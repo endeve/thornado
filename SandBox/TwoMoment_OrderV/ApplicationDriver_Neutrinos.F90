@@ -85,16 +85,17 @@ PROGRAM ApplicationDriver_Neutrinos
   REAL(DP)      :: Rtol_outer, Rtol_inner
   REAL(DP)      :: wMatterRHS(5)
 
-  ProgramName = 'Relaxation'
+  !ProgramName = 'Relaxation'
+  ProgramName = 'DeleptonizationWave1D'
 
   CoordinateSystem = 'CARTESIAN'
 
   EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
-  OpacityTableName_EmAb = 'wl-Op-SFHo-15-25-50-E40-B85-EmAb.h5'
-  OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5'
-  OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5'
-  OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5'
-  OpacityTableName_Brem = 'wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5'
+  OpacityTableName_EmAb = 'wl-Op-SFHo-15-25-50-E40-EmAb.h5'
+  OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-Iso.h5'
+  OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-NES.h5'
+  OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-Pair.h5'
+  OpacityTableName_Brem = 'wl-Op-SFHo-15-25-50-E40-Brem.h5'
 
   PrescribedTimeStep = .FALSE.
 

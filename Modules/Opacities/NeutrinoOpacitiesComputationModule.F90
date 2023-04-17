@@ -823,12 +823,12 @@ CONTAINS
 #ifdef MICROPHYSICS_WEAKLIB
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA       &
+    !$OMP TARGET ENTER DATA        &
     !$OMP MAP( to:    E, D, T, Y ) &
     !$OMP MAP( alloc: opEC )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA              &
-    !$ACC COPYIN  ( E, D, T, Y )  &
+    !$ACC ENTER DATA               &
+    !$ACC COPYIN  ( E, D, T, Y )   &
     !$ACC CREATE  ( opEC )
 #endif
 
@@ -892,7 +892,6 @@ CONTAINS
                                * hbarMeVs**3
   REAL(dp), PARAMETER :: kmev  = 8.61733d-11   ! Boltzmann's constant [MeV K^{-1}]
 
-  !REAL(dp) :: Me(iX_B:iX_E), Mn(iX_B:iX_E), Mp(iX_B:iX_E)
   REAL(dp) :: Xh(iX_B:iX_E), Ah(iX_B:iX_E)
   REAL(dp) :: EC_rate(iX_B:iX_E)
   REAL(dp) :: opECT(iE_B:iE_E,iX_B:iX_E)
@@ -908,11 +907,13 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET ENTER DATA                         &
+  !$OMP MAP( to: f0 )                             &
   !$OMP MAP( alloc: Xh, Ah, EC_rate,              & 
   !$OMP      opECT, spec_nodes, spec_elements,    &
   !$OMP      spec_elements_nodes, spec_fine )
 #elif defined(THORNADO_OACC)
   !$ACC ENTER DATA                                &
+  !$ACC COPYIN( f0 )                              &    
   !$ACC CREATE( Xh, Ah, EC_rate,                  &
   !$ACC         opECT, spec_nodes, spec_elements, &
   !$ACC         spec_elements_nodes, spec_fine )
@@ -937,7 +938,7 @@ CONTAINS
     !$ACC PRIVATE( D_P, T_P, Y_P, spec_nodes, spec_elements_nodes, & 
     !$ACC          spec_elements, spec_fine, tmev, Xnuc, loctot )  &
     !$ACC COPYIN ( CenterE, WidthE, NodesE )                       &
-    !$ACC PRESENT( Me, Mn, Mp, Xh, Ah, EC_rate, OS_EmAb_EC_rate,   &
+    !$ACC PRESENT( Xh, Ah, EC_rate, OS_EmAb_EC_rate,               &
     !$ACC          OS_EmAb_EC_spec, EmAb_EC_spec_T, WeightsE,      &
     !$ACC          f0, EC_nE, EC_dE, EC_iE_max, EC_iNodeE_max,  &
     !$ACC          Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T) 
@@ -1150,13 +1151,13 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA                                &
-    !$OMP MAP( release: Xh, Ah, EC_rate,                  &
+    !$OMP MAP( release: f0, Xh, Ah, EC_rate,              &
     !$OMP               opECT, spec_nodes, spec_elements, &
     !$OMP               spec_elements_nodes, spec_fine,   &
     !$OMP               CenterE, WidthE, NodesE )     
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA                                       &
-    !$ACC DELETE  (     Xh, Ah, EC_rate,                  &
+    !$ACC DELETE  (     f0, Xh, Ah, EC_rate,              &
     !$ACC               opECT, spec_nodes, spec_elements, &
     !$ACC               spec_elements_nodes, spec_fine,   &
     !$ACC               CenterE, WidthE, NodesE )     
