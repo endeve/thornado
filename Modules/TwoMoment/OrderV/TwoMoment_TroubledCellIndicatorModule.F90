@@ -285,8 +285,31 @@ CONTAINS
             1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
 
     IF( .NOT. UseTroubledCellIndicator )THEN
-      TroubledCell = .TRUE.
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) ASYNC &
+      !$ACC PRESENT( iZ_B0, iZ_E0, TroubledCell )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+      DO iS   = 1       , nSpecies
+      DO iE_G = 1       , nE_G
+      DO iZ4  = iZ_B0(4), iZ_E0(4)
+      DO iZ3  = iZ_B0(3), iZ_E0(3)
+      DO iZ2  = iZ_B0(2), iZ_E0(2)
+
+        TroubledCell(iZ2,iZ3,iZ4,iE_G,iS) = .TRUE.
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
       RETURN
+
     END IF
 
     CALL TimersStart( Timer_TCI )
