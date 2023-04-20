@@ -131,7 +131,6 @@ MODULE InitializationModule
     t_chk, &
     dt_wrt, &
     dt_chk, &
-    xL, &
     UseTiling, &
     UseFluxCorrection_Euler, &
     MaxGridSizeX, &
@@ -158,9 +157,6 @@ MODULE InitializationModule
     TimersStop_AMReX, &
     InitializeTimers_AMReX, &
     Timer_AMReX_Initialize
-  USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
-    InitializeGravitySolver_XCFC_Poseidon_MF, &
-    InitializeMetric_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -275,32 +271,9 @@ CONTAINS
       CALL ApplyPositivityLimiter_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uDF )
 
-      CALL CreateMesh_MF( 0, MeshX )
-
-      CALL InitializeGravitySolver_XCFC_Poseidon_MF
-
-      CALL DestroyMesh_MF( MeshX )
-
-      CALL ComputeFromConserved_Euler_MF &
-             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-      CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-      CALL ApplySlopeLimiter_Euler_MF &
-             ( MF_uGF, MF_uCF, MF_uDF )
-
-      CALL ApplyPositivityLimiter_Euler_MF &
-             ( MF_uGF, MF_uCF, MF_uDF )
-
     ELSE
 
       CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
-
-      CALL CreateMesh_MF( 0, MeshX )
-
-      CALL InitializeGravitySolver_XCFC_Poseidon_MF( MF_uGF, MF_uCF )
-
-      CALL DestroyMesh_MF( MeshX )
 
     END IF
 
@@ -313,8 +286,7 @@ CONTAINS
     t_wrt = t_new(0) + dt_wrt
 
     CALL InitializeFluid_SSPRK_MF &
-           ( Verbose_Option = amrex_parallel_ioprocessor(), &
-             EvolveGravity_Option = .TRUE. )
+           ( Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL DescribeProgramHeader_AMReX
 
@@ -421,9 +393,11 @@ CONTAINS
              ( FluxRegister_Euler(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
                iLevel, nDOFX_X1 * nCF )
 
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uGF )
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF )
+    CALL FillCoarsePatch( iLevel, MF_uGF )
     CALL FillCoarsePatch( iLevel, MF_uGF, MF_uDF )
+    CALL FillCoarsePatch &
+           ( iLevel, MF_uGF, MF_uCF, &
+             MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
 
   END SUBROUTINE MakeNewLevelFromCoarse
 
@@ -464,9 +438,9 @@ CONTAINS
     CALL amrex_multifab_build( MF_uAF_tmp, BA, DM, nDOFX * nAF, swX )
     CALL amrex_multifab_build( MF_uDF_tmp, BA, DM, nDOFX * nDF, swX )
 
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF, MF_uGF_tmp )
-    CALL FillPatch( iLevel, MF_uGF, MF_uCF, MF_uCF_tmp )
+    CALL FillPatch( iLevel, MF_uGF        , MF_uGF_tmp )
     CALL FillPatch( iLevel, MF_uGF, MF_uDF, MF_uDF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uCF, MF_uCF_tmp )
 
     CALL ClearLevel( iLevel )
 
@@ -497,7 +471,12 @@ CONTAINS
   SUBROUTINE ErrorEstimate( iLevel, cp, Time, SetTag, ClearTag ) BIND(c)
 
     USE TaggingModule, ONLY: &
-      TagElements
+      TagElements_Advection1D, &
+      TagElements_RiemannProblem1D, &
+      TagElements_Advection2D, &
+      TagElements_KelvinHelmholtz2D, &
+      TagElements_Advection3D, &
+      TagElements_uCF
 
     INTEGER,                INTENT(in), VALUE :: iLevel
     TYPE(c_ptr),            INTENT(in), VALUE :: cp
@@ -538,10 +517,51 @@ CONTAINS
       ! TagCriteria(iLevel+1) because iLevel starts at 0 but
       ! TagCriteria starts with 1
 
-      CALL TagElements &
-             ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-               uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
-               LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+      SELECT CASE( TRIM( ProgramName ) )
+
+        CASE( 'Advection1D' )
+
+          CALL TagElements_Advection1D &
+                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+        CASE( 'RiemannProblem1D' )
+
+          CALL TagElements_RiemannProblem1D &
+                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+        CASE( 'Advection2D' )
+
+          CALL TagElements_Advection2D &
+                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+        CASE( 'KelvinHelmholtz2D' )
+
+          CALL TagElements_KelvinHelmholtz2D &
+                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+        CASE( 'Advection3D' )
+
+          CALL TagElements_Advection3D &
+                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+        CASE DEFAULT
+
+          CALL TagElements_uCF &
+                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+      END SELECT
 
     END DO
 

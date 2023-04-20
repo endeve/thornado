@@ -32,11 +32,15 @@ clobber: clean
 Poseidon_UtilitiesModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  MeshModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
+  UnitsModule.o \
   Euler_UtilitiesModule_Relativistic.o \
-  EquationOfStateModule_IDEAL.o \
-  EquationOfStateModule_TABLE.o \
+  EquationOfStateModule.o \
+  Euler_ErrorModule.o \
+  TimersModule_Euler.o \
   Poseidon_UtilitiesModule.F90
 
 InitializationModule_Relativistic.o: \
@@ -45,23 +49,27 @@ InitializationModule_Relativistic.o: \
   ReferenceElementModuleX.o \
   MeshModule.o \
   GravitySolutionModule_CFA_Poseidon.o \
+  Poseidon_UtilitiesModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule_IDEAL.o \
   Euler_UtilitiesModule_Relativistic.o \
   UnitsModule.o \
   UtilitiesModule.o \
-  Poseidon_UtilitiesModule.o \
+  Euler_SlopeLimiterModule_Relativistic_IDEAL.o \
+  Euler_PositivityLimiterModule_Relativistic_IDEAL.o \
   InitializationModule_Relativistic.f90
 
 TimeSteppingModule_SSPRK.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  GeometryFieldsModule.o \
+  GravitySolutionModule_CFA_Poseidon.o \
   FluidFieldsModule.o \
-  Euler_SlopeLimiterModule_Relativistic_IDEAL.o \
-  Euler_PositivityLimiterModule_Relativistic_IDEAL.o \
-  TimersModule_Euler.o \
+  Euler_SlopeLimiterModule_Relativistic_TABLE.o \
+  Euler_PositivityLimiterModule_Relativistic_TABLE.o \
   Poseidon_UtilitiesModule.o \
+  TimersModule_Euler.o \
   Euler_dgDiscretizationModule.o \
   Euler_TallyModule_Relativistic.o \
   TimeSteppingModule_SSPRK.f90
@@ -85,7 +93,7 @@ ApplicationDriver.o: \
   TimeSteppingModule_SSPRK.o \
   UnitsModule.o \
   Euler_TallyModule_Relativistic.o \
-  TimersModule_Euler.o \
   Poseidon_UtilitiesModule.o \
+  TimersModule_Euler.o \
   ApplicationDriver.f90
 
