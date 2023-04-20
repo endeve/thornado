@@ -115,13 +115,6 @@ CONTAINS
     REAL(DP),         INTENT(in), OPTIONAL :: zoomE_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
-#if defined( THORNADO_GIT_VERSION )
-
-    WRITE(*,*)
-    WRITE(*,'(2x,A,A)') 'INFO: thornado git version: ', THORNADO_GIT_VERSION
-
-#endif
-
     IF( PRESENT( ProgramName_Option ) )THEN
       ProgramName = TRIM( ProgramName_Option )
     ELSE
@@ -132,6 +125,17 @@ CONTAINS
       Verbose = Verbose_Option
     ELSE
       Verbose = .TRUE.
+    END IF
+
+    IF( Verbose )THEN
+
+#if defined( THORNADO_GIT_VERSION )
+
+      WRITE(*,*)
+      WRITE(*,'(2x,A,A)') 'INFO: thornado git version: ', THORNADO_GIT_VERSION
+
+#endif
+
     END IF
 
     IF( ( LEN_TRIM( ProgramName ) > 0 ) .AND. Verbose )THEN
