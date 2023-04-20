@@ -480,6 +480,8 @@ contains
 
       IF( TRIM(CoordinateSystem_Option) == 'spherical' )THEN
         CoordinateSystem = 'SPHERICAL'
+      ELSE IF( TRIM(CoordinateSystem_Option) == 'cylindrical' )THEN
+        CoordinateSystem = 'CYLINDRICAL'
       ELSE IF( TRIM(CoordinateSystem_Option) == 'cartesian' )THEN
         CoordinateSystem = 'CARTESIAN'
       ELSE
