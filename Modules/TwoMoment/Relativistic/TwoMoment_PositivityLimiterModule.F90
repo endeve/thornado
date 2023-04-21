@@ -1438,15 +1438,15 @@ m=0
 
       IF( N_K(iZ1,iZ2,iZ3,iZ4,iS) < Min_1 )THEN
 
-        PRINT*
-        PRINT*, "  N_K < Min_1"
-        PRINT*
-        PRINT*, "  iZ1,iZ2,iZ3,iZ4,iS = ", iZ1,iZ2,iZ3,iZ4,iS
-        PRINT*, "  N_K                = ", N_K (iZ1,iZ2,iZ3,iZ4,iS)
-        PRINT*, "  G1_K               = ", G1_K(iZ1,iZ2,iZ3,iZ4,iS)
-        PRINT*, "  G2_K               = ", G2_K(iZ1,iZ2,iZ3,iZ4,iS)
-        PRINT*, "  G3_K               = ", G3_K(iZ1,iZ2,iZ3,iZ4,iS)
-        PRINT*
+       ! PRINT*
+       ! PRINT*, "  N_K < Min_1"
+       ! PRINT*
+       ! PRINT*, "  iZ1,iZ2,iZ3,iZ4,iS = ", iZ1,iZ2,iZ3,iZ4,iS
+       ! PRINT*, "  N_K                = ", N_K (iZ1,iZ2,iZ3,iZ4,iS)
+       ! PRINT*, "  G1_K               = ", G1_K(iZ1,iZ2,iZ3,iZ4,iS)
+       ! PRINT*, "  G2_K               = ", G2_K(iZ1,iZ2,iZ3,iZ4,iS)
+       ! PRINT*, "  G3_K               = ", G3_K(iZ1,iZ2,iZ3,iZ4,iS)
+       ! PRINT*
 
         RealizableCellAverage(iZ1,iZ2,iZ3,iZ4,iS) = .FALSE.
       END IF
@@ -1486,16 +1486,16 @@ m=0
 
         IF(  Gamma_K < Min_2 )THEN
 
-          PRINT*
-          PRINT*, "  Gamma_K < Min_2"
-          PRINT*
-          PRINT*, "  iZ1,iZ2,iZ3,iZ4,iS = ", iZ1,iZ2,iZ3,iZ4,iS
-          PRINT*, "  Gamma_K            = ", Gamma_K
-          PRINT*, "  N_K                = ", N_K (iZ1,iZ2,iZ3,iZ4,iS)
-          PRINT*, "  G1_K               = ", G1_K(iZ1,iZ2,iZ3,iZ4,iS)
-          PRINT*, "  G2_K               = ", G2_K(iZ1,iZ2,iZ3,iZ4,iS)
-          PRINT*, "  G3_K               = ", G3_K(iZ1,iZ2,iZ3,iZ4,iS)
-          PRINT*, "  V1_P               = ", V_1_P(iP_X,iZ2,iZ3,iZ4)
+       !   PRINT*
+       !   PRINT*, "  Gamma_K < Min_2"
+       !   PRINT*
+       !   PRINT*, "  iZ1,iZ2,iZ3,iZ4,iS = ", iZ1,iZ2,iZ3,iZ4,iS
+       !   PRINT*, "  Gamma_K            = ", Gamma_K
+       !   PRINT*, "  N_K                = ", N_K (iZ1,iZ2,iZ3,iZ4,iS)
+       !   PRINT*, "  G1_K               = ", G1_K(iZ1,iZ2,iZ3,iZ4,iS)
+       !   PRINT*, "  G2_K               = ", G2_K(iZ1,iZ2,iZ3,iZ4,iS)
+       !   PRINT*, "  G3_K               = ", G3_K(iZ1,iZ2,iZ3,iZ4,iS)
+       !   PRINT*, "  V1_P               = ", V_1_P(iP_X,iZ2,iZ3,iZ4)
 
           RealizableCellAverage(iZ1,iZ2,iZ3,iZ4,iS) = .FALSE.
         END IF
