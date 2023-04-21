@@ -34,14 +34,17 @@ MODULE  MF_MHD_dgDiscretizationModule
     Zero
   USE MF_UtilitiesModule,                 ONLY: &
     amrex2thornado_X, &
-    thornado2amrex_X
+    thornado2amrex_X, &
+    WriteNodalDataToFile
   USE InputParsingModule,                 ONLY: &
     nLevels, &
     UseTiling, &
     DEBUG, &
     EvolveOnlyMagnetic, &
     UseDivergenceCleaning, &
-    DampingParameter
+    DampingParameter, &
+    WriteNodalData, &
+    StepNo
   USE MF_MHD_BoundaryConditionsModule,  ONLY: &
     EdgeMap,          &
     ConstructEdgeMap, &
@@ -82,73 +85,75 @@ CONTAINS
 
     TYPE(EdgeMap) :: Edge_Map
 
-    DO iLevel = 0, nLevels-1
+    CHARACTER(LEN=19) :: NodalFileBaseName
 
-      ! --- Apply boundary conditions to interior domains ---
-
-      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
-
-      CALL MF_uCM(iLevel) % Fill_Boundary( GEOM(iLevel) )
-
-      CALL MF_uDM(iLevel) % Fill_Boundary( GEOM(iLevel) )
-
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
-
-      DO WHILE( MFI % next() )
-
-        uGF  => MF_uGF (iLevel) % DataPtr( MFI )
-        uCM  => MF_uCM (iLevel) % DataPtr( MFI )
-        uDM  => MF_uDM (iLevel) % DataPtr( MFI )
-
-        iLo_MF = LBOUND( uGF )
-
-        BX = MFI % tilebox()
-
-        iX_B0 = BX % lo
-        iX_E0 = BX % hi
-        iX_B1 = BX % lo - swX
-        iX_E1 = BX % hi + swX
-
-        ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nGF) )
-
-        ALLOCATE( U (1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nCM) )
-
-        ALLOCATE( D (1:nDOFX,iX_B1(1):iX_E1(1), &
-                             iX_B1(2):iX_E1(2), &
-                             iX_B1(3):iX_E1(3),1:nDM) )
-
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
-
-        CALL amrex2thornado_X( nCM, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCM, U )
-
-        CALL amrex2thornado_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDM, D )
-
-        ! --- Apply boundary conditions to physical boundaries ---
-
-        CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
-
-        IF( DEBUG ) WRITE(*,'(A)') '    CALL MF_ApplyBoundaryConditions_MHD'
-
-        CALL MF_ApplyBoundaryConditions_MHD &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
-
-        CALL thornado2amrex_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDM, D )
-
-        DEALLOCATE( D  )
-
-        DEALLOCATE( U  )
-
-        DEALLOCATE( G  )
-
-      END DO
-
-      CALL amrex_mfiter_destroy( MFI )
-
-    END DO
+!    !DO iLevel = 0, nLevels-1
+!
+!      ! --- Apply boundary conditions to interior domains ---
+!
+!      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+!
+!      CALL MF_uCM(iLevel) % Fill_Boundary( GEOM(iLevel) )
+!
+!      CALL MF_uDM(iLevel) % Fill_Boundary( GEOM(iLevel) )
+!
+!      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+!
+!      DO WHILE( MFI % next() )
+!
+!        uGF  => MF_uGF (iLevel) % DataPtr( MFI )
+!        uCM  => MF_uCM (iLevel) % DataPtr( MFI )
+!        uDM  => MF_uDM (iLevel) % DataPtr( MFI )
+!
+!        iLo_MF = LBOUND( uGF )
+!
+!        BX = MFI % tilebox()
+!
+!        iX_B0 = BX % lo
+!        iX_E0 = BX % hi
+!        iX_B1 = BX % lo - swX
+!        iX_E1 = BX % hi + swX
+!
+!        ALLOCATE( G (1:nDOFX,iX_B1(1):iX_E1(1), &
+!                             iX_B1(2):iX_E1(2), &
+!                             iX_B1(3):iX_E1(3),1:nGF) )
+!
+!        ALLOCATE( U (1:nDOFX,iX_B1(1):iX_E1(1), &
+!                             iX_B1(2):iX_E1(2), &
+!                             iX_B1(3):iX_E1(3),1:nCM) )
+!
+!        ALLOCATE( D (1:nDOFX,iX_B1(1):iX_E1(1), &
+!                             iX_B1(2):iX_E1(2), &
+!                             iX_B1(3):iX_E1(3),1:nDM) )
+!
+!        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
+!
+!        CALL amrex2thornado_X( nCM, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCM, U )
+!
+!        CALL amrex2thornado_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDM, D )
+!
+!        ! --- Apply boundary conditions to physical boundaries ---
+!
+!        CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
+!
+!        IF( DEBUG ) WRITE(*,'(A)') '    CALL MF_ApplyBoundaryConditions_MHD'
+!
+!        CALL MF_ApplyBoundaryConditions_MHD &
+!               ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+!
+!        CALL thornado2amrex_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDM, D )
+!
+!        DEALLOCATE( D  )
+!
+!        DEALLOCATE( U  )
+!
+!        DEALLOCATE( G  )
+!
+!      END DO
+!
+!      CALL amrex_mfiter_destroy( MFI )
+!
+!    END DO
 
     DO iLevel = 0, nLevels-1
 
