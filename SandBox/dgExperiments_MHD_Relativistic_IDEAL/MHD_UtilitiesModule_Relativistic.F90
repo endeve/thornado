@@ -1632,8 +1632,8 @@ CONTAINS
 
     LOGICAL :: CONVERGED
     INTEGER :: ITER
-    REAL(DP), PARAMETER :: Tolmu = 1.0d-16
-    REAL(DP), PARAMETER :: Tolf = 1.0d-16
+    REAL(DP), PARAMETER :: Tolmu = 1.0d-08
+    REAL(DP), PARAMETER :: Tolf = 1.0d-08
     INTEGER,  PARAMETER :: MAX_ITER = 4 - INT( LOG( Tolmu ) / LOG( Two ) )
 
    !PRINT*, 'Solving for the upper bound with the Newton-Raphson method.'
@@ -1702,7 +1702,7 @@ CONTAINS
     INTEGER             :: ITERATION
     REAL(DP)            :: mua, mub, muc, dmu
     REAL(DP)            :: fa, fb, fc
-    REAL(DP), PARAMETER :: dmu_min = 1.0d-16
+    REAL(DP), PARAMETER :: dmu_min = 1.0d-08
     INTEGER,  PARAMETER :: MAX_IT = 4 - INT( LOG( dmu_min) / LOG( Two ) )
 
     IF( r < h0 ) THEN
