@@ -67,7 +67,7 @@ DEFINES += $(MDEFS)$(PP)THORNADO_GIT_DATE=\"$(THORNADO_GIT_DATE)\"
 THORNADO_GIT_BRANCH \
   := $(shell \
      cd $(THORNADO_DIR) \
-     && git branch --show-current \
+     && git rev-parse --abbrev-ref HEAD \
      && cd - > /dev/null)
 DEFINES += $(MDEFS)$(PP)THORNADO_GIT_BRANCH=\"$(THORNADO_GIT_BRANCH)\"
 

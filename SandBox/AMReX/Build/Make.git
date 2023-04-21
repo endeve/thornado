@@ -19,7 +19,7 @@ DEFINES += -DTHORNADO_AMREX_GIT_DATE=\"$(THORNADO_AMREX_GIT_DATE)\"
 THORNADO_AMREX_GIT_BRANCH \
   := $(shell \
      cd $(THORNADO_DIR) \
-     && git branch --show-current \
+     && git rev-parse --abbrev-ref HEAD \
      && cd - > /dev/null)
 DEFINES += -DTHORNADO_AMREX_GIT_BRANCH=\"$(THORNADO_AMREX_GIT_BRANCH)\"
 
