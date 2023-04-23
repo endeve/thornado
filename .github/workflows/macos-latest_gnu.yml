@@ -1,0 +1,117 @@
+name: Compile thornado on MacOS (latest) with gnu compilers
+
+on: [ push, pull_request ]
+
+jobs:
+  compile-with-amrex_gnu:
+    name: Compile thornado on MacOS (latest) with gnu compilers
+    runs-on: macos-latest
+    env:
+      THORNADO_MACHINE: gh-runner_macos-latest_gnu
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+
+      - name: Checkout weaklib
+        uses: actions/checkout@v3
+        with:
+          repository: starkiller-astro/weaklib
+          path: weaklib
+
+      - name: Checkout amrex
+        uses: actions/checkout@v3
+        with:
+          repository: dunhamsj/amrex
+          path: amrex
+          ref: MeshRefinement_DG
+
+      - name: Download and install homebrew and dependencies
+        run: |
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          echo ""
+          echo "brew install gcc"
+                brew install gcc
+          echo ""
+          echo "brew install gfortran"
+                brew install gfortran
+          echo ""
+          echo "brew install open-mpi --cc=gcc-12"
+                brew install open-mpi --cc=gcc-12
+          GCC_VERSION=`ls /usr/local/Cellar/gcc`
+          echo "/usr/local/Cellar/gcc/${GCC_VERSION}/bin" >> ${GITHUB_PATH}
+          OMPI_VERSION=`ls /usr/local/Cellar/open-mpi`
+          echo "/usr/local/Cellar/open-mpi/${OMPI_VERSION}/bin" >> ${GITHUB_PATH}
+          echo ""
+          echo "brew install hdf5"
+                brew install hdf5
+          echo ""
+          echo "brew install lapack"
+                brew install lapack
+
+      - name: Find Libraries and Set Environment Variables
+        run: |
+          echo ""
+          echo "mpicxx --version"
+                mpicxx --version
+          echo ""
+          echo "mpif90 --version"
+                mpif90 --version
+          echo ""
+          echo "find /usr/local/Cellar -name \"*hdf5.mod\""
+                find /usr/local/Cellar -name  "*hdf5.mod"
+          echo ""
+          echo "find /usr/local/Cellar -name \"*libhdf5*\""
+                find /usr/local/Cellar -name  "*libhdf5*"
+          echo ""
+          echo "find /usr/local/Cellar -name \"*liblapack*\""
+                find /usr/local/Cellar -name  "*liblapack*"
+          echo ""
+          echo "find /usr/local/Cellar -name \"*lib*blas*\""
+                find /usr/local/Cellar -name  "*lib*blas*"
+          HDF5_VERSION=`ls /usr/local/Cellar/hdf5`
+          echo "HDF5_INC=/usr/local/Cellar/hdf5/${HDF5_VERSION}/include" >> ${GITHUB_ENV}
+          echo "HDF5_LIB=/usr/local/Cellar/hdf5/${HDF5_VERSION}/lib"     >> ${GITHUB_ENV}
+          LAPACK_VERSION=`ls /usr/local/Cellar/lapack`
+          echo "LAPACK_LIB=/usr/local/Cellar/lapack/${LAPACK_VERSION}/lib" >> ${GITHUB_ENV}
+          echo "BLAS_LIB=/usr/local/Cellar/lapack/${LAPACK_VERSION}/lib"   >> ${GITHUB_ENV}
+          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"        >> ${GITHUB_ENV}
+          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib" >> ${GITHUB_ENV}
+          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"     >> ${GITHUB_ENV}
+
+      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
+        run: |
+          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
+          make
+          make clobber
+
+      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
+        run: |
+          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
+          make
+          make clobber
+
+      - name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
+        run: |
+          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
+          make
+          make clobber
+
+      - name: Compile SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables
+        run: |
+          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables
+          make
+          make clobber
+
+      # OSX's cpp has trouble with fortran files; use homebrew's instead
+
+      - name: Compile SandBox/AMReX/Euler_Relativistic_IDEAL_MR
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Euler_Relativistic_IDEAL_MR
+          make FORT_CPP="cpp-12 -E -traditional-cpp -P"
+          make realclean
+
+      - name: Compile SandBox/AMReX/TwoMoment_Test
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/TwoMoment_Test
+          make FORT_CPP="cpp-12 -E -traditional-cpp -P"
+          make realclean

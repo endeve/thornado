@@ -22,24 +22,23 @@ ifeq ($(USE_OACC),TRUE)
   OPENACC = -acc -gpu=cuda$(CUDA_MAJOR).$(CUDA_MINOR),cc70,ptxinfo -Minfo=accel
 endif
 
-#HDF5_ROOT=/home/runner/work/thornado/thornado/hdf5
-
-# Hacked to include mpi (mpi.mod is in $(MPI_ROOT)/lib for some reason)
-INCLUDE_CUDA     = -I$(CUDA_ROOT)/include \
-		   -I$(MPI_ROOT)/lib
-INCLUDE_HDF5     = -I$(HDF5_ROOT)/include
+# Hacked to include MPI include files
+INCLUDE_CUDA     = -I$(CUDA_INC) \
+                   -I$(OMPI_INC)
+INCLUDE_HDF5     = -I$(HDF5_INC)
 INCLUDE_LAPACK   =
 INCLUDE_MAGMA    =
 INCLUDE_PETSC    =
 INCLUDE_POSEIDON =
 INCLUDE_ROCM     =
 
-# Hacked to include mpi
-LIBRARIES_CUDA     = -L$(CUDA_ROOT)/lib64 -lcublas -lcusparse -lcusolver \
-		     -L$(CUDART_ROOT)/lib64 -lcudart \
-		     -L$(MPI_ROOT)/lib -lmpi_mpifh -lmpi
-LIBRARIES_HDF5     = -L$(HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
-LIBRARIES_LAPACK   = -L$(LAPACK_ROOT)/lib -llapack -L$(BLAS_ROOT)/lib -lblas
+# Hacked to include MPI library files
+LIBRARIES_CUDA     = -L$(CUDA_LIB) -lcublas -lcusparse -lcusolver \
+                     -L$(CUDART_LIB) -lcudart \
+                     -L$(OMPI_LIB) -lmpi -lmpi_mpifh
+LIBRARIES_HDF5     = -L$(HDF5_LIB) -lhdf5_fortran -lhdf5
+LIBRARIES_LAPACK   = -L$(LAPACK_LIB) -llapack \
+                     -L$(BLAS_LIB) -lblas
 LIBRARIES_MAGMA    =
 LIBRARIES_PETSC    =
 LIBRARIES_POSEIDON =
