@@ -27,23 +27,32 @@ jobs:
 
       - name: Update Ubuntu
         run: |
-          sudo apt-get -y install libhdf5-dev
-          sudo apt-get -y install mpich
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
           sudo apt-get -y update
 
-      - name: Set Environment Variables
+      - name: Find Libraries and Set Environment Variables
         run: |
-          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"                       >> ${GITHUB_ENV}
-          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"                >> ${GITHUB_ENV}
-          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"                    >> ${GITHUB_ENV}
-          echo "HDF5_ROOT=/usr/lib/x86_64-linux-gnu/hdf5/serial"        >> ${GITHUB_ENV}
-          echo "LAPACK_ROOT=/usr/lib/x86_64-linux-gnu/lapack"           >> ${GITHUB_ENV}
-          echo "BLAS_ROOT=/usr/lib/x86_64-linux-gnu/blas"               >> ${GITHUB_ENV}
-          echo "HDF5_DIR=/usr/lib/x86_64-linux-gnu/hdf5/serial"         >> ${GITHUB_ENV}
-          echo "HDF5_INC=/usr/lib/x86_64-linux-gnu/hdf5/serial/include" >> ${GITHUB_ENV}
-          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial/lib"     >> ${GITHUB_ENV}
-          echo "LAPACK_DIR=/usr/lib/x86_64-linux-gnu/lapack"            >> ${GITHUB_ENV}
-          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu/lapack"            >> ${GITHUB_ENV}
+          echo ""
+          echo "find /usr -name \"*hdf5.mod\""
+                find /usr -name  "*hdf5.mod"
+          echo ""
+          echo "find /usr -name \"*libhdf5*\""
+                find /usr -name  "*libhdf5*"
+          echo ""
+          echo "find /usr -name \"*liblapack*\""
+                find /usr -name  "*liblapack*"
+          echo ""
+          echo "find /usr -name \"*lib*blas*\""
+                find /usr -name  "*lib*blas*"
+          echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_ENV}
+          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_ENV}
+          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_ENV}
+          echo "BLAS_LIB=/usr/lib/x86_64-linux-gnu"             >> ${GITHUB_ENV}
+          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"               >> ${GITHUB_ENV}
+          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"        >> ${GITHUB_ENV}
+          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_ENV}
 
       - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
         run: |
