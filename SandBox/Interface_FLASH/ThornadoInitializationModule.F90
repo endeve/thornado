@@ -87,6 +87,9 @@ module ThornadoInitializationModule
   use TwoMoment_MeshRefinementModule, only : &
     InitializeMeshRefinement_TwoMoment, &
     FinalizeMeshRefinement_TwoMoment
+  use TwoMoment_TroubledCellIndicatorModule, only: &
+    InitializeTroubledCellIndicator_TwoMoment, &
+    FinalizeTroubledCellIndicator_TwoMoment
   use TwoMoment_SlopeLimiterModule, only: &
     InitializeSlopeLimiter_TwoMoment, &
     FinalizeSlopeLimiter_TwoMoment
@@ -114,6 +117,7 @@ contains
       EquationOfStateTableName_Option, External_EOS, &
       Gamma_IDEAL_Option, &
       PositivityLimiter_Option, UpperBry1_Option, &
+      TroubledCellIndicator_Option, C_TCI_Option, &
       SlopeLimiter_Option, &
       EnergyLimiter_Option, &
       OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
@@ -138,6 +142,8 @@ contains
 
     real(dp),         intent(in), optional :: Gamma_IDEAL_Option
     logical,          intent(in), optional :: PositivityLimiter_Option
+    logical,          intent(in), optional :: TroubledCellIndicator_Option
+    real(dp),         intent(in), optional :: C_TCI_Option
     logical,          intent(in), optional :: SlopeLimiter_Option
     logical,          intent(in), optional :: EnergyLimiter_Option
     real(dp),         intent(in), optional :: UpperBry1_Option
@@ -159,15 +165,29 @@ contains
     real(dp),         intent(in), optional :: wMatrRHS_Option(5)
     logical,          intent(in), optional :: Verbose_Option
 
+    logical  :: TroubledCellIndicator
     logical  :: PositivityLimiter, SlopeLimiter, EnergyLimiter, Verbose
     integer  :: nX(3), bcX(3)
     integer  :: i
+    real(dp) :: C_TCI
     real(dp) :: eL, eR, UpperBry1
 
     IF( PRESENT(PositivityLimiter_Option) )THEN
       PositivityLimiter = PositivityLimiter_Option
     ELSE
       PositivityLimiter = .FALSE.
+    END IF
+
+    IF( PRESENT(TroubledCellIndicator_Option) )THEN
+      TroubledCellIndicator = TroubledCellIndicator_Option
+    ELSE
+      TroubledCellIndicator = .FALSE.
+    END IF
+
+    IF( PRESENT(C_TCI_Option) )THEN
+      C_TCI = C_TCI_Option
+    ELSE
+      C_TCI = 1.0e-2_dp
     END IF
 
     IF( PRESENT(SlopeLimiter_Option) )THEN
@@ -281,6 +301,15 @@ contains
            ( Verbose_Option = Verbose )
 
 #ifdef TWOMOMENT_ORDER_V
+
+    CALL InitializeTroubledCellIndicator_TwoMoment &
+           ( UseTroubledCellIndicator_Option &
+               = TroubledCellIndicator, &
+             C_TCI_Option &
+               = C_TCI, &
+             Verbose_Option &
+               = Verbose )
+
     call InitializeSlopeLimiter_TwoMoment &
            ( BetaTVD_Option &
                = 1.75_DP, &
@@ -288,6 +317,7 @@ contains
                = SlopeLimiter, &
              Verbose_Option &
                = Verbose )
+
 #endif
 
 #ifdef TWOMOMENT_ORDER_1
@@ -421,6 +451,8 @@ contains
 #endif
 
     call FinalizeSlopeLimiter_TwoMoment
+
+    CALL FinalizeTroubledCellIndicator_TwoMoment
 #endif
 
     call FinalizePositivityLimiter_TwoMoment
@@ -448,6 +480,8 @@ contains
 
       IF( TRIM(CoordinateSystem_Option) == 'spherical' )THEN
         CoordinateSystem = 'SPHERICAL'
+      ELSE IF( TRIM(CoordinateSystem_Option) == 'cylindrical' )THEN
+        CoordinateSystem = 'CYLINDRICAL'
       ELSE IF( TRIM(CoordinateSystem_Option) == 'cartesian' )THEN
         CoordinateSystem = 'CARTESIAN'
       ELSE

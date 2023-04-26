@@ -8,14 +8,13 @@ jobs:
     runs-on: ubuntu-20.04
     env:
       THORNADO_MACHINE: gh-runner_ubuntu-20.04_nvhpc
-      ARCH: x86_64
-      NVARCH: Linux_x86_64
-      NVCOMPILERS: /opt/nvidia/hpc_sdk
-      NVHPC_SILENT: true
-      NVHPC_MAJOR: 22
-      NVHPC_MINOR: 7
-      CUDA_MAJOR: 11
-      CUDA_MINOR: 7
+      NVHPC_MAJOR: 23
+      NVHPC_MINOR: 3
+      CUDA_MAJOR: 12
+      CUDA_MINOR: 0
+      HDF5_MAJOR: 1.14
+      HDF5_MINOR: 0
+      OMPI_VERSION: 3.1.5
     steps:
       - name: Checkout thornado
         uses: actions/checkout@v3
@@ -29,121 +28,107 @@ jobs:
 
       - name: Update Ubuntu
         run: |
-          git branch
-          sudo apt-get -qq update
+          sudo apt-get -qqq update
+          sudo apt-get install -y \
+            environment-modules
 
-      - name: Set Environment Variables
+      # https://developer.nvidia.com/hpc-sdk-downloads
+      - name: Download and install nvhpc
         run: |
-          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"        >> ${GITHUB_ENV}
-          echo "HDF5_DIR=${GITHUB_WORKSPACE}/hdf5"       >> ${GITHUB_ENV}
-          echo "HDF5_ROOT=${GITHUB_WORKSPACE}/hdf5"      >> ${GITHUB_ENV}
+          curl https://developer.download.nvidia.com/hpc-sdk/ubuntu/DEB-GPG-KEY-NVIDIA-HPC-SDK \
+            | sudo gpg --dearmor -o \
+            /usr/share/keyrings/nvidia-hpcsdk-archive-keyring.gpg
+          echo 'deb [signed-by=/usr/share/keyrings/nvidia-hpcsdk-archive-keyring.gpg] https://developer.download.nvidia.com/hpc-sdk/ubuntu/amd64 /' \
+            | sudo tee /etc/apt/sources.list.d/nvhpc.list
+          sudo apt-get update -y
+          sudo apt-get install -y nvhpc-${NVHPC_MAJOR}-${NVHPC_MINOR}
+          echo "NVHPC_ROOT=/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_MAJOR}.${NVHPC_MINOR}" >> ${GITHUB_ENV}
+          echo "NVHPC_MOD=/opt/nvidia/hpc_sdk/modulefiles/nvhpc/${NVHPC_MAJOR}.${NVHPC_MINOR}" >> ${GITHUB_ENV}
+
+      - name: Find Libraries and Set Environment Variables
+        run: |
+          source /etc/profile.d/modules.sh
+          module load ${NVHPC_MOD}
+          echo ""
+          echo "find ${NVHPC_ROOT} -name \"*libmpi*\""
+                find ${NVHPC_ROOT} -name  "*libmpi*"
+          echo ""
+          echo "find ${NVHPC_ROOT} -name \"*mpifh*\""
+                find ${NVHPC_ROOT} -name  "*mpifh*"
+          echo ""
+          echo "find ${NVHPC_ROOT} -name \"*mpi.mod\""
+                find ${NVHPC_ROOT} -name  "*mpi.mod"
+          echo ""
+          echo "find ${NVHPC_ROOT} -name \"*cublas*\""
+                find ${NVHPC_ROOT} -name  "*cublas*"
+          echo ""
+          echo "find ${NVHPC_ROOT} -name \"*cusparse*\""
+                find ${NVHPC_ROOT} -name  "*cusparse*"
+          echo ""
+          echo "find ${NVHPC_ROOT} -name \"*cusolver*\""
+                find ${NVHPC_ROOT} -name  "*cusolver*"
+          echo ""
+          echo "find ${NVHPC_ROOT} -name \"*cudart*\""
+                find ${NVHPC_ROOT} -name  "*cudart*"
+          echo ""
+          echo "find ${NVHPC_ROOT} -name \"*liblapack*\""
+                find ${NVHPC_ROOT} -name  "*liblapack*"
+          echo ""
+          echo "find ${NVHPC_ROOT} -name \"*lib*blas*\""
+                find ${NVHPC_ROOT} -name  "*lib*blas*"
+          echo "HDF5_INC=${GITHUB_WORKSPACE}/hdf5/include" >> ${GITHUB_ENV}
+          echo "HDF5_LIB=${GITHUB_WORKSPACE}/hdf5/lib" >> ${GITHUB_ENV}
+          echo "CUDA_INC=${NVHPC_ROOT}/cuda/include" >> ${GITHUB_ENV}
+          echo "CUDA_LIB=${NVHPC_ROOT}/math_libs/lib64" >> ${GITHUB_ENV}
+          echo "CUDART_LIB=${NVHPC_ROOT}/cuda/${CUDA_MAJOR}.${CUDA_MINOR}/targets/x86_64-linux/lib" >> ${GITHUB_ENV}
+          echo "OMPI_INC=${NVHPC_ROOT}/comm_libs/openmpi/openmpi-${OMPI_VERSION}/include" >> ${GITHUB_ENV}
+          echo "OMPI_LIB=${NVHPC_ROOT}/comm_libs/openmpi/openmpi-${OMPI_VERSION}/lib" >> ${GITHUB_ENV}
+          echo "LAPACK_LIB=${NVHPC_ROOT}/compilers/lib" >> ${GITHUB_ENV}
+          echo "BLAS_LIB=${NVHPC_ROOT}/compilers/lib" >> ${GITHUB_ENV}
+          sudo ln -s ${NVHPC_ROOT}/comm_libs/openmpi/openmpi-${OMPI_VERSION}/lib/mpi.mod \
+                     ${NVHPC_ROOT}/comm_libs/openmpi/openmpi-${OMPI_VERSION}/include/
+          echo "THORNADO_DIR=${GITHUB_WORKSPACE}" >> ${GITHUB_ENV}
           echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib" >> ${GITHUB_ENV}
-          echo "NVHPC_DIR=${GITHUB_WORKSPACE}/nvhpc"     >> ${GITHUB_ENV}
-          echo "NVHPC_ROOT=${NVCOMPILERS}/${NVARCH}/${NVHPC_MAJOR}.${NVHPC_MINOR}" >> ${GITHUB_ENV}
-
-      # https://docs.nvidia.com/hpc-sdk/hpc-sdk-install-guide/index.html
-      - name: Download and Install nvhpc; Set nvhpc Environment Variables
-        run: |
-          mkdir ${NVHPC_DIR}
-          cd ${NVHPC_DIR}
-          wget https://developer.download.nvidia.com/hpc-sdk/${NVHPC_MAJOR}.${NVHPC_MINOR}/nvhpc_20${NVHPC_MAJOR}_${NVHPC_MAJOR}${NVHPC_MINOR}_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
-          tar xpzf nvhpc_20${NVHPC_MAJOR}_${NVHPC_MAJOR}${NVHPC_MINOR}_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}.tar.gz
-          sudo nvhpc_20${NVHPC_MAJOR}_${NVHPC_MAJOR}${NVHPC_MINOR}_${NVARCH}_cuda_${CUDA_MAJOR}.${CUDA_MINOR}/install
-          echo ${NVHPC_ROOT}/compilers/bin >> ${GITHUB_PATH}
-          echo "CUDA_ROOT=${NVHPC_ROOT}/math_libs"    >> ${GITHUB_ENV}
-          echo "CUDART_ROOT=${NVHPC_ROOT}/cuda"       >> ${GITHUB_ENV}
-          echo "LAPACK_ROOT=${NVHPC_ROOT}/compilers"  >> ${GITHUB_ENV}
-          echo "BLAS_ROOT=${NVHPC_ROOT}/compilers"    >> ${GITHUB_ENV}
-          echo "MPI_ROOT=${NVHPC_ROOT}/comm_libs/mpi" >> ${GITHUB_ENV}
-          echo ${NVHPC_ROOT}/comm_libs/mpi/bin >> ${GITHUB_PATH} # only needed for HDF5
 
       # Compilation flags for nvhpc from
       # https://forums.developer.nvidia.com/t/
       # help-configuring-hdf5-with-nvhpc-no-version-information-available/183413
       - name: Download, Compile, and Install hdf5 with nvhpc
         run: |
+          source /etc/profile.d/modules.sh
+          module load ${NVHPC_MOD}
+          HDF5_DIR=${GITHUB_WORKSPACE}/hdf5
           mkdir ${HDF5_DIR}
           cd ${HDF5_DIR}
-          wget https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.14/hdf5-1.14.0/src/hdf5-1.14.0.tar.gz
-          tar zxf hdf5-1.14.0.tar.gz
+          wget https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-${HDF5_MAJOR}/hdf5-${HDF5_MAJOR}.${HDF5_MINOR}/src/hdf5-${HDF5_MAJOR}.${HDF5_MINOR}.tar.gz
+          tar zxf hdf5-${HDF5_MAJOR}.${HDF5_MINOR}.tar.gz
           mkdir built_fortran
           cd built_fortran
-          ../hdf5-1.14.0/configure --prefix=${HDF5_DIR} \
-          --enable-shared --enable-static \
-          --enable-fortran --enable-hl --enable-parallel \
-          CC=mpicc FC=mpifort F77=mpifort CPP=cpp \
-          CFLAGS="-fPIC -O1 -tp px -nomp" \
+          ../hdf5-${HDF5_MAJOR}.${HDF5_MINOR}/configure \
+          --prefix=${HDF5_DIR} \
+          --enable-shared \
+          --enable-static \
+          --enable-fortran \
+          --enable-hl \
+          --enable-parallel \
+           CC=`which mpicc` \
+           FC=`which mpifort` \
+          F77=`which mpifort` \
+          CPP=cpp \
+           CFLAGS="-fPIC -O1 -tp px -nomp" \
           FCFLAGS="-fPIC -O1 -tp px -nomp" \
-          FFLAGS="-fPIC -O1 -tp px -nomp"
-          make -j -l6
-          make install
-
-      - name: Check Environment and Find Libraries and Include Directories
-        run: |
+           FFLAGS="-fPIC -O1 -tp px -nomp"
           echo ""
-          echo "ls ${THORNADO_DIR}"
-          ls ${THORNADO_DIR}
+          echo "make -j -l6"
+                make -j -l6
           echo ""
-          echo "ls ${NVHPC_DIR}"
-          ls ${NVHPC_DIR}
-          echo ""
-          echo "ls ${HDF5_DIR}"
-          ls ${HDF5_DIR}
-          echo ""
-          echo "ls ${WEAKLIB_DIR}"
-          ls ${WEAKLIB_DIR}
-          echo ""
-          echo "ls ${NVHPC_ROOT}"
-          ls ${NVHPC_ROOT}
-          echo ""
-          echo "ls ${NVHPC_ROOT}/comm_libs"
-          ls ${NVHPC_ROOT}/comm_libs
-          echo ""
-          echo ""
-          echo "ls ${NVHPC_ROOT}/comm_libs/mpi"
-          ls ${NVHPC_ROOT}/comm_libs/mpi
-          echo ""
-          echo "ls ${NVHPC_ROOT}/comm_libs/mpi/bin"
-          ls ${NVHPC_ROOT}/comm_libs/mpi/bin
-          echo ""
-          echo "ls ${NVHPC_ROOT}/comm_libs/mpi/include"
-          ls ${NVHPC_ROOT}/comm_libs/mpi/include
-          echo ""
-          echo "ls ${NVHPC_ROOT}/comm_libs/mpi/lib"
-          ls ${NVHPC_ROOT}/comm_libs/mpi/lib
-          echo ""
-          echo "ls ${NVHPC_ROOT}/compilers"
-          ls ${NVHPC_ROOT}/compilers
-          echo ""
-          echo "ls ${NVHPC_ROOT}/compilers/include"
-          ls ${NVHPC_ROOT}/compilers/include
-          echo ""
-          echo "ls ${NVHPC_ROOT}/compilers/lib"
-          ls ${NVHPC_ROOT}/compilers/lib
-          echo ""
-          echo "ls ${NVHPC_ROOT}/cuda"
-          ls ${NVHPC_ROOT}/cuda
-          echo ""
-          echo "ls ${NVHPC_ROOT}/cuda/bin"
-          ls ${NVHPC_ROOT}/cuda/bin
-          echo ""
-          echo "ls ${NVHPC_ROOT}/cuda/include"
-          ls ${NVHPC_ROOT}/cuda/include
-          echo ""
-          echo "ls ${NVHPC_ROOT}/cuda/lib64"
-          ls ${NVHPC_ROOT}/cuda/lib64
-          echo ""
-          echo "ls ${NVHPC_ROOT}/math_libs"
-          ls ${NVHPC_ROOT}/math_libs
-          echo ""
-          echo "ls ${NVHPC_ROOT}/math_libs/include"
-          ls ${NVHPC_ROOT}/math_libs/include
-          echo ""
-          echo "ls ${NVHPC_ROOT}/math_libs/lib64"
-          ls ${NVHPC_ROOT}/math_libs/lib64
+          echo "make install"
+                make install
 
       - name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
         run: |
+          source /etc/profile.d/modules.sh
+          module load ${NVHPC_MOD}
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
           make OPT_LEVEL=DEBUG \
                HYDRO=RELATIVISTIC \
@@ -155,6 +140,8 @@ jobs:
 
       - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
         run: |
+          source /etc/profile.d/modules.sh
+          module load ${NVHPC_MOD}
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
           make OPT_LEVEL=DEBUG \
                USE_GPU=TRUE \
@@ -165,6 +152,8 @@ jobs:
 
       - name: Compile SandBox/TwoMoment_OrderV/Executables
         run: |
+          source /etc/profile.d/modules.sh
+          module load ${NVHPC_MOD}
           cd ${THORNADO_DIR}/SandBox/TwoMoment_OrderV/Executables
           make OPT_LEVEL=DEBUG \
                USE_GPU=TRUE \

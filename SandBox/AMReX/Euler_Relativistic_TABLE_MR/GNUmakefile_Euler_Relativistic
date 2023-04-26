@@ -2,23 +2,20 @@
 # If you set XXX_HOME as an environment variable, this line will be ignored
 AMREX_HOME    ?= $(AMREX_DIR)
 THORNADO_HOME ?= $(THORNADO_DIR)
+POSEIDON_HOME ?= $(POSEIDON_DIR)
 WEAKLIB_HOME  ?= $(WEAKLIB_DIR)
 HDF5_HOME     ?= $(HDF5_DIR)
 LAPACK_HOME   ?= $(LAPACK_DIR)
 
-#HDF5_INC ?= $(HDF5_HOME)/include
-#HDF5_LIB ?= $(HDF5_HOME)/lib
-HDF5_INC ?= $(HDF5_HOME)/serial/include
-HDF5_LIB ?= $(HDF5_HOME)/serial/lib
+HDF5_INC ?= $(HDF5_HOME)/include
+HDF5_LIB ?= $(HDF5_HOME)/lib
 
-#LAPACK_LIB ?= $(LAPACK_HOME)/lib
-LAPACK_LIB ?= /usr/lib/x86_64-linux-gnu/lapack
+LAPACK_LIB ?= $(LAPACK_HOME)/lib
 
-DEBUG = FALSE
+DEBUG = TRUE
 
-USE_MPI  = TRUE
-USE_OMP  = FALSE
-USE_MPI3 = FALSE
+USE_MPI = TRUE
+USE_OMP = FALSE
 
 DIM = 1
 
@@ -60,15 +57,13 @@ include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Numbers
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.InputOutput
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Units
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.EquationOfState
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Opacities
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Fields
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Geometry
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Mesh
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.MeshRefinement
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.ProgramHeader
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Euler_MR
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.TwoMoment
-include Make.TwoMoment_TABLE
+include Make.Euler_Relativistic_TABLE_MR
 
 # Include rules for compilation
 include $(AMREX_HOME)/Tools/GNUMake/Make.rules
