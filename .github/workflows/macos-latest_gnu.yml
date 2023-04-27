@@ -103,6 +103,7 @@ jobs:
           make clobber
 
       # OSX's cpp has trouble with fortran files; use homebrew's instead
+      # Thanks to Weiqun Zhang from for finding this bug!
 
       - name: Compile SandBox/AMReX/Euler_Relativistic_IDEAL_MR
         run: |
