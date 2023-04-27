@@ -4,6 +4,10 @@ MODULE MF_TimeSteppingModule_SSPRK
 
   USE amrex_fort_module, ONLY: &
     amrex_spacedim
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse, &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_multifab_build, &
@@ -86,20 +90,22 @@ MODULE MF_TimeSteppingModule_SSPRK
 CONTAINS
 
 
-  SUBROUTINE InitializeFluid_SSPRK_MF( Verbose_Option, EvolveGravity_Option )
+  SUBROUTINE InitializeFluid_SSPRK_MF( Verbose_Option )
 
     LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
-    LOGICAL, INTENT(in), OPTIONAL :: EvolveGravity_Option
 
     INTEGER :: iS
+
+    TYPE(amrex_parmparse) :: PP
 
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
     EvolveGravity = .FALSE.
-    IF( PRESENT( EvolveGravity_Option ) ) &
-      EvolveGravity = EvolveGravity_Option
+    CALL amrex_parmparse_build( PP, 'TS' )
+      CALL PP % query( 'EvolveGravity', EvolveGravity )
+    CALL amrex_parmparse_destroy( PP )
 
     CALL InitializeSSPRK
 
