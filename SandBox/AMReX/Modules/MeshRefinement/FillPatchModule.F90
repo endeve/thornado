@@ -50,6 +50,7 @@ MODULE FillPatchModule
   USE MF_UtilitiesModule, ONLY: &
     MultiplyWithMetric
   USE InputParsingModule, ONLY: &
+    nLevels, &
     UseTiling, &
     t_old, &
     t_new, &
@@ -223,10 +224,14 @@ CONTAINS
 
     END IF
 
-    IF( ApplyPositivityLimiter ) &
-      CALL ApplyPositivityLimiter_Euler_MF &
-             ( FineLevel, &
-               MF_uGF(FineLevel), MF_dst, MF_uDF(FineLevel) )
+    IF( nLevels .GT. 1 )THEN
+
+      IF( ApplyPositivityLimiter ) &
+        CALL ApplyPositivityLimiter_Euler_MF &
+               ( FineLevel, &
+                 MF_uGF(FineLevel), MF_dst, MF_uDF(FineLevel) )
+
+    END IF
 
     CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
 
@@ -360,10 +365,14 @@ CONTAINS
 
     END IF
 
-    IF( ApplyPositivityLimiter ) &
-      CALL ApplyPositivityLimiter_Euler_MF &
-             ( FineLevel, &
-               MF_uGF(FineLevel), MF(FineLevel), MF_uDF(FineLevel) )
+    IF( nLevels .GT. 1 )THEN
+
+      IF( ApplyPositivityLimiter ) &
+        CALL ApplyPositivityLimiter_Euler_MF &
+               ( FineLevel, &
+                 MF_uGF(FineLevel), MF(FineLevel), MF_uDF(FineLevel) )
+
+    END IF
 
     CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
 
@@ -485,10 +494,14 @@ CONTAINS
 
     END IF
 
-    IF( ApplyPositivityLimiter ) &
-      CALL ApplyPositivityLimiter_Euler_MF &
-             ( FineLevel, &
-               MF_uGF(FineLevel), MF(FineLevel), MF_uDF(FineLevel) )
+    IF( nLevels .GT. 1 )THEN
+
+      IF( ApplyPositivityLimiter ) &
+        CALL ApplyPositivityLimiter_Euler_MF &
+               ( FineLevel, &
+                 MF_uGF(FineLevel), MF(FineLevel), MF_uDF(FineLevel) )
+
+    END IF
 
     CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
 

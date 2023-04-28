@@ -27,6 +27,7 @@ MODULE AverageDownModule
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler_MF
   USE InputParsingModule, ONLY: &
+    nLevels, &
     swX, &
     DEBUG
   USE MF_TimersModule, ONLY: &
@@ -238,10 +239,14 @@ CONTAINS
 
     CALL amrex_multifab_destroy( SqrtGm(CoarseLevel) )
 
-    IF( ApplyPositivityLimiter ) &
-      CALL ApplyPositivityLimiter_Euler_MF &
-             ( CoarseLevel, &
-               MF_uGF(CoarseLevel), MF(CoarseLevel), MF_uDF(CoarseLevel) )
+    IF( nLevels .GT. 1 )THEN
+
+      IF( ApplyPositivityLimiter ) &
+        CALL ApplyPositivityLimiter_Euler_MF &
+               ( CoarseLevel, &
+                 MF_uGF(CoarseLevel), MF(CoarseLevel), MF_uDF(CoarseLevel) )
+
+    END IF
 
     CALL TimersStop_AMReX( Timer_AMReX_AverageDown )
 
