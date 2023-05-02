@@ -1,5 +1,5 @@
 # Adapted with permission from Axel Huebl's work with CI from amrex
-#
+
 name: Compile thornado on Ubuntu 20.04 with nvhpc compilers
 
 on: [ push, pull_request ]

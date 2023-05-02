@@ -31,14 +31,16 @@ jobs:
           echo ""
           echo "brew install gcc"
                 brew install gcc
+          GCC_VERSION=`ls /usr/local/Cellar/gcc`
+          echo "/usr/local/Cellar/gcc/${GCC_VERSION}/bin" >> ${GITHUB_PATH}
+          GCC_MAJOR=`ls /usr/local/Cellar/gcc | cut -c1-2`
+          echo "GCC_MAJOR=${GCC_MAJOR}" >> ${GITHUB_ENV}
           echo ""
           echo "brew install gfortran"
                 brew install gfortran
           echo ""
-          echo "brew install open-mpi --cc=gcc-12"
-                brew install open-mpi --cc=gcc-12
-          GCC_VERSION=`ls /usr/local/Cellar/gcc`
-          echo "/usr/local/Cellar/gcc/${GCC_VERSION}/bin" >> ${GITHUB_PATH}
+          echo "brew install open-mpi --cc=gcc-${GCC_MAJOR}"
+                brew install open-mpi --cc=gcc-${GCC_MAJOR}
           OMPI_VERSION=`ls /usr/local/Cellar/open-mpi`
           echo "/usr/local/Cellar/open-mpi/${OMPI_VERSION}/bin" >> ${GITHUB_PATH}
           echo ""
@@ -108,11 +110,11 @@ jobs:
       - name: Compile SandBox/AMReX/Euler_Relativistic_IDEAL_MR
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Euler_Relativistic_IDEAL_MR
-          make FORT_CPP="cpp-12 -E -traditional-cpp -P"
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
           make realclean
 
       - name: Compile SandBox/AMReX/TwoMoment_Test
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/TwoMoment_Test
-          make FORT_CPP="cpp-12 -E -traditional-cpp -P"
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
           make realclean
