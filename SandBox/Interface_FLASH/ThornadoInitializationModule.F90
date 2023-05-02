@@ -254,7 +254,8 @@ contains
            ( ProgramName_Option = '', nNodes_Option = nNodes, &
              nX_Option = nX, bcX_Option = bcX, &
              nE_Option = nE, swE_Option = swE, bcE_Option = bcE, &
-             eL_Option = eL, eR_Option = eR, zoomE_Option = zoomE )
+             eL_Option = eL, eR_Option = eR, zoomE_Option = zoomE, &
+             Verbose_Option = Verbose )
 
 #ifdef THORNADO_DEBUG
     call DescribeProgramHeader

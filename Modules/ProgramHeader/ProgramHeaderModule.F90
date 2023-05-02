@@ -129,10 +129,18 @@ CONTAINS
 
     IF( Verbose )THEN
 
-#if defined( THORNADO_GIT_VERSION )
+#if defined( THORNADO_GIT_HASH )
 
       WRITE(*,*)
-      WRITE(*,'(2x,A,A)') 'INFO: thornado git version: ', THORNADO_GIT_VERSION
+
+      WRITE(*,'(2x,A,A)') &
+        'INFO: thornado git hash:   ', THORNADO_GIT_HASH
+      WRITE(*,'(2x,A,A)') &
+        'INFO: thornado git date:   ', THORNADO_GIT_DATE
+      WRITE(*,'(2x,A,A)') &
+        'INFO: thornado git branch: ', THORNADO_GIT_BRANCH
+      WRITE(*,'(2x,A,A)') &
+        'INFO: thornado git url:    ', THORNADO_GIT_URL
 
 #endif
 

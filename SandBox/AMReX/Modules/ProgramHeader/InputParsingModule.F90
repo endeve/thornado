@@ -149,14 +149,20 @@ CONTAINS
 
     TYPE(amrex_parmparse) :: PP
 
-#if defined( THORNADO_AMREX_GIT_VERSION )
+#if defined( THORNADO_AMREX_GIT_HASH )
 
     IF( amrex_parallel_ioprocessor() )THEN
 
       WRITE(*,*)
 
       WRITE(*,'(2x,A,A)') &
-        'INFO: thornado git version: ', THORNADO_AMREX_GIT_VERSION
+        'INFO: thornado git hash:   ', THORNADO_AMREX_GIT_HASH
+      WRITE(*,'(2x,A,A)') &
+        'INFO: thornado git date:   ', THORNADO_AMREX_GIT_DATE
+      WRITE(*,'(2x,A,A)') &
+        'INFO: thornado git branch: ', THORNADO_AMREX_GIT_BRANCH
+      WRITE(*,'(2x,A,A)') &
+        'INFO: thornado git url:    ', THORNADO_AMREX_GIT_URL
 
     END IF
 
