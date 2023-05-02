@@ -130,10 +130,6 @@ CONTAINS
 
   SUBROUTINE CreateSubcellReconstruction
 
-    INTEGER  :: iS1, iS2, iS3, iS
-    INTEGER  :: jS1, jS2, jS3, jS
-    INTEGER  :: kS1, jS2, jS3, jS
-    INTEGER  :: iN1, iN2, iN3
     INTEGER  :: INFO
     INTEGER  :: IPIV(nDOFX)
     REAL(DP) :: WORK(nDOFX)
