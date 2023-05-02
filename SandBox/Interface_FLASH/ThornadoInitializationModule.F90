@@ -44,7 +44,9 @@ module ThornadoInitializationModule
     FinalizeReferenceElement_Lagrange
   use SubcellReconstructionModule, only: &
     InitializeSubcellReconstruction, &
-    FinalizeSubcellReconstruction
+    FinalizeSubcellReconstruction, &
+    CreateSubcellReconstruction, &
+    DestroySubcellReconstruction
 #ifdef MICROPHYSICS_WEAKLIB
   use EquationOfStateModule_TABLE, only: &
     InitializeEquationOfState_TABLE, &
@@ -532,6 +534,8 @@ contains
     CALL ComputeGeometryX &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
+    call CreateSubcellReconstruction
+
     call CreateFluidFields &
            ( nX, swX, Verbose_Option = .FALSE. )
 
@@ -553,6 +557,8 @@ contains
     END DO
 
     call DestroyGeometryFields
+
+    call DestroySubcellReconstruction
 
     call DestroyFluidFields
 
