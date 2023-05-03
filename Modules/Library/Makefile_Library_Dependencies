@@ -154,4 +154,5 @@ SubcellReconstructionModule.o: \
   PolynomialBasisModuleX_Lagrange.o \
   GeometryFieldsModule.o \
   MeshModule.o \
+  LinearAlgebraModule.o \
   SubcellReconstructionModule.F90
