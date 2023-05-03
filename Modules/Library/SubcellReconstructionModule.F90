@@ -11,13 +11,12 @@ MODULE SubcellReconstructionModule
   USE PolynomialBasisModuleX_Lagrange, ONLY: &
     IndLX_Q, L_X1, L_X2, L_X3
   USE GeometryFieldsModule, ONLY: &
-    CoordinateSystem
+    CoordinateSystem, &
+    uGF, iGF_SqrtGm
   USE MeshModule, ONLY: &
     MeshX
   USE LinearAlgebraModule, ONLY: &
     MatrixVectorMultiply
-  USE GeometryFieldsModule, ONLY: &
-    uGF, iGF_SqrtGm
 
   IMPLICIT NONE
   PRIVATE
@@ -130,10 +129,6 @@ CONTAINS
 
   SUBROUTINE CreateSubcellReconstruction
 
-    INTEGER  :: iS1, iS2, iS3, iS
-    INTEGER  :: jS1, jS2, jS3, jS
-    INTEGER  :: kS1, jS2, jS3, jS
-    INTEGER  :: iN1, iN2, iN3
     INTEGER  :: INFO
     INTEGER  :: IPIV(nDOFX)
     REAL(DP) :: WORK(nDOFX)
