@@ -292,7 +292,7 @@ CONTAINS
 
 #elif TWOMOMENT_ORDER_V
       CALL ApplySlopeLimiter_TwoMoment &
-             ( iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+             ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
