@@ -219,7 +219,7 @@ CONTAINS
     CALL FillPatch( iLevel, MF_uGF, MF_uDF )
     CALL FillPatch &
            ( iLevel, MF_uGF, MF_uCF, &
-             MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
+             MF_uDF, ApplyPositivityLimiter_Option = .FALSE. )
 
     CALL CreateMesh_MF( iLevel, MeshX )
 

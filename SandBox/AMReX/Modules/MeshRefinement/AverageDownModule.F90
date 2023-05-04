@@ -239,14 +239,10 @@ CONTAINS
 
     CALL amrex_multifab_destroy( SqrtGm(CoarseLevel) )
 
-    IF( nLevels .GT. 1 )THEN
-
-      IF( ApplyPositivityLimiter ) &
-        CALL ApplyPositivityLimiter_Euler_MF &
-               ( CoarseLevel, &
-                 MF_uGF(CoarseLevel), MF(CoarseLevel), MF_uDF(CoarseLevel) )
-
-    END IF
+    IF( ApplyPositivityLimiter ) &
+      CALL ApplyPositivityLimiter_Euler_MF &
+             ( CoarseLevel, &
+               MF_uGF(CoarseLevel), MF(CoarseLevel), MF_uDF(CoarseLevel) )
 
     CALL TimersStop_AMReX( Timer_AMReX_AverageDown )
 
