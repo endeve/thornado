@@ -9,8 +9,10 @@ WEAKLIB_DIR ?= $(HOME)/weaklib
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
 
-POSEIDON_DIR ?= $(HOME)/poseidon
-include $(POSEIDON_DIR)/Build/Make.Poseidon_Native
+ifeq ($(USE_GPU),FALSE)
+  POSEIDON_DIR ?= $(HOME)/poseidon
+  include $(POSEIDON_DIR)/Build/Make.Poseidon_Native
+endif
 
 #DEFINES += $(PP)-DTHORNADO_DEBUG
 
