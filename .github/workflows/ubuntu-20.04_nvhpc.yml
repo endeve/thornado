@@ -27,6 +27,13 @@ jobs:
           repository: starkiller-astro/weaklib
           path: weaklib
 
+      - name: Checkout poseidon
+        uses: actions/checkout@v3
+        with:
+          repository: jrober50/Poseidon
+          path: poseidon
+          ref: Development
+
       - name: Update Ubuntu
         run: |
           sudo apt-get -qqq update
@@ -90,6 +97,7 @@ jobs:
                      ${NVHPC_ROOT}/comm_libs/openmpi/openmpi-${OMPI_VERSION}/include/
           echo "THORNADO_DIR=${GITHUB_WORKSPACE}" >> ${GITHUB_ENV}
           echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib" >> ${GITHUB_ENV}
+          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon" >> ${GITHUB_ENV}
 
       # Compilation flags for nvhpc from
       # https://forums.developer.nvidia.com/t/
