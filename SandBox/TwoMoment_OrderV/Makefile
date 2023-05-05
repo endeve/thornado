@@ -16,7 +16,7 @@ endif
 
 POSEIDON_DIR ?= $(HOME)/Poseidon
 ifeq ($(GRAVITY_SOLVER),POSEIDON_NEWTON)
-include $(POSEIDON_DIR)/Build/Makefile_Interface
+include $(POSEIDON_DIR)/Build/Make.Poseidon_Native
 endif
 
 VPATH += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
@@ -30,31 +30,37 @@ all: TwoMomentClosure PrimitiveConserved \
 
 TwoMomentClosure: \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	TwoMomentClosure.o
 	$(FLINKER) $(FLAGS) -o TwoMomentClosure_$(MACHINE) \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	TwoMomentClosure.o \
 	$(LIBRARIES)
 
 PrimitiveConserved: \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	PrimitiveConserved.o
 	$(FLINKER) $(FLAGS) -o PrimitiveConserved_$(MACHINE) \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	PrimitiveConserved.o \
 	$(LIBRARIES)
 
 ApplicationDriver: \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	InitializationModule.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	InitializationModule.o \
 	ApplicationDriver.o \
@@ -62,11 +68,13 @@ ApplicationDriver: \
 
 ApplicationDriver_Neutrinos: \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	InitializationModule_Neutrinos.o \
 	ApplicationDriver_Neutrinos.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_Neutrinos_$(MACHINE) \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	InitializationModule_Neutrinos.o \
 	ApplicationDriver_Neutrinos.o \

@@ -27,7 +27,6 @@ INCLUDE_HDF5     = -I${HDF5_ROOT}/include
 INCLUDE_LAPACK   = -qmkl
 INCLUDE_MAGMA    =
 INCLUDE_PETSC    =
-INCLUDE_POSEIDON =
 INCLUDE_ROCM     =
 INCLUDE_ONEMKL   = -I${MKLROOT}/include -fpp  -qmkl
 
@@ -36,6 +35,5 @@ LIBRARIES_HDF5     = -L${HDF5_ROOT}/lib -lhdf5_fortran -lhdf5
 LIBRARIES_LAPACK   =
 LIBRARIES_MAGMA    =
 LIBRARIES_PETSC    =
-LIBRARIES_POSEIDON =
 LIBRARIES_ROCM     =
 LIBRARIES_ONEMKL   = -fsycl -L${MKLROOT}/lib/intel64 -lmkl_sycl -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lsycl -lOpenCL -lstdc++ -lpthread -lm -ldl
