@@ -128,7 +128,8 @@ contains
       M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
       MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
       Include_NES_Option, Include_Pair_Option, Include_Brem_Option, &
-      Include_LinCorr_Option, wMatrRHS_Option, Verbose_Option )
+      Include_LinCorr_Option, wMatrRHS_Option, &
+      ActivateUnits_Option, Verbose_Option )
 
     integer,  intent(in) :: nNodes, nDimsX, nE, swE, bcE
     real(dp), intent(in) :: eL_MeV, eR_MeV, zoomE
@@ -165,10 +166,12 @@ contains
     logical,          intent(in), optional :: Include_Brem_Option
     logical,          intent(in), optional :: Include_LinCorr_Option
     real(dp),         intent(in), optional :: wMatrRHS_Option(5)
+    logical,          intent(in), optional :: ActivateUnits_Option
     logical,          intent(in), optional :: Verbose_Option
 
     logical  :: TroubledCellIndicator
     logical  :: PositivityLimiter, SlopeLimiter, EnergyLimiter, Verbose
+    logical  :: ActivateUnits
     integer  :: nX(3), bcX(3)
     integer  :: i
     real(dp) :: C_TCI
@@ -214,6 +217,19 @@ contains
       UpperBry1 = UpperBry1_Option
     ELSE
       UpperBry1 = 1.0d0 - EPSILON(1.0d0)
+    END IF
+
+    IF( PRESENT( ActivateUnits_Option ) )THEN
+      ActivateUnits = ActivateUnits_Option
+    ELSE
+      ActivateUnits = .FALSE.
+    END IF
+
+    IF( ActivateUnits )THEN
+
+      CALL ActivateUnitsDisplay &
+             ( CoordinateSystem_Option = CoordinateSystem_Option )
+
     END IF
 
     IF(Verbose)THEN
@@ -466,17 +482,15 @@ contains
 
 
   subroutine InitThornado_Patch &
-    ( nX, swX, xL, xR, nSpecies, CoordinateSystem_Option, ActivateUnits_Option )
+    ( nX, swX, xL, xR, nSpecies, CoordinateSystem_Option )
 
     use ProgramHeaderModule, only: nE, swE, nNodesX
 
     integer,  intent(in) :: nX(3), swX(3), nSpecies
     real(dp), intent(in) :: xL(3), xR(3)
     character(len=*), intent(in), optional :: CoordinateSystem_Option
-    logical,          intent(in), optional :: ActivateUnits_Option
 
     integer :: iDim, bcX(3)
-    logical :: ActivateUnits
     character(24) :: CoordinateSystem
 
     IF( PRESENT(CoordinateSystem_Option) )THEN
@@ -494,19 +508,6 @@ contains
 
     ELSE
       CoordinateSystem = 'CARTESIAN'
-    END IF
-
-    IF( PRESENT( ActivateUnits_Option ) )THEN
-      ActivateUnits = ActivateUnits_Option
-    ELSE
-      ActivateUnits = .FALSE.
-    END IF
-
-    IF( ActivateUnits )THEN
-
-      CALL ActivateUnitsDisplay &
-             ( CoordinateSystem_Option = CoordinateSystem_Option )
-
     END IF
 
     ! bcX is for general thornado setting
