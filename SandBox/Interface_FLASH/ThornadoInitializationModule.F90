@@ -103,6 +103,9 @@ module ThornadoInitializationModule
     FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
   use TwoMoment_NeutrinoMatterSolverModule, only: &
     InitializeNeutrinoMatterSolverParameters
+  use TwoMoment_TimersModule, only: &
+    TwoMoment_InitializeTimers => InitializeTimers, &
+    TwoMoment_FinalizeTimers => FinalizeTimers
 
   implicit none
   private
@@ -281,6 +284,8 @@ contains
 
     call InitializeTimers
 
+    call TwoMoment_InitializeTimers
+
     call InitializeQuadratures
 
     call InitializeReferenceElementX
@@ -438,6 +443,8 @@ contains
     call DestroyGeometryFieldsE
 
     if ( write_timers ) call FinalizeTimers
+
+    if ( write_timers ) call TwoMoment_FinalizeTimers
 
     call FinalizeReferenceElementX
 
