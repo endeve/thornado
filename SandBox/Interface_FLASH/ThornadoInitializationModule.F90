@@ -250,7 +250,7 @@ contains
     IF( ActivateUnits )THEN
 
       CALL ActivateUnitsDisplay &
-             ( CoordinateSystem_Option = CoordinateSystem_Option )
+             ( CoordinateSystem_Option = CoordinateSystem )
 
     END IF
 
