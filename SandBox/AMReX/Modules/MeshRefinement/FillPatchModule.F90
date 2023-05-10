@@ -50,6 +50,7 @@ MODULE FillPatchModule
   USE MF_UtilitiesModule, ONLY: &
     MultiplyWithMetric
   USE InputParsingModule, ONLY: &
+    nLevels, &
     UseTiling, &
     t_old, &
     t_new, &

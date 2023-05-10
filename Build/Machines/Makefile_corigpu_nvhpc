@@ -27,7 +27,6 @@ INCLUDE_HDF5     = -I$(HDF5_DIR)/include
 INCLUDE_LAPACK   =
 INCLUDE_MAGMA    = -I$(MAGMA_ROOT)/include
 INCLUDE_PETSC    =
-INCLUDE_POSEIDON =
 INCLUDE_ROCM     =
 
 LIBRARIES_CUDA     = -cudalib
@@ -35,5 +34,4 @@ LIBRARIES_HDF5     = -L$(HDF5_DIR)/lib -lhdf5_fortran -lhdf5
 LIBRARIES_LAPACK   = -llapack -lblas
 LIBRARIES_MAGMA    = -L$(MAGMA_ROOT)/lib -lmagma
 LIBRARIES_PETSC    =
-LIBRARIES_POSEIDON =
 LIBRARIES_ROCM     =

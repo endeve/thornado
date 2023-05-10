@@ -29,7 +29,6 @@ INCLUDE_HDF5     = -I$(HDF5_INC)
 INCLUDE_LAPACK   =
 INCLUDE_MAGMA    =
 INCLUDE_PETSC    =
-INCLUDE_POSEIDON =
 INCLUDE_ROCM     =
 
 # Hacked to include MPI library files
@@ -41,5 +40,4 @@ LIBRARIES_LAPACK   = -L$(LAPACK_LIB) -llapack \
                      -L$(BLAS_LIB) -lblas
 LIBRARIES_MAGMA    =
 LIBRARIES_PETSC    =
-LIBRARIES_POSEIDON =
 LIBRARIES_ROCM     =

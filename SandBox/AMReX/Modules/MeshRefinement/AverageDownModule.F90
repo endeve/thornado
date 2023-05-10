@@ -27,6 +27,7 @@ MODULE AverageDownModule
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler_MF
   USE InputParsingModule, ONLY: &
+    nLevels, &
     swX, &
     DEBUG
   USE MF_TimersModule, ONLY: &

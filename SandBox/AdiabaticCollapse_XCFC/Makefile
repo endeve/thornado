@@ -8,12 +8,16 @@ WEAKLIB_DIR ?= $(HOME)/weaklib
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
 
+POSEIDON_DIR ?= $(HOME)/poseidon
+include $(POSEIDON_DIR)/Build/Make.Poseidon_Native
+
 .DEFAULT_GOAL := all
 
-all: ApplicationDriver ComputePrimitiveTest TestPressure
+all: ApplicationDriver# ComputePrimitiveTest TestPressure
 
 ApplicationDriver: \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	ProgenitorModule.o \
 	Poseidon_UtilitiesModule.o \
@@ -22,6 +26,7 @@ ApplicationDriver: \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	ProgenitorModule.o \
 	Poseidon_UtilitiesModule.o \
@@ -32,20 +37,24 @@ ApplicationDriver: \
 
 ComputePrimitiveTest: \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	ComputePrimitiveTest.o
 	$(FLINKER) $(FLAGS) -o ComputePrimitiveTest_$(MACHINE) \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	ComputePrimitiveTest.o \
 	$(LIBRARIES)
 
 TestPressure: \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	TestPressure.o
 	$(FLINKER) $(FLAGS) -o TestPressure_$(MACHINE) \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	TestPressure.o \
 	$(LIBRARIES)

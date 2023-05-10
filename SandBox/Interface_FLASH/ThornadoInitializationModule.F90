@@ -132,7 +132,7 @@ contains
       MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
       Include_NES_Option, Include_Pair_Option, Include_Brem_Option, &
       Include_LinCorr_Option, wMatrRHS_Option, &
-      ActivateUnits_Option, Verbose_Option )
+      ActivateUnits_Option, CoordinateSystem_Option, Verbose_Option )
 
     integer,  intent(in) :: nNodes, nDimsX, nE, swE, bcE
     real(dp), intent(in) :: eL_MeV, eR_MeV, zoomE
@@ -170,6 +170,7 @@ contains
     logical,          intent(in), optional :: Include_LinCorr_Option
     real(dp),         intent(in), optional :: wMatrRHS_Option(5)
     logical,          intent(in), optional :: ActivateUnits_Option
+    character(len=*), intent(in), optional :: CoordinateSystem_Option
     logical,          intent(in), optional :: Verbose_Option
 
     logical  :: TroubledCellIndicator
@@ -179,6 +180,7 @@ contains
     integer  :: i
     real(dp) :: C_TCI
     real(dp) :: eL, eR, UpperBry1
+    character(24) :: CoordinateSystem
 
     IF( PRESENT(PositivityLimiter_Option) )THEN
       PositivityLimiter = PositivityLimiter_Option
@@ -220,6 +222,23 @@ contains
       UpperBry1 = UpperBry1_Option
     ELSE
       UpperBry1 = 1.0d0 - EPSILON(1.0d0)
+    END IF
+
+    IF( PRESENT(CoordinateSystem_Option) )THEN
+
+      IF( TRIM(CoordinateSystem_Option) == 'spherical' )THEN
+        CoordinateSystem = 'SPHERICAL'
+      ELSE IF( TRIM(CoordinateSystem_Option) == 'cylindrical' )THEN
+        CoordinateSystem = 'CYLINDRICAL'
+      ELSE IF( TRIM(CoordinateSystem_Option) == 'cartesian' )THEN
+        CoordinateSystem = 'CARTESIAN'
+      ELSE
+        print*, '[InitThornado] Invalid Coordinate System: ', &
+                 CoordinateSystem_Option
+      END IF
+
+    ELSE
+      CoordinateSystem = 'CARTESIAN'
     END IF
 
     IF( PRESENT( ActivateUnits_Option ) )THEN

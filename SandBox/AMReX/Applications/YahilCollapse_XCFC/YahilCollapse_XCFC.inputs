@@ -78,3 +78,6 @@ PL.Min_2_Euler                = 1.0e-13
 
 # Equation of state parameters
 EoS.Gamma_IDEAL = 1.30
+
+# Time-Stepping parameters
+TS.EvolveGravity = 1
