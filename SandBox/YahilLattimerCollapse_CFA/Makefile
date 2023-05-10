@@ -2,6 +2,9 @@ THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
 include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
+POSEIDON_DIR ?= $(HOME)/poseidon
+include $(POSEIDON_DIR)/Build/Make.Poseidon_Native
+
 #DEFINES += -DTHORNADO_DEBUG
 
 .DEFAULT_GOAL := all
@@ -9,12 +12,14 @@ include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 all: ApplicationDriver
 
 ApplicationDriver: \
+	$(POSEIDON_o) \
 	$(thornado) \
 	Poseidon_UtilitiesModule.o \
 	InitializationModule_Relativistic.o \
 	TimeSteppingModule_SSPRK.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	Poseidon_UtilitiesModule.o \
 	InitializationModule_Relativistic.o \

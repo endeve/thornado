@@ -313,8 +313,7 @@ CONTAINS
     t_wrt = t_new(0) + dt_wrt
 
     CALL InitializeFluid_SSPRK_MF &
-           ( Verbose_Option = amrex_parallel_ioprocessor(), &
-             EvolveGravity_Option = .TRUE. )
+           ( Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL DescribeProgramHeader_AMReX
 

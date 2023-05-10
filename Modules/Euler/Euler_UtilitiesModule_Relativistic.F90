@@ -1884,8 +1884,9 @@ CONTAINS
 !!$
 !!$  END SUBROUTINE GetBoundsForBisection
 
-
 #ifdef MICROPHYSICS_WEAKLIB
+
+  ! --- TABLE EOS Version ---
 
   SUBROUTINE ComputeFunZ_Scalar( D, Ne, r, z, q, FunZ )
 

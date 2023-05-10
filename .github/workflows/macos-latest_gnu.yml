@@ -18,6 +18,13 @@ jobs:
           repository: starkiller-astro/weaklib
           path: weaklib
 
+      - name: Checkout poseidon
+        uses: actions/checkout@v3
+        with:
+          repository: jrober50/Poseidon
+          path: poseidon
+          ref: Development
+
       - name: Checkout amrex
         uses: actions/checkout@v3
         with:
@@ -76,9 +83,10 @@ jobs:
           LAPACK_VERSION=`ls /usr/local/Cellar/lapack`
           echo "LAPACK_LIB=/usr/local/Cellar/lapack/${LAPACK_VERSION}/lib" >> ${GITHUB_ENV}
           echo "BLAS_LIB=/usr/local/Cellar/lapack/${LAPACK_VERSION}/lib"   >> ${GITHUB_ENV}
-          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"        >> ${GITHUB_ENV}
-          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib" >> ${GITHUB_ENV}
-          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"     >> ${GITHUB_ENV}
+          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"          >> ${GITHUB_ENV}
+          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"   >> ${GITHUB_ENV}
+          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"       >> ${GITHUB_ENV}
+          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon" >> ${GITHUB_ENV}
 
       - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
         run: |
