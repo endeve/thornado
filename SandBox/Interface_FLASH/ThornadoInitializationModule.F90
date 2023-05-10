@@ -44,7 +44,9 @@ module ThornadoInitializationModule
     FinalizeReferenceElement_Lagrange
   use SubcellReconstructionModule, only: &
     InitializeSubcellReconstruction, &
-    FinalizeSubcellReconstruction
+    FinalizeSubcellReconstruction, &
+    CreateSubcellReconstruction, &
+    DestroySubcellReconstruction
 #ifdef MICROPHYSICS_WEAKLIB
   use EquationOfStateModule_TABLE, only: &
     InitializeEquationOfState_TABLE, &
@@ -101,6 +103,9 @@ module ThornadoInitializationModule
     FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
   use TwoMoment_NeutrinoMatterSolverModule, only: &
     InitializeNeutrinoMatterSolverParameters
+  use TwoMoment_TimersModule, only: &
+    TwoMoment_InitializeTimers => InitializeTimers, &
+    TwoMoment_FinalizeTimers => FinalizeTimers
 
   implicit none
   private
@@ -126,7 +131,8 @@ contains
       M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
       MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
       Include_NES_Option, Include_Pair_Option, Include_Brem_Option, &
-      Include_LinCorr_Option, wMatrRHS_Option, Verbose_Option )
+      Include_LinCorr_Option, wMatrRHS_Option, &
+      ActivateUnits_Option, Verbose_Option )
 
     integer,  intent(in) :: nNodes, nDimsX, nE, swE, bcE
     real(dp), intent(in) :: eL_MeV, eR_MeV, zoomE
@@ -163,10 +169,12 @@ contains
     logical,          intent(in), optional :: Include_Brem_Option
     logical,          intent(in), optional :: Include_LinCorr_Option
     real(dp),         intent(in), optional :: wMatrRHS_Option(5)
+    logical,          intent(in), optional :: ActivateUnits_Option
     logical,          intent(in), optional :: Verbose_Option
 
     logical  :: TroubledCellIndicator
     logical  :: PositivityLimiter, SlopeLimiter, EnergyLimiter, Verbose
+    logical  :: ActivateUnits
     integer  :: nX(3), bcX(3)
     integer  :: i
     real(dp) :: C_TCI
@@ -214,6 +222,19 @@ contains
       UpperBry1 = 1.0d0 - EPSILON(1.0d0)
     END IF
 
+    IF( PRESENT( ActivateUnits_Option ) )THEN
+      ActivateUnits = ActivateUnits_Option
+    ELSE
+      ActivateUnits = .FALSE.
+    END IF
+
+    IF( ActivateUnits )THEN
+
+      CALL ActivateUnitsDisplay &
+             ( CoordinateSystem_Option = CoordinateSystem_Option )
+
+    END IF
+
     IF(Verbose)THEN
       WRITE(*,*)
 #ifdef TWOMOMENT_ORDER_V
@@ -254,13 +275,16 @@ contains
            ( ProgramName_Option = '', nNodes_Option = nNodes, &
              nX_Option = nX, bcX_Option = bcX, &
              nE_Option = nE, swE_Option = swE, bcE_Option = bcE, &
-             eL_Option = eL, eR_Option = eR, zoomE_Option = zoomE )
+             eL_Option = eL, eR_Option = eR, zoomE_Option = zoomE, &
+             Verbose_Option = Verbose )
 
 #ifdef THORNADO_DEBUG
     call DescribeProgramHeader
 #endif
 
     call InitializeTimers
+
+    call TwoMoment_InitializeTimers
 
     call InitializeQuadratures
 
@@ -420,6 +444,8 @@ contains
 
     if ( write_timers ) call FinalizeTimers
 
+    if ( write_timers ) call TwoMoment_FinalizeTimers
+
     call FinalizeReferenceElementX
 
     call FinalizeReferenceElementX_Lagrange
@@ -463,17 +489,15 @@ contains
 
 
   subroutine InitThornado_Patch &
-    ( nX, swX, xL, xR, nSpecies, CoordinateSystem_Option, ActivateUnits_Option )
+    ( nX, swX, xL, xR, nSpecies, CoordinateSystem_Option )
 
     use ProgramHeaderModule, only: nE, swE, nNodesX
 
     integer,  intent(in) :: nX(3), swX(3), nSpecies
     real(dp), intent(in) :: xL(3), xR(3)
     character(len=*), intent(in), optional :: CoordinateSystem_Option
-    logical,          intent(in), optional :: ActivateUnits_Option
 
     integer :: iDim, bcX(3)
-    logical :: ActivateUnits
     character(24) :: CoordinateSystem
 
     IF( PRESENT(CoordinateSystem_Option) )THEN
@@ -491,19 +515,6 @@ contains
 
     ELSE
       CoordinateSystem = 'CARTESIAN'
-    END IF
-
-    IF( PRESENT( ActivateUnits_Option ) )THEN
-      ActivateUnits = ActivateUnits_Option
-    ELSE
-      ActivateUnits = .FALSE.
-    END IF
-
-    IF( ActivateUnits )THEN
-
-      CALL ActivateUnitsDisplay &
-             ( CoordinateSystem_Option = CoordinateSystem_Option )
-
     END IF
 
     ! bcX is for general thornado setting
@@ -531,6 +542,8 @@ contains
     CALL ComputeGeometryX &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
+    call CreateSubcellReconstruction
+
     call CreateFluidFields &
            ( nX, swX, Verbose_Option = .FALSE. )
 
@@ -552,6 +565,8 @@ contains
     END DO
 
     call DestroyGeometryFields
+
+    call DestroySubcellReconstruction
 
     call DestroyFluidFields
 
