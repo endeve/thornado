@@ -38,6 +38,13 @@ elif [[ $THORNADO_MACHINE == ascent* ]]; then
   module unload xl spectrum-mpi hsi xalt lsf-tools darshan-runtime
   module unload DefApps
 
+elif [[ $THORNADO_MACHINE == frontier* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
+  source ${MODULESHOME}/init/bash
+
 elif [[ $THORNADO_MACHINE == darter* ]]; then
 
   echo
@@ -220,7 +227,7 @@ elif [[ $THORNADO_MACHINE == summit_gcc ]]; then
 
   echo
 
-  module load gcc
+  module load gcc/12.1.0
   module load spectrum-mpi
   module load hdf5
   module load netlib-lapack
@@ -235,6 +242,19 @@ elif [[ $THORNADO_MACHINE == ascent_pgi ]]; then
   module load netlib-lapack
   module load essl
   module load cuda
+
+elif [[ $THORNADO_MACHINE == frontier_cce ]]; then
+
+  echo
+
+  module use /ccs/home/jaharris/modulefiles/frontier
+  
+  module load PrgEnv-cray
+  module load cce/15.0.0
+  module load craype-accel-amd-gfx90a
+  module load cray-hdf5-parallel
+  module load rocm/5.4.0
+  module load hipfort/5.4.0
 
 elif [[ $THORNADO_MACHINE == darter_gnu ]]; then
 
