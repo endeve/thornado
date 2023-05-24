@@ -106,7 +106,7 @@ CONTAINS
     LOGICAL :: ActivateUnits
     INTEGER :: iDim, nSpecies
 
-    CALL MPI_INIT( mpierr )
+    !CALL MPI_INIT( mpierr )
 
     ! --- Device ---
 
@@ -418,7 +418,7 @@ CONTAINS
 
       CALL FinalizeDevice
 
-      CALL MPI_FINALIZE( mpierr )
+     ! CALL MPI_FINALIZE( mpierr )
 
       RETURN
 
@@ -436,7 +436,7 @@ CONTAINS
 
     CALL FinalizeDevice
 
-    CALL MPI_FINALIZE( mpierr )
+    !CALL MPI_FINALIZE( mpierr )
 
   END SUBROUTINE FinalizeProgram
 
