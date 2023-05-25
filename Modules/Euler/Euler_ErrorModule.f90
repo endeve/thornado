@@ -2,8 +2,12 @@ MODULE Euler_ErrorModule
 
   USE KindModule, ONLY: &
     DP
+  USE UnitsModule, ONLY: &
+    UnitsDisplay
   USE UtilitiesModule, ONLY: &
     thornado_abort
+  USE GeometryFieldsModule, ONLY: &
+    CoordinateSystem
 
   IMPLICIT NONE
   PRIVATE
@@ -303,30 +307,89 @@ CONTAINS
       'iX_B0:              ', IntArray(3), IntArray(4), IntArray(5)
     WRITE(*,'(2x,A,3I7.5)') &
       'iX_E0:              ', IntArray(6), IntArray(7), IntArray(8)
-    WRITE(*,'(2x,A,SP3ES15.6E3)') &
-      'X1_C, X2_C, X3_C: ', &
-       RealArray(1), RealArray(2), RealArray(3)
-    WRITE(*,'(2x,A,SP3ES15.6E3)') &
-      'dX1, dX2, dX3:    ', &
-       RealArray(4), RealArray(5), RealArray(6)
-    WRITE(*,'(2x,A,SPES24.16E3,A)') &
-      'U(iCF_D       ) = ', RealArray(7), '_DP'
-    WRITE(*,'(2x,A,SPES24.16E3,A)') &
-      'U(iCF_S1      ) = ', RealArray(8), '_DP'
-    WRITE(*,'(2x,A,SPES24.16E3,A)') &
-      'U(iCF_S2      ) = ', RealArray(9), '_DP'
-    WRITE(*,'(2x,A,SPES24.16E3,A)') &
-      'U(iCF_S3      ) = ', RealArray(10), '_DP'
-    WRITE(*,'(2x,A,SPES24.16E3,A)') &
-      'U(iCF_E       ) = ', RealArray(11), '_DP'
-    WRITE(*,'(2x,A,SPES24.16E3,A)') &
-      'U(iCF_Ne      ) = ', RealArray(12), '_DP'
-    WRITE(*,'(2x,A,SPES24.16E3,A)') &
-      'G(iGF_Gm_dd_11) = ', RealArray(13), '_DP'
-    WRITE(*,'(2x,A,SPES24.16E3,A)') &
-      'G(iGF_Gm_dd_22) = ', RealArray(14), '_DP'
-    WRITE(*,'(2x,A,SPES24.16E3,A)') &
-      'G(iGF_Gm_dd_33) = ', RealArray(15), '_DP'
+    WRITE(*,'(2x,A,SPES15.6E3,1x,A)') &
+      'X1_C: ', RealArray(1) / UnitsDisplay % LengthX1Unit, &
+      TRIM( UnitsDisplay % LengthX1Label )
+    WRITE(*,'(2x,A,SPES15.6E3,1x,A)') &
+      'X2_C: ', RealArray(2) / UnitsDisplay % LengthX2Unit, &
+      TRIM ( UnitsDisplay % LengthX2Label )
+    WRITE(*,'(2x,A,SPES15.6E3,1x,A)') &
+      'X3_C: ', RealArray(3) / UnitsDisplay % LengthX3Unit, &
+      TRIM( UnitsDisplay % LengthX3Label )
+    WRITE(*,'(2x,A,SPES15.6E3,1x,A)') &
+      'dX1: ', RealArray(1) / UnitsDisplay % LengthX1Unit, &
+      TRIM( UnitsDisplay % LengthX1Label )
+    WRITE(*,'(2x,A,SPES15.6E3,1x,A)') &
+      'dX2: ', RealArray(2) / UnitsDisplay % LengthX2Unit, &
+      TRIM( UnitsDisplay % LengthX2Label )
+    WRITE(*,'(2x,A,SPES15.6E3,1x,A)') &
+      'dX3: ', RealArray(3) / UnitsDisplay % LengthX3Unit, &
+      TRIM( UnitsDisplay % LengthX3Label )
+
+    WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
+      'U(iCF_D       ) = ', &
+      RealArray(7)   /       UnitsDisplay % MassDensityUnit, &
+      '_DP',           TRIM( UnitsDisplay % MassDensityLabel )
+    WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
+      'U(iCF_S1      ) = ', &
+       RealArray(8)  /       UnitsDisplay % MomentumDensityX1Unit, &
+      '_DP',           TRIM( UnitsDisplay % MomentumDensityX1Label )
+    WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
+      'U(iCF_S2      ) = ', &
+       RealArray(9)  /       UnitsDisplay % MomentumDensityX2Unit, &
+      '_DP',           TRIM( UnitsDisplay % MomentumDensityX2Label )
+    WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
+      'U(iCF_S3      ) = ', &
+       RealArray(10) /       UnitsDisplay % MomentumDensityX3Unit, &
+      '_DP',           TRIM( UnitsDisplay % MomentumDensityX3Label )
+    WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
+      'U(iCF_E       ) = ', &
+      RealArray(11) /       UnitsDisplay % EnergyDensityUnit, &
+      '_DP',          TRIM( UnitsDisplay % EnergyDensityLabel )
+    WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
+      'U(iCF_Ne      ) = ', &
+      RealArray(12) /       UnitsDisplay % ParticleDensityUnit, &
+      '_DP',          TRIM( UnitsDisplay % ParticleDensityLabel )
+
+    IF( TRIM( CoordinateSystem ) .EQ. 'CARTESIAN' )THEN
+
+      WRITE(*,'(2x,A,SPES24.16E3,A,1x,A,A)') &
+        'G(iGF_Gm_dd_11) = ', RealArray(13), '_DP'
+      WRITE(*,'(2x,A,SPES24.16E3,A,1x,A,A)') &
+        'G(iGF_Gm_dd_22) = ', RealArray(14), '_DP'
+      WRITE(*,'(2x,A,SPES24.16E3,A,1x,A,A)') &
+        'G(iGF_Gm_dd_33) = ', RealArray(15), '_DP'
+
+    ELSE IF( TRIM( CoordinateSystem ) .EQ. 'CYLINDRICAL' )THEN
+
+      WRITE(*,'(2x,A,SPES24.16E3,A,1x,A,A)') &
+        'G(iGF_Gm_dd_11) = ', RealArray(13), '_DP'
+      WRITE(*,'(2x,A,SPES24.16E3,A,1x,A,A)') &
+        'G(iGF_Gm_dd_22) = ', RealArray(14), '_DP'
+      WRITE(*,'(2x,A,SPES24.16E3,A,1x,A,A)') &
+        'G(iGF_Gm_dd_33) = ', &
+        RealArray(15) /       ( UnitsDisplay % LengthX1Unit )**2, &
+        '_DP',            TRIM( UnitsDisplay % LengthX1Label ), '^2'
+
+    ELSE IF( TRIM( CoordinateSystem ) .EQ. 'SPHERICAL' )THEN
+
+      WRITE(*,'(2x,A,SPES24.16E3,A,1x,A,A)') &
+        'G(iGF_Gm_dd_11) = ', RealArray(13), '_DP'
+      WRITE(*,'(2x,A,SPES24.16E3,A,1x,A,A)') &
+        'G(iGF_Gm_dd_22) = ', &
+        RealArray(14) /       ( UnitsDisplay % LengthX1Unit )**2, &
+        '_DP',            TRIM( UnitsDisplay % LengthX1Label ), '^2'
+      WRITE(*,'(2x,A,SPES24.16E3,A,1x,A,A)') &
+        'G(iGF_Gm_dd_33) = ', &
+        RealArray(15) /       ( UnitsDisplay % LengthX1Unit )**2, &
+        '_DP',            TRIM( UnitsDisplay % LengthX1Label ), '^2'
+
+    ELSE
+
+      WRITE(*,'(2x,A,A)') &
+        'Invalid coordinate system: ', TRIM( CoordinateSystem )
+
+    END IF
 
   END SUBROUTINE WriteOutput
 
