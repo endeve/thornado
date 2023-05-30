@@ -236,7 +236,8 @@ CONTAINS
 #else
     INTEGER,          INTENT(in), OPTIONAL :: External_EOS
 #endif
-
+    
+    REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: Ps, Ss, Es
     LOGICAL :: Verbose
 
     IF( PRESENT( EquationOfStateTableName_Option ) )THEN
@@ -407,12 +408,26 @@ CONTAINS
     Xh_T = EOS % DV % Variables(iXh_T) % Values
     Gm_T = EOS % DV % Variables(iGm_T) % Values
 
+    ALLOCATE &
+      ( Ps  (1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
+    ALLOCATE &
+      ( Ss  (1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
+    ALLOCATE &
+      ( Es  (1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
+    Ps = 10.0d0**P_T - OS_P
+    Ss = 10.0d0**S_T - OS_S
+    Es = 10.0d0**E_T - OS_E
     CALL InitializeEOSInversion &
            ( D_T, T_T, Y_T, &
-             10.0d0**( E_T ) - OS_E, &
-             10.0d0**( P_T ) - OS_P, &
-             10.0d0**( S_T ) - OS_S, &
+             Es, Ps, Ss, &
              Verbose_Option = Verbose )
+    DEALLOCATE( Ps, Ss, Es )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
