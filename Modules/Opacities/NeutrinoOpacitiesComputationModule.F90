@@ -1131,11 +1131,9 @@ CONTAINS
         ENDDO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP PARALLEL DO SIMD &
-    !$OMP PRIVATE( iX, iE )
+    !$OMP PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
-    !$ACC LOOP VECTOR      &
-    !$ACC PRIVATE( iX, iE ) 
+    !$ACC LOOP VECTOR
 #endif
         DO iE = iE_B, iE_E
 

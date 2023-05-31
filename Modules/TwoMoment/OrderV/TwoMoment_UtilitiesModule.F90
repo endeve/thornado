@@ -208,16 +208,16 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iX, A_d_1, A_d_2, A_d_3, k_dd, DET, LMAT )
+      !$OMP PRIVATE( iX, A_d_1, A_d_2, A_d_3, k_dd, DET, LMAT, SUM1 )
 #elif defined( THORNADO_OACC   )
       !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( iX, A_d_1, A_d_2, A_d_3, k_dd, DET, LMAT ) &
+      !$ACC PRIVATE( iX, A_d_1, A_d_2, A_d_3, k_dd, DET, LMAT, SUM1 ) &
       !$ACC PRESENT( ITERATE, UVEC, CVEC, GVEC, FVEC, GVECm, FVECm, &
       !$ACC          PositionIndexZ, D, I_u_1, I_u_2, I_u_3, &
       !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, V_u_1, V_u_2, V_u_3 )
 #elif defined( THORNADO_OMP    )
       !$OMP PARALLEL DO &
-      !$OMP PRIVATE( iX, A_d_1, A_d_2, A_d_3, k_dd, DET, LMAT )
+      !$OMP PRIVATE( iX, A_d_1, A_d_2, A_d_3, k_dd, DET, LMAT, SUM1 )
 #endif
       DO iZ = 1, nZ
         IF ( ITERATE(iZ) ) THEN
@@ -3092,15 +3092,15 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
-    !$OMP PRIVATE( uV_K, iCF_S, iGF_Gm_dd, iGF_h )
+    !$OMP PRIVATE( uV_K, iCF, iCF_S, iGF_Gm_dd, iGF_h )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRIVATE( uV_K, iCF_S, iGF_Gm_dd, iGF_h ) &
+    !$ACC PRIVATE( uV_K, iCF, iCF_S, iGF_Gm_dd, iGF_h ) &
     !$ACC PRESENT( iX_B0, iX_E0, U_F_K, GX_K, h_d_K, &
     !$ACC          V_u_K, V_d_K, WeightsX_q )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5) &
-    !$OMP PRIVATE( uV_K, iCF_S, iGF_Gm_dd, iGF_h )
+    !$OMP PRIVATE( uV_K, iCF, iCF_S, iGF_Gm_dd, iGF_h )
 #endif
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -3665,15 +3665,15 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
-    !$OMP PRIVATE( uV_K, iCF_S, iGF_Gm_dd, iGF_h )
+    !$OMP PRIVATE( uV_K, iCF, iCF_S, iGF_Gm_dd, iGF_h )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRIVATE( uV_K, iCF_S, iGF_Gm_dd, iGF_h ) &
+    !$ACC PRIVATE( uV_K, iCF, iCF_S, iGF_Gm_dd, iGF_h ) &
     !$ACC PRESENT( iX_B0, iX_E0, U_F_K, GX_K, h_d_K, &
     !$ACC          V_u_K, V_d_K, WeightsX_q )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5) &
-    !$OMP PRIVATE( uV_K, iCF_S, iGF_Gm_dd, iGF_h )
+    !$OMP PRIVATE( uV_K, iCF, iCF_S, iGF_Gm_dd, iGF_h )
 #endif
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -4240,15 +4240,15 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
-    !$OMP PRIVATE( uV_K, iCF_S, iGF_Gm_dd, iGF_h )
+    !$OMP PRIVATE( uV_K, iCF, iCF_S, iGF_Gm_dd, iGF_h )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRIVATE( uV_K, iCF_S, iGF_Gm_dd, iGF_h ) &
+    !$ACC PRIVATE( uV_K, iCF, iCF_S, iGF_Gm_dd, iGF_h ) &
     !$ACC PRESENT( iX_B0, iX_E0, U_F_K, GX_K, h_d_K, &
     !$ACC          V_u_K, V_d_K, WeightsX_q )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5) &
-    !$OMP PRIVATE( uV_K, iCF_S, iGF_Gm_dd, iGF_h )
+    !$OMP PRIVATE( uV_K, iCF, iCF_S, iGF_Gm_dd, iGF_h )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)

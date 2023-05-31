@@ -426,10 +426,10 @@ CONTAINS
     !the neutron and proton chemical potentials
     !are tabulated subtracting the neutron-proton-mass difference
     !in order to use the same conventions as used in Chimera
-    !to account for this, and get detailed balence factors 
+    !to account for this, and get detailed balance factors 
     !correct, we add the mass difference back in and then
     !add the SFHo reference masses for the chemical potential
-    !(mn for Mn, mp for Mp)  
+    !(mn for Mn, mp for Mp)
     !For this renomalisation to the original SFHo tables,
     !we need to recalculate the offsets first
 

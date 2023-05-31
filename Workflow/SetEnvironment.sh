@@ -250,7 +250,7 @@ elif [[ $THORNADO_MACHINE == frontier_cce ]]; then
   module use /ccs/home/jaharris/modulefiles/frontier
   
   module load PrgEnv-cray
-  module load cce/15.0.0
+  module load cce/15.0.1
   module load craype-accel-amd-gfx90a
   module load cray-hdf5-parallel
   module load rocm/5.4.0
