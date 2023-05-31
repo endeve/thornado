@@ -449,7 +449,7 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    dU, U, D ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX2, dX3, G, tau, &
-    !$OMP               SurfaceFlux_X1, SurfaceFlux_X2, SurfaceFlux_X3 ) &
+    !$OMP               SurfaceFlux_X1, SurfaceFlux_X2, SurfaceFlux_X3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      dU, U, D ) &
