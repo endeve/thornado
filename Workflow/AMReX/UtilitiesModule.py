@@ -136,6 +136,8 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
     ds = yt.load( '{:}'.format( DataDirectory + File ) )
 
+    ds.force_periodicity()
+
     MaxLevel = ds.index.max_level
     Time     = ds.current_time.to_ndarray()
     nX       = ds.domain_dimensions
@@ -169,17 +171,17 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
     X2  = np.linspace( xL[1] + dX[1] / 2.0, xU[1] - dX[1] / 2.0, nX[1] )
     X3  = np.linspace( xL[2] + dX[2] / 2.0, xU[2] - dX[2] / 2.0, nX[2] )
 
-    if  ( Field == 'PF_D'  ):
+    if  ( Field == 'PF_D' or Field == 'PM_D'  ):
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = 'g/cm**3'
 
-    elif( Field == 'PF_V1' ):
+    elif( Field == 'PF_V1' or Field == 'PM_V1' ):
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = 'km/s'
 
-    elif( Field == 'PF_V2' ):
+    elif( Field == 'PF_V2' or Field == 'PM_V2' ):
 
         Data = CoveringGrid[Field].to_ndarray()
 
@@ -187,7 +189,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         elif CoordinateSystem == 'cylindrical': DataUnit = 'km/s'
         elif CoordinateSystem == 'spherical'  : DataUnit = '1/s'
 
-    elif( Field == 'PF_V3' ):
+    elif( Field == 'PF_V3' or Field == 'PM_V3' ):
 
         Data = CoveringGrid[Field].to_ndarray()
 
@@ -195,22 +197,22 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         elif CoordinateSystem == 'cylindrical': DataUnit = '1/s'
         elif CoordinateSystem == 'spherical'  : DataUnit = '1/s'
 
-    elif( Field == 'PF_E'  ):
+    elif( Field == 'PF_E' or Field == 'PM_E'  ):
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = 'erg/cm**3'
 
-    elif( Field == 'CF_D'  ):
+    elif( Field == 'CF_D' or Field == 'CM_D'  ):
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = 'g/cm**3'
 
-    elif( Field == 'CF_S1' ):
+    elif( Field == 'CF_S1' or Field == 'CM_S1' ):
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = 'g/cm**2/s'
 
-    elif( Field == 'CF_S2' ):
+    elif( Field == 'CF_S2' or Field == 'CM_S2' ):
 
         Data = CoveringGrid[Field].to_ndarray()
 
@@ -218,7 +220,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         elif CoordinateSystem == 'cylindrical': DataUnit = 'g/cm**2/s'
         elif CoordinateSystem == 'spherical'  : DataUnit = 'g/cm/s'
 
-    elif( Field == 'CF_S3' ):
+    elif( Field == 'CF_S3' or Field == 'CM_S3' ):
 
         Data = CoveringGrid[Field].to_ndarray()
 
@@ -226,17 +228,17 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         elif CoordinateSystem == 'cylindrical': DataUnit = 'g/cm/s'
         elif CoordinateSystem == 'spherical'  : DataUnit = 'g/cm/s'
 
-    elif( Field == 'CF_E'  ):
+    elif( Field == 'CF_E' or Field == 'CM_E'  ):
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = 'erg/cm**3'
 
-    elif( Field == 'AF_P'  ):
+    elif( Field == 'AF_P' or Field == 'AM_P' ):
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = 'erg/cm**3'
 
-    elif( Field == 'AF_Cs' ):
+    elif( Field == 'AF_Cs' or Field == 'AM_Cs' ):
 
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = 'km/s'
@@ -277,7 +279,191 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         Data = CoveringGrid[Field].to_ndarray()
         DataUnit = ''
 
+    # --- MHD-Only Fields
+
+    elif( Field == 'PM_B1'  ):
+
+        Data = CoveringGrid[Field].to_ndarray()
+        DataUnit = '' # Update unit later.
+
+    elif( Field == 'PM_B2'  ):
+
+        Data = CoveringGrid[Field].to_ndarray()
+        DataUnit = '' # Update unit later.
+
+    elif( Field == 'PM_B3'  ):
+
+        Data = CoveringGrid[Field].to_ndarray()
+        DataUnit = '' # Update unit later.
+
+    elif( Field == 'PM_Chi' ):
+
+        Data = CoveringGrid[Field].to_ndarray()
+        DataUnit = '' # Update unit later.
+
+    elif( Field == 'CM_B1'  ):
+
+        Data = CoveringGrid[Field].to_ndarray()
+        DataUnit = '' # Update unit later.
+
+    elif( Field == 'CM_B2'  ):
+
+        Data = CoveringGrid[Field].to_ndarray()
+        DataUnit = '' # Update unit later.
+
+    elif( Field == 'CM_B3'  ):
+
+        Data = CoveringGrid[Field].to_ndarray()
+        DataUnit = '' # Update unit later.
+
+    elif( Field == 'CM_Chi' ):
+
+        Data = CoveringGrid[Field].to_ndarray()
+        DataUnit = '' # Update unit later.
+
     # --- Derived Fields ---
+
+    elif( Field == 'EulerianMagneticPressure' ):
+
+       B1 = CoveringGrid['CM_B1'].to_ndarray()
+       B2 = CoveringGrid['CM_B2'].to_ndarray()
+       B3 = CoveringGrid['CM_B3'].to_ndarray()
+
+       Data = (B1**2 + B2**2 + B3**2) / 2.0
+       DataUnit = ''
+
+    elif( Field == 'MagneticPressure' ):
+
+        v1 = CoveringGrid['PM_V1'].to_ndarray()
+        v2 = CoveringGrid['PM_V2'].to_ndarray()
+        v3 = CoveringGrid['PM_V3'].to_ndarray()
+
+        b1 = CoveringGrid['PM_B1'].to_ndarray()
+        b2 = CoveringGrid['PM_B2'].to_ndarray()
+        b3 = CoveringGrid['PM_B3'].to_ndarray()
+
+        b0 = b1 * v1 + b2 * v2 + b3 * v3
+
+        Data = (-b0**2 + b1**2 + b2**2 + b3**2) / 2.0
+        DataUnit = ''
+
+    elif( Field == 'MagneticDivergence' ):
+
+        Data = np.zeros( (nX[0], nX[1], nX[2]), np.float64 )
+
+        B1 = CoveringGrid['CM_B1'].to_ndarray()
+        B2 = CoveringGrid['CM_B2'].to_ndarray()
+        B3 = CoveringGrid['CM_B3'].to_ndarray()
+
+        print(Data.shape)
+        print(B1.shape)
+        print(X1.shape)
+        print(nX[0],nX[1],nX[2])
+
+        for i in range( 0, nX[0] - 1 ):
+            for j in range( 0, nX[1] - 1 ):
+                for k in range( 0, nX[2] - 1 ):
+
+                    print(i,j,k)
+
+                    Data[i,j,k] \
+                      = ( B1[i+1,j,k] - B1[i,j,k] ) \
+                        / ( X1[i+1] - X1[i] ) \
+                        + ( B2[i,j+1,k] - B2[i,j,k] ) \
+                          / ( X2[j+1] - X2[j] ) \
+                        + ( B3[i,j,k+1] - B3[i,j,k] ) \
+                          / ( X3[k+1] - X3[k] )
+
+        DataUnit = ''
+
+    elif( Field == 'MagneticDivergenceX1' ):
+
+        Data = np.zeros( (nX[0], nX[1], nX[2]), np.float64 )
+
+        B1 = CoveringGrid['CM_B1'].to_ndarray()
+        B2 = CoveringGrid['CM_B2'].to_ndarray()
+        B3 = CoveringGrid['CM_B3'].to_ndarray()
+
+        print(Data.shape)
+        print(B1.shape)
+        print(X1.shape)
+        print(nX[0],nX[1],nX[2])
+
+        for i in range( 0, nX[0] - 1 ):
+            for j in range( 0, nX[1] - 1 ):
+                for k in range( 0, nX[2] - 1 ):
+
+                    print(i,j,k)
+
+                    Data[i,j,k] \
+                      = ( B1[i+1,j,k] - B1[i,j,k] ) \
+                        / ( X1[i+1] - X1[i] )
+
+        DataUnit = ''
+
+
+    elif( Field == 'MagneticDivergenceX2' ):
+
+        Data = np.zeros( (nX[0], nX[1], nX[2]), np.float64 )
+
+        B1 = CoveringGrid['CM_B1'].to_ndarray()
+        B2 = CoveringGrid['CM_B2'].to_ndarray()
+        B3 = CoveringGrid['CM_B3'].to_ndarray()
+
+        print(Data.shape)
+        print(B1.shape)
+        print(X1.shape)
+        print(nX[0],nX[1],nX[2])
+
+        for i in range( 0, nX[0] - 1 ):
+            for j in range( 0, nX[1] - 1 ):
+                for k in range( 0, nX[2] - 1 ):
+
+                    print(i,j,k)
+
+                    Data[i,j,k] \
+                      = ( B2[i,j+1,k] - B2[i,j,k] ) \
+                          / ( X2[j+1] - X2[j] )
+
+        DataUnit = ''
+
+    elif( Field == 'MagneticDivergenceX3' ):
+
+        Data = np.zeros( (nX[0], nX[1], nX[2]), np.float64 )
+
+        B1 = CoveringGrid['CM_B1'].to_ndarray()
+        B2 = CoveringGrid['CM_B2'].to_ndarray()
+        B3 = CoveringGrid['CM_B3'].to_ndarray()
+
+        print(Data.shape)
+        print(B1.shape)
+        print(X1.shape)
+        print(nX[0],nX[1],nX[2])
+
+        for i in range( 0, nX[0] - 1 ):
+            for j in range( 0, nX[1] - 1 ):
+                for k in range( 0, nX[2] - 1 ):
+
+                    print(i,j,k)
+
+                    Data[i,j,k] \
+                      = ( B3[i,j,k+1] - B3[i,j,k] ) \
+                          / ( X3[k+1] - X3[k] )
+
+        DataUnit = ''
+
+    elif( Field == 'PlasmaBeta' ):
+
+        # Will need to revise for relativistic expressions.
+
+        P  = CoveringGrid['AM_P' ].to_ndarray()
+        B1 = CoveringGrid['CM_B1'].to_ndarray()
+        B2 = CoveringGrid['CM_B2'].to_ndarray()
+        B3 = CoveringGrid['CM_B3'].to_ndarray()
+
+        Data = (2 * P) / (B1**2 + B2**2 + B3**2)
+
+        DataUnit = ''
 
     elif( Field == 'pr4' ):
 
@@ -566,6 +752,8 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
     if not UsePhysicalUnits: DataUnit = ''
 
+    print(nDimsX)
+
     if nDimsX == 1:
 
         Data = Data[:,0,0]
@@ -581,7 +769,15 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
     else:
 
-        print( 'Not ready for 3D yet. Good luck...' )
+        X2v, X1v, X3v = np.meshgrid( X2, X1, X3 )
+
+        X1 = X1v
+        X2 = X2v
+        X3 = X3v
+
+        Data = Data[:,:,:]
+
+        print(Data.shape)
 
     if ReturnTime and ReturnMesh:
 
