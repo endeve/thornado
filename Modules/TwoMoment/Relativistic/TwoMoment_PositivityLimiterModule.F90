@@ -689,17 +689,17 @@ CONTAINS
          nSpecies)
 
     INTEGER :: ITERATION_Q(nDOFX,iZ_B0(2):iZ_E0(2), &
-                                 iZ_B0(3):iZ_B0(3), &
+                                 iZ_B0(3):iZ_E0(3), &
                                  iZ_B0(4):iZ_E0(4))
     INTEGER :: iErr_Q     (nDOFX,iZ_B0(2):iZ_E0(2), &
-                                 iZ_B0(3):iZ_B0(3), &
+                                 iZ_B0(3):iZ_E0(3), &
                                  iZ_B0(4):iZ_E0(4))
 
     INTEGER :: ITERATION_P(nPT_X,iZ_B0(2):iZ_E0(2), &
-                                 iZ_B0(3):iZ_B0(3), &
+                                 iZ_B0(3):iZ_E0(3), &
                                  iZ_B0(4):iZ_E0(4))
     INTEGER :: iErr_P     (nPT_X,iZ_B0(2):iZ_E0(2), &
-                                 iZ_B0(3):iZ_B0(3), &
+                                 iZ_B0(3):iZ_E0(3), &
                                  iZ_B0(4):iZ_E0(4))
 
     INTEGER :: ErrorExists
@@ -792,12 +792,10 @@ CONTAINS
     END DO
 
     ErrorExists = 0
-
     DO iZ4    = iZ_B0(4), iZ_E0(4)
     DO iZ3    = iZ_B0(3), iZ_E0(3)
     DO iZ2    = iZ_B0(2), iZ_E0(2)
     DO iNodeX = 1       , nDOFX
-
       ITERATION_Q(iNodeX,iZ2,iZ3,iZ4) = 0
       iErr_Q     (iNodeX,iZ2,iZ3,iZ4) = 0
 
@@ -1103,7 +1101,6 @@ m=0
         IF( Gamma_Min < Min_2 )THEN
 
           ! --- Limit Towards Cell Average ---
-
           Theta_2 = One_EPS * Theta_2
 
           N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) &
@@ -1133,11 +1130,8 @@ m=0
     END DO
     END DO
     END DO
-
 !print*, n, m
-
     IF( .NOT. ALL( RealizableCellAverage ) )THEN
-
       CALL RecoverRealizableCellAverage &
              ( iZ_B0, iZ_E0, N_K, G1_K, G2_K, G3_K, N_Q, G1_Q, G2_Q, G3_Q, &
                V1_P, V2_P, V3_P, G_11_P, G_22_P, G_33_P, &

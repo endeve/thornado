@@ -76,6 +76,10 @@ CONTAINS
 
         CALL SetOpacities_HomogeneousSphereGR &
                ( iZ_B0, iZ_E0, iOS_CPP, D0, Chi, kT, E0, mu0, R0 )
+      CASE( 'ShadowCasting' )
+
+        CALL SetOpacities_ShadowCasting &
+               ( iZ_B0, iZ_E0, iOS_CPP )
 
       CASE DEFAULT
 
@@ -245,6 +249,69 @@ CONTAINS
     END DO
     END DO
   END SUBROUTINE SetOpacities_HomogeneousSphereGR
+
+
+  SUBROUTINE SetOpacities_ShadowCasting &
+    ( iZ_B0, iZ_E0, iOS_CPP )
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    INTEGER,  INTENT(in) :: &
+      iZ_B0(4), iZ_E0(4), iOS_CPP(3)
+
+    REAL(DP), PARAMETER :: R_0_A = 2.0d+00 ! --- Radius of Absorbing Region
+    REAL(DP), PARAMETER :: R_0_S = 1.5d+00 ! --- Radius of Radiating Region
+
+    INTEGER  :: iNodeZ, iNodeZ2, iNodeZ3, iZ1, iZ2, iZ3, iZ4, iS
+    REAL(DP) :: X1, X2, Distance_A, Distance_S, D0_loc, Chi_loc
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4)-iOS_CPP(3), iZ_E0(4)-iOS_CPP(3)
+    DO iZ3 = iZ_B0(3)-iOS_CPP(2), iZ_E0(3)-iOS_CPP(2)
+    DO iZ2 = iZ_B0(2)-iOS_CPP(1), iZ_E0(2)-iOS_CPP(1)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iNodeZ = 1, nDOFZ
+
+        iNodeZ2 = NodeNumberTable(2,iNodeZ)
+        iNodeZ3 = NodeNumberTable(3,iNodeZ)
+
+        X1 = NodeCoordinate( MeshX(1), iZ2, iNodeZ2 )
+        X2 = NodeCoordinate( MeshX(2), iZ3, iNodeZ3 )
+
+        ! Distance to Center of Absorbing Region (x,y) = ( 11, 0 )
+        Distance_A = SQRT( (X1 - 1.1d1 )**2 + X2**2 )
+        Chi_loc = Zero
+        D0_loc  = Zero
+
+        IF( Distance_A <= R_0_A )THEN ! Inside Absorbing Region
+           Chi_loc = 10.d0
+        ELSE
+          ! Distance to Center of Radiation Region (x,y) = ( 3, 0 )
+           Distance_S = SQRT( (X1 - 3.0d0 )**2 + X2**2 )
+           IF( Distance_S <= R_0_S )THEN ! Inside Radiating Region
+             Chi_loc = 10.d0 * EXP( - 2.0d0 * ( Distance_S / R_0_S )**2 )
+             D0_loc  = 1.0d-1
+           END IF
+        END IF
+
+        uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_D0   ,iS) &
+          = D0_loc
+        uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Chi  ,iS) &
+          = Chi_loc
+        uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Sigma,iS) &
+          = Zero
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE SetOpacities_ShadowCasting
+
 
   SUBROUTINE CreateOpacities( iZ_B1, iZ_E1, iOS_CPP, Verbose_Option )
 
