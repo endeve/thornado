@@ -299,7 +299,7 @@ CONTAINS
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) ! Diagnostic Fluid
 
     LOGICAL  :: NegativeStates
-    LOGICAL  :: DoStep_3
+    !LOGICAL  :: DoStep_3
     INTEGER  :: iX1, iX2, iX3, iCF, iP, iNodeX
     INTEGER  :: ITERATION
     REAL(DP) :: Min_D_K, Max_D_K, Min_N_K
@@ -593,11 +593,11 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_PL_LimitCells )
 
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE FROM( U_Q_D, U_Q_Ne )
-#elif defined( THORNADO_OACC   )
-    !$ACC UPDATE HOST( U_Q_D, U_Q_Ne )
-#endif
+!#if   defined( THORNADO_OMP_OL )
+!    !$OMP TARGET UPDATE FROM( U_Q_D, U_Q_Ne )
+!#elif defined( THORNADO_OACC   )
+!    !$ACC UPDATE HOST( U_Q_D, U_Q_Ne )
+!#endif
 
     ! -------------------------------------------------------------------
     ! --- Step 1 --------------------------------------------------------
@@ -621,16 +621,17 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      Min_D_K = U_P_D (1,iX1,iX2,iX3) ! --- Minimum D  in Element
-      Max_D_K = U_P_D (1,iX1,iX2,iX3) ! --- Maximum D  in Element
-      Min_N_K = U_P_Ne(1,iX1,iX2,iX3) ! --- Minimum Ne in Element
-      DO iP = 2, nPT
-        Min_D_K = MIN( Min_D_K, U_P_D (iP,iX1,iX2,iX3) )
-        Max_D_K = MAX( Max_D_K, U_P_D (iP,iX1,iX2,iX3) )
-        Min_N_K = MIN( Min_N_K, U_P_Ne(iP,iX1,iX2,iX3) )
-      END DO
+      Min_D_K = MINVAL( U_P_D (:,iX1,iX2,iX3) ) ! --- Minimum D  in Element
+      Max_D_K = MAXVAL( U_P_D (:,iX1,iX2,iX3) ) ! --- Maximum D  in Element
+      Min_N_K = MINVAL( U_P_Ne(:,iX1,iX2,iX3) ) ! --- Minimum Ne in Element
+      !DO iP = 2, nPT
+      !  Min_D_K = MIN( Min_D_K, U_P_D (iP,iX1,iX2,iX3) )
+      !  Max_D_K = MAX( Max_D_K, U_P_D (iP,iX1,iX2,iX3) )
+      !  Min_N_K = MIN( Min_N_K, U_P_Ne(iP,iX1,iX2,iX3) )
+      !END DO
 
-      IF( ANY( [ Min_D_K-Min_D, Max_D-Max_D_K, Min_N_K-Min_N ] < Zero ) )THEN
+      !IF( ANY( [ Min_D_K-Min_D, Max_D-Max_D_K, Min_N_K-Min_N ] < Zero ) )THEN
+      IF( ( Min_D_K < Min_D ) .OR. ( Max_D < Max_D_K ) .OR. ( Min_N_K < Min_N ) ) THEN
 
         Theta_1 = One
 
@@ -640,7 +641,8 @@ CONTAINS
 
           D_P = U_P_D (iP,iX1,iX2,iX3)
           N_P = U_P_Ne(iP,iX1,iX2,iX3)
-          DO WHILE( ANY( [ D_P-Min_D, Max_D-D_P, N_P-Min_N ] < Zero ) )
+          !DO WHILE( ANY( [ D_P-Min_D, Max_D-D_P, N_P-Min_N ] < Zero ) )
+          DO WHILE( ( D_P < Min_D ) .OR. ( Max_D < D_P ) .OR. ( N_P < Min_N ) )
 
             IF( Theta_P > 1.0d-2 )THEN
 
@@ -681,9 +683,9 @@ CONTAINS
         ! --- Recompute Point Values from Limited Solution ---
 
         CALL ComputePointValues_Single &
-               ( U_Q_D (1:nDOFX,iX1,iX2,iX3), nDOFX, U_P_D (1:nPT,iX1,iX2,iX3), nPT )
+               ( U_Q_D (:,iX1,iX2,iX3), nDOFX, U_P_D (:,iX1,iX2,iX3), nPT )
         CALL ComputePointValues_Single &
-               ( U_Q_Ne(1:nDOFX,iX1,iX2,iX3), nDOFX, U_P_Ne(1:nPT,iX1,iX2,iX3), nPT )
+               ( U_Q_Ne(:,iX1,iX2,iX3), nDOFX, U_P_Ne(:,iX1,iX2,iX3), nPT )
 
       END IF
 
@@ -693,11 +695,11 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_PL_LimitCells )
 
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE FROM( U_Q_D, U_Q_Ne )
-#elif defined( THORNADO_OACC   )
-    !$ACC UPDATE HOST( U_Q_D, U_Q_Ne )
-#endif
+!#if   defined( THORNADO_OMP_OL )
+!    !$OMP TARGET UPDATE FROM( U_Q_D, U_Q_Ne )
+!#elif defined( THORNADO_OACC   )
+!    !$ACC UPDATE HOST( U_Q_D, U_Q_Ne )
+!#endif
 
     ! -------------------------------------------------------------------
     ! --- Step 2 --------------------------------------------------------
@@ -721,14 +723,14 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      Min_Y_K = BaryonMass * U_P_Ne(1,iX1,iX2,iX3) / U_P_D(1,iX1,iX2,iX3)
-      Max_Y_K = BaryonMass * U_P_Ne(1,iX1,iX2,iX3) / U_P_D(1,iX1,iX2,iX3)
-      DO iP = 2, nPT
-        Min_Y_K = MIN( Min_Y_K, BaryonMass * U_P_Ne(iP,iX1,iX2,iX3) &
-                                           / U_P_D (iP,iX1,iX2,iX3) )
-        Max_Y_K = MAX( Max_Y_K, BaryonMass * U_P_Ne(iP,iX1,iX2,iX3) &
-                                           / U_P_D (iP,iX1,iX2,iX3) )
-      END DO
+      Min_Y_K = MINVAL( BaryonMass * U_P_Ne(:,iX1,iX2,iX3) / U_P_D(:,iX1,iX2,iX3) )
+      Max_Y_K = MAXVAL( BaryonMass * U_P_Ne(:,iX1,iX2,iX3) / U_P_D(:,iX1,iX2,iX3) )
+      !DO iP = 2, nPT
+      !  Min_Y_K = MIN( Min_Y_K, BaryonMass * U_P_Ne(iP,iX1,iX2,iX3) &
+      !                                     / U_P_D (iP,iX1,iX2,iX3) )
+      !  Max_Y_K = MAX( Max_Y_K, BaryonMass * U_P_Ne(iP,iX1,iX2,iX3) &
+      !                                     / U_P_D (iP,iX1,iX2,iX3) )
+      !END DO
 
       IF( Min_Y_K < Min_Y .OR. Max_Y_K > Max_Y )THEN
 
@@ -738,10 +740,10 @@ CONTAINS
                      ABS( ( Min_Y - Y_K ) / ( Min_Y_K - Y_K ) ), &
                      ABS( ( Max_Y - Y_K ) / ( Max_Y_K - Y_K ) ) )
 
-        Max_D_K = U_P_D(1,iX1,iX2,iX3)
-        DO iP = 2, nPT
-          Max_D_K = MAX( Max_D_K, U_P_D(iP,iX1,iX2,iX3) )
-        END DO
+        Max_D_K = MAXVAL( U_P_D(:,iX1,iX2,iX3) )
+        !DO iP = 2, nPT
+        !  Max_D_K = MAX( Max_D_K, U_P_D(iP,iX1,iX2,iX3) )
+        !END DO
 
         Theta_2 &
           = SafetyFactor * Alpha * U_K_D(iX1,iX2,iX3) &
@@ -764,9 +766,9 @@ CONTAINS
         ! --- Recompute Point Values from Limited Solution ---
 
         CALL ComputePointValues_Single &
-               ( U_Q_D (1:nDOFX,iX1,iX2,iX3), nDOFX, U_P_D (1:nPT,iX1,iX2,iX3), nPT )
+               ( U_Q_D (:,iX1,iX2,iX3), nDOFX, U_P_D (:,iX1,iX2,iX3), nPT )
         CALL ComputePointValues_Single &
-               ( U_Q_Ne(1:nDOFX,iX1,iX2,iX3), nDOFX, U_P_Ne(1:nPT,iX1,iX2,iX3), nPT )
+               ( U_Q_Ne(:,iX1,iX2,iX3), nDOFX, U_P_Ne(:,iX1,iX2,iX3), nPT )
 
       END IF
 
@@ -776,15 +778,15 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_PL_LimitCells )
 
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE FROM( U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
-    !$OMP                     U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne, &
-    !$OMP                     U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne )
-#elif defined( THORNADO_OACC   )
-    !$ACC UPDATE HOST( U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
-    !$ACC              U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne, &
-    !$ACC              U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne )
-#endif
+!#if   defined( THORNADO_OMP_OL )
+!    !$OMP TARGET UPDATE FROM( U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
+!    !$OMP                     U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne, &
+!    !$OMP                     U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne )
+!#elif defined( THORNADO_OACC   )
+!    !$ACC UPDATE HOST( U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
+!    !$ACC              U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne, &
+!    !$ACC              U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne )
+!#endif
 
     ! -------------------------------------------------------------------
     ! --- Step 3 --------------------------------------------------------
@@ -795,10 +797,10 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( iP, iNodeX, ITERATION, Theta_3, Theta_P, DoStep_3 )
+    !$OMP PRIVATE( iP, iNodeX, ITERATION, Theta_3, Theta_P )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( iP, iNodeX, ITERATION, Theta_3, Theta_P, DoStep_3 ) &
+    !$ACC PRIVATE( iP, iNodeX, ITERATION, Theta_3, Theta_P ) &
     !$ACC PRESENT( iX_B0, iX_E0, &
     !$ACC          U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne, &
     !$ACC          U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
@@ -808,7 +810,7 @@ CONTAINS
     !$ACC          Eps_K, Min_Eps_K, Ye_K )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( iP, iNodeX, ITERATION, Theta_3, Theta_P, DoStep_3 )
+    !$OMP PRIVATE( iP, iNodeX, ITERATION, Theta_3, Theta_P )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -839,10 +841,10 @@ CONTAINS
 
         END DO
 
-      DoStep_3 = ANY( Eps_P(:,iX1,iX2,iX3) -  Min_Eps_P(:,iX1,iX2,iX3) < Zero )
+      !DoStep_3 = ANY( Eps_P(:,iX1,iX2,iX3) < Min_Eps_P(:,iX1,iX2,iX3) )
 
       ITERATION = 0
-      DO WHILE( DoStep_3 )
+      DO WHILE( ANY( Eps_P(:,iX1,iX2,iX3) < Min_Eps_P(:,iX1,iX2,iX3) ) .AND. ITERATION <= 10 )
 
         ITERATION = ITERATION + 1
 
@@ -974,7 +976,7 @@ CONTAINS
 
         END DO
 
-        DoStep_3 = ANY( Eps_P(:,iX1,iX2,iX3) -  Min_Eps_P(:,iX1,iX2,iX3) < Zero )
+        !DoStep_3 = ANY( Eps_P(:,iX1,iX2,iX3) < Min_Eps_P(:,iX1,iX2,iX3) )
 
       END DO ! --- WHILE( DoStep_3 )
 
@@ -984,19 +986,19 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_PL_LimitCells )
 
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE FROM( U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
-    !$OMP                     U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne, &
-    !$OMP                     U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne, &
-    !$OMP                     Eps_P, Min_Eps_P, Max_Eps_P, Ye_P, &
-    !$OMP                     Eps_K, Min_Eps_K, Ye_K )
-#elif defined( THORNADO_OACC   )
-    !$ACC UPDATE HOST( U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
-    !$ACC              U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne, &
-    !$ACC              U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne, &
-    !$ACC              Eps_P, Min_Eps_P, Max_Eps_P, Ye_P, &
-    !$ACC              Eps_K, Min_Eps_K, Ye_K )
-#endif
+!#if   defined( THORNADO_OMP_OL )
+!    !$OMP TARGET UPDATE FROM( U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
+!    !$OMP                     U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne, &
+!    !$OMP                     U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne, &
+!    !$OMP                     Eps_P, Min_Eps_P, Max_Eps_P, Ye_P, &
+!    !$OMP                     Eps_K, Min_Eps_K, Ye_K )
+!#elif defined( THORNADO_OACC   )
+!    !$ACC UPDATE HOST( U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
+!    !$ACC              U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne, &
+!    !$ACC              U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne, &
+!    !$ACC              Eps_P, Min_Eps_P, Max_Eps_P, Ye_P, &
+!    !$ACC              Eps_K, Min_Eps_K, Ye_K )
+!#endif
 
     ! --- Copy Back Fluid Variables ---
 
