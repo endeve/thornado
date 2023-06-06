@@ -42,6 +42,7 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_TABLE
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
+    nDF, &
     iDF_T1, &
     iDF_T2, &
     iDF_T3, &
@@ -297,11 +298,11 @@ CONTAINS
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
     REAL(DP), INTENT(inout) :: &
-      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      U(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
     REAL(DP), INTENT(inout) :: &
-      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) ! Diagnostic Fluid
+      D(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nDF)
 
     LOGICAL  :: NegativeStates
     LOGICAL  :: DoStep_3
