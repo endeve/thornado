@@ -1749,8 +1749,12 @@ CONTAINS
     INTEGER       :: iNodeX, iX1, iX2, iX3
     INTEGER       :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
     INTEGER       :: iNodeX1
-    REAL(DP)      :: X1, Theta, V_Max = 0.30_DP
+    REAL(DP)      :: X1, Theta, V_Max = 0.20_DP
 
+    WRITE(*,*)
+    WRITE(*,'(A6,A8,3ES9.2E2)') '', 'V_Max = ', V_Max
+    WRITE(*,*)
+    
     ! --- Fluid Fields ---
 
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -1924,6 +1928,7 @@ CONTAINS
 
   END SUBROUTINE SetInnerBoundary_RadiatingSphere
 
+
   SUBROUTINE InitializeFields_GaussianDiffusion1D( V_0 )
 
     REAL(DP), INTENT(in) :: V_0(3)
@@ -2037,6 +2042,7 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_GaussianDiffusion1D
+
 
   SUBROUTINE InitializeFields_GaussianDiffusion( V_0 )
 
