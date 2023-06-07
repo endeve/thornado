@@ -33,6 +33,10 @@ MODULE TimeSteppingModule_Flash
     ApplySlopeLimiter_TwoMoment
   USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
     ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
+#ifdef TWOMOMENT_ORDER_V
+  USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
+    OffGridFlux_TwoMoment
+#endif
 
   USE, INTRINSIC :: ieee_arithmetic, ONLY: &
     IEEE_IS_NAN
@@ -82,7 +86,7 @@ CONTAINS
   SUBROUTINE Update_IMEX_PDARS &
     ( dt, U_F, U_R, Explicit_Option, Implicit_Option, &
       SingleStage_Option, CallFromThornado_Option, &
-      bcX_Option, iApplyBC_Option )
+      bcX_Option, iApplyBC_Option, OffGridFluxR_Option )
 
     use GeometryFieldsModuleE, only : uGE
     use GeometryFieldsModule,  only : uGF
@@ -112,6 +116,8 @@ CONTAINS
       CallFromThornado_Option
     INTEGER, INTENT(in), OPTIONAL :: &
       bcX_Option(3), iApplyBC_Option(3)
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      OffGridFluxR_Option(2*nCR)
 
     LOGICAL  :: &
       Explicit, &
@@ -124,6 +130,10 @@ CONTAINS
       iX_SW(3), iZ_SW(4), iZ_SW_P(4)
     INTEGER  :: &
       iX_B0_SW(3), iX_E0_SW(3), iZ_B0_SW(4), iZ_E0_SW(4), iZ_B0_SW_P(4), iZ_E0_SW_P(4)
+    REAL(DP) :: &
+      OffGridFluxR   (2*nCR), &
+      OffGridFluxR_T0(2*nCR), &
+      OffGridFluxR_T1(2*nCR)
     REAL(DP) :: &
       U0_F &
         (1:nDOFX, &
@@ -220,6 +230,8 @@ CONTAINS
     U0_F = Zero; Q1_F = Zero
 
     U0_R = Zero; T0_R = Zero; T1_R = Zero; Q1_R = Zero
+
+    OffGridFluxR = Zero
 
 #ifdef TWOMOMENT_ORDER_V
 #if defined MICROPHYSICS_WEAKLIB
@@ -319,6 +331,7 @@ CONTAINS
       CALL ComputeIncrement_TwoMoment_Explicit &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, &
                uGE, uGF, U_F, U_R, T0_R )
+      OffGridFluxR_T0 = OffGridFlux_TwoMoment
 #endif
     ELSE
 
@@ -345,6 +358,7 @@ CONTAINS
           END DO
         END DO
       END DO
+      OffGridFluxR_T0 = Zero
 
     END IF
 
@@ -352,6 +366,10 @@ CONTAINS
 
     CALL AddFields_Radiation &
            ( iZ_B0_SW, iZ_E0_SW, One, dt, U0_R, T0_R, U_R )
+
+#ifdef TWOMOMENT_ORDER_V
+    OffGridFluxR = dt * OffGridFluxR_T0
+#endif
 
     ! --- Apply Limiter ---
 
@@ -501,6 +519,7 @@ CONTAINS
         CALL ComputeIncrement_TwoMoment_Explicit &
                ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, &
                  uGE, uGF, U_F, U_R, T1_R )
+        OffGridFluxR_T1 = OffGridFlux_TwoMoment
 #endif
 
       ELSE
@@ -528,6 +547,7 @@ CONTAINS
             END DO
           END DO
         END DO
+        OffGridFluxR_T1 = Zero
 
       END IF
 
@@ -544,6 +564,10 @@ CONTAINS
 
       CALL AddFields_Radiation &
              ( iZ_B0_SW, iZ_E0_SW, One, Half * dt, U_R,  Q1_R, U_R )
+
+#ifdef TWOMOMENT_ORDER_V
+      OffGridFluxR = Half * dt * OffGridFluxR_T0 + Half * dt * OffGridFluxR_T1
+#endif
 
       ! --- Apply Limiter ---
 
@@ -675,6 +699,10 @@ CONTAINS
     !$ACC DELETE( U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R, uGE, uGF, &
     !$ACC         iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
 #endif
+
+    IF( PRESENT( OffGridFluxR_Option ) )THEN
+      OffGridFluxR_Option = OffGridFluxR
+    END IF
 
   END SUBROUTINE Update_IMEX_PDARS
 
