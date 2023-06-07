@@ -21,6 +21,7 @@ PROGRAM ApplicationDriver
     WriteFieldsHDF
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeFromConserved_TwoMoment, &
+    ComputeTimeStep_TwoMoment, &
     ComputeTimeStep_TwoMoment_Realizability
   USE TwoMoment_SlopeLimiterModule, ONLY: &
     ApplySlopeLimiter_TwoMoment
@@ -467,7 +468,14 @@ PROGRAM ApplicationDriver
       xL    = [ 1.0d1, Zero,  Zero ]
       xR    = [ 1.0d4,   Pi, TwoPi ]
       bcX   = [ 12, 1, 1 ]
-      ZoomX = [ 1.024333847373375_DP, One, One ]
+
+      IF     ( nX(1) == 200 )THEN
+         ZoomX = [ 1.024333847373375_DP, One, One ] ! dX1(1)=2 with nX(1)=200
+      ELSE IF( nX(1) == 400 )THEN
+         ZoomX = [ 1.012074699662899_DP, One, One ] ! dX1(1)=1 with nX(1)=400
+      ELSE
+         ZoomX = One
+      END IF
 
       nE    = 16
       eL    = 0.0d0
@@ -508,9 +516,9 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'IMEX_PDARS'
 
-      t_end   = 5.0_DP
-      iCycleD = 10
-      iCycleW = 10
+      t_end     = 5.0_DP
+      iCycleD   = 10
+      iCycleW   = 10
       maxCycles = 1000000
 
       V_0 = [ 0.0_DP, 0.0_DP, 0.0_DP ]
@@ -518,7 +526,6 @@ PROGRAM ApplicationDriver
       D_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 3200.0_DP
-      !Sigma = 1.0d+2
 
       UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
@@ -760,7 +767,8 @@ PROGRAM ApplicationDriver
 
       C_CFL  = 0.3_DP / ( Two * DBLE(nNodes-1) + One )
 
-      dt_CFL = C_CFL * MINVAL( ( xR - xL ) / DBLE( nX ) )
+      CALL ComputeTimeStep_TwoMoment &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, C_CFL, dt_CFL )
 
     END IF
 
