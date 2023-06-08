@@ -49,17 +49,9 @@ CONTAINS
             'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
           WRITE(*,'(2x,A)') 'U_K(iCF_E) < 0'
           WRITE(*,*)
-          WRITE(*,'(2x,A,I8.8)')      'iX1:       ', Int_Option(1)
-          WRITE(*,'(2x,A,I8.8)')      'iX2:       ', Int_Option(2)
-          WRITE(*,'(2x,A,I8.8)')      'iX3:       ', Int_Option(3)
-          WRITE(*,'(2x,A,ES24.16E3)') 'uD  (iNX): ', Real_Option(1)
-          WRITE(*,'(2x,A,ES24.16E3)') 'uS1 (iNX): ', Real_Option(2)
-          WRITE(*,'(2x,A,ES24.16E3)') 'uS2 (iNX): ', Real_Option(3)
-          WRITE(*,'(2x,A,ES24.16E3)') 'uS3 (iNX): ', Real_Option(4)
-          WRITE(*,'(2x,A,ES24.16E3)') 'uE  (iNX): ', Real_Option(5)
-          WRITE(*,'(2x,A,ES24.16E3)') 'h1  (iNX): ', Real_Option(6)
-          WRITE(*,'(2x,A,ES24.16E3)') 'h2  (iNX): ', Real_Option(7)
-          WRITE(*,'(2x,A,ES24.16E3)') 'h3  (iNX): ', Real_Option(8)
+
+          CALL WriteOutput_PL( Int_Option, Real_Option )
+
           WRITE(*,'(2x,A)') TRIM( Message )
 
           CALL thornado_abort
@@ -73,17 +65,10 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
           WRITE(*,'(2x,A)') 'SolveTheta_Bisection: No root in interval'
-          WRITE(*,'(2x,A,I8.8)')      'iX1:       ', Int_Option(1)
-          WRITE(*,'(2x,A,I8.8)')      'iX2:       ', Int_Option(2)
-          WRITE(*,'(2x,A,I8.8)')      'iX3:       ', Int_Option(3)
-          WRITE(*,'(2x,A,ES24.16E3)') 'uD  (iNX): ', Real_Option(1)
-          WRITE(*,'(2x,A,ES24.16E3)') 'uS1 (iNX): ', Real_Option(2)
-          WRITE(*,'(2x,A,ES24.16E3)') 'uS2 (iNX): ', Real_Option(3)
-          WRITE(*,'(2x,A,ES24.16E3)') 'uS3 (iNX): ', Real_Option(4)
-          WRITE(*,'(2x,A,ES24.16E3)') 'uE  (iNX): ', Real_Option(5)
-          WRITE(*,'(2x,A,ES24.16E3)') 'h1  (iNX): ', Real_Option(6)
-          WRITE(*,'(2x,A,ES24.16E3)') 'h2  (iNX): ', Real_Option(7)
-          WRITE(*,'(2x,A,ES24.16E3)') 'h3  (iNX): ', Real_Option(8)
+          WRITE(*,*)
+
+          CALL WriteOutput_PL( Int_Option, Real_Option )
+
           WRITE(*,'(2x,A)') TRIM( Message )
 
           CALL thornado_abort
@@ -97,6 +82,10 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
           WRITE(*,'(2x,A)') 'SolveTheta_Bisection: Failure to converge'
+          WRITE(*,*)
+
+          CALL WriteOutput_PL( Int_Option, Real_Option )
+
           WRITE(*,'(2x,A)') TRIM( Message )
 
           CALL thornado_abort
@@ -110,6 +99,10 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'SUBROUTINE: ApplyPositivityLimiter_Euler_Relativistic_IDEAL'
           WRITE(*,'(2x,A)') 'q < 0 after all limiting'
+          WRITE(*,*)
+
+          CALL WriteOutput_PL( Int_Option, Real_Option )
+
           WRITE(*,'(2x,A)') TRIM( Message )
 
           CALL thornado_abort
@@ -328,20 +321,20 @@ CONTAINS
 
     WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
       'U(iCF_D       ) = ', &
-      RealArray(7)   /       UnitsDisplay % MassDensityUnit, &
-      '_DP',           TRIM( UnitsDisplay % MassDensityLabel )
+      RealArray(7)  /       UnitsDisplay % MassDensityUnit, &
+      '_DP',          TRIM( UnitsDisplay % MassDensityLabel )
     WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
       'U(iCF_S1      ) = ', &
-       RealArray(8)  /       UnitsDisplay % MomentumDensityX1Unit, &
-      '_DP',           TRIM( UnitsDisplay % MomentumDensityX1Label )
+      RealArray(8)  /       UnitsDisplay % MomentumDensityX1Unit, &
+      '_DP',          TRIM( UnitsDisplay % MomentumDensityX1Label )
     WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
       'U(iCF_S2      ) = ', &
-       RealArray(9)  /       UnitsDisplay % MomentumDensityX2Unit, &
-      '_DP',           TRIM( UnitsDisplay % MomentumDensityX2Label )
+      RealArray(9)  /       UnitsDisplay % MomentumDensityX2Unit, &
+      '_DP',          TRIM( UnitsDisplay % MomentumDensityX2Label )
     WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
       'U(iCF_S3      ) = ', &
-       RealArray(10) /       UnitsDisplay % MomentumDensityX3Unit, &
-      '_DP',           TRIM( UnitsDisplay % MomentumDensityX3Label )
+      RealArray(10) /       UnitsDisplay % MomentumDensityX3Unit, &
+      '_DP',          TRIM( UnitsDisplay % MomentumDensityX3Label )
     WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
       'U(iCF_E       ) = ', &
       RealArray(11) /       UnitsDisplay % EnergyDensityUnit, &
@@ -392,6 +385,114 @@ CONTAINS
     END IF
 
   END SUBROUTINE WriteOutput
+
+
+  SUBROUTINE WriteOutput_PL( IntArray, RealArray )
+
+    INTEGER , INTENT(in) :: IntArray(:)
+    REAL(DP), INTENT(in) :: RealArray(:)
+
+    WRITE(*,'(2x,A,4I7.5)') &
+      'iX1, iX2, iX3, iPT: ', &
+       IntArray(7), IntArray(8), IntArray(9), IntArray(10)
+    WRITE(*,'(2x,A,3I7.5)') &
+      'iX_B0:              ', IntArray(1), IntArray(2), IntArray(3)
+    WRITE(*,'(2x,A,3I7.5)') &
+      'iX_E0:              ', IntArray(4), IntArray(5), IntArray(6)
+
+    WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
+      'U_K(iCF_D       ) = ', &
+      RealArray(1)  /       UnitsDisplay % MassDensityUnit, &
+      '_DP',          TRIM( UnitsDisplay % MassDensityLabel )
+    WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
+      'U_K(iCF_S1      ) = ', &
+      RealArray(2)  /       UnitsDisplay % MomentumDensityX1Unit, &
+      '_DP',          TRIM( UnitsDisplay % MomentumDensityX1Label )
+    WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
+      'U_K(iCF_S2      ) = ', &
+      RealArray(3)  /       UnitsDisplay % MomentumDensityX2Unit, &
+      '_DP',          TRIM( UnitsDisplay % MomentumDensityX2Label )
+    WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
+      'U_K(iCF_S3      ) = ', &
+      RealArray(4)  /       UnitsDisplay % MomentumDensityX3Unit, &
+      '_DP',          TRIM( UnitsDisplay % MomentumDensityX3Label )
+    WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
+      'U_K(iCF_E       ) = ', &
+      RealArray(5)  /       UnitsDisplay % EnergyDensityUnit, &
+      '_DP',          TRIM( UnitsDisplay % EnergyDensityLabel )
+
+    WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
+      'q_K               = ', &
+      RealArray(6)  /       UnitsDisplay % EnergyDensityUnit, &
+      '_DP',          TRIM( UnitsDisplay % EnergyDensityLabel )
+
+    WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
+      'U_P(iCF_D       ) = ', &
+      RealArray(7)  /       UnitsDisplay % MassDensityUnit, &
+      '_DP',          TRIM( UnitsDisplay % MassDensityLabel )
+    WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
+      'U_P(iCF_S1      ) = ', &
+      RealArray(8)  /       UnitsDisplay % MomentumDensityX1Unit, &
+      '_DP',          TRIM( UnitsDisplay % MomentumDensityX1Label )
+    WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
+      'U_P(iCF_S2      ) = ', &
+      RealArray(9)  /       UnitsDisplay % MomentumDensityX2Unit, &
+      '_DP',          TRIM( UnitsDisplay % MomentumDensityX2Label )
+    WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
+      'U_P(iCF_S3      ) = ', &
+      RealArray(10) /       UnitsDisplay % MomentumDensityX3Unit, &
+      '_DP',          TRIM( UnitsDisplay % MomentumDensityX3Label )
+    WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
+      'U_P(iCF_E       ) = ', &
+      RealArray(11) /       UnitsDisplay % EnergyDensityUnit, &
+      '_DP',         TRIM( UnitsDisplay % EnergyDensityLabel )
+
+    WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
+      'q_P               = ', &
+      RealArray(12) /       UnitsDisplay % EnergyDensityUnit, &
+      '_DP',          TRIM( UnitsDisplay % EnergyDensityLabel )
+
+    IF( TRIM( CoordinateSystem ) .EQ. 'CARTESIAN' )THEN
+
+      WRITE(*,'(2x,A,SPES24.16E3,A,1x,A,A)') &
+        'G_P(iGF_Gm_dd_11) = ', RealArray(13), '_DP'
+      WRITE(*,'(2x,A,SPES24.16E3,A,1x,A,A)') &
+        'G_P(iGF_Gm_dd_22) = ', RealArray(14), '_DP'
+      WRITE(*,'(2x,A,SPES24.16E3,A,1x,A,A)') &
+        'G_P(iGF_Gm_dd_33) = ', RealArray(15), '_DP'
+
+    ELSE IF( TRIM( CoordinateSystem ) .EQ. 'CYLINDRICAL' )THEN
+
+      WRITE(*,'(2x,A,SPES24.16E3,A,1x,A,A)') &
+        'G_P(iGF_Gm_dd_11) = ', RealArray(13), '_DP'
+      WRITE(*,'(2x,A,SPES24.16E3,A,1x,A,A)') &
+        'G_P(iGF_Gm_dd_22) = ', RealArray(14), '_DP'
+      WRITE(*,'(2x,A,SPES24.16E3,A,1x,A,A)') &
+        'G_P(iGF_Gm_dd_33) = ', &
+        RealArray(15) /     ( UnitsDisplay % LengthX1Unit  )**2, &
+        '_DP',          TRIM( UnitsDisplay % LengthX1Label ), '^2'
+
+    ELSE IF( TRIM( CoordinateSystem ) .EQ. 'SPHERICAL' )THEN
+
+      WRITE(*,'(2x,A,SPES24.16E3,A,1x,A,A)') &
+        'G_P(iGF_Gm_dd_11) = ', RealArray(13), '_DP'
+      WRITE(*,'(2x,A,SPES24.16E3,A,1x,A,A)') &
+        'G_P(iGF_Gm_dd_22) = ', &
+        RealArray(14) /     ( UnitsDisplay % LengthX1Unit  )**2, &
+        '_DP',          TRIM( UnitsDisplay % LengthX1Label ), '^2'
+      WRITE(*,'(2x,A,SPES24.16E3,A,1x,A,A)') &
+        'G_P(iGF_Gm_dd_33) = ', &
+        RealArray(15) /     ( UnitsDisplay % LengthX1Unit  )**2, &
+        '_DP',          TRIM( UnitsDisplay % LengthX1Label ), '^2'
+
+    ELSE
+
+      WRITE(*,'(2x,A,A)') &
+        'Invalid coordinate system: ', TRIM( CoordinateSystem )
+
+    END IF
+
+  END SUBROUTINE WriteOutput_PL
 
 
 END MODULE Euler_ErrorModule
