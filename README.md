@@ -74,6 +74,39 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 
 
 # Status and Progress
+## June 07-08 2023
+1. Thornado runs fine with neo/agama-devel-sp3/664-23.17.26241.21-664
+2. The libsycl.so version issue persists in nightly 0607
+3. Git cloned Flash-X, get all the submodules in. Get the build script from Mathi, and also the Makefile.h for intel PVC system. but still have problem in compilation.
+<par>
+
+A setup internal error has occured, if possible please email the following
+debugging info to flash-x-users@lists.cels.anl.gov
+Arguments: ['/home/shaopingquan/ExaStar/Flash-X/bin/setup.py', 'StreamingSineWave', '-auto', '-3d', '+cartesian', '-nxb=16', '-nyb=4', '-nzb=4', '+pm4dev', 'Bittree=True', 'ImprovedSort=True', 'AltMorton=True', '+uhd', 'nE=16', 'swE=1', 'nSpecies=6', 'nNodes=2', 'nMoments=4', 'momentClosure=MINERBO', 'thornadoOrder=ORDER_V', '-objdir=StreamingSineWave', '+thornado', '-site=sunspot.alcf.anl.gov', '-parfile=tests/test_amr_3d.par', 'thornadoGPU=INTEL', 'thornadoOMP_OL=True']
+Python Version: 3.6.15
+Platform Details: linux
+Traceback (most recent call last):
+  File "/home/shaopingquan/ExaStar/Flash-X/bin/setup.py", line 317, in <module>
+    raise e
+  File "/home/shaopingquan/ExaStar/Flash-X/bin/setup.py", line 302, in <module>
+    main()
+  File "/home/shaopingquan/ExaStar/Flash-X/bin/setup.py", line 222, in main
+    generateMakefile(configInfo, machDir)
+  File "/home/shaopingquan/ExaStar/Flash-X/bin/genFiles.py", line 540, in generateMakefile
+    configInfo['libConfigInfo'])
+  File "/home/shaopingquan/ExaStar/Flash-X/bin/genFiles.py", line 659, in setRedirectFlags
+    args=args, makefilename=makefilename)
+  File "/home/shaopingquan/ExaStar/Flash-X/bin/libUtils.py", line 146, in getLibFlags
+    self.makeBinary(libDir,base,makefilename)
+  File "/home/shaopingquan/ExaStar/Flash-X/bin/libUtils.py", line 247, in makeBinary
+    status = subprocess.check_call('./build.sh', shell=False)
+  File "/usr/lib64/python3.6/subprocess.py", line 311, in check_call
+    raise CalledProcessError(retcode, cmd)
+subprocess.CalledProcessError: Command './build.sh' returned non-zero exit status 2.
+
+</par>
+
+
 ## June 06 2023
 1. Proof-reading the MS69 report
 2. Run OpenMC successfully with the help of Cong
