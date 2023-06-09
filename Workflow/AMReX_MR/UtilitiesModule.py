@@ -175,11 +175,11 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
     nDimsX = 1
     if nX[1] > 1: nDimsX += 1
     if nX[2] > 1: nDimsX += 1
-#    nDimsX = 2
+
     if nDimsX == 1:
-        dim_array = [nX[0] * 2**MaxLevel, 1, 1]
+        dim_array = [nX[0] * 2**MaxLevel, nX[1], nX[2]]
     elif nDimsX == 2:
-        dim_array = [nX[0] * 2**MaxLevel, nX[1] * 2**MaxLevel, 1]
+        dim_array = [nX[0] * 2**MaxLevel, nX[1] * 2**MaxLevel, nX[2]]
     else:
         dim_array = nX * 2**MaxLevel
         
