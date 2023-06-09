@@ -201,7 +201,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
           = ds.covering_grid \
               ( level           = MaxLevel, \
                 left_edge       = xL, \
-                dims            = nX * 2**MaxLevel, \
+                dims            = dim_array, \
                 num_ghost_zones = nX[0] )
 
     ds.force_periodicity()
