@@ -234,7 +234,7 @@ CONTAINS
     INTEGER  :: iNX, iX1, iX2, iX3, iCF, iPT, nX_K, nCF_K
     REAL(DP) :: Min_D, Min_K, Theta_D, Theta_P, q
 
-    INTEGER :: iErr(              iX_B0(1):iX_E0(1), &
+    INTEGER :: iErr(1:nPT        ,iX_B0(1):iX_E0(1), &
                                   iX_B0(2):iX_E0(2), &
                                   iX_B0(3):iX_E0(3))
     LOGICAL :: NegativeStates(2  ,iX_B0(1):iX_E0(1), &
@@ -302,16 +302,18 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_PL_CopyIn )
 
+    iErr = 0
+
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    iX_B0, iX_E0, G, U ) &
-    !$OMP MAP( alloc: iErr, NegativeStates, Theta_q, SqrtGm, &
+    !$OMP MAP( to:    iX_B0, iX_E0, G, U, iErr ) &
+    !$OMP MAP( alloc: NegativeStates, Theta_q, SqrtGm, &
     !$OMP             U_Q, U_P, U_K, &
     !$OMP             h1Q, h2Q, h3Q, h1P, h2P, h3P, g1P, g2P, g3P )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     iX_B0, iX_E0, G, U ) &
-    !$ACC CREATE(     iErr, NegativeStates, Theta_q, SqrtGm, &
+    !$ACC COPYIN(     iX_B0, iX_E0, G, U, iErr ) &
+    !$ACC CREATE(     NegativeStates, Theta_q, SqrtGm, &
     !$ACC             U_Q, U_P, U_K, &
     !$ACC             h1Q, h2Q, h3Q, h1P, h2P, h3P, g1P, g2P, g3P )
 #endif
@@ -514,11 +516,17 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      iErr(iX1,iX2,iX3) = 0
-
       IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
 
-      IF( U_K(iCF_E,iX1,iX2,iX3) .LT. Zero ) iErr(iX1,iX2,iX3) = 01
+      IF( U_K(iCF_E,iX1,iX2,iX3) .LT. Zero )THEN
+
+        DO iPT = 1, nPT
+
+          iErr(iPT,iX1,iX2,iX3) = 01
+
+        END DO
+
+      END IF
 
       Theta_q(iX1,iX2,iX3) = One
 
@@ -555,7 +563,7 @@ CONTAINS
                    g2P(iPT      ,iX1,iX2,iX3), &
                    g3P(iPT      ,iX1,iX2,iX3), &
                    Theta_P, &
-                   iErr(iX1,iX2,iX3) )
+                   iErr(iPT,iX1,iX2,iX3) )
 
           Theta_q(iX1,iX2,iX3) = MIN( Theta_q(iX1,iX2,iX3), Theta_P )
 
@@ -618,16 +626,16 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    U, iErr ) &
+    !$OMP MAP( from:    U, iErr, U_P, U_K, g1P, g2P, g3P ) &
     !$OMP MAP( release: NegativeStates, Theta_q, iX_B0, iX_E0, SqrtGm, &
-    !$OMP               G, U_Q, U_P, U_K, &
-    !$OMP               h1Q, h2Q, h3Q, h1P, h2P, h3P, g1P, g2P, g3P )
+    !$OMP               G, U_Q, &
+    !$OMP               h1Q, h2Q, h3Q, h1P, h2P, h3P )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      U, iErr ) &
+    !$ACC COPYOUT(      U, iErr, U_P, U_K, g1P, g2P, g3P ) &
     !$ACC DELETE(       NegativeStates, Theta_q, iX_B0, iX_E0, SqrtGm, &
-    !$ACC               G, U_Q, U_P, U_K, &
-    !$ACC               h1Q, h2Q, h3Q, h1P, h2P, h3P, g1P, g2P, g3P )
+    !$ACC               G, U_Q, &
+    !$ACC               h1Q, h2Q, h3Q, h1P, h2P, h3P)
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_PL_CopyOut )
@@ -637,20 +645,45 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
+    DO iPT = 1       , nPT
 
-      IF( iErr(iX1,iX2,iX3) .NE. 0 ) &
+      IF( iErr(iPT,iX1,iX2,iX3) .NE. 0 ) &
         CALL DescribeError_Euler &
-          ( iErr(iX1,iX2,iX3), &
-            Int_Option  = [ iX1, iX2, iX3 ], &
-            Real_Option = [ U(1,iX1,iX2,iX3,iCF_D ), &
-                            U(1,iX1,iX2,iX3,iCF_S1), &
-                            U(1,iX1,iX2,iX3,iCF_S2), &
-                            U(1,iX1,iX2,iX3,iCF_S3), &
-                            U(1,iX1,iX2,iX3,iCF_E ), &
-                            G(1,iX1,iX2,iX3,iGF_h_1), &
-                            G(1,iX1,iX2,iX3,iGF_h_2), &
-                            G(1,iX1,iX2,iX3,iGF_h_3) ] )
+          ( iErr(iPT,iX1,iX2,iX3), &
+            Int_Option  = [ iX_B0(1), iX_B0(2), iX_B0(3), &
+                            iX_E0(1), iX_E0(2), iX_E0(3), &
+                            iX1, iX2, iX3, iPT ], &
+            Real_Option = [ U_K(    iCF_D ,iX1,iX2,iX3), &
+                            U_K(    iCF_S1,iX1,iX2,iX3), &
+                            U_K(    iCF_S2,iX1,iX2,iX3), &
+                            U_K(    iCF_S3,iX1,iX2,iX3), &
+                            U_K(    iCF_E ,iX1,iX2,iX3), &
+                            Computeq( U_K(    iCF_D ,iX1,iX2,iX3), &
+                                      U_K(    iCF_S1,iX1,iX2,iX3), &
+                                      U_K(    iCF_S2,iX1,iX2,iX3), &
+                                      U_K(    iCF_S3,iX1,iX2,iX3), &
+                                      U_K(    iCF_E ,iX1,iX2,iX3), &
+                                      g1P(iPT       ,iX1,iX2,iX3), &
+                                      g2P(iPT       ,iX1,iX2,iX3), &
+                                      g3P(iPT       ,iX1,iX2,iX3) ), &
+                            U_P(iPT,iCF_D ,iX1,iX2,iX3), &
+                            U_P(iPT,iCF_S1,iX1,iX2,iX3), &
+                            U_P(iPT,iCF_S2,iX1,iX2,iX3), &
+                            U_P(iPT,iCF_S3,iX1,iX2,iX3), &
+                            U_P(iPT,iCF_E ,iX1,iX2,iX3), &
+                            Computeq( U_P(iPT,iCF_D ,iX1,iX2,iX3), &
+                                      U_P(iPT,iCF_S1,iX1,iX2,iX3), &
+                                      U_P(iPT,iCF_S2,iX1,iX2,iX3), &
+                                      U_P(iPT,iCF_S3,iX1,iX2,iX3), &
+                                      U_P(iPT,iCF_E ,iX1,iX2,iX3), &
+                                      g1P(iPT       ,iX1,iX2,iX3), &
+                                      g2P(iPT       ,iX1,iX2,iX3), &
+                                      g3P(iPT       ,iX1,iX2,iX3) ), &
+                            g1P(iPT       ,iX1,iX2,iX3), &
+                            g2P(iPT       ,iX1,iX2,iX3), &
+                            g3P(iPT       ,iX1,iX2,iX3) ] )
 
+    END DO
     END DO
     END DO
     END DO
