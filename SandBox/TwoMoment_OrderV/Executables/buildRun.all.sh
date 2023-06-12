@@ -130,7 +130,8 @@ fi
 export BASE_DATE="2023.04.01"
 #export COMPILER_DATE="2023.03.30"
 export COMPILER_DATE="2023.05.03"
-export COMPILER_DATE="2023.06.07"
+export COMPILER_DATE="2023.06.11"
+#export COMPILER_DATE="2023.06.07"
 #export COMPILER_DATE="2023.06.05"
 #export COMPILER_DATE="2023.06.06"
 #export COMPILER_DATE="2023.06.04"
@@ -172,11 +173,11 @@ module load nightly-compiler/${COMPILER_DATE}
 #UMD="neo/agama-devel-sp3/657-23.17.26241.18-657"
 #UMD="neo/agama-devel-sp3/658-23.17.26241.19-658"
 #UMD="neo/agama-devel-sp3/661-23.17.26241.21-661"
-
+#UMD="neo/agama-devel-sp3/663-23.17.26241.21-662"
+#UMD="neo/agama-devel-sp3/664-23.17.26241.21-664"
 
 #UMD="neo/agama-devel-sp3/627-23.13.26032.8-626"
-#UMD="neo/agama-devel-sp3/663-23.17.26241.21-662"
-UMD="neo/agama-devel-sp3/664-23.17.26241.21-664"
+UMD="neo/agama-devel-sp3/666-23.17.26241.22-665"
 umdf=""
 export useAGRF="FALSE"
 if [[ -n $UMD ]]; then
