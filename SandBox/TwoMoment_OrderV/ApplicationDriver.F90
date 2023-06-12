@@ -410,6 +410,39 @@ PROGRAM ApplicationDriver
       UsePositivityLimiter = .TRUE.
       UseEnergyLimiter     = .FALSE.
 
+    CASE( 'TransparentShock2D' )
+
+      LengthScale = 3.0d-2 ! --- Shock Width
+
+      nX  = [ 80, 10, 1 ]
+      xL  = [ 0.0d0, 0.00_DP, 0.0_DP ]
+      xR  = [ 2.0d0, 0.25_DP, 1.0_DP ]
+      bcX = [ 12, 2, 0 ]
+
+      nE  = 32
+      eL  = 0.0d0
+      eR  = 5.0d1
+      bcE = 11
+
+      nNodes = 2
+
+      TimeSteppingScheme = 'SSPRK2'
+
+      t_end   = 5.0d0
+      iCycleD = 1
+      iCycleW = 100
+      maxCycles = 1000000
+
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 0.0_DP
+
+      UseSlopeLimiter      = .FALSE.
+      UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .TRUE.
+
+      UseRealizabilityTimeStep = .TRUE.
+
     CASE( 'TransparentVortex' )
 
       Direction = 'X' ! --- (X or Y)
