@@ -1143,8 +1143,8 @@ CONTAINS
       '', 'Neutrino Momentum 3 Change......: ', &
       NeutrinoMomentum3_Change
     WRITE(*,'(A6,A40,ES16.8E3)') &
-      '', 'Neutrino Momentum 2 PL..........: ', &
-      NeutrinoMomentum2_PL
+      '', 'Neutrino Momentum 3 PL..........: ', &
+      NeutrinoMomentum3_PL
     WRITE(*,*)
     WRITE(*,'(A6,A40,ES16.8E3)') &
       '', 'Fluid Lepton Number Interior....: ', &
