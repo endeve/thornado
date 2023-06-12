@@ -74,7 +74,13 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 
 
 # Status and Progress
-## June 07-08 2023
+## June 12 2023
+1. With the help from Chaberek, Jakub and Whitney, Brian, I have tested the ci-neo-master-026509, ci-neo-master-026510, and ci-neo-master-026561 with nightly compiler 2023.05.11 and 2023.06.11. The reproducer fails exactly the same way as UMD608 for 026509, and runs successfully with 026510 and 026561. But when I run Thornado code with ci-neo-master-026561, there are lot of issues such as sineWaveStreaming case gets segmentation fault and NaNs in relaxation cases. So I leave this JIRA open and will test Thornado with a newer UMD which has the fix in it once it is available. Please see https://jira.devtools.intel.com/browse/GSD-4704 for the details. 
+2. Working on put ms69 to Flash-X submodule in my local branch. 
+    * Change .gitmodules 's branch row of thornado
+    * git submodule update --init --remote; then cd to the submodule and git checkout ms69
+
+## June 07-09 2023
 1. Thornado runs fine with neo/agama-devel-sp3/664-23.17.26241.21-664
 2. The libsycl.so version issue persists in nightly 0607
 3. Git cloned Flash-X, get all the submodules in. Get the build script from Mathi, and also the Makefile.h for intel PVC system. but still have problem in compilation.
