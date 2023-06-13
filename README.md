@@ -74,6 +74,7 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 
 
 # Status and Progress
+more timeFOM_2023.05.03.txt*IMM*
 ## June 13 2023
 1. Relaxation case was run on A100 using OpenACC by ORNL, and as we found there is warp misalignment error when the code is compiled with nvhpc22.7 for !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD. 
 2. Thornado sineWaveStreaming and relaxation cases compiles and runs fine with nightly compiler 2023.05.03 and neo/agama-devel-sp3/666-23.17.26241.22-665 for -O3. 
