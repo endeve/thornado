@@ -201,7 +201,7 @@ CONTAINS
 
       CASE( 'RadiatingSphere' )
 
-        CALL InitializeFields_HomogeneousSphere1D &
+        CALL InitializeFields_RadiatingSphere &
                ( iLevel, MF_uGF, MF_uCR, MF_uCF )
 
       CASE DEFAULT
@@ -1926,7 +1926,6 @@ CONTAINS
 
             END IF
 
-
           END DO
         CALL ComputePressureFromPrimitive &
                  ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
@@ -2010,7 +2009,6 @@ CONTAINS
         END DO
 
       END DO
-
       CALL amrex_mfiter_destroy( MFI )
 
 
