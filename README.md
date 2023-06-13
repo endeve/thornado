@@ -74,6 +74,56 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 
 
 # Status and Progress
+## June 13 2023
+1. Relaxation case was run on A100 using OpenACC by ORNL, and as we found there is warp misalignment error when the code is compiled with nvhpc22.7 for !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD. 
+2. Thornado sineWaveStreaming and relaxation cases compiles and runs fine with nightly compiler 2023.05.03 and neo/agama-devel-sp3/666-23.17.26241.22-665 for -O3. 
+3. Run Thornado's sineWaveStreaming and relaxation with the new software stack, i.e., oneapi/eng-compiler/.2023.05.15.003-rc11, but there is a regression in performace. It is supposed that compared to the run with nightly-compiler 2023.04.01, the speedup for {8, 8,8} should be 30%. But we get less than 5% improvement. Here is the FOM result:
+<pre>
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/thornado/SandBox/TwoMomentOrderV/Executables> more timeFOM.2023.05.15.003-rc11.txt
+                                             Time(seconds)                         |              Figure of Merit (FOM)
+AppName     Grid      OpLevel :  .2023.05.15.003-rc11   2023.04.01    TimeDiff   Percentage  |    .2023.05.15.003-rc11   2023.04.01    FOM-Diff   Percentage
+-----------------------------    ------------------------------------------------       ------------------------------------------------
+sineWave   [8,8,8]      O3    :  1.2158e+01   1.2754e+01  -5.9668e-01    -4.68%         1.0479e+07   9.9889e+06   4.9020e+05     4.91%
+sineWave   [16,16,16]   O3    :  1.4950e+02   1.5465e+02  -5.1504e+00    -3.33%         1.3551e+07   1.3099e+07   4.5130e+05     3.45%
+relax      [8,8,8]      O3    :  4.0004e+01   4.0511e+01  -5.0767e-01    -1.25%         2.1310e+07   2.1043e+07   2.6710e+05     1.27%
+relax      [16,16,16]   O3    :  2.3928e+02   2.4705e+02  -7.7692e+00    -3.14%         2.8502e+07   2.7606e+07   8.9640e+05     3.25%
+</pre>
+By switch the compiler and umd, it is found that the slowdown is because of the compiler. Here is the result using 2023.05.15.003-rc11 and umd627
+<pre>
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables> more timeFOM-.2023.05.15.003-rc11.txtumd627
+                                             Time(seconds)                         |              Figure of Merit (FOM)
+AppName     Grid      OpLevel :  .2023.05.15.003-rc11   2023.04.01    TimeDiff   Percentage  |    .2023.05.15.003-rc11   2023.04.01    FOM-Diff   Percentage
+-----------------------------    ------------------------------------------------       ------------------------------------------------
+sineWave   [8,8,8]      O3    :  1.2044e+01   1.2754e+01  -7.1046e-01    -5.57%         1.0578e+07   9.9889e+06   5.8920e+05     5.90%
+sineWave   [16,16,16]   O3    :  1.5210e+02   1.5465e+02  -2.5577e+00    -1.65%         1.3320e+07   1.3099e+07   2.2030e+05     1.68%
+relax      [8,8,8]      O3    :  3.9942e+01   4.0511e+01  -5.6933e-01    -1.41%         2.1343e+07   2.1043e+07   3.0000e+05     1.43%
+relax      [16,16,16]   O3    :  2.4039e+02   2.4705e+02  -6.6567e+00    -2.69%         2.8370e+07   2.7606e+07   7.6450e+05     2.77%
+</pre>
+Here are the results using 2023.05.03 using umd627 and devel627
+<pre>
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables> more timeFOM_2023.05.03.txtumd627
+                                             Time(seconds)                         |              Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2023.05.03   2023.04.01    TimeDiff   Percentage  |    2023.05.03   2023.04.01    FOM-Diff   Percentage
+-----------------------------    ------------------------------------------------       ------------------------------------------------
+sineWave   [8,8,8]      O3    :  9.5895e+00   1.2754e+01  -3.1649e+00   -24.81%         1.3286e+07   9.9889e+06   3.2967e+06    33.00%
+sineWave   [16,16,16]   O3    :  1.3849e+02   1.5465e+02  -1.6159e+01   -10.45%         1.4628e+07   1.3099e+07   1.5284e+06    11.67%
+relax      [8,8,8]      O3    :  3.0405e+01   4.0511e+01  -1.0107e+01   -24.95%         2.8038e+07   2.1043e+07   6.9949e+06    33.24%
+relax      [16,16,16]   O3    :  2.2667e+02   2.4705e+02  -2.0379e+01    -8.25%         3.0088e+07   2.7606e+07   2.4819e+06     8.99%
+
+</pre>
+
+<pre>
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables> more timeFOM_2023.05.03.txtdevel627
+                                             Time(seconds)                         |              Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2023.05.03   2023.04.01    TimeDiff   Percentage  |    2023.05.03   2023.04.01    FOM-Diff   Percentage
+-----------------------------    ------------------------------------------------       ------------------------------------------------
+sineWave   [8,8,8]      O3    :  9.7439e+00   1.2754e+01  -3.0104e+00   -23.60%         1.3075e+07   9.9889e+06   3.0861e+06    30.90%
+sineWave   [16,16,16]   O3    :  1.4473e+02   1.5465e+02  -9.9209e+00    -6.41%         1.3997e+07   1.3099e+07   8.9800e+05     6.86%
+relax      [8,8,8]      O3    :  3.0297e+01   4.0511e+01  -1.0214e+01   -25.21%         2.8138e+07   2.1043e+07   7.0947e+06    33.71%
+relax      [16,16,16]   O3    :  2.2669e+02   2.4705e+02  -2.0359e+01    -8.24%         3.0085e+07   2.7606e+07   2.4793e+06     8.98%
+</pre>
+
+
 ## June 12 2023
 1. With the help from Chaberek, Jakub and Whitney, Brian, I have tested the ci-neo-master-026509, ci-neo-master-026510, and ci-neo-master-026561 with nightly compiler 2023.05.11 and 2023.06.11. The reproducer fails exactly the same way as UMD608 for 026509, and runs successfully with 026510 and 026561. But when I run Thornado code with ci-neo-master-026561, there are lot of issues such as sineWaveStreaming case gets segmentation fault and NaNs in relaxation cases. So I leave this JIRA open and will test Thornado with a newer UMD which has the fix in it once it is available. Please see https://jira.devtools.intel.com/browse/GSD-4704 for the details. 
 2. Working on put ms69 to Flash-X submodule in my local branch. 
