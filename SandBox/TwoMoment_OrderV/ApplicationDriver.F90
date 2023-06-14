@@ -349,7 +349,7 @@ PROGRAM ApplicationDriver
 
       Direction = 'X' ! --- (X,Y, or Z)
 
-      LengthScale = 1.0d-1 ! --- Shock Width
+      LengthScale = 1.0d-2 ! --- Shock Width
 
       IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
@@ -391,24 +391,26 @@ PROGRAM ApplicationDriver
       nE  = 32
       eL  = 0.0d0
       eR  = 5.0d1
-      bcE = 10
+      bcE = 11
 
-      nNodes = 1
+      nNodes = 3
 
-      TimeSteppingScheme = 'SSPRK1'
+      TimeSteppingScheme = 'SSPRK3'
 
-      t_end   = 5.0d0
+      t_end   = 3.0d0
       iCycleD = 1
-      iCycleW = 10
+      iCycleW = 100
       maxCycles = 1000000
 
       D_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter      = .TRUE.
+      UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
-      UseEnergyLimiter     = .FALSE.
+      UseEnergyLimiter     = .TRUE.
+
+      UseRealizabilityTimeStep = .TRUE.
 
     CASE( 'TransparentShock2D' )
 
@@ -428,7 +430,7 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'SSPRK2'
 
-      t_end   = 5.0d0
+      t_end   = 3.0d0
       iCycleD = 1
       iCycleW = 100
       maxCycles = 1000000
@@ -491,7 +493,9 @@ PROGRAM ApplicationDriver
 
       UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
-      UseEnergyLimiter     = .FALSE.
+      UseEnergyLimiter     = .TRUE.
+
+      UseRealizabilityTimeStep = .TRUE.
 
     CASE( 'RadiatingSphere' )
 
