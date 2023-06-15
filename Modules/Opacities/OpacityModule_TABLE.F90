@@ -164,6 +164,13 @@ CONTAINS
     LOGICAL :: Include_Brem
     LOGICAL :: Verbose
 
+    ! Helpers for EC table 
+    REAL(dp), DIMENSION(nE)   :: E_cells, dE_cells
+    REAL(dp), DIMENSION(nE+1) :: E_faces
+    INTEGER                   :: k, kk
+    REAL(dp)                  :: EC_E_max
+    REAL(dp)                  :: x
+
     IF( PRESENT( OpacityTableName_EmAb_Option ) &
         .AND. ( LEN_TRIM( OpacityTableName_EmAb_Option ) > 1 ) )THEN
       OpacityTableName_EmAb = TRIM( OpacityTableName_EmAb_Option )
@@ -486,29 +493,13 @@ CONTAINS
     !$ACC   NES_AT, Pair_AT, Brem_AT, C1, C2            )
 #endif
 
-    Energy_Grid: BLOCK
-    REAL(dp) :: CenterE(nE), WidthE(nE), NodesE(nNodesE)
-
-    CenterE(:) = MeshE % Center(1:nE)
-    WidthE(:)  = MeshE % Width(1:nE)
-    NodesE(:)  = MeshE % Nodes(:)
-
-    EC_TABLE: BLOCK
-
     use_EC_table = OPACITIES % EmAb % nuclei_EC_table
 
     IF( use_EC_table .gt. 0 ) THEN
 
-    build_kfmin_max: BLOCK
-
-      REAL(dp), DIMENSION(nE)   :: E_cells, dE_cells
-      REAL(dp), DIMENSION(nE+1) :: E_faces
-      INTEGER                   :: iE1, iNodeE1
-      INTEGER                   :: k, kk
-
-      REAL(dp)                  :: EC_E_max
-
-      REAL(dp)                  :: x
+    ASSOCIATE ( CenterE => MeshE % Center(1:nE), &
+                WidthE  => MeshE % Width(1:nE),  &
+                NodesE  => MeshE % Nodes )
 
       EC_E_max = Es_EC_T(EC_nE)
 
@@ -617,8 +608,6 @@ CONTAINS
       
       ENDDO
 
-    END BLOCK build_kfmin_max
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA MAP                       & 
     !$OMP ( to:                                       &
@@ -645,13 +634,13 @@ CONTAINS
     !$ACC   EC_a, EC_b, EC_ak, EC_bk )
 #endif
 
-     ENDIF
+    END ASSOCIATE
+    ENDIF
 
-    END BLOCK EC_TABLE
 
-    NES: BLOCK
-
-    INTEGER :: nOpacities, nMoments, nPointsEta, nPointsT
+    ASSOCIATE ( CenterE => MeshE % Center, &
+                WidthE  => MeshE % Width,  &
+                NodesE  => MeshE % Nodes )
 
     nOpacities = OPACITIES % Scat_NES % nOpacities
     nMoments   = OPACITIES % Scat_NES % nMoments
@@ -699,12 +688,6 @@ CONTAINS
       END DO
     END DO
 
-    END BLOCK NES
-
-    Pair: BLOCK
-
-    INTEGER :: nOpacities, nMoments, nPointsEta, nPointsT
-
     nOpacities = OPACITIES % Scat_Pair % nOpacities
     nMoments   = OPACITIES % Scat_Pair % nMoments
     nPointsT   = OPACITIES % Scat_Pair % nPoints(4)
@@ -750,12 +733,6 @@ CONTAINS
         END DO
       END DO
     END DO
-
-    END BLOCK Pair
-
-    Brem: BLOCK
-
-    INTEGER :: nOpacities, nMoments, nPointsD, nPointsT
 
     nOpacities = OPACITIES % Scat_Brem % nOpacities
     nMoments   = OPACITIES % Scat_Brem % nMoments
@@ -803,9 +780,7 @@ CONTAINS
       END DO
     END DO
 
-    END BLOCK Brem
-
-    END BLOCK Energy_Grid
+    END ASSOCIATE
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE FROM &

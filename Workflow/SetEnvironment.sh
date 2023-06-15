@@ -231,6 +231,7 @@ elif [[ $THORNADO_MACHINE == summit_gcc ]]; then
   module load spectrum-mpi
   module load hdf5
   module load netlib-lapack
+  module load cuda
 
 elif [[ $THORNADO_MACHINE == ascent_pgi ]]; then
 
