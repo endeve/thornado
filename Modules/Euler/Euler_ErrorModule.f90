@@ -310,13 +310,13 @@ CONTAINS
       'X3_C: ', RealArray(3) / UnitsDisplay % LengthX3Unit, &
       TRIM( UnitsDisplay % LengthX3Label )
     WRITE(*,'(2x,A,SPES15.6E3,1x,A)') &
-      'dX1: ', RealArray(1) / UnitsDisplay % LengthX1Unit, &
+      'dX1:  ', RealArray(4) / UnitsDisplay % LengthX1Unit, &
       TRIM( UnitsDisplay % LengthX1Label )
     WRITE(*,'(2x,A,SPES15.6E3,1x,A)') &
-      'dX2: ', RealArray(2) / UnitsDisplay % LengthX2Unit, &
+      'dX2:  ', RealArray(5) / UnitsDisplay % LengthX2Unit, &
       TRIM( UnitsDisplay % LengthX2Label )
     WRITE(*,'(2x,A,SPES15.6E3,1x,A)') &
-      'dX3: ', RealArray(3) / UnitsDisplay % LengthX3Unit, &
+      'dX3:  ', RealArray(6) / UnitsDisplay % LengthX3Unit, &
       TRIM( UnitsDisplay % LengthX3Label )
 
     WRITE(*,'(2x,A,SPES24.16E3,A,1x,A)') &
