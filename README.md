@@ -74,6 +74,12 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 
 
 # Status and Progress
+## 
+1. Build Thornado from Flash-X. 
+    - buildRun.sh inside ${FLASH_HOME}/Flash-X
+    - add a directory under ${FLASH_HOME}/Flash-X/sites and add Makefile.h and Makefile.h.???? under this directory. For example summit.olcf.ornl.gov/
+    - w
+
 ## June 20 2023
 1. Thornado successfully ran on PVC15 with FOM output comparing to baseline FOM simulated using nightly 2023.04.01. The most recent working nightly is 2023.05.15, and the tested UMD is 665. On PVC15
 2. Tested Thornado with the newer UMDs (umd670 and above) as noted by Brain there might be something intesting with the new UMDs. In conclusion, Thornado compiles and runs fine with the UMD671 and above. Nightly 2023.05.15 is used. The are more warnings of register spill starting from UMD672, but the performance change is very minimal. Here are some details:
