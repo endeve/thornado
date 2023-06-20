@@ -74,7 +74,69 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 
 
 # Status and Progress
-more timeFOM_2023.05.03.txt*IMM*
+## June 20 2023
+1. Thornado successfully ran on PVC15 with FOM output comparing to baseline FOM simulated using nightly 2023.04.01. The most recent working nightly is 2023.05.15, and the tested UMD is 665. On PVC15
+2. Tested Thornado with the newer UMDs (umd670 and above) as noted by Brain there might be something intesting with the new UMDs. In conclusion, Thornado compiles and runs fine with the UMD671 and above. Nightly 2023.05.15 is used. The are more warnings of register spill starting from UMD672, but the performance change is very minimal. Here are some details:
+<pre>
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables> more timeFOM_2023.05.15.txt-umd670
+                                             Time(seconds)                         |              Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2023.05.15   2023.04.01    TimeDiff   Percentage  |    2023.05.15   2023.04.01    FOM-Diff   Percentage
+-----------------------------    ------------------------------------------------       ------------------------------------------------
+sineWave   [8,8,8]      O3    :  9.5479e+00   1.2754e+01  -3.2065e+00   -25.14%         1.3344e+07   9.9889e+06   3.3546e+06    33.58%
+sineWave   [16,16,16]   O3    :  1.4313e+02   1.5465e+02  -1.1518e+01    -7.45%         1.4154e+07   1.3099e+07   1.0542e+06     8.05%
+relax      [8,8,8]      O3    :  3.0480e+01   4.0511e+01  -1.0031e+01   -24.76%         2.7969e+07   2.1043e+07   6.9253e+06    32.91%
+relax      [16,16,16]   O3    :  2.2865e+02   2.4705e+02  -1.8403e+01    -7.45%         2.9828e+07   2.7606e+07   2.2219e+06     8.05%
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables> more timeFOM_2023.05.15.txt-umd671
+                                             Time(seconds)                         |              Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2023.05.15   2023.04.01    TimeDiff   Percentage  |    2023.05.15   2023.04.01    FOM-Diff   Percentage
+-----------------------------    ------------------------------------------------       ------------------------------------------------
+sineWave   [8,8,8]      O3    :  9.8154e+00   1.2754e+01  -2.9390e+00   -23.04%         1.2980e+07   9.9889e+06   2.9909e+06    29.94%
+sineWave   [16,16,16]   O3    :  1.4247e+02   1.5465e+02  -1.2183e+01    -7.88%         1.4220e+07   1.3099e+07   1.1202e+06     8.55%
+relax      [8,8,8]      O3    :  3.0612e+01   4.0511e+01  -9.8998e+00   -24.44%         2.7849e+07   2.1043e+07   6.8054e+06    32.34%
+relax      [16,16,16]   O3    :  2.2774e+02   2.4705e+02  -1.9306e+01    -7.81%         2.9946e+07   2.7606e+07   2.3402e+06     8.48%
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables> more timeFOM_2023.05.15.txt-umd672
+                                             Time(seconds)                         |              Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2023.05.15   2023.04.01    TimeDiff   Percentage  |    2023.05.15   2023.04.01    FOM-Diff   Percentage
+-----------------------------    ------------------------------------------------       ------------------------------------------------
+sineWave   [8,8,8]      O3    :  9.8554e+00   1.2754e+01  -2.8990e+00   -22.73%         1.2927e+07   9.9889e+06   2.9382e+06    29.41%
+sineWave   [16,16,16]   O3    :  1.4548e+02   1.5465e+02  -9.1755e+00    -5.93%         1.3926e+07   1.3099e+07   8.2620e+05     6.31%
+relax      [8,8,8]      O3    :  3.0514e+01   4.0511e+01  -9.9974e+00   -24.68%         2.7938e+07   2.1043e+07   6.8946e+06    32.76%
+relax      [16,16,16]   O3    :  2.2945e+02   2.4705e+02  -1.7599e+01    -7.12%         2.9723e+07   2.7606e+07   2.1175e+06     7.67%
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables> more timeFOM_2023.05.15.txt-umd673
+                                             Time(seconds)                         |              Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2023.05.15   2023.04.01    TimeDiff   Percentage  |    2023.05.15   2023.04.01    FOM-Diff   Percentage
+-----------------------------    ------------------------------------------------       ------------------------------------------------
+sineWave   [8,8,8]      O3    :  9.8933e+00   1.2754e+01  -2.8611e+00   -22.43%         1.2878e+07   9.9889e+06   2.8887e+06    28.92%
+sineWave   [16,16,16]   O3    :  1.4113e+02   1.5465e+02  -1.3525e+01    -8.75%         1.4355e+07   1.3099e+07   1.2554e+06     9.58%
+relax      [8,8,8]      O3    :  3.0520e+01   4.0511e+01  -9.9908e+00   -24.66%         2.7932e+07   2.1043e+07   6.8885e+06    32.73%
+relax      [16,16,16]   O3    :  2.2882e+02   2.4705e+02  -1.8225e+01    -7.38%         2.9804e+07   2.7606e+07   2.1987e+06     7.96%
+
+</pre>
+
+Here is the register spills
+<pre>
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables> grep spill *O3.2023.05.15.ms69-umd671* |wc -l
+14
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables> grep spill *O3.2023.05.15.ms69-umd672* |wc -l
+20
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables> grep spill *O3.2023.05.15.ms69-umd673* |wc -l
+20
+</pre>
+
+## June 14, 16 2023
+1. Works on test affects of IMM Thornado's running time. To set IMM on or off one needs to set the following two variables to 1 or zero. for example: `LIBOMPTARGET_LEVEL_ZERO_USE_IMMEDIATE_COMMAND_LIST=1` and `SYCL_PI_LEVEL_ZERO_USE_IMMEDIATE_COMMANDLISTS=1`
+2. It is that without set the above two variables the sineWaveStreaming case runs less than 10 seconds, but with IMM=0, it is around 12.5 seconds, and with IMM=1, it is 12.0 seconds. Similar trend is found for the Relaxation {8,8,8} grid case. Here is the detail:
+
+  | runs          | IMM=1        |  IMM=0      | Not set IMM      |
+  | :----:        | :----:       | :----:      | :-----: |
+  | SinvWave run1 |      1.1977e+01    |          1.2699e+01    |           9.7111e+00 |
+  | SineWave run2 |      1.2077e+01    |          1.2543e+01    |           9.6409e+00 |
+  | Relaxation run1 |          3.9845e+01  |         4.0529e+01  |             3.0507e+01|
+  | Relaxation run2 |          3.9649e+01  |         4.0198e+01  |            3.0362e+01 |
+
+
+3. As PVC04 is down, move to PVC15 and checkout weaklib, and it seems that the weaklib is updated and in no longer compatible with Thornado we have. Need do more investigation.   
+
 ## June 13 2023
 1. Relaxation case was run on A100 using OpenACC by ORNL, and as we found there is warp misalignment error when the code is compiled with nvhpc22.7 for !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD. 
 2. Thornado sineWaveStreaming and relaxation cases compiles and runs fine with nightly compiler 2023.05.03 and neo/agama-devel-sp3/666-23.17.26241.22-665 for -O3. 
