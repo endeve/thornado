@@ -74,11 +74,15 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 
 
 # Status and Progress
-## 
+## June 21 2023
 1. Build Thornado from Flash-X. 
     - buildRun.sh inside ${FLASH_HOME}/Flash-X
     - add a directory under ${FLASH_HOME}/Flash-X/sites and add Makefile.h and Makefile.h.???? under this directory. For example summit.olcf.ornl.gov/
-    - w
+    - Add .o file name to Makefile.Flash and the path of source files to $(THORNADO_DIR)/Build/Makefile_Path
+    - ./build.sh is written in line 130 of libUtils.py, which call the library's libinfo.py
+
+2. Thornado runs with the latest UMD, i.e., neo/agama-devel-sp3/673-23.22.26516.8-673
+3. Tested IMM effect on the latest UMD, here is the result
 
 ## June 20 2023
 1. Thornado successfully ran on PVC15 with FOM output comparing to baseline FOM simulated using nightly 2023.04.01. The most recent working nightly is 2023.05.15, and the tested UMD is 665. On PVC15
