@@ -20,6 +20,7 @@ MODULE MeshModule
 
   PUBLIC :: CreateMesh
   PUBLIC :: CreateMesh_Custom
+  PUBLIC :: CreateMesh_PiecewiseUniform
   PUBLIC :: DestroyMesh
   PUBLIC :: NodeCoordinate
 
@@ -274,6 +275,118 @@ CONTAINS
 #endif
 
   END SUBROUTINE CreateMesh_Custom
+
+
+  SUBROUTINE CreateMesh_PiecewiseUniform &
+    ( Mesh, N, nN, SW, xL, xR, nGrids, xRef, Verbose_Option )
+
+    TYPE(MeshType)       :: Mesh
+    INTEGER , INTENT(in) :: N, nN, nGrids, SW
+    REAL(DP), INTENT(in) :: xL, xR, xRef(nGrids-1)
+    LOGICAL , INTENT(in), OPTIONAL :: Verbose_Option
+
+    INTEGER  :: nX(nGrids), iGrid, iX_G, iX
+    REAL(DP) :: dX(nGrids), xLL, xRR, xI(nGrids), xQ(nN), wQ(nN)
+
+    LOGICAL  :: Verbose
+
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    ELSE
+      Verbose = .FALSE.
+    END IF
+
+    xI(1:nGrids-1) = xRef
+    xI(nGrids)     = xR
+
+    Mesh % Length = xR - xL
+
+    dX(1) = Mesh % Length / DBLE( N )
+
+    DO iGrid = 2, nGrids
+
+      dX(iGrid) = Half * dX(iGrid-1)
+
+    END DO
+
+    xRR = xL
+    nX  = 0
+    DO iGrid = 1, nGrids
+
+      DO WHILE( xRR .LT. xI(iGrid) )
+
+        xRR = xRR + dX(iGrid)
+
+        nX(iGrid) = nX(iGrid) + 1
+
+      END DO ! xRR .LT. xI(iGrid)
+
+    END DO ! iGrid = 1, nGrids
+
+    IF( .NOT. ALLOCATED( Mesh % Center ) ) &
+      ALLOCATE( Mesh % Center(1-SW:SUM(nX)+SW) )
+
+    IF( .NOT. ALLOCATED( Mesh % Width  ) ) &
+      ALLOCATE( Mesh % Width (1-SW:SUM(nX)+SW) )
+
+    Mesh % Center(1-SW) = xL - Half * dX(1)
+    Mesh % Width (1-SW) = dX(1)
+
+    xLL = xL
+
+    iX_G = 1-SW
+    DO iGrid = 1, nGrids
+
+      DO iX = 1, nX(iGrid)
+
+        iX_G = iX_G + 1
+
+        Mesh % Center(iX_G) = xLL + Half * dX(iGrid)
+        Mesh % Width (iX_G) = dX(iGrid)
+
+        xLL = xLL + dX(iGrid)
+
+      END DO ! iX = 1, nX(iGrid)
+
+    END DO ! iGrid = 1, nGrids
+
+    Mesh % Center(SUM(nX)+SW) = xR + Half * dX(nGrids)
+    Mesh % Width (SUM(nX)+SW) = dX(nGrids)
+
+    CALL GetQuadrature( nN, xQ, wQ )
+
+    IF( .NOT. ALLOCATED( Mesh % Nodes  ) ) &
+      ALLOCATE( Mesh % Nodes(1:nN) )
+
+    Mesh % Nodes = xQ
+
+    IF( Verbose )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A5,A)') '', 'CreateMesh_PiecewiseUniform'
+      WRITE(*,*)
+      WRITE(*,'(A7,A13,ES9.2E2,A3,ES9.2E2)') &
+      '', 'MIN/MAX dx = ', &
+      MINVAL( Mesh % Width ), &
+      ' / ', &
+      MAXVAL( Mesh % Width )
+      WRITE(*,'(A7,A13,I2.2)') &
+      '', 'nGrids = ', nGrids
+      WRITE(*,'(A7,A13)',ADVANCE='NO') &
+      '', 'Interfaces = '
+      WRITE(*,*) xRef
+      WRITE(*,*)
+
+    END IF
+
+! Requires deep copy (not supported on all compilers)
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET UPDATE TO( Mesh % Center, Mesh % Width, Mesh % Nodes )
+#elif defined( THORNADO_OACC   )
+    !$ACC UPDATE DEVICE   ( Mesh % Center, Mesh % Width, Mesh % Nodes )
+#endif
+
+  END SUBROUTINE CreateMesh_PiecewiseUniform
 
 
   SUBROUTINE DestroyMesh( Mesh )
