@@ -1,7 +1,7 @@
 MODULE MeshModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, Two
+    DP, Zero, Half, One
   USE QuadratureModule, ONLY: &
     GetQuadrature
 
@@ -45,9 +45,6 @@ CONTAINS
     REAL(DP) :: xQ(nN), wQ(nN)
     INTEGER  :: iOS
 
-    INTEGER  :: nGrids, i, j
-    REAL(DP), ALLOCATABLE :: xRef(:), xRef_Flipped(:)
-
     iOS = 0
     IF( PRESENT( iOS_Option ) ) &
       iOS = iOS_Option
@@ -57,66 +54,6 @@ CONTAINS
     ELSE
       Zoom = 1.0_DP
     END IF
-
-!!$    Mesh % Length = xR - xL
-!!$
-!!$    ALLOCATE( Mesh % Center(1-SW-iOS:N+SW-iOS) )
-!!$    ALLOCATE( Mesh % Width (1-SW-iOS:N+SW-iOS) )
-!!$
-!!$    IF( Zoom > 1.0_DP )THEN
-!!$
-!!$      CALL CreateMesh_Geometric &
-!!$             ( N, SW, xL, xR, Mesh % Center, Mesh % Width, Zoom )
-!!$
-!!$    ELSE
-!!$
-!!$      CALL CreateMesh_Equidistant &
-!!$             ( N, SW, xL, xR, Mesh % Center, Mesh % Width, iOS )
-!!$
-!!$    END IF
-!!$
-!!$    CALL GetQuadrature( nN, xQ, wQ )
-!!$
-!!$    ALLOCATE( Mesh % Nodes(1:nN) )
-!!$    Mesh % Nodes = xQ
-!!$
-!!$! Requires deep copy (not supported on all compilers)
-!!$#if defined(THORNADO_OMP_OL)
-!!$    !$OMP TARGET ENTER DATA &
-!!$    !$OMP MAP( to: Mesh % Center, Mesh % Width, Mesh % Nodes )
-!!$#elif defined(THORNADO_OACC)
-!!$    !$ACC ENTER DATA &
-!!$    !$ACC COPYIN( Mesh % Center, Mesh % Width, Mesh % Nodes )
-!!$#endif
-
-IF( N .GT. 1 )THEN
-
-  nGrids = 10
-
-  ALLOCATE( xRef        (nGrids-1) )
-  ALLOCATE( xRef_Flipped(nGrids-1) )
-
-  xRef = [ 5.0000e+4_DP, 2.50000e+4_DP, 1.250000e+4_DP  , &
-           6.2500e+3_DP, 3.12500e+3_DP, 1.562500e+3_DP, &
-           7.8125e+2_DP, 3.90625e+2_DP, 1.953125e+2_DP ]
-
-  xRef = xRef * Kilometer
-
-  DO i = 1, nGrids-1
-
-    xRef_Flipped(i) = xRef(nGrids-i)
-
-  END DO
-
-!  j = 512
-  CALL CreateMesh_PiecewiseUniform &
-         ( Mesh, N, nN, SW, xL, xR, nGrids, xRef_Flipped, &
-           Verbose_Option = .TRUE. )
-
-  DEALLOCATE( xRef_Flipped )
-  DEALLOCATE( xRef         )
-
-ELSE ! N .LE. 1
 
     Mesh % Length = xR - xL
 
@@ -148,8 +85,6 @@ ELSE ! N .LE. 1
     !$ACC ENTER DATA &
     !$ACC COPYIN( Mesh % Center, Mesh % Width, Mesh % Nodes )
 #endif
-
-END IF ! N .GT. 1
 
   END SUBROUTINE CreateMesh
 
