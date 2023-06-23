@@ -178,77 +178,13 @@ CONTAINS
 
     CALL InitializeQuadratures
 
-    iDim = 1
-    WRITE(*,'(A7,A3,I1,A4,ES9.2E2,A1,A,A2,A3,I1,A4,&
-              &ES9.2E2,A1,A,A2,A6,I1,A4,ES10.4E2)') &
-      '',   'xL(', iDim, ') = ', xL(iDim) / U % LengthX1Unit, &
-      '', TRIM( U % LengthX1Label ), &
-      ', ', 'xR(', iDim, ') = ', xR(iDim) / U % LengthX1Unit, &
-      '', TRIM( U % LengthX1Label ), &
-      ', ', 'ZoomX(', iDim, ') = ', ZoomX(iDim)
+    DO iDim = 1, 3
 
-    WRITE(*,*)
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
+               xL(iDim), xR(iDim), ZoomOption = ZoomX(iDim) )
 
-    CALL CreateMesh &
-           ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
-             xL(iDim), xR(iDim), ZoomOption = ZoomX(iDim) )
-
-    WRITE(*,'(A9,A11,I1,A4,ES9.2E2,A1,A,A3,ES9.2E2,A1,A)') &
-      '', 'MIN/MAX dx(', iDim, ') = ', &
-      MINVAL( MeshX(iDim) % Width(1:nX(iDim)) ) &
-        / U % LengthX1Unit, '', TRIM( U % LengthX1Label ), &
-      ' / ', &
-      MAXVAL( MeshX(iDim) % Width(1:nX(iDim)) ) &
-        / U % LengthX1Unit, '', TRIM( U % LengthX1Label )
-    WRITE(*,*)
-
-    iDim = 2
-    WRITE(*,'(A7,A3,I1,A4,ES9.2E2,A1,A,A2,A3,I1,A4,&
-              &ES9.2E2,A1,A,A2,A6,I1,A4,ES10.4E2)') &
-      '',   'xL(', iDim, ') = ', xL(iDim) / U % LengthX2Unit, &
-      '', TRIM( U % LengthX2Label ), &
-      ', ', 'xR(', iDim, ') = ', xR(iDim) / U % LengthX2Unit, &
-      '', TRIM( U % LengthX2Label ), &
-      ', ', 'ZoomX(', iDim, ') = ', ZoomX(iDim)
-
-    WRITE(*,*)
-
-    CALL CreateMesh &
-           ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
-             xL(iDim), xR(iDim), ZoomOption = ZoomX(iDim) )
-
-    WRITE(*,'(A9,A11,I1,A4,ES9.2E2,A1,A,A3,ES9.2E2,A1,A)') &
-      '', 'MIN/MAX dx(', iDim, ') = ', &
-      MINVAL( MeshX(iDim) % Width(1:nX(iDim)) ) &
-        / U % LengthX2Unit, '', TRIM( U % LengthX2Label ), &
-      ' / ', &
-      MAXVAL( MeshX(iDim) % Width(1:nX(iDim)) ) &
-        / U % LengthX2Unit, '', TRIM( U % LengthX2Label )
-    WRITE(*,*)
-
-    iDim = 3
-    WRITE(*,'(A7,A3,I1,A4,ES9.2E2,A1,A,A2,A3,I1,A4,&
-              &ES9.2E2,A1,A,A2,A6,I1,A4,ES10.4E2)') &
-      '',   'xL(', iDim, ') = ', xL(iDim) / U % LengthX3Unit, &
-      '', TRIM( U % LengthX3Label ), &
-      ', ', 'xR(', iDim, ') = ', xR(iDim) / U % LengthX3Unit, &
-      '', TRIM( U % LengthX3Label ), &
-      ', ', 'ZoomX(', iDim, ') = ', ZoomX(iDim)
-
-    WRITE(*,*)
-
-    CALL CreateMesh &
-           ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
-             xL(iDim), xR(iDim), ZoomOption = ZoomX(iDim) )
-
-    WRITE(*,'(A9,A11,I1,A4,ES9.2E2,A1,A,A3,ES9.2E2,A1,A)') &
-      '', 'MIN/MAX dx(', iDim, ') = ', &
-      MINVAL( MeshX(iDim) % Width(1:nX(iDim)) ) &
-        / U % LengthX3Unit, '', TRIM( U % LengthX3Label ), &
-      ' / ', &
-      MAXVAL( MeshX(iDim) % Width(1:nX(iDim)) ) &
-        / U % LengthX3Unit, '', TRIM( U % LengthX3Label )
-    WRITE(*,*)
+    END DO
 
     CALL InitializeProgramHeaderX &
            ( nX_Option = nX, swX_Option = swX, &

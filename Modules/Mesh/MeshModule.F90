@@ -376,13 +376,14 @@ CONTAINS
       WRITE(FMT,'(A,I2.2,A)') '(', nGrids-1, 'ES11.3E3)'
       WRITE(*,*)
       WRITE(*,'(A5,A)') '', 'CreateMesh_PiecewiseUniform'
+      WRITE(*,'(A5,A)') '', '---------------------------'
       WRITE(*,*)
       WRITE(*,'(A7,A20,I2.2)') &
       '', 'nGrids = ', nGrids
       WRITE(*,'(A7,A20,I8.8)') &
       '', 'nLeafElements = ', N
       WRITE(*,'(A7,A20,A,A)',ADVANCE='NO') &
-      '', 'Interfaces [', UnitsDisplay % LengthX1Label, '] = '
+      '', 'Interfaces [', TRIM( UnitsDisplay % LengthX1Label ), '] = '
       WRITE(*,TRIM(FMT)) xRef / UnitsDisplay % LengthX1Unit
       WRITE(*,*)
 
