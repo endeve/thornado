@@ -1,7 +1,7 @@
 MODULE MeshModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One
+    DP, Zero, Half, One, Two
   USE QuadratureModule, ONLY: &
     GetQuadrature
 
@@ -35,7 +35,8 @@ CONTAINS
   SUBROUTINE CreateMesh( Mesh, N, nN, SW, xL, xR, ZoomOption, iOS_Option )
 
     TYPE(MeshType)                 :: Mesh
-    INTEGER,  INTENT(in)           :: N, nN, SW
+    INTEGER,  INTENT(inout)        :: N
+    INTEGER,  INTENT(in)           :: nN, SW
     REAL(DP), INTENT(in)           :: xL, xR
     REAL(DP), INTENT(in), OPTIONAL :: ZoomOption
     INTEGER,  INTENT(in), OPTIONAL :: iOS_Option
@@ -43,6 +44,9 @@ CONTAINS
     REAL(DP) :: Zoom
     REAL(DP) :: xQ(nN), wQ(nN)
     INTEGER  :: iOS
+
+    INTEGER  :: nGrids, i, j
+    REAL(DP), ALLOCATABLE :: xRef(:), xRef_Flipped(:)
 
     iOS = 0
     IF( PRESENT( iOS_Option ) ) &
@@ -53,6 +57,66 @@ CONTAINS
     ELSE
       Zoom = 1.0_DP
     END IF
+
+!!$    Mesh % Length = xR - xL
+!!$
+!!$    ALLOCATE( Mesh % Center(1-SW-iOS:N+SW-iOS) )
+!!$    ALLOCATE( Mesh % Width (1-SW-iOS:N+SW-iOS) )
+!!$
+!!$    IF( Zoom > 1.0_DP )THEN
+!!$
+!!$      CALL CreateMesh_Geometric &
+!!$             ( N, SW, xL, xR, Mesh % Center, Mesh % Width, Zoom )
+!!$
+!!$    ELSE
+!!$
+!!$      CALL CreateMesh_Equidistant &
+!!$             ( N, SW, xL, xR, Mesh % Center, Mesh % Width, iOS )
+!!$
+!!$    END IF
+!!$
+!!$    CALL GetQuadrature( nN, xQ, wQ )
+!!$
+!!$    ALLOCATE( Mesh % Nodes(1:nN) )
+!!$    Mesh % Nodes = xQ
+!!$
+!!$! Requires deep copy (not supported on all compilers)
+!!$#if defined(THORNADO_OMP_OL)
+!!$    !$OMP TARGET ENTER DATA &
+!!$    !$OMP MAP( to: Mesh % Center, Mesh % Width, Mesh % Nodes )
+!!$#elif defined(THORNADO_OACC)
+!!$    !$ACC ENTER DATA &
+!!$    !$ACC COPYIN( Mesh % Center, Mesh % Width, Mesh % Nodes )
+!!$#endif
+
+IF( N .GT. 1 )THEN
+
+  nGrids = 10
+
+  ALLOCATE( xRef        (nGrids-1) )
+  ALLOCATE( xRef_Flipped(nGrids-1) )
+
+  xRef = [ 5.0000e+4_DP, 2.50000e+4_DP, 1.250000e+4_DP  , &
+           6.2500e+3_DP, 3.12500e+3_DP, 1.562500e+3_DP, &
+           7.8125e+2_DP, 3.90625e+2_DP, 1.953125e+2_DP ]
+
+  xRef = xRef * Kilometer
+
+  DO i = 1, nGrids-1
+
+    xRef_Flipped(i) = xRef(nGrids-i)
+
+  END DO
+
+!  j = 512
+  CALL CreateMesh_PiecewiseUniform &
+         ( Mesh, N, nN, SW, xL, xR, nGrids, xRef_Flipped, &
+           Verbose_Option = .TRUE. )
+
+  DEALLOCATE( xRef_Flipped )
+  DEALLOCATE( xRef         )
+
+ELSE ! N .LE. 1
 
     Mesh % Length = xR - xL
 
@@ -84,6 +148,8 @@ CONTAINS
     !$ACC ENTER DATA &
     !$ACC COPYIN( Mesh % Center, Mesh % Width, Mesh % Nodes )
 #endif
+
+END IF ! N .GT. 1
 
   END SUBROUTINE CreateMesh
 
@@ -280,15 +346,18 @@ CONTAINS
   SUBROUTINE CreateMesh_PiecewiseUniform &
     ( Mesh, N, nN, SW, xL, xR, nGrids, xRef, Verbose_Option )
 
-    TYPE(MeshType)       :: Mesh
-    INTEGER , INTENT(in) :: N, nN, nGrids, SW
-    REAL(DP), INTENT(in) :: xL, xR, xRef(nGrids-1)
+    TYPE(MeshType)          :: Mesh
+    INTEGER , INTENT(inout) :: N
+    INTEGER , INTENT(in)    :: nN, nGrids, SW
+    REAL(DP), INTENT(in)    :: xL, xR, xRef(nGrids-1)
     LOGICAL , INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER  :: nX(nGrids), iGrid, iX_G, iX
     REAL(DP) :: dX(nGrids), xLL, xRR, xI(nGrids), xQ(nN), wQ(nN)
 
     LOGICAL  :: Verbose
+
+    CHARACTER(128) :: FMT
 
     IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
@@ -301,16 +370,19 @@ CONTAINS
 
     Mesh % Length = xR - xL
 
-    dX(1) = Mesh % Length / DBLE( N )
+    ! --- Hard-coded to have finest grid be inner-most grid ---
+
+    dX(1) = Mesh % Length / DBLE( N ) / Two**( nGrids - 1 )
 
     DO iGrid = 2, nGrids
 
-      dX(iGrid) = Half * dX(iGrid-1)
+      dX(iGrid) = Two * dX(iGrid-1)
 
     END DO
 
     xRR = xL
     nX  = 0
+
     DO iGrid = 1, nGrids
 
       DO WHILE( xRR .LT. xI(iGrid) )
@@ -323,11 +395,13 @@ CONTAINS
 
     END DO ! iGrid = 1, nGrids
 
+    N = SUM( nX )
+
     IF( .NOT. ALLOCATED( Mesh % Center ) ) &
-      ALLOCATE( Mesh % Center(1-SW:SUM(nX)+SW) )
+      ALLOCATE( Mesh % Center(1-SW:N+SW) )
 
     IF( .NOT. ALLOCATED( Mesh % Width  ) ) &
-      ALLOCATE( Mesh % Width (1-SW:SUM(nX)+SW) )
+      ALLOCATE( Mesh % Width (1-SW:N+SW) )
 
     Mesh % Center(1-SW) = xL - Half * dX(1)
     Mesh % Width (1-SW) = dX(1)
@@ -350,8 +424,8 @@ CONTAINS
 
     END DO ! iGrid = 1, nGrids
 
-    Mesh % Center(SUM(nX)+SW) = xR + Half * dX(nGrids)
-    Mesh % Width (SUM(nX)+SW) = dX(nGrids)
+    Mesh % Center(N+SW) = xR + Half * dX(nGrids)
+    Mesh % Width (N+SW) = dX(nGrids)
 
     CALL GetQuadrature( nN, xQ, wQ )
 
@@ -362,19 +436,17 @@ CONTAINS
 
     IF( Verbose )THEN
 
+      WRITE(FMT,'(A,I2.2,A)') '(', nGrids-1, 'ES11.3E3)'
       WRITE(*,*)
       WRITE(*,'(A5,A)') '', 'CreateMesh_PiecewiseUniform'
       WRITE(*,*)
-      WRITE(*,'(A7,A13,ES9.2E2,A3,ES9.2E2)') &
-      '', 'MIN/MAX dx = ', &
-      MINVAL( Mesh % Width ), &
-      ' / ', &
-      MAXVAL( Mesh % Width )
-      WRITE(*,'(A7,A13,I2.2)') &
+      WRITE(*,'(A7,A20,I2.2)') &
       '', 'nGrids = ', nGrids
-      WRITE(*,'(A7,A13)',ADVANCE='NO') &
-      '', 'Interfaces = '
-      WRITE(*,*) xRef
+      WRITE(*,'(A7,A20,I8.8)') &
+      '', 'nLeafElements = ', N
+      WRITE(*,'(A7,A20)',ADVANCE='NO') &
+      '', 'Interfaces (km) = '
+      WRITE(*,TRIM(FMT)) xRef / Kilometer
       WRITE(*,*)
 
     END IF

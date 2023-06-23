@@ -12,7 +12,8 @@ MODULE ProgramInitializationModule
     nDimsX, nDimsE, nDims, &
     nDOFX,  nDOFE,  nDOF, &
     nNodesX, nNodesE, nNodes, &
-    InitializeProgramHeader
+    InitializeProgramHeader, &
+    InitializeProgramHeaderX
   USE UtilitiesModule, ONLY: &
     InitializeWeights
   USE QuadratureModule, ONLY: &
@@ -171,63 +172,11 @@ CONTAINS
 
     END IF
 
-    WRITE(*,'(A5,A17,I1)') &
-      '', 'Dimensionality = ', nDims
-    WRITE(*,'(A5,A18)') &
-      '', '------------------'
-    WRITE(*,*)
-    WRITE(*,'(A7,A9,I1,A2,A9,I1)') &
-      '', 'nDimsX = ', nDimsX, '', 'nDimsE = ', nDimsE
-    WRITE(*,*)
-
-    WRITE(*,'(A7,A9,I4.4,A2,A9,I4.4,A2,A9,I4.4,A2,A6,I4.4)') &
-      '', 'nX(1) = ', nX(1), '', 'nX(2) = ', nX(2), &
-      '', 'nX(3) = ', nX(3), '', 'nE = ', nE
-    WRITE(*,'(A7,A9,I4,A2,A9,I4,A2,A9,I4,A2,A6,I4)') &
-      '', 'swX(1) = ', swX(1), '', 'swX(2) = ', swX(2), &
-      '', 'swX(3) = ', swX(3), '', 'swE = ', swE
-    WRITE(*,*)
-
-    WRITE(*,'(A5,A36)') '', 'Degrees of Freedom / Element / Field'
-    WRITE(*,*)
-    WRITE(*,'(A7,A9,I2.2)') &
-      '', 'nNodes = ', nNodes
-    WRITE(*,*)
-    DO iDim = 1, 3
-      WRITE(*,'(A9,A4,I1,A10,I1,A4,I2.2)') &
-        '', 'i = ', iDim, ', nNodesX(', iDim, ') = ', nNodesX(iDim)
-    END DO
-    WRITE(*,'(A16,A13,I2.2)') &
-      '', 'nNodesE    = ', nNodesE
-    WRITE(*,*)
-    WRITE(*,'(A7,A8,I4.4,A2,A8,I4.4,A2,A7,I4.4)') &
-      '', 'nDOFX = ', nDOFX, '', 'nDOFE = ', nDOFE, '', 'nDOF = ', nDOF
-    WRITE(*,*)
+    ASSOCIATE( U => UnitsDisplay )
 
     ! --- Quadratures ---
 
     CALL InitializeQuadratures
-
-    ! --- Polynomial Basis ---
-
-    CALL InitializePolynomialBasisX_Lagrange
-
-    CALL InitializePolynomialBasisX_Legendre
-
-    CALL InitializePolynomialBasis_Lagrange
-
-    CALL InitializePolynomialBasis_Legendre
-
-    ASSOCIATE( U => UnitsDisplay )
-
-    ! --- Spatial Grid ---
-
-    WRITE(*,'(A5,A)') '', 'Computational Domain'
-    WRITE(*,'(A5,A)') '', '--------------------'
-    WRITE(*,*)
-    WRITE(*,'(A7,A)') '', 'Spatial Domain:'
-    WRITE(*,'(A7,A)') '', '---------------'
-    WRITE(*,*)
 
     iDim = 1
     WRITE(*,'(A7,A3,I1,A4,ES9.2E2,A1,A,A2,A3,I1,A4,&
@@ -299,6 +248,63 @@ CONTAINS
       ' / ', &
       MAXVAL( MeshX(iDim) % Width(1:nX(iDim)) ) &
         / U % LengthX3Unit, '', TRIM( U % LengthX3Label )
+    WRITE(*,*)
+
+    CALL InitializeProgramHeaderX &
+           ( nX_Option = nX, swX_Option = swX, &
+             bcX_Option = bcX_Option, xL_Option = xL, &
+             xR_Option = xR, zoomX_Option = zoomX )
+
+    WRITE(*,'(A5,A17,I1)') &
+      '', 'Dimensionality = ', nDims
+    WRITE(*,'(A5,A18)') &
+      '', '------------------'
+    WRITE(*,*)
+    WRITE(*,'(A7,A9,I1,A2,A9,I1)') &
+      '', 'nDimsX = ', nDimsX, '', 'nDimsE = ', nDimsE
+    WRITE(*,*)
+
+    WRITE(*,'(A7,A9,I4.4,A2,A9,I4.4,A2,A9,I4.4,A2,A6,I4.4)') &
+      '', 'nX(1) = ', nX(1), '', 'nX(2) = ', nX(2), &
+      '', 'nX(3) = ', nX(3), '', 'nE = ', nE
+    WRITE(*,'(A7,A9,I4,A2,A9,I4,A2,A9,I4,A2,A6,I4)') &
+      '', 'swX(1) = ', swX(1), '', 'swX(2) = ', swX(2), &
+      '', 'swX(3) = ', swX(3), '', 'swE = ', swE
+    WRITE(*,*)
+
+    WRITE(*,'(A5,A36)') '', 'Degrees of Freedom / Element / Field'
+    WRITE(*,*)
+    WRITE(*,'(A7,A9,I2.2)') &
+      '', 'nNodes = ', nNodes
+    WRITE(*,*)
+    DO iDim = 1, 3
+      WRITE(*,'(A9,A4,I1,A10,I1,A4,I2.2)') &
+        '', 'i = ', iDim, ', nNodesX(', iDim, ') = ', nNodesX(iDim)
+    END DO
+    WRITE(*,'(A16,A13,I2.2)') &
+      '', 'nNodesE    = ', nNodesE
+    WRITE(*,*)
+    WRITE(*,'(A7,A8,I4.4,A2,A8,I4.4,A2,A7,I4.4)') &
+      '', 'nDOFX = ', nDOFX, '', 'nDOFE = ', nDOFE, '', 'nDOF = ', nDOF
+    WRITE(*,*)
+
+    ! --- Polynomial Basis ---
+
+    CALL InitializePolynomialBasisX_Lagrange
+
+    CALL InitializePolynomialBasisX_Legendre
+
+    CALL InitializePolynomialBasis_Lagrange
+
+    CALL InitializePolynomialBasis_Legendre
+
+    ! --- Spatial Grid ---
+
+    WRITE(*,'(A5,A)') '', 'Computational Domain'
+    WRITE(*,'(A5,A)') '', '--------------------'
+    WRITE(*,*)
+    WRITE(*,'(A7,A)') '', 'Spatial Domain:'
+    WRITE(*,'(A7,A)') '', '---------------'
     WRITE(*,*)
 
     ! --- Spectral Grid ---
