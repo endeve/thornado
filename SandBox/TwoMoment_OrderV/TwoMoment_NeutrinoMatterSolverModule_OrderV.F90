@@ -1843,14 +1843,9 @@ CONTAINS
     REAL(DP) :: SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3
 
 #if   defined( THORNADO_OMP_OL )
-    !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD&
     !$OMP TARGET TEAMS DISTRIBUTE &
     !$OMP PRIVATE( vDotV, SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
-    !$OMP          V_d_1, V_d_2, V_d_3, Ef)
-!    !$OMP          vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
-!    !$OMP          FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
-!    !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
-!    !$OMP          N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3 )
+    !$OMP          V_d_1, V_d_2, V_d_3, Ef )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG &
     !$ACC PRIVATE( vDotV, SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
@@ -2154,10 +2149,6 @@ CONTAINS
                 + V_u_2(iN_X) * HGm_22 &
                 + V_u_3(iN_X) * HGm_33
 
-          !vDotH =   V_u_1(iN_X) * H_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
-          !        + V_u_2(iN_X) * H_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
-          !        + V_u_3(iN_X) * H_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X)
-
           ! AH: Need to inline this to workaround CCE OpenMP offload bug
           !CALL ComputeEddingtonTensorComponents_dd &
           !       ( J    (iN_E,iS,iN_X), H_u_1(iN_E,iS,iN_X), &
@@ -2172,11 +2163,6 @@ CONTAINS
                           + H_u_3(iN_E,iS,iN_X) * HGm_33 ) &
                     / MAX( J(iN_E,iS,iN_X), SqrtTiny )
 
-          !FFactor = SQRT(   H_u_1(iN_E,iS,iN_X)**2 * Gm_dd_11(iN_X) &
-          !                + H_u_2(iN_E,iS,iN_X)**2 * Gm_dd_22(iN_X) &
-          !                + H_u_3(iN_E,iS,iN_X)**2 * Gm_dd_33(iN_X) ) &
-          !          / MAX( J(iN_E,iS,iN_X), SqrtTiny )
-  
           FFactor = MIN( MAX( FFactor, SqrtTiny ), One )
 
           EFactor &
@@ -2189,10 +2175,6 @@ CONTAINS
           h_d_1 = HGm_11 / ( FFactor * J(iN_E,iS,iN_X) )
           h_d_2 = HGm_22 / ( FFactor * J(iN_E,iS,iN_X) )
           h_d_3 = HGm_33 / ( FFactor * J(iN_E,iS,iN_X) )
-
-          !h_d_1 = H_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) / ( FFactor * J(iN_E,iS,iN_X) )
-          !h_d_2 = H_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) / ( FFactor * J(iN_E,iS,iN_X) )
-          !h_d_3 = H_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) / ( FFactor * J(iN_E,iS,iN_X) )
 
           ! --- Diagonal Eddington Tensor Components ---
 
@@ -2233,15 +2215,12 @@ CONTAINS
 
           F_nu_d_1 &
             = HGm_11 + V_d_1 * J(iN_E,iS,iN_X) + vDotK_d_1
-            != H_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) + V_d_1 * J(iN_E,iS,iN_X) + vDotK_d_1
 
           F_nu_d_2 &
             = HGm_22 + V_d_2 * J(iN_E,iS,iN_X) + vDotK_d_2
-            != H_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) + V_d_2 * J(iN_E,iS,iN_X) + vDotK_d_2
 
           F_nu_d_3 &
             = HGm_33 + V_d_3 * J(iN_E,iS,iN_X) + vDotK_d_3
-            != H_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) + V_d_3 * J(iN_E,iS,iN_X) + vDotK_d_3
 
           IF ( iS <= iNuE_Bar ) THEN
           SUM_Y  = SUM_Y  + N_nu     * W2_S(iN_E) * LeptonNumber(iS)
@@ -2341,10 +2320,6 @@ CONTAINS
                 + V_u_2(iN_X) * HGm_22 &
                 + V_u_3(iN_X) * HGm_33
         
-        !vDotH =   V_u_1(iN_X) * H_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
-        !        + V_u_2(iN_X) * H_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
-        !        + V_u_3(iN_X) * H_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X)
-
         ! AH: Need to inline this to workaround CCE OpenMP offload bug
         !CALL ComputeEddingtonTensorComponents_dd &
         !       ( J    (iN_E,iS,iN_X), H_u_1(iN_E,iS,iN_X), &
@@ -2358,10 +2333,6 @@ CONTAINS
                         + H_u_2(iN_E,iS,iN_X) * HGm_22 &
                         + H_u_3(iN_E,iS,iN_X) * HGm_33 ) &
                   / MAX( J(iN_E,iS,iN_X), SqrtTiny )
-        !FFactor = SQRT(   H_u_1(iN_E,iS,iN_X)**2 * Gm_dd_11(iN_X) &
-        !                + H_u_2(iN_E,iS,iN_X)**2 * Gm_dd_22(iN_X) &
-        !                + H_u_3(iN_E,iS,iN_X)**2 * Gm_dd_33(iN_X) ) &
-        !          / MAX( J(iN_E,iS,iN_X), SqrtTiny )
         FFactor = MIN( MAX( FFactor, SqrtTiny ), One )
 
         EFactor &
@@ -2373,17 +2344,9 @@ CONTAINS
 
         FFactorJ_i = 1 / ( FFactor * J(iN_E,iS,iN_X) )
 
-        !h_d_1 = HGm_11 / ( FFactor * J(iN_E,iS,iN_X) )
-        !h_d_2 = HGm_22 / ( FFactor * J(iN_E,iS,iN_X) )
-        !h_d_3 = HGm_33 / ( FFactor * J(iN_E,iS,iN_X) )
-
         h_d_1 = HGm_11 * FFactorJ_i
         h_d_2 = HGm_22 * FFactorJ_i 
         h_d_3 = HGm_33 * FFactorJ_i
-
-        !h_d_1 = H_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) / ( FFactor * J(iN_E,iS,iN_X) )
-        !h_d_2 = H_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) / ( FFactor * J(iN_E,iS,iN_X) )
-        !h_d_3 = H_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) / ( FFactor * J(iN_E,iS,iN_X) )
 
         ! --- Diagonal Eddington Tensor Components ---
 
@@ -2463,10 +2426,6 @@ CONTAINS
                    + L_u_2 * HGm_22 &
                    + L_u_3 * HGm_33 )
 
-        !L_N  = - (   L_u_1 * H_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
-        !           + L_u_2 * H_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
-        !           + L_u_3 * H_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) )
-
         L_G1 = Third * L_d_1 &
                - (   L_u_1 * k_dd_11 &
                    + L_u_2 * k_dd_12 &
@@ -2530,40 +2489,30 @@ CONTAINS
 
         Gm(iOS+iCR_G1,iN_X) &
           = ( ( One - Omega(iN_X) ) * HGm_11 &
-          != ( ( One - Omega(iN_X) ) * H_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
             + Omega(iN_X) &
                 * ( C_H_d_1(iN_E,iS,iN_X) - vDotK_d_1 + dt * L_G1 ) ) &
                 * Omega_dt_i
-                !/ ( One + Omega(iN_X) * dt * Kappa )
 
         ! --- Number Flux 2 Equation ---
 
         Gm(iOS+iCR_G2,iN_X) &
           = ( ( One - Omega(iN_X) ) * HGm_22&
-          != ( ( One - Omega(iN_X) ) * H_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
             + Omega(iN_X) &
                 * ( C_H_d_2(iN_E,iS,iN_X) - vDotK_d_2 + dt * L_G2 ) ) &
                 * Omega_dt_i
-                !/ ( One + Omega(iN_X) * dt * Kappa )
 
         ! --- Number Flux 3 Equation ---
 
         Gm(iOS+iCR_G3,iN_X) &
           = ( ( One - Omega(iN_X) ) * HGm_33 &
-          != ( ( One - Omega(iN_X) ) * H_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) &
             + Omega(iN_X) &
                 * ( C_H_d_3(iN_E,iS,iN_X) - vDotK_d_3 + dt * L_G3 ) ) &
                 * Omega_dt_i
-                !/ ( One + Omega(iN_X) * dt * Kappa )
 
         Fm(iOS+iCR_N ,iN_X) = Gm(iOS+iCR_N ,iN_X) - J    (iN_E,iS,iN_X)
         Fm(iOS+iCR_G1,iN_X) = Gm(iOS+iCR_G1,iN_X) - HGm_11
         Fm(iOS+iCR_G2,iN_X) = Gm(iOS+iCR_G2,iN_X) - HGm_22
         Fm(iOS+iCR_G3,iN_X) = Gm(iOS+iCR_G3,iN_X) - HGm_33
-
-        !Fm(iOS+iCR_G1,iN_X) = Gm(iOS+iCR_G1,iN_X) - H_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X)
-        !Fm(iOS+iCR_G2,iN_X) = Gm(iOS+iCR_G2,iN_X) - H_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X)
-        !Fm(iOS+iCR_G3,iN_X) = Gm(iOS+iCR_G3,iN_X) - H_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X)
 
       END IF
 
