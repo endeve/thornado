@@ -816,7 +816,7 @@ CONTAINS
     CHARACTER(2)         , INTENT(in)    :: Field
     TYPE(amrex_multifab) , INTENT(inout) :: MF_plt
 
-    INTEGER                       :: iX1, iX2, iX3, iFd, iS, iZ1, iNZ, iNE
+    INTEGER                       :: iX1, iX2, iX3, iFd, iS, iZ1, iNZ, iNE, iNX
     INTEGER                       :: iX_B0(3), iX_E0(3)
     INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_U(4), hi_U(4)
@@ -827,7 +827,7 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: G    (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: U    (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
-    REAL(DP)                      :: Eq(1:nDOFE), E(1:nDOFZ), V_K
+    REAL(DP)                      :: Eq(1:nDOFE), E(1:nDOFZ), SqrtGM(1:nDOFZ), V_K
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
@@ -862,22 +862,27 @@ CONTAINS
 
           ! --- Compute cell-average ---
 
+
           DO iNZ = 1, nDOFZ
 
             iNE = MOD( iNZ - 1, nDOFE ) + 1
+            iNX = MOD( (iNZ-1) / nDOFE, nDOFX ) + 1
 
             E (iNZ) = NodeCoordinate( MeshE, iZ1, iNE )
             Eq(iNE) = NodeCoordinate( MeshE, iZ1, iNE )
 
+            SqrtGM(iNZ) = G_K(iNX,iGF_SqrtGm)
+
+
           END DO
 
-          V_K = SUM( WeightsE * Eq**2 )
+          V_K = SUM( Weights_q * SqrtGM * E**2 )
 
           DO iFd = 1, nFd
 
             U_plt(iX1,iX2,iX3, &
                   iFd + ( iZ1 - 1 ) * nFd + ( iS - 1 ) * nFd * nE + iOS) &
-              = SUM( Weights_q * U_K(:,iZ1,iFd,iS) * E**2 ) / V_K
+              = SUM( Weights_q * U_K(:,iZ1,iFd,iS) * E**2 * SqrtGM ) / V_K
 
           END DO
 
