@@ -74,6 +74,44 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 
 
 # Status and Progress
+## June 23 2023
+1. Thornado compiles and runs fine with nightly 2023.05.15 and UMD="neo/agama-devel-sp3/674-23.22.26516.8-673"
+2. libmkl_sycl.so issue persists with 2023.06.23.
+3. 
+## June 22 2023
+1. Tested IMM effect on the latest UMD,i.e., neo/agama-devel-sp3/673-23.22.26516.8-673 and the trend is the same, i.e., IMM=1 and 0 are both slower than run without set IMM.  here is the result
+<pre>
+::::::::::::::
+timeFOM_2023.05.15.txt-IMM0-umd673
+::::::::::::::
+                                             Time(seconds)                         |              Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2023.05.15   2023.04.01    TimeDiff   Percentage  |    2023.05.15   2023.04.01    FOM-Diff   Percentage
+-----------------------------    ------------------------------------------------       ------------------------------------------------
+sineWave   [8,8,8]      O3    :  1.1945e+01   1.2754e+01  -8.0925e-01    -6.34%         1.0666e+07   9.9889e+06   6.7670e+05     6.77%
+sineWave   [16,16,16]   O3    :  1.5186e+02   1.5465e+02  -2.7879e+00    -1.80%         1.3340e+07   1.3099e+07   2.4050e+05     1.84%
+relax      [8,8,8]      O3    :  3.8526e+01   4.0511e+01  -1.9856e+00    -4.90%         2.2128e+07   2.1043e+07   1.0846e+06     5.15%
+relax      [16,16,16]   O3    :  2.4434e+02   2.4705e+02  -2.7059e+00    -1.10%         2.7911e+07   2.7606e+07   3.0570e+05     1.11%
+::::::::::::::
+timeFOM_2023.05.15.txt-IMM1-umd673
+::::::::::::::
+                                             Time(seconds)                         |              Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2023.05.15   2023.04.01    TimeDiff   Percentage  |    2023.05.15   2023.04.01    FOM-Diff   Percentage
+-----------------------------    ------------------------------------------------       ------------------------------------------------
+sineWave   [8,8,8]      O3    :  1.1334e+01   1.2754e+01  -1.4200e+00   -11.13%         1.1240e+07   9.9889e+06   1.2515e+06    12.53%
+sineWave   [16,16,16]   O3    :  1.4851e+02   1.5465e+02  -6.1429e+00    -3.97%         1.3641e+07   1.3099e+07   5.4190e+05     4.14%
+relax      [8,8,8]      O3    :  3.8384e+01   4.0511e+01  -2.1272e+00    -5.25%         2.2210e+07   2.1043e+07   1.1662e+06     5.54%
+relax      [16,16,16]   O3    :  2.4014e+02   2.4705e+02  -6.9059e+00    -2.80%         2.8400e+07   2.7606e+07   7.9390e+05     2.88%
+::::::::::::::
+timeFOM_2023.05.15.txt-umd673
+::::::::::::::
+                                             Time(seconds)                         |              Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2023.05.15   2023.04.01    TimeDiff   Percentage  |    2023.05.15   2023.04.01    FOM-Diff   Percentage
+-----------------------------    ------------------------------------------------       ------------------------------------------------
+sineWave   [8,8,8]      O3    :  9.9417e+00   1.2754e+01  -2.8126e+00   -22.05%         1.2815e+07   9.9889e+06   2.8260e+06    28.29%
+sineWave   [16,16,16]   O3    :  1.4424e+02   1.5465e+02  -1.0411e+01    -6.73%         1.4045e+07   1.3099e+07   9.4550e+05     7.22%
+relax      [8,8,8]      O3    :  3.0598e+01   4.0511e+01  -9.9130e+00   -24.47%         2.7861e+07   2.1043e+07   6.8174e+06    32.40%
+relax      [16,16,16]   O3    :  2.3056e+02   2.4705e+02  -1.6488e+01    -6.67%         2.9580e+07   2.7606e+07   1.9742e+06     7.15%
+</pre>
 ## June 21 2023
 1. Build Thornado from Flash-X. 
     - buildRun.sh inside ${FLASH_HOME}/Flash-X
@@ -82,7 +120,6 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
     - ./build.sh is written in line 130 of libUtils.py, which call the library's libinfo.py
 
 2. Thornado runs with the latest UMD, i.e., neo/agama-devel-sp3/673-23.22.26516.8-673
-3. Tested IMM effect on the latest UMD, here is the result
 
 ## June 20 2023
 1. Thornado successfully ran on PVC15 with FOM output comparing to baseline FOM simulated using nightly 2023.04.01. The most recent working nightly is 2023.05.15, and the tested UMD is 665. On PVC15
