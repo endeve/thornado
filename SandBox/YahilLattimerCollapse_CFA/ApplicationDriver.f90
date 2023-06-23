@@ -159,7 +159,7 @@ PROGRAM ApplicationDriver
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 3
+  nStagesSSPRK = 2
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
