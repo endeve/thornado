@@ -1,9 +1,11 @@
 MODULE MeshModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One
+    DP, Zero, Half, One, Two
   USE QuadratureModule, ONLY: &
     GetQuadrature
+  USE UnitsModule, ONLY: &
+    UnitsDisplay
 
   IMPLICIT NONE
   PRIVATE
@@ -379,9 +381,9 @@ CONTAINS
       '', 'nGrids = ', nGrids
       WRITE(*,'(A7,A20,I8.8)') &
       '', 'nLeafElements = ', N
-      WRITE(*,'(A7,A20)',ADVANCE='NO') &
-      '', 'Interfaces (km) = '
-      WRITE(*,TRIM(FMT)) xRef / Kilometer
+      WRITE(*,'(A7,A20,A,A)',ADVANCE='NO') &
+      '', 'Interfaces [', UnitsDisplay % LengthX1Label, '] = '
+      WRITE(*,TRIM(FMT)) xRef / UnitsDisplay % LengthX1Unit
       WRITE(*,*)
 
     END IF
