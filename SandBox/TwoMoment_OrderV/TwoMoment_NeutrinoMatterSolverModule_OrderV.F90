@@ -1019,27 +1019,6 @@ CONTAINS
     ITERATE_outer = .TRUE.
     ITERATE_inner = .TRUE.
 
-!! Mathi: move the data trnasfers for opacity rate computation out of the loop
-!    REAL(DP), DIMENSION(:,:,:), POINTER :: J_P, J0_P
-!    !REAL(DP), DIMENSION(:,:,:), POINTER :: H_u_1_P, H_u_2_P, H_u_3_P
-!    REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_NES_P , Eta_NES_P
-!    REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_Pair_P, Eta_Pair_P
-!    REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_Brem_P, Eta_Brem_P
-   ! REAL(DP), DIMENSION(:,:,:), POINTER :: L_NES__In__u_1_P, L_NES__Out_u_1_P
-   ! REAL(DP), DIMENSION(:,:,:), POINTER :: L_NES__In__u_2_P, L_NES__Out_u_2_P
-   ! REAL(DP), DIMENSION(:,:,:), POINTER :: L_NES__In__u_3_P, L_NES__Out_u_3_P
-   ! REAL(DP), DIMENSION(:,:,:), POINTER :: L_Pair_Pro_u_1_P, L_Pair_Ann_u_1_P
-   ! REAL(DP), DIMENSION(:,:,:), POINTER :: L_Pair_Pro_u_2_P, L_Pair_Ann_u_2_P
-   ! REAL(DP), DIMENSION(:,:,:), POINTER :: L_Pair_Pro_u_3_P, L_Pair_Ann_u_3_P
-   ! REAL(DP), DIMENSION(:,:,:), POINTER :: L_Brem_Pro_u_1_P, L_Brem_Ann_u_1_P
-   ! REAL(DP), DIMENSION(:,:,:), POINTER :: L_Brem_Pro_u_2_P, L_Brem_Ann_u_2_P
-   ! REAL(DP), DIMENSION(:,:,:), POINTER :: L_Brem_Pro_u_3_P, L_Brem_Ann_u_3_P
-!    REAL(DP), DIMENSION(:,:,:), POINTER :: H_I_0_P !, H_I_1_P
-!    REAL(DP), DIMENSION(:,:,:), POINTER :: H_II_0_P !, H_II_1_P
-!    REAL(DP), DIMENSION(:,:,:), POINTER :: J_I_0_P !, J_I_1_P
-!    REAL(DP), DIMENSION(:,:,:), POINTER :: J_II_0_P !, J_II_1_P
-!    REAL(DP), DIMENSION(:,:,:), POINTER :: S_Sigma_P
-
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: &
@@ -1067,16 +1046,6 @@ CONTAINS
     !$ACC   BVEC_inner, GVECm_inner, FVECm_inner, &
     !$ACC   WORK_inner, TAU_inner, Alpha_inner )
 #endif
-
-    !!! Mathi: Why we dont transfer all the needed data to device once and use it later on?
-    !! Needs to check for possible duplicate mappings e.g. W2_N
-!#if defined( THORNADO_OMP_OL )
-!    !$OMP TARGET DATA MAP(to : J_P, J0_P, H_I_0_P, H_II_0_P, &
-!    !$OMP       J_I_0_P, J_II_0_P, S_Sigma_P ) &
-!    !$OMP MAP(from : Eta_NES_P, Chi_NES_P, &
-!    !$OMP            Eta_Pair_P, Chi_Pair_P, &
-!    !$OMP            Eta_Brem_P, Chi_Brem_P )
-!#endif
 
     ! --- Initial RHS ---
 
@@ -2119,24 +2088,9 @@ CONTAINS
     REAL(DP) :: N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3
     REAL(DP) :: SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3
     REAL(DP) :: HGm_11, HGm_22, HGm_33
-    !REAL(DP), save :: HGm_11, HGm_22, HGm_33
-
-!#if   defined( THORNADO_OMP_OL )
-!    !$OMP DECLARE TARGET( HGm_11, HGm_22, HGm_33)
-!#endif
-
-!#if   defined( THORNADO_OMP_OL )
-!    !$OMP TARGET
-!#endif
-
-     !REAL(DP) :: HGm_11, HGm_22, HGm_33
 
 #if   defined( THORNADO_OMP_OL )
-    !!$OMP TEAMS DISTRIBUTE &
-        !! $OMP NUM_TEAMS( (nX_G*nSpecies*nE_G +1)/256) THREAD_LIMIT(256) &
-        !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD&
-        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO &
-    !!$OMP NUM_TEAMS(nX_G) THREAD_LIMIT(nE_G*nSpecies) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO &
     !$OMP PRIVATE( SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
     !$OMP          V_d_1, V_d_2, V_d_3, &
     !$OMP          vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
@@ -2173,7 +2127,7 @@ CONTAINS
 
 !!Shaoping: Remove SIMD as it causes wrong results for SUM1      
 
-!#if   defined( THORNADO_OMP_OL )
+#if   defined( THORNADO_OMP_OL )
 !        !$OMP PARALLEL DO SIMD COLLAPSE(2) &
 !        !$OMP PRIVATE( vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
 !        !$OMP          FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
@@ -2181,18 +2135,17 @@ CONTAINS
 !        !$OMP          N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3, &
 !        !$OMP          HGm_11, HGm_22, HGm_33) &
 !        !$OMP REDUCTION( + : SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
-!#elif defined( THORNADO_OACC   )
+#elif defined( THORNADO_OACC   )
         !$ACC LOOP VECTOR COLLAPSE(2) &
         !$ACC PRIVATE( vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
         !$ACC          FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
         !$ACC          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
         !$ACC          N_nu, E_nu, F_nu_d_1, F_nu_d_2, F_nu_d_3 ) &
         !$ACC REDUCTION( + : SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
-!#endif
+#endif
         DO iS   = 1, nSpecies
         DO iN_E = 1, nE_G
 
-           !REAL(DP), save :: HGm_11, HGm_22, HGm_33
            HGm_11 = H_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X)
            HGm_22 = H_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X)
            HGm_33 = H_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X)
@@ -2322,9 +2275,6 @@ CONTAINS
 
       END IF
     END DO
-!#if   defined( THORNADO_OMP_OL )
-!    !$OMP END TARGET
-!#endif
 
   END SUBROUTINE ComputeMatterRHS_FP
 
@@ -2356,9 +2306,6 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(3) &
-    !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !!! $OMP NUM_TEAMS( (nX_G*nSpecies*nE_G +1)/16) THREAD_LIMIT(16) &
-    !!$OMP NUM_TEAMS(nX_G) THREAD_LIMIT(nE_G*nSpecies) &
     !$OMP PRIVATE( vDotH, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
     !$OMP          FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
     !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
@@ -2704,7 +2651,7 @@ CONTAINS
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     INTEGER  :: iN_E, iN_X, iS, iOS
-!
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( iOS )
@@ -2824,13 +2771,13 @@ CONTAINS
             AA11 = Zero
             AB1  = Zero
 
-!#if   defined(THORNADO_OMP_OL)
+#if   defined(THORNADO_OMP_OL)
 !            !$OMP PARALLEL DO SIMD &
 !            !$OMP REDUCTION( +: AA11, AB1 )
-!#elif defined(THORNADO_OACC  )
+#elif defined(THORNADO_OACC  )
             !$ACC LOOP VECTOR &
             !$ACC REDUCTION( +: AA11, AB1 )
-!#endif
+#endif
             DO iFP = 1, n_FP
 
               AA11 = AA11 + A(iFP,1,iN_X) * A(iFP,1,iN_X)
@@ -2872,13 +2819,13 @@ CONTAINS
             AB1  = Zero
             AB2  = Zero
 
-!#if   defined(THORNADO_OMP_OL)
+#if   defined(THORNADO_OMP_OL)
 !            !$OMP PARALLEL DO SIMD &
 !            !$OMP REDUCTION( +: AA11, AA12, AA22, AB1, AB2 )
-!#elif defined(THORNADO_OACC  )
+#elif defined(THORNADO_OACC  )
 !            !$ACC LOOP VECTOR &
 !            !$ACC REDUCTION( +: AA11, AA12, AA22, AB1, AB2 )
-!#endif
+#endif
             DO iFP = 1, n_FP
 
               AA11 = AA11 + A(iFP,1,iN_X) * A(iFP,1,iN_X)
@@ -2924,7 +2871,6 @@ CONTAINS
 !!Shaoping: Remove SIMD as it causes wrong results for SUM1      
 
 #if   defined( THORNADO_OMP_OL )
-!!      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO &
       !$OMP PRIVATE( SUM1 )
 #elif defined( THORNADO_OACC   )
@@ -2950,7 +2896,6 @@ CONTAINS
 !!Shaoping: Remove SIMD as it causes wrong results for SUM1      
 
 #if   defined( THORNADO_OMP_OL )
-!!      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2) &
       !$OMP PRIVATE( SUM1 )
 #elif defined( THORNADO_OACC   )
@@ -3038,62 +2983,6 @@ CONTAINS
 
   END SUBROUTINE ShiftRHS_FP
 
-  SUBROUTINE ShiftRHS_FP_org( MASK, n_FP, M, Mk, F, G )
-
-    LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
-    INTEGER,                    INTENT(in)    :: n_FP, M, Mk
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: F, G
-
-    INTEGER  :: iN_X, iFP, iM
-    REAL(DP) :: FTMP(1:n_FP,1:M)
-    REAL(DP) :: GTMP(1:n_FP,1:M)
-
-    IF ( Mk == M ) THEN
-
-#if   defined( THORNADO_OMP_OL )
-      !$OMP TARGET TEAMS DISTRIBUTE &
-      !$OMP PRIVATE( FTMP, GTMP )
-#elif defined( THORNADO_OACC   )
-      !$ACC PARALLEL LOOP GANG &
-      !$ACC PRIVATE( FTMP, GTMP )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO &
-      !$OMP PRIVATE( FTMP, GTMP )
-#endif
-      DO iN_X = 1, nX_G
-        IF( MASK(iN_X) )THEN
-
-#if   defined( THORNADO_OMP_OL )
-          !$OMP PARALLEL DO SIMD COLLAPSE(2)
-#elif defined( THORNADO_OACC   )
-          !$ACC LOOP VECTOR COLLAPSE(2)
-#endif
-          DO iM  = 1, Mk-1
-          DO iFP = 1, n_FP
-            FTMP(iFP,iM) = F(iFP,iM+1,iN_X)
-            GTMP(iFP,iM) = G(iFP,iM+1,iN_X)
-          END DO
-          END DO
-
-#if   defined( THORNADO_OMP_OL )
-          !$OMP PARALLEL DO SIMD COLLAPSE(2)
-#elif defined( THORNADO_OACC   )
-          !$ACC LOOP VECTOR COLLAPSE(2)
-#endif
-          DO iM  = 1, Mk-1
-          DO iFP = 1, n_FP
-            F(iFP,iM,iN_X) = FTMP(iFP,iM)
-            G(iFP,iM,iN_X) = GTMP(iFP,iM)
-          END DO
-          END DO
-
-        END IF
-      END DO
-
-    END IF
-
-  END SUBROUTINE ShiftRHS_FP_org
-
 
   SUBROUTINE CheckConvergence_Inner &
     ( MASK, n_FP, k_inner, nIterations_Inner, Fm )
@@ -3133,11 +3022,6 @@ CONTAINS
           Fnorm_G2 = Zero
           Fnorm_G3 = Zero
 
-!#if defined( THORNADO_OMP_OL )
-!    !$OMP PARALLEL DO SIMD &
-!    !$OMP PRIVATE(iOS) &
-!    !$OMP REDUCTION(+: Fnorm_N, Fnorm_G1, Fnorm_G2, Fnorm_G3 )
-!#endif
           DO iN_E = 1, nE_G
 
             iOS = ( (iN_E-1) + (iS-1) * nE_G ) * nCR

@@ -12,7 +12,7 @@ function set_common(){
    export EXASTAR_HOME=/localdisk/quanshao/ExaStar
    export HDF5_INC=${EXASTAR_HOME}/hdf57/include
    export HDF5_LIB=${EXASTAR_HOME}/hdf57/lib64
-   export THORNADO_DIR=${EXASTAR_HOME}/thornado-dev
+   export THORNADO_DIR=${EXASTAR_HOME}/thornado
    export WEAKLIB_DIR=${EXASTAR_HOME}/weaklib
    export WEAKLIB_TABLES_DIR=${EXASTAR_HOME}/weaklib-tables
    export THORNADO_MACHINE=beacon_intel
@@ -21,14 +21,14 @@ function set_common(){
 
 ## for running
 
-
+   #export MKL_VERBOSE=2
    export LTTNG_HOME=$EXASTAR_HOME
    mkdir -p $LTTNG_HOME
    export LD_LIBRARY_PATH=${HDF5_LIB}:$LD_LIBRARY_PATH
-   export LIBOMPTARGET_PLUGIN=LEVEL0
+   #export LIBOMPTARGET_PLUGIN=LEVEL0
    #export ONEAPI_DEVICE_FILTER=level_zero:gpu
    ##export LIBOMPTARGET_PLUGIN=OPENCL
-   export LIBOMPTARGET_DEBUG=0
+   #export LIBOMPTARGET_DEBUG=1
    #export EnableImplicitScaling=1
    export ZE_AFFINITY_MASK=0.0
    #export LIBOMPTARGET_PLUGIN_PROFILE=T
@@ -115,7 +115,8 @@ export A21_SDK_MKLROOT_OVERRIDE=/exaperf/nightly/mkl-cev/2023.04.19 ## Latest ni
 
 #export IGC_EnableZEBinary=0
 #export IGC_ForceOCLSIMDWidth=16
-#export LIBOMPTARGET_LEVEL_ZERO_USE_IMMEDIATE_COMMAND_LIST=F
+#export LIBOMPTARGET_LEVEL_ZERO_USE_IMMEDIATE_COMMAND_LIST=0
+#export SYCL_PI_LEVEL_ZERO_USE_IMMEDIATE_COMMANDLISTS=0
 
 ACTION="iprof"
 #ACTION="perf"
@@ -128,9 +129,13 @@ if [[ -n $ACTION ]];then
 fi
 #export BASE_DATE="2023.03.10"
 export BASE_DATE="2023.04.01"
+#export COMPILER_DATE="2023.05.03"
+#export COMPILER_DATE="2023.05.08"
+export COMPILER_DATE="2023.05.15"
+#export COMPILER_DATE="2023.06.22"
+
 #export COMPILER_DATE="2023.03.30"
-export COMPILER_DATE="2023.05.03"
-export COMPILER_DATE="2023.06.11"
+#export COMPILER_DATE="2023.06.11"
 #export COMPILER_DATE="2023.06.07"
 #export COMPILER_DATE="2023.06.05"
 #export COMPILER_DATE="2023.06.06"
@@ -147,7 +152,6 @@ export AADEBUG=""
 
 #export ONEAPI_MODULE_OVERRIDE=oneapi/eng-compiler/2022.12.30.003
 module load nightly-compiler/${COMPILER_DATE}
-#module load oneapi/eng-compiler/${COMPILER_DATE}
 
 #UMD=""
 #UMD="neo/agama-devel-sp3/611-23.09.25812.14-609"
@@ -175,9 +179,15 @@ module load nightly-compiler/${COMPILER_DATE}
 #UMD="neo/agama-devel-sp3/661-23.17.26241.21-661"
 #UMD="neo/agama-devel-sp3/663-23.17.26241.21-662"
 #UMD="neo/agama-devel-sp3/664-23.17.26241.21-664"
+#UMD="neo/agama-devel-sp3/666-23.17.26241.22-665"
 
 #UMD="neo/agama-devel-sp3/627-23.13.26032.8-626"
-UMD="neo/agama-devel-sp3/666-23.17.26241.22-665"
+#UMD="neo/agama-devel-sp3/670-23.17.26241.24-670"
+#UMD="neo/agama-devel-sp3/671-23.22.26516.8-671"
+#UMD="neo/agama-devel-sp3/672-23.22.26516.8-672"
+#UMD="neo/agama-devel-sp3/673-23.22.26516.8-673"
+UMD="neo/agama-devel-sp3/674-23.22.26516.8-673"
+#UMD="neo/agama-devel-sp3/673-23.22.26516.8-673"
 umdf=""
 export useAGRF="FALSE"
 if [[ -n $UMD ]]; then
@@ -189,9 +199,22 @@ if [[ -n $UMD ]]; then
       umdf=`echo $UMD |cut -d '/' -f3`
       umdf=`echo $umdf |cut -d '-' -f1`
       umdf="-umd$umdf"
+#      umdf="-Tdebug1IMM1-umd$umdf"
       export useAGRF="TRUE"
    fi
 fi
+
+#export COMPILER_DATE="2023.05.03"
+#module load nightly-compiler/${COMPILER_DATE}
+#export COMPILER_DATE=".2023.05.15.003-rc11"
+#module load oneapi/eng-compiler/${COMPILER_DATE}
+#export FI_PROVIDER=sockets
+#export useAGRF="TRUE"
+#module switch -f intel_compute_runtime/release/agama-devel-627 neo/agama-devel-sp3/627-23.13.26032.8-626
+
+#module switch -f intel_compute_runtime/release/agama-devel-551 neo/agama-devel-sp3/627-23.13.26032.8-626 
+#module switch -f intel_compute_runtime/release/agama-devel-551 intel_compute_runtime/release/agama-devel-627 
+#umdf="umd627NoIMMmkl2"
 
 #if action is empty, performance comparison will be done. otherwise there is no performance comparison and just run the app using such as onetrace, vtune etc. so action can be "", "onetrace", "iprof", "vtune", 
 
@@ -213,7 +236,7 @@ fi
 #userOptions=("MICROPHYSICS=WEAKLIB")
 #gridLines=(127)
 
-opLevels=(O0 O1 O2 O3)
+#opLevels=(O0 O1 O2 O3)
 opLevels=(O3)
 grids=("[8,8,8]" "[16,16,16]")
 gridNames=("" "-xN16")
@@ -222,6 +245,19 @@ logFiles=(sineWave relax)
 CaseNames=(SineWaveStreaming Relaxation)
 userOptions=("" "MICROPHYSICS=WEAKLIB")
 gridLines=(85 127)
+
+#grids=("[8,8,8]")
+#gridNames=("")
+#appNames=(ApplicationDriver)
+#logFiles=(sineWave)
+#CaseNames=(SineWaveStreaming)
+#userOptions=("")
+#gridLines=(85)
+#appNames=(ApplicationDriver_Neutrinos)
+#logFiles=(relax)
+#CaseNames=(Relaxation)
+#userOptions=("MICROPHYSICS=WEAKLIB")
+#gridLines=(127)
 
 if [[ "$ACTION" == "vtune" ]]; then
    opLevels=(O3)
@@ -326,9 +362,9 @@ do
             baseTime=`printf "%12.4e" $baseTime`
             diffTime=`printf "%12.4e" $diffTime`
 
-            baseFOM=`grep FOM $LOG_BASE |cut -d':' -f2`
+            baseFOM=`grep "FOM is" $LOG_BASE |cut -d':' -f2`
             baseFOM=`printf "%.6f" $baseFOM`
-            currFOM=`grep FOM $LOG_FILE |cut -d':' -f2`
+            currFOM=`grep "FOM is" $LOG_FILE |cut -d':' -f2`
             currFOM=`printf "%.6f" $currFOM`
             diffFOM=`echo ${currFOM}-${baseFOM}|bc -l`
             percentFOM=`echo 100*${diffFOM}/${baseFOM}|bc -l`

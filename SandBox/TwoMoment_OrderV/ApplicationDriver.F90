@@ -105,6 +105,7 @@ PROGRAM ApplicationDriver
 !!      iCycleW = 1000
 !!      iCycleW = 1
 !!      maxCycles = 1
+!!      maxCycles = 10
       maxCycles = 10000
 !!      maxCycles = 10
 
