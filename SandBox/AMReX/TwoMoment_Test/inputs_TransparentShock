@@ -1,0 +1,56 @@
+
+
+
+
+DEBUG = 0
+
+thornado.ProgramName = "TransparentShock"
+thornado.Scheme = "SSPRK1"
+thornado.nStages = 1
+
+thornado.t_end     = 5.0    # Final time
+thornado.dt_wrt    = 5.0      # Write time interval
+thornado.dt_chk    = 21.0      # Time increment to write checkpoint-file
+thornado.nNodes    = 1        # Number of DG nodes in each active dimension
+thornado.CFL       = 0.3     # CFL number
+thornado.bcX       = 22 00 00 # Boundary conditions change this based off of direction
+thornado.swX       = 01 00 00 # Stencil width (nGhostCells) in each dimension
+thornado.V_0       = -0.1 0.0 0.0  # three velocity
+thornado.nE        = 32       # Number of Energy Cells
+thornado.swE       = 01
+thornado.bcZ_TwoMoment = 10 22 00 00
+thornado.eL        = 0.0           # Lower energy domain size
+thornado.eR        = 50.0          # Lower energy domain size
+thornado.zoomE     = 1.0
+thornado.nSpecies  = 1
+thornado.iCycleD   = 0010     # MOD this number to display info
+thornado.iCycleW   = -0100     # MOD this number to write plotfile
+thornado.iCycleChk = -1000     # MOD this number to write checkpoint file
+thornado.iRestart  = -1     # Checkpoint-file to restart from. Negative for clean start
+
+geometry.coord_sys   = 0             # CARTESIAN
+geometry.prob_lo     = -1.0 0.0 0.0         # Lower energy domain size
+geometry.prob_hi     = 1.0 1.0 1.0         # High energy domain size
+geometry.is_periodic = 1   1   1
+
+
+amr.n_cell            = 80 01 01 # Number of cells in each dimension
+amr.max_grid_size_x   = 80
+amr.max_grid_size_y   = 1
+amr.max_grid_size_z   = 1
+amr.blocking_factor_x = 1
+amr.blocking_factor_y = 1
+amr.blocking_factor_z = 1
+amr.max_level         = 0
+amr.UseTiling         = 0
+amr.ref_ratio         = 2
+
+
+# Positivity limiter parameters
+PL.UsePositivityLimiter_TwoMoment = 1
+PL.Min_1_TwoMoment                = 1.0e-26
+PL.Min_2_TwoMoment                = 1.0e-26
+
+# Slope limiter parameters
+SL.UseSlopeLimiter_TwoMoment           = 1
+SL.BetaTVD_TwoMoment                   = 1.75e0

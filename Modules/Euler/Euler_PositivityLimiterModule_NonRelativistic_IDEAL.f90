@@ -44,6 +44,8 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_IDEAL
     TimersStart_Euler, &
     TimersStop_Euler, &
     Timer_Euler_PositivityLimiter
+  USE UnitsModule, ONLY: &
+    UnitsDisplay
 
   IMPLICIT NONE
   PRIVATE
@@ -52,24 +54,29 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_IDEAL
   PUBLIC :: FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL
   PUBLIC :: ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL
 
+
   LOGICAL               :: UsePositivityLimiter
   LOGICAL               :: Verbose
   INTEGER, PARAMETER    :: nPS = 7
   INTEGER               :: nPP(nPS)
   INTEGER               :: nPT
   REAL(DP)              :: Min_1, Min_2
+  REAL(DP)              :: D_Min_Euler_PL, IntE_Min_Euler_PL
   REAL(DP), ALLOCATABLE :: U_PP(:,:), G_PP(:,:)
 
 CONTAINS
 
 
   SUBROUTINE InitializePositivityLimiter_Euler_NonRelativistic_IDEAL &
-    ( UsePositivityLimiter_Option, Verbose_Option, Min_1_Option, Min_2_Option )
+    ( UsePositivityLimiter_Option, Verbose_Option, Min_1_Option, Min_2_Option, &
+      D_Min_Euler_PL_Option, IntE_Min_Euler_PL_Option )
 
     LOGICAL,  INTENT(in), OPTIONAL :: UsePositivityLimiter_Option
     LOGICAL,  INTENT(in), OPTIONAL :: Verbose_Option
     REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option
     REAL(DP), INTENT(in), OPTIONAL :: Min_2_Option
+    REAL(DP), INTENT(in), OPTIONAL :: D_Min_Euler_PL_Option
+    REAL(DP), INTENT(in), OPTIONAL :: IntE_Min_Euler_PL_Option
 
     INTEGER :: i
 
@@ -89,6 +96,14 @@ CONTAINS
     IF( PRESENT( Min_2_Option ) ) &
       Min_2 = Min_2_Option
 
+    D_Min_Euler_PL = Zero
+    IF( PRESENT( D_Min_Euler_PL_Option ) ) &
+      D_Min_Euler_PL = D_Min_Euler_PL_Option
+
+    IntE_Min_Euler_PL = Zero
+    IF( PRESENT( IntE_Min_Euler_PL_Option ) ) &
+      IntE_Min_Euler_PL = IntE_Min_Euler_PL_Option
+
     IF( Verbose )THEN
       WRITE(*,*)
       WRITE(*,'(A)') &
@@ -99,8 +114,14 @@ CONTAINS
       WRITE(*,'(A6,A,L1)') &
         '', 'Use Positivity Limiter: ', UsePositivityLimiter
       WRITE(*,*)
-      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_1 = ', Min_1
-      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_2 = ', Min_2
+      WRITE(*,'(A6,A20,ES12.4E3)') '', 'Min_1 = ', Min_1
+      WRITE(*,'(A6,A20,ES12.4E3)') '', 'Min_2 = ', Min_2
+      WRITE(*,'(A6,A20,ES12.4E3,A,A)') '', 'D_Min_Euler_PL = ', &
+        D_Min_Euler_PL / UnitsDisplay % MassDensityUnit, ' ', &
+        UnitsDisplay % MassDensityLabel
+      WRITE(*,'(A6,A20,ES12.4E3,A,A)') '', 'IntE_Min_Euler_PL = ', &
+        IntE_Min_Euler_PL / UnitsDisplay % EnergyDensityUnit, ' ', &
+        UnitsDisplay % EnergyDensityLabel
     END IF
 
     ! --- Compute Number of Positive Points per Set ---
@@ -156,7 +177,10 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iP
     REAL(DP) :: Min_K, Theta_1, Theta_2, Theta_P
     REAL(DP) :: Min_D, Min_E
-    REAL(DP) :: U_q(nDOFX,nCF), G_q(nDOFX,nGF), U_K(nCF), IntE(nPT)
+    REAL(DP) :: U_q(nDOFX,nCF), G_q(nDOFX,nGF), U_K(nCF), &
+                IntE(nPT), IntE_K_P(nPT), IntE_K_P_Min
+
+    REAL(DP), PARAMETER :: Alpha = 1.01_DP
 
     IF( nDOFX == 1 ) RETURN
 
@@ -218,26 +242,49 @@ CONTAINS
 
       ! --- Ensure Positive Internal Energy Density ---
 
+      DO iCF = 1, nCF
+
+        U_K(iCF) &
+          = SUM( WeightsX_q(:) * U_q(:,iCF) * G_q(:,iGF_SqrtGm) ) &
+              / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
+
+      END DO
+
+      DO iP = 1, nPT
+
+        IntE_K_P(iP) &
+          = U_K(iCF_E) &
+              - Half * ( U_K(iCF_S1)**2 / G_PP(iP,iGF_Gm_dd_11) &
+                       + U_K(iCF_S2)**2 / G_PP(iP,iGF_Gm_dd_22) &
+                       + U_K(iCF_S3)**2 / G_PP(iP,iGF_Gm_dd_33) ) / U_K(iCF_D)
+
+      END DO
+
+      IntE_K_P_Min = MINVAL( IntE_K_P )
+
+      IF( IntE_K_P_Min .LT. IntE_Min_Euler_PL )THEN
+
+        PRINT *, 'iX1, iX2, iX3, IntE (Old), dIntE: ', &
+                  iX1, iX2, iX3, IntE_K_P_Min, IntE_Min_Euler_PL - IntE_K_P_Min
+
+        U_K(iCF_E) = U_K(iCF_E) + Alpha * ( IntE_Min_Euler_PL - IntE_K_P_Min )
+
+        DO iCF = 1, nCF
+
+          U(1:nDOFX,iX1,iX2,iX3,iCF) = U_K(iCF)
+
+        END DO
+
+        CYCLE
+
+      END IF ! ANY( IntE_K_P .LT. IntE_Min_Euler_PL )
+
       CALL ComputeInternalEnergyDensity &
              ( nPT, U_PP(1:nPT,1:nCF), G_PP(1:nPT,1:nGF), IntE(1:nPT) )
-
-      U_K(iCF_E) &
-        = SUM( WeightsX_q(:) * U_q(:,iCF_E) * G_q(:,iGF_SqrtGm) ) &
-            / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
 
       Min_E = Min_2 * U_K(iCF_E)
 
       IF( ANY( IntE(:) < Min_E ) )THEN
-
-        ! --- Cell Average ---
-
-        DO iCF = 1, nCF
-
-          U_K(iCF) &
-            = SUM( WeightsX_q(:) * U_q(:,iCF) * G_q(:,iGF_SqrtGm) ) &
-                / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
-
-        END DO
 
         Theta_2 = One
         DO iP = 1, nPT

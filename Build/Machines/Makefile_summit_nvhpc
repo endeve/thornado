@@ -5,7 +5,7 @@ FORTRAN = mpifort -Mpreprocess
 FLINKER = mpifort
 
 DEBUG    = -g -O0 -Mbounds -Mnoopenmp -Ktrap=fp
-OPTIMIZE = -g -O2 -tp=pwr9
+OPTIMIZE = -gopt -fast -tp=pwr9
 
 SUFFIX_f90 =
 
@@ -27,7 +27,6 @@ INCLUDE_HDF5     = -I$(OLCF_HDF5_ROOT)/include
 INCLUDE_LAPACK   = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
 INCLUDE_MAGMA    = -I$(OLCF_MAGMA_ROOT)/include
 INCLUDE_PETSC    =
-INCLUDE_POSEIDON =
 INCLUDE_ROCM     =
 
 LIBRARIES_CUDA     = -cudalib=cusparse,cusolver,cublas
@@ -35,5 +34,4 @@ LIBRARIES_HDF5     = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
 LIBRARIES_LAPACK   = -L$(OLCF_ESSL_ROOT)/lib64 -lessl -L$(OLCF_NETLIB_LAPACK_ROOT) -llapack -lblas
 LIBRARIES_MAGMA    = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
 LIBRARIES_PETSC    =
-LIBRARIES_POSEIDON =
 LIBRARIES_ROCM     =

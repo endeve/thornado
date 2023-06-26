@@ -9,7 +9,7 @@ PROGRAM TwoMomentClosure
     FluxFactor, &
     EddingtonFactor, &
     HeatFluxFactor
-  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeEddingtonTensorComponents_ud, &
     ComputeHeatFluxTensorComponents_udd, &
     Flux_E

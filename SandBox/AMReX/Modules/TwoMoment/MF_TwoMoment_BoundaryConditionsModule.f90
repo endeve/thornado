@@ -27,25 +27,13 @@
 
   USE InputParsingModule,              ONLY: &
     DEBUG
+  USE MF_EdgeMapModule,                ONLY: &
+    EdgeMap
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: ApplyBoundaryConditions_TwoMoment_MF
-  PUBLIC :: ConstructEdgeMap
-
-  TYPE, PUBLIC :: EdgeMap
-    LOGICAL :: IsLowerBoundary(3)
-    LOGICAL :: IsUpperBoundary(3)
-  CONTAINS
-    PROCEDURE :: TwoMoment_GetBC => EdgeMap_TwoMoment_GetBC
-  END TYPE EdgeMap
-
-  ! --- Hack to get iApplyBC_TwoMoment_XXX. DO NOT CHANGE THESE VALUES ---
-  INTEGER, PARAMETER :: iApplyBC_TwoMoment_Both  = 0
-  INTEGER, PARAMETER :: iApplyBC_TwoMoment_Inner = 1
-  INTEGER, PARAMETER :: iApplyBC_TwoMoment_Outer = 2
-  INTEGER, PARAMETER :: iApplyBC_TwoMoment_None  = 3
 
 
 CONTAINS
@@ -66,7 +54,7 @@ CONTAINS
 
     INTEGER :: iApplyBC(3)
 
-    CALL Edge_Map % TwoMoment_GetBC( iApplyBC )
+    CALL Edge_Map % GetBC( iApplyBC )
 
     IF( DEBUG ) WRITE(*,'(A)') '      CALL ApplyBoundaryConditions_TwoMoment'
 
@@ -75,73 +63,6 @@ CONTAINS
              iApplyBC_Option = iApplyBC )
 
   END SUBROUTINE ApplyBoundaryConditions_TwoMoment_MF
-
-
-  SUBROUTINE ConstructEdgeMap( GEOM, BX, Edge_Map )
-
-    TYPE(amrex_geometry), INTENT(in   ) :: GEOM
-    TYPE(amrex_box),      INTENT(in   ) :: BX
-    TYPE(EdgeMap),        INTENT(inout) :: Edge_Map
-
-    INTEGER :: iDim
-
-
-    Edge_Map % IsLowerBoundary = .FALSE.
-    Edge_Map % IsUpperBoundary = .FALSE.
-
-    DO iDim = 1, 3
-
-      IF( iDim .LE. amrex_spacedim )THEN
-
-        IF( BX % lo( iDim ) .LE. GEOM % DOMAIN % lo( iDim ) ) &
-          Edge_Map % IsLowerBoundary( iDim ) = .TRUE.
-
-        IF( BX % hi( iDim ) .GE. GEOM % DOMAIN % hi( iDim ) ) &
-          Edge_Map % IsUpperBoundary( iDim ) = .TRUE.
-
-      END IF
-
-    END DO
-
-
-  END SUBROUTINE ConstructEdgeMap
-
-
-
-
-  SUBROUTINE EdgeMap_TwoMoment_GetBC( this, iApplyBC )
-
-    CLASS(EdgeMap), INTENT(in)  :: this
-    INTEGER,        INTENT(out) :: iApplyBC(3)
-
-    INTEGER :: iDim
-
-
-    DO iDim = 1, 3
-
-      IF     ( this % IsLowerBoundary( iDim ) .AND. &
-               this % IsUpperBoundary( iDim ) )THEN
-
-        iApplyBC(iDim) = iApplyBC_TwoMoment_Both
-
-      ELSE IF( this % IsLowerBoundary( iDim ) )THEN
-
-        iApplyBC(iDim) = iApplyBC_TwoMoment_Inner
-
-      ELSE IF( this % IsUpperBoundary( iDim ) )THEN
-
-        iApplyBC(iDim) = iApplyBC_TwoMoment_Outer
-
-      ELSE
-
-        iApplyBC(iDim) = iApplyBC_TwoMoment_None
-
-      END IF
-
-    END DO
-
-
-  END SUBROUTINE EdgeMap_TwoMoment_GetBC
 
 
 

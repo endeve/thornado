@@ -47,29 +47,6 @@ clobber: clean
 	rm -f  ComputePrimitiveTest_$(MACHINE)
 	rm -rf ComputePrimitiveTest_$(MACHINE).dSYM
 
-ApplicationDriver.o: \
-  KindModule.o \
-  ProgramInitializationModule.o \
-  ProgramHeaderModule.o \
-  ReferenceElementModuleX.o \
-  ReferenceElementModuleX_Lagrange.o \
-  EquationOfStateModule.o \
-  EquationOfStateModule_TABLE.o \
-  GeometryFieldsModule.o \
-  GeometryComputationModule.o \
-  FluidFieldsModule.o \
-  InitializationModule.o \
-  Euler_SlopeLimiterModule_Relativistic_TABLE.o \
-  Euler_PositivityLimiterModule_Relativistic_TABLE.o \
-  Euler_UtilitiesModule_Relativistic.o \
-  InputOutputModuleHDF.o \
-  Euler_dgDiscretizationModule.o \
-  TimeSteppingModule_SSPRK.o \
-  Euler_TallyModule_Relativistic.o \
-  TimersModule_Euler.o \
-  UnitsModule.o \
-  ApplicationDriver.F90
-
 InitializationModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
@@ -92,6 +69,29 @@ TimeSteppingModule_SSPRK.o: \
   Euler_dgDiscretizationModule.o \
   Euler_TallyModule_Relativistic.o \
   TimeSteppingModule_SSPRK.F90
+
+ApplicationDriver.o: \
+  KindModule.o \
+  ProgramInitializationModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  EquationOfStateModule.o \
+  EquationOfStateModule_TABLE.o \
+  GeometryFieldsModule.o \
+  GeometryComputationModule.o \
+  FluidFieldsModule.o \
+  InitializationModule.o \
+  Euler_SlopeLimiterModule_Relativistic_TABLE.o \
+  Euler_PositivityLimiterModule_Relativistic_TABLE.o \
+  Euler_UtilitiesModule_Relativistic.o \
+  InputOutputModuleHDF.o \
+  Euler_dgDiscretizationModule.o \
+  TimeSteppingModule_SSPRK.o \
+  Euler_TallyModule_Relativistic.o \
+  TimersModule_Euler.o \
+  UnitsModule.o \
+  ApplicationDriver.F90
 
 ComputePrimitiveTest.o: \
   KindModule.o \

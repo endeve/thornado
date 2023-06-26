@@ -38,9 +38,6 @@ MODULE InitializationModule
     amrex_fluxregister_destroy
   USE amrex_tagbox_module, ONLY: &
     amrex_tagboxarray
-  USE amrex_bc_types_module, ONLY: &
-    amrex_bc_foextrap, &
-    amrex_bc_bogus
 
   ! --- thornado Modules ---
 
@@ -107,6 +104,9 @@ MODULE InitializationModule
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     InitializePositivityLimiter_Euler_MF, &
     ApplyPositivityLimiter_Euler_MF
+  USE MF_InitializationModule, ONLY: &
+    D_Min_Euler_PL, &
+    IntE_Min_Euler_PL
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
@@ -144,8 +144,6 @@ MODULE InitializationModule
     EquationOfState, &
     Gamma_IDEAL, &
     EosTableName, &
-    lo_bc, &
-    hi_bc, &
     ProgramName, &
     TagCriteria, &
     nRefinementBuffer, &
@@ -174,6 +172,8 @@ CONTAINS
 
   SUBROUTINE InitializeProgram
 
+    INTEGER :: iLevel
+
     CALL amrex_init()
 
     CALL amrex_amrcore_init()
@@ -193,12 +193,6 @@ CONTAINS
 
     CALL CreateFields_Geometry_MF
     CALL CreateFields_Euler_MF
-
-    ALLOCATE( lo_bc(1:amrex_spacedim,1) )
-    ALLOCATE( hi_bc(1:amrex_spacedim,1) )
-
-    lo_bc = amrex_bc_bogus
-    hi_bc = amrex_bc_bogus
 
     CALL InitializePolynomialBasisX_Lagrange
     CALL InitializePolynomialBasisX_Legendre
@@ -248,8 +242,6 @@ CONTAINS
 
     END IF
 
-    CALL InitializePositivityLimiter_Euler_MF
-
     CALL InitializeSlopeLimiter_Euler_MF
 
     CALL amrex_init_virtual_functions &
@@ -275,17 +267,25 @@ CONTAINS
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
 
-    ELSE
+      CALL ApplySlopeLimiter_Euler_MF &
+             ( MF_uGF, MF_uCF, MF_uDF )
 
-      CALL amrex_init_from_scratch( 0.0_DP )
-      ! nLevels read from checkpoint file
+      CALL ApplyPositivityLimiter_Euler_MF &
+             ( MF_uGF, MF_uCF, MF_uDF )
+
+    ELSE
 
       CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
 
     END IF
 
-    CALL AverageDown( MF_uGF, MF_uGF )
-    CALL AverageDown( MF_uGF, MF_uCF )
+    CALL InitializePositivityLimiter_Euler_MF &
+           ( D_Min_Euler_PL_Option    = D_Min_Euler_PL, &
+             IntE_Min_Euler_PL_Option = IntE_Min_Euler_PL )
+
+    CALL AverageDown( MF_uGF )
+    CALL AverageDown &
+           ( MF_uGF, MF_uCF, MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
 
     t_old = t_new
     t_chk = t_new(0) + dt_chk
@@ -295,12 +295,6 @@ CONTAINS
            ( Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL DescribeProgramHeader_AMReX
-
-    CALL ApplySlopeLimiter_Euler_MF &
-           ( t_new, MF_uGF, MF_uCF, MF_uDF )
-
-    CALL ApplyPositivityLimiter_Euler_MF &
-           ( MF_uGF, MF_uCF, MF_uDF )
 
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
@@ -372,9 +366,6 @@ CONTAINS
 
     CALL InitializeFields_MF( iLevel, MF_uGF(iLevel), MF_uCF(iLevel) )
 
-    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uGF )
-    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCF )
-
     CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE MakeNewLevelFromScratch
@@ -408,9 +399,9 @@ CONTAINS
              ( FluxRegister_Euler(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
                iLevel, nDOFX_X1 * nCF )
 
-    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uGF )
-    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uCF )
-    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uDF )
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uGF )
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF )
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uDF )
 
   END SUBROUTINE MakeNewLevelFromCoarse
 
@@ -451,9 +442,9 @@ CONTAINS
     CALL amrex_multifab_build( MF_uAF_tmp, BA, DM, nDOFX * nAF, swX )
     CALL amrex_multifab_build( MF_uDF_tmp, BA, DM, nDOFX * nDF, swX )
 
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF, MF_uGF_tmp )
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF, MF_uCF_tmp )
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF, MF_uDF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF, MF_uGF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uCF, MF_uCF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uDF, MF_uDF_tmp )
 
     CALL ClearLevel( iLevel )
 

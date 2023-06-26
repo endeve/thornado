@@ -97,10 +97,10 @@ MODULE DeviceModule
     acc_async_noval
 #endif
 
+  USE MPI
+
   IMPLICIT NONE
   PRIVATE
-
-  INCLUDE 'mpif.h'
 
   INTEGER, PUBLIC :: mydevice, ndevices
   TYPE(C_PTR), POINTER, PUBLIC :: stream

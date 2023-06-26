@@ -24,7 +24,7 @@ MODULE InitializationModule_CCSN
     uCR, nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputeConserved_Euler_NonRelativistic
-  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeConserved_TwoMoment
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeThermodynamicStates_Primitive_TABLE, &

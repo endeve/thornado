@@ -23,6 +23,7 @@
 *.ptx
 *.dSYM
 *.acc.s
+*.i
 pgipar*
 
 # AMReX

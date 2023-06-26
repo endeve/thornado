@@ -45,7 +45,7 @@ PROGRAM PrimitiveConserved
     WriteVector
   USE TwoMoment_ClosureModule, ONLY: &
     InitializeClosure_TwoMoment
-  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputePrimitive_TwoMoment, &
     ComputeConserved_TwoMoment
 

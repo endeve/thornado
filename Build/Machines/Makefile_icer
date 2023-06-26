@@ -27,7 +27,6 @@ INCLUDE_HDF5     = -I/opt/software/HDF5/1.10.4-foss-2019a/include
 INCLUDE_LAPACK   =
 INCLUDE_MAGMA    =
 INCLUDE_PETSC    =
-INCLUDE_POSEIDON = -I$(POSEIDON_DIR)/Obj
 INCLUDE_ROCM     =
 
 LIBRARIES_CUDA     =
@@ -35,5 +34,4 @@ LIBRARIES_HDF5     = -L/opt/software/HDF5/1.10.4-foss-2019a/lib -lhdf5_fortran -
 LIBRARIES_LAPACK   = -L/opt/software/LAPACK/3.8.0-foss-2018a/lib -lopenblas
 LIBRARIES_MAGMA    =
 LIBRARIES_PETSC    =
-LIBRARIES_POSEIDON = $(POSEIDON_DIR)/Obj/poseidon.a
 LIBRARIES_ROCM     =

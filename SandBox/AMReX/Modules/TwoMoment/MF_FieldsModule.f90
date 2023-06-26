@@ -15,6 +15,7 @@ MODULE MF_FieldsModule
   TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uDF(:)
   TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uPR(:)
   TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uCR(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: MF_OffGridFlux_Twomoment(:,:)
 
   PUBLIC :: InitializeDataAMReX
   PUBLIC :: FinalizeDataAMReX
@@ -33,6 +34,7 @@ CONTAINS
     ALLOCATE( MF_uDF(0:nLevels-1) )
     ALLOCATE( MF_uPR(0:nLevels-1) )
     ALLOCATE( MF_uCR(0:nLevels-1) )
+    ALLOCATE( MF_OffGridFlux_TwoMoment(0:nLevels-1,2*nCR) )
 
   END SUBROUTINE InitializeDataAMReX
 
@@ -42,7 +44,9 @@ CONTAINS
     INTEGER, INTENT(in) :: nLevels
 
     INTEGER :: iLevel
+      
 
+    DEALLOCATE( MF_OffGridFlux_TwoMoment )
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_destroy( MF_uCF(iLevel) )
@@ -52,6 +56,7 @@ CONTAINS
       CALL amrex_multifab_destroy( MF_uDF(iLevel) )
       CALL amrex_multifab_destroy( MF_uPR(iLevel) )
       CALL amrex_multifab_destroy( MF_uCR(iLevel) )
+
     END DO
 
     DEALLOCATE( MF_uCF )

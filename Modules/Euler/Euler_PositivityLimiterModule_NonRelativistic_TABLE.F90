@@ -181,7 +181,7 @@ CONTAINS
     END IF
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE TO( Min_D, Max_D, Min_T, Max_T, Min_Y, Max_Y )
+    !$OMP TARGET UPDATE TO( Min_D, Max_D, Min_T, Max_T, Min_Y, Max_Y, Min_N, Max_N )
 #elif defined( THORNADO_OACC   )
     !$ACC UPDATE DEVICE   ( Min_D, Max_D, Min_T, Max_T, Min_Y, Max_Y, Min_N, Max_N )
 #endif
@@ -363,7 +363,15 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_PL_CopyIn )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to:    iX_B0, iX_E0, G, U ) &
+    !$OMP MAP( alloc: G_Q_h_d_1, G_Q_h_d_2, G_Q_h_d_3, G_Q_SqrtGm,  &
+    !$OMP             G_P_Gm_dd_11, G_P_Gm_dd_22, G_P_Gm_dd_33,     &
+    !$OMP             U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne, &
+    !$OMP             U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
+    !$OMP             U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne, &
+    !$OMP             Eps_P, Min_Eps_P, Max_Eps_P, Ye_P, &
+    !$OMP             Eps_K, Min_Eps_K, Ye_K )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( iX_B0, iX_E0, G, U ) &
@@ -383,7 +391,7 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_PL_Permute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, G, &
@@ -425,7 +433,7 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_PL_Permute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, &
@@ -459,7 +467,7 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_PL_Permute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, U, &
@@ -519,7 +527,8 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_PL_LimitCells )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( Y_K, iNodeX )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( Y_K, iNodeX ) &
@@ -585,7 +594,9 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_PL_LimitCells )
 
-#if defined( THORNADO_OACC )
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET UPDATE FROM( U_Q_D, U_Q_Ne )
+#elif defined( THORNADO_OACC   )
     !$ACC UPDATE HOST( U_Q_D, U_Q_Ne )
 #endif
 
@@ -597,7 +608,8 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_PL_LimitCells )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( iP, iNodeX, Min_D_K, Max_D_K, Min_N_K, Theta_1, Theta_P, D_P, N_P )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( iP, iNodeX, Min_D_K, Max_D_K, Min_N_K, Theta_1, Theta_P, D_P, N_P ) &
@@ -682,7 +694,9 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_PL_LimitCells )
 
-#if defined( THORNADO_OACC )
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET UPDATE FROM( U_Q_D, U_Q_Ne )
+#elif defined( THORNADO_OACC   )
     !$ACC UPDATE HOST( U_Q_D, U_Q_Ne )
 #endif
 
@@ -694,7 +708,8 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_PL_LimitCells )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( Min_Y_K, Max_Y_K, Y_K, Alpha, Max_D_K, Theta_2 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( Min_Y_K, Max_Y_K, Y_K, Alpha, Max_D_K, Theta_2 ) &
@@ -762,7 +777,11 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_PL_LimitCells )
 
-#if defined( THORNADO_OACC )
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET UPDATE FROM( U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
+    !$OMP                     U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne, &
+    !$OMP                     U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne )
+#elif defined( THORNADO_OACC   )
     !$ACC UPDATE HOST( U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
     !$ACC              U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne, &
     !$ACC              U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne )
@@ -776,7 +795,8 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_PL_LimitCells )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( iP, iNodeX, ITERATION, Theta_3, Theta_P, DoStep_3 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( iP, iNodeX, ITERATION, Theta_3, Theta_P, DoStep_3 ) &
@@ -965,7 +985,13 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_Euler_PL_LimitCells )
 
-#if defined( THORNADO_OACC )
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET UPDATE FROM( U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
+    !$OMP                     U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne, &
+    !$OMP                     U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne, &
+    !$OMP                     Eps_P, Min_Eps_P, Max_Eps_P, Ye_P, &
+    !$OMP                     Eps_K, Min_Eps_K, Ye_K )
+#elif defined( THORNADO_OACC   )
     !$ACC UPDATE HOST( U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
     !$ACC              U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne, &
     !$ACC              U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne, &
@@ -978,7 +1004,7 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_PL_Permute )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, U, &
@@ -1010,7 +1036,16 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_PL_CopyOut )
 
 #if   defined( THORNADO_OMP_OL )
-
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: U ) &
+    !$OMP MAP( release: iX_B0, iX_E0, G, &
+    !$OMP               G_Q_h_d_1, G_Q_h_d_2, G_Q_h_d_3, G_Q_SqrtGm,   &
+    !$OMP               G_P_Gm_dd_11, G_P_Gm_dd_22, G_P_Gm_dd_33,      &
+    !$OMP               U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne,  &
+    !$OMP               U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne,  &
+    !$OMP               U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne,  &
+    !$OMP               Eps_P, Min_Eps_P, Max_Eps_P, Ye_P, &
+    !$OMP               Eps_K, Min_Eps_K, Ye_K )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC COPYOUT( U ) &
@@ -1103,15 +1138,15 @@ CONTAINS
     REAL(DP) :: SUM1, SUM2
 
 #if   defined( THORNADO_OMP_OL )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-      !$OMP PRIVATE( SUM1, SUM2 )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( SUM1, SUM2 )
 #elif defined( THORNADO_OACC   )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-      !$ACC PRIVATE( SUM1, SUM2 ) &
-      !$ACC PRESENT( U_K, WeightsX_Q, SqrtGm_Q, U_Q, iX_B0, iX_E0 )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( SUM1, SUM2 ) &
+    !$ACC PRESENT( U_K, WeightsX_Q, SqrtGm_Q, U_Q, iX_B0, iX_E0 )
 #elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(3) &
-      !$OMP PRIVATE( SUM1, SUM2 )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( SUM1, SUM2 )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)

@@ -210,8 +210,10 @@ Euler_SlopeLimiterModule_Relativistic_IDEAL.o: \
 Euler_SlopeLimiterModule_Relativistic_TABLE.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  LinearAlgebraModule.o \
   ReferenceElementModuleX.o \
   UtilitiesModule.o \
+  PolynomialBasisModuleX_Lagrange.o \
   PolynomialBasisModule_Legendre.o \
   PolynomialBasisMappingModule.o \
   MeshModule.o \
@@ -219,9 +221,10 @@ Euler_SlopeLimiterModule_Relativistic_TABLE.o: \
   FluidFieldsModule.o \
   Euler_BoundaryConditionsModule.o \
   Euler_DiscontinuityDetectionModule.o \
-  UnitsModule.o \
   TimersModule_Euler.o \
+  UnitsModule.o \
   Euler_SlopeLimiterModule_Relativistic_TABLE.F90
+#  Euler_CharacteristicDecompositionModule_Relativistic_TABLE.o
 
 Euler_SlopeLimiterModule.o: \
   KindModule.o \

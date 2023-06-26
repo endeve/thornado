@@ -17,6 +17,10 @@ ifeq ($(USE_MAGMA),TRUE)
 DeviceModule_prereqs += MagmaModule.o
 endif
 
+MemoryProfilingModule.o: \
+  KindModule.o \
+  MemoryProfilingModule.f90
+
 ArrayUtilitiesModule.o: \
   KindModule.o \
   ArrayUtilitiesModule.F90
@@ -150,4 +154,5 @@ SubcellReconstructionModule.o: \
   PolynomialBasisModuleX_Lagrange.o \
   GeometryFieldsModule.o \
   MeshModule.o \
+  LinearAlgebraModule.o \
   SubcellReconstructionModule.F90

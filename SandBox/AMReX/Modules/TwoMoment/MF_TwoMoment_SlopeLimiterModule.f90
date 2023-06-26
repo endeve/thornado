@@ -37,7 +37,7 @@ MODULE MF_TwoMoment_SlopeLimiterModule
     nCR
   USE FluidFieldsModule, ONLY: &
     nCF
-  USE TwoMoment_SlopeLimiterModule_Relativistic, ONLY: &
+  USE TwoMoment_SlopeLimiterModule, ONLY: &
     InitializeSlopeLimiter_TwoMoment, &
     FinalizeSlopeLimiter_TwoMoment, &
     ApplySlopeLimiter_TwoMoment
@@ -62,9 +62,10 @@ MODULE MF_TwoMoment_SlopeLimiterModule
     UseTiling, &
     nE
   USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
-    EdgeMap, &
-    ConstructEdgeMap, &
     ApplyBoundaryConditions_TwoMoment_MF
+  USE MF_EdgeMapModule, ONLY: &
+    EdgeMap,          &
+    ConstructEdgeMap
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -80,6 +81,7 @@ CONTAINS
 
 
   SUBROUTINE InitializeSlopeLimiter_TwoMoment_MF
+
 
     CALL InitializeSlopeLimiter_TwoMoment &
            ( BetaTVD_Option = BetaTVD_TwoMoment, &
@@ -207,7 +209,7 @@ CONTAINS
 
         ! --- Apply boundary conditions to physical boundaries ---
 
-        CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
+        CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
         CALL ApplyBoundaryConditions_TwoMoment_MF &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )

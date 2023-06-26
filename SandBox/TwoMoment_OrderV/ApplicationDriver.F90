@@ -17,26 +17,27 @@ PROGRAM ApplicationDriver
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE RadiationFieldsModule, ONLY: &
-    uCR, uPR
+    uCR, uPR, uAR, uGR
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
-  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeFromConserved_TwoMoment, &
+    ComputeTimeStep_TwoMoment, &
     ComputeTimeStep_TwoMoment_Realizability
-  USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
+  USE TwoMoment_SlopeLimiterModule, ONLY: &
     ApplySlopeLimiter_TwoMoment
-  USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
+  USE TwoMoment_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_TwoMoment
-  USE TwoMoment_DiscretizationModule_Collisions_OrderV, ONLY: &
+  USE TwoMoment_DiscretizationModule_Collisions, ONLY: &
     ComputeIncrement_TwoMoment_Implicit
-  USE TwoMoment_OpacityModule_OrderV, ONLY: &
+  USE TwoMoment_OpacityModule, ONLY: &
     SetOpacities
-  USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
+  USE TwoMoment_TimeSteppingModule, ONLY: &
     Update_IMEX_RK
   USE InitializationModule, ONLY: &
     InitializeFields, &
     ComputeError
-  USE TwoMoment_TallyModule_OrderV, ONLY: &
+  USE TwoMoment_TallyModule, ONLY: &
     ComputeTally
   USE TwoMoment_TimersModule_OrderV, ONLY: Timer_IMEX
 
@@ -85,6 +86,7 @@ PROGRAM ApplicationDriver
       nX  =[16,16,16]
       !nX  = [ 16, 16, 16 ]
       !nX  = [ 32, 32, 32 ]
+!!      nX  = [ 64, 1, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
       bcX = [ 1, 1, 1 ]
@@ -95,6 +97,7 @@ PROGRAM ApplicationDriver
       bcE = 1
 
       nSpecies = 6
+!!      nSpecies = 1
       nNodes = 2
 
       TimeSteppingScheme = 'SSPRK2'
@@ -268,7 +271,7 @@ PROGRAM ApplicationDriver
       nE    = 32
       eL    = 0.0d0
       eR    = 5.0d1
-      bcE   = 10
+      bcE   = 11
       zoomE = 1.0_DP
 
       nNodes = 2
@@ -357,7 +360,7 @@ PROGRAM ApplicationDriver
 
       Direction = 'X' ! --- (X,Y, or Z)
 
-      LengthScale = 1.0d-1 ! --- Shock Width
+      LengthScale = 1.0d-2 ! --- Shock Width
 
       IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
@@ -399,24 +402,59 @@ PROGRAM ApplicationDriver
       nE  = 32
       eL  = 0.0d0
       eR  = 5.0d1
-      bcE = 10
+      bcE = 11
 
-      nNodes = 1
+      nNodes = 3
 
-      TimeSteppingScheme = 'SSPRK1'
+      TimeSteppingScheme = 'SSPRK3'
 
-      t_end   = 5.0d0
+      t_end   = 3.0d0
       iCycleD = 1
-      iCycleW = 10
+      iCycleW = 100
       maxCycles = 1000000
 
       D_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter      = .TRUE.
+      UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
-      UseEnergyLimiter     = .FALSE.
+      UseEnergyLimiter     = .TRUE.
+
+      UseRealizabilityTimeStep = .TRUE.
+
+    CASE( 'TransparentShock2D' )
+
+      LengthScale = 3.0d-2 ! --- Shock Width
+
+      nX  = [ 80, 10, 1 ]
+      xL  = [ 0.0d0, 0.00_DP, 0.0_DP ]
+      xR  = [ 2.0d0, 0.25_DP, 1.0_DP ]
+      bcX = [ 12, 2, 0 ]
+
+      nE  = 32
+      eL  = 0.0d0
+      eR  = 5.0d1
+      bcE = 11
+
+      nNodes = 2
+
+      TimeSteppingScheme = 'SSPRK2'
+
+      t_end   = 3.0d0
+      iCycleD = 1
+      iCycleW = 100
+      maxCycles = 1000000
+
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 0.0_DP
+
+      UseSlopeLimiter      = .FALSE.
+      UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .TRUE.
+
+      UseRealizabilityTimeStep = .TRUE.
 
     CASE( 'TransparentVortex' )
 
@@ -466,7 +504,9 @@ PROGRAM ApplicationDriver
 
       UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
-      UseEnergyLimiter     = .FALSE.
+      UseEnergyLimiter     = .TRUE.
+
+      UseRealizabilityTimeStep = .TRUE.
 
     CASE( 'RadiatingSphere' )
 
@@ -476,7 +516,14 @@ PROGRAM ApplicationDriver
       xL    = [ 1.0d1, Zero,  Zero ]
       xR    = [ 1.0d4,   Pi, TwoPi ]
       bcX   = [ 12, 1, 1 ]
-      ZoomX = [ 1.024333847373375_DP, One, One ]
+
+      IF     ( nX(1) == 200 )THEN
+         ZoomX = [ 1.024333847373375_DP, One, One ] ! dX1(1)=2 with nX(1)=200
+      ELSE IF( nX(1) == 400 )THEN
+         ZoomX = [ 1.012074699662899_DP, One, One ] ! dX1(1)=1 with nX(1)=400
+      ELSE
+         ZoomX = One
+      END IF
 
       nE    = 16
       eL    = 0.0d0
@@ -517,9 +564,9 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'IMEX_PDARS'
 
-      t_end   = 5.0_DP
-      iCycleD = 10
-      iCycleW = 10
+      t_end     = 5.0_DP
+      iCycleD   = 10
+      iCycleW   = 10
       maxCycles = 1000000
 
       V_0 = [ 0.0_DP, 0.0_DP, 0.0_DP ]
@@ -527,7 +574,6 @@ PROGRAM ApplicationDriver
       D_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 3200.0_DP
-      !Sigma = 1.0d+2
 
       UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
@@ -732,11 +778,8 @@ PROGRAM ApplicationDriver
 
   ! --- Write Initial Condition ---
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET UPDATE FROM( uGE, uGF, uCF, uCR )
-#elif defined(THORNADO_OACC)
-      !$ACC UPDATE HOST( uGE, uGF, uCF, uCR )
-#endif
+  CALL ComputeFromConserved_TwoMoment &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
   CALL WriteFieldsHDF &
          ( Time = 0.0_DP, &
@@ -772,7 +815,8 @@ PROGRAM ApplicationDriver
 
       C_CFL  = 0.3_DP / ( Two * DBLE(nNodes-1) + One )
 
-      dt_CFL = C_CFL * MINVAL( ( xR - xL ) / DBLE( nX ) )
+      CALL ComputeTimeStep_TwoMoment &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, C_CFL, dt_CFL )
 
     END IF
 
@@ -814,14 +858,8 @@ PROGRAM ApplicationDriver
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET UPDATE FROM( uGF, uCF, uCR )
-#elif defined(THORNADO_OACC)
-      !$ACC UPDATE HOST( uGF, uCF, uCR )
-#endif
-
       CALL ComputeFromConserved_TwoMoment &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
       CALL WriteFieldsHDF &
              ( Time = t, &
@@ -835,14 +873,8 @@ PROGRAM ApplicationDriver
 
   END DO
 
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( uGF, uCF, uCR )
-#elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST( uGF, uCF, uCR )
-#endif
-
   CALL ComputeFromConserved_TwoMoment &
-         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
   CALL WriteFieldsHDF &
          ( Time = t, &
@@ -868,7 +900,7 @@ CONTAINS
 
   SUBROUTINE InitializeDriver
 
-    USE TwoMoment_TimersModule_OrderV, ONLY: &
+    USE TwoMoment_TimersModule, ONLY: &
       InitializeTimers
     USE ProgramInitializationModule, ONLY: &
       InitializeProgram
@@ -894,17 +926,17 @@ CONTAINS
       InitializeEquationOfState
     USE TwoMoment_ClosureModule, ONLY: &
       InitializeClosure_TwoMoment
-    USE TwoMoment_OpacityModule_OrderV, ONLY: &
+    USE TwoMoment_OpacityModule, ONLY: &
       CreateOpacities
     USE TwoMoment_TroubledCellIndicatorModule, ONLY: &
       InitializeTroubledCellIndicator_TwoMoment
-    USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
+    USE TwoMoment_SlopeLimiterModule, ONLY: &
       InitializeSlopeLimiter_TwoMoment
-    USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
+    USE TwoMoment_PositivityLimiterModule, ONLY: &
       InitializePositivityLimiter_TwoMoment
-    USE TwoMoment_TallyModule_OrderV, ONLY: &
+    USE TwoMoment_TallyModule, ONLY: &
       InitializeTally
-    USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
+    USE TwoMoment_TimeSteppingModule, ONLY: &
       Initialize_IMEX_RK
 
     CALL InitializeTimers
@@ -1034,19 +1066,19 @@ CONTAINS
 
   SUBROUTINE FinalizeDriver
 
-    USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
+    USE TwoMoment_TimeSteppingModule, ONLY: &
       Finalize_IMEX_RK
-    USE TwoMoment_TallyModule_OrderV, ONLY: &
+    USE TwoMoment_TallyModule, ONLY: &
       FinalizeTally
-    USE TwoMoment_OpacityModule_OrderV, ONLY: &
+    USE TwoMoment_OpacityModule, ONLY: &
       DestroyOpacities
     USE EquationOfStateModule, ONLY: &
       FinalizeEquationOfState
     USE TwoMoment_TroubledCellIndicatorModule, ONLY: &
       FinalizeTroubledCellIndicator_TwoMoment
-    USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
+    USE TwoMoment_SlopeLimiterModule, ONLY: &
       FinalizeSlopeLimiter_TwoMoment
-    USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
+    USE TwoMoment_PositivityLimiterModule, ONLY: &
       FinalizePositivityLimiter_TwoMoment
     USE ReferenceElementModuleX, ONLY: &
       FinalizeReferenceElementX
@@ -1064,7 +1096,7 @@ CONTAINS
       FinalizeReferenceElement_Lagrange
     USE ProgramInitializationModule, ONLY: &
       FinalizeProgram
-    USE TwoMoment_TimersModule_OrderV, ONLY: &
+    USE TwoMoment_TimersModule, ONLY: &
       FinalizeTimers
 
     CALL Finalize_IMEX_RK

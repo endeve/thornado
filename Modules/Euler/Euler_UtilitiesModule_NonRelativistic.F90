@@ -245,9 +245,17 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM( G, U )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST( G, U )
+#endif
+
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
+
+      A(1:nDOFX,iX1,iX2,iX3,:) = Zero
 
       CALL ComputePrimitive_Euler_NonRelativistic &
              ( U(1:nDOFX,iX1,iX2,iX3,iCF_D),         &
@@ -297,6 +305,12 @@ CONTAINS
     END DO
     END DO
     END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO( P, A )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE( P, A )
+#endif
 
   END SUBROUTINE ComputeFromConserved_Euler_NonRelativistic
 

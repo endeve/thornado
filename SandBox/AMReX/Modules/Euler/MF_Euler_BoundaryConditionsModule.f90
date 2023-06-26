@@ -29,7 +29,8 @@ MODULE MF_Euler_BoundaryConditionsModule
     TimersStop_AMReX_Euler,             &
     Timer_AMReX_Euler_ConstructEdgeMap, &
     Timer_AMReX_Euler_GetBC
-
+  USE MF_EdgeMapModule,               ONLY: &
+    EdgeMap
   IMPLICIT NONE
   PRIVATE
 

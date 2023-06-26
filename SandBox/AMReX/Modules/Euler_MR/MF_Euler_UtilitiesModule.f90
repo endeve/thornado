@@ -10,10 +10,12 @@ MODULE MF_Euler_UtilitiesModule
     amrex_multifab, &
     amrex_mfiter, &
     amrex_mfiter_build, &
-    amrex_mfiter_destroy
+    amrex_mfiter_destroy, &
+    amrex_imultifab
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_reduce_min, &
-    amrex_parallel_ioprocessor
+    amrex_parallel_ioprocessor, &
+    amrex_parallel_communicator
 
   ! --- thornado Modules ---
 
@@ -63,7 +65,8 @@ MODULE MF_Euler_UtilitiesModule
     swX, &
     nX, &
     xL, &
-    xR
+    xR, &
+    DEBUG
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X, &
@@ -111,7 +114,13 @@ CONTAINS
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
     INTEGER :: iX_B(3), iX_E(3), swXX(3)
 
+    swXX = 0
+    IF( PRESENT( swXX_Option ) ) &
+      swXX = swXX_Option
+
     DO iLevel = 0, nLevels-1
+
+      CALL CreateMesh_MF( iLevel, MeshX )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -150,10 +159,6 @@ CONTAINS
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                  [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nAF ], &
                  A )
-
-        swXX = 0
-        IF( PRESENT( swXX_Option ) ) &
-          swXX = swXX_Option
 
         iX_B = iX_B0 - swXX
         iX_E = iX_E0 + swXX
@@ -197,6 +202,8 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
+      CALL DestroyMesh_MF( MeshX )
+
     END DO
 
   END SUBROUTINE ComputeFromConserved_Euler_MF
@@ -206,8 +213,8 @@ CONTAINS
     ( MF_uGF, MF_uCF, CFL, TimeStepMin )
 
     TYPE(amrex_multifab), INTENT(in)  :: MF_uGF(0:), MF_uCF(0:)
-    REAL(DP),             INTENT(in)  :: CFL
-    REAL(DP),             INTENT(out) :: TimeStepMin(0:)
+    REAL(DP)            , INTENT(in)  :: CFL
+    REAL(DP)            , INTENT(out) :: TimeStepMin(0:)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -218,11 +225,20 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
 
-    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4), iErr
 
     REAL(DP) :: TimeStep(0:nLevels-1)
 
     CALL TimersStart_AMReX( Timer_AMReX_ComputeTimeStep_Euler )
+
+    IF( DEBUG )THEN
+
+      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+      IF( amrex_parallel_ioprocessor() ) &
+        WRITE(*,'(A)') 'CALL ComputeTimeStep_Euler_MF'
+
+    END IF
 
     TimeStepMin = HUGE( One )
 
@@ -243,8 +259,8 @@ CONTAINS
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
-        iX_B1 = BX % lo - swX
-        iX_E1 = BX % hi + swX
+        iX_B1 = iX_B0 - swX
+        iX_E1 = iX_E0 + swX
 
         CALL AllocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &

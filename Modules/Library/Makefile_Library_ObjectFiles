@@ -22,7 +22,8 @@ LIBRARY = \
   ReferenceElementModuleZ_Lagrange.o \
   ReferenceElementModule_Lagrange.o \
   PolynomialBasisMappingModule.o \
-  SubcellReconstructionModule.o
+  SubcellReconstructionModule.o \
+  MemoryProfilingModule.o
 
 ifeq ($(USE_CUDA),TRUE)
 LIBRARY += \

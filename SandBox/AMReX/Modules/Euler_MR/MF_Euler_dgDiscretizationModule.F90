@@ -27,26 +27,14 @@ MODULE  MF_Euler_dgDiscretizationModule
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, &
     nDOFX_X2, &
-    nDOFX_X3, &
-    WeightsX_X1, &
-    WeightsX_X2, &
-    WeightsX_X3, &
-    WeightsX_q
-  USE ReferenceElementModuleX_Lagrange, ONLY: &
-    LX_X1_Dn, &
-    LX_X1_Up, &
-    LX_X2_Dn, &
-    LX_X2_Up, &
-    LX_X3_Dn, &
-    LX_X3_Up
+    nDOFX_X3
   USE MeshModule, ONLY: &
     MeshX
   USE FluidFieldsModule, ONLY: &
     nCF, &
     nDF
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
-    iGF_Psi
+    nGF
   USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit, &
     OffGridFlux_Euler_X1_Inner, &
@@ -57,24 +45,16 @@ MODULE  MF_Euler_dgDiscretizationModule
     OffGridFlux_Euler_X3_Outer
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     DetectShocks_Euler
-  USE LinearAlgebraModule, ONLY: &
-    MatrixMatrixMultiply
-  USE Euler_MeshRefinementModule, ONLY: &
-    LX_X1_Refined_C, &
-    LX_X2_Refined_C, &
-    LX_X3_Refined_C
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
     DP, &
-    Zero, &
-    One
+    Zero
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X, &
     thornado2amrex_X_F, &
-    amrex2thornado_X_F, &
     AllocateArray_X, &
     DeallocateArray_X
   USE MF_FieldsModule_Euler, ONLY: &
@@ -84,17 +64,15 @@ MODULE  MF_Euler_dgDiscretizationModule
     CreateMesh_MF, &
     DestroyMesh_MF
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
-    EdgeMap, &
-    ConstructEdgeMap, &
     ApplyBoundaryConditions_Euler_MF
-  USE MF_Euler_PositivityLimiterModule, ONLY: &
-    ApplyPositivityLimiter_Euler_MF
+  USE MF_EdgeMapModule, ONLY: &
+    EdgeMap,          &
+    ConstructEdgeMap
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
     swX, &
     UseFluxCorrection_Euler, &
-    UsePositivityLimiter_Euler, &
     UseXCFC, &
     DEBUG
   USE FillPatchModule, ONLY: &
@@ -116,9 +94,8 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Euler_MF_MultipleLevels &
-    ( Time, MF_uGF, MF_uCF, MF_uDF, MF_duCF )
+    ( MF_uGF, MF_uCF, MF_uDF, MF_duCF )
 
-    REAL(DP),             INTENT(in)    :: Time   (0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF (0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF (0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF (0:)
@@ -141,7 +118,7 @@ CONTAINS
       END IF
 
       CALL ComputeIncrement_Euler_MF_SingleLevel &
-             ( iLevel, Time(iLevel), MF_uGF, MF_uCF, MF_uDF, MF_duCF(iLevel) )
+             ( iLevel, MF_uGF, MF_uCF, MF_uDF, MF_duCF(iLevel) )
 
     END DO
 
@@ -151,15 +128,17 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Euler_MF_SingleLevel &
-    ( iLevel, Time, MF_uGF, MF_uCF, MF_uDF, MF_duCF )
+    ( iLevel, MF_uGF, MF_uCF, MF_uDF, MF_duCF )
 
 !    DO iLevel = 0, nLevels-1
 !
 !      ! --- Apply boundary conditions to interior domains ---
 !
-!      CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF )
-!      CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF )
-!      CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF )
+!      CALL FillPatch( iLevel, MF_uGF )
+!      CALL FillPatch( iLevel, MF_uGF, MF_uDF )
+!      CALL FillPatch &
+!             ( iLevel, MF_uGF, MF_uCF, &
+!               MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
 !
 !      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 !
@@ -232,7 +211,6 @@ CONTAINS
 !    END DO
 
     INTEGER,              INTENT(in)    :: iLevel
-    REAL(DP),             INTENT(in)    :: Time
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:)
@@ -241,10 +219,10 @@ CONTAINS
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF  (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF  (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uDF  (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: duCF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDF     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: duCF    (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uSurfaceFlux_X1(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uSurfaceFlux_X2(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uSurfaceFlux_X3(:,:,:,:)
@@ -270,17 +248,11 @@ CONTAINS
 
     ! --- Apply boundary conditions to interior domains ---
 
-    ! --- This conditions spoils conservation, but is needed for
-    !     mesh refinement ---
-    IF( ( .NOT. UsePositivityLimiter_Euler ) .OR. ( nDOFX .EQ. 1 ) )THEN
-
-      CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF )
-      CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF )
-      CALL ApplyPositivityLimiter_Euler_MF &
-             ( iLevel, MF_uGF, MF_uCF, MF_uDF )
-      CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF )
-
-    END IF
+    CALL FillPatch( iLevel, MF_uGF )
+    CALL FillPatch( iLevel, MF_uGF, MF_uDF )
+    CALL FillPatch &
+           ( iLevel, MF_uGF, MF_uCF, &
+             MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
 
     CALL MF_duCF % SetVal( Zero )
 
@@ -376,6 +348,8 @@ CONTAINS
       CALL ApplyBoundaryConditions_Euler_MF &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
+
+
       CALL ComputeIncrement_Euler_DG_Explicit &
              ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
                SuppressBC_Option = .TRUE., &
@@ -397,7 +371,6 @@ CONTAINS
                               [ iX_B0(1)  , iX_B0(2), iX_B0(3) ], &
                               [ iX_E0(1)+1, iX_E0(2), iX_E0(3) ], &
                               uSurfaceFlux_X1, SurfaceFlux_X1 )
-
 
       IF( nDimsX .GT. 1 )THEN
 
@@ -462,16 +435,16 @@ CONTAINS
 
     END DO ! MFI
 
-    CALL amrex_parallel_reduce_sum( OffGridFlux_Euler_MF(:,iLevel), nCF )
-
     CALL amrex_mfiter_destroy( MFI )
+
+    CALL amrex_parallel_reduce_sum( OffGridFlux_Euler_MF(:,iLevel), nCF )
 
 #if defined( THORNADO_USE_MESHREFINEMENT )
 
     IF( UseFluxCorrection_Euler )THEN
 
       IF( iLevel .GT. 0 ) &
-        CALL FluxRegister_Euler( iLevel ) % FineAdd_DG( SurfaceFluxes, nCF )
+        CALL FluxRegister_Euler( iLevel   ) % FineAdd_DG ( SurfaceFluxes, nCF )
 
       IF( iLevel .LT. amrex_get_finest_level() ) &
         CALL FluxRegister_Euler( iLevel+1 ) % CrseInit_DG( SurfaceFluxes, nCF )
@@ -498,6 +471,8 @@ CONTAINS
 
     INTEGER , INTENT(in) :: iLevel
     INTEGER , INTENT(in) :: iX_B0(3), iX_E0(3)
+
+    ! --- dM = Minterior - Minitial + ( OffGrid_Outer - OffGrid_Inner ) ---
 
     IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo(1) ) &
       OffGridFlux_Euler_MF(:,iLevel) &

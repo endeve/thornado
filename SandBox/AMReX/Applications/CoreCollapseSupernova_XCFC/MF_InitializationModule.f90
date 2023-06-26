@@ -82,7 +82,7 @@ MODULE MF_InitializationModule
     iPR_I3
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_Euler_Relativistic
-  USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeConserved_TwoMoment
   USE UtilitiesModule, ONLY: &
     Locate, &
