@@ -439,14 +439,26 @@ CONTAINS
     E_T  = EOS % DV % Variables(iE_T ) % Values
     Me_T = EOS % DV % Variables(iMe_T) % Values
 
-    minvar = OS_Mp/(-2.0d0)
-    OS_loc = MIN(0.0d0,minvar+proton_mass+dmnp)+1.0d-100
+    IF(OS_Mp > 0.0d0) THEN
+      minvar = -OS_Mp/2.0d0
+    ELSE
+      minvar = MINVAL(10.0d0**(EOS % DV % Variables(iMp_T) % Values))
+    ENDIF
+    minvar = minvar + proton_mass + dmnp
+    OS_loc = -2.0d0 * MIN(0.0d0,minvar)
+
     Mp_T   = LOG10(10.0d0**(EOS % DV % Variables(iMp_T) % Values) &
            - OS_Mp + proton_mass + dmnp + OS_loc)
     OS_Mp  = OS_loc
 
-    minvar = OS_Mn/(-2.0d0)
-    OS_loc = MIN(0.0d0,minvar+neutron_mass+dmnp)+1.0d-100
+    IF(OS_Mn > 0.0d0) THEN
+      minvar = -OS_Mn/2.0d0
+    ELSE
+      minvar = MINVAL(10.0d0**(EOS % DV % Variables(iMn_T) % Values))
+    ENDIF
+    minvar = minvar + neutron_mass + dmnp
+    OS_loc = -2.0d0 * MIN(0.0d0,minvar)
+
     Mn_T   = LOG10(10.0d0**(EOS % DV % Variables(iMn_T) % Values) &
            - OS_Mn + neutron_mass + dmnp + OS_loc)
     OS_Mn  = OS_loc
