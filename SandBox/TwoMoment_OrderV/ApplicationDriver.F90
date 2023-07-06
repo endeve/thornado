@@ -449,17 +449,17 @@ PROGRAM ApplicationDriver
 
       Direction = 'X' ! --- (X or Y)
 
-      nX  = [ 16, 16, 1 ]
+      nX  = [ 48, 48, 1 ]
       xL  = [ - 5.0_DP, - 5.0_DP, - 0.5_DP ]
       xR  = [ + 5.0_DP, + 5.0_DP, + 0.5_DP ]
 
       IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
-        bcX = [ 12, 1, 1 ]
+        bcX = [ 12, 3, 1 ]
 
       ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
 
-        bcX = [ 1, 12, 1 ]
+        bcX = [ 3, 12, 1 ]
 
       ELSE
 
@@ -473,16 +473,16 @@ PROGRAM ApplicationDriver
 
       V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
 
-      nE  = 16
+      nE  = 32
       eL  = 0.0d0
       eR  = 5.0d1
-      bcE = 10
+      bcE = 11
 
       nNodes = 3
 
       TimeSteppingScheme = 'SSPRK3'
 
-      t_end   = 4.0d+1
+      t_end   = 2.0d+1
       iCycleD = 1
       iCycleW = 100
       maxCycles = 1000000
