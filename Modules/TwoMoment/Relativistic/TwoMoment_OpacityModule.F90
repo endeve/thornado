@@ -34,12 +34,12 @@ MODULE TwoMoment_OpacityModule
 CONTAINS
 
 
-  SUBROUTINE SetOpacities( iZ_B0, iZ_E0, iOS_CPP, D0, Chi, Sigma, kT, E0, mu0, R0, Verbose_Option )
+  SUBROUTINE SetOpacities( iZ_B1, iZ_E1, iOS_CPP, D0, Chi, Sigma, kT, E0, mu0, R0, Verbose_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
     INTEGER,  INTENT(in) :: &
-      iZ_B0(4), iZ_E0(4), iOS_CPP(3)
+      iZ_B1(4), iZ_E1(4), iOS_CPP(3)
     REAL(DP), INTENT(in) :: &
       D0, Chi, Sigma, kT, E0, mu0, R0
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
@@ -65,21 +65,21 @@ CONTAINS
       CASE( 'HomogeneousSphere1D' )
 
         CALL SetOpacities_HomogeneousSphere1D &
-               ( iZ_B0, iZ_E0, iOS_CPP, D0, Chi )
+               ( iZ_B1, iZ_E1, iOS_CPP, D0, Chi )
 
       CASE( 'HomogeneousSphere2D' )
 
         CALL SetOpacities_HomogeneousSphere2D &
-               ( iZ_B0, iZ_E0, iOS_CPP, D0, Chi )
+               ( iZ_B1, iZ_E1, iOS_CPP, D0, Chi )
 
       CASE( 'HomogeneousSphereGR' )
 
         CALL SetOpacities_HomogeneousSphereGR &
-               ( iZ_B0, iZ_E0, iOS_CPP, D0, Chi, kT, E0, mu0, R0 )
+               ( iZ_B1, iZ_E1, iOS_CPP, D0, Chi, kT, E0, mu0, R0 )
       CASE( 'ShadowCasting' )
 
         CALL SetOpacities_ShadowCasting &
-               ( iZ_B0, iZ_E0, iOS_CPP )
+               ( iZ_B1, iZ_E1, iOS_CPP )
 
       CASE DEFAULT
 
@@ -94,12 +94,12 @@ CONTAINS
 
 
   SUBROUTINE SetOpacities_HomogeneousSphere1D &
-    ( iZ_B0, iZ_E0, iOS_CPP, D0, Chi )
+    ( iZ_B1, iZ_E1, iOS_CPP, D0, Chi )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
     INTEGER,  INTENT(in) :: &
-      iZ_B0(4), iZ_E0(4), iOS_CPP(3)
+      iZ_B1(4), iZ_E1(4), iOS_CPP(3)
     REAL(DP), INTENT(in) :: &
       D0, Chi
 
@@ -110,10 +110,10 @@ CONTAINS
     REAL(DP) :: Radius
 
     DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4)-iOS_CPP(3), iZ_E0(4)-iOS_CPP(3)
-    DO iZ3 = iZ_B0(3)-iOS_CPP(2), iZ_E0(3)-iOS_CPP(2)
-    DO iZ2 = iZ_B0(2)-iOS_CPP(1), iZ_E0(2)-iOS_CPP(1)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iZ4 = iZ_B1(4)-iOS_CPP(3), iZ_E1(4)-iOS_CPP(3)
+    DO iZ3 = iZ_B1(3)-iOS_CPP(2), iZ_E1(3)-iOS_CPP(2)
+    DO iZ2 = iZ_B1(2)-iOS_CPP(1), iZ_E1(2)-iOS_CPP(1)
+    DO iZ1 = iZ_B1(1), iZ_E1(1)
 
       DO iNodeZ = 1, nDOFZ
 
@@ -139,12 +139,12 @@ CONTAINS
 
 
   SUBROUTINE SetOpacities_HomogeneousSphere2D &
-    ( iZ_B0, iZ_E0, iOS_CPP, D0, Chi )
+    ( iZ_B1, iZ_E1, iOS_CPP, D0, Chi )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
     INTEGER,  INTENT(in) :: &
-      iZ_B0(4), iZ_E0(4), iOS_CPP(3)
+      iZ_B1(4), iZ_E1(4), iOS_CPP(3)
     REAL(DP), INTENT(in) :: &
       D0, Chi
 
@@ -155,10 +155,10 @@ CONTAINS
     REAL(DP) :: E, X1_C, X2_C, X3_C, R_C, Spectrum
 
     DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4)-iOS_CPP(3), iZ_E0(4)-iOS_CPP(3)
-    DO iZ3 = iZ_B0(3)-iOS_CPP(2), iZ_E0(3)-iOS_CPP(2)
-    DO iZ2 = iZ_B0(2)-iOS_CPP(1), iZ_E0(2)-iOS_CPP(1)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iZ4 = iZ_B1(4)-iOS_CPP(3), iZ_E1(4)-iOS_CPP(3)
+    DO iZ3 = iZ_B1(3)-iOS_CPP(2), iZ_E1(3)-iOS_CPP(2)
+    DO iZ2 = iZ_B1(2)-iOS_CPP(1), iZ_E1(2)-iOS_CPP(1)
+    DO iZ1 = iZ_B1(1), iZ_E1(1)
 
       X1_C = MeshX(1) % Center(iZ2)
       X2_C = MeshX(2) % Center(iZ3)
@@ -168,7 +168,7 @@ CONTAINS
 
       DO iNodeZ = 1, nDOFZ
 
-        IF( iZ_E0(1) .EQ. iZ_B0(1) )THEN
+        IF( iZ_E1(1) .EQ. iZ_B1(1) )THEN
 
           Spectrum = One
 
@@ -200,12 +200,12 @@ CONTAINS
   END SUBROUTINE SetOpacities_HomogeneousSphere2D
 
   SUBROUTINE SetOpacities_HomogeneousSphereGR &
-    ( iZ_B0, iZ_E0, iOS_CPP, D0, Chi, kT, E0, mu0, R0 )
+    ( iZ_B1, iZ_E1, iOS_CPP, D0, Chi, kT, E0, mu0, R0 )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
     INTEGER,  INTENT(in) :: &
-      iZ_B0(4), iZ_E0(4), iOS_CPP(3)
+      iZ_B1(4), iZ_E1(4), iOS_CPP(3)
     REAL(DP), INTENT(in) :: &
       D0, Chi, kT, E0, mu0, R0
 
@@ -216,10 +216,10 @@ CONTAINS
 
 
     DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4)-iOS_CPP(3), iZ_E0(4)-iOS_CPP(3)
-    DO iZ3 = iZ_B0(3)-iOS_CPP(2), iZ_E0(3)-iOS_CPP(2)
-    DO iZ2 = iZ_B0(2)-iOS_CPP(1), iZ_E0(2)-iOS_CPP(1)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iZ4 = iZ_B1(4)-iOS_CPP(3), iZ_E1(4)-iOS_CPP(3)
+    DO iZ3 = iZ_B1(3)-iOS_CPP(2), iZ_E1(3)-iOS_CPP(2)
+    DO iZ2 = iZ_B1(2)-iOS_CPP(1), iZ_E1(2)-iOS_CPP(1)
+    DO iZ1 = iZ_B1(1), iZ_E1(1)
 
       DO iNodeZ = 1, nDOFZ
 
@@ -253,12 +253,12 @@ CONTAINS
 
 
   SUBROUTINE SetOpacities_ShadowCasting &
-    ( iZ_B0, iZ_E0, iOS_CPP )
+    ( iZ_B1, iZ_E1, iOS_CPP )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
     INTEGER,  INTENT(in) :: &
-      iZ_B0(4), iZ_E0(4), iOS_CPP(3)
+      iZ_B1(4), iZ_E1(4), iOS_CPP(3)
 
     REAL(DP), PARAMETER :: R_A = 2.0d+00 ! --- Radius of Absorbing Region
     REAL(DP), PARAMETER :: R_S = 1.5d+00 ! --- Radius of Radiating Region
@@ -267,10 +267,10 @@ CONTAINS
     REAL(DP) :: X1, X2, Radius, Distance_A, WindowFunction, D0, Chi
 
     DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4)-iOS_CPP(3), iZ_E0(4)-iOS_CPP(3)
-    DO iZ3 = iZ_B0(3)-iOS_CPP(2), iZ_E0(3)-iOS_CPP(2)
-    DO iZ2 = iZ_B0(2)-iOS_CPP(1), iZ_E0(2)-iOS_CPP(1)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iZ4 = iZ_B1(4)-iOS_CPP(3), iZ_E1(4)-iOS_CPP(3)
+    DO iZ3 = iZ_B1(3)-iOS_CPP(2), iZ_E1(3)-iOS_CPP(2)
+    DO iZ2 = iZ_B1(2)-iOS_CPP(1), iZ_E1(2)-iOS_CPP(1)
+    DO iZ1 = iZ_B1(1), iZ_E1(1)
 
       DO iNodeZ = 1, nDOFZ
 
@@ -302,11 +302,9 @@ CONTAINS
           D0  = 1.0d-1 * WindowFunction
 
         END IF
-
         uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_D0   ,iS) = D0
         uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Chi  ,iS) = Chi
         uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Sigma,iS) = Zero
-
       END DO
 
     END DO
@@ -314,6 +312,7 @@ CONTAINS
     END DO
     END DO
     END DO
+
 
   END SUBROUTINE SetOpacities_ShadowCasting
 
