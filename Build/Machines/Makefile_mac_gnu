@@ -23,14 +23,14 @@ ifeq ($(USE_OACC),TRUE)
 endif
 
 INCLUDE_CUDA     =
-INCLUDE_HDF5     = -I/usr/local/include
+INCLUDE_HDF5     = -I$(HDF5_DIR)/include
 INCLUDE_LAPACK   = -framework Accelerate
 INCLUDE_MAGMA    =
 INCLUDE_PETSC    =
 INCLUDE_ROCM     =
 
 LIBRARIES_CUDA     =
-LIBRARIES_HDF5     = -L/usr/local/lib -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5     = -L$(HDF5_DIR)/lib -lhdf5_fortran -lhdf5
 LIBRARIES_LAPACK   = -framework Accelerate
 LIBRARIES_MAGMA    =
 LIBRARIES_PETSC    =

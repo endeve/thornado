@@ -909,7 +909,6 @@ CONTAINS
 
     ! --- Off-Grid Fluxes for Conservation Tally ---
 
-
     CALL ComputeOffGridFlux( iZP_B0, iZP_E0, nDOF_X1, NumericalFlux, NumericalFlux2 )
 
     !--------------------
@@ -3603,7 +3602,7 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC CREATE( PositionIndexZ_F, PositionIndexZ_K, &
-    !$ACC         IndexTableZ_F, IndexTableZ_K,  &
+    !$ACC         IndexTableZ_F, IndexTableZ_K, &
     !$ACC         uV1_F, uV2_F, uV3_F, &
     !$ACC         uD_L, uI1_L, uI2_L, uI3_L, &
     !$ACC         uD_R, uI1_R, uI2_R, uI3_R, &
@@ -3622,7 +3621,7 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(7) &
     !$OMP PRIVATE( iNodeZ_X, iZ_F, iX_F )
-#endif    
+#endif
     DO iZP4 = iZP_B0(4), iZP_E0(4)+1
     DO iS  = 1, nSpecies
     DO iZP3 = iZP_B0(3), iZP_E0(3)
@@ -3670,7 +3669,7 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(7) &
     !$OMP PRIVATE( iNodeZ, iZ_K, iX_K )
-#endif    
+#endif
     DO iZP4 = iZP_B0(4), iZP_E0(4)
     DO iS  = 1, nSpecies
     DO iZP3 = iZP_B0(3), iZP_E0(3)
@@ -3706,6 +3705,7 @@ CONTAINS
     END DO
     END DO
 
+    ! AH: This update *may* not be necessary.
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE &
     !$OMP FROM( PositionIndexZ_F, PositionIndexZ_K, &
@@ -3714,7 +3714,7 @@ CONTAINS
     !$ACC UPDATE &
     !$ACC HOST( PositionIndexZ_F, PositionIndexZ_K, &
     !$ACC       IndexTableZ_F, IndexTableZ_K )
-#endif    
+#endif
 
     RETURN
   END SUBROUTINE InitializeIncrement_Divergence_X
@@ -3917,7 +3917,6 @@ CONTAINS
     END DO
     END DO
 
-
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
     !$OMP PRIVATE( iNodeZ, iZ_K, iX_K )
@@ -3964,6 +3963,7 @@ CONTAINS
     END DO
     END DO
 
+    ! AH: This update *may* not be necessary.
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE &
     !$OMP FROM( PositionIndexZ_F, PositionIndexZ_K, &

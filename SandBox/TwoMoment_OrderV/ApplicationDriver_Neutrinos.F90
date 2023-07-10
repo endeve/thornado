@@ -47,7 +47,7 @@ PROGRAM ApplicationDriver_Neutrinos
     ComputeError
   USE TwoMoment_TallyModule, ONLY: &
     ComputeTally
-  USE TwoMoment_TimersModule_OrderV, ONLY: Timer_IMEX
+  USE TwoMoment_TimersModule, ONLY: Timer_IMEX
 
   IMPLICIT NONE
 
