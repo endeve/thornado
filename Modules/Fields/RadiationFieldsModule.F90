@@ -170,13 +170,20 @@ MODULE RadiationFieldsModule
 CONTAINS
 
 
-  SUBROUTINE SetNumberOfSpecies( nS )
+  SUBROUTINE SetNumberOfSpecies( nS, Verbose_Option )
 
     INTEGER, INTENT(in) :: nS
+    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
 
     nSpecies = nS
 
-    IF( Verbose )THEN
+    IF( PRESENT( Verbose_Option ) )THEN
+      IF( Verbose_Option )THEN
+        WRITE(*,*)
+        WRITE(*,'(A5,A29,I2.2)') &
+          '', 'Radiation Fields, nSpecies = ', nSpecies
+      END IF
+    ELSE
       WRITE(*,*)
       WRITE(*,'(A5,A29,I2.2)') &
         '', 'Radiation Fields, nSpecies = ', nSpecies
@@ -213,7 +220,7 @@ CONTAINS
     IF( PRESENT( nSpecies_Option ) ) &
       nS = nSpecies_Option
 
-    CALL SetNumberOfSpecies( nS )
+    CALL SetNumberOfSpecies( nS, Verbose_Option = Verbose )
 
     CALL CreateRadiationFields_Conserved ( nX, swX, nE, swE )
     CALL CreateRadiationFields_Primitive ( nX, swX, nE, swE )
