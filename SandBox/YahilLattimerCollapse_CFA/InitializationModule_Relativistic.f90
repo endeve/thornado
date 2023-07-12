@@ -100,7 +100,7 @@ CONTAINS
 
     LOGICAL           :: ReadFromFile    = .TRUE.
     CHARACTER(LEN=64) :: &
-      FileName = 'YahilHomologousCollapse_Gm1.30_t1.500E+000ms.dat'
+      FileName = 'YahilHomologousCollapse_Gm1.30_t1.500E+002ms.dat'
     REAL(DP)          :: D0              = 1.75_DP
     REAL(DP)          :: CentralDensity  = 7.0e9_DP  * ( Gram / Centimeter**3 )
     REAL(DP)          :: CentralPressure = 6.0e27_DP * ( Erg  / Centimeter**3 )
@@ -112,7 +112,7 @@ CONTAINS
     IF( PRESENT( ReadFromFile_Option ) ) &
       ReadFromFile = ReadFromFile_Option
     IF( PRESENT( FileName_Option ) ) &
-      FileName = FileName_Option
+      FileName = TRIM( FileName_Option )
     IF( PRESENT( D0_Option ) ) &
       D0 = D0_Option
     IF( PRESENT( CentralDensity_Option ) ) &
@@ -398,8 +398,8 @@ CONTAINS
                                               D(iX_L), D(iX_L+1) )
 
        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-         = dvdV * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
-                                            V(iX_L), V(iX_L+1) )
+         = dvdV   * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
+                                              V(iX_L), V(iX_L+1) )
 
        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
 
@@ -452,12 +452,10 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: X(:), D(:), U(:), V(:), M(:), &
                              Numer(:), Denom(:)
 
-    LOGICAL, PARAMETER :: WriteToFile  = .FALSE.
-
-    INTEGER, PARAMETER :: NX = 2048
-    CHARACTER(LEN=64)  :: FileName
-    REAL(DP)           :: FileX(NX), FileD(NX), FileV(NX), FileM(NX), dLogX
-    INTEGER            :: iLine
+    LOGICAL, PARAMETER    :: WriteToFile = .FALSE.
+    CHARACTER(LEN=64)     :: FileName
+    INTEGER               :: nLines, iLine
+    REAL(DP), ALLOCATABLE :: FileX(:), FileD(:), FileV(:), FileM(:)
 
     dr = 1.0e-2_DP * Kilometer
     dX = dXdr * dr
@@ -466,11 +464,11 @@ CONTAINS
 
     ALLOCATE( Numer(N) )
     ALLOCATE( Denom(N) )
-    ALLOCATE( X(N) )
-    ALLOCATE( D(N) )
-    ALLOCATE( U(N) )
-    ALLOCATE( V(N) )
-    ALLOCATE( M(N) )
+    ALLOCATE( X    (N) )
+    ALLOCATE( D    (N) )
+    ALLOCATE( U    (N) )
+    ALLOCATE( V    (N) )
+    ALLOCATE( M    (N) )
 
     X    (1) = 1.0e-5_DP
     D    (1) = D0
@@ -538,25 +536,27 @@ CONTAINS
 
     IF( WriteToFile )THEN
 
-      FileX(1 ) = X(1)
-      FileX(NX) = X(N)
+      nLines = N
 
-      dLogX = ( LOG10( FileX(NX) ) - LOG10( FileX(1) ) ) / DBLE( NX - 1 )
+      ALLOCATE( FileX(nLines) )
+      ALLOCATE( FileD(nLines) )
+      ALLOCATE( FileV(nLines) )
+      ALLOCATE( FileM(nLines) )
 
-      DO iLine = 2, NX
+      FileX(1)      = X(1)
+      FileD(1)      = D(1)
+      FileV(1)      = V(1)
+      FileM(1)      = M(1)
+      FileX(nLines) = X(N)
+      FileD(nLines) = D(N)
+      FileV(nLines) = V(N)
+      FileM(nLines) = M(N)
 
-        FileX(iLine) &
-          = 10.0_DP**( LOG10( FileX(iLine-1) ) + dLogX )
+      IF( nLines .NE. N ) dX = ( X(N) - X(1) ) / DBLE( nLines - 1 )
 
-      END DO
+      DO iLine = 2, nLines-1
 
-      FileD(1)  = D(1)
-      FileV(1)  = V(1)
-      FileM(1)  = M(1)
-      FileD(NX) = D(N)
-      FileV(NX) = V(N)
-      FileM(NX) = M(N)
-      DO iLine = 2, NX-1
+        FileX(iLine) = FileX(iLine-1) + dX
 
         iX_L = Locate( FileX(iLine), X, N )
 
@@ -582,7 +582,7 @@ CONTAINS
 
       WRITE( 100, '(A)' ) '# X D V M'
 
-      DO iLine = 1, NX
+      DO iLine = 1, nLines
 
         WRITE( 100, '(ES24.16E3,1x,ES24.16E3,1x,ES24.16E3,1x,ES24.16E3)' ) &
           FileX(iLine), FileD(iLine), FileV(iLine), FileM(iLine)
@@ -591,7 +591,12 @@ CONTAINS
 
       CLOSE( 100 )
 
-    END IF
+      DEALLOCATE( FileM )
+      DEALLOCATE( FileV )
+      DEALLOCATE( FileD )
+      DEALLOCATE( FileX )
+
+    END IF ! WriteToFile
 
     DEALLOCATE( M )
     DEALLOCATE( V )
@@ -615,26 +620,8 @@ CONTAINS
     REAL(DP)            :: dDdX, dMdX, XC, X0, &
                            NumerC, DenomC, NumerPrime, DenomPrime
     INTEGER             :: iX1
-    LOGICAL             :: WriteToFile, FirstTime
+    LOGICAL             :: FirstTime
     REAL(DP), PARAMETER :: Threshold = 0.015_DP
-
-    WriteToFile = .FALSE.
-
-    IF( WriteToFile )THEN
-
-      OPEN(100,FILE='X.dat')
-      OPEN(101,FILE='D.dat')
-      OPEN(102,FILE='V.dat')
-      OPEN(103,FILE='Numer.dat')
-      OPEN(104,FILE='Denom.dat')
-
-      WRITE(100,*) X(1)
-      WRITE(101,*) D(1)
-      WRITE(102,*) ( Gamma_IDEAL - Two ) * X(1) + U(1)
-      WRITE(103,*) Numer(1)
-      WRITE(104,*) Denom(1)
-
-    END IF
 
     FirstTime = .TRUE.
 
@@ -672,27 +659,7 @@ CONTAINS
 
       END IF
 
-      IF( WriteToFile )THEN
-
-        WRITE(100,*) X(iX1)
-        WRITE(101,*) D(iX1)
-        WRITE(102,*) ( Gamma_IDEAL - Two ) * X(iX1) + U(iX1)
-        WRITE(103,*) Numer(iX1)
-        WRITE(104,*) Denom(iX1)
-
-      END IF
-
     END DO
-
-    IF( WriteToFile )THEN
-
-      CLOSE(104)
-      CLOSE(103)
-      CLOSE(102)
-      CLOSE(101)
-      CLOSE(100)
-
-    END IF
 
   END SUBROUTINE IntegrateD
 

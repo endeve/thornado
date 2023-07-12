@@ -126,7 +126,7 @@ PROGRAM ApplicationDriver
 
   ReadFromFile = .FALSE.
 
-  FileName = 'YahilHomologousCollapse_Gm1.30_t1.500E+000ms.dat'
+  FileName = 'YahilHomologousCollapse_Gm1.30_t1.500E+002ms.dat'
 
   RestartFileNumber = -1
   t                 = 0.0_DP
@@ -254,6 +254,7 @@ PROGRAM ApplicationDriver
 
   CALL InitializeFields_Relativistic &
          ( ReadFromFile_Option    = ReadFromFile,    &
+           FileName_Option        = FileName,        &
            D0_Option              = D0,              &
            CentralDensity_Option  = CentralDensity,  &
            CentralPressure_Option = CentralPressure, &
@@ -265,8 +266,8 @@ PROGRAM ApplicationDriver
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
-    CALL ComputeNewtonianPotential_SphericalSymmetry &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uGF )
+!!$    CALL ComputeNewtonianPotential_SphericalSymmetry &
+!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uGF )
 
     CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
