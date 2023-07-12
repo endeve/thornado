@@ -21,6 +21,7 @@ PROGRAM ApplicationDriver
     WriteFieldsHDF
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeFromConserved_TwoMoment, &
+    ComputeTimeStep_TwoMoment, &
     ComputeTimeStep_TwoMoment_Realizability
   USE TwoMoment_SlopeLimiterModule, ONLY: &
     ApplySlopeLimiter_TwoMoment
@@ -348,7 +349,7 @@ PROGRAM ApplicationDriver
 
       Direction = 'X' ! --- (X,Y, or Z)
 
-      LengthScale = 1.0d-1 ! --- Shock Width
+      LengthScale = 1.0d-2 ! --- Shock Width
 
       IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
@@ -390,40 +391,75 @@ PROGRAM ApplicationDriver
       nE  = 32
       eL  = 0.0d0
       eR  = 5.0d1
-      bcE = 10
+      bcE = 11
 
-      nNodes = 1
+      nNodes = 3
 
-      TimeSteppingScheme = 'SSPRK1'
+      TimeSteppingScheme = 'SSPRK3'
 
-      t_end   = 5.0d0
+      t_end   = 3.0d0
       iCycleD = 1
-      iCycleW = 10
+      iCycleW = 100
       maxCycles = 1000000
 
       D_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter      = .TRUE.
+      UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
-      UseEnergyLimiter     = .FALSE.
+      UseEnergyLimiter     = .TRUE.
+
+      UseRealizabilityTimeStep = .TRUE.
+
+    CASE( 'TransparentShock2D' )
+
+      LengthScale = 3.0d-2 ! --- Shock Width
+
+      nX  = [ 80, 10, 1 ]
+      xL  = [ 0.0d0, 0.00_DP, 0.0_DP ]
+      xR  = [ 2.0d0, 0.25_DP, 1.0_DP ]
+      bcX = [ 12, 2, 0 ]
+
+      nE  = 32
+      eL  = 0.0d0
+      eR  = 5.0d1
+      bcE = 11
+
+      nNodes = 2
+
+      TimeSteppingScheme = 'SSPRK2'
+
+      t_end   = 3.0d0
+      iCycleD = 1
+      iCycleW = 100
+      maxCycles = 1000000
+
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 0.0_DP
+
+      UseSlopeLimiter      = .FALSE.
+      UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .TRUE.
+
+      UseRealizabilityTimeStep = .TRUE.
 
     CASE( 'TransparentVortex' )
 
       Direction = 'X' ! --- (X or Y)
 
-      nX  = [ 16, 16, 1 ]
+      nX  = [ 48, 48, 1 ]
       xL  = [ - 5.0_DP, - 5.0_DP, - 0.5_DP ]
       xR  = [ + 5.0_DP, + 5.0_DP, + 0.5_DP ]
 
       IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
-        bcX = [ 12, 1, 1 ]
+        bcX = [ 12, 3, 1 ]
 
       ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
 
-        bcX = [ 1, 12, 1 ]
+        bcX = [ 3, 12, 1 ]
 
       ELSE
 
@@ -437,16 +473,16 @@ PROGRAM ApplicationDriver
 
       V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
 
-      nE  = 16
+      nE  = 32
       eL  = 0.0d0
       eR  = 5.0d1
-      bcE = 10
+      bcE = 11
 
       nNodes = 3
 
       TimeSteppingScheme = 'SSPRK3'
 
-      t_end   = 4.0d+1
+      t_end   = 2.0d+1
       iCycleD = 1
       iCycleW = 100
       maxCycles = 1000000
@@ -457,7 +493,9 @@ PROGRAM ApplicationDriver
 
       UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
-      UseEnergyLimiter     = .FALSE.
+      UseEnergyLimiter     = .TRUE.
+
+      UseRealizabilityTimeStep = .TRUE.
 
     CASE( 'RadiatingSphere' )
 
@@ -467,7 +505,14 @@ PROGRAM ApplicationDriver
       xL    = [ 1.0d1, Zero,  Zero ]
       xR    = [ 1.0d4,   Pi, TwoPi ]
       bcX   = [ 12, 1, 1 ]
-      ZoomX = [ 1.024333847373375_DP, One, One ]
+
+      IF     ( nX(1) == 200 )THEN
+         ZoomX = [ 1.024333847373375_DP, One, One ] ! dX1(1)=2 with nX(1)=200
+      ELSE IF( nX(1) == 400 )THEN
+         ZoomX = [ 1.012074699662899_DP, One, One ] ! dX1(1)=1 with nX(1)=400
+      ELSE
+         ZoomX = One
+      END IF
 
       nE    = 16
       eL    = 0.0d0
@@ -508,9 +553,9 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'IMEX_PDARS'
 
-      t_end   = 5.0_DP
-      iCycleD = 10
-      iCycleW = 10
+      t_end     = 5.0_DP
+      iCycleD   = 10
+      iCycleW   = 10
       maxCycles = 1000000
 
       V_0 = [ 0.0_DP, 0.0_DP, 0.0_DP ]
@@ -518,7 +563,6 @@ PROGRAM ApplicationDriver
       D_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 3200.0_DP
-      !Sigma = 1.0d+2
 
       UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
@@ -760,7 +804,8 @@ PROGRAM ApplicationDriver
 
       C_CFL  = 0.3_DP / ( Two * DBLE(nNodes-1) + One )
 
-      dt_CFL = C_CFL * MINVAL( ( xR - xL ) / DBLE( nX ) )
+      CALL ComputeTimeStep_TwoMoment &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, C_CFL, dt_CFL )
 
     END IF
 

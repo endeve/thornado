@@ -24,7 +24,7 @@ function...
   uGF_Gm11   = h5read( FileName, '/Geometry Fields/Spatial Metric Component (11)' );
   uGF_Gm22   = h5read( FileName, '/Geometry Fields/Spatial Metric Component (22)' );
   uGF_Gm33   = h5read( FileName, '/Geometry Fields/Spatial Metric Component (33)' );
-  uGF_SqrtGm = h5read( FileName, '/Geometry Fields/Sqrt of Spatial Metric Determina' );
+  uGF_SqrtGm = h5read( FileName, '/Geometry Fields/Sqrt Spatial Metric Determinant' );
 
   uGF_Phi_N  = h5read( FileName, '/Geometry Fields/Newtonian Potential' );
   
