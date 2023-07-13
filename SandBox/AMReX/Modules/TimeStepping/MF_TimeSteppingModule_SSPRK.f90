@@ -286,8 +286,15 @@ CONTAINS
 
         END DO
 
-        IF( nLevels .GT. 1 .AND. UseFluxCorrection_Euler ) &
+        IF( nLevels .GT. 1 .AND. UseFluxCorrection_Euler )THEN
+
+          CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_D(iS,:) )
+
           CALL ApplyFluxCorrection_Euler_MF( MF_uGF, MF_D(iS,:) )
+
+          CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_D(iS,:) )
+
+        END IF
 
       END IF ! a(:,iS) .NE. Zero .OR. w(iS) .NE. Zero
 
