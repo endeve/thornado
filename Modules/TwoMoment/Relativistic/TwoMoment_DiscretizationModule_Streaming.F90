@@ -4538,7 +4538,29 @@ CONTAINS
                GX_F(1,1,iX_B0(2),iX_B0(3),iX_B0(1)), nDOFX_X1 )
 
 
+    DO iX1  = iX_B0(1), iX_E0(1)+1
+    DO iX3  = iX_B0(3), iX_E0(3)
+    DO iX2  = iX_B0(2), iX_E0(2)
 
+      DO iNodeX = 1, nDOFX_X1
+
+        GX_F(iNodeX,iGF_Gm_dd_11,iX2,iX3,iX1) &
+          = MAX( GX_F(iNodeX,iGF_h_1,iX2,iX3,iX1)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_22,iX2,iX3,iX1) &
+          = MAX( GX_F(iNodeX,iGF_h_2,iX2,iX3,iX1)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_33,iX2,iX3,iX1) &
+          = MAX( GX_F(iNodeX,iGF_h_3,iX2,iX3,iX1)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_SqrtGm,iX2,iX3,iX1) &
+          = SQRT(   GX_F(iNodeX,iGF_Gm_dd_11,iX2,iX3,iX1) &
+                  * GX_F(iNodeX,iGF_Gm_dd_22,iX2,iX3,iX1) &
+                  * GX_F(iNodeX,iGF_Gm_dd_33,iX2,iX3,iX1) )
+
+
+      END DO
+
+    END DO
+    END DO
+    END DO
 
 
 
@@ -5062,7 +5084,29 @@ CONTAINS
 
 
 
+    DO iX2  = iX_B0(2), iX_E0(2)+1
+    DO iX3  = iX_B0(3), iX_E0(3)
+    DO iX1  = iX_B0(1), iX_E0(1)
 
+      DO iNodeX = 1, nDOFX_X2
+
+        GX_F(iNodeX,iGF_Gm_dd_11,iX1,iX3,iX2) &
+          = MAX( GX_F(iNodeX,iGF_h_1,iX1,iX3,iX2)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+          = MAX( GX_F(iNodeX,iGF_h_2,iX1,iX3,iX2)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_33,iX1,iX3,iX2) &
+          = MAX( GX_F(iNodeX,iGF_h_3,iX1,iX3,iX2)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_SqrtGm,iX1,iX3,iX2) &
+          = SQRT(   GX_F(iNodeX,iGF_Gm_dd_11,iX1,iX3,iX2) &
+                  * GX_F(iNodeX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+                  * GX_F(iNodeX,iGF_Gm_dd_33,iX1,iX3,iX2) )
+
+
+      END DO
+
+    END DO
+    END DO
+    END DO
 
 
 
@@ -5586,7 +5630,29 @@ CONTAINS
                GX_F(1,1,iX_B0(1),iX_B0(2),iX_B0(3)), nDOFX_X3 )
 
 
+    DO iX3  = iX_B0(3), iX_E0(3)+1
+    DO iX2  = iX_B0(2), iX_E0(2)
+    DO iX1  = iX_B0(1), iX_E0(1)
 
+      DO iNodeX = 1, nDOFX_X3
+
+        GX_F(iNodeX,iGF_Gm_dd_11,iX1,iX2,iX3) &
+          = MAX( GX_F(iNodeX,iGF_h_1,iX1,iX2,iX3)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_22,iX1,iX2,iX3) &
+          = MAX( GX_F(iNodeX,iGF_h_2,iX1,iX2,iX3)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_33,iX1,iX2,iX3) &
+          = MAX( GX_F(iNodeX,iGF_h_3,iX1,iX2,iX3)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_SqrtGm,iX1,iX2,iX3) &
+          = SQRT(   GX_F(iNodeX,iGF_Gm_dd_11,iX1,iX2,iX3) &
+                  * GX_F(iNodeX,iGF_Gm_dd_22,iX1,iX2,iX3) &
+                  * GX_F(iNodeX,iGF_Gm_dd_33,iX1,iX2,iX3) )
+
+
+      END DO
+
+    END DO
+    END DO
+    END DO
 
 
 

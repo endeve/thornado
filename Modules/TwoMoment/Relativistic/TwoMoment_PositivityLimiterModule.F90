@@ -35,7 +35,8 @@ MODULE TwoMoment_PositivityLimiterModule
     nGE, iGE_Ep2
   USE GeometryFieldsModule, ONLY: &
     nGF, iGF_SqrtGm, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
-    iGF_Alpha, iGF_Beta_1, iGF_Beta_2, iGF_Beta_3
+    iGF_Alpha, iGF_Beta_1, iGF_Beta_2, iGF_Beta_3, &
+    iGF_h_1, iGF_h_2, iGF_h_3
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, &
     iCF_E, iCF_NE
@@ -655,6 +656,24 @@ CONTAINS
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
 
+    REAL(DP) :: h_d_1_Q(nDOFX, &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                h_d_1_P(nPT_X, &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: h_d_2_Q(nDOFX, &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                h_d_2_P(nPT_X, &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+    REAL(DP) :: h_d_3_Q(nDOFX, &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                h_d_3_P(nPT_X, &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
     REAL(DP) :: A_Q(nDOFX, &
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
@@ -782,6 +801,10 @@ CONTAINS
       G_22_Q(:,iZ2,iZ3,iZ4) = GX(:,iZ2,iZ3,iZ4,iGF_Gm_dd_22)
       G_33_Q(:,iZ2,iZ3,iZ4) = GX(:,iZ2,iZ3,iZ4,iGF_Gm_dd_33)
 
+      h_d_1_Q(:,iZ2,iZ3,iZ4) = GX(:,iZ2,iZ3,iZ4,iGF_h_1)
+      h_d_2_Q(:,iZ2,iZ3,iZ4) = GX(:,iZ2,iZ3,iZ4,iGF_h_2)
+      h_d_3_Q(:,iZ2,iZ3,iZ4) = GX(:,iZ2,iZ3,iZ4,iGF_h_3)
+
       A_Q (:,iZ2,iZ3,iZ4) = GX(:,iZ2,iZ3,iZ4,iGF_Alpha )
       B1_Q(:,iZ2,iZ3,iZ4) = GX(:,iZ2,iZ3,iZ4,iGF_Beta_1)
       B2_Q(:,iZ2,iZ3,iZ4) = GX(:,iZ2,iZ3,iZ4,iGF_Beta_2)
@@ -885,9 +908,9 @@ CONTAINS
     CALL ComputePointValuesX( iX_B0, iX_E0, E_Q , E_P  )
     CALL ComputePointValuesX( iX_B0, iX_E0, NE_Q , NE_P  )
 
-    CALL ComputePointValuesX( iX_B0, iX_E0, G_11_Q , G_11_P  )
-    CALL ComputePointValuesX( iX_B0, iX_E0, G_22_Q , G_22_P  )
-    CALL ComputePointValuesX( iX_B0, iX_E0, G_33_Q , G_33_P  )
+    CALL ComputePointValuesX( iX_B0, iX_E0, h_d_1_Q , h_d_1_P  )
+    CALL ComputePointValuesX( iX_B0, iX_E0, h_d_2_Q , h_d_2_P  )
+    CALL ComputePointValuesX( iX_B0, iX_E0, h_d_3_Q , h_d_3_P  )
 
     CALL ComputePointValuesX( iX_B0, iX_E0, A_Q , A_P  )
     CALL ComputePointValuesX( iX_B0, iX_E0, B1_Q , B1_P  )
@@ -903,6 +926,12 @@ CONTAINS
 
       ITERATION_P(iP,iZ2,iZ3,iZ4) = 0
       iErr_P     (iP,iZ2,iZ3,iZ4) = 0
+
+
+      G_11_P(iP,iZ2,iZ3,iZ4) = MAX( h_d_1_P(iP,iZ2,iZ3,iZ4)**2, SqrtTiny )
+      G_22_P(iP,iZ2,iZ3,iZ4) = MAX( h_d_2_P(iP,iZ2,iZ3,iZ4)**2, SqrtTiny )
+      G_33_P(iP,iZ2,iZ3,iZ4) = MAX( h_d_3_P(iP,iZ2,iZ3,iZ4)**2, SqrtTiny )
+
 
       CALL ComputePrimitive_Euler_Relativistic &
              ( D_P   (iP,iZ2,iZ3,iZ4), &
