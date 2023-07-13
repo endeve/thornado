@@ -82,6 +82,7 @@ module ThornadoInitializationModule
     CreateFluidFields, &
     DestroyFluidFields
   use RadiationFieldsModule, only: &
+    SetNumberOfSpecies, &
     CreateRadiationFields, &
     DestroyRadiationFields
   use TwoMoment_ClosureModule, only: &
@@ -118,7 +119,7 @@ module ThornadoInitializationModule
 contains
 
   subroutine InitThornado &
-    ( nNodes, nDimsX, nE, swE, eL_MeV, eR_MeV, zoomE, bcE, &
+    ( nNodes, nDimsX, nE, swE, eL_MeV, eR_MeV, zoomE, bcE, nSpecies, &
       EquationOfStateTableName_Option, External_EOS, &
       Gamma_IDEAL_Option, &
       PositivityLimiter_Option, UpperBry1_Option, &
@@ -134,7 +135,7 @@ contains
       Include_LinCorr_Option, wMatrRHS_Option, &
       ActivateUnits_Option, CoordinateSystem_Option, Verbose_Option )
 
-    integer,  intent(in) :: nNodes, nDimsX, nE, swE, bcE
+    integer,  intent(in) :: nNodes, nDimsX, nE, swE, bcE, nSpecies
     real(dp), intent(in) :: eL_MeV, eR_MeV, zoomE
 
     character(len=*), intent(in), optional :: EquationOfStateTableName_Option
@@ -296,6 +297,8 @@ contains
              nE_Option = nE, swE_Option = swE, bcE_Option = bcE, &
              eL_Option = eL, eR_Option = eR, zoomE_Option = zoomE, &
              Verbose_Option = Verbose )
+
+    call SetNumberOfSpecies( nSpecies, Verbose_Option = Verbose )
 
 #ifdef THORNADO_DEBUG
     call DescribeProgramHeader

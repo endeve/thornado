@@ -287,7 +287,7 @@ call amrex_parmparse_destroy( pp )
                          zoomE )
     CALL amrex_parmparse_destroy( PP )
 
-    CALL SetNumberOfSpecies( nSpecies )
+    CALL SetNumberOfSpecies( nSpecies, Verbose_Option = amrex_parallel_ioprocessor() )
 
     IF( iCycleW * dt_wrt .GT. Zero ) &
       CALL DescribeError_MF &
