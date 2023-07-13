@@ -1131,8 +1131,7 @@ CONTAINS
 
 #elif defined( TWOMOMENT_ORDER_V )
 
-    CALL LimitNeutrinoDistribution_OrderV & ! --- Enforce Dnu < 1
-           ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+    CALL LimitNeutrinoDistribution_OrderV ( Dnu ) ! --- Enforce Dnu < 1
 
     CALL InitializeRHS_OrderV &
            ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, D, Y, E, V_u_1, V_u_2, V_u_3, &
@@ -2024,11 +2023,9 @@ CONTAINS
   END SUBROUTINE UpdateTemperature_Packed
 
 
-  SUBROUTINE LimitNeutrinoDistribution_OrderV &
-    ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+  SUBROUTINE LimitNeutrinoDistribution_OrderV ( Dnu )
 
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: Dnu
 
     INTEGER :: iN_E, iN_X, iS
 
