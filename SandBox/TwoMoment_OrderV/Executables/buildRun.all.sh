@@ -12,7 +12,7 @@ function set_common(){
    export EXASTAR_HOME=/localdisk/quanshao/ExaStar
    export HDF5_INC=${EXASTAR_HOME}/hdf57/include
    export HDF5_LIB=${EXASTAR_HOME}/hdf57/lib64
-   export THORNADO_DIR=${EXASTAR_HOME}/thornado
+   export THORNADO_DIR=${EXASTAR_HOME}/thornado-mergingMaster
    export WEAKLIB_DIR=${EXASTAR_HOME}/weaklib
    export WEAKLIB_TABLES_DIR=${EXASTAR_HOME}/weaklib-tables
    export THORNADO_MACHINE=beacon_intel
@@ -28,7 +28,7 @@ function set_common(){
    #export LIBOMPTARGET_PLUGIN=LEVEL0
    #export ONEAPI_DEVICE_FILTER=level_zero:gpu
    ##export LIBOMPTARGET_PLUGIN=OPENCL
-   #export LIBOMPTARGET_DEBUG=1
+#   export LIBOMPTARGET_DEBUG=1
    #export EnableImplicitScaling=1
    export ZE_AFFINITY_MASK=0.0
    #export LIBOMPTARGET_PLUGIN_PROFILE=T
@@ -218,14 +218,14 @@ fi
 
 #if action is empty, performance comparison will be done. otherwise there is no performance comparison and just run the app using such as onetrace, vtune etc. so action can be "", "onetrace", "iprof", "vtune", 
 
-#opLevels=(O3)
-#grids=("[8,8,8]")
-#gridNames=("")
-#appNames=(ApplicationDriver)
-#logFiles=(sineWave)
-#CaseNames=(SineWaveStreaming)
-#userOptions=("")
-#gridLines=(85)
+opLevels=(O3)
+grids=("[8,8,8]")
+gridNames=("")
+appNames=(ApplicationDriver)
+logFiles=(sineWave)
+CaseNames=(SineWaveStreaming)
+userOptions=("")
+gridLines=(85)
 
 #opLevels=(O3)
 #grids=("[8,8,8]")
@@ -237,14 +237,14 @@ fi
 #gridLines=(127)
 
 #opLevels=(O0 O1 O2 O3)
-opLevels=(O3)
-grids=("[8,8,8]" "[16,16,16]")
-gridNames=("" "-xN16")
-appNames=(ApplicationDriver ApplicationDriver_Neutrinos)
-logFiles=(sineWave relax)
-CaseNames=(SineWaveStreaming Relaxation)
-userOptions=("" "MICROPHYSICS=WEAKLIB")
-gridLines=(85 127)
+#opLevels=(O3)
+#grids=("[8,8,8]" "[16,16,16]")
+#gridNames=("" "-xN16")
+#appNames=(ApplicationDriver ApplicationDriver_Neutrinos)
+#logFiles=(sineWave relax)
+#CaseNames=(SineWaveStreaming Relaxation)
+#userOptions=("" "MICROPHYSICS=WEAKLIB")
+#gridLines=(85 127)
 
 #grids=("[8,8,8]")
 #gridNames=("")

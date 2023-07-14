@@ -82,7 +82,7 @@ PROGRAM ApplicationDriver
     CASE( 'SineWaveStreaming' )
 
       ! --- Minerbo Closure Only ---
-
+      nX  =[8,8,8]
       nX  =[16,16,16]
       !nX  = [ 16, 16, 16 ]
       !nX  = [ 32, 32, 32 ]

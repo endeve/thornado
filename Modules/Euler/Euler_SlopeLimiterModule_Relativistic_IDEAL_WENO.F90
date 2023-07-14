@@ -97,7 +97,7 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL_WENO
   !$OMP DECLARE TARGET &
   !$OMP   ( UseSlopeLimiter, UseCharacteristicLimiting, &
   !$OMP     UseConservativeCorrection, &
-  !$OMP     BetaTVD, BetaTVB, SlopeTolerance, I_6x6 )
+  !$OMP     BetaTVD, BetaTVB, SlopeTolerance, I_6x6, LegendreX )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
   !$ACC DECLARE CREATE &
   !$ACC   ( UseSlopeLimiter, UseCharacteristicLimiting, &
