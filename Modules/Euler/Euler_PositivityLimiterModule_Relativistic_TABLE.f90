@@ -196,7 +196,7 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER  :: iX1, iX2, iX3, iCF
-    REAL(DP) :: U_q(nDOFX,nCF)
+    REAL(DP) :: U_q(nDOFX,nCF), U_K(nCF), SqrtGm(nDOFX)
 
     IF( nDOFX .EQ. 1 ) RETURN
 
@@ -208,17 +208,27 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      U_q(1:nDOFX,1:nCF) = U(1:nDOFX,iX1,iX2,iX3,1:nCF)
+      U_q = U(:,iX1,iX2,iX3,:)
+
+      SqrtGm = G(:,iX1,iX2,iX3,iGF_SqrtGm)
 
       DO iCF = 1, nCF
 
-        CALL ComputePointValues( U_q(1:nDOFX,iCF), U_PP(1:nPT,iCF) )
+        U_K(iCF) &
+          = SUM( WeightsX_q * U_q(:,iCF) * SqrtGm ) &
+              / SUM( WeightsX_q * SqrtGm )
+
+        CALL ComputePointValues( U_q(:,iCF), U_PP(:,iCF) )
 
       END DO
 
       IF( ANY( U_PP(:,iCF_E) .LT. Zero ) )THEN
 
-        U(:,iX1,iX2,iX3,iCF_E) = SqrtTiny
+        DO iCF = 1, nCF
+
+          U(:,iX1,iX2,iX3,iCF) = U_K(iCF)
+
+        END DO
 
       END IF
 

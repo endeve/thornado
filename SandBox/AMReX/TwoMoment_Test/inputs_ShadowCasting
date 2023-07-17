@@ -1,0 +1,65 @@
+
+
+
+
+DEBUG = 1
+
+thornado.ProgramName = "ShadowCasting"
+thornado.Scheme = "IMEX_PDARS"
+
+thornado.t_end     = 15.0     # Final time
+thornado.dt_wrt    = 1.0e+1      # Write time interval
+thornado.dt_chk    = 1.0e+1      # Time increment to write checkpoint-file
+thornado.nNodes    = 2        # Number of DG nodes in each active dimension
+thornado.nStages    = 2        # Number of DG nodes in each active dimension
+thornado.CFL       = 0.3      # CFL number
+thornado.bcX       = 2 2 00 # Boundary conditions
+thornado.bcZ_TwoMoment = 1 2 2 00 # Boundary conditions
+thornado.swX       = 01 01 00 # Stencil width (nGhostCells) in each dimension remember to change this
+thornado.V_0       = 0.0 0.0 0.0  # three velocity
+thornado.nE        = 1       # Number of Energy Cells
+thornado.swE       = 1
+thornado.bcE       = 1
+thornado.eL        = 0.0           # Lower energy domain size
+thornado.eR        = 1.0           # Lower energy domain size
+thornado.D_0     = 0.0
+thornado.Chi     = 0.0
+thornado.Sigma     = 0.0
+thornado.zoomE     = 1.0
+thornado.nSpecies  = 1
+thornado.iCycleD   = 0010     # MOD this number to display info
+thornado.iCycleW   = -0100     # MOD this number to write plotfile
+thornado.iCycleChk = -1000     # MOD this number to write checkpoint file
+thornado.iRestart  = -1        # Checkpoint-file to restart from. Negative for clean start
+
+
+geometry.coord_sys   = 1             # CYLINDRICAL
+geometry.prob_lo     = 0.0 -5.0 0.0         # Lower energy domain size
+geometry.prob_hi     = 15.0 5.0 6.28318530717959  # High energy domain size
+geometry.is_periodic = 0   0   1
+
+
+amr.n_cell            = 240 200 1 # Number of cells in each dimension
+amr.max_grid_size_x   = 240
+amr.max_grid_size_y   = 200
+#amr.max_grid_size_z   = 1
+#amr.blocking_factor_x = 1
+#amr.blocking_factor_y = 1
+#amr.blocking_factor_z = 1
+amr.ref_ratio          = 2
+amr.max_level         = 0
+amr.UseTiling         = 0
+amr.UseFluxCorrection_TwoMoment = 0
+amr.UseFluxCorrection_Euler = 0
+amr.n_error_buf              = 0
+
+
+
+# Positivity limiter parameters
+PL.UsePositivityLimiter_TwoMoment = 1
+PL.Min_1_TwoMoment                = 1.0e-26
+PL.Min_2_TwoMoment                = 1.0e-26
+
+# Slope limiter parameters
+SL.UseSlopeLimiter_TwoMoment           = 0
+SL.BetaTVD_TwoMoment                   = 1.75e0
