@@ -12,8 +12,7 @@ MODULE ProgramInitializationModule
     nDimsX, nDimsE, nDims, &
     nDOFX,  nDOFE,  nDOF, &
     nNodesX, nNodesE, nNodes, &
-    InitializeProgramHeader, &
-    InitializeProgramHeaderX
+    InitializeProgramHeader
   USE UtilitiesModule, ONLY: &
     InitializeWeights
   USE QuadratureModule, ONLY: &
@@ -172,25 +171,6 @@ CONTAINS
 
     END IF
 
-    ASSOCIATE( U => UnitsDisplay )
-
-    ! --- Quadratures ---
-
-    CALL InitializeQuadratures
-
-    DO iDim = 1, 3
-
-      CALL CreateMesh &
-             ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
-               xL(iDim), xR(iDim), ZoomOption = ZoomX(iDim) )
-
-    END DO
-
-    CALL InitializeProgramHeaderX &
-           ( nX_Option = nX, swX_Option = swX, &
-             bcX_Option = bcX_Option, xL_Option = xL, &
-             xR_Option = xR, zoomX_Option = zoomX )
-
     WRITE(*,'(A5,A17,I1)') &
       '', 'Dimensionality = ', nDims
     WRITE(*,'(A5,A18)') &
@@ -224,6 +204,10 @@ CONTAINS
       '', 'nDOFX = ', nDOFX, '', 'nDOFE = ', nDOFE, '', 'nDOF = ', nDOF
     WRITE(*,*)
 
+    ! --- Quadratures ---
+
+    CALL InitializeQuadratures
+
     ! --- Polynomial Basis ---
 
     CALL InitializePolynomialBasisX_Lagrange
@@ -233,6 +217,8 @@ CONTAINS
     CALL InitializePolynomialBasis_Lagrange
 
     CALL InitializePolynomialBasis_Legendre
+
+    ASSOCIATE( U => UnitsDisplay )
 
     ! --- Spatial Grid ---
 
@@ -254,6 +240,10 @@ CONTAINS
 
     WRITE(*,*)
 
+    CALL CreateMesh &
+           ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
+             xL(iDim), xR(iDim), ZoomOption = ZoomX(iDim) )
+
     WRITE(*,'(A9,A11,I1,A4,ES9.2E2,A1,A,A3,ES9.2E2,A1,A)') &
       '', 'MIN/MAX dx(', iDim, ') = ', &
       MINVAL( MeshX(iDim) % Width(1:nX(iDim)) ) &
@@ -274,6 +264,10 @@ CONTAINS
 
     WRITE(*,*)
 
+    CALL CreateMesh &
+           ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
+             xL(iDim), xR(iDim), ZoomOption = ZoomX(iDim) )
+
     WRITE(*,'(A9,A11,I1,A4,ES9.2E2,A1,A,A3,ES9.2E2,A1,A)') &
       '', 'MIN/MAX dx(', iDim, ') = ', &
       MINVAL( MeshX(iDim) % Width(1:nX(iDim)) ) &
@@ -293,6 +287,10 @@ CONTAINS
       ', ', 'ZoomX(', iDim, ') = ', ZoomX(iDim)
 
     WRITE(*,*)
+
+    CALL CreateMesh &
+           ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
+             xL(iDim), xR(iDim), ZoomOption = ZoomX(iDim) )
 
     WRITE(*,'(A9,A11,I1,A4,ES9.2E2,A1,A,A3,ES9.2E2,A1,A)') &
       '', 'MIN/MAX dx(', iDim, ') = ', &
