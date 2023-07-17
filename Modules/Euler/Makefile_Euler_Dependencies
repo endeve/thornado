@@ -1,6 +1,8 @@
 Euler_ErrorModule.o: \
   KindModule.o \
+  UnitsModule.o \
   UtilitiesModule.o \
+  GeometryFieldsModule.o \
   Euler_ErrorModule.f90
 
 Euler_UtilitiesModule_NonRelativistic.o: \
