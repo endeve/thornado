@@ -44,7 +44,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout), OPTIONAL :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(in)   , OPTIONAL :: MF_uCF(0:)
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     CALL InitializeGravitySolver_XCFC_MF_Poseidon &
            ( MF_uGF, MF_uCF )
@@ -56,7 +56,7 @@ CONTAINS
 
   SUBROUTINE FinalizeGravitySolver_XCFC_MF
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     CALL FinalizeGravitySolver_XCFC_MF_Poseidon
 
@@ -72,7 +72,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:) ! Psi^6 * U
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF_Poseidon &
            ( MF_uGF, MF_uCF, MF_uGS )
@@ -90,7 +90,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCR(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:nLevels-1)
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF_Poseidon &
            ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
@@ -105,7 +105,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGS(0:nLevels-1) ! Gravity Sources
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     CALL ComputeConformalFactor_MF_Poseidon( MF_uGS, MF_uGF )
 
@@ -121,7 +121,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:nLevels-1) ! Psi^6 * U
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:nLevels-1)
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     CALL ComputePressureTensorTrace_XCFC_Euler_MF_Poseidon &
            ( MF_uGF, MF_uCF, MF_uGS )
@@ -139,7 +139,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCR(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:nLevels-1)
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     CALL ComputePressureTensorTrace_XCFC_TwoMoment_MF_Poseidon &
            ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
@@ -154,7 +154,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGS(0:nLevels-1) ! Gravity Sources
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     CALL ComputeGeometry_MF_Poseidon( MF_uGS, MF_uGF )
 
@@ -170,7 +170,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uPF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uAF(0:nLevels-1)
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     CALL InitializeMetric_Euler_MF_Poseidon &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
@@ -189,7 +189,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uPF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uAF(0:nLevels-1)
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     CALL InitializeMetric_TwoMoment_MF_Poseidon &
            ( MF_uGF, MF_uCF, MF_uCR, MF_uPF, MF_uAF )

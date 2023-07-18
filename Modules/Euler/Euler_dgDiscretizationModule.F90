@@ -3621,7 +3621,7 @@ CONTAINS
     END DO
     END DO
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     ! --- Contributions from time-dependent metric ---
 

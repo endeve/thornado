@@ -124,7 +124,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     ComputeGravitationalMass_MF, &
     PopulateMF_uMF
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
   ! --- Poseidon Modules ---
 
@@ -172,7 +172,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout), OPTIONAL :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(in)   , OPTIONAL :: MF_uCF(0:)
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     TYPE(amrex_multifab)  :: MF_uGS    (0:nLevels-1), &
                              MF_uMF    (0:nLevels-1), &
@@ -292,7 +292,7 @@ CONTAINS
 
   SUBROUTINE FinalizeGravitySolver_XCFC_MF_Poseidon
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     CALL Poseidon_Close()
 
@@ -314,7 +314,7 @@ CONTAINS
 
     INTEGER :: iLevel
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     DO iLevel = 0, nLevels-1
 
@@ -376,7 +376,7 @@ CONTAINS
 
     INTEGER :: iLevel
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     DO iLevel = 0, nLevels-1
 
@@ -442,7 +442,7 @@ CONTAINS
     INTEGER, ALLOCATABLE :: ITERATION(:,:,:,:)
     INTEGER, ALLOCATABLE :: iErr     (:,:,:,:)
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     DO iLevel = 0, nLevels-1
 
@@ -657,7 +657,7 @@ CONTAINS
 
     REAL(DP) :: uPF(nPF), Pressure, Psi6
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     DO iLevel = 0, nLevels-1
 
@@ -860,7 +860,7 @@ CONTAINS
     REAL(DP) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     INTEGER  :: iD_N, iD_G1, iD_G2, iD_G3, iE, iN_E, iS, iN_Z
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     ASSOCIATE &
       ( dZ1 => MeshE  % Width )
@@ -1178,7 +1178,7 @@ CONTAINS
     REAL(DP) :: LorentzFactor, V_u_1, V_u_2, V_u_3
     INTEGER  :: iD_N, iD_G1, iD_G2, iD_G3, iE, iN_E, iS, iN_Z
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     ASSOCIATE &
       ( dZ1 => MeshE  % Width )
@@ -1431,7 +1431,7 @@ CONTAINS
 
     INTEGER, PARAMETER :: MAX_ITER = 10
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     DO iLevel = 0, nLevels-1
 
@@ -1588,7 +1588,7 @@ CONTAINS
 
     INTEGER, PARAMETER :: MAX_ITER = 10
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     DO iLevel = 0, nLevels-1
 

@@ -67,7 +67,7 @@ MODULE MF_Euler_TallyModule
     AllocateArray_X, &
     DeallocateArray_X
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
   USE ADM_Mass_Module, ONLY: &
     Calc_ADM_Mass
@@ -102,7 +102,7 @@ MODULE MF_Euler_TallyModule
   REAL(DP)       :: ElectronNumber_OffGrid
   REAL(DP)       :: ElectronNumber_Change
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
   CHARACTER(256) :: ADMMass_FileName
   REAL(DP)       :: ADMMass_Interior
@@ -215,7 +215,7 @@ CONTAINS
 
       CLOSE( FileUnit )
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
       ! --- ADM Mass ---
 
@@ -260,7 +260,7 @@ CONTAINS
     ElectronNumber_OffGrid  = Zero
     ElectronNumber_Change   = Zero
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     ADMMass_Interior = Zero
     ADMMass_Initial  = Zero
@@ -311,7 +311,7 @@ CONTAINS
     Energy_Interior         = Zero
     ElectronNumber_Interior = Zero
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     ADMMass_Interior      = Zero
 
@@ -373,7 +373,7 @@ CONTAINS
 
     END DO ! iLevel = 0, nLevels-1
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     CALL Calc_ADM_Mass( ADMMass_Interior )
 
@@ -389,7 +389,7 @@ CONTAINS
       Energy_Initial         = Energy_Interior
       ElectronNumber_Initial = ElectronNumber_Interior
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
       ADMMass_Initial      = ADMMass_Interior
 
@@ -411,7 +411,7 @@ CONTAINS
       = ElectronNumber_Interior &
           - ElectronNumber_Initial + ElectronNumber_OffGrid
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     ADMMass_Change &
       = ADMMass_Interior &
@@ -445,7 +445,7 @@ CONTAINS
       ElectronNumber_OffGrid &
         = ElectronNumber_OffGrid + dM(iCF_Ne,iLevel)
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
       ADMMass_OffGrid &
         = Zero
@@ -579,7 +579,7 @@ CONTAINS
 
       CLOSE( FileUnit )
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
       ! --- ADM Mass ---
 
@@ -671,7 +671,7 @@ CONTAINS
         ElectronNumber_Change, &
         ''
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
       WRITE(*,*)
       WRITE(*,'(A6,A40,ES14.7E2,x,A)') &

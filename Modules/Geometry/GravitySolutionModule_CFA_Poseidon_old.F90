@@ -48,7 +48,7 @@ MODULE GravitySolutionModule_CFA_Poseidon
     TimersStop_Euler,  &
     Timer_GravitySolver
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
   ! --- Poseidon Modules ---
 
@@ -80,7 +80,7 @@ CONTAINS
 
   SUBROUTINE InitializeGravitySolver_CFA_Poseidon
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     WRITE(*,*)
     WRITE(*,'(A)') &
@@ -113,7 +113,7 @@ CONTAINS
 
   SUBROUTINE FinalizeGravitySolver_CFA_Poseidon
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     CALL Poseidon_Close()
 
@@ -148,7 +148,7 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_GravitySolver )
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     ! --- Set Boundary Values ---
 

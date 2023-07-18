@@ -53,7 +53,7 @@ MODULE GravitySolutionModule_CFA_Poseidon
     TimersStop_Euler,  &
     Timer_GravitySolver
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
   ! --- Poseidon Modules ---
 
@@ -100,7 +100,7 @@ CONTAINS
 
     CALL ComputeGeometryX( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     WRITE(*,*)
     WRITE(*,'(A)') &
@@ -141,7 +141,7 @@ CONTAINS
 
   SUBROUTINE FinalizeGravitySolver_CFA_Poseidon
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     CALL Poseidon_Close()
 
@@ -171,7 +171,7 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_GravitySolver )
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     ! --- Set Boundary Values ---
 
@@ -243,7 +243,7 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_GravitySolver )
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     ! --- Set matter sources with updated conformal factor ---
 
@@ -289,7 +289,7 @@ CONTAINS
 
   ! --- PRIVATE Subroutines ---
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
   SUBROUTINE UpdateConformalFactorAndMetric &
     ( iX_B0, iX_E0, iX_B1, iX_E1, Psi, G )
