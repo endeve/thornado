@@ -86,8 +86,8 @@ MODULE FinalizationModule
     dt_TM, &
     t_old, &
     t_new
-  USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
-    FinalizeGravitySolver_XCFC_Poseidon_MF
+  USE MF_GravitySolutionModule_XCFC, ONLY: &
+    FinalizeGravitySolver_XCFC_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
@@ -115,7 +115,7 @@ CONTAINS
 
     CALL ComputeGray_TwoMoment_MF &
            ( MF_uGF, MF_uPF, MF_uCR, MF_uPR, MF_uGR )
- 
+
     CALL WriteFieldsAMReX_PlotFile &
            ( t_new(0), StepNo, MF_uGF, &
              MF_uGF_Option = MF_uGF, &
@@ -145,7 +145,7 @@ CONTAINS
 
     CALL Finalize_IMEX_RK_MF
 
-    CALL FinalizeGravitySolver_XCFC_Poseidon_MF
+    CALL FinalizeGravitySolver_XCFC_MF
 
     CALL FinalizeTally_TwoMoment_MF
 

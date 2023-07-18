@@ -59,14 +59,15 @@ MODULE MF_TimeSteppingModule_SSPRK
     DEBUG
   USE FluxCorrectionModule_Euler, ONLY: &
     ApplyFluxCorrection_Euler_MF
-  USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
+  USE XCFC_UtilitiesModule, ONLY: &
     nGS, &
-    MultiplyWithPsi6_MF, &
-    ComputeConformalFactorSourcesAndMg_XCFC_MF, &
-    ComputeConformalFactor_Poseidon_MF, &
-    ComputePressureTensorTrace_XCFC_MF, &
-    ComputeGeometry_Poseidon_MF, &
-    swXX
+    swXX, &
+    MultiplyWithPsi6_MF
+  USE MF_GravitySolutionModule_XCFC, ONLY: &
+    ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF, &
+    ComputeConformalFactor_MF, &
+    ComputePressureTensorTrace_XCFC_Euler_MF, &
+    ComputeGeometry_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
@@ -232,10 +233,10 @@ CONTAINS
 
           IF( EvolveGravity )THEN
 
-            CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
+            CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF &
                    ( MF_uGF, MF_U(iS,:), MF_uGS )
 
-            CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+            CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
 
           END IF ! EvolveGravity
 
@@ -255,16 +256,16 @@ CONTAINS
 
           IF( EvolveGravity )THEN
 
-            CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
+            CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF &
                    ( MF_uGF, MF_U(iS,:), MF_uGS )
 
-            CALL ComputeConformalFactor_Poseidon_MF &
+            CALL ComputeConformalFactor_MF &
                    ( MF_uGS, MF_uGF )
 
-            CALL ComputePressureTensorTrace_XCFC_MF &
+            CALL ComputePressureTensorTrace_XCFC_Euler_MF &
                    ( MF_uGF, MF_U(iS,:), MF_uGS )
 
-            CALL ComputeGeometry_Poseidon_MF &
+            CALL ComputeGeometry_MF &
                    ( MF_uGS, MF_uGF )
 
           END IF ! EvolveGravity
@@ -337,10 +338,10 @@ CONTAINS
 
     IF( EvolveGravity )THEN
 
-      CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
+      CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uGS )
 
-      CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+      CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
 
     END IF ! EvolveGravity
 
@@ -360,14 +361,14 @@ CONTAINS
 
     IF( EvolveGravity )THEN
 
-      CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
+      CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uGS )
 
-      CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+      CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
 
-      CALL ComputePressureTensorTrace_XCFC_MF( MF_uGF, MF_uCF, MF_uGS )
+      CALL ComputePressureTensorTrace_XCFC_Euler_MF( MF_uGF, MF_uCF, MF_uGS )
 
-      CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
+      CALL ComputeGeometry_MF( MF_uGS, MF_uGF )
 
       DO iLevel = 0, nLevels-1
 
