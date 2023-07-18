@@ -12,7 +12,7 @@ MODULE TimeSteppingModule_SSPRK
     nDOFX
   USE GeometryFieldsModule, ONLY: &
     iGF_Psi
-  USE GravitySolutionModule_CFA_Poseidon, ONLY: &
+  USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
     ComputeConformalFactor_Poseidon, &
     ComputeGeometry_Poseidon
   USE FluidFieldsModule, ONLY: &
