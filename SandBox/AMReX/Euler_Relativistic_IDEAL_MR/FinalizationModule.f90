@@ -54,8 +54,6 @@ MODULE FinalizationModule
     TimersStop_AMReX, &
     Timer_AMReX_Finalize, &
     FinalizeTimers_AMReX
-  USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
-    FinalizeGravitySolver_XCFC_Poseidon_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -92,8 +90,6 @@ CONTAINS
     CALL ComputeTally_Euler_MF( t_new, MF_uGF, MF_uCF )
 
     CALL FinalizeFluid_SSPRK_MF
-
-    CALL FinalizeGravitySolver_XCFC_Poseidon_MF
 
     CALL FinalizeTally_Euler_MF
 
