@@ -159,6 +159,8 @@ CONTAINS
       ChangeLabel   &
         = 'Change ['   // TRIM( UnitsDisplay % MassLabel ) // ']'
 
+      CALL CheckFileExistenceAndAppend( BaryonicMass_FileName )
+
       OPEN( NEWUNIT = FileUnit, FILE = TRIM( BaryonicMass_FileName ) )
 
       WRITE(FileUnit,'(5(A25,x))') &
@@ -183,6 +185,8 @@ CONTAINS
       ChangeLabel   &
         = 'Change ['   // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
 
+      CALL CheckFileExistenceAndAppend( Energy_FileName )
+
       OPEN( NEWUNIT = FileUnit, FILE = TRIM( Energy_FileName ) )
 
       WRITE(FileUnit,'(5(A25,x))') &
@@ -206,6 +210,8 @@ CONTAINS
         = 'Initial ['  // '' // ']'
       ChangeLabel   &
         = 'Change ['   // '' // ']'
+
+      CALL CheckFileExistenceAndAppend( ElectronNumber_FileName )
 
       OPEN( NEWUNIT = FileUnit, FILE = TRIM( ElectronNumber_FileName ) )
 
@@ -232,6 +238,8 @@ CONTAINS
         = 'Initial ['  // TRIM( UnitsDisplay % MassLabel ) // ']'
       ChangeLabel   &
         = 'Change ['   // TRIM( UnitsDisplay % MassLabel ) // ']'
+
+      CALL CheckFileExistenceAndAppend( ADMMass_FileName )
 
       OPEN( NEWUNIT = FileUnit, FILE = TRIM( ADMMass_FileName ) )
 
@@ -698,6 +706,25 @@ CONTAINS
     END IF
 
   END SUBROUTINE DisplayTally
+
+
+  RECURSIVE SUBROUTINE CheckFileExistenceAndAppend( FileName )
+
+    CHARACTER(LEN=256), INTENT(inout) :: FileName
+
+    LOGICAL :: IsFile
+
+    INQUIRE( FILE = TRIM( FileName ), EXIST = IsFile )
+
+    IF( IsFile )THEN
+
+      WRITE(FileName,'(A,A)') TRIM( FileName ), '_new'
+
+      CALL CheckFileExistenceAndAppend( FileName )
+
+    END IF
+
+  END SUBROUTINE CheckFileExistenceAndAppend
 
 
 END MODULE MF_Euler_TallyModule
