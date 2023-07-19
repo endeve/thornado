@@ -73,8 +73,7 @@ MODULE XCFC_UtilitiesModule
     IsNotLeafElement
   USE InputParsingModule, ONLY: &
     nLevels, &
-    UseTiling, &
-    UseXCFC
+    UseTiling
 
   IMPLICIT NONE
   PRIVATE
@@ -137,8 +136,6 @@ CONTAINS
     INTEGER  :: iX_B0(3), iX_E0(3)
 
     REAL(DP) :: Psi6
-
-    IF( .NOT. UseXCFC ) RETURN
 
     nE = iE_E0 - iE_B0 + 1
 

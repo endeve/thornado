@@ -73,7 +73,6 @@ MODULE  MF_Euler_dgDiscretizationModule
     UseTiling, &
     swX, &
     UseFluxCorrection_Euler, &
-    UseXCFC, &
     DEBUG
   USE FillPatchModule, ONLY: &
     FillPatch
@@ -348,15 +347,12 @@ CONTAINS
       CALL ApplyBoundaryConditions_Euler_MF &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
-
-
       CALL ComputeIncrement_Euler_DG_Explicit &
              ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
                SuppressBC_Option = .TRUE., &
                SurfaceFlux_X1_Option = SurfaceFlux_X1, &
                SurfaceFlux_X2_Option = SurfaceFlux_X2, &
-               SurfaceFlux_X3_Option = SurfaceFlux_X3, &
-               UseXCFC_Option = UseXCFC )
+               SurfaceFlux_X3_Option = SurfaceFlux_X3 )
 
       CALL thornado2amrex_X &
              ( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, duCF, dU )

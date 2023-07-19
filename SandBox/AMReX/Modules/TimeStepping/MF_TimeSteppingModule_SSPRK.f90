@@ -229,20 +229,20 @@ CONTAINS
 
         IF( iS .NE. 1 )THEN
 
-          CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
-
           IF( EvolveGravity )THEN
+
+            CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
 
             CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF &
                    ( MF_uGF, MF_U(iS,:), MF_uGS )
 
             CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
 
+            CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
+
           END IF ! EvolveGravity
 
           CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_U(iS,:) )
-
-          CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
           CALL ApplySlopeLimiter_Euler_MF &
                  ( MF_uGF, MF_U(iS,:), MF_uDF )
@@ -250,11 +250,11 @@ CONTAINS
           CALL ApplyPositivityLimiter_Euler_MF &
                  ( MF_uGF, MF_U(iS,:), MF_uDF )
 
-          CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
-
           CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_U(iS,:) )
 
           IF( EvolveGravity )THEN
+
+            CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
 
             CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF &
                    ( MF_uGF, MF_U(iS,:), MF_uGS )
@@ -268,14 +268,15 @@ CONTAINS
             CALL ComputeGeometry_MF &
                    ( MF_uGS, MF_uGF )
 
-          END IF ! EvolveGravity
+            CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
-          CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
+          END IF ! EvolveGravity
 
         END IF ! iS .NE. 1
 
         CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_U(iS,:) )
 
+        ! Come in with U, leave with \psi^6 * dU
         CALL ComputeIncrement_Euler_MF &
                ( MF_uGF, MF_U(iS,:), MF_uDF, MF_D(iS,:) )
 
@@ -334,20 +335,20 @@ CONTAINS
 
     END DO
 
-    CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
-
     IF( EvolveGravity )THEN
+
+      CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
 
       CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uGS )
 
       CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
 
+      CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
+
     END IF ! EvolveGravity
 
     CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
-
-    CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
     CALL ApplySlopeLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
@@ -355,11 +356,11 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
 
-    CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
-
     CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
 
     IF( EvolveGravity )THEN
+
+      CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
 
       CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uGS )
@@ -376,11 +377,11 @@ CONTAINS
 
       END DO
 
+      CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
+
     END IF ! EvolveGravity
 
     CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
-
-    CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
     CALL IncrementOffGridTally_Euler_MF( dM_OffGrid_Euler )
 

@@ -159,7 +159,7 @@ CONTAINS
 
   SUBROUTINE ComputeIncrement_TwoMoment_Explicit &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
-      Verbose_Option, SuppressBC_Option, UseXCFC_Option, &
+      Verbose_Option, SuppressBC_Option, &
       SurfaceFlux_X1_Option, &
       SurfaceFlux_X2_Option, &
       SurfaceFlux_X3_Option )
@@ -186,8 +186,6 @@ CONTAINS
       Verbose_Option
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
-    LOGICAL,  INTENT(in), OPTIONAL :: &
-      UseXCFC_Option
     REAL(DP), INTENT(out), OPTIONAL :: &
       SurfaceFlux_X1_Option(:,:,:,:,:,:,:), &
       SurfaceFlux_X2_Option(:,:,:,:,:,:,:), &
@@ -222,17 +220,9 @@ CONTAINS
     INTEGER :: iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iCR, iS
     LOGICAL :: Verbose
     LOGICAL  :: SuppressBC
-    LOGICAL  :: UseXCFC
     REAL(DP) :: tau(nDOFX,iZ_B1(2):iZ_E1(2), &
                           iZ_B1(3):iZ_E1(3), &
                           iZ_B1(4):iZ_E1(4))
-
-
-    UseXCFC = .FALSE.
-    IF( PRESENT( UseXCFC_Option ) ) &
-      UseXCFC = UseXCFC_Option
-
-
 
     SuppressBC = .FALSE.
     IF( PRESENT( SuppressBC_Option ) )THEN
@@ -262,43 +252,19 @@ CONTAINS
              ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
     END IF
 
-    IF( UseXCFC )THEN
+    DO iZ4 = iZ_B1(4), iZ_E1(4)
+    DO iZ3 = iZ_B1(3), iZ_E1(3)
+    DO iZ2 = iZ_B1(2), iZ_E1(2)
 
-      DO iZ4 = iZ_B1(4), iZ_E1(4)
-      DO iZ3 = iZ_B1(3), iZ_E1(3)
-      DO iZ2 = iZ_B1(2), iZ_E1(2)
+      DO iNodeX = 1, nDOFX
 
-        DO iNodeX = 1, nDOFX
-
-          tau(iNodeX,iZ2,iZ3,iZ4) = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Psi)**6
-
-        END DO
+        tau(iNodeX,iZ2,iZ3,iZ4) = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Psi)**6
 
       END DO
-      END DO
-      END DO
 
-    ELSE
-
-      DO iZ4 = iZ_B1(4), iZ_E1(4)
-      DO iZ3 = iZ_B1(3), iZ_E1(3)
-      DO iZ2 = iZ_B1(2), iZ_E1(2)
-
-        DO iNodeX = 1, nDOFX
-
-          tau(iNodeX,iZ2,iZ3,iZ4) = One
-
-        END DO
-
-      END DO
-      END DO
-      END DO
-
-    END IF
-
-
-
-
+    END DO
+    END DO
+    END DO
 
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
@@ -984,7 +950,7 @@ CONTAINS
         SurfaceFlux_X1(iNodeZ_X1,iZ1,iZ2,iZ3,iZ4,iS,iCR) &
           = G_Alpha_F(iX_F) * SqrtGm_F(iX_F) &
           * NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2)
-        
+
         NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
           = dZ1(iZ1) * dZ3(iZ3) * dZ4(iZ4) &
               * Weights_X1(iNodeZ_X1) * GE(iNodeE,iZ1,iGE_Ep2) &
@@ -992,10 +958,10 @@ CONTAINS
               * NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2)
       END DO
       ! --- Energy ---
-      
+
       vsq = uV1_F(iX_F)**2 * Gm_dd_11_F(iX_F) &
           + uV2_F(iX_F)**2 * Gm_dd_22_F(iX_F) &
-          + uV3_F(iX_F)**2 * Gm_dd_33_F(iX_F) 
+          + uV3_F(iX_F)**2 * Gm_dd_33_F(iX_F)
 
       W = 1.0_DP / SQRT( 1.0_DP - vsq )
 
@@ -1897,7 +1863,7 @@ CONTAINS
 
       vsq = uV1_F(iX_F)**2 * Gm_dd_11_F(iX_F) &
           + uV2_F(iX_F)**2 * Gm_dd_22_F(iX_F) &
-          + uV3_F(iX_F)**2 * Gm_dd_33_F(iX_F) 
+          + uV3_F(iX_F)**2 * Gm_dd_33_F(iX_F)
 
       W = 1.0_DP / SQRT( 1.0_DP - vsq )
 
@@ -2783,8 +2749,8 @@ CONTAINS
               ( uCR_X3_L(iCR), uCR_X3_R(iCR), Flux_L(iCR), Flux_R(iCR), One )
 
         SurfaceFlux_X3(iNodeZ_X3,iZ1,iZ2,iZ3,iZ4,iS,iCR) &
-          = G_Alpha_F(iX_F) * SqrtGm_F(iX_F) & 
-          * NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ4) 
+          = G_Alpha_F(iX_F) * SqrtGm_F(iX_F) &
+          * NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ4)
 
         NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ4) &
           = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) &
@@ -2797,7 +2763,7 @@ CONTAINS
 
       vsq = uV1_F(iX_F)**2 * Gm_dd_11_F(iX_F) &
           + uV2_F(iX_F)**2 * Gm_dd_22_F(iX_F) &
-          + uV3_F(iX_F)**2 * Gm_dd_33_F(iX_F) 
+          + uV3_F(iX_F)**2 * Gm_dd_33_F(iX_F)
 
       W = 1.0_DP / SQRT( 1.0_DP - vsq )
 
@@ -3739,7 +3705,7 @@ CONTAINS
         = EdgeEnergyCubed &
             * ( NumericalFlux(iNodeZ_E,iCR_G3,iZ2,iZ3,iZ4,iS,iZ1) &
                 + W * Gm_dd_33_K(iX_F) * uV3_K(iX_F) &
-                    * NumericalFlux(iNodeZ_E,iCR_N,iZ2,iZ3,iZ4,iS,iZ1) ) 
+                    * NumericalFlux(iNodeZ_E,iCR_N,iZ2,iZ3,iZ4,iS,iZ1) )
 
 
 
@@ -4683,7 +4649,7 @@ CONTAINS
         B_d_X1(3) = GX_F(iNodeX,iGF_Gm_dd_33,iX2,iX3,iX1) * B_u_X1(3)
 
 
-   
+
         U_d_X1(iNodeX,1,iX2,iX3,iX1) = W_X1 * ( - A_X1 + B_d_X1(1) * V_u_X1(1) &
                                      + B_d_X1(2) * V_u_X1(2) + B_d_X1(3) * V_u_X1(3) )
 
@@ -6219,13 +6185,13 @@ CONTAINS
 
 
         G_munu_F(iNodeX,5,iX2,iX3,iX1) &
-          = MAX( G_munu_F(iNodeX,8,iX2,iX3,iX1)**2, SqrtTiny ) 
+          = MAX( G_munu_F(iNodeX,8,iX2,iX3,iX1)**2, SqrtTiny )
 
         G_munu_F(iNodeX,6,iX2,iX3,iX1) &
-          = MAX( G_munu_F(iNodeX,9,iX2,iX3,iX1)**2, SqrtTiny ) 
+          = MAX( G_munu_F(iNodeX,9,iX2,iX3,iX1)**2, SqrtTiny )
 
         G_munu_F(iNodeX,7,iX2,iX3,iX1) &
-          = MAX( G_munu_F(iNodeX,10,iX2,iX3,iX1)**2, SqrtTiny ) 
+          = MAX( G_munu_F(iNodeX,10,iX2,iX3,iX1)**2, SqrtTiny )
 
         H_munu_F(iNodeX,1,iX2,iX3,iX1) = WeightsX_X1(iNodeX) * G_munu_F(iNodeX,1,iX2,iX3,iX1)
 
