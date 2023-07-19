@@ -3323,7 +3323,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
 
-    INTEGER :: iNX, iX1, iX2, iX3, iCF, ErrorExists
+    INTEGER :: iNX, iX1, iX2, iX3, ErrorExists
 
     REAL(DP) :: P(nPF)
     REAL(DP) :: Pressure
@@ -3348,8 +3348,6 @@ CONTAINS
     INTEGER :: iErr     (nDOFX,iX_B0(1):iX_E0(1), &
                                iX_B0(2):iX_E0(2), &
                                iX_B0(3):iX_E0(3))
-
-    REAL(DP) :: GradPsiF(nDOFX)
 
     CALL TimersStart_Euler( Timer_Euler_DG_CopyIn )
 
@@ -3608,14 +3606,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-    ! --- GradPsiF ---
-
-    GradPsiF = Zero
-
-    CALL DGEMV &
-           ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-             dGdX1(:,iGF_Psi,1,1,iX_E0(1)), 1, Zero, GradPsiF(1:nDOFX_X1), 1 )
 
 #endif
 
@@ -4115,7 +4105,7 @@ CONTAINS
 
     ! --- Conserved Fluid Fields ---
 
-    INTEGER :: iNX, iX1, iX2, iX3, iCF
+    INTEGER :: iNX, iX1, iX2, iX3
     INTEGER :: nXP(3), nXP_X(3), nX_X, nNodesX_X, iX_F, iX_V
 
     nXP       = iXP_E0 - iXP_B0 + 1
