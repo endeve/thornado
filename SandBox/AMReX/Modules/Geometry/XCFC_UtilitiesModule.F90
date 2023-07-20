@@ -147,6 +147,11 @@ CONTAINS
 
       CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
 
+#if defined( THORNADO_OMP )
+      !$OMP PARALLEL &
+      !$OMP PRIVATE( BX, MFI, uGF, U, FineMask, iNX, iComp, iX_B0, iX_E0, Psi6 )
+#endif
+
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
@@ -196,6 +201,10 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
+#if defined( THORNADO_OMP )
+      !$OMP END PARALLEL
+#endif
+
       CALL DestroyFineMask( iMF_FineMask )
 
     END DO ! iLevel = 0, nLevels-1
@@ -220,9 +229,15 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
-
       CALL CreateMesh_MF( iLevel, MeshX )
+
+#if defined( THORNADO_OMP )
+      !$OMP PARALLEL &
+      !$OMP PRIVATE( BX, MFI, uMF, uGF, iNX1, iNX2, &
+      !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, X1, X2, Psi, h1, h2, h3 )
+#endif
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
@@ -270,9 +285,13 @@ CONTAINS
 
       END DO ! WHILE( MFI % next() )
 
-      CALL DestroyMesh_MF( MeshX )
-
       CALL amrex_mfiter_destroy( MFI )
+
+#if defined( THORNADO_OMP )
+      !$OMP END PARALLEL
+#endif
+
+      CALL DestroyMesh_MF( MeshX )
 
     END DO ! iLevel = 0, nLevels-1
 
@@ -294,6 +313,11 @@ CONTAINS
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
     DO iLevel = 0, nLevels-1
+
+#if defined( THORNADO_OMP )
+      !$OMP PARALLEL &
+      !$OMP PRIVATE( BX, MFI, uMF, uGF, iX_B0, iX_E0, iX_B1, iX_E1 )
+#endif
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -346,6 +370,10 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
+#if defined( THORNADO_OMP )
+      !$OMP END PARALLEL
+#endif
+
     END DO ! iLevel = 0, nLevels-1
 
   END SUBROUTINE UpdateGeometry_MF
@@ -370,6 +398,11 @@ CONTAINS
     DO iLevel = 0, nLevels-1
 
       CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
+
+#if defined( THORNADO_OMP )
+      !$OMP PARALLEL &
+      !$OMP PRIVATE( BX, MFI, uGF, uMF, FineMask, iX_B0, iX_E0 )
+#endif
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -424,6 +457,12 @@ CONTAINS
 
       END DO ! WHILE( MFI % next() )
 
+      CALL amrex_mfiter_destroy( MFI )
+
+#if defined( THORNADO_OMP )
+      !$OMP END PARALLEL
+#endif
+
     END DO ! iLevel = 0, nLevels-1
 
   END SUBROUTINE PopulateMF_uMF
@@ -440,7 +479,7 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
 
     INTEGER  :: iNX, iX1, iX2, iX3, iX_B0(3), iX_E0(3), iLevel
-    REAL(DP) :: d3X
+    REAL(DP) :: d3X, GravitationalMass_OMP
 
     ! --- Assuming 1D spherical symmetry ---
 
@@ -448,9 +487,17 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_mfiter_build( MFI, MF_uGS(iLevel), tiling = UseTiling )
-
       CALL CreateMesh_MF( iLevel, MeshX )
+
+      GravitationalMass_OMP = Zero
+
+#if defined( THORNADO_OMP )
+      !$OMP PARALLEL &
+      !$OMP PRIVATE( BX, MFI, uGS, iX_B0, iX_E0, d3X ) &
+      !$OMP REDUCTION( +:GravitationalMass_OMP )
+#endif
+
+      CALL amrex_mfiter_build( MFI, MF_uGS(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
@@ -470,8 +517,8 @@ CONTAINS
                          * MeshX(2) % Width(iX2) &
                          * MeshX(3) % Width(iX3)
 
-          GravitationalMass &
-            = GravitationalMass + d3X &
+          GravitationalMass_OMP &
+            = GravitationalMass_OMP + d3X &
                 * WeightsX_q(iNX) * uGS(iX1,iX2,iX3,nDOFX*(iGS_Mg-1)+iNX)
 
         END DO
@@ -481,9 +528,15 @@ CONTAINS
 
       END DO ! WHILE( MFI % next() )
 
-      CALL DestroyMesh_MF( MeshX )
-
       CALL amrex_mfiter_destroy( MFI )
+
+#if defined( THORNADO_OMP )
+      !$OMP END PARALLEL
+#endif
+
+      GravitationalMass = GravitationalMass_OMP
+
+      CALL DestroyMesh_MF( MeshX )
 
     END DO ! iLevel = 0, nLevels-1
 
@@ -520,6 +573,11 @@ CONTAINS
     INTEGER :: jNX1, jNX
 
     DO iLevel = 0, nLevels-1
+
+#if defined( THORNADO_OMP )
+      !$OMP PARALLEL &
+      !$OMP PRIVATE( BX, MFI, uGF, iX_B0, iX_E0, iNX, jNX, jNX1 )
+#endif
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -602,6 +660,10 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
+#if defined( THORNADO_OMP )
+      !$OMP END PARALLEL
+#endif
+
     END DO ! iLevel = 0, nLevels-1
 
   END SUBROUTINE ApplyBoundaryConditions_X1_Inner
@@ -623,6 +685,11 @@ CONTAINS
     INTEGER :: iNX
 
     DO iLevel = 0, nLevels-1
+
+#if defined( THORNADO_OMP )
+      !$OMP PARALLEL &
+      !$OMP PRIVATE( BX, MFI, G_K, G_F, uGF, iX_B0, iX_E0, nX1_X )
+#endif
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -686,6 +753,10 @@ CONTAINS
       END DO ! WHILE( MFI % next() )
 
       CALL amrex_mfiter_destroy( MFI )
+
+#if defined( THORNADO_OMP )
+      !$OMP END PARALLEL
+#endif
 
     END DO ! iLevel = 0, nLevels-1
 

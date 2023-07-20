@@ -86,31 +86,30 @@ MODULE MF_Euler_TallyModule
 
   CHARACTER(256) :: BaryonicMass_FileName
   REAL(DP)       :: BaryonicMass_Interior
+  REAL(DP)       :: BaryonicMass_Interior_OMP
   REAL(DP)       :: BaryonicMass_Initial
   REAL(DP)       :: BaryonicMass_OffGrid
   REAL(DP)       :: BaryonicMass_Change
 
   CHARACTER(256) :: Energy_FileName
   REAL(DP)       :: Energy_Interior
+  REAL(DP)       :: Energy_Interior_OMP
   REAL(DP)       :: Energy_Initial
   REAL(DP)       :: Energy_OffGrid
   REAL(DP)       :: Energy_Change
 
   CHARACTER(256) :: ElectronNumber_FileName
   REAL(DP)       :: ElectronNumber_Interior
+  REAL(DP)       :: ElectronNumber_Interior_OMP
   REAL(DP)       :: ElectronNumber_Initial
   REAL(DP)       :: ElectronNumber_OffGrid
   REAL(DP)       :: ElectronNumber_Change
-
-#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
   CHARACTER(256) :: ADMMass_FileName
   REAL(DP)       :: ADMMass_Interior
   REAL(DP)       :: ADMMass_Initial
   REAL(DP)       :: ADMMass_OffGrid
   REAL(DP)       :: ADMMass_Change
-
-#endif
 
 CONTAINS
 
@@ -268,14 +267,10 @@ CONTAINS
     ElectronNumber_OffGrid  = Zero
     ElectronNumber_Change   = Zero
 
-#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
-
     ADMMass_Interior = Zero
     ADMMass_Initial  = Zero
     ADMMass_OffGrid  = Zero
     ADMMass_Change   = Zero
-
-#endif
 
   END SUBROUTINE InitializeTally_Euler_MF
 
@@ -305,6 +300,10 @@ CONTAINS
 
     TYPE(amrex_imultifab) :: iMF_FineMask
 
+    TYPE(MeshType) :: MeshX(3)
+    INTEGER        :: iNX, iX1, iX2, iX3
+    REAL(DP)       :: d3X
+
     IF( SuppressTally ) RETURN
 
     SetInitialValues = .FALSE.
@@ -318,16 +317,26 @@ CONTAINS
     BaryonicMass_Interior   = Zero
     Energy_Interior         = Zero
     ElectronNumber_Interior = Zero
-
-#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
-
-    ADMMass_Interior      = Zero
-
-#endif
+    ADMMass_Interior        = Zero
 
     DO iLevel = 0, nLevels-1
 
       CALL CreateFineMask( iLevel, iMF_FineMask, MF_uCF % BA, MF_uCF % DM )
+
+      CALL CreateMesh_MF( iLevel, MeshX )
+
+      BaryonicMass_Interior_OMP   = Zero
+      Energy_Interior_OMP         = Zero
+      ElectronNumber_Interior_OMP = Zero
+
+#if defined( THORNADO_OMP )
+      !$OMP PARALLEL &
+      !$OMP PRIVATE( iX_B0, iX_E0, iX_B1, iX_E1, iLo_MF, &
+      !$OMP          BX, MFI, FineMask, uGF, uCF, G, U, d3X ) &
+      !$OMP REDUCTION( +:BaryonicMass_Interior_OMP, &
+      !$OMP              Energy_Interior_OMP, &
+      !$OMP              ElectronNumber_Interior_OMP )
+#endif
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -360,8 +369,42 @@ CONTAINS
         CALL amrex2thornado_X( nGF, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uGF, G )
         CALL amrex2thornado_X( nCF, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uCF, U )
 
-        CALL ComputeTally_Euler &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, FineMask, iLevel )
+        d3X =   MeshX(1) % Width(iX_B0(1)) &
+              * MeshX(2) % Width(iX_B0(2)) &
+              * MeshX(3) % Width(iX_B0(3))
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1       , nDOFX
+
+          IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
+
+          BaryonicMass_Interior_OMP &
+            = BaryonicMass_Interior_OMP &
+                + d3X &
+                    * WeightsX_q(iNX) &
+                    * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                    * U(iNX,iX1,iX2,iX3,iCF_D)
+
+          Energy_Interior_OMP &
+            = Energy_Interior_OMP &
+                + d3X &
+                    * WeightsX_q(iNX) &
+                    * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                    * U(iNX,iX1,iX2,iX3,iCF_E)
+
+          ElectronNumber_Interior_OMP &
+            = ElectronNumber_Interior_OMP &
+                + d3X &
+                    * WeightsX_q(iNX) &
+                    * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                    * U(iNX,iX1,iX2,iX3,iCF_Ne)
+
+        END DO
+        END DO
+        END DO
+        END DO
 
         CALL DeallocateArray_X &
                ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
@@ -376,6 +419,19 @@ CONTAINS
       END DO ! WHILE( MFI % next() )
 
       CALL amrex_mfiter_destroy( MFI )
+
+#if defined( THORNADO_OMP )
+      !$OMP END PARALLEL
+#endif
+
+      BaryonicMass_Interior &
+        = BaryonicMass_Interior   + BaryonicMass_Interior_OMP
+      Energy_Interior &
+        = Energy_Interior         + Energy_Interior_OMP
+      ElectronNumber_Interior &
+        = ElectronNumber_Interior + ElectronNumber_Interior_OMP
+
+      CALL DestroyMesh_MF( MeshX )
 
       CALL DestroyFineMask( iMF_FineMask )
 
@@ -399,7 +455,7 @@ CONTAINS
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
-      ADMMass_Initial      = ADMMass_Interior
+      ADMMass_Initial = ADMMass_Interior
 
 #endif
 
@@ -473,66 +529,6 @@ CONTAINS
 
 
   ! --- PRIVATE Subroutines ---
-
-
-  SUBROUTINE ComputeTally_Euler &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, FineMask, iLevel )
-
-    INTEGER,  INTENT(in) :: &
-      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLevel
-    REAL(DP), INTENT(in) :: &
-      G(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
-    REAL(DP), INTENT(in) :: &
-      U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
-    INTEGER , INTENT(in) :: &
-      FineMask(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-
-    TYPE(MeshType) :: MeshX(3)
-    INTEGER        :: iNX, iX1, iX2, iX3
-    REAL(DP)       :: d3X
-
-    CALL CreateMesh_MF( iLevel, MeshX )
-
-    d3X =   MeshX(1) % Width(iX_B0(1)) &
-          * MeshX(2) % Width(iX_B0(2)) &
-          * MeshX(3) % Width(iX_B0(3))
-
-    CALL DestroyMesh_MF( MeshX )
-
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNX = 1       , nDOFX
-
-      IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
-
-      BaryonicMass_Interior &
-        = BaryonicMass_Interior &
-            + d3X &
-                * WeightsX_q(iNX) &
-                * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                * U(iNX,iX1,iX2,iX3,iCF_D)
-
-      Energy_Interior &
-        = Energy_Interior &
-            + d3X &
-                * WeightsX_q(iNX) &
-                * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                * U(iNX,iX1,iX2,iX3,iCF_E)
-
-      ElectronNumber_Interior &
-        = ElectronNumber_Interior &
-            + d3X &
-                * WeightsX_q(iNX) &
-                * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                * U(iNX,iX1,iX2,iX3,iCF_Ne)
-
-    END DO
-    END DO
-    END DO
-    END DO
-
-  END SUBROUTINE ComputeTally_Euler
 
 
   SUBROUTINE WriteTally_Euler( Time )

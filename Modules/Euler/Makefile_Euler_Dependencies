@@ -122,7 +122,7 @@ Euler_PositivityLimiterModule_Relativistic_TABLE.o: \
   UnitsModule.o \
   TimersModule_Euler.o \
   Euler_ErrorModule.o \
-  Euler_PositivityLimiterModule_Relativistic_TABLE.f90
+  Euler_PositivityLimiterModule_Relativistic_TABLE.F90
 
 Euler_PositivityLimiterModule.o: \
   KindModule.o \

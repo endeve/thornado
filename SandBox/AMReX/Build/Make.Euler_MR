@@ -3,11 +3,11 @@
 VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/Euler_MR
 f90EXE_sources  += MF_Euler_BoundaryConditionsModule.f90
 F90EXE_sources  += MF_Euler_dgDiscretizationModule.F90
-f90EXE_sources  += MF_Euler_PositivityLimiterModule.f90
-f90EXE_sources  += MF_Euler_SlopeLimiterModule.f90
+F90EXE_sources  += MF_Euler_PositivityLimiterModule.F90
+F90EXE_sources  += MF_Euler_SlopeLimiterModule.F90
 F90EXE_sources  += MF_Euler_TallyModule.F90
 f90EXE_sources  += MF_Euler_TimersModule.f90
-f90EXE_sources  += MF_Euler_UtilitiesModule.f90
+F90EXE_sources  += MF_Euler_UtilitiesModule.F90
 
 # THORNADO_DIR/Modules/Euler
 
@@ -32,6 +32,6 @@ F90EXE_sources  += Euler_SlopeLimiterModule.F90
 f90EXE_sources  += Euler_PositivityLimiterModule_NonRelativistic_IDEAL.f90
 F90EXE_sources  += Euler_PositivityLimiterModule_NonRelativistic_TABLE.F90
 F90EXE_sources  += Euler_PositivityLimiterModule_Relativistic_IDEAL.F90
-f90EXE_sources  += Euler_PositivityLimiterModule_Relativistic_TABLE.f90
+F90EXE_sources  += Euler_PositivityLimiterModule_Relativistic_TABLE.F90
 F90EXE_sources  += Euler_PositivityLimiterModule.F90
 F90EXE_sources  += Euler_MeshRefinementModule.F90

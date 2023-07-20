@@ -204,6 +204,10 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_PositivityLimiter )
 
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( U_q, SqrtGm, U_K, U_PP )
+#endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)

@@ -277,6 +277,14 @@ CONTAINS
 
     END DO
 
+! #if defined( THORNADO_OMP )
+!     !$OMP PARALLEL &
+!     !$OMP PRIVATE( MFI, BX, uGF, uCF, uDF, duCF, G, U, D, dU, &
+!     !$OMP          uSurfaceFlux_X1, uSurfaceFlux_X2, uSurfaceFlux_X3, &
+!     !$OMP           SurfaceFlux_X1,  SurfaceFlux_X2,  SurfaceFlux_X3, &
+!     !$OMP           iX_B0, iX_E0, iX_B1, iX_E1, iLo_MF, Edge_Map )
+! #endif
+
     CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
     DO WHILE( MFI % next() )
@@ -432,6 +440,10 @@ CONTAINS
     END DO ! MFI
 
     CALL amrex_mfiter_destroy( MFI )
+
+! #if defined( THORNADO_OMP )
+!     !$OMP END PARALLEL
+! #endif
 
     CALL amrex_parallel_reduce_sum( OffGridFlux_Euler_MF(:,iLevel), nCF )
 
