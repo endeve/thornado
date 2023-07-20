@@ -84,32 +84,34 @@ MODULE MF_Euler_TallyModule
 
   LOGICAL :: SuppressTally
 
-  CHARACTER(256) :: BaryonicMass_FileName
-  REAL(DP)       :: BaryonicMass_Interior
-  REAL(DP)       :: BaryonicMass_Interior_OMP
-  REAL(DP)       :: BaryonicMass_Initial
-  REAL(DP)       :: BaryonicMass_OffGrid
-  REAL(DP)       :: BaryonicMass_Change
+  INTEGER, PARAMETER :: SL = 256
 
-  CHARACTER(256) :: Energy_FileName
-  REAL(DP)       :: Energy_Interior
-  REAL(DP)       :: Energy_Interior_OMP
-  REAL(DP)       :: Energy_Initial
-  REAL(DP)       :: Energy_OffGrid
-  REAL(DP)       :: Energy_Change
+  CHARACTER(SL) :: BaryonicMass_FileName
+  REAL(DP)      :: BaryonicMass_Interior
+  REAL(DP)      :: BaryonicMass_Interior_OMP
+  REAL(DP)      :: BaryonicMass_Initial
+  REAL(DP)      :: BaryonicMass_OffGrid
+  REAL(DP)      :: BaryonicMass_Change
 
-  CHARACTER(256) :: ElectronNumber_FileName
-  REAL(DP)       :: ElectronNumber_Interior
-  REAL(DP)       :: ElectronNumber_Interior_OMP
-  REAL(DP)       :: ElectronNumber_Initial
-  REAL(DP)       :: ElectronNumber_OffGrid
-  REAL(DP)       :: ElectronNumber_Change
+  CHARACTER(SL) :: Energy_FileName
+  REAL(DP)      :: Energy_Interior
+  REAL(DP)      :: Energy_Interior_OMP
+  REAL(DP)      :: Energy_Initial
+  REAL(DP)      :: Energy_OffGrid
+  REAL(DP)      :: Energy_Change
 
-  CHARACTER(256) :: ADMMass_FileName
-  REAL(DP)       :: ADMMass_Interior
-  REAL(DP)       :: ADMMass_Initial
-  REAL(DP)       :: ADMMass_OffGrid
-  REAL(DP)       :: ADMMass_Change
+  CHARACTER(SL) :: ElectronNumber_FileName
+  REAL(DP)      :: ElectronNumber_Interior
+  REAL(DP)      :: ElectronNumber_Interior_OMP
+  REAL(DP)      :: ElectronNumber_Initial
+  REAL(DP)      :: ElectronNumber_OffGrid
+  REAL(DP)      :: ElectronNumber_Change
+
+  CHARACTER(SL) :: ADMMass_FileName
+  REAL(DP)      :: ADMMass_Interior
+  REAL(DP)      :: ADMMass_Initial
+  REAL(DP)      :: ADMMass_OffGrid
+  REAL(DP)      :: ADMMass_Change
 
 CONTAINS
 
@@ -122,11 +124,11 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
       BaseFileName_Option
 
-    CHARACTER(256) :: BaseFileName
-    INTEGER        :: FileUnit
+    CHARACTER(SL) :: BaseFileName
+    INTEGER       :: FileUnit
 
-    CHARACTER(256) :: TimeLabel
-    CHARACTER(256) :: InteriorLabel, InitialLabel, OffGridLabel, ChangeLabel
+    CHARACTER(SL) :: TimeLabel
+    CHARACTER(SL) :: InteriorLabel, InitialLabel, OffGridLabel, ChangeLabel
 
     SuppressTally = .FALSE.
     IF( PRESENT( SuppressTally_Option ) ) &
@@ -704,19 +706,39 @@ CONTAINS
   END SUBROUTINE DisplayTally
 
 
-  RECURSIVE SUBROUTINE CheckFileExistenceAndAppend( FileName )
+  RECURSIVE SUBROUTINE CheckFileExistenceAndAppend( FileName, IntSuffix_Option )
 
-    CHARACTER(LEN=256), INTENT(inout) :: FileName
+    CHARACTER(LEN=SL), INTENT(inout) :: FileName
+    INTEGER          , INTENT(inout), OPTIONAL :: IntSuffix_Option
 
     LOGICAL :: IsFile
+    INTEGER :: IntSuffix
+    INTEGER :: SL_T
+
+    IntSuffix = 1
+    IF( PRESENT( IntSuffix_Option ) ) &
+      IntSuffix = IntSuffix_Option
+
+    SL_T = LEN( TRIM( FileName ) )
 
     INQUIRE( FILE = TRIM( FileName ), EXIST = IsFile )
 
     IF( IsFile )THEN
 
-      WRITE(FileName,'(A,A)') TRIM( FileName ), '_new'
+      IF( FileName(SL_T-3:SL_T) .EQ. '.dat' )THEN
 
-      CALL CheckFileExistenceAndAppend( FileName )
+        WRITE(FileName,'(A,A,I2.2)') TRIM( FileName ), '_', IntSuffix
+
+      ELSE
+
+        WRITE(FileName(SL_T-1:SL_T),'(I2.2)') IntSuffix
+
+      END IF
+
+      IntSuffix = IntSuffix + 1
+
+      CALL CheckFileExistenceAndAppend &
+             ( FileName, IntSuffix_Option = IntSuffix )
 
     END IF
 
