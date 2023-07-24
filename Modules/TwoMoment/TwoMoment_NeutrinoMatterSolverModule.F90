@@ -2103,7 +2103,7 @@ CONTAINS
     REAL(DP) :: SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE &
+    !$OMP TARGET TEAMS DISTRIBUTE num_teams(nX_G) &
     !$OMP PRIVATE( vDotV, SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
     !$OMP          V_d_1, V_d_2, V_d_3, Ef )
 #elif defined( THORNADO_OACC   )
@@ -2647,7 +2647,7 @@ CONTAINS
     REAL(DP) :: SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE &
+    !$OMP TARGET TEAMS DISTRIBUTE num_teams(nX_G) &
     !$OMP PRIVATE( SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
     !$OMP          V_d_1, V_d_2, V_d_3 )
 #elif defined( THORNADO_OACC   )
@@ -2677,7 +2677,7 @@ CONTAINS
         SUM_V3 = Zero
 
 #if   defined( THORNADO_OMP_OL )
-        !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+        !$OMP PARALLEL DO COLLAPSE(2) &
         !$OMP PRIVATE( vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
         !$OMP          FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
         !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
@@ -3245,7 +3245,7 @@ CONTAINS
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
-    REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
+    REAL(DP), DIMENSION(:,:)  , INTENT(out) :: Fm, Gm
     REAL(DP),                   INTENT(in)    :: dt
     REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: V_u_1, V_u_2, V_u_3
@@ -3260,7 +3260,7 @@ CONTAINS
     REAL(DP) :: L_N, L_G1, L_G2, L_G3
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
     !$OMP          FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
     !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
@@ -4083,7 +4083,7 @@ CONTAINS
       IF ( Mk == 2 ) THEN
 
 #if   defined( THORNADO_OMP_OL )
-        !$OMP TARGET TEAMS DISTRIBUTE &
+!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD&
         !$OMP PRIVATE( AA11, AB1 )
 #elif defined( THORNADO_OACC   )
         !$ACC PARALLEL LOOP GANG &
@@ -4099,8 +4099,8 @@ CONTAINS
             AB1  = Zero
 
 #if   defined(THORNADO_OMP_OL)
-            !$OMP PARALLEL DO SIMD &
-            !$OMP REDUCTION( +: AA11, AB1 )
+!!            !$OMP PARALLEL DO SIMD &
+!!            !$OMP REDUCTION( +: AA11, AB1 )
 #elif defined(THORNADO_OACC  )
             !$ACC LOOP VECTOR &
             !$ACC REDUCTION( +: AA11, AB1 )
@@ -4128,7 +4128,7 @@ CONTAINS
       ELSE IF ( Mk == 3 ) THEN
 
 #if defined  ( THORNADO_OMP_OL )
-        !$OMP TARGET TEAMS DISTRIBUTE &
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
         !$OMP PRIVATE( AA11, AA12, AA22, AB1, AB2, DET_AA )
 #elif defined( THORNADO_OACC   )
         !$ACC PARALLEL LOOP GANG &
@@ -4147,8 +4147,8 @@ CONTAINS
             AB2  = Zero
 
 #if   defined(THORNADO_OMP_OL)
-            !$OMP PARALLEL DO SIMD &
-            !$OMP REDUCTION( +: AA11, AA12, AA22, AB1, AB2 )
+!!            !$OMP PARALLEL DO SIMD &
+!!            !$OMP REDUCTION( +: AA11, AA12, AA22, AB1, AB2 )
 #elif defined(THORNADO_OACC  )
             !$ACC LOOP VECTOR &
             !$ACC REDUCTION( +: AA11, AA12, AA22, AB1, AB2 )
@@ -4196,7 +4196,7 @@ CONTAINS
       END IF
 
 #if   defined( THORNADO_OMP_OL )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO &
       !$OMP PRIVATE( SUM1 )
 #elif defined( THORNADO_OACC   )
       !$ACC PARALLEL LOOP GANG VECTOR &
@@ -4219,7 +4219,7 @@ CONTAINS
       END DO
 
 #if   defined( THORNADO_OMP_OL )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2) &
       !$OMP PRIVATE( SUM1 )
 #elif defined( THORNADO_OACC   )
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
@@ -4263,63 +4263,46 @@ CONTAINS
 
   END SUBROUTINE SolveLS_FP
 
+  !! Shaoping : The use of private temporary arrays for teams tends out to be giving random and wrong values, and is also slower than this one
+  !without temporary arrays
 
   SUBROUTINE ShiftRHS_FP( MASK, n_FP, M, Mk, F, G )
+     LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
+     INTEGER,                    INTENT(in)    :: n_FP, M, Mk
+     REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: F, G
 
-    LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
-    INTEGER,                    INTENT(in)    :: n_FP, M, Mk
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: F, G
+     INTEGER  :: iN_X, iFP, iM, k
 
-    INTEGER  :: iN_X, iFP, iM
-    REAL(DP) :: FTMP(1:n_FP,1:M)
-    REAL(DP) :: GTMP(1:n_FP,1:M)
-
-    IF ( Mk == M ) THEN
+     IF ( Mk == M ) THEN
 
 #if   defined( THORNADO_OMP_OL )
-      !$OMP TARGET TEAMS DISTRIBUTE &
-      !$OMP PRIVATE( FTMP, GTMP )
+        !$OMP TARGET TEAMS DISTRIBUTE
 #elif defined( THORNADO_OACC   )
-      !$ACC PARALLEL LOOP GANG &
-      !$ACC PRIVATE( FTMP, GTMP )
+        !$ACC PARALLEL LOOP GANG
 #elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO &
-      !$OMP PRIVATE( FTMP, GTMP )
+        !$OMP PARALLEL DO
 #endif
       DO iN_X = 1, nX_G
         IF( MASK(iN_X) )THEN
 
 #if   defined( THORNADO_OMP_OL )
-          !$OMP PARALLEL DO SIMD COLLAPSE(2)
+        !$OMP PARALLEL DO SIMD COLLAPSE(2)
 #elif defined( THORNADO_OACC   )
-          !$ACC LOOP VECTOR COLLAPSE(2)
+        !$ACC LOOP VECTOR COLLAPSE(2)
 #endif
-          DO iM  = 1, Mk-1
-          DO iFP = 1, n_FP
-            FTMP(iFP,iM) = F(iFP,iM+1,iN_X)
-            GTMP(iFP,iM) = G(iFP,iM+1,iN_X)
-          END DO
-          END DO
+            DO iM  = 1, Mk-1
+            DO iFP = 1, n_FP
+               F(iFP,iM,iN_X) = F(iFP,iM+1,iN_X)
+               G(iFP,iM,iN_X) = G(iFP,iM+1,iN_X)
+            END DO
+            END DO
 
-#if   defined( THORNADO_OMP_OL )
-          !$OMP PARALLEL DO SIMD COLLAPSE(2)
-#elif defined( THORNADO_OACC   )
-          !$ACC LOOP VECTOR COLLAPSE(2)
-#endif
-          DO iM  = 1, Mk-1
-          DO iFP = 1, n_FP
-            F(iFP,iM,iN_X) = FTMP(iFP,iM)
-            G(iFP,iM,iN_X) = GTMP(iFP,iM)
-          END DO
-          END DO
+          END IF
+        END DO
 
-        END IF
-      END DO
-
-    END IF
+     END IF
 
   END SUBROUTINE ShiftRHS_FP
-
 
   SUBROUTINE CheckConvergence_Inner &
     ( MASK, n_FP, k_inner, nIterations_Inner, Fm )
@@ -4386,7 +4369,7 @@ CONTAINS
     END DO
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE FROM( MASK )
+    !$OMP TARGET UPDATE FROM( MASK , nIterations_Inner )
 #elif defined( THORNADO_OACC   )
     !$ACC UPDATE HOST( MASK )
 #endif
@@ -4434,7 +4417,7 @@ CONTAINS
     END DO
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE FROM( MASK_OUTER, MASK_INNER )
+    !$OMP TARGET UPDATE FROM( MASK_OUTER, MASK_INNER, nIterations_Outer)
 #elif defined( THORNADO_OACC   )
     !$ACC UPDATE HOST( MASK_OUTER, MASK_INNER )
 #endif

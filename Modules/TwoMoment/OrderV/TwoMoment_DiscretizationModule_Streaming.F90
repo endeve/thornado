@@ -494,7 +494,6 @@ CONTAINS
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
 
-!! Shaoping added NumericalFlux2 to the MAP list, otherwise we got NaNs     
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: dZ1, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
@@ -1038,7 +1037,6 @@ CONTAINS
 
     CALL FinalizeIncrement_Divergence_X
 
-!! Shaoping added NumericalFlux2 to the MAP list, otherwise we got NaNs    
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: dZ1, dZ3, dZ4, &
@@ -1221,7 +1219,6 @@ CONTAINS
         dZ2 => MeshX(1) % Width, &
         dZ4 => MeshX(3) % Width )
 
-!! Shaoping added NumericalFlux2 to the MAP list, otherwise we got NaNs     
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
@@ -1765,7 +1762,6 @@ CONTAINS
 
     CALL FinalizeIncrement_Divergence_X
 
-!! Shaoping added NumericalFlux2 to the MAP list, otherwise we got NaNs
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
@@ -1946,7 +1942,6 @@ CONTAINS
         dZ2 => MeshX(1) % Width, &
         dZ3 => MeshX(2) % Width )
 
-!! Shaoping added NumericalFlux2 to the MAP list, otherwise we got NaNs
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 ) &
@@ -2490,7 +2485,6 @@ CONTAINS
 
     CALL FinalizeIncrement_Divergence_X
 
-!! Shaoping added NumericalFlux2 to the MAP list, otherwise we got NaNs    
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0, &
@@ -2971,6 +2965,7 @@ CONTAINS
                   dGm_dd_dX3(iNodeZ_E,1,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeZ_E,2,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeZ_E,3,iZ2,iZ3,iZ4) )
+
       uPR_L = [ uD_L(iZ_F), uI1_L(iZ_F), uI2_L(iZ_F), uI3_L(iZ_F) ]
 
       ! --- Right State Flux ---
@@ -3429,7 +3424,7 @@ CONTAINS
         dZ2 => MeshX(1) % Width, &
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
-!! Shaoping Deleted mapping for dZ1, ... dZ4 as this causes crash for -O1.
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
