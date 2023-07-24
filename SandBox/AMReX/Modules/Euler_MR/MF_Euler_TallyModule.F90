@@ -67,7 +67,7 @@ MODULE MF_Euler_TallyModule
     AllocateArray_X, &
     DeallocateArray_X
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
   USE ADM_Mass_Module, ONLY: &
     Calc_ADM_Mass
@@ -84,33 +84,34 @@ MODULE MF_Euler_TallyModule
 
   LOGICAL :: SuppressTally
 
-  CHARACTER(256) :: BaryonicMass_FileName
-  REAL(DP)       :: BaryonicMass_Interior
-  REAL(DP)       :: BaryonicMass_Initial
-  REAL(DP)       :: BaryonicMass_OffGrid
-  REAL(DP)       :: BaryonicMass_Change
+  INTEGER, PARAMETER :: SL = 256
 
-  CHARACTER(256) :: Energy_FileName
-  REAL(DP)       :: Energy_Interior
-  REAL(DP)       :: Energy_Initial
-  REAL(DP)       :: Energy_OffGrid
-  REAL(DP)       :: Energy_Change
+  CHARACTER(SL) :: BaryonicMass_FileName
+  REAL(DP)      :: BaryonicMass_Interior
+  REAL(DP)      :: BaryonicMass_Interior_OMP
+  REAL(DP)      :: BaryonicMass_Initial
+  REAL(DP)      :: BaryonicMass_OffGrid
+  REAL(DP)      :: BaryonicMass_Change
 
-  CHARACTER(256) :: ElectronNumber_FileName
-  REAL(DP)       :: ElectronNumber_Interior
-  REAL(DP)       :: ElectronNumber_Initial
-  REAL(DP)       :: ElectronNumber_OffGrid
-  REAL(DP)       :: ElectronNumber_Change
+  CHARACTER(SL) :: Energy_FileName
+  REAL(DP)      :: Energy_Interior
+  REAL(DP)      :: Energy_Interior_OMP
+  REAL(DP)      :: Energy_Initial
+  REAL(DP)      :: Energy_OffGrid
+  REAL(DP)      :: Energy_Change
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+  CHARACTER(SL) :: ElectronNumber_FileName
+  REAL(DP)      :: ElectronNumber_Interior
+  REAL(DP)      :: ElectronNumber_Interior_OMP
+  REAL(DP)      :: ElectronNumber_Initial
+  REAL(DP)      :: ElectronNumber_OffGrid
+  REAL(DP)      :: ElectronNumber_Change
 
-  CHARACTER(256) :: ADMMass_FileName
-  REAL(DP)       :: ADMMass_Interior
-  REAL(DP)       :: ADMMass_Initial
-  REAL(DP)       :: ADMMass_OffGrid
-  REAL(DP)       :: ADMMass_Change
-
-#endif
+  CHARACTER(SL) :: ADMMass_FileName
+  REAL(DP)      :: ADMMass_Interior
+  REAL(DP)      :: ADMMass_Initial
+  REAL(DP)      :: ADMMass_OffGrid
+  REAL(DP)      :: ADMMass_Change
 
 CONTAINS
 
@@ -123,11 +124,11 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
       BaseFileName_Option
 
-    CHARACTER(256) :: BaseFileName
-    INTEGER        :: FileUnit
+    CHARACTER(SL) :: BaseFileName
+    INTEGER       :: FileUnit
 
-    CHARACTER(256) :: TimeLabel
-    CHARACTER(256) :: InteriorLabel, InitialLabel, OffGridLabel, ChangeLabel
+    CHARACTER(SL) :: TimeLabel
+    CHARACTER(SL) :: InteriorLabel, InitialLabel, OffGridLabel, ChangeLabel
 
     SuppressTally = .FALSE.
     IF( PRESENT( SuppressTally_Option ) ) &
@@ -159,6 +160,8 @@ CONTAINS
       ChangeLabel   &
         = 'Change ['   // TRIM( UnitsDisplay % MassLabel ) // ']'
 
+      CALL CheckFileExistenceAndAppend( BaryonicMass_FileName )
+
       OPEN( NEWUNIT = FileUnit, FILE = TRIM( BaryonicMass_FileName ) )
 
       WRITE(FileUnit,'(5(A25,x))') &
@@ -182,6 +185,8 @@ CONTAINS
         = 'Initial ['  // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
       ChangeLabel   &
         = 'Change ['   // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+
+      CALL CheckFileExistenceAndAppend( Energy_FileName )
 
       OPEN( NEWUNIT = FileUnit, FILE = TRIM( Energy_FileName ) )
 
@@ -207,6 +212,8 @@ CONTAINS
       ChangeLabel   &
         = 'Change ['   // '' // ']'
 
+      CALL CheckFileExistenceAndAppend( ElectronNumber_FileName )
+
       OPEN( NEWUNIT = FileUnit, FILE = TRIM( ElectronNumber_FileName ) )
 
       WRITE(FileUnit,'(5(A25,x))') &
@@ -215,7 +222,7 @@ CONTAINS
 
       CLOSE( FileUnit )
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
       ! --- ADM Mass ---
 
@@ -232,6 +239,8 @@ CONTAINS
         = 'Initial ['  // TRIM( UnitsDisplay % MassLabel ) // ']'
       ChangeLabel   &
         = 'Change ['   // TRIM( UnitsDisplay % MassLabel ) // ']'
+
+      CALL CheckFileExistenceAndAppend( ADMMass_FileName )
 
       OPEN( NEWUNIT = FileUnit, FILE = TRIM( ADMMass_FileName ) )
 
@@ -260,14 +269,10 @@ CONTAINS
     ElectronNumber_OffGrid  = Zero
     ElectronNumber_Change   = Zero
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
-
     ADMMass_Interior = Zero
     ADMMass_Initial  = Zero
     ADMMass_OffGrid  = Zero
     ADMMass_Change   = Zero
-
-#endif
 
   END SUBROUTINE InitializeTally_Euler_MF
 
@@ -297,6 +302,10 @@ CONTAINS
 
     TYPE(amrex_imultifab) :: iMF_FineMask
 
+    TYPE(MeshType) :: MeshX(3)
+    INTEGER        :: iNX, iX1, iX2, iX3
+    REAL(DP)       :: d3X
+
     IF( SuppressTally ) RETURN
 
     SetInitialValues = .FALSE.
@@ -310,16 +319,26 @@ CONTAINS
     BaryonicMass_Interior   = Zero
     Energy_Interior         = Zero
     ElectronNumber_Interior = Zero
-
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
-
-    ADMMass_Interior      = Zero
-
-#endif
+    ADMMass_Interior        = Zero
 
     DO iLevel = 0, nLevels-1
 
       CALL CreateFineMask( iLevel, iMF_FineMask, MF_uCF % BA, MF_uCF % DM )
+
+      CALL CreateMesh_MF( iLevel, MeshX )
+
+      BaryonicMass_Interior_OMP   = Zero
+      Energy_Interior_OMP         = Zero
+      ElectronNumber_Interior_OMP = Zero
+
+#if defined( THORNADO_OMP )
+      !$OMP PARALLEL &
+      !$OMP PRIVATE( iX_B0, iX_E0, iX_B1, iX_E1, iLo_MF, &
+      !$OMP          BX, MFI, FineMask, uGF, uCF, G, U, d3X ) &
+      !$OMP REDUCTION( +:BaryonicMass_Interior_OMP, &
+      !$OMP              Energy_Interior_OMP, &
+      !$OMP              ElectronNumber_Interior_OMP )
+#endif
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -352,8 +371,42 @@ CONTAINS
         CALL amrex2thornado_X( nGF, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uGF, G )
         CALL amrex2thornado_X( nCF, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uCF, U )
 
-        CALL ComputeTally_Euler &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, FineMask, iLevel )
+        d3X =   MeshX(1) % Width(iX_B0(1)) &
+              * MeshX(2) % Width(iX_B0(2)) &
+              * MeshX(3) % Width(iX_B0(3))
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1       , nDOFX
+
+          IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
+
+          BaryonicMass_Interior_OMP &
+            = BaryonicMass_Interior_OMP &
+                + d3X &
+                    * WeightsX_q(iNX) &
+                    * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                    * U(iNX,iX1,iX2,iX3,iCF_D)
+
+          Energy_Interior_OMP &
+            = Energy_Interior_OMP &
+                + d3X &
+                    * WeightsX_q(iNX) &
+                    * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                    * U(iNX,iX1,iX2,iX3,iCF_E)
+
+          ElectronNumber_Interior_OMP &
+            = ElectronNumber_Interior_OMP &
+                + d3X &
+                    * WeightsX_q(iNX) &
+                    * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                    * U(iNX,iX1,iX2,iX3,iCF_Ne)
+
+        END DO
+        END DO
+        END DO
+        END DO
 
         CALL DeallocateArray_X &
                ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
@@ -369,11 +422,24 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
+#if defined( THORNADO_OMP )
+      !$OMP END PARALLEL
+#endif
+
+      BaryonicMass_Interior &
+        = BaryonicMass_Interior   + BaryonicMass_Interior_OMP
+      Energy_Interior &
+        = Energy_Interior         + Energy_Interior_OMP
+      ElectronNumber_Interior &
+        = ElectronNumber_Interior + ElectronNumber_Interior_OMP
+
+      CALL DestroyMesh_MF( MeshX )
+
       CALL DestroyFineMask( iMF_FineMask )
 
     END DO ! iLevel = 0, nLevels-1
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     CALL Calc_ADM_Mass( ADMMass_Interior )
 
@@ -389,9 +455,9 @@ CONTAINS
       Energy_Initial         = Energy_Interior
       ElectronNumber_Initial = ElectronNumber_Interior
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
-      ADMMass_Initial      = ADMMass_Interior
+      ADMMass_Initial = ADMMass_Interior
 
 #endif
 
@@ -411,7 +477,7 @@ CONTAINS
       = ElectronNumber_Interior &
           - ElectronNumber_Initial + ElectronNumber_OffGrid
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     ADMMass_Change &
       = ADMMass_Interior &
@@ -445,7 +511,7 @@ CONTAINS
       ElectronNumber_OffGrid &
         = ElectronNumber_OffGrid + dM(iCF_Ne,iLevel)
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
       ADMMass_OffGrid &
         = Zero
@@ -465,66 +531,6 @@ CONTAINS
 
 
   ! --- PRIVATE Subroutines ---
-
-
-  SUBROUTINE ComputeTally_Euler &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, FineMask, iLevel )
-
-    INTEGER,  INTENT(in) :: &
-      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLevel
-    REAL(DP), INTENT(in) :: &
-      G(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
-    REAL(DP), INTENT(in) :: &
-      U(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
-    INTEGER , INTENT(in) :: &
-      FineMask(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-
-    TYPE(MeshType) :: MeshX(3)
-    INTEGER        :: iNX, iX1, iX2, iX3
-    REAL(DP)       :: d3X
-
-    CALL CreateMesh_MF( iLevel, MeshX )
-
-    d3X =   MeshX(1) % Width(iX_B0(1)) &
-          * MeshX(2) % Width(iX_B0(2)) &
-          * MeshX(3) % Width(iX_B0(3))
-
-    CALL DestroyMesh_MF( MeshX )
-
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNX = 1       , nDOFX
-
-      IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
-
-      BaryonicMass_Interior &
-        = BaryonicMass_Interior &
-            + d3X &
-                * WeightsX_q(iNX) &
-                * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                * U(iNX,iX1,iX2,iX3,iCF_D)
-
-      Energy_Interior &
-        = Energy_Interior &
-            + d3X &
-                * WeightsX_q(iNX) &
-                * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                * U(iNX,iX1,iX2,iX3,iCF_E)
-
-      ElectronNumber_Interior &
-        = ElectronNumber_Interior &
-            + d3X &
-                * WeightsX_q(iNX) &
-                * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                * U(iNX,iX1,iX2,iX3,iCF_Ne)
-
-    END DO
-    END DO
-    END DO
-    END DO
-
-  END SUBROUTINE ComputeTally_Euler
 
 
   SUBROUTINE WriteTally_Euler( Time )
@@ -579,7 +585,7 @@ CONTAINS
 
       CLOSE( FileUnit )
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
       ! --- ADM Mass ---
 
@@ -671,7 +677,7 @@ CONTAINS
         ElectronNumber_Change, &
         ''
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
       WRITE(*,*)
       WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
@@ -698,6 +704,45 @@ CONTAINS
     END IF
 
   END SUBROUTINE DisplayTally
+
+
+  RECURSIVE SUBROUTINE CheckFileExistenceAndAppend( FileName, IntSuffix_Option )
+
+    CHARACTER(LEN=SL), INTENT(inout) :: FileName
+    INTEGER          , INTENT(inout), OPTIONAL :: IntSuffix_Option
+
+    LOGICAL :: IsFile
+    INTEGER :: IntSuffix
+    INTEGER :: SL_T
+
+    IntSuffix = 1
+    IF( PRESENT( IntSuffix_Option ) ) &
+      IntSuffix = IntSuffix_Option
+
+    SL_T = LEN( TRIM( FileName ) )
+
+    INQUIRE( FILE = TRIM( FileName ), EXIST = IsFile )
+
+    IF( IsFile )THEN
+
+      IF( FileName(SL_T-3:SL_T) .EQ. '.dat' )THEN
+
+        WRITE(FileName,'(A,A,I2.2)') TRIM( FileName ), '_', IntSuffix
+
+      ELSE
+
+        WRITE(FileName(SL_T-1:SL_T),'(I2.2)') IntSuffix
+
+      END IF
+
+      IntSuffix = IntSuffix + 1
+
+      CALL CheckFileExistenceAndAppend &
+             ( FileName, IntSuffix_Option = IntSuffix )
+
+    END IF
+
+  END SUBROUTINE CheckFileExistenceAndAppend
 
 
 END MODULE MF_Euler_TallyModule

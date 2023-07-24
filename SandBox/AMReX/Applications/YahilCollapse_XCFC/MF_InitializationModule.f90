@@ -109,28 +109,9 @@ CONTAINS
     INTEGER             , INTENT(in) :: iLevel
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
 
-    ! --- thornado ---
-
-    INTEGER  :: iX1, iX2, iX3
-    INTEGER  :: iNX, iNX1
-    REAL(DP) :: X1
-    REAL(DP) :: uGF_K(nDOFX,nGF)
-    REAL(DP) :: uCF_K(nDOFX,nCF)
-    REAL(DP) :: uPF_K(nDOFX,nPF)
-    REAL(DP) :: uAF_K(nDOFX,nAF)
-
-    ! --- AMReX ---
-
-    INTEGER                       :: lo_G(4), hi_G(4)
-    INTEGER                       :: lo_F(4), hi_F(4)
-    INTEGER                       :: iX_B(3), iX_E(3)
-    TYPE(amrex_box)               :: BX
-    TYPE(amrex_mfiter)            :: MFI
-    TYPE(amrex_parmparse)         :: PP
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-
     LOGICAL :: Verbose
+
+    TYPE(amrex_parmparse) :: PP
 
     ! --- Problem-Dependent Parameters ---
 
@@ -141,11 +122,6 @@ CONTAINS
     REAL(DP) :: CollapseTime
     REAL(DP) :: PolytropicConstant
     REAL(DP) :: dXdr, drhodD, dvdV, dmdM, TotalEnclosedMass
-
-    INTEGER               :: N, iX_L
-    REAL(DP)              :: dr, dX, XX, R
-    REAL(DP), ALLOCATABLE :: X(:), D(:), U(:), V(:), M(:), &
-                             Numer(:), Denom(:)
 
     CALL amrex_parmparse_build( PP, 'YC' )
       CALL PP % get( 'D0'             , D0 )
@@ -191,116 +167,10 @@ CONTAINS
                * CollapseTime**( Four - Three * Gamma_IDEAL ) &
                * GravitationalConstant**( ( One - Three * Gamma_IDEAL ) / Two )
 
-    dr = 1.0e-2_DP * Kilometer
-    dX = dXdr * dr
-
-    N = 1.1_DP * CoreRadius * dXdr / dX
-
-    ALLOCATE( Numer(N) )
-    ALLOCATE( Denom(N) )
-    ALLOCATE( X    (N) )
-    ALLOCATE( D    (N) )
-    ALLOCATE( U    (N) )
-    ALLOCATE( V    (N) )
-    ALLOCATE( M    (N) )
-
-    X    (1) = 1.0e-5_DP
-    D    (1) = D0
-    U    (1) = Zero
-    M    (1) = Zero
-    Numer(1) = Numerator  ( X(1), D(1), U(1), M(1) )
-    Denom(1) = Denominator( D(1), U(1) )
-
-    CALL IntegrateD( dX, X, D, U, M, Numer, Denom )
-
-    TotalEnclosedMass = M(N)
-
-    V = ( Gamma_IDEAL - Two ) * X + U
-
-    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
-
-    DO WHILE( MFI % next() )
-
-      uGF => MF_uGF % DataPtr( MFI )
-      uCF => MF_uCF % DataPtr( MFI )
-
-      BX = MFI % tilebox()
-
-      lo_G = LBOUND( uGF )
-      hi_G = UBOUND( uGF )
-
-      lo_F = LBOUND( uCF )
-      hi_F = UBOUND( uCF )
-
-      iX_B = BX % lo
-      iX_E = BX % hi
-
-      IF( BX % hi(1) .EQ. amrex_geom(iLevel) % domain % hi( 1 ) ) &
-        iX_E(1) = iX_E(1) + swX(1)
-
-      DO iX3 = iX_B(3), iX_E(3)
-      DO iX2 = iX_B(2), iX_E(2)
-      DO iX1 = iX_B(1), iX_E(1)
-      DO iNX = 1, nDOFX
-
-        iNX1 = NodeNumberTableX(1,iNX)
-
-        R = NodeCoordinate( MeshX(1), iX1, iNX1 )
-        XX = dXdr * R
-
-        iX_L = Locate( XX, X, N )
-
-        uPF_K(iNX,iPF_D ) &
-          = drhodD * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
-                                               D(iX_L), D(iX_L+1) )
-
-        uPF_K(iNX,iPF_V1) &
-          = dvdV * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
-                                             V(iX_L), V(iX_L+1) )
-
-        uPF_K(iNX,iPF_V2) = Zero
-
-        uPF_K(iNX,iPF_V3) = Zero
-
-        uPF_K(iNX,iPF_E ) &
-          = PolytropicConstant * uPF_K(iNX,iPF_D)**( Gamma_IDEAL ) &
-              / ( Gamma_IDEAL - One )
-
-        uPF_K(iNX,iPF_Ne) = Zero
-
-        CALL ComputePressureFromPrimitive_IDEAL &
-               ( uPF_K(iNX,iPF_D ), uPF_K(iNX,iPF_E), &
-                 uPF_K(iNX,iPF_Ne), uAF_K(iNX,iAF_P) )
-
-        CALL ComputeConserved_Euler_Relativistic &
-               ( uPF_K(iNX,iPF_D ), uPF_K(iNX,iPF_V1), &
-                 uPF_K(iNX,iPF_V2), uPF_K(iNX,iPF_V3), &
-                 uPF_K(iNX,iPF_E ), uPF_K(iNX,iPF_Ne), &
-                 uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX), &
-                 uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX), &
-                 uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX), &
-                 uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX), &
-                 uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX), &
-                 uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX), &
-                 uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
-                 uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
-                 uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
-                 uAF_K(iNX,iAF_P) )
-
-      END DO
-      END DO
-      END DO
-      END DO
-
-    END DO ! WHILE MFI % next()
-
-    DEALLOCATE( M )
-    DEALLOCATE( V )
-    DEALLOCATE( U )
-    DEALLOCATE( D )
-    DEALLOCATE( X )
-    DEALLOCATE( Denom )
-    DEALLOCATE( Numer )
+    CALL InitializeFields_YahilCollapse_FromScratch &
+           ( iLevel, MF_uGF, MF_uCF, &
+             dXdr, drhodD, dvdV, dmdM, PolytropicConstant, &
+             CoreRadius, D0, CollapseTime, TotalEnclosedMass )
 
   END SUBROUTINE InitializeFields_MF
 
@@ -380,6 +250,148 @@ CONTAINS
 
 
   ! --- End of auxiliary functions for Yahil collapse problem ---
+
+
+  SUBROUTINE InitializeFields_YahilCollapse_FromScratch &
+    ( iLevel, MF_uGF, MF_uCF, &
+      dXdr, drhodD, dvdV, dmdM, PolytropicConstant, &
+      CoreRadius, D0, CollapseTime, TotalEnclosedMass )
+
+    INTEGER, INTENT(in) :: iLevel
+    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    REAL(DP), INTENT(in)  :: dXdr, drhodD, dvdV, dmdM, PolytropicConstant, &
+                             CoreRadius, D0, CollapseTime
+    REAL(DP), INTENT(out) :: TotalEnclosedMass
+
+    INTEGER               :: N, iX1, iX2, iX3, iX_L, iNX, iNX1
+    REAL(DP)              :: dr, dX, XX, R
+    REAL(DP), ALLOCATABLE :: X(:), D(:), U(:), V(:), M(:), &
+                             Numer(:), Denom(:)
+
+    REAL(DP) :: uPF_K(nDOFX,nPF)
+    REAL(DP) :: uAF_K(nDOFX,nAF)
+    INTEGER, PARAMETER :: NX = 2048
+
+    INTEGER                       :: lo_G(4), hi_G(4)
+    INTEGER                       :: lo_F(4), hi_F(4)
+    INTEGER                       :: iX_B(3), iX_E(3)
+    TYPE(amrex_box)               :: BX
+    TYPE(amrex_mfiter)            :: MFI
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    dr = 1.0e-2_DP * Kilometer
+    dX = dXdr * dr
+
+    N = 1.1_DP * CoreRadius * dXdr / dX
+
+    ALLOCATE( Numer(N) )
+    ALLOCATE( Denom(N) )
+    ALLOCATE( X    (N) )
+    ALLOCATE( D    (N) )
+    ALLOCATE( U    (N) )
+    ALLOCATE( V    (N) )
+    ALLOCATE( M    (N) )
+
+    X    (1) = 1.0e-5_DP
+    D    (1) = D0
+    U    (1) = Zero
+    M    (1) = Zero
+    Numer(1) = Numerator  ( X(1), D(1), U(1), M(1) )
+    Denom(1) = Denominator( D(1), U(1) )
+
+    CALL IntegrateD( dX, X, D, U, M, Numer, Denom )
+
+    TotalEnclosedMass = M(N)
+
+    V = ( Gamma_IDEAL - Two ) * X + U
+
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+
+    DO WHILE( MFI % next() )
+
+      uGF => MF_uGF % DataPtr( MFI )
+      uCF => MF_uCF % DataPtr( MFI )
+
+      BX = MFI % tilebox()
+
+      lo_G = LBOUND( uGF )
+      hi_G = UBOUND( uGF )
+
+      lo_F = LBOUND( uCF )
+      hi_F = UBOUND( uCF )
+
+      iX_B = BX % lo
+      iX_E = BX % hi
+
+      IF( BX % hi(1) .EQ. amrex_geom(iLevel) % domain % hi( 1 ) ) &
+        iX_E(1) = iX_E(1) + swX(1)
+
+      DO iX3 = iX_B(3), iX_E(3)
+      DO iX2 = iX_B(2), iX_E(2)
+      DO iX1 = iX_B(1), iX_E(1)
+      DO iNX = 1, nDOFX
+
+        iNX1 = NodeNumberTableX(1,iNX)
+
+        R = NodeCoordinate( MeshX(1), iX1, iNX1 )
+        XX = dXdr * R
+
+        iX_L = Locate( XX, X, N )
+
+        uPF_K(iNX,iPF_D ) &
+          = drhodD * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
+                                               D(iX_L), D(iX_L+1) )
+
+        uPF_K(iNX,iPF_V1) &
+          = dvdV   * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
+                                               V(iX_L), V(iX_L+1) )
+
+        uPF_K(iNX,iPF_V2) = Zero
+
+        uPF_K(iNX,iPF_V3) = Zero
+
+        uPF_K(iNX,iPF_E ) &
+          = PolytropicConstant * uPF_K(iNX,iPF_D)**( Gamma_IDEAL ) &
+              / ( Gamma_IDEAL - One )
+
+        uPF_K(iNX,iPF_Ne) = Zero
+
+        CALL ComputePressureFromPrimitive_IDEAL &
+               ( uPF_K(iNX,iPF_D ), uPF_K(iNX,iPF_E), &
+                 uPF_K(iNX,iPF_Ne), uAF_K(iNX,iAF_P) )
+
+        CALL ComputeConserved_Euler_Relativistic &
+               ( uPF_K(iNX,iPF_D ), uPF_K(iNX,iPF_V1), &
+                 uPF_K(iNX,iPF_V2), uPF_K(iNX,iPF_V3), &
+                 uPF_K(iNX,iPF_E ), uPF_K(iNX,iPF_Ne), &
+                 uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX), &
+                 uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX), &
+                 uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX), &
+                 uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX), &
+                 uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX), &
+                 uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX), &
+                 uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
+                 uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
+                 uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
+                 uAF_K(iNX,iAF_P) )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END DO ! WHILE MFI % next()
+
+    DEALLOCATE( M )
+    DEALLOCATE( V )
+    DEALLOCATE( U )
+    DEALLOCATE( D )
+    DEALLOCATE( X )
+    DEALLOCATE( Denom )
+    DEALLOCATE( Numer )
+
+  END SUBROUTINE InitializeFields_YahilCollapse_FromScratch
 
 
 END MODULE MF_InitializationModule

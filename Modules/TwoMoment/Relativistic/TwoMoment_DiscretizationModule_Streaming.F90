@@ -159,7 +159,7 @@ CONTAINS
 
   SUBROUTINE ComputeIncrement_TwoMoment_Explicit &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
-      Verbose_Option, SuppressBC_Option, UseXCFC_Option, &
+      Verbose_Option, SuppressBC_Option, &
       SurfaceFlux_X1_Option, &
       SurfaceFlux_X2_Option, &
       SurfaceFlux_X3_Option )
@@ -186,8 +186,6 @@ CONTAINS
       Verbose_Option
     LOGICAL,  INTENT(in), OPTIONAL :: &
       SuppressBC_Option
-    LOGICAL,  INTENT(in), OPTIONAL :: &
-      UseXCFC_Option
     REAL(DP), INTENT(out), OPTIONAL :: &
       SurfaceFlux_X1_Option(:,:,:,:,:,:,:), &
       SurfaceFlux_X2_Option(:,:,:,:,:,:,:), &
@@ -222,17 +220,9 @@ CONTAINS
     INTEGER :: iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iCR, iS
     LOGICAL :: Verbose
     LOGICAL  :: SuppressBC
-    LOGICAL  :: UseXCFC
     REAL(DP) :: tau(nDOFX,iZ_B1(2):iZ_E1(2), &
                           iZ_B1(3):iZ_E1(3), &
                           iZ_B1(4):iZ_E1(4))
-
-
-    UseXCFC = .FALSE.
-    IF( PRESENT( UseXCFC_Option ) ) &
-      UseXCFC = UseXCFC_Option
-
-
 
     SuppressBC = .FALSE.
     IF( PRESENT( SuppressBC_Option ) )THEN
@@ -262,43 +252,19 @@ CONTAINS
              ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
     END IF
 
-    IF( UseXCFC )THEN
+    DO iZ4 = iZ_B1(4), iZ_E1(4)
+    DO iZ3 = iZ_B1(3), iZ_E1(3)
+    DO iZ2 = iZ_B1(2), iZ_E1(2)
 
-      DO iZ4 = iZ_B1(4), iZ_E1(4)
-      DO iZ3 = iZ_B1(3), iZ_E1(3)
-      DO iZ2 = iZ_B1(2), iZ_E1(2)
+      DO iNodeX = 1, nDOFX
 
-        DO iNodeX = 1, nDOFX
-
-          tau(iNodeX,iZ2,iZ3,iZ4) = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Psi)**6
-
-        END DO
+        tau(iNodeX,iZ2,iZ3,iZ4) = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Psi)**6
 
       END DO
-      END DO
-      END DO
 
-    ELSE
-
-      DO iZ4 = iZ_B1(4), iZ_E1(4)
-      DO iZ3 = iZ_B1(3), iZ_E1(3)
-      DO iZ2 = iZ_B1(2), iZ_E1(2)
-
-        DO iNodeX = 1, nDOFX
-
-          tau(iNodeX,iZ2,iZ3,iZ4) = One
-
-        END DO
-
-      END DO
-      END DO
-      END DO
-
-    END IF
-
-
-
-
+    END DO
+    END DO
+    END DO
 
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
@@ -325,6 +291,7 @@ CONTAINS
     CALL ComputeIncrement_Divergence_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
              SurfaceFlux_X1, Verbose_Option = Verbose )
+
     CALL ComputeIncrement_Divergence_X2 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
              SurfaceFlux_X2, Verbose_Option = Verbose )
@@ -816,12 +783,12 @@ CONTAINS
              ( uPF_L(iPF_V1), uPF_L(iPF_V2), uPF_L(iPF_V3), &
                uPF_R(iPF_V1), uPF_R(iPF_V2), uPF_R(iPF_V3), &
                uV1_F(iX_F), uV2_F(iX_F), uV3_F(iX_F) )
+
       END DO
 
     END DO
     END DO
     END DO
-
 
     ! --- Permute Radiation Fields ---
 
@@ -853,7 +820,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
 
     ! --- Interpolate Radiation Fields ---
 
@@ -891,7 +857,6 @@ CONTAINS
              G_Alpha_F, G_Beta_1_F, G_Beta_2_F, G_Beta_3_F, &
              PositionIndexZ_F, &
              nIterations_L )
-
     ! --- Right State Primitive ---
 
      CALL ComputePrimitive_TwoMoment_Vector_Richardson &
@@ -936,6 +901,7 @@ CONTAINS
       iNodeZ_X1 = iNodeE + ( iNodeX_X1 - 1 ) * nDOFE
 
         ! --- Left State Flux ---
+
       Flux_L &
         = Flux_X1 &
             ( uD_L (iZ_F), uI1_L(iZ_F), &
@@ -944,7 +910,6 @@ CONTAINS
               Gm_dd_11_F(iX_F), Gm_dd_22_F(iX_F), Gm_dd_33_F(iX_F), &
               G_Alpha_F(iX_F), G_Beta_1_F(iX_F),      &
               G_Beta_2_F(iX_F), G_Beta_3_F(iX_F) )
-
       CALL ComputeConserved_TwoMoment &
              ( uD_L (iZ_F), uI1_L(iZ_F), &
                uI2_L(iZ_F), uI3_L(iZ_F), &
@@ -966,7 +931,6 @@ CONTAINS
               G_Alpha_F(iX_F), G_Beta_1_F(iX_F),      &
               G_Beta_2_F(iX_F), G_Beta_3_F(iX_F) )
 
-
       CALL ComputeConserved_TwoMoment &
              ( uD_R (iZ_F), uI1_R(iZ_F), &
                uI2_R(iZ_F), uI3_R(iZ_F), &
@@ -986,20 +950,18 @@ CONTAINS
         SurfaceFlux_X1(iNodeZ_X1,iZ1,iZ2,iZ3,iZ4,iS,iCR) &
           = G_Alpha_F(iX_F) * SqrtGm_F(iX_F) &
           * NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2)
-        
+
         NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
           = dZ1(iZ1) * dZ3(iZ3) * dZ4(iZ4) &
               * Weights_X1(iNodeZ_X1) * GE(iNodeE,iZ1,iGE_Ep2) &
               * SqrtGm_F(iX_F) &
               * NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2)
-
       END DO
-
       ! --- Energy ---
-      
+
       vsq = uV1_F(iX_F)**2 * Gm_dd_11_F(iX_F) &
           + uV2_F(iX_F)**2 * Gm_dd_22_F(iX_F) &
-          + uV3_F(iX_F)**2 * Gm_dd_33_F(iX_F) 
+          + uV3_F(iX_F)**2 * Gm_dd_33_F(iX_F)
 
       W = 1.0_DP / SQRT( 1.0_DP - vsq )
 
@@ -1042,9 +1004,6 @@ CONTAINS
 
 
     END DO
-
-
-
     ! --- Surface Contributions ---
 
     ! --- Contribution from Left Face ---
@@ -1166,7 +1125,6 @@ CONTAINS
     END DO
     END DO
 
-
      CALL ComputePrimitive_TwoMoment_Vector_Richardson &
            ( uN_K, uG1_K, uG2_K, uG3_K, &
              uD_K, uI1_K, uI2_K, uI3_K, &
@@ -1202,7 +1160,6 @@ CONTAINS
       iZ2    = IndexTableZ_K(7,iZ_K)
 
       iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
-
       Flux_K &
         = Flux_X1 &
             ( uD_K (iZ_K), uI1_K(iZ_K), &
@@ -1211,7 +1168,6 @@ CONTAINS
               Gm_dd_11_K(iX_K), Gm_dd_22_K(iX_K), Gm_dd_33_K(iX_K), &
               G_Alpha_K(iX_K), G_Beta_1_K(iX_K),      &
               G_Beta_2_K(iX_K), G_Beta_3_K(iX_K) )
-
       DO iCR = 1, nCR
 
         Flux_q(iNodeZ,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
@@ -1223,8 +1179,6 @@ CONTAINS
       END DO
 
     END DO
-
-
     ! --- Volume Contributions ---
 
     CALL MatrixMatrixMultiply &
@@ -1252,6 +1206,7 @@ CONTAINS
         dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
           = dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
             + dU_X1(iNodeZ,iCR,iZ1,iZ3,iZ4,iS,iZ2)
+
       END DO
 
     END DO
@@ -1260,7 +1215,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
     CALL FinalizeIncrement_Divergence_X
 
 #if   defined( THORNADO_OMP_OL )
@@ -1909,7 +1863,7 @@ CONTAINS
 
       vsq = uV1_F(iX_F)**2 * Gm_dd_11_F(iX_F) &
           + uV2_F(iX_F)**2 * Gm_dd_22_F(iX_F) &
-          + uV3_F(iX_F)**2 * Gm_dd_33_F(iX_F) 
+          + uV3_F(iX_F)**2 * Gm_dd_33_F(iX_F)
 
       W = 1.0_DP / SQRT( 1.0_DP - vsq )
 
@@ -2795,8 +2749,8 @@ CONTAINS
               ( uCR_X3_L(iCR), uCR_X3_R(iCR), Flux_L(iCR), Flux_R(iCR), One )
 
         SurfaceFlux_X3(iNodeZ_X3,iZ1,iZ2,iZ3,iZ4,iS,iCR) &
-          = G_Alpha_F(iX_F) * SqrtGm_F(iX_F) & 
-          * NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ4) 
+          = G_Alpha_F(iX_F) * SqrtGm_F(iX_F) &
+          * NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ4)
 
         NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ4) &
           = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) &
@@ -2809,7 +2763,7 @@ CONTAINS
 
       vsq = uV1_F(iX_F)**2 * Gm_dd_11_F(iX_F) &
           + uV2_F(iX_F)**2 * Gm_dd_22_F(iX_F) &
-          + uV3_F(iX_F)**2 * Gm_dd_33_F(iX_F) 
+          + uV3_F(iX_F)**2 * Gm_dd_33_F(iX_F)
 
       W = 1.0_DP / SQRT( 1.0_DP - vsq )
 
@@ -3488,7 +3442,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
     ! --- Compute Primitive Fluid ---
 
 #if defined( THORNADO_OMP_OL )
@@ -3752,7 +3705,7 @@ CONTAINS
         = EdgeEnergyCubed &
             * ( NumericalFlux(iNodeZ_E,iCR_G3,iZ2,iZ3,iZ4,iS,iZ1) &
                 + W * Gm_dd_33_K(iX_F) * uV3_K(iX_F) &
-                    * NumericalFlux(iNodeZ_E,iCR_N,iZ2,iZ3,iZ4,iS,iZ1) ) 
+                    * NumericalFlux(iNodeZ_E,iCR_N,iZ2,iZ3,iZ4,iS,iZ1) )
 
 
 
@@ -3959,7 +3912,6 @@ CONTAINS
                   dG_dd_dX1(iNodeX,:,:,iZ2,iZ3,iZ4), &
                   dG_dd_dX2(iNodeX,:,:,iZ2,iZ3,iZ4), &
                   dG_dd_dX3(iNodeX,:,:,iZ2,iZ3,iZ4))
-
         Beta &
           = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4)  &
           * Weights_q(iNodeZ) * GE(iNodeE,iZ1,iGE_Ep2) &
@@ -3986,6 +3938,7 @@ CONTAINS
 
 
     END DO
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined( THORNADO_OACC   )
@@ -4015,7 +3968,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
     CALL FinalizeIncrement_ObserverCorrections
 
 #if   defined( THORNADO_OMP_OL )
@@ -4243,12 +4195,10 @@ CONTAINS
         U_d(iNodeX,2,iX1,iX2,iX3) = W * GX (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) * V2
         U_d(iNodeX,3,iX1,iX2,iX3) = W * GX (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) * V3
 
-
       END DO
     END DO
     END DO
     END DO
-
 
     IF( PRESENT( uPF_Option ) ) &
       uPF_Option = uPF
@@ -4431,7 +4381,6 @@ CONTAINS
         = dU_d_dX0_COV(iNodeX,3,iX1,iX2,iX3) &
         - Gamma_udd(iNodeX,mu,0,3,iX1,iX2,iX3) * U_d(iNodeX,mu+1,iX1,iX2,iX3)
 
-
       END DO
       END DO
 
@@ -4439,7 +4388,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
   END SUBROUTINE ComputeWeakDerivatives_X0
 
   SUBROUTINE ComputeWeakDerivatives_X1 &
@@ -4556,7 +4504,29 @@ CONTAINS
                GX_F(1,1,iX_B0(2),iX_B0(3),iX_B0(1)), nDOFX_X1 )
 
 
+    DO iX1  = iX_B0(1), iX_E0(1)+1
+    DO iX3  = iX_B0(3), iX_E0(3)
+    DO iX2  = iX_B0(2), iX_E0(2)
 
+      DO iNodeX = 1, nDOFX_X1
+
+        GX_F(iNodeX,iGF_Gm_dd_11,iX2,iX3,iX1) &
+          = MAX( GX_F(iNodeX,iGF_h_1,iX2,iX3,iX1)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_22,iX2,iX3,iX1) &
+          = MAX( GX_F(iNodeX,iGF_h_2,iX2,iX3,iX1)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_33,iX2,iX3,iX1) &
+          = MAX( GX_F(iNodeX,iGF_h_3,iX2,iX3,iX1)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_SqrtGm,iX2,iX3,iX1) &
+          = SQRT(   GX_F(iNodeX,iGF_Gm_dd_11,iX2,iX3,iX1) &
+                  * GX_F(iNodeX,iGF_Gm_dd_22,iX2,iX3,iX1) &
+                  * GX_F(iNodeX,iGF_Gm_dd_33,iX2,iX3,iX1) )
+
+
+      END DO
+
+    END DO
+    END DO
+    END DO
 
 
 
@@ -4750,6 +4720,8 @@ CONTAINS
 
         V_u_K(3) = uPF_K(iPF_V3)
 
+
+
         V_d_K(1) &
           = GX_K(iNodeX,iGF_Gm_dd_11,iX2,iX3,iX1) &
               * V_u_K(1)
@@ -4777,8 +4749,6 @@ CONTAINS
                   + V_u_K(3) * V_d_K(3)
 
         W_K = 1.0_DP / SQRT( 1.0_DP - Vsq_K )
-
-
         U_d(iNodeX,1,iX2,iX3,iX1) = W_K * ( -A_K + B_d_K(1) * V_u_K(1) &
                                               +    B_d_K(2) * V_u_K(2) &
                                               +    B_d_K(3) * V_u_K(3)  )
@@ -4809,8 +4779,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
-
 
 
 
@@ -4877,14 +4845,12 @@ CONTAINS
         dU_d_dX1(iNodeX,1,iX1,iX2,iX3)  &
           = dU_d_dX1_Temp(iNodeX,2,iX2,iX3,iX1)
 
+
         dU_d_dX1(iNodeX,2,iX1,iX2,iX3)  &
           = dU_d_dX1_Temp(iNodeX,3,iX2,iX3,iX1)
 
         dU_d_dX1(iNodeX,3,iX1,iX2,iX3)  &
           = dU_d_dX1_Temp(iNodeX,4,iX2,iX3,iX1)
-
-
-
 
         dU_d_dX1_COV(iNodeX,0,iX1,iX2,iX3)  &
           = dU_d_dX1_Temp(iNodeX,1,iX2,iX3,iX1)
@@ -4904,7 +4870,6 @@ CONTAINS
     END DO
     END DO
     END DO
-
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -5085,7 +5050,29 @@ CONTAINS
 
 
 
+    DO iX2  = iX_B0(2), iX_E0(2)+1
+    DO iX3  = iX_B0(3), iX_E0(3)
+    DO iX1  = iX_B0(1), iX_E0(1)
 
+      DO iNodeX = 1, nDOFX_X2
+
+        GX_F(iNodeX,iGF_Gm_dd_11,iX1,iX3,iX2) &
+          = MAX( GX_F(iNodeX,iGF_h_1,iX1,iX3,iX2)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+          = MAX( GX_F(iNodeX,iGF_h_2,iX1,iX3,iX2)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_33,iX1,iX3,iX2) &
+          = MAX( GX_F(iNodeX,iGF_h_3,iX1,iX3,iX2)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_SqrtGm,iX1,iX3,iX2) &
+          = SQRT(   GX_F(iNodeX,iGF_Gm_dd_11,iX1,iX3,iX2) &
+                  * GX_F(iNodeX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+                  * GX_F(iNodeX,iGF_Gm_dd_33,iX1,iX3,iX2) )
+
+
+      END DO
+
+    END DO
+    END DO
+    END DO
 
 
 
@@ -5609,7 +5596,29 @@ CONTAINS
                GX_F(1,1,iX_B0(1),iX_B0(2),iX_B0(3)), nDOFX_X3 )
 
 
+    DO iX3  = iX_B0(3), iX_E0(3)+1
+    DO iX2  = iX_B0(2), iX_E0(2)
+    DO iX1  = iX_B0(1), iX_E0(1)
 
+      DO iNodeX = 1, nDOFX_X3
+
+        GX_F(iNodeX,iGF_Gm_dd_11,iX1,iX2,iX3) &
+          = MAX( GX_F(iNodeX,iGF_h_1,iX1,iX2,iX3)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_22,iX1,iX2,iX3) &
+          = MAX( GX_F(iNodeX,iGF_h_2,iX1,iX2,iX3)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_33,iX1,iX2,iX3) &
+          = MAX( GX_F(iNodeX,iGF_h_3,iX1,iX2,iX3)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_SqrtGm,iX1,iX2,iX3) &
+          = SQRT(   GX_F(iNodeX,iGF_Gm_dd_11,iX1,iX2,iX3) &
+                  * GX_F(iNodeX,iGF_Gm_dd_22,iX1,iX2,iX3) &
+                  * GX_F(iNodeX,iGF_Gm_dd_33,iX1,iX2,iX3) )
+
+
+      END DO
+
+    END DO
+    END DO
+    END DO
 
 
 
@@ -6042,9 +6051,9 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3
     REAL(DP) :: B_u_K(3), B_d_K(3), A_K
     REAL(DP) :: &
-      G_munu_K(nDOFX   ,7,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3), &
+      G_munu_K(nDOFX   ,10,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3), &
            iX_B1(1):iX_E1(1)), &
-      G_munu_F(nDOFX_X1,7,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3), &
+      G_munu_F(nDOFX_X1,10,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3), &
            iX_B0(1):iX_E0(1)+1), &
       H_munu_K(nDOFX   ,7,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3), &
            iX_B0(1):iX_E0(1)), &
@@ -6117,6 +6126,15 @@ CONTAINS
 
 
         G_munu_K(iNodeX,7,iX2,iX3,iX1) = GX(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33)
+
+
+        G_munu_K(iNodeX,8,iX2,iX3,iX1) = GX(iNodeX,iX1,iX2,iX3,iGF_h_1)
+
+
+        G_munu_K(iNodeX,9,iX2,iX3,iX1) = GX(iNodeX,iX1,iX2,iX3,iGF_h_2)
+
+
+        G_munu_K(iNodeX,10,iX2,iX3,iX1) = GX(iNodeX,iX1,iX2,iX3,iGF_h_3)
       END DO
 
 
@@ -6137,13 +6155,13 @@ CONTAINS
 
 
       CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X1, 7*nX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+             ( 'N', 'N', nDOFX_X1, 10*nX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
                G_munu_K(1,1,iX_B0(2),iX_B0(3),iX_B0(1)-1), nDOFX, Zero, &
                G_munu_F(1,1,iX_B0(2),iX_B0(3),iX_B0(1)), nDOFX_X1 )
 
 
       CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X1, 7*nX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+             ( 'N', 'N', nDOFX_X1, 10*nX_X1, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
                G_munu_K(1,1,iX_B0(2),iX_B0(3),iX_B0(1)), nDOFX, Half, &
                G_munu_F(1,1,iX_B0(2),iX_B0(3),iX_B0(1)), nDOFX_X1 )
     ! --- Compute Metric Components ---
@@ -6166,6 +6184,14 @@ CONTAINS
       DO iNodeX = 1, nDOFX_X1
 
 
+        G_munu_F(iNodeX,5,iX2,iX3,iX1) &
+          = MAX( G_munu_F(iNodeX,8,iX2,iX3,iX1)**2, SqrtTiny )
+
+        G_munu_F(iNodeX,6,iX2,iX3,iX1) &
+          = MAX( G_munu_F(iNodeX,9,iX2,iX3,iX1)**2, SqrtTiny )
+
+        G_munu_F(iNodeX,7,iX2,iX3,iX1) &
+          = MAX( G_munu_F(iNodeX,10,iX2,iX3,iX1)**2, SqrtTiny )
 
         H_munu_F(iNodeX,1,iX2,iX3,iX1) = WeightsX_X1(iNodeX) * G_munu_F(iNodeX,1,iX2,iX3,iX1)
 
@@ -6413,9 +6439,9 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: nK(3), nK_X2(3), nX, nX_X2
     REAL(DP) :: &
-      G_munu_K(nDOFX   ,7,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3), &
+      G_munu_K(nDOFX   ,10,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3), &
            iX_B1(2):iX_E1(2)), &
-      G_munu_F(nDOFX_X2,7,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3), &
+      G_munu_F(nDOFX_X2,10,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3), &
            iX_B0(2):iX_E0(2)+1), &
       H_munu_K(nDOFX   ,7,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3), &
            iX_B0(2):iX_E0(2)), &
@@ -6481,6 +6507,11 @@ CONTAINS
 
         G_munu_K(iNodeX,7,iX1,iX3,iX2) = GX(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33)
 
+        G_munu_K(iNodeX,8,iX1,iX3,iX2) = GX(iNodeX,iX1,iX2,iX3,iGF_h_1)
+
+        G_munu_K(iNodeX,9,iX1,iX3,iX2) = GX(iNodeX,iX1,iX2,iX3,iGF_h_2)
+
+        G_munu_K(iNodeX,10,iX1,iX3,iX2) = GX(iNodeX,iX1,iX2,iX3,iGF_h_3)
       END DO
 
     END DO
@@ -6508,12 +6539,12 @@ CONTAINS
 
 
       CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X2, 7*nX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+             ( 'N', 'N', nDOFX_X2, 10*nX_X2, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
                G_munu_K(1,1,iX_B0(1),iX_B0(3),iX_B0(2)-1), nDOFX, Zero, &
                G_munu_F(1,1,iX_B0(1),iX_B0(3),iX_B0(2)), nDOFX_X2 )
 
       CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X2, 7*nX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+             ( 'N', 'N', nDOFX_X2, 10*nX_X2, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
                G_munu_K(1,1,iX_B0(1),iX_B0(3),iX_B0(2)), nDOFX, Half, &
                G_munu_F(1,1,iX_B0(1),iX_B0(3),iX_B0(2)), nDOFX_X2 )
 
@@ -6541,7 +6572,12 @@ CONTAINS
 
       DO iNodeX = 1, nDOFX_X2
 
-
+        G_munu_F(iNodeX,5,iX1,iX3,iX2) &
+          = MAX( G_munu_F(iNodeX,8,iX1,iX3,iX2)**2, SqrtTiny )
+        G_munu_F(iNodeX,6,iX1,iX3,iX2) &
+          = MAX( G_munu_F(iNodeX,9,iX1,iX3,iX2)**2, SqrtTiny )
+        G_munu_F(iNodeX,7,iX1,iX3,iX2) &
+          = MAX( G_munu_F(iNodeX,10,iX1,iX3,iX2)**2, SqrtTiny )
 
         H_munu_F(iNodeX,1,iX1,iX3,iX2) = WeightsX_X2(iNodeX) * G_munu_F(iNodeX,1,iX1,iX3,iX2)
 
@@ -6771,9 +6807,9 @@ CONTAINS
     INTEGER  :: nK(3), nK_X3(3), nX, nX_X3
     REAL(DP) :: B_u_K(3), B_d_K(3), A_K
     REAL(DP) :: &
-      G_munu_K(nDOFX   ,7,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2), &
+      G_munu_K(nDOFX   ,10,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2), &
            iX_B1(3):iX_E1(3)), &
-      G_munu_F(nDOFX_X3,7,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2), &
+      G_munu_F(nDOFX_X3,10,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2), &
            iX_B0(3):iX_E0(3)+1), &
       H_munu_K(nDOFX   ,7,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2), &
            iX_B0(3):iX_E0(3)), &
@@ -6857,6 +6893,13 @@ CONTAINS
         G_munu_K(iNodeX,7,iX1,iX2,iX3) = GX(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33)
 
 
+        G_munu_K(iNodeX,8,iX1,iX2,iX3) = GX(iNodeX,iX1,iX2,iX3,iGF_h_1)
+
+
+        G_munu_K(iNodeX,9,iX1,iX2,iX3) = GX(iNodeX,iX1,iX2,iX3,iGF_h_2)
+
+
+        G_munu_K(iNodeX,10,iX1,iX2,iX3) = GX(iNodeX,iX1,iX2,iX3,iGF_h_3)
 
 
       END DO
@@ -6899,13 +6942,13 @@ CONTAINS
 
 
       CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X3, 7*nX_X3, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
+             ( 'N', 'N', nDOFX_X3, 10*nX_X3, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
                G_munu_K(1,1,iX_B0(1),iX_B0(2),iX_B0(3)-1), nDOFX, Zero, &
                G_munu_F(1,1,iX_B0(1),iX_B0(2),iX_B0(3)), nDOFX_X3 )
 
 
       CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X3, 7*nX_X3, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
+             ( 'N', 'N', nDOFX_X3, 10*nX_X3, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
                G_munu_K(1,1,iX_B0(1),iX_B0(2),iX_B0(3)), nDOFX, Half, &
                G_munu_F(1,1,iX_B0(1),iX_B0(2),iX_B0(3)), nDOFX_X3 )
 
@@ -6956,6 +6999,12 @@ CONTAINS
 
 
 
+        G_munu_F(iNodeX,5,iX1,iX2,iX3) &
+          = MAX( G_munu_F(iNodeX,8,iX1,iX2,iX3)**2, SqrtTiny )
+        G_munu_F(iNodeX,6,iX1,iX2,iX3) &
+          = MAX( G_munu_F(iNodeX,9,iX1,iX2,iX3)**2, SqrtTiny )
+        G_munu_F(iNodeX,7,iX1,iX2,iX3) &
+          = MAX( G_munu_F(iNodeX,10,iX1,iX2,iX3)**2, SqrtTiny )
 
 
 
@@ -7465,8 +7514,6 @@ CONTAINS
                                                 - dG_munu_dXrho(iNodeX,sig,mu,nu,iX1,iX2,iX3) )
 
 
-
-
         END DO
         END DO
         END DO
@@ -7474,7 +7521,6 @@ CONTAINS
 
 
       END DO
-
 
     END DO
     END DO

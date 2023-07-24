@@ -1,4 +1,4 @@
-##### YahilCollapse_XCFC #####
+##### YahilCollapse_XCFC.inputs_singleLevel #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
@@ -6,8 +6,6 @@
 debug.DEBUG = 0
 
 thornado.ProgramName = "YahilCollapse_XCFC"
-
-thornado.UseXCFC = 1
 
 YC.D0              = 1.75
 YC.CentralDensity  = 7.0e9 # g/cm^3

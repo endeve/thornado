@@ -22,8 +22,8 @@ MODULE InitializationModule_Relativistic
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
-  USE GravitySolutionModule_CFA_Poseidon, ONLY: &
-    SolveGravity_CFA_Poseidon
+  USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
+    SolveGravity_XCFC_Poseidon
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX_FromScaleFactors
   USE GeometryFieldsModule, ONLY: &
@@ -627,7 +627,7 @@ CONTAINS
       dAlpha = MINVAL( uGF(:,:,:,:,iGF_Alpha) )
       dPsi   = MAXVAL( uGF(:,:,:,:,iGF_Psi  ) )
 
-      CALL SolveGravity_CFA_Poseidon &
+      CALL SolveGravity_XCFC_Poseidon &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
 
       dAlpha = ABS( dAlpha - MINVAL( uGF(:,:,:,:,iGF_Alpha) ) ) &

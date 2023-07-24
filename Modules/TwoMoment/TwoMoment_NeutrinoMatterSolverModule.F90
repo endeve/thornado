@@ -3788,13 +3788,13 @@ CONTAINS
     
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( vDotV, W )
+    !$OMP PRIVATE( Ef_temp, V_d_1, V_d_2, V_d_3, vDotV, W )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( vDotV, W )
+    !$ACC PRIVATE( Ef_temp, V_d_1, V_d_2, V_d_3, vDotV, W )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( vDotV, W )
+    !$OMP PRIVATE( Ef_temp, V_d_1, V_d_2, V_d_3, vDotV, W )
 #endif
     DO iN_X = 1, nX_G
 
