@@ -9,11 +9,11 @@
 function set_common(){
 
 
-   export EXASTAR_HOME=/localdisk/quanshao/ExaStar
+   export EXASTAR_HOME=/home/ac.squan/ExaStar
    export HDF5_INC=${EXASTAR_HOME}/hdf57/include
    export HDF5_LIB=${EXASTAR_HOME}/hdf57/lib64
-   export THORNADO_DIR=${EXASTAR_HOME}/thornado-mergingMaster
-   export WEAKLIB_DIR=${EXASTAR_HOME}/weaklib-merging
+   export THORNADO_DIR=${EXASTAR_HOME}/thornado-new
+   export WEAKLIB_DIR=${EXASTAR_HOME}/weaklib-new
    export WEAKLIB_TABLES_DIR=${EXASTAR_HOME}/weaklib-tables
    export THORNADO_MACHINE=beacon_intel
    export IGC_OverrideOCLMaxParamSize=4096
@@ -40,7 +40,9 @@ function set_common(){
    ulimit -s unlimited
    #ulimit -n 20480
    ## The following seems working well for the SineWaveStream app.
-   export LIBOMPTARGET_LEVEL0_MEMORY_POOL=device,128,64,16384
+   #export LIBOMPTARGET_LEVEL0_MEMORY_POOL=device,128,64,16384
+   export LIBOMPTARGET_LEVEL_ZERO_MEMORY_POOL=device,128,64,16384
+   export FI_PROVIDER=sockets
    #export LIBOMPTARGET_LEVEL_ZERO_COMMAND_BATCH=copy,8
    #export OMP_NUM_THREADS=1
 }
@@ -110,14 +112,6 @@ function runApp(){
 
 module purge
 
-#export A21_SDK_MKLROOT_OVERRIDE=/exaperf/nightly/mkl-cev/2022.11.02 ## Latest nightly, i.e. 10.06, uses this mkl
-export A21_SDK_MKLROOT_OVERRIDE=/exaperf/nightly/mkl-cev/2023.04.19 ## Latest nightly, i.e. 2023-05-01 use this mkl 
-
-#export IGC_EnableZEBinary=0
-#export IGC_ForceOCLSIMDWidth=16
-#export LIBOMPTARGET_LEVEL_ZERO_USE_IMMEDIATE_COMMAND_LIST=0
-#export SYCL_PI_LEVEL_ZERO_USE_IMMEDIATE_COMMANDLISTS=0
-
 ACTION="iprof"
 #ACTION="perf"
 #ACTION="onetrace"
@@ -127,66 +121,12 @@ ACTION=""
 if [[ -n $ACTION ]];then
    faction="-$ACTION"
 fi
-#export BASE_DATE="2023.03.10"
-export BASE_DATE="2023.04.01"
-#export COMPILER_DATE="2023.05.03"
-#export COMPILER_DATE="2023.05.08"
-export COMPILER_DATE="2023.05.15"
-#export COMPILER_DATE="2023.06.22"
 
-#export COMPILER_DATE="2023.03.30"
-#export COMPILER_DATE="2023.06.11"
-#export COMPILER_DATE="2023.06.07"
-#export COMPILER_DATE="2023.06.05"
-#export COMPILER_DATE="2023.06.06"
-#export COMPILER_DATE="2023.06.04"
-#export COMPILER_DATE="2023.05.21"
-#export COMPILER_DATE="2023.05.22"
-#export COMPILER_DATE="2023.05.23"
-#export COMPILER_DATE="2023.05.24"
-#export COMPILER_DATE="2023.05.29"
-#export COMPILER_DATE="2023.06.01"
-#export COMPILER_DATE="2023.03.10"
-#export COMPILER_DATE="2022.12.30.002"
+export BASE_DATE="2023.05.15.07"
 export AADEBUG=""
 
-#export ONEAPI_MODULE_OVERRIDE=oneapi/eng-compiler/2022.12.30.003
-module load nightly-compiler/${COMPILER_DATE}
-
-#UMD=""
-#UMD="neo/agama-devel-sp3/611-23.09.25812.14-609"
-#UMD="neo/agama-devel-sp3/609-23.09.25812.14-609"
-#UMD="neo/agama-devel-sp3/610-23.09.25812.14-609"
-#UMD="neo/agama-devel-sp3/608-23.05.25593.18-i606"
-#UMD="neo/agama-devel-sp3/619-23.09.25812.15-619"
-#UMD="neo/agama-devel-sp3/625-23.13.26032.7-624"
-#UMD="neo/agama-devel-sp3/622-23.09.25812.15-622"
-#UMD="neo/agama-devel-sp3/628-23.13.26032.8-626"
-#UMD="neo/agama-devel-sp3/627-23.13.26032.8-626"
-#UMD="neo/agama-devel-sp3/636-23.13.26032.22-631"
-#UMD="neo/agama-devel-sp3/637-23.13.26032.26-637"
-#UMD="neo/agama-devel-sp3/639-23.13.26032.26-637"
-#UMD="neo/agama-devel-sp3/644-23.13.26032.30-644"
-#UMD="neo/agama-devel-sp3/646-23.13.26032.30-646"
-#UMD="neo/agama-devel-sp3/648-23.17.26241.13-648"
-#UMD="neo/agama-devel-sp3/650-23.17.26241.13-649"
-#UMD="neo/agama-devel-sp3/651-23.17.26241.14-651"
-#UMD="neo/agama-devel-sp3/652-23.17.26241.14-651"
-#UMD="neo/agama-devel-sp3/653-23.17.26241.15-653"
-#UMD="intel_compute_runtime/release/agama-devel-602"
-#UMD="neo/agama-devel-sp3/657-23.17.26241.18-657"
-#UMD="neo/agama-devel-sp3/658-23.17.26241.19-658"
-#UMD="neo/agama-devel-sp3/661-23.17.26241.21-661"
-#UMD="neo/agama-devel-sp3/663-23.17.26241.21-662"
-#UMD="neo/agama-devel-sp3/664-23.17.26241.21-664"
-#UMD="neo/agama-devel-sp3/666-23.17.26241.22-665"
-
-#UMD="neo/agama-devel-sp3/627-23.13.26032.8-626"
-#UMD="neo/agama-devel-sp3/670-23.17.26241.24-670"
-#UMD="neo/agama-devel-sp3/671-23.22.26516.8-671"
-#UMD="neo/agama-devel-sp3/672-23.22.26516.8-672"
-#UMD="neo/agama-devel-sp3/673-23.22.26516.8-673"
-UMD="neo/agama-devel-sp3/674-23.22.26516.8-673"
+export COMPILER_DATE="2023.05.15.007"
+module load oneapi/eng-compiler/${COMPILER_DATE}
 #UMD="neo/agama-devel-sp3/673-23.22.26516.8-673"
 umdf=""
 export useAGRF="FALSE"
@@ -203,20 +143,7 @@ if [[ -n $UMD ]]; then
       export useAGRF="TRUE"
    fi
 fi
-
-#export COMPILER_DATE="2023.05.03"
-#module load nightly-compiler/${COMPILER_DATE}
-#export COMPILER_DATE=".2023.05.15.003-rc11"
-#module load oneapi/eng-compiler/${COMPILER_DATE}
-#export FI_PROVIDER=sockets
-#export useAGRF="TRUE"
-#module switch -f intel_compute_runtime/release/agama-devel-627 neo/agama-devel-sp3/627-23.13.26032.8-626
-
-#module switch -f intel_compute_runtime/release/agama-devel-551 neo/agama-devel-sp3/627-23.13.26032.8-626 
-#module switch -f intel_compute_runtime/release/agama-devel-551 intel_compute_runtime/release/agama-devel-627 
-#umdf="umd627NoIMMmkl2"
-
-#if action is empty, performance comparison will be done. otherwise there is no performance comparison and just run the app using such as onetrace, vtune etc. so action can be "", "onetrace", "iprof", "vtune", 
+export useAGRF="TRUE"
 
 #opLevels=(O3)
 #grids=("[8,8,8]")
@@ -296,8 +223,7 @@ do
 
          export OP_LEVEL=$op
          export LOG_FILE=${logFiles[jj]}.${OP_LEVEL}.${COMPILER_DATE}.ms69${umdf}${gridNames[ii]}${faction}$AADEBUG
-#         export LOG_BASE=${logFiles[jj]}.${OP_LEVEL}.${BASE_DATE}.ms69-umd602${gridNames[ii]}$AADEBUG
-         export LOG_BASE=${logFiles[jj]}.${OP_LEVEL}.${BASE_DATE}.ms69-devel602${gridNames[ii]}$AADEBUG
+         export LOG_BASE=${logFiles[jj]}.${OP_LEVEL}.${BASE_DATE}.ms69${umdf}${gridNames[ii]}$AADEBUG
          #export LOG_BASE=${logFiles[jj]}.${OP_LEVEL}.${BASE_DATE}.ms69${umdf}${gridNames[ii]}$AADEBUG
          export USER_OPTION=${userOptions[jj]}
 
