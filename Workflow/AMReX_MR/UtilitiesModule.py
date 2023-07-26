@@ -176,6 +176,14 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
     if nX[1] > 1: nDimsX += 1
     if nX[2] > 1: nDimsX += 1
 
+    if nDimsX == 1:
+        dim_array = [nX[0] * 2**MaxLevel, nX[1], nX[2]]
+    elif nDimsX == 2:
+        dim_array = [nX[0] * 2**MaxLevel, nX[1] * 2**MaxLevel, nX[2]]
+    else:
+        dim_array = nX * 2**MaxLevel
+        
+    
     """
     https://yt-project.org/doc/reference/api/
     yt.data_objects.construction_data_containers.html#yt.data_objects.
@@ -186,20 +194,19 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
           = ds.covering_grid \
               ( level           = MaxLevel, \
                 left_edge       = xL, \
-                dims            = nX * 2**MaxLevel, \
+                dims            = dim_array, \
                 num_ghost_zones = 0 )
     else:
         CoveringGrid \
           = ds.covering_grid \
               ( level           = MaxLevel, \
                 left_edge       = xL, \
-                dims            = nX * 2**MaxLevel, \
+                dims            = dim_array, \
                 num_ghost_zones = nX[0] )
 
     ds.force_periodicity()
 
     # --- Get Mesh ---
-
     xL = np.copy( xL.to_ndarray() )
     xH = np.copy( xH.to_ndarray() )
 
@@ -211,16 +218,15 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
     dX2 = np.copy( CoveringGrid['dX2'].to_ndarray() )
     dX3 = np.copy( CoveringGrid['dX3'].to_ndarray() )
 
+
     if   Field == 'MPIProcess':
 
         Data = np.copy( CoveringGrid['MPIProcess'].to_ndarray() )
         DataUnits = ''
 
     elif Field == 'PF_D':
-
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
         DataUnits = 'g/cm^3'
-
     elif Field == 'PF_V1':
 
         Data = np.copy( CoveringGrid[Field].to_ndarray() )
@@ -671,6 +677,8 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         print( '  Vorticity' )
 
         assert 0, 'Invalid choice of field'
+
+
 
     if not UsePhysicalUnits: DataUnits = '[]'
     else:                    DataUnits = '[' + DataUnits + ']'

@@ -19,7 +19,7 @@ MODULE InitializationModule_Relativistic
     Locate, &
     NodeNumberX, &
     Interpolate1D_Linear
-  USE GravitySolutionModule_CFA_Poseidon, ONLY: &
+  USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
     ComputeConformalFactor_Poseidon, &
     ComputeGeometry_Poseidon
   USE Poseidon_UtilitiesModule, ONLY: &

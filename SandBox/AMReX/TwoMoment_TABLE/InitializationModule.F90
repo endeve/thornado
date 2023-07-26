@@ -405,7 +405,7 @@ CONTAINS
 
       END DO
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
       CALL CreateMesh_MF( 0, MeshX )
 
@@ -426,7 +426,7 @@ CONTAINS
              ( ReadFields_uCF_Option = .TRUE., &
                ReadFields_uCR_Option = .TRUE. )
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
       CALL CreateMesh_MF( 0, MeshX )
 

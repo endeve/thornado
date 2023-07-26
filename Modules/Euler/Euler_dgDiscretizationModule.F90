@@ -81,8 +81,6 @@ MODULE Euler_dgDiscretizationModule
     iDF_Sh_X2, &
     iDF_Sh_X3, &
     nDF
-  USE GeometryComputationModule_XCFC, ONLY: &
-    ComputeChristoffelSymbols_3D_XCFC
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE Euler_UtilitiesModule, ONLY: &
@@ -163,7 +161,7 @@ CONTAINS
 
   SUBROUTINE ComputeIncrement_Euler_DG_Explicit &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
-      SuppressBC_Option, UseXCFC_Option, &
+      SuppressBC_Option, &
       SurfaceFlux_X1_Option, &
       SurfaceFlux_X2_Option, &
       SurfaceFlux_X3_Option )
@@ -179,8 +177,6 @@ CONTAINS
       dU(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL,  INTENT(in),  OPTIONAL :: &
       SuppressBC_Option
-    LOGICAL,  INTENT(in),  OPTIONAL :: &
-      UseXCFC_Option
     REAL(DP), INTENT(out), OPTIONAL :: &
       SurfaceFlux_X1_Option(:,:,:,:,:), &
       SurfaceFlux_X2_Option(:,:,:,:,:), &
@@ -210,7 +206,7 @@ CONTAINS
           nCF)
 
     INTEGER  :: iNX, iX1, iX2, iX3, iCF
-    LOGICAL  :: SuppressBC, UseXCFC
+    LOGICAL  :: SuppressBC
     REAL(DP) :: tau(nDOFX,iX_B1(1):iX_E1(1), &
                           iX_B1(2):iX_E1(2), &
                           iX_B1(3):iX_E1(3))
@@ -220,10 +216,6 @@ CONTAINS
                dX3 => MeshX(3) % Width )
 
     CALL TimersStart_Euler( Timer_Euler_DG )
-
-    UseXCFC = .FALSE.
-    IF( PRESENT( UseXCFC_Option ) ) &
-      UseXCFC = UseXCFC_Option
 
     CALL TimersStart_Euler( Timer_Euler_DG_CopyIn )
 
@@ -262,51 +254,25 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_Increment )
 
-    IF( UseXCFC )THEN
-
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-      !$ACC PRESENT( iX_B1, iX_E1, tau, G )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B1, iX_E1, tau, G )
 #elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
-      DO iX3 = iX_B1(3), iX_E1(3)
-      DO iX2 = iX_B1(2), iX_E1(2)
-      DO iX1 = iX_B1(1), iX_E1(1)
-      DO iNX = 1, nDOFX
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iNX = 1, nDOFX
 
-        tau(iNX,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Psi)**6
+      tau(iNX,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Psi)**6
 
-      END DO
-      END DO
-      END DO
-      END DO
-
-    ELSE
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-      !$ACC PRESENT( iX_B1, iX_E1, tau )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(4)
-#endif
-      DO iX3 = iX_B1(3), iX_E1(3)
-      DO iX2 = iX_B1(2), iX_E1(2)
-      DO iX1 = iX_B1(1), iX_E1(1)
-      DO iNX = 1, nDOFX
-
-        tau(iNX,iX1,iX2,iX3) = One
-
-      END DO
-      END DO
-      END DO
-      END DO
-
-    END IF
+    END DO
+    END DO
+    END DO
+    END DO
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -420,7 +386,7 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_Geometry )
 
     CALL ComputeIncrement_Geometry &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, UseXCFC, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
 
     CALL TimersStop_Euler( Timer_Euler_Geometry )
 
@@ -2731,7 +2697,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Geometry &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, UseXCFC, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -2740,15 +2706,13 @@ CONTAINS
       tau(:,iX_B1(1):,iX_B1(2):,iX_B1(3):)
     REAL(DP), INTENT(inout) :: &
       U  (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
-    LOGICAL,  INTENT(in)    :: &
-      UseXCFC
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
 #ifdef HYDRO_RELATIVISTIC
 
     CALL ComputeIncrement_Geometry_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, UseXCFC, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
 
 #else
 
@@ -3346,7 +3310,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Geometry_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, UseXCFC, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -3356,14 +3320,11 @@ CONTAINS
       U (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
     REAL(DP), INTENT(in)    :: &
       tau(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
-    LOGICAL,  INTENT(in)    :: &
-      UseXCFC
     REAL(DP), INTENT(inout) :: &
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
 
-    INTEGER :: iNX, iX1, iX2, iX3, iCF, ErrorExists
+    INTEGER :: iNX, iX1, iX2, iX3, ErrorExists
 
-    REAL(DP) :: DivGridVolume
     REAL(DP) :: P(nPF)
     REAL(DP) :: Pressure
     REAL(DP) :: PressureTensor(3,3,nDOFX,iX_B0(1):iX_E0(1), &
@@ -3380,16 +3341,6 @@ CONTAINS
                                 iX_B0(2):iX_E0(2), &
                                 iX_B0(3):iX_E0(3))
 
-    REAL(DP) :: Christoffel3D_X1(3,3,nDOFX,iX_B0(1):iX_E0(1), &
-                                           iX_B0(2):iX_E0(2), &
-                                           iX_B0(3):iX_E0(3))
-    REAL(DP) :: Christoffel3D_X2(3,3,nDOFX,iX_B0(1):iX_E0(1), &
-                                           iX_B0(2):iX_E0(2), &
-                                           iX_B0(3):iX_E0(3))
-    REAL(DP) :: Christoffel3D_X3(3,3,nDOFX,iX_B0(1):iX_E0(1), &
-                                           iX_B0(2):iX_E0(2), &
-                                           iX_B0(3):iX_E0(3))
-
     INTEGER :: ITERATION(nDOFX,iX_B0(1):iX_E0(1), &
                                iX_B0(2):iX_E0(2), &
                                iX_B0(3):iX_E0(3))
@@ -3398,8 +3349,6 @@ CONTAINS
                                iX_B0(2):iX_E0(2), &
                                iX_B0(3):iX_E0(3))
 
-    REAL(DP) :: GradPsiF(nDOFX)
-
     CALL TimersStart_Euler( Timer_Euler_DG_CopyIn )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
@@ -3407,14 +3356,12 @@ CONTAINS
     !$OMP MAP( to:    iX_B0, iX_E0, tau ) &
     !$OMP MAP( alloc: PressureTensor, &
     !$OMP             dGdX1, dGdX2, dGdX3, &
-    !$OMP             Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3, &
     !$OMP             ITERATION, iErr )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, tau ) &
     !$ACC CREATE(     PressureTensor, &
     !$ACC             dGdX1, dGdX2, dGdX3, &
-    !$ACC             Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3, &
     !$ACC             ITERATION, iErr )
 #endif
 
@@ -3621,27 +3568,18 @@ CONTAINS
     END DO
     END DO
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     ! --- Contributions from time-dependent metric ---
 
-    IF( .NOT. UseXCFC ) &
-      CALL ComputeChristoffelSymbols_3D_XCFC &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX1, dGdX2, dGdX3, &
-               Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
-
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
-    !$OMP PRIVATE( DivGridVolume )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRIVATE( DivGridVolume ) &
     !$ACC PRESENT( iX_B0, iX_E0, dU, U, G, dGdX1, dGdX2, dGdX3, &
-    !$ACC          tau, PressureTensor, &
-    !$ACC          Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
+    !$ACC          tau, PressureTensor )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(4) &
-    !$OMP PRIVATE( DivGridVolume )
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -3664,47 +3602,10 @@ CONTAINS
                      + Two * PressureTensor(2,3,iNX,iX1,iX2,iX3) &
                          * G(iNX,iX1,iX2,iX3,iGF_K_dd_23) )
 
-      IF( .NOT. UseXCFC )THEN
-
-        DivGridVolume &
-          =   dGdX1(iNX,iGF_Beta_1,iX2,iX3,iX1) &
-            + dGdX2(iNX,iGF_Beta_2,iX1,iX3,iX2) &
-            + dGdX3(iNX,iGF_Beta_3,iX1,iX2,iX3) &
-            + (   Christoffel3D_X1(1,1,iNX,iX1,iX2,iX3) &
-                + Christoffel3D_X2(2,1,iNX,iX1,iX3,iX2) &
-                + Christoffel3D_X3(3,1,iNX,iX1,iX2,iX3) ) &
-              * G(iNX,iX1,iX2,iX3,iGF_Beta_1) &
-            + (   Christoffel3D_X1(1,2,iNX,iX1,iX2,iX3) &
-                + Christoffel3D_X2(2,2,iNX,iX1,iX3,iX2) &
-                + Christoffel3D_X3(3,2,iNX,iX1,iX2,iX3) ) &
-              * G(iNX,iX1,iX2,iX3,iGF_Beta_2) &
-            + (   Christoffel3D_X1(1,3,iNX,iX1,iX2,iX3) &
-                + Christoffel3D_X2(2,3,iNX,iX1,iX3,iX2) &
-                + Christoffel3D_X3(3,3,iNX,iX1,iX2,iX3) ) &
-              * G(iNX,iX1,iX2,iX3,iGF_Beta_3)
-
-        DO iCF = 1, nCF
-
-          dU(iNX,iX1,iX2,iX3,iCF) &
-            = dU(iNX,iX1,iX2,iX3,iCF) &
-                - U(iNX,iX1,iX2,iX3,iCF) * DivGridVolume
-
-        END DO
-
-      END IF
-
     END DO
     END DO
     END DO
     END DO
-
-    ! --- GradPsiF ---
-
-    GradPsiF = Zero
-
-    CALL DGEMV &
-           ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-             dGdX1(:,iGF_Psi,1,1,iX_E0(1)), 1, Zero, GradPsiF(1:nDOFX_X1), 1 )
 
 #endif
 
@@ -3715,15 +3616,13 @@ CONTAINS
     !$OMP MAP( from:    G, U, ITERATION, iErr, ErrorExists ) &
     !$OMP MAP( release: iX_B0, iX_E0, tau, &
     !$OMP               PressureTensor, &
-    !$OMP               dGdX1, dGdX2, dGdX3, &
-    !$OMP               Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
+    !$OMP               dGdX1, dGdX2, dGdX3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      G, U, ITERATION, iErr, ErrorExists ) &
     !$ACC DELETE(       iX_B0, iX_E0, tau, &
     !$ACC               PressureTensor, &
-    !$ACC               dGdX1, dGdX2, dGdX3, &
-    !$ACC               Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
+    !$ACC               dGdX1, dGdX2, dGdX3 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
@@ -4206,7 +4105,7 @@ CONTAINS
 
     ! --- Conserved Fluid Fields ---
 
-    INTEGER :: iNX, iX1, iX2, iX3, iCF
+    INTEGER :: iNX, iX1, iX2, iX3
     INTEGER :: nXP(3), nXP_X(3), nX_X, nNodesX_X, iX_F, iX_V
 
     nXP       = iXP_E0 - iXP_B0 + 1
@@ -4351,11 +4250,11 @@ CONTAINS
   SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X1 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX1 )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(inout) :: &
       dGdX1(1:nDOFX,1:nGF,iX_B0(2):iX_E0(2), &
                           iX_B0(3):iX_E0(3), &
                           iX_B0(1):iX_E0(1))
@@ -4705,11 +4604,11 @@ CONTAINS
   SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X2 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX2 )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(inout) :: &
       dGdX2(1:nDOFX,1:nGF,iX_B0(1):iX_E0(1), &
                           iX_B0(3):iX_E0(3), &
                           iX_B0(2):iX_E0(2))
@@ -5089,11 +4988,11 @@ CONTAINS
   SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X3 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX3 )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(inout) :: &
       dGdX3(1:nDOFX,1:nGF,iX_B0(1):iX_E0(1), &
                           iX_B0(2):iX_E0(2), &
                           iX_B0(3):iX_E0(3))
