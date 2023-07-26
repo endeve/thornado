@@ -179,10 +179,11 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE &
-    !$OMP TO( N2M_Vec_0, N2M_Vec_1, N2M_Vec_2, N2M_Vec_3, &
-    !$OMP     M2N_Vec_0, M2N_Vec_1, M2N_Vec_2, M2N_Vec_3, &
-    !$OMP     BetaTVD, BetaTVB, SlopeTolerance )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( always, to: &
+    !$OMP   N2M_Vec_0, N2M_Vec_1, N2M_Vec_2, N2M_Vec_3, &
+    !$OMP   M2N_Vec_0, M2N_Vec_1, M2N_Vec_2, M2N_Vec_3, &
+    !$OMP   BetaTVD, BetaTVB, SlopeTolerance )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE &
     !$ACC DEVICE( N2M_Vec_0, N2M_Vec_1, N2M_Vec_2, N2M_Vec_3, &
@@ -194,6 +195,14 @@ CONTAINS
 
 
   SUBROUTINE FinalizeSlopeLimiter_TwoMoment
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( always, release: &
+    !$OMP   N2M_Vec_0, N2M_Vec_1, N2M_Vec_2, N2M_Vec_3, &
+    !$OMP   M2N_Vec_0, M2N_Vec_1, M2N_Vec_2, M2N_Vec_3, &
+    !$OMP   BetaTVD, BetaTVB, SlopeTolerance )
+#endif
 
     DEALLOCATE( N2M_Vec_0, N2M_Vec_1, N2M_Vec_2, N2M_Vec_3 )
     DEALLOCATE( M2N_Vec_0, M2N_Vec_1, M2N_Vec_2, M2N_Vec_3 )
