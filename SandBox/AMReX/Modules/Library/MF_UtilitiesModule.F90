@@ -399,6 +399,12 @@ CONTAINS
     IF( PRESENT( swXX_Option ) ) &
       swXX = swXX_Option
 
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL &
+    !$OMP PRIVATE( lo_G, hi_G, iX_B0, iX_E0, iX_B1, iX_E1, &
+    !$OMP          BX, MFI, G_K, SqrtGm, G )
+#endif
+
     CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
     DO WHILE( MFI % next() )
@@ -443,6 +449,10 @@ CONTAINS
 
     CALL amrex_mfiter_destroy( MFI )
 
+#if defined( THORNADO_OMP )
+    !$OMP END PARALLEL
+#endif
+
   END SUBROUTINE MultiplyWithMetric_uGF
 
 
@@ -467,6 +477,12 @@ CONTAINS
     swXX = swX
     IF( PRESENT( swXX_Option ) ) &
       swXX = swXX_Option
+
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL &
+    !$OMP PRIVATE( lo_F, hi_F, iX_B0, iX_E0, iX_B1, iX_E1, &
+    !$OMP          BX, MFI, F_K, SqrtGm, F )
+#endif
 
     CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = UseTiling )
 
@@ -506,6 +522,10 @@ CONTAINS
     END DO ! WHILE( MFI % next() )
 
     CALL amrex_mfiter_destroy( MFI )
+
+#if defined( THORNADO_OMP )
+    !$OMP END PARALLEL
+#endif
 
   END SUBROUTINE MultiplyWithMetric_uCF
 

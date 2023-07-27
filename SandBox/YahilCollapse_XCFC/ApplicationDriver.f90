@@ -48,9 +48,9 @@ PROGRAM ApplicationDriver
     uDF
   USE GeometryFieldsModule, ONLY: &
     uGF
-  USE GravitySolutionModule_CFA_Poseidon, ONLY: &
-    InitializeGravitySolver_CFA_Poseidon, &
-    FinalizeGravitySolver_CFA_Poseidon
+  USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
+    InitializeGravitySolver_XCFC_Poseidon, &
+    FinalizeGravitySolver_XCFC_Poseidon
   USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit
   USE TimeSteppingModule_SSPRK, ONLY: &
@@ -126,7 +126,7 @@ PROGRAM ApplicationDriver
 
   ReadFromFile = .FALSE.
 
-  FileName = 'YahilHomologousCollapse_Gm1.30_t1.500E+000ms.dat'
+  FileName = 'YahilHomologousCollapse_Gm1.30_t1.500E+002ms.dat'
 
   RestartFileNumber = -1
   t                 = 0.0_DP
@@ -159,7 +159,7 @@ PROGRAM ApplicationDriver
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 3
+  nStagesSSPRK = 2
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -213,7 +213,7 @@ PROGRAM ApplicationDriver
 
   CALL InitializeReferenceElementX_Lagrange
 
-  CALL InitializeGravitySolver_CFA_Poseidon( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+  CALL InitializeGravitySolver_XCFC_Poseidon( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option &
@@ -254,6 +254,7 @@ PROGRAM ApplicationDriver
 
   CALL InitializeFields_Relativistic &
          ( ReadFromFile_Option    = ReadFromFile,    &
+           FileName_Option        = FileName,        &
            D0_Option              = D0,              &
            CentralDensity_Option  = CentralDensity,  &
            CentralPressure_Option = CentralPressure, &
@@ -265,8 +266,8 @@ PROGRAM ApplicationDriver
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
-    CALL ComputeNewtonianPotential_SphericalSymmetry &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uGF )
+!!$    CALL ComputeNewtonianPotential_SphericalSymmetry &
+!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uGF )
 
     CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -400,7 +401,7 @@ PROGRAM ApplicationDriver
 !  CALL ComputeSourceTerms_Poseidon &
 !         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
 !
-!  CALL SolveGravity_CFA_Poseidon &
+!  CALL SolveGravity_XCFC_Poseidon &
 !         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
 
   CALL ComputeNewtonianPotential_SphericalSymmetry &
@@ -424,7 +425,7 @@ PROGRAM ApplicationDriver
 
   CALL FinalizeReferenceElementX_Lagrange
 
-  CALL FinalizeGravitySolver_CFA_Poseidon
+  CALL FinalizeGravitySolver_XCFC_Poseidon
 
   CALL FinalizeEquationOfState
 

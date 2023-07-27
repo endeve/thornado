@@ -176,7 +176,9 @@ def UpdateFrame( t ):
 
     line             .set_data( X1_C , Data .flatten() )
     if ShowIC:   IC  .set_data( X1_C0, Data0.flatten() )
-    if PlotMesh: mesh.set_data( X1_C - 0.5 * dX1, 0.5 * ( vmin + vmax ) )
+    if PlotMesh: mesh.set_data( X1_C - 0.5 * dX1, \
+                                0.5 * ( vmin + vmax ) \
+                                  * np.ones( dX1.shape[0] ) )
 
     if ShowIC and PlotMesh: ret = ( line, time_text, IC, mesh )
     elif ShowIC:            ret = ( line, time_text, IC )

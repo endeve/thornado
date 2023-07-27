@@ -78,7 +78,7 @@ CONTAINS
 
   SUBROUTINE ComputeIncrement_TwoMoment_Implicit_Neutrinos &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R, &
-      UseXCFC_Option, Verbose_Option )
+      Verbose_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -125,12 +125,10 @@ CONTAINS
            1:nCR, &
            1:nSpecies)
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
-    LOGICAL,          INTENT(in), OPTIONAL :: UseXCFC_Option
 
     INTEGER :: iN_X, iN_E, iS
     INTEGER :: iCF, iCR, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4
     LOGICAL :: Verbose
-    LOGICAL :: UseXCFC
     REAL(DP), DIMENSION(1) :: Zeros
     REAL(DP) :: tau(nDOFX,iZ_B1(2):iZ_E1(2), &
                           iZ_B1(3):iZ_E1(3), &
@@ -142,10 +140,6 @@ CONTAINS
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
-
-    UseXCFC = .FALSE.
-    IF( PRESENT( UseXCFC_Option ) ) &
-      UseXCFC = UseXCFC_Option
 
     IF (Verbose) THEN
       PRINT*, "      ComputeIncrement_TwoMoment_Implicit_Neutrinos (Start)"
@@ -238,12 +232,12 @@ CONTAINS
              GX_N(:,iGF_Gm_dd_11), &
              GX_N(:,iGF_Gm_dd_22), &
              GX_N(:,iGF_Gm_dd_33), &
-             GX_N(:,iGF_Alpha), & 
-             GX_N(:,iGF_Beta_1),& 
-             GX_N(:,iGF_Beta_2),& 
-             GX_N(:,iGF_Beta_3),& 
+             GX_N(:,iGF_Alpha), &
+             GX_N(:,iGF_Beta_1),&
+             GX_N(:,iGF_Beta_2),&
+             GX_N(:,iGF_Beta_3),&
              PositionIndexZ, &
-             nIterations_Prim )     
+             nIterations_Prim )
 
             ! PRINT*, "N_P = ", N_P(:)
             ! PRINT*, "G1_P = ", G1_P(:)
@@ -348,7 +342,7 @@ CONTAINS
            ( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye), &
              PF_N(:,iPF_E), AF_N(:,iAF_E), PF_N(:,iPF_Ne) )
 
-    CALL ComputePressureFromPrimitive_TABLE & 
+    CALL ComputePressureFromPrimitive_TABLE &
            ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
              AF_N(:,iAF_P) )
 
@@ -386,40 +380,19 @@ CONTAINS
     CALL ComputeAndMapIncrement &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, U_F, U_R, dU_F, dU_R )
 
-    IF( UseXCFC )THEN
+    DO iZ4 = iZ_B1(4), iZ_E1(4)
+    DO iZ3 = iZ_B1(3), iZ_E1(3)
+    DO iZ2 = iZ_B1(2), iZ_E1(2)
 
-      DO iZ4 = iZ_B1(4), iZ_E1(4)
-      DO iZ3 = iZ_B1(3), iZ_E1(3)
-      DO iZ2 = iZ_B1(2), iZ_E1(2)
+      DO iNodeX = 1, nDOFX
 
-        DO iNodeX = 1, nDOFX
-
-          tau(iNodeX,iZ2,iZ3,iZ4) = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Psi)**6
-
-        END DO
+        tau(iNodeX,iZ2,iZ3,iZ4) = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Psi)**6
 
       END DO
-      END DO
-      END DO
 
-    ELSE
-
-      DO iZ4 = iZ_B1(4), iZ_E1(4)
-      DO iZ3 = iZ_B1(3), iZ_E1(3)
-      DO iZ2 = iZ_B1(2), iZ_E1(2)
-
-        DO iNodeX = 1, nDOFX
-
-          tau(iNodeX,iZ2,iZ3,iZ4) = One
-
-        END DO
-
-      END DO
-      END DO
-      END DO
-
-    END IF
-
+    END DO
+    END DO
+    END DO
 
     DO iS  = 1, nSpecies
     DO iCR = 1, nCR
@@ -435,7 +408,7 @@ CONTAINS
 
         dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
           = dU_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
-            * tau(iNodeX,iZ2,iZ3,iZ4) 
+            * tau(iNodeX,iZ2,iZ3,iZ4)
 
       END DO
       END DO
@@ -457,7 +430,7 @@ CONTAINS
 
         dU_F(iNodeX,iZ2,iZ3,iZ4,iCF) &
           = dU_F(iNodeX,iZ2,iZ3,iZ4,iCF) &
-            * tau(iNodeX,iZ2,iZ3,iZ4) 
+            * tau(iNodeX,iZ2,iZ3,iZ4)
 
       END DO
 

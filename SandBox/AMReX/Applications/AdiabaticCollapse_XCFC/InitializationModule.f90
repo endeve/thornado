@@ -153,9 +153,9 @@ MODULE InitializationModule
     AverageDown
   USE Euler_MeshRefinementModule, ONLY: &
     InitializeMeshRefinement_Euler
-  USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
-    InitializeGravitySolver_XCFC_Poseidon_MF, &
-    InitializeMetric_MF
+  USE MF_GravitySolutionModule_XCFC, ONLY: &
+    InitializeGravitySolver_XCFC_MF, &
+    InitializeMetric_Euler_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
@@ -278,14 +278,14 @@ CONTAINS
 
       CALL CreateMesh_MF( 0, MeshX )
 
-      CALL InitializeGravitySolver_XCFC_Poseidon_MF
+      CALL InitializeGravitySolver_XCFC_MF
 
       CALL DestroyMesh_MF( MeshX )
 
       CALL ComputeFromConserved_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-      CALL InitializeMetric_MF &
+      CALL InitializeMetric_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL ApplySlopeLimiter_Euler_MF &
@@ -300,7 +300,7 @@ CONTAINS
 
       CALL CreateMesh_MF( 0, MeshX )
 
-      CALL InitializeGravitySolver_XCFC_Poseidon_MF( MF_uGF, MF_uCF )
+      CALL InitializeGravitySolver_XCFC_MF( MF_uGF, MF_uCF )
 
       CALL DestroyMesh_MF( MeshX )
 

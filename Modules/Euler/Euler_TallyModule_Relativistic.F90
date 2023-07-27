@@ -22,7 +22,7 @@ MODULE Euler_TallyModule_Relativistic
   USE UnitsModule, ONLY: &
     UnitsDisplay
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
   USE ADM_Mass_Module, ONLY: &
     Calc_ADM_Mass
@@ -51,7 +51,7 @@ MODULE Euler_TallyModule_Relativistic
   REAL(DP)       :: Energy_OffGrid
   REAL(DP)       :: Energy_Change
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
   CHARACTER(256) :: ADMMass_FileName
   REAL(DP)       :: ADMMass_Interior
@@ -156,7 +156,7 @@ CONTAINS
 
     CLOSE( FileUnit )
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     ! --- ADM Mass ---
 
@@ -227,7 +227,7 @@ CONTAINS
       BaryonicMass_Initial = BaryonicMass_Interior
       Energy_Initial       = Energy_Interior
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
       ADMMass_Initial      = ADMMass_Interior
 
@@ -244,7 +244,7 @@ CONTAINS
       = Energy_Interior &
           - ( Energy_Initial + Energy_OffGrid )
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     ADMMass_Change &
       = ADMMass_Interior &
@@ -305,7 +305,7 @@ CONTAINS
     END DO
     END DO
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     CALL Calc_ADM_Mass( ADMMass_Interior )
 
@@ -326,7 +326,7 @@ CONTAINS
     Energy_OffGrid &
       = Energy_OffGrid + dM(iCF_E)
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     ADMMass_OffGrid &
       = Zero
@@ -370,7 +370,7 @@ CONTAINS
 
     CLOSE( FileUnit )
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     ! --- ADM Mass ---
 
@@ -440,7 +440,7 @@ CONTAINS
       Energy_Change   / UnitsDisplay % EnergyGlobalUnit, &
       UnitsDisplay % EnergyGlobalLabel
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     WRITE(*,*)
 

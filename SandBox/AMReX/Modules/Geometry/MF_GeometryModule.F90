@@ -108,6 +108,11 @@ CONTAINS
 
     END IF
 
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL &
+    !$OMP PRIVATE( MFI, BX, iX_B0, iX_E0, iX_B1, iX_E1, G, uGF, iLo_G, iHi_G )
+#endif
+
     CALL amrex_mfiter_build( MFI, MF_uGF )
 
     DO WHILE( MFI % next() )
@@ -159,6 +164,10 @@ CONTAINS
 
     CALL amrex_mfiter_destroy( MFI )
 
+#if defined( THORNADO_OMP )
+    !$OMP END PARALLEL
+#endif
+
   END SUBROUTINE ComputeGeometryX_MF
 
 
@@ -184,14 +193,19 @@ CONTAINS
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
-    INTEGER  :: iLevel, iNX, iX2, iX3, iGF, nX1_X, jNX
-    INTEGER  :: iNX1, iNX2, iNX3, jNX1, jNX2, jNX3
     INTEGER  :: iX_B0(3), iX_E0(3)
+    INTEGER  :: iLevel, iNX, iX2, iX3, iGF, nX1_X, jNX
+    INTEGER  :: iNX1, iNX2, iNX3, jNX1
 
     REAL(DP), ALLOCATABLE :: G_K(:,:,:,:)
     REAL(DP), ALLOCATABLE :: G_F(:,:,:,:)
 
     DO iLevel = 0, nLevels-1
+
+#if defined( THORNADO_OMP )
+      !$OMP PARALLEL &
+      !$OMP PRIVATE( BX, MFI, uGF, iX_B0, iX_E0, iNX, nX1_X, jNX, jNX1 )
+#endif
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -287,6 +301,10 @@ CONTAINS
       END DO
 
       CALL amrex_mfiter_destroy( MFI )
+
+#if defined( THORNADO_OMP )
+      !$OMP END PARALLEL
+#endif
 
     END DO
 

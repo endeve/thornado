@@ -209,6 +209,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP) :: Rtol_outer
   REAL(DP) :: Rtol_inner
   REAL(DP) :: wMatrRHS(nMatterEquations)
+  REAL(DP) :: DnuMax
 
   ! --- Temporary arrays for scatter/gather (packing)
 
@@ -740,7 +741,7 @@ CONTAINS
     ( M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
       MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
       Include_NES_Option, Include_Pair_Option, Include_Brem_Option, &
-      Include_LinCorr_Option, wMatrRHS_Option, Verbose_Option )
+      Include_LinCorr_Option, wMatrRHS_Option, DnuMax_Option, Verbose_Option )
 
     INTEGER , INTENT(in), OPTIONAL :: M_outer_Option
     INTEGER , INTENT(in), OPTIONAL :: M_inner_Option
@@ -753,6 +754,7 @@ CONTAINS
     LOGICAL , INTENT(in), OPTIONAL :: Include_Brem_Option
     LOGICAL , INTENT(in), OPTIONAL :: Include_LinCorr_Option
     REAL(DP), INTENT(in), OPTIONAL :: wMatrRHS_Option(nMatterEquations)
+    REAL(DP), INTENT(in), OPTIONAL :: DnuMax_Option
     LOGICAL , INTENT(in), OPTIONAL :: Verbose_Option
 
     LOGICAL :: Verbose
@@ -825,6 +827,12 @@ CONTAINS
       wMatrRHS = One ! --- One = On, Zero = Off
     END IF
 
+    IF( PRESENT( DnuMax_Option ) )THEN
+      DnuMax = DnuMax_Option
+    ELSE
+      DnuMax = One - EPSILON( One )
+    END IF
+
     IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
     ELSE
@@ -856,6 +864,8 @@ CONTAINS
 !!$      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iV2): '  , INT(wMatrRHS(iV2))
 !!$      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iV3): '  , INT(wMatrRHS(iV3))
 !!$      WRITE(*,*)
+      WRITE(*,'(A4,A32,ES10.3E3)') '', 'DnuMax: '         , DnuMax
+      WRITE(*,*)
 
     END IF
 
@@ -1120,7 +1130,10 @@ CONTAINS
              Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
 #elif defined( TWOMOMENT_ORDER_V )
-    
+
+    CALL LimitNeutrinoDistribution_OrderV & ! --- Enforce Dnu < 1
+           ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
     CALL InitializeRHS_OrderV &
            ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, D, Y, E, V_u_1, V_u_2, V_u_3, &
              Gm_dd_11, Gm_dd_22, Gm_dd_33 )
@@ -2009,6 +2022,34 @@ CONTAINS
     END IF
 
   END SUBROUTINE UpdateTemperature_Packed
+
+
+  SUBROUTINE LimitNeutrinoDistribution_OrderV &
+    ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+
+    INTEGER :: iN_E, iN_X, iS
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO iN_X = 1, nX_G
+    DO iS   = 1, nSpecies
+    DO iN_E = 1, nE_G
+
+      Dnu(iN_E,iS,iN_X) = MIN( DnuMax, Dnu(iN_E,iS,iN_X) )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE LimitNeutrinoDistribution_OrderV
 
 
   SUBROUTINE InitializeRHS_OrderOne &
@@ -3418,34 +3459,34 @@ CONTAINS
         ! --- Number Equation ---
 
         Gm(iOS+iCR_N,iN_X) &
-          = ( One - Omega(iN_X) ) * Dnu(iN_E,iS,iN_X) &
-            + Omega(iN_X) &
-                * ( C_Dnu(iN_E,iS,iN_X) - vDotInu + dt * ( Eta_T + L_N ) ) &
-                / ( One + dt * Chi_T )
+          = ( ( One - Omega(iN_X) ) * Dnu(iN_E,iS,iN_X) &
+              + Omega(iN_X) &
+                  * ( C_Dnu(iN_E,iS,iN_X) - vDotInu + dt * ( Eta_T + L_N ) ) ) &
+            / ( One + Omega(iN_X) * dt * Chi_T )
 
         ! --- Number Flux 1 Equation ---
 
         Gm(iOS+iCR_G1,iN_X) &
-          = ( One - Omega(iN_X) ) * Inu_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
-            + Omega(iN_X) &
-                * ( C_Inu_d_1(iN_E,iS,iN_X) - vDotK_d_1 + dt * L_G1 ) &
-                                    / ( One + dt * Kappa )
+          = ( ( One - Omega(iN_X) ) * Inu_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
+              + Omega(iN_X) &
+                  * ( C_Inu_d_1(iN_E,iS,iN_X) - vDotK_d_1 + dt * L_G1 ) ) &
+            / ( One + Omega(iN_X) * dt * Kappa )
 
         ! --- Number Flux 2 Equation ---
 
         Gm(iOS+iCR_G2,iN_X) &
-          = ( One - Omega(iN_X) ) * Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
-            + Omega(iN_X) &
-                * ( C_Inu_d_2(iN_E,iS,iN_X) - vDotK_d_2 + dt * L_G2 ) &
-                / ( One + dt * Kappa )
+          = ( ( One - Omega(iN_X) ) * Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
+              + Omega(iN_X) &
+                  * ( C_Inu_d_2(iN_E,iS,iN_X) - vDotK_d_2 + dt * L_G2 ) ) &
+            / ( One + Omega(iN_X) * dt * Kappa )
 
         ! --- Number Flux 3 Equation ---
 
         Gm(iOS+iCR_G3,iN_X) &
-          = ( One - Omega(iN_X) ) * Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) &
-            + Omega(iN_X) &
-                * ( C_Inu_d_3(iN_E,iS,iN_X) - vDotK_d_3 + dt * L_G3 ) &
-                / ( One + dt * Kappa )
+          = ( ( One - Omega(iN_X) ) * Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) &
+              + Omega(iN_X) &
+                  * ( C_Inu_d_3(iN_E,iS,iN_X) - vDotK_d_3 + dt * L_G3 ) ) &
+            / ( One + Omega(iN_X) * dt * Kappa )
 
         Fm(iOS+iCR_N ,iN_X) &
           = Gm(iOS+iCR_N ,iN_X) - Dnu    (iN_E,iS,iN_X)

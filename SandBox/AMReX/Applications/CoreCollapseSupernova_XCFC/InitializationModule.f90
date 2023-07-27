@@ -235,8 +235,8 @@ MODULE InitializationModule
     AverageDown
   USE Euler_MeshRefinementModule, ONLY: &
     InitializeMeshRefinement_Euler
-  USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
-    InitializeGravitySolver_XCFC_Poseidon_MF, &
+  USE MF_GravitySolutionModule_XCFC, ONLY: &
+    InitializeGravitySolver_XCFC_MF, &
     InitializeMetric_TwoMoment_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
@@ -253,8 +253,6 @@ CONTAINS
 
 
   SUBROUTINE InitializeProgram
-
-    INTEGER :: iLevel
 
     CALL amrex_init()
 
@@ -432,7 +430,7 @@ CONTAINS
 
       CALL CreateMesh_MF( 0, MeshX )
 
-      CALL InitializeGravitySolver_XCFC_Poseidon_MF
+      CALL InitializeGravitySolver_XCFC_MF
 
       CALL DestroyMesh_MF( MeshX )
 
@@ -465,7 +463,7 @@ CONTAINS
 
       CALL CreateMesh_MF( 0, MeshX )
 
-      CALL InitializeGravitySolver_XCFC_Poseidon_MF( MF_uGF, MF_uCF )
+      CALL InitializeGravitySolver_XCFC_MF( MF_uGF, MF_uCF )
 
       CALL DestroyMesh_MF( MeshX )
 

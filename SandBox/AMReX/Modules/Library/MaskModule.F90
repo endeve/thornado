@@ -132,6 +132,11 @@ CONTAINS
                DM(iLevel) % p, BA(iLevel+1) % p, &
                iLeaf, iNotLeaf, swX(1), amrex_geom(iLevel) % p )
 
+#if defined( THORNADO_OMP )
+      !$OMP PARALLEL &
+      !$OMP PRIVATE( MFI, BX, FineMask, iX_B0, iX_E0, iX_B1, iX_E1 )
+#endif
+
       CALL amrex_mfiter_build( MFI, iMF_FineMask, tiling = UseTiling )
 
       DO WHILE( MFI % next() )
@@ -254,6 +259,10 @@ CONTAINS
       END DO ! WHILE( MFI % next() )
 
       CALL amrex_mfiter_destroy( MFI )
+
+#if defined( THORNADO_OMP )
+      !$OMP END PARALLEL
+#endif
 
     ELSE
 

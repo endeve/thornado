@@ -53,7 +53,7 @@ InitializationModule_Relativistic.o: \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   MeshModule.o \
-  GravitySolutionModule_CFA_Poseidon.o \
+  GravitySolutionModule_XCFC_Poseidon.o \
   Poseidon_UtilitiesModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
@@ -69,7 +69,7 @@ TimeSteppingModule_SSPRK.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   GeometryFieldsModule.o \
-  GravitySolutionModule_CFA_Poseidon.o \
+  GravitySolutionModule_XCFC_Poseidon.o \
   FluidFieldsModule.o \
   Euler_SlopeLimiterModule_Relativistic_TABLE.o \
   Euler_PositivityLimiterModule_Relativistic_TABLE.o \
@@ -93,7 +93,7 @@ ApplicationDriver.o: \
   InputOutputModuleHDF.o \
   FluidFieldsModule.o \
   GeometryFieldsModule.o \
-  GravitySolutionModule_CFA_Poseidon.o \
+  GravitySolutionModule_XCFC_Poseidon.o \
   Euler_dgDiscretizationModule.o \
   TimeSteppingModule_SSPRK.o \
   UnitsModule.o \

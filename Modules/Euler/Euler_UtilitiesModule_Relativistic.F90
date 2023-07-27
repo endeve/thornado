@@ -1,4 +1,4 @@
-!> Perform computations related to the 3+1, CFA Euler equations.
+!> Perform computations related to the 3+1, XCFC Euler equations.
 !> Find the equations in Rezzolla & Zanotti, Relativistic Hydrodynamics, 2013,
 !> Equation 7.234.
 MODULE Euler_UtilitiesModule_Relativistic

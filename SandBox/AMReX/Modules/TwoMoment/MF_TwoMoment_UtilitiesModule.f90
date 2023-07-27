@@ -639,7 +639,6 @@ CONTAINS
     dt_min = 100000.0_DP
     dt_s = 0.0_DP
 
-
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -663,16 +662,15 @@ CONTAINS
     END DO
     END DO
 
-    IF( iX_B0(2) .GT. iX_E0(2) )THEN
+    IF( iX_B0(2) .LT. iX_E0(2) )THEN
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-
       DO iNodeX = 1, nDOFX
 
         dX(2) = dX2(iX2)
-
         dt_s = ( dX(2) * G(iNodeX,iX1,iX2,iX3,iGF_h_2) * CFL ) / G(iNodeX,iX1,iX2,iX3,iGF_Alpha)
+
         IF ( dt_s .LT. dt_min(2) ) THEN
 
           dt_min(2) = dt_s
@@ -687,7 +685,7 @@ CONTAINS
     END DO
     END IF
 
-    IF( iX_B0(3) .GT. iX_E0(3) )THEN
+    IF( iX_B0(3) .LT. iX_E0(3) )THEN
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
