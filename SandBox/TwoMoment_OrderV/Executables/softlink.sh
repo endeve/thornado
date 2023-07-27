@@ -1,5 +1,6 @@
 #!/bin/bash
-WEAKLIB_TABLES_DIR='/localdisk/quanshao/ExaStar/weaklib-tables'
+#/home/ac.squan/
+WEAKLIB_TABLES_DIR='/home/ac.squan/ExaStar/weaklib-tables'
 ln -s $WEAKLIB_TABLES_DIR/SFHo/LowRes/wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5
 ln -s $WEAKLIB_TABLES_DIR/SFHo/LowRes/wl-Op-SFHo-15-25-50-E40-B85-Iso.h5
 ln -s $WEAKLIB_TABLES_DIR/SFHo/LowRes/wl-Op-SFHo-15-25-50-E40-B85-NES.h5
