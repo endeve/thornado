@@ -42,6 +42,8 @@ function set_common(){
    #ulimit -n 20480
    ## The following seems working well for the SineWaveStream app.
    export LIBOMPTARGET_LEVEL0_MEMORY_POOL=device,128,64,16384
+   export LIBOMPTARGET_LEVEL_ZERO_MEMORY_POOL=device,128,64,16384
+   export FI_PROVIDER=sockets
    #export LIBOMPTARGET_LEVEL_ZERO_COMMAND_BATCH=copy,8
    #export OMP_NUM_THREADS=1
 }
@@ -133,64 +135,13 @@ export BASE_DATE="2023.05.15"
 #export COMPILER_DATE="2023.05.03"
 #export COMPILER_DATE="2023.05.08"
 export COMPILER_DATE="2023.05.15"
-#export COMPILER_DATE="2023.06.22"
-
-#export COMPILER_DATE="2023.03.30"
-#export COMPILER_DATE="2023.06.11"
-#export COMPILER_DATE="2023.06.07"
-#export COMPILER_DATE="2023.06.05"
-#export COMPILER_DATE="2023.06.06"
-#export COMPILER_DATE="2023.06.04"
-#export COMPILER_DATE="2023.05.21"
-#export COMPILER_DATE="2023.05.22"
-#export COMPILER_DATE="2023.05.23"
-#export COMPILER_DATE="2023.05.24"
-#export COMPILER_DATE="2023.05.29"
-#export COMPILER_DATE="2023.06.01"
-#export COMPILER_DATE="2023.03.10"
-#export COMPILER_DATE="2022.12.30.002"
 export AADEBUG=""
 
 #export ONEAPI_MODULE_OVERRIDE=oneapi/eng-compiler/2022.12.30.003
 module load nightly-compiler/${COMPILER_DATE}
 
-#UMD=""
-#UMD="neo/agama-devel-sp3/611-23.09.25812.14-609"
-#UMD="neo/agama-devel-sp3/609-23.09.25812.14-609"
-#UMD="neo/agama-devel-sp3/610-23.09.25812.14-609"
-#UMD="neo/agama-devel-sp3/608-23.05.25593.18-i606"
-#UMD="neo/agama-devel-sp3/619-23.09.25812.15-619"
-#UMD="neo/agama-devel-sp3/625-23.13.26032.7-624"
-#UMD="neo/agama-devel-sp3/622-23.09.25812.15-622"
-#UMD="neo/agama-devel-sp3/628-23.13.26032.8-626"
-#UMD="neo/agama-devel-sp3/627-23.13.26032.8-626"
-#UMD="neo/agama-devel-sp3/636-23.13.26032.22-631"
-#UMD="neo/agama-devel-sp3/637-23.13.26032.26-637"
-#UMD="neo/agama-devel-sp3/639-23.13.26032.26-637"
-#UMD="neo/agama-devel-sp3/644-23.13.26032.30-644"
-#UMD="neo/agama-devel-sp3/646-23.13.26032.30-646"
-#UMD="neo/agama-devel-sp3/648-23.17.26241.13-648"
-#UMD="neo/agama-devel-sp3/650-23.17.26241.13-649"
-#UMD="neo/agama-devel-sp3/651-23.17.26241.14-651"
-#UMD="neo/agama-devel-sp3/652-23.17.26241.14-651"
-#UMD="neo/agama-devel-sp3/653-23.17.26241.15-653"
-#UMD="intel_compute_runtime/release/agama-devel-602"
-#UMD="neo/agama-devel-sp3/657-23.17.26241.18-657"
-#UMD="neo/agama-devel-sp3/658-23.17.26241.19-658"
-#UMD="neo/agama-devel-sp3/661-23.17.26241.21-661"
-#UMD="neo/agama-devel-sp3/663-23.17.26241.21-662"
-#UMD="neo/agama-devel-sp3/664-23.17.26241.21-664"
-#UMD="neo/agama-devel-sp3/666-23.17.26241.22-665"
-
-#UMD="neo/agama-devel-sp3/627-23.13.26032.8-626"
-#UMD="neo/agama-devel-sp3/670-23.17.26241.24-670"
-#UMD="neo/agama-devel-sp3/671-23.22.26516.8-671"
-#UMD="neo/agama-devel-sp3/672-23.22.26516.8-672"
-#UMD="neo/agama-devel-sp3/673-23.22.26516.8-673"
-#UMD="neo/agama-devel-sp3/674-23.22.26516.8-673"
-#UMD="neo/agama-devel-sp3/673-23.22.26516.8-673"
-#UMD="neo/agama-devel-sp3/691-23.22.26516.18-688"
-UMD="neo/agama-devel-sp3/692-23.22.26516.20-692"
+#UMD="neo/agama-devel-sp3/692-23.22.26516.20-692"
+UMD="neo/agama-devel-sp3/697-23.26.26690.19-697"
 umdf=""
 export useAGRF="FALSE"
 if [[ -n $UMD ]]; then
@@ -211,7 +162,6 @@ fi
 #module load nightly-compiler/${COMPILER_DATE}
 #export COMPILER_DATE=".2023.05.15.003-rc11"
 #module load oneapi/eng-compiler/${COMPILER_DATE}
-#export FI_PROVIDER=sockets
 #export useAGRF="TRUE"
 #module switch -f intel_compute_runtime/release/agama-devel-627 neo/agama-devel-sp3/627-23.13.26032.8-626
 
