@@ -12,12 +12,13 @@ function set_common(){
    export EXASTAR_HOME=/localdisk/quanshao/ExaStar
    export HDF5_INC=${EXASTAR_HOME}/hdf57/include
    export HDF5_LIB=${EXASTAR_HOME}/hdf57/lib64
-   export THORNADO_DIR=${EXASTAR_HOME}/thornado-mergingMaster
-   export WEAKLIB_DIR=${EXASTAR_HOME}/weaklib-merging
+   export THORNADO_DIR=${EXASTAR_HOME}/thornado-new
+   export WEAKLIB_DIR=${EXASTAR_HOME}/weaklib-new
    export WEAKLIB_TABLES_DIR=${EXASTAR_HOME}/weaklib-tables
    export THORNADO_MACHINE=beacon_intel
    export IGC_OverrideOCLMaxParamSize=4096
-   export MPIR_CVAR_ENABLE_GPU=0
+   export numTeamCap="-mllvm -vpo-paropt-atomic-free-red-global-buf-size=4096"
+#   export MPIR_CVAR_ENABLE_GPU=0
 
 ## for running
 
@@ -128,7 +129,7 @@ if [[ -n $ACTION ]];then
    faction="-$ACTION"
 fi
 #export BASE_DATE="2023.03.10"
-export BASE_DATE="2023.04.01"
+export BASE_DATE="2023.05.15"
 #export COMPILER_DATE="2023.05.03"
 #export COMPILER_DATE="2023.05.08"
 export COMPILER_DATE="2023.05.15"
@@ -186,8 +187,10 @@ module load nightly-compiler/${COMPILER_DATE}
 #UMD="neo/agama-devel-sp3/671-23.22.26516.8-671"
 #UMD="neo/agama-devel-sp3/672-23.22.26516.8-672"
 #UMD="neo/agama-devel-sp3/673-23.22.26516.8-673"
-UMD="neo/agama-devel-sp3/674-23.22.26516.8-673"
+#UMD="neo/agama-devel-sp3/674-23.22.26516.8-673"
 #UMD="neo/agama-devel-sp3/673-23.22.26516.8-673"
+#UMD="neo/agama-devel-sp3/691-23.22.26516.18-688"
+UMD="neo/agama-devel-sp3/692-23.22.26516.20-692"
 umdf=""
 export useAGRF="FALSE"
 if [[ -n $UMD ]]; then
@@ -295,10 +298,8 @@ do
          fi
 
          export OP_LEVEL=$op
-         export LOG_FILE=${logFiles[jj]}.${OP_LEVEL}.${COMPILER_DATE}.ms69${umdf}${gridNames[ii]}${faction}$AADEBUG
-#         export LOG_BASE=${logFiles[jj]}.${OP_LEVEL}.${BASE_DATE}.ms69-umd602${gridNames[ii]}$AADEBUG
-         export LOG_BASE=${logFiles[jj]}.${OP_LEVEL}.${BASE_DATE}.ms69-devel602${gridNames[ii]}$AADEBUG
-         #export LOG_BASE=${logFiles[jj]}.${OP_LEVEL}.${BASE_DATE}.ms69${umdf}${gridNames[ii]}$AADEBUG
+         export LOG_FILE=${logFiles[jj]}.${OP_LEVEL}.${COMPILER_DATE}${umdf}${gridNames[ii]}${faction}$AADEBUG
+         export LOG_BASE=${logFiles[jj]}.${OP_LEVEL}.${BASE_DATE}.ms69-umd674${gridNames[ii]}$AADEBUG
          export USER_OPTION=${userOptions[jj]}
 
          if [[ "$ACTION" == "vtune" ]]; then
