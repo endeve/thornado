@@ -14,8 +14,9 @@ thornado.CFL       = 0.5
 thornado.iCycleW   = 100
 thornado.iCycleChk = 100000
 
-thornado.PlotFileBaseName       = "RiemannProblemSpherical1D.plt"
-thornado.CheckpointFileBaseName = "RiemannProblemSpherical1D.chk"
+thornado.PlotFileBaseName        = "RiemannProblemSpherical1D.plt"
+thornado.CheckpointFileBaseName  = "RiemannProblemSpherical1D.chk"
+thornado.TallyFileNameRoot_Euler = "RiemannProblemSpherical1D.Tally"
 
 EoS.Gamma_IDEAL = 1.3333333333333333
 

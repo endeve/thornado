@@ -17,6 +17,7 @@ thornado.iRestart = -1
 
 thornado.UsePhysicalUnits = 1
 
+thornado.TallyFileNameRoot_Euler = "YahilCollapse_XCFC.Tally"
 thornado.PlotFileBaseName = "YahilCollapse_XCFC.plt"
 thornado.t_end   = 3.0e+2
 thornado.iCycleD = 1

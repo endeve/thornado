@@ -15,8 +15,9 @@ thornado.dt_wrt  = 1.0e-2 # fraction of t_end
 thornado.dt_chk  = 1.1e5
 thornado.UsePhysicalUnits = 1
 
-thornado.PlotFileBaseName       = "Advection1D.plt"
-thornado.CheckpointFileBaseName = "Advection1D.chk"
+thornado.PlotFileBaseName        = "Advection1D.plt"
+thornado.CheckpointFileBaseName  = "Advection1D.chk"
+thornado.TallyFileNameRoot_Euler = "Advection1D.plt"
 
 # Equation of state parameters
 EoS.EquationOfState = "TABLE"

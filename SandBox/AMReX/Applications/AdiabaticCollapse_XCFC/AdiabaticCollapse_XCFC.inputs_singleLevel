@@ -13,6 +13,7 @@ thornado.iRestart = -1
 
 thornado.UsePhysicalUnits = 1
 
+thornado.TallyFileNameRoot_Euler = "AdiabaticCollapse_XCFC.Tally"
 thornado.PlotFileBaseName = "AdiabaticCollapse_XCFC.plt"
 thornado.t_end   = 3.0e+2
 thornado.iCycleD = 1

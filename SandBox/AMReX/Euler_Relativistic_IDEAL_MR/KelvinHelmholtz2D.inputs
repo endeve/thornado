@@ -16,8 +16,10 @@ thornado.dt_wrt  = 3.0e-2
 thornado.dt_chk  = 3.0e-1
 
 thornado.iRestart = -1
-thornado.PlotFileBaseName       = "KelvinHelmholtz2D.plt"
-thornado.CheckpointFileBaseName = "KelvinHelmholtz2D.chk"
+
+thornado.PlotFileBaseName        = "KelvinHelmholtz2D.plt"
+thornado.CheckpointFileBaseName  = "KelvinHelmholtz2D.chk"
+thornado.TallyFileNameRoot_Euler = "KelvinHelmholtz2D.Tally"
 
 EoS.Gamma_IDEAL = 1.3333333333333333
 
