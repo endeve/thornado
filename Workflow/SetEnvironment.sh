@@ -45,6 +45,13 @@ elif [[ $THORNADO_MACHINE == frontier* ]]; then
 
   source ${MODULESHOME}/init/bash
 
+elif [[ $THORNADO_MACHINE == perlmutter* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
+  source ${MODULESHOME}/init/bash
+
 elif [[ $THORNADO_MACHINE == darter* ]]; then
 
   echo
@@ -256,6 +263,16 @@ elif [[ $THORNADO_MACHINE == frontier_cce ]]; then
   module load cray-hdf5-parallel
   module load rocm/5.4.0
   module load hipfort/5.4.0
+
+elif [[ $THORNADO_MACHINE == perlmutter_nvhpc ]]; then
+
+  echo
+
+  module load PrgEnv-nvidia
+  module load cray-hdf5-parallel
+  module unload cpu
+  module load gpu
+  
 
 elif [[ $THORNADO_MACHINE == darter_gnu ]]; then
 
