@@ -889,7 +889,7 @@ CONTAINS
     CALL TimersStart( Timer_PL_Theta_1 )
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE COLLAPSE(5) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
     !$OMP PRIVATE( Min_K, Max_K, Theta_1 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG COLLAPSE(5) ASYNC &
@@ -914,9 +914,9 @@ CONTAINS
         Max_K = Max_1
 
 #if   defined( THORNADO_OMP_OL )
-        !$OMP PARALLEL DO SIMD &
-        !$OMP REDUCTION( min: Min_K ) &
-        !$OMP REDUCTION( max: Max_K )
+!        !$OMP PARALLEL DO SIMD &
+!        !$OMP REDUCTION( min: Min_K ) &
+!        !$OMP REDUCTION( max: Max_K )
 #elif defined( THORNADO_OACC   )
         !$ACC LOOP VECTOR &
         !$ACC REDUCTION( min: Min_K ) &
@@ -970,7 +970,8 @@ CONTAINS
     CALL TimersStart( Timer_PL_Theta_2 )
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE COLLAPSE(5) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP PRIVATE( iP_X, Gm_dd_11, Gm_dd_22, Gm_dd_33, Gamma_P, Theta_P ) &
     !$OMP PRIVATE( Theta_2, Gamma_Min )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG COLLAPSE(5) ASYNC &
@@ -995,9 +996,9 @@ CONTAINS
         Gamma_Min = Min_2
 
 #if   defined( THORNADO_OMP_OL )
-        !$OMP PARALLEL DO SIMD &
-        !$OMP PRIVATE( iP_X, Gm_dd_11, Gm_dd_22, Gm_dd_33, Gamma_P, Theta_P ) &
-        !$OMP REDUCTION( min: Gamma_Min, Theta_2 )
+!        !$OMP PARALLEL DO SIMD &
+!        !$OMP PRIVATE( iP_X, Gm_dd_11, Gm_dd_22, Gm_dd_33, Gamma_P, Theta_P ) &
+!        !$OMP REDUCTION( min: Gamma_Min, Theta_2 )
 #elif defined( THORNADO_OACC   )
         !$ACC LOOP VECTOR &
         !$ACC PRIVATE( iP_X, Gm_dd_11, Gm_dd_22, Gm_dd_33, Gamma_P, Theta_P ) &
@@ -1335,8 +1336,9 @@ CONTAINS
         dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE COLLAPSE(4) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
     !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4 ) &
+    !$OMP PRIVATE( iNodeX, iNodeE ) &
     !$OMP PRIVATE( ResidualE, iK1, iK2, N_K1, N_K2, E_K1, E_K2, &
     !$OMP          Theta_K1, Theta_K2, MinTheta_K1, MinTheta_K2, &
     !$OMP          V_u_1, V_u_2, V_u_3, W2_K, W3_K )
@@ -1365,7 +1367,7 @@ CONTAINS
         ! --- Three-Velocity ---
 
 #if   defined( THORNADO_OMP_OL )
-        !$OMP PARALLEL DO SIMD
+!        !$OMP PARALLEL DO SIMD
 #elif defined( THORNADO_OACC   )
         !$ACC LOOP VECTOR
 #endif
@@ -1391,8 +1393,8 @@ CONTAINS
         ! --- Integration Weights ---
 
 #if   defined( THORNADO_OMP_OL )
-        !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-        !$OMP PRIVATE( iNodeX, iNodeE )
+!        !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+!        !$OMP PRIVATE( iNodeX, iNodeE )
 #elif defined( THORNADO_OACC   )
         !$ACC LOOP VECTOR COLLAPSE(2) &
         !$ACC PRIVATE( iNodeX, iNodeE )
@@ -2050,8 +2052,8 @@ CONTAINS
     ElementNumber = Zero
 
 #if defined  ( THORNADO_OMP_OL )
-    !$OMP PARALLEL DO SIMD &
-    !$OMP REDUCTION( +: ElementNumber )
+!    !$OMP PARALLEL DO SIMD &
+!    !$OMP REDUCTION( +: ElementNumber )
 #elif defined( THORNADO_OACC   )
     !$ACC LOOP VECTOR &
     !$ACC REDUCTION( +: ElementNumber )
@@ -2089,9 +2091,9 @@ CONTAINS
     ElementEnergy = Zero
 
 #if defined  ( THORNADO_OMP_OL )
-    !$OMP PARALLEL DO SIMD &
-    !$OMP PRIVATE( iNodeX ) &
-    !$OMP REDUCTION( +: ElementEnergy )
+!    !$OMP PARALLEL DO SIMD &
+!    !$OMP PRIVATE( iNodeX ) &
+!    !$OMP REDUCTION( +: ElementEnergy )
 #elif defined( THORNADO_OACC   )
     !$ACC LOOP VECTOR &
     !$ACC PRIVATE( iNodeX ) &
@@ -2209,7 +2211,7 @@ CONTAINS
     INTEGER :: iNodeZ
 
 #if defined  ( THORNADO_OMP_OL )
-    !$OMP PARALLEL DO SIMD
+!    !$OMP PARALLEL DO SIMD
 #elif defined( THORNADO_OACC   )
     !$ACC LOOP VECTOR
 #endif
@@ -2235,7 +2237,7 @@ CONTAINS
     INTEGER :: iNodeZ
 
 #if defined  ( THORNADO_OMP_OL )
-    !$OMP PARALLEL DO SIMD
+!    !$OMP PARALLEL DO SIMD
 #elif defined( THORNADO_OACC   )
     !$ACC LOOP VECTOR
 #endif
@@ -2302,8 +2304,9 @@ CONTAINS
         dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE COLLAPSE(5) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
     !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4 ) &
+    !$OMP PRIVATE( iNodeZ, V_u_1, V_u_2, V_u_3 ) &
     !$OMP PRIVATE( SUM_E )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG COLLAPSE(5) ASYNC &
@@ -2326,9 +2329,9 @@ CONTAINS
       SUM_E = Zero
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( iNodeZ, V_u_1, V_u_2, V_u_3 ) &
-      !$OMP REDUCTION( +: SUM_E )
+!      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+!      !$OMP PRIVATE( iNodeZ, V_u_1, V_u_2, V_u_3 ) &
+!      !$OMP REDUCTION( +: SUM_E )
 #elif defined(THORNADO_OACC)
       !$ACC LOOP VECTOR COLLAPSE(2) &
       !$ACC PRIVATE( iNodeZ, V_u_1, V_u_2, V_u_3 ) &
@@ -2519,3 +2522,4 @@ CONTAINS
 
 
 END MODULE TwoMoment_PositivityLimiterModule
+
