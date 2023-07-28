@@ -133,7 +133,7 @@ MODULE InputOutputModuleAMReX
     StepNo, &
     swX, &
     t_new, &
-    PlotFileBaseName, &
+    PlotFileNameRoot, &
     nX, &
     nE, &
     nSpecies, &
@@ -331,7 +331,7 @@ CONTAINS
 
     END IF
 
-    PlotFileName = TRIM( PlotFileBaseName ) // NumberString
+    PlotFileName = TRIM( PlotFileNameRoot ) // NumberString
 
     IF( amrex_parallel_ioprocessor() )THEN
 

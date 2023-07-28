@@ -18,14 +18,14 @@ thornado.iRestart = -1
 thornado.UsePhysicalUnits = 1
 
 thornado.TallyFileNameRoot_Euler = "YahilCollapse_XCFC.Tally"
-thornado.PlotFileBaseName = "YahilCollapse_XCFC.plt"
+thornado.PlotFileNameRoot = "YahilCollapse_XCFC.plt"
 thornado.t_end   = 3.0e+2
 thornado.iCycleD = 1
 
 thornado.dt_wrt  = 1.0e-1
 thornado.iCycleW = -1
 
-thornado.CheckpointFileBaseName = "YahilCollapse_XCFC.chk"
+thornado.CheckpointFileNameRoot = "YahilCollapse_XCFC.chk"
 thornado.dt_chk    = 1.0e+0
 thornado.iCycleChk = -1
 

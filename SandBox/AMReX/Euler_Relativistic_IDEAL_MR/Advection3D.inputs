@@ -16,8 +16,8 @@ thornado.iCycleChk = 100000
 
 EoS.Gamma_IDEAL = 1.3333333333333333
 
-thornado.PlotFileBaseName        = "Advection3D.plt"
-thornado.CheckpointFileBaseName  = "Advection3D.chk"
+thornado.PlotFileNameRoot        = "Advection3D.plt"
+thornado.CheckpointFileNameRoot  = "Advection3D.chk"
 thornado.TallyFileNameRoot_Euler = "Advection3D.Tally"
 
 thornado.bcX         = 01 01 01
