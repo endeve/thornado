@@ -475,16 +475,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    !$OMP MAP( always, to: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     !$OMP             OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
     !$OMP             EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
     !$OMP             NES_AT, Pair_AT, Brem_AT, C1, C2 )
-
-    !$OMP TARGET UPDATE TO &
-    !$OMP ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
-    !$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,  &
-    !$OMP   EmAb_T, Iso_T, NES_T, Pair_T, Brem_T,       &
-    !$OMP   NES_AT, Pair_AT, Brem_AT, C1, C2            )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
@@ -609,19 +603,12 @@ CONTAINS
       ENDDO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA MAP                       & 
-    !$OMP ( to:                                       &
+    !$OMP TARGET ENTER DATA                           & 
+    !$OMP MAP( always, to:                            &
     !$OMP   Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T,       &
     !$OMP   OS_EmAb_EC_rate, OS_EmAb_EC_spec,         &
     !$OMP   EmAb_EC_rate_T, EmAb_EC_spec_T,           &
     !$OMP   EC_nE, EC_dE, EC_iE_max, EC_iNodeE_max,   & 
-    !$OMP   EC_kfmin, EC_kfmax, use_EC_table,         &
-    !$OMP   EC_a, EC_b, EC_ak, EC_bk )
-    !$OMP TARGET UPDATE TO                            &
-    !$OMP ( Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T,       & 
-    !$OMP   OS_EmAb_EC_rate, OS_EmAb_EC_spec,         &
-    !$OMP   EmAb_EC_rate_T, EmAb_EC_spec_T,           &
-    !$OMP   EC_nE, EC_dE, EC_iE_max, EC_iNodeE_max,   &
     !$OMP   EC_kfmin, EC_kfmax, use_EC_table,         &
     !$OMP   EC_a, EC_b, EC_ak, EC_bk )
 #elif defined(THORNADO_OACC)
@@ -802,15 +789,15 @@ CONTAINS
   IF ( Use_OpacityTables ) THEN
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T,     &
-    !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,      &
-    !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T,           &
-    !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2,               &
-    !$OMP               use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
-    !$OMP               EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
-    !$OMP               EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax,   &
-    !$OMP               EC_a, EC_b, EC_ak, EC_bk )
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( always, release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+      !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
+      !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
+      !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2, &
+      !$OMP               use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
+      !$OMP               EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
+      !$OMP               EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax,   &
+      !$OMP               EC_a, EC_b, EC_ak, EC_bk )
 #endif
 
     DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )

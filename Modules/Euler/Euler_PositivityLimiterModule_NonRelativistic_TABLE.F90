@@ -256,8 +256,7 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: InterpMat )
-    !$OMP TARGET UPDATE TO( InterpMat )
+    !$OMP MAP( always, to: InterpMat )
 #elif defined( THORNADO_OACC   )
     !$ACC UPDATE DEVICE( InterpMat )
 #endif
@@ -275,7 +274,7 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET EXIT DATA &
-      !$OMP MAP( release: InterpMat )
+      !$OMP MAP( always, release: InterpMat )
 #endif
 
       DEALLOCATE( InterpMat )

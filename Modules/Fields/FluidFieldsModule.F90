@@ -227,9 +227,11 @@ CONTAINS
                  1-swX(3):nX(3)+swX(3), &
                  1:nCF) )
 
+    uCF = Zero
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: uCF )
+    !$OMP MAP( to: uCF )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC CREATE(     uCF )
@@ -270,9 +272,11 @@ CONTAINS
                   1-swX(3):nX(3)+swX(3), &
                   1:nPF) )
 
+    uPF = Zero
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: uPF )
+    !$OMP MAP( to: uPF )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC CREATE(     uPF )
@@ -313,9 +317,11 @@ CONTAINS
                   1-swX(3):nX(3)+swX(3), &
                   1:nAF) )
 
+    uAF = Zero
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: uAF )
+    !$OMP MAP( to: uAF )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC CREATE(     uAF )
@@ -356,9 +362,11 @@ CONTAINS
                   1-swX(3):nX(3)+swX(3), &
                   1:nDF) )
 
+    uDF = Zero
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: uDF )
+    !$OMP MAP( to: uDF )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC CREATE(     uDF )
