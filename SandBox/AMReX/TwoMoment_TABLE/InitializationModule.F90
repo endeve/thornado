@@ -128,7 +128,6 @@ MODULE InitializationModule
   USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
     InitializeNeutrinoMatterSolverParameters
 
-
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
@@ -248,6 +247,7 @@ CONTAINS
   SUBROUTINE InitializeProgram
 
     INTEGER :: iLevel
+    LOGICAL :: SetInitialValues
 
     CALL amrex_init()
 
@@ -372,8 +372,6 @@ CONTAINS
 
     CALL InitializeSlopeLimiter_TwoMoment_MF
 
-    CALL InitializeTally_Euler_MF
-
     CALL InitializeTally_TwoMoment_MF
 
     CALL amrex_init_virtual_functions &
@@ -396,6 +394,10 @@ CONTAINS
 
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
+
+      SetInitialValues = .TRUE.
+
+      CALL InitializeTally_Euler_MF
 
       DO iLevel = 0, nLevels-1
 
@@ -425,6 +427,11 @@ CONTAINS
       CALL ReadCheckpointFile &
              ( ReadFields_uCF_Option = .TRUE., &
                ReadFields_uCR_Option = .TRUE. )
+
+      SetInitialValues = .FALSE.
+
+      CALL InitializeTally_Euler_MF &
+             ( InitializeFromCheckpoint_Option = .TRUE. )
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
@@ -473,7 +480,8 @@ CONTAINS
 
     CALL ComputeTally_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, &
-             SetInitialValues_Option = .TRUE., Verbose_Option = .TRUE. )
+             SetInitialValues_Option = SetInitialValues, &
+             Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL ComputeTally_TwoMoment_MF &
            ( amrex_geom(0), MF_uGF, MF_uCF, MF_uCR, &

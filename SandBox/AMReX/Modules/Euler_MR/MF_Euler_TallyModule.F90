@@ -90,46 +90,49 @@ MODULE MF_Euler_TallyModule
 
   INTEGER, PARAMETER :: SL = 256
 
-  CHARACTER(SL) :: BaryonicMass_FileName
-  REAL(DP)      :: BaryonicMass_Interior
-  REAL(DP)      :: BaryonicMass_Interior_OMP
-  REAL(DP)      :: BaryonicMass_Initial
-  REAL(DP)      :: BaryonicMass_OffGrid
-  REAL(DP)      :: BaryonicMass_Change
+  CHARACTER(SL)    :: BaryonicMass_FileName
+  REAL(DP), PUBLIC :: BaryonicMass_Initial
+  REAL(DP)         :: BaryonicMass_Interior
+  REAL(DP)         :: BaryonicMass_Interior_OMP
+  REAL(DP)         :: BaryonicMass_OffGrid
+  REAL(DP)         :: BaryonicMass_Change
 
-  CHARACTER(SL) :: Energy_FileName
-  REAL(DP)      :: Energy_Interior
-  REAL(DP)      :: Energy_Interior_OMP
-  REAL(DP)      :: Energy_Initial
-  REAL(DP)      :: Energy_OffGrid
-  REAL(DP)      :: Energy_Change
+  CHARACTER(SL)    :: Energy_FileName
+  REAL(DP), PUBLIC :: Energy_Initial
+  REAL(DP)         :: Energy_Interior
+  REAL(DP)         :: Energy_Interior_OMP
+  REAL(DP)         :: Energy_OffGrid
+  REAL(DP)         :: Energy_Change
 
-  CHARACTER(SL) :: ElectronNumber_FileName
-  REAL(DP)      :: ElectronNumber_Interior
-  REAL(DP)      :: ElectronNumber_Interior_OMP
-  REAL(DP)      :: ElectronNumber_Initial
-  REAL(DP)      :: ElectronNumber_OffGrid
-  REAL(DP)      :: ElectronNumber_Change
+  CHARACTER(SL)    :: ElectronNumber_FileName
+  REAL(DP), PUBLIC :: ElectronNumber_Initial
+  REAL(DP)         :: ElectronNumber_Interior
+  REAL(DP)         :: ElectronNumber_Interior_OMP
+  REAL(DP)         :: ElectronNumber_OffGrid
+  REAL(DP)         :: ElectronNumber_Change
 
-  CHARACTER(SL) :: ADMMass_FileName
-  REAL(DP)      :: ADMMass_Interior
-  REAL(DP)      :: ADMMass_Initial
-  REAL(DP)      :: ADMMass_OffGrid
-  REAL(DP)      :: ADMMass_Change
+  CHARACTER(SL)    :: ADMMass_FileName
+  REAL(DP), PUBLIC :: ADMMass_Initial
+  REAL(DP)         :: ADMMass_Interior
+  REAL(DP)         :: ADMMass_OffGrid
+  REAL(DP)         :: ADMMass_Change
 
 CONTAINS
 
 
   SUBROUTINE InitializeTally_Euler_MF &
-    ( SuppressTally_Option )
+    ( SuppressTally_Option, InitializeFromCheckpoint_Option )
 
     LOGICAL, INTENT(in), OPTIONAL :: &
-      SuppressTally_Option
+      SuppressTally_Option, &
+      InitializeFromCheckpoint_Option
 
     CHARACTER(:), ALLOCATABLE :: TallyFileNameRoot_Euler
 
     CHARACTER(SL) :: FileNameRoot
     INTEGER       :: FileUnit
+
+    LOGICAL :: InitializeFromCheckpoint
 
     TYPE(amrex_parmparse) :: PP
 
@@ -139,6 +142,10 @@ CONTAINS
     SuppressTally = .FALSE.
     IF( PRESENT( SuppressTally_Option ) ) &
       SuppressTally = SuppressTally_Option
+
+    InitializeFromCheckpoint = .FALSE.
+    IF( PRESENT( InitializeFromCheckpoint_Option ) ) &
+      InitializeFromCheckpoint = InitializeFromCheckpoint_Option
 
     TallyFileNameRoot_Euler = TRIM( ProgramName )
     CALL amrex_parmparse_build( PP, 'thornado' )
@@ -262,23 +269,28 @@ CONTAINS
 
     END IF
 
+    IF( .NOT. InitializeFromCheckpoint )THEN
+
+      BaryonicMass_Initial   = Zero
+      Energy_Initial         = Zero
+      ElectronNumber_Initial = Zero
+      ADMMass_Initial        = Zero
+
+    END IF
+
     BaryonicMass_Interior = Zero
-    BaryonicMass_Initial  = Zero
     BaryonicMass_OffGrid  = Zero
     BaryonicMass_Change   = Zero
 
     Energy_Interior = Zero
-    Energy_Initial  = Zero
     Energy_OffGrid  = Zero
     Energy_Change   = Zero
 
     ElectronNumber_Interior = Zero
-    ElectronNumber_Initial  = Zero
     ElectronNumber_OffGrid  = Zero
     ElectronNumber_Change   = Zero
 
     ADMMass_Interior = Zero
-    ADMMass_Initial  = Zero
     ADMMass_OffGrid  = Zero
     ADMMass_Change   = Zero
 

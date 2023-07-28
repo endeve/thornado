@@ -54,7 +54,11 @@ PROGRAM main
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
   USE MF_Euler_TallyModule, ONLY: &
-    ComputeTally_Euler_MF
+    ComputeTally_Euler_MF, &
+    BaryonicMass_Initial, &
+    Energy_Initial, &
+    ElectronNumber_Initial, &
+    ADMMass_Initial
   USE MF_TwoMoment_TallyModule, ONLY: &
     ComputeTally_TwoMoment_MF
   USE AverageDownModule, ONLY: &
@@ -238,10 +242,9 @@ CONTAINS
       CALL ComputeFromConserved_TwoMoment_MF &
              ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
-
       CALL ComputeGray_TwoMoment_MF &
              ( MF_uGF, MF_uPF, MF_uCR, MF_uPR, MF_uGR )
-  
+
       CALL WriteFieldsAMReX_PlotFile &
              ( t_new(0), StepNo, MF_uGF, &
                MF_uGF_Option = MF_uGF, &
@@ -252,7 +255,7 @@ CONTAINS
                MF_uPR_Option = MF_uPR, &
                MF_uCR_Option = MF_uCR, &
                MF_uGR_Option = MF_uGR )
-  
+
         CALL ComputeTally_Euler_MF &
              ( t_new, MF_uGF, MF_uCF, &
                Verbose_Option = .FALSE. )
@@ -311,6 +314,10 @@ CONTAINS
 
       CALL WriteFieldsAMReX_Checkpoint &
              ( StepNo, nLevels, dt, t_new, &
+               BaryonicMass_Initial, &
+               Energy_Initial, &
+               ElectronNumber_Initial, &
+               ADMMass_Initial, &
                MF_uGF % BA % P, &
                iWriteFields_uGF = 1, &
                iWriteFields_uCF = 1, &

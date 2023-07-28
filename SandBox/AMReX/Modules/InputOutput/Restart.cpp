@@ -28,6 +28,10 @@ extern "C"
   void writefieldsamrex_checkpoint
          ( int StepNo[], int nLevels,
            Real dt[], Real time[],
+           Real BaryonicMass_Initial,
+           Real Energy_Initial,
+           Real ElectronNumber_Initial,
+           Real ADMMass_Initial,
            BoxArray** pBA,
            int iWriteFields_uGF = 0,
            int iWriteFields_uCF = 0,
@@ -127,6 +131,12 @@ extern "C"
       }
       HeaderFile << "\n";
 
+      // Write out initial values for tally
+      HeaderFile << BaryonicMass_Initial   << "\n";
+      HeaderFile << Energy_Initial         << "\n";
+      HeaderFile << ElectronNumber_Initial << "\n";
+      HeaderFile << ADMMass_Initial        << "\n";
+
       // Write the BoxArray at each level
       for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )
       {
@@ -176,10 +186,18 @@ extern "C"
   void readheaderandboxarraydata
          ( int FinestLevelArr[], int StepNo[],
 	   Real dt[], Real Time[],
+           Real BaryonicMass_InitialArr[],
+           Real Energy_InitialArr[],
+           Real ElectronNumber_InitialArr[],
+           Real ADMMass_InitialArr[],
            BoxArray** pba, DistributionMapping** pdm, int iChkFile )
   {
 
     int FinestLevel;
+    Real BaryonicMass;
+    Real Energy;
+    Real ElectronNumber;
+    Real ADMMass;
 
     ParmParse pp("thornado");
     chk_file = "chk";
@@ -244,6 +262,20 @@ extern "C"
         Time[i++] = std::stod( word );
       }
     }
+
+    // Read in initial values for tally
+    is >> BaryonicMass;
+    GotoNextLine( is );
+    BaryonicMass_InitialArr[0] = BaryonicMass;
+    is >> Energy;
+    GotoNextLine( is );
+    Energy_InitialArr[0] = Energy;
+    is >> ElectronNumber;
+    GotoNextLine( is );
+    ElectronNumber_InitialArr[0] = ElectronNumber;
+    is >> ADMMass;
+    GotoNextLine( is );
+    ADMMass_InitialArr[0] = ADMMass;
 
     // Read in level 'iLevel' BoxArray from Header
     for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )

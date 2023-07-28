@@ -40,7 +40,11 @@ PROGRAM main
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
   USE MF_Euler_TallyModule, ONLY: &
-    ComputeTally_Euler_MF
+    ComputeTally_Euler_MF, &
+    BaryonicMass_Initial, &
+    Energy_Initial, &
+    ElectronNumber_Initial, &
+    ADMMass_Initial
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
     UpdateFluid_SSPRK_MF
   USE InputParsingModule, ONLY: &
@@ -270,6 +274,10 @@ CONTAINS
 
       CALL WriteFieldsAMReX_Checkpoint &
              ( StepNo, nLevels, dt, t_new, &
+               BaryonicMass_Initial, &
+               Energy_Initial, &
+               ElectronNumber_Initial, &
+               ADMMass_Initial, &
                MF_uGF % BA % P, &
                iWriteFields_uGF = 1, &
                iWriteFields_uCF = 1, &
