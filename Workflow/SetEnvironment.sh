@@ -264,7 +264,7 @@ elif [[ $THORNADO_MACHINE == frontier_cce ]]; then
   module load rocm/5.4.0
   module load hipfort/5.4.0
 
-elif [[ $THORNADO_MACHINE == perlmutter_nvidia ]]; then
+elif [[ $THORNADO_MACHINE == perlmutter_nvhpc ]]; then
 
   echo
 
@@ -273,6 +273,24 @@ elif [[ $THORNADO_MACHINE == perlmutter_nvidia ]]; then
   module unload cpu
   module load gpu
   
+elif [[ $THORNADO_MACHINE == perlmutter_cce ]]; then
+
+  echo
+
+  module load PrgEnv-cray
+  module load cray-hdf5-parallel
+  module unload cpu
+  module load gpu
+
+elif [[ $THORNADO_MACHINE == perlmutter_gcc ]]; then
+
+  echo
+
+  module load PrgEnv-gnu
+  module load cudatoolkit
+  module load cray-hdf5-parallel
+  module unload cpu
+  module load gpu
 
 elif [[ $THORNADO_MACHINE == darter_gnu ]]; then
 
