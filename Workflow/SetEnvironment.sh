@@ -264,7 +264,7 @@ elif [[ $THORNADO_MACHINE == frontier_cce ]]; then
   module load rocm/5.4.0
   module load hipfort/5.4.0
 
-elif [[ $THORNADO_MACHINE == perlmutter_nvhpc ]]; then
+elif [[ $THORNADO_MACHINE == perlmutter_nvidia ]]; then
 
   echo
 
