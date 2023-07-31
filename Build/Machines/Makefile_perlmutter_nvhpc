@@ -1,0 +1,39 @@
+## Makefile definitions for Perlmutter with NVIDIA HPC SDK (formerly PGI) compiler
+
+C       = CC --c++11
+FORTRAN = ftn -Mpreprocess
+FLINKER = ftn
+
+DEBUG    = -g -O0 -Mbounds -Mnoopenmp -Ktrap=fp
+OPTIMIZE = -g -O2
+
+SUFFIX_f90 =
+
+MDEFS =
+PP    = -D
+
+ifeq ($(USE_OMP),TRUE)
+  OPENMP = -mp=multicore
+else ifeq ($(USE_OMP_OL),TRUE)
+  OPENMP = -mp=gpu -gpu=cc80,ptxinfo -Minfo=accel
+endif
+
+ifeq ($(USE_OACC),TRUE)
+  OPENACC = -acc -gpu=cc80,ptxinfo -Minfo=accel
+endif
+
+INCLUDE_CUDA     =
+INCLUDE_HDF5     = -I$(HDF5_DIR)/include
+INCLUDE_LAPACK   =
+INCLUDE_MAGMA    = -I$(MAGMA_ROOT)/include
+INCLUDE_PETSC    =
+INCLUDE_POSEIDON =
+INCLUDE_ROCM     =
+
+LIBRARIES_CUDA     = -cudalib=cusparse,cusolver,cublas
+LIBRARIES_HDF5     = -L$(HDF5_DIR)/lib -lhdf5_fortran -lhdf5
+LIBRARIES_LAPACK   =
+LIBRARIES_MAGMA    = -L$(MAGMA_ROOT)/lib -lmagma
+LIBRARIES_PETSC    =
+LIBRARIES_POSEIDON =
+LIBRARIES_ROCM     =
