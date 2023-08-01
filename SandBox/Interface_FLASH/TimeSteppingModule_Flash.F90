@@ -388,7 +388,6 @@ CONTAINS
     ! --- Implicit Step ---
 
     IF( Implicit )THEN
-
       CALL ComputeIncrement_TwoMoment_Implicit &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, dt, &
                uGE, uGF, &
@@ -989,7 +988,15 @@ CONTAINS
         DO iX1 = 1, swX1
         DO iNX = 1, nDOFX
 
-          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF) = MIN( U(iNX,iX_B0(1),iX2,iX3,iCF), Zero )
+          IF( iCF == iCF_S1 )THEN
+
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF) = MIN( U(iNX,iX_B0(1),iX2,iX3,iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF) = U(iNX,iX_B0(1),iX2,iX3,iCF)
+
+          END IF
 
         END DO
         END DO
@@ -1017,7 +1024,15 @@ CONTAINS
         DO iX1 = 1, swX1
         DO iNX = 1, nDOFX
 
-          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) = MAX( U(iNX,iX_E0(1),iX2,iX3,iCF), Zero )
+          IF( iCF == iCF_S1 )THEN
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) = MAX( U(iNX,iX_E0(1),iX2,iX3,iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) = U(iNX,iX_E0(1),iX2,iX3,iCF)
+
+          END IF
 
         END DO
         END DO
@@ -1184,7 +1199,15 @@ CONTAINS
         DO iX1 = 1, swX1
         DO iNX = 1, nDOFX
 
-          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) = MAX( U(iNX,iX_E0(1),iX2,iX3,iCF), Zero )
+          IF( iCF == iCF_S1 )THEN
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) = MAX( U(iNX,iX_E0(1),iX2,iX3,iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) = U(iNX,iX_E0(1),iX2,iX3,iCF)
+
+          END IF
 
         END DO
         END DO
@@ -1237,7 +1260,15 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1, nDOFX
 
-          U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF) = MIN( U(iNX,iX1,iX_E0(2)-(iX2-1),iX3,iCF), Zero )
+          IF( iCF == iCF_S2 )THEN
+
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF) = MIN( U(iNX,iX1,iX_E0(2)-(iX2-1),iX3,iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF) = U(iNX,iX1,iX_E0(2)-(iX2-1),iX3,iCF)
+
+          END IF
 
         END DO
         END DO
@@ -1265,7 +1296,15 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1, nDOFX
 
-          U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = MAX( U(iNX,iX1,iX_B0(2)+(iX2-1),iX3,iCF), Zero )
+          IF( iCF == iCF_S2 )THEN
+
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = MAX( U(iNX,iX1,iX_B0(2)+(iX2-1),iX3,iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = U(iNX,iX1,iX_B0(2)+(iX2-1),iX3,iCF)
+
+          END IF
 
         END DO
         END DO
@@ -1432,7 +1471,15 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1, nDOFX
 
-          U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = MAX( U(iNX,iX1,iX_B0(2)+(iX2-1),iX3,iCF), Zero )
+          IF( iCF == iCF_S2 )THEN
+
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = MAX( U(iNX,iX1,iX_B0(2)+(iX2-1),iX3,iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = U(iNX,iX1,iX_B0(2)+(iX2-1),iX3,iCF)
+
+          END IF
 
         END DO
         END DO
@@ -1485,7 +1532,15 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1, nDOFX
 
-          U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF) = MIN( U(iNX,iX1,iX2,iX_B0(3),iCF), Zero )
+          IF( iCF == iCF_S3 )THEN
+
+            U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF) = MIN( U(iNX,iX1,iX2,iX_B0(3),iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF) = U(iNX,iX1,iX2,iX_B0(3),iCF)
+
+          END IF
 
         END DO
         END DO
@@ -1513,7 +1568,15 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1, nDOFX
 
-          U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF) = MAX( U(iNX,iX1,iX2,iX_E0(3),iCF), Zero )
+          IF( iCF == iCF_S3 )THEN
+
+            U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF) = MAX( U(iNX,iX1,iX2,iX_E0(3),iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF) = U(iNX,iX1,iX2,iX_E0(3),iCF)
+
+          END IF
 
         END DO
         END DO
@@ -1680,7 +1743,15 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1, nDOFX
 
-          U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF) = MAX( U(iNX,iX1,iX2,iX_E0(3),iCF), Zero )
+          IF( iCF == iCF_S3 )THEN
+
+            U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF) = MAX( U(iNX,iX1,iX2,iX_E0(3),iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF) = U(iNX,iX1,iX2,iX_E0(3),iCF)
+
+          END IF
 
         END DO
         END DO
