@@ -100,7 +100,6 @@ MODULE MF_UtilitiesModule
   PUBLIC :: WriteNodalDataToFile
   PUBLIC :: CombineGridData
 
-
 CONTAINS
 
 
@@ -399,8 +398,8 @@ CONTAINS
                  P   (:,iPM_Chi), &
                  G   (:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G   (:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 G   (:,iX1,iX2,iX3,iGF_Alpha),    &
                  G   (:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 G   (:,iX1,iX2,iX3,iGF_Alpha), &
                  G   (:,iX1,iX2,iX3,iGF_Beta_1 ), &
                  G   (:,iX1,iX2,iX3,iGF_Beta_2 ), &
                  G   (:,iX1,iX2,iX3,iGF_Beta_3 ), &
