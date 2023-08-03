@@ -481,6 +481,7 @@ CONTAINS
     USE TaggingModule, ONLY: &
       TagElements_Advection1D, &
       TagElements_RiemannProblem1D, &
+      TagElements_RiemannProblem2D, &
       TagElements_Advection2D, &
       TagElements_KelvinHelmholtz2D, &
       TagElements_Advection3D, &
@@ -537,6 +538,13 @@ CONTAINS
         CASE( 'RiemannProblem1D' )
 
           CALL TagElements_RiemannProblem1D &
+                 ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                   uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+                   LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+        CASE( 'RiemannProblem2D' )
+
+          CALL TagElements_RiemannProblem2D &
                  ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
                    uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
                    LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
