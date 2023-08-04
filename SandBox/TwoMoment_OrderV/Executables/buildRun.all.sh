@@ -16,12 +16,13 @@ function set_common(){
    export WEAKLIB_DIR=${EXASTAR_HOME}/weaklib-new
    export WEAKLIB_TABLES_DIR=${EXASTAR_HOME}/weaklib-tables
    export THORNADO_MACHINE=beacon_intel
+
    export IGC_OverrideOCLMaxParamSize=4096
    export numTeamCap="-mllvm -vpo-paropt-atomic-free-red-global-buf-size=4096"
-#   export MPIR_CVAR_ENABLE_GPU=0
 
 ## for running
 
+#   export MPIR_CVAR_ENABLE_GPU=0
    #export MKL_VERBOSE=2
    export LTTNG_HOME=$EXASTAR_HOME
    mkdir -p $LTTNG_HOME
@@ -29,23 +30,26 @@ function set_common(){
    #export LIBOMPTARGET_PLUGIN=LEVEL0
    #export ONEAPI_DEVICE_FILTER=level_zero:gpu
    ##export LIBOMPTARGET_PLUGIN=OPENCL
-#   export LIBOMPTARGET_DEBUG=1
+   ##export LIBOMPTARGET_DEBUG=1
    #export EnableImplicitScaling=1
    export ZE_AFFINITY_MASK=0.0
    #export LIBOMPTARGET_PLUGIN_PROFILE=T
-   #export OMP_TARGET_OFFLOAD=DISABLED
    export OMP_TARGET_OFFLOAD=MANDATORY
-   #export OMP_TARGET_OFFLOAD=DISABLED
-   #unset OMP_TARGET_OFFLOAD
    export OMP_NUM_THREADS=1
    ulimit -s unlimited
    #ulimit -n 20480
-   ## The following seems working well for the SineWaveStream app.
-   export LIBOMPTARGET_LEVEL0_MEMORY_POOL=device,128,64,16384
+   #export LIBOMPTARGET_LEVEL0_MEMORY_POOL=device,128,64,16384
    export LIBOMPTARGET_LEVEL_ZERO_MEMORY_POOL=device,128,64,16384
    export FI_PROVIDER=sockets
+
+#   export IGC_ShaderDumpEnable=1
+#   export IGC_ShowFullVectorsInShaderDumps=1
+
    #export LIBOMPTARGET_LEVEL_ZERO_COMMAND_BATCH=copy,8
-   #export OMP_NUM_THREADS=1
+   #export IGC_EnableZEBinary=0
+   #export IGC_ForceOCLSIMDWidth=16
+   #export LIBOMPTARGET_LEVEL_ZERO_USE_IMMEDIATE_COMMAND_LIST=0
+   #export SYCL_PI_LEVEL_ZERO_USE_IMMEDIATE_COMMANDLISTS=0
 }
 
 ###########################################################################################
@@ -78,7 +82,7 @@ function runApp(){
    echo "LIBOMPTARGET_LEVEL0_MEMORY_POOL="${LIBOMPTARGET_LEVEL0_MEMORY_POOL}  |& tee -a $LOG_FILE
 
    if [[ "$ACTION" == "iprof" ]]; then
-      module load iprof
+      module load iprof/0.11.2
       ( time iprof ./${APP_NAME}_${THORNADO_MACHINE} ) |& tee -a $LOG_FILE
    elif [[ "$ACTION" == "onetrace" ]]; then
       module use /nfs/pdx/home/roymoore/modules
@@ -113,39 +117,61 @@ function runApp(){
 
 module purge
 
-#export A21_SDK_MKLROOT_OVERRIDE=/exaperf/nightly/mkl-cev/2022.11.02 ## Latest nightly, i.e. 10.06, uses this mkl
-export A21_SDK_MKLROOT_OVERRIDE=/exaperf/nightly/mkl-cev/2023.04.19 ## Latest nightly, i.e. 2023-05-01 use this mkl 
+#export A21_SDK_MKLROOT_OVERRIDE=/exaperf/nightly/mkl-cev/2022.11.02 ## Latest nightly, i.e. 2022-10-06, uses this mkl
+#export A21_SDK_MKLROOT_OVERRIDE=/exaperf/nightly/mkl-cev/2023.04.19 ## Latest nightly, i.e. 2023-05-01 use this mkl 
 
-#export IGC_EnableZEBinary=0
-#export IGC_ForceOCLSIMDWidth=16
-#export LIBOMPTARGET_LEVEL_ZERO_USE_IMMEDIATE_COMMAND_LIST=0
-#export SYCL_PI_LEVEL_ZERO_USE_IMMEDIATE_COMMANDLISTS=0
-
-ACTION="iprof"
+#ACTION="iprof"
 #ACTION="perf"
 #ACTION="onetrace"
 #ACTION="advisor"
 #ACTION="vtune"
-ACTION=""
+#ACTION=""
+
 if [[ -n $ACTION ]];then
    faction="-$ACTION"
 fi
-#export BASE_DATE="2023.03.10"
-export BASE_DATE="2023.05.15"
-#export COMPILER_DATE="2023.05.03"
-#export COMPILER_DATE="2023.05.08"
-export COMPILER_DATE="2023.05.15"
+
+export BASE_DATE="2023.5.007"
+export BASE_UMD="-dev647"
 export AADEBUG=""
 
+export COMPILER_DATE="2023.08.02"
+
+#export COMPILER_DATE=".2023.05.15.003-rc11"
+#export COMPILER_DATE="2023.5.007"
+#module load oneapi/eng-compiler/2023.05.15.007
+#module load oneapi/eng-compiler/${COMPILER_DATE}
+#module switch -f mpich/52.2-256/icc-sockets-gpu mpich/51.2/icc-sockets-gpu    ## Needed by 05.15.007.
+
+### New compiler working with mkl nighlty.
+module load nightly-mkl-cev_nightly/${COMPILER_DATE}
+#module swap -f nightly-compiler/${COMPILER_DATE}
+
+
 #export ONEAPI_MODULE_OVERRIDE=oneapi/eng-compiler/2022.12.30.003
-module load nightly-compiler/${COMPILER_DATE}
+#module load nightly-compiler/${COMPILER_DATE}
+
+### Local umd
+###umdf="026559"
+###umdf="026560"
+###rm -rf sdump-$umdf
+###mkdir sdump-$umdf
+###export IGC_DumpToCustomDir=sdump-$umdf
+###GRAPHICS_RT_INSTALL_DIR=/localdisk/quanshao/sandbox/drivers/devel-${umdf}
+###export PATH=$GRAPHICS_RT_INSTALL_DIR/usr/bin:$PATH
+###export CPATH=$GRAPHICS_RT_INSTALL_DIR/usr/include:$CPATH
+###export LIBRARY_PATH=$GRAPHICS_RT_INSTALL_DIR/usr/lib64:$LIBRARY_PATH
+###export LD_LIBRARY_PATH=$GRAPHICS_RT_INSTALL_DIR/usr/lib64:$LD_LIBRARY_PATH
+###export INCLUDE=$GRAPHICS_RT_INSTALL_DIR/usr/include:$INCLUDE
 
 #UMD="neo/agama-devel-sp3/692-23.22.26516.20-692"
-UMD="neo/agama-devel-sp3/697-23.26.26690.19-697"
-umdf=""
-export useAGRF="FALSE"
+#UMD="neo/agama-devel-sp3/697-23.26.26690.19-697"
+#UMD="neo/agama-devel-sp3/693-23.26.26690.13-693"
+
+export useAGRF="TRUE"
 if [[ -n $UMD ]]; then
-   module switch -f intel_compute_runtime/release/agama-devel-551 $UMD
+   #module switch -f intel_compute_runtime/release/agama-devel-551 $UMD
+   module switch -f intel_compute_runtime/release/agama-devel-627 $UMD
    if [[ $UMD == intel_compute* ]]; then
       umdf="-devel602"
       export useAGRF="FALSE"
@@ -154,28 +180,24 @@ if [[ -n $UMD ]]; then
       umdf=`echo $umdf |cut -d '-' -f1`
       umdf="-umd$umdf"
 #      umdf="-Tdebug1IMM1-umd$umdf"
-      export useAGRF="TRUE"
    fi
+else
+   aaa=`ml list|grep agama-devel`
+   ddd=`echo "${aaa#*agama-devel-}"`
+   umdf=`echo  $ddd |cut -d ' ' -f1`
+   umdf="-dev$umdf"
 fi
 
-#export COMPILER_DATE="2023.05.03"
-#module load nightly-compiler/${COMPILER_DATE}
-#export COMPILER_DATE=".2023.05.15.003-rc11"
-#module load oneapi/eng-compiler/${COMPILER_DATE}
-#export useAGRF="TRUE"
-#module switch -f intel_compute_runtime/release/agama-devel-627 neo/agama-devel-sp3/627-23.13.26032.8-626
-
-#module switch -f intel_compute_runtime/release/agama-devel-551 neo/agama-devel-sp3/627-23.13.26032.8-626 
-#module switch -f intel_compute_runtime/release/agama-devel-551 intel_compute_runtime/release/agama-devel-627 
-#umdf="umd627NoIMMmkl2"
 
 #if action is empty, performance comparison will be done. otherwise there is no performance comparison and just run the app using such as onetrace, vtune etc. so action can be "", "onetrace", "iprof", "vtune", 
 
 #opLevels=(O3)
 #grids=("[8,8,8]")
+#grids=("[16,16,16]")
 #gridNames=("")
+#gridNames=("-xN16")
 #appNames=(ApplicationDriver)
-#logFiles=(sineWave)
+#logFiles=(sineWaveShaderDump)
 #CaseNames=(SineWaveStreaming)
 #userOptions=("")
 #gridLines=(85)
@@ -229,10 +251,11 @@ set_common
 timeFOMLog="timeFOM_${COMPILER_DATE}.txt${umdf}$AADEBUG"
 if [[ -z $ACTION ]];then
    rm -rf $timeFOMLog
-   echo "                                             Time(seconds)                         |              Figure of Merit (FOM)">>$timeFOMLog
-   echo "AppName     Grid      OpLevel :  ${COMPILER_DATE}   ${BASE_DATE}    TimeDiff   Percentage  |    ${COMPILER_DATE}   ${BASE_DATE}    FOM-Diff   Percentage">>$timeFOMLog
-   echo "-----------------------------    ------------------------------------------------       ------------------------------------------------">>$timeFOMLog
-fi
+   echo "                                                        Time(seconds)                             |                      Figure of Merit (FOM)">>$timeFOMLog
+   echo "AppName     Grid      OpLevel :  ${COMPILER_DATE}$umdf   ${BASE_DATE}${BASE_UMD}    TimeDiff   Percentage   |   ${COMPILER_DATE}${umdf}   ${BASE_DATE}${BASE_UMD}    FOM-Diff   Percentage">>$timeFOMLog
+
+   echo "-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------">>$timeFOMLog
+fi   
 
 for ((jj=0; jj<${#appNames[@]}; jj++));
 do
@@ -249,7 +272,7 @@ do
 
          export OP_LEVEL=$op
          export LOG_FILE=${logFiles[jj]}.${OP_LEVEL}.${COMPILER_DATE}${umdf}${gridNames[ii]}${faction}$AADEBUG
-         export LOG_BASE=${logFiles[jj]}.${OP_LEVEL}.${BASE_DATE}.ms69-umd674${gridNames[ii]}$AADEBUG
+         export LOG_BASE=${logFiles[jj]}.${OP_LEVEL}.${BASE_DATE}${BASE_UMD}${gridNames[ii]}$AADEBUG
          export USER_OPTION=${userOptions[jj]}
 
          if [[ "$ACTION" == "vtune" ]]; then
@@ -327,7 +350,7 @@ do
 
             caseName=`printf "%-10s" ${logFiles[jj]}`
             gg=`printf "%-10s" ${grids[ii]}`
-            echo "$caseName $gg   $OP_LEVEL    :$currTime $baseTime $diffTime $percentage%       $currFOM $baseFOM $diffFOM $percentFOM%" >>$timeFOMLog
+            echo "$caseName $gg   $OP_LEVEL    :   $currTime        $baseTime     $diffTime $percentage%          $currFOM        $baseFOM      $diffFOM $percentFOM%" >>$timeFOMLog
          fi
    done
 done

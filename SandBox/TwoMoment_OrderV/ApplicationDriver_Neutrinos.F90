@@ -147,6 +147,7 @@ PROGRAM ApplicationDriver_Neutrinos
       iCycleW            = 1000
 !!      iCycleW            = 1
       maxCycles          = 100000
+!!      maxCycles          = 2
 
       EvolveEuler                    = .FALSE.
       UseSlopeLimiter_Euler          = .FALSE.

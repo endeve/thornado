@@ -2,10 +2,10 @@
 ## VERY IMPORTANT: heap-arrays is needed for the large table of the app
 
 C       = mpic++ --c++11
-FORTRAN = /localdisk/quanshao/ExaStar/mpifort -fc=ifx -fPIC -fpp -xCore-AVX512
+FORTRAN = /localdisk/quanshao/ExaStar/mpifort -fc=ifx -fPIC -fpp -xCore-AVX512 ${AADEBUG}
 #-heap-arrays 0 -fpe0 
 #-init=snan -traceback
-FLINKER = /localdisk/quanshao/ExaStar/mpifort -fc=ifx -fPIC -fpp -xCore-AVX512
+FLINKER = /localdisk/quanshao/ExaStar/mpifort -fc=ifx -fPIC -fpp -xCore-AVX512 ${AADEBUG}
 #-heap-arrays 0 -fpe0
 #-init=snan -traceback
 # -O0 -fpe0
@@ -26,9 +26,9 @@ ifeq ($(USE_OMP),TRUE)
   OPENMP = -fiopenmp
 else ifeq ($(USE_OMP_OL),TRUE)
    ifeq ($(useAGRF), FALSE)
-     OPENMP = -fiopenmp -fopenmp-targets=spir64_gen ${numTeamCap} -Xopenmp-target-backend "-device 12.60.7"
+     OPENMP = -fiopenmp -fopenmp-targets=spir64_gen -Xopenmp-target-backend "-device 12.60.7"  ${numTeamCap}
    else
-     OPENMP = -fiopenmp -fopenmp-targets=spir64_gen ${numTeamCap} -Xopenmp-target-backend "-device 12.60.7 -options -ze-intel-enable-auto-large-GRF-mode"
+     OPENMP = -fiopenmp -fopenmp-targets=spir64_gen -Xopenmp-target-backend "-device 12.60.7 -options -ze-intel-enable-auto-large-GRF-mode" ${numTeamCap}
    endif
 #  OPENMP = -fiopenmp -fopenmp-targets=spir64_gen -Xopenmp-target-backend "-device 12.60.7 -options -ze-opt-large-register-file"
 #PVC rev B AOT 
