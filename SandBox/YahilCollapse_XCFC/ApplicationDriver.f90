@@ -48,9 +48,9 @@ PROGRAM ApplicationDriver
     uDF
   USE GeometryFieldsModule, ONLY: &
     uGF
-  USE GravitySolutionModule_CFA_Poseidon, ONLY: &
-    InitializeGravitySolver_CFA_Poseidon, &
-    FinalizeGravitySolver_CFA_Poseidon
+  USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
+    InitializeGravitySolver_XCFC_Poseidon, &
+    FinalizeGravitySolver_XCFC_Poseidon
   USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit
   USE TimeSteppingModule_SSPRK, ONLY: &
@@ -213,7 +213,7 @@ PROGRAM ApplicationDriver
 
   CALL InitializeReferenceElementX_Lagrange
 
-  CALL InitializeGravitySolver_CFA_Poseidon( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+  CALL InitializeGravitySolver_XCFC_Poseidon( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option &
@@ -401,7 +401,7 @@ PROGRAM ApplicationDriver
 !  CALL ComputeSourceTerms_Poseidon &
 !         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
 !
-!  CALL SolveGravity_CFA_Poseidon &
+!  CALL SolveGravity_XCFC_Poseidon &
 !         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
 
   CALL ComputeNewtonianPotential_SphericalSymmetry &
@@ -425,7 +425,7 @@ PROGRAM ApplicationDriver
 
   CALL FinalizeReferenceElementX_Lagrange
 
-  CALL FinalizeGravitySolver_CFA_Poseidon
+  CALL FinalizeGravitySolver_XCFC_Poseidon
 
   CALL FinalizeEquationOfState
 

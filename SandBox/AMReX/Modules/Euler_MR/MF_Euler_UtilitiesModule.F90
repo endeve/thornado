@@ -131,6 +131,12 @@ CONTAINS
 
       CALL CreateMesh_MF( iLevel, MeshX )
 
+#if defined( THORNADO_OMP )
+      !$OMP PARALLEL &
+      !$OMP PRIVATE( MFI, BX, uGF, uCF, uPF, uAF, G, U, P, A, &
+      !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, iLo_MF, iX_B, iX_E )
+#endif
+
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
@@ -207,6 +213,10 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
+#if defined( THORNADO_OMP )
+      !$OMP END PARALLEL
+#endif
+
       CALL DestroyMesh_MF( MeshX )
 
     END DO
@@ -250,6 +260,13 @@ CONTAINS
     DO iLevel = 0, nLevels-1
 
       CALL CreateMesh_MF( iLevel, MeshX )
+
+#if defined( THORNADO_OMP )
+      !$OMP PARALLEL &
+      !$OMP PRIVATE( MFI, BX, uGF, uCF, G, U, &
+      !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, iLo_MF, TimeStep ) &
+      !$OMP REDUCTION( MIN:TimeStepMin )
+#endif
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -300,6 +317,10 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
+#if defined( THORNADO_OMP )
+      !$OMP END PARALLEL
+#endif
+
       CALL DestroyMesh_MF( MeshX )
 
     END DO ! --- Loop over levels ---
@@ -335,6 +356,12 @@ CONTAINS
     INTEGER :: iNX, iX1, iX2, iX3
 
     DO iLevel = 0, nLevels-1
+
+#if defined( THORNADO_OMP )
+      !$OMP PARALLEL &
+      !$OMP PRIVATE( MFI, BX, uGF, uPF, uAF, uCF, G, P, A, U, &
+      !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, iLo_MF )
+#endif
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -434,6 +461,10 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
+#if defined( THORNADO_OMP )
+      !$OMP END PARALLEL
+#endif
+
     END DO
 
   END SUBROUTINE ComputeConserved_Euler_MF
@@ -482,6 +513,12 @@ CONTAINS
                nDOFX * nAF, swX )
 
       CALL CreateMesh_MF( iLevel, MeshX )
+
+#if defined( THORNADO_OMP )
+      !$OMP PARALLEL &
+      !$OMP PRIVATE( MFI, BX, uGF, uCF, uPF, uAF, uDF, G, U, P, A, D, &
+      !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, iLo_MF, iX_B, iX_E )
+#endif
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -572,6 +609,10 @@ CONTAINS
       END DO
 
       CALL amrex_mfiter_destroy( MFI )
+
+#if defined( THORNADO_OMP )
+      !$OMP END PARALLEL
+#endif
 
       CALL DestroyMesh_MF( MeshX )
 

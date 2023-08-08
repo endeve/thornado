@@ -48,7 +48,7 @@ MODULE InputParsingModule
   REAL(DP)                  :: t_wrt, t_chk, dt_wrt, dt_chk, dt_rel
   INTEGER                   :: iCycleW, iCycleChk, iCycleD, iRestart, iReGrid
   REAL(DP)                  :: t_end
-  LOGICAL     , SAVE        :: UsePhysicalUnits, UseXCFC
+  LOGICAL     , SAVE        :: UsePhysicalUnits
   LOGICAL     , SAVE        :: DEBUG
   LOGICAL     , SAVE        :: SolveGravity_NR
 
@@ -216,7 +216,6 @@ call amrex_parmparse_destroy( pp )
     dt_wrt           = -1.0_DP
     dt_chk           = -1.0_DP
     dt_rel           = 0.0_DP
-    UseXCFC          = .FALSE.
     iReGrid          = 1
     SolveGravity_NR  = .FALSE.
     Scheme           = ''
@@ -265,8 +264,6 @@ call amrex_parmparse_destroy( pp )
                          dt_rel )
       CALL PP % query ( 'UsePhysicalUnits', &
                          UsePhysicalUnits )
-      CALL PP % query ( 'UseXCFC', &
-                         UseXCFC )
       CALL PP % query ( 'iReGrid', &
                          iReGrid )
       CALL PP % query ( 'SolveGravity_NR', &
@@ -287,7 +284,7 @@ call amrex_parmparse_destroy( pp )
                          zoomE )
     CALL amrex_parmparse_destroy( PP )
 
-    CALL SetNumberOfSpecies( nSpecies )
+    CALL SetNumberOfSpecies( nSpecies, Verbose_Option = amrex_parallel_ioprocessor() )
 
     IF( iCycleW * dt_wrt .GT. Zero ) &
       CALL DescribeError_MF &

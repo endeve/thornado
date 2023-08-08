@@ -176,8 +176,6 @@ CONTAINS
 
     TYPE(amrex_parmparse) :: PP
 
-    INTEGER :: iLevel
-
     CALL amrex_init()
 
     CALL amrex_amrcore_init()

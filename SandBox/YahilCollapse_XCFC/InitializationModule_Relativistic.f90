@@ -21,9 +21,9 @@ MODULE InitializationModule_Relativistic
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
-!!$  USE GravitySolutionModule_CFA_Poseidon, ONLY: &
-!!$    SolveGravity_CFA_Poseidon
-  USE GravitySolutionModule_CFA_Poseidon, ONLY: &
+!!$  USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
+!!$    SolveGravity_XCFC_Poseidon
+  USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
     ComputeConformalFactor_Poseidon, &
     ComputeGeometry_Poseidon
   USE Poseidon_UtilitiesModule, ONLY: &
