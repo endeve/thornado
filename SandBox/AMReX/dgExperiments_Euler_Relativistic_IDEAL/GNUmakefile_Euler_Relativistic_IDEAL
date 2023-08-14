@@ -60,7 +60,7 @@ include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Mesh
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.MeshRefinement
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.ProgramHeader
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Euler
-include Make.Euler_Relativistic_IDEAL_MR
+include Make.dgExperiments_Euler_Relativistic_IDEAL
 
 # Include rules for compilation
 include $(AMREX_HOME)/Tools/GNUMake/Make.rules

@@ -6,4 +6,4 @@ DEFINES += -DTHORNADO_USE_MESHREFINEMENT
 
 DEFINES += -DTHORNADO_NOTRANSPORT
 
-include GNUmakefile_Euler_Relativistic
+include GNUmakefile_Euler_Relativistic_IDEAL
