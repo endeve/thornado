@@ -39,6 +39,12 @@ ApplicationDriver.o: \
   ApplicationDriver.F90
 
 InitializationModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleZ.o \
+  MeshModule.o \
+  TwoMoment_FieldsModule_FMC.o \
   InitializationModule.F90
 
 TwoMoment_FieldsModule_FMC.o: \
@@ -48,7 +54,16 @@ TwoMoment_FieldsModule_FMC.o: \
 
 TwoMoment_InputOutputModule_FMC.o: \
   KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModule.o \
+  MeshModule.o \
+  InputOutputUtilitiesModule.o \
+  TwoMoment_FieldsModule_FMC.o \
   TwoMoment_InputOutputModule_FMC.F90
 
 TwoMoment_UtilitiesModule_FMC.o: \
+  KindModule.o \
+  TwoMoment_ClosureModule.o \
   TwoMoment_UtilitiesModule_FMC.F90

@@ -4250,11 +4250,11 @@ CONTAINS
   SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X1 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX1 )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(inout) :: &
       dGdX1(1:nDOFX,1:nGF,iX_B0(2):iX_E0(2), &
                           iX_B0(3):iX_E0(3), &
                           iX_B0(1):iX_E0(1))
@@ -4604,11 +4604,11 @@ CONTAINS
   SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X2 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX2 )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(inout) :: &
       dGdX2(1:nDOFX,1:nGF,iX_B0(1):iX_E0(1), &
                           iX_B0(3):iX_E0(3), &
                           iX_B0(2):iX_E0(2))
@@ -4988,11 +4988,11 @@ CONTAINS
   SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X3 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX3 )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(inout) :: &
       dGdX3(1:nDOFX,1:nGF,iX_B0(1):iX_E0(1), &
                           iX_B0(2):iX_E0(2), &
                           iX_B0(3):iX_E0(3))
