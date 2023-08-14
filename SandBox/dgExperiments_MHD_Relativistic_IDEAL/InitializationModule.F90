@@ -720,6 +720,47 @@ CONTAINS
             uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = 0.0001_DP
             uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
+          CASE( 'CPAlfvenX3' )
+
+            Eta = One
+            k   = One
+            h   = One + Gamma_IDEAL / ( Gamma_IDEAL - One )
+            VA  = SQRT( ( Two / ( h + ( One + Eta**2 ) ) ) &
+                        * ( One / ( One + SQRT( One - ( Two * Eta / ( h + ( One + Eta**2 ) ) )**2 ) ) ) )
+
+            W = One / SQRT( One - VA**2 * Eta**2 )
+
+            uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = -VA * Eta * COS( k * X3 )
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = -VA * Eta * SIN( k * X3 )
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = 0.0_DP
+            uAM(iNodeX,iX1,iX2,iX3,iAM_P)  = One
+            uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
+              = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
+
+            VdotB = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) * Eta * COS( k * X3 ) &
+                      + uPM(iNodeX,iX1,iX2,iX3,iPM_V2) * Eta * SIN( k * X3 )
+
+            V1_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
+                           - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_1) &
+                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
+
+            V2_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V2) &
+                           - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2) &
+                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
+
+            V3_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V3) &
+                           - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3) &
+                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
+
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) &
+              = W * VdotB * V1_Transport + Eta * COS( k * X3 ) / W
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B2) &
+              = W * VdotB * V2_Transport + Eta * SIN( k * X3 ) / W
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B3) &
+              = W * VdotB * V3_Transport + ( One / W )
+            uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
+
           CASE DEFAULT
 
             WRITE(*,*)
@@ -728,6 +769,7 @@ CONTAINS
             WRITE(*,'(A)') 'Valid choices:'
             WRITE(*,'(A)') '  HydroSineWaveX3'
             WRITE(*,'(A)') '  MagneticSineWaveX3'
+            WRITE(*,'(A)') '  CPAlfvenX3'
             WRITE(*,*)
             WRITE(*,'(A)') 'Stopping...'
             STOP
