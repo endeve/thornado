@@ -88,14 +88,32 @@ jobs:
           make
           make clobber
 
-      - name: Compile SandBox/AMReX/Euler_Relativistic_IDEAL_MR
+      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
         run: |
-          cd ${THORNADO_DIR}/SandBox/AMReX/Euler_Relativistic_IDEAL_MR
-          make
+          cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
+          make realclean
+
+      - name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
+          make realclean
+
+      - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
+          make realclean
+
+      - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
+          make realclean
+
+      - name: Compile SandBox/AMReX/Applications/YahilCollapse_XCFC
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/YahilCollapse_XCFC
           make realclean
 
       - name: Compile SandBox/AMReX/TwoMoment_Test
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/TwoMoment_Test
-          make
           make realclean
