@@ -1,6 +1,6 @@
-# THORNADO_DIR/SandBox/AMReX/Modules/Euler_MR
+# THORNADO_DIR/SandBox/AMReX/Modules/Euler
 
-VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/Euler_MR
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/Euler
 f90EXE_sources  += MF_Euler_BoundaryConditionsModule.f90
 F90EXE_sources  += MF_Euler_dgDiscretizationModule.F90
 F90EXE_sources  += MF_Euler_PositivityLimiterModule.F90
