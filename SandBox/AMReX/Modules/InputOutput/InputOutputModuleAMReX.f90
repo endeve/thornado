@@ -133,7 +133,7 @@ MODULE InputOutputModuleAMReX
     StepNo, &
     swX, &
     t_new, &
-    PlotFileBaseName, &
+    PlotFileNameRoot, &
     nX, &
     nE, &
     nSpecies, &
@@ -142,6 +142,11 @@ MODULE InputOutputModuleAMReX
     UseFluxCorrection_Euler, &
     UseFluxCorrection_TwoMoment, &
     iOS_CPP
+  USE MF_Euler_TallyModule, ONLY: &
+    BaryonicMass_Initial, &
+    Energy_Initial, &
+    ElectronNumber_Initial, &
+    ADMMass_Initial
 
   IMPLICIT NONE
   PRIVATE
@@ -153,32 +158,49 @@ MODULE InputOutputModuleAMReX
   INTERFACE
 
     SUBROUTINE WriteFieldsAMReX_Checkpoint &
-                 ( StepNo, nLevels, dt, time, pBA, &
+                 ( StepNo, nLevels, dt, time, &
+                   BaryonicMass_Initial, &
+                   Energy_Initial, &
+                   ElectronNumber_Initial, &
+                   ADMMass_Initial, &
+                   pBA, &
                    iWriteFields_uGF, iWriteFields_uCF, iWriteFields_uCR, &
                    pMF_uGF_Option, pMF_uCF_Option, pMF_uCR_Option ) BIND(c)
-       IMPORT
-       IMPLICIT NONE
-       INTEGER(c_int),        INTENT(in) :: StepNo(*)
-       INTEGER(c_int), VALUE, INTENT(in) :: nLevels
-       REAL(DP)      ,        INTENT(in) :: dt(*), time(*)
-       TYPE(c_ptr)   ,        INTENT(in) :: pBA(*)
-       INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uGF
-       INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uCF
-       INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uCR
-       TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uGF_Option(*)
-       TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uCF_Option(*)
-       TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uCR_Option(*)
+      IMPORT
+      IMPLICIT NONE
+      INTEGER(c_int),        INTENT(in) :: StepNo(*)
+      INTEGER(c_int), VALUE, INTENT(in) :: nLevels
+      REAL(DP)      ,        INTENT(in) :: dt(*), time(*)
+      REAL(DP)      , VALUE, INTENT(in) :: BaryonicMass_Initial
+      REAL(DP)      , VALUE, INTENT(in) :: Energy_Initial
+      REAL(DP)      , VALUE, INTENT(in) :: ElectronNumber_Initial
+      REAL(DP)      , VALUE, INTENT(in) :: ADMMass_Initial
+      TYPE(c_ptr)   ,        INTENT(in) :: pBA(*)
+      INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uGF
+      INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uCF
+      INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uCR
+      TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uGF_Option(*)
+      TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uCF_Option(*)
+      TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uCR_Option(*)
     END SUBROUTINE WriteFieldsAMReX_Checkpoint
 
     SUBROUTINE ReadHeaderAndBoxArrayData &
                  ( FinestLevelArr, StepNo, dt, Time, &
+                   BaryonicMass_InitialArr, &
+                   Energy_InitialArr, &
+                   ElectronNumber_InitialArr, &
+                   ADMMass_InitialArr, &
                    pBA, pDM, iChkFile ) BIND(c)
       IMPORT
       IMPLICIT NONE
       INTEGER(c_int), INTENT(out) :: FinestLevelArr(*)
       INTEGER(c_int), INTENT(out) :: StepNo(*)
-      REAL(DP),       INTENT(out) :: dt(*), Time(*)
-      TYPE(c_ptr),    INTENT(out) :: pBA(*), pDM(*)
+      REAL(DP)      , INTENT(out) :: dt(*), Time(*)
+      REAL(DP)      , INTENT(out) :: BaryonicMass_InitialArr(*)
+      REAL(DP)      , INTENT(out) :: Energy_InitialArr(*)
+      REAL(DP)      , INTENT(out) :: ElectronNumber_InitialArr(*)
+      REAL(DP)      , INTENT(out) :: ADMMass_InitialArr(*)
+      TYPE(c_ptr)   , INTENT(out) :: pBA(*), pDM(*)
       INTEGER(c_int), VALUE       :: iChkFile
     END SUBROUTINE ReadHeaderAndBoxArrayData
 
@@ -309,7 +331,7 @@ CONTAINS
 
     END IF
 
-    PlotFileName = TRIM( PlotFileBaseName ) // NumberString
+    PlotFileName = TRIM( PlotFileNameRoot ) // NumberString
 
     IF( amrex_parallel_ioprocessor() )THEN
 
@@ -597,6 +619,11 @@ CONTAINS
     INTEGER :: nXX(3)
     INTEGER :: FinestLevelArr(0:0) ! Hack
 
+    REAL(DP) :: BaryonicMass_InitialArr  (0:0)
+    REAL(DP) :: Energy_InitialArr        (0:0)
+    REAL(DP) :: ElectronNumber_InitialArr(0:0)
+    REAL(DP) :: ADMMass_InitialArr       (0:0)
+
     LOGICAL :: ReadFields_uCF
     LOGICAL :: ReadFields_uCR
 
@@ -634,11 +661,21 @@ CONTAINS
     pDM(0:nMaxLevels-1) = DM(0:nMaxLevels-1) % P
 
     CALL ReadHeaderAndBoxArrayData &
-           ( FinestLevelArr, StepNo, dt, t_new, pBA, pDM, iRestart )
+           ( FinestLevelArr, StepNo, dt, t_new, &
+             BaryonicMass_InitialArr, &
+             Energy_InitialArr, &
+             ElectronNumber_InitialArr, &
+             ADMMass_InitialArr, &
+             pBA, pDM, iRestart )
 
     FinestLevel = FinestLevelArr(0) ! Hack
     CALL amrex_set_finest_level( FinestLevel )
     nLevels = amrex_get_numlevels()
+
+    BaryonicMass_Initial   = BaryonicMass_InitialArr  (0)
+    Energy_Initial         = Energy_InitialArr        (0)
+    ElectronNumber_Initial = ElectronNumber_InitialArr(0)
+    ADMMass_Initial        = ADMMass_InitialArr       (0)
 
     DO iLevel = 0, nLevels-1
 
@@ -951,7 +988,6 @@ CONTAINS
 
       lo_G = LBOUND( G ); hi_G = UBOUND( G )
       lo_U = LBOUND( U ); hi_U = UBOUND( U )
- 
 
       DO iS = 1, nSpecies
       DO iX3 = BX % lo(3), BX % hi(3)

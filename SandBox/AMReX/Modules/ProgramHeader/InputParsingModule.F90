@@ -132,7 +132,7 @@ MODULE InputParsingModule
   REAL(DP), ALLOCATABLE :: dt   (:), dt_TM(:)
   REAL(DP), ALLOCATABLE :: t_old(:)
   REAL(DP), ALLOCATABLE :: t_new(:)
-  CHARACTER(:), ALLOCATABLE :: PlotFileBaseName
+  CHARACTER(:), ALLOCATABLE :: PlotFileNameRoot
   INTEGER :: iOS_CPP(3)
 
   LOGICAL                   :: WriteNodalData
@@ -208,7 +208,7 @@ call amrex_parmparse_destroy( pp )
     ! --- thornado Parameters thornado.* ---
 
     UsePhysicalUnits = .FALSE.
-    PlotFileBaseName = 'plt'
+    PlotFileNameRoot = 'plt'
     iCycleD          = 10
     iCycleW          = -1
     iCycleChk        = -1
@@ -248,8 +248,8 @@ call amrex_parmparse_destroy( pp )
                          CFL )
       CALL PP % query ( 'iCycleD', &
                          iCycleD )
-      CALL PP % query ( 'PlotFileBaseName', &
-                         PlotFileBaseName )
+      CALL PP % query ( 'PlotFileNameRoot', &
+                         PlotFileNameRoot )
       CALL PP % query ( 'iCycleW', &
                          iCycleW )
       CALL PP % query ( 'iCycleChk', &

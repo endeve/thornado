@@ -115,9 +115,39 @@ jobs:
       # OSX's cpp has trouble with fortran files; use homebrew's instead
       # Thanks to Weiqun Zhang from for finding this bug!
 
-      - name: Compile SandBox/AMReX/Euler_Relativistic_IDEAL_MR
+      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
         run: |
-          cd ${THORNADO_DIR}/SandBox/AMReX/Euler_Relativistic_IDEAL_MR
+          cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make realclean
+
+      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make realclean
+
+      - name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make realclean
+
+      - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make realclean
+
+      - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make realclean
+
+      - name: Compile SandBox/AMReX/Applications/YahilCollapse_XCFC
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/YahilCollapse_XCFC
           make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
           make realclean
 

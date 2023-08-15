@@ -281,7 +281,7 @@ CONTAINS
 
     CHARACTER(08)                   :: NumberString
     CHARACTER(64)                   :: PlotFileName
-    CHARACTER(64)                   :: PlotFileBaseName
+    CHARACTER(64)                   :: PlotFileNameRoot
     CHARACTER(64)                   :: nm
     LOGICAL                         :: WriteGF
     LOGICAL                         :: WriteFF_C, WriteFF_P, &
@@ -391,7 +391,7 @@ CONTAINS
 
 
 
-    PlotFileBaseName = 'FluidFields'
+    PlotFileNameRoot = 'FluidFields'
 
     IF( PRESENT( num_Option ) )THEN
 
@@ -401,7 +401,7 @@ CONTAINS
 
     END IF
 
-    PlotFileName = TRIM( PlotFileBaseName ) // '_' // NumberString
+    PlotFileName = TRIM( PlotFileNameRoot ) // '_' // NumberString
 
     ALLOCATE( VarNames(nF) )
 
