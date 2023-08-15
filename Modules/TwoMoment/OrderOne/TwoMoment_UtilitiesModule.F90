@@ -8,6 +8,9 @@ MODULE TwoMoment_UtilitiesModule
     MeshX
   USE GeometryFieldsModule, ONLY: &
     nGF, iGF_h_1, iGF_h_2, iGF_h_3
+  USE TwoMoment_ClosureModule, ONLY: &
+    FluxFactor, &
+    EddingtonFactor
 
   IMPLICIT NONE
   PRIVATE
@@ -20,6 +23,7 @@ MODULE TwoMoment_UtilitiesModule
   PUBLIC :: Flux_X3
   PUBLIC :: StressTensor_Diagonal
   PUBLIC :: NumericalFlux_LLF
+  PUBLIC :: ComputeEddingtonTensorComponents_dd
 
   INTERFACE NumericalFlux_LLF
     MODULE PROCEDURE NumericalFlux_LLF_Scalar
@@ -343,6 +347,55 @@ CONTAINS
 
     RETURN
   END FUNCTION NumericalFlux_LLF_Vector
+
+
+  SUBROUTINE ComputeEddingtonTensorComponents_dd &
+    ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: &
+      D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), INTENT(out) :: &
+      k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
+
+    REAL(DP) :: FF, EF, a, b
+    REAL(DP) :: h_d_1, h_d_2, h_d_3
+
+    FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    IF ( FF <= SqrtTiny ) THEN
+      EF = Third
+      a = Third
+      b = Zero
+    ELSE
+      EF = EddingtonFactor( D, FF )
+      a = Half * ( One - EF )
+      b = Half * ( Three * EF - One )
+    END IF
+
+    h_d_1 = Gm_dd_11 * I_u_1 / ( FF * D )
+    h_d_2 = Gm_dd_22 * I_u_2 / ( FF * D )
+    h_d_3 = Gm_dd_33 * I_u_3 / ( FF * D )
+
+    ! --- Diagonal Eddington Tensor Components ---
+
+    k_dd_11 = a * Gm_dd_11 + b * h_d_1 * h_d_1
+    k_dd_22 = a * Gm_dd_22 + b * h_d_2 * h_d_2
+    k_dd_33 = a * Gm_dd_33 + b * h_d_3 * h_d_3
+
+    ! --- Off-Diagonal Eddington Tensor Components ---
+
+    k_dd_12 = b * h_d_1 * h_d_2
+    k_dd_13 = b * h_d_1 * h_d_3
+    k_dd_23 = b * h_d_2 * h_d_3
+
+  END SUBROUTINE ComputeEddingtonTensorComponents_dd
 
 
 END MODULE TwoMoment_UtilitiesModule
