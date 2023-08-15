@@ -2223,11 +2223,13 @@ CONTAINS
                   + V_u_2(iN_X) * Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
                   + V_u_3(iN_X) * Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X)
 
+#if defined( TWOMOMENT_ORDER_V )
         CALL ComputeEddingtonTensorComponents_dd &
                ( Dnu    (iN_E,iS,iN_X), Inu_u_1(iN_E,iS,iN_X), &
                  Inu_u_2(iN_E,iS,iN_X), Inu_u_3(iN_E,iS,iN_X), &
                  Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
                  k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+#endif
 
         vDotK_d_1 &
           = ( V_u_1(iN_X) * k_dd_11 &
@@ -2692,11 +2694,13 @@ CONTAINS
                     + V_u_2(iN_X) * Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
                     + V_u_3(iN_X) * Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X)
 
+#if defined( TWOMOMENT_ORDER_V )
           CALL ComputeEddingtonTensorComponents_dd &
                  ( Dnu    (iN_E,iS,iN_X), Inu_u_1(iN_E,iS,iN_X), &
                    Inu_u_2(iN_E,iS,iN_X), Inu_u_3(iN_E,iS,iN_X), &
                    Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
                    k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+#endif
 
           vDotK_d_1 &
             = ( V_u_1(iN_X) * k_dd_11 &
@@ -3007,11 +3011,13 @@ CONTAINS
 
       IF( MASK(iN_X) )THEN
 
+#if defined( TWOMOMENT_ORDER_1 )
         CALL ComputeEddingtonTensorComponents_dd &
                ( Dnu    (iN_E,iS,iN_X), Inu_u_1(iN_E,iS,iN_X), &
                  Inu_u_2(iN_E,iS,iN_X), Inu_u_3(iN_E,iS,iN_X), &
                  Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
                  k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+#endif
 
         ! --- Emissivity ---
 
@@ -3204,11 +3210,13 @@ CONTAINS
                   + V_u_2(iN_X) * Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
                   + V_u_3(iN_X) * Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X)
 
+#if defined( TWOMOMENT_ORDER_V )
         CALL ComputeEddingtonTensorComponents_dd &
                ( Dnu    (iN_E,iS,iN_X), Inu_u_1(iN_E,iS,iN_X), &
                  Inu_u_2(iN_E,iS,iN_X), Inu_u_3(iN_E,iS,iN_X), &
                  Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
                  k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+#endif
 
         vDotK_d_1 &
           = ( V_u_1(iN_X) * k_dd_11 &
