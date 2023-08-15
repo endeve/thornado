@@ -1,7 +1,7 @@
 MODULE TwoMoment_UtilitiesModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, Three, SqrtTiny
+    DP, Zero, Half, One, Three, SqrtTiny, Third
   USE ProgramHeaderModule, ONLY: &
     nDOFX, nDimsX
   USE MeshModule, ONLY: &
