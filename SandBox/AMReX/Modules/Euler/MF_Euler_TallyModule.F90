@@ -298,16 +298,19 @@ CONTAINS
 
 
   SUBROUTINE ComputeTally_Euler_MF &
-    ( Time, MF_uGF, MF_uCF, SetInitialValues_Option, Verbose_Option )
+    ( Time, MF_uGF, MF_uCF, SetInitialValues_Option, &
+      WriteTally_Option, Verbose_Option )
 
     REAL(DP),             INTENT(in) :: Time  (0:)
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:)
     LOGICAL,              INTENT(in), OPTIONAL :: SetInitialValues_Option
+    LOGICAL,              INTENT(in), OPTIONAL :: WriteTally_Option
     LOGICAL,              INTENT(in), OPTIONAL :: Verbose_Option
 
     LOGICAL :: SetInitialValues
     LOGICAL :: Verbose
+    LOGICAL :: WriteTally
 
     INTEGER                       :: iX_B0(3), iX_E0(3)
     INTEGER                       :: iX_B1(3), iX_E1(3)
@@ -331,6 +334,10 @@ CONTAINS
     SetInitialValues = .FALSE.
     IF( PRESENT( SetInitialValues_Option ) ) &
       SetInitialValues = SetInitialValues_Option
+
+    WriteTally = .TRUE.
+    IF( PRESENT( WriteTally_Option ) ) &
+      WriteTally = WriteTally_Option
 
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
@@ -505,7 +512,8 @@ CONTAINS
 
 #endif
 
-    CALL WriteTally_Euler( Time(0) )
+    IF( WriteTally ) &
+      CALL WriteTally_Euler( Time(0) )
 
     IF( Verbose ) CALL DisplayTally( Time(0) )
 
