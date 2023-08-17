@@ -144,9 +144,13 @@ MODULE InputOutputModuleAMReX
     iOS_CPP
   USE MF_Euler_TallyModule, ONLY: &
     BaryonicMass_Initial, &
+    BaryonicMass_OffGrid, &
     Energy_Initial, &
+    Energy_OffGrid, &
     ElectronNumber_Initial, &
-    ADMMass_Initial
+    ElectronNumber_OffGrid, &
+    ADMMass_Initial, &
+    ADMMass_OffGrid
 
   IMPLICIT NONE
   PRIVATE
@@ -159,10 +163,10 @@ MODULE InputOutputModuleAMReX
 
     SUBROUTINE WriteFieldsAMReX_Checkpoint &
                  ( StepNo, nLevels, dt, time, &
-                   BaryonicMass_Initial, &
-                   Energy_Initial, &
-                   ElectronNumber_Initial, &
-                   ADMMass_Initial, &
+                   BaryonicMassArr, &
+                   EnergyArr, &
+                   ElectronNumberArr, &
+                   ADMMassArr, &
                    pBA, &
                    iWriteFields_uGF, iWriteFields_uCF, iWriteFields_uCR, &
                    pMF_uGF_Option, pMF_uCF_Option, pMF_uCR_Option ) BIND(c)
@@ -171,10 +175,10 @@ MODULE InputOutputModuleAMReX
       INTEGER(c_int),        INTENT(in) :: StepNo(*)
       INTEGER(c_int), VALUE, INTENT(in) :: nLevels
       REAL(DP)      ,        INTENT(in) :: dt(*), time(*)
-      REAL(DP)      , VALUE, INTENT(in) :: BaryonicMass_Initial
-      REAL(DP)      , VALUE, INTENT(in) :: Energy_Initial
-      REAL(DP)      , VALUE, INTENT(in) :: ElectronNumber_Initial
-      REAL(DP)      , VALUE, INTENT(in) :: ADMMass_Initial
+      REAL(DP)      ,        INTENT(in) :: BaryonicMassArr(*)
+      REAL(DP)      ,        INTENT(in) :: EnergyArr(*)
+      REAL(DP)      ,        INTENT(in) :: ElectronNumberArr(*)
+      REAL(DP)      ,        INTENT(in) :: ADMMassArr(*)
       TYPE(c_ptr)   ,        INTENT(in) :: pBA(*)
       INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uGF
       INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uCF
@@ -186,20 +190,20 @@ MODULE InputOutputModuleAMReX
 
     SUBROUTINE ReadHeaderAndBoxArrayData &
                  ( FinestLevelArr, StepNo, dt, Time, &
-                   BaryonicMass_InitialArr, &
-                   Energy_InitialArr, &
-                   ElectronNumber_InitialArr, &
-                   ADMMass_InitialArr, &
+                   BaryonicMassArr, &
+                   EnergyArr, &
+                   ElectronNumberArr, &
+                   ADMMassArr, &
                    pBA, pDM, iChkFile ) BIND(c)
       IMPORT
       IMPLICIT NONE
       INTEGER(c_int), INTENT(out) :: FinestLevelArr(*)
       INTEGER(c_int), INTENT(out) :: StepNo(*)
       REAL(DP)      , INTENT(out) :: dt(*), Time(*)
-      REAL(DP)      , INTENT(out) :: BaryonicMass_InitialArr(*)
-      REAL(DP)      , INTENT(out) :: Energy_InitialArr(*)
-      REAL(DP)      , INTENT(out) :: ElectronNumber_InitialArr(*)
-      REAL(DP)      , INTENT(out) :: ADMMass_InitialArr(*)
+      REAL(DP)      , INTENT(out) :: BaryonicMassArr(*)
+      REAL(DP)      , INTENT(out) :: EnergyArr(*)
+      REAL(DP)      , INTENT(out) :: ElectronNumberArr(*)
+      REAL(DP)      , INTENT(out) :: ADMMassArr(*)
       TYPE(c_ptr)   , INTENT(out) :: pBA(*), pDM(*)
       INTEGER(c_int), VALUE       :: iChkFile
     END SUBROUTINE ReadHeaderAndBoxArrayData
@@ -619,10 +623,10 @@ CONTAINS
     INTEGER :: nXX(3)
     INTEGER :: FinestLevelArr(0:0) ! Hack
 
-    REAL(DP) :: BaryonicMass_InitialArr  (0:0)
-    REAL(DP) :: Energy_InitialArr        (0:0)
-    REAL(DP) :: ElectronNumber_InitialArr(0:0)
-    REAL(DP) :: ADMMass_InitialArr       (0:0)
+    REAL(DP) :: BaryonicMassArr  (0:1)
+    REAL(DP) :: EnergyArr        (0:1)
+    REAL(DP) :: ElectronNumberArr(0:1)
+    REAL(DP) :: ADMMassArr       (0:1)
 
     LOGICAL :: ReadFields_uCF
     LOGICAL :: ReadFields_uCR
@@ -662,20 +666,24 @@ CONTAINS
 
     CALL ReadHeaderAndBoxArrayData &
            ( FinestLevelArr, StepNo, dt, t_new, &
-             BaryonicMass_InitialArr, &
-             Energy_InitialArr, &
-             ElectronNumber_InitialArr, &
-             ADMMass_InitialArr, &
+             BaryonicMassArr, &
+             EnergyArr, &
+             ElectronNumberArr, &
+             ADMMassArr, &
              pBA, pDM, iRestart )
 
     FinestLevel = FinestLevelArr(0) ! Hack
     CALL amrex_set_finest_level( FinestLevel )
     nLevels = amrex_get_numlevels()
 
-    BaryonicMass_Initial   = BaryonicMass_InitialArr  (0)
-    Energy_Initial         = Energy_InitialArr        (0)
-    ElectronNumber_Initial = ElectronNumber_InitialArr(0)
-    ADMMass_Initial        = ADMMass_InitialArr       (0)
+    BaryonicMass_Initial   = BaryonicMassArr  (0)
+    BaryonicMass_OffGrid   = BaryonicMassArr  (1)
+    Energy_Initial         = EnergyArr        (0)
+    Energy_OffGrid         = EnergyArr        (1)
+    ElectronNumber_Initial = ElectronNumberArr(0)
+    ElectronNumber_OffGrid = ElectronNumberArr(1)
+    ADMMass_Initial        = ADMMassArr       (0)
+    ADMMass_OffGrid        = ADMMassArr       (1)
 
     DO iLevel = 0, nLevels-1
 

@@ -49,9 +49,13 @@ PROGRAM main
   USE MF_Euler_TallyModule, ONLY: &
     ComputeTally_Euler_MF, &
     BaryonicMass_Initial, &
+    BaryonicMass_OffGrid, &
     Energy_Initial, &
+    Energy_OffGrid, &
     ElectronNumber_Initial, &
-    ADMMass_Initial
+    ElectronNumber_OffGrid, &
+    ADMMass_Initial, &
+    ADMMass_OffGrid
   USE MF_TwoMoment_TallyModule, ONLY: &
     ComputeTally_TwoMoment_MF
   USE AverageDownModule, ONLY: &
@@ -307,10 +311,10 @@ CONTAINS
 
       CALL WriteFieldsAMReX_Checkpoint &
              ( StepNo, nLevels, dt, t_new, &
-               BaryonicMass_Initial, &
-               Energy_Initial, &
-               ElectronNumber_Initial, &
-               ADMMass_Initial, &
+               [ BaryonicMass_Initial  , BaryonicMass_OffGrid   ], &
+               [ Energy_Initial        , Energy_OffGrid         ], &
+               [ ElectronNumber_Initial, ElectronNumber_OffGrid ], &
+               [ ADMMass_Initial       , ADMMass_OffGrid        ], &
                MF_uGF % BA % P, &
                iWriteFields_uGF = 1, &
                iWriteFields_uCF = 1, &

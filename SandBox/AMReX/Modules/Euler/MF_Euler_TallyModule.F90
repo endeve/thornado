@@ -92,29 +92,29 @@ MODULE MF_Euler_TallyModule
 
   CHARACTER(SL)    :: BaryonicMass_FileName
   REAL(DP), PUBLIC :: BaryonicMass_Initial
+  REAL(DP), PUBLIC :: BaryonicMass_OffGrid
   REAL(DP)         :: BaryonicMass_Interior
   REAL(DP)         :: BaryonicMass_Interior_OMP
-  REAL(DP)         :: BaryonicMass_OffGrid
   REAL(DP)         :: BaryonicMass_Change
 
   CHARACTER(SL)    :: Energy_FileName
   REAL(DP), PUBLIC :: Energy_Initial
+  REAL(DP), PUBLIC :: Energy_OffGrid
   REAL(DP)         :: Energy_Interior
   REAL(DP)         :: Energy_Interior_OMP
-  REAL(DP)         :: Energy_OffGrid
   REAL(DP)         :: Energy_Change
 
   CHARACTER(SL)    :: ElectronNumber_FileName
   REAL(DP), PUBLIC :: ElectronNumber_Initial
+  REAL(DP), PUBLIC :: ElectronNumber_OffGrid
   REAL(DP)         :: ElectronNumber_Interior
   REAL(DP)         :: ElectronNumber_Interior_OMP
-  REAL(DP)         :: ElectronNumber_OffGrid
   REAL(DP)         :: ElectronNumber_Change
 
   CHARACTER(SL)    :: ADMMass_FileName
   REAL(DP), PUBLIC :: ADMMass_Initial
+  REAL(DP), PUBLIC :: ADMMass_OffGrid
   REAL(DP)         :: ADMMass_Interior
-  REAL(DP)         :: ADMMass_OffGrid
   REAL(DP)         :: ADMMass_Change
 
 CONTAINS
@@ -271,27 +271,30 @@ CONTAINS
 
     IF( .NOT. InitializeFromCheckpoint )THEN
 
-      BaryonicMass_Initial   = Zero
-      Energy_Initial         = Zero
+      BaryonicMass_Initial = Zero
+      BaryonicMass_OffGrid = Zero
+
+      Energy_Initial = Zero
+      Energy_OffGrid = Zero
+
       ElectronNumber_Initial = Zero
-      ADMMass_Initial        = Zero
+      ElectronNumber_OffGrid = Zero
+
+      ADMMass_Initial = Zero
+      ADMMass_OffGrid = Zero
 
     END IF
 
     BaryonicMass_Interior = Zero
-    BaryonicMass_OffGrid  = Zero
     BaryonicMass_Change   = Zero
 
     Energy_Interior = Zero
-    Energy_OffGrid  = Zero
     Energy_Change   = Zero
 
     ElectronNumber_Interior = Zero
-    ElectronNumber_OffGrid  = Zero
     ElectronNumber_Change   = Zero
 
     ADMMass_Interior = Zero
-    ADMMass_OffGrid  = Zero
     ADMMass_Change   = Zero
 
   END SUBROUTINE InitializeTally_Euler_MF
