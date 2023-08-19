@@ -1,5 +1,7 @@
 MODULE Euler_MeshRefinementModule
 
+  USE ISO_C_BINDING
+
 #if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
 
   USE amrex_DGInterfaceModule, ONLY: &
@@ -35,9 +37,11 @@ MODULE Euler_MeshRefinementModule
     nDOFX_X1, &
     nDOFX_X2, &
     nDOFX_X3, &
+    NodeNumberTableX, &
     NodeNumberTableX_X1, &
     NodeNumberTableX_X2, &
-    NodeNumberTableX_X3
+    NodeNumberTableX_X3, &
+    NodeNumberTableX3D
   USE PolynomialBasisModuleX_Lagrange, ONLY: &
     IndLX_Q, &
     L_X1, &
@@ -79,7 +83,30 @@ MODULE Euler_MeshRefinementModule
 
   INTEGER  :: nFine, nFineX(3)
   REAL(DP) :: VolumeRatio
+  REAL(DP), PUBLIC :: FaceRatio
 
+  INTEGER(c_int), ALLOCATABLE, TARGET, PUBLIC :: NodeNumberTableX_c(:,:)
+  TYPE(c_ptr)                        , PUBLIC :: pNodeNumberTableX_c
+  INTEGER(c_int), ALLOCATABLE, TARGET, PUBLIC :: NodeNumberTableX_X1_c(:)
+  TYPE(c_ptr)                        , PUBLIC :: pNodeNumberTableX_X1_c
+  INTEGER(c_int), ALLOCATABLE, TARGET, PUBLIC :: NodeNumberTableX_X2_c(:)
+  TYPE(c_ptr)                        , PUBLIC :: pNodeNumberTableX_X2_c
+  INTEGER(c_int), ALLOCATABLE, TARGET, PUBLIC :: NodeNumberTableX_X3_c(:)
+  TYPE(c_ptr)                        , PUBLIC :: pNodeNumberTableX_X3_c
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC :: WeightsX_q_c(:)
+  TYPE(c_ptr)                        , PUBLIC :: pWeightsX_q_c
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC :: LX_X1_Up_c(:,:)
+  TYPE(c_ptr)                        , PUBLIC :: pLX_X1_Up_c
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC :: LX_X1_Dn_c(:,:)
+  TYPE(c_ptr)                        , PUBLIC :: pLX_X1_Dn_c
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC :: LX_X2_Up_c(:,:)
+  TYPE(c_ptr)                        , PUBLIC :: pLX_X2_Up_c
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC :: LX_X2_Dn_c(:,:)
+  TYPE(c_ptr)                        , PUBLIC :: pLX_X2_Dn_c
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC :: LX_X3_Up_c(:,:)
+  TYPE(c_ptr)                        , PUBLIC :: pLX_X3_Up_c
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC :: LX_X3_Dn_c(:,:)
+  TYPE(c_ptr)                        , PUBLIC :: pLX_X3_Dn_c
 
 CONTAINS
 
@@ -88,9 +115,73 @@ CONTAINS
 
     INTEGER :: iDim
     INTEGER :: iFine, iFineX1, iFineX2, iFineX3
-    INTEGER :: i, k, iN1, iN2, iN3, kk, &
+    INTEGER :: i, j, k, iN1, iN2, iN3, kk, &
                iNX_X_Crse, iNX_X1_Crse, iNX_X2_Crse, iNX_X3_Crse, &
                iNX_X_Fine, iNX_X1_Fine, iNX_X2_Fine, iNX_X3_Fine
+
+    ALLOCATE( NodeNumberTableX_c(nDOFX,3) )
+    DO i = 1, 3
+    DO j = 1, nDOFX
+      NodeNumberTableX_c(j,i) = NodeNumberTableX(i,j)-1
+    END DO
+    END DO
+    pNodeNumberTableX_c = c_loc( NodeNumberTableX_c(1,1) )
+
+    ALLOCATE( NodeNumberTableX_X1_c(0:nDOFX-1) )
+    ALLOCATE( NodeNumberTableX_X2_c(0:nDOFX-1) )
+    ALLOCATE( NodeNumberTableX_X3_c(0:nDOFX-1) )
+    DO iN3 = 0, nNodesX(3)-1
+    DO iN2 = 0, nNodesX(2)-1
+    DO iN1 = 0, nNodesX(1)-1
+
+      k = NodeNumberTableX3D(iN1+1,iN2+1,iN3+1)-1
+      NodeNumberTableX_X1_c(k) = k / nNodesX(1)
+      NodeNumberTableX_X2_c(k) = MOD( k, nNodesX(1) ) + nNodesX(1) * iN3
+      NodeNumberTableX_X3_c(k) = MOD( k, nDOFX_X1 )
+
+    END DO
+    END DO
+    END DO
+    pNodeNumberTableX_X1_c = c_loc( NodeNumberTableX_X1_c(0) )
+    pNodeNumberTableX_X2_c = c_loc( NodeNumberTableX_X2_c(0) )
+    pNodeNumberTableX_X3_c = c_loc( NodeNumberTableX_X3_c(0) )
+
+    ALLOCATE( WeightsX_q_c(nDOFX) )
+    WeightsX_q_c = WeightsX_q
+    pWeightsX_q_c = c_loc( WeightsX_q_c(1) )
+
+    ALLOCATE( LX_X1_Up_c(nDOFX,nDOFX_X1) )
+    ALLOCATE( LX_X1_Dn_c(nDOFX,nDOFX_X1) )
+    ALLOCATE( LX_X2_Up_c(nDOFX,nDOFX_X2) )
+    ALLOCATE( LX_X2_Dn_c(nDOFX,nDOFX_X2) )
+    ALLOCATE( LX_X3_Up_c(nDOFX,nDOFX_X3) )
+    ALLOCATE( LX_X3_Dn_c(nDOFX,nDOFX_X3) )
+
+    DO j = 1, nDOFX
+
+      DO i = 1, nDOFX_X1
+        LX_X1_Up_c(j,i) = LX_X1_Up(i,j)
+        LX_X1_Dn_c(j,i) = LX_X1_Dn(i,j)
+      END DO
+
+      DO i = 1, nDOFX_X2
+        LX_X2_Up_c(j,i) = LX_X2_Up(i,j)
+        LX_X2_Dn_c(j,i) = LX_X2_Dn(i,j)
+      END DO
+
+      DO i = 1, nDOFX_X3
+        LX_X3_Up_c(j,i) = LX_X3_Up(i,j)
+        LX_X3_Dn_c(j,i) = LX_X3_Dn(i,j)
+      END DO
+
+    END DO
+
+    pLX_X1_Up_c = c_loc( LX_X1_Up_c(1,1) )
+    pLX_X1_Dn_c = c_loc( LX_X1_Dn_c(1,1) )
+    pLX_X2_Up_c = c_loc( LX_X2_Up_c(1,1) )
+    pLX_X2_Dn_c = c_loc( LX_X2_Dn_c(1,1) )
+    pLX_X3_Up_c = c_loc( LX_X3_Up_c(1,1) )
+    pLX_X3_Dn_c = c_loc( LX_X3_Dn_c(1,1) )
 
     nFineX      = 1
     VolumeRatio = One
@@ -100,6 +191,8 @@ CONTAINS
       VolumeRatio  = Half * VolumeRatio
     END DO
     nFine = PRODUCT( nFineX )
+
+    FaceRatio = One / 2**( nDimsX - 1 )
 
     ALLOCATE( LX_X1_Refined(nDOFX_X1,nFineX(2)*nFineX(3),nDOFX_X1) )
     ALLOCATE( LX_X2_Refined(nDOFX_X2,nFineX(1)*nFineX(3),nDOFX_X2) )
@@ -412,6 +505,18 @@ CONTAINS
     DEALLOCATE( LX_X3_Refined )
     DEALLOCATE( LX_X2_Refined )
     DEALLOCATE( LX_X1_Refined )
+
+    DEALLOCATE( LX_X3_Dn_c )
+    DEALLOCATE( LX_X3_Up_c )
+    DEALLOCATE( LX_X2_Dn_c )
+    DEALLOCATE( LX_X2_Up_c )
+    DEALLOCATE( LX_X1_Dn_c )
+    DEALLOCATE( LX_X1_Up_c )
+    DEALLOCATE( WeightsX_q_c )
+    DEALLOCATE( NodeNumberTableX_X3_c )
+    DEALLOCATE( NodeNumberTableX_X2_c )
+    DEALLOCATE( NodeNumberTableX_X1_c )
+    DEALLOCATE( NodeNumberTableX_c )
 
   END SUBROUTINE FinalizeMeshRefinement_Euler
 

@@ -45,6 +45,8 @@ MODULE  MF_Euler_dgDiscretizationModule
     OffGridFlux_Euler_X3_Outer
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     DetectShocks_Euler
+  USE Euler_MeshRefinementModule, ONLY: &
+    FaceRatio
 
   ! --- Local Modules ---
 
@@ -452,7 +454,8 @@ CONTAINS
     IF( UseFluxCorrection_Euler )THEN
 
       IF( iLevel .GT. 0 ) &
-        CALL FluxRegister_Euler( iLevel   ) % FineAdd_DG ( SurfaceFluxes, nCF )
+        CALL FluxRegister_Euler &
+               ( iLevel   ) % FineAdd_DG ( SurfaceFluxes, nCF, FaceRatio )
 
       IF( iLevel .LT. amrex_get_finest_level() ) &
         CALL FluxRegister_Euler( iLevel+1 ) % CrseInit_DG( SurfaceFluxes, nCF )
