@@ -1,7 +1,6 @@
 MODULE FluxCorrectionModule_Euler
 
   USE Euler_MeshRefinementModule, ONLY: &
-    pNodeNumberTableX_c, &
     pNodeNumberTableX_X1_c, &
     pNodeNumberTableX_X2_c, &
     pNodeNumberTableX_X3_c, &
@@ -110,7 +109,6 @@ CONTAINS
     CALL FluxRegister_Euler( FineLevel ) &
            % reflux_dg( MF_uGF(FineLevel-1), MF(FineLevel-1), &
                         nDOFX, nDOFX_X1, nDOFX_X2, nDOFX_X3, nCF, iGF_SqrtGm, &
-                        pNodeNumberTableX_c, &
                         pNodeNumberTableX_X1_c, &
                         pNodeNumberTableX_X2_c, &
                         pNodeNumberTableX_X3_c, &
