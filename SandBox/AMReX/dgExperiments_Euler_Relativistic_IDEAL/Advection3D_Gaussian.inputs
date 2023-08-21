@@ -1,4 +1,4 @@
-##### Advection3D.inputs #####
+##### Advection3D_Gaussian.inputs #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
@@ -6,19 +6,19 @@
 thornado.ProgramName = "Advection3D"
 thornado.AdvectionProfile = "Gaussian"
 
-thornado.nNodes    = 03
-thornado.nStages   = 03
-thornado.t_end     = 1.0e1
-thornado.iCycleD   = 10
-thornado.CFL       = 0.5
-thornado.iCycleW   = 10
-thornado.iCycleChk = 100000
+thornado.nNodes  = 03
+thornado.nStages = 03
+thornado.t_end   = 1.0e1
+thornado.iCycleD = 10
+thornado.CFL     = 0.5
+thornado.dt_wrt  = 1.0e-1
+thornado.dt_chk  = 1.1e1
 
 EoS.Gamma_IDEAL = 1.3333333333333333
 
-thornado.PlotFileNameRoot        = "Advection3D.plt"
-thornado.CheckpointFileNameRoot  = "Advection3D.chk"
-thornado.TallyFileNameRoot_Euler = "Advection3D.Tally"
+thornado.PlotFileNameRoot        = "Advection3D_Gaussian.plt"
+thornado.CheckpointFileNameRoot  = "Advection3D_Gaussian.chk"
+thornado.TallyFileNameRoot_Euler = "Advection3D_Gaussian.Tally"
 
 thornado.bcX         = 01 01 01
 geometry.is_periodic = 1 1 1  # Periodic BCs: 0 (no), 1 (yes)

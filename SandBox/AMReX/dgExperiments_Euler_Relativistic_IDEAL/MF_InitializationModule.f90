@@ -177,14 +177,14 @@ CONTAINS
     REAL(DP) :: X1_0
     REAL(DP) :: sigmaX1
 
-    AdvectionProfile = 'SineWave'
+    AdvectionProfile = 'SineWaveX1'
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % query( 'AdvectionProfile', AdvectionProfile )
     CALL amrex_parmparse_destroy( PP )
 
     SELECT CASE( TRIM( AdvectionProfile ) )
 
-      CASE( 'SineWave' )
+      CASE( 'SineWaveX1' )
 
         D_0 = 1.0_DP
         Amp = 0.1_DP
@@ -280,7 +280,7 @@ CONTAINS
         iNX1 = NodeNumberTableX(1,iNX)
         X1   = NodeCoordinate( MeshX(1), iX1, iNX1 )
 
-        IF( TRIM( AdvectionProfile ) .EQ. 'SineWave' )THEN
+        IF( TRIM( AdvectionProfile ) .EQ. 'SineWaveX1' )THEN
 
           uAF(iNX,iAF_P ) = P
 
