@@ -1,0 +1,66 @@
+# XXX_HOME defines the directory in which all the XXX source code is located
+# If you set XXX_HOME as an environment variable, this line will be ignored
+AMREX_HOME    ?= $(AMREX_DIR)
+THORNADO_HOME ?= $(THORNADO_DIR)
+POSEIDON_HOME ?= $(POSEIDON_DIR)
+WEAKLIB_HOME  ?= $(WEAKLIB_DIR)
+HDF5_HOME     ?= $(HDF5_DIR)
+LAPACK_HOME   ?= $(LAPACK_DIR)
+
+HDF5_INC ?= $(HDF5_HOME)/include
+HDF5_LIB ?= $(HDF5_HOME)/lib
+
+LAPACK_LIB ?= $(LAPACK_HOME)/lib
+
+DEBUG = TRUE
+
+USE_MPI = TRUE
+USE_OMP = FALSE
+
+DIM = 1
+
+EBASE = main
+
+INCLUDE_LOCATIONS += $(HDF5_INC)
+LIBRARY_LOCATIONS += $(HDF5_LIB)
+LIBRARIES += -lhdf5_fortran -lhdf5
+
+LIBRARY_LOCATIONS += $(LAPACK_LIB)
+LIBRARIES += -llapack -lblas
+
+# Set pre-processor directives
+# This is also where, e.g., USE_HDF5 and USE_PETSC are used
+include $(AMREX_HOME)/Tools/GNUMake/Make.defs
+
+# Include basic AMReX framework
+include $(AMREX_HOME)/Src/Base/Make.package
+
+ifneq ("$(wildcard $(AMREX_HOME)/Src/DG/Make.package)","")
+  # Requires amrex fork from github.com:dunhamsj/amrex
+  # Branch: MeshRefinement_DG
+  include $(AMREX_HOME)/Src/DG/Make.package
+endif
+
+# Include directories and source files needed from amrex
+include $(AMREX_HOME)/Src/Boundary/Make.package
+include $(AMREX_HOME)/Src/AmrCore/Make.package
+include $(AMREX_HOME)/Src/F_Interfaces/Base/Make.package
+include $(AMREX_HOME)/Src/F_Interfaces/AmrCore/Make.package
+
+# Include directories and source files needed from thornado
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.git
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Library
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Numbers
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.InputOutput
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Units
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.EquationOfState
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Fields
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Geometry
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Mesh
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.MeshRefinement
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.ProgramHeader
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Euler
+include Make.dgExperiments_Euler_Relativistic_IDEAL
+
+# Include rules for compilation
+include $(AMREX_HOME)/Tools/GNUMake/Make.rules

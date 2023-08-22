@@ -1,0 +1,48 @@
+##### RiemannProblem2D_dZB2002.inputs #####
+
+# For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+# For all REAL types, use "e" and not "d", i.e. 1.0e3
+
+debug.DEBUG = 0
+
+thornado.ProgramName = "RiemannProblem2D"
+thornado.RiemannProblemName = "dZB2002"
+
+thornado.nNodes  = 03
+thornado.nStages = 03
+thornado.t_end   = 4.0e-1
+thornado.iCycleD = 10
+thornado.CFL     = 0.5
+thornado.dt_wrt  = 4.0e-3
+thornado.dt_chk  = 4.1e-1
+
+thornado.PlotFileNameRoot        = "RiemannProblem2D_dZB2002.plt"
+thornado.CheckpointFileNameRoot  = "RiemannProblem2D_dZB2002.chk"
+thornado.TallyFileNameRoot_Euler = "RiemannProblem2D_dZB2002.Tally"
+
+EoS.Gamma_IDEAL = 1.6666666666666666
+
+thornado.bcX         = 02 02 01
+geometry.is_periodic = 0 0 1  # Periodic BCs: 0 (no), 1 (yes)
+
+geometry.coord_sys = 0           # CARTESIAN
+geometry.prob_lo   = 0.0 0.0 0.0 # Lower domain size
+geometry.prob_hi   = 1.0 1.0 1.0 # Upper domain size
+
+thornado.swX                = 01 01 00
+amr.n_cell                  = 32 32 01 # Number of cells in each dimension
+#amr.max_grid_size_x         = 8
+#amr.blocking_factor_x       = 4
+amr.max_level               = 2
+amr.UseAMR                  = 1
+amr.UseFluxCorrection_Euler = 1
+amr.TagCriteria             = 0.3 0.2
+amr.n_error_buf             = 0
+amr.ref_ratio               = 2
+amr.UseTiling               = 0
+
+SL.UseSlopeLimiter_Euler           = 1
+SL.UseCharacteristicLimiting_Euler = 1
+SL.UseTroubledCellIndicator_Euler  = 0
+
+PL.UsePositivityLimiter_Euler = 1

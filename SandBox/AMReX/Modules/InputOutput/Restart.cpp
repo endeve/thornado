@@ -28,6 +28,10 @@ extern "C"
   void writefieldsamrex_checkpoint
          ( int StepNo[], int nLevels,
            Real dt[], Real time[],
+           Real BaryonicMassArr[],
+           Real EnergyArr[],
+           Real ElectronNumberArr[],
+           Real ADMMassArr[],
            BoxArray** pBA,
            int iWriteFields_uGF = 0,
            int iWriteFields_uCF = 0,
@@ -59,7 +63,7 @@ extern "C"
 
     ParmParse pp("thornado");
     chk_file = "chk";
-    pp.query("CheckpointFileBaseName",chk_file);
+    pp.query("CheckpointFileNameRoot",chk_file);
 
     const std::string& checkpointname
                          = amrex::Concatenate( chk_file, StepNo[0], 8 );
@@ -127,6 +131,16 @@ extern "C"
       }
       HeaderFile << "\n";
 
+      // Write out initial values for tally
+      HeaderFile << BaryonicMassArr  [0] << "\n";
+      HeaderFile << BaryonicMassArr  [1] << "\n";
+      HeaderFile << EnergyArr        [0] << "\n";
+      HeaderFile << EnergyArr        [1] << "\n";
+      HeaderFile << ElectronNumberArr[0] << "\n";
+      HeaderFile << ElectronNumberArr[1] << "\n";
+      HeaderFile << ADMMassArr       [0] << "\n";
+      HeaderFile << ADMMassArr       [1] << "\n";
+
       // Write the BoxArray at each level
       for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )
       {
@@ -176,14 +190,26 @@ extern "C"
   void readheaderandboxarraydata
          ( int FinestLevelArr[], int StepNo[],
 	   Real dt[], Real Time[],
+           Real BaryonicMassArr[],
+           Real EnergyArr[],
+           Real ElectronNumberArr[],
+           Real ADMMassArr[],
            BoxArray** pba, DistributionMapping** pdm, int iChkFile )
   {
 
     int FinestLevel;
+    Real BaryonicMass_Initial;
+    Real BaryonicMass_OffGrid;
+    Real Energy_Initial;
+    Real Energy_OffGrid;
+    Real ElectronNumber_Initial;
+    Real ElectronNumber_OffGrid;
+    Real ADMMass_Initial;
+    Real ADMMass_OffGrid;
 
     ParmParse pp("thornado");
     chk_file = "chk";
-    pp.query("CheckpointFileBaseName",chk_file);
+    pp.query("CheckpointFileNameRoot",chk_file);
 
     std::stringstream sChkFile;
     sChkFile << chk_file << std::setw(8) << std::setfill('0') << iChkFile;
@@ -245,6 +271,36 @@ extern "C"
       }
     }
 
+    // Read in initial values for tally
+    //
+    is >> BaryonicMass_Initial;
+    GotoNextLine( is );
+    BaryonicMassArr[0] = BaryonicMass_Initial;
+    is >> BaryonicMass_OffGrid;
+    GotoNextLine( is );
+    BaryonicMassArr[1] = BaryonicMass_OffGrid;
+
+    is >> Energy_Initial;
+    GotoNextLine( is );
+    EnergyArr[0] = Energy_Initial;
+    is >> Energy_OffGrid;
+    GotoNextLine( is );
+    EnergyArr[1] = Energy_OffGrid;
+
+    is >> ElectronNumber_Initial;
+    GotoNextLine( is );
+    ElectronNumberArr[0] = ElectronNumber_Initial;
+    is >> ElectronNumber_OffGrid;
+    GotoNextLine( is );
+    ElectronNumberArr[1] = ElectronNumber_OffGrid;
+
+    is >> ADMMass_Initial;
+    GotoNextLine( is );
+    ADMMassArr[0] = ADMMass_Initial;
+    is >> ADMMass_OffGrid;
+    GotoNextLine( is );
+    ADMMassArr[1] = ADMMass_OffGrid;
+
     // Read in level 'iLevel' BoxArray from Header
     for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )
     {
@@ -269,7 +325,7 @@ extern "C"
 
     ParmParse pp("thornado");
     chk_file = "chk";
-    pp.query("CheckpointFileBaseName",chk_file);
+    pp.query("CheckpointFileNameRoot",chk_file);
 
     std::stringstream sChkFile;
 

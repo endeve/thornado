@@ -170,6 +170,7 @@ CONTAINS
         WRITE(*,'(2x,A)')   '-------------'
         WRITE(*,'(2x,A)')   '  Advection1D'
         WRITE(*,'(2x,A)')   '  RiemannProblem1D'
+        WRITE(*,'(2x,A)')   '  RiemannProblem2D'
         WRITE(*,'(2x,A)')   '  Advection2D'
         WRITE(*,'(2x,A)')   '  KelvinHelmholtz2D'
         WRITE(*,'(2x,A)')   '  Advection3D'
@@ -193,7 +194,7 @@ CONTAINS
         WRITE(*,*)
         WRITE(*,'(2x,A)')   'Valid choices'
         WRITE(*,'(2x,A)')   '-------------'
-        WRITE(*,'(2x,A)')   '  SineWave'
+        WRITE(*,'(2x,A)')   '  SineWaveX1'
         WRITE(*,'(2x,A)')   '  Gaussian'
         WRITE(*,*)
 

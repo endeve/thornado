@@ -61,7 +61,15 @@ MODULE FinalizationModule
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
   USE MF_Euler_TallyModule, ONLY: &
-    FinalizeTally_Euler_MF
+    FinalizeTally_Euler_MF, &
+    BaryonicMass_Initial, &
+    BaryonicMass_OffGrid, &
+    Energy_Initial, &
+    Energy_OffGrid, &
+    ElectronNumber_Initial, &
+    ElectronNumber_OffGrid, &
+    ADMMass_Initial, &
+    ADMMass_OffGrid
   USE MF_TwoMoment_TallyModule, ONLY: &
     FinalizeTally_TwoMoment_MF
   USE InputParsingModule, ONLY: &
@@ -106,6 +114,10 @@ CONTAINS
 
     CALL WriteFieldsAMReX_Checkpoint &
            ( StepNo, nLevels, dt, t_new, &
+             [ BaryonicMass_Initial  , BaryonicMass_OffGrid   ], &
+             [ Energy_Initial        , Energy_OffGrid         ], &
+             [ ElectronNumber_Initial, ElectronNumber_OffGrid ], &
+             [ ADMMass_Initial       , ADMMass_OffGrid        ], &
              MF_uGF % BA % P, &
              iWriteFields_uGF = 1, &
              iWriteFields_uCF = 1, &

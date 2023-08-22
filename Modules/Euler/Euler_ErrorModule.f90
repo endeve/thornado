@@ -156,7 +156,7 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'MODULE: Euler_UtilitiesModule_Relativistic'
           WRITE(*,'(2x,A)') &
-            'SUBROUTINE: SolveZ_Bisection'
+            'SUBROUTINE: SolveF_Bisection'
            WRITE(*,'(2x,A)') &
             'No Root in Interval'
           WRITE(*,*)
@@ -220,7 +220,7 @@ CONTAINS
           WRITE(*,'(2x,A)') &
             'MODULE: Euler_UtilitiesModule_Relativistic'
           WRITE(*,'(2x,A)') &
-            'SUBROUTINE: SolveZ_Bisection_Scalar'
+            'SUBROUTINE: SolveF_Bisection_Scalar'
            WRITE(*,'(2x,A)') &
             'Reason for failure: ITERATION .EQ. MAX_IT'
           WRITE(*,*)

@@ -77,10 +77,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     ComputeNeutrinoOpacityRates_LinearCorrections_NES, &
     ComputeNeutrinoOpacityRates_LinearCorrections_Pair, &
     ComputeNeutrinoOpacityRates_LinearCorrections_Brem
-#if defined( TWOMOMENT_RELATIVISTIC )
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeEddingtonTensorComponents_dd
-#endif
   USE TwoMoment_ClosureModule, ONLY: &
     FluxFactor, &
     EddingtonFactor
@@ -99,7 +97,6 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), PARAMETER :: Unit_T = MeV
 
   INTEGER :: MoveLeft = 1
-
 
 #if   defined( TWOMOMENT_ORDER_1 )
   INTEGER, PARAMETER :: iD  = 1
@@ -2138,7 +2135,6 @@ CONTAINS
     INTEGER  :: iN_E, iN_X, iS
     REAL(DP) :: vDotV, vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3
     REAL(DP) :: V_d_1, V_d_2, V_d_3, Ef
-    REAL(DP) :: FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3
     REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
     REAL(DP) :: Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3
     REAL(DP) :: SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3
@@ -2155,7 +2151,6 @@ CONTAINS
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( vDotV, SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
     !$OMP          V_d_1, V_d_2, V_d_3, Ef, &
-    !$OMP          FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
     !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$OMP          Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3, &
     !$OMP          vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
@@ -2211,14 +2206,12 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
       !$OMP PARALLEL DO SIMD COLLAPSE(2) &
       !$OMP PRIVATE( vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
-      !$OMP          FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
       !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
       !$OMP          Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3 ) &
       !$OMP REDUCTION( + : SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
 #elif defined( THORNADO_OACC   )
       !$ACC LOOP VECTOR COLLAPSE(2) &
       !$ACC PRIVATE( vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
-      !$ACC          FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
       !$ACC          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
       !$ACC          Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3 ) &
       !$ACC REDUCTION( + : SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
@@ -2230,47 +2223,13 @@ CONTAINS
                   + V_u_2(iN_X) * Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
                   + V_u_3(iN_X) * Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X)
 
-        ! AH: Need to inline this to workaround CCE OpenMP offload bug
-        !CALL ComputeEddingtonTensorComponents_dd &
-        !       ( Dnu    (iN_E,iS,iN_X), Inu_u_1(iN_E,iS,iN_X), &
-        !         Inu_u_2(iN_E,iS,iN_X), Inu_u_3(iN_E,iS,iN_X), &
-        !         Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
-        !         k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
-
-        ! ----------------------------------------------------------------------
-
-        FFactor = SQRT(   Inu_u_1(iN_E,iS,iN_X)**2 * Gm_dd_11(iN_X) &
-                        + Inu_u_2(iN_E,iS,iN_X)**2 * Gm_dd_22(iN_X) &
-                        + Inu_u_3(iN_E,iS,iN_X)**2 * Gm_dd_33(iN_X) ) &
-                  / MAX( Dnu(iN_E,iS,iN_X), SqrtTiny )
-        FFactor = MIN( MAX( FFactor, SqrtTiny ), One )
-
-        EFactor &
-          = EddingtonFactor( Dnu(iN_E,iS,iN_X), FFactor )
-
-        a = Half * ( One - EFactor )
-        b = Half * ( Three * EFactor - One )
-
-        h_d_1 = Inu_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
-                  / ( FFactor * Dnu(iN_E,iS,iN_X) )
-        h_d_2 = Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
-                  / ( FFactor * Dnu(iN_E,iS,iN_X) )
-        h_d_3 = Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) &
-                  / ( FFactor * Dnu(iN_E,iS,iN_X) )
-
-        ! --- Diagonal Eddington Tensor Components ---
-
-        k_dd_11 = a * Gm_dd_11(iN_X) + b * h_d_1 * h_d_1
-        k_dd_22 = a * Gm_dd_22(iN_X) + b * h_d_2 * h_d_2
-        k_dd_33 = a * Gm_dd_33(iN_X) + b * h_d_3 * h_d_3
-
-        ! --- Off-Diagonal Eddington Tensor Components ---
-
-        k_dd_12 = b * h_d_1 * h_d_2
-        k_dd_13 = b * h_d_1 * h_d_3
-        k_dd_23 = b * h_d_2 * h_d_3
-
-        ! ----------------------------------------------------------------------
+#if defined( TWOMOMENT_ORDER_V )
+        CALL ComputeEddingtonTensorComponents_dd &
+               ( Dnu    (iN_E,iS,iN_X), Inu_u_1(iN_E,iS,iN_X), &
+                 Inu_u_2(iN_E,iS,iN_X), Inu_u_3(iN_E,iS,iN_X), &
+                 Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
+                 k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+#endif
 
         vDotK_d_1 &
           = ( V_u_1(iN_X) * k_dd_11 &
@@ -2682,7 +2641,6 @@ CONTAINS
     INTEGER  :: iN_E, iN_X, iS
     REAL(DP) :: vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3
     REAL(DP) :: V_d_1, V_d_2, V_d_3
-    REAL(DP) :: FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3
     REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
     REAL(DP) :: Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3
     REAL(DP) :: SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3
@@ -2699,7 +2657,6 @@ CONTAINS
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
     !$OMP          V_d_1, V_d_2, V_d_3, &
-    !$OMP          FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
     !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$OMP          Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3, &
     !$OMP          vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
@@ -2720,14 +2677,12 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
         !$OMP PARALLEL DO SIMD COLLAPSE(2) &
         !$OMP PRIVATE( vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
-        !$OMP          FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
         !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
         !$OMP          Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3 ) &
         !$OMP REDUCTION( + : SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
 #elif defined( THORNADO_OACC   )
         !$ACC LOOP VECTOR COLLAPSE(2) &
         !$ACC PRIVATE( vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
-        !$ACC          FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
         !$ACC          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
         !$ACC          Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3 ) &
         !$ACC REDUCTION( + : SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
@@ -2739,48 +2694,13 @@ CONTAINS
                     + V_u_2(iN_X) * Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
                     + V_u_3(iN_X) * Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X)
 
-          ! AH: Need to inline this to workaround CCE OpenMP offload bug
-          !CALL ComputeEddingtonTensorComponents_dd &
-          !       ( Dnu    (iN_E,iS,iN_X), Inu_u_1(iN_E,iS,iN_X), &
-          !         Inu_u_2(iN_E,iS,iN_X), Inu_u_3(iN_E,iS,iN_X), &
-          !         Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
-          !         k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
-
-          ! --------------------------------------------------------------------
-
-          FFactor = SQRT(   Inu_u_1(iN_E,iS,iN_X)**2 * Gm_dd_11(iN_X) &
-                          + Inu_u_2(iN_E,iS,iN_X)**2 * Gm_dd_22(iN_X) &
-                          + Inu_u_3(iN_E,iS,iN_X)**2 * Gm_dd_33(iN_X) ) &
-                    / MAX( Dnu(iN_E,iS,iN_X), SqrtTiny )
-
-          FFactor = MIN( MAX( FFactor, SqrtTiny ), One )
-
-          EFactor &
-            = EddingtonFactor( Dnu(iN_E,iS,iN_X), FFactor )
-
-          a = Half * ( One - EFactor )
-          b = Half * ( Three * EFactor - One )
-
-          h_d_1 = Inu_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
-                    / ( FFactor * Dnu(iN_E,iS,iN_X) )
-          h_d_2 = Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
-                    / ( FFactor * Dnu(iN_E,iS,iN_X) )
-          h_d_3 = Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) &
-                    / ( FFactor * Dnu(iN_E,iS,iN_X) )
-
-          ! --- Diagonal Eddington Tensor Components ---
-
-          k_dd_11 = a * Gm_dd_11(iN_X) + b * h_d_1 * h_d_1
-          k_dd_22 = a * Gm_dd_22(iN_X) + b * h_d_2 * h_d_2
-          k_dd_33 = a * Gm_dd_33(iN_X) + b * h_d_3 * h_d_3
-
-          ! --- Off-Diagonal Eddington Tensor Components ---
-
-          k_dd_12 = b * h_d_1 * h_d_2
-          k_dd_13 = b * h_d_1 * h_d_3
-          k_dd_23 = b * h_d_2 * h_d_3
-
-          ! --------------------------------------------------------------------
+#if defined( TWOMOMENT_ORDER_V )
+          CALL ComputeEddingtonTensorComponents_dd &
+                 ( Dnu    (iN_E,iS,iN_X), Inu_u_1(iN_E,iS,iN_X), &
+                   Inu_u_2(iN_E,iS,iN_X), Inu_u_3(iN_E,iS,iN_X), &
+                   Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
+                   k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+#endif
 
           vDotK_d_1 &
             = ( V_u_1(iN_X) * k_dd_11 &
@@ -3063,7 +2983,6 @@ CONTAINS
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     INTEGER  :: iN_E, iN_X, iS, iOS
-    REAL(DP) :: FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3
     REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
     REAL(DP) :: Eta_T, Chi_T, Kappa
     REAL(DP) :: L_u_1, L_u_2, L_u_3, L_d_1, L_d_2, L_d_3
@@ -3071,20 +2990,17 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
-    !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
+    !$OMP PRIVATE( k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$OMP          Eta_T, Chi_T, Kappa, L_u_1, L_u_2, L_u_3, &
     !$OMP          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
-    !$ACC          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
+    !$ACC PRIVATE( k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$ACC          Eta_T, Chi_T, Kappa, L_u_1, L_u_2, L_u_3, &
     !$ACC          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
-    !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
+    !$OMP PRIVATE( k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$OMP          Eta_T, Chi_T, Kappa, L_u_1, L_u_2, L_u_3, &
     !$OMP          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS )
 #endif
@@ -3095,48 +3011,13 @@ CONTAINS
 
       IF( MASK(iN_X) )THEN
 
-        ! AH: Need to inline this to workaround CCE OpenMP offload bug
-        !CALL ComputeEddingtonTensorComponents_dd &
-        !       ( Dnu    (iN_E,iS,iN_X), Inu_u_1(iN_E,iS,iN_X), &
-        !         Inu_u_2(iN_E,iS,iN_X), Inu_u_3(iN_E,iS,iN_X), &
-        !         Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
-        !         k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
-
-        ! ----------------------------------------------------------------------
-
-        FFactor = SQRT(   Inu_u_1(iN_E,iS,iN_X)**2 * Gm_dd_11(iN_X) &
-                        + Inu_u_2(iN_E,iS,iN_X)**2 * Gm_dd_22(iN_X) &
-                        + Inu_u_3(iN_E,iS,iN_X)**2 * Gm_dd_33(iN_X) ) &
-                  / MAX( Dnu(iN_E,iS,iN_X), SqrtTiny )
-        FFactor = MIN( MAX( FFactor, SqrtTiny ), One )
-
-        EFactor &
-          = EddingtonFactor &
-              ( Dnu(iN_E,iS,iN_X), FFactor )
-
-        a = Half * ( One - EFactor )
-        b = Half * ( Three * EFactor - One )
-
-        h_d_1 = Inu_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
-                  / ( FFactor * Dnu(iN_E,iS,iN_X) )
-        h_d_2 = Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
-                  / ( FFactor * Dnu(iN_E,iS,iN_X) )
-        h_d_3 = Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) &
-                  / ( FFactor * Dnu(iN_E,iS,iN_X) )
-
-        ! --- Diagonal Eddington Tensor Components ---
-
-        k_dd_11 = a * Gm_dd_11(iN_X) + b * h_d_1 * h_d_1
-        k_dd_22 = a * Gm_dd_22(iN_X) + b * h_d_2 * h_d_2
-        k_dd_33 = a * Gm_dd_33(iN_X) + b * h_d_3 * h_d_3
-
-        ! --- Off-Diagonal Eddington Tensor Components ---
-
-        k_dd_12 = b * h_d_1 * h_d_2
-        k_dd_13 = b * h_d_1 * h_d_3
-        k_dd_23 = b * h_d_2 * h_d_3
-
-        ! ----------------------------------------------------------------------
+#if defined( TWOMOMENT_ORDER_1 )
+        CALL ComputeEddingtonTensorComponents_dd &
+               ( Dnu    (iN_E,iS,iN_X), Inu_u_1(iN_E,iS,iN_X), &
+                 Inu_u_2(iN_E,iS,iN_X), Inu_u_3(iN_E,iS,iN_X), &
+                 Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
+                 k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+#endif
 
         ! --- Emissivity ---
 
@@ -3294,7 +3175,6 @@ CONTAINS
 
     INTEGER  :: iN_E, iN_X, iS, iOS
     REAL(DP) :: vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3
-    REAL(DP) :: FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3
     REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
     REAL(DP) :: Eta_T, Chi_T, Kappa
     REAL(DP) :: L_u_1, L_u_2, L_u_3, L_d_1, L_d_2, L_d_3
@@ -3303,21 +3183,18 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
-    !$OMP          FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
     !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$OMP          Eta_T, Chi_T, Kappa, L_u_1, L_u_2, L_u_3, &
     !$OMP          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
-    !$ACC          FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
     !$ACC          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$ACC          Eta_T, Chi_T, Kappa, L_u_1, L_u_2, L_u_3, &
     !$ACC          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
-    !$OMP          FFactor, EFactor, a, b, h_d_1, h_d_2, h_d_3, &
     !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$OMP          Eta_T, Chi_T, Kappa, L_u_1, L_u_2, L_u_3, &
     !$OMP          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS )
@@ -3333,47 +3210,13 @@ CONTAINS
                   + V_u_2(iN_X) * Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
                   + V_u_3(iN_X) * Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X)
 
-        ! AH: Need to inline this to workaround CCE OpenMP offload bug
-        !CALL ComputeEddingtonTensorComponents_dd &
-        !       ( Dnu    (iN_E,iS,iN_X), Inu_u_1(iN_E,iS,iN_X), &
-        !         Inu_u_2(iN_E,iS,iN_X), Inu_u_3(iN_E,iS,iN_X), &
-        !         Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
-        !         k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
-
-        ! ----------------------------------------------------------------------
-
-        FFactor = SQRT(   Inu_u_1(iN_E,iS,iN_X)**2 * Gm_dd_11(iN_X) &
-                        + Inu_u_2(iN_E,iS,iN_X)**2 * Gm_dd_22(iN_X) &
-                        + Inu_u_3(iN_E,iS,iN_X)**2 * Gm_dd_33(iN_X) ) &
-                  / MAX( Dnu(iN_E,iS,iN_X), SqrtTiny )
-        FFactor = MIN( MAX( FFactor, SqrtTiny ), One )
-
-        EFactor &
-          = EddingtonFactor( Dnu(iN_E,iS,iN_X), FFactor )
-
-        a = Half * ( One - EFactor )
-        b = Half * ( Three * EFactor - One )
-
-        h_d_1 = Inu_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
-                  / ( FFactor * Dnu(iN_E,iS,iN_X) )
-        h_d_2 = Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
-                  / ( FFactor * Dnu(iN_E,iS,iN_X) )
-        h_d_3 = Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) &
-                  / ( FFactor * Dnu(iN_E,iS,iN_X) )
-
-        ! --- Diagonal Eddington Tensor Components ---
-
-        k_dd_11 = a * Gm_dd_11(iN_X) + b * h_d_1 * h_d_1
-        k_dd_22 = a * Gm_dd_22(iN_X) + b * h_d_2 * h_d_2
-        k_dd_33 = a * Gm_dd_33(iN_X) + b * h_d_3 * h_d_3
-
-        ! --- Off-Diagonal Eddington Tensor Components ---
-
-        k_dd_12 = b * h_d_1 * h_d_2
-        k_dd_13 = b * h_d_1 * h_d_3
-        k_dd_23 = b * h_d_2 * h_d_3
-
-        ! ----------------------------------------------------------------------
+#if defined( TWOMOMENT_ORDER_V )
+        CALL ComputeEddingtonTensorComponents_dd &
+               ( Dnu    (iN_E,iS,iN_X), Inu_u_1(iN_E,iS,iN_X), &
+                 Inu_u_2(iN_E,iS,iN_X), Inu_u_3(iN_E,iS,iN_X), &
+                 Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
+                 k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+#endif
 
         vDotK_d_1 &
           = ( V_u_1(iN_X) * k_dd_11 &
@@ -3575,7 +3418,6 @@ CONTAINS
         vDotInu = V_u_1(iN_X) * Inu_d_1 &
                 + V_u_2(iN_X) * Inu_d_2 &
                 + V_u_3(iN_X) * Inu_d_3
-
 
 #if defined( TWOMOMENT_RELATIVISTIC )
        CALL ComputeEddingtonTensorComponents_dd &

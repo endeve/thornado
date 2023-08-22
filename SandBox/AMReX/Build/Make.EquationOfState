@@ -1,5 +1,3 @@
-# THORNADO_DIR/Modules/EquationOfState
-
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/EquationOfState
 F90EXE_sources  += EquationOfStateModule.F90
 F90EXE_sources  += EquationOfStateModule_IDEAL.F90
