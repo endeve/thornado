@@ -33,7 +33,11 @@ PROGRAM main
   USE MF_TwoMoment_TallyModule,         ONLY: &
     ComputeTally_TwoMoment_MF
   USE MF_Euler_TallyModule,         ONLY: &
-    ComputeTally_Euler_MF
+    ComputeTally_Euler_MF, &
+    BaryonicMass_Initial, &
+    Energy_Initial, &
+    ElectronNumber_Initial, &
+    ADMMass_Initial
   USE InitializationModule,             ONLY: &
     InitializeProgram
   USE FinalizationModule,               ONLY: &
@@ -133,9 +137,13 @@ num = 1
 
      CALL ComputeGray_TwoMoment_MF &
             ( MF_uGF, MF_uPF, MF_uCR, MF_uPR, MF_uGR )
- 
+
      CALL WriteFieldsAMReX_Checkpoint &
             ( StepNo, nLevels, dt, t_new, &
+              BaryonicMass_Initial, &
+              Energy_Initial, &
+              ElectronNumber_Initial, &
+              ADMMass_Initial, &
               MF_uGF % BA % P, &
               iWriteFields_uGF = 1, &
               iWriteFields_uCF = 1, &
@@ -154,7 +162,7 @@ num = 1
               MF_uPR_Option = MF_uPR, &
               MF_uCR_Option = MF_uCR, &
               MF_uGR_Option = MF_uGR )
- 
+
       num = num + 1
       wrt = .FALSE.
     END IF
@@ -195,6 +203,10 @@ num = 1
 
   CALL WriteFieldsAMReX_Checkpoint &
          ( StepNo, nLevels, dt, t_new, &
+           BaryonicMass_Initial, &
+           Energy_Initial, &
+           ElectronNumber_Initial, &
+           ADMMass_Initial, &
            MF_uGF % BA % P, &
            iWriteFields_uGF = 1, &
            iWriteFields_uCF = 1, &

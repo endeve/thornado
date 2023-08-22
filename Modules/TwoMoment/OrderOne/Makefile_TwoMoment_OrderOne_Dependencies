@@ -3,6 +3,7 @@ TwoMoment_UtilitiesModule.o: \
   ProgramHeaderModule.o \
   MeshModule.o \
   GeometryFieldsModule.o \
+  TwoMoment_ClosureModule.o \
   TwoMoment_UtilitiesModule.F90
 
 TwoMoment_CharacteristicDecompositionModule.o: \

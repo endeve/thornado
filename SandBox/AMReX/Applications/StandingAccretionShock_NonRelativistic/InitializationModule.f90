@@ -172,7 +172,7 @@ CONTAINS
 
   SUBROUTINE InitializeProgram
 
-    INTEGER :: iLevel
+    LOGICAL :: SetInitialValues
 
     CALL amrex_init()
 
@@ -260,12 +260,14 @@ CONTAINS
     dt     = 0.0_DP
     t_new  = 0.0_DP
 
-    CALL InitializeTally_Euler_MF
-
     IF( iRestart .LT. 0 )THEN
 
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
+
+      SetInitialValues = .TRUE.
+
+      CALL InitializeTally_Euler_MF
 
       CALL ApplySlopeLimiter_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uDF )
@@ -276,6 +278,11 @@ CONTAINS
     ELSE
 
       CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
+
+      SetInitialValues = .FALSE.
+
+      CALL InitializeTally_Euler_MF &
+             ( InitializeFromCheckpoint_Option = .TRUE. )
 
     END IF
 
@@ -309,7 +316,8 @@ CONTAINS
 
     CALL ComputeTally_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, &
-             SetInitialValues_Option = .TRUE., Verbose_Option = .TRUE. )
+             SetInitialValues_Option = SetInitialValues, &
+             Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL TimersStop_AMReX( Timer_AMReX_Initialize )
 

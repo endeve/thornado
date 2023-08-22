@@ -1571,7 +1571,7 @@ CONTAINS
           iZ_B0(3):iZ_E0(3), &
           iZ_B0(4):iZ_E0(4), &
           nSpecies)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(inout) :: &
       U_P(nPT_Z, &
           iZ_B0(1):iZ_E0(1), &
           iZ_B0(2):iZ_E0(2), &
@@ -1635,7 +1635,7 @@ CONTAINS
           iZ_B0(2):iZ_E0(2), &
           iZ_B0(3):iZ_E0(3), &
           iZ_B0(4):iZ_E0(4))
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(inout) :: &
       U_P(nPT_X, &
           iZ_B0(2):iZ_E0(2), &
           iZ_B0(3):iZ_E0(3), &

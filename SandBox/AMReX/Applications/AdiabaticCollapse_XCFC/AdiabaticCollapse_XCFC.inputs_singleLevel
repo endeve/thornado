@@ -13,14 +13,15 @@ thornado.iRestart = -1
 
 thornado.UsePhysicalUnits = 1
 
-thornado.PlotFileBaseName = "AdiabaticCollapse_XCFC.plt"
+thornado.TallyFileNameRoot_Euler = "AdiabaticCollapse_XCFC.Tally"
+thornado.PlotFileNameRoot = "AdiabaticCollapse_XCFC.plt"
 thornado.t_end   = 3.0e+2
 thornado.iCycleD = 1
 
 thornado.dt_wrt  = 1.0e+0
 thornado.iCycleW = -1
 
-thornado.CheckpointFileBaseName = "AdiabaticCollapse_XCFC.chk"
+thornado.CheckpointFileNameRoot = "AdiabaticCollapse_XCFC.chk"
 thornado.dt_chk    = 1.0e+1
 thornado.iCycleChk = -1
 
@@ -67,8 +68,6 @@ SL.UseConservativeCorrection_Euler = 1
 
 # Positivity limiter parameters
 PL.UsePositivityLimiter_Euler = 1
-PL.Min_1_Euler                = 1.0e-13
-PL.Min_2_Euler                = 1.0e-13
 
 # Equation of state parameters
 EoS.EquationOfState = "TABLE"

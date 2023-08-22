@@ -72,6 +72,7 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_TABLE
   REAL(DP), PARAMETER   :: Unit_T       = Kelvin
   REAL(DP), PARAMETER   :: BaryonMass   = AtomicMassUnit
   REAL(DP), PARAMETER   :: SafetyFactor = 0.99_DP
+  REAL(DP), PARAMETER   :: Theta_1_Min  = 0.01_DP
 
   LOGICAL               :: UsePositivityLimiter
   LOGICAL               :: Verbose
@@ -85,11 +86,11 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_TABLE
 #if   defined( THORNADO_OMP_OL )
   !$OMP DECLARE TARGET( Min_D, Max_D, Min_T, Max_T, &
   !$OMP                 Min_Y, Max_Y, Min_N, Max_N, &
-  !$OMP                 nPT, InterpMat )
+  !$OMP                 nPT )
 #elif defined( THORNADO_OACC   )
   !$ACC DECLARE CREATE( Min_D, Max_D, Min_T, Max_T, &
   !$ACC                 Min_Y, Max_Y, Min_N, Max_N, &
-  !$ACC                 nPT, InterpMat )
+  !$ACC                 nPT )
 #endif
 
 CONTAINS
@@ -258,7 +259,8 @@ CONTAINS
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( always, to: InterpMat )
 #elif defined( THORNADO_OACC   )
-    !$ACC UPDATE DEVICE( InterpMat )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( InterpMat )
 #endif
 
     ! --- Conserved Variables in Positive Points ---
@@ -275,6 +277,9 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET EXIT DATA &
       !$OMP MAP( always, release: InterpMat )
+#elif defined( THORNADO_OACC   )
+      !$ACC EXIT DATA &
+      !$ACC DELETE( InterpMat )
 #endif
 
       DEALLOCATE( InterpMat )
@@ -299,7 +304,7 @@ CONTAINS
       D(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nDF)
 
     LOGICAL  :: NegativeStates
-    !LOGICAL  :: DoStep_3
+    LOGICAL  :: DoStep_3
     INTEGER  :: iX1, iX2, iX3, iCF, iP, iNodeX
     INTEGER  :: ITERATION
     REAL(DP) :: Min_D_K, Max_D_K, Min_N_K
@@ -549,21 +554,15 @@ CONTAINS
         IF( U_K_D(iX1,iX2,iX3) < Min_D )THEN
 
           U_K_D(iX1,iX2,iX3) = ( One + 1.0d-6 ) * Min_D
-
           DO iNodeX = 1, nDOFX
-
             U_Q_D(iNodeX,iX1,iX2,iX3) = U_K_D(iX1,iX2,iX3)
-
           END DO
 
         ELSE
 
           U_K_D(iX1,iX2,iX3) = ( One - 1.0d-6 ) * Max_D
-
           DO iNodeX = 1, nDOFX
-
             U_Q_D(iNodeX,iX1,iX2,iX3) = U_K_D(iX1,iX2,iX3)
-
           END DO
 
         END IF
@@ -571,19 +570,16 @@ CONTAINS
         ! --- Reset Electron Density by Preserving Cell-Averaged Ye ---
 
         U_K_Ne(iX1,iX2,iX3) = Y_K * U_K_D(iX1,iX2,iX3) / BaryonMass
-
         DO iNodeX = 1, nDOFX
-
           U_Q_Ne(iNodeX,iX1,iX2,iX3) = U_K_Ne(iX1,iX2,iX3)
-
         END DO
 
         ! --- Recompute Point Values from Limited Solution ---
 
         CALL ComputePointValues_Single &
-               ( U_Q_D (:,iX1,iX2,iX3), nDOFX, U_P_D (:,iX1,iX2,iX3), nPT )
+               ( InterpMat, U_Q_D (:,iX1,iX2,iX3), U_P_D (:,iX1,iX2,iX3) )
         CALL ComputePointValues_Single &
-               ( U_Q_Ne(:,iX1,iX2,iX3), nDOFX, U_P_Ne(:,iX1,iX2,iX3), nPT )
+               ( InterpMat, U_Q_Ne(:,iX1,iX2,iX3), U_P_Ne(:,iX1,iX2,iX3) )
 
       END IF
 
@@ -592,12 +588,6 @@ CONTAINS
     END DO
 
     CALL TimersStop_Euler( Timer_Euler_PL_LimitCells )
-
-!#if   defined( THORNADO_OMP_OL )
-!    !$OMP TARGET UPDATE FROM( U_Q_D, U_Q_Ne )
-!#elif defined( THORNADO_OACC   )
-!    !$ACC UPDATE HOST( U_Q_D, U_Q_Ne )
-!#endif
 
     ! -------------------------------------------------------------------
     ! --- Step 1 --------------------------------------------------------
@@ -621,71 +611,43 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      Min_D_K = MINVAL( U_P_D (:,iX1,iX2,iX3) ) ! --- Minimum D  in Element
-      Max_D_K = MAXVAL( U_P_D (:,iX1,iX2,iX3) ) ! --- Maximum D  in Element
-      Min_N_K = MINVAL( U_P_Ne(:,iX1,iX2,iX3) ) ! --- Minimum Ne in Element
-      !DO iP = 2, nPT
-      !  Min_D_K = MIN( Min_D_K, U_P_D (iP,iX1,iX2,iX3) )
-      !  Max_D_K = MAX( Max_D_K, U_P_D (iP,iX1,iX2,iX3) )
-      !  Min_N_K = MIN( Min_N_K, U_P_Ne(iP,iX1,iX2,iX3) )
-      !END DO
+      Min_D_K = Max_D
+      Max_D_K = Min_D
+      Min_N_K = Max_N
+      DO iP = 1, nPT
+        Min_D_K = MIN( Min_D_K, U_P_D (iP,iX1,iX2,iX3) ) ! --- Minimum D  in Element
+        Max_D_K = MAX( Max_D_K, U_P_D (iP,iX1,iX2,iX3) ) ! --- Maximum D  in Element
+        Min_N_K = MIN( Min_N_K, U_P_Ne(iP,iX1,iX2,iX3) ) ! --- Minimum Ne in Element
+      END DO
 
-      !IF( ANY( [ Min_D_K-Min_D, Max_D-Max_D_K, Min_N_K-Min_N ] < Zero ) )THEN
       IF( ( Min_D_K < Min_D ) .OR. ( Max_D < Max_D_K ) .OR. ( Min_N_K < Min_N ) ) THEN
 
-        Theta_1 = One
+        ! --- This calculation for Theta_1 has been changed from the original backtracing
+        ! --- algorithm described in 3.4.1 of Pochik et al. (2021)
 
-        DO iP = 1, nPT
+        Theta_1 &
+          = MIN( One, &
+                 ABS( ( Min_D   - U_K_D (iX1,iX2,iX3) ) &
+                    / ( Min_D_K - U_K_D (iX1,iX2,iX3) - SqrtTiny ) ), &
+                 ABS( ( Max_D   - U_K_D (iX1,iX2,iX3) ) &
+                    / ( Max_D_K - U_K_D (iX1,iX2,iX3) + SqrtTiny ) ), &
+                 ABS( ( Min_N   - U_K_Ne(iX1,iX2,iX3) ) &
+                    / ( Min_N_K - U_K_Ne(iX1,iX2,iX3) - SqrtTiny ) ) )
 
-          Theta_P = One
-
-          D_P = U_P_D (iP,iX1,iX2,iX3)
-          N_P = U_P_Ne(iP,iX1,iX2,iX3)
-          !DO WHILE( ANY( [ D_P-Min_D, Max_D-D_P, N_P-Min_N ] < Zero ) )
-          DO WHILE( ( D_P < Min_D ) .OR. ( Max_D < D_P ) .OR. ( N_P < Min_N ) )
-
-            IF( Theta_P > 1.0d-2 )THEN
-
-              Theta_P = 0.95_DP * Theta_P
-
-            ELSE
-
-              Theta_P = Zero
-
-            END IF
-
-            D_P = ( One - Theta_P ) * U_K_D   (iX1,iX2,iX3) &
-                        + Theta_P   * U_P_D(iP,iX1,iX2,iX3)
-
-            N_P = ( One - Theta_P ) * U_K_Ne   (iX1,iX2,iX3) &
-                        + Theta_P   * U_P_Ne(iP,iX1,iX2,iX3)
-
-          END DO
-
-          Theta_1 = MIN( Theta_1, SafetyFactor * Theta_P )
-
-        END DO
+        Theta_1 = SafetyFactor * Theta_1
+        IF ( Theta_1 < Theta_1_Min ) Theta_1 = Zero
 
         ! --- Limit Mass and Electron Density Towards Cell Average ---
 
-        DO iNodeX = 1, nDOFX
-
-          U_Q_D (iNodeX,iX1,iX2,iX3) &
-            = Theta_1 * U_Q_D (iNodeX,iX1,iX2,iX3) &
-                + (One-Theta_1) * U_K_D (iX1,iX2,iX3)
-
-          U_Q_Ne(iNodeX,iX1,iX2,iX3) &
-            = Theta_1 * U_Q_Ne(iNodeX,iX1,iX2,iX3) &
-                + (One-Theta_1) * U_K_Ne(iX1,iX2,iX3)
-
-        END DO
+        CALL ApplyLimiter( Theta_1, U_K_D (iX1,iX2,iX3), U_Q_D (:,iX1,iX2,iX3) )
+        CALL ApplyLimiter( Theta_1, U_K_Ne(iX1,iX2,iX3), U_Q_Ne(:,iX1,iX2,iX3) )
 
         ! --- Recompute Point Values from Limited Solution ---
 
         CALL ComputePointValues_Single &
-               ( U_Q_D (:,iX1,iX2,iX3), nDOFX, U_P_D (:,iX1,iX2,iX3), nPT )
+               ( InterpMat, U_Q_D (:,iX1,iX2,iX3), U_P_D (:,iX1,iX2,iX3) )
         CALL ComputePointValues_Single &
-               ( U_Q_Ne(:,iX1,iX2,iX3), nDOFX, U_P_Ne(:,iX1,iX2,iX3), nPT )
+               ( InterpMat, U_Q_Ne(:,iX1,iX2,iX3), U_P_Ne(:,iX1,iX2,iX3) )
 
       END IF
 
@@ -694,12 +656,6 @@ CONTAINS
     END DO
 
     CALL TimersStop_Euler( Timer_Euler_PL_LimitCells )
-
-!#if   defined( THORNADO_OMP_OL )
-!    !$OMP TARGET UPDATE FROM( U_Q_D, U_Q_Ne )
-!#elif defined( THORNADO_OACC   )
-!    !$ACC UPDATE HOST( U_Q_D, U_Q_Ne )
-!#endif
 
     ! -------------------------------------------------------------------
     ! --- Step 2 --------------------------------------------------------
@@ -723,27 +679,27 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      Min_Y_K = MINVAL( BaryonMass * U_P_Ne(:,iX1,iX2,iX3) / U_P_D(:,iX1,iX2,iX3) )
-      Max_Y_K = MAXVAL( BaryonMass * U_P_Ne(:,iX1,iX2,iX3) / U_P_D(:,iX1,iX2,iX3) )
-      !DO iP = 2, nPT
-      !  Min_Y_K = MIN( Min_Y_K, BaryonMass * U_P_Ne(iP,iX1,iX2,iX3) &
-      !                                     / U_P_D (iP,iX1,iX2,iX3) )
-      !  Max_Y_K = MAX( Max_Y_K, BaryonMass * U_P_Ne(iP,iX1,iX2,iX3) &
-      !                                     / U_P_D (iP,iX1,iX2,iX3) )
-      !END DO
+      Min_Y_K = Max_Y
+      Max_Y_K = Min_Y
+      DO iP = 1, nPT
+        Min_Y_K = MIN( Min_Y_K, BaryonMass * U_P_Ne(iP,iX1,iX2,iX3) &
+                                           / U_P_D (iP,iX1,iX2,iX3) )
+        Max_Y_K = MAX( Max_Y_K, BaryonMass * U_P_Ne(iP,iX1,iX2,iX3) &
+                                           / U_P_D (iP,iX1,iX2,iX3) )
+      END DO
 
       IF( Min_Y_K < Min_Y .OR. Max_Y_K > Max_Y )THEN
 
         Y_K = BaryonMass * U_K_Ne(iX1,iX2,iX3) / U_K_D(iX1,iX2,iX3)
 
         Alpha = MIN( One, &
-                     ABS( ( Min_Y - Y_K ) / ( Min_Y_K - Y_K ) ), &
-                     ABS( ( Max_Y - Y_K ) / ( Max_Y_K - Y_K ) ) )
+                     ABS( ( Min_Y - Y_K ) / ( Min_Y_K - Y_K - SqrtTiny ) ), &
+                     ABS( ( Max_Y - Y_K ) / ( Max_Y_K - Y_K + SqrtTiny ) ) )
 
-        Max_D_K = MAXVAL( U_P_D(:,iX1,iX2,iX3) )
-        !DO iP = 2, nPT
-        !  Max_D_K = MAX( Max_D_K, U_P_D(iP,iX1,iX2,iX3) )
-        !END DO
+        Max_D_K = Min_D
+        DO iP = 1, nPT
+          Max_D_K = MAX( Max_D_K, U_P_D(iP,iX1,iX2,iX3) )
+        END DO
 
         Theta_2 &
           = SafetyFactor * Alpha * U_K_D(iX1,iX2,iX3) &
@@ -751,24 +707,15 @@ CONTAINS
 
         ! --- Limit Mass and Electron Density Towards Cell Average ---
 
-        DO iNodeX = 1, nDOFX
-
-          U_Q_D (iNodeX,iX1,iX2,iX3) &
-            = Theta_2 * U_Q_D (iNodeX,iX1,iX2,iX3) &
-                + (One-Theta_2) * U_K_D (iX1,iX2,iX3)
-
-          U_Q_Ne(iNodeX,iX1,iX2,iX3) &
-            = Theta_2 * U_Q_Ne(iNodeX,iX1,iX2,iX3) &
-                + (One-Theta_2) * U_K_Ne(iX1,iX2,iX3)
-
-        END DO
+        CALL ApplyLimiter( Theta_2, U_K_D (iX1,iX2,iX3), U_Q_D (:,iX1,iX2,iX3) )
+        CALL ApplyLimiter( Theta_2, U_K_Ne(iX1,iX2,iX3), U_Q_Ne(:,iX1,iX2,iX3) )
 
         ! --- Recompute Point Values from Limited Solution ---
 
         CALL ComputePointValues_Single &
-               ( U_Q_D (:,iX1,iX2,iX3), nDOFX, U_P_D (:,iX1,iX2,iX3), nPT )
+               ( InterpMat, U_Q_D (:,iX1,iX2,iX3), U_P_D (:,iX1,iX2,iX3) )
         CALL ComputePointValues_Single &
-               ( U_Q_Ne(:,iX1,iX2,iX3), nDOFX, U_P_Ne(:,iX1,iX2,iX3), nPT )
+               ( InterpMat, U_Q_Ne(:,iX1,iX2,iX3), U_P_Ne(:,iX1,iX2,iX3) )
 
       END IF
 
@@ -777,16 +724,6 @@ CONTAINS
     END DO
 
     CALL TimersStop_Euler( Timer_Euler_PL_LimitCells )
-
-!#if   defined( THORNADO_OMP_OL )
-!    !$OMP TARGET UPDATE FROM( U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
-!    !$OMP                     U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne, &
-!    !$OMP                     U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne )
-!#elif defined( THORNADO_OACC   )
-!    !$ACC UPDATE HOST( U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
-!    !$ACC              U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne, &
-!    !$ACC              U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne )
-!#endif
 
     ! -------------------------------------------------------------------
     ! --- Step 3 --------------------------------------------------------
@@ -797,10 +734,10 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( iP, iNodeX, ITERATION, Theta_3, Theta_P )
+    !$OMP PRIVATE( iP, iNodeX, ITERATION, Theta_3, Theta_P, DoStep_3 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( iP, iNodeX, ITERATION, Theta_3, Theta_P ) &
+    !$ACC PRIVATE( iP, iNodeX, ITERATION, Theta_3, Theta_P, DoStep_3 ) &
     !$ACC PRESENT( iX_B0, iX_E0, &
     !$ACC          U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne, &
     !$ACC          U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
@@ -810,12 +747,13 @@ CONTAINS
     !$ACC          Eps_K, Min_Eps_K, Ye_K )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( iP, iNodeX, ITERATION, Theta_3, Theta_P )
+    !$OMP PRIVATE( iP, iNodeX, ITERATION, Theta_3, Theta_P, DoStep_3 )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
+      DoStep_3 = .FALSE.
       DO iP = 1, nPT
 
         CALL ComputeEpsAndYe &
@@ -832,173 +770,141 @@ CONTAINS
                  Ye_P        (iP,iX1,iX2,iX3) )
 
         CALL ComputeSpecificInternalEnergy_TABLE &
-               ( U_P_D(iP,iX1,iX2,iX3), Min_T, Ye_P(iP,iX1,iX2,iX3), &
-                 Min_Eps_P(iP,iX1,iX2,iX3) )
-
-        CALL ComputeSpecificInternalEnergy_TABLE &
-               ( U_P_D(iP,iX1,iX2,iX3), Max_T, Ye_P(iP,iX1,iX2,iX3),&
-                 Max_Eps_P(iP,iX1,iX2,iX3) )
-
-        END DO
-
-      !DoStep_3 = ANY( Eps_P(:,iX1,iX2,iX3) < Min_Eps_P(:,iX1,iX2,iX3) )
-
-      ITERATION = 0
-      DO WHILE( ANY( Eps_P(:,iX1,iX2,iX3) < Min_Eps_P(:,iX1,iX2,iX3) ) .AND. ITERATION <= 10 )
-
-        ITERATION = ITERATION + 1
-
-        DO iP = 1, nPT
-
-          CALL ComputeEpsAndYe &
-                 ( U_K_D          (iX1,iX2,iX3), &
-                   U_K_S1         (iX1,iX2,iX3), &
-                   U_K_S2         (iX1,iX2,iX3), &
-                   U_K_S3         (iX1,iX2,iX3), &
-                   U_K_E          (iX1,iX2,iX3), &
-                   U_K_Ne         (iX1,iX2,iX3), &
-                   G_P_Gm_dd_11(iP,iX1,iX2,iX3), &
-                   G_P_Gm_dd_22(iP,iX1,iX2,iX3), &
-                   G_P_Gm_dd_33(iP,iX1,iX2,iX3), &
-                   Eps_K       (iP,iX1,iX2,iX3), &
-                   Ye_K        (iP,iX1,iX2,iX3) )
-
-          CALL ComputeSpecificInternalEnergy_TABLE &
-                 ( U_K_D(iX1,iX2,iX3), Min_T, Ye_K(iP,iX1,iX2,iX3), &
-                   Min_Eps_K(iP,iX1,iX2,iX3) )
-
-        END DO
-
-        IF( ITERATION .LT. 10 )THEN
-
-          Theta_3 = One
-          DO iP = 1, nPT
-
-            IF( Eps_P(iP,iX1,iX2,iX3) < Min_Eps_P(iP,iX1,iX2,iX3) )THEN
-
-              CALL SolveTheta_Bisection &
-                     ( U_P_D       (iP,iX1,iX2,iX3), &
-                       U_P_S1      (iP,iX1,iX2,iX3), &
-                       U_P_S2      (iP,iX1,iX2,iX3), &
-                       U_P_S3      (iP,iX1,iX2,iX3), &
-                       U_P_E       (iP,iX1,iX2,iX3), &
-                       U_K_D          (iX1,iX2,iX3), &
-                       U_K_S1         (iX1,iX2,iX3), &
-                       U_K_S2         (iX1,iX2,iX3), &
-                       U_K_S3         (iX1,iX2,iX3), &
-                       U_K_E          (iX1,iX2,iX3), &
-                       G_P_Gm_dd_11(iP,iX1,iX2,iX3), &
-                       G_P_Gm_dd_22(iP,iX1,iX2,iX3), &
-                       G_P_Gm_dd_33(iP,iX1,iX2,iX3), &
-                       Min_Eps_P   (iP,iX1,iX2,iX3), &
-                       Min_Eps_K   (iP,iX1,iX2,iX3), &
-                       Theta_P )
-
-              Theta_3 = MIN( Theta_3, SafetyFactor * Theta_P )
-
-            END IF
-
-          END DO ! iP
-
-        ELSE ! --- ITERATION .GE. 10
-
-          Theta_3 = Zero
-
-        END IF ! IF( ITERATION .LT. 10 )
-
-        ! --- Limit All Conserved Fields Towards Cell Average ---
-
-        DO iNodeX = 1, nDOFX
-
-          U_Q_D (iNodeX,iX1,iX2,iX3) &
-            = Theta_3 * U_Q_D (iNodeX,iX1,iX2,iX3) &
-                + (One-Theta_3) * U_K_D (iX1,iX2,iX3)
-
-          U_Q_S1(iNodeX,iX1,iX2,iX3) &
-            = Theta_3 * U_Q_S1(iNodeX,iX1,iX2,iX3) &
-                + (One-Theta_3) * U_K_S1(iX1,iX2,iX3)
-
-          U_Q_S2(iNodeX,iX1,iX2,iX3) &
-            = Theta_3 * U_Q_S2(iNodeX,iX1,iX2,iX3) &
-                + (One-Theta_3) * U_K_S2(iX1,iX2,iX3)
-
-          U_Q_S3(iNodeX,iX1,iX2,iX3) &
-            = Theta_3 * U_Q_S3(iNodeX,iX1,iX2,iX3) &
-                + (One-Theta_3) * U_K_S3(iX1,iX2,iX3)
-
-          U_Q_E (iNodeX,iX1,iX2,iX3) &
-            = Theta_3 * U_Q_E (iNodeX,iX1,iX2,iX3) &
-                + (One-Theta_3) * U_K_E (iX1,iX2,iX3)
-
-          U_Q_Ne(iNodeX,iX1,iX2,iX3) &
-            = Theta_3 * U_Q_Ne(iNodeX,iX1,iX2,iX3) &
-                + (One-Theta_3) * U_K_Ne(iX1,iX2,iX3)
-
-        END DO
-
-        ! --- Recompute Point Values from Limited Solution ---
-
-        CALL ComputePointValues_Single &
-               ( U_Q_D (:,iX1,iX2,iX3), nDOFX, U_P_D (:,iX1,iX2,iX3), nPT )
-        CALL ComputePointValues_Single &
-               ( U_Q_S1(:,iX1,iX2,iX3), nDOFX, U_P_S1(:,iX1,iX2,iX3), nPT )
-        CALL ComputePointValues_Single &
-               ( U_Q_S2(:,iX1,iX2,iX3), nDOFX, U_P_S2(:,iX1,iX2,iX3), nPT )
-        CALL ComputePointValues_Single &
-               ( U_Q_S3(:,iX1,iX2,iX3), nDOFX, U_P_S3(:,iX1,iX2,iX3), nPT )
-        CALL ComputePointValues_Single &
-               ( U_Q_E (:,iX1,iX2,iX3), nDOFX, U_P_E (:,iX1,iX2,iX3), nPT )
-        CALL ComputePointValues_Single &
-               ( U_Q_Ne(:,iX1,iX2,iX3), nDOFX, U_P_Ne(:,iX1,iX2,iX3), nPT )
-
-        DO iP = 1, nPT
-
-          CALL ComputeEpsAndYe &
-                 ( U_P_D       (iP,iX1,iX2,iX3), &
-                   U_P_S1      (iP,iX1,iX2,iX3), &
-                   U_P_S2      (iP,iX1,iX2,iX3), &
-                   U_P_S3      (iP,iX1,iX2,iX3), &
-                   U_P_E       (iP,iX1,iX2,iX3), &
-                   U_P_Ne      (iP,iX1,iX2,iX3), &
-                   G_P_Gm_dd_11(iP,iX1,iX2,iX3), &
-                   G_P_Gm_dd_22(iP,iX1,iX2,iX3), &
-                   G_P_Gm_dd_33(iP,iX1,iX2,iX3), &
-                   Eps_P       (iP,iX1,iX2,iX3), &
-                   Ye_P        (iP,iX1,iX2,iX3) )
-
-          CALL ComputeSpecificInternalEnergy_TABLE &
                  ( U_P_D(iP,iX1,iX2,iX3), Min_T, Ye_P(iP,iX1,iX2,iX3), &
                    Min_Eps_P(iP,iX1,iX2,iX3) )
 
-          CALL ComputeSpecificInternalEnergy_TABLE &
-                 ( U_P_D(iP,iX1,iX2,iX3), Max_T, Ye_P(iP,iX1,iX2,iX3), &
+        CALL ComputeSpecificInternalEnergy_TABLE &
+                 ( U_P_D(iP,iX1,iX2,iX3), Max_T, Ye_P(iP,iX1,iX2,iX3),&
                    Max_Eps_P(iP,iX1,iX2,iX3) )
 
-        END DO
+        DoStep_3 = DoStep_3 .OR. ( Eps_P(iP,iX1,iX2,iX3) < Min_Eps_P(iP,iX1,iX2,iX3) )
 
-        !DoStep_3 = ANY( Eps_P(:,iX1,iX2,iX3) < Min_Eps_P(:,iX1,iX2,iX3) )
+      END DO
 
-      END DO ! --- WHILE( DoStep_3 )
+      IF ( DoStep_3 ) THEN
+
+        DO ITERATION = 1, 10
+
+          DO iP = 1, nPT
+
+            CALL ComputeEpsAndYe &
+                   ( U_K_D          (iX1,iX2,iX3), &
+                     U_K_S1         (iX1,iX2,iX3), &
+                     U_K_S2         (iX1,iX2,iX3), &
+                     U_K_S3         (iX1,iX2,iX3), &
+                     U_K_E          (iX1,iX2,iX3), &
+                     U_K_Ne         (iX1,iX2,iX3), &
+                     G_P_Gm_dd_11(iP,iX1,iX2,iX3), &
+                     G_P_Gm_dd_22(iP,iX1,iX2,iX3), &
+                     G_P_Gm_dd_33(iP,iX1,iX2,iX3), &
+                     Eps_K       (iP,iX1,iX2,iX3), &
+                     Ye_K        (iP,iX1,iX2,iX3) )
+
+            CALL ComputeSpecificInternalEnergy_TABLE &
+                   ( U_K_D(iX1,iX2,iX3), Min_T, Ye_K(iP,iX1,iX2,iX3), &
+                     Min_Eps_K(iP,iX1,iX2,iX3) )
+
+          END DO
+
+          IF( ITERATION .LT. 10 )THEN
+
+            Theta_3 = One
+            DO iP = 1, nPT
+
+              IF( Eps_P(iP,iX1,iX2,iX3) < Min_Eps_P(iP,iX1,iX2,iX3) )THEN
+
+                CALL SolveTheta_Bisection &
+                       ( U_P_D       (iP,iX1,iX2,iX3), &
+                         U_P_S1      (iP,iX1,iX2,iX3), &
+                         U_P_S2      (iP,iX1,iX2,iX3), &
+                         U_P_S3      (iP,iX1,iX2,iX3), &
+                         U_P_E       (iP,iX1,iX2,iX3), &
+                         U_K_D          (iX1,iX2,iX3), &
+                         U_K_S1         (iX1,iX2,iX3), &
+                         U_K_S2         (iX1,iX2,iX3), &
+                         U_K_S3         (iX1,iX2,iX3), &
+                         U_K_E          (iX1,iX2,iX3), &
+                         G_P_Gm_dd_11(iP,iX1,iX2,iX3), &
+                         G_P_Gm_dd_22(iP,iX1,iX2,iX3), &
+                         G_P_Gm_dd_33(iP,iX1,iX2,iX3), &
+                         Min_Eps_P   (iP,iX1,iX2,iX3), &
+                         Min_Eps_K   (iP,iX1,iX2,iX3), &
+                         Theta_P )
+
+                Theta_3 = MIN( Theta_3, SafetyFactor * Theta_P )
+
+              END IF
+
+            END DO ! iP
+
+          ELSE ! --- ITERATION .GE. 10
+
+            Theta_3 = Zero
+
+          END IF ! IF( ITERATION .LT. 10 )
+
+          ! --- Limit All Conserved Fields Towards Cell Average ---
+
+          CALL ApplyLimiter( Theta_3, U_K_D (iX1,iX2,iX3), U_Q_D (:,iX1,iX2,iX3) )
+          CALL ApplyLimiter( Theta_3, U_K_S1(iX1,iX2,iX3), U_Q_S1(:,iX1,iX2,iX3) )
+          CALL ApplyLimiter( Theta_3, U_K_S2(iX1,iX2,iX3), U_Q_S2(:,iX1,iX2,iX3) )
+          CALL ApplyLimiter( Theta_3, U_K_S3(iX1,iX2,iX3), U_Q_S3(:,iX1,iX2,iX3) )
+          CALL ApplyLimiter( Theta_3, U_K_E (iX1,iX2,iX3), U_Q_E (:,iX1,iX2,iX3) )
+          CALL ApplyLimiter( Theta_3, U_K_Ne(iX1,iX2,iX3), U_Q_Ne(:,iX1,iX2,iX3) )
+
+          ! --- Recompute Point Values from Limited Solution ---
+
+          CALL ComputePointValues_Single &
+                 ( InterpMat, U_Q_D (:,iX1,iX2,iX3), U_P_D (:,iX1,iX2,iX3) )
+          CALL ComputePointValues_Single &
+                 ( InterpMat, U_Q_S1(:,iX1,iX2,iX3), U_P_S1(:,iX1,iX2,iX3) )
+          CALL ComputePointValues_Single &
+                 ( InterpMat, U_Q_S2(:,iX1,iX2,iX3), U_P_S2(:,iX1,iX2,iX3) )
+          CALL ComputePointValues_Single &
+                 ( InterpMat, U_Q_S3(:,iX1,iX2,iX3), U_P_S3(:,iX1,iX2,iX3) )
+          CALL ComputePointValues_Single &
+                 ( InterpMat, U_Q_E (:,iX1,iX2,iX3), U_P_E (:,iX1,iX2,iX3) )
+          CALL ComputePointValues_Single &
+                 ( InterpMat, U_Q_Ne(:,iX1,iX2,iX3), U_P_Ne(:,iX1,iX2,iX3) )
+
+          DoStep_3 = .FALSE.
+          DO iP = 1, nPT
+
+            CALL ComputeEpsAndYe &
+                   ( U_P_D       (iP,iX1,iX2,iX3), &
+                     U_P_S1      (iP,iX1,iX2,iX3), &
+                     U_P_S2      (iP,iX1,iX2,iX3), &
+                     U_P_S3      (iP,iX1,iX2,iX3), &
+                     U_P_E       (iP,iX1,iX2,iX3), &
+                     U_P_Ne      (iP,iX1,iX2,iX3), &
+                     G_P_Gm_dd_11(iP,iX1,iX2,iX3), &
+                     G_P_Gm_dd_22(iP,iX1,iX2,iX3), &
+                     G_P_Gm_dd_33(iP,iX1,iX2,iX3), &
+                     Eps_P       (iP,iX1,iX2,iX3), &
+                     Ye_P        (iP,iX1,iX2,iX3) )
+
+            CALL ComputeSpecificInternalEnergy_TABLE &
+                   ( U_P_D(iP,iX1,iX2,iX3), Min_T, Ye_P(iP,iX1,iX2,iX3), &
+                     Min_Eps_P(iP,iX1,iX2,iX3) )
+
+            CALL ComputeSpecificInternalEnergy_TABLE &
+                   ( U_P_D(iP,iX1,iX2,iX3), Max_T, Ye_P(iP,iX1,iX2,iX3), &
+                     Max_Eps_P(iP,iX1,iX2,iX3) )
+
+            DoStep_3 = DoStep_3 .OR. ( Eps_P(iP,iX1,iX2,iX3) < Min_Eps_P(iP,iX1,iX2,iX3) )
+
+          END DO
+
+          IF ( .NOT. DoStep_3 ) EXIT
+        END DO ! --- WHILE( DoStep_3 )
+
+      END IF
 
     END DO
     END DO
     END DO
 
     CALL TimersStop_Euler( Timer_Euler_PL_LimitCells )
-
-!#if   defined( THORNADO_OMP_OL )
-!    !$OMP TARGET UPDATE FROM( U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
-!    !$OMP                     U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne, &
-!    !$OMP                     U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne, &
-!    !$OMP                     Eps_P, Min_Eps_P, Max_Eps_P, Ye_P, &
-!    !$OMP                     Eps_K, Min_Eps_K, Ye_K )
-!#elif defined( THORNADO_OACC   )
-!    !$ACC UPDATE HOST( U_Q_D, U_Q_S1, U_Q_S2, U_Q_S3, U_Q_E, U_Q_Ne, &
-!    !$ACC              U_P_D, U_P_S1, U_P_S2, U_P_S3, U_P_E, U_P_Ne, &
-!    !$ACC              U_K_D, U_K_S1, U_K_S2, U_K_S3, U_K_E, U_K_Ne, &
-!    !$ACC              Eps_P, Min_Eps_P, Max_Eps_P, Ye_P, &
-!    !$ACC              Eps_K, Min_Eps_K, Ye_K )
-!#endif
 
     ! --- Copy Back Fluid Variables ---
 
@@ -1076,7 +982,7 @@ CONTAINS
           iX_B0(1):iX_E0(1), &
           iX_B0(2):iX_E0(2), &
           iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(inout) :: &
       U_P(nPT, &
           iX_B0(1):iX_E0(1), &
           iX_B0(2):iX_E0(2), &
@@ -1089,7 +995,7 @@ CONTAINS
   END SUBROUTINE ComputePointValues
 
 
-  SUBROUTINE ComputePointValues_Single( U_Q, N_Q, U_P, N_P )
+  SUBROUTINE ComputePointValues_Single( InterpMat, U_Q, U_P )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP DECLARE TARGET
@@ -1097,19 +1003,19 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    INTEGER,  INTENT(in)  :: N_Q, N_P
-    REAL(DP), INTENT(in)  :: U_Q(N_Q)
-    REAL(DP), INTENT(out) :: U_P(N_P)
+    REAL(DP), INTENT(in)  :: InterpMat(nPT,nDOFX)
+    REAL(DP), INTENT(in)  :: U_Q(nDOFX)
+    REAL(DP), INTENT(out) :: U_P(nPT)
 
-    INTEGER :: i, j
+    REAL(DP) :: SUM1
+    INTEGER  :: iNodeX, iP
 
-    U_P = Zero
-    DO j = 1, N_Q
-    DO i = 1, N_P
-
-      U_P(i) = U_P(i) + InterpMat(i,j) * U_Q(j)
-
-    END DO
+    DO iP = 1, nPT
+      SUM1 = Zero
+      DO iNodeX = 1, nDOFX
+        SUM1 = SUM1 + InterpMat(iP,iNodeX) * U_Q(iNodeX)
+      END DO
+      U_P(iP) = SUM1
     END DO
 
   END SUBROUTINE ComputePointValues_Single
@@ -1319,6 +1225,27 @@ CONTAINS
     Theta_P = x_a
 
   END SUBROUTINE SolveTheta_Bisection
+
+
+  SUBROUTINE ApplyLimiter( Theta, U_K, U_Q )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)    :: Theta, U_K
+    REAL(DP), INTENT(inout) :: U_Q(nDOFX)
+
+    INTEGER :: iNodeX
+
+    DO iNodeX = 1, nDOFX
+      U_Q(iNodeX) = Theta * U_Q(iNodeX) + ( One - Theta ) * U_K
+    END DO
+
+    RETURN
+  END SUBROUTINE ApplyLimiter
 
 
 END MODULE Euler_PositivityLimiterModule_NonRelativistic_TABLE
