@@ -1,4 +1,4 @@
-##### RiemannProblemSpherical1D.inputs #####
+##### RiemannProblem1D_SphericalSod.inputs #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
@@ -6,17 +6,17 @@
 thornado.ProgramName = "RiemannProblem1D"
 thornado.RiemannProblemName = "SphericalSod"
 
-thornado.nNodes    = 03
-thornado.nStages   = 03
-thornado.t_end     = 0.8
-thornado.iCycleD   = 10
-thornado.CFL       = 0.5
-thornado.iCycleW   = 100
-thornado.iCycleChk = 100000
+thornado.nNodes  = 03
+thornado.nStages = 03
+thornado.t_end   = 8.0e-1
+thornado.iCycleD = 10
+thornado.CFL     = 0.5
+thornado.dt_wrt  = 8.0e-3
+thornado.dt_chk  = 8.1e-1
 
-thornado.PlotFileNameRoot        = "RiemannProblemSpherical1D.plt"
-thornado.CheckpointFileNameRoot  = "RiemannProblemSpherical1D.chk"
-thornado.TallyFileNameRoot_Euler = "RiemannProblemSpherical1D.Tally"
+thornado.PlotFileNameRoot        = "RiemannProblem1D_SphericalSod.plt"
+thornado.CheckpointFileNameRoot  = "RiemannProblem1D_SphericalSod.chk"
+thornado.TallyFileNameRoot_Euler = "RiemannProblem1D_SphericalSod.Tally"
 
 EoS.Gamma_IDEAL = 1.3333333333333333
 

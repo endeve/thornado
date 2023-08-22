@@ -1,4 +1,4 @@
-##### Advection2D.inputs #####
+##### Advection2D_SineWaveX1.inputs #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
@@ -14,9 +14,9 @@ thornado.CFL       = 0.5
 thornado.iCycleW   = 100
 thornado.iCycleChk = 100000
 
-thornado.PlotFileNameRoot        = "Advection2D.plt"
-thornado.CheckpointFileNameRoot  = "Advection2D.chk"
-thornado.TallyFileNameRoot_Euler = "Advection2D.Tally"
+thornado.PlotFileNameRoot        = "Advection2D_SineWaveX1.plt"
+thornado.CheckpointFileNameRoot  = "Advection2D_SineWaveX1.chk"
+thornado.TallyFileNameRoot_Euler = "Advection2D_SineWaveX1.Tally"
 
 EoS.Gamma_IDEAL = 1.3333333333333333
 

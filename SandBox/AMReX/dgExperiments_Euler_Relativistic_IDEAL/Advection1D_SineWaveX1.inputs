@@ -1,22 +1,22 @@
-##### Advection1D.inputs #####
+##### Advection1D_SineWaveX1.inputs #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
 
 thornado.ProgramName = "Advection1D"
-thornado.AdvectionProfile = "SineWave"
+thornado.AdvectionProfile = "SineWaveX1"
 
-thornado.nNodes    = 03
-thornado.nStages   = 03
-thornado.t_end     = 1.0e1
-thornado.iCycleD   = 10
-thornado.CFL       = 0.5
-thornado.iCycleW   = 100
-thornado.iCycleChk = 100000
+thornado.nNodes  = 03
+thornado.nStages = 03
+thornado.t_end   = 1.0e1
+thornado.iCycleD = 10
+thornado.CFL     = 0.5
+thornado.dt_wrt  = 1.0e-1
+thornado.dt_chk  = 1.1e1
 
-thornado.PlotFileNameRoot        = "Advection1D.plt"
-thornado.CheckpointFileNameRoot  = "Advection1D.chk"
-thornado.TallyFileNameRoot_Euler = "Advection1D.Tally"
+thornado.PlotFileNameRoot        = "Advection1D_SineWaveX1.plt"
+thornado.CheckpointFileNameRoot  = "Advection1D_SineWaveX1.chk"
+thornado.TallyFileNameRoot_Euler = "Advection1D_SineWaveX1.Tally"
 
 EoS.Gamma_IDEAL = 1.3333333333333333
 
