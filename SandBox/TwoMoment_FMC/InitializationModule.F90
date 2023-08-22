@@ -1,7 +1,7 @@
 MODULE InitializationModule
 
   USE KindModule, ONLY: &
-    DP, TwoPi
+    DP, One, TwoPi
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     nDOFZ, nDOFX, nDOFE, &
@@ -25,6 +25,8 @@ MODULE InitializationModule
     nSpecies, &
     uPM, iPM_J, iPM_H1, iPM_H2, iPM_H3, nPM, &
     uCM, iCM_E, iCM_F1, iCM_F2, iCM_F3, nCM
+  USE TwoMoment_UtilitiesModule_FMC, ONLY: &
+    ComputeConserved_TwoMoment_FMC
 
   IMPLICIT NONE
   PRIVATE
@@ -36,7 +38,7 @@ CONTAINS
 
   SUBROUTINE InitializeFields( V_0 )
 
-    REAL(DP),      INTENT(in) :: V_0(3)
+    REAL(DP), INTENT(in) :: V_0(3)
 
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') '', 'INFO: ', TRIM( ProgramName )
@@ -65,7 +67,7 @@ CONTAINS
     INTEGER :: iNodeX, iX1, iX2, iX3
     INTEGER :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
     INTEGER :: iNodeZ2, iNodeZ3, iNodeZ4
-    Real(DP) :: X1, X2, X3
+    Real(DP) :: X1, X2, X3, W
 
     ! --- Fluid Fields ---
 
@@ -108,30 +110,32 @@ CONTAINS
         X2 = NodeCoordinate( MeshX(2), iZ3, iNodeZ3)
         X3 = NodeCoordinate( MeshX(3), iZ4, iNodeZ4)
 
-        uCM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E,iS) &
+        W = One / SQRT( One - uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V1)**2 )
+
+        uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J,iS) &
           = 0.50_DP + 0.49_DP * SIN( TwoPi * X1)
-        uCM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F1,iS) &
-          = uCM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E,iS)
-        uCM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F2,iS) &
+        uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1,iS) &
+          = W * uCM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J,iS)
+        uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H2,iS) &
           = 0.0_DP
-        uCM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F3,iS) &
+        uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H3,iS) &
           = 0.0_DP
 
-        ! CALL ComputeConserved_TwoMoment_FMC &
-        !   ( uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J,iS), &
-        !     uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1,iS), &
-        !     uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H2,iS), &
-        !     uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H3,iS), &
-        !     uCM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E,iS), &
-        !     uCM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F1,iS), &
-        !     uCM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F2,iS), &
-        !     uCM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F3,iS), &
-        !     uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V1), &
-        !     uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V2), &
-        !     uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V3), &
-        !     uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
-        !     uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
-        !     uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+        CALL ComputeConserved_TwoMoment_FMC &
+               ( uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS), &
+                 uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1,iS), &
+                 uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H2,iS), &
+                 uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H3,iS), &
+                 uCM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E ,iS), &
+                 uCM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F1,iS), &
+                 uCM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F2,iS), &
+                 uCM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F3,iS), &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V1), &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V2), &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V3), &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
 
       END DO
 

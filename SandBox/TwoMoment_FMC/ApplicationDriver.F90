@@ -12,8 +12,10 @@ PROGRAM ApplicationDriver
     uGF
   USE GeometryFieldsModuleE, ONLY: &
     uGE
+  USE TwoMoment_DiscretizationModule_Collisions_FMC, ONLY: &
+    ComputeIncrement_TwoMoment_Implicit
   USE TwoMoment_FieldsModule_FMC, ONLY: &
-    uCM, uPM, uAM, uGm
+    uCM, uPM, uAM, uGM
   USE TwoMoment_InputOutputModule_FMC, ONLY: &
     WriteTwoMomentFieldsHDF
   USE TwoMoment_UtilitiesModule_FMC, ONLY: &
@@ -21,8 +23,8 @@ PROGRAM ApplicationDriver
     HeatFluxTensorComponents_uuu, &
     ComputeHeatFluxTensorComponents_ddd_Lagrangian, &
     ComputeHeatFluxTensorComponents_uud_Lagrangian, &
-    Flux_X1, Flux_X2, Flux_X3
-  USE TwoMoment_TimeSteppingModule, ONLY: &
+    Flux_X1, Flux_X2, Flux_X3, ComputeTimeStep_TwoMoment
+  USE TwoMoment_TimeSteppingModule_FMC, ONLY: &
     Update_IMEX_RK
   USE InitializationModule, ONLY: &
     InitializeFields
@@ -38,7 +40,7 @@ PROGRAM ApplicationDriver
   INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
   REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
   REAL(DP)      :: eL, eR, ZoomE = One
-  REAL(DP)      :: t, t_end, dt, dt_CFL, V_0(3)
+  REAL(DP)      :: t, t_end, dt, dt_CFL, V_0(3), CFL
   REAL(DP)      :: J_0, Chi, Sigma
   REAL(DP) :: l_uuu_munurho(0:3,0:3,0:3), l_ddd_ijk(1:3,1:3,1:3), l_uud_munurho(0:3,0:3,0:3)
 
@@ -63,6 +65,7 @@ PROGRAM ApplicationDriver
       nNodes = 2
 
       TimeSteppingScheme = 'SSPRK2'
+      ! TimeSteppingScheme = 'IMEX_PDARS'
 
       t_end   = 1.0d-0
       iCycleD = 1
@@ -88,7 +91,7 @@ PROGRAM ApplicationDriver
 
   CALL InitializeFields( V_0 )
 
-  t=0.0_DP
+  t = 0.0_DP
 
   ! --- Write Initial Condition ---
 
@@ -97,42 +100,6 @@ PROGRAM ApplicationDriver
 
   CALL WriteTwoMomentFieldsHDF( t )
 
-  ! --- Testing Heat Flux Tensor ---
-
-  CALL HeatFluxTensorComponents_uuu &
-  ( uPM(1,1,1,1,1,1,1), uPM(1,1,1,1,1,2,1), uPM(1,1,1,1,1,3,1), uPM(1,1,1,1,1,4,1), &
-    uGF(1,1,1,1,2), uGF(1,1,1,1,3), uGF(1,1,1,1,4), &
-    uPF(1,1,1,1,2), uPF(1,1,1,1,3), uPF(1,1,1,1,4), l_uuu_munurho )
-
-  !print *, l_uuu_munurho(0:3,0:3,0:3)
-
-  CALL ComputeHeatFluxTensorComponents_ddd_Lagrangian &
-  ( uPM(1,1,1,1,1,1,1), uPM(1,1,1,1,1,2,1), uPM(1,1,1,1,1,3,1), uPM(1,1,1,1,1,4,1), &
-    uGF(1,1,1,1,2), uGF(1,1,1,1,3), uGF(1,1,1,1,4), -One, Zero, Zero, Zero, &
-    uPF(1,1,1,1,2), uPF(1,1,1,1,3), uPF(1,1,1,1,4), l_ddd_ijk )
-
-  !Write(*,*)
-  !print *, l_ddd_ijk(1:3,1:3,1:3)-l_uuu_munurho(1:3,1:3,1:3)
-
-  CALL ComputeHeatFluxTensorComponents_uud_Lagrangian &
-  ( uPM(1,1,1,1,1,1,1), uPM(1,1,1,1,1,2,1), uPM(1,1,1,1,1,3,1), uPM(1,1,1,1,1,4,1), &
-    uGF(1,1,1,1,2), uGF(1,1,1,1,3), uGF(1,1,1,1,4), -One, Zero, Zero, Zero, &
-    uPF(1,1,1,1,2), uPF(1,1,1,1,3), uPF(1,1,1,1,4), l_uud_munurho )
-
-  !Write(*,*)
-  !print *, l_uuu_munurho - l_uud_munurho
-
-  Write(*,*)
-  print *, l_uuu_munurho(0,1,1),l_uud_munurho(0,1,1) ! there is either a bug in my uuu, or in the already written uud
-
-  Write(*,*)
-  print *,Flux_X1(uPM(1,1,1,1,1,1,1), uPM(1,1,1,1,1,2,1), uPM(1,1,1,1,1,3,1), uPM(1,1,1,1,1,4,1),uPF(1,1,1,1,2), &
-    uPF(1,1,1,1,3), uPF(1,1,1,1,4), uGF(1,1,1,1,2), uGF(1,1,1,1,3), uGF(1,1,1,1,4))
-  print *,Flux_X2(uPM(1,1,1,1,1,1,1), uPM(1,1,1,1,1,2,1), uPM(1,1,1,1,1,3,1), uPM(1,1,1,1,1,4,1),uPF(1,1,1,1,2), &
-    uPF(1,1,1,1,3), uPF(1,1,1,1,4), uGF(1,1,1,1,2), uGF(1,1,1,1,3), uGF(1,1,1,1,4))
-    print *,Flux_X3(uPM(1,1,1,1,1,1,1), uPM(1,1,1,1,1,2,1), uPM(1,1,1,1,1,3,1), uPM(1,1,1,1,1,4,1),uPF(1,1,1,1,2), &
-  uPF(1,1,1,1,3), uPF(1,1,1,1,4), uGF(1,1,1,1,2), uGF(1,1,1,1,3), uGF(1,1,1,1,4))
-
   ! --- Evolve ---
 
   WRITE(*,*)
@@ -140,26 +107,44 @@ PROGRAM ApplicationDriver
     '', 'Evolving from t = ', t, ' to t = ', t_end
   WRITE(*,*)
 
-  ! iCycle = 0
-  ! DO WHILE( t < t_end .AND. iCycle < maxCycles )
+  iCycle = 0
+  CFL = 0.1_DP
+  DO WHILE( t < t_end .AND. iCycle < maxCycles )
 
-  !   iCycle = iCycle + 1
+    iCycle = iCycle + 1
 
-  !   ! --- IMEX updating ---
+    ! --- Compute Timestep ---
+    CALL ComputeTimeStep_TwoMoment &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, CFL, dt )
 
-  !   CALL Update_IMEX_RK &
-  !     ( dt, uGE, uGF, uCF, uCM, ComputeIncrement_TwoMoment_Implicit)
+    IF ( t + dt > t_end )THEN
 
-  !   t = t + dt
+      dt = t_end - t
 
-  !   ! --- Write updated values ---
+    END IF
 
-  !   CALL ComputeFromConserved_TwoMoment_FMC &
-  !        ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uPF, uCM, uPM, uAM, uGM )
+    IF( MOD( iCycle, iCycleD ) == 0 )THEN
 
-  !   CALL WriteTwoMomentFieldsHDF( t )
+      WRITE(*,'(A8,A8,I8.8,A2,A4,ES12.6E2,A1,A5,ES12.6E2)') &
+          '', 'Cycle = ', iCycle, '', 't = ',  t, '', 'dt = ', dt
 
-  ! END DO
+    END IF
+
+    ! --- IMEX updating ---
+
+    CALL Update_IMEX_RK &
+           ( dt, uGE, uGF, uCM, ComputeIncrement_TwoMoment_Implicit )
+
+    t = t + dt
+
+    ! --- Write updated values ---
+
+    CALL ComputeFromConserved_TwoMoment_FMC &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uPF, uCM, uPM, uAM, uGM )
+
+    CALL WriteTwoMomentFieldsHDF( t )
+
+  END DO
 
   CALL FinalizeDriver
 
@@ -192,6 +177,8 @@ CONTAINS
       InitializeReferenceElement
     USE ReferenceElementModule_Lagrange, ONLY: &
       InitializeReferenceElement_Lagrange
+    USE TwoMoment_TimeSteppingModule_FMC, ONLY: &
+      Initialize_IMEX_RK
 
     CALL InitializeProgram &
            ( ProgramName_Option &
@@ -257,6 +244,10 @@ CONTAINS
 
     CALL InitializeReferenceElement_Lagrange
 
+    ! --- Initialize Time Stepper ---
+
+    CALL Initialize_IMEX_RK( TRIM( TimeSteppingScheme ) )
+
   END SUBROUTINE InitializeDriver
 
 
@@ -266,6 +257,10 @@ CONTAINS
       DestroyTwoMomentFields
     USE ProgramInitializationModule, ONLY: &
       FinalizeProgram
+    USE TwoMoment_TimeSteppingModule_FMC, ONLY: &
+      Finalize_IMEX_RK
+    
+    CALL Finalize_IMEX_RK
 
     CALL DestroyTwoMomentFields
 

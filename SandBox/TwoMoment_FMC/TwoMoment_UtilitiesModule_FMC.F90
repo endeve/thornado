@@ -1,21 +1,24 @@
 MODULE TwoMoment_UtilitiesModule_FMC
 
   USE KindModule, ONLY: &
-    DP, Half, Zero, One, Three, Five
+    DP, Half, Zero, One, Three, Five, SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nDOFX, nDOFE
+  USE MeshModule, ONLY: &
+    MeshX
+  USE GeometryFieldsModule, ONLY: &
+    nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
+    iGF_h_1, iGF_h_2, iGF_h_3
   USE FluidFieldsModule, ONLY: &
     nPF, iPF_V1, iPF_V2, iPF_V3
-  USE GeometryFieldsModule, ONLY: &
-    nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
-  USE TwoMoment_ClosureModule, ONLY: &
-    FluxFactor_Relativistic, EddingtonFactor, HeatFluxFactor
   USE TwoMoment_FieldsModule_FMC, ONLY: &
     nSpecies, &
     nCM, iCM_E, iCM_F1, iCM_F2, iCM_F3, &
     nPM, iPM_J, iPM_H1, iPM_H2, iPM_H3, &
     nAM, &
     nGM
+  USE TwoMoment_ClosureModule, ONLY: &
+    FluxFactor_Relativistic, EddingtonFactor, HeatFluxFactor
 
   IMPLICIT NONE
   PRIVATE
@@ -34,21 +37,22 @@ MODULE TwoMoment_UtilitiesModule_FMC
   PUBLIC :: Flux_X3
   PUBLIC :: Flux_E
   PUBLIC :: NumericalFlux_LLF
+  PUBLIC :: ComputeTimeStep_TwoMoment
 
-  CONTAINS
+CONTAINS
 
   SUBROUTINE ComputeConserved_TwoMoment_FMC &
     ( J, H_d_1, H_d_2, H_d_3, E, F_d_1, F_d_2, F_d_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     ! --- Input/Output variables ---
-    REAL(DP), INTENT(in)  :: J, H_d_1, H_d_2, H_d_3 ! --- Index down
+    REAL(DP), INTENT(in)  :: J, H_d_1, H_d_2, H_d_3 ! --- Index down change to up
     REAL(DP), INTENT(out) :: E, F_d_1, F_d_2, F_d_3 ! --- Index down
     REAL(DP), INTENT(in)  ::    V_u_1, V_u_2, V_u_3 ! --- Index up 
     REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     ! --- Local variables ---
-    REAL(DP) :: k_dd(3,3), vMag, W, vFhat
+    REAL(DP) :: k_dd(3,3), vMag, W, vDotFhat
     REAL(DP) :: E_hat, F_hat_d_1, F_hat_d_2, F_hat_d_3 ! --- Index down
 
     k_dd = EddingtonTensorComponents_dd &
@@ -61,23 +65,29 @@ MODULE TwoMoment_UtilitiesModule_FMC
     W = One / SQRT ( One - vMag**2 )
 
     CALL ComputeHatMomentsFromPrimitive &
-      ( J, H_d_1, H_d_2, H_d_3, E_hat, F_hat_d_1, F_hat_d_2, F_hat_d_3, &
-        V_u_1, V_u_2, V_u_3, &
-        Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+           ( J, H_d_1, H_d_2, H_d_3, E_hat, F_hat_d_1, F_hat_d_2, F_hat_d_3, &
+             V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 ) !change H indices to up
+
+    vDotFhat = V_u_1 * F_hat_d_1 + V_u_2 * F_hat_d_2 + V_u_3 * F_hat_d_3
 
     ! --- Eulerian Energy Density ---
-        E = W*E_hat+vFhat
+    
+    E = W * E_hat + vDotFhat
 
     ! --- Eulerian Momentum Density (1) ---
-        F_d_1 = F_hat_d_1 + W*V_u_1*E_hat
+    
+    F_d_1 = F_hat_d_1 + W * Gm_dd_11 * V_u_1 * E_hat
 
     ! --- Eulerian Momentum Density (2) ---
-        F_d_2 = F_hat_d_2 + W*V_u_2*E_hat
+        
+    F_d_2 = F_hat_d_2 + W * Gm_dd_22 * V_u_2 * E_hat
 
     ! --- Eulerian Momentum Density (3) ---
-        F_d_3 = F_hat_d_3 + W*V_u_3*E_hat
+        
+    F_d_3 = F_hat_d_3 + W * Gm_dd_33 * V_u_3 * E_hat
 
   END SUBROUTINE ComputeConserved_TwoMoment_FMC
+
 
   SUBROUTINE ComputeFromConserved_TwoMoment_FMC &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, PF, CM, PM, AM, GM )
@@ -236,7 +246,7 @@ MODULE TwoMoment_UtilitiesModule_FMC
         V_u_1, V_u_2, V_u_3, &
         Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    ! -- Input/Output variables ---
+    ! --- Input/Output variables ---
     REAL(DP), INTENT(in) :: E, F_d_1, F_d_2, F_d_3
     REAL(DP), INTENT(out) :: E_hat, F_hat_d_1, F_hat_d_2, F_hat_d_3
     REAL(DP), INTENT(in) :: V_u_1, V_u_2, V_u_3
@@ -271,7 +281,7 @@ MODULE TwoMoment_UtilitiesModule_FMC
 
     ! --- Local variables ---
     REAL(DP) :: k_dd(3,3)
-    REAL(DP) :: vMag, W, vH, vK
+    REAL(DP) :: vMag, W, vH
 
     k_dd = EddingtonTensorComponents_dd &
       ( J, H_d_1, H_d_2, H_d_3, V_u_1, V_u_2, V_u_3, &
@@ -1410,6 +1420,63 @@ MODULE TwoMoment_UtilitiesModule_FMC
 
     RETURN
   END FUNCTION NumericalFlux_LLF
+
+  SUBROUTINE ComputeTimeStep_TwoMoment &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, GX, CFL, TimeStep )
+
+    INTEGER,  INTENT(in)  :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      GX(1:nDOFX, &
+         iX_B1(1):iX_E1(1), &
+         iX_B1(2):iX_E1(2), &
+         iX_B1(3):iX_E1(3), &
+         1:nGF)
+    REAL(DP), INTENT(in)  :: &
+      CFL
+    REAL(DP), INTENT(out) :: &
+      TimeStep
+
+    INTEGER  :: iX1, iX2, iX3
+    REAL(DP) :: dt(3)
+
+    TimeStep = HUGE( One )
+    dt       = HUGE( One )
+
+    ASSOCIATE &
+      ( dX1 => MeshX(1) % Width, &
+        dX2 => MeshX(2) % Width, &
+        dX3 => MeshX(3) % Width )
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      dt(1) = dX1(iX1) * MINVAL( GX(:,iX1,iX2,iX3,iGF_h_1) )
+
+      IF( iX_E0(2) .GT. iX_B0(2) )THEN
+
+        dt(2) = dX2(iX2) * MINVAL( GX(:,iX1,iX2,iX3,iGF_h_2) )
+
+      END IF
+
+      IF( iX_E0(3) .GT. iX_B0(3) )THEN
+
+        dt(3) = dX3(iX3) * MINVAL( GX(:,iX1,iX2,iX3,iGF_h_3) )
+
+      END IF
+
+      TimeStep = MIN( TimeStep, MINVAL( dt ) )
+
+    END DO
+    END DO
+    END DO
+
+    END ASSOCIATE ! dX1, etc.
+
+    TimeStep = MAX( CFL * TimeStep, SqrtTiny )
+
+  END SUBROUTINE ComputeTimeStep_TwoMoment
 
 
 END MODULE TwoMoment_UtilitiesModule_FMC
