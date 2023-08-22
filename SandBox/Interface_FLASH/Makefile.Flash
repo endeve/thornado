@@ -306,3 +306,6 @@ ThornadoInitializationModule.o: \
   TwoMoment_NeutrinoMatterSolverModule.o \
   ThornadoInitializationModule.F90
 endif
+
+TwoMoment_PositivityLimiterModule.o : TwoMoment_PositivityLimiterModule.F90
+	$(FCOMP) $(FFLAGS) $(filter-out -qrealsize=8,$(F90FLAGS)) -h ipa1 $(DEFINES) $< -o $@
