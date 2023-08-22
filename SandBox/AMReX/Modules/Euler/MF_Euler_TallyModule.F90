@@ -92,29 +92,29 @@ MODULE MF_Euler_TallyModule
 
   CHARACTER(SL)    :: BaryonicMass_FileName
   REAL(DP), PUBLIC :: BaryonicMass_Initial
+  REAL(DP), PUBLIC :: BaryonicMass_OffGrid
   REAL(DP)         :: BaryonicMass_Interior
   REAL(DP)         :: BaryonicMass_Interior_OMP
-  REAL(DP)         :: BaryonicMass_OffGrid
   REAL(DP)         :: BaryonicMass_Change
 
   CHARACTER(SL)    :: Energy_FileName
   REAL(DP), PUBLIC :: Energy_Initial
+  REAL(DP), PUBLIC :: Energy_OffGrid
   REAL(DP)         :: Energy_Interior
   REAL(DP)         :: Energy_Interior_OMP
-  REAL(DP)         :: Energy_OffGrid
   REAL(DP)         :: Energy_Change
 
   CHARACTER(SL)    :: ElectronNumber_FileName
   REAL(DP), PUBLIC :: ElectronNumber_Initial
+  REAL(DP), PUBLIC :: ElectronNumber_OffGrid
   REAL(DP)         :: ElectronNumber_Interior
   REAL(DP)         :: ElectronNumber_Interior_OMP
-  REAL(DP)         :: ElectronNumber_OffGrid
   REAL(DP)         :: ElectronNumber_Change
 
   CHARACTER(SL)    :: ADMMass_FileName
   REAL(DP), PUBLIC :: ADMMass_Initial
+  REAL(DP), PUBLIC :: ADMMass_OffGrid
   REAL(DP)         :: ADMMass_Interior
-  REAL(DP)         :: ADMMass_OffGrid
   REAL(DP)         :: ADMMass_Change
 
 CONTAINS
@@ -271,43 +271,49 @@ CONTAINS
 
     IF( .NOT. InitializeFromCheckpoint )THEN
 
-      BaryonicMass_Initial   = Zero
-      Energy_Initial         = Zero
+      BaryonicMass_Initial = Zero
+      BaryonicMass_OffGrid = Zero
+
+      Energy_Initial = Zero
+      Energy_OffGrid = Zero
+
       ElectronNumber_Initial = Zero
-      ADMMass_Initial        = Zero
+      ElectronNumber_OffGrid = Zero
+
+      ADMMass_Initial = Zero
+      ADMMass_OffGrid = Zero
 
     END IF
 
     BaryonicMass_Interior = Zero
-    BaryonicMass_OffGrid  = Zero
     BaryonicMass_Change   = Zero
 
     Energy_Interior = Zero
-    Energy_OffGrid  = Zero
     Energy_Change   = Zero
 
     ElectronNumber_Interior = Zero
-    ElectronNumber_OffGrid  = Zero
     ElectronNumber_Change   = Zero
 
     ADMMass_Interior = Zero
-    ADMMass_OffGrid  = Zero
     ADMMass_Change   = Zero
 
   END SUBROUTINE InitializeTally_Euler_MF
 
 
   SUBROUTINE ComputeTally_Euler_MF &
-    ( Time, MF_uGF, MF_uCF, SetInitialValues_Option, Verbose_Option )
+    ( Time, MF_uGF, MF_uCF, SetInitialValues_Option, &
+      WriteTally_Option, Verbose_Option )
 
     REAL(DP),             INTENT(in) :: Time  (0:)
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:)
     LOGICAL,              INTENT(in), OPTIONAL :: SetInitialValues_Option
+    LOGICAL,              INTENT(in), OPTIONAL :: WriteTally_Option
     LOGICAL,              INTENT(in), OPTIONAL :: Verbose_Option
 
     LOGICAL :: SetInitialValues
     LOGICAL :: Verbose
+    LOGICAL :: WriteTally
 
     INTEGER                       :: iX_B0(3), iX_E0(3)
     INTEGER                       :: iX_B1(3), iX_E1(3)
@@ -331,6 +337,10 @@ CONTAINS
     SetInitialValues = .FALSE.
     IF( PRESENT( SetInitialValues_Option ) ) &
       SetInitialValues = SetInitialValues_Option
+
+    WriteTally = .TRUE.
+    IF( PRESENT( WriteTally_Option ) ) &
+      WriteTally = WriteTally_Option
 
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
@@ -505,7 +515,8 @@ CONTAINS
 
 #endif
 
-    CALL WriteTally_Euler( Time(0) )
+    IF( WriteTally ) &
+      CALL WriteTally_Euler( Time(0) )
 
     IF( Verbose ) CALL DisplayTally( Time(0) )
 

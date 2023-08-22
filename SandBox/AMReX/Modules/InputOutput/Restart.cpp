@@ -28,10 +28,10 @@ extern "C"
   void writefieldsamrex_checkpoint
          ( int StepNo[], int nLevels,
            Real dt[], Real time[],
-           Real BaryonicMass_Initial,
-           Real Energy_Initial,
-           Real ElectronNumber_Initial,
-           Real ADMMass_Initial,
+           Real BaryonicMassArr[],
+           Real EnergyArr[],
+           Real ElectronNumberArr[],
+           Real ADMMassArr[],
            BoxArray** pBA,
            int iWriteFields_uGF = 0,
            int iWriteFields_uCF = 0,
@@ -132,10 +132,14 @@ extern "C"
       HeaderFile << "\n";
 
       // Write out initial values for tally
-      HeaderFile << BaryonicMass_Initial   << "\n";
-      HeaderFile << Energy_Initial         << "\n";
-      HeaderFile << ElectronNumber_Initial << "\n";
-      HeaderFile << ADMMass_Initial        << "\n";
+      HeaderFile << BaryonicMassArr  [0] << "\n";
+      HeaderFile << BaryonicMassArr  [1] << "\n";
+      HeaderFile << EnergyArr        [0] << "\n";
+      HeaderFile << EnergyArr        [1] << "\n";
+      HeaderFile << ElectronNumberArr[0] << "\n";
+      HeaderFile << ElectronNumberArr[1] << "\n";
+      HeaderFile << ADMMassArr       [0] << "\n";
+      HeaderFile << ADMMassArr       [1] << "\n";
 
       // Write the BoxArray at each level
       for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )
@@ -186,18 +190,22 @@ extern "C"
   void readheaderandboxarraydata
          ( int FinestLevelArr[], int StepNo[],
 	   Real dt[], Real Time[],
-           Real BaryonicMass_InitialArr[],
-           Real Energy_InitialArr[],
-           Real ElectronNumber_InitialArr[],
-           Real ADMMass_InitialArr[],
+           Real BaryonicMassArr[],
+           Real EnergyArr[],
+           Real ElectronNumberArr[],
+           Real ADMMassArr[],
            BoxArray** pba, DistributionMapping** pdm, int iChkFile )
   {
 
     int FinestLevel;
-    Real BaryonicMass;
-    Real Energy;
-    Real ElectronNumber;
-    Real ADMMass;
+    Real BaryonicMass_Initial;
+    Real BaryonicMass_OffGrid;
+    Real Energy_Initial;
+    Real Energy_OffGrid;
+    Real ElectronNumber_Initial;
+    Real ElectronNumber_OffGrid;
+    Real ADMMass_Initial;
+    Real ADMMass_OffGrid;
 
     ParmParse pp("thornado");
     chk_file = "chk";
@@ -264,18 +272,34 @@ extern "C"
     }
 
     // Read in initial values for tally
-    is >> BaryonicMass;
+    //
+    is >> BaryonicMass_Initial;
     GotoNextLine( is );
-    BaryonicMass_InitialArr[0] = BaryonicMass;
-    is >> Energy;
+    BaryonicMassArr[0] = BaryonicMass_Initial;
+    is >> BaryonicMass_OffGrid;
     GotoNextLine( is );
-    Energy_InitialArr[0] = Energy;
-    is >> ElectronNumber;
+    BaryonicMassArr[1] = BaryonicMass_OffGrid;
+
+    is >> Energy_Initial;
     GotoNextLine( is );
-    ElectronNumber_InitialArr[0] = ElectronNumber;
-    is >> ADMMass;
+    EnergyArr[0] = Energy_Initial;
+    is >> Energy_OffGrid;
     GotoNextLine( is );
-    ADMMass_InitialArr[0] = ADMMass;
+    EnergyArr[1] = Energy_OffGrid;
+
+    is >> ElectronNumber_Initial;
+    GotoNextLine( is );
+    ElectronNumberArr[0] = ElectronNumber_Initial;
+    is >> ElectronNumber_OffGrid;
+    GotoNextLine( is );
+    ElectronNumberArr[1] = ElectronNumber_OffGrid;
+
+    is >> ADMMass_Initial;
+    GotoNextLine( is );
+    ADMMassArr[0] = ADMMass_Initial;
+    is >> ADMMass_OffGrid;
+    GotoNextLine( is );
+    ADMMassArr[1] = ADMMass_OffGrid;
 
     // Read in level 'iLevel' BoxArray from Header
     for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )

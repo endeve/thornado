@@ -18,14 +18,19 @@ MODULE AverageDownModule
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_communicator, &
     amrex_parallel_ioprocessor
-  USE MF_UtilitiesModule, ONLY: &
-    MultiplyWithMetric
+
+  ! --- thornado Modules ---
+
+
   USE ProgramHeaderModule, ONLY: &
     nDOFX
   USE GeometryFieldsModule, ONLY: &
     iGF_SqrtGm
-  USE MF_Euler_PositivityLimiterModule, ONLY: &
-    ApplyPositivityLimiter_Euler_MF
+  USE Euler_MeshRefinementModule, ONLY: &
+    pProjectionMatrix_T_c, &
+    pWeightsX_q_c, &
+    VolumeRatio, &
+    nFine
   USE InputParsingModule, ONLY: &
     nLevels, &
     swX, &
@@ -34,6 +39,13 @@ MODULE AverageDownModule
     TimersStart_AMReX, &
     TimersStop_AMReX, &
     Timer_AMReX_AverageDown
+
+  ! --- Local Modules ---
+
+  USE MF_UtilitiesModule, ONLY: &
+    MultiplyWithMetric
+  USE MF_Euler_PositivityLimiterModule, ONLY: &
+    ApplyPositivityLimiter_Euler_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -146,7 +158,8 @@ CONTAINS
     CALL amrex_average_down_dg &
            ( MF_uGF    (CoarseLevel+1), MF_uGF    (CoarseLevel), &
              amrex_geom(CoarseLevel+1), amrex_geom(CoarseLevel), &
-             1, nComp, amrex_ref_ratio(CoarseLevel))
+             1, nComp, amrex_ref_ratio(CoarseLevel), &
+            nDOFX, nFine, VolumeRatio, pProjectionMatrix_T_c, pWeightsX_q_c )
 
 #endif
 
@@ -216,7 +229,8 @@ CONTAINS
     CALL amrex_average_down_dg &
            ( MF        (CoarseLevel+1), MF        (CoarseLevel), &
              amrex_geom(CoarseLevel+1), amrex_geom(CoarseLevel), &
-             1, nComp, amrex_ref_ratio(CoarseLevel))
+             1, nComp, amrex_ref_ratio(CoarseLevel), &
+             nDOFX, nFine, VolumeRatio, pProjectionMatrix_T_c, pWeightsX_q_c )
 
 #endif
 

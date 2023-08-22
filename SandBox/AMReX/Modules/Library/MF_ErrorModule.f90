@@ -194,7 +194,7 @@ CONTAINS
         WRITE(*,*)
         WRITE(*,'(2x,A)')   'Valid choices'
         WRITE(*,'(2x,A)')   '-------------'
-        WRITE(*,'(2x,A)')   '  SineWave'
+        WRITE(*,'(2x,A)')   '  SineWaveX1'
         WRITE(*,'(2x,A)')   '  Gaussian'
         WRITE(*,*)
 

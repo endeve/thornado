@@ -1,4 +1,4 @@
-##### RiemannProblem1D.inputs #####
+##### RiemannProblem2D_dZB2002.inputs #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
@@ -14,7 +14,7 @@ thornado.t_end   = 4.0e-1
 thornado.iCycleD = 10
 thornado.CFL     = 0.5
 thornado.dt_wrt  = 4.0e-3
-thornado.dt_chk  = 4.2e-1
+thornado.dt_chk  = 4.1e-1
 
 thornado.PlotFileNameRoot        = "RiemannProblem2D_dZB2002.plt"
 thornado.CheckpointFileNameRoot  = "RiemannProblem2D_dZB2002.chk"
