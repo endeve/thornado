@@ -115,7 +115,7 @@ CONTAINS
         uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J,iS) &
           = 0.50_DP + 0.49_DP * SIN( TwoPi * X1)
         uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1,iS) &
-          = W * uCM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J,iS)
+          = W * uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J,iS)
         uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H2,iS) &
           = 0.0_DP
         uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H3,iS) &
