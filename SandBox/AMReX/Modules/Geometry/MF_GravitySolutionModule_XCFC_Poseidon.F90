@@ -250,7 +250,7 @@ CONTAINS
 
       CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF_tmp )
 
-      CALL Poseidon_Input_Sources_Part1( MF_uGS, nGS )
+      CALL Poseidon_Input_Sources_Part1( MF_uGS )
 
       ! --- Set Boundary Values ---
 
@@ -343,7 +343,7 @@ CONTAINS
            ( 'O', OUTER_BC_TYPES, OUTER_BC_VALUES)
 
     ! --- Set XCFC sources with current conformal factor ---
-    CALL Poseidon_Input_Sources_Part1( MF_uGS, nGS )
+    CALL Poseidon_Input_Sources_Part1( MF_uGS )
 
     ! --- Compute conformal factor ---
 
@@ -389,7 +389,7 @@ CONTAINS
 
     ! --- Set gravity sources with updated conformal factor ---
 
-    CALL Poseidon_Input_Sources_Part2( MF_uGS, nGS )
+    CALL Poseidon_Input_Sources_Part2( MF_uGS )
 
     ! --- Compute lapse and shift ---
 

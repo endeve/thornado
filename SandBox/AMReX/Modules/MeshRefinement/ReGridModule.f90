@@ -69,7 +69,7 @@ CONTAINS
 
           ! amrex_regrid operates on level `iLevel+1`, so don't operate
           ! on nMaxLevels
-          IF( iLevel .LT. nMaxLevels-1 ) &
+          IF( iLevel .LT. nLevels-1  ) &
             CALL amrex_regrid( iLevel, t_new(iLevel) )
 
         END DO

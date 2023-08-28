@@ -68,6 +68,8 @@ PROGRAM main
     TimersStop_AMReX, &
     Timer_AMReX_InputOutput, &
     FinalizeTimers_AMReX
+  USE ReGridModule, ONLY: &
+    ReGrid
 
   IMPLICIT NONE
 
@@ -95,6 +97,8 @@ PROGRAM main
     StepNo = StepNo + 1
 
     t_old = t_new
+    
+    CALL ReGrid
 
     CALL ComputeTimeStep_Euler_MF( MF_uGF, MF_uCF, CFL, dt )
 
