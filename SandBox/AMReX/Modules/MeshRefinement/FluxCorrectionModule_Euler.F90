@@ -1,14 +1,5 @@
 MODULE FluxCorrectionModule_Euler
 
-  USE Euler_MeshRefinementModule, ONLY: &
-    pNodeNumberTableX_X1_c, &
-    pNodeNumberTableX_X2_c, &
-    pNodeNumberTableX_X3_c, &
-    pWeightsX_q_c, &
-    pLX_X1_Up_c, pLX_X1_Dn_c, &
-    pLX_X2_Up_c, pLX_X2_Dn_c, &
-    pLX_X3_Up_c, pLX_X3_Dn_c
-
   ! --- AMReX Modules ---
 
   USE amrex_multifab_module, ONLY: &
@@ -22,6 +13,8 @@ MODULE FluxCorrectionModule_Euler
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX
+  USE MeshModule, ONLY: &
+    MeshX
   USE GeometryFieldsModule, ONLY: &
     nGF, &
     iGF_SqrtGm
@@ -43,6 +36,15 @@ MODULE FluxCorrectionModule_Euler
     NodeNumberTableX_X2, &
     NodeNumberTableX_X3, &
     WeightsX_q
+  USE Euler_MeshRefinementModule, ONLY: &
+!    pNodeNumberTableX_c, &
+    pNodeNumberTableX_X1_c, &
+    pNodeNumberTableX_X2_c, &
+    pNodeNumberTableX_X3_c, &
+    pWeightsX_q_c, &
+    pLX_X1_Up_c, pLX_X1_Dn_c, &
+    pLX_X2_Up_c, pLX_X2_Dn_c, &
+    pLX_X3_Up_c, pLX_X3_Dn_c
 
   ! --- Local Modules ---
 
@@ -50,6 +52,10 @@ MODULE FluxCorrectionModule_Euler
     FluxRegister_Euler
   USE AverageDownModule, ONLY: &
     AverageDown
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
+
   USE InputParsingModule, ONLY: &
     nLevels, &
     swX, &
@@ -106,16 +112,28 @@ CONTAINS
 
 #if defined( THORNADO_USE_MESHREFINEMENT )
 
+    CALL CreateMesh_MF( FineLevel, MeshX )
+
+    ASSOCIATE( dX1 => MeshX(1) % Width, &
+               dX2 => MeshX(2) % Width, &
+               dX3 => MeshX(3) % Width )
+
     CALL FluxRegister_Euler( FineLevel ) &
            % reflux_dg( MF_uGF(FineLevel-1), MF(FineLevel-1), &
-                        nDOFX, nDOFX_X1, nDOFX_X2, nDOFX_X3, nCF, iGF_SqrtGm, &
-                        pNodeNumberTableX_X1_c, &
-                        pNodeNumberTableX_X2_c, &
-                        pNodeNumberTableX_X3_c, &
-                        pWeightsX_q_c, &
-                        pLX_X1_Up_c, pLX_X1_Dn_c, &
-                        pLX_X2_Up_c, pLX_X2_Dn_c, &
-                        pLX_X3_Up_c, pLX_X3_Dn_c )
+                        nCF, dX1, dX2, dX3 )
+                        !nDOFX, nDOFX_X1, nDOFX_X2, nDOFX_X3, nCF, iGF_SqrtGm, &
+                        !pNodeNumberTableX_c, &
+                        !pNodeNumberTableX_X1_c, &
+                        !pNodeNumberTableX_X2_c, &
+                        !pNodeNumberTableX_X3_c, &
+                        !pWeightsX_q_c, &
+                        !pLX_X1_Up_c, pLX_X1_Dn_c, &
+                        !pLX_X2_Up_c, pLX_X2_Dn_c, &
+                        !pLX_X3_Up_c, pLX_X3_Dn_c )
+
+    END ASSOCIATE
+
+    CALL DestroyMesh_MF( MeshX )
 
 #endif
 

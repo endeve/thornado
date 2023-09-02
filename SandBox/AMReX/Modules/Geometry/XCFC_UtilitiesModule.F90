@@ -84,6 +84,7 @@ MODULE XCFC_UtilitiesModule
   PUBLIC :: ComputeGravitationalMass_MF
   PUBLIC :: PopulateMF_uMF
   PUBLIC :: ApplyBoundaryConditions_Geometry
+  PUBLIC :: UpdateGeometryFields_MF
 
   INTEGER, PUBLIC :: swXX(3)
 
@@ -761,6 +762,80 @@ CONTAINS
     END DO ! iLevel = 0, nLevels-1
 
   END SUBROUTINE ApplyBoundaryConditions_X1_Outer
+
+
+  SUBROUTINE UpdateGeometryFields_MF( MF_uGF )
+
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+
+    REAL(DP), CONTIGUOUS, POINTER :: uMF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+
+    INTEGER  :: iLevel, iNX, iX1, iX2, iX3, iNX1, iNX2
+    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP) :: X1, X2, Psi, h1, h2, h3
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+
+      CALL CreateMesh_MF( iLevel, MeshX )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+        iX_B1 = iX_B0 - swXX
+        iX_E1 = iX_E0 + swXX
+
+        DO iX3 = iX_B1(3), iX_E1(3)
+        DO iX2 = iX_B1(2), iX_E1(2)
+        DO iX1 = iX_B1(1), iX_E1(1)
+        DO iNX = 1       , nDOFX
+
+          iNX1 = NodeNumberTableX(1,iNX)
+          iNX2 = NodeNumberTableX(2,iNX)
+
+          X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+          X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
+
+          Psi = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)
+          h1  = Psi**2
+          h2  = Psi**2 * X1
+          h3  = Psi**2 * X1 * SIN( X2 )
+
+!          uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX) = Psi
+          uGF(iX1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) = h1
+          uGF(iX1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) = h2
+          uGF(iX1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX) = h3
+
+          uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX) = MAX( h1**2, SqrtTiny )
+          uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX) = MAX( h2**2, SqrtTiny )
+          uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) = MAX( h3**2, SqrtTiny )
+
+          uGF(iX1,iX2,iX3,nDOFX*(iGF_SqrtGm-1)+iNX) = h1 * h2 * h3
+
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END DO ! WHILE( MFI % next() )
+
+      CALL DestroyMesh_MF( MeshX )
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO ! iLevel = 0, nLevels-1
+
+  END SUBROUTINE UpdateGeometryFields_MF
 
 
 END MODULE XCFC_UtilitiesModule

@@ -14,7 +14,8 @@ MODULE TaggingModule
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
-    DP
+    DP, &
+    Zero
 
   IMPLICIT NONE
   PRIVATE
@@ -92,9 +93,9 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    
-!      PRINT*,uCF(iX1,iX2,iX3,iCF_D)/(Gram/Centimeter**3), TagCriteria_this
-      IF( uCF(iX1,iX2,iX3,iCF_D)/(Gram/Centimeter**3) .GT. TagCriteria_this  ) THEN
+
+      IF( uCF(iX1,iX2,iX3,iCF_D) / ( Gram / Centimeter**3 ) &
+            .GT. TagCriteria_this  ) THEN
 
         Tag(iX1,iX2,iX3,1) = SetTag
 
@@ -109,12 +110,6 @@ CONTAINS
     END DO
 
   END SUBROUTINE TagElements_Density
-
-
-
-
-
-
 
 
   SUBROUTINE TagElements_Max &
@@ -136,24 +131,24 @@ CONTAINS
 
     REAL(DP) :: TagCriteria_this
     REAL(DP) :: BoxMaxDensity
-    
-    BoxMaxDensity = 0.0_DP
-    IF (iLevel == 0 ) THEN
-        BoxMaxDensity = maxval( uCF(:,:,:,iCF_D) )
-        IF ( BoxMaxDensity > MaxDensity ) THEN
-            MaxDensity = BoxMaxDensity
-        END IF
+
+    BoxMaxDensity = Zero
+
+    IF( iLevel .EQ. 0 )THEN
+
+      BoxMaxDensity = MAXVAL( uCF(:,:,:,iCF_D) )
+
+      IF( BoxMaxDensity .GT. MaxDensity ) &
+        MaxDensity = BoxMaxDensity
+
     END IF
 
     TagCriteria_this = TagCriteria*MaxDensity
-    
-!    PRINT*,"Tag Criteria :",TagCriteria_this," of ",MaxDensity," - ",iLevel
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    
-!      PRINT*,uCF(iX1,iX2,iX3,iCF_D)/(Gram/Centimeter**3), TagCriteria_this/(Gram/Centimeter**3)
+
       IF( uCF(iX1,iX2,iX3,iCF_D) .GT. TagCriteria_this  ) THEN
 
         Tag(iX1,iX2,iX3,1) = SetTag
@@ -169,7 +164,6 @@ CONTAINS
     END DO
 
   END SUBROUTINE TagElements_Max
-
 
 
 END MODULE TaggingModule

@@ -357,6 +357,8 @@ CONTAINS
       CALL ApplyBoundaryConditions_Euler_MF &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
+      CALL DetectShocks_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+
       CALL ComputeIncrement_Euler_DG_Explicit &
              ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
                SuppressBC_Option = .TRUE., &
@@ -455,7 +457,7 @@ CONTAINS
 
       IF( iLevel .GT. 0 ) &
         CALL FluxRegister_Euler &
-               ( iLevel   ) % FineAdd_DG ( SurfaceFluxes, nCF, FaceRatio )
+               ( iLevel   ) % FineAdd_DG ( SurfaceFluxes, nCF )!, FaceRatio )
 
       IF( iLevel .LT. amrex_get_finest_level() ) &
         CALL FluxRegister_Euler( iLevel+1 ) % CrseInit_DG( SurfaceFluxes, nCF )

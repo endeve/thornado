@@ -22,6 +22,8 @@ MODULE ReGridModule
     ApplyPositivityLimiter_Euler_MF
   USE MF_GeometryModule, ONLY: &
     ApplyBoundaryConditions_Geometry_MF
+  USE XCFC_UtilitiesModule, ONLY: &
+    UpdateGeometryFields_MF
   USE InputParsingModule, ONLY: &
     DEBUG, &
     UseAMR, &
@@ -39,7 +41,7 @@ CONTAINS
 
   SUBROUTINE ReGrid
 
-    INTEGER :: iErr, iLevel
+    INTEGER :: iErr
 
     IF( DEBUG )THEN
 
@@ -65,16 +67,15 @@ CONTAINS
 
         END IF
 
-        DO iLevel = 0, nLevels
+        CALL amrex_regrid( 0, t_new(0) )
 
-          ! amrex_regrid operates on level `iLevel+1`, so don't operate
-          ! on nMaxLevels
-          IF( iLevel .LT. nLevels-1  ) &
-            CALL amrex_regrid( iLevel, t_new(iLevel) )
+        IF( nLevels .NE. amrex_get_numlevels() )THEN
 
-        END DO
+          nLevels = amrex_get_numlevels()
 
-        nLevels = amrex_get_numlevels()
+          CALL UpdateGeometryFields_MF( MF_uGF )
+
+        END IF
 
         ! --- nLevels <= nMaxLevels; entire arrays t_old(0:nMaxLevels-1) and
         !     t_new(0:nMaxLevels-1) must have valid data ---
