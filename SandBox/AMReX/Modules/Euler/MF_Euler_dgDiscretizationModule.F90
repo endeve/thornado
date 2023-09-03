@@ -457,7 +457,7 @@ CONTAINS
 
       IF( iLevel .GT. 0 ) &
         CALL FluxRegister_Euler &
-               ( iLevel   ) % FineAdd_DG ( SurfaceFluxes, nCF )!, FaceRatio )
+               ( iLevel   ) % FineAdd_DG ( SurfaceFluxes, nCF, FaceRatio )
 
       IF( iLevel .LT. amrex_get_finest_level() ) &
         CALL FluxRegister_Euler( iLevel+1 ) % CrseInit_DG( SurfaceFluxes, nCF )

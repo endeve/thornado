@@ -37,7 +37,6 @@ MODULE FluxCorrectionModule_Euler
     NodeNumberTableX_X3, &
     WeightsX_q
   USE Euler_MeshRefinementModule, ONLY: &
-!    pNodeNumberTableX_c, &
     pNodeNumberTableX_X1_c, &
     pNodeNumberTableX_X2_c, &
     pNodeNumberTableX_X3_c, &
@@ -112,7 +111,7 @@ CONTAINS
 
 #if defined( THORNADO_USE_MESHREFINEMENT )
 
-    CALL CreateMesh_MF( FineLevel, MeshX )
+    CALL CreateMesh_MF( FineLevel-1, MeshX )
 
     ASSOCIATE( dX1 => MeshX(1) % Width, &
                dX2 => MeshX(2) % Width, &
@@ -120,16 +119,15 @@ CONTAINS
 
     CALL FluxRegister_Euler( FineLevel ) &
            % reflux_dg( MF_uGF(FineLevel-1), MF(FineLevel-1), &
-                        nCF, dX1, dX2, dX3 )
-                        !nDOFX, nDOFX_X1, nDOFX_X2, nDOFX_X3, nCF, iGF_SqrtGm, &
-                        !pNodeNumberTableX_c, &
-                        !pNodeNumberTableX_X1_c, &
-                        !pNodeNumberTableX_X2_c, &
-                        !pNodeNumberTableX_X3_c, &
-                        !pWeightsX_q_c, &
-                        !pLX_X1_Up_c, pLX_X1_Dn_c, &
-                        !pLX_X2_Up_c, pLX_X2_Dn_c, &
-                        !pLX_X3_Up_c, pLX_X3_Dn_c )
+                        nDOFX, nDOFX_X1, nDOFX_X2, nDOFX_X3, nCF, iGF_SqrtGm, &
+                        pNodeNumberTableX_X1_c, &
+                        pNodeNumberTableX_X2_c, &
+                        pNodeNumberTableX_X3_c, &
+                        pWeightsX_q_c, &
+                        pLX_X1_Up_c, pLX_X1_Dn_c, &
+                        pLX_X2_Up_c, pLX_X2_Dn_c, &
+                        pLX_X3_Up_c, pLX_X3_Dn_c, &
+                        MINVAL( dX1 ), MINVAL( dX2 ), MINVAL( dX3 ) )
 
     END ASSOCIATE
 

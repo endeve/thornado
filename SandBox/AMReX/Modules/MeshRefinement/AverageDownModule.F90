@@ -158,8 +158,8 @@ CONTAINS
     CALL amrex_average_down_dg &
            ( MF_uGF    (CoarseLevel+1), MF_uGF    (CoarseLevel), &
              amrex_geom(CoarseLevel+1), amrex_geom(CoarseLevel), &
-             1, nComp, amrex_ref_ratio(CoarseLevel))!, &
-            !nDOFX, nFine, VolumeRatio, pProjectionMatrix_T_c, pWeightsX_q_c )
+             1, nComp, amrex_ref_ratio(CoarseLevel), &
+            nDOFX, nFine, VolumeRatio, pProjectionMatrix_T_c, pWeightsX_q_c )
 
 #endif
 
@@ -229,8 +229,8 @@ CONTAINS
     CALL amrex_average_down_dg &
            ( MF        (CoarseLevel+1), MF        (CoarseLevel), &
              amrex_geom(CoarseLevel+1), amrex_geom(CoarseLevel), &
-             1, nComp, amrex_ref_ratio(CoarseLevel))!, &
-             !nDOFX, nFine, VolumeRatio, pProjectionMatrix_T_c, pWeightsX_q_c )
+             1, nComp, amrex_ref_ratio(CoarseLevel), &
+             nDOFX, nFine, VolumeRatio, pProjectionMatrix_T_c, pWeightsX_q_c )
 
 #endif
 
