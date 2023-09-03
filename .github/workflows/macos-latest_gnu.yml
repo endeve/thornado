@@ -32,7 +32,7 @@ jobs:
           path: amrex
           ref: MeshRefinement_DG
 
-      - name: Download and install homebrew and dependencies
+      - name: Download and install homebrew and gcc
         run: |
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           echo ""
@@ -46,8 +46,11 @@ jobs:
           echo "brew install gfortran"
                 brew install gfortran
           echo ""
-          HOMEBREW_CC=gcc-${GCC_VERSION}
-          export HOMEBREW_CC=gcc-${GCC_VERSION}
+          echo ${GCC_VERSION}
+          echo "HOMEBREW_CC=gcc-${GCC_VERSION}" >> ${GITHUB_ENV}
+
+      - name: Download and install homebrew and dependencies
+        run: |
           echo "brew install open-mpi"
                 brew install open-mpi
           OMPI_VERSION=`ls /usr/local/Cellar/open-mpi`
