@@ -46,8 +46,10 @@ jobs:
           echo "brew install gfortran"
                 brew install gfortran
           echo ""
-          echo "brew install open-mpi --cc=gcc-${GCC_MAJOR}"
-                brew install open-mpi --cc=gcc-${GCC_MAJOR}
+          HOMEBREW_CC=gcc-${GCC_VERSION}
+          export HOMEBREW_CC=gcc-${GCC_VERSION}
+          echo "brew install open-mpi"
+                brew install open-mpi
           OMPI_VERSION=`ls /usr/local/Cellar/open-mpi`
           echo "/usr/local/Cellar/open-mpi/${OMPI_VERSION}/bin" >> ${GITHUB_PATH}
           echo ""
