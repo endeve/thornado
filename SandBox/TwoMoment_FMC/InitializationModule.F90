@@ -67,7 +67,10 @@ CONTAINS
     INTEGER :: iNodeX, iX1, iX2, iX3
     INTEGER :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
     INTEGER :: iNodeZ2, iNodeZ3, iNodeZ4
-    Real(DP) :: X1, X2, X3, W
+    Real(DP) :: X1, X2, X3, W, vMag
+
+    vMag = SQRT( V_0(1)**2 + V_0(2)**2 + V_0(3)**2 )
+    W = One / SQRT( One - vMag**2 )
 
     ! --- Fluid Fields ---
 
@@ -109,8 +112,6 @@ CONTAINS
         X1 = NodeCoordinate( MeshX(1), iZ2, iNodeZ2)
         X2 = NodeCoordinate( MeshX(2), iZ3, iNodeZ3)
         X3 = NodeCoordinate( MeshX(3), iZ4, iNodeZ4)
-
-        W = One / SQRT( One - uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V1)**2 )
 
         uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J,iS) &
           = 0.50_DP + 0.49_DP * SIN( TwoPi * X1)

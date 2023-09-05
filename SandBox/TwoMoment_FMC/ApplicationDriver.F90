@@ -52,7 +52,7 @@ PROGRAM ApplicationDriver
 
       ! --- Minerbo Closure Only ---
 
-      nX  = [ 64, 1, 1 ]
+      nX  = [ 32, 1, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
       bcX = [ 1, 1, 1 ]
@@ -62,9 +62,9 @@ PROGRAM ApplicationDriver
       eR  = 1.0_DP
       bcE = 1
 
-      nNodes = 2
+      nNodes = 3
 
-      TimeSteppingScheme = 'SSPRK2'
+      TimeSteppingScheme = 'SSPRK3'
       ! TimeSteppingScheme = 'IMEX_PDARS'
 
       t_end   = 1.0d-0
@@ -72,7 +72,7 @@ PROGRAM ApplicationDriver
       iCycleW = 100
       maxCycles = 10000
 
-      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
+      V_0 = [ 0.9_DP, 0.0_DP, 0.0_DP ]
 
       J_0   = 0.0_DP
       Chi   = 0.0_DP
@@ -133,16 +133,23 @@ PROGRAM ApplicationDriver
     ! --- IMEX updating ---
 
     CALL Update_IMEX_RK &
-           ( dt, uGE, uGF, uCM, ComputeIncrement_TwoMoment_Implicit )
+           ( dt, uGE, uGF, uPF, uCM, ComputeIncrement_TwoMoment_Implicit )
 
     t = t + dt
 
     ! --- Write updated values ---
 
+    Write(*,*)
+    print *, "Updating values..."
+
     CALL ComputeFromConserved_TwoMoment_FMC &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uPF, uCM, uPM, uAM, uGM )
 
     CALL WriteTwoMomentFieldsHDF( t )
+
+    ! IF( iCycle == 1)THEN 
+    !   STOP
+    ! END IF
 
   END DO
 

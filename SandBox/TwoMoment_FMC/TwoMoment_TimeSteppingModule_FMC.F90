@@ -12,7 +12,8 @@ MODULE TwoMoment_TimeSteppingModule_FMC
   USE GeometryFieldsModule, ONLY: &
     nGF
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, uDF
+    nCF, iCF_D, uDF, &
+    nPF
   USE TwoMoment_FieldsModule_FMC, ONLY: &
     nCM, nSpecies
   USE TwoMoment_TimersModule, ONLY: &
@@ -110,7 +111,7 @@ MODULE TwoMoment_TimeSteppingModule_FMC
 CONTAINS
 
   SUBROUTINE Update_IMEX_RK &
-    ( dt, GE, GX, M, ComputeIncrement_TwoMoment_Implicit)
+    ( dt, GE, GX, U, M, ComputeIncrement_TwoMoment_Implicit)
 
     !--- Input/Output variable ---
     REAL(DP), INTENT(in) :: dt
@@ -122,6 +123,11 @@ CONTAINS
                                   iX_B1(2):iX_E1(2), &
                                   iX_B1(3):iX_E1(3), &
                                   1:nGF)
+    REAL(DP), INTENT(inout) :: U(1:nDOFX, &
+                                 iX_B1(1):iX_E1(1), &
+                                 iX_B1(2):iX_E1(2), &
+                                 iX_B1(3):iX_E1(3), &
+                                 1:nPF)
     REAL(DP), INTENT(inout) :: M(1:nDOFZ, &
                                  iZ_B1(1):iZ_E1(1), &
                                  iZ_B1(2):iZ_E1(2), &
@@ -183,7 +189,7 @@ CONTAINS
 
       CALL ComputeIncrement_TwoMoment_Explicit &
         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
-          Mi, StageData(iS) % dM_EX )
+          U, Mi, StageData(iS) % dM_EX )
 
       ! StageData(iS) % OffGridFlux_M = OffGridFlux_TwoMoment
 

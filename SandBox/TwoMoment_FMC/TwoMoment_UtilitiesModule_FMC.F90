@@ -1,7 +1,7 @@
 MODULE TwoMoment_UtilitiesModule_FMC
 
   USE KindModule, ONLY: &
-    DP, Half, Zero, One, Three, Five, SqrtTiny
+    DP, Third, Half, Zero, One, Three, Five, SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nDOFX, nDOFE
   USE MeshModule, ONLY: &
@@ -38,6 +38,7 @@ MODULE TwoMoment_UtilitiesModule_FMC
   PUBLIC :: Flux_E
   PUBLIC :: NumericalFlux_LLF
   PUBLIC :: ComputeTimeStep_TwoMoment
+  PUBLIC :: FaceVelocity_X1
 
 CONTAINS
 
@@ -60,8 +61,8 @@ CONTAINS
         Gm_dd_11, Gm_dd_22, Gm_dd_33)
 
     vMag = SQRT( V_u_1 * Gm_dd_11 * V_u_1 &
-      + V_u_2 * Gm_dd_22 * V_u_2 &
-      + V_u_3 * Gm_dd_33 * V_u_3 )
+                 + V_u_2 * Gm_dd_22 * V_u_2 &
+                 + V_u_3 * Gm_dd_33 * V_u_3 )
     W = One / SQRT ( One - vMag**2 )
 
     CALL ComputeHatMomentsFromPrimitive &
@@ -170,23 +171,28 @@ CONTAINS
     REAL(DP), PARAMETER :: TOL = 1.0d-08
 
     ! --- Local variables ---
-    INTEGER :: iteration, i, k
-    REAL(DP) :: vMag, vH, vK, lambda, W
+    INTEGER :: iteration
+    REAL(DP) :: vMag, vDotH, vDotk1, vDotk2, vDotk3, lambda, W
     REAL(DP) :: E_hat, F_hat_d_1, F_hat_d_2, F_hat_d_3
-    REAL(DP) :: Mvec(4), Uvec(4), Fvec(4), Gvec(4), dX(4), k_dd(3,3)
+    REAL(DP) :: fvec_0, fvec_1, fvec_2, fvec_3
+    REAL(DP) :: k_dd(3,3)
 
     LOGICAL :: CONVERGED
 
     ! --- Initial guess ---
+
     CALL ComputeHatMomentsFromConserved &
       ( E, F_d_1, F_d_2, F_d_3, E_hat, F_hat_d_1, F_hat_d_2, F_hat_d_3, &
         V_u_1, V_u_2, V_u_3, &
         Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    Uvec = [ E_hat, F_hat_d_1, F_hat_d_2, F_hat_d_3 ]
-    Mvec(:) = Uvec(:)
+    J = E_hat
+    H_d_1 = F_hat_d_1
+    H_d_2 = F_hat_d_2
+    H_d_3 = F_hat_d_3
 
     ! --- Richardson update ---
+
     vMag = SQRT( V_u_1 * Gm_dd_11 * V_u_1 &
                  + V_u_2 * Gm_dd_22 * V_u_2 &
                  + V_u_3 * Gm_dd_33 * V_u_3 )
@@ -198,40 +204,35 @@ CONTAINS
     DO WHILE( .NOT. CONVERGED .AND. iteration < MaxIterations )
 
       iteration = iteration + 1
-      
+
       k_dd = EddingtonTensorComponents_dd &
-        ( Mvec(1), Mvec(2), Mvec(3), Mvec(4), V_u_1, V_u_2, V_u_3, &
-        Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+        ( J, H_d_1, H_d_2, H_d_3, V_u_1, V_u_2, V_u_3, &
+          Gm_dd_11, Gm_dd_22, Gm_dd_33 )
       
-      vH = V_u_1 * Mvec(2) + V_u_2 * Mvec(3) + V_u_3 * Mvec(4)
-      Fvec(1) = Uvec(1) - vH
-      Gvec(1) = (One - lambda * W) * Mvec(1) + lambda * Fvec(1)
+      vDotH = V_u_1 * H_d_1 + V_u_2 * H_d_2 + V_u_3 * H_d_3
 
+      vDotk1 = V_u_1 * k_dd(1,1) + V_u_2 * k_dd(1,2) + V_u_3 * k_dd(1,3)
+      vDotk2 = V_u_1 * k_dd(2,1) + V_u_2 * k_dd(2,2) + V_u_3 * k_dd(2,3)
+      vDotk3 = V_u_1 * k_dd(3,1) + V_u_2 * k_dd(3,2) + V_u_3 * k_dd(3,3)
 
-      DO i = 1, 3
+      ! --- Compute components of vector function f ---
+      ! If converged, f = 0
 
-        vK = V_u_1 * k_dd(i,1) + V_u_2 * k_dd(i,2) + V_u_3 * k_dd(i,3)
-        Fvec(i+1) = Uvec(i+1) - vK * Mvec(1)
-        Gvec(i+1) = (One - lambda * W) * Mvec(i+1) + lambda * Fvec(i+1)
+      fvec_0 = W * J + vDotH - E_hat
+      fvec_1 = W * H_d_1 + vDotk1 * J - F_hat_d_1
+      fvec_2 = W * H_d_2 + vDotk2 * J - F_hat_d_2
+      fvec_3 = W * H_d_3 + vDotk3 * J - F_hat_d_3
 
-      END DO
+      ! --- Compute next iterate ---
 
-      !dX = ABS ( Gvec - Mvec )
-      CONVERGED = SQRT( SUM( (Fvec-W*Mvec)**2 ) ) < TOL
-
-      ! print *, "k: ", iteration
-      ! print *, "||F(M)||: ", SQRT( SUM( (Fvec-W*Mvec)**2 ) )
-      Mvec(:) = Gvec(:)
+      J = J - lambda * fvec_0
+      H_d_1 = H_d_1 - lambda * fvec_1
+      H_d_2 = H_d_2 - lambda * fvec_2
+      H_d_3 = H_d_3 - lambda * fvec_3
+      
+      CONVERGED = SQRT( fvec_0**2 + fvec_1**2 + fvec_2**2 +fvec_3**2 ) < TOL
 
     END DO
-
-    ! --- Converged solution ---
-    J = Mvec(1)
-    H_d_1 = Mvec(2)
-    H_d_2 = Mvec(3)
-    H_d_3 = Mvec(4)
-
-    !print *, iteration
 
     IF( PRESENT( nIterations_Option ) ) THEN
 
@@ -243,8 +244,8 @@ CONTAINS
 
   SUBROUTINE ComputeHatMomentsFromConserved &
     ( E, F_d_1, F_d_2, F_d_3, E_hat, F_hat_d_1, F_hat_d_2, F_hat_d_3, &
-        V_u_1, V_u_2, V_u_3, &
-        Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+      V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     ! --- Input/Output variables ---
     REAL(DP), INTENT(in) :: E, F_d_1, F_d_2, F_d_3
@@ -253,18 +254,18 @@ CONTAINS
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     ! --- Local variables ---
-    REAL(DP) :: W, vMag, vF
+    REAL(DP) :: W, vMag, vDotF
     
     vMag = SQRT( V_u_1 * Gm_dd_11 * V_u_1 &
                  + V_u_2 * Gm_dd_22 * V_u_2 &
                  + V_u_3 * Gm_dd_33 * V_u_3 )
     W = One / SQRT ( One - vMag**2 )
-    vF = V_u_1 * F_d_1 + V_u_2 * F_d_2 + V_u_3 * F_d_3
+    vDotF = V_u_1 * F_d_1 + V_u_2 * F_d_2 + V_u_3 * F_d_3
 
-    E_hat = W * ( E - vF )
-    F_hat_d_1 = F_d_1 - W * V_u_1 * E_hat
-    F_hat_d_2 = F_d_2 - W * V_u_2 * E_hat
-    F_hat_d_3 = F_d_3 - W * V_u_3 * E_hat
+    E_hat = W * ( E - vDotF )
+    F_hat_d_1 = F_d_1 - W * Gm_dd_11 * V_u_1 * E_hat
+    F_hat_d_2 = F_d_2 - W * Gm_dd_22 * V_u_2 * E_hat
+    F_hat_d_3 = F_d_3 - W * Gm_dd_33 * V_u_3 * E_hat
 
   END SUBROUTINE ComputeHatMomentsFromConserved
 
@@ -281,7 +282,7 @@ CONTAINS
 
     ! --- Local variables ---
     REAL(DP) :: k_dd(3,3)
-    REAL(DP) :: vMag, W, vH
+    REAL(DP) :: vMag, W, vDotH, vDotk1, vDotk2, vDotk3
 
     k_dd = EddingtonTensorComponents_dd &
       ( J, H_d_1, H_d_2, H_d_3, V_u_1, V_u_2, V_u_3, &
@@ -291,12 +292,17 @@ CONTAINS
                  + V_u_2 * Gm_dd_22 * V_u_2 &
                  + V_u_3 * Gm_dd_33 * V_u_3 )
     W = One / SQRT ( One - vMag**2 )
-    vH = V_u_1 * H_d_1 + V_u_2 * H_d_2 + V_u_3 * H_d_3
 
-    E_hat = W*J + vH
-    F_hat_d_1 = W*H_d_1 + V_u_1*k_dd(1,1)*J + V_u_2*k_dd(1,2)*J + V_u_3*k_dd(1,3)*J
-    F_hat_d_2 = W*H_d_2 + V_u_1*k_dd(2,1)*J + V_u_2*k_dd(2,2)*J + V_u_3*k_dd(2,3)*J
-    F_hat_d_3 = W*H_d_3 + V_u_1*k_dd(3,1)*J + V_u_2*k_dd(3,2)*J + V_u_3*k_dd(3,3)*J
+    vDotH = V_u_1 * H_d_1 + V_u_2 * H_d_2 + V_u_3 * H_d_3
+
+    vDotk1 = V_u_1 * k_dd(1,1) + V_u_2 * k_dd(1,2) + V_u_3 * k_dd(1,3)
+    vDotk2 = V_u_1 * k_dd(2,1) + V_u_2 * k_dd(2,2) + V_u_3 * k_dd(2,3)
+    vDotk3 = V_u_1 * k_dd(3,1) + V_u_2 * k_dd(3,2) + V_u_3 * k_dd(3,3)
+
+    E_hat = W * J + vDotH
+    F_hat_d_1 = W * H_d_1 + vDotk1 * J
+    F_hat_d_2 = W * H_d_2 + vDotk2 * J
+    F_hat_d_3 = W * H_d_3 + vDotk3 * J
 
   END SUBROUTINE ComputeHatMomentsFromPrimitive
 
@@ -313,31 +319,57 @@ CONTAINS
     ! --- Local variables ---
     INTEGER :: i, k
     REAL(DP) :: FF, EF, a, b, W, vMag
-    REAL(DP) :: h_hat_d(3), u(3), Gm_dd(3,3) 
+    REAL(DP) :: h_hat_d(3), u_d(3), Gm_dd(3,3) 
 
-    FF = FluxFactor_Relativistic &
-      ( J, H_d_1, H_d_2, H_d_3, &
-        Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-        -One, Zero, Zero, Zero, &
-        V_u_1, V_u_2, V_u_3 )
+    ! FF = FluxFactor_Relativistic &
+    !   ( J, H_d_1, H_d_2, H_d_3, &
+    !     Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    !     One, Zero, Zero, Zero, &
+    !     V_u_1, V_u_2, V_u_3 )
+    ! print *, "V_u_1 = ", V_u_1
+    ! print *, "V_u_2 = ", V_u_2
+    ! print *, "V_u_3 = ", V_u_3
+    ! print *, "J     = ", J
+    ! print *, "H_d_1 = ", H_d_1
+    ! print *, "H_d_2 = ", H_d_2
+    ! print *, "H_d_3 = ", H_d_3
 
-    EF = EddingtonFactor( J, FF )
+    FF = MIN( MAX( SQRT( -(V_u_1 * H_d_1 + V_u_2 * H_d_2 + V_u_3 * H_d_3)**2 &
+                         + H_d_1**2 + H_d_2**2 + H_d_3**2 ) &
+                         / MAX( J, SqrtTiny ), &
+                   SqrtTiny ), &
+              One )
+    ! FF = One
 
-    a = Half * ( One - EF )
-    b= Half * ( Three * EF - One )
+    ! print *, "FF = ", FF
 
-    h_hat_d(1) = H_d_1 / ( FF * J )
-    h_hat_d(2) = H_d_2 / ( FF * J )
-    h_hat_d(3) = H_d_3 / ( FF * J )
+    IF ( FF <= SqrtTiny ) THEN
+      EF = Third
+      a = Third
+      b = Zero
+    ELSE
+      EF = EddingtonFactor( J, FF )
+      a = Half * ( One - EF )
+      b = Half * ( Three * EF - One )
+    END IF
+
+    ! EF = EddingtonFactor( J, FF )
+
+    ! a = Half * ( One - EF )
+    ! b= Half * ( Three * EF - One )
+
+    h_hat_d(1) = H_d_1 / ( FF * MAX( ABS(J), SqrtTiny ) ) ! Was running in to division by zero.
+    h_hat_d(2) = H_d_2 / ( FF * MAX( ABS(J), SqrtTiny ) ) ! Is this a good fix?
+    h_hat_d(3) = H_d_3 / ( FF * MAX( ABS(J), SqrtTiny ) )
 
     vMag = SQRT( V_u_1 * Gm_dd_11 * V_u_1 &
-      + V_u_2 * Gm_dd_22 * V_u_2 &
-      + V_u_3 * Gm_dd_33 * V_u_3 )
+                 + V_u_2 * Gm_dd_22 * V_u_2 &
+                 + V_u_3 * Gm_dd_33 * V_u_3 )
     W = One / SQRT ( One - vMag**2 )
 
-    u(1) = W * V_u_1
-    u(2) = W * V_u_2
-    u(3) = W * V_u_3
+    u_d(1) = W * Gm_dd_11 * V_u_1
+    u_d(2) = W * Gm_dd_22 * V_u_2
+    u_d(3) = W * Gm_dd_33 * V_u_3
 
     Gm_dd = Zero
     Gm_dd(1,1) = Gm_dd_11
@@ -348,7 +380,7 @@ CONTAINS
       DO i = 1, 3
 
         EddingtonTensorComponents_dd(i,k) &
-          = a * ( Gm_dd(i,k) + u(i)*u(k) ) + b * h_hat_d(i) * h_hat_d(k)
+          = a * ( Gm_dd(i,k) + u_d(i) * u_d(k) ) + b * h_hat_d(i) * h_hat_d(k)
 
       END DO
     END DO
@@ -398,11 +430,13 @@ CONTAINS
                 l_uuu_000
 
 
-    FF = FluxFactor_Relativistic &
-      ( J, H_u_1, H_u_2, H_u_3, &
-          Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-          -One, Zero, Zero, Zero, &
-          V_u_1, V_u_2, V_u_3 )
+    ! FF = FluxFactor_Relativistic &
+    !   ( J, H_u_1, H_u_2, H_u_3, &
+    !       Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    !       One, Zero, Zero, Zero, &
+    !       V_u_1, V_u_2, V_u_3 )
+    FF = SQRT( -(V_u_1 * H_u_1 + V_u_2 * H_u_2 + V_u_3 * H_u_3)**2 &
+               + H_u_1**2 + H_u_2**2 + H_u_3**2 ) / J
     HF = HeatFluxFactor(J, FF)
 
     vMag = SQRT( V_u_1 * Gm_dd_11 * V_u_1 &
@@ -1252,26 +1286,29 @@ CONTAINS
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     ! --- Local variables ---
-    REAL(DP) :: vMag, W, vH
+    REAL(DP) :: vMag, W, vDotH
     REAL(DP) :: k_ud(3,3)
     REAL(DP) :: vK_u_1
 
     vMag = SQRT( V_u_1 * Gm_dd_11 * V_u_1 &
-      + V_u_2 * Gm_dd_22 * V_u_2 &
-      + V_u_3 * Gm_dd_33 * V_u_3 )
+                 + V_u_2 * Gm_dd_22 * V_u_2 &
+                 + V_u_3 * Gm_dd_33 * V_u_3 )
     W = One / SQRT ( One - vMag**2 )
-    vH = V_u_1 * H_u_1 + V_u_2 * H_u_2 + V_u_3 * H_u_3
+    vDotH = V_u_1 * H_u_1 + V_u_2 * H_u_2 + V_u_3 * H_u_3
 
     k_ud = EddingtonTensorComponents_dd ( J, H_u_1, H_u_2, H_u_3, &
       V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33)
-    vK_u_1 = V_u_1 * k_ud(1,1) + V_u_2 * k_ud(1,2) + V_u_3 * k_ud(1,3)
+    vK_u_1 = V_u_1 * k_ud(1,1) + V_u_2 * k_ud(1,2) + V_u_3 * k_ud(1,3) !possible bug here
 
-    Flux_X1(1) = W * H_u_1 + W * V_u_1 * (W * J + vH) + vK_u_1 * J
-    Flux_X1(2) = k_ud(1,1) + W * (H_u_1 * V_u_1 + V_u_1 * H_u_1) + W * W * V_u_1 * V_u_1 * J
-    Flux_X1(3) = k_ud(1,2) + W * (H_u_1 * V_u_2 + V_u_1 * H_u_2) + W * W * V_u_1 * V_u_2 * J
-    Flux_X1(4) = k_ud(1,3) + W * (H_u_1 * V_u_3 + V_u_1 * H_u_3) + W * W * V_u_1 * V_u_3 * J
+    Flux_X1(1) = W * H_u_1 + W * V_u_1 * (W * J + vDotH) + vK_u_1 * J
+    Flux_X1(2) = k_ud(1,1) * J + W * (H_u_1 * Gm_dd_11 * V_u_1 + V_u_1 * H_u_1) &
+                 + W**2 * V_u_1 * Gm_dd_11 * V_u_1 * J
+    Flux_X1(3) = k_ud(1,2) * J + W * (H_u_1 * Gm_dd_22 * V_u_2 + V_u_1 * H_u_2) &
+                 + W**2 * V_u_1 * Gm_dd_22 * V_u_2 * J
+    Flux_X1(4) = k_ud(1,3) * J + W * (H_u_1 * Gm_dd_33 * V_u_3 + V_u_1 * H_u_3) &
+                 + W**2 * V_u_1 * Gm_dd_33 * V_u_3 * J
+    
     RETURN
-
   END FUNCTION Flux_X1
 
   FUNCTION Flux_X2 ( J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, &
@@ -1284,26 +1321,29 @@ CONTAINS
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     ! --- Local variables ---
-    REAL(DP) :: vMag, W, vH
+    REAL(DP) :: vMag, W, vDotH
     REAL(DP) :: k_ud(3,3)
     REAL(DP) :: vK_u_2
 
     vMag = SQRT( V_u_1 * Gm_dd_11 * V_u_1 &
-      + V_u_2 * Gm_dd_22 * V_u_2 &
-      + V_u_3 * Gm_dd_33 * V_u_3 )
+                 + V_u_2 * Gm_dd_22 * V_u_2 &
+                 + V_u_3 * Gm_dd_33 * V_u_3 )
     W = One / SQRT ( One - vMag**2 )
-    vH = V_u_1 * H_u_1 + V_u_2 * H_u_2 + V_u_3 * H_u_3
+    vDotH = V_u_1 * H_u_1 + V_u_2 * H_u_2 + V_u_3 * H_u_3
 
     k_ud = EddingtonTensorComponents_dd ( J, H_u_1, H_u_2, H_u_3, &
       V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33)
     vK_u_2 = V_u_1 * k_ud(2,1) + V_u_2 * k_ud(2,2) + V_u_3 * k_ud(2,3)
 
-    Flux_X2(1) = W * H_u_2 + W * V_u_2 * (W * J + vH) + vK_u_2 * J
-    Flux_X2(2) = k_ud(2,1) + W * (H_u_2 * V_u_1 + V_u_2 * H_u_1) + W * W * V_u_2 * V_u_1 * J
-    Flux_X2(3) = k_ud(2,2) + W * (H_u_2 * V_u_2 + V_u_2 * H_u_2) + W * W * V_u_2 * V_u_2 * J
-    Flux_X2(4) = k_ud(2,3) + W * (H_u_2 * V_u_3 + V_u_2 * H_u_3) + W * W * V_u_2 * V_u_3 * J
+    Flux_X2(1) = W * H_u_2 + W * V_u_2 * (W * J + vDotH) + vK_u_2 * J
+    Flux_X2(2) = k_ud(2,1) * J + W * (H_u_2 * Gm_dd_11 * V_u_1 + V_u_2 * H_u_1) &
+                 + W**2 * V_u_2 * Gm_dd_11 * V_u_1 * J
+    Flux_X2(3) = k_ud(2,2) * J + W * (H_u_2 * Gm_dd_22 * V_u_2 + V_u_2 * H_u_2) &
+                 + W**2 * V_u_2 * Gm_dd_22 * V_u_2 * J
+    Flux_X2(4) = k_ud(2,3) * J + W * (H_u_2 * Gm_dd_33 * V_u_3 + V_u_2 * H_u_3) &
+                 + W**2 * V_u_2 * Gm_dd_33 * V_u_3 * J
+    
     RETURN
-
   END FUNCTION Flux_X2
 
   FUNCTION Flux_X3 ( J, H_u_1, H_u_2, H_u_3, V_u_1, V_u_2, V_u_3, &
@@ -1316,26 +1356,29 @@ CONTAINS
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     ! --- Local variables ---
-    REAL(DP) :: vMag, W, vH
+    REAL(DP) :: vMag, W, vDotH
     REAL(DP) :: k_ud(3,3)
     REAL(DP) :: vK_u_3
 
     vMag = SQRT( V_u_1 * Gm_dd_11 * V_u_1 &
-      + V_u_2 * Gm_dd_22 * V_u_2 &
-      + V_u_3 * Gm_dd_33 * V_u_3 )
+                 + V_u_2 * Gm_dd_22 * V_u_2 &
+                 + V_u_3 * Gm_dd_33 * V_u_3 )
     W = One / SQRT ( One - vMag**2 )
-    vH = V_u_1 * H_u_1 + V_u_2 * H_u_2 + V_u_3 * H_u_3
+    vDotH = V_u_1 * H_u_1 + V_u_2 * H_u_2 + V_u_3 * H_u_3
 
     k_ud = EddingtonTensorComponents_dd ( J, H_u_1, H_u_2, H_u_3, &
       V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33)
     vK_u_3 = V_u_1 * k_ud(3,1) + V_u_2 * k_ud(3,2) + V_u_3 * k_ud(3,3)
 
-    Flux_X3(1) = W * H_u_3 + W * V_u_3 * (W * J + vH) + vK_u_3 * J
-    Flux_X3(2) = k_ud(3,1) + W * (H_u_3 * V_u_1 + V_u_3 * H_u_1) + W * W * V_u_3 * V_u_1 * J
-    Flux_X3(3) = k_ud(3,2) + W * (H_u_3 * V_u_2 + V_u_3 * H_u_2) + W * W * V_u_3 * V_u_2 * J
-    Flux_X3(4) = k_ud(3,3) + W * (H_u_3 * V_u_3 + V_u_3 * H_u_3) + W * W * V_u_3 * V_u_3 * J
+    Flux_X3(1) = W * H_u_3 + W * V_u_3 * (W * J + vDotH) + vK_u_3 * J
+    Flux_X3(2) = k_ud(3,1) * J + W * (H_u_3 * Gm_dd_11 * V_u_1 + V_u_3 * H_u_1) &
+                 + W**2 * V_u_3 * Gm_dd_11 * V_u_1 * J
+    Flux_X3(3) = k_ud(3,2) * J + W * (H_u_3 * Gm_dd_22 * V_u_2 + V_u_3 * H_u_2) &
+                 + W**2 * V_u_3 * Gm_dd_22 * V_u_2 * J
+    Flux_X3(4) = k_ud(3,3) * J + W * (H_u_3 * Gm_dd_33 * V_u_3 + V_u_3 * H_u_3) &
+                 + W**2 * V_u_3 * Gm_dd_33 * V_u_3 * J
+    
     RETURN
-
   END FUNCTION Flux_X3
 
   FUNCTION Flux_E( J, H_d_1, H_d_2, H_d_3, &
@@ -1477,6 +1520,23 @@ CONTAINS
     TimeStep = MAX( CFL * TimeStep, SqrtTiny )
 
   END SUBROUTINE ComputeTimeStep_TwoMoment
+
+  SUBROUTINE FaceVelocity_X1 &
+    ( V1_L, V2_L, V3_L, V1_R, V2_R, V3_R, V1_F, V2_F, V3_F )
+
+    REAL(DP), INTENT(in)  :: V1_L, V2_L, V3_L
+    REAL(DP), INTENT(in)  :: V1_R, V2_R, V3_R
+    REAL(DP), INTENT(out) :: V1_F, V2_F, V3_F
+
+    ! --- Average Left and Right States ---
+
+    V1_F = Half * ( V1_L + V1_R )
+    V2_F = Half * ( V2_L + V2_R )
+    V3_F = Half * ( V3_L + V3_R )
+
+    RETURN
+
+  END SUBROUTINE FaceVelocity_X1
 
 
 END MODULE TwoMoment_UtilitiesModule_FMC
