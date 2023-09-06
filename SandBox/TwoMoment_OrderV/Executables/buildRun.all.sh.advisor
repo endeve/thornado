@@ -103,9 +103,9 @@ function runApp(){
       #module load nightly-advisor/23.1.0.613901
       time(advisor --collect=roofline --data-limit=0 --profile-gpu --project-dir=/localdisk/quanshao/ExaStar/thornado-ms69/SandBox/TwoMoment_OrderV/Executables/advisor-sineWave-umd692 -- ./${APP_NAME}_${THORNADO_MACHINE}) |& tee -a $OUTPUT_LOG
    else
-#      echo "FI_PROVIDER="$FI_PROVIDER
-#      gdb-oneapi ./ApplicationDriver_beacon_intel
-      ( time ./${APP_NAME}_${THORNADO_MACHINE} ) |& tee -a $LOG_FILE
+      echo "FI_PROVIDER="$FI_PROVIDER
+      gdb-oneapi ./ApplicationDriver_beacon_intel
+#      ( time ./${APP_NAME}_${THORNADO_MACHINE} ) |& tee -a $LOG_FILE
    fi
 
    #(time /nfs/pdx/home/mheckel/pti-gpu/tools/bin/onetrace -h -d -v ./${APP_NAME}_${THORNADO_MACHINE} ) |& tee -a $LOG_FILE
@@ -136,7 +136,7 @@ module purge
 #ACTION="iprof"
 #ACTION="perf"
 #ACTION="onetrace"
-#ACTION="advisor"
+ACTION="advisor"
 #ACTION="vtune"
 #export ONEAPI_MODULE_OVERRIDE=oneapi/eng-compiler/2023.05.15.007
 #ACTION=""
@@ -214,21 +214,21 @@ fi
 
 #opLevels=(O0 O1 O2 O3)
 opLevels=(O3)
-grids=("[8,8,8]" "[16,16,16]")
-gridNames=("" "-xN16")
-appNames=(ApplicationDriver ApplicationDriver_Neutrinos)
-logFiles=(sineWave relax)
-CaseNames=(SineWaveStreaming Relaxation)
-userOptions=("" "MICROPHYSICS=WEAKLIB")
-gridLines=(85 127)
+#grids=("[8,8,8]" "[16,16,16]")
+#gridNames=("" "-xN16")
+#appNames=(ApplicationDriver ApplicationDriver_Neutrinos)
+#logFiles=(sineWave relax)
+#CaseNames=(SineWaveStreaming Relaxation)
+#userOptions=("" "MICROPHYSICS=WEAKLIB")
+#gridLines=(85 127)
 
-#grids=("[8,8,8]")
-#gridNames=("")
-#appNames=(ApplicationDriver)
-#logFiles=(sineWave)
-#CaseNames=(SineWaveStreaming)
-#userOptions=("")
-#gridLines=(85)
+grids=("[8,8,8]")
+gridNames=("")
+appNames=(ApplicationDriver)
+logFiles=(sineWave)
+CaseNames=(SineWaveStreaming)
+userOptions=("")
+gridLines=(85)
 #appNames=(ApplicationDriver_Neutrinos)
 #logFiles=(relax)
 #CaseNames=(Relaxation)
