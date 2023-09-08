@@ -259,8 +259,10 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
+print*,"I am hungry and I am hungry"
     IF( .NOT. PRESENT( External_EOS ) ) THEN
 
+       print*,"dkfjdalkfjdkafjdkjfaks"
        ALLOCATE( EOS )
        UsingExternalEOS = .FALSE.
 
@@ -450,22 +452,37 @@ CONTAINS
     !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
 #endif
 
+print*,"ddddd0000"
     DEALLOCATE( D_T, T_T, Y_T )
 
+print*,"ddddd0001"
     DEALLOCATE( P_T  )
+print*,"ddddd0002"
     DEALLOCATE( S_T  )
+print*,"ddddd0003"
     DEALLOCATE( E_T  )
+print*,"ddddd0004"
     DEALLOCATE( Me_T )
+print*,"ddddd0005"
     DEALLOCATE( Mp_T )
+print*,"ddddd0006"
     DEALLOCATE( Mn_T )
+print*,"ddddd0007"
     DEALLOCATE( Xp_T )
+print*,"ddddd0008"
     DEALLOCATE( Xn_T )
+print*,"ddddd0009"
     DEALLOCATE( Xa_T )
+print*,"ddddd0010"
     DEALLOCATE( Xh_T )
+print*,"ddddd0011"
     DEALLOCATE( Gm_T )
 
+print*,"ddddd0012", UsingExternalEOS
     IF ( .NOT. UsingExternalEOS ) THEN
+       print*, "ddd111222"
        DEALLOCATE( EOS )
+       print*, "ddd222"
     END IF
 
 #endif

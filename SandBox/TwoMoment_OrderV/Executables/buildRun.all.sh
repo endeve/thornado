@@ -79,7 +79,7 @@ function runApp(){
 
    echo "ZE_AFFINITY_MASK="${ZE_AFFINITY_MASK}                                |& tee -a $LOG_FILE
    echo "EnableImplicitScaling="${EnableImplicitScaling}                      |& tee -a $LOG_FILE
-   echo "LIBOMPTARGET_LEVEL0_MEMORY_POOL="${LIBOMPTARGET_LEVEL0_MEMORY_POOL}  |& tee -a $LOG_FILE
+   echo "LIBOMPTARGET_LEVEL_ZERO_MEMORY_POOL="${LIBOMPTARGET_LEVEL_ZERO_MEMORY_POOL}  |& tee -a $LOG_FILE
 
    if [[ "$ACTION" == "iprof" ]]; then
       module load iprof/0.11.2
@@ -97,7 +97,7 @@ function runApp(){
       #module load nightly-advisor/23.1.0.613901
       time(advisor --collect=roofline --data-limit=0 --profile-gpu --project-dir=/localdisk/quanshao/ExaStar/thornado-dev/roofline04-03-762 -- ./${APP_NAME}_${THORNADO_MACHINE}) |& tee -a $OUTPUT_LOG
    else
-      ( time ./${APP_NAME}_${THORNADO_MACHINE} ) |& tee -a $LOG_FILE
+      ( time gdb-oneapi ./${APP_NAME}_${THORNADO_MACHINE} ) |& tee -a $LOG_FILE
    fi
 
    #(time /nfs/pdx/home/mheckel/pti-gpu/tools/bin/onetrace -h -d -v ./${APP_NAME}_${THORNADO_MACHINE} ) |& tee -a $LOG_FILE
@@ -120,7 +120,7 @@ module purge
 #export A21_SDK_MKLROOT_OVERRIDE=/exaperf/nightly/mkl-cev/2022.11.02 ## Latest nightly, i.e. 2022-10-06, uses this mkl
 #export A21_SDK_MKLROOT_OVERRIDE=/exaperf/nightly/mkl-cev/2023.04.19 ## Latest nightly, i.e. 2023-05-01 use this mkl 
 
-#ACTION="iprof"
+ACTION="iprof"
 #ACTION="perf"
 #ACTION="onetrace"
 #ACTION="advisor"
@@ -131,11 +131,11 @@ if [[ -n $ACTION ]];then
    faction="-$ACTION"
 fi
 
-export BASE_DATE="2023.5.007"
-export BASE_UMD="-dev647"
-export AADEBUG=""
+BASE_DATE="2023.5.007"
+BASE_UMD="-dev647"
+MKL_BASE_DATE="" ## A underline is need before the date string for clarity
+#export AADEBUG="-g"
 
-export COMPILER_DATE="2023.08.02"
 
 #export COMPILER_DATE=".2023.05.15.003-rc11"
 #export COMPILER_DATE="2023.5.007"
@@ -144,9 +144,18 @@ export COMPILER_DATE="2023.08.02"
 #module switch -f mpich/52.2-256/icc-sockets-gpu mpich/51.2/icc-sockets-gpu    ## Needed by 05.15.007.
 
 ### New compiler working with mkl nighlty.
-module load nightly-mkl-cev_nightly/${COMPILER_DATE}
-#module swap -f nightly-compiler/${COMPILER_DATE}
-
+MKL_DATE="2023.08.28"
+#module load nightly-mkl-cev_nightly/${MKL_DATE}
+module load nightly-mkl-cev_rls/${MKL_DATE}
+COMPILER_DATE="2023.08.20"
+#COMPILER_DATE=""
+if [[ -n $COMPILER_DATE ]]; then
+   module swap -f nightly-compiler/${COMPILER_DATE}
+else
+   aaa=`ml list|grep nightly-compiler`
+   ddd=`echo "${aaa#*nightly-compiler/}"`
+   COMPILER_DATE=`echo  $ddd |cut -d ' ' -f1`
+fi
 
 #export ONEAPI_MODULE_OVERRIDE=oneapi/eng-compiler/2022.12.30.003
 #module load nightly-compiler/${COMPILER_DATE}
@@ -158,34 +167,39 @@ module load nightly-mkl-cev_nightly/${COMPILER_DATE}
 ###mkdir sdump-$umdf
 ###export IGC_DumpToCustomDir=sdump-$umdf
 ###GRAPHICS_RT_INSTALL_DIR=/localdisk/quanshao/sandbox/drivers/devel-${umdf}
-###export PATH=$GRAPHICS_RT_INSTALL_DIR/usr/bin:$PATH
-###export CPATH=$GRAPHICS_RT_INSTALL_DIR/usr/include:$CPATH
-###export LIBRARY_PATH=$GRAPHICS_RT_INSTALL_DIR/usr/lib64:$LIBRARY_PATH
-###export LD_LIBRARY_PATH=$GRAPHICS_RT_INSTALL_DIR/usr/lib64:$LD_LIBRARY_PATH
-###export INCLUDE=$GRAPHICS_RT_INSTALL_DIR/usr/include:$INCLUDE
+#umdf=21028
+#GRAPHICS_RT_INSTALL_DIR=/localdisk/quanshao/sandbox/drivers/devigc-${umdf}
+#GRAPHICS_RT_INSTALL_DIR=/localdisk/quanshao/sandbox/drivers/compigc-${umdf}
+#export PATH=$GRAPHICS_RT_INSTALL_DIR/usr/bin:$PATH
+#export CPATH=$GRAPHICS_RT_INSTALL_DIR/usr/include:$CPATH
+#export LIBRARY_PATH=$GRAPHICS_RT_INSTALL_DIR/usr/lib64:$LIBRARY_PATH
+#export LD_LIBRARY_PATH=$GRAPHICS_RT_INSTALL_DIR/usr/lib64:$LD_LIBRARY_PATH
+#export INCLUDE=$GRAPHICS_RT_INSTALL_DIR/usr/include:$INCLUDE
 
-#UMD="neo/agama-devel-sp3/692-23.22.26516.20-692"
+UMD="neo/agama-devel-sp3/692-23.22.26516.20-692"
 #UMD="neo/agama-devel-sp3/697-23.26.26690.19-697"
 #UMD="neo/agama-devel-sp3/693-23.26.26690.13-693"
-
+#UMD="neo/agama-devel-sp3/701-23.26.26690.20-701"
+#UMD="neo/agama-devel-sp3/704-23.26.26690.22-702"
+#UMD="neo/agama-devel-sp3/708-23.26.26690.22-702"
 export useAGRF="TRUE"
 if [[ -n $UMD ]]; then
    #module switch -f intel_compute_runtime/release/agama-devel-551 $UMD
-   module switch -f intel_compute_runtime/release/agama-devel-627 $UMD
+  module switch -f intel_compute_runtime/release/agama-devel-627 $UMD
    if [[ $UMD == intel_compute* ]]; then
       umdf="-devel602"
       export useAGRF="FALSE"
    else
       umdf=`echo $UMD |cut -d '/' -f3`
       umdf=`echo $umdf |cut -d '-' -f1`
-      umdf="-umd$umdf"
+      umdf="-umdAGRF$umdf"
 #      umdf="-Tdebug1IMM1-umd$umdf"
    fi
 else
    aaa=`ml list|grep agama-devel`
    ddd=`echo "${aaa#*agama-devel-}"`
    umdf=`echo  $ddd |cut -d ' ' -f1`
-   umdf="-dev$umdf"
+   umdf="-Ddev$umdf"
 fi
 
 
@@ -213,26 +227,26 @@ fi
 
 #opLevels=(O0 O1 O2 O3)
 opLevels=(O3)
-grids=("[8,8,8]" "[16,16,16]")
-gridNames=("" "-xN16")
-appNames=(ApplicationDriver ApplicationDriver_Neutrinos)
-logFiles=(sineWave relax)
-CaseNames=(SineWaveStreaming Relaxation)
-userOptions=("" "MICROPHYSICS=WEAKLIB")
-gridLines=(85 127)
+#grids=("[8,8,8]" "[16,16,16]")
+#gridNames=("" "-xN16")
+#appNames=(ApplicationDriver ApplicationDriver_Neutrinos)
+#logFiles=(sineWave relax)
+#CaseNames=(SineWaveStreaming Relaxation)
+#userOptions=("" "MICROPHYSICS=WEAKLIB")
+#gridLines=(85 127)
 
-#grids=("[8,8,8]")
-#gridNames=("")
+grids=("[16,16,16]")
+#gridNames=("-xN16")
 #appNames=(ApplicationDriver)
 #logFiles=(sineWave)
 #CaseNames=(SineWaveStreaming)
 #userOptions=("")
 #gridLines=(85)
-#appNames=(ApplicationDriver_Neutrinos)
-#logFiles=(relax)
-#CaseNames=(Relaxation)
-#userOptions=("MICROPHYSICS=WEAKLIB")
-#gridLines=(127)
+appNames=(ApplicationDriver_Neutrinos)
+logFiles=(relax)
+CaseNames=(Relaxation)
+userOptions=("MICROPHYSICS=WEAKLIB")
+gridLines=(127)
 
 if [[ "$ACTION" == "vtune" ]]; then
    opLevels=(O3)
@@ -248,11 +262,12 @@ fi
 
 set_common
 
-timeFOMLog="timeFOM_${COMPILER_DATE}.txt${umdf}$AADEBUG"
-if [[ -z $ACTION ]];then
+timeFOMLog="timeFOM_${COMPILER_DATE}-${MKL_DATE}.txt${umdf}$AADEBUG"
+if [[ -z $ACTION || "$1" == "FOM" ]];then
    rm -rf $timeFOMLog
    echo "                                                        Time(seconds)                             |                      Figure of Merit (FOM)">>$timeFOMLog
    echo "AppName     Grid      OpLevel :  ${COMPILER_DATE}$umdf   ${BASE_DATE}${BASE_UMD}    TimeDiff   Percentage   |   ${COMPILER_DATE}${umdf}   ${BASE_DATE}${BASE_UMD}    FOM-Diff   Percentage">>$timeFOMLog
+   echo "                     MKL Date :  $MKL_DATE               $MKL_BASE_DATE">>$timeFOMLog
 
    echo "-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------">>$timeFOMLog
 fi   
@@ -271,8 +286,8 @@ do
          fi
 
          export OP_LEVEL=$op
-         export LOG_FILE=${logFiles[jj]}.${OP_LEVEL}.${COMPILER_DATE}${umdf}${gridNames[ii]}${faction}$AADEBUG
-         export LOG_BASE=${logFiles[jj]}.${OP_LEVEL}.${BASE_DATE}${BASE_UMD}${gridNames[ii]}$AADEBUG
+         export LOG_FILE=${logFiles[jj]}.${OP_LEVEL}.${COMPILER_DATE}-${MKL_DATE}${umdf}${gridNames[ii]}${faction}$AADEBUG
+         export LOG_BASE=${logFiles[jj]}.${OP_LEVEL}.${BASE_DATE}${MKL_BASE_DATE}${BASE_UMD}${gridNames[ii]}$AADEBUG
          export USER_OPTION=${userOptions[jj]}
 
          if [[ "$ACTION" == "vtune" ]]; then

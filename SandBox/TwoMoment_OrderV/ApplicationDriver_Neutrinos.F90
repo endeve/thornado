@@ -683,42 +683,60 @@ CONTAINS
     USE TwoMoment_TimersModule, ONLY: &
       FinalizeTimers
 
+   print*, "aaa00111"
     CALL Finalize_IMEX_RK
-
+   print*, "aaa00222"
     CALL FinalizeTally
 
+   print*, "aaa00333"
     CALL FinalizeEquationOfState_TABLE
 
+   print*, "aaa00444"
     CALL FinalizeOpacities_TABLE
 
+   print*, "aaa00555"
     CALL FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
 
+   print*, "aaa00666"
     CALL FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
 
+   print*, "aaa00777"
     CALL FinalizeTroubledCellIndicator_TwoMoment
 
+   print*, "aaa00888"
     CALL FinalizeSlopeLimiter_TwoMoment
 
+   print*, "aaa00999"
     CALL FinalizePositivityLimiter_TwoMoment
 
+    print*, "bbb00111"
     CALL FinalizeReferenceElementX
 
+    print*, "bbb00222"
     CALL FinalizeReferenceElementX_Lagrange
 
+    print*, "bbb00333"
     CALL FinalizeReferenceElementE
 
+    print*, "bbb00444"
     CALL FinalizeReferenceElementE_Lagrange
 
+    print*, "bbb00555"
     CALL FinalizeReferenceElementZ
 
+    print*, "bbb00666"
     CALL FinalizeReferenceElement
 
+    print*, "bbb00777"
     CALL FinalizeReferenceElement_Lagrange
 
+    print*, "bbb00888"
     CALL FinalizeProgram
 
+    print*, "ccc00111"
     CALL FinalizeTimers_Euler
 
+    print*, "ccc00222"
     CALL FinalizeTimers
 
   END SUBROUTINE FinalizeDriver
