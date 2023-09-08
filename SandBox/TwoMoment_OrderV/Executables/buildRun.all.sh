@@ -97,7 +97,7 @@ function runApp(){
       #module load nightly-advisor/23.1.0.613901
       time(advisor --collect=roofline --data-limit=0 --profile-gpu --project-dir=/localdisk/quanshao/ExaStar/thornado-dev/roofline04-03-762 -- ./${APP_NAME}_${THORNADO_MACHINE}) |& tee -a $OUTPUT_LOG
    else
-      ( time gdb-oneapi ./${APP_NAME}_${THORNADO_MACHINE} ) |& tee -a $LOG_FILE
+      ( time ./${APP_NAME}_${THORNADO_MACHINE} ) |& tee -a $LOG_FILE
    fi
 
    #(time /nfs/pdx/home/mheckel/pti-gpu/tools/bin/onetrace -h -d -v ./${APP_NAME}_${THORNADO_MACHINE} ) |& tee -a $LOG_FILE
@@ -120,7 +120,7 @@ module purge
 #export A21_SDK_MKLROOT_OVERRIDE=/exaperf/nightly/mkl-cev/2022.11.02 ## Latest nightly, i.e. 2022-10-06, uses this mkl
 #export A21_SDK_MKLROOT_OVERRIDE=/exaperf/nightly/mkl-cev/2023.04.19 ## Latest nightly, i.e. 2023-05-01 use this mkl 
 
-ACTION="iprof"
+#ACTION="iprof"
 #ACTION="perf"
 #ACTION="onetrace"
 #ACTION="advisor"
@@ -144,11 +144,11 @@ MKL_BASE_DATE="" ## A underline is need before the date string for clarity
 #module switch -f mpich/52.2-256/icc-sockets-gpu mpich/51.2/icc-sockets-gpu    ## Needed by 05.15.007.
 
 ### New compiler working with mkl nighlty.
-MKL_DATE="2023.08.28"
+MKL_DATE="2023.08.30"
 #module load nightly-mkl-cev_nightly/${MKL_DATE}
 module load nightly-mkl-cev_rls/${MKL_DATE}
 COMPILER_DATE="2023.08.20"
-#COMPILER_DATE=""
+COMPILER_DATE=""
 if [[ -n $COMPILER_DATE ]]; then
    module swap -f nightly-compiler/${COMPILER_DATE}
 else
@@ -228,26 +228,26 @@ fi
 
 #opLevels=(O0 O1 O2 O3)
 opLevels=(O3)
-#grids=("[8,8,8]" "[16,16,16]")
-#gridNames=("" "-xN16")
-#appNames=(ApplicationDriver ApplicationDriver_Neutrinos)
-#logFiles=(sineWave relax)
-#CaseNames=(SineWaveStreaming Relaxation)
-#userOptions=("" "MICROPHYSICS=WEAKLIB")
-#gridLines=(85 127)
+grids=("[8,8,8]" "[16,16,16]")
+gridNames=("" "-xN16")
+appNames=(ApplicationDriver ApplicationDriver_Neutrinos)
+logFiles=(sineWave relax)
+CaseNames=(SineWaveStreaming Relaxation)
+userOptions=("" "MICROPHYSICS=WEAKLIB")
+gridLines=(85 127)
 
-grids=("[16,16,16]")
+#grids=("[16,16,16]")
 #gridNames=("-xN16")
 #appNames=(ApplicationDriver)
 #logFiles=(sineWave)
 #CaseNames=(SineWaveStreaming)
 #userOptions=("")
 #gridLines=(85)
-appNames=(ApplicationDriver_Neutrinos)
-logFiles=(relax)
-CaseNames=(Relaxation)
-userOptions=("MICROPHYSICS=WEAKLIB")
-gridLines=(127)
+#appNames=(ApplicationDriver_Neutrinos)
+#logFiles=(relax)
+#CaseNames=(Relaxation)
+#userOptions=("MICROPHYSICS=WEAKLIB")
+#gridLines=(127)
 
 if [[ "$ACTION" == "vtune" ]]; then
    opLevels=(O3)
