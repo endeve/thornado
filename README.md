@@ -76,6 +76,9 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 
 
 # Status and Progress
+## Sept 08 2023
+1. reorganized the directories on PVC04. 
+2.  Continue modify the ms69 report
 ## Sept 07 2023
 1. Continue modify the ms69 report by addressing the comments and suggestions from Todd, Brain, and Marcus. 
 ## Sept 06 2023

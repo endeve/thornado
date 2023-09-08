@@ -12,8 +12,8 @@ function set_common(){
    export EXASTAR_HOME=/localdisk/quanshao/ExaStar
    export HDF5_INC=${EXASTAR_HOME}/hdf57/include
    export HDF5_LIB=${EXASTAR_HOME}/hdf57/lib64
-   export THORNADO_DIR=${EXASTAR_HOME}/thornado-new
-   export WEAKLIB_DIR=${EXASTAR_HOME}/weaklib-new
+   export THORNADO_DIR=${EXASTAR_HOME}/thornado
+   export WEAKLIB_DIR=${EXASTAR_HOME}/weaklib
    export WEAKLIB_TABLES_DIR=${EXASTAR_HOME}/weaklib-tables
    export THORNADO_MACHINE=beacon_intel
 
@@ -177,6 +177,7 @@ fi
 #export INCLUDE=$GRAPHICS_RT_INSTALL_DIR/usr/include:$INCLUDE
 
 UMD="neo/agama-devel-sp3/692-23.22.26516.20-692"
+UMD="neo/agama-devel-sp3/723-23.30.26918.10-721"
 #UMD="neo/agama-devel-sp3/697-23.26.26690.19-697"
 #UMD="neo/agama-devel-sp3/693-23.26.26690.13-693"
 #UMD="neo/agama-devel-sp3/701-23.26.26690.20-701"
