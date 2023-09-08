@@ -80,6 +80,7 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 1. reorganized the directories on PVC04. 
 2.  Continue modify the ms69 report
 3. With MKL  2023.08.30 and ifx 2023.09.07, and umd723, the StreamingSineWave case runs fine, but the Relaxation case crashed with "forrtl: severe (153): allocatable array or pointer is not allocated" and the runs are around 5-10 times slower than the usual runs. 
+4. Tried a 5liner, but the forrtl: severe error did not appear. Need to figure out a reproducer. for the deallocation (EOS). reducing Thornado to /localdisk/quanshao/sandbox/allocDeallocPointer 
 ## Sept 07 2023
 1. Continue modify the ms69 report by addressing the comments and suggestions from Todd, Brain, and Marcus. 
 ## Sept 06 2023
