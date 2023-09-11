@@ -76,6 +76,9 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 
 
 # Status and Progress
+## Sept 11 2023
+1. Continue modify the ms69 report, and reading other apps' report
+2. Created a reproducer for the forrtl error related to deallocation, and submitted a JIRA https://jira.devtools.intel.com/browse/CMPLRLLVM-51515
 ## Sept 08 2023
 1. reorganized the directories on PVC04. 
 2.  Continue modify the ms69 report
