@@ -76,6 +76,20 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 
 
 # Status and Progress
+## Sept 12 2023
+1. Thornado crashes with same forrtl error with nightly-compiler/2023.09.10.
+2. Commented out "DEALLOCATE( EOS )" in Modules/EquationOfState/EquationOfStateModule_TABLE.F90 as a work around to the crash. Running Thornado with this work around and 2023.09.10. 
+3. The slow down on the Relaxation small case is significant, starting from nightly-compiler/2023.08.22
+<pre>
+AppName     Grid      OpLevel :  2023.09.10-dev627   2023.5.007-dev647    TimeDiff   Percentage   |   2023.09.10-dev627   2023.5.007-dev647    FOM-Diff   Percentage
+                     MKL Date :  2023.08.30
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     9.7744e+00          9.4460e+00       3.2840e-01     3.48%            1.3034e+07          1.3487e+07       -4.5310e+05    -3.36%
+sineWave   [16,16,16]   O3    :     1.3885e+02          1.3354e+02       5.3113e+00     3.98%            1.4590e+07          1.5170e+07       -5.8030e+05    -3.83%
+relax      [8,8,8]      O3    :     4.1567e+02          1.9943e+01       3.9573e+02  1984.30%            2.0509e+06          4.2746e+07       -4.0695e+07   -95.20%
+relax      [16,16,16]   O3    :     1.6938e+02          1.6671e+02       2.6685e+00     1.60%            4.0265e+07          4.0910e+07       -6.4450e+05    -1.58%
+</pre>
+4. Continue proof-reading ms report.
 ## Sept 11 2023
 1. Continue modify the ms69 report, and reading other apps' report
 2. Created a reproducer for the forrtl error related to deallocation, and submitted a JIRA https://jira.devtools.intel.com/browse/CMPLRLLVM-51515
