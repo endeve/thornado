@@ -484,13 +484,16 @@ CONTAINS
     ! --- Initial Guess ---
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( iX )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( iX ) &
     !$ACC PRESENT( CVEC, N, G_d_1, G_d_2, G_d_3, &
-    !$ACC          D, I_u_1, I_u_2, I_u_3 )
+    !$ACC          PositionIndexZ, D, I_u_1, I_u_2, I_u_3 )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( iX )
 #endif
     DO iZ = 1, nZ
       CVEC(iCR_N ,iZ) = N    (iZ)
@@ -498,10 +501,12 @@ CONTAINS
       CVEC(iCR_G2,iZ) = G_d_2(iZ)
       CVEC(iCR_G3,iZ) = G_d_3(iZ)
 
+      iX = PositionIndexZ(iZ)
+
       D    (iZ) = N(iZ)
-      I_u_1(iZ) = Zero
-      I_u_2(iZ) = Zero
-      I_u_3(iZ) = Zero
+      I_u_1(iZ) = G_d_1(iZ) / Gm_dd_11(iX)
+      I_u_2(iZ) = G_d_2(iZ) / Gm_dd_22(iX)
+      I_u_3(iZ) = G_d_3(iZ) / Gm_dd_33(iX)
     END DO
 
     CALL TimersStop( Timer_Streaming_NumericalFlux_InOut )
