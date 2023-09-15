@@ -76,10 +76,11 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 
 
 # Status and Progress
-## Sept 13-14 2023
+## Sept 13-15 2023
 1. Continue working on improving ms69 report by addressing reviewer's comments and suggestions and also proofreading. 
 2. copied all the ms69 related result files to /shared/shared2/MS69, and add these files and the build run scripts to generated this files to to ms69 branch 
 3. Did have 9.2 seconds IMEX time for StreamingSineWave {8,8,8} case on PVC04 using nightly-mkl-cev_rls/2023.08.28, nightly-compiler/ 2023.08.20, and neo/agama-devel-sp3/692-23.22.26516.20-692, but can only get 10.2 as the best time since 09/13/2023 on PVC04. Wondering what happened 1) with PVC04 machine, 2) the setup 3), source code changes? 4) run script changes.  BIG ????
+4. git diff Aug 4 and Sept 14 did not show any code change can make the run slow.
 ## Sept 12 2023
 1. Thornado crashes with same forrtl error with nightly-compiler/2023.09.10.
 2. Commented out "DEALLOCATE( EOS )" in Modules/EquationOfState/EquationOfStateModule_TABLE.F90 as a work around to the crash. Running Thornado with this work around and 2023.09.10. 
