@@ -81,6 +81,18 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 2. copied all the ms69 related result files to /shared/shared2/MS69, and add these files and the build run scripts to generated this files to to ms69 branch 
 3. Did have 9.2 seconds IMEX time for StreamingSineWave {8,8,8} case on PVC04 using nightly-mkl-cev_rls/2023.08.28, nightly-compiler/ 2023.08.20, and neo/agama-devel-sp3/692-23.22.26516.20-692, but can only get 10.2 as the best time since 09/13/2023 on PVC04. Wondering what happened 1) with PVC04 machine, 2) the setup 3), source code changes? 4) run script changes.  BIG ????
 4. git diff Aug 4 and Sept 14 did not show any code change can make the run slow.
+5. Thornado works with nightly 2023.09.14 and mkl 2023.08.30 umd dev627. The relaxation {8,8,8} case is still 20 times slower than the benchmarking run:
+<pre>
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables> more timeFOM_2023.09.14-2023.08.30.txt-dev627
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2023.09.14-dev627   2023.5.007-dev647    TimeDiff   Percentage   |   2023.09.14-dev627   2023.5.007-dev647    FOM-Diff   Percentage
+                     MKL Date :  2023.08.30
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     9.7823e+00          9.4460e+00       3.3635e-01     3.56%            1.3024e+07          1.3487e+07       -4.6370e+05    -3.44%
+sineWave   [16,16,16]   O3    :     1.3317e+02          1.3354e+02      -3.7330e-01    -0.28%            1.5213e+07          1.5170e+07        4.2500e+04     0.28%
+relax      [8,8,8]      O3    :     4.1522e+02          1.9943e+01       3.9528e+02  1982.05%            2.0531e+06          4.2746e+07       -4.0693e+07   -95.20%
+relax      [16,16,16]   O3    :     1.6632e+02          1.6671e+02      -3.8470e-01    -0.23%            4.1004e+07          4.0910e+07        9.4600e+04     0.23%
+</pre>
 ## Sept 12 2023
 1. Thornado crashes with same forrtl error with nightly-compiler/2023.09.10.
 2. Commented out "DEALLOCATE( EOS )" in Modules/EquationOfState/EquationOfStateModule_TABLE.F90 as a work around to the crash. Running Thornado with this work around and 2023.09.10. 
