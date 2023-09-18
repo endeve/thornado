@@ -463,9 +463,9 @@ CONTAINS
     DEALLOCATE( Xa_T )
     DEALLOCATE( Xh_T )
     DEALLOCATE( Gm_T )
-
+!! Shaoping : work around https://jira.devtools.intel.com/browse/CMPLRLLVM-51515
     IF ( .NOT. UsingExternalEOS ) THEN
-       DEALLOCATE( EOS )
+!!       DEALLOCATE( EOS )
     END IF
 
 #endif

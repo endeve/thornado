@@ -144,10 +144,10 @@ MKL_BASE_DATE="" ## A underline is need before the date string for clarity
 #module switch -f mpich/52.2-256/icc-sockets-gpu mpich/51.2/icc-sockets-gpu    ## Needed by 05.15.007.
 
 ### New compiler working with mkl nighlty.
-MKL_DATE="2023.08.30"
-#module load nightly-mkl-cev_nightly/${MKL_DATE}
-module load nightly-mkl-cev_rls/${MKL_DATE}
-COMPILER_DATE="2023.08.20"
+MKL_DATE="2023.09.14"
+module load nightly-mkl-cev_nightly/${MKL_DATE}
+#module load nightly-mkl-cev_rls/${MKL_DATE}
+#COMPILER_DATE="2023.08.20"
 COMPILER_DATE=""
 if [[ -n $COMPILER_DATE ]]; then
    module swap -f nightly-compiler/${COMPILER_DATE}
@@ -176,8 +176,8 @@ fi
 #export LD_LIBRARY_PATH=$GRAPHICS_RT_INSTALL_DIR/usr/lib64:$LD_LIBRARY_PATH
 #export INCLUDE=$GRAPHICS_RT_INSTALL_DIR/usr/include:$INCLUDE
 
-UMD="neo/agama-devel-sp3/692-23.22.26516.20-692"
-UMD="neo/agama-devel-sp3/723-23.30.26918.10-721"
+#UMD="neo/agama-devel-sp3/692-23.22.26516.20-692"
+#UMD="neo/agama-devel-sp3/723-23.30.26918.10-721"
 #UMD="neo/agama-devel-sp3/697-23.26.26690.19-697"
 #UMD="neo/agama-devel-sp3/693-23.26.26690.13-693"
 #UMD="neo/agama-devel-sp3/701-23.26.26690.20-701"
@@ -193,14 +193,14 @@ if [[ -n $UMD ]]; then
    else
       umdf=`echo $UMD |cut -d '/' -f3`
       umdf=`echo $umdf |cut -d '-' -f1`
-      umdf="-umdAGRF$umdf"
+      umdf="-umd$umdf"
 #      umdf="-Tdebug1IMM1-umd$umdf"
    fi
 else
    aaa=`ml list|grep agama-devel`
    ddd=`echo "${aaa#*agama-devel-}"`
    umdf=`echo  $ddd |cut -d ' ' -f1`
-   umdf="-Ddev$umdf"
+   umdf="-dev$umdf"
 fi
 
 

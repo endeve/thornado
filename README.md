@@ -76,6 +76,20 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 
 
 # Status and Progress
+## Sept 18 2023
+1. Thornado works with nightly 2023.09.17 and mkl 2023.09.14 umd dev627. The relaxation {8,8,8} case is still 20 times slower than the benchmarking run:
+<pre>
+
+cat timeFOM_2023.09.17-2023.09.14.txt-dev627
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2023.09.17-dev627   2023.5.007-dev647    TimeDiff   Percentage   |   2023.09.17-dev627   2023.5.007-dev647    FOM-Diff   Percentage
+                     MKL Date :  2023.09.14
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     9.7783e+00          9.4460e+00       3.3234e-01     3.52%            1.3029e+07          1.3487e+07       -4.5840e+05    -3.40%
+sineWave   [16,16,16]   O3    :     1.3117e+02          1.3354e+02      -2.3728e+00    -1.78%            1.5445e+07          1.5170e+07        2.7440e+05     1.81%
+relax      [8,8,8]      O3    :     4.0712e+02          1.9943e+01       3.8718e+02  1941.41%            2.0940e+06          4.2746e+07       -4.0652e+07   -95.10%
+relax      [16,16,16]   O3    :     1.6737e+02          1.6671e+02       6.6170e-01     0.40%            4.0748e+07          4.0910e+07       -1.6170e+05    -0.40%
+</pre>
 ## Sept 13-15 2023
 1. Continue working on improving ms69 report by addressing reviewer's comments and suggestions and also proofreading. 
 2. copied all the ms69 related result files to /shared/shared2/MS69, and add these files and the build run scripts to generated this files to to ms69 branch 
