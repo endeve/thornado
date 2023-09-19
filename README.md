@@ -77,7 +77,27 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 
 # Status and Progress
 ## Sept 18 2023
-1. Thornado works with nightly 2023.09.17 and mkl 2023.09.14 umd dev627. The relaxation {8,8,8} case is still 20 times slower than the benchmarking run:
+1. It is noted that the 8x8x8 Relaxation case slows down at Cycle=216 and more than 10-100X slow down after 236 Cycle. 
+   - iprof -l seems hanging for the all whole 271 simulations. It ran more than 30 minutes but it is still running. Kill the job. The iprof folder is more than 20G in size. 
+   - set maxCycle = 250, and see a file size limit error from iprof. The limit is 2G, but the data to be written is more than 3G. The iprof folder is 4.4G.
+   - set maxCycle = 238, and the iprof folder is 2.2G. "Perfetto trace saved: out.pftrace" 
+2. Debuging using iprof -l to see what caused slow down by running the code to Cycle=238
+   - nightly-mkl-cev_rls/2023.08.28
+    - nightly-compiler/2023.08.20
+    - nightly-compiler/2023.08.22
+
+3. With nightly-mkl-cev_rls/2023.08.30 and  nightly-compiler/2023.08.20, thornado gives: 
+<pre>
+
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables> tail -10 relax.O3.2023.08.20-2023.08.30-dev627-iprof
+warning: kernel __omp_offloading_802_302539_ylimitermodule_nonrelativistic_table_mp_APPLYPOSITIVITYlimiter_euler_nonrelativistic_table__l802  compiled SIMD32 allocated 256 regs and spilled around 280
+
+Build succeeded.
+ld: /exaperf/nightly/mkl-cev_rls/2023.08.30/lib/libmkl_sycl_blas.so: undefined reference to `sycl::_V1::detail::AccessorBaseHost::AccessorBaseHost(sycl::_V1::id<3>, sycl::_V1::range<3>, sycl::_V1::range<3>, sycl::_V1::access::mode, void*, int, int, bool, unsigned long, bool, sycl::_V1::property_list const&)'
+ld: /exaperf/nightly/mkl-cev_rls/2023.08.30/lib/libmkl_sycl_blas.so: undefined reference to `sycl::_V1::detail::AccessorBaseHost::AccessorBaseHost(sycl::_V1::id<3>, sycl::_V1::range<3>, sycl::_V1::range<3>, sycl::_V1::access::mode, void*, int, int, unsigned long, bool, sycl::_V1::property_list const&)'
+make: *** [../Makefile:75: ApplicationDriver_Neutrinos] Error 1
+</pre>
+4. Thornado works with nightly 2023.09.17 and mkl 2023.09.14 umd dev627. The relaxation {8,8,8} case is still 20 times slower than the benchmarking run:
 <pre>
 
 cat timeFOM_2023.09.17-2023.09.14.txt-dev627
