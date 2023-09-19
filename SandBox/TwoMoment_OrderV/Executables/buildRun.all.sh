@@ -144,11 +144,11 @@ MKL_BASE_DATE="" ## A underline is need before the date string for clarity
 #module switch -f mpich/52.2-256/icc-sockets-gpu mpich/51.2/icc-sockets-gpu    ## Needed by 05.15.007.
 
 ### New compiler working with mkl nighlty.
-MKL_DATE="2023.09.14"
+MKL_DATE="2023.09.17"
 module load nightly-mkl-cev_nightly/${MKL_DATE}
 #module load nightly-mkl-cev_rls/${MKL_DATE}
-#COMPILER_DATE="2023.08.20"
-COMPILER_DATE=""
+COMPILER_DATE="2023.09.17"
+#COMPILER_DATE=""
 if [[ -n $COMPILER_DATE ]]; then
    module swap -f nightly-compiler/${COMPILER_DATE}
 else
@@ -183,6 +183,7 @@ fi
 #UMD="neo/agama-devel-sp3/701-23.26.26690.20-701"
 #UMD="neo/agama-devel-sp3/704-23.26.26690.22-702"
 #UMD="neo/agama-devel-sp3/708-23.26.26690.22-702"
+UMD="neo/agama-devel-sp3/728-23.30.26918.14-728"
 export useAGRF="TRUE"
 if [[ -n $UMD ]]; then
    #module switch -f intel_compute_runtime/release/agama-devel-551 $UMD
