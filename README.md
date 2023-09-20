@@ -76,7 +76,8 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 
 
 # Status and Progress
-
+## Sept 20 2023
+1. The slowness still persist with ifx 2023.09.19 amd mkl 2023.09.18 and umd 728
 ## Sept 19 2023
 1. Thornado runs with 2023.09.17 amd mkl 2023.09.17 and umd 728. The same slowness still persists. 
 2. iprof runs for Relaxation with {8,8,8} shows that there are way more call to computeneutrinoopacityrates_brem__l1804 with new compiler than the old ones (08.20), i.e.,  32880/6094, the time for each call seems not changed too much. need run iprof. 

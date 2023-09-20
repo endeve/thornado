@@ -144,10 +144,10 @@ MKL_BASE_DATE="" ## A underline is need before the date string for clarity
 #module switch -f mpich/52.2-256/icc-sockets-gpu mpich/51.2/icc-sockets-gpu    ## Needed by 05.15.007.
 
 ### New compiler working with mkl nighlty.
-MKL_DATE="2023.09.17"
+MKL_DATE="2023.09.18"
 module load nightly-mkl-cev_nightly/${MKL_DATE}
 #module load nightly-mkl-cev_rls/${MKL_DATE}
-COMPILER_DATE="2023.09.17"
+#COMPILER_DATE="2023.09.17"
 #COMPILER_DATE=""
 if [[ -n $COMPILER_DATE ]]; then
    module swap -f nightly-compiler/${COMPILER_DATE}
