@@ -1262,11 +1262,11 @@ CONTAINS
 
           IF( iCF == iCF_S2 )THEN
 
-            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF) = MIN( U(iNX,iX1,iX_E0(2)-(iX2-1),iX3,iCF), Zero )
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF) = MIN( U(iNX,iX1,iX_B0(2),iX3,iCF), Zero )
 
           ELSE
 
-            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF) = U(iNX,iX1,iX_E0(2)-(iX2-1),iX3,iCF)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF) = U(iNX,iX1,iX_B0(2),iX3,iCF)
 
           END IF
 
@@ -1298,11 +1298,11 @@ CONTAINS
 
           IF( iCF == iCF_S2 )THEN
 
-            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = MAX( U(iNX,iX1,iX_B0(2)+(iX2-1),iX3,iCF), Zero )
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = MAX( U(iNX,iX1,iX_E0(2),iX3,iCF), Zero )
 
           ELSE
 
-            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = U(iNX,iX1,iX_B0(2)+(iX2-1),iX3,iCF)
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = U(iNX,iX1,iX_E0(2),iX3,iCF)
 
           END IF
 
@@ -1473,11 +1473,11 @@ CONTAINS
 
           IF( iCF == iCF_S2 )THEN
 
-            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = MAX( U(iNX,iX1,iX_B0(2)+(iX2-1),iX3,iCF), Zero )
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = MAX( U(iNX,iX1,iX_E0(2),iX3,iCF), Zero )
 
           ELSE
 
-            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = U(iNX,iX1,iX_B0(2)+(iX2-1),iX3,iCF)
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = U(iNX,iX1,iX_E0(2),iX3,iCF)
 
           END IF
 
