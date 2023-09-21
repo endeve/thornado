@@ -27,6 +27,9 @@ TwoMoment_BoundaryConditionsModule.o: \
   ProgramHeaderModule.o \
   ReferenceElementModule.o \
   RadiationFieldsModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  GeometryFieldsModuleE.o \
   TwoMoment_BoundaryConditionsModule.F90
 
 TwoMoment_NeutrinoMatterSolverModule.o: \
