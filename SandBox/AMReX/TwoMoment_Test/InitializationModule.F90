@@ -357,7 +357,7 @@ CONTAINS
                Verbose_Option = amrex_parallel_ioprocessor() )
 
       CALL SetOpacities &
-             ( iZ_B0, iZ_E0, iOS_CPP, D_0, Chi, Sigma, kT, E0, mu0, R0, &
+             ( iZ_B1, iZ_E1, iOS_CPP, D_0, Chi, Sigma, kT, E0, mu0, R0, &
                Verbose_Option = amrex_parallel_ioprocessor()  )
 
       CALL DestroyMesh_MF( MeshX )
