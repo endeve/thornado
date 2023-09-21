@@ -134,6 +134,50 @@ CONTAINS
       OffGridFluxR   (2*nCR), &
       OffGridFluxR_T0(2*nCR), &
       OffGridFluxR_T1(2*nCR)
+#ifdef THORNADO_STACK
+    REAL(DP) :: &
+      U0_F &
+        (1:nDOFX, &
+         iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4), &
+         1:nCF), &
+      Q1_F &
+        (1:nDOFX, &
+         iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4), &
+         1:nCF)
+    REAL(DP) :: &
+      U0_R &
+        (1:nDOF, &
+         iZ_B1(1):iZ_E1(1), &
+         iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4), &
+         1:nCR,1:nSpecies), &
+      T0_R &
+        (1:nDOF, &
+         iZ_B1(1):iZ_E1(1), &
+         iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4), &
+         1:nCR,1:nSpecies), &
+      T1_R &
+        (1:nDOF, &
+         iZ_B1(1):iZ_E1(1), &
+         iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4), &
+         1:nCR,1:nSpecies), &
+      Q1_R &
+        (1:nDOF, &
+         iZ_B1(1):iZ_E1(1), &
+         iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4), &
+         1:nCR,1:nSpecies)
+#else
     REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:)     :: U0_F, Q1_F
     REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:,:,:) :: U0_R, T0_R, T1_R, Q1_R
 
@@ -144,6 +188,7 @@ CONTAINS
     ALLOCATE( T0_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
     ALLOCATE( T1_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
     ALLOCATE( Q1_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+#endif
 
     IF( PRESENT( Explicit_Option ) )THEN
       Explicit = Explicit_Option

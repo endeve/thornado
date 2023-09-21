@@ -53,6 +53,9 @@ endif
 ifeq ($(USE_OMP),TRUE)
   FFLAGS += $(OPENMP)
 endif
+ifeq ($(USE_STACK),TRUE)
+  FFLAGS += -DTHORNADO_STACK
+endif
 ifeq ($(MICROPHYSICS),WEAKLIB)
   FFLAGS += -I../../../../weaklib/include
 endif
