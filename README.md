@@ -78,6 +78,20 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Status and Progress
 ## Sept 20 2023
 1. The slowness still persist with ifx 2023.09.19 amd mkl 2023.09.18 and umd 728
+2. The slowdown due to umd change starting from umd693 (https://jira.devtools.intel.com/browse/GSD-5788) is gone for open-linux-driver-ci-dev_igc-15269. Here are the times for the two kernel :
+<pre>
+                                                                        time
+ kernel                                       14180                     15296                           14181
+computegeometryx_cartesian__l153              15.68us                 14.88us                          33.28us
+tive_twomoment_vector_richardson__l639        659.69ms                569.69ms                          1.26s 
+
+</pre>
+vimdiff  sineWave.O3.2023.08.20-2023.08.2814180-iprof sineWave.O3.2023.08.20-2023.08.2815296-iprof sineWave.O3.2023.08.20-2023.08.2814181-iprof
+3. Try to figure out the more than 10X slow down for the small relaxation case:  vimdiff relax.O3.2023.08.20-2023.08.28-dev627xN801-iprof00 relax.O3.2023.08.22-2023.08.28-dev627xN801-
+iprof00. The results are different for 1 cycle run.
+   - Fm is the same for 0820 and 0822 for k_outer=0 and k_inner to 0 and 1. 
+   - Mask are all TRUE for 0820 and all FALSE for 0822
+
 ## Sept 19 2023
 1. Thornado runs with 2023.09.17 amd mkl 2023.09.17 and umd 728. The same slowness still persists. 
 2. iprof runs for Relaxation with {8,8,8} shows that there are way more call to computeneutrinoopacityrates_brem__l1804 with new compiler than the old ones (08.20), i.e.,  32880/6094, the time for each call seems not changed too much. need run iprof. 
