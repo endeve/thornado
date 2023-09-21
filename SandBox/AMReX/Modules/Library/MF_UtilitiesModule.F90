@@ -243,15 +243,19 @@ CONTAINS
       IF( WriteToFile )THEN
 
         iFileNo = 100 + amrex_parallel_myproc()
-
-        FileNameBase = 'NodalData'
+IF(iField .EQ. 1) THEN
+        FileNameBase = 'NodalData1'
+END IF
+IF(iField .EQ. 2) THEN
+        FileNameBase = 'NodalData2'
+END IF
         IF( PRESENT( FileNameBase_Option ) ) &
           FileNameBase = TRIM( FileNameBase_Option )
 
         WRITE(FileName,'(A,A,I3.3,A,I8.8,A)') &
           TRIM( FileNameBase ), '_proc', &
           amrex_parallel_myproc(), '_', StepNo(0), '.dat'
-
+ 
         OPEN( iFileNo, FILE = TRIM( FileName ), POSITION = 'APPEND' )
 
       END IF
@@ -396,14 +400,15 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: G(:,:,:,:)
 
     swXX = swX
-    IF( PRESENT( swXX_Option ) ) &
-      swXX = swXX_Option
 
 #if defined( THORNADO_OMP )
     !$OMP PARALLEL &
     !$OMP PRIVATE( lo_G, hi_G, iX_B0, iX_E0, iX_B1, iX_E1, &
     !$OMP          BX, MFI, G_K, SqrtGm, G )
 #endif
+
+    IF( PRESENT( swXX_Option ) ) &
+      swXX = swXX_Option
 
     CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -448,6 +453,7 @@ CONTAINS
     END DO ! WHILE( MFI % next() )
 
     CALL amrex_mfiter_destroy( MFI )
+
 
 #if defined( THORNADO_OMP )
     !$OMP END PARALLEL
@@ -522,6 +528,7 @@ CONTAINS
     END DO ! WHILE( MFI % next() )
 
     CALL amrex_mfiter_destroy( MFI )
+
 
 #if defined( THORNADO_OMP )
     !$OMP END PARALLEL
