@@ -579,153 +579,41 @@ CONTAINS
     REAL(DP) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP) :: EnergyMomentum_0(nCR)
     REAL(DP) :: EnergyMomentum_1(nCR)
-    LOGICAL  :: &
-      RealizableCellAverage &
-        (iZ_B0(1):iZ_E0(1), &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4), &
-         nSpecies)
-    LOGICAL  :: &
-      LimiterApplied &
-        (iZ_B0(1):iZ_E0(1), &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4), &
-         nSpecies)
-    LOGICAL  :: &
-      ApplyEnergyLimiter &
-        (iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4), &
-         nSpecies)
-    REAL(DP) :: &
-      Theta_1_K &
-        (iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4)), &
-      Theta_2_K &
-        (iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      Energy_K &
-        (iZ_B0(1):iZ_E0(1), &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4), &
-         nSpecies), &
-      dEnergy_K &
-        (iZ_B0(1):iZ_E0(1), &
-         iZ_B0(2):iZ_E0(2), &
-         iZ_B0(3):iZ_E0(3), &
-         iZ_B0(4):iZ_E0(4), &
-         nSpecies)
-    REAL(DP) :: &
-      Tau_Q(nDOFZ, &
-            iZ_B0(1):iZ_E0(1), &
-            iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      N_Q(nDOFZ, &
-          iZ_B0(1):iZ_E0(1), &
-          iZ_B0(2):iZ_E0(2), &
-          iZ_B0(3):iZ_E0(3), &
-          iZ_B0(4):iZ_E0(4), &
-          nSpecies), &
-      N_P(nPT_Z, &
-          iZ_B0(1):iZ_E0(1), &
-          iZ_B0(2):iZ_E0(2), &
-          iZ_B0(3):iZ_E0(3), &
-          iZ_B0(4):iZ_E0(4), &
-          nSpecies), &
-      N_K(iZ_B0(1):iZ_E0(1), &
-          iZ_B0(2):iZ_E0(2), &
-          iZ_B0(3):iZ_E0(3), &
-          iZ_B0(4):iZ_E0(4), &
-          nSpecies)
-    REAL(DP) :: &
-      G1_Q(nDOFZ, &
-           iZ_B0(1):iZ_E0(1), &
-           iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3), &
-           iZ_B0(4):iZ_E0(4), &
-           nSpecies), &
-      G1_P(nPT_Z, &
-           iZ_B0(1):iZ_E0(1), &
-           iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3), &
-           iZ_B0(4):iZ_E0(4), &
-           nSpecies), &
-      G1_K(iZ_B0(1):iZ_E0(1), &
-           iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3), &
-           iZ_B0(4):iZ_E0(4), &
-           nSpecies)
-    REAL(DP) :: &
-      G2_Q(nDOFZ, &
-           iZ_B0(1):iZ_E0(1), &
-           iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3), &
-           iZ_B0(4):iZ_E0(4), &
-           nSpecies), &
-      G2_P(nPT_Z, &
-           iZ_B0(1):iZ_E0(1), &
-           iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3), &
-           iZ_B0(4):iZ_E0(4), &
-           nSpecies), &
-      G2_K(iZ_B0(1):iZ_E0(1), &
-           iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3), &
-           iZ_B0(4):iZ_E0(4), &
-           nSpecies)
-    REAL(DP) :: &
-      G3_Q(nDOFZ, &
-           iZ_B0(1):iZ_E0(1), &
-           iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3), &
-           iZ_B0(4):iZ_E0(4), &
-           nSpecies), &
-      G3_P(nPT_Z, &
-           iZ_B0(1):iZ_E0(1), &
-           iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3), &
-           iZ_B0(4):iZ_E0(4), &
-           nSpecies), &
-      G3_K(iZ_B0(1):iZ_E0(1), &
-           iZ_B0(2):iZ_E0(2), &
-           iZ_B0(3):iZ_E0(3), &
-           iZ_B0(4):iZ_E0(4), &
-           nSpecies)
-    REAL(DP) :: &
-      h_d_1_Q(nDOFX, &
-              iZ_B0(2):iZ_E0(2), &
-              iZ_B0(3):iZ_E0(3), &
-              iZ_B0(4):iZ_E0(4)), &
-      h_d_1_P(nPT_X, &
-              iZ_B0(2):iZ_E0(2), &
-              iZ_B0(3):iZ_E0(3), &
-              iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      h_d_2_Q(nDOFX, &
-              iZ_B0(2):iZ_E0(2), &
-              iZ_B0(3):iZ_E0(3), &
-              iZ_B0(4):iZ_E0(4)), &
-      h_d_2_P(nPT_X, &
-              iZ_B0(2):iZ_E0(2), &
-              iZ_B0(3):iZ_E0(3), &
-              iZ_B0(4):iZ_E0(4))
-    REAL(DP) :: &
-      h_d_3_Q(nDOFX, &
-              iZ_B0(2):iZ_E0(2), &
-              iZ_B0(3):iZ_E0(3), &
-              iZ_B0(4):iZ_E0(4)), &
-      h_d_3_P(nPT_X, &
-              iZ_B0(2):iZ_E0(2), &
-              iZ_B0(3):iZ_E0(3), &
-              iZ_B0(4):iZ_E0(4))
+
+    LOGICAL,  ALLOCATABLE, DIMENSION(:,:,:,:,:)   :: RealizableCellAverage, LimiterApplied
+    LOGICAL,  ALLOCATABLE, DIMENSION(:,:,:,:)     :: ApplyEnergyLimiter
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:)       :: Theta_1_K, Theta_2_K
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:)     :: h_d_1_Q, h_d_1_P, h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:)   :: Energy_K, dEnergy_K
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:)   :: Tau_Q, N_K, G1_K, G2_K, G3_K
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:,:) :: N_Q, N_P, G1_Q, G1_P, G2_Q, G2_P, G3_Q, G3_P
+
+    ALLOCATE( RealizableCellAverage(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( LimiterApplied(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( ApplyEnergyLimiter(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( Theta_1_K(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
+    ALLOCATE( Theta_2_K(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
+    ALLOCATE( Energy_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( dEnergy_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( Tau_Q(nDOFZ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
+    ALLOCATE( N_Q(nDOFZ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( N_P(nPT_Z,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( N_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( G1_Q(nDOFZ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( G1_P(nPT_Z,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( G1_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( G2_Q(nDOFZ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( G2_P(nPT_Z,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( G2_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( G3_Q(nDOFZ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( G3_P(nPT_Z,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( G3_K(iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( h_d_1_Q(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
+    ALLOCATE( h_d_1_P(nPT_X,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
+    ALLOCATE( h_d_2_Q(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
+    ALLOCATE( h_d_2_P(nPT_X,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
+    ALLOCATE( h_d_3_Q(nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
+    ALLOCATE( h_d_3_P(nPT_X,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
 
     IF( .NOT. UsePositivityLimiter .OR. nDOFZ == 1 ) RETURN
 
@@ -1313,18 +1201,15 @@ CONTAINS
     REAL(DP) :: N_K1, N_K2, E_K1, E_K2, ResidualE
     REAL(DP) :: Theta_K1, Theta_K2
     REAL(DP) :: MinTheta_K1, MinTheta_K2
-    REAL(DP) :: &
-      V_u_1(1:nDOFX)
-    REAL(DP) :: &
-      V_u_2(1:nDOFX)
-    REAL(DP) :: &
-      V_u_3(1:nDOFX)
-    REAL(DP) :: &
-      W2_K(1:nDOFZ, &
-           iZ_B0(1):iZ_E0(1))
-    REAL(DP) :: &
-      W3_K(1:nDOFZ, &
-           iZ_B0(1):iZ_E0(1))
+
+    REAL(DP), ALLOCATABLE, DIMENSION(:)   :: V_u_1, V_u_2, V_u_3
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:) :: W2_K, W3_K
+
+    ALLOCATE( V_u_1(1:nDOFX) )
+    ALLOCATE( V_u_2(1:nDOFX) )
+    ALLOCATE( V_u_3(1:nDOFX) )
+    ALLOCATE( W2_K(1:nDOFZ,iZ_B0(1):iZ_E0(1)) )
+    ALLOCATE( W3_K(1:nDOFZ,iZ_B0(1):iZ_E0(1)) )
 
     IF( .NOT. UseEnergyLimiter ) RETURN
 
@@ -2437,13 +2322,13 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
     !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4 ) &
-    !$OMP MAP( from: SUM_N, SUM_G1, SUM_G2, SUM_G3 ) &
+    !$OMP MAP( tofrom: SUM_N, SUM_G1, SUM_G2, SUM_G3 ) &
     !$OMP PRIVATE( iNodeZ, V_d_1, V_d_2, V_d_3, V_u_1, V_u_2, V_u_3, W3_K ) &
     !$OMP REDUCTION( +: SUM_N, SUM_G1, SUM_G2, SUM_G3 )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
     !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4 ) &
-    !$ACC COPYOUT( SUM_N, SUM_G1, SUM_G2, SUM_G3 ) &
+    !$ACC COPY( SUM_N, SUM_G1, SUM_G2, SUM_G3 ) &
     !$ACC PRIVATE( iNodeZ, V_d_1, V_d_2, V_d_3, V_u_1, V_u_2, V_u_3, W3_K ) &
     !$ACC REDUCTION( +: SUM_N, SUM_G1, SUM_G2, SUM_G3 ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, Weights_Q, GE, GX, U_F, U_R )
