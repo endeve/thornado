@@ -74,7 +74,14 @@ export  IGC_DumpToCustomDir=/nfs/site/home/quanshao/sandbox/shaderDump/tmp
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 
-
+## Sept 22 2023
+1. The compilation issue persists for nightly 0921. 
+2. Focusing on SolveNeutrinoMatterCoupling_FP_Nested_AA of Modules/TwoMoment/TwoMoment_NeutrinoMatterSolverModule.F90
+## Sept 21 2023
+1. Thornado compilation hangs for 5 minutes on "TwoMoment_PositivityLimiterModule.F90", and then gets a fatal error and aborts starting from nightly 0920 /Intel(R) Fortran 24.0-1270. It compiles fine with Intel(R) Fortran 24.0-1252 and older ones. Reduced Thornado and got a reproducer, filed a jira: https://jira.devtools.intel.com/browse/CMPLRLLVM-51851
+2. Tested nightly 0920 /Intel(R) Fortran 24.0-1270 with the reproducer of https://jira.devtools.intel.com/browse/CMPLRLLVM-50559 and confirmed that the issue has been fixed. Closed the jira issue. 
+3. Tested nightly 0920 /Intel(R) Fortran 24.0-1270 with the reproducer of https://jira.devtools.intel.com/browse/CMPLRLLVM-51515. the issue has been fixed. Closed the jira. 
+4. reviewed the abstract and introduction of the paper and send the comments and suggestions to Mathi and cc-ed Brice. 
 # Status and Progress
 ## Sept 20 2023
 1. The slowness still persist with ifx 2023.09.19 amd mkl 2023.09.18 and umd 728
