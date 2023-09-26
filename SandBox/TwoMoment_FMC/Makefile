@@ -21,6 +21,7 @@ ApplicationDriver: \
   TwoMoment_DiscretizationModule_Streaming_FMC.o \
   TwoMoment_DiscretizationModule_Collisions_FMC.o \
   TwoMoment_PositivityLimiterModule_FMC.o \
+  TwoMoment_OpacityModule_FMC.o \
   InitializationModule.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
@@ -32,6 +33,7 @@ ApplicationDriver: \
   TwoMoment_DiscretizationModule_Streaming_FMC.o \
   TwoMoment_DiscretizationModule_Collisions_FMC.o \
   TwoMoment_PositivityLimiterModule_FMC.o \
+  TwoMoment_OpacityModule_FMC.o \
   InitializationModule.o \
 	ApplicationDriver.o \
 	$(LIBRARIES)
@@ -88,3 +90,6 @@ TwoMoment_DiscretizationModule_Collisions_FMC.o: \
 
 TwoMoment_PositivityLimiterModule_FMC.o: \
   TwoMoment_PositivityLimiterModule_FMC.F90
+
+TwoMoment_OpacityModule_FMC.o: \
+  TwoMoment_OpacityModule_FMC.F90

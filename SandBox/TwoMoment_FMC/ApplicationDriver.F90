@@ -24,6 +24,8 @@ PROGRAM ApplicationDriver
     ComputeHeatFluxTensorComponents_ddd_Lagrangian, &
     ComputeHeatFluxTensorComponents_uud_Lagrangian, &
     Flux_X1, Flux_X2, Flux_X3, ComputeTimeStep_TwoMoment
+  USE TwoMoment_OpacityModule_FMC, ONLY: &
+    SetOpacities
   USE TwoMoment_TimeSteppingModule_FMC, ONLY: &
     Update_IMEX_RK
   USE InitializationModule, ONLY: &
@@ -31,6 +33,8 @@ PROGRAM ApplicationDriver
 
   IMPLICIT NONE
 
+  CHARACTER(2)  :: Direction
+  CHARACTER(32) :: Spectrum
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: CoordinateSystem = 'CARTESIAN'
   CHARACTER(32) :: TimeSteppingScheme
@@ -44,7 +48,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: J_0, Chi, Sigma
   REAL(DP) :: l_uuu_munurho(0:3,0:3,0:3), l_ddd_ijk(1:3,1:3,1:3), l_uud_munurho(0:3,0:3,0:3)
 
-  ProgramName = 'SineWaveStreaming'
+  ProgramName = 'StreamingDopplerShift'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -62,9 +66,9 @@ PROGRAM ApplicationDriver
       eR  = 1.0_DP
       bcE = 1
 
-      nNodes = 3
+      nNodes = 1
 
-      TimeSteppingScheme = 'SSPRK3'
+      TimeSteppingScheme = 'SSPRK2'
       ! TimeSteppingScheme = 'IMEX_PDARS'
 
       t_end   = 1.0d-0
@@ -72,11 +76,112 @@ PROGRAM ApplicationDriver
       iCycleW = 100
       maxCycles = 10000
 
-      V_0 = [ 0.9_DP, 0.0_DP, 0.0_DP ]
+      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
 
       J_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 0.0_DP
+
+    CASE( 'SineWaveDiffusion' )
+
+      nX  = [ 32, 1, 1 ]
+      xL  = [ - 3.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ + 3.0_DP, 1.0_DP, 1.0_DP ]
+      bcX = [ 1, 1, 1 ]
+
+      nE  = 1
+      eL  = 0.0_DP
+      eR  = 1.0_DP
+      bcE = 1
+
+      nNodes = 1
+
+      TimeSteppingScheme = 'SSPRK2'
+
+      !t_end   = 7.2951_DP !sig small old
+      !t_end   = 1459.02504445_DP !sig large old
+
+      t_end   = 60.0_DP !sig small
+      !t_end   = 1500.0_DP !sig large
+
+      iCycleD = 1000
+      iCycleW = 1000
+      maxCycles = 1000000
+
+      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
+
+      J_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 2.6666666_DP 
+      !Sigma = 533.33333333_DP
+
+    CASE( 'StreamingDopplerShift' )
+
+      Spectrum = 'Fermi-Dirac'
+
+      Direction = 'X' ! --- (X,Y, or Z)
+
+      IF(     TRIM( Direction ) .EQ. 'X' )THEN
+
+        nX  = [ 256, 1, 1 ]
+        xL  = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR  = [ 1.0d1, 1.0d0, 1.0d0 ]
+        bcX = [ 12, 1, 1 ]
+
+        V_0 = [ 0.4_DP, 0.0_DP, 0.0_DP ]
+
+      ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
+
+        nX  = [ 1, 32, 1 ]
+        xL  = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR  = [ 1.0d0, 1.0d1, 1.0d0 ]
+        bcX = [ 1, 12, 1 ]
+
+        V_0 = [ 0.0_DP, 0.1_DP, 0.0_DP ]
+
+      ELSEIF( TRIM( Direction ) .EQ. 'Z' )THEN
+
+        nX  = [ 1, 1, 32 ]
+        xL  = [ 0.0d0, 0.0d0, 0.0d0 ]
+        xR  = [ 1.0d0, 1.0d0, 1.0d1 ]
+        bcX = [ 1, 1, 12 ]
+
+        V_0 = [ 0.0_DP, 0.0_DP, 0.1_DP ]
+
+      ELSE
+
+        WRITE(*,*)
+        WRITE(*,'(A6,A)') &
+          '', 'StreamingDopplerShift.  Direction must be X, Y, or Z'
+        WRITE(*,*)
+        STOP
+
+      END IF
+
+      nE    = 256
+      eL    = 0.0d0
+      eR    = 5.0d1
+      bcE   = 11
+      zoomE = 1.0_DP
+
+      nNodes = 1
+
+      TimeSteppingScheme = 'SSPRK1'
+
+      t_end   = 2.0d+1
+      iCycleD = 1
+      iCycleW = 100
+      maxCycles = 1000000
+
+      J_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 0.0_DP
+
+      ! UseSlopeLimiter      = .FALSE.
+      ! UsePositivityLimiter = .TRUE.
+      ! UseEnergyLimiter     = .TRUE.
+
+      ! UseRealizabilityTimeStep = .TRUE.
 
   CASE DEFAULT
 
@@ -87,9 +192,15 @@ PROGRAM ApplicationDriver
 
   END SELECT
 
+  ! --- Auxiliary Initialization ---
+
   CALL InitializeDriver
 
-  CALL InitializeFields( V_0 )
+  CALL SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, J_0, Chi, Sigma )
+
+  ! --- Set Initial Condition ---
+
+  CALL InitializeFields( V_0 , Direction, Spectrum )
 
   t = 0.0_DP
 
@@ -184,6 +295,8 @@ CONTAINS
       InitializeReferenceElement
     USE ReferenceElementModule_Lagrange, ONLY: &
       InitializeReferenceElement_Lagrange
+    USE TwoMoment_OpacityModule_FMC, ONLY: &
+      CreateOpacities
     USE TwoMoment_TimeSteppingModule_FMC, ONLY: &
       Initialize_IMEX_RK
 
@@ -250,6 +363,11 @@ CONTAINS
     CALL InitializeReferenceElement
 
     CALL InitializeReferenceElement_Lagrange
+
+    ! --- Initialize Opacities ---
+
+    CALL CreateOpacities &
+           ( nx, [1, 1, 1], nE, 1, Verbose_Option = .TRUE.)
 
     ! --- Initialize Time Stepper ---
 
