@@ -86,8 +86,9 @@ export  IGC_DumpToCustomDir=/nfs/site/home/quanshao/sandbox/shaderDump/tmp
 `ZEX_NUMBER_OF_CCS=0:1`
 </pre>
 
-
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
+# Activities, progress, and results
+
 ## Sept 27 2023
 1. Working on Flash-X compilation and runs
    - Set -maxblocks=100000 (7000) make the code compile and run without the "SIGSEGV, Segmentation fault on the intrinsic allocation function" errror. https://jira.devtools.intel.com/browse/CMPLRLIBS-34599
@@ -115,7 +116,6 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 2. Tested nightly 0920 /Intel(R) Fortran 24.0-1270 with the reproducer of https://jira.devtools.intel.com/browse/CMPLRLLVM-50559 and confirmed that the issue has been fixed. Closed the jira issue. 
 3. Tested nightly 0920 /Intel(R) Fortran 24.0-1270 with the reproducer of https://jira.devtools.intel.com/browse/CMPLRLLVM-51515. the issue has been fixed. Closed the jira. 
 4. reviewed the abstract and introduction of the paper and send the comments and suggestions to Mathi and cc-ed Brice. 
-# Status and Progress
 ## Sept 20 2023
 1. The slowness still persist with ifx 2023.09.19 amd mkl 2023.09.18 and umd 728
 2. The slowdown due to umd change starting from umd693 (https://jira.devtools.intel.com/browse/GSD-5788) is gone for open-linux-driver-ci-dev_igc-15269. Here are the times for the two kernel :
