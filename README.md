@@ -38,6 +38,7 @@ More information on the external packages, please visit: https://gitlab.devtools
 9. run buildRun.sh under ${FLASH_HOME}
     - Add .o file name to Makefile.Flash and the path of source files to $(THORNADO_DIR)/Build/Makefile_Path
     - ./build.sh is written in line 130 of libUtils.py, which call the library's libinfo.py
+
 **sudo usermod -a -G render <username>** to make sycl-ls work
 **exaperf-sdpcloud-ats1.jf.intel.com  IP Address:**    10.165.9.163          
 **exaperf-sdpcloud-pvc09.jf.intel.com IP Address:**    10.23.153.3        pvc12: 10.23.153.76   pvc19: 10.23.153.179 
