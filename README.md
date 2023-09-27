@@ -95,18 +95,18 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
    - However, the run of flashX has some issues:
        - ` mpirun -np ${NTOTRANKS} -ppn ${NRANKS} -envall /localdisk/quanshao/ExaStar/bin/gpu_tile_compact.sh ./flashx` gives error " OMP: Info #277: omp_get_nested routine deprecated, please use omp_get_max_active_levels instead. /localdisk/quanshao/ExaStar/bin/gpu_tile_compact.sh: line 46: 79264 Killed          "$@""
        - `mpiexec -env ZE_AFFINITY_MASK=0.0 -np 1 -ppn 2 ./flashx` and `mpiexec -env ZE_AFFINITY_MASK=0.0 -np 1 -ppn 1 ./flashx` gives:
-       <pre>
+   <pre>
         Done with refinement: total blocks =         4080
- [amr_morton_process]: Initializing surr_blks using standard orrery implementati
- on
- INFO: Grid_fillGuardCells is ignoring masking.
-  iteration, no. not moved =            0        4079
-    iteration, no. not moved =          100        4064
-  ERROR: could not move all blocks in amr_redist_blk
-  Try increasing maxblocks or use more processors
-  nm2_old, nm2 =         4064        4064
-  ABORTING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-       </pre>
+        [amr_morton_process]: Initializing surr_blks using standard orrery implementati
+        on
+        INFO: Grid_fillGuardCells is ignoring masking.
+        iteration, no. not moved =            0        4079
+        iteration, no. not moved =          100        4064
+        ERROR: could not move all blocks in amr_redist_blk
+        Try increasing maxblocks or use more processors
+        nm2_old, nm2 =         4064        4064
+        ABORTING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   </pre>
 
 ## Sept 26 2023
 1. Compilers tested for the slowness of Relaxation {8,8,8}
