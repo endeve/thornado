@@ -33,7 +33,15 @@ PROGRAM main
   USE MF_TwoMoment_TallyModule,         ONLY: &
     ComputeTally_TwoMoment_MF
   USE MF_Euler_TallyModule,         ONLY: &
-    ComputeTally_Euler_MF
+    ComputeTally_Euler_MF, &
+    BaryonicMass_Initial, &
+    BaryonicMass_OffGrid, &
+    Energy_Initial, &
+    Energy_OffGrid, &
+    ElectronNumber_Initial, &
+    ElectronNumber_OffGrid, &
+    ADMMass_Initial, &
+    ADMMass_OffGrid
   USE InitializationModule,             ONLY: &
     InitializeProgram
   USE FinalizationModule,               ONLY: &
@@ -133,7 +141,7 @@ num = 1
      CALL ComputeFromConserved_Euler_MF &
             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-     CALL ComputeGray_TwoMoment_MF & 
+     CALL ComputeGray_TwoMoment_MF &
             ( MF_uGF, MF_uPF, MF_uCR, MF_uPR, MF_uGR )
 
      CALL WriteFieldsAMReX_PlotFile &
@@ -150,6 +158,10 @@ num = 1
 
      CALL WriteFieldsAMReX_Checkpoint &
             ( StepNo, nLevels, dt, t_new, &
+              [ BaryonicMass_Initial  , BaryonicMass_OffGrid   ], &
+              [ Energy_Initial        , Energy_OffGrid         ], &
+              [ ElectronNumber_Initial, ElectronNumber_OffGrid ], &
+              [ ADMMass_Initial       , ADMMass_OffGrid        ], &
               MF_uGF % BA % P, &
               iWriteFields_uGF = 1, &
               iWriteFields_uCF = 1, &
@@ -169,7 +181,7 @@ num = 1
 
   CALL ComputeFromConserved_Euler_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-  CALL ComputeGray_TwoMoment_MF & 
+  CALL ComputeGray_TwoMoment_MF &
             ( MF_uGF, MF_uPF, MF_uCR, MF_uPR, MF_uGR )
 
   CALL ShowVariableFromMultiFab(0,MF_uPR(0),1, WriteToFile_Option = .TRUE.)

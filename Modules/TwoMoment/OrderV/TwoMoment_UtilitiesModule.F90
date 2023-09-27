@@ -1,7 +1,7 @@
 MODULE TwoMoment_UtilitiesModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, Two, Three, Five, &
+    DP, Zero, Half, One, Two, Three, Five, Third, &
     SqrtTiny, FourPi
   USE UnitsModule, ONLY: &
     UnitsActive, &
@@ -484,13 +484,16 @@ CONTAINS
     ! --- Initial Guess ---
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( iX )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( iX ) &
     !$ACC PRESENT( CVEC, N, G_d_1, G_d_2, G_d_3, &
-    !$ACC          D, I_u_1, I_u_2, I_u_3 )
+    !$ACC          PositionIndexZ, D, I_u_1, I_u_2, I_u_3 )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( iX )
 #endif
     DO iZ = 1, nZ
       CVEC(iCR_N ,iZ) = N    (iZ)
@@ -498,10 +501,12 @@ CONTAINS
       CVEC(iCR_G2,iZ) = G_d_2(iZ)
       CVEC(iCR_G3,iZ) = G_d_3(iZ)
 
+      iX = PositionIndexZ(iZ)
+
       D    (iZ) = N(iZ)
-      I_u_1(iZ) = Zero
-      I_u_2(iZ) = Zero
-      I_u_3(iZ) = Zero
+      I_u_1(iZ) = G_d_1(iZ) / Gm_dd_11(iX)
+      I_u_2(iZ) = G_d_2(iZ) / Gm_dd_22(iX)
+      I_u_3(iZ) = G_d_3(iZ) / Gm_dd_33(iX)
     END DO
 
     CALL TimersStop( Timer_Streaming_NumericalFlux_InOut )
@@ -2180,10 +2185,15 @@ CONTAINS
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    EF = EddingtonFactor( D, FF )
-
-    a = Half * ( One - EF )
-    b = Half * ( Three * EF - One )
+    IF ( FF <= SqrtTiny ) THEN
+      EF = Third
+      a = Third
+      b = Zero
+    ELSE
+      EF = EddingtonFactor( D, FF )
+      a = Half * ( One - EF )
+      b = Half * ( Three * EF - One )
+    END IF
 
     h_u_1 = I_u_1 / ( FF * D )
 
@@ -2228,10 +2238,15 @@ CONTAINS
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    EF = EddingtonFactor( D, FF )
-
-    a = Half * ( One - EF )
-    b = Half * ( Three * EF - One )
+    IF ( FF <= SqrtTiny ) THEN
+      EF = Third
+      a = Third
+      b = Zero
+    ELSE
+      EF = EddingtonFactor( D, FF )
+      a = Half * ( One - EF )
+      b = Half * ( Three * EF - One )
+    END IF
 
     h_u_2 = I_u_2 / ( FF * D )
 
@@ -2276,10 +2291,15 @@ CONTAINS
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    EF = EddingtonFactor( D, FF )
-
-    a = Half * ( One - EF )
-    b = Half * ( Three * EF - One )
+    IF ( FF <= SqrtTiny ) THEN
+      EF = Third
+      a = Third
+      b = Zero
+    ELSE
+      EF = EddingtonFactor( D, FF )
+      a = Half * ( One - EF )
+      b = Half * ( Three * EF - One )
+    END IF
 
     h_u_3 = I_u_3 / ( FF * D )
 
@@ -2323,10 +2343,15 @@ CONTAINS
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    EF = EddingtonFactor( D, FF )
-
-    a = Half * ( One - EF )
-    b = Half * ( Three * EF - One )
+    IF ( FF <= SqrtTiny ) THEN
+      EF = Third
+      a = Third
+      b = Zero
+    ELSE
+      EF = EddingtonFactor( D, FF )
+      a = Half * ( One - EF )
+      b = Half * ( Three * EF - One )
+    END IF
 
     h_u = [ I_u_1, I_u_2, I_u_3 ] / ( FF * D )
 
@@ -2366,10 +2391,15 @@ CONTAINS
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    EF = EddingtonFactor( D, FF )
-
-    a = Half * ( One - EF )
-    b = Half * ( Three * EF - One )
+    IF ( FF <= SqrtTiny ) THEN
+      EF = Third
+      a = Third
+      b = Zero
+    ELSE
+      EF = EddingtonFactor( D, FF )
+      a = Half * ( One - EF )
+      b = Half * ( Three * EF - One )
+    END IF
 
     h_d_1 = Gm_dd_11 * I_u_1 / ( FF * D )
     h_d_2 = Gm_dd_22 * I_u_2 / ( FF * D )
@@ -2410,10 +2440,15 @@ CONTAINS
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    EF = EddingtonFactor( D, FF )
-
-    a = Half * ( One - EF )
-    b = Half * ( Three * EF - One )
+    IF ( FF <= SqrtTiny ) THEN
+      EF = Third
+      a = Third
+      b = Zero
+    ELSE
+      EF = EddingtonFactor( D, FF )
+      a = Half * ( One - EF )
+      b = Half * ( Three * EF - One )
+    END IF
 
     h_d(1) = Gm_dd_11 * I_u_1 / ( FF * D )
     h_d(2) = Gm_dd_22 * I_u_2 / ( FF * D )
@@ -2452,10 +2487,15 @@ CONTAINS
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    EF = EddingtonFactor( D, FF )
-
-    a = Half * ( One - EF )
-    b = Half * ( Three * EF - One )
+    IF ( FF <= SqrtTiny ) THEN
+      EF = Third
+      a = Third
+      b = Zero
+    ELSE
+      EF = EddingtonFactor( D, FF )
+      a = Half * ( One - EF )
+      b = Half * ( Three * EF - One )
+    END IF
 
     h_u_1 = I_u_1 / ( FF * D )
     h_u_2 = I_u_2 / ( FF * D )
@@ -2500,10 +2540,15 @@ CONTAINS
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    HF = HeatFluxFactor( D, FF )
-
-    a = Half * ( FF - HF )
-    b = Half * ( Five * HF - Three * FF )
+    IF ( FF <= SqrtTiny ) THEN
+      HF = Zero
+      a = Zero
+      b = Zero
+    ELSE
+      HF = HeatFluxFactor( D, FF )
+      a = Half * ( FF - HF )
+      b = Half * ( Five * HF - Three * FF )
+    END IF
 
     h_u = [ I_u_1, I_u_2, I_u_3 ] / ( FF * D )
 
@@ -2549,10 +2594,15 @@ CONTAINS
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    HF = HeatFluxFactor( D, FF )
-
-    a = Half * ( FF - HF )
-    b = Half * ( Five * HF - Three * FF )
+    IF ( FF <= SqrtTiny ) THEN
+      HF = Zero
+      a = Zero
+      b = Zero
+    ELSE
+      HF = HeatFluxFactor( D, FF )
+      a = Half * ( FF - HF )
+      b = Half * ( Five * HF - Three * FF )
+    END IF
 
     h_u_1 = I_u_1 / ( FF * D )
     h_u_2 = I_u_2 / ( FF * D )
@@ -2611,10 +2661,15 @@ CONTAINS
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    HF = HeatFluxFactor( D, FF )
-
-    a = Half * ( FF - HF )
-    b = Half * ( Five * HF - Three * FF )
+    IF ( FF <= SqrtTiny ) THEN
+      HF = Zero
+      a = Zero
+      b = Zero
+    ELSE
+      HF = HeatFluxFactor( D, FF )
+      a = Half * ( FF - HF )
+      b = Half * ( Five * HF - Three * FF )
+    END IF
 
     h_u_1 = I_u_1 / ( FF * D )
     h_u_2 = I_u_2 / ( FF * D )

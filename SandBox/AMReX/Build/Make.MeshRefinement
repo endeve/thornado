@@ -2,3 +2,4 @@ VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/MeshRefinement
 F90EXE_sources  += FillPatchModule.F90
 F90EXE_sources  += FluxCorrectionModule_Euler.F90
 F90EXE_sources  += AverageDownModule.F90
+f90EXE_sources  += ReGridModule.f90

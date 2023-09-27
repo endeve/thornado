@@ -36,20 +36,20 @@ MODULE MF_TwoMoment_UtilitiesModule
     iPR_I1,  &
     iPR_I2,  &
     iPR_I3,  &
-    iGR_N,   &      
-    iGR_D,   & 
-    iGR_I1,  & 
+    iGR_N,   &
+    iGR_D,   &
+    iGR_I1,  &
     iGR_I2,  &
-    iGR_I3,  & 
-    iGR_J,   & 
-    iGR_H1,  & 
-    iGR_H2,  & 
-    iGR_H3,  & 
+    iGR_I3,  &
+    iGR_J,   &
+    iGR_H1,  &
+    iGR_H2,  &
+    iGR_H3,  &
     iGR_RMS, &
-    iGR_F,   & 
-    iGR_K,   & 
-    iGR_Q,   & 
-    nGR,     & 
+    iGR_F,   &
+    iGR_K,   &
+    iGR_Q,   &
+    nGR,     &
     LeptonNumber
   USE FluidFieldsModule, ONLY: &
     nCF, &
@@ -778,10 +778,12 @@ CONTAINS
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                  [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
                  G )
+
         CALL AllocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                  [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nPF ], &
                  PF )
+
         CALL AllocateArray_Z &
                ( [ 1       , &
                    iZ_B1(1), &
@@ -857,6 +859,65 @@ CONTAINS
                ( nGR, nSpecies, iX_B1, iX_E1, &
                  iLo_MF, iX_B0, iX_E0, uGR, GR )
 
+        CALL DeallocateArray_Integrated &
+               ( [ 1       , &
+                   iX_B1(1), &
+                   iX_B1(2), &
+                   iX_B1(3), &
+                   1       , &
+                   1        ], &
+                 [ nDOFX   , &
+                   iX_E1(1), &
+                   iX_E1(2), &
+                   iX_E1(3), &
+                   nGR     , &
+                   nSpecies ], &
+                 GR )
+
+        CALL DeallocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nPR     , &
+                   nSpecies ], &
+                 PR )
+
+        CALL DeallocateArray_Z &
+               ( [ 1       , &
+                   iZ_B1(1), &
+                   iZ_B1(2), &
+                   iZ_B1(3), &
+                   iZ_B1(4), &
+                   1       , &
+                   1        ], &
+                 [ nDOFZ   , &
+                   iZ_E1(1), &
+                   iZ_E1(2), &
+                   iZ_E1(3), &
+                   iZ_E1(4), &
+                   nCR     , &
+                   nSpecies ], &
+                 CR )
+
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nPF ], &
+                 PF )
+
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
+
       END DO
 
       CALL amrex_mfiter_destroy( MFI )
@@ -925,7 +986,7 @@ CONTAINS
       W5_RMS(iNodeE,iZ1) = W2(iNodeE,iZ1) * ( E / E_0 )**3
 
 
-    
+
     END DO
     END DO
     END ASSOCIATE ! dZ1
@@ -1024,7 +1085,7 @@ CONTAINS
     END DO
     END DO
     END DO
-    
+
   END SUBROUTINE ComputeGray_TwoMoment
 
 
