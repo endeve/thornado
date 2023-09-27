@@ -94,7 +94,7 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
    - Set -maxblocks=100000 (7000) make the code compile and run without the "SIGSEGV, Segmentation fault on the intrinsic allocation function" errror. https://jira.devtools.intel.com/browse/CMPLRLIBS-34599
    - However, the run of flashX has some issues:
        - ` mpirun -np ${NTOTRANKS} -ppn ${NRANKS} -envall /localdisk/quanshao/ExaStar/bin/gpu_tile_compact.sh ./flashx` gives error " OMP: Info #277: omp_get_nested routine deprecated, please use omp_get_max_active_levels instead. /localdisk/quanshao/ExaStar/bin/gpu_tile_compact.sh: line 46: 79264 Killed          "$@""
-       - `mpiexec -env ZE_AFFINITY_MASK=0.0 -np 1 -ppn 2 ./flashx` and `mpiexec -env ZE_AFFINITY_MASK=0.0 -np 1 -ppn 1 ./flashx` gives:
+       - `mpiexec -env ZE_AFFINITY_MASK=0.0 -np 1 -ppn 2 ./flashx` and `mpiexec -env ZE_AFFINITY_MASK=0.0 -np 1 -ppn 1 ./flashx`, and `./flashx` all give:
        <pre>
         Done with refinement: total blocks =         4080
         [amr_morton_process]: Initializing surr_blks using standard orrery implementati
@@ -107,7 +107,23 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
         nm2_old, nm2 =         4064        4064
         ABORTING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        </pre>
-
+2. For the reproducer, allocating smaller memory gives different crash errors, but after the same print " nvarnvarnvar          108           4           4           4"
+<pre>
+Thread 1 "flashxJira" received signal SIGSEGV, Segmentation fault.
+0x0000155549442c2f in rml::internal::LargeObjectCache::putList(rml::internal::LargeMemoryBlock*) () from /exaperf/nightly/compiler/2023.08.27/linux/lib/libiomp5.so
+(gdb) bt
+#0  0x0000155549442c2f in rml::internal::LargeObjectCache::putList(rml::internal::LargeMemoryBlock*) () from /exaperf/nightly/compiler/2023.08.27/linux/lib/libiomp5.so
+#1  0x000015554943aa6f in rml::internal::TLSData::release() () from /exaperf/nightly/compiler/2023.08.27/linux/lib/libiomp5.so
+#2  0x000015554943a948 in rml::internal::MemoryPool::onThreadShutdown(rml::internal::TLSData*) () from /exaperf/nightly/compiler/2023.08.27/linux/lib/libiomp5.so
+#3  0x000015554943a5fd in doThreadShutdownNotification(rml::internal::TLSData*, bool) () from /exaperf/nightly/compiler/2023.08.27/linux/lib/libiomp5.so
+#4  0x000015554943af3e in __TBB_mallocProcessShutdownNotification () from /exaperf/nightly/compiler/2023.08.27/linux/lib/libiomp5.so
+#5  0x00001555493a6f5d in __kmp_internal_end_library (gtid_req=1350) at ../../src/kmp_runtime.cpp:669
+#6  0x000015555533b003 in _dl_fini () from /lib64/ld-linux-x86-64.so.2
+#7  0x0000155548537c49 in __run_exit_handlers () from /lib64/libc.so.6
+#8  0x0000155548537dca in exit () from /lib64/libc.so.6
+#9  0x0000155548520354 in __libc_start_main () from /lib64/libc.so.6
+#10 0x000000000040c01a in _start () at ../sysdeps/x86_64/start.S:120
+</pre>
 ## Sept 26 2023
 1. Compilers tested for the slowness of Relaxation {8,8,8}
    - 08/20 no slow down. Base case
