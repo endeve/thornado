@@ -25,6 +25,19 @@ More information on the external packages, please visit: https://gitlab.devtools
 4. Copy `/nfs/site/home/quanshao/ExaStar/mpifort` to your `$HOME/ExaStar` and modify `$HOME/ExaStar/thornado/Build/Machines/Makefile_beacon_intel` to reflect the correct path of `mpifort`
 5. To compile,  run `build.anl.sh` inside `$HOME/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables`. Be sure to make modifications to reflect the path of your source code and change the module to your favorite one
 6. To run apps, run `run.anl.active.sh` inside `$HOME/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables`. Be sure to make modifications to reflect the path of your source code and change the module to your favorite one
+
+# Flash-X build and run
+1. git clone git@github.com:Flash-X/Flash-X.git to $FLASH_HOME, i.e., /localdisk/quanshao/ExaStar/Flash-X
+2. cd $FLASH_HOME & git submodule update --init. thornado and weaklib has been cloned to $FLSH_HOME/lib/ and Grid(paramesh) has been clone to $FLASH_HOME/source as submodules
+3. git checkout delep_Ov & git submodule update
+4. cd $FLASH_HOME/lib/thornado/source & git checokut $BRANCH_OF_INTEREST (for example: git checkout ms69)
+5. StreamingSineWave case already exsits inside $FLASH_HOME/source/Simulation/SimulationMain/   
+6. cp buildRun.sh inside ${FLASH_HOME}. This script set $APP_DIR, for example: APP_DIR=StreamingSineWave for the Streaming Sine Wave case of Thornado. 
+7. add a directory under ${FLASH_HOME}/sites and add Makefile.h under this directory. For example sdpcloud.pvc.intel.com
+8. add DEFINES += -DTHORNADO_EULER_NOGPU to $FLASH_HOME/lib/thornado/source/SandBox/Interface_FLASH/Makefile.Flash
+9. run buildRun.sh under ${FLASH_HOME}
+    - Add .o file name to Makefile.Flash and the path of source files to $(THORNADO_DIR)/Build/Makefile_Path
+    - ./build.sh is written in line 130 of libUtils.py, which call the library's libinfo.py
 **sudo usermod -a -G render <username>** to make sycl-ls work
 **exaperf-sdpcloud-ats1.jf.intel.com  IP Address:**    10.165.9.163          
 **exaperf-sdpcloud-pvc09.jf.intel.com IP Address:**    10.23.153.3        pvc12: 10.23.153.76   pvc19: 10.23.153.179 
@@ -73,6 +86,24 @@ export  IGC_DumpToCustomDir=/nfs/site/home/quanshao/sandbox/shaderDump/tmp
 
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
+## Sept 27 2023
+1. Working on Flash-X compilation and runs
+   - Set -maxblocks=100000 (7000) make the code compile and run without the "SIGSEGV, Segmentation fault on the intrinsic allocation function" errror. https://jira.devtools.intel.com/browse/CMPLRLIBS-34599
+   - However, the run of flashX has some issues:
+       - ` mpirun -np ${NTOTRANKS} -ppn ${NRANKS} -envall /localdisk/quanshao/ExaStar/bin/gpu_tile_compact.sh ./flashx` gives error " OMP: Info #277: omp_get_nested routine deprecated, please use omp_get_max_active_levels instead. /localdisk/quanshao/ExaStar/bin/gpu_tile_compact.sh: line 46: 79264 Killed          "$@""
+       - `mpiexec -env ZE_AFFINITY_MASK=0.0 -np 1 -ppn 2 ./flashx` and `mpiexec -env ZE_AFFINITY_MASK=0.0 -np 1 -ppn 1 ./flashx` gives "
+
+## Sept 26 2023
+1. Compilers tested for the slowness of Relaxation {8,8,8}
+   - 08/20 no slow down. Base case
+   - 08/22 slow down. Wrong MASK(1) value after TARGET UPDATE FROM
+   - 09/17 slow down. Wrong MASK(1) value after TARGET UPDATE FROM
+   - UMD 728 and 627 all have the problem. so it is not umd related. it is ifx related.
+2. Discussed with Brian about ways to narrow down the issue. One thing found is that split the UPDATE FROM variables fix the issue. The second is that putting the subroutine CheckConvergence_Inner into a separate file and call the sub from Modules/TwoMoment/TwoMoment_NeutrinoMatterSolverModule.F90 replicated the issue. The 3rd one is that the caculations in the subroutine does not affect the issue. 
+## Sept 25 2023
+1. The compilation issue persists for nightly compiler 2023.09.24.
+2. Proof reading the Thornado porting paper leading by ANL's Math and targeted at IPDPS-24
+3. Discussed with Brian about the UPDATE FROM for MASK variable in Modules/TwoMoment/TwoMoment_NeutrinoMatterSolverModule.F90. It seems that splitting the update for four variable to update for individual variable makes the code work. Will do a sweep test of the compilers from 08/22 to 09/19 to see whether the issue has been fixed accidently. 
 
 ## Sept 22 2023
 1. The compilation issue persists for nightly 0921. 
@@ -1125,8 +1156,8 @@ relax      [16,16,16]   O3    :  2.3056e+02   2.4705e+02  -1.6488e+01    -6.67% 
 </pre>
 ## June 21 2023
 1. Build Thornado from Flash-X. 
-    - buildRun.sh inside ${FLASH_HOME}/Flash-X
-    - add a directory under ${FLASH_HOME}/Flash-X/sites and add Makefile.h and Makefile.h.???? under this directory. For example summit.olcf.ornl.gov/
+    - buildRun.sh inside ${FLASH_HOME}
+    - add a directory under ${FLASH_HOME}/sites and add Makefile.h and Makefile.h.???? under this directory. For example summit.olcf.ornl.gov/
     - Add .o file name to Makefile.Flash and the path of source files to $(THORNADO_DIR)/Build/Makefile_Path
     - ./build.sh is written in line 130 of libUtils.py, which call the library's libinfo.py
 
