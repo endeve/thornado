@@ -298,6 +298,13 @@ def InitializeFrame(FileNumberArray, DataDirectory, Field, Action):
 
     # If requested, initialize refinement lines. Add to Return List
     if gvS.ShowRefinement:
+        if not gvS.ShowIC:
+            for i in range(nDirs):
+                Data0[i], DataUnits0[i],  \
+                X1_C0[i], dX10[i], Time0[i] = fetchData_AMReX(0,                 \
+                                                              FileNumberArray[i],\
+                                                              DataDirectory[i],  \
+                                                              Field              )
         bottom, top = plt.ylim()
         RefinementLocations = FindRefinementBoundaries( dX10[0] )
         for i in range(len(RefinementLocations)):
