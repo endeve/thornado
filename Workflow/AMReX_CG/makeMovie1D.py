@@ -22,11 +22,10 @@ if __name__ == "__main__":
     ProblemName = 'AdiabaticCollapse_XCFC'
 
     # Specify title of figure
-    gvS.FigTitle = '{:} with AMR - First Scheme'.format(ProblemName)
+    gvS.FigTitle = '{:} with AMR'.format(ProblemName)
 
     # Specify directory containing amrex Plotfiles
-#    PlotDirectory = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC/AdCol_AMR_ThirdRun/'
-    PlotDirectory = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC/AdCol_AMR_ThirdRun/'
+    PlotDirectory = ''
 
     # Specify plot file base name
     PlotBaseName = ProblemName + '.plt'
@@ -84,7 +83,7 @@ if __name__ == "__main__":
     #### ====== End of User Input =======
 
 #    DataDirectory = 'DataDirectories/{:s}_StaticMesh'.format( ProblemName )
-    DataDirectory = 'DataDirectories/{:s}_ThirdRun'.format( ProblemName )
+    DataDirectory = 'DataDirectories/{:s}'.format( ProblemName )
 
 
     ID            = '{:s}_{:s}'.format( ProblemName, Field )

@@ -30,11 +30,10 @@ if __name__ == "__main__":
     gvS.nDirs = 2
     
     PlotDirectories = ['None']*gvS.nDirs
-#    PlotDirectories[0] = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC/AdCol_AMR_FirstRun/'
-#    PlotDirectories[1] = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC/AdCol_AMR_SecondRun/'
-    PlotDirectories[0] = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC/'
-    PlotDirectories[1] = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC/AdCol_AMR_ThirdRun/'
 
+    PlotDirectories[0] = 'Directory of First Data Set'
+    PlotDirectories[1] = 'Directory of Second Data Set'
+#    PlotDirectories[1] = 'Directory of Third Data Set. Don't forget to change gvS.nDirs.'
 
     # Specify plot file base name
     PlotBaseName = ProblemName + '.plt'
