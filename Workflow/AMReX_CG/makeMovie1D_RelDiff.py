@@ -37,9 +37,9 @@ if __name__ == "__main__":
     Field = 'PF_D'
 
     # Specify to plot in log-scale
-    UseLogScale_X  = True
-    UseLogScale_Y  = True
-    UseLogScale_2D = False
+    gvS.UseLogScale_X  = True
+    gvS.UseLogScale_Y  = True
+    gvS.UseLogScale_2D = False
 
     # Specify whether or not to use physical units
     UsePhysicalUnits = True

@@ -511,6 +511,7 @@ def ApplyMovieSettings( ax, xL, xH, dX10, Field, DataUnits ):
     #
     #   Apply Log Scale
     #
+    print(gvS.UseLogScale_Y)
     if gvS.UseLogScale_Y: ax.set_yscale( 'log' )
     
     if gvS.UseLogScale_X:

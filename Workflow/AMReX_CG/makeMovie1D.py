@@ -25,18 +25,18 @@ if __name__ == "__main__":
     gvS.FigTitle = '{:} with AMR'.format(ProblemName)
 
     # Specify directory containing amrex Plotfiles
-    PlotDirectory = ''
+    PlotDirectory = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC/AdCol_AMR_ThirdRun'
 
     # Specify plot file base name
     PlotBaseName = ProblemName + '.plt'
 
     # Specify field to plot
-    Field = 'PF_D'
+    Field = 'PF_V1'
 
     # Specify to plot in log-scale
-    UseLogScale_X  = True
-    UseLogScale_Y  = True
-    UseLogScale_2D = False
+    gvS.UseLogScale_X  = True
+    gvS.UseLogScale_Y  = False
+    gvS.UseLogScale_2D = False
 
     # Specify whether or not to use physical units
     UsePhysicalUnits = True
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     CoordinateSystem = 'spherical'
 
     # Only use every <plotEvery> plotfile
-    PlotEvery = 1
+    PlotEvery = 10
 
     # First and last snapshots and number of snapshots to include in movie
     SSi = -1 # -1 -> SSi = 0
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     gvS.MaxLevel = -1
 
     # Include initial conditions in movie?
-    gvS.ShowIC = True
+    gvS.ShowIC = False
 
     gvS.PlotMesh = False
 
@@ -66,8 +66,8 @@ if __name__ == "__main__":
 
     # Use custom limts for y-axis (1D) or colorbar (2D)
     gvS.UseCustomLimits = False
-    gvS.vmin = 0.0
-    gvS.vmax = 2.0
+    gvS.vmin = -35000.0
+    gvS.vmax = 0.0
 
     gvS.MovieRunTime = 10.0 # seconds
 
@@ -83,7 +83,7 @@ if __name__ == "__main__":
     #### ====== End of User Input =======
 
 #    DataDirectory = 'DataDirectories/{:s}_StaticMesh'.format( ProblemName )
-    DataDirectory = 'DataDirectories/{:s}'.format( ProblemName )
+    DataDirectory = 'DataDirectories/{:s}_ThirdRun'.format( ProblemName )
 
 
     ID            = '{:s}_{:s}'.format( ProblemName, Field )
