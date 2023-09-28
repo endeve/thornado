@@ -1059,10 +1059,6 @@ CONTAINS
     uGF_K = Zero
     uAF_K = Zero
 
-    Third = 1.0_DP / 3.0_DP
-
-    W = 1.0_DP - ( V_0(1)*V_0(1) + V_0(2)*V_0(2) + V_0(3)*V_0(3) )
-    W = 1.0_DP / SQRT( W )
 
     Mu_0 = 0.8_DP
 
@@ -1118,18 +1114,25 @@ CONTAINS
 
             CASE( 'X' )
 
+
+
+
               IF( X1 .LT. X_0 )THEN
                 uPF_K(iNodeX,iPF_V1) &
                   = 0.0_DP
               ELSEIF( X1 .GE. X_0 .AND. X1 .LT. X_1 )THEN
                 uPF_K(iNodeX,iPF_V1) &
-                  = V_0(1) * SIN( TwoPi * ( X1 - X_0 ) / L_X )**2
+                   = V_0(1) / 3.0_DP * ( 2.0_DP * X1 - 4.0_DP )
+                   != V_0(1) / 3.0_DP * ( 2.0_DP * X1 - 2004.0_DP )
+   !               = V_0(1) * SIN( TwoPi * ( X1 - X_0 ) / L_X )**2
               ELSEIF( X1 .GE. X_1 .AND. X1 .LT. X_2 )THEN
                uPF_K(iNodeX,iPF_V1) &
                   = V_0(1)
               ELSEIF( X1 .GE. X_2 .AND. X1 .LT. X_3 )THEN
                 uPF_K(iNodeX,iPF_V1) &
-                  = V_0(1) * SIN( TwoPi * ( X1 - X_0 ) / L_X )**2
+                   = V_0(1) / 3.0_DP * (-2.0_DP * X1 + 16.0_DP )
+                   != V_0(1) / 3.0_DP * (-2.0_DP * X1 + 2016.0_DP )
+    !              = V_0(1) * SIN( TwoPi * ( X1 - X_0 ) / L_X )**2
               ELSE
                 uPF_K(iNodeX,iPF_V1) &
                  = 0.0_DP
@@ -1233,22 +1236,24 @@ CONTAINS
               iNodeZ2 = NodeNumberTable(2,iNodeZ)
 
 
-
               W = 1.0_DP - (uPF_K(iNodeX,iPF_V1)**2 +  uPF_K(iNodeX,iPF_V2)**2 + uPF_K(iNodeX,iPF_V3)**2 )
 
               W = 1.0_DP / SQRT( W )
               X1 = NodeCoordinate( MeshX(1), iX1, iNodeZ2 )
 
               E = NodeCoordinate( MeshE, iZ1, iNodeE )
+              IF( iX1 .EQ. 1) THEN
+               print*, E
+              END IF 
 
               IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
                 uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
-                  ! = 1.0d-40
-                  = 1.0_DP / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP )
+                   = 1.0d-45
+                  != 1.0_DP / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP ) * (1.0_DP / X1)**2 
                 uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
-                  ! = 0.0_DP
-                  = 0.99_DP * W * uPR_K( iNodeZ, iZ1, iPR_D, iS )
+                   = 0.0_DP
+                 ! = 0.99_DP * W * uPR_K( iNodeZ, iZ1, iPR_D, iS )
                 uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
                   = 0.0_DP
                 uPR_K( iNodeZ, iZ1, iPR_I3, iS ) &
@@ -1425,7 +1430,7 @@ CONTAINS
               iNodeZ2 = NodeNumberTable(2,iNodeZ)
 
               uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
-                = 10d-8
+                = 1.0d-8
               uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
                  = 0.0_DP
               uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
@@ -1605,7 +1610,7 @@ CONTAINS
               END IF
 
               uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
-                = 1.0d-8
+                = 1.0d-12
               uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
                  = 0.0_DP
               uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
@@ -1770,17 +1775,10 @@ CONTAINS
 
             iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
-            iNodeZ2 = NodeNumberTable(2,iNodeZ)
-            iNodeZ3 = NodeNumberTable(3,iNodeZ)
-            iNodeZ4 = NodeNumberTable(4,iNodeZ)
-
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeZ2 )
-            X2 = NodeCoordinate( MeshX(2), iX2, iNodeZ3 )
-            X3 = NodeCoordinate( MeshX(3), iX3, iNodeZ4 )
 
 
             uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
-              = 10d-10
+              = 1.0d-10
    
             uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
               = 0.0_DP
@@ -1817,7 +1815,6 @@ CONTAINS
           END DO ! iS  = 1, nSpecies
 
         END DO ! iNodeZ = 1, nDOFZ
-
         uCR(iX1,iX2,iX3,lo_C(4):hi_C(4)) &
           = RESHAPE( uCR_K, [ hi_C(4) - lo_C(4) + 1 ] )
 
@@ -1851,7 +1848,7 @@ CONTAINS
     REAL(DP)       :: uPF_K( nDOFX, nPF )
     REAL(DP)       :: uCF_K( nDOFX, nCF )
     REAL(DP)       :: uAF_K( nDOFX, nAF )
-
+    REAL(DP)       :: E
     ! --- AMReX ---
     INTEGER                       :: lo_C(4), hi_C(4)
     INTEGER                       :: lo_G(4), hi_G(4)
@@ -1949,7 +1946,6 @@ CONTAINS
                  uGF_K(:,iGF_Gm_dd_33), &
                  uAF_K(:,iAF_P)      )
 
-
           uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
             = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
 
@@ -1962,6 +1958,12 @@ CONTAINS
 
               iNodeZ2 = NodeNumberTable(2,iNodeZ)
 
+            iNodeE = MOD( (iNodeZ-1)        , nDOFE ) + 1
+
+            E = NodeCoordinate( MeshE, iZ1, iNodeE )
+            IF(iX1 .EQ. 1 .AND. iNodeE .EQ. 1) THEN
+            print*, E
+            END IF
               uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
                 = 10d-40
               uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &

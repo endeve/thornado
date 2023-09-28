@@ -721,14 +721,17 @@ CONTAINS
                                  iZ_B0(3):iZ_E0(3), &
                                  iZ_B0(4):iZ_E0(4))
 
-    INTEGER :: ErrorExists
+    INTEGER :: ErrorExists, i, j
+    REAL(DP) :: absG_K, G_uu(0:3,0:3), G(0:3), absG, B(3), alp, Gm_dd_11, Gm_dd_22, Gm_dd_33, V1, V2, V3
+
 
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
     END IF
 
-    IF( .NOT. UsePositivityLimiter .OR. nDOFZ == 1 ) RETURN
+!    IF( .NOT. UsePositivityLimiter .OR. nDOFZ == 1 ) RETURN
+    IF( .NOT. UsePositivityLimiter ) RETURN
 
     IF( Verbose )THEN
 
@@ -1130,8 +1133,8 @@ m=0
         IF( Gamma_Min < Min_2 )THEN
 
           ! --- Limit Towards Cell Average ---
+!print*, iZ1,iZ2, N_Q(:,iZ1,iZ2,iZ3,iZ4,iS), G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS)
           Theta_2 = One_EPS * Theta_2
-
           N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) &
             = Theta_2 * N_Q (:,iZ1,iZ2,iZ3,iZ4,iS) &
               + ( One - Theta_2 ) * N_K (iZ1,iZ2,iZ3,iZ4,iS)
@@ -1159,12 +1162,79 @@ m=0
     END DO
     END DO
     END DO
-!print*, n, m
+
+print*, n, m
+!STOP
     IF( .NOT. ALL( RealizableCellAverage ) )THEN
+
       CALL RecoverRealizableCellAverage &
              ( iZ_B0, iZ_E0, N_K, G1_K, G2_K, G3_K, N_Q, G1_Q, G2_Q, G3_Q, &
                V1_P, V2_P, V3_P, G_11_P, G_22_P, G_33_P, &
                A_P, B1_P, B2_P, B3_P, RealizableCellAverage )
+    DO iS = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+      DO iNodeZ = 1, nDOFZ
+
+
+        iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
+        IF( .NOT. RealizableCellAverage(iZ1,iZ2,iZ3,iZ4,iS) )THEN
+
+            absG = 0.0_DP
+            Gm_dd_11 = G_11_Q(iNodeX,iZ2,iZ3,iZ4)
+            Gm_dd_22 = G_22_Q(iNodeX,iZ2,iZ3,iZ4)
+            Gm_dd_33 = G_33_Q(iNodeX,iZ2,iZ3,iZ4)
+
+            V1 = V1_Q(iNodeX,iZ2,iZ3,iZ4)
+            V2 = V2_Q(iNodeX,iZ2,iZ3,iZ4)
+            V3 = V3_Q(iNodeX,iZ2,iZ3,iZ4)
+
+            alp = A_Q(iNodeX,iZ2,iZ3,iZ4)
+            B(1) = B1_Q(iNodeX,iZ2,iZ3,iZ4)
+            B(2) = B2_Q(iNodeX,iZ2,iZ3,iZ4)
+            B(3) = B3_Q(iNodeX,iZ2,iZ3,iZ4)
+
+
+            G_uu(0,0) = - 1.0_DP / alp**2
+            G_uu(1:3,0) = B(1:3) / alp**2
+            G_uu(0,1:3) = B(1:3) / alp**2
+            G_uu(1,1) = 1.0_DP / Gm_dd_11 - B(1) * B(1) / alp**2
+            G_uu(2,2) = 1.0_DP / Gm_dd_22 - B(2) * B(2) / alp**2
+            G_uu(3,3) = 1.0_DP / Gm_dd_33 - B(3) * B(3) / alp**2
+            G_uu(1,2) = - B(1) * B(2) / alp**2
+            G_uu(1,3) = - B(1) * B(3) / alp**2
+            G_uu(2,1) = - B(1) * B(2) / alp**2
+            G_uu(3,1) = - B(1) * B(3) / alp**2
+            G_uu(2,3) = - B(2) * B(3) / alp**2
+            G_uu(3,2) = - B(2) * B(3) / alp**2
+
+            G(1) = G1_Q(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS)
+            G(2) = G2_Q(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS)
+            G(3) = G3_Q(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS)
+            G(0) = ( V1 * G(1) + V2 * G(2) + V3 * G(3) ) / alp
+
+            absG = 0.0_DP
+
+            DO i = 0,3
+            DO j = 0,3
+
+              absG = absG + G_uu(i,j) * G(i) * G(j)
+
+            END DO
+            END DO
+
+            absG = SQRT(absG)
+            !print*, absG / N_Q(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS)
+        END IF
+      END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
 
     END IF
 
@@ -1238,7 +1308,8 @@ m=0
       U_K  (      iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2), &
                   iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies)
 
-    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iNodeZ
+    REAL(DP) :: SUM1, SUM2
 
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -1246,10 +1317,15 @@ m=0
     DO iZ2 = iZ_B0(2), iZ_E0(2)
     DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-      U_K(iZ1,iZ2,iZ3,iZ4,iS) &
-        = SUM( Weights_Q(:) * Tau_Q(:,iZ1,iZ2,iZ3,iZ4) &
-                 * U_Q(:,iZ1,iZ2,iZ3,iZ4,iS) ) &
-          / SUM( Weights_Q(:) * Tau_Q(:,iZ1,iZ2,iZ3,iZ4) )
+      SUM1 = Zero
+      SUM2 = Zero
+      DO iNodeZ = 1, nDOFZ
+        SUM1 = SUM1 + Weights_Q(iNodeZ) * Tau_Q(iNodeZ,iZ1,iZ2,iZ3,iZ4) * U_Q(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS)
+        SUM2 = SUM2 + Weights_Q(iNodeZ) * Tau_Q(iNodeZ,iZ1,iZ2,iZ3,iZ4)
+      END DO
+      U_K(iZ1,iZ2,iZ3,iZ4,iS) = SUM1 / SUM2
+
+
     END DO
     END DO
     END DO
