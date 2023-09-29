@@ -286,15 +286,15 @@ CONTAINS
               = 0.0_DP
           ELSEIF( X1 .GE. X_0 .AND. X1 .LT. X_1 )THEN
             uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-              = 2 * V_0(1) / 3 * ( X1 - X_0 )
-              ! = V_0(1) * SIN( TwoPi * ( X1 - X_0 ) / L_X )**2
+              ! = 2 * V_0(1) / 3 * ( X1 - X_0 )
+              = V_0(1) * SIN( TwoPi * ( X1 - X_0 ) / L_X )**2
           ELSEIF( X1 .GE. X_1 .AND. X1 .LT. X_2 )THEN
             uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
               = V_0(1)
           ELSEIF( X1 .GE. X_2 .AND. X1 .LT. X_3 )THEN
             uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
-              = - 2 * V_0(1) / 3 * ( X1 - X_3 )
-              ! = V_0(1) * SIN( TwoPi * ( X1 - X_0 ) / L_X )**2
+              ! = - 2 * V_0(1) / 3 * ( X1 - X_3 )
+              = V_0(1) * SIN( TwoPi * ( X1 - X_0 ) / L_X )**2
           ELSE
             uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
               = 0.0_DP
@@ -509,7 +509,7 @@ CONTAINS
           CASE DEFAULT
 
             uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J,iS) &
-              = One / ( EXP( E / Three - Three ) + One )
+              = E / ( EXP( E / Three - Three ) + One )
 
           END SELECT
 

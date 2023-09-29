@@ -148,10 +148,14 @@ CONTAINS
 
         iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
-        ! print *, 'E'
-        ! print *, CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E ,iS)
-        ! print *, 'F1'
-        ! print *, CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F1 ,iS)
+        ! IF ( CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E ,iS) < &
+        !      SQRT ( CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F1 ,iS)**2 + &
+        !             CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F2 ,iS)**2 + &
+        !             CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F3 ,iS)**2 ) ) THEN
+          ! print *, 'E  = ', CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E ,iS)
+          ! print *, 'F1 = ', CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F1 ,iS)
+          ! STOP
+        ! END IF
 
         CALL ComputePrimitive_TwoMoment_Richardson_FMC &
                ( CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E ,iS), &

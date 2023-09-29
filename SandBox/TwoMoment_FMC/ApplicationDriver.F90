@@ -1,7 +1,7 @@
 PROGRAM ApplicationDriver
 
   USE KindModule, ONLY: &
-    DP, One, Zero
+    DP, SqrtTiny, One, Zero
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_E0, iX_B1, iX_E1, &
     iE_B0, iE_E0, iE_B1, iE_E1, &
@@ -38,6 +38,8 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: CoordinateSystem = 'CARTESIAN'
   CHARACTER(32) :: TimeSteppingScheme
+  LOGICAL       :: UsePositivityLimiter
+  LOGICAL       :: UseEnergyLimiter
   INTEGER       :: nNodes
   INTEGER       :: nSpecies = 1
   INTEGER       :: nE, bcE, nX(3), bcX(3)
@@ -128,7 +130,7 @@ PROGRAM ApplicationDriver
         xR  = [ 1.0d1, 1.0d0, 1.0d0 ]
         bcX = [ 12, 1, 1 ]
 
-        V_0 = [ 0.4_DP, 0.0_DP, 0.0_DP ]
+        V_0 = [ 0.3_DP, 0.0_DP, 0.0_DP ]
 
       ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
 
@@ -158,15 +160,15 @@ PROGRAM ApplicationDriver
 
       END IF
 
-      nE    = 256
+      nE    = 64
       eL    = 0.0d0
       eR    = 5.0d1
       bcE   = 11
       zoomE = 1.0_DP
 
-      nNodes = 1
+      nNodes = 2
 
-      TimeSteppingScheme = 'SSPRK1'
+      TimeSteppingScheme = 'SSPRK2'
 
       t_end   = 2.0d+1
       iCycleD = 1
@@ -178,8 +180,8 @@ PROGRAM ApplicationDriver
       Sigma = 0.0_DP
 
       ! UseSlopeLimiter      = .FALSE.
-      ! UsePositivityLimiter = .TRUE.
-      ! UseEnergyLimiter     = .TRUE.
+      UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .TRUE.
 
       ! UseRealizabilityTimeStep = .TRUE.
 
@@ -297,6 +299,8 @@ CONTAINS
       InitializeReferenceElement_Lagrange
     USE TwoMoment_OpacityModule_FMC, ONLY: &
       CreateOpacities
+    USE TwoMoment_PositivityLimiterModule_FMC, ONLY: &
+      InitializePositivityLimiter_TwoMoment
     USE TwoMoment_TimeSteppingModule_FMC, ONLY: &
       Initialize_IMEX_RK
 
@@ -369,6 +373,18 @@ CONTAINS
     CALL CreateOpacities &
            ( nx, [1, 1, 1], nE, 1, Verbose_Option = .TRUE.)
 
+    ! --- Initialize Positivity Limiter ---
+
+    CALL InitializePositivityLimiter_TwoMoment &
+           ( Min_1_Option &
+               = SqrtTiny, &
+             Min_2_Option &
+               = SqrtTiny, &
+             UsePositivityLimiter_Option &
+               = UsePositivityLimiter, &
+             Verbose_Option &
+               = .TRUE. )
+
     ! --- Initialize Time Stepper ---
 
     CALL Initialize_IMEX_RK( TRIM( TimeSteppingScheme ) )
@@ -384,10 +400,47 @@ CONTAINS
       FinalizeProgram
     USE TwoMoment_TimeSteppingModule_FMC, ONLY: &
       Finalize_IMEX_RK
+    USE TwoMoment_OpacityModule_FMC, ONLY: &
+      DestroyOpacities
+    USE TwoMoment_PositivityLimiterModule_FMC, ONLY: &
+      FinalizePositivityLimiter_TwoMoment
+    USE ReferenceElementModuleX, ONLY: &
+      FinalizeReferenceElementX
+    USE ReferenceElementModuleX_Lagrange, ONLY: &
+      FinalizeReferenceElementX_Lagrange
+    USE ReferenceElementModuleE, ONLY: &
+      FinalizeReferenceElementE
+    USE ReferenceElementModuleE_Lagrange, ONLY: &
+      FinalizeReferenceElementE_Lagrange
+    USE ReferenceElementModuleZ, ONLY: &
+      FinalizeReferenceElementZ
+    USE ReferenceElementModule, ONLY: &
+      FinalizeReferenceElement
+    USE ReferenceElementModule_Lagrange, ONLY: &
+      FinalizeReferenceElement_Lagrange
     
     CALL Finalize_IMEX_RK
 
+    CALL DestroyOpacities
+
+    CALL FinalizePositivityLimiter_TwoMoment
+
     CALL DestroyTwoMomentFields
+
+    CALL FinalizeReferenceElementX
+
+    CALL FinalizeReferenceElementX_Lagrange
+
+    CALL FinalizeReferenceElementE
+
+    CALL FinalizeReferenceElementE_Lagrange
+
+    CALL FinalizeReferenceElementZ
+
+    CALL FinalizeReferenceElement
+
+    CALL FinalizeReferenceElement_Lagrange
+
 
     CALL FinalizeProgram
 
