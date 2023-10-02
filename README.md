@@ -90,7 +90,11 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
 ## Oct 2 2023
 1. Continue reducing Thornado to replicate the wrong MASK value since 08.22.
-    - 
+    - Modules/TwoMoment/TwoMoment_DiscretizationModule_Collisions_Neutrinos.F90 : Done 
+    - Modules/TwoMoment/TwoMoment_NeutrinoMatterSolverModule.F90 : Done
+    - Modules/TwoMoment/OrderV/TwoMoment_TimeSteppingModule.F90  : Done
+    - Sandbox/TwoMoment_OrderV/ApplicationDriver_Neutrinos.F90   : Done
+2. Discussed with Austin about the serial run crash inside the grid distribution. Sent an email to him with the files he asked. 
 ## Sept 28-29 2023
 1. Code to output ITERATE_inner.
 <pre>
