@@ -88,7 +88,77 @@ export  IGC_DumpToCustomDir=/nfs/site/home/quanshao/sandbox/shaderDump/tmp
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
+## Oct 2 2023
+1. Continue reducing Thornado to replicate the wrong MASK value since 08.22.
+    - 
+## Sept 28-29 2023
+1. Code to output ITERATE_inner.
+<pre>
+   ITERATE_outer = .TRUE.
+    ITERATE_inner = .TRUE.
 
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: &
+    !$OMP   ITERATE_outer, ITERATE_inner )
+
+      !$OMP TARGET PARALLEL
+      !$OMP Single
+      print*, "gpu gpu ",ITERATE_inner(1), LOC(ITERATE_inner)
+      !$OMP END Single
+      !$OMP END TARGET PARALLEL
+
+      print*,"CPU CPU ", ITERATE_inner(1), LOC(ITERATE_inner)
+
+      !$OMP TARGET UPDATE FROM(ITERATE_inner, nIterations_Inner)
+      print*,"ITERATE_inner nIterations_Inner ", ITERATE_inner(1), LOC(ITERATE_inner)
+
+      !$OMP TARGET UPDATE FROM(ITERATE_inner, ITERATE_outer)
+      print*,"ITERATE_inner ITERATE_outer     ", ITERATE_inner(1), LOC(ITERATE_inner)
+
+      !$OMP TARGET UPDATE FROM(ITERATE_inner, nIterations_Outer)
+      print*,"ITERATE_inner nIterations_Outer ", ITERATE_inner(1), LOC(ITERATE_inner)
+      !$OMP TARGET UPDATE FROM(ITERATE_inner, Beta_u_1)
+      print*,"ITERATE_inner Beta_u_1          ", ITERATE_inner(1), LOC(ITERATE_inner)
+
+      !$OMP TARGET UPDATE FROM(ITERATE_inner, nIterations_Inner)
+      print*,"ITERATE_inner nIterations_Inner ", ITERATE_inner(1), LOC(ITERATE_inner)
+stop " wwwwwwwww "
+
+  END SUBROUTINE SolveNeutrinoMatterCoupling_FP_Nested_AA
+</pre>
+
+Here is the result for 0822 for original code
+<pre>
+ gpu gpu -1      -71776119063216128
+ CPU CPU  T       140721758803632
+ ITERATE_inner nIterations_Inner  F       140721758803632
+ ITERATE_inner ITERATE_outer      T       140721758803632
+ ITERATE_inner nIterations_Outer  F       140721758803632
+ ITERATE_inner Beta_u_1           T       140721758803632
+ ITERATE_inner nIterations_Inner  F       140721758803632
+ wwwwwwwww
+</pre>
+2. reducing Thornado for the wrong value of MASK after UPDATE FROM directive. 
+   - set nIterations_Inner(:) = 1/0 and nIterations_Outer(:) = 1/0 does not affect 0820, i.e. ITERATE_inner(1)=T; however it affect 08.22, setting them to 1, make the output of ITERATE_inner(1)=T. 
+   <pre>
+     ITERATE_inner nIterations_Inner  T       140724786721344
+     ITERATE_inner ITERATE_outer      T       140724786721344
+     ITERATE_inner nIterations_Outer  T       140724786721344
+     ITERATE_inner Beta_u_1           T       140724786721344
+     ITERATE_inner nIterations_Inner  T       140724786721344
+   </pre>
+   - Simplified SolveNeutrinoMatterCoupling_FP_Nested_AA and created a SolveNeutrinoMatterCoupling_FP_Nested_AA_debug. The simplication includes remove all unnecessary variables, functions, etc. . 
+   - Simplified  InitializeCollisions , but get T for all print out for both 0820 and 0822. Here are code: 
+   <pre>
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to:  & 
+    !$OMP          nIterations_Inner, nIterations_Outer ) &
+    !$OMP MAP( alloc: GX_N )
+   </pre>
+   - The above issue is caused by deleting InitializeNeutrinoMatterSolver call. With this call, and removal of unnecessary variables in TARGET ENTER DATA, the code replicated the wrong value issue. 
+   - Modules/TwoMoment/TwoMoment_DiscretizationModule_Collisions_Neutrinos.F90 almost in its simplest form
+   - Modules/TwoMoment/TwoMoment_NeutrinoMatterSolverModule.F90 almost in its simplest form
+   - Modules/TwoMoment/OrderV/TwoMoment_TimeSteppingModule.F90 working on it 
 ## Sept 27 2023
 1. Working on Flash-X compilation and runs
    - Set -maxblocks=100000 (7000) make the code compile and run without the "SIGSEGV, Segmentation fault on the intrinsic allocation function" errror. https://jira.devtools.intel.com/browse/CMPLRLIBS-34599
