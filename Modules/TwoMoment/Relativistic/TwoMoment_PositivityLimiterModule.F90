@@ -1164,7 +1164,6 @@ m=0
     END DO
 
 print*, n, m
-!STOP
     IF( .NOT. ALL( RealizableCellAverage ) )THEN
 
       CALL RecoverRealizableCellAverage &
@@ -1692,6 +1691,7 @@ print*, n, m
            nSpecies)
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iP_X, i, j
     REAL(DP) :: absG_K, G_uu(0:3,0:3), G(0:3), absG, B(3), alp, Gm_dd_11, Gm_dd_22, Gm_dd_33, V1, V2, V3
+    REAL(DP) :: RecovC  = 0.999_DP
 
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -1773,15 +1773,15 @@ print*, n, m
 
           G1_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
             = ( G1_K(iZ1,iZ2,iZ3,iZ4,iS) / absG_K ) &
-                * 0.99_DP * N_K(iZ1,iZ2,iZ3,iZ4,iS)
+                * RecovC * N_K(iZ1,iZ2,iZ3,iZ4,iS)
 
           G2_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
             = ( G2_K(iZ1,iZ2,iZ3,iZ4,iS) / absG_K ) &
-                * 0.99_DP * N_K(iZ1,iZ2,iZ3,iZ4,iS)
+                * RecovC * N_K(iZ1,iZ2,iZ3,iZ4,iS)
 
           G3_Q(:,iZ1,iZ2,iZ3,iZ4,iS) &
             = ( G3_K(iZ1,iZ2,iZ3,iZ4,iS) / absG_K ) &
-                * 0.99_DP * N_K(iZ1,iZ2,iZ3,iZ4,iS)
+                * RecovC * N_K(iZ1,iZ2,iZ3,iZ4,iS)
 
         END IF
 
