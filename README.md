@@ -88,7 +88,10 @@ export  IGC_DumpToCustomDir=/nfs/site/home/quanshao/sandbox/shaderDump/tmp
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
-## Oct 2 2023
+## Oct 3 2023
+1. Obtained a reproducer for the wrong value of MASK starting from nightly 08.22/ Intel(R) Fortran 24.0-1202. Filed a JIRA for it, and here is the link: https://jira.devtools.intel.com/browse/CMPLRLLVM-52215
+
+# Oct 2 2023
 1. Continue reducing Thornado to replicate the wrong MASK value since 08.22.
     - Modules/TwoMoment/TwoMoment_DiscretizationModule_Collisions_Neutrinos.F90 : Done 
     - Modules/TwoMoment/TwoMoment_NeutrinoMatterSolverModule.F90 : Done
