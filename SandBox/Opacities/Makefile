@@ -58,3 +58,8 @@ NeutrinoOpacities.o: \
   DeviceModule.o \
   TimersModule.o \
   NeutrinoOpacities.F90
+
+ifeq ($(PE_ENV),CRAY)
+TwoMoment_PositivityLimiterModule.o : TwoMoment_PositivityLimiterModule.F90
+	$(FORTRAN) -c $(DEFINES) $(FLAGS) $(filter-out -qrealsize=8,$(F90FLAGS)) -h ipa1 $< -o $@
+endif

@@ -1203,14 +1203,16 @@ CONTAINS
     REAL(DP) :: Theta_K1, Theta_K2
     REAL(DP) :: MinTheta_K1, MinTheta_K2
 
-    REAL(DP), ALLOCATABLE, DIMENSION(:)   :: V_u_1, V_u_2, V_u_3
-    REAL(DP), ALLOCATABLE, DIMENSION(:,:) :: W2_K, W3_K
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:)   :: V_u_1, V_u_2, V_u_3
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:,:) :: W2_K, W3_K
 
-    ALLOCATE( V_u_1(1:nDOFX) )
-    ALLOCATE( V_u_2(1:nDOFX) )
-    ALLOCATE( V_u_3(1:nDOFX) )
-    ALLOCATE( W2_K(1:nDOFZ,iZ_B0(1):iZ_E0(1)) )
-    ALLOCATE( W3_K(1:nDOFZ,iZ_B0(1):iZ_E0(1)) )
+    ALLOCATE( V_u_1(1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( V_u_2(1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( V_u_3(1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( W2_K (1:nDOFZ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),            &
+                            iZ_B0(4):iZ_E0(4),nSpecies) )
+    ALLOCATE( W3_K (1:nDOFZ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),            &
+                            iZ_B0(4):iZ_E0(4),nSpecies) )
 
     IF( .NOT. UseEnergyLimiter ) RETURN
 
@@ -1225,21 +1227,18 @@ CONTAINS
     !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4 ) &
     !$OMP PRIVATE( iNodeX, iNodeE ) &
     !$OMP PRIVATE( ResidualE, iK1, iK2, N_K1, N_K2, E_K1, E_K2, &
-    !$OMP          Theta_K1, Theta_K2, MinTheta_K1, MinTheta_K2, &
-    !$OMP          V_u_1, V_u_2, V_u_3, W2_K, W3_K )
+    !$OMP          Theta_K1, Theta_K2, MinTheta_K1, MinTheta_K2 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG COLLAPSE(4) ASYNC &
     !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4 ) &
     !$ACC PRIVATE( ResidualE, iK1, iK2, N_K1, N_K2, E_K1, E_K2, &
     !$ACC          Theta_K1, Theta_K2, MinTheta_K1, MinTheta_K2, &
-    !$ACC          V_u_1, V_u_2, V_u_3, W2_K, W3_K ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, GE, GX, U_F, U_R, DeltaE, &
     !$ACC          Weights_Q, ApplyEnergyLimiter )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( ResidualE, iK1, iK2, N_K1, N_K2, E_K1, E_K2, &
     !$OMP          Theta_K1, Theta_K2, MinTheta_K1, MinTheta_K2, &
-    !$OMP          V_u_1, V_u_2, V_u_3, W2_K, W3_K, &
     !$OMP          iNodeX, iNodeE )
 #endif
     DO iS  = 1, nSpecies
@@ -1258,17 +1257,17 @@ CONTAINS
 #endif
         DO iNodeX = 1, nDOFX
 
-          V_u_1(iNodeX) &
+          V_u_1(iNodeX,iZ2,iZ3,iZ4,iS) &
             = U_F(iNodeX,iZ2,iZ3,iZ4,iCF_S1) &
                 / ( U_F(iNodeX,iZ2,iZ3,iZ4,iCF_D) &
                       * GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) )
 
-          V_u_2(iNodeX) &
+          V_u_2(iNodeX,iZ2,iZ3,iZ4,iS) &
             = U_F(iNodeX,iZ2,iZ3,iZ4,iCF_S2) &
                 / ( U_F(iNodeX,iZ2,iZ3,iZ4,iCF_D) &
                       * GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22) )
 
-          V_u_3(iNodeX) &
+          V_u_3(iNodeX,iZ2,iZ3,iZ4,iS) &
             = U_F(iNodeX,iZ2,iZ3,iZ4,iCF_S3) &
                 / ( U_F(iNodeX,iZ2,iZ3,iZ4,iCF_D) &
                       * GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
@@ -1290,14 +1289,14 @@ CONTAINS
             iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
             iNodeE = MOD( (iNodeZ-1)        , nDOFE ) + 1
 
-            W2_K(iNodeZ,iZ1) &
+            W2_K(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS) &
               = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
                   * W_Factor &
                   * GE(iNodeE,iZ1,iGE_Ep2) &
                   * GX(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm) &
                   * Weights_Q(iNodeZ)
 
-            W3_K(iNodeZ,iZ1) &
+            W3_K(iNodeZ,iZ1,iZ2,iZ3,iZ4,iS) &
               = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
                   * W_Factor &
                   * GE(iNodeE,iZ1,iGE_Ep3) &
@@ -1316,35 +1315,35 @@ CONTAINS
 
           N_K1 &
             = ElementNumber &
-                ( W2_K(:,iK1), &
+                ( W2_K(:,iK1,iZ2,iZ3,iZ4,iS), &
                   U_R (:,iK1,iZ2,iZ3,iZ4,iCR_N,iS) )
 
           N_K2 &
             = ElementNumber &
-                ( W2_K(:,iK2), &
+                ( W2_K(:,iK2,iZ2,iZ3,iZ4,iS), &
                   U_R (:,iK2,iZ2,iZ3,iZ4,iCR_N,iS) )
 
           E_K1 &
             = ElementEnergy &
-                ( W3_K (:,iK1), &
+                ( W3_K (:,iK1,iZ2,iZ3,iZ4,iS), &
                   U_R  (:,iK1,iZ2,iZ3,iZ4,iCR_N ,iS), &
                   U_R  (:,iK1,iZ2,iZ3,iZ4,iCR_G1,iS), &
                   U_R  (:,iK1,iZ2,iZ3,iZ4,iCR_G2,iS), &
                   U_R  (:,iK1,iZ2,iZ3,iZ4,iCR_G3,iS), &
-                  V_u_1, &
-                  V_u_2, &
-                  V_u_3 )
+                  V_u_1(:,iZ2,iZ3,iZ4,iS), &
+                  V_u_2(:,iZ2,iZ3,iZ4,iS), &
+                  V_u_3(:,iZ2,iZ3,iZ4,iS) )
 
           E_K2 &
             = ElementEnergy &
-                ( W3_K (:,iK2), &
+                ( W3_K (:,iK2,iZ2,iZ3,iZ4,iS), &
                   U_R  (:,iK2,iZ2,iZ3,iZ4,iCR_N ,iS), &
                   U_R  (:,iK2,iZ2,iZ3,iZ4,iCR_G1,iS), &
                   U_R  (:,iK2,iZ2,iZ3,iZ4,iCR_G2,iS), &
                   U_R  (:,iK2,iZ2,iZ3,iZ4,iCR_G3,iS), &
-                  V_u_1, &
-                  V_u_2, &
-                  V_u_3 )
+                  V_u_1(:,iZ2,iZ3,iZ4,iS), &
+                  V_u_2(:,iZ2,iZ3,iZ4,iS), &
+                  V_u_3(:,iZ2,iZ3,iZ4,iS) )
 
           MinTheta_K1 = MIN(0.0_DP, Min_1 / &
                             MINVAL(U_R(:,iK1,iZ2,iZ3,iZ4,iCR_N ,iS)) - One)
@@ -1377,35 +1376,35 @@ CONTAINS
 
             N_K1 &
               = ElementNumber &
-                  ( W2_K(:,iK1), &
+                  ( W2_K(:,iK1,iZ2,iZ3,iZ4,iS), &
                     U_R (:,iK1,iZ2,iZ3,iZ4,iCR_N,iS) )
 
             N_K2 &
               = ElementNumber &
-                  ( W2_K(:,iK2), &
+                  ( W2_K(:,iK2,iZ2,iZ3,iZ4,iS), &
                     U_R (:,iK2,iZ2,iZ3,iZ4,iCR_N,iS) )
 
             E_K1 &
               = ElementEnergy &
-                  ( W3_K (:,iK1), &
+                  ( W3_K (:,iK1,iZ2,iZ3,iZ4,iS), &
                     U_R  (:,iK1,iZ2,iZ3,iZ4,iCR_N ,iS), &
                     U_R  (:,iK1,iZ2,iZ3,iZ4,iCR_G1,iS), &
                     U_R  (:,iK1,iZ2,iZ3,iZ4,iCR_G2,iS), &
                     U_R  (:,iK1,iZ2,iZ3,iZ4,iCR_G3,iS), &
-                    V_u_1, &
-                    V_u_2, &
-                    V_u_3 )
+                    V_u_1(:,iZ2,iZ3,iZ4,iS), &
+                    V_u_2(:,iZ2,iZ3,iZ4,iS), &
+                    V_u_3(:,iZ2,iZ3,iZ4,iS) )
 
             E_K2 &
               = ElementEnergy &
-                  ( W3_K (:,iK2), &
+                  ( W3_K (:,iK2,iZ2,iZ3,iZ4,iS), &
                     U_R  (:,iK2,iZ2,iZ3,iZ4,iCR_N ,iS), &
                     U_R  (:,iK2,iZ2,iZ3,iZ4,iCR_G1,iS), &
                     U_R  (:,iK2,iZ2,iZ3,iZ4,iCR_G2,iS), &
                     U_R  (:,iK2,iZ2,iZ3,iZ4,iCR_G3,iS), &
-                    V_u_1, &
-                    V_u_2, &
-                    V_u_3 )
+                    V_u_1(:,iZ2,iZ3,iZ4,iS), &
+                    V_u_2(:,iZ2,iZ3,iZ4,iS), &
+                    V_u_3(:,iZ2,iZ3,iZ4,iS) )
 
             MinTheta_K1 = MIN(0.0_DP, Min_1 / &
                               MINVAL(U_R(:,iK1,iZ2,iZ3,iZ4,iCR_N ,iS)) - One)
