@@ -88,9 +88,47 @@ export  IGC_DumpToCustomDir=/nfs/site/home/quanshao/sandbox/shaderDump/tmp
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
-## Oct 3 2023
-1. Obtained a reproducer for the wrong value of MASK starting from nightly 08.22/ Intel(R) Fortran 24.0-1202. Filed a JIRA for it, and here is the link: https://jira.devtools.intel.com/browse/CMPLRLLVM-52215
+## Oct 6 2023
+1. Tested Thornado using the candidate SDK for MS69, and thornado compiles and runs fine with a little bit (less than 2%) performance improvement compared to the one in current MS69 report. 
+<pre>
+ml use /exaperf/validate/modulefiles
+ml oneapi/eng-compiler/2023.10.15.002-rc01 
+ml swap -f mpich/52.2/icc-sockets-gpu
+</pre>
+2. Tried the suggestions from Austin on FlashX/Thornado run. The second method by Austin helps the run passed the grid parts. But the code hangs on `2532     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO &` of "Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90. It might be the time to try the CPU only runs. 
+3. Tested the reproducer of https://jira.devtools.intel.com/browse/CMPLRLLVM-52215 on a Gen9 node, i.e., anepcdlin01, and it is found that as Lorri pointed out that the reproducer produces correct result. So the wrong value only happens on PVC systems. Updated the JIRA issue with this new findings. 
 
+## Oct 5 2023
+1. Suggested by Kwasniewski, Patryk that the slowdown seeing in open-linux-driver-verify-dev_igc-74802 might come from other source and test of open-linux-driver-ci-dev_igc-15399 has been performed. The test showed that the slowdown is in the igc driver of 15399. Here are the times using 15399:
+<pre>
+sineWave   [8,8,8]        1.2346e+01
+
+sineWave   [16,16,16]     1.3893e+02
+</pre>
+It is noticed that extra warning messages appeared with 15399 and 74802.
+<pre>
+warning: VLA has been detected, the private memory size is set to 4096B. You can change the size by setting flag ForcePerThreadPrivateMemorySize to a value from [1024:20480]. Greater values can affect performance, and lower ones may lead to incorrect results of your program.
+To make sure your program runs correctly you can set flag StackOverflowDetection to 1. This flag will print "Stack overflow detected!" if insufficient memory value has lead to stack overflow. It should be used for debugging only as it affects performance.
+
+warning: VLA has been detected, the private memory size is set to 4096B. You can change the size by setting flag ForcePerThreadPrivateMemorySize to a value from [1024:20480]. Greater values can affect performance, and lower ones may lead to incorrect results of your program.
+To make sure your program runs correctly you can set flag StackOverflowDetection to 1. This flag will print "Stack overflow detected!" if insufficient memory value has lead to stack overflow. It should be used for debugging only as it affects performance.
+
+warning: VLA has been detected, the private memory size is set to 4096B. You can change the size by setting flag ForcePerThreadPrivateMemorySize to a value from [1024:20480]. Greater values can affect performance, and lower ones may lead to incorrect results of your program.
+To make sure your program runs correctly you can set flag StackOverflowDetection to 1. This flag will print "Stack overflow detected!" if insufficient memory value has lead to stack overflow. It should be used for debugging only as it affects performance.
+
+
+</pre>
+
+2. Tested newest nightly, i.e., nightly-compiler/2023.10.04 (Intel(R) Fortran 24.0-1308) for the reproducer of https://jira.devtools.intel.com/browse/CMPLRLLVM-52215 and find the issue still persists. the reason of doing this test is that Lorri commented "I cannot reproduce this with the latest xmain compiler.". Updated the JIRA issue with the test result and ask the version of the compiler Lorri was testing. 
+## Oct 3-4 2023
+1. Obtained a reproducer for the wrong value of MASK starting from nightly 08.22/ Intel(R) Fortran 24.0-1202. Filed a JIRA for it, and here is the link: https://jira.devtools.intel.com/browse/CMPLRLLVM-52215
+2. Tested open-linux-driver-verify-dev_igc-74802 for Thornado and also compared the run times for umd692 and umd693, and here is the result: 
+<pre>
+  Case             umd692   open-linux-driver-verify-dev_igc-74802     umd693 
+sineWave [8,8,8]    9.4859e+00          1.2605e+01                       1.1712e+01
+sineWave [16,16,16] 1.3178e+02          1.3617e+02                       1.5630e+02
+</pre>
+The log files are in /localdisk/quanshao/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables/GSD5788
 # Oct 2 2023
 1. Continue reducing Thornado to replicate the wrong MASK value since 08.22.
     - Modules/TwoMoment/TwoMoment_DiscretizationModule_Collisions_Neutrinos.F90 : Done 
