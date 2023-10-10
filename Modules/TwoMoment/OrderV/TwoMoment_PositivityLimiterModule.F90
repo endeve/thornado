@@ -1206,6 +1206,8 @@ CONTAINS
     REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:)   :: V_u_1, V_u_2, V_u_3
     REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:,:) :: W2_K, W3_K
 
+    IF( .NOT. UseEnergyLimiter ) RETURN
+
     ALLOCATE( V_u_1(1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
     ALLOCATE( V_u_2(1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
     ALLOCATE( V_u_3(1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),nSpecies) )
@@ -1213,8 +1215,6 @@ CONTAINS
                             iZ_B0(4):iZ_E0(4),nSpecies) )
     ALLOCATE( W3_K (1:nDOFZ,iZ_B0(1):iZ_E0(1),iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),            &
                             iZ_B0(4):iZ_E0(4),nSpecies) )
-
-    IF( .NOT. UseEnergyLimiter ) RETURN
 
     CALL TimersStart( Timer_PL_EnergyLimiter )
 
