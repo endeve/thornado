@@ -88,6 +88,18 @@ export  IGC_DumpToCustomDir=/nfs/site/home/quanshao/sandbox/shaderDump/tmp
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
+## Oct 11 2023
+1. Tried 75049 and did not see any performance improvement, but slightly degradation. https://gfx-assets-build.intel.com/artifactory/api/archive/download/open-linux-driver-builds/verify/dev_igc/open-linux-driver-verify-dev_igc-75049/artifacts/linux/sles/15.3/release?archiveType=zip
+<pre>
+cat timeFOM_2023.08.20-2023.08.28.txt75049
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2023.08.2075049   2023.5.007-dev647    TimeDiff   Percentage   |   2023.08.2075049   2023.5.007-dev647    FOM-Diff   Percentage
+                     MKL Date :  2023.08.28
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     1.2547e+01          9.4460e+00       3.1010e+00    32.83%            1.0154e+07          1.3487e+07       -3.3334e+06   -24.71%
+sineWave   [16,16,16]   O3    :     1.3882e+02          1.3354e+02       5.2778e+00     3.95%            1.4594e+07          1.5170e+07       -5.7680e+05    -3.80%
+</pre>
+
 ## Oct 6 2023
 1. Tested Thornado using the candidate SDK for MS69, and thornado compiles and runs fine with a little bit (less than 2%) performance improvement compared to the one in current MS69 report. 
 <pre>
