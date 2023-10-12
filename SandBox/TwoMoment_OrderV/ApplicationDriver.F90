@@ -555,10 +555,10 @@ PROGRAM ApplicationDriver
 
       t_end     = 5.0_DP
       iCycleD   = 10
-      iCycleW   = 10
+      iCycleW   = 1000
       maxCycles = 1000000
 
-      V_0 = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
 
       D_0   = 0.0_DP
       Chi   = 0.0_DP

@@ -207,6 +207,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP) :: Rtol_inner
   REAL(DP) :: wMatrRHS(nMatterEquations)
   REAL(DP) :: DnuMax
+  LOGICAL  :: FreezeOpacities
 
   ! --- Temporary arrays for scatter/gather (packing)
 
@@ -738,7 +739,8 @@ CONTAINS
     ( M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
       MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
       Include_NES_Option, Include_Pair_Option, Include_Brem_Option, &
-      Include_LinCorr_Option, wMatrRHS_Option, DnuMax_Option, Verbose_Option )
+      Include_LinCorr_Option, wMatrRHS_Option, DnuMax_Option, &
+      FreezeOpacities_Option, Verbose_Option )
 
     INTEGER , INTENT(in), OPTIONAL :: M_outer_Option
     INTEGER , INTENT(in), OPTIONAL :: M_inner_Option
@@ -752,6 +754,7 @@ CONTAINS
     LOGICAL , INTENT(in), OPTIONAL :: Include_LinCorr_Option
     REAL(DP), INTENT(in), OPTIONAL :: wMatrRHS_Option(nMatterEquations)
     REAL(DP), INTENT(in), OPTIONAL :: DnuMax_Option
+    LOGICAL , INTENT(in), OPTIONAL :: FreezeOpacities_Option
     LOGICAL , INTENT(in), OPTIONAL :: Verbose_Option
 
     LOGICAL :: Verbose
@@ -830,6 +833,12 @@ CONTAINS
       DnuMax = One - EPSILON( One )
     END IF
 
+    IF( PRESENT( FreezeOpacities_Option ) )THEN
+      FreezeOpacities = FreezeOpacities_Option
+    ELSE
+      FreezeOpacities = .FALSE.
+    END IF
+
     IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
     ELSE
@@ -862,6 +871,7 @@ CONTAINS
 !!$      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iV3): '  , INT(wMatrRHS(iV3))
 !!$      WRITE(*,*)
       WRITE(*,'(A4,A32,ES10.3E3)') '', 'DnuMax: '         , DnuMax
+      WRITE(*,'(A4,A32,L1)')       '', 'FreezeOpacities: ', FreezeOpacities
       WRITE(*,*)
 
     END IF
@@ -1190,15 +1200,15 @@ CONTAINS
       CALL CreatePackIndex &
              ( ITERATE_outer, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
 
-      IF ( k_outer > 1 ) THEN
+      IF ( k_outer > 1 .AND. .NOT. FreezeOpacities ) THEN
 
         ! --- Recompute Opacity Kernels ---
 
         CALL TimersStart( Timer_Collisions_ComputeOpacity )
 
         CALL ComputeOpacities_Packed &
-               ( D, T, Y, SqrtGm, &
-                 ITERATE_outer, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
+               ( D, T, Y, SqrtGm, ITERATE_outer, nX_P_outer, &
+                 PackIndex_outer, UnpackIndex_outer )
 
         CALL TimersStop( Timer_Collisions_ComputeOpacity )
 
@@ -1497,7 +1507,7 @@ CONTAINS
       CALL ArrayPack &
              ( nX, UnpackIndex, D, T, Y, SqrtGm, D_P, T_P, Y_P, SqrtGm_P )
 
-      Dnu_0_P        => Dnu_0_T       (:,:,1:nX)
+      Dnu_0_P     => Dnu_0_T    (:,:,1:nX)
       Sigma_Iso_P => Sigma_Iso_T(  :,1:nX)
       Phi_0_Iso_P => Phi_0_Iso_T(  :,1:nX)
       Phi_1_Iso_P => Phi_1_Iso_T(  :,1:nX)
