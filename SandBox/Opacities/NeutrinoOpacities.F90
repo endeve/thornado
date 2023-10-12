@@ -92,7 +92,7 @@ PROGRAM NeutrinoOpacities
   INCLUDE 'mpif.h'
 
   INTEGER, PARAMETER :: &
-    nNodes   = 3, & !2, &
+    nNodes   = 2, & !2, &
     nE       = 16, & !2**4, &
     nX1      = 2**6, &
     nPointsX = nNodes * nX1, &
