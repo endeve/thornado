@@ -628,7 +628,7 @@ CONTAINS
     !$OMP MAP( to: iZ_B0, iZ_E0, GE, GX, U_F, U_R ) &
     !$OMP MAP( alloc:  RealizableCellAverage, &
     !$OMP              LimiterApplied, ApplyEnergyLimiter, &
-    !$OMP              Energy_K, dEnergy_K, &
+    !$OMP              Theta_1_K, Theta_2_K, Energy_K, dEnergy_K, &
     !$OMP              Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
     !$OMP              G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
     !$OMP              h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P )
@@ -637,7 +637,7 @@ CONTAINS
     !$ACC COPYIN( iZ_B0, iZ_E0, GE, GX, U_F, U_R ) &
     !$ACC CREATE( RealizableCellAverage, &
     !$ACC         LimiterApplied, ApplyEnergyLimiter, &
-    !$ACC         Energy_K, dEnergy_K, &
+    !$ACC         Theta_1_K, Theta_2_K, Energy_K, dEnergy_K, &
     !$ACC         Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
     !$ACC         G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
     !$ACC         h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P )
@@ -1232,6 +1232,7 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG COLLAPSE(4) ASYNC &
     !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4 ) &
+    !$ACC CREATE( V_u_1, V_u_2, V_u_3, W2_K, W3_K ) &
     !$ACC PRIVATE( ResidualE, iK1, iK2, N_K1, N_K2, E_K1, E_K2, &
     !$ACC          Theta_K1, Theta_K2, MinTheta_K1, MinTheta_K2 ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, GE, GX, U_F, U_R, DeltaE, &
