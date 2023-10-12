@@ -257,13 +257,19 @@ elif [[ $THORNADO_MACHINE == frontier_cce ]]; then
 
   module use /ccs/home/jaharris/modulefiles/frontier
   
-  module load PrgEnv-cray
-  module load cce/15.0.1
-  module load craype-accel-amd-gfx90a
-  module load cray-hdf5-parallel
-  module load rocm/5.4.0
-  module load hipfort/5.4.0
+  #module load PrgEnv-cray
+  #module load cce/15.0.1
+  #module load craype-accel-amd-gfx90a
+  #module load cray-hdf5-parallel
+  #module load rocm/5.4.0
+  #module load hipfort/5.4.0
+  
+  module load cpe/23.09
+  module load PrgEnv-cray cce/16.0.1 cray-hdf5-parallel craype-accel-amd-gfx90a rocm/5.5.1 hipfort/5.5.1
+  module unload darshan-runtime
 
+  module -t list
+  
 elif [[ $THORNADO_MACHINE == perlmutter_nvhpc ]]; then
 
   echo
