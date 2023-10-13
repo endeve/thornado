@@ -628,7 +628,7 @@ CONTAINS
     !$OMP MAP( to: iZ_B0, iZ_E0, GE, GX, U_F, U_R ) &
     !$OMP MAP( alloc:  RealizableCellAverage, &
     !$OMP              LimiterApplied, ApplyEnergyLimiter, &
-    !$OMP              Theta_1_K, Theta_2_K, Energy_K, dEnergy_K, &
+    !$OMP              Energy_K, dEnergy_K, &
     !$OMP              Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
     !$OMP              G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
     !$OMP              h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P )
@@ -637,7 +637,7 @@ CONTAINS
     !$ACC COPYIN( iZ_B0, iZ_E0, GE, GX, U_F, U_R ) &
     !$ACC CREATE( RealizableCellAverage, &
     !$ACC         LimiterApplied, ApplyEnergyLimiter, &
-    !$ACC         Theta_1_K, Theta_2_K, Energy_K, dEnergy_K, &
+    !$ACC         Energy_K, dEnergy_K, &
     !$ACC         Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
     !$ACC         G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
     !$ACC         h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P )
