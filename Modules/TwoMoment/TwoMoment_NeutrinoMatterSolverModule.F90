@@ -4181,20 +4181,22 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: F, G
 
     INTEGER  :: iN_X, iFP, iM
-    REAL(DP) :: FTMP(1:n_FP,1:M)
-    REAL(DP) :: GTMP(1:n_FP,1:M)
+
+    REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: FTMP, GTMP
 
     IF ( Mk == M ) THEN
+ 
+      ALLOCATE( FTMP(1:n_FP,1:M,1:nX_G))
+      ALLOCATE( GTMP(1:n_FP,1:M,1:nX_G))
 
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET TEAMS DISTRIBUTE &
-      !$OMP PRIVATE( FTMP, GTMP )
+      !$OMP MAP( alloc: FTMP, GTMP )
 #elif defined( THORNADO_OACC   )
       !$ACC PARALLEL LOOP GANG &
-      !$ACC PRIVATE( FTMP, GTMP )
+      !$ACC CREATE( FTMP, GTMP )
 #elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO &
-      !$OMP PRIVATE( FTMP, GTMP )
+      !$OMP PARALLEL DO 
 #endif
       DO iN_X = 1, nX_G
         IF( MASK(iN_X) )THEN
@@ -4206,8 +4208,8 @@ CONTAINS
 #endif
           DO iM  = 1, Mk-1
           DO iFP = 1, n_FP
-            FTMP(iFP,iM) = F(iFP,iM+1,iN_X)
-            GTMP(iFP,iM) = G(iFP,iM+1,iN_X)
+            FTMP(iFP,iM,iN_X) = F(iFP,iM+1,iN_X)
+            GTMP(iFP,iM,iN_X) = G(iFP,iM+1,iN_X)
           END DO
           END DO
 
@@ -4218,8 +4220,8 @@ CONTAINS
 #endif
           DO iM  = 1, Mk-1
           DO iFP = 1, n_FP
-            F(iFP,iM,iN_X) = FTMP(iFP,iM)
-            G(iFP,iM,iN_X) = GTMP(iFP,iM)
+            F(iFP,iM,iN_X) = FTMP(iFP,iM,iN_X)
+            G(iFP,iM,iN_X) = GTMP(iFP,iM,iN_X)
           END DO
           END DO
 
