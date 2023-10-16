@@ -88,6 +88,10 @@ export  IGC_DumpToCustomDir=/nfs/site/home/quanshao/sandbox/shaderDump/tmp
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
+## Oct 16 2023
+1. Tested the release candidate rc02, thornado compiles and runs correctly with the candidate. The performance looks good.
+2. Flash-X/Thronado compiles, but it hangs in OMP PRIVATE( uPR_L)  in Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90. Plan to run CPU only to see if the code works. 
+
 ## Oct 11 2023
 1. Tried 75049 and did not see any performance improvement, but slightly degradation. https://gfx-assets-build.intel.com/artifactory/api/archive/download/open-linux-driver-builds/verify/dev_igc/open-linux-driver-verify-dev_igc-75049/artifacts/linux/sles/15.3/release?archiveType=zip
 <pre>
