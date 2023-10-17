@@ -628,7 +628,7 @@ CONTAINS
     !$OMP MAP( to: iZ_B0, iZ_E0, GE, GX, U_F, U_R ) &
     !$OMP MAP( alloc:  RealizableCellAverage, &
     !$OMP              LimiterApplied, ApplyEnergyLimiter, &
-    !$OMP              Energy_K, dEnergy_K, &
+    !$OMP              Theta_1_K, Theta_2_K, Energy_K, dEnergy_K, &
     !$OMP              Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
     !$OMP              G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
     !$OMP              h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P )
@@ -637,12 +637,19 @@ CONTAINS
     !$ACC COPYIN( iZ_B0, iZ_E0, GE, GX, U_F, U_R ) &
     !$ACC CREATE( RealizableCellAverage, &
     !$ACC         LimiterApplied, ApplyEnergyLimiter, &
-    !$ACC         Energy_K, dEnergy_K, &
+    !$ACC         Theta_1_K, Theta_2_K, Energy_K, dEnergy_K, &
     !$ACC         Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
     !$ACC         G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
     !$ACC         h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P )
 #endif
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) ASYNC
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
@@ -1127,7 +1134,7 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: iZ_B0, iZ_E0, GE, GX, U_F, U_R, &
     !$OMP               RealizableCellAverage, &
-    !$OMP               LimiterApplied, ApplyEnergyLimiter, &
+    !$OMP               LimiterApplied, ApplyEnergyLimiter, Theta_1_K, Theta_2_K, &
     !$OMP               Energy_K, dEnergy_K, Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
     !$OMP               G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
     !$OMP               h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P )
@@ -1135,7 +1142,7 @@ CONTAINS
     !$ACC EXIT DATA ASYNC &
     !$ACC DELETE( iZ_B0, iZ_E0, GE, GX, U_F, U_R, &
     !$ACC         RealizableCellAverage, &
-    !$ACC         LimiterApplied, ApplyEnergyLimiter, &
+    !$ACC         LimiterApplied, ApplyEnergyLimiter, Theta_1_K, Theta_2_K, &
     !$ACC         Energy_K, dEnergy_K, Tau_Q, N_Q, N_P, N_K, G1_Q, G1_P, G1_K, &
     !$ACC         G2_Q, G2_P, G2_K, G3_Q, G3_P, G3_K, h_d_1_Q, h_d_1_P, &
     !$ACC         h_d_2_Q, h_d_2_P, h_d_3_Q, h_d_3_P )
