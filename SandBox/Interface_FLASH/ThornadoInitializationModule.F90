@@ -170,6 +170,7 @@ contains
     logical,          intent(in), optional :: Include_Brem_Option
     logical,          intent(in), optional :: Include_LinCorr_Option
     real(dp),         intent(in), optional :: wMatrRHS_Option(5)
+    logical,          intent(in), optional :: FreezeOpacities_Option
     logical,          intent(in), optional :: ActivateUnits_Option
     character(len=*), intent(in), optional :: CoordinateSystem_Option
     logical,          intent(in), optional :: Verbose_Option
@@ -451,6 +452,7 @@ contains
              Include_Brem_Option = Include_Brem_Option, &
              Include_LinCorr_Option = Include_LinCorr_Option, &
              wMatrRHS_Option = wMatrRHS_Option, &
+             FreezeOpacities_Option = FreezeOpacities_Option, &
              Verbose_Option = Verbose )
 
   end subroutine InitThornado
