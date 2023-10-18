@@ -88,6 +88,24 @@ export  IGC_DumpToCustomDir=/nfs/site/home/quanshao/sandbox/shaderDump/tmp
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
+## Oct 18 2023
+1. Testing umd692 and umd693 and also igc drivers from 14062 to 15443. 
+## Oct 17 2023
+1. Merged mms69 branch with the lastest master branch and found that the Streaming SineWave case runs almost 2X faster. Discussed with the developers at national labs, and it found out that the recent change of the initial guess reduced the iterations of the liner solvers, so leading to faster computing time. Here is the data:
+
+<pre>
+cat timeFOM_2023.08.20-2023.08.28.txt-umd692
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2023.08.20-umd692   2023.08.20-dev627    TimeDiff   Percentage   |   2023.08.20-umd692   2023.08.20-dev627    FOM-Diff   Percentage
+                     MKL Date :  2023.08.28               2023.08.28
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     5.6065e+00          9.4682e+00      -3.8617e+00   -40.79%            2.2724e+07          1.3456e+07        9.2681e+06    68.88%
+sineWave   [16,16,16]   O3    :     7.0337e+01          1.3478e+02      -6.4441e+01   -47.81%            2.8802e+07          1.5031e+07        1.3771e+07    91.62%
+relax      [8,8,8]      O3    :     2.0817e+01          2.0464e+01       3.5318e-01     1.73%            4.0952e+07          4.1659e+07       -7.0680e+05    -1.70%
+relax      [16,16,16]   O3    :     1.7703e+02          1.6591e+02       1.1119e+01     6.70%            3.8525e+07          4.1107e+07       -2.5818e+06    -6.28%
+</pre>
+2. Thornado compiles and runs on CPU only, the results are correct. 
+
 ## Oct 16 2023
 1. Tested the release candidate rc02, thornado compiles and runs correctly with the candidate. The performance looks good.
 2. Flash-X/Thronado compiles, but it hangs in OMP PRIVATE( uPR_L)  in Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90. Plan to run CPU only to see if the code works. 
