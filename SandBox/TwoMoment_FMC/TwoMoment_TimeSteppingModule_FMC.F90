@@ -165,7 +165,8 @@ CONTAINS
         IF( jS==iS - 1)THEN
 
           ! --- Apply Limiters ---
-          CALL ApplyPositivityLimiter_TwoMoment
+          CALL ApplyPositivityLimiter_TwoMoment &
+                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, Mi )
 
         END IF
 
@@ -181,7 +182,8 @@ CONTAINS
         CALL AddToArray ( One, Mi, dt * a_IM(iS,iS), StageData(iS) % dM_IM )
 
         ! --- Apply Limiters ---
-        CALL ApplyPositivityLimiter_TwoMoment
+        CALL ApplyPositivityLimiter_TwoMoment &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, Mi )
 
       END IF
 
@@ -219,7 +221,8 @@ CONTAINS
       END DO
 
       ! --- Apply Limiters ---
-      CALL ApplyPositivityLimiter_TwoMoment
+      CALL ApplyPositivityLimiter_TwoMoment &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, Mi )
 
       CALL CopyArray( M, One, Mi )
 

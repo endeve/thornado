@@ -1,16 +1,30 @@
 MODULE TwoMoment_UtilitiesModule_FMC
 
   USE KindModule, ONLY: &
-    DP, Third, Half, Zero, One, Three, Five, SqrtTiny
+    DP, Third, Half, Zero, One, Two, Three, Five, SqrtTiny
+  USE QuadratureModule, ONLY: &
+    GetQuadrature
   USE ProgramHeaderModule, ONLY: &
-    nDOFZ, nDOFX, nDOFE
+    nDOFZ, nDOFX, nDOFE, &
+    nNOdes, nDimsX
+  USE ReferenceElementModuleX, ONLY: &
+    nDOFX_X1, nDOFX_X2, nDOFX_X3, &
+    WeightsX_q, &
+    WeightsX_X1, &
+    WeightsX_X2, &
+    WeightsX_X3
+  USE ReferenceElementModuleX_Lagrange, ONLY: &
+    dLXdX1_q, LX_X1_Dn, LX_X1_Up, &
+    dLXdX2_q, LX_X2_Dn, LX_X2_Up, &
+    dLXdX3_q, LX_X3_Dn, LX_X3_Up
   USE MeshModule, ONLY: &
-    MeshX
+    MeshX, &
+    MeshE
   USE GeometryFieldsModule, ONLY: &
     nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
-    iGF_h_1, iGF_h_2, iGF_h_3
+    iGF_h_1, iGF_h_2, iGF_h_3, iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
-    nPF, iPF_V1, iPF_V2, iPF_V3
+    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3
   USE TwoMoment_FieldsModule_FMC, ONLY: &
     nSpecies, &
     nCM, iCM_E, iCM_F1, iCM_F2, iCM_F3, &
@@ -19,6 +33,9 @@ MODULE TwoMoment_UtilitiesModule_FMC
     nGM
   USE TwoMoment_ClosureModule, ONLY: &
     FluxFactor_Relativistic, EddingtonFactor, HeatFluxFactor
+  USE LinearAlgebraModule, ONLY: &
+    MatrixMatrixMultiply, &
+    EigenvaluesSymmetric3
 
   IMPLICIT NONE
   PRIVATE
@@ -38,6 +55,8 @@ MODULE TwoMoment_UtilitiesModule_FMC
   PUBLIC :: Flux_E
   PUBLIC :: NumericalFlux_LLF
   PUBLIC :: ComputeTimeStep_TwoMoment
+  PUBLIC :: ComputeTimeStep_TwoMoment_Realizable
+  PUBLIC :: ComputeWeakDerivatives_X1
   PUBLIC :: FaceVelocity_X1
 
 CONTAINS
@@ -129,6 +148,15 @@ CONTAINS
 
         iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
+        ! IF ( CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E ,iS) < &
+        !      SQRT ( CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F1 ,iS)**2 + &
+        !             CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F2 ,iS)**2 + &
+        !             CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F3 ,iS)**2 ) ) THEN
+          ! print *, 'E  = ', CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E ,iS)
+          ! print *, 'F1 = ', CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F1 ,iS)
+          ! STOP
+        ! END IF
+
         CALL ComputePrimitive_TwoMoment_Richardson_FMC &
                ( CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E ,iS), &
                  CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F1,iS), &
@@ -190,6 +218,12 @@ CONTAINS
     H_d_1 = F_hat_d_1
     H_d_2 = F_hat_d_2
     H_d_3 = F_hat_d_3
+    ! print *, J, H_d_1
+
+    ! J = SQRT( F_d_1**2 + F_d_2**2 + F_d_3**2 )
+    ! H_d_1 = F_d_1
+    ! H_d_2 = F_d_2
+    ! H_d_3 = F_d_3
 
     ! --- Richardson update ---
 
@@ -197,13 +231,18 @@ CONTAINS
                  + V_u_2 * Gm_dd_22 * V_u_2 &
                  + V_u_3 * Gm_dd_33 * V_u_3 )
     W = One / SQRT ( One - vMag**2 )
-    lambda = One / ( W + W * vMag )  
+    lambda = Half / ( W + W * vMag )  
 
     iteration = 0
     CONVERGED = .FALSE.
     DO WHILE( .NOT. CONVERGED .AND. iteration < MaxIterations )
 
       iteration = iteration + 1
+
+      ! ! print *, "V_u_1 = ", V_u_1
+      ! print *, "J     = ", J
+      ! print *, "H_d_1 = ", H_d_1
+      ! Write(*,*)
 
       k_dd = EddingtonTensorComponents_dd &
         ( J, H_d_1, H_d_2, H_d_3, V_u_1, V_u_2, V_u_3, &
@@ -326,17 +365,22 @@ CONTAINS
     !     Gm_dd_11, Gm_dd_22, Gm_dd_33, &
     !     One, Zero, Zero, Zero, &
     !     V_u_1, V_u_2, V_u_3 )
-    ! print *, "V_u_1 = ", V_u_1
-    ! print *, "V_u_2 = ", V_u_2
-    ! print *, "V_u_3 = ", V_u_3
-    ! print *, "J     = ", J
-    ! print *, "H_d_1 = ", H_d_1
-    ! print *, "H_d_2 = ", H_d_2
-    ! print *, "H_d_3 = ", H_d_3
+
+    ! IF (J < SQRT( -(V_u_1 * H_d_1 + V_u_2 * H_d_2 + V_u_3 * H_d_3)**2 + H_d_1**2 + H_d_2**2 + H_d_3**2 ) ) THEN
+    !   ! print *, "V_u_1 = ", V_u_1
+    !   ! print *, "V_u_2 = ", V_u_2
+    !   ! print *, "V_u_3 = ", V_u_3
+    !   print *, "J     = ", J
+    !   print *, "H_d_1 = ", H_d_1
+    !   ! print *, "H_d_2 = ", H_d_2
+    !   ! print *, "H_d_3 = ", H_d_3
+    !   Write(*,*)
+      
+    ! END IF
 
     FF = MIN( MAX( SQRT( -(V_u_1 * H_d_1 + V_u_2 * H_d_2 + V_u_3 * H_d_3)**2 &
                          + H_d_1**2 + H_d_2**2 + H_d_3**2 ) &
-                         / MAX( J, SqrtTiny ), &
+                         / MAX( ABS( J ), SqrtTiny ), &
                    SqrtTiny ), &
               One )
     ! FF = One
@@ -435,8 +479,13 @@ CONTAINS
     !       Gm_dd_11, Gm_dd_22, Gm_dd_33, &
     !       One, Zero, Zero, Zero, &
     !       V_u_1, V_u_2, V_u_3 )
-    FF = SQRT( -(V_u_1 * H_u_1 + V_u_2 * H_u_2 + V_u_3 * H_u_3)**2 &
-               + H_u_1**2 + H_u_2**2 + H_u_3**2 ) / J
+    ! FF = SQRT( -(V_u_1 * H_u_1 + V_u_2 * H_u_2 + V_u_3 * H_u_3)**2 &
+    !            + H_u_1**2 + H_u_2**2 + H_u_3**2 ) / J
+    FF = MIN( MAX( SQRT( -(V_u_1 * H_u_1 + V_u_2 * H_u_2 + V_u_3 * H_u_3)**2 &
+                         + H_u_1**2 + H_u_2**2 + H_u_3**2 ) &
+                         / MAX( J, SqrtTiny ), &
+                   SqrtTiny ), &
+              One )
     HF = HeatFluxFactor(J, FF)
 
     vMag = SQRT( V_u_1 * Gm_dd_11 * V_u_1 &
@@ -444,9 +493,9 @@ CONTAINS
       + V_u_3 * Gm_dd_33 * V_u_3 )
     W = One / SQRT ( One - vMag**2 )
 
-    h_hat_u_1 = H_u_1 / ( FF * J )
-    h_hat_u_2 = H_u_2 / ( FF * J )
-    h_hat_u_3 = H_u_3 / ( FF * J )
+    h_hat_u_1 = H_u_1 / ( FF * MAX( ABS(J), SqrtTiny ) )
+    h_hat_u_2 = H_u_2 / ( FF * MAX( ABS(J), SqrtTiny ) )
+    h_hat_u_3 = H_u_3 / ( FF * MAX( ABS(J), SqrtTiny ) )
 
     h_uu_11 = Gm_dd_11 + W**2 * V_u_1 * V_u_1
     h_uu_12 = W**2 * V_u_1 * V_u_2
@@ -1382,24 +1431,31 @@ CONTAINS
   END FUNCTION Flux_X3
 
   FUNCTION Flux_E( J, H_d_1, H_d_2, H_d_3, &
-    V_u_1, V_u_2, V_u_3, Jacobian_U, &
+    V_u_1, V_u_2, V_u_3, &
+    dV_d_0_dX1, dV_d_1_dX1, dV_d_2_dX1, dV_d_3_dX1, &
+    dV_d_0_dX2, dV_d_1_dX2, dV_d_2_dX2, dV_d_3_dX2, &
+    dV_d_0_dX3, dV_d_1_dX3, dV_d_2_dX3, dV_d_3_dX3, &
     Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     ! --- Input/Output variables ---
     REAL(DP) :: Flux_E(4)
     REAL(DP), INTENT(in) :: J, H_d_1, H_d_2, H_d_3
-    REAL(DP), INTENT(in) :: V_u_1, V_u_2, V_u_3, Jacobian_U(0:3,0:3)
+    REAL(DP), INTENT(in) :: V_u_1, V_u_2, V_u_3
+    REAL(DP), INTENT(in) :: dV_d_0_dX1, dV_d_1_dX1, dV_d_2_dX1, dV_d_3_dX1
+    REAL(DP), INTENT(in) :: dV_d_0_dX2, dV_d_1_dX2, dV_d_2_dX2, dV_d_3_dX2
+    REAL(DP), INTENT(in) :: dV_d_0_dX3, dV_d_1_dX3, dV_d_2_dX3, dV_d_3_dX3
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     ! --- Local variables ---
     REAL(DP) :: vMag, W, u_u(0:3)
     REAL(DP) :: vH, H_u(0:3)
     REAL(DP) :: k_uu(0:3,0:3), l_uuu(0:3,0:3,0:3), Q_uuu(0:3,0:3,0:3)
+    REAL(DP) :: Jacobian_U(0:3,0:3)
     INTEGER :: mu, nu, rho
 
     vMag = SQRT( V_u_1 * Gm_dd_11 * V_u_1 &
-      + V_u_2 * Gm_dd_22 * V_u_2 &
-      + V_u_3 * Gm_dd_33 * V_u_3 )
+               + V_u_2 * Gm_dd_22 * V_u_2 &
+               + V_u_3 * Gm_dd_33 * V_u_3 )
     W = One / SQRT ( One - vMag**2 )
     u_u(0) = W
     u_u(1) = W * V_u_1
@@ -1417,29 +1473,34 @@ CONTAINS
         Gm_dd_11, Gm_dd_22, Gm_dd_33 )
     DO nu = 1,3
 
-      k_uu(0,nu) = V_u_1 * k_uu(nu,1) + V_u_2 * k_uu(nu,2) + V_u_3 * k_uu(nu,3)
+      k_uu(0,nu) = V_u_1 * k_uu(1,nu) + V_u_2 * k_uu(2,nu) + V_u_3 * k_uu(3,nu)
       k_uu(nu,0) = k_uu(0,nu)
 
     END DO
-    k_uu(0,0) = V_u_1 * k_uu(0,1) + V_u_2 * k_uu(0,2) + V_u_3 * k_uu(0,3)
+    k_uu(0,0) = V_u_1 * k_uu(1,0) + V_u_2 * k_uu(2,0) + V_u_3 * k_uu(3,0)
 
     CALL HeatFluxTensorComponents_uuu &
       ( J, H_d_1, H_d_2, H_d_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
         V_u_1, V_u_2, V_u_3, l_uuu )
 
-    Flux_E = 0.0_DP
+    Jacobian_U(0,:) = Zero ! Assuming velocity is constan wrt to time
+    Jacobian_U(1,:) = [ dV_d_0_dX1, dV_d_1_dX1, dV_d_2_dX1, dV_d_3_dX1 ]
+    Jacobian_U(2,:) = [ dV_d_0_dX2, dV_d_1_dX2, dV_d_2_dX2, dV_d_3_dX2 ]
+    Jacobian_U(3,:) = [ dV_d_0_dX3, dV_d_1_dX3, dV_d_2_dX3, dV_d_3_dX3 ]
+
+    Flux_E = Zero
     DO rho = 0,3
       DO nu = 0,3
         DO mu = 0,3
 
           Q_uuu(mu,nu,rho) = J*u_u(mu)*u_u(nu)*u_u(rho)+ &
-                             H_u(mu)*u_u(nu)*u_U(rho)+ &
+                             H_u(mu)*u_u(nu)*u_u(rho)+ &
                              H_u(nu)*u_u(mu)*u_u(rho)+ &
                              H_u(rho)*u_u(mu)*u_u(nu)+ &
                              k_uu(mu,nu)*J*u_u(rho)+ &
                              k_uu(mu,rho)*J*u_u(nu)+ &
                              k_uu(nu,rho)*J*u_u(mu)+ &
-                             l_uuu(mu,nu,rho)
+                             l_uuu(mu,nu,rho)*J
 
         END DO
         Flux_E(1) = Flux_E(1) + Q_uuu(0,nu,rho) * Jacobian_U(nu,rho)
@@ -1520,6 +1581,714 @@ CONTAINS
     TimeStep = MAX( CFL * TimeStep, SqrtTiny )
 
   END SUBROUTINE ComputeTimeStep_TwoMoment
+
+  SUBROUTINE ComputeTimeStep_TwoMoment_Realizable &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, U_F, CFL, TimeStep, Verbose_Option )
+
+    INTEGER,  INTENT(in)  :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)  :: &
+      GX (1:nDOFX, &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nGF)
+    REAL(DP), INTENT(in)  :: &
+      U_F(1:nDOFX, &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4), &
+          1:nPF)
+    REAL(DP), INTENT(in)  :: &
+      CFL
+    REAL(DP), INTENT(out) :: &
+      TimeStep
+    LOGICAL, INTENT(in), OPTIONAL :: &
+      Verbose_Option
+
+    LOGICAL  :: Verbose
+    INTEGER  :: iX_B0(3), iX_E0(3)
+    INTEGER  :: iX_B1(3), iX_E1(3)
+    INTEGER  :: iX1, iX2, iX3, iNodeX, iE
+    REAL(DP) :: xQ(nNodes), wQ(nNodes)
+    REAL(DP) :: TimeStep_X, dt_X(3)
+    REAL(DP) :: TimeStep_E, dt_E
+    REAL(DP) :: V_d_1, V_d_2, V_d_3, vMag, W
+    REAL(DP) :: dE_Min, A(0:3,0:3), Lambda(3), Alpha_E
+    REAL(DP), DIMENSION(nDOFX,0:3, &
+                        iZ_B0(2):iZ_E0(2), &
+                        iZ_B0(3):iZ_E0(3), &
+                        iZ_B0(4):iZ_E0(4)) :: &
+      dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
+      dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
+      dV_u_dX3, dV_d_dX3, dGm_dd_dX3
+
+      IF( PRESENT( Verbose_Option ) )THEN
+        Verbose = Verbose_Option
+      ELSE
+        Verbose = .FALSE.
+      END IF
+  
+      ASSOCIATE &
+        ( dX1 => MeshX(1) % Width, &
+          dX2 => MeshX(2) % Width, &
+          dX3 => MeshX(3) % Width, &
+          dE  => MeshE    % Width, &
+          E_C => MeshE    % Center )
+  
+      iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
+      iX_B1 = iZ_B1(2:4); iX_E1 = iZ_E1(2:4)
+  
+      TimeStep_X = HUGE( One )
+      TimeStep_E = HUGE( One )
+      dt_X       = HUGE( One )
+      dt_E       = HUGE( One )
+  
+      CALL GetQuadrature( nNodes, xQ, wQ, 'Lobatto' )
+
+      dE_Min = HUGE( One ) ! --- Min of dE / E_H
+      DO iE = iZ_B0(1), iZ_E0(1)
+
+        dE_Min = MIN( dE_Min, dE(iE) / ( E_C(iE) + Half * dE(iE) ) )
+
+      END DO
+
+      CALL ComputeWeakDerivatives_X1 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
+             dV_u_dX1, dV_d_dX1 )
+
+      ! CALL ComputeWeakDerivatives_X2 &
+      !       ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
+      !         dV_u_dX2, dV_d_dX2 )
+
+      dV_u_dX2 = Zero
+      dV_d_dX2 = Zero
+
+      ! CALL ComputeWeakDerivatives_X3 &
+      !       ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
+      !         dV_u_dX3, dV_d_dX3 )
+
+      dV_u_dX3 = Zero
+      dV_d_dX3 = Zero
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+    
+        DO iNodeX = 1, nDOFX
+   
+          V_d_1 = U_F(iNodeX,iX1,iX2,iX3,iPF_V1)
+          V_d_2 = U_F(iNodeX,iX1,iX2,iX3,iPF_V2)
+          V_d_3 = U_F(iNodeX,iX1,iX2,iX3,iPF_V3)
+  
+          vMag = SQRT( V_d_1**2 + V_d_2**2 + V_d_3**2 )
+          W = One / SQRT ( One - vMag**2 )
+  
+          ! --- Time Step from Spatial Divergence ---
+  
+          dt_X(1) = wQ(nNodes) * dX1(iX1) / Three
+          dt_X(2) = wQ(nNodes) * dX2(iX2) / Three
+          dt_X(3) = wQ(nNodes) * dX3(iX3) / Three
+  
+          TimeStep_X = MIN( TimeStep_X, MINVAL( dt_X ) )
+  
+          ! --- Quadratic Form Matrix ---
+          ! Assuming velocity is constant with respect to time
+
+          A(:,0) = Half * [ Zero, &
+                            dV_d_dX1(iNodeX,0,iX1,iX2,iX3), &
+                            dV_d_dX2(iNodeX,0,iX1,iX2,iX3), &
+                            dV_d_dX3(iNodeX,0,iX1,iX2,iX3) ]
+
+          A(:,1) = Half * [       dV_d_dX1(iNodeX,0,iX1,iX2,iX3), &
+                            Two * dV_d_dX1(iNodeX,1,iX1,iX2,iX3), &
+                                  dV_d_dX2(iNodeX,1,iX1,iX2,iX3)  &
+                                + dV_d_dX1(iNodeX,2,iX1,iX2,iX3), &
+                                  dV_d_dX3(iNodeX,1,iX1,iX2,iX3)  &
+                                + dV_d_dX1(iNodeX,3,iX1,iX2,iX3) ]
+          A(:,2) = Half * [       dV_d_dX2(iNodeX,0,iX1,iX2,iX3), &
+                                  dV_d_dX1(iNodeX,2,iX1,iX2,iX3)  &
+                                + dV_d_dX2(iNodeX,1,iX1,iX2,iX3), &
+                            Two * dV_d_dX2(iNodeX,2,iX1,iX2,iX3), &
+                                  dV_d_dX3(iNodeX,2,iX1,iX2,iX3)  &
+                                + dV_d_dX2(iNodeX,3,iX1,iX2,iX3) ]
+          A(:,3) = Half * [       dV_d_dX3(iNodeX,0,iX1,iX2,iX3), &
+                                  dV_d_dX1(iNodeX,3,iX1,iX2,iX3)  &
+                                + dV_d_dX3(iNodeX,1,iX1,iX2,iX3), &
+                                  dV_d_dX2(iNodeX,3,iX1,iX2,iX3)  &
+                                + dV_d_dX3(iNodeX,2,iX1,iX2,iX3), &
+                            Two * dV_d_dX3(iNodeX,3,iX1,iX2,iX3) ]
+  
+          CALL EigenvaluesSymmetric3( A(1:3,1:3), Lambda )
+  
+          Alpha_E = MAX( MAXVAL( ABS( Lambda ) ), SqrtTiny )
+
+          Alpha_E = MAXVAL( ABS( Lambda ) ) &
+                      + Two * SQRT ( A(1,0)**2 + A(2,0)**2 + A(3,0)**2 ) &
+                      + ABS( A(0,0) )
+          Alpha_E = Alpha_E * W**2 * ( One + vMag )**2
+  
+          ! --- Time Step from Energy Divergence ---
+  
+          dt_E = W * ( One - vMag ) * dE_Min * wQ(nNodes) / Alpha_E
+  
+          TimeStep_E = MIN( TimeStep_E, dt_E )
+  
+        END DO
+    
+      END DO
+      END DO
+      END DO
+
+      TimeStep = MAX( CFL * MIN( TimeStep_X, TimeStep_E ), SqrtTiny )
+
+      IF( Verbose )THEN
+        WRITE(*,'(A8,A7,ES12.6E2,A8,ES12.6E2)') &
+          '', 'dt_X = ', TimeStep_X, ' dt_E = ', TimeStep_E
+      END IF
+
+      END ASSOCIATE ! dX1, etc.
+
+  END SUBROUTINE
+
+  SUBROUTINE ComputeWeakDerivatives_X1 &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, dV_u_dX1_Out, dV_d_dX1_Out )
+
+    INTEGER,  INTENT(in)  :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      GX (1:nDOFX, &
+          iX_B1(1):iX_E1(1), &
+          iX_B1(2):iX_E1(2), &
+          iX_B1(3):iX_E1(3), &
+          1:nGF)
+    REAL(DP), INTENT(in)  :: &
+      U_F(1:nDOFX, &
+          iX_B1(1):iX_E1(1), &
+          iX_B1(2):iX_E1(2), &
+          iX_B1(3):iX_E1(3), &
+          1:nPF)
+    REAL(DP), INTENT(out) :: &
+      dV_u_dX1_Out &
+        (1:nDOFX,0:3, &
+         iX_B0(1):iX_E0(1), &
+         iX_B0(2):iX_E0(2), &
+         iX_B0(3):iX_E0(3)), &
+      dV_d_dX1_Out &
+        (1:nDOFX,0:3, &
+         iX_B0(1):iX_E0(1), &
+         iX_B0(2):iX_E0(2), &
+         iX_B0(3):iX_E0(3))
+
+    INTEGER  :: iNodeX
+    INTEGER  :: iX1, iX2, iX3, i
+    INTEGER  :: iPF, iPF_V
+    INTEGER  :: iGF, iGF_h, iGF_Gm_dd
+    INTEGER  :: nX(3), nX_X1(3), nK_X, nX1_X
+    REAL(DP) :: uV_L(3), uV_R(3), uV_F(3), uV_K
+
+    ! --- Geometry Fields ---
+
+    REAL(DP) :: &
+      GX_K   (nDOFX,nGF, &
+              iX_B0(2)  :iX_E0(2)  , &
+              iX_B0(3)  :iX_E0(3)  , &
+              iX_B0(1)-1:iX_E0(1)+1)
+    REAL(DP) :: &
+      GX_F   (nDOFX_X1,nGF, &
+              iX_B0(2)  :iX_E0(2)  , &
+              iX_B0(3)  :iX_E0(3)  , &
+              iX_B0(1)  :iX_E0(1)+1)
+
+    ! --- Primitive Fluid Fields ---
+
+    REAL(DP) :: &
+      U_F_K(nDOFX,nPF, &
+            iX_B0(2)  :iX_E0(2)  , &
+            iX_B0(3)  :iX_E0(3)  , &
+            iX_B0(1)-1:iX_E0(1)+1)
+    REAL(DP) :: &
+      U_F_L(nDOFX_X1,nPF, &
+            iX_B0(2)  :iX_E0(2)  , &
+            iX_B0(3)  :iX_E0(3)  , &
+            iX_B0(1)  :iX_E0(1)+1)
+    REAL(DP) :: &
+      U_F_R(nDOFX_X1,nPF, &
+            iX_B0(2)  :iX_E0(2)  , &
+            iX_B0(3)  :iX_E0(3)  , &
+            iX_B0(1)  :iX_E0(1)+1)
+
+    ! --- Velocities ---
+
+    REAL(DP) :: &
+      V_u_X1  (nDOFX_X1,3, &
+               iX_B0(2)  :iX_E0(2)  , &
+               iX_B0(3)  :iX_E0(3)  , &
+               iX_B0(1)  :iX_E0(1)+1)
+    REAL(DP) :: &
+      V_d_X1  (nDOFX_X1,3, &
+               iX_B0(2)  :iX_E0(2)  , &
+               iX_B0(3)  :iX_E0(3)  , &
+               iX_B0(1)  :iX_E0(1)+1)
+    REAL(DP) :: &
+      V_u_K   (nDOFX,3, &
+               iX_B0(2)  :iX_E0(2)  , &
+               iX_B0(3)  :iX_E0(3)  , &
+               iX_B0(1)  :iX_E0(1)  )
+    REAL(DP) :: &
+      V_d_K   (nDOFX,3, &
+               iX_B0(2)  :iX_E0(2)  , &
+               iX_B0(3)  :iX_E0(3)  , &
+               iX_B0(1)  :iX_E0(1)  )
+    REAL(DP) :: &
+      dV_u_dX1(nDOFX,3, &
+               iX_B0(2)  :iX_E0(2)  , &
+               iX_B0(3)  :iX_E0(3)  , &
+               iX_B0(1)  :iX_E0(1)  )
+    REAL(DP) :: &
+      dV_d_dX1(nDOFX,3, &
+               iX_B0(2)  :iX_E0(2)  , &
+               iX_B0(3)  :iX_E0(3)  , &
+               iX_B0(1)  :iX_E0(1)  )
+
+    IF( iX_E0(1) .EQ. iX_B0(1) )THEN
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO i = 0, 3
+      DO iNodeX = 1, nDOFX
+
+          dV_u_dX1_Out  (iNodeX,i,iX1,iX2,iX3) = Zero
+          dV_d_dX1_Out  (iNodeX,i,iX1,iX2,iX3) = Zero
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+      RETURN
+    END IF
+
+    nX    = iX_E0 - iX_B0 + 1 ! --- Number of Elements per Spatial Dimension
+    nX_X1 = nX + [ 1, 0, 0 ]  ! --- Number of X1 Faces per Spatial Dimension
+    nK_X  = PRODUCT( nX )     ! --- Number of Elements in Position Space
+    nX1_X = PRODUCT( nX_X1 )  ! --- Number of X1 Faces in Position Space
+
+    ASSOCIATE( dX1 => MeshX(1) % Width )
+
+      ! --- Permute Geometry Fields ---
+
+      DO iX1 = iX_B0(1)-1, iX_E0(1)+1
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+  
+        DO iGF = 1, nGF
+        DO iNodeX = 1, nDOFX
+  
+          GX_K(iNodeX,iGF,iX2,iX3,iX1) = GX(iNodeX,iX1,iX2,iX3,iGF)
+  
+        END DO
+        END DO
+  
+      END DO
+      END DO
+      END DO
+  
+      !---------------------
+      ! --- Surface Term ---
+      !---------------------
+  
+      ! --- Interpolate Geometry Fields on Shared Face ---
+  
+      ! --- Face States (Average of Left and Right States) ---
+  
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X1, nX1_X*nGF, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+               GX_K(1,1,iX_B0(2),iX_B0(3),iX_B0(1)-1), nDOFX, Zero, &
+               GX_F(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+  
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X1, nX1_X*nGF, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+               GX_K(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Half, &
+               GX_F(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+
+      ! --- Compute Metric Components from Scale Factors ---
+
+      DO iX1  = iX_B0(1), iX_E0(1)+1
+      DO iX3  = iX_B0(3), iX_E0(3)
+      DO iX2  = iX_B0(2), iX_E0(2)
+
+        DO iNodeX = 1, nDOFX_X1
+
+          GX_F(iNodeX,iGF_Gm_dd_11,iX2,iX3,iX1) &
+            = MAX( GX_F(iNodeX,iGF_h_1,iX2,iX3,iX1)**2, SqrtTiny )
+          GX_F(iNodeX,iGF_Gm_dd_22,iX2,iX3,iX1) &
+            = MAX( GX_F(iNodeX,iGF_h_2,iX2,iX3,iX1)**2, SqrtTiny )
+          GX_F(iNodeX,iGF_Gm_dd_33,iX2,iX3,iX1) &
+            = MAX( GX_F(iNodeX,iGF_h_3,iX2,iX3,iX1)**2, SqrtTiny )
+          GX_F(iNodeX,iGF_SqrtGm,iX2,iX3,iX1) &
+            = SQRT(   GX_F(iNodeX,iGF_Gm_dd_11,iX2,iX3,iX1) &
+                    * GX_F(iNodeX,iGF_Gm_dd_22,iX2,iX3,iX1) &
+                    * GX_F(iNodeX,iGF_Gm_dd_33,iX2,iX3,iX1) )
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+
+      ! --- Permute Fluid Fields ---
+
+      DO iX1 = iX_B0(1)-1, iX_E0(1)+1
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+  
+        DO iPF = 1, nPF
+        DO iNodeX = 1, nDOFX
+  
+          U_F_K(iNodeX,iPF,iX2,iX3,iX1) = U_F(iNodeX,iX1,iX2,iX3,iPF)
+  
+        END DO
+        END DO
+  
+      END DO
+      END DO
+      END DO
+
+    ! --- Interpolate Left State ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X1, nX1_X*nPF, nDOFX, One, LX_X1_Up, nDOFX_X1, &
+             U_F_K(1,1,iX_B0(2),iX_B0(3),iX_B0(1)-1), nDOFX, Zero, &
+             U_F_L(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+
+    ! print *, U_F_K(1,1,iX_B0(2),iX_B0(3),iX_B0(1)-1)
+    ! print *, U_F_L(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  )
+    ! print *, U_F_L(1,iPF_V1,iX_B0(2),iX_B0(3),iX_B0(1))
+
+    ! STOP
+
+    ! --- Interpolate Right State ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X1, nX1_X*nPF, nDOFX, One, LX_X1_Dn, nDOFX_X1, &
+             U_F_K(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Zero, &
+             U_F_R(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+
+    DO iX1 = iX_B0(1), iX_E0(1)+1
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+
+      DO iNodeX = 1, nDOFX_X1
+
+        DO i = 1, 3 ! Can I iterate at 0?
+
+          iPF_V     = iPF_V1       + i - 1
+          iGF_Gm_dd = iGF_Gm_dd_11 + i - 1
+
+          ! --- Left States ---
+
+          ! print *, GX_F (iNodeX,iGF_Gm_dd,iX2,iX3,iX1)
+          ! print *, U_F_L(iNodeX,iPF_D ,iX2,iX3,iX1)
+          ! print *, U_F_L(iNodeX,iPF_V ,iX2,iX3,iX1)
+
+          uV_L(i) = U_F_L(iNodeX,iPF_V,iX2,iX3,iX1) &
+                    / ( GX_F (iNodeX,iGF_Gm_dd,iX2,iX3,iX1) &
+                      * U_F_L(iNodeX,iPF_D ,iX2,iX3,iX1) )
+
+          ! --- Right States ---
+
+          uV_R(i) = U_F_R(iNodeX,iPF_V,iX2,iX3,iX1) &
+                    / ( GX_F (iNodeX,iGF_Gm_dd,iX2,iX3,iX1) &
+                      * U_F_R(iNodeX,iPF_D ,iX2,iX3,iX1) )
+
+        END DO
+
+        ! --- Compute 0th component of Left States ---
+
+        ! uV_L(0) = 1 / SQRT ( 1 - uV_L(1)**2 - uV_L(2)**2 - uV_L(3)**2 )
+
+        ! ! --- Compute 0th component of Right States ---
+
+        ! uV_R(0) = 1 / SQRT ( 1 - uV_R(1)**2 - uV_R(2)**2 - uV_R(3)**2 )
+
+        ! print *, uV_L
+        ! print *, uV_R
+        ! STOP
+
+        CALL FaceVelocity_X1 &
+               ( uV_L(1), uV_L(2), uV_L(3), &
+                 uV_R(1), uV_R(2), uV_R(3), &
+                 uV_F(1), uV_F(2), uV_F(3) )
+
+        ! uV_F(0) = 1 / SQRT ( 1 - uV_F(1)**2 - uV_F(2)**2 - uV_F(3)**2 )
+
+        ! print *, uV_F
+
+        DO i = 1, 3
+
+          iGF_Gm_dd = iGF_Gm_dd_11 + i - 1
+
+          V_u_X1(iNodeX,i,iX2,iX3,iX1) &
+            = uV_F(i) * WeightsX_X1(iNodeX)
+
+          V_d_X1(iNodeX,i,iX2,iX3,iX1) &
+            = uV_F(i) * WeightsX_X1(iNodeX) * GX_F(iNodeX,iGF_Gm_dd,iX2,iX3,iX1)
+
+        END DO
+
+        ! V_u_X1(iNodeX,0,iX2,iX3,iX1) &
+        !   = 1 / SQRT ( 1 - V_u_X1(iNodeX,1,iX2,iX3,iX1)**2 &
+        !                  - V_u_X1(iNodeX,2,iX2,iX3,iX1)**2 &
+        !                  - V_u_X1(iNodeX,3,iX2,iX3,iX1)**2 )
+
+        ! V_d_X1(iNodeX,0,iX2,iX3,iX1) &
+        !   = 1 / SQRT ( 1 - V_d_X1(iNodeX,1,iX2,iX3,iX1)**2 &
+        !                  - V_d_X1(iNodeX,2,iX2,iX3,iX1)**2 &
+        !                  - V_d_X1(iNodeX,3,iX2,iX3,iX1)**2 )
+
+        ! print *, V_u_X1(iNodeX,:,iX2,iX3,iX1)
+        ! print *, V_d_X1(iNodeX,:,iX2,iX3,iX1)
+        ! WRITE(*,*)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    ! --- Surface Contributions ---
+
+    ! --- Contribution from Left Face ---
+
+    ! print *, dV_u_dX1(:,1:3,:,:,:)
+    ! Write(*,*)
+    ! print *, V_u_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  )
+    ! print *, V_u_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)+1)
+    ! Write(*,*)
+    ! print *, LX_X1_Dn
+    ! print *, LX_X1_Up
+    ! Write(*,*)
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X1, - One, LX_X1_Dn, nDOFX_X1, &
+             V_u_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1, Zero, &
+             dV_u_dX1(:,1:3,:,:,:), nDOFX )
+
+    ! print *, dV_u_dX1(:,1:3,:,:,:)
+
+    ! --- Contribution from Right Face ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X1, + One, LX_X1_Up, nDOFX_X1, &
+             V_u_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX_X1, One,  &
+             dV_u_dX1(:,1:3,:,:,:), nDOFX )
+
+    ! Write(*,*)
+    ! print *, dV_u_dX1(:,1:3,:,:,:)
+    ! STOP
+
+    ! --- Contribution from Left Face ---
+
+    ! print *, dV_d_dX1(:,1:3,:,:,:)
+    ! Write(*,*)
+    ! print *, V_d_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  )
+    ! Write(*,*)
+    ! print *, LX_X1_Dn
+    ! print *, LX_X1_Up
+    ! Write(*,*)
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X1, - One, LX_X1_Dn, nDOFX_X1, &
+             V_d_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1, Zero, &
+             dV_d_dX1(:,1:3,:,:,:), nDOFX )
+
+    ! --- Contribution from Right Face ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X1, + One, LX_X1_Up, nDOFX_X1, &
+             V_d_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX_X1, One,  &
+             dV_d_dX1(:,1:3,:,:,:), nDOFX )
+
+    ! print *, dV_d_dX1(:,1:3,:,:,:)
+    ! STOP
+
+    ! -------------------
+    ! --- Volume Term ---
+    ! -------------------
+
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+
+      DO i = 1, 3
+      DO iNodeX = 1, nDOFX
+
+        iPF       = iPF_V1       + i - 1
+        iGF_Gm_dd = iGF_Gm_dd_11 + i - 1
+
+        uV_K &
+          = U_F_K(iNodeX,iPF,iX2,iX3,iX1) &
+            / ( GX_K (iNodeX,iGF_Gm_dd,iX2,iX3,iX1) &
+              * U_F_K(iNodeX,iPF_D ,iX2,iX3,iX1) )
+
+        ! print *, iPF
+        ! print *, uV_K
+
+        V_u_K(iNodeX,i,iX2,iX3,iX1) &
+          = uV_K * WeightsX_q(iNodeX)
+
+        V_d_K(iNodeX,i,iX2,iX3,iX1) &
+          = uV_K * WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Gm_dd,iX2,iX3,iX1)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    ! DO iX1 = iX_B0(1), iX_E0(1)
+    ! DO iX3 = iX_B0(3), iX_E0(3)
+    ! DO iX2 = iX_B0(2), iX_E0(2)
+
+    !   DO iNodeX = 1, nDOFX
+
+    !     V_u_K(iNodeX,0,iX2,iX3,iX1) &
+    !           = 1 / SQRT ( 1 - V_u_K(iNodeX,1,iX2,iX3,iX1)**2 &
+    !                           - V_u_K(iNodeX,2,iX2,iX3,iX1)**2 &
+    !                           - V_u_K(iNodeX,3,iX2,iX3,iX1)**2 )
+
+    !     V_d_K(iNodeX,0,iX2,iX3,iX1) &
+    !       = 1 / SQRT ( 1 - V_d_K(iNodeX,1,iX2,iX3,iX1)**2 &
+    !                      - V_d_K(iNodeX,2,iX2,iX3,iX1)**2 &
+    !                      - V_d_K(iNodeX,3,iX2,iX3,iX1)**2 )
+
+    !   END DO
+
+    ! END DO
+    ! END DO
+    ! END DO
+
+    ! print *, V_u_K(:,:,:,:,:)
+    ! Write(*,*)
+    ! print *, V_d_K(:,:,:,:,:)
+    ! STOP
+
+    ! --- Volume Contributions ---
+
+    ! print *, dV_u_dX1(:,1:3,:,:,:)
+    ! Write(*,*)
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX, - One, dLXdX1_q, nDOFX, &
+             V_u_K(:,1:3,:,:,:), nDOFX, One, dV_u_dX1(:,1:3,:,:,:), nDOFX )
+
+    ! print *, dV_u_dX1(:,1:3,:,:,:)
+    ! Write(*,*)
+
+    ! print *, dV_d_dX1(:,1:3,:,:,:)
+    ! Write(*,*)
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, 3*nK_X, nDOFX, - One, dLXdX1_q, nDOFX, &
+             V_d_K(:,1:3,:,:,:), nDOFX, One, dV_d_dX1(:,1:3,:,:,:), nDOFX )
+
+    ! print *, dV_d_dX1(:,1:3,:,:,:)
+    ! Write(*,*)
+    ! STOP
+
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+
+      DO i      = 1, 3
+      DO iNodeX = 1, nDOFX
+
+        dV_u_dX1(iNodeX,i,iX2,iX3,iX1) &
+         = dV_u_dX1(iNodeX,i,iX2,iX3,iX1) &
+             / ( WeightsX_q(iNodeX) * dX1(iX1) )
+
+        dV_d_dX1(iNodeX,i,iX2,iX3,iX1) &
+         = dV_d_dX1(iNodeX,i,iX2,iX3,iX1) &
+             / ( WeightsX_q(iNodeX) * dX1(iX1) )
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    ! print*, dV_d_dX1(:,1:3,:,:,:)
+    ! STOP
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO i = 1, 3
+      DO iNodeX = 1, nDOFX
+
+        dV_u_dX1_Out(iNodeX,i,iX1,iX2,iX3) &
+          = dV_u_dX1(iNodeX,i,iX2,iX3,iX1)
+
+        dV_d_dX1_Out(iNodeX,i,iX1,iX2,iX3) &
+          = dV_d_dX1(iNodeX,i,iX2,iX3,iX1)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        dV_u_dX1_Out(iNodeX,0,iX1,iX2,iX3) &
+          = One / SQRT( ( One - U_F_K(iNodeX,iPF_V1,iX2,iX3,iX1)**2 &
+                - U_F_K(iNodeX,iPF_V2,iX2,iX3,iX1)**2 & 
+                - U_F_K(iNodeX,iPF_V3,iX2,iX3,iX1)**2 ) )**3 &
+            * ( U_F_K(iNodeX,iPF_V1,iX2,iX3,iX1) &
+                * dV_u_dX1(iNodeX,1,iX2,iX3,iX1) &
+                + U_F_K(iNodeX,iPF_V2,iX2,iX3,iX1) &
+                * dV_u_dX1(iNodeX,2,iX2,iX3,iX1) & 
+                + U_F_K(iNodeX,iPF_V3,iX2,iX3,iX1) &
+                * dV_u_dX1(iNodeX,3,iX2,iX3,iX1) )
+
+        ! print *, 'dV_0_dX1_Out'
+        ! print *, dV_u_dX1_Out(iNodeX,0,iX1,iX2,iX3)
+        ! print *, 'dV_1_dX1_Out'
+        ! print *, dV_u_dX1_Out(iNodeX,1,iX1,iX2,iX3)
+        ! Write(*,*)
+
+        dV_d_dX1_Out(iNodeX,0,iX1,iX2,iX3) &
+          = - dV_u_dX1_Out(iNodeX,0,iX1,iX2,iX3)
+
+        ! dV_u_dX1_Out(iNodeX,0,iX1,iX2,iX3) = Zero
+        ! dV_d_dX1_Out(iNodeX,0,iX1,iX2,iX3) = Zero
+
+      END DO
+  
+    END DO
+    END DO
+    END DO
+
+    END ASSOCIATE
+    
+    ! print *, 'dV_d_dX1_Out'
+    ! print *, dV_d_dX1_Out(:,:,:,:,:)
+    ! Write (*,*)
+    ! print *, 'dV_u_dX1_Out'
+    ! print *, dV_u_dX1_Out(:,:,:,:,:)
+
+  END SUBROUTINE ComputeWeakDerivatives_X1
 
   SUBROUTINE FaceVelocity_X1 &
     ( V1_L, V2_L, V3_L, V1_R, V2_R, V3_R, V1_F, V2_F, V3_F )
