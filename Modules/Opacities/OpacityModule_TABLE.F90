@@ -26,7 +26,7 @@ MODULE OpacityModule_TABLE
 #endif
 
   USE KindModule, ONLY: &
-    DP
+    DP, Zero
   USE UnitsModule, ONLY: &
     Gram, &
     Centimeter, &
@@ -99,10 +99,13 @@ MODULE OpacityModule_TABLE
   LOGICAL :: Use_OpacityTables
 
   REAL(DP), DIMENSION(6), PUBLIC :: &
-    C1, C2
+    C1, C2, C1_NuPair, C2_NuPair
 
   REAL(DP), PARAMETER :: cv       = 0.96d+00 ! weak interaction constant
   REAL(DP), PARAMETER :: ca       = 0.50d+00 ! weak interaction constant
+
+  REAL(DP), PARAMETER :: cv_nu    = 0.50d+00 ! weal interaction constant for electron neutrino pair annihilation  
+  REAL(DP), PARAMETER :: ca_nu    = 0.50d+00 ! weal interaction constant for electron neutrino pair annihilation  
 
   REAL(DP), PARAMETER :: C1_NuE     = ( cv + ca )**2, C2_NuE     = ( cv - ca )**2
   REAL(DP), PARAMETER :: C1_NuE_Bar = ( cv - ca )**2, C2_NuE_Bar = ( cv + ca )**2
@@ -125,7 +128,7 @@ MODULE OpacityModule_TABLE
   !$OMP   Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T,             &
   !$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,      &
   !$OMP   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT,  &
-  !$OMP   Brem_T, Brem_AT, C1, C2,                        &
+  !$OMP   Brem_T, Brem_AT, C1, C2, C1_NuPair, C2_NuPair,  &
   !$OMP   use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
   !$OMP   EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
   !$OMP   EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax,   &
@@ -136,7 +139,7 @@ MODULE OpacityModule_TABLE
   !$ACC   Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T,             &
   !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,      &
   !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT,  & 
-  !$ACC   Brem_T, Brem_AT, C1, C2,                        &
+  !$ACC   Brem_T, Brem_AT, C1, C2, C1_NuPair, C2_NuPair,  &
   !$ACC   use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
   !$ACC   EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
   !$ACC   EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax,   &
@@ -308,6 +311,13 @@ CONTAINS
     C2 = [ C2_NuE, C2_NuE_Bar, &
            C2_NuM, C2_NuM_Bar, &
            C2_NuT, C2_NuT_Bar ]
+
+    C1_NuPair = [ Zero,                 Zero,                 &
+                  ( cv_nu + ca_nu )**2, ( cv_nu - ca_nu )**2, &
+                  ( cv_nu + ca_nu )**2, ( cv_nu - ca_nu )**2 ]
+    C2_NuPair = [ Zero,                 Zero,                 &
+                  ( cv_nu - ca_nu )**2, ( cv_nu + ca_nu )**2, & 
+                  ( cv_nu - ca_nu )**2, ( cv_nu + ca_nu )**2 ]
 
     ! --- Thermodynamic State Indices ---
 
@@ -502,13 +512,15 @@ CONTAINS
     !$OMP MAP( always, to: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     !$OMP             OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
     !$OMP             EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
-    !$OMP             NES_AT, Pair_AT, Brem_AT, C1, C2 )
+    !$OMP             NES_AT, Pair_AT, Brem_AT, C1, C2, &
+    !$OMP             C1_NuPair, C2_NuPair )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,  &
     !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, Brem_T,       &
-    !$ACC   NES_AT, Pair_AT, Brem_AT, C1, C2            )
+    !$ACC   NES_AT, Pair_AT, Brem_AT, C1, C2,           &
+    !$ACC   C1_NuPair, C2_NuPair )
 #endif
 
     use_EC_table = OPACITIES % EmAb % nuclei_EC_table
@@ -809,6 +821,7 @@ CONTAINS
       !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
       !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
       !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2, &
+      !$OMP               C1_NuPair, C2_NuPair, &
       !$OMP               use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
       !$OMP               EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
       !$OMP               EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax,   &

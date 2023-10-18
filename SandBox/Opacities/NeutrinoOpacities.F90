@@ -32,11 +32,11 @@ PROGRAM NeutrinoOpacities
   USE OpacityModule_TABLE, ONLY: &
     InitializeOpacities_TABLE, &
     FinalizeOpacities_TABLE, &
-    C1, C2
+    C1, C2, C1_NuPair, C2_NuPair
   USE ReferenceElementModuleE_Lagrange, ONLY: &
     InitializeReferenceElementE_Lagrange
   USE RadiationFieldsModule, ONLY: &
-    iNuE, iNuE_Bar
+    iNuE, iNuE_Bar, iNuM, iNuM_Bar
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     ComputeEquilibriumDistributions, &
     ComputeEquilibriumDistributions_DG, &
@@ -48,6 +48,8 @@ PROGRAM NeutrinoOpacities
     ComputeNeutrinoOpacities_Pair, &
     ComputeNeutrinoOpacityRates_Pair, &
     ComputeNeutrinoOpacityRates_LinearCorrections_Pair, &
+    ComputeNeutrinoOpacities_NuPair, &
+    ComputeNeutrinoOpacityRates_NuPair, &
     ComputeNeutrinoOpacities_Brem, &
     ComputeNeutrinoOpacityRates_Brem
   USE DeviceModule, ONLY: &
@@ -133,6 +135,9 @@ PROGRAM NeutrinoOpacities
     Timer_ComputeRate_Pair, &
     Timer_Compute_Pair, &
     Timer_ComputeCorr_Pair, &
+    Timer_ComputeKrnl_NuPair, &
+    Timer_ComputeRate_NuPair, &
+    Timer_Compute_NuPair, &
     Timer_ComputeKrnl_Brem, &
     Timer_ComputeRate_Brem, &
     Timer_Compute_Brem, &
@@ -144,6 +149,7 @@ PROGRAM NeutrinoOpacities
   REAL(DP), DIMENSION(nE,nSpecies,nPointsX) :: Edot_EmAb_element, &
     Edot_Iso_element,  &
     Qdot_Pair_element, &
+    Qdot_NuPair_element, &
     Qdot_Brem_element, &
     Edot_NES_element
   REAL(DP), DIMENSION(nPointsE) :: &
@@ -170,6 +176,9 @@ PROGRAM NeutrinoOpacities
     Eta_Pair , & ! --- Pair Emissivity
     Chi_Pair , & ! --- Pair Opacity
     Qdot_Pair, & ! --- Pair Heating Rate
+    Eta_NuPair , & ! --- electron neutrino Pair annihilation Emissivity
+    Chi_NuPair , & ! --- electron neutrino Pair annihilation Opacity
+    Qdot_NuPair, & ! --- electron neutrino Pair annihilation Heating Rate
     Eta_Brem , & ! --- Brem Emissivity
     Chi_Brem , & ! --- Brem Opacity
     Qdot_Brem, & ! --- Brem Heating Rate
@@ -190,6 +199,7 @@ PROGRAM NeutrinoOpacities
     H_I_1, H_II_1, &  ! --- NES  Scattering Functions (1st moment)
     J_I_0, J_II_0, &  ! --- Pair Scattering Functions (0th moment)
     J_I_1, J_II_1, &  ! --- Pair Scattering Functions (1st moment)
+    Nu_J_I_0, Nu_J_II_0, &  ! --- electron neutrino Pair annihilation Scattering Functions (0th moment)
     S_sigma       ! --- Brem Scattering Kernel
 
   REAL(dp) :: loctot
@@ -255,7 +265,8 @@ PROGRAM NeutrinoOpacities
    !T = 2.0d0 / 8.61733d-11 * Unit_T
    !Y = 0.33 * Unit_Y
 
-   D = 0.70428d10 * Unit_D
+   !D = 0.70428d10 * Unit_D
+   D = 0.70428d13 * Unit_D
    T = 0.66006d0 / 8.61733d-11 * Unit_T
    Y = 0.43642d0
 
@@ -338,16 +349,16 @@ PROGRAM NeutrinoOpacities
   !$OMP TARGET ENTER DATA &
   !$OMP MAP( to: E, D, T, Y, W2, f0, f0_DG, J, H_1, H_2, H_3, S_sigma, &
   !$OMP          H_I_0, H_II_0, H_I_1, H_II_1, J_I_0, J_II_0, J_I_1, J_II_1 ) &
-  !$OMP MAP( alloc: Chi_EmAb, Chi_NES, Chi_Pair, Chi_Brem, Chi_Iso, Sigma_Iso, &
-  !$OMP             Eta_EmAb, Eta_NES, Eta_Pair, Eta_Brem, Eta_Iso, &
+  !$OMP MAP( alloc: Chi_EmAb, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, Chi_Iso, Sigma_Iso, &
+  !$OMP             Eta_EmAb, Eta_NES, Eta_Pair, Eta_NuPair, Eta_Brem, Eta_Iso, &
   !$OMP             A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3, &
   !$OMP             A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 )
 #elif defined(THORNADO_OACC)
   !$ACC ENTER DATA &
   !$ACC COPYIN( E, D, T, Y, W2, f0, f0_DG, J, H_1, H_2, H_3, S_sigma, &
   !$ACC         H_I_0, H_II_0, H_I_1, H_II_1, J_I_0, J_II_0, J_I_1, J_II_1 ) &
-  !$ACC CREATE( Chi_EmAb, Chi_NES, Chi_Pair, Chi_Brem, Chi_Iso, Sigma_Iso, &
-  !$ACC         Eta_EmAb, Eta_NES, Eta_Pair, Eta_Brem, Eta_Iso, &
+  !$ACC CREATE( Chi_EmAb, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, Chi_Iso, Sigma_Iso, &
+  !$ACC         Eta_EmAb, Eta_NES, Eta_Pair, Eta_NuPair, Eta_Brem, Eta_Iso, &
   !$ACC         A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3, &
   !$ACC         A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 )
 #endif
@@ -514,6 +525,26 @@ PROGRAM NeutrinoOpacities
 
   CALL TimersStop( Timer_Compute_Pair )
 
+  ! --- Compute NuPair Opacities ---
+
+  Timer_Compute_NuPair = 0.0d0
+  CALL TimersStart( Timer_Compute_NuPair )
+
+  Timer_ComputeKrnl_NuPair = 0.0d0
+  CALL TimersStart( Timer_ComputeKrnl_NuPair )
+  CALL ComputeNeutrinoOpacities_NuPair &
+         ( 1, nPointsE, 1, nPointsX, D, T, Y, 1, Nu_J_I_0, Nu_J_II_0 )
+  CALL TimersStop( Timer_ComputeKrnl_NuPair )
+
+  Timer_ComputeRate_NuPair = 0.0d0
+  CALL TimersStart( Timer_ComputeRate_NuPair )
+  CALL ComputeNeutrinoOpacityRates_NuPair &
+         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, &
+           J, f0_DG, Nu_J_I_0, Nu_J_II_0, Eta_NuPair, Chi_NuPair )
+  CALL TimersStop( Timer_ComputeRate_NuPair )
+
+  CALL TimersStop( Timer_Compute_NuPair )
+
   ! --- Compute Brem Opacities ---
   
   Timer_Compute_Brem = 0.0d0
@@ -537,8 +568,8 @@ PROGRAM NeutrinoOpacities
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET EXIT DATA &
   !$OMP MAP( from: f0, f0_DG, J, H_1, H_2, H_3, S_sigma, &
-  !$OMP            Chi_EmAb, Chi_NES, Chi_Pair, Chi_Brem, Chi_Iso, &
-  !$OMP            Eta_EmAb, Eta_NES, Eta_Pair, Eta_Brem, Eta_Iso, &
+  !$OMP            Chi_EmAb, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, Chi_Iso, &
+  !$OMP            Eta_EmAb, Eta_NES, Eta_Pair, Eta_NuPair, Eta_Brem, Eta_Iso, &
   !$OMP            H_I_0, H_II_0, H_I_1, H_II_1, J_I_0, J_II_0, J_I_1, J_II_1, &
   !$OMP            A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3, &
   !$OMP            A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 ) &
@@ -546,8 +577,8 @@ PROGRAM NeutrinoOpacities
 #elif defined(THORNADO_OACC)
   !$ACC EXIT DATA &
   !$ACC COPYOUT( f0, f0_DG, J, H_1, H_2, H_3, S_sigma, &
-  !$ACC          Chi_EmAb, Chi_NES, Chi_Pair, Chi_Brem, Chi_Iso, &
-  !$ACC          Eta_EmAb, Eta_NES, Eta_Pair, Eta_Brem, Eta_Iso, &
+  !$ACC          Chi_EmAb, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, Chi_Iso, &
+  !$ACC          Eta_EmAb, Eta_NES, Eta_Pair, Eta_NuPair, Eta_Brem, Eta_Iso, &
   !$ACC          H_I_0, H_II_0, H_I_1, H_II_1, J_I_0, J_II_0, J_I_1, J_II_1, &
   !$ACC          A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3, &
   !$ACC          A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 ) &
@@ -558,22 +589,24 @@ PROGRAM NeutrinoOpacities
   DO iS = 1, nSpecies
   DO iE = 1, nPointsE
 
-    Edot_EmAb(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_EmAb(iE,iS,iX)) * E(iE)**3
+    Edot_EmAb(iE,iS,iX)   = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_EmAb(iE,iS,iX)) * E(iE)**3
     !Edot_EmAb(iE,iS,iX) = abs(Chi_EmAb(iE,iS,iX))
-    Edot_Iso(iE,iS,iX)  = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_Iso(iE,iS,iX))  * E(iE)**3
-    Qdot_Pair(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * Eta_Pair(iE,iS,iX)      * E(iE)**3
-    Qdot_Brem(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * Eta_Brem(iE,iS,iX)      * E(iE)**3
-    Edot_NES(iE,iS,iX)  = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_NES(iE,iS,iX))  * E(iE)**3
+    Edot_Iso(iE,iS,iX)    = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_Iso(iE,iS,iX))  * E(iE)**3
+    Qdot_Pair(iE,iS,iX)   = FourPi / PlanckConstant**3 / D(iX) * Eta_Pair(iE,iS,iX)      * E(iE)**3
+    Qdot_NuPair(iE,iS,iX) = FourPi / PlanckConstant**3 / D(iX) * Eta_NuPair(iE,iS,iX)    * E(iE)**3
+    Qdot_Brem(iE,iS,iX)   = FourPi / PlanckConstant**3 / D(iX) * Eta_Brem(iE,iS,iX)      * E(iE)**3
+    Edot_NES(iE,iS,iX)    = FourPi / PlanckConstant**3 / D(iX) * abs(Chi_NES(iE,iS,iX))  * E(iE)**3
 
   END DO
   END DO
   END DO
 
-  Edot_EmAb_element = 0.0d0
-  Edot_Iso_element  = 0.0d0
-  Qdot_Pair_element = 0.0d0
-  Qdot_Brem_element = 0.0d0
-  Edot_NES_element  = 0.0d0
+  Edot_EmAb_element   = 0.0d0
+  Edot_Iso_element    = 0.0d0
+  Qdot_Pair_element   = 0.0d0
+  Qdot_NuPair_element = 0.0d0
+  Qdot_Brem_element   = 0.0d0
+  Edot_NES_element    = 0.0d0
 
   DO iX = 1, nPointsX
   DO iS = 1, nSpecies
@@ -582,21 +615,24 @@ PROGRAM NeutrinoOpacities
     iE       = MOD( (iN_E-1) / nNodes, nE     ) + 1
     iNodeE   = MOD( (iN_E-1)         , nNodes ) + 1
 
-    Edot_EmAb_element(iE,iS,iX) = Edot_EmAb_element(iE,iS,iX) &
-                                + dE(iE) / Unit_E * WeightsE(iNodeE) * Edot_EmAb(iN_E,iS,iX) &
-                                * (E(iN_E) / Unit_E)**2
-    Edot_Iso_element(iE,iS,iX)  = Edot_Iso_element(iE,iS,iX) &
-                                + dE(iE) / Unit_E * WeightsE(iNodeE) * Edot_Iso(iN_E,iS,iX) &
-                                * (E(iN_E) / Unit_E)**2
-    Qdot_Pair_element(iE,iS,iX) = Qdot_Pair_element(iE,iS,iX) &
-                                + dE(iE) / Unit_E * WeightsE(iNodeE) * Qdot_Pair(iN_E,iS,iX) &
-                                * (E(iN_E) / Unit_E)**2
-    Qdot_Brem_element(iE,iS,iX) = Qdot_Brem_element(iE,iS,iX) &
-                                + dE(iE) / Unit_E * WeightsE(iNodeE) * Qdot_Brem(iN_E,iS,iX) &
-                                * (E(iN_E) / Unit_E)**2
-    Edot_NES_element(iE,iS,iX)  = Edot_NES_element(iE,iS,iX) &
-                                + dE(iE) / Unit_E * WeightsE(iNodeE) * Edot_NES(iN_E,iS,iX) &
-                                * (E(iN_E) / Unit_E)**2
+    Edot_EmAb_element(iE,iS,iX)   = Edot_EmAb_element(iE,iS,iX) &
+                                  + dE(iE) / Unit_E * WeightsE(iNodeE) * Edot_EmAb(iN_E,iS,iX) &
+                                  * (E(iN_E) / Unit_E)**2
+    Edot_Iso_element(iE,iS,iX)    = Edot_Iso_element(iE,iS,iX) &
+                                  + dE(iE) / Unit_E * WeightsE(iNodeE) * Edot_Iso(iN_E,iS,iX) &
+                                  * (E(iN_E) / Unit_E)**2
+    Qdot_Pair_element(iE,iS,iX)   = Qdot_Pair_element(iE,iS,iX) &
+                                  + dE(iE) / Unit_E * WeightsE(iNodeE) * Qdot_Pair(iN_E,iS,iX) &
+                                  * (E(iN_E) / Unit_E)**2
+    Qdot_NuPair_element(iE,iS,iX) = Qdot_NuPair_element(iE,iS,iX) &
+                                  + dE(iE) / Unit_E * WeightsE(iNodeE) * Qdot_NuPair(iN_E,iS,iX) &
+                                  * (E(iN_E) / Unit_E)**2
+    Qdot_Brem_element(iE,iS,iX)   = Qdot_Brem_element(iE,iS,iX) &
+                                  + dE(iE) / Unit_E * WeightsE(iNodeE) * Qdot_Brem(iN_E,iS,iX) &
+                                  * (E(iN_E) / Unit_E)**2
+    Edot_NES_element(iE,iS,iX)    = Edot_NES_element(iE,iS,iX) &
+                                  + dE(iE) / Unit_E * WeightsE(iNodeE) * Edot_NES(iN_E,iS,iX) &
+                                  * (E(iN_E) / Unit_E)**2
   END DO
   END DO
   END DO
@@ -612,6 +648,10 @@ PROGRAM NeutrinoOpacities
          ( nE, Edot_Iso_element (:,iNuE, 1) / Unit_Edot, 'Edot_Iso_NuE_element.dat'  )
   CALL WriteVector & ! --- NuE
          ( nE, Qdot_Pair_element(:,iNuE, 1) / Unit_Edot, 'Qdot_Pair_NuE_element.dat' )
+  CALL WriteVector & ! --- NuE
+         ( nE, Qdot_NuPair_element(:,iNuE, 1) / Unit_Edot, 'Qdot_NuPair_NuE_element.dat' )
+  CALL WriteVector & ! --- NuM
+         ( nE, Qdot_NuPair_element(:,iNuM, 1) / Unit_Edot, 'Qdot_NuPair_NuM_element.dat' )
   CALL WriteVector & ! --- NuE
          ( nE, Qdot_Brem_element(:,iNuE, 1) / Unit_Edot, 'Qdot_Brem_NuE_element.dat' )
   CALL WriteVector & ! --- NuE
@@ -679,6 +719,22 @@ PROGRAM NeutrinoOpacities
          ( nPointsE, Chi_Pair(:,iNuE_Bar,1) / Unit_Chi, 'Chi_Pair_NuE_Bar.dat' )
   CALL WriteVector & ! --- NuE_Bar
          ( nPointsE, Eta_Pair(:,iNuE_Bar,1) / Unit_Chi, 'Eta_Pair_NuE_Bar.dat' )
+  CALL WriteVector & ! --- NuE
+         ( nPointsE, Chi_NuPair(:,iNuE    ,1) / Unit_Chi, 'Chi_NuPair_NuE.dat'     )
+  CALL WriteVector & ! --- NuE
+         ( nPointsE, Eta_NuPair(:,iNuE    ,1) / Unit_Chi, 'Eta_NuPair_NuE.dat'     )
+  CALL WriteVector & ! --- NuE_Bar
+         ( nPointsE, Chi_NuPair(:,iNuE_Bar,1) / Unit_Chi, 'Chi_NuPair_NuE_Bar.dat' )
+  CALL WriteVector & ! --- NuE_Bar
+         ( nPointsE, Eta_NuPair(:,iNuE_Bar,1) / Unit_Chi, 'Eta_NuPair_NuE_Bar.dat' )
+  CALL WriteVector & ! --- NuM
+         ( nPointsE, Chi_NuPair(:,iNuM    ,1) / Unit_Chi, 'Chi_NuPair_NuM.dat'     )
+  CALL WriteVector & ! --- NuM
+         ( nPointsE, Eta_NuPair(:,iNuM    ,1) / Unit_Chi, 'Eta_NuPair_NuM.dat'     )
+  CALL WriteVector & ! --- NuM_Bar
+         ( nPointsE, Chi_NuPair(:,iNuM_Bar,1) / Unit_Chi, 'Chi_NuPair_NuM_Bar.dat' )
+  CALL WriteVector & ! --- NuM_Bar
+         ( nPointsE, Eta_NuPair(:,iNuM_Bar,1) / Unit_Chi, 'Eta_NuPair_NuM_Bar.dat' )
 
   CALL WriteVector & ! --- NuE
          ( nPointsE, Chi_Brem(:,iNuE    ,1) / Unit_Chi, 'Chi_Brem_NuE.dat'     )
@@ -697,6 +753,14 @@ PROGRAM NeutrinoOpacities
          ( nPointsE, Qdot_Pair(:,iNuE    ,1) / Unit_Qdot, 'Qdot_Pair_NuE.dat'     )
   CALL WriteVector & ! --- NuE_Bar
          ( nPointsE, Qdot_Pair(:,iNuE_Bar,1) / Unit_Qdot, 'Qdot_Pair_NuE_Bar.dat' )
+  CALL WriteVector & ! --- NuE
+         ( nPointsE, Qdot_NuPair(:,iNuE    ,1) / Unit_Qdot, 'Qdot_NuPair_NuE.dat'     )
+  CALL WriteVector & ! --- NuE_Bar
+         ( nPointsE, Qdot_NuPair(:,iNuE_Bar,1) / Unit_Qdot, 'Qdot_NuPair_NuE_Bar.dat' )
+  CALL WriteVector & ! --- NuM
+         ( nPointsE, Qdot_NuPair(:,iNuM    ,1) / Unit_Qdot, 'Qdot_NuPair_NuM.dat'     )
+  CALL WriteVector & ! --- NuM_Bar
+         ( nPointsE, Qdot_NuPair(:,iNuM_Bar,1) / Unit_Qdot, 'Qdot_NuPair_NuM_Bar.dat' )
 
   CALL WriteVector & ! --- NuE
          ( nPointsE, Qdot_Brem(:,iNuE    ,1) / Unit_Qdot, 'Qdot_Brem_NuE.dat'     )
@@ -733,7 +797,7 @@ PROGRAM NeutrinoOpacities
   Timer_Total &
     = Timer_Compute_EC + Timer_Compute_ES &
       + Timer_Compute_NES + Timer_Compute_Pair &
-      + Timer_Compute_Brem
+      + Timer_Compute_NuPair + Timer_Compute_Brem
 
   WRITE(*,*)
   WRITE(*,'(A4,A22,1ES10.2E2)') '', 'ReadEos = ',       &
@@ -766,6 +830,13 @@ PROGRAM NeutrinoOpacities
     Timer_ComputeRate_Pair
   WRITE(*,'(A4,A22,1ES10.2E2)') '', '(Corrections)',   &
     Timer_ComputeCorr_Pair
+
+  WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_NuPair = ',  &
+    Timer_Compute_NuPair, Timer_Compute_NuPair / Timer_Total
+  WRITE(*,'(A4,A22,1ES10.2E2)') '', '(Kernel)',   &
+    Timer_ComputeKrnl_NuPair
+  WRITE(*,'(A4,A22,1ES10.2E2)') '', '(Rate)',   &
+    Timer_ComputeRate_NuPair
 
   WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_Brem = ',  &
     Timer_Compute_Brem, Timer_Compute_Brem / Timer_Total

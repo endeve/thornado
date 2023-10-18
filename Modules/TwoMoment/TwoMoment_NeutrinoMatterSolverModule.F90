@@ -35,9 +35,11 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     Timer_Opacity_ES, &
     Timer_Opacity_NES, &
     Timer_Opacity_Pair, &
+    Timer_Opacity_NuPair, &
     Timer_Opacity_Brem, &
     Timer_OpacityRate_NES, &
     Timer_OpacityRate_Pair, &
+    Timer_OpacityRate_NuPair, &
     Timer_OpacityRate_Brem
   USE ArrayUtilitiesModule, ONLY: &
     CreatePackIndex, &
@@ -70,9 +72,11 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     ComputeNeutrinoOpacities_ES, &
     ComputeNeutrinoOpacities_NES, &
     ComputeNeutrinoOpacities_Pair, &
+    ComputeNeutrinoOpacities_NuPair, &
     ComputeNeutrinoOpacities_Brem, &
     ComputeNeutrinoOpacityRates_NES, &
     ComputeNeutrinoOpacityRates_Pair, &
+    ComputeNeutrinoOpacityRates_NuPair, &
     ComputeNeutrinoOpacityRates_Brem, &
     ComputeNeutrinoOpacityRates_LinearCorrections_NES, &
     ComputeNeutrinoOpacityRates_LinearCorrections_Pair, &
@@ -159,6 +163,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_EmAb, Eta_EmAb
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_NES , Eta_NES
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_Pair, Eta_Pair
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_NuPair, Eta_NuPair
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_Brem, Eta_Brem
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_NES__In__u_1
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_NES__In__u_2
@@ -183,6 +188,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: H_I_1, H_II_1
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: J_I_0, J_II_0
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: J_I_1, J_II_1
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Nu_J_I_0, Nu_J_II_0
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: S_Sigma
 
   INTEGER :: LWORK_outer
@@ -196,6 +202,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
 
   LOGICAL  :: Include_NES
   LOGICAL  :: Include_Pair
+  LOGICAL  :: Include_NuPair
   LOGICAL  :: Include_Brem
   LOGICAL  :: Include_LinCorr
   INTEGER  :: M_outer
@@ -226,6 +233,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_EmAb_T, Eta_EmAb_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_NES_T , Eta_NES_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_Pair_T, Eta_Pair_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_NuPair_T, Eta_NuPair_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_Brem_T, Eta_Brem_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_NES__In__u_1_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: L_NES__In__u_2_T
@@ -250,6 +258,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: H_I_1_T, H_II_1_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: J_I_0_T, J_II_0_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: J_I_1_T, J_II_1_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Nu_J_I_0_T, Nu_J_II_0_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: S_Sigma_T
 
 CONTAINS
@@ -341,6 +350,8 @@ CONTAINS
     ALLOCATE(        Eta_NES(nE_G,nSpecies,nX_G) )
     ALLOCATE(       Chi_Pair(nE_G,nSpecies,nX_G) )
     ALLOCATE(       Eta_Pair(nE_G,nSpecies,nX_G) )
+    ALLOCATE(     Chi_NuPair(nE_G,nSpecies,nX_G) )
+    ALLOCATE(     Eta_NuPair(nE_G,nSpecies,nX_G) )
     ALLOCATE(       Chi_Brem(nE_G,nSpecies,nX_G) )
     ALLOCATE(       Eta_Brem(nE_G,nSpecies,nX_G) )
     ALLOCATE( L_NES__In__u_1(nE_G,nSpecies,nX_G) )
@@ -362,15 +373,17 @@ CONTAINS
     ALLOCATE( L_Brem_Ann_u_2(nE_G,nSpecies,nX_G) )
     ALLOCATE( L_Brem_Ann_u_3(nE_G,nSpecies,nX_G) )
 
-    ALLOCATE(  H_I_0 (nE_G,nE_G,nX_G) )
-    ALLOCATE(  H_I_1 (nE_G,nE_G,nX_G) )
-    ALLOCATE(  H_II_0(nE_G,nE_G,nX_G) )
-    ALLOCATE(  H_II_1(nE_G,nE_G,nX_G) )
-    ALLOCATE(  J_I_0 (nE_G,nE_G,nX_G) )
-    ALLOCATE(  J_I_1 (nE_G,nE_G,nX_G) )
-    ALLOCATE(  J_II_0(nE_G,nE_G,nX_G) )
-    ALLOCATE(  J_II_1(nE_G,nE_G,nX_G) )
-    ALLOCATE( S_Sigma(nE_G,nE_G,nX_G) )
+    ALLOCATE(    H_I_0 (nE_G,nE_G,nX_G) )
+    ALLOCATE(    H_I_1 (nE_G,nE_G,nX_G) )
+    ALLOCATE(    H_II_0(nE_G,nE_G,nX_G) )
+    ALLOCATE(    H_II_1(nE_G,nE_G,nX_G) )
+    ALLOCATE(    J_I_0 (nE_G,nE_G,nX_G) )
+    ALLOCATE(    J_I_1 (nE_G,nE_G,nX_G) )
+    ALLOCATE(    J_II_0(nE_G,nE_G,nX_G) )
+    ALLOCATE(    J_II_1(nE_G,nE_G,nX_G) )
+    ALLOCATE(  Nu_J_I_0(nE_G,nE_G,nX_G) )
+    ALLOCATE( Nu_J_II_0(nE_G,nE_G,nX_G) )
+    ALLOCATE(   S_Sigma(nE_G,nE_G,nX_G) )
 
     ALLOCATE( D_T(nX_G) )
     ALLOCATE( T_T(nX_G) )
@@ -394,6 +407,8 @@ CONTAINS
     ALLOCATE(        Eta_NES_T(nE_G,nSpecies,nX_G) )
     ALLOCATE(       Chi_Pair_T(nE_G,nSpecies,nX_G) )
     ALLOCATE(       Eta_Pair_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(     Chi_NuPair_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(     Eta_NuPair_T(nE_G,nSpecies,nX_G) )
     ALLOCATE(       Chi_Brem_T(nE_G,nSpecies,nX_G) )
     ALLOCATE(       Eta_Brem_T(nE_G,nSpecies,nX_G) )
     ALLOCATE( L_NES__In__u_1_T(nE_G,nSpecies,nX_G) )
@@ -415,15 +430,17 @@ CONTAINS
     ALLOCATE( L_Brem_Ann_u_2_T(nE_G,nSpecies,nX_G) )
     ALLOCATE( L_Brem_Ann_u_3_T(nE_G,nSpecies,nX_G) )
 
-    ALLOCATE(   H_I_0_T(nE_G,nE_G,nX_G) )
-    ALLOCATE(   H_I_1_T(nE_G,nE_G,nX_G) )
-    ALLOCATE(  H_II_0_T(nE_G,nE_G,nX_G) )
-    ALLOCATE(  H_II_1_T(nE_G,nE_G,nX_G) )
-    ALLOCATE(   J_I_0_T(nE_G,nE_G,nX_G) )
-    ALLOCATE(   J_I_1_T(nE_G,nE_G,nX_G) )
-    ALLOCATE(  J_II_0_T(nE_G,nE_G,nX_G) )
-    ALLOCATE(  J_II_1_T(nE_G,nE_G,nX_G) )
-    ALLOCATE( S_Sigma_T(nE_G,nE_G,nX_G) )
+    ALLOCATE(     H_I_0_T(nE_G,nE_G,nX_G) )
+    ALLOCATE(     H_I_1_T(nE_G,nE_G,nX_G) )
+    ALLOCATE(    H_II_0_T(nE_G,nE_G,nX_G) )
+    ALLOCATE(    H_II_1_T(nE_G,nE_G,nX_G) )
+    ALLOCATE(     J_I_0_T(nE_G,nE_G,nX_G) )
+    ALLOCATE(     J_I_1_T(nE_G,nE_G,nX_G) )
+    ALLOCATE(    J_II_0_T(nE_G,nE_G,nX_G) )
+    ALLOCATE(    J_II_1_T(nE_G,nE_G,nX_G) )
+    ALLOCATE(  Nu_J_I_0_T(nE_G,nE_G,nX_G) )
+    ALLOCATE( Nu_J_II_0_T(nE_G,nE_G,nX_G) )
+    ALLOCATE(   S_Sigma_T(nE_G,nE_G,nX_G) )
 
     ALLOCATE( INFO(nX_G) )
 
@@ -448,6 +465,7 @@ CONTAINS
     !$OMP             Chi_EmAb, Eta_EmAb, &
     !$OMP             Chi_NES, Eta_NES, &
     !$OMP             Chi_Pair, Eta_Pair, &
+    !$OMP             Chi_NuPair, Eta_NuPair, &
     !$OMP             Chi_Brem, Eta_Brem, &
     !$OMP             L_NES__In__u_1, L_NES__In__u_2, L_NES__In__u_3, &
     !$OMP             L_NES__Out_u_1, L_NES__Out_u_2, L_NES__Out_u_3, &
@@ -456,7 +474,8 @@ CONTAINS
     !$OMP             L_Brem_Pro_u_1, L_Brem_Pro_u_2, L_Brem_Pro_u_3, &
     !$OMP             L_Brem_Ann_u_1, L_Brem_Ann_u_2, L_Brem_Ann_u_3, &
     !$OMP             H_I_0, H_II_0, J_I_0, J_II_0, &
-    !$OMP             H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
+    !$OMP             H_I_1, H_II_1, J_I_1, J_II_1, &
+    !$OMP             Nu_J_I_0, Nu_J_II_0, S_Sigma, &
     !$OMP             D_T, T_T, Y_T, E_T, &
     !$OMP             SqrtGm_T, &
     !$OMP             Dnu_T, Inu_u_1_T, Inu_u_2_T, Inu_u_3_T, &
@@ -464,6 +483,7 @@ CONTAINS
     !$OMP             Chi_EmAb_T, Eta_EmAb_T, &
     !$OMP             Chi_NES_T, Eta_NES_T, &
     !$OMP             Chi_Pair_T, Eta_Pair_T, &
+    !$OMP             Chi_NuPair_T, Eta_NuPair_T, &
     !$OMP             Chi_Brem_T, Eta_Brem_T, &
     !$OMP             L_NES__In__u_1_T, L_NES__In__u_2_T, L_NES__In__u_3_T, &
     !$OMP             L_NES__Out_u_1_T, L_NES__Out_u_2_T, L_NES__Out_u_3_T, &
@@ -472,7 +492,8 @@ CONTAINS
     !$OMP             L_Brem_Pro_u_1_T, L_Brem_Pro_u_2_T, L_Brem_Pro_u_3_T, &
     !$OMP             L_Brem_Ann_u_1_T, L_Brem_Ann_u_2_T, L_Brem_Ann_u_3_T, &
     !$OMP             H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
-    !$OMP             H_I_1_T, H_II_1_T, J_I_1_T, J_II_1_T, S_Sigma_T )
+    !$OMP             H_I_1_T, H_II_1_T, J_I_1_T, J_II_1_T, &
+    !$OMP             Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T )
 #elif defined(THORNADO_OACC  )
     !$ACC ENTER DATA &
     !$ACC COPYIN( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, wMatrRHS ) &
@@ -494,6 +515,7 @@ CONTAINS
     !$ACC         Chi_EmAb, Eta_EmAb, &
     !$ACC         Chi_NES, Eta_NES, &
     !$ACC         Chi_Pair, Eta_Pair, &
+    !$ACC         Chi_NuPair, Eta_NuPair, &
     !$ACC         Chi_Brem, Eta_Brem, &
     !$ACC         L_NES__In__u_1, L_NES__In__u_2, L_NES__In__u_3, &
     !$ACC         L_NES__Out_u_1, L_NES__Out_u_2, L_NES__Out_u_3, &
@@ -502,7 +524,8 @@ CONTAINS
     !$ACC         L_Brem_Pro_u_1, L_Brem_Pro_u_2, L_Brem_Pro_u_3, &
     !$ACC         L_Brem_Ann_u_1, L_Brem_Ann_u_2, L_Brem_Ann_u_3, &
     !$ACC         H_I_0, H_II_0, J_I_0, J_II_0, &
-    !$ACC         H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
+    !$ACC         H_I_1, H_II_1, J_I_1, J_II_1, &
+    !$ACC         Nu_J_I_0, Nu_J_II_0, S_Sigma, &
     !$ACC         D_T, T_T, Y_T, E_T, &
     !$ACC         SqrtGm_T, &
     !$ACC         Dnu_T, Inu_u_1_T, Inu_u_2_T, Inu_u_3_T, &
@@ -510,6 +533,7 @@ CONTAINS
     !$ACC         Chi_EmAb_T, Eta_EmAb_T, &
     !$ACC         Chi_NES_T, Eta_NES_T, &
     !$ACC         Chi_Pair_T, Eta_Pair_T, &
+    !$ACC         Chi_NuPair_T, Eta_NuPair_T, &
     !$ACC         Chi_Brem_T, Eta_Brem_T, &
     !$ACC         L_NES__In__u_1_T, L_NES__In__u_2_T, L_NES__In__u_3_T, &
     !$ACC         L_NES__Out_u_1_T, L_NES__Out_u_2_T, L_NES__Out_u_3_T, &
@@ -518,7 +542,8 @@ CONTAINS
     !$ACC         L_Brem_Pro_u_1_T, L_Brem_Pro_u_2_T, L_Brem_Pro_u_3_T, &
     !$ACC         L_Brem_Ann_u_1_T, L_Brem_Ann_u_2_T, L_Brem_Ann_u_3_T, &
     !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
-    !$ACC         H_I_1_T, H_II_1_T, J_I_1_T, J_II_1_T, S_Sigma_T )
+    !$ACC         H_I_1_T, H_II_1_T, J_I_1_T, J_II_1_T, &
+    !$ACC         Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T )
 #endif
 
     IF ( .NOT. Include_NES ) THEN
@@ -570,6 +595,30 @@ CONTAINS
         J_I_1_T (iE1,iE2,iN_X) = Zero
         J_II_0_T(iE1,iE2,iN_X) = Zero
         J_II_1_T(iE1,iE2,iN_X) = Zero
+
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF ( .NOT. Include_NuPair ) THEN
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+      DO iN_X = 1, nX_G
+      DO iE2  = 1, nE_G
+      DO iE1  = 1, nE_G
+
+        Nu_J_I_0   (iE1,iE2,iN_X) = Zero
+        Nu_J_II_0  (iE1,iE2,iN_X) = Zero
+        Nu_J_I_0_T (iE1,iE2,iN_X) = Zero
+        Nu_J_II_0_T(iE1,iE2,iN_X) = Zero
 
       END DO
       END DO
@@ -738,9 +787,9 @@ CONTAINS
   SUBROUTINE InitializeNeutrinoMatterSolverParameters &
     ( M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
       MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
-      Include_NES_Option, Include_Pair_Option, Include_Brem_Option, &
-      Include_LinCorr_Option, wMatrRHS_Option, DnuMax_Option, &
-      FreezeOpacities_Option, Verbose_Option )
+      Include_NES_Option, Include_Pair_Option, Include_NuPair_Option, &
+      Include_Brem_Option, Include_LinCorr_Option, wMatrRHS_Option, &
+      DnuMax_Option, FreezeOpacities_Option, Verbose_Option )
 
     INTEGER , INTENT(in), OPTIONAL :: M_outer_Option
     INTEGER , INTENT(in), OPTIONAL :: M_inner_Option
@@ -750,6 +799,7 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL :: Rtol_outer_Option
     LOGICAL , INTENT(in), OPTIONAL :: Include_NES_Option
     LOGICAL , INTENT(in), OPTIONAL :: Include_Pair_Option
+    LOGICAL , INTENT(in), OPTIONAL :: Include_NuPair_Option
     LOGICAL , INTENT(in), OPTIONAL :: Include_Brem_Option
     LOGICAL , INTENT(in), OPTIONAL :: Include_LinCorr_Option
     REAL(DP), INTENT(in), OPTIONAL :: wMatrRHS_Option(nMatterEquations)
@@ -809,6 +859,12 @@ CONTAINS
       Include_Pair = .TRUE.
     END IF
 
+    IF( PRESENT( Include_NuPair_Option ) )THEN
+      Include_NuPair = Include_NuPair_Option
+    ELSE
+      Include_NuPair = .FALSE.
+    END IF
+
     IF( PRESENT( Include_Brem_Option ) )THEN
       Include_Brem = Include_Brem_Option
     ELSE
@@ -861,6 +917,7 @@ CONTAINS
       WRITE(*,*)
       WRITE(*,'(A4,A32,L1)')       '', 'Include_NES: '    , Include_NES
       WRITE(*,'(A4,A32,L1)')       '', 'Include_Pair: '   , Include_Pair
+      WRITE(*,'(A4,A32,L1)')       '', 'Include_NuPair: ' , Include_NuPair
       WRITE(*,'(A4,A32,L1)')       '', 'Include_Brem: '   , Include_Brem
       WRITE(*,'(A4,A32,L1)')       '', 'Include_LinCorr: ', Include_LinCorr
       WRITE(*,*)
@@ -906,6 +963,7 @@ CONTAINS
     !$OMP               Chi_EmAb, Eta_EmAb, &
     !$OMP               Chi_NES, Eta_NES, &
     !$OMP               Chi_Pair, Eta_Pair, &
+    !$OMP               Chi_NuPair, Eta_NuPair, &
     !$OMP               Chi_Brem, Eta_Brem, &
     !$OMP               L_NES__In__u_1, L_NES__In__u_2, L_NES__In__u_3, &
     !$OMP               L_NES__Out_u_1, L_NES__Out_u_2, L_NES__Out_u_3, &
@@ -914,7 +972,8 @@ CONTAINS
     !$OMP               L_Brem_Pro_u_1, L_Brem_Pro_u_2, L_Brem_Pro_u_3, &
     !$OMP               L_Brem_Ann_u_1, L_Brem_Ann_u_2, L_Brem_Ann_u_3, &
     !$OMP               H_I_0, H_II_0, J_I_0, J_II_0, &
-    !$OMP               H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
+    !$OMP               H_I_1, H_II_1, J_I_1, J_II_1, &
+    !$OMP               Nu_J_I_0, Nu_J_II_0, S_Sigma, &
     !$OMP               D_T, T_T, Y_T, E_T, &
     !$OMP               SqrtGm_T, &
     !$OMP               Dnu_T, Inu_u_1_T, Inu_u_2_T, Inu_u_3_T, &
@@ -922,6 +981,7 @@ CONTAINS
     !$OMP               Chi_EmAb_T, Eta_EmAb_T, &
     !$OMP               Chi_NES_T, Eta_NES_T, &
     !$OMP               Chi_Pair_T, Eta_Pair_T, &
+    !$OMP               Chi_NuPair_T, Eta_NuPair_T, &
     !$OMP               Chi_Brem_T, Eta_Brem_T, &
     !$OMP               L_NES__In__u_1_T, L_NES__In__u_2_T, L_NES__In__u_3_T, &
     !$OMP               L_NES__Out_u_1_T, L_NES__Out_u_2_T, L_NES__Out_u_3_T, &
@@ -930,7 +990,8 @@ CONTAINS
     !$OMP               L_Brem_Pro_u_1_T, L_Brem_Pro_u_2_T, L_Brem_Pro_u_3_T, &
     !$OMP               L_Brem_Ann_u_1_T, L_Brem_Ann_u_2_T, L_Brem_Ann_u_3_T, &
     !$OMP               H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
-    !$OMP               H_I_1_T, H_II_1_T, J_I_1_T, J_II_1_T, S_Sigma_T )
+    !$OMP               H_I_1_T, H_II_1_T, J_I_1_T, J_II_1_T, &
+    !$OMP               Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T )
 #elif defined(THORNADO_OACC  )
     !$ACC EXIT DATA &
     !$ACC DELETE( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, wMatrRHS, &
@@ -952,6 +1013,7 @@ CONTAINS
     !$ACC         Chi_EmAb, Eta_EmAb, &
     !$ACC         Chi_NES, Eta_NES, &
     !$ACC         Chi_Pair, Eta_Pair, &
+    !$ACC         Chi_NuPair, Eta_NuPair, &
     !$ACC         Chi_Brem, Eta_Brem, &
     !$ACC         L_NES__In__u_1, L_NES__In__u_2, L_NES__In__u_3, &
     !$ACC         L_NES__Out_u_1, L_NES__Out_u_2, L_NES__Out_u_3, &
@@ -960,7 +1022,8 @@ CONTAINS
     !$ACC         L_Brem_Pro_u_1, L_Brem_Pro_u_2, L_Brem_Pro_u_3, &
     !$ACC         L_Brem_Ann_u_1, L_Brem_Ann_u_2, L_Brem_Ann_u_3, &
     !$ACC         H_I_0, H_II_0, J_I_0, J_II_0, &
-    !$ACC         H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma, &
+    !$ACC         H_I_1, H_II_1, J_I_1, J_II_1, &
+    !$ACC         Nu_J_I_0, Nu_J_II_0, S_Sigma, &
     !$ACC         D_T, T_T, Y_T, E_T, &
     !$ACC         SqrtGm_T, &
     !$ACC         Dnu_T, Inu_u_1_T, Inu_u_2_T, Inu_u_3_T, &
@@ -968,6 +1031,7 @@ CONTAINS
     !$ACC         Chi_EmAb_T, Eta_EmAb_T, &
     !$ACC         Chi_NES_T, Eta_NES_T, &
     !$ACC         Chi_Pair_T, Eta_Pair_T, &
+    !$ACC         Chi_NuPair_T, Eta_NuPair_T, &
     !$ACC         Chi_Brem_T, Eta_Brem_T, &
     !$ACC         L_NES__In__u_1_T, L_NES__In__u_2_T, L_NES__In__u_3_T, &
     !$ACC         L_NES__Out_u_1_T, L_NES__Out_u_2_T, L_NES__Out_u_3_T, &
@@ -976,7 +1040,8 @@ CONTAINS
     !$ACC         L_Brem_Pro_u_1_T, L_Brem_Pro_u_2_T, L_Brem_Pro_u_3_T, &
     !$ACC         L_Brem_Ann_u_1_T, L_Brem_Ann_u_2_T, L_Brem_Ann_u_3_T, &
     !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
-    !$ACC         H_I_1_T, H_II_1_T, J_I_1_T, J_II_1_T, S_Sigma_T )
+    !$ACC         H_I_1_T, H_II_1_T, J_I_1_T, J_II_1_T, &
+    !$ACC         Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T )
 #endif
 
     DEALLOCATE( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2 )
@@ -998,6 +1063,7 @@ CONTAINS
     DEALLOCATE( Chi_EmAb, Eta_EmAb )
     DEALLOCATE( Chi_NES, Eta_NES )
     DEALLOCATE( Chi_Pair, Eta_Pair )
+    DEALLOCATE( Chi_NuPair, Eta_NuPair )
     DEALLOCATE( Chi_Brem, Eta_Brem )
     DEALLOCATE( L_NES__In__u_1, L_NES__In__u_2, L_NES__In__u_3 )
     DEALLOCATE( L_NES__Out_u_1, L_NES__Out_u_2, L_NES__Out_u_3 )
@@ -1007,12 +1073,14 @@ CONTAINS
     DEALLOCATE( L_Brem_Ann_u_1, L_Brem_Ann_u_2, L_Brem_Ann_u_3 )
     DEALLOCATE( H_I_0, H_II_0, J_I_0, J_II_0 )
     DEALLOCATE( H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma )
+    DEALLOCATE( Nu_J_I_0, Nu_J_II_0 )
     DEALLOCATE( D_T, T_T, Y_T, E_T, SqrtGm_T )
     DEALLOCATE( Dnu_T, Inu_u_1_T, Inu_u_2_T, Inu_u_3_T )
     DEALLOCATE( Dnu_0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T )
     DEALLOCATE( Chi_EmAb_T, Eta_EmAb_T )
     DEALLOCATE( Chi_NES_T, Eta_NES_T )
     DEALLOCATE( Chi_Pair_T, Eta_Pair_T )
+    DEALLOCATE( Chi_NuPair_T, Eta_NuPair_T )
     DEALLOCATE( Chi_Brem_T, Eta_Brem_T )
     DEALLOCATE( L_NES__In__u_1_T, L_NES__In__u_2_T, L_NES__In__u_3_T )
     DEALLOCATE( L_NES__Out_u_1_T, L_NES__Out_u_2_T, L_NES__Out_u_3_T )
@@ -1022,6 +1090,7 @@ CONTAINS
     DEALLOCATE( L_Brem_Ann_u_1_T, L_Brem_Ann_u_2_T, L_Brem_Ann_u_3_T )
     DEALLOCATE( H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T )
     DEALLOCATE( H_I_1_T, H_II_1_T, J_I_1_T, J_II_1_T, S_Sigma_T )
+    DEALLOCATE( Nu_J_I_0_T, Nu_J_II_0_T )
 
   END SUBROUTINE FinalizeNeutrinoMatterSolver
 
@@ -1479,6 +1548,7 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), POINTER :: H_I_1_P, H_II_1_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: J_I_0_P, J_II_0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: J_I_1_P, J_II_1_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Nu_J_I_0_P, Nu_J_II_0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: S_Sigma_P
 
     INTEGER :: nX, nX0, iX, iE
@@ -1523,6 +1593,9 @@ CONTAINS
       J_II_0_P    => J_II_0_T   (:,:,1:nX)
       J_II_1_P    => J_II_1_T   (:,:,1:nX)
 
+      Nu_J_I_0_P  => Nu_J_I_0_T (:,:,1:nX)
+      Nu_J_II_0_P => Nu_J_II_0_T(:,:,1:nX)
+
       S_Sigma_P   => S_Sigma_T  (:,:,1:nX)
 
     ELSE
@@ -1548,6 +1621,9 @@ CONTAINS
       J_I_1_P     => J_I_1    (:,:,:)
       J_II_0_P    => J_II_0   (:,:,:)
       J_II_1_P    => J_II_1   (:,:,:)
+
+      Nu_J_I_0_P  => Nu_J_I_0 (:,:,:)
+      Nu_J_II_0_P => Nu_J_II_0(:,:,:)
 
       S_Sigma_P   => S_Sigma  (:,:,:)
 
@@ -1653,6 +1729,19 @@ CONTAINS
 
     END IF
 
+    IF( Include_NuPair )THEN
+
+      ! --- NuPair Kernels ---
+
+      CALL TimersStart( Timer_Opacity_NuPair )
+
+      CALL ComputeNeutrinoOpacities_NuPair &
+             ( 1, nE_G, 1, nX, D_P, T_P, Y_P, 1, Nu_J_I_0_P, Nu_J_II_0_P )
+
+      CALL TimersStop( Timer_Opacity_NuPair )
+
+    END IF
+
     IF( Include_Brem )THEN
 
       ! --- Brem Kernels ---
@@ -1684,6 +1773,9 @@ CONTAINS
 
         CALL ArrayUnpack &
                ( nX, MASK, PackIndex, J_I_0_P, J_II_0_P, J_I_0, J_II_0 )
+
+        CALL ArrayUnpack &
+               ( nX, MASK, PackIndex, Nu_J_I_0_P, Nu_J_II_0_P, Nu_J_I_0, Nu_J_II_0 )
 
         CALL ArrayUnpack &
                ( nX, MASK, PackIndex, S_Sigma_P, S_Sigma )
@@ -1721,6 +1813,7 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), POINTER :: Inu_u_1_P, Inu_u_2_P, Inu_u_3_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_NES_P , Eta_NES_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_Pair_P, Eta_Pair_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_NuPair_P, Eta_NuPair_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_Brem_P, Eta_Brem_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: L_NES__In__u_1_P, L_NES__Out_u_1_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: L_NES__In__u_2_P, L_NES__Out_u_2_P
@@ -1735,6 +1828,7 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), POINTER :: H_I_1_P, H_II_1_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: J_I_0_P, J_II_0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: J_I_1_P, J_II_1_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Nu_J_I_0_P, Nu_J_II_0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: S_Sigma_P
 
     INTEGER :: nX, nX0
@@ -1769,6 +1863,9 @@ CONTAINS
       Eta_NES_P        => Eta_NES_T       (:,:,1:nX)
       Chi_Pair_P       => Chi_Pair_T      (:,:,1:nX)
       Eta_Pair_P       => Eta_Pair_T      (:,:,1:nX)
+      Chi_NuPair_P     => Chi_NuPair_T    (:,:,1:nX)
+      Eta_NuPair_P     => Eta_NuPair_T    (:,:,1:nX)
+      Eta_Pair_P       => Eta_Pair_T      (:,:,1:nX)
       Chi_Brem_P       => Chi_Brem_T      (:,:,1:nX)
       Eta_Brem_P       => Eta_Brem_T      (:,:,1:nX)
 
@@ -1801,6 +1898,9 @@ CONTAINS
       J_II_0_P         => J_II_0_T        (:,:,1:nX)
       J_II_1_P         => J_II_1_T        (:,:,1:nX)
 
+      Nu_J_I_0_P       => Nu_J_I_0_T         (:,:,1:nX)
+      Nu_J_II_0_P      => Nu_J_II_0_T        (:,:,1:nX)
+
       S_Sigma_P        => S_Sigma_T       (:,:,1:nX)
 
       IF ( nX < nX0 ) THEN
@@ -1810,6 +1910,9 @@ CONTAINS
 
         CALL ArrayPack &
                ( nX, UnpackIndex, J_I_0, J_II_0, J_I_0_P, J_II_0_P )
+
+        CALL ArrayPack &
+               ( nX, UnpackIndex, Nu_J_I_0, Nu_J_II_0, Nu_J_I_0_P, Nu_J_II_0_P )
 
         CALL ArrayPack &
                ( nX, UnpackIndex, S_Sigma, S_Sigma_P )
@@ -1828,16 +1931,18 @@ CONTAINS
 
     ELSE
 
-      Dnu_P              => Dnu             (:,:,:)
-      Dnu_0_P             => Dnu_0            (:,:,:)
-      Inu_u_1_P          => Inu_u_1         (:,:,:)
-      Inu_u_2_P          => Inu_u_2         (:,:,:)
-      Inu_u_3_P          => Inu_u_3         (:,:,:)
+      Dnu_P            => Dnu           (:,:,:)
+      Dnu_0_P          => Dnu_0         (:,:,:)
+      Inu_u_1_P        => Inu_u_1       (:,:,:)
+      Inu_u_2_P        => Inu_u_2       (:,:,:)
+      Inu_u_3_P        => Inu_u_3       (:,:,:)
 
       Chi_NES_P        => Chi_NES       (:,:,:)
       Eta_NES_P        => Eta_NES       (:,:,:)
       Chi_Pair_P       => Chi_Pair      (:,:,:)
       Eta_Pair_P       => Eta_Pair      (:,:,:)
+      Chi_NuPair_P     => Chi_NuPair    (:,:,:)
+      Eta_NuPair_P     => Eta_NuPair    (:,:,:)
       Chi_Brem_P       => Chi_Brem      (:,:,:)
       Eta_Brem_P       => Eta_Brem      (:,:,:)
 
@@ -1869,6 +1974,9 @@ CONTAINS
       J_I_1_P          => J_I_1         (:,:,:)
       J_II_0_P         => J_II_0        (:,:,:)
       J_II_1_P         => J_II_1        (:,:,:)
+
+      Nu_J_I_0_P       => Nu_J_I_0      (:,:,:)
+      Nu_J_II_0_P      => Nu_J_II_0     (:,:,:)
 
       S_Sigma_P        => S_Sigma       (:,:,:)
 
@@ -1918,6 +2026,16 @@ CONTAINS
 
     CALL TimersStop( Timer_OpacityRate_Pair )
 
+    ! --- NuPair Emissivities and Opacities ---
+
+    CALL TimersStart( Timer_OpacityRate_NuPair )
+
+    CALL ComputeNeutrinoOpacityRates_Pair &
+           ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, Dnu_P, Dnu_0_P, &
+             Nu_J_I_0_P, Nu_J_II_0_P, Eta_NuPair_P, Chi_NuPair_P )
+
+    CALL TimersStop( Timer_OpacityRate_NuPair )
+
     ! --- Brem Emissivities and Opacities ---
 
     CALL TimersStart( Timer_OpacityRate_Brem )
@@ -1951,6 +2069,10 @@ CONTAINS
       CALL ArrayUnpack &
              ( nX, MASK, PackIndex, &
                Chi_Pair_P, Eta_Pair_P, Chi_Pair, Eta_Pair )
+
+      CALL ArrayUnpack &
+             ( nX, MASK, PackIndex, &
+               Chi_NuPair_P, Eta_NuPair_P, Chi_NuPair, Eta_NuPair )
 
       CALL ArrayUnpack &
              ( nX, MASK, PackIndex, &
@@ -3048,17 +3170,19 @@ CONTAINS
 
         ! --- Emissivity ---
 
-        Eta_T =   Chi_EmAb(iN_E,iS,iN_X) * Dnu_0(iN_E,iS,iN_X) &
-                + Eta_NES (iN_E,iS,iN_X) &
-                + Eta_Pair(iN_E,iS,iN_X) &
-                + Eta_Brem(iN_E,iS,iN_X)
+        Eta_T =   Chi_EmAb  (iN_E,iS,iN_X) * Dnu_0(iN_E,iS,iN_X) &
+                + Eta_NES   (iN_E,iS,iN_X) &
+                + Eta_Pair  (iN_E,iS,iN_X) &
+                + Eta_NuPair(iN_E,iS,iN_X) &
+                + Eta_Brem  (iN_E,iS,iN_X)
 
         ! --- Number Opacity ---
 
-        Chi_T =   Chi_EmAb(iN_E,iS,iN_X) &
-                + Chi_NES (iN_E,iS,iN_X) &
-                + Chi_Pair(iN_E,iS,iN_X) &
-                + Chi_Brem(iN_E,iS,iN_X)
+        Chi_T =   Chi_EmAb  (iN_E,iS,iN_X) &
+                + Chi_NES   (iN_E,iS,iN_X) &
+                + Chi_Pair  (iN_E,iS,iN_X) &
+                + Chi_NuPair(iN_E,iS,iN_X) &
+                + Chi_Brem  (iN_E,iS,iN_X)
 
         ! --- Number Flux Opacity ---
 
@@ -3260,17 +3384,19 @@ CONTAINS
 
         ! --- Emissivity ---
 
-        Eta_T =   Chi_EmAb(iN_E,iS,iN_X) * Dnu_0(iN_E,iS,iN_X) &
-                + Eta_NES (iN_E,iS,iN_X) &
-                + Eta_Pair(iN_E,iS,iN_X) &
-                + Eta_Brem(iN_E,iS,iN_X)
+        Eta_T =   Chi_EmAb  (iN_E,iS,iN_X) * Dnu_0(iN_E,iS,iN_X) &
+                + Eta_NES   (iN_E,iS,iN_X) &
+                + Eta_Pair  (iN_E,iS,iN_X) &
+                + Eta_NuPair(iN_E,iS,iN_X) &
+                + Eta_Brem  (iN_E,iS,iN_X)
 
         ! --- Number Opacity ---
 
-        Chi_T =   Chi_EmAb(iN_E,iS,iN_X) &
-                + Chi_NES (iN_E,iS,iN_X) &
-                + Chi_Pair(iN_E,iS,iN_X) &
-                + Chi_Brem(iN_E,iS,iN_X)
+        Chi_T =   Chi_EmAb  (iN_E,iS,iN_X) &
+                + Chi_NES   (iN_E,iS,iN_X) &
+                + Chi_Pair  (iN_E,iS,iN_X) &
+                + Chi_NuPair(iN_E,iS,iN_X) &
+                + Chi_Brem  (iN_E,iS,iN_X)
 
         ! --- Number Flux Opacity ---
 
@@ -3476,17 +3602,19 @@ CONTAINS
 
         ! --- Emissivity ---
 
-        Eta_T =   Chi_EmAb(iN_E,iS,iN_X) * Dnu_0(iN_E,iS,iN_X) &
-                + Eta_NES (iN_E,iS,iN_X) &
-                + Eta_Pair(iN_E,iS,iN_X) &
-                + Eta_Brem(iN_E,iS,iN_X)
+        Eta_T =   Chi_EmAb  (iN_E,iS,iN_X) * Dnu_0(iN_E,iS,iN_X) &
+                + Eta_NES   (iN_E,iS,iN_X) &
+                + Eta_Pair  (iN_E,iS,iN_X) &
+                + Eta_NuPair(iN_E,iS,iN_X) &
+                + Eta_Brem  (iN_E,iS,iN_X)
 
         ! --- Number Opacity ---
 
-        Chi_T =   Chi_EmAb(iN_E,iS,iN_X) &
-                + Chi_NES (iN_E,iS,iN_X) &
-                + Chi_Pair(iN_E,iS,iN_X) &
-                + Chi_Brem(iN_E,iS,iN_X)
+        Chi_T =   Chi_EmAb  (iN_E,iS,iN_X) &
+                + Chi_NES   (iN_E,iS,iN_X) &
+                + Chi_Pair  (iN_E,iS,iN_X) &
+                + Chi_NuPair(iN_E,iS,iN_X) &
+                + Chi_Brem  (iN_E,iS,iN_X)
 
         ! --- Number Flux Opacity ---
 

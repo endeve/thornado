@@ -131,7 +131,8 @@ contains
       OpacityTableName_Brem_Option, &
       M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
       MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
-      Include_NES_Option, Include_Pair_Option, Include_Brem_Option, &
+      Include_NES_Option, Include_Pair_Option, &
+      Include_NuPair_Option, Include_Brem_Option, &
       Include_LinCorr_Option, wMatrRHS_Option, &
       DnuMax_Option, FreezeOpacities_Option , &
       ActivateUnits_Option, CoordinateSystem_Option, Verbose_Option )
@@ -168,6 +169,7 @@ contains
     real(dp),         intent(in), optional :: Rtol_outer_Option
     logical,          intent(in), optional :: Include_NES_Option
     logical,          intent(in), optional :: Include_Pair_Option
+    logical,          intent(in), optional :: Include_NuPair_Option
     logical,          intent(in), optional :: Include_Brem_Option
     logical,          intent(in), optional :: Include_LinCorr_Option
     real(dp),         intent(in), optional :: wMatrRHS_Option(5)
@@ -451,6 +453,7 @@ contains
              Rtol_outer_Option = Rtol_outer_Option, &
              Include_NES_Option = Include_NES_Option, &
              Include_Pair_Option = Include_Pair_Option, &
+             Include_NuPair_Option = Include_NuPair_Option, &
              Include_Brem_Option = Include_Brem_Option, &
              Include_LinCorr_Option = Include_LinCorr_Option, &
              wMatrRHS_Option = wMatrRHS_Option, &
