@@ -62,6 +62,7 @@ MODULE EquationOfStateModule_TABLE
     OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm
   REAL(DP), PARAMETER :: &
     BaryonMass = AtomicMassUnit
+  REAL(DP) :: minvar, OS_loc
   REAL(DP), DIMENSION(:), ALLOCATABLE :: &
     D_T, T_T, Y_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: &
@@ -74,6 +75,7 @@ MODULE EquationOfStateModule_TABLE
 
   PUBLIC :: InitializeEquationOfState_TABLE
   PUBLIC :: FinalizeEquationOfState_TABLE
+  PUBLIC :: ApplyChemicalPotentialShift_TABLE
   PUBLIC :: ApplyEquationOfState_TABLE
   PUBLIC :: ComputeTemperatureFromPressure_TABLE
   PUBLIC :: ComputeTemperatureFromSpecificInternalEnergy_TABLE
@@ -226,9 +228,11 @@ CONTAINS
 
 
   SUBROUTINE InitializeEquationOfState_TABLE &
-    ( EquationOfStateTableName_Option, Verbose_Option, External_EOS )
+    ( EquationOfStateTableName_Option, UseChemicalPotentialShift_Option, &
+      Verbose_Option, External_EOS )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: EquationOfStateTableName_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: UseChemicalPotentialShift_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 #ifdef MICROPHYSICS_WEAKLIB
     TYPE(EquationOfStateTableType), POINTER, &
@@ -236,13 +240,20 @@ CONTAINS
 #else
     INTEGER,          INTENT(in), OPTIONAL :: External_EOS
 #endif
-
-    LOGICAL :: Verbose
+    
+    REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: Ps, Ss, Es
+    LOGICAL :: UseChemicalPotentialShift, Verbose
 
     IF( PRESENT( EquationOfStateTableName_Option ) )THEN
        EquationOfStateTableName = TRIM( EquationOfStateTableName_Option )
     ELSE
        EquationOfStateTableName = 'EquationOfStateTable.h5'
+    END IF
+
+    IF( PRESENT( UseChemicalPotentialShift_Option ) )THEN
+       UseChemicalPotentialShift = UseChemicalPotentialShift_Option
+    ELSE
+       UseChemicalPotentialShift = .FALSE.
     END IF
 
     IF( PRESENT( Verbose_Option ) )THEN
@@ -407,16 +418,32 @@ CONTAINS
     Xh_T = EOS % DV % Variables(iXh_T) % Values
     Gm_T = EOS % DV % Variables(iGm_T) % Values
 
+    IF ( UseChemicalPotentialShift ) CALL ApplyChemicalPotentialShift_TABLE( Mp_T, Mn_T, OS_Mp, OS_Mn )
+
+    ALLOCATE &
+      ( Ps  (1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
+    ALLOCATE &
+      ( Ss  (1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
+    ALLOCATE &
+      ( Es  (1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
+    Ps = 10.0d0**P_T - OS_P
+    Ss = 10.0d0**S_T - OS_S
+    Es = 10.0d0**E_T - OS_E
     CALL InitializeEOSInversion &
            ( D_T, T_T, Y_T, &
-             10.0d0**( E_T ) - OS_E, &
-             10.0d0**( P_T ) - OS_P, &
-             10.0d0**( S_T ) - OS_S, &
+             Es, Ps, Ss, &
              Verbose_Option = Verbose )
+    DEALLOCATE( Ps, Ss, Es )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO &
-    !$OMP ( D_T, T_T, Y_T, &
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( always, to: D_T, T_T, Y_T, &
     !$OMP   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMe, UnitMp, UnitMn, &
     !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
     !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, P_T, S_T, &
@@ -441,6 +468,16 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( always, release: D_T, T_T, Y_T, &
+    !$OMP   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMe, UnitMp, UnitMn, &
+    !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
+    !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, P_T, S_T, &
+    !$OMP   E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Gm_T, &
+    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
+#endif
+
     DEALLOCATE( D_T, T_T, Y_T )
 
     DEALLOCATE( P_T  )
@@ -462,6 +499,52 @@ CONTAINS
 #endif
 
   END SUBROUTINE FinalizeEquationOfState_TABLE
+
+
+  SUBROUTINE ApplyChemicalPotentialShift_TABLE( Mp_T, Mn_T, OS_Mp, OS_Mn )
+
+    !For SFHo tables from
+    !https://code.ornl.gov/astro/weaklib-tables/-/tree/master/SFHo/LowRes
+    !up until git commit hash a36240ed
+    !the neutron and proton chemical potentials
+    !are tabulated subtracting the neutron-proton-mass difference
+    !in order to use the same conventions as used in Chimera
+    !to account for this, and get detailed balance factors
+    !correct, we add the mass difference back in and then
+    !add the SFHo reference masses for the chemical potential
+    !(mn for Mn, mp for Mp)
+    !For this renomalisation to the original SFHo tables,
+    !we need to recalculate the offsets first
+
+    REAL(dp), INTENT(inout), DIMENSION(:,:,:) :: Mp_T, Mn_T
+    REAL(dp), INTENT(inout) :: OS_Mp, OS_Mn
+
+    REAL(DP), PARAMETER :: neutron_mass = 939.56542052d0
+    REAL(DP), PARAMETER :: proton_mass = 938.2720813d0
+    REAL(DP), PARAMETER :: dmnp = 1.29333922d0
+    REAL(DP) :: min_M, OS_M_new
+
+    ! Apply the shift for proton chemical potential
+    IF ( OS_Mp > 0.0d0 ) THEN
+      min_M = -0.5d0 * OS_Mp
+    ELSE
+      min_M = MINVAL( 10.0d0**Mp_T )
+    ENDIF
+    OS_M_new = -2.0d0 * MIN( 0.0d0, min_M + proton_mass + dmnp )
+    Mp_T     = LOG10( 10.0d0**Mp_T - OS_Mp + proton_mass + dmnp + OS_M_new)
+    OS_Mp    = OS_M_new
+
+    ! Apply the shift for neutron chemical potential
+    IF ( OS_Mn > 0.0d0 ) THEN
+      min_M = -0.5d0 * OS_Mn
+    ELSE
+      min_M = MINVAL( 10.0d0**Mn_T )
+    ENDIF
+    OS_M_new = -2.0d0 * MIN( 0.0d0, min_M + proton_mass + dmnp )
+    Mn_T     = LOG10( 10.0d0**Mn_T - OS_Mn + proton_mass + dmnp + OS_M_new)
+    OS_Mn    = OS_M_new
+
+  END SUBROUTINE ApplyChemicalPotentialShift_TABLE
 
 
   SUBROUTINE ApplyEquationOfState_TABLE_Scalar &
@@ -786,7 +869,7 @@ CONTAINS
           WRITE(*,'(a,i5,3es23.15)') '  iP, D, E, Y : ', iP, D_P, E_P, Y_P
         END IF
       END DO
-      STOP
+      !STOP
     END IF
 
 #endif
