@@ -3471,8 +3471,8 @@ CONTAINS
 
         Gm(iOS+iCR_N,iN_X) &
           = ( One - Omega(iN_X) ) *     Dnu(iN_E,iS,iN_X) &
-           + Omega(iN_X)   *  ( C_Dnu(iN_E,iS,iN_X) - vDotInu + dt * Alpha * Eta_T ) &
-              / ( W + dt * Alpha * Chi_T )
+           + Omega(iN_X)   *  ( C_Dnu(iN_E,iS,iN_X) - vDotInu + dt * Alpha(iN_X) * Eta_T ) &
+              / ( W + dt * Alpha(iN_X) * Chi_T )
 
         Fm(iOS+iCR_N,iN_X) &
           = Gm(iOS+iCR_N,iN_X) - Dnu(iN_E,iS,iN_X)
@@ -3482,7 +3482,7 @@ CONTAINS
         Gm(iOS+iCR_G1,iN_X) &
           = ( One - Omega(iN_X) ) *     Inu_d_1 &
             +       Omega(iN_X)   * ( C_Inu_d_1(iN_E,iS,iN_X) - vDotK_d_1 ) &
-                                    / ( W + dt * Alpha * Kappa )
+                                    / ( W + dt * Alpha(iN_X) * Kappa )
 
         Fm(iOS+iCR_G1,iN_X) &
           = Gm(iOS+iCR_G1,iN_X) - Inu_d_1
@@ -3492,7 +3492,7 @@ CONTAINS
         Gm(iOS+iCR_G2,iN_X) &
           = ( One - Omega(iN_X) ) *     Inu_d_2 &
             +       Omega(iN_X)   * ( C_Inu_d_2(iN_E,iS,iN_X) - vDotK_d_2 ) &
-                                    / ( W + dt * Alpha * Kappa )
+                                    / ( W + dt * Alpha(iN_X) * Kappa )
 
         Fm(iOS+iCR_G2,iN_X) &
           = Gm(iOS+iCR_G2,iN_X) - Inu_d_2
@@ -3502,7 +3502,7 @@ CONTAINS
         Gm(iOS+iCR_G3,iN_X) &
           = ( One - Omega(iN_X) ) *     Inu_d_3 &
             +       Omega(iN_X)   * ( C_Inu_d_3(iN_E,iS,iN_x) - vDotK_d_3 ) &
-                                    / ( W + dt * Alpha * Kappa )
+                                    / ( W + dt * Alpha(iN_X) * Kappa )
 
         Fm(iOS+iCR_G3,iN_X) &
           = Gm(iOS+iCR_G3,iN_X) - Inu_d_3
