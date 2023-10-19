@@ -82,14 +82,18 @@ export IGC_ShaderDumpEnable=1
 export IGC_ShowFullVectorsInShaderDumps=1
 
 export  IGC_DumpToCustomDir=/nfs/site/home/quanshao/sandbox/shaderDump/tmp
+objcopy --dump-section __CLANG_OFFLOAD_BUNDLE__openmp-spirv=offload.elf ApplicationDriver_Neutrinos_beacon_intel
+objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv offload.elf
 
 `ZEX_NUMBER_OF_CCS=0:1`
 </pre>
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
-## Oct 18 2023
+## Oct 18-19 2023
 1. Testing umd692 and umd693 and also igc drivers from 14062 to 15443. 
+2. summarized the results and put them to the JIRA, https://jira.devtools.intel.com/browse/GSD-5788
+3. Profile the relaxation case and created a .spv file and uploaded to the JIRA https://jira.devtools.intel.com/browse/GSD-6461?filter=-2
 ## Oct 17 2023
 1. Merged mms69 branch with the lastest master branch and found that the Streaming SineWave case runs almost 2X faster. Discussed with the developers at national labs, and it found out that the recent change of the initial guess reduced the iterations of the liner solvers, so leading to faster computing time. Here is the data:
 
