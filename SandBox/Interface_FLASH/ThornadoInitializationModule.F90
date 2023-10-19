@@ -135,7 +135,8 @@ contains
       Include_NuPair_Option, Include_Brem_Option, &
       Include_LinCorr_Option, wMatrRHS_Option, &
       DnuMax_Option, FreezeOpacities_Option , &
-      ActivateUnits_Option, CoordinateSystem_Option, Verbose_Option )
+      ActivateUnits_Option, CoordinateSystem_Option, &
+      UseChemicalPotentialShift_Option, Verbose_Option )
 
     integer,  intent(in) :: nNodes, nDimsX, nE, swE, bcE, nSpecies
     real(dp), intent(in) :: eL_MeV, eR_MeV, zoomE
@@ -178,9 +179,10 @@ contains
     logical,          intent(in), optional :: ActivateUnits_Option
     character(len=*), intent(in), optional :: CoordinateSystem_Option
     logical,          intent(in), optional :: Verbose_Option
+    logical,          intent(in), optional :: UseChemicalPotentialShift_Option
 
     logical  :: TroubledCellIndicator
-    logical  :: PositivityLimiter, SlopeLimiter, EnergyLimiter, Verbose
+    logical  :: PositivityLimiter, SlopeLimiter, EnergyLimiter, UseChemicalPotentialShift, Verbose
     logical  :: ActivateUnits
     integer  :: nX(3), bcX(3)
     integer  :: i
@@ -222,6 +224,12 @@ contains
       Verbose = Verbose_Option
     ELSE
       Verbose = .FALSE.
+    END IF
+
+    IF( PRESENT(UseChemicalPotentialShift_Option) )THEN
+      UseChemicalPotentialShift = UseChemicalPotentialShift_Option
+    ELSE
+      UseChemicalPotentialShift = .FALSE.
     END IF
 
     IF( PRESENT(UpperBry1_Option) )THEN
@@ -393,7 +401,8 @@ contains
     call InitializeEquationOfState_TABLE &
            ( EquationOfStateTableName_Option &
                = EquationOfStateTableName_Option, &
-             Verbose_Option = Verbose , &
+             UseChemicalPotentialShift_Option = UseChemicalPotentialShift, &
+             Verbose_Option = Verbose, &
              External_EOS = External_EOS )
 #else
     call InitializeEquationOfState_IDEAL &

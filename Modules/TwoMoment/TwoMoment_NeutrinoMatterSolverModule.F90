@@ -1269,7 +1269,7 @@ CONTAINS
       CALL CreatePackIndex &
              ( ITERATE_outer, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
 
-      IF ( k_outer > 1 .AND. .NOT. FreezeOpacities ) THEN
+      IF ( k_outer > 1 ) THEN
 
         ! --- Recompute Opacity Kernels ---
 
@@ -1277,7 +1277,8 @@ CONTAINS
 
         CALL ComputeOpacities_Packed &
                ( D, T, Y, SqrtGm, ITERATE_outer, nX_P_outer, &
-                 PackIndex_outer, UnpackIndex_outer )
+                 PackIndex_outer, UnpackIndex_outer, &
+                 FreezeOpacities_Option = FreezeOpacities )
 
         CALL TimersStop( Timer_Collisions_ComputeOpacity )
 
@@ -1530,14 +1531,18 @@ CONTAINS
 
 
   SUBROUTINE ComputeOpacities_Packed &
-    ( D, T, Y, SqrtGm, MASK, nX_P, PackIndex, UnpackIndex, nX_P0 )
+    ( D, T, Y, SqrtGm, MASK, nX_P, PackIndex, UnpackIndex, nX_P0, &
+      FreezeOpacities_Option )
 
     REAL(DP), DIMENSION(:), INTENT(in), TARGET   :: D, T, Y, SqrtGm
     LOGICAL,  DIMENSION(:), INTENT(in), OPTIONAL :: MASK
     INTEGER,                INTENT(in), OPTIONAL :: nX_P
     INTEGER,  DIMENSION(:), INTENT(in), OPTIONAL :: PackIndex, UnpackIndex
     INTEGER,                INTENT(in), OPTIONAL :: nX_P0
+    LOGICAL,                INTENT(in), OPTIONAL :: FreezeOpacities_Option
 
+    INTEGER                             :: nX, nX0, iX, iE
+    LOGICAL                             :: FreezeOpacities
     REAL(DP), DIMENSION(:)    , POINTER :: D_P, T_P, Y_P, SqrtGm_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Dnu_0_P
     REAL(DP), DIMENSION(:,:)  , POINTER :: Sigma_Iso_P
@@ -1551,7 +1556,6 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), POINTER :: Nu_J_I_0_P, Nu_J_II_0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: S_Sigma_P
 
-    INTEGER :: nX, nX0, iX, iE
     IF( PRESENT( nX_P ) )THEN
       nX = nX_P
     ELSE
@@ -1562,6 +1566,12 @@ CONTAINS
       nX0 = nX_P0
     ELSE
       nX0 = nX_G
+    END IF
+
+    IF( PRESENT( FreezeOpacities_Option ) )THEN
+      FreezeOpacities = FreezeOpacities_Option
+    ELSE
+      FreezeOpacities = .FALSE.
     END IF
 
     IF ( nX < nX_G ) THEN
@@ -1629,47 +1639,49 @@ CONTAINS
 
     END IF
 
-    ! --- Equilibrium Distributions ---
+    IF( .NOT. FreezeOpacities )THEN
 
-    CALL TimersStart( Timer_Opacity_D0 )
+      ! --- Equilibrium Distributions ---
 
-    CALL ComputeEquilibriumDistributions &
-           ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Y_P, Dnu_0_P )
+      CALL TimersStart( Timer_Opacity_D0 )
+
+      CALL ComputeEquilibriumDistributions &
+             ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Y_P, Dnu_0_P )
 
 !!$    CALL ComputeEquilibriumDistributions_DG &
 !!$           ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Y_P, SqrtGm_P, Dnu_0_P )
 
-    CALL TimersStop( Timer_Opacity_D0 )
+      CALL TimersStop( Timer_Opacity_D0 )
 
-    CALL TimersStart( Timer_Opacity_LimitD0 )
+      CALL TimersStart( Timer_Opacity_LimitD0 )
 
-    CALL LimitEquilibriumDistributions_DG &
-           ( 1, nE_G, 1, nSpecies, 1, nX, E_N, Dnu_0_P )
+      CALL LimitEquilibriumDistributions_DG &
+             ( 1, nE_G, 1, nSpecies, 1, nX, E_N, Dnu_0_P )
 
-    CALL TimersStop( Timer_Opacity_LimitD0 )
+      CALL TimersStop( Timer_Opacity_LimitD0 )
 
-    ! --- EmAb ---
+      ! --- EmAb ---
 
-    CALL TimersStart( Timer_Opacity_EC )
+      CALL TimersStart( Timer_Opacity_EC )
 
-    CALL ComputeNeutrinoOpacities_EC &
-           ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Y_P, Dnu_0_P, Chi_EmAb_P )
+      CALL ComputeNeutrinoOpacities_EC &
+             ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Y_P, Dnu_0_P, Chi_EmAb_P )
 
-    CALL TimersStop( Timer_Opacity_EC )
+      CALL TimersStop( Timer_Opacity_EC )
 
-    ! --- Isoenergetic scattering ---
+      ! --- Isoenergetic scattering ---
 
-    CALL TimersStart( Timer_Opacity_ES )
-
-    CALL ComputeNeutrinoOpacities_ES &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, 1, Phi_0_Iso_P )
-
-    IF( Include_LinCorr )THEN
+      CALL TimersStart( Timer_Opacity_ES )
 
       CALL ComputeNeutrinoOpacities_ES &
-             ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, 2, Phi_1_Iso_P )
+             ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, 1, Phi_0_Iso_P )
 
-    END IF
+      IF( Include_LinCorr )THEN
+
+        CALL ComputeNeutrinoOpacities_ES &
+               ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, 2, Phi_1_Iso_P )
+
+      END IF
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
@@ -1678,82 +1690,84 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(2)
 #endif
-    DO iX = 1, nX
-    DO iE = 1, nE_G
+      DO iX = 1, nX
+      DO iE = 1, nE_G
 
-      Sigma_Iso_P(iE,iX) &
-        = FourPiEp2(iE) * ( Phi_0_Iso_P(iE,iX) - Third * Phi_1_Iso_P(iE,iX) )
+        Sigma_Iso_P(iE,iX) &
+          = FourPiEp2(iE) * ( Phi_0_Iso_P(iE,iX) - Third * Phi_1_Iso_P(iE,iX) )
 
-    END DO
-    END DO
+      END DO
+      END DO
 
-    CALL TimersStop( Timer_Opacity_ES )
+      CALL TimersStop( Timer_Opacity_ES )
 
-    IF( Include_NES )THEN
+      IF( Include_NES )THEN
 
-      ! --- NES Scattering Functions ---
+        ! --- NES Scattering Functions ---
 
-      CALL TimersStart( Timer_Opacity_NES )
-
-      CALL ComputeNeutrinoOpacities_NES &
-             ( 1, nE_G, 1, nX, D_P, T_P, Y_P, 1, H_I_0_P, H_II_0_P )
-
-      IF( Include_LinCorr )THEN
+        CALL TimersStart( Timer_Opacity_NES )
 
         CALL ComputeNeutrinoOpacities_NES &
-               ( 1, nE_G, 1, nX, D_P, T_P, Y_P, 2, H_I_1_P, H_II_1_P )
+               ( 1, nE_G, 1, nX, D_P, T_P, Y_P, 1, H_I_0_P, H_II_0_P )
+
+        IF( Include_LinCorr )THEN
+
+          CALL ComputeNeutrinoOpacities_NES &
+                 ( 1, nE_G, 1, nX, D_P, T_P, Y_P, 2, H_I_1_P, H_II_1_P )
+
+        END IF
+
+        CALL TimersStop( Timer_Opacity_NES )
 
       END IF
 
-      CALL TimersStop( Timer_Opacity_NES )
+      IF( Include_Pair )THEN
 
-    END IF
+        ! --- Pair Kernels ---
 
-    IF( Include_Pair )THEN
-
-      ! --- Pair Kernels ---
-
-      CALL TimersStart( Timer_Opacity_Pair )
-
-      CALL ComputeNeutrinoOpacities_Pair &
-             ( 1, nE_G, 1, nX, D_P, T_P, Y_P, 1, J_I_0_P, J_II_0_P )
-
-      IF( Include_LinCorr )THEN
+        CALL TimersStart( Timer_Opacity_Pair )
 
         CALL ComputeNeutrinoOpacities_Pair &
-               ( 1, nE_G, 1, nX, D_P, T_P, Y_P, 2, J_I_1_P, J_II_1_P )
+               ( 1, nE_G, 1, nX, D_P, T_P, Y_P, 1, J_I_0_P, J_II_0_P )
+
+        IF( Include_LinCorr )THEN
+
+          CALL ComputeNeutrinoOpacities_Pair &
+                 ( 1, nE_G, 1, nX, D_P, T_P, Y_P, 2, J_I_1_P, J_II_1_P )
+
+        END IF
+
+        CALL TimersStop( Timer_Opacity_Pair )
 
       END IF
 
-      CALL TimersStop( Timer_Opacity_Pair )
+      IF( Include_NuPair )THEN
 
-    END IF
+        ! --- NuPair Kernels ---
 
-    IF( Include_NuPair )THEN
+        CALL TimersStart( Timer_Opacity_NuPair )
 
-      ! --- NuPair Kernels ---
+        CALL ComputeNeutrinoOpacities_NuPair &
+               ( 1, nE_G, 1, nX, D_P, T_P, Y_P, 1, Nu_J_I_0_P, Nu_J_II_0_P )
 
-      CALL TimersStart( Timer_Opacity_NuPair )
+        CALL TimersStop( Timer_Opacity_NuPair )
 
-      CALL ComputeNeutrinoOpacities_NuPair &
-             ( 1, nE_G, 1, nX, D_P, T_P, Y_P, 1, Nu_J_I_0_P, Nu_J_II_0_P )
+      END IF
 
-      CALL TimersStop( Timer_Opacity_NuPair )
+      IF( Include_Brem )THEN
 
-    END IF
+        ! --- Brem Kernels ---
 
-    IF( Include_Brem )THEN
+        CALL TimersStart( Timer_Opacity_Brem )
 
-      ! --- Brem Kernels ---
+        CALL ComputeNeutrinoOpacities_Brem &
+               ( 1, nE_G, 1, nX, D_P, T_P, Y_P, S_Sigma_P )
 
-      CALL TimersStart( Timer_Opacity_Brem )
+        CALL TimersStop( Timer_Opacity_Brem )
 
-      CALL ComputeNeutrinoOpacities_Brem &
-             ( 1, nE_G, 1, nX, D_P, T_P, Y_P, S_Sigma_P )
+      END IF
 
-      CALL TimersStop( Timer_Opacity_Brem )
-
-    END IF
+    END IF ! --- .NOT. FreezeOpacities
 
     IF ( nX < nX_G ) THEN
 

@@ -62,12 +62,6 @@ MODULE EquationOfStateModule_TABLE
     OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Ah, OS_Gm
   REAL(DP), PARAMETER :: &
     BaryonMass = AtomicMassUnit
-  REAL(DP), PARAMETER :: &
-    neutron_mass = 939.56542052d0
-  REAL(DP), PARAMETER :: &
-    proton_mass = 938.2720813d0
-  REAL(DP), PARAMETER :: &
-    dmnp = 1.29333922d0
   REAL(DP) :: minvar, OS_loc
   REAL(DP), DIMENSION(:), ALLOCATABLE :: &
     D_T, T_T, Y_T
@@ -81,6 +75,7 @@ MODULE EquationOfStateModule_TABLE
 
   PUBLIC :: InitializeEquationOfState_TABLE
   PUBLIC :: FinalizeEquationOfState_TABLE
+  PUBLIC :: ApplyChemicalPotentialShift_TABLE
   PUBLIC :: ApplyEquationOfState_TABLE
   PUBLIC :: ComputeTemperatureFromPressure_TABLE
   PUBLIC :: ComputeTemperatureFromSpecificInternalEnergy_TABLE
@@ -245,9 +240,11 @@ CONTAINS
 
 
   SUBROUTINE InitializeEquationOfState_TABLE &
-    ( EquationOfStateTableName_Option, Verbose_Option, External_EOS )
+    ( EquationOfStateTableName_Option, UseChemicalPotentialShift_Option, &
+      Verbose_Option, External_EOS )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: EquationOfStateTableName_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: UseChemicalPotentialShift_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 #ifdef MICROPHYSICS_WEAKLIB
     TYPE(EquationOfStateTableType), POINTER, &
@@ -257,12 +254,19 @@ CONTAINS
 #endif
     
     REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: Ps, Ss, Es
-    LOGICAL :: Verbose
+
+    LOGICAL :: UseChemicalPotentialShift, Verbose
 
     IF( PRESENT( EquationOfStateTableName_Option ) )THEN
        EquationOfStateTableName = TRIM( EquationOfStateTableName_Option )
     ELSE
        EquationOfStateTableName = 'EquationOfStateTable.h5'
+    END IF
+
+    IF( PRESENT( UseChemicalPotentialShift_Option ) )THEN
+       UseChemicalPotentialShift = UseChemicalPotentialShift_Option
+    ELSE
+       UseChemicalPotentialShift = .FALSE.
     END IF
 
     IF( PRESENT( Verbose_Option ) )THEN
@@ -421,54 +425,21 @@ CONTAINS
       ( Gm_T(1:EOS % DV % nPoints(1), &
              1:EOS % DV % nPoints(2), &
              1:EOS % DV % nPoints(3)) )
-    !For SFHo tables from 
-    !https://code.ornl.gov/astro/weaklib-tables/-/tree/master/SFHo/LowRes
-    !up until git commit hash a36240ed
-    !the neutron and proton chemical potentials
-    !are tabulated subtracting the neutron-proton-mass difference
-    !in order to use the same conventions as used in Chimera
-    !to account for this, and get detailed balance factors 
-    !correct, we add the mass difference back in and then
-    !add the SFHo reference masses for the chemical potential
-    !(mn for Mn, mp for Mp)
-    !For this renomalisation to the original SFHo tables,
-    !we need to recalculate the offsets first
 
     P_T  = EOS % DV % Variables(iP_T ) % Values
     S_T  = EOS % DV % Variables(iS_T ) % Values
     E_T  = EOS % DV % Variables(iE_T ) % Values
     Me_T = EOS % DV % Variables(iMe_T) % Values
-
-    IF(OS_Mp > 0.0d0) THEN
-      minvar = -OS_Mp/2.0d0
-    ELSE
-      minvar = MINVAL(10.0d0**(EOS % DV % Variables(iMp_T) % Values))
-    ENDIF
-    minvar = minvar + proton_mass + dmnp
-    OS_loc = -2.0d0 * MIN(0.0d0,minvar)
-
-    Mp_T   = LOG10(10.0d0**(EOS % DV % Variables(iMp_T) % Values) &
-           - OS_Mp + proton_mass + dmnp + OS_loc)
-    OS_Mp  = OS_loc
-
-    IF(OS_Mn > 0.0d0) THEN
-      minvar = -OS_Mn/2.0d0
-    ELSE
-      minvar = MINVAL(10.0d0**(EOS % DV % Variables(iMn_T) % Values))
-    ENDIF
-    minvar = minvar + neutron_mass + dmnp
-    OS_loc = -2.0d0 * MIN(0.0d0,minvar)
-
-    Mn_T   = LOG10(10.0d0**(EOS % DV % Variables(iMn_T) % Values) &
-           - OS_Mn + neutron_mass + dmnp + OS_loc)
-    OS_Mn  = OS_loc
- 
+    Mp_T = EOS % DV % Variables(iMp_T) % Values
+    Mn_T = EOS % DV % Variables(iMn_T) % Values
     Xp_T = EOS % DV % Variables(iXp_T) % Values
     Xn_T = EOS % DV % Variables(iXn_T) % Values
     Xa_T = EOS % DV % Variables(iXa_T) % Values
     Xh_T = EOS % DV % Variables(iXh_T) % Values
     Ah_T = EOS % DV % Variables(iAh_T) % Values
     Gm_T = EOS % DV % Variables(iGm_T) % Values
+
+    IF ( UseChemicalPotentialShift ) CALL ApplyChemicalPotentialShift_TABLE( Mp_T, Mn_T, OS_Mp, OS_Mn )
 
     ALLOCATE &
       ( Ps  (1:EOS % DV % nPoints(1), &
@@ -550,6 +521,52 @@ CONTAINS
 #endif
 
   END SUBROUTINE FinalizeEquationOfState_TABLE
+
+
+  SUBROUTINE ApplyChemicalPotentialShift_TABLE( Mp_T, Mn_T, OS_Mp, OS_Mn )
+
+    !For SFHo tables from
+    !https://code.ornl.gov/astro/weaklib-tables/-/tree/master/SFHo/LowRes
+    !up until git commit hash a36240ed
+    !the neutron and proton chemical potentials
+    !are tabulated subtracting the neutron-proton-mass difference
+    !in order to use the same conventions as used in Chimera
+    !to account for this, and get detailed balance factors
+    !correct, we add the mass difference back in and then
+    !add the SFHo reference masses for the chemical potential
+    !(mn for Mn, mp for Mp)
+    !For this renomalisation to the original SFHo tables,
+    !we need to recalculate the offsets first
+
+    REAL(dp), INTENT(inout), DIMENSION(:,:,:) :: Mp_T, Mn_T
+    REAL(dp), INTENT(inout) :: OS_Mp, OS_Mn
+
+    REAL(DP), PARAMETER :: neutron_mass = 939.56542052d0
+    REAL(DP), PARAMETER :: proton_mass = 938.2720813d0
+    REAL(DP), PARAMETER :: dmnp = 1.29333922d0
+    REAL(DP) :: min_M, OS_M_new
+
+    ! Apply the shift for proton chemical potential
+    IF ( OS_Mp > 0.0d0 ) THEN
+      min_M = -0.5d0 * OS_Mp
+    ELSE
+      min_M = MINVAL( 10.0d0**Mp_T )
+    ENDIF
+    OS_M_new = -2.0d0 * MIN( 0.0d0, min_M + proton_mass + dmnp )
+    Mp_T     = LOG10( 10.0d0**Mp_T - OS_Mp + proton_mass + dmnp + OS_M_new)
+    OS_Mp    = OS_M_new
+
+    ! Apply the shift for neutron chemical potential
+    IF ( OS_Mn > 0.0d0 ) THEN
+      min_M = -0.5d0 * OS_Mn
+    ELSE
+      min_M = MINVAL( 10.0d0**Mn_T )
+    ENDIF
+    OS_M_new = -2.0d0 * MIN( 0.0d0, min_M + proton_mass + dmnp )
+    Mn_T     = LOG10( 10.0d0**Mn_T - OS_Mn + proton_mass + dmnp + OS_M_new)
+    OS_Mn    = OS_M_new
+
+  END SUBROUTINE ApplyChemicalPotentialShift_TABLE
 
 
   SUBROUTINE ApplyEquationOfState_TABLE_Scalar &
@@ -874,7 +891,7 @@ CONTAINS
           WRITE(*,'(a,i5,3es23.15)') '  iP, D, E, Y : ', iP, D_P, E_P, Y_P
         END IF
       END DO
-      STOP
+      !STOP
     END IF
 
 #endif
