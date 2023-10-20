@@ -138,17 +138,18 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   ! --- Solver scratch arrays ---
 
   REAL(DP), DIMENSION(:,:)  , ALLOCATABLE :: DnuNorm
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: C_Dnu
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: C_Inu_d_1
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: C_Inu_d_2
-  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: C_Inu_d_3
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: C_Dnu, Dnu_old
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: C_Inu_d_1, Inu_u_1_old
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: C_Inu_d_2, Inu_u_2_old
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: C_Inu_d_3, Inu_u_3_old
 
   REAL(DP), DIMENSION(:), ALLOCATABLE :: Omega
-  REAL(DP), DIMENSION(:), ALLOCATABLE :: Ef_old, C_Ef, S_Ef, G_Ef, U_Ef
+  REAL(DP), DIMENSION(:), ALLOCATABLE :: E_old, Ef_old, C_Ef, S_Ef, G_Ef, U_Ef
   REAL(DP), DIMENSION(:), ALLOCATABLE :: Y_old, C_Y, S_Y, G_Y, U_Y
-  REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1
-  REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2
-  REAL(DP), DIMENSION(:), ALLOCATABLE :: C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3
+  REAL(DP), DIMENSION(:), ALLOCATABLE :: T_old
+  REAL(DP), DIMENSION(:), ALLOCATABLE :: V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1
+  REAL(DP), DIMENSION(:), ALLOCATABLE :: V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2
+  REAL(DP), DIMENSION(:), ALLOCATABLE :: V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3
   REAL(DP), DIMENSION(:), ALLOCATABLE :: D_old, cD_old, C_D, S_D, G_D, U_D
 
   REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: SqrtGm
@@ -294,8 +295,14 @@ CONTAINS
     ALLOCATE( C_Inu_d_2(nE_G,nSpecies,nX_G) )
     ALLOCATE( C_Inu_d_3(nE_G,nSpecies,nX_G) )
 
+    ALLOCATE( Dnu_old    (nE_G,nSpecies,nX_G) )
+    ALLOCATE( Inu_u_1_old(nE_G,nSpecies,nX_G) )
+    ALLOCATE( Inu_u_2_old(nE_G,nSpecies,nX_G) )
+    ALLOCATE( Inu_u_3_old(nE_G,nSpecies,nX_G) )
+
     ALLOCATE( Omega(nX_G) )
 
+    ALLOCATE(    E_old(nX_G) )
     ALLOCATE(   Ef_old(nX_G) )
     ALLOCATE( C_Ef    (nX_G) )
     ALLOCATE( S_Ef    (nX_G) )
@@ -308,16 +315,21 @@ CONTAINS
     ALLOCATE( G_Y    (nX_G) )
     ALLOCATE( U_Y    (nX_G) )
 
+    ALLOCATE(   T_old(nX_G) )
+
+    ALLOCATE( V_u_1_old(nX_G) )
     ALLOCATE( C_V_d_1(nX_G) )
     ALLOCATE( S_V_d_1(nX_G) )
     ALLOCATE( G_V_d_1(nX_G) )
     ALLOCATE( U_V_d_1(nX_G) )
 
+    ALLOCATE( V_u_2_old(nX_G) )
     ALLOCATE( C_V_d_2(nX_G) )
     ALLOCATE( S_V_d_2(nX_G) )
     ALLOCATE( G_V_d_2(nX_G) )
     ALLOCATE( U_V_d_2(nX_G) )
 
+    ALLOCATE( V_u_3_old(nX_G) )
     ALLOCATE( C_V_d_3(nX_G) )
     ALLOCATE( S_V_d_3(nX_G) )
     ALLOCATE( G_V_d_3(nX_G) )
@@ -331,7 +343,7 @@ CONTAINS
     ALLOCATE( U_D    (nX_G) )
 
     ALLOCATE(         SqrtGm(              nX_G) )
-    ALLOCATE(             Dnu_0(nE_G,nSpecies,nX_G) )
+    ALLOCATE(          Dnu_0(nE_G,nSpecies,nX_G) )
     ALLOCATE(      Sigma_Iso(nE_G,         nX_G) )
     ALLOCATE(      Phi_0_Iso(nE_G,         nX_G) )
     ALLOCATE(      Phi_1_Iso(nE_G,         nX_G) )
@@ -436,13 +448,18 @@ CONTAINS
     !$OMP             C_Inu_d_1, &
     !$OMP             C_Inu_d_2, &
     !$OMP             C_Inu_d_3, &
+    !$OMP             Dnu_old, &
+    !$OMP             Inu_u_1_old, &
+    !$OMP             Inu_u_2_old, &
+    !$OMP             Inu_u_3_old, &
     !$OMP             Omega, &
-    !$OMP             Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, &
+    !$OMP             E_old, Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, &
     !$OMP             D_old, cD_old, C_D, S_D, G_D, U_D, &
     !$OMP             Y_old, C_Y, S_Y, G_Y, U_Y, &
-    !$OMP             C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
-    !$OMP             C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
-    !$OMP             C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
+    !$OMP             T_old, &
+    !$OMP             V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
+    !$OMP             V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
+    !$OMP             V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
     !$OMP             SqrtGm, &
     !$OMP             Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$OMP             Chi_EmAb, Eta_EmAb, &
@@ -482,13 +499,18 @@ CONTAINS
     !$ACC         C_Inu_d_1, &
     !$ACC         C_Inu_d_2, &
     !$ACC         C_Inu_d_3, &
+    !$ACC         Dnu_old, &
+    !$ACC         Inu_u_1_old, &
+    !$ACC         Inu_u_2_old, &
+    !$ACC         Inu_u_3_old, &
     !$ACC         Omega, &
-    !$ACC         Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, &
+    !$ACC         E_old, Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, &
     !$ACC         D_old, cD_old, C_D, S_D, G_D, U_D, &
     !$ACC         Y_old, C_Y, S_Y, G_Y, U_Y, &
-    !$ACC         C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
-    !$ACC         C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
-    !$ACC         C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
+    !$ACC         T_old, &
+    !$ACC         V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
+    !$ACC         V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
+    !$ACC         V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
     !$ACC         SqrtGm, &
     !$ACC         Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$ACC         Chi_EmAb, Eta_EmAb, &
@@ -894,13 +916,18 @@ CONTAINS
     !$OMP               C_Inu_d_1, &
     !$OMP               C_Inu_d_2, &
     !$OMP               C_Inu_d_3, &
+    !$OMP               Dnu_old, &
+    !$OMP               Inu_u_1_old, &
+    !$OMP               Inu_u_2_old, &
+    !$OMP               Inu_u_3_old, &
     !$OMP               Omega, &
-    !$OMP               Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, &
+    !$OMP               E_old, Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, &
     !$OMP               D_old, cD_old, C_D, S_D, G_D, U_D, &
     !$OMP               Y_old, C_Y, S_Y, G_Y, U_Y, &
-    !$OMP               C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
-    !$OMP               C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
-    !$OMP               C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
+    !$OMP               T_old, &
+    !$OMP               V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
+    !$OMP               V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
+    !$OMP               V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
     !$OMP               SqrtGm, &
     !$OMP               Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$OMP               Chi_EmAb, Eta_EmAb, &
@@ -940,13 +967,18 @@ CONTAINS
     !$ACC         C_Inu_d_1, &
     !$ACC         C_Inu_d_2, &
     !$ACC         C_Inu_d_3, &
+    !$ACC         Dnu_old, &
+    !$ACC         Inu_u_1_old, &
+    !$ACC         Inu_u_2_old, &
+    !$ACC         Inu_u_3_old, &
     !$ACC         Omega, &
-    !$ACC         Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, &
+    !$ACC         E_old, Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, &
     !$ACC         D_old, cD_old, C_D, S_D, G_D, U_D, &
     !$ACC         Y_old, C_Y, S_Y, G_Y, U_Y, &
-    !$ACC         C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
-    !$ACC         C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
-    !$ACC         C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
+    !$ACC         T_old, &
+    !$ACC         V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
+    !$ACC         V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
+    !$ACC         V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
     !$ACC         SqrtGm, &
     !$ACC         Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$ACC         Chi_EmAb, Eta_EmAb, &
@@ -986,12 +1018,17 @@ CONTAINS
     DEALLOCATE( C_Inu_d_1 )
     DEALLOCATE( C_Inu_d_2 )
     DEALLOCATE( C_Inu_d_3 )
+    DEALLOCATE( Dnu_old )
+    DEALLOCATE( Inu_u_1_old )
+    DEALLOCATE( Inu_u_2_old )
+    DEALLOCATE( Inu_u_3_old )
     DEALLOCATE( Omega )
-    DEALLOCATE( Ef_old, C_Ef, S_Ef, G_Ef, U_Ef )
+    DEALLOCATE( E_old, Ef_old, C_Ef, S_Ef, G_Ef, U_Ef )
     DEALLOCATE( Y_old, C_Y, S_Y, G_Y, U_Y )
-    DEALLOCATE( C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1 )
-    DEALLOCATE( C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2 )
-    DEALLOCATE( C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3 )
+    DEALLOCATE( T_old )
+    DEALLOCATE( V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1 )
+    DEALLOCATE( V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2 )
+    DEALLOCATE( V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3 )
     DEALLOCATE( cD_old, D_old, C_D, S_D, G_D, U_D )
     DEALLOCATE( SqrtGm )
     DEALLOCATE( Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso )
@@ -1163,7 +1200,7 @@ CONTAINS
            ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     CALL InitializeRHS_OrderV &
-           ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, D, Y, E, V_u_1, V_u_2, V_u_3, &
+           ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, D, Y, E, T, V_u_1, V_u_2, V_u_3, &
              Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
 #elif defined( TWOMOMENT_RELATIVISTIC )
@@ -1545,7 +1582,7 @@ CONTAINS
 
       SqrtGm_P => SqrtGm(:)
 
-      Dnu_0_P        => Dnu_0       (:,:,:)
+      Dnu_0_P     => Dnu_0    (:,:,:)
       Sigma_Iso_P => Sigma_Iso(  :,:)
       Phi_0_Iso_P => Phi_0_Iso(  :,:)
       Phi_1_Iso_P => Phi_1_Iso(  :,:)
@@ -2170,11 +2207,11 @@ CONTAINS
 
 
   SUBROUTINE InitializeRHS_OrderV &
-    ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, D, Y, E, V_u_1, V_u_2, V_u_3, &
+    ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, D, Y, E, T, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:)    , INTENT(in)  :: D, Y, E, V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:)    , INTENT(in)  :: D, Y, E, T, V_u_1, V_u_2, V_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     INTEGER  :: iN_E, iN_X, iS
@@ -2223,8 +2260,15 @@ CONTAINS
 
       ! --- Store Initial Matter State ---
 
+      D_old (iN_X) = D(iN_X)
       Y_old (iN_X) = Y(iN_X)
+      E_old (iN_X) = E(iN_X)
       Ef_old(iN_X) = Ef
+      T_old (iN_X) = T(iN_X)
+
+      V_u_1_old(iN_X) = V_u_1(iN_X)
+      V_u_2_old(iN_X) = V_u_2(iN_X)
+      V_u_3_old(iN_X) = V_u_3(iN_X)
 
       ! --- Scaling Factors ---
 
@@ -2263,6 +2307,13 @@ CONTAINS
 #endif
       DO iS   = 1, nSpecies
       DO iN_E = 1, nE_G
+
+        ! --- Store Initial Neutrino State ---
+
+        Dnu_old    (iN_E,iS,iN_X) = Dnu    (iN_E,iS,iN_X)
+        Inu_u_1_old(iN_E,iS,iN_X) = Inu_u_1(iN_E,iS,iN_X)
+        Inu_u_2_old(iN_E,iS,iN_X) = Inu_u_2(iN_E,iS,iN_X)
+        Inu_u_3_old(iN_E,iS,iN_X) = Inu_u_3(iN_E,iS,iN_X)
 
         vDotInu =   V_u_1(iN_X) * Inu_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
                   + V_u_2(iN_X) * Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
