@@ -869,7 +869,7 @@ CONTAINS
           WRITE(*,'(a,i5,3es23.15)') '  iP, D, E, Y : ', iP, D_P, E_P, Y_P
         END IF
       END DO
-      STOP
+      IF( .NOT. PRESENT( Error_Option ) ) STOP
     END IF
 
 #endif
