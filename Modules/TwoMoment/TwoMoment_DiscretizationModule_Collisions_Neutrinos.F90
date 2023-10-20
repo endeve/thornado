@@ -267,6 +267,10 @@ CONTAINS
              GX_N(:,iGF_Beta_1  ), &
              GX_N(:,iGF_Beta_2  ), &
              GX_N(:,iGF_Beta_3  ), &
+             CR_N(:,:,:,iCR_N ), &
+             CR_N(:,:,:,iCR_G1), &
+             CR_N(:,:,:,iCR_G2), &
+             CR_N(:,:,:,iCR_G3), &
              nIterations_Inner, &
              nIterations_Outer )
 
