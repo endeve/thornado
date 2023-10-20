@@ -90,7 +90,7 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
-## Oct 18-19 2023
+## Oct 18-20 2023
 1. Testing umd692 and umd693 and also igc drivers from 14062 to 15443. 
 2. summarized the results and put them to the JIRA, https://jira.devtools.intel.com/browse/GSD-5788
 3. Profile the relaxation case and created a .spv file and uploaded to the JIRA https://jira.devtools.intel.com/browse/GSD-6461?filter=-2
