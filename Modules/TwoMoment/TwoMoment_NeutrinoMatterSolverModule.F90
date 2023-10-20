@@ -1052,7 +1052,7 @@ CONTAINS
   SUBROUTINE SolveNeutrinoMatterCoupling_FP_Nested_AA &
     ( dt, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, V_u_1, V_u_2, V_u_3, D, T, Y, E, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, Alpha, Beta_u_1, Beta_u_2, Beta_u_3, &
-      nIterations_Inner, nIterations_Outer )
+      Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, nIterations_Inner, nIterations_Outer )
 
     REAL(DP),                   INTENT(in)    :: dt
     REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
@@ -1061,6 +1061,7 @@ CONTAINS
     REAL(DP), DIMENSION(:),     INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP), DIMENSION(:),     INTENT(in)    :: Alpha
     REAL(DP), DIMENSION(:),     INTENT(in)    :: Beta_u_1, Beta_u_2, Beta_u_3
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3
     INTEGER,  DIMENSION(:),     INTENT(inout) :: nIterations_Inner
     INTEGER,  DIMENSION(:),     INTENT(inout) :: nIterations_Outer
 
@@ -1069,29 +1070,49 @@ CONTAINS
     INTEGER  :: k_outer, Mk_outer, nX_P_outer
     INTEGER  :: k_inner, Mk_inner, nX_P_inner, iN_E, iS
 
-    LOGICAL,  DIMENSION(nX_G) :: ITERATE_outer, ITERATE_inner
-    INTEGER,  DIMENSION(nX_G) :: PackIndex_outer, UnpackIndex_outer
-    INTEGER,  DIMENSION(nX_G) :: PackIndex_inner, UnpackIndex_inner
+    LOGICAL,  ALLOCATABLE, DIMENSION(:) :: ITERATE_outer, ITERATE_inner
+    INTEGER,  ALLOCATABLE, DIMENSION(:) :: PackIndex_outer, UnpackIndex_outer
+    INTEGER,  ALLOCATABLE, DIMENSION(:) :: PackIndex_inner, UnpackIndex_inner
 
-    REAL(DP), DIMENSION(nX_G) :: P
+    REAL(DP), ALLOCATABLE, DIMENSION(:) :: P
 
     ! --- Least-squares scratch arrays ---
 
-    REAL(DP), DIMENSION(n_FP_outer,M_outer,nX_G) :: AMAT_outer, GVEC_outer, &
-                                                    FVEC_outer
-    REAL(DP), DIMENSION(n_FP_outer,        nX_G) :: BVEC_outer, GVECm_outer, &
-                                                    FVECm_outer
-    REAL(DP), DIMENSION(       LWORK_outer,nX_G) :: WORK_outer
-    REAL(DP), DIMENSION(n_FP_outer,        nX_G) :: TAU_outer
-    REAL(DP), DIMENSION(           M_outer,nX_G) :: Alpha_outer
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:) :: AMAT_outer, GVEC_outer, FVEC_outer
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:)   :: BVEC_outer, GVECm_outer, FVECm_outer
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:)   :: WORK_outer, TAU_outer, Alpha_outer
 
-    REAL(DP), DIMENSION(n_FP_inner,M_inner,nX_G) :: AMAT_inner, GVEC_inner, &
-                                                    FVEC_inner
-    REAL(DP), DIMENSION(n_FP_inner,        nX_G) :: BVEC_inner, GVECm_inner, &
-                                                    FVECm_inner
-    REAL(DP), DIMENSION(       LWORK_inner,nX_G) :: WORK_inner
-    REAL(DP), DIMENSION(n_FP_inner,        nX_G) :: TAU_inner
-    REAL(DP), DIMENSION(           M_inner,nX_G) :: Alpha_inner
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:) :: AMAT_inner, GVEC_inner, FVEC_inner
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:)   :: BVEC_inner, GVECm_inner, FVECm_inner
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:)   :: WORK_inner, TAU_inner, Alpha_inner
+
+    ALLOCATE( P(nX_G) )
+
+    ALLOCATE(     ITERATE_outer(                   nX_G) )
+    ALLOCATE(   PackIndex_outer(                   nX_G) )
+    ALLOCATE( UnpackIndex_outer(                   nX_G) )
+    ALLOCATE(        AMAT_outer(n_FP_outer,M_outer,nX_G) )
+    ALLOCATE(        GVEC_outer(n_FP_outer,M_outer,nX_G) )
+    ALLOCATE(        FVEC_outer(n_FP_outer,M_outer,nX_G) )
+    ALLOCATE(        BVEC_outer(n_FP_outer,        nX_G) )
+    ALLOCATE(       GVECm_outer(n_FP_outer,        nX_G) )
+    ALLOCATE(       FVECm_outer(n_FP_outer,        nX_G) )
+    ALLOCATE(        WORK_outer(       LWORK_outer,nX_G) )
+    ALLOCATE(         TAU_outer(n_FP_outer,        nX_G) )
+    ALLOCATE(       Alpha_outer(           M_outer,nX_G) )
+
+    ALLOCATE(     ITERATE_inner(                   nX_G) )
+    ALLOCATE(   PackIndex_inner(                   nX_G) )
+    ALLOCATE( UnpackIndex_inner(                   nX_G) )
+    ALLOCATE(        AMAT_inner(n_FP_inner,M_inner,nX_G) )
+    ALLOCATE(        GVEC_inner(n_FP_inner,M_inner,nX_G) )
+    ALLOCATE(        FVEC_inner(n_FP_inner,M_inner,nX_G) )
+    ALLOCATE(        BVEC_inner(n_FP_inner,        nX_G) )
+    ALLOCATE(       GVECm_inner(n_FP_inner,        nX_G) )
+    ALLOCATE(       FVECm_inner(n_FP_inner,        nX_G) )
+    ALLOCATE(        WORK_inner(       LWORK_inner,nX_G) )
+    ALLOCATE(         TAU_inner(n_FP_inner,        nX_G) )
+    ALLOCATE(       Alpha_inner(           M_inner,nX_G) )
 
     ITERATE_outer = .TRUE.
     ITERATE_inner = .TRUE.
