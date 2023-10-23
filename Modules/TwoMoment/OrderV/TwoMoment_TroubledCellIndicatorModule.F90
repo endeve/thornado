@@ -177,10 +177,10 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( always, to: &
-    !$OMP   WeightsX_X1_Up, WeightsX_X1_Dn, &
-    !$OMP   WeightsX_X2_Up, WeightsX_X2_Dn, &
-    !$OMP   WeightsX_X3_Up, WeightsX_X3_Dn, &
-    !$OMP   C_TCI )
+    !$OMP      WeightsX_X1_Up, WeightsX_X1_Dn, &
+    !$OMP      WeightsX_X2_Up, WeightsX_X2_Dn, &
+    !$OMP      WeightsX_X3_Up, WeightsX_X3_Dn, &
+    !$OMP      C_TCI )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE &
     !$ACC DEVICE( WeightsX_X1_Up, WeightsX_X1_Dn, &
@@ -196,11 +196,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( always, release: &
-    !$OMP   WeightsX_X1_Up, WeightsX_X1_Dn, &
-    !$OMP   WeightsX_X2_Up, WeightsX_X2_Dn, &
-    !$OMP   WeightsX_X3_Up, WeightsX_X3_Dn, &
-    !$OMP   C_TCI )
+    !$OMP MAP( release: &
+    !$OMP      WeightsX_X1_Up, WeightsX_X1_Dn, &
+    !$OMP      WeightsX_X2_Up, WeightsX_X2_Dn, &
+    !$OMP      WeightsX_X3_Up, WeightsX_X3_Dn, &
+    !$OMP      C_TCI )
 #endif
 
     DEALLOCATE( WeightsX_X1_Up, WeightsX_X1_Dn )
