@@ -257,8 +257,7 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: InterpMat )
-    !$OMP TARGET UPDATE TO( InterpMat )
+    !$OMP MAP( always, to: InterpMat )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( InterpMat )
