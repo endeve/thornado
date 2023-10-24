@@ -23,7 +23,8 @@ PROGRAM ApplicationDriver
     HeatFluxTensorComponents_uuu, &
     ComputeHeatFluxTensorComponents_ddd_Lagrangian, &
     ComputeHeatFluxTensorComponents_uud_Lagrangian, &
-    Flux_X1, Flux_X2, Flux_X3, ComputeTimeStep_TwoMoment
+    Flux_X1, Flux_X2, Flux_X3, ComputeTimeStep_TwoMoment, &
+    ComputeTimeStep_TwoMoment_Realizable
   USE TwoMoment_OpacityModule_FMC, ONLY: &
     SetOpacities
   USE TwoMoment_TimeSteppingModule_FMC, ONLY: &
@@ -125,12 +126,12 @@ PROGRAM ApplicationDriver
 
       IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
-        nX  = [ 256, 1, 1 ]
+        nX  = [ 128, 1, 1 ]
         xL  = [ 0.0d0, 0.0d0, 0.0d0 ]
         xR  = [ 1.0d1, 1.0d0, 1.0d0 ]
         bcX = [ 12, 1, 1 ]
 
-        V_0 = [ 0.3_DP, 0.0_DP, 0.0_DP ]
+        V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
 
       ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
 
@@ -160,7 +161,7 @@ PROGRAM ApplicationDriver
 
       END IF
 
-      nE    = 64
+      nE    = 32
       eL    = 0.0d0
       eR    = 5.0d1
       bcE   = 11
@@ -172,8 +173,8 @@ PROGRAM ApplicationDriver
 
       t_end   = 2.0d+1
       iCycleD = 1
-      iCycleW = 100
-      maxCycles = 1000000
+      iCycleW = 200
+      maxCycles = 15000000
 
       J_0   = 0.0_DP
       Chi   = 0.0_DP
@@ -221,14 +222,18 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
 
   iCycle = 0
-  CFL = 0.1_DP
+  CFL = 0.3_DP
   DO WHILE( t < t_end .AND. iCycle < maxCycles )
 
     iCycle = iCycle + 1
 
     ! --- Compute Timestep ---
-    CALL ComputeTimeStep_TwoMoment &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, CFL, dt )
+
+    ! CALL ComputeTimeStep_TwoMoment &
+    !        ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, CFL, dt )
+
+    CALL ComputeTimeStep_TwoMoment_Realizable &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uPF, CFL, dt )
 
     IF ( t + dt > t_end )THEN
 
@@ -252,19 +257,21 @@ PROGRAM ApplicationDriver
 
     ! --- Write updated values ---
 
-    Write(*,*)
-    print *, "Updating values..."
+    IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
-    CALL ComputeFromConserved_TwoMoment_FMC &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uPF, uCM, uPM, uAM, uGM )
+      CALL ComputeFromConserved_TwoMoment_FMC &
+              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uPF, uCM, uPM, uAM, uGM )
 
-    CALL WriteTwoMomentFieldsHDF( t )
+      CALL WriteTwoMomentFieldsHDF( t )
 
-    ! IF( iCycle == 1)THEN 
-    !   STOP
-    ! END IF
+    END IF
 
   END DO
+
+  CALL ComputeFromConserved_TwoMoment_FMC &
+  ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uPF, uCM, uPM, uAM, uGM )
+
+  CALL WriteTwoMomentFieldsHDF( t )
 
   CALL FinalizeDriver
 

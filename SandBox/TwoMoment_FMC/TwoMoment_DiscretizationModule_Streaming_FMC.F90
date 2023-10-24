@@ -974,7 +974,7 @@ CONTAINS
     INTEGER  :: iZP_B0(4), iZP_E0(4)
 
     REAL(DP) :: EdgeEnergyCubed, Beta
-    REAL(DP) :: A(0:3,0:3), Lambda(3), vMag, W
+    REAL(DP) :: A, B_i(1:3), C_ij(1:3,1:3), Lambda(3), vMag, vMagSq, W
     REAL(DP) :: Flux_K(nCM), dFlux_K(nPM)
     REAL(DP) :: Flux_L(nCM), uPM_L(nPM)
     REAL(DP) :: Flux_R(nCM), uPM_R(nPM)
@@ -1001,7 +1001,7 @@ CONTAINS
 
     CALL ComputeWeakDerivatives_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
-             dV_u_dX1, dV_d_dX1 )
+             dV_d_dX1 )
 
     ! dV_u_dX1 = Zero
     ! dV_d_dX1 = Zero
@@ -1100,33 +1100,57 @@ CONTAINS
         ! --- Quadratic Form Matrix ---
         ! Assuming velocity is constant with respect to time
 
-        A(:,0) = Half * [ Zero, &
-                          dV_d_dX1(iNodeX,0,iZ2,iZ3,iZ4), &
-                          dV_d_dX2(iNodeX,0,iZ2,iZ3,iZ4), &
-                          dV_d_dX3(iNodeX,0,iZ2,iZ3,iZ4) ]
+        A = Zero
 
-        A(:,1) = Half * [       dV_d_dX1(iNodeX,0,iZ2,iZ3,iZ4), &
-                          Two * dV_d_dX1(iNodeX,1,iZ2,iZ3,iZ4), &
-                                dV_d_dX2(iNodeX,1,iZ2,iZ3,iZ4)  &
-                              + dV_d_dX1(iNodeX,2,iZ2,iZ3,iZ4), &
-                                dV_d_dX3(iNodeX,1,iZ2,iZ3,iZ4)  &
-                              + dV_d_dX1(iNodeX,3,iZ2,iZ3,iZ4) ]
-        A(:,2) = Half * [       dV_d_dX2(iNodeX,0,iZ2,iZ3,iZ4), &
-                                dV_d_dX1(iNodeX,2,iZ2,iZ3,iZ4)  &
-                              + dV_d_dX2(iNodeX,1,iZ2,iZ3,iZ4), &
-                          Two * dV_d_dX2(iNodeX,2,iZ2,iZ3,iZ4), &
-                                dV_d_dX3(iNodeX,2,iZ2,iZ3,iZ4)  &
-                              + dV_d_dX2(iNodeX,3,iZ2,iZ3,iZ4) ]
-        A(:,3) = Half * [       dV_d_dX3(iNodeX,0,iZ2,iZ3,iZ4), &
-                                dV_d_dX1(iNodeX,3,iZ2,iZ3,iZ4)  &
-                              + dV_d_dX3(iNodeX,1,iZ2,iZ3,iZ4), &
-                                dV_d_dX2(iNodeX,3,iZ2,iZ3,iZ4)  &
-                              + dV_d_dX3(iNodeX,2,iZ2,iZ3,iZ4), &
-                          Two * dV_d_dX3(iNodeX,3,iZ2,iZ3,iZ4) ]
+        B_i = Half * [ dV_d_dX1(iNodeX,0,iZ2,iZ3,iZ4), &
+                       dV_d_dX2(iNodeX,0,iZ2,iZ3,iZ4), &
+                       dV_d_dX3(iNodeX,0,iZ2,iZ3,iZ4) ]
+
+        C_ij(:,1) = Half * [ Two * dV_d_dX1(iNodeX,1,iZ2,iZ3,iZ4), &
+                                   dV_d_dX2(iNodeX,1,iZ2,iZ3,iZ4)  &
+                                 + dV_d_dX1(iNodeX,2,iZ2,iZ3,iZ4), &
+                                   dV_d_dX3(iNodeX,1,iZ2,iZ3,iZ4)  &
+                                 + dV_d_dX1(iNodeX,3,iZ2,iZ3,iZ4) ]
+
+        C_ij(:,2) = Half * [       dV_d_dX1(iNodeX,2,iZ2,iZ3,iZ4)  &
+                                 + dV_d_dX2(iNodeX,1,iZ2,iZ3,iZ4), &
+                             Two * dV_d_dX2(iNodeX,2,iZ2,iZ3,iZ4), &
+                                   dV_d_dX3(iNodeX,2,iZ2,iZ3,iZ4)  &
+                                 + dV_d_dX2(iNodeX,3,iZ2,iZ3,iZ4) ]
+
+        C_ij(:,3) = Half * [       dV_d_dX1(iNodeX,3,iZ2,iZ3,iZ4)  &
+                                 + dV_d_dX3(iNodeX,1,iZ2,iZ3,iZ4), &
+                                   dV_d_dX2(iNodeX,3,iZ2,iZ3,iZ4)  &
+                                 + dV_d_dX3(iNodeX,2,iZ2,iZ3,iZ4), &
+                             Two * dV_d_dX3(iNodeX,3,iZ2,iZ3,iZ4) ]
+
+        ! A(:,0) = Half * [ Zero, &
+        !                   dV_d_dX1(iNodeX,0,iZ2,iZ3,iZ4), &
+        !                   dV_d_dX2(iNodeX,0,iZ2,iZ3,iZ4), &
+        !                   dV_d_dX3(iNodeX,0,iZ2,iZ3,iZ4) ]
+
+        ! A(:,1) = Half * [       dV_d_dX1(iNodeX,0,iZ2,iZ3,iZ4), &
+        !                   Two * dV_d_dX1(iNodeX,1,iZ2,iZ3,iZ4), &
+        !                         dV_d_dX2(iNodeX,1,iZ2,iZ3,iZ4)  &
+        !                       + dV_d_dX1(iNodeX,2,iZ2,iZ3,iZ4), &
+        !                         dV_d_dX3(iNodeX,1,iZ2,iZ3,iZ4)  &
+        !                       + dV_d_dX1(iNodeX,3,iZ2,iZ3,iZ4) ]
+        ! A(:,2) = Half * [       dV_d_dX2(iNodeX,0,iZ2,iZ3,iZ4), &
+        !                         dV_d_dX1(iNodeX,2,iZ2,iZ3,iZ4)  &
+        !                       + dV_d_dX2(iNodeX,1,iZ2,iZ3,iZ4), &
+        !                   Two * dV_d_dX2(iNodeX,2,iZ2,iZ3,iZ4), &
+        !                         dV_d_dX3(iNodeX,2,iZ2,iZ3,iZ4)  &
+        !                       + dV_d_dX2(iNodeX,3,iZ2,iZ3,iZ4) ]
+        ! A(:,3) = Half * [       dV_d_dX3(iNodeX,0,iZ2,iZ3,iZ4), &
+        !                         dV_d_dX1(iNodeX,3,iZ2,iZ3,iZ4)  &
+        !                       + dV_d_dX3(iNodeX,1,iZ2,iZ3,iZ4), &
+        !                         dV_d_dX2(iNodeX,3,iZ2,iZ3,iZ4)  &
+        !                       + dV_d_dX3(iNodeX,2,iZ2,iZ3,iZ4), &
+        !                   Two * dV_d_dX3(iNodeX,3,iZ2,iZ3,iZ4) ]
 
         
 
-        CALL EigenvaluesSymmetric3( A(1:3,1:3), Lambda )
+        CALL EigenvaluesSymmetric3( C_ij, Lambda )
 
         vMag = SQRT( uPF_K(iNodeX,iZ2,iZ3,iZ4,iPF_V1)**2 &
                      + uPF_K(iNodeX,iZ2,iZ3,iZ4,iPF_V2)**2 &
@@ -1135,10 +1159,10 @@ CONTAINS
         W = One / SQRT( One - vMag**2 )
 
         Alpha(iNodeX,iZ2,iZ3,iZ4) = MAXVAL( ABS( Lambda ) ) &
-                                    + Two * SQRT ( A(1,0)**2 &
-                                                   + A(2,0)**2 &
-                                                   + A(3,0)**2 ) &
-                                    + ABS( A(0,0) )
+                                    + Two * SQRT ( B_i(1)**2 &
+                                                 + B_i(2)**2 &
+                                                 + B_i(3)**2 ) &
+                                    + ABS( A )
         Alpha(iNodeX,iZ2,iZ3,iZ4) = Alpha(iNodeX,iZ2,iZ3,iZ4) &
                                     * W**2 * ( One + vMag )**2
 
@@ -1222,9 +1246,9 @@ CONTAINS
                   dV_d_dX3(iNodeZ_E,3,iZ2,iZ3,iZ4), &
                   Gm_dd_11_K(iX_F), Gm_dd_22_K(iX_F), Gm_dd_33_K(iX_F) )
 
-      vMag = SQRT( uV1_K(iX_F)**2 + uV2_K(iX_F)**2 + uV3_K(iX_F)**2 )
+      vMagSq = uV1_K(iX_F)**2 + uV2_K(iX_F)**2 + uV3_K(iX_F)**2
 
-      W = One / SQRT( One - vMag**2 )
+      W = One / SQRT( One - vMagSq )
 
       H_u_0_L = uV1_K(iX_F) * H_u_1_L(iZ_F) &
                 + uV2_K(iX_F) * H_u_2_L(iZ_F) &
