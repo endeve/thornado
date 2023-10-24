@@ -29,8 +29,8 @@ geometry.prob_hi   = 2.0 3.1415926535897931 6.2831853071795862
 
 thornado.swX                = 01 00 00
 amr.n_cell                  = 128 01 01 # Number of cells in each dimension
-amr.max_grid_size_x         = 8
-amr.blocking_factor_x       = 4
+amr.max_grid_size_x         = 32
+amr.blocking_factor_x       = 8
 amr.max_level               = 0
 amr.UseAMR                  = 0
 amr.UseFluxCorrection_Euler = 0
@@ -40,8 +40,13 @@ amr.ref_ratio               = 2
 amr.UseTiling               = 0
 
 SL.UseSlopeLimiter_Euler           = 1
-SL.UseCharacteristicLimiting_Euler = 0
-SL.UseTroubledCellIndicator_Euler  = 0
-SL.UseConservativeCorrection_Euler = 1
+SL.BetaTVD_Euler                   = 1.75
+SL.BetaTVB_Euler                   = 0.0
+SL.SlopeTolerance_Euler            = 1.0e-6
+SL.UseCharacteristicLimiting_Euler = 1
+SL.UseTroubledCellIndicator_Euler  = 1
+SL.LimiterThresholdParameter_Euler = 0.03
 
 PL.UsePositivityLimiter_Euler = 1
+PL.Min_1_Euler                = 1.0e-13
+PL.Min_2_Euler                = 1.0e-13

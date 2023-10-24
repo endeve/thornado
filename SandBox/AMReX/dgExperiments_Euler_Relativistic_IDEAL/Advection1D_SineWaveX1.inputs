@@ -40,7 +40,13 @@ amr.ref_ratio               = 2
 amr.UseTiling               = 0
 
 SL.UseSlopeLimiter_Euler           = 1
-SL.UseCharacteristicLimiting_Euler = 0
-SL.UseTroubledCellIndicator_Euler  = 0
+SL.BetaTVD_Euler                   = 1.75
+SL.BetaTVB_Euler                   = 0.0
+SL.SlopeTolerance_Euler            = 1.0e-6
+SL.UseCharacteristicLimiting_Euler = 1
+SL.UseTroubledCellIndicator_Euler  = 1
+SL.LimiterThresholdParameter_Euler = 0.03
 
 PL.UsePositivityLimiter_Euler = 1
+PL.Min_1_Euler                = 1.0e-13
+PL.Min_2_Euler                = 1.0e-13
