@@ -22,6 +22,8 @@ MODULE FluxCorrectionModule_Euler
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX
+  USE MeshModule, ONLY: &
+    MeshX
   USE GeometryFieldsModule, ONLY: &
     nGF, &
     iGF_SqrtGm
@@ -50,6 +52,9 @@ MODULE FluxCorrectionModule_Euler
     FluxRegister_Euler
   USE AverageDownModule, ONLY: &
     AverageDown
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
   USE InputParsingModule, ONLY: &
     nLevels, &
     swX, &
@@ -106,6 +111,12 @@ CONTAINS
 
 #if defined( THORNADO_USE_MESHREFINEMENT )
 
+    CALL CreateMesh_MF( FineLevel-1, MeshX )
+
+    ASSOCIATE( dX1 => MeshX(1) % Width, &
+               dX2 => MeshX(2) % Width, &
+               dX3 => MeshX(3) % Width )
+
     CALL FluxRegister_Euler( FineLevel ) &
            % reflux_dg( MF_uGF(FineLevel-1), MF(FineLevel-1), &
                         nDOFX, nDOFX_X1, nDOFX_X2, nDOFX_X3, nCF, iGF_SqrtGm, &
@@ -115,7 +126,12 @@ CONTAINS
                         pWeightsX_q_c, &
                         pLX_X1_Up_c, pLX_X1_Dn_c, &
                         pLX_X2_Up_c, pLX_X2_Dn_c, &
-                        pLX_X3_Up_c, pLX_X3_Dn_c )
+                        pLX_X3_Up_c, pLX_X3_Dn_c, &
+                        MINVAL( dX1 ), MINVAL( dX2 ), MINVAL( dX3 ) )
+
+    END ASSOCIATE
+
+    CALL DestroyMesh_MF( MeshX )
 
 #endif
 

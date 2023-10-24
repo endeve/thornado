@@ -12,6 +12,7 @@ MODULE ArrayUtilitiesModule
   PUBLIC :: ArrayCopy
 
   INTERFACE ArrayPack
+    MODULE PROCEDURE ArrayPack1D_1_i
     MODULE PROCEDURE ArrayPack1D_1
     MODULE PROCEDURE ArrayPack1D_2
     MODULE PROCEDURE ArrayPack1D_3
@@ -27,11 +28,10 @@ MODULE ArrayUtilitiesModule
     MODULE PROCEDURE ArrayPack3D_3
     MODULE PROCEDURE ArrayPack3D_4
     MODULE PROCEDURE ArrayPack3D_8
-    MODULE PROCEDURE ArrayPack3D_10
-    MODULE PROCEDURE ArrayPack3D_12
   END INTERFACE ArrayPack
 
   INTERFACE ArrayUnpack
+    MODULE PROCEDURE ArrayUnpack1D_1_i
     MODULE PROCEDURE ArrayUnpack1D_1
     MODULE PROCEDURE ArrayUnpack1D_2
     MODULE PROCEDURE ArrayUnpack1D_3
@@ -42,17 +42,15 @@ MODULE ArrayUtilitiesModule
     MODULE PROCEDURE ArrayUnpack2D_3
     MODULE PROCEDURE ArrayUnpack2D_4
     MODULE PROCEDURE ArrayUnpack2D_8
-    MODULE PROCEDURE ArrayUnpack2D_12
     MODULE PROCEDURE ArrayUnpack3D_1
     MODULE PROCEDURE ArrayUnpack3D_2
     MODULE PROCEDURE ArrayUnpack3D_3
     MODULE PROCEDURE ArrayUnpack3D_4
     MODULE PROCEDURE ArrayUnpack3D_8
-    MODULE PROCEDURE ArrayUnpack3D_10
-    MODULE PROCEDURE ArrayUnpack3D_12
   END INTERFACE ArrayUnpack
 
   INTERFACE ArrayCopy
+    MODULE PROCEDURE ArrayCopy1D_1_i
     MODULE PROCEDURE ArrayCopy1D_1
     MODULE PROCEDURE ArrayCopy1D_2
     MODULE PROCEDURE ArrayCopy1D_3
@@ -65,15 +63,12 @@ MODULE ArrayUtilitiesModule
     MODULE PROCEDURE ArrayCopy2D_4
     MODULE PROCEDURE ArrayCopy2D_5
     MODULE PROCEDURE ArrayCopy2D_8
-    MODULE PROCEDURE ArrayCopy2D_12
     MODULE PROCEDURE ArrayCopy3D_1
     MODULE PROCEDURE ArrayCopy3D_2
     MODULE PROCEDURE ArrayCopy3D_3
     MODULE PROCEDURE ArrayCopy3D_4
     MODULE PROCEDURE ArrayCopy3D_5
     MODULE PROCEDURE ArrayCopy3D_8
-    MODULE PROCEDURE ArrayCopy3D_10
-    MODULE PROCEDURE ArrayCopy3D_12
   END INTERFACE ArrayCopy
 
 CONTAINS
@@ -112,6 +107,43 @@ CONTAINS
 #endif
 
   END SUBROUTINE CreatePackIndex
+
+
+  SUBROUTINE ArrayPack1D_1_i &
+    ( nP, UnpackIndex, X1, X1_P )
+
+    INTEGER,                 INTENT(in)    :: nP
+    INTEGER,  DIMENSION(1:), INTENT(in)    :: UnpackIndex
+    INTEGER,  DIMENSION(1:), INTENT(in)    :: X1
+    INTEGER,  DIMENSION(1:), INTENT(inout) :: X1_P
+
+    INTEGER  :: i, iPack
+
+    IF ( nP < SIZE(X1,1) ) THEN
+
+!#if defined(THORNADO_OMP_OL)
+!      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+!      !$OMP PRIVATE( i )
+!#elif defined(THORNADO_OACC)
+!      !$ACC PARALLEL LOOP GANG VECTOR &
+!      !$ACC PRIVATE( i ) &
+!      !$ACC PRESENT( UnpackIndex, X1, X1_P )
+!#elif defined(THORNADO_OMP)
+!      !$OMP PARALLEL DO &
+!      !$OMP PRIVATE( i )
+!#endif
+      DO iPack = 1, nP
+        i = UnpackIndex(iPack)
+        X1_P(iPack) = X1(i)
+      END DO
+
+    ELSE
+
+      CALL ArrayCopy( X1, X1_P )
+
+    END IF
+
+  END SUBROUTINE ArrayPack1D_1_i
 
 
   SUBROUTINE ArrayPack1D_1 &
@@ -756,128 +788,44 @@ CONTAINS
   END SUBROUTINE ArrayPack3D_8
 
 
-  SUBROUTINE ArrayPack3D_10 &
-    ( nP, UnpackIndex, &
-      X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, &
-      X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, X9_P, X10_P)
+  SUBROUTINE ArrayUnpack1D_1_i &
+    ( nP, MASK, PackIndex, X1_P, X1 )
 
-    INTEGER,                       INTENT(in)    :: nP
-    INTEGER,  DIMENSION(1:),       INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)    :: &
-      X1, X2, X3, X4, X5, X6, X7, X8, X9, X10
-    REAL(DP), DIMENSION(1:,1:,1:), INTENT(inout) :: &
-      X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, X9_P, X10_P
+    INTEGER,                 INTENT(in)    :: nP
+    LOGICAL,  DIMENSION(1:), INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(1:), INTENT(in)    :: PackIndex
+    INTEGER,  DIMENSION(1:), INTENT(in)    :: X1_P
+    INTEGER,  DIMENSION(1:), INTENT(inout) :: X1
 
-    INTEGER  :: i, iPack, j, k
+    INTEGER  :: i, iPack
 
-    IF ( nP < SIZE(X1,3) ) THEN
+    IF ( nP < SIZE(X1,1) ) THEN
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-      !$OMP PRIVATE( i )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-      !$ACC PRIVATE( i ) &
-      !$ACC PRESENT( UnpackIndex, &
-      !$ACC          X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, &
-      !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
-      !$ACC          X9_P, X10_P )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(3) &
-      !$OMP PRIVATE( i )
-#endif
-      DO iPack = 1, nP
-      DO j = 1, SIZE(X1,2)
-      DO k = 1, SIZE(X1,1)
-        i = UnpackIndex(iPack)
-        X1_P(k,j,iPack)  = X1(k,j,i)
-        X2_P(k,j,iPack)  = X2(k,j,i)
-        X3_P(k,j,iPack)  = X3(k,j,i)
-        X4_P(k,j,iPack)  = X4(k,j,i)
-        X5_P(k,j,iPack)  = X5(k,j,i)
-        X6_P(k,j,iPack)  = X6(k,j,i)
-        X7_P(k,j,iPack)  = X7(k,j,i)
-        X8_P(k,j,iPack)  = X8(k,j,i)
-        X9_P(k,j,iPack)  = X9(k,j,i)
-        X10_P(k,j,iPack) = X10(k,j,i)
-      END DO
-      END DO
+!#if defined(THORNADO_OMP_OL)
+!      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+!      !$OMP PRIVATE( iPack )
+!#elif defined(THORNADO_OACC)
+!      !$ACC PARALLEL LOOP GANG VECTOR &
+!      !$ACC PRIVATE( iPack ) &
+!      !$ACC PRESENT( PackIndex, X1_P, X1 )
+!#elif defined(THORNADO_OMP)
+!      !$OMP PARALLEL DO &
+!      !$OMP PRIVATE( iPack )
+!#endif
+      DO i = 1, SIZE(X1,1)
+      IF ( MASK(i) ) THEN
+        iPack = PackIndex(i)
+        X1(i) = X1_P(iPack)
+      END IF
       END DO
 
     ELSE
 
-      CALL ArrayCopy &
-             ( X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, &
-               X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
-               X9_P, X10_P )
+      CALL ArrayCopy( X1_P, X1 )
 
     END IF
 
-  END SUBROUTINE ArrayPack3D_10
-
-
-  SUBROUTINE ArrayPack3D_12 &
-    ( nP, UnpackIndex, &
-      X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12, &
-      X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
-      X9_P, X10_P, X11_P, X12_P )
-
-    INTEGER,                       INTENT(in)    :: nP
-    INTEGER,  DIMENSION(1:),       INTENT(in)    :: UnpackIndex
-    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)    :: &
-      X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12
-    REAL(DP), DIMENSION(1:,1:,1:), INTENT(inout) :: &
-      X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
-      X9_P, X10_P, X11_P, X12_P
-
-    INTEGER  :: i, iPack, j, k
-
-    IF ( nP < SIZE(X1,3) ) THEN
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-      !$OMP PRIVATE( i )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-      !$ACC PRIVATE( i ) &
-      !$ACC PRESENT( UnpackIndex, &
-      !$ACC          X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12, &
-      !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
-      !$ACC          X9_P, X10_P, X11_P, X12_P )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(3) &
-      !$OMP PRIVATE( i )
-#endif
-      DO iPack = 1, nP
-      DO j = 1, SIZE(X1,2)
-      DO k = 1, SIZE(X1,1)
-        i = UnpackIndex(iPack)
-        X1_P(k,j,iPack)  = X1(k,j,i)
-        X2_P(k,j,iPack)  = X2(k,j,i)
-        X3_P(k,j,iPack)  = X3(k,j,i)
-        X4_P(k,j,iPack)  = X4(k,j,i)
-        X5_P(k,j,iPack)  = X5(k,j,i)
-        X6_P(k,j,iPack)  = X6(k,j,i)
-        X7_P(k,j,iPack)  = X7(k,j,i)
-        X8_P(k,j,iPack)  = X8(k,j,i)
-        X9_P(k,j,iPack)  = X9(k,j,i)
-        X10_P(k,j,iPack) = X10(k,j,i)
-        X11_P(k,j,iPack) = X11(k,j,i)
-        X12_P(k,j,iPack) = X12(k,j,i)
-      END DO
-      END DO
-      END DO
-
-    ELSE
-
-      CALL ArrayCopy &
-             ( X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12, &
-               X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
-               X9_P, X10_P, X11_P, X12_P )
-
-    END IF
-
-  END SUBROUTINE ArrayPack3D_12
+  END SUBROUTINE ArrayUnpack1D_1_i
 
 
   SUBROUTINE ArrayUnpack1D_1 &
@@ -1328,70 +1276,6 @@ CONTAINS
   END SUBROUTINE ArrayUnpack2D_8
 
 
-  SUBROUTINE ArrayUnpack2D_12 &
-    ( nP, MASK, PackIndex, &
-      X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
-      X9_P, X10_P, X11_P, X12_P, &
-      X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12 )
-
-    INTEGER,                    INTENT(in)    :: nP
-    LOGICAL,  DIMENSION(1:),    INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(1:),    INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(1:,1:), INTENT(in)    :: &
-      X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, X9_P, X10_P, X11_P, X12_P
-    REAL(DP), DIMENSION(1:,1:), INTENT(inout) :: &
-      X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12
-
-    INTEGER  :: i, iPack, j
-
-    IF ( nP < SIZE(X1,2) ) THEN
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( iPack )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( iPack ) &
-      !$ACC PRESENT( PackIndex, &
-      !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
-      !$ACC          X9_P, X10_P, X11_P, X12_P,                      &
-      !$ACC          X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12 )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(2) &
-      !$OMP PRIVATE( iPack )
-#endif
-      DO i = 1, SIZE(X1,2)
-      DO j = 1, SIZE(X1,1)
-      IF ( MASK(i) ) THEN
-        iPack = PackIndex(i)
-        X1(j,i)  = X1_P(j,iPack)
-        X2(j,i)  = X2_P(j,iPack)
-        X3(j,i)  = X3_P(j,iPack)
-        X4(j,i)  = X4_P(j,iPack)
-        X5(j,i)  = X5_P(j,iPack)
-        X6(j,i)  = X6_P(j,iPack)
-        X7(j,i)  = X7_P(j,iPack)
-        X8(j,i)  = X8_P(j,iPack)
-        X9(j,i)  = X9_P(j,iPack)
-        X10(j,i) = X10_P(j,iPack)
-        X11(j,i) = X11_P(j,iPack)
-        X12(j,i) = X12_P(j,iPack)
-      END IF
-      END DO
-      END DO
-
-    ELSE
-
-      CALL ArrayCopy &
-             ( X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
-               X9_P, X10_P, X11_P, X12_P, &
-               X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12 )
-
-    END IF
-
-  END SUBROUTINE ArrayUnpack2D_12
-
-
   SUBROUTINE ArrayUnpack3D_1 &
     ( nP, MASK, PackIndex, X1_P, X1 )
 
@@ -1631,132 +1515,27 @@ CONTAINS
   END SUBROUTINE ArrayUnpack3D_8
 
 
-  SUBROUTINE ArrayUnpack3D_10 &
-    ( nP, MASK, PackIndex, &
-      X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, X9_P, X10_P, &
-      X1, X2, X3, X4, X5, X6, X7, X8, X9, X10 )
+  SUBROUTINE ArrayCopy1D_1_i &
+    ( X1, Y1 )
 
-    INTEGER,                       INTENT(in)    :: nP
-    LOGICAL,  DIMENSION(1:),       INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(1:),       INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)    :: &
-      X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, X9_P, X10_P
-    REAL(DP), DIMENSION(1:,1:,1:), INTENT(inout) :: &
-      X1, X2, X3, X4, X5, X6, X7, X8, X9, X10
+    INTEGER,  DIMENSION(1:), INTENT(in)  :: X1
+    INTEGER,  DIMENSION(1:), INTENT(out) :: Y1
 
-    INTEGER  :: i, iPack, j, k
+    INTEGER  :: i
 
-    IF ( nP < SIZE(X1,3) ) THEN
+!#if defined(THORNADO_OMP_OL)
+!    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+!#elif defined(THORNADO_OACC)
+!    !$ACC PARALLEL LOOP GANG VECTOR &
+!    !$ACC PRESENT( X1, Y1 )
+!#elif defined(THORNADO_OMP)
+!    !$OMP PARALLEL DO
+!#endif
+    DO i = 1, SIZE(X1,1)
+      Y1(i) = X1(i)
+    END DO
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-      !$OMP PRIVATE( iPack )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-      !$ACC PRIVATE( iPack ) &
-      !$ACC PRESENT( PackIndex, &
-      !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
-      !$ACC          X9_P, X10_P, &
-      !$ACC          X1, X2, X3, X4, X5, X6, X7, X8, X9, X10 )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(3) &
-      !$OMP PRIVATE( iPack )
-#endif
-      DO i = 1, SIZE(X1,3)
-      DO j = 1, SIZE(X1,2)
-      DO k = 1, SIZE(X1,1)
-      IF ( MASK(i) ) THEN
-        iPack = PackIndex(i)
-        X1(k,j,i)  = X1_P(k,j,iPack)
-        X2(k,j,i)  = X2_P(k,j,iPack)
-        X3(k,j,i)  = X3_P(k,j,iPack)
-        X4(k,j,i)  = X4_P(k,j,iPack)
-        X5(k,j,i)  = X5_P(k,j,iPack)
-        X6(k,j,i)  = X6_P(k,j,iPack)
-        X7(k,j,i)  = X7_P(k,j,iPack)
-        X8(k,j,i)  = X8_P(k,j,iPack)
-        X9(k,j,i)  = X9_P(k,j,iPack)
-        X10(k,j,i) = X10_P(k,j,iPack)
-      END IF
-      END DO
-      END DO
-      END DO
-
-    ELSE
-
-      CALL ArrayCopy &
-             ( X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, X9_P, X10_P, &
-               X1, X2, X3, X4, X5, X6, X7, X8, X9, X10 )
-
-    END IF
-
-  END SUBROUTINE ArrayUnpack3D_10
-
-
-  SUBROUTINE ArrayUnpack3D_12 &
-    ( nP, MASK, PackIndex, &
-      X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
-      X9_P, X10_P, X11_P, X12_P, &
-      X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12 )
-
-    INTEGER,                       INTENT(in)    :: nP
-    LOGICAL,  DIMENSION(1:),       INTENT(in)    :: MASK
-    INTEGER,  DIMENSION(1:),       INTENT(in)    :: PackIndex
-    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)    :: &
-      X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, X9_P, X10_P, X11_P, X12_P
-    REAL(DP), DIMENSION(1:,1:,1:), INTENT(inout) :: &
-      X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12
-
-    INTEGER  :: i, iPack, j, k
-
-    IF ( nP < SIZE(X1,3) ) THEN
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-      !$OMP PRIVATE( iPack )
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-      !$ACC PRIVATE( iPack ) &
-      !$ACC PRESENT( PackIndex, &
-      !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
-      !$ACC          X9_P, X10_P, X11_P, X12_P, &
-      !$ACC          X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12 )
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(3) &
-      !$OMP PRIVATE( iPack )
-#endif
-      DO i = 1, SIZE(X1,3)
-      DO j = 1, SIZE(X1,2)
-      DO k = 1, SIZE(X1,1)
-      IF ( MASK(i) ) THEN
-        iPack = PackIndex(i)
-        X1(k,j,i)  = X1_P(k,j,iPack)
-        X2(k,j,i)  = X2_P(k,j,iPack)
-        X3(k,j,i)  = X3_P(k,j,iPack)
-        X4(k,j,i)  = X4_P(k,j,iPack)
-        X5(k,j,i)  = X5_P(k,j,iPack)
-        X6(k,j,i)  = X6_P(k,j,iPack)
-        X7(k,j,i)  = X7_P(k,j,iPack)
-        X8(k,j,i)  = X8_P(k,j,iPack)
-        X9(k,j,i)  = X9_P(k,j,iPack)
-        X10(k,j,i) = X10_P(k,j,iPack)
-        X11(k,j,i) = X11_P(k,j,iPack)
-        X12(k,j,i) = X12_P(k,j,iPack)
-      END IF
-      END DO
-      END DO
-      END DO
-
-    ELSE
-
-      CALL ArrayCopy &
-             ( X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
-               X9_P, X10_P, X11_P, X12_P, &
-               X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12 )
-
-    END IF
-
-  END SUBROUTINE ArrayUnpack3D_12
+  END SUBROUTINE ArrayCopy1D_1_i
 
 
   SUBROUTINE ArrayCopy1D_1 &
@@ -2083,46 +1862,6 @@ CONTAINS
   END SUBROUTINE ArrayCopy2D_8
 
 
-  SUBROUTINE ArrayCopy2D_12 &
-    ( X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12, &
-      Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8, Y9, Y10, Y11, Y12 )
-
-    REAL(DP), DIMENSION(1:,1:), INTENT(in)  :: &
-      X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12
-    REAL(DP), DIMENSION(1:,1:), INTENT(out) :: &
-      Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8, Y9, Y10, Y11, Y12
-
-    INTEGER  :: i, j
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC PRESENT( X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12, &
-    !$ACC          Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8, Y9, Y10, Y11, Y12 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(2)
-#endif
-    DO i = 1, SIZE(X1,2)
-    DO j = 1, SIZE(X1,1)
-      Y1(j,i)  = X1(j,i)
-      Y2(j,i)  = X2(j,i)
-      Y3(j,i)  = X3(j,i)
-      Y4(j,i)  = X4(j,i)
-      Y5(j,i)  = X5(j,i)
-      Y6(j,i)  = X6(j,i)
-      Y7(j,i)  = X7(j,i)
-      Y8(j,i)  = X8(j,i)
-      Y9(j,i)  = X9(j,i)
-      Y10(j,i) = X10(j,i)
-      Y11(j,i) = X11(j,i)
-      Y12(j,i) = X12(j,i)
-    END DO
-    END DO
-
-  END SUBROUTINE ArrayCopy2D_12
-
-
   SUBROUTINE ArrayCopy3D_1 &
     ( X1, Y1 )
 
@@ -2302,86 +2041,5 @@ CONTAINS
 
   END SUBROUTINE ArrayCopy3D_8
 
-
-  SUBROUTINE ArrayCopy3D_10 &
-    ( X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, &
-      Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8, Y9, Y10 )
-
-    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)  :: &
-      X1, X2, X3, X4, X5, X6, X7, X8, X9, X10
-    REAL(DP), DIMENSION(1:,1:,1:), INTENT(out) :: &
-      Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8, Y9, Y10
-
-    INTEGER  :: i, j, k
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, &
-    !$ACC          Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8, Y9, Y10 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(3)
-#endif
-    DO i = 1, SIZE(X1,3)
-    DO j = 1, SIZE(X1,2)
-    DO k = 1, SIZE(X1,1)
-      Y1(k,j,i)  = X1(k,j,i)
-      Y2(k,j,i)  = X2(k,j,i)
-      Y3(k,j,i)  = X3(k,j,i)
-      Y4(k,j,i)  = X4(k,j,i)
-      Y5(k,j,i)  = X5(k,j,i)
-      Y6(k,j,i)  = X6(k,j,i)
-      Y7(k,j,i)  = X7(k,j,i)
-      Y8(k,j,i)  = X8(k,j,i)
-      Y9(k,j,i)  = X9(k,j,i)
-      Y10(k,j,i) = X10(k,j,i)
-    END DO
-    END DO
-    END DO
-
-  END SUBROUTINE ArrayCopy3D_10
-
-
-  SUBROUTINE ArrayCopy3D_12 &
-    ( X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12, &
-      Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8, Y9, Y10, Y11, Y12 )
-
-    REAL(DP), DIMENSION(1:,1:,1:), INTENT(in)  :: &
-      X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12
-    REAL(DP), DIMENSION(1:,1:,1:), INTENT(out) :: &
-      Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8, Y9, Y10, Y11, Y12
-
-    INTEGER  :: i, j, k
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12, &
-    !$ACC          Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8, Y9, Y10, Y11, Y12 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(3)
-#endif
-    DO i = 1, SIZE(X1,3)
-    DO j = 1, SIZE(X1,2)
-    DO k = 1, SIZE(X1,1)
-      Y1(k,j,i)  = X1(k,j,i)
-      Y2(k,j,i)  = X2(k,j,i)
-      Y3(k,j,i)  = X3(k,j,i)
-      Y4(k,j,i)  = X4(k,j,i)
-      Y5(k,j,i)  = X5(k,j,i)
-      Y6(k,j,i)  = X6(k,j,i)
-      Y7(k,j,i)  = X7(k,j,i)
-      Y8(k,j,i)  = X8(k,j,i)
-      Y9(k,j,i)  = X9(k,j,i)
-      Y10(k,j,i) = X10(k,j,i)
-      Y11(k,j,i) = X11(k,j,i)
-      Y12(k,j,i) = X12(k,j,i)
-    END DO
-    END DO
-    END DO
-
-  END SUBROUTINE ArrayCopy3D_12
 
 END MODULE ArrayUtilitiesModule

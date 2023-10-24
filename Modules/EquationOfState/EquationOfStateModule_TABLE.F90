@@ -254,7 +254,6 @@ CONTAINS
 #endif
     
     REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: Ps, Ss, Es
-
     LOGICAL :: UseChemicalPotentialShift, Verbose
 
     IF( PRESENT( EquationOfStateTableName_Option ) )THEN
@@ -891,7 +890,7 @@ CONTAINS
           WRITE(*,'(a,i5,3es23.15)') '  iP, D, E, Y : ', iP, D_P, E_P, Y_P
         END IF
       END DO
-      !STOP
+      IF( .NOT. PRESENT( Error_Option ) ) STOP
     END IF
 
 #endif
