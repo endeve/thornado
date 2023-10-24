@@ -90,6 +90,46 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
+
+## Oct 24 2023
+1. Relaxation case does not run with advisor as the first step of advisor run gives errors like:
+<pre>
+ [ComputeThermodynamicStates_Auxiliary_TABLE_Vector] Error
+  iP, D, E, Y :  4093  1.032000000000000E+12  2.317372267736278E+19  1.347000000000000E-01
+
+   wlEOSInversionModule ERROR: EOS Inversion Not Initialized
+
+ [ComputeThermodynamicStates_Auxiliary_TABLE_Vector] Error
+  iP, D, E, Y :  4094  1.032000000000000E+12  2.317372267736278E+19  1.347000000000000E-01
+
+</pre>
+however, the second step run is Okay. Upload "partially correct roofline results to GSD6461. This issue happens to the default umd627, 728 and 692 also. 
+2. Got the OACC run of relaxation case and put the outputs under $GSD6461/GSD6461. 
+
+## Oct 23 2023
+1. Tested the newest compiler, nightly-compiler/2023.10.22 (Intel(R) Fortran 24.0-1349), the wrong values persist. Here is the output:
+<pre>
+nightly-compiler/2023.10.22
+ Intel(R) Fortran 24.0-1349
+ Intel(R) Fortran 24.0-1349
+ Intel(R) Fortran 24.0-1349
+gpu gpu  -1 -71776119069884416
+ CPU CPU  T       140730218568480
+ ITERATE_inner nIterations_Inner  F       140730218568480
+ ITERATE_inner ITERATE_outer      T       140730218568480
+ ITERATE_inner nIterations_Outer  F       140730218568480
+ ITERATE_inner Beta_u_1           T       140730218568480
+ ITERATE_inner nIterations_Inner  F       140730218568480
+ ITERATE_inner                    T       140730218568480
+
+
+Mon 23 Oct 2023 10:10:17 AM EDT
+/localdisk/quanshao/sandbox/CMPLRLLVM-52215/maskValue on exaperf-sdpcloud-pvc04.jf.intel.com
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/sandbox/CMPLRLLVM-52215/maskValue
+</pre>
+2. Provided ShaderDump with all the asm .ll to https://jira.devtools.intel.com/browse/GSD-6461
+3. Get relaxation cases running on GPU-A100 machines of JLSE, gpu06. Have the iprof data, but iprof -l seems not working with OACC. 
+4. Synchronize the GSD6461 with the JLSE GPU06 code. 
 ## Oct 18-20 2023
 1. Testing umd692 and umd693 and also igc drivers from 14062 to 15443. 
 2. summarized the results and put them to the JIRA, https://jira.devtools.intel.com/browse/GSD-5788
