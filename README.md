@@ -95,15 +95,15 @@ Oct 25 2023
 1. Learn to run Thornado with a roofline tool suggest by Kwasniewski, Patryk   https://github.com/intel-sandbox/roofline. So far two observations:
    - python3 is needed otherwise   
    <pre>
- "Traceback (most recent call last):
-  File "main.py", line 3, in <module>
+   "Traceback (most recent call last):
+    File "main.py", line 3, in <module>
     from pathlib import Path
-ImportError: No module named pathlib"
+    ImportError: No module named pathlib"
    </pre>
    - Got an error like:
    <pre>
-"DATAPORT_OUTPUT_READY_XECORE  :  Off
-Traceback (most recent call last):
+    "DATAPORT_OUTPUT_READY_XECORE  :  Off
+    Traceback (most recent call last):
   File "main.py", line 229, in <module>
     run_roofline(args)
   File "main.py", line 179, in run_roofline
