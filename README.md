@@ -91,6 +91,33 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
 
+Oct 25 2023
+1. Learn to run Thornado with a roofline tool suggest by Kwasniewski, Patryk   https://github.com/intel-sandbox/roofline. So far two observations:
+
+   - python3 is needed otherwise
+   <pre>
+ "Traceback (most recent call last):
+  File "main.py", line 3, in <module>
+    from pathlib import Path
+ImportError: No module named pathlib"
+   </pre>
+   - Got an error like:
+   <pre>
+"DATAPORT_OUTPUT_READY_XECORE  :  Off
+Traceback (most recent call last):
+  File "main.py", line 229, in <module>
+    run_roofline(args)
+  File "main.py", line 179, in run_roofline
+    run_workloads(wl_info, args, wl_report_name)
+  File "main.py", line 40, in run_workloads
+    metric_groups, WL_oneprof_km_metrics, _ = get_metric_list(drop_cols_CB, drop_cols_nonCB, compute_metric, selected_groups=WL_oneprof_km_metrics)
+  File "/localdisk/quanshao/ExaStar/roofline/utils.py", line 236, in get_metric_list
+    oneprof_list = subprocess.run(['./tools/oneprofexe/oneprof', '--metric-list'], capture_output=True).stdout.decode()
+  File "/usr/lib64/python3.6/subprocess.py", line 423, in run
+    with Popen(*popenargs, **kwargs) as process:
+TypeError: __init__() got an unexpected keyword argument 'capture_output' "
+    </pre>
+And this error also happen for ze_gemm case.
 ## Oct 24 2023
 1. Relaxation case does not run with advisor as the first step of advisor run gives errors like:
 <pre>
