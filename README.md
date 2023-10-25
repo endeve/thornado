@@ -94,7 +94,7 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 Oct 25 2023
 1. Learn to run Thornado with a roofline tool suggest by Kwasniewski, Patryk   https://github.com/intel-sandbox/roofline. So far two observations:
 
-   - python3 is needed otherwise
+   - python3 is needed otherwise   
    <pre>
  "Traceback (most recent call last):
   File "main.py", line 3, in <module>
