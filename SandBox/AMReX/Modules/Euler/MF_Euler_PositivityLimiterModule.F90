@@ -113,8 +113,8 @@ CONTAINS
 
     ELSE
 
-      Min_1 = 1.0e-12_DP
-      Min_2 = 1.0e-12_DP
+      Min_1 = 1.0e-13_DP
+      Min_2 = 1.0e-13_DP
       CALL amrex_parmparse_build( PP, 'PL' )
         CALL PP % query( 'Min_1_Euler', &
                           Min_1 )
