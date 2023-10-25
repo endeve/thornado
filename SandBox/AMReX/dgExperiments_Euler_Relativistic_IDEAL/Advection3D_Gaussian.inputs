@@ -14,8 +14,6 @@ thornado.CFL     = 0.5
 thornado.dt_wrt  = 1.0e-1
 thornado.dt_chk  = 1.1e1
 
-EoS.Gamma_IDEAL = 1.3333333333333333
-
 thornado.PlotFileNameRoot        = "Advection3D_Gaussian.plt"
 thornado.CheckpointFileNameRoot  = "Advection3D_Gaussian.chk"
 thornado.TallyFileNameRoot_Euler = "Advection3D_Gaussian.Tally"
@@ -54,3 +52,6 @@ SL.LimiterThresholdParameter_Euler = 0.03
 PL.UsePositivityLimiter_Euler = 1
 PL.Min_1_Euler                = 1.0e-13
 PL.Min_2_Euler                = 1.0e-13
+
+EoS.EquationOfState = "IDEAL"
+EoS.Gamma_IDEAL     = 1.3333333333333333

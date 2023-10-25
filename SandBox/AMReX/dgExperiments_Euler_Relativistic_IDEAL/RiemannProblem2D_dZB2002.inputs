@@ -20,8 +20,6 @@ thornado.PlotFileNameRoot        = "RiemannProblem2D_dZB2002.plt"
 thornado.CheckpointFileNameRoot  = "RiemannProblem2D_dZB2002.chk"
 thornado.TallyFileNameRoot_Euler = "RiemannProblem2D_dZB2002.Tally"
 
-EoS.Gamma_IDEAL = 1.6666666666666666
-
 thornado.bcX         = 02 02 01
 geometry.is_periodic = 0 0 1  # Periodic BCs: 0 (no), 1 (yes)
 
@@ -52,3 +50,6 @@ SL.LimiterThresholdParameter_Euler = 0.03
 PL.UsePositivityLimiter_Euler = 1
 PL.Min_1_Euler                = 1.0e-13
 PL.Min_2_Euler                = 1.0e-13
+
+EoS.EquationOfState = "IDEAL"
+EoS.Gamma_IDEAL     = 1.6666666666666666
