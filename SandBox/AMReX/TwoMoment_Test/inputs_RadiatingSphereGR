@@ -5,7 +5,7 @@
 DEBUG = 0
 
 thornado.ProgramName = "RadiatingSphereGR"
-thornado.Scheme = "IMEX_PDARS"
+thornado.Scheme = "SSPRK2"
 thornado.nStages = 2
 
 
@@ -28,6 +28,7 @@ thornado.iCycleD   = 0010     # MOD this number to display info
 thornado.iCycleW   = -0100     # MOD this number to write plotfile
 thornado.iCycleChk = -1000     # MOD this number to write checkpoint file
 thornado.iRestart  = -1        # Checkpoint-file to restart from. Negative for clean start
+thornado.Mass      = 0.00451
 thornado.UsePhysicalUnits = 0
 
 
@@ -36,8 +37,8 @@ geometry.prob_lo     = 10.0 0.0 0.0         # Lower spatial domain size
 geometry.prob_hi     = 1000.0 3.1415926535897932 6.28318530717959 # High spatial domain size
 geometry.is_periodic = 0   1   1
 
-amr.n_cell            = 1024 01 01 # Number of cells in each dimension
-amr.max_grid_size_x   = 1024
+amr.n_cell            = 2048 01 01 # Number of cells in each dimension
+amr.max_grid_size_x   = 2048
 amr.max_grid_size_y   = 1
 amr.blocking_factor_x = 1
 amr.blocking_factor_y = 1
@@ -50,19 +51,5 @@ PL.Min_1_TwoMoment                = 1.0e-50
 PL.Min_2_TwoMoment                = 1.0e-50
 
 # Slope limiter parameters
-SL.UseSlopeLimiter_TwoMoment           = 1
+SL.UseSlopeLimiter_TwoMoment           = 0
 SL.BetaTVD_TwoMoment                   = 1.75e0
-
-
-
-
-# Star parameters
-ST.mass = 2.0 # Solar Masses
-ST.r0   = 25.0 # km
-ST.kt   = 10.0 # MeV
-ST.e0   = 10.0 # MeV
-ST.mu0  = 10.0 # MeV
-ST.d_0     = 1.0
-ST.chi     = 0.00001  # cm^-1
-ST.sigma     = 0.0
-
