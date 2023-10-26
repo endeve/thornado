@@ -91,7 +91,7 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
 
-Oct 25 2023
+##Oct 25-26 2023
 1. Learn to run Thornado with a roofline tool suggest by Kwasniewski, Patryk   https://github.com/intel-sandbox/roofline. So far two observations:
    - python3 is needed otherwise   
    <pre>
@@ -117,6 +117,7 @@ Oct 25 2023
     TypeError: __init__() got an unexpected keyword argument 'capture_output' "
    </pre>
 And this error also happen for ze_gemm case.
+2. Tried again on 26 with Patryk's suggestion, and same thing happened    
 ## Oct 24 2023
 1. Relaxation case does not run with advisor as the first step of advisor run gives errors like:
 <pre>
