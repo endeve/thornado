@@ -2121,7 +2121,6 @@ CONTAINS
 
             END IF
 
-            CALL ComputeAlphaPsi( Mass, X1, R0, X2, uGF_K(iNodeX,:) )
 
           END DO
         CALL ComputePressureFromPrimitive &
@@ -2265,6 +2264,5 @@ CONTAINS
 
 
   END SUBROUTINE ComputeAlphaPsi
-
 
 END MODULE MF_InitializationModule
