@@ -80,6 +80,8 @@ GravitySolutionModule_XCFC_Poseidon.o: \
 XCFC_UtilitiesModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  MeshModule.o \
   GeometryFieldsModule.o \
   GeometryBoundaryConditionsModule.o \
   XCFC_UtilitiesModule.f90

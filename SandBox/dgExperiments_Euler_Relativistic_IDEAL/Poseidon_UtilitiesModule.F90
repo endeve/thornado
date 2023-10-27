@@ -21,6 +21,7 @@ MODULE Poseidon_UtilitiesModule
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
+    iGF_SqrtGm, &
     iGF_Alpha, &
     iGF_Beta_1, &
     iGF_Beta_2, &
@@ -162,9 +163,9 @@ CONTAINS
        Enthalpy = uPF(iPF_D) + uPF(iPF_E) + Pressure
 
        GS(iNX,iX1,iX2,iX3,iGS_Mg) &
-         = Enthalpy * ( Two * LorentzFactor**2             &
-             * ( One - BetaDotV / uGF(iGF_Alpha) ) - One ) &
-             + Two * Pressure
+         = ( Enthalpy * ( Two * LorentzFactor**2             &
+               * ( One - BetaDotV / uGF(iGF_Alpha) ) - One ) &
+               + Two * Pressure ) * uGF(iGF_Alpha) * uGF(iGF_SqrtGm)
 
     END DO
     END DO

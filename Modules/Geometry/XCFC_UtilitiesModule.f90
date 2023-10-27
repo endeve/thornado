@@ -1,10 +1,18 @@
 MODULE XCFC_UtilitiesModule
 
   USE KindModule, ONLY: &
-    DP
+    DP, &
+    Two, &
+    Pi
   USE ProgramHeaderModule, ONLY: &
     nDOFX
+  USE ReferenceElementModuleX, ONLY: &
+    WeightsX_q
+  USE MeshModule, ONLY: &
+    MeshX
   USE GeometryFieldsModule, ONLY: &
+    iGF_SqrtGm, &
+    iGF_Alpha, &
     iGF_Psi
   USE GeometryBoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Geometry_X1_Inner_Reflecting, &
@@ -15,6 +23,7 @@ MODULE XCFC_UtilitiesModule
 
   PUBLIC :: MultiplyWithPsi6
   PUBLIC :: ApplyBoundaryConditions_Geometry_XCFC
+  PUBLIC :: ComputeGravitationalMass
 
   ! --- GS: Gravity/Geometry Sources ---
 
@@ -72,6 +81,49 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, G )
 
   END SUBROUTINE ApplyBoundaryConditions_Geometry_XCFC
+
+
+  SUBROUTINE ComputeGravitationalMass &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, GS, GravitationalMass )
+
+    INTEGER,  INTENT(in)   :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)   :: &
+      G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(in)   :: &
+      GS(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    REAL(DP), INTENT(inout) :: &
+      GravitationalMass
+
+    INTEGER  :: iX1, iX2, iX3
+    REAL(DP) :: d3X
+
+    ASSOCIATE &
+      ( dX1 => MeshX(1) % Width, &
+        dX2 => MeshX(2) % Width, &
+        dX3 => MeshX(3) % Width )
+
+    ! --- Mg has been pre-multiplied with \alpha * \psi^6
+
+    ! --- Assuming 1D spherical symmetry ---
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      d3X = Two / Pi * dX1(iX1) * dX2(iX2) * dX3(iX3)
+
+      GravitationalMass &
+        = GravitationalMass + d3X                  &
+            * SUM( WeightsX_q * GS(:,iX1,iX2,iX3,iGS_Mg) )
+
+    END DO
+    END DO
+    END DO
+
+    END ASSOCIATE ! dX1, etc.
+
+  END SUBROUTINE ComputeGravitationalMass
 
 
 END MODULE XCFC_UtilitiesModule

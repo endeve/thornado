@@ -55,7 +55,8 @@ MODULE GravitySolutionModule_XCFC_Poseidon
     iGS_S3, &
     iGS_S, &
     iGS_Mg, &
-    ApplyBoundaryConditions_Geometry_XCFC
+    ApplyBoundaryConditions_Geometry_XCFC, &
+    ComputeGravitationalMass
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler,  &
@@ -179,8 +180,11 @@ CONTAINS
 
     ! --- Set Boundary Values ---
 
+    GravitationalMass = Zero
+
     CALL ComputeGravitationalMass &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, GS(:,:,:,:,iGS_Mg) )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, &
+             G, GS, GravitationalMass )
 
     Psi_BC      = ConformalFactor( xR(1), GravitationalMass )
     AlphaPsi_BC = LapseFunction  ( xR(1), GravitationalMass ) * Psi_BC
@@ -384,50 +388,6 @@ CONTAINS
     END DO ! iX3
 
   END SUBROUTINE ComputeGeometryFromPoseidon
-
-
-  SUBROUTINE ComputeGravitationalMass &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mg )
-
-    INTEGER,  INTENT(in)  :: &
-      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
-      G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(in)  :: &
-      Mg(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
-
-    INTEGER  :: iX1, iX2, iX3
-    REAL(DP) :: d3X
-
-    ASSOCIATE &
-      ( dX1 => MeshX(1) % Width(1:nX(1)), &
-        dX2 => MeshX(2) % Width(1:nX(2)), &
-        dX3 => MeshX(3) % Width(1:nX(3)) )
-
-    ! --- Assuming 1D spherical symmetry ---
-
-    GravitationalMass = Zero
-
-    DO iX3 = 1, nX(3)
-    DO iX2 = 1, nX(2)
-    DO iX1 = 1, nX(1)
-
-      d3X = Two / Pi * dX1(iX1) * dX2(iX2) * dX3(iX3)
-
-      GravitationalMass &
-        = GravitationalMass + d3X                  &
-            * SUM( WeightsX_q                      &
-                     * Mg(:,iX1,iX2,iX3)           &
-                     * G (:,iX1,iX2,iX3,iGF_Alpha) &
-                     * G (:,iX1,iX2,iX3,iGF_SqrtGm) )
-
-    END DO
-    END DO
-    END DO
-
-    END ASSOCIATE ! dX1, etc.
-
-  END SUBROUTINE ComputeGravitationalMass
 
 #endif
 
