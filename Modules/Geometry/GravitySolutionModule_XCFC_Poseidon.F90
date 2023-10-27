@@ -54,7 +54,8 @@ MODULE GravitySolutionModule_XCFC_Poseidon
     iGS_S2, &
     iGS_S3, &
     iGS_S, &
-    iGS_Mg
+    iGS_Mg, &
+    ApplyBoundaryConditions_Geometry_XCFC
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler,  &
@@ -272,7 +273,7 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              Tmp_Lapse, Tmp_Shift, Tmp_ExtrinsicCurvature, G )
 
-    CALL SetBoundaryConditions &
+    CALL ApplyBoundaryConditions_Geometry_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G )
 
 #else
@@ -383,102 +384,6 @@ CONTAINS
     END DO ! iX3
 
   END SUBROUTINE ComputeGeometryFromPoseidon
-
-
-  SUBROUTINE SetBoundaryConditions &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G )
-
-    INTEGER,  INTENT(in)    :: &
-      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(inout) :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-
-    CALL SetBoundaryConditions_X1 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
-
-  END SUBROUTINE SetBoundaryConditions
-
-
-  SUBROUTINE SetBoundaryConditions_X1 &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G )
-
-    INTEGER,  INTENT(in)    :: &
-      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(inout) :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-
-    INTEGER  :: iX2, iX3
-    INTEGER  :: iNX1, jNX1, iNX2, iNX3
-    INTEGER  :: iNX, jNX
-    REAL(DP) :: X1, X2
-
-    X2 = Half * Pi
-
-    DO iX3 = 1, nX(3)
-    DO iX2 = 1, nX(2)
-
-      DO iNX3 = 1, nNodesX(3)
-      DO iNX2 = 1, nNodesX(2)
-      DO iNX1 = 1, nNodesX(1)
-
-        ! --- Inner Boundary: Reflecting ---
-
-        jNX1 = ( nNodesX(1) - iNX1 ) + 1
-
-        iNX = NodeNumberX( iNX1, iNX2, iNX3 )
-        jNX = NodeNumberX( jNX1, iNX2, iNX3 )
-
-        G(iNX,0,iX2,iX3,iGF_Alpha) &
-          = G(jNX,1,iX2,iX3,iGF_Alpha)
-
-        G(iNX,0,iX2,iX3,iGF_Psi) &
-          = G(jNX,1,iX2,iX3,iGF_Psi)
-
-        G(iNX,0,iX2,iX3,iGF_Beta_1) &
-          = -G(jNX,1,iX2,iX3,iGF_Beta_1)
-
-        G(iNX,0,iX2,iX3,iGF_h_1) &
-          = G(jNX,1,iX2,iX3,iGF_h_1)
-
-        G(iNX,0,iX2,iX3,iGF_h_2) &
-          = G(jNX,1,iX2,iX3,iGF_h_2)
-
-        G(iNX,0,iX2,iX3,iGF_h_3) &
-          = G(jNX,1,iX2,iX3,iGF_h_3)
-
-        ! --- Outer Boundary: Dirichlet ---
-
-        X1 = NodeCoordinate( MeshX(1), nX(1)+1, iNX1 )
-
-        G(iNX,nX(1)+1,iX2,iX3,iGF_Alpha) &
-          = LapseFunction( X1, GravitationalMass )
-
-        G(iNX,nX(1)+1,iX2,iX3,iGF_Psi) &
-          = ConformalFactor( X1, GravitationalMass )
-
-        G(iNX,nX(1)+1,iX2,iX3,iGF_Beta_1) &
-          = Zero
-
-        G(iNX,nX(1)+1,iX2,iX3,iGF_h_1) &
-          = G(iNX,nX(1)+1,iX2,iX3,iGF_Psi)**2
-
-        G(iNX,nX(1)+1,iX2,iX3,iGF_h_2) &
-          = G(iNX,nX(1)+1,iX2,iX3,iGF_Psi)**2 * X1
-
-        G(iNX,nX(1)+1,iX2,iX3,iGF_h_3) &
-          = G(iNX,nX(1)+1,iX2,iX3,iGF_Psi)**2 * X1 * SIN( X2 )
-
-      END DO
-      END DO
-      END DO
-
-      CALL ComputeGeometryX_FromScaleFactors( G(:,0      ,iX2,iX3,:) )
-      CALL ComputeGeometryX_FromScaleFactors( G(:,nX(1)+1,iX2,iX3,:) )
-
-    END DO
-    END DO
-
-  END SUBROUTINE SetBoundaryConditions_X1
 
 
   SUBROUTINE ComputeGravitationalMass &

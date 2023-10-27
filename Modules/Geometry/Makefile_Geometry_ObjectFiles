@@ -2,6 +2,7 @@ GEOMETRY = \
   GeometryFieldsModule.o \
   GeometryComputationModule.o \
   GeometryComputationModule_XCFC.o \
+  GeometryBoundaryConditionsModule.o \
   GeometryFieldsModuleE.o \
   GeometryComputationModuleE.o \
   GravitySolutionModule_Newtonian_PointMass.o \

@@ -6,11 +6,15 @@ MODULE XCFC_UtilitiesModule
     nDOFX
   USE GeometryFieldsModule, ONLY: &
     iGF_Psi
+  USE GeometryBoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_Geometry_X1_Inner_Reflecting, &
+    ApplyBoundaryConditions_Geometry_X1_Outer_ExtrapolateToFace
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: MultiplyWithPsi6
+  PUBLIC :: ApplyBoundaryConditions_Geometry_XCFC
 
   ! --- GS: Gravity/Geometry Sources ---
 
@@ -51,6 +55,23 @@ CONTAINS
     END DO
 
   END SUBROUTINE MultiplyWithPsi6
+
+
+  SUBROUTINE ApplyBoundaryConditions_Geometry_XCFC &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G )
+
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    CALL ApplyBoundaryConditions_Geometry_X1_Inner_Reflecting &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
+
+    CALL ApplyBoundaryConditions_Geometry_X1_Outer_ExtrapolateToFace &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
+
+  END SUBROUTINE ApplyBoundaryConditions_Geometry_XCFC
 
 
 END MODULE XCFC_UtilitiesModule

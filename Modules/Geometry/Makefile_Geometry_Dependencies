@@ -4,6 +4,17 @@ GeometryFieldsModule.o: \
   ProgramHeaderModule.o \
   GeometryFieldsModule.F90
 
+GeometryBoundaryConditionsModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  GeometryComputationModule.o \
+  GeometryBoundaryConditionsModule.f90
+
 GeometryComputationModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
@@ -70,4 +81,5 @@ XCFC_UtilitiesModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   GeometryFieldsModule.o \
+  GeometryBoundaryConditionsModule.o \
   XCFC_UtilitiesModule.f90
