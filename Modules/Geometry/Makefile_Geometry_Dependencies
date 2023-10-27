@@ -64,3 +64,9 @@ GravitySolutionModule_XCFC_Poseidon.o: \
   GeometryComputationModule.o \
   TimersModule_Euler.o \
   GravitySolutionModule_XCFC_Poseidon.F90
+
+XCFC_UtilitiesModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  GeometryFieldsModule.o \
+  XCFC_UtilitiesModule.f90

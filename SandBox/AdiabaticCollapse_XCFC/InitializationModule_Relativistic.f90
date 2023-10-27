@@ -19,12 +19,12 @@ MODULE InitializationModule_Relativistic
     Locate, &
     NodeNumberX, &
     Interpolate1D_Linear
+  USE XCFC_UtilitiesModule, ONLY: &
+    MultiplyWithPsi6
   USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
     ComputeConformalFactor_Poseidon, &
     ComputeGeometry_Poseidon
   USE Poseidon_UtilitiesModule, ONLY: &
-    MultiplyByPsi6, &
-    DivideByPsi6, &
     ComputeMatterSources_Poseidon, &
     ComputePressureTensorTrace_Poseidon
   USE GeometryFieldsModule, ONLY: &
@@ -274,7 +274,7 @@ CONTAINS
                    iX_B0(2):iX_E0(2), &
                    iX_B0(3):iX_E0(3),iGF_Psi  )
 
-      CALL MultiplyByPsi6( iX_B1, iX_E1, uGF, uCF )
+      CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, +1 )
 
       CALL ComputeMatterSources_Poseidon &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, E, Si, Mg )
@@ -335,7 +335,7 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
-    CALL MultiplyByPsi6( iX_B1, iX_E1, uGF, uCF )
+    CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, +1 )
 
     CALL ComputeMatterSources_Poseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, E, Si, Mg )
@@ -349,7 +349,7 @@ CONTAINS
     CALL ComputeGeometry_Poseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, uGF )
 
-    CALL DivideByPsi6( iX_B1, iX_E1, uGF, uCF )
+    CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, -1 )
 
   END SUBROUTINE InitializeFields_AdiabaticCollapse_XCFC
 

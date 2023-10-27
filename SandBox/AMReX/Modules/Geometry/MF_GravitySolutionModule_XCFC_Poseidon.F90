@@ -107,7 +107,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     iRestart
   USE AverageDownModule, ONLY: &
     AverageDown
-  USE XCFC_UtilitiesModule, ONLY: &
+  USE MF_XCFC_UtilitiesModule, ONLY: &
     iGS_E, &
     iGS_S1, &
     iGS_S2, &

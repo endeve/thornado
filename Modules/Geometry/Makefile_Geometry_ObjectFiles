@@ -6,4 +6,5 @@ GEOMETRY = \
   GeometryComputationModuleE.o \
   GravitySolutionModule_Newtonian_PointMass.o \
   GravitySolutionModule_Newtonian_Poseidon.o \
-  GravitySolutionModule_XCFC_Poseidon.o
+  GravitySolutionModule_XCFC_Poseidon.o \
+  XCFC_UtilitiesModule.o

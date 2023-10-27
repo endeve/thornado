@@ -63,7 +63,7 @@ MODULE MF_TimeSteppingModule_IMEX
     ApplySlopeLimiter_TwoMoment_MF
   USE MF_Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_MF
-  USE XCFC_UtilitiesModule, ONLY: &
+  USE MF_XCFC_UtilitiesModule, ONLY: &
     nGS, &
     MultiplyWithPsi6_MF
   USE MF_GravitySolutionModule_XCFC, ONLY: &

@@ -1,4 +1,4 @@
-MODULE XCFC_UtilitiesModule
+MODULE MF_XCFC_UtilitiesModule
 
   ! --- AMReX Modules ---
 
@@ -838,4 +838,4 @@ CONTAINS
   END SUBROUTINE UpdateGeometryFields_MF
 
 
-END MODULE XCFC_UtilitiesModule
+END MODULE MF_XCFC_UtilitiesModule

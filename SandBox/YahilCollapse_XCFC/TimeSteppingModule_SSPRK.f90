@@ -12,6 +12,8 @@ MODULE TimeSteppingModule_SSPRK
     nDOFX
   USE GeometryFieldsModule, ONLY: &
     iGF_Psi
+  USE XCFC_UtilitiesModule, ONLY: &
+    MultiplyWithPsi6
   USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
     ComputeConformalFactor_Poseidon, &
     ComputeGeometry_Poseidon
@@ -23,9 +25,7 @@ MODULE TimeSteppingModule_SSPRK
     ApplyPositivityLimiter_Euler_Relativistic_TABLE
   USE Poseidon_UtilitiesModule, ONLY: &
     ComputeMatterSources_Poseidon, &
-    ComputePressureTensorTrace_Poseidon, &
-    MultiplyByPsi6, &
-    DivideByPsi6
+    ComputePressureTensorTrace_Poseidon
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler,  &
@@ -223,7 +223,7 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
 
-    CALL MultiplyByPsi6( iX_B1, iX_E1, G, U ) ! Ustar = psi^6 * U
+    CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, +1 ) ! Ustar = psi^6 * U
 
     Dstar = Zero ! --- Increment
 
@@ -253,7 +253,7 @@ CONTAINS
           CALL ComputeConformalFactor_Poseidon &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, G )
 
-          CALL DivideByPsi6( iX_B1, iX_E1, G, Ustar )
+          CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, -1 )
 
           CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, D )
@@ -261,7 +261,7 @@ CONTAINS
           CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar )
 
-          CALL MultiplyByPsi6( iX_B1, iX_E1, G, Ustar )
+          CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, +1 )
 
           CALL ComputeMatterSources_Poseidon &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, E, Si, Mg )
@@ -277,7 +277,7 @@ CONTAINS
 
         END IF
 
-        CALL DivideByPsi6( iX_B1, iX_E1, G, Ustar )
+        CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, -1 )
 
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -314,7 +314,7 @@ CONTAINS
     CALL ComputeConformalFactor_Poseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, G )
 
-    CALL DivideByPsi6( iX_B1, iX_E1, G, U )
+    CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, -1 )
 
     CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
@@ -322,7 +322,7 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
-    CALL MultiplyByPsi6( iX_B1, iX_E1, G, U )
+    CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, +1 )
 
     CALL ComputeMatterSources_Poseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, E, Si, Mg )
@@ -336,7 +336,7 @@ CONTAINS
     CALL ComputeGeometry_Poseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, G )
 
-    CALL DivideByPsi6( iX_B1, iX_E1, G, U )
+    CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, -1 )
 
     CALL IncrementOffGridTally_Euler_Relativistic( dM_OffGrid_Euler )
 

@@ -1,6 +1,6 @@
 VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/Geometry
 F90EXE_sources  += MF_GeometryModule.F90
-F90EXE_sources  += XCFC_UtilitiesModule.F90
+F90EXE_sources  += MF_XCFC_UtilitiesModule.F90
 F90EXE_sources  += MF_GravitySolutionModule_XCFC.F90
 F90EXE_sources  += MF_GravitySolutionModule_XCFC_Poseidon.F90
 

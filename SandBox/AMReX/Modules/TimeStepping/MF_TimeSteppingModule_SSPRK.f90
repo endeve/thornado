@@ -59,7 +59,7 @@ MODULE MF_TimeSteppingModule_SSPRK
     DEBUG
   USE FluxCorrectionModule_Euler, ONLY: &
     ApplyFluxCorrection_Euler_MF
-  USE XCFC_UtilitiesModule, ONLY: &
+  USE MF_XCFC_UtilitiesModule, ONLY: &
     nGS, &
     swXX, &
     MultiplyWithPsi6_MF

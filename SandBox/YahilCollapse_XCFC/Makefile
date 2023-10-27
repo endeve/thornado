@@ -53,6 +53,7 @@ InitializationModule_Relativistic.o: \
   ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
   MeshModule.o \
+  XCFC_UtilitiesModule.o \
   GravitySolutionModule_XCFC_Poseidon.o \
   Poseidon_UtilitiesModule.o \
   GeometryFieldsModule.o \
@@ -69,6 +70,7 @@ TimeSteppingModule_SSPRK.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   GeometryFieldsModule.o \
+  XCFC_UtilitiesModule.o \
   GravitySolutionModule_XCFC_Poseidon.o \
   FluidFieldsModule.o \
   Euler_SlopeLimiterModule_Relativistic_TABLE.o \

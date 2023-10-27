@@ -3,7 +3,6 @@ MODULE Poseidon_UtilitiesModule
   USE KindModule, ONLY: &
     DP, &
     Zero, &
-    Half, &
     One, &
     Two, &
     Three, &
@@ -42,9 +41,6 @@ MODULE Poseidon_UtilitiesModule
     iPF_V3, &
     iPF_E, &
     iPF_Ne
-  USE UnitsModule, ONLY: &
-    Kilometer, &
-    SolarMass
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic
   USE EquationOfStateModule, ONLY: &
@@ -61,10 +57,7 @@ MODULE Poseidon_UtilitiesModule
 
   PUBLIC :: ComputeMatterSources_Poseidon
   PUBLIC :: ComputePressureTensorTrace_Poseidon
-  PUBLIC :: MultiplyByPsi6
-  PUBLIC :: DivideByPsi6
   PUBLIC :: ComputeNewtonianPotential_SphericalSymmetry
-
 
 CONTAINS
 
@@ -336,58 +329,6 @@ CONTAINS
     CALL TimersStop_Euler( Timer_GS_ComputeSourceTerms )
 
   END SUBROUTINE ComputePressureTensorTrace_Poseidon
-
-
-  SUBROUTINE MultiplyByPsi6( iX_B1, iX_E1, G, U )
-
-    INTEGER,  INTENT(in)    :: iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)    :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout) :: U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-
-    INTEGER :: iNX, iX1, iX2, iX3, iCF
-
-    DO iCF = 1, nCF
-    DO iX3 = iX_B1(3), iX_E1(3)
-    DO iX2 = iX_B1(2), iX_E1(2)
-    DO iX1 = iX_B1(1), iX_E1(1)
-    DO iNX = 1, nDOFX
-
-      U(iNX,iX1,iX2,iX3,iCF) &
-        = U(iNX,iX1,iX2,iX3,iCF) * G(iNX,iX1,iX2,iX3,iGF_Psi)**6
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-  END SUBROUTINE MultiplyByPsi6
-
-
-  SUBROUTINE DivideByPsi6( iX_B1, iX_E1, G, U )
-
-    INTEGER,  INTENT(in)    :: iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)    :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout) :: U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-
-    INTEGER :: iNX, iX1, iX2, iX3, iCF
-
-    DO iCF = 1, nCF
-    DO iX3 = iX_B1(3), iX_E1(3)
-    DO iX2 = iX_B1(2), iX_E1(2)
-    DO iX1 = iX_B1(1), iX_E1(1)
-    DO iNX = 1, nDOFX
-
-      U(iNX,iX1,iX2,iX3,iCF) &
-        = U(iNX,iX1,iX2,iX3,iCF) / G(iNX,iX1,iX2,iX3,iGF_Psi)**6
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-  END SUBROUTINE DivideByPsi6
 
 
   SUBROUTINE ComputeNewtonianPotential_SphericalSymmetry &

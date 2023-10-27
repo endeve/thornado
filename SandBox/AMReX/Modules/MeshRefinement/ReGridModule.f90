@@ -22,7 +22,7 @@ MODULE ReGridModule
     ApplyPositivityLimiter_Euler_MF
   USE MF_GeometryModule, ONLY: &
     ApplyBoundaryConditions_Geometry_MF
-  USE XCFC_UtilitiesModule, ONLY: &
+  USE MF_XCFC_UtilitiesModule, ONLY: &
     UpdateGeometryFields_MF
   USE InputParsingModule, ONLY: &
     DEBUG, &
