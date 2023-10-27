@@ -201,7 +201,7 @@ CONTAINS
 
     CALL ComputeGravitationalMass &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
-             G, GS, GravitationalMass )
+             GS, GravitationalMass )
 
     Psi_BC      = ConformalFactor( xR(1), GravitationalMass )
     AlphaPsi_BC = LapseFunction  ( xR(1), GravitationalMass ) * Psi_BC
@@ -229,6 +229,8 @@ CONTAINS
 
     CALL Poseidon_Return_Conformal_Factor &
          ( Return_ConFactor = M(:,:,:,:,iMF_Psi) )
+
+    ! --- Copy data from Poseidon arrays to thornado arrays ---
 
     CALL UpdateConformalFactorAndMetric &
            ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
