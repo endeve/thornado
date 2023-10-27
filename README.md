@@ -90,7 +90,22 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
-
+## Oct 27 2023
+1. Had a meeting with Kwasniewski, Patryk, and Dziekonski, Adam for the roofline they are using, and it was found out the python version was the cause of the crashes. The version they are using is Python 3.10.12
+2. Chong helped in to set up miniconda which makes the installation of python version very easy. 
+3. Moved CMPLRLLVM-52215 to GSD-6817 per Lorri's suggestion
+4. Tested the reproducer with the latest nightly compiler, nightly-compiler/2023.10.26 ( Intel(R) Fortran 24.0-1349), the reproducer still hangs. It looks like that -O0 was missing in Lorri's compilation line.
+Further tests showed that UMD now plays a rule for hanging. Here is the summary from Lorri in the JIRA
+<pre>
+Shaoping and I have been doing further experiments.   
+We were both using the same version of the ifx compiler (24-1349).
+He is using UMD627, and noted that this test still hangs for both PVC and GEN9.
+I am using a "hotfix" UMD, seemingly from around level 736 and do not see a hang on our local GEN9 system.
+If I use a UMD627 from the rdrive, then I do see a hang on our local GEN9 system.
+At this point, we're waiting for the experimental one to be available to the TCE's, when Shaoping will retry again.
+If it works both GEN and PVC we'll all be happy.
+If it works GEN, not PVC, this will be reassigned to the GSD project.
+</pre>
 ##Oct 25-26 2023
 1. Learn to run Thornado with a roofline tool suggest by Kwasniewski, Patryk   https://github.com/intel-sandbox/roofline. So far two observations:
    - python3 is needed otherwise   
