@@ -24,7 +24,7 @@ MODULE InitializationModule_Relativistic
     nGS
   USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
     ComputeConformalFactor_Poseidon, &
-    ComputeGeometry_Poseidon
+    ComputeLapseShiftCurvature_Poseidon
   USE Poseidon_UtilitiesModule, ONLY: &
     ComputeConformalFactorSourcesAndMg_XCFC, &
     ComputePressureTensorTrace_XCFC
@@ -277,7 +277,7 @@ CONTAINS
       CALL ComputePressureTensorTrace_XCFC &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uGS )
 
-      CALL ComputeGeometry_Poseidon &
+      CALL ComputeLapseShiftCurvature_Poseidon &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uGF )
 
       dAl2 = uGF(:,iX_B0(1):iX_E0(1), &
@@ -338,7 +338,7 @@ CONTAINS
     CALL ComputePressureTensorTrace_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uGS )
 
-    CALL ComputeGeometry_Poseidon &
+    CALL ComputeLapseShiftCurvature_Poseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uGF )
 
     CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, -1 )

@@ -17,7 +17,7 @@ MODULE TimeSteppingModule_SSPRK
     nGS
   USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
     ComputeConformalFactor_Poseidon, &
-    ComputeGeometry_Poseidon
+    ComputeLapseShiftCurvature_Poseidon
   USE FluidFieldsModule, ONLY: &
     nCF
   USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
@@ -264,7 +264,7 @@ CONTAINS
           CALL ComputePressureTensorTrace_XCFC &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
 
-          CALL ComputeGeometry_Poseidon &
+          CALL ComputeLapseShiftCurvature_Poseidon &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, GS, G )
 
         END IF
@@ -325,7 +325,7 @@ CONTAINS
     CALL ComputePressureTensorTrace_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GS )
 
-    CALL ComputeGeometry_Poseidon &
+    CALL ComputeLapseShiftCurvature_Poseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GS, G )
 
     CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, -1 )

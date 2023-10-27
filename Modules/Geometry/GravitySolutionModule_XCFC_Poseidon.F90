@@ -107,7 +107,7 @@ MODULE GravitySolutionModule_XCFC_Poseidon
   PUBLIC :: InitializeGravitySolver_XCFC_Poseidon
   PUBLIC :: FinalizeGravitySolver_XCFC_Poseidon
   PUBLIC :: ComputeConformalFactor_Poseidon
-  PUBLIC :: ComputeGeometry_Poseidon
+  PUBLIC :: ComputeLapseShiftCurvature_Poseidon
 
   REAL(DP) :: GravitationalMass
 
@@ -250,7 +250,7 @@ CONTAINS
   END SUBROUTINE ComputeConformalFactor_Poseidon
 
 
-  SUBROUTINE ComputeGeometry_Poseidon &
+  SUBROUTINE ComputeLapseShiftCurvature_Poseidon &
     ( iX_B0, iX_E0, iX_B1, iX_E1, GS, G )
 
     INTEGER,  INTENT(in)    :: &
@@ -306,7 +306,7 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_GravitySolver )
 
-  END SUBROUTINE ComputeGeometry_Poseidon
+  END SUBROUTINE ComputeLapseShiftCurvature_Poseidon
 
 
 END MODULE GravitySolutionModule_XCFC_Poseidon
