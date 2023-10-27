@@ -27,8 +27,8 @@ MODULE InitializationModule_Relativistic
     ComputeConformalFactor_Poseidon, &
     ComputeGeometry_Poseidon
   USE Poseidon_UtilitiesModule, ONLY: &
-    ComputeMatterSources_Poseidon, &
-    ComputePressureTensorTrace_Poseidon
+    ComputeConformalFactorSourcesAndMg_XCFC, &
+    ComputePressureTensorTrace_XCFC
   USE GeometryFieldsModule, ONLY: &
     uGF, &
     iGF_Gm_dd_11, &
@@ -237,13 +237,13 @@ CONTAINS
 
       CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, +1 )
 
-      CALL ComputeMatterSources_Poseidon &
+      CALL ComputeConformalFactorSourcesAndMg_XCFC &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, E, Si, Mg )
 
       CALL ComputeConformalFactor_Poseidon &
              ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, uGF )
 
-      CALL ComputePressureTensorTrace_Poseidon &
+      CALL ComputePressureTensorTrace_XCFC &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, S )
 
       CALL ComputeGeometry_Poseidon &
@@ -298,13 +298,13 @@ CONTAINS
 
     CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, +1 )
 
-    CALL ComputeMatterSources_Poseidon &
+    CALL ComputeConformalFactorSourcesAndMg_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, E, Si, Mg )
 
     CALL ComputeConformalFactor_Poseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, uGF )
 
-    CALL ComputePressureTensorTrace_Poseidon &
+    CALL ComputePressureTensorTrace_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, S )
 
     CALL ComputeGeometry_Poseidon &

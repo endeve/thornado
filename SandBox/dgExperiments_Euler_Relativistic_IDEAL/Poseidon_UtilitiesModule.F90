@@ -55,14 +55,14 @@ MODULE Poseidon_UtilitiesModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: ComputeMatterSources_Poseidon
-  PUBLIC :: ComputePressureTensorTrace_Poseidon
+  PUBLIC :: ComputeConformalFactorSourcesAndMg_XCFC
+  PUBLIC :: ComputePressureTensorTrace_XCFC
   PUBLIC :: ComputeNewtonianPotential_SphericalSymmetry
 
 CONTAINS
 
 
-  SUBROUTINE ComputeMatterSources_Poseidon &
+  SUBROUTINE ComputeConformalFactorSourcesAndMg_XCFC &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, E, Si, Mg )
 
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -171,7 +171,7 @@ CONTAINS
       WRITE(*,*) 'ERROR'
       WRITE(*,*) '-----'
       WRITE(*,*) '    MODULE: Poseidon_UtilitiesModule'
-      WRITE(*,*) 'SUBROUTINE: ComputeMatterSources_Poseidon'
+      WRITE(*,*) 'SUBROUTINE: ComputeConformalFactorSourcesAndMg_XCFC'
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -203,7 +203,7 @@ CONTAINS
                             G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ], &
             Char_Option = [ 'NA' ], &
             Message_Option &
-              = 'Calling from ComputeMatterSources_Poseidon' )
+              = 'Calling from ComputeConformalFactorSourcesAndMg_XCFC' )
 
       END DO
       END DO
@@ -214,10 +214,10 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_GS_ComputeSourceTerms )
 
-  END SUBROUTINE ComputeMatterSources_Poseidon
+  END SUBROUTINE ComputeConformalFactorSourcesAndMg_XCFC
 
 
-  SUBROUTINE ComputePressureTensorTrace_Poseidon &
+  SUBROUTINE ComputePressureTensorTrace_XCFC &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, S )
 
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -305,7 +305,7 @@ CONTAINS
       WRITE(*,*) 'ERROR'
       WRITE(*,*) '-----'
       WRITE(*,*) '    MODULE: Poseidon_UtilitiesModule'
-      WRITE(*,*) 'SUBROUTINE: ComputePressureTensorTrace_Poseidon'
+      WRITE(*,*) 'SUBROUTINE: ComputePressureTensorTrace_XCFC'
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -328,7 +328,7 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_GS_ComputeSourceTerms )
 
-  END SUBROUTINE ComputePressureTensorTrace_Poseidon
+  END SUBROUTINE ComputePressureTensorTrace_XCFC
 
 
   SUBROUTINE ComputeNewtonianPotential_SphericalSymmetry &

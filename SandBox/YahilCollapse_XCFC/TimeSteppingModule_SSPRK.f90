@@ -24,8 +24,8 @@ MODULE TimeSteppingModule_SSPRK
   USE Euler_PositivityLimiterModule_Relativistic_TABLE, ONLY: &
     ApplyPositivityLimiter_Euler_Relativistic_TABLE
   USE Poseidon_UtilitiesModule, ONLY: &
-    ComputeMatterSources_Poseidon, &
-    ComputePressureTensorTrace_Poseidon
+    ComputeConformalFactorSourcesAndMg_XCFC, &
+    ComputePressureTensorTrace_XCFC
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler,  &
@@ -247,7 +247,7 @@ CONTAINS
 
         IF( iS .NE. 1 )THEN ! At first stage, U and psi are known
 
-          CALL ComputeMatterSources_Poseidon &
+          CALL ComputeConformalFactorSourcesAndMg_XCFC &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, E, Si, Mg )
 
           CALL ComputeConformalFactor_Poseidon &
@@ -263,13 +263,13 @@ CONTAINS
 
           CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, +1 )
 
-          CALL ComputeMatterSources_Poseidon &
+          CALL ComputeConformalFactorSourcesAndMg_XCFC &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, E, Si, Mg )
 
           CALL ComputeConformalFactor_Poseidon &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, G )
 
-          CALL ComputePressureTensorTrace_Poseidon &
+          CALL ComputePressureTensorTrace_XCFC &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, S )
 
           CALL ComputeGeometry_Poseidon &
@@ -308,7 +308,7 @@ CONTAINS
 
     END DO
 
-    CALL ComputeMatterSources_Poseidon &
+    CALL ComputeConformalFactorSourcesAndMg_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, E, Si, Mg )
 
     CALL ComputeConformalFactor_Poseidon &
@@ -324,13 +324,13 @@ CONTAINS
 
     CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, +1 )
 
-    CALL ComputeMatterSources_Poseidon &
+    CALL ComputeConformalFactorSourcesAndMg_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, E, Si, Mg )
 
     CALL ComputeConformalFactor_Poseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, G )
 
-    CALL ComputePressureTensorTrace_Poseidon &
+    CALL ComputePressureTensorTrace_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, S )
 
     CALL ComputeGeometry_Poseidon &
