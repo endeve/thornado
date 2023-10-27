@@ -14,7 +14,10 @@ MODULE TimeSteppingModule_SSPRK
     iGF_Psi
   USE XCFC_UtilitiesModule, ONLY: &
     MultiplyWithPsi6, &
-    nGS
+    nGS, &
+    nMF, &
+    UpdateConformalFactorAndMetric, &
+    ApplyBoundaryConditions_Geometry_XCFC
   USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
     ComputeConformalFactor_Poseidon, &
     ComputeLapseShiftCurvature_Poseidon
@@ -208,6 +211,9 @@ CONTAINS
     REAL(DP) :: GS(nDOFX,iX_B0(1):iX_E0(1), &
                          iX_B0(2):iX_E0(2), &
                          iX_B0(3):iX_E0(3),nGS)
+    REAL(DP) :: M (nDOFX,iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3),nMF)
 
     REAL(DP) :: dM_OffGrid_Euler(nCF)
 
@@ -243,7 +249,13 @@ CONTAINS
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
 
           CALL ComputeConformalFactor_Poseidon &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, GS, G )
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
+
+          CALL UpdateConformalFactorAndMetric &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+
+          CALL ApplyBoundaryConditions_Geometry_XCFC &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G )
 
           CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, -1 )
 
@@ -259,7 +271,13 @@ CONTAINS
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
 
           CALL ComputeConformalFactor_Poseidon &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, GS, G )
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
+
+          CALL UpdateConformalFactorAndMetric &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+
+          CALL ApplyBoundaryConditions_Geometry_XCFC &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G )
 
           CALL ComputePressureTensorTrace_XCFC &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
@@ -304,7 +322,13 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GS )
 
     CALL ComputeConformalFactor_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, G )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
+
+    CALL UpdateConformalFactorAndMetric &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+
+    CALL ApplyBoundaryConditions_Geometry_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
 
     CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, -1 )
 
@@ -320,7 +344,13 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GS )
 
     CALL ComputeConformalFactor_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, G )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
+
+    CALL UpdateConformalFactorAndMetric &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+
+    CALL ApplyBoundaryConditions_Geometry_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
 
     CALL ComputePressureTensorTrace_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GS )

@@ -21,7 +21,10 @@ MODULE InitializationModule_Relativistic
     Interpolate1D_Linear
   USE XCFC_UtilitiesModule, ONLY: &
     MultiplyWithPsi6, &
-    nGS
+    nGS, &
+    nMF, &
+    UpdateConformalFactorAndMetric, &
+    ApplyBoundaryConditions_Geometry_XCFC
   USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
     ComputeConformalFactor_Poseidon, &
     ComputeLapseShiftCurvature_Poseidon
@@ -134,6 +137,9 @@ CONTAINS
     REAL(DP) :: uGS(nDOFX,iX_B0(1):iX_E0(1), &
                           iX_B0(2):iX_E0(2), &
                           iX_B0(3):iX_E0(3),nGS)
+    REAL(DP) :: uMF(nDOFX,iX_B0(1):iX_E0(1), &
+                          iX_B0(2):iX_E0(2), &
+                          iX_B0(3):iX_E0(3),nMF)
 
     INTEGER  :: ITER
     REAL(DP) :: dAlpha, dPsi
@@ -272,7 +278,13 @@ CONTAINS
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uGS )
 
       CALL ComputeConformalFactor_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uGF )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uMF )
+
+      CALL UpdateConformalFactorAndMetric &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uMF, uGF )
+
+      CALL ApplyBoundaryConditions_Geometry_XCFC &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
       CALL ComputePressureTensorTrace_XCFC &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uGS )
@@ -333,7 +345,13 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uGS )
 
     CALL ComputeConformalFactor_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uGF )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uMF )
+
+    CALL UpdateConformalFactorAndMetric &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uMF, uGF )
+
+    CALL ApplyBoundaryConditions_Geometry_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
     CALL ComputePressureTensorTrace_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uGS )

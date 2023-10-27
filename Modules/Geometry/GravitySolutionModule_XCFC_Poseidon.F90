@@ -175,21 +175,18 @@ CONTAINS
 
 
   SUBROUTINE ComputeConformalFactor_Poseidon &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, GS, G )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       GS(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:) ! This contains psi^6 * { E, S_i }
     REAL(DP), INTENT(inout) :: &
-      G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      M (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
     REAL(DP)         :: Psi_BC, AlphaPsi_BC
     CHARACTER(LEN=1) :: INNER_BC_TYPES (5), OUTER_BC_TYPES (5)
     REAL(DP)         :: INNER_BC_VALUES(5), OUTER_BC_VALUES(5)
-    REAL(DP)         :: M(nDOFX,iX_B0(1):iX_E0(1), &
-                                iX_B0(2):iX_E0(2), &
-                                iX_B0(3):iX_E0(3),nMF)
 
     CALL TimersStart_Euler( Timer_GravitySolver )
 
@@ -229,14 +226,6 @@ CONTAINS
 
     CALL Poseidon_Return_Conformal_Factor &
          ( Return_ConFactor = M(:,:,:,:,iMF_Psi) )
-
-    ! --- Copy data from Poseidon arrays to thornado arrays ---
-
-    CALL UpdateConformalFactorAndMetric &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
-
-    CALL ApplyBoundaryConditions_Geometry_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
 
 #else
 
