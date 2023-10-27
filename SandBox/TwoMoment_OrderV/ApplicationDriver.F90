@@ -514,11 +514,11 @@ PROGRAM ApplicationDriver
          ZoomX = One
       END IF
 
-      nE    = 16
+      nE    = 32
       eL    = 0.0d0
       eR    = 3.0d2
-      bcE   = 2
-      ZoomE = 1.310262775587271_DP
+      bcE   = 11
+      ZoomE = 1.119237083677839_DP
 
       nNodes = 2
 
@@ -533,9 +533,11 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter      = .FALSE.
-      UsePositivityLimiter = .TRUE.
-      UseEnergyLimiter     = .TRUE.
+      C_TCI = 0.1_DP
+      UseTroubledCellIndicator = .FALSE.
+      UseSlopeLimiter          = .FALSE.
+      UsePositivityLimiter     = .TRUE.
+      UseEnergyLimiter         = .TRUE.
 
     CASE( 'GaussianDiffusion1D' )
 
@@ -555,10 +557,10 @@ PROGRAM ApplicationDriver
 
       t_end     = 5.0_DP
       iCycleD   = 10
-      iCycleW   = 10
+      iCycleW   = 1000
       maxCycles = 1000000
 
-      V_0 = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
 
       D_0   = 0.0_DP
       Chi   = 0.0_DP

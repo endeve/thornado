@@ -12,6 +12,7 @@ MODULE ArrayUtilitiesModule
   PUBLIC :: ArrayCopy
 
   INTERFACE ArrayPack
+    MODULE PROCEDURE ArrayPack1D_1_i
     MODULE PROCEDURE ArrayPack1D_1
     MODULE PROCEDURE ArrayPack1D_2
     MODULE PROCEDURE ArrayPack1D_3
@@ -30,6 +31,7 @@ MODULE ArrayUtilitiesModule
   END INTERFACE ArrayPack
 
   INTERFACE ArrayUnpack
+    MODULE PROCEDURE ArrayUnpack1D_1_i
     MODULE PROCEDURE ArrayUnpack1D_1
     MODULE PROCEDURE ArrayUnpack1D_2
     MODULE PROCEDURE ArrayUnpack1D_3
@@ -48,6 +50,7 @@ MODULE ArrayUtilitiesModule
   END INTERFACE ArrayUnpack
 
   INTERFACE ArrayCopy
+    MODULE PROCEDURE ArrayCopy1D_1_i
     MODULE PROCEDURE ArrayCopy1D_1
     MODULE PROCEDURE ArrayCopy1D_2
     MODULE PROCEDURE ArrayCopy1D_3
@@ -104,6 +107,43 @@ CONTAINS
 #endif
 
   END SUBROUTINE CreatePackIndex
+
+
+  SUBROUTINE ArrayPack1D_1_i &
+    ( nP, UnpackIndex, X1, X1_P )
+
+    INTEGER,                 INTENT(in)    :: nP
+    INTEGER,  DIMENSION(1:), INTENT(in)    :: UnpackIndex
+    INTEGER,  DIMENSION(1:), INTENT(in)    :: X1
+    INTEGER,  DIMENSION(1:), INTENT(inout) :: X1_P
+
+    INTEGER  :: i, iPack
+
+    IF ( nP < SIZE(X1,1) ) THEN
+
+!#if defined(THORNADO_OMP_OL)
+!      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+!      !$OMP PRIVATE( i )
+!#elif defined(THORNADO_OACC)
+!      !$ACC PARALLEL LOOP GANG VECTOR &
+!      !$ACC PRIVATE( i ) &
+!      !$ACC PRESENT( UnpackIndex, X1, X1_P )
+!#elif defined(THORNADO_OMP)
+!      !$OMP PARALLEL DO &
+!      !$OMP PRIVATE( i )
+!#endif
+      DO iPack = 1, nP
+        i = UnpackIndex(iPack)
+        X1_P(iPack) = X1(i)
+      END DO
+
+    ELSE
+
+      CALL ArrayCopy( X1, X1_P )
+
+    END IF
+
+  END SUBROUTINE ArrayPack1D_1_i
 
 
   SUBROUTINE ArrayPack1D_1 &
@@ -746,6 +786,46 @@ CONTAINS
     END IF
 
   END SUBROUTINE ArrayPack3D_8
+
+
+  SUBROUTINE ArrayUnpack1D_1_i &
+    ( nP, MASK, PackIndex, X1_P, X1 )
+
+    INTEGER,                 INTENT(in)    :: nP
+    LOGICAL,  DIMENSION(1:), INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(1:), INTENT(in)    :: PackIndex
+    INTEGER,  DIMENSION(1:), INTENT(in)    :: X1_P
+    INTEGER,  DIMENSION(1:), INTENT(inout) :: X1
+
+    INTEGER  :: i, iPack
+
+    IF ( nP < SIZE(X1,1) ) THEN
+
+!#if defined(THORNADO_OMP_OL)
+!      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+!      !$OMP PRIVATE( iPack )
+!#elif defined(THORNADO_OACC)
+!      !$ACC PARALLEL LOOP GANG VECTOR &
+!      !$ACC PRIVATE( iPack ) &
+!      !$ACC PRESENT( PackIndex, X1_P, X1 )
+!#elif defined(THORNADO_OMP)
+!      !$OMP PARALLEL DO &
+!      !$OMP PRIVATE( iPack )
+!#endif
+      DO i = 1, SIZE(X1,1)
+      IF ( MASK(i) ) THEN
+        iPack = PackIndex(i)
+        X1(i) = X1_P(iPack)
+      END IF
+      END DO
+
+    ELSE
+
+      CALL ArrayCopy( X1_P, X1 )
+
+    END IF
+
+  END SUBROUTINE ArrayUnpack1D_1_i
 
 
   SUBROUTINE ArrayUnpack1D_1 &
@@ -1433,6 +1513,29 @@ CONTAINS
     END IF
 
   END SUBROUTINE ArrayUnpack3D_8
+
+
+  SUBROUTINE ArrayCopy1D_1_i &
+    ( X1, Y1 )
+
+    INTEGER,  DIMENSION(1:), INTENT(in)  :: X1
+    INTEGER,  DIMENSION(1:), INTENT(out) :: Y1
+
+    INTEGER  :: i
+
+!#if defined(THORNADO_OMP_OL)
+!    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+!#elif defined(THORNADO_OACC)
+!    !$ACC PARALLEL LOOP GANG VECTOR &
+!    !$ACC PRESENT( X1, Y1 )
+!#elif defined(THORNADO_OMP)
+!    !$OMP PARALLEL DO
+!#endif
+    DO i = 1, SIZE(X1,1)
+      Y1(i) = X1(i)
+    END DO
+
+  END SUBROUTINE ArrayCopy1D_1_i
 
 
   SUBROUTINE ArrayCopy1D_1 &

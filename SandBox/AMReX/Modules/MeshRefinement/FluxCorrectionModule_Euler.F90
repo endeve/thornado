@@ -54,7 +54,6 @@ MODULE FluxCorrectionModule_Euler
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
-
   USE InputParsingModule, ONLY: &
     nLevels, &
     swX, &

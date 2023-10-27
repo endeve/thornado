@@ -17,14 +17,24 @@ ApplicationDriver: \
 	TwoMoment_FieldsModule_FMC.o \
 	TwoMoment_InputOutputModule_FMC.o \
 	TwoMoment_UtilitiesModule_FMC.o \
-        InitializationModule.o \
+  TwoMoment_PositivityLimiterModule_FMC.o \
+  TwoMoment_DiscretizationModule_Streaming_FMC.o \
+  TwoMoment_DiscretizationModule_Collisions_FMC.o \
+  TwoMoment_OpacityModule_FMC.o \
+  TwoMoment_TimeSteppingModule_FMC.o \
+  InitializationModule.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
 	TwoMoment_FieldsModule_FMC.o \
 	TwoMoment_InputOutputModule_FMC.o \
 	TwoMoment_UtilitiesModule_FMC.o \
-        InitializationModule.o \
+  TwoMoment_PositivityLimiterModule_FMC.o \
+  TwoMoment_DiscretizationModule_Streaming_FMC.o \
+  TwoMoment_DiscretizationModule_Collisions_FMC.o \
+  TwoMoment_OpacityModule_FMC.o \
+  TwoMoment_TimeSteppingModule_FMC.o \
+  InitializationModule.o \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 
@@ -67,3 +77,20 @@ TwoMoment_UtilitiesModule_FMC.o: \
   KindModule.o \
   TwoMoment_ClosureModule.o \
   TwoMoment_UtilitiesModule_FMC.F90
+
+TwoMoment_TimeSteppingModule_FMC.o: \
+  TwoMoment_PositivityLimiterModule_FMC.o \
+  TwoMoment_DiscretizationModule_Streaming_FMC.o \
+  TwoMoment_TimeSteppingModule_FMC.F90
+
+TwoMoment_DiscretizationModule_Streaming_FMC.o: \
+  TwoMoment_DiscretizationModule_Streaming_FMC.F90
+
+TwoMoment_DiscretizationModule_Collisions_FMC.o: \
+  TwoMoment_DiscretizationModule_Collisions_FMC.F90
+
+TwoMoment_PositivityLimiterModule_FMC.o: \
+  TwoMoment_PositivityLimiterModule_FMC.F90
+
+TwoMoment_OpacityModule_FMC.o: \
+  TwoMoment_OpacityModule_FMC.F90
