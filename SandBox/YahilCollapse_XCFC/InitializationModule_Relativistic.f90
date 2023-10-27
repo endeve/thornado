@@ -26,6 +26,7 @@ MODULE InitializationModule_Relativistic
     nGS, &
     nMF, &
     UpdateConformalFactorAndMetric, &
+    UpdateLapseShiftCurvature, &
     ApplyBoundaryConditions_Geometry_XCFC
   USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
     ComputeConformalFactor_Poseidon, &
@@ -251,7 +252,13 @@ CONTAINS
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uGS )
 
       CALL ComputeLapseShiftCurvature_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uGF )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uMF )
+
+      CALL UpdateLapseShiftCurvature &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uMF, uGF )
+
+      CALL ApplyBoundaryConditions_Geometry_XCFC &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
       dAl2 = uGF(:,iX_B0(1):iX_E0(1), &
                    iX_B0(2):iX_E0(2), &
@@ -318,7 +325,13 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uGS )
 
     CALL ComputeLapseShiftCurvature_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uGF )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uMF )
+
+    CALL UpdateLapseShiftCurvature &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uMF, uGF )
+
+    CALL ApplyBoundaryConditions_Geometry_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
     CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, -1 )
 

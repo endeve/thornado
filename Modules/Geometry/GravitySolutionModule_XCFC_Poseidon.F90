@@ -2,51 +2,19 @@ MODULE GravitySolutionModule_XCFC_Poseidon
 
   USE KindModule, ONLY: &
     DP, &
-    Pi, &
-    FourPi, &
     Zero, &
-    Half, &
-    One, &
-    Two
+    Half
   USE ProgramHeaderModule, ONLY: &
     nX, &
     nNodesX, &
-    nDOFX, &
     nNodes, &
     xL, &
     xR
-  USE ReferenceElementModuleX, ONLY: &
-    WeightsX_q, &
-    NodeNumberTableX
-  USE UtilitiesModule, ONLY: &
-    NodeNumberX
   USE MeshModule, ONLY: &
-    MeshX, &
-    NodeCoordinate
-  USE GeometryFieldsModule, ONLY: &
-    iGF_Phi_N, &
-    iGF_SqrtGm, &
-    iGF_Alpha, &
-    iGF_Psi, &
-    iGF_Beta_1, &
-    iGF_Beta_2, &
-    iGF_Beta_3, &
-    iGF_h_1, &
-    iGF_h_2, &
-    iGF_h_3, &
-    iGF_Gm_dd_11, &
-    iGF_Gm_dd_22, &
-    iGF_Gm_dd_33, &
-    iGF_K_dd_11, &
-    iGF_K_dd_12, &
-    iGF_K_dd_13, &
-    iGF_K_dd_22, &
-    iGF_K_dd_23, &
-    iGF_K_dd_33
+    MeshX
   USE GeometryComputationModule, ONLY: &
     LapseFunction, &
     ConformalFactor, &
-    ComputeGeometryX_FromScaleFactors, &
     ComputeGeometryX
   USE XCFC_UtilitiesModule, ONLY: &
     iGS_E, &
@@ -54,8 +22,6 @@ MODULE GravitySolutionModule_XCFC_Poseidon
     iGS_S2, &
     iGS_S3, &
     iGS_S, &
-    iGS_Mg, &
-    nGS, &
     iMF_Psi, &
     iMF_Alpha, &
     iMF_Beta_1, &
@@ -67,11 +33,7 @@ MODULE GravitySolutionModule_XCFC_Poseidon
     iMF_K_dd_22, &
     iMF_K_dd_23, &
     iMF_K_dd_33, &
-    nMF, &
-    ApplyBoundaryConditions_Geometry_XCFC, &
-    ComputeGravitationalMass, &
-    UpdateConformalFactorAndMetric, &
-    UpdateLapseShiftCurvature
+    ComputeGravitationalMass
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler,  &
@@ -245,18 +207,14 @@ CONTAINS
 
 
   SUBROUTINE ComputeLapseShiftCurvature_Poseidon &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, GS, G )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       GS(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     REAL(DP), INTENT(inout)    :: &
-      G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-
-    REAL(DP) :: M(nDOFX,iX_B0(1):iX_E0(1), &
-                        iX_B0(2):iX_E0(2), &
-                        iX_B0(3):iX_E0(3),nMF)
+      M (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
     CALL TimersStart_Euler( Timer_GravitySolver )
 
@@ -281,14 +239,6 @@ CONTAINS
 
     CALL Poseidon_Return_Extrinsic_Curvature &
            ( Return_Kij = M(:,:,:,:,iMF_K_dd_11:iMF_K_dd_33) )
-
-    ! --- Copy data from Poseidon arrays to thornado arrays ---
-
-    CALL UpdateLapseShiftCurvature &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
-
-    CALL ApplyBoundaryConditions_Geometry_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
 
 #else
 

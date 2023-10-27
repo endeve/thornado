@@ -17,6 +17,7 @@ MODULE TimeSteppingModule_SSPRK
     nGS, &
     nMF, &
     UpdateConformalFactorAndMetric, &
+    UpdateLapseShiftCurvature, &
     ApplyBoundaryConditions_Geometry_XCFC
   USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
     ComputeConformalFactor_Poseidon, &
@@ -284,7 +285,14 @@ CONTAINS
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
 
           CALL ComputeLapseShiftCurvature_Poseidon &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, GS, G )
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
+
+          CALL UpdateLapseShiftCurvature &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+
+          CALL ApplyBoundaryConditions_Geometry_XCFC &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G )
+
 
         END IF
 
@@ -357,7 +365,13 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GS )
 
     CALL ComputeLapseShiftCurvature_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, G )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
+
+    CALL UpdateLapseShiftCurvature &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+
+    CALL ApplyBoundaryConditions_Geometry_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
 
     CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, -1 )
 
