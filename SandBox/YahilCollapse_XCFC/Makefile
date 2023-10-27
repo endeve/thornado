@@ -41,7 +41,6 @@ Poseidon_UtilitiesModule.o: \
   MeshModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
-  UnitsModule.o \
   Euler_UtilitiesModule_Relativistic.o \
   EquationOfStateModule.o \
   Euler_ErrorModule.o \
