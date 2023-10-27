@@ -249,6 +249,12 @@ CONTAINS
        EquationOfStateTableName = 'EquationOfStateTable.h5'
     END IF
 
+    IF( PRESENT( Verbose_Option ) )THEN
+      Verbose = Verbose_Option
+    ELSE
+      Verbose = .FALSE.
+    END IF
+
     IF( Verbose )THEN
       WRITE(*,*)
       WRITE(*,'(A7,A20,A)') &
@@ -466,12 +472,6 @@ CONTAINS
 
     EmAb_Nucleon_MaxD = MIN( EmAb_Nucleon_MaxD, Op_EmAb_MaxD )
     EmAb_Nuclei_MaxD  = MIN( EmAb_Nuclei_MaxD , Op_EmAb_MaxD )
-
-    IF( PRESENT( Verbose_Option ) )THEN
-      Verbose = Verbose_Option
-    ELSE
-      Verbose = .FALSE.
-    END IF
 
     nPointsE = nE * nNodesE
 
