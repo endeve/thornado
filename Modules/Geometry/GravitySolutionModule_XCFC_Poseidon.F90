@@ -55,8 +55,23 @@ MODULE GravitySolutionModule_XCFC_Poseidon
     iGS_S3, &
     iGS_S, &
     iGS_Mg, &
+    nGS, &
+    iMF_Psi, &
+    iMF_Alpha, &
+    iMF_Beta_1, &
+    iMF_Beta_2, &
+    iMF_Beta_3, &
+    iMF_K_dd_11, &
+    iMF_K_dd_12, &
+    iMF_K_dd_13, &
+    iMF_K_dd_22, &
+    iMF_K_dd_23, &
+    iMF_K_dd_33, &
+    nMF, &
     ApplyBoundaryConditions_Geometry_XCFC, &
-    ComputeGravitationalMass
+    ComputeGravitationalMass, &
+    UpdateConformalFactorAndMetric, &
+    UpdateLapseShiftCurvature
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler,  &
@@ -172,7 +187,9 @@ CONTAINS
     REAL(DP)         :: Psi_BC, AlphaPsi_BC
     CHARACTER(LEN=1) :: INNER_BC_TYPES (5), OUTER_BC_TYPES (5)
     REAL(DP)         :: INNER_BC_VALUES(5), OUTER_BC_VALUES(5)
-    REAL(DP)         :: Tmp_ConFact(nDOFX,nX(1),nX(2),nX(3))
+    REAL(DP)         :: M(nDOFX,iX_B0(1):iX_E0(1), &
+                                iX_B0(2):iX_E0(2), &
+                                iX_B0(3):iX_E0(3),nMF)
 
     CALL TimersStart_Euler( Timer_GravitySolver )
 
@@ -211,20 +228,20 @@ CONTAINS
     CALL Poseidon_XCFC_Run_Part1()
 
     CALL Poseidon_Return_Conformal_Factor &
-         ( Return_ConFactor = Tmp_ConFact )
+         ( Return_ConFactor = M(:,:,:,:,iMF_Psi) )
 
     CALL UpdateConformalFactorAndMetric &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, Tmp_ConFact, G )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
 
 #else
 
-    Psi_BC          = Zero
-    AlphaPsi_BC     = Zero
-    INNER_BC_TYPES  = 'N'
-    OUTER_BC_TYPES  = 'N'
-    INNER_BC_VALUES = Zero
-    OUTER_BC_VALUES = Zero
-    Tmp_ConFact     = Zero
+    Psi_BC             = Zero
+    AlphaPsi_BC        = Zero
+    INNER_BC_TYPES     = 'N'
+    OUTER_BC_TYPES     = 'N'
+    INNER_BC_VALUES    = Zero
+    OUTER_BC_VALUES    = Zero
+    M(:,:,:,:,iMF_Psi) = Zero
 
 #endif
 
@@ -243,9 +260,9 @@ CONTAINS
     REAL(DP), INTENT(inout)    :: &
       G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    REAL(DP) :: Tmp_Lapse             (nDOFX,nX(1),nX(2),nX(3)), &
-                Tmp_Shift             (nDOFX,nX(1),nX(2),nX(3),1:3), &
-                Tmp_ExtrinsicCurvature(nDOFX,nX(1),nX(2),nX(3),1:6)
+    REAL(DP) :: M(nDOFX,iX_B0(1):iX_E0(1), &
+                        iX_B0(2):iX_E0(2), &
+                        iX_B0(3):iX_E0(3),nMF)
 
     CALL TimersStart_Euler( Timer_GravitySolver )
 
@@ -263,28 +280,27 @@ CONTAINS
     CALL Poseidon_XCFC_Run_Part2()
 
     CALL Poseidon_Return_Lapse_Function &
-           ( Return_Lapse = Tmp_Lapse )
+           ( Return_Lapse = M(:,:,:,:,iMF_Alpha) )
 
     CALL Poseidon_Return_Shift_Vector &
-           ( Return_Shift = Tmp_Shift )
+           ( Return_Shift = M(:,:,:,:,iMF_Beta_1:iMF_Beta_3) )
 
     CALL Poseidon_Return_Extrinsic_Curvature &
-           ( Return_Kij = Tmp_ExtrinsicCurvature )
+           ( Return_Kij = M(:,:,:,:,iMF_K_dd_11:iMF_K_dd_33) )
 
     ! --- Copy data from Poseidon arrays to thornado arrays ---
 
-    CALL ComputeGeometryFromPoseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, &
-             Tmp_Lapse, Tmp_Shift, Tmp_ExtrinsicCurvature, G )
+    CALL UpdateLapseShiftCurvature &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
 
     CALL ApplyBoundaryConditions_Geometry_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G )
 
 #else
 
-    Tmp_Lapse              = Zero
-    Tmp_Shift              = Zero
-    Tmp_ExtrinsicCurvature = Zero
+    M(:,:,:,:,iMF_Alpha)               = Zero
+    M(:,:,:,:,iMF_Beta_1:iMF_Beta_3)   = Zero
+    M(:,:,:,:,iMF_K_dd_11:iMF_K_dd_33) = Zero
 
 #endif
 
@@ -292,103 +308,5 @@ CONTAINS
 
   END SUBROUTINE ComputeGeometry_Poseidon
 
-
-  ! --- PRIVATE Subroutines ---
-
-#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
-
-  SUBROUTINE UpdateConformalFactorAndMetric &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, Psi, G )
-
-    INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)    :: Psi(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
-    REAL(DP), INTENT(inout) :: G  (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-
-    INTEGER  :: iX1, iX2, iX3, iNX, iNX1, iNX2
-    REAL(DP) :: X1, X2
-
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
-
-      DO iNX = 1, nDOFX
-
-        iNX1 = NodeNumberTableX(1,iNX)
-        iNX2 = NodeNumberTableX(2,iNX)
-
-        X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
-        X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
-
-        G(iNX,iX1,iX2,iX3,iGF_Psi) = Psi    (iNX,iX1,iX2,iX3)
-        G(iNX,iX1,iX2,iX3,iGF_h_1) = Psi(iNX,iX1,iX2,iX3)**2
-        G(iNX,iX1,iX2,iX3,iGF_h_2) = Psi(iNX,iX1,iX2,iX3)**2 * X1
-        G(iNX,iX1,iX2,iX3,iGF_h_3) = Psi(iNX,iX1,iX2,iX3)**2 * X1 * SIN( X2 )
-
-      END DO ! iNX
-
-      CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
-
-    END DO ! iX1
-    END DO ! iX2
-    END DO ! iX3
-
-  END SUBROUTINE UpdateConformalFactorAndMetric
-
-
-  SUBROUTINE ComputeGeometryFromPoseidon &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, Alpha, Beta_u, K_dd, G )
-
-    INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)    :: Alpha (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
-    REAL(DP), INTENT(in)    :: Beta_u(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
-    REAL(DP), INTENT(in)    :: K_dd  (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
-    REAL(DP), INTENT(inout) :: G     (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-
-    INTEGER  :: iX1, iX2, iX3, iNX, iNX1, iNX2
-    REAL(DP) :: X1, X2
-
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
-
-      DO iNX = 1, nDOFX
-
-        iNX1 = NodeNumberTableX(1,iNX)
-        iNX2 = NodeNumberTableX(2,iNX)
-
-        X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
-        X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
-
-        G(iNX,iX1,iX2,iX3,iGF_Alpha) = Alpha(iNX,iX1,iX2,iX3)
-
-        G(iNX,iX1,iX2,iX3,iGF_Beta_1) = Beta_u(iNX,iX1,iX2,iX3,1)
-        G(iNX,iX1,iX2,iX3,iGF_Beta_2) = Beta_u(iNX,iX1,iX2,iX3,2)
-        G(iNX,iX1,iX2,iX3,iGF_Beta_3) = Beta_u(iNX,iX1,iX2,iX3,3)
-
-        G(iNX,iX1,iX2,iX3,iGF_h_1) &
-          = G(iNX,iX1,iX2,iX3,iGF_Psi)**2
-        G(iNX,iX1,iX2,iX3,iGF_h_2) &
-          = G(iNX,iX1,iX2,iX3,iGF_Psi)**2 * X1
-        G(iNX,iX1,iX2,iX3,iGF_h_3) &
-          = G(iNX,iX1,iX2,iX3,iGF_Psi)**2 * X1 * SIN( X2 )
-
-        G(iNX,iX1,iX2,iX3,iGF_K_dd_11) = K_dd(iNX,iX1,iX2,iX3,1)
-        G(iNX,iX1,iX2,iX3,iGF_K_dd_12) = K_dd(iNX,iX1,iX2,iX3,2)
-        G(iNX,iX1,iX2,iX3,iGF_K_dd_13) = K_dd(iNX,iX1,iX2,iX3,3)
-        G(iNX,iX1,iX2,iX3,iGF_K_dd_22) = K_dd(iNX,iX1,iX2,iX3,4)
-        G(iNX,iX1,iX2,iX3,iGF_K_dd_23) = K_dd(iNX,iX1,iX2,iX3,5)
-        G(iNX,iX1,iX2,iX3,iGF_K_dd_33) = K_dd(iNX,iX1,iX2,iX3,6)
-
-      END DO ! iNX
-
-      CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
-
-    END DO ! iX1
-    END DO ! iX2
-    END DO ! iX3
-
-  END SUBROUTINE ComputeGeometryFromPoseidon
-
-#endif
 
 END MODULE GravitySolutionModule_XCFC_Poseidon

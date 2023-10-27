@@ -84,4 +84,5 @@ XCFC_UtilitiesModule.o: \
   MeshModule.o \
   GeometryFieldsModule.o \
   GeometryBoundaryConditionsModule.o \
+  GeometryComputationModule.o \
   XCFC_UtilitiesModule.f90

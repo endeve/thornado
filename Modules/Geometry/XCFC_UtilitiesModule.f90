@@ -7,16 +7,32 @@ MODULE XCFC_UtilitiesModule
   USE ProgramHeaderModule, ONLY: &
     nDOFX
   USE ReferenceElementModuleX, ONLY: &
-    WeightsX_q
+    WeightsX_q, &
+    NodeNumberTableX
   USE MeshModule, ONLY: &
-    MeshX
+    MeshX, &
+    NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
+    iGF_h_1, &
+    iGF_h_2, &
+    iGF_h_3, &
     iGF_SqrtGm, &
     iGF_Alpha, &
-    iGF_Psi
+    iGF_Beta_1, &
+    iGF_Beta_2, &
+    iGF_Beta_3, &
+    iGF_Psi, &
+    iGF_K_dd_11, &
+    iGF_K_dd_12, &
+    iGF_K_dd_13, &
+    iGF_K_dd_22, &
+    iGF_K_dd_23, &
+    iGF_K_dd_33
   USE GeometryBoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Geometry_X1_Inner_Reflecting, &
     ApplyBoundaryConditions_Geometry_X1_Outer_ExtrapolateToFace
+  USE GeometryComputationModule, ONLY: &
+    ComputeGeometryX_FromScaleFactors
 
   IMPLICIT NONE
   PRIVATE
@@ -24,6 +40,23 @@ MODULE XCFC_UtilitiesModule
   PUBLIC :: MultiplyWithPsi6
   PUBLIC :: ApplyBoundaryConditions_Geometry_XCFC
   PUBLIC :: ComputeGravitationalMass
+  PUBLIC :: UpdateConformalFactorAndMetric
+  PUBLIC :: UpdateLapseShiftCurvature
+
+  ! --- MF: Metric Fields ---
+
+  INTEGER, PARAMETER, PUBLIC :: iMF_Psi     = 1
+  INTEGER, PARAMETER, PUBLIC :: iMF_Alpha   = 2
+  INTEGER, PARAMETER, PUBLIC :: iMF_Beta_1  = 3
+  INTEGER, PARAMETER, PUBLIC :: iMF_Beta_2  = 4
+  INTEGER, PARAMETER, PUBLIC :: iMF_Beta_3  = 5
+  INTEGER, PARAMETER, PUBLIC :: iMF_K_dd_11 = 6
+  INTEGER, PARAMETER, PUBLIC :: iMF_K_dd_12 = 7
+  INTEGER, PARAMETER, PUBLIC :: iMF_K_dd_13 = 8
+  INTEGER, PARAMETER, PUBLIC :: iMF_K_dd_22 = 9
+  INTEGER, PARAMETER, PUBLIC :: iMF_K_dd_23 = 10
+  INTEGER, PARAMETER, PUBLIC :: iMF_K_dd_33 = 11
+  INTEGER, PARAMETER, PUBLIC :: nMF         = 11
 
   ! --- GS: Gravity/Geometry Sources ---
 
@@ -124,6 +157,85 @@ CONTAINS
     END ASSOCIATE ! dX1, etc.
 
   END SUBROUTINE ComputeGravitationalMass
+
+
+  SUBROUTINE UpdateConformalFactorAndMetric &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+
+    INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: M(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    REAL(DP), INTENT(inout) :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER  :: iX1, iX2, iX3, iNX, iNX1, iNX2
+    REAL(DP) :: X1, X2, Psi
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNX = 1, nDOFX
+
+        iNX1 = NodeNumberTableX(1,iNX)
+        iNX2 = NodeNumberTableX(2,iNX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
+
+        Psi = M(iNX,iX1,iX2,iX3,iMF_Psi)
+
+        G(iNX,iX1,iX2,iX3,iGF_Psi) = Psi
+        G(iNX,iX1,iX2,iX3,iGF_h_1) = Psi**2
+        G(iNX,iX1,iX2,iX3,iGF_h_2) = Psi**2 * X1
+        G(iNX,iX1,iX2,iX3,iGF_h_3) = Psi**2 * X1 * SIN( X2 )
+
+      END DO ! iNX
+
+      CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
+
+    END DO ! iX1
+    END DO ! iX2
+    END DO ! iX3
+
+  END SUBROUTINE UpdateConformalFactorAndMetric
+
+
+  SUBROUTINE UpdateLapseShiftCurvature &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+
+    INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: M(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    REAL(DP), INTENT(inout) :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER :: iNX, iX1, iX2, iX3
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNX = 1, nDOFX
+
+        G(iNX,iX1,iX2,iX3,iGF_Alpha) = M(iNX,iX1,iX2,iX3,iMF_Alpha)
+
+        G(iNX,iX1,iX2,iX3,iGF_Beta_1) = M(iNX,iX1,iX2,iX3,iMF_Beta_1)
+        G(iNX,iX1,iX2,iX3,iGF_Beta_2) = M(iNX,iX1,iX2,iX3,iMF_Beta_2)
+        G(iNX,iX1,iX2,iX3,iGF_Beta_3) = M(iNX,iX1,iX2,iX3,iMF_Beta_3)
+
+        G(iNX,iX1,iX2,iX3,iGF_K_dd_11) = M(iNX,iX1,iX2,iX3,iMF_K_dd_11)
+        G(iNX,iX1,iX2,iX3,iGF_K_dd_12) = M(iNX,iX1,iX2,iX3,iMF_K_dd_12)
+        G(iNX,iX1,iX2,iX3,iGF_K_dd_13) = M(iNX,iX1,iX2,iX3,iMF_K_dd_13)
+        G(iNX,iX1,iX2,iX3,iGF_K_dd_22) = M(iNX,iX1,iX2,iX3,iMF_K_dd_22)
+        G(iNX,iX1,iX2,iX3,iGF_K_dd_23) = M(iNX,iX1,iX2,iX3,iMF_K_dd_23)
+        G(iNX,iX1,iX2,iX3,iGF_K_dd_33) = M(iNX,iX1,iX2,iX3,iMF_K_dd_33)
+
+      END DO ! iNX
+
+      CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
+
+    END DO ! iX1
+    END DO ! iX2
+    END DO ! iX3
+
+  END SUBROUTINE UpdateLapseShiftCurvature
 
 
 END MODULE XCFC_UtilitiesModule
