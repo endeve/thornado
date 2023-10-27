@@ -20,7 +20,8 @@ MODULE InitializationModule_Relativistic
     NodeNumberX, &
     Interpolate1D_Linear
   USE XCFC_UtilitiesModule, ONLY: &
-    MultiplyWithPsi6
+    MultiplyWithPsi6, &
+    nGS
   USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
     ComputeConformalFactor_Poseidon, &
     ComputeGeometry_Poseidon
@@ -130,18 +131,9 @@ CONTAINS
     REAL(DP)               :: X1
     TYPE(ProgenitorType1D) :: P1D
 
-    REAL(DP) :: E (nDOFX,iX_B0(1):iX_E0(1), &
-                         iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3))
-    REAL(DP) :: Si(nDOFX,iX_B0(1):iX_E0(1), &
-                         iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3),3)
-    REAL(DP) :: S (nDOFX,iX_B0(1):iX_E0(1), &
-                         iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3))
-    REAL(DP) :: Mg(nDOFX,iX_B0(1):iX_E0(1), &
-                         iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3))
+    REAL(DP) :: uGS(nDOFX,iX_B0(1):iX_E0(1), &
+                          iX_B0(2):iX_E0(2), &
+                          iX_B0(3):iX_E0(3),nGS)
 
     INTEGER  :: ITER
     REAL(DP) :: dAlpha, dPsi
@@ -277,16 +269,16 @@ CONTAINS
       CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, +1 )
 
       CALL ComputeConformalFactorSourcesAndMg_XCFC &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, E, Si, Mg )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uGS )
 
       CALL ComputeConformalFactor_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, uGF )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uGF )
 
       CALL ComputePressureTensorTrace_XCFC &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, S )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uGS )
 
       CALL ComputeGeometry_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, uGF )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uGF )
 
       dAl2 = uGF(:,iX_B0(1):iX_E0(1), &
                    iX_B0(2):iX_E0(2), &
@@ -338,16 +330,16 @@ CONTAINS
     CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, +1 )
 
     CALL ComputeConformalFactorSourcesAndMg_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, E, Si, Mg )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uGS )
 
     CALL ComputeConformalFactor_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, uGF )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uGF )
 
     CALL ComputePressureTensorTrace_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, S )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uGS )
 
     CALL ComputeGeometry_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, uGF )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uGF )
 
     CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, -1 )
 

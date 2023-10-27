@@ -48,6 +48,13 @@ MODULE GravitySolutionModule_XCFC_Poseidon
     ConformalFactor, &
     ComputeGeometryX_FromScaleFactors, &
     ComputeGeometryX
+  USE XCFC_UtilitiesModule, ONLY: &
+    iGS_E, &
+    iGS_S1, &
+    iGS_S2, &
+    iGS_S3, &
+    iGS_S, &
+    iGS_Mg
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler,  &
@@ -151,16 +158,12 @@ CONTAINS
 
 
   SUBROUTINE ComputeConformalFactor_Poseidon &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, G )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, GS, G )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
-      E (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)   ! This is psi^6 * E
-    REAL(DP), INTENT(in)    :: &
-      Si(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:) ! This is psi^6 * S_i
-    REAL(DP), INTENT(in)    :: &
-      Mg(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
+      GS(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:) ! This contains psi^6 * { E, S_i }
     REAL(DP), INTENT(inout) :: &
       G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
@@ -176,7 +179,7 @@ CONTAINS
     ! --- Set Boundary Values ---
 
     CALL ComputeGravitationalMass &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Mg )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, GS(:,:,:,:,iGS_Mg) )
 
     Psi_BC      = ConformalFactor( xR(1), GravitationalMass )
     AlphaPsi_BC = LapseFunction  ( xR(1), GravitationalMass ) * Psi_BC
@@ -195,8 +198,8 @@ CONTAINS
     ! --- Set matter sources with current conformal factor ---
 
     CALL Poseidon_Input_Sources_Part1 &
-           ( Input_E  = E, &
-             Input_Si = Si )
+           ( Input_E  = GS(:,:,:,:,iGS_E), &
+             Input_Si = GS(:,:,:,:,iGS_S1:iGS_S3) )
 
     ! --- Compute conformal factor ---
 
@@ -226,14 +229,12 @@ CONTAINS
 
 
   SUBROUTINE ComputeGeometry_Poseidon &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, G )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, GS, G )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
-      E (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):), &
-      S (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):), &
-      Si(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      GS(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     REAL(DP), INTENT(inout)    :: &
       G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
@@ -248,9 +249,9 @@ CONTAINS
     ! --- Set matter sources with updated conformal factor ---
 
     CALL Poseidon_Input_Sources_Part2 &
-           ( Input_E  = E,  &
-             Input_Si = Si, &
-             Input_S  = S  )
+           ( Input_E  = GS(:,:,:,:,iGS_E),  &
+             Input_Si = GS(:,:,:,:,iGS_S1:iGS_S3), &
+             Input_S  = GS(:,:,:,:,iGS_S)  )
 
     ! --- Compute lapse and shift ---
 

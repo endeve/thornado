@@ -47,6 +47,13 @@ MODULE Poseidon_UtilitiesModule
     ComputePressureFromPrimitive
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
+  USE XCFC_UtilitiesModule, ONLY: &
+    iGS_E, &
+    iGS_S1, &
+    iGS_S2, &
+    iGS_S3, &
+    iGS_S, &
+    iGS_Mg
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler, &
@@ -63,14 +70,12 @@ CONTAINS
 
 
   SUBROUTINE ComputeConformalFactorSourcesAndMg_XCFC &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, E, Si, Mg )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GS )
 
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) ! psi^6*U
-    REAL(DP), INTENT(out)   :: E (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
-    REAL(DP), INTENT(out)   :: Si(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
-    REAL(DP), INTENT(out)   :: Mg(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
+    REAL(DP), INTENT(inout) :: GS(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
     REAL(DP) :: uGF(nGF), uCF(nCF), uPF(nPF), Psi6, Pressure, &
                 LorentzFactor, Enthalpy, BetaDotV
@@ -93,12 +98,12 @@ CONTAINS
       ITERATION(iNX,iX1,iX2,iX3) = 0
       iErr     (iNX,iX1,iX2,iX3) = 0
 
-      E(iNX,iX1,iX2,iX3) &
+      GS(iNX,iX1,iX2,iX3,iGS_E) &
         = U(iNX,iX1,iX2,iX3,iCF_E) + U(iNX,iX1,iX2,iX3,iCF_D)
 
-      Si(iNX,iX1,iX2,iX3,1) = U(iNX,iX1,iX2,iX3,iCF_S1)
-      Si(iNX,iX1,iX2,iX3,2) = U(iNX,iX1,iX2,iX3,iCF_S2)
-      Si(iNX,iX1,iX2,iX3,3) = U(iNX,iX1,iX2,iX3,iCF_S3)
+      GS(iNX,iX1,iX2,iX3,iGS_S1) = U(iNX,iX1,iX2,iX3,iCF_S1)
+      GS(iNX,iX1,iX2,iX3,iGS_S2) = U(iNX,iX1,iX2,iX3,iCF_S2)
+      GS(iNX,iX1,iX2,iX3,iGS_S3) = U(iNX,iX1,iX2,iX3,iCF_S3)
 
       ! --- Compute gravitational mass ---
 
@@ -156,7 +161,7 @@ CONTAINS
 
        Enthalpy = uPF(iPF_D) + uPF(iPF_E) + Pressure
 
-       Mg(iNX,iX1,iX2,iX3) &
+       GS(iNX,iX1,iX2,iX3,iGS_Mg) &
          = Enthalpy * ( Two * LorentzFactor**2             &
              * ( One - BetaDotV / uGF(iGF_Alpha) ) - One ) &
              + Two * Pressure
@@ -218,12 +223,12 @@ CONTAINS
 
 
   SUBROUTINE ComputePressureTensorTrace_XCFC &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, S )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GS )
 
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)    :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout) :: U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) ! psi^6*U
-    REAL(DP), INTENT(out)   :: S(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):)
+    REAL(DP), INTENT(in)    :: G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) ! psi^6*U
+    REAL(DP), INTENT(inout) :: GS(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
     REAL(DP) :: uGF(nGF), uCF(nCF), uPF(nPF), Psi6, Pressure
     INTEGER  :: iNX, iX1, iX2, iX3, iGF, iCF
@@ -289,7 +294,7 @@ CONTAINS
       CALL ComputePressureFromPrimitive &
              ( uPF(iPF_D), uPF(iPF_E), uPF(iPF_Ne), Pressure )
 
-      S(iNX,iX1,iX2,iX3) &
+      GS(iNX,iX1,iX2,iX3,iGS_S) &
         = Psi6 * ( uCF(iCF_S1) * uPF(iPF_V1) &
                  + uCF(iCF_S2) * uPF(iPF_V2) &
                  + uCF(iCF_S3) * uPF(iPF_V3) &
