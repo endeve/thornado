@@ -54,6 +54,19 @@ MODULE MF_XCFC_UtilitiesModule
     iGF_K_dd_23, &
     iGF_K_dd_33, &
     nGF
+  USE XCFC_UtilitiesModule, ONLY: &
+   iMF_Psi, &
+   iMF_Alpha, &
+   iMF_Beta_1, &
+   iMF_Beta_2, &
+   iMF_Beta_3, &
+   iMF_K_dd_11, &
+   iMF_K_dd_12, &
+   iMF_K_dd_13, &
+   iMF_K_dd_22, &
+   iMF_K_dd_23, &
+   iMF_K_dd_33, &
+   iGS_Mg
 
   ! --- Local Modules ---
 
@@ -87,31 +100,6 @@ MODULE MF_XCFC_UtilitiesModule
   PUBLIC :: UpdateGeometryFields_MF
 
   INTEGER, PUBLIC :: swXX(3)
-
-  ! --- MF: Metric Fields ---
-
-  INTEGER, PARAMETER, PUBLIC :: iMF_Psi     = 1
-  INTEGER, PARAMETER, PUBLIC :: iMF_Alpha   = 2
-  INTEGER, PARAMETER, PUBLIC :: iMF_Beta_1  = 3
-  INTEGER, PARAMETER, PUBLIC :: iMF_Beta_2  = 4
-  INTEGER, PARAMETER, PUBLIC :: iMF_Beta_3  = 5
-  INTEGER, PARAMETER, PUBLIC :: iMF_K_dd_11 = 6
-  INTEGER, PARAMETER, PUBLIC :: iMF_K_dd_12 = 7
-  INTEGER, PARAMETER, PUBLIC :: iMF_K_dd_13 = 8
-  INTEGER, PARAMETER, PUBLIC :: iMF_K_dd_22 = 9
-  INTEGER, PARAMETER, PUBLIC :: iMF_K_dd_23 = 10
-  INTEGER, PARAMETER, PUBLIC :: iMF_K_dd_33 = 11
-  INTEGER, PARAMETER, PUBLIC :: nMF         = 11
-
-  ! --- GS: Gravity/Geometry Sources ---
-
-  INTEGER, PARAMETER, PUBLIC :: iGS_E  = 1
-  INTEGER, PARAMETER, PUBLIC :: iGS_S1 = 2
-  INTEGER, PARAMETER, PUBLIC :: iGS_S2 = 3
-  INTEGER, PARAMETER, PUBLIC :: iGS_S3 = 4
-  INTEGER, PARAMETER, PUBLIC :: iGS_S  = 5
-  INTEGER, PARAMETER, PUBLIC :: iGS_Mg = 6
-  INTEGER, PARAMETER, PUBLIC :: nGS    = 6
 
 CONTAINS
 

@@ -22,6 +22,8 @@ MODULE MF_TimeSteppingModule_SSPRK
     nDOFX
   USE FluidFieldsModule, ONLY: &
     nCF
+  USE XCFC_UtilitiesModule, ONLY: &
+    nGS
 
   ! --- Local Modules ---
 
@@ -60,7 +62,6 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE FluxCorrectionModule_Euler, ONLY: &
     ApplyFluxCorrection_Euler_MF
   USE MF_XCFC_UtilitiesModule, ONLY: &
-    nGS, &
     swXX, &
     MultiplyWithPsi6_MF
   USE MF_GravitySolutionModule_XCFC, ONLY: &

@@ -22,6 +22,8 @@ MODULE MF_TimeSteppingModule_IMEX
     nCF
   USE RadiationFieldsModule, ONLY: &
     nCR
+  USE XCFC_UtilitiesModule, ONLY: &
+    nGS
   USE MF_TwoMoment_DiscretizationModule_Streaming_Relativistic, ONLY: &
     ComputeIncrement_TwoMoment_Explicit_MF
   USE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
@@ -64,7 +66,6 @@ MODULE MF_TimeSteppingModule_IMEX
   USE MF_Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_MF
   USE MF_XCFC_UtilitiesModule, ONLY: &
-    nGS, &
     MultiplyWithPsi6_MF
   USE MF_GravitySolutionModule_XCFC, ONLY: &
     ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF, &

@@ -62,6 +62,15 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     nPF
   USE GeometryFieldsModuleE, ONLY: &
     iGE_Ep3
+  USE XCFC_UtilitiesModule, ONLY: &
+    iGS_E, &
+    iGS_S1, &
+    iGS_S2, &
+    iGS_S3, &
+    iGS_S, &
+    iGS_Mg, &
+    nGS, &
+    nMF
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     nCR,    &
@@ -108,14 +117,6 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   USE AverageDownModule, ONLY: &
     AverageDown
   USE MF_XCFC_UtilitiesModule, ONLY: &
-    iGS_E, &
-    iGS_S1, &
-    iGS_S2, &
-    iGS_S3, &
-    iGS_S, &
-    iGS_Mg, &
-    nGS, &
-    nMF, &
     swXX, &
     MultiplyWithPsi6_MF, &
     UpdateConformalFactorAndMetric_MF, &
