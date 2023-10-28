@@ -76,34 +76,56 @@ MODULE XCFC_UtilitiesModule
     MODULE PROCEDURE MultiplyWithPsi6_Z
   END INTERFACE MultiplyWithPsi6
 
+  ! https://amrex-codes.github.io/amrex/docs_html/Basics.html#fine-mask
+  INTEGER, PARAMETER :: iLeaf    = 0
+  INTEGER, PARAMETER :: iNotLeaf = 1
+
 CONTAINS
 
 
   SUBROUTINE MultiplyWithPsi6_X &
-    ( iX_B1, iX_E1, G, U, Power )
+    ( iX_B1, iX_E1, G, U, Power, M_Option )
 
     INTEGER , INTENT(in)    :: iX_B1(3), iX_E1(3), Power
     REAL(DP), INTENT(in)    :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    INTEGER , INTENT(in), OPTIONAL :: &
+      M_Option(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     REAL(DP) :: Psi6
     INTEGER  :: iNX, iX1, iX2, iX3, iCF, nCF
 
+    INTEGER :: M(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1)
+
+    IF( PRESENT( M_Option ) )THEN
+
+      M = M_Option
+
+    ELSE
+
+      M = iLeaf
+
+    END IF
+
     nCF = SIZE( U, DIM = 5 )
 
-    DO iCF = 1       , nCF
     DO iX3 = iX_B1(3), iX_E1(3)
     DO iX2 = iX_B1(2), iX_E1(2)
     DO iX1 = iX_B1(1), iX_E1(1)
-    DO iNX = 1       , nDOFX
 
-      Psi6 = G(iNX,iX1,iX2,iX3,iGF_Psi)**6
+      IF( IsNotLeafElement( M(1,iX1,iX2,iX3,1) ) ) CYCLE
 
-      U(iNX,iX1,iX2,iX3,iCF) &
-        = U(iNX,iX1,iX2,iX3,iCF) * Psi6**( Power )
+      DO iCF = 1, nCF
+      DO iNX = 1, nDOFX
 
-    END DO
-    END DO
+        Psi6 = G(iNX,iX1,iX2,iX3,iGF_Psi)**6
+
+        U(iNX,iX1,iX2,iX3,iCF) &
+          = U(iNX,iX1,iX2,iX3,iCF) * Psi6**( Power )
+
+      END DO
+      END DO
+
     END DO
     END DO
     END DO
@@ -112,7 +134,7 @@ CONTAINS
 
 
   SUBROUTINE MultiplyWithPsi6_Z &
-    ( iE_B1, iE_E1, iX_B1, iX_E1, G, U, Power )
+    ( iE_B1, iE_E1, iX_B1, iX_E1, G, U, Power, M_Option )
 
     INTEGER , INTENT(in)    :: &
       iE_B1, iE_E1, iX_B1(3), iX_E1(3), Power
@@ -120,10 +142,24 @@ CONTAINS
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
       U(1:,iE_B1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
+    INTEGER , INTENT(in), OPTIONAL :: &
+      M_Option(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     REAL(DP) :: Psi6
     INTEGER  :: iE_B0, iE_E0, nE
     INTEGER  :: iNZ, iE, iX1, iX2, iX3, iCR, iS, iNX, nCR, nS
+
+    INTEGER :: M(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1)
+
+    IF( PRESENT( M_Option ) )THEN
+
+      M = M_Option
+
+    ELSE
+
+      M = iLeaf
+
+    END IF
 
     nCR = SIZE( U, DIM = 6 )
     nS  = SIZE( U, DIM = 7 )
@@ -133,25 +169,29 @@ CONTAINS
 
     nE = iE_E0 - iE_B0 + 1
 
-    DO iS  = 1       , nS
-    DO iCR = 1       , nCR
     DO iX3 = iX_B1(3), iX_E1(3)
     DO iX2 = iX_B1(2), iX_E1(2)
     DO iX1 = iX_B1(1), iX_E1(1)
-    DO iE  = iE_B0   , iE_E0
-    DO iNZ = 1       , nDOF
 
-      iNX = MOD( ( iNZ - 1 ) / nDOFE, nDOFX ) + 1
+      IF( IsNotLeafElement( M(1,iX1,iX2,iX3,1) ) ) CYCLE
 
-      Psi6 = G(iNX,iX1,iX2,iX3,iGF_Psi)**6
+      DO iS  = 1    , nS
+      DO iCR = 1    , nCR
+      DO iE  = iE_B0, iE_E0
+      DO iNZ = 1    , nDOF
 
-      U(iNZ,iE,iX1,iX2,iX3,iCR,iS) &
-        = U(iNZ,iE,iX1,iX2,iX3,iCR,iS) * Psi6**( Power )
+        iNX = MOD( ( iNZ - 1 ) / nDOFE, nDOFX ) + 1
 
-    END DO
-    END DO
-    END DO
-    END DO
+        Psi6 = G(iNX,iX1,iX2,iX3,iGF_Psi)**6
+
+        U(iNZ,iE,iX1,iX2,iX3,iCR,iS) &
+          = U(iNZ,iE,iX1,iX2,iX3,iCR,iS) * Psi6**( Power )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
     END DO
     END DO
     END DO
@@ -294,6 +334,23 @@ CONTAINS
     END DO ! iX3
 
   END SUBROUTINE UpdateLapseShiftCurvature
+
+
+  ! --- PRIVATE SUBROUTINES ---
+
+
+  LOGICAL FUNCTION IsNotLeafElement( Element )
+
+    INTEGER, INTENT(in) :: Element
+
+    IF( Element .EQ. iNotLeaf )THEN
+      IsNotLeafElement = .TRUE.
+    ELSE
+      IsNotLeafElement = .FALSE.
+    END IF
+
+    RETURN
+  END FUNCTION IsNotLeafElement
 
 
 END MODULE XCFC_UtilitiesModule
