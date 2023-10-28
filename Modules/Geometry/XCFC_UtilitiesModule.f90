@@ -5,7 +5,10 @@ MODULE XCFC_UtilitiesModule
     Two, &
     Pi
   USE ProgramHeaderModule, ONLY: &
-    nDOFX
+    nDOFX, &
+    nDOFE, &
+    nDOF, &
+    swE
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q, &
     NodeNumberTableX
@@ -68,27 +71,36 @@ MODULE XCFC_UtilitiesModule
   INTEGER, PARAMETER, PUBLIC :: iGS_Mg = 6
   INTEGER, PARAMETER, PUBLIC :: nGS    = 6
 
+  INTERFACE MultiplyWithPsi6
+    MODULE PROCEDURE MultiplyWithPsi6_X
+    MODULE PROCEDURE MultiplyWithPsi6_Z
+  END INTERFACE MultiplyWithPsi6
+
 CONTAINS
 
 
-  SUBROUTINE MultiplyWithPsi6( iX_B1, iX_E1, G, U, Power )
+  SUBROUTINE MultiplyWithPsi6_X &
+    ( iX_B1, iX_E1, G, U, Power )
 
-    INTEGER,  INTENT(in)    :: iX_B1(3), iX_E1(3), Power
+    INTEGER , INTENT(in)    :: iX_B1(3), iX_E1(3), Power
     REAL(DP), INTENT(in)    :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iNX, iX1, iX2, iX3, iFF, nFF
+    REAL(DP) :: Psi6
+    INTEGER  :: iNX, iX1, iX2, iX3, iCF, nCF
 
-    nFF = SIZE( U, DIM = 5 )
+    nCF = SIZE( U, DIM = 5 )
 
-    DO iFF = 1       , nFF
+    DO iCF = 1       , nCF
     DO iX3 = iX_B1(3), iX_E1(3)
     DO iX2 = iX_B1(2), iX_E1(2)
     DO iX1 = iX_B1(1), iX_E1(1)
     DO iNX = 1       , nDOFX
 
-      U(iNX,iX1,iX2,iX3,iFF) &
-        = U(iNX,iX1,iX2,iX3,iFF) * G(iNX,iX1,iX2,iX3,iGF_Psi)**( 6 * Power )
+      Psi6 = G(iNX,iX1,iX2,iX3,iGF_Psi)**6
+
+      U(iNX,iX1,iX2,iX3,iCF) &
+        = U(iNX,iX1,iX2,iX3,iCF) * Psi6**( Power )
 
     END DO
     END DO
@@ -96,7 +108,55 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE MultiplyWithPsi6
+  END SUBROUTINE MultiplyWithPsi6_X
+
+
+  SUBROUTINE MultiplyWithPsi6_Z &
+    ( iE_B1, iE_E1, iX_B1, iX_E1, G, U, Power )
+
+    INTEGER , INTENT(in)    :: &
+      iE_B1, iE_E1, iX_B1(3), iX_E1(3), Power
+    REAL(DP), INTENT(in)    :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: &
+      U(1:,iE_B1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
+
+    REAL(DP) :: Psi6
+    INTEGER  :: iE_B0, iE_E0, nE
+    INTEGER  :: iNZ, iE, iX1, iX2, iX3, iCR, iS, iNX, nCR, nS
+
+    nCR = SIZE( U, DIM = 6 )
+    nS  = SIZE( U, DIM = 7 )
+
+    iE_B0 = iE_B1 + swE
+    iE_E0 = iE_E1 - swE
+
+    nE = iE_E0 - iE_B0 + 1
+
+    DO iS  = 1       , nS
+    DO iCR = 1       , nCR
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iE  = iE_B0   , iE_E0
+    DO iNZ = 1       , nDOF
+
+      iNX = MOD( ( iNZ - 1 ) / nDOFE, nDOFX ) + 1
+
+      Psi6 = G(iNX,iX1,iX2,iX3,iGF_Psi)**6
+
+      U(iNZ,iE,iX1,iX2,iX3,iCR,iS) &
+        = U(iNZ,iE,iX1,iX2,iX3,iCR,iS) * Psi6**( Power )
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE MultiplyWithPsi6_Z
 
 
   SUBROUTINE ApplyBoundaryConditions_Geometry_XCFC &
