@@ -266,8 +266,8 @@ PROGRAM ApplicationDriver
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
-!!$    CALL ComputeNewtonianPotential_SphericalSymmetry &
-!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uGF )
+    CALL ComputeNewtonianPotential_SphericalSymmetry &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uGF )
 
     CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -397,12 +397,6 @@ PROGRAM ApplicationDriver
 
   CALL ComputeFromConserved_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
-
-!  CALL ComputeSourceTerms_Poseidon &
-!         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
-!
-!  CALL SolveGravity_XCFC_Poseidon &
-!         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
 
   CALL ComputeNewtonianPotential_SphericalSymmetry &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uGF )
