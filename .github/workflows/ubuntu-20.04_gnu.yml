@@ -124,15 +124,15 @@ jobs:
           make
           make realclean
 
-      - name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
-        run: |
-          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
-          make
-          make realclean
-
       - name: Compile SandBox/AMReX/Applications/YahilCollapse_XCFC
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/YahilCollapse_XCFC
+          make
+          make realclean
+
+      - name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
           make
           make realclean
 
