@@ -3,7 +3,7 @@ name: Compile thornado on MacOS (latest) with gnu compilers
 on: [ push, pull_request ]
 
 jobs:
-  compile-with-amrex_gnu:
+  compile-with--gnu:
     name: Compile thornado on MacOS (latest) with gnu compilers
     runs-on: macos-latest
     env:
@@ -112,6 +112,18 @@ jobs:
           make
           make clobber
 
+      - name: Compile SandBox/YahilCollapse_XCFC/Executables
+        run: |
+          cd ${THORNADO_DIR}/SandBox/YahilCollapse_XCFC/Executables
+          make
+          make clobber
+
+      - name: Compile SandBox/AdiabaticCollapse_XCFC/Executables
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AdiabaticCollapse_XCFC/Executables
+          make
+          make clobber
+
       # OSX's cpp has trouble with fortran files; use homebrew's instead
       # Thanks to Weiqun Zhang from for finding this bug!
 
@@ -127,12 +139,6 @@ jobs:
           make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
           make realclean
 
-          #      - name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
-          #        run: |
-          #          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
-          #          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
-          #          make realclean
-
       - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
@@ -145,11 +151,17 @@ jobs:
           make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
           make realclean
 
-          #      - name: Compile SandBox/AMReX/Applications/YahilCollapse_XCFC
-          #        run: |
-          #          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/YahilCollapse_XCFC
-          #          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
-          #          make realclean
+      - name: Compile SandBox/AMReX/Applications/YahilCollapse_XCFC
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/YahilCollapse_XCFC
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make realclean
+
+      - name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make realclean
 
       - name: Compile SandBox/AMReX/TwoMoment_Test
         run: |
