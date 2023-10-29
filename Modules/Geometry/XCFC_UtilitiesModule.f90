@@ -84,26 +84,26 @@ CONTAINS
 
 
   SUBROUTINE MultiplyWithPsi6_X &
-    ( iX_B1, iX_E1, G, U, Power, M_Option )
+    ( iX_B1, iX_E1, G, U, Power, Mask_Option )
 
     INTEGER , INTENT(in)    :: iX_B1(3), iX_E1(3), Power
     REAL(DP), INTENT(in)    :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     INTEGER , INTENT(in), OPTIONAL :: &
-      M_Option(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     REAL(DP) :: Psi6
     INTEGER  :: iNX, iX1, iX2, iX3, iCF, nCF
 
-    INTEGER :: M(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1)
+    INTEGER :: Mask(iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1)
 
-    IF( PRESENT( M_Option ) )THEN
+    IF( PRESENT( Mask_Option ) )THEN
 
-      M = M_Option
+      Mask = Mask_Option
 
     ELSE
 
-      M = iLeaf
+      Mask = iLeaf
 
     END IF
 
@@ -113,7 +113,7 @@ CONTAINS
     DO iX2 = iX_B1(2), iX_E1(2)
     DO iX1 = iX_B1(1), iX_E1(1)
 
-      IF( IsNotLeafElement( M(1,iX1,iX2,iX3,1) ) ) CYCLE
+      IF( IsNotLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
       DO iCF = 1, nCF
       DO iNX = 1, nDOFX
@@ -134,7 +134,7 @@ CONTAINS
 
 
   SUBROUTINE MultiplyWithPsi6_Z &
-    ( iE_B1, iE_E1, iX_B1, iX_E1, G, U, Power, M_Option )
+    ( iE_B1, iE_E1, iX_B1, iX_E1, G, U, Power, Mask_Option )
 
     INTEGER , INTENT(in)    :: &
       iE_B1, iE_E1, iX_B1(3), iX_E1(3), Power
@@ -143,21 +143,21 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iE_B1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
     INTEGER , INTENT(in), OPTIONAL :: &
-      M_Option(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     REAL(DP) :: Psi6
     INTEGER  :: iE_B0, iE_E0, nE
     INTEGER  :: iNZ, iE, iX1, iX2, iX3, iCR, iS, iNX, nCR, nS
 
-    INTEGER :: M(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1)
+    INTEGER :: Mask(iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1)
 
-    IF( PRESENT( M_Option ) )THEN
+    IF( PRESENT( Mask_Option ) )THEN
 
-      M = M_Option
+      Mask = Mask_Option
 
     ELSE
 
-      M = iLeaf
+      Mask = iLeaf
 
     END IF
 
@@ -173,7 +173,7 @@ CONTAINS
     DO iX2 = iX_B1(2), iX_E1(2)
     DO iX1 = iX_B1(1), iX_E1(1)
 
-      IF( IsNotLeafElement( M(1,iX1,iX2,iX3,1) ) ) CYCLE
+      IF( IsNotLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
       DO iS  = 1    , nS
       DO iCR = 1    , nCR
