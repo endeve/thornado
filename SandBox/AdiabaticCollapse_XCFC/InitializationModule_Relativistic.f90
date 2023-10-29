@@ -23,8 +23,8 @@ MODULE InitializationModule_Relativistic
     MultiplyWithPsi6, &
     nGS, &
     nMF, &
-    UpdateConformalFactorAndMetric, &
-    UpdateLapseShiftCurvature, &
+    UpdateConformalFactorAndMetric_XCFC, &
+    UpdateLapseShiftCurvature_XCFC, &
     ApplyBoundaryConditions_Geometry_XCFC
   USE GravitySolutionModule_XCFC, ONLY: &
     ComputeConformalFactor_XCFC, &
@@ -281,7 +281,7 @@ CONTAINS
       CALL ComputeConformalFactor_XCFC &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uMF )
 
-      CALL UpdateConformalFactorAndMetric &
+      CALL UpdateConformalFactorAndMetric_XCFC &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uMF, uGF )
 
       CALL ApplyBoundaryConditions_Geometry_XCFC &
@@ -293,7 +293,7 @@ CONTAINS
       CALL ComputeLapseShiftCurvature_XCFC &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uMF )
 
-      CALL UpdateLapseShiftCurvature &
+      CALL UpdateLapseShiftCurvature_XCFC &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uMF, uGF )
 
       CALL ApplyBoundaryConditions_Geometry_XCFC &
@@ -354,7 +354,7 @@ CONTAINS
     CALL ComputeConformalFactor_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uMF )
 
-    CALL UpdateConformalFactorAndMetric &
+    CALL UpdateConformalFactorAndMetric_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uMF, uGF )
 
     CALL ApplyBoundaryConditions_Geometry_XCFC &
@@ -366,7 +366,7 @@ CONTAINS
     CALL ComputeLapseShiftCurvature_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uMF )
 
-    CALL UpdateLapseShiftCurvature &
+    CALL UpdateLapseShiftCurvature_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uMF, uGF )
 
     CALL ApplyBoundaryConditions_Geometry_XCFC &

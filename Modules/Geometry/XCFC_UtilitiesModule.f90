@@ -44,8 +44,8 @@ MODULE XCFC_UtilitiesModule
   PUBLIC :: MultiplyWithPsi6
   PUBLIC :: ApplyBoundaryConditions_Geometry_XCFC
   PUBLIC :: ComputeGravitationalMass
-  PUBLIC :: UpdateConformalFactorAndMetric
-  PUBLIC :: UpdateLapseShiftCurvature
+  PUBLIC :: UpdateConformalFactorAndMetric_XCFC
+  PUBLIC :: UpdateLapseShiftCurvature_XCFC
 
   ! --- MF: Metric Fields ---
 
@@ -260,7 +260,7 @@ CONTAINS
   END SUBROUTINE ComputeGravitationalMass
 
 
-  SUBROUTINE UpdateConformalFactorAndMetric &
+  SUBROUTINE UpdateConformalFactorAndMetric_XCFC &
     ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
 
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -297,10 +297,10 @@ CONTAINS
     END DO ! iX2
     END DO ! iX3
 
-  END SUBROUTINE UpdateConformalFactorAndMetric
+  END SUBROUTINE UpdateConformalFactorAndMetric_XCFC
 
 
-  SUBROUTINE UpdateLapseShiftCurvature &
+  SUBROUTINE UpdateLapseShiftCurvature_XCFC &
     ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
 
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -336,7 +336,7 @@ CONTAINS
     END DO ! iX2
     END DO ! iX3
 
-  END SUBROUTINE UpdateLapseShiftCurvature
+  END SUBROUTINE UpdateLapseShiftCurvature_XCFC
 
 
   ! --- PRIVATE SUBROUTINES ---
