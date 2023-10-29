@@ -191,15 +191,6 @@ CONTAINS
 
 #else
 
-    Psi_xR             = Zero
-    AlphaPsi_xR        = Zero
-    Beta_u_xR(1)       = Zero
-    Beta_u_xR(2)       = Zero
-    Beta_u_xR(3)       = Zero
-    INNER_BC_TYPES     = 'N'
-    OUTER_BC_TYPES     = 'N'
-    INNER_BC_VALUES    = Zero
-    OUTER_BC_VALUES    = Zero
     M(:,:,:,:,iMF_Psi) = Zero
 
 #endif
