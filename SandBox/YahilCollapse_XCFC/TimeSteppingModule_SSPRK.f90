@@ -246,17 +246,8 @@ CONTAINS
 
         IF( iS .NE. 1 )THEN ! At first stage, U and psi are known
 
-          CALL ComputeConformalFactorSourcesAndMg_XCFC &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
-
-          CALL ComputeConformalFactor_XCFC &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
-
-          CALL UpdateConformalFactorAndMetric_XCFC &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
-
-          CALL ApplyBoundaryConditions_Geometry_XCFC &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G )
+          CALL ComputeConformalFactor &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
 
           CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, -1 )
 
@@ -268,29 +259,11 @@ CONTAINS
 
           CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, +1 )
 
-          CALL ComputeConformalFactorSourcesAndMg_XCFC &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
+          CALL ComputeConformalFactor &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
 
-          CALL ComputeConformalFactor_XCFC &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
-
-          CALL UpdateConformalFactorAndMetric_XCFC &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
-
-          CALL ApplyBoundaryConditions_Geometry_XCFC &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G )
-
-          CALL ComputePressureTensorTrace_XCFC &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
-
-          CALL ComputeLapseShiftCurvature_XCFC &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
-
-          CALL UpdateLapseShiftCurvature_XCFC &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
-
-          CALL ApplyBoundaryConditions_Geometry_XCFC &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G )
+          CALL ComputeLapseShiftCurvature &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
 
         END IF
 
@@ -325,17 +298,8 @@ CONTAINS
 
     END DO
 
-    CALL ComputeConformalFactorSourcesAndMg_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GS )
-
-    CALL ComputeConformalFactor_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
-
-    CALL UpdateConformalFactorAndMetric_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
-
-    CALL ApplyBoundaryConditions_Geometry_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
+    CALL ComputeConformalFactor &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, M, GS )
 
     CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, -1 )
 
@@ -347,29 +311,11 @@ CONTAINS
 
     CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, +1 )
 
-    CALL ComputeConformalFactorSourcesAndMg_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GS )
+    CALL ComputeConformalFactor &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, M, GS )
 
-    CALL ComputeConformalFactor_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
-
-    CALL UpdateConformalFactorAndMetric_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
-
-    CALL ApplyBoundaryConditions_Geometry_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
-
-    CALL ComputePressureTensorTrace_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GS )
-
-    CALL ComputeLapseShiftCurvature_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
-
-    CALL UpdateLapseShiftCurvature_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
-
-    CALL ApplyBoundaryConditions_Geometry_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
+    CALL ComputeLapseShiftCurvature &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, M, GS )
 
     CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, -1 )
 
@@ -411,6 +357,58 @@ CONTAINS
     END DO
 
   END SUBROUTINE AddIncrement_Fluid
+
+
+  SUBROUTINE ComputeConformalFactor &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
+
+    INTEGER , INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      G    (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      Ustar(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      M    (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      GS   (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    CALL ComputeConformalFactorSourcesAndMg_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
+
+    CALL ComputeConformalFactor_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
+
+    CALL UpdateConformalFactorAndMetric_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+
+    CALL ApplyBoundaryConditions_Geometry_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
+
+  END SUBROUTINE ComputeConformalFactor
+
+
+  SUBROUTINE ComputeLapseShiftCurvature &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
+
+    INTEGER , INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      G    (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      Ustar(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      M    (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      GS   (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    CALL ComputePressureTensorTrace_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
+
+    CALL ComputeLapseShiftCurvature_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
+
+    CALL UpdateLapseShiftCurvature_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+
+    CALL ApplyBoundaryConditions_Geometry_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
+
+  END SUBROUTINE ComputeLapseShiftCurvature
 
 
 END MODULE TimeSteppingModule_SSPRK

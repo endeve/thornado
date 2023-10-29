@@ -275,29 +275,11 @@ CONTAINS
 
       CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, +1 )
 
-      CALL ComputeConformalFactorSourcesAndMg_XCFC &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uGS )
+      CALL ComputeConformalFactor &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
 
-      CALL ComputeConformalFactor_XCFC &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uMF )
-
-      CALL UpdateConformalFactorAndMetric_XCFC &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uMF, uGF )
-
-      CALL ApplyBoundaryConditions_Geometry_XCFC &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
-
-      CALL ComputePressureTensorTrace_XCFC &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uGS )
-
-      CALL ComputeLapseShiftCurvature_XCFC &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uMF )
-
-      CALL UpdateLapseShiftCurvature_XCFC &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uMF, uGF )
-
-      CALL ApplyBoundaryConditions_Geometry_XCFC &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+      CALL ComputeLapseShiftCurvature &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
 
       dAl2 = uGF(:,iX_B0(1):iX_E0(1), &
                    iX_B0(2):iX_E0(2), &
@@ -348,29 +330,11 @@ CONTAINS
 
     CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, +1 )
 
-    CALL ComputeConformalFactorSourcesAndMg_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uGS )
+    CALL ComputeConformalFactor &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
 
-    CALL ComputeConformalFactor_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uMF )
-
-    CALL UpdateConformalFactorAndMetric_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uMF, uGF )
-
-    CALL ApplyBoundaryConditions_Geometry_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
-
-    CALL ComputePressureTensorTrace_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uGS )
-
-    CALL ComputeLapseShiftCurvature_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGS, uMF )
-
-    CALL UpdateLapseShiftCurvature_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uMF, uGF )
-
-    CALL ApplyBoundaryConditions_Geometry_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+    CALL ComputeLapseShiftCurvature &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
 
     CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, -1 )
 
@@ -411,6 +375,58 @@ CONTAINS
     RETURN
 
   END FUNCTION Interpolate1D
+
+
+  SUBROUTINE ComputeConformalFactor &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
+
+    INTEGER , INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      G    (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      Ustar(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      M    (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      GS   (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    CALL ComputeConformalFactorSourcesAndMg_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
+
+    CALL ComputeConformalFactor_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
+
+    CALL UpdateConformalFactorAndMetric_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+
+    CALL ApplyBoundaryConditions_Geometry_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
+
+  END SUBROUTINE ComputeConformalFactor
+
+
+  SUBROUTINE ComputeLapseShiftCurvature &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
+
+    INTEGER , INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      G    (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      Ustar(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      M    (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      GS   (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    CALL ComputePressureTensorTrace_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
+
+    CALL ComputeLapseShiftCurvature_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
+
+    CALL UpdateLapseShiftCurvature_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+
+    CALL ApplyBoundaryConditions_Geometry_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
+
+  END SUBROUTINE ComputeLapseShiftCurvature
 
 
 END MODULE InitializationModule_Relativistic
