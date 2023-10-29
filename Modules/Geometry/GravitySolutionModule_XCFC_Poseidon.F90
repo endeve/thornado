@@ -14,8 +14,7 @@ MODULE GravitySolutionModule_XCFC_Poseidon
     MeshX
   USE GeometryComputationModule, ONLY: &
     LapseFunction, &
-    ConformalFactor, &
-    ComputeGeometryX
+    ConformalFactor
   USE XCFC_UtilitiesModule, ONLY: &
     iGS_E, &
     iGS_S1, &
@@ -34,10 +33,6 @@ MODULE GravitySolutionModule_XCFC_Poseidon
     iMF_K_dd_23, &
     iMF_K_dd_33, &
     ComputeGravitationalMass
-  USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, &
-    TimersStop_Euler,  &
-    Timer_GravitySolver
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
@@ -68,8 +63,8 @@ MODULE GravitySolutionModule_XCFC_Poseidon
 
   PUBLIC :: InitializeGravitySolver_XCFC_Poseidon
   PUBLIC :: FinalizeGravitySolver_XCFC_Poseidon
-  PUBLIC :: ComputeConformalFactor_Poseidon
-  PUBLIC :: ComputeLapseShiftCurvature_Poseidon
+  PUBLIC :: ComputeConformalFactor_XCFC_Poseidon
+  PUBLIC :: ComputeLapseShiftCurvature_XCFC_Poseidon
 
 CONTAINS
 
@@ -79,8 +74,6 @@ CONTAINS
 
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-
-    CALL ComputeGeometryX( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
@@ -132,7 +125,7 @@ CONTAINS
   END SUBROUTINE FinalizeGravitySolver_XCFC_Poseidon
 
 
-  SUBROUTINE ComputeConformalFactor_Poseidon &
+  SUBROUTINE ComputeConformalFactor_XCFC_Poseidon &
     ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
 
     INTEGER,  INTENT(in)    :: &
@@ -146,10 +139,6 @@ CONTAINS
     CHARACTER(LEN=1) :: INNER_BC_TYPES (5), OUTER_BC_TYPES (5)
     REAL(DP)         :: INNER_BC_VALUES(5), OUTER_BC_VALUES(5)
 
-    CALL TimersStart_Euler( Timer_GravitySolver )
-
-#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
-
     ! --- Set Boundary Values ---
 
     CALL ComputeGravitationalMass &
@@ -162,6 +151,8 @@ CONTAINS
     Beta_u_xR(1) = Zero
     Beta_u_xR(2) = Zero
     Beta_u_xR(3) = Zero
+
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     INNER_BC_TYPES = [ 'N', 'N', 'N', 'N', 'N' ] ! Neumann
     OUTER_BC_TYPES = [ 'D', 'D', 'D', 'D', 'D' ] ! Dirichlet
@@ -189,18 +180,12 @@ CONTAINS
     CALL Poseidon_Return_Conformal_Factor &
          ( Return_ConFactor = M(:,:,:,:,iMF_Psi) )
 
-#else
-
-    M(:,:,:,:,iMF_Psi) = Zero
-
 #endif
 
-    CALL TimersStop_Euler( Timer_GravitySolver )
-
-  END SUBROUTINE ComputeConformalFactor_Poseidon
+  END SUBROUTINE ComputeConformalFactor_XCFC_Poseidon
 
 
-  SUBROUTINE ComputeLapseShiftCurvature_Poseidon &
+  SUBROUTINE ComputeLapseShiftCurvature_XCFC_Poseidon &
     ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
 
     INTEGER,  INTENT(in)    :: &
@@ -209,8 +194,6 @@ CONTAINS
       GS(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     REAL(DP), INTENT(inout)    :: &
       M (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
-
-    CALL TimersStart_Euler( Timer_GravitySolver )
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
@@ -234,17 +217,9 @@ CONTAINS
     CALL Poseidon_Return_Extrinsic_Curvature &
            ( Return_Kij = M(:,:,:,:,iMF_K_dd_11:iMF_K_dd_33) )
 
-#else
-
-    M(:,:,:,:,iMF_Alpha)               = Zero
-    M(:,:,:,:,iMF_Beta_1:iMF_Beta_3)   = Zero
-    M(:,:,:,:,iMF_K_dd_11:iMF_K_dd_33) = Zero
-
 #endif
 
-    CALL TimersStop_Euler( Timer_GravitySolver )
-
-  END SUBROUTINE ComputeLapseShiftCurvature_Poseidon
+  END SUBROUTINE ComputeLapseShiftCurvature_XCFC_Poseidon
 
 
 END MODULE GravitySolutionModule_XCFC_Poseidon

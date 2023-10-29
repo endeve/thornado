@@ -65,13 +65,20 @@ GravitySolutionModule_Newtonian_Poseidon.o: \
   GeometryFieldsModule.o \
   GravitySolutionModule_Newtonian_Poseidon.F90
 
+GravitySolutionModule_XCFC.o: \
+  KindModule.o \
+  GeometryComputationModule.o \
+  XCFC_UtilitiesModule.o \
+  GravitySolutionModule_XCFC_Poseidon.o \
+  TimersModule_Euler.o \
+  GravitySolutionModule_XCFC.F90
+
 GravitySolutionModule_XCFC_Poseidon.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   MeshModule.o \
   GeometryComputationModule.o \
   XCFC_UtilitiesModule.o \
-  TimersModule_Euler.o \
   GravitySolutionModule_XCFC_Poseidon.F90
 
 XCFC_UtilitiesModule.o: \

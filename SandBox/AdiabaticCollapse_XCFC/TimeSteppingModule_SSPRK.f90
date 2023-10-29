@@ -19,9 +19,9 @@ MODULE TimeSteppingModule_SSPRK
     UpdateConformalFactorAndMetric, &
     UpdateLapseShiftCurvature, &
     ApplyBoundaryConditions_Geometry_XCFC
-  USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
-    ComputeConformalFactor_Poseidon, &
-    ComputeLapseShiftCurvature_Poseidon
+  USE GravitySolutionModule_XCFC, ONLY: &
+    ComputeConformalFactor_XCFC, &
+    ComputeLapseShiftCurvature_XCFC
   USE FluidFieldsModule, ONLY: &
     nCF
   USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
@@ -250,7 +250,7 @@ CONTAINS
           CALL ComputeConformalFactorSourcesAndMg_XCFC &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
 
-          CALL ComputeConformalFactor_Poseidon &
+          CALL ComputeConformalFactor_XCFC &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
 
           CALL UpdateConformalFactorAndMetric &
@@ -272,7 +272,7 @@ CONTAINS
           CALL ComputeConformalFactorSourcesAndMg_XCFC &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
 
-          CALL ComputeConformalFactor_Poseidon &
+          CALL ComputeConformalFactor_XCFC &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
 
           CALL UpdateConformalFactorAndMetric &
@@ -284,7 +284,7 @@ CONTAINS
           CALL ComputePressureTensorTrace_XCFC &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
 
-          CALL ComputeLapseShiftCurvature_Poseidon &
+          CALL ComputeLapseShiftCurvature_XCFC &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
 
           CALL UpdateLapseShiftCurvature &
@@ -330,7 +330,7 @@ CONTAINS
     CALL ComputeConformalFactorSourcesAndMg_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GS )
 
-    CALL ComputeConformalFactor_Poseidon &
+    CALL ComputeConformalFactor_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
 
     CALL UpdateConformalFactorAndMetric &
@@ -352,7 +352,7 @@ CONTAINS
     CALL ComputeConformalFactorSourcesAndMg_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GS )
 
-    CALL ComputeConformalFactor_Poseidon &
+    CALL ComputeConformalFactor_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
 
     CALL UpdateConformalFactorAndMetric &
@@ -364,7 +364,7 @@ CONTAINS
     CALL ComputePressureTensorTrace_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GS )
 
-    CALL ComputeLapseShiftCurvature_Poseidon &
+    CALL ComputeLapseShiftCurvature_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
 
     CALL UpdateLapseShiftCurvature &
