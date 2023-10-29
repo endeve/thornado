@@ -415,8 +415,7 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uDF (:,:,:,:)
 
-    INTEGER       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    INTEGER       :: iX1
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
     BA = pBA
     DM = pDM
@@ -504,8 +503,7 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uDF (:,:,:,:)
 
-    INTEGER       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    INTEGER       :: iX1
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
     BA = pBA
     DM = pDM
@@ -618,7 +616,7 @@ CONTAINS
       ! TagCriteria(iLevel+1) because iLevel starts at 0 but
       ! TagCriteria starts with 1
 
-      CALL TagElements_Density &
+      CALL TagElements &
              ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
                uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
                LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
