@@ -46,7 +46,11 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     iGF_Beta_3, &
     iGF_Psi
   USE GeometryFieldsModuleE, ONLY: &
+    iGE_Ep3, &
     uGE
+  USE GeometryComputationModule, ONLY: &
+    LapseFunction, &
+    ConformalFactor
   USE FluidFieldsModule, ONLY: &
     iCF_D, &
     iCF_S1, &
@@ -62,8 +66,6 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     iPF_E, &
     iPF_Ne, &
     nPF
-  USE GeometryFieldsModuleE, ONLY: &
-    iGE_Ep3
   USE XCFC_UtilitiesModule, ONLY: &
     iGS_E, &
     iGS_S1, &
@@ -184,7 +186,7 @@ CONTAINS
     TYPE(amrex_parmparse) :: PP
 
     INTEGER          :: iLevel
-    REAL(DP)         :: Psi_xR, AlphaPsi_xR, Beta_u_xR(3)
+    REAL(DP)         :: GravitationalMass, Psi_xR, AlphaPsi_xR, Beta_u_xR(3)
     CHARACTER(LEN=1) :: INNER_BC_TYPES (5), OUTER_BC_TYPES (5)
     REAL(DP)         :: INNER_BC_VALUES(5), OUTER_BC_VALUES(5)
 
@@ -258,15 +260,23 @@ CONTAINS
 
       ! --- Set Boundary Values ---
 
-      CALL SetPoseidonBoundaryConditions_Outer &
-             ( MF_uGS, Psi_xR, AlphaPsi_xR, Beta_u_xR )
+      CALL ComputeGravitationalMass_MF( MF_uGS, GravitationalMass )
+
+      ! --- Approximate outer boundary with isotropic expressions ---
+
+      Psi_xR       = ConformalFactor( xR(1), GravitationalMass )
+      AlphaPsi_xR  = LapseFunction  ( xR(1), GravitationalMass ) * Psi_xR
+      Beta_u_xR(1) = Zero
+      Beta_u_xR(2) = Zero
+      Beta_u_xR(3) = Zero
 
       INNER_BC_TYPES = [ 'N', 'N', 'N', 'N', 'N' ] ! Neumann
       OUTER_BC_TYPES = [ 'D', 'D', 'D', 'D', 'D' ] ! Dirichlet
 
-      INNER_BC_VALUES = [ Zero  , Zero       , Zero, Zero, Zero ]
-      OUTER_BC_VALUES = [ Psi_xR, AlphaPsi_xR, &
-                          Beta_u_xR(1), Beta_u_xR(2), Beta_u_xR(3) ]
+      INNER_BC_VALUES &
+        = [ Zero  , Zero       , Zero        , Zero        , Zero ]
+      OUTER_BC_VALUES &
+        = [ Psi_xR, AlphaPsi_xR, Beta_u_xR(1), Beta_u_xR(2), Beta_u_xR(3) ]
 
       CALL Poseidon_Set_Uniform_Boundary_Conditions &
              ( 'I', INNER_BC_TYPES, INNER_BC_VALUES )
@@ -310,7 +320,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGS(0:nLevels-1) ! Gravity Sources
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
 
-    REAL(DP)         :: Psi_xR, AlphaPsi_xR, Beta_u_xR(3)
+    REAL(DP)         :: GravitationalMass, Psi_xR, AlphaPsi_xR, Beta_u_xR(3)
     CHARACTER(LEN=1) :: INNER_BC_TYPES (5), OUTER_BC_TYPES (5)
     REAL(DP)         :: INNER_BC_VALUES(5), OUTER_BC_VALUES(5)
 
@@ -331,15 +341,23 @@ CONTAINS
 
     ! --- Set Boundary Values ---
 
-    CALL SetPoseidonBoundaryConditions_Outer &
-           ( MF_uGS, Psi_xR, AlphaPsi_xR, Beta_u_xR )
+    CALL ComputeGravitationalMass_MF( MF_uGS, GravitationalMass )
+
+    ! --- Approximate outer boundary with isotropic expressions ---
+
+    Psi_xR       = ConformalFactor( xR(1), GravitationalMass )
+    AlphaPsi_xR  = LapseFunction  ( xR(1), GravitationalMass ) * Psi_xR
+    Beta_u_xR(1) = Zero
+    Beta_u_xR(2) = Zero
+    Beta_u_xR(3) = Zero
 
     INNER_BC_TYPES = [ 'N', 'N', 'N', 'N', 'N' ] ! Neumann
     OUTER_BC_TYPES = [ 'D', 'D', 'D', 'D', 'D' ] ! Dirichlet
 
-    INNER_BC_VALUES = [ Zero  , Zero       , Zero, Zero, Zero ]
-    OUTER_BC_VALUES = [ Psi_xR, AlphaPsi_xR, &
-                        Beta_u_xR(1), Beta_u_xR(2), Beta_u_xR(3) ]
+    INNER_BC_VALUES &
+      = [ Zero  , Zero       , Zero        , Zero        , Zero ]
+    OUTER_BC_VALUES &
+      = [ Psi_xR, AlphaPsi_xR, Beta_u_xR(1), Beta_u_xR(2), Beta_u_xR(3) ]
 
     CALL Poseidon_Set_Uniform_Boundary_Conditions &
            ( 'I', INNER_BC_TYPES, INNER_BC_VALUES )
@@ -1724,32 +1742,6 @@ CONTAINS
 #endif
 
   END SUBROUTINE InitializeMetric_TwoMoment_MF_Poseidon
-
-
-  ! --- PRIVATE SUBROUTINES ---
-
-
-  SUBROUTINE SetPoseidonBoundaryConditions_Outer &
-    ( MF_uGS, Psi_xR, AlphaPsi_xR, Beta_u_xR )
-
-    TYPE(amrex_multifab), INTENT(in)  :: MF_uGS(0:nLevels-1)
-    REAL(DP)            , INTENT(out) :: Psi_xR, AlphaPsi_xR, Beta_u_xR(3)
-
-    REAL(DP) :: GravitationalMass
-    REAL(DP) :: Alpha_xR
-
-    CALL ComputeGravitationalMass_MF( MF_uGS, GravitationalMass )
-
-    ! --- Approximate outer boundary with isotropic expressions ---
-
-    Psi_xR   = One + Half * Gravitationalmass / xR(1)
-    Alpha_xR =   ( One - Half * GravitationalMass / xR(1) ) &
-               / ( One + Half * GravitationalMass / xR(1) )
-
-    AlphaPsi_xR = Alpha_xR * Psi_xR
-    Beta_u_xR   = Zero
-
-  END SUBROUTINE SetPoseidonBoundaryConditions_Outer
 
 
 END MODULE MF_GravitySolutionModule_XCFC_Poseidon
