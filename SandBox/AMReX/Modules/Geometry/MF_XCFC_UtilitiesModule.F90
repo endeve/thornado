@@ -19,6 +19,7 @@ MODULE MF_XCFC_UtilitiesModule
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
+    nDOFZ, &
     nNodesX
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q, &
@@ -54,6 +55,11 @@ MODULE MF_XCFC_UtilitiesModule
     iGF_K_dd_23, &
     iGF_K_dd_33, &
     nGF
+  USE FluidFieldsModule, ONLY: &
+    nCF
+  USE RadiationFieldsModule, ONLY: &
+    nCR, &
+    nSp => nSpecies
   USE XCFC_UtilitiesModule, ONLY: &
    iMF_Psi, &
    iMF_Alpha, &
@@ -66,7 +72,8 @@ MODULE MF_XCFC_UtilitiesModule
    iMF_K_dd_22, &
    iMF_K_dd_23, &
    iMF_K_dd_33, &
-   iGS_Mg
+   iGS_Mg, &
+   MultiplyWithPsi6
 
   ! --- Local Modules ---
 
@@ -77,6 +84,15 @@ MODULE MF_XCFC_UtilitiesModule
     One, &
     Two, &
     Pi
+  USE MF_UtilitiesModule, ONLY: &
+    AllocateArray_X, &
+    DeallocateArray_X, &
+    AllocateArray_Z, &
+    DeallocateArray_Z, &
+    amrex2thornado_X, &
+    thornado2amrex_X, &
+    amrex2thornado_Z, &
+    thornado2amrex_Z
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -86,6 +102,7 @@ MODULE MF_XCFC_UtilitiesModule
     IsNotLeafElement
   USE InputParsingModule, ONLY: &
     nLevels, &
+    swX, &
     UseTiling
 
   IMPLICIT NONE
@@ -101,36 +118,33 @@ MODULE MF_XCFC_UtilitiesModule
 
   INTEGER, PUBLIC :: swXX(3)
 
+  INTERFACE MultiplyWithPsi6_MF
+    MODULE PROCEDURE MultiplyWithPsi6_MF_X
+    MODULE PROCEDURE MultiplyWithPsi6_MF_Z
+  END INTERFACE MultiplyWithPsi6_MF
+
 CONTAINS
 
 
-  SUBROUTINE MultiplyWithPsi6_MF &
-    ( MF_uGF, Power, nDOFE, iE_B0, iE_E0, nS, MF_U )
+  SUBROUTINE MultiplyWithPsi6_MF_X &
+    ( MF_uGF, MF_uCF, Power )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     INTEGER             , INTENT(in)    :: Power
-    INTEGER             , INTENT(in)    :: nDOFE, iE_B0, iE_E0, nS
-    TYPE(amrex_multifab), INTENT(inout) :: MF_U  (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
 
-    TYPE(amrex_imultifab) :: iMF_FineMask
     TYPE(amrex_box)       :: BX
     TYPE(amrex_mfiter)    :: MFI
+    TYPE(amrex_imultifab) :: iMF_FineMask
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: U       (:,:,:,:)
-    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: uFM(:,:,:,:)
 
-    INTEGER  :: iLevel, iNX, iNZ, iE, iX1, iX2, iX3, &
-                iS, iFd, iComp, nDOF, nFd, nE
-    INTEGER  :: iX_B0(3), iX_E0(3)
-
-    REAL(DP) :: Psi6
-
-    nE = iE_E0 - iE_B0 + 1
-
-    nDOF = nDOFX * nDOFE
-
-    nFd = MF_U(0) % nComp() / ( nDOF * nS * nE )
+    INTEGER  :: iLevel
+    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
     DO iLevel = 0, nLevels-1
 
@@ -138,53 +152,56 @@ CONTAINS
 
 #if defined( THORNADO_OMP )
       !$OMP PARALLEL &
-      !$OMP PRIVATE( BX, MFI, uGF, U, FineMask, iNX, iComp, iX_B0, iX_E0, Psi6 )
+      !$OMP PRIVATE( BX, MFI, G, U, uGF, uCF, uFM, &
+      !$OMP          iX_B0, iX_E0, iX_B1, iX_E1 )
 #endif
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
 
-        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
-        U        => MF_U  (iLevel) % DataPtr( MFI )
-        FineMask => iMF_FineMask   % DataPtr( MFI )
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+        uFM => iMF_FineMask   % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
+        iX_B1 = iX_B0 - swX
+        iX_E1 = iX_E0 + swX
 
-        DO iS  = 1       , nS
-        DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B0(1), iX_E0(1)
-        DO iE  = iE_B0   , iE_E0
-        DO iNZ = 1       , nDOF
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
-          IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+                 U )
 
-          iNX  = MOD( ( iNZ - 1 ) / nDOFE, nDOFX ) + 1
+        CALL amrex2thornado_X &
+               ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
 
-          Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
+        CALL amrex2thornado_X &
+               ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
 
-          DO iFd = 1, nFd
+        CALL MultiplyWithPsi6 &
+               ( iX_B1, iX_E1, G, U, Power, Mask_Option = uFM )
 
-            iComp = iNZ &
-                      + ( iE  - 1 ) * nDOF &
-                      + ( iFd - 1 ) * nDOF * nE &
-                      + ( iS  - 1 ) * nDOF * nE * nFd
+        CALL thornado2amrex_X &
+               ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
 
-            U(iX1,iX2,iX3,iComp) &
-              = U(iX1,iX2,iX3,iComp) * Psi6**( Power )
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+                 U )
 
-          END DO
-
-        END DO
-        END DO
-        END DO
-        END DO
-        END DO
-        END DO
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
       END DO ! WHILE( MFI % next() )
 
@@ -198,7 +215,109 @@ CONTAINS
 
     END DO ! iLevel = 0, nLevels-1
 
-  END SUBROUTINE MultiplyWithPsi6_MF
+  END SUBROUTINE MultiplyWithPsi6_MF_X
+
+
+  SUBROUTINE MultiplyWithPsi6_MF_Z &
+    ( iE_B0, iE_E0, iE_B1, iE_E1, MF_uGF, MF_uCR, Power )
+
+    INTEGER             , INTENT(in)    :: iE_B0, iE_E0, iE_B1, iE_E1, Power
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:)
+
+    TYPE(amrex_box)       :: BX
+    TYPE(amrex_mfiter)    :: MFI
+    TYPE(amrex_imultifab) :: iMF_FineMask
+
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: uFM(:,:,:,:)
+
+    INTEGER  :: iLevel
+    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), nE
+    INTEGER  :: iZ_B1(4), iZ_E1(4)
+
+    nE = iE_E0 - iE_B0 + 1
+
+    DO iLevel = 0, nLevels-1
+
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
+
+#if defined( THORNADO_OMP )
+      !$OMP PARALLEL &
+      !$OMP PRIVATE( BX, MFI, G, U, uGF, uCR, uFM, &
+      !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, iZ_B1, iZ_E1 )
+#endif
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCR => MF_uCR(iLevel) % DataPtr( MFI )
+        uFM => iMF_FineMask   % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+        iX_B1 = iX_B0 - swX
+        iX_E1 = iX_E0 + swX
+
+        iZ_B1(1)   = iE_B1
+        iZ_B1(2:4) = iX_B1
+        iZ_E1(1)   = iE_E1
+        iZ_E1(2:4) = iX_E1
+
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
+
+        CALL AllocateArray_Z &
+               ( [ 1    , iZ_B1(1), iZ_B1(2), iZ_B1(3), iZ_B1(4), 1  , 1   ], &
+                 [ nDOFZ, iZ_E1(1), iZ_E1(2), iZ_E1(3), iZ_E1(4), nCR, nSp ], &
+                 U )
+
+        CALL amrex2thornado_X &
+               ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
+
+        CALL amrex2thornado_Z &
+               ( nCR, nSp, nE, iE_B0, iE_E0, &
+                 iZ_B1, iZ_E1, LBOUND( uCR ), iZ_B1, iZ_E1, uCR, U )
+
+        CALL MultiplyWithPsi6 &
+               ( iE_B1, iE_E1, iX_B1, iX_E1, G, U, Power, Mask_Option = uFM )
+
+        CALL thornado2amrex_Z &
+               ( nCR, nSp, nE, iE_B0, iE_E0, &
+                 iZ_B1, iZ_E1, LBOUND( uCR ), iZ_B1, iZ_E1, uCR, U )
+
+        CALL DeallocateArray_Z &
+               ( [ 1    , iZ_B1(1), iZ_B1(2), iZ_B1(3), iZ_B1(4), 1  , 1   ], &
+                 [ nDOFZ, iZ_E1(1), iZ_E1(2), iZ_E1(3), iZ_E1(4), nCR, nSp ], &
+                 U )
+
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
+
+      END DO ! WHILE( MFI % next() )
+
+      CALL amrex_mfiter_destroy( MFI )
+
+#if defined( THORNADO_OMP )
+      !$OMP END PARALLEL
+#endif
+
+      CALL DestroyFineMask( iMF_FineMask )
+
+    END DO ! iLevel = 0, nLevels-1
+
+  END SUBROUTINE MultiplyWithPsi6_MF_Z
 
 
   SUBROUTINE UpdateConformalFactorAndMetric_MF( MF_uMF, MF_uGF )
@@ -759,7 +878,6 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uMF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
     INTEGER  :: iLevel, iNX, iX1, iX2, iX3, iNX1, iNX2

@@ -28,6 +28,8 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     nDOFZ, &
     iE_E0, &
     iE_B0, &
+    iE_E1, &
+    iE_B1, &
     nDOFE, &
     nE
   USE MeshModule, ONLY: &
@@ -244,12 +246,12 @@ CONTAINS
 
       END DO
 
-      CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF_tmp )
+      CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF_tmp, +1 )
 
       CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF_Poseidon &
              ( MF_uGF, MF_uCF_tmp, MF_uGS )
 
-      CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF_tmp )
+      CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF_tmp, -1 )
 
       CALL Poseidon_Input_Sources_Part1( MF_uGS )
 
@@ -1495,7 +1497,7 @@ CONTAINS
 
       END DO
 
-      CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
+      CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, +1 )
 
       CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF_Poseidon &
              ( MF_uGF, MF_uCF, MF_uGS )
@@ -1505,7 +1507,7 @@ CONTAINS
       CALL ComputePressureTensorTrace_XCFC_Euler_MF_Poseidon &
              ( MF_uGF, MF_uCF, MF_uGS )
 
-      CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
+      CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, -1 )
 
       CALL ComputeGeometry_MF_Poseidon( MF_uGS, MF_uGF )
 
@@ -1652,7 +1654,7 @@ CONTAINS
 
       END DO
 
-      CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
+      CALL MultiplyWithPsi6_MF( iE_B0, iE_E0, iE_B1, iE_E1, MF_uGF, MF_uCR, +1 )
 
       CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF_Poseidon &
              ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
@@ -1662,7 +1664,7 @@ CONTAINS
       CALL ComputePressureTensorTrace_XCFC_TwoMoment_MF_Poseidon &
              ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
 
-      CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
+      CALL MultiplyWithPsi6_MF( iE_B0, iE_E0, iE_B1, iE_E1, MF_uGF, MF_uCR, -1 )
 
       CALL ComputeGeometry_MF_Poseidon( MF_uGS, MF_uGF )
 

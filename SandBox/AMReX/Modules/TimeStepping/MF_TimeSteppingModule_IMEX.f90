@@ -13,10 +13,11 @@ MODULE MF_TimeSteppingModule_IMEX
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
-    nDOFE, &
     nDOFZ, &
     iE_B0, &
     iE_E0, &
+    iE_B1, &
+    iE_E1, &
     swX
   USE FluidFieldsModule, ONLY: &
     nCF
@@ -50,7 +51,6 @@ MODULE MF_TimeSteppingModule_IMEX
   USE InputParsingModule, ONLY: &
     t_new, &
     dt, &
-    nLevels, &
     nMaxLevels, &
 !    DEBUG, &
     nE, &
@@ -137,9 +137,9 @@ CONTAINS
     IF( DEBUG ) &
       CALL MF_uGS(iLevel) % SetVal( Zero )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, +1 )
     CALL MultiplyWithPsi6_MF &
-           ( MF_uGF, +1, nDOFE, iE_B0, iE_E0, nSpecies, MF_uCR )
+           ( iE_B0, iE_E0, iE_B1, iE_E1, MF_uGF, MF_uCR, +1 )
 
     CALL amrex_multifab_build &
            ( MF_F0(iLevel), MF_uCF(iLevel) % BA, &
@@ -308,7 +308,7 @@ CONTAINS
 
             CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
 
-            CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_F )
+            CALL MultiplyWithPsi6_MF( MF_uGF, MF_F, -1 )
 
             CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
@@ -320,7 +320,7 @@ CONTAINS
 
             CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
 
-            CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_F )
+            CALL MultiplyWithPsi6_MF( MF_uGF, MF_F, +1 )
 
             CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
                    ( MF_uGF, MF_F, MF_R, MF_uGS )
@@ -336,7 +336,7 @@ CONTAINS
 
           END IF ! iS .NE. 1
 
-          CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_F )
+          CALL MultiplyWithPsi6_MF( MF_uGF, MF_F, -1 )
 
           CALL ComputeIncrement_Euler_MF &
                  ( MF_uGF, MF_F, MF_uDF, MF_DF_Ex(:,iS) )
@@ -352,8 +352,6 @@ CONTAINS
           dM_OffGrid_TwoMoment(:,iLevel) &
             = dM_OffGrid_TwoMoment(:,iLevel) &
             + dt(iLevel) * w_EX(iS) * OffGridFlux_TwoMoment_MF(:,iLevel)
-
-
 
         END IF ! EvolveTwoMoment
 
@@ -448,7 +446,7 @@ CONTAINS
 
     CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, -1 )
 
     CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
@@ -460,7 +458,7 @@ CONTAINS
 
     CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, +1 )
 
     CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
            ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
@@ -471,9 +469,9 @@ CONTAINS
 
     CALL ComputeGeometry_MF( MF_uGS, MF_uGF )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, -1 )
     CALL MultiplyWithPsi6_MF &
-           ( MF_uGF, -1, nDOFE, iE_B0, iE_E0, nSpecies, MF_uCR )
+           ( iE_B0, iE_E0, iE_B1, iE_E1, MF_uGF, MF_uCR, -1 )
 
     CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 

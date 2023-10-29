@@ -174,7 +174,7 @@ CONTAINS
 
     END IF ! EvolveGravity
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, +1 )
 
     DO iS = 1, nStages
 
@@ -243,7 +243,7 @@ CONTAINS
 
           END IF ! EvolveGravity
 
-          CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_U(iS,:) )
+          CALL MultiplyWithPsi6_MF( MF_uGF, MF_U(iS,:), -1 )
 
           CALL ApplySlopeLimiter_Euler_MF &
                  ( MF_uGF, MF_U(iS,:), MF_uDF )
@@ -251,7 +251,7 @@ CONTAINS
           CALL ApplyPositivityLimiter_Euler_MF &
                  ( MF_uGF, MF_U(iS,:), MF_uDF )
 
-          CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_U(iS,:) )
+          CALL MultiplyWithPsi6_MF( MF_uGF, MF_U(iS,:), +1 )
 
           IF( EvolveGravity )THEN
 
@@ -275,7 +275,7 @@ CONTAINS
 
         END IF ! iS .NE. 1
 
-        CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_U(iS,:) )
+        CALL MultiplyWithPsi6_MF( MF_uGF, MF_U(iS,:), -1 )
 
         ! Come in with U, leave with \psi^6 * dU
         CALL ComputeIncrement_Euler_MF &
@@ -291,11 +291,11 @@ CONTAINS
 
         IF( nLevels .GT. 1 .AND. UseFluxCorrection_Euler )THEN
 
-          CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_D(iS,:) )
+          CALL MultiplyWithPsi6_MF( MF_uGF, MF_D(iS,:), -1 )
 
           CALL ApplyFluxCorrection_Euler_MF( MF_uGF, MF_D(iS,:) )
 
-          CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_D(iS,:) )
+          CALL MultiplyWithPsi6_MF( MF_uGF, MF_D(iS,:), +1 )
 
         END IF
 
@@ -349,7 +349,7 @@ CONTAINS
 
     END IF ! EvolveGravity
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, -1 )
 
     CALL ApplySlopeLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
@@ -357,7 +357,7 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, +1 )
 
     IF( EvolveGravity )THEN
 
@@ -382,7 +382,7 @@ CONTAINS
 
     END IF ! EvolveGravity
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, -1 )
 
     CALL IncrementOffGridTally_Euler_MF( dM_OffGrid_Euler )
 
