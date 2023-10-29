@@ -68,7 +68,7 @@ MODULE MF_TimeSteppingModule_SSPRK
     ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF, &
     ComputeConformalFactor_MF, &
     ComputePressureTensorTrace_XCFC_Euler_MF, &
-    ComputeGeometry_MF
+    ComputeLapseShiftCurvature_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
@@ -266,7 +266,7 @@ CONTAINS
             CALL ComputePressureTensorTrace_XCFC_Euler_MF &
                    ( MF_uGF, MF_U(iS,:), MF_uGS )
 
-            CALL ComputeGeometry_MF &
+            CALL ComputeLapseShiftCurvature_MF &
                    ( MF_uGS, MF_uGF )
 
             CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
@@ -370,7 +370,7 @@ CONTAINS
 
       CALL ComputePressureTensorTrace_XCFC_Euler_MF( MF_uGF, MF_uCF, MF_uGS )
 
-      CALL ComputeGeometry_MF( MF_uGS, MF_uGF )
+      CALL ComputeLapseShiftCurvature_MF( MF_uGS, MF_uGF )
 
       DO iLevel = 0, nLevels-1
 

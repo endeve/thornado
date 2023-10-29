@@ -71,7 +71,7 @@ MODULE MF_TimeSteppingModule_IMEX
     ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF, &
     ComputeConformalFactor_MF, &
     ComputePressureTensorTrace_XCFC_TwoMoment_MF, &
-    ComputeGeometry_MF
+    ComputeLapseShiftCurvature_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
@@ -330,7 +330,7 @@ CONTAINS
             CALL ComputePressureTensorTrace_XCFC_TwoMoment_MF &
                    ( MF_uGF, MF_F, MF_R, MF_uGS )
 
-            CALL ComputeGeometry_MF( MF_uGS, MF_uGF )
+            CALL ComputeLapseShiftCurvature_MF( MF_uGS, MF_uGF )
 
             CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
@@ -465,9 +465,10 @@ CONTAINS
 
     CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
 
-    CALL ComputePressureTensorTrace_XCFC_TwoMoment_MF( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
+    CALL ComputePressureTensorTrace_XCFC_TwoMoment_MF &
+           ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
 
-    CALL ComputeGeometry_MF( MF_uGS, MF_uGF )
+    CALL ComputeLapseShiftCurvature_MF( MF_uGS, MF_uGF )
 
     CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, -1 )
     CALL MultiplyWithPsi6_MF &
