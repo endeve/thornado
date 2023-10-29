@@ -71,8 +71,6 @@ MODULE GravitySolutionModule_XCFC_Poseidon
   PUBLIC :: ComputeConformalFactor_Poseidon
   PUBLIC :: ComputeLapseShiftCurvature_Poseidon
 
-  REAL(DP) :: GravitationalMass
-
 CONTAINS
 
 
@@ -81,8 +79,6 @@ CONTAINS
 
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-
-    GravitationalMass = Zero
 
     CALL ComputeGeometryX( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
@@ -146,7 +142,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       M (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
-    REAL(DP)         :: Psi_BC, AlphaPsi_BC
+    REAL(DP)         :: GravitationalMass, Psi_xR, AlphaPsi_xR, Beta_u_xR(3)
     CHARACTER(LEN=1) :: INNER_BC_TYPES (5), OUTER_BC_TYPES (5)
     REAL(DP)         :: INNER_BC_VALUES(5), OUTER_BC_VALUES(5)
 
@@ -156,20 +152,24 @@ CONTAINS
 
     ! --- Set Boundary Values ---
 
-    GravitationalMass = Zero
-
     CALL ComputeGravitationalMass &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, &
-             GS, GravitationalMass )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, GravitationalMass )
 
-    Psi_BC      = ConformalFactor( xR(1), GravitationalMass )
-    AlphaPsi_BC = LapseFunction  ( xR(1), GravitationalMass ) * Psi_BC
+    ! --- Approximate outer boundary with isotropic expressions ---
+
+    Psi_xR       = ConformalFactor( xR(1), GravitationalMass )
+    AlphaPsi_xR  = LapseFunction  ( xR(1), GravitationalMass ) * Psi_xR
+    Beta_u_xR(1) = Zero
+    Beta_u_xR(2) = Zero
+    Beta_u_xR(3) = Zero
 
     INNER_BC_TYPES = [ 'N', 'N', 'N', 'N', 'N' ] ! Neumann
     OUTER_BC_TYPES = [ 'D', 'D', 'D', 'D', 'D' ] ! Dirichlet
 
-    INNER_BC_VALUES = [ Zero  , Zero       , Zero, Zero, Zero ]
-    OUTER_BC_VALUES = [ Psi_BC, AlphaPsi_BC, Zero, Zero, Zero ]
+    INNER_BC_VALUES &
+      = [ Zero  , Zero       , Zero        , Zero        , Zero ]
+    OUTER_BC_VALUES &
+      = [ Psi_xR, AlphaPsi_xR, Beta_u_xR(1), Beta_u_xR(2), Beta_u_xR(3) ]
 
     CALL Poseidon_Set_Uniform_Boundary_Conditions &
            ( 'I', INNER_BC_TYPES, INNER_BC_VALUES )
@@ -191,8 +191,11 @@ CONTAINS
 
 #else
 
-    Psi_BC             = Zero
-    AlphaPsi_BC        = Zero
+    Psi_xR             = Zero
+    AlphaPsi_xR        = Zero
+    Beta_u_xR(1)       = Zero
+    Beta_u_xR(2)       = Zero
+    Beta_u_xR(3)       = Zero
     INNER_BC_TYPES     = 'N'
     OUTER_BC_TYPES     = 'N'
     INNER_BC_VALUES    = Zero

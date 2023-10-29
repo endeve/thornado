@@ -2,6 +2,7 @@ MODULE XCFC_UtilitiesModule
 
   USE KindModule, ONLY: &
     DP, &
+    Zero, &
     Two, &
     Pi
   USE ProgramHeaderModule, ONLY: &
@@ -219,11 +220,11 @@ CONTAINS
   SUBROUTINE ComputeGravitationalMass &
     ( iX_B0, iX_E0, iX_B1, iX_E1, GS, GravitationalMass )
 
-    INTEGER,  INTENT(in)   :: &
+    INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)   :: &
+    REAL(DP), INTENT(in)  :: &
       GS(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
-    REAL(DP), INTENT(inout) :: &
+    REAL(DP), INTENT(out) :: &
       GravitationalMass
 
     INTEGER  :: iX1, iX2, iX3
@@ -234,7 +235,9 @@ CONTAINS
         dX2 => MeshX(2) % Width, &
         dX3 => MeshX(3) % Width )
 
-    ! --- Mg has been pre-multiplied with \alpha * \psi^6
+    GravitationalMass = Zero
+
+    ! --- Mg has been pre-multiplied with \alpha * \sqrt{ \gamma }
 
     ! --- Assuming 1D spherical symmetry ---
 
