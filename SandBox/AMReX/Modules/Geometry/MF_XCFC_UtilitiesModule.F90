@@ -64,19 +64,20 @@ MODULE MF_XCFC_UtilitiesModule
     nCR, &
     nSp => nSpecies
   USE XCFC_UtilitiesModule, ONLY: &
-   iMF_Psi, &
-   iMF_Alpha, &
-   iMF_Beta_1, &
-   iMF_Beta_2, &
-   iMF_Beta_3, &
-   iMF_K_dd_11, &
-   iMF_K_dd_12, &
-   iMF_K_dd_13, &
-   iMF_K_dd_22, &
-   iMF_K_dd_23, &
-   iMF_K_dd_33, &
-   iGS_Mg, &
-   MultiplyWithPsi6
+    iMF_Psi, &
+    iMF_Alpha, &
+    iMF_Beta_1, &
+    iMF_Beta_2, &
+    iMF_Beta_3, &
+    iMF_K_dd_11, &
+    iMF_K_dd_12, &
+    iMF_K_dd_13, &
+    iMF_K_dd_22, &
+    iMF_K_dd_23, &
+    iMF_K_dd_33, &
+    nGS, &
+    MultiplyWithPsi6, &
+    ComputeGravitationalMass
 
   ! --- Local Modules ---
 
@@ -588,10 +589,11 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
+    REAL(DP), ALLOCATABLE :: GS(:,:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
 
-    INTEGER  :: iNX, iX1, iX2, iX3, iX_B0(3), iX_E0(3), iLevel
-    REAL(DP) :: d3X, GravitationalMass_OMP
+    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLevel
+    REAL(DP) :: GravitationalMass_OMP
 
     ! --- Assuming 1D spherical symmetry ---
 
@@ -605,7 +607,7 @@ CONTAINS
 
 #if defined( THORNADO_OMP )
       !$OMP PARALLEL &
-      !$OMP PRIVATE( BX, MFI, uGS, iX_B0, iX_E0, d3X ) &
+      !$OMP PRIVATE( BX, MFI, GS, uGS, iX_B0, iX_E0, iX_B1, iX_E1 ) &
       !$OMP REDUCTION( +:GravitationalMass_OMP )
 #endif
 
@@ -619,24 +621,24 @@ CONTAINS
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
+        iX_B1 = iX_B0 - swX
+        iX_E1 = iX_E0 + swX
 
-        DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = iX_B0(1), iX_E0(1)
-        DO iNX = 1       , nDOFX
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
+                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nGS ], &
+                 GS )
 
-          d3X = Two / Pi * MeshX(1) % Width(iX1) &
-                         * MeshX(2) % Width(iX2) &
-                         * MeshX(3) % Width(iX3)
+        CALL amrex2thornado_X &
+               ( nGS, iX_B0, iX_E0, LBOUND( uGS ), iX_B0, iX_E0, uGS, GS )
 
-          GravitationalMass_OMP &
-            = GravitationalMass_OMP + d3X &
-                * WeightsX_q(iNX) * uGS(iX1,iX2,iX3,nDOFX*(iGS_Mg-1)+iNX)
+        CALL ComputeGravitationalMass &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, GS, GravitationalMass_OMP )
 
-        END DO
-        END DO
-        END DO
-        END DO
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
+                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nGS ], &
+                 GS )
 
       END DO ! WHILE( MFI % next() )
 
