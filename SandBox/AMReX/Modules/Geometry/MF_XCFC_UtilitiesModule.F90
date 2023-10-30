@@ -55,6 +55,9 @@ MODULE MF_XCFC_UtilitiesModule
     iGF_K_dd_23, &
     iGF_K_dd_33, &
     nGF
+  USE GeometryBoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_Geometry_X1_Inner_Reflecting, &
+    ApplyBoundaryConditions_Geometry_X1_Outer_ExtrapolateToFace
   USE FluidFieldsModule, ONLY: &
     nCF
   USE RadiationFieldsModule, ONLY: &
@@ -109,11 +112,12 @@ MODULE MF_XCFC_UtilitiesModule
   PRIVATE
 
   PUBLIC :: MultiplyWithPsi6_MF
+  PUBLIC :: ApplyBoundaryConditions_Geometry_XCFC_MF
+  PUBLIC :: ComputeGravitationalMass_MF
   PUBLIC :: UpdateConformalFactorAndMetric_MF
   PUBLIC :: UpdateGeometry_MF
-  PUBLIC :: ComputeGravitationalMass_MF
+
   PUBLIC :: PopulateMF_uMF
-  PUBLIC :: ApplyBoundaryConditions_Geometry
   PUBLIC :: UpdateGeometryFields_MF
 
   INTEGER, PUBLIC :: swXX(3)
@@ -653,14 +657,14 @@ CONTAINS
   END SUBROUTINE ComputeGravitationalMass_MF
 
 
-  SUBROUTINE ApplyBoundaryConditions_Geometry( MF_uGF )
+  SUBROUTINE ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
 
     CALL ApplyBoundaryConditions_X1_Inner( MF_uGF )
     CALL ApplyBoundaryConditions_X1_Outer( MF_uGF )
 
-  END SUBROUTINE ApplyBoundaryConditions_Geometry
+  END SUBROUTINE ApplyBoundaryConditions_Geometry_XCFC_MF
 
 
   ! --- PRIVATE SUBROUTINES ---
@@ -673,18 +677,19 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
-    INTEGER :: iLevel, iX2, iX3
-    INTEGER :: iX_B0(3), iX_E0(3)
-    INTEGER :: iNX1, iNX2, iNX3, iNX
-    INTEGER :: jNX1, jNX
+    INTEGER :: iLevel
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+
+    ! --- Inner Boundary: Reflecting ---
 
     DO iLevel = 0, nLevels-1
 
 #if defined( THORNADO_OMP )
       !$OMP PARALLEL &
-      !$OMP PRIVATE( BX, MFI, uGF, iX_B0, iX_E0, iNX, jNX, jNX1 )
+      !$OMP PRIVATE( BX, MFI, G, uGF, iX_B0, iX_E0, iX_B1, iX_E1 )
 #endif
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
@@ -697,70 +702,29 @@ CONTAINS
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
-
-        ! --- Inner Boundary: Reflecting ---
+        iX_B1 = iX_B0 - swX
+        iX_E1 = iX_E0 + swX
 
         IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo( 1 ) )THEN
 
-          DO iX3 = iX_B0(3), iX_E0(3)
-          DO iX2 = iX_B0(2), iX_E0(2)
+          CALL AllocateArray_X &
+                 ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                   [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                   G )
 
-            DO iNX3 = 1, nNodesX(3)
-            DO iNX2 = 1, nNodesX(2)
-            DO iNX1 = 1, nNodesX(1)
+          CALL amrex2thornado_X &
+                 ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
 
-              jNX1 = ( nNodesX(1) - iNX1 ) + 1
+          CALL ApplyBoundaryConditions_Geometry_X1_Inner_Reflecting &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G )
 
-              iNX = NodeNumberX( iNX1, iNX2, iNX3 )
-              jNX = NodeNumberX( jNX1, iNX2, iNX3 )
+          CALL thornado2amrex_X &
+                 ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
 
-              uGF     (iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_Alpha-1)+iNX) &
-                = +uGF(iX_B0(1)  ,iX2,iX3,nDOFX*(iGF_Alpha-1)+jNX)
-
-              uGF     (iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX) &
-                = +uGF(iX_B0(1)  ,iX2,iX3,nDOFX*(iGF_Psi-1)+jNX)
-
-              uGF     (iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_Beta_1-1)+iNX) &
-                = -uGF(iX_B0(1)  ,iX2,iX3,nDOFX*(iGF_Beta_1-1)+jNX)
-
-              uGF     (iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_Beta_2-1)+iNX) &
-                = +uGF(iX_B0(1)  ,iX2,iX3,nDOFX*(iGF_Beta_2-1)+jNX)
-
-              uGF     (iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_Beta_3-1)+iNX) &
-                = +uGF(iX_B0(1)  ,iX2,iX3,nDOFX*(iGF_Beta_3-1)+jNX)
-
-              uGF     (iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) &
-                = +uGF(iX_B0(1)  ,iX2,iX3,nDOFX*(iGF_h_1-1)+jNX)
-
-              uGF     (iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) &
-                = +uGF(iX_B0(1)  ,iX2,iX3,nDOFX*(iGF_h_2-1)+jNX)
-
-              uGF     (iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX) &
-                = +uGF(iX_B0(1)  ,iX2,iX3,nDOFX*(iGF_h_3-1)+jNX)
-
-              uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX) &
-                = MAX( uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX)**2, &
-                       SqrtTiny )
-
-              uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX) &
-                = MAX( uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX)**2, &
-                       SqrtTiny )
-
-              uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) &
-                = MAX( uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX)**2, &
-                       SqrtTiny )
-
-              uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_SqrtGm-1)+iNX) &
-                =   uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) &
-                  * uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) &
-                  * uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX)
-
-            END DO
-            END DO
-            END DO
-
-          END DO
-          END DO
+          CALL DeallocateArray_X &
+                 ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                   [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                   G )
 
         END IF
 
@@ -784,19 +748,19 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), ALLOCATABLE :: G_K(:,:,:,:)
-    REAL(DP), ALLOCATABLE :: G_F(:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
-    INTEGER :: iLevel, iX2, iX3, iGF, nX1_X
-    INTEGER :: iX_B0(3), iX_E0(3)
-    INTEGER :: iNX
+    INTEGER :: iLevel
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+
+    ! --- Outer Boundary: Extrapolate fields to face ---
 
     DO iLevel = 0, nLevels-1
 
 #if defined( THORNADO_OMP )
       !$OMP PARALLEL &
-      !$OMP PRIVATE( BX, MFI, G_K, G_F, uGF, iX_B0, iX_E0, nX1_X )
+      !$OMP PRIVATE( BX, MFI, G, uGF, iX_B0, iX_E0, iX_B1, iX_E1 )
 #endif
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
@@ -809,52 +773,29 @@ CONTAINS
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
-
-        ! --- Outer Boundary ---
+        iX_B1 = iX_B0 - swX
+        iX_E1 = iX_E0 + swX
 
         IF( iX_E0(1) .EQ. amrex_geom(iLevel) % domain % hi( 1 ) )THEN
 
-          nX1_X = ( iX_E0(3) - iX_B0(3) + 1 ) * ( iX_E0(2) - iX_B0(2) + 1 )
+          CALL AllocateArray_X &
+                 ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                   [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                   G )
 
-          ALLOCATE( G_K(1:nDOFX   ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
-          ALLOCATE( G_F(1:nDOFX_X1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
+          CALL amrex2thornado_X &
+                 ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
 
-          DO iGF = 1       , nGF
-          DO iX3 = iX_B0(3), iX_E0(3)
-          DO iX2 = iX_B0(2), iX_E0(2)
-          DO iNX = 1       , nDOFX
+          CALL ApplyBoundaryConditions_Geometry_X1_Outer_ExtrapolateToFace &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G )
 
-            G_K(iNX,iX2,iX3,iGF) = uGF(iX_E0(1),iX2,iX3,nDOFX*(iGF-1)+iNX)
+          CALL thornado2amrex_X &
+                 ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
 
-          END DO
-          END DO
-          END DO
-          END DO
-
-          DO iGF = 1, nGF
-
-            CALL MatrixMatrixMultiply &
-                   ( 'N', 'N', nDOFX_X1, nX1_X, nDOFX, One, LX_X1_Up, &
-                     nDOFX_X1,   G_K(1,iX_B0(2),iX_B0(3),iGF), &
-                     nDOFX, Zero,G_F(1,iX_B0(2),iX_B0(3),iGF), &
-                     nDOFX_X1 )
-
-          END DO
-
-          DO iGF = 1       , nGF
-          DO iX3 = iX_B0(3), iX_E0(3)
-          DO iX2 = iX_B0(2), iX_E0(2)
-          DO iNX = 1       , nDOFX
-
-            uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF-1)+iNX) = G_F(1,iX2,iX3,iGF)
-
-          END DO
-          END DO
-          END DO
-          END DO
-
-          DEALLOCATE( G_F )
-          DEALLOCATE( G_K )
+          CALL DeallocateArray_X &
+                 ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                   [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                   G )
 
         END IF
 

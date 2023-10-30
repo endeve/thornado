@@ -125,7 +125,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     MultiplyWithPsi6_MF, &
     UpdateConformalFactorAndMetric_MF, &
     UpdateGeometry_MF, &
-    ApplyBoundaryConditions_Geometry, &
+    ApplyBoundaryConditions_Geometry_XCFC_MF, &
     ComputeGravitationalMass_MF, &
     PopulateMF_uMF
 
@@ -426,7 +426,7 @@ CONTAINS
 
     CALL AverageDown( MF_uGF )
 
-    CALL ApplyBoundaryConditions_Geometry( MF_uGF )
+    CALL ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
 
     DO iLevel = 0, nLevels-1
 
