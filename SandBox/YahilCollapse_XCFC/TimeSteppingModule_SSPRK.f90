@@ -11,7 +11,8 @@ MODULE TimeSteppingModule_SSPRK
     iX_E1, &
     nDOFX
   USE GeometryFieldsModule, ONLY: &
-    iGF_Psi
+    iGF_Psi, &
+    nGF
   USE XCFC_UtilitiesModule, ONLY: &
     MultiplyWithPsi6, &
     nGS, &
@@ -365,10 +366,10 @@ CONTAINS
     INTEGER , INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: &
-      G    (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      Ustar(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      M    (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      GS   (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      G    (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nGF), &
+      Ustar(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nCF), &
+      M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF), &
+      GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
 
     CALL ComputeConformalFactorSourcesAndMg_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
@@ -391,10 +392,10 @@ CONTAINS
     INTEGER , INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: &
-      G    (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      Ustar(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      M    (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      GS   (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      G    (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nGF), &
+      Ustar(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nCF), &
+      M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF), &
+      GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
 
     CALL ComputePressureTensorTrace_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )

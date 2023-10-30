@@ -38,7 +38,8 @@ MODULE InitializationModule_Relativistic
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
     iGF_Alpha,    &
-    iGF_Psi
+    iGF_Psi, &
+    nGF
   USE FluidFieldsModule, ONLY: &
     uPF, &
     iPF_D, &
@@ -54,6 +55,7 @@ MODULE InitializationModule_Relativistic
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
+    nCF, &
     uAF, &
     iAF_P, &
     iAF_T, &
@@ -383,10 +385,10 @@ CONTAINS
     INTEGER , INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: &
-      G    (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      Ustar(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      M    (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      GS   (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      G    (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nGF), &
+      Ustar(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nCF), &
+      M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF), &
+      GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
 
     CALL ComputeConformalFactorSourcesAndMg_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
@@ -409,10 +411,10 @@ CONTAINS
     INTEGER , INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: &
-      G    (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      Ustar(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      M    (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      GS   (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      G    (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nGF), &
+      Ustar(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nCF), &
+      M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF), &
+      GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
 
     CALL ComputePressureTensorTrace_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
