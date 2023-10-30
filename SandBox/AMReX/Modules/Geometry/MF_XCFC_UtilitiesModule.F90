@@ -79,7 +79,8 @@ MODULE MF_XCFC_UtilitiesModule
     nGS, &
     MultiplyWithPsi6, &
     ComputeGravitationalMass, &
-    UpdateConformalFactorAndMetric_XCFC
+    UpdateConformalFactorAndMetric_XCFC, &
+    UpdateLapseShiftCurvature_XCFC
 
   ! --- Local Modules ---
 
@@ -118,7 +119,7 @@ MODULE MF_XCFC_UtilitiesModule
   PUBLIC :: ApplyBoundaryConditions_Geometry_XCFC_MF
   PUBLIC :: ComputeGravitationalMass_MF
   PUBLIC :: UpdateConformalFactorAndMetric_XCFC_MF
-  PUBLIC :: UpdateGeometry_MF
+  PUBLIC :: UpdateLapseShiftCurvature_XCFC_MF
 
   PUBLIC :: PopulateMF_uMF
   PUBLIC :: UpdateGeometryFields_MF
@@ -329,8 +330,8 @@ CONTAINS
 
   SUBROUTINE UpdateConformalFactorAndMetric_XCFC_MF( MF_uMF, MF_uGF )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uMF(0:nLevels-1) ! Metric Fields
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uMF(0:) ! Metric Fields
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
 
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
@@ -413,16 +414,18 @@ CONTAINS
   END SUBROUTINE UpdateConformalFactorAndMetric_XCFC_MF
 
 
-  SUBROUTINE UpdateGeometry_MF( MF_uMF, MF_uGF )
+  SUBROUTINE UpdateLapseShiftCurvature_XCFC_MF( MF_uMF, MF_uGF )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uMF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uMF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
 
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
-    REAL(DP), CONTIGUOUS, POINTER :: uMF (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
+    REAL(DP), ALLOCATABLE :: M(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uMF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
     INTEGER  :: iLevel, iNX, iX1, iX2, iX3
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -448,38 +451,37 @@ CONTAINS
         iX_B1 = iX_B0 - swXX
         iX_E1 = iX_E0 + swXX
 
-        DO iX3 = iX_B1(3), iX_E1(3)
-        DO iX2 = iX_B1(2), iX_E1(2)
-        DO iX1 = iX_B1(1), iX_E1(1)
-        DO iNX = 1       , nDOFX
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
+                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nMF ], &
+                 M )
 
-          uGF    (iX1,iX2,iX3,nDOFX*(iGF_Alpha-1)+iNX) &
-            = uMF(iX1,iX2,iX3,nDOFX*(iMF_Alpha-1)+iNX)
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
-          uGF    (iX1,iX2,iX3,nDOFX*(iGF_Beta_1-1)+iNX) &
-            = uMF(iX1,iX2,iX3,nDOFX*(iMF_Beta_1-1)+iNX)
-          uGF    (iX1,iX2,iX3,nDOFX*(iGF_Beta_2-1)+iNX) &
-            = uMF(iX1,iX2,iX3,nDOFX*(iMF_Beta_2-1)+iNX)
-          uGF    (iX1,iX2,iX3,nDOFX*(iGF_Beta_3-1)+iNX) &
-            = uMF(iX1,iX2,iX3,nDOFX*(iMF_Beta_3-1)+iNX)
+        CALL amrex2thornado_X &
+               ( nMF, iX_B0, iX_E0, LBOUND( uMF ), iX_B0, iX_E0, uMF, M )
 
-          uGF    (iX1,iX2,iX3,nDOFX*(iGF_K_dd_11-1)+iNX) &
-            = uMF(iX1,iX2,iX3,nDOFX*(iMF_K_dd_11-1)+iNX)
-          uGF    (iX1,iX2,iX3,nDOFX*(iGF_K_dd_12-1)+iNX) &
-            = uMF(iX1,iX2,iX3,nDOFX*(iMF_K_dd_12-1)+iNX)
-          uGF    (iX1,iX2,iX3,nDOFX*(iGF_K_dd_13-1)+iNX) &
-            = uMF(iX1,iX2,iX3,nDOFX*(iMF_K_dd_13-1)+iNX)
-          uGF    (iX1,iX2,iX3,nDOFX*(iGF_K_dd_22-1)+iNX) &
-            = uMF(iX1,iX2,iX3,nDOFX*(iMF_K_dd_22-1)+iNX)
-          uGF    (iX1,iX2,iX3,nDOFX*(iGF_K_dd_23-1)+iNX) &
-            = uMF(iX1,iX2,iX3,nDOFX*(iMF_K_dd_23-1)+iNX)
-          uGF    (iX1,iX2,iX3,nDOFX*(iGF_K_dd_33-1)+iNX) &
-            = uMF(iX1,iX2,iX3,nDOFX*(iMF_K_dd_33-1)+iNX)
+        CALL amrex2thornado_X &
+               ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
 
-        END DO
-        END DO
-        END DO
-        END DO
+        CALL UpdateLapseShiftCurvature_XCFC &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+
+        CALL thornado2amrex_X &
+               ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
+
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
+
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
+                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nMF ], &
+                 M )
 
       END DO ! WHILE( MFI % next() )
 
@@ -491,7 +493,7 @@ CONTAINS
 
     END DO ! iLevel = 0, nLevels-1
 
-  END SUBROUTINE UpdateGeometry_MF
+  END SUBROUTINE UpdateLapseShiftCurvature_XCFC_MF
 
 
   SUBROUTINE PopulateMF_uMF( MF_uGF, MF_uMF )
@@ -585,7 +587,7 @@ CONTAINS
 
   SUBROUTINE ComputeGravitationalMass_MF( MF_uGS, GravitationalMass )
 
-    TYPE(amrex_multifab), INTENT(in)  :: MF_uGS(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)  :: MF_uGS(0:)
     REAL(DP)            , INTENT(out) :: GravitationalMass
 
     TYPE(amrex_box)    :: BX
@@ -663,7 +665,7 @@ CONTAINS
 
   SUBROUTINE ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
 
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
 
     CALL ApplyBoundaryConditions_X1_Inner( MF_uGF )
     CALL ApplyBoundaryConditions_X1_Outer( MF_uGF )
@@ -676,7 +678,7 @@ CONTAINS
 
   SUBROUTINE ApplyBoundaryConditions_X1_Inner( MF_uGF )
 
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
 
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
@@ -747,7 +749,7 @@ CONTAINS
 
   SUBROUTINE ApplyBoundaryConditions_X1_Outer( MF_uGF )
 
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
 
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI

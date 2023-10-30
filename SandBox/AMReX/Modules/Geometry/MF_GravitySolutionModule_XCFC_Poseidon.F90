@@ -124,7 +124,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     swXX, &
     MultiplyWithPsi6_MF, &
     UpdateConformalFactorAndMetric_XCFC_MF, &
-    UpdateGeometry_MF, &
+    UpdateLapseShiftCurvature_XCFC_MF, &
     ApplyBoundaryConditions_Geometry_XCFC_MF, &
     ComputeGravitationalMass_MF, &
     PopulateMF_uMF
@@ -422,7 +422,7 @@ CONTAINS
 
     ! --- Copy data from Poseidon to thornado ---
 
-    CALL UpdateGeometry_MF( MF_uMF, MF_uGF )
+    CALL UpdateLapseShiftCurvature_XCFC_MF( MF_uMF, MF_uGF )
 
     CALL AverageDown( MF_uGF )
 
