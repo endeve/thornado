@@ -90,6 +90,28 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
+## Oct 30 2023
+1. Contiued with Adam on running their roofline with Thornado. However, oneprof --metric-list does not work, i.e., gives segmenation fault. Discussed with Carolos, and he said that oneprof --metric-list does not work for our system. But oneprof $APPLICATION $INPUTS --group 1216 works. Tested with ze-gemm app, and found that it is indeed working:
+<pre>
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/roofline-org/Examples/ze_gemm> ../../tools/oneprofexe/oneprof ./ze_gemm 1000x1000 2 --group 1216
+Level Zero Matrix Multiplication (matrix size: 1000 x 1000, repeats 2 times)
+Target device: Intel(R) Data Center GPU Max 1550
+Matrix multiplication time: 0.00300288 sec
+Results are CORRECT with accuracy: 4.76852e-06
+Matrix multiplication time: 0.00305696 sec
+Results are CORRECT with accuracy: 4.76852e-06
+Total execution time: 0.0750938 sec
+[INFO] Result file is result.8031.bin
+</pre>
+2. Merge ms69 with the newest master dated Oct 23 2023, but see 10% performance regression:
+<pre>
+                                        Oct 23           Mid Oct
+sineWave   [8,8,8]      O3        :     6.2197e+00      5.6065e+00
+sineWave   [16,16,16]   O3        :     7.7251e+01      7.0337e+01
+relax      [8,8,8]      O3        :     2.5685e+01          
+relax      [16,16,16]   O3        :     2.0825e+02
+
+</pre>
 ## Oct 27 2023
 1. Had a meeting with Kwasniewski, Patryk, and Dziekonski, Adam for the roofline they are using, and it was found out the python version was the cause of the crashes. The version they are using is Python 3.10.12
 2. Chong helped in to set up miniconda which makes the installation of python version very easy. 
