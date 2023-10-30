@@ -123,7 +123,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   USE MF_XCFC_UtilitiesModule, ONLY: &
     swXX, &
     MultiplyWithPsi6_MF, &
-    UpdateConformalFactorAndMetric_MF, &
+    UpdateConformalFactorAndMetric_XCFC_MF, &
     UpdateGeometry_MF, &
     ApplyBoundaryConditions_Geometry_XCFC_MF, &
     ComputeGravitationalMass_MF, &
@@ -163,12 +163,12 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   PUBLIC :: ComputeConformalFactor_MF_Poseidon
   PUBLIC :: ComputeLapseShiftCurvature_MF_Poseidon
 
+  PUBLIC :: InitializeMetric_Euler_MF_Poseidon
+  PUBLIC :: InitializeMetric_TwoMoment_MF_Poseidon
   PUBLIC :: ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF_Poseidon
   PUBLIC :: ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF_Poseidon
   PUBLIC :: ComputePressureTensorTrace_XCFC_Euler_MF_Poseidon
   PUBLIC :: ComputePressureTensorTrace_XCFC_TwoMoment_MF_Poseidon
-  PUBLIC :: InitializeMetric_Euler_MF_Poseidon
-  PUBLIC :: InitializeMetric_TwoMoment_MF_Poseidon
 
 CONTAINS
 
@@ -328,8 +328,6 @@ CONTAINS
 
     INTEGER :: iLevel
 
-#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
-
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
@@ -350,6 +348,8 @@ CONTAINS
     Beta_u_xR(1) = Zero
     Beta_u_xR(2) = Zero
     Beta_u_xR(3) = Zero
+
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     INNER_BC_TYPES = [ 'N', 'N', 'N', 'N', 'N' ] ! Neumann
     OUTER_BC_TYPES = [ 'D', 'D', 'D', 'D', 'D' ] ! Dirichlet
@@ -374,17 +374,17 @@ CONTAINS
     CALL Poseidon_Return_Conformal_Factor &
            ( MF_uMF, FillGhostCells_Option = FillGhostCells )
 
-    CALL UpdateConformalFactorAndMetric_MF( MF_uMF, MF_uGF )
+    CALL UpdateConformalFactorAndMetric_XCFC_MF( MF_uMF, MF_uGF )
 
     CALL AverageDown( MF_uGF )
+
+#endif
 
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_destroy( MF_uMF(iLevel) )
 
     END DO
-
-#endif
 
   END SUBROUTINE ComputeConformalFactor_MF_Poseidon
 

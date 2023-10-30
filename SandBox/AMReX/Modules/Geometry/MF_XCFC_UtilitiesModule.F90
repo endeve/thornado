@@ -75,9 +75,11 @@ MODULE MF_XCFC_UtilitiesModule
     iMF_K_dd_22, &
     iMF_K_dd_23, &
     iMF_K_dd_33, &
+    nMF, &
     nGS, &
     MultiplyWithPsi6, &
-    ComputeGravitationalMass
+    ComputeGravitationalMass, &
+    UpdateConformalFactorAndMetric_XCFC
 
   ! --- Local Modules ---
 
@@ -115,7 +117,7 @@ MODULE MF_XCFC_UtilitiesModule
   PUBLIC :: MultiplyWithPsi6_MF
   PUBLIC :: ApplyBoundaryConditions_Geometry_XCFC_MF
   PUBLIC :: ComputeGravitationalMass_MF
-  PUBLIC :: UpdateConformalFactorAndMetric_MF
+  PUBLIC :: UpdateConformalFactorAndMetric_XCFC_MF
   PUBLIC :: UpdateGeometry_MF
 
   PUBLIC :: PopulateMF_uMF
@@ -325,7 +327,7 @@ CONTAINS
   END SUBROUTINE MultiplyWithPsi6_MF_Z
 
 
-  SUBROUTINE UpdateConformalFactorAndMetric_MF( MF_uMF, MF_uGF )
+  SUBROUTINE UpdateConformalFactorAndMetric_XCFC_MF( MF_uMF, MF_uGF )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uMF(0:nLevels-1) ! Metric Fields
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
@@ -333,12 +335,13 @@ CONTAINS
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
+    REAL(DP), ALLOCATABLE :: M(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uMF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
-    INTEGER  :: iLevel, iNX, iX1, iX2, iX3, iNX1, iNX2
+    INTEGER  :: iLevel
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP) :: X1, X2, Psi, h1, h2, h3
 
     DO iLevel = 0, nLevels-1
 
@@ -346,8 +349,7 @@ CONTAINS
 
 #if defined( THORNADO_OMP )
       !$OMP PARALLEL &
-      !$OMP PRIVATE( BX, MFI, uMF, uGF, iNX1, iNX2, &
-      !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, X1, X2, Psi, h1, h2, h3 )
+      !$OMP PRIVATE( BX, MFI, MF, GF, uMF, uGF, iX_B0, iX_E0, iX_B1, iX_E1 )
 #endif
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
@@ -364,37 +366,37 @@ CONTAINS
         iX_B1 = iX_B0 - swXX
         iX_E1 = iX_E0 + swXX
 
-        DO iX3 = iX_B1(3), iX_E1(3)
-        DO iX2 = iX_B1(2), iX_E1(2)
-        DO iX1 = iX_B1(1), iX_E1(1)
-        DO iNX = 1       , nDOFX
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
+                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nMF ], &
+                 M )
 
-          iNX1 = NodeNumberTableX(1,iNX)
-          iNX2 = NodeNumberTableX(2,iNX)
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
-          X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
-          X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
+        CALL amrex2thornado_X &
+               ( nMF, iX_B0, iX_E0, LBOUND( uMF ), iX_B0, iX_E0, uMF, M )
 
-          Psi = uMF(iX1,iX2,iX3,nDOFX*(iMF_Psi-1)+iNX)
-          h1  = Psi**2
-          h2  = Psi**2 * X1
-          h3  = Psi**2 * X1 * SIN( X2 )
+        CALL amrex2thornado_X &
+               ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
 
-          uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX) = Psi
-          uGF(iX1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) = h1
-          uGF(iX1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) = h2
-          uGF(iX1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX) = h3
+        CALL UpdateConformalFactorAndMetric_XCFC &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
 
-          uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX) = MAX( h1**2, SqrtTiny )
-          uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX) = MAX( h2**2, SqrtTiny )
-          uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) = MAX( h3**2, SqrtTiny )
+        CALL thornado2amrex_X &
+               ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
 
-          uGF(iX1,iX2,iX3,nDOFX*(iGF_SqrtGm-1)+iNX) = h1 * h2 * h3
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
-        END DO
-        END DO
-        END DO
-        END DO
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
+                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nMF ], &
+                 M )
 
       END DO ! WHILE( MFI % next() )
 
@@ -408,7 +410,7 @@ CONTAINS
 
     END DO ! iLevel = 0, nLevels-1
 
-  END SUBROUTINE UpdateConformalFactorAndMetric_MF
+  END SUBROUTINE UpdateConformalFactorAndMetric_XCFC_MF
 
 
   SUBROUTINE UpdateGeometry_MF( MF_uMF, MF_uGF )

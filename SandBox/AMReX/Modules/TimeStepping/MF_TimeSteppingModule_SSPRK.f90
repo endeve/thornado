@@ -433,10 +433,10 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
 
-    CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF_Poseidon &
+    CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
 
-    CALL ComputeConformalFactor_MF_Poseidon( MF_uGS, MF_uGF )
+    CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
 
   END SUBROUTINE ComputeConformalFactor
 
@@ -447,10 +447,10 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
 
-    CALL ComputePressureTensorTrace_XCFC_Euler_MF_Poseidon &
+    CALL ComputePressureTensorTrace_XCFC_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
 
-    CALL ComputeLapseShiftCurvature_MF_Poseidon &
+    CALL ComputeLapseShiftCurvature_MF &
            ( MF_uGS, MF_uGF )
 
   END SUBROUTINE ComputeLapseShiftCurvature
