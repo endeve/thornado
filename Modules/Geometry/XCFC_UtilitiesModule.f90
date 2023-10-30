@@ -220,11 +220,11 @@ CONTAINS
   SUBROUTINE ComputeGravitationalMass &
     ( iX_B0, iX_E0, iX_B1, iX_E1, GS, GravitationalMass )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
-      GS(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(in)    :: &
+      GS(nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
+    REAL(DP), INTENT(inout) :: &
       GravitationalMass
 
     INTEGER  :: iX1, iX2, iX3
@@ -234,8 +234,6 @@ CONTAINS
       ( dX1 => MeshX(1) % Width, &
         dX2 => MeshX(2) % Width, &
         dX3 => MeshX(3) % Width )
-
-    GravitationalMass = Zero
 
     ! --- Mg has been pre-multiplied with \alpha * \sqrt{ \gamma }
 

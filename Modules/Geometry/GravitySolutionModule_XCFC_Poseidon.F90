@@ -141,6 +141,8 @@ CONTAINS
 
     ! --- Set Boundary Values ---
 
+    GravitationalMass = Zero
+
     CALL ComputeGravitationalMass &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GS, GravitationalMass )
 
