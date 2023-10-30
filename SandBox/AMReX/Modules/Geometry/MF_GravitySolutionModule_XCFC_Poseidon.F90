@@ -455,7 +455,7 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: uGS     (:,:,:,:)
     INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
 
-    INTEGER  :: iLevel, iNX, iX1, iX2, iX3, ErrorExists
+    INTEGER  :: iLevel, iNX, iX1, iX2, iX3, ErrorExists, iCF
     INTEGER  :: iX_B0(3), iX_E0(3)
     REAL(DP) :: Psi6
     REAL(DP) :: uCF_K(nCF), uPF_K(nPF), &
@@ -520,12 +520,11 @@ CONTAINS
 
           Psi6 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**6
 
-          uCF_K(iCF_D ) = uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX) / Psi6
-          uCF_K(iCF_S1) = uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX) / Psi6
-          uCF_K(iCF_S2) = uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX) / Psi6
-          uCF_K(iCF_S3) = uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX) / Psi6
-          uCF_K(iCF_E ) = uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX) / Psi6
-          uCF_K(iCF_Ne) = uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX) / Psi6
+          DO iCF = 1, nCF
+
+            uCF_K(iCF) = uCF(iX1,iX2,iX3,nDOFX*(iCF-1)+iNX) / Psi6
+
+          END DO
 
           CALL ComputePrimitive_Euler_Relativistic &
                  ( uCF_K(iCF_D ), &
@@ -547,6 +546,12 @@ CONTAINS
                    iErr_Option      = iErr     (iNX,iX1,iX2,iX3) )
 
           ErrorExists = ErrorExists + iErr(iNX,iX1,iX2,iX3)
+
+          DO iCF = 1, nCF
+
+            uCF(iX1,iX2,iX3,nDOFX*(iCF-1)+iNX) = uCF_K(iCF) * Psi6
+
+          END DO
 
           CALL ComputePressureFromPrimitive &
                  ( uPF_K(iPF_D), uPF_K(iPF_E), uPF_K(iPF_Ne), Pressure )
