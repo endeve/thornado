@@ -1405,9 +1405,10 @@ CONTAINS
 
     LOGICAL  :: CONVERGED
     INTEGER  :: iLevel, ITER, iNX
-    REAL(DP) :: MinLF, MinCF
+    REAL(DP) :: MaxLF, MaxCF
 
-    INTEGER, PARAMETER :: MAX_ITER = 10
+    REAL(DP), PARAMETER :: TOLERANCE = 1.0e-13_DP
+    INTEGER , PARAMETER :: MAX_ITER = 10
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
@@ -1460,10 +1461,10 @@ CONTAINS
     CONVERGED = .FALSE.
     ITER = 0
 
-    MinLF = HUGE( One )
-    MinCF = HUGE( One )
-
     DO WHILE( .NOT. CONVERGED )
+
+      MaxLF = -HUGE( One )
+      MaxCF = -HUGE( One )
 
       ITER = ITER + 1
 
@@ -1505,21 +1506,21 @@ CONTAINS
 
         DO iNX = 1, nDOFX
 
-          MinLF = MIN( MinLF, dLF(iLevel) % Norm0( iNX ) )
-          MinCF = MIN( MinCF, dCF(iLevel) % Norm0( iNX ) )
+          MaxLF = MAX( MaxLF, dLF(iLevel) % Norm0( iNX ) )
+          MaxCF = MAX( MaxCF, dCF(iLevel) % Norm0( iNX ) )
 
         END DO
 
       END DO ! iLevel = 0, nLevels-1
 
-      CALL amrex_parallel_reduce_max( MinLF )
-      CALL amrex_parallel_reduce_max( MinCF )
+      CALL amrex_parallel_reduce_max( MaxLF )
+      CALL amrex_parallel_reduce_max( MaxCF )
 
-      IF( MAX( MinLF, MinCF ) .LT. 1.0e-13_DP ) CONVERGED = .TRUE.
+      IF( MAX( MaxLF, MaxCF ) .LT. TOLERANCE ) CONVERGED = .TRUE.
 
       IF( ITER .EQ. MAX_ITER ) &
         CALL DescribeError_MF &
-               ( 901, Real_Option = [ MAX( MinLF, MinCF ) ] )
+               ( 901, Real_Option = [ MAX( MaxLF, MaxCF ) ] )
 
     END DO ! WHILE( .NOT. CONVERGED )
 
@@ -1561,9 +1562,10 @@ CONTAINS
 
     LOGICAL  :: CONVERGED
     INTEGER  :: iLevel, ITER, iNX
-    REAL(DP) :: MinLF, MinCF
+    REAL(DP) :: MaxLF, MaxCF
 
-    INTEGER, PARAMETER :: MAX_ITER = 10
+    REAL(DP), PARAMETER :: TOLERANCE = 1.0e-13_DP
+    INTEGER , PARAMETER :: MAX_ITER = 10
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
@@ -1616,10 +1618,10 @@ CONTAINS
     CONVERGED = .FALSE.
     ITER = 0
 
-    MinLF = HUGE( One )
-    MinCF = HUGE( One )
-
     DO WHILE( .NOT. CONVERGED )
+
+      MaxLF = HUGE( One )
+      MaxCF = HUGE( One )
 
       ITER = ITER + 1
 
@@ -1663,21 +1665,21 @@ CONTAINS
 
         DO iNX = 1, nDOFX
 
-          MinLF = MIN( MinLF, dLF(iLevel) % Norm0( iNX ) )
-          MinCF = MIN( MinCF, dCF(iLevel) % Norm0( iNX ) )
+          MaxLF = MAX( MaxLF, dLF(iLevel) % Norm0( iNX ) )
+          MaxCF = MAX( MaxCF, dCF(iLevel) % Norm0( iNX ) )
 
         END DO
 
       END DO ! iLevel = 0, nLevels-1
 
-      CALL amrex_parallel_reduce_max( MinLF )
-      CALL amrex_parallel_reduce_max( MinCF )
+      CALL amrex_parallel_reduce_max( MaxLF )
+      CALL amrex_parallel_reduce_max( MaxCF )
 
-      IF( MAX( MinLF, MinCF ) .LT. 1.0e-13_DP ) CONVERGED = .TRUE.
+      IF( MAX( MaxLF, MaxCF ) .LT. TOLERANCE ) CONVERGED = .TRUE.
 
       IF( ITER .EQ. MAX_ITER ) &
         CALL DescribeError_MF &
-               ( 901, Real_Option = [ MAX( MinLF, MinCF ) ] )
+               ( 901, Real_Option = [ MAX( MaxLF, MaxCF ) ] )
 
     END DO ! WHILE( .NOT. CONVERGED )
 

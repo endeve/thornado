@@ -176,6 +176,8 @@ CONTAINS
                           iX_B0(3):iX_E0(3),nMF)
 
     INTEGER  :: ITER
+    INTEGER , PARAMETER :: MAX_ITER  = 10
+    REAL(DP), PARAMETER :: TOLERANCE = 1.0e-13_DP
     REAL(DP) :: dAlpha, dPsi
     LOGICAL  :: CONVERGED
 
@@ -220,6 +222,12 @@ CONTAINS
 
     END IF
 
+    CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+
+    CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+
     ! --- Iterate to incorporate gravity in initial conditions ---
 
     CONVERGED = .FALSE.
@@ -251,8 +259,8 @@ CONTAINS
                    iX_B0(2):iX_E0(2), &
                    iX_B0(3):iX_E0(3),iGF_Psi  )
 
-      dAlpha = MINVAL( ABS( dAl2 - dAl1 ) / ( Half * ( dAl1 + dAl2 ) ) )
-      dPsi   = MINVAL( ABS( dCF2 - dCF1 ) / ( Half * ( dCF1 + dCF2 ) ) )
+      dAlpha = MAXVAL( ABS( dAl2 - dAl1 ) )
+      dPsi   = MAXVAL( ABS( dCF2 - dCF1 ) )
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -274,9 +282,9 @@ CONTAINS
       END DO
       END DO
 
-      IF( MAX( dAlpha, dPsi ) .LT. 1.0e-12_DP ) CONVERGED = .TRUE.
+      IF( MAX( dAlpha, dPsi ) .LT. TOLERANCE ) CONVERGED = .TRUE.
 
-      IF( ITER .EQ. 20 )THEN
+      IF( ITER .EQ. MAX_ITER )THEN
 
         WRITE(*,*) 'Could not initialize fields. Exiting...'
         STOP
@@ -290,16 +298,6 @@ CONTAINS
 
     CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
-
-    CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, +1 )
-
-    CALL ComputeLapseShiftCurvature &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
-
-    CALL ComputeLapseShiftCurvature &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
-
-    CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, -1 )
 
     WRITE(*,*)
     WRITE(*,'(6x,A,L)') &
