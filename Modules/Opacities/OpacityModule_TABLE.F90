@@ -459,8 +459,8 @@ CONTAINS
     NNS_MinD    = MAX( NNS_MinD   , Op_MinD )
     NuPair_MinD = MAX( NuPair_MinD, Op_MinD )
 
-    EmAb_Nucleon_MinD = MAX( EmAb_Nucleon_MinD, Op_EmAb_MinD )
-    EmAb_Nuclei_MinD  = MAX( EmAb_Nuclei_MinD , Op_EmAb_MinD )
+    EmAb_Nucleon_MinD = MAX( EmAb_Nucleon_MinD, EmAb_MinD )
+    EmAb_Nuclei_MinD  = MAX( EmAb_Nuclei_MinD , EmAb_MinD )
 
     EmAb_MaxD   = MIN( EmAb_MaxD  , Op_MaxD )
     Iso_MaxD    = MIN( Iso_MaxD   , Op_MaxD )
