@@ -470,8 +470,8 @@ CONTAINS
     NNS_MaxD    = MIN( NNS_MaxD   , Op_MaxD )
     NuPair_MaxD = MIN( NuPair_MaxD, Op_MaxD )
 
-    EmAb_Nucleon_MaxD = MIN( EmAb_Nucleon_MaxD, Op_EmAb_MaxD )
-    EmAb_Nuclei_MaxD  = MIN( EmAb_Nuclei_MaxD , Op_EmAb_MaxD )
+    EmAb_Nucleon_MaxD = MIN( EmAb_Nucleon_MaxD, EmAb_MaxD )
+    EmAb_Nuclei_MaxD  = MIN( EmAb_Nuclei_MaxD , EmAb_MaxD )
 
     nPointsE = nE * nNodesE
 
