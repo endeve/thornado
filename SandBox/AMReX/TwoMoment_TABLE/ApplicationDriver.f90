@@ -205,19 +205,19 @@ num = 1
            MF_uGR_Option = MF_uGR )
 
 
-  CALL WriteFieldsAMReX_Checkpoint &
-         ( StepNo, nLevels, dt, t_new, &
-           BaryonicMass_Initial, &
-           Energy_Initial, &
-           ElectronNumber_Initial, &
-           ADMMass_Initial, &
-           MF_uGF % BA % P, &
-           iWriteFields_uGF = 1, &
-           iWriteFields_uCF = 1, &
-           iWriteFields_uCR = 1, &
-           pMF_uGF_Option = MF_uGF % P, &
-           pMF_uCF_Option = MF_uCF % P, &
-           pMF_uCR_Option = MF_uCR % P )
+   CALL WriteFieldsAMReX_Checkpoint &
+          ( StepNo, nLevels, dt, t_new, &
+            [ BaryonicMass_Initial  , BaryonicMass_OffGrid   ], &
+            [ Energy_Initial        , Energy_OffGrid         ], &
+            [ ElectronNumber_Initial, ElectronNumber_OffGrid ], &
+            [ ADMMass_Initial       , ADMMass_OffGrid        ], &
+            MF_uGF % BA % P, &
+            iWriteFields_uGF = 1, &
+            iWriteFields_uCF = 1, &
+            iWriteFields_uCR = 1, &
+            pMF_uGF_Option = MF_uGF % P, &
+            pMF_uCF_Option = MF_uCF % P, &
+            pMF_uCR_Option = MF_uCR % P )
 
 
 
