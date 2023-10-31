@@ -1009,7 +1009,7 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: D
 
-    QueryOpacity &
+    QueryOpacity_EmAb_Nuclei &
         = ( D >= EmAb_Nuclei_MinD .AND. D <= EmAb_Nuclei_MaxD )
 
   END FUNCTION QueryOpacity_EmAb_Nuclei
@@ -1024,7 +1024,7 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: D
 
-    QueryOpacity &
+    QueryOpacity_EmAb_Nucleon &
         = ( D >= EmAb_Nucleon_MinD .AND. D <= EmAb_Nucleon_MaxD )
 
   END FUNCTION QueryOpacity_EmAb_Nucleon
@@ -1039,7 +1039,7 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: D
 
-    QueryOpacity &
+    QueryOpacity_EmAb &
         = ( D >= EmAb_MinD .AND. D <= EmAb_MaxD ) &
             .AND. (      QueryOpacity_EmAb_Nucleon( D ) &
                     .OR. QueryOpacity_EmAb_Nuclei ( D ) )
@@ -1056,7 +1056,7 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: D
 
-    QueryOpacity &
+    QueryOpacity_Iso &
         = ( D >= Iso_MinD .AND. D <= Iso_MaxD )
 
   END FUNCTION QueryOpacity_Iso
@@ -1071,7 +1071,7 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: D
 
-    QueryOpacity &
+    QueryOpacity_NES &
         = ( D >= NES_MinD .AND. D <= NES_MaxD )
 
   END FUNCTION QueryOpacity_NES
@@ -1086,7 +1086,7 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: D
 
-    QueryOpacity &
+    QueryOpacity_Pair &
         = ( D >= Pair_MinD .AND. D <= Pair_MaxD )
 
   END FUNCTION QueryOpacity_Pair
@@ -1101,7 +1101,7 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: D
 
-    QueryOpacity &
+    QueryOpacity_Brem &
         = ( D >= Brem_MinD .AND. D <= Brem_MaxD )
 
   END FUNCTION QueryOpacity_Brem
@@ -1116,7 +1116,7 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: D
 
-    QueryOpacity &
+    QueryOpacity_NNS &
         = ( D >= NNS_MinD .AND. D <= NNS_MaxD )
 
   END FUNCTION QueryOpacity_NNS
@@ -1131,7 +1131,7 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: D
 
-    QueryOpacity &
+    QueryOpacity_NuPair &
         = ( D >= NuPair_MinD .AND. D <= NuPair_MaxD )
 
   END FUNCTION QueryOpacity_NuPair
