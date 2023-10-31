@@ -427,7 +427,7 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: uMF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
-    INTEGER  :: iLevel, iNX, iX1, iX2, iX3
+    INTEGER  :: iLevel
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
     DO iLevel = 0, nLevels-1
