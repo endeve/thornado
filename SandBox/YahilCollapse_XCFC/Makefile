@@ -14,14 +14,12 @@ all: ApplicationDriver
 ApplicationDriver: \
 	$(POSEIDON_o) \
 	$(thornado) \
-	Poseidon_UtilitiesModule.o \
 	InitializationModule_Relativistic.o \
 	TimeSteppingModule_SSPRK.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(POSEIDON_o) \
 	$(thornado) \
-	Poseidon_UtilitiesModule.o \
 	InitializationModule_Relativistic.o \
 	TimeSteppingModule_SSPRK.o \
 	ApplicationDriver.o \
@@ -34,20 +32,6 @@ clobber: clean
 	rm -f  ApplicationDriver_$(MACHINE)
 	rm -rf ApplicationDriver_$(MACHINE).dSYM
 
-Poseidon_UtilitiesModule.o: \
-  KindModule.o \
-  ProgramHeaderModule.o \
-  ReferenceElementModuleX.o \
-  MeshModule.o \
-  GeometryFieldsModule.o \
-  FluidFieldsModule.o \
-  Euler_UtilitiesModule_Relativistic.o \
-  EquationOfStateModule.o \
-  Euler_ErrorModule.o \
-  XCFC_UtilitiesModule.o \
-  TimersModule_Euler.o \
-  Poseidon_UtilitiesModule.F90
-
 InitializationModule_Relativistic.o: \
   KindModule.o \
   ProgramHeaderModule.o \
@@ -55,7 +39,7 @@ InitializationModule_Relativistic.o: \
   MeshModule.o \
   XCFC_UtilitiesModule.o \
   GravitySolutionModule_XCFC.o \
-  Poseidon_UtilitiesModule.o \
+  Euler_XCFC_UtilitiesModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule_IDEAL.o \
@@ -75,7 +59,7 @@ TimeSteppingModule_SSPRK.o: \
   FluidFieldsModule.o \
   Euler_SlopeLimiterModule_Relativistic_TABLE.o \
   Euler_PositivityLimiterModule_Relativistic_TABLE.o \
-  Poseidon_UtilitiesModule.o \
+  Euler_XCFC_UtilitiesModule.o \
   TimersModule_Euler.o \
   Euler_dgDiscretizationModule.o \
   Euler_TallyModule_Relativistic.o \
@@ -100,7 +84,7 @@ ApplicationDriver.o: \
   TimeSteppingModule_SSPRK.o \
   UnitsModule.o \
   Euler_TallyModule_Relativistic.o \
-  Poseidon_UtilitiesModule.o \
+  Euler_XCFC_UtilitiesModule.o \
   TimersModule_Euler.o \
   ApplicationDriver.f90
 

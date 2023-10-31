@@ -292,3 +292,17 @@ Euler_PerturbationModule.o: \
   FluidFieldsModule.o \
   Euler_UtilitiesModule_NonRelativistic.o \
   Euler_PerturbationModule.f90
+
+Euler_XCFC_UtilitiesModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_UtilitiesModule_Relativistic.o \
+  EquationOfStateModule.o \
+  Euler_ErrorModule.o \
+  XCFC_UtilitiesModule.o \
+  TimersModule_Euler.o \
+  Euler_XCFC_UtilitiesModule.f90

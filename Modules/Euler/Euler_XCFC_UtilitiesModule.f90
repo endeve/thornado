@@ -1,4 +1,4 @@
-MODULE Poseidon_UtilitiesModule
+MODULE Euler_XCFC_UtilitiesModule
 
   USE KindModule, ONLY: &
     DP, &
@@ -63,14 +63,14 @@ MODULE Poseidon_UtilitiesModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: ComputeConformalFactorSourcesAndMg_XCFC
-  PUBLIC :: ComputePressureTensorTrace_XCFC
+  PUBLIC :: ComputeConformalFactorSourcesAndMg_Euler_XCFC
+  PUBLIC :: ComputePressureTensorTrace_Euler_XCFC
   PUBLIC :: ComputeNewtonianPotential_SphericalSymmetry
 
 CONTAINS
 
 
-  SUBROUTINE ComputeConformalFactorSourcesAndMg_XCFC &
+  SUBROUTINE ComputeConformalFactorSourcesAndMg_Euler_XCFC &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GS )
 
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -176,8 +176,8 @@ CONTAINS
 
       WRITE(*,*) 'ERROR'
       WRITE(*,*) '-----'
-      WRITE(*,*) '    MODULE: Poseidon_UtilitiesModule'
-      WRITE(*,*) 'SUBROUTINE: ComputeConformalFactorSourcesAndMg_XCFC'
+      WRITE(*,*) '    MODULE: Euler_XCFC_UtilitiesModule'
+      WRITE(*,*) 'SUBROUTINE: ComputeConformalFactorSourcesAndMg_Euler_XCFC'
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -209,7 +209,7 @@ CONTAINS
                             G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ], &
             Char_Option = [ 'NA' ], &
             Message_Option &
-              = 'Calling from ComputeConformalFactorSourcesAndMg_XCFC' )
+              = 'Calling from ComputeConformalFactorSourcesAndMg_Euler_XCFC' )
 
       END DO
       END DO
@@ -220,10 +220,10 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_GS_ComputeSourceTerms )
 
-  END SUBROUTINE ComputeConformalFactorSourcesAndMg_XCFC
+  END SUBROUTINE ComputeConformalFactorSourcesAndMg_Euler_XCFC
 
 
-  SUBROUTINE ComputePressureTensorTrace_XCFC &
+  SUBROUTINE ComputePressureTensorTrace_Euler_XCFC &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GS )
 
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -310,8 +310,8 @@ CONTAINS
 
       WRITE(*,*) 'ERROR'
       WRITE(*,*) '-----'
-      WRITE(*,*) '    MODULE: Poseidon_UtilitiesModule'
-      WRITE(*,*) 'SUBROUTINE: ComputePressureTensorTrace_XCFC'
+      WRITE(*,*) '    MODULE: Euler_XCFC_UtilitiesModule'
+      WRITE(*,*) 'SUBROUTINE: ComputePressureTensorTrace_Euler_XCFC'
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -334,7 +334,7 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_GS_ComputeSourceTerms )
 
-  END SUBROUTINE ComputePressureTensorTrace_XCFC
+  END SUBROUTINE ComputePressureTensorTrace_Euler_XCFC
 
 
   SUBROUTINE ComputeNewtonianPotential_SphericalSymmetry &
@@ -391,4 +391,4 @@ CONTAINS
   END SUBROUTINE ComputeNewtonianPotential_SphericalSymmetry
 
 
-END MODULE Poseidon_UtilitiesModule
+END MODULE Euler_XCFC_UtilitiesModule

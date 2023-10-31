@@ -20,7 +20,6 @@ ApplicationDriver: \
 	$(POSEIDON_o) \
 	$(thornado) \
 	ProgenitorModule.o \
-	Poseidon_UtilitiesModule.o \
 	InitializationModule_Relativistic.o \
 	TimeSteppingModule_SSPRK.o \
 	ApplicationDriver.o
@@ -29,7 +28,6 @@ ApplicationDriver: \
 	$(POSEIDON_o) \
 	$(thornado) \
 	ProgenitorModule.o \
-	Poseidon_UtilitiesModule.o \
 	InitializationModule_Relativistic.o \
 	TimeSteppingModule_SSPRK.o \
 	ApplicationDriver.o \
@@ -76,20 +74,6 @@ ProgenitorModule.o: \
   UtilitiesModule.o \
   ProgenitorModule.f90
 
-Poseidon_UtilitiesModule.o: \
-  KindModule.o \
-  ProgramHeaderModule.o \
-  ReferenceElementModuleX.o \
-  MeshModule.o \
-  GeometryFieldsModule.o \
-  FluidFieldsModule.o \
-  Euler_UtilitiesModule_Relativistic.o \
-  EquationOfStateModule.o \
-  Euler_ErrorModule.o \
-  XCFC_UtilitiesModule.o \
-  TimersModule_Euler.o \
-  Poseidon_UtilitiesModule.F90
-
 InitializationModule_Relativistic.o: \
   KindModule.o \
   ProgramHeaderModule.o \
@@ -97,7 +81,7 @@ InitializationModule_Relativistic.o: \
   UtilitiesModule.o \
   XCFC_UtilitiesModule.o \
   GravitySolutionModule_XCFC.o \
-  Poseidon_UtilitiesModule.o \
+  Euler_XCFC_UtilitiesModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   Euler_SlopeLimiterModule_Relativistic_TABLE.o \
@@ -116,7 +100,7 @@ TimeSteppingModule_SSPRK.o: \
   FluidFieldsModule.o \
   Euler_SlopeLimiterModule_Relativistic_IDEAL.o \
   Euler_PositivityLimiterModule_Relativistic_IDEAL.o \
-  Poseidon_UtilitiesModule.o \
+  Euler_XCFC_UtilitiesModule.o \
   TimersModule_Euler.o \
   Euler_dgDiscretizationModule.o \
   Euler_TallyModule_Relativistic.o \
@@ -143,7 +127,7 @@ ApplicationDriver.o: \
   UnitsModule.o \
   Euler_TallyModule_Relativistic.o \
   TimersModule_Euler.o \
-  Poseidon_UtilitiesModule.o \
+  Euler_XCFC_UtilitiesModule.o \
   ApplicationDriver.f90
 
 ComputePrimitiveTest.o: \

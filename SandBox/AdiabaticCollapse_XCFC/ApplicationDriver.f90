@@ -72,7 +72,7 @@ PROGRAM ApplicationDriver
     InitializeTally_Euler_Relativistic, &
     FinalizeTally_Euler_Relativistic, &
     ComputeTally_Euler_Relativistic
-  USE Poseidon_UtilitiesModule, ONLY: &
+  USE Euler_XCFC_UtilitiesModule, ONLY: &
     ComputeNewtonianPotential_SphericalSymmetry
   USE TimersModule_Euler, ONLY: &
     TimeIt_Euler, &
