@@ -29,7 +29,7 @@ thornado.nSpecies  = 2
 thornado.iCycleD   = 0010     # MOD this number to display info
 thornado.iCycleW   = -0100     # MOD this number to write plotfile
 thornado.iCycleChk = -1000     # MOD this number to write checkpoint file
-thornado.iRestart  = 5001       # Checkpoint-file to restart from. Negative for clean start
+thornado.iRestart  = -1       # Checkpoint-file to restart from. Negative for clean start
 thornado.UsePhysicalUnits = 1
 
 geometry.coord_sys   = 0             # Cartesian
@@ -47,8 +47,8 @@ amr.ref_ratio         = 2
 
 # Positivity limiter parameters
 PL.UsePositivityLimiter_TwoMoment = 1
-PL.Min_1_TwoMoment                = 1.0e-26
-PL.Min_2_TwoMoment                = 1.0e-26
+PL.Min_1_TwoMoment                = 1.0e-50
+PL.Min_2_TwoMoment                = 1.0e-50
 
 # Slope limiter parameters
 SL.UseSlopeLimiter_TwoMoment           = 0
@@ -67,10 +67,10 @@ OP.OpacityTableName_Brem = "wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5"
 
 
 # Non-Linear Solve Parameters
-NL.M_outer         = 1
+NL.M_outer         = 3
 NL.MaxIter_outer   = 100
 NL.Rtol_outer      = 1.0e-8
-NL.M_inner         = 5
+NL.M_inner         = 2
 NL.MaxIter_inner   = 100
 NL.Rtol_inner      = 1.0e-8
 NL.Include_NES     = 1
