@@ -69,10 +69,11 @@ MODULE MF_TimeSteppingModule_SSPRK
     UpdateLapseShiftCurvature_XCFC_MF, &
     ApplyBoundaryConditions_Geometry_XCFC_MF
   USE MF_GravitySolutionModule_XCFC, ONLY: &
-    ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF, &
     ComputeConformalFactor_XCFC_MF, &
-    ComputePressureTensorTrace_XCFC_Euler_MF, &
     ComputeLapseShiftCurvature_XCFC_MF
+  USE MF_Euler_XCFC_UtilitiesModule, ONLY: &
+    ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF, &
+    ComputePressureTensorTrace_XCFC_Euler_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
