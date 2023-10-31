@@ -23,7 +23,8 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE FluidFieldsModule, ONLY: &
     nCF
   USE XCFC_UtilitiesModule, ONLY: &
-    nGS
+    nGS, &
+    nMF
 
   ! --- Local Modules ---
 
@@ -63,7 +64,10 @@ MODULE MF_TimeSteppingModule_SSPRK
     ApplyFluxCorrection_Euler_MF
   USE MF_XCFC_UtilitiesModule, ONLY: &
     swXX, &
-    MultiplyWithPsi6_MF
+    MultiplyWithPsi6_MF, &
+    UpdateConformalFactorAndMetric_XCFC_MF, &
+    UpdateLapseShiftCurvature_XCFC_MF, &
+    ApplyBoundaryConditions_Geometry_XCFC_MF
   USE MF_GravitySolutionModule_XCFC, ONLY: &
     ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF, &
     ComputeConformalFactor_XCFC_MF, &
@@ -149,6 +153,7 @@ CONTAINS
     TYPE(amrex_multifab) :: MF_U(1:nStages,0:nMaxLevels-1)
     TYPE(amrex_multifab) :: MF_D(1:nStages,0:nMaxLevels-1)
     TYPE(amrex_multifab) :: MF_uGS(        0:nMaxLevels-1)
+    TYPE(amrex_multifab) :: MF_uMF(        0:nMaxLevels-1)
 
     INTEGER :: iS, jS, nCompCF
     INTEGER :: iLevel, iErr
@@ -169,6 +174,11 @@ CONTAINS
                ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                  nDOFX * nGS, swXX )
         CALL MF_uGS(iLevel) % SetVal( Zero ) ! remove this after debugging
+
+        CALL amrex_multifab_build &
+               ( MF_uMF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+                 nDOFX * nMF, swXX )
+        CALL MF_uMF(iLevel) % SetVal( Zero ) ! remove this after debugging
 
       END DO
 
@@ -234,7 +244,7 @@ CONTAINS
 
             CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
 
-            CALL ComputeConformalFactor( MF_uGF, MF_U(iS,:), MF_uGS )
+            CALL ComputeConformalFactor( MF_uGF, MF_U(iS,:), MF_uGS, MF_uMF )
 
             CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
@@ -254,9 +264,11 @@ CONTAINS
 
             CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
 
-            CALL ComputeConformalFactor( MF_uGF, MF_U(iS,:), MF_uGS )
+            CALL ComputeConformalFactor &
+                   ( MF_uGF, MF_U(iS,:), MF_uGS, MF_uMF )
 
-            CALL ComputeLapseShiftCurvature( MF_uGF, MF_U(iS,:), MF_uGS )
+            CALL ComputeLapseShiftCurvature &
+                   ( MF_uGF, MF_U(iS,:), MF_uGS, MF_uMF )
 
             CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
@@ -329,7 +341,7 @@ CONTAINS
 
       CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
 
-      CALL ComputeConformalFactor( MF_uGF, MF_uCF, MF_uGS )
+      CALL ComputeConformalFactor( MF_uGF, MF_uCF, MF_uGS, MF_uMF )
 
       CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
@@ -349,12 +361,13 @@ CONTAINS
 
       CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
 
-      CALL ComputeConformalFactor( MF_uGF, MF_uCF, MF_uGS )
+      CALL ComputeConformalFactor( MF_uGF, MF_uCF, MF_uGS, MF_uMF )
 
-      CALL ComputeLapseShiftCurvature( MF_uGF, MF_uCF, MF_uGS )
+      CALL ComputeLapseShiftCurvature( MF_uGF, MF_uCF, MF_uGS, MF_uMF )
 
       DO iLevel = 0, nLevels-1
 
+        CALL amrex_multifab_destroy( MF_uMF(iLevel) )
         CALL amrex_multifab_destroy( MF_uGS(iLevel) )
 
       END DO
@@ -427,31 +440,46 @@ CONTAINS
   END SUBROUTINE AllocateButcherTables_SSPRK
 
 
-  SUBROUTINE ComputeConformalFactor( MF_uGF, MF_uCF, MF_uGS )
+  SUBROUTINE ComputeConformalFactor( MF_uGF, MF_uCF, MF_uGS, MF_uMF )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:)
 
     CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
 
-    CALL ComputeConformalFactor_XCFC_MF( MF_uGS, MF_uGF )
+    CALL ComputeConformalFactor_XCFC_MF &
+           ( MF_uGS, MF_uMF )
+
+    CALL UpdateConformalFactorAndMetric_XCFC_MF &
+           ( MF_uMF, MF_uGF )
+
+    CALL AverageDown( MF_uGF )
 
   END SUBROUTINE ComputeConformalFactor
 
 
-  SUBROUTINE ComputeLapseShiftCurvature( MF_uGF, MF_uCF, MF_uGS )
+  SUBROUTINE ComputeLapseShiftCurvature( MF_uGF, MF_uCF, MF_uGS, MF_uMF )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:)
 
     CALL ComputePressureTensorTrace_XCFC_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
 
     CALL ComputeLapseShiftCurvature_XCFC_MF &
-           ( MF_uGS, MF_uGF )
+           ( MF_uGS, MF_uMF )
+
+    CALL UpdateLapseShiftCurvature_XCFC_MF &
+           ( MF_uMF, MF_uGF )
+
+    CALL AverageDown( MF_uGF )
+
+    CALL ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
 
   END SUBROUTINE ComputeLapseShiftCurvature
 

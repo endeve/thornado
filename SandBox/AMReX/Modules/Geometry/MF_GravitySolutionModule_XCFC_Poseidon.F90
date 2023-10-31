@@ -315,27 +315,14 @@ CONTAINS
   END SUBROUTINE FinalizeGravitySolver_XCFC_MF_Poseidon
 
 
-  SUBROUTINE ComputeConformalFactor_XCFC_MF_Poseidon( MF_uGS, MF_uGF )
+  SUBROUTINE ComputeConformalFactor_XCFC_MF_Poseidon( MF_uGS, MF_uMF )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGS(0:nLevels-1) ! Gravity Sources
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGS(0:) ! Gravity Sources
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:)
 
     REAL(DP)         :: GravitationalMass, Psi_xR, AlphaPsi_xR, Beta_u_xR(3)
     CHARACTER(LEN=1) :: INNER_BC_TYPES (5), OUTER_BC_TYPES (5)
     REAL(DP)         :: INNER_BC_VALUES(5), OUTER_BC_VALUES(5)
-
-    TYPE(amrex_multifab) :: MF_uMF(0:nLevels-1) ! Metric Fields
-
-    INTEGER :: iLevel
-
-    DO iLevel = 0, nLevels-1
-
-      CALL amrex_multifab_build &
-             ( MF_uMF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX * nMF, swXX )
-      CALL MF_uMF(iLevel) % SetVal( Zero )
-
-    END DO
 
     ! --- Set Boundary Values ---
 
@@ -374,40 +361,17 @@ CONTAINS
     CALL Poseidon_Return_Conformal_Factor &
            ( MF_uMF, FillGhostCells_Option = FillGhostCells )
 
-    CALL UpdateConformalFactorAndMetric_XCFC_MF( MF_uMF, MF_uGF )
-
-    CALL AverageDown( MF_uGF )
-
 #endif
-
-    DO iLevel = 0, nLevels-1
-
-      CALL amrex_multifab_destroy( MF_uMF(iLevel) )
-
-    END DO
 
   END SUBROUTINE ComputeConformalFactor_XCFC_MF_Poseidon
 
 
-  SUBROUTINE ComputeLapseShiftCurvature_XCFC_MF_Poseidon( MF_uGS, MF_uGF )
+  SUBROUTINE ComputeLapseShiftCurvature_XCFC_MF_Poseidon( MF_uGS, MF_uMF )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGS(0:nLevels-1) ! Gravity Sources
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-
-    TYPE(amrex_multifab) :: MF_uMF(0:nLevels-1) ! Metric Fields
-
-    INTEGER :: iLevel
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:nLevels-1)
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
-
-    DO iLevel = 0, nLevels-1
-
-      CALL amrex_multifab_build &
-             ( MF_uMF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX * nMF, swXX )
-      CALL MF_uMF(iLevel) % SetVal( Zero )
-
-    END DO
 
     ! --- Set gravity sources with updated conformal factor ---
 
@@ -419,20 +383,6 @@ CONTAINS
 
     CALL Poseidon_Return_ALL &
            ( MF_uMF, FillGhostCells_Option = FillGhostCells )
-
-    ! --- Copy data from Poseidon to thornado ---
-
-    CALL UpdateLapseShiftCurvature_XCFC_MF( MF_uMF, MF_uGF )
-
-    CALL AverageDown( MF_uGF )
-
-    CALL ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
-
-    DO iLevel = 0, nLevels-1
-
-      CALL amrex_multifab_destroy( MF_uMF(iLevel) )
-
-    END DO
 
 #endif
 
@@ -1445,6 +1395,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uAF(0:nLevels-1)
 
     TYPE(amrex_multifab) :: MF_uGS(0:nLevels-1)
+    TYPE(amrex_multifab) :: MF_uMF(0:nLevels-1)
     TYPE(amrex_multifab) :: LF1   (0:nLevels-1)
     TYPE(amrex_multifab) :: LF2   (0:nLevels-1)
     TYPE(amrex_multifab) :: dLF   (0:nLevels-1)
@@ -1466,6 +1417,11 @@ CONTAINS
              ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                nDOFX * nGS, swXX )
       CALL MF_uGS(iLevel) % SetVal( Zero )
+
+      CALL amrex_multifab_build &
+             ( MF_uMF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX * nMF, swXX )
+      CALL MF_uMF(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( LF1(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
@@ -1523,9 +1479,9 @@ CONTAINS
 
       CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, +1 )
 
-      CALL ComputeConformalFactor( MF_uGF, MF_uCF, MF_uGS )
+      CALL ComputeConformalFactor_Euler( MF_uGF, MF_uCF, MF_uGS, MF_uMF )
 
-      CALL ComputeLapseShiftCurvature( MF_uGF, MF_uCF, MF_uGS )
+      CALL ComputeLapseShiftCurvature_Euler( MF_uGF, MF_uCF, MF_uGS, MF_uMF )
 
       CALL ComputeConserved_Euler_MF( MF_uGF, MF_uPF, MF_uAF, MF_uCF )
 
@@ -1575,6 +1531,7 @@ CONTAINS
       CALL amrex_multifab_destroy( dLF   (iLevel) )
       CALL amrex_multifab_destroy( LF2   (iLevel) )
       CALL amrex_multifab_destroy( LF1   (iLevel) )
+      CALL amrex_multifab_destroy( MF_uMF(iLevel) )
       CALL amrex_multifab_destroy( MF_uGS(iLevel) )
 
     END DO
@@ -1594,6 +1551,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uAF(0:nLevels-1)
 
     TYPE(amrex_multifab) :: MF_uGS(0:nLevels-1)
+    TYPE(amrex_multifab) :: MF_uMF(0:nLevels-1)
     TYPE(amrex_multifab) :: LF1   (0:nLevels-1)
     TYPE(amrex_multifab) :: LF2   (0:nLevels-1)
     TYPE(amrex_multifab) :: dLF   (0:nLevels-1)
@@ -1615,6 +1573,11 @@ CONTAINS
              ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
                nDOFX * nGS, 0 )
       CALL MF_uGS(iLevel) % SetVal( Zero )
+
+      CALL amrex_multifab_build &
+             ( MF_uMF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX * nMF, 0 )
+      CALL MF_uMF(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( LF1(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
@@ -1672,17 +1635,11 @@ CONTAINS
 
       CALL MultiplyWithPsi6_MF( iE_B0, iE_E0, iE_B1, iE_E1, MF_uGF, MF_uCR, +1 )
 
-      CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF_Poseidon &
-             ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
+      CALL ComputeConformalFactor_TwoMoment &
+             ( MF_uGF, MF_uCF, MF_uCR, MF_uGS, MF_uMF )
 
-      CALL ComputeConformalFactor_XCFC_MF_Poseidon( MF_uGS, MF_uGF )
-
-      CALL ComputePressureTensorTrace_XCFC_TwoMoment_MF_Poseidon &
-             ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
-
-      CALL MultiplyWithPsi6_MF( iE_B0, iE_E0, iE_B1, iE_E1, MF_uGF, MF_uCR, -1 )
-
-      CALL ComputeLapseShiftCurvature_XCFC_MF_Poseidon( MF_uGS, MF_uGF )
+      CALL ComputeLapseShiftCurvature_TwoMoment &
+             ( MF_uGF, MF_uCF, MF_uCR, MF_uGS, MF_uMF )
 
       CALL ComputeConserved_Euler_MF( MF_uGF, MF_uPF, MF_uAF, MF_uCF )
 
@@ -1732,6 +1689,7 @@ CONTAINS
       CALL amrex_multifab_destroy( dLF   (iLevel) )
       CALL amrex_multifab_destroy( LF2   (iLevel) )
       CALL amrex_multifab_destroy( LF1   (iLevel) )
+      CALL amrex_multifab_destroy( MF_uMF(iLevel) )
       CALL amrex_multifab_destroy( MF_uGS(iLevel) )
 
     END DO
@@ -1744,33 +1702,88 @@ CONTAINS
   ! --- PRIVATE SUBROUTINES ---
 
 
-  SUBROUTINE ComputeConformalFactor( MF_uGF, MF_uCF, MF_uGS )
+  SUBROUTINE ComputeConformalFactor_Euler( MF_uGF, MF_uCF, MF_uGS, MF_uMF )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:)
 
     CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF_Poseidon &
            ( MF_uGF, MF_uCF, MF_uGS )
 
-    CALL ComputeConformalFactor_XCFC_MF_Poseidon( MF_uGS, MF_uGF )
+    CALL ComputeConformalFactor_XCFC_MF_Poseidon( MF_uGS, MF_uMF )
 
-  END SUBROUTINE ComputeConformalFactor
+    CALL UpdateConformalFactorAndMetric_XCFC_MF( MF_uMF, MF_uGF )
+
+    CALL AverageDown( MF_uGF )
+
+  END SUBROUTINE ComputeConformalFactor_Euler
 
 
-  SUBROUTINE ComputeLapseShiftCurvature( MF_uGF, MF_uCF, MF_uGS )
+  SUBROUTINE ComputeLapseShiftCurvature_Euler( MF_uGF, MF_uCF, MF_uGS, MF_uMF )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:)
 
     CALL ComputePressureTensorTrace_XCFC_Euler_MF_Poseidon &
            ( MF_uGF, MF_uCF, MF_uGS )
 
     CALL ComputeLapseShiftCurvature_XCFC_MF_Poseidon &
-           ( MF_uGS, MF_uGF )
+           ( MF_uGS, MF_uMF )
 
-  END SUBROUTINE ComputeLapseShiftCurvature
+    CALL UpdateLapseShiftCurvature_XCFC_MF( MF_uMF, MF_uGF )
+
+    CALL AverageDown( MF_uGF )
+
+    CALL ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
+
+  END SUBROUTINE ComputeLapseShiftCurvature_Euler
+
+
+  SUBROUTINE ComputeConformalFactor_TwoMoment &
+    ( MF_uGF, MF_uCF, MF_uCR, MF_uGS, MF_uMF )
+
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:)
+
+    CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF_Poseidon &
+           ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
+
+    CALL ComputeConformalFactor_XCFC_MF_Poseidon( MF_uGS, MF_uMF )
+
+    CALL UpdateConformalFactorAndMetric_XCFC_MF( MF_uMF, MF_uGF )
+
+    CALL AverageDown( MF_uGF )
+
+  END SUBROUTINE ComputeConformalFactor_TwoMoment
+
+
+  SUBROUTINE ComputeLapseShiftCurvature_TwoMoment &
+    ( MF_uGF, MF_uCF, MF_uCR, MF_uGS, MF_uMF )
+
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:)
+
+    CALL ComputePressureTensorTrace_XCFC_TwoMoment_MF_Poseidon &
+           ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
+
+    CALL ComputeLapseShiftCurvature_XCFC_MF_Poseidon &
+           ( MF_uGS, MF_uMF )
+
+    CALL AverageDown( MF_uGF )
+
+    CALL ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
+
+  END SUBROUTINE ComputeLapseShiftCurvature_TwoMoment
 
 
 END MODULE MF_GravitySolutionModule_XCFC_Poseidon
