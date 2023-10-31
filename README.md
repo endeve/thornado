@@ -90,6 +90,29 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
+## Oct 31 2023
+1. Mathi reported that FlashX/Thornado runs on PVCs. Tested his setup command line and running. I got
+<pre>
+ mpiexec -np 6 -ppn 6 -d 2 --cpu-bind depth  ./flashxsrun: error: Node failure on exaperf-sdpcloud-pvc04
+srun: error: Node failure on exaperf-sdpcloud-pvc04DS_PER_RANK=1
+srun: Force Terminated job 32549
+quanshao@gojira:~> pcloud-pvc04.jf.intel.com] match_arg (lib/utils/args.c:166): unrecognized argument d
+[mpiexec@exaperf-sdpcloud-pvc04.jf.intel.com] HYDU_parse_array (lib/utils/args.c:181): argument matching returned error
+[mpiexec@exaperf-sdpcloud-pvc04.jf.intel.com] parse_args (mpiexec/get_parameters.c:312): error parsing input array
+[mpiexec@exaperf-sdpcloud-pvc04.jf.intel.com] HYD_uii_mpx_get_parameters (mpiexec/get_parameters.c:47): unable to parse user arguments
+[mpiexec@exaperf-sdpcloud-pvc04.jf.intel.com] main (mpiexec/mpiexec.c:46): error parsing parameters
+</pre>
+2. FlashX/Thornado run hangs with eng-05.15.003 aslo with MKL 2023.08.28 and nightly 2023.08.20.
+3. The error message is 
+<pre>
+Target LEVEL0 RTL --> Error: runTargetTeamRegion:zeEventHostSynchronize failed with error code 1879048193, ZE_RESULT_ERROR_DEVICE_LOST
+Libomptarget --> Executing target region abort target.
+Libomptarget error: Run with
+Libomptarget error: LIBOMPTARGET_DEBUG=1 to display basic debug information.
+Libomptarget error: LIBOMPTARGET_DEBUG=2 to display calls to the compute runtime.
+Libomptarget error: LIBOMPTARGET_INFO=4 to dump host-target pointer mappings.
+TwoMoment_DiscretizationModule_Streaming.F90:2270:0: Libomptarget fatal error 1: failure of target construct while offloading is mandatory
+</pre>>     
 ## Oct 30 2023
 1. Contiued with Adam on running their roofline with Thornado. However, oneprof --metric-list does not work, i.e., gives segmenation fault. Discussed with Carolos, and he said that oneprof --metric-list does not work for our system. But oneprof $APPLICATION $INPUTS --group 1216 works. Tested with ze-gemm app, and found that it is indeed working:
 <pre>
