@@ -69,7 +69,7 @@ MODULE MF_TimeSteppingModule_IMEX
     MultiplyWithPsi6_MF
   USE MF_GravitySolutionModule_XCFC, ONLY: &
     ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF, &
-    ComputeConformalFactor_MF, &
+    ComputeConformalFactor_XCFC_MF, &
     ComputePressureTensorTrace_XCFC_TwoMoment_MF, &
     ComputeLapseShiftCurvature_MF
   USE MF_TimersModule, ONLY: &
@@ -306,7 +306,7 @@ CONTAINS
             CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
                    ( MF_uGF, MF_F, MF_R, MF_uGS )
 
-            CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
+            CALL ComputeConformalFactor_XCFC_MF( MF_uGS, MF_uGF )
 
             CALL MultiplyWithPsi6_MF( MF_uGF, MF_F, -1 )
 
@@ -325,7 +325,7 @@ CONTAINS
             CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
                    ( MF_uGF, MF_F, MF_R, MF_uGS )
 
-            CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
+            CALL ComputeConformalFactor_XCFC_MF( MF_uGS, MF_uGF )
 
             CALL ComputePressureTensorTrace_XCFC_TwoMoment_MF &
                    ( MF_uGF, MF_F, MF_R, MF_uGS )
@@ -444,7 +444,7 @@ CONTAINS
     CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
            ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
 
-    CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
+    CALL ComputeConformalFactor_XCFC_MF( MF_uGS, MF_uGF )
 
     CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, -1 )
 
@@ -463,7 +463,7 @@ CONTAINS
     CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
            ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
 
-    CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
+    CALL ComputeConformalFactor_XCFC_MF( MF_uGS, MF_uGF )
 
     CALL ComputePressureTensorTrace_XCFC_TwoMoment_MF &
            ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )

@@ -66,7 +66,7 @@ MODULE MF_TimeSteppingModule_SSPRK
     MultiplyWithPsi6_MF
   USE MF_GravitySolutionModule_XCFC, ONLY: &
     ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF, &
-    ComputeConformalFactor_MF, &
+    ComputeConformalFactor_XCFC_MF, &
     ComputePressureTensorTrace_XCFC_Euler_MF, &
     ComputeLapseShiftCurvature_MF
   USE MF_TimersModule, ONLY: &
@@ -436,7 +436,7 @@ CONTAINS
     CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
 
-    CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
+    CALL ComputeConformalFactor_XCFC_MF( MF_uGS, MF_uGF )
 
   END SUBROUTINE ComputeConformalFactor
 

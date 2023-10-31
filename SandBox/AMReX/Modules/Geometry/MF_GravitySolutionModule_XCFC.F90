@@ -12,7 +12,7 @@ MODULE MF_GravitySolutionModule_XCFC
     FinalizeGravitySolver_XCFC_MF_Poseidon, &
     ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF_Poseidon, &
     ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF_Poseidon, &
-    ComputeConformalFactor_MF_Poseidon, &
+    ComputeConformalFactor_XCFC_MF_Poseidon, &
     ComputePressureTensorTrace_XCFC_Euler_MF_Poseidon, &
     ComputePressureTensorTrace_XCFC_TwoMoment_MF_Poseidon, &
     ComputeLapseShiftCurvature_MF_Poseidon, &
@@ -24,7 +24,7 @@ MODULE MF_GravitySolutionModule_XCFC
 
   PUBLIC :: InitializeGravitySolver_XCFC_MF
   PUBLIC :: FinalizeGravitySolver_XCFC_MF
-  PUBLIC :: ComputeConformalFactor_MF
+  PUBLIC :: ComputeConformalFactor_XCFC_MF
   PUBLIC :: ComputeLapseShiftCurvature_MF
 
   PUBLIC :: InitializeMetric_Euler_MF
@@ -66,18 +66,18 @@ CONTAINS
   END SUBROUTINE FinalizeGravitySolver_XCFC_MF
 
 
-  SUBROUTINE ComputeConformalFactor_MF( MF_uGS, MF_uGF )
+  SUBROUTINE ComputeConformalFactor_XCFC_MF( MF_uGS, MF_uGF )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGS(0:) ! Gravity Sources
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
-    CALL ComputeConformalFactor_MF_Poseidon( MF_uGS, MF_uGF )
+    CALL ComputeConformalFactor_XCFC_MF_Poseidon( MF_uGS, MF_uGF )
 
 #endif
 
-  END SUBROUTINE ComputeConformalFactor_MF
+  END SUBROUTINE ComputeConformalFactor_XCFC_MF
 
 
   SUBROUTINE ComputeLapseShiftCurvature_MF( MF_uGS, MF_uGF )
