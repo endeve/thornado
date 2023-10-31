@@ -30,8 +30,8 @@ MODULE TimeSteppingModule_SSPRK
   USE Euler_PositivityLimiterModule_Relativistic_TABLE, ONLY: &
     ApplyPositivityLimiter_Euler_Relativistic_TABLE
   USE Euler_XCFC_UtilitiesModule, ONLY: &
-    ComputeConformalFactorSourcesAndMg_Euler_XCFC, &
-    ComputePressureTensorTrace_Euler_XCFC
+    ComputeConformalFactorSourcesAndMg_XCFC_Euler, &
+    ComputePressureTensorTrace_XCFC_Euler
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler,  &
@@ -371,7 +371,7 @@ CONTAINS
       M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF), &
       GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
 
-    CALL ComputeConformalFactorSourcesAndMg_Euler_XCFC &
+    CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
 
     CALL ComputeConformalFactor_XCFC &
@@ -397,7 +397,7 @@ CONTAINS
       M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF), &
       GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
 
-    CALL ComputePressureTensorTrace_Euler_XCFC &
+    CALL ComputePressureTensorTrace_XCFC_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
 
     CALL ComputeLapseShiftCurvature_XCFC &

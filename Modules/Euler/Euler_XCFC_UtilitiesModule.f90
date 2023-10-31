@@ -63,14 +63,14 @@ MODULE Euler_XCFC_UtilitiesModule
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: ComputeConformalFactorSourcesAndMg_Euler_XCFC
-  PUBLIC :: ComputePressureTensorTrace_Euler_XCFC
+  PUBLIC :: ComputeConformalFactorSourcesAndMg_XCFC_Euler
+  PUBLIC :: ComputePressureTensorTrace_XCFC_Euler
   PUBLIC :: ComputeNewtonianPotential_SphericalSymmetry
 
 CONTAINS
 
 
-  SUBROUTINE ComputeConformalFactorSourcesAndMg_Euler_XCFC &
+  SUBROUTINE ComputeConformalFactorSourcesAndMg_XCFC_Euler &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GS )
 
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -177,7 +177,7 @@ CONTAINS
       WRITE(*,*) 'ERROR'
       WRITE(*,*) '-----'
       WRITE(*,*) '    MODULE: Euler_XCFC_UtilitiesModule'
-      WRITE(*,*) 'SUBROUTINE: ComputeConformalFactorSourcesAndMg_Euler_XCFC'
+      WRITE(*,*) 'SUBROUTINE: ComputeConformalFactorSourcesAndMg_XCFC_Euler'
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -209,7 +209,7 @@ CONTAINS
                             G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ], &
             Char_Option = [ 'NA' ], &
             Message_Option &
-              = 'Calling from ComputeConformalFactorSourcesAndMg_Euler_XCFC' )
+              = 'Calling from ComputeConformalFactorSourcesAndMg_XCFC_Euler' )
 
       END DO
       END DO
@@ -220,10 +220,10 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_GS_ComputeSourceTerms )
 
-  END SUBROUTINE ComputeConformalFactorSourcesAndMg_Euler_XCFC
+  END SUBROUTINE ComputeConformalFactorSourcesAndMg_XCFC_Euler
 
 
-  SUBROUTINE ComputePressureTensorTrace_Euler_XCFC &
+  SUBROUTINE ComputePressureTensorTrace_XCFC_Euler &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GS )
 
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -311,7 +311,7 @@ CONTAINS
       WRITE(*,*) 'ERROR'
       WRITE(*,*) '-----'
       WRITE(*,*) '    MODULE: Euler_XCFC_UtilitiesModule'
-      WRITE(*,*) 'SUBROUTINE: ComputePressureTensorTrace_Euler_XCFC'
+      WRITE(*,*) 'SUBROUTINE: ComputePressureTensorTrace_XCFC_Euler'
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -334,7 +334,7 @@ CONTAINS
 
     CALL TimersStop_Euler( Timer_GS_ComputeSourceTerms )
 
-  END SUBROUTINE ComputePressureTensorTrace_Euler_XCFC
+  END SUBROUTINE ComputePressureTensorTrace_XCFC_Euler
 
 
   SUBROUTINE ComputeNewtonianPotential_SphericalSymmetry &
