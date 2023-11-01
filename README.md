@@ -90,6 +90,8 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
+## Nov 1 2023
+1. reran the newest code and the previous code, did not replicate the performance regression due to the merge with Oct 27 master. Interesting. Ran several runs. 
 ## Oct 31 2023
 1. Mathi reported that FlashX/Thornado runs on PVCs. Tested his setup command line and running. I got
 <pre>
