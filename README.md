@@ -92,6 +92,20 @@ JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
 ## Nov 1 2023
 1. reran the newest code and the previous code, did not replicate the performance regression due to the merge with Oct 27 master. Interesting. Ran several runs. 
+2. FlashX with Thornado/master hangs on PVC04
+3. Relaxation 16x16x16 running time comparison between JLSE A100 and PVC04. Here are the largest differences:
+<pre>
+                                                        PVC04                      A100                   PVC04-A100
+            Timer_IMEX                          :     1.747317E+02 s              1.285368E+02 s            46.10                                            
+           Timer_Streaming_NumericalFlux_InOut  :     6.020492E+00 s              1.787175E+00 s            4.23
+           Timer_Streaming_NumericalFlux_RHS    :     6.367417E+00 s              4.640298E+00 s            1.73
+           Time_Collision                       :     1.725610E+02 s              1.279202E+02 s            44.64
+           Timer_Collisions_Solve               :     1.266426E+02 s              1.072200E+02 s            19.42  
+           Timer_Collisions_OuterLoop           :     1.165613E+02 s              1.014776E+02 s            15.08
+           Timer_Collisions_InnerLoop           :     9.952693E+01 s              7.903135E+01 s            20.50
+           Timer_Collisions_NeutrinoRHS         :     2.384875E+01 s              1.771042E+01 s       
+</pre>
+
 ## Oct 31 2023
 1. Mathi reported that FlashX/Thornado runs on PVCs. Tested his setup command line and running. I got
 <pre>
