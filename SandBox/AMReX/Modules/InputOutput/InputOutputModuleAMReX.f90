@@ -27,14 +27,20 @@ MODULE InputOutputModuleAMReX
     amrex_multifab_destroy, &
     amrex_mfiter, &
     amrex_mfiter_build, &
-    amrex_mfiter_destroy
+    amrex_mfiter_destroy, &
+    amrex_imultifab
   USE amrex_geometry_module, ONLY: &
     amrex_geometry, &
     amrex_geometry_build, &
     amrex_geometry_destroy
   USE amrex_amrcore_module, ONLY: &
     amrex_get_amrcore, &
-    amrex_ref_ratio
+    amrex_get_numlevels, &
+    amrex_ref_ratio, &
+    amrex_set_boxarray, &
+    amrex_set_distromap, &
+    amrex_set_geometry, &
+    amrex_set_finest_level
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_myproc
@@ -61,7 +67,7 @@ MODULE InputOutputModuleAMReX
   USE ReferenceElementModule, ONLY: &
     Weights_q
   USE MeshModule, ONLY: &
-    MeshX, &
+    MeshType, &
     MeshE, &
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
@@ -88,7 +94,10 @@ MODULE InputOutputModuleAMReX
     nCR, &
     ShortNamesPR, &
     unitsPR, &
-    nPR
+    nPR, &
+    ShortNamesGR, &
+    unitsGR, &
+    nGR
   USE UnitsModule, ONLY: &
     UnitsDisplay
 
@@ -96,7 +105,8 @@ MODULE InputOutputModuleAMReX
 
   USE MF_KindModule, ONLY: &
     DP, &
-    Zero
+    Zero, &
+    Two
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -111,6 +121,7 @@ MODULE InputOutputModuleAMReX
   USE MF_FieldsModule_TwoMoment, ONLY: &
     MF_uCR, &
     MF_uPR, &
+    MF_uGR, &
     FluxRegister_TwoMoment
   USE FillPatchModule, ONLY: &
     FillPatch
@@ -122,14 +133,24 @@ MODULE InputOutputModuleAMReX
     StepNo, &
     swX, &
     t_new, &
-    PlotFileBaseName, &
+    PlotFileNameRoot, &
     nX, &
     nE, &
     nSpecies, &
     iRestart, &
     UseTiling, &
     UseFluxCorrection_Euler, &
-    UseFluxCorrection_TwoMoment
+    UseFluxCorrection_TwoMoment, &
+    iOS_CPP
+  USE MF_Euler_TallyModule, ONLY: &
+    BaryonicMass_Initial, &
+    BaryonicMass_OffGrid, &
+    Energy_Initial, &
+    Energy_OffGrid, &
+    ElectronNumber_Initial, &
+    ElectronNumber_OffGrid, &
+    ADMMass_Initial, &
+    ADMMass_OffGrid
 
   IMPLICIT NONE
   PRIVATE
@@ -141,32 +162,49 @@ MODULE InputOutputModuleAMReX
   INTERFACE
 
     SUBROUTINE WriteFieldsAMReX_Checkpoint &
-                 ( StepNo, nLevels, dt, time, pBA, &
+                 ( StepNo, nLevels, dt, time, &
+                   BaryonicMassArr, &
+                   EnergyArr, &
+                   ElectronNumberArr, &
+                   ADMMassArr, &
+                   pBA, &
                    iWriteFields_uGF, iWriteFields_uCF, iWriteFields_uCR, &
                    pMF_uGF_Option, pMF_uCF_Option, pMF_uCR_Option ) BIND(c)
-       IMPORT
-       IMPLICIT NONE
-       INTEGER(c_int),        INTENT(in) :: StepNo(*)
-       INTEGER(c_int), VALUE, INTENT(in) :: nLevels
-       REAL(DP)      ,        INTENT(in) :: dt(*), time(*)
-       TYPE(c_ptr)   ,        INTENT(in) :: pBA(*)
-       INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uGF
-       INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uCF
-       INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uCR
-       TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uGF_Option(*)
-       TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uCF_Option(*)
-       TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uCR_Option(*)
+      IMPORT
+      IMPLICIT NONE
+      INTEGER(c_int),        INTENT(in) :: StepNo(*)
+      INTEGER(c_int), VALUE, INTENT(in) :: nLevels
+      REAL(DP)      ,        INTENT(in) :: dt(*), time(*)
+      REAL(DP)      ,        INTENT(in) :: BaryonicMassArr(*)
+      REAL(DP)      ,        INTENT(in) :: EnergyArr(*)
+      REAL(DP)      ,        INTENT(in) :: ElectronNumberArr(*)
+      REAL(DP)      ,        INTENT(in) :: ADMMassArr(*)
+      TYPE(c_ptr)   ,        INTENT(in) :: pBA(*)
+      INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uGF
+      INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uCF
+      INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uCR
+      TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uGF_Option(*)
+      TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uCF_Option(*)
+      TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uCR_Option(*)
     END SUBROUTINE WriteFieldsAMReX_Checkpoint
 
     SUBROUTINE ReadHeaderAndBoxArrayData &
                  ( FinestLevelArr, StepNo, dt, Time, &
+                   BaryonicMassArr, &
+                   EnergyArr, &
+                   ElectronNumberArr, &
+                   ADMMassArr, &
                    pBA, pDM, iChkFile ) BIND(c)
       IMPORT
       IMPLICIT NONE
       INTEGER(c_int), INTENT(out) :: FinestLevelArr(*)
       INTEGER(c_int), INTENT(out) :: StepNo(*)
-      REAL(DP),       INTENT(out) :: dt(*), Time(*)
-      TYPE(c_ptr),    INTENT(out) :: pBA(*), pDM(*)
+      REAL(DP)      , INTENT(out) :: dt(*), Time(*)
+      REAL(DP)      , INTENT(out) :: BaryonicMassArr(*)
+      REAL(DP)      , INTENT(out) :: EnergyArr(*)
+      REAL(DP)      , INTENT(out) :: ElectronNumberArr(*)
+      REAL(DP)      , INTENT(out) :: ADMMassArr(*)
+      TYPE(c_ptr)   , INTENT(out) :: pBA(*), pDM(*)
       INTEGER(c_int), VALUE       :: iChkFile
     END SUBROUTINE ReadHeaderAndBoxArrayData
 
@@ -179,36 +217,6 @@ MODULE InputOutputModuleAMReX
       INTEGER(c_int), VALUE       :: iChkFile
     END SUBROUTINE ReadMultiFabData
 
-    SUBROUTINE amrex_fi_set_boxarray( iLevel, pBA, amrcore ) BIND(c)
-      IMPORT
-      IMPLICIT NONE
-      TYPE(c_ptr),    VALUE :: pBA
-      INTEGER(c_int), VALUE :: iLevel
-      TYPE(c_ptr),    VALUE :: amrcore
-    END SUBROUTINE amrex_fi_set_boxarray
-
-    SUBROUTINE amrex_fi_set_distromap( iLevel, pDM, amrcore ) BIND(c)
-      IMPORT
-      IMPLICIT NONE
-      TYPE(c_ptr),    VALUE :: pDM
-      INTEGER(c_int), VALUE :: iLevel
-      TYPE(c_ptr),    VALUE :: amrcore
-    END SUBROUTINE amrex_fi_set_distromap
-
-    SUBROUTINE amrex_fi_clone_boxarray( bao, bai ) BIND(c)
-      IMPORT
-      IMPLICIT NONE
-      TYPE(c_ptr)        :: bao
-      TYPE(c_ptr), VALUE :: bai
-    END SUBROUTINE amrex_fi_clone_boxarray
-
-    SUBROUTINE amrex_fi_set_finest_level( iLevel, amrcore ) BIND(c)
-      IMPORT
-      IMPLICIT NONE
-      INTEGER(c_int), VALUE :: iLevel
-      TYPE(c_ptr),    VALUE :: amrcore
-    END SUBROUTINE amrex_fi_set_finest_level
-
   END INTERFACE
 
 CONTAINS
@@ -218,10 +226,10 @@ CONTAINS
     ( Time, StepNo, MF_uGF, &
       MF_uGF_Option, MF_uCF_Option, MF_uPF_Option, &
       MF_uAF_Option, MF_uDF_Option, &
-      MF_uCR_Option, MF_uPR_Option, PlotFileNumber_Option )
+      MF_uCR_Option, MF_uPR_Option, MF_uGR_Option, PlotFileNumber_Option )
 
-    REAL(DP),             INTENT(in) :: Time
-    INTEGER,              INTENT(in) :: StepNo(0:)
+    REAL(DP)            , INTENT(in) :: Time
+    INTEGER             , INTENT(in) :: StepNo(0:)
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uGF_Option(0:)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uCF_Option(0:)
@@ -230,12 +238,14 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uDF_Option(0:)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uCR_Option(0:)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uPR_Option(0:)
-    INTEGER,              INTENT(in), OPTIONAL :: PlotFileNumber_Option
+    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uGR_Option(0:)
+    INTEGER             , INTENT(in), OPTIONAL :: PlotFileNumber_Option
 
     CHARACTER(08)                   :: NumberString
     CHARACTER(64)                   :: PlotFileName
     CHARACTER(32)                   :: ShortNamesCR_Z
     CHARACTER(32)                   :: ShortNamesPR_Z
+    CHARACTER(32)                   :: ShortNamesGR_Z
     CHARACTER(3)                    :: iSC, iZ1C
     LOGICAL                         :: WriteGF
     LOGICAL                         :: WriteFF_C
@@ -244,6 +254,7 @@ CONTAINS
     LOGICAL                         :: WriteFF_D
     LOGICAL                         :: WriteRF_C
     LOGICAL                         :: WriteRF_P
+    LOGICAL                         :: WriteRF_GR
     INTEGER                         :: iFd, iOS, iLevel, nF, iS, iZ1
     TYPE(amrex_multifab)            :: MF_plt(0:nLevels-1)
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
@@ -306,6 +317,14 @@ CONTAINS
 
     END IF
 
+    WriteRF_GR = .FALSE.
+    IF( PRESENT( MF_uGR_Option ) )THEN
+
+      WriteRF_GR = .TRUE.
+      nF = nF + nGR *  nSpecies
+
+    END IF
+
     IF( PRESENT( PlotFileNumber_Option ) )THEN
 
       WRITE(NumberString,'(I8.8)') PlotFileNumber_Option
@@ -316,7 +335,7 @@ CONTAINS
 
     END IF
 
-    PlotFileName = TRIM( PlotFileBaseName ) // NumberString
+    PlotFileName = TRIM( PlotFileNameRoot ) // NumberString
 
     IF( amrex_parallel_ioprocessor() )THEN
 
@@ -448,6 +467,29 @@ CONTAINS
 
     END IF
 
+
+    IF( WriteRF_GR )THEN
+
+      DO iS  = 1       , nSpecies
+      DO iFd = 1, nGR
+
+        WRITE(iSC ,'(I3.3)') iS
+
+        ShortNamesGR_Z = TRIM( ShortNamesGR(iFd) ) // '_' // iSC
+
+        CALL amrex_string_build &
+               ( VarNames( iFd &
+                   + ( iS - 1 ) * nGR + iOS ), TRIM( ShortNamesGR_Z ) )
+
+      END DO
+      END DO
+
+      iOS = iOS + nGR * nSpecies
+
+    END IF
+
+
+
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
@@ -532,6 +574,15 @@ CONTAINS
 
       END IF
 
+      IF( WriteRF_GR )THEN
+
+        CALL ComputeCellAverage_Integral_MF &
+               ( nGR, MF_uGF(iLevel), MF_uGR_Option(iLevel), &
+                 iOS, 'GR', MF_plt(iLevel) )
+
+        iOS = iOS + nGR * nSpecies
+
+      END IF
     END DO ! iLevel = 0, nLevels-1
 
     CALL amrex_write_plotfile &
@@ -569,7 +620,13 @@ CONTAINS
     TYPE(amrex_boxarray)  :: BA  (0:nMaxLevels-1)
     TYPE(amrex_geometry)  :: GEOM(0:nMaxLevels-1)
 
+    INTEGER :: nXX(3)
     INTEGER :: FinestLevelArr(0:0) ! Hack
+
+    REAL(DP) :: BaryonicMassArr  (0:1)
+    REAL(DP) :: EnergyArr        (0:1)
+    REAL(DP) :: ElectronNumberArr(0:1)
+    REAL(DP) :: ADMMassArr       (0:1)
 
     LOGICAL :: ReadFields_uCF
     LOGICAL :: ReadFields_uCR
@@ -584,11 +641,17 @@ CONTAINS
 
     amrcore = amrex_get_amrcore()
 
-    BX = amrex_box( [ 0, 0, 0 ], [ nX(1)-1, nX(2)-1, nX(3)-1 ] )
-
     DO iLevel = 0, nMaxLevels-1
 
-      CALL amrex_boxarray_build ( BA(iLevel), BX )
+      nXX = nX
+
+      nXX(1) = 2**( iLevel ) * nX(1)
+      IF( amrex_spacedim .GT. 1 ) nXX(2) = 2**( iLevel ) * nX(2)
+      IF( amrex_spacedim .GT. 2 ) nXX(3) = 2**( iLevel ) * nX(3)
+
+      BX = amrex_box( 1 - iOS_CPP, nXX - iOS_CPP )
+
+      CALL amrex_boxarray_build( BA(iLevel), BX )
 
       CALL BA(iLevel) % maxSize( MaxGridSizeX )
 
@@ -602,26 +665,34 @@ CONTAINS
     pDM(0:nMaxLevels-1) = DM(0:nMaxLevels-1) % P
 
     CALL ReadHeaderAndBoxArrayData &
-           ( FinestLevelArr, StepNo, dt, t_new, pBA, pDM, iRestart )
+           ( FinestLevelArr, StepNo, dt, t_new, &
+             BaryonicMassArr, &
+             EnergyArr, &
+             ElectronNumberArr, &
+             ADMMassArr, &
+             pBA, pDM, iRestart )
 
-    FinestLevel = FinestLevelArr(0)
-    nLevels = FinestLevel + 1
+    FinestLevel = FinestLevelArr(0) ! Hack
+    CALL amrex_set_finest_level( FinestLevel )
+    nLevels = amrex_get_numlevels()
+
+    BaryonicMass_Initial   = BaryonicMassArr  (0)
+    BaryonicMass_OffGrid   = BaryonicMassArr  (1)
+    Energy_Initial         = EnergyArr        (0)
+    Energy_OffGrid         = EnergyArr        (1)
+    ElectronNumber_Initial = ElectronNumberArr(0)
+    ElectronNumber_OffGrid = ElectronNumberArr(1)
+    ADMMass_Initial        = ADMMassArr       (0)
+    ADMMass_OffGrid        = ADMMassArr       (1)
 
     DO iLevel = 0, nLevels-1
 
       BA(iLevel) = pBA(iLevel)
       DM(iLevel) = pDM(iLevel)
 
-    END DO
-
-    DO iLevel = 0, nLevels-1
-
-      CALL amrex_fi_set_boxarray ( iLevel, BA(iLevel) % P, amrcore )
-      CALL amrex_fi_set_distromap( iLevel, DM(iLevel) % P, amrcore )
-
-    END DO
-
-    DO iLevel = 0, nLevels-1
+      CALL amrex_set_boxarray ( iLevel, BA  (iLevel) )
+      CALL amrex_set_distromap( iLevel, DM  (iLevel) )
+      CALL amrex_set_geometry ( iLevel, GEOM(iLevel) )
 
       CALL amrex_multifab_build &
              ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX )
@@ -668,6 +739,13 @@ CONTAINS
                  nDOFZ * nPR * nE * nSpecies, swX )
         CALL MF_uPR(iLevel) % SetVal( Zero )
 
+
+        CALL amrex_multifab_build &
+               ( MF_uGR(iLevel), BA(iLevel), DM(iLevel), &
+                 nDOFX * nGR * nSpecies, swX )
+        CALL MF_uGR(iLevel) % SetVal( Zero )
+
+
         ! Assume nDOFZ_Z3 = nDOFZ_Z4 = nDOFZ_Z2
         IF( iLevel .GT. 0 .AND. UseFluxCorrection_TwoMoment )THEN
 
@@ -685,22 +763,10 @@ CONTAINS
     pGF(0:nLevels-1) = MF_uGF(0:nLevels-1) % P
     CALL ReadMultiFabData( FinestLevel, pGF, 0, iRestart )
 
-    DO iLevel = 0, nLevels-1
-
-      CALL FillPatch( iLevel, t_new(0), MF_uGF, MF_uGF )
-
-    END DO
-
     IF( ReadFields_uCF )THEN
 
       pCF(0:nLevels-1) = MF_uCF(0:nLevels-1) % P
       CALL ReadMultiFabData( FinestLevel, pCF, 1, iRestart )
-
-      DO iLevel = 0, nLevels-1
-
-        CALL FillPatch( iLevel, t_new(0), MF_uGF, MF_uCF )
-
-      END DO
 
     END IF
 
@@ -709,15 +775,7 @@ CONTAINS
       pCR(0:nLevels-1) = MF_uCR(0:nLevels-1) % P
       CALL ReadMultiFabData( FinestLevel, pCR, 2, iRestart )
 
-      DO iLevel = 0, nLevels-1
-
-        CALL FillPatch( iLevel, t_new(0), MF_uGF, MF_uCR )
-
-      END DO
-
     END IF
-
-    CALL amrex_fi_set_finest_level( FinestLevel, amrcore )
 
   END SUBROUTINE ReadCheckpointFile
 
@@ -728,13 +786,14 @@ CONTAINS
   SUBROUTINE ComputeCellAverage_X_MF &
     ( nFd, MF_uGF, MF, iOS, Field, MF_plt )
 
-    INTEGER,              INTENT(in)    :: nFd, iOS
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
-    TYPE(amrex_multifab), INTENT(in)    :: MF
-    CHARACTER(2),         INTENT(in)    :: Field
-    TYPE(amrex_multifab), INTENT(inout) :: MF_plt
+    INTEGER              , INTENT(in)    :: nFd, iOS
+    TYPE(amrex_multifab) , INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab) , INTENT(in)    :: MF
+    CHARACTER(2)         , INTENT(in)    :: Field
+    TYPE(amrex_multifab) , INTENT(inout) :: MF_plt
 
     INTEGER                       :: iX1, iX2, iX3, iFd
+    INTEGER                       :: iX_B0(3), iX_E0(3)
     INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_U(4), hi_U(4)
     REAL(DP)                      :: G_K(nDOFX,nGF)
@@ -749,18 +808,20 @@ CONTAINS
 
     DO WHILE( MFI % next() )
 
-      G     => MF_uGF % DataPtr( MFI )
-      U     => MF     % DataPtr( MFI )
-      U_plt => MF_plt % DataPtr( MFI )
+      G     => MF_uGF   % DataPtr( MFI )
+      U     => MF       % DataPtr( MFI )
+      U_plt => MF_plt   % DataPtr( MFI )
 
       BX = MFI % TileBox()
 
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+
       lo_G = LBOUND( G ); hi_G = UBOUND( G )
       lo_U = LBOUND( U ); hi_U = UBOUND( U )
-
-      DO iX3 = BX % lo(3), BX % hi(3)
-      DO iX2 = BX % lo(2), BX % hi(2)
-      DO iX1 = BX % lo(1), BX % hi(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
 
         G_K(1:nDOFX,1:nGF) &
           = RESHAPE( G(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
@@ -789,16 +850,19 @@ CONTAINS
   END SUBROUTINE ComputeCellAverage_X_MF
 
 
+
+
   SUBROUTINE ComputeCellAverage_Z_MF &
     ( nFd, MF_uGF, MF, iOS, Field, MF_plt )
 
-    INTEGER,              INTENT(in)    :: nFd, iOS
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
-    TYPE(amrex_multifab), INTENT(in)    :: MF
-    CHARACTER(2),         INTENT(in)    :: Field
-    TYPE(amrex_multifab), INTENT(inout) :: MF_plt
+    INTEGER              , INTENT(in)    :: nFd, iOS
+    TYPE(amrex_multifab) , INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab) , INTENT(in)    :: MF
+    CHARACTER(2)         , INTENT(in)    :: Field
+    TYPE(amrex_multifab) , INTENT(inout) :: MF_plt
 
-    INTEGER                       :: iX1, iX2, iX3, iFd, iS, iZ1, iNZ, iNE
+    INTEGER                       :: iX1, iX2, iX3, iFd, iS, iZ1, iNZ, iNE, iNX
+    INTEGER                       :: iX_B0(3), iX_E0(3)
     INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_U(4), hi_U(4)
     REAL(DP)                      :: G_K(nDOFX,nGF)
@@ -808,24 +872,27 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: G    (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: U    (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
-    REAL(DP)                      :: Eq(1:nDOFE), E(1:nDOFZ), V_K
+    REAL(DP)                      :: Eq(1:nDOFE), E(1:nDOFZ), SqrtGM(1:nDOFZ), V_K, SUM2
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
-      G     => MF_uGF % DataPtr( MFI )
-      U     => MF     % DataPtr( MFI )
-      U_plt => MF_plt % DataPtr( MFI )
+      G     => MF_uGF   % DataPtr( MFI )
+      U     => MF       % DataPtr( MFI )
+      U_plt => MF_plt   % DataPtr( MFI )
 
       BX = MFI % tilebox()
+
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
 
       lo_G = LBOUND( G ); hi_G = UBOUND( G )
       lo_U = LBOUND( U ); hi_U = UBOUND( U )
 
-      DO iX3 = BX % lo(3), BX % hi(3)
-      DO iX2 = BX % lo(2), BX % hi(2)
-      DO iX1 = BX % lo(1), BX % hi(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
 
         G_K(1:nDOFX,1:nGF) &
           = RESHAPE( G(iX1,iX2,iX3,lo_G(4):hi_G(4)), &
@@ -840,22 +907,44 @@ CONTAINS
 
           ! --- Compute cell-average ---
 
+            V_K = 0.0_DP
+
           DO iNZ = 1, nDOFZ
 
             iNE = MOD( iNZ - 1, nDOFE ) + 1
+            iNX = MOD( (iNZ-1) / nDOFE, nDOFX ) + 1
 
             E (iNZ) = NodeCoordinate( MeshE, iZ1, iNE )
             Eq(iNE) = NodeCoordinate( MeshE, iZ1, iNE )
 
+            SqrtGM(iNZ) = G_K(iNX,iGF_SqrtGm)
+
+            V_K = V_K + Weights_q(iNZ) * Eq(iNE)**2 * G_K(iNX,iGF_SqrtGm)
+
           END DO
 
-          V_K = SUM( WeightsE * Eq**2 )
 
           DO iFd = 1, nFd
 
+
+            SUM2 = 0.0_DP
+
+            DO iNZ = 1, nDOFZ
+
+              iNE = MOD( iNZ - 1, nDOFE ) + 1
+              iNX = MOD( (iNZ-1) / nDOFE, nDOFX ) + 1
+
+              E (iNZ) = NodeCoordinate( MeshE, iZ1, iNE )
+              Eq(iNE) = NodeCoordinate( MeshE, iZ1, iNE )
+
+              SUM2 = SUM2 &
+                   + Weights_q(iNZ) * Eq(iNE)**2 * G_K(iNX,iGF_SqrtGm) * U_K(iNZ,iZ1,iFd,iS)
+
+            END DO
+
             U_plt(iX1,iX2,iX3, &
                   iFd + ( iZ1 - 1 ) * nFd + ( iS - 1 ) * nFd * nE + iOS) &
-              = SUM( Weights_q * U_K(:,iZ1,iFd,iS) * E**2 ) / V_K
+              = SUM2 / V_K
 
           END DO
 
@@ -875,13 +964,78 @@ CONTAINS
   END SUBROUTINE ComputeCellAverage_Z_MF
 
 
+  SUBROUTINE ComputeCellAverage_Integral_MF &
+    ( nFd, MF_uGF, MF, iOS, Field, MF_plt )
+
+    INTEGER,              INTENT(in)    :: nFd, iOS
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(in)    :: MF
+    CHARACTER(2),         INTENT(in)    :: Field
+    TYPE(amrex_multifab), INTENT(inout) :: MF_plt
+
+    INTEGER                       :: iX1, iX2, iX3, iFd, iS
+    INTEGER                       :: lo_G(4), hi_G(4)
+    INTEGER                       :: lo_U(4), hi_U(4)
+    REAL(DP)                      :: G_K(nDOFX,nGF)
+    REAL(DP)                      :: U_K(nDOFX,nFd,nSpecies)
+    TYPE(amrex_box)               :: BX
+    TYPE(amrex_mfiter)            :: MFI
+    REAL(DP), CONTIGUOUS, POINTER :: G    (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: U    (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
+
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+
+    DO WHILE( MFI % next() )
+
+      G     => MF_uGF % DataPtr( MFI )
+      U     => MF     % DataPtr( MFI )
+      U_plt => MF_plt % DataPtr( MFI )
+
+      BX = MFI % TileBox()
+
+      lo_G = LBOUND( G ); hi_G = UBOUND( G )
+      lo_U = LBOUND( U ); hi_U = UBOUND( U )
+
+      DO iS = 1, nSpecies
+      DO iX3 = BX % lo(3), BX % hi(3)
+      DO iX2 = BX % lo(2), BX % hi(2)
+      DO iX1 = BX % lo(1), BX % hi(1)
+
+        G_K(1:nDOFX,1:nGF) &
+          = RESHAPE( G(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+        U_K(1:nDOFX,1:nFd,1:nSpecies) &
+          = RESHAPE( U(iX1,iX2,iX3,lo_U(4):hi_U(4)), [ nDOFX, nFd, nSpecies ] )
+
+        DO iFd = 1, nFd
+
+          U_plt(iX1,iX2,iX3,iFd + ( iS - 1 ) * nFd + iOS) &
+            = SUM( WeightsX_q * U_K(:,iFd,iS) * G_K(:,iGF_SqrtGm) ) &
+                / SUM( WeightsX_q * G_K(:,iGF_SqrtGm) )
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL ConvertUnits( Field, nFd, iOS, U_plt )
+
+    END DO
+
+    CALL amrex_mfiter_destroy( MFI )
+
+  END SUBROUTINE ComputeCellAverage_Integral_MF
+
   SUBROUTINE ConvertUnits( Field, nFd, iOS, U_plt )
 
     CHARACTER(2), INTENT(in)    :: Field
-    INTEGER,      INTENT(in)    :: nFd, iOS
-    REAL(DP),     INTENT(inout) :: U_plt(:,:,:,:)
+    INTEGER     , INTENT(in)    :: nFd, iOS
+    REAL(DP)    , INTENT(inout) :: U_plt(:,:,:,:)
 
-    INTEGER :: iFd
+    INTEGER :: iFd, iS
 
     SELECT CASE( Field )
 
@@ -941,6 +1095,17 @@ CONTAINS
 
         END DO
 
+      CASE( 'GR' )
+
+        DO iS = 1, nSpecies
+        DO iFd = 1, nFd
+
+          U_plt(:,:,:,iFd+(iS-1)*nFd+iOS) &
+            = U_plt(:,:,:,iFd+(iS-1)*nFd+iOS) / unitsGR(iFd)
+
+        END DO
+        END DO
+
       CASE DEFAULT
 
         RETURN
@@ -952,10 +1117,11 @@ CONTAINS
 
   SUBROUTINE WriteMPI( MF_uGF, MF_plt )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_plt
+    TYPE(amrex_multifab) , INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab) , INTENT(inout) :: MF_plt
 
     INTEGER            :: iX1, iX2, iX3
+    INTEGER            :: iX_B0(3), iX_E0(3)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
@@ -965,13 +1131,16 @@ CONTAINS
 
     DO WHILE( MFI % next() )
 
-      U_plt => MF_plt % DataPtr( MFI )
+      U_plt => MF_plt   % DataPtr( MFI )
 
       BX = MFI % TileBox()
 
-      DO iX3 = BX % lo(3), BX % hi(3)
-      DO iX2 = BX % lo(2), BX % hi(2)
-      DO iX1 = BX % lo(1), BX % hi(1)
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
 
         U_plt(iX1,iX2,iX3,1) = amrex_parallel_myproc()
 
@@ -988,13 +1157,16 @@ CONTAINS
 
   SUBROUTINE WriteMesh( iLevel, MF_uGF, MF_plt )
 
-    INTEGER,              INTENT(in)    :: iLevel
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_plt
+    INTEGER              , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab) , INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab) , INTENT(inout) :: MF_plt
 
     INTEGER            :: iX1, iX2, iX3
+    INTEGER            :: iX_B0(3), iX_E0(3)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
+
+    TYPE(MeshType) :: MeshX(3)
 
     REAL(DP), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
 
@@ -1006,13 +1178,16 @@ CONTAINS
 
     DO WHILE( MFI % next() )
 
-      U_plt => MF_plt % DataPtr( MFI )
+      U_plt => MF_plt   % DataPtr( MFI )
 
       BX = MFI % TileBox()
 
-      DO iX3 = BX % lo(3), BX % hi(3)
-      DO iX2 = BX % lo(2), BX % hi(2)
-      DO iX1 = BX % lo(1), BX % hi(1)
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
 
         U_plt(iX1,iX2,iX3,2) = MeshX(1) % Center(iX1) / U % LengthX1Unit
         U_plt(iX1,iX2,iX3,3) = MeshX(2) % Center(iX2) / U % LengthX2Unit

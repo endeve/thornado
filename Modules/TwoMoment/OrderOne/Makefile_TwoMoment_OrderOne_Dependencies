@@ -1,0 +1,61 @@
+TwoMoment_UtilitiesModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  TwoMoment_ClosureModule.o \
+  TwoMoment_UtilitiesModule.F90
+
+TwoMoment_CharacteristicDecompositionModule.o: \
+  KindModule.o \
+  GeometryFieldsModule.o \
+  RadiationFieldsModule.o \
+  TwoMoment_ClosureModule.o \
+  TwoMoment_UtilitiesModule.o \
+  TwoMoment_CharacteristicDecompositionModule.f90
+
+TwoMoment_SlopeLimiterModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModule.o \
+  ReferenceElementModuleX.o \
+  UtilitiesModule.o \
+  PolynomialBasisMappingModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  GeometryFieldsModuleE.o \
+  RadiationFieldsModule.o \
+  TwoMoment_CharacteristicDecompositionModule.o \
+  TwoMoment_SlopeLimiterModule.f90
+
+TwoMoment_PositivityLimiterModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  TimersModule.o \
+  LinearAlgebraModule.o \
+  ReferenceElementModule.o \
+  ReferenceElementModule_Lagrange.o \
+  RadiationFieldsModule.o \
+  GeometryFieldsModule.o \
+  GeometryFieldsModuleE.o \
+  RadiationFieldsModule.o \
+  TwoMoment_PositivityLimiterModule.F90
+
+TwoMoment_DiscretizationModule_Streaming.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  TimersModule.o \
+  LinearAlgebraModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  ReferenceElementModule.o \
+  ReferenceElementModule_Lagrange.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  GeometryComputationModule.o \
+  GeometryFieldsModuleE.o \
+  RadiationFieldsModule.o \
+  TwoMoment_ClosureModule.o \
+  TwoMoment_BoundaryConditionsModule.o \
+  TwoMoment_UtilitiesModule.o \
+  TwoMoment_DiscretizationModule_Streaming.F90

@@ -58,10 +58,10 @@ MODULE ProgramInitializationModule
     InitializeDevice, &
     FinalizeDevice
 
+  USE MPI
+
   IMPLICIT NONE
   PRIVATE
-
-  INCLUDE 'mpif.h'
 
   LOGICAL :: BasicInitialization
   INTEGER :: mpierr

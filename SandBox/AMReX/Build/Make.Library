@@ -1,14 +1,12 @@
-# $(THORNADO_DIR)/SandBox/AMReX/Modules/Library
-
 VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/Library
 f90EXE_sources  += ProgenitorModule.f90
 f90EXE_sources  += MF_ErrorModule.f90
-f90EXE_sources  += MakeFineMaskModule.f90
-CEXE_sources    += MakeFineMaskModule_fi.cpp
+F90EXE_sources  += MaskModule.F90
+CEXE_sources    += MaskModule_fi.cpp
 F90EXE_sources  += MF_UtilitiesModule.F90
+CEXE_sources    += MF_UtilitiesModule_fi.cpp
 f90EXE_sources  += MF_TimersModule.f90
-
-# THORNADO_DIR/Modules/Library
+f90EXE_sources  += MF_EdgeMapModule.f90
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Library
 f90EXE_sources  += QuadratureModule.f90
@@ -30,4 +28,4 @@ f90EXE_sources  += PolynomialBasisModule_Legendre.f90
 f90EXE_sources  += PolynomialBasisMappingModule.f90
 F90EXE_sources  += LinearAlgebraModule.F90
 F90EXE_sources  += ArrayUtilitiesModule.F90
-F90EXE_sources  += MemoryProfilingModule.F90
+f90EXE_sources  += MemoryProfilingModule.f90

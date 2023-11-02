@@ -9,6 +9,11 @@ WEAKLIB_DIR ?= $(HOME)/weaklib
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
 
+ifeq ($(USE_GPU),FALSE)
+  POSEIDON_DIR ?= $(HOME)/poseidon
+  include $(POSEIDON_DIR)/Build/Make.Poseidon_Native
+endif
+
 #DEFINES += $(PP)-DTHORNADO_DEBUG
 
 .DEFAULT_GOAL := all
@@ -17,6 +22,7 @@ all: ApplicationDriver
 
 ApplicationDriver: \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	ProgenitorModule.o \
 	InitializationModule.o \
@@ -24,6 +30,7 @@ ApplicationDriver: \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	ProgenitorModule.o \
 	InitializationModule.o \
@@ -33,11 +40,13 @@ ApplicationDriver: \
 
 ComputeEigensystem_NuclearEOS: \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	UtilitiesModule_NuclearEOS.o \
 	ComputeEigensystem_NuclearEOS.o
 	$(FLINKER) $(FLAGS) -o ComputeEigensystem_NuclearEOS_$(MACHINE) \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	UtilitiesModule_NuclearEOS.o \
 	ComputeEigensystem_NuclearEOS.o \
@@ -45,21 +54,25 @@ ComputeEigensystem_NuclearEOS: \
 
 EigensystemTest: \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
         EigensystemTest.o
 	$(FLINKER) $(FLAGS) -o EigensystemTest_$(MACHINE) \
         $(weaklib) \
+	$(POSEIDON_o) \
         $(thornado) \
         EigensystemTest.o \
         $(LIBRARIES)
 
 ComputeLeftState_NuclearEOS: \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	UtilitiesModule_NuclearEOS.o \
 	ComputeLeftState_NuclearEOS.o
 	$(FLINKER) $(FLAGS) -o ComputeLeftState_NuclearEOS_$(MACHINE) \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
 	UtilitiesModule_NuclearEOS.o \
 	ComputeLeftState_NuclearEOS.o \

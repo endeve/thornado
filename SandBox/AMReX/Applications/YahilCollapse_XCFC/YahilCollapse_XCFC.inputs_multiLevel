@@ -1,0 +1,82 @@
+##### YahilCollapse_XCFC.inputs_multiLevel #####
+
+# For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+# For all REAL types, use "e" and not "d", i.e. 1.0e3
+
+debug.DEBUG = 0
+
+thornado.ProgramName = "YahilCollapse_XCFC"
+
+YC.D0              = 1.75
+YC.CentralDensity  = 7.0e9 # g/cm^3
+YC.CentralPressure = 6.0e27 # erg/cm^3
+YC.CoreRadius      = 1.0e5 # km
+YC.CollapseTime    = 1.50e2 # ms
+
+thornado.iRestart = -1
+
+thornado.UsePhysicalUnits = 1
+
+thornado.TallyFileNameRoot_Euler = "YahilCollapse_XCFC.Tally"
+thornado.PlotFileNameRoot = "YahilCollapse_XCFC.plt"
+thornado.t_end   = 3.0e+2
+thornado.iCycleD = 1
+
+thornado.dt_wrt  = 1.0e-1
+thornado.iCycleW = -1
+
+thornado.CheckpointFileNameRoot = "YahilCollapse_XCFC.chk"
+thornado.dt_chk    = 1.0e+0
+thornado.iCycleChk = -1
+
+thornado.nNodes  = 2
+thornado.nStages = 2
+
+thornado.CFL = 0.5
+
+thornado.bcX         = 30 00 00
+geometry.is_periodic = 0  1  1
+
+geometry.coord_sys = 2
+geometry.prob_lo   = 000.0 0.0               0.0
+geometry.prob_hi   = 1.0e5 3.1415926535897931 6.2831853071795862
+
+amr.n_cell                  = 512 01 01
+thornado.swX                = 01  00 00
+#amr.max_grid_size_x         = 512
+#amr.blocking_factor_x       = 512
+amr.max_level               = 9
+amr.UseFluxCorrection_Euler = 1
+amr.UseAMR                  = 0
+amr.TagCriteria             = 5.0000e+4 2.50000e+4 1.250000e+4 6.2500e+3 3.12500e+3 1.562500e+3 7.8125e+2 3.90625e+2 1.953125e+2
+amr.n_error_buf             = 0
+amr.ref_ratio               = 2
+
+# Poseidon parameters
+poseidon.fem_degree        = 1
+poseidon.l_limit           = 0
+poseidon.max_fp_iters      = 20
+poseidon.anderson_m        = 3
+poseidon.converge_criteria = 1.0e-08
+
+# Slope limiter parameters
+SL.UseSlopeLimiter_Euler           = 1
+SL.SlopeLimiterMethod_Euler        = "TVD"
+SL.BetaTVD_Euler                   = 1.75e+0
+SL.BetaTVB_Euler                   = 0.00e+0
+SL.SlopeTolerance_Euler            = 1.00e-6
+SL.UseCharacteristicLimiting_Euler = 0
+SL.UseTroubledCellIndicator_Euler  = 0
+SL.LimiterThresholdParameter_Euler = 5.00e-3
+SL.UseConservativeCorrection_Euler = 1
+
+# Positivity limiter parameters
+PL.UsePositivityLimiter_Euler = 1
+PL.Min_1_Euler                = 1.0e-13
+PL.Min_2_Euler                = 1.0e-13
+
+# Equation of state parameters
+EoS.Gamma_IDEAL = 1.30
+
+# Time-Stepping parameters
+TS.EvolveGravity = 1

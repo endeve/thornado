@@ -3,6 +3,7 @@ module ThornadoInitializationModule
   use KindModule, only: &
     DP, SqrtTiny, One, Zero
   use UnitsModule, only : &
+    ActivateUnitsDisplay, &
     MeV
   use ProgramHeaderModule, only: &
     InitializeProgramHeader, &
@@ -43,7 +44,9 @@ module ThornadoInitializationModule
     FinalizeReferenceElement_Lagrange
   use SubcellReconstructionModule, only: &
     InitializeSubcellReconstruction, &
-    FinalizeSubcellReconstruction
+    FinalizeSubcellReconstruction, &
+    CreateSubcellReconstruction, &
+    DestroySubcellReconstruction
 #ifdef MICROPHYSICS_WEAKLIB
   use EquationOfStateModule_TABLE, only: &
     InitializeEquationOfState_TABLE, &
@@ -79,6 +82,7 @@ module ThornadoInitializationModule
     CreateFluidFields, &
     DestroyFluidFields
   use RadiationFieldsModule, only: &
+    SetNumberOfSpecies, &
     CreateRadiationFields, &
     DestroyRadiationFields
   use TwoMoment_ClosureModule, only: &
@@ -86,23 +90,23 @@ module ThornadoInitializationModule
   use TwoMoment_MeshRefinementModule, only : &
     InitializeMeshRefinement_TwoMoment, &
     FinalizeMeshRefinement_TwoMoment
-#ifdef TWOMOMENT_ORDER_1
-  use TwoMoment_PositivityLimiterModule, only: &
-    InitializePositivityLimiter_TwoMoment, &
-    FinalizePositivityLimiter_TwoMoment
-#elif TWOMOMENT_ORDER_V
-  use TwoMoment_SlopeLimiterModule_OrderV, only: &
+  use TwoMoment_TroubledCellIndicatorModule, only: &
+    InitializeTroubledCellIndicator_TwoMoment, &
+    FinalizeTroubledCellIndicator_TwoMoment
+  use TwoMoment_SlopeLimiterModule, only: &
     InitializeSlopeLimiter_TwoMoment, &
     FinalizeSlopeLimiter_TwoMoment
-  use TwoMoment_PositivityLimiterModule_OrderV, only: &
+  use TwoMoment_PositivityLimiterModule, only: &
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment
   use Euler_PositivityLimiterModule_NonRelativistic_TABLE, only: &
     InitializePositivityLimiter_Euler_NonRelativistic_TABLE, &
     FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
-  use TwoMoment_NeutrinoMatterSolverModule_OrderV, only: &
+  use TwoMoment_NeutrinoMatterSolverModule, only: &
     InitializeNeutrinoMatterSolverParameters
-#endif
+  use TwoMoment_TimersModule, only: &
+    TwoMoment_InitializeTimers => InitializeTimers, &
+    TwoMoment_FinalizeTimers => FinalizeTimers
 
   implicit none
   private
@@ -115,20 +119,24 @@ module ThornadoInitializationModule
 contains
 
   subroutine InitThornado &
-    ( nNodes, nDimsX, nE, swE, eL_MeV, eR_MeV, zoomE, bcE, &
+    ( nNodes, nDimsX, nE, swE, eL_MeV, eR_MeV, zoomE, bcE, nSpecies, &
       EquationOfStateTableName_Option, External_EOS, &
       Gamma_IDEAL_Option, &
       PositivityLimiter_Option, UpperBry1_Option, &
+      TroubledCellIndicator_Option, C_TCI_Option, &
       SlopeLimiter_Option, &
+      EnergyLimiter_Option, &
       OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
       OpacityTableName_NES_Option, OpacityTableName_Pair_Option, &
       OpacityTableName_Brem_Option, &
       M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
       MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
       Include_NES_Option, Include_Pair_Option, Include_Brem_Option, &
-      Include_LinCorr_Option, wMatrRHS_Option, Verbose_Option )
+      Include_LinCorr_Option, wMatrRHS_Option, FreezeOpacities_Option, &
+      ActivateUnits_Option, CoordinateSystem_Option, &
+      UseChemicalPotentialShift_Option, Verbose_Option )
 
-    integer,  intent(in) :: nNodes, nDimsX, nE, swE, bcE
+    integer,  intent(in) :: nNodes, nDimsX, nE, swE, bcE, nSpecies
     real(dp), intent(in) :: eL_MeV, eR_MeV, zoomE
 
     character(len=*), intent(in), optional :: EquationOfStateTableName_Option
@@ -142,7 +150,10 @@ contains
 
     real(dp),         intent(in), optional :: Gamma_IDEAL_Option
     logical,          intent(in), optional :: PositivityLimiter_Option
+    logical,          intent(in), optional :: TroubledCellIndicator_Option
+    real(dp),         intent(in), optional :: C_TCI_Option
     logical,          intent(in), optional :: SlopeLimiter_Option
+    logical,          intent(in), optional :: EnergyLimiter_Option
     real(dp),         intent(in), optional :: UpperBry1_Option
     character(len=*), intent(in), optional :: OpacityTableName_EmAb_Option
     character(len=*), intent(in), optional :: OpacityTableName_Iso_Option
@@ -160,17 +171,37 @@ contains
     logical,          intent(in), optional :: Include_Brem_Option
     logical,          intent(in), optional :: Include_LinCorr_Option
     real(dp),         intent(in), optional :: wMatrRHS_Option(5)
+    logical,          intent(in), optional :: FreezeOpacities_Option
+    logical,          intent(in), optional :: ActivateUnits_Option
+    character(len=*), intent(in), optional :: CoordinateSystem_Option
     logical,          intent(in), optional :: Verbose_Option
+    logical,          intent(in), optional :: UseChemicalPotentialShift_Option
 
-    logical  :: PositivityLimiter, SlopeLimiter, EnergyLimiter, Verbose
+    logical  :: TroubledCellIndicator
+    logical  :: PositivityLimiter, SlopeLimiter, EnergyLimiter, UseChemicalPotentialShift, Verbose
+    logical  :: ActivateUnits
     integer  :: nX(3), bcX(3)
     integer  :: i
+    real(dp) :: C_TCI
     real(dp) :: eL, eR, UpperBry1
+    character(24) :: CoordinateSystem
 
     IF( PRESENT(PositivityLimiter_Option) )THEN
       PositivityLimiter = PositivityLimiter_Option
     ELSE
       PositivityLimiter = .FALSE.
+    END IF
+
+    IF( PRESENT(TroubledCellIndicator_Option) )THEN
+      TroubledCellIndicator = TroubledCellIndicator_Option
+    ELSE
+      TroubledCellIndicator = .FALSE.
+    END IF
+
+    IF( PRESENT(C_TCI_Option) )THEN
+      C_TCI = C_TCI_Option
+    ELSE
+      C_TCI = 1.0e-2_dp
     END IF
 
     IF( PRESENT(SlopeLimiter_Option) )THEN
@@ -179,12 +210,11 @@ contains
       SlopeLimiter = .FALSE.
     END IF
 
-    EnergyLimiter = .TRUE.
-!!    IF( PRESENT(EnergyLimiter_Option) )THEN
-!!      EnergyLimiter = EnergyLimiter_Option
-!!    ELSE
-!!      EnergyLimiter = .FALSE.
-!!    END IF
+    IF( PRESENT(EnergyLimiter_Option) )THEN
+      EnergyLimiter = EnergyLimiter_Option
+    ELSE
+      EnergyLimiter = .TRUE.
+    END IF
 
     IF( PRESENT(Verbose_Option) )THEN
       Verbose = Verbose_Option
@@ -192,10 +222,46 @@ contains
       Verbose = .FALSE.
     END IF
 
+    IF( PRESENT(UseChemicalPotentialShift_Option) )THEN
+      UseChemicalPotentialShift = UseChemicalPotentialShift_Option
+    ELSE
+      UseChemicalPotentialShift = .FALSE.
+    END IF
+
     IF( PRESENT(UpperBry1_Option) )THEN
       UpperBry1 = UpperBry1_Option
     ELSE
       UpperBry1 = 1.0d0 - EPSILON(1.0d0)
+    END IF
+
+    IF( PRESENT(CoordinateSystem_Option) )THEN
+
+      IF( TRIM(CoordinateSystem_Option) == 'spherical' )THEN
+        CoordinateSystem = 'SPHERICAL'
+      ELSE IF( TRIM(CoordinateSystem_Option) == 'cylindrical' )THEN
+        CoordinateSystem = 'CYLINDRICAL'
+      ELSE IF( TRIM(CoordinateSystem_Option) == 'cartesian' )THEN
+        CoordinateSystem = 'CARTESIAN'
+      ELSE
+        print*, '[InitThornado] Invalid Coordinate System: ', &
+                 CoordinateSystem_Option
+      END IF
+
+    ELSE
+      CoordinateSystem = 'CARTESIAN'
+    END IF
+
+    IF( PRESENT( ActivateUnits_Option ) )THEN
+      ActivateUnits = ActivateUnits_Option
+    ELSE
+      ActivateUnits = .FALSE.
+    END IF
+
+    IF( ActivateUnits )THEN
+
+      CALL ActivateUnitsDisplay &
+             ( CoordinateSystem_Option = CoordinateSystem )
+
     END IF
 
     IF(Verbose)THEN
@@ -238,13 +304,18 @@ contains
            ( ProgramName_Option = '', nNodes_Option = nNodes, &
              nX_Option = nX, bcX_Option = bcX, &
              nE_Option = nE, swE_Option = swE, bcE_Option = bcE, &
-             eL_Option = eL, eR_Option = eR, zoomE_Option = zoomE )
+             eL_Option = eL, eR_Option = eR, zoomE_Option = zoomE, &
+             Verbose_Option = Verbose )
+
+    call SetNumberOfSpecies( nSpecies, Verbose_Option = Verbose )
 
 #ifdef THORNADO_DEBUG
     call DescribeProgramHeader
 #endif
 
     call InitializeTimers
+
+    call TwoMoment_InitializeTimers
 
     call InitializeQuadratures
 
@@ -285,6 +356,15 @@ contains
            ( Verbose_Option = Verbose )
 
 #ifdef TWOMOMENT_ORDER_V
+
+    CALL InitializeTroubledCellIndicator_TwoMoment &
+           ( UseTroubledCellIndicator_Option &
+               = TroubledCellIndicator, &
+             C_TCI_Option &
+               = C_TCI, &
+             Verbose_Option &
+               = Verbose )
+
     call InitializeSlopeLimiter_TwoMoment &
            ( BetaTVD_Option &
                = 1.75_DP, &
@@ -292,6 +372,7 @@ contains
                = SlopeLimiter, &
              Verbose_Option &
                = Verbose )
+
 #endif
 
 #ifdef TWOMOMENT_ORDER_1
@@ -316,7 +397,8 @@ contains
     call InitializeEquationOfState_TABLE &
            ( EquationOfStateTableName_Option &
                = EquationOfStateTableName_Option, &
-             Verbose_Option = Verbose , &
+             UseChemicalPotentialShift_Option = UseChemicalPotentialShift, &
+             Verbose_Option = Verbose, &
              External_EOS = External_EOS )
 #else
     call InitializeEquationOfState_IDEAL &
@@ -365,6 +447,7 @@ contains
              Max_3_Option &
                = ( One - 1.0d-3 * EPSILON( One ) ) * Max_Y )
 #endif
+#endif
 
     call InitializeNeutrinoMatterSolverParameters &
            ( M_outer_Option = M_outer_Option, &
@@ -378,8 +461,8 @@ contains
              Include_Brem_Option = Include_Brem_Option, &
              Include_LinCorr_Option = Include_LinCorr_Option, &
              wMatrRHS_Option = wMatrRHS_Option, &
+             FreezeOpacities_Option = FreezeOpacities_Option, &
              Verbose_Option = Verbose )
-#endif
 
   end subroutine InitThornado
 
@@ -393,6 +476,8 @@ contains
     call DestroyGeometryFieldsE
 
     if ( write_timers ) call FinalizeTimers
+
+    if ( write_timers ) call TwoMoment_FinalizeTimers
 
     call FinalizeReferenceElementX
 
@@ -425,6 +510,8 @@ contains
 #endif
 
     call FinalizeSlopeLimiter_TwoMoment
+
+    CALL FinalizeTroubledCellIndicator_TwoMoment
 #endif
 
     call FinalizePositivityLimiter_TwoMoment
@@ -450,6 +537,8 @@ contains
 
       IF( TRIM(CoordinateSystem_Option) == 'spherical' )THEN
         CoordinateSystem = 'SPHERICAL'
+      ELSE IF( TRIM(CoordinateSystem_Option) == 'cylindrical' )THEN
+        CoordinateSystem = 'CYLINDRICAL'
       ELSE IF( TRIM(CoordinateSystem_Option) == 'cartesian' )THEN
         CoordinateSystem = 'CARTESIAN'
       ELSE
@@ -486,6 +575,8 @@ contains
     CALL ComputeGeometryX &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
+    call CreateSubcellReconstruction
+
     call CreateFluidFields &
            ( nX, swX, Verbose_Option = .FALSE. )
 
@@ -507,6 +598,8 @@ contains
     END DO
 
     call DestroyGeometryFields
+
+    call DestroySubcellReconstruction
 
     call DestroyFluidFields
 

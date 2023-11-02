@@ -127,6 +127,25 @@ CONTAINS
       Verbose = .TRUE.
     END IF
 
+    IF( Verbose )THEN
+
+#if defined( THORNADO_GIT_HASH )
+
+      WRITE(*,*)
+
+      WRITE(*,'(2x,A,A)') &
+        'INFO: thornado git hash:   ', THORNADO_GIT_HASH
+      WRITE(*,'(2x,A,A)') &
+        'INFO: thornado git date:   ', THORNADO_GIT_DATE
+      WRITE(*,'(2x,A,A)') &
+        'INFO: thornado git branch: ', THORNADO_GIT_BRANCH
+      WRITE(*,'(2x,A,A)') &
+        'INFO: thornado git url:    ', THORNADO_GIT_URL
+
+#endif
+
+    END IF
+
     IF( ( LEN_TRIM( ProgramName ) > 0 ) .AND. Verbose )THEN
 
       WRITE(*,*)

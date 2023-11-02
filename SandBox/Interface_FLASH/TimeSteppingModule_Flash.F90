@@ -22,25 +22,20 @@ MODULE TimeSteppingModule_Flash
     nCF, uDF, iCF_D, iCF_S1, iCF_S2, iCF_S3, &
     iCF_E, iCF_Ne
   USE RadiationFieldsModule, ONLY: &
-    nCR, nSpecies, iCR_N, iCR_G1, iCR_G2
-#ifdef TWOMOMENT_ORDER_1
+    nCR, nSpecies, iCR_N, iCR_G1, iCR_G2, iCR_G3
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit
   USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
-    ComputeIncrement_TwoMoment_Implicit_New
+    ComputeIncrement_TwoMoment_Implicit
   USE TwoMoment_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_TwoMoment
-#elif TWOMOMENT_ORDER_V
-  USE TwoMoment_DiscretizationModule_Streaming_OrderV, ONLY: &
-    ComputeIncrement_TwoMoment_Explicit
-  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV, ONLY: &
-    ComputeIncrement_TwoMoment_Implicit
-  USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
-    ApplyPositivityLimiter_TwoMoment
-  USE TwoMoment_SlopeLimiterModule_OrderV, ONLY : &
+  USE TwoMoment_SlopeLimiterModule, ONLY : &
     ApplySlopeLimiter_TwoMoment
   USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
     ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
+#ifdef TWOMOMENT_ORDER_V
+  USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
+    OffGridFlux_TwoMoment
 #endif
 
   USE, INTRINSIC :: ieee_arithmetic, ONLY: &
@@ -52,9 +47,14 @@ MODULE TimeSteppingModule_Flash
   PUBLIC :: ComputeTimeStep_TwoMoment
   PUBLIC :: Update_IMEX_PDARS
   PUBLIC :: ApplyBoundaryConditions_Radiation
-  PUBLIC :: ApplyBoundaryConditions_Euler_FLASH
+  PUBLIC :: ApplyBoundaryConditions_Fluid
 
   LOGICAL :: DEBUG = .FALSE.
+
+  INTEGER, PARAMETER, PUBLIC :: iApplyBC_Both  = 0
+  INTEGER, PARAMETER, PUBLIC :: iApplyBC_Inner = 1
+  INTEGER, PARAMETER, PUBLIC :: iApplyBC_Outer = 2
+  INTEGER, PARAMETER, PUBLIC :: iApplyBC_None  = 3
 
 CONTAINS
 
@@ -85,7 +85,8 @@ CONTAINS
 
   SUBROUTINE Update_IMEX_PDARS &
     ( dt, U_F, U_R, Explicit_Option, Implicit_Option, &
-      SingleStage_Option, CallFromThornado_Option, BoundaryCondition_Option )
+      SingleStage_Option, CallFromThornado_Option, &
+      bcX_Option, iApplyBC_Option, OffGridFluxR_Option )
 
     use GeometryFieldsModuleE, only : uGE
     use GeometryFieldsModule,  only : uGF
@@ -114,7 +115,9 @@ CONTAINS
       SingleStage_Option, &
       CallFromThornado_Option
     INTEGER, INTENT(in), OPTIONAL :: &
-      BoundaryCondition_Option
+      bcX_Option(3), iApplyBC_Option(3)
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      OffGridFluxR_Option(2*nCR)
 
     LOGICAL  :: &
       Explicit, &
@@ -122,53 +125,25 @@ CONTAINS
       SingleStage, &
       CallFromThornado
     INTEGER  :: &
-      iS, iCR, iZ4, iZ3, iZ2, iZ1, iNode, iCF, iNodeX, BoundaryCondition
+      iS, iCR, iZ4, iZ3, iZ2, iZ1, iNode, iCF, iNodeX, bcX(3), iApplyBC(3)
     INTEGER  :: &
       iX_SW(3), iZ_SW(4), iZ_SW_P(4)
     INTEGER  :: &
       iX_B0_SW(3), iX_E0_SW(3), iZ_B0_SW(4), iZ_E0_SW(4), iZ_B0_SW_P(4), iZ_E0_SW_P(4)
     REAL(DP) :: &
-      U0_F &
-        (1:nDOFX, &
-         iZ_B1(2):iZ_E1(2), &
-         iZ_B1(3):iZ_E1(3), &
-         iZ_B1(4):iZ_E1(4), &
-         1:nCF), &
-      Q1_F &
-        (1:nDOFX, &
-         iZ_B1(2):iZ_E1(2), &
-         iZ_B1(3):iZ_E1(3), &
-         iZ_B1(4):iZ_E1(4), &
-         1:nCF)
-    REAL(DP) :: &
-      U0_R &
-        (1:nDOF, &
-         iZ_B1(1):iZ_E1(1), &
-         iZ_B1(2):iZ_E1(2), &
-         iZ_B1(3):iZ_E1(3), &
-         iZ_B1(4):iZ_E1(4), &
-         1:nCR,1:nSpecies), &
-      T0_R &
-        (1:nDOF, &
-         iZ_B1(1):iZ_E1(1), &
-         iZ_B1(2):iZ_E1(2), &
-         iZ_B1(3):iZ_E1(3), &
-         iZ_B1(4):iZ_E1(4), &
-         1:nCR,1:nSpecies), &
-      T1_R &
-        (1:nDOF, &
-         iZ_B1(1):iZ_E1(1), &
-         iZ_B1(2):iZ_E1(2), &
-         iZ_B1(3):iZ_E1(3), &
-         iZ_B1(4):iZ_E1(4), &
-         1:nCR,1:nSpecies), &
-      Q1_R &
-        (1:nDOF, &
-         iZ_B1(1):iZ_E1(1), &
-         iZ_B1(2):iZ_E1(2), &
-         iZ_B1(3):iZ_E1(3), &
-         iZ_B1(4):iZ_E1(4), &
-         1:nCR,1:nSpecies)
+      OffGridFluxR   (2*nCR), &
+      OffGridFluxR_T0(2*nCR), &
+      OffGridFluxR_T1(2*nCR)
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:)     :: U0_F, Q1_F
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:,:,:) :: U0_R, T0_R, T1_R, Q1_R
+
+    ALLOCATE( U0_F(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF) )
+    ALLOCATE( Q1_F(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF) )
+
+    ALLOCATE( U0_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+    ALLOCATE( T0_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+    ALLOCATE( T1_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+    ALLOCATE( Q1_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
 
     IF( PRESENT( Explicit_Option ) )THEN
       Explicit = Explicit_Option
@@ -194,29 +169,37 @@ CONTAINS
       CallFromThornado = .FALSE.
     END IF
 
-    IF( PRESENT( BoundaryCondition_Option ) )THEN
-      BoundaryCondition = BoundaryCondition_Option
+    IF( PRESENT( bcX_Option ) )THEN
+      bcX = bcX_Option
     ELSE
-      BoundaryCondition = 0 ! No Boundary Condition
+      bcX = 0 ! No Boundary Condition
+    END IF
+
+    IF( PRESENT( iApplyBC_Option ) )THEN
+      iApplyBC = iApplyBC_Option
+    ELSE
+      iApplyBC = iApplyBC_None
     END IF
 
 #ifdef THORNADO_DEBUG
     IF( ANY(IEEE_IS_NAN(U_R)) ) PRINT*, 'NaN when enter TimeStep'
 #endif
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: U_F, U_R, uGE, uGF ) &
-    !$OMP MAP( alloc: U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R )
-#elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( U_F, U_R, uGE, uGF ) &
-    !$ACC CREATE( U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R )
-#endif
-
     U0_F = Zero; Q1_F = Zero
 
     U0_R = Zero; T0_R = Zero; T1_R = Zero; Q1_R = Zero
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: U_F, U_R, uGE, uGF, &
+    !$OMP          U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( U_F, U_R, uGE, uGF, &
+    !$ACC         U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R )
+#endif
+
+    OffGridFluxR = Zero
 
 #ifdef TWOMOMENT_ORDER_V
 #if defined MICROPHYSICS_WEAKLIB
@@ -244,7 +227,7 @@ CONTAINS
 
     if (nDimsX .eq. 3) then
        iX_SW   = [    1, 1, 1 ]
-       iZ_SW   = [ 0, 1, 1, 1 ] 
+       iZ_SW   = [ 0, 1, 1, 1 ]
        iZ_SW_P = [ 0, 2, 2, 2 ]
     else if (nDimsX .eq. 2) then
        iX_SW   = [    1, 1, 0 ]
@@ -289,7 +272,7 @@ CONTAINS
 
 #elif TWOMOMENT_ORDER_V
       CALL ApplySlopeLimiter_TwoMoment &
-             ( iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+             ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
@@ -298,11 +281,11 @@ CONTAINS
       ! --- Apply Boundary Condition ---
 
       CALL ApplyBoundaryConditions_Radiation &
-             ( iZ_SW_P, iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, BoundaryCondition )
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC )
 
 #ifdef TWOMOMENT_ORDER_V
-      CALL ApplyBoundaryConditions_Euler_FLASH &
-             ( iZ_SW_P, iX_B0, iX_E0, iX_B1, iX_E1, U_F, BoundaryCondition )
+      CALL ApplyBoundaryConditions_Fluid &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC )
 #endif
 
       ! --- Explicit Solver ---
@@ -316,6 +299,7 @@ CONTAINS
       CALL ComputeIncrement_TwoMoment_Explicit &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, &
                uGE, uGF, U_F, U_R, T0_R )
+      OffGridFluxR_T0 = OffGridFlux_TwoMoment
 #endif
     ELSE
 
@@ -342,6 +326,7 @@ CONTAINS
           END DO
         END DO
       END DO
+      OffGridFluxR_T0 = Zero
 
     END IF
 
@@ -349,6 +334,10 @@ CONTAINS
 
     CALL AddFields_Radiation &
            ( iZ_B0_SW, iZ_E0_SW, One, dt, U0_R, T0_R, U_R )
+
+#ifdef TWOMOMENT_ORDER_V
+    OffGridFluxR = dt * OffGridFluxR_T0
+#endif
 
     ! --- Apply Limiter ---
 
@@ -367,21 +356,11 @@ CONTAINS
     ! --- Implicit Step ---
 
     IF( Implicit )THEN
-
-#ifdef TWOMOMENT_ORDER_1
-      CALL ComputeIncrement_TwoMoment_Implicit_New &
-             ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, dt, &
-               uGE, uGF, &
-               U_F, Q1_F, &
-               U_R, Q1_R )
-
-#elif TWOMOMENT_ORDER_V
       CALL ComputeIncrement_TwoMoment_Implicit &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, dt, &
                uGE, uGF, &
                U_F, Q1_F, &
                U_R, Q1_R )
-#endif
 
     ELSE
 
@@ -491,11 +470,11 @@ CONTAINS
       IF( Explicit )THEN
 
         CALL ApplyBoundaryConditions_Radiation &
-               ( iZ_SW_P, iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, BoundaryCondition )
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC )
 
 #ifdef TWOMOMENT_ORDER_V
-        CALL ApplyBoundaryConditions_Euler_FLASH &
-               ( iZ_SW_P, iX_B0, iX_E0, iX_B1, iX_E1, U_F, BoundaryCondition )
+        CALL ApplyBoundaryConditions_Fluid &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC )
 #endif
 
 #ifdef TWOMOMENT_ORDER_1
@@ -507,6 +486,7 @@ CONTAINS
         CALL ComputeIncrement_TwoMoment_Explicit &
                ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, &
                  uGE, uGF, U_F, U_R, T1_R )
+        OffGridFluxR_T1 = OffGridFlux_TwoMoment
 #endif
 
       ELSE
@@ -534,6 +514,7 @@ CONTAINS
             END DO
           END DO
         END DO
+        OffGridFluxR_T1 = Zero
 
       END IF
 
@@ -550,6 +531,10 @@ CONTAINS
 
       CALL AddFields_Radiation &
              ( iZ_B0_SW, iZ_E0_SW, One, Half * dt, U_R,  Q1_R, U_R )
+
+#ifdef TWOMOMENT_ORDER_V
+      OffGridFluxR = Half * dt * OffGridFluxR_T0 + Half * dt * OffGridFluxR_T1
+#endif
 
       ! --- Apply Limiter ---
 
@@ -570,20 +555,11 @@ CONTAINS
 
       IF( Implicit )THEN
 
-#ifdef TWOMOMENT_ORDER_1
-        CALL ComputeIncrement_TwoMoment_Implicit_New &
-               ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, Half * dt, &
-                 uGE, uGF, &
-                 U_F, Q1_F, &
-                 U_R, Q1_R )
-
-#elif TWOMOMENT_ORDER_V
         CALL ComputeIncrement_TwoMoment_Implicit &
                (iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, Half * dt, &
                  uGE, uGF, &
                  U_F, Q1_F, &
                  U_R, Q1_R )
-#endif
 
       ELSE
 
@@ -691,6 +667,10 @@ CONTAINS
     !$ACC         iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
 #endif
 
+    IF( PRESENT( OffGridFluxR_Option ) )THEN
+      OffGridFluxR_Option = OffGridFluxR
+    END IF
+
   END SUBROUTINE Update_IMEX_PDARS
 
 
@@ -704,7 +684,7 @@ CONTAINS
       A(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
     REAL(DP), INTENT(inout) :: &
       B(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
-    REAL(DP), INTENT(out)   :: &
+    REAL(DP), INTENT(inout) :: &
       C(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
 
     INTEGER :: iNodeX, iX1, iX2, iX3, iFF
@@ -768,7 +748,7 @@ CONTAINS
       A(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(inout) :: &
       B(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
-    REAL(DP), INTENT(out)   :: &
+    REAL(DP), INTENT(inout) :: &
       C(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
 
     INTEGER :: iNode, iZ1, iZ2, iZ3, iZ4, iRF, iS
@@ -826,90 +806,943 @@ CONTAINS
   END SUBROUTINE AddFields_Radiation
 
 
+  LOGICAL FUNCTION ApplyInnerBC( iApplyBC )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    INTEGER, INTENT(in) :: iApplyBC
+
+    ApplyInnerBC = .FALSE.
+    IF( iApplyBC .EQ. iApplyBC_Inner .OR. &
+        iApplyBC .EQ. iApplyBC_Both ) &
+    ApplyInnerBC = .TRUE.
+
+  END FUNCTION ApplyInnerBC
+
+
+  LOGICAL FUNCTION ApplyOuterBC( iApplyBC )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    INTEGER, INTENT(in) :: iApplyBC
+
+    ApplyOuterBC = .FALSE.
+    IF( iApplyBC .EQ. iApplyBC_Outer .OR. &
+        iApplyBC .EQ. iApplyBC_Both ) &
+    ApplyOuterBC = .TRUE.
+
+  END FUNCTION ApplyOuterBC
+
+
   SUBROUTINE ApplyBoundaryConditions_Radiation &
-    ( swZ, iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, BoundaryCondition )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, swZ, bcX, iApplyBC )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
     INTEGER,  INTENT(in)    :: &
-      swZ(4), iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), BoundaryCondition
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), swZ(4), bcX(3), iApplyBC(3)
     REAL(DP), INTENT(inout) :: &
       U(1:nDOF, &
         iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
         iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
         1:nCR,1:nSpecies)
 
-    IF( BoundaryCondition == 0 ) RETURN
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: U, iZ_B0, iZ_E0, iZ_B1, iZ_E1, swZ, bcX, iApplyBC )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA ASYNC &
+    !$ACC COPYIN( U, iZ_B0, iZ_E0, iZ_B1, iZ_E1, swZ, bcX, iApplyBC )
+#endif
 
-    IF( BoundaryCondition == 3 )THEN
-      CALL ApplyBoundaryConditions_Radiation_Reflecting( swZ, iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
-      RETURN
-    END IF
+    CALL ApplyBC_Radiation_X1 &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, swZ(2), bcX(1), iApplyBC(1) )
+
+    CALL ApplyBC_Radiation_X2 &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, swZ(3), bcX(2), iApplyBC(2) )
+
+    CALL ApplyBC_Radiation_X3 &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, swZ(4), bcX(3), iApplyBC(3) )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: U ) &
+    !$OMP MAP( release: iZ_B0, iZ_E0, iZ_B1, iZ_E1, swZ, bcX, iApplyBC )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA ASYNC &
+    !$ACC COPYOUT( U ) &
+    !$ACC DELETE( iZ_B0, iZ_E0, iZ_B1, iZ_E1, swZ, bcX, iApplyBC )
+#endif
 
   END SUBROUTINE ApplyBoundaryConditions_Radiation
 
 
-  SUBROUTINE ApplyBoundaryConditions_Euler_FLASH &
-    ( swZ, iX_B0, iX_E0, iX_B1, iX_E1, U, BoundaryCondition )
+  SUBROUTINE ApplyBoundaryConditions_Fluid &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, U, swZ, bcX, iApplyBC )
 
     INTEGER,  INTENT(in)           :: &
-      swZ(4), iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), BoundaryCondition
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), swZ(4), bcX(3), iApplyBC(3)
     REAL(DP), INTENT(inout)        :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iX1, iX2, iX3
-    INTEGER :: iNodeX1, iNodeX2, iNodeX3, jNodeX1, iNodeX, jNodeX
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: U, iX_B0, iX_E0, iX_B1, iX_E1, swZ, bcX, iApplyBC )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN(  U, iX_B0, iX_E0, iX_B1, iX_E1, swZ, bcX, iApplyBC )
+#endif
 
-    IF( BoundaryCondition == 0 ) RETURN
+    CALL ApplyBC_Fluid_X1( iX_B0, iX_E0, iX_B1, iX_E1, U, swZ(2), bcX(1), iApplyBC(1) )
 
-    IF( BoundaryCondition == 3 )THEN
-    !! For 1D Reflecting Inner Boundary ONLY
-       DO iX3 = iX_B0(3), iX_E0(3)
-       DO iX2 = iX_B0(2), iX_E0(2)
-       DO iX1 = 1, swZ(2)
+    CALL ApplyBC_Fluid_X2( iX_B0, iX_E0, iX_B1, iX_E1, U, swZ(3), bcX(2), iApplyBC(2) )
 
-         DO iNodeX3 = 1, nNodesX(3)
-         DO iNodeX2 = 1, nNodesX(2)
-         DO iNodeX1 = 1, nNodesX(1)
+    CALL ApplyBC_Fluid_X3( iX_B0, iX_E0, iX_B1, iX_E1, U, swZ(4), bcX(3), iApplyBC(3) )
 
-           jNodeX1 = ( nNodesX(1) - iNodeX1 ) + 1
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from:    U ) &
+    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, swZ, bcX, iApplyBC )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT(      U ) &
+    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, swZ, bcX, iApplyBC )
+#endif
 
-           iNodeX = NodeNumberX( iNodeX1, iNodeX2, iNodeX3 )
-           jNodeX = NodeNumberX( jNodeX1, iNodeX2, iNodeX3 )
-
-           U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
-             = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_D)
-           U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S1) &
-             = - U(jNodeX,iX_B0(1),iX2,iX3,iCF_S1)
-           U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S2) &
-             = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_S2)
-           U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_S3) &
-             = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_S3)
-           U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
-             = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_E)
-           U(iNodeX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) &
-             = + U(jNodeX,iX_B0(1),iX2,iX3,iCF_Ne)
-
-         END DO
-         END DO
-         END DO
-
-       END DO
-       END DO
-       END DO
-
-    END IF
-    
-  END SUBROUTINE ApplyBoundaryConditions_Euler_FLASH
+  END SUBROUTINE ApplyBoundaryConditions_Fluid
 
 
-  SUBROUTINE ApplyBoundaryConditions_Radiation_Reflecting &
-    ( swZ, iZ_B0, iZ_E0, iZ_B1, iZ_E1, U )
+  SUBROUTINE ApplyBC_Fluid_X1( iX_B0, iX_E0, iX_B1, iX_E1, U, swX1, bcX1, iApplyBC )
+
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
+      swX1, bcX1, iApplyBC
+    REAL(DP), INTENT(inout) :: &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER  :: iCF, iX1, iX2, iX3
+    INTEGER  :: iNX
+    INTEGER  :: iNX1, iNX2, iNX3, jNX, jNX1
+
+    SELECT CASE ( bcX1 )
+
+    CASE ( 0 ) ! No Boundary Condition
+
+    CASE ( 2 ) ! Homogeneous
+
+      ! --- Inner Boundary ---
+
+      IF( ApplyInnerBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( U, iX_B0, iX_E0 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iCF = 1, nCF
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX1
+        DO iNX = 1, nDOFX
+
+          IF( iCF == iCF_S1 )THEN
+
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF) = MIN( U(iNX,iX_B0(1),iX2,iX3,iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF) = U(iNX,iX_B0(1),iX2,iX3,iCF)
+
+          END IF
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+      ! --- Outer Boundary ---
+
+      IF( ApplyOuterBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( U, iX_B0, iX_E0 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iCF = 1, nCF
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX1
+        DO iNX = 1, nDOFX
+
+          IF( iCF == iCF_S1 )THEN
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) = MAX( U(iNX,iX_E0(1),iX2,iX3,iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) = U(iNX,iX_E0(1),iX2,iX3,iCF)
+
+          END IF
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+    CASE ( 3 ) ! Reflecting
+
+      ! --- Inner Boundary ---
+
+      IF( ApplyInnerBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX1 )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+        !$ACC PRIVATE( iNX, jNX, jNX1 ) &
+        !$ACC PRESENT( U, iX_B0, iX_E0, nNodesX )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX1 )
+#endif
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX1
+
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
+
+            jNX1 = ( nNodesX(1) - iNX1 ) + 1
+
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( jNX1, iNX2, iNX3 )
+
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_D ) = + U(jNX,iX_B0(1)+iX1-1,iX2,iX3,iCF_D )
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S1) = - U(jNX,iX_B0(1)+iX1-1,iX2,iX3,iCF_S1)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S2) = + U(jNX,iX_B0(1)+iX1-1,iX2,iX3,iCF_S2)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S3) = + U(jNX,iX_B0(1)+iX1-1,iX2,iX3,iCF_S3)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_E ) = + U(jNX,iX_B0(1)+iX1-1,iX2,iX3,iCF_E )
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) = + U(jNX,iX_B0(1)+iX1-1,iX2,iX3,iCF_Ne)
+
+          END DO
+          END DO
+          END DO
+
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+      ! --- Outer Boundary ---
+
+      IF( ApplyOuterBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX1 )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+        !$ACC PRIVATE( iNX, jNX, jNX1 ) &
+        !$ACC PRESENT( U, iX_B0, iX_E0, nNodesX )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX1 )
+#endif
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX1
+
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
+
+            jNX1 = ( nNodesX(1) - iNX1 ) + 1
+
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( jNX1, iNX2, iNX3 )
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_D ) = + U(jNX,iX_E0(1)-iX1+1,iX2,iX3,iCF_D )
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_S1) = - U(jNX,iX_E0(1)-iX1+1,iX2,iX3,iCF_S1)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_S2) = + U(jNX,iX_E0(1)-iX1+1,iX2,iX3,iCF_S2)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_S3) = + U(jNX,iX_E0(1)-iX1+1,iX2,iX3,iCF_S3)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_E ) = + U(jNX,iX_E0(1)-iX1+1,iX2,iX3,iCF_E )
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_Ne) = + U(jNX,iX_E0(1)-iX1+1,iX2,iX3,iCF_Ne)
+
+          END DO
+          END DO
+          END DO
+
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+    CASE ( 32 ) ! Reflecting (Inner), Homogeneous (Outer)
+
+      ! --- Inner Boundary ---
+
+      IF( ApplyInnerBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX1 )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+        !$ACC PRIVATE( iNX, jNX, jNX1 ) &
+        !$ACC PRESENT( U, iX_B0, iX_E0, nNodesX )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX1 )
+#endif
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX1
+
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
+
+            jNX1 = ( nNodesX(1) - iNX1 ) + 1
+
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( jNX1, iNX2, iNX3 )
+
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_D ) = + U(jNX,iX_B0(1)+iX1-1,iX2,iX3,iCF_D )
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S1) = - U(jNX,iX_B0(1)+iX1-1,iX2,iX3,iCF_S1)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S2) = + U(jNX,iX_B0(1)+iX1-1,iX2,iX3,iCF_S2)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S3) = + U(jNX,iX_B0(1)+iX1-1,iX2,iX3,iCF_S3)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_E ) = + U(jNX,iX_B0(1)+iX1-1,iX2,iX3,iCF_E )
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) = + U(jNX,iX_B0(1)+iX1-1,iX2,iX3,iCF_Ne)
+
+          END DO
+          END DO
+          END DO
+
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+      ! --- Outer Boundary ---
+
+      IF( ApplyOuterBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( U, iX_B0, iX_E0 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iCF = 1, nCF
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX1
+        DO iNX = 1, nDOFX
+
+          IF( iCF == iCF_S1 )THEN
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) = MAX( U(iNX,iX_E0(1),iX2,iX3,iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) = U(iNX,iX_E0(1),iX2,iX3,iCF)
+
+          END IF
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+    CASE DEFAULT
+
+    END SELECT
+
+  END SUBROUTINE ApplyBC_Fluid_X1
+
+
+  SUBROUTINE ApplyBC_Fluid_X2( iX_B0, iX_E0, iX_B1, iX_E1, U, swX2, bcX2, iApplyBC )
+
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
+      swX2, bcX2, iApplyBC
+    REAL(DP), INTENT(inout) :: &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER  :: iCF, iX1, iX2, iX3
+    INTEGER  :: iNX
+    INTEGER  :: iNX1, iNX2, iNX3, jNX, jNX2
+
+    SELECT CASE ( bcX2 )
+
+    CASE ( 0 ) ! No Boundary Condition
+
+    CASE ( 2 ) ! Homogeneous
+
+      ! --- Inner Boundary ---
+
+      IF( ApplyInnerBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( U, iX_B0, iX_E0 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iCF = 1, nCF
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = 1, swX2
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1, nDOFX
+
+          IF( iCF == iCF_S2 )THEN
+
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF) = MIN( U(iNX,iX1,iX_B0(2),iX3,iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF) = U(iNX,iX1,iX_B0(2),iX3,iCF)
+
+          END IF
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+      ! --- Outer Boundary ---
+
+      IF( ApplyOuterBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( U, iX_B0, iX_E0 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iCF = 1, nCF
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = 1, swX2
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1, nDOFX
+
+          IF( iCF == iCF_S2 )THEN
+
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = MAX( U(iNX,iX1,iX_E0(2),iX3,iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = U(iNX,iX1,iX_E0(2),iX3,iCF)
+
+          END IF
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+    CASE ( 3 ) ! Reflecting
+
+      ! --- Inner Boundary ---
+
+      IF( ApplyInnerBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+        !$ACC PRIVATE( iNX, jNX, jNX2 ) &
+        !$ACC PRESENT( U, iX_B0, iX_E0, nNodesX )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
+#endif
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = 1, swX2
+        DO iX1 = iX_B0(1), iX_E0(1)
+
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
+
+            jNX2 = ( nNodesX(2) - iNX2 ) + 1
+
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( iNX1, jNX2, iNX3 )
+
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_D ) = + U(jNX,iX1,iX_B0(2)+iX2-1,iX3,iCF_D )
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S1) = + U(jNX,iX1,iX_B0(2)+iX2-1,iX3,iCF_S1)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S2) = - U(jNX,iX1,iX_B0(2)+iX2-1,iX3,iCF_S2)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S3) = + U(jNX,iX1,iX_B0(2)+iX2-1,iX3,iCF_S3)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_E ) = + U(jNX,iX1,iX_B0(2)+iX2-1,iX3,iCF_E )
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_Ne) = + U(jNX,iX1,iX_B0(2)+iX2-1,iX3,iCF_Ne)
+
+          END DO
+          END DO
+          END DO
+
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+      ! --- Outer Boundary ---
+
+      IF( ApplyOuterBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+        !$ACC PRIVATE( iNX, jNX, jNX2 ) &
+        !$ACC PRESENT( U, iX_B0, iX_E0, nNodesX )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
+#endif
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = 1, swX2
+        DO iX1 = iX_B0(1), iX_E0(1)
+
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
+
+            jNX2 = ( nNodesX(2) - iNX2 ) + 1
+
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( iNX1, jNX2, iNX3 )
+
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_D ) = + U(jNX,iX1,iX_E0(2)-iX2+1,iX3,iCF_D )
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_S1) = + U(jNX,iX1,iX_E0(2)-iX2+1,iX3,iCF_S1)
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_S2) = - U(jNX,iX1,iX_E0(2)-iX2+1,iX3,iCF_S2)
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_S3) = + U(jNX,iX1,iX_E0(2)-iX2+1,iX3,iCF_S3)
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_E ) = + U(jNX,iX1,iX_E0(2)-iX2+1,iX3,iCF_E )
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_Ne) = + U(jNX,iX1,iX_E0(2)-iX2+1,iX3,iCF_Ne)
+
+          END DO
+          END DO
+          END DO
+
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+    CASE ( 32 ) ! Reflecting (Inner), Homogeneous (Outer)
+
+      ! --- Inner Boundary ---
+
+      IF( ApplyInnerBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+        !$ACC PRIVATE( iNX, jNX, jNX2 ) &
+        !$ACC PRESENT( U, iX_B0, iX_E0, nNodesX )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
+#endif
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = 1, swX2
+        DO iX1 = iX_B0(1), iX_E0(1)
+
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
+
+            jNX2 = ( nNodesX(2) - iNX2 ) + 1
+
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( iNX1, jNX2, iNX3 )
+
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_D ) = + U(jNX,iX1,iX_B0(2)+iX2-1,iX3,iCF_D )
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S1) = + U(jNX,iX1,iX_B0(2)+iX2-1,iX3,iCF_S1)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S2) = - U(jNX,iX1,iX_B0(2)+iX2-1,iX3,iCF_S2)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S3) = + U(jNX,iX1,iX_B0(2)+iX2-1,iX3,iCF_S3)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_E ) = + U(jNX,iX1,iX_B0(2)+iX2-1,iX3,iCF_E )
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_Ne) = + U(jNX,iX1,iX_B0(2)+iX2-1,iX3,iCF_Ne)
+
+          END DO
+          END DO
+          END DO
+
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+      ! --- Outer Boundary ---
+
+      IF( ApplyOuterBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( U, iX_B0, iX_E0 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iCF = 1, nCF
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = 1, swX2
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1, nDOFX
+
+          IF( iCF == iCF_S2 )THEN
+
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = MAX( U(iNX,iX1,iX_E0(2),iX3,iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = U(iNX,iX1,iX_E0(2),iX3,iCF)
+
+          END IF
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+    CASE DEFAULT
+
+    END SELECT
+
+  END SUBROUTINE ApplyBC_Fluid_X2
+
+
+  SUBROUTINE ApplyBC_Fluid_X3( iX_B0, iX_E0, iX_B1, iX_E1, U, swX3, bcX3, iApplyBC )
+
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
+      swX3, bcX3, iApplyBC
+    REAL(DP), INTENT(inout) :: &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER  :: iCF, iX1, iX2, iX3
+    INTEGER  :: iNX
+    INTEGER  :: iNX1, iNX2, iNX3, jNX, jNX3
+
+    SELECT CASE ( bcX3 )
+
+    CASE ( 0 ) ! No Boundary Condition
+
+    CASE ( 2 ) ! Homogeneous
+
+      ! --- Inner Boundary ---
+
+      IF( ApplyInnerBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( U, iX_B0, iX_E0 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iCF = 1, nCF
+        DO iX3 = 1, swX3
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1, nDOFX
+
+          IF( iCF == iCF_S3 )THEN
+
+            U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF) = MIN( U(iNX,iX1,iX2,iX_B0(3),iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF) = U(iNX,iX1,iX2,iX_B0(3),iCF)
+
+          END IF
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+      ! --- Outer Boundary ---
+
+      IF( ApplyOuterBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( U, iX_B0, iX_E0 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iCF = 1, nCF
+        DO iX3 = 1, swX3
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1, nDOFX
+
+          IF( iCF == iCF_S3 )THEN
+
+            U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF) = MAX( U(iNX,iX1,iX2,iX_E0(3),iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF) = U(iNX,iX1,iX2,iX_E0(3),iCF)
+
+          END IF
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+    CASE ( 3 ) ! Reflecting
+
+      ! --- Inner Boundary ---
+
+      IF( ApplyInnerBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX3 )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+        !$ACC PRIVATE( iNX, jNX, jNX3 ) &
+        !$ACC PRESENT( U, iX_B0, iX_E0, nNodesX )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX3 )
+#endif
+        DO iX3 = 1, swX3
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
+
+            jNX3 = ( nNodesX(3) - iNX3 ) + 1
+
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( iNX1, iNX2, jNX3 )
+
+            U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF_D ) = + U(jNX,iX1,iX2,iX_B0(3)+iX3-1,iCF_D )
+            U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF_S1) = + U(jNX,iX1,iX2,iX_B0(3)+iX3-1,iCF_S1)
+            U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF_S2) = + U(jNX,iX1,iX2,iX_B0(3)+iX3-1,iCF_S2)
+            U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF_S3) = - U(jNX,iX1,iX2,iX_B0(3)+iX3-1,iCF_S3)
+            U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF_E ) = + U(jNX,iX1,iX2,iX_B0(3)+iX3-1,iCF_E )
+            U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF_Ne) = + U(jNX,iX1,iX2,iX_B0(3)+iX3-1,iCF_Ne)
+
+          END DO
+          END DO
+          END DO
+
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+      ! --- Outer Boundary ---
+
+      IF( ApplyOuterBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX3 )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+        !$ACC PRIVATE( iNX, jNX, jNX3 ) &
+        !$ACC PRESENT( U, iX_B0, iX_E0, nNodesX )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX3 )
+#endif
+        DO iX3 = 1, swX3
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
+
+            jNX3 = ( nNodesX(3) - iNX3 ) + 1
+
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( iNX1, iNX2, jNX3 )
+
+            U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF_D ) = + U(jNX,iX1,iX2,iX_E0(3)-iX3+1,iCF_D )
+            U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF_S1) = + U(jNX,iX1,iX2,iX_E0(3)-iX3+1,iCF_S1)
+            U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF_S2) = + U(jNX,iX1,iX2,iX_E0(3)-iX3+1,iCF_S2)
+            U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF_S3) = - U(jNX,iX1,iX2,iX_E0(3)-iX3+1,iCF_S3)
+            U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF_E ) = + U(jNX,iX1,iX2,iX_E0(3)-iX3+1,iCF_E )
+            U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF_Ne) = + U(jNX,iX1,iX2,iX_E0(3)-iX3+1,iCF_Ne)
+
+          END DO
+          END DO
+          END DO
+
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+    CASE ( 32 ) ! Reflecting (Inner), Homogeneous (Outer)
+
+      ! --- Inner Boundary ---
+
+      IF( ApplyInnerBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX3 )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+        !$ACC PRIVATE( iNX, jNX, jNX3 ) &
+        !$ACC PRESENT( U, iX_B0, iX_E0, nNodesX )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX3 )
+#endif
+        DO iX3 = 1, swX3
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
+
+            jNX3 = ( nNodesX(3) - iNX3 ) + 1
+
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( iNX1, iNX2, jNX3 )
+
+            U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF_D ) = + U(jNX,iX1,iX2,iX_B0(3)+iX3-1,iCF_D )
+            U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF_S1) = + U(jNX,iX1,iX2,iX_B0(3)+iX3-1,iCF_S1)
+            U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF_S2) = + U(jNX,iX1,iX2,iX_B0(3)+iX3-1,iCF_S2)
+            U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF_S3) = - U(jNX,iX1,iX2,iX_B0(3)+iX3-1,iCF_S3)
+            U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF_E ) = + U(jNX,iX1,iX2,iX_B0(3)+iX3-1,iCF_E )
+            U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF_Ne) = + U(jNX,iX1,iX2,iX_B0(3)+iX3-1,iCF_Ne)
+
+          END DO
+          END DO
+          END DO
+
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+      ! --- Outer Boundary ---
+
+      IF( ApplyOuterBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( U, iX_B0, iX_E0 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iCF = 1, nCF
+        DO iX3 = 1, swX3
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1, nDOFX
+
+          IF( iCF == iCF_S3 )THEN
+
+            U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF) = MAX( U(iNX,iX1,iX2,iX_E0(3),iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF) = U(iNX,iX1,iX2,iX_E0(3),iCF)
+
+          END IF
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+    CASE DEFAULT
+
+    END SELECT
+
+  END SUBROUTINE ApplyBC_Fluid_X3
+
+
+  SUBROUTINE ApplyBC_Radiation_X1( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, swX1, bcX1, iApplyBC )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
     INTEGER,  INTENT(in)    :: &
-      swZ(4), iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), &
+      swX1, bcX1, iApplyBC
     REAL(DP), INTENT(inout) :: &
       U(1:nDOF, &
         iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
@@ -918,90 +1751,1010 @@ CONTAINS
 
     INTEGER :: iNode, iS, iCR, iZ1, iZ2, iZ3, iZ4
     INTEGER :: iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4
-    INTEGER :: jNodeZ2, iNodeZ, jNodeZ, iNodeE
+    INTEGER :: jNodeZ2, iNodeZ, jNodeZ
+
+    SELECT CASE ( bcX1 )
+
+    CASE ( 0 ) ! No Boundary Condition
+
+    CASE ( 2 ) ! Homogeneous
+
+      IF( ApplyInnerBC( iApplyBC ) )THEN
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
-    !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-    !$ACC PRIVATE( jNodeZ2, iNodeZ, jNodeZ ) &
-    !$ACC PRESENT( U, iZ_B0, iZ_E0, swZ, nNodesZ, NodeNumberTable4D )
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
+        !$ACC PRESENT( U, iZ_B0, iZ_E0 )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(6) &
-    !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
+        !$OMP PARALLEL DO COLLAPSE(7)
 #endif
-    DO iS = 1, nSpecies
-      DO iCR = 1, nCR
-        DO iZ4 = iZ_B0(4), iZ_E0(4)
-          DO iZ3 = iZ_B0(3), iZ_E0(3)
-            DO iZ2 = 1, swZ(2)
-              DO iZ1 = iZ_B0(1), iZ_E0(1)
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = iZ_B0(4), iZ_E0(4)
+              DO iZ3 = iZ_B0(3), iZ_E0(3)
+                DO iZ2 = 1, swX1
+                  DO iZ1 = iZ_B0(1), iZ_E0(1)
+                    DO iNode = 1, nDOF
 
-                ! --- Inner Boundary (Reflecting) ---
+                      ! --- Inner Boundary ---
 
-                IF( iCR == iCR_G1 )THEN
+                      IF( iCR == iCR_G1 )THEN
 
-                  DO iNodeZ4 = 1, nNodesZ(4)
-                  DO iNodeZ3 = 1, nNodesZ(3)
-                  DO iNodeZ2 = 1, nNodesZ(2)
-                  DO iNodeZ1 = 1, nNodesZ(1)
+                        U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR,iS) &
+                          = MIN( U(iNode,iZ1,iZ_B0(2),iZ3,iZ4,iCR,iS), Zero )
 
-                    jNodeZ2 = (nNodesZ(2)-iNodeZ2) + 1
+                      ELSE
 
-                    iNodeZ = NodeNumberTable4D &
-                               ( iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4 )
-                    jNodeZ = NodeNumberTable4D &
-                               ( iNodeZ1, jNodeZ2, iNodeZ3, iNodeZ4 )
+                        U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR,iS) &
+                          = U(iNode,iZ1,iZ_B0(2),iZ3,iZ4,iCR,iS)
 
-                    U(iNodeZ,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR,iS) &
-                      = - U(jNodeZ,iZ1,iZ_B0(2),iZ3,iZ4,iCR,iS)
+                      END IF
 
+                    END DO
                   END DO
-                  END DO
-                  END DO
-                  END DO
-
-                ELSE IF( iCR == iCR_N )THEN
-
-                  DO iNodeZ4 = 1, nNodesZ(4)
-                  DO iNodeZ3 = 1, nNodesZ(3)
-                  DO iNodeZ2 = 1, nNodesZ(2)
-                  DO iNodeZ1 = 1, nNodesZ(1)
-
-                    jNodeZ2 = (nNodesZ(2)-iNodeZ2) + 1
-
-                    iNodeZ = NodeNumberTable4D &
-                               ( iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4 )
-                    jNodeZ = NodeNumberTable4D &
-                               ( iNodeZ1, jNodeZ2, iNodeZ3, iNodeZ4 )
-
-                    U(iNodeZ,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR,iS) &
-                      = U(jNodeZ,iZ1,iZ_B0(2),iZ3,iZ4,iCR,iS)
-
-                  END DO
-                  END DO
-                  END DO
-                  END DO
-
-                ELSE
-
-                  DO iNode = 1, nDOF
-
-                    U(iNode,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR,iS) &
-                      = U(iNode,iZ1,iZ_B0(2),iZ3,iZ4,iCR,iS)
-
-                  END DO
-
-                END IF
-
+                END DO
               END DO
             END DO
           END DO
         END DO
-      END DO
-    END DO
 
-  END SUBROUTINE ApplyBoundaryConditions_Radiation_Reflecting
+      END IF
+
+      IF( ApplyOuterBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
+        !$ACC PRESENT( U, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(7)
+#endif
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = iZ_B0(4), iZ_E0(4)
+              DO iZ3 = iZ_B0(3), iZ_E0(3)
+                DO iZ2 = 1, swX1
+                  DO iZ1 = iZ_B0(1), iZ_E0(1)
+                    DO iNode = 1, nDOF
+
+                      ! --- Outer Boundary ---
+
+                      IF( iCR == iCR_G1 )THEN
+
+                        U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR,iS) &
+                          = MAX( U(iNode,iZ1,iZ_E0(2),iZ3,iZ4,iCR,iS), Zero )
+
+                      ELSE
+
+                        U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR,iS) &
+                          = U(iNode,iZ1,iZ_E0(2),iZ3,iZ4,iCR,iS)
+
+                      END IF
+
+                    END DO
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+
+      END IF
+
+    CASE ( 3 ) ! Reflecting
+
+      IF( ApplyInnerBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(10) &
+        !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(10) ASYNC &
+        !$ACC PRIVATE( jNodeZ2, iNodeZ, jNodeZ ) &
+        !$ACC PRESENT( U, iZ_B0, iZ_E0, nNodesZ, NodeNumberTable4D )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(10) &
+        !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
+#endif
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = iZ_B0(4), iZ_E0(4)
+              DO iZ3 = iZ_B0(3), iZ_E0(3)
+                DO iZ2 = 1, swX1
+                  DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+                    DO iNodeZ4 = 1, nNodesZ(4)
+                    DO iNodeZ3 = 1, nNodesZ(3)
+                    DO iNodeZ2 = 1, nNodesZ(2)
+                    DO iNodeZ1 = 1, nNodesZ(1)
+
+                      jNodeZ2 = (nNodesZ(2)-iNodeZ2) + 1
+
+                      iNodeZ = NodeNumberTable4D &
+                                 ( iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4 )
+                      jNodeZ = NodeNumberTable4D &
+                                 ( iNodeZ1, jNodeZ2, iNodeZ3, iNodeZ4 )
+
+                      ! --- Inner Boundary ---
+
+                      IF( iCR == iCR_G1 )THEN
+
+                        U(iNodeZ,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR,iS) &
+                          = - U(jNodeZ,iZ1,iZ_B0(2)+iZ2-1,iZ3,iZ4,iCR,iS)
+
+                      ELSE
+
+                        U(iNodeZ,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR,iS) &
+                          = U(jNodeZ,iZ1,iZ_B0(2)+iZ2-1,iZ3,iZ4,iCR,iS)
+
+                      END IF
+
+                    END DO
+                    END DO
+                    END DO
+                    END DO
+
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+
+      END IF
+
+      IF( ApplyOuterBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(10) &
+        !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(10) ASYNC &
+        !$ACC PRIVATE( jNodeZ2, iNodeZ, jNodeZ ) &
+        !$ACC PRESENT( U, iZ_B0, iZ_E0, nNodesZ, NodeNumberTable4D )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(10) &
+        !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
+#endif
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = iZ_B0(4), iZ_E0(4)
+              DO iZ3 = iZ_B0(3), iZ_E0(3)
+                DO iZ2 = 1, swX1
+                  DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+                    DO iNodeZ4 = 1, nNodesZ(4)
+                    DO iNodeZ3 = 1, nNodesZ(3)
+                    DO iNodeZ2 = 1, nNodesZ(2)
+                    DO iNodeZ1 = 1, nNodesZ(1)
+
+                      jNodeZ2 = (nNodesZ(2)-iNodeZ2) + 1
+
+                      iNodeZ = NodeNumberTable4D &
+                                 ( iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4 )
+                      jNodeZ = NodeNumberTable4D &
+                                 ( iNodeZ1, jNodeZ2, iNodeZ3, iNodeZ4 )
+
+                      ! --- Outer Boundary ---
+
+                      IF( iCR == iCR_G1 )THEN
+
+                        U(iNodeZ,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR,iS) &
+                          = - U(jNodeZ,iZ1,iZ_E0(2)-iZ2+1,iZ3,iZ4,iCR,iS)
+
+                      ELSE
+
+                        U(iNodeZ,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR,iS) &
+                          = U(jNodeZ,iZ1,iZ_E0(2)-iZ2+1,iZ3,iZ4,iCR,iS)
+
+                      END IF
+
+                    END DO
+                    END DO
+                    END DO
+                    END DO
+
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+
+      END IF
+
+    CASE ( 32 ) ! Reflecting (Inner), Homogeneous (Outer)
+
+      IF( ApplyInnerBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(10) &
+        !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(10) ASYNC &
+        !$ACC PRIVATE( jNodeZ2, iNodeZ, jNodeZ ) &
+        !$ACC PRESENT( U, iZ_B0, iZ_E0, nNodesZ, NodeNumberTable4D )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(10) &
+        !$OMP PRIVATE( jNodeZ2, iNodeZ, jNodeZ )
+#endif
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = iZ_B0(4), iZ_E0(4)
+              DO iZ3 = iZ_B0(3), iZ_E0(3)
+                DO iZ2 = 1, swX1
+                  DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+                    DO iNodeZ4 = 1, nNodesZ(4)
+                    DO iNodeZ3 = 1, nNodesZ(3)
+                    DO iNodeZ2 = 1, nNodesZ(2)
+                    DO iNodeZ1 = 1, nNodesZ(1)
+
+                      jNodeZ2 = (nNodesZ(2)-iNodeZ2) + 1
+
+                      iNodeZ = NodeNumberTable4D &
+                                 ( iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4 )
+                      jNodeZ = NodeNumberTable4D &
+                                 ( iNodeZ1, jNodeZ2, iNodeZ3, iNodeZ4 )
+
+                      ! --- Inner Boundary ---
+
+                      IF( iCR == iCR_G1 )THEN
+
+                        U(iNodeZ,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR,iS) &
+                          = - U(jNodeZ,iZ1,iZ_B0(2)+iZ2-1,iZ3,iZ4,iCR,iS)
+
+                      ELSE
+
+                        U(iNodeZ,iZ1,iZ_B0(2)-iZ2,iZ3,iZ4,iCR,iS) &
+                          = U(jNodeZ,iZ1,iZ_B0(2)+iZ2-1,iZ3,iZ4,iCR,iS)
+
+                      END IF
+
+                    END DO
+                    END DO
+                    END DO
+                    END DO
+
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+
+      END IF
+
+      IF( ApplyOuterBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
+        !$ACC PRESENT( U, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(7)
+#endif
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = iZ_B0(4), iZ_E0(4)
+              DO iZ3 = iZ_B0(3), iZ_E0(3)
+                DO iZ2 = 1, swX1
+                  DO iZ1 = iZ_B0(1), iZ_E0(1)
+                    DO iNode = 1, nDOF
+
+                      ! --- Outer Boundary ---
+
+                      IF( iCR == iCR_G1 )THEN
+
+                        U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR,iS) &
+                          = MAX( U(iNode,iZ1,iZ_E0(2),iZ3,iZ4,iCR,iS), Zero )
+
+                      ELSE
+
+                        U(iNode,iZ1,iZ_E0(2)+iZ2,iZ3,iZ4,iCR,iS) &
+                          = U(iNode,iZ1,iZ_E0(2),iZ3,iZ4,iCR,iS)
+
+                      END IF
+
+                    END DO
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+
+      END IF
+
+    CASE DEFAULT
+
+    END SELECT
+
+  END SUBROUTINE ApplyBC_Radiation_X1
+
+
+  SUBROUTINE ApplyBC_Radiation_X2( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, swX2, bcX2, iApplyBC )
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), &
+      swX2, bcX2, iApplyBC
+    REAL(DP), INTENT(inout) :: &
+      U(1:nDOF, &
+        iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+        iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+        1:nCR,1:nSpecies)
+
+    INTEGER :: iNode, iS, iCR, iZ1, iZ2, iZ3, iZ4
+    INTEGER :: iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4
+    INTEGER :: jNodeZ3, iNodeZ, jNodeZ, iNodeE
+
+    SELECT CASE ( bcX2 )
+
+    CASE ( 0 ) ! No Boundary Condition
+
+    CASE ( 2 ) ! Homogeneous
+
+      IF( ApplyInnerBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
+        !$ACC PRESENT( U, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(7)
+#endif
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = iZ_B0(4), iZ_E0(4)
+              DO iZ3 = 1, swX2
+                DO iZ2 = iZ_B0(2), iZ_E0(2)
+                  DO iZ1 = iZ_B0(1), iZ_E0(1)
+                    DO iNode = 1, nDOF
+
+                      ! --- Inner Boundary ---
+
+                      IF( iCR == iCR_G2 )THEN
+
+                        U(iNode,iZ1,iZ2,iZ_B0(3)-iZ3,iZ4,iCR,iS) &
+                          = MIN( U(iNode,iZ1,iZ2,iZ_B0(3),iZ4,iCR,iS), Zero )
+
+                      ELSE
+
+                        U(iNode,iZ1,iZ2,iZ_B0(3)-iZ3,iZ4,iCR,iS) &
+                          = U(iNode,iZ1,iZ2,iZ_B0(3),iZ4,iCR,iS)
+
+                      END IF
+
+                    END DO
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+
+      END IF
+
+      IF( ApplyOuterBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
+        !$ACC PRESENT( U, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(7)
+#endif
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = iZ_B0(4), iZ_E0(4)
+              DO iZ3 = 1, swX2
+                DO iZ2 = iZ_B0(2), iZ_E0(2)
+                  DO iZ1 = iZ_B0(1), iZ_E0(1)
+                    DO iNode = 1, nDOF
+
+                      ! --- Outer Boundary ---
+
+                      IF( iCR == iCR_G2 )THEN
+
+                        U(iNode,iZ1,iZ2,iZ_E0(3)+iZ3,iZ4,iCR,iS) &
+                          = MAX( U(iNode,iZ1,iZ2,iZ_E0(3),iZ4,iCR,iS), Zero )
+
+                      ELSE
+
+                        U(iNode,iZ1,iZ2,iZ_E0(3)+iZ3,iZ4,iCR,iS) &
+                          = U(iNode,iZ1,iZ2,iZ_E0(3),iZ4,iCR,iS)
+
+                      END IF
+
+                    END DO
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+
+      END IF
+
+    CASE ( 3 ) ! Reflecting
+
+      IF( ApplyInnerBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(10) &
+        !$OMP PRIVATE( jNodeZ3, iNodeZ, jNodeZ )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(10) ASYNC &
+        !$ACC PRIVATE( jNodeZ3, iNodeZ, jNodeZ ) &
+        !$ACC PRESENT( U, iZ_B0, iZ_E0, nNodesZ, NodeNumberTable4D )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(10) &
+        !$OMP PRIVATE( jNodeZ3, iNodeZ, jNodeZ )
+#endif
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = iZ_B0(4), iZ_E0(4)
+              DO iZ3 = 1, swX2
+                DO iZ2 = iZ_B0(2), iZ_E0(2)
+                  DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+                    DO iNodeZ4 = 1, nNodesZ(4)
+                    DO iNodeZ3 = 1, nNodesZ(3)
+                    DO iNodeZ2 = 1, nNodesZ(2)
+                    DO iNodeZ1 = 1, nNodesZ(1)
+
+                      jNodeZ3 = (nNodesZ(3)-iNodeZ3) + 1
+
+                      iNodeZ = NodeNumberTable4D &
+                                 ( iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4 )
+                      jNodeZ = NodeNumberTable4D &
+                                 ( iNodeZ1, iNodeZ2, jNodeZ3, iNodeZ4 )
+
+                      ! --- Inner Boundary ---
+
+                      IF( iCR == iCR_G2 )THEN
+
+                        U(iNodeZ,iZ1,iZ2,iZ_B0(3)-iZ3,iZ4,iCR,iS) &
+                          = - U(jNodeZ,iZ1,iZ2,iZ_B0(3)+iZ3-1,iZ4,iCR,iS)
+
+                      ELSE
+
+                        U(iNodeZ,iZ1,iZ2,iZ_B0(3)-iZ3,iZ4,iCR,iS) &
+                          = U(jNodeZ,iZ1,iZ2,iZ_B0(3)+iZ3-1,iZ4,iCR,iS)
+
+                      END IF
+
+                    END DO
+                    END DO
+                    END DO
+                    END DO
+
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+
+      END IF
+
+      IF( ApplyOuterBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(10) &
+        !$OMP PRIVATE( jNodeZ3, iNodeZ, jNodeZ )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(10) ASYNC &
+        !$ACC PRIVATE( jNodeZ3, iNodeZ, jNodeZ ) &
+        !$ACC PRESENT( U, iZ_B0, iZ_E0, nNodesZ, NodeNumberTable4D )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(10) &
+        !$OMP PRIVATE( jNodeZ3, iNodeZ, jNodeZ )
+#endif
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = iZ_B0(4), iZ_E0(4)
+              DO iZ3 = 1, swX2
+                DO iZ2 = iZ_B0(2), iZ_E0(2)
+                  DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+                    DO iNodeZ4 = 1, nNodesZ(4)
+                    DO iNodeZ3 = 1, nNodesZ(3)
+                    DO iNodeZ2 = 1, nNodesZ(2)
+                    DO iNodeZ1 = 1, nNodesZ(1)
+
+                      jNodeZ3 = (nNodesZ(3)-iNodeZ3) + 1
+
+                      iNodeZ = NodeNumberTable4D &
+                                 ( iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4 )
+                      jNodeZ = NodeNumberTable4D &
+                                 ( iNodeZ1, iNodeZ2, jNodeZ3, iNodeZ4 )
+
+
+                      ! --- Outer Boundary ---
+
+                      IF( iCR == iCR_G2 )THEN
+
+                        U(iNodeZ,iZ1,iZ2,iZ_E0(3)+iZ3,iZ4,iCR,iS) &
+                          = - U(jNodeZ,iZ1,iZ2,iZ_E0(3)-iZ3+1,iZ4,iCR,iS)
+
+                      ELSE
+
+                        U(iNodeZ,iZ1,iZ2,iZ_E0(3)+iZ3,iZ4,iCR,iS) &
+                          = U(jNodeZ,iZ1,iZ2,iZ_E0(3)-iZ3+1,iZ4,iCR,iS)
+
+                      END IF
+
+                    END DO
+                    END DO
+                    END DO
+                    END DO
+
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+
+      END IF
+
+    CASE ( 32 ) ! Reflecting (Inner), Homogeneous (Outer)
+
+      IF( ApplyInnerBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(10) &
+        !$OMP PRIVATE( jNodeZ3, iNodeZ, jNodeZ )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(10) ASYNC &
+        !$ACC PRIVATE( jNodeZ3, iNodeZ, jNodeZ ) &
+        !$ACC PRESENT( U, iZ_B0, iZ_E0, nNodesZ, NodeNumberTable4D )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(10) &
+        !$OMP PRIVATE( jNodeZ3, iNodeZ, jNodeZ )
+#endif
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = iZ_B0(4), iZ_E0(4)
+              DO iZ3 = 1, swX2
+                DO iZ2 = iZ_B0(2), iZ_E0(2)
+                  DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+                    DO iNodeZ4 = 1, nNodesZ(4)
+                    DO iNodeZ3 = 1, nNodesZ(3)
+                    DO iNodeZ2 = 1, nNodesZ(2)
+                    DO iNodeZ1 = 1, nNodesZ(1)
+
+                      jNodeZ3 = (nNodesZ(3)-iNodeZ3) + 1
+
+                      iNodeZ = NodeNumberTable4D &
+                                 ( iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4 )
+                      jNodeZ = NodeNumberTable4D &
+                                 ( iNodeZ1, iNodeZ2, jNodeZ3, iNodeZ4 )
+
+                      ! --- Inner Boundary ---
+
+                      IF( iCR == iCR_G2 )THEN
+
+                        U(iNodeZ,iZ1,iZ2,iZ_B0(3)-iZ3,iZ4,iCR,iS) &
+                          = - U(jNodeZ,iZ1,iZ2,iZ_B0(3)+iZ3-1,iZ4,iCR,iS)
+
+                      ELSE
+
+                        U(iNodeZ,iZ1,iZ2,iZ_B0(3)-iZ3,iZ4,iCR,iS) &
+                          = U(jNodeZ,iZ1,iZ2,iZ_B0(3)+iZ3-1,iZ4,iCR,iS)
+
+                      END IF
+
+                    END DO
+                    END DO
+                    END DO
+                    END DO
+
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+
+      END IF
+
+      IF( ApplyOuterBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
+        !$ACC PRESENT( U, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(7)
+#endif
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = iZ_B0(4), iZ_E0(4)
+              DO iZ3 = 1, swX2
+                DO iZ2 = iZ_B0(2), iZ_E0(2)
+                  DO iZ1 = iZ_B0(1), iZ_E0(1)
+                    DO iNode = 1, nDOF
+
+                      ! --- Outer Boundary ---
+
+                      IF( iCR == iCR_G2 )THEN
+
+                        U(iNode,iZ1,iZ2,iZ_E0(3)+iZ3,iZ4,iCR,iS) &
+                          = MAX( U(iNode,iZ1,iZ2,iZ_E0(3),iZ4,iCR,iS), Zero )
+
+                      ELSE
+
+                        U(iNode,iZ1,iZ2,iZ_E0(3)+iZ3,iZ4,iCR,iS) &
+                          = U(iNode,iZ1,iZ2,iZ_E0(3),iZ4,iCR,iS)
+
+                      END IF
+
+                    END DO
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+
+      END IF
+
+    CASE DEFAULT
+
+    END SELECT
+
+  END SUBROUTINE ApplyBC_Radiation_X2
+
+
+  SUBROUTINE ApplyBC_Radiation_X3( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, swX3, bcX3, iApplyBC )
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    INTEGER,  INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), &
+      swX3, bcX3, iApplyBC
+    REAL(DP), INTENT(inout) :: &
+      U(1:nDOF, &
+        iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+        iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+        1:nCR,1:nSpecies)
+
+    INTEGER :: iNode, iS, iCR, iZ1, iZ2, iZ3, iZ4
+    INTEGER :: iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4
+    INTEGER :: jNodeZ4, iNodeZ, jNodeZ, iNodeE
+
+    SELECT CASE ( bcX3 )
+
+    CASE ( 0 ) ! No Boundary Condition
+
+    CASE ( 2 ) ! Homogeneous
+
+      IF( ApplyInnerBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
+        !$ACC PRESENT( U, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(7)
+#endif
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = 1, swX3
+              DO iZ3 = iZ_B0(3), iZ_E0(3)
+                DO iZ2 = iZ_B0(2), iZ_E0(2)
+                  DO iZ1 = iZ_B0(1), iZ_E0(1)
+                    DO iNode = 1, nDOF
+
+                      ! --- Inner Boundary ---
+
+                      IF( iCR == iCR_G3 )THEN
+
+                        U(iNode,iZ1,iZ2,iZ3,iZ_B0(4)-iZ4,iCR,iS) &
+                          = MIN( U(iNode,iZ1,iZ2,iZ3,iZ_B0(4),iCR,iS), Zero )
+
+                      ELSE
+
+                        U(iNode,iZ1,iZ2,iZ3,iZ_B0(4)-iZ4,iCR,iS) &
+                          = U(iNode,iZ1,iZ2,iZ3,iZ_B0(4),iCR,iS)
+
+                      END IF
+
+                    END DO
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+
+      END IF
+
+      IF( ApplyOuterBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
+        !$ACC PRESENT( U, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(7)
+#endif
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = 1, swX3
+              DO iZ3 = iZ_B0(3), iZ_E0(3)
+                DO iZ2 = iZ_B0(2), iZ_E0(2)
+                  DO iZ1 = iZ_B0(1), iZ_E0(1)
+                    DO iNode = 1, nDOF
+
+                      ! --- Outer Boundary ---
+
+                      IF( iCR == iCR_G3 )THEN
+
+                        U(iNode,iZ1,iZ2,iZ3,iZ_E0(4)+iZ4,iCR,iS) &
+                          = MAX( U(iNode,iZ1,iZ2,iZ3,iZ_E0(4),iCR,iS), Zero )
+
+                      ELSE
+
+                        U(iNode,iZ1,iZ2,iZ3,iZ_E0(4)+iZ4,iCR,iS) &
+                          = U(iNode,iZ1,iZ2,iZ3,iZ_E0(4),iCR,iS)
+
+                      END IF
+
+                    END DO
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+
+      END IF
+
+    CASE ( 3 ) ! Reflecting
+
+      IF( ApplyInnerBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(10) &
+        !$OMP PRIVATE( jNodeZ4, iNodeZ, jNodeZ )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(10) ASYNC &
+        !$ACC PRIVATE( jNodeZ4, iNodeZ, jNodeZ ) &
+        !$ACC PRESENT( U, iZ_B0, iZ_E0, nNodesZ, NodeNumberTable4D )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(10) &
+        !$OMP PRIVATE( jNodeZ4, iNodeZ, jNodeZ )
+#endif
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = 1, swX3
+              DO iZ3 = iZ_B0(3), iZ_E0(3)
+                DO iZ2 = iZ_B0(2), iZ_E0(2)
+                  DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+                    DO iNodeZ4 = 1, nNodesZ(4)
+                    DO iNodeZ3 = 1, nNodesZ(3)
+                    DO iNodeZ2 = 1, nNodesZ(2)
+                    DO iNodeZ1 = 1, nNodesZ(1)
+
+                      jNodeZ4 = (nNodesZ(4)-iNodeZ4) + 1
+
+                      iNodeZ = NodeNumberTable4D &
+                                 ( iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4 )
+                      jNodeZ = NodeNumberTable4D &
+                                 ( iNodeZ1, iNodeZ2, iNodeZ3, jNodeZ4 )
+
+                      ! --- Inner Boundary ---
+
+                      IF( iCR == iCR_G3 )THEN
+
+                        U(iNodeZ,iZ1,iZ2,iZ3,iZ_B0(4)-iZ4,iCR,iS) &
+                          = - U(jNodeZ,iZ1,iZ2,iZ3,iZ_B0(4)+iZ4-1,iCR,iS)
+
+                      ELSE
+
+                        U(iNodeZ,iZ1,iZ2,iZ3,iZ_B0(4)-iZ4,iCR,iS) &
+                          = U(jNodeZ,iZ1,iZ2,iZ3,iZ_B0(4)+iZ4-1,iCR,iS)
+
+                      END IF
+
+                    END DO
+                    END DO
+                    END DO
+                    END DO
+
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+
+      END IF
+
+      IF( ApplyOuterBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(10) &
+        !$OMP PRIVATE( jNodeZ4, iNodeZ, jNodeZ )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(10) ASYNC &
+        !$ACC PRIVATE( jNodeZ4, iNodeZ, jNodeZ ) &
+        !$ACC PRESENT( U, iZ_B0, iZ_E0, nNodesZ, NodeNumberTable4D )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(10) &
+        !$OMP PRIVATE( jNodeZ4, iNodeZ, jNodeZ )
+#endif
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = 1, swX3
+              DO iZ3 = iZ_B0(3), iZ_E0(3)
+                DO iZ2 = iZ_B0(2), iZ_E0(2)
+                  DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+                    DO iNodeZ4 = 1, nNodesZ(4)
+                    DO iNodeZ3 = 1, nNodesZ(3)
+                    DO iNodeZ2 = 1, nNodesZ(2)
+                    DO iNodeZ1 = 1, nNodesZ(1)
+
+                      jNodeZ4 = (nNodesZ(4)-iNodeZ4) + 1
+
+                      iNodeZ = NodeNumberTable4D &
+                                 ( iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4 )
+                      jNodeZ = NodeNumberTable4D &
+                                 ( iNodeZ1, iNodeZ2, iNodeZ3, jNodeZ4 )
+
+
+                      ! --- Outer Boundary ---
+
+                      IF( iCR == iCR_G3 )THEN
+
+                        U(iNodeZ,iZ1,iZ2,iZ3,iZ_E0(4)+iZ4,iCR,iS) &
+                          = - U(jNodeZ,iZ1,iZ2,iZ3,iZ_E0(4)-iZ4+1,iCR,iS)
+
+                      ELSE
+
+                        U(iNodeZ,iZ1,iZ2,iZ3,iZ_E0(4)+iZ4,iCR,iS) &
+                          = U(jNodeZ,iZ1,iZ2,iZ3,iZ_E0(4)-iZ4+1,iCR,iS)
+
+                      END IF
+
+                    END DO
+                    END DO
+                    END DO
+                    END DO
+
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+
+      END IF
+
+    CASE ( 32 ) ! Reflecting (Inner), Homogeneous (Outer)
+
+      IF( ApplyInnerBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(10) &
+        !$OMP PRIVATE( jNodeZ4, iNodeZ, jNodeZ )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(10) ASYNC &
+        !$ACC PRIVATE( jNodeZ4, iNodeZ, jNodeZ ) &
+        !$ACC PRESENT( U, iZ_B0, iZ_E0, nNodesZ, NodeNumberTable4D )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(10) &
+        !$OMP PRIVATE( jNodeZ4, iNodeZ, jNodeZ )
+#endif
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = 1, swX3
+              DO iZ3 = iZ_B0(3), iZ_E0(3)
+                DO iZ2 = iZ_B0(2), iZ_E0(2)
+                  DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+                    DO iNodeZ4 = 1, nNodesZ(4)
+                    DO iNodeZ3 = 1, nNodesZ(3)
+                    DO iNodeZ2 = 1, nNodesZ(2)
+                    DO iNodeZ1 = 1, nNodesZ(1)
+
+                      jNodeZ4 = (nNodesZ(4)-iNodeZ4) + 1
+
+                      iNodeZ = NodeNumberTable4D &
+                                 ( iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4 )
+                      jNodeZ = NodeNumberTable4D &
+                                 ( iNodeZ1, iNodeZ2, iNodeZ3, jNodeZ4 )
+
+                      ! --- Inner Boundary ---
+
+                      IF( iCR == iCR_G3 )THEN
+
+                        U(iNodeZ,iZ1,iZ2,iZ3,iZ_B0(4)-iZ4,iCR,iS) &
+                          = - U(jNodeZ,iZ1,iZ2,iZ3,iZ_B0(4)+iZ4-1,iCR,iS)
+
+                      ELSE
+
+                        U(iNodeZ,iZ1,iZ2,iZ3,iZ_B0(4)-iZ4,iCR,iS) &
+                          = U(jNodeZ,iZ1,iZ2,iZ3,iZ_B0(4)+iZ4-1,iCR,iS)
+
+                      END IF
+
+                    END DO
+                    END DO
+                    END DO
+                    END DO
+
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+
+      END IF
+
+      IF( ApplyOuterBC( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
+        !$ACC PRESENT( U, iZ_B0, iZ_E0 )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(7)
+#endif
+        DO iS = 1, nSpecies
+          DO iCR = 1, nCR
+            DO iZ4 = 1, swX3
+              DO iZ3 = iZ_B0(3), iZ_E0(3)
+                DO iZ2 = iZ_B0(2), iZ_E0(2)
+                  DO iZ1 = iZ_B0(1), iZ_E0(1)
+                    DO iNode = 1, nDOF
+
+                      ! --- Outer Boundary ---
+
+                      IF( iCR == iCR_G3 )THEN
+
+                        U(iNode,iZ1,iZ2,iZ3,iZ_E0(4)+iZ4,iCR,iS) &
+                          = MAX( U(iNode,iZ1,iZ2,iZ3,iZ_E0(4),iCR,iS), Zero )
+
+                      ELSE
+
+                        U(iNode,iZ1,iZ2,iZ3,iZ_E0(4)+iZ4,iCR,iS) &
+                          = U(iNode,iZ1,iZ2,iZ3,iZ_E0(4),iCR,iS)
+
+                      END IF
+
+                    END DO
+                  END DO
+                END DO
+              END DO
+            END DO
+          END DO
+        END DO
+
+      END IF
+
+    CASE DEFAULT
+
+    END SELECT
+
+  END SUBROUTINE ApplyBC_Radiation_X3
 
 END MODULE TimeSteppingModule_Flash

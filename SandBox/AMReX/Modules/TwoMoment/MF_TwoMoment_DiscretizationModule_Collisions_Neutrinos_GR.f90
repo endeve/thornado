@@ -35,8 +35,8 @@ MODULE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR
     nCR
   USE FluidFieldsModule, ONLY: &
     nCF
-  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
-    ComputeIncrement_TwoMoment_Implicit_Neutrinos
+  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
+    ComputeIncrement_TwoMoment_Implicit
 
 
   ! --- Local Modules ---
@@ -62,9 +62,12 @@ MODULE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR
     CreateMesh_MF, &
     DestroyMesh_MF
   USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
-    EdgeMap, &
-    ConstructEdgeMap, &
     ApplyBoundaryConditions_TwoMoment_MF
+  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_Euler_MF
+  USE MF_EdgeMapModule, ONLY: &
+    EdgeMap,          &
+    ConstructEdgeMap
 
   IMPLICIT NONE
   PRIVATE
@@ -217,16 +220,16 @@ CONTAINS
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B1, iZ_E1, uCR, U )
 
-        CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
+        CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
+
+        CALL ApplyBoundaryConditions_Euler_MF &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, C, Edge_Map )
 
         CALL ApplyBoundaryConditions_TwoMoment_MF &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )
 
-        CALL ComputeIncrement_TwoMoment_Implicit_Neutrinos &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, G, C, dC, U, dU, &
-                  Verbose_Option = Verbose )
-
-
+        CALL ComputeIncrement_TwoMoment_Implicit &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, G, C, dC, U, dU )
         CALL thornado2amrex_X &
                ( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, duCF, dC )
 

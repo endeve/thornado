@@ -16,7 +16,7 @@ endif
 
 POSEIDON_DIR ?= $(HOME)/Poseidon
 ifeq ($(GRAVITY_SOLVER),POSEIDON_NEWTON)
-include $(POSEIDON_DIR)/Build/Makefile_Interface
+include $(POSEIDON_DIR)/Build/Make.Poseidon_Native
 endif
 
 VPATH += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
@@ -30,92 +30,52 @@ all: TwoMomentClosure PrimitiveConserved \
 
 TwoMomentClosure: \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
-	TwoMoment_TimersModule_OrderV.o \
-	TwoMoment_UtilitiesModule_OrderV.o \
 	TwoMomentClosure.o
 	$(FLINKER) $(FLAGS) -o TwoMomentClosure_$(MACHINE) \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
-	TwoMoment_TimersModule_OrderV.o \
-	TwoMoment_UtilitiesModule_OrderV.o \
 	TwoMomentClosure.o \
 	$(LIBRARIES)
 
 PrimitiveConserved: \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
-	TwoMoment_TimersModule_OrderV.o \
-	TwoMoment_UtilitiesModule_OrderV.o \
 	PrimitiveConserved.o
 	$(FLINKER) $(FLAGS) -o PrimitiveConserved_$(MACHINE) \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
-	TwoMoment_TimersModule_OrderV.o \
-	TwoMoment_UtilitiesModule_OrderV.o \
 	PrimitiveConserved.o \
 	$(LIBRARIES)
 
 ApplicationDriver: \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
-	TwoMoment_TimersModule_OrderV.o \
-	TwoMoment_UtilitiesModule_OrderV.o \
-	TwoMoment_TroubledCellIndicatorModule.o \
-	TwoMoment_SlopeLimiterModule_OrderV.o \
-	TwoMoment_PositivityLimiterModule_OrderV.o \
-	TwoMoment_OpacityModule_OrderV.o \
-	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
-	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
-	TwoMoment_TallyModule_OrderV.o \
-	TwoMoment_TimeSteppingModule_OrderV.o \
 	InitializationModule.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
-	TwoMoment_TimersModule_OrderV.o \
-	TwoMoment_UtilitiesModule_OrderV.o \
-	TwoMoment_TroubledCellIndicatorModule.o \
-	TwoMoment_SlopeLimiterModule_OrderV.o \
-	TwoMoment_PositivityLimiterModule_OrderV.o \
-	TwoMoment_OpacityModule_OrderV.o \
-	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
-	TwoMoment_DiscretizationModule_Collisions_OrderV.o \
-	TwoMoment_TallyModule_OrderV.o \
-	TwoMoment_TimeSteppingModule_OrderV.o \
 	InitializationModule.o \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 
 ApplicationDriver_Neutrinos: \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
-	TwoMoment_TimersModule_OrderV.o \
-	TwoMoment_UtilitiesModule_OrderV.o \
-	TwoMoment_TroubledCellIndicatorModule.o \
-	TwoMoment_SlopeLimiterModule_OrderV.o \
-	TwoMoment_PositivityLimiterModule_OrderV.o \
-	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
-	TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
-	TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
-	TwoMoment_TallyModule_OrderV.o \
-	TwoMoment_TimeSteppingModule_OrderV.o \
 	InitializationModule_Neutrinos.o \
 	ApplicationDriver_Neutrinos.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_Neutrinos_$(MACHINE) \
 	$(weaklib) \
+	$(POSEIDON_o) \
 	$(thornado) \
-	TwoMoment_TimersModule_OrderV.o \
-	TwoMoment_UtilitiesModule_OrderV.o \
-	TwoMoment_TroubledCellIndicatorModule.o \
-	TwoMoment_SlopeLimiterModule_OrderV.o \
-	TwoMoment_PositivityLimiterModule_OrderV.o \
-	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
-	TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
-	TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
-	TwoMoment_TallyModule_OrderV.o \
-	TwoMoment_TimeSteppingModule_OrderV.o \
 	InitializationModule_Neutrinos.o \
 	ApplicationDriver_Neutrinos.o \
 	$(LIBRARIES)
@@ -124,16 +84,6 @@ ApplicationDriver_CCSN: \
 	$(weaklib) \
 	$(POSEIDON_o) \
 	$(thornado) \
-	TwoMoment_TimersModule_OrderV.o \
-	TwoMoment_UtilitiesModule_OrderV.o \
-	TwoMoment_TroubledCellIndicatorModule.o \
-	TwoMoment_SlopeLimiterModule_OrderV.o \
-	TwoMoment_PositivityLimiterModule_OrderV.o \
-	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
-	TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
-	TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
-	TwoMoment_TallyModule_OrderV.o \
-	TwoMoment_TimeSteppingModule_OrderV.o \
 	ProgenitorModule.o \
 	InitializationModule_CCSN.o \
 	ApplicationDriver_CCSN.o
@@ -141,23 +91,13 @@ ApplicationDriver_CCSN: \
 	$(weaklib) \
 	$(POSEIDON_o) \
 	$(thornado) \
-	TwoMoment_TimersModule_OrderV.o \
-	TwoMoment_UtilitiesModule_OrderV.o \
-	TwoMoment_TroubledCellIndicatorModule.o \
-	TwoMoment_SlopeLimiterModule_OrderV.o \
-	TwoMoment_PositivityLimiterModule_OrderV.o \
-	TwoMoment_DiscretizationModule_Streaming_OrderV.o \
-	TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
-	TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
-	TwoMoment_TallyModule_OrderV.o \
-	TwoMoment_TimeSteppingModule_OrderV.o \
 	ProgenitorModule.o \
 	InitializationModule_CCSN.o \
 	ApplicationDriver_CCSN.o \
 	$(LIBRARIES)
 
 clean:
-	rm -f *.o *.mod *.ld *.lst *.acc.s
+	rm -f *.o *.mod *.ld *.lst *.i *.s
 
 clobber: clean
 	rm -f  TwoMomentClosure_$(MACHINE)
@@ -175,7 +115,7 @@ TwoMomentClosure.o: \
   KindModule.o \
   UtilitiesModule.o \
   TwoMoment_ClosureModule.o \
-  TwoMoment_UtilitiesModule_OrderV.o \
+  TwoMoment_UtilitiesModule.o \
   TwoMomentClosure.f90
 
 PrimitiveConserved.o: \
@@ -196,7 +136,7 @@ PrimitiveConserved.o: \
   InputOutputModuleHDF.o \
   UtilitiesModule.o \
   TwoMoment_ClosureModule.o \
-  TwoMoment_UtilitiesModule_OrderV.o \
+  TwoMoment_UtilitiesModule.o \
   PrimitiveConserved.f90
 
 ApplicationDriver.o: \
@@ -207,14 +147,14 @@ ApplicationDriver.o: \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   InputOutputModuleHDF.o \
-  TwoMoment_UtilitiesModule_OrderV.o \
-  TwoMoment_SlopeLimiterModule_OrderV.o \
-  TwoMoment_PositivityLimiterModule_OrderV.o \
-  TwoMoment_DiscretizationModule_Collisions_OrderV.o \
-  TwoMoment_OpacityModule_OrderV.o \
-  TwoMoment_TimeSteppingModule_OrderV.o \
+  TwoMoment_UtilitiesModule.o \
+  TwoMoment_SlopeLimiterModule.o \
+  TwoMoment_PositivityLimiterModule.o \
+  TwoMoment_DiscretizationModule_Collisions.o \
+  TwoMoment_OpacityModule.o \
+  TwoMoment_TimeSteppingModule.o \
   InitializationModule.o \
-  TwoMoment_TimersModule_OrderV.o \
+  TwoMoment_TimersModule.o \
   ProgramInitializationModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModuleX_Lagrange.o \
@@ -242,13 +182,13 @@ ApplicationDriver_Neutrinos.o: \
   Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
   RadiationFieldsModule.o \
   InputOutputModuleHDF.o \
-  TwoMoment_UtilitiesModule_OrderV.o \
-  TwoMoment_SlopeLimiterModule_OrderV.o \
-  TwoMoment_PositivityLimiterModule_OrderV.o \
-  TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
-  TwoMoment_TimeSteppingModule_OrderV.o \
+  TwoMoment_UtilitiesModule.o \
+  TwoMoment_SlopeLimiterModule.o \
+  TwoMoment_PositivityLimiterModule.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
+  TwoMoment_TimeSteppingModule.o \
   InitializationModule_Neutrinos.o \
-  TwoMoment_TallyModule_OrderV.o \
+  TwoMoment_TallyModule.o \
   EquationOfStateModule_TABLE.o \
   OpacityModule_TABLE.o \
   TwoMoment_TroubledCellIndicatorModule.o \
@@ -260,7 +200,7 @@ ApplicationDriver_Neutrinos.o: \
   ReferenceElementModule.o \
   ReferenceElementModule_Lagrange.o \
   ProgramInitializationModule.o \
-  TwoMoment_TimersModule_OrderV.o \
+  TwoMoment_TimersModule.o \
   GeometryComputationModule.o \
   GeometryComputationModuleE.o \
   TwoMoment_ClosureModule.o \
@@ -277,12 +217,12 @@ ApplicationDriver_CCSN.o: \
   Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
   Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
   RadiationFieldsModule.o \
-  TwoMoment_UtilitiesModule_OrderV.o \
-  TwoMoment_SlopeLimiterModule_OrderV.o \
-  TwoMoment_PositivityLimiterModule_OrderV.o \
-  TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o \
+  TwoMoment_UtilitiesModule.o \
+  TwoMoment_SlopeLimiterModule.o \
+  TwoMoment_PositivityLimiterModule.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
   GravitySolutionModule_Newtonian_Poseidon.o \
-  TwoMoment_TimeSteppingModule_OrderV.o \
+  TwoMoment_TimeSteppingModule.o \
   InputOutputModuleHDF.o \
   ApplicationDriver_CCSN.F90
 
@@ -296,8 +236,8 @@ InitializationModule.o: \
   FluidFieldsModule.o \
   Euler_UtilitiesModule_NonRelativistic.o \
   RadiationFieldsModule.o \
-  TwoMoment_UtilitiesModule_OrderV.o \
-  TwoMoment_OpacityModule_OrderV.o \
+  TwoMoment_UtilitiesModule.o \
+  TwoMoment_OpacityModule.o \
   InitializationModule.F90
 
 InitializationModule_Neutrinos.o: \
@@ -310,167 +250,6 @@ InitializationModule_Neutrinos.o: \
   FluidFieldsModule.o \
   Euler_UtilitiesModule_NonRelativistic.o \
   RadiationFieldsModule.o \
-  TwoMoment_UtilitiesModule_OrderV.o \
+  TwoMoment_UtilitiesModule.o \
   EquationOfStateModule_TABLE.o \
   InitializationModule_Neutrinos.F90
-
-TwoMoment_TimersModule_OrderV.o: \
-  KindModule.o \
-  TwoMoment_TimersModule_OrderV.F90
-
-TwoMoment_UtilitiesModule_OrderV.o: \
-  KindModule.o \
-  ProgramHeaderModule.o \
-  GeometryFieldsModule.o \
-  FluidFieldsModule.o \
-  Euler_UtilitiesModule_NonRelativistic.o \
-  RadiationFieldsModule.o \
-  TwoMoment_ClosureModule.o \
-  TwoMoment_TimersModule_OrderV.o \
-  LinearAlgebraModule.o \
-  TwoMoment_UtilitiesModule_OrderV.F90
-
-TwoMoment_TroubledCellIndicatorModule.o: \
-  KindModule.o \
-  ProgramHeaderModule.o \
-  TwoMoment_TimersModule_OrderV.o \
-  LinearAlgebraModule.o \
-  ReferenceElementModuleX.o \
-  PolynomialBasisModuleX_Lagrange.o \
-  RadiationFieldsModule.o \
-  TwoMoment_BoundaryConditionsModule.o \
-  TwoMoment_TroubledCellIndicatorModule.F90
-
-TwoMoment_SlopeLimiterModule_OrderV.o: \
-  KindModule.o \
-  ProgramHeaderModule.o \
-  TwoMoment_TimersModule_OrderV.o \
-  LinearAlgebraModule.o \
-  UtilitiesModule.o \
-  ReferenceElementModuleX.o \
-  PolynomialBasisMappingModule.o \
-  MeshModule.o \
-  GeometryFieldsModuleE.o \
-  GeometryFieldsModule.o \
-  FluidFieldsModule.o \
-  RadiationFieldsModule.o \
-  TwoMoment_BoundaryConditionsModule.o \
-  TwoMoment_TroubledCellIndicatorModule.o \
-  TwoMoment_SlopeLimiterModule_OrderV.F90
-
-TwoMoment_PositivityLimiterModule_OrderV.o: \
-  KindModule.o \
-  ProgramHeaderModule.o \
-  TwoMoment_TimersModule_OrderV.o \
-  ReferenceElementModuleX.o \
-  ReferenceElementModuleX_Lagrange.o \
-  ReferenceElementModule.o \
-  ReferenceElementModule_Lagrange.o \
-  LinearAlgebraModule.o \
-  GeometryFieldsModuleE.o \
-  GeometryFieldsModule.o \
-  FluidFieldsModule.o \
-  RadiationFieldsModule.o \
-  TwoMoment_PositivityLimiterModule_OrderV.F90
-
-TwoMoment_OpacityModule_OrderV.o: \
-  KindModule.o \
-  ProgramHeaderModule.o \
-  ReferenceElementModuleZ.o \
-  MeshModule.o \
-  RadiationFieldsModule.o \
-  TwoMoment_OpacityModule_OrderV.F90
-
-TwoMoment_DiscretizationModule_Streaming_OrderV.o: \
-  KindModule.o \
-  ProgramHeaderModule.o \
-  TwoMoment_TimersModule_OrderV.o \
-  LinearAlgebraModule.o \
-  ReferenceElementModuleX.o \
-  ReferenceElementModuleX_Lagrange.o \
-  ReferenceElementModule.o \
-  ReferenceElementModule_Lagrange.o \
-  MeshModule.o \
-  GeometryFieldsModuleE.o \
-  GeometryFieldsModule.o \
-  FluidFieldsModule.o \
-  Euler_BoundaryConditionsModule.o \
-  Euler_UtilitiesModule_NonRelativistic.o \
-  RadiationFieldsModule.o \
-  TwoMoment_ClosureModule.o \
-  TwoMoment_BoundaryConditionsModule.o \
-  TwoMoment_UtilitiesModule_OrderV.o \
-  TwoMoment_DiscretizationModule_Streaming_OrderV.F90
-
-TwoMoment_DiscretizationModule_Collisions_OrderV.o: \
-  KindModule.o \
-  ProgramHeaderModule.o \
-  GeometryFieldsModuleE.o \
-  GeometryFieldsModule.o \
-  FluidFieldsModule.o \
-  Euler_UtilitiesModule_NonRelativistic.o \
-  RadiationFieldsModule.o \
-  TwoMoment_TimersModule_OrderV.o \
-  TwoMoment_UtilitiesModule_OrderV.o \
-  TwoMoment_OpacityModule_OrderV.o \
-  TwoMoment_DiscretizationModule_Collisions_OrderV.F90
-
-TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.o: \
-  KindModule.o \
-  UnitsModule.o \
-  ProgramHeaderModule.o \
-  GeometryFieldsModuleE.o \
-  GeometryFieldsModule.o \
-  FluidFieldsModule.o \
-  RadiationFieldsModule.o \
-  Euler_UtilitiesModule_NonRelativistic.o \
-  EquationOfStateModule_TABLE.o \
-  TwoMoment_NeutrinoMatterSolverModule_OrderV.o \
-  TwoMoment_UtilitiesModule_OrderV.o \
-  TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV.F90
-
-TwoMoment_NeutrinoMatterSolverModule_OrderV.o: \
-  KindModule.o \
-  UnitsModule.o \
-  ProgramHeaderModule.o \
-  TimersModule.o \
-  ArrayUtilitiesModule.o \
-  LinearAlgebraModule.o \
-  ReferenceElementModuleE.o \
-  MeshModule.o \
-  RadiationFieldsModule.o \
-  EquationOfStateModule_TABLE.o \
-  NeutrinoOpacitiesComputationModule.o \
-  TwoMoment_UtilitiesModule_OrderV.o \
-  TwoMoment_NeutrinoMatterSolverModule_OrderV.F90
-
-TwoMoment_TallyModule_OrderV.o: \
-  KindModule.o \
-  UnitsModule.o \
-  ProgramHeaderModule.o \
-  ReferenceElementModuleX.o \
-  ReferenceElementModule.o \
-  MeshModule.o \
-  GeometryFieldsModuleE.o \
-  GeometryFieldsModule.o \
-  FluidFieldsModule.o \
-  Euler_UtilitiesModule_NonRelativistic.o \
-  RadiationFieldsModule.o \
-  TwoMoment_TallyModule_OrderV.F90
-
-TwoMoment_TimeSteppingModule_OrderV.o: \
-  KindModule.o \
-  ProgramHeaderModule.o \
-  GeometryFieldsModuleE.o \
-  GeometryFieldsModule.o \
-  FluidFieldsModule.o \
-  Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
-  Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
-  Euler_dgDiscretizationModule.o \
-  RadiationFieldsModule.o \
-  TwoMoment_TimersModule_OrderV.o \
-  TwoMoment_SlopeLimiterModule_OrderV.o \
-  TwoMoment_PositivityLimiterModule_OrderV.o \
-  TwoMoment_DiscretizationModule_Streaming_OrderV.o \
-  TwoMoment_TallyModule_OrderV.o \
-  TwoMoment_TimeSteppingModule_OrderV.F90

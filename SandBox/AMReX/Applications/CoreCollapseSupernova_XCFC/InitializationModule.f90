@@ -39,9 +39,6 @@ MODULE InitializationModule
     amrex_fluxregister_destroy
   USE amrex_tagbox_module, ONLY: &
     amrex_tagboxarray
-  USE amrex_bc_types_module, ONLY: &
-    amrex_bc_foextrap, &
-    amrex_bc_bogus
 
   ! --- thornado Modules ---
 
@@ -54,9 +51,8 @@ MODULE InitializationModule
     iE_E1, &
     nNodesX, &
     nNodesE, &
-    bcZ,     &
     DescribeProgramHeaderX
-  USE TwoMoment_NeutrinoMatterSolverModule_OrderV, ONLY: &
+  USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
     InitializeNeutrinoMatterSolverParameters
   USE PolynomialBasisModule_Lagrange, ONLY: &
     InitializePolynomialBasis_Lagrange
@@ -113,6 +109,7 @@ MODULE InitializationModule
   USE RadiationFieldsModule, ONLY: &
     nCR, &
     nPR, &
+    nGR, &
     DescribeRadiationFields_Primitive, &
     DescribeRadiationFields_Conserved, &
     SetUnitsRadiationFields
@@ -122,7 +119,7 @@ MODULE InitializationModule
     InitializeClosure_TwoMoment
   USE OpacityModule_Table, ONLY: &
     InitializeOpacities_TABLE
-  USE TwoMoment_TimersModule_Relativistic, ONLY: &
+  USE TwoMoment_TimersModule, ONLY: &
     InitializeTimers
 
   ! --- Local Modules ---
@@ -145,6 +142,7 @@ MODULE InitializationModule
     CreateFields_TwoMoment_MF, &
     MF_uCR, &
     MF_uPR, &
+    MF_uGR, &
     FluxRegister_TwoMoment
   USE MF_Euler_SlopeLimiterModule, ONLY: &
     InitializeSlopeLimiter_Euler_MF, &
@@ -161,6 +159,7 @@ MODULE InitializationModule
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
+    ComputeGray_TwoMoment_MF, &
     ComputeFromConserved_TwoMoment_MF
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
@@ -207,7 +206,8 @@ MODULE InitializationModule
     OpacityTableName_Iso, &
     OpacityTableName_NES, &
     OpacityTableName_Pair, &
-    M_outer, & 
+    OpacityTableName_Brem, &
+    M_outer, &
     MaxIter_outer, &
     Rtol_outer, &
     M_inner, &
@@ -223,8 +223,6 @@ MODULE InitializationModule
     EquationOfState, &
     Gamma_IDEAL, &
     EosTableName, &
-    lo_bc, &
-    hi_bc, &
     ProgramName, &
     TagCriteria, &
     nRefinementBuffer, &
@@ -237,8 +235,8 @@ MODULE InitializationModule
     AverageDown
   USE Euler_MeshRefinementModule, ONLY: &
     InitializeMeshRefinement_Euler
-  USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
-    InitializeGravitySolver_XCFC_Poseidon_MF, &
+  USE MF_GravitySolutionModule_XCFC, ONLY: &
+    InitializeGravitySolver_XCFC_MF, &
     InitializeMetric_TwoMoment_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
@@ -255,6 +253,8 @@ CONTAINS
 
 
   SUBROUTINE InitializeProgram
+
+    LOGICAL :: SetInitialValues
 
     CALL amrex_init()
 
@@ -276,12 +276,6 @@ CONTAINS
     CALL CreateFields_Geometry_MF
     CALL CreateFields_Euler_MF
     CALL CreateFields_TwoMoment_MF
-
-    ALLOCATE( lo_bc(1:amrex_spacedim,1) )
-    ALLOCATE( hi_bc(1:amrex_spacedim,1) )
-
-    lo_bc = amrex_bc_bogus
-    hi_bc = amrex_bc_bogus
 
     CALL InitializePolynomialBasisX_Lagrange
     CALL InitializePolynomialBasisX_Legendre
@@ -324,8 +318,9 @@ CONTAINS
 
     CALL DescribeFluidFields_Diagnostic( amrex_parallel_ioprocessor() )
 
-    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
-                              Verbose_Option = amrex_parallel_ioprocessor() )
+    CALL SetUnitsFluidFields &
+           ( TRIM( CoordinateSystem ), &
+             Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL DescribeRadiationFields_Conserved( amrex_parallel_ioprocessor() )
 
@@ -349,9 +344,9 @@ CONTAINS
              OpacityTableName_Iso_Option  = OpacityTableName_Iso,  &
              OpacityTableName_NES_Option  = OpacityTableName_NES,  &
              OpacityTableName_Pair_Option = OpacityTableName_Pair, &
+             OpacityTableName_Brem_Option = OpacityTableName_Brem, &
              EquationOfStateTableName_Option = EosTableName, &
              Verbose_Option = amrex_parallel_ioprocessor())
-
 
     CALL InitializeNeutrinoMatterSolverParameters &
            ( M_outer_Option &
@@ -408,8 +403,6 @@ CONTAINS
     dt_TM  = 0.0_DP
     t_new  = 0.0_DP
 
-    CALL InitializeTally_Euler_MF
-
     CALL InitializeTally_TwoMoment_MF
 
     CALL Initialize_IMEX_RK_MF &
@@ -423,9 +416,25 @@ CONTAINS
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
 
+      SetInitialValues = .TRUE.
+
+      CALL InitializeTally_Euler_MF
+
+      CALL ApplySlopeLimiter_Euler_MF &
+             ( MF_uGF, MF_uCF, MF_uDF )
+
+      CALL ApplyPositivityLimiter_Euler_MF &
+             ( MF_uGF, MF_uCF, MF_uDF )
+
+      CALL ApplySlopeLimiter_TwoMoment_MF &
+             ( amrex_geom, MF_uGF, MF_uCF, MF_uCR )
+
+      CALL ApplyPositivityLimiter_TwoMoment_MF &
+             ( amrex_geom, MF_uGF, MF_uCF, MF_uCR )
+
       CALL CreateMesh_MF( 0, MeshX )
 
-      CALL InitializeGravitySolver_XCFC_Poseidon_MF
+      CALL InitializeGravitySolver_XCFC_MF
 
       CALL DestroyMesh_MF( MeshX )
 
@@ -435,35 +444,43 @@ CONTAINS
       CALL ComputeFromConserved_TwoMoment_MF &
              ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
 
-      CALL InitializeMetric_TwoMoment_MF( MF_uGF, MF_uCF, MF_uCR, MF_uPF, MF_uAF )
+      CALL InitializeMetric_TwoMoment_MF &
+             ( MF_uGF, MF_uCF, MF_uCR, MF_uPF, MF_uAF )
+
+      CALL ApplySlopeLimiter_Euler_MF &
+             ( MF_uGF, MF_uCF, MF_uDF )
+
+      CALL ApplyPositivityLimiter_Euler_MF &
+             ( MF_uGF, MF_uCF, MF_uDF )
+
+      CALL ApplySlopeLimiter_TwoMoment_MF &
+             ( amrex_geom, MF_uGF, MF_uCF, MF_uCR )
+
+      CALL ApplyPositivityLimiter_TwoMoment_MF &
+             ( amrex_geom, MF_uGF, MF_uCF, MF_uCR )
 
     ELSE
-
-      CALL amrex_init_from_scratch( 0.0_DP )
-      ! nLevels read from checkpoint file
 
       CALL ReadCheckpointFile &
              ( ReadFields_uCF_Option = .TRUE., &
                ReadFields_uCR_Option = .TRUE. )
 
+      SetInitialValues = .FALSE.
+
+      CALL InitializeTally_Euler_MF &
+             ( InitializeFromCheckpoint_Option = .TRUE. )
+
       CALL CreateMesh_MF( 0, MeshX )
 
-      CALL InitializeGravitySolver_XCFC_Poseidon_MF
+      CALL InitializeGravitySolver_XCFC_MF( MF_uGF, MF_uCF )
 
       CALL DestroyMesh_MF( MeshX )
 
-      CALL ComputeFromConserved_Euler_MF &
-             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-      CALL ComputeFromConserved_TwoMoment_MF &
-             ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
-
-      CALL InitializeMetric_TwoMoment_MF( MF_uGF, MF_uCF, MF_uCR, MF_uPF, MF_uAF )
-
     END IF
 
-    CALL AverageDown( MF_uGF, MF_uGF )
-    CALL AverageDown( MF_uGF, MF_uCF )
+    CALL AverageDown( MF_uGF )
+    CALL AverageDown &
+           ( MF_uGF, MF_uCF, MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
     !!$CALL AverageDown( MF_uGF, MF_uCR )
 
     t_old = t_new
@@ -472,23 +489,14 @@ CONTAINS
 
     CALL DescribeProgramHeader_AMReX
 
-    CALL ApplySlopeLimiter_Euler_MF &
-           ( t_new, MF_uGF, MF_uCF, MF_uDF )
-
-    CALL ApplyPositivityLimiter_Euler_MF &
-           ( MF_uGF, MF_uCF, MF_uDF )
-
-    CALL ApplySlopeLimiter_TwoMoment_MF &
-           ( amrex_geom, MF_uGF, MF_uCF, MF_uCR )
-
-    CALL ApplyPositivityLimiter_TwoMoment_MF &
-           ( amrex_geom, MF_uGF, MF_uCF, MF_uCR )
-
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
     CALL ComputeFromConserved_TwoMoment_MF &
            ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
+
+    CALL ComputeGray_TwoMoment_MF &
+           ( MF_uGF, MF_uPF, MF_uCR, MF_uPR, MF_uGR )
 
     CALL WriteFieldsAMReX_PlotFile &
            ( t_new(0), StepNo, MF_uGF, &
@@ -497,16 +505,18 @@ CONTAINS
              MF_uPF_Option = MF_uPF, &
              MF_uAF_Option = MF_uAF, &
              MF_uDF_Option = MF_uDF, &
+             MF_uPR_Option = MF_uPR, &
              MF_uCR_Option = MF_uCR, &
-             MF_uPR_Option = MF_uPR )
+             MF_uGR_Option = MF_uGR )
 
     CALL ComputeTally_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, &
-             SetInitialValues_Option = .TRUE., &
+             SetInitialValues_Option = SetInitialValues, &
              Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL ComputeTally_TwoMoment_MF &
            ( amrex_geom, MF_uGF, MF_uCF, MF_uCR, t_new(0), &
+             SetInitialValues_Option = .TRUE., &
              Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL TimersStop_AMReX( Timer_AMReX_Initialize )
@@ -566,6 +576,9 @@ CONTAINS
            ( MF_uPR(iLevel), BA, DM, nDOFZ * nPR * nE * nSpecies, swX )
     CALL MF_uPR(iLevel) % SetVal( Zero )
 
+    CALL amrex_multifab_build( MF_uGR(iLevel), BA, DM, nDOFX * nGR * nSpecies, swX )
+    CALL MF_uGR(iLevel) % SetVal( Zero )
+
     ! Assume nDOFZ_Z3 = nDOFZ_Z4 = nDOFZ_Z2
     IF( iLevel .GT. 0 .AND. UseFluxCorrection_TwoMoment ) &
       CALL amrex_fluxregister_build &
@@ -578,10 +591,6 @@ CONTAINS
 
     CALL InitializeFields_MF &
            ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uCR(iLevel) )
-
-    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uGF )
-    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCF )
-    CALL FillPatch( iLevel, t_new(iLevel), MF_uGF, MF_uCR )
 
     CALL DestroyMesh_MF( MeshX )
 
@@ -614,6 +623,7 @@ CONTAINS
            ( MF_uCR(iLevel), BA, DM, nDOFZ * nCR * nE * nSpecies, swX )
     CALL amrex_multifab_build &
            ( MF_uPR(iLevel), BA, DM, nDOFZ * nPR * nE * nSpecies, swX )
+    CALL amrex_multifab_build( MF_uGR(iLevel), BA, DM, nDOFX * nGR * nSpecies, swX )
 
     IF( iLevel .GT. 0 .AND. UseFluxCorrection_Euler ) &
       CALL amrex_fluxregister_build &
@@ -626,10 +636,10 @@ CONTAINS
                amrex_ref_ratio(iLevel-1), &
                iLevel, nDOFZ_Z2 * nCR * nE * nSpecies )
 
-    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uGF )
-    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uCF )
-    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uDF )
-    CALL FillCoarsePatch( iLevel, Time, MF_uGF, MF_uCR )
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uGF )
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF )
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uDF )
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCR )
 
   END SUBROUTINE MakeNewLevelFromCoarse
 
@@ -638,6 +648,9 @@ CONTAINS
 
     INTEGER, INTENT(in), VALUE :: iLevel
 
+    CALL amrex_multifab_destroy( MF_uCR(iLevel) )
+    CALL amrex_multifab_destroy( MF_uPR(iLevel) )
+    CALL amrex_multifab_destroy( MF_uGR(iLevel) )
     CALL amrex_multifab_destroy( MF_uDF(iLevel) )
     CALL amrex_multifab_destroy( MF_uAF(iLevel) )
     CALL amrex_multifab_destroy( MF_uPF(iLevel) )
@@ -674,10 +687,10 @@ CONTAINS
     CALL amrex_multifab_build &
            ( MF_uPR_tmp, BA, DM, nDOFZ * nPR * nE * nSpecies, swX )
 
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uGF, MF_uGF_tmp )
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uCF, MF_uCF_tmp )
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uDF, MF_uDF_tmp )
-    CALL FillPatch( iLevel, Time, MF_uGF, MF_uCR, MF_uCR_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF, MF_uGF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uCF, MF_uCF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uDF, MF_uDF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uCR, MF_uCR_tmp )
 
     CALL ClearLevel( iLevel )
 
@@ -690,6 +703,7 @@ CONTAINS
            ( MF_uCR(iLevel), BA, DM, nDOFZ * nCF * nE * nSpecies, swX )
     CALL amrex_multifab_build &
            ( MF_uPR(iLevel), BA, DM, nDOFZ * nPF * nE * nSpecies, swX )
+    CALL amrex_multifab_build( MF_uGR(iLevel), BA, DM, nDOFX * nGR * nSpecies, swX )
 
     IF( iLevel .GT. 0 .AND. UseFluxCorrection_Euler ) &
       CALL amrex_fluxregister_build &
@@ -776,6 +790,5 @@ CONTAINS
     CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE ErrorEstimate
-
 
 END MODULE InitializationModule

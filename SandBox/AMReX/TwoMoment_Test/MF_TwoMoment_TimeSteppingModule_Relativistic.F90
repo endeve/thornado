@@ -37,15 +37,22 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
     ComputeIncrement_TwoMoment_Explicit_MF
   USE MF_TwoMoment_DiscretizationModule_Collisions_Relativistic, ONLY: &
     ComputeIncrement_TwoMoment_Implicit_MF
-!  USE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
-!    ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF
   USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_TwoMoment_MF
   USE MF_TwoMoment_SlopeLimiterModule, ONLY: &
     ApplySlopeLimiter_TwoMoment_MF
+  USE MF_FieldsModule_TwoMoment, ONLY: &
+    OffGridFlux_TwoMoment_MF
   ! --- Local Modules ---
   USE InputParsingModule,                      ONLY: &
     nLevels, DEBUG, UseTiling, nSpecies
+  USE MF_KindModule, ONLY: &
+    DP, &
+    Zero, &
+    One
+  USE MF_TwoMoment_TallyModule, ONLY: &
+    IncrementOffGridTally_TwoMoment_MF
+
 
   IMPLICIT NONE
   PRIVATE
@@ -97,14 +104,18 @@ CONTAINS
     REAL(AR), CONTIGUOUS, POINTER :: uCR(:,:,:,:), U(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:), F(:,:,:,:)
 
+    REAL(DP) :: dM_OffGrid_TwoMoment(1:2*nCR,0:nLevels-1)
+
+    INTEGER :: i
+
     LOGICAL :: Verbose
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
+    dM_OffGrid_TwoMoment = Zero
     ! --- Set temporary MultiFabs U and dU to zero --
     DO iLevel = 0, nLevels-1
-
 
 
       CALL MF_U(iLevel) % setval( 0.0_AR )
@@ -179,26 +190,11 @@ CONTAINS
 
           IF( a_IM(iS,jS) .NE. 0.0_AR )THEN
 
-#if defined(MICROPHYSICS_WEAKLIB)
-
-
-            CALL MF_U(iLevel) &
-                 % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
-                            dt(iLevel) * a_IM(iS,iS), MF_DU_Im(iLevel,iS), 1, &
-                            1, MF_U(iLevel) % nComp(), swX )
-
-            CALL MF_F(iLevel) &
-                 % LinComb( 1.0_AR,              MF_F(iLevel),    1, &
-                            dt(iLevel) * a_IM(iS,jS), MF_DF_Im(iLevel,jS), 1, &
-                            1, MF_F(iLevel) % nComp(), swX )
-
-#else
 
             CALL MF_U(iLevel) &
                  % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
                             dt(iLevel) * a_IM(iS,jS), MF_DU_Im(iLevel,jS), 1, &
                             1, MF_U(iLevel) % nComp(), swX )
-#endif
           END IF
 
           IF( jS == iS - 1 )THEN
@@ -222,21 +218,6 @@ CONTAINS
           IF (Verbose) THEN
             PRINT*, "    IMPLICIT: ", iS
           END IF
-#if defined(MICROPHYSICS_WEAKLIB)
-!          CALL ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF &
-!               ( GEOM, MF_uGF, MF_uCF, MF_DF_Im(:,iS), MF_U, MF_DU_Im(:,iS), &
-!                 dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
-
-          CALL MF_U(iLevel) &
-                 % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
-                            dt(iLevel) * a_IM(iS,iS), MF_DU_Im(iLevel,iS), 1, &
-                            1, MF_U(iLevel) % nComp(), swX )
-
-          CALL MF_F(iLevel) &
-                 % LinComb( 1.0_AR,              MF_F(iLevel),    1, &
-                            dt(iLevel) * a_IM(iS,iS), MF_DF_Im(iLevel,iS), 1, &
-                            1, MF_F(iLevel) % nComp(), swX )
-#else
           CALL ComputeIncrement_TwoMoment_Implicit_MF &
                ( GEOM, MF_uGF, MF_uCF, MF_U, MF_DU_Im(:,iS), dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
 
@@ -244,7 +225,12 @@ CONTAINS
                  % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
                             dt(iLevel) * a_IM(iS,iS), MF_DU_Im(iLevel,iS), 1, &
                             1, MF_U(iLevel) % nComp(), swX )
-#endif
+
+
+          CALL ApplyPositivityLimiter_TwoMoment_MF &
+                  ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
+
+
         END IF
 
         IF( ANY( a_EX(:,iS) .NE. 0.0_AR ) .OR. ( w_EX(iS) .NE. 0.0_AR ) )THEN
@@ -256,6 +242,12 @@ CONTAINS
 
           CALL ComputeIncrement_TwoMoment_Explicit_MF &
                ( t, GEOM, MF_uGF, MF_uCF, MF_U, MF_DU_Ex(:,iS), Verbose_Option = Verbose )
+
+
+          dM_OffGrid_TwoMoment(:,iLevel) &
+            = dM_OffGrid_TwoMoment(:,iLevel) &
+            + dt(iLevel) * w_EX(iS) * OffGridFlux_TwoMoment_MF(:,iLevel)
+
         END IF
 
       END DO
@@ -268,12 +260,7 @@ CONTAINS
     IF( ANY( a_IM(nStages,:) .NE. w_IM(:) ) .OR. &
         ANY( a_EX(nStages,:) .NE. w_EX(:) ) )THEN
 
-#if defined(MICROPHYSICS_WEAKLIB)
       U = uCR
-      F = uCF
-#else
-      U = uCR
-#endif
 
       IF (Verbose) THEN
         PRINT*, "    ASSEMBLY:"
@@ -283,22 +270,10 @@ CONTAINS
 
         IF( w_IM(iS) .NE. 0.0_AR )THEN
 
-#if defined(MICROPHYSICS_WEAKLIB)
           CALL MF_U(iLevel) &
                  % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
                             dt(iLevel) * w_IM(iS), MF_DU_Im(iLevel,iS), 1, &
                             1, MF_U(iLevel) % nComp(), swX )
-
-          CALL MF_F(iLevel) &
-                 % LinComb( 1.0_AR,              MF_F(iLevel),    1, &
-                            dt(iLevel) * w_IM(iS), MF_DF_Im(iLevel,iS), 1, &
-                            1, MF_F(iLevel) % nComp(), swX )
-#else
-          CALL MF_U(iLevel) &
-                 % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
-                            dt(iLevel) * w_IM(iS), MF_DU_Im(iLevel,iS), 1, &
-                            1, MF_U(iLevel) % nComp(), swX )
-#endif
 
         END IF
 
@@ -323,12 +298,10 @@ CONTAINS
 
   END DO
 
-#if defined(MICROPHYSICS_WEAKLIB)
+  CALL IncrementOffGridTally_TwoMoment_MF( dM_OffGrid_TwoMoment )
+
+
   uCR = U
-  uCF = F
-#else
-  uCR = U
-#endif
 
   END SUBROUTINE Update_IMEX_RK_MF
 
@@ -553,14 +526,8 @@ CONTAINS
     DO i = 1, nStages
 
 
-#if defined(MICROPHYSICS_WEAKLIB)
       CALL AllocateArray7D( StageData(i) % dU_IM )
       CALL AllocateArray7D( StageData(i) % dU_EX )
-      CALL AllocateArray5D( StageData(i) % dF_EX )
-#else
-      CALL AllocateArray7D( StageData(i) % dU_IM )
-      CALL AllocateArray7D( StageData(i) % dU_EX )
-#endif
     END DO
 
 
@@ -582,14 +549,8 @@ CONTAINS
 
     DO i = 1, nStages
 
-#if defined(MICROPHYSICS_WEAKLIB)
       CALL DeallocateArray7D( StageData(i) % dU_IM )
       CALL DeallocateArray7D( StageData(i) % dU_EX )
-      CALL DeallocateArray5D( StageData(i) % dF_EX )
-#else
-      CALL DeallocateArray7D( StageData(i) % dU_IM )
-      CALL DeallocateArray7D( StageData(i) % dU_EX )
-#endif
 
     END DO
 

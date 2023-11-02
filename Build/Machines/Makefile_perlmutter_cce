@@ -1,0 +1,39 @@
+## Makefile definitions for Perlmutter with CCE compiler
+
+C       = CC --c++11
+FORTRAN = ftn
+FLINKER = ftn
+
+DEBUG    = -g -G0 -O0
+OPTIMIZE = -G2 -O2
+
+SUFFIX_f90 =
+
+MDEFS =
+PP    = -D
+
+ifeq ($(USE_OMP),TRUE)
+  OPENMP = -fopenmp
+else ifeq ($(USE_OMP_OL),TRUE)
+  OPENMP = -fopenmp -target-accel=nvidia80
+endif
+
+ifeq ($(USE_OACC),TRUE)
+  OPENACC = -hacc -target-accel=nvidia80
+endif
+
+INCLUDE_CUDA     = -I$(CUDA_DIR)/include
+INCLUDE_HDF5     = -I$(HDF5_DIR)/include
+INCLUDE_LAPACK   =
+INCLUDE_MAGMA    = -I$(MAGMA_ROOT)/include
+INCLUDE_PETSC    =
+INCLUDE_POSEIDON =
+INCLUDE_ROCM     =
+
+LIBRARIES_CUDA     = -L$(CUDA_DIR)/lib64 -lcusparse -lcusolver -lcublas -lcudart -lcuda
+LIBRARIES_HDF5     = -L$(HDF5_DIR)/lib -lhdf5_fortran -lhdf5
+LIBRARIES_LAPACK   =
+LIBRARIES_MAGMA    = -L$(MAGMA_ROOT)/lib -lmagma
+LIBRARIES_PETSC    =
+LIBRARIES_POSEIDON =
+LIBRARIES_ROCM     =

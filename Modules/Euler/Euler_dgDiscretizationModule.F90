@@ -63,26 +63,24 @@ MODULE Euler_dgDiscretizationModule
     iGF_Phi_N, &
     CoordinateSystem
   USE FluidFieldsModule, ONLY: &
-    nCF, &
     iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
-    nPF, &
+    nCF, &
     iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
-    nDF, &
+    nPF, &
     iDF_Sh_X1, &
     iDF_Sh_X2, &
-    iDF_Sh_X3
-  USE GeometryComputationModule_XCFC, ONLY: &
-    ComputeChristoffelSymbols_3D_XCFC
+    iDF_Sh_X3, &
+    nDF
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE Euler_UtilitiesModule, ONLY: &
@@ -120,10 +118,10 @@ MODULE Euler_dgDiscretizationModule
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
 
+  USE MPI
+
   IMPLICIT NONE
   PRIVATE
-
-  INCLUDE 'mpif.h'
 
   PUBLIC :: ComputeIncrement_Euler_DG_Explicit
 
@@ -158,30 +156,27 @@ MODULE Euler_dgDiscretizationModule
                       OffGridFlux_Euler_X3_Inner(nCF), &
                       OffGridFlux_Euler_X3_Outer(nCF)
 
-
 CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Euler_DG_Explicit &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
-      SuppressBC_Option, UseXCFC_Option, &
+      SuppressBC_Option, &
       SurfaceFlux_X1_Option, &
       SurfaceFlux_X2_Option, &
       SurfaceFlux_X3_Option )
 
-    INTEGER,  INTENT(in)            :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)            :: &
+    REAL(DP), INTENT(in)    :: &
       G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout)         :: &
+    REAL(DP), INTENT(inout) :: &
       U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       D (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out)           :: &
+    REAL(DP), INTENT(out)   :: &
       dU(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL,  INTENT(in),  OPTIONAL :: &
       SuppressBC_Option
-    LOGICAL,  INTENT(in),  OPTIONAL :: &
-      UseXCFC_Option
     REAL(DP), INTENT(out), OPTIONAL :: &
       SurfaceFlux_X1_Option(:,:,:,:,:), &
       SurfaceFlux_X2_Option(:,:,:,:,:), &
@@ -211,7 +206,7 @@ CONTAINS
           nCF)
 
     INTEGER  :: iNX, iX1, iX2, iX3, iCF
-    LOGICAL  :: SuppressBC, UseXCFC
+    LOGICAL  :: SuppressBC
     REAL(DP) :: tau(nDOFX,iX_B1(1):iX_E1(1), &
                           iX_B1(2):iX_E1(2), &
                           iX_B1(3):iX_E1(3))
@@ -222,20 +217,16 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_DG )
 
-    UseXCFC = .FALSE.
-    IF( PRESENT( UseXCFC_Option ) ) &
-      UseXCFC = UseXCFC_Option
-
     CALL TimersStart_Euler( Timer_Euler_DG_CopyIn )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dX1, dX2, dX3 ) &
-    !$OMP MAP( alloc: dU, tau )
+    !$OMP MAP( alloc: dU, tau, SurfaceFlux_X1, SurfaceFlux_X2, SurfaceFlux_X3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dX1, dX2, dX3 ) &
-    !$ACC CREATE(     dU, tau )
+    !$ACC CREATE(     dU, tau, SurfaceFlux_X1, SurfaceFlux_X2, SurfaceFlux_X3 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
@@ -263,51 +254,25 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_Increment )
 
-    IF( UseXCFC )THEN
-
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-      !$ACC PRESENT( iX_B1, iX_E1, tau, G )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( iX_B1, iX_E1, tau, G )
 #elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
-      DO iX3 = iX_B1(3), iX_E1(3)
-      DO iX2 = iX_B1(2), iX_E1(2)
-      DO iX1 = iX_B1(1), iX_E1(1)
-      DO iNX = 1, nDOFX
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iNX = 1, nDOFX
 
-        tau(iNX,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Psi)**6
+      tau(iNX,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Psi)**6
 
-      END DO
-      END DO
-      END DO
-      END DO
-
-    ELSE
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-      !$ACC PRESENT( iX_B1, iX_E1, tau )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(4)
-#endif
-      DO iX3 = iX_B1(3), iX_E1(3)
-      DO iX2 = iX_B1(2), iX_E1(2)
-      DO iX1 = iX_B1(1), iX_E1(1)
-      DO iNX = 1, nDOFX
-
-        tau(iNX,iX1,iX2,iX3) = One
-
-      END DO
-      END DO
-      END DO
-      END DO
-
-    END IF
+    END DO
+    END DO
+    END DO
+    END DO
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
@@ -351,14 +316,38 @@ CONTAINS
     CALL ComputeIncrement_Euler_Divergence_X3 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X3 )
 
-    IF( PRESENT( SurfaceFlux_X1_Option ) ) &
+    IF( PRESENT( SurfaceFlux_X1_Option ) )THEN
+#if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET UPDATE FROM( SurfaceFlux_X1 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC UPDATE HOST       ( SurfaceFlux_X1 )
+#endif
+#endif
       SurfaceFlux_X1_Option = SurfaceFlux_X1
+    END IF
 
-    IF( PRESENT( SurfaceFlux_X2_Option ) ) &
+    IF( PRESENT( SurfaceFlux_X2_Option ) )THEN
+#if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET UPDATE FROM( SurfaceFlux_X2 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC UPDATE HOST       ( SurfaceFlux_X2 )
+#endif
+#endif
       SurfaceFlux_X2_Option = SurfaceFlux_X2
+    END IF
 
-    IF( PRESENT( SurfaceFlux_X3_Option ) ) &
+    IF( PRESENT( SurfaceFlux_X3_Option ) )THEN
+#if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET UPDATE FROM( SurfaceFlux_X3 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC UPDATE HOST       ( SurfaceFlux_X3 )
+#endif
+#endif
       SurfaceFlux_X3_Option = SurfaceFlux_X3
+    END IF
 
     CALL TimersStop_Euler( Timer_Euler_Divergence )
 
@@ -397,7 +386,7 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_Geometry )
 
     CALL ComputeIncrement_Geometry &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, UseXCFC, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
 
     CALL TimersStop_Euler( Timer_Euler_Geometry )
 
@@ -425,11 +414,13 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    dU, U, D ) &
-    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX2, dX3, G, tau )
+    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX2, dX3, G, tau, &
+    !$OMP               SurfaceFlux_X1, SurfaceFlux_X2, SurfaceFlux_X3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      dU, U, D ) &
-    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX2, dX3, G, tau )
+    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, dX1, dX2, dX3, G, tau, &
+    !$ACC               SurfaceFlux_X1, SurfaceFlux_X2, SurfaceFlux_X3 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
@@ -444,7 +435,7 @@ CONTAINS
   SUBROUTINE ComputeIncrement_Euler_Divergence_X1 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X1 )
 
-    INTEGER, INTENT(in)     :: &
+    INTEGER , INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       G (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF), &
@@ -554,24 +545,26 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX2, dX3 ) &
+    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, &
+    !$OMP             dX2, dX3 ) &
     !$OMP MAP( alloc: EigVals_L, EigVals_R, &
     !$OMP             Flux_L, Flux_R, &
     !$OMP             Flux_F, Flux_K, &
     !$OMP             uCF_L_nCF, uCF_R_nCF, &
     !$OMP             iErr, &
     !$OMP             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$OMP             NumericalFlux, Flux_q, dU_X1, SurfaceFlux_X1 )
+    !$OMP             NumericalFlux, Flux_q, dU_X1 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX2, dX3 ) &
+    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, &
+    !$ACC             dX2, dX3 ) &
     !$ACC CREATE(     EigVals_L, EigVals_R, &
     !$ACC             Flux_L, Flux_R, &
     !$ACC             Flux_F, Flux_K, &
     !$ACC             uCF_L_nCF, uCF_R_nCF, &
     !$ACC             iErr, &
     !$ACC             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$ACC             NumericalFlux, Flux_q, dU_X1, SurfaceFlux_X1 )
+    !$ACC             NumericalFlux, Flux_q, dU_X1 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
@@ -787,17 +780,25 @@ CONTAINS
     CALL ComputePrimitive_Euler &
            ( uD_L, uS1_L, uS2_L, uS3_L, uE_L, uNe_L, &
              pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, &
-             Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F )
+             Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
+             iDimX_Option = 'X1', IndexTable_Option = IndexTableX_F, &
+             iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL ComputePrimitive_Euler &
            ( uD_R, uS1_R, uS2_R, uS3_R, uE_R, uNe_R, &
              pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, &
-             Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F )
+             Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
+             iDimX_Option = 'X1', IndexTable_Option = IndexTableX_F, &
+             iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL TimersStop_Euler( Timer_Euler_DG_ComputePrimitive )
 
     CALL TimersStart_Euler( Timer_Euler_SurfaceTerm )
 
+ ! Initializations needed in debug mode
+ NumericalFlux  = Zero
+ Flux_q         = Zero
+ SurfaceFlux_X1 = Zero
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
@@ -825,6 +826,8 @@ CONTAINS
     !$OMP REDUCTION( +:ErrorExists )
 #endif
     DO iNX_X = 1, nNodesX_X1
+
+      iErr(iNX_X) = 0
 
       ! --- Left state ---
 
@@ -907,8 +910,6 @@ CONTAINS
 
       AlphaPls &
         = MAX( Zero, MAXVAL( + EigVals_L ), MAXVAL( + EigVals_R ) )
-
-      iErr(iNX_X) = 0
 
       AlphaMdl &
         = AlphaMiddle_Euler &
@@ -1011,7 +1012,9 @@ CONTAINS
     CALL ComputePrimitive_Euler &
            ( uD_K, uS1_K, uS2_K, uS3_K, uE_K, uNe_K, &
              pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, &
-             Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K )
+             Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
+             iDimX_Option = 'X1', IndexTable_Option = IndexTableX_V, &
+             iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL TimersStop_Euler( Timer_Euler_DG_ComputePrimitive )
 
@@ -1025,7 +1028,8 @@ CONTAINS
     !$ACC PRIVATE( P_K, Flux_K, iNX, iX1, iX2, iX3 ) &
     !$ACC PRESENT( pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, &
     !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, Alpha_K, Beta_1_K, &
-    !$ACC          Flux_q, SqrtGm_K, dX2, dX3, WeightsX_q, IndexTableX_V )
+    !$ACC          Flux_q, SqrtGm_K, dX2, dX3, WeightsX_q, &
+    !$ACC          IndexTableX_V )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( P_K, Flux_K, iNX, iX1, iX2, iX3 )
@@ -1118,7 +1122,7 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    NumericalFlux, SurfaceFlux_X1, iErr, ErrorExists ) &
+    !$OMP MAP( from:    NumericalFlux, iErr ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX2, dX3, &
     !$OMP               EigVals_L, EigVals_R, &
     !$OMP               Flux_L, Flux_R, &
@@ -1128,7 +1132,7 @@ CONTAINS
     !$OMP               Flux_q, dU_X1 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      NumericalFlux, SurfaceFlux_X1, iErr, ErrorExists ) &
+    !$ACC COPYOUT(      NumericalFlux, iErr ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX2, dX3, &
     !$ACC               EigVals_L, EigVals_R, &
     !$ACC               Flux_L, Flux_R, &
@@ -1296,24 +1300,26 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX1, dX3 ) &
+    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, &
+    !$OMP             dX1, dX3 ) &
     !$OMP MAP( alloc: EigVals_L, EigVals_R, &
     !$OMP             Flux_L, Flux_R, &
     !$OMP             Flux_F, Flux_K, &
     !$OMP             uCF_L_nCF, uCF_R_nCF, &
     !$OMP             iErr, &
     !$OMP             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$OMP             NumericalFlux, Flux_q, dU_X2, SurfaceFlux_X2 )
+    !$OMP             NumericalFlux, Flux_q, dU_X2 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX1, dX3 ) &
+    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, &
+    !$ACC             dX1, dX3 ) &
     !$ACC CREATE(     EigVals_L, EigVals_R, &
     !$ACC             Flux_L, Flux_R, &
     !$ACC             Flux_F, Flux_K, &
     !$ACC             uCF_L_nCF, uCF_R_nCF, &
     !$ACC             iErr, &
     !$ACC             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$ACC             NumericalFlux, Flux_q, dU_X2, SurfaceFlux_X2 )
+    !$ACC             NumericalFlux, Flux_q, dU_X2 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
@@ -1529,17 +1535,25 @@ CONTAINS
     CALL ComputePrimitive_Euler &
            ( uD_L, uS1_L, uS2_L, uS3_L, uE_L, uNe_L, &
              pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, &
-             Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F )
+             Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
+             iDimX_Option = 'X2', IndexTable_Option = IndexTableX_F, &
+             iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL ComputePrimitive_Euler &
            ( uD_R, uS1_R, uS2_R, uS3_R, uE_R, uNe_R, &
              pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, &
-             Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F )
+             Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
+             iDimX_Option = 'X2', IndexTable_Option = IndexTableX_F, &
+             iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL TimersStop_Euler( Timer_Euler_DG_ComputePrimitive )
 
     CALL TimersStart_Euler( Timer_Euler_SurfaceTerm )
 
+! ! Initializations needed in debug mode
+! NumericalFlux  = Zero
+! Flux_q         = Zero
+! SurfaceFlux_X2 = Zero
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
@@ -1567,6 +1581,8 @@ CONTAINS
     !$OMP REDUCTION( +:ErrorExists )
 #endif
     DO iNX_X = 1, nNodesX_X2
+
+      iErr(iNX_X) = 0
 
       ! --- Left state ---
 
@@ -1649,8 +1665,6 @@ CONTAINS
 
       AlphaPls &
         = MAX( Zero, MAXVAL( + EigVals_L ), MAXVAL( + EigVals_R ) )
-
-      iErr(iNX_X) = 0
 
       AlphaMdl &
         = AlphaMiddle_Euler &
@@ -1753,7 +1767,9 @@ CONTAINS
     CALL ComputePrimitive_Euler &
            ( uD_K, uS1_K, uS2_K, uS3_K, uE_K, uNe_K, &
              pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, &
-             Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K )
+             Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
+             iDimX_Option = 'X2', IndexTable_Option = IndexTableX_V, &
+             iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL TimersStop_Euler( Timer_Euler_DG_ComputePrimitive )
 
@@ -1767,7 +1783,8 @@ CONTAINS
     !$ACC PRIVATE( P_K, Flux_K, iNX, iX1, iX2, iX3 ) &
     !$ACC PRESENT( pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, &
     !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, Alpha_K, Beta_2_K, &
-    !$ACC          Flux_q, SqrtGm_K, dX1, dX3, WeightsX_q, IndexTableX_V )
+    !$ACC          Flux_q, SqrtGm_K, dX1, dX3, WeightsX_q, &
+    !$ACC          IndexTableX_V )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( P_K, Flux_K, iNX, iX1, iX2, iX3 )
@@ -1860,7 +1877,7 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    NumericalFlux, SurfaceFlux_X2, iErr, ErrorExists ) &
+    !$OMP MAP( from:    NumericalFlux, iErr ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX1, dX3, &
     !$OMP               EigVals_L, EigVals_R, &
     !$OMP               Flux_L, Flux_R, &
@@ -1870,7 +1887,7 @@ CONTAINS
     !$OMP               Flux_q, dU_X2 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      NumericalFlux, SurfaceFlux_X2, iErr, ErrorExists ) &
+    !$ACC COPYOUT(      NumericalFlux, iErr ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX1, dX3, &
     !$ACC               EigVals_L, EigVals_R, &
     !$ACC               Flux_L, Flux_R, &
@@ -2038,24 +2055,26 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX1, dX2 ) &
+    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, &
+    !$OMP             dX1, dX2 ) &
     !$OMP MAP( alloc: EigVals_L, EigVals_R, &
     !$OMP             Flux_L, Flux_R, &
     !$OMP             Flux_F, Flux_K, &
     !$OMP             uCF_L_nCF, uCF_R_nCF, &
     !$OMP             iErr, &
     !$OMP             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$OMP             NumericalFlux, Flux_q, dU_X3, SurfaceFlux_X3 )
+    !$OMP             NumericalFlux, Flux_q, dU_X3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX1, dX2 ) &
+    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, &
+    !$ACC             dX1, dX2 ) &
     !$ACC CREATE(     EigVals_L, EigVals_R, &
     !$ACC             Flux_L, Flux_R, &
     !$ACC             Flux_F, Flux_K, &
     !$ACC             uCF_L_nCF, uCF_R_nCF, &
     !$ACC             iErr, &
     !$ACC             G_K, G_F, uCF_K, uCF_L, uCF_R, uDF_L, uDF_R, &
-    !$ACC             NumericalFlux, Flux_q, dU_X3, SurfaceFlux_X3 )
+    !$ACC             NumericalFlux, Flux_q, dU_X3 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
@@ -2270,17 +2289,25 @@ CONTAINS
     CALL ComputePrimitive_Euler &
            ( uD_L, uS1_L, uS2_L, uS3_L, uE_L, uNe_L, &
              pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, &
-             Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F )
+             Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
+             iDimX_Option = 'X3', IndexTable_Option = IndexTableX_F, &
+             iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL ComputePrimitive_Euler &
            ( uD_R, uS1_R, uS2_R, uS3_R, uE_R, uNe_R, &
              pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, &
-             Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F )
+             Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
+             iDimX_Option = 'X3', IndexTable_Option = IndexTableX_F, &
+             iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL TimersStop_Euler( Timer_Euler_DG_ComputePrimitive )
 
     CALL TimersStart_Euler( Timer_Euler_SurfaceTerm )
 
+! ! Initializations needed in debug mode
+! NumericalFlux  = Zero
+! Flux_q         = Zero
+! SurfaceFlux_X3 = Zero
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( AlphaMns, AlphaPls, AlphaMdl, P_L, P_R, Cs_L, Cs_R, &
@@ -2308,6 +2335,8 @@ CONTAINS
     !$OMP REDUCTION( +:ErrorExists )
 #endif
     DO iNX_X = 1, nNodesX_X3
+
+      iErr(iNX_X) = 0
 
       ! --- Left state ---
 
@@ -2390,8 +2419,6 @@ CONTAINS
 
       AlphaPls &
         = MAX( Zero, MAXVAL( + EigVals_L ), MAXVAL( + EigVals_R ) )
-
-      iErr(iNX_X) = 0
 
       AlphaMdl &
         = AlphaMiddle_Euler &
@@ -2494,7 +2521,9 @@ CONTAINS
     CALL ComputePrimitive_Euler &
            ( uD_K, uS1_K, uS2_K, uS3_K, uE_K, uNe_K, &
              pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, &
-             Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K )
+             Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
+             iDimX_Option = 'X3', IndexTable_Option = IndexTableX_F, &
+             iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL TimersStop_Euler( Timer_Euler_DG_ComputePrimitive )
 
@@ -2508,7 +2537,8 @@ CONTAINS
     !$ACC PRIVATE( P_K, Flux_K, iNX, iX1, iX2, iX3 ) &
     !$ACC PRESENT( pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, &
     !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, Alpha_K, Beta_3_K, &
-    !$ACC          Flux_q, SqrtGm_K, dX1, dX2, WeightsX_q, IndexTableX_V )
+    !$ACC          Flux_q, SqrtGm_K, dX1, dX2, WeightsX_q, &
+    !$ACC          IndexTableX_V )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( P_K, Flux_K, iNX, iX1, iX2, iX3 )
@@ -2601,7 +2631,7 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    NumericalFlux, SurfaceFlux_X3, iErr, ErrorExists ) &
+    !$OMP MAP( from:    NumericalFlux, iErr ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX1, dX2, &
     !$OMP               EigVals_L, EigVals_R, &
     !$OMP               Flux_L, Flux_R, &
@@ -2611,7 +2641,7 @@ CONTAINS
     !$OMP               Flux_q, dU_X3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      NumericalFlux, SurfaceFlux_X3, iErr, ErrorExists ) &
+    !$ACC COPYOUT(      NumericalFlux, iErr ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, iXP_B0, iXP_E0, dX1, dX2, &
     !$ACC               EigVals_L, EigVals_R, &
     !$ACC               Flux_L, Flux_R, &
@@ -2667,23 +2697,22 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Geometry &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, UseXCFC, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       G  (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
-      U  (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
       tau(:,iX_B1(1):,iX_B1(2):,iX_B1(3):)
-    LOGICAL,  INTENT(in)    :: &
-      UseXCFC
+    REAL(DP), INTENT(inout) :: &
+      U  (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
 #ifdef HYDRO_RELATIVISTIC
 
     CALL ComputeIncrement_Geometry_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, UseXCFC, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
 
 #else
 
@@ -2701,7 +2730,8 @@ CONTAINS
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
-      G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+    REAL(DP), INTENT(inout) :: &
       U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
       dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
@@ -3280,23 +3310,21 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Geometry_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, UseXCFC, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
-      G (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF), &
+      G (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
+    REAL(DP), INTENT(inout) :: &
       U (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
     REAL(DP), INTENT(in)    :: &
       tau(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
-    LOGICAL,  INTENT(in)    :: &
-      UseXCFC
     REAL(DP), INTENT(inout) :: &
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
 
-    INTEGER :: iNX, iX1, iX2, iX3, iCF, ErrorExists
+    INTEGER :: iNX, iX1, iX2, iX3, ErrorExists
 
-    REAL(DP) :: DivGridVolume
     REAL(DP) :: P(nPF)
     REAL(DP) :: Pressure
     REAL(DP) :: PressureTensor(3,3,nDOFX,iX_B0(1):iX_E0(1), &
@@ -3313,21 +3341,13 @@ CONTAINS
                                 iX_B0(2):iX_E0(2), &
                                 iX_B0(3):iX_E0(3))
 
-    REAL(DP) :: Christoffel3D_X1(3,3,nDOFX,iX_B0(1):iX_E0(1), &
-                                           iX_B0(2):iX_E0(2), &
-                                           iX_B0(3):iX_E0(3))
-    REAL(DP) :: Christoffel3D_X2(3,3,nDOFX,iX_B0(1):iX_E0(1), &
-                                           iX_B0(2):iX_E0(2), &
-                                           iX_B0(3):iX_E0(3))
-    REAL(DP) :: Christoffel3D_X3(3,3,nDOFX,iX_B0(1):iX_E0(1), &
-                                           iX_B0(2):iX_E0(2), &
-                                           iX_B0(3):iX_E0(3))
+    INTEGER :: ITERATION(nDOFX,iX_B0(1):iX_E0(1), &
+                               iX_B0(2):iX_E0(2), &
+                               iX_B0(3):iX_E0(3))
 
-    INTEGER :: iErr(nDOFX,iX_B0(1):iX_E0(1), &
-                          iX_B0(2):iX_E0(2), &
-                          iX_B0(3):iX_E0(3))
-
-    REAL(DP) :: GradPsiF(nDOFX)
+    INTEGER :: iErr     (nDOFX,iX_B0(1):iX_E0(1), &
+                               iX_B0(2):iX_E0(2), &
+                               iX_B0(3):iX_E0(3))
 
     CALL TimersStart_Euler( Timer_Euler_DG_CopyIn )
 
@@ -3336,15 +3356,13 @@ CONTAINS
     !$OMP MAP( to:    iX_B0, iX_E0, tau ) &
     !$OMP MAP( alloc: PressureTensor, &
     !$OMP             dGdX1, dGdX2, dGdX3, &
-    !$OMP             Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3, &
-    !$OMP             iErr )
+    !$OMP             ITERATION, iErr )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, tau ) &
     !$ACC CREATE(     PressureTensor, &
     !$ACC             dGdX1, dGdX2, dGdX3, &
-    !$ACC             Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3, &
-    !$ACC             iErr )
+    !$ACC             ITERATION, iErr )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyIn )
@@ -3372,7 +3390,7 @@ CONTAINS
     !$ACC REDUCTION( +:ErrorExists ) &
     !$ACC PRESENT( iX_B0, iX_E0, dU, U, G, &
     !$ACC          PressureTensor, tau, &
-    !$ACC          dGdX1, dGdX2, dGdX3, iErr )
+    !$ACC          dGdX1, dGdX2, dGdX3, ITERATION, iErr )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( P, Pressure ) &
@@ -3383,7 +3401,8 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1       , nDOFX
 
-      iErr(iNX,iX1,iX2,iX3) = 0
+      ITERATION(iNX,iX1,iX2,iX3) = 0
+      iErr     (iNX,iX1,iX2,iX3) = 0
 
       CALL ComputePrimitive_Euler &
              ( U(   iNX,iX1,iX2,iX3,iCF_D ), &
@@ -3401,7 +3420,8 @@ CONTAINS
                G(   iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                G(   iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                G(   iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-               iErr(iNX,iX1,iX2,iX3) )
+               ITERATION_Option = ITERATION(iNX,iX1,iX2,iX3), &
+               iErr_Option      = iErr     (iNX,iX1,iX2,iX3) )
 
       ErrorExists = ErrorExists + iErr(iNX,iX1,iX2,iX3)
 
@@ -3548,27 +3568,18 @@ CONTAINS
     END DO
     END DO
 
-#ifdef GRAVITY_SOLVER_POSEIDON_CFA
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     ! --- Contributions from time-dependent metric ---
 
-    IF( .NOT. UseXCFC ) &
-      CALL ComputeChristoffelSymbols_3D_XCFC &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX1, dGdX2, dGdX3, &
-               Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
-
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
-    !$OMP PRIVATE( DivGridVolume )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRIVATE( DivGridVolume ) &
     !$ACC PRESENT( iX_B0, iX_E0, dU, U, G, dGdX1, dGdX2, dGdX3, &
-    !$ACC          tau, PressureTensor, &
-    !$ACC          Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
+    !$ACC          tau, PressureTensor )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(4) &
-    !$OMP PRIVATE( DivGridVolume )
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -3591,47 +3602,10 @@ CONTAINS
                      + Two * PressureTensor(2,3,iNX,iX1,iX2,iX3) &
                          * G(iNX,iX1,iX2,iX3,iGF_K_dd_23) )
 
-      IF( .NOT. UseXCFC )THEN
-
-        DivGridVolume &
-          =   dGdX1(iNX,iGF_Beta_1,iX2,iX3,iX1) &
-            + dGdX2(iNX,iGF_Beta_2,iX1,iX3,iX2) &
-            + dGdX3(iNX,iGF_Beta_3,iX1,iX2,iX3) &
-            + (   Christoffel3D_X1(1,1,iNX,iX1,iX2,iX3) &
-                + Christoffel3D_X2(2,1,iNX,iX1,iX3,iX2) &
-                + Christoffel3D_X3(3,1,iNX,iX1,iX2,iX3) ) &
-              * G(iNX,iX1,iX2,iX3,iGF_Beta_1) &
-            + (   Christoffel3D_X1(1,2,iNX,iX1,iX2,iX3) &
-                + Christoffel3D_X2(2,2,iNX,iX1,iX3,iX2) &
-                + Christoffel3D_X3(3,2,iNX,iX1,iX2,iX3) ) &
-              * G(iNX,iX1,iX2,iX3,iGF_Beta_2) &
-            + (   Christoffel3D_X1(1,3,iNX,iX1,iX2,iX3) &
-                + Christoffel3D_X2(2,3,iNX,iX1,iX3,iX2) &
-                + Christoffel3D_X3(3,3,iNX,iX1,iX2,iX3) ) &
-              * G(iNX,iX1,iX2,iX3,iGF_Beta_3)
-
-        DO iCF = 1, nCF
-
-          dU(iNX,iX1,iX2,iX3,iCF) &
-            = dU(iNX,iX1,iX2,iX3,iCF) &
-                - U(iNX,iX1,iX2,iX3,iCF) * DivGridVolume
-
-        END DO
-
-      END IF
-
     END DO
     END DO
     END DO
     END DO
-
-    ! --- GradPsiF ---
-
-    GradPsiF = Zero
-
-    CALL DGEMV &
-           ( 'N', nDOFX_X1, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
-             dGdX1(:,iGF_Psi,1,1,iX_E0(1)), 1, Zero, GradPsiF(1:nDOFX_X1), 1 )
 
 #endif
 
@@ -3639,18 +3613,16 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    iErr, ErrorExists ) &
+    !$OMP MAP( from:    G, U, ITERATION, iErr, ErrorExists ) &
     !$OMP MAP( release: iX_B0, iX_E0, tau, &
     !$OMP               PressureTensor, &
-    !$OMP               dGdX1, dGdX2, dGdX3, &
-    !$OMP               Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
+    !$OMP               dGdX1, dGdX2, dGdX3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      iErr, ErrorExists ) &
+    !$ACC COPYOUT(      G, U, ITERATION, iErr, ErrorExists ) &
     !$ACC DELETE(       iX_B0, iX_E0, tau, &
     !$ACC               PressureTensor, &
-    !$ACC               dGdX1, dGdX2, dGdX3, &
-    !$ACC               Christoffel3D_X1, Christoffel3D_X2, Christoffel3D_X3 )
+    !$ACC               dGdX1, dGdX2, dGdX3 )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
@@ -3659,10 +3631,6 @@ CONTAINS
 
     IF( ErrorExists .GT. 0 )THEN
 
-      WRITE(*,*) 'ERROR: ComputeIncrement_Geometry_Relativistic'
-      WRITE(*,*) 'iX_B0: ', iX_B0
-      WRITE(*,*) 'iX_E0: ', iX_E0
-
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
@@ -3670,10 +3638,30 @@ CONTAINS
 
         IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
-          WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
-
-          CALL DescribeError_Euler( iErr(iNX,iX1,iX2,iX3) )
-
+          CALL DescribeError_Euler &
+            ( iErr(iNX,iX1,iX2,iX3), &
+              Int_Option = [ ITERATION(iNX,iX1,iX2,iX3), 99999999, &
+                             iX_B0(1), iX_B0(2), iX_B0(3), &
+                             iX_E0(1), iX_E0(2), iX_E0(3), &
+                             iNX, iX1, iX2, iX3 ], &
+              Real_Option = [ MeshX(1) % Center(iX1), &
+                              MeshX(2) % Center(iX2), &
+                              MeshX(3) % Center(iX3), &
+                              MeshX(1) % Width (iX1), &
+                              MeshX(2) % Width (iX2), &
+                              MeshX(3) % Width (iX3), &
+                              U(iNX,iX1,iX2,iX3,iCF_D ), &
+                              U(iNX,iX1,iX2,iX3,iCF_S1), &
+                              U(iNX,iX1,iX2,iX3,iCF_S2), &
+                              U(iNX,iX1,iX2,iX3,iCF_S3), &
+                              U(iNX,iX1,iX2,iX3,iCF_E ), &
+                              U(iNX,iX1,iX2,iX3,iCF_Ne), &
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ], &
+              Char_Option = [ 'NA' ], &
+              Message_Option &
+                = 'Calling from ComputeIncrement_Geometry_Relativistic' )
         END IF
 
       END DO
@@ -4076,7 +4064,8 @@ CONTAINS
 
 
   SUBROUTINE InitializeIncrement_Divergence &
-    ( iXP_B0, iXP_E0, nDOFX_X, G_K, G_F, uCF_K, uCF_L, uCF_R )
+    ( iXP_B0, iXP_E0, nDOFX_X, G_K, G_F, &
+      uCF_K, uCF_L, uCF_R )
 
     INTEGER, INTENT(in) :: iXP_B0(3), iXP_E0(3) ! Permuted limits
     INTEGER, INTENT(in) :: nDOFX_X              ! nDOFX_X1, ...
@@ -4114,7 +4103,9 @@ CONTAINS
             iXP_B0(3)  :iXP_E0(3)+1, &
             1:nCF)
 
-    INTEGER :: iNX, iX1, iX2, iX3, iCF
+    ! --- Conserved Fluid Fields ---
+
+    INTEGER :: iNX, iX1, iX2, iX3
     INTEGER :: nXP(3), nXP_X(3), nX_X, nNodesX_X, iX_F, iX_V
 
     nXP       = iXP_E0 - iXP_B0 + 1
@@ -4140,26 +4131,26 @@ CONTAINS
     Beta_3_F  (1:nNodesX_X) => G_F(:,:,:,:,iGF_Beta_3  )
     Alpha_F   (1:nNodesX_X) => G_F(:,:,:,:,iGF_Alpha   )
 
-    uD_K (1:nNodesX_K) => uCF_K(:,:,:,iXP_B0(3):iXP_E0(3),iCF_D )
-    uS1_K(1:nNodesX_K) => uCF_K(:,:,:,iXP_B0(3):iXP_E0(3),iCF_S1)
-    uS2_K(1:nNodesX_K) => uCF_K(:,:,:,iXP_B0(3):iXP_E0(3),iCF_S2)
-    uS3_K(1:nNodesX_K) => uCF_K(:,:,:,iXP_B0(3):iXP_E0(3),iCF_S3)
-    uE_K (1:nNodesX_K) => uCF_K(:,:,:,iXP_B0(3):iXP_E0(3),iCF_E )
-    uNe_K(1:nNodesX_K) => uCF_K(:,:,:,iXP_B0(3):iXP_E0(3),iCF_Ne)
+    uD_K (1:nNodesX_K) => uCF_K (:,:,:,iXP_B0(3):iXP_E0(3),iCF_D )
+    uS1_K(1:nNodesX_K) => uCF_K (:,:,:,iXP_B0(3):iXP_E0(3),iCF_S1)
+    uS2_K(1:nNodesX_K) => uCF_K (:,:,:,iXP_B0(3):iXP_E0(3),iCF_S2)
+    uS3_K(1:nNodesX_K) => uCF_K (:,:,:,iXP_B0(3):iXP_E0(3),iCF_S3)
+    uE_K (1:nNodesX_K) => uCF_K (:,:,:,iXP_B0(3):iXP_E0(3),iCF_E )
+    uNe_K(1:nNodesX_K) => uCF_K (:,:,:,iXP_B0(3):iXP_E0(3),iCF_Ne)
 
-    uD_L (1:nNodesX_X) => uCF_L(:,:,:,:,iCF_D )
-    uS1_L(1:nNodesX_X) => uCF_L(:,:,:,:,iCF_S1)
-    uS2_L(1:nNodesX_X) => uCF_L(:,:,:,:,iCF_S2)
-    uS3_L(1:nNodesX_X) => uCF_L(:,:,:,:,iCF_S3)
-    uE_L (1:nNodesX_X) => uCF_L(:,:,:,:,iCF_E )
-    uNe_L(1:nNodesX_X) => uCF_L(:,:,:,:,iCF_Ne)
+    uD_L (1:nNodesX_X) => uCF_L (:,:,:,:,iCF_D )
+    uS1_L(1:nNodesX_X) => uCF_L (:,:,:,:,iCF_S1)
+    uS2_L(1:nNodesX_X) => uCF_L (:,:,:,:,iCF_S2)
+    uS3_L(1:nNodesX_X) => uCF_L (:,:,:,:,iCF_S3)
+    uE_L (1:nNodesX_X) => uCF_L (:,:,:,:,iCF_E )
+    uNe_L(1:nNodesX_X) => uCF_L (:,:,:,:,iCF_Ne)
 
-    uD_R (1:nNodesX_X) => uCF_R(:,:,:,:,iCF_D )
-    uS1_R(1:nNodesX_X) => uCF_R(:,:,:,:,iCF_S1)
-    uS2_R(1:nNodesX_X) => uCF_R(:,:,:,:,iCF_S2)
-    uS3_R(1:nNodesX_X) => uCF_R(:,:,:,:,iCF_S3)
-    uE_R (1:nNodesX_X) => uCF_R(:,:,:,:,iCF_E )
-    uNe_R(1:nNodesX_X) => uCF_R(:,:,:,:,iCF_Ne)
+    uD_R (1:nNodesX_X) => uCF_R (:,:,:,:,iCF_D )
+    uS1_R(1:nNodesX_X) => uCF_R (:,:,:,:,iCF_S1)
+    uS2_R(1:nNodesX_X) => uCF_R (:,:,:,:,iCF_S2)
+    uS3_R(1:nNodesX_X) => uCF_R (:,:,:,:,iCF_S3)
+    uE_R (1:nNodesX_X) => uCF_R (:,:,:,:,iCF_E )
+    uNe_R(1:nNodesX_X) => uCF_R (:,:,:,:,iCF_Ne)
 
     ALLOCATE( pD_L (nNodesX_X) )
     ALLOCATE( pV1_L(nNodesX_X) )
@@ -4259,11 +4250,11 @@ CONTAINS
   SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X1 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX1 )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(inout) :: &
       dGdX1(1:nDOFX,1:nGF,iX_B0(2):iX_E0(2), &
                           iX_B0(3):iX_E0(3), &
                           iX_B0(1):iX_E0(1))
@@ -4322,13 +4313,19 @@ CONTAINS
       END DO
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
+      !$OMP TARGET UPDATE FROM( dGdX1 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-      !$ACC PRESENT( iX_B0, iX_E0, dGdX1, G, dX1, dLXdX1_q )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(6)
+      !$ACC        UPDATE HOST( dGdX1 )
 #endif
+!TODO: fix this. Probably doesn't like the i = i + 1 structure
+!#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
+!#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+!      !$ACC PRESENT( iX_B0, iX_E0, dGdX1, G, dX1, dLXdX1_q )
+!#elif defined( THORNADO_OMP    )
+!      !$OMP PARALLEL DO COLLAPSE(6)
+!#endif
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -4346,6 +4343,12 @@ CONTAINS
       END DO
       END DO
       END DO
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET UPDATE TO    ( dGdX1 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC        UPDATE DEVICE( dGdX1 )
+#endif
 
       CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 
@@ -4601,11 +4604,11 @@ CONTAINS
   SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X2 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX2 )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(inout) :: &
       dGdX2(1:nDOFX,1:nGF,iX_B0(1):iX_E0(1), &
                           iX_B0(3):iX_E0(3), &
                           iX_B0(2):iX_E0(2))
@@ -4708,13 +4711,19 @@ CONTAINS
         END DO
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
+      !$OMP TARGET UPDATE FROM( dGdX2 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-        !$ACC PRESENT( iX_B0, iX_E0, dGdX2, G, dX2, dLXdX2_q )
-#elif defined( THORNADO_OMP    )
-        !$OMP PARALLEL DO COLLAPSE(6)
+      !$ACC        UPDATE HOST( dGdX2 )
 #endif
+!TODO: fix this. Probably doesn't like the i = i + 1 structure
+!#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
+!#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+!        !$ACC PRESENT( iX_B0, iX_E0, dGdX2, G, dX2, dLXdX2_q )
+!#elif defined( THORNADO_OMP    )
+!        !$OMP PARALLEL DO COLLAPSE(6)
+!#endif
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX1 = iX_B0(1), iX_E0(1)
@@ -4732,6 +4741,12 @@ CONTAINS
         END DO
         END DO
         END DO
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET UPDATE TO    ( dGdX2 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC        UPDATE DEVICE( dGdX2 )
+#endif
 
         CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 
@@ -4973,11 +4988,11 @@ CONTAINS
   SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X3 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX3 )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(inout) :: &
       dGdX3(1:nDOFX,1:nGF,iX_B0(1):iX_E0(1), &
                           iX_B0(2):iX_E0(2), &
                           iX_B0(3):iX_E0(3))
@@ -5080,13 +5095,19 @@ CONTAINS
         END DO
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
+      !$OMP TARGET UPDATE FROM( dGdX3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-        !$ACC PRESENT( iX_B0, iX_E0, dGdX3, G, dX3, dLXdX3_q )
-#elif defined( THORNADO_OMP    )
-        !$OMP PARALLEL DO COLLAPSE(6)
+      !$ACC        UPDATE HOST( dGdX3 )
 #endif
+!TODO: fix this. Probably doesn't like the i = i + 1 structure
+!#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
+!#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+!        !$ACC PRESENT( iX_B0, iX_E0, dGdX3, G, dX3, dLXdX3_q )
+!#elif defined( THORNADO_OMP    )
+!        !$OMP PARALLEL DO COLLAPSE(6)
+!#endif
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
@@ -5104,6 +5125,12 @@ CONTAINS
         END DO
         END DO
         END DO
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+      !$OMP TARGET UPDATE TO    ( dGdX3 )
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+      !$ACC        UPDATE DEVICE( dGdX3 )
+#endif
 
         CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 

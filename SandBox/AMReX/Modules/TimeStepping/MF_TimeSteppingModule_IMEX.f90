@@ -26,6 +26,9 @@ MODULE MF_TimeSteppingModule_IMEX
     ComputeIncrement_TwoMoment_Explicit_MF
   USE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
     ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF
+  USE MF_FieldsModule_TwoMoment, ONLY: &
+    OffGridFlux_TwoMoment_MF
+
 
   ! --- Local Modules ---
 
@@ -60,18 +63,22 @@ MODULE MF_TimeSteppingModule_IMEX
     ApplySlopeLimiter_TwoMoment_MF
   USE MF_Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_MF
-  USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
+  USE XCFC_UtilitiesModule, ONLY: &
     nGS, &
-    MultiplyWithPsi6_MF, &
+    MultiplyWithPsi6_MF
+  USE MF_GravitySolutionModule_XCFC, ONLY: &
     ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF, &
-    ComputeConformalFactor_Poseidon_MF, &
+    ComputeConformalFactor_MF, &
     ComputePressureTensorTrace_XCFC_TwoMoment_MF, &
-    ComputeGeometry_Poseidon_MF
+    ComputeGeometry_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
     Timer_AMReX_UpdateFluid, &
     Timer_AMReX_GravitySolve
+  USE MF_TwoMoment_TallyModule, ONLY: &
+    IncrementOffGridTally_TwoMoment_MF
+
 
   IMPLICIT NONE
   PRIVATE
@@ -107,10 +114,11 @@ CONTAINS
 
     INTEGER :: iS, jS, nCompCF, nCompCR, iLevel
 
-    REAL(DP) :: dM_OffGrid_Euler    (1:nCF,0:nMaxLevels-1)
-    REAL(DP) :: dM_OffGrid_TwoMoment(1:nCR,0:nMaxLevels-1)
+    REAL(DP) :: dM_OffGrid_Euler    (1:nCF  ,0:nMaxLevels-1)
+    REAL(DP) :: dM_OffGrid_TwoMoment(1:2*nCR,0:nMaxLevels-1)
 
     CALL TimersStart_AMReX( Timer_AMReX_UpdateFluid )
+
 
     iLevel = 0 ! temporary hack
     dM_OffGrid_Euler     = Zero
@@ -217,7 +225,7 @@ CONTAINS
           IF( EvolveEuler )THEN
 
             CALL ApplySlopeLimiter_Euler_MF &
-                   ( t_new, MF_uGF, MF_F, MF_uDF )
+                   ( MF_uGF, MF_F, MF_uDF )
 
             CALL ApplyPositivityLimiter_Euler_MF &
                    ( MF_uGF, MF_F, MF_uDF )
@@ -225,7 +233,6 @@ CONTAINS
           END IF ! EvolveEuler
 
           IF( EvolveTwoMoment )THEN
-
             CALL ApplySlopeLimiter_TwoMoment_MF &
                    ( GEOM, MF_uGF, MF_F, MF_R, &
                      Verbose_Option = .FALSE.  )
@@ -298,14 +305,14 @@ CONTAINS
             CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
                    ( MF_uGF, MF_F, MF_R, MF_uGS )
 
-            CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+            CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
 
             CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_F )
 
             CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
             CALL ApplySlopeLimiter_Euler_MF &
-                   ( t_new, MF_uGF, MF_F, MF_uDF )
+                   ( MF_uGF, MF_F, MF_uDF )
 
             CALL ApplyPositivityLimiter_Euler_MF &
                    ( MF_uGF, MF_F, MF_uDF )
@@ -317,12 +324,12 @@ CONTAINS
             CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
                    ( MF_uGF, MF_F, MF_R, MF_uGS )
 
-            CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+            CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
 
             CALL ComputePressureTensorTrace_XCFC_TwoMoment_MF &
                    ( MF_uGF, MF_F, MF_R, MF_uGS )
 
-            CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
+            CALL ComputeGeometry_MF( MF_uGS, MF_uGF )
 
             CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
@@ -331,7 +338,7 @@ CONTAINS
           CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_F )
 
           CALL ComputeIncrement_Euler_MF &
-                 ( t_new, MF_uGF, MF_F, MF_uDF, MF_DF_Ex(:,iS) )
+                 ( MF_uGF, MF_F, MF_uDF, MF_DF_Ex(:,iS) )
 
         END IF ! EvolveEuler
 
@@ -340,6 +347,12 @@ CONTAINS
           CALL ComputeIncrement_TwoMoment_Explicit_MF &
                  ( t_new, GEOM, MF_uGF, MF_F, MF_R, MF_DR_Ex(:,iS), &
                    Verbose_Option = .FALSE. )
+
+          dM_OffGrid_TwoMoment(:,iLevel) &
+            = dM_OffGrid_TwoMoment(:,iLevel) &
+            + dt(iLevel) * w_EX(iS) * OffGridFlux_TwoMoment_MF(:,iLevel)
+
+
 
         END IF ! EvolveTwoMoment
 
@@ -402,14 +415,14 @@ CONTAINS
       IF( EvolveEuler )THEN
 
         CALL ApplySlopeLimiter_Euler_MF &
-               ( t_new, MF_uGF, MF_F, MF_uDF )
+               ( MF_uGF, MF_F, MF_uDF )
 
         CALL ApplyPositivityLimiter_Euler_MF &
                ( MF_uGF, MF_F, MF_uDF )
 
-      END IF ! EvolveEuler
+     END IF ! EvolveEuler
 
-      IF( EvolveTwoMoment )THEN
+     IF( EvolveTwoMoment )THEN
 
         CALL ApplySlopeLimiter_TwoMoment_MF &
                ( GEOM, MF_uGF, MF_F, MF_R, &
@@ -432,14 +445,14 @@ CONTAINS
     CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
            ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
 
-    CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+    CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
 
     CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
 
     CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
     CALL ApplySlopeLimiter_Euler_MF &
-           ( t_new, MF_uGF, MF_uCF, MF_uDF )
+           ( MF_uGF, MF_uCF, MF_uDF )
 
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
@@ -451,11 +464,11 @@ CONTAINS
     CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
            ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
 
-    CALL ComputeConformalFactor_Poseidon_MF( MF_uGS, MF_uGF )
+    CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
 
     CALL ComputePressureTensorTrace_XCFC_TwoMoment_MF( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
 
-    CALL ComputeGeometry_Poseidon_MF( MF_uGS, MF_uGF )
+    CALL ComputeGeometry_MF( MF_uGS, MF_uGF )
 
     CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
     CALL MultiplyWithPsi6_MF &
@@ -471,6 +484,9 @@ CONTAINS
       CALL amrex_multifab_destroy( MF_DF_Ex(iLevel,iS) )
 
     END DO ! iS = 0, nStages
+
+
+    CALL IncrementOffGridTally_TwoMoment_MF( dM_OffGrid_TwoMoment )
 
     CALL amrex_multifab_destroy( MF_R  (iLevel) )
     CALL amrex_multifab_destroy( MF_F  (iLevel) )

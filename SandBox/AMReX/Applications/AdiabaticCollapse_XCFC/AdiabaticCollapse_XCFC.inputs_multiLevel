@@ -9,20 +9,19 @@ thornado.ProgramName = "AdiabaticCollapse_XCFC"
 
 AC.ProgenitorFileName = "../../Progenitors/WH07_15M_Sun.h5"
 
-thornado.UseXCFC = 1
-
 thornado.iRestart = -1
 
 thornado.UsePhysicalUnits = 1
 
-thornado.PlotFileBaseName = "AdiabaticCollapse_XCFC.plt"
+thornado.TallyFileNameRoot_Euler = "AdiabaticCollapse_XCFC.Tally"
+thornado.PlotFileNameRoot = "AdiabaticCollapse_XCFC.plt"
 thornado.t_end   = 3.0e+2
 thornado.iCycleD = 1
 
 thornado.dt_wrt  = 1.0e+0
 thornado.iCycleW = -1
 
-thornado.CheckpointFileBaseName = "AdiabaticCollapse_XCFC.chk"
+thornado.CheckpointFileNameRoot = "AdiabaticCollapse_XCFC.chk"
 thornado.dt_chk    = 1.0e+1
 thornado.iCycleChk = -1
 
@@ -55,6 +54,7 @@ poseidon.l_limit           = 0
 poseidon.max_fp_iters      = 20
 poseidon.anderson_m        = 3
 poseidon.converge_criteria = 1.0e-08
+poseidon.FillGhostCells    = 0
 
 # Slope limiter parameters
 SL.UseSlopeLimiter_Euler           = 1
@@ -69,9 +69,10 @@ SL.UseConservativeCorrection_Euler = 1
 
 # Positivity limiter parameters
 PL.UsePositivityLimiter_Euler = 1
-PL.Min_1_Euler                = 1.0e-13
-PL.Min_2_Euler                = 1.0e-13
 
 # Equation of state parameters
 EoS.EquationOfState = "TABLE"
 EoS.EosTableName = "../../EosTables/wl-EOS-SFHo-25-50-100.h5"
+
+# Time-Stepper parameters
+TS.EvolveGravity = 1

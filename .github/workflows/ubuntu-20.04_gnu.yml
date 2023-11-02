@@ -1,0 +1,125 @@
+# Adapted with permission from Axel Huebl's work with CI from amrex
+
+name: Compile thornado on Ubuntu 20.04 with gnu compilers
+
+on: [ push, pull_request ]
+
+jobs:
+  compile-with-amrex_gnu:
+    name: Compile thornado on Ubuntu 20.04 with gnu compilers
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+
+      - name: Checkout weaklib
+        uses: actions/checkout@v3
+        with:
+          repository: starkiller-astro/weaklib
+          path: weaklib
+
+      - name: Checkout poseidon
+        uses: actions/checkout@v3
+        with:
+          repository: jrober50/Poseidon
+          path: poseidon
+          ref: Development
+
+      - name: Checkout amrex
+        uses: actions/checkout@v3
+        with:
+          repository: dunhamsj/amrex
+          path: amrex
+          ref: MeshRefinement_DG
+
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
+          sudo apt-get -y update
+
+      - name: Find Libraries and Set Environment Variables
+        run: |
+          echo ""
+          echo "find /usr -name \"*hdf5.mod\""
+                find /usr -name  "*hdf5.mod"
+          echo ""
+          echo "find /usr -name \"*libhdf5*\""
+                find /usr -name  "*libhdf5*"
+          echo ""
+          echo "find /usr -name \"*liblapack*\""
+                find /usr -name  "*liblapack*"
+          echo ""
+          echo "find /usr -name \"*lib*blas*\""
+                find /usr -name  "*lib*blas*"
+          echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_ENV}
+          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_ENV}
+          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_ENV}
+          echo "BLAS_LIB=/usr/lib/x86_64-linux-gnu"             >> ${GITHUB_ENV}
+          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"               >> ${GITHUB_ENV}
+          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"        >> ${GITHUB_ENV}
+          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_ENV}
+          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_ENV}
+
+      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
+        run: |
+          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
+          make
+          make clobber
+
+      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
+        run: |
+          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
+          make
+          make clobber
+
+      - name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
+        run: |
+          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
+          make
+          make clobber
+
+      - name: Compile SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables
+        run: |
+          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables
+          make
+          make clobber
+
+      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
+          make
+          make realclean
+
+          #      - name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
+          #        run: |
+          #          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
+          #          make
+          #          make realclean
+
+      - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
+          make
+          make realclean
+
+      - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
+          make
+          make realclean
+
+          #      - name: Compile SandBox/AMReX/Applications/YahilCollapse_XCFC
+          #        run: |
+          #          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/YahilCollapse_XCFC
+          #          make
+          #          make realclean
+
+      - name: Compile SandBox/AMReX/TwoMoment_Test
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/TwoMoment_Test
+          make
+          make realclean

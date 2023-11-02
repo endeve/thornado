@@ -78,6 +78,8 @@ MODULE Euler_DiscontinuityDetectionModule
     Timer_Euler_DD_SD_ErrorCheck
   USE Euler_ErrorModule, ONLY: &
     DescribeError_Euler
+  USE MeshModule, ONLY: &
+    MeshX
 
   IMPLICIT NONE
   PRIVATE
@@ -1336,6 +1338,9 @@ CONTAINS
                                   iX_B1(2):iX_E1(2), &
                                   iX_B1(3):iX_E1(3))
 
+    INTEGER :: ITERATION(         iX_B1(1):iX_E1(1), &
+                                  iX_B1(2):iX_E1(2), &
+                                  iX_B1(3):iX_E1(3))
     INTEGER :: iErr(              iX_B1(1):iX_E1(1), &
                                   iX_B1(2):iX_E1(2), &
                                   iX_B1(3):iX_E1(3))
@@ -1358,12 +1363,14 @@ CONTAINS
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, D ) &
-    !$OMP MAP( alloc: SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, iErr, &
+    !$OMP MAP( alloc: SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, &
+    !$OMP             ITERATION, iErr, &
     !$OMP             iX1arr, iX2arr, iX3arr )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, D ) &
-    !$ACC CREATE(     SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, iErr, &
+    !$ACC CREATE(     SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, &
+    !$ACC             ITERATION, iErr, &
     !$ACC             iX1arr, iX2arr, iX3arr )
 #endif
 
@@ -1494,7 +1501,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( iX_B1, iX_E1, iErr, Vol, GK, UK, PK, PrK, VK, &
+    !$ACC PRESENT( iX_B1, iX_E1, ITERATION, iErr, Vol, GK, UK, PK, PrK, VK, &
     !$ACC          iX1arr, iX2arr, iX3arr )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
@@ -1503,7 +1510,8 @@ CONTAINS
     DO iX2 = iX_B1(2), iX_E1(2)
     DO iX1 = iX_B1(1), iX_E1(1)
 
-      iErr(iX1,iX2,iX3) = 0
+      ITERATION(iX1,iX2,iX3) = 0
+      iErr     (iX1,iX2,iX3) = 0
 
       IF( IsCornerCell &
             ( iX_B1, iX_E1, iX1arr(iX1), iX2arr(iX2), iX3arr(iX3) ) ) CYCLE
@@ -1539,7 +1547,8 @@ CONTAINS
              GK(1     ,iX1,iX2,iX3), &
              GK(2     ,iX1,iX2,iX3), &
              GK(3     ,iX1,iX2,iX3), &
-             iErr(     iX1,iX2,iX3) )
+             ITERATION_Option = ITERATION(iX1,iX2,iX3), &
+             iErr_Option      = iErr     (iX1,iX2,iX3) )
 
       CALL ComputePressureFromPrimitive &
              ( PK(iPF_D ,iX1,iX2,iX3), &
@@ -1568,12 +1577,15 @@ CONTAINS
     !     Fryxell et al., (2000), ApJS, 131, 273 ---
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( GradP, DivV )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( GradP, DivV ) &
     !$ACC PRESENT( iX_B0, iX_E0, PrK, VK, D )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(3)
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( GradP, DivV )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -1648,14 +1660,14 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    D, iErr ) &
-    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, U, &
+    !$OMP MAP( from:    G, U, D, ITERATION, iErr ) &
+    !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, &
     !$OMP               SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, &
     !$OMP               iX1arr, iX2arr, iX3arr )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      D, iErr ) &
-    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, U, &
+    !$ACC COPYOUT(      G, U, D, ITERATION, iErr ) &
+    !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, &
     !$ACC               SqrtGm, G_X, GK, U_X, UK, PK, VK, PrK, Vol, &
     !$ACC               iX1arr, iX2arr, iX3arr )
 #endif
@@ -1668,8 +1680,8 @@ CONTAINS
 
     IF( ANY( iErr .NE. 0 ) )THEN
 
-      WRITE(*,*) 'Module: Euler_DiscontinuityDetectionModule'
-      WRITE(*,*) 'Subroutine: DetectShocks_Euler'
+      WRITE(*,*) '    MODULE: Euler_DiscontinuityDetectionModule'
+      WRITE(*,*) 'SUBROUTINE: DetectShocks_Euler'
 
       DO iX3 = iX_B1(3), iX_E1(3)
       DO iX2 = iX_B1(2), iX_E1(2)
@@ -1677,14 +1689,30 @@ CONTAINS
 
         IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
 
-        IF( iErr(iX1,iX2,iX3) .NE. 0 )THEN
-
-          WRITE(*,'(A,I4.4,1x,I4.4,1x,I4.4,1x,I2.2)') &
-            'iX1, iX2, iX3, iErr = ', iX1, iX2, iX3, iErr(iX1,iX2,iX3)
-
-          CALL DescribeError_Euler( iErr(iX1,iX2,iX3) )
-
-        END IF
+        CALL DescribeError_Euler &
+          ( iErr(iX1,iX2,iX3), &
+            Int_Option = [ ITERATION(iX1,iX2,iX3), 99999999, &
+                           iX_B0(1), iX_B0(2), iX_B0(3), &
+                           iX_E0(1), iX_E0(2), iX_E0(3), &
+                           99999, iX1, iX2, iX3 ], &
+            Real_Option = [ MeshX(1) % Center(iX1), &
+                            MeshX(2) % Center(iX2), &
+                            MeshX(3) % Center(iX3), &
+                            MeshX(1) % Width (iX1), &
+                            MeshX(2) % Width (iX2), &
+                            MeshX(3) % Width (iX3), &
+                            U(iNX,iX1,iX2,iX3,iCF_D ), &
+                            U(iNX,iX1,iX2,iX3,iCF_S1), &
+                            U(iNX,iX1,iX2,iX3,iCF_S2), &
+                            U(iNX,iX1,iX2,iX3,iCF_S3), &
+                            U(iNX,iX1,iX2,iX3,iCF_E ), &
+                            U(iNX,iX1,iX2,iX3,iCF_Ne), &
+                            G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                            G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                            G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ], &
+            Char_Option = [ 'NA' ], &
+            Message_Option &
+              = 'Calling from DetectShocks_Euler' )
 
       END DO
       END DO

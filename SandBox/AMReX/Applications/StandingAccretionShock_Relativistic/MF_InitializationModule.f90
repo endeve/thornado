@@ -8,17 +8,18 @@ MODULE MF_InitializationModule
     amrex_geom
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
+    amrex_multifab_build, &
+    amrex_multifab_destroy, &
     amrex_mfiter, &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
   USE amrex_parallel_module, ONLY: &
-    amrex_parallel_ioprocessor
+    amrex_parallel_ioprocessor, &
+    amrex_parallel_reduce_min
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse, &
     amrex_parmparse_build, &
     amrex_parmparse_destroy
-  USE amrex_parallel_module, ONLY: &
-    amrex_parallel_reduce_min
 
   ! --- thornado Modules ---
 
@@ -34,29 +35,32 @@ MODULE MF_InitializationModule
     MeshX, &
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
-    iGF_Gm_dd_33
+    iGF_Gm_dd_33, &
+    nGF
   USE FluidFieldsModule, ONLY: &
-    nCF, &
     iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
     iCF_E, &
-    iPF_Ne, &
-    nPF, &
+    iCF_Ne, &
+    nCF, &
     iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
     iPF_E, &
-    iCF_Ne, &
+    iPF_Ne, &
+    nPF, &
+    iAF_P, &
     nAF, &
-    iAF_P
+    nDF
   USE Euler_UtilitiesModule, ONLY: &
     ComputeConserved_Euler
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    epsMin_Euler_GR
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive
   USE UnitsModule, ONLY: &
@@ -94,10 +98,22 @@ MODULE MF_InitializationModule
     nLevels, &
     Gamma_IDEAL, &
     UseTiling, &
-    t_end
+    t_end, &
+    xL
   USE MF_AccretionShockUtilitiesModule, ONLY: &
     FileName_Nodal1DIC_SAS, &
     WriteNodal1DIC_SAS
+  USE InputOutputModuleAMReX, ONLY: &
+    WriteFieldsAMReX_PlotFile
+  USE MF_Euler_UtilitiesModule, ONLY: &
+    ComputeFromConserved_Euler_MF
+  USE MF_FieldsModule_Euler, ONLY: &
+    MF_uPF, &
+    MF_uAF, &
+    MF_uDF
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -113,6 +129,12 @@ CONTAINS
     INTEGER             , INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
+
+    TYPE(amrex_multifab) :: MF_uGFF(0:0)
+    TYPE(amrex_multifab) :: MF_uCFF(0:0)
+    TYPE(amrex_multifab) :: MF_uPFF(0:0)
+    TYPE(amrex_multifab) :: MF_uAFF(0:0)
+    TYPE(amrex_multifab) :: MF_uDFF(0:0)
 
     ! --- thornado ---
 
@@ -148,29 +170,32 @@ CONTAINS
     REAL(DP) :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_1, P_2, uPert
     REAL(DP) :: BernoulliConstant
     REAL(DP) :: D0, V0, P0
-    REAL(DP) :: K_1, K_2, Mdot, AdvectionTime, rCenter, sigma
+    REAL(DP) :: K_1, K_2, Mdot, AdvectionTime, PreShockK
+    REAL(DP) :: eta, etaC, sigma_eta, rC
     REAL(DP), ALLOCATABLE :: D    (:,:)
     REAL(DP), ALLOCATABLE :: V    (:,:)
     REAL(DP), ALLOCATABLE :: P    (:,:)
     REAL(DP), ALLOCATABLE :: Field(:,:)
-    LOGICAL               :: InitializeFromFile, ResetEndTime
-    LOGICAL               :: FirstPreShockElement, &
+    LOGICAL               :: InitializeFromFile, &
+                             ResetEndTime, &
+                             FirstPreShockElement, &
                              AllPreShockElements, &
                              AllPostShockElements
-    INTEGER, PARAMETER    :: nX_LeastSquares = 5
     CHARACTER(LEN=:), ALLOCATABLE :: PerturbationType
+    INTEGER :: nX_LeastSquares
 
     ApplyPerturbation     = .FALSE.
     PerturbationOrder     = 0
     PerturbationAmplitude = Zero
     rPerturbationInner    = Zero
     rPerturbationOuter    = Zero
+    etaC                  = 0.90_DP
+    sigma_eta             = 0.05_DP
     InitializeFromFile    = .FALSE.
     ResetEndTime          = .FALSE.
-    rCenter               = Zero
-    sigma                 = SqrtTiny
     PerturbationType      = 'StepFunction'
     WriteNodal1DIC_SAS    = .FALSE.
+    nX_LeastSquares       = 5
     CALL amrex_parmparse_build( PP, 'SAS' )
       CALL PP % get  ( 'Mass', &
                         MassPNS )
@@ -178,6 +203,8 @@ CONTAINS
                         AccretionRate )
       CALL PP % get  ( 'ShockRadius', &
                         ShockRadius )
+      CALL PP % get  ( 'PreShockK', &
+                        PreShockK )
       CALL PP % query( 'ApplyPerturbation', &
                         ApplyPerturbation )
       CALL PP % query( 'PerturbationOrder', &
@@ -188,10 +215,10 @@ CONTAINS
                         rPerturbationInner )
       CALL PP % query( 'rPerturbationOuter', &
                         rPerturbationOuter )
-      CALL PP % query( 'rCenter', &
-                       rCenter )
-      CALL PP % query( 'sigma', &
-                       sigma )
+      CALL PP % query( 'etaC', &
+                        etaC )
+      CALL PP % query( 'sigma_eta', &
+                        sigma_eta )
       CALL PP % query( 'InitializeFromFile', &
                         InitializeFromFile )
       CALL PP % query( 'ResetEndTime', &
@@ -200,6 +227,8 @@ CONTAINS
                         PerturbationType )
       CALL PP % query( 'WriteNodal1DIC_SAS', &
                         WriteNodal1DIC_SAS )
+      CALL PP % query( 'nX_LeastSquares', &
+                        nX_LeastSquares )
     CALL amrex_parmparse_destroy( PP )
 
     MassPNS            = MassPNS            * SolarMass
@@ -207,9 +236,8 @@ CONTAINS
     ShockRadius        = ShockRadius        * Kilometer
     rPerturbationInner = rPerturbationInner * Kilometer
     rPerturbationOuter = rPerturbationOuter * Kilometer
-    rCenter            = rCenter            * ShockRadius
-    sigma              = ( ShockRadius - rCenter ) / sigma
-    PolytropicConstant = 2.0e14_DP &
+    rC                 = MapEtaToRadius( etaC     , ShockRadius )
+    PolytropicConstant = PreShockK &
                            * ( Erg / Centimeter**3 &
                            / ( Gram / Centimeter**3 )**( Gamma_IDEAL ) )
 
@@ -272,13 +300,13 @@ CONTAINS
         'Outer radius of perturbation: ', &
         rPerturbationOuter / Kilometer, ' km'
 
-      WRITE(*,'(6x,A,ES9.2E3,A)') &
-        'Center of perturbation:       ', &
-        rCenter / Kilometer, ' km'
+      WRITE(*,'(6x,A,F5.3)') &
+        'Center of perturbation (eta): ', &
+        etaC
 
-      WRITE(*,'(6x,A,ES9.2E3,A)') &
-        'Width of perturbation:        ', &
-        sigma / Kilometer, ' km'
+      WRITE(*,'(6x,A,F5.3)') &
+        'Width of perturbation (eta):  ', &
+        sigma_eta
 
       WRITE(*,'(6x,A,L)') &
         'Reset end-time:               ', &
@@ -429,26 +457,144 @@ CONTAINS
 
             AdvectionTime &
               = AdvectionTime &
-                  + WeightsX1(iNX1) * MeshX(1) % Width(iX1) / ABS( V(iNX1,iX1) )
+                  - WeightsX1(iNX1) * MeshX(1) % Width(iX1) &
+                  *  ConformalFactor( X1, MassPNS )**2 &
+                  / ( LapseFunction( X1, MassPNS ) * V(iNX1,iX1) )
 
           END DO
 
         END DO
 
-        IF( ResetEndTime )THEN
-          t_end = 50.0_DP * AdvectionTime
-          WRITE(*,'(6x,A,ES9.2E3,A)') &
-            't_end: ', &
-            t_end / Millisecond, ' ms'
-        END IF
-
       END IF ! .NOT. AllPreShockElements
 
-    END IF
-
-    indC = Locate( rCenter, MeshX(1) % Center, nX(1) )
+    END IF ! InitializeFromFile
 
     ! --- Map to 3D domain ---
+
+    ! --- Hack for single level simulation to get un-perturbed plotfile ---
+
+    IF( nLevels .EQ. 1 )THEN
+
+      CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+
+      ! --- No perturbation, for reference plotfile ---
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF % DataPtr( MFI )
+        uCF => MF_uCF % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
+
+        lo_F = LBOUND( uCF )
+        hi_F = UBOUND( uCF )
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+        iX_B1 = BX % lo - swX
+        iX_E1 = BX % hi + swX
+
+        iX_B(1) = iX_B0(1)
+        iX_E(1) = iX_E0(1)
+
+        IF( BX % lo(1) .EQ. amrex_geom(iLevel) % domain % lo(1) ) &
+          iX_B(1) = iX_B1(1)
+        IF( BX % hi(1) .EQ. amrex_geom(iLevel) % domain % hi(1) ) &
+          iX_E(1) = iX_E1(1)
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B (1), iX_E (1)
+
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+          DO iNX = 1, nDOFX
+
+            iNX1 = NodeNumberTableX(1,iNX)
+
+            uPF_K(iNX,iPF_D ) = D(iNX1,iX1)
+            uPF_K(iNX,iPF_V1) = V(iNX1,iX1)
+            uPF_K(iNX,iPF_V2) = Zero
+            uPF_K(iNX,iPF_V3) = Zero
+            uAF_K(iNX,iAF_P ) = P(iNX1,iX1)
+            uPF_K(iNX,iPF_E ) = P(iNX1,iX1) / ( Gamma_IDEAL - One )
+            uPF_K(iNX,iPF_Ne) = Zero
+
+          END DO !iNX
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
+                   uAF_K(:,iAF_P) )
+
+          CALL ComputeConserved_Euler &
+                 ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                   uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                   uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                   uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uAF_K(:,iAF_P) )
+
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+
+        END DO
+        END DO
+        END DO
+
+      END DO ! WHILE( MFI % next() )
+
+      CALL amrex_mfiter_destroy( MFI )
+
+      CALL amrex_multifab_build &
+             ( MF_uGFF(0), MF_uGF % BA, MF_uGF % DM, nDOFX * nGF, swX )
+      CALL amrex_multifab_build &
+             ( MF_uCFF(0), MF_uGF % BA, MF_uGF % DM, nDOFX * nCF, swX )
+      CALL amrex_multifab_build &
+             ( MF_uPFF(0), MF_uGF % BA, MF_uGF % DM, nDOFX * nPF, swX )
+      CALL amrex_multifab_build &
+             ( MF_uAFF(0), MF_uGF % BA, MF_uGF % DM, nDOFX * nAF, swX )
+      CALL amrex_multifab_build &
+             ( MF_uDFF(0), MF_uGF % BA, MF_uGF % DM, nDOFX * nDF, swX )
+
+      CALL MF_uDFF(0) % SetVal( Zero )
+
+      CALL MF_uGFF(0) % COPY( MF_uGF, 1, 1, nDOFX * nGF, swX )
+      CALL MF_uCFF(0) % COPY( MF_uCF, 1, 1, nDOFX * nCF, swX )
+
+      CALL DestroyMesh_MF( MeshX )
+
+      CALL ComputeFromConserved_Euler_MF &
+             ( MF_uGFF, MF_uCFF, MF_uPFF, MF_uAFF )
+
+      CALL CreateMesh_MF( iLevel, MeshX )
+
+      CALL WriteFieldsAMReX_PlotFile &
+             ( -1.0e100_DP * Millisecond, [99999999], MF_uGFF, &
+               MF_uGF_Option = MF_uGFF, &
+               MF_uCF_Option = MF_uCFF, &
+               MF_uPF_Option = MF_uPFF, &
+               MF_uAF_Option = MF_uAFF, &
+               MF_uDF_Option = MF_uDFF )
+
+      CALL amrex_multifab_destroy( MF_uDFF(0) )
+      CALL amrex_multifab_destroy( MF_uAFF(0) )
+      CALL amrex_multifab_destroy( MF_uPFF(0) )
+      CALL amrex_multifab_destroy( MF_uCFF(0) )
+      CALL amrex_multifab_destroy( MF_uGFF(0) )
+
+    END IF ! nLevels .EQ. 1
+
+    epsMin_Euler_GR = HUGE( One )
+
+    ! --- With perturbation ---
+
+    indC = Locate( rC, MeshX(1) % Center, nX(1) )
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
@@ -506,6 +652,8 @@ CONTAINS
             X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
             X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
 
+            eta = MapRadiusToEta( X1, ShockRadius )
+
             uPert = Field(iNX1,iX1)
 
             IF( TRIM( PerturbationType ) .EQ. 'Gaussian' )THEN
@@ -517,14 +665,14 @@ CONTAINS
                   uPert &
                     = Field(iNX1,iX1) &
                         + Field(1,indC) * PerturbationAmplitude &
-                        * EXP( -( X1 - rCenter )**2 / ( Two * sigma**2 ) )
+                        * EXP( -( eta - etaC )**2 / ( Two * sigma_eta**2 ) )
 
                 ELSE
 
                   uPert &
                     = Field(iNX1,iX1) &
                         + Field(1,indC) * PerturbationAmplitude * COS( X2 ) &
-                        * EXP( -( X1 - rCenter )**2 / ( Two * sigma**2 ) )
+                        * EXP( -( eta - etaC )**2 / ( Two * sigma_eta**2 ) )
 
                 END IF ! nDimsX .EQ. 1 .OR. PerturbationOrder .EQ. 0
 
@@ -558,6 +706,9 @@ CONTAINS
 
           END IF ! Apply perturbation
 
+          epsMin_Euler_GR &
+            = MIN( epsMin_Euler_GR, uPF_K(iNX,iPF_E) / uPF_K(iNX,iPF_D) )
+
         END DO !iNX
 
         CALL ComputePressureFromPrimitive &
@@ -581,14 +732,59 @@ CONTAINS
       END DO
       END DO
 
-    END DO
+    END DO ! WHILE( MFI % next() )
 
     CALL amrex_mfiter_destroy( MFI )
+
+    CALL amrex_parallel_reduce_min( epsMin_Euler_GR )
+
+    epsMin_Euler_GR = 1.0e-06_DP * epsMin_Euler_GR
 
     DEALLOCATE( Field   )
     DEALLOCATE( P )
     DEALLOCATE( V )
     DEALLOCATE( D )
+
+    IF( ResetEndTime ) &
+      t_end = 1.00e2_DP * AdvectionTime
+
+    IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,*)
+
+      WRITE(*,'(6x,A,ES24.16E3,A)') &
+        'epsMin_Euler_GR: ', &
+         epsMin_Euler_GR / ( Erg / Gram ), ' erg/g'
+
+      IF( .NOT. InitializeFromFile )THEN
+
+        WRITE(*,*)
+
+        WRITE(*,'(6x,A,ES13.6E3,A)') &
+          'Advection time:  ', &
+           AdvectionTime / Millisecond, ' ms'
+
+      END IF
+
+      IF( ResetEndTime )THEN
+
+        WRITE(*,*)
+
+        WRITE(*,'(6x,A,ES13.6E3,A)') &
+          't_end: ', &
+          t_end / Millisecond, ' ms'
+
+      END IF
+
+      WRITE(*,*)
+
+      WRITE(*,'(6x,A,I2.2)') &
+        'nX_LeastSquares: ', &
+         nX_LeastSquares
+
+      WRITE(*,*)
+
+    END IF
 
     IF( .NOT. InitializeFromFile ) &
       CALL ComputeExtrapolationExponents &
@@ -596,19 +792,6 @@ CONTAINS
                amrex_geom(iLevel) % domain % lo - swX, &
                amrex_geom(iLevel) % domain % hi + swX, &
                nX_LeastSquares )
-
-    IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
-
-      IF( .NOT. InitializeFromFile ) &
-        WRITE(*,'(6x,A,ES13.6E3,A)') &
-          'Advection time:  ', &
-          AdvectionTime / Millisecond, ' ms'
-
-      WRITE(*,'(6x,A,I2.2)') &
-        'nX_LeastSquares: ', &
-        nX_LeastSquares
-
-    END IF
 
   END SUBROUTINE InitializeFields_MF
 
@@ -1055,6 +1238,26 @@ CONTAINS
              / ( n * SUM( lnR_LS**2 ) - SUM( lnR_LS )**2 )
 
   END SUBROUTINE ComputeExtrapolationExponents
+
+
+  REAL(DP) FUNCTION MapRadiusToEta( r, ShockRadius ) RESULT( eta )
+
+    REAL(DP), INTENT(in) :: r, ShockRadius
+
+    eta = ( r - xL(1) ) / ( ShockRadius - xL(1) )
+
+    RETURN
+  END FUNCTION MapRadiusToEta
+
+
+  REAL(DP) FUNCTION MapEtaToRadius( eta, ShockRadius ) RESULT( r )
+
+    REAL(DP), INTENT(in) :: eta, ShockRadius
+
+    r = xL(1) + eta * ( ShockRadius - xL(1) )
+
+    RETURN
+  END FUNCTION MapEtaToRadius
 
 
 END MODULE MF_InitializationModule
