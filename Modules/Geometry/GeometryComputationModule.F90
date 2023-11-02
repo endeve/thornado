@@ -383,7 +383,7 @@ CONTAINS
 
     INTEGER  :: iX1, iX2, iX3, iNodeX
     INTEGER  :: nP_X, nX(3)
-    REAL(DP) :: x1L_q, x1G_q
+    REAL(DP) :: x1L_q, x2L_q, x1G_q, x2G_q
     REAL(DP) :: h_1_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
     REAL(DP) :: h_2_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
     REAL(DP) :: h_3_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
@@ -394,7 +394,9 @@ CONTAINS
     nP_X = PRODUCT( nX )
 
     ASSOCIATE ( CenterX1 => MeshX(1) % Center, &
-                WidthX1  => MeshX(1) % Width )
+                CenterX2 => MeshX(2) % Center, &
+                WidthX1  => MeshX(1) % Width, &
+                WidthX2  => MeshX(2) % Width )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
