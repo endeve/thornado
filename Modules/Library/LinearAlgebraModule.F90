@@ -478,6 +478,8 @@ CONTAINS
     TYPE(C_PTR)                        :: da, db, dc
     INTEGER                            :: ka, kb
     INTEGER                            :: osa, osb, osc
+    INTEGER                            :: ia, ib, ic
+    INTEGER                            :: ja, jb, jc
     LOGICAL                            :: data_on_device
 
     data_on_device = .false.
@@ -564,11 +566,20 @@ CONTAINS
 #endif
 
       DO i = 1, batchcount
-        osa = (i-1) * ka + 1
-        osb = (i-1) * kb + 1
-        osc = (i-1) * n  + 1
+        osa = (i-1) * stridea + 1
+        osb = (i-1) * strideb + 1
+        osc = (i-1) * stridec + 1
+        ia = mod( (osa-1), lda ) + 1
+        ib = mod( (osb-1), ldb ) + 1
+        ic = mod( (osc-1), ldc ) + 1
+        ja = 1
+        jb = 1
+        jc = 1
+        IF ( stridea /= 0 ) ja = mod( (osa-1)/lda, stridea ) + 1
+        IF ( strideb /= 0 ) jb = mod( (osb-1)/ldb, strideb ) + 1
+        IF ( stridec /= 0 ) jc = mod( (osc-1)/ldc, stridec ) + 1
         CALL DGEMM &
-               ( transa, transb, m, n, k, alpha, a(1,osa), lda, b(1,osb), ldb, beta, c(1,osc), ldc )
+               ( transa, transb, m, n, k, alpha, a(ia,ja), lda, b(ib,jb), ldb, beta, c(ic,jc), ldc )
       END DO
 
     END IF

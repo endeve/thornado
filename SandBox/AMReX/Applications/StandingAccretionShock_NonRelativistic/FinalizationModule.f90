@@ -42,15 +42,21 @@ MODULE FinalizationModule
     WriteFieldsAMReX_Checkpoint
   USE MF_Euler_TallyModule, ONLY: &
     ComputeTally_Euler_MF, &
-    FinalizeTally_Euler_MF
+    FinalizeTally_Euler_MF, &
+    BaryonicMass_Initial, &
+    BaryonicMass_OffGrid, &
+    Energy_Initial, &
+    Energy_OffGrid, &
+    ElectronNumber_Initial, &
+    ElectronNumber_OffGrid, &
+    ADMMass_Initial, &
+    ADMMass_OffGrid
   USE InputParsingModule, ONLY: &
     nLevels, &
     StepNo, &
     dt, &
     t_old, &
-    t_new, &
-    lo_bc, &
-    hi_bc
+    t_new
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
@@ -86,6 +92,10 @@ CONTAINS
 
     CALL WriteFieldsAMReX_Checkpoint &
            ( StepNo, nLevels, dt, t_new, &
+             [ BaryonicMass_Initial  , BaryonicMass_OffGrid   ], &
+             [ Energy_Initial        , Energy_OffGrid         ], &
+             [ ElectronNumber_Initial, ElectronNumber_OffGrid ], &
+             [ ADMMass_Initial       , ADMMass_OffGrid        ], &
              MF_uGF % BA % P, &
              iWriteFields_uGF = 1, &
              iWriteFields_uCF = 1, &
@@ -114,9 +124,6 @@ CONTAINS
 
     CALL FinalizeReferenceElementX_Lagrange
     CALL FinalizeReferenceElementX
-
-    DEALLOCATE( hi_bc )
-    DEALLOCATE( lo_bc )
 
     CALL DestroyFields_Euler_MF
     CALL DestroyFields_Geometry_MF

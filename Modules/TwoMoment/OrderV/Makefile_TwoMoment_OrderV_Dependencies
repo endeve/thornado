@@ -1,0 +1,132 @@
+TwoMoment_UtilitiesModule.o: \
+  KindModule.o \
+  QuadratureModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  RadiationFieldsModule.o \
+  TwoMoment_ClosureModule.o \
+  TwoMoment_TimersModule.o \
+  LinearAlgebraModule.o \
+  TwoMoment_UtilitiesModule.F90
+
+TwoMoment_TroubledCellIndicatorModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  TwoMoment_TimersModule.o \
+  LinearAlgebraModule.o \
+  ReferenceElementModuleX.o \
+  PolynomialBasisModuleX_Lagrange.o \
+  RadiationFieldsModule.o \
+  TwoMoment_BoundaryConditionsModule.o \
+  TwoMoment_TroubledCellIndicatorModule.F90
+
+TwoMoment_SlopeLimiterModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  TwoMoment_TimersModule.o \
+  LinearAlgebraModule.o \
+  UtilitiesModule.o \
+  ReferenceElementModuleX.o \
+  PolynomialBasisMappingModule.o \
+  MeshModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  TwoMoment_BoundaryConditionsModule.o \
+  TwoMoment_TroubledCellIndicatorModule.o \
+  TwoMoment_SlopeLimiterModule.F90
+
+TwoMoment_PositivityLimiterModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  TwoMoment_TimersModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  ReferenceElementModule.o \
+  ReferenceElementModule_Lagrange.o \
+  LinearAlgebraModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  MeshModule.o \
+  TwoMoment_PositivityLimiterModule.F90
+
+TwoMoment_OpacityModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleZ.o \
+  MeshModule.o \
+  RadiationFieldsModule.o \
+  TwoMoment_OpacityModule.F90
+
+TwoMoment_DiscretizationModule_Streaming.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  TwoMoment_TimersModule.o \
+  LinearAlgebraModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  ReferenceElementModule.o \
+  ReferenceElementModule_Lagrange.o \
+  MeshModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_BoundaryConditionsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  RadiationFieldsModule.o \
+  TwoMoment_ClosureModule.o \
+  TwoMoment_BoundaryConditionsModule.o \
+  TwoMoment_UtilitiesModule.o \
+  TwoMoment_DiscretizationModule_Streaming.F90
+
+TwoMoment_DiscretizationModule_Collisions.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  RadiationFieldsModule.o \
+  TwoMoment_TimersModule.o \
+  TwoMoment_UtilitiesModule.o \
+  TwoMoment_OpacityModule.o \
+  TwoMoment_DiscretizationModule_Collisions.F90
+
+TwoMoment_TallyModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModule.o \
+  MeshModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  RadiationFieldsModule.o \
+  TwoMoment_TallyModule.F90
+
+TwoMoment_TimeSteppingModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_SlopeLimiterModule_NonRelativistic_TABLE.o \
+  Euler_PositivityLimiterModule_NonRelativistic_TABLE.o \
+  Euler_dgDiscretizationModule.o \
+  RadiationFieldsModule.o \
+  TwoMoment_TimersModule.o \
+  TwoMoment_SlopeLimiterModule.o \
+  TwoMoment_PositivityLimiterModule.o \
+  TwoMoment_DiscretizationModule_Streaming.o \
+  TwoMoment_TallyModule.o \
+  TwoMoment_TimeSteppingModule.F90

@@ -22,10 +22,10 @@ MODULE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
     ComputeSoundSpeedFromPrimitive, &
     ComputePressureFromPrimitive
 
+  USE MPI
+
   IMPLICIT NONE
   PRIVATE
-
-  INCLUDE 'mpif.h'
 
   PUBLIC :: ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL
 
@@ -42,9 +42,10 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    INTEGER,  INTENT(in)  :: iDim
-    REAL(DP), INTENT(in)  :: G(8), U(nCF)
-    REAL(DP), INTENT(out) :: R(nCF,nCF), invR(nCF,nCF)
+    INTEGER,  INTENT(in)    :: iDim
+    REAL(DP), INTENT(in)    :: G(8)
+    REAL(DP), INTENT(inout) :: U(nCF)
+    REAL(DP), INTENT(out)   :: R(nCF,nCF), invR(nCF,nCF)
 
     ! --- Expressions for right and left eigenvector matrices from
     !     Rezzolla & Zanotti, Relativistic Hydrodynamics, Eq. 7.240-7.248 ---
@@ -672,9 +673,10 @@ CONTAINS
 
   SUBROUTINE ComputeFluxJacConsMatrix( iDim, U, G, dFdU )
 
-    INTEGER,  INTENT(in)  :: iDim
-    REAL(DP), INTENT(in)  :: U(nCF), G(8)
-    REAL(DP), INTENT(out) :: dFdU(nCF,nCF)
+    INTEGER,  INTENT(in)    :: iDim
+    REAL(DP), INTENT(in)    :: G(8)
+    REAL(DP), INTENT(inout) :: U(nCF)
+    REAL(DP), INTENT(out)   :: dFdU(nCF,nCF)
 
     REAL(DP) :: Gmdd11, Gmdd22, Gmdd33, LapseFunction, ShiftVector(3), eta
     REAL(DP) :: D, V1, V2, V3, E, Ne, P, Cs

@@ -1,4 +1,4 @@
-PROGRAM ApplicationDriver
+PROGRAM SlopeLimiterDiagnostics
 
   USE KindModule, ONLY: &
     DP, Zero, One, Two, Pi, TwoPi
@@ -169,4 +169,4 @@ PROGRAM ApplicationDriver
 
   CALL FinalizeProgram
 
-END PROGRAM ApplicationDriver
+END PROGRAM SlopeLimiterDiagnostics

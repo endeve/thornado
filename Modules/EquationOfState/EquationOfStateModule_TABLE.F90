@@ -17,9 +17,11 @@ MODULE EquationOfStateModule_TABLE
     EquationOfStateTableType
   USE wlEOSInversionModule, ONLY: &
     InitializeEOSInversion, &
-    ComputeTemperatureWith_DEY_Single_Guess, &
-    ComputeTemperatureWith_DEY_Single_NoGuess, &
-    ComputeTemperatureWith_DPY_Single_NoGuess, &
+    ComputeTemperatureWith_DEY_Single_Guess_Error, &
+    ComputeTemperatureWith_DEY_Single_Guess_NoError, &
+    ComputeTemperatureWith_DEY_Single_NoGuess_Error, &
+    ComputeTemperatureWith_DEY_Single_NoGuess_NoError, &
+    ComputeTemperatureWith_DPY_Single_NoGuess_Error, &
     DescribeEOSInversionError
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable_3D_Custom_Point, &
@@ -60,6 +62,7 @@ MODULE EquationOfStateModule_TABLE
     OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm
   REAL(DP), PARAMETER :: &
     BaryonMass = AtomicMassUnit
+  REAL(DP) :: minvar, OS_loc
   REAL(DP), DIMENSION(:), ALLOCATABLE :: &
     D_T, T_T, Y_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: &
@@ -72,6 +75,7 @@ MODULE EquationOfStateModule_TABLE
 
   PUBLIC :: InitializeEquationOfState_TABLE
   PUBLIC :: FinalizeEquationOfState_TABLE
+  PUBLIC :: ApplyChemicalPotentialShift_TABLE
   PUBLIC :: ApplyEquationOfState_TABLE
   PUBLIC :: ComputeTemperatureFromPressure_TABLE
   PUBLIC :: ComputeTemperatureFromSpecificInternalEnergy_TABLE
@@ -88,6 +92,7 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputeNeutronChemicalPotential_TABLE
   PUBLIC :: ComputeProtonMassFraction_TABLE
   PUBLIC :: ComputeNeutronMassFraction_TABLE
+  PUBLIC :: ComputeElectronNeutrinoChemicalPotential_TABLE
 
   REAL(DP), PUBLIC :: Min_D, Min_T, Min_Y
   REAL(DP), PUBLIC :: Max_D, Max_T, Max_Y
@@ -138,9 +143,19 @@ MODULE EquationOfStateModule_TABLE
   END INTERFACE ComputeAuxiliary_Fluid_TABLE
 
   INTERFACE ComputeTemperatureFromSpecificInternalEnergy_TABLE
-    MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar
+    MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_NG_NE
+    MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_NG_E
+    MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_G_NE
+    MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_G_E
     MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector
   END INTERFACE ComputeTemperatureFromSpecificInternalEnergy_TABLE
+
+  INTERFACE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar
+    MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_NG_NE
+    MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_NG_E
+    MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_G_NE
+    MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_G_E
+  END INTERFACE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar
 
   INTERFACE ComputeTemperatureFromPressure_TABLE
     MODULE PROCEDURE ComputeTemperatureFromPressure_TABLE_Scalar
@@ -170,6 +185,11 @@ MODULE EquationOfStateModule_TABLE
   INTERFACE ComputeNeutronMassFraction_TABLE
     MODULE PROCEDURE ComputeNeutronMassFraction_TABLE_Scalar
     MODULE PROCEDURE ComputeNeutronMassFraction_TABLE_Vector
+  END INTERFACE
+
+  INTERFACE ComputeElectronNeutrinoChemicalPotential_TABLE
+    MODULE PROCEDURE ComputeElectronNeutrinoChemicalPotential_TABLE_Scalar
+    MODULE PROCEDURE ComputeElectronNeutrinoChemicalPotential_TABLE_Vector
   END INTERFACE
 
   INTERFACE ComputeDependentVariable_TABLE
@@ -208,9 +228,11 @@ CONTAINS
 
 
   SUBROUTINE InitializeEquationOfState_TABLE &
-    ( EquationOfStateTableName_Option, Verbose_Option, External_EOS )
+    ( EquationOfStateTableName_Option, UseChemicalPotentialShift_Option, &
+      Verbose_Option, External_EOS )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: EquationOfStateTableName_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: UseChemicalPotentialShift_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 #ifdef MICROPHYSICS_WEAKLIB
     TYPE(EquationOfStateTableType), POINTER, &
@@ -218,13 +240,20 @@ CONTAINS
 #else
     INTEGER,          INTENT(in), OPTIONAL :: External_EOS
 #endif
-
-    LOGICAL :: Verbose
+    
+    REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: Ps, Ss, Es
+    LOGICAL :: UseChemicalPotentialShift, Verbose
 
     IF( PRESENT( EquationOfStateTableName_Option ) )THEN
        EquationOfStateTableName = TRIM( EquationOfStateTableName_Option )
     ELSE
        EquationOfStateTableName = 'EquationOfStateTable.h5'
+    END IF
+
+    IF( PRESENT( UseChemicalPotentialShift_Option ) )THEN
+       UseChemicalPotentialShift = UseChemicalPotentialShift_Option
+    ELSE
+       UseChemicalPotentialShift = .FALSE.
     END IF
 
     IF( PRESENT( Verbose_Option ) )THEN
@@ -389,16 +418,32 @@ CONTAINS
     Xh_T = EOS % DV % Variables(iXh_T) % Values
     Gm_T = EOS % DV % Variables(iGm_T) % Values
 
+    IF ( UseChemicalPotentialShift ) CALL ApplyChemicalPotentialShift_TABLE( Mp_T, Mn_T, OS_Mp, OS_Mn )
+
+    ALLOCATE &
+      ( Ps  (1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
+    ALLOCATE &
+      ( Ss  (1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
+    ALLOCATE &
+      ( Es  (1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
+    Ps = 10.0d0**P_T - OS_P
+    Ss = 10.0d0**S_T - OS_S
+    Es = 10.0d0**E_T - OS_E
     CALL InitializeEOSInversion &
            ( D_T, T_T, Y_T, &
-             10.0d0**( E_T ) - OS_E, &
-             10.0d0**( P_T ) - OS_P, &
-             10.0d0**( S_T ) - OS_S, &
+             Es, Ps, Ss, &
              Verbose_Option = Verbose )
+    DEALLOCATE( Ps, Ss, Es )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO &
-    !$OMP ( D_T, T_T, Y_T, &
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( always, to: D_T, T_T, Y_T, &
     !$OMP   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMe, UnitMp, UnitMn, &
     !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
     !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, P_T, S_T, &
@@ -423,6 +468,16 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( always, release: D_T, T_T, Y_T, &
+    !$OMP   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMe, UnitMp, UnitMn, &
+    !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
+    !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, P_T, S_T, &
+    !$OMP   E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Gm_T, &
+    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
+#endif
+
     DEALLOCATE( D_T, T_T, Y_T )
 
     DEALLOCATE( P_T  )
@@ -444,6 +499,52 @@ CONTAINS
 #endif
 
   END SUBROUTINE FinalizeEquationOfState_TABLE
+
+
+  SUBROUTINE ApplyChemicalPotentialShift_TABLE( Mp_T, Mn_T, OS_Mp, OS_Mn )
+
+    !For SFHo tables from
+    !https://code.ornl.gov/astro/weaklib-tables/-/tree/master/SFHo/LowRes
+    !up until git commit hash a36240ed
+    !the neutron and proton chemical potentials
+    !are tabulated subtracting the neutron-proton-mass difference
+    !in order to use the same conventions as used in Chimera
+    !to account for this, and get detailed balance factors
+    !correct, we add the mass difference back in and then
+    !add the SFHo reference masses for the chemical potential
+    !(mn for Mn, mp for Mp)
+    !For this renomalisation to the original SFHo tables,
+    !we need to recalculate the offsets first
+
+    REAL(dp), INTENT(inout), DIMENSION(:,:,:) :: Mp_T, Mn_T
+    REAL(dp), INTENT(inout) :: OS_Mp, OS_Mn
+
+    REAL(DP), PARAMETER :: neutron_mass = 939.56542052d0
+    REAL(DP), PARAMETER :: proton_mass = 938.2720813d0
+    REAL(DP), PARAMETER :: dmnp = 1.29333922d0
+    REAL(DP) :: min_M, OS_M_new
+
+    ! Apply the shift for proton chemical potential
+    IF ( OS_Mp > 0.0d0 ) THEN
+      min_M = -0.5d0 * OS_Mp
+    ELSE
+      min_M = MINVAL( 10.0d0**Mp_T )
+    ENDIF
+    OS_M_new = -2.0d0 * MIN( 0.0d0, min_M + proton_mass + dmnp )
+    Mp_T     = LOG10( 10.0d0**Mp_T - OS_Mp + proton_mass + dmnp + OS_M_new)
+    OS_Mp    = OS_M_new
+
+    ! Apply the shift for neutron chemical potential
+    IF ( OS_Mn > 0.0d0 ) THEN
+      min_M = -0.5d0 * OS_Mn
+    ELSE
+      min_M = MINVAL( 10.0d0**Mn_T )
+    ENDIF
+    OS_M_new = -2.0d0 * MIN( 0.0d0, min_M + proton_mass + dmnp )
+    Mn_T     = LOG10( 10.0d0**Mn_T - OS_Mn + proton_mass + dmnp + OS_M_new)
+    OS_Mn    = OS_M_new
+
+  END SUBROUTINE ApplyChemicalPotentialShift_TABLE
 
 
   SUBROUTINE ApplyEquationOfState_TABLE_Scalar &
@@ -538,8 +639,8 @@ CONTAINS
   END SUBROUTINE ApplyEquationOfState_TABLE_Vector
 
 
-  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
-    ( D, E, Y, T, Guess_Option, Error_Option )
+  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_G_E &
+    ( D, E, Y, T, Guess, Error )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -549,11 +650,10 @@ CONTAINS
 
     REAL(DP), INTENT(in)            :: D, E, Y
     REAL(DP), INTENT(out)           :: T
-    REAL(DP), INTENT(in),  OPTIONAL :: Guess_Option
-    INTEGER,  INTENT(out), OPTIONAL :: Error_Option
+    REAL(DP), INTENT(in)            :: Guess
+    INTEGER,  INTENT(out)           :: Error
 
     REAL(DP) :: D_P, E_P, Y_P, T_Lookup, T_Guess
-    INTEGER  :: Error
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -561,28 +661,112 @@ CONTAINS
     E_P = E / ( Erg / Gram )
     Y_P = Y
 
-    IF ( PRESENT( Guess_Option ) ) THEN
+    T_Guess = Guess / Kelvin
 
-      T_Guess = Guess_Option / Kelvin
+    CALL ComputeTemperatureWith_DEY_Single_Guess_Error &
+           ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, T_Guess, &
+             Error )
 
-      CALL ComputeTemperatureWith_DEY_Single_Guess &
-             ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, T_Guess, &
-               Error_Option = Error )
-
-    ELSE
-
-      CALL ComputeTemperatureWith_DEY_Single_NoGuess &
-             ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, &
-               Error_Option = Error )
-
-    END IF
     T = T_Lookup * Kelvin
 
 #endif
 
-    IF ( PRESENT( Error_Option ) ) Error_Option = Error
+  END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_G_E
 
-  END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar
+
+  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_G_NE &
+    ( D, E, Y, T, Guess )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)            :: D, E, Y
+    REAL(DP), INTENT(out)           :: T
+    REAL(DP), INTENT(in)            :: Guess
+
+    REAL(DP) :: D_P, E_P, Y_P, T_Lookup, T_Guess
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    D_P = D / ( Gram / Centimeter**3 )
+    E_P = E / ( Erg / Gram )
+    Y_P = Y
+
+    T_Guess = Guess / Kelvin
+
+    CALL ComputeTemperatureWith_DEY_Single_Guess_NoError &
+           ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, T_Guess )
+
+    T = T_Lookup * Kelvin
+
+#endif
+
+  END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_G_NE
+
+
+  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_NG_E &
+    ( D, E, Y, T, Error )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)            :: D, E, Y
+    REAL(DP), INTENT(out)           :: T
+    INTEGER,  INTENT(out)           :: Error
+
+    REAL(DP) :: D_P, E_P, Y_P, T_Lookup
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    D_P = D / ( Gram / Centimeter**3 )
+    E_P = E / ( Erg / Gram )
+    Y_P = Y
+
+    CALL ComputeTemperatureWith_DEY_Single_NoGuess_Error &
+           ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, &
+             Error )
+
+    T = T_Lookup * Kelvin
+
+#endif
+
+  END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_NG_E
+
+
+  SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_NG_NE &
+    ( D, E, Y, T )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)            :: D, E, Y
+    REAL(DP), INTENT(out)           :: T
+
+    REAL(DP) :: D_P, E_P, Y_P, T_Lookup
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    D_P = D / ( Gram / Centimeter**3 )
+    E_P = E / ( Erg / Gram )
+    Y_P = Y
+
+    CALL ComputeTemperatureWith_DEY_Single_NoGuess_NoError &
+           ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup )
+
+    T = T_Lookup * Kelvin
+
+#endif
+
+  END SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_NG_NE
 
 
   SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector &
@@ -596,6 +780,8 @@ CONTAINS
     INTEGER  :: iP, nP
     INTEGER  :: Error(SIZE(D))
     REAL(DP) :: D_P, E_P, Y_P, T_Lookup, T_Guess
+
+    Error = 0
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -625,9 +811,9 @@ CONTAINS
 
         T_Guess = Guess_Option(iP) / Kelvin
 
-        CALL ComputeTemperatureWith_DEY_Single_Guess &
+        CALL ComputeTemperatureWith_DEY_Single_Guess_Error &
                ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, T_Guess, &
-                 Error_Option = Error(iP) )
+                 Error(iP) )
 
         T(iP) = T_Lookup * Kelvin
 
@@ -655,9 +841,9 @@ CONTAINS
         E_P = E(iP) / ( Erg / Gram )
         Y_P = Y(iP)
 
-        CALL ComputeTemperatureWith_DEY_Single_NoGuess &
+        CALL ComputeTemperatureWith_DEY_Single_NoGuess_Error &
                ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, &
-                 Error_Option = Error(iP) )
+                 Error(iP) )
 
         T(iP) = T_Lookup * Kelvin
 
@@ -683,7 +869,7 @@ CONTAINS
           WRITE(*,'(a,i5,3es23.15)') '  iP, D, E, Y : ', iP, D_P, E_P, Y_P
         END IF
       END DO
-      STOP
+      IF( .NOT. PRESENT( Error_Option ) ) STOP
     END IF
 
 #endif
@@ -757,7 +943,7 @@ CONTAINS
     E_P = Em / UnitE
     Y_P = Y  / UnitY
 
-    CALL ComputeTemperatureWith_DEY_Single_NoGuess &
+    CALL ComputeTemperatureWith_DEY_Single_NoGuess_NoError &
            ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_P )
 
     T = T_P * UnitT
@@ -863,9 +1049,9 @@ CONTAINS
     P_P = P / UnitP
     Y_P = Y / UnitY
 
-    CALL ComputeTemperatureWith_DPY_Single_NoGuess &
+    CALL ComputeTemperatureWith_DPY_Single_NoGuess_Error &
            ( D_P, P_P, Y_P, D_T, T_T, Y_T, P_T, OS_P, T_P, &
-             Error_Option = Error )
+             Error )
 
     T = T_P * UnitT
 
@@ -1002,7 +1188,7 @@ CONTAINS
       Y (iP) = Ne(iP) / D(iP) * BaryonMass ! --- Electron Fraction
 
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
-             ( D(iP), Em(iP), Y(iP), T(iP), Error_Option = Error(iP) )
+             ( D(iP), Em(iP), Y(iP), T(iP), Error(iP) )
 
     END DO
 
@@ -1874,6 +2060,127 @@ CONTAINS
     END IF
 
   END SUBROUTINE ComputeNeutronMassFraction_TABLE_Vector
+
+
+  SUBROUTINE ComputeElectronNeutrinoChemicalPotential_TABLE_Scalar &
+    ( D, T, Y, Mnu )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: D, T, Y
+    REAL(DP), INTENT(out) :: Mnu
+
+    REAL(DP) :: D_P, T_P, Y_P
+    INTEGER  :: iD, iT, iY
+    REAL(DP) :: dD, dT, dY
+    REAL(DP) :: Me, Mp, Mn
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    D_P = D / UnitD
+    T_P = T / UnitT
+    Y_P = Y / UnitY
+
+    CALL LogInterpolateSingleVariable_3D_Custom_Point &
+           ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Me, Me_T, Me )
+
+    CALL LogInterpolateSingleVariable_3D_Custom_Point &
+           ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mp, Mp_T, Mp )
+
+    CALL LogInterpolateSingleVariable_3D_Custom_Point &
+           ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mn, Mn_T, Mn )
+
+    Me = Me * UnitMe
+    Mp = Mp * UnitMp
+    Mn = Mn * UnitMn
+
+    Mnu = ( Me + Mp ) - Mn
+
+#else
+
+    Mnu = Zero
+
+#endif
+
+  END SUBROUTINE ComputeElectronNeutrinoChemicalPotential_TABLE_Scalar
+
+
+  SUBROUTINE ComputeElectronNeutrinoChemicalPotential_TABLE_Vector &
+    ( D, T, Y, Mnu )
+
+    REAL(DP), INTENT(in)  :: D(1:), T(1:), Y(1:)
+    REAL(DP), INTENT(out) :: Mnu(1:)
+
+    REAL(DP) :: D_P, T_P, Y_P
+    INTEGER  :: iD, iT, iY
+    REAL(DP) :: dD, dT, dY
+    REAL(DP) :: Me, Mp, Mn
+
+    INTEGER  :: iP, nP
+
+    nP = SIZE( D )
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( D_P, T_P, Y_P, iD, iT, iY, dD, dT, dY, Me, Mp, Mn ) &
+    !$OMP MAP( to: D, T, Y, D_T, T_T, Y_T, OS_Me, OS_Mp, OS_Mn, Me_T, Mp_T, Mn_T ) &
+    !$OMP MAP( from: Mnu )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( D_P, T_P, Y_P, iD, iT, iY, dD, dT, dY, Me, Mp, Mn ) &
+    !$ACC COPYIN( D, T, Y, D_T, T_T, Y_T, OS_Me, OS_Mp, OS_Mn, Me_T, Mp_T, Mn_T ) &
+    !$ACC COPYOUT( Mnu )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( D_P, T_P, Y_P, iD, iT, iY, dD, dT, dY, Me, Mp, Mn )
+#endif
+    DO iP = 1, nP
+
+      D_P = D(iP) / UnitD
+      T_P = T(iP) / UnitT
+      Y_P = Y(iP) / UnitY
+
+      CALL LogInterpolateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Me, Me_T, Me )
+
+      CALL LogInterpolateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mp, Mp_T, Mp )
+
+      CALL LogInterpolateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mn, Mn_T, Mn )
+
+      Me = Me * UnitMe
+      Mp = Mp * UnitMp
+      Mn = Mn * UnitMn
+
+      Mnu(iP) = ( Me + Mp ) - Mn
+
+    END DO
+
+#else
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP MAP( from: Mnu )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC COPYOUT( Mnu )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iP = 1, nP
+      Mnu(iP) = Zero
+    END DO
+
+#endif
+
+  END SUBROUTINE ComputeElectronNeutrinoChemicalPotential_TABLE_Vector
 
 
   SUBROUTINE ComputeDependentVariable_TABLE_Scalar &

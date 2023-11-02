@@ -37,15 +37,24 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
     ComputeIncrement_TwoMoment_Explicit_MF
   USE MF_TwoMoment_DiscretizationModule_Collisions_Relativistic, ONLY: &
     ComputeIncrement_TwoMoment_Implicit_MF
-!  USE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
-!    ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF
+  USE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
+    ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF
   USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_TwoMoment_MF
   USE MF_TwoMoment_SlopeLimiterModule, ONLY: &
     ApplySlopeLimiter_TwoMoment_MF
+  USE MF_FieldsModule_TwoMoment, ONLY: &
+    OffGridFlux_TwoMoment_MF
   ! --- Local Modules ---
   USE InputParsingModule,                      ONLY: &
     nLevels, DEBUG, UseTiling, nSpecies
+  USE MF_TwoMoment_TallyModule, ONLY: &
+    IncrementOffGridTally_TwoMoment_MF
+  USE MF_KindModule, ONLY: &
+    DP, &
+    Zero, &
+    One
+
 
   IMPLICIT NONE
   PRIVATE
@@ -97,11 +106,17 @@ CONTAINS
     REAL(AR), CONTIGUOUS, POINTER :: uCR(:,:,:,:), U(:,:,:,:)
     REAL(AR), CONTIGUOUS, POINTER :: uCF(:,:,:,:), F(:,:,:,:)
 
+    REAL(DP) :: dM_OffGrid_TwoMoment(1:2*nCR,0:nLevels-1)
+
     LOGICAL :: Verbose
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
+
+
+    dM_OffGrid_TwoMoment = Zero
+ 
     ! --- Set temporary MultiFabs U and dU to zero --
     DO iLevel = 0, nLevels-1
 
@@ -223,9 +238,9 @@ CONTAINS
             PRINT*, "    IMPLICIT: ", iS
           END IF
 #if defined(MICROPHYSICS_WEAKLIB)
-!          CALL ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF &
-!               ( GEOM, MF_uGF, MF_uCF, MF_DF_Im(:,iS), MF_U, MF_DU_Im(:,iS), &
-!                 dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
+          CALL ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF &
+               ( GEOM, MF_uGF, MF_uCF, MF_DF_Im(:,iS), MF_U, MF_DU_Im(:,iS), &
+                 dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
 
           CALL MF_U(iLevel) &
                  % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
@@ -255,7 +270,14 @@ CONTAINS
           END IF
 
           CALL ComputeIncrement_TwoMoment_Explicit_MF &
-               ( GEOM, MF_uGF, MF_uCF, MF_U, MF_DU_Ex(:,iS), Verbose_Option = Verbose )
+               ( t, GEOM, MF_uGF, MF_uCF, MF_U, MF_DU_Ex(:,iS), Verbose_Option = Verbose )
+
+
+
+
+          dM_OffGrid_TwoMoment(:,iLevel) &
+            = dM_OffGrid_TwoMoment(:,iLevel) &
+            + dt(iLevel) * w_EX(iS) * OffGridFlux_TwoMoment_MF(:,iLevel)
         END IF
 
       END DO
@@ -322,6 +344,9 @@ CONTAINS
     END IF
 
   END DO
+
+  CALL IncrementOffGridTally_TwoMoment_MF( dM_OffGrid_TwoMoment )
+
 
 #if defined(MICROPHYSICS_WEAKLIB)
   uCR = U

@@ -49,10 +49,10 @@ PROGRAM ApplicationDriver
     uDF
   USE GeometryFieldsModule, ONLY: &
     uGF
-  USE GravitySolutionModule_CFA_Poseidon, ONLY: &
-    InitializeGravitySolver_CFA_Poseidon, &
-    FinalizeGravitySolver_CFA_Poseidon, &
-    SolveGravity_CFA_Poseidon
+  USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
+    InitializeGravitySolver_XCFC_Poseidon, &
+    FinalizeGravitySolver_XCFC_Poseidon, &
+    SolveGravity_XCFC_Poseidon
   USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit, &
     Time
@@ -208,7 +208,7 @@ PROGRAM ApplicationDriver
                                            iX_B0(2):iX_E0(2), &
                                            iX_B0(3):iX_E0(3),1:6) )
 
-    CALL InitializeGravitySolver_CFA_Poseidon
+    CALL InitializeGravitySolver_XCFC_Poseidon
 
   END IF
 
@@ -261,7 +261,7 @@ PROGRAM ApplicationDriver
       CALL ComputeSourceTerms_Poseidon &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
 
-      CALL SolveGravity_CFA_Poseidon &
+      CALL SolveGravity_XCFC_Poseidon &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
 
     END IF
@@ -352,7 +352,7 @@ PROGRAM ApplicationDriver
       CALL UpdateFluid_SSPRK &
              ( t, dt, uGF, uCF, uDF, &
                ComputeIncrement_Euler_DG_Explicit, &
-               SolveGravity_CFA_Poseidon )
+               SolveGravity_XCFC_Poseidon )
 
       WriteSourceTerms2 = .FALSE.
 
@@ -417,7 +417,7 @@ PROGRAM ApplicationDriver
     CALL ComputeSourceTerms_Poseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
 
-    CALL SolveGravity_CFA_Poseidon &
+    CALL SolveGravity_XCFC_Poseidon &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
 
   END IF
@@ -444,7 +444,7 @@ PROGRAM ApplicationDriver
 
     DEALLOCATE( SourceTerms_Poseidon )
 
-    CALL FinalizeGravitySolver_CFA_Poseidon
+    CALL FinalizeGravitySolver_XCFC_Poseidon
 
   END IF
 

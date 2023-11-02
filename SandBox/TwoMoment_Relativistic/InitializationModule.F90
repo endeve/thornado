@@ -27,7 +27,7 @@ MODULE InitializationModule
     nSpecies, &
     uPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, &
     uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
-  USE TwoMoment_UtilitiesModule_Relativistic, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeConserved_TwoMoment
 
   IMPLICIT NONE

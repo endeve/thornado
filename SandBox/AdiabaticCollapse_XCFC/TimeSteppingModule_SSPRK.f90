@@ -12,7 +12,7 @@ MODULE TimeSteppingModule_SSPRK
     nDOFX
   USE GeometryFieldsModule, ONLY: &
     iGF_Psi
-  USE GravitySolutionModule_CFA_Poseidon, ONLY: &
+  USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
     ComputeConformalFactor_Poseidon, &
     ComputeGeometry_Poseidon
   USE FluidFieldsModule, ONLY: &
@@ -58,25 +58,22 @@ MODULE TimeSteppingModule_SSPRK
   INTERFACE
     SUBROUTINE FluidIncrement &
       ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
-        SuppressBC_Option, UseXCFC_Option, &
+        SuppressBC_Option, &
         SurfaceFlux_X1_Option, &
         SurfaceFlux_X2_Option, &
         SurfaceFlux_X3_Option )
       USE KindModule, ONLY: DP
-      INTEGER, INTENT(in)     :: &
+      INTEGER,  INTENT(in)    :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
       REAL(DP), INTENT(in)    :: &
         G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       REAL(DP), INTENT(inout) :: &
-        U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-      REAL(DP), INTENT(inout) :: &
+        U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
         D (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       REAL(DP), INTENT(out)   :: &
         dU(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-      LOGICAL, INTENT(in), OPTIONAL :: &
+      LOGICAL,  INTENT(in),  OPTIONAL :: &
         SuppressBC_Option
-      LOGICAL, INTENT(in), OPTIONAL :: &
-        UseXCFC_Option
       REAL(DP), INTENT(out), OPTIONAL :: &
         SurfaceFlux_X1_Option(:,:,:,:,:), &
         SurfaceFlux_X2_Option(:,:,:,:,:), &
@@ -285,8 +282,7 @@ CONTAINS
 
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
-                 G, Ustar, D, Dstar(:,:,:,:,:,iS), &
-                 UseXCFC_Option = .TRUE. )
+                 G, Ustar, D, Dstar(:,:,:,:,:,iS) )
 
         dM_OffGrid_Euler &
           = dM_OffGrid_Euler &

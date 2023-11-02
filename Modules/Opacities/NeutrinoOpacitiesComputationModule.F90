@@ -33,7 +33,8 @@ MODULE NeutrinoOpacitiesComputationModule
     ComputeNeutronChemicalPotential_TABLE, &
     ComputeSpecificInternalEnergy_TABLE, &
     ComputeProtonMassFraction_TABLE, &
-    ComputeNeutronMassFraction_TABLE
+    ComputeNeutronMassFraction_TABLE, &
+    ComputeElectronNeutrinoChemicalPotential_TABLE
   USE OpacityModule_TABLE, ONLY: &
 #ifdef MICROPHYSICS_WEAKLIB
     OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
@@ -78,6 +79,7 @@ MODULE NeutrinoOpacitiesComputationModule
   PUBLIC :: ComputeEquilibriumDistributions_Point
   PUBLIC :: ComputeEquilibriumDistributions
   PUBLIC :: ComputeEquilibriumDistributions_DG
+  PUBLIC :: LimitEquilibriumDistributions_DG
   PUBLIC :: ComputeEquilibriumDistributionAndDerivatives
   PUBLIC :: ComputeNeutrinoOpacities_Brem
   PUBLIC :: ComputeNeutrinoOpacityRates_Brem
@@ -146,29 +148,22 @@ CONTAINS
     REAL(DP), INTENT(out) :: f0
     INTEGER,  INTENT(in)  :: iSpecies
 
-    REAL(DP) :: Me, Mp, Mn
-    REAL(DP) :: Mnu, kT
+    REAL(DP) :: M, Mnu, kT
 
     ! --- Compute Chemical Potentials ---
 
-    CALL ComputeElectronChemicalPotential_TABLE &
-           ( D, T, Y, Me )
-
-    CALL ComputeProtonChemicalPotential_TABLE &
-           ( D, T, Y, Mp )
-
-    CALL ComputeNeutronChemicalPotential_TABLE &
-           ( D, T, Y, Mn )
+    CALL ComputeElectronNeutrinoChemicalPotential_TABLE &
+           ( D, T, Y, Mnu )
 
     kT = BoltzmannConstant * T
 
     IF ( iSpecies > iNuE_Bar ) THEN
-      Mnu = Zero
+      M = Zero
     ELSE
-      Mnu = ( ( Me + Mp ) - Mn ) * LeptonNumber(iSpecies)
+      M = Mnu * LeptonNumber(iSpecies)
     END IF
 
-    f0 = FermiDirac( E, Mnu, kT )
+    f0 = FermiDirac( E, M, kT )
 
   END SUBROUTINE ComputeEquilibriumDistributions_Point
 
@@ -187,55 +182,68 @@ CONTAINS
     REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
     REAL(DP), INTENT(out) :: f0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
 
-    REAL(DP) :: Me(iX_B:iX_E), Mp(iX_B:iX_E), Mn(iX_B:iX_E)
-    REAL(DP) :: Mnu, kT
+    REAL(DP) :: Mnu(iX_B:iX_E)
+    REAL(DP) :: M, kT
     INTEGER  :: iE, iS, iX
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: Me, Mp, Mn, f0 ) &
+    !$OMP MAP( alloc: f0, Mnu ) &
     !$OMP MAP( to: E, D, T, Y )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( Me, Mp, Mn, f0 ) &
+    !$ACC CREATE( f0, Mnu ) &
     !$ACC COPYIN( E, D, T, Y )
 #endif
 
     ! --- Compute Chemical Potentials ---
 
-    CALL ComputeElectronChemicalPotential_TABLE &
-           ( D, T, Y, Me )
-
-    CALL ComputeProtonChemicalPotential_TABLE &
-           ( D, T, Y, Mp )
-
-    CALL ComputeNeutronChemicalPotential_TABLE &
-           ( D, T, Y, Mn )
+    CALL ComputeElectronNeutrinoChemicalPotential_TABLE &
+           ( D, T, Y, Mnu )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( Mnu, kT )
+    !$OMP PRIVATE( M, kT )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( Mnu, kT )
+    !$ACC PRIVATE( M, kT )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( Mnu, kT )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( M, kT )
 #endif
     DO iX = iX_B, iX_E
-    DO iS = iS_B, iS_E
+    DO iS = iS_B, iNuE_Bar
     DO iE = iE_B, iE_E
 
       kT = BoltzmannConstant * T(iX)
-
-      IF ( iS > iNuE_Bar ) THEN
-        Mnu = Zero
-      ELSE
-        Mnu = ( ( Me(iX) + Mp(iX) ) - Mn(iX) ) * LeptonNumber(iS)
-      END IF
+      M = Mnu(iX) * LeptonNumber(iS)
 
       f0(iE,iS,iX) &
-        = One / ( EXP( MIN( MAX( ( E(iE) - Mnu ) / kT, - Log1d100 ), + Log1d100 ) ) + One )
+        = One / ( EXP( MIN( MAX( ( E(iE) - M ) / kT, - Log1d100 ), + Log1d100 ) ) + One )
+
+    END DO
+    END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( M, kT )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( M, kT )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( M, kT )
+#endif
+    DO iX = iX_B, iX_E
+    DO iS = iNuE_Bar+1, iS_E
+    DO iE = iE_B, iE_E
+
+      kT = BoltzmannConstant * T(iX)
+      M = Zero
+
+      f0(iE,iS,iX) &
+        = One / ( EXP( MIN( MAX( ( E(iE) - M ) / kT, - Log1d100 ), + Log1d100 ) ) + One )
 
     END DO
     END DO
@@ -243,30 +251,27 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: Me, Mp, Mn, E, D, T, Y ) &
+    !$OMP MAP( release: Mnu, E, D, T, Y ) &
     !$OMP MAP( from: f0 )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( Me, Mp, Mn, E, D, T, Y ) &
+    !$ACC DELETE( Mnu, E, D, T, Y ) &
     !$ACC COPYOUT( f0 )
 #endif
 
   END SUBROUTINE ComputeEquilibriumDistributions
 
 
-  SUBROUTINE ComputeEquilibriumDistributions_DG_E &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0 )
+  SUBROUTINE LimitEquilibriumDistributions_DG &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, f0 )
 
     ! --- Equilibrium Neutrino Distributions (Multiple D,T,Y) ---
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
-    REAL(DP), INTENT(in) , TARGET :: E(iE_B:iE_E)
-    REAL(DP), INTENT(in) , TARGET :: D(iX_B:iX_E)
-    REAL(DP), INTENT(in) , TARGET :: T(iX_B:iX_E)
-    REAL(DP), INTENT(in) , TARGET :: Y(iX_B:iX_E)
-    REAL(DP), INTENT(out), TARGET :: f0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+    REAL(DP), INTENT(in)   , TARGET :: E(iE_B:iE_E)
+    REAL(DP), INTENT(inout), TARGET :: f0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
 
     REAL(DP), POINTER :: E_Q(:,:), f0_Q(:,:,:,:)
 
@@ -285,16 +290,13 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: f0, f0_K ) &
-    !$OMP MAP( to: E, D, T, Y )
+    !$OMP MAP( alloc: f0_K ) &
+    !$OMP MAP( to: E, f0 )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( f0, f0_K ) &
-    !$ACC COPYIN( E, D, T, Y )
+    !$ACC CREATE( f0_K ) &
+    !$ACC COPYIN( E, f0 )
 #endif
-
-    CALL ComputeEquilibriumDistributions &
-           ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0 )
 
     ! --- Cell Average of Equilibrium Distributions ---
 
@@ -389,11 +391,54 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: f0_K, E, D, T, Y ) &
+    !$OMP MAP( release: f0_K, E ) &
     !$OMP MAP( from: f0 )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( f0_K, E, D, T, Y ) &
+    !$ACC DELETE( f0_K, E ) &
+    !$ACC COPYOUT( f0 )
+#endif
+
+  END SUBROUTINE LimitEquilibriumDistributions_DG
+
+
+  SUBROUTINE ComputeEquilibriumDistributions_DG_E &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0 )
+
+    ! --- Equilibrium Neutrino Distributions (Multiple D,T,Y) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    INTEGER,  INTENT(in)  :: iS_B, iS_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
+    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    REAL(DP), INTENT(out) :: f0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: f0 ) &
+    !$OMP MAP( to: E, D, T, Y )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC CREATE( f0 ) &
+    !$ACC COPYIN( E, D, T, Y )
+#endif
+
+    CALL ComputeEquilibriumDistributions &
+           ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0 )
+
+    CALL LimitEquilibriumDistributions_DG &
+           ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, f0 )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: E, D, T, Y ) &
+    !$OMP MAP( from: f0 )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( E, D, T, Y ) &
     !$ACC COPYOUT( f0 )
 #endif
 
@@ -418,13 +463,13 @@ CONTAINS
     REAL(DP), PARAMETER :: EXPM   = EXP( - One )
 
     INTEGER  :: nE, nX, nS
-    INTEGER  :: iE, iX, iS, iP
+    INTEGER  :: iE, iX, iS, iS0, iP
     INTEGER  :: iNodeE, iNodeX, iNodeZ
-    REAL(DP) :: kT, Mnu, Exponent, N_K, V_K, f0_P
+    REAL(DP) :: kT, M, Exponent, N_K, V_K, f0_P
     REAL(DP) :: Min_K, Max_K, Theta
     REAL(DP), POINTER :: E_Q(:,:), D_Q(:,:), T_Q(:,:), Y_Q(:,:)
-    REAL(DP), POINTER :: Me_Q(:,:), Mp_Q(:,:), Mn_Q(:,:), SqrtGm_Q(:,:)
-    REAL(DP), TARGET  :: Me(iX_B:iX_E), Mp(iX_B:iX_E), Mn(iX_B:iX_E)
+    REAL(DP), POINTER :: Mnu_Q(:,:), SqrtGm_Q(:,:)
+    REAL(DP), TARGET  :: Mnu(iX_B:iX_E)
     REAL(DP) :: &
       Tau_Q(1:nDOFE*nDOFX, &
             1:(iE_E-iE_B+1)/nDOFE, &
@@ -445,48 +490,61 @@ CONTAINS
 
     ! --- Compute Chemical Potentials ---
 
-    CALL ComputeElectronChemicalPotential_TABLE &
-           ( D, T, Y, Me )
+    CALL ComputeElectronNeutrinoChemicalPotential_TABLE &
+           ( D, T, Y, Mnu )
 
-    CALL ComputeProtonChemicalPotential_TABLE &
-           ( D, T, Y, Mp )
-
-    CALL ComputeNeutronChemicalPotential_TABLE &
-           ( D, T, Y, Mn )
-
-    E_Q (1:nDOFE,1:nE) => E (:)
-    D_Q (1:nDOFX,1:nX) => D (:)
-    T_Q (1:nDOFX,1:nX) => T (:)
-    Y_Q (1:nDOFX,1:nX) => Y (:)
-    Me_Q(1:nDOFX,1:nX) => Me(:)
-    Mp_Q(1:nDOFX,1:nX) => Mp(:)
-    Mn_Q(1:nDOFX,1:nX) => Mn(:)
+    E_Q  (1:nDOFE,1:nE) => E  (:)
+    D_Q  (1:nDOFX,1:nX) => D  (:)
+    T_Q  (1:nDOFX,1:nX) => T  (:)
+    Y_Q  (1:nDOFX,1:nX) => Y  (:)
+    Mnu_Q(1:nDOFX,1:nX) => Mnu(:)
 
     SqrtGm_Q(1:nDOFX,1:nX) => SqrtGm(:)
 
     ! --- Compute Fermi-Dirac Distribution in Elements ---
 
     DO iX = 1, nX
-    DO iS = 1, nS
+    DO iS = iS_B, iNuE_Bar
     DO iE = 1, nE
 
       DO iNodeX = 1, nDOFX
       DO iNodeE = 1, nDOFE
 
+        kT = BoltzmannConstant * T_Q(iNodeX,iX)
+
         iNodeZ = (iNodeX-1) * nDOFE + iNodeE
 
         kT = BoltzmannConstant * T_Q(iNodeX,iX)
-
-        IF( iS > iNuE_Bar )THEN
-          Mnu = Zero
-        ELSE
-          Mnu = (   Me_Q(iNodeX,iX) &
-                  + Mp_Q(iNodeX,iX) &
-                  - Mn_Q(iNodeX,iX) ) * LeptonNumber(iS)
-        END IF
+        M = Mnu_Q(iNodeX,iX) * LeptonNumber(iS)
 
         Exponent &
-          = MIN( MAX( ( E_Q(iNodeE,iE) - Mnu ) / kT, - Log1d100 ), Log1d100 )
+          = MIN( MAX( ( E_Q(iNodeE,iE) - M ) / kT, - Log1d100 ), Log1d100 )
+
+        f0_Q(iNodeZ,iE,iS,iX) = One / ( EXP( Exponent ) + One )
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    DO iX = 1, nX
+    DO iS = iNuE_Bar+1, iS_E
+    DO iE = 1, nE
+
+      DO iNodeX = 1, nDOFX
+      DO iNodeE = 1, nDOFE
+
+        kT = BoltzmannConstant * T_Q(iNodeX,iX)
+
+        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+
+        kT = BoltzmannConstant * T_Q(iNodeX,iX)
+        M = Zero
+
+        Exponent &
+          = MIN( MAX( ( E_Q(iNodeE,iE) - M ) / kT, - Log1d100 ), Log1d100 )
 
         f0_Q(iNodeZ,iE,iS,iX) = One / ( EXP( Exponent ) + One )
 

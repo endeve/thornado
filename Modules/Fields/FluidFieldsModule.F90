@@ -227,9 +227,11 @@ CONTAINS
                  1-swX(3):nX(3)+swX(3), &
                  1:nCF) )
 
+    uCF = Zero
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: uCF )
+    !$OMP MAP( to: uCF )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC CREATE(     uCF )
@@ -270,9 +272,11 @@ CONTAINS
                   1-swX(3):nX(3)+swX(3), &
                   1:nPF) )
 
+    uPF = Zero
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: uPF )
+    !$OMP MAP( to: uPF )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC CREATE(     uPF )
@@ -313,9 +317,11 @@ CONTAINS
                   1-swX(3):nX(3)+swX(3), &
                   1:nAF) )
 
+    uAF = Zero
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: uAF )
+    !$OMP MAP( to: uAF )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC CREATE(     uAF )
@@ -356,6 +362,16 @@ CONTAINS
                   1-swX(3):nX(3)+swX(3), &
                   1:nDF) )
 
+    uDF = Zero
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: uDF )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC CREATE(     uDF )
+#endif
+
   END SUBROUTINE CreateFluidFields_Diagnostic
 
 
@@ -383,10 +399,12 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: uCF, uPF, uAF )
+    !$OMP MAP( release: uCF, uPF, uAF, uDF, &
+    !$OMP               unitsCF, unitsPF, unitsAF, unitsDF )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
-    !$ACC DELETE(       uCF, uPF, uAF )
+    !$ACC DELETE(       uCF, uPF, uAF, uDF, &
+    !$ACC               unitsCF, unitsPF, unitsAF, unitsDF )
 #endif
 
     DEALLOCATE( uCF, rhsCF, uPF, uAF, uDF )
@@ -411,6 +429,12 @@ CONTAINS
     uDF(:,:,:,:,iDF_T1)    = One
     uDF(:,:,:,:,iDF_T2)    = One
     uDF(:,:,:,:,iDF_T3)    = One
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO( uDF )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE( uDF )
+#endif
 
   END SUBROUTINE ResetFluidFields_Diagnostic
 
@@ -558,6 +582,14 @@ CONTAINS
       unitsDF = One
 
     END IF
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: unitsCF, unitsPF, unitsAF, unitsDF)
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( unitsCF, unitsPF, unitsAF, unitsDF )
+#endif
 
   END SUBROUTINE SetUnitsFluidFields
 

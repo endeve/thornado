@@ -1,5 +1,14 @@
 MODULE FluxCorrectionModule_Euler
 
+  USE Euler_MeshRefinementModule, ONLY: &
+    pNodeNumberTableX_X1_c, &
+    pNodeNumberTableX_X2_c, &
+    pNodeNumberTableX_X3_c, &
+    pWeightsX_q_c, &
+    pLX_X1_Up_c, pLX_X1_Dn_c, &
+    pLX_X2_Up_c, pLX_X2_Dn_c, &
+    pLX_X3_Up_c, pLX_X3_Dn_c
+
   ! --- AMReX Modules ---
 
   USE amrex_multifab_module, ONLY: &
@@ -13,23 +22,39 @@ MODULE FluxCorrectionModule_Euler
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX
+  USE MeshModule, ONLY: &
+    MeshX
   USE GeometryFieldsModule, ONLY: &
     nGF, &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF
-  USE MeshModule, ONLY: &
-    MeshX
+  USE ReferenceElementModuleX_Lagrange, ONLY: &
+     LX_X1_Dn, &
+     LX_X1_Up, &
+     LX_X2_Dn, &
+     LX_X2_Up, &
+     LX_X3_Dn, &
+     LX_X3_Up
+  USE ReferenceElementModuleX, ONLY: &
+    nDOFX_X1, &
+    nDOFX_X2, &
+    nDOFX_X3, &
+    NodeNumberTableX, &
+    NodeNumberTableX_X1, &
+    NodeNumberTableX_X2, &
+    NodeNumberTableX_X3, &
+    WeightsX_q
 
   ! --- Local Modules ---
 
   USE MF_FieldsModule_Euler, ONLY: &
     FluxRegister_Euler
+  USE AverageDownModule, ONLY: &
+    AverageDown
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
-  USE AverageDownModule, ONLY: &
-    AverageDown
   USE InputParsingModule, ONLY: &
     nLevels, &
     swX, &
@@ -84,23 +109,31 @@ CONTAINS
 
     END IF
 
+#if defined( THORNADO_USE_MESHREFINEMENT )
+
     CALL CreateMesh_MF( FineLevel-1, MeshX )
 
     ASSOCIATE( dX1 => MeshX(1) % Width, &
                dX2 => MeshX(2) % Width, &
                dX3 => MeshX(3) % Width )
 
-#if defined( THORNADO_USE_MESHREFINEMENT )
-
     CALL FluxRegister_Euler( FineLevel ) &
            % reflux_dg( MF_uGF(FineLevel-1), MF(FineLevel-1), &
-                        nCF, dX1, dX2, dX3 )
-
-#endif
+                        nDOFX, nDOFX_X1, nDOFX_X2, nDOFX_X3, nCF, iGF_SqrtGm, &
+                        pNodeNumberTableX_X1_c, &
+                        pNodeNumberTableX_X2_c, &
+                        pNodeNumberTableX_X3_c, &
+                        pWeightsX_q_c, &
+                        pLX_X1_Up_c, pLX_X1_Dn_c, &
+                        pLX_X2_Up_c, pLX_X2_Dn_c, &
+                        pLX_X3_Up_c, pLX_X3_Dn_c, &
+                        MINVAL( dX1 ), MINVAL( dX2 ), MINVAL( dX3 ) )
 
     END ASSOCIATE
 
     CALL DestroyMesh_MF( MeshX )
+
+#endif
 
   END SUBROUTINE ApplyFluxCorrection_Euler_MF_SingleLevel
 

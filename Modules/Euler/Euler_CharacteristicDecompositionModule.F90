@@ -45,11 +45,11 @@ CONTAINS
   SUBROUTINE ComputeCharacteristicDecomposition_Euler &
     ( iDim, G, U, R, invR )
 
-    INTEGER,  INTENT(in)  :: iDim
-    REAL(DP), INTENT(in)  :: G(nGF)
-    REAL(DP), INTENT(in)  :: U(nCF)
-    REAL(DP), INTENT(out) :: R(nCF,nCF)
-    REAL(DP), INTENT(out) :: invR(nCF,nCF)
+    INTEGER,  INTENT(in)    :: iDim
+    REAL(DP), INTENT(in)    :: G(nGF)
+    REAL(DP), INTENT(inout) :: U(nCF)
+    REAL(DP), INTENT(out)   :: R(nCF,nCF)
+    REAL(DP), INTENT(out)   :: invR(nCF,nCF)
 
 #ifdef MICROPHYSICS_WEAKLIB
 

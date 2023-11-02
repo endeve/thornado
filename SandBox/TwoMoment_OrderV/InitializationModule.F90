@@ -28,9 +28,9 @@ MODULE InitializationModule
     nSpecies, &
     uPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, nPR, &
     uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, nCR
-  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeConserved_TwoMoment
-  USE TwoMoment_OpacityModule_OrderV, ONLY: &
+  USE TwoMoment_OpacityModule, ONLY: &
     uOP, iOP_Sigma
 
   IMPLICIT NONE
@@ -86,6 +86,11 @@ CONTAINS
 
         CALL InitializeFields_TransparentShock &
                ( V_0, LengthScale, Direction )
+
+      CASE( 'TransparentShock2D' )
+
+        CALL InitializeFields_TransparentShock2D &
+               ( LengthScale )
 
       CASE( 'TransparentVortex' )
 
@@ -1337,7 +1342,7 @@ CONTAINS
                  uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
                  uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
       
-         END DO
+      END DO
 
     END DO
     END DO
@@ -1496,6 +1501,177 @@ CONTAINS
     END DO
 
   END SUBROUTINE SetInnerBoundary_TransparentShock
+
+
+  SUBROUTINE InitializeFields_TransparentShock2D( ShockWidth )
+
+    REAL(DP), INTENT(in) :: ShockWidth
+
+    REAL(DP), PARAMETER :: X1_Shock = 1.000_DP
+    REAL(DP), PARAMETER :: X2_Shock = 0.125_DP
+    REAL(DP), PARAMETER :: V_0      = - 0.1_DP
+    REAL(DP), PARAMETER :: Theta    = Pi / 4.0_DP
+
+    INTEGER  :: iNodeX, iX1, iX2, iX3
+    INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
+    INTEGER  :: iNodeX1, iNodeX2
+    REAL(DP) :: X1, X2, Eta, Eta_Shock, V_Eta
+
+    WRITE(*,*)
+    WRITE(*,'(A6,A13,1ES9.2E2)') '', 'V_0 = '       , V_0
+    WRITE(*,'(A6,A13,1ES9.2E2)') '', 'ShockWidth = ', ShockWidth
+    WRITE(*,'(A6,A13,1ES9.2E2)') '', 'Theta = '     , Theta
+    WRITE(*,*)
+
+    ! --- Fluid Fields ---
+
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+        Eta = X1 * COS( Theta ) + X2 * SIN( Theta )
+
+        Eta_Shock = X1_Shock * COS( Theta ) + X2_Shock * SIN( Theta )
+
+        V_Eta = Half * V_0 * ( One + TANH( (Eta-Eta_Shock)/ShockWidth ) )
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = One
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_Eta * COS( Theta )
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_Eta * SIN( Theta )
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 1.0d-1
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0d-0
+
+        CALL ComputeConserved_Euler_NonRelativistic &
+               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    ! --- Radiation Fields ---
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B1(4), iZ_E1(4)
+    DO iZ3 = iZ_B1(3), iZ_E1(3)
+    DO iZ2 = iZ_B1(2), iZ_E1(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iNodeZ = 1, nDOFZ
+
+        iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
+
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) = 1.0d-8
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) = 0.0_DP
+        
+        CALL ComputeConserved_TwoMoment &
+               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V1),        &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V2),        &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V3),        &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+      
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL SetInnerBoundary_TransparentShock2D
+
+  END SUBROUTINE InitializeFields_TransparentShock2D
+
+
+  SUBROUTINE SetInnerBoundary_TransparentShock2D
+
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS
+    INTEGER  :: iNodeX, iNodeE, iNodeZ
+    REAL(DP) :: E
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B1(4), iZ_E1(4)
+    DO iZ3 = iZ_B1(3), iZ_E1(3)
+    DO iZ2 = iZ_B1(2), iZ_B1(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iNodeZ = 1, nDOFZ
+
+        iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
+        iNodeE = MOD( (iNodeZ-1)        , nDOFE ) + 1
+
+        E = NodeCoordinate( MeshE, iZ1, iNodeE )
+
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
+          = One / ( EXP( E / Three - Three ) + One )
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
+          = 0.999_DP * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
+          = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &
+          = 0.0_DP
+
+        CALL ComputeConserved_TwoMoment &
+               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V1),        &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V2),        &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V3),        &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+      
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE SetInnerBoundary_TransparentShock2D
 
 
   SUBROUTINE InitializeFields_TransparentVortex( V_0, Direction )
@@ -1749,8 +1925,12 @@ CONTAINS
     INTEGER       :: iNodeX, iX1, iX2, iX3
     INTEGER       :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
     INTEGER       :: iNodeX1
-    REAL(DP)      :: X1, Theta, V_Max = 0.30_DP
+    REAL(DP)      :: X1, Theta, V_Max = 0.20_DP
 
+    WRITE(*,*)
+    WRITE(*,'(A6,A8,3ES9.2E2)') '', 'V_Max = ', V_Max
+    WRITE(*,*)
+    
     ! --- Fluid Fields ---
 
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -1924,6 +2104,7 @@ CONTAINS
 
   END SUBROUTINE SetInnerBoundary_RadiatingSphere
 
+
   SUBROUTINE InitializeFields_GaussianDiffusion1D( V_0 )
 
     REAL(DP), INTENT(in) :: V_0(3)
@@ -1931,7 +2112,7 @@ CONTAINS
     INTEGER  :: iNodeX, iX1, iX2, iX3
     INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
     INTEGER  :: iNodeZ2, iNodeZ3
-    REAL(DP) :: X1, X2, t_0, D_min, D_0, X1_0, X2_0
+    REAL(DP) :: X1, t_0, D_min, D_0, X1_0
 
     D_min = 1.0d-06
     t_0   = 5.0_DP
@@ -2037,6 +2218,7 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_GaussianDiffusion1D
+
 
   SUBROUTINE InitializeFields_GaussianDiffusion( V_0 )
 

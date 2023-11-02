@@ -1,0 +1,31 @@
+# from https://gist.github.com/pch-envision/9dbbc4f9313ec468859631a049188bc4
+# Modified based on Vassili's work in weaklib
+
+THORNADO_AMREX_GIT_HASH \
+  := $(shell \
+     cd $(THORNADO_DIR) \
+     && git --no-pager describe --tags --always --dirty \
+     && cd - > /dev/null)
+DEFINES += -DTHORNADO_AMREX_GIT_HASH=\"$(THORNADO_AMREX_GIT_HASH)\"
+
+THORNADO_AMREX_GIT_DATE \
+  := $(firstword \
+     $(shell \
+     cd $(THORNADO_DIR) \
+     && git --no-pager show --date=short --format="%ad" --name-only \
+     && cd - >/dev/null))
+DEFINES += -DTHORNADO_AMREX_GIT_DATE=\"$(THORNADO_AMREX_GIT_DATE)\"
+
+THORNADO_AMREX_GIT_BRANCH \
+  := $(shell \
+     cd $(THORNADO_DIR) \
+     && git rev-parse --abbrev-ref HEAD \
+     && cd - > /dev/null)
+DEFINES += -DTHORNADO_AMREX_GIT_BRANCH=\"$(THORNADO_AMREX_GIT_BRANCH)\"
+
+THORNADO_AMREX_GIT_URL \
+  := $(shell \
+     cd $(THORNADO_DIR) \
+     && git config --get remote.origin.url \
+     && cd - > /dev/null)
+DEFINES += -DTHORNADO_AMREX_GIT_URL=\"$(THORNADO_AMREX_GIT_URL)\"

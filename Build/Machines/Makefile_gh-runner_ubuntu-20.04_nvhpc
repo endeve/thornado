@@ -1,0 +1,43 @@
+## Makefile definitions for Ubuntu 20.04 with nvhpc compilers
+
+C       = nvc++ --c++11
+FORTRAN = nvfortran -Mpreprocess
+FLINKER = nvfortran
+
+DEBUG    = -g -O0 -Mnoopenmp -Ktrap=fp
+OPTIMIZE = -g -O2 -tp=pwr9
+
+SUFFIX_f90 =
+
+MDEFS =
+PP    = -D
+
+ifeq ($(USE_OMP),TRUE)
+  OPENMP = -mp=multicore
+else ifeq ($(USE_OMP_OL),TRUE)
+  OPENMP = -mp=gpu -gpu=cuda$(CUDA_MAJOR).$(CUDA_MINOR),cc70,ptxinfo -Minfo=accel
+endif
+
+ifeq ($(USE_OACC),TRUE)
+  OPENACC = -acc -gpu=cuda$(CUDA_MAJOR).$(CUDA_MINOR),cc70,ptxinfo -Minfo=accel
+endif
+
+# Hacked to include MPI include files
+INCLUDE_CUDA     = -I$(CUDA_INC) \
+                   -I$(OMPI_INC)
+INCLUDE_HDF5     = -I$(HDF5_INC)
+INCLUDE_LAPACK   =
+INCLUDE_MAGMA    =
+INCLUDE_PETSC    =
+INCLUDE_ROCM     =
+
+# Hacked to include MPI library files
+LIBRARIES_CUDA     = -L$(CUDA_LIB) -lcublas -lcusparse -lcusolver \
+                     -L$(CUDART_LIB) -lcudart \
+                     -L$(OMPI_LIB) -lmpi -lmpi_mpifh
+LIBRARIES_HDF5     = -L$(HDF5_LIB) -lhdf5_fortran -lhdf5
+LIBRARIES_LAPACK   = -L$(LAPACK_LIB) -llapack \
+                     -L$(BLAS_LIB) -lblas
+LIBRARIES_MAGMA    =
+LIBRARIES_PETSC    =
+LIBRARIES_ROCM     =

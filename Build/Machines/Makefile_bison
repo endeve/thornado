@@ -27,7 +27,6 @@ INCLUDE_HDF5     = -I/usr/include/hdf5/serial
 INCLUDE_LAPACK   = -I/usr/include
 INCLUDE_MAGMA    =
 INCLUDE_PETSC    =
-INCLUDE_POSEIDON =
 INCLUDE_ROCM     =
 
 LIBRARIES_CUDA     =
@@ -35,5 +34,4 @@ LIBRARIES_HDF5     = -L/usr/lib/x86_64-linux-gnu/hdf5/serial/lib -lhdf5_fortran 
 LIBRARIES_LAPACK   = -L/usr/lib/x86_64-linux-gnu/lapack -llapack -lblas
 LIBRARIES_MAGMA    =
 LIBRARIES_PETSC    =
-LIBRARIES_POSEIDON =
 LIBRARIES_ROCM     =

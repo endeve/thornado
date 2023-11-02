@@ -1,6 +1,8 @@
 Euler_ErrorModule.o: \
   KindModule.o \
+  UnitsModule.o \
   UtilitiesModule.o \
+  GeometryFieldsModule.o \
   Euler_ErrorModule.f90
 
 Euler_UtilitiesModule_NonRelativistic.o: \
@@ -120,7 +122,7 @@ Euler_PositivityLimiterModule_Relativistic_TABLE.o: \
   UnitsModule.o \
   TimersModule_Euler.o \
   Euler_ErrorModule.o \
-  Euler_PositivityLimiterModule_Relativistic_TABLE.f90
+  Euler_PositivityLimiterModule_Relativistic_TABLE.F90
 
 Euler_PositivityLimiterModule.o: \
   KindModule.o \
@@ -244,7 +246,6 @@ Euler_dgDiscretizationModule.o: \
   MeshModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
-  GeometryComputationModule_XCFC.o \
   Euler_BoundaryConditionsModule.o \
   Euler_UtilitiesModule.o \
   Euler_DiscontinuityDetectionModule.o \

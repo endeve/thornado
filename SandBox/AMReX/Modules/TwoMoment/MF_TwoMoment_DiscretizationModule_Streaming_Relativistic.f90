@@ -12,6 +12,9 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
     amrex_mfiter,   &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_reduce_sum
+
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule,      ONLY: &
@@ -24,8 +27,9 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
     nCR
   USE FluidFieldsModule,            ONLY: &
     nCF
-  USE TwoMoment_DiscretizationModule_Streaming_Relativistic, ONLY: &
-    ComputeIncrement_TwoMoment_Explicit
+  USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
+    ComputeIncrement_TwoMoment_Explicit, &
+    OffGridFlux_TwoMoment  
   USE MeshModule, ONLY: &
     MeshX
 
@@ -49,15 +53,19 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_Relativistic
     CreateMesh_MF, &
     DestroyMesh_MF
   USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
-    EdgeMap,          &
-    ConstructEdgeMap, &
     ApplyBoundaryConditions_TwoMoment_MF
+  USE MF_EdgeMapModule, ONLY: &
+    EdgeMap,          &
+    ConstructEdgeMap
+  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_Euler_MF
   USE FillPatchModule, ONLY: &
     FillPatch
   USE AverageDownModule, ONLY: &
     AverageDown
   USE MF_FieldsModule_TwoMoment, ONLY: &
-    MF_Permute
+    MF_Permute, &
+    OffGridFlux_TwoMoment_MF
   USE MF_UtilitiesModule, ONLY: &
     amrex2amrex_permute_Z, &
     amrex_permute2amrex_Z, &
@@ -120,10 +128,10 @@ CONTAINS
 
         END DO
 
-        CALL FillPatch( i, Time(i), MF_uGF, MF_Permute )
+!        CALL FillPatch( i, Time(i), MF_uGF, MF_Permute )
       ELSE
 
-        CALL FillPatch( i, Time(i), MF_uGF, MF_uCR )
+!        CALL FillPatch( i, Time(i), MF_uGF, MF_uCR )
 
       END IF
 
@@ -138,6 +146,9 @@ CONTAINS
       END IF
     END DO
 
+
+
+    OffGridFlux_TwoMoment_MF = Zero
 
     DO iLevel = 0, nLevels-1
 
@@ -238,17 +249,31 @@ CONTAINS
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B1, iZ_E1, uCR, U )
 
-        CALL ConstructEdgeMap( GEOM(iLevel), BX, Edge_Map )
+        CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
         CALL ApplyBoundaryConditions_TwoMoment_MF &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )
 
+        CALL ApplyBoundaryConditions_Euler_MF &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, C, Edge_Map )
 
 
        CALL ComputeIncrement_TwoMoment_Explicit &
               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, &
                 Verbose_Option = Verbose, &
                 SuppressBC_Option = .TRUE.  )
+
+
+
+ DO i=1,nCR
+        OffGridFlux_TwoMoment_MF(i,iLevel) &
+          = OffGridFlux_TwoMoment_MF(i,iLevel) &
+          + OffGridFlux_TwoMoment(i)  
+        OffGridFlux_TwoMoment_MF(i+nCR,iLevel) &
+          = OffGridFlux_TwoMoment_MF(i+nCR,iLevel) &
+          + OffGridFlux_TwoMoment(i+nCR)  
+END DO
+
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, duCR, dU )
@@ -300,6 +325,9 @@ CONTAINS
       END DO
 
       CALL amrex_mfiter_destroy( MFI )
+
+      CALL amrex_parallel_reduce_sum( OffGridFlux_TwoMoment_MF(:,iLevel), 2 * nCR )
+
 
       CALL DestroyMesh_MF( MeshX )
 

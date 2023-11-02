@@ -10,7 +10,8 @@ MODULE OpacityModule_TABLE
   USE wlOpacityTableIOModuleHDF, ONLY: &
     ReadOpacityTableHDF
   USE wlOpacityTableModule, ONLY: &
-    OpacityTableType
+    OpacityTableType, &
+    DeAllocateOpacityTable
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable_1D3D_Custom, &
     LogInterpolateSingleVariable_2D_Custom_Point
@@ -44,6 +45,12 @@ MODULE OpacityModule_TABLE
     OpacityTableName_Pair, &
     OpacityTableName_Brem
   INTEGER :: &
+    nOpacities_NES, nMoments_NES, nPointsT_NES, nPointsEta_NES
+  INTEGER :: &
+    nOpacities_Pair, nMoments_Pair, nPointsT_Pair, nPointsEta_Pair
+  INTEGER :: &
+    nOpacities_Brem, nMoments_Brem, nPointsD_Brem, nPointsT_Brem
+  INTEGER :: &
     iD_T, iT_T, iY_T, idxE1, idxE2
   REAL(DP) :: &
     dE1, dE2
@@ -63,6 +70,7 @@ MODULE OpacityModule_TABLE
   TYPE(OpacityTableType), PUBLIC :: &
     OPACITIES
 #endif
+  LOGICAL :: Use_OpacityTables
 
   REAL(DP), DIMENSION(6), PUBLIC :: &
     C1, C2
@@ -128,7 +136,7 @@ CONTAINS
     LOGICAL :: Verbose
 
     IF( PRESENT( OpacityTableName_EmAb_Option ) &
-        .AND. ( LEN( OpacityTableName_EmAb_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( OpacityTableName_EmAb_Option ) > 1 ) )THEN
       OpacityTableName_EmAb = TRIM( OpacityTableName_EmAb_Option )
       Include_EmAb = .TRUE.
     ELSE
@@ -137,7 +145,7 @@ CONTAINS
     END IF
 
     IF( PRESENT( OpacityTableName_Iso_Option ) &
-        .AND. ( LEN( OpacityTableName_Iso_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( OpacityTableName_Iso_Option ) > 1 ) )THEN
       OpacityTableName_Iso = TRIM( OpacityTableName_Iso_Option )
       Include_Iso = .TRUE.
     ELSE
@@ -146,7 +154,7 @@ CONTAINS
     END IF
 
     IF( PRESENT( OpacityTableName_NES_Option ) &
-        .AND. ( LEN( OpacityTableName_NES_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( OpacityTableName_NES_Option ) > 1 ) )THEN
       OpacityTableName_NES = TRIM( OpacityTableName_NES_Option )
       Include_NES = .TRUE.
     ELSE
@@ -155,7 +163,7 @@ CONTAINS
     END IF
 
     IF( PRESENT( OpacityTableName_Pair_Option ) &
-        .AND. ( LEN( OpacityTableName_Pair_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( OpacityTableName_Pair_Option ) > 1 ) )THEN
       OpacityTableName_Pair = TRIM( OpacityTableName_Pair_Option )
       Include_Pair = .TRUE.
     ELSE
@@ -164,7 +172,7 @@ CONTAINS
     END IF
 
     IF( PRESENT( OpacityTableName_Brem_Option ) &
-        .AND. ( LEN( OpacityTableName_Brem_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( OpacityTableName_Brem_Option ) > 1 ) )THEN
       OpacityTableName_Brem = TRIM( OpacityTableName_Brem_Option )
       Include_Brem = .TRUE.
     ELSE
@@ -173,7 +181,7 @@ CONTAINS
     END IF
 
     IF( PRESENT( EquationOfStateTableName_Option ) &
-        .AND. ( LEN( EquationOfStateTableName_Option ) > 1 ) )THEN
+        .AND. ( LEN_TRIM( EquationOfStateTableName_Option ) > 1 ) )THEN
        EquationOfStateTableName = TRIM( EquationOfStateTableName_Option )
     ELSE
        EquationOfStateTableName = 'EquationOfStateTable.h5'
@@ -205,7 +213,20 @@ CONTAINS
       END IF
     END IF
 
+    Use_OpacityTables = .FALSE.
+
 #ifdef MICROPHYSICS_WEAKLIB
+
+    IF (   Include_EmAb &
+      .OR. Include_Iso  &
+      .OR. Include_NES  &
+      .OR. Include_Pair &
+      .OR. Include_Brem ) THEN
+      Use_OpacityTables = .TRUE.
+    ELSE
+      Use_OpacityTables = .FALSE.
+      RETURN
+    END IF
 
     CALL InitializeHDF( )
 
@@ -221,6 +242,21 @@ CONTAINS
     CALL FinalizeHDF( )
 
     nPointsE = nE * nNodesE
+
+    nOpacities_NES  = OPACITIES % Scat_NES % nOpacities
+    nMoments_NES    = OPACITIES % Scat_NES % nMoments
+    nPointsT_NES    = OPACITIES % Scat_NES % nPoints(4)
+    nPointsEta_NES  = OPACITIES % Scat_NES % nPoints(5)
+
+    nOpacities_Pair = OPACITIES % Scat_Pair % nOpacities
+    nMoments_Pair   = OPACITIES % Scat_Pair % nMoments
+    nPointsT_Pair   = OPACITIES % Scat_Pair % nPoints(4)
+    nPointsEta_Pair = OPACITIES % Scat_Pair % nPoints(5)
+
+    nOpacities_Brem = OPACITIES % Scat_Brem % nOpacities
+    nMoments_Brem   = OPACITIES % Scat_Brem % nMoments
+    nPointsD_Brem   = OPACITIES % Scat_Brem % nPoints(4)
+    nPointsT_Brem   = OPACITIES % Scat_Brem % nPoints(5)
 
     C1 = [ C1_NuE, C1_NuE_Bar, &
            C1_NuM, C1_NuM_Bar, &
@@ -375,18 +411,14 @@ CONTAINS
                       1:OPACITIES % Scat_Brem % nOpacities) )
     Brem_AT = 0.0d0
 
+    CALL DeAllocateOpacityTable( OPACITIES )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
-    !$OMP          OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
-    !$OMP          EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
-    !$OMP          NES_AT, Pair_AT, Brem_AT, C1, C2 )
-
-    !$OMP TARGET UPDATE TO &
-    !$OMP ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
-    !$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
-    !$OMP   EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
-    !$OMP   NES_AT, Pair_AT, Brem_AT, C1, C2 )
+    !$OMP MAP( always, to: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    !$OMP                  OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
+    !$OMP                  EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
+    !$OMP                  NES_AT, Pair_AT, Brem_AT, C1, C2 )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
@@ -399,26 +431,23 @@ CONTAINS
                 WidthE  => MeshE % Width, &
                 NodesE  => MeshE % Nodes )
 
-    nOpacities = OPACITIES % Scat_NES % nOpacities
-    nMoments   = OPACITIES % Scat_NES % nMoments
-    nPointsT   = OPACITIES % Scat_NES % nPoints(4)
-    nPointsEta = OPACITIES % Scat_NES % nPoints(5)
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP MAP( to: CenterE, WidthE, NodesE ) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC COPYIN( CenterE, WidthE, NodesE ) &
     !$ACC PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 ) &
     !$ACC PRESENT( LogEs_T, OS_NES, NES_T, NES_AT )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
-    DO iS = 1, nOpacities
-      DO iM = 1, nMoments
-        DO iEta = 1, nPointsEta
-          DO iT = 1, nPointsT
+    DO iS = 1, nOpacities_NES
+      DO iM = 1, nMoments_NES
+        DO iEta = 1, nPointsEta_NES
+          DO iT = 1, nPointsT_NES
             DO iN_E2 = 1, nPointsE
               DO iN_E1 = 1, nPointsE
 
@@ -445,26 +474,23 @@ CONTAINS
       END DO
     END DO
 
-    nOpacities = OPACITIES % Scat_Pair % nOpacities
-    nMoments   = OPACITIES % Scat_Pair % nMoments
-    nPointsT   = OPACITIES % Scat_Pair % nPoints(4)
-    nPointsEta = OPACITIES % Scat_Pair % nPoints(5)
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP MAP( to: CenterE, WidthE, NodesE ) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC COPYIN( CenterE, WidthE, NodesE ) &
     !$ACC PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 ) &
     !$ACC PRESENT( LogEs_T, OS_Pair, Pair_T, Pair_AT )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
-    DO iS = 1, nOpacities
-      DO iM = 1, nMoments
-        DO iEta = 1, nPointsEta
-          DO iT = 1, nPointsT
+    DO iS = 1, nOpacities_Pair
+      DO iM = 1, nMoments_Pair
+        DO iEta = 1, nPointsEta_Pair
+          DO iT = 1, nPointsT_Pair
             DO iN_E2 = 1, nPointsE
               DO iN_E1 = 1, nPointsE
 
@@ -491,26 +517,23 @@ CONTAINS
       END DO
     END DO
 
-    nOpacities = OPACITIES % Scat_Brem % nOpacities
-    nMoments   = OPACITIES % Scat_Brem % nMoments
-    nPointsD   = OPACITIES % Scat_Brem % nPoints(4)
-    nPointsT   = OPACITIES % Scat_Brem % nPoints(5)
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP MAP( to: CenterE, WidthE, NodesE ) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC COPYIN( CenterE, WidthE, NodesE ) &
     !$ACC PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 ) &
     !$ACC PRESENT( LogEs_T, OS_Brem, Brem_T, Brem_AT )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #endif
-    DO iS = 1, nOpacities
-      DO iM = 1, nMoments
-        DO iD = 1, nPointsD
-          DO iT = 1, nPointsT
+    DO iS = 1, nOpacities_Brem
+      DO iM = 1, nMoments_Brem
+        DO iD = 1, nPointsD_Brem
+          DO iT = 1, nPointsT_Brem
             DO iN_E2 = 1, nPointsE
               DO iN_E1 = 1, nPointsE 
 
@@ -556,20 +579,24 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
+  IF ( Use_OpacityTables ) THEN
+
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
-    !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
-    !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
-    !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2 )
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+      !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
+      !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
+      !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2 )
 #endif
 
-    DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
-    DEALLOCATE( LogEs_T, LogDs_T, LogTs_T, LogEtas_T )
+      DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
+      DEALLOCATE( LogEs_T, LogDs_T, LogTs_T, LogEtas_T )
 
-    DEALLOCATE( OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem )
-    DEALLOCATE( EmAb_T, Iso_T, NES_T, Pair_T, Brem_T )
-    DEALLOCATE( NES_AT, Pair_AT, Brem_AT )
+      DEALLOCATE( OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem )
+      DEALLOCATE( EmAb_T, Iso_T, NES_T, Pair_T, Brem_T )
+      DEALLOCATE( NES_AT, Pair_AT, Brem_AT )
+
+  END IF
 
 #endif
 

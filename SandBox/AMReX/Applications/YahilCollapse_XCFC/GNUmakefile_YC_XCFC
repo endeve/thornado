@@ -10,7 +10,6 @@ LAPACK_HOME   ?= $(LAPACK_DIR)
 HDF5_INC ?= $(HDF5_HOME)/include
 HDF5_LIB ?= $(HDF5_HOME)/lib
 
-LAPACK_INC ?= $(LAPACK_HOME)/include
 LAPACK_LIB ?= $(LAPACK_HOME)/lib
 
 DEBUG = TRUE
@@ -26,7 +25,6 @@ INCLUDE_LOCATIONS += $(HDF5_INC)
 LIBRARY_LOCATIONS += $(HDF5_LIB)
 LIBRARIES += -lhdf5_fortran -lhdf5
 
-INCLUDE_LOCATIONS += $(LAPACK_INC)
 LIBRARY_LOCATIONS += $(LAPACK_LIB)
 LIBRARIES += -llapack -lblas
 
@@ -49,6 +47,7 @@ include $(AMREX_HOME)/Src/F_Interfaces/Base/Make.package
 include $(AMREX_HOME)/Src/F_Interfaces/AmrCore/Make.package
 
 # Include directories and source files needed from thornado
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.git
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Library
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Numbers
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.InputOutput
@@ -59,7 +58,7 @@ include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Geometry
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Mesh
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.MeshRefinement
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.ProgramHeader
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Euler_MR
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Euler
 include Make.YahilCollapse_XCFC
 
 # Include directories and source files needed from Poseidon

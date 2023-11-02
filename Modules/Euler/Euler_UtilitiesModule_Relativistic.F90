@@ -1,7 +1,10 @@
-!> Perform computations related to the 3+1, CFA Euler equations.
+!> Perform computations related to the 3+1, XCFC Euler equations.
 !> Find the equations in Rezzolla & Zanotti, Relativistic Hydrodynamics, 2013,
 !> Equation 7.234.
 MODULE Euler_UtilitiesModule_Relativistic
+
+  USE, INTRINSIC :: IEEE_ARITHMETIC, ONLY: &
+    ISNAN => IEEE_IS_NAN
 
   USE KindModule, ONLY: &
     DP, &
@@ -24,31 +27,39 @@ MODULE Euler_UtilitiesModule_Relativistic
     iGF_Alpha, &
     iGF_Beta_1
   USE FluidFieldsModule, ONLY: &
-    nCF, &
     iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
-    nPF, &
+    nCF, &
     iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
-    nAF, &
+    nPF, &
     iAF_P, &
     iAF_T, &
     iAF_Ye, &
     iAF_S, &
     iAF_E, &
+    iAF_Me, &
+    iAF_Mp, &
+    iAF_Mn, &
+    iAF_Xp, &
+    iAF_Xn, &
+    iAF_Xa, &
+    iAF_Xh, &
     iAF_Gm, &
-    iAF_Cs
+    iAF_Cs, &
+    nAF
   USE EquationOfStateModule, ONLY: &
     ComputeSoundSpeedFromPrimitive, &
     ComputeAuxiliary_Fluid, &
+    ApplyEquationOfState, &
     ComputePressureFromSpecificInternalEnergy
   USE EquationOfStateModule_TABLE, ONLY: &
     Min_D, &
@@ -112,7 +123,19 @@ MODULE Euler_UtilitiesModule_Relativistic
   REAL(DP), PARAMETER :: Offset_Temperature = 1.0e-12_DP
   REAL(DP), PARAMETER :: Offset_Epsilon     = 1.0e-12_DP
   REAL(DP), PARAMETER :: Offset_z           = 10.0_DP * SqrtTiny
+  REAL(DP), PARAMETER :: vMax               = One - 1.0e-05_DP
+  REAL(DP), PARAMETER :: kMax               = Two * vMax / ( One + vMax**2 )
 
+  INTEGER, PUBLIC, PARAMETER :: MaxIterations_ComputePrimitive_Euler = 35
+
+  ! --- User must set this in fluid initialization and update device ---
+  REAL(DP), PUBLIC :: epsMin_Euler_GR = Zero
+
+#if   defined( THORNADO_OMP_OL )
+  !$OMP DECLARE TARGET( epsMin_Euler_GR )
+#elif defined( THORNADO_OACC   )
+  !$ACC DECLARE CREATE( epsMin_Euler_GR )
+#endif
 
 CONTAINS
 
@@ -120,14 +143,36 @@ CONTAINS
   SUBROUTINE ComputePrimitive_Vector_old &
     ( uD, uS1, uS2, uS3, uE, uNe, &
       pD, pV1, pV2, pV3, pE, pNe, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      iDimX_Option, IndexTable_Option, &
+      iX_B0_Option, iX_E0_Option )
 
-    REAL(DP), INTENT(in)  :: uD(:), uS1(:), uS2(:), uS3(:), uE(:), uNe(:)
-    REAL(DP), INTENT(out) :: pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:)
-    REAL(DP), INTENT(in)  :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
+    REAL(DP)    , INTENT(inout) :: uD(:), uS1(:), uS2(:), uS3(:), uE(:), uNe(:)
+    REAL(DP)    , INTENT(out)   :: pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:)
+    REAL(DP)    , INTENT(in)    :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
+    INTEGER     , INTENT(in), OPTIONAL :: &
+      iX_B0_Option(3), iX_E0_Option(3)
+    CHARACTER(2), INTENT(in), OPTIONAL :: &
+      iDimX_Option
+    INTEGER     , INTENT(in), OPTIONAL :: &
+      IndexTable_Option(:,:)
 
-    INTEGER :: N, ErrorExists
-    INTEGER :: iNX, iErr(SIZE(uD))
+    INTEGER  :: N, ErrorExists, iX1, iX2, iX3, iNXX
+    INTEGER  :: iNX, iErr(SIZE(uD))
+    INTEGER  :: ITERATION(SIZE(uD))
+    REAL(DP) :: X1, X2, X3, dX1, dX2, dX3
+
+    CHARACTER(2) :: iDimX
+    INTEGER      :: iX_B0(3), iX_E0(3)
+
+    iDimX = 'NA'
+    IF( PRESENT( iDimX_Option ) ) iDimX = iDimX_Option
+
+    iX_B0 = -99
+    IF( PRESENT( iX_B0_Option ) ) iX_B0 = iX_B0_Option
+
+    iX_E0 = -99
+    IF( PRESENT( iX_E0_Option ) ) iX_E0 = iX_E0_Option
 
     N           = SIZE(uD)
     ErrorExists = 0
@@ -140,12 +185,12 @@ CONTAINS
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    uD, uS1, uS2, uS3, uE, uNe, &
     !$OMP             Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
-    !$OMP MAP( alloc: pD, pV1, pV2, pV3, pE, pNe, iErr )
+    !$OMP MAP( alloc: pD, pV1, pV2, pV3, pE, pNe, ITERATION, iErr )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     uD, uS1, uS2, uS3, uE, uNe, &
     !$ACC             Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
-    !$ACC CREATE(     pD, pV1, pV2, pV3, pE, pNe, iErr )
+    !$ACC CREATE(     pD, pV1, pV2, pV3, pE, pNe, ITERATION, iErr )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_CP_CopyIn )
@@ -160,19 +205,38 @@ CONTAINS
     !$ACC REDUCTION( +:ErrorExists ) &
     !$ACC PRESENT( uD, uS1, uS2, uS3, uE, uNe, &
     !$ACC          pD, pV1, pV2, pV3, pE, pNe, &
-    !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, iErr )
+    !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, ITERATION, iErr )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
     !$OMP REDUCTION( +:ErrorExists )
 #endif
     DO iNX = 1, N
 
-      iErr(iNX) = 0
+      iErr     (iNX) = 0
+      ITERATION(iNX) = 0
+
+      IF(      ISNAN( uD (iNX) ) .OR. ISNAN( uS1(iNX) ) &
+          .OR. ISNAN( uS2(iNX) ) .OR. ISNAN( uS3(iNX) ) &
+          .OR. ISNAN( uE (iNX) ) .OR. ISNAN( uNe(iNX) ) )THEN
+
+        iErr(iNX) = 13
+
+        ErrorExists = ErrorExists + iErr(iNX)
+
+        CYCLE
+
+      END IF
 
       CALL ComputePrimitive_Scalar &
              ( uD(iNX), uS1(iNX), uS2(iNX), uS3(iNX), uE(iNX), uNe(iNX), &
                pD(iNX), pV1(iNX), pV2(iNX), pV3(iNX), pE(iNX), pNe(iNX), &
-               Gm_dd_11(iNX), Gm_dd_22(iNX), Gm_dd_33(iNX), iErr(iNX) )
+               Gm_dd_11(iNX), Gm_dd_22(iNX), Gm_dd_33(iNX), &
+               ITERATION_Option = ITERATION(iNX), &
+               iErr_Option      = iErr     (iNX) )
+
+      IF(      ISNAN( uD (iNX) ) .OR. ISNAN( uS1(iNX) ) &
+          .OR. ISNAN( uS2(iNX) ) .OR. ISNAN( uS3(iNX) ) &
+          .OR. ISNAN( uE (iNX) ) .OR. ISNAN( uNe(iNX) ) ) iErr(iNX) = 14
 
       ErrorExists = ErrorExists + iErr(iNX)
 
@@ -184,12 +248,14 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    pD, pV1, pV2, pV3, pE, pNe, iErr, ErrorExists ) &
+    !$OMP MAP( from:    pD, pV1, pV2, pV3, pE, pNe, &
+    !$OMP               ITERATION, iErr ) &
     !$OMP MAP( release: uD, uS1, uS2, uS3, uE, uNe, &
     !$OMP               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      pD, pV1, pV2, pV3, pE, pNe, iErr, ErrorExists ) &
+    !$ACC COPYOUT(      pD, pV1, pV2, pV3, pE, pNe, &
+    !$ACC               ITERATION, iErr ) &
     !$ACC DELETE(       uD, uS1, uS2, uS3, uE, uNe, &
     !$ACC               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 #endif
@@ -200,12 +266,62 @@ CONTAINS
 
       DO iNX = 1, N
 
-        CALL DescribeError_Euler &
-          ( iErr(iNX), &
-            Int_Option = [ iNX ], &
-            Real_Option = [ uD(iNX), uS1(iNX), uS2(iNX), uS3(iNX), &
-                            uE(iNX), uNe(iNX), &
-                            Gm_dd_11(iNX), Gm_dd_22(iNX), Gm_dd_33(iNX) ] )
+        IF( iErr(iNX) .NE. 0 )THEN
+
+          iNXX = -99
+          iX1  = -99
+          iX2  = -99
+          iX3  = -99
+
+          X1  = -HUGE( One )
+          X2  = -HUGE( One )
+          X3  = -HUGE( One )
+          dX1 = -HUGE( One )
+          dX2 = -HUGE( One )
+          dX3 = -HUGE( One )
+
+          IF( PRESENT( iDimX_Option ) .AND. PRESENT( IndexTable_Option ) )THEN
+
+            IF     ( iDimX .EQ. 'X1' )THEN
+              iNXX = IndexTable_Option(1,iNX)
+              iX2  = IndexTable_Option(2,iNX)
+              iX3  = IndexTable_Option(3,iNX)
+              iX1  = IndexTable_Option(4,iNX)
+            ELSE IF( iDimX .EQ. 'X2' )THEN
+              iNXX = IndexTable_Option(1,iNX)
+              iX1  = IndexTable_Option(2,iNX)
+              iX3  = IndexTable_Option(3,iNX)
+              iX2  = IndexTable_Option(4,iNX)
+            ELSE IF( iDimX .EQ. 'X3' )THEN
+              iNXX = IndexTable_Option(1,iNX)
+              iX1  = IndexTable_Option(2,iNX)
+              iX2  = IndexTable_Option(3,iNX)
+              iX3  = IndexTable_Option(4,iNX)
+            END IF
+
+            X1  = MeshX(1) % Center(iX1)
+            X2  = MeshX(2) % Center(iX2)
+            X3  = MeshX(3) % Center(iX3)
+
+            dX1 = MeshX(1) % Width (iX1)
+            dX2 = MeshX(2) % Width (iX2)
+            dX3 = MeshX(3) % Width (iX3)
+
+          END IF
+
+          CALL DescribeError_Euler &
+            ( iErr(iNX), &
+              Int_Option = [ ITERATION(iNX), iNX, &
+                             iX_B0(1), iX_B0(2), iX_B0(3), &
+                             iX_E0(1), iX_E0(2), iX_E0(3), &
+                             iNXX, iX1, iX2, iX3 ], &
+              Real_Option = [ X1, X2, X3, dX1, dX2, dX3, &
+                              uD(iNX), uS1(iNX), uS2(iNX), uS3(iNX), &
+                              uE(iNX), uNe(iNX), &
+                              Gm_dd_11(iNX), Gm_dd_22(iNX), Gm_dd_33(iNX) ], &
+              Char_Option = [ TRIM( iDimX ) ] )
+
+        END IF
 
       END DO
 
@@ -221,9 +337,9 @@ CONTAINS
 !!$      pD, pV1, pV2, pV3, pE, pNe, &
 !!$      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 !!$
-!!$    REAL(DP), INTENT(in)  :: uD(:), uS1(:), uS2(:), uS3(:), uE(:), uNe(:)
-!!$    REAL(DP), INTENT(out) :: pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:)
-!!$    REAL(DP), INTENT(in)  :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
+!!$    REAL(DP), INTENT(inout) :: uD(:), uS1(:), uS2(:), uS3(:), uE(:), uNe(:)
+!!$    REAL(DP), INTENT(out)   :: pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:)
+!!$    REAL(DP), INTENT(in)    :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
 !!$
 !!$    INTEGER  :: N, iX, ErrorExists
 !!$    INTEGER  :: iErr(SIZE(uD))
@@ -284,7 +400,7 @@ CONTAINS
 !!$
 !!$    CALL TimersStart_Euler( Timer_Euler_CP_Bisection )
 !!$
-!!$    CALL SolveZ_Bisection_Vector &
+!!$    CALL SolveF_Bisection_Vector &
 !!$           ( N, uD, uNe, q, r, k, &
 !!$             za, zb, fa, fb, &
 !!$             dz, zc, fc, ITERATE )
@@ -374,7 +490,7 @@ CONTAINS
 !!$
 !!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
 !!$    !$OMP TARGET EXIT DATA &
-!!$    !$OMP MAP( from:    iErr, ErrorExists, &
+!!$    !$OMP MAP( from:    iErr, &
 !!$    !$OMP               pD, pV1, pV2, pV3, pE, pNe ) &
 !!$    !$OMP MAP( release: uD, uS1, uS2, uS3, uE, uNe, &
 !!$    !$OMP               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
@@ -385,7 +501,7 @@ CONTAINS
 !!$    !$OMP               ITERATE )
 !!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
 !!$    !$ACC EXIT DATA &
-!!$    !$ACC COPYOUT(      iErr, ErrorExists, &
+!!$    !$ACC COPYOUT(      iErr, &
 !!$    !$ACC               pD, pV1, pV2, pV3, pE, pNe ) &
 !!$    !$ACC DELETE(       uD, uS1, uS2, uS3, uE, uNe, &
 !!$    !$ACC               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
@@ -420,11 +536,11 @@ CONTAINS
 
   !> Compute the primitive variables from the conserved variables,
   !> a la Galeazzi et al., (2013), Phys. Rev. D., 88, 064009, Appendix C
-  !> @todo Modify for tabular EOS
   SUBROUTINE ComputePrimitive_Scalar &
     ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-      GF_Gm11, GF_Gm22, GF_Gm33, iErr )
+      GF_Gm11, GF_Gm22, GF_Gm33, &
+      ITERATION_Option, iErr_Option )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
@@ -432,17 +548,28 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)    :: &
+    REAL(DP), INTENT(inout) :: &
       CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
     REAL(DP), INTENT(in)    :: &
       GF_Gm11, GF_Gm22, GF_Gm33
     REAL(DP), INTENT(out)   :: &
       PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne
     INTEGER,  INTENT(inout), OPTIONAL :: &
-      iErr
+      ITERATION_Option
+    INTEGER,  INTENT(inout), OPTIONAL :: &
+      iErr_Option
 
     REAL(DP) :: S, q, r, k, z0
     REAL(DP) :: W, eps, p, h, DhW
+    INTEGER  :: ITERATION, iErr
+
+    ITERATION = 0
+    IF( PRESENT( ITERATION_Option ) ) &
+      ITERATION = ITERATION_Option
+
+    iErr = 0
+    IF( PRESENT( iErr_Option ) ) &
+      iErr = iErr_Option
 
     S = SQRT( CF_S1**2 / GF_Gm11 + CF_S2**2 / GF_Gm22 + CF_S3**2 / GF_Gm33 )
 
@@ -463,6 +590,8 @@ CONTAINS
       PF_E  = MAX( CF_E, SqrtTiny ) ! What to put here
       PF_Ne = CF_Ne / CF_D
 
+      iErr = 11
+
       RETURN
 
     END IF
@@ -474,9 +603,17 @@ CONTAINS
 
     END IF
 
+    IF( k .GT. kMax )THEN
+
+      k = kMax
+      r = kMax * ( One + q )
+
+    END IF
+
     ! --- Solve for primitive ---
 
-    CALL SolveZ_Bisection_Scalar( CF_D, CF_Ne, q, r, k, z0, iErr )
+    CALL SolveF_Bisection_Scalar &
+           ( CF_D, CF_Ne, q, r, k, z0, iErr, ITERATION )
 
     ! --- Eq. C15 ---
 
@@ -499,6 +636,12 @@ CONTAINS
     PF_V2 = ( CF_S2 / GF_Gm22 ) / DhW
     PF_V3 = ( CF_S3 / GF_Gm33 ) / DhW
     PF_E  = PF_D * eps
+
+    IF( PRESENT( ITERATION_Option ) ) &
+      ITERATION_Option = ITERATION
+
+    IF( PRESENT( iErr_Option ) ) &
+      iErr_Option = iErr
 
   END SUBROUTINE ComputePrimitive_Scalar
 
@@ -583,19 +726,23 @@ CONTAINS
   SUBROUTINE ComputeFromConserved_Euler_Relativistic &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+    REAL(DP), INTENT(in)    :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(out)   :: &
       P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iNX, iX1, iX2, iX3, iAF, ErrorExists
-    INTEGER :: iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
-                            iX_B0(2):iX_E0(2), &
-                            iX_B0(3):iX_E0(3))
+    INTEGER :: ITERATION(1:nDOFX,iX_B0(1):iX_E0(1), &
+                                 iX_B0(2):iX_E0(2), &
+                                 iX_B0(3):iX_E0(3))
+    INTEGER :: iErr     (1:nDOFX,iX_B0(1):iX_E0(1), &
+                                 iX_B0(2):iX_E0(2), &
+                                 iX_B0(3):iX_E0(3))
 
     CALL TimersStart_Euler( Timer_Euler_ComputeFromConserved )
 
@@ -608,11 +755,11 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U ) &
-    !$OMP MAP( alloc: P, A, iErr )
+    !$OMP MAP( alloc: P, A, ITERATION, iErr )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U ) &
-    !$ACC CREATE(     P, A, iErr )
+    !$ACC CREATE(     P, A, ITERATION, iErr )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_CFC_CopyIn )
@@ -657,25 +804,27 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1, nDOFX
 
-      iErr(iNX,iX1,iX2,iX3) = 0
+      ITERATION(iNX,iX1,iX2,iX3) = 0
+      iErr     (iNX,iX1,iX2,iX3) = 0
 
       CALL ComputePrimitive_Euler_Relativistic &
-             ( U   (iNX,iX1,iX2,iX3,iCF_D ),        &
-               U   (iNX,iX1,iX2,iX3,iCF_S1),        &
-               U   (iNX,iX1,iX2,iX3,iCF_S2),        &
-               U   (iNX,iX1,iX2,iX3,iCF_S3),        &
-               U   (iNX,iX1,iX2,iX3,iCF_E ),        &
-               U   (iNX,iX1,iX2,iX3,iCF_Ne),        &
-               P   (iNX,iX1,iX2,iX3,iPF_D ),        &
-               P   (iNX,iX1,iX2,iX3,iPF_V1),        &
-               P   (iNX,iX1,iX2,iX3,iPF_V2),        &
-               P   (iNX,iX1,iX2,iX3,iPF_V3),        &
-               P   (iNX,iX1,iX2,iX3,iPF_E ),        &
-               P   (iNX,iX1,iX2,iX3,iPF_Ne),        &
-               G   (iNX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
-               G   (iNX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
-               G   (iNX,iX1,iX2,iX3,iGF_Gm_dd_33),  &
-               iErr(iNX,iX1,iX2,iX3) )
+             ( U(iNX,iX1,iX2,iX3,iCF_D ),        &
+               U(iNX,iX1,iX2,iX3,iCF_S1),        &
+               U(iNX,iX1,iX2,iX3,iCF_S2),        &
+               U(iNX,iX1,iX2,iX3,iCF_S3),        &
+               U(iNX,iX1,iX2,iX3,iCF_E ),        &
+               U(iNX,iX1,iX2,iX3,iCF_Ne),        &
+               P(iNX,iX1,iX2,iX3,iPF_D ),        &
+               P(iNX,iX1,iX2,iX3,iPF_V1),        &
+               P(iNX,iX1,iX2,iX3,iPF_V2),        &
+               P(iNX,iX1,iX2,iX3,iPF_V3),        &
+               P(iNX,iX1,iX2,iX3,iPF_E ),        &
+               P(iNX,iX1,iX2,iX3,iPF_Ne),        &
+               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
+               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
+               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33),  &
+               ITERATION_Option = ITERATION(iNX,iX1,iX2,iX3), &
+               iErr_Option      = iErr     (iNX,iX1,iX2,iX3) )
 
       ErrorExists = ErrorExists + iErr(iNX,iX1,iX2,iX3)
 
@@ -691,6 +840,28 @@ CONTAINS
                A(iNX,iX1,iX2,iX3,iAF_Gm), &
                A(iNX,iX1,iX2,iX3,iAF_Cs) )
 
+      CALL ApplyEquationOfState &
+             ( P(iNX,iX1,iX2,iX3,iPF_D ), &
+               A(iNX,iX1,iX2,iX3,iAF_T ), &
+               A(iNX,iX1,iX2,iX3,iAF_Ye), &
+               A(iNX,iX1,iX2,iX3,iAF_P ), &
+               A(iNX,iX1,iX2,iX3,iAF_S ), &
+               A(iNX,iX1,iX2,iX3,iAF_E ), &
+               A(iNX,iX1,iX2,iX3,iAF_Me), &
+               A(iNX,iX1,iX2,iX3,iAF_Mp), &
+               A(iNX,iX1,iX2,iX3,iAF_Mn), &
+               A(iNX,iX1,iX2,iX3,iAF_Xp), &
+               A(iNX,iX1,iX2,iX3,iAF_Xn), &
+               A(iNX,iX1,iX2,iX3,iAF_Xa), &
+               A(iNX,iX1,iX2,iX3,iAF_Xh), &
+               A(iNX,iX1,iX2,iX3,iAF_Gm) )
+
+      A(iNX,iX1,iX2,iX3,iAF_Cs) &
+        = SQRT( A(iNX,iX1,iX2,iX3,iAF_Gm) * A(iNX,iX1,iX2,iX3,iAF_P) &
+                  / (   P(iNX,iX1,iX2,iX3,iPF_D) &
+                      + P(iNX,iX1,iX2,iX3,iPF_E) &
+                      + A(iNX,iX1,iX2,iX3,iAF_P) ) )
+
     END DO
     END DO
     END DO
@@ -702,11 +873,11 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    P, A, iErr, ErrorExists ) &
+    !$OMP MAP( from:    P, A, ITERATION, iErr ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      P, A, iErr, ErrorExists ) &
+    !$ACC COPYOUT(      P, A, ITERATION, iErr ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 #endif
 
@@ -716,23 +887,26 @@ CONTAINS
 
     IF( ErrorExists .GT. 0 )THEN
 
-      WRITE(*,*) 'ERROR: ComputeFromConserved_Euler_Relativistic'
-      WRITE(*,*) 'iX_B0: ', iX_B0
-      WRITE(*,*) 'iX_E0: ', iX_E0
-
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
-      DO iNX = 1, nDOFX
+      DO iNX = 1       , nDOFX
 
         IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
-          WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
-
           CALL DescribeError_Euler &
             ( iErr(iNX,iX1,iX2,iX3), &
-              Int_Option = [ iNX ], &
-              Real_Option = [ U(iNX,iX1,iX2,iX3,iCF_D ), &
+              Int_Option = [ ITERATION(iNX,iX1,iX2,iX3), 99999999, &
+                             iX_B0(1), iX_B0(2), iX_B0(3), &
+                             iX_E0(1), iX_E0(2), iX_E0(3), &
+                             iNX, iX1, iX2, iX3 ], &
+              Real_Option = [ MeshX(1) % Center(iX1), &
+                              MeshX(2) % Center(iX2), &
+                              MeshX(3) % Center(iX3), &
+                              MeshX(1) % Width (iX1), &
+                              MeshX(2) % Width (iX2), &
+                              MeshX(3) % Width (iX3), &
+                              U(iNX,iX1,iX2,iX3,iCF_D ), &
                               U(iNX,iX1,iX2,iX3,iCF_S1), &
                               U(iNX,iX1,iX2,iX3,iCF_S2), &
                               U(iNX,iX1,iX2,iX3,iCF_S3), &
@@ -740,7 +914,10 @@ CONTAINS
                               U(iNX,iX1,iX2,iX3,iCF_Ne), &
                               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ] )
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ], &
+              Char_Option = [ 'NA' ], &
+              Message_Option &
+                = 'Calling from ComputeFromConserved_Euler_Relativistic' )
 
         END IF
 
@@ -763,22 +940,26 @@ CONTAINS
   SUBROUTINE ComputeTimeStep_Euler_Relativistic &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+    REAL(DP), INTENT(in)    :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       CFL
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(out)   :: &
       TimeStep
 
     INTEGER  :: iX1, iX2, iX3, iNX, iDimX, ErrorExists
     REAL(DP) :: dX(3), dt
     REAL(DP) :: P(nPF), Cs, EigVals(nCF)
-    INTEGER  :: iErr(1:nDOFX,iX_B0(1):iX_E0(1), &
-                             iX_B0(2):iX_E0(2), &
-                             iX_B0(3):iX_E0(3))
+    INTEGER  :: ITERATION(1:nDOFX,iX_B0(1):iX_E0(1), &
+                                  iX_B0(2):iX_E0(2), &
+                                  iX_B0(3):iX_E0(3))
+    INTEGER  :: iErr     (1:nDOFX,iX_B0(1):iX_E0(1), &
+                                  iX_B0(2):iX_E0(2), &
+                                  iX_B0(3):iX_E0(3))
 
     ASSOCIATE &
       ( dX1 => MeshX(1) % Width, &
@@ -794,11 +975,11 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    G, U, iX_B0, iX_E0, dX1, dX2, dX3 ) &
-    !$OMP MAP( alloc: iErr )
+    !$OMP MAP( alloc: ITERATION, iErr )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     G, U, iX_B0, iX_E0, dX1, dX2, dX3 ) &
-    !$ACC CREATE(     iErr )
+    !$ACC CREATE(     ITERATION, iErr )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_CTS_CopyIn )
@@ -817,7 +998,7 @@ CONTAINS
     !$ACC PRIVATE( dX, dt, P, Cs, EigVals ) &
     !$ACC REDUCTION( MIN: TimeStep ) &
     !$ACC REDUCTION( +:ErrorExists ) &
-    !$ACC PRESENT( G, U, iX_B0, iX_E0, dX1, dX2, dX3, iErr )
+    !$ACC PRESENT( G, U, iX_B0, iX_E0, dX1, dX2, dX3, ITERATION, iErr )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP PRIVATE( dX, dt, P, Cs, EigVals ) &
@@ -829,25 +1010,31 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1, nDOFX
 
-      iErr(iNX,iX1,iX2,iX3) = 0
+      ITERATION(iNX,iX1,iX2,iX3) = 0
+      iErr     (iNX,iX1,iX2,iX3) = 0
 
       dX(1) = dX1(iX1)
       dX(2) = dX2(iX2)
       dX(3) = dX3(iX3)
 
       CALL ComputePrimitive_Euler_Relativistic &
-             ( U   (iNX,iX1,iX2,iX3,iCF_D ), &
-               U   (iNX,iX1,iX2,iX3,iCF_S1), &
-               U   (iNX,iX1,iX2,iX3,iCF_S2), &
-               U   (iNX,iX1,iX2,iX3,iCF_S3), &
-               U   (iNX,iX1,iX2,iX3,iCF_E ), &
-               U   (iNX,iX1,iX2,iX3,iCF_Ne), &
-               P   (iPF_D ), P(iPF_V1), P(iPF_V2), &
-               P   (iPF_V3), P(iPF_E ), P(iPF_Ne), &
-               G   (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-               G   (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               G   (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-               iErr(iNX,iX1,iX2,iX3) )
+             ( U(iNX,iX1,iX2,iX3,iCF_D ), &
+               U(iNX,iX1,iX2,iX3,iCF_S1), &
+               U(iNX,iX1,iX2,iX3,iCF_S2), &
+               U(iNX,iX1,iX2,iX3,iCF_S3), &
+               U(iNX,iX1,iX2,iX3,iCF_E ), &
+               U(iNX,iX1,iX2,iX3,iCF_Ne), &
+               P(iPF_D ), &
+               P(iPF_V1), &
+               P(iPF_V2), &
+               P(iPF_V3), &
+               P(iPF_E ), &
+               P(iPF_Ne), &
+               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               ITERATION_Option = ITERATION(iNX,iX1,iX2,iX3), &
+               iErr_Option      = iErr     (iNX,iX1,iX2,iX3) )
 
       ErrorExists = ErrorExists + iErr(iNX,iX1,iX2,iX3)
 
@@ -886,11 +1073,11 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    iErr, ErrorExists ) &
+    !$OMP MAP( from:    ITERATION, iErr ) &
     !$OMP MAP( release: G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      iErr, ErrorExists ) &
+    !$ACC COPYOUT(      ITERATION, iErr ) &
     !$ACC DELETE(       G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #endif
 
@@ -900,23 +1087,26 @@ CONTAINS
 
     IF( ErrorExists .GT. 0 )THEN
 
-      WRITE(*,*) 'ERROR: ComputeTimeStep_Euler_Relativistic'
-      WRITE(*,*) 'iX_B0: ', iX_B0
-      WRITE(*,*) 'iX_E0: ', iX_E0
-
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
-      DO iNX = 1, nDOFX
+      DO iNX = 1       , nDOFX
 
         IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
 
-          WRITE(*,*) 'iNX, iX1, iX2, iX3 = ', iNX, iX1, iX2, iX3
-
           CALL DescribeError_Euler &
             ( iErr(iNX,iX1,iX2,iX3), &
-              Int_Option = [ iNX ], &
-              Real_Option = [ U(iNX,iX1,iX2,iX3,iCF_D ), &
+              Int_Option = [ ITERATION(iNX,iX1,iX2,iX3), 99999999, &
+                             iX_B0(1), iX_B0(2), iX_B0(3), &
+                             iX_E0(1), iX_E0(2), iX_E0(3), &
+                             iNX, iX1, iX2, iX3 ], &
+              Real_Option = [ MeshX(1) % Center(iX1), &
+                              MeshX(2) % Center(iX2), &
+                              MeshX(3) % Center(iX3), &
+                              MeshX(1) % Width (iX1), &
+                              MeshX(2) % Width (iX2), &
+                              MeshX(3) % Width (iX3), &
+                              U(iNX,iX1,iX2,iX3,iCF_D ), &
                               U(iNX,iX1,iX2,iX3,iCF_S1), &
                               U(iNX,iX1,iX2,iX3,iCF_S2), &
                               U(iNX,iX1,iX2,iX3,iCF_S3), &
@@ -924,7 +1114,10 @@ CONTAINS
                               U(iNX,iX1,iX2,iX3,iCF_Ne), &
                               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ] )
+                              G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ], &
+              Char_Option = [ 'NA' ], &
+              Message_Option &
+                = 'Calling from ComputeTimeStep_Euler_Relativistic' )
 
         END IF
 
@@ -1691,8 +1884,9 @@ CONTAINS
 !!$
 !!$  END SUBROUTINE GetBoundsForBisection
 
-
 #ifdef MICROPHYSICS_WEAKLIB
+
+  ! --- TABLE EOS Version ---
 
   SUBROUTINE ComputeFunZ_Scalar( D, Ne, r, z, q, FunZ )
 
@@ -1921,6 +2115,8 @@ CONTAINS
 
 #else
 
+  ! --- IDEAL EOS Version ---
+
   SUBROUTINE ComputeFunZ_Scalar( D, Ne, r, z, q, FunZ )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
@@ -1929,8 +2125,9 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)  :: D, Ne, r, z, q
-    REAL(DP), INTENT(out) :: FunZ
+    REAL(DP), INTENT(in)    :: D, Ne, r, z
+    REAL(DP), INTENT(inout) :: q
+    REAL(DP), INTENT(out)   :: FunZ
 
     REAL(DP) :: Wt, rhot, epst, pt, at, Ye, ht
 
@@ -1942,6 +2139,20 @@ CONTAINS
     ! --- Eq. C16 ---
 
     epst = Wt * q - z * r + z**2 / ( One + Wt )
+
+    IF( epst .LT. epsMin_Euler_GR )THEN
+
+      PRINT *, 'IntE (Old), IntE (New): ', epst, epsMin_Euler_GR
+      PRINT *, 'q+1=E/D (Old): ', q+One
+
+      q = ( One + q ) * ( One + epsMin_Euler_GR ) &
+            / ( One + epst ) - One
+
+      PRINT *, 'q+1=E/D (New): ', q+One
+
+      epst = epsMin_Euler_GR
+
+    END IF
 
     Ye = Ne * AtomicMassUnit / D
 
@@ -2022,8 +2233,8 @@ CONTAINS
 
 #endif
 
-  SUBROUTINE SolveZ_Bisection_Scalar &
-    ( CF_D, CF_Ne, q, r, k, z0, iErr, dzMin_Option )
+  SUBROUTINE SolveF_Bisection_Scalar &
+    ( CF_D, CF_Ne, q, r, k, z0, iErr, ITERATION, dzMin_Option )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
@@ -2035,19 +2246,19 @@ CONTAINS
     REAL(DP), INTENT(inout) :: q
     REAL(DP), INTENT(out)   :: z0
     INTEGER,  INTENT(inout) :: iErr
+    INTEGER,  INTENT(inout) :: ITERATION
     REAL(DP), INTENT(in), OPTIONAL :: dzMin_Option
 
     LOGICAL  :: CONVERGED
-    INTEGER  :: ITERATION
     REAL(DP) :: za, zb, zc, dz, dzMin
     REAL(DP) :: fa, fb, fc
-    INTEGER  :: MAX_IT
+    !INTEGER  :: MaxIterations_ComputePrimitive_Euler
 
     dzMin = 1.0e-08_DP
     IF( PRESENT( dzMin_Option ) ) &
       dzMin = dzMin_Option
 
-    MAX_IT = 4 - INT( LOG( dzMin ) / LOG( Two ) )
+    !MaxIterations_ComputePrimitive_Euler = 4 - INT( LOG( dzMin ) / LOG( Two ) )
 
     ! --- Eq. C23 ---
 
@@ -2070,7 +2281,8 @@ CONTAINS
 
     ITERATION = 0
     CONVERGED = .FALSE.
-    DO WHILE ( .NOT. CONVERGED .AND. ITERATION .LT. MAX_IT )
+    DO WHILE( .NOT. CONVERGED &
+                .AND. ITERATION .LT. MaxIterations_ComputePrimitive_Euler )
 
       ITERATION = ITERATION + 1
 
@@ -2123,23 +2335,26 @@ CONTAINS
       IF( ABS( dz ) / MAX( ABS( zc ), SqrtTiny ) .LE. dzMin ) &
         CONVERGED = .TRUE.
 
-!!$      IF( ITERATION .GT. MAX_IT - 3 )THEN
-!!$
-!!$        WRITE(*,*) 'Iter   = ', ITERATION
-!!$        WRITE(*,*) 'za, zb = ', za, zb
-!!$        WRITE(*,*) 'dz     = ', dz
-!!$        WRITE(*,*)
-!!$
-!!$      END IF
+     IF( ITERATION .GT. MaxIterations_ComputePrimitive_Euler - 2 )THEN
+
+        WRITE(*,*) 'Iter       = ', ITERATION
+        WRITE(*,*) 'za, zb     = ', za, zb
+        WRITE(*,*) 'fa, fb     = ', fa, fb
+        WRITE(*,*) '|dz|/|zc|  = ', ABS( dz ) / MAX( ABS( zc ), SqrtTiny )
+        WRITE(*,*)
+
+      END IF
 
     END DO
 
+    IF( ITERATION .EQ. MaxIterations_ComputePrimitive_Euler ) iErr = 12
+
     z0 = zc
 
-  END SUBROUTINE SolveZ_Bisection_Scalar
+  END SUBROUTINE SolveF_Bisection_Scalar
 
 
-!!$  SUBROUTINE SolveZ_Bisection_Vector &
+!!$  SUBROUTINE SolveF_Bisection_Vector &
 !!$    ( N, uD, uNe, q, r, k, &
 !!$      za, zb, fa, fb, &
 !!$      dz, zc, fc, ITERATE, dzMin_Option )
@@ -2152,7 +2367,7 @@ CONTAINS
 !!$    REAL(DP), INTENT(in), OPTIONAL :: dzMin_Option
 !!$
 !!$    REAL(DP) :: dzMin
-!!$    INTEGER  :: MAX_IT
+!!$    INTEGER  :: MaxIterations_ComputePrimitive_Euler
 !!$
 !!$    INTEGER :: ITERATION, iX
 !!$
@@ -2160,10 +2375,11 @@ CONTAINS
 !!$    IF( PRESENT( dzMin_Option ) ) &
 !!$      dzMin = dzMin_Option
 !!$
-!!$    MAX_IT = 4 - INT( LOG( dzMin ) / LOG( Two ) )
+!!$    MaxIterations_ComputePrimitive_Euler = 4 - INT( LOG( dzMin ) / LOG( Two ) )
 !!$
 !!$    ITERATION = 0
-!!$    DO WHILE( ANY( ITERATE ) .AND. ITERATION .LT. MAX_IT )
+!!$    DO WHILE( ANY( ITERATE ) &
+!!$              .AND. ITERATION .LT. MaxIterations_ComputePrimitive_Euler )
 !!$
 !!$      ITERATION = ITERATION + 1
 !!$
@@ -2222,7 +2438,7 @@ CONTAINS
 !!$          IF( ABS( dz(iX) ) .LE. ABS( zc(iX) ) * dzMin ) &
 !!$            ITERATE(iX) = .FALSE.
 !!$
-!!$!!$          IF( ITERATION .GT. MAX_IT - 3 )THEN
+!!$!!$          IF( ITERATION .GT. MaxIterations_ComputePrimitive_Euler - 3 )THEN
 !!$!!$
 !!$!!$            WRITE(*,*) 'iX     = ', iX
 !!$!!$            WRITE(*,*) 'Iter   = ', ITERATION
@@ -2245,8 +2461,8 @@ CONTAINS
 !!$      !$ACC UPDATE HOST       ( ITERATE )
 !!$#endif
 !!$
-!!$    END DO ! WHILE( ANY( ITERATE ) .AND. ITERATION .LT. MAX_IT )
+!!$    END DO ! WHILE( ANY( ITERATE ) .AND. ITERATION .LT. MaxIterations_ComputePrimitive_Euler )
 !!$
-!!$  END SUBROUTINE SolveZ_Bisection_Vector
+!!$  END SUBROUTINE SolveF_Bisection_Vector
 
 END MODULE Euler_UtilitiesModule_Relativistic

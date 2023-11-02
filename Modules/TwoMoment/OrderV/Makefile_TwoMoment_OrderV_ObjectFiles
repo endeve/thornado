@@ -1,0 +1,10 @@
+TWO_MOMENT += \
+  TwoMoment_UtilitiesModule.o \
+  TwoMoment_TroubledCellIndicatorModule.o \
+  TwoMoment_SlopeLimiterModule.o \
+  TwoMoment_PositivityLimiterModule.o \
+  TwoMoment_OpacityModule.o \
+  TwoMoment_DiscretizationModule_Streaming.o \
+  TwoMoment_DiscretizationModule_Collisions.o \
+  TwoMoment_TallyModule.o \
+  TwoMoment_TimeSteppingModule.o

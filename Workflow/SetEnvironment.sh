@@ -70,6 +70,15 @@ elif [[ $THORNADO_MACHINE == acf* ]]; then
   module purge
   module load GNU/8.2.0-2.31.1 OpenMPI/3.1.3 HDF5/1.10.4
 
+elif [[ $THORNADO_MACHINE == isaac* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
+  module unload PE-intel
+  module unload intel-mpi
+  module unload intel-compilers
+
 elif [[ $THORNADO_MACHINE == sn1987b* ]]; then
 
   echo
@@ -247,6 +256,18 @@ elif [[ $THORNADO_MACHINE == acf_gnu ]]; then
   module swap intel-mpi/2018.1.163 openmpi/3.0.0-gcc6.3.0
   module load hdf5
   module load lapack
+
+elif [[ $THORNADO_MACHINE == isaac_intel ]]; then
+
+  echo
+
+  module load intel-compilers
+  module load intel-mpi
+  module load PE-intel
+  module load hdf5/1.10.8-intel
+  module load netlib-lapack/3.8.0
+
+  export LAPACK_DIR=/spack/spack-0.16.3/apps/linux-rhel8-cascadelake/gcc-10.2.0/netlib-lapack-3.8.0-xh7uzdm4yijch4yghw3fo2tvv3wrq553
 
 elif [[ $THORNADO_MACHINE == sn1987b ]]; then
 

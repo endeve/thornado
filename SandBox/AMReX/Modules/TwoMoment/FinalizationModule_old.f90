@@ -11,7 +11,7 @@ MODULE FinalizationModule
   ! --- thornado Modules ---
   USE RadiationFieldsModule,                ONLY: &
     DestroyRadiationFields
-  USE TwoMoment_TimersModule_OrderV, ONLY: &
+  USE TwoMoment_TimersModule, ONLY: &
     FinalizeTimers
 
   ! --- Local Modules ---

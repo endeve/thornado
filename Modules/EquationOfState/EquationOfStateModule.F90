@@ -211,6 +211,12 @@ CONTAINS
   SUBROUTINE ApplyEquationOfState_Scalar &
     ( D, T, Y, P, S, E, Me, Mp, Mn, Xp, Xn, Xa, Xh, Gm )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
     REAL(DP), INTENT(in)  :: D, T, Y
     REAL(DP), INTENT(out) :: P, S, E, Me, Mp, Mn, Xp, Xn, Xa, Xh, Gm
 
@@ -811,7 +817,7 @@ CONTAINS
     ELSE
 
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-             ( D, E, Y, T, Error_Option = Error )
+             ( D, E, Y, T, Error )
 
     END IF
 

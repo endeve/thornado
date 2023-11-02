@@ -25,9 +25,9 @@ MODULE FinalizationModule
     DestroyGeometryFieldsE
   USE EquationOfStateModule, ONLY: &
     FinalizeEquationOfState
-  USE TwoMoment_OpacityModule_Relativistic, ONLY: &
+  USE TwoMoment_OpacityModule, ONLY: &
     DestroyOpacities
-  USE TwoMoment_TimersModule_Relativistic, ONLY: &
+  USE TwoMoment_TimersModule, ONLY: &
     FinalizeTimers
 
   ! --- Local Modules ---
@@ -44,6 +44,7 @@ MODULE FinalizationModule
   USE MF_FieldsModule_TwoMoment, ONLY: &
     MF_uCR, &
     MF_uPR, &
+    MF_uGR, &
     DestroyFields_TwoMoment_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
@@ -54,12 +55,21 @@ MODULE FinalizationModule
   USE MF_TwoMoment_TimeSteppingModule_Relativistic, ONLY: &
     Finalize_IMEX_RK_MF
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
-    ComputeFromConserved_TwoMoment_MF
+    ComputeFromConserved_TwoMoment_MF, &
+    ComputeGray_TwoMoment_MF
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
   USE MF_Euler_TallyModule, ONLY: &
-    FinalizeTally_Euler_MF
+    FinalizeTally_Euler_MF, &
+    BaryonicMass_Initial, &
+    BaryonicMass_OffGrid, &
+    Energy_Initial, &
+    Energy_OffGrid, &
+    ElectronNumber_Initial, &
+    ElectronNumber_OffGrid, &
+    ADMMass_Initial, &
+    ADMMass_OffGrid
   USE MF_TwoMoment_TallyModule, ONLY: &
     FinalizeTally_TwoMoment_MF
   USE InputParsingModule, ONLY: &
@@ -67,9 +77,7 @@ MODULE FinalizationModule
     StepNo, &
     dt, &
     t_old, &
-    t_new, &
-    lo_bc, &
-    hi_bc
+    t_new
 
   IMPLICIT NONE
   PRIVATE
@@ -87,6 +95,10 @@ CONTAINS
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
+
+    CALL ComputeGray_TwoMoment_MF &
+           ( MF_uGF, MF_uPF, MF_uCR, MF_uPR, MF_uGR )
+
     CALL WriteFieldsAMReX_PlotFile &
            ( t_new(0), StepNo, MF_uGF, &
              MF_uGF_Option = MF_uGF, &
@@ -95,10 +107,17 @@ CONTAINS
              MF_uAF_Option = MF_uAF, &
              MF_uDF_Option = MF_uDF, &
              MF_uPR_Option = MF_uPR, &
-             MF_uCR_Option = MF_uCR )
+             MF_uCR_Option = MF_uCR, &
+             MF_uGR_Option = MF_uGR )
+
+
 
     CALL WriteFieldsAMReX_Checkpoint &
            ( StepNo, nLevels, dt, t_new, &
+             [ BaryonicMass_Initial  , BaryonicMass_OffGrid   ], &
+             [ Energy_Initial        , Energy_OffGrid         ], &
+             [ ElectronNumber_Initial, ElectronNumber_OffGrid ], &
+             [ ADMMass_Initial       , ADMMass_OffGrid        ], &
              MF_uGF % BA % P, &
              iWriteFields_uGF = 1, &
              iWriteFields_uCF = 1, &
@@ -136,9 +155,6 @@ CONTAINS
 
     CALL FinalizeReferenceElementX_Lagrange
     CALL FinalizeReferenceElementX
-
-    DEALLOCATE( hi_bc )
-    DEALLOCATE( lo_bc )
 
     CALL DestroyFields_TwoMoment_MF
     CALL DestroyFields_Euler_MF

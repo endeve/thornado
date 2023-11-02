@@ -18,7 +18,8 @@ DeviceModule_prereqs += MagmaModule.o
 endif
 
 MemoryProfilingModule.o: \
-  MemoryProfilingModule.F90
+  KindModule.o \
+  MemoryProfilingModule.f90
 
 ArrayUtilitiesModule.o: \
   KindModule.o \
@@ -153,4 +154,5 @@ SubcellReconstructionModule.o: \
   PolynomialBasisModuleX_Lagrange.o \
   GeometryFieldsModule.o \
   MeshModule.o \
+  LinearAlgebraModule.o \
   SubcellReconstructionModule.F90

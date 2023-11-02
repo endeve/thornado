@@ -194,41 +194,46 @@ CONTAINS
              LimiterThresholdParameter_Option = LimiterThresholdParameter )
 
     IF( Verbose )THEN
+
       WRITE(*,*)
+
       WRITE(*,'(A)') &
         '    INFO: Slope Limiter (Euler, Relativistic, TABLE)'
       WRITE(*,'(A)') &
         '    ------------------------------------------------'
       WRITE(*,*)
-      WRITE(*,'(A4,A27,L1)'       ) '', 'UseSlopeLimiter: ' , &
+      WRITE(*,'(A4,A29,L1)'       ) '', 'UseSlopeLimiter: ' , &
         UseSlopeLimiter
       WRITE(*,*)
-      WRITE(*,'(A4,A27,A)')         '', 'SlopeLimiterMethod: ', &
+      WRITE(*,'(A4,A29,A)')         '', 'SlopeLimiterMethod: ', &
         TRIM( SlopeLimiterMethod )
       WRITE(*,*)
 
       IF( TRIM( SlopeLimiterMethod ) .EQ. 'TVD' )THEN
 
-        WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'BetaTVD: ' , &
+        WRITE(*,'(A4,A29,ES10.3E3)' ) '', 'BetaTVD: ' , &
           BetaTVD
-        WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'BetaTVB: ' , &
+        WRITE(*,'(A4,A29,ES10.3E3)' ) '', 'BetaTVB: ' , &
           BetaTVB
-        WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'SlopeTolerance: ' , &
+        WRITE(*,'(A4,A29,ES10.3E3)' ) '', 'SlopeTolerance: ' , &
           SlopeTolerance
         WRITE(*,*)
 
       END IF
 
-      WRITE(*,'(A4,A27,L1)'       ) '', 'UseCharacteristicLimiting: ' , &
+      WRITE(*,'(A4,A29,L1)'       ) '', 'UseCharacteristicLimiting: ' , &
         UseCharacteristicLimiting
       WRITE(*,*)
-      WRITE(*,'(A4,A27,L1)'       ) '', 'UseTroubledCellIndicator: ' , &
+      WRITE(*,'(A4,A29,L1)'       ) '', 'UseTroubledCellIndicator: ' , &
         UseTroubledCellIndicator
-      WRITE(*,'(A4,A27,ES10.3E3)' ) '', 'LimiterThreshold: ' , &
+      WRITE(*,'(A4,A29,ES10.3E3)' ) '', 'LimiterThreshold: ' , &
         LimiterThreshold
       WRITE(*,*)
-      WRITE(*,'(A4,A27,L1)'       ) '', 'UseConservativeCorrection: ' , &
+      WRITE(*,'(A4,A29,L1)'       ) '', 'UseConservativeCorrection: ' , &
         UseConservativeCorrection
+
+      WRITE(*,*)
+
     END IF
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)

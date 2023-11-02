@@ -1,5 +1,7 @@
 MODULE Euler_MeshRefinementModule
 
+  USE ISO_C_BINDING
+
 #if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
 
   USE amrex_DGInterfaceModule, ONLY: &
@@ -35,9 +37,11 @@ MODULE Euler_MeshRefinementModule
     nDOFX_X1, &
     nDOFX_X2, &
     nDOFX_X3, &
+    NodeNumberTableX, &
     NodeNumberTableX_X1, &
     NodeNumberTableX_X2, &
-    NodeNumberTableX_X3
+    NodeNumberTableX_X3, &
+    NodeNumberTableX3D
   USE PolynomialBasisModuleX_Lagrange, ONLY: &
     IndLX_Q, &
     L_X1, &
@@ -77,9 +81,34 @@ MODULE Euler_MeshRefinementModule
   REAL(DP), ALLOCATABLE :: ProjectionMatrix_c(:)
   REAL(DP), ALLOCATABLE :: ProjectionMatrix_T(:,:,:) ! --- Transpose ---
 
-  INTEGER  :: nFine, nFineX(3)
-  REAL(DP) :: VolumeRatio
+  REAL(DP), PUBLIC :: VolumeRatio
+  REAL(DP), PUBLIC :: FaceRatio
+  INTEGER , PUBLIC :: nFine
+  INTEGER          :: nFineX(3)
 
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  ProjectionMatrix_T_c(:,:,:)
+  TYPE(c_ptr)                        , PUBLIC :: pProjectionMatrix_T_c
+
+  INTEGER(c_int), ALLOCATABLE, TARGET, PUBLIC ::  NodeNumberTableX_X1_c(:)
+  TYPE(c_ptr)                        , PUBLIC ::  pNodeNumberTableX_X1_c
+  INTEGER(c_int), ALLOCATABLE, TARGET, PUBLIC ::  NodeNumberTableX_X2_c(:)
+  TYPE(c_ptr)                        , PUBLIC :: pNodeNumberTableX_X2_c
+  INTEGER(c_int), ALLOCATABLE, TARGET, PUBLIC ::  NodeNumberTableX_X3_c(:)
+  TYPE(c_ptr)                        , PUBLIC :: pNodeNumberTableX_X3_c
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  WeightsX_q_c(:)
+  TYPE(c_ptr)                        , PUBLIC :: pWeightsX_q_c
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  LX_X1_Up_c(:,:)
+  TYPE(c_ptr)                        , PUBLIC :: pLX_X1_Up_c
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  LX_X1_Dn_c(:,:)
+  TYPE(c_ptr)                        , PUBLIC :: pLX_X1_Dn_c
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  LX_X2_Up_c(:,:)
+  TYPE(c_ptr)                        , PUBLIC :: pLX_X2_Up_c
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  LX_X2_Dn_c(:,:)
+  TYPE(c_ptr)                        , PUBLIC :: pLX_X2_Dn_c
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  LX_X3_Up_c(:,:)
+  TYPE(c_ptr)                        , PUBLIC :: pLX_X3_Up_c
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  LX_X3_Dn_c(:,:)
+  TYPE(c_ptr)                        , PUBLIC :: pLX_X3_Dn_c
 
 CONTAINS
 
@@ -88,9 +117,56 @@ CONTAINS
 
     INTEGER :: iDim
     INTEGER :: iFine, iFineX1, iFineX2, iFineX3
-    INTEGER :: i, k, iN1, iN2, iN3, kk, &
+    INTEGER :: i, j, k, iN1, iN2, iN3, kk, &
                iNX_X_Crse, iNX_X1_Crse, iNX_X2_Crse, iNX_X3_Crse, &
                iNX_X_Fine, iNX_X1_Fine, iNX_X2_Fine, iNX_X3_Fine
+
+    ALLOCATE( NodeNumberTableX_X1_c(nDOFX) )
+    ALLOCATE( NodeNumberTableX_X2_c(nDOFX) )
+    ALLOCATE( NodeNumberTableX_X3_c(nDOFX) )
+    DO iN3 = 1, nNodesX(3)
+    DO iN2 = 1, nNodesX(2)
+    DO iN1 = 1, nNodesX(1)
+
+      k = NodeNumberTableX3D(iN1,iN2,iN3)
+      NodeNumberTableX_X1_c(k) = ( k - 1 ) / nNodesX(1)
+      NodeNumberTableX_X2_c(k) = MOD( k - 1, nNodesX(1) ) &
+                                   + nNodesX(1) * ( iN3 - 1 )
+      NodeNumberTableX_X3_c(k) = MOD( k - 1, nDOFX_X1 )
+
+    END DO
+    END DO
+    END DO
+    pNodeNumberTableX_X1_c = c_loc( NodeNumberTableX_X1_c(1) )
+    pNodeNumberTableX_X2_c = c_loc( NodeNumberTableX_X2_c(1) )
+    pNodeNumberTableX_X3_c = c_loc( NodeNumberTableX_X3_c(1) )
+
+!!$    CALL PrintNodeNumberTableX_X_Mapping
+
+    ALLOCATE( WeightsX_q_c(nDOFX) )
+    WeightsX_q_c = WeightsX_q
+    pWeightsX_q_c = c_loc( WeightsX_q_c(1) )
+
+    ALLOCATE( LX_X1_Up_c(nDOFX_X1,nDOFX) )
+    ALLOCATE( LX_X1_Dn_c(nDOFX_X1,nDOFX) )
+    ALLOCATE( LX_X2_Up_c(nDOFX_X2,nDOFX) )
+    ALLOCATE( LX_X2_Dn_c(nDOFX_X2,nDOFX) )
+    ALLOCATE( LX_X3_Up_c(nDOFX_X3,nDOFX) )
+    ALLOCATE( LX_X3_Dn_c(nDOFX_X3,nDOFX) )
+
+    LX_X1_Up_c = LX_X1_Up
+    LX_X1_Dn_c = LX_X1_Dn
+    LX_X2_Up_c = LX_X2_Up
+    LX_X2_Dn_c = LX_X2_Dn
+    LX_X3_Up_c = LX_X3_Up
+    LX_X3_Dn_c = LX_X3_Dn
+
+    pLX_X1_Up_c = c_loc( LX_X1_Up_c(1,1) )
+    pLX_X1_Dn_c = c_loc( LX_X1_Dn_c(1,1) )
+    pLX_X2_Up_c = c_loc( LX_X2_Up_c(1,1) )
+    pLX_X2_Dn_c = c_loc( LX_X2_Dn_c(1,1) )
+    pLX_X3_Up_c = c_loc( LX_X3_Up_c(1,1) )
+    pLX_X3_Dn_c = c_loc( LX_X3_Dn_c(1,1) )
 
     nFineX      = 1
     VolumeRatio = One
@@ -100,6 +176,8 @@ CONTAINS
       VolumeRatio  = Half * VolumeRatio
     END DO
     nFine = PRODUCT( nFineX )
+
+    FaceRatio = One / 2**( nDimsX - 1 )
 
     ALLOCATE( LX_X1_Refined(nDOFX_X1,nFineX(2)*nFineX(3),nDOFX_X1) )
     ALLOCATE( LX_X2_Refined(nDOFX_X2,nFineX(1)*nFineX(3),nDOFX_X2) )
@@ -206,6 +284,27 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    ALLOCATE( ProjectionMatrix_T_c(nFine,nDOFX,nDOFX) )
+    iFine = 0
+    DO iFineX3 = 1, nFineX(3)
+    DO iFineX2 = 1, nFineX(2)
+    DO iFineX1 = 1, nFineX(1)
+
+      iFine = iFine + 1
+
+      DO k = 1, nDOFX
+      DO i = 1, nDOFX
+
+        ProjectionMatrix_T_c(iFine,k,i) = ProjectionMatrix(i,k,iFine)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+    pProjectionMatrix_T_c = c_loc( ProjectionMatrix_T_c(1,1,1) )
 
     kk = 0
     DO iNX_X1_Crse = 1, nDOFX_X1
@@ -390,6 +489,8 @@ CONTAINS
 
 #endif
 
+    DEALLOCATE( ProjectionMatrix_T_c )
+
     DEALLOCATE( ProjectionMatrix_T )
     DEALLOCATE( ProjectionMatrix_c )
     DEALLOCATE( ProjectionMatrix )
@@ -412,6 +513,17 @@ CONTAINS
     DEALLOCATE( LX_X3_Refined )
     DEALLOCATE( LX_X2_Refined )
     DEALLOCATE( LX_X1_Refined )
+
+    DEALLOCATE( LX_X3_Dn_c )
+    DEALLOCATE( LX_X3_Up_c )
+    DEALLOCATE( LX_X2_Dn_c )
+    DEALLOCATE( LX_X2_Up_c )
+    DEALLOCATE( LX_X1_Dn_c )
+    DEALLOCATE( LX_X1_Up_c )
+    DEALLOCATE( WeightsX_q_c )
+    DEALLOCATE( NodeNumberTableX_X3_c )
+    DEALLOCATE( NodeNumberTableX_X2_c )
+    DEALLOCATE( NodeNumberTableX_X1_c )
 
   END SUBROUTINE FinalizeMeshRefinement_Euler
 
@@ -488,5 +600,37 @@ CONTAINS
 
     RETURN
   END FUNCTION Lagrange
+
+  SUBROUTINE PrintNodeNumberTableX_X_Mapping
+
+    INTEGER :: iN1, iN2, iN3, k
+
+    DO iN3 = 1, nNodesX(3)
+    DO iN2 = 1, nNodesX(2)
+    DO iN1 = 1, nNodesX(1)
+
+      k = NodeNumberTableX3D(iN1,iN2,iN3)
+
+      IF( nDimsX .EQ. 1 )  &
+        WRITE(*,*) 'k, X1 = ', &
+        k, NodeNumberTableX_X1_c(k)+1
+
+      IF( nDimsX .EQ. 2 )  &
+        WRITE(*,*) 'k, X1, X2 = ', &
+        k, NodeNumberTableX_X1_c(k)+1, &
+             NodeNumberTableX_X2_c(k)+1
+
+      IF( nDimsX .EQ. 3 )  &
+        WRITE(*,*) 'k, X1, X2, X3 = ', &
+        k, NodeNumberTableX_X1_c(k)+1, &
+             NodeNumberTableX_X2_c(k)+1, &
+             NodeNumberTableX_X3_c(k)+1
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE PrintNodeNumberTableX_X_Mapping
+
 
 END MODULE Euler_MeshRefinementModule

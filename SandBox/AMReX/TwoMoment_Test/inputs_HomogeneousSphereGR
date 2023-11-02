@@ -7,28 +7,28 @@ DEBUG = 0
 thornado.ProgramName = "HomogeneousSphereGR"
 
 thornado.Scheme = "IMEX_PDARS"
+thornado.nStages = 2
 
-thornado.t_end     = 1000.0     # Final time
-thornado.dt_wrt    = 1000.0      # Write time interval
-thornado.dt_chk    = -0.1      # Time increment to write checkpoint-file
-thornado.nNodes    = 3        # Number of DG nodes in each active dimension
-thornado.CFL       = 0.5     # CFL number
+
+thornado.t_end     = 10.0     # Final time
+thornado.dt_wrt    = 11.0      # Write time interval
+thornado.dt_chk    = 11.0      # Time increment to write checkpoint-file
+thornado.nNodes    = 2        # Number of DG nodes in each active dimension
+thornado.CFL       = 0.5    # CFL number
 thornado.bcX       = 30 1 1 # Boundary conditions
+thornado.bcZ_TwoMoment = 11 30 1 1 #bcE might be 2 or 10
 thornado.swX       = 01 00 00 # Stencil width (nGhostCells) in each dimension
 thornado.V_0       = 0.0 0.0 0.0  # three velocity
-thornado.nE        = 8       # Number of Energy Cells
+thornado.nE        = 64       # Number of Energy Cells
 thornado.swE       = 01
-thornado.bcE       = 2
+thornado.bcE       = 11
 thornado.eL        = 0.0           #  MeV Lower energy domain size
 thornado.eR        = 250.0         #  MeV Higher energy domain size
-thornado.D_0     = 1.0
-thornado.Chi     = 0.00001  # cm^-1
-thornado.Sigma     = 0.0
 thornado.zoomE     = 1.0
 thornado.nSpecies  = 1
 thornado.iCycleD   = 0010     # MOD this number to display info
-thornado.iCycleW   = 0100     # MOD this number to write plotfile
-thornado.iCycleChk = 1000     # MOD this number to write checkpoint file
+thornado.iCycleW   = -0100     # MOD this number to write plotfile
+thornado.iCycleChk = -1000     # MOD this number to write checkpoint file
 thornado.iRestart  = -1        # Checkpoint-file to restart from. Negative for clean start
 thornado.UsePhysicalUnits = 1
 
@@ -43,7 +43,7 @@ amr.max_grid_size_y   = 1
 amr.blocking_factor_x = 1
 amr.blocking_factor_y = 1
 amr.max_level         = 0
-
+amr.ref_ratio         = 2
 
 # Positivity limiter parameters
 PL.UsePositivityLimiter_TwoMoment = 1
@@ -55,9 +55,12 @@ SL.UseSlopeLimiter_TwoMoment           = 1
 SL.BetaTVD_TwoMoment                   = 1.75e0
 
 # Star parameters
-ST.Mass = 2.0 # Solar Masses
-ST.R0   = 25.0 # km
-ST.kT   = 10.0 # MeV
-ST.E0   = 10.0 # MeV
+ST.mass = 2.0 # Solar Masses
+ST.r0   = 25.0 # km
+ST.kt   = 10.0 # MeV
+ST.e0   = 10.0 # MeV
 ST.mu0  = 10.0 # MeV
+ST.d_0     = 1.0
+ST.chi     = 0.00001  # cm^-1
+ST.sigma     = 0.0
 

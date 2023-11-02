@@ -114,7 +114,7 @@ MODULE InitializationModule
     ReadCheckpointFile
   USE InputOutputEuler,           ONLY: &
     WriteFieldsAMReX_PlotFile_Euler
-  USE TwoMoment_TimersModule_OrderV, ONLY: &
+  USE TwoMoment_TimersModule, ONLY: &
     InitializeTimers
   ! --- Local modules ---
   USE MF_FieldsModule,                  ONLY: &

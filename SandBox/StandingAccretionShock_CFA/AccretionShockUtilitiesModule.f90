@@ -72,7 +72,6 @@ CONTAINS
     INTEGER  :: iNX, iX1
     REAL(DP) :: D(nNodesX(1)), V1(nNodesX(1)), V2(nNodesX(1)), V3(nNodesX(1)), &
                 E(nNodesX(1)), Ne(nNodesX(1)), P (nNodesX(1))
-    INTEGER :: iErr(nNodesX(1),iX_B1(1):iX_E1(1))
     CHARACTER(LEN=16) :: FMT
 
     IF( nDimsX .GT. 1 )THEN
@@ -96,8 +95,6 @@ CONTAINS
 
     DO iX1 = iX_B1(1), iX_E1(1)
 
-      iErr(:,iX1) = 0
-
       CALL ComputePrimitive_Euler_Relativistic &
              ( uCF(:,iX1,1,1,iCF_D ), &
                uCF(:,iX1,1,1,iCF_S1), &
@@ -108,8 +105,7 @@ CONTAINS
                D, V1, V2, V3, E, Ne, &
                uGF(:,iX1,1,1,iGF_Gm_dd_11), &
                uGF(:,iX1,1,1,iGF_Gm_dd_22), &
-               uGF(:,iX1,1,1,iGF_Gm_dd_33), &
-               iErr(:,iX1) )
+               uGF(:,iX1,1,1,iGF_Gm_dd_33) )
 
       CALL ComputePressureFromPrimitive &
              ( D, E, Ne, P )
@@ -123,18 +119,6 @@ CONTAINS
     CLOSE( 103 )
     CLOSE( 102 )
     CLOSE( 101 )
-
-    IF( ANY( iErr .NE. 0 ) )THEN
-
-      DO iX1 = iX_B1(1), iX_E1(1)
-      DO iNX = 1, nNodesX(1)
-
-        CALL DescribeError_Euler( iErr(iNX,iX1) )
-
-      END DO
-      END DO
-
-    END IF
 
   END SUBROUTINE WriteInitialConditionsToFile
 

@@ -24,27 +24,27 @@ PROGRAM ApplicationDriver_Neutrinos
   USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
     ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
   USE RadiationFieldsModule, ONLY: &
-    uCR, uPR
+    uCR, uPR, uAR, uGR
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF, &
     ReadFieldsHDF
-  USE TwoMoment_UtilitiesModule_OrderV, ONLY: &
+  USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeFromConserved_TwoMoment, &
     ComputeTimeStep_TwoMoment
-  USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
+  USE TwoMoment_SlopeLimiterModule, ONLY: &
     ApplySlopeLimiter_TwoMoment
-  USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
+  USE TwoMoment_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_TwoMoment
-  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos_OrderV, ONLY: &
+  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
     ComputeIncrement_TwoMoment_Implicit
-  USE TwoMoment_NeutrinoMatterSolverModule_OrderV, ONLY: &
+  USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
     InitializeNeutrinoMatterSolverParameters
-  USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
+  USE TwoMoment_TimeSteppingModule, ONLY: &
     Update_IMEX_RK
   USE InitializationModule_Neutrinos, ONLY: &
     InitializeFields, &
     ComputeError
-  USE TwoMoment_TallyModule_OrderV, ONLY: &
+  USE TwoMoment_TallyModule, ONLY: &
     ComputeTally
 
   IMPLICIT NONE
@@ -70,6 +70,7 @@ PROGRAM ApplicationDriver_Neutrinos
   LOGICAL       :: Include_Pair
   LOGICAL       :: Include_Brem
   LOGICAL       :: Include_LinCorr
+  LOGICAL       :: FreezeOpacities
   INTEGER       :: RestartFileNumber
   INTEGER       :: nSpecies
   INTEGER       :: nNodes
@@ -84,6 +85,7 @@ PROGRAM ApplicationDriver_Neutrinos
   REAL(DP)      :: t, dt, dt_CFL, dt_0, dt_MAX, dt_RATE, t_end
   REAL(DP)      :: Rtol_outer, Rtol_inner
   REAL(DP)      :: wMatterRHS(5)
+  REAL(DP)      :: DnuMax
 
   ProgramName = 'Relaxation'
 
@@ -111,6 +113,8 @@ PROGRAM ApplicationDriver_Neutrinos
   Include_Brem    = .TRUE.
   Include_LinCorr = .FALSE.
   wMatterRHS      = [ One, One, One, One, One ]
+  DnuMax          = HUGE( One )
+  FreezeOpacities = .FALSE.
 
   nEquidistantX = 1
   dEquidistantX = 1.0_DP * Kilometer
@@ -156,16 +160,16 @@ PROGRAM ApplicationDriver_Neutrinos
 
       CoordinateSystem = 'SPHERICAL'
 
-      nSpecies = 2
+      nSpecies = 6
       nNodes   = 2
 
-      nX    = [ 200, 1, 1 ]
+      nX    = [ 256, 1, 1 ]
       xL    = [ 0.0_DP           , 0.0_DP, 0.0_DP ]
-      xR    = [ 5.0d2 * Kilometer, Pi    , TwoPi  ]
+      xR    = [ 5.12d2 * Kilometer, Pi    , TwoPi  ]
       bcX   = [ 31, 1, 1 ]
       ZoomX = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-      nEquidistantX = 50
+      nEquidistantX = 0
       dEquidistantX = 1.0_DP * Kilometer
 
       nE    = 16
@@ -192,6 +196,8 @@ PROGRAM ApplicationDriver_Neutrinos
       ProfileName = 'input_thornado_VX_100ms.dat'
 
       wMatterRHS = [ One, One, Zero, Zero, Zero ] ! --- Keep Velocity Fixed
+
+      FreezeOpacities = .FALSE. ! --- Keep opacities fixed during iterations?
 
     CASE( 'EquilibriumAdvection' )
 
@@ -236,6 +242,9 @@ PROGRAM ApplicationDriver_Neutrinos
   CALL InitializeDriver
 
   CALL InitializeFields( ProfileName )
+
+  CALL ComputeFromConserved_TwoMoment &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
   IF( RestartFileNumber .LT. 0 )THEN
 
@@ -325,17 +334,11 @@ PROGRAM ApplicationDriver_Neutrinos
 
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET UPDATE FROM( uGE, uGF, uCF, uCR )
-#elif defined(THORNADO_OACC)
-      !$ACC UPDATE HOST( uGE, uGF, uCF, uCR )
-#endif
-
       CALL ComputeFromConserved_Euler_NonRelativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
       CALL ComputeFromConserved_TwoMoment &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
       CALL WriteFieldsHDF &
              ( Time = t, &
@@ -350,17 +353,11 @@ PROGRAM ApplicationDriver_Neutrinos
 
   END DO
 
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET UPDATE FROM( uGE, uGF, uCF, uCR )
-#elif defined(THORNADO_OACC)
-  !$ACC UPDATE HOST( uGE, uGF, uCF, uCR )
-#endif
-
   CALL ComputeFromConserved_Euler_NonRelativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
   CALL ComputeFromConserved_TwoMoment &
-         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
   CALL WriteFieldsHDF &
          ( Time = t, &
@@ -380,7 +377,7 @@ CONTAINS
 
   SUBROUTINE InitializeDriver
 
-    USE TwoMoment_TimersModule_OrderV, ONLY: &
+    USE TwoMoment_TimersModule, ONLY: &
       InitializeTimers
     USE TimersModule_Euler, ONLY: &
       InitializeTimers_Euler
@@ -420,13 +417,13 @@ CONTAINS
       InitializePositivityLimiter_Euler_NonRelativistic_TABLE
     USE TwoMoment_TroubledCellIndicatorModule, ONLY: &
       InitializeTroubledCellIndicator_TwoMoment
-    USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
+    USE TwoMoment_SlopeLimiterModule, ONLY: &
       InitializeSlopeLimiter_TwoMoment
-    USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
+    USE TwoMoment_PositivityLimiterModule, ONLY: &
       InitializePositivityLimiter_TwoMoment
-    USE TwoMoment_TallyModule_OrderV, ONLY: &
+    USE TwoMoment_TallyModule, ONLY: &
       InitializeTally
-    USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
+    USE TwoMoment_TimeSteppingModule, ONLY: &
       Initialize_IMEX_RK
 
     CALL InitializeTimers
@@ -627,6 +624,10 @@ CONTAINS
                = Include_LinCorr, &
              wMatrRHS_Option &
                = wMatterRHS, &
+             DnuMax_Option &
+               = DnuMax, &
+             FreezeOpacities_Option &
+               = FreezeOpacities, &
              Verbose_Option &
                = .TRUE. )
 
@@ -644,9 +645,9 @@ CONTAINS
 
   SUBROUTINE FinalizeDriver
 
-    USE TwoMoment_TimeSteppingModule_OrderV, ONLY: &
+    USE TwoMoment_TimeSteppingModule, ONLY: &
       Finalize_IMEX_RK
-    USE TwoMoment_TallyModule_OrderV, ONLY: &
+    USE TwoMoment_TallyModule, ONLY: &
       FinalizeTally
     USE EquationOfStateModule_TABLE, ONLY: &
       FinalizeEquationOfState_TABLE
@@ -658,9 +659,9 @@ CONTAINS
       FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
     USE TwoMoment_TroubledCellIndicatorModule, ONLY: &
       FinalizeTroubledCellIndicator_TwoMoment
-    USE TwoMoment_SlopeLimiterModule_OrderV, ONLY: &
+    USE TwoMoment_SlopeLimiterModule, ONLY: &
       FinalizeSlopeLimiter_TwoMoment
-    USE TwoMoment_PositivityLimiterModule_OrderV, ONLY: &
+    USE TwoMoment_PositivityLimiterModule, ONLY: &
       FinalizePositivityLimiter_TwoMoment
     USE ReferenceElementModuleX, ONLY: &
       FinalizeReferenceElementX
@@ -680,7 +681,7 @@ CONTAINS
       FinalizeProgram
     USE TimersModule_Euler, ONLY: &
       FinalizeTimers_Euler
-    USE TwoMoment_TimersModule_OrderV, ONLY: &
+    USE TwoMoment_TimersModule, ONLY: &
       FinalizeTimers
 
     CALL Finalize_IMEX_RK
