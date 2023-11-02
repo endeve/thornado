@@ -15,8 +15,6 @@ F90EXE_sources  += TwoMoment_UtilitiesModule.F90
 F90EXE_sources  += TwoMoment_BoundaryConditionsModule.F90
 F90EXE_sources  += TwoMoment_DiscretizationModule_Collisions_Neutrinos.F90
 F90EXE_sources  += TwoMoment_NeutrinoMatterSolverModule.F90
-F90EXE_sources  += TwoMoment_SlopeLimiterModule.F90
-F90EXE_sources  += TwoMoment_TroubledCellIndicatorModule.F90 
 
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/TwoMoment/Relativistic
@@ -26,3 +24,5 @@ F90EXE_sources  += TwoMoment_DiscretizationModule_Collisions.F90
 F90EXE_sources  += TwoMoment_OpacityModule.F90
 F90EXE_sources  += TwoMoment_PositivityLimiterModule.F90
 F90EXE_sources  += TwoMoment_TimersModule.F90
+F90EXE_sources  += TwoMoment_TroubledCellIndicatorModule.F90 
+F90EXE_sources  += TwoMoment_SlopeLimiterModule.F90
