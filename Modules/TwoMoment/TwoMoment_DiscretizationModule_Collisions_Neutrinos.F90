@@ -24,17 +24,11 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    nAF, iAF_T, iAF_E , iAF_Ye
+    nAF, iAF_T, iAF_E , iAF_Ye, iAF_P
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
     nDR, iDR_iter_outer, iDR_iter_inner
-  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
-    ComputePrimitive_Euler_NonRelativistic, &
-    ComputeConserved_Euler_NonRelativistic
-  USE EquationOfStateModule_TABLE, ONLY: &
-    ComputeThermodynamicStates_Auxiliary_TABLE, &
-    ComputeThermodynamicStates_Primitive_TABLE
   USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
     SolveNeutrinoMatterCoupling_FP_Nested_AA, &
     InitializeNeutrinoMatterSolver, &
@@ -43,6 +37,35 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputePrimitive_TwoMoment, &
     ComputeConserved_TwoMoment
+#if   defined( TWOMOMENT_ORDER_1 )
+
+  USE EquationOfStateModule_TABLE, ONLY: &
+    ComputeThermodynamicStates_Auxiliary_TABLE, &
+    ComputeThermodynamicStates_Primitive_TABLE
+  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
+    ComputePrimitive_Euler_NonRelativistic, &
+    ComputeConserved_Euler_NonRelativistic
+
+#elif defined( TWOMOMENT_ORDER_V )
+
+  USE EquationOfStateModule_TABLE, ONLY: &
+    ComputeThermodynamicStates_Auxiliary_TABLE, &
+    ComputeThermodynamicStates_Primitive_TABLE
+  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
+    ComputePrimitive_Euler_NonRelativistic, &
+    ComputeConserved_Euler_NonRelativistic
+
+#elif defined( TWOMOMENT_RELATIVISTIC )
+
+  USE EquationOfStateModule_TABLE, ONLY: &
+    ComputeThermodynamicStates_Auxiliary_TABLE, &
+    ComputeThermodynamicStates_Primitive_TABLE, &
+    ComputePressureFromPrimitive_TABLE
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    ComputePrimitive_Euler_Relativistic, &
+    ComputeConserved_Euler_Relativistic
+
+#endif
 
   IMPLICIT NONE
   PRIVATE
@@ -165,6 +188,11 @@ CONTAINS
 #elif defined(THORNADO_OMP   )
     !$OMP PARALLEL DO
 #endif
+
+
+
+#if   defined( TWOMOMENT_ORDER_1 )
+
     DO iN_X = 1, nX_G
 
       CALL ComputePrimitive_Euler_NonRelativistic &
@@ -185,6 +213,56 @@ CONTAINS
                GX_N(iN_X,iGF_Gm_dd_33) )
 
     END DO
+
+#elif defined( TWOMOMENT_ORDER_V )
+
+    DO iN_X = 1, nX_G
+
+      CALL ComputePrimitive_Euler_NonRelativistic &
+             ( CF_N(iN_X,iCF_D ), &
+               CF_N(iN_X,iCF_S1), &
+               CF_N(iN_X,iCF_S2), &
+               CF_N(iN_X,iCF_S3), &
+               CF_N(iN_X,iCF_E ), &
+               CF_N(iN_X,iCF_Ne), &
+               PF_N(iN_X,iPF_D ), &
+               PF_N(iN_X,iPF_V1), &
+               PF_N(iN_X,iPF_V2), &
+               PF_N(iN_X,iPF_V3), &
+               PF_N(iN_X,iPF_E ), &
+               PF_N(iN_X,iPF_Ne), &
+               GX_N(iN_X,iGF_Gm_dd_11), &
+               GX_N(iN_X,iGF_Gm_dd_22), &
+               GX_N(iN_X,iGF_Gm_dd_33) )
+
+    END DO
+
+#elif defined( TWOMOMENT_RELATIVISTIC )
+
+
+    DO iN_X = 1, nX_G
+
+      CALL ComputePrimitive_Euler_Relativistic &
+             ( CF_N(iN_X,iCF_D ), &
+               CF_N(iN_X,iCF_S1), &
+               CF_N(iN_X,iCF_S2), &
+               CF_N(iN_X,iCF_S3), &
+               CF_N(iN_X,iCF_E ), &
+               CF_N(iN_X,iCF_Ne), &
+               PF_N(iN_X,iPF_D ), &
+               PF_N(iN_X,iPF_V1), &
+               PF_N(iN_X,iPF_V2), &
+               PF_N(iN_X,iPF_V3), &
+               PF_N(iN_X,iPF_E ), &
+               PF_N(iN_X,iPF_Ne), &
+               GX_N(iN_X,iGF_Gm_dd_11), &
+               GX_N(iN_X,iGF_Gm_dd_22), &
+               GX_N(iN_X,iGF_Gm_dd_33) )
+
+    END DO
+
+#endif
+
 
     CALL TimersStop( Timer_Collisions_PrimitiveFluid )
 
@@ -422,6 +500,11 @@ CONTAINS
 #elif defined(THORNADO_OMP   )
     !$OMP PARALLEL DO
 #endif
+
+
+
+#if   defined( TWOMOMENT_ORDER_1 )
+
     DO iN_X = 1, nX_G
 
       PF_N(iN_X,iPF_E ) = AF_N(iN_X,iAF_E ) * PF_N(iN_X,iPF_D)
@@ -445,6 +528,72 @@ CONTAINS
                GX_N(iN_X,iGF_Gm_dd_33) )
 
     END DO
+
+
+#elif defined( TWOMOMENT_ORDER_V )
+
+    DO iN_X = 1, nX_G
+
+      PF_N(iN_X,iPF_E ) = AF_N(iN_X,iAF_E ) * PF_N(iN_X,iPF_D)
+      PF_N(iN_X,iPF_Ne) = AF_N(iN_X,iAF_Ye) * PF_N(iN_X,iPF_D) / AtomicMassUnit
+
+      CALL ComputeConserved_Euler_NonRelativistic &
+             ( PF_N(iN_X,iPF_D),  &
+               PF_N(iN_X,iPF_V1), &
+               PF_N(iN_X,iPF_V2), &
+               PF_N(iN_X,iPF_V3), &
+               PF_N(iN_X,iPF_E ), &
+               PF_N(iN_X,iPF_Ne), &
+               CF_N(iN_X,iCF_D ), &
+               CF_N(iN_X,iCF_S1), &
+               CF_N(iN_X,iCF_S2), &
+               CF_N(iN_X,iCF_S3), &
+               CF_N(iN_X,iCF_E ), &
+               CF_N(iN_X,iCF_Ne), &
+               GX_N(iN_X,iGF_Gm_dd_11), &
+               GX_N(iN_X,iGF_Gm_dd_22), &
+               GX_N(iN_X,iGF_Gm_dd_33) )
+
+    END DO
+
+
+#elif defined( TWOMOMENT_RELATIVISTIC )
+
+
+    CALL ComputeThermodynamicStates_Primitive_TABLE &
+           ( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye), &
+             PF_N(:,iPF_E), AF_N(:,iAF_E), PF_N(:,iPF_Ne) )
+
+    CALL ComputePressureFromPrimitive_TABLE & 
+           ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
+             AF_N(:,iAF_P) )
+
+
+    DO iN_X = 1, nX_G
+
+      CALL ComputeConserved_Euler_Relativistic &
+             ( PF_N(iN_X,iPF_D),  &
+               PF_N(iN_X,iPF_V1), &
+               PF_N(iN_X,iPF_V2), &
+               PF_N(iN_X,iPF_V3), &
+               PF_N(iN_X,iPF_E ), &
+               PF_N(iN_X,iPF_Ne), &
+               CF_N(iN_X,iCF_D ), &
+               CF_N(iN_X,iCF_S1), &
+               CF_N(iN_X,iCF_S2), &
+               CF_N(iN_X,iCF_S3), &
+               CF_N(iN_X,iCF_E ), &
+               CF_N(iN_X,iCF_Ne), &
+               GX_N(iN_X,iGF_Gm_dd_11), &
+               GX_N(iN_X,iGF_Gm_dd_22), &
+               GX_N(iN_X,iGF_Gm_dd_33), &
+               AF_N(iN_X,iAF_P) )
+
+    END DO
+
+
+#endif
+
 
     CALL ComputeAndMapIncrement &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, U_F, U_R, dU_F, dU_R )
