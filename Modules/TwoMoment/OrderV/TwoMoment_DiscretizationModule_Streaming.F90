@@ -258,7 +258,6 @@ CONTAINS
 
     CALL ApplyBoundaryConditions_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
-
     CALL InitializeIncrement_TwoMoment_Explicit &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 
@@ -313,7 +312,6 @@ CONTAINS
     CALL TimersStop( Timer_Streaming_ObserverCorrections )
 
     ! --- Multiply Inverse Mass Matrix ---
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(8) &
     !$OMP PRIVATE( iNodeZ )
@@ -2322,7 +2320,6 @@ CONTAINS
              dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
 
     CALL TimersStop( Timer_Streaming_Derivatives )
-
     ! --- Permute Geometry Fields ---
 
 #if   defined( THORNADO_OMP_OL )
@@ -2472,21 +2469,34 @@ CONTAINS
 
         ! --- Quadratic Form Matrix ---
 
-        A(:,1) = Half * [ Two * dV_u_dX1(iNodeX,1,iZ2,iZ3,iZ4), &
-                                dV_u_dX2(iNodeX,1,iZ2,iZ3,iZ4)  &
-                              + dV_u_dX1(iNodeX,2,iZ2,iZ3,iZ4), &
-                                dV_u_dX3(iNodeX,1,iZ2,iZ3,iZ4)  &
-                              + dV_u_dX1(iNodeX,3,iZ2,iZ3,iZ4) ]
-        A(:,2) = Half * [       dV_u_dX1(iNodeX,2,iZ2,iZ3,iZ4)  &
-                              + dV_u_dX2(iNodeX,1,iZ2,iZ3,iZ4), &
-                          Two * dV_u_dX2(iNodeX,2,iZ2,iZ3,iZ4), &
-                                dV_u_dX3(iNodeX,2,iZ2,iZ3,iZ4)  &
-                              + dV_u_dX2(iNodeX,3,iZ2,iZ3,iZ4) ]
-        A(:,3) = Half * [       dV_u_dX1(iNodeX,3,iZ2,iZ3,iZ4)  &
-                              + dV_u_dX3(iNodeX,1,iZ2,iZ3,iZ4), &
-                                dV_u_dX2(iNodeX,3,iZ2,iZ3,iZ4)  &
-                              + dV_u_dX3(iNodeX,2,iZ2,iZ3,iZ4), &
-                          Two * dV_u_dX3(iNodeX,3,iZ2,iZ3,iZ4) ]
+        A(1,1) = dV_u_dX1(iNodeX,1,iZ2,iZ3,iZ4) 
+        A(2,1) = Half * ( dV_u_dX2(iNodeX,1,iZ2,iZ3,iZ4) + dV_u_dX1(iNodeX,2,iZ2,iZ3,iZ4) )
+        A(3,1) = Half * ( dV_u_dX3(iNodeX,1,iZ2,iZ3,iZ4) + dV_u_dX1(iNodeX,3,iZ2,iZ3,iZ4) )
+
+        A(1,2) = Half * ( dV_u_dX1(iNodeX,2,iZ2,iZ3,iZ4) + dV_u_dX2(iNodeX,1,iZ2,iZ3,iZ4) )
+        A(2,2) = dV_u_dX2(iNodeX,2,iZ2,iZ3,iZ4) 
+        A(3,2) = Half * ( dV_u_dX3(iNodeX,2,iZ2,iZ3,iZ4) + dV_u_dX2(iNodeX,3,iZ2,iZ3,iZ4) )
+
+        A(1,3) = Half * ( dV_u_dX1(iNodeX,3,iZ2,iZ3,iZ4) + dV_u_dX3(iNodeX,1,iZ2,iZ3,iZ4) )
+        A(2,3) = Half * ( dV_u_dX2(iNodeX,3,iZ2,iZ3,iZ4)  + dV_u_dX3(iNodeX,2,iZ2,iZ3,iZ4) )
+        A(3,3) = dV_u_dX3(iNodeX,3,iZ2,iZ3,iZ4) 
+
+
+        !A(:,1) = Half * [ Two * dV_u_dX1(iNodeX,1,iZ2,iZ3,iZ4), &
+        !                        dV_u_dX2(iNodeX,1,iZ2,iZ3,iZ4)  &
+        !                      + dV_u_dX1(iNodeX,2,iZ2,iZ3,iZ4), &
+        !                        dV_u_dX3(iNodeX,1,iZ2,iZ3,iZ4)  &
+        !                      + dV_u_dX1(iNodeX,3,iZ2,iZ3,iZ4) ]
+        !A(:,2) = Half * [       dV_u_dX1(iNodeX,2,iZ2,iZ3,iZ4)  &
+        !                      + dV_u_dX2(iNodeX,1,iZ2,iZ3,iZ4), &
+        !                  Two * dV_u_dX2(iNodeX,2,iZ2,iZ3,iZ4), &
+        !                        dV_u_dX3(iNodeX,2,iZ2,iZ3,iZ4)  &
+        !                      + dV_u_dX2(iNodeX,3,iZ2,iZ3,iZ4) ]
+        !A(:,3) = Half * [       dV_u_dX1(iNodeX,3,iZ2,iZ3,iZ4)  &
+        !                      + dV_u_dX3(iNodeX,1,iZ2,iZ3,iZ4), &
+        !                        dV_u_dX2(iNodeX,3,iZ2,iZ3,iZ4)  &
+        !                      + dV_u_dX3(iNodeX,2,iZ2,iZ3,iZ4), &
+        !                  Two * dV_u_dX3(iNodeX,3,iZ2,iZ3,iZ4) ]
 
         CALL EigenvaluesSymmetric3( A, Lambda )
 
@@ -2501,7 +2511,7 @@ CONTAINS
     CALL TimersStop( Timer_Streaming_Eigenvalues )
 
     CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
-
+    
     ! --- Left State Primitive ---
 
     CALL ComputePrimitive_TwoMoment &
@@ -2525,9 +2535,10 @@ CONTAINS
     ! --- Numerical Flux ---
 
     CALL TimersStart( Timer_Streaming_NumericalFlux )
-
+    !Mathi: distribute parallel do gives 'ERROR: Memory allocation error'
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP TARGET TEAMS DISTRIBUTE &
     !$OMP PRIVATE( iX_F, iNodeZ_E, iZ1, iZ2, iZ3, iZ4, iS, uPR_L, uPR_R, &
     !$OMP          Flux_L, Flux_R, A, Lambda, EdgeEnergyCubed )
 #elif defined( THORNADO_OACC   )
@@ -2581,7 +2592,12 @@ CONTAINS
                   dGm_dd_dX3(iNodeZ_E,2,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeZ_E,3,iZ2,iZ3,iZ4) )
 
-      uPR_L = [ uD_L(iZ_F), uI1_L(iZ_F), uI2_L(iZ_F), uI3_L(iZ_F) ]
+      !uPR_L = [ uD_L(iZ_F), uI1_L(iZ_F), uI2_L(iZ_F), uI3_L(iZ_F) ]
+
+      uPR_L(1) = uD_L(iZ_F)
+      uPR_L(2) = uI1_L(iZ_F)
+      uPR_L(3) = uI2_L(iZ_F)
+      uPR_L(4) = uI3_L(iZ_F)
 
       ! --- Right State Flux ---
 
@@ -2608,12 +2624,18 @@ CONTAINS
                   dGm_dd_dX3(iNodeZ_E,2,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeZ_E,3,iZ2,iZ3,iZ4) )
 
-      uPR_R = [ uD_R(iZ_F), uI1_R(iZ_F), uI2_R(iZ_F), uI3_R(iZ_F) ]
+      !uPR_R = [ uD_R(iZ_F), uI1_R(iZ_F), uI2_R(iZ_F), uI3_R(iZ_F) ]
+      uPR_R(1) = uD_R(iZ_F)
+      uPR_R(2) = uI1_R(iZ_F)
+      uPR_R(3) = uI2_R(iZ_F)
+      uPR_R(4) = uI3_R(iZ_F)
 
       ! --- Numerical Flux (Local Lax-Friedrichs) ---
 
       EdgeEnergyCubed = ( xZ1(iZ1) - Half * dZ1(iZ1) )**3
-
+#if   defined( THORNADO_OMP_OL )
+   !$OMP PARALLEL DO
+#endif
       DO iCR = 1, nCR
 
         NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
@@ -2637,7 +2659,7 @@ CONTAINS
 
       NumericalFlux2(iNodeZ_E,iCR_N,iZ2,iZ3,iZ4,iS,iZ1) &
         = EdgeEnergyCubed &
-            * ( NumericalFlux(iNodeZ_E,iCR_N,iZ2,iZ3,iZ4,iS,iZ1) &
+          * ( NumericalFlux(iNodeZ_E,iCR_N,iZ2,iZ3,iZ4,iS,iZ1) &
                 + uV1_K(iX_F) &
                     * NumericalFlux(iNodeZ_E,iCR_G1,iZ2,iZ3,iZ4,iS,iZ1) &
                 + uV2_K(iX_F) &
@@ -2690,7 +2712,6 @@ CONTAINS
            ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOF_E, - One, L_E_Up, nDOF_E, &
              NumericalFlux(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)+1), &
              nDOF_E, One,  dU_Z, nDOFZ )
-
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Off-Grid Fluxes for Conservation Tally ---
@@ -2714,8 +2735,10 @@ CONTAINS
 
     CALL TimersStart( Timer_Streaming_NumericalFlux )
 
+    !Mathi: distribute parallel do gives 'ERROR: Memory allocation error'
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP TARGET TEAMS DISTRIBUTE &
     !$OMP PRIVATE( iX_K, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iS, &
     !$OMP          Flux_K )
 #elif defined( THORNADO_OACC   )
@@ -2770,6 +2793,9 @@ CONTAINS
                   dGm_dd_dX3(iNodeX,2,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeX,3,iZ2,iZ3,iZ4) )
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP PARALLEL DO 
+#endif
       DO iCR = 1, nCR
 
         Flux_q(iNodeZ,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
@@ -2800,8 +2826,10 @@ CONTAINS
 
     CALL TimersStart( Timer_Streaming_Sources )
 
+    !Mathi: distribute parallel do gives 'ERROR: Memory allocation error'
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP TARGET TEAMS DISTRIBUTE &
     !$OMP PRIVATE( iX_K, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iS, Flux_K, &
     !$OMP          Beta, dFlux_K, k_uu, S_uu_11, S_uu_22, S_uu_33 )
 #elif defined( THORNADO_OACC   )
@@ -2893,7 +2921,9 @@ CONTAINS
         = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4)  &
           * Weights_q(iNodeZ) * GE(iNodeE,iZ1,iGE_Ep2) &
           * SqrtGm_K(iX_K)
-
+#if   defined( THORNADO_OMP_OL )
+!$OMP PARALLEL DO
+#endif
       DO iCR = iCR_G1, iCR_G3
 
         dU_Z(iNodeZ,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
@@ -3002,10 +3032,14 @@ CONTAINS
         dZ2 => MeshX(1) % Width, &
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
+!!Mathi - the mapping of MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width 
+!!        gives 'explicit extension not allowed: host address specified is 0x0000000002110a10 (672 bytes), but device allocation
+!!               maps to host at 0x0000000002110a10 (224 bytes)'
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
+    !!$OMP MAP( to: MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
+    !$OMP MAP( to: &
     !$OMP          nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3 ) &
     !$OMP MAP( alloc: uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
 #elif defined( THORNADO_OACC   )
@@ -3028,9 +3062,11 @@ CONTAINS
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
 
+!! Mathi- releasing is not needed for the unmapped vars
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
+    !!$OMP MAP( release: MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
+    !$OMP MAP( release: &
     !$OMP               nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3, &
     !$OMP               uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
 #elif defined( THORNADO_OACC   )
@@ -3282,7 +3318,15 @@ CONTAINS
 
       PositionIndexZ_F(iZ_F) = iX_F
 
-      IndexTableZ_F(:,iZ_F) = [ iNodeE, iNodeX_X, iZP1, iZP2, iZP3, iS, iZP4 ]
+! Shaoping : causing ERROR: Memory allocation error
+      !IndexTableZ_F(:,iZ_F) = [ iNodeE, iNodeX_X, iZP1, iZP2, iZP3, iS, iZP4 ]
+      IndexTableZ_F(1,iZ_F) =  iNodeE
+      IndexTableZ_F(2,iZ_F) =  iNodeX_X
+      IndexTableZ_F(3,iZ_F) =  iZP1
+      IndexTableZ_F(4,iZ_F) =  iZP2
+      IndexTableZ_F(5,iZ_F) =  iZP3
+      IndexTableZ_F(6,iZ_F) =  iS
+      IndexTableZ_F(7,iZ_F) =  iZP4
 
     END DO
     END DO
@@ -3329,8 +3373,16 @@ CONTAINS
              + ( iZP4 - iZP_B0(4) ) * nDOFX * nZP(2) * nZP(3)
 
       PositionIndexZ_K(iZ_K) = iX_K
+!! Shaoping : causing ERROR: Memory allocation error
+      !IndexTableZ_K(:,iZ_K) = [ iNodeE, iNodeX, iZP1, iZP2, iZP3, iS, iZP4 ]
+      IndexTableZ_K(1,iZ_K) = iNodeE
+      IndexTableZ_K(2,iZ_K) = iNodeX
+      IndexTableZ_K(3,iZ_K) = iZP1
+      IndexTableZ_K(4,iZ_K) = iZP2
+      IndexTableZ_K(5,iZ_K) = iZP3
+      IndexTableZ_K(6,iZ_K) = iS
+      IndexTableZ_K(7,iZ_K) = iZP4
 
-      IndexTableZ_K(:,iZ_K) = [ iNodeE, iNodeX, iZP1, iZP2, iZP3, iS, iZP4 ]
 
     END DO
     END DO
@@ -3635,7 +3687,15 @@ CONTAINS
 
       PositionIndexZ_F(iZ_F) = iX_F
 
-      IndexTableZ_F(:,iZ_F) = [ 1, iNode_E, iZ2, iZ3, iZ4, iS, iZ1 ]
+!! Shaoping : causing ERROR: Memory allocation error
+      !IndexTableZ_F(:,iZ_F) = [ 1, iNode_E, iZ2, iZ3, iZ4, iS, iZ1 ]
+      IndexTableZ_F(1,iZ_F) =  1
+      IndexTableZ_F(2,iZ_F) =  iNode_E
+      IndexTableZ_F(3,iZ_F) =  iZ2
+      IndexTableZ_F(4,iZ_F) =  iZ3
+      IndexTableZ_F(5,iZ_F) =  iZ4
+      IndexTableZ_F(6,iZ_F) =  iS
+      IndexTableZ_F(7,iZ_F) =  iZ1
 
     END DO
     END DO
@@ -3680,7 +3740,16 @@ CONTAINS
 
       PositionIndexZ_K(iZ_K) = iX_K
 
-      IndexTableZ_K(:,iZ_K) = [ iNodeE, iNodeX, iZ2, iZ3, iZ4, iS, iZ1 ]
+      !! Shaoping : causing ERROR: Memory allocation error
+      !IndexTableZ_K(:,iZ_K) = [ iNodeE, iNodeX, iZ2, iZ3, iZ4, iS, iZ1 ]
+      IndexTableZ_K(1,iZ_K) = iNodeE
+      IndexTableZ_K(2,iZ_K) = iNodeX
+      IndexTableZ_K(3,iZ_K) = iZ2
+      IndexTableZ_K(4,iZ_K) = iZ3
+      IndexTableZ_K(5,iZ_K) = iZ4
+      IndexTableZ_K(6,iZ_K) = iS
+      IndexTableZ_K(7,iZ_K) = iZ1
+
 
     END DO
     END DO

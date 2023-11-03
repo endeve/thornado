@@ -152,6 +152,8 @@ CONTAINS
     ierr = cudaGetDeviceCount( ndevices )
 #elif defined(THORNADO_HIP)
     CALL hipCheck( hipGetDeviceCount( ndevices ) )
+#elif defined(THORNADO_OMP_OL)
+    CALL omp_get_num_devices( mydevice )
 #endif
     IF ( ndevices > 0 ) THEN
       mydevice = MOD( myrank, ndevices )
@@ -163,13 +165,12 @@ CONTAINS
     ierr = cudaSetDevice( mydevice )
 #elif defined(THORNADO_HIP)
     CALL hipCheck( hipSetDevice( mydevice ) )
+#elif defined(THORNADO_OMP_OL)
+    CALL omp_set_default_device( mydevice )
 #endif
 #else
     mydevice = -1
     ndevices = 0
-#endif
-#if defined(THORNADO_OMP_OL)
-    CALL omp_set_default_device( mydevice )
 #endif
 
     ! Setup linear algebra library handles

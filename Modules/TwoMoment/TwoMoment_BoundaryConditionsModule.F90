@@ -1667,6 +1667,7 @@ CONTAINS
     INTEGER :: jNodeZ4, iNodeZ, jNodeZ, iNodeE
     REAL(DP) :: E
 
+
     SELECT CASE ( bcZ(4) )
 
     CASE ( 0 ) ! No Boundary Condition
@@ -1726,7 +1727,7 @@ CONTAINS
                   DO iZ1 = iZ_B0(1), iZ_E0(1)
                     DO iNode = 1, nDOF
   
-  
+
                       ! --- Outer Boundary ---
   
                       U(iNode,iZ1,iZ2,iZ3,iZ_E0(4)+iZ4,iCR,iS) &
