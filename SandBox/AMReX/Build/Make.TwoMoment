@@ -7,6 +7,7 @@ f90EXE_sources  += MF_TwoMoment_BoundaryConditionsModule.f90
 f90EXE_sources  += MF_TwoMoment_PositivityLimiterModule.f90
 f90EXE_sources  += MF_TwoMoment_SlopeLimiterModule.f90
 f90EXE_sources  += MF_TwoMoment_TallyModule.f90
+F90EXE_sources  += MF_TwoMoment_XCFC_UtilitiesModule.F90
 
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/TwoMoment
@@ -24,5 +25,5 @@ F90EXE_sources  += TwoMoment_DiscretizationModule_Collisions.F90
 F90EXE_sources  += TwoMoment_OpacityModule.F90
 F90EXE_sources  += TwoMoment_PositivityLimiterModule.F90
 F90EXE_sources  += TwoMoment_TimersModule.F90
-F90EXE_sources  += TwoMoment_TroubledCellIndicatorModule.F90 
+F90EXE_sources  += TwoMoment_TroubledCellIndicatorModule.F90
 F90EXE_sources  += TwoMoment_SlopeLimiterModule.F90

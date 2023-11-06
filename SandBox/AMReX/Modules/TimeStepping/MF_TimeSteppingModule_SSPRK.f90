@@ -33,22 +33,6 @@ MODULE MF_TimeSteppingModule_SSPRK
     Zero, &
     One, &
     Two
-  USE MF_Euler_dgDiscretizationModule, ONLY: &
-    ComputeIncrement_Euler_MF
-  USE MF_Euler_TallyModule, ONLY: &
-    IncrementOffGridTally_Euler_MF
-  USE MF_Euler_SlopeLimiterModule, ONLY: &
-    ApplySlopeLimiter_Euler_MF
-  USE MF_Euler_PositivityLimiterModule, ONLY: &
-    ApplyPositivityLimiter_Euler_MF
-  USE MF_FieldsModule_Geometry, ONLY: &
-    MF_uGF
-  USE MF_FieldsModule_Euler, ONLY: &
-    MF_uCF, &
-    MF_uDF, &
-    OffGridFlux_Euler_MF
-  USE AverageDownModule, ONLY: &
-    AverageDown
   USE InputParsingModule, ONLY: &
     nLevels, &
     nMaxLevels, &
@@ -60,20 +44,36 @@ MODULE MF_TimeSteppingModule_SSPRK
     t_new, &
     dt, &
     DEBUG
-  USE FluxCorrectionModule_Euler, ONLY: &
-    ApplyFluxCorrection_Euler_MF
+  USE MF_FieldsModule_Geometry, ONLY: &
+    MF_uGF
+  USE MF_FieldsModule_Euler, ONLY: &
+    MF_uCF, &
+    MF_uDF, &
+    OffGridFlux_Euler_MF
+  USE MF_Euler_SlopeLimiterModule, ONLY: &
+    ApplySlopeLimiter_Euler_MF
+  USE MF_Euler_PositivityLimiterModule, ONLY: &
+    ApplyPositivityLimiter_Euler_MF
+  USE MF_Euler_dgDiscretizationModule, ONLY: &
+    ComputeIncrement_Euler_MF
+  USE MF_Euler_TallyModule, ONLY: &
+    IncrementOffGridTally_Euler_MF
   USE MF_XCFC_UtilitiesModule, ONLY: &
     swXX, &
     MultiplyWithPsi6_MF, &
     UpdateConformalFactorAndMetric_XCFC_MF, &
     UpdateLapseShiftCurvature_XCFC_MF, &
     ApplyBoundaryConditions_Geometry_XCFC_MF
-  USE MF_GravitySolutionModule_XCFC, ONLY: &
-    ComputeConformalFactor_XCFC_MF, &
-    ComputeLapseShiftCurvature_XCFC_MF
   USE MF_Euler_XCFC_UtilitiesModule, ONLY: &
     ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF, &
     ComputePressureTensorTrace_XCFC_Euler_MF
+  USE MF_GravitySolutionModule_XCFC, ONLY: &
+    ComputeConformalFactor_XCFC_MF, &
+    ComputeLapseShiftCurvature_XCFC_MF
+  USE AverageDownModule, ONLY: &
+    AverageDown
+  USE FluxCorrectionModule_Euler, ONLY: &
+    ApplyFluxCorrection_Euler_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &

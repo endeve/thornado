@@ -68,14 +68,20 @@ MODULE MF_TimeSteppingModule_IMEX
     ComputeIncrement_Euler_MF
   USE MF_XCFC_UtilitiesModule, ONLY: &
     MultiplyWithPsi6_MF
-  USE MF_GravitySolutionModule_XCFC, ONLY: &
+  USE AverageDownModule, ONLY: &
+    AverageDown
+  USE MF_XCFC_UtilitiesModule, ONLY: &
+    swXX, &
+    MultiplyWithPsi6_MF, &
+    UpdateConformalFactorAndMetric_XCFC_MF, &
+    UpdateLapseShiftCurvature_XCFC_MF, &
+    ApplyBoundaryConditions_Geometry_XCFC_MF
+  USE MF_TwoMoment_XCFC_UtilitiesModule, ONLY: &
     ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF, &
+    ComputePressureTensorTrace_XCFC_TwoMoment_MF
+  USE MF_GravitySolutionModule_XCFC, ONLY: &
     ComputeConformalFactor_XCFC_MF, &
-    ComputePressureTensorTrace_XCFC_TwoMoment_MF, &
     ComputeLapseShiftCurvature_XCFC_MF
-  USE MF_Euler_XCFC_UtilitiesModule, ONLY: &
-    ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF, &
-    ComputePressureTensorTrace_XCFC_Euler_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
@@ -696,7 +702,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:)
 
-    CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF &
+    CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
            ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
 
     CALL ComputeConformalFactor_XCFC_MF &
@@ -719,7 +725,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:)
 
-    CALL ComputePressureTensorTrace_XCFC_Euler_MF &
+    CALL ComputePressureTensorTrace_XCFC_TwoMoment_MF &
            ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
 
     CALL ComputeLapseShiftCurvature_XCFC_MF &
