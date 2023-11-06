@@ -63,14 +63,18 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     ApplyBoundaryConditions_Geometry_XCFC_MF, &
     ComputeGravitationalMass_MF, &
     PopulateMF_uMF
+
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
+
   USE MF_Euler_XCFC_UtilitiesModule, ONLY: &
     ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF, &
     ComputePressureTensorTrace_XCFC_Euler_MF
+
+#ifndef THORNADO_NOTRANSPORT
   USE MF_TwoMoment_XCFC_UtilitiesModule, ONLY: &
     ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF, &
     ComputePressureTensorTrace_XCFC_TwoMoment_MF
-
-#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
+#endif
 
   ! --- Poseidon Modules ---
 
@@ -651,6 +655,8 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:)
 
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
+
     CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
 
@@ -659,6 +665,8 @@ CONTAINS
     CALL UpdateConformalFactorAndMetric_XCFC_MF( MF_uMF, MF_uGF )
 
     CALL AverageDown( MF_uGF )
+
+#endif
 
   END SUBROUTINE ComputeConformalFactor_Euler
 
@@ -669,6 +677,8 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:)
+
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     CALL ComputePressureTensorTrace_XCFC_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
@@ -682,6 +692,8 @@ CONTAINS
 
     CALL ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
 
+#endif
+
   END SUBROUTINE ComputeLapseShiftCurvature_Euler
 
 
@@ -694,6 +706,9 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:)
 
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
+#ifndef THORNADO_NOTRANSPORT
+
     CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
            ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
 
@@ -702,6 +717,9 @@ CONTAINS
     CALL UpdateConformalFactorAndMetric_XCFC_MF( MF_uMF, MF_uGF )
 
     CALL AverageDown( MF_uGF )
+
+#endif
+#endif
 
   END SUBROUTINE ComputeConformalFactor_TwoMoment
 
@@ -715,6 +733,9 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:)
 
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
+#ifndef THORNADO_NOTRANSPORT
+
     CALL ComputePressureTensorTrace_XCFC_TwoMoment_MF &
            ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
 
@@ -724,6 +745,9 @@ CONTAINS
     CALL AverageDown( MF_uGF )
 
     CALL ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
+
+#endif
+#endif
 
   END SUBROUTINE ComputeLapseShiftCurvature_TwoMoment
 
