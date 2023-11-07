@@ -41,16 +41,7 @@ CONTAINS
 
       CASE( 101 )
 
-        WRITE(*,*)
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,*)
-        WRITE(*,'(2x,A)') &
-          'MODULE: InputParsingModule'
-        WRITE(*,'(2x,A)') &
-          'SUBROUTINE: InitializeParameters'
-        WRITE(*,*)
+        CALL WriteHeader( 'InputParsingModule', 'InitializeParameters' )
         WRITE(*,'(2x,A)') &
           'iCycleW and dt_wrt cannot both be greater than zero.'
         WRITE(*,*)
@@ -62,16 +53,7 @@ CONTAINS
 
       CASE( 102 )
 
-        WRITE(*,*)
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,*)
-        WRITE(*,'(2x,A)') &
-          'MODULE: InputParsingModule'
-        WRITE(*,'(2x,A)') &
-          'SUBROUTINE: InitializeParameters'
-        WRITE(*,*)
+        CALL WriteHeader( 'InputParsingModule', 'InitializeParameters' )
         WRITE(*,'(2x,A)') &
           'iCycleChk and dt_chk cannot both be greater than zero.'
         WRITE(*,*)
@@ -83,16 +65,7 @@ CONTAINS
 
       CASE( 103 )
 
-        WRITE(*,*)
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,*)
-        WRITE(*,'(2x,A)') &
-          'MODULE: InputParsingModule'
-        WRITE(*,'(2x,A)') &
-          'SUBROUTINE: InitializeParameters'
-        WRITE(*,*)
+        CALL WriteHeader( 'InputParsingModule', 'InitializeParameters' )
         WRITE(*,'(2x,A,1x,I3.2)') 'Invalid CoordSys:', Int_Option(1)
         WRITE(*,*)
         WRITE(*,'(2x,A)') 'Valid choices'
@@ -106,16 +79,7 @@ CONTAINS
 
       CASE( 104 )
 
-        WRITE(*,*)
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,*)
-        WRITE(*,'(2x,A)') &
-          'MODULE: InputParsingModule'
-        WRITE(*,'(2x,A)') &
-          'SUBROUTINE: InitializeParameters'
-        WRITE(*,*)
+        CALL WriteHeader( 'InputParsingModule', 'InitializeParameters' )
         WRITE(*,'(2x,A)') 'thornado nDimsX different from AMReX amrex_spacedim.'
         WRITE(*,'(2x,A,I2.2)') 'thornado: nDimsX: ', Int_Option(1)
         WRITE(*,'(2x,A,I2.2)') 'amrex:    nDimsX: ', Int_Option(2)
@@ -126,16 +90,7 @@ CONTAINS
 
       CASE( 105 )
 
-        WRITE(*,*)
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,*)
-        WRITE(*,'(2x,A)') &
-          'MODULE: MF_TimeSteppingModule'
-        WRITE(*,'(2x,A)') &
-          'SUBROUTINE: Initialize_IMEX_RK'
-        WRITE(*,*)
+        CALL WriteHeader( 'MF_TimeSteppingModule', 'Initialize_IMEX_RK' )
         WRITE(*,'(2x,A,A)') &
           'Unknown Time Stepping Scheme: ', TRIM( Char_Option(1) )
         WRITE(*,*)
@@ -154,16 +109,7 @@ CONTAINS
 
       CASE( 201 )
 
-        WRITE(*,*)
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,*)
-        WRITE(*,'(2x,A)') &
-          'MODULE: MF_InitializationModule'
-        WRITE(*,'(2x,A)') &
-          'SUBROUTINE: InitializeFields_MF'
-        WRITE(*,*)
+        CALL WriteHeader( 'MF_InitializationModule', 'InitializeFields_MF' )
         WRITE(*,'(2x,A)') TRIM( Message )
         WRITE(*,*)
         WRITE(*,'(2x,A)')   'Valid choices'
@@ -180,16 +126,8 @@ CONTAINS
 
       CASE( 202 )
 
-        WRITE(*,*)
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,*)
-        WRITE(*,'(2x,A)') &
-          'MODULE: MF_InitializationModule'
-        WRITE(*,'(2x,A)') &
-          'SUBROUTINE: InitializeFields_Advection1D'
-        WRITE(*,*)
+        CALL WriteHeader( 'MF_InitializationModule', &
+                          'InitializeFields_Advection_1D' )
         WRITE(*,'(2x,A)') TRIM( Message )
         WRITE(*,*)
         WRITE(*,'(2x,A)')   'Valid choices'
@@ -202,16 +140,8 @@ CONTAINS
 
       CASE( 203 )
 
-        WRITE(*,*)
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,*)
-        WRITE(*,'(2x,A)') &
-          'MODULE: MF_InitializationModule'
-        WRITE(*,'(2x,A)') &
-          'SUBROUTINE: InitializeFields_RiemannProblem1D'
-        WRITE(*,*)
+        CALL WriteHeader( 'MF_InitializationModule', &
+                          'InitializeFields_RiemannProblem1D' )
         WRITE(*,'(2x,A)') TRIM( Message )
         WRITE(*,*)
         WRITE(*,'(2x,A)')   'Valid choices'
@@ -224,16 +154,8 @@ CONTAINS
 
       CASE( 204 )
 
-        WRITE(*,*)
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,*)
-        WRITE(*,'(2x,A)') &
-          'MODULE: MF_InitializationModule'
-        WRITE(*,'(2x,A)') &
-          'SUBROUTINE: InitializeFields_Advection2D'
-        WRITE(*,*)
+        CALL WriteHeader( 'MF_InitializationModule', &
+                          'InitializeFields_Advection2D' )
         WRITE(*,'(2x,A)') TRIM( Message )
         WRITE(*,*)
         WRITE(*,'(2x,A)')   'Valid choices'
@@ -246,16 +168,8 @@ CONTAINS
 
       CASE( 205 )
 
-        WRITE(*,*)
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,*)
-        WRITE(*,'(2x,A)') &
-          'MODULE: MF_InitializationModule'
-        WRITE(*,'(2x,A)') &
-          'SUBROUTINE: InitializeFields_Advection3D'
-        WRITE(*,*)
+        CALL WriteHeader( 'MF_InitializationModule', &
+                          'InitializeFields_Advection3D' )
         WRITE(*,'(2x,A)') TRIM( Message )
         WRITE(*,*)
         WRITE(*,'(2x,A)')   'Valid choices'
@@ -268,16 +182,8 @@ CONTAINS
 
       CASE( 301 )
 
-        WRITE(*,*)
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,'(2x,A,A)') 'FATAL ERROR'
-        WRITE(*,'(2x,A,A)') '-----------'
-        WRITE(*,*)
-        WRITE(*,'(2x,A)') &
-          'MODULE: MF_InitializationModule'
-        WRITE(*,'(2x,A)') &
-          'SUBROUTINE: InitializeFields_MF'
-        WRITE(*,*)
+        CALL WriteHeader( 'MF_InitializationModule', &
+                          'InitializeFields_MF' )
         WRITE(*,'(2x,A)') TRIM( Message )
         WRITE(*,*)
         WRITE(*,'(2x,A)')   'Valid choices'
@@ -289,8 +195,31 @@ CONTAINS
 
       CASE( 901 )
 
-        WRITE(*,*)
+        CALL WriteHeader( 'InitializationModule', &
+                          'InitializeProgram' )
         WRITE(*,'(2x,A)') 'Boundary condition exponent < 0'
+        WRITE(*,'(2x,A)') TRIM( Message )
+
+        CALL thornado_abort
+
+      CASE( 902 )
+
+        WRITE(*,*)
+        CALL WriteHeader( 'MF_GravitySolutionModule_XCFC_Poseidon', &
+                          'InitializeMetric_Euler_MF_Poseidon' )
+        WRITE(*,'(2x,A)') 'Metric fields did not converge'
+        WRITE(*,'(2x,A,ES24.16E3)') 'MAX( LaxLF, MaxCF ): ', Real_Option(1)
+        WRITE(*,'(2x,A)') TRIM( Message )
+
+        CALL thornado_abort
+
+      CASE( 903 )
+
+        WRITE(*,*)
+        CALL WriteHeader( 'MF_GravitySolutionModule_XCFC_Poseidon', &
+                          'InitializeMetric_TwoMoment_MF_Poseidon' )
+        WRITE(*,'(2x,A)') 'Metric fields did not converge'
+        WRITE(*,'(2x,A,ES24.16E3)') 'MAX( LaxLF, MaxCF ): ', Real_Option(1)
         WRITE(*,'(2x,A)') TRIM( Message )
 
         CALL thornado_abort
@@ -306,6 +235,24 @@ CONTAINS
     END SELECT
 
   END SUBROUTINE DescribeError_MF
+
+
+  SUBROUTINE WriteHeader( ModuleName, SubroutineName )
+
+    CHARACTER(*), INTENT(in) :: ModuleName, SubroutineName
+
+    WRITE(*,*)
+    WRITE(*,'(2x,A,A)') '-----------'
+    WRITE(*,'(2x,A,A)') 'FATAL ERROR'
+    WRITE(*,'(2x,A,A)') '-----------'
+    WRITE(*,*)
+    WRITE(*,'(2x,A,A)') &
+      'MODULE: ', TRIM( ModuleName )
+    WRITE(*,'(2x,A,A)') &
+      'SUBROUTINE: ', TRIM( SubroutineName )
+    WRITE(*,*)
+
+  END SUBROUTINE WriteHeader
 
 
 END MODULE MF_ErrorModule

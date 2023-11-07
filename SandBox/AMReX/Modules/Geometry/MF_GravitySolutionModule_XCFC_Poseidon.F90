@@ -460,11 +460,19 @@ CONTAINS
       CALL amrex_parallel_reduce_max( MaxLF )
       CALL amrex_parallel_reduce_max( MaxCF )
 
+      IF( amrex_parallel_ioprocessor() )THEN
+
+        IF( ITER .GT. MAX_ITER - 3 ) &
+          WRITE(*,'(4x,A,I2.2,1x,ES24.16E3)') &
+            'ITER, MAX( MaxLF, MaxCF ): ', ITER, MAX( MaxLF, MaxCF )
+
+      END IF
+
       IF( MAX( MaxLF, MaxCF ) .LT. TOLERANCE ) CONVERGED = .TRUE.
 
       IF( ITER .EQ. MAX_ITER ) &
         CALL DescribeError_MF &
-               ( 901, Real_Option = [ MAX( MaxLF, MaxCF ) ] )
+               ( 902, Real_Option = [ MAX( MaxLF, MaxCF ) ] )
 
     END DO ! WHILE( .NOT. CONVERGED )
 
@@ -619,11 +627,19 @@ CONTAINS
       CALL amrex_parallel_reduce_max( MaxLF )
       CALL amrex_parallel_reduce_max( MaxCF )
 
+      IF( amrex_parallel_ioprocessor() )THEN
+
+        IF( ITER .GT. MAX_ITER - 3 ) &
+          WRITE(*,'(4x,A,I2.2,1x,ES24.16E3)') &
+            'ITER, MAX( MaxLF, MaxCF ): ', ITER, MAX( MaxLF, MaxCF )
+
+      END IF
+
       IF( MAX( MaxLF, MaxCF ) .LT. TOLERANCE ) CONVERGED = .TRUE.
 
       IF( ITER .EQ. MAX_ITER ) &
         CALL DescribeError_MF &
-               ( 901, Real_Option = [ MAX( MaxLF, MaxCF ) ] )
+               ( 903, Real_Option = [ MAX( MaxLF, MaxCF ) ] )
 
     END DO ! WHILE( .NOT. CONVERGED )
 
