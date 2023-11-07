@@ -572,8 +572,8 @@ CONTAINS
 
     DO WHILE( .NOT. CONVERGED )
 
-      MaxLF = HUGE( One )
-      MaxCF = HUGE( One )
+      MaxLF = -HUGE( One )
+      MaxCF = -HUGE( One )
 
       ITER = ITER + 1
 
