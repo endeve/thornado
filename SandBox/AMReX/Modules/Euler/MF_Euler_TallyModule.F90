@@ -42,6 +42,9 @@ MODULE MF_Euler_TallyModule
     CoordinateSystem
   USE FluidFieldsModule, ONLY: &
     iCF_D, &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
     iCF_E, &
     iCF_Ne, &
     nCF
@@ -96,6 +99,27 @@ MODULE MF_Euler_TallyModule
   REAL(DP)         :: BaryonicMass_Interior
   REAL(DP)         :: BaryonicMass_Interior_OMP
   REAL(DP)         :: BaryonicMass_Change
+
+  CHARACTER(SL)    :: EulerMomentumX1_FileName
+  REAL(DP), PUBLIC :: EulerMomentumX1_Initial
+  REAL(DP), PUBLIC :: EulerMomentumX1_OffGrid
+  REAL(DP)         :: EulerMomentumX1_Interior
+  REAL(DP)         :: EulerMomentumX1_Interior_OMP
+  REAL(DP)         :: EulerMomentumX1_Change
+
+  CHARACTER(SL)    :: EulerMomentumX2_FileName
+  REAL(DP), PUBLIC :: EulerMomentumX2_Initial
+  REAL(DP), PUBLIC :: EulerMomentumX2_OffGrid
+  REAL(DP)         :: EulerMomentumX2_Interior
+  REAL(DP)         :: EulerMomentumX2_Interior_OMP
+  REAL(DP)         :: EulerMomentumX2_Change
+
+  CHARACTER(SL)    :: EulerMomentumX3_FileName
+  REAL(DP), PUBLIC :: EulerMomentumX3_Initial
+  REAL(DP), PUBLIC :: EulerMomentumX3_OffGrid
+  REAL(DP)         :: EulerMomentumX3_Interior
+  REAL(DP)         :: EulerMomentumX3_Interior_OMP
+  REAL(DP)         :: EulerMomentumX3_Change
 
   CHARACTER(SL)    :: EulerEnergy_FileName
   REAL(DP), PUBLIC :: EulerEnergy_Initial
@@ -168,6 +192,33 @@ CONTAINS
       CALL CreateFile &
              ( BaryonicMass_FileName, UnitsDisplay % MassLabel, TimeLabel )
 
+      ! --- Euler Momentum (X1) ---
+
+      EulerMomentumX1_FileName &
+        = TRIM( FileNameRoot ) // '_EulerMomentumX1.dat'
+
+      CALL CreateFile &
+             ( EulerMomentumX1_FileName, &
+               UnitsDisplay % MomentumX1Label, TimeLabel )
+
+      ! --- Euler Momentum (X2) ---
+
+      EulerMomentumX2_FileName &
+        = TRIM( FileNameRoot ) // '_EulerMomentumX2.dat'
+
+      CALL CreateFile &
+             ( EulerMomentumX2_FileName, &
+               UnitsDisplay % MomentumX2Label, TimeLabel )
+
+      ! --- Euler Momentum (X3) ---
+
+      EulerMomentumX3_FileName &
+        = TRIM( FileNameRoot ) // '_EulerMomentumX3.dat'
+
+      CALL CreateFile &
+             ( EulerMomentumX3_FileName, &
+               UnitsDisplay % MomentumX3Label, TimeLabel )
+
       ! --- Euler Energy ---
 
       EulerEnergy_FileName &
@@ -207,6 +258,15 @@ CONTAINS
     BaryonicMass_Interior = Zero
     BaryonicMass_Change   = Zero
 
+    EulerMomentumX1_Interior = Zero
+    EulerMomentumX1_Change   = Zero
+
+    EulerMomentumX2_Interior = Zero
+    EulerMomentumX2_Change   = Zero
+
+    EulerMomentumX3_Interior = Zero
+    EulerMomentumX3_Change   = Zero
+
     EulerEnergy_Interior = Zero
     EulerEnergy_Change   = Zero
 
@@ -220,6 +280,15 @@ CONTAINS
 
       BaryonicMass_Initial = Zero
       BaryonicMass_OffGrid = Zero
+
+      EulerMomentumX1_Initial = Zero
+      EulerMomentumX1_OffGrid = Zero
+
+      EulerMomentumX2_Initial = Zero
+      EulerMomentumX2_OffGrid = Zero
+
+      EulerMomentumX3_Initial = Zero
+      EulerMomentumX3_OffGrid = Zero
 
       EulerEnergy_Initial = Zero
       EulerEnergy_OffGrid = Zero
@@ -281,10 +350,13 @@ CONTAINS
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
-    BaryonicMass_Interior   = Zero
-    EulerEnergy_Interior    = Zero
-    ElectronNumber_Interior = Zero
-    ADMMass_Interior        = Zero
+    BaryonicMass_Interior    = Zero
+    EulerMomentumX1_Interior = Zero
+    EulerMomentumX2_Interior = Zero
+    EulerMomentumX3_Interior = Zero
+    EulerEnergy_Interior     = Zero
+    ElectronNumber_Interior  = Zero
+    ADMMass_Interior         = Zero
 
     DO iLevel = 0, nLevels-1
 
@@ -292,15 +364,21 @@ CONTAINS
 
       CALL CreateMesh_MF( iLevel, MeshX )
 
-      BaryonicMass_Interior_OMP   = Zero
-      EulerEnergy_Interior_OMP    = Zero
-      ElectronNumber_Interior_OMP = Zero
+      BaryonicMass_Interior_OMP    = Zero
+      EulerMomentumX1_Interior_OMP = Zero
+      EulerMomentumX2_Interior_OMP = Zero
+      EulerMomentumX3_Interior_OMP = Zero
+      EulerEnergy_Interior_OMP     = Zero
+      ElectronNumber_Interior_OMP  = Zero
 
 #if defined( THORNADO_OMP )
       !$OMP PARALLEL &
       !$OMP PRIVATE( iX_B0, iX_E0, iX_B1, iX_E1, iLo_MF, &
       !$OMP          BX, MFI, FineMask, uGF, uCF, G, U, d3X ) &
       !$OMP REDUCTION( +:BaryonicMass_Interior_OMP, &
+      !$OMP              EulerMomentumX1_Interior_OMP, &
+      !$OMP              EulerMomentumX2_Interior_OMP, &
+      !$OMP              EulerMomentumX3_Interior_OMP, &
       !$OMP              EulerEnergy_Interior_OMP, &
       !$OMP              ElectronNumber_Interior_OMP )
 #endif
@@ -354,6 +432,27 @@ CONTAINS
                     * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                     * U(iNX,iX1,iX2,iX3,iCF_D)
 
+          EulerMomentumX1_Interior_OMP &
+            = EulerMomentumX1_Interior_OMP &
+                + d3X &
+                    * WeightsX_q(iNX) &
+                    * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                    * U(iNX,iX1,iX2,iX3,iCF_S1)
+
+          EulerMomentumX2_Interior_OMP &
+            = EulerMomentumX2_Interior_OMP &
+                + d3X &
+                    * WeightsX_q(iNX) &
+                    * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                    * U(iNX,iX1,iX2,iX3,iCF_S2)
+
+          EulerMomentumX3_Interior_OMP &
+            = EulerMomentumX3_Interior_OMP &
+                + d3X &
+                    * WeightsX_q(iNX) &
+                    * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                    * U(iNX,iX1,iX2,iX3,iCF_S3)
+
           EulerEnergy_Interior_OMP &
             = EulerEnergy_Interior_OMP &
                 + d3X &
@@ -392,11 +491,17 @@ CONTAINS
 #endif
 
       BaryonicMass_Interior &
-        = BaryonicMass_Interior   + BaryonicMass_Interior_OMP
+        = BaryonicMass_Interior    + BaryonicMass_Interior_OMP
+      EulerMomentumX1_Interior &
+        = EulerMomentumX1_Interior + EulerMomentumX1_Interior_OMP
+      EulerMomentumX2_Interior &
+        = EulerMomentumX2_Interior + EulerMomentumX2_Interior_OMP
+      EulerMomentumX3_Interior &
+        = EulerMomentumX3_Interior + EulerMomentumX3_Interior_OMP
       EulerEnergy_Interior &
-        = EulerEnergy_Interior    + EulerEnergy_Interior_OMP
+        = EulerEnergy_Interior     + EulerEnergy_Interior_OMP
       ElectronNumber_Interior &
-        = ElectronNumber_Interior + ElectronNumber_Interior_OMP
+        = ElectronNumber_Interior  + ElectronNumber_Interior_OMP
 
       CALL DestroyMesh_MF( MeshX )
 
@@ -414,16 +519,22 @@ CONTAINS
 
 #endif
 
-    CALL amrex_parallel_reduce_sum( BaryonicMass_Interior   )
-    CALL amrex_parallel_reduce_sum( EulerEnergy_Interior    )
-    CALL amrex_parallel_reduce_sum( ElectronNumber_Interior )
+    CALL amrex_parallel_reduce_sum( BaryonicMass_Interior    )
+    CALL amrex_parallel_reduce_sum( EulerMomentumX1_Interior )
+    CALL amrex_parallel_reduce_sum( EulerMomentumX2_Interior )
+    CALL amrex_parallel_reduce_sum( EulerMomentumX3_Interior )
+    CALL amrex_parallel_reduce_sum( EulerEnergy_Interior     )
+    CALL amrex_parallel_reduce_sum( ElectronNumber_Interior  )
 
     IF( SetInitialValues )THEN
 
-      BaryonicMass_Initial   = BaryonicMass_Interior
-      EulerEnergy_Initial    = EulerEnergy_Interior
-      ElectronNumber_Initial = ElectronNumber_Interior
-      ADMMass_Initial        = ADMMass_Interior
+      BaryonicMass_Initial    = BaryonicMass_Interior
+      EulerMomentumX1_Initial = EulerMomentumX1_Interior
+      EulerMomentumX2_Initial = EulerMomentumX2_Interior
+      EulerMomentumX3_Initial = EulerMomentumX3_Interior
+      EulerEnergy_Initial     = EulerEnergy_Interior
+      ElectronNumber_Initial  = ElectronNumber_Interior
+      ADMMass_Initial         = ADMMass_Interior
 
     END IF
 
@@ -431,15 +542,27 @@ CONTAINS
 
     BaryonicMass_Change &
       = BaryonicMass_Interior &
-          - BaryonicMass_Initial   + BaryonicMass_OffGrid
+          - BaryonicMass_Initial    + BaryonicMass_OffGrid
+
+    EulerMomentumX1_Change &
+      = EulerMomentumX1_Interior &
+          - EulerMomentumX1_Initial + EulerMomentumX1_OffGrid
+
+    EulerMomentumX2_Change &
+      = EulerMomentumX2_Interior &
+          - EulerMomentumX2_Initial + EulerMomentumX2_OffGrid
+
+    EulerMomentumX3_Change &
+      = EulerMomentumX3_Interior &
+          - EulerMomentumX3_Initial + EulerMomentumX3_OffGrid
 
     EulerEnergy_Change &
       = EulerEnergy_Interior &
-          - EulerEnergy_Initial    + EulerEnergy_OffGrid
+          - EulerEnergy_Initial     + EulerEnergy_OffGrid
 
     ElectronNumber_Change &
       = ElectronNumber_Interior &
-          - ElectronNumber_Initial + ElectronNumber_OffGrid
+          - ElectronNumber_Initial  + ElectronNumber_OffGrid
 
     ADMMass_Change &
       = ADMMass_Interior &
@@ -464,13 +587,22 @@ CONTAINS
     DO iLevel = 0, nLevels-1
 
       BaryonicMass_OffGrid &
-        = BaryonicMass_OffGrid   + dM(iCF_D,iLevel)
+        = BaryonicMass_OffGrid    + dM(iCF_D ,iLevel)
+
+      EulerMomentumX1_OffGrid &
+        = EulerMomentumX1_OffGrid + dM(iCF_S1,iLevel)
+
+      EulerMomentumX2_OffGrid &
+        = EulerMomentumX2_OffGrid + dM(iCF_S2,iLevel)
+
+      EulerMomentumX3_OffGrid &
+        = EulerMomentumX3_OffGrid + dM(iCF_S3,iLevel)
 
       EulerEnergy_OffGrid &
-        = EulerEnergy_OffGrid    + dM(iCF_E,iLevel)
+        = EulerEnergy_OffGrid     + dM(iCF_E ,iLevel)
 
       ElectronNumber_OffGrid &
-        = ElectronNumber_OffGrid + dM(iCF_Ne,iLevel)
+        = ElectronNumber_OffGrid  + dM(iCF_Ne,iLevel)
 
       ADMMass_OffGrid &
         = Zero
@@ -505,6 +637,36 @@ CONTAINS
                BaryonicMass_OffGrid, &
                BaryonicMass_Change, &
                UnitsDisplay % MassUnit )
+
+      ! --- Euler Momentum (X1) ---
+
+      CALL WriteTallyToFile &
+             ( EulerMomentumX1_FileName, Time, UnitsDisplay % TimeUnit, &
+               EulerMomentumX1_Interior, &
+               EulerMomentumX1_Initial, &
+               EulerMomentumX1_OffGrid, &
+               EulerMomentumX1_Change, &
+               UnitsDisplay % MomentumX1Unit )
+
+      ! --- Euler Momentum (X2) ---
+
+      CALL WriteTallyToFile &
+             ( EulerMomentumX2_FileName, Time, UnitsDisplay % TimeUnit, &
+               EulerMomentumX2_Interior, &
+               EulerMomentumX2_Initial, &
+               EulerMomentumX2_OffGrid, &
+               EulerMomentumX2_Change, &
+               UnitsDisplay % MomentumX2Unit )
+
+      ! --- Euler Momentum (X3) ---
+
+      CALL WriteTallyToFile &
+             ( EulerMomentumX3_FileName, Time, UnitsDisplay % TimeUnit, &
+               EulerMomentumX3_Interior, &
+               EulerMomentumX3_Initial, &
+               EulerMomentumX3_OffGrid, &
+               EulerMomentumX3_Change, &
+               UnitsDisplay % MomentumX3Unit )
 
       ! --- Euler Energy ---
 
@@ -568,6 +730,30 @@ CONTAINS
                                BaryonicMass_Change, &
                                UnitsDisplay % MassUnit, &
                                UnitsDisplay % MassLabel )
+
+      CALL WriteTallyToScreen( 'Euler Momentum (X1)', &
+                               EulerMomentumX1_Interior, &
+                               EulerMomentumX1_Initial, &
+                               EulerMomentumX1_OffGrid, &
+                               EulerMomentumX1_Change, &
+                               UnitsDisplay % MomentumX1Unit, &
+                               UnitsDisplay % MomentumX1Label )
+
+      CALL WriteTallyToScreen( 'Euler Momentum (X2)', &
+                               EulerMomentumX2_Interior, &
+                               EulerMomentumX2_Initial, &
+                               EulerMomentumX2_OffGrid, &
+                               EulerMomentumX2_Change, &
+                               UnitsDisplay % MomentumX2Unit, &
+                               UnitsDisplay % MomentumX2Label )
+
+      CALL WriteTallyToScreen( 'Euler Momentum (X3)', &
+                               EulerMomentumX3_Interior, &
+                               EulerMomentumX3_Initial, &
+                               EulerMomentumX3_OffGrid, &
+                               EulerMomentumX3_Change, &
+                               UnitsDisplay % MomentumX3Unit, &
+                               UnitsDisplay % MomentumX3Label )
 
       CALL WriteTallyToScreen( 'Euler Energy', &
                                EulerEnergy_Interior, &
@@ -689,13 +875,13 @@ CONTAINS
 
     WRITE(*,*)
     WRITE(*,TRIM(FMT)) &
-      TRIM( FieldName ) // ' Interior.: '     , Interior / Units, TRIM( Label )
+      TRIM( FieldName ) // ' Interior.: ', Interior / Units, TRIM( Label )
     WRITE(*,TRIM(FMT)) &
-      TRIM( FieldName ) // ' Mass Initial..: ', Initial  / Units, TRIM( Label )
+      TRIM( FieldName ) // ' Initial..: ', Initial  / Units, TRIM( Label )
     WRITE(*,TRIM(FMT)) &
-      TRIM( FieldName ) // ' Off Grid.: '     , OffGrid  / Units, TRIM( Label )
+      TRIM( FieldName ) // ' Off Grid.: ', OffGrid  / Units, TRIM( Label )
     WRITE(*,TRIM(FMT)) &
-      TRIM( FieldName ) // ' Change...: '     , Change   / Units, TRIM( Label )
+      TRIM( FieldName ) // ' Change...: ', Change   / Units, TRIM( Label )
 
   END SUBROUTINE WriteTallyToScreen
 
