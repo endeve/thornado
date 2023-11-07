@@ -64,8 +64,8 @@ MODULE FinalizationModule
     FinalizeTally_Euler_MF, &
     BaryonicMass_Initial, &
     BaryonicMass_OffGrid, &
-    Energy_Initial, &
-    Energy_OffGrid, &
+    EulerEnergy_Initial, &
+    EulerEnergy_OffGrid, &
     ElectronNumber_Initial, &
     ElectronNumber_OffGrid, &
     ADMMass_Initial, &
@@ -115,7 +115,7 @@ CONTAINS
     CALL WriteFieldsAMReX_Checkpoint &
            ( StepNo, nLevels, dt, t_new, &
              [ BaryonicMass_Initial  , BaryonicMass_OffGrid   ], &
-             [ Energy_Initial        , Energy_OffGrid         ], &
+             [ EulerEnergy_Initial   , EulerEnergy_OffGrid    ], &
              [ ElectronNumber_Initial, ElectronNumber_OffGrid ], &
              [ ADMMass_Initial       , ADMMass_OffGrid        ], &
              MF_uGF % BA % P, &
