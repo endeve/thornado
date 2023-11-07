@@ -1285,7 +1285,7 @@ CONTAINS
         CALL TimersStart( Timer_Collisions_ComputeRates )
 
         CALL ComputeRates_Packed &
-               ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, ITERATE_inner, nX_P_inner, &
+               ( D, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, ITERATE_inner, nX_P_inner, &
                  PackIndex_inner, UnpackIndex_inner, nX_P_outer )
 
         CALL TimersStop( Timer_Collisions_ComputeRates )
@@ -1764,8 +1764,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeRates_Packed &
-    ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, MASK, nX_P, PackIndex, UnpackIndex, nX_P0 )
+    ( D, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, MASK, nX_P, PackIndex, UnpackIndex, nX_P0 )
 
+    REAL(DP), DIMENSION(:),     INTENT(in), TARGET   :: D
     REAL(DP), DIMENSION(:,:,:), INTENT(in), TARGET   :: Dnu
     REAL(DP), DIMENSION(:,:,:), INTENT(in), TARGET   :: Inu_u_1
     REAL(DP), DIMENSION(:,:,:), INTENT(in), TARGET   :: Inu_u_2
@@ -1775,6 +1776,7 @@ CONTAINS
     INTEGER,  DIMENSION(:),     INTENT(in), OPTIONAL :: PackIndex, UnpackIndex
     INTEGER,                    INTENT(in), OPTIONAL :: nX_P0
 
+    REAL(DP), DIMENSION(:)    , POINTER :: D_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Dnu_P, Dnu_0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Inu_u_1_P, Inu_u_2_P, Inu_u_3_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_NES_P , Eta_NES_P
@@ -1813,8 +1815,12 @@ CONTAINS
 
       ! --- Pack Arrays ---
 
+      D_P => D_T(1:nX)
+
+      CALL ArrayPack( nX, UnpackIndex, D, D_P )
+
       Dnu_P     => Dnu_T    (:,:,1:nX)
-      Dnu_0_P    => Dnu_0_T   (:,:,1:nX)
+      Dnu_0_P   => Dnu_0_T  (:,:,1:nX)
       Inu_u_1_P => Inu_u_1_T(:,:,1:nX)
       Inu_u_2_P => Inu_u_2_T(:,:,1:nX)
       Inu_u_3_P => Inu_u_3_T(:,:,1:nX)
@@ -1886,6 +1892,8 @@ CONTAINS
 
     ELSE
 
+      D_P => D(:)
+
       Dnu_P            => Dnu           (:,:,:)
       Dnu_0_P          => Dnu_0         (:,:,:)
       Inu_u_1_P        => Inu_u_1       (:,:,:)
@@ -1937,7 +1945,7 @@ CONTAINS
     CALL TimersStart( Timer_OpacityRate_NES )
 
     CALL ComputeNeutrinoOpacityRates_NES &
-           ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, Dnu_P, Dnu_0_P, H_I_0_P, H_II_0_P, &
+           ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, H_I_0_P, H_II_0_P, &
              Eta_NES_P, Chi_NES_P )
 
     IF( Include_LinCorr )THEN
@@ -1945,7 +1953,7 @@ CONTAINS
       ! --- Compute Linear Rate Corrections (NES) ---
 
       CALL ComputeNeutrinoOpacityRates_LinearCorrections_NES &
-             ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, &
+             ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, &
                Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, Dnu_0_P, H_I_1_P, H_II_1_P, &
                L_NES__In__u_1_P, L_NES__In__u_2_P, L_NES__In__u_3_P, &
                L_NES__Out_u_1_P, L_NES__Out_u_2_P, L_NES__Out_u_3_P )
@@ -1959,7 +1967,7 @@ CONTAINS
     CALL TimersStart( Timer_OpacityRate_Pair )
 
     CALL ComputeNeutrinoOpacityRates_Pair &
-           ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, Dnu_P, Dnu_0_P, J_I_0_P, J_II_0_P, &
+           ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, J_I_0_P, J_II_0_P, &
              Eta_Pair_P, Chi_Pair_P )
 
     IF( Include_LinCorr )THEN
@@ -1967,7 +1975,7 @@ CONTAINS
       ! --- Compute Linear Rate Corrections (Pair) ---
 
       CALL ComputeNeutrinoOpacityRates_LinearCorrections_Pair &
-             ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, &
+             ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, &
                Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, Dnu_0_P, J_I_1_P, J_II_1_P, &
                L_Pair_Pro_u_1_P, L_Pair_Pro_u_2_P, L_Pair_Pro_u_3_P, &
                L_Pair_Ann_u_1_P, L_Pair_Ann_u_2_P, L_Pair_Ann_u_3_P )
@@ -1981,7 +1989,7 @@ CONTAINS
     CALL TimersStart( Timer_OpacityRate_Brem )
 
     CALL ComputeNeutrinoOpacityRates_Brem &
-           ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, Dnu_P, Dnu_0_P, S_Sigma_P, &
+           ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, S_Sigma_P, &
              Eta_Brem_P, Chi_Brem_P )
 
     IF( Include_LinCorr )THEN
@@ -1989,7 +1997,7 @@ CONTAINS
       ! --- Compute Linear Rate Corrections (Brem) ---
 
       CALL ComputeNeutrinoOpacityRates_LinearCorrections_Brem &
-             ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, &
+             ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, &
                Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, Dnu_0_P, S_Sigma_P, &
                L_Brem_Pro_u_1_P, L_Brem_Pro_u_2_P, L_Brem_Pro_u_3_P, &
                L_Brem_Ann_u_1_P, L_Brem_Ann_u_2_P, L_Brem_Ann_u_3_P )
