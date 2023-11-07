@@ -66,8 +66,6 @@ PROGRAM main
     t_chk, &
     dt_wrt, &
     dt_chk, &
-    UseAMR, &
-    iReGrid, &
     DEBUG
   USE ReGridModule, ONLY: &
     ReGrid
@@ -84,7 +82,7 @@ PROGRAM main
 
   INCLUDE 'mpif.h'
 
-  INTEGER  :: iLevel, iErr
+  INTEGER  :: iErr
   LOGICAL  :: wrt, chk
   REAL(DP) :: Timer_Evolution
 
