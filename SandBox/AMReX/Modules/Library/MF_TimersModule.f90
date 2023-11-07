@@ -18,6 +18,10 @@ MODULE MF_TimersModule
     TimeIt_AMReX_Euler, &
     InitializeTimers_AMReX_Euler, &
     FinalizeTimers_AMReX_Euler
+  USE MF_TwoMoment_TimersModule, ONLY: &
+    TimeIt_AMReX_TwoMoment, &
+    InitializeTimers_AMReX_TwoMoment, &
+    FinalizeTimers_AMReX_TwoMoment
 
   IMPLICIT NONE
   PRIVATE
@@ -92,6 +96,9 @@ CONTAINS
     IF( TimeIt_AMReX_Euler ) &
       CALL InitializeTimers_AMReX_Euler &
              ( WriteMMS_Option = WriteMMS )
+
+    IF( TimeIt_AMReX_TwoMoment ) &
+      CALL InitializeTimers_AMReX_TwoMoment
 
   END SUBROUTINE InitializeTimers_AMReX
 
@@ -215,6 +222,9 @@ CONTAINS
 
     IF( TimeIt_AMReX_Euler ) &
       CALL FinalizeTimers_AMReX_Euler( TimerAve(iT_P) )
+
+    IF( TimeIt_AMReX_TwoMoment ) &
+      CALL FinalizeTimers_AMReX_TwoMoment
 
     IF( RestartProgramTimer )THEN
 
