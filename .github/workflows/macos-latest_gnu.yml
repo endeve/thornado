@@ -1,6 +1,9 @@
 name: Compile thornado on MacOS (latest) with gnu compilers
 
-on: [ push, pull_request ]
+on:
+  push:
+    branches:
+      - InterfaceWithPoseidon
 
 jobs:
   compile-with--gnu:
