@@ -174,7 +174,7 @@ PROGRAM ApplicationDriver
   SlopeTolerance            = 1.0e-6_DP
   UseCharacteristicLimiting = .FALSE.
   UseTroubledCellIndicator  = .FALSE.
-  LimiterThresholdParameter = 1.5e-2_DP
+  LimiterThresholdParameter = 5.0e-3_DP
   UseConservativeCorrection = .TRUE.
 
   ! --- Positivity Limiter ---
