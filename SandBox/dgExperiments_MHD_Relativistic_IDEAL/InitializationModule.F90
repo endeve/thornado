@@ -204,8 +204,10 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1
     REAL(DP) :: X1
-    REAL(DP) :: Eta, h, P, VA, W, k, VdotB, &
+    REAL(DP) :: Eta, h, P, VA, W, k, L, VdotB, Kappa, &
                 V1_Transport, V2_Transport, V3_Transport
+
+    REAL(DP) :: V1, V2, V3, CB1, CB2, CB3
 
     WRITE(*,*)
     WRITE(*,'(A4,A,A)') &
@@ -272,7 +274,7 @@ CONTAINS
             W = One / SQRT( One - VA**2 * Eta**2 )
 
             uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
-            uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = 0.0_DP
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = Zero
             uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = -VA * Eta * COS( k * X1 )
             uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = -VA * Eta * SIN( k * X1 )
             uAM(iNodeX,iX1,iX2,iX3,iAM_P)  = One
@@ -357,8 +359,9 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1, iNodeX2
     REAL(DP) :: X1, X2
-    REAL(DP) :: Eta, h, P, VA, W, k, VdotB, &
+    REAL(DP) :: Eta, h, P, VA, W, kappa, L, k, VdotB, &
                 V1_Transport, V2_Transport, V3_Transport
+    REAL(DP) :: V1, V2, V3, VSq, CB1, CB2, CB3
 
     WRITE(*,*)
     WRITE(*,'(A4,A,A)') &
@@ -493,6 +496,8 @@ CONTAINS
 
           CASE( 'CPAlfvenOblique' )
 
+            L = X1 * COS( Angle ) + X2 * SIN( Angle )
+
             Eta = One
             k   = One
             h   = One + Gamma_IDEAL / ( Gamma_IDEAL - One )
@@ -501,106 +506,89 @@ CONTAINS
 
             W = One / SQRT( One - VA**2 * Eta**2 )
 
+            V1 =  VA * Eta * SIN( Angle ) * COS( TwoPi * k * L )
+            V2 = -VA * Eta * COS( Angle ) * COS( TwoPi * k * L )
+            V3 = -VA * Eta * SIN( TwoPi * k * L )
+
+            CB1 = COS( Angle ) + V1 / ( -VA )
+            CB2 = SIN( Angle ) + V2 / ( -VA )
+            CB3 = V3 / ( -VA )
+
+            VSq = V1**2 + V2**2 + V3**2
+
+            VdotB = V1 * CB1 + V2 * CB2 + V3 * CB3
+
             uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
-            uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
-              =  VA * Eta * SIN( Angle ) * COS( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) )
-            uPM(iNodeX,iX1,iX2,iX3,iPM_V2) &
-              = -VA * Eta * COS( Angle ) * COS( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) )
-            uPM(iNodeX,iX1,iX2,iX3,iPM_V3) &
-              = -VA * Eta * SIN( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) )
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = V1
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = V2
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = V3
             uAM(iNodeX,iX1,iX2,iX3,iAM_P)  = One
             uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
               = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
 
-            VdotB &
-              =  uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
-                 * ( COS( Angle ) - SIN( Angle ) * Eta &
-                                    * COS( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) ) ) &
-                + uPM(iNodeX,iX1,iX2,iX3,iPM_V2) &
-                  * ( SIN( Angle ) + COS( Angle ) * Eta &
-                                     * COS( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) ) ) &
-                + uPM(iNodeX,iX1,iX2,iX3,iPM_V3) &
-                  * Eta * SIN( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) )
-
-            V1_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
-                           - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_1) &
-                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
-
-            V2_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V2) &
-                           - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2) &
-                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
-
-            V3_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V3) &
-                           - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3) &
-                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
-
             uPM(iNodeX,iX1,iX2,iX3,iPM_B1) &
-              = W * VdotB * V1_Transport &
-                + ( COS( Angle ) - SIN( Angle ) * Eta &
-                                   * COS( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) ) ) / W
+              = W * VdotB * V1 + CB1 / W
             uPM(iNodeX,iX1,iX2,iX3,iPM_B2) &
-              = W * VdotB * V2_Transport &
-                + ( SIN( Angle ) + COS( Angle ) * Eta &
-                                   * COS( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) ) ) / W
+              = W * VdotB * V2 + CB2 / W
             uPM(iNodeX,iX1,iX2,iX3,iPM_B3) &
-              = W * VdotB * V3_Transport &
-                + Eta * SIN( k * ( X1 * COS( Angle ) + X2 * SIN( Angle ) ) ) / W
+              = W * VdotB * V3 + CB3 / W
             uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
           ! Loop advection problem from Section 5.5 of Mosta et al. (2014).
 
           CASE( 'LoopAdvection' )
 
-            IF( SQRT( X1**2 + X2**2 ) .LE. 0.3 )THEN
+            IF( SQRT( X1**2 + X2**2 ) .LE. 0.3_DP )THEN
 
-            uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
-            uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = One / Two
-            uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = One / 24.0_DP
-            uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = 0.0_DP
-            uAM(iNodeX,iX1,iX2,iX3,iAM_P ) = Three
-            uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
-              = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
+              uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
+              uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = One / Two
+              uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = One / Two
+              uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = One / 24.0_DP
+              uAM(iNodeX,iX1,iX2,iX3,iAM_P ) = Three
+              uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
+                = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
 
+              W = One / SQRT( One - ( One / Two )**2 - ( One / Two )**2 - ( One / 24.0_DP )**2 )
 
-            W = One / SQRT( One - ( ( One / Two )**2 + ( One / 24.0_DP )**2 ) )
+              VdotB = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
+                        * ( -1.0d-3 * ( X2 / SQRT( X1**2 + X2**2 ) ) ) &
+                        + uPM(iNodeX,iX1,iX2,iX3,iPM_V2) &
+                            * ( 1.0d-3 * ( X1 / SQRT( X1**2 + X2**2 ) ) )
 
-            VdotB = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
-                      * ( -1.0d-3 * ( X2 / SQRT( X1**2 + X2**2 ) ) ) &
-                      + uPM(iNodeX,iX1,iX2,iX3,iPM_V2) &
-                          * ( 1.0d-3 * ( X1 / SQRT( X1**2 + X2**2 ) ) )
+              V1_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
+                             - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_1) &
+                                 / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
 
-            V1_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
-                           - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_1) &
-                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
+              V2_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V2) &
+                             - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2) &
+                                 / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
 
-            V2_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V2) &
-                           - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2) &
-                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
+              V3_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V3) &
+                             - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3) &
+                                 / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
 
-            V3_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V3) &
-                           - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3) &
-                               / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
-
-            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = W * VdotB * V1_Transport &
-                                             + ( -1.0d-3 * ( X2 / SQRT( X1**2 + X2**2 ) ) ) / W
-            uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = W * VdotB * V2_Transport &
-                                             + (  1.0d-3 * ( X1 / SQRT( X1**2 + X2**2 ) ) ) / W
-            uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = W * VdotB * V3_Transport
-            uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
+              uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = W * VdotB * V1_Transport &
+                                               + ( -1.0d-3 * ( X2 / SQRT( X1**2 + X2**2 ) ) ) / W
+              uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = W * VdotB * V2_Transport &
+                                               + (  1.0d-3 * ( X1 / SQRT( X1**2 + X2**2 ) ) ) / W
+              uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = W * VdotB * V3_Transport
+              uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
             ELSE
 
-            uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
-            uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = One / Two
-            uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = One / 24.0_DP
-            uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = 0.0_DP
-            uAM(iNodeX,iX1,iX2,iX3,iAM_P ) = Three
-            uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
-              = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
-            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.0_DP
-            uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = 0.0_DP
-            uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = 0.0_DP
-            uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
+              W = One / SQRT( One - ( One / Two )**2 - ( One / Two )**2 - ( One / 24.0_DP )**2 )
+
+              uPM(iNodeX,iX1,iX2,iX3,iPM_D ) = One
+              uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = One / Two
+              uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = One / Two
+              uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = One / 24.0_DP
+              uAM(iNodeX,iX1,iX2,iX3,iAM_P ) = Three
+              uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
+                = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
+              uPM(iNodeX,iX1,iX2,iX3,iPM_B1 ) = 0.0_DP
+              uPM(iNodeX,iX1,iX2,iX3,iPM_B2 ) = 0.0_DP
+              uPM(iNodeX,iX1,iX2,iX3,iPM_B3 ) = 0.0_DP
+              uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
             END IF
 
