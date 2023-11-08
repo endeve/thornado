@@ -242,6 +242,7 @@ PROGRAM ApplicationDriver
 
           AdvectionProfile = 'MagneticSineWaveX1X2'
 
+
           Gamma = 5.0_DP / 3.0_DP
           t_end = 10.0_DP
           bcX = [ 1, 1, 0 ]
@@ -276,31 +277,31 @@ PROGRAM ApplicationDriver
           EvolveOnlyMagnetic = .FALSE.
           UseDivergenceCleaning = .FALSE.
 
-          Angle = ATAN(2.0_DP);
+          Angle = ATAN(TwoPi)
 
           AdvectionProfile = 'CPAlfvenOblique'
 
           Gamma = 4.0_DP / 3.0_DP
-          t_end = 16.449592691810107_DP
+          t_end = 16.449592691810107_DP / TwoPi
           bcX = [ 1, 1, 0 ]
 
           CoordinateSystem = 'CARTESIAN'
 
-          nX  = [ 256, 128, 1 ]
-          swX = [ 1, 1, 0 ]
-          xL  = [ 0.0_DP,   0.0_DP, 0.0_DP ]
-          xR  = [ Two * Pi / COS( Angle ), Two * Pi / SIN( Angle ), 1.0_DP ]
+          nX  = [    128,                  128,                  1 ]
+          swX = [    1,                  1,                  0 ]
+          xL  = [ Zero,               Zero,               -One ]
+          xR  = [ One / COS( Angle ), One / SIN( Angle ),  One ]
 
         CASE( 'LoopAdvection' )
 
           EvolveOnlyMagnetic = .TRUE.
-          UseDivergenceCleaning = .TRUE.
+          UseDivergenceCleaning = .FALSE.
           DampingParameter = 0.0_DP
 
           AdvectionProfile = 'LoopAdvection'
 
           Gamma = 5.0_DP / 3.0_DP
-          t_end = 24.0_DP
+          t_end = 2.0_DP
           bcX = [ 1, 1, 0 ]
 
           CoordinateSystem = 'CARTESIAN'
@@ -357,7 +358,7 @@ PROGRAM ApplicationDriver
 
           Gamma = 5.0_DP / 3.0_DP
           t_end = 10.0_DP
-          bcX = [ 1, 0, 0 ]
+          bcX = [ 1, 1, 1 ]
 
           CoordinateSystem = 'CARTESIAN'
 
@@ -366,6 +367,24 @@ PROGRAM ApplicationDriver
           xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
           xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
+        CASE( 'CPAlfvenX3' )
+
+          EvolveOnlyMagnetic = .FALSE.
+          UseDivergenceCleaning = .FALSE.
+
+          AdvectionProfile = 'CPAlfvenX3'
+
+          Gamma = 4.0_DP / 3.0_DP
+          t_end = 16.449592691810107_DP
+          bcX = [ 1, 1, 1 ]
+
+          CoordinateSystem = 'CARTESIAN'
+
+          nX  = [ 2, 2, 8 ]
+          swX = [ 1, 1, 1 ]
+          xL  = [ 0.0_DP,   0.0_DP, 0.0_DP ]
+          xR  = [ Two * Pi, Two * Pi, Two * Pi ]
+
         CASE DEFAULT
 
           WRITE(*,*)
@@ -373,16 +392,15 @@ PROGRAM ApplicationDriver
           WRITE(*,'(A)')     'Valid choices:'
           WRITE(*,'(A)')     '  HydroSineWaveX3'
           WRITE(*,'(A)')     '  MagneticSineWaveX3'
+          WRITE(*,'(A)')     '  CPAlfvenX3'
           WRITE(*,'(A)')     'Stopping...'
           STOP
 
       END SELECT
 
-
     CASE( 'Cleaning1D' )
 
       EvolveOnlyMagnetic = .TRUE.
-
       UseDivergenceCleaning = .TRUE.
       DampingParameter = 0.0_DP
 
@@ -558,6 +576,7 @@ PROGRAM ApplicationDriver
       WRITE(*,'(A)')     'Valid choices:'
       WRITE(*,'(A)')     '  Advection1D'
       WRITE(*,'(A)')     '  Advection2D'
+      WRITE(*,'(A)')     '  Advection3D'
       WRITE(*,'(A)')     '  Cleaning1D'
       WRITE(*,'(A)')     '  Cleaning2D'
       WRITE(*,'(A)')     '  Riemann1D'
