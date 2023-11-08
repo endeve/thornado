@@ -90,7 +90,35 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
-## Nov 1 2023
+## Nov 7 2023
+1. Got a small standalone test code which compiles and runs on PVC04 with random numbers, and the file is reductionSpeed.f90. will run on JLSE's A100 system to see the performance comparison with PVC04 
+
+## Nov 6 2023
+1. Worked on figureing out why solvels-fp-399? is 3X slower on PVC than on A100
+2. Discussed with Brian and he suggested to test fopenmp-target-simd, and found out that this flag has a lots of issue for ocloc. Brian has filed a JIRA issue for this one: https://jira.devtools.intel.com/browse/XDEPS-6315
+3. Will try to standalone test to see whether it can replicate the slowness issue. 
+## Nov 3 2023
+1. Added more timers in the code to see which one takes more time compared to A100 runs. 
+2. Test the reproducer with the newest ifx,  Intel(R) Fortran 24.0-1372 (nightly-compiler/2023.11.02). even with -heap-arrays 0, the Direct way now is around 1000X faster than before. However, it seems that the individual assignment has become faster by 10X. Therefore, the Direct way is still around 20X slower than the Individual assignment. I propose to close the jira issue: https://jira.devtools.intel.com/browse/CMPLRLLVM-45457
+<pre>
+__omp_offloading_802_2c1be2_twomoment[...]attersolvermodule_mp_solvels_fp__l3994 |    5.99s |   4.51% |    6666 | 898.18us |   8.48us |   1.24ms |
+__omp_offloading_802_2c1be2_twomoment[...]attersolvermodule_mp_solvels_fp__l3942 |    5.12s |   3.86% |    8239 | 621.92us |  20.48us | 850.88us |
+__omp_offloading_802_2c1be2_twomoment[...]attersolvermodule_mp_solvels_fp__l4130 |    3.67s |   2.77% |    6666 | 551.25us |  20.00us | 725.12us |
+__omp_offloading_802_2c1be2_twomoment[...]attersolvermodule_mp_solvels_fp__l3975 |    3.48s |   2.62% |    6666 | 522.16us |  18.56us | 693.76us |
+__omp_offloading_802_2c1be2_twomoment[...]attersolvermodule_mp_solvels_fp__l3960 |    2.62s |   1.97% |    6666 | 392.78us |  14.40us | 558.56us |
+__omp_offloading_802_2c1be2_twomoment[...]attersolvermodule_mp_solvels_fp__l4107 |  45.48ms |   0.03% |    6666 |   6.82us |   5.44us |  38.40us |
+__omp_offloading_802_2c1be2_twomoment[...]attersolvermodule_mp_solvels_fp__l4156 |   6.24ms |   0.00% |    1573 |   3.96us |   3.04us |  26.08us |
+
+
+                        twomoment_neutrinomattersolvermodule_solvels_fp_3944_gpu |    4.20s |   3.51% |   8239 | 509.48us |   9.22us | 723.97us |
+                        twomoment_neutrinomattersolvermodule_solvels_fp_4133_gpu |    2.87s |   2.40% |   6666 | 431.15us |   9.22us | 715.78us |
+                        twomoment_neutrinomattersolvermodule_solvels_fp_3977_gpu |    2.63s |   2.20% |   6666 | 394.51us |   9.22us | 553.98us |
+                        twomoment_neutrinomattersolvermodule_solvels_fp_3997_gpu |    1.90s |   1.59% |   6666 | 285.29us | 119.81us | 355.33us |
+                        twomoment_neutrinomattersolvermodule_solvels_fp_3962_gpu |    1.86s |   1.55% |   6666 | 278.39us |   6.14us | 443.39us |
+                        twomoment_neutrinomattersolvermodule_solvels_fp_4110_gpu |  62.62ms |   0.05% |   6666 |   9.39us |   6.14us |  15.36us |
+                        twomoment_neutrinomattersolvermodule_solvels_fp_4158_gpu |  10.30ms |   0.01% |   1573 |   6.55us |   5.12us |  10.24us |
+</pre>
+## Nov 1-2 2023
 1. reran the newest code and the previous code, did not replicate the performance regression due to the merge with Oct 27 master. Interesting. Ran several runs. 
 2. FlashX with Thornado/master hangs on PVC04
 3. Relaxation 16x16x16 running time comparison between JLSE A100 and PVC04. Here are the largest differences:
