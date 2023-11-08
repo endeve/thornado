@@ -263,6 +263,7 @@ CONTAINS
            ( Min_D, Min_T, Min_Y, MinEps )
 
     !*, 'MinEps: ', MinEps
+ 
 
     ! --- Not valid. Need better method of getting         ---
     ! --- minimum enthalpy (and deal with ideal gas case). ---
@@ -290,11 +291,7 @@ CONTAINS
     CALL SolveMu_Bisection &
            ( D_bar, Ne_bar, q, r, &
              bSq, rb, h0, v0, mu )
-
-!    CALL SolveMu_TOM748 &
-!           ( D_bar, Ne_bar, q, ru1, ru2, ru3, r, &
-!             bu1, bu2, bu3, bSq, rb, h0, v0, mu )
-
+ 
    !PRINT*, 'mu: ', mu
 
     ! --- Eq. 26 ---
@@ -309,8 +306,9 @@ CONTAINS
 
     r_barSq = r**2 * x**2 + mu * x * ( One + x ) * rb**2
 
-    q_bar = q - Half * bSq - Half * mu**2 &
-                             * ( bSq * r_barSq - rb**2 )
+    q_bar = q - Half * bSq - Half * mu**2 * x**2 * ( bSq * r**2 - rb**2 )
+
+   !PRINT*, 'q_bar: ', q_bar
 
     ! --- Eq. 68 ---
 
@@ -340,8 +338,11 @@ CONTAINS
 
     ! --- Eq. 42 ---
 
-    eps = W * ( q_bar - mu * r_barSq ) &
-          + VSq * ( W**2 / ( One + W ) )
+    ! See line 203 of RePrimAnd's con2prim_imhd.cc (these should be equivalent).
+
+    eps = W * (q_bar - mu * r_barSq * ( One - mu * W / ( One + W ) ) )
+
+    !PRINT*, 'eps: ', eps
 
     PM_E = PM_D * eps
 
@@ -374,27 +375,6 @@ CONTAINS
    !PRINT*, 'PM_B3: ', PM_B3
  
     PM_Chi = CM_Chi
-
-   !PRINT*
-   !PRINT*, 'Actual accuracy (abs. relative error) of PM_D in first node: ',  &
-   !         abs( PM_D - One ) / One
-
-   !PRINT*, 'Actual accuracy (abs. relative error) of PM_V1 in first node: ', &
-   !         PM_V1 - 0.1_DP
-   !PRINT*, 'Actual accuracy (abs. relative error) of PM_V2 in first node: ', &
-   !         PM_V2 - 0.0_DP
-   !PRINT*, 'Actual accuracy (abs. relative error) of PM_V3 in first node: ', &
-   !         PM_V3 - 0.0_DP
-
-   !PRINT*, 'Actual accuracy (abs. relative error) of PM_B1 in first node: ', &
-   !         abs( PM_B1 - 0.0001_DP ) /  0.0001_DP 
-   !PRINT*, 'Actual accuracy (abs. relative error) of W in first node: ', &
-   !         abs( W - ( 1.0_DP / SQRT( 1.0_DP - 0.01_DP ) ) ) / ( 1.0_DP / SQRT( 1.0_DP - 0.01_DP ) )
-
-   !PRINT*
-   !PRINT*, 'Rounding Error One: ', ( VSq / SQRT( One - VSq ) ) / eps
-
-   !PRINT*, 'Rounding Error Two: ', ( bSq * W ) / eps
 
     CALL ComputeSoundSpeedFromPrimitive &
            ( PM_D, PM_E, PM_Ne, Cs )
@@ -1480,6 +1460,8 @@ CONTAINS
 
     x = One / ( One + mu * bSq )
 
+   !PRINT*, 'x: ', x
+
     ! --- Eqs. 38 and 39                              ---
     ! --- Note: Eq. 39 rewritten using Eqs. 25 and 30 ---
     ! --- to avoid B = 0 degeneracy.                  ---
@@ -1490,15 +1472,11 @@ CONTAINS
 
    !PRINT*, 'SQRT( r_barSq ): ', SQRT( r_barSq )
 
-    q_bar = q - Half * bSq - Half * mu**2 &
-                             * ( bSq * r_barSq - rb**2 )
+    ! See lines 178 and 146 of RePrimAnd's con2prim_imhd.cc file (think this is correct).
 
-   !PRINT*, 'q_bar Old: ', q_bar
+    q_bar = q - Half * bSq - Half * mu**2 * x**2 * ( bSq * r**2 - rb**2 )
 
-    !q_bar = q - Half * bSq - Half * mu**2 &
-    !                         * x**2 * bSq * ( r**2 - Two * rb**2 / bSq + rb**2 )
-
-    !PRINT*, 'q_bar New: ', q_bar
+    !PRINT*, 'q_bar: ', q_bar
 
     ! --- Eq. 40 ---
 
@@ -1518,16 +1496,20 @@ CONTAINS
 
    !PRINT*, 'rho: ', rho
 
+    ! Use Line 229 of RePrimAnd's con2prim_imhd.cc to
+    ! limit rho to physical values?????
+
     rho_e = Ne_bar / W
 
    !PRINT*, 'rho_e: ', rho_e
 
     ! --- Eq. 42 ---
 
-    eps = W * ( q_bar - mu * r_barSq ) &
-          + v**2 * ( W**2 / ( 1.0_DP + W ) )
+    ! See again line 203 of RePrimAnd's con2prim_imhd.cc
 
-   !PRINT*, 'eps: ', eps
+    eps = W * ( q_bar - mu * r_barSq * ( One - mu * W / ( One + W ) ) )
+
+   !PRINT*, 'eps:   ', eps
 
     ! --- Eq. 43 ---
 
@@ -1538,9 +1520,15 @@ CONTAINS
 
    !PRINT*, 'a: ', a
 
+    ! Lines 240-244 of RePrimAnd's con2prim_imhd.cc
+
+    h = (One + eps) * (One + a)
+
+   !PRINT*, 'h: ', h
+
     ! --- Eqs. 46-48 ---
 
-    nua = ( One + a ) * ( ( One + eps ) / W )
+    nua = h / W
 
    !PRINT*, 'nua: ', nua
 
@@ -1744,8 +1732,10 @@ CONTAINS
 
     ! --- Check that sign of FunZ changes across bounds ---
 
-    IF( .NOT. fa * fb .LT. 0 ) &
+    IF( .NOT. fa * fb .LT. 0 ) THEN
       PRINT*, 'Cannot perform bisection!'
+      STOP
+    END IF
 
     dmu = mub - mua
 
