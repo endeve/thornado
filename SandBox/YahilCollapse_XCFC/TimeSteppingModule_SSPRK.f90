@@ -25,10 +25,10 @@ MODULE TimeSteppingModule_SSPRK
     ComputeLapseShiftCurvature_XCFC
   USE FluidFieldsModule, ONLY: &
     nCF
-  USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
-    ApplySlopeLimiter_Euler_Relativistic_TABLE
-  USE Euler_PositivityLimiterModule_Relativistic_TABLE, ONLY: &
-    ApplyPositivityLimiter_Euler_Relativistic_TABLE
+  USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
+    ApplySlopeLimiter_Euler_Relativistic_IDEAL
+  USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
+    ApplyPositivityLimiter_Euler_Relativistic_IDEAL
   USE Euler_XCFC_UtilitiesModule, ONLY: &
     ComputeConformalFactorSourcesAndMg_XCFC_Euler, &
     ComputePressureTensorTrace_XCFC_Euler
@@ -252,10 +252,10 @@ CONTAINS
 
           CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, -1 )
 
-          CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
+          CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, D )
 
-          CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
+          CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar )
 
           CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, +1 )
@@ -304,10 +304,10 @@ CONTAINS
 
     CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, -1 )
 
-    CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
+    CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
-    CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
+    CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, +1 )
