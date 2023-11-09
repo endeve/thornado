@@ -381,9 +381,6 @@ CONTAINS
     CALL UpdateConformalFactorAndMetric_XCFC &
            ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
 
-    CALL ApplyBoundaryConditions_Geometry_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
-
   END SUBROUTINE ComputeConformalFactor
 
 
