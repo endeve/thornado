@@ -428,8 +428,6 @@ CONTAINS
 
       CALL ComputeLapseShiftCurvature_Euler( MF_uGF, MF_uCF, MF_uGS, MF_uMF )
 
-      CALL ComputeConserved_Euler_MF( MF_uGF, MF_uPF, MF_uAF, MF_uCF )
-
       DO iLevel = 0, nLevels-1
 
         CALL LF2(iLevel) % COPY &
@@ -459,6 +457,8 @@ CONTAINS
 
       CALL amrex_parallel_reduce_max( MaxLF )
       CALL amrex_parallel_reduce_max( MaxCF )
+
+      CALL ComputeConserved_Euler_MF( MF_uGF, MF_uPF, MF_uAF, MF_uCF )
 
       IF( amrex_parallel_ioprocessor() )THEN
 
