@@ -79,7 +79,7 @@ ApplicationDriver.o: \
   InputOutputModuleHDF.o \
   FluidFieldsModule.o \
   GeometryFieldsModule.o \
-  GravitySolutionModule_XCFC_Poseidon.o \
+  GravitySolutionModule_XCFC.o \
   Euler_dgDiscretizationModule.o \
   TimeSteppingModule_SSPRK.o \
   UnitsModule.o \

@@ -48,9 +48,9 @@ PROGRAM ApplicationDriver
     uDF
   USE GeometryFieldsModule, ONLY: &
     uGF
-  USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
-    InitializeGravitySolver_XCFC_Poseidon, &
-    FinalizeGravitySolver_XCFC_Poseidon
+  USE GravitySolutionModule_XCFC, ONLY: &
+    InitializeGravitySolver_XCFC, &
+    FinalizeGravitySolver_XCFC
   USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit
   USE TimeSteppingModule_SSPRK, ONLY: &
@@ -213,7 +213,7 @@ PROGRAM ApplicationDriver
 
   CALL InitializeReferenceElementX_Lagrange
 
-  CALL InitializeGravitySolver_XCFC_Poseidon( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+  CALL InitializeGravitySolver_XCFC( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option &
@@ -419,7 +419,7 @@ PROGRAM ApplicationDriver
 
   CALL FinalizeReferenceElementX_Lagrange
 
-  CALL FinalizeGravitySolver_XCFC_Poseidon
+  CALL FinalizeGravitySolver_XCFC
 
   CALL FinalizeEquationOfState
 
