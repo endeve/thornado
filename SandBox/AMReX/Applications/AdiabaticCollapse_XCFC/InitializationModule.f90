@@ -284,9 +284,6 @@ CONTAINS
 
       CALL DestroyMesh_MF( MeshX )
 
-      CALL ComputeFromConserved_Euler_MF &
-             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
       CALL InitializeMetric_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
@@ -395,7 +392,9 @@ CONTAINS
 
     CALL ComputeGeometryX_MF( MF_uGF(iLevel) )
 
-    CALL InitializeFields_MF( iLevel, MF_uGF(iLevel), MF_uCF(iLevel) )
+    CALL InitializeFields_MF &
+           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), &
+                     MF_uPF(iLevel), MF_uAF(iLevel) )
 
     CALL DestroyMesh_MF( MeshX )
 
