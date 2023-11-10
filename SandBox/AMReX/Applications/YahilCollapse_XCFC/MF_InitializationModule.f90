@@ -233,11 +233,12 @@ CONTAINS
       dXdr, drhodD, dvdV, dmdM, PolytropicConstant, &
       CoreRadius, D0, CollapseTime, TotalEnclosedMass )
 
-    INTEGER, INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF, MF_uPF, MF_uAF
-    REAL(DP), INTENT(in)  :: dXdr, drhodD, dvdV, dmdM, PolytropicConstant, &
-                             CoreRadius, D0, CollapseTime
-    REAL(DP), INTENT(out) :: TotalEnclosedMass
+    INTEGER             , INTENT(in)  :: iLevel
+    TYPE(amrex_multifab), INTENT(in)  :: MF_uGF, MF_uCF, MF_uPF, MF_uAF
+    REAL(DP)            , INTENT(in)  :: dXdr, drhodD, dvdV, dmdM, &
+                                         PolytropicConstant, &
+                                         CoreRadius, D0, CollapseTime
+    REAL(DP)            , INTENT(out) :: TotalEnclosedMass
 
     INTEGER               :: N, iX1, iX2, iX3, iX_L, iNX, iNX1
     REAL(DP)              :: dr, dX, XX, R
