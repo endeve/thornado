@@ -304,5 +304,6 @@ Euler_XCFC_UtilitiesModule.o: \
   EquationOfStateModule.o \
   Euler_ErrorModule.o \
   XCFC_UtilitiesModule.o \
+  GravitySolutionModule_XCFC.o \
   TimersModule_Euler.o \
   Euler_XCFC_UtilitiesModule.f90

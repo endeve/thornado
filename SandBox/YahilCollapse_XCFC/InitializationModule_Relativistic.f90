@@ -9,11 +9,13 @@ MODULE InitializationModule_Relativistic
     Three, &
     Four, &
     FourPi
+  USE UtilitiesModule, ONLY: &
+    Locate, &
+    Interpolate1D_Linear
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
     nDOFX, &
     iX_B0, &
-    iX_B1, &
     iX_E0, &
     iX_E1
   USE ReferenceElementModuleX, ONLY: &
@@ -21,27 +23,19 @@ MODULE InitializationModule_Relativistic
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
-  USE XCFC_UtilitiesModule, ONLY: &
-    MultiplyWithPsi6, &
-    nGS, &
-    nMF, &
-    UpdateConformalFactorAndMetric_XCFC, &
-    UpdateLapseShiftCurvature_XCFC, &
-    ApplyBoundaryConditions_Geometry_XCFC
-  USE GravitySolutionModule_XCFC, ONLY: &
-    ComputeConformalFactor_XCFC, &
-    ComputeLapseShiftCurvature_XCFC
-  USE Euler_XCFC_UtilitiesModule, ONLY: &
-    ComputeConformalFactorSourcesAndMg_XCFC_Euler, &
-    ComputePressureTensorTrace_XCFC_Euler
+  USE UnitsModule, ONLY: &
+    Kilometer, &
+    SolarMass, &
+    Gram, &
+    Centimeter, &
+    Erg, &
+    Millisecond, &
+    GravitationalConstant
   USE GeometryFieldsModule, ONLY: &
     uGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
-    iGF_Gm_dd_33, &
-    iGF_Alpha, &
-    iGF_Psi, &
-    nGF
+    iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
     uPF, &
     iPF_D, &
@@ -57,30 +51,13 @@ MODULE InitializationModule_Relativistic
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
-    nCF, &
     uAF, &
-    iAF_P, &
-    uDF
+    iAF_P
   USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL, &
     ComputePressureFromPrimitive_IDEAL
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_Euler_Relativistic
-  USE UnitsModule, ONLY: &
-    Kilometer, &
-    SolarMass, &
-    Gram, &
-    Centimeter, &
-    Erg, &
-    Millisecond, &
-    GravitationalConstant
-  USE UtilitiesModule, ONLY: &
-    Locate, &
-    Interpolate1D_Linear
-  USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
-    ApplySlopeLimiter_Euler_Relativistic_IDEAL
-  USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
-    ApplyPositivityLimiter_Euler_Relativistic_IDEAL
 
   IMPLICIT NONE
   PRIVATE
@@ -111,8 +88,6 @@ CONTAINS
     REAL(DP)          :: CentralPressure = 6.0e27_DP * ( Erg  / Centimeter**3 )
     REAL(DP)          :: CoreRadius      = 1.0e5_DP  * Kilometer
     REAL(DP)          :: CollapseTime    = 1.50e2_DP * Millisecond
-
-    uPF(:,:,:,:,iPF_Ne) = Zero
 
     IF( PRESENT( ReadFromFile_Option ) ) &
       ReadFromFile = ReadFromFile_Option
@@ -165,34 +140,7 @@ CONTAINS
     REAL(DP),          INTENT(in) :: CoreRadius
     REAL(DP),          INTENT(in) :: CollapseTime
 
-    INTEGER  :: iX1, iX2, iX3
     REAL(DP) :: PolytropicConstant, dXdr, drhodD, dvdV, dmdM, TotalEnclosedMass
-
-    REAL(DP) :: uGS(nDOFX,iX_B0(1):iX_E0(1), &
-                          iX_B0(2):iX_E0(2), &
-                          iX_B0(3):iX_E0(3),nGS)
-    REAL(DP) :: uMF(nDOFX,iX_B0(1):iX_E0(1), &
-                          iX_B0(2):iX_E0(2), &
-                          iX_B0(3):iX_E0(3),nMF)
-
-    INTEGER  :: ITER
-    INTEGER , PARAMETER :: MAX_ITER  = 10
-    REAL(DP), PARAMETER :: TOLERANCE = 1.0e-13_DP
-    REAL(DP) :: dAlpha, dPsi
-    LOGICAL  :: CONVERGED
-
-    REAL(DP) :: dAl1(nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3))
-    REAL(DP) :: dCF1(nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3))
-    REAL(DP) :: dAl2(nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3))
-    REAL(DP) :: dCF2(nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3))
 
     PolytropicConstant = CentralPressure / CentralDensity**Gamma_IDEAL
 
@@ -221,83 +169,6 @@ CONTAINS
                TotalEnclosedMass )
 
     END IF
-
-    CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
-
-    CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
-
-    ! --- Iterate to incorporate gravity in initial conditions ---
-
-    CONVERGED = .FALSE.
-    ITER      = 0
-
-    DO WHILE( .NOT. CONVERGED )
-
-      ITER = ITER + 1
-
-      dAl1 = uGF(:,iX_B0(1):iX_E0(1), &
-                   iX_B0(2):iX_E0(2), &
-                   iX_B0(3):iX_E0(3),iGF_Alpha)
-      dCF1 = uGF(:,iX_B0(1):iX_E0(1), &
-                   iX_B0(2):iX_E0(2), &
-                   iX_B0(3):iX_E0(3),iGF_Psi  )
-
-      CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, +1 )
-
-      CALL ComputeConformalFactor &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
-
-      CALL ComputeLapseShiftCurvature &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
-
-      dAl2 = uGF(:,iX_B0(1):iX_E0(1), &
-                   iX_B0(2):iX_E0(2), &
-                   iX_B0(3):iX_E0(3),iGF_Alpha)
-      dCF2 = uGF(:,iX_B0(1):iX_E0(1), &
-                   iX_B0(2):iX_E0(2), &
-                   iX_B0(3):iX_E0(3),iGF_Psi  )
-
-      dAlpha = MAXVAL( ABS( dAl2 - dAl1 ) )
-      dPsi   = MAXVAL( ABS( dCF2 - dCF1 ) )
-
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E1(1)
-
-        CALL ComputeConserved_Euler_Relativistic &
-               ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
-                 uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
-                 uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
-                 uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
-                 uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
-                 uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
-                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 uAF(:,iX1,iX2,iX3,iAF_P) )
-
-      END DO
-      END DO
-      END DO
-
-      IF( MAX( dAlpha, dPsi ) .LT. TOLERANCE ) CONVERGED = .TRUE.
-
-      IF( ITER .EQ. MAX_ITER )THEN
-
-        WRITE(*,*) 'Could not initialize fields. Exiting...'
-        STOP
-
-      END IF
-
-    END DO
-
-    CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
-
-    CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
     WRITE(*,*)
     WRITE(*,'(6x,A,L)') &
@@ -393,6 +264,8 @@ CONTAINS
        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) &
          = PolytropicConstant * uPF(iNodeX,iX1,iX2,iX3,iPF_D)**( Gamma_IDEAL ) &
              / ( Gamma_IDEAL - One )
+
+       uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = Zero
 
      END DO
 
@@ -496,6 +369,8 @@ CONTAINS
        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) &
          = PolytropicConstant * uPF(iNodeX,iX1,iX2,iX3,iPF_D)**( Gamma_IDEAL ) &
              / ( Gamma_IDEAL - One )
+
+       uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = Zero
 
      END DO
 
@@ -666,55 +541,6 @@ CONTAINS
     Denominator = Gamma_IDEAL * D**( Gamma_IDEAL - One ) - U**2
 
   END FUNCTION Denominator
-
-
-  SUBROUTINE ComputeConformalFactor &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
-
-    INTEGER , INTENT(in)    :: &
-      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(inout) :: &
-      G    (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nGF), &
-      Ustar(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nCF), &
-      M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF), &
-      GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
-
-    CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
-
-    CALL ComputeConformalFactor_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
-
-    CALL UpdateConformalFactorAndMetric_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
-
-  END SUBROUTINE ComputeConformalFactor
-
-
-  SUBROUTINE ComputeLapseShiftCurvature &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
-
-    INTEGER , INTENT(in)    :: &
-      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(inout) :: &
-      G    (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nGF), &
-      Ustar(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nCF), &
-      M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF), &
-      GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
-
-    CALL ComputePressureTensorTrace_XCFC_Euler &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
-
-    CALL ComputeLapseShiftCurvature_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
-
-    CALL UpdateLapseShiftCurvature_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
-
-    CALL ApplyBoundaryConditions_Geometry_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
-
-  END SUBROUTINE ComputeLapseShiftCurvature
 
 
 END MODULE InitializationModule_Relativistic

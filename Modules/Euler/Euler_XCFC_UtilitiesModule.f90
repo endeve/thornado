@@ -16,7 +16,6 @@ MODULE Euler_XCFC_UtilitiesModule
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
     iGF_Phi_N, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
@@ -26,23 +25,26 @@ MODULE Euler_XCFC_UtilitiesModule
     iGF_Beta_1, &
     iGF_Beta_2, &
     iGF_Beta_3, &
-    iGF_Psi
+    iGF_Psi, &
+    nGF
   USE FluidFieldsModule, ONLY: &
-    nCF, &
     iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
-    nPF, &
+    nCF, &
     iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
     iPF_E, &
-    iPF_Ne
+    iPF_Ne, &
+    nPF, &
+    iAF_P
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    ComputeConserved_Euler_Relativistic, &
     ComputePrimitive_Euler_Relativistic
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive
@@ -54,7 +56,16 @@ MODULE Euler_XCFC_UtilitiesModule
     iGS_S2, &
     iGS_S3, &
     iGS_S, &
-    iGS_Mg
+    iGS_Mg, &
+    nGS, &
+    nMF, &
+    MultiplyWithPsi6, &
+    UpdateConformalFactorAndMetric_XCFC, &
+    UpdateLapseShiftCurvature_XCFC, &
+    ApplyBoundaryConditions_Geometry_XCFC
+  USE GravitySolutionModule_XCFC, ONLY: &
+    ComputeConformalFactor_XCFC, &
+    ComputeLapseShiftCurvature_XCFC
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler, &
@@ -65,6 +76,7 @@ MODULE Euler_XCFC_UtilitiesModule
 
   PUBLIC :: ComputeConformalFactorSourcesAndMg_XCFC_Euler
   PUBLIC :: ComputePressureTensorTrace_XCFC_Euler
+  PUBLIC :: InitializeMetric_Euler
   PUBLIC :: ComputeNewtonianPotential_SphericalSymmetry
 
   ! https://amrex-codes.github.io/amrex/docs_html/Basics.html#fine-mask
@@ -387,6 +399,117 @@ CONTAINS
   END SUBROUTINE ComputePressureTensorTrace_XCFC_Euler
 
 
+  SUBROUTINE InitializeMetric_Euler &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+    INTEGER , INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+                               uCF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+                               uPF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+                               uAF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+
+    INTEGER             :: iNX, iX1, iX2, iX3
+    INTEGER             :: ITER
+    INTEGER , PARAMETER :: MAX_ITER  = 10
+    REAL(DP), PARAMETER :: TOLERANCE = 1.0e-13_DP
+    REAL(DP)            :: dAlpha, dPsi
+    LOGICAL             :: CONVERGED
+
+    REAL(DP) :: uGS(nDOFX,iX_B0(1):iX_E0(1), &
+                          iX_B0(2):iX_E0(2), &
+                          iX_B0(3):iX_E0(3),nGS)
+    REAL(DP) :: uMF(nDOFX,iX_B0(1):iX_E0(1), &
+                          iX_B0(2):iX_E0(2), &
+                          iX_B0(3):iX_E0(3),nMF)
+
+    REAL(DP) :: dAl1(nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3))
+    REAL(DP) :: dCF1(nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3))
+    REAL(DP) :: dAl2(nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3))
+    REAL(DP) :: dCF2(nDOFX,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3))
+
+    CONVERGED = .FALSE.
+    ITER      = 0
+
+    DO WHILE( .NOT. CONVERGED )
+
+      ITER = ITER + 1
+
+      dAl1 = uGF(:,iX_B0(1):iX_E0(1), &
+                   iX_B0(2):iX_E0(2), &
+                   iX_B0(3):iX_E0(3),iGF_Alpha)
+      dCF1 = uGF(:,iX_B0(1):iX_E0(1), &
+                   iX_B0(2):iX_E0(2), &
+                   iX_B0(3):iX_E0(3),iGF_Psi  )
+
+      CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, +1 )
+
+      CALL ComputeConformalFactor &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
+
+      CALL ComputeLapseShiftCurvature &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
+
+      dAl2 = uGF(:,iX_B0(1):iX_E0(1), &
+                   iX_B0(2):iX_E0(2), &
+                   iX_B0(3):iX_E0(3),iGF_Alpha)
+      dCF2 = uGF(:,iX_B0(1):iX_E0(1), &
+                   iX_B0(2):iX_E0(2), &
+                   iX_B0(3):iX_E0(3),iGF_Psi  )
+
+      dAlpha = MAXVAL( ABS( dAl2 - dAl1 ) )
+      dPsi   = MAXVAL( ABS( dCF2 - dCF1 ) )
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX = 1       , nDOFX
+
+        CALL ComputeConserved_Euler_Relativistic &
+               ( uPF(iNX,iX1,iX2,iX3,iPF_D       ), &
+                 uPF(iNX,iX1,iX2,iX3,iPF_V1      ), &
+                 uPF(iNX,iX1,iX2,iX3,iPF_V2      ), &
+                 uPF(iNX,iX1,iX2,iX3,iPF_V3      ), &
+                 uPF(iNX,iX1,iX2,iX3,iPF_E       ), &
+                 uPF(iNX,iX1,iX2,iX3,iPF_Ne      ), &
+                 uCF(iNX,iX1,iX2,iX3,iCF_D       ), &
+                 uCF(iNX,iX1,iX2,iX3,iCF_S1      ), &
+                 uCF(iNX,iX1,iX2,iX3,iCF_S2      ), &
+                 uCF(iNX,iX1,iX2,iX3,iCF_S3      ), &
+                 uCF(iNX,iX1,iX2,iX3,iCF_E       ), &
+                 uCF(iNX,iX1,iX2,iX3,iCF_Ne      ), &
+                 uGF(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 uGF(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 uGF(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 uAF(iNX,iX1,iX2,iX3,iAF_P       ) )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      IF( MAX( dAlpha, dPsi ) .LT. TOLERANCE ) CONVERGED = .TRUE.
+
+      IF( ITER .EQ. MAX_ITER )THEN
+
+        WRITE(*,*) 'Could not initialize fields. Exiting...'
+        STOP
+
+      END IF
+
+    END DO
+
+  END SUBROUTINE InitializeMetric_Euler
+
+
   SUBROUTINE ComputeNewtonianPotential_SphericalSymmetry &
     ( iX_B0, iX_E0, iX_B1, iX_E1, P, G )
 
@@ -456,6 +579,55 @@ CONTAINS
 
     RETURN
   END FUNCTION IsNotLeafElement
+
+
+  SUBROUTINE ComputeConformalFactor &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
+
+    INTEGER , INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      G    (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nGF), &
+      Ustar(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nCF), &
+      M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF), &
+      GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
+
+    CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
+
+    CALL ComputeConformalFactor_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
+
+    CALL UpdateConformalFactorAndMetric_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+
+  END SUBROUTINE ComputeConformalFactor
+
+
+  SUBROUTINE ComputeLapseShiftCurvature &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
+
+    INTEGER , INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      G    (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nGF), &
+      Ustar(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nCF), &
+      M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF), &
+      GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
+
+    CALL ComputePressureTensorTrace_XCFC_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
+
+    CALL ComputeLapseShiftCurvature_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
+
+    CALL UpdateLapseShiftCurvature_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+
+    CALL ApplyBoundaryConditions_Geometry_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
+
+  END SUBROUTINE ComputeLapseShiftCurvature
 
 
 END MODULE Euler_XCFC_UtilitiesModule

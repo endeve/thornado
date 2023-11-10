@@ -11,8 +11,9 @@ MODULE TimeSteppingModule_SSPRK
     iX_E1, &
     nDOFX
   USE GeometryFieldsModule, ONLY: &
-    iGF_Psi, &
     nGF
+  USE FluidFieldsModule, ONLY: &
+    nCF
   USE XCFC_UtilitiesModule, ONLY: &
     MultiplyWithPsi6, &
     nGS, &
@@ -23,19 +24,13 @@ MODULE TimeSteppingModule_SSPRK
   USE GravitySolutionModule_XCFC, ONLY: &
     ComputeConformalFactor_XCFC, &
     ComputeLapseShiftCurvature_XCFC
-  USE FluidFieldsModule, ONLY: &
-    nCF
+  USE Euler_XCFC_UtilitiesModule, ONLY: &
+    ComputeConformalFactorSourcesAndMg_XCFC_Euler, &
+    ComputePressureTensorTrace_XCFC_Euler
   USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
     ApplySlopeLimiter_Euler_Relativistic_IDEAL
   USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
     ApplyPositivityLimiter_Euler_Relativistic_IDEAL
-  USE Euler_XCFC_UtilitiesModule, ONLY: &
-    ComputeConformalFactorSourcesAndMg_XCFC_Euler, &
-    ComputePressureTensorTrace_XCFC_Euler
-  USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, &
-    TimersStop_Euler,  &
-    Timer_Euler_UpdateFluid
   USE Euler_dgDiscretizationModule, ONLY: &
     OffGridFlux_Euler_X1_Inner, &
     OffGridFlux_Euler_X1_Outer, &
@@ -45,6 +40,10 @@ MODULE TimeSteppingModule_SSPRK
     OffGridFlux_Euler_X3_Outer
   USE Euler_TallyModule_Relativistic, ONLY: &
     IncrementOffGridTally_Euler_Relativistic
+  USE TimersModule_Euler, ONLY: &
+    TimersStart_Euler, &
+    TimersStop_Euler,  &
+    Timer_Euler_UpdateFluid
 
   IMPLICIT NONE
   PRIVATE
