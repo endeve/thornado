@@ -470,7 +470,7 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( always, release: D_T, T_T, Y_T, &
+    !$OMP MAP( release: D_T, T_T, Y_T, &
     !$OMP   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMe, UnitMp, UnitMn, &
     !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
     !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, P_T, S_T, &
