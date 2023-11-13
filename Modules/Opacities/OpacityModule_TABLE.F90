@@ -832,7 +832,7 @@ CONTAINS
       !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
       !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
       !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
-      !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2 )
+      !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2, &
       !$OMP               EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD, &
       !$OMP               EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD, &
       !$OMP               EmAb_MinD, EmAb_MaxD, &
