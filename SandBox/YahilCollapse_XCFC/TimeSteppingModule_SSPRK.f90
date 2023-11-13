@@ -56,6 +56,8 @@ MODULE TimeSteppingModule_SSPRK
   REAL(DP), DIMENSION(:,:,:,:,:),   ALLOCATABLE :: Ustar
   REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE :: Dstar
 
+  LOGICAL, PUBLIC :: EvolveGravity
+
   PUBLIC :: InitializeFluid_SSPRK
   PUBLIC :: UpdateFluid_SSPRK
   PUBLIC :: FinalizeFluid_SSPRK
@@ -246,8 +248,12 @@ CONTAINS
 
         IF( iS .NE. 1 )THEN ! At first stage, U and psi are known
 
-          CALL ComputeConformalFactor &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
+          IF( EvolveGravity )THEN
+
+            CALL ComputeConformalFactor &
+                   ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS, M )
+
+          END IF
 
           CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, -1 )
 
@@ -259,13 +265,17 @@ CONTAINS
 
           CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, +1 )
 
-          CALL ComputeConformalFactor &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
+          IF( EvolveGravity )THEN
 
-          CALL ComputeLapseShiftCurvature &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
+            CALL ComputeConformalFactor &
+                   ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS, M )
 
-        END IF
+            CALL ComputeLapseShiftCurvature &
+                   ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS, M )
+
+          END IF
+
+        END IF !( iS .NE. 1 )
 
         CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, -1 )
 
@@ -298,8 +308,12 @@ CONTAINS
 
     END DO
 
-    CALL ComputeConformalFactor &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, M, GS )
+    IF( EvolveGravity )THEN
+
+      CALL ComputeConformalFactor &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GS, M )
+
+    END IF
 
     CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, -1 )
 
@@ -311,11 +325,15 @@ CONTAINS
 
     CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, +1 )
 
-    CALL ComputeConformalFactor &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, M, GS )
+    IF( EvolveGravity )THEN
 
-    CALL ComputeLapseShiftCurvature &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, M, GS )
+      CALL ComputeConformalFactor &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GS, M )
+
+      CALL ComputeLapseShiftCurvature &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, GS, M )
+
+    END IF
 
     CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, -1 )
 
@@ -360,15 +378,15 @@ CONTAINS
 
 
   SUBROUTINE ComputeConformalFactor &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS, M )
 
     INTEGER , INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: &
       G    (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nGF), &
       Ustar(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nCF), &
-      M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF), &
-      GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
+      GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS), &
+      M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF)
 
     CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
@@ -383,15 +401,15 @@ CONTAINS
 
 
   SUBROUTINE ComputeLapseShiftCurvature &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS, M )
 
     INTEGER , INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: &
       G    (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nGF), &
       Ustar(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nCF), &
-      M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF), &
-      GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
+      GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS), &
+      M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF)
 
     CALL ComputePressureTensorTrace_XCFC_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )

@@ -67,7 +67,8 @@ PROGRAM ApplicationDriver
   USE TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK, &
-    UpdateFluid_SSPRK
+    UpdateFluid_SSPRK, &
+    EvolveGravity
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF, &
     ReadFieldsHDF
@@ -159,6 +160,8 @@ PROGRAM ApplicationDriver
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
+
+  EvolveGravity = .TRUE.
 
   nStagesSSPRK = 2
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
