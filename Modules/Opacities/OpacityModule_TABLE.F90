@@ -75,6 +75,17 @@ MODULE OpacityModule_TABLE
   REAL(DP), DIMENSION(6), PUBLIC :: &
     C1, C2
 
+  REAL(DP) :: EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD ! density cutoffs for EmAb (free nucleon) opacities
+  REAL(DP) :: EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD   ! density cutoffs for EmAb (nuclei) opacities
+  REAL(DP) :: EmAb_MinD, EmAb_MaxD                 ! density cutoffs for all EmAb opacities
+  REAL(DP) :: Iso_MinD, Iso_MaxD                   ! density cutoffs for all Iso opacities
+  REAL(DP) :: NES_MinD, NES_MaxD                   ! density cutoffs for all NES opacities
+  REAL(DP) :: Pair_MinD, Pair_MaxD                 ! density cutoffs for all Pair opacities
+  REAL(DP) :: Brem_MinD, Brem_MaxD                 ! density cutoffs for all Brem opacities
+  REAL(DP) :: NNS_MinD, NNS_MaxD                   ! density cutoffs for all NNS opacities
+  REAL(DP) :: NuPair_MinD, NuPair_MaxD             ! density cutoffs for all NuPair opacities
+  REAL(DP) :: Op_MinD, Op_MaxD                     ! density cutoffs for all opacities
+
   REAL(DP), PARAMETER :: cv       = 0.96d+00 ! weak interaction constant
   REAL(DP), PARAMETER :: ca       = 0.50d+00 ! weak interaction constant
 
@@ -93,18 +104,49 @@ MODULE OpacityModule_TABLE
   PUBLIC :: ComputeScatteringOpacity_ES_TABLE
   PUBLIC :: ComputeScatteringOpacity_NES_TABLE
 
+  PUBLIC :: QueryOpacity_EmAb_Nucleon
+  PUBLIC :: QueryOpacity_EmAb_Nuclei
+  PUBLIC :: QueryOpacity_EmAb
+  PUBLIC :: QueryOpacity_Iso
+  PUBLIC :: QueryOpacity_NES
+  PUBLIC :: QueryOpacity_Pair
+  PUBLIC :: QueryOpacity_Brem
+  PUBLIC :: QueryOpacity_NNS
+  PUBLIC :: QueryOpacity_NuPair
+  PUBLIC :: QueryOpacity
+
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET &
   !$OMP ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T,    &
   !$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,     &
   !$OMP   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT, &
-  !$OMP   Brem_T, Brem_AT, C1, C2 )
+  !$OMP   Brem_T, Brem_AT, C1, C2,                       &
+  !$OMP   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD,          &
+  !$OMP   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD,            &
+  !$OMP   EmAb_MinD, EmAb_MaxD,                          &
+  !$OMP   Iso_MinD, Iso_MaxD,                            &
+  !$OMP   NES_MinD, NES_MaxD,                            &
+  !$OMP   Pair_MinD, Pair_MaxD,                          &
+  !$OMP   Brem_MinD, Brem_MaxD,                          &
+  !$OMP   NNS_MinD, NNS_MaxD,                            &
+  !$OMP   NuPair_MinD, NuPair_MaxD,                      &
+  !$OMP   Op_MinD, Op_MaxD )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T,    &
   !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,     &
   !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT, & 
-  !$ACC   Brem_T, Brem_AT, C1, C2 )
+  !$ACC   Brem_T, Brem_AT, C1, C2,                       &
+  !$ACC   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD,          &
+  !$ACC   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD,            &
+  !$ACC   EmAb_MinD, EmAb_MaxD,                          &
+  !$ACC   Iso_MinD, Iso_MaxD,                            &
+  !$ACC   NES_MinD, NES_MaxD,                            &
+  !$ACC   Pair_MinD, Pair_MaxD,                          &
+  !$ACC   Brem_MinD, Brem_MaxD,                          &
+  !$ACC   NNS_MinD, NNS_MaxD,                            &
+  !$ACC   NuPair_MinD, NuPair_MaxD,                      &
+  !$ACC   Op_MinD, Op_MaxD )
 #endif
 
 CONTAINS
@@ -114,6 +156,16 @@ CONTAINS
     ( OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
       OpacityTableName_NES_Option, OpacityTableName_Pair_Option, &
       OpacityTableName_Brem_Option,                              &
+      EmAb_Nucleon_MinD_Option, EmAb_Nucleon_MaxD_Option,        &
+      EmAb_Nuclei_MinD_Option, EmAb_Nuclei_MaxD_Option,          &
+      EmAb_MinD_Option, EmAb_MaxD_Option,                        &
+      Iso_MinD_Option, Iso_MaxD_Option,                          &
+      NES_MinD_Option, NES_MaxD_Option,                          &
+      Pair_MinD_Option, Pair_MaxD_Option,                        &
+      Brem_MinD_Option, Brem_MaxD_Option,                        &
+      NNS_MinD_Option, NNS_MaxD_Option,                          &
+      NuPair_MinD_Option, NuPair_MaxD_Option,                    &
+      Op_MinD_Option, Op_MaxD_Option,                            &
       EquationOfStateTableName_Option, Verbose_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_EmAb_Option
@@ -122,6 +174,16 @@ CONTAINS
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_Pair_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_Brem_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: EquationOfStateTableName_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: EmAb_Nucleon_MinD_Option, EmAb_Nucleon_MaxD_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: EmAb_Nuclei_MinD_Option, EmAb_Nuclei_MaxD_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: EmAb_MinD_Option, EmAb_MaxD_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: Iso_MinD_Option, Iso_MaxD_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: NES_MinD_Option, NES_MaxD_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: Pair_MinD_Option, Pair_MaxD_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: Brem_MinD_Option, Brem_MaxD_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: NNS_MinD_Option, NNS_MaxD_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: NuPair_MinD_Option, NuPair_MaxD_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: Op_MinD_Option, Op_MaxD_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     CHARACTER(128)     :: EquationOfStateTableName
@@ -241,6 +303,176 @@ CONTAINS
 
     CALL FinalizeHDF( )
 
+    ! --- Thermodynamic State Indices ---
+
+    iD_T = OPACITIES % TS % Indices % iRho
+    iT_T = OPACITIES % TS % Indices % iT
+    iY_T = OPACITIES % TS % Indices % iYe
+
+    ! --- Opacity Density Cutoffs ---
+
+    ! --- EmAb ---
+
+    IF( PRESENT( EmAb_Nucleon_MinD_Option ) )THEN
+      EmAb_Nucleon_MinD = EmAb_Nucleon_MinD_Option
+    ELSE
+      EmAb_Nucleon_MinD = OPACITIES % EOSTable % TS % minValues( iD_T )
+    END IF
+
+    IF( PRESENT( EmAb_Nucleon_MaxD_Option ) )THEN
+      EmAb_Nucleon_MaxD = EmAb_Nucleon_MaxD_Option
+    ELSE
+      EmAb_Nucleon_MaxD = OPACITIES % EOSTable % TS % maxValues( iD_T )
+    END IF
+
+    IF( PRESENT( EmAb_Nuclei_MinD_Option ) )THEN
+      EmAb_Nuclei_MinD = EmAb_Nuclei_MinD_Option
+    ELSE
+      EmAb_Nuclei_MinD = OPACITIES % EOSTable % TS % minValues( iD_T )
+    END IF
+
+    IF( PRESENT( EmAb_Nuclei_MaxD_Option ) )THEN
+      EmAb_Nuclei_MaxD = EmAb_Nuclei_MaxD_Option
+    ELSE
+      EmAb_Nuclei_MaxD = OPACITIES % EOSTable % TS % maxValues( iD_T )
+    END IF
+
+    IF( PRESENT( EmAb_MinD_Option ) )THEN
+      EmAb_MinD = EmAb_MinD_Option
+    ELSE
+      EmAb_MinD = MIN( EmAb_Nucleon_MinD, EmAb_Nuclei_MinD )
+    END IF
+
+    IF( PRESENT( EmAb_MaxD_Option ) )THEN
+      EmAb_MaxD = EmAb_MaxD_Option
+    ELSE
+      EmAb_MaxD = MAX( EmAb_Nucleon_MaxD, EmAb_Nuclei_MaxD )
+    END IF
+
+    ! --- Iso ---
+
+    IF( PRESENT( Iso_MinD_Option ) )THEN
+      Iso_MinD = Iso_MinD_Option
+    ELSE
+      Iso_MinD = OPACITIES % EOSTable % TS % minValues( iD_T )
+    END IF
+
+    IF( PRESENT( Iso_MaxD_Option ) )THEN
+      Iso_MaxD = Iso_MaxD_Option
+    ELSE
+      Iso_MaxD = OPACITIES % EOSTable % TS % maxValues( iD_T )
+    END IF
+
+    ! --- NES ---
+
+    IF( PRESENT( NES_MinD_Option ) )THEN
+      NES_MinD = NES_MinD_Option
+    ELSE
+      NES_MinD = OPACITIES % EOSTable % TS % minValues( iD_T )
+    END IF
+
+    IF( PRESENT( NES_MaxD_Option ) )THEN
+      NES_MaxD = NES_MaxD_Option
+    ELSE
+      NES_MaxD = OPACITIES % EOSTable % TS % maxValues( iD_T )
+    END IF
+
+    ! --- Pair ---
+
+    IF( PRESENT( Pair_MinD_Option ) )THEN
+      Pair_MinD = Pair_MinD_Option
+    ELSE
+      Pair_MinD = OPACITIES % EOSTable % TS % minValues( iD_T )
+    END IF
+
+    IF( PRESENT( Pair_MaxD_Option ) )THEN
+      Pair_MaxD = Pair_MaxD_Option
+    ELSE
+      Pair_MaxD = OPACITIES % EOSTable % TS % maxValues( iD_T )
+    END IF
+
+    ! --- Brem ---
+
+    IF( PRESENT( Brem_MinD_Option ) )THEN
+      Brem_MinD = Brem_MinD_Option
+    ELSE
+      Brem_MinD = OPACITIES % EOSTable % TS % minValues( iD_T )
+    END IF
+
+    IF( PRESENT( Brem_MaxD_Option ) )THEN
+      Brem_MaxD = Brem_MaxD_Option
+    ELSE
+      Brem_MaxD = OPACITIES % EOSTable % TS % maxValues( iD_T )
+    END IF
+
+    ! --- NNS ---
+
+    IF( PRESENT( NNS_MinD_Option ) )THEN
+      NNS_MinD = NNS_MinD_Option
+    ELSE
+      NNS_MinD = OPACITIES % EOSTable % TS % minValues( iD_T )
+    END IF
+
+    IF( PRESENT( NNS_MaxD_Option ) )THEN
+      NNS_MaxD = NNS_MaxD_Option
+    ELSE
+      NNS_MaxD = OPACITIES % EOSTable % TS % maxValues( iD_T )
+    END IF
+
+    ! --- NuPair ---
+
+    IF( PRESENT( NuPair_MinD_Option ) )THEN
+      NuPair_MinD = NuPair_MinD_Option
+    ELSE
+      NuPair_MinD = OPACITIES % EOSTable % TS % minValues( iD_T )
+    END IF
+
+    IF( PRESENT( NuPair_MaxD_Option ) )THEN
+      NuPair_MaxD = NuPair_MaxD_Option
+    ELSE
+      NuPair_MaxD = OPACITIES % EOSTable % TS % maxValues( iD_T )
+    END IF
+
+    ! --- Cutoff For All Opacities ---
+
+    IF( PRESENT( Op_MinD_Option ) )THEN
+      Op_MinD = Op_MinD_Option
+    ELSE
+      !Op_MinD = MIN( EmAb_MinD, Iso_MinD, NES_MinD, Pair_MinD, Brem_MinD, NNS_MinD, NuPair_MinD )
+      Op_MinD = MIN( EmAb_MinD, Iso_MinD, NES_MinD, Pair_MinD, Brem_MinD )
+    END IF
+
+    IF( PRESENT( Op_MaxD_Option ) )THEN
+      Op_MaxD = Op_MaxD_Option
+    ELSE
+      !Op_MaxD = MAX( EmAb_MaxD, Iso_MaxD, NES_MaxD, Pair_MaxD, Brem_MaxD, NNS_MaxD, NuPair_MaxD )
+      Op_MaxD = MAX( EmAb_MaxD, Iso_MaxD, NES_MaxD, Pair_MaxD, Brem_MaxD )
+    END IF
+
+    ! --- Make Cutoffs Consistent ---
+
+    EmAb_MinD   = MAX( EmAb_MinD  , Op_MinD )
+    Iso_MinD    = MAX( Iso_MinD   , Op_MinD )
+    NES_MinD    = MAX( NES_MinD   , Op_MinD )
+    Pair_MinD   = MAX( Pair_MinD  , Op_MinD )
+    Brem_MinD   = MAX( Brem_MinD  , Op_MinD )
+    NNS_MinD    = MAX( NNS_MinD   , Op_MinD )
+    NuPair_MinD = MAX( NuPair_MinD, Op_MinD )
+
+    EmAb_Nucleon_MinD = MAX( EmAb_Nucleon_MinD, EmAb_MinD )
+    EmAb_Nuclei_MinD  = MAX( EmAb_Nuclei_MinD , EmAb_MinD )
+
+    EmAb_MaxD   = MIN( EmAb_MaxD  , Op_MaxD )
+    Iso_MaxD    = MIN( Iso_MaxD   , Op_MaxD )
+    NES_MaxD    = MIN( NES_MaxD   , Op_MaxD )
+    Pair_MaxD   = MIN( Pair_MaxD  , Op_MaxD )
+    Brem_MaxD   = MIN( Brem_MaxD  , Op_MaxD )
+    NNS_MaxD    = MIN( NNS_MaxD   , Op_MaxD )
+    NuPair_MaxD = MIN( NuPair_MaxD, Op_MaxD )
+
+    EmAb_Nucleon_MaxD = MIN( EmAb_Nucleon_MaxD, EmAb_MaxD )
+    EmAb_Nuclei_MaxD  = MIN( EmAb_Nuclei_MaxD , EmAb_MaxD )
+
     nPointsE = nE * nNodesE
 
     nOpacities_NES  = OPACITIES % Scat_NES % nOpacities
@@ -265,12 +497,6 @@ CONTAINS
     C2 = [ C2_NuE, C2_NuE_Bar, &
            C2_NuM, C2_NuM_Bar, &
            C2_NuT, C2_NuT_Bar ]
-
-    ! --- Thermodynamic State Indices ---
-
-    iD_T = OPACITIES % TS % Indices % iRho
-    iT_T = OPACITIES % TS % Indices % iT
-    iY_T = OPACITIES % TS % Indices % iYe
 
     ! --- Thermodynamic States ---
 
@@ -418,13 +644,33 @@ CONTAINS
     !$OMP MAP( always, to: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     !$OMP                  OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
     !$OMP                  EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
-    !$OMP                  NES_AT, Pair_AT, Brem_AT, C1, C2 )
+    !$OMP                  NES_AT, Pair_AT, Brem_AT, C1, C2, &
+    !$OMP                  EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD, &
+    !$OMP                  EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD, &
+    !$OMP                  EmAb_MinD, EmAb_MaxD, &
+    !$OMP                  Iso_MinD, Iso_MaxD, &
+    !$OMP                  NES_MinD, NES_MaxD, &
+    !$OMP                  Pair_MinD, Pair_MaxD, &
+    !$OMP                  Brem_MinD, Brem_MaxD, &
+    !$OMP                  NNS_MinD, NNS_MaxD, &
+    !$OMP                  NuPair_MinD, NuPair_MaxD, &
+    !$OMP                  Op_MinD, Op_MaxD )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
     !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
-    !$ACC   NES_AT, Pair_AT, Brem_AT, C1, C2 )
+    !$ACC   NES_AT, Pair_AT, Brem_AT, C1, C2, &
+    !$ACC   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD, &
+    !$ACC   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD, &
+    !$ACC   EmAb_MinD, EmAb_MaxD, &
+    !$ACC   Iso_MinD, Iso_MaxD, &
+    !$ACC   NES_MinD, NES_MaxD, &
+    !$ACC   Pair_MinD, Pair_MaxD, &
+    !$ACC   Brem_MinD, Brem_MaxD, &
+    !$ACC   NNS_MinD, NNS_MaxD, &
+    !$ACC   NuPair_MinD, NuPair_MaxD, &
+    !$ACC   Op_MinD, Op_MaxD )
 #endif
 
     ASSOCIATE ( CenterE => MeshE % Center, &
@@ -587,6 +833,16 @@ CONTAINS
       !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
       !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
       !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2 )
+      !$OMP               EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD, &
+      !$OMP               EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD, &
+      !$OMP               EmAb_MinD, EmAb_MaxD, &
+      !$OMP               Iso_MinD, Iso_MaxD, &
+      !$OMP               NES_MinD, NES_MaxD, &
+      !$OMP               Pair_MinD, Pair_MaxD, &
+      !$OMP               Brem_MinD, Brem_MaxD, &
+      !$OMP               NNS_MinD, NNS_MaxD, &
+      !$OMP               NuPair_MinD, NuPair_MaxD, &
+      !$OMP               Op_MinD, Op_MaxD )
 #endif
 
       DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
@@ -742,6 +998,163 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeScatteringOpacity_NES_TABLE
+
+
+  LOGICAL FUNCTION QueryOpacity_EmAb_Nuclei( D )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: D
+
+    QueryOpacity_EmAb_Nuclei &
+        = ( D >= EmAb_Nuclei_MinD .AND. D <= EmAb_Nuclei_MaxD )
+
+  END FUNCTION QueryOpacity_EmAb_Nuclei
+
+
+  LOGICAL FUNCTION QueryOpacity_EmAb_Nucleon( D )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: D
+
+    QueryOpacity_EmAb_Nucleon &
+        = ( D >= EmAb_Nucleon_MinD .AND. D <= EmAb_Nucleon_MaxD )
+
+  END FUNCTION QueryOpacity_EmAb_Nucleon
+
+
+  LOGICAL FUNCTION QueryOpacity_EmAb( D )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: D
+
+    QueryOpacity_EmAb &
+        = ( D >= EmAb_MinD .AND. D <= EmAb_MaxD ) &
+            .AND. (      QueryOpacity_EmAb_Nucleon( D ) &
+                    .OR. QueryOpacity_EmAb_Nuclei ( D ) )
+
+  END FUNCTION QueryOpacity_EmAb
+
+
+  LOGICAL FUNCTION QueryOpacity_Iso( D )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: D
+
+    QueryOpacity_Iso &
+        = ( D >= Iso_MinD .AND. D <= Iso_MaxD )
+
+  END FUNCTION QueryOpacity_Iso
+
+
+  LOGICAL FUNCTION QueryOpacity_NES( D )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: D
+
+    QueryOpacity_NES &
+        = ( D >= NES_MinD .AND. D <= NES_MaxD )
+
+  END FUNCTION QueryOpacity_NES
+
+
+  LOGICAL FUNCTION QueryOpacity_Pair( D )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: D
+
+    QueryOpacity_Pair &
+        = ( D >= Pair_MinD .AND. D <= Pair_MaxD )
+
+  END FUNCTION QueryOpacity_Pair
+
+
+  LOGICAL FUNCTION QueryOpacity_Brem( D )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: D
+
+    QueryOpacity_Brem &
+        = ( D >= Brem_MinD .AND. D <= Brem_MaxD )
+
+  END FUNCTION QueryOpacity_Brem
+
+
+  LOGICAL FUNCTION QueryOpacity_NNS( D )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: D
+
+    QueryOpacity_NNS &
+        = ( D >= NNS_MinD .AND. D <= NNS_MaxD )
+
+  END FUNCTION QueryOpacity_NNS
+
+
+  LOGICAL FUNCTION QueryOpacity_NuPair( D )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: D
+
+    QueryOpacity_NuPair &
+        = ( D >= NuPair_MinD .AND. D <= NuPair_MaxD )
+
+  END FUNCTION QueryOpacity_NuPair
+
+
+  LOGICAL FUNCTION QueryOpacity( D )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: D
+
+    QueryOpacity &
+        = ( D >= Op_MinD .AND. D <= Op_MaxD ) &
+            .AND. (      QueryOpacity_EmAb( D ) &
+                    .OR. QueryOpacity_Iso ( D ) &
+                    .OR. QueryOpacity_NES ( D ) &
+                    .OR. QueryOpacity_Pair( D ) &
+                    .OR. QueryOpacity_Brem( D ) )
+
+  END FUNCTION QueryOpacity
 
 
 END MODULE OpacityModule_TABLE
