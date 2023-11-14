@@ -428,6 +428,8 @@ CONTAINS
 
       CALL ComputeLapseShiftCurvature_Euler( MF_uGF, MF_uCF, MF_uGS, MF_uMF )
 
+      CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, -1 )
+
       DO iLevel = 0, nLevels-1
 
         CALL LF2(iLevel) % COPY &
