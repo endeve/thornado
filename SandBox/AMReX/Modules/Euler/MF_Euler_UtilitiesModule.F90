@@ -415,7 +415,7 @@ CONTAINS
           CALL ComputeConserved_Euler &
                  ( P(iNX,iX1,iX2,iX3,iPF_D ), &
                    P(iNX,iX1,iX2,iX3,iPF_V1), &
-                   P(iNX,iX1,iX2,iX3,iPF_V3), &
+                   P(iNX,iX1,iX2,iX3,iPF_V2), &
                    P(iNX,iX1,iX2,iX3,iPF_V3), &
                    P(iNX,iX1,iX2,iX3,iPF_E ), &
                    P(iNX,iX1,iX2,iX3,iPF_Ne), &
