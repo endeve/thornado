@@ -169,6 +169,7 @@ while on Sunspot the data look like:
 [WARNING] yaksa: 3 leaked handle pool objects
 [WARNING] yaksa: 3 leaked handle pool objects
 </pre>
+3. Tried Thorado relaxatoin on a PVC machine of ORtce cluster, the code compiles, but get hdf5 errors when running. 
 ## Nov 7-9 2023
 1. Got a small standalone test code which compiles and runs on PVC04 with random numbers, and the file is reductionSpeed.f90. will run on JLSE's A100 system to see the performance comparison with PVC04 
 2. Tried running FlashX with Thornado on Sunspot. With the code from Mathi, it compiles and runs on 6 cpu rank and 6 GPU tiles. 
