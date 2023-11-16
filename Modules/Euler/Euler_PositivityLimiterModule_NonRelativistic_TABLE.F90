@@ -276,7 +276,7 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET EXIT DATA &
-      !$OMP MAP( always, release: InterpMat )
+      !$OMP MAP( release: InterpMat )
 #elif defined( THORNADO_OACC   )
       !$ACC EXIT DATA &
       !$ACC DELETE( InterpMat )

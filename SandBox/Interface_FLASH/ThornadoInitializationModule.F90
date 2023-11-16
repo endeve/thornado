@@ -129,6 +129,16 @@ contains
       OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
       OpacityTableName_NES_Option, OpacityTableName_Pair_Option, &
       OpacityTableName_Brem_Option, &
+      EmAb_Nucleon_MinD_Option, EmAb_Nucleon_MaxD_Option, &
+      EmAb_Nuclei_MinD_Option, EmAb_Nuclei_MaxD_Option, &
+      EmAb_MinD_Option, EmAb_MaxD_Option, &
+      Iso_MinD_Option, Iso_MaxD_Option, &
+      NES_MinD_Option, NES_MaxD_Option, &
+      Pair_MinD_Option, Pair_MaxD_Option, &
+      Brem_MinD_Option, Brem_MaxD_Option, &
+      NNS_MinD_Option, NNS_MaxD_Option, &
+      NuPair_MinD_Option, NuPair_MaxD_Option, &
+      Op_MinD_Option, Op_MaxD_Option, &
       M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
       MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
       Include_NES_Option, Include_Pair_Option, &
@@ -162,6 +172,16 @@ contains
     character(len=*), intent(in), optional :: OpacityTableName_NES_Option
     character(len=*), intent(in), optional :: OpacityTableName_Pair_Option
     character(len=*), intent(in), optional :: OpacityTableName_Brem_Option
+    real(dp),         intent(in), optional :: EmAb_Nucleon_MinD_Option, EmAb_Nucleon_MaxD_Option
+    real(dp),         intent(in), optional :: EmAb_Nuclei_MinD_Option, EmAb_Nuclei_MaxD_Option
+    real(dp),         intent(in), optional :: EmAb_MinD_Option, EmAb_MaxD_Option
+    real(dp),         intent(in), optional :: Iso_MinD_Option, Iso_MaxD_Option
+    real(dp),         intent(in), optional :: NES_MinD_Option, NES_MaxD_Option
+    real(dp),         intent(in), optional :: Pair_MinD_Option, Pair_MaxD_Option
+    real(dp),         intent(in), optional :: Brem_MinD_Option, Brem_MaxD_Option
+    real(dp),         intent(in), optional :: NNS_MinD_Option, NNS_MaxD_Option
+    real(dp),         intent(in), optional :: NuPair_MinD_Option, NuPair_MaxD_Option
+    real(dp),         intent(in), optional :: Op_MinD_Option, Op_MaxD_Option
     integer,          intent(in), optional :: M_outer_Option
     integer,          intent(in), optional :: M_inner_Option
     integer,          intent(in), optional :: MaxIter_outer_Option
@@ -424,6 +444,46 @@ contains
                = OpacityTableName_Brem_Option, &
              EquationOfStateTableName_Option &
                = EquationOfStateTableName_Option, &
+             EmAb_Nucleon_MinD_Option &
+               = EmAb_Nucleon_MinD_Option, &
+             EmAb_Nucleon_MaxD_Option &
+               = EmAb_Nucleon_MaxD_Option, &
+             EmAb_Nuclei_MinD_Option &
+               = EmAb_Nuclei_MinD_Option, &
+             EmAb_Nuclei_MaxD_Option &
+               = EmAb_Nuclei_MaxD_Option, &
+             EmAb_MinD_Option &
+               = EmAb_MinD_Option, &
+             EmAb_MaxD_Option &
+               = EmAb_MaxD_Option, &
+             Iso_MinD_Option &
+               = Iso_MinD_Option, &
+             Iso_MaxD_Option &
+               = Iso_MaxD_Option, &
+             NES_MinD_Option &
+               = NES_MinD_Option, &
+             NES_MaxD_Option &
+               = NES_MaxD_Option, &
+             Pair_MinD_Option &
+               = Pair_MinD_Option, &
+             Pair_MaxD_Option &
+               = Pair_MaxD_Option, &
+             Brem_MinD_Option &
+               = Brem_MinD_Option, &
+             Brem_MaxD_Option &
+               = Brem_MaxD_Option, &
+             NNS_MinD_Option &
+               = NNS_MinD_Option, &
+             NNS_MaxD_Option &
+               = NNS_MaxD_Option, &
+             NuPair_MinD_Option &
+               = NuPair_MinD_Option, &
+             NuPair_MaxD_Option &
+               = NuPair_MaxD_Option, &
+             Op_MinD_Option &
+               = Op_MinD_Option, &
+             Op_MaxD_Option &
+               = Op_MaxD_Option, &
              Verbose_Option = Verbose )
 
     ! --- For refinement and coarsening of DG data
