@@ -48,6 +48,7 @@ More information on the external packages, please visit: https://gitlab.devtools
 **get default /opt/exaperf/modulefiles** `/opt/scripts/update_nightly.sh`    
 **remove nightlies and agamas** ` sudo /shared/maint/tools/prune_nightly.py`
 **ortce** ortce-skl.jf.intel.com/
+**DUT** srun -p FM-QZ1J-ICX-PVC -t 1:00:00 --pty /bin/bash
 **get on a node on JLSE:**  `qsub -n 1 -t 300 -q arcticus -I`       
 **get on a node on Sunspot** `qsub -l select=1 -l walltime=30:00 -A Aurora_deployment -q workq -I`
 **To git clone weaklib tables from ORNL, we need** `export https_proxy=http://proxy-us.intel.com:912`    (error: SSL certificate problem: self signed certificate in certificate chain) 
@@ -90,6 +91,49 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
+## Nov 15-16 2023
+1. Build hdf1.12.0 on DUT machie of ORTCE lab. The machine has a Ubuntu Operating system and the run of autogen.sh fails. Running
+`quanshao@DUT755PVC:~/ExaStar/hdf512$ CC=/opt/hpc_software/libraries/intel/mpich/pvc51.2/bin/mpicc FC=/opt/hpc_software/libraries/intel/mpich/pvc51.2/bin/mpifort CXX=/opt/hpc_software/libraries/intel/mpich/pvc51.2/bin/mpicxx ./configure --enable-fortran --enable-cxx --enable-parallel --enable-unsupported --prefix=/nfs/site/home/quanshao/ExaStar/hdf512`. But got a error message
+<pre>
+libtool: warning: library '/opt/hpc_software/libraries/intel/mpich/pvc51.2/lib/libmpicxx.la' was moved.
+/usr/bin/grep: /opt/hpc_software/libraries/intel/mpich/drop51.2/lib/libmpi.la: No such file or directory
+/usr/bin/sed: can't read /opt/hpc_software/libraries/intel/mpich/drop51.2/lib/libmpi.la: No such file or directory
+libtool:   error: '/opt/hpc_software/libraries/intel/mpich/drop51.2/lib/libmpi.la' is not a valid libtool archive
+ 
+my echo $LD_LIBRARY_PATH shows:
+/opt/hpc_software/libraries/intel/mpich/pvc51.2/lib:/opt/hpc_software/compilers/intel/nightly/20230816/opt/compiler/lib:/opt/hpc_software/compilers/intel/nightly/20230816/lib
+ 
+and here is my configure line:
+quanshao@DUT755PVC:~/ExaStar/hdf512$ CC=/opt/hpc_software/libraries/intel/mpich/pvc51.2/bin/mpicc FC=/opt/hpc_software/libraries/intel/mpich/pvc51.2/bin/mpifort CXX=/opt/hpc_software/libraries/intel/mpich/pvc51.2/bin/mpicxx ./configure --enable-fortran --enable-cxx --enable-parallel --enable-unsupported --prefix=/nfs/site/home/quanshao/ExaStar/hdf512
+</pre>
+2. Asked ORTCe channel, Gregg suggested to use INTEL MPI. Tried module load intel/mpi, there was a configure error. 
+3. Trying module load  intel/oneapi/2023.2.1, and see a lot warnings when doing make -j8 "warning: redundant redeclaration of 'PMPI_Ssend". "make -j8" finished with a lot of warnning messages. Running make install. Here is errors:
+<pre>
+ /usr/bin/mkdir -p '/nfs/site/home/quanshao/ExaStar/hdf512/bin'
+ /usr/bin/install -c h5redeploy '/nfs/site/home/quanshao/ExaStar/hdf512/bin'
+/usr/bin/install: 'h5redeploy' and '/nfs/site/home/quanshao/ExaStar/hdf512/bin/h5redeploy' are the same file
+make[2]: *** [Makefile:765: install-binSCRIPTS] Error 1
+make[2]: Leaving directory '/nfs/site/home/quanshao/ExaStar/hdf512/bin'
+make[1]: *** [Makefile:1000: install-am] Error 2
+make[1]: Leaving directory '/nfs/site/home/quanshao/ExaStar/hdf512/bin'
+make: *** [Makefile:662: install-recursive] Error 1
+</pre>
+4. DUT***PVC machine is slow, the compilation takes more than 10 minutes, while it takes less than 2 mins on sdpcloud PVC machines
+5. Relaxation case compiles and runs on sdp693160 with old hdf57.  Here is the timing:
+<pre>
+       Timer_Total                              :     1.802631E+02 s
+         Timer_IMEX                             :     1.476576E+02 s
+         Timer_Collisions                       :     1.457741E+02 s
+           Timer_Collisions_PrimitiveFluid      :     5.665064E-03 s
+           Timer_Collisions_PrimitiveTwoMoment  :     2.040077E+01 s
+           Timer_Collisions_Solve               :     1.087499E+02 s
+           Timer_Collisions_OuterLoop           :     1.026653E+02 s
+           Timer_Collisions_InnerLoop           :     9.394104E+01 s
+           Timer_Collisions_ComputeOpacity      :     6.658610E+00 s
+           Timer_Collisions_ComputeRates        :     3.319608E+01 s
+           Timer_Collisions_InitializeRHS       :     4.150761E+00 s
+           Timer_Collisions_NeutrinoRHS         :     2.152830E+01 s         
+</pre>
 ## Mov 14 2023
 1. FlashX with Thornado run hangs on PVC04 with the lastest delep-Ov and master branch of Thornado.
 <pre>
