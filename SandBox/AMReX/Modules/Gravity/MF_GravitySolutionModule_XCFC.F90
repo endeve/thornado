@@ -7,13 +7,15 @@ MODULE MF_GravitySolutionModule_XCFC
 
   ! --- Local Modules ---
 
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
+
   USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
     InitializeGravitySolver_XCFC_MF_Poseidon, &
     FinalizeGravitySolver_XCFC_MF_Poseidon, &
     ComputeConformalFactor_XCFC_MF_Poseidon, &
-    ComputeLapseShiftCurvature_XCFC_MF_Poseidon, &
-    InitializeMetric_Euler_MF_Poseidon, &
-    InitializeMetric_TwoMoment_MF_Poseidon
+    ComputeLapseShiftCurvature_XCFC_MF_Poseidon
+
+#endif
 
   IMPLICIT NONE
   PRIVATE
@@ -23,24 +25,16 @@ MODULE MF_GravitySolutionModule_XCFC
   PUBLIC :: ComputeConformalFactor_XCFC_MF
   PUBLIC :: ComputeLapseShiftCurvature_XCFC_MF
 
-  PUBLIC :: InitializeMetric_Euler_MF
-  PUBLIC :: InitializeMetric_TwoMoment_MF
-
 CONTAINS
 
 
-  SUBROUTINE InitializeGravitySolver_XCFC_MF &
-    ( MF_uGF, MF_uCF )
-
-    TYPE(amrex_multifab), INTENT(inout), OPTIONAL :: MF_uGF(0:)
-    TYPE(amrex_multifab), INTENT(in)   , OPTIONAL :: MF_uCF(0:)
+  SUBROUTINE InitializeGravitySolver_XCFC_MF
 
     ! --- Initialized to flat space in amrex_init_from_scratch ---
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
-    CALL InitializeGravitySolver_XCFC_MF_Poseidon &
-           ( MF_uGF, MF_uCF )
+    CALL InitializeGravitySolver_XCFC_MF_Poseidon
 
 #endif
 
@@ -84,42 +78,6 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeLapseShiftCurvature_XCFC_MF
-
-
-  SUBROUTINE InitializeMetric_Euler_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uPF(0:)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uAF(0:)
-
-#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
-
-    CALL InitializeMetric_Euler_MF_Poseidon &
-           ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-#endif
-
-  END SUBROUTINE InitializeMetric_Euler_MF
-
-
-  SUBROUTINE InitializeMetric_TwoMoment_MF &
-    ( MF_uGF, MF_uCF, MF_uCR, MF_uPF, MF_uAF )
-
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uPF(0:)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uAF(0:)
-
-#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
-
-    CALL InitializeMetric_TwoMoment_MF_Poseidon &
-           ( MF_uGF, MF_uCF, MF_uCR, MF_uPF, MF_uAF )
-
-#endif
-
-  END SUBROUTINE InitializeMetric_TwoMoment_MF
 
 
 END MODULE MF_GravitySolutionModule_XCFC

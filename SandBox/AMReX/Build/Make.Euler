@@ -6,7 +6,6 @@ F90EXE_sources  += MF_Euler_SlopeLimiterModule.F90
 F90EXE_sources  += MF_Euler_TallyModule.F90
 f90EXE_sources  += MF_Euler_TimersModule.f90
 F90EXE_sources  += MF_Euler_UtilitiesModule.F90
-F90EXE_sources  += MF_Euler_XCFC_UtilitiesModule.F90
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Euler
 F90EXE_sources  += Euler_UtilitiesModule_NonRelativistic.F90

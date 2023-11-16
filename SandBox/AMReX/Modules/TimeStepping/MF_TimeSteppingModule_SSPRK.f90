@@ -63,10 +63,9 @@ MODULE MF_TimeSteppingModule_SSPRK
     MultiplyWithPsi6_MF, &
     UpdateConformalFactorAndMetric_XCFC_MF, &
     UpdateLapseShiftCurvature_XCFC_MF, &
-    ApplyBoundaryConditions_Geometry_XCFC_MF
-  USE MF_Euler_XCFC_UtilitiesModule, ONLY: &
-    ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF, &
-    ComputePressureTensorTrace_XCFC_Euler_MF
+    ApplyBoundaryConditions_Geometry_XCFC_MF, &
+    ComputeConformalFactorSourcesAndMg_XCFC_MF, &
+    ComputePressureTensorTrace_XCFC_MF
   USE MF_GravitySolutionModule_XCFC, ONLY: &
     ComputeConformalFactor_XCFC_MF, &
     ComputeLapseShiftCurvature_XCFC_MF
@@ -448,7 +447,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:)
 
-    CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler_MF &
+    CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
 
     CALL ComputeConformalFactor_XCFC_MF &
@@ -469,7 +468,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:)
 
-    CALL ComputePressureTensorTrace_XCFC_Euler_MF &
+    CALL ComputePressureTensorTrace_XCFC_MF &
            ( MF_uGF, MF_uCF, MF_uGS )
 
     CALL ComputeLapseShiftCurvature_XCFC_MF &

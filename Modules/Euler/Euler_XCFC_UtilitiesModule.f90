@@ -126,12 +126,12 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
+      ITERATION(:,iX1,iX2,iX3) = 0
+      iErr     (:,iX1,iX2,iX3) = 0
+
       IF( IsNotLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
       DO iNX = 1, nDOFX
-
-        ITERATION(iNX,iX1,iX2,iX3) = 0
-        iErr     (iNX,iX1,iX2,iX3) = 0
 
         GS(iNX,iX1,iX2,iX3,iGS_E) &
           = U(iNX,iX1,iX2,iX3,iCF_E) + U(iNX,iX1,iX2,iX3,iCF_D)
@@ -301,12 +301,12 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
+      ITERATION(:,iX1,iX2,iX3) = 0
+      iErr     (:,iX1,iX2,iX3) = 0
+
       IF( IsNotLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
       DO iNX = 1, nDOFX
-
-        ITERATION(iNX,iX1,iX2,iX3) = 0
-        iErr     (iNX,iX1,iX2,iX3) = 0
 
         DO iGF = 1, nGF
 
