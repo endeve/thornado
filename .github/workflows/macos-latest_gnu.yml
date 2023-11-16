@@ -51,8 +51,8 @@ jobs:
           echo ""
           echo "brew install gfortran"
                 brew install gfortran
-          echo "rm -rf /usr/local/bin/2to3"
-                rm -rf /usr/local/bin/2to3
+          echo "rm -rf /usr/local/bin/2to3*"
+                rm -rf /usr/local/bin/2to3*
           echo "brew install open-mpi --cc=gcc-${GCC_MAJOR}"
                 brew install open-mpi --cc=gcc-${GCC_MAJOR}
           OMPI_VERSION=`ls /usr/local/Cellar/open-mpi`
