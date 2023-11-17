@@ -2,7 +2,9 @@
 
 name: Compile thornado on Ubuntu 20.04 with nvhpc compilers
 
-on: [ push, pull_request ]
+on:
+  schedule:
+    - cron: '0 3 * * *'
 
 jobs:
   compile-with-nvhpc:

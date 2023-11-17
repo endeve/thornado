@@ -23,7 +23,8 @@ MODULE  MF_Euler_dgDiscretizationModule
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
-    nDimsX
+    nDimsX, &
+    swX
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, &
     nDOFX_X2, &
@@ -73,7 +74,6 @@ MODULE  MF_Euler_dgDiscretizationModule
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
-    swX, &
     UseFluxCorrection_Euler, &
     DEBUG
   USE FillPatchModule, ONLY: &
@@ -356,6 +356,8 @@ CONTAINS
 
       CALL ApplyBoundaryConditions_Euler_MF &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+
+      CALL DetectShocks_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
       CALL ComputeIncrement_Euler_DG_Explicit &
              ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &

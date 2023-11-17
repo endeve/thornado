@@ -5,7 +5,7 @@ F90EXE_sources  += MaskModule.F90
 CEXE_sources    += MaskModule_fi.cpp
 F90EXE_sources  += MF_UtilitiesModule.F90
 CEXE_sources    += MF_UtilitiesModule_fi.cpp
-f90EXE_sources  += MF_TimersModule.f90
+F90EXE_sources  += MF_TimersModule.F90
 f90EXE_sources  += MF_EdgeMapModule.f90
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Library

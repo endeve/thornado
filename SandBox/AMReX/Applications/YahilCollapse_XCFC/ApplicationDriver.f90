@@ -36,8 +36,8 @@ PROGRAM main
     ComputeTally_Euler_MF, &
     BaryonicMass_Initial, &
     BaryonicMass_OffGrid, &
-    Energy_Initial, &
-    Energy_OffGrid, &
+    EulerEnergy_Initial, &
+    EulerEnergy_OffGrid, &
     ElectronNumber_Initial, &
     ElectronNumber_OffGrid, &
     ADMMass_Initial, &
@@ -68,6 +68,8 @@ PROGRAM main
     TimersStop_AMReX, &
     Timer_AMReX_InputOutput, &
     FinalizeTimers_AMReX
+  USE ReGridModule, ONLY: &
+    ReGrid
 
   IMPLICIT NONE
 
@@ -95,6 +97,8 @@ PROGRAM main
     StepNo = StepNo + 1
 
     t_old = t_new
+
+    CALL ReGrid
 
     CALL ComputeTimeStep_Euler_MF( MF_uGF, MF_uCF, CFL, dt )
 
@@ -268,7 +272,7 @@ CONTAINS
       CALL WriteFieldsAMReX_Checkpoint &
              ( StepNo, nLevels, dt, t_new, &
                [ BaryonicMass_Initial  , BaryonicMass_OffGrid   ], &
-               [ Energy_Initial        , Energy_OffGrid         ], &
+               [ EulerEnergy_Initial   , EulerEnergy_OffGrid    ], &
                [ ElectronNumber_Initial, ElectronNumber_OffGrid ], &
                [ ADMMass_Initial       , ADMMass_OffGrid        ], &
                MF_uGF % BA % P, &

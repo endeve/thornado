@@ -1,14 +1,14 @@
 MODULE MF_MeshModule
 
-  ! --- AMReX Modules ---
-
-  USE amrex_fort_module, ONLY: &
-    amrex_spacedim
-
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
-    nNodesX
+    nNodesX, &
+    nX, &
+    swX, &
+    xL, &
+    xR, &
+    nDimsX
   USE MeshModule, ONLY: &
     MeshType, &
     CreateMesh, &
@@ -17,10 +17,6 @@ MODULE MF_MeshModule
   ! --- Local Modules ---
 
   USE InputParsingModule, ONLY: &
-    nX, &
-    swX, &
-    xL, &
-    xR, &
     iOS_CPP
 
   IMPLICIT NONE
@@ -37,19 +33,19 @@ CONTAINS
     INTEGER,        INTENT(in)  :: iLevel
     TYPE(MeshType), INTENT(out) :: MeshX(3)
 
-    INTEGER :: iDim, nXX(3)
+    INTEGER :: iDimX, nXX(3)
 
     nXX = nX
 
     nXX(1) = 2**( iLevel ) * nX(1)
-    IF( amrex_spacedim .GT. 1 ) nXX(2) = 2**( iLevel ) * nX(2)
-    IF( amrex_spacedim .GT. 2 ) nXX(3) = 2**( iLevel ) * nX(3)
+    IF( nDimsX .GT. 1 ) nXX(2) = 2**( iLevel ) * nX(2)
+    IF( nDimsX .GT. 2 ) nXX(3) = 2**( iLevel ) * nX(3)
 
-    DO iDim = 1, 3
+    DO iDimX = 1, 3
 
       CALL CreateMesh &
-             ( MeshX(iDim), nXX(iDim), nNodesX(iDim), swX(iDim), &
-               xL(iDim), xR(iDim), iOS_Option = iOS_CPP(iDim) )
+             ( MeshX(iDimX), nXX(iDimX), nNodesX(iDimX), swX(iDimX), &
+               xL(iDimX), xR(iDimX), iOS_Option = iOS_CPP(iDimX) )
 
     END DO
 
@@ -60,11 +56,11 @@ CONTAINS
 
     TYPE(MeshType), INTENT(inout) :: MeshX(3)
 
-    INTEGER :: iDim
+    INTEGER :: iDimX
 
-    DO iDim = 1, 3
+    DO iDimX = 1, 3
 
-      CALL DestroyMesh( MeshX(iDim) )
+      CALL DestroyMesh( MeshX(iDimX) )
 
     END DO
 

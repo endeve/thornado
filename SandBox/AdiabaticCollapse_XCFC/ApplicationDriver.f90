@@ -55,9 +55,9 @@ PROGRAM ApplicationDriver
     uDF
   USE GeometryFieldsModule, ONLY: &
     uGF
-  USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
-    InitializeGravitySolver_XCFC_Poseidon, &
-    FinalizeGravitySolver_XCFC_Poseidon
+  USE GravitySolutionModule_XCFC, ONLY: &
+    InitializeGravitySolver_XCFC, &
+    FinalizeGravitySolver_XCFC
   USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit
   USE TimeSteppingModule_SSPRK, ONLY: &
@@ -72,7 +72,7 @@ PROGRAM ApplicationDriver
     InitializeTally_Euler_Relativistic, &
     FinalizeTally_Euler_Relativistic, &
     ComputeTally_Euler_Relativistic
-  USE Poseidon_UtilitiesModule, ONLY: &
+  USE Euler_XCFC_UtilitiesModule, ONLY: &
     ComputeNewtonianPotential_SphericalSymmetry
   USE TimersModule_Euler, ONLY: &
     TimeIt_Euler, &
@@ -201,7 +201,7 @@ PROGRAM ApplicationDriver
 
   CALL InitializeReferenceElementX_Lagrange
 
-  CALL InitializeGravitySolver_XCFC_Poseidon( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+  CALL InitializeGravitySolver_XCFC( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option &
@@ -379,12 +379,6 @@ PROGRAM ApplicationDriver
   CALL ComputeFromConserved_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
-!  CALL ComputeSourceTerms_Poseidon &
-!         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
-!
-!  CALL SolveGravity_XCFC_Poseidon &
-!         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
-
   CALL ComputeNewtonianPotential_SphericalSymmetry &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uGF )
 
@@ -406,7 +400,7 @@ PROGRAM ApplicationDriver
 
   CALL FinalizeReferenceElementX_Lagrange
 
-  CALL FinalizeGravitySolver_XCFC_Poseidon
+  CALL FinalizeGravitySolver_XCFC
 
   CALL FinalizeEquationOfState
 

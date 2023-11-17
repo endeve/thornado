@@ -1,16 +1,5 @@
 MODULE MF_Euler_BoundaryConditionsModule
 
-  ! --- AMReX Modules ---
-
-  USE amrex_fort_module, ONLY: &
-    amrex_spacedim
-  USE amrex_box_module, ONLY: &
-    amrex_box
-  USE amrex_geometry_module, ONLY: &
-    amrex_geometry
-  USE amrex_amrcore_module, ONLY: &
-    amrex_geom
-
   ! --- thornado Modules ---
 
   USE Euler_BoundaryConditionsModule, ONLY: &
@@ -20,7 +9,7 @@ MODULE MF_Euler_BoundaryConditionsModule
 
   USE MF_KindModule, ONLY: &
     DP
-  USE MF_EdgeMapModule,               ONLY: &
+  USE MF_EdgeMapModule, ONLY: &
     EdgeMap
 
   IMPLICIT NONE

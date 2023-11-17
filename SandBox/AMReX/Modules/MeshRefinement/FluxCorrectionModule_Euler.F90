@@ -1,20 +1,9 @@
 MODULE FluxCorrectionModule_Euler
 
-  USE Euler_MeshRefinementModule, ONLY: &
-    pNodeNumberTableX_X1_c, &
-    pNodeNumberTableX_X2_c, &
-    pNodeNumberTableX_X3_c, &
-    pWeightsX_q_c, &
-    pLX_X1_Up_c, pLX_X1_Dn_c, &
-    pLX_X2_Up_c, pLX_X2_Dn_c, &
-    pLX_X3_Up_c, pLX_X3_Dn_c
-
   ! --- AMReX Modules ---
 
   USE amrex_multifab_module, ONLY: &
-    amrex_multifab, &
-    amrex_multifab_build, &
-    amrex_multifab_destroy
+    amrex_multifab
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_communicator
 
@@ -25,26 +14,24 @@ MODULE FluxCorrectionModule_Euler
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF
-  USE ReferenceElementModuleX_Lagrange, ONLY: &
-     LX_X1_Dn, &
-     LX_X1_Up, &
-     LX_X2_Dn, &
-     LX_X2_Up, &
-     LX_X3_Dn, &
-     LX_X3_Up
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, &
     nDOFX_X2, &
-    nDOFX_X3, &
-    NodeNumberTableX, &
-    NodeNumberTableX_X1, &
-    NodeNumberTableX_X2, &
-    NodeNumberTableX_X3, &
-    WeightsX_q
+    nDOFX_X3
+  USE Euler_MeshRefinementModule, ONLY: &
+    pNodeNumberTableX_X1_c, &
+    pNodeNumberTableX_X2_c, &
+    pNodeNumberTableX_X3_c, &
+    pWeightsX_q_c, &
+    pLX_X1_Up_c, &
+    pLX_X1_Dn_c, &
+    pLX_X2_Up_c, &
+    pLX_X2_Dn_c, &
+    pLX_X3_Up_c, &
+    pLX_X3_Dn_c
 
   ! --- Local Modules ---
 
@@ -57,7 +44,6 @@ MODULE FluxCorrectionModule_Euler
     DestroyMesh_MF
   USE InputParsingModule, ONLY: &
     nLevels, &
-    swX, &
     DEBUG
 
   IMPLICIT NONE

@@ -7,6 +7,12 @@ PROGRAM ApplicationDriver
     Two, &
     Pi, &
     TwoPi
+  USE ProgramHeaderModule, ONLY: &
+    iX_B0, &
+    iX_B1, &
+    iX_E0, &
+    iX_E1, &
+    nDimsX
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
@@ -16,17 +22,29 @@ PROGRAM ApplicationDriver
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange, &
     FinalizeReferenceElementX_Lagrange
+  USE UnitsModule, ONLY: &
+    Kilometer, &
+    Millisecond, &
+    Centimeter, &
+    Gram, &
+    Erg, &
+    UnitsDisplay
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState, &
     FinalizeEquationOfState
-  USE ProgramHeaderModule, ONLY: &
-    iX_B0, &
-    iX_B1, &
-    iX_E0, &
-    iX_E1, &
-    nDimsX
-  USE InitializationModule_Relativistic, ONLY: &
-    InitializeFields_Relativistic
+  USE GeometryFieldsModule, ONLY: &
+    uGF
+  USE FluidFieldsModule, ONLY: &
+    uCF, &
+    uPF, &
+    uAF, &
+    uDF
+  USE GravitySolutionModule_XCFC, ONLY: &
+    InitializeGravitySolver_XCFC, &
+    FinalizeGravitySolver_XCFC
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    ComputeFromConserved_Euler_Relativistic, &
+    ComputeTimeStep_Euler_Relativistic
   USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
     InitializeSlopeLimiter_Euler_Relativistic_IDEAL, &
     FinalizeSlopeLimiter_Euler_Relativistic_IDEAL, &
@@ -35,41 +53,25 @@ PROGRAM ApplicationDriver
     InitializePositivityLimiter_Euler_Relativistic_IDEAL, &
     FinalizePositivityLimiter_Euler_Relativistic_IDEAL, &
     ApplyPositivityLimiter_Euler_Relativistic_IDEAL
-  USE Euler_UtilitiesModule_Relativistic, ONLY: &
-    ComputeFromConserved_Euler_Relativistic, &
-    ComputeTimeStep_Euler_Relativistic
-  USE InputOutputModuleHDF, ONLY: &
-    WriteFieldsHDF, &
-    ReadFieldsHDF
-  USE FluidFieldsModule, ONLY: &
-    uCF, &
-    uPF, &
-    uAF, &
-    uDF
-  USE GeometryFieldsModule, ONLY: &
-    uGF
-  USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
-    InitializeGravitySolver_XCFC_Poseidon, &
-    FinalizeGravitySolver_XCFC_Poseidon
   USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit
-  USE TimeSteppingModule_SSPRK, ONLY: &
-    InitializeFluid_SSPRK, &
-    FinalizeFluid_SSPRK, &
-    UpdateFluid_SSPRK
-  USE UnitsModule, ONLY: &
-    Kilometer, &
-    Millisecond, &
-    Centimeter, &
-    Gram, &
-    Erg, &
-    UnitsDisplay
   USE Euler_TallyModule_Relativistic, ONLY: &
     InitializeTally_Euler_Relativistic, &
     FinalizeTally_Euler_Relativistic, &
     ComputeTally_Euler_Relativistic
-  USE Poseidon_UtilitiesModule, ONLY: &
+  USE Euler_XCFC_UtilitiesModule, ONLY: &
+    InitializeMetric_Euler, &
     ComputeNewtonianPotential_SphericalSymmetry
+  USE InitializationModule_Relativistic, ONLY: &
+    InitializeFields_Relativistic
+  USE TimeSteppingModule_SSPRK, ONLY: &
+    InitializeFluid_SSPRK, &
+    FinalizeFluid_SSPRK, &
+    UpdateFluid_SSPRK, &
+    EvolveGravity
+  USE InputOutputModuleHDF, ONLY: &
+    WriteFieldsHDF, &
+    ReadFieldsHDF
   USE TimersModule_Euler, ONLY: &
     TimeIt_Euler, &
     InitializeTimers_Euler, &
@@ -104,7 +106,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: BetaTVD, BetaTVB
   REAL(DP)      :: LimiterThresholdParameter
   REAL(DP)      :: ZoomX(3)
-  REAL(DP)      :: Gamma
+  REAL(DP)      :: Gamma_IDEAL
   REAL(DP)      :: Min_1, Min_2
 
   LOGICAL  :: WriteGF = .TRUE., WriteFF = .TRUE.
@@ -139,7 +141,7 @@ PROGRAM ApplicationDriver
   CollapseTime    = 1.50e2_DP * Millisecond
 
   ! --- These values come from Table 2 in the Yahil paper ---
-  Gamma = 1.30_DP
+  Gamma_IDEAL = 1.30_DP
   D0    = 1.75_DP
 
   t_end = CollapseTime - 0.5_DP * Millisecond
@@ -159,6 +161,8 @@ PROGRAM ApplicationDriver
 
   ! --- Time Stepping ---
 
+  EvolveGravity = .TRUE.
+
   nStagesSSPRK = 2
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
@@ -174,7 +178,7 @@ PROGRAM ApplicationDriver
   SlopeTolerance            = 1.0e-6_DP
   UseCharacteristicLimiting = .FALSE.
   UseTroubledCellIndicator  = .FALSE.
-  LimiterThresholdParameter = 1.5e-2_DP
+  LimiterThresholdParameter = 5.0e-3_DP
   UseConservativeCorrection = .TRUE.
 
   ! --- Positivity Limiter ---
@@ -213,12 +217,12 @@ PROGRAM ApplicationDriver
 
   CALL InitializeReferenceElementX_Lagrange
 
-  CALL InitializeGravitySolver_XCFC_Poseidon( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+  CALL InitializeGravitySolver_XCFC( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option &
              = 'IDEAL', &
-           Gamma_IDEAL_Option = Gamma, &
+           Gamma_IDEAL_Option = Gamma_IDEAL, &
            Verbose_Option = .TRUE. )
 
   CALL InitializeSlopeLimiter_Euler_Relativistic_IDEAL &
@@ -261,13 +265,28 @@ PROGRAM ApplicationDriver
            CoreRadius_Option      = CoreRadius,      &
            CollapseTime_Option    = CollapseTime )
 
+  CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+
+  CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+
+  CALL InitializeMetric_Euler &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+  CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+
+  CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+
   IF( RestartFileNumber .LT. 0 )THEN
 
     CALL ComputeFromConserved_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
-!!$    CALL ComputeNewtonianPotential_SphericalSymmetry &
-!!$           ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uGF )
+    CALL ComputeNewtonianPotential_SphericalSymmetry &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uGF )
 
     CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
@@ -398,12 +417,6 @@ PROGRAM ApplicationDriver
   CALL ComputeFromConserved_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
 
-!  CALL ComputeSourceTerms_Poseidon &
-!         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, SourceTerms_Poseidon )
-!
-!  CALL SolveGravity_XCFC_Poseidon &
-!         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, SourceTerms_Poseidon )
-
   CALL ComputeNewtonianPotential_SphericalSymmetry &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uPF, uGF )
 
@@ -425,7 +438,7 @@ PROGRAM ApplicationDriver
 
   CALL FinalizeReferenceElementX_Lagrange
 
-  CALL FinalizeGravitySolver_XCFC_Poseidon
+  CALL FinalizeGravitySolver_XCFC
 
   CALL FinalizeEquationOfState
 

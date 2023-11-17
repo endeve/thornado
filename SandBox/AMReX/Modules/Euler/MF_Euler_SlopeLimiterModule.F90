@@ -6,8 +6,6 @@ MODULE MF_Euler_SlopeLimiterModule
 
   USE amrex_box_module, ONLY: &
     amrex_box
-  USE amrex_amrcore_module, ONLY: &
-    amrex_geom
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_mfiter, &
@@ -24,7 +22,8 @@ MODULE MF_Euler_SlopeLimiterModule
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
-    nDOFX
+    nDOFX, &
+    swX
   USE MeshModule, ONLY: &
     MeshX
   USE FluidFieldsModule, ONLY: &
@@ -48,7 +47,6 @@ MODULE MF_Euler_SlopeLimiterModule
     DeallocateArray_X
   USE InputParsingModule, ONLY: &
     nLevels, &
-    swX, &
     UseTiling, &
     DEBUG
   USE MF_MeshModule, ONLY: &

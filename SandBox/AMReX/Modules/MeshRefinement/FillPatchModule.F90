@@ -4,8 +4,6 @@ MODULE FillPatchModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module, ONLY: &
-    amrex_spacedim
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_multifab_build, &
@@ -37,8 +35,8 @@ MODULE FillPatchModule
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
-    nNodes, &
     nDOFX, &
+    swX, &
     nDimsX
   USE GeometryFieldsModule, ONLY: &
     iGF_SqrtGm
@@ -50,11 +48,7 @@ MODULE FillPatchModule
   USE MF_UtilitiesModule, ONLY: &
     MultiplyWithMetric
   USE InputParsingModule, ONLY: &
-    nLevels, &
     UseTiling, &
-    t_old, &
-    t_new, &
-    swX, &
     DEBUG
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler_MF
@@ -718,6 +712,8 @@ CONTAINS
         END IF
 
       END DO
+
+      CALL amrex_mfiter_destroy( MFI )
 
     END IF
 
