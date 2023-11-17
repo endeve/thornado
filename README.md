@@ -91,6 +91,50 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
+## Nov 17 2023
+1. Thornado's relaxation compiles and runs on Sunspot with following changes to the buildRun.all.sh in /home/shaopingquan/ExaStar/thornado-GSD6461/SandBox/TwoMoment_OrderV/Executables
+<pre>
+export MPIR_CVAR_ENABLE_GPU=0
+#   export FI_PROVIDER=sockets
+module load  oneapi/eng-compiler/2023.10.15.002
+module switch mpich/51.2/icc-all-pmix-gpu
+
+</pre>
+The times are worse
+<pre>
+       Timer_Total                              :     2.039285E+02 s
+         Timer_IMEX                             :     1.956048E+02 s
+         Timer_Euler                            :     0.000000E+00 s
+         Timer_Poisson                          :     0.000000E+00 s
+         Timer_Streaming                        :     0.000000E+00 s
+           Timer_Streaming_Divergence           :     0.000000E+00 s 0.000000E+00
+           Timer_Streaming_ObserverCorrections  :     0.000000E+00 s 0.000000E+00
+           Timer_Streaming_Derivatives          :     0.000000E+00 s
+           Timer_Streaming_Eigenvalues          :     0.000000E+00 s
+           Timer_Streaming_NumericalFlux        :     0.000000E+00 s
+           Timer_Streaming_NumericalFlux_InOut  :     6.722693E+00 s
+           Timer_Streaming_NumericalFlux_RHS    :     6.465289E+00 s
+           Timer_Streaming_NumericalFlux_LS     :     3.395362E+00 s
+           Timer_Streaming_NumericalFlux_Update :     6.137787E+00 s
+           Timer_Streaming_PrimitiveTwoMoment   :     0.000000E+00 s
+           Timer_Streaming_Sources              :     0.000000E+00 s
+           Timer_Streaming_LinearAlgebra        :     0.000000E+00 s
+         Timer_Collisions                       :     1.930194E+02 s
+           Timer_Collisions_PrimitiveFluid      :     6.094217E-03 s
+           Timer_Collisions_PrimitiveTwoMoment  :     2.562205E+01 s
+           Timer_Collisions_Solve               :     1.420913E+02 s
+           Timer_Collisions_OuterLoop           :     1.319691E+02 s
+           Timer_Collisions_InnerLoop           :     1.128033E+02 s
+           Timer_Collisions_ComputeOpacity      :     1.471983E+01 s
+           Timer_Collisions_ComputeRates        :     3.918974E+01 s
+           Timer_Collisions_InitializeRHS       :     6.183593E+00 s
+           Timer_Collisions_NeutrinoRHS         :     2.479573E+01 s
+           Timer_Collisions_MatterRHS           :     4.735996E+00 s
+           Timer_Collisions_SolveLS             :     3.411053E+01 s
+           Timer_Collisions_UpdateFP            :     7.098278E+00 s
+           Timer_Collisions_UpdateFP_out        :     8.023067E-01 s
+           Timer_Collisions_CheckOuter          :     4.130428E-01 s
+</pre>
 ## Nov 15-16 2023
 1. Build hdf1.12.0 on DUT machie of ORTCE lab. The machine has a Ubuntu Operating system and the run of autogen.sh fails. Running
 `quanshao@DUT755PVC:~/ExaStar/hdf512$ CC=/opt/hpc_software/libraries/intel/mpich/pvc51.2/bin/mpicc FC=/opt/hpc_software/libraries/intel/mpich/pvc51.2/bin/mpifort CXX=/opt/hpc_software/libraries/intel/mpich/pvc51.2/bin/mpicxx ./configure --enable-fortran --enable-cxx --enable-parallel --enable-unsupported --prefix=/nfs/site/home/quanshao/ExaStar/hdf512`. But got a error message
