@@ -490,7 +490,7 @@ CONTAINS
     IF( PRESENT( NuPair_MinD_Option ) )THEN
       NuPair_MinD = NuPair_MinD_Option
     ELSE
-      NuPair_MinD = OPACITIES % EOSTable % TS % minValues( iD_T )
+      NuPair_MinD = 1.0d12
     END IF
 
     IF( PRESENT( NuPair_MaxD_Option ) )THEN
@@ -505,14 +505,14 @@ CONTAINS
       Op_MinD = Op_MinD_Option
     ELSE
       !Op_MinD = MIN( EmAb_MinD, Iso_MinD, NES_MinD, Pair_MinD, Brem_MinD, NNS_MinD, NuPair_MinD )
-      Op_MinD = MIN( EmAb_MinD, Iso_MinD, NES_MinD, Pair_MinD, Brem_MinD )
+      Op_MinD = MIN( EmAb_MinD, Iso_MinD, NES_MinD, Pair_MinD, Brem_MinD, NuPair_MinD )
     END IF
 
     IF( PRESENT( Op_MaxD_Option ) )THEN
       Op_MaxD = Op_MaxD_Option
     ELSE
       !Op_MaxD = MAX( EmAb_MaxD, Iso_MaxD, NES_MaxD, Pair_MaxD, Brem_MaxD, NNS_MaxD, NuPair_MaxD )
-      Op_MaxD = MAX( EmAb_MaxD, Iso_MaxD, NES_MaxD, Pair_MaxD, Brem_MaxD )
+      Op_MaxD = MAX( EmAb_MaxD, Iso_MaxD, NES_MaxD, Pair_MaxD, Brem_MaxD, NuPair_MaxD )
     END IF
 
     ! --- Make Cutoffs Consistent ---
