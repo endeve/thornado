@@ -3,8 +3,8 @@
 name: Compile thornado on Ubuntu 20.04 with gnu compilers
 
 on:
-  push
-  pull_request
+  push:
+  pull_request:
   schedule:
     - cron: '0 3 * * *'
 
