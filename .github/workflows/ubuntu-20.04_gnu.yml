@@ -9,8 +9,7 @@ on:
     - cron: '0 3 * * *'
 
 jobs:
-
-  build:
+  compile-with-gnu:
     name: Compile thornado on Ubuntu 20.04 with gnu compilers
     runs-on: ubuntu-20.04
     env:
@@ -69,159 +68,47 @@ jobs:
           echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_ENV}
           echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_ENV}
 
-  dgExperiments_Euler_NonRelativistic_IDEAL_native:
-    needs: build
-    runs-on: ubuntu-20.04
-    env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
-    steps:
-      - name: Find Libraries and Set Environment Variables
-        run: |
-          echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_ENV}
-          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_ENV}
-          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_ENV}
-          echo "BLAS_LIB=/usr/lib/x86_64-linux-gnu"             >> ${GITHUB_ENV}
-          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"               >> ${GITHUB_ENV}
-          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"        >> ${GITHUB_ENV}
-          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_ENV}
-          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_ENV}
-      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL
+      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
         if: github.event.schedule == '0 3 * * *'
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
           make
           make clobber
 
-  dgExperiments_Euler_NonRelativistic_TABLE_native:
-    needs: build
-    runs-on: ubuntu-20.04
-    env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
-    steps:
-      - name: Find Libraries and Set Environment Variables
-        run: |
-          echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_ENV}
-          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_ENV}
-          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_ENV}
-          echo "BLAS_LIB=/usr/lib/x86_64-linux-gnu"             >> ${GITHUB_ENV}
-          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"               >> ${GITHUB_ENV}
-          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"        >> ${GITHUB_ENV}
-          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_ENV}
-          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_ENV}
-      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_TABLE
+      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
         if: github.event.schedule == '0 3 * * *'
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
           make
           make clobber
 
-  dgExperiments_Euler_Relativistic_IDEAL_native:
-    needs: build
-    runs-on: ubuntu-20.04
-    env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
-    steps:
-      - name: Find Libraries and Set Environment Variables
-        run: |
-          echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_ENV}
-          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_ENV}
-          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_ENV}
-          echo "BLAS_LIB=/usr/lib/x86_64-linux-gnu"             >> ${GITHUB_ENV}
-          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"               >> ${GITHUB_ENV}
-          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"        >> ${GITHUB_ENV}
-          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_ENV}
-          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_ENV}
-      - name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL
+      - name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
         if: github.event.schedule == '0 3 * * *'
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
           make -j -l6
           make clobber
 
-  dgExperiments_Euler_Relativistic_TABLE_native:
-    needs: build
-    runs-on: ubuntu-20.04
-    env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
-    steps:
-      - name: Find Libraries and Set Environment Variables
-        run: |
-          echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_ENV}
-          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_ENV}
-          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_ENV}
-          echo "BLAS_LIB=/usr/lib/x86_64-linux-gnu"             >> ${GITHUB_ENV}
-          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"               >> ${GITHUB_ENV}
-          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"        >> ${GITHUB_ENV}
-          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_ENV}
-          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_ENV}
-      - name: Compile SandBox/dgExperiments_Euler_Relativistic_TABLE
+      - name: Compile SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables
         if: github.event.schedule == '0 3 * * *'
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables
           make
           make clobber
 
-  YahilCollapse_XCFC_native:
-    needs: build
-    runs-on: ubuntu-20.04
-    env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
-    steps:
-      - name: Find Libraries and Set Environment Variables
-        run: |
-          echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_ENV}
-          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_ENV}
-          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_ENV}
-          echo "BLAS_LIB=/usr/lib/x86_64-linux-gnu"             >> ${GITHUB_ENV}
-          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"               >> ${GITHUB_ENV}
-          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"        >> ${GITHUB_ENV}
-          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_ENV}
-          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_ENV}
-      - name: Compile SandBox/YahilCollapse_XCFC
+      - name: Compile SandBox/YahilCollapse_XCFC/Executables
         if: github.event.schedule == '0 3 * * *'
         run: |
           cd ${THORNADO_DIR}/SandBox/YahilCollapse_XCFC/Executables
           make
           make clobber
 
-  AdiabaticCollapse_XCFC_native:
-    needs: build
-    runs-on: ubuntu-20.04
-    env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
-    steps:
-      - name: Find Libraries and Set Environment Variables
-        run: |
-          echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_ENV}
-          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_ENV}
-          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_ENV}
-          echo "BLAS_LIB=/usr/lib/x86_64-linux-gnu"             >> ${GITHUB_ENV}
-          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"               >> ${GITHUB_ENV}
-          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"        >> ${GITHUB_ENV}
-          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_ENV}
-          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_ENV}
-      - name: Compile SandBox/AdiabaticCollapse_XCFC
+      - name: Compile SandBox/AdiabaticCollapse_XCFC/Executables
         run: |
           cd ${THORNADO_DIR}/SandBox/AdiabaticCollapse_XCFC/Executables
           make
           make clobber
 
-  dgExperiments_Euler_Relativistic_IDEAL_amrex:
-    needs: build
-    runs-on: ubuntu-20.04
-    env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
-    steps:
-      - name: Find Libraries and Set Environment Variables
-        run: |
-          echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_ENV}
-          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_ENV}
-          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_ENV}
-          echo "BLAS_LIB=/usr/lib/x86_64-linux-gnu"             >> ${GITHUB_ENV}
-          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"               >> ${GITHUB_ENV}
-          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"        >> ${GITHUB_ENV}
-          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_ENV}
-          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_ENV}
       - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
         if: github.event.schedule == '0 3 * * *'
         run: |
@@ -229,22 +116,6 @@ jobs:
           make -j -l6
           make realclean
 
-  dgExperiments_Euler_Relativistic_TABLE_amrex:
-    needs: build
-    runs-on: ubuntu-20.04
-    env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
-    steps:
-      - name: Find Libraries and Set Environment Variables
-        run: |
-          echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_ENV}
-          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_ENV}
-          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_ENV}
-          echo "BLAS_LIB=/usr/lib/x86_64-linux-gnu"             >> ${GITHUB_ENV}
-          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"               >> ${GITHUB_ENV}
-          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"        >> ${GITHUB_ENV}
-          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_ENV}
-          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_ENV}
       - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
         if: github.event.schedule == '0 3 * * *'
         run: |
@@ -252,22 +123,6 @@ jobs:
           make -j -l6
           make realclean
 
-  StandingAccretionShock_NonRelativistic_amrex:
-    needs: build
-    runs-on: ubuntu-20.04
-    env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
-    steps:
-      - name: Find Libraries and Set Environment Variables
-        run: |
-          echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_ENV}
-          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_ENV}
-          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_ENV}
-          echo "BLAS_LIB=/usr/lib/x86_64-linux-gnu"             >> ${GITHUB_ENV}
-          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"               >> ${GITHUB_ENV}
-          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"        >> ${GITHUB_ENV}
-          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_ENV}
-          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_ENV}
       - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
         if: github.event.schedule == '0 3 * * *'
         run: |
@@ -275,22 +130,6 @@ jobs:
           make -j -l6
           make realclean
 
-  StandingAccretionShock_Relativistic_amrex:
-    needs: build
-    runs-on: ubuntu-20.04
-    env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
-    steps:
-      - name: Find Libraries and Set Environment Variables
-        run: |
-          echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_ENV}
-          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_ENV}
-          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_ENV}
-          echo "BLAS_LIB=/usr/lib/x86_64-linux-gnu"             >> ${GITHUB_ENV}
-          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"               >> ${GITHUB_ENV}
-          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"        >> ${GITHUB_ENV}
-          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_ENV}
-          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_ENV}
       - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
         if: github.event.schedule == '0 3 * * *'
         run: |
@@ -298,22 +137,6 @@ jobs:
           make -j -l6
           make realclean
 
-  YahilCollapse_XCFC_amrex:
-    needs: build
-    runs-on: ubuntu-20.04
-    env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
-    steps:
-      - name: Find Libraries and Set Environment Variables
-        run: |
-          echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_ENV}
-          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_ENV}
-          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_ENV}
-          echo "BLAS_LIB=/usr/lib/x86_64-linux-gnu"             >> ${GITHUB_ENV}
-          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"               >> ${GITHUB_ENV}
-          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"        >> ${GITHUB_ENV}
-          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_ENV}
-          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_ENV}
       - name: Compile SandBox/AMReX/Applications/YahilCollapse_XCFC
         if: github.event.schedule == '0 3 * * *'
         run: |
@@ -321,22 +144,6 @@ jobs:
           make -j -l6
           make realclean
 
-  AdiabaticCollapse_XCFC_amrex:
-    needs: build
-    runs-on: ubuntu-20.04
-    env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
-    steps:
-      - name: Find Libraries and Set Environment Variables
-        run: |
-          echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_ENV}
-          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_ENV}
-          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_ENV}
-          echo "BLAS_LIB=/usr/lib/x86_64-linux-gnu"             >> ${GITHUB_ENV}
-          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"               >> ${GITHUB_ENV}
-          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"        >> ${GITHUB_ENV}
-          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_ENV}
-          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_ENV}
       - name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
         if: github.event.schedule == '0 3 * * *'
         run: |
@@ -344,22 +151,6 @@ jobs:
           make -j -l6
           make realclean
 
-  TwoMoment_Test_amrex:
-    needs: build
-    runs-on: ubuntu-20.04
-    env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
-    steps:
-      - name: Find Libraries and Set Environment Variables
-        run: |
-          echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_ENV}
-          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_ENV}
-          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_ENV}
-          echo "BLAS_LIB=/usr/lib/x86_64-linux-gnu"             >> ${GITHUB_ENV}
-          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"               >> ${GITHUB_ENV}
-          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"        >> ${GITHUB_ENV}
-          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_ENV}
-          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_ENV}
       - name: Compile SandBox/AMReX/TwoMoment_Test
         if: github.event.schedule == '0 3 * * *'
         run: |
@@ -367,22 +158,6 @@ jobs:
           make -j -l6
           make realclean
 
-  CoreCollapseSupernova_XCFC_amrex:
-    needs: build
-    runs-on: ubuntu-20.04
-    env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
-    steps:
-      - name: Find Libraries and Set Environment Variables
-        run: |
-          echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_ENV}
-          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_ENV}
-          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_ENV}
-          echo "BLAS_LIB=/usr/lib/x86_64-linux-gnu"             >> ${GITHUB_ENV}
-          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"               >> ${GITHUB_ENV}
-          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"        >> ${GITHUB_ENV}
-          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_ENV}
-          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_ENV}
       - name: Compile SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
