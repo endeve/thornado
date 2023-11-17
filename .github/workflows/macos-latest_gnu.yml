@@ -1,11 +1,8 @@
 name: Compile thornado on MacOS (latest) with gnu compilers
 
 on:
-  push:
-    branches:
-      - InterfaceWithPoseidon
   schedule:
-    - cron: '0 5 * * *'
+    - cron: '0 3 * * *'
 
 jobs:
   compile-with--gnu:
@@ -51,6 +48,7 @@ jobs:
           echo ""
           echo "brew install gfortran"
                 brew install gfortran
+          # Hack: https://github.com/actions/setup-python/issues/577
           echo "rm -rf /usr/local/bin/2to3*"
                 rm -rf /usr/local/bin/2to3*
           echo "rm -rf /usr/local/bin/idle3*"
