@@ -9,7 +9,8 @@ on:
     - cron: '0 3 * * *'
 
 jobs:
-  compile-with-gnu:
+
+  build:
     name: Compile thornado on Ubuntu 20.04 with gnu compilers
     runs-on: ubuntu-20.04
     env:
@@ -68,47 +69,89 @@ jobs:
           echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_ENV}
           echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_ENV}
 
-      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
+  SandBox/dgExperiments_Euler_NonRelativistic_IDEAL:
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+    steps:
+      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL
         if: github.event.schedule == '0 3 * * *'
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
           make
           make clobber
 
-      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
+  SandBox/dgExperiments_Euler_NonRelativistic_TABLE:
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+    steps:
+      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_TABLE
         if: github.event.schedule == '0 3 * * *'
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
           make
           make clobber
 
-      - name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
+  SandBox/dgExperiments_Euler_Relativistic_IDEAL:
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+    steps:
+      - name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL
         if: github.event.schedule == '0 3 * * *'
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
           make -j -l6
           make clobber
 
-      - name: Compile SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables
+  SandBox/dgExperiments_Euler_Relativistic_TABLE:
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+    steps:
+      - name: Compile SandBox/dgExperiments_Euler_Relativistic_TABLE
         if: github.event.schedule == '0 3 * * *'
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables
           make
           make clobber
 
-      - name: Compile SandBox/YahilCollapse_XCFC/Executables
+  SandBox/YahilCollapse_XCFC:
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+    steps:
+      - name: Compile SandBox/YahilCollapse_XCFC
         if: github.event.schedule == '0 3 * * *'
         run: |
           cd ${THORNADO_DIR}/SandBox/YahilCollapse_XCFC/Executables
           make
           make clobber
 
-      - name: Compile SandBox/AdiabaticCollapse_XCFC/Executables
+  SandBox/AdiabaticCollapse_XCFC:
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+    steps:
+      - name: Compile SandBox/AdiabaticCollapse_XCFC
         run: |
           cd ${THORNADO_DIR}/SandBox/AdiabaticCollapse_XCFC/Executables
           make
           make clobber
 
+  SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL:
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+    steps:
       - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
         if: github.event.schedule == '0 3 * * *'
         run: |
@@ -116,6 +159,12 @@ jobs:
           make -j -l6
           make realclean
 
+  SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE:
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+    steps:
       - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
         if: github.event.schedule == '0 3 * * *'
         run: |
@@ -123,6 +172,12 @@ jobs:
           make -j -l6
           make realclean
 
+  SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic:
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+    steps:
       - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
         if: github.event.schedule == '0 3 * * *'
         run: |
@@ -130,6 +185,12 @@ jobs:
           make -j -l6
           make realclean
 
+  SandBox/AMReX/Applications/StandingAccretionShock_Relativistic:
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+    steps:
       - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
         if: github.event.schedule == '0 3 * * *'
         run: |
@@ -137,6 +198,12 @@ jobs:
           make -j -l6
           make realclean
 
+  SandBox/AMReX/Applications/YahilCollapse_XCFC:
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+    steps:
       - name: Compile SandBox/AMReX/Applications/YahilCollapse_XCFC
         if: github.event.schedule == '0 3 * * *'
         run: |
@@ -144,6 +211,12 @@ jobs:
           make -j -l6
           make realclean
 
+  SandBox/AMReX/Applications/AdiabaticCollapse_XCFC:
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+    steps:
       - name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
         if: github.event.schedule == '0 3 * * *'
         run: |
@@ -151,6 +224,12 @@ jobs:
           make -j -l6
           make realclean
 
+  SandBox/AMReX/TwoMoment_Test:
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+    steps:
       - name: Compile SandBox/AMReX/TwoMoment_Test
         if: github.event.schedule == '0 3 * * *'
         run: |
@@ -158,6 +237,12 @@ jobs:
           make -j -l6
           make realclean
 
+  SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC:
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+    steps:
       - name: Compile SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
