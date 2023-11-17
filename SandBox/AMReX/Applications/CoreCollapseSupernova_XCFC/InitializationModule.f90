@@ -409,9 +409,7 @@ CONTAINS
 
     CALL Initialize_IMEX_RK_MF &
            ( Scheme, &
-             EvolveEuler_Option     = .TRUE., &
-             EvolveTwoMoment_Option = .TRUE., &
-             Verbose_Option         = amrex_parallel_ioprocessor() )
+             Verbose_Option = amrex_parallel_ioprocessor() )
 
     IF( iRestart .LT. 0 )THEN
 

@@ -2,6 +2,10 @@ MODULE MF_TimeSteppingModule_IMEX
 
   ! --- AMReX Modules ---
 
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse, &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_multifab_build, &
@@ -245,6 +249,7 @@ CONTAINS
           END IF ! EvolveEuler
 
           IF( EvolveTwoMoment )THEN
+
             CALL ApplySlopeLimiter_TwoMoment_MF &
                    ( GEOM, MF_uGF, MF_F, MF_R, &
                      Verbose_Option = .FALSE.  )
@@ -497,20 +502,19 @@ CONTAINS
 
 
   SUBROUTINE Initialize_IMEX_RK_MF &
-    ( Scheme, EvolveEuler_Option, EvolveTwoMoment_Option, Verbose_Option )
+    ( Scheme, Verbose_Option )
 
     CHARACTER(LEN=*), INTENT(in) :: Scheme
-    LOGICAL         , INTENT(in), OPTIONAL :: EvolveEuler_Option
-    LOGICAL         , INTENT(in), OPTIONAL :: EvolveTwoMoment_Option
     LOGICAL         , INTENT(in), OPTIONAL :: Verbose_Option
 
-    EvolveEuler = .FALSE.
-    IF( PRESENT( EvolveEuler_Option ) ) &
-      EvolveEuler = EvolveEuler_Option
+    TYPE(amrex_parmparse) :: PP
 
-    EvolveTwoMoment = .FALSE.
-    IF( PRESENT( EvolveTwoMoment_Option ) ) &
-      EvolveTwoMoment = EvolveTwoMoment_Option
+    EvolveEuler     = .TRUE.
+    EvolveTwoMoment = .TRUE.
+    CALL amrex_parmparse_build( PP, 'TS' )
+      CALL PP % query( 'EvolveEuler'    , EvolveEuler )
+      CALL PP % query( 'EvolveTwoMoment', EvolveTwoMoment )
+    CALL amrex_parmparse_destroy( PP )
 
     Verbose = .FALSE.
     IF( PRESENT( Verbose_Option ) ) &
@@ -540,7 +544,9 @@ CONTAINS
       WRITE(*,'(4x,A)')   'INFO: Time-stepper'
       WRITE(*,'(4x,A)')   '------------------'
       WRITE(*,*)
-      WRITE(*,'(6x,A,A)') 'IMEX-RK Scheme: ', TRIM( Scheme )
+      WRITE(*,'(6x,A18,A)') 'IMEX-RK Scheme: ', TRIM( Scheme )
+      WRITE(*,'(6x,A18,L)') 'EvolveEuler: ', EvolveEuler
+      WRITE(*,'(6x,A18,L)') 'EvolveTwoMoment: ', EvolveTwoMoment
 
     END IF
 
