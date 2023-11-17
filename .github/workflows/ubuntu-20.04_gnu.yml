@@ -24,6 +24,9 @@ jobs:
     env:
       THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
     steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+
       - name: Update Ubuntu
         run: |
           sudo apt-get -y install \
