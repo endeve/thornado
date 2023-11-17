@@ -2,10 +2,14 @@
 
 name: Compile thornado on Ubuntu 20.04 with gnu compilers
 
-on: [ push, pull_request ]
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '0 3 * * *'
 
 jobs:
-  compile-with-amrex_gnu:
+  compile-with-gnu:
     name: Compile thornado on Ubuntu 20.04 with gnu compilers
     runs-on: ubuntu-20.04
     env:
@@ -65,61 +69,97 @@ jobs:
           echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_ENV}
 
       - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
+        if: github.event.schedule == '0 3 * * *'
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
           make
           make clobber
 
       - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
+        if: github.event.schedule == '0 3 * * *'
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
           make
           make clobber
 
       - name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
+        if: github.event.schedule == '0 3 * * *'
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
-          make
+          make -j -l6
           make clobber
 
       - name: Compile SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables
+        if: github.event.schedule == '0 3 * * *'
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables
           make
           make clobber
 
-      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
+      - name: Compile SandBox/YahilCollapse_XCFC/Executables
+        if: github.event.schedule == '0 3 * * *'
         run: |
-          cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
+          cd ${THORNADO_DIR}/SandBox/YahilCollapse_XCFC/Executables
           make
+          make clobber
+
+      - name: Compile SandBox/AdiabaticCollapse_XCFC/Executables
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AdiabaticCollapse_XCFC/Executables
+          make
+          make clobber
+
+      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+        if: github.event.schedule == '0 3 * * *'
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+          make -j -l6
           make realclean
 
-          #      - name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
-          #        run: |
-          #          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
-          #          make
-          #          make realclean
+      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
+        if: github.event.schedule == '0 3 * * *'
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
+          make -j -l6
+          make realclean
 
       - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
+        if: github.event.schedule == '0 3 * * *'
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
-          make
+          make -j -l6
           make realclean
 
       - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
+        if: github.event.schedule == '0 3 * * *'
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
-          make
+          make -j -l6
           make realclean
 
-          #      - name: Compile SandBox/AMReX/Applications/YahilCollapse_XCFC
-          #        run: |
-          #          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/YahilCollapse_XCFC
-          #          make
-          #          make realclean
+      - name: Compile SandBox/AMReX/Applications/YahilCollapse_XCFC
+        if: github.event.schedule == '0 3 * * *'
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/YahilCollapse_XCFC
+          make -j -l6
+          make realclean
+
+      - name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
+        if: github.event.schedule == '0 3 * * *'
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
+          make -j -l6
+          make realclean
 
       - name: Compile SandBox/AMReX/TwoMoment_Test
+        if: github.event.schedule == '0 3 * * *'
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/TwoMoment_Test
-          make
+          make -j -l6
+          make realclean
+
+      - name: Compile SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
+          make -j -l6
           make realclean
