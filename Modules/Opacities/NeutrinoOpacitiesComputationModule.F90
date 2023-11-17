@@ -60,6 +60,8 @@ MODULE NeutrinoOpacitiesComputationModule
     LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     C1, C2, C1_NuPair, C2_NuPair, &
     QueryOpacity_EmAb, &
+    QueryOpacity_EmAb_Nucleon, &
+    QueryOpacity_EmAb_Nuclei, &
     QueryOpacity_Iso, &
     QueryOpacity_NES, &
     QueryOpacity_Pair, &
@@ -959,6 +961,8 @@ CONTAINS
 #endif
     DO iX = iX_B, iX_E
 
+      IF ( QueryOpacity_EmAb_Nuclei( D(iX) / UnitD ) .AND. iS <= iNuE_Bar ) THEN
+
       D_P = D(iX) / UnitD
       T_P = T(iX) / UnitT
       Y_P = Y(iX) / UnitY
@@ -1152,6 +1156,8 @@ CONTAINS
                            * spec_nodes(iE,iX) / f0(iE,iNuE,iX) * UnitEC)
 
         END DO
+
+      END IF
 
     END DO
 
