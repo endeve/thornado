@@ -164,7 +164,17 @@ MODULE OpacityModule_TABLE
   !$OMP   use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
   !$OMP   EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
   !$OMP   EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax,   &
-  !$OMP   EC_a, EC_b, EC_ak, EC_bk )   
+  !$OMP   EC_a, EC_b, EC_ak, EC_bk,                       &
+  !$OMP   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD,           &
+  !$OMP   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD,             &
+  !$OMP   EmAb_MinD, EmAb_MaxD,                           &
+  !$OMP   Iso_MinD, Iso_MaxD,                             &
+  !$OMP   NES_MinD, NES_MaxD,                             &
+  !$OMP   Pair_MinD, Pair_MaxD,                           &
+  !$OMP   Brem_MinD, Brem_MaxD,                           &
+  !$OMP   NNS_MinD, NNS_MaxD,                             &
+  !$OMP   NuPair_MinD, NuPair_MaxD,                       &
+  !$OMP   Op_MinD, Op_MaxD )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T,     &
@@ -185,7 +195,17 @@ MODULE OpacityModule_TABLE
   !$ACC   use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
   !$ACC   EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
   !$ACC   EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax,   &
-  !$ACC   EC_a, EC_b, EC_ak, EC_bk )
+  !$ACC   EC_a, EC_b, EC_ak, EC_bk,                       &
+  !$ACC   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD,           &
+  !$ACC   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD,             &
+  !$ACC   EmAb_MinD, EmAb_MaxD,                           &
+  !$ACC   Iso_MinD, Iso_MaxD,                             &
+  !$ACC   NES_MinD, NES_MaxD,                             &
+  !$ACC   Pair_MinD, Pair_MaxD,                           &
+  !$ACC   Brem_MinD, Brem_MaxD,                           &
+  !$ACC   NNS_MinD, NNS_MaxD,                             &
+  !$ACC   NuPair_MinD, NuPair_MaxD,                       &
+  !$ACC   Op_MinD, Op_MaxD )
 #endif
 
 CONTAINS
@@ -550,12 +570,6 @@ CONTAINS
     C2_NuPair = [ Zero,                 Zero,                 &
                   ( cv_nu - ca_nu )**2, ( cv_nu + ca_nu )**2, & 
                   ( cv_nu - ca_nu )**2, ( cv_nu + ca_nu )**2 ]
-
-    ! --- Thermodynamic State Indices ---
-
-    iD_T = OPACITIES % TS % Indices % iRho
-    iT_T = OPACITIES % TS % Indices % iT
-    iY_T = OPACITIES % TS % Indices % iYe
 
     ! --- Thermodynamic States ---
 
@@ -1074,6 +1088,10 @@ CONTAINS
       !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
       !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2, &
       !$OMP               C1_NuPair, C2_NuPair, &
+      !$OMP               use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
+      !$OMP               EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
+      !$OMP               EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax,   &
+      !$OMP               EC_a, EC_b, EC_ak, EC_bk, &
       !$OMP               EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD, &
       !$OMP               EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD, &
       !$OMP               EmAb_MinD, EmAb_MaxD, &
@@ -1083,11 +1101,7 @@ CONTAINS
       !$OMP               Brem_MinD, Brem_MaxD, &
       !$OMP               NNS_MinD, NNS_MaxD, &
       !$OMP               NuPair_MinD, NuPair_MaxD, &
-      !$OMP               Op_MinD, Op_MaxD, &
-      !$OMP               use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
-      !$OMP               EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
-      !$OMP               EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax,   &
-      !$OMP               EC_a, EC_b, EC_ak, EC_bk )
+      !$OMP               Op_MinD, Op_MaxD )
 #endif
 
     DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )

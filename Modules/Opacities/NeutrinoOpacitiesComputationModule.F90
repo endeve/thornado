@@ -60,10 +60,13 @@ MODULE NeutrinoOpacitiesComputationModule
     LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     C1, C2, C1_NuPair, C2_NuPair, &
     QueryOpacity_EmAb, &
+    QueryOpacity_EmAb_Nucleon, &
+    QueryOpacity_EmAb_Nuclei, &
     QueryOpacity_Iso, &
     QueryOpacity_NES, &
     QueryOpacity_Pair, &
-    QueryOpacity_Brem
+    QueryOpacity_Brem, &
+    QueryOpacity_NuPair
   USE RadiationFieldsModule, ONLY: &
     iNuE, iNuE_Bar, LeptonNumber
 
@@ -958,6 +961,8 @@ CONTAINS
 #endif
     DO iX = iX_B, iX_E
 
+      IF ( QueryOpacity_EmAb_Nuclei( D(iX) / UnitD ) .AND. iS <= iNuE_Bar ) THEN
+
       D_P = D(iX) / UnitD
       T_P = T(iX) / UnitT
       Y_P = Y(iX) / UnitY
@@ -1151,6 +1156,8 @@ CONTAINS
                            * spec_nodes(iE,iX) / f0(iE,iNuE,iX) * UnitEC)
 
         END DO
+
+      END IF
 
     END DO
 
@@ -2115,13 +2122,14 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacityRates_NuPair &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, W2, J, J0, J_I, J_II, Eta, Chi )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, J, J0, J_I, J_II, Eta, Chi )
 
     ! --- Pair Rates (Multiple J) ---
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
+    REAL(DP), INTENT(in)  :: D   (iX_B:iX_E)
     REAL(DP), INTENT(in)  :: W2  (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: J   (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: J0  (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
@@ -2137,12 +2145,12 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Pro, Phi_0_Ann ) &
-    !$OMP MAP( to: J_I, J_II, W2, J, J0 ) &
+    !$OMP MAP( to: J_I, J_II, W2, J, J0, D ) &
     !$OMP MAP( from: Eta, Chi )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Pro, Phi_0_Ann ) &
-    !$ACC COPYIN( J_I, J_II, W2, J, J0 ) &
+    !$ACC COPYIN( J_I, J_II, W2, J, J0, D ) &
     !$ACC COPYOUT( Eta, Chi ) &
     !$ACC PRESENT( C1_NuPair, C2_NuPair )
 #elif defined( THORNADO_OMP    )
@@ -2159,24 +2167,28 @@ CONTAINS
         SUM1 = Zero
         SUM2 = Zero
 
-        DO iE1 = iE_B, iE_E
+        IF ( QueryOpacity_NuPair( D(iX) / UnitD ) ) THEN
 
-          DetBal =   ( J0(iE2,iS,iX) * J0(iE1,iS_A,iX) ) &
-                   / ( ( One - J0(iE2,iS,iX) ) * ( One - J0(iE1,iS_A,iX) ) )
+          DO iE1 = iE_B, iE_E
 
-          IF ( iE1 <= iE2 ) THEN
-            Phi_0_Ann = (   C1_NuPair(iS) * J_I (iE1,iE2,iX) &
-                          + C2_NuPair(iS) * J_II(iE1,iE2,iX) ) * UnitPair
-          ELSE
-            Phi_0_Ann = (   C1_NuPair(iS) * J_II(iE2,iE1,iX) &
-                          + C2_NuPair(iS) * J_I (iE2,iE1,iX) ) * UnitPair
-          END IF
-          Phi_0_Pro = Phi_0_Ann * DetBal
+            DetBal =   ( J0(iE2,iS,iX) * J0(iE1,iS_A,iX) ) &
+                     / ( ( One - J0(iE2,iS,iX) ) * ( One - J0(iE1,iS_A,iX) ) )
 
-          SUM1 = SUM1 + Phi_0_Pro * W2(iE1) * ( One - J(iE1,iS_A,iX) )
-          SUM2 = SUM2 + Phi_0_Ann * W2(iE1) * J(iE1,iS_A,iX)
+            IF ( iE1 <= iE2 ) THEN
+              Phi_0_Ann = (   C1_NuPair(iS) * J_I (iE1,iE2,iX) &
+                            + C2_NuPair(iS) * J_II(iE1,iE2,iX) ) * UnitPair
+            ELSE
+              Phi_0_Ann = (   C1_NuPair(iS) * J_II(iE2,iE1,iX) &
+                            + C2_NuPair(iS) * J_I (iE2,iE1,iX) ) * UnitPair
+            END IF
+            Phi_0_Pro = Phi_0_Ann * DetBal
 
-        END DO
+            SUM1 = SUM1 + Phi_0_Pro * W2(iE1) * ( One - J(iE1,iS_A,iX) )
+            SUM2 = SUM2 + Phi_0_Ann * W2(iE1) * J(iE1,iS_A,iX)
+
+          END DO
+
+        END IF
 
         Eta(iE2,iS,iX) = SUM1
         Chi(iE2,iS,iX) = SUM1 + SUM2
