@@ -69,7 +69,7 @@ jobs:
           echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_ENV}
           echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_ENV}
 
-  SandBox/dgExperiments_Euler_NonRelativistic_IDEAL:
+  dgExperiments_Euler_NonRelativistic_IDEAL_native:
     needs: build
     runs-on: ubuntu-20.04
     env:
@@ -82,7 +82,7 @@ jobs:
           make
           make clobber
 
-  SandBox/dgExperiments_Euler_NonRelativistic_TABLE:
+  dgExperiments_Euler_NonRelativistic_TABLE_native:
     needs: build
     runs-on: ubuntu-20.04
     env:
@@ -95,7 +95,7 @@ jobs:
           make
           make clobber
 
-  SandBox/dgExperiments_Euler_Relativistic_IDEAL:
+  dgExperiments_Euler_Relativistic_IDEAL_native:
     needs: build
     runs-on: ubuntu-20.04
     env:
@@ -108,7 +108,7 @@ jobs:
           make -j -l6
           make clobber
 
-  SandBox/dgExperiments_Euler_Relativistic_TABLE:
+  dgExperiments_Euler_Relativistic_TABLE_native:
     needs: build
     runs-on: ubuntu-20.04
     env:
@@ -121,7 +121,7 @@ jobs:
           make
           make clobber
 
-  SandBox/YahilCollapse_XCFC:
+  YahilCollapse_XCFC_native:
     needs: build
     runs-on: ubuntu-20.04
     env:
@@ -134,7 +134,7 @@ jobs:
           make
           make clobber
 
-  SandBox/AdiabaticCollapse_XCFC:
+  AdiabaticCollapse_XCFC_native:
     needs: build
     runs-on: ubuntu-20.04
     env:
@@ -146,7 +146,7 @@ jobs:
           make
           make clobber
 
-  SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL:
+  dgExperiments_Euler_Relativistic_IDEAL_amrex:
     needs: build
     runs-on: ubuntu-20.04
     env:
@@ -159,7 +159,7 @@ jobs:
           make -j -l6
           make realclean
 
-  SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE:
+  dgExperiments_Euler_Relativistic_TABLE_amrex:
     needs: build
     runs-on: ubuntu-20.04
     env:
@@ -172,7 +172,7 @@ jobs:
           make -j -l6
           make realclean
 
-  SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic:
+  StandingAccretionShock_NonRelativistic_amrex:
     needs: build
     runs-on: ubuntu-20.04
     env:
@@ -185,7 +185,7 @@ jobs:
           make -j -l6
           make realclean
 
-  SandBox/AMReX/Applications/StandingAccretionShock_Relativistic:
+  StandingAccretionShock_Relativistic_amrex:
     needs: build
     runs-on: ubuntu-20.04
     env:
@@ -198,7 +198,7 @@ jobs:
           make -j -l6
           make realclean
 
-  SandBox/AMReX/Applications/YahilCollapse_XCFC:
+  YahilCollapse_XCFC_amrex:
     needs: build
     runs-on: ubuntu-20.04
     env:
@@ -211,7 +211,7 @@ jobs:
           make -j -l6
           make realclean
 
-  SandBox/AMReX/Applications/AdiabaticCollapse_XCFC:
+  AdiabaticCollapse_XCFC_amrex:
     needs: build
     runs-on: ubuntu-20.04
     env:
@@ -224,7 +224,7 @@ jobs:
           make -j -l6
           make realclean
 
-  SandBox/AMReX/TwoMoment_Test:
+  TwoMoment_Test_amrex:
     needs: build
     runs-on: ubuntu-20.04
     env:
@@ -237,7 +237,7 @@ jobs:
           make -j -l6
           make realclean
 
-  SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC:
+  CoreCollapseSupernova_XCFC_amrex:
     needs: build
     runs-on: ubuntu-20.04
     env:
