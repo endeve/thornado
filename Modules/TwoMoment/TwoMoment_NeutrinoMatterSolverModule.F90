@@ -2095,8 +2095,8 @@ CONTAINS
 
     CALL TimersStart( Timer_OpacityRate_NuPair )
 
-    CALL ComputeNeutrinoOpacityRates_Pair &
-           ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, Dnu_P, Dnu_0_P, &
+    CALL ComputeNeutrinoOpacityRates_NuPair &
+           ( 1, nE_G, 1, nSpecies, 1, nX, D, W2_N, Dnu_P, Dnu_0_P, &
              Nu_J_I_0_P, Nu_J_II_0_P, Eta_NuPair_P, Chi_NuPair_P )
 
     CALL TimersStop( Timer_OpacityRate_NuPair )
