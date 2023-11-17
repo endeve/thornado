@@ -179,3 +179,9 @@ jobs:
           cd ${THORNADO_DIR}/SandBox/AMReX/TwoMoment_Test
           make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
           make realclean
+
+      - name: Compile SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make realclean
