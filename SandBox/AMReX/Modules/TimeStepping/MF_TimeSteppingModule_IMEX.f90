@@ -18,11 +18,13 @@ MODULE MF_TimeSteppingModule_IMEX
     iE_E0, &
     iE_B1, &
     iE_E1, &
-    swX
+    swX, &
+    nE
   USE FluidFieldsModule, ONLY: &
     nCF
   USE RadiationFieldsModule, ONLY: &
-    nCR
+    nCR, &
+    nSpecies
   USE XCFC_UtilitiesModule, ONLY: &
     nGS, &
     nMF
@@ -32,7 +34,6 @@ MODULE MF_TimeSteppingModule_IMEX
     ComputeIncrement_TwoMoment_Implicit_Neutrinos_MF
   USE MF_FieldsModule_TwoMoment, ONLY: &
     OffGridFlux_TwoMoment_MF
-
 
   ! --- Local Modules ---
 
@@ -52,10 +53,7 @@ MODULE MF_TimeSteppingModule_IMEX
   USE InputParsingModule, ONLY: &
     t_new, &
     dt, &
-    nMaxLevels, &
-!    DEBUG, &
-    nE, &
-    nSpecies
+    nMaxLevels
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler_MF
   USE MF_Euler_SlopeLimiterModule, ONLY: &
@@ -67,7 +65,6 @@ MODULE MF_TimeSteppingModule_IMEX
   USE MF_Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_MF
   USE MF_XCFC_UtilitiesModule, ONLY: &
-    swXX, &
     MultiplyWithPsi6_MF, &
     UpdateConformalFactorAndMetric_XCFC_MF, &
     UpdateLapseShiftCurvature_XCFC_MF, &

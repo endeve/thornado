@@ -20,47 +20,21 @@ MODULE MF_XCFC_UtilitiesModule
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
     nDOFZ, &
-    nNodesX, &
     iE_E0, &
     iE_B0, &
     nDOFE, &
-    nE
-  USE ReferenceElementModuleX, ONLY: &
-    WeightsX_q, &
-    NodeNumberTableX
-  USE UtilitiesModule, ONLY: &
-    NodeNumberX
-  USE LinearAlgebraModule, ONLY: &
-    MatrixMatrixMultiply
-  USE ReferenceElementModuleX, ONLY: &
-    nDOFX_X1
+    nE, &
+    swX
   USE ReferenceElementModuleE, ONLY: &
     WeightsE
-  USE ReferenceElementModuleX_Lagrange, ONLY: &
-    LX_X1_Up
   USE MeshModule, ONLY: &
     MeshX, &
-    MeshE, &
-    NodeCoordinate
+    MeshE
   USE GeometryFieldsModule, ONLY: &
-    iGF_h_1, &
-    iGF_h_2, &
-    iGF_h_3, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
-    iGF_SqrtGm, &
     iGF_Psi, &
-    iGF_Alpha, &
-    iGF_Beta_1, &
-    iGF_Beta_2, &
-    iGF_Beta_3, &
-    iGF_K_dd_11, &
-    iGF_K_dd_12, &
-    iGF_K_dd_13, &
-    iGF_K_dd_22, &
-    iGF_K_dd_23, &
-    iGF_K_dd_33, &
     nGF
   USE GeometryFieldsModuleE, ONLY: &
     iGE_Ep3, &
@@ -91,17 +65,6 @@ MODULE MF_XCFC_UtilitiesModule
     nCR, &
     nSp => nSpecies
   USE XCFC_UtilitiesModule, ONLY: &
-    iMF_Psi, &
-    iMF_Alpha, &
-    iMF_Beta_1, &
-    iMF_Beta_2, &
-    iMF_Beta_3, &
-    iMF_K_dd_11, &
-    iMF_K_dd_12, &
-    iMF_K_dd_13, &
-    iMF_K_dd_22, &
-    iMF_K_dd_23, &
-    iMF_K_dd_33, &
     nMF, &
     iGS_E, &
     iGS_S1, &
@@ -126,10 +89,7 @@ MODULE MF_XCFC_UtilitiesModule
   USE MF_KindModule, ONLY: &
     DP, &
     Zero, &
-    SqrtTiny, &
     One, &
-    Two, &
-    Pi, &
     FourPi
   USE MF_UtilitiesModule, ONLY: &
     AllocateArray_X, &
@@ -145,11 +105,9 @@ MODULE MF_XCFC_UtilitiesModule
     DestroyMesh_MF
   USE MaskModule, ONLY: &
     CreateFineMask, &
-    DestroyFineMask, &
-    IsNotLeafElement
+    DestroyFineMask
   USE InputParsingModule, ONLY: &
     nLevels, &
-    swX, &
     UseTiling
 
   IMPLICIT NONE

@@ -205,19 +205,8 @@ CONTAINS
       CASE( 902 )
 
         WRITE(*,*)
-        CALL WriteHeader( 'MF_GravitySolutionModule_XCFC_Poseidon', &
-                          'InitializeMetric_Euler_MF_Poseidon' )
-        WRITE(*,'(2x,A)') 'Metric fields did not converge'
-        WRITE(*,'(2x,A,ES24.16E3)') 'MAX( LaxLF, MaxCF ): ', Real_Option(1)
-        WRITE(*,'(2x,A)') TRIM( Message )
-
-        CALL thornado_abort
-
-      CASE( 903 )
-
-        WRITE(*,*)
-        CALL WriteHeader( 'MF_GravitySolutionModule_XCFC_Poseidon', &
-                          'InitializeMetric_TwoMoment_MF_Poseidon' )
+        CALL WriteHeader( 'MF_MetricInitializationModule_XCFC_Poseidon', &
+                          'InitializeMetric_MF_Poseidon' )
         WRITE(*,'(2x,A)') 'Metric fields did not converge'
         WRITE(*,'(2x,A,ES24.16E3)') 'MAX( LaxLF, MaxCF ): ', Real_Option(1)
         WRITE(*,'(2x,A)') TRIM( Message )
@@ -226,11 +215,11 @@ CONTAINS
 
       CASE DEFAULT
 
-          WRITE(*,'(2x,A,I2.2)') 'Unknown error: ', iErr
-          WRITE(*,'(2x,A)') TRIM( Message )
-          WRITE(*,*)
+        WRITE(*,'(2x,A,I2.2)') 'Unknown error: ', iErr
+        WRITE(*,'(2x,A)') TRIM( Message )
+        WRITE(*,*)
 
-          CALL thornado_abort
+        CALL thornado_abort
 
     END SELECT
 

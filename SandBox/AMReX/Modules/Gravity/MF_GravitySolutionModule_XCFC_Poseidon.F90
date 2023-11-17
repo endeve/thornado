@@ -14,7 +14,9 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
-    nNodesX
+    nNodesX, &
+    xR, &
+    swX
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryComputationModule, ONLY: &
@@ -27,9 +29,6 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     DP, &
     Zero, &
     Half
-  USE InputParsingModule, ONLY: &
-    xR, &
-    swX
   USE AverageDownModule, ONLY: &
     AverageDown
   USE MF_XCFC_UtilitiesModule, ONLY: &

@@ -25,7 +25,9 @@ MODULE MF_MetricInitializationModule_XCFC_Poseidon
     iE_B0, &
     iE_E1, &
     iE_B1, &
-    nE
+    nE, &
+    xR, &
+    swX
   USE GeometryFieldsModule, ONLY: &
     iGF_Alpha, &
     iGF_Beta_1, &
@@ -73,8 +75,6 @@ MODULE MF_MetricInitializationModule_XCFC_Poseidon
     DescribeError_MF
   USE InputParsingModule, ONLY: &
     nLevels, &
-    xR, &
-    swX, &
     UseTiling
   USE AverageDownModule, ONLY: &
     AverageDown

@@ -4,8 +4,6 @@ MODULE MF_Euler_TallyModule
 
   USE amrex_box_module, ONLY: &
     amrex_box
-  USE amrex_geometry_module, ONLY: &
-    amrex_geometry
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse, &
     amrex_parmparse_build, &
@@ -19,27 +17,21 @@ MODULE MF_Euler_TallyModule
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_reduce_sum
-  USE amrex_amr_module, ONLY: &
-    amrex_geom
 
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
-    nNodesX, &
-    nDimsX
+    swX
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q
   USE UnitsModule, ONLY: &
     UnitsDisplay
   USE MeshModule, ONLY: &
-    MeshType, &
-    CreateMesh, &
-    DestroyMesh
+    MeshType
   USE GeometryFieldsModule, ONLY: &
     iGF_SqrtGm, &
-    nGF, &
-    CoordinateSystem
+    nGF
   USE FluidFieldsModule, ONLY: &
     iCF_D, &
     iCF_S1, &
@@ -55,13 +47,9 @@ MODULE MF_Euler_TallyModule
     DP, &
     Zero
   USE InputParsingModule, ONLY: &
-    nX, &
     nLevels, &
     ProgramName, &
-    UseTiling, &
-    xL, &
-    xR, &
-    swX
+    UseTiling
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -316,11 +304,10 @@ CONTAINS
     LOGICAL,              INTENT(in), OPTIONAL :: Verbose_Option
 
     LOGICAL :: SetInitialValues
-    LOGICAL :: Verbose
     LOGICAL :: WriteTally
+    LOGICAL :: Verbose
 
     INTEGER                       :: iX_B0(3), iX_E0(3)
-    INTEGER                       :: iX_B1(3), iX_E1(3)
     INTEGER                       :: iLevel, iLo_MF(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
@@ -373,7 +360,7 @@ CONTAINS
 
 #if defined( THORNADO_OMP )
       !$OMP PARALLEL &
-      !$OMP PRIVATE( iX_B0, iX_E0, iX_B1, iX_E1, iLo_MF, &
+      !$OMP PRIVATE( iX_B0, iX_E0, iLo_MF, &
       !$OMP          BX, MFI, FineMask, uGF, uCF, G, U, d3X ) &
       !$OMP REDUCTION( +:BaryonicMass_Interior_OMP, &
       !$OMP              EulerMomentumX1_Interior_OMP, &
@@ -397,9 +384,6 @@ CONTAINS
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
-
-        iX_B1 = iX_B0 - swX
-        iX_E1 = iX_E0 + swX
 
         CALL AllocateArray_X &
                ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &

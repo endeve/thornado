@@ -23,7 +23,8 @@ MODULE  MF_Euler_dgDiscretizationModule
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
-    nDimsX
+    nDimsX, &
+    swX
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, &
     nDOFX_X2, &
@@ -73,7 +74,6 @@ MODULE  MF_Euler_dgDiscretizationModule
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
-    swX, &
     UseFluxCorrection_Euler, &
     DEBUG
   USE FillPatchModule, ONLY: &

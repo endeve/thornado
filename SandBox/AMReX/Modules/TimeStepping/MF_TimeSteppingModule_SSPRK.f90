@@ -2,8 +2,6 @@ MODULE MF_TimeSteppingModule_SSPRK
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module, ONLY: &
-    amrex_spacedim
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse, &
     amrex_parmparse_build, &
@@ -19,7 +17,10 @@ MODULE MF_TimeSteppingModule_SSPRK
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
-    nDOFX
+    nDOFX, &
+    nNodes, &
+    nDimsX, &
+    swX
   USE FluidFieldsModule, ONLY: &
     nCF
   USE XCFC_UtilitiesModule, ONLY: &
@@ -36,12 +37,9 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE InputParsingModule, ONLY: &
     nLevels, &
     nMaxLevels, &
-    swX, &
     CFL, &
-    nNodes, &
     nStages, &
     UseFluxCorrection_Euler, &
-    t_new, &
     dt, &
     DEBUG
   USE MF_FieldsModule_Geometry, ONLY: &
@@ -124,7 +122,7 @@ CONTAINS
         '    -----------------'
       WRITE(*,'(A5,A,I1)') '', 'SSP RK Scheme: ', nStages
       WRITE(*,'(A5,A,ES10.3E3)') '', 'CFL:           ', &
-        CFL * ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
+        CFL * ( DBLE( nDimsX ) * ( Two * DBLE( nNodes ) - One ) )
       WRITE(*,*)
       WRITE(*,'(A5,A,L)') '', 'EvolveGravity: ', EvolveGravity
       WRITE(*,*)

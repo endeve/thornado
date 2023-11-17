@@ -22,7 +22,8 @@ MODULE MF_GeometryModule
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
-    nNodesX
+    nNodesX, &
+    swX
   USE UtilitiesModule, ONLY: &
     NodeNumberX
   USE ReferenceElementModuleX, ONLY: &
@@ -66,7 +67,6 @@ MODULE MF_GeometryModule
     DeallocateArray_X
   USE InputParsingModule, ONLY: &
     nLevels, &
-    swX, &
     UseTiling, &
     ProgramName, &
     SolveGravity_NR
@@ -246,7 +246,6 @@ CONTAINS
           h2  = Psi**2 * X1
           h3  = Psi**2 * X1 * SIN( X2 )
 
-!          uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX) = Psi
           uGF(iX1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) = h1
           uGF(iX1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) = h2
           uGF(iX1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX) = h3

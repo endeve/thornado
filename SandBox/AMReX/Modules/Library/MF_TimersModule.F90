@@ -20,10 +20,12 @@ MODULE MF_TimersModule
     FinalizeTimers_AMReX_Euler
 
 #ifndef THORNADO_NOTRANSPORT
+
   USE MF_TwoMoment_TimersModule, ONLY: &
     TimeIt_AMReX_TwoMoment, &
     InitializeTimers_AMReX_TwoMoment, &
     FinalizeTimers_AMReX_TwoMoment
+
 #endif
 
   IMPLICIT NONE
@@ -101,8 +103,10 @@ CONTAINS
              ( WriteMMS_Option = WriteMMS )
 
 #ifndef THORNADO_NOTRANSPORT
+
     IF( TimeIt_AMReX_TwoMoment ) &
       CALL InitializeTimers_AMReX_TwoMoment
+
 #endif
 
   END SUBROUTINE InitializeTimers_AMReX
@@ -229,8 +233,10 @@ CONTAINS
       CALL FinalizeTimers_AMReX_Euler( TimerAve(iT_P) )
 
 #ifndef THORNADO_NOTRANSPORT
+
     IF( TimeIt_AMReX_TwoMoment ) &
       CALL FinalizeTimers_AMReX_TwoMoment
+
 #endif
 
     IF( RestartProgramTimer )THEN

@@ -2,17 +2,15 @@ MODULE MF_EdgeMapModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module, ONLY: &
-    amrex_spacedim
   USE amrex_box_module, ONLY: &
     amrex_box
-  USE amrex_geometry_module, ONLY: &
-    amrex_geometry
   USE amrex_amrcore_module, ONLY: &
     amrex_geom
 
   ! --- thornado Modules ---
 
+  USE ProgramHeaderModule, ONLY: &
+    nDimsX
   USE Euler_BoundaryConditionsModule, ONLY: &
     iApplyBC_Euler_Both,  &
     iApplyBC_Euler_Inner, &
@@ -52,7 +50,7 @@ CONTAINS
 
     DO iDimX = 1, 3
 
-      IF( iDimX .LE. amrex_spacedim )THEN
+      IF( iDimX .LE. nDimsX )THEN
 
         IF( BX % lo( iDimX ) .LE. amrex_geom(iLevel) % DOMAIN % lo( iDimX ) ) &
           Edge_Map % IsLowerBoundary( iDimX ) = .TRUE.

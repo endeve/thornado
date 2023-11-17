@@ -4,8 +4,6 @@ MODULE InputOutputModuleAMReX
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module, ONLY: &
-    amrex_spacedim
   USE amrex_plotfile_module, ONLY: &
     amrex_write_plotfile
   USE amrex_string_module, ONLY: &
@@ -15,24 +13,20 @@ MODULE InputOutputModuleAMReX
     amrex_box
   USE amrex_boxarray_module, ONLY: &
     amrex_boxarray, &
-    amrex_boxarray_build, &
-    amrex_boxarray_destroy
+    amrex_boxarray_build
   USE amrex_distromap_module,  ONLY: &
     amrex_distromap,       &
-    amrex_distromap_build, &
-    amrex_distromap_destroy
+    amrex_distromap_build
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_multifab_build, &
     amrex_multifab_destroy, &
     amrex_mfiter, &
     amrex_mfiter_build, &
-    amrex_mfiter_destroy, &
-    amrex_imultifab
+    amrex_mfiter_destroy
   USE amrex_geometry_module, ONLY: &
     amrex_geometry, &
-    amrex_geometry_build, &
-    amrex_geometry_destroy
+    amrex_geometry_build
   USE amrex_amrcore_module, ONLY: &
     amrex_get_amrcore, &
     amrex_get_numlevels, &
@@ -56,14 +50,16 @@ MODULE InputOutputModuleAMReX
     nDOFZ, &
     nDOFE, &
     iZ_B0, &
-    iZ_E0
+    iZ_E0, &
+    swX, &
+    nX, &
+    nE, &
+    nDimsX
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q, &
     nDOFX_X1
   USE ReferenceElementModuleZ, ONLY: &
     nDOFZ_Z2
-  USE ReferenceElementModuleE, ONLY: &
-    WeightsE
   USE ReferenceElementModule, ONLY: &
     Weights_q
   USE MeshModule, ONLY: &
@@ -97,7 +93,8 @@ MODULE InputOutputModuleAMReX
     nPR, &
     ShortNamesGR, &
     unitsGR, &
-    nGR
+    nGR, &
+    nSpecies
   USE UnitsModule, ONLY: &
     UnitsDisplay
 
@@ -105,8 +102,7 @@ MODULE InputOutputModuleAMReX
 
   USE MF_KindModule, ONLY: &
     DP, &
-    Zero, &
-    Two
+    Zero
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -123,20 +119,14 @@ MODULE InputOutputModuleAMReX
     MF_uPR, &
     MF_uGR, &
     FluxRegister_TwoMoment
-  USE FillPatchModule, ONLY: &
-    FillPatch
   USE InputParsingModule, ONLY: &
     nLevels, &
     nMaxLevels, &
     MaxGridSizeX, &
     dt, &
     StepNo, &
-    swX, &
     t_new, &
     PlotFileNameRoot, &
-    nX, &
-    nE, &
-    nSpecies, &
     iRestart, &
     UseTiling, &
     UseFluxCorrection_Euler, &
@@ -467,7 +457,6 @@ CONTAINS
 
     END IF
 
-
     IF( WriteRF_GR )THEN
 
       DO iS  = 1       , nSpecies
@@ -487,8 +476,6 @@ CONTAINS
       iOS = iOS + nGR * nSpecies
 
     END IF
-
-
 
     DO iLevel = 0, nLevels-1
 
@@ -583,6 +570,7 @@ CONTAINS
         iOS = iOS + nGR * nSpecies
 
       END IF
+
     END DO ! iLevel = 0, nLevels-1
 
     CALL amrex_write_plotfile &
@@ -646,8 +634,8 @@ CONTAINS
       nXX = nX
 
       nXX(1) = 2**( iLevel ) * nX(1)
-      IF( amrex_spacedim .GT. 1 ) nXX(2) = 2**( iLevel ) * nX(2)
-      IF( amrex_spacedim .GT. 2 ) nXX(3) = 2**( iLevel ) * nX(3)
+      IF( nDimsX .GT. 1 ) nXX(2) = 2**( iLevel ) * nX(2)
+      IF( nDimsX .GT. 2 ) nXX(3) = 2**( iLevel ) * nX(3)
 
       BX = amrex_box( 1 - iOS_CPP, nXX - iOS_CPP )
 
@@ -850,8 +838,6 @@ CONTAINS
   END SUBROUTINE ComputeCellAverage_X_MF
 
 
-
-
   SUBROUTINE ComputeCellAverage_Z_MF &
     ( nFd, MF_uGF, MF, iOS, Field, MF_plt )
 
@@ -872,7 +858,8 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: G    (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: U    (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
-    REAL(DP)                      :: Eq(1:nDOFE), E(1:nDOFZ), SqrtGM(1:nDOFZ), V_K, SUM2
+    REAL(DP)                      :: Eq(1:nDOFE), E(1:nDOFZ), SqrtGM(1:nDOFZ), &
+                                     V_K, SUM2
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
