@@ -2182,7 +2182,7 @@ CONTAINS
 
           END DO
 
-        END DO
+        END IF
 
         Eta(iE2,iS,iX) = SUM1
         Chi(iE2,iS,iX) = SUM1 + SUM2
