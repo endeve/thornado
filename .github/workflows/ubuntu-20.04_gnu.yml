@@ -93,12 +93,14 @@ jobs:
       AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR }}
       POSEIDON_DIR: ${{ needs.build.outputs.POSEIDON_DIR }}
     steps:
-    - run: |
-        cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
-        make
-        make clobber
-      env:
-        myenv: ${{ needs.build.outputs.myenv }}
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+      - run: |
+          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
+          make
+          make clobber
+        env:
+          myenv: ${{ needs.build.outputs.myenv }}
 
             #      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
             #        if: github.event.schedule == '0 3 * * *'
