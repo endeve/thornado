@@ -45,9 +45,8 @@ MODULE InputParsingModule
   INTEGER     , ALLOCATABLE :: swX(:)
   INTEGER     , ALLOCATABLE :: bcX(:)
   INTEGER                   :: nNodes
-  REAL(DP)                  :: t_wrt, t_chk, dt_wrt, dt_chk, dt_rel
+  REAL(DP)                  :: t_end, t_wrt, t_chk, dt_wrt, dt_chk, dt_rel
   INTEGER                   :: iCycleW, iCycleChk, iCycleD, iRestart, iReGrid
-  REAL(DP)                  :: t_end
   LOGICAL                   :: UsePhysicalUnits
   LOGICAL                   :: DEBUG
   LOGICAL                   :: SolveGravity_NR
