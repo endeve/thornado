@@ -85,21 +85,15 @@ CONTAINS
 
   SUBROUTINE InitializeSlopeLimiter_TwoMoment_MF
 
-
-   ! CALL InitializeSlopeLimiter_TwoMoment &
-   !        ( BetaTVD_Option = BetaTVD_TwoMoment, &
-   !          UseSlopeLimiter_Option &
-   !            = UseSlopeLimiter_TwoMoment, &
-   !          Verbose_Option = amrex_parallel_ioprocessor() )
-
     CALL InitializeSlopeLimiter_TwoMoment &
            ( BetaTVD_Option = BetaTVD_TwoMoment, &
              UseSlopeLimiter_Option &
-               = UseSlopeLimiter_TwoMoment )
-
+               = UseSlopeLimiter_TwoMoment, &
+             Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL InitializeTroubledCellIndicator_TwoMoment &
-    ( UseTroubledCellIndicator_Option = .TRUE., C_TCI_Option = 0.1_DP )
+           ( UseTroubledCellIndicator_Option = .TRUE., C_TCI_Option = 0.1_DP, &
+             Verbose_Option = amrex_parallel_ioprocessor() )
 
   END SUBROUTINE InitializeSlopeLimiter_TwoMoment_MF
 
