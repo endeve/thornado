@@ -6,8 +6,6 @@ MODULE InitializationModule
 
   USE amrex_init_module, ONLY: &
     amrex_init
-  USE amrex_fort_module, ONLY: &
-    amrex_spacedim
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse, &
     amrex_parmparse_build, &
@@ -43,7 +41,7 @@ MODULE InitializationModule
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
-    nNodesX, &
+    swX, &
     DescribeProgramHeaderX
   USE PolynomialBasisModule_Lagrange, ONLY: &
     InitializePolynomialBasis_Lagrange
@@ -65,20 +63,12 @@ MODULE InitializationModule
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
-    CoordinateSystem, &
-    DescribeGeometryFields, &
-    SetUnitsGeometryFields
+    nGF
   USE FluidFieldsModule, ONLY: &
     nCF, &
     nPF, &
     nAF, &
-    nDF, &
-    DescribeFluidFields_Primitive, &
-    DescribeFluidFields_Conserved, &
-    DescribeFluidFields_Auxiliary, &
-    DescribeFluidFields_Diagnostic, &
-    SetUnitsFluidFields
+    nDF
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState
 
@@ -86,8 +76,7 @@ MODULE InitializationModule
 
   USE MF_KindModule, ONLY: &
     DP, &
-    Zero, &
-    One
+    Zero
   USE MF_FieldsModule_Geometry, ONLY: &
     CreateFields_Geometry_MF, &
     MF_uGF
@@ -121,7 +110,6 @@ MODULE InitializationModule
     InitializeParameters, &
     nLevels, &
     nMaxLevels, &
-    swX, &
     StepNo, &
     iRestart, &
     dt, &
@@ -131,20 +119,10 @@ MODULE InitializationModule
     t_chk, &
     dt_wrt, &
     dt_chk, &
-    xL, &
     UseTiling, &
     UseFluxCorrection_Euler, &
-    MaxGridSizeX, &
-    BlockingFactor, &
-    xL, &
-    xR, &
-    EquationOfState, &
     Gamma_IDEAL, &
-    EosTableName, &
-    ProgramName, &
     TagCriteria, &
-    nRefinementBuffer, &
-    UseAMR, &
     DescribeProgramHeader_AMReX
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
@@ -215,34 +193,10 @@ CONTAINS
 
     CALL InitializeMeshRefinement_Euler
 
-    CALL SetUnitsGeometryFields
-
-    CALL DescribeFluidFields_Conserved ( amrex_parallel_ioprocessor() )
-
-    CALL DescribeFluidFields_Primitive ( amrex_parallel_ioprocessor() )
-
-    CALL DescribeFluidFields_Auxiliary ( amrex_parallel_ioprocessor() )
-
-    CALL DescribeFluidFields_Diagnostic( amrex_parallel_ioprocessor() )
-
-    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
-                              Verbose_Option = amrex_parallel_ioprocessor() )
-
-    IF( TRIM( EquationOfState ) .EQ. 'TABLE' )THEN
-
-      CALL InitializeEquationOfState &
-             ( EquationOfState_Option = EquationOfState, &
-               EquationOfStateTableName_Option = EosTableName, &
+    CALL InitializeEquationOfState &
+             ( EquationOfState_Option = 'IDEAL', &
+               Gamma_IDEAL_Option = Gamma_IDEAL, &
                Verbose_Option = amrex_parallel_ioprocessor() )
-
-    ELSE
-
-      CALL InitializeEquationOfState &
-               ( EquationOfState_Option = EquationOfState, &
-                 Gamma_IDEAL_Option = Gamma_IDEAL, &
-                 Verbose_Option = amrex_parallel_ioprocessor() )
-
-    END IF
 
     CALL InitializePositivityLimiter_Euler_MF
 
@@ -352,7 +306,6 @@ CONTAINS
 
     USE MF_GeometryModule, ONLY: &
       ComputeGeometryX_MF
-
     USE MF_InitializationModule, ONLY: &
       InitializeFields_MF
 

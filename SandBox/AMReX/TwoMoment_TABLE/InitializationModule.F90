@@ -88,10 +88,7 @@ MODULE InitializationModule
     MeshE, &
     CreateMesh
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
-    CoordinateSystem, &
-    DescribeGeometryFields, &
-    SetUnitsGeometryFields
+    nGF
   USE GeometryFieldsModuleE, ONLY: &
     CreateGeometryFieldsE, &
     uGE
@@ -101,19 +98,11 @@ MODULE InitializationModule
     nCF, &
     nPF, &
     nAF, &
-    nDF, &
-    DescribeFluidFields_Primitive, &
-    DescribeFluidFields_Conserved, &
-    DescribeFluidFields_Auxiliary, &
-    DescribeFluidFields_Diagnostic, &
-    SetUnitsFluidFields
+    nDF
   USE RadiationFieldsModule, ONLY: &
     nCR, &
     nPR, &
-    nGR, &
-    DescribeRadiationFields_Primitive, &
-    DescribeRadiationFields_Conserved, &
-    SetUnitsRadiationFields
+    nGR
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState
   USE TwoMoment_OpacityModule, ONLY: &
@@ -293,25 +282,6 @@ CONTAINS
 
     CALL InitializeReferenceElement
     CALL InitializeReferenceElement_Lagrange
-
-    CALL SetUnitsGeometryFields
-
-    CALL DescribeFluidFields_Conserved ( amrex_parallel_ioprocessor() )
-
-    CALL DescribeFluidFields_Primitive ( amrex_parallel_ioprocessor() )
-
-    CALL DescribeFluidFields_Auxiliary ( amrex_parallel_ioprocessor() )
-
-    CALL DescribeFluidFields_Diagnostic( amrex_parallel_ioprocessor() )
-
-    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
-                              Verbose_Option = amrex_parallel_ioprocessor() )
-
-    CALL DescribeRadiationFields_Conserved( amrex_parallel_ioprocessor() )
-
-    CALL DescribeRadiationFields_Primitive( amrex_parallel_ioprocessor() )
-
-    CALL SetUnitsRadiationFields
 
     CALL CreateGeometryFieldsE &
            ( nE, swE, Verbose_Option = amrex_parallel_ioprocessor() )

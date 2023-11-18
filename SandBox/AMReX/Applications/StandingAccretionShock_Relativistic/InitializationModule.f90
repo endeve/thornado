@@ -65,20 +65,12 @@ MODULE InitializationModule
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
-    CoordinateSystem, &
-    DescribeGeometryFields, &
-    SetUnitsGeometryFields
+    nGF
   USE FluidFieldsModule, ONLY: &
     nCF, &
     nPF, &
     nAF, &
-    nDF, &
-    DescribeFluidFields_Primitive, &
-    DescribeFluidFields_Conserved, &
-    DescribeFluidFields_Auxiliary, &
-    DescribeFluidFields_Diagnostic, &
-    SetUnitsFluidFields
+    nDF
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState
   USE Euler_BoundaryConditionsModule, ONLY: &
@@ -216,19 +208,6 @@ CONTAINS
     CALL InitializeReferenceElementX_Lagrange
 
     CALL InitializeMeshRefinement_Euler
-
-    CALL SetUnitsGeometryFields
-
-    CALL DescribeFluidFields_Conserved ( amrex_parallel_ioprocessor() )
-
-    CALL DescribeFluidFields_Primitive ( amrex_parallel_ioprocessor() )
-
-    CALL DescribeFluidFields_Auxiliary ( amrex_parallel_ioprocessor() )
-
-    CALL DescribeFluidFields_Diagnostic( amrex_parallel_ioprocessor() )
-
-    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
-                              Verbose_Option = amrex_parallel_ioprocessor() )
 
     IF( TRIM( EquationOfState ) .EQ. 'TABLE' )THEN
 
