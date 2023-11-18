@@ -57,11 +57,6 @@ MODULE InputParsingModule
   INTEGER  :: nE, nSpecies, swE, bcE
   REAL(DP) :: eL, eR, zoomE
 
-  ! --- Slope Limiter ---
-
-  LOGICAL  :: UseSlopeLimiter_TwoMoment
-  REAL(DP) :: BetaTVD_TwoMoment
-
   ! --- Positivity Limiter ---
 
   LOGICAL  :: UsePositivityLimiter_TwoMoment
@@ -279,17 +274,6 @@ call amrex_parmparse_destroy( pp )
     IF( iCycleChk * dt_chk .GT. Zero ) &
       CALL DescribeError_MF &
              ( 102, Int_Option = [ iCycleChk ], Real_Option = [ dt_chk ] )
-
-    ! --- Slope Limiter Parameters SL.* ---
-
-    UseSlopeLimiter_TwoMoment = .TRUE.
-    BetaTVD_TwoMoment         = 1.75_DP
-    CALL amrex_parmparse_build( PP, 'SL' )
-      CALL PP % query( 'UseSlopeLimiter_TwoMoment', &
-                        UseSlopeLimiter_TwoMoment )
-      CALL PP % query( 'BetaTVD_TwoMoment', &
-                        BetaTVD_TwoMoment )
-    CALL amrex_parmparse_destroy( PP )
 
     ! --- Positivity Limiter Parameters PL.* ---
 
