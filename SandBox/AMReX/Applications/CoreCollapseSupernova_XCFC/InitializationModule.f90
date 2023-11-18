@@ -584,7 +584,9 @@ CONTAINS
     CALL ComputeGeometryX_MF( MF_uGF(iLevel) )
 
     CALL InitializeFields_MF &
-           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uCR(iLevel) )
+           ( iLevel, &
+             MF_uGF(iLevel), MF_uCF(iLevel), MF_uPF(iLevel), MF_uAF(iLevel), &
+                             MF_uCR(iLevel), MF_uPR(iLevel) )
 
     CALL DestroyMesh_MF( MeshX )
 
