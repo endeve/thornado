@@ -6,8 +6,6 @@ DEBUG = 0
 
 thornado.ProgramName = "HomogeneousSphereGR"
 
-thornado.Scheme = "IMEX_PDARS"
-
 thornado.t_end     = 1.0     # Final time
 thornado.dt_wrt    = 0.5      # Write time interval
 thornado.dt_chk    = 11.0      # Time increment to write checkpoint-file
@@ -62,4 +60,5 @@ ST.chi     = 0.00001  # cm^-1
 ST.sigma     = 0.0
 
 # Time-Stepping parameters
-TS.CFL = 0.5    # CFL number
+TS.Scheme = "IMEX_PDARS"
+TS.CFL    = 0.5    # CFL number

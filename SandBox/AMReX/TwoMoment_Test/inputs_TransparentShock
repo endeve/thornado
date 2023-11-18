@@ -5,7 +5,6 @@
 DEBUG = 0
 
 thornado.ProgramName = "TransparentShock"
-thornado.Scheme = "SSPRK1"
 
 thornado.t_end     = 5.0    # Final time
 thornado.dt_wrt    = 5.0      # Write time interval
@@ -54,4 +53,5 @@ SL.UseSlopeLimiter_TwoMoment           = 1
 SL.BetaTVD_TwoMoment                   = 1.75e0
 
 # Time-Stepping parameters
-TS.CFL = 0.3     # CFL number
+TS.Scheme = "SSPRK1"
+TS.CFL    = 0.3     # CFL number

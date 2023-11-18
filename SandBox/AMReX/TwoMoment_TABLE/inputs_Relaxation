@@ -6,7 +6,6 @@ DEBUG = 0
 
 thornado.ProgramName = "Relaxation"
 
-thornado.Scheme = "BackwardEuler"
 
 thornado.t_end     = 10.0     # Final time
 thornado.dt_wrt    = 11.0      # Write time interval
@@ -55,6 +54,10 @@ SL.BetaTVD_TwoMoment                   = 1.75e0
 # Equation of State parameters
 EoS.EosTableName = "wl-EOS-SFHo-15-25-50.h5"
 EoS.EquationOfState = "TABLE"
+
+# Time-Stepping parameters
+TS.Scheme = "BackwardEuler"
+TS.CFL    = 0.5
 
 #Opacity parameters
 OP.OpacityTableName_AbEm = "wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5"

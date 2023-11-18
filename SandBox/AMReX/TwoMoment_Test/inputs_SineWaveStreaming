@@ -5,7 +5,6 @@
 DEBUG = 1
 
 thornado.ProgramName = "SineWaveStreaming"
-thornado.Scheme = "SSPRK2"
 
 thornado.t_end     = 1.0     # Final time
 thornado.dt_wrt    = 1.0e+1      # Write time interval
@@ -54,4 +53,5 @@ amr.UseFluxCorrection_Euler = 0
 amr.n_error_buf              = 0
 
 # Time-Steppingn parameters
-TS.CFL = 0.5      # CFL number
+TS.Scheme = "SSPRK2"
+TS.CFL    = 0.5      # CFL number

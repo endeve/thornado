@@ -208,7 +208,6 @@ MODULE InitializationModule
     UseAMR, &
     nE, &
     nSpecies, &
-    Scheme, &
     OpacityTableName_AbEm, &
     OpacityTableName_Iso, &
     OpacityTableName_NES, &
@@ -452,7 +451,7 @@ CONTAINS
     t_chk = t_new(0) + dt_chk
     t_wrt = t_new(0) + dt_wrt
     CALL Initialize_IMEX_RK_MF &
-           ( Scheme, MF_uGF % BA, MF_uGF % DM, &
+           ( MF_uGF % BA, MF_uGF % DM, &
              Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL DescribeProgramHeader_AMReX

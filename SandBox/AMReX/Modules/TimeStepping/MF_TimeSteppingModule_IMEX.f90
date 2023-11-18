@@ -105,7 +105,8 @@ MODULE MF_TimeSteppingModule_IMEX
   PUBLIC :: Finalize_IMEX_RK_MF
   PUBLIC :: Update_IMEX_RK_MF
 
-  REAL(DP), PUBLIC :: CFL
+  REAL(DP)                 , PUBLIC :: CFL
+  CHARACTER(:), ALLOCATABLE, PUBLIC :: Scheme
 
   LOGICAL, PARAMETER :: DEBUG = .FALSE.
 
@@ -506,9 +507,8 @@ CONTAINS
 
 
   SUBROUTINE Initialize_IMEX_RK_MF &
-    ( Scheme, Verbose_Option )
+    ( Verbose_Option )
 
-    CHARACTER(LEN=*), INTENT(in) :: Scheme
     LOGICAL         , INTENT(in), OPTIONAL :: Verbose_Option
 
     TYPE(amrex_parmparse) :: PP
@@ -516,8 +516,9 @@ CONTAINS
     EvolveEuler     = .TRUE.
     EvolveTwoMoment = .TRUE.
     CALL amrex_parmparse_build( PP, 'TS' )
-      CALL PP % query( 'EvolveEuler'    , EvolveEuler )
+      CALL PP % get  ( 'Scheme'         , Scheme )
       CALL PP % get  ( 'CFL'            , CFL )
+      CALL PP % query( 'EvolveEuler'    , EvolveEuler )
       CALL PP % query( 'EvolveTwoMoment', EvolveTwoMoment )
     CALL amrex_parmparse_destroy( PP )
 

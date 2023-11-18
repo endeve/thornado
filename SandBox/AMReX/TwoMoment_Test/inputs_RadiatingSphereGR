@@ -5,9 +5,6 @@
 DEBUG = 0
 
 thornado.ProgramName = "RadiatingSphereGR"
-thornado.Scheme = "SSPRK2"
-thornado.nStages = 2
-
 
 thornado.t_end     = 20000.0     # Final time
 thornado.dt_wrt    = 20000.0      # Write time interval
@@ -54,4 +51,5 @@ SL.UseSlopeLimiter_TwoMoment           = 0
 SL.BetaTVD_TwoMoment                   = 1.75e0
 
 # Time-Stepping parameters
-TS.CFL = 0.3     # CFL number
+TS.Scheme = "SSPRK2"
+TS.CFL    = 0.3     # CFL number

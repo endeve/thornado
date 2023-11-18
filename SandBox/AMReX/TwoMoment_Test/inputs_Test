@@ -5,7 +5,6 @@
 DEBUG = 0
 
 thornado.ProgramName = "Test"
-thornado.Scheme = "IMEX_PDARS"
 
 thornado.t_end     = 10.0     # Final time
 thornado.dt_wrt    = 10.0      # Write time interval
@@ -58,4 +57,5 @@ ST.Mass = 2.0 # Solar Masses
 ST.R0   = 25.0 # km
 
 # Time-Stepping parameters
-TS.CFL = 0.5     # CFL number
+TS.Scheme = "IMEX_PDARS"
+TS.CFL    = 0.5     # CFL number

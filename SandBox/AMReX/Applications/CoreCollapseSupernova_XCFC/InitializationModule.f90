@@ -218,7 +218,6 @@ MODULE InitializationModule
     Include_Brem, &
     Include_LinCorr, &
     wMatterRHS, &
-    Scheme, &
     nSpecies, &
     EquationOfState, &
     Gamma_IDEAL, &
@@ -408,8 +407,7 @@ CONTAINS
     CALL InitializeTally_TwoMoment_MF
 
     CALL Initialize_IMEX_RK_MF &
-           ( Scheme, &
-             Verbose_Option = amrex_parallel_ioprocessor() )
+           ( Verbose_Option = amrex_parallel_ioprocessor() )
 
     IF( iRestart .LT. 0 )THEN
 

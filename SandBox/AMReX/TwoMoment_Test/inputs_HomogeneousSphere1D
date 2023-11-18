@@ -5,7 +5,6 @@
 DEBUG = 0
 
 thornado.ProgramName = "HomogeneousSphere1D"
-thornado.Scheme = "IMEX_PDARS"
 
 thornado.t_end     = 20.0     # Final time
 thornado.dt_wrt    = 20.5      # Write time interval
@@ -55,4 +54,5 @@ ST.chi     = 4.0
 ST.sigma     = 0.0
 
 # Time-Stepping parameters
-TS.CFL = 0.5     # CFL number
+TS.Scheme = "IMEX_PDARS"
+TS.CFL    = 0.5     # CFL number

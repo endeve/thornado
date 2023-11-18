@@ -83,7 +83,8 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
   REAL(AR),            ALLOCATABLE :: Ui(:,:,:,:,:,:,:)
   TYPE(StageDataType), ALLOCATABLE :: StageData(:)
 
-  REAL(DP), PUBLIC :: CFL
+  REAL(DP)                 , PUBLIC :: CFL
+  CHARACTER(:), ALLOCATABLE, PUBLIC :: Scheme
 
   PUBLIC :: Initialize_IMEX_RK
   PUBLIC :: Finalize_IMEX_RK
@@ -353,9 +354,8 @@ CONTAINS
 
 
   SUBROUTINE Initialize_IMEX_RK_MF &
-    ( Scheme, BA, DM, Verbose_Option )
+    ( BA, DM, Verbose_Option )
 
-    CHARACTER(LEN=*), INTENT(in) :: Scheme
     TYPE(amrex_boxarray),  INTENT(in)           :: BA(0:nLevels-1)
     TYPE(amrex_distromap), INTENT(in)           :: DM(0:nLevels-1)
     LOGICAL,               INTENT(in), OPTIONAL :: Verbose_Option
@@ -367,6 +367,7 @@ CONTAINS
 
     CALL amrex_parmparse_build( PP, 'TS' )
       CALL PP % get( 'CFL', CFL )
+      CALL PP % get( 'Scheme', Scheme )
     CALL amrex_parmparse_destroy( PP )
 
     CFL = CFL / ( DBLE( nDimsX ) * ( Two * DBLE( nNodes ) - One ) )

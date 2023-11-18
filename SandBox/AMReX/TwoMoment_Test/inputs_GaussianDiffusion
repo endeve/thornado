@@ -5,7 +5,6 @@
 DEBUG = 0
 
 thornado.ProgramName = "GaussianDiffusion"
-thornado.Scheme = "IMEX_PDARS"
 
 thornado.t_end     = 276.0     # Final time
 thornado.dt_wrt    = -0.1      # Write time interval
@@ -56,4 +55,5 @@ SL.UseSlopeLimiter_TwoMoment           = 0
 SL.BetaTVD_TwoMoment                   = 1.75e0
 
 # Time-Stepping parameters
-TS.CFL = 0.625      # CFL number
+TS.Scheme = "IMEX_PDARS"
+TS.CFL    = 0.625      # CFL number
