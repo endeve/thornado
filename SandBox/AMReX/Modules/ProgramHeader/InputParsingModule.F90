@@ -53,9 +53,9 @@ MODULE InputParsingModule
 
   ! --- Transport ---
 
-  INTEGER     , ALLOCATABLE :: bcZ_TwoMoment(:)
-  INTEGER  :: nE, nSpecies, swE, bcE
-  REAL(DP) :: eL, eR, zoomE
+  INTEGER, ALLOCATABLE :: bcZ_TwoMoment(:)
+  INTEGER              :: nE, nSpecies, swE, bcE
+  REAL(DP)             :: eL, eR, zoomE
 
   ! --- Equation of State ---
 
@@ -326,8 +326,6 @@ call amrex_parmparse_destroy( pp )
       mu0 = mu0 * UnitsDisplay % EnergyUnit
       kT = kT * UnitsDisplay % EnergyUnit
       R0 = R0 * UnitsDisplay % LengthX1Unit
-
-
 
     END IF
 
