@@ -282,7 +282,8 @@ CONTAINS
 
       CALL CreateMesh_MF( 0, MeshX )
 
-      CALL InitializeGravitySolver_XCFC_MF
+      CALL InitializeGravitySolver_XCFC_MF &
+             ( Verbose_Option = amrex_parallel_ioprocessor() )
 
       CALL DestroyMesh_MF( MeshX )
 
@@ -306,7 +307,8 @@ CONTAINS
 
       CALL CreateMesh_MF( 0, MeshX )
 
-      CALL InitializeGravitySolver_XCFC_MF
+      CALL InitializeGravitySolver_XCFC_MF &
+             ( Verbose_Option = amrex_parallel_ioprocessor() )
 
       CALL InitializeMetricFromCheckpoint_MF( MF_uGF, MF_uCF )
 

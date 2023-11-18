@@ -64,7 +64,8 @@ MODULE MF_TimeSteppingModule_SSPRK
     ComputePressureTensorTrace_XCFC_MF
   USE MF_GravitySolutionModule_XCFC, ONLY: &
     ComputeConformalFactor_XCFC_MF, &
-    ComputeLapseShiftCurvature_XCFC_MF
+    ComputeLapseShiftCurvature_XCFC_MF, &
+    EvolveGravity
   USE AverageDownModule, ONLY: &
     AverageDown
   USE FluxCorrectionModule_Euler, ONLY: &
@@ -87,7 +88,6 @@ MODULE MF_TimeSteppingModule_SSPRK
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: a_SSPRK
 
   LOGICAL :: Verbose
-  LOGICAL :: EvolveGravity
 
   INTEGER  :: nStages
   REAL(DP), PUBLIC :: CFL
@@ -107,11 +107,9 @@ CONTAINS
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
-    EvolveGravity = .FALSE.
     CALL amrex_parmparse_build( PP, 'TS' )
       CALL PP % get  ( 'nStages'      , nStages )
       CALL PP % get  ( 'CFL'          , CFL )
-      CALL PP % query( 'EvolveGravity', EvolveGravity )
     CALL amrex_parmparse_destroy( PP )
 
     CFL = CFL / ( DBLE( nDimsX ) * ( Two * DBLE( nNodes ) - One ) )
@@ -128,8 +126,6 @@ CONTAINS
       WRITE(*,'(A5,A,I1)') '', 'SSP RK Scheme: ', nStages
       WRITE(*,'(A5,A,ES10.3E3)') '', 'CFL:           ', &
         CFL * ( DBLE( nDimsX ) * ( Two * DBLE( nNodes ) - One ) )
-      WRITE(*,*)
-      WRITE(*,'(A5,A,L)') '', 'EvolveGravity: ', EvolveGravity
       WRITE(*,*)
       WRITE(*,'(A5,A)') '', 'Butcher Table:'
       WRITE(*,'(A5,A)') '', '--------------'
