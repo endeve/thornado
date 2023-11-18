@@ -57,11 +57,6 @@ MODULE InputParsingModule
   INTEGER  :: nE, nSpecies, swE, bcE
   REAL(DP) :: eL, eR, zoomE
 
-  ! --- Positivity Limiter ---
-
-  LOGICAL  :: UsePositivityLimiter_TwoMoment
-  REAL(DP) :: Min_1_TwoMoment, Min_2_TwoMoment
-
   ! --- Equation of State ---
 
   CHARACTER(:), ALLOCATABLE :: EquationOfState
@@ -274,20 +269,6 @@ call amrex_parmparse_destroy( pp )
     IF( iCycleChk * dt_chk .GT. Zero ) &
       CALL DescribeError_MF &
              ( 102, Int_Option = [ iCycleChk ], Real_Option = [ dt_chk ] )
-
-    ! --- Positivity Limiter Parameters PL.* ---
-
-    UsePositivityLimiter_TwoMoment = .TRUE.
-    Min_1_TwoMoment                = 1.0e-12_DP
-    Min_2_TwoMoment                = 1.0e-12_DP
-    CALL amrex_parmparse_build( PP, 'PL' )
-      CALL PP % query( 'UsePositivityLimiter_TwoMoment', &
-                        UsePositivityLimiter_TwoMoment )
-      CALL PP % query( 'Min_1_TwoMoment', &
-                        Min_1_TwoMoment )
-      CALL PP % query( 'Min_2_TwoMoment', &
-                        Min_2_TwoMoment )
-    CALL amrex_parmparse_destroy( PP )
 
     ! --- Parameters geometry.* ---
 
