@@ -52,10 +52,6 @@ MODULE InputParsingModule
   LOGICAL     , SAVE        :: DEBUG
   LOGICAL     , SAVE        :: SolveGravity_NR
 
-  ! --- TimeStepping ---
-
-  CHARACTER(:), ALLOCATABLE :: Scheme
-
   ! --- Transport ---
 
   INTEGER     , ALLOCATABLE :: bcZ_TwoMoment(:)
@@ -216,7 +212,6 @@ call amrex_parmparse_destroy( pp )
     dt_rel           = 0.0_DP
     iReGrid          = 1
     SolveGravity_NR  = .FALSE.
-    Scheme           = ''
     nE               = 1
     nSpecies         = 1
     swE              = 0
@@ -230,8 +225,6 @@ call amrex_parmparse_destroy( pp )
                          ProgramName )
       CALL PP % get   ( 'nNodes', &
                          nNodes )
-      CALL PP % query ( 'Scheme', &
-                         Scheme )
       CALL PP % getarr( 'swX', &
                          swX )
       CALL PP % getarr( 'bcX', &
