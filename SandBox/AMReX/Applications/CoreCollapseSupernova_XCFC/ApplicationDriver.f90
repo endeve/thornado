@@ -95,7 +95,7 @@ PROGRAM main
 
   INCLUDE 'mpif.h'
 
-  INTEGER  :: iLevel, iErr
+  INTEGER  :: iErr
   LOGICAL  :: wrt, chk
   REAL(DP) :: Timer_Evolution
 
