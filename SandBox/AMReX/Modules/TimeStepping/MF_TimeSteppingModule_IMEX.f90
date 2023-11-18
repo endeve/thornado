@@ -23,7 +23,9 @@ MODULE MF_TimeSteppingModule_IMEX
     iE_B1, &
     iE_E1, &
     swX, &
-    nE
+    nE, &
+    nDimsX, &
+    nNodes
   USE FluidFieldsModule, ONLY: &
     nCF
   USE RadiationFieldsModule, ONLY: &
@@ -44,7 +46,8 @@ MODULE MF_TimeSteppingModule_IMEX
   USE MF_KindModule, ONLY: &
     DP, &
     Zero, &
-    One
+    One, &
+    Two
   USE MF_ErrorModule, ONLY: &
     DescribeError_MF
   USE MF_FieldsModule_Geometry, ONLY: &
@@ -88,7 +91,6 @@ MODULE MF_TimeSteppingModule_IMEX
   USE MF_TwoMoment_TallyModule, ONLY: &
     IncrementOffGridTally_TwoMoment_MF
 
-
   IMPLICIT NONE
   PRIVATE
 
@@ -102,6 +104,8 @@ MODULE MF_TimeSteppingModule_IMEX
   PUBLIC :: Initialize_IMEX_RK_MF
   PUBLIC :: Finalize_IMEX_RK_MF
   PUBLIC :: Update_IMEX_RK_MF
+
+  REAL(DP), PUBLIC :: CFL
 
   LOGICAL, PARAMETER :: DEBUG = .FALSE.
 
@@ -513,8 +517,11 @@ CONTAINS
     EvolveTwoMoment = .TRUE.
     CALL amrex_parmparse_build( PP, 'TS' )
       CALL PP % query( 'EvolveEuler'    , EvolveEuler )
+      CALL PP % get  ( 'CFL'            , CFL )
       CALL PP % query( 'EvolveTwoMoment', EvolveTwoMoment )
     CALL amrex_parmparse_destroy( PP )
+
+    CFL = CFL / ( DBLE( nDimsX ) * ( Two * DBLE( nNodes ) - One ) )
 
     Verbose = .FALSE.
     IF( PRESENT( Verbose_Option ) ) &

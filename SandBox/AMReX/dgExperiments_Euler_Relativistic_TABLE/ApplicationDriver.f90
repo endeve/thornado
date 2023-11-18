@@ -50,7 +50,8 @@ PROGRAM main
     ADMMass_Initial, &
     ADMMass_OffGrid
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
-    UpdateFluid_SSPRK_MF
+    UpdateFluid_SSPRK_MF, &
+    CFL
   USE InputParsingModule, ONLY: &
     nLevels, &
     StepNo, &
@@ -58,7 +59,6 @@ PROGRAM main
     t_new, &
     t_old, &
     dt, &
-    CFL, &
     iCycleD, &
     iCycleW, &
     iCycleChk, &

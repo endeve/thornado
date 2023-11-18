@@ -7,10 +7,8 @@ thornado.ProgramName = "Advection1D"
 thornado.AdvectionProfile = "SineWaveX1"
 
 thornado.nNodes  = 03
-thornado.nStages = 03
 thornado.t_end   = 1.0 # Times to advect across grid
 thornado.iCycleD = 10
-thornado.CFL     = 0.5
 thornado.dt_wrt  = 1.0e-2 # Fraction of total evolution time
 thornado.dt_chk  = 1.1e5
 
@@ -53,3 +51,7 @@ PL.UsePositivityLimiter_Euler = 1
 # Equation of state parameters
 EoS.EquationOfState = "TABLE"
 EoS.EosTableName = "../EosTables/wl-EOS-SFHo-25-50-100.h5"
+
+# Time-Stepping parameters
+TS.nStages = 3
+TS.CFL     = 0.5

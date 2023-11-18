@@ -7,10 +7,8 @@ thornado.ProgramName = "Advection1D"
 thornado.AdvectionProfile = "SineWaveX1"
 
 thornado.nNodes  = 03
-thornado.nStages = 03
 thornado.t_end   = 1.0e1
 thornado.iCycleD = 10
-thornado.CFL     = 0.5
 thornado.dt_wrt  = 1.0e-1
 thornado.dt_chk  = 1.1e1
 
@@ -52,3 +50,7 @@ PL.Min_2_Euler                = 1.0e-13
 
 EoS.EquationOfState = "IDEAL"
 EoS.Gamma_IDEAL     = 1.3333333333333333
+
+# Time-Stepping parameters
+TS.nStages = 3
+TS.CFL     = 0.5

@@ -6,14 +6,11 @@ DEBUG = 0
 
 thornado.ProgramName = "SineWaveDiffusion"
 thornado.Scheme = "IMEX_PDARS"
-thornado.nStages = 2
-
 
 thornado.t_end     = 276.0     # Final time
 thornado.dt_wrt    = -0.1      # Write time interval
 thornado.dt_chk    = -0.1      # Time increment to write checkpoint-file
 thornado.nNodes    = 2        # Number of DG nodes in each active dimension
-thornado.CFL       = 0.5      # CFL number
 thornado.bcX       = 00 00 00 # Boundary conditions
 thornado.bcZ_TwoMoment = 00 00 00 00
 thornado.swX       = 01 00 00 # Stencil width (nGhostCells) in each dimension
@@ -57,3 +54,6 @@ PL.Min_2_TwoMoment                = 1.0e-26
 # Slope limiter parameters
 SL.UseSlopeLimiter_TwoMoment           = 0
 SL.BetaTVD_TwoMoment                   = 1.75e0
+
+# Time-Stepping parameters
+TS.CFL = 0.5      # CFL number

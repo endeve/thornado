@@ -42,7 +42,8 @@ PROGRAM main
     ComputeFromConserved_TwoMoment_MF, &
     ComputeGray_TwoMoment_MF
   USE MF_TimeSteppingModule_IMEX, ONLY: &
-    Update_IMEX_RK_MF
+    Update_IMEX_RK_MF, &
+    CFL
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
@@ -68,7 +69,6 @@ PROGRAM main
     t_old, &
     dt, &
     dt_TM, &
-    CFL, &
     iCycleD, &
     iCycleW, &
     iCycleChk, &

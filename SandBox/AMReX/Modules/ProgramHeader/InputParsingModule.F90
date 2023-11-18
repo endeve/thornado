@@ -55,8 +55,6 @@ MODULE InputParsingModule
   ! --- TimeStepping ---
 
   CHARACTER(:), ALLOCATABLE :: Scheme
-  INTEGER                   :: nStages
-  REAL(DP)                  :: CFL
 
   ! --- Transport ---
 
@@ -232,8 +230,6 @@ call amrex_parmparse_destroy( pp )
                          ProgramName )
       CALL PP % get   ( 'nNodes', &
                          nNodes )
-      CALL PP % get   ( 'nStages', &
-                         nStages )
       CALL PP % query ( 'Scheme', &
                          Scheme )
       CALL PP % getarr( 'swX', &
@@ -244,8 +240,6 @@ call amrex_parmparse_destroy( pp )
                            bcZ_TwoMoment )
       CALL PP % get   ( 't_end', &
                          t_end )
-      CALL PP % get   ( 'CFL', &
-                         CFL )
       CALL PP % query ( 'iCycleD', &
                          iCycleD )
       CALL PP % query ( 'PlotFileNameRoot', &
@@ -293,8 +287,6 @@ call amrex_parmparse_destroy( pp )
     IF( iCycleChk * dt_chk .GT. Zero ) &
       CALL DescribeError_MF &
              ( 102, Int_Option = [ iCycleChk ], Real_Option = [ dt_chk ] )
-
-    CFL = CFL / ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
 
     ! --- Slope Limiter Parameters SL.* ---
 

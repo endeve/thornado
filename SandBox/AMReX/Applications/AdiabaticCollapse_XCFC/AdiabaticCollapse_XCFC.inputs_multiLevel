@@ -25,10 +25,7 @@ thornado.CheckpointFileNameRoot = "AdiabaticCollapse_XCFC.chk"
 thornado.dt_chk    = 1.0e+1
 thornado.iCycleChk = -1
 
-thornado.nNodes  = 2
-thornado.nStages = 2
-
-thornado.CFL = 0.5
+thornado.nNodes = 2
 
 thornado.bcX         = 30 00 00
 geometry.is_periodic = 0  1  1
@@ -76,3 +73,5 @@ EoS.EosTableName = "../../EosTables/wl-EOS-SFHo-25-50-100.h5"
 
 # Time-Stepper parameters
 TS.EvolveGravity = 1
+TS.nStages       = 2
+TS.CFL           = 0.5

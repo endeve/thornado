@@ -7,14 +7,12 @@ DEBUG = 0
 thornado.ProgramName = "Relaxation"
 
 thornado.Scheme = "BackwardEuler"
-thornado.nStages = 1
 
 thornado.t_end     = 10.0     # Final time
 thornado.dt_wrt    = 11.0      # Write time interval
 thornado.dt_chk    = 11.0      # Time increment to write checkpoint-file
 thornado.dt_rel    = 0.001
 thornado.nNodes    = 2        # Number of DG nodes in each active dimension
-thornado.CFL       = 0.5     # CFL number
 thornado.bcX       = 0 0 0 # Boundary conditions
 thornado.swX       = 00 00 00 # Stencil width (nGhostCells) in each dimension
 thornado.V_0       = 0.1 0.0 0.0  # three velocity

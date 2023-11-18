@@ -56,14 +56,14 @@ PROGRAM main
     xL,        &
     nNodes,    &
     t_end,     &
-    CFL,       &
     t_wrt,     &
     dt_wrt,    &
     dt_rel
   USE ProgramHeaderModule,  ONLY: &
     nDOFZ
   USE MF_TwoMoment_TimeSteppingModule_Relativistic,      ONLY: &
-    Update_IMEX_RK_MF
+    Update_IMEX_RK_MF, &
+    CFL
 
   ! --- thornado Modules ---
   USE InputOutputModuleAMReX, ONLY: &

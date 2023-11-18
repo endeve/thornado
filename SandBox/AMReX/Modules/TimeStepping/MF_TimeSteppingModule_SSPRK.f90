@@ -37,8 +37,6 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE InputParsingModule, ONLY: &
     nLevels, &
     nMaxLevels, &
-    CFL, &
-    nStages, &
     UseFluxCorrection_Euler, &
     dt, &
     DEBUG
@@ -91,6 +89,9 @@ MODULE MF_TimeSteppingModule_SSPRK
   LOGICAL :: Verbose
   LOGICAL :: EvolveGravity
 
+  INTEGER  :: nStages
+  REAL(DP), PUBLIC :: CFL
+
 CONTAINS
 
 
@@ -108,8 +109,12 @@ CONTAINS
 
     EvolveGravity = .FALSE.
     CALL amrex_parmparse_build( PP, 'TS' )
+      CALL PP % get  ( 'nStages'      , nStages )
+      CALL PP % get  ( 'CFL'          , CFL )
       CALL PP % query( 'EvolveGravity', EvolveGravity )
     CALL amrex_parmparse_destroy( PP )
+
+    CFL = CFL / ( DBLE( nDimsX ) * ( Two * DBLE( nNodes ) - One ) )
 
     CALL InitializeSSPRK
 

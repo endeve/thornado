@@ -8,10 +8,8 @@ debug.DEBUG = 0
 thornado.ProgramName = "KelvinHelmholtz2D"
 
 thornado.nNodes  = 03
-thornado.nStages = 03
 thornado.t_end   = 3.0e0
 thornado.iCycleD = 10
-thornado.CFL     = 0.5
 thornado.dt_wrt  = 3.0e-2
 thornado.dt_chk  = 3.0e-1
 
@@ -57,3 +55,7 @@ PL.Min_2_Euler                = 1.0e-13
 
 EoS.EquationOfState = "IDEAL"
 EoS.Gamma_IDEAL     = 1.3333333333333333
+
+# Time-Stepping parameters
+TS.nStages = 3
+TS.CFL     = 0.5
