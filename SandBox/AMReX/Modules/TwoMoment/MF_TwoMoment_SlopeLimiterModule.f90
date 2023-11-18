@@ -22,9 +22,7 @@ MODULE MF_TwoMoment_SlopeLimiterModule
 
   USE ProgramHeaderModule, ONLY: &
     swX, &
-    swE, &
     nDOFX, &
-    nDOFE, &
     nDOFZ, &
     iE_B0, &
     iE_E0, &
@@ -35,10 +33,10 @@ MODULE MF_TwoMoment_SlopeLimiterModule
   USE GeometryFieldsModule, ONLY: &
     nGF
   USE GeometryFieldsModuleE, ONLY: &
-    nGE, &
     uGE
   USE RadiationFieldsModule, ONLY: &
-    nCR
+    nCR, &
+    nSpecies
   USE FluidFieldsModule, ONLY: &
     nCF
   USE TwoMoment_SlopeLimiterModule, ONLY: &
@@ -63,7 +61,6 @@ MODULE MF_TwoMoment_SlopeLimiterModule
     DeallocateArray_Z
   USE InputParsingModule, ONLY: &
     nLevels, &
-    nSpecies, &
     UseTiling, &
     nE
   USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
