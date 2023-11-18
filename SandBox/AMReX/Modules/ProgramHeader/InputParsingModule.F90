@@ -48,9 +48,9 @@ MODULE InputParsingModule
   REAL(DP)                  :: t_wrt, t_chk, dt_wrt, dt_chk, dt_rel
   INTEGER                   :: iCycleW, iCycleChk, iCycleD, iRestart, iReGrid
   REAL(DP)                  :: t_end
-  LOGICAL     , SAVE        :: UsePhysicalUnits
-  LOGICAL     , SAVE        :: DEBUG
-  LOGICAL     , SAVE        :: SolveGravity_NR
+  LOGICAL                   :: UsePhysicalUnits
+  LOGICAL                   :: DEBUG
+  LOGICAL                   :: SolveGravity_NR
 
   ! --- Transport ---
 
