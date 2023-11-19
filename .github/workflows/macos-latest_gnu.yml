@@ -35,7 +35,8 @@ jobs:
           ref: MeshRefinement_DG
 
       - name: Download and install homebrew and dependencies
-        run: | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        run: |
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           echo ""
           echo "brew install gcc"
                 brew install gcc
