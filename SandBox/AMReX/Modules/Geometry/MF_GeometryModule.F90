@@ -86,7 +86,7 @@ CONTAINS
 
   SUBROUTINE ComputeGeometryX_MF( MF_uGF )
 
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX
