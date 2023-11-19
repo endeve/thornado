@@ -19,9 +19,7 @@ MODULE InputParsingModule
     nDimsX
   USE UnitsModule, ONLY: &
     ActivateUnitsDisplay, &
-    UnitsDisplay, &
-    SolarMass, &
-    Centimeter
+    UnitsDisplay
   USE GeometryFieldsModule, ONLY: &
     CoordinateSystem
   USE RadiationFieldsModule, ONLY: &
