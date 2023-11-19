@@ -64,6 +64,7 @@ MODULE InputParsingModule
   CHARACTER(:), ALLOCATABLE :: OpacityTableName_Brem
 
   ! --- Non-Linear Solver Parameters ---
+
   INTEGER  ::  M_outer
   INTEGER  ::  MaxIter_outer
   REAL(DP) ::  Rtol_outer
