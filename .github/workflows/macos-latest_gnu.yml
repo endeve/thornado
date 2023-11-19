@@ -180,6 +180,12 @@ jobs:
           make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
           make realclean
 
+      - name: Compile SandBox/AMReX/TwoMoment_TABLLE
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/TwoMoment_TABLE
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make realclean
+
       - name: Compile SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
