@@ -82,7 +82,9 @@ MODULE InitializationModule
   USE ReferenceElementModuleE_Lagrange, ONLY: &
     InitializeReferenceElementE_Lagrange
   USE UnitsModule, ONLY: &
-    DescribeUnitsDisplay
+    DescribeUnitsDisplay, &
+    Centimeter, &
+    UnitsDisplay
   USE MeshModule, ONLY: &
     MeshX, &
     MeshE, &
@@ -122,7 +124,8 @@ MODULE InitializationModule
 
   USE MF_KindModule, ONLY: &
     DP, &
-    Zero
+    Zero, &
+    One
   USE MF_EquationOfStateModule, ONLY: &
     InitializeEquationOfState_MF, &
     EosTableName
@@ -185,13 +188,6 @@ MODULE InitializationModule
     UseTiling, &
     UseFluxCorrection_TwoMoment, &
     TagCriteria, &
-    D_0, &
-    Sigma, &
-    Chi, &
-    kT, &
-    Mu0, &
-    E0, &
-    R0, &
     OpacityTableName_AbEm, &
     OpacityTableName_Iso, &
     OpacityTableName_NES, &
@@ -217,6 +213,10 @@ CONTAINS
     INTEGER :: i
 
     LOGICAL :: SetInitialValues
+
+    TYPE(amrex_parmparse) :: PP
+
+    REAL(DP) :: R0, kT, Mu0, E0, D_0, Chi, Sigma
 
     CALL amrex_init()
 
@@ -291,6 +291,28 @@ CONTAINS
       CALL CreateOpacities &
              ( iZ_B1, iZ_E1, iOS_CPP, &
                Verbose_Option = amrex_parallel_ioprocessor() )
+
+      R0    = Zero
+      E0    = Zero
+      Mu0   = Zero
+      kT    = Zero
+      D_0   = Zero
+      Chi   = Zero
+      Sigma = Zero
+      CALL amrex_parmparse_build( PP, 'ST' )
+        CALL PP % query( 'R0'   , R0    )
+        CALL PP % query( 'Mu0'  , Mu0   )
+        CALL PP % query( 'E0'   , E0    )
+        CALL PP % query( 'kT'   , kT    )
+        CALL PP % query( 'D_0'  , D_0   )
+        CALL PP % query( 'Chi'  , Chi   )
+        CALL PP % query( 'Sigma', Sigma )
+      CALL amrex_parmparse_destroy( PP )
+      Chi  = Chi  * ( One / Centimeter )
+      E0   = E0   * UnitsDisplay % EnergyUnit
+      mu0  = mu0  * UnitsDisplay % EnergyUnit
+      kT   = kT   * UnitsDisplay % EnergyUnit
+      R0   = R0   * UnitsDisplay % LengthX1Unit
 
       CALL SetOpacities &
              ( iZ_B1, iZ_E1, iOS_CPP, D_0, Chi, Sigma, kT, E0, mu0, R0, &

@@ -114,10 +114,6 @@ MODULE InputParsingModule
   LOGICAL                   :: WriteNodalData
   CHARACTER(:), ALLOCATABLE :: NodalDataFileName
 
-real(dp)::mass,r0,kt,mu0,e0
-real(dp)::d_0,chi,sigma
-character(:),allocatable::direction
-
 CONTAINS
 
 
@@ -143,29 +139,6 @@ CONTAINS
     END IF
 
 #endif
-
-mass=zero
-r0=zero
-e0=zero
-mu0=zero
-kt=zero
-d_0=zero
-chi=zero
-sigma=zero
-call amrex_parmparse_build( pp, 'ST' )
-  call pp % query( 'mass',mass )
-  call pp % query( 'r0',r0 )
-  call pp % query( 'mu0',mu0 )
-  call pp % query( 'e0',e0 )
-  call pp % query( 'kt',kt )
-  call pp % query( 'd_0',d_0 )
-  call pp % query( 'chi',chi )
-  call pp % query( 'sigma',sigma )
-call amrex_parmparse_destroy( pp )
-direction=''
-call amrex_parmparse_build( pp, 'thornado' )
-  call pp % query( 'direction',direction )
-call amrex_parmparse_destroy( pp )
 
     ! --- debug Parameters debug.* ---
 
@@ -312,14 +285,6 @@ call amrex_parmparse_destroy( pp )
 
       eL = eL * UnitsDisplay % EnergyUnit
       eR = eR * UnitsDisplay % EnergyUnit
-
-      Chi = Chi * ( 1.0_DP / Centimeter )
-
-      Mass = Mass * SolarMass
-      E0 = E0 * UnitsDisplay % EnergyUnit
-      mu0 = mu0 * UnitsDisplay % EnergyUnit
-      kT = kT * UnitsDisplay % EnergyUnit
-      R0 = R0 * UnitsDisplay % LengthX1Unit
 
     END IF
 
