@@ -25,6 +25,14 @@ jobs:
       - name: Find Libraries
         id: getenv
         run: |
+          echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_OUTPUT}
+          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_OUTPUT}
+          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_OUTPUT}
+          echo "BLAS_LIB=/usr/lib/x86_64-linux-gnu"             >> ${GITHUB_OUTPUT}
+          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"               >> ${GITHUB_OUTPUT}
+          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"        >> ${GITHUB_OUTPUT}
+          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_OUTPUT}
+          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_OUTPUT}
 #          echo ""
 #          echo "find /usr -name \"*hdf5.mod\""
 #                find /usr -name  "*hdf5.mod"
@@ -37,14 +45,6 @@ jobs:
 #          echo ""
 #          echo "find /usr -name \"*lib*blas*\""
 #                find /usr -name  "*lib*blas*"
-          echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_OUTPUT}
-          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_OUTPUT}
-          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_OUTPUT}
-          echo "BLAS_LIB=/usr/lib/x86_64-linux-gnu"             >> ${GITHUB_OUTPUT}
-          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"               >> ${GITHUB_OUTPUT}
-          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"        >> ${GITHUB_OUTPUT}
-          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_OUTPUT}
-          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_OUTPUT}
 
   dgExperiments_Euler_NonRelativistic_IDEAL_native:
     name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL
