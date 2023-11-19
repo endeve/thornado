@@ -17,14 +17,17 @@ MODULE MF_InitializationModule
     amrex_parmparse_destroy
 
   USE ProgramHeaderModule, ONLY: &
-    nDOFX
+    ProgramName, &
+    nDOFX, &
+    swX
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
   USE EquationOfStateModule_IDEAL, ONLY: &
-    ComputePressureFromPrimitive_IDEAL
+    ComputePressureFromPrimitive_IDEAL, &
+    Gamma_IDEAL
   USE UnitsModule, ONLY: &
     Gram, &
     Erg, &
@@ -66,10 +69,7 @@ MODULE MF_InitializationModule
     Four, &
     FourPi
   USE InputParsingModule, ONLY: &
-    ProgramName, &
-    swX, &
-    UseTiling, &
-    Gamma_IDEAL
+    UseTiling
 
   IMPLICIT NONE
   PRIVATE
@@ -82,8 +82,9 @@ CONTAINS
   SUBROUTINE InitializeFields_MF &
     ( iLevel, MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF, MF_uPF, MF_uAF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF, MF_uPF, MF_uAF
 
     LOGICAL :: Verbose
 
@@ -233,12 +234,13 @@ CONTAINS
       dXdr, drhodD, dvdV, dmdM, PolytropicConstant, &
       CoreRadius, D0, CollapseTime, TotalEnclosedMass )
 
-    INTEGER             , INTENT(in)  :: iLevel
-    TYPE(amrex_multifab), INTENT(in)  :: MF_uGF, MF_uCF, MF_uPF, MF_uAF
-    REAL(DP)            , INTENT(in)  :: dXdr, drhodD, dvdV, dmdM, &
-                                         PolytropicConstant, &
-                                         CoreRadius, D0, CollapseTime
-    REAL(DP)            , INTENT(out) :: TotalEnclosedMass
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF, MF_uPF, MF_uAF
+    REAL(DP)            , INTENT(in)    :: dXdr, drhodD, dvdV, dmdM, &
+                                           PolytropicConstant, &
+                                           CoreRadius, D0, CollapseTime
+    REAL(DP)            , INTENT(out)   :: TotalEnclosedMass
 
     INTEGER               :: N, iX1, iX2, iX3, iX_L, iNX, iNX1
     REAL(DP)              :: dr, dX, XX, R
