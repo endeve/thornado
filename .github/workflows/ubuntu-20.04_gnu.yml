@@ -22,27 +22,21 @@ jobs:
     env:
       THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
     steps:
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
       - name: Find Libraries
         id: getenv
         run: |
-          echo ""
-          echo "find /usr -name \"*hdf5.mod\""
-                find /usr -name  "*hdf5.mod"
-          echo ""
-          echo "find /usr -name \"*libhdf5*\""
-                find /usr -name  "*libhdf5*"
-          echo ""
-          echo "find /usr -name \"*liblapack*\""
-                find /usr -name  "*liblapack*"
-          echo ""
-          echo "find /usr -name \"*lib*blas*\""
-                find /usr -name  "*lib*blas*"
+#          echo ""
+#          echo "find /usr -name \"*hdf5.mod\""
+#                find /usr -name  "*hdf5.mod"
+#          echo ""
+#          echo "find /usr -name \"*libhdf5*\""
+#                find /usr -name  "*libhdf5*"
+#          echo ""
+#          echo "find /usr -name \"*liblapack*\""
+#                find /usr -name  "*liblapack*"
+#          echo ""
+#          echo "find /usr -name \"*lib*blas*\""
+#                find /usr -name  "*lib*blas*"
           echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_OUTPUT}
           echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_OUTPUT}
           echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_OUTPUT}
