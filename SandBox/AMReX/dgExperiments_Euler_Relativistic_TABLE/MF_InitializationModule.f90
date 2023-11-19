@@ -116,8 +116,9 @@ CONTAINS
   SUBROUTINE InitializeFields_MF &
     ( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER,              INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER,              INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_parmparse) :: PP
 
@@ -158,8 +159,9 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Advection1D( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER,              INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER,              INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX

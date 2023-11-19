@@ -91,8 +91,9 @@ CONTAINS
   SUBROUTINE InitializeFields_MF &
     ( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
 
@@ -145,8 +146,9 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Advection1D( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX
@@ -357,8 +359,9 @@ CONTAINS
 
   SUBROUTINE InitializeFields_RiemannProblem1D( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX
@@ -574,8 +577,9 @@ CONTAINS
 
   SUBROUTINE InitializeFields_RiemannProblem2D( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX
@@ -849,8 +853,9 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Advection2D( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX
@@ -1071,8 +1076,9 @@ CONTAINS
   !     Radice & Rezzolla, (2012), AA, 547, A26 ---
   SUBROUTINE InitializeFields_KelvinHelmholtz2D( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -1263,8 +1269,9 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Advection3D( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX
