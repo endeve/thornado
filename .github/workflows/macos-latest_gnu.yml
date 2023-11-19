@@ -2,7 +2,7 @@ name: Compile thornado on MacOS (latest) with gnu compilers
 
 on:
   schedule:
-    - cron: '0 3 * * *'
+    - cron: '0 7 * * *'
 
 jobs:
   compile-with--gnu:
@@ -35,8 +35,7 @@ jobs:
           ref: MeshRefinement_DG
 
       - name: Download and install homebrew and dependencies
-        run: |
-          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        run: | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           echo ""
           echo "brew install gcc"
                 brew install gcc
