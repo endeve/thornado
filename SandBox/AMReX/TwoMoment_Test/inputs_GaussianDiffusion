@@ -57,3 +57,6 @@ SL.BetaTVD_TwoMoment                   = 1.75e0
 # Time-Stepping parameters
 TS.Scheme = "IMEX_PDARS"
 TS.CFL    = 0.625      # CFL number
+
+EoS.EquationOfState = "IDEAL"
+EoS.Gamma_IDEAL     = 1.3333333333333333

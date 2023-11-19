@@ -6,8 +6,6 @@ MODULE InitializationModule
 
   USE amrex_init_module, ONLY: &
     amrex_init
-  USE amrex_fort_module, ONLY: &
-    amrex_spacedim
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse, &
     amrex_parmparse_build, &
@@ -43,7 +41,7 @@ MODULE InitializationModule
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
-    nNodesX, &
+    swX, &
     DescribeProgramHeaderX
   USE PolynomialBasisModule_Lagrange, ONLY: &
     InitializePolynomialBasis_Lagrange
@@ -71,15 +69,14 @@ MODULE InitializationModule
     nPF, &
     nAF, &
     nDF
-  USE EquationOfStateModule, ONLY: &
-    InitializeEquationOfState
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
     DP, &
-    Zero, &
-    One
+    Zero
+  USE MF_EquationOfStateModule, ONLY: &
+    InitializeEquationOfState_MF
   USE MF_FieldsModule_Geometry, ONLY: &
     CreateFields_Geometry_MF, &
     MF_uGF
@@ -116,7 +113,6 @@ MODULE InitializationModule
     InitializeParameters, &
     nLevels, &
     nMaxLevels, &
-    swX, &
     StepNo, &
     iRestart, &
     dt, &
@@ -126,20 +122,9 @@ MODULE InitializationModule
     t_chk, &
     dt_wrt, &
     dt_chk, &
-    xL, &
     UseTiling, &
     UseFluxCorrection_Euler, &
-    MaxGridSizeX, &
-    BlockingFactor, &
-    xL, &
-    xR, &
-    EquationOfState, &
-    Gamma_IDEAL, &
-    EosTableName, &
-    ProgramName, &
     TagCriteria, &
-    nRefinementBuffer, &
-    UseAMR, &
     DescribeProgramHeader_AMReX
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
@@ -205,21 +190,7 @@ CONTAINS
 
     CALL InitializeMeshRefinement_Euler
 
-    IF( TRIM( EquationOfState ) .EQ. 'TABLE' )THEN
-
-      CALL InitializeEquationOfState &
-             ( EquationOfState_Option = EquationOfState, &
-               EquationOfStateTableName_Option = EosTableName, &
-               Verbose_Option = amrex_parallel_ioprocessor() )
-
-    ELSE
-
-      CALL InitializeEquationOfState &
-               ( EquationOfState_Option = EquationOfState, &
-                 Gamma_IDEAL_Option = Gamma_IDEAL, &
-                 Verbose_Option = amrex_parallel_ioprocessor() )
-
-    END IF
+    CALL InitializeEquationOfState_MF
 
     CALL InitializeSlopeLimiter_Euler_MF
 

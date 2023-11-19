@@ -6,8 +6,6 @@ MODULE InitializationModule
 
   USE amrex_init_module, ONLY: &
     amrex_init
-  USE amrex_fort_module, ONLY: &
-    amrex_spacedim
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse, &
     amrex_parmparse_build, &
@@ -43,18 +41,22 @@ MODULE InitializationModule
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
+    ProgramName, &
+    swX, &
+    swE, &
+    zoomE, &
     nDOFX, &
     nDOFZ, &
     iE_B0, &
     iE_E0, &
     iE_B1, &
     iE_E1, &
-    iZ_B0, &
-    iZ_E0, &
     iZ_B1, &
     iZ_E1, &
-    nNodesX, &
     nNodesE, &
+    eL, &
+    eR, &
+    nE, &
     DescribeProgramHeaderX
   USE PolynomialBasisModule_Lagrange, ONLY: &
     InitializePolynomialBasis_Lagrange
@@ -72,8 +74,7 @@ MODULE InitializationModule
   USE ReferenceElementModule_Lagrange, ONLY: &
     InitializeReferenceElement_Lagrange
   USE ReferenceElementModuleX, ONLY: &
-    InitializeReferenceElementX, &
-    nDOFX_X1
+    InitializeReferenceElementX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange
   USE ReferenceElementModuleE, ONLY: &
@@ -86,6 +87,8 @@ MODULE InitializationModule
     MeshX, &
     MeshE, &
     CreateMesh
+  USE EquationOfStateModule, ONLY: &
+    EquationOfState
   USE GeometryFieldsModule, ONLY: &
     nGF
   USE GeometryFieldsModuleE, ONLY: &
@@ -101,9 +104,8 @@ MODULE InitializationModule
   USE RadiationFieldsModule, ONLY: &
     nCR, &
     nPR, &
-    nGR
-  USE EquationOfStateModule, ONLY: &
-    InitializeEquationOfState
+    nGR, &
+    nSpecies
   USE TwoMoment_OpacityModule, ONLY: &
     CreateOpacities, &
     SetOpacities
@@ -116,13 +118,14 @@ MODULE InitializationModule
   USE Euler_MeshRefinementModule, ONLY: &
     InitializeMeshRefinement_Euler
 
-
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
     DP, &
-    Zero, &
-    One
+    Zero
+  USE MF_EquationOfStateModule, ONLY: &
+    InitializeEquationOfState_MF, &
+    EosTableName
   USE MF_FieldsModule_Geometry, ONLY: &
     CreateFields_Geometry_MF, &
     MF_uGF
@@ -131,8 +134,7 @@ MODULE InitializationModule
     MF_uCF, &
     MF_uPF, &
     MF_uAF, &
-    MF_uDF, &
-    FluxRegister_Euler
+    MF_uDF
   USE MF_FieldsModule_TwoMoment, ONLY: &
     CreateFields_TwoMoment_MF, &
     MF_uCR, &
@@ -161,8 +163,6 @@ MODULE InitializationModule
     ComputeFromConserved_TwoMoment_MF, &
     ComputeGray_TwoMoment_MF
   USE MF_UtilitiesModule, ONLY: &
-    amrex2amrex_permute_Z, &
-    amrex_permute2amrex_Z, &
     MF_amrex2amrex_permute_Z_Level, &
     MF_amrex_permute2amrex_Z_Level
 
@@ -170,22 +170,11 @@ MODULE InitializationModule
     FillPatch, &
     FillCoarsePatch
   USE InputParsingModule, ONLY: &
-    nX, &
     InitializeParameters, &
     nLevels, &
     nMaxLevels, &
-    swX, &
-    swE, &
-    zoomE, &
     StepNo, &
     iRestart, &
-    D_0, &
-    Sigma, &
-    Chi, &
-    kT, &
-    Mu0, &
-    E0, &
-    R0, &
     dt, &
     t_old, &
     t_new, &
@@ -194,23 +183,15 @@ MODULE InitializationModule
     dt_wrt, &
     dt_chk, &
     UseTiling, &
-    UseFluxCorrection_Euler, &
     UseFluxCorrection_TwoMoment, &
-    MaxGridSizeX, &
-    BlockingFactor, &
-    xL, &
-    xR, &
-    eL, &
-    eR, &
-    EquationOfState, &
-    Gamma_IDEAL, &
-    EosTableName, &
-    ProgramName, &
     TagCriteria, &
-    nRefinementBuffer, &
-    UseAMR, &
-    nE, &
-    nSpecies, &
+    D_0, &
+    Sigma, &
+    Chi, &
+    kT, &
+    Mu0, &
+    E0, &
+    R0, &
     OpacityTableName_AbEm, &
     OpacityTableName_Iso, &
     OpacityTableName_NES, &
@@ -222,9 +203,6 @@ MODULE InitializationModule
     ReadCheckpointFile
   USE AverageDownModule, ONLY: &
     AverageDown
-
-  use inputparsingmodule, only: &
-          r0,e0,mu0,kt,d_0,chi,sigma
 
   IMPLICIT NONE
   PRIVATE
@@ -294,13 +272,9 @@ CONTAINS
     CALL ComputeGeometryE &
            ( iE_B0, iE_E0, iE_B1, iE_E1, uGE )
 
+    CALL InitializeEquationOfState_MF
 
     IF( TRIM( EquationOfState ) .EQ. 'TABLE' )THEN
-
-      CALL InitializeEquationOfState &
-             ( EquationOfState_Option = EquationOfState, &
-               EquationOfStateTableName_Option = EosTableName, &
-               Verbose_Option = amrex_parallel_ioprocessor() )
 
       CALL InitializeOpacities_TABLE &
              ( OpacityTableName_EmAb_Option = OpacityTableName_AbEm, &
@@ -314,11 +288,6 @@ CONTAINS
 
       CALL CreateMesh_MF( 0, MeshX )
 
-      CALL InitializeEquationOfState &
-               ( EquationOfState_Option = EquationOfState, &
-                 Gamma_IDEAL_Option = Gamma_IDEAL, &
-                 Verbose_Option = amrex_parallel_ioprocessor() )
-
       CALL CreateOpacities &
              ( iZ_B1, iZ_E1, iOS_CPP, &
                Verbose_Option = amrex_parallel_ioprocessor() )
@@ -328,6 +297,7 @@ CONTAINS
                Verbose_Option = amrex_parallel_ioprocessor()  )
 
       CALL DestroyMesh_MF( MeshX )
+
     END IF
 
     CALL InitializeClosure_TwoMoment

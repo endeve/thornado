@@ -20,40 +20,41 @@ MODULE MF_InitializationModule
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
+    ProgramName, &
+    swX, &
     nDOFX
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
+  USE EquationOfStateModule_IDEAL, ONLY: &
+    ComputePressureFromPrimitive_IDEAL, &
+    Gamma_IDEAL
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
-    iGF_Gm_dd_33
+    iGF_Gm_dd_33, &
+    nGF
   USE FluidFieldsModule, ONLY: &
-    nCF, &
     iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
-    nPF, &
+    nCF, &
     iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
-    nAF, &
-    iAF_P
+    nPF
   USE Euler_UtilitiesModule, ONLY: &
     ComputeConserved_Euler
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     epsMin_Euler_GR
-  USE EquationOfStateModule_IDEAL, ONLY: &
-    ComputePressureFromPrimitive_IDEAL
 
   ! --- Local Modules ---
 
@@ -70,9 +71,6 @@ MODULE MF_InitializationModule
     AllocateArray_X, &
     DeallocateArray_X
   USE InputParsingModule, ONLY: &
-    swX, &
-    Gamma_IDEAL, &
-    ProgramName, &
     UseTiling
   USE MF_ErrorModule, ONLY: &
     DescribeError_MF

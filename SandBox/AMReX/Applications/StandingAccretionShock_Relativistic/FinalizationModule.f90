@@ -13,13 +13,13 @@ MODULE FinalizationModule
     FinalizeReferenceElementX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     FinalizeReferenceElementX_Lagrange
-  USE EquationOfStateModule, ONLY: &
-    FinalizeEquationOfState
   USE Euler_MeshRefinementModule, ONLY: &
     FinalizeMeshRefinement_Euler
 
   ! --- Local Modules ---
 
+  USE MF_EquationOfStateModule, ONLY: &
+    FinalizeEquationOfState_MF
   USE MF_FieldsModule_Geometry, ONLY: &
     MF_uGF, &
     DestroyFields_Geometry_MF
@@ -118,7 +118,7 @@ CONTAINS
 
     CALL FinalizePositivityLimiter_Euler_MF
 
-    CALL FinalizeEquationOfState
+    CALL FinalizeEquationOfState_MF
 
     CALL FinalizeMeshRefinement_Euler
 

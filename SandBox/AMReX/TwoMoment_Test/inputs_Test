@@ -59,3 +59,6 @@ ST.R0   = 25.0 # km
 # Time-Stepping parameters
 TS.Scheme = "IMEX_PDARS"
 TS.CFL    = 0.5     # CFL number
+
+EoS.EquationOfState = "IDEAL"
+EoS.Gamma_IDEAL     = 1.3333333333333333

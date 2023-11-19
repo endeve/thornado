@@ -29,6 +29,8 @@ MODULE MF_Euler_PositivityLimiterModule
     nDF
   USE GeometryFieldsModule, ONLY: &
     nGF
+  USE EquationOfStateModule, ONLY: &
+    EquationOfState
   USE EquationOfStateModule_TABLE, ONLY: &
     Min_D, &
     Max_D, &
@@ -53,7 +55,6 @@ MODULE MF_Euler_PositivityLimiterModule
     AllocateArray_X, &
     DeallocateArray_X
   USE InputParsingModule, ONLY: &
-    EquationOfState, &
     nLevels, &
     UseTiling, &
     DEBUG

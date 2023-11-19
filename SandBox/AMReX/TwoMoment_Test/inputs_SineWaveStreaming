@@ -55,3 +55,6 @@ amr.n_error_buf              = 0
 # Time-Steppingn parameters
 TS.Scheme = "SSPRK2"
 TS.CFL    = 0.5      # CFL number
+
+EoS.EquationOfState = "IDEAL"
+EoS.Gamma_IDEAL     = 1.3333333333333333

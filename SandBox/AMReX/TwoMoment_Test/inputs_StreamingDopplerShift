@@ -61,3 +61,6 @@ SL.BetaTVD_TwoMoment                   = 1.75e0
 # Time-Stepping parameters
 TS.Scheme = "SSPRK2"
 TS.CFL    = 0.3     # CFL number
+
+EoS.EquationOfState = "IDEAL"
+EoS.Gamma_IDEAL     = 1.3333333333333333

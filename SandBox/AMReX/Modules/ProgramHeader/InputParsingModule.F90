@@ -31,9 +31,7 @@ MODULE InputParsingModule
 
   USE MF_KindModule, ONLY: &
     DP, &
-    Zero, &
-    One, &
-    Two
+    Zero
   USE MF_ErrorModule, ONLY: &
     DescribeError_MF
 
@@ -56,12 +54,6 @@ MODULE InputParsingModule
   INTEGER, ALLOCATABLE :: bcZ_TwoMoment(:)
   INTEGER              :: nE, nSpecies, swE, bcE
   REAL(DP)             :: eL, eR, zoomE
-
-  ! --- Equation of State ---
-
-  CHARACTER(:), ALLOCATABLE :: EquationOfState
-  CHARACTER(:), ALLOCATABLE :: EosTableName
-  REAL(DP)                  :: Gamma_IDEAL
 
   ! --- Opacity Tables ---
 
@@ -260,7 +252,8 @@ call amrex_parmparse_destroy( pp )
                          zoomE )
     CALL amrex_parmparse_destroy( PP )
 
-    CALL SetNumberOfSpecies( nSpecies, Verbose_Option = amrex_parallel_ioprocessor() )
+    CALL SetNumberOfSpecies &
+           ( nSpecies, Verbose_Option = amrex_parallel_ioprocessor() )
 
     IF( iCycleW * dt_wrt .GT. Zero ) &
       CALL DescribeError_MF &
@@ -328,20 +321,6 @@ call amrex_parmparse_destroy( pp )
       R0 = R0 * UnitsDisplay % LengthX1Unit
 
     END IF
-
-    ! --- Equation of State Parameters EoS.* ---
-
-    EquationOfState = 'IDEAL'
-    Gamma_IDEAL     = 4.0_DP / 3.0_DP
-    EosTableName    = ''
-    CALL amrex_parmparse_build( PP, 'EoS' )
-      CALL PP % query ( 'EquationOfState', &
-                         EquationOfState )
-      CALL PP % query ( 'Gamma_IDEAL', &
-                         Gamma_IDEAL )
-      CALL PP % query ( 'EosTableName', &
-                         EosTableName )
-    CALL amrex_parmparse_destroy( PP )
 
     ! --- Opacity table parameters OP.* ---
 

@@ -6,8 +6,6 @@ MODULE InitializationModule
 
   USE amrex_init_module, ONLY: &
     amrex_init
-  USE amrex_fort_module, ONLY: &
-    amrex_spacedim
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse, &
     amrex_parmparse_build, &
@@ -49,8 +47,13 @@ MODULE InitializationModule
     iE_E0, &
     iE_B1, &
     iE_E1, &
-    nNodesX, &
     nNodesE, &
+    swX, &
+    swE, &
+    zoomE, &
+    eL, &
+    eR, &
+    nE, &
     DescribeProgramHeaderX
   USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
     InitializeNeutrinoMatterSolverParameters
@@ -86,6 +89,8 @@ MODULE InitializationModule
     CreateMesh, &
     MeshX, &
     MeshE
+  USE EquationOfStateModule, ONLY: &
+    EquationOfState
   USE GeometryFieldsModule, ONLY: &
     nGF
   USE GeometryFieldsModuleE, ONLY: &
@@ -101,22 +106,21 @@ MODULE InitializationModule
   USE RadiationFieldsModule, ONLY: &
     nCR, &
     nPR, &
-    nGR
-  USE EquationOfStateModule, ONLY: &
-    InitializeEquationOfState
+    nGR, &
+    nSpecies
   USE TwoMoment_ClosureModule, ONLY: &
     InitializeClosure_TwoMoment
   USE OpacityModule_Table, ONLY: &
     InitializeOpacities_TABLE
-  USE TwoMoment_TimersModule, ONLY: &
-    InitializeTimers
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
     DP, &
-    Zero, &
-    One
+    Zero
+  USE MF_EquationOfStateModule, ONLY: &
+    InitializeEquationOfState_MF, &
+    EosTableName
   USE MF_FieldsModule_Geometry, ONLY: &
     CreateFields_Geometry_MF, &
     MF_uGF
@@ -168,9 +172,6 @@ MODULE InitializationModule
     InitializeParameters, &
     nLevels, &
     nMaxLevels, &
-    swX, &
-    swE, &
-    zoomE, &
     StepNo, &
     iRestart, &
     dt, &
@@ -184,13 +185,6 @@ MODULE InitializationModule
     UseTiling, &
     UseFluxCorrection_Euler, &
     UseFluxCorrection_TwoMoment, &
-    MaxGridSizeX, &
-    BlockingFactor, &
-    xL, &
-    xR, &
-    eL, &
-    eR, &
-    nE, &
     OpacityTableName_AbEm, &
     OpacityTableName_Iso, &
     OpacityTableName_NES, &
@@ -207,14 +201,7 @@ MODULE InitializationModule
     Include_Brem, &
     Include_LinCorr, &
     wMatterRHS, &
-    nSpecies, &
-    EquationOfState, &
-    Gamma_IDEAL, &
-    EosTableName, &
-    ProgramName, &
     TagCriteria, &
-    nRefinementBuffer, &
-    UseAMR, &
     DescribeProgramHeader_AMReX
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
@@ -304,10 +291,7 @@ CONTAINS
     CALL ComputeGeometryE &
            ( iE_B0, iE_E0, iE_B1, iE_E1, uGE )
 
-    CALL InitializeEquationOfState &
-           ( EquationOfState_Option = EquationOfState, &
-             EquationOfStateTableName_Option = EosTableName, &
-             Verbose_Option = amrex_parallel_ioprocessor() )
+    CALL InitializeEquationOfState_MF
 
     CALL InitializeOpacities_TABLE &
            ( OpacityTableName_EmAb_Option = OpacityTableName_AbEm, &

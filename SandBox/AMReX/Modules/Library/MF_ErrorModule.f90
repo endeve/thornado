@@ -90,7 +90,7 @@ CONTAINS
 
       CASE( 105 )
 
-        CALL WriteHeader( 'MF_TimeSteppingModule', 'Initialize_IMEX_RK' )
+        CALL WriteHeader( 'MF_TimeSteppingModule_IMEX', 'Initialize_IMEX_RK' )
         WRITE(*,'(2x,A,A)') &
           'Unknown Time Stepping Scheme: ', TRIM( Char_Option(1) )
         WRITE(*,*)
@@ -103,6 +103,15 @@ CONTAINS
         WRITE(*,'(2x,A)') '  SSPRK3'
         WRITE(*,'(2x,A)') '  IMEX_ARS_111'
         WRITE(*,'(2x,A)') '  IMEX_PDARS'
+        WRITE(*,*)
+
+        CALL thornado_abort
+
+      CASE( 106 )
+
+        CALL WriteHeader( 'MF_EquationOfStateModule', &
+                          'InitializeEquationOfState_MF' )
+        WRITE(*,'(2x,A,A)') 'Invalid EquationOfState: ', TRIM( Message )
         WRITE(*,*)
 
         CALL thornado_abort
@@ -235,9 +244,9 @@ CONTAINS
     WRITE(*,'(2x,A,A)') 'FATAL ERROR'
     WRITE(*,'(2x,A,A)') '-----------'
     WRITE(*,*)
-    WRITE(*,'(2x,A,A)') &
+    WRITE(*,'(2x,A14,A)') &
       'MODULE: ', TRIM( ModuleName )
-    WRITE(*,'(2x,A,A)') &
+    WRITE(*,'(2x,A14,A)') &
       'SUBROUTINE: ', TRIM( SubroutineName )
     WRITE(*,*)
 

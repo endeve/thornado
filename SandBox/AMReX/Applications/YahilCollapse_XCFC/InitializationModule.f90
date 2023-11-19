@@ -69,14 +69,14 @@ MODULE InitializationModule
     nPF, &
     nAF, &
     nDF
-  USE EquationOfStateModule, ONLY: &
-    InitializeEquationOfState
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
     DP, &
     Zero
+  USE MF_EquationOfStateModule, ONLY: &
+    InitializeEquationOfState_MF
   USE MF_FieldsModule_Geometry, ONLY: &
     CreateFields_Geometry_MF, &
     MF_uGF
@@ -121,7 +121,6 @@ MODULE InitializationModule
     dt_chk, &
     UseTiling, &
     UseFluxCorrection_Euler, &
-    Gamma_IDEAL, &
     TagCriteria, &
     DescribeProgramHeader_AMReX
   USE InputOutputModuleAMReX, ONLY: &
@@ -193,10 +192,7 @@ CONTAINS
 
     CALL InitializeMeshRefinement_Euler
 
-    CALL InitializeEquationOfState &
-             ( EquationOfState_Option = 'IDEAL', &
-               Gamma_IDEAL_Option = Gamma_IDEAL, &
-               Verbose_Option = amrex_parallel_ioprocessor() )
+    CALL InitializeEquationOfState_MF
 
     CALL InitializePositivityLimiter_Euler_MF
 

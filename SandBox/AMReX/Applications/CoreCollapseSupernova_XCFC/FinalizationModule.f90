@@ -30,8 +30,6 @@ MODULE FinalizationModule
   USE MeshModule, ONLY: &
     MeshE, &
     DestroyMesh
-  USE EquationOfStateModule, ONLY: &
-    FinalizeEquationOfState
   USE Euler_MeshRefinementModule, ONLY: &
     FinalizeMeshRefinement_Euler
   USE TwoMoment_TimersModule, ONLY: &
@@ -41,6 +39,8 @@ MODULE FinalizationModule
 
   ! --- Local Modules ---
 
+  USE MF_EquationOfStateModule, ONLY: &
+    FinalizeEquationOfState_MF
   USE MF_FieldsModule_Geometry, ONLY: &
     MF_uGF, &
     DestroyFields_Geometry_MF
@@ -177,7 +177,7 @@ CONTAINS
 
     CALL FinalizePositivityLimiter_Euler_MF
 
-    CALL FinalizeEquationOfState
+    CALL FinalizeEquationOfState_MF
 
     CALL DestroyGeometryFieldsE
 
