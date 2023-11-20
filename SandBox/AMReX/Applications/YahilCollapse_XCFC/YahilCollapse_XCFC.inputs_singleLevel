@@ -74,7 +74,8 @@ PL.Min_1_Euler                = 1.0e-13
 PL.Min_2_Euler                = 1.0e-13
 
 # Equation of state parameters
-EoS.Gamma_IDEAL = 1.30
+EoS.EquationOfState = "IDEAL"
+EoS.Gamma_IDEAL     = 1.30
 
 # Time-Stepping parameters
 TS.nStages       = 2
