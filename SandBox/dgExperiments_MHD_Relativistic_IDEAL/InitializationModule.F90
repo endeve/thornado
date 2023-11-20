@@ -86,7 +86,8 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Relativistic_MHD &
                ( AdvectionProfile_Option, SmoothProfile_Option, &
-                 ConstantDensity_Option, Angle_Option, RiemannProblemName_Option, &
+                 ConstantDensity_Option, ConstNonZeroV_Option, &
+                 Angle_Option, RiemannProblemName_Option, &
                  MMBlastWaveB0_Option, MMBlastWavePhi_Option, &
                  OTScaleFactor_Option, EvolveOnlyMagnetic_Option )
 
@@ -95,6 +96,7 @@ CONTAINS
     LOGICAL,          INTENT(in), OPTIONAL :: EvolveOnlyMagnetic_Option
     LOGICAL,          INTENT(in), OPTIONAL :: SmoothProfile_Option
     LOGICAL,          INTENT(in), OPTIONAL :: ConstantDensity_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: ConstNonZeroV_Option
     REAL(DP),         INTENT(in), OPTIONAL :: Angle_Option
     REAL(DP),         INTENT(in), OPTIONAL :: MMBlastWaveB0_Option
     REAL(DP),         INTENT(in), OPTIONAL :: MMBlastWavePhi_Option
@@ -104,6 +106,7 @@ CONTAINS
     CHARACTER(LEN=64) :: RiemannProblemName = 'IsolatedContact'
     LOGICAL           :: SmoothProfile = .TRUE.
     LOGICAL           :: ConstantDensity = .TRUE.
+    LOGICAL           :: ConstNonZeroV = .FALSE.
     REAL(DP)          :: Angle = Pi / Four
     REAL(DP)          :: MMBlastWaveB0 = 0.5_DP
     REAL(DP)          :: MMBlastWavePhi = 0.0_DP
@@ -121,6 +124,9 @@ CONTAINS
 
     IF( PRESENT( ConstantDensity_Option ) ) &
       ConstantDensity = ConstantDensity_Option
+
+    IF( PRESENT( ConstNonZeroV_Option ) ) &
+      ConstNonZeroV = ConstNonZeroV_Option
 
     IF( PRESENT( Angle_Option ) ) &
       Angle = Angle_Option
@@ -168,7 +174,7 @@ CONTAINS
       CASE( 'Cleaning2D' )
 
         CALL InitializeFields_Cleaning2D &
-               ( ConstantDensity, EvolveOnlyMagnetic )
+               ( ConstantDensity, ConstNonZeroV, EvolveOnlyMagnetic )
 
       CASE( 'Riemann1D' )
 
@@ -882,19 +888,22 @@ CONTAINS
   END SUBROUTINE InitializeFields_Cleaning1D
 
 
-  SUBROUTINE InitializeFields_Cleaning2D( ConstantDensity, EvolveOnlyMagnetic )
+  SUBROUTINE InitializeFields_Cleaning2D( ConstantDensity, ConstNonZeroV, EvolveOnlyMagnetic )
 
     ! 2D divergence cleaning test from Section 5.2 of
     ! Derigs et al. (2018) with option to use
     ! constant density.
 
     LOGICAL, INTENT(in) :: ConstantDensity
+    LOGICAL, INTENT(in) :: ConstNonZeroV
     LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1, iNodeX2
     REAL(DP) :: X1, X2
 
+    REAL(DP) :: D, V1, V2, V3, W
+    REAL(DP) :: CB1, CB2, CB3, VdotB
     REAL(DP) :: R, R0
 
     R0 = One / SQRT( 8.0_DP )
@@ -915,39 +924,61 @@ CONTAINS
 
         IF( ConstantDensity )THEN
 
-          uPM(iNodeX,iX1,iX2,iX3,iPM_D) = 1.0_DP
+          D = One
 
         ELSE
 
           IF( X1 .LE. 0.5_DP )THEN
-            uPM(iNodeX,iX1,iX2,iX3,iPM_D) = 1.0_DP
+            D = One
           ELSE
-            uPM(iNodeX,iX1,iX2,iX3,iPM_D) = 2.0_DP
+            D = Two
           END IF
 
         END IF
 
-        uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = 0.0_DP
-        uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = 0.0_DP
-        uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = 0.0_DP
+        IF( ConstNonZeroV )THEN
+
+          V1 = One / Two
+          V2 = One / Two
+          V3 = Zero
+
+        ELSE
+
+          V1 = Zero
+          V2 = Zero
+          V3 = Zero
+
+        END IF
+
+        W = One / SQRT( One - V1**2 - V2**2 - V3**2 )
+
+        uPM(iNodeX,iX1,iX2,iX3,iPM_D )  = D
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V1 ) = V1
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V2 ) = V2
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V3 ) = V3
         uAM(iNodeX,iX1,iX2,iX3,iAM_P ) = 6.0_DP
         uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
           = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
 
         IF( R .LE. R0 )THEN
 
-          uPM(iNodeX,iX1,iX2,iX3,iPM_B1) &
-            = ( One / SQRT( Four * Pi ) ) &
-              * ( ( R / R0 )**8 - Two * ( R / R0 )**4 + One )
+          CB1 = ( One / SQRT( FourPi ) ) &
+                * ( ( R / R0 )**8 - Two * ( R / R0 )**4 + One )
 
         ELSE
 
-          uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.0_DP
+          CB1 = Zero
 
         END IF
 
-        uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = 0.0_DP
-        uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = One / SQRT( Four * Pi )
+        CB2 = Zero
+        CB3 = One / SQRT( FourPi )
+
+        VdotB = V1 * CB1 + V2 * CB2 + V3 * CB3
+
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B1 ) = W * VdotB * V1 + CB1 / W
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B2 ) = W * VdotB * V2 + CB2 / W
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B3 ) = W * VdotB * V3 + CB3 / W
         uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
       END DO
