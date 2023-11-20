@@ -1733,7 +1733,7 @@ CONTAINS
     ! --- Check that sign of FunZ changes across bounds ---
 
     IF( .NOT. fa * fb .LT. 0 ) THEN
-      PRINT*, 'Cannot perform bisection!'
+      PRINT*, 'Cannot perform bisection in primitive recovery!'
       STOP
     END IF
 
