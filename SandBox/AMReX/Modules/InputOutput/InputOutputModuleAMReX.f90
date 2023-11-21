@@ -135,6 +135,12 @@ MODULE InputOutputModuleAMReX
   USE MF_Euler_TallyModule, ONLY: &
     BaryonicMass_Initial, &
     BaryonicMass_OffGrid, &
+    EulerMomentumX1_Initial, &
+    EulerMomentumX1_OffGrid, &
+    EulerMomentumX2_Initial, &
+    EulerMomentumX2_OffGrid, &
+    EulerMomentumX3_Initial, &
+    EulerMomentumX3_OffGrid, &
     EulerEnergy_Initial, &
     EulerEnergy_OffGrid, &
     ElectronNumber_Initial, &
@@ -153,10 +159,13 @@ MODULE InputOutputModuleAMReX
 
     SUBROUTINE WriteFieldsAMReX_Checkpoint &
                  ( StepNo, nLevels, dt, time, &
-                   BaryonicMassArr, &
-                   EulerEnergyArr, &
-                   ElectronNumberArr, &
-                   ADMMassArr, &
+                   BaryonicMassArr   , &
+                   EulerMomentumX1Arr, &
+                   EulerMomentumX2Arr, &
+                   EulerMomentumX3Arr, &
+                   EulerEnergyArr    , &
+                   ElectronNumberArr , &
+                   ADMMassArr        , &
                    pBA, &
                    iWriteFields_uGF, iWriteFields_uCF, iWriteFields_uCR, &
                    pMF_uGF_Option, pMF_uCF_Option, pMF_uCR_Option ) BIND(c)
@@ -165,10 +174,13 @@ MODULE InputOutputModuleAMReX
       INTEGER(c_int),        INTENT(in) :: StepNo(*)
       INTEGER(c_int), VALUE, INTENT(in) :: nLevels
       REAL(DP)      ,        INTENT(in) :: dt(*), time(*)
-      REAL(DP)      ,        INTENT(in) :: BaryonicMassArr(*)
-      REAL(DP)      ,        INTENT(in) :: EulerEnergyArr(*)
-      REAL(DP)      ,        INTENT(in) :: ElectronNumberArr(*)
-      REAL(DP)      ,        INTENT(in) :: ADMMassArr(*)
+      REAL(DP)      ,        INTENT(in) :: BaryonicMassArr   (*)
+      REAL(DP)      ,        INTENT(in) :: EulerMomentumX1Arr(*)
+      REAL(DP)      ,        INTENT(in) :: EulerMomentumX2Arr(*)
+      REAL(DP)      ,        INTENT(in) :: EulerMomentumX3Arr(*)
+      REAL(DP)      ,        INTENT(in) :: EulerEnergyArr    (*)
+      REAL(DP)      ,        INTENT(in) :: ElectronNumberArr (*)
+      REAL(DP)      ,        INTENT(in) :: ADMMassArr        (*)
       TYPE(c_ptr)   ,        INTENT(in) :: pBA(*)
       INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uGF
       INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uCF
@@ -180,9 +192,12 @@ MODULE InputOutputModuleAMReX
 
     SUBROUTINE ReadHeaderAndBoxArrayData &
                  ( FinestLevelArr, StepNo, dt, Time, &
-                   BaryonicMassArr, &
-                   EulerEnergyArr, &
-                   ElectronNumberArr, &
+                   BaryonicMassArr   , &
+                   EulerMomentumX1Arr, &
+                   EulerMomentumX2Arr, &
+                   EulerMomentumX3Arr, &
+                   EulerEnergyArr    , &
+                   ElectronNumberArr , &
                    ADMMassArr, &
                    pBA, pDM, iChkFile ) BIND(c)
       IMPORT
@@ -190,10 +205,13 @@ MODULE InputOutputModuleAMReX
       INTEGER(c_int), INTENT(out) :: FinestLevelArr(*)
       INTEGER(c_int), INTENT(out) :: StepNo(*)
       REAL(DP)      , INTENT(out) :: dt(*), Time(*)
-      REAL(DP)      , INTENT(out) :: BaryonicMassArr(*)
-      REAL(DP)      , INTENT(out) :: EulerEnergyArr(*)
-      REAL(DP)      , INTENT(out) :: ElectronNumberArr(*)
-      REAL(DP)      , INTENT(out) :: ADMMassArr(*)
+      REAL(DP)      , INTENT(out) :: BaryonicMassArr   (*)
+      REAL(DP)      , INTENT(out) :: EulerMomentumX1Arr(*)
+      REAL(DP)      , INTENT(out) :: EulerMomentumX2Arr(*)
+      REAL(DP)      , INTENT(out) :: EulerMomentumX3Arr(*)
+      REAL(DP)      , INTENT(out) :: EulerEnergyArr    (*)
+      REAL(DP)      , INTENT(out) :: ElectronNumberArr (*)
+      REAL(DP)      , INTENT(out) :: ADMMassArr        (*)
       TYPE(c_ptr)   , INTENT(out) :: pBA(*), pDM(*)
       INTEGER(c_int), VALUE       :: iChkFile
     END SUBROUTINE ReadHeaderAndBoxArrayData
@@ -611,10 +629,13 @@ CONTAINS
     INTEGER :: nXX(3)
     INTEGER :: FinestLevelArr(0:0) ! Hack
 
-    REAL(DP) :: BaryonicMassArr  (0:1)
-    REAL(DP) :: EulerEnergyArr   (0:1)
-    REAL(DP) :: ElectronNumberArr(0:1)
-    REAL(DP) :: ADMMassArr       (0:1)
+    REAL(DP) :: BaryonicMassArr   (0:1)
+    REAL(DP) :: EulerMomentumX1Arr(0:1)
+    REAL(DP) :: EulerMomentumX2Arr(0:1)
+    REAL(DP) :: EulerMomentumX3Arr(0:1)
+    REAL(DP) :: EulerEnergyArr    (0:1)
+    REAL(DP) :: ElectronNumberArr (0:1)
+    REAL(DP) :: ADMMassArr        (0:1)
 
     LOGICAL :: ReadFields_uCF
     LOGICAL :: ReadFields_uCR
@@ -654,9 +675,12 @@ CONTAINS
 
     CALL ReadHeaderAndBoxArrayData &
            ( FinestLevelArr, StepNo, dt, t_new, &
-             BaryonicMassArr, &
-             EulerEnergyArr, &
-             ElectronNumberArr, &
+             BaryonicMassArr   , &
+             EulerMomentumX1Arr, &
+             EulerMomentumX2Arr, &
+             EulerMomentumX3Arr, &
+             EulerEnergyArr    , &
+             ElectronNumberArr , &
              ADMMassArr, &
              pBA, pDM, iRestart )
 
@@ -664,14 +688,20 @@ CONTAINS
     CALL amrex_set_finest_level( FinestLevel )
     nLevels = amrex_get_numlevels()
 
-    BaryonicMass_Initial   = BaryonicMassArr  (0)
-    BaryonicMass_OffGrid   = BaryonicMassArr  (1)
-    EulerEnergy_Initial    = EulerEnergyArr   (0)
-    EulerEnergy_OffGrid    = EulerEnergyArr   (1)
-    ElectronNumber_Initial = ElectronNumberArr(0)
-    ElectronNumber_OffGrid = ElectronNumberArr(1)
-    ADMMass_Initial        = ADMMassArr       (0)
-    ADMMass_OffGrid        = ADMMassArr       (1)
+    BaryonicMass_Initial    = BaryonicMassArr   (0)
+    BaryonicMass_OffGrid    = BaryonicMassArr   (1)
+    EulerMomentumX1_Initial = EulerMomentumX1Arr(0)
+    EulerMomentumX1_OffGrid = EulerMomentumX1Arr(1)
+    EulerMomentumX2_Initial = EulerMomentumX2Arr(0)
+    EulerMomentumX2_OffGrid = EulerMomentumX2Arr(1)
+    EulerMomentumX3_Initial = EulerMomentumX3Arr(0)
+    EulerMomentumX3_OffGrid = EulerMomentumX3Arr(1)
+    EulerEnergy_Initial     = EulerEnergyArr    (0)
+    EulerEnergy_OffGrid     = EulerEnergyArr    (1)
+    ElectronNumber_Initial  = ElectronNumberArr (0)
+    ElectronNumber_OffGrid  = ElectronNumberArr (1)
+    ADMMass_Initial         = ADMMassArr        (0)
+    ADMMass_OffGrid         = ADMMassArr        (1)
 
     DO iLevel = 0, nLevels-1
 
@@ -732,7 +762,6 @@ CONTAINS
                ( MF_uGR(iLevel), BA(iLevel), DM(iLevel), &
                  nDOFX * nGR * nSpecies, swX )
         CALL MF_uGR(iLevel) % SetVal( Zero )
-
 
         ! Assume nDOFZ_Z3 = nDOFZ_Z4 = nDOFZ_Z2
         IF( iLevel .GT. 0 .AND. UseFluxCorrection_TwoMoment )THEN
