@@ -91,6 +91,17 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
+## Nov 21 2023
+1. Working on TwoMoment_NeutrinoMatterSolverModule.F90 TwoMoment_DiscretizationModule_Collisions_Neutrinos.F90 TwoMoment_TimeSteppingModule.F90 by adding timer to see what causes 26ms GPU idle. 
+## Nov 20 2023
+1. Got iprof run of 16x16x16 relaxation case on sunspot
+2. try to run vtune on ortce machines, quanshao@sdp125072, but got error 38.
+<pre>
+Libomptarget error: Source location information not present. Compile with -g or -gline-tables-only.
+Libomptarget fatal error 1: failure of target construct while offloading is mandatory
+vtune: Error: Application sets its own handler for signal 38 that is used for internal needs of the tool. Collection cannot continue. Refer to the Troubleshooting section of the online help for possible workarounds.
+forrtl: error (76): Abort trap signal
+</pre>
 ## Nov 17 2023
 1. Thornado's relaxation compiles and runs on Sunspot with following changes to the buildRun.all.sh in /home/shaopingquan/ExaStar/thornado-GSD6461/SandBox/TwoMoment_OrderV/Executables
 <pre>
