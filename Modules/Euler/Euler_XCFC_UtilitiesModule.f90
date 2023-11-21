@@ -450,7 +450,7 @@ CONTAINS
                    iX_B0(2):iX_E0(2), &
                    iX_B0(3):iX_E0(3),iGF_Psi  )
 
-      CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, +1 )
+      CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, +1 )
 
       CALL ComputeConformalFactor &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
@@ -458,7 +458,7 @@ CONTAINS
       CALL ComputeLapseShiftCurvature &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
 
-      CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, -1 )
+      CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, -1 )
 
       dAl2 = uGF(:,iX_B0(1):iX_E0(1), &
                    iX_B0(2):iX_E0(2), &

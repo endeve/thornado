@@ -193,7 +193,7 @@ CONTAINS
                ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
 
         CALL MultiplyWithPsi6 &
-               ( iX_B1, iX_E1, G, U, Power, Mask_Option = uFM )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Power, Mask_Option = uFM )
 
         CALL thornado2amrex_X &
                ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
@@ -294,7 +294,8 @@ CONTAINS
                  iZ_B1, iZ_E1, LBOUND( uCR ), iZ_B1, iZ_E1, uCR, U )
 
         CALL MultiplyWithPsi6 &
-               ( iE_B1, iE_E1, iX_B1, iX_E1, G, U, Power, Mask_Option = uFM )
+               ( iE_B1, iE_E1, iX_B0, iX_E0, iX_B1, iX_E1, &
+                 G, U, Power, Mask_Option = uFM )
 
         CALL thornado2amrex_Z &
                ( nCR, nSp, nE, iE_B0, iE_E0, &

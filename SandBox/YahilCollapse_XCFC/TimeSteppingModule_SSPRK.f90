@@ -224,7 +224,7 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
 
-    CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, +1 ) ! Ustar = psi^6 * U
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, +1 ) ! Ustar = psi^6 * U
 
     Dstar = Zero ! --- Increment
 
@@ -255,7 +255,7 @@ CONTAINS
 
           END IF
 
-          CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, -1 )
+          CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, -1 )
 
           CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, D )
@@ -263,7 +263,7 @@ CONTAINS
           CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar )
 
-          CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, +1 )
+          CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, +1 )
 
           IF( EvolveGravity )THEN
 
@@ -277,7 +277,7 @@ CONTAINS
 
         END IF !( iS .NE. 1 )
 
-        CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, -1 )
+        CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, -1 )
 
         ! To match amrex implementation
         CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
@@ -319,7 +319,7 @@ CONTAINS
 
     END IF
 
-    CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, -1 )
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, -1 )
 
     CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
@@ -327,7 +327,7 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
-    CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, +1 )
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, +1 )
 
     IF( EvolveGravity )THEN
 
@@ -339,7 +339,7 @@ CONTAINS
 
     END IF
 
-    CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, -1 )
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, -1 )
 
     CALL IncrementOffGridTally_Euler_Relativistic( dM_OffGrid_Euler )
 

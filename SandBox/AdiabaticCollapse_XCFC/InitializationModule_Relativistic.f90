@@ -275,7 +275,7 @@ CONTAINS
                    iX_B0(2):iX_E0(2), &
                    iX_B0(3):iX_E0(3),iGF_Psi  )
 
-      CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, +1 )
+      CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, +1 )
 
       CALL ComputeConformalFactor &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
@@ -330,7 +330,7 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
-    CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, +1 )
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, +1 )
 
     CALL ComputeConformalFactor &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
@@ -338,7 +338,7 @@ CONTAINS
     CALL ComputeLapseShiftCurvature &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
 
-    CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, -1 )
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, -1 )
 
   END SUBROUTINE InitializeFields_AdiabaticCollapse_XCFC
 

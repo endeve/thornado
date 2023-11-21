@@ -85,9 +85,9 @@ CONTAINS
 
 
   SUBROUTINE MultiplyWithPsi6_X &
-    ( iX_B1, iX_E1, G, U, Power, Mask_Option )
+    ( iX_B, iX_E, iX_B1, iX_E1, G, U, Power, Mask_Option )
 
-    INTEGER , INTENT(in)    :: iX_B1(3), iX_E1(3), Power
+    INTEGER , INTENT(in)    :: iX_B(3), iX_E(3), iX_B1(3), iX_E1(3), Power
     REAL(DP), INTENT(in)    :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     INTEGER , INTENT(in), OPTIONAL :: &
@@ -110,9 +110,9 @@ CONTAINS
 
     nCF = SIZE( U, DIM = 5 )
 
-    DO iX3 = iX_B1(3), iX_E1(3)
-    DO iX2 = iX_B1(2), iX_E1(2)
-    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iX3 = iX_B(3), iX_E(3)
+    DO iX2 = iX_B(2), iX_E(2)
+    DO iX1 = iX_B(1), iX_E(1)
 
       IF( IsNotLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
@@ -135,10 +135,10 @@ CONTAINS
 
 
   SUBROUTINE MultiplyWithPsi6_Z &
-    ( iE_B1, iE_E1, iX_B1, iX_E1, G, U, Power, Mask_Option )
+    ( iE_B1, iE_E1, iX_B, iX_E, iX_B1, iX_E1, G, U, Power, Mask_Option )
 
     INTEGER , INTENT(in)    :: &
-      iE_B1, iE_E1, iX_B1(3), iX_E1(3), Power
+      iE_B1, iE_E1, iX_B(3), iX_E(3), iX_B1(3), iX_E1(3), Power
     REAL(DP), INTENT(in)    :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
@@ -170,9 +170,9 @@ CONTAINS
 
     nE = iE_E0 - iE_B0 + 1
 
-    DO iX3 = iX_B1(3), iX_E1(3)
-    DO iX2 = iX_B1(2), iX_E1(2)
-    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iX3 = iX_B(3), iX_E(3)
+    DO iX2 = iX_B(2), iX_E(2)
+    DO iX1 = iX_B(1), iX_E(1)
 
       IF( IsNotLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
