@@ -144,7 +144,7 @@ PROGRAM ApplicationDriver
   Gamma_IDEAL = 1.30_DP
   D0    = 1.75_DP
 
-  t_end = CollapseTime - 0.5_DP * Millisecond
+  t_end = CollapseTime
   bcX = [ 30, 0, 0 ]
 
   nX    = [ 512                 , 1     , 1      ]
