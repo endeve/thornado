@@ -271,6 +271,10 @@ CONTAINS
 
         CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, -1 )
 
+        ! To match amrex implementation
+        CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar )
+
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, Ustar, D, Dstar(:,:,:,:,:,iS) )
