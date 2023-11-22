@@ -348,7 +348,7 @@ CONTAINS
 
 #if defined( THORNADO_OMP )
       !$OMP PARALLEL &
-      !$OMP PRIVATE( BX, MFI, MF, GF, uMF, uGF, iX_B0, iX_E0, iX_B1, iX_E1 )
+      !$OMP PRIVATE( BX, MFI, M, G, uMF, uGF, iX_B0, iX_E0, iX_B1, iX_E1 )
 #endif
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
@@ -499,14 +499,15 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)  :: MF_uGS(0:)
     REAL(DP)            , INTENT(out) :: GravitationalMass
 
-    TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_box)       :: BX
+    TYPE(amrex_mfiter)    :: MFI
+    TYPE(amrex_imultifab) :: iMF_FineMask
 
     REAL(DP), ALLOCATABLE :: GS(:,:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: uFM(:,:,:,:)
 
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLevel
-    REAL(DP) :: GravitationalMass_OMP
 
     ! --- Assuming 1D spherical symmetry ---
 
@@ -514,14 +515,15 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL CreateMesh_MF( iLevel, MeshX )
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGS % BA, MF_uGS % DM )
 
-      GravitationalMass_OMP = Zero
+      CALL CreateMesh_MF( iLevel, MeshX )
 
 #if defined( THORNADO_OMP )
       !$OMP PARALLEL &
-      !$OMP PRIVATE( BX, MFI, GS, uGS, iX_B0, iX_E0, iX_B1, iX_E1 ) &
-      !$OMP REDUCTION( +:GravitationalMass_OMP )
+      !$OMP PRIVATE( BX, MFI, GS, uGS, uFM, &
+      !$OMP          iX_B0, iX_E0, iX_B1, iX_E1 ) &
+      !$OMP REDUCTION( +:GravitationalMass )
 #endif
 
       CALL amrex_mfiter_build( MFI, MF_uGS(iLevel), tiling = UseTiling )
@@ -529,6 +531,7 @@ CONTAINS
       DO WHILE( MFI % next() )
 
         uGS => MF_uGS(iLevel) % DataPtr( MFI )
+        uFM => iMF_FineMask   % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
@@ -546,7 +549,8 @@ CONTAINS
                ( nGS, iX_B0, iX_E0, LBOUND( uGS ), iX_B0, iX_E0, uGS, GS )
 
         CALL ComputeGravitationalMass &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, GS, GravitationalMass_OMP )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, GS, GravitationalMass, &
+                 Mask_Option = uFM )
 
         CALL DeallocateArray_X &
                ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
@@ -561,9 +565,9 @@ CONTAINS
       !$OMP END PARALLEL
 #endif
 
-      GravitationalMass = GravitationalMass_OMP
-
       CALL DestroyMesh_MF( MeshX )
+
+      CALL DestroyFineMask( iMF_FineMask )
 
     END DO ! iLevel = 0, nLevels-1
 
