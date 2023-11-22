@@ -218,7 +218,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeGravitationalMass &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, GS, GravitationalMass )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, GS, GravitationalMass, Mask_Option )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -226,9 +226,23 @@ CONTAINS
       GS(nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
     REAL(DP), INTENT(inout) :: &
       GravitationalMass
+    INTEGER , INTENT(in), OPTIONAL :: &
+      Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER  :: iX1, iX2, iX3
     REAL(DP) :: d3X
+
+    INTEGER :: Mask(iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1)
+
+    IF( PRESENT( Mask_Option ) )THEN
+
+      Mask = Mask_Option
+
+    ELSE
+
+      Mask = iLeaf
+
+    END IF
 
     ASSOCIATE &
       ( dX1 => MeshX(1) % Width, &
@@ -242,6 +256,8 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
+
+      IF( IsNotLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
       d3X = Two / Pi * dX1(iX1) * dX2(iX2) * dX3(iX3)
 
