@@ -160,7 +160,8 @@ MODULE MagnetofluidFieldsModule
   INTEGER, PUBLIC, PARAMETER :: iDM_T3    = 07 ! Theta 3
   INTEGER, PUBLIC, PARAMETER :: iDM_MinE  = 08 ! Minimum Specific Internal Energy
   INTEGER, PUBLIC, PARAMETER :: iDM_MaxE  = 09 ! Maximum Specific Internal Energy
-  INTEGER, PUBLIC, PARAMETER :: nDM       = 09 ! n Diagnostic Magnetofluid Fields
+  INTEGER, PUBLIC, PARAMETER :: iDM_Div   = 10 ! Divergence of Eulerian Magnetic Field
+  INTEGER, PUBLIC, PARAMETER :: nDM       = 10 ! n Diagnostic Magnetofluid Fields
 
   CHARACTER(32), DIMENSION(nDM), PUBLIC, PARAMETER :: &
     namesDM = [ 'TCI                             ', &
@@ -171,7 +172,8 @@ MODULE MagnetofluidFieldsModule
                 'Theta 2                         ', &
                 'Theta 3                         ', &
                 'Min E                           ', &
-                'Max E                           ' ]
+                'Max E                           ', &
+                'Div                             ' ]
 
   CHARACTER(10), DIMENSION(nDM), PUBLIC, PARAMETER :: &
     ShortNamesDM = [ 'DM_TCI    ', &
@@ -182,7 +184,8 @@ MODULE MagnetofluidFieldsModule
                      'DM_T2     ', &
                      'DM_T3     ', &
                      'DM_MinE   ', &
-                     'DM_MaxE   ' ]
+                     'DM_MaxE   ', &
+                     'DM_Div    ' ]
 
   REAL(DP), DIMENSION(nDM), PUBLIC :: unitsDM
 
@@ -398,6 +401,7 @@ CONTAINS
     uDM(:,:,:,:,iDM_T1)    = One
     uDM(:,:,:,:,iDM_T2)    = One
     uDM(:,:,:,:,iDM_T3)    = One
+    uDM(:,:,:,:,iDM_Div)   = Zero
 
   END SUBROUTINE ResetFields_Diagnostic
 
@@ -498,6 +502,7 @@ CONTAINS
       unitsAM(iAM_Cs) = Kilometer / Second
 
       ! --- Diagnostic ---
+
       unitsDM(iDM_TCI)   = One
       unitsDM(iDM_Sh_X1) = One
       unitsDM(iDM_Sh_X2) = One
@@ -507,6 +512,7 @@ CONTAINS
       unitsDM(iDM_T3)    = One
       unitsDM(iDM_MinE)  = Erg / Gram
       unitsDM(iDM_MaxE)  = Erg / Gram
+      unitsDM(iDM_Div)   = Gauss / Kilometer
 
     ELSE
 
