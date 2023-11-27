@@ -1,11 +1,11 @@
-function [B] = GetCellAverages(nNodes, A)
+function [B] = GetCellAverages(Dim, nNodes, A)
 % Calculates cell averages for the nodal data matrix A.
 W1D   = zeros(nNodes,1);
 W1    = zeros(nNodes,1);
 W2    = zeros(nNodes,1);
 W3    = zeros(nNodes,1);
-nX    = size(A, [1, 2, 3]) ./ nNodes;
-B   = zeros(nX);
+nX    = uint64(size(A, [1, 2, 3]) / nNodes);
+B     = zeros(nX);
 
 if(nNodes == 1)
     W1D = 1.0;
@@ -13,13 +13,6 @@ elseif(nNodes == 2)
     W1D = [0.5, 0.5];
 elseif(nNodes == 3)
     W1D = [5.0 / 18.0, 8.0 / 18.0, 5.0 / 18.0];
-end
-
-Dim = 1;
-if(size(A,2) >= 1)
-    Dim = 2;
-elseif(size(A,3) >= 1)
-    Dim = 3;
 end
 
 if(Dim == 3)
