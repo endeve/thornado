@@ -91,6 +91,22 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
+## Nov 27 2023
+1. Measuring times for the memory allocation and the computation in InitializeNeutrinoMatterSolver subroutine of Modules/TwoMoment/TwoMoment_NeutrinoMatterSolverModule.F90 on PVC04, JLSE-A100, Sunspot, and Ortce's QZ1B-SPR-4oam-PVC partition sdp12* machines.
+2. Investigate memory pool effects on the run time;
+<pre>
+	Timer_IMEX
+mem-128-64-16384:	1.78E+02
+mem-256-64-32768:	1.61E+02
+mem-256-64-16384:	1.62E+02
+mem-512-64-16384:	2.22E+02
+mem-512-64-32768:	1.55E+02
+mem-1024-64-16384:	1.65E+02
+mem-1024-64-32768:	1.54E+02
+
+</pre>
+3. Time for memory allocation comparison between A100 and PVC04, Sunspot 
+ ![time4MemoryAllocation](./pics-readme/time4MemoryAllocation.png)
 ## Nov 21 2023
 1. Working on TwoMoment_NeutrinoMatterSolverModule.F90 TwoMoment_DiscretizationModule_Collisions_Neutrinos.F90 TwoMoment_TimeSteppingModule.F90 by adding timer to see what causes 26ms GPU idle. 
 ## Nov 20 2023
