@@ -2,19 +2,40 @@ PROGRAM main
 
   ! --- AMReX Modules ---
 
+  USE amrex_box_module, ONLY: &
+    amrex_box
+  USE amrex_multifab_module, ONLY: &
+    amrex_mfiter, &
+    amrex_mfiter_build, &
+    amrex_mfiter_destroy, &
+    amrex_imultifab
+  USE amrex_amrcore_module, ONLY: &
+    amrex_geom
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
-    amrex_parallel_communicator
+    amrex_parallel_communicator, &
+    amrex_parallel_reduce_max
 
   ! --- thornado Modules ---
 
+  USE ProgramHeaderModule, ONLY: &
+    nDOFX
   USE UnitsModule, ONLY: &
-    UnitsDisplay
+    UnitsDisplay, &
+    Gram, &
+    Centimeter
+  USE FluidFieldsModule, ONLY: &
+    iPF_D
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
-    DP
+    DP, &
+    One
+  USE MaskModule, ONLY: &
+    CreateFineMask, &
+    DestroyFineMask, &
+    IsNotLeafElement
   USE MF_FieldsModule_Geometry, ONLY: &
     MF_uGF
   USE MF_FieldsModule_Euler, ONLY: &
@@ -65,7 +86,8 @@ PROGRAM main
     t_chk, &
     dt_wrt, &
     dt_chk, &
-    DEBUG
+    DEBUG, &
+    UseTiling
   USE MF_Euler_TimersModule, ONLY: &
     TimeIt_AMReX_Euler
   USE MF_TimersModule, ONLY: &
@@ -81,9 +103,10 @@ PROGRAM main
 
   INCLUDE 'mpif.h'
 
-  INTEGER  :: iErr
+  INTEGER  :: iErr, iLevel
   LOGICAL  :: wrt, chk
-  REAL(DP) :: Timer_Evolution
+  REAL(DP) :: Timer_Evolution, CentralDensity
+  REAL(DP), PARAMETER :: MaxCentralDensity = 1.0e15_DP * Gram / Centimeter**3
 
   TimeIt_AMReX       = .TRUE.
   TimeIt_AMReX_Euler = .TRUE.
@@ -167,6 +190,10 @@ PROGRAM main
     CALL WritePlotFile
 
     CALL WriteCheckpointFile
+
+    CALL GetCentralDensity( CentralDensity )
+
+    IF( CentralDensity .GE. MaxCentralDensity ) EXIT
 
   END DO
 
@@ -301,6 +328,68 @@ CONTAINS
     CALL TimersStop_AMReX( Timer_AMReX_InputOutput )
 
   END SUBROUTINE WriteCheckpointFile
+
+
+  SUBROUTINE GetCentralDensity( CentralDensity )
+
+    REAL(DP), INTENT(out) :: CentralDensity
+
+    TYPE(amrex_mfiter)    :: MFI
+    TYPE(amrex_box)       :: BX
+    TYPE(amrex_imultifab) :: iMF_FineMask
+
+    REAL(DP), CONTIGUOUS, POINTER :: uPF(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: uFM(:,:,:,:)
+
+    INTEGER :: iX_B0(3), iX_E0(3), iX2, iX3
+
+    CALL ComputeFromConserved_Euler_MF &
+           ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+    CentralDensity = -HUGE( One )
+
+    DO iLevel = 0, nLevels-1
+
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uPF % BA, MF_uPF % DM )
+
+      CALL amrex_mfiter_build( MFI, MF_uPF(iLevel), tiling = UseTiling  )
+
+      DO WHILE( MFI % next() )
+
+        uPF => MF_uPF(iLevel) % DataPtr( MFI )
+        uFM => iMF_FineMask   % DataPtr( MFI )
+
+        BX = MFI % TileBox()
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+
+        IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo( 1 ) )THEN
+
+          IF( IsNotLeafElement( uFM(iX_B0(1),iX_B0(2),iX_B0(3),1) ) ) CYCLE
+
+          DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = iX_B0(2), iX_E0(2)
+
+            CentralDensity &
+              = MAX( CentralDensity, uPF(iX_B0(1),iX2,iX3,nDOFX*(iPF_D-1)+1) )
+
+          END DO
+          END DO
+
+        END IF
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+      CALL DestroyFineMask( iMF_FineMask )
+
+    END DO
+
+    CALL amrex_parallel_reduce_max( CentralDensity )
+
+  END SUBROUTINE GetCentralDensity
 
 
 END PROGRAM main
