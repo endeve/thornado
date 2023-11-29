@@ -234,14 +234,24 @@ CONTAINS
 
       DO jS = 1, iS - 1
 
-        IF( a_SSPRK(iS,jS) .NE. Zero )THEN
-
+        IF( a_SSPRK(iS,jS) .NE. Zero ) &
           CALL AddIncrement_Fluid &
                  ( One, Ustar, dt * a_SSPRK(iS,jS), Dstar(:,:,:,:,:,jS) )
 
-        END IF
-
       END DO
+
+      ! To match amrex implementation
+
+      IF( iS .GT. 1 )THEN
+
+        CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, -1 )
+
+        CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar )
+
+        CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, +1 )
+
+      END IF
 
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
@@ -303,14 +313,20 @@ CONTAINS
 
     DO iS = 1, nStages_SSPRK
 
-      IF( w_SSPRK(iS) .NE. Zero )THEN
-
+      IF( w_SSPRK(iS) .NE. Zero ) &
         CALL AddIncrement_Fluid &
                ( One, U, dt * w_SSPRK(iS), Dstar(:,:,:,:,:,iS) )
 
-      END IF
-
     END DO
+
+    ! To match amrex implementation
+
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, -1 )
+
+    CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, +1 )
 
     IF( EvolveGravity )THEN
 

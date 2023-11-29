@@ -217,22 +217,33 @@ CONTAINS
 
       DO jS = 1, iS-1
 
-        DO iLevel = 0, nLevels-1
+        IF( a_SSPRK(iS,jS) .NE. Zero )THEN
 
-          IF( a_SSPRK(iS,jS) .NE. Zero ) &
-            CALL MF_U(iS,iLevel) &
-                   % LinComb( One, MF_U(iS,iLevel), 1, &
-                              dt(iLevel) * a_SSPRK(iS,jS), MF_D(jS,iLevel), 1, &
-                              1, nCompCF, 0 )
+          DO iLevel = 0, nLevels-1
 
-        END DO ! iLevel = 0, nLevels-1
+              CALL MF_U(iS,iLevel) &
+                     % LinComb( One, MF_U(iS,iLevel), 1, &
+                                dt(iLevel) * a_SSPRK(iS,jS), &
+                                MF_D(jS,iLevel), 1, &
+                                1, nCompCF, 0 )
 
-!!$        IF( a_SSPRK(iS,jS) .NE. Zero ) &
-!!$          CALL AverageDown &
-!!$                 ( MF_uGF, MF_U(iS,:), &
-!!$                   MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
+          END DO
+
+        END IF ! a_SSPRK(iS,jS) .NE. Zero
 
       END DO ! jS = 1, iS-1
+
+      IF( iS .GT. 1 )THEN
+
+        CALL MultiplyWithPsi6_MF( MF_uGF, MF_U(iS,:), -1 )
+
+        CALL AverageDown &
+               ( MF_uGF, MF_U(iS,:), &
+                 MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
+
+        CALL MultiplyWithPsi6_MF( MF_uGF, MF_U(iS,:), +1 )
+
+      END IF
 
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
@@ -305,25 +316,28 @@ CONTAINS
 
     DO iS = 1, nStages
 
-      DO iLevel = 0, nLevels-1
+      IF( w_SSPRK(iS) .NE. Zero )THEN
 
-        IF( w_SSPRK(iS) .NE. Zero )THEN
+        DO iLevel = 0, nLevels-1
 
           CALL MF_uCF(iLevel) &
                  % LinComb( One, MF_uCF(iLevel), 1, &
                             dt(iLevel) * w_SSPRK(iS), MF_D(iS,iLevel), 1, 1, &
                             nCompCF, 0 )
 
-        END IF
+        END DO
 
-      END DO ! iLevel
+      END IF ! w_SSPRK(iS) .NE. Zero
 
-!!$      IF( w_SSPRK(iS) .NE. Zero ) &
-!!$        CALL AverageDown &
-!!$               ( MF_uGF, MF_uCF, &
-!!$                 MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
+    END DO ! iS = 1, nStages
 
-    END DO ! iS
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, -1 )
+
+    CALL AverageDown &
+           ( MF_uGF, MF_uCF, &
+             MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, +1 )
 
     DO iLevel = 0, nLevels-1
 
