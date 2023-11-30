@@ -234,7 +234,8 @@ CONTAINS
     ( Time, StepNo, MF_uGF, &
       MF_uGF_Option, MF_uCF_Option, MF_uPF_Option, &
       MF_uAF_Option, MF_uDF_Option, &
-      MF_uCR_Option, MF_uPR_Option, MF_uGR_Option, PlotFileNumber_Option )
+      MF_uCR_Option, MF_uPR_Option, MF_uGR_Option, PlotFileNumber_Option, &
+      Verbose_Option )
 
     REAL(DP)            , INTENT(in) :: Time
     INTEGER             , INTENT(in) :: StepNo(0:)
@@ -248,6 +249,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uPR_Option(0:)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uGR_Option(0:)
     INTEGER             , INTENT(in), OPTIONAL :: PlotFileNumber_Option
+    LOGICAL             , INTENT(in), OPTIONAL :: Verbose_Option
 
     CHARACTER(08)                   :: NumberString
     CHARACTER(64)                   :: PlotFileName
@@ -266,6 +268,11 @@ CONTAINS
     INTEGER                         :: iFd, iOS, iLevel, nF, iS, iZ1
     TYPE(amrex_multifab)            :: MF_plt(0:nLevels-1)
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
+    LOGICAL                         :: Verbose
+
+    Verbose = .FALSE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
 
     nF = 7 ! MPI proc, X1_C, X2_C, X3_C, dX1, dX2, dX3
 
@@ -345,7 +352,7 @@ CONTAINS
 
     PlotFileName = TRIM( PlotFileNameRoot ) // NumberString
 
-    IF( amrex_parallel_ioprocessor() )THEN
+    IF( Verbose )THEN
 
       WRITE(*,*)
       WRITE(*,'(6x,A,A)') 'Writing PlotFile ', PlotFileName
