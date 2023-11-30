@@ -97,11 +97,12 @@ MODULE InputParsingModule
   LOGICAL :: UseFluxCorrection_Euler
   LOGICAL :: UseFluxCorrection_TwoMoment
   LOGICAL :: UseAMR
-  INTEGER , ALLOCATABLE :: nX(:)
-  INTEGER , ALLOCATABLE :: RefinementRatio(:)
-  INTEGER , ALLOCATABLE :: StepNo(:)
-  INTEGER , ALLOCATABLE :: nRefinementBuffer(:)
-  REAL(DP), ALLOCATABLE :: TagCriteria(:)
+  INTEGER     , ALLOCATABLE :: nX(:)
+  INTEGER     , ALLOCATABLE :: RefinementRatio(:)
+  INTEGER     , ALLOCATABLE :: StepNo(:)
+  INTEGER     , ALLOCATABLE :: nRefinementBuffer(:)
+  REAL(DP)    , ALLOCATABLE :: TagCriteria(:)
+  CHARACTER(:), ALLOCATABLE :: RefinementScheme
 
   REAL(DP), ALLOCATABLE :: dt   (:), dt_TM(:)
   REAL(DP), ALLOCATABLE :: t_old(:)
@@ -378,6 +379,7 @@ CONTAINS
     UseFluxCorrection_Euler     = .FALSE.
     UseFluxCorrection_TwoMoment = .FALSE.
     UseTiling                   = .FALSE.
+    RefinementScheme            = ''
     CALL amrex_parmparse_build( PP, 'amr' )
       CALL PP % getarr  ( 'n_cell', &
                            nX )
@@ -402,6 +404,8 @@ CONTAINS
                            UseFluxCorrection_Euler )
         CALL PP % query ( 'UseFluxCorrection_TwoMoment', &
                            UseFluxCorrection_TwoMoment )
+        CALL PP % query ( 'RefinementScheme', &
+                           RefinementScheme )
         CALL PP % getarr( 'TagCriteria', &
                            TagCriteria )
         CALL PP % getarr( 'n_error_buf', &

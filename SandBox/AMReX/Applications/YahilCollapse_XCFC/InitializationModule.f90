@@ -122,6 +122,7 @@ MODULE InitializationModule
     UseTiling, &
     UseFluxCorrection_Euler, &
     TagCriteria, &
+    RefinementScheme, &
     DescribeProgramHeader_AMReX
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
@@ -570,10 +571,28 @@ CONTAINS
       ! TagCriteria(iLevel+1) because iLevel starts at 0 but
       ! TagCriteria starts with 1
 
-      CALL TagElements &
-             ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-               uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
-               LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+      IF( TRIM( RefinementScheme ) .EQ. 'Density' )THEN
+
+        CALL TagElements_Density &
+               ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                 uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+                 LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+      ELSE IF( TRIM( RefinementScheme ) .EQ. 'Mesh' )THEN
+
+        CALL TagElements &
+               ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                 uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+                 LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+      ELSE
+
+        CALL TagElements &
+               ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                 uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+                 LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+      END IF
 
     END DO
 
