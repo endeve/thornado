@@ -260,6 +260,10 @@ CONTAINS
                             dt(iLevel) * a_IM(iS,iS), MF_DU_Im(iLevel,iS), 1, &
                             1, MF_U(iLevel) % nComp(), swX )
 #endif
+
+
+          CALL ApplyPositivityLimiter_TwoMoment_MF &
+                  ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
         END IF
 
         IF( ANY( a_EX(:,iS) .NE. 0.0_AR ) .OR. ( w_EX(iS) .NE. 0.0_AR ) )THEN

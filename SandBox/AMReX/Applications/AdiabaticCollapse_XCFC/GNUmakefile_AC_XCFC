@@ -62,6 +62,7 @@ include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Mesh
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.MeshRefinement
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.ProgramHeader
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Euler
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Gravity
 include Make.AdiabaticCollapse_XCFC
 
 # Include directories and source files needed from Poseidon

@@ -24,15 +24,14 @@ MODULE MF_Euler_TimersModule
     Timer_Euler_DD_TCI, &
     Timer_Euler_DD_SD, &
     Timer_Euler_SlopeLimiter, &
+    Timer_Euler_SL_CharDecomp, &
     Timer_Euler_PositivityLimiter, &
-    Timer_Euler_BoundaryConditions, &
-    Timer_Euler_SL_CharDecomp
+    Timer_Euler_BoundaryConditions
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
-    DP, &
-    Zero
+    DP
 
   IMPLICIT NONE
   PRIVATE
@@ -45,7 +44,7 @@ MODULE MF_Euler_TimersModule
   PUBLIC :: TimersStop_AMReX_Euler
   PUBLIC :: TimersWtime_AMReX
 
-  LOGICAL,  PUBLIC :: TimeIt_AMReX_Euler = .FALSE.
+  LOGICAL, PUBLIC :: TimeIt_AMReX_Euler = .FALSE.
 
   INTEGER :: iT_DG  = 1
   INTEGER :: iT_INC = 2
@@ -228,8 +227,8 @@ CONTAINS
       TimerAve, TimerMin, TimerMax, TimerSum )
 
     CHARACTER(nChar), INTENT(in) :: OutFMT, OutMMS, Label
-    REAL(DP), INTENT(in) :: TimerAve_P
-    REAL(DP), INTENT(in) :: TimerAve, TimerMin, TimerMax, TimerSum
+    REAL(DP)        , INTENT(in) :: TimerAve_P
+    REAL(DP)        , INTENT(in) :: TimerAve, TimerMin, TimerMax, TimerSum
 
     WRITE(*,TRIM(OutFMT)) &
       Label, ' : ', TimerAve, ' s = ', TimerAve / TimerAve_P

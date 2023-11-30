@@ -31,3 +31,4 @@ F90EXE_sources  += Euler_PositivityLimiterModule_Relativistic_IDEAL.F90
 F90EXE_sources  += Euler_PositivityLimiterModule_Relativistic_TABLE.F90
 F90EXE_sources  += Euler_PositivityLimiterModule.F90
 F90EXE_sources  += Euler_MeshRefinementModule.F90
+f90EXE_sources  += Euler_XCFC_UtilitiesModule.f90

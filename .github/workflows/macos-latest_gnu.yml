@@ -1,9 +1,11 @@
 name: Compile thornado on MacOS (latest) with gnu compilers
 
-on: [ push, pull_request ]
+on:
+  schedule:
+    - cron: '0 3 * * *'
 
 jobs:
-  compile-with-amrex_gnu:
+  compile-with--gnu:
     name: Compile thornado on MacOS (latest) with gnu compilers
     runs-on: macos-latest
     env:
@@ -38,14 +40,23 @@ jobs:
           echo ""
           echo "brew install gcc"
                 brew install gcc
-          GCC_VERSION=`ls /usr/local/Cellar/gcc`
+          GCC_VERSION=`ls /usr/local/Cellar/gcc | tail -n1`
+          echo ${GCC_VERSION}
           echo "/usr/local/Cellar/gcc/${GCC_VERSION}/bin" >> ${GITHUB_PATH}
-          GCC_MAJOR=`ls /usr/local/Cellar/gcc | cut -c1-2`
+          GCC_MAJOR=`ls /usr/local/Cellar/gcc | tail -n1 | cut -c1-2`
           echo "GCC_MAJOR=${GCC_MAJOR}" >> ${GITHUB_ENV}
           echo ""
           echo "brew install gfortran"
                 brew install gfortran
-          echo ""
+          # Hack: https://github.com/actions/setup-python/issues/577
+          echo "rm -rf /usr/local/bin/2to3*"
+                rm -rf /usr/local/bin/2to3*
+          echo "rm -rf /usr/local/bin/idle3*"
+                rm -rf /usr/local/bin/idle3*
+          echo "rm -rf /usr/local/bin/pydoc3*"
+                rm -rf /usr/local/bin/pydoc3*
+          echo "rm -rf /usr/local/bin/python3*"
+                rm -rf /usr/local/bin/python3*
           echo "brew install open-mpi --cc=gcc-${GCC_MAJOR}"
                 brew install open-mpi --cc=gcc-${GCC_MAJOR}
           OMPI_VERSION=`ls /usr/local/Cellar/open-mpi`
@@ -112,6 +123,18 @@ jobs:
           make
           make clobber
 
+      - name: Compile SandBox/YahilCollapse_XCFC/Executables
+        run: |
+          cd ${THORNADO_DIR}/SandBox/YahilCollapse_XCFC/Executables
+          make
+          make clobber
+
+      - name: Compile SandBox/AdiabaticCollapse_XCFC/Executables
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AdiabaticCollapse_XCFC/Executables
+          make
+          make clobber
+
       # OSX's cpp has trouble with fortran files; use homebrew's instead
       # Thanks to Weiqun Zhang from for finding this bug!
 
@@ -127,12 +150,6 @@ jobs:
           make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
           make realclean
 
-          #      - name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
-          #        run: |
-          #          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
-          #          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
-          #          make realclean
-
       - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
@@ -145,14 +162,26 @@ jobs:
           make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
           make realclean
 
-          #      - name: Compile SandBox/AMReX/Applications/YahilCollapse_XCFC
-          #        run: |
-          #          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/YahilCollapse_XCFC
-          #          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
-          #          make realclean
+      - name: Compile SandBox/AMReX/Applications/YahilCollapse_XCFC
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/YahilCollapse_XCFC
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make realclean
+
+      - name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make realclean
 
       - name: Compile SandBox/AMReX/TwoMoment_Test
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/TwoMoment_Test
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make realclean
+
+      - name: Compile SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
           make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
           make realclean

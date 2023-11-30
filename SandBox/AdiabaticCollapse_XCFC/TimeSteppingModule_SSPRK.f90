@@ -11,21 +11,27 @@ MODULE TimeSteppingModule_SSPRK
     iX_E1, &
     nDOFX
   USE GeometryFieldsModule, ONLY: &
-    iGF_Psi
-  USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
-    ComputeConformalFactor_Poseidon, &
-    ComputeGeometry_Poseidon
+    iGF_Psi, &
+    nGF
+  USE XCFC_UtilitiesModule, ONLY: &
+    MultiplyWithPsi6, &
+    nGS, &
+    nMF, &
+    UpdateConformalFactorAndMetric_XCFC, &
+    UpdateLapseShiftCurvature_XCFC, &
+    ApplyBoundaryConditions_Geometry_XCFC
+  USE GravitySolutionModule_XCFC, ONLY: &
+    ComputeConformalFactor_XCFC, &
+    ComputeLapseShiftCurvature_XCFC
   USE FluidFieldsModule, ONLY: &
     nCF
   USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
     ApplySlopeLimiter_Euler_Relativistic_TABLE
   USE Euler_PositivityLimiterModule_Relativistic_TABLE, ONLY: &
     ApplyPositivityLimiter_Euler_Relativistic_TABLE
-  USE Poseidon_UtilitiesModule, ONLY: &
-    ComputeMatterSources_Poseidon, &
-    ComputePressureTensorTrace_Poseidon, &
-    MultiplyByPsi6, &
-    DivideByPsi6
+  USE Euler_XCFC_UtilitiesModule, ONLY: &
+    ComputeConformalFactorSourcesAndMg_XCFC_Euler, &
+    ComputePressureTensorTrace_XCFC_Euler
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler,  &
@@ -205,18 +211,12 @@ CONTAINS
 
     INTEGER :: iS, jS
 
-    REAL(DP) :: E (nDOFX,iX_B0(1):iX_E0(1), &
+    REAL(DP) :: GS(nDOFX,iX_B0(1):iX_E0(1), &
                          iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3))
-    REAL(DP) :: Si(nDOFX,iX_B0(1):iX_E0(1), &
+                         iX_B0(3):iX_E0(3),nGS)
+    REAL(DP) :: M (nDOFX,iX_B0(1):iX_E0(1), &
                          iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3),3)
-    REAL(DP) :: S (nDOFX,iX_B0(1):iX_E0(1), &
-                         iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3))
-    REAL(DP) :: Mg(nDOFX,iX_B0(1):iX_E0(1), &
-                         iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3))
+                         iX_B0(3):iX_E0(3),nMF)
 
     REAL(DP) :: dM_OffGrid_Euler(nCF)
 
@@ -224,7 +224,7 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
 
-    CALL MultiplyByPsi6( iX_B1, iX_E1, G, U )
+    CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, +1 )
 
     Dstar = Zero ! --- Increment
 
@@ -248,13 +248,10 @@ CONTAINS
 
         IF( iS .NE. 1 )THEN
 
-          CALL ComputeMatterSources_Poseidon &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, E, Si, Mg )
+          CALL ComputeConformalFactor &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
 
-          CALL ComputeConformalFactor_Poseidon &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, G )
-
-          CALL DivideByPsi6( iX_B1, iX_E1, G, Ustar )
+          CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, -1 )
 
           CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, D )
@@ -262,23 +259,17 @@ CONTAINS
           CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar )
 
-          CALL MultiplyByPsi6( iX_B1, iX_E1, G, Ustar )
+          CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, +1 )
 
-          CALL ComputeMatterSources_Poseidon &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, E, Si, Mg )
+          CALL ComputeConformalFactor &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
 
-          CALL ComputeConformalFactor_Poseidon &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, G )
-
-          CALL ComputePressureTensorTrace_Poseidon &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, S )
-
-          CALL ComputeGeometry_Poseidon &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, G )
+          CALL ComputeLapseShiftCurvature &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
 
         END IF
 
-        CALL DivideByPsi6( iX_B1, iX_E1, G, Ustar )
+        CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, -1 )
 
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -309,13 +300,10 @@ CONTAINS
 
     END DO
 
-    CALL ComputeMatterSources_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, E, Si, Mg )
+    CALL ComputeConformalFactor &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, M, GS )
 
-    CALL ComputeConformalFactor_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, G )
-
-    CALL DivideByPsi6( iX_B1, iX_E1, G, U )
+    CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, -1 )
 
     CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
@@ -323,21 +311,15 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
-    CALL MultiplyByPsi6( iX_B1, iX_E1, G, U )
+    CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, +1 )
 
-    CALL ComputeMatterSources_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, E, Si, Mg )
+    CALL ComputeConformalFactor &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, M, GS )
 
-    CALL ComputeConformalFactor_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, G )
+    CALL ComputeLapseShiftCurvature &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, M, GS )
 
-    CALL ComputePressureTensorTrace_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, S )
-
-    CALL ComputeGeometry_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, G )
-
-    CALL DivideByPsi6( iX_B1, iX_E1, G, U )
+    CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, -1 )
 
     CALL IncrementOffGridTally_Euler_Relativistic( dM_OffGrid_Euler )
 
@@ -377,6 +359,55 @@ CONTAINS
     END DO
 
   END SUBROUTINE AddIncrement_Fluid
+
+
+  SUBROUTINE ComputeConformalFactor &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
+
+    INTEGER , INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      G    (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nGF), &
+      Ustar(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nCF), &
+      M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF), &
+      GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
+
+    CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
+
+    CALL ComputeConformalFactor_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
+
+    CALL UpdateConformalFactorAndMetric_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+
+  END SUBROUTINE ComputeConformalFactor
+
+
+  SUBROUTINE ComputeLapseShiftCurvature &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
+
+    INTEGER , INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      G    (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nGF), &
+      Ustar(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nCF), &
+      M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF), &
+      GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
+
+    CALL ComputePressureTensorTrace_XCFC_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
+
+    CALL ComputeLapseShiftCurvature_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
+
+    CALL UpdateLapseShiftCurvature_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+
+    CALL ApplyBoundaryConditions_Geometry_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
+
+  END SUBROUTINE ComputeLapseShiftCurvature
 
 
 END MODULE TimeSteppingModule_SSPRK

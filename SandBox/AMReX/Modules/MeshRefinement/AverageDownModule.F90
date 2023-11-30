@@ -23,7 +23,8 @@ MODULE AverageDownModule
 
 
   USE ProgramHeaderModule, ONLY: &
-    nDOFX
+    nDOFX, &
+    swX
   USE GeometryFieldsModule, ONLY: &
     iGF_SqrtGm
   USE Euler_MeshRefinementModule, ONLY: &
@@ -32,8 +33,6 @@ MODULE AverageDownModule
     VolumeRatio, &
     nFine
   USE InputParsingModule, ONLY: &
-    nLevels, &
-    swX, &
     DEBUG
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &

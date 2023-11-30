@@ -1,0 +1,55 @@
+##### Advection1D_SineWaveX1.inputs #####
+
+# For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+# For all REAL types, use "e" and not "d", i.e. 1.0e3
+
+thornado.ProgramName = "Advection1D"
+thornado.AdvectionProfile = "SineWaveX1"
+
+thornado.nNodes  = 03
+thornado.nStages = 03
+thornado.t_end   = 1.0 # Times to advect across grid
+thornado.iCycleD = 10
+thornado.CFL     = 0.5
+thornado.dt_wrt  = 1.0e-2 # Fraction of total evolution time
+thornado.dt_chk  = 1.1e5
+
+thornado.UsePhysicalUnits = 1
+
+thornado.PlotFileNameRoot        = "Advection1D_SineWaveX1.plt"
+thornado.CheckpointFileNameRoot  = "Advection1D_SineWaveX1.chk"
+thornado.TallyFileNameRoot_Euler = "Advection1D_SineWaveX1.Tally"
+
+thornado.bcX         = 01 01 01
+geometry.is_periodic = 1 1 1  # Periodic BCs: 0 (no), 1 (yes)
+
+geometry.coord_sys = 0           # CARTESIAN
+geometry.prob_lo   = 0.0   0.0 0.0 # Lower domain size [km]
+geometry.prob_hi   = 1.0e2 1.0 1.0 # Upper domain size [km]
+
+thornado.swX                = 01 00 00
+amr.n_cell                  = 16 01 01 # Number of cells in each dimension
+amr.max_grid_size_x         = 16
+amr.blocking_factor_x       = 16
+amr.max_level               = 0
+amr.UseAMR                  = 0
+amr.UseFluxCorrection_Euler = 0
+amr.TagCriteria             = 0.5
+amr.n_error_buf             = 0
+amr.ref_ratio               = 2
+amr.UseTiling               = 0
+
+SL.UseSlopeLimiter_Euler           = 1
+SL.BetaTVD_Euler                   = 1.75
+SL.BetaTVB_Euler                   = 0.0
+SL.SlopeTolerance_Euler            = 1.0e-6
+SL.UseCharacteristicLimiting_Euler = 0
+SL.UseTroubledCellIndicator_Euler  = 1
+SL.LimiterThresholdParameter_Euler = 0.03
+SL.UseConservativeCorrection       = 1
+
+PL.UsePositivityLimiter_Euler = 1
+
+# Equation of state parameters
+EoS.EquationOfState = "TABLE"
+EoS.EosTableName = "../EosTables/wl-EOS-SFHo-25-50-100.h5"

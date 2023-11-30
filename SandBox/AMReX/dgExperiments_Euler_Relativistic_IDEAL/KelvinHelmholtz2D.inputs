@@ -21,8 +21,6 @@ thornado.PlotFileNameRoot        = "KelvinHelmholtz2D.plt"
 thornado.CheckpointFileNameRoot  = "KelvinHelmholtz2D.chk"
 thornado.TallyFileNameRoot_Euler = "KelvinHelmholtz2D.Tally"
 
-EoS.Gamma_IDEAL = 1.3333333333333333
-
 thornado.bcX         = 01 01 00
 geometry.is_periodic = 01 01 00  # Periodic BCs: 0 (no), 1 (yes)
 
@@ -45,7 +43,17 @@ amr.ref_ratio               = 2
 amr.UseTiling               = 0
 
 SL.UseSlopeLimiter_Euler           = 1
-SL.UseCharacteristicLimiting_Euler = 0
-SL.UseTroubledCellIndicator_Euler  = 0
+SL.BetaTVD_Euler                   = 1.75
+SL.BetaTVB_Euler                   = 0.0
+SL.SlopeTolerance_Euler            = 1.0e-6
+SL.UseCharacteristicLimiting_Euler = 1
+SL.UseTroubledCellIndicator_Euler  = 1
+SL.LimiterThresholdParameter_Euler = 0.03
+SL.UseConservativeCorrection       = 1
 
 PL.UsePositivityLimiter_Euler = 1
+PL.Min_1_Euler                = 1.0e-13
+PL.Min_2_Euler                = 1.0e-13
+
+EoS.EquationOfState = "IDEAL"
+EoS.Gamma_IDEAL     = 1.3333333333333333

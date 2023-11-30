@@ -159,8 +159,10 @@ MODULE InitializationModule
     InitializeTimers_AMReX, &
     Timer_AMReX_Initialize
   USE MF_GravitySolutionModule_XCFC, ONLY: &
-    InitializeGravitySolver_XCFC_MF, &
-    InitializeMetric_Euler_MF
+    InitializeGravitySolver_XCFC_MF
+  USE MF_MetricInitializationModule, ONLY: &
+    InitializeMetric_MF, &
+    InitializeMetricFromCheckpoint_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -283,10 +285,7 @@ CONTAINS
 
       CALL DestroyMesh_MF( MeshX )
 
-      CALL ComputeFromConserved_Euler_MF &
-             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
-      CALL InitializeMetric_Euler_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+      CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL ApplySlopeLimiter_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uDF )
@@ -305,7 +304,9 @@ CONTAINS
 
       CALL CreateMesh_MF( 0, MeshX )
 
-      CALL InitializeGravitySolver_XCFC_MF( MF_uGF, MF_uCF )
+      CALL InitializeGravitySolver_XCFC_MF
+
+      CALL InitializeMetricFromCheckpoint_MF( MF_uGF, MF_uCF )
 
       CALL DestroyMesh_MF( MeshX )
 
@@ -393,7 +394,9 @@ CONTAINS
 
     CALL ComputeGeometryX_MF( MF_uGF(iLevel) )
 
-    CALL InitializeFields_MF( iLevel, MF_uGF(iLevel), MF_uCF(iLevel) )
+    CALL InitializeFields_MF &
+           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), &
+                     MF_uPF(iLevel), MF_uAF(iLevel) )
 
     CALL DestroyMesh_MF( MeshX )
 
@@ -408,6 +411,14 @@ CONTAINS
 
     TYPE(amrex_boxarray)  :: BA
     TYPE(amrex_distromap) :: DM
+
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDF (:,:,:,:)
+
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
 
     BA = pBA
     DM = pDM
@@ -431,6 +442,33 @@ CONTAINS
     CALL FillCoarsePatch( iLevel, MF_uGF, MF_uGF )
     CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF )
     CALL FillCoarsePatch( iLevel, MF_uGF, MF_uDF )
+
+    CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+
+    DO WHILE( MFI % next() )
+
+      uGF => MF_uGF(iLevel) % DataPtr( MFI )
+      uCF => MF_uCF(iLevel) % DataPtr( MFI )
+      uDF => MF_uDF(iLevel) % DataPtr( MFI )
+
+      BX = MFI % tilebox()
+
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+      iX_B1 = BX % lo - swX
+      iX_E1 = BX % hi + swX
+
+      IF( iX_B1(1) .EQ. -1 )THEN
+
+        uCF(iX_B1(1),iX_B1(2),iX_B1(3),1:nDOFX)  &
+            = uCF(iX_B0(1),iX_B1(2),iX_B1(3),1:nDOFX)
+
+        uDF(iX_B1(1),iX_B1(2),iX_B1(3),1:nDOFX)  &
+            = uDF(iX_B0(1),iX_B1(2),iX_B1(3),1:nDOFX)
+
+      END IF
+
+    END DO
 
   END SUBROUTINE MakeNewLevelFromCoarse
 
@@ -462,6 +500,14 @@ CONTAINS
     TYPE(amrex_multifab)  :: MF_uGF_tmp, MF_uCF_tmp, MF_uPF_tmp, &
                              MF_uAF_tmp, MF_uDF_tmp
 
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+    REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDF (:,:,:,:)
+
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+
     BA = pBA
     DM = pDM
 
@@ -471,9 +517,37 @@ CONTAINS
     CALL amrex_multifab_build( MF_uAF_tmp, BA, DM, nDOFX * nAF, swX )
     CALL amrex_multifab_build( MF_uDF_tmp, BA, DM, nDOFX * nDF, swX )
 
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF, MF_uGF_tmp )
-    CALL FillPatch( iLevel, MF_uGF, MF_uCF, MF_uCF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp )
     CALL FillPatch( iLevel, MF_uGF, MF_uDF, MF_uDF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uCF, MF_uCF_tmp )
+
+    CALL amrex_mfiter_build( MFI, MF_uGF_tmp, tiling = UseTiling )
+
+    DO WHILE( MFI % next() )
+
+      uGF => MF_uGF_tmp % DataPtr( MFI )
+      uCF => MF_uCF_tmp % DataPtr( MFI )
+      uDF => MF_uDF_tmp % DataPtr( MFI )
+
+      BX = MFI % tilebox()
+
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+      iX_B1 = BX % lo - swX
+      iX_E1 = BX % hi + swX
+
+      IF( iX_B1(1) .EQ. -1 )THEN
+
+        uCF(iX_B1(1),iX_B1(2),iX_B1(3),1:nDOFX)  &
+            = uCF(iX_B0(1),iX_B1(2),iX_B1(3),1:nDOFX)
+
+        uDF(iX_B1(1),iX_B1(2),iX_B1(3),1:nDOFX)  &
+            = uDF(iX_B0(1),iX_B1(2),iX_B1(3),1:nDOFX)
+
+      END IF
+
+    END DO
+
 
     CALL ClearLevel( iLevel )
 
@@ -504,7 +578,7 @@ CONTAINS
   SUBROUTINE ErrorEstimate( iLevel, cp, Time, SetTag, ClearTag ) BIND(c)
 
     USE TaggingModule, ONLY: &
-      TagElements
+      TagElements, TagElements_Density
 
     INTEGER,                INTENT(in), VALUE :: iLevel
     TYPE(c_ptr),            INTENT(in), VALUE :: cp

@@ -42,7 +42,6 @@ MODULE MF_FieldsModule_TwoMoment
 
   REAL(DP), ALLOCATABLE, PUBLIC :: OffGridFlux_TwoMoment_MF(:,:)
 
-
   PUBLIC :: CreateFields_TwoMoment_MF
   PUBLIC :: DestroyFields_TwoMoment_MF
 
@@ -77,7 +76,6 @@ CONTAINS
       CALL amrex_multifab_destroy( MF_uCR(iLevel) )
       CALL amrex_multifab_destroy( MF_uGR(iLevel) )
       CALL amrex_multifab_destroy( MF_Permute(iLevel) )
-
 
     END DO
 

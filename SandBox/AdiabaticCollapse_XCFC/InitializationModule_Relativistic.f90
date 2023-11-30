@@ -19,21 +19,27 @@ MODULE InitializationModule_Relativistic
     Locate, &
     NodeNumberX, &
     Interpolate1D_Linear
-  USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
-    ComputeConformalFactor_Poseidon, &
-    ComputeGeometry_Poseidon
-  USE Poseidon_UtilitiesModule, ONLY: &
-    MultiplyByPsi6, &
-    DivideByPsi6, &
-    ComputeMatterSources_Poseidon, &
-    ComputePressureTensorTrace_Poseidon
+  USE XCFC_UtilitiesModule, ONLY: &
+    MultiplyWithPsi6, &
+    nGS, &
+    nMF, &
+    UpdateConformalFactorAndMetric_XCFC, &
+    UpdateLapseShiftCurvature_XCFC, &
+    ApplyBoundaryConditions_Geometry_XCFC
+  USE GravitySolutionModule_XCFC, ONLY: &
+    ComputeConformalFactor_XCFC, &
+    ComputeLapseShiftCurvature_XCFC
+  USE Euler_XCFC_UtilitiesModule, ONLY: &
+    ComputeConformalFactorSourcesAndMg_XCFC_Euler, &
+    ComputePressureTensorTrace_XCFC_Euler
   USE GeometryFieldsModule, ONLY: &
     uGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
     iGF_Alpha,    &
-    iGF_Psi
+    iGF_Psi, &
+    nGF
   USE FluidFieldsModule, ONLY: &
     uPF, &
     iPF_D, &
@@ -49,6 +55,7 @@ MODULE InitializationModule_Relativistic
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
+    nCF, &
     uAF, &
     iAF_P, &
     iAF_T, &
@@ -130,18 +137,12 @@ CONTAINS
     REAL(DP)               :: X1
     TYPE(ProgenitorType1D) :: P1D
 
-    REAL(DP) :: E (nDOFX,iX_B0(1):iX_E0(1), &
-                         iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3))
-    REAL(DP) :: Si(nDOFX,iX_B0(1):iX_E0(1), &
-                         iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3),3)
-    REAL(DP) :: S (nDOFX,iX_B0(1):iX_E0(1), &
-                         iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3))
-    REAL(DP) :: Mg(nDOFX,iX_B0(1):iX_E0(1), &
-                         iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3))
+    REAL(DP) :: uGS(nDOFX,iX_B0(1):iX_E0(1), &
+                          iX_B0(2):iX_E0(2), &
+                          iX_B0(3):iX_E0(3),nGS)
+    REAL(DP) :: uMF(nDOFX,iX_B0(1):iX_E0(1), &
+                          iX_B0(2):iX_E0(2), &
+                          iX_B0(3):iX_E0(3),nMF)
 
     INTEGER  :: ITER
     REAL(DP) :: dAlpha, dPsi
@@ -274,19 +275,13 @@ CONTAINS
                    iX_B0(2):iX_E0(2), &
                    iX_B0(3):iX_E0(3),iGF_Psi  )
 
-      CALL MultiplyByPsi6( iX_B1, iX_E1, uGF, uCF )
+      CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, +1 )
 
-      CALL ComputeMatterSources_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, E, Si, Mg )
+      CALL ComputeConformalFactor &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
 
-      CALL ComputeConformalFactor_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, uGF )
-
-      CALL ComputePressureTensorTrace_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, S )
-
-      CALL ComputeGeometry_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, uGF )
+      CALL ComputeLapseShiftCurvature &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
 
       dAl2 = uGF(:,iX_B0(1):iX_E0(1), &
                    iX_B0(2):iX_E0(2), &
@@ -335,21 +330,15 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
-    CALL MultiplyByPsi6( iX_B1, iX_E1, uGF, uCF )
+    CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, +1 )
 
-    CALL ComputeMatterSources_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, E, Si, Mg )
+    CALL ComputeConformalFactor &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
 
-    CALL ComputeConformalFactor_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, uGF )
+    CALL ComputeLapseShiftCurvature &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
 
-    CALL ComputePressureTensorTrace_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, S )
-
-    CALL ComputeGeometry_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, uGF )
-
-    CALL DivideByPsi6( iX_B1, iX_E1, uGF, uCF )
+    CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, -1 )
 
   END SUBROUTINE InitializeFields_AdiabaticCollapse_XCFC
 
@@ -388,6 +377,55 @@ CONTAINS
     RETURN
 
   END FUNCTION Interpolate1D
+
+
+  SUBROUTINE ComputeConformalFactor &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
+
+    INTEGER , INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      G    (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nGF), &
+      Ustar(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nCF), &
+      M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF), &
+      GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
+
+    CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
+
+    CALL ComputeConformalFactor_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
+
+    CALL UpdateConformalFactorAndMetric_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+
+  END SUBROUTINE ComputeConformalFactor
+
+
+  SUBROUTINE ComputeLapseShiftCurvature &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
+
+    INTEGER , INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      G    (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nGF), &
+      Ustar(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nCF), &
+      M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF), &
+      GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
+
+    CALL ComputePressureTensorTrace_XCFC_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
+
+    CALL ComputeLapseShiftCurvature_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
+
+    CALL UpdateLapseShiftCurvature_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+
+    CALL ApplyBoundaryConditions_Geometry_XCFC &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
+
+  END SUBROUTINE ComputeLapseShiftCurvature
 
 
 END MODULE InitializationModule_Relativistic

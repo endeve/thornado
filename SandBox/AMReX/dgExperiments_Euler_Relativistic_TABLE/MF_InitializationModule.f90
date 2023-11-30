@@ -26,6 +26,7 @@ MODULE MF_InitializationModule
   USE PhysicalConstantsModule, ONLY: &
     SpeedOfLightMKS
   USE UnitsModule, ONLY: &
+    BaryonMass => AtomicMassUnit, &
     Gram, &
     Erg, &
     Centimeter, &
@@ -34,6 +35,8 @@ MODULE MF_InitializationModule
   USE EquationOfStateModule, ONLY: &
     ComputeTemperatureFromPressure, &
     ComputeThermodynamicStates_Primitive
+  USE EquationOfStateModule_TABLE, ONLY: &
+    ComputePressureFromPrimitive_TABLE
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
@@ -105,7 +108,6 @@ MODULE MF_InitializationModule
 
   PUBLIC :: InitializeFields_MF
 
-  REAL(DP), PARAMETER :: LengthUnits  = Kilometer
   REAL(DP), PARAMETER :: DensityUnits = Gram / Centimeter**3
 
 CONTAINS
@@ -183,12 +185,11 @@ CONTAINS
 
     CHARACTER(:), ALLOCATABLE :: AdvectionProfile
 
-    REAL(DP) :: D_0, V1, V2, V3, P
+    REAL(DP) :: D_0, V1, V2, V3, P, Ye, Ne
     REAL(DP) :: Amp
-    REAL(DP) :: L, X1_0
-    REAL(DP) :: sigmaX1
+    REAL(DP) :: L
 
-    AdvectionProfile = 'SineWave'
+    AdvectionProfile = 'SineWaveX1'
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % query( 'AdvectionProfile', AdvectionProfile )
       CALL PP % get  ( 't_end'           , t_end            )
@@ -196,15 +197,15 @@ CONTAINS
 
     SELECT CASE( TRIM( AdvectionProfile ) )
 
-      CASE( 'SineWave' )
+      CASE( 'SineWaveX1' )
 
         D_0 = 1.0e12_DP * DensityUnits
         Amp = 0.1_DP * D_0
-
-        V1 = 0.1_DP
-        V2 = 0.0_DP
-        V3 = 0.0_DP
-        P  = 1.0e-2_DP * D_0
+        V1  = 0.1_DP
+        V2  = 0.0_DP
+        V3  = 0.0_DP
+        P   = 1.0e-2_DP * D_0
+        Ye  = 0.3_DP
 
         L = xR(1) - xL(1)
 
@@ -215,13 +216,22 @@ CONTAINS
 
           WRITE(*,'(6x,A,A)') 'Advection Profile: ', TRIM( AdvectionProfile )
           WRITE(*,*)
-          WRITE(*,'(8x,A,ES14.6E3,A)') '  D_0: ', D_0 / DensityUnits, ' gram/cm^3'
-          WRITE(*,'(8x,A,ES14.6E3,A)') '  Amp: ', Amp / DensityUnits, ' gram/cm^3'
-          WRITE(*,'(8x,A,ES14.6E3)')   '   V1: ', V1
-          WRITE(*,'(8x,A,ES14.6E3)')   '   V2: ', V2
-          WRITE(*,'(8x,A,ES14.6E3)')   '   V3: ', V3
-          WRITE(*,'(8x,A,ES14.6E3,A)') '    P: ', P / D_0, ' D_0'
-          WRITE(*,'(8x,A,ES14.6E3,A)') 't_end: ', t_end / Millisecond, ' ms'
+          WRITE(*,'(8x,A,ES14.6E3,A)') &
+            'D_0:         ', D_0 / DensityUnits, ' gram/cm^3'
+          WRITE(*,'(8x,A,F5.2)') &
+            'Amp/D_0:     ', Amp / D_0
+          WRITE(*,'(8x,A,F5.2)') &
+            'V1/c:        ', V1
+          WRITE(*,'(8x,A,F5.2)') &
+            'V2/c:        ', V2
+          WRITE(*,'(8x,A,F5.2)') &
+            'V3/c:        ', V3
+          WRITE(*,'(8x,A,F5.2,A)') &
+            'P/(D_0*c^2): ', P / D_0
+          WRITE(*,'(8x,A,F5.2)') &
+            'Ye:          ', Ye
+          WRITE(*,'(8x,A,ES14.6E3,A)') &
+            't_end:       ', t_end / Millisecond, ' ms'
           WRITE(*,*)
 
         END IF
@@ -265,21 +275,20 @@ CONTAINS
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
-      DO iNX = 1, nDOFX
+      DO iNX = 1       , nDOFX
 
         iNX1 = NodeNumberTableX(1,iNX)
         X1   = NodeCoordinate( MeshX(1), iX1, iNX1 )
 
-        IF( TRIM( AdvectionProfile ) .EQ. 'SineWave' )THEN
+        IF( TRIM( AdvectionProfile ) .EQ. 'SineWaveX1' )THEN
 
           uPF(iNX,iPF_D ) = D_0 + Amp * SIN( TwoPi * X1 / L )
           uPF(iNX,iPF_V1) = V1
           uPF(iNX,iPF_V2) = V2
           uPF(iNX,iPF_V3) = V3
-          uPF(iNX,iPF_Ne) = Zero
 
           uAF(iNX,iAF_P ) = P
-          uAF(iNX,iAF_Ye) = 0.3_DP
+          uAF(iNX,iAF_Ye) = Ye
 
         END IF
 

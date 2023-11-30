@@ -41,6 +41,9 @@ MODULE MF_TwoMoment_SlopeLimiterModule
     InitializeSlopeLimiter_TwoMoment, &
     FinalizeSlopeLimiter_TwoMoment, &
     ApplySlopeLimiter_TwoMoment
+  USE TwoMoment_TroubledCellIndicatorModule, ONLY: &
+    InitializeTroubledCellIndicator_TwoMoment, &
+    FinalizeTroubledCellIndicator_TwoMoment
 
   ! --- Local Modules ---
 
@@ -83,11 +86,20 @@ CONTAINS
   SUBROUTINE InitializeSlopeLimiter_TwoMoment_MF
 
 
+   ! CALL InitializeSlopeLimiter_TwoMoment &
+   !        ( BetaTVD_Option = BetaTVD_TwoMoment, &
+   !          UseSlopeLimiter_Option &
+   !            = UseSlopeLimiter_TwoMoment, &
+   !          Verbose_Option = amrex_parallel_ioprocessor() )
+
     CALL InitializeSlopeLimiter_TwoMoment &
            ( BetaTVD_Option = BetaTVD_TwoMoment, &
              UseSlopeLimiter_Option &
-               = UseSlopeLimiter_TwoMoment, &
-             Verbose_Option = amrex_parallel_ioprocessor() )
+               = UseSlopeLimiter_TwoMoment )
+
+
+    CALL InitializeTroubledCellIndicator_TwoMoment &
+    ( UseTroubledCellIndicator_Option = .TRUE., C_TCI_Option = 0.1_DP )
 
   END SUBROUTINE InitializeSlopeLimiter_TwoMoment_MF
 
@@ -95,6 +107,8 @@ CONTAINS
   SUBROUTINE FinalizeSlopeLimiter_TwoMoment_MF
 
     CALL FinalizeSlopeLimiter_TwoMoment
+
+    CALL FinalizeTroubledCellIndicator_TwoMoment
 
   END SUBROUTINE FinalizeSlopeLimiter_TwoMoment_MF
 
@@ -214,11 +228,14 @@ CONTAINS
         CALL ApplyBoundaryConditions_TwoMoment_MF &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )
 
+       ! CALL ApplySlopeLimiter_TwoMoment &
+       !        ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, &
+       !          SuppressBC_Option = .TRUE., &
+       !          Verbose_Option = Verbose )
+
         CALL ApplySlopeLimiter_TwoMoment &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, &
-                 SuppressBC_Option = .TRUE., &
-                 Verbose_Option = Verbose )
-
+                 SuppressBC_Option = .TRUE. )
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uCR, U )

@@ -22,6 +22,7 @@ MODULE UtilitiesModule
   PUBLIC :: NodeNumberX_X1
   PUBLIC :: InitializeWeights
   PUBLIC :: Interpolate1D_Linear
+  PUBLIC :: Interpolate2D_BiLinear
   PUBLIC :: Interpolate1D_Log
   PUBLIC :: MapTo1D
   PUBLIC :: MapFrom1D
@@ -217,6 +218,27 @@ CONTAINS
     RETURN
   END FUNCTION Interpolate1D_Linear
 
+  PURE REAL(DP) FUNCTION Interpolate2D_BiLinear( x, xL, xR, y, yL, yR, u11, u12, u21, u22 )
+
+    REAL(DP), INTENT(in) :: x, xL, xR
+    REAL(DP), INTENT(in) :: y, yL, yR
+    REAL(DP), INTENT(in) :: u11, u12, u21, u22
+
+    REAL(DP) :: Co, a, b, c, d
+
+   ! -- u11 referes to u( xL, yL ) ---
+ 
+    Co = 1.0_DP / (( xR - xL ) * ( yR - yL ))
+ 
+    a = ( xR - x  ) * ( yR - y  )
+    b = ( x  - xL ) * ( yR - y  )
+    c = ( xR - x  ) * ( y  - yL )
+    d = ( x  - xL ) * ( y  - yL )
+
+    Interpolate2D_BiLinear &
+      = Co * ( a * u11 + b * u21 + c * u12 + d * u22 ) 
+    RETURN
+  END FUNCTION Interpolate2D_BiLinear
 
   PURE REAL(DP) FUNCTION Interpolate1D_Log( x, xL, xR, uL, uR )
 
