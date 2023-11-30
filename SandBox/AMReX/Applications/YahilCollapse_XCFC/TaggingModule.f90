@@ -4,6 +4,8 @@ MODULE TaggingModule
 
   ! --- thornado Modules ---
 
+  USE ProgramHeaderModule, ONLY: &
+    nDOFX
   USE MeshModule, ONLY: &
     MeshX
   USE UnitsModule, ONLY: &
@@ -84,7 +86,7 @@ CONTAINS
                                                  TagLo(3):TagHi(3), &
                                                  TagLo(4):TagHi(4))
 
-    INTEGER :: iX1, iX2, iX3
+    INTEGER :: iX1, iX2, iX3, indLo, indHi
 
     REAL(DP) :: TagCriteria_this
 
@@ -94,8 +96,11 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      IF( uCF(iX1,iX2,iX3,iCF_D) / ( Gram / Centimeter**3 ) &
-            .GT. TagCriteria_this  ) THEN
+      indLo = nDOFX * ( iCF_D - 1 ) + 1
+      indHi = indLo + nDOFX - 1
+
+      IF( ANY( uCF(iX1,iX2,iX3,indLo:indHi) / ( Gram / Centimeter**3 ) &
+            .GT. TagCriteria_this  ) ) THEN
 
         Tag(iX1,iX2,iX3,1) = SetTag
 
