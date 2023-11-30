@@ -112,9 +112,10 @@ CONTAINS
   END SUBROUTINE InitializeTimers_AMReX
 
 
-  SUBROUTINE FinalizeTimers_AMReX( RestartProgramTimer_Option )
+  SUBROUTINE FinalizeTimers_AMReX( RestartProgramTimer_Option, Verbose_Option )
 
     LOGICAL, INTENT(in), OPTIONAL :: RestartProgramTimer_Option
+    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
 
     REAL(DP) :: Timer(nTimers), TotalTime
     REAL(DP) :: TimerSum(nTimers), TimerMin(nTimers), &
@@ -129,10 +130,15 @@ CONTAINS
       OutMMS = '(10x,A,ES13.6E3,A,A,ES13.6E3,A,A,ES13.6E3,A)'
 
     LOGICAL :: RestartProgramTimer
+    LOGICAL :: Verbose
 
     RestartProgramTimer = .FALSE.
     IF( PRESENT( RestartProgramTimer_Option ) ) &
       RestartProgramTimer = RestartProgramTimer_Option
+
+    Verbose = .FALSE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
 
     IF( .NOT. TimeIt_AMReX ) RETURN
 
@@ -166,7 +172,7 @@ CONTAINS
 
     END DO
 
-    IF( amrex_parallel_ioprocessor() )THEN
+    IF( Verbose )THEN
 
       WRITE(*,*)
       WRITE(*,'(4x,A)') 'Timers Summary (AMReX)'
@@ -230,7 +236,8 @@ CONTAINS
     END IF
 
     IF( TimeIt_AMReX_Euler ) &
-      CALL FinalizeTimers_AMReX_Euler( TimerAve(iT_P) )
+      CALL FinalizeTimers_AMReX_Euler &
+             ( TimerAve(iT_P), Verbose_Option = Verbose )
 
 #ifndef THORNADO_NOTRANSPORT
 

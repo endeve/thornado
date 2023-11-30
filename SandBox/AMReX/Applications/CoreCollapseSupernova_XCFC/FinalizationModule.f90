@@ -213,7 +213,7 @@ CONTAINS
 
     CALL FinalizeTimers
 
-    CALL FinalizeTimers_AMReX
+    CALL FinalizeTimers_AMReX( Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL amrex_amrcore_finalize()
 

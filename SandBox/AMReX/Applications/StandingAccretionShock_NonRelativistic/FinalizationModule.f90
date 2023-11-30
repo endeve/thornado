@@ -6,6 +6,8 @@ MODULE FinalizationModule
     amrex_finalize
   USE amrex_amrcore_module, ONLY: &
     amrex_amrcore_finalize
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
 
@@ -139,7 +141,7 @@ CONTAINS
 
     CALL TimersStop_AMReX( Timer_AMReX_Finalize )
 
-    CALL FinalizeTimers_AMReX
+    CALL FinalizeTimers_AMReX( Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL amrex_amrcore_finalize()
 

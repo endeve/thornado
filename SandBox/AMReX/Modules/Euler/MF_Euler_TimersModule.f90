@@ -87,14 +87,16 @@ CONTAINS
   END SUBROUTINE InitializeTimers_AMReX_Euler
 
 
-  SUBROUTINE FinalizeTimers_AMReX_Euler( Timer_ProgramAve )
+  SUBROUTINE FinalizeTimers_AMReX_Euler( Timer_ProgramAve, Verbose_Option )
 
     REAL(DP), INTENT(in) :: Timer_ProgramAve
+    LOGICAL , INTENT(in), OPTIONAL :: Verbose_Option
 
     REAL(DP) :: Timer(nTimers)
     REAL(DP) :: TimerSum(nTimers), TimerMin(nTimers), &
                 TimerMax(nTimers), TimerAve(nTimers)
     CHARACTER(nChar) :: Label(nTimers)
+    LOGICAL          :: Verbose
 
     INTEGER :: iT
 
@@ -104,6 +106,10 @@ CONTAINS
       OutMMS = '(10x,A,ES13.6E3,A,A,ES13.6E3,A,A,ES13.6E3,A)'
 
     IF( .NOT. TimeIt_AMReX_Euler ) RETURN
+
+    Verbose = .FALSE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
 
     CALL FinalizeTimers_Euler &
            ( Verbose_Option = .FALSE., &
@@ -129,7 +135,7 @@ CONTAINS
 
     END DO
 
-    IF( amrex_parallel_ioprocessor() )THEN
+    IF( Verbose )THEN
 
       WRITE(*,'(4x,A)') 'Timers Summary (Euler)'
       WRITE(*,'(4x,A)') '----------------------'
