@@ -43,13 +43,14 @@ thornado.swX                = 01  00 00
 #amr.max_grid_size_x         = 512
 #amr.blocking_factor_x       = 512
 amr.UseFluxCorrection_Euler = 1
-amr.UseAMR                  = 1
 #amr.RefinementScheme        = "Mesh"
 #amr.max_level               = 9
 #amr.TagCriteria             = 5.0000e+4 2.50000e+4 1.250000e+4 6.2500e+3 3.12500e+3 1.562500e+3 7.8125e+2 3.90625e+2 1.953125e+2
+#amr.UseAMR                  = 0
 amr.RefinementScheme        = "Density"
 amr.max_level               = 10
 amr.TagCriteria             = 1.0e6 1.0e7 1.0e8 1.0e9 1.0e10 1.0e11 1.0e12 1.0e13 1.0e14 1.0e15
+amr.UseAMR                  = 1
 amr.n_error_buf             = 0
 amr.ref_ratio               = 2
 
