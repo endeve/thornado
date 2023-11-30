@@ -103,9 +103,9 @@ __omp_offloading_802_2c1d3b_twomoment[...]attersolvermodule_mp_solvels_fp__l3973
 __omp_offloading_802_2c1d3b_twomoment[...]attersolvermodule_mp_solvels_fp__l4122 	0.05409	0.062
 __omp_offloading_802_2c1d3b_twomoment[...]attersolvermodule_mp_solvels_fp__l4171 	0.00901	0.01012
 		
-	20.66	13.54
+	                                                                                20.66	13.54
 		
-Timer_Collisions_SolveLS	33.78	14.20
+Timer_Collisions_SolveLS                                                         	33.78	14.20
 
 </pre>
 
