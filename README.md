@@ -91,7 +91,25 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
-## Nov 28 2023
+## Nov 30 2023
+1. iprof run shows that Timer_Collisions_SolveLS on PVC is 2.895608E+01 s while on A1000 is 1.419644E+01 s.  Here is some detailed comparison:
+<pre>
+	PVC04	A100
+__omp_offloading_802_2c1d3b_twomoment[...]attersolvermodule_mp_solvels_fp__l4007 	5.93	4.2
+__omp_offloading_802_2c1d3b_twomoment[...]attersolvermodule_mp_solvels_fp__l3953 	5.05	2.88
+__omp_offloading_802_2c1d3b_twomoment[...]attersolvermodule_mp_solvels_fp__l4145 	3.65	2.63
+__omp_offloading_802_2c1d3b_twomoment[...]attersolvermodule_mp_solvels_fp__l3988 	3.41	1.9
+__omp_offloading_802_2c1d3b_twomoment[...]attersolvermodule_mp_solvels_fp__l3973 	2.56	1.86
+__omp_offloading_802_2c1d3b_twomoment[...]attersolvermodule_mp_solvels_fp__l4122 	0.05409	0.062
+__omp_offloading_802_2c1d3b_twomoment[...]attersolvermodule_mp_solvels_fp__l4171 	0.00901	0.01012
+		
+	20.66	13.54
+		
+Timer_Collisions_SolveLS	33.78	14.20
+
+</pre>
+
+## Nov 28-29 2023
 1. rerun Memory pool case on PVC04, and here is the result
 <pre>
 mem-128-64-16384:	1.78E+02	s	mem-128,64,16384:	1.83E+02
