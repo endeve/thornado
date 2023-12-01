@@ -91,7 +91,7 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
-## Nov 30 2023
+## Nov 30-31 2023
 1. iprof run shows that Timer_Collisions_SolveLS on PVC is 2.895608E+01 s while on A1000 is 1.419644E+01 s.  Here is some detailed comparison:
 <pre>
 	PVC04	A100
@@ -103,11 +103,12 @@ __omp_offloading_802_2c1d3b_twomoment[...]attersolvermodule_mp_solvels_fp__l3973
 __omp_offloading_802_2c1d3b_twomoment[...]attersolvermodule_mp_solvels_fp__l4122 	0.05409	0.062
 __omp_offloading_802_2c1d3b_twomoment[...]attersolvermodule_mp_solvels_fp__l4171 	0.00901	0.01012
 		
-	                                                                                20.66	13.54
+Sum	                                                                                20.66	13.54
 		
 Timer_Collisions_SolveLS                                                         	33.78	14.20
 
 </pre>
+2. Enabling Immediate Command List seems not helping, but slowing down the simulation. "Timer_IMEX                             :     1.609845E+02 s" with export LIBOMPTARGET_LEVEL_ZERO_MEMORY_POOL=device,1024,64,32768; export LIBOMPTARGET_LEVEL_ZERO_USE_IMMEDIATE_COMMAND_LIST=1;  export SYCL_PI_LEVEL_ZERO_USE_IMMEDIATE_COMMANDLISTS=1
 
 ## Nov 28-29 2023
 1. rerun Memory pool case on PVC04, and here is the result
