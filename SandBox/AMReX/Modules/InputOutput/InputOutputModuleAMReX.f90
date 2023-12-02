@@ -168,7 +168,8 @@ MODULE InputOutputModuleAMReX
                    ADMMassArr        , &
                    pBA, &
                    iWriteFields_uGF, iWriteFields_uCF, iWriteFields_uCR, &
-                   pMF_uGF_Option, pMF_uCF_Option, pMF_uCR_Option ) BIND(c)
+                   pMF_uGF_Option, pMF_uCF_Option, pMF_uCR_Option, &
+                   Verbose_Option ) BIND(c)
       IMPORT
       IMPLICIT NONE
       INTEGER(c_int),        INTENT(in) :: StepNo(*)
@@ -188,6 +189,7 @@ MODULE InputOutputModuleAMReX
       TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uGF_Option(*)
       TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uCF_Option(*)
       TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uCR_Option(*)
+      INTEGER(c_int),        INTENT(in), OPTIONAL :: Verbose_Option(*)
     END SUBROUTINE WriteFieldsAMReX_Checkpoint
 
     SUBROUTINE ReadHeaderAndBoxArrayData &
