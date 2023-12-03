@@ -48,7 +48,7 @@ MODULE FillPatchModule
     One, &
     Half
   USE MF_UtilitiesModule, ONLY: &
-    MultiplyWithMetric
+    MultiplyWithSqrtGm
   USE InputParsingModule, ONLY: &
     UseTiling, &
     DEBUG
@@ -111,10 +111,10 @@ CONTAINS
 
     IF( FineLevel .GT. 0 )THEN
 
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel-1, MF_uGF, +One, swXX_Option = swXX )
 
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel  , MF_uGF, +One, swXX_Option = swXX )
 
     END IF
@@ -123,10 +123,10 @@ CONTAINS
 
     IF( FineLevel .GT. 0 )THEN
 
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel-1, MF_uGF, -Half, swXX_Option = swXX )
 
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel  , MF_uGF, -Half, swXX_Option = swXX )
 
     END IF
@@ -187,7 +187,7 @@ CONTAINS
       CALL SqrtGm(FineLevel-1) % COPY &
              ( MF_uGF(FineLevel-1), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel-1, SqrtGm(FineLevel-1), MF_src, nF, +1, &
                swXX_Option = swXX )
 
@@ -198,7 +198,7 @@ CONTAINS
       CALL SqrtGm(FineLevel  ) % COPY &
              ( MF_uGF(FineLevel  ), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel  , SqrtGm(FineLevel  ), MF_src, nF, +1, &
                swXX_Option = swXX )
 
@@ -208,10 +208,10 @@ CONTAINS
 
     IF( FineLevel .GT. 0 )THEN
 
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel-1, SqrtGm(FineLevel-1), MF_src, nF, -1, &
                swXX_Option = swXX )
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel  , SqrtGm(FineLevel  ), MF_src, nF, -1, &
                swXX_Option = swXX )
 
@@ -254,10 +254,10 @@ CONTAINS
 
     IF( FineLevel .GT. 0 )THEN
 
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel-1, MF_uGF, +One, swXX_Option = swXX )
 
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel  , MF_uGF, +One, swXX_Option = swXX )
 
     END IF
@@ -266,10 +266,10 @@ CONTAINS
 
     IF( FineLevel .GT. 0 )THEN
 
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel-1, MF_uGF, -Half, swXX_Option = swXX )
 
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel  , MF_uGF, -Half, swXX_Option = swXX )
 
     END IF
@@ -324,7 +324,7 @@ CONTAINS
       CALL SqrtGm(FineLevel-1) % COPY &
              ( MF_uGF(FineLevel-1), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel-1, SqrtGm(FineLevel-1), MF, nF, +1, &
                swXX_Option = swXX )
 
@@ -335,7 +335,7 @@ CONTAINS
       CALL SqrtGm(FineLevel  ) % COPY &
              ( MF_uGF(FineLevel  ), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel  , SqrtGm(FineLevel  ), MF, nF, +1, &
                swXX_Option = swXX )
 
@@ -345,10 +345,10 @@ CONTAINS
 
     IF( FineLevel .GT. 0 )THEN
 
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel-1, SqrtGm(FineLevel-1), MF, nF, -1, &
                swXX_Option = swXX )
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel  , SqrtGm(FineLevel  ), MF, nF, -1, &
                swXX_Option = swXX )
 
@@ -388,17 +388,17 @@ CONTAINS
     END IF
 
     IF( FineLevel .GT. 0 ) &
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel-1, MF_uGF, +One, swXX_Option = swXX )
 
     CALL FillCoarsePatch_Vector( FineLevel, MF_uGF )
 
     IF( FineLevel .GT. 0 )THEN
 
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel-1, MF_uGF, -Half, swXX_Option = swXX )
 
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel  , MF_uGF, -Half, swXX_Option = swXX )
 
     END IF
@@ -451,7 +451,7 @@ CONTAINS
       CALL SqrtGm(FineLevel-1) % COPY &
              ( MF_uGF(FineLevel-1), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel-1, SqrtGm(FineLevel-1), MF, nF, +1, &
                swXX_Option = swXX )
 
@@ -461,7 +461,7 @@ CONTAINS
 
     IF( FineLevel .GT. 0 )THEN
 
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel-1, SqrtGm(FineLevel-1), MF, nF, -1, &
                swXX_Option = swXX )
 
@@ -474,7 +474,7 @@ CONTAINS
       CALL SqrtGm(FineLevel) % COPY &
              ( MF_uGF(FineLevel), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
-      CALL MultiplyWithMetric &
+      CALL MultiplyWithSqrtGm &
              ( FineLevel  , SqrtGm(FineLevel  ), MF, nF, -1, &
                swXX_Option = swXX )
 

@@ -141,7 +141,7 @@ MODULE MF_UtilitiesModule
 
   PUBLIC :: ShowVariableFromMultiFab
   PUBLIC :: ShowVariableFromMultiFab_Single
-  PUBLIC :: MultiplyWithMetric
+  PUBLIC :: MultiplyWithSqrtGm
   PUBLIC :: amrex2thornado_X
   PUBLIC :: thornado2amrex_X
   PUBLIC :: amrex2thornado_Z
@@ -164,10 +164,10 @@ MODULE MF_UtilitiesModule
   PUBLIC :: DeallocateArray_Integrated
   PUBLIC :: PrintBoxArray
 
-  INTERFACE MultiplyWithMetric
-    MODULE PROCEDURE MultiplyWithMetric_uGF
-    MODULE PROCEDURE MultiplyWithMetric_uCF
-  END INTERFACE MultiplyWithMetric
+  INTERFACE MultiplyWithSqrtGm
+    MODULE PROCEDURE MultiplyWithSqrtGm_uGF
+    MODULE PROCEDURE MultiplyWithSqrtGm_uCF
+  END INTERFACE MultiplyWithSqrtGm
 
   INTERFACE ShowVariableFromMultiFab
     MODULE PROCEDURE ShowVariableFromMultiFab_Single
@@ -377,7 +377,7 @@ END IF
   END SUBROUTINE ShowVariableFromMultiFab_Vector
 
 
-  SUBROUTINE MultiplyWithMetric_uGF &
+  SUBROUTINE MultiplyWithSqrtGm_uGF &
     ( iLevel, MF_uGF, Power, swXX_Option )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
@@ -445,10 +445,10 @@ END IF
     !$OMP END PARALLEL
 #endif
 
-  END SUBROUTINE MultiplyWithMetric_uGF
+  END SUBROUTINE MultiplyWithSqrtGm_uGF
 
 
-  SUBROUTINE MultiplyWithMetric_uCF &
+  SUBROUTINE MultiplyWithSqrtGm_uCF &
     ( iLevel, MF_SqrtGm, MF, nFd, Power, swXX_Option )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_SqrtGm
@@ -514,7 +514,7 @@ END IF
     !$OMP END PARALLEL
 #endif
 
-  END SUBROUTINE MultiplyWithMetric_uCF
+  END SUBROUTINE MultiplyWithSqrtGm_uCF
 
 
   SUBROUTINE amrex2thornado_X &

@@ -44,7 +44,7 @@ MODULE AverageDownModule
     One, &
     Half
   USE MF_UtilitiesModule, ONLY: &
-    MultiplyWithMetric
+    MultiplyWithSqrtGm
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler_MF
 
@@ -151,7 +151,7 @@ CONTAINS
 
     END IF
 
-    CALL MultiplyWithMetric &
+    CALL MultiplyWithSqrtGm &
            ( CoarseLevel+1, MF_uGF, +One, swXX_Option = swXX )
 
 #if defined( THORNADO_USE_MESHREFINEMENT )
@@ -164,10 +164,10 @@ CONTAINS
 
 #endif
 
-    CALL MultiplyWithMetric &
+    CALL MultiplyWithSqrtGm &
            ( CoarseLevel+1, MF_uGF, -Half, swXX_Option = swXX )
 
-    CALL MultiplyWithMetric &
+    CALL MultiplyWithSqrtGm &
            ( CoarseLevel  , MF_uGF, -Half, swXX_Option = swXX )
 
     CALL TimersStop_AMReX( Timer_AMReX_AverageDown )
@@ -221,7 +221,7 @@ CONTAINS
     CALL SqrtGm(CoarseLevel+1) % COPY &
            ( MF_uGF(CoarseLevel+1), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
-    CALL MultiplyWithMetric &
+    CALL MultiplyWithSqrtGm &
            ( CoarseLevel+1, SqrtGm(CoarseLevel+1), MF, nF, +1, &
              swXX_Option = swXX )
 
@@ -235,7 +235,7 @@ CONTAINS
 
 #endif
 
-    CALL MultiplyWithMetric &
+    CALL MultiplyWithSqrtGm &
            ( CoarseLevel+1, SqrtGm(CoarseLevel+1), MF, nF, -1, &
              swXX_Option = swXX )
 
@@ -248,7 +248,7 @@ CONTAINS
     CALL SqrtGm(CoarseLevel) % COPY &
            ( MF_uGF(CoarseLevel), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
-    CALL MultiplyWithMetric &
+    CALL MultiplyWithSqrtGm &
            ( CoarseLevel, SqrtGm(CoarseLevel), MF, nF, -1, &
              swXX_Option = swXX )
 
