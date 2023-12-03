@@ -14,7 +14,8 @@ MODULE Euler_MeshRefinementModule
     DP, &
     Zero, &
     One, &
-    Half
+    Half, &
+    Two
   USE ProgramHeaderModule, ONLY: &
     nDimsX, &
     nNodesX, &
@@ -30,6 +31,9 @@ MODULE Euler_MeshRefinementModule
     NodesX1, &
     NodesX2, &
     NodesX3, &
+    NodesLX1, &
+    NodesLX2, &
+    NodesLX3, &
     WeightsX1, &
     WeightsX2, &
     WeightsX3, &
@@ -73,10 +77,6 @@ MODULE Euler_MeshRefinementModule
   REAL(DP), ALLOCATABLE, PUBLIC :: LX_X3_Up_1D(:)
   REAL(DP), ALLOCATABLE, PUBLIC :: LX_X3_Dn_1D(:)
 
-  REAL(DP), ALLOCATABLE :: xiX1(:)
-  REAL(DP), ALLOCATABLE :: xiX2(:)
-  REAL(DP), ALLOCATABLE :: xiX3(:)
-
   REAL(DP), ALLOCATABLE :: ProjectionMatrix  (:,:,:)
   REAL(DP), ALLOCATABLE :: ProjectionMatrix_c(:)
   REAL(DP), ALLOCATABLE :: ProjectionMatrix_T(:,:,:) ! --- Transpose ---
@@ -110,16 +110,40 @@ MODULE Euler_MeshRefinementModule
   REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  LX_X3_Dn_c(:,:)
   TYPE(c_ptr)                        , PUBLIC :: pLX_X3_Dn_c
 
+  ! --- Lobatto-to-Gauss and Gauss-to-Lobatto ---
+
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  L2G_c(:,:)
+  TYPE(c_ptr)                        , PUBLIC :: pL2G_c
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  G2L_c(:,:)
+  TYPE(c_ptr)                        , PUBLIC :: pG2L_c
+
+  ! --- Fine-to-Coarse (enforce continuity across interfaces) ---
+
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  F2C_c(:,:,:)
+  TYPE(c_ptr)                        , PUBLIC :: pF2C_c
+
 CONTAINS
 
 
   SUBROUTINE InitializeMeshRefinement_Euler
 
-    INTEGER :: iDim
+    INTEGER :: iDimX
     INTEGER :: iFine, iFineX1, iFineX2, iFineX3
     INTEGER :: i, j, k, iN1, iN2, iN3, kk, &
-               iNX_X_Crse, iNX_X1_Crse, iNX_X2_Crse, iNX_X3_Crse, &
-               iNX_X_Fine, iNX_X1_Fine, iNX_X2_Fine, iNX_X3_Fine
+               iNX_X1_Crse, iNX_X2_Crse, iNX_X3_Crse, &
+               iNX_X1_Fine, iNX_X2_Fine, iNX_X3_Fine
+    INTEGER :: i1, i2, i3, j1, j2, j3, q1, q2, q3, q
+
+    REAL(DP) :: LL(nDOFX,nDOFX)
+    REAL(DP) :: LG(nDOFX,nDOFX)
+    REAL(DP) :: GL(nDOFX,nDOFX)
+    REAL(DP) :: GG(nDOFX,nDOFX)
+
+    REAL(DP) :: LL_I(nDOFX), LG_I(nDOFX), GL_I(nDOFX), GG_I(nDOFX)
+
+    REAL(DP) :: xiX1(nNodesX(1))
+    REAL(DP) :: xiX2(nNodesX(2))
+    REAL(DP) :: xiX3(nNodesX(3))
 
     ALLOCATE( NodeNumberTableX_X1_c(nDOFX) )
     ALLOCATE( NodeNumberTableX_X2_c(nDOFX) )
@@ -170,9 +194,9 @@ CONTAINS
 
     nFineX      = 1
     VolumeRatio = One
-    DO iDim = 1, nDimsX
+    DO iDimX = 1, nDimsX
       ! --- Refinement Factor of 2 Assumed ---
-      nFineX(iDim) = 2
+      nFineX(iDimX) = 2
       VolumeRatio  = Half * VolumeRatio
     END DO
     nFine = PRODUCT( nFineX )
@@ -193,10 +217,6 @@ CONTAINS
     ALLOCATE( LX_X2_Dn_1D(nNodesX(2)) )
     ALLOCATE( LX_X3_Up_1D(nNodesX(3)) )
     ALLOCATE( LX_X3_Dn_1D(nNodesX(3)) )
-
-    ALLOCATE( xiX1(nNodesX(1)) )
-    ALLOCATE( xiX2(nNodesX(2)) )
-    ALLOCATE( xiX3(nNodesX(3)) )
 
     ALLOCATE( ProjectionMatrix  (nDOFX,nDOFX,nFine) )
     ALLOCATE( ProjectionMatrix_c(nDOFX*nDOFX*nFine) )
@@ -467,6 +487,106 @@ CONTAINS
 
     END IF ! nDimsX .GT. 2
 
+    DO i = 1, nDOFX
+    DO j = 1, nDOFX
+
+      i1 = NodeNumberTableX(1,i)
+      i2 = NodeNumberTableX(2,i)
+      i3 = NodeNumberTableX(3,i)
+
+      j1 = NodeNumberTableX(1,j)
+      j2 = NodeNumberTableX(2,j)
+      j3 = NodeNumberTableX(3,j)
+
+      DO q = 1, nDOFX
+
+        q1 = NodeNumberTableX(1,q)
+        q2 = NodeNumberTableX(2,q)
+        q3 = NodeNumberTableX(3,q)
+
+        LL_I(q) =   Lagrange( NodesX1(q1), i1, NodesLX1 ) &
+                  * Lagrange( NodesX2(q2), i2, NodesLX2 ) &
+                  * Lagrange( NodesX3(q3), i3, NodesLX3 ) &
+                  * Lagrange( NodesX1(q1), j1, NodesLX1 ) &
+                  * Lagrange( NodesX2(q2), j2, NodesLX2 ) &
+                  * Lagrange( NodesX3(q3), j3, NodesLX3 )
+
+        LG_I(q) =   Lagrange( NodesX1(q1), i1, NodesLX1 ) &
+                  * Lagrange( NodesX2(q2), i2, NodesLX2 ) &
+                  * Lagrange( NodesX3(q3), i3, NodesLX3 ) &
+                  * Lagrange( NodesX1(q1), j1, NodesX1  ) &
+                  * Lagrange( NodesX2(q2), j2, NodesX2  ) &
+                  * Lagrange( NodesX3(q3), j3, NodesX3  )
+
+        GL_I(q) =   Lagrange( NodesX1(q1), i1, NodesX1  ) &
+                  * Lagrange( NodesX2(q2), i2, NodesX2  ) &
+                  * Lagrange( NodesX3(q3), i3, NodesX3  ) &
+                  * Lagrange( NodesX1(q1), j1, NodesLX1 ) &
+                  * Lagrange( NodesX2(q2), j2, NodesLX2 ) &
+                  * Lagrange( NodesX3(q3), j3, NodesLX3 )
+
+        GG_I(q) =   Lagrange( NodesX1(q1), i1, NodesX1  ) &
+                  * Lagrange( NodesX2(q2), i2, NodesX2  ) &
+                  * Lagrange( NodesX3(q3), i3, NodesX3  ) &
+                  * Lagrange( NodesX1(q1), j1, NodesX1  ) &
+                  * Lagrange( NodesX2(q2), j2, NodesX2  ) &
+                  * Lagrange( NodesX3(q3), j3, NodesX3  )
+
+      END DO
+
+      LL(i,j) = SUM( WeightsX_q * LL_I )
+      LG(i,j) = SUM( WeightsX_q * LG_I )
+      GL(i,j) = SUM( WeightsX_q * GL_I )
+      GG(i,j) = SUM( WeightsX_q * GG_I )
+
+    END DO
+    END DO
+
+    ALLOCATE( L2G_c(nDOFX,nDOFX) )
+    ALLOCATE( G2L_c(nDOFX,nDOFX) )
+
+    L2G_c = MATMUL( inv( GG ), GL )
+    G2L_c = MATMUL( inv( LL ), LG )
+
+    pL2G_c = c_loc( L2G_c(1,1) )
+    pG2L_c = c_loc( G2L_c(1,1) )
+
+    ALLOCATE( F2C_c(nDOFX,nFine,nDOFX) )
+
+    iFine = 0
+    DO iFineX3 = 1, nFineX(3)
+    DO iFineX2 = 1, nFineX(2)
+    DO iFineX1 = 1, nFineX(1)
+
+      iFine = iFine + 1
+
+      DO i = 1, nDOFX
+      DO j = 1, nDOFX
+
+        i1 = NodeNumberTableX(1,i)
+        i2 = NodeNumberTableX(2,i)
+        i3 = NodeNumberTableX(3,i)
+        j1 = NodeNumberTableX(1,j)
+        j2 = NodeNumberTableX(2,j)
+        j3 = NodeNumberTableX(3,j)
+
+        F2C_c(i,iFine,j) &
+          =   IndicatorFunction1D( iFineX1, NodesLX1(i1) ) &
+              * Lagrange( XiOfEta1D( NodesLX1(i1), iFineX1 ), j1, NodesLX1 ) &
+            * IndicatorFunction1D( iFineX2, NodesLX2(i2) ) &
+              * Lagrange( XiOfEta1D( NodesLX2(i2), iFineX2 ), j2, NodesLX2 ) &
+            * IndicatorFunction1D( iFineX3, NodesLX3(i3) ) &
+              * Lagrange( XiOfEta1D( NodesLX3(i3), iFineX3 ), j3, NodesLX3 )
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    pF2C_c = c_loc( F2C_c(1,1,1) )
+
 #if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
 
     CALL amrex_InitializeMeshRefinement_DG &
@@ -489,15 +609,16 @@ CONTAINS
 
 #endif
 
+    DEALLOCATE( F2C_c )
+
+    DEALLOCATE( L2G_c )
+    DEALLOCATE( G2L_c )
+
     DEALLOCATE( ProjectionMatrix_T_c )
 
     DEALLOCATE( ProjectionMatrix_T )
     DEALLOCATE( ProjectionMatrix_c )
     DEALLOCATE( ProjectionMatrix )
-
-    DEALLOCATE( xiX3 )
-    DEALLOCATE( xiX2 )
-    DEALLOCATE( xiX1 )
 
     DEALLOCATE( LX_X3_Dn_1D )
     DEALLOCATE( LX_X3_Up_1D )
@@ -583,6 +704,44 @@ CONTAINS
   END SUBROUTINE Coarsen_Euler
 
 
+  INTEGER FUNCTION IndicatorFunction1D( j, eta ) RESULT( Chi )
+
+    INTEGER , INTENT(in) :: j
+    REAL(DP), INTENT(in) :: eta
+
+    IF( j .EQ. 1 .AND. eta .LE. Zero )THEN
+
+      Chi = 1
+
+    ELSE IF( j .EQ. 1 )THEN
+
+      Chi = 0
+
+    ELSE IF( j .EQ. 2 .AND. eta .GT. Zero )THEN
+
+      Chi = 1
+
+    ELSE
+
+      Chi = 0
+
+    END IF
+
+    RETURN
+  END FUNCTION IndicatorFunction1D
+
+
+  REAL(DP) FUNCTION XiOfEta1D( eta, j ) RESULT( Xi )
+
+    REAL(DP), INTENT(in) :: eta
+    INTEGER , INTENT(in) :: j
+
+    Xi = Two * eta - Half * ( -1 )**( j )
+
+    RETURN
+  END FUNCTION XiOfEta1D
+
+
   REAL(DP) FUNCTION Lagrange( x, i, xn ) RESULT( L )
 
     REAL(DP), INTENT(in) :: x
@@ -600,6 +759,7 @@ CONTAINS
 
     RETURN
   END FUNCTION Lagrange
+
 
   SUBROUTINE PrintNodeNumberTableX_X_Mapping
 
@@ -631,6 +791,45 @@ CONTAINS
     END DO
 
   END SUBROUTINE PrintNodeNumberTableX_X_Mapping
+
+
+  ! Returns the inverse of a matrix calculated by finding the LU
+  ! decomposition.  Depends on LAPACK.
+  FUNCTION inv( A ) RESULT( Ainv )
+
+    REAL(DP), DIMENSION(:,:)                , INTENT(in)  :: A
+    REAL(DP), DIMENSION(SIZE(A,1),SIZE(A,2))              :: Ainv
+
+    REAL(DP), DIMENSION(SIZE(A,1)) :: work  ! work array for LAPACK
+    INTEGER , DIMENSION(SIZE(A,1)) :: ipiv  ! pivot indices
+    INTEGER :: n, info
+
+    ! External procedures defined in LAPACK
+    EXTERNAL DGETRF
+    EXTERNAL DGETRI
+
+    ! Store A in Ainv to prevent it from being overwritten by LAPACK
+    Ainv = A
+    n = SIZE(A,1)
+
+    ! DGETRF computes an LU factorization of a general M-by-N matrix A
+    ! using partial pivoting with row interchanges.
+    CALL DGETRF(n, n, Ainv, n, ipiv, info)
+
+    IF (info /= 0) THEN
+     STOP 'Matrix is numerically singular!'
+    END IF
+
+    ! DGETRI computes the inverse of a matrix using the LU factorization
+    ! computed by DGETRF.
+    CALL DGETRI(n, Ainv, n, ipiv, work, n, info)
+
+    IF (info /= 0) THEN
+     STOP 'Matrix inversion failed!'
+    END IF
+
+    RETURN
+  END FUNCTION inv
 
 
 END MODULE Euler_MeshRefinementModule
