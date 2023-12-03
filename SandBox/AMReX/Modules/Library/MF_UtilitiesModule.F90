@@ -378,13 +378,14 @@ END IF
 
 
   SUBROUTINE MultiplyWithMetric_uGF &
-    ( iLevel, MF_uGF, nFd, Power, swXX_Option )
+    ( iLevel, MF_uGF, Power, swXX_Option )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
-    INTEGER             , INTENT(in)    :: iLevel, nFd, Power
+    INTEGER             , INTENT(in)    :: iLevel
+    REAL(DP)            , INTENT(in)    :: Power
     INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
 
-    INTEGER            :: iX1, iX2, iX3, iNX, iFd, iLo, iHi
+    INTEGER            :: iX1, iX2, iX3, iNX, iGF, iLo, iHi
     INTEGER            :: iX_B0(3), iX_E0(3), iX_B(3), iX_E(3), swXX(3)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
@@ -423,11 +424,11 @@ END IF
         iHi = iLo + nDOFX - 1
         SqrtGm = G(iX1,iX2,iX3,iLo:iHi)
 
-        DO iFd = 1, nFd
+        DO iGF = 1, nGF
         DO iNX = 1, nDOFX
 
-          G(iX1,iX2,iX3,nDOFX*(iFd-1)+iNX) &
-            = G(iX1,iX2,iX3,nDOFX*(iFd-1)+iNX) * SqrtGm(iNX)**( Power )
+          G(iX1,iX2,iX3,nDOFX*(iGF-1)+iNX) &
+            = G(iX1,iX2,iX3,nDOFX*(iGF-1)+iNX) * SqrtGm(iNX)**( Power )
 
         END DO
         END DO

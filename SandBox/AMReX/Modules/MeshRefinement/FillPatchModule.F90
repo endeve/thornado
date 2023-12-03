@@ -44,7 +44,9 @@ MODULE FillPatchModule
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
-    DP
+    DP, &
+    One, &
+    Half
   USE MF_UtilitiesModule, ONLY: &
     MultiplyWithMetric
   USE InputParsingModule, ONLY: &
@@ -110,10 +112,10 @@ CONTAINS
     IF( FineLevel .GT. 0 )THEN
 
       CALL MultiplyWithMetric &
-             ( FineLevel-1, MF_uGF, nF, +1, swXX_Option = swXX )
+             ( FineLevel-1, MF_uGF, +One, swXX_Option = swXX )
 
       CALL MultiplyWithMetric &
-             ( FineLevel  , MF_uGF, nF, +1, swXX_Option = swXX )
+             ( FineLevel  , MF_uGF, +One, swXX_Option = swXX )
 
     END IF
 
@@ -122,10 +124,10 @@ CONTAINS
     IF( FineLevel .GT. 0 )THEN
 
       CALL MultiplyWithMetric &
-             ( FineLevel-1, MF_uGF, nF, -1, swXX_Option = swXX )
+             ( FineLevel-1, MF_uGF, -Half, swXX_Option = swXX )
 
       CALL MultiplyWithMetric &
-             ( FineLevel  , MF_uGF, nF, -1, swXX_Option = swXX )
+             ( FineLevel  , MF_uGF, -Half, swXX_Option = swXX )
 
     END IF
 
@@ -253,10 +255,10 @@ CONTAINS
     IF( FineLevel .GT. 0 )THEN
 
       CALL MultiplyWithMetric &
-             ( FineLevel-1, MF_uGF, nF, +1, swXX_Option = swXX )
+             ( FineLevel-1, MF_uGF, +One, swXX_Option = swXX )
 
       CALL MultiplyWithMetric &
-             ( FineLevel  , MF_uGF, nF, +1, swXX_Option = swXX )
+             ( FineLevel  , MF_uGF, +One, swXX_Option = swXX )
 
     END IF
 
@@ -265,10 +267,10 @@ CONTAINS
     IF( FineLevel .GT. 0 )THEN
 
       CALL MultiplyWithMetric &
-             ( FineLevel-1, MF_uGF, nF, -1, swXX_Option = swXX )
+             ( FineLevel-1, MF_uGF, -Half, swXX_Option = swXX )
 
       CALL MultiplyWithMetric &
-             ( FineLevel  , MF_uGF, nF, -1, swXX_Option = swXX )
+             ( FineLevel  , MF_uGF, -Half, swXX_Option = swXX )
 
     END IF
 
@@ -387,17 +389,17 @@ CONTAINS
 
     IF( FineLevel .GT. 0 ) &
       CALL MultiplyWithMetric &
-             ( FineLevel-1, MF_uGF, nF, +1, swXX_Option = swXX )
+             ( FineLevel-1, MF_uGF, +One, swXX_Option = swXX )
 
     CALL FillCoarsePatch_Vector( FineLevel, MF_uGF )
 
     IF( FineLevel .GT. 0 )THEN
 
       CALL MultiplyWithMetric &
-             ( FineLevel-1, MF_uGF, nF, -1, swXX_Option = swXX )
+             ( FineLevel-1, MF_uGF, -Half, swXX_Option = swXX )
 
       CALL MultiplyWithMetric &
-             ( FineLevel  , MF_uGF, nF, -1, swXX_Option = swXX )
+             ( FineLevel  , MF_uGF, -Half, swXX_Option = swXX )
 
     END IF
 

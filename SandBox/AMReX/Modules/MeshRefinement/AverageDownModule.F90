@@ -21,7 +21,6 @@ MODULE AverageDownModule
 
   ! --- thornado Modules ---
 
-
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
     swX
@@ -41,6 +40,9 @@ MODULE AverageDownModule
 
   ! --- Local Modules ---
 
+  USE MF_KindModule, ONLY: &
+    One, &
+    Half
   USE MF_UtilitiesModule, ONLY: &
     MultiplyWithMetric
   USE MF_Euler_PositivityLimiterModule, ONLY: &
@@ -150,7 +152,7 @@ CONTAINS
     END IF
 
     CALL MultiplyWithMetric &
-           ( CoarseLevel+1, MF_uGF, nF, +1, swXX_Option = swXX )
+           ( CoarseLevel+1, MF_uGF, +One, swXX_Option = swXX )
 
 #if defined( THORNADO_USE_MESHREFINEMENT )
 
@@ -163,10 +165,10 @@ CONTAINS
 #endif
 
     CALL MultiplyWithMetric &
-           ( CoarseLevel+1, MF_uGF, nF, -1, swXX_Option = swXX )
+           ( CoarseLevel+1, MF_uGF, -Half, swXX_Option = swXX )
 
     CALL MultiplyWithMetric &
-           ( CoarseLevel  , MF_uGF, nF, -1, swXX_Option = swXX )
+           ( CoarseLevel  , MF_uGF, -Half, swXX_Option = swXX )
 
     CALL TimersStop_AMReX( Timer_AMReX_AverageDown )
 
