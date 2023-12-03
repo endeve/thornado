@@ -81,10 +81,34 @@ MODULE MF_GeometryModule
   PUBLIC :: ApplyBoundaryConditions_Geometry_MF
   PUBLIC :: UpdateGeometryFields_MF
 
+  INTERFACE ComputeGeometryX_MF
+    MODULE PROCEDURE ComputeGeometryX_MF_SingleLevel
+    MODULE PROCEDURE ComputeGeometryX_MF_AllLevels
+  END INTERFACE ComputeGeometryX_MF
+
 CONTAINS
 
 
-  SUBROUTINE ComputeGeometryX_MF( MF_uGF )
+  SUBROUTINE ComputeGeometryX_MF_AllLevels( MF_uGF )
+
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+
+    INTEGER :: iLevel
+
+    DO iLevel = 0, nLevels-1
+
+      CALL CreateMesh_MF( iLevel, MeshX )
+
+      CALL ComputeGeometryX_MF_SingleLevel( MF_uGF(iLevel) )
+
+      CALL DestroyMesh_MF( MeshX )
+
+    END DO
+
+  END SUBROUTINE ComputeGeometryX_MF_AllLevels
+
+
+  SUBROUTINE ComputeGeometryX_MF_SingleLevel( MF_uGF )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF
 
@@ -179,7 +203,7 @@ CONTAINS
     !$OMP END PARALLEL
 #endif
 
-  END SUBROUTINE ComputeGeometryX_MF
+  END SUBROUTINE ComputeGeometryX_MF_SingleLevel
 
 
   SUBROUTINE ApplyBoundaryConditions_Geometry_MF( MF_uGF )
