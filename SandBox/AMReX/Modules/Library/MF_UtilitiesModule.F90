@@ -378,36 +378,48 @@ END IF
 
 
   SUBROUTINE MultiplyWithSqrtGm_uGF &
-    ( iLevel, MF_uGF, Power, swXX_Option )
+    ( iLevel, MF_uGF, Power, swXX_Option, CoveredElementsOnly_Option )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
     INTEGER             , INTENT(in)    :: iLevel
     REAL(DP)            , INTENT(in)    :: Power
     INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
+    LOGICAL             , INTENT(in), OPTIONAL :: CoveredElementsOnly_Option
 
     INTEGER            :: iX1, iX2, iX3, iNX, iGF, iLo, iHi
     INTEGER            :: iX_B0(3), iX_E0(3), iX_B(3), iX_E(3), swXX(3)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
+    LOGICAL            :: CoveredElementsOnly
+
+    TYPE(amrex_imultifab) :: iMF_FineMask
 
     REAL(DP)                      :: SqrtGm(nDOFX)
     REAL(DP), CONTIGUOUS, POINTER :: G(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
 
     swXX = swX
     IF( PRESENT( swXX_Option ) ) &
       swXX = swXX_Option
 
+    CoveredElementsOnly = .FALSE.
+    IF( PRESENT( CoveredElementsOnly_Option ) ) &
+      CoveredElementsOnly = CoveredElementsOnly_Option
+
+    CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
+
 #if defined( THORNADO_OMP )
     !$OMP PARALLEL &
     !$OMP PRIVATE( iLo, iHi, iX_B0, iX_E0, iX_B, iX_E, &
-    !$OMP          BX, MFI, SqrtGm, G )
+    !$OMP          BX, MFI, SqrtGm, G, FineMask )
 #endif
 
     CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
-      G => MF_uGF(iLevel) % DataPtr( MFI )
+      G        => MF_uGF(iLevel) % DataPtr( MFI )
+      FineMask => iMF_FineMask   % DataPtr( MFI )
 
       BX = MFI % tilebox()
 
@@ -419,6 +431,12 @@ END IF
       DO iX3 = iX_B(3), iX_E(3)
       DO iX2 = iX_B(2), iX_E(2)
       DO iX1 = iX_B(1), iX_E(1)
+
+        IF( CoveredElementsOnly )THEN
+
+          IF( .NOT. IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
+
+        END IF
 
         iLo = nDOFX*(iGF_SqrtGm-1)+1
         iHi = iLo + nDOFX - 1
@@ -445,41 +463,56 @@ END IF
     !$OMP END PARALLEL
 #endif
 
+    CALL DestroyFineMask( iMF_FineMask )
+
   END SUBROUTINE MultiplyWithSqrtGm_uGF
 
 
   SUBROUTINE MultiplyWithSqrtGm_uCF &
-    ( iLevel, MF_SqrtGm, MF, nFd, Power, swXX_Option )
+    ( iLevel, MF_SqrtGm, MF, nFd, Power, swXX_Option, &
+      CoveredElementsOnly_Option )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_SqrtGm
     TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
     INTEGER             , INTENT(in)    :: iLevel, nFd, Power
     INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
+    LOGICAL             , INTENT(in), OPTIONAL :: CoveredElementsOnly_Option
 
     INTEGER            :: iX1, iX2, iX3, iNX, iFd, iLo, iHi
     INTEGER            :: iX_B0(3), iX_E0(3), iX_B(3), iX_E(3), swXX(3)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
+    LOGICAL            :: CoveredElementsOnly
+
+    TYPE(amrex_imultifab) :: iMF_FineMask
 
     REAL(DP), CONTIGUOUS, POINTER :: SqrtGm(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: U     (:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
 
     swXX = swX
     IF( PRESENT( swXX_Option ) ) &
       swXX = swXX_Option
 
+    CoveredElementsOnly = .FALSE.
+    IF( PRESENT( CoveredElementsOnly_Option ) ) &
+      CoveredElementsOnly = CoveredElementsOnly_Option
+
+    CALL CreateFineMask( iLevel, iMF_FineMask, MF % BA, MF % DM )
+
 #if defined( THORNADO_OMP )
     !$OMP PARALLEL &
     !$OMP PRIVATE( iLo, iHi, iX_B0, iX_E0, iX_B, iX_E, &
-    !$OMP          BX, MFI, SqrtGm, U )
+    !$OMP          BX, MFI, SqrtGm, U, FineMask )
 #endif
 
     CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
-      SqrtGm => MF_SqrtGm  % DataPtr( MFI )
-      U      => MF(iLevel) % DataPtr( MFI )
+      SqrtGm   => MF_SqrtGm    % DataPtr( MFI )
+      U        => MF(iLevel)   % DataPtr( MFI )
+      FineMask => iMF_FineMask % DataPtr( MFI )
 
       BX = MFI % tilebox()
 
@@ -491,6 +524,12 @@ END IF
       DO iX3 = iX_B(3), iX_E(3)
       DO iX2 = iX_B(2), iX_E(2)
       DO iX1 = iX_B(1), iX_E(1)
+
+        IF( CoveredElementsOnly )THEN
+
+          IF( .NOT. IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
+
+        END IF
 
         DO iFd = 1, nFd
         DO iNX = 1, nDOFX
@@ -513,6 +552,8 @@ END IF
 #if defined( THORNADO_OMP )
     !$OMP END PARALLEL
 #endif
+
+    CALL DestroyFineMask( iMF_FineMask )
 
   END SUBROUTINE MultiplyWithSqrtGm_uCF
 
