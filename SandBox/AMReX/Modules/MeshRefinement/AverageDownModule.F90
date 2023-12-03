@@ -131,12 +131,13 @@ CONTAINS
     INTEGER             , INTENT(in)    :: CoarseLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
 
-    INTEGER :: nComp, nF, iErr
+    INTEGER :: nComp, iErr
 
     CALL TimersStart_AMReX( Timer_AMReX_AverageDown )
 
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
+
     nComp = MF_uGF(CoarseLevel) % nComp()
-    nF    = nComp / nDOFX
 
     IF( DEBUG )THEN
 
@@ -169,6 +170,8 @@ CONTAINS
 
     CALL MultiplyWithSqrtGm &
            ( CoarseLevel  , MF_uGF, -Half, swXX_Option = swXX )
+
+#endif
 
     CALL TimersStop_AMReX( Timer_AMReX_AverageDown )
 
@@ -250,7 +253,8 @@ CONTAINS
 
     CALL MultiplyWithSqrtGm &
            ( CoarseLevel, SqrtGm(CoarseLevel), MF, nF, -1, &
-             swXX_Option = swXX )
+             swXX_Option = swXX, &
+             CoveredElementsOnly_Option = .TRUE. )
 
     CALL amrex_multifab_destroy( SqrtGm(CoarseLevel) )
 

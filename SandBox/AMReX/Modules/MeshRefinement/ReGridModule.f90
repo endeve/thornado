@@ -22,7 +22,10 @@ MODULE ReGridModule
     ApplyPositivityLimiter_Euler_MF
   USE MF_GeometryModule, ONLY: &
     ApplyBoundaryConditions_Geometry_MF, &
-    UpdateGeometryFields_MF
+    UpdateGeometryFields_MF, &
+    ComputeGeometryX_MF
+  USE MF_GravitySolutionModule_XCFC, ONLY: &
+    EvolveGravity
   USE InputParsingModule, ONLY: &
     DEBUG, &
     UseAMR, &
@@ -68,11 +71,15 @@ CONTAINS
 
         CALL amrex_regrid( 0, t_new(0) )
 
+        IF( .NOT. EvolveGravity ) &
+          CALL ComputeGeometryX_MF( MF_uGF )
+
         IF( nLevels .NE. amrex_get_numlevels() )THEN
 
           nLevels = amrex_get_numlevels()
 
-          CALL UpdateGeometryFields_MF( MF_uGF )
+          IF( EvolveGravity ) &
+            CALL UpdateGeometryFields_MF( MF_uGF )
 
         END IF
 
@@ -95,7 +102,8 @@ CONTAINS
 
         END IF
 
-        CALL ApplyBoundaryConditions_Geometry_MF( MF_uGF )
+        IF( EvolveGravity ) &
+          CALL ApplyBoundaryConditions_Geometry_MF( MF_uGF )
 
         IF( DEBUG )THEN
 

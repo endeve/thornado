@@ -88,13 +88,11 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_dst
 
-    INTEGER, PARAMETER :: sComp = 1, dComp = 1
-
-    INTEGER :: nF, iErr
+    INTEGER :: iErr
 
     CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
 
-    nF = MF_dst % nComp() / nDOFX
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     IF( DEBUG )THEN
 
@@ -131,6 +129,8 @@ CONTAINS
 
     END IF
 
+#endif
+
     CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
 
   END SUBROUTINE FillPatch_Scalar_WithMetric_Geometry
@@ -148,8 +148,6 @@ CONTAINS
       MF_uDF(0:)
     LOGICAL             , INTENT(in)   , OPTIONAL :: &
       ApplyPositivityLimiter_Option
-
-    INTEGER, PARAMETER :: sComp = 1, dComp = 1
 
     TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel)
 
@@ -189,7 +187,7 @@ CONTAINS
 
       CALL MultiplyWithSqrtGm &
              ( FineLevel-1, SqrtGm(FineLevel-1), MF_src, nF, +1, &
-               swXX_Option = swXX )
+               swXX_Option = swX )
 
       CALL amrex_multifab_build &
              ( SqrtGm(FineLevel  ), MF_uGF(FineLevel  ) % BA, &
@@ -200,7 +198,7 @@ CONTAINS
 
       CALL MultiplyWithSqrtGm &
              ( FineLevel  , SqrtGm(FineLevel  ), MF_src, nF, +1, &
-               swXX_Option = swXX )
+               swXX_Option = swX )
 
     END IF
 
@@ -210,10 +208,10 @@ CONTAINS
 
       CALL MultiplyWithSqrtGm &
              ( FineLevel-1, SqrtGm(FineLevel-1), MF_src, nF, -1, &
-               swXX_Option = swXX )
+               swXX_Option = swX )
       CALL MultiplyWithSqrtGm &
              ( FineLevel  , SqrtGm(FineLevel  ), MF_src, nF, -1, &
-               swXX_Option = swXX )
+               swXX_Option = swX )
 
       CALL amrex_multifab_destroy( SqrtGm(FineLevel-1) )
       CALL amrex_multifab_destroy( SqrtGm(FineLevel  ) )
@@ -235,13 +233,11 @@ CONTAINS
     INTEGER             , INTENT(in)    :: FineLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
 
-    INTEGER, PARAMETER :: sComp = 1, dComp = 1
-
-    INTEGER :: nF, iErr
+    INTEGER :: iErr
 
     CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
 
-    nF = MF_uGF(0) % nComp() / nDOFX
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     IF( DEBUG )THEN
 
@@ -274,6 +270,8 @@ CONTAINS
 
     END IF
 
+#endif
+
     CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
 
   END SUBROUTINE FillPatch_Vector_WithMetric_Geometry
@@ -289,8 +287,6 @@ CONTAINS
       MF_uDF(0:)
     LOGICAL             , INTENT(in)   , OPTIONAL :: &
       ApplyPositivityLimiter_Option
-
-    INTEGER, PARAMETER :: sComp = 1, dComp = 1
 
     TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel)
 
@@ -326,7 +322,7 @@ CONTAINS
 
       CALL MultiplyWithSqrtGm &
              ( FineLevel-1, SqrtGm(FineLevel-1), MF, nF, +1, &
-               swXX_Option = swXX )
+               swXX_Option = swX )
 
       CALL amrex_multifab_build &
              ( SqrtGm(FineLevel  ), MF_uGF(FineLevel  ) % BA, &
@@ -337,7 +333,7 @@ CONTAINS
 
       CALL MultiplyWithSqrtGm &
              ( FineLevel  , SqrtGm(FineLevel  ), MF, nF, +1, &
-               swXX_Option = swXX )
+               swXX_Option = swX )
 
     END IF
 
@@ -347,10 +343,10 @@ CONTAINS
 
       CALL MultiplyWithSqrtGm &
              ( FineLevel-1, SqrtGm(FineLevel-1), MF, nF, -1, &
-               swXX_Option = swXX )
+               swXX_Option = swX )
       CALL MultiplyWithSqrtGm &
              ( FineLevel  , SqrtGm(FineLevel  ), MF, nF, -1, &
-               swXX_Option = swXX )
+               swXX_Option = swX )
 
       CALL amrex_multifab_destroy( SqrtGm(FineLevel-1) )
       CALL amrex_multifab_destroy( SqrtGm(FineLevel  ) )
@@ -372,11 +368,9 @@ CONTAINS
     INTEGER             , INTENT(in)    :: FineLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
 
-    INTEGER, PARAMETER :: sComp = 1, dComp = 1
+    INTEGER :: iErr
 
-    INTEGER :: nF, iErr
-
-    nF = MF_uGF(0) % nComp() / nDOFX
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     IF( DEBUG )THEN
 
@@ -387,9 +381,15 @@ CONTAINS
 
     END IF
 
-    IF( FineLevel .GT. 0 ) &
+    IF( FineLevel .GT. 0 )THEN
+
       CALL MultiplyWithSqrtGm &
              ( FineLevel-1, MF_uGF, +One, swXX_Option = swXX )
+
+      CALL MultiplyWithSqrtGm &
+             ( FineLevel  , MF_uGF, +One, swXX_Option = swXX )
+
+    END IF
 
     CALL FillCoarsePatch_Vector( FineLevel, MF_uGF )
 
@@ -402,6 +402,8 @@ CONTAINS
              ( FineLevel  , MF_uGF, -Half, swXX_Option = swXX )
 
     END IF
+
+#endif
 
   END SUBROUTINE FillCoarsePatch_Geometry
 
@@ -416,8 +418,6 @@ CONTAINS
       MF_uDF(0:)
     LOGICAL             , INTENT(in)   , OPTIONAL :: &
       ApplyPositivityLimiter_Option
-
-    INTEGER, PARAMETER :: sComp = 1, dComp = 1
 
     TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel)
 
@@ -453,19 +453,7 @@ CONTAINS
 
       CALL MultiplyWithSqrtGm &
              ( FineLevel-1, SqrtGm(FineLevel-1), MF, nF, +1, &
-               swXX_Option = swXX )
-
-    END IF
-
-    CALL FillCoarsePatch_Vector( FineLevel, MF )
-
-    IF( FineLevel .GT. 0 )THEN
-
-      CALL MultiplyWithSqrtGm &
-             ( FineLevel-1, SqrtGm(FineLevel-1), MF, nF, -1, &
-               swXX_Option = swXX )
-
-      CALL amrex_multifab_destroy( SqrtGm(FineLevel-1) )
+               swXX_Option = swX )
 
       CALL amrex_multifab_build &
              ( SqrtGm(FineLevel), MF_uGF(FineLevel) % BA, &
@@ -475,8 +463,24 @@ CONTAINS
              ( MF_uGF(FineLevel), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
       CALL MultiplyWithSqrtGm &
+             ( FineLevel  , SqrtGm(FineLevel  ), MF, nF, +1, &
+               swXX_Option = swX )
+
+    END IF
+
+    CALL FillCoarsePatch_Vector( FineLevel, MF )
+
+    IF( FineLevel .GT. 0 )THEN
+
+      CALL MultiplyWithSqrtGm &
+             ( FineLevel-1, SqrtGm(FineLevel-1), MF, nF, -1, &
+               swXX_Option = swX )
+
+      CALL amrex_multifab_destroy( SqrtGm(FineLevel-1) )
+
+      CALL MultiplyWithSqrtGm &
              ( FineLevel  , SqrtGm(FineLevel  ), MF, nF, -1, &
-               swXX_Option = swXX )
+               swXX_Option = swX )
 
       CALL amrex_multifab_destroy( SqrtGm(FineLevel  ) )
 
