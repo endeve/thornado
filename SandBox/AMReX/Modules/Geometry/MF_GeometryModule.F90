@@ -79,7 +79,7 @@ MODULE MF_GeometryModule
 
   PUBLIC :: ComputeGeometryX_MF
   PUBLIC :: ApplyBoundaryConditions_Geometry_MF
-  PUBLIC :: UpdateGeometryFields_MF
+  PUBLIC :: UpdateSpatialMetric_MF
 
   INTERFACE ComputeGeometryX_MF
     MODULE PROCEDURE ComputeGeometryX_MF_SingleLevel
@@ -219,7 +219,7 @@ CONTAINS
   END SUBROUTINE ApplyBoundaryConditions_Geometry_MF
 
 
-  SUBROUTINE UpdateGeometryFields_MF( MF_uGF, swX_Option )
+  SUBROUTINE UpdateSpatialMetric_MF( MF_uGF, swX_Option )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
     INTEGER             , INTENT(in), OPTIONAL :: swX_Option(3)
@@ -293,7 +293,7 @@ CONTAINS
 
     END DO ! iLevel = 0, nLevels-1
 
-  END SUBROUTINE UpdateGeometryFields_MF
+  END SUBROUTINE UpdateSpatialMetric_MF
 
 
   SUBROUTINE ApplyBoundaryConditions_Geometry_MF_X1( MF_uGF )
