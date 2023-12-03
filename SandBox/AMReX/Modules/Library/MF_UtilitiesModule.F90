@@ -384,12 +384,10 @@ END IF
     INTEGER             , INTENT(in)    :: iLevel, nFd, Power
     INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
 
-    INTEGER            :: iX1, iX2, iX3, iNX, iFd, swXX(3)
-    INTEGER            :: lo_G(4), hi_G(4)
-    INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER            :: iX1, iX2, iX3, iNX, iFd, iLo, iHi
+    INTEGER            :: iX_B0(3), iX_E0(3), iX_B(3), iX_E(3), swXX(3)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
-    REAL(DP)           :: G_K(nDOFX,nFd)
 
     REAL(DP)                      :: SqrtGm(nDOFX)
     REAL(DP), CONTIGUOUS, POINTER :: G(:,:,:,:)
@@ -400,8 +398,8 @@ END IF
 
 #if defined( THORNADO_OMP )
     !$OMP PARALLEL &
-    !$OMP PRIVATE( lo_G, hi_G, iX_B0, iX_E0, iX_B1, iX_E1, &
-    !$OMP          BX, MFI, G_K, SqrtGm, G )
+    !$OMP PRIVATE( iLo, iHi, iX_B0, iX_E0, iX_B, iX_E, &
+    !$OMP          BX, MFI, SqrtGm, G )
 #endif
 
     CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
@@ -410,32 +408,26 @@ END IF
 
       G => MF_uGF(iLevel) % DataPtr( MFI )
 
-      lo_G = LBOUND( G ); hi_G = UBOUND( G )
-
       BX = MFI % tilebox()
 
       iX_B0 = BX % lo
       iX_E0 = BX % hi
-      iX_B1 = iX_B0 - swXX
-      iX_E1 = iX_E0 + swXX
+      iX_B  = iX_B0 - swXX
+      iX_E  = iX_E0 + swXX
 
-      DO iX3 = iX_B1(3), iX_E1(3)
-      DO iX2 = iX_B1(2), iX_E1(2)
-      DO iX1 = iX_B1(1), iX_E1(1)
+      DO iX3 = iX_B(3), iX_E(3)
+      DO iX2 = iX_B(2), iX_E(2)
+      DO iX1 = iX_B(1), iX_E(1)
 
-        G_K(1:nDOFX,1:nFd) &
-          = RESHAPE( G(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nFd ] )
-
-        DO iNX = 1, nDOFX
-
-          SqrtGm(iNX) = SQRT( G_K(iNX,iGF_SqrtGm) )
-
-        END DO
+        iLo = nDOFX*(iGF_SqrtGm-1)+1
+        iHi = iLo + nDOFX - 1
+        SqrtGm = G(iX1,iX2,iX3,iLo:iHi)
 
         DO iFd = 1, nFd
         DO iNX = 1, nDOFX
 
-          G_K(iNX,iFd) = G_K(iNX,iFd) * SqrtGm(iNX)**( Power )
+          G(iX1,iX2,iX3,nDOFX*(iFd-1)+iNX) &
+            = G(iX1,iX2,iX3,nDOFX*(iFd-1)+iNX) * SqrtGm(iNX)**( Power )
 
         END DO
         END DO
@@ -463,15 +455,13 @@ END IF
     INTEGER             , INTENT(in)    :: iLevel, nFd, Power
     INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
 
-    INTEGER            :: iX1, iX2, iX3, iNX, iFd, swXX(3)
-    INTEGER            :: lo_F(4), hi_F(4)
-    INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER            :: iX1, iX2, iX3, iNX, iFd, iLo, iHi
+    INTEGER            :: iX_B0(3), iX_E0(3), iX_B(3), iX_E(3), swXX(3)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
-    REAL(DP)           :: F_K(nDOFX,nFd)
 
-    REAL(DP), CONTIGUOUS, POINTER :: SqrtGm  (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: F       (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: SqrtGm(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: U     (:,:,:,:)
 
     swXX = swX
     IF( PRESENT( swXX_Option ) ) &
@@ -479,8 +469,8 @@ END IF
 
 #if defined( THORNADO_OMP )
     !$OMP PARALLEL &
-    !$OMP PRIVATE( lo_F, hi_F, iX_B0, iX_E0, iX_B1, iX_E1, &
-    !$OMP          BX, MFI, F_K, SqrtGm, F )
+    !$OMP PRIVATE( iLo, iHi, iX_B0, iX_E0, iX_B, iX_E, &
+    !$OMP          BX, MFI, SqrtGm, U )
 #endif
 
     CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = UseTiling )
@@ -488,28 +478,25 @@ END IF
     DO WHILE( MFI % next() )
 
       SqrtGm => MF_SqrtGm  % DataPtr( MFI )
-      F      => MF(iLevel) % DataPtr( MFI )
-
-      lo_F = LBOUND( F ); hi_F = UBOUND( F )
+      U      => MF(iLevel) % DataPtr( MFI )
 
       BX = MFI % tilebox()
 
       iX_B0 = BX % lo
       iX_E0 = BX % hi
-      iX_B1 = iX_B0 - swXX
-      iX_E1 = iX_E0 + swXX
+      iX_B  = iX_B0 - swXX
+      iX_E  = iX_E0 + swXX
 
-      DO iX3 = iX_B1(3), iX_E1(3)
-      DO iX2 = iX_B1(2), iX_E1(2)
-      DO iX1 = iX_B1(1), iX_E1(1)
-
-        F_K(1:nDOFX,1:nFd) &
-          = RESHAPE( F(iX1,iX2,iX3,lo_F(4):hi_F(4)), [ nDOFX, nFd ] )
+      DO iX3 = iX_B(3), iX_E(3)
+      DO iX2 = iX_B(2), iX_E(2)
+      DO iX1 = iX_B(1), iX_E(1)
 
         DO iFd = 1, nFd
         DO iNX = 1, nDOFX
 
-          F_K(iNX,iFd) = F_K(iNX,iFd) * SqrtGm(iX1,iX2,iX3,iNX)**( Power )
+          U(iX1,iX2,iX3,nDOFX*(iFd-1)+iNX) &
+            = U(iX1,iX2,iX3,nDOFX*(iFd-1)+iNX) &
+                * SqrtGm(iX1,iX2,iX3,iNX)**( Power )
 
         END DO
         END DO
