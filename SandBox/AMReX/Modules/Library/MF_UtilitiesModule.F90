@@ -166,7 +166,8 @@ MODULE MF_UtilitiesModule
 
   INTERFACE MultiplyWithSqrtGm
     MODULE PROCEDURE MultiplyWithSqrtGm_uGF
-    MODULE PROCEDURE MultiplyWithSqrtGm_uCF
+    MODULE PROCEDURE MultiplyWithSqrtGm_uCF_Scalar
+    MODULE PROCEDURE MultiplyWithSqrtGm_uCF_Vector
   END INTERFACE MultiplyWithSqrtGm
 
   INTERFACE ShowVariableFromMultiFab
@@ -315,11 +316,15 @@ END IF
 
         CLOSE( iFileNo )
 
-      ELSE IF( ANY( FineMask(:,:,:,1) .EQ. 0 ) )THEN
+      ELSE IF( PRESENT( iMF_FineMask_Option ) )THEN
 
-        WRITE(*,*)
+        IF( ANY( FineMask(:,:,:,1) .EQ. 0 ) )THEN
 
-      END IF
+          WRITE(*,*)
+
+        END IF
+
+     END IF
 
     END DO ! WHILE( MFI % next() )
 
@@ -468,7 +473,76 @@ END IF
   END SUBROUTINE MultiplyWithSqrtGm_uGF
 
 
-  SUBROUTINE MultiplyWithSqrtGm_uCF &
+  SUBROUTINE MultiplyWithSqrtGm_uCF_Scalar &
+    ( iLevel, MF_SqrtGm, MF, nFd, Power, swXX_Option )
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_SqrtGm
+    TYPE(amrex_multifab), INTENT(inout) :: MF
+    INTEGER             , INTENT(in)    :: iLevel, nFd, Power
+    INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
+
+    INTEGER            :: iX1, iX2, iX3, iNX, iFd, iLo, iHi
+    INTEGER            :: iX_B0(3), iX_E0(3), iX_B(3), iX_E(3), swXX(3)
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+
+    REAL(DP), CONTIGUOUS, POINTER :: SqrtGm(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: U     (:,:,:,:)
+
+    swXX = swX
+    IF( PRESENT( swXX_Option ) ) &
+      swXX = swXX_Option
+
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL &
+    !$OMP PRIVATE( iLo, iHi, iX_B0, iX_E0, iX_B, iX_E, &
+    !$OMP          BX, MFI, SqrtGm, U )
+#endif
+
+    CALL amrex_mfiter_build( MFI, MF, tiling = UseTiling )
+
+    DO WHILE( MFI % next() )
+
+      SqrtGm => MF_SqrtGm    % DataPtr( MFI )
+      U      => MF           % DataPtr( MFI )
+
+      BX = MFI % tilebox()
+
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+      iX_B  = iX_B0 - swXX
+      iX_E  = iX_E0 + swXX
+
+      DO iX3 = iX_B(3), iX_E(3)
+      DO iX2 = iX_B(2), iX_E(2)
+      DO iX1 = iX_B(1), iX_E(1)
+
+        DO iFd = 1, nFd
+        DO iNX = 1, nDOFX
+
+          U(iX1,iX2,iX3,nDOFX*(iFd-1)+iNX) &
+            = U(iX1,iX2,iX3,nDOFX*(iFd-1)+iNX) &
+                * SqrtGm(iX1,iX2,iX3,iNX)**( Power )
+
+        END DO
+        END DO
+
+      END DO
+      END DO
+      END DO
+
+    END DO ! WHILE( MFI % next() )
+
+    CALL amrex_mfiter_destroy( MFI )
+
+#if defined( THORNADO_OMP )
+    !$OMP END PARALLEL
+#endif
+
+  END SUBROUTINE MultiplyWithSqrtGm_uCF_Scalar
+
+
+  SUBROUTINE MultiplyWithSqrtGm_uCF_Vector &
     ( iLevel, MF_SqrtGm, MF, nFd, Power, swXX_Option, &
       CoveredElementsOnly_Option )
 
@@ -555,7 +629,7 @@ END IF
 
     CALL DestroyFineMask( iMF_FineMask )
 
-  END SUBROUTINE MultiplyWithSqrtGm_uCF
+  END SUBROUTINE MultiplyWithSqrtGm_uCF_Vector
 
 
   SUBROUTINE amrex2thornado_X &
