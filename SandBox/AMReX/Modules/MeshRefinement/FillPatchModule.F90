@@ -38,6 +38,8 @@ MODULE FillPatchModule
     nDOFX, &
     swX, &
     nDimsX
+  USE MeshModule, ONLY: &
+    MeshX
   USE GeometryFieldsModule, ONLY: &
     iGF_SqrtGm
 
@@ -49,6 +51,11 @@ MODULE FillPatchModule
     Half
   USE MF_UtilitiesModule, ONLY: &
     MultiplyWithSqrtGm
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
+  USE MF_GeometryModule, ONLY: &
+    ComputeGeometryX_MF
   USE InputParsingModule, ONLY: &
     UseTiling, &
     DEBUG
@@ -65,10 +72,10 @@ MODULE FillPatchModule
   PUBLIC :: FillPatch, FillCoarsePatch
 
   INTERFACE FillPatch
-    MODULE PROCEDURE FillPatch_Scalar_WithMetric_Geometry
-    MODULE PROCEDURE FillPatch_Scalar_WithMetric_Fluid
-    MODULE PROCEDURE FillPatch_Vector_WithMetric_Geometry
-    MODULE PROCEDURE FillPatch_Vector_WithMetric_Fluid
+    MODULE PROCEDURE FillPatch_Scalar_Geometry
+    MODULE PROCEDURE FillPatch_Scalar_Fluid
+    MODULE PROCEDURE FillPatch_Vector_Geometry
+    MODULE PROCEDURE FillPatch_Vector_Fluid
   END INTERFACE FillPatch
 
   INTERFACE FillCoarsePatch
@@ -81,7 +88,7 @@ MODULE FillPatchModule
 CONTAINS
 
 
-  SUBROUTINE FillPatch_Scalar_WithMetric_Geometry &
+  SUBROUTINE FillPatch_Scalar_Geometry &
     ( FineLevel, MF_uGF, MF_dst )
 
     INTEGER             , INTENT(in)    :: FineLevel
@@ -101,7 +108,7 @@ CONTAINS
       IF( amrex_parallel_ioprocessor() )THEN
 
         WRITE(*,'(4x,A,I3.3)') &
-          'CALL FillPatch_Scalar_WithMetric_Geometry, FineLevel: ', FineLevel
+          'CALL FillPatch_Scalar_Geometry, FineLevel: ', FineLevel
 
       END IF
 
@@ -129,19 +136,27 @@ CONTAINS
 
     END IF
 
+#else
+
+    CALL CreateMesh_MF( FineLevel, MeshX )
+
+    CALL ComputeGeometryX_MF( MF_dst )
+
+    CALL DestroyMesh_MF( MeshX )
+
 #endif
 
     CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
 
-  END SUBROUTINE FillPatch_Scalar_WithMetric_Geometry
+  END SUBROUTINE FillPatch_Scalar_Geometry
 
 
-  SUBROUTINE FillPatch_Scalar_WithMetric_Fluid &
-    ( FineLevel, MF_uGF, MF_src, MF_dst, &
+  SUBROUTINE FillPatch_Scalar_Fluid &
+    ( FineLevel, MF_uGF, MF_uGF_tmp, MF_src, MF_dst, &
       MF_uDF, ApplyPositivityLimiter_Option )
 
     INTEGER             , INTENT(in)    :: FineLevel
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:), MF_uGF_tmp
     TYPE(amrex_multifab), INTENT(inout) :: MF_src(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_dst
     TYPE(amrex_multifab), INTENT(inout), OPTIONAL :: &
@@ -149,7 +164,7 @@ CONTAINS
     LOGICAL             , INTENT(in)   , OPTIONAL :: &
       ApplyPositivityLimiter_Option
 
-    TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel)
+    TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel), SqrtGm_tmp
 
     INTEGER :: nF, iErr
 
@@ -170,7 +185,7 @@ CONTAINS
       IF( amrex_parallel_ioprocessor() )THEN
 
         WRITE(*,'(4x,A,I3.3)') &
-          'CALL FillPatch_Scalar_WithMetric_Fluid, FineLevel: ', FineLevel
+          'CALL FillPatch_Scalar_Fluid, FineLevel: ', FineLevel
 
       END IF
 
@@ -181,20 +196,22 @@ CONTAINS
       CALL amrex_multifab_build &
              ( SqrtGm(FineLevel-1), MF_uGF(FineLevel-1) % BA, &
                                     MF_uGF(FineLevel-1) % DM, nDOFX, swX )
+      CALL amrex_multifab_build &
+             ( SqrtGm(FineLevel  ), MF_uGF(FineLevel  ) % BA, &
+                                    MF_uGF(FineLevel  ) % DM, nDOFX, swX )
+      CALL amrex_multifab_build &
+             ( SqrtGm_tmp, MF_uGF_tmp % BA, &
+                           MF_uGF_tmp % DM, nDOFX, swX )
 
       CALL SqrtGm(FineLevel-1) % COPY &
              ( MF_uGF(FineLevel-1), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
+      CALL SqrtGm(FineLevel  ) % COPY &
+             ( MF_uGF(FineLevel  ), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
+
       CALL MultiplyWithSqrtGm &
              ( FineLevel-1, SqrtGm(FineLevel-1), MF_src, nF, +1, &
                swXX_Option = swX )
-
-      CALL amrex_multifab_build &
-             ( SqrtGm(FineLevel  ), MF_uGF(FineLevel  ) % BA, &
-                                    MF_uGF(FineLevel  ) % DM, nDOFX, swX )
-
-      CALL SqrtGm(FineLevel  ) % COPY &
-             ( MF_uGF(FineLevel  ), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
 
       CALL MultiplyWithSqrtGm &
              ( FineLevel  , SqrtGm(FineLevel  ), MF_src, nF, +1, &
@@ -206,15 +223,26 @@ CONTAINS
 
     IF( FineLevel .GT. 0 )THEN
 
+      CALL SqrtGm_tmp % COPY &
+             ( MF_uGF_tmp, 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
+
       CALL MultiplyWithSqrtGm &
-             ( FineLevel-1, SqrtGm(FineLevel-1), MF_src, nF, -1, &
+             ( FineLevel, SqrtGm_tmp, MF_dst, nF, -1, &
                swXX_Option = swX )
+
       CALL MultiplyWithSqrtGm &
              ( FineLevel  , SqrtGm(FineLevel  ), MF_src, nF, -1, &
                swXX_Option = swX )
 
-      CALL amrex_multifab_destroy( SqrtGm(FineLevel-1) )
+      CALL MultiplyWithSqrtGm &
+             ( FineLevel-1, SqrtGm(FineLevel-1), MF_src, nF, -1, &
+               swXX_Option = swX )
+
+      CALL amrex_multifab_destroy( SqrtGm_tmp )
+
       CALL amrex_multifab_destroy( SqrtGm(FineLevel  ) )
+
+      CALL amrex_multifab_destroy( SqrtGm(FineLevel-1) )
 
     END IF
 
@@ -225,10 +253,10 @@ CONTAINS
 
     CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
 
-  END SUBROUTINE FillPatch_Scalar_WithMetric_Fluid
+  END SUBROUTINE FillPatch_Scalar_Fluid
 
 
-  SUBROUTINE FillPatch_Vector_WithMetric_Geometry( FineLevel, MF_uGF )
+  SUBROUTINE FillPatch_Vector_Geometry( FineLevel, MF_uGF )
 
     INTEGER             , INTENT(in)    :: FineLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
@@ -244,7 +272,7 @@ CONTAINS
       CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
 
       WRITE(*,'(4x,A,I3.3)') &
-        'CALL FillPatch_Vector_WithMetric_Geometry, FineLevel: ', FineLevel
+        'CALL FillPatch_Vector_Geometry, FineLevel: ', FineLevel
 
     END IF
 
@@ -270,14 +298,22 @@ CONTAINS
 
     END IF
 
+#else
+
+    CALL CreateMesh_MF( FineLevel, MeshX )
+
+    CALL ComputeGeometryX_MF( MF_uGF(FineLevel) )
+
+    CALL DestroyMesh_MF( MeshX )
+
 #endif
 
     CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
 
-  END SUBROUTINE FillPatch_Vector_WithMetric_Geometry
+  END SUBROUTINE FillPatch_Vector_Geometry
 
 
-  SUBROUTINE FillPatch_Vector_WithMetric_Fluid &
+  SUBROUTINE FillPatch_Vector_Fluid &
     ( FineLevel, MF_uGF, MF, MF_uDF, ApplyPositivityLimiter_Option )
 
     INTEGER             , INTENT(in)    :: FineLevel
@@ -307,7 +343,7 @@ CONTAINS
       CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
 
       WRITE(*,'(4x,A,I3.3)') &
-        'CALL FillPatch_Vector_WithMetric_Fluid, FineLevel: ', FineLevel
+        'CALL FillPatch_Vector_Fluid, FineLevel: ', FineLevel
 
     END IF
 
@@ -360,7 +396,7 @@ CONTAINS
 
     CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
 
-  END SUBROUTINE FillPatch_Vector_WithMetric_Fluid
+  END SUBROUTINE FillPatch_Vector_Fluid
 
 
   SUBROUTINE FillCoarsePatch_Geometry( FineLevel, MF_uGF )
@@ -369,6 +405,8 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
 
     INTEGER :: iErr
+
+    CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
@@ -403,7 +441,17 @@ CONTAINS
 
     END IF
 
+#else
+
+    CALL CreateMesh_MF( FineLevel, MeshX )
+
+    CALL ComputeGeometryX_MF( MF_uGF(FineLevel) )
+
+    CALL DestroyMesh_MF( MeshX )
+
 #endif
+
+    CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
 
   END SUBROUTINE FillCoarsePatch_Geometry
 

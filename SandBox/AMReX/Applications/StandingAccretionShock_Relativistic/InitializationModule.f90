@@ -90,6 +90,8 @@ MODULE InitializationModule
     MF_uAF, &
     MF_uDF, &
     FluxRegister_Euler
+  USE MF_GeometryModule, ONLY: &
+    ComputeGeometryX_MF
   USE MF_Euler_SlopeLimiterModule, ONLY: &
     InitializeSlopeLimiter_Euler_MF, &
     ApplySlopeLimiter_Euler_MF
@@ -98,6 +100,8 @@ MODULE InitializationModule
     ApplyPositivityLimiter_Euler_MF
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK_MF
+  USE MF_InitializationModule, ONLY: &
+    InitializeFields_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
   USE MF_MeshModule, ONLY: &
@@ -111,6 +115,8 @@ MODULE InitializationModule
   USE FillPatchModule, ONLY: &
     FillPatch, &
     FillCoarsePatch
+  USE TaggingModule, ONLY: &
+    TagElements
   USE InputParsingModule, ONLY: &
     InitializeParameters, &
     nLevels, &
@@ -295,12 +301,6 @@ CONTAINS
 
   SUBROUTINE MakeNewLevelFromScratch( iLevel, Time, pBA, pDM ) BIND(c)
 
-    USE MF_GeometryModule, ONLY: &
-      ComputeGeometryX_MF
-
-    USE MF_InitializationModule, ONLY: &
-      InitializeFields_MF
-
     INTEGER,     INTENT(in), VALUE :: iLevel
     REAL(DP),    INTENT(in), VALUE :: Time
     TYPE(c_ptr), INTENT(in), VALUE :: pBA, pDM
@@ -401,35 +401,32 @@ CONTAINS
 
   SUBROUTINE RemakeLevel( iLevel, Time, pBA, pDM ) BIND(c)
 
-    INTEGER,     INTENT(in), VALUE :: iLevel
-    REAL(DP),    INTENT(in), VALUE :: Time
+    INTEGER    , INTENT(in), VALUE :: iLevel
+    REAL(DP)   , INTENT(in), VALUE :: Time
     TYPE(c_ptr), INTENT(in), VALUE :: pBA, pDM
 
     TYPE(amrex_boxarray)  :: BA
     TYPE(amrex_distromap) :: DM
-    TYPE(amrex_multifab)  :: MF_uGF_tmp, MF_uCF_tmp, MF_uPF_tmp, &
-                             MF_uAF_tmp, MF_uDF_tmp
+    TYPE(amrex_multifab)  :: MF_uGF_tmp, MF_uCF_tmp, MF_uDF_tmp
 
     BA = pBA
     DM = pDM
 
     CALL amrex_multifab_build( MF_uGF_tmp, BA, DM, nDOFX * nGF, swX )
     CALL amrex_multifab_build( MF_uCF_tmp, BA, DM, nDOFX * nCF, swX )
-    CALL amrex_multifab_build( MF_uPF_tmp, BA, DM, nDOFX * nPF, swX )
-    CALL amrex_multifab_build( MF_uAF_tmp, BA, DM, nDOFX * nAF, swX )
     CALL amrex_multifab_build( MF_uDF_tmp, BA, DM, nDOFX * nDF, swX )
 
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF, MF_uGF_tmp )
-    CALL FillPatch( iLevel, MF_uGF, MF_uCF, MF_uCF_tmp )
-    CALL FillPatch( iLevel, MF_uGF, MF_uDF, MF_uDF_tmp )
+    CALL FillPatch( iLevel, MF_uGF                    , MF_uGF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, MF_uDF, MF_uDF_tmp )
 
     CALL ClearLevel( iLevel )
 
     CALL amrex_multifab_build( MF_uGF(iLevel), BA, DM, nDOFX * nGF, swX )
     CALL amrex_multifab_build( MF_uCF(iLevel), BA, DM, nDOFX * nCF, swX )
+    CALL amrex_multifab_build( MF_uDF(iLevel), BA, DM, nDOFX * nDF, swX )
     CALL amrex_multifab_build( MF_uPF(iLevel), BA, DM, nDOFX * nPF, swX )
     CALL amrex_multifab_build( MF_uAF(iLevel), BA, DM, nDOFX * nAF, swX )
-    CALL amrex_multifab_build( MF_uDF(iLevel), BA, DM, nDOFX * nDF, swX )
 
     IF( iLevel .GT. 0 .AND. UseFluxCorrection_Euler ) &
       CALL amrex_fluxregister_build &
@@ -441,8 +438,6 @@ CONTAINS
     CALL MF_uDF(iLevel) % COPY( MF_uDF_tmp, 1, 1, nDOFX * nDF, swX )
 
     CALL amrex_multifab_destroy( MF_uDF_tmp )
-    CALL amrex_multifab_destroy( MF_uAF_tmp )
-    CALL amrex_multifab_destroy( MF_uPF_tmp )
     CALL amrex_multifab_destroy( MF_uCF_tmp )
     CALL amrex_multifab_destroy( MF_uGF_tmp )
 
@@ -450,9 +445,6 @@ CONTAINS
 
 
   SUBROUTINE ErrorEstimate( iLevel, cp, Time, SetTag, ClearTag ) BIND(c)
-
-    USE TaggingModule, ONLY: &
-      TagElements
 
     INTEGER,                INTENT(in), VALUE :: iLevel
     TYPE(c_ptr),            INTENT(in), VALUE :: cp
