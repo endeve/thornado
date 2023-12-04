@@ -67,6 +67,7 @@ GravitySolutionModule_Newtonian_Poseidon.o: \
 
 GravitySolutionModule_XCFC.o: \
   KindModule.o \
+  ProgramHeaderModule.o \
   GeometryComputationModule.o \
   XCFC_UtilitiesModule.o \
   GravitySolutionModule_XCFC_Poseidon.o \

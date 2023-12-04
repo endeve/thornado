@@ -25,7 +25,8 @@ MODULE MF_TimeSteppingModule_SSPRK
     nCF
   USE XCFC_UtilitiesModule, ONLY: &
     nGS, &
-    nMF
+    nMF, &
+    swX_GS
 
   ! --- Local Modules ---
 
@@ -55,7 +56,6 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE MF_Euler_TallyModule, ONLY: &
     IncrementOffGridTally_Euler_MF
   USE MF_XCFC_UtilitiesModule, ONLY: &
-    swXX, &
     MultiplyWithPsi6_MF, &
     UpdateConformalFactorAndMetric_XCFC_MF, &
     UpdateLapseShiftCurvature_XCFC_MF, &
@@ -171,12 +171,12 @@ CONTAINS
 
         CALL amrex_multifab_build &
                ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-                 nDOFX * nGS, swXX )
+                 nDOFX * nGS, 0 )
         CALL MF_uGS(iLevel) % SetVal( Zero ) ! remove this after debugging
 
         CALL amrex_multifab_build &
                ( MF_uMF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-                 nDOFX * nMF, swXX )
+                 nDOFX * nMF, swX_GS )
         CALL MF_uMF(iLevel) % SetVal( Zero ) ! remove this after debugging
 
       END DO

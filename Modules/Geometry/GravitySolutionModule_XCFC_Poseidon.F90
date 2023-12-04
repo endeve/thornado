@@ -32,6 +32,7 @@ MODULE GravitySolutionModule_XCFC_Poseidon
     iMF_K_dd_22, &
     iMF_K_dd_23, &
     iMF_K_dd_33, &
+    swX_GS, &
     ComputeGravitationalMass
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
@@ -69,11 +70,7 @@ MODULE GravitySolutionModule_XCFC_Poseidon
 CONTAINS
 
 
-  SUBROUTINE InitializeGravitySolver_XCFC_Poseidon &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
-
-    INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(inout) :: uGF(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+  SUBROUTINE InitializeGravitySolver_XCFC_Poseidon
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
@@ -133,7 +130,7 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       GS(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:) ! This contains psi^6 * { E, S_i }
     REAL(DP), INTENT(inout) :: &
-      M (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+      M (1:,iX_B0(1)-swX_GS(1):,iX_B0(2)-swX_GS(2):,iX_B0(3)-swX_GS(3):,1:)
 
     REAL(DP)         :: GravitationalMass, Psi_xR, AlphaPsi_xR, Beta_u_xR(3)
     CHARACTER(LEN=1) :: INNER_BC_TYPES (5), OUTER_BC_TYPES (5)
@@ -194,8 +191,8 @@ CONTAINS
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       GS(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
-    REAL(DP), INTENT(inout)    :: &
-      M (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    REAL(DP), INTENT(inout) :: &
+      M (1:,iX_B0(1)-swX_GS(1):,iX_B0(2)-swX_GS(2):,iX_B0(3)-swX_GS(3):,1:)
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
@@ -204,7 +201,7 @@ CONTAINS
     CALL Poseidon_Input_Sources_Part2 &
            ( Input_E  = GS(:,:,:,:,iGS_E),  &
              Input_Si = GS(:,:,:,:,iGS_S1:iGS_S3), &
-             Input_S  = GS(:,:,:,:,iGS_S)  )
+             Input_S  = GS(:,:,:,:,iGS_S) )
 
     ! --- Compute lapse and shift ---
 

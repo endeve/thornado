@@ -17,6 +17,7 @@ MODULE TimeSteppingModule_SSPRK
     MultiplyWithPsi6, &
     nGS, &
     nMF, &
+    swX_GS, &
     UpdateConformalFactorAndMetric_XCFC, &
     UpdateLapseShiftCurvature_XCFC, &
     ApplyBoundaryConditions_Geometry_XCFC
@@ -214,9 +215,9 @@ CONTAINS
     REAL(DP) :: GS(nDOFX,iX_B0(1):iX_E0(1), &
                          iX_B0(2):iX_E0(2), &
                          iX_B0(3):iX_E0(3),nGS)
-    REAL(DP) :: M (nDOFX,iX_B0(1):iX_E0(1), &
-                         iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3),nMF)
+    REAL(DP) :: M (nDOFX,iX_B0(1)-swX_GS(1):iX_E0(1)+swX_GS(1), &
+                         iX_B0(2)-swX_GS(2):iX_E0(2)+swX_GS(2), &
+                         iX_B0(3)-swX_GS(3):iX_E0(3)+swX_GS(3),nMF)
 
     REAL(DP) :: dM_OffGrid_Euler(nCF)
 

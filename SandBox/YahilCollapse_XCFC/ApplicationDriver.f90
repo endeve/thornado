@@ -217,7 +217,8 @@ PROGRAM ApplicationDriver
 
   CALL InitializeReferenceElementX_Lagrange
 
-  CALL InitializeGravitySolver_XCFC( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+  CALL InitializeGravitySolver_XCFC &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, FillGhostCells_Option = .FALSE. )
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option &

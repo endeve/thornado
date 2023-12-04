@@ -61,7 +61,8 @@ MODULE MF_MetricInitializationModule_XCFC_Poseidon
     iMF_K_dd_22, &
     iMF_K_dd_23, &
     iMF_K_dd_33, &
-    nMF
+    nMF, &
+    swX_GS
 
   ! --- Local Modules ---
 
@@ -79,7 +80,6 @@ MODULE MF_MetricInitializationModule_XCFC_Poseidon
   USE AverageDownModule, ONLY: &
     AverageDown
   USE MF_XCFC_UtilitiesModule, ONLY: &
-    swXX, &
     MultiplyWithPsi6_MF, &
     UpdateConformalFactorAndMetric_XCFC_MF, &
     UpdateLapseShiftCurvature_XCFC_MF, &
@@ -163,42 +163,42 @@ CONTAINS
 
       CALL amrex_multifab_build &
              ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX * nGS, swXX )
+               nDOFX * nGS, 0 )
       CALL MF_uGS(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( MF_uMF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX * nMF, swXX )
+               nDOFX * nMF, swX_GS )
       CALL MF_uMF(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( LF1(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX, swXX )
+               nDOFX, 0 )
       CALL LF1(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( LF2(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX, swXX )
+               nDOFX, 0 )
       CALL LF2(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( dLF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX, swXX )
+               nDOFX, 0 )
       CALL dLF(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( CF1(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX, swXX )
+               nDOFX, 0 )
       CALL CF1(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( CF2(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX, swXX )
+               nDOFX, 0 )
       CALL CF2(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( dCF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX, swXX )
+               nDOFX, 0 )
       CALL dCF(iLevel) % SetVal( Zero )
 
     END DO ! iLevel = 0, nLevels-1
@@ -371,12 +371,12 @@ CONTAINS
 
       CALL amrex_multifab_build &
              ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX * nGS, swXX )
+               nDOFX * nGS, 0 )
       CALL MF_uGS(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
              ( MF_uMF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX * nMF, swXX )
+               nDOFX * nMF, swX_GS )
       CALL MF_uMF(iLevel) % SetVal( Zero )
 
     END DO

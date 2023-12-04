@@ -47,6 +47,8 @@ MODULE XCFC_UtilitiesModule
   PUBLIC :: UpdateConformalFactorAndMetric_XCFC
   PUBLIC :: UpdateLapseShiftCurvature_XCFC
 
+  INTEGER, PUBLIC :: swX_GS(3)
+
   ! --- MF: Metric Fields ---
 
   INTEGER, PARAMETER, PUBLIC :: iMF_Psi     = 1
@@ -223,7 +225,7 @@ CONTAINS
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
-      GS(nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
+      GS(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
     REAL(DP), INTENT(inout) :: &
       GravitationalMass
     INTEGER , INTENT(in), OPTIONAL :: &
@@ -278,15 +280,20 @@ CONTAINS
     ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
 
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)    :: M(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    REAL(DP), INTENT(in)    :: M(1:,iX_B0(1)-swX_GS(1):, &
+                                    iX_B0(2)-swX_GS(2):, &
+                                    iX_B0(3)-swX_GS(3):,1:)
     REAL(DP), INTENT(inout) :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER  :: iX1, iX2, iX3, iNX, iNX1, iNX2
+    INTEGER  :: iX1, iX2, iX3, iNX, iNX1, iNX2, iX_B(3), iX_E(3)
     REAL(DP) :: X1, X2, Psi
 
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
+    iX_B = iX_B0 - swX_GS
+    iX_E = iX_E0 + swX_GS
+
+    DO iX3 = iX_B(3), iX_E(3)
+    DO iX2 = iX_B(2), iX_E(2)
+    DO iX1 = iX_B(1), iX_E(1)
 
       DO iNX = 1, nDOFX
 
@@ -318,14 +325,19 @@ CONTAINS
     ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
 
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)    :: M(1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
+    REAL(DP), INTENT(in)    :: M(1:,iX_B0(1)-swX_GS(1):, &
+                                    iX_B0(2)-swX_GS(2):, &
+                                    iX_B0(3)-swX_GS(3):,1:)
     REAL(DP), INTENT(inout) :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iNX, iX1, iX2, iX3
+    INTEGER :: iNX, iX1, iX2, iX3, iX_B(3), iX_E(3)
 
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
+    iX_B = iX_B0 - swX_GS
+    iX_E = iX_E0 + swX_GS
+
+    DO iX3 = iX_B(3), iX_E(3)
+    DO iX2 = iX_B(2), iX_E(2)
+    DO iX1 = iX_B(1), iX_E(1)
 
       DO iNX = 1, nDOFX
 
