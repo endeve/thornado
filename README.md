@@ -91,6 +91,9 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
+## Dec 04
+1. Tests on the different memory pool settings on the time spent on the allocation. There are some effects, but not to an extent that affects the overall Thornado simulation time. The data are plotted and recorded in PerformanceThornadoRelaxationApplication.pptx under windows Downdloads/GSD6461
+2. Created a reproducer of allocation of memories, ran it on PVC04, and will run it on A100 tomorrow as A100 is not available today.
 ## Nov 30-31 2023
 1. iprof run shows that Timer_Collisions_SolveLS on PVC is 2.895608E+01 s while on A1000 is 1.419644E+01 s.  Here is some detailed comparison:
 <pre>
