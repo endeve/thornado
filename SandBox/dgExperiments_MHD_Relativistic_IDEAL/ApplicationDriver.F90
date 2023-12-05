@@ -37,7 +37,8 @@ PROGRAM ApplicationDriver
     ApplySlopeLimiter_MHD_Relativistic_IDEAL
   USE MHD_UtilitiesModule_Relativistic, ONLY: &
     ComputeFromConserved_MHD_Relativistic, &
-    ComputeTimeStep_MHD_Relativistic
+    ComputeTimeStep_MHD_Relativistic, &
+    ComputeMagneticDivergence_MHD_Relativistic
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF, &
     ReadFieldsHDF
@@ -701,6 +702,9 @@ PROGRAM ApplicationDriver
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM, &
              EvolveOnlyMagnetic )
 
+    CALL ComputeMagneticDivergence_MHD_Relativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
+
     CALL WriteFieldsHDF &
            ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF )
 
@@ -783,6 +787,9 @@ PROGRAM ApplicationDriver
       CALL ComputeFromConserved_MHD_Relativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM, EvolveOnlyMagnetic )
 
+      CALL ComputeMagneticDivergence_MHD_Relativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
+
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF )
 
@@ -800,6 +807,9 @@ PROGRAM ApplicationDriver
 
   CALL ComputeFromConserved_MHD_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM, EvolveOnlyMagnetic )
+
+  CALL ComputeMagneticDivergence_MHD_Relativistic &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF )
