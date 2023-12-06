@@ -110,6 +110,8 @@ MODULE InitializationModule
   USE FillPatchModule, ONLY: &
     FillPatch, &
     FillCoarsePatch
+  USE RegridModule, ONLY: &
+    ReGrid
   USE InputParsingModule, ONLY: &
     InitializeParameters, &
     nLevels, &
@@ -138,6 +140,9 @@ CONTAINS
 
 
   SUBROUTINE InitializeProgram
+
+    INTEGER :: iLevel
+    TYPE(amrex_multifab) :: MF_dU
 
     CALL amrex_init()
 
@@ -199,6 +204,9 @@ CONTAINS
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
 
+      CALL AverageDown( MF_uGF )
+      CALL AverageDown( MF_uGF, MF_uCF )
+
       CALL ApplySlopeLimiter_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uDF )
 
@@ -214,6 +222,22 @@ CONTAINS
     CALL AverageDown( MF_uGF )
     CALL AverageDown &
            ( MF_uGF, MF_uCF, MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_multifab_build &
+             ( MF_dU, MF_uCF(iLevel) % BA, MF_uCF(iLevel) % DM, &
+               nCF * nDOFX, swX )
+
+      CALL MF_dU % SetVal( 1.0_DP )
+
+      CALL MF_uCF(iLevel) % Add( MF_dU, 1, 1, nCF * nDOFX, swX )
+
+      CALL amrex_multifab_destroy( MF_dU )
+
+    END DO
+
+    CALL ReGrid
 
     t_old = t_new
 
@@ -601,8 +625,8 @@ CONTAINS
     CALL amrex_multifab_build( MF_uDF_tmp, BA, DM, nDOFX * nDF, swX )
 
     CALL FillPatch( iLevel, MF_uGF        , MF_uGF_tmp )
-    CALL FillPatch( iLevel, MF_uGF, MF_uDF, MF_uDF_tmp )
-    CALL FillPatch( iLevel, MF_uGF, MF_uCF, MF_uCF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, MF_uDF, MF_uDF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp )
 
     CALL ClearLevel( iLevel )
 
