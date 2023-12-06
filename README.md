@@ -91,6 +91,12 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
+## Dec 06 2004
+1. Added more test data to  https://jira.devtools.intel.com/browse/CMPLRLLVM-54220 after discussions with Brain and Lorri. Now it is kind sure that fopenmp and fiopenmp is the cause for the slow down in allocation function for ifort and ifx respectively. 
+2. Work with Mathi on improving the Thornado porting paper. 
+
+## Dec 05 2004
+1. Created a reproducer for allocation slowness using ifx. discussed with Brian, and did a lot of runs, and learned a lot of things. Submitted a JIRA for this issue, and here is the link: https://jira.devtools.intel.com/browse/CMPLRLLVM-54220
 ## Dec 04
 1. Tests on the different memory pool settings on the time spent on the allocation. There are some effects, but not to an extent that affects the overall Thornado simulation time. The data are plotted and recorded in PerformanceThornadoRelaxationApplication.pptx under windows Downdloads/GSD6461
 2. Created a reproducer of allocation of memories, ran it on PVC04, and will run it on A100 tomorrow as A100 is not available today.
