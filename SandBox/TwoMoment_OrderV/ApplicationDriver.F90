@@ -497,6 +497,39 @@ PROGRAM ApplicationDriver
 
       UseRealizabilityTimeStep = .TRUE.
 
+    CASE( 'TransparentVortex_Spherical' )
+
+      CoordinateSystem = 'SPHERICAL'
+
+      nX  = [ 48, 48, 1 ]
+      xL  = [  2.0_DP, 0.0_DP     , 0.0_DP ]
+      xR  = [ 10.0_DP, 0.5_DP * Pi,  TwoPi ]
+      bcX = [ 12, 3, 1 ]
+
+      V_0 = [ SQRT(10.0_DP)*0.001_DP, 0.0_DP, 0.0_DP ]
+
+      nE  = 32
+      eL  = 0.0d0
+      eR  = 5.0d1
+      bcE = 11
+
+      nNodes = 3
+
+      TimeSteppingScheme = 'SSPRK3'
+
+      t_end   = 1.5d+1
+      iCycleD = 1
+      iCycleW = 125
+      maxCycles = 1000000
+
+      D_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 0.0_DP
+
+      UseSlopeLimiter      = .FALSE.
+      UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .TRUE.
+
     CASE( 'RadiatingSphere' )
 
       CoordinateSystem = 'SPHERICAL'
@@ -507,7 +540,7 @@ PROGRAM ApplicationDriver
       bcX   = [ 12, 1, 1 ]
 
       IF     ( nX(1) == 200 )THEN
-         ZoomX = [ 1.024333847373375_DP, One, One ] ! dX1(1)=2 with nX(1)=200
+         ZoomX = [ 1.028717467149282_DP, One, One ] ! dX1(1)=1 with nX(1)=200
       ELSE IF( nX(1) == 400 )THEN
          ZoomX = [ 1.012074699662899_DP, One, One ] ! dX1(1)=1 with nX(1)=400
       ELSE
@@ -614,7 +647,7 @@ PROGRAM ApplicationDriver
       nE  = 50
       eL  = 00.0_DP
       eR  = 12.0_DP
-      bcE = 1
+      bcE = 11
 
       nNodes = 2
 
@@ -633,7 +666,7 @@ PROGRAM ApplicationDriver
 
       UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
-      UseEnergyLimiter     = .FALSE.
+      UseEnergyLimiter     = .TRUE.
 
     CASE( 'HomogeneousSphere1D' )
 
@@ -707,7 +740,7 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'CYLINDRICAL'
 
-      nX  = [ 240, 200, 1 ]
+      nX  = [ 168, 140, 1 ]
       xL  = [ 00.0_DP, - 5.0_DP, 0.0_DP ]
       xR  = [ 12.0_DP, + 5.0_DP,  TwoPi ]
       bcX = [ 30, 2, 1 ]
@@ -717,7 +750,7 @@ PROGRAM ApplicationDriver
       eR  = 1.0d0
       bcE = 1
 
-      nNodes = 2
+      nNodes = 3
 
       TimeSteppingScheme = 'IMEX_PDARS'
 
@@ -732,9 +765,11 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      UseSlopeLimiter      = .FALSE.
-      UsePositivityLimiter = .TRUE.
-      UseEnergyLimiter     = .FALSE.
+      C_TCI = 0.1_DP
+      UseTroubledCellIndicator = .FALSE.
+      UseSlopeLimiter          = .FALSE.
+      UsePositivityLimiter     = .TRUE.
+      UseEnergyLimiter         = .FALSE.
 
     CASE DEFAULT
 
