@@ -339,7 +339,7 @@ CONTAINS
 
       DO iLevel = 0, nLevels-1
 
-        CALL FillPatch( iLevel, MF_uGF, MF_uGF )
+        CALL FillPatch( iLevel, MF_uGF )
         CALL FillPatch( iLevel, MF_uGF, MF_uCF )
         CALL FillPatch( iLevel, MF_uGF, MF_uCR )
 
@@ -531,9 +531,14 @@ CONTAINS
                amrex_ref_ratio(iLevel-1), &
                iLevel, nDOFZ_Z2 * nCR * nE * nSpecies )
 
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uGF )
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF )
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uDF )
+    CALL FillCoarsePatch( iLevel, MF_uGF, &
+                          ApplyBoundaryConditions_Geometry_Option = .TRUE. )
+
+    CALL FillCoarsePatch( iLevel, MF_uDF )
+
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF, &
+                          ApplyBoundaryConditions_Euler_Option = .TRUE. )
+
     CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCR )
 
   END SUBROUTINE MakeNewLevelFromCoarse
@@ -582,9 +587,14 @@ CONTAINS
     CALL amrex_multifab_build &
            ( MF_uPR_tmp, BA, DM, nDOFZ * nPR * nE * nSpecies, swX )
 
-    CALL FillPatch( iLevel, MF_uGF                    , MF_uGF_tmp )
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp )
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, MF_uDF, MF_uDF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, &
+                    ApplyBoundaryConditions_Geometry_Option = .TRUE. )
+
+    CALL FillPatch( iLevel, MF_uDF, MF_uDF_tmp )
+
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp, &
+                    ApplyBoundaryConditions_Euler_Option = .TRUE. )
+
     CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, MF_uCR, MF_uCR_tmp )
 
     CALL ClearLevel( iLevel )

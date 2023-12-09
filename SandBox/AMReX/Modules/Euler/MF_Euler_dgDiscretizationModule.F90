@@ -68,6 +68,8 @@ MODULE  MF_Euler_dgDiscretizationModule
     DestroyMesh_MF
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler_MF
+  USE MF_Euler_PositivityLimiterModule, ONLY: &
+    ApplyPositivityLimiter_Euler_MF
   USE MF_EdgeMapModule, ONLY: &
     EdgeMap,          &
     ConstructEdgeMap
@@ -137,9 +139,9 @@ CONTAINS
 !
 !      CALL FillPatch( iLevel, MF_uGF )
 !      CALL FillPatch( iLevel, MF_uGF, MF_uDF )
-!      CALL FillPatch &
-!             ( iLevel, MF_uGF, MF_uCF, &
-!               MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
+!      CALL FillPatch( iLevel, MF_uGF, MF_uCF )
+!      CALL ApplyPositivityLimiter_Euler_MF &
+!             ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
 !
 !      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 !
@@ -251,9 +253,9 @@ CONTAINS
 
     CALL FillPatch( iLevel, MF_uGF )
     CALL FillPatch( iLevel, MF_uGF, MF_uDF )
-    CALL FillPatch &
-           ( iLevel, MF_uGF, MF_uCF, &
-             MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
+    CALL FillPatch( iLevel, MF_uGF, MF_uCF )
+    CALL ApplyPositivityLimiter_Euler_MF &
+           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
 
     CALL MF_duCF % SetVal( Zero )
 

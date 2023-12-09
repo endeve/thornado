@@ -401,10 +401,8 @@ CONTAINS
 
     END IF
 
-    CALL AverageDown( MF_uGF, MF_uGF )
+    CALL AverageDown( MF_uGF )
     CALL AverageDown( MF_uGF, MF_uCF )
-
-
 
     DO i = 0, nLevels-1
 
@@ -535,9 +533,8 @@ CONTAINS
     CALL InitializeFields_MF &
            ( iLevel, MF_uGF(iLevel), MF_uCR(iLevel), MF_uCF(iLevel) )
 
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF )
+    CALL FillPatch( iLevel, MF_uGF )
     CALL FillPatch( iLevel, MF_uGF, MF_uCF )
-
 
     IF(iLevel .NE. 0) THEN
 
@@ -603,9 +600,16 @@ CONTAINS
                amrex_ref_ratio(iLevel-1), &
                iLevel, nDOF_X1 * nCR * nE * nSpecies )
 
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uGF )
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF )
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uDF )
+    CALL FillCoarsePatch( iLevel, MF_uGF, &
+                          ApplyBoundaryConditions_Geometry_Option = .TRUE. )
+
+    CALL FillCoarsePatch( iLevel, MF_uDF )
+
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF, &
+                          ApplyBoundaryConditions_Euler_Option = .TRUE. )
+
+!    CALL ApplyPositivityLimiter_Euler_MF &
+!           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
 
     IF(iLevel .NE. 0) THEN
 
@@ -675,10 +679,16 @@ CONTAINS
     CALL amrex_multifab_build &
            ( MF_uPR_tmp, BA, DM, nDOFZ * nPR * nE * nSpecies, swX )
 
-    CALL FillPatch( iLevel, MF_uGF                    , MF_uGF_tmp )
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp )
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, MF_uDF, MF_uDF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, &
+                    ApplyBoundaryConditions_Geometry_Option = .TRUE. )
 
+    CALL FillPatch( iLevel, MF_uDF, MF_uDF_tmp )
+
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp, &
+                    ApplyBoundaryConditions_Euler_Option = .TRUE. )
+
+!    CALL ApplyPositivityLimiter_Euler_MF &
+!           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
 
     IF(iLevel .NE. 0) THEN
 

@@ -117,6 +117,15 @@ MODULE Euler_MeshRefinementModule
   REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  G2L_c(:,:)
   TYPE(c_ptr)                        , PUBLIC :: pG2L_c
 
+  ! --- Coarse-to-Fine and Fine-to-Coarse ---
+
+  REAL(DP)      , ALLOCATABLE         ::   CoarseToFineProjectionMatrix(:,:,:)
+  REAL(DP)      , ALLOCATABLE         ::   FineToCoarseProjectionMatrix(:,:,:)
+  REAL(c_double), ALLOCATABLE, TARGET ::  pCoarseToFineProjectionMatrix(:,:,:)
+  REAL(c_double), ALLOCATABLE, TARGET ::  pFineToCoarseProjectionMatrix(:,:,:)
+  TYPE(c_ptr), PUBLIC                 :: vpCoarseToFineProjectionMatrix
+  TYPE(c_ptr), PUBLIC                 :: vpFineToCoarseProjectionMatrix
+
   ! --- Fine-to-Coarse (enforce continuity across interfaces) ---
 
   REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  F2C_c(:,:,:)
@@ -203,24 +212,12 @@ CONTAINS
 
     FaceRatio = One / 2**( nDimsX - 1 )
 
-    ALLOCATE( LX_X1_Refined(nDOFX_X1,nFineX(2)*nFineX(3),nDOFX_X1) )
-    ALLOCATE( LX_X2_Refined(nDOFX_X2,nFineX(1)*nFineX(3),nDOFX_X2) )
-    ALLOCATE( LX_X3_Refined(nDOFX_X3,nFineX(1)*nFineX(2),nDOFX_X3) )
-
-    ALLOCATE( LX_X1_Refined_C(nDOFX_X1*nFineX(2)*nFineX(3)*nDOFX_X1) )
-    ALLOCATE( LX_X2_Refined_C(nDOFX_X2*nFineX(1)*nFineX(3)*nDOFX_X2) )
-    ALLOCATE( LX_X3_Refined_C(nDOFX_X3*nFineX(1)*nFineX(2)*nDOFX_X3) )
-
     ALLOCATE( LX_X1_Up_1D(nNodesX(1)) )
     ALLOCATE( LX_X1_Dn_1D(nNodesX(1)) )
     ALLOCATE( LX_X2_Up_1D(nNodesX(2)) )
     ALLOCATE( LX_X2_Dn_1D(nNodesX(2)) )
     ALLOCATE( LX_X3_Up_1D(nNodesX(3)) )
     ALLOCATE( LX_X3_Dn_1D(nNodesX(3)) )
-
-    ALLOCATE( ProjectionMatrix  (nDOFX,nDOFX,nFine) )
-    ALLOCATE( ProjectionMatrix_c(nDOFX*nDOFX*nFine) )
-    ALLOCATE( ProjectionMatrix_T(nDOFX,nDOFX,nFine) )
 
     DO i = 1, nNodesX(1)
 
@@ -243,9 +240,26 @@ CONTAINS
 
     END DO
 
-    kk = 0
+    ALLOCATE( LX_X1_Refined(nDOFX_X1,nFineX(2)*nFineX(3),nDOFX_X1) )
+    ALLOCATE( LX_X2_Refined(nDOFX_X2,nFineX(1)*nFineX(3),nDOFX_X2) )
+    ALLOCATE( LX_X3_Refined(nDOFX_X3,nFineX(1)*nFineX(2),nDOFX_X3) )
 
+    ALLOCATE( LX_X1_Refined_C(nDOFX_X1*nFineX(2)*nFineX(3)*nDOFX_X1) )
+    ALLOCATE( LX_X2_Refined_C(nDOFX_X2*nFineX(1)*nFineX(3)*nDOFX_X2) )
+    ALLOCATE( LX_X3_Refined_C(nDOFX_X3*nFineX(1)*nFineX(2)*nDOFX_X3) )
+
+    ALLOCATE( ProjectionMatrix  (nDOFX,nDOFX,nFine) )
+    ALLOCATE( ProjectionMatrix_c(nDOFX*nDOFX*nFine) )
+    ALLOCATE( ProjectionMatrix_T(nDOFX,nDOFX,nFine) )
+
+    ALLOCATE(  CoarseToFineProjectionMatrix(nFine,nDOFX,nDOFX) )
+    ALLOCATE(  FineToCoarseProjectionMatrix(nFine,nDOFX,nDOFX) )
+    ALLOCATE( pCoarseToFineProjectionMatrix(nFine,nDOFX,nDOFX) )
+    ALLOCATE( pFineToCoarseProjectionMatrix(nFine,nDOFX,nDOFX) )
+
+    kk    = 0
     iFine = 0
+
     DO iFineX3 = 1, nFineX(3)
     DO iFineX2 = 1, nFineX(2)
     DO iFineX1 = 1, nFineX(1)
@@ -301,9 +315,42 @@ CONTAINS
       ProjectionMatrix_T(:,:,iFine) &
         = TRANSPOSE( ProjectionMatrix(:,:,iFine) )
 
-    END DO
-    END DO
-    END DO
+      DO i = 1, nDOFX
+      DO j = 1, nDOFX
+
+        i1 = NodeNumberTableX(1,i)
+        i2 = NodeNumberTableX(2,i)
+        i3 = NodeNumberTableX(3,i)
+
+        j1 = NodeNumberTableX(1,j)
+        j2 = NodeNumberTableX(2,j)
+        j3 = NodeNumberTableX(3,j)
+
+        CoarseToFineProjectionMatrix(iFine,i,j) &
+          =   Lagrange( EtaOfXi1D( NodesX1(i1), iFineX1 ), j1, NodesX1 ) &
+            * Lagrange( EtaOfXi1D( NodesX1(i2), iFineX2 ), j2, NodesX2 ) &
+            * Lagrange( EtaOfXi1D( NodesX1(i3), iFineX3 ), j3, NodesX3 )
+
+        FineToCoarseProjectionMatrix(iFine,i,j) &
+          =   VolumeRatio * WeightsX_q(j) / WeightsX_q(i) &
+            * Lagrange( EtaOfXi1D( NodesX1(j1), iFineX1 ), i1, NodesX1 ) &
+            * Lagrange( EtaOfXi1D( NodesX1(j2), iFineX2 ), i2, NodesX2 ) &
+            * Lagrange( EtaOfXi1D( NodesX1(j3), iFineX3 ), i3, NodesX3 )
+
+      END DO
+      END DO
+
+    END DO ! iFineX1
+    END DO ! iFineX2
+    END DO ! iFineX3
+
+    pCoarseToFineProjectionMatrix = CoarseToFineProjectionMatrix
+    pFineToCoarseProjectionMatrix = FineToCoarseProjectionMatrix
+
+    vpCoarseToFineProjectionMatrix &
+      = c_loc( pCoarseToFineProjectionMatrix(1,1,1) )
+    vpFineToCoarseProjectionMatrix &
+      = c_loc( pFineToCoarseProjectionMatrix(1,1,1) )
 
     ALLOCATE( ProjectionMatrix_T_c(nFine,nDOFX,nDOFX) )
     iFine = 0
@@ -590,7 +637,8 @@ CONTAINS
 #if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
 
     CALL amrex_InitializeMeshRefinement_DG &
-           ( nNodesX, ProjectionMatrix_c, WeightsX1, WeightsX2, WeightsX3, &
+           ( nNodesX, &
+             ProjectionMatrix_c, WeightsX1, WeightsX2, WeightsX3, &
              LX_X1_Refined_C, LX_X2_Refined_C, LX_X3_Refined_C, &
              LX_X1_Up_1D, LX_X1_Dn_1D, &
              LX_X2_Up_1D, LX_X2_Dn_1D, &
@@ -740,6 +788,17 @@ CONTAINS
 
     RETURN
   END FUNCTION XiOfEta1D
+
+
+  REAL(DP) FUNCTION EtaOfXi1D( xi, j ) RESULT( eta )
+
+    REAL(DP), INTENT(in) :: xi
+    INTEGER , INTENT(in) :: j
+
+    eta = Half * ( xi + (-1)**j * Half )
+
+    RETURN
+  END FUNCTION EtaOfXi1D
 
 
   REAL(DP) FUNCTION Lagrange( x, i, xn ) RESULT( L )

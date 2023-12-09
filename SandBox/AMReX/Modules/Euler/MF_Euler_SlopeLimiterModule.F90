@@ -57,6 +57,8 @@ MODULE MF_Euler_SlopeLimiterModule
   USE MF_EdgeMapModule, ONLY: &
     EdgeMap, &
     ConstructEdgeMap
+  USE AverageDownModule, ONLY: &
+    AverageDown
   USE FillPatchModule, ONLY: &
     FillPatch
 
@@ -181,6 +183,9 @@ CONTAINS
 
     END DO
 
+    CALL AverageDown( MF_uGF, MF_uCF )
+    CALL AverageDown( MF_uGF, MF_uDF )
+
   END SUBROUTINE ApplySlopeLimiter_Euler_MF_MultipleLevels
 
 
@@ -215,9 +220,7 @@ CONTAINS
 
     CALL FillPatch( iLevel, MF_uGF )
     CALL FillPatch( iLevel, MF_uGF, MF_uDF )
-    CALL FillPatch &
-           ( iLevel, MF_uGF, MF_uCF, &
-             MF_uDF, ApplyPositivityLimiter_Option = .FALSE. )
+    CALL FillPatch( iLevel, MF_uGF, MF_uCF )
 
     CALL CreateMesh_MF( iLevel, MeshX )
 

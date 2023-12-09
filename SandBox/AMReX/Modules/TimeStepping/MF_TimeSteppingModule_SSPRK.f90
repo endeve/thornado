@@ -237,9 +237,9 @@ CONTAINS
 
         CALL MultiplyWithPsi6_MF( MF_uGF, MF_U(iS,:), -1 )
 
-        CALL AverageDown &
-               ( MF_uGF, MF_U(iS,:), &
-                 MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
+        CALL AverageDown( MF_uGF, MF_U(iS,:) )
+        CALL ApplyPositivityLimiter_Euler_MF &
+               ( MF_uGF, MF_U(iS,:), MF_uDF )
 
         CALL MultiplyWithPsi6_MF( MF_uGF, MF_U(iS,:), +1 )
 
@@ -333,9 +333,9 @@ CONTAINS
 
     CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, -1 )
 
-    CALL AverageDown &
-           ( MF_uGF, MF_uCF, &
-             MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
+    CALL AverageDown( MF_uGF, MF_uCF )
+    CALL ApplyPositivityLimiter_Euler_MF &
+           ( MF_uGF, MF_uCF, MF_uDF )
 
     CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, +1 )
 

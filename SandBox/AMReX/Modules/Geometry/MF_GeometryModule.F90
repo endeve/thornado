@@ -82,9 +82,14 @@ MODULE MF_GeometryModule
   PUBLIC :: UpdateSpatialMetric_MF
 
   INTERFACE ComputeGeometryX_MF
-    MODULE PROCEDURE ComputeGeometryX_MF_SingleLevel
     MODULE PROCEDURE ComputeGeometryX_MF_AllLevels
+    MODULE PROCEDURE ComputeGeometryX_MF_SingleLevel
   END INTERFACE ComputeGeometryX_MF
+
+  INTERFACE ApplyBoundaryConditions_Geometry_MF
+    MODULE PROCEDURE ApplyBoundaryConditions_Geometry_MF_AllLevels
+    MODULE PROCEDURE ApplyBoundaryConditions_Geometry_MF_SingleLevel
+  END INTERFACE ApplyBoundaryConditions_Geometry_MF
 
 CONTAINS
 
@@ -206,17 +211,34 @@ CONTAINS
   END SUBROUTINE ComputeGeometryX_MF_SingleLevel
 
 
-  SUBROUTINE ApplyBoundaryConditions_Geometry_MF( MF_uGF )
+  SUBROUTINE ApplyBoundaryConditions_Geometry_MF_AllLevels( MF_uGF )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
 
+    INTEGER :: iLevel
+
+    DO iLevel = 0, nLevels-1
+
+      CALL ApplyBoundaryConditions_Geometry_MF_SingleLevel &
+             ( iLevel, MF_uGF(iLevel) )
+
+    END DO
+
+  END SUBROUTINE ApplyBoundaryConditions_Geometry_MF_AllLevels
+
+
+  SUBROUTINE ApplyBoundaryConditions_Geometry_MF_SingleLevel( iLevel, MF_uGF )
+
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF
+
     IF( .NOT. amrex_is_all_periodic() )THEN
 
-      CALL ApplyBoundaryConditions_Geometry_MF_X1( MF_uGF )
+      CALL ApplyBoundaryConditions_Geometry_MF_X1( iLevel, MF_uGF )
 
     END IF
 
-  END SUBROUTINE ApplyBoundaryConditions_Geometry_MF
+  END SUBROUTINE ApplyBoundaryConditions_Geometry_MF_SingleLevel
 
 
   SUBROUTINE UpdateSpatialMetric_MF( MF_uGF, swX_Option )
@@ -296,9 +318,14 @@ CONTAINS
   END SUBROUTINE UpdateSpatialMetric_MF
 
 
-  SUBROUTINE ApplyBoundaryConditions_Geometry_MF_X1( MF_uGF )
+  ! --- PRIVATE SUBROUTINES ---
 
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+
+  SUBROUTINE ApplyBoundaryConditions_Geometry_MF_X1 &
+    ( iLevel, MF_uGF )
+
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF
 
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
@@ -306,119 +333,115 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
     INTEGER  :: iX_B0(3), iX_E0(3)
-    INTEGER  :: iLevel, iNX, iX2, iX3, iGF, nX1_X, jNX
+    INTEGER  :: iNX, iX2, iX3, iGF, nX1_X, jNX
     INTEGER  :: iNX1, iNX2, iNX3, jNX1
 
     REAL(DP), ALLOCATABLE :: G_K(:,:,:,:)
     REAL(DP), ALLOCATABLE :: G_F(:,:,:,:)
 
-    DO iLevel = 0, nLevels-1
-
 #if defined( THORNADO_OMP )
-      !$OMP PARALLEL &
-      !$OMP PRIVATE( BX, MFI, uGF, iX_B0, iX_E0, iNX, nX1_X, jNX, jNX1 )
+    !$OMP PARALLEL &
+    !$OMP PRIVATE( BX, MFI, uGF, iX_B0, iX_E0, iNX, nX1_X, jNX, jNX1 )
 #endif
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
-      DO WHILE( MFI % next() )
+    DO WHILE( MFI % next() )
 
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+      uGF => MF_uGF % DataPtr( MFI )
 
-        BX = MFI % tilebox()
+      BX = MFI % tilebox()
 
-        iX_B0 = BX % lo
-        iX_E0 = BX % hi
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
 
-        ! --- Lower boundary (Reflecting) ---
+      ! --- Lower boundary (Reflecting) ---
 
-        IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo( 1 ) )THEN
+      IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo( 1 ) )THEN
 
-          DO iGF  = 1       , nGF
-          DO iX3  = iX_B0(3), iX_E0(3)
-          DO iX2  = iX_B0(2), iX_E0(2)
-          DO iNX3 = 1       , nNodesX(3)
-          DO iNX2 = 1       , nNodesX(2)
-          DO iNX1 = 1       , nNodesX(1)
+        DO iGF  = 1       , nGF
+        DO iX3  = iX_B0(3), iX_E0(3)
+        DO iX2  = iX_B0(2), iX_E0(2)
+        DO iNX3 = 1       , nNodesX(3)
+        DO iNX2 = 1       , nNodesX(2)
+        DO iNX1 = 1       , nNodesX(1)
 
-            jNX1 = ( nNodesX(1) - iNX1 ) + 1
+          jNX1 = ( nNodesX(1) - iNX1 ) + 1
 
-            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
-            jNX = NodeNumberX( jNX1, iNX2, iNX3 )
+          iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+          jNX = NodeNumberX( jNX1, iNX2, iNX3 )
 
+          uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF-1)+iNX) &
+            = uGF(iX_B0(1),iX2,iX3,nDOFX*(iGF-1)+jNX)
+
+          IF( iGF .EQ. iGF_Beta_1 ) &
             uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF-1)+iNX) &
-              = uGF(iX_B0(1),iX2,iX3,nDOFX*(iGF-1)+jNX)
+              = -uGF(iX_B0(1),iX2,iX3,nDOFX*(iGF-1)+jNX)
 
-            IF( iGF .EQ. iGF_Beta_1 ) &
-              uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF-1)+iNX) &
-                = -uGF(iX_B0(1),iX2,iX3,nDOFX*(iGF-1)+jNX)
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
 
-          END DO
-          END DO
-          END DO
-          END DO
-          END DO
-          END DO
+      END IF ! Lower boundary
 
-        END IF ! Lower boundary
+      ! --- Upper boundary ---
 
-        ! --- Upper boundary ---
+      IF( iX_E0(1) .EQ. amrex_geom(iLevel) % domain % hi( 1 ) )THEN
 
-        IF( iX_E0(1) .EQ. amrex_geom(iLevel) % domain % hi( 1 ) )THEN
+        nX1_X = ( iX_E0(3) - iX_B0(3) + 1 ) * ( iX_E0(2) - iX_B0(2) + 1 )
 
-          nX1_X = ( iX_E0(3) - iX_B0(3) + 1 ) * ( iX_E0(2) - iX_B0(2) + 1 )
+        ALLOCATE( G_K(1:nDOFX   ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
+        ALLOCATE( G_F(1:nDOFX_X1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
 
-          ALLOCATE( G_K(1:nDOFX   ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
-          ALLOCATE( G_F(1:nDOFX_X1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
+        DO iGF = 1       , nGF
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iNX = 1       , nDOFX
 
-          DO iGF = 1       , nGF
-          DO iX3 = iX_B0(3), iX_E0(3)
-          DO iX2 = iX_B0(2), iX_E0(2)
-          DO iNX = 1       , nDOFX
+          G_K(iNX,iX2,iX3,iGF) = uGF(iX_E0(1),iX2,iX3,nDOFX*(iGF-1)+iNX)
 
-            G_K(iNX,iX2,iX3,iGF) = uGF(iX_E0(1),iX2,iX3,nDOFX*(iGF-1)+iNX)
+        END DO
+        END DO
+        END DO
+        END DO
 
-          END DO
-          END DO
-          END DO
-          END DO
+        DO iGF = 1, nGF
 
-          DO iGF = 1, nGF
+          CALL MatrixMatrixMultiply &
+                 ( 'N', 'N', nDOFX_X1, nX1_X, nDOFX, One, LX_X1_Up, &
+                   nDOFX_X1,   G_K(1,iX_B0(2),iX_B0(3),iGF), &
+                   nDOFX, Zero,G_F(1,iX_B0(2),iX_B0(3),iGF), &
+                   nDOFX_X1 )
 
-            CALL MatrixMatrixMultiply &
-                   ( 'N', 'N', nDOFX_X1, nX1_X, nDOFX, One, LX_X1_Up, &
-                     nDOFX_X1,   G_K(1,iX_B0(2),iX_B0(3),iGF), &
-                     nDOFX, Zero,G_F(1,iX_B0(2),iX_B0(3),iGF), &
-                     nDOFX_X1 )
+        END DO
 
-          END DO
+        DO iGF = 1       , nGF
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iNX = 1       , nDOFX
 
-          DO iGF = 1       , nGF
-          DO iX3 = iX_B0(3), iX_E0(3)
-          DO iX2 = iX_B0(2), iX_E0(2)
-          DO iNX = 1       , nDOFX
+          uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF-1)+iNX) = G_F(1,iX2,iX3,iGF)
 
-            uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF-1)+iNX) = G_F(1,iX2,iX3,iGF)
+        END DO
+        END DO
+        END DO
+        END DO
 
-          END DO
-          END DO
-          END DO
-          END DO
+        DEALLOCATE( G_F )
+        DEALLOCATE( G_K )
 
-          DEALLOCATE( G_F )
-          DEALLOCATE( G_K )
-
-        END IF ! Upper boundary
-
-      END DO
-
-      CALL amrex_mfiter_destroy( MFI )
-
-#if defined( THORNADO_OMP )
-      !$OMP END PARALLEL
-#endif
+      END IF ! Upper boundary
 
     END DO
+
+    CALL amrex_mfiter_destroy( MFI )
+
+#if defined( THORNADO_OMP )
+    !$OMP END PARALLEL
+#endif
 
   END SUBROUTINE ApplyBoundaryConditions_Geometry_MF_X1
 

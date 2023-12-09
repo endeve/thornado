@@ -266,8 +266,9 @@ CONTAINS
       CALL DescribeError_MF( 901 )
 
     CALL AverageDown( MF_uGF )
-    CALL AverageDown &
-           ( MF_uGF, MF_uCF, MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
+    CALL AverageDown( MF_uGF, MF_uCF )
+    CALL ApplyPositivityLimiter_Euler_MF &
+           ( MF_uGF, MF_uCF, MF_uDF )
 
     t_old = t_new
     t_chk = t_new(0) + dt_chk
@@ -376,9 +377,16 @@ CONTAINS
              ( FluxRegister_Euler(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
                iLevel, nDOFX_X1 * nCF )
 
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uGF )
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF )
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uDF )
+    CALL FillCoarsePatch( iLevel, MF_uGF, &
+                          ApplyBoundaryConditions_Geometry_Option = .TRUE. )
+
+    CALL FillCoarsePatch( iLevel, MF_uDF )
+
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF, &
+                          ApplyBoundaryConditions_Euler_Option = .TRUE. )
+
+    CALL ApplyPositivityLimiter_Euler_MF &
+           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
 
   END SUBROUTINE MakeNewLevelFromCoarse
 
@@ -416,9 +424,16 @@ CONTAINS
     CALL amrex_multifab_build( MF_uCF_tmp, BA, DM, nDOFX * nCF, swX )
     CALL amrex_multifab_build( MF_uDF_tmp, BA, DM, nDOFX * nDF, swX )
 
-    CALL FillPatch( iLevel, MF_uGF                    , MF_uGF_tmp )
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp )
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, MF_uDF, MF_uDF_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, &
+                    ApplyBoundaryConditions_Geometry_Option = .TRUE. )
+
+    CALL FillPatch( iLevel, MF_uDF, MF_uDF_tmp )
+
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp, &
+                    ApplyBoundaryConditions_Euler_Option = .TRUE. )
+
+    CALL ApplyPositivityLimiter_Euler_MF &
+           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
 
     CALL ClearLevel( iLevel )
 
