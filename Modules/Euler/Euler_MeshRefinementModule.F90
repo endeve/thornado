@@ -2,14 +2,6 @@ MODULE Euler_MeshRefinementModule
 
   USE ISO_C_BINDING
 
-#if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
-
-  USE amrex_DGInterfaceModule, ONLY: &
-    amrex_InitializeMeshRefinement_DG, &
-    amrex_FinalizeMeshRefinement_DG
-
-#endif
-
   USE KindModule, ONLY: &
     DP, &
     Zero, &
@@ -37,6 +29,9 @@ MODULE Euler_MeshRefinementModule
     WeightsX1, &
     WeightsX2, &
     WeightsX3, &
+    WeightsX_X1, &
+    WeightsX_X2, &
+    WeightsX_X3, &
     WeightsX_q, &
     nDOFX_X1, &
     nDOFX_X2, &
@@ -62,69 +57,70 @@ MODULE Euler_MeshRefinementModule
   PUBLIC :: Refine_Euler
   PUBLIC :: Coarsen_Euler
 
-  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X1_Refined(:,:,:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X2_Refined(:,:,:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X3_Refined(:,:,:)
-
-  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X1_Refined_C(:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X2_Refined_C(:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X3_Refined_C(:)
-
-  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X1_Up_1D(:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X1_Dn_1D(:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X2_Up_1D(:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X2_Dn_1D(:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X3_Up_1D(:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: LX_X3_Dn_1D(:)
-
-  REAL(DP), ALLOCATABLE :: ProjectionMatrix  (:,:,:)
-  REAL(DP), ALLOCATABLE :: ProjectionMatrix_c(:)
-  REAL(DP), ALLOCATABLE :: ProjectionMatrix_T(:,:,:) ! --- Transpose ---
-
-  REAL(DP), PUBLIC :: VolumeRatio
+  REAL(DP)         :: VolumeRatio
   REAL(DP), PUBLIC :: FaceRatio
-  INTEGER , PUBLIC :: nFine
+  INTEGER , PUBLIC :: nFine, nFineX_X1, nFineX_X2, nFineX_X3
   INTEGER          :: nFineX(3)
 
-  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  ProjectionMatrix_T_c(:,:,:)
-  TYPE(c_ptr)                        , PUBLIC :: pProjectionMatrix_T_c
+  ! --- For reflux ---
 
-  INTEGER(c_int), ALLOCATABLE, TARGET, PUBLIC ::  NodeNumberTableX_X1_c(:)
-  TYPE(c_ptr)                        , PUBLIC ::  pNodeNumberTableX_X1_c
-  INTEGER(c_int), ALLOCATABLE, TARGET, PUBLIC ::  NodeNumberTableX_X2_c(:)
-  TYPE(c_ptr)                        , PUBLIC :: pNodeNumberTableX_X2_c
-  INTEGER(c_int), ALLOCATABLE, TARGET, PUBLIC ::  NodeNumberTableX_X3_c(:)
-  TYPE(c_ptr)                        , PUBLIC :: pNodeNumberTableX_X3_c
-  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  WeightsX_q_c(:)
-  TYPE(c_ptr)                        , PUBLIC :: pWeightsX_q_c
-  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  LX_X1_Up_c(:,:)
-  TYPE(c_ptr)                        , PUBLIC :: pLX_X1_Up_c
-  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  LX_X1_Dn_c(:,:)
-  TYPE(c_ptr)                        , PUBLIC :: pLX_X1_Dn_c
-  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  LX_X2_Up_c(:,:)
-  TYPE(c_ptr)                        , PUBLIC :: pLX_X2_Up_c
-  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  LX_X2_Dn_c(:,:)
-  TYPE(c_ptr)                        , PUBLIC :: pLX_X2_Dn_c
-  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  LX_X3_Up_c(:,:)
-  TYPE(c_ptr)                        , PUBLIC :: pLX_X3_Up_c
-  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  LX_X3_Dn_c(:,:)
-  TYPE(c_ptr)                        , PUBLIC :: pLX_X3_Dn_c
+  TYPE(c_ptr), PUBLIC                 ::  pNodeNumberTableX_X1_c
+  INTEGER(c_int), ALLOCATABLE, TARGET ::   NodeNumberTableX_X1_c(:)
+  TYPE(c_ptr), PUBLIC                 :: pNodeNumberTableX_X2_c
+  INTEGER(c_int), ALLOCATABLE, TARGET ::  NodeNumberTableX_X2_c(:)
+  TYPE(c_ptr), PUBLIC                 :: pNodeNumberTableX_X3_c
+  INTEGER(c_int), ALLOCATABLE, TARGET ::   NodeNumberTableX_X3_c(:)
+  TYPE(c_ptr), PUBLIC                 :: pWeightsX_q_c
+  REAL(c_double), ALLOCATABLE, TARGET ::  WeightsX_q_c(:)
+  TYPE(c_ptr), PUBLIC                 :: pLX_X1_Up_c
+  REAL(c_double), ALLOCATABLE, TARGET ::  LX_X1_Up_c(:,:)
+  TYPE(c_ptr), PUBLIC                 :: pLX_X1_Dn_c
+  REAL(c_double), ALLOCATABLE, TARGET ::  LX_X1_Dn_c(:,:)
+  TYPE(c_ptr), PUBLIC                 :: pLX_X2_Up_c
+  REAL(c_double), ALLOCATABLE, TARGET ::  LX_X2_Up_c(:,:)
+  TYPE(c_ptr), PUBLIC                 :: pLX_X2_Dn_c
+  REAL(c_double), ALLOCATABLE, TARGET ::  LX_X2_Dn_c(:,:)
+  TYPE(c_ptr), PUBLIC                 :: pLX_X3_Up_c
+  REAL(c_double), ALLOCATABLE, TARGET ::  LX_X3_Up_c(:,:)
+  TYPE(c_ptr), PUBLIC                 :: pLX_X3_Dn_c
+  REAL(c_double), ALLOCATABLE, TARGET ::  LX_X3_Dn_c(:,:)
+
+  ! --- For CrseInit and FineAdd ---
+
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC :: WeightsX_X1c(:)
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC :: WeightsX_X2c(:)
+  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC :: WeightsX_X3c(:)
+
+  ! --- For FineAdd ---
+
+  TYPE(c_ptr), PUBLIC                 :: vpLX_X1_Refined
+  REAL(c_double), ALLOCATABLE, TARGET ::  pLX_X1_Refined(:,:,:)
+  REAL(DP)      , ALLOCATABLE         ::   LX_X1_Refined(:,:,:)
+
+  TYPE(c_ptr), PUBLIC                 :: vpLX_X2_Refined
+  REAL(c_double), ALLOCATABLE, TARGET ::  pLX_X2_Refined(:,:,:)
+  REAL(DP)      , ALLOCATABLE         ::   LX_X2_Refined(:,:,:)
+
+  TYPE(c_ptr), PUBLIC                 :: vpLX_X3_Refined
+  REAL(c_double), ALLOCATABLE, TARGET ::  pLX_X3_Refined(:,:,:)
+  REAL(DP)      , ALLOCATABLE         ::   LX_X3_Refined(:,:,:)
 
   ! --- Lobatto-to-Gauss and Gauss-to-Lobatto ---
 
-  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  L2G_c(:,:)
-  TYPE(c_ptr)                        , PUBLIC :: pL2G_c
-  REAL(c_double), ALLOCATABLE, TARGET, PUBLIC ::  G2L_c(:,:)
-  TYPE(c_ptr)                        , PUBLIC :: pG2L_c
+  TYPE(c_ptr), PUBLIC                 :: pL2G_c
+  REAL(c_double), ALLOCATABLE, TARGET ::  L2G_c(:,:)
+  TYPE(c_ptr),  PUBLIC                :: pG2L_c
+  REAL(c_double), ALLOCATABLE, TARGET ::  G2L_c(:,:)
 
   ! --- Coarse-to-Fine and Fine-to-Coarse ---
 
-  REAL(DP)      , ALLOCATABLE         ::   CoarseToFineProjectionMatrix(:,:,:)
-  REAL(DP)      , ALLOCATABLE         ::   FineToCoarseProjectionMatrix(:,:,:)
-  REAL(c_double), ALLOCATABLE, TARGET ::  pCoarseToFineProjectionMatrix(:,:,:)
-  REAL(c_double), ALLOCATABLE, TARGET ::  pFineToCoarseProjectionMatrix(:,:,:)
   TYPE(c_ptr), PUBLIC                 :: vpCoarseToFineProjectionMatrix
+  REAL(c_double), ALLOCATABLE, TARGET ::  pCoarseToFineProjectionMatrix(:,:,:)
+  REAL(DP)      , ALLOCATABLE         ::   CoarseToFineProjectionMatrix(:,:,:)
+
   TYPE(c_ptr), PUBLIC                 :: vpFineToCoarseProjectionMatrix
+  REAL(c_double), ALLOCATABLE, TARGET ::  pFineToCoarseProjectionMatrix(:,:,:)
+  REAL(DP)      , ALLOCATABLE         ::   FineToCoarseProjectionMatrix(:,:,:)
 
   ! --- Fine-to-Coarse (enforce continuity across interfaces) ---
 
@@ -138,7 +134,7 @@ CONTAINS
 
     INTEGER :: iDimX
     INTEGER :: iFine, iFineX1, iFineX2, iFineX3
-    INTEGER :: i, j, k, iN1, iN2, iN3, kk, &
+    INTEGER :: i, j, k, iN1, iN2, iN3, &
                iNX_X1_Crse, iNX_X2_Crse, iNX_X3_Crse, &
                iNX_X1_Fine, iNX_X2_Fine, iNX_X3_Fine
     INTEGER :: i1, i2, i3, j1, j2, j3, q1, q2, q3, q
@@ -212,52 +208,30 @@ CONTAINS
 
     FaceRatio = One / 2**( nDimsX - 1 )
 
-    ALLOCATE( LX_X1_Up_1D(nNodesX(1)) )
-    ALLOCATE( LX_X1_Dn_1D(nNodesX(1)) )
-    ALLOCATE( LX_X2_Up_1D(nNodesX(2)) )
-    ALLOCATE( LX_X2_Dn_1D(nNodesX(2)) )
-    ALLOCATE( LX_X3_Up_1D(nNodesX(3)) )
-    ALLOCATE( LX_X3_Dn_1D(nNodesX(3)) )
+    nFineX_X1 = nFineX(2) * nFineX(3)
+    nFineX_X2 = nFineX(1) * nFineX(3)
+    nFineX_X3 = nFineX(1) * nFineX(2)
 
-    DO i = 1, nNodesX(1)
-
-      LX_X1_Up_1D(i) = L_X1(i) % P( +Half )
-      LX_X1_Dn_1D(i) = L_X1(i) % P( -Half )
-
-    END DO
-
-    DO i = 1, nNodesX(2)
-
-      LX_X2_Up_1D(i) = L_X2(i) % P( +Half )
-      LX_X2_Dn_1D(i) = L_X2(i) % P( -Half )
-
-    END DO
-
-    DO i = 1, nNodesX(3)
-
-      LX_X3_Up_1D(i) = L_X3(i) % P( +Half )
-      LX_X3_Dn_1D(i) = L_X3(i) % P( -Half )
-
-    END DO
-
-    ALLOCATE( LX_X1_Refined(nDOFX_X1,nFineX(2)*nFineX(3),nDOFX_X1) )
-    ALLOCATE( LX_X2_Refined(nDOFX_X2,nFineX(1)*nFineX(3),nDOFX_X2) )
-    ALLOCATE( LX_X3_Refined(nDOFX_X3,nFineX(1)*nFineX(2),nDOFX_X3) )
-
-    ALLOCATE( LX_X1_Refined_C(nDOFX_X1*nFineX(2)*nFineX(3)*nDOFX_X1) )
-    ALLOCATE( LX_X2_Refined_C(nDOFX_X2*nFineX(1)*nFineX(3)*nDOFX_X2) )
-    ALLOCATE( LX_X3_Refined_C(nDOFX_X3*nFineX(1)*nFineX(2)*nDOFX_X3) )
-
-    ALLOCATE( ProjectionMatrix  (nDOFX,nDOFX,nFine) )
-    ALLOCATE( ProjectionMatrix_c(nDOFX*nDOFX*nFine) )
-    ALLOCATE( ProjectionMatrix_T(nDOFX,nDOFX,nFine) )
+    ALLOCATE(  LX_X1_Refined(nDOFX_X1,nFineX(2)*nFineX(3),nDOFX_X1) )
+    ALLOCATE( pLX_X1_Refined(nDOFX_X1,nFineX(2)*nFineX(3),nDOFX_X1) )
+    ALLOCATE(  LX_X2_Refined(nDOFX_X2,nFineX(1)*nFineX(3),nDOFX_X2) )
+    ALLOCATE( pLX_X2_Refined(nDOFX_X2,nFineX(1)*nFineX(3),nDOFX_X2) )
+    ALLOCATE(  LX_X3_Refined(nDOFX_X3,nFineX(1)*nFineX(2),nDOFX_X3) )
+    ALLOCATE( pLX_X3_Refined(nDOFX_X3,nFineX(1)*nFineX(2),nDOFX_X3) )
 
     ALLOCATE(  CoarseToFineProjectionMatrix(nFine,nDOFX,nDOFX) )
-    ALLOCATE(  FineToCoarseProjectionMatrix(nFine,nDOFX,nDOFX) )
     ALLOCATE( pCoarseToFineProjectionMatrix(nFine,nDOFX,nDOFX) )
+    ALLOCATE(  FineToCoarseProjectionMatrix(nFine,nDOFX,nDOFX) )
     ALLOCATE( pFineToCoarseProjectionMatrix(nFine,nDOFX,nDOFX) )
 
-    kk    = 0
+    ALLOCATE( WeightsX_X1c(nDOFX_X1) )
+    ALLOCATE( WeightsX_X2c(nDOFX_X2) )
+    ALLOCATE( WeightsX_X3c(nDOFX_X3) )
+
+    WeightsX_X1c = WeightsX_X1
+    WeightsX_X2c = WeightsX_X2
+    WeightsX_X3c = WeightsX_X3
+
     iFine = 0
 
     DO iFineX3 = 1, nFineX(3)
@@ -283,37 +257,6 @@ CONTAINS
       ELSE
         xiX3 = Zero
       END IF
-
-      ProjectionMatrix(:,:,iFine) = Zero
-      DO k = 1, nDOFX
-      DO i = 1, nDOFX
-
-        DO iN3 = 1, nNodesX(3)
-        DO iN2 = 1, nNodesX(2)
-        DO iN1 = 1, nNodesX(1)
-
-          ProjectionMatrix(i,k,iFine) &
-            = ProjectionMatrix(i,k,iFine) &
-                + WeightsX1(iN1) * WeightsX2(iN2) * WeightsX3(iN3) &
-                  * L_X1(IndLX_Q(1,i)) % P( NodesX1(iN1) ) &
-                  * L_X2(IndLX_Q(2,i)) % P( NodesX2(iN2) ) &
-                  * L_X3(IndLX_Q(3,i)) % P( NodesX3(iN3) ) &
-                  * L_X1(IndLX_Q(1,k)) % P( xiX1   (iN1) ) &
-                  * L_X2(IndLX_Q(2,k)) % P( xiX2   (iN2) ) &
-                  * L_X3(IndLX_Q(3,k)) % P( xiX3   (iN3) )
-
-        END DO
-        END DO
-        END DO
-
-        kk = kk + 1
-        ProjectionMatrix_c(kk) = ProjectionMatrix(i,k,iFine)
-
-      END DO
-      END DO
-
-      ProjectionMatrix_T(:,:,iFine) &
-        = TRANSPOSE( ProjectionMatrix(:,:,iFine) )
 
       DO i = 1, nDOFX
       DO j = 1, nDOFX
@@ -352,28 +295,6 @@ CONTAINS
     vpFineToCoarseProjectionMatrix &
       = c_loc( pFineToCoarseProjectionMatrix(1,1,1) )
 
-    ALLOCATE( ProjectionMatrix_T_c(nFine,nDOFX,nDOFX) )
-    iFine = 0
-    DO iFineX3 = 1, nFineX(3)
-    DO iFineX2 = 1, nFineX(2)
-    DO iFineX1 = 1, nFineX(1)
-
-      iFine = iFine + 1
-
-      DO k = 1, nDOFX
-      DO i = 1, nDOFX
-
-        ProjectionMatrix_T_c(iFine,k,i) = ProjectionMatrix(i,k,iFine)
-
-      END DO
-      END DO
-
-    END DO
-    END DO
-    END DO
-    pProjectionMatrix_T_c = c_loc( ProjectionMatrix_T_c(1,1,1) )
-
-    kk = 0
     DO iNX_X1_Crse = 1, nDOFX_X1
 
       iNX_X2_Crse = NodeNumberTableX_X1(1,iNX_X1_Crse)
@@ -413,10 +334,6 @@ CONTAINS
               = LX_X1_Refined(iNX_X1_Crse,iFine,iNX_X1_Fine) &
                   * Lagrange( xiX3(iNX_X3_Fine), iNX_X3_Crse, NodesX3 )
 
-          kk = kk + 1
-          LX_X1_Refined_C(kk) &
-            = LX_X1_Refined(iNX_X1_Crse,iFine,iNX_X1_Fine)
-
         END DO ! iNX_X1_Fine
 
       END DO ! iFineX2
@@ -424,9 +341,12 @@ CONTAINS
 
     END DO ! iNX_X1_Crse
 
+    pLX_X1_Refined = LX_X1_Refined
+    vpLX_X1_Refined &
+      = c_loc( pLX_X1_Refined(1,1,1) )
+
     IF( nDimsX .GT. 1 )THEN
 
-      kk = 0
       DO iNX_X2_Crse = 1, nDOFX_X2
 
         iNX_X1_Crse = NodeNumberTableX_X2(1,iNX_X2_Crse)
@@ -466,10 +386,6 @@ CONTAINS
                 = LX_X2_Refined(iNX_X2_Crse,iFine,iNX_X2_Fine) &
                     * Lagrange( xiX3(iNX_X3_Fine), iNX_X3_Crse, NodesX3 )
 
-            kk = kk + 1
-            LX_X2_Refined_C(kk) &
-              = LX_X2_Refined(iNX_X2_Crse,iFine,iNX_X2_Fine)
-
           END DO ! iNX_X2_Fine
 
         END DO ! iFineX1
@@ -479,9 +395,12 @@ CONTAINS
 
     END IF ! nDimsX .GT. 1
 
+    pLX_X2_Refined = LX_X2_Refined
+    vpLX_X2_Refined &
+      = c_loc( pLX_X2_Refined(1,1,1) )
+
     IF( nDimsX .GT. 2)THEN
 
-      kk = 0
       DO iNX_X3_Crse = 1, nDOFX_X3
 
         iNX_X1_Crse = NodeNumberTableX_X3(1,iNX_X3_Crse)
@@ -521,10 +440,6 @@ CONTAINS
                 = LX_X3_Refined(iNX_X3_Crse,iFine,iNX_X3_Fine) &
                     * Lagrange( xiX2(iNX_X2_Fine), iNX_X2_Crse, NodesX2 )
 
-            kk = kk + 1
-            LX_X3_Refined_C(kk) &
-              = LX_X3_Refined(iNX_X3_Crse,iFine,iNX_X3_Fine)
-
           END DO ! iNX_X3_Fine
 
         END DO ! iFineX1
@@ -533,6 +448,10 @@ CONTAINS
       END DO ! iNX_X3_Crse
 
     END IF ! nDimsX .GT. 2
+
+    pLX_X3_Refined = LX_X3_Refined
+    vpLX_X3_Refined &
+      = c_loc( pLX_X3_Refined(1,1,1) )
 
     DO i = 1, nDOFX
     DO j = 1, nDOFX
@@ -634,54 +553,31 @@ CONTAINS
 
     pF2C_c = c_loc( F2C_c(1,1,1) )
 
-#if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
-
-    CALL amrex_InitializeMeshRefinement_DG &
-           ( nNodesX, &
-             ProjectionMatrix_c, WeightsX1, WeightsX2, WeightsX3, &
-             LX_X1_Refined_C, LX_X2_Refined_C, LX_X3_Refined_C, &
-             LX_X1_Up_1D, LX_X1_Dn_1D, &
-             LX_X2_Up_1D, LX_X2_Dn_1D, &
-             LX_X3_Up_1D, LX_X3_Dn_1D, iGF_SqrtGm )
-
-#endif
-
   END SUBROUTINE InitializeMeshRefinement_Euler
 
 
   SUBROUTINE FinalizeMeshRefinement_Euler
 
-#if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
-
-    CALL amrex_FinalizeMeshRefinement_DG
-
-#endif
-
     DEALLOCATE( F2C_c )
 
-    DEALLOCATE( L2G_c )
     DEALLOCATE( G2L_c )
+    DEALLOCATE( L2G_c )
 
-    DEALLOCATE( ProjectionMatrix_T_c )
+    DEALLOCATE( WeightsX_X3c )
+    DEALLOCATE( WeightsX_X2c )
+    DEALLOCATE( WeightsX_X1c )
 
-    DEALLOCATE( ProjectionMatrix_T )
-    DEALLOCATE( ProjectionMatrix_c )
-    DEALLOCATE( ProjectionMatrix )
+    DEALLOCATE( pFineToCoarseProjectionMatrix )
+    DEALLOCATE(  FineToCoarseProjectionMatrix )
+    DEALLOCATE( pCoarseToFineProjectionMatrix )
+    DEALLOCATE(  CoarseToFineProjectionMatrix )
 
-    DEALLOCATE( LX_X3_Dn_1D )
-    DEALLOCATE( LX_X3_Up_1D )
-    DEALLOCATE( LX_X2_Dn_1D )
-    DEALLOCATE( LX_X2_Up_1D )
-    DEALLOCATE( LX_X1_Dn_1D )
-    DEALLOCATE( LX_X1_Up_1D )
-
-    DEALLOCATE( LX_X3_Refined_C )
-    DEALLOCATE( LX_X2_Refined_C )
-    DEALLOCATE( LX_X1_Refined_C )
-
-    DEALLOCATE( LX_X3_Refined )
-    DEALLOCATE( LX_X2_Refined )
-    DEALLOCATE( LX_X1_Refined )
+    DEALLOCATE( pLX_X3_Refined )
+    DEALLOCATE(  LX_X3_Refined )
+    DEALLOCATE( pLX_X2_Refined )
+    DEALLOCATE(  LX_X2_Refined )
+    DEALLOCATE( pLX_X1_Refined )
+    DEALLOCATE(  LX_X1_Refined )
 
     DEALLOCATE( LX_X3_Dn_c )
     DEALLOCATE( LX_X3_Up_c )
@@ -689,7 +585,9 @@ CONTAINS
     DEALLOCATE( LX_X2_Up_c )
     DEALLOCATE( LX_X1_Dn_c )
     DEALLOCATE( LX_X1_Up_c )
+
     DEALLOCATE( WeightsX_q_c )
+
     DEALLOCATE( NodeNumberTableX_X3_c )
     DEALLOCATE( NodeNumberTableX_X2_c )
     DEALLOCATE( NodeNumberTableX_X1_c )
@@ -713,7 +611,7 @@ CONTAINS
       iFine = iFine + 1
 
       U_Fin(:,iFineX1,iFineX2,iFineX3) &
-        = MATMUL( ProjectionMatrix(:,:,iFine), U_Crs ) / WeightsX_q
+        = MATMUL( CoarseToFineProjectionMatrix(iFine,:,:), U_Crs )
 
     END DO
     END DO
@@ -740,10 +638,8 @@ CONTAINS
 
       iFine = iFine + 1
 
-      U_Crs_iFine = MATMUL( ProjectionMatrix_T(:,:,iFine), &
-                            U_Fin(:,iFineX1,iFineX2,iFineX3) ) / WeightsX_q
-
-      U_Crs = U_Crs + VolumeRatio * U_Crs_iFine
+      U_Crs_iFine = MATMUL( FineToCoarseProjectionMatrix(iFine,:,:), &
+                            U_Fin(:,iFineX1,iFineX2,iFineX3) )
 
     END DO
     END DO
