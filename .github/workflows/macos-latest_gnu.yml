@@ -138,10 +138,22 @@ jobs:
       # OSX's cpp has trouble with fortran files; use homebrew's instead
       # Thanks to Weiqun Zhang from for finding this bug!
 
-      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL_1D
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
-          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P" DIM=1
+          make realclean
+
+      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL_2D
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P" DIM=2
+          make realclean
+
+      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL_3D
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P" DIM=3
           make realclean
 
       - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE

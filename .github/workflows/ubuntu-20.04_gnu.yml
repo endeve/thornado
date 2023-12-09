@@ -243,7 +243,7 @@ jobs:
           make
           make clobber
 
-  dgExperiments_Euler_Relativistic_IDEAL_amrex:
+  dgExperiments_Euler_Relativistic_IDEAL_amrex_1D:
     name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
     needs: build
     runs-on: ubuntu-20.04
@@ -273,7 +273,73 @@ jobs:
       - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
-          make -j -l6
+          make DIM=1 -j -l6
+          make realclean
+
+  dgExperiments_Euler_Relativistic_IDEAL_amrex_2D:
+    name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+      AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+      - name: Checkout amrex
+        uses: actions/checkout@v3
+        with:
+          repository: dunhamsj/amrex
+          path: amrex
+          ref: MeshRefinement_DG
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
+          sudo apt-get -y update
+      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+          make DIM=2 -j -l6
+          make realclean
+
+  dgExperiments_Euler_Relativistic_IDEAL_amrex_3D:
+    name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+      AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+      - name: Checkout amrex
+        uses: actions/checkout@v3
+        with:
+          repository: dunhamsj/amrex
+          path: amrex
+          ref: MeshRefinement_DG
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
+          sudo apt-get -y update
+      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+          make DIM=3 -j -l6
           make realclean
 
   dgExperiments_Euler_Relativistic_TABLE_amrex:
