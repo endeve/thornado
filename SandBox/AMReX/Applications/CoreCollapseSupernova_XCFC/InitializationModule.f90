@@ -213,8 +213,7 @@ MODULE InitializationModule
   USE MF_GravitySolutionModule_XCFC, ONLY: &
     InitializeGravitySolver_XCFC_MF
   USE MF_MetricInitializationModule, ONLY: &
-    InitializeMetric_MF, &
-    InitializeMetricFromCheckpoint_MF
+    InitializeMetric_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
@@ -231,7 +230,7 @@ CONTAINS
 
   SUBROUTINE InitializeProgram
 
-    LOGICAL :: SetInitialValues
+    LOGICAL :: SetInitialValues, FixInteriorADMMass
 
     CALL amrex_init()
 
@@ -367,7 +366,8 @@ CONTAINS
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
 
-      SetInitialValues = .TRUE.
+      SetInitialValues   = .TRUE.
+      FixInteriorADMMass = .FALSE.
 
       CALL InitializeTally_Euler_MF
 
@@ -411,7 +411,8 @@ CONTAINS
              ( ReadFields_uCF_Option = .TRUE., &
                ReadFields_uCR_Option = .TRUE. )
 
-      SetInitialValues = .FALSE.
+      SetInitialValues   = .FALSE.
+      FixInteriorADMMass = .TRUE.
 
       CALL InitializeTally_Euler_MF &
              ( InitializeFromCheckpoint_Option = .TRUE. )
@@ -420,8 +421,6 @@ CONTAINS
 
       CALL InitializeGravitySolver_XCFC_MF &
              ( Verbose_Option = amrex_parallel_ioprocessor() )
-
-      CALL InitializeMetricFromCheckpoint_MF( MF_uGF, MF_uCF, MF_uCR )
 
       CALL DestroyMesh_MF( MeshX )
 
@@ -463,6 +462,7 @@ CONTAINS
     CALL ComputeTally_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, &
              SetInitialValues_Option = SetInitialValues, &
+             FixInteriorADMMass_Option = FixInteriorADMMass, &
              Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL ComputeTally_TwoMoment_MF &
