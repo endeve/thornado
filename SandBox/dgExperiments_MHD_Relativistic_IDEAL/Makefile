@@ -8,7 +8,7 @@ DEFINES += $(PP)THORNADO_EULER_NOGPU
 
 .DEFAULT_GOAL := all
 
-all: ApplicationDriver ComputePrimitiveTest
+all: ApplicationDriver
 
 ApplicationDriver: \
 	$(weaklib) \
@@ -36,22 +36,11 @@ ApplicationDriver: \
         ApplicationDriver.o \
 	$(LIBRARIES)
 
-ComputePrimitiveTest: \
-	$(thornado) \
-        MHD_UtilitiesModule_Relativistic.o \
-      	ComputePrimitiveTest.o
-	$(FLINKER) $(FLAGS) -o ComputePrimitiveTest_$(MACHINE) \
-        $(thornado) \
-        MHD_UtilitiesModule_Relativistic.o \
-        ComputePrimitiveTest.o \
-	$(LIBRARIES)
-
 clean:
 	rm -f *.o *.mod *.ld
 
 clobber: clean
 	rm -f  ApplicationDriver_$(MACHINE)
-	rm -f  ComputePrimitiveTest_$(MACHINE)
 	rm -rf *.dSYM
 
 ApplicationDriver.o: \
@@ -67,19 +56,6 @@ ApplicationDriver.o: \
   InitializationModule.o \
   UnitsModule.o \
   ApplicationDriver.F90
-
-ComputePrimitiveTest.o: \
-  KindModule.o \
-  ProgramInitializationModule.o \
-  ProgramHeaderModule.o \
-  UnitsModule.o \
-  MeshModule.o \
-  GeometryFieldsModule.o \
-  GeometryComputationModule.o \
-  MagnetofluidFieldsModule.o \
-  EquationOfStateModule.o \
-  MHD_UtilitiesModule_Relativistic.o \
-  ComputePrimitiveTest.F90
 
 InitializationModule.o: \
   KindModule.o \
@@ -106,7 +82,6 @@ MHD_BoundaryConditionsModule.o: \
   KindModule.o \
   MeshModule.o \
   ProgramHeaderModule.o \
-  MHD_UtilitiesModule.o \
   MagnetofluidFieldsModule.o \
   MHD_BoundaryConditionsModule.F90
 
@@ -154,9 +129,13 @@ MHD_UtilitiesModule.o: \
 MHD_UtilitiesModule_Relativistic.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  LinearAlgebraModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
   MeshModule.o \
   GeometryFieldsModule.o \
   MagnetofluidFieldsModule.o \
+  MHD_BoundaryConditionsModule.o \
   EquationOfStateModule.o \
   EquationOfStateModule_TABLE.o \
   UnitsModule.o \

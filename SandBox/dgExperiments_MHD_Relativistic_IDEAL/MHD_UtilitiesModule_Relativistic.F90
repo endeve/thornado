@@ -13,6 +13,7 @@ MODULE MHD_UtilitiesModule_Relativistic
     Four, &
     Fourth
   USE ProgramHeaderModule, ONLY: &
+    swX, &
     nDOFX, &
     nDimsX
   USE LinearAlgebraModule, ONLY: &
@@ -86,6 +87,8 @@ MODULE MHD_UtilitiesModule_Relativistic
     iDM_Sh_X2, &
     iDM_Sh_X3, &
     iDM_Div
+  USE MHD_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_MHD
   USE EquationOfStateModule, ONLY: &
     ComputeSoundSpeedFromPrimitive, &
     ComputeAuxiliary_Fluid, &
@@ -702,11 +705,14 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(inout)  :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    CALL ApplyBoundaryConditions_MHD &
+      ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL InitializeIncrement &
       ( iX_B0, iX_E0, iX_B1, iX_E1 )
@@ -778,22 +784,14 @@ CONTAINS
     ! --- Diagnostic Fields ---
 
     REAL(DP) :: &
-      uDM_K(1,1,iX_B0(2)  :iX_E0(2), &
-                iX_B0(3)  :iX_E0(3), &
-                iX_B0(1)  :iX_E0(1))
-    REAL(DP) :: &
-      uDM_L(iX_B0(2):iX_E0(2), &
-            iX_B0(3):iX_E0(3), &
-            iX_B0(1):iX_E0(1)+1,2)
-    REAL(DP) :: &
-      uDM_R(iX_B0(2):iX_E0(2), &
-            iX_B0(3):iX_E0(3), &
-            iX_B0(1):iX_E0(1)+1,2)
+      uDM_K(1,1,iX_B0(2)      :iX_E0(2), &
+                iX_B0(3)      :iX_E0(3), &
+                iX_B0(1)      :iX_E0(1))
 
     REAL(DP) :: &
-      Div(nDOFX_X1,1,iX_B0(2)  :iX_E0(2),   &
-                     iX_B0(3)  :iX_E0(3),   &
-                     iX_B0(1)  :iX_E0(1)+1)
+      Div(nDOFX_X1,1,iX_B0(2)    :iX_E0(2),   &
+                     iX_B0(3)    :iX_E0(3),   &
+                     iX_B0(1)-1  :iX_E0(1)+1)
 
     REAL(DP) :: &
       Ones(nDOFX_X1)
@@ -842,24 +840,11 @@ CONTAINS
     END DO
     END DO
 
-    DO iX1 = iX_B0(1)    , iX_E0(1)
-    DO iX3 = iX_B0(3)    , iX_E0(3)
-    DO iX2 = iX_B0(2)    , iX_E0(2)
+    DO iX1 = iX_B0(1)        , iX_E0(1)
+    DO iX3 = iX_B0(3)        , iX_E0(3)
+    DO iX2 = iX_B0(2)        , iX_E0(2)
 
-      uDM_K(1,1,iX2,iX3,iX1) = D(1,iX1,iX2,iX3,iDM_Div)
-
-    END DO
-    END DO
-    END DO
-
-    DO iX1 = iX_B0(1), iX_E0(1) + 1
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-
-      uDM_L(iX2,iX3,iX1,1) = D(1,iX1-1,iX2,iX3,iDM_Sh_X2)
-      uDM_L(iX2,iX3,iX1,2) = D(1,iX1-1,iX2,iX3,iDM_Sh_X3)
-      uDM_R(iX2,iX3,iX1,1) = D(1,iX1  ,iX2,iX3,iDM_Sh_X2)
-      uDM_R(iX2,iX3,iX1,2) = D(1,iX1  ,iX2,iX3,iDM_Sh_X3)
+      uDM_K(1,1,iX2,iX3,iX1) = 0.0_DP
 
     END DO
     END DO
@@ -991,22 +976,28 @@ CONTAINS
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', 1, nX_K, nDOFX_X1, + One, Ones, nDOFX_X1, &
-             Div(1,1,iX_B0(2),iX_B0(3),iX_B0(1)+1), &
+             Div(1,1,iX_B0(2),iX_B0(3),iX_B0(1)+1 ), &
              nDOFX_X1, One, uDM_K, 1 )
+
+    DO iX3 = iX_B0(3),     iX_E0(3)
+    DO iX2 = iX_B0(2),     iX_E0(2)
+    DO iX1 = iX_B0(1),     iX_E0(1)
+    DO iNX = 1       , nDOFX
+
+      D(iNX,iX1,iX2,iX3,iDM_Div) = uDM_K(1,1,iX2,iX3,iX1)
+
+    END DO
+    END DO
+    END DO
+    END DO
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNX = 1       , nDOFX
+    DO iX1 = 1, sWX(1)
+    DO iNX = 1, nDOFX
 
-      !PRINT*, 'Assigning divergence back to diagnostic field.'
-
-     !PRINT*, 'D:     ', D(iNX,iX1,iX2,iX3,iDM_Div)
-
-      D(iNX,iX1,iX2,iX3,iDM_Div) = D(iNX,iX1,iX2,iX3,iDM_Div) + uDM_K(1,1,iX2,iX3,iX1)
-
-     !PRINT*, 'uDM_K: ', uDM_K(1,iX2,iX3,iX1,1)
-     !PRINT*, 'D:     ', D(iNX,iX1,iX2,iX3,iDM_Div)
+      D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_Div) = 0.0_DP
+      D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_Div) = 0.0_DP
 
     END DO
     END DO
