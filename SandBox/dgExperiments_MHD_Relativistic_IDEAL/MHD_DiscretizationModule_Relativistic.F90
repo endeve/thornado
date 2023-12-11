@@ -2966,7 +2966,6 @@ CONTAINS
     
           dU(iNX,iX1,iX2,iX3,iCM_Chi) &
             = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
-                - DampingParameter * U(iNX,iX1,iX2,iX3,iCM_Chi) &
                 + ( U(iNX,iX1,iX2,iX3,iCM_B2) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
                   * dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2)
     
@@ -3045,7 +3044,6 @@ CONTAINS
     
           dU(iNX,iX1,iX2,iX3,iCM_Chi) &
             = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
-                - DampingParameter * U(iNX,iX1,iX2,iX3,iCM_Chi) &
                 + ( U(iNX,iX1,iX2,iX3,iCM_B3) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
                   * dGdX3(iNX,iGF_Alpha,iX1,iX2,iX3)
     
