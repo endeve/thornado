@@ -72,12 +72,13 @@ MODULE FillPatchModule
   PUBLIC :: FillPatch, FillCoarsePatch
 
   INTERFACE FillPatch
-    MODULE PROCEDURE FillPatch_PointWise_Scalar
+    MODULE PROCEDURE FillPatch_PointWise_Scalar ! Only called by RemakeLevel
     MODULE PROCEDURE FillPatch_PointWise_Vector
-    MODULE PROCEDURE FillPatch_Conservative_Scalar
+    MODULE PROCEDURE FillPatch_Conservative_Scalar ! Only called by RemakeLevel
     MODULE PROCEDURE FillPatch_Conservative_Vector
   END INTERFACE FillPatch
 
+  ! Only called by FillCoarsePatch
   INTERFACE FillCoarsePatch
     MODULE PROCEDURE FillCoarsePatch_PointWise
     MODULE PROCEDURE FillCoarsePatch_Conservative
@@ -591,12 +592,12 @@ CONTAINS
       hi_bc = amrex_bc_bogus
 
       CALL amrex_fillpatch &
-             ( MF(FineLevel), &
-               t_old_crse, MF(FineLevel-1), &
-               t_new_crse, MF(FineLevel-1), &
+             ( MF(FineLevel), SqrtGm(FineLevel), &
+               t_old_crse, MF(FineLevel-1), SqrtGm(FineLevel-1), &
+               t_new_crse, MF(FineLevel-1), SqrtGm(FineLevel-1), &
                amrex_geom(FineLevel-1), FillPhysicalBC_Dummy, &
-               t_old_fine, MF(FineLevel  ), &
-               t_new_fine, MF(FineLevel  ), &
+               t_old_fine, MF(FineLevel  ), SqrtGm(FineLevel  ), &
+               t_new_fine, MF(FineLevel  ), SqrtGm(FineLevel  ), &
                amrex_geom(FineLevel  ), FillPhysicalBC_Dummy, &
                t, 1, 1, MF(FineLevel) % nComp(), &
                amrex_ref_ratio(FineLevel-1), &
