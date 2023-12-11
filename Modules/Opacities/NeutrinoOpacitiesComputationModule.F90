@@ -961,7 +961,7 @@ CONTAINS
 #endif
     DO iX = iX_B, iX_E
 
-      IF ( QueryOpacity_EmAb_Nuclei( D(iX) / UnitD ) .AND. iS <= iNuE_Bar ) THEN
+      IF ( QueryOpacity_EmAb_Nuclei( D(iX) / UnitD ) ) THEN
 
       D_P = D(iX) / UnitD
       T_P = T(iX) / UnitT
