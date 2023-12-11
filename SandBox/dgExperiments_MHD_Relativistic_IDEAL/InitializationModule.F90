@@ -546,15 +546,19 @@ CONTAINS
 
             IF( SQRT( X1**2 + X2**2 ) .LE. 0.3_DP )THEN
 
+              V1 = One / Two
+              V2 = Zero
+              V3 = Zero
+
+              W = One / SQRT( One - V1**2  - V2**2 - V3**2 )
+
               uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
-              uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = One / Two
-              uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = One / Two
-              uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = One / 24.0_DP
+              uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = V1
+              uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = V2
+              uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = V3
               uAM(iNodeX,iX1,iX2,iX3,iAM_P ) = Three
               uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
                 = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
-
-              W = One / SQRT( One - ( One / Two )**2 - ( One / Two )**2 - ( One / 24.0_DP )**2 )
 
               VdotB = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
                         * ( -1.0d-3 * ( X2 / SQRT( X1**2 + X2**2 ) ) ) &
@@ -582,12 +586,16 @@ CONTAINS
 
             ELSE
 
-              W = One / SQRT( One - ( One / Two )**2 - ( One / Two )**2 - ( One / 24.0_DP )**2 )
+              V1 = One / Two
+              V2 = Zero
+              V3 = Zero
+
+              W = One / SQRT( One - V1**2 - V2**2 - V3**2 )
 
               uPM(iNodeX,iX1,iX2,iX3,iPM_D ) = One
-              uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = One / Two
-              uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = One / Two
-              uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = One / 24.0_DP
+              uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = V1
+              uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = V2
+              uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = V3
               uAM(iNodeX,iX1,iX2,iX3,iAM_P ) = Three
               uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
                 = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
