@@ -32,14 +32,15 @@ MODULE MF_InitializationModule
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
   USE ProgramHeaderModule, ONLY: &
+    ProgramName, &
     nDOFX, &
     nX, &
+    nE, &
     swX, &
     nNodesX, &
     nDOFE, &
     nDOFZ
   USE RadiationFieldsModule, ONLY: &
-    nPR, &
     iCR_N, &
     iCR_G1, &
     iCR_G2, &
@@ -48,7 +49,9 @@ MODULE MF_InitializationModule
     iPR_D, &
     iPR_I1, &
     iPR_I2, &
-    iPR_I3
+    iPR_I3, &
+    nPR, &
+    nSpecies
   USE FluidFieldsModule, ONLY: &
     nCF, &
     iCF_D, &
@@ -107,6 +110,7 @@ MODULE MF_InitializationModule
     ComputeConserved_TwoMoment
   USE UnitsModule, ONLY: &
     UnitsDisplay, &
+    SolarMass, &
     SpeedOfLight, &
     Erg, &
     Gram, &
@@ -127,15 +131,8 @@ MODULE MF_InitializationModule
   USE MF_ErrorModule, ONLY: &
     DescribeError_MF
   USE InputParsingModule, ONLY: &
-    ProgramName, &
     nLevels, &
-    xL, &
-    xR, &
-    nE, &
-    nSpecies, &
-    Mass, &
-    UseTiling, &
-    R0
+    UseTiling
 
   IMPLICIT NONE
   PRIVATE
@@ -752,10 +749,10 @@ CONTAINS
 
               X1 = NodeCoordinate( MeshX(1), iX1, iNodeZ2 )
 
-              EN = exp( -9.0_DP * X1**2 ) 
- 
+              EN = exp( -9.0_DP * X1**2 )
+
               uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
-                =  EN / W 
+                =  EN / W
 
               uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
                 = 0.0_DP
@@ -888,7 +885,7 @@ CONTAINS
         DO iNodeX = 1, nDOFX
 
           X1 = NodeCoordinate( MeshX(1), iX1, iNodeX )
-          
+
           uPF_K(iNodeX,iPF_D ) = 1.0_DP
           uPF_K(iNodeX,iPF_V2) = 0.0_DP
           uPF_K(iNodeX,iPF_V3) = 0.0_DP
@@ -1249,13 +1246,13 @@ CONTAINS
               E = NodeCoordinate( MeshE, iZ1, iNodeE )
               IF( iX1 .EQ. 1) THEN
                print*, E
-              END IF 
+              END IF
 
               IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
                 uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
                    = 1.0d-45
-                  != 1.0_DP / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP ) * (1.0_DP / X1)**2 
+                  != 1.0_DP / ( EXP( E / 3.0_DP - 3.0_DP ) + 1.0_DP ) * (1.0_DP / X1)**2
                 uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
                    = 0.0_DP
                  ! = 0.99_DP * W * uPR_K( iNodeZ, iZ1, iPR_D, iS )
@@ -1496,8 +1493,8 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
-
     ! --- thornado ---
+
     INTEGER        :: iDim
     INTEGER        :: iX1, iX2, iX3, iZ1, iZ2, iZ3, iZ4, iS, iNodeZ, iSpecies
     INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3, iNodeZ2, iNodeE
@@ -1510,22 +1507,32 @@ CONTAINS
     REAL(DP)       :: uAF_K( nDOFX, nAF )
 
     ! --- AMReX ---
+
     INTEGER                       :: lo_C(4), hi_C(4)
     INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_F(4), hi_F(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
+    TYPE(amrex_parmparse)         :: PP
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(DP)                      :: W, R, Theta, E
+    REAL(DP)                      :: W, R, Theta, E, Mass, R0
+
+    Mass = Zero
+    R0   = Zero
+    CALL amrex_parmparse_build( PP, 'ST' )
+      CALL PP % query( 'Mass', Mass )
+      CALL PP % query( 'R0'  , R0   )
+    CALL amrex_parmparse_destroy( PP )
+    Mass = Mass * SolarMass
+    R0   = R0   * UnitsDisplay % LengthX1Unit
 
     uCR_K = Zero
     uPF_K = Zero
     uCF_K = Zero
     uGF_K = Zero
     uAF_K = Zero
-
 
       CALL amrex_mfiter_build( MFI, MF_uCR, tiling = UseTiling )
 
@@ -1570,7 +1577,9 @@ CONTAINS
             uPF_K(iNodeX,iPF_Ne) = 0.0_DP
 
             CALL ComputeAlphaPsi( Mass, R, R0, theta, uGF_K(iNodeX,:) )
+
           END DO
+
         CALL ComputePressureFromPrimitive &
                  ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
                    uAF_K(:,iAF_P) )
@@ -1784,17 +1793,17 @@ CONTAINS
 
             uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
               = 1.0d-10
-   
+
             uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
               = 0.0_DP
-   
+
             uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
               = 0.0_DP
-   
+
             uPR_K( iNodeZ, iZ1, iPR_I3, iS ) &
               = 0.0_DP
-  
-  
+
+
             CALL ComputeConserved_TwoMoment &
                    ( uPR_K(iNodeZ,iZ1,iPR_D ,iS), &
                      uPR_K(iNodeZ,iZ1,iPR_I1,iS), &

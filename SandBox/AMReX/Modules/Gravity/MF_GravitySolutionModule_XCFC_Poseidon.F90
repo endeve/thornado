@@ -22,6 +22,8 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   USE GeometryComputationModule, ONLY: &
     LapseFunction, &
     ConformalFactor
+  USE XCFC_UtilitiesModule, ONLY: &
+    swX_GS
 
   ! --- Local Modules ---
 
@@ -32,7 +34,6 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
   USE AverageDownModule, ONLY: &
     AverageDown
   USE MF_XCFC_UtilitiesModule, ONLY: &
-    swXX, &
     UpdateConformalFactorAndMetric_XCFC_MF, &
     ApplyBoundaryConditions_Geometry_XCFC_MF, &
     ComputeGravitationalMass_MF, &
@@ -85,8 +86,8 @@ CONTAINS
       CALL PP % query( 'FillGhostCells', FillGhostCells )
     CALL amrex_parmparse_destroy( PP )
 
-    swXX = 0
-    IF( FillGhostCells ) swXX = swX
+    swX_GS = 0
+    IF( FillGhostCells ) swX_GS = swX
 
     IF( amrex_parallel_ioprocessor() )THEN
 

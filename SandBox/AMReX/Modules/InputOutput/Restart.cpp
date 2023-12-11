@@ -28,10 +28,13 @@ extern "C"
   void writefieldsamrex_checkpoint
          ( int StepNo[], int nLevels,
            Real dt[], Real time[],
-           Real BaryonicMassArr[],
-           Real EnergyArr[],
-           Real ElectronNumberArr[],
-           Real ADMMassArr[],
+           Real BaryonicMassArr   [],
+           Real EulerMomentumX1Arr[],
+           Real EulerMomentumX2Arr[],
+           Real EulerMomentumX3Arr[],
+           Real EulerEnergyArr    [],
+           Real ElectronNumberArr [],
+           Real ADMMassArr        [],
            BoxArray** pBA,
            int iWriteFields_uGF = 0,
            int iWriteFields_uCF = 0,
@@ -68,9 +71,12 @@ extern "C"
     const std::string& checkpointname
                          = amrex::Concatenate( chk_file, StepNo[0], 8 );
 
-    if ( ParallelDescriptor::IOProcessor() )
-      amrex::Print() << "\n    Writing CheckpointFile "
+    bool Verbose = false;
+    if ( Verbose && ParallelDescriptor::IOProcessor() )
+    {
+        amrex::Print() << "\n    Writing CheckpointFile "
                      << checkpointname << "\n\n";
+    }
 
     const int FinestLevel = nLevels-1;
 
@@ -132,14 +138,20 @@ extern "C"
       HeaderFile << "\n";
 
       // Write out initial values for tally
-      HeaderFile << BaryonicMassArr  [0] << "\n";
-      HeaderFile << BaryonicMassArr  [1] << "\n";
-      HeaderFile << EnergyArr        [0] << "\n";
-      HeaderFile << EnergyArr        [1] << "\n";
-      HeaderFile << ElectronNumberArr[0] << "\n";
-      HeaderFile << ElectronNumberArr[1] << "\n";
-      HeaderFile << ADMMassArr       [0] << "\n";
-      HeaderFile << ADMMassArr       [1] << "\n";
+      HeaderFile << BaryonicMassArr   [0] << "\n";
+      HeaderFile << BaryonicMassArr   [1] << "\n";
+      HeaderFile << EulerMomentumX1Arr[0] << "\n";
+      HeaderFile << EulerMomentumX1Arr[1] << "\n";
+      HeaderFile << EulerMomentumX2Arr[0] << "\n";
+      HeaderFile << EulerMomentumX2Arr[1] << "\n";
+      HeaderFile << EulerMomentumX3Arr[0] << "\n";
+      HeaderFile << EulerMomentumX3Arr[1] << "\n";
+      HeaderFile << EulerEnergyArr    [0] << "\n";
+      HeaderFile << EulerEnergyArr    [1] << "\n";
+      HeaderFile << ElectronNumberArr [0] << "\n";
+      HeaderFile << ElectronNumberArr [1] << "\n";
+      HeaderFile << ADMMassArr        [0] << "\n";
+      HeaderFile << ADMMassArr        [1] << "\n";
 
       // Write the BoxArray at each level
       for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )
@@ -190,18 +202,27 @@ extern "C"
   void readheaderandboxarraydata
          ( int FinestLevelArr[], int StepNo[],
 	   Real dt[], Real Time[],
-           Real BaryonicMassArr[],
-           Real EnergyArr[],
-           Real ElectronNumberArr[],
-           Real ADMMassArr[],
+           Real BaryonicMassArr   [],
+           Real EulerMomentumX1Arr[],
+           Real EulerMomentumX2Arr[],
+           Real EulerMomentumX3Arr[],
+           Real EulerEnergyArr    [],
+           Real ElectronNumberArr [],
+           Real ADMMassArr        [],
            BoxArray** pba, DistributionMapping** pdm, int iChkFile )
   {
 
     int FinestLevel;
     Real BaryonicMass_Initial;
     Real BaryonicMass_OffGrid;
-    Real Energy_Initial;
-    Real Energy_OffGrid;
+    Real EulerMomentumX1_Initial;
+    Real EulerMomentumX1_OffGrid;
+    Real EulerMomentumX2_Initial;
+    Real EulerMomentumX2_OffGrid;
+    Real EulerMomentumX3_Initial;
+    Real EulerMomentumX3_OffGrid;
+    Real EulerEnergy_Initial;
+    Real EulerEnergy_OffGrid;
     Real ElectronNumber_Initial;
     Real ElectronNumber_OffGrid;
     Real ADMMass_Initial;
@@ -272,7 +293,7 @@ extern "C"
     }
 
     // Read in initial values for tally
-    //
+
     is >> BaryonicMass_Initial;
     GotoNextLine( is );
     BaryonicMassArr[0] = BaryonicMass_Initial;
@@ -280,12 +301,33 @@ extern "C"
     GotoNextLine( is );
     BaryonicMassArr[1] = BaryonicMass_OffGrid;
 
-    is >> Energy_Initial;
+    is >> EulerMomentumX1_Initial;
     GotoNextLine( is );
-    EnergyArr[0] = Energy_Initial;
-    is >> Energy_OffGrid;
+    EulerMomentumX1Arr[0] = EulerMomentumX1_Initial;
+    is >> EulerMomentumX1_OffGrid;
     GotoNextLine( is );
-    EnergyArr[1] = Energy_OffGrid;
+    EulerMomentumX1Arr[1] = EulerMomentumX1_OffGrid;
+
+    is >> EulerMomentumX2_Initial;
+    GotoNextLine( is );
+    EulerMomentumX2Arr[0] = EulerMomentumX2_Initial;
+    is >> EulerMomentumX2_OffGrid;
+    GotoNextLine( is );
+    EulerMomentumX2Arr[1] = EulerMomentumX2_OffGrid;
+
+    is >> EulerMomentumX3_Initial;
+    GotoNextLine( is );
+    EulerMomentumX3Arr[0] = EulerMomentumX3_Initial;
+    is >> EulerMomentumX3_OffGrid;
+    GotoNextLine( is );
+    EulerMomentumX3Arr[1] = EulerMomentumX3_OffGrid;
+
+    is >> EulerEnergy_Initial;
+    GotoNextLine( is );
+    EulerEnergyArr[0] = EulerEnergy_Initial;
+    is >> EulerEnergy_OffGrid;
+    GotoNextLine( is );
+    EulerEnergyArr[1] = EulerEnergy_OffGrid;
 
     is >> ElectronNumber_Initial;
     GotoNextLine( is );

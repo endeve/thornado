@@ -84,8 +84,9 @@ CONTAINS
   SUBROUTINE InitializeFields_MF &
     ( iLevel, MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF, MF_uPF, MF_uAF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF, MF_uPF, MF_uAF
 
     ! --- thornado ---
 

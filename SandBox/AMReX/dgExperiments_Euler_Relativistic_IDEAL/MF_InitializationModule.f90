@@ -20,40 +20,41 @@ MODULE MF_InitializationModule
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
+    ProgramName, &
+    swX, &
     nDOFX
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
+  USE EquationOfStateModule_IDEAL, ONLY: &
+    ComputePressureFromPrimitive_IDEAL, &
+    Gamma_IDEAL
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
-    iGF_Gm_dd_33
+    iGF_Gm_dd_33, &
+    nGF
   USE FluidFieldsModule, ONLY: &
-    nCF, &
     iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
-    nPF, &
+    nCF, &
     iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
-    nAF, &
-    iAF_P
+    nPF
   USE Euler_UtilitiesModule, ONLY: &
     ComputeConserved_Euler
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     epsMin_Euler_GR
-  USE EquationOfStateModule_IDEAL, ONLY: &
-    ComputePressureFromPrimitive_IDEAL
 
   ! --- Local Modules ---
 
@@ -70,9 +71,6 @@ MODULE MF_InitializationModule
     AllocateArray_X, &
     DeallocateArray_X
   USE InputParsingModule, ONLY: &
-    swX, &
-    Gamma_IDEAL, &
-    ProgramName, &
     UseTiling
   USE MF_ErrorModule, ONLY: &
     DescribeError_MF
@@ -93,8 +91,9 @@ CONTAINS
   SUBROUTINE InitializeFields_MF &
     ( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
 
@@ -147,8 +146,9 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Advection1D( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX
@@ -359,8 +359,9 @@ CONTAINS
 
   SUBROUTINE InitializeFields_RiemannProblem1D( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX
@@ -576,8 +577,9 @@ CONTAINS
 
   SUBROUTINE InitializeFields_RiemannProblem2D( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX
@@ -851,8 +853,9 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Advection2D( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX
@@ -1073,8 +1076,9 @@ CONTAINS
   !     Radice & Rezzolla, (2012), AA, 547, A26 ---
   SUBROUTINE InitializeFields_KelvinHelmholtz2D( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -1265,8 +1269,9 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Advection3D( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX

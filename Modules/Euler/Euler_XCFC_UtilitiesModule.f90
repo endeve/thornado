@@ -59,6 +59,7 @@ MODULE Euler_XCFC_UtilitiesModule
     iGS_Mg, &
     nGS, &
     nMF, &
+    swX_GS, &
     MultiplyWithPsi6, &
     UpdateConformalFactorAndMetric_XCFC, &
     UpdateLapseShiftCurvature_XCFC, &
@@ -419,9 +420,9 @@ CONTAINS
     REAL(DP) :: uGS(nDOFX,iX_B0(1):iX_E0(1), &
                           iX_B0(2):iX_E0(2), &
                           iX_B0(3):iX_E0(3),nGS)
-    REAL(DP) :: uMF(nDOFX,iX_B0(1):iX_E0(1), &
-                          iX_B0(2):iX_E0(2), &
-                          iX_B0(3):iX_E0(3),nMF)
+    REAL(DP) :: uMF(nDOFX,iX_B0(1)-swX_GS(1):iX_E0(1)+swX_GS(1), &
+                          iX_B0(2)-swX_GS(2):iX_E0(2)+swX_GS(2), &
+                          iX_B0(3)-swX_GS(3):iX_E0(3)+swX_GS(3),nMF)
 
     REAL(DP) :: dAl1(nDOFX,iX_B0(1):iX_E0(1), &
                            iX_B0(2):iX_E0(2), &
@@ -450,7 +451,7 @@ CONTAINS
                    iX_B0(2):iX_E0(2), &
                    iX_B0(3):iX_E0(3),iGF_Psi  )
 
-      CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, +1 )
+      CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, +1 )
 
       CALL ComputeConformalFactor &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
@@ -458,7 +459,7 @@ CONTAINS
       CALL ComputeLapseShiftCurvature &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
 
-      CALL MultiplyWithPsi6( iX_B1, iX_E1, uGF, uCF, -1 )
+      CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, -1 )
 
       dAl2 = uGF(:,iX_B0(1):iX_E0(1), &
                    iX_B0(2):iX_E0(2), &
@@ -589,10 +590,12 @@ CONTAINS
     INTEGER , INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: &
-      G    (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nGF), &
-      Ustar(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nCF), &
-      M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF), &
-      GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
+      G    (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      Ustar(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      M    (1:,iX_B0(1)-swX_GS(1):, &
+               iX_B0(2)-swX_GS(2):, &
+               iX_B0(3)-swX_GS(3):,1:), &
+      GS   (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
     CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
@@ -612,10 +615,12 @@ CONTAINS
     INTEGER , INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: &
-      G    (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nGF), &
-      Ustar(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nCF), &
-      M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF), &
-      GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
+      G    (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      Ustar(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      M    (1:,iX_B0(1)-swX_GS(1):, &
+               iX_B0(2)-swX_GS(2):, &
+               iX_B0(3)-swX_GS(3):,1:), &
+      GS   (1:,iX_B0(1):,iX_B0(2):,iX_B0(3):,1:)
 
     CALL ComputePressureTensorTrace_XCFC_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )

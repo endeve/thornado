@@ -1,11 +1,11 @@
 # XXX_HOME defines the directory in which all the XXX source code is located
 # If you set XXX_HOME as an environment variable, this line will be ignored
-AMREX_HOME    ?= $(AMREX_DIR)
-THORNADO_HOME ?= $(THORNADO_DIR)
-POSEIDON_HOME ?= $(POSEIDON_DIR)
-WEAKLIB_HOME  ?= $(WEAKLIB_DIR)
 HDF5_HOME     ?= $(HDF5_DIR)
 LAPACK_HOME   ?= $(LAPACK_DIR)
+WEAKLIB_HOME  ?= $(WEAKLIB_DIR)
+AMREX_HOME    ?= $(AMREX_DIR)
+POSEIDON_HOME ?= $(POSEIDON_DIR)
+THORNADO_HOME ?= $(THORNADO_DIR)
 
 HDF5_INC ?= $(HDF5_HOME)/include
 HDF5_LIB ?= $(HDF5_HOME)/lib

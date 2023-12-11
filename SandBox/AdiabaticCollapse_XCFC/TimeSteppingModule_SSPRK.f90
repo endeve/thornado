@@ -17,6 +17,7 @@ MODULE TimeSteppingModule_SSPRK
     MultiplyWithPsi6, &
     nGS, &
     nMF, &
+    swX_GS, &
     UpdateConformalFactorAndMetric_XCFC, &
     UpdateLapseShiftCurvature_XCFC, &
     ApplyBoundaryConditions_Geometry_XCFC
@@ -214,9 +215,9 @@ CONTAINS
     REAL(DP) :: GS(nDOFX,iX_B0(1):iX_E0(1), &
                          iX_B0(2):iX_E0(2), &
                          iX_B0(3):iX_E0(3),nGS)
-    REAL(DP) :: M (nDOFX,iX_B0(1):iX_E0(1), &
-                         iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3),nMF)
+    REAL(DP) :: M (nDOFX,iX_B0(1)-swX_GS(1):iX_E0(1)+swX_GS(1), &
+                         iX_B0(2)-swX_GS(2):iX_E0(2)+swX_GS(2), &
+                         iX_B0(3)-swX_GS(3):iX_E0(3)+swX_GS(3),nMF)
 
     REAL(DP) :: dM_OffGrid_Euler(nCF)
 
@@ -224,7 +225,7 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
 
-    CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, +1 )
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, +1 )
 
     Dstar = Zero ! --- Increment
 
@@ -251,7 +252,7 @@ CONTAINS
           CALL ComputeConformalFactor &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
 
-          CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, -1 )
+          CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, -1 )
 
           CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, D )
@@ -259,7 +260,7 @@ CONTAINS
           CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar )
 
-          CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, +1 )
+          CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, +1 )
 
           CALL ComputeConformalFactor &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
@@ -269,7 +270,11 @@ CONTAINS
 
         END IF
 
-        CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, -1 )
+        CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, -1 )
+
+        ! To match amrex implementation
+        CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar )
 
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -303,7 +308,7 @@ CONTAINS
     CALL ComputeConformalFactor &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, M, GS )
 
-    CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, -1 )
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, -1 )
 
     CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
@@ -311,7 +316,7 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
-    CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, +1 )
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, +1 )
 
     CALL ComputeConformalFactor &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, M, GS )
@@ -319,7 +324,7 @@ CONTAINS
     CALL ComputeLapseShiftCurvature &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, M, GS )
 
-    CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, -1 )
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, -1 )
 
     CALL IncrementOffGridTally_Euler_Relativistic( dM_OffGrid_Euler )
 

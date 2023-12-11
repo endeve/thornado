@@ -5,14 +5,11 @@
 DEBUG = 1
 
 thornado.ProgramName = "ShadowCasting"
-thornado.Scheme = "IMEX_PDARS"
 
 thornado.t_end     = 15.0     # Final time
 thornado.dt_wrt    = 1.0e+1      # Write time interval
 thornado.dt_chk    = 1.0e+1      # Time increment to write checkpoint-file
 thornado.nNodes    = 2        # Number of DG nodes in each active dimension
-thornado.nStages    = 2        # Number of DG nodes in each active dimension
-thornado.CFL       = 0.3      # CFL number
 thornado.bcX       = 2 2 00 # Boundary conditions
 thornado.bcZ_TwoMoment = 1 2 2 00 # Boundary conditions
 thornado.swX       = 01 01 00 # Stencil width (nGhostCells) in each dimension remember to change this
@@ -63,3 +60,10 @@ PL.Min_2_TwoMoment                = 1.0e-26
 # Slope limiter parameters
 SL.UseSlopeLimiter_TwoMoment           = 0
 SL.BetaTVD_TwoMoment                   = 1.75e0
+
+# Time-Stepping parameters
+TS.Scheme = "IMEX_PDARS"
+TS.CFL    = 0.3      # CFL number
+
+EoS.EquationOfState = "IDEAL"
+EoS.Gamma_IDEAL     = 1.3333333333333333

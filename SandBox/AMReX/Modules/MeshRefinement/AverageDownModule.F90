@@ -9,11 +9,12 @@ MODULE AverageDownModule
   USE amrex_amrcore_module, ONLY: &
     amrex_get_finest_level
   USE amrex_amr_module, ONLY: &
-    amrex_geom, &
     amrex_ref_ratio
 #if defined( THORNADO_USE_MESHREFINEMENT )
   USE amrex_multifabutil_module, ONLY: &
-    amrex_average_down_dg
+    amrex_average_down_dg_conservative, &
+    amrex_average_down_dg_pointwise, &
+    amrex_average_down_cg
 #endif
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_communicator, &
@@ -21,17 +22,17 @@ MODULE AverageDownModule
 
   ! --- thornado Modules ---
 
-
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
     swX
   USE GeometryFieldsModule, ONLY: &
     iGF_SqrtGm
   USE Euler_MeshRefinementModule, ONLY: &
-    pProjectionMatrix_T_c, &
-    pWeightsX_q_c, &
-    VolumeRatio, &
-    nFine
+    nFine, &
+    pG2L_c, &
+    pL2G_c, &
+    pF2C_c, &
+    vpFineToCoarseProjectionMatrix
   USE InputParsingModule, ONLY: &
     DEBUG
   USE MF_TimersModule, ONLY: &
@@ -39,37 +40,28 @@ MODULE AverageDownModule
     TimersStop_AMReX, &
     Timer_AMReX_AverageDown
 
-  ! --- Local Modules ---
-
-  USE MF_UtilitiesModule, ONLY: &
-    MultiplyWithMetric
-  USE MF_Euler_PositivityLimiterModule, ONLY: &
-    ApplyPositivityLimiter_Euler_MF
-
   IMPLICIT NONE
   PRIVATE
 
   INTERFACE AverageDown
-    MODULE PROCEDURE AverageDown_Geometry
-    MODULE PROCEDURE AverageDown_Fluid
+    MODULE PROCEDURE AverageDown_PointWise
+    MODULE PROCEDURE AverageDown_Conservative
   END INTERFACE AverageDown
 
   INTERFACE AverageDownTo
-    MODULE PROCEDURE AverageDownTo_Geometry
-    MODULE PROCEDURE AverageDownTo_Fluid
+    MODULE PROCEDURE AverageDownTo_PointWise
+    MODULE PROCEDURE AverageDownTo_Conservative
   END INTERFACE AverageDownTo
 
   PUBLIC :: AverageDown
   PUBLIC :: AverageDownTo
 
-  INTEGER, PARAMETER :: swXX(3) = [ 0, 0, 0 ]
-
 CONTAINS
 
 
-  SUBROUTINE AverageDown_Geometry( MF_uGF )
+  SUBROUTINE AverageDown_PointWise( MF )
 
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
 
     INTEGER :: iLevel, FinestLevel
 
@@ -77,64 +69,41 @@ CONTAINS
 
     DO iLevel = FinestLevel-1, 0, -1
 
-      CALL AverageDownTo_Geometry( iLevel, MF_uGF )
+      CALL AverageDownTo_PointWise( iLevel, MF )
 
     END DO
 
-  END SUBROUTINE AverageDown_Geometry
+  END SUBROUTINE AverageDown_PointWise
 
 
-  SUBROUTINE AverageDown_Fluid &
-    ( MF_uGF, MF, MF_uDF, ApplyPositivityLimiter_Option )
+  SUBROUTINE AverageDown_Conservative( MF_uGF, MF )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF    (0:)
-    TYPE(amrex_multifab), INTENT(inout), OPTIONAL :: &
-      MF_uDF(0:)
-    LOGICAL             , INTENT(in)   , OPTIONAL :: &
-      ApplyPositivityLimiter_Option
 
     INTEGER :: iLevel, FinestLevel
-
-    LOGICAL :: ApplyPositivityLimiter
-
-    ApplyPositivityLimiter = .FALSE.
-    IF( PRESENT( ApplyPositivityLimiter_Option ) ) &
-      ApplyPositivityLimiter = ApplyPositivityLimiter_Option
 
     FinestLevel = amrex_get_finest_level()
 
     DO iLevel = FinestLevel-1, 0, -1
 
-      IF( ApplyPositivityLimiter )THEN
-
-        CALL AverageDownTo_Fluid &
-               ( iLevel, MF_uGF, MF, &
-                 MF_uDF, &
-                 ApplyPositivityLimiter_Option = ApplyPositivityLimiter )
-
-      ELSE
-
-        CALL AverageDownTo_Fluid( iLevel, MF_uGF, MF )
-
-      END IF
+      CALL AverageDownTo_Conservative( iLevel, MF_uGF, MF )
 
     END DO
 
-  END SUBROUTINE AverageDown_Fluid
+  END SUBROUTINE AverageDown_Conservative
 
 
-  SUBROUTINE AverageDownTo_Geometry( CoarseLevel, MF_uGF )
+  SUBROUTINE AverageDownTo_PointWise( CoarseLevel, MF )
 
     INTEGER             , INTENT(in)    :: CoarseLevel
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
 
-    INTEGER :: nComp, nF, iErr
+    INTEGER :: iErr
 
     CALL TimersStart_AMReX( Timer_AMReX_AverageDown )
 
-    nComp = MF_uGF(CoarseLevel) % nComp()
-    nF    = nComp / nDOFX
+#if defined( THORNADO_USE_MESHREFINEMENT )
 
     IF( DEBUG )THEN
 
@@ -143,61 +112,37 @@ CONTAINS
       IF( amrex_parallel_ioprocessor() )THEN
 
         WRITE(*,'(4x,A,I3.3)') &
-          'CALL AverageDownTo_Geometry, CoarseLevel: ', CoarseLevel
+          'CALL AverageDownTo_PointWise, CoarseLevel: ', CoarseLevel
 
       END IF
 
     END IF
 
-    CALL MultiplyWithMetric &
-           ( CoarseLevel+1, MF_uGF, nF, +1, swXX_Option = swXX )
-
-#if defined( THORNADO_USE_MESHREFINEMENT )
-
-    CALL amrex_average_down_dg &
-           ( MF_uGF    (CoarseLevel+1), MF_uGF    (CoarseLevel), &
-             amrex_geom(CoarseLevel+1), amrex_geom(CoarseLevel), &
-             1, nComp, amrex_ref_ratio(CoarseLevel), &
-            nDOFX, nFine, VolumeRatio, pProjectionMatrix_T_c, pWeightsX_q_c )
+    CALL amrex_average_down_dg_pointwise &
+           ( MF(CoarseLevel+1), MF(CoarseLevel), &
+             MF(CoarseLevel) % nComp(), amrex_ref_ratio(CoarseLevel), &
+             nDOFX, nFine, vpFineToCoarseProjectionMatrix )
 
 #endif
 
-    CALL MultiplyWithMetric &
-           ( CoarseLevel+1, MF_uGF, nF, -1, swXX_Option = swXX )
-
-    CALL MultiplyWithMetric &
-           ( CoarseLevel  , MF_uGF, nF, -1, swXX_Option = swXX )
-
     CALL TimersStop_AMReX( Timer_AMReX_AverageDown )
 
-  END SUBROUTINE AverageDownTo_Geometry
+  END SUBROUTINE AverageDownTo_PointWise
 
 
-  SUBROUTINE AverageDownTo_Fluid &
-    ( CoarseLevel, MF_uGF, MF, MF_uDF, ApplyPositivityLimiter_Option )
+  SUBROUTINE AverageDownTo_Conservative( CoarseLevel, MF_uGF, MF )
 
     INTEGER             , INTENT(in)    :: CoarseLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF    (0:)
-    TYPE(amrex_multifab), INTENT(inout), OPTIONAL :: &
-      MF_uDF(0:)
-    LOGICAL             , INTENT(in)   , OPTIONAL :: &
-      ApplyPositivityLimiter_Option
 
     TYPE(amrex_multifab) :: SqrtGm(CoarseLevel:CoarseLevel+1)
 
-    INTEGER :: nComp, nF, iErr
-
-    LOGICAL :: ApplyPositivityLimiter
+    INTEGER :: iErr
 
     CALL TimersStart_AMReX( Timer_AMReX_AverageDown )
 
-    ApplyPositivityLimiter = .FALSE.
-    IF( PRESENT( ApplyPositivityLimiter_Option ) ) &
-      ApplyPositivityLimiter = ApplyPositivityLimiter_Option
-
-    nComp = MF(CoarseLevel) % nComp()
-    nF    =  nComp / nDOFX
+#if defined( THORNADO_USE_MESHREFINEMENT )
 
     IF( DEBUG )THEN
 
@@ -206,60 +151,41 @@ CONTAINS
       IF( amrex_parallel_ioprocessor() )THEN
 
         WRITE(*,'(4x,A,I3.3)') &
-          'CALL AverageDownTo_Fluid, CoarseLevel: ', CoarseLevel
+          'CALL AverageDownTo_Conservative, CoarseLevel: ', CoarseLevel
 
       END IF
 
     END IF
 
     CALL amrex_multifab_build &
-           ( SqrtGm(CoarseLevel+1), MF_uGF(CoarseLevel+1) % BA, &
-                                    MF_uGF(CoarseLevel+1) % DM, nDOFX, swX )
+           ( SqrtGm(CoarseLevel+1), MF(CoarseLevel+1) % BA, &
+                                    MF(CoarseLevel+1) % DM, nDOFX, swX )
 
     CALL SqrtGm(CoarseLevel+1) % COPY &
-           ( MF_uGF(CoarseLevel+1), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
+           ( MF_uGF(CoarseLevel+1), nDOFX*(iGF_SqrtGm-1)+1, 1, nDOFX, swX )
 
-    CALL MultiplyWithMetric &
-           ( CoarseLevel+1, SqrtGm(CoarseLevel+1), MF, nF, +1, &
-             swXX_Option = swXX )
+    CALL amrex_multifab_build &
+           ( SqrtGm(CoarseLevel  ), MF(CoarseLevel  ) % BA, &
+                                    MF(CoarseLevel  ) % DM, nDOFX, swX )
 
-#if defined( THORNADO_USE_MESHREFINEMENT )
+    CALL SqrtGm(CoarseLevel  ) % COPY &
+           ( MF_uGF(CoarseLevel  ), nDOFX*(iGF_SqrtGm-1)+1, 1, nDOFX, swX )
 
-    CALL amrex_average_down_dg &
-           ( MF        (CoarseLevel+1), MF        (CoarseLevel), &
-             amrex_geom(CoarseLevel+1), amrex_geom(CoarseLevel), &
-             1, nComp, amrex_ref_ratio(CoarseLevel), &
-             nDOFX, nFine, VolumeRatio, pProjectionMatrix_T_c, pWeightsX_q_c )
-
-#endif
-
-    CALL MultiplyWithMetric &
-           ( CoarseLevel+1, SqrtGm(CoarseLevel+1), MF, nF, -1, &
-             swXX_Option = swXX )
+    CALL amrex_average_down_dg_conservative &
+           ( MF    (CoarseLevel+1), MF    (CoarseLevel), &
+             SqrtGm(CoarseLevel+1), SqrtGm(CoarseLevel), &
+             MF(CoarseLevel) % nComp(), amrex_ref_ratio(CoarseLevel), &
+             nDOFX, nFine, vpFineToCoarseProjectionMatrix )
 
     CALL amrex_multifab_destroy( SqrtGm(CoarseLevel+1) )
 
-    CALL amrex_multifab_build &
-           ( SqrtGm(CoarseLevel), MF_uGF(CoarseLevel) % BA, &
-                                  MF_uGF(CoarseLevel) % DM, nDOFX, swX )
-
-    CALL SqrtGm(CoarseLevel) % COPY &
-           ( MF_uGF(CoarseLevel), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
-
-    CALL MultiplyWithMetric &
-           ( CoarseLevel, SqrtGm(CoarseLevel), MF, nF, -1, &
-             swXX_Option = swXX )
-
     CALL amrex_multifab_destroy( SqrtGm(CoarseLevel) )
 
-    IF( ApplyPositivityLimiter ) &
-      CALL ApplyPositivityLimiter_Euler_MF &
-             ( CoarseLevel, &
-               MF_uGF(CoarseLevel), MF(CoarseLevel), MF_uDF(CoarseLevel) )
+#endif
 
     CALL TimersStop_AMReX( Timer_AMReX_AverageDown )
 
-  END SUBROUTINE AverageDownTo_Fluid
+  END SUBROUTINE AverageDownTo_Conservative
 
 
 END MODULE AverageDownModule

@@ -6,8 +6,6 @@ MODULE InitializationModule
 
   USE amrex_init_module, ONLY: &
     amrex_init
-  USE amrex_fort_module, ONLY: &
-    amrex_spacedim
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse, &
     amrex_parmparse_build, &
@@ -49,8 +47,13 @@ MODULE InitializationModule
     iE_E0, &
     iE_B1, &
     iE_E1, &
-    nNodesX, &
     nNodesE, &
+    swX, &
+    swE, &
+    zoomE, &
+    eL, &
+    eR, &
+    nE, &
     DescribeProgramHeaderX
   USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
     InitializeNeutrinoMatterSolverParameters
@@ -86,11 +89,10 @@ MODULE InitializationModule
     CreateMesh, &
     MeshX, &
     MeshE
+  USE EquationOfStateModule, ONLY: &
+    EquationOfState
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
-    CoordinateSystem, &
-    DescribeGeometryFields, &
-    SetUnitsGeometryFields
+    nGF
   USE GeometryFieldsModuleE, ONLY: &
     CreateGeometryFieldsE, &
     uGE
@@ -100,34 +102,25 @@ MODULE InitializationModule
     nCF, &
     nPF, &
     nAF, &
-    nDF, &
-    DescribeFluidFields_Primitive, &
-    DescribeFluidFields_Conserved, &
-    DescribeFluidFields_Auxiliary, &
-    DescribeFluidFields_Diagnostic, &
-    SetUnitsFluidFields
+    nDF
   USE RadiationFieldsModule, ONLY: &
     nCR, &
     nPR, &
     nGR, &
-    DescribeRadiationFields_Primitive, &
-    DescribeRadiationFields_Conserved, &
-    SetUnitsRadiationFields
-  USE EquationOfStateModule, ONLY: &
-    InitializeEquationOfState
+    nSpecies
   USE TwoMoment_ClosureModule, ONLY: &
     InitializeClosure_TwoMoment
   USE OpacityModule_Table, ONLY: &
     InitializeOpacities_TABLE
-  USE TwoMoment_TimersModule, ONLY: &
-    InitializeTimers
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
     DP, &
-    Zero, &
-    One
+    Zero
+  USE MF_EquationOfStateModule, ONLY: &
+    InitializeEquationOfState_MF, &
+    EosTableName
   USE MF_FieldsModule_Geometry, ONLY: &
     CreateFields_Geometry_MF, &
     MF_uGF
@@ -179,9 +172,6 @@ MODULE InitializationModule
     InitializeParameters, &
     nLevels, &
     nMaxLevels, &
-    swX, &
-    swE, &
-    zoomE, &
     StepNo, &
     iRestart, &
     dt, &
@@ -195,13 +185,6 @@ MODULE InitializationModule
     UseTiling, &
     UseFluxCorrection_Euler, &
     UseFluxCorrection_TwoMoment, &
-    MaxGridSizeX, &
-    BlockingFactor, &
-    xL, &
-    xR, &
-    eL, &
-    eR, &
-    nE, &
     OpacityTableName_AbEm, &
     OpacityTableName_Iso, &
     OpacityTableName_NES, &
@@ -218,15 +201,7 @@ MODULE InitializationModule
     Include_Brem, &
     Include_LinCorr, &
     wMatterRHS, &
-    Scheme, &
-    nSpecies, &
-    EquationOfState, &
-    Gamma_IDEAL, &
-    EosTableName, &
-    ProgramName, &
     TagCriteria, &
-    nRefinementBuffer, &
-    UseAMR, &
     DescribeProgramHeader_AMReX
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
@@ -310,36 +285,13 @@ CONTAINS
 
     CALL InitializeMeshRefinement_Euler
 
-    CALL SetUnitsGeometryFields
-
-    CALL DescribeFluidFields_Conserved ( amrex_parallel_ioprocessor() )
-
-    CALL DescribeFluidFields_Primitive ( amrex_parallel_ioprocessor() )
-
-    CALL DescribeFluidFields_Auxiliary ( amrex_parallel_ioprocessor() )
-
-    CALL DescribeFluidFields_Diagnostic( amrex_parallel_ioprocessor() )
-
-    CALL SetUnitsFluidFields &
-           ( TRIM( CoordinateSystem ), &
-             Verbose_Option = amrex_parallel_ioprocessor() )
-
-    CALL DescribeRadiationFields_Conserved( amrex_parallel_ioprocessor() )
-
-    CALL DescribeRadiationFields_Primitive( amrex_parallel_ioprocessor() )
-
-    CALL SetUnitsRadiationFields
-
     CALL CreateGeometryFieldsE &
            ( nE, swE, Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL ComputeGeometryE &
            ( iE_B0, iE_E0, iE_B1, iE_E1, uGE )
 
-    CALL InitializeEquationOfState &
-           ( EquationOfState_Option = EquationOfState, &
-             EquationOfStateTableName_Option = EosTableName, &
-             Verbose_Option = amrex_parallel_ioprocessor() )
+    CALL InitializeEquationOfState_MF
 
     CALL InitializeOpacities_TABLE &
            ( OpacityTableName_EmAb_Option = OpacityTableName_AbEm, &
@@ -408,10 +360,7 @@ CONTAINS
     CALL InitializeTally_TwoMoment_MF
 
     CALL Initialize_IMEX_RK_MF &
-           ( Scheme, &
-             EvolveEuler_Option     = .TRUE., &
-             EvolveTwoMoment_Option = .TRUE., &
-             Verbose_Option         = amrex_parallel_ioprocessor() )
+           ( Verbose_Option = amrex_parallel_ioprocessor() )
 
     IF( iRestart .LT. 0 )THEN
 
@@ -436,7 +385,8 @@ CONTAINS
 
       CALL CreateMesh_MF( 0, MeshX )
 
-      CALL InitializeGravitySolver_XCFC_MF
+      CALL InitializeGravitySolver_XCFC_MF &
+             ( Verbose_Option = amrex_parallel_ioprocessor() )
 
       CALL DestroyMesh_MF( MeshX )
 
@@ -468,7 +418,8 @@ CONTAINS
 
       CALL CreateMesh_MF( 0, MeshX )
 
-      CALL InitializeGravitySolver_XCFC_MF
+      CALL InitializeGravitySolver_XCFC_MF &
+             ( Verbose_Option = amrex_parallel_ioprocessor() )
 
       CALL InitializeMetricFromCheckpoint_MF( MF_uGF, MF_uCF, MF_uCR )
 
@@ -477,8 +428,10 @@ CONTAINS
     END IF
 
     CALL AverageDown( MF_uGF )
-    CALL AverageDown &
-           ( MF_uGF, MF_uCF, MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
+    CALL AverageDown( MF_uGF, MF_uCF )
+    CALL ApplyPositivityLimiter_Euler_MF &
+           ( MF_uGF, MF_uCF, MF_uDF )
+
     !!$CALL AverageDown( MF_uGF, MF_uCR )
 
     t_old = t_new
@@ -588,7 +541,9 @@ CONTAINS
     CALL ComputeGeometryX_MF( MF_uGF(iLevel) )
 
     CALL InitializeFields_MF &
-           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uCR(iLevel) )
+           ( iLevel, &
+             MF_uGF(iLevel), MF_uCF(iLevel), MF_uPF(iLevel), MF_uAF(iLevel), &
+                             MF_uCR(iLevel), MF_uPR(iLevel) )
 
     CALL DestroyMesh_MF( MeshX )
 
@@ -634,9 +589,18 @@ CONTAINS
                amrex_ref_ratio(iLevel-1), &
                iLevel, nDOFZ_Z2 * nCR * nE * nSpecies )
 
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uGF )
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF )
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uDF )
+    CALL FillCoarsePatch( iLevel, MF_uGF, &
+                          ApplyBoundaryConditions_Geometry_Option = .TRUE. )
+
+    CALL FillCoarsePatch( iLevel, MF_uDF )
+
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF, &
+                          ApplyBoundaryConditions_Euler_Option = .TRUE. )
+
+    CALL ApplyPositivityLimiter_Euler_MF &
+           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
+
+    ! MF_uCR needs to be permuted
     CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCR )
 
   END SUBROUTINE MakeNewLevelFromCoarse
@@ -685,10 +649,19 @@ CONTAINS
     CALL amrex_multifab_build &
            ( MF_uPR_tmp, BA, DM, nDOFZ * nPR * nE * nSpecies, swX )
 
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF, MF_uGF_tmp )
-    CALL FillPatch( iLevel, MF_uGF, MF_uCF, MF_uCF_tmp )
-    CALL FillPatch( iLevel, MF_uGF, MF_uDF, MF_uDF_tmp )
-    CALL FillPatch( iLevel, MF_uGF, MF_uCR, MF_uCR_tmp )
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, &
+                    ApplyBoundaryConditions_Geometry_Option = .TRUE. )
+
+    CALL FillPatch( iLevel, MF_uDF, MF_uDF_tmp )
+
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp, &
+                    ApplyBoundaryConditions_Euler_Option = .TRUE. )
+
+    CALL ApplyPositivityLimiter_Euler_MF &
+           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
+
+    ! MF_uCR needs to be permuted
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, MF_uCR, MF_uCR_tmp )
 
     CALL ClearLevel( iLevel )
 

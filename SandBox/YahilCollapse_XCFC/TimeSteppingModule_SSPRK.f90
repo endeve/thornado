@@ -18,6 +18,7 @@ MODULE TimeSteppingModule_SSPRK
     MultiplyWithPsi6, &
     nGS, &
     nMF, &
+    swX_GS, &
     UpdateConformalFactorAndMetric_XCFC, &
     UpdateLapseShiftCurvature_XCFC, &
     ApplyBoundaryConditions_Geometry_XCFC
@@ -214,9 +215,9 @@ CONTAINS
     REAL(DP) :: GS(nDOFX,iX_B0(1):iX_E0(1), &
                          iX_B0(2):iX_E0(2), &
                          iX_B0(3):iX_E0(3),nGS)
-    REAL(DP) :: M (nDOFX,iX_B0(1):iX_E0(1), &
-                         iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3),nMF)
+    REAL(DP) :: M (nDOFX,iX_B0(1)-swX_GS(1):iX_E0(1)+swX_GS(1), &
+                         iX_B0(2)-swX_GS(1):iX_E0(2)+swX_GS(1), &
+                         iX_B0(3)-swX_GS(1):iX_E0(3)+swX_GS(1),nMF)
 
     REAL(DP) :: dM_OffGrid_Euler(nCF)
 
@@ -224,7 +225,7 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
 
-    CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, +1 ) ! Ustar = psi^6 * U
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, +1 ) ! Ustar = psi^6 * U
 
     Dstar = Zero ! --- Increment
 
@@ -234,14 +235,24 @@ CONTAINS
 
       DO jS = 1, iS - 1
 
-        IF( a_SSPRK(iS,jS) .NE. Zero )THEN
-
+        IF( a_SSPRK(iS,jS) .NE. Zero ) &
           CALL AddIncrement_Fluid &
                  ( One, Ustar, dt * a_SSPRK(iS,jS), Dstar(:,:,:,:,:,jS) )
 
-        END IF
-
       END DO
+
+      ! To match amrex implementation
+
+      IF( iS .GT. 1 )THEN
+
+        CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, -1 )
+
+        CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar )
+
+        CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, +1 )
+
+      END IF
 
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
@@ -255,7 +266,7 @@ CONTAINS
 
           END IF
 
-          CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, -1 )
+          CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, -1 )
 
           CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, D )
@@ -263,7 +274,7 @@ CONTAINS
           CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar )
 
-          CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, +1 )
+          CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, +1 )
 
           IF( EvolveGravity )THEN
 
@@ -277,7 +288,11 @@ CONTAINS
 
         END IF !( iS .NE. 1 )
 
-        CALL MultiplyWithPsi6( iX_B1, iX_E1, G, Ustar, -1 )
+        CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, -1 )
+
+        ! To match amrex implementation
+        CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar )
 
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -299,14 +314,20 @@ CONTAINS
 
     DO iS = 1, nStages_SSPRK
 
-      IF( w_SSPRK(iS) .NE. Zero )THEN
-
+      IF( w_SSPRK(iS) .NE. Zero ) &
         CALL AddIncrement_Fluid &
                ( One, U, dt * w_SSPRK(iS), Dstar(:,:,:,:,:,iS) )
 
-      END IF
-
     END DO
+
+    ! To match amrex implementation
+
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, -1 )
+
+    CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, +1 )
 
     IF( EvolveGravity )THEN
 
@@ -315,7 +336,7 @@ CONTAINS
 
     END IF
 
-    CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, -1 )
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, -1 )
 
     CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
@@ -323,7 +344,7 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
-    CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, +1 )
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, +1 )
 
     IF( EvolveGravity )THEN
 
@@ -335,7 +356,7 @@ CONTAINS
 
     END IF
 
-    CALL MultiplyWithPsi6( iX_B1, iX_E1, G, U, -1 )
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, -1 )
 
     CALL IncrementOffGridTally_Euler_Relativistic( dM_OffGrid_Euler )
 

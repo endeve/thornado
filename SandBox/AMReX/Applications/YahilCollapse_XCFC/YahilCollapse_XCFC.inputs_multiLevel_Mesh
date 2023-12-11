@@ -1,4 +1,4 @@
-##### YahilCollapse_XCFC.inputs_multiLevel #####
+##### YahilCollapse_XCFC.inputs_multiLevel_Mesh #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
@@ -19,7 +19,7 @@ thornado.UsePhysicalUnits = 1
 
 thornado.TallyFileNameRoot_Euler = "YahilCollapse_XCFC.Tally"
 thornado.PlotFileNameRoot = "YahilCollapse_XCFC.plt"
-thornado.t_end   = 3.0e+2
+thornado.t_end   = 1.5e+2
 thornado.iCycleD = 1
 
 thornado.dt_wrt  = 1.0e-1
@@ -29,10 +29,7 @@ thornado.CheckpointFileNameRoot = "YahilCollapse_XCFC.chk"
 thornado.dt_chk    = 1.0e+0
 thornado.iCycleChk = -1
 
-thornado.nNodes  = 2
-thornado.nStages = 2
-
-thornado.CFL = 0.5
+thornado.nNodes = 2
 
 thornado.bcX         = 30 00 00
 geometry.is_periodic = 0  1  1
@@ -45,14 +42,16 @@ amr.n_cell                  = 512 01 01
 thornado.swX                = 01  00 00
 #amr.max_grid_size_x         = 512
 #amr.blocking_factor_x       = 512
-amr.max_level               = 9
 amr.UseFluxCorrection_Euler = 1
-amr.UseAMR                  = 0
+amr.RefinementScheme        = "Mesh"
+amr.max_level               = 9
 amr.TagCriteria             = 5.0000e+4 2.50000e+4 1.250000e+4 6.2500e+3 3.12500e+3 1.562500e+3 7.8125e+2 3.90625e+2 1.953125e+2
+amr.UseAMR                  = 0
 amr.n_error_buf             = 0
 amr.ref_ratio               = 2
 
 # Poseidon parameters
+GS.EvolveGravity           = 1
 poseidon.fem_degree        = 1
 poseidon.l_limit           = 0
 poseidon.max_fp_iters      = 20
@@ -76,7 +75,9 @@ PL.Min_1_Euler                = 1.0e-13
 PL.Min_2_Euler                = 1.0e-13
 
 # Equation of state parameters
-EoS.Gamma_IDEAL = 1.30
+EoS.EquationOfState = "IDEAL"
+EoS.Gamma_IDEAL     = 1.30
 
 # Time-Stepping parameters
-TS.EvolveGravity = 1
+TS.nStages       = 2
+TS.CFL           = 0.5

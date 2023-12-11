@@ -20,8 +20,6 @@ thornado.t_end     = 80.0      # Final time
 thornado.dt_wrt    = -0.25      # Write time interval
 thornado.dt_chk    = -0.25      # Time increment to write checkpoint-file
 thornado.nNodes    = 3         # Number of DG nodes in each active dimension
-thornado.nStages   = 3         # Number of SSP-RK stages for time integration
-thornado.CFL       = 0.5       # CFL number
 thornado.bcX       = 11 03 00  # Boundary conditions
 thornado.swX       = 01 01 00  # Stencil width (nGhostCells) in each dimension
 thornado.iCycleD   = 000010    # MOD this number to display info
@@ -58,3 +56,7 @@ PL.Min_2                = 1.0e-12
 
 # Equation of state parameters
 EoS.Gamma = 1.3333333333333333 # Ideal Gas EoS Gamma
+
+# Time-Stepping parameters
+TS.nStages = 3         # Number of SSP-RK stages for time integration
+TS.CFL     = 0.5       # CFL number

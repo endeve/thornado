@@ -6,15 +6,10 @@ DEBUG = 0
 
 thornado.ProgramName = "HomogeneousSphereGR"
 
-thornado.Scheme = "IMEX_PDARS"
-thornado.nStages = 2
-
-
 thornado.t_end     = 1.0     # Final time
 thornado.dt_wrt    = 0.5      # Write time interval
 thornado.dt_chk    = 11.0      # Time increment to write checkpoint-file
 thornado.nNodes    = 1        # Number of DG nodes in each active dimension
-thornado.CFL       = 0.5    # CFL number
 thornado.bcX       = 2 1 1 # Boundary conditions
 thornado.bcZ_TwoMoment = 11 30 1 1 #bcE might be 2 or 10
 thornado.swX       = 01 00 00 # Stencil width (nGhostCells) in each dimension
@@ -64,3 +59,9 @@ ST.d_0     = 1.0
 ST.chi     = 0.00001  # cm^-1
 ST.sigma     = 0.0
 
+# Time-Stepping parameters
+TS.Scheme = "IMEX_PDARS"
+TS.CFL    = 0.5    # CFL number
+
+EoS.EquationOfState = "IDEAL"
+EoS.Gamma_IDEAL     = 1.3333333333333333

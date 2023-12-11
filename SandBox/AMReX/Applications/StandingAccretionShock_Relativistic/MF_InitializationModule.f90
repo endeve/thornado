@@ -27,6 +27,7 @@ MODULE MF_InitializationModule
     nDOFX, &
     nNodesX, &
     swX, &
+    xL, &
     nDimsX
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX, &
@@ -63,6 +64,8 @@ MODULE MF_InitializationModule
     epsMin_Euler_GR
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive
+  USE EquationOfStateModule_IDEAL, ONLY: &
+    Gamma_IDEAL
   USE UnitsModule, ONLY: &
     Kilometer, &
     Second, &
@@ -87,7 +90,6 @@ MODULE MF_InitializationModule
   USE MF_KindModule, ONLY: &
     DP, &
     Zero, &
-    SqrtTiny, &
     Half, &
     One, &
     Two, &
@@ -96,10 +98,8 @@ MODULE MF_InitializationModule
     FourPi
   USE InputParsingModule, ONLY: &
     nLevels, &
-    Gamma_IDEAL, &
     UseTiling, &
-    t_end, &
-    xL
+    t_end
   USE MF_AccretionShockUtilitiesModule, ONLY: &
     FileName_Nodal1DIC_SAS, &
     WriteNodal1DIC_SAS
@@ -107,10 +107,6 @@ MODULE MF_InitializationModule
     WriteFieldsAMReX_PlotFile
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
-  USE MF_FieldsModule_Euler, ONLY: &
-    MF_uPF, &
-    MF_uAF, &
-    MF_uDF
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF

@@ -5,14 +5,11 @@
 DEBUG = 0
 
 thornado.ProgramName = "StreamingDopplerShift"
-thornado.Scheme = "SSPRK2"
-thornado.nStages = 2
 
 thornado.t_end     = 10.0    # Final time
 thornado.dt_wrt    = 10.3     # Write time interval
 thornado.dt_chk    = 10.3      # Time increment to write checkpoint-file
 thornado.nNodes    = 2        # Number of DG nodes in each active dimension
-thornado.CFL       = 0.3     # CFL number
 thornado.bcX       = 2 00 00 # Boundary conditions change this based off of direction
 thornado.swX       = 01 00 00 # Stencil width (nGhostCells) in each dimension
 thornado.V_0       = 0.2 0.0 0.0  # three velocity
@@ -60,3 +57,10 @@ PL.Min_2_TwoMoment                = 1.0e-50
 # Slope limiter parameters
 SL.UseSlopeLimiter_TwoMoment           = 0
 SL.BetaTVD_TwoMoment                   = 1.75e0
+
+# Time-Stepping parameters
+TS.Scheme = "SSPRK2"
+TS.CFL    = 0.3     # CFL number
+
+EoS.EquationOfState = "IDEAL"
+EoS.Gamma_IDEAL     = 1.3333333333333333

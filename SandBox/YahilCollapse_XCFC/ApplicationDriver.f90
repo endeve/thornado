@@ -144,7 +144,7 @@ PROGRAM ApplicationDriver
   Gamma_IDEAL = 1.30_DP
   D0    = 1.75_DP
 
-  t_end = CollapseTime - 0.5_DP * Millisecond
+  t_end = CollapseTime
   bcX = [ 30, 0, 0 ]
 
   nX    = [ 512                 , 1     , 1      ]
@@ -217,7 +217,8 @@ PROGRAM ApplicationDriver
 
   CALL InitializeReferenceElementX_Lagrange
 
-  CALL InitializeGravitySolver_XCFC( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+  CALL InitializeGravitySolver_XCFC &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, FillGhostCells_Option = .FALSE. )
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option &

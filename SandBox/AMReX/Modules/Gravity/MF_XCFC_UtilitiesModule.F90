@@ -72,6 +72,7 @@ MODULE MF_XCFC_UtilitiesModule
     iGS_S3, &
     iGS_S, &
     nGS, &
+    swX_GS, &
     MultiplyWithPsi6, &
     ComputeGravitationalMass, &
     UpdateConformalFactorAndMetric_XCFC, &
@@ -120,8 +121,6 @@ MODULE MF_XCFC_UtilitiesModule
   PUBLIC :: UpdateLapseShiftCurvature_XCFC_MF
   PUBLIC :: ComputeConformalFactorSourcesAndMg_XCFC_MF
   PUBLIC :: ComputePressureTensorTrace_XCFC_MF
-
-  INTEGER, PUBLIC :: swXX(3)
 
   INTERFACE MultiplyWithPsi6_MF
     MODULE PROCEDURE MultiplyWithPsi6_MF_X
@@ -193,7 +192,7 @@ CONTAINS
                ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
 
         CALL MultiplyWithPsi6 &
-               ( iX_B1, iX_E1, G, U, Power, Mask_Option = uFM )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Power, Mask_Option = uFM )
 
         CALL thornado2amrex_X &
                ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
@@ -294,7 +293,8 @@ CONTAINS
                  iZ_B1, iZ_E1, LBOUND( uCR ), iZ_B1, iZ_E1, uCR, U )
 
         CALL MultiplyWithPsi6 &
-               ( iE_B1, iE_E1, iX_B1, iX_E1, G, U, Power, Mask_Option = uFM )
+               ( iE_B1, iE_E1, iX_B0, iX_E0, iX_B1, iX_E1, &
+                 G, U, Power, Mask_Option = uFM )
 
         CALL thornado2amrex_Z &
                ( nCR, nSp, nE, iE_B0, iE_E0, &
@@ -339,7 +339,7 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
     INTEGER  :: iLevel
-    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3)
 
     DO iLevel = 0, nLevels-1
 
@@ -347,7 +347,8 @@ CONTAINS
 
 #if defined( THORNADO_OMP )
       !$OMP PARALLEL &
-      !$OMP PRIVATE( BX, MFI, MF, GF, uMF, uGF, iX_B0, iX_E0, iX_B1, iX_E1 )
+      !$OMP PRIVATE( BX, MFI, M, G, uMF, uGF, &
+      !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, iX_B, iX_E )
 #endif
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
@@ -361,12 +362,14 @@ CONTAINS
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
-        iX_B1 = iX_B0 - swXX
-        iX_E1 = iX_E0 + swXX
+        iX_B1 = iX_B0 - swX
+        iX_E1 = iX_E0 + swX
+        iX_B  = iX_B0 - swX_GS
+        iX_E  = iX_E0 + swX_GS
 
         CALL AllocateArray_X &
-               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
-                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nMF ], &
+               ( [ 1    , iX_B(1), iX_B(2), iX_B(3), 1   ], &
+                 [ nDOFX, iX_E(1), iX_E(2), iX_E(3), nMF ], &
                  M )
 
         CALL AllocateArray_X &
@@ -375,7 +378,7 @@ CONTAINS
                  G )
 
         CALL amrex2thornado_X &
-               ( nMF, iX_B0, iX_E0, LBOUND( uMF ), iX_B0, iX_E0, uMF, M )
+               ( nMF, iX_B, iX_E, LBOUND( uMF ), iX_B, iX_E, uMF, M )
 
         CALL amrex2thornado_X &
                ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
@@ -384,7 +387,7 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
 
         CALL thornado2amrex_X &
-               ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
+               ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B, iX_E, uGF, G )
 
         CALL DeallocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
@@ -392,8 +395,8 @@ CONTAINS
                  G )
 
         CALL DeallocateArray_X &
-               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
-                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nMF ], &
+               ( [ 1    , iX_B(1), iX_B(2), iX_B(3), 1   ], &
+                 [ nDOFX, iX_E(1), iX_E(2), iX_E(3), nMF ], &
                  M )
 
       END DO ! WHILE( MFI % next() )
@@ -425,13 +428,14 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
     INTEGER  :: iLevel
-    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3)
 
     DO iLevel = 0, nLevels-1
 
 #if defined( THORNADO_OMP )
       !$OMP PARALLEL &
-      !$OMP PRIVATE( BX, MFI, uMF, uGF, iX_B0, iX_E0, iX_B1, iX_E1 )
+      !$OMP PRIVATE( BX, MFI, uMF, uGF, &
+      !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, iX_B, iX_E )
 #endif
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
@@ -445,12 +449,14 @@ CONTAINS
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
-        iX_B1 = iX_B0 - swXX
-        iX_E1 = iX_E0 + swXX
+        iX_B1 = iX_B0 - swX
+        iX_E1 = iX_E0 + swX
+        iX_B  = iX_B0 - swX_GS
+        iX_E  = iX_E0 + swX_GS
 
         CALL AllocateArray_X &
-               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
-                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nMF ], &
+               ( [ 1    , iX_B(1), iX_B(2), iX_B(3), 1   ], &
+                 [ nDOFX, iX_E(1), iX_E(2), iX_E(3), nMF ], &
                  M )
 
         CALL AllocateArray_X &
@@ -459,7 +465,7 @@ CONTAINS
                  G )
 
         CALL amrex2thornado_X &
-               ( nMF, iX_B0, iX_E0, LBOUND( uMF ), iX_B0, iX_E0, uMF, M )
+               ( nMF, iX_B, iX_E, LBOUND( uMF ), iX_B, iX_E, uMF, M )
 
         CALL amrex2thornado_X &
                ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
@@ -468,7 +474,7 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
 
         CALL thornado2amrex_X &
-               ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
+               ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B, iX_E, uGF, G )
 
         CALL DeallocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
@@ -476,8 +482,8 @@ CONTAINS
                  G )
 
         CALL DeallocateArray_X &
-               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
-                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nMF ], &
+               ( [ 1    , iX_B(1), iX_B(2), iX_B(3), 1   ], &
+                 [ nDOFX, iX_E(1), iX_E(2), iX_E(3), nMF ], &
                  M )
 
       END DO ! WHILE( MFI % next() )
@@ -498,14 +504,15 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)  :: MF_uGS(0:)
     REAL(DP)            , INTENT(out) :: GravitationalMass
 
-    TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_box)       :: BX
+    TYPE(amrex_mfiter)    :: MFI
+    TYPE(amrex_imultifab) :: iMF_FineMask
 
     REAL(DP), ALLOCATABLE :: GS(:,:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: uFM(:,:,:,:)
 
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLevel
-    REAL(DP) :: GravitationalMass_OMP
 
     ! --- Assuming 1D spherical symmetry ---
 
@@ -513,14 +520,15 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
-      CALL CreateMesh_MF( iLevel, MeshX )
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGS % BA, MF_uGS % DM )
 
-      GravitationalMass_OMP = Zero
+      CALL CreateMesh_MF( iLevel, MeshX )
 
 #if defined( THORNADO_OMP )
       !$OMP PARALLEL &
-      !$OMP PRIVATE( BX, MFI, GS, uGS, iX_B0, iX_E0, iX_B1, iX_E1 ) &
-      !$OMP REDUCTION( +:GravitationalMass_OMP )
+      !$OMP PRIVATE( BX, MFI, GS, uGS, uFM, &
+      !$OMP          iX_B0, iX_E0, iX_B1, iX_E1 ) &
+      !$OMP REDUCTION( +:GravitationalMass )
 #endif
 
       CALL amrex_mfiter_build( MFI, MF_uGS(iLevel), tiling = UseTiling )
@@ -528,6 +536,7 @@ CONTAINS
       DO WHILE( MFI % next() )
 
         uGS => MF_uGS(iLevel) % DataPtr( MFI )
+        uFM => iMF_FineMask   % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
@@ -545,7 +554,8 @@ CONTAINS
                ( nGS, iX_B0, iX_E0, LBOUND( uGS ), iX_B0, iX_E0, uGS, GS )
 
         CALL ComputeGravitationalMass &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, GS, GravitationalMass_OMP )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, GS, GravitationalMass, &
+                 Mask_Option = uFM )
 
         CALL DeallocateArray_X &
                ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
@@ -560,9 +570,9 @@ CONTAINS
       !$OMP END PARALLEL
 #endif
 
-      GravitationalMass = GravitationalMass_OMP
-
       CALL DestroyMesh_MF( MeshX )
+
+      CALL DestroyFineMask( iMF_FineMask )
 
     END DO ! iLevel = 0, nLevels-1
 

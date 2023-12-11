@@ -2753,18 +2753,60 @@ CONTAINS
 
       ! --- Include Old Matter State in Constant (C) Terms ---
 
-      C_D    (iN_X) &
-        = W * U_D(iN_X) 
-      C_Y    (iN_X) &
-        = U_Y(iN_X) + SUM_Y * S_Y(iN_X)
-      C_Ef   (iN_X) &
-        = ( Tau_f + SUM_Ef ) * S_Ef  (iN_X) / cD_old(iN_X)
-      C_V_d_1(iN_X) &
-        = ( SJ(1) + SUM_V1 ) * S_V_d_1(iN_X) / cD_old(iN_X)
-      C_V_d_2(iN_X) &
-        = ( SJ(2) + SUM_V2 ) * S_V_d_2(iN_X) / cD_old(iN_X)
-      C_V_d_3(iN_X) &
-        = ( SJ(3) + SUM_V3 ) * S_V_d_3(iN_X) / cD_old(iN_X)
+
+      IF ( wMatrRHS(iD) .EQ. 1.0_DP) THEN
+        C_D    (iN_X) &
+          = W * U_D(iN_X)
+      ELSE  
+        C_D    (iN_X) &
+          = U_D(iN_X)
+      END IF
+
+      IF ( wMatrRHS(iY) .EQ. 1.0_DP) THEN
+        C_Y    (iN_X) &
+          = U_Y(iN_X) + SUM_Y * S_Y(iN_X)
+      ELSE
+        C_Y    (iN_X) &
+          = U_Y(iN_X)
+      END IF
+       
+      IF ( wMatrRHS(iEF) .EQ. 1.0_DP) THEN
+        C_Ef   (iN_X) &
+          = ( Tau_f + SUM_Ef ) * S_Ef  (iN_X) / cD_old(iN_X)
+      ELSE
+        C_Ef   (iN_X) &
+          = U_Ef(iN_X)
+      END IF
+
+      IF ( wMatrRHS(iV1) .EQ. 1.0_DP) THEN
+        C_V_d_1(iN_X) &
+          = ( SJ(1) + SUM_V1 ) * S_V_d_1(iN_X) / cD_old(iN_X)
+      ELSE
+        C_V_d_1(iN_X) &
+          = U_V_d_1(iN_X)
+      END IF
+
+
+      IF ( wMatrRHS(iV2) .EQ. 1.0_DP) THEN
+        C_V_d_2(iN_X) &
+          = ( SJ(2) + SUM_V2 ) * S_V_d_2(iN_X) / cD_old(iN_X)
+      ELSE
+        C_V_d_2(iN_X) &
+          = U_V_d_2(iN_X)
+      END IF
+
+
+      IF ( wMatrRHS(iV3) .EQ. 1.0_DP) THEN
+        C_V_d_3(iN_X) &
+          = ( SJ(3) + SUM_V3 ) * S_V_d_3(iN_X) / cD_old(iN_X)
+      ELSE
+        C_V_d_3(iN_X) &
+          = U_V_d_3(iN_X)
+      END IF
+
+
+
+
 
     END DO
 
@@ -3173,18 +3215,67 @@ CONTAINS
 
         h = ( 1.0_DP + E(iN_X) + P(iN_X) / D(iN_X) ) 
 
-        G_D    (iN_X)  = ( 1.0_DP / W ) * C_D  (iN_X) 
-        G_Y    (iN_X)  = C_Y    (iN_X) - ( AtomicMassUnit / cD_old(iN_X) ) * SUM_Y * S_Y(iN_X)
-        G_Ef   (iN_X)  = S_Ef(iN_X) * ( 1.0_DP - W ) / W**2 * ( W + ( W + 1.0_DP) * P(iN_X) / D(iN_X) ) &
-                       + 1.0_DP / W * C_Ef(iN_X) - S_Ef(iN_X) / ( W * cD_old(iN_X) ) * SUM_Ef 
-        G_V_d_1(iN_X)  = 1.0_DP / ( h * W ) * (  C_V_d_1(iN_X) - SUM_V1 * S_V_d_1(iN_X) / cD_old(iN_X) ) 
-        G_V_d_2(iN_X)  = 1.0_DP / ( h * W ) * (  C_V_d_2(iN_X) - SUM_V2 * S_V_d_2(iN_X) / cD_old(iN_X) ) 
-        G_V_d_3(iN_X)  = 1.0_DP / ( h * W ) * (  C_V_d_3(iN_X) - SUM_V3 * S_V_d_3(iN_X) / cD_old(iN_X) ) 
+        IF ( wMatrRHS(iD) .EQ. 1.0_DP) THEN
+          G_D    (iN_X)  = ( 1.0_DP / W ) * C_D  (iN_X) 
+        ELSE  
+          G_D    (iN_X) &
+            = C_D(iN_X)
+        END IF
+
+        IF ( wMatrRHS(iY) .EQ. 1.0_DP) THEN
+          G_Y    (iN_X) &
+            = C_Y    (iN_X) - ( AtomicMassUnit / cD_old(iN_X) ) * SUM_Y * S_Y(iN_X)
+        ELSE
+          G_Y    (iN_X) &
+            = C_Y(iN_X)
+        END IF
+         
+        IF ( wMatrRHS(iEF) .EQ. 1.0_DP) THEN
+          G_Ef   (iN_X)  = S_Ef(iN_X) * ( 1.0_DP - W ) / W**2 * ( W + ( W + 1.0_DP) * P(iN_X) / D(iN_X) ) &
+                         + 1.0_DP / W * C_Ef(iN_X) - S_Ef(iN_X) / ( W * cD_old(iN_X) ) * SUM_Ef 
+        ELSE
+          G_Ef   (iN_X) &
+            = C_Ef(iN_X)
+        END IF
+
+        IF ( wMatrRHS(iV1) .EQ. 1.0_DP) THEN
+          G_V_d_1(iN_X)  &
+            = 1.0_DP / ( h * W ) * (  C_V_d_1(iN_X) - SUM_V1 * S_V_d_1(iN_X) / cD_old(iN_X) ) 
+        ELSE
+          G_V_d_1(iN_X) &
+            = C_V_d_1(iN_X)
+        END IF
+
+
+        IF ( wMatrRHS(iV2) .EQ. 1.0_DP) THEN
+          G_V_d_2(iN_X) &
+            = 1.0_DP / ( h * W ) * (  C_V_d_2(iN_X) - SUM_V2 * S_V_d_2(iN_X) / cD_old(iN_X) ) 
+        ELSE
+          G_V_d_2(iN_X) &
+            = C_V_d_2(iN_X)
+        END IF
+
+
+        IF ( wMatrRHS(iV3) .EQ. 1.0_DP) THEN
+          G_V_d_3(iN_X) &
+            = 1.0_DP / ( h * W ) * (  C_V_d_3(iN_X) - SUM_V3 * S_V_d_3(iN_X) / cD_old(iN_X) ) 
+        ELSE
+          G_V_d_3(iN_X) &
+            = C_V_d_3(iN_X)
+        END IF
+
+
+        
 
         IF( MoveLeft .EQ. 1) THEN
+          IF ( wMatrRHS(iEF) .EQ. 1.0_DP) THEN
+            G_Ef(iN_X) = ( 1.0_DP / W ) * C_Ef(iN_X) - S_Ef(iN_X) / ( W * cD_old(iN_X) ) * SUM_Ef &
+                       + S_Ef(iN_X) * ( 1.0_DP - W ) / W**2 *  ( W + 1.0_DP) * P(iN_X) / D(iN_X) 
+          ELSE
+            G_Ef   (iN_X) &
+              = C_Ef(iN_X)
+          END IF
 
-          G_Ef(iN_X) = ( 1.0_DP / W ) * C_Ef(iN_X) - S_Ef(iN_X) / ( W * cD_old(iN_X) ) * SUM_Ef &
-                     + S_Ef(iN_X) * ( 1.0_DP - W ) / W**2 *  ( W + 1.0_DP) * P(iN_X) / D(iN_X) 
         END IF
 
         Gm(iD ,iN_X) = G_D    (iN_X)
@@ -3196,7 +3287,7 @@ CONTAINS
 
         Fm(iD ,iN_X) = G_D    (iN_X) - U_D  (iN_X)
         Fm(iY ,iN_X) = G_Y    (iN_X) - U_Y    (iN_X)
-        Fm(iEf,iN_X) = G_Ef   (iN_X)  - U_Ef  (iN_X)
+        Fm(iEf,iN_X) = G_Ef   (iN_X) - U_Ef  (iN_X)
         Fm(iV1,iN_X) = G_V_d_1(iN_X) - U_V_d_1(iN_X)
         Fm(iV2,iN_X) = G_V_d_2(iN_X) - U_V_d_2(iN_X)
         Fm(iV3,iN_X) = G_V_d_3(iN_X) - U_V_d_3(iN_X)

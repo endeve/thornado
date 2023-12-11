@@ -25,7 +25,8 @@ MODULE MF_TimeSteppingModule_SSPRK
     nCF
   USE XCFC_UtilitiesModule, ONLY: &
     nGS, &
-    nMF
+    nMF, &
+    swX_GS
 
   ! --- Local Modules ---
 
@@ -37,8 +38,6 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE InputParsingModule, ONLY: &
     nLevels, &
     nMaxLevels, &
-    CFL, &
-    nStages, &
     UseFluxCorrection_Euler, &
     dt, &
     DEBUG
@@ -57,7 +56,6 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE MF_Euler_TallyModule, ONLY: &
     IncrementOffGridTally_Euler_MF
   USE MF_XCFC_UtilitiesModule, ONLY: &
-    swXX, &
     MultiplyWithPsi6_MF, &
     UpdateConformalFactorAndMetric_XCFC_MF, &
     UpdateLapseShiftCurvature_XCFC_MF, &
@@ -66,7 +64,8 @@ MODULE MF_TimeSteppingModule_SSPRK
     ComputePressureTensorTrace_XCFC_MF
   USE MF_GravitySolutionModule_XCFC, ONLY: &
     ComputeConformalFactor_XCFC_MF, &
-    ComputeLapseShiftCurvature_XCFC_MF
+    ComputeLapseShiftCurvature_XCFC_MF, &
+    EvolveGravity
   USE AverageDownModule, ONLY: &
     AverageDown
   USE FluxCorrectionModule_Euler, ONLY: &
@@ -89,7 +88,9 @@ MODULE MF_TimeSteppingModule_SSPRK
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: a_SSPRK
 
   LOGICAL :: Verbose
-  LOGICAL :: EvolveGravity
+
+  INTEGER  :: nStages
+  REAL(DP), PUBLIC :: CFL
 
 CONTAINS
 
@@ -106,10 +107,12 @@ CONTAINS
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
-    EvolveGravity = .FALSE.
     CALL amrex_parmparse_build( PP, 'TS' )
-      CALL PP % query( 'EvolveGravity', EvolveGravity )
+      CALL PP % get  ( 'nStages'      , nStages )
+      CALL PP % get  ( 'CFL'          , CFL )
     CALL amrex_parmparse_destroy( PP )
+
+    CFL = CFL / ( DBLE( nDimsX ) * ( Two * DBLE( nNodes ) - One ) )
 
     CALL InitializeSSPRK
 
@@ -123,8 +126,6 @@ CONTAINS
       WRITE(*,'(A5,A,I1)') '', 'SSP RK Scheme: ', nStages
       WRITE(*,'(A5,A,ES10.3E3)') '', 'CFL:           ', &
         CFL * ( DBLE( nDimsX ) * ( Two * DBLE( nNodes ) - One ) )
-      WRITE(*,*)
-      WRITE(*,'(A5,A,L)') '', 'EvolveGravity: ', EvolveGravity
       WRITE(*,*)
       WRITE(*,'(A5,A)') '', 'Butcher Table:'
       WRITE(*,'(A5,A)') '', '--------------'
@@ -170,12 +171,12 @@ CONTAINS
 
         CALL amrex_multifab_build &
                ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-                 nDOFX * nGS, swXX )
+                 nDOFX * nGS, 0 )
         CALL MF_uGS(iLevel) % SetVal( Zero ) ! remove this after debugging
 
         CALL amrex_multifab_build &
                ( MF_uMF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-                 nDOFX * nMF, swXX )
+                 nDOFX * nMF, swX_GS )
         CALL MF_uMF(iLevel) % SetVal( Zero ) ! remove this after debugging
 
       END DO
@@ -216,22 +217,33 @@ CONTAINS
 
       DO jS = 1, iS-1
 
-        DO iLevel = 0, nLevels-1
+        IF( a_SSPRK(iS,jS) .NE. Zero )THEN
 
-          IF( a_SSPRK(iS,jS) .NE. Zero ) &
-            CALL MF_U(iS,iLevel) &
-                   % LinComb( One, MF_U(iS,iLevel), 1, &
-                              dt(iLevel) * a_SSPRK(iS,jS), MF_D(jS,iLevel), 1, &
-                              1, nCompCF, 0 )
+          DO iLevel = 0, nLevels-1
 
-        END DO ! iLevel = 0, nLevels-1
+              CALL MF_U(iS,iLevel) &
+                     % LinComb( One, MF_U(iS,iLevel), 1, &
+                                dt(iLevel) * a_SSPRK(iS,jS), &
+                                MF_D(jS,iLevel), 1, &
+                                1, nCompCF, 0 )
 
-!!$        IF( a_SSPRK(iS,jS) .NE. Zero ) &
-!!$          CALL AverageDown &
-!!$                 ( MF_uGF, MF_U(iS,:), &
-!!$                   MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
+          END DO
+
+        END IF ! a_SSPRK(iS,jS) .NE. Zero
 
       END DO ! jS = 1, iS-1
+
+      IF( iS .GT. 1 )THEN
+
+        CALL MultiplyWithPsi6_MF( MF_uGF, MF_U(iS,:), -1 )
+
+        CALL AverageDown( MF_uGF, MF_U(iS,:) )
+        CALL ApplyPositivityLimiter_Euler_MF &
+               ( MF_uGF, MF_U(iS,:), MF_uDF )
+
+        CALL MultiplyWithPsi6_MF( MF_uGF, MF_U(iS,:), +1 )
+
+      END IF
 
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
@@ -304,25 +316,28 @@ CONTAINS
 
     DO iS = 1, nStages
 
-      DO iLevel = 0, nLevels-1
+      IF( w_SSPRK(iS) .NE. Zero )THEN
 
-        IF( w_SSPRK(iS) .NE. Zero )THEN
+        DO iLevel = 0, nLevels-1
 
           CALL MF_uCF(iLevel) &
                  % LinComb( One, MF_uCF(iLevel), 1, &
                             dt(iLevel) * w_SSPRK(iS), MF_D(iS,iLevel), 1, 1, &
                             nCompCF, 0 )
 
-        END IF
+        END DO
 
-      END DO ! iLevel
+      END IF ! w_SSPRK(iS) .NE. Zero
 
-!!$      IF( w_SSPRK(iS) .NE. Zero ) &
-!!$        CALL AverageDown &
-!!$               ( MF_uGF, MF_uCF, &
-!!$                 MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
+    END DO ! iS = 1, nStages
 
-    END DO ! iS
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, -1 )
+
+    CALL AverageDown( MF_uGF, MF_uCF )
+    CALL ApplyPositivityLimiter_Euler_MF &
+           ( MF_uGF, MF_uCF, MF_uDF )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, +1 )
 
     DO iLevel = 0, nLevels-1
 

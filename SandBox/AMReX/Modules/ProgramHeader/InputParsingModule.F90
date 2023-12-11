@@ -19,9 +19,7 @@ MODULE InputParsingModule
     nDimsX
   USE UnitsModule, ONLY: &
     ActivateUnitsDisplay, &
-    UnitsDisplay, &
-    SolarMass, &
-    Centimeter
+    UnitsDisplay
   USE GeometryFieldsModule, ONLY: &
     CoordinateSystem
   USE RadiationFieldsModule, ONLY: &
@@ -31,9 +29,7 @@ MODULE InputParsingModule
 
   USE MF_KindModule, ONLY: &
     DP, &
-    Zero, &
-    One, &
-    Two
+    Zero
   USE MF_ErrorModule, ONLY: &
     DescribeError_MF
 
@@ -45,40 +41,17 @@ MODULE InputParsingModule
   INTEGER     , ALLOCATABLE :: swX(:)
   INTEGER     , ALLOCATABLE :: bcX(:)
   INTEGER                   :: nNodes
-  REAL(DP)                  :: t_wrt, t_chk, dt_wrt, dt_chk, dt_rel
+  REAL(DP)                  :: t_end, t_wrt, t_chk, dt_wrt, dt_chk, dt_rel
   INTEGER                   :: iCycleW, iCycleChk, iCycleD, iRestart, iReGrid
-  REAL(DP)                  :: t_end
-  LOGICAL     , SAVE        :: UsePhysicalUnits
-  LOGICAL     , SAVE        :: DEBUG
-  LOGICAL     , SAVE        :: SolveGravity_NR
-
-  ! --- TimeStepping ---
-
-  CHARACTER(:), ALLOCATABLE :: Scheme
-  INTEGER                   :: nStages
-  REAL(DP)                  :: CFL
+  LOGICAL                   :: UsePhysicalUnits
+  LOGICAL                   :: DEBUG
+  LOGICAL                   :: SolveGravity_NR
 
   ! --- Transport ---
 
-  INTEGER     , ALLOCATABLE :: bcZ_TwoMoment(:)
-  INTEGER  :: nE, nSpecies, swE, bcE
-  REAL(DP) :: eL, eR, zoomE
-
-  ! --- Slope Limiter ---
-
-  LOGICAL  :: UseSlopeLimiter_TwoMoment
-  REAL(DP) :: BetaTVD_TwoMoment
-
-  ! --- Positivity Limiter ---
-
-  LOGICAL  :: UsePositivityLimiter_TwoMoment
-  REAL(DP) :: Min_1_TwoMoment, Min_2_TwoMoment
-
-  ! --- Equation of State ---
-
-  CHARACTER(:), ALLOCATABLE :: EquationOfState
-  CHARACTER(:), ALLOCATABLE :: EosTableName
-  REAL(DP)                  :: Gamma_IDEAL
+  INTEGER, ALLOCATABLE :: bcZ_TwoMoment(:)
+  INTEGER              :: nE, nSpecies, swE, bcE
+  REAL(DP)             :: eL, eR, zoomE
 
   ! --- Opacity Tables ---
 
@@ -89,6 +62,7 @@ MODULE InputParsingModule
   CHARACTER(:), ALLOCATABLE :: OpacityTableName_Brem
 
   ! --- Non-Linear Solver Parameters ---
+
   INTEGER  ::  M_outer
   INTEGER  ::  MaxIter_outer
   REAL(DP) ::  Rtol_outer
@@ -123,11 +97,12 @@ MODULE InputParsingModule
   LOGICAL :: UseFluxCorrection_Euler
   LOGICAL :: UseFluxCorrection_TwoMoment
   LOGICAL :: UseAMR
-  INTEGER , ALLOCATABLE :: nX(:)
-  INTEGER , ALLOCATABLE :: RefinementRatio(:)
-  INTEGER , ALLOCATABLE :: StepNo(:)
-  INTEGER , ALLOCATABLE :: nRefinementBuffer(:)
-  REAL(DP), ALLOCATABLE :: TagCriteria(:)
+  INTEGER     , ALLOCATABLE :: nX(:)
+  INTEGER     , ALLOCATABLE :: RefinementRatio(:)
+  INTEGER     , ALLOCATABLE :: StepNo(:)
+  INTEGER     , ALLOCATABLE :: nRefinementBuffer(:)
+  REAL(DP)    , ALLOCATABLE :: TagCriteria(:)
+  CHARACTER(:), ALLOCATABLE :: RefinementScheme
 
   REAL(DP), ALLOCATABLE :: dt   (:), dt_TM(:)
   REAL(DP), ALLOCATABLE :: t_old(:)
@@ -137,10 +112,6 @@ MODULE InputParsingModule
 
   LOGICAL                   :: WriteNodalData
   CHARACTER(:), ALLOCATABLE :: NodalDataFileName
-
-real(dp)::mass,r0,kt,mu0,e0
-real(dp)::d_0,chi,sigma
-character(:),allocatable::direction
 
 CONTAINS
 
@@ -167,29 +138,6 @@ CONTAINS
     END IF
 
 #endif
-
-mass=zero
-r0=zero
-e0=zero
-mu0=zero
-kt=zero
-d_0=zero
-chi=zero
-sigma=zero
-call amrex_parmparse_build( pp, 'ST' )
-  call pp % query( 'mass',mass )
-  call pp % query( 'r0',r0 )
-  call pp % query( 'mu0',mu0 )
-  call pp % query( 'e0',e0 )
-  call pp % query( 'kt',kt )
-  call pp % query( 'd_0',d_0 )
-  call pp % query( 'chi',chi )
-  call pp % query( 'sigma',sigma )
-call amrex_parmparse_destroy( pp )
-direction=''
-call amrex_parmparse_build( pp, 'thornado' )
-  call pp % query( 'direction',direction )
-call amrex_parmparse_destroy( pp )
 
     ! --- debug Parameters debug.* ---
 
@@ -218,7 +166,6 @@ call amrex_parmparse_destroy( pp )
     dt_rel           = 0.0_DP
     iReGrid          = 1
     SolveGravity_NR  = .FALSE.
-    Scheme           = ''
     nE               = 1
     nSpecies         = 1
     swE              = 0
@@ -232,10 +179,6 @@ call amrex_parmparse_destroy( pp )
                          ProgramName )
       CALL PP % get   ( 'nNodes', &
                          nNodes )
-      CALL PP % get   ( 'nStages', &
-                         nStages )
-      CALL PP % query ( 'Scheme', &
-                         Scheme )
       CALL PP % getarr( 'swX', &
                          swX )
       CALL PP % getarr( 'bcX', &
@@ -244,8 +187,6 @@ call amrex_parmparse_destroy( pp )
                            bcZ_TwoMoment )
       CALL PP % get   ( 't_end', &
                          t_end )
-      CALL PP % get   ( 'CFL', &
-                         CFL )
       CALL PP % query ( 'iCycleD', &
                          iCycleD )
       CALL PP % query ( 'PlotFileNameRoot', &
@@ -284,7 +225,8 @@ call amrex_parmparse_destroy( pp )
                          zoomE )
     CALL amrex_parmparse_destroy( PP )
 
-    CALL SetNumberOfSpecies( nSpecies, Verbose_Option = amrex_parallel_ioprocessor() )
+    CALL SetNumberOfSpecies &
+           ( nSpecies, Verbose_Option = amrex_parallel_ioprocessor() )
 
     IF( iCycleW * dt_wrt .GT. Zero ) &
       CALL DescribeError_MF &
@@ -293,33 +235,6 @@ call amrex_parmparse_destroy( pp )
     IF( iCycleChk * dt_chk .GT. Zero ) &
       CALL DescribeError_MF &
              ( 102, Int_Option = [ iCycleChk ], Real_Option = [ dt_chk ] )
-
-    CFL = CFL / ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
-
-    ! --- Slope Limiter Parameters SL.* ---
-
-    UseSlopeLimiter_TwoMoment = .TRUE.
-    BetaTVD_TwoMoment         = 1.75_DP
-    CALL amrex_parmparse_build( PP, 'SL' )
-      CALL PP % query( 'UseSlopeLimiter_TwoMoment', &
-                        UseSlopeLimiter_TwoMoment )
-      CALL PP % query( 'BetaTVD_TwoMoment', &
-                        BetaTVD_TwoMoment )
-    CALL amrex_parmparse_destroy( PP )
-
-    ! --- Positivity Limiter Parameters PL.* ---
-
-    UsePositivityLimiter_TwoMoment = .TRUE.
-    Min_1_TwoMoment                = 1.0e-12_DP
-    Min_2_TwoMoment                = 1.0e-12_DP
-    CALL amrex_parmparse_build( PP, 'PL' )
-      CALL PP % query( 'UsePositivityLimiter_TwoMoment', &
-                        UsePositivityLimiter_TwoMoment )
-      CALL PP % query( 'Min_1_TwoMoment', &
-                        Min_1_TwoMoment )
-      CALL PP % query( 'Min_2_TwoMoment', &
-                        Min_2_TwoMoment )
-    CALL amrex_parmparse_destroy( PP )
 
     ! --- Parameters geometry.* ---
 
@@ -370,31 +285,7 @@ call amrex_parmparse_destroy( pp )
       eL = eL * UnitsDisplay % EnergyUnit
       eR = eR * UnitsDisplay % EnergyUnit
 
-      Chi = Chi * ( 1.0_DP / Centimeter )
-
-      Mass = Mass * SolarMass
-      E0 = E0 * UnitsDisplay % EnergyUnit
-      mu0 = mu0 * UnitsDisplay % EnergyUnit
-      kT = kT * UnitsDisplay % EnergyUnit
-      R0 = R0 * UnitsDisplay % LengthX1Unit
-
-
-
     END IF
-
-    ! --- Equation of State Parameters EoS.* ---
-
-    EquationOfState = 'IDEAL'
-    Gamma_IDEAL     = 4.0_DP / 3.0_DP
-    EosTableName    = ''
-    CALL amrex_parmparse_build( PP, 'EoS' )
-      CALL PP % query ( 'EquationOfState', &
-                         EquationOfState )
-      CALL PP % query ( 'Gamma_IDEAL', &
-                         Gamma_IDEAL )
-      CALL PP % query ( 'EosTableName', &
-                         EosTableName )
-    CALL amrex_parmparse_destroy( PP )
 
     ! --- Opacity table parameters OP.* ---
 
@@ -488,6 +379,7 @@ call amrex_parmparse_destroy( pp )
     UseFluxCorrection_Euler     = .FALSE.
     UseFluxCorrection_TwoMoment = .FALSE.
     UseTiling                   = .FALSE.
+    RefinementScheme            = ''
     CALL amrex_parmparse_build( PP, 'amr' )
       CALL PP % getarr  ( 'n_cell', &
                            nX )
@@ -512,6 +404,8 @@ call amrex_parmparse_destroy( pp )
                            UseFluxCorrection_Euler )
         CALL PP % query ( 'UseFluxCorrection_TwoMoment', &
                            UseFluxCorrection_TwoMoment )
+        CALL PP % query ( 'RefinementScheme', &
+                           RefinementScheme )
         CALL PP % getarr( 'TagCriteria', &
                            TagCriteria )
         CALL PP % getarr( 'n_error_buf', &

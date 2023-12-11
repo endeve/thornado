@@ -5,15 +5,11 @@
 DEBUG = 0
 
 thornado.ProgramName = "RadiatingSphereGR"
-thornado.Scheme = "SSPRK2"
-thornado.nStages = 2
-
 
 thornado.t_end     = 20000.0     # Final time
 thornado.dt_wrt    = 20000.0      # Write time interval
 thornado.dt_chk    = 20000.0      # Time increment to write checkpoint-file
 thornado.nNodes    = 2        # Number of DG nodes in each active dimension
-thornado.CFL       = 0.3     # CFL number
 thornado.bcX       = 2 1 1 # Boundary conditions (this might not be correct)
 thornado.bcZ_TwoMoment = 11 22 1 1
 thornado.swX       = 01 00 00 # Stencil width (nGhostCells) in each dimension
@@ -53,3 +49,10 @@ PL.Min_2_TwoMoment                = 1.0e-50
 # Slope limiter parameters
 SL.UseSlopeLimiter_TwoMoment           = 0
 SL.BetaTVD_TwoMoment                   = 1.75e0
+
+# Time-Stepping parameters
+TS.Scheme = "SSPRK2"
+TS.CFL    = 0.3     # CFL number
+
+EoS.EquationOfState = "IDEAL"
+EoS.Gamma_IDEAL     = 1.3333333333333333

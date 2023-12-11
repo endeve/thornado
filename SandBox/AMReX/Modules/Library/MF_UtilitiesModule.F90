@@ -47,7 +47,6 @@ MODULE MF_UtilitiesModule
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
-    iGF_SqrtGm, &
     iGF_Alpha, &
     iGF_Beta_1, &
     iGF_Beta_2, &
@@ -141,7 +140,6 @@ MODULE MF_UtilitiesModule
 
   PUBLIC :: ShowVariableFromMultiFab
   PUBLIC :: ShowVariableFromMultiFab_Single
-  PUBLIC :: MultiplyWithMetric
   PUBLIC :: amrex2thornado_X
   PUBLIC :: thornado2amrex_X
   PUBLIC :: amrex2thornado_Z
@@ -163,11 +161,6 @@ MODULE MF_UtilitiesModule
   PUBLIC :: AllocateArray_Integrated
   PUBLIC :: DeallocateArray_Integrated
   PUBLIC :: PrintBoxArray
-
-  INTERFACE MultiplyWithMetric
-    MODULE PROCEDURE MultiplyWithMetric_uGF
-    MODULE PROCEDURE MultiplyWithMetric_uCF
-  END INTERFACE MultiplyWithMetric
 
   INTERFACE ShowVariableFromMultiFab
     MODULE PROCEDURE ShowVariableFromMultiFab_Single
@@ -315,11 +308,15 @@ END IF
 
         CLOSE( iFileNo )
 
-      ELSE IF( ANY( FineMask(:,:,:,1) .EQ. 0 ) )THEN
+      ELSE IF( PRESENT( iMF_FineMask_Option ) )THEN
 
-        WRITE(*,*)
+        IF( ANY( FineMask(:,:,:,1) .EQ. 0 ) )THEN
 
-      END IF
+          WRITE(*,*)
+
+        END IF
+
+     END IF
 
     END DO ! WHILE( MFI % next() )
 
@@ -375,158 +372,6 @@ END IF
     END DO
 
   END SUBROUTINE ShowVariableFromMultiFab_Vector
-
-
-  SUBROUTINE MultiplyWithMetric_uGF &
-    ( iLevel, MF_uGF, nFd, Power, swXX_Option )
-
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
-    INTEGER             , INTENT(in)    :: iLevel, nFd, Power
-    INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
-
-    INTEGER            :: iX1, iX2, iX3, iNX, iFd, swXX(3)
-    INTEGER            :: lo_G(4), hi_G(4)
-    INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI
-    REAL(DP)           :: G_K(nDOFX,nFd)
-
-    REAL(DP)                      :: SqrtGm(nDOFX)
-    REAL(DP), CONTIGUOUS, POINTER :: G(:,:,:,:)
-
-    swXX = swX
-    IF( PRESENT( swXX_Option ) ) &
-      swXX = swXX_Option
-
-#if defined( THORNADO_OMP )
-    !$OMP PARALLEL &
-    !$OMP PRIVATE( lo_G, hi_G, iX_B0, iX_E0, iX_B1, iX_E1, &
-    !$OMP          BX, MFI, G_K, SqrtGm, G )
-#endif
-
-    CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
-
-    DO WHILE( MFI % next() )
-
-      G => MF_uGF(iLevel) % DataPtr( MFI )
-
-      lo_G = LBOUND( G ); hi_G = UBOUND( G )
-
-      BX = MFI % tilebox()
-
-      iX_B0 = BX % lo
-      iX_E0 = BX % hi
-      iX_B1 = iX_B0 - swXX
-      iX_E1 = iX_E0 + swXX
-
-      DO iX3 = iX_B1(3), iX_E1(3)
-      DO iX2 = iX_B1(2), iX_E1(2)
-      DO iX1 = iX_B1(1), iX_E1(1)
-
-        G_K(1:nDOFX,1:nFd) &
-          = RESHAPE( G(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nFd ] )
-
-        DO iNX = 1, nDOFX
-
-          SqrtGm(iNX) = SQRT( G_K(iNX,iGF_SqrtGm) )
-
-        END DO
-
-        DO iFd = 1, nFd
-        DO iNX = 1, nDOFX
-
-          G_K(iNX,iFd) = G_K(iNX,iFd) * SqrtGm(iNX)**( Power )
-
-        END DO
-        END DO
-
-      END DO
-      END DO
-      END DO
-
-    END DO ! WHILE( MFI % next() )
-
-    CALL amrex_mfiter_destroy( MFI )
-
-#if defined( THORNADO_OMP )
-    !$OMP END PARALLEL
-#endif
-
-  END SUBROUTINE MultiplyWithMetric_uGF
-
-
-  SUBROUTINE MultiplyWithMetric_uCF &
-    ( iLevel, MF_SqrtGm, MF, nFd, Power, swXX_Option )
-
-    TYPE(amrex_multifab), INTENT(in)    :: MF_SqrtGm
-    TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
-    INTEGER             , INTENT(in)    :: iLevel, nFd, Power
-    INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
-
-    INTEGER            :: iX1, iX2, iX3, iNX, iFd, swXX(3)
-    INTEGER            :: lo_F(4), hi_F(4)
-    INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI
-    REAL(DP)           :: F_K(nDOFX,nFd)
-
-    REAL(DP), CONTIGUOUS, POINTER :: SqrtGm  (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: F       (:,:,:,:)
-
-    swXX = swX
-    IF( PRESENT( swXX_Option ) ) &
-      swXX = swXX_Option
-
-#if defined( THORNADO_OMP )
-    !$OMP PARALLEL &
-    !$OMP PRIVATE( lo_F, hi_F, iX_B0, iX_E0, iX_B1, iX_E1, &
-    !$OMP          BX, MFI, F_K, SqrtGm, F )
-#endif
-
-    CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = UseTiling )
-
-    DO WHILE( MFI % next() )
-
-      SqrtGm => MF_SqrtGm  % DataPtr( MFI )
-      F      => MF(iLevel) % DataPtr( MFI )
-
-      lo_F = LBOUND( F ); hi_F = UBOUND( F )
-
-      BX = MFI % tilebox()
-
-      iX_B0 = BX % lo
-      iX_E0 = BX % hi
-      iX_B1 = iX_B0 - swXX
-      iX_E1 = iX_E0 + swXX
-
-      DO iX3 = iX_B1(3), iX_E1(3)
-      DO iX2 = iX_B1(2), iX_E1(2)
-      DO iX1 = iX_B1(1), iX_E1(1)
-
-        F_K(1:nDOFX,1:nFd) &
-          = RESHAPE( F(iX1,iX2,iX3,lo_F(4):hi_F(4)), [ nDOFX, nFd ] )
-
-        DO iFd = 1, nFd
-        DO iNX = 1, nDOFX
-
-          F_K(iNX,iFd) = F_K(iNX,iFd) * SqrtGm(iX1,iX2,iX3,iNX)**( Power )
-
-        END DO
-        END DO
-
-      END DO
-      END DO
-      END DO
-
-    END DO ! WHILE( MFI % next() )
-
-    CALL amrex_mfiter_destroy( MFI )
-
-#if defined( THORNADO_OMP )
-    !$OMP END PARALLEL
-#endif
-
-  END SUBROUTINE MultiplyWithMetric_uCF
 
 
   SUBROUTINE amrex2thornado_X &

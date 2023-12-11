@@ -50,7 +50,11 @@ CONTAINS
     INTEGER  :: nGrids, i
     REAL(DP), ALLOCATABLE :: xRef(:), xRef_Flipped(:)
 
+#ifdef THORNADO_USE_AMREX
     LOGICAL :: UseCustomMesh = .FALSE.
+#else
+    LOGICAL :: UseCustomMesh = .TRUE.
+#endif
 
     iOS = 0
     IF( PRESENT( iOS_Option ) ) &
