@@ -131,11 +131,12 @@ CONTAINS
 
 
   SUBROUTINE MultiplyWithPsi6_MF_X &
-    ( MF_uGF, MF_uCF, Power )
+    ( MF_uGF, MF_uCF, Power, OnlyLeafElements_Option )
 
     INTEGER             , INTENT(in)    :: Power
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
+    LOGICAL             , INTENT(in), OPTIONAL :: OnlyLeafElements_Option
 
     TYPE(amrex_box)       :: BX
     TYPE(amrex_mfiter)    :: MFI
@@ -147,12 +148,18 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     INTEGER , CONTIGUOUS, POINTER :: uFM(:,:,:,:)
 
-    INTEGER  :: iLevel
-    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER :: iLevel
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    LOGICAL :: OnlyLeafElements
+
+    OnlyLeafElements = .TRUE.
+    IF( PRESENT( OnlyLeafElements_Option ) ) &
+      OnlyLeafElements = OnlyLeafElements_Option
 
     DO iLevel = 0, nLevels-1
 
-      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
+      IF( OnlyLeafElements ) &
+        CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
 
 #if defined( THORNADO_OMP )
       !$OMP PARALLEL &
@@ -166,7 +173,8 @@ CONTAINS
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
         uCF => MF_uCF(iLevel) % DataPtr( MFI )
-        uFM => iMF_FineMask   % DataPtr( MFI )
+        IF( OnlyLeafElements ) &
+          uFM => iMF_FineMask   % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
@@ -191,8 +199,17 @@ CONTAINS
         CALL amrex2thornado_X &
                ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
 
-        CALL MultiplyWithPsi6 &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Power, Mask_Option = uFM )
+        IF( OnlyLeafElements )THEN
+
+          CALL MultiplyWithPsi6 &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Power, Mask_Option = uFM )
+
+        ELSE
+
+          CALL MultiplyWithPsi6 &
+                 ( iX_B1, iX_E1, iX_B1, iX_E1, G, U, Power )
+
+        END IF
 
         CALL thornado2amrex_X &
                ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
@@ -330,24 +347,28 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uMF(0:) ! Metric Fields
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
 
-    TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_box)       :: BX
+    TYPE(amrex_mfiter)    :: MFI
+    TYPE(amrex_imultifab) :: iMF_FineMask
 
     REAL(DP), ALLOCATABLE :: M(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uMF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: uFM(:,:,:,:)
 
-    INTEGER  :: iLevel
-    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3)
+    INTEGER :: iLevel
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3)
 
     DO iLevel = 0, nLevels-1
+
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
 
       CALL CreateMesh_MF( iLevel, MeshX )
 
 #if defined( THORNADO_OMP )
       !$OMP PARALLEL &
-      !$OMP PRIVATE( BX, MFI, M, G, uMF, uGF, &
+      !$OMP PRIVATE( BX, MFI, M, G, uMF, uGF, uFM, &
       !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, iX_B, iX_E )
 #endif
 
@@ -357,6 +378,7 @@ CONTAINS
 
         uMF => MF_uMF(iLevel) % DataPtr( MFI )
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uFM => iMF_FineMask   % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
@@ -384,7 +406,7 @@ CONTAINS
                ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
 
         CALL UpdateConformalFactorAndMetric_XCFC &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, M, G, Mask_Option = uFM )
 
         CALL thornado2amrex_X &
                ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B, iX_E, uGF, G )
@@ -409,6 +431,8 @@ CONTAINS
 
       CALL DestroyMesh_MF( MeshX )
 
+      CALL DestroyFineMask( iMF_FineMask )
+
     END DO ! iLevel = 0, nLevels-1
 
   END SUBROUTINE UpdateConformalFactorAndMetric_XCFC_MF
@@ -419,22 +443,26 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uMF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
 
-    TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_box)       :: BX
+    TYPE(amrex_mfiter)    :: MFI
+    TYPE(amrex_imultifab) :: iMF_FineMask
 
     REAL(DP), ALLOCATABLE :: M(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uMF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: uFM(:,:,:,:)
 
-    INTEGER  :: iLevel
-    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3)
+    INTEGER :: iLevel
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3)
 
     DO iLevel = 0, nLevels-1
 
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
+
 #if defined( THORNADO_OMP )
       !$OMP PARALLEL &
-      !$OMP PRIVATE( BX, MFI, uMF, uGF, &
+      !$OMP PRIVATE( BX, MFI, uMF, uGF, uFM, &
       !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, iX_B, iX_E )
 #endif
 
@@ -444,6 +472,7 @@ CONTAINS
 
         uMF => MF_uMF(iLevel) % DataPtr( MFI )
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uFM => iMF_FineMask   % DataPtr( MFI )
 
         BX = MFI % tilebox()
 
@@ -471,7 +500,7 @@ CONTAINS
                ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
 
         CALL UpdateLapseShiftCurvature_XCFC &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, M, G, Mask_Option = uFM )
 
         CALL thornado2amrex_X &
                ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B, iX_E, uGF, G )
@@ -493,6 +522,8 @@ CONTAINS
 #if defined( THORNADO_OMP )
       !$OMP END PARALLEL
 #endif
+
+      CALL DestroyFineMask( iMF_FineMask )
 
     END DO ! iLevel = 0, nLevels-1
 
