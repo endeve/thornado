@@ -698,6 +698,7 @@ CONTAINS
                Error )
     ELSE
       T_Lookup = T_Guess
+      Error = 0
     END IF
     T = T_Lookup * Kelvin
 
@@ -770,6 +771,7 @@ CONTAINS
                Error )
     ELSE
       T_Lookup = Zero
+      Error = 0
     END IF
 
     T = T_Lookup * Kelvin
@@ -861,6 +863,7 @@ CONTAINS
                    Error(iP) )
         ELSE
           T_Lookup = T_Guess
+          Error(iP) = 0
         END IF
 
         T(iP) = T_Lookup * Kelvin
@@ -895,6 +898,7 @@ CONTAINS
                    Error(iP) )
         ELSE
           T_Lookup = Zero
+          Error(iP) = 0
         END IF
 
         T(iP) = T_Lookup * Kelvin
@@ -1111,6 +1115,7 @@ CONTAINS
                Error )
     ELSE
       T_P = Zero
+      Error = 0
     END IF
 
     T = T_P * UnitT
