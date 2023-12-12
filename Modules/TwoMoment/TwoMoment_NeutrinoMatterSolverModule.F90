@@ -66,6 +66,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     ComputeTemperatureFromSpecificInternalEnergy_TABLE, &
     ComputeSpecificInternalEnergy_TABLE, &
     ComputePressure_TABLE
+  USE OpacityModule_TABLE, ONLY: &
+    QueryOpacity
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     ComputeEquilibriumDistributions, &
     LimitEquilibriumDistributions_DG, &
