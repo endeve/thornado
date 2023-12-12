@@ -1182,6 +1182,7 @@ CONTAINS
 
     INTEGER  :: k_outer, Mk_outer, nX_P_outer
     INTEGER  :: k_inner, Mk_inner, nX_P_inner
+    INTEGER  :: iN_X
 
     REAL(DP), ALLOCATABLE, DIMENSION(:) :: P
     INTEGER,  ALLOCATABLE, DIMENSION(:) :: Error
@@ -1232,14 +1233,10 @@ CONTAINS
     ALLOCATE(         TAU_inner(n_FP_inner,        nX_G) )
     ALLOCATE(       Alpha_inner(           M_inner,nX_G) )
 
-    ITERATE_outer = .TRUE.
-    ITERATE_inner = .TRUE.
-
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: &
-    !$OMP   ITERATE_outer, ITERATE_inner ) &
     !$OMP MAP( alloc: &
+    !$OMP   ITERATE_outer, ITERATE_inner, &
     !$OMP   PackIndex_outer, UnpackIndex_outer, &
     !$OMP   AMAT_outer, GVEC_outer, FVEC_outer, &
     !$OMP   BVEC_outer, GVECm_outer, FVECm_outer, &
@@ -1250,9 +1247,8 @@ CONTAINS
     !$OMP   WORK_inner, TAU_inner, Alpha_inner )
 #elif defined(THORNADO_OACC  )
     !$ACC ENTER DATA &
-    !$ACC COPYIN( &
-    !$ACC   ITERATE_outer, ITERATE_inner ) &
     !$ACC CREATE( &
+    !$ACC   ITERATE_outer, ITERATE_inner, &
     !$ACC   PackIndex_outer, UnpackIndex_outer, &
     !$ACC   AMAT_outer, GVEC_outer, FVEC_outer, &
     !$ACC   BVEC_outer, GVECm_outer, FVECm_outer, &
@@ -1261,6 +1257,24 @@ CONTAINS
     !$ACC   AMAT_inner, GVEC_inner, FVEC_inner, &
     !$ACC   BVEC_inner, GVECm_inner, FVECm_inner, &
     !$ACC   WORK_inner, TAU_inner, Alpha_inner )
+#endif
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC  )
+    !$ACC PARALLEL LOOP GANG VECTOR
+#elif defined(THORNADO_OMP   )
+    !$OMP PARALLEL DO
+#endif
+    DO iN_X = 1, nX_G
+      ITERATE_outer(iN_X) = QueryOpacity( D(iN_X) )
+      ITERATE_inner(iN_X) = ITERATE_outer(iN_X)
+    END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET UPDATE FROM( ITERATE_outer, ITERATE_inner )
+#elif defined( THORNADO_OACC   )
+    !$ACC UPDATE HOST( ITERATE_outer, ITERATE_inner )
 #endif
 
     SqrtGm = SQRT( Gm_dd_11 * Gm_dd_22 * Gm_dd_33 )
@@ -1296,11 +1310,16 @@ CONTAINS
 
     CALL TimersStop( Timer_Collisions_InitializeRHS )
 
+    CALL CreatePackIndex &
+           ( ITERATE_outer, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
+
     ! --- Compute Opacity Kernels ---
 
     CALL TimersStart( Timer_Collisions_ComputeOpacity )
 
-    CALL ComputeOpacities_Packed( D, T, Y, SqrtGm )
+    CALL ComputeOpacities_Packed &
+           ( D, T, Y, SqrtGm, ITERATE_outer, nX_P_outer, &
+             PackIndex_outer, UnpackIndex_outer )
 
     CALL TimersStop( Timer_Collisions_ComputeOpacity )
 
@@ -1318,20 +1337,24 @@ CONTAINS
 
       CALL ComputeDnuNorm( ITERATE_outer, Dnu )
 
-      CALL CreatePackIndex &
-             ( ITERATE_outer, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
+      IF ( k_outer > 1 ) THEN
 
-      IF ( k_outer > 1 .AND. .NOT. FreezeOpacities ) THEN
+        CALL CreatePackIndex &
+               ( ITERATE_outer, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
 
-        ! --- Recompute Opacity Kernels ---
+        IF ( .NOT. FreezeOpacities ) THEN
 
-        CALL TimersStart( Timer_Collisions_ComputeOpacity )
+          ! --- Recompute Opacity Kernels ---
 
-        CALL ComputeOpacities_Packed &
-               ( D, T, Y, SqrtGm, ITERATE_outer, nX_P_outer, &
-                 PackIndex_outer, UnpackIndex_outer )
+          CALL TimersStart( Timer_Collisions_ComputeOpacity )
 
-        CALL TimersStop( Timer_Collisions_ComputeOpacity )
+          CALL ComputeOpacities_Packed &
+                 ( D, T, Y, SqrtGm, ITERATE_outer, nX_P_outer, &
+                   PackIndex_outer, UnpackIndex_outer )
+
+          CALL TimersStop( Timer_Collisions_ComputeOpacity )
+
+        END IF
 
       END IF
 
