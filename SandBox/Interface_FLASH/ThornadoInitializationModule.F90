@@ -126,6 +126,7 @@ contains
       TroubledCellIndicator_Option, C_TCI_Option, &
       SlopeLimiter_Option, &
       EnergyLimiter_Option, &
+      Eos_MinD_Option, &
       OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
       OpacityTableName_NES_Option, OpacityTableName_Pair_Option, &
       OpacityTableName_Brem_Option, &
@@ -167,6 +168,7 @@ contains
     logical,          intent(in), optional :: SlopeLimiter_Option
     logical,          intent(in), optional :: EnergyLimiter_Option
     real(dp),         intent(in), optional :: UpperBry1_Option
+    real(dp),         intent(in), optional :: Eos_MinD_Option
     character(len=*), intent(in), optional :: OpacityTableName_EmAb_Option
     character(len=*), intent(in), optional :: OpacityTableName_Iso_Option
     character(len=*), intent(in), optional :: OpacityTableName_NES_Option
@@ -422,6 +424,8 @@ contains
            ( EquationOfStateTableName_Option &
                = EquationOfStateTableName_Option, &
              UseChemicalPotentialShift_Option = UseChemicalPotentialShift, &
+             Eos_MinD_Option &
+               = Eos_MinD_Option, &
              Verbose_Option = Verbose, &
              External_EOS = External_EOS )
 #else

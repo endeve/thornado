@@ -72,6 +72,7 @@ MODULE EquationOfStateModule_TABLE
   LOGICAL :: UsingExternalEOS
   TYPE(EquationOfStateTableType), POINTER :: EOS
 #endif
+  REAL(DP), PUBLIC :: Eos_MinD
 
   PUBLIC :: InitializeEquationOfState_TABLE
   PUBLIC :: FinalizeEquationOfState_TABLE
@@ -223,7 +224,7 @@ MODULE EquationOfStateModule_TABLE
   !$OMP   OS_Xa, OS_Xh, OS_Ah, OS_Gm, &
   !$OMP   P_T, S_T, E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, &
   !$OMP   Xa_T, Xh_T, Ah_T, Gm_T, &
-  !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
+  !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( D_T, T_T, Y_T, &
@@ -233,7 +234,7 @@ MODULE EquationOfStateModule_TABLE
   !$ACC   OS_Xa, OS_Xh, OS_Ah, OS_Gm, &
   !$ACC   P_T, S_T, E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, &
   !$ACC   Xa_T, Xh_T, Ah_T, Gm_T, &
-  !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
+  !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #endif
 
 CONTAINS
@@ -241,10 +242,11 @@ CONTAINS
 
   SUBROUTINE InitializeEquationOfState_TABLE &
     ( EquationOfStateTableName_Option, UseChemicalPotentialShift_Option, &
-      Verbose_Option, External_EOS )
+      Eos_MinD_Option, Verbose_Option, External_EOS )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: EquationOfStateTableName_Option
     LOGICAL,          INTENT(in), OPTIONAL :: UseChemicalPotentialShift_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: Eos_MinD_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 #ifdef MICROPHYSICS_WEAKLIB
     TYPE(EquationOfStateTableType), POINTER, &
@@ -266,6 +268,12 @@ CONTAINS
        UseChemicalPotentialShift = UseChemicalPotentialShift_Option
     ELSE
        UseChemicalPotentialShift = .FALSE.
+    END IF
+
+    IF( PRESENT( Eos_MinD_Option ) )THEN
+       Eos_MinD = Eos_MinD_Option
+    ELSE
+       Eos_MinD = Zero
     END IF
 
     IF( PRESENT( Verbose_Option ) )THEN
@@ -468,7 +476,7 @@ CONTAINS
     !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
     !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Ah, OS_Gm, P_T, S_T, &
     !$OMP   E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Ah_T, Gm_T, &
-    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
+    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( D_T, T_T, Y_T, &
@@ -476,7 +484,7 @@ CONTAINS
     !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
     !$ACC   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Ah, OS_Gm, P_T, S_T, &
     !$ACC   E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Ah_T, Gm_T, &
-    !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
+    !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #endif
 
 #endif
@@ -495,7 +503,7 @@ CONTAINS
     !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
     !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, P_T, S_T, &
     !$OMP   E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Gm_T, &
-    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
+    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #endif
 
     DEALLOCATE( D_T, T_T, Y_T )
@@ -684,10 +692,13 @@ CONTAINS
 
     T_Guess = Guess / Kelvin
 
-    CALL ComputeTemperatureWith_DEY_Single_Guess_Error &
-           ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, T_Guess, &
-             Error )
-
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL ComputeTemperatureWith_DEY_Single_Guess_Error &
+             ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, T_Guess, &
+               Error )
+    ELSE
+      T_Lookup = T_Guess
+    END IF
     T = T_Lookup * Kelvin
 
 #endif
@@ -718,8 +729,12 @@ CONTAINS
 
     T_Guess = Guess / Kelvin
 
-    CALL ComputeTemperatureWith_DEY_Single_Guess_NoError &
-           ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, T_Guess )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL ComputeTemperatureWith_DEY_Single_Guess_NoError &
+             ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, T_Guess )
+    ELSE
+      T_Lookup = T_Guess
+    END IF
 
     T = T_Lookup * Kelvin
 
@@ -749,9 +764,13 @@ CONTAINS
     E_P = E / ( Erg / Gram )
     Y_P = Y
 
-    CALL ComputeTemperatureWith_DEY_Single_NoGuess_Error &
-           ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, &
-             Error )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL ComputeTemperatureWith_DEY_Single_NoGuess_Error &
+             ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, &
+               Error )
+    ELSE
+      T_Lookup = Zero
+    END IF
 
     T = T_Lookup * Kelvin
 
@@ -780,8 +799,12 @@ CONTAINS
     E_P = E / ( Erg / Gram )
     Y_P = Y
 
-    CALL ComputeTemperatureWith_DEY_Single_NoGuess_NoError &
-           ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL ComputeTemperatureWith_DEY_Single_NoGuess_NoError &
+             ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup )
+    ELSE
+      T_Lookup = Zero
+    END IF
 
     T = T_Lookup * Kelvin
 
@@ -832,9 +855,13 @@ CONTAINS
 
         T_Guess = Guess_Option(iP) / Kelvin
 
-        CALL ComputeTemperatureWith_DEY_Single_Guess_Error &
-               ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, T_Guess, &
-                 Error(iP) )
+        IF ( D_P >= Eos_MinD ) THEN
+          CALL ComputeTemperatureWith_DEY_Single_Guess_Error &
+                 ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, T_Guess, &
+                   Error(iP) )
+        ELSE
+          T_Lookup = T_Guess
+        END IF
 
         T(iP) = T_Lookup * Kelvin
 
@@ -862,9 +889,13 @@ CONTAINS
         E_P = E(iP) / ( Erg / Gram )
         Y_P = Y(iP)
 
-        CALL ComputeTemperatureWith_DEY_Single_NoGuess_Error &
-               ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, &
-                 Error(iP) )
+        IF ( D_P >= Eos_MinD ) THEN
+          CALL ComputeTemperatureWith_DEY_Single_NoGuess_Error &
+                 ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, &
+                   Error(iP) )
+        ELSE
+          T_Lookup = Zero
+        END IF
 
         T(iP) = T_Lookup * Kelvin
 
@@ -964,13 +995,17 @@ CONTAINS
     E_P = Em / UnitE
     Y_P = Y  / UnitY
 
-    CALL ComputeTemperatureWith_DEY_Single_NoGuess_NoError &
-           ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_P )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL ComputeTemperatureWith_DEY_Single_NoGuess_NoError &
+             ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_P )
 
-    T = T_P * UnitT
+      T = T_P * UnitT
 
-    CALL ComputeDependentVariable_TABLE_Scalar &
-           ( D, T, Y, P, P_T, OS_P, Units_V = UnitP )
+      CALL ComputeDependentVariable_TABLE_Scalar &
+             ( D, T, Y, P, P_T, OS_P, Units_V = UnitP )
+    ELSE
+      P = Zero
+    END IF
 
 #endif
 
@@ -1070,9 +1105,13 @@ CONTAINS
     P_P = P / UnitP
     Y_P = Y / UnitY
 
-    CALL ComputeTemperatureWith_DPY_Single_NoGuess_Error &
-           ( D_P, P_P, Y_P, D_T, T_T, Y_T, P_T, OS_P, T_P, &
-             Error )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL ComputeTemperatureWith_DPY_Single_NoGuess_Error &
+             ( D_P, P_P, Y_P, D_T, T_T, Y_T, P_T, OS_P, T_P, &
+               Error )
+    ELSE
+      T_P = Zero
+    END IF
 
     T = T_P * UnitT
 
@@ -2328,20 +2367,24 @@ CONTAINS
     T_P = T / UnitT
     Y_P = Y / UnitY
 
-    CALL LogInterpolateSingleVariable_3D_Custom_Point &
-           ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Me, Me_T, Me )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL LogInterpolateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Me, Me_T, Me )
 
-    CALL LogInterpolateSingleVariable_3D_Custom_Point &
-           ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mp, Mp_T, Mp )
+      CALL LogInterpolateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mp, Mp_T, Mp )
 
-    CALL LogInterpolateSingleVariable_3D_Custom_Point &
-           ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mn, Mn_T, Mn )
+      CALL LogInterpolateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mn, Mn_T, Mn )
 
-    Me = Me * UnitMe
-    Mp = Mp * UnitMp
-    Mn = Mn * UnitMn
+      Me = Me * UnitMe
+      Mp = Mp * UnitMp
+      Mn = Mn * UnitMn
 
-    Mnu = ( Me + Mp ) - Mn
+      Mnu = ( Me + Mp ) - Mn
+    ELSE
+      Mnu = Zero
+    END IF
 
 #else
 
@@ -2389,20 +2432,24 @@ CONTAINS
       T_P = T(iP) / UnitT
       Y_P = Y(iP) / UnitY
 
-      CALL LogInterpolateSingleVariable_3D_Custom_Point &
-             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Me, Me_T, Me )
+      IF ( D_P >= Eos_MinD ) THEN
+        CALL LogInterpolateSingleVariable_3D_Custom_Point &
+               ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Me, Me_T, Me )
 
-      CALL LogInterpolateSingleVariable_3D_Custom_Point &
-             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mp, Mp_T, Mp )
+        CALL LogInterpolateSingleVariable_3D_Custom_Point &
+               ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mp, Mp_T, Mp )
 
-      CALL LogInterpolateSingleVariable_3D_Custom_Point &
-             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mn, Mn_T, Mn )
+        CALL LogInterpolateSingleVariable_3D_Custom_Point &
+               ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mn, Mn_T, Mn )
 
-      Me = Me * UnitMe
-      Mp = Mp * UnitMp
-      Mn = Mn * UnitMn
+        Me = Me * UnitMe
+        Mp = Mp * UnitMp
+        Mn = Mn * UnitMn
 
-      Mnu(iP) = ( Me + Mp ) - Mn
+        Mnu(iP) = ( Me + Mp ) - Mn
+      ELSE
+        Mnu(iP) = Zero
+      END IF
 
     END DO
 
@@ -2448,8 +2495,12 @@ CONTAINS
     T_P = T / UnitT
     Y_P = Y / UnitY
 
-    CALL LogInterpolateSingleVariable_3D_Custom_Point &
-           ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_V, V_T, V_P )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL LogInterpolateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_V, V_T, V_P )
+    ELSE
+      V_P = Zero
+    END IF
 
     V = V_P * Units_V
 
@@ -2497,8 +2548,12 @@ CONTAINS
       T_P = T(iP) / UnitT
       Y_P = Y(iP) / UnitY
 
-      CALL LogInterpolateSingleVariable_3D_Custom_Point &
-             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_V, V_T, V_P )
+      IF ( D_P >= Eos_MinD ) THEN
+        CALL LogInterpolateSingleVariable_3D_Custom_Point &
+               ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_V, V_T, V_P )
+      ELSE
+        V_P = Zero
+      END IF
 
       V(iP) = V_P * Units_V
 
@@ -2546,8 +2601,13 @@ CONTAINS
     T_P = T / UnitT
     Y_P = Y / UnitY
 
-    CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
-           ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_V, V_T, V_P, dV_P )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_V, V_T, V_P, dV_P )
+    ELSE
+      V_P = Zero
+      dV_P = Zero
+    END IF
 
     V = V_P * Units_V
 
