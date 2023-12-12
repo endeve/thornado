@@ -692,6 +692,8 @@ CONTAINS
 
     T_Guess = Guess / Kelvin
 
+    Error = 0
+
     IF ( D_P >= Eos_MinD ) THEN
       CALL ComputeTemperatureWith_DEY_Single_Guess_Error &
              ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, T_Guess, &
@@ -764,6 +766,8 @@ CONTAINS
     D_P = D / ( Gram / Centimeter**3 )
     E_P = E / ( Erg / Gram )
     Y_P = Y
+
+    Error = 0
 
     IF ( D_P >= Eos_MinD ) THEN
       CALL ComputeTemperatureWith_DEY_Single_NoGuess_Error &
@@ -1108,6 +1112,8 @@ CONTAINS
     D_P = D / UnitD
     P_P = P / UnitP
     Y_P = Y / UnitY
+
+    Error = 0
 
     IF ( D_P >= Eos_MinD ) THEN
       CALL ComputeTemperatureWith_DPY_Single_NoGuess_Error &
