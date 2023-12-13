@@ -91,11 +91,54 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
-## Dec 06 2004
+## Dec 13 2023
+1. Investigating the hanging of FlashX with Thornado using  oneapi/eng-compiler/2023.10.15.002
+   - hangs after "Source terms initialized" was output.
+   - added a print statement after call Simulation-init() 
+2. use gdb-oneapi to see where the hang happens. This seems to be not GPU related. so gdb-oneapi might help. Here is the trace:
+<pre>
+Thread 1.1 "flashx" received signal SIGINT, Interrupt.
+(gdb) where
+#0  0x000015551c93285d in MPIR_Csel_search () from /soft/restricted/CNDA/mpich/52.2/mpich-ofi-sockets-icc-default-gpu-drop52/lib/libmpi.so.12
+#1  0x000015551c9a4bbf in MPIR_Scan () from /soft/restricted/CNDA/mpich/52.2/mpich-ofi-sockets-icc-default-gpu-drop52/lib/libmpi.so.12
+#2  0x000015551c1464b1 in PMPI_Scan () from /soft/restricted/CNDA/mpich/52.2/mpich-ofi-sockets-icc-default-gpu-drop52/lib/libmpi.so.12
+#3  0x00001555279cfb90 in pmpi_scan__ () from /soft/restricted/CNDA/mpich/52.2/mpich-ofi-sockets-icc-default-gpu-drop52/lib/libmpifort.so.12
+#5  0x00000000005ca499 in amr_sort_morton (mort_no=<error reading variable: value requires 240000 bytes, which is more than max-value-size>, new_loc=..., nprocs=1) at amr_sort_morton.F90:164
+#6  0x00000000005aa4b0 in amr_morton_order (lnblocks_old=16, nprocs=1, mype=0, l_move_solution=.TRUE., reorder_grid=<error reading variable: Cannot access memory at address 0x0>) at amr_morton_order.F90:139
+#7  0x00000000007a3658 in amr_refine_derefine (force_rebalance=<error reading variable: Cannot access memory at address 0x0>) at mpi_amr_refine_derefine.F90:306
+#8  0x000000000060427a in gr_initparamesharrays (restart=.FALSE., xlboundary=-135, xrboundary=-135, ylboundary=-135, yrboundary=-135, zlboundary=-135, zrboundary=-135) at gr_initParameshArrays.F90:111
+#10 0x00000000005faa96 in gr_expanddomain (particlesinitialized=.FALSE.) at gr_expandDomain.F90:110
+#12 0x000000000049a0e7 in grid_initdomain (restart=.FALSE., particlesinitialized=.FALSE.) at Grid_initDomain.F90:111
+#13 0x000000000041f3d8 in driver_initall () at Driver_initAll.F90:162
+#14 0x00000000006e407e in flashx () at main.F90:52
+</pre>
+
+## Dec 11-12 2023
+1. Creating a reproducer for the ICE by commenting out subroutines one by one from the beginning of the file using nightly compiler 2023.12.07
+    - ComputePrimitive_TwoMoment_Vector does not affect the ICE
+    - ComputePrimitive_TwoMoment_Vector_Richardson_ ICE is gone after commenting out all the operational statements in this subroutine. So the ICE is from this subroutine
+2. The hanging still exists on Modules/TwoMoment/OrderV/TwoMoment_PositivityLimiterModule.F90 with nightly compiler 2023.12.07
+    
+3. Commenting our each OpenMP directives to isolate which directive causes ICE
+    - 477-510 lines does not affect ICE
+    - 522-535: commenting out these directives, the ICE is gone. So the ICE is caused by these lines. 
+4. It is the nested call to k_dd = EddingtonTensorComponents_dd causes the ICE.     
+5. ICE occurs for both AOT and JIT and for all the optimization levels
+6. Binary search to see which ifx starts the ICE 
+   - 2023.12.07                              ICE
+   - 2023.11.20/Intel(R) Fortran 24.0-1177  Success (Monday's compiler, old one. ::::)
+   - 2023.11.21/Intel(R) Fortran 24.0-1399  ICE
+   - 2023.11.10/Intel(R) Fortran 24.0-1372  Success 
+   - 2023.11.15/Intel(R) Fortran 24.0-1399  ICE
+   - 2023.11.12/Intel(R) Fortran 24.0-1372  Success 
+   - 2023.11.14/Intel(R) Fortran 24.0-1372  Success 
+7. Created a JIRA named:  ICE appears with nested offload function calls inside a do while loop starting from nightly-compiler 2023.11.15 ( Intel(R) Fortran 24.0-1399 ), and the link is : https://jira.devtools.intel.com/browse/CMPLRLLVM-54357
+## Dec 06-08 2023
 1. Added more test data to  https://jira.devtools.intel.com/browse/CMPLRLLVM-54220 after discussions with Brain and Lorri. Now it is kind sure that fopenmp and fiopenmp is the cause for the slow down in allocation function for ifort and ifx respectively. 
 2. Work with Mathi on improving the Thornado porting paper. 
+3. Thornado StreamingSineWave case compilation failed due to ICE with nightly-compiler/2023.12.06. The ICE happens in Modules/TwoMoment/OrderV/TwoMoment-UtilitiesModule.F90. ifx -what shows Intel(R) Fortran 24.0-1425
 
-## Dec 05 2004
+## Dec 05 2023
 1. Created a reproducer for allocation slowness using ifx. discussed with Brian, and did a lot of runs, and learned a lot of things. Submitted a JIRA for this issue, and here is the link: https://jira.devtools.intel.com/browse/CMPLRLLVM-54220
 ## Dec 04
 1. Tests on the different memory pool settings on the time spent on the allocation. There are some effects, but not to an extent that affects the overall Thornado simulation time. The data are plotted and recorded in PerformanceThornadoRelaxationApplication.pptx under windows Downdloads/GSD6461
