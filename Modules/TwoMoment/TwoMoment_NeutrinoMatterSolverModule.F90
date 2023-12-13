@@ -1269,7 +1269,7 @@ CONTAINS
     !$OMP PARALLEL DO
 #endif
     DO iN_X = 1, nX_G
-      ITERATE_outer(iN_X) = QueryOpacity( D(iN_X) )
+      ITERATE_outer(iN_X) = QueryOpacity( D(iN_X) / Unit_D )
       ITERATE_inner(iN_X) = ITERATE_outer(iN_X)
     END DO
 
