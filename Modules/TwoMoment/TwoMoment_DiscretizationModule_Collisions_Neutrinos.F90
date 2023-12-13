@@ -4,6 +4,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     DP, &
     Zero
   USE UnitsModule, ONLY: &
+    Centimeter, &
+    Gram, &
     AtomicMassUnit
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
@@ -37,6 +39,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputePrimitive_TwoMoment, &
     ComputeConserved_TwoMoment
+  USE OpacityModule_TABLE, ONLY: &
+    QueryOpacity
 #if   defined( TWOMOMENT_ORDER_1 )
 
   USE EquationOfStateModule_TABLE, ONLY: &
@@ -95,6 +99,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   INTEGER, ALLOCATABLE :: nIterations_Prim(:)
 
   LOGICAL, PARAMETER :: ReportConvergenceData = .FALSE.
+
+  REAL(DP), PARAMETER :: UnitD    = Gram / Centimeter**3
 
 CONTAINS
 
@@ -963,8 +969,12 @@ CONTAINS
              + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
              + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
 
-      dU_F(iNodeX,iX1,iX2,iX3,iCF) &
-        = ( CF_N(iN_X,iCF) - U_F(iNodeX,iX1,iX2,iX3,iCF) ) / dt
+      IF ( QueryOpacity( U_F(iNodeX,iX1,iX2,iX3,iCF_D) / UnitD ) ) THEN
+        dU_F(iNodeX,iX1,iX2,iX3,iCF) &
+          = ( CF_N(iN_X,iCF) - U_F(iNodeX,iX1,iX2,iX3,iCF) ) / dt
+      ELSE
+        dU_F(iNodeX,iX1,iX2,iX3,iCF) = Zero
+      END IF
 
     END DO
     END DO
@@ -1003,8 +1013,12 @@ CONTAINS
       iN_E = iNodeE &
              + ( iE  - iE_B0    ) * nDOFE
 
-      dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) &
-        = ( CR_N(iN_E,iS,iN_X,iCR) - U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) ) / dt
+      IF ( QueryOpacity( U_F(iNodeX,iX1,iX2,iX3,iCF_D) / UnitD ) ) THEN
+        dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) &
+          = ( CR_N(iN_E,iS,iN_X,iCR) - U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) ) / dt
+      ELSE
+        dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) = Zero
+      END IF
 
     END DO
     END DO
