@@ -91,6 +91,13 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
+##Dec 14 2023
+1. Try FlashX from Mathi on Sunspot
+    - it compiles and runs with the original package, but for some combination of np and npp, the run hangs. shaopingquan@x1922c5s7b0n0
+    - Try to update original package to the newest commit to see whether the code runs or not. 
+    - Got an update version of the whole package from Mathi, the run hangs at cyclc=655555, much later than the previous runs. 
+2. Will try on Aurora.     
+
 ## Dec 13 2023
 1. Investigating the hanging of FlashX with Thornado using  oneapi/eng-compiler/2023.10.15.002
    - hangs after "Source terms initialized" was output.
