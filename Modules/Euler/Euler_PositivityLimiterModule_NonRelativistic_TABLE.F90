@@ -932,6 +932,8 @@ CONTAINS
 
       DO iNodeX = 1, nDOFX
 
+      IF ( .NOT. QueryOpacity( U(iNodeX,iX1,iX2,iX3,iCF_D ) / Unit_D ) ) CYCLE
+
         U(iNodeX,iX1,iX2,iX3,iCF_D ) = U_Q_D (iNodeX,iX1,iX2,iX3)
         U(iNodeX,iX1,iX2,iX3,iCF_S1) = U_Q_S1(iNodeX,iX1,iX2,iX3)
         U(iNodeX,iX1,iX2,iX3,iCF_S2) = U_Q_S2(iNodeX,iX1,iX2,iX3)
