@@ -46,7 +46,8 @@ MODULE MF_GeometryModule
     iGF_SqrtGm, &
     iGF_Psi, &
     iGF_Beta_1, &
-    nGF
+    nGF, &
+    CoordinateSystem
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
   USE GravitySolutionModule_Newtonian_PointMass, ONLY: &
@@ -313,9 +314,26 @@ CONTAINS
         X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
 
         Psi = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)
-        h1  = Psi**2
-        h2  = Psi**2 * X1
-        h3  = Psi**2 * X1 * SIN( X2 )
+
+        IF( TRIM( CoordinateSystem ) .EQ. 'SPHERICAL' )THEN
+
+          h1 = Psi**2
+          h2 = Psi**2 * ABS( X1 )
+          h3 = Psi**2 * ABS( X1 * SIN( X2 ) )
+
+        ELSE IF( TRIM( CoordinateSystem ) .EQ. 'CYLINDIRCAL' )THEN
+
+          h1 = Psi**2
+          h2 = Psi**2
+          h3 = Psi**2 * ABS( X1  )
+
+        ELSE
+
+          h1 = Psi**2
+          h2 = Psi**2
+          h3 = Psi**2
+
+        END IF
 
         uGF(iX1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) = h1
         uGF(iX1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) = h2
@@ -325,7 +343,8 @@ CONTAINS
         uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX) = MAX( h2**2, SqrtTiny )
         uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) = MAX( h3**2, SqrtTiny )
 
-        uGF(iX1,iX2,iX3,nDOFX*(iGF_SqrtGm-1)+iNX) = h1 * h2 * h3
+        uGF(iX1,iX2,iX3,nDOFX*(iGF_SqrtGm-1)+iNX) &
+          = MAX( h1 * h2 * h3, SqrtTiny )
 
       END DO
       END DO
