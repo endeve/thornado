@@ -1,6 +1,0 @@
-init_from_scratch
-
-  --> F_Interfaces/AmrCore/AMReX_amrcore_mod.F90:amrex_fi_init_from_scratch
-    --> F_Interfaces/AmrCore/AMReX_amrcore_fi.cpp:InitFromScratch(t);
-      --> AmrCore/AMReX_AmrCore.cpp:MakeNewGrids(time);
-        --> AmrCore/AMReX_AmrMesh.cpp:MakeBaseGrids();
