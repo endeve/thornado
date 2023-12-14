@@ -152,13 +152,18 @@ CONTAINS
 
 
   SUBROUTINE ApplyPositivityLimiter_Euler_MF_MultipleLevels &
-    ( MF_uGF, MF_uCF, MF_uDF )
+    ( MF_uGF, MF_uCF, MF_uDF, swX_Option )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:)
+    INTEGER             , INTENT(in), OPTIONAL :: swX_Option(3)
 
-    INTEGER :: iLevel, iErr
+    INTEGER :: iLevel, iErr, swXX(3)
+
+    swXX = 0
+    IF( PRESENT( swX_Option ) ) &
+      swXX = swX_Option
 
     DO iLevel = 0, nLevels-1
 
@@ -177,7 +182,8 @@ CONTAINS
       END IF ! DEBUG
 
       CALL ApplyPositivityLimiter_Euler_MF_SingleLevel &
-             ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
+             ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel), &
+               swX_Option = swXX )
 
     END DO ! iLevel = 0, nLevels-1
 
@@ -185,12 +191,13 @@ CONTAINS
 
 
   SUBROUTINE ApplyPositivityLimiter_Euler_MF_SingleLevel &
-    ( iLevel, MF_uGF, MF_uCF, MF_uDF )
+    ( iLevel, MF_uGF, MF_uCF, MF_uDF, swX_Option )
 
     INTEGER             , INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDF
+    INTEGER             , INTENT(in), OPTIONAL :: swX_Option(3)
 
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
@@ -203,13 +210,17 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: D(:,:,:,:,:)
 
-    INTEGER       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
-                     iLo_MF(4)
+    INTEGER       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3), &
+                     iLo_MF(4), swXX(3)
     TYPE(EdgeMap) :: Edge_Map
 
     IF( nDOFX .EQ. 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter ) RETURN
+
+    swXX = 0
+    IF( PRESENT( swX_Option ) ) &
+      swXX = swX_Option
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
@@ -235,6 +246,8 @@ CONTAINS
       iX_E0 = BX % hi
       iX_B1 = BX % lo - swX
       iX_E1 = BX % hi + swX
+      iX_B  = BX % lo - swXX
+      iX_E  = BX % hi + swXX
 
       CALL AllocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
@@ -251,11 +264,11 @@ CONTAINS
                [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDF ], &
                D )
 
-      CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
+      CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uGF, G )
 
-      CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
+      CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uCF, U )
 
-      CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
+      CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uDF, D )
 
       ! --- Apply boundary conditions to physical boundaries
       !     (needed for AMR) ---
@@ -266,11 +279,11 @@ CONTAINS
              ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
       CALL ApplyPositivityLimiter_Euler &
-             ( iX_B1, iX_E1, iX_B1, iX_E1, G, U, D )
+             ( iX_B , iX_E , iX_B1, iX_E1, G, U, D )
 
-      CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
+      CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uCF, U )
 
-      CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
+      CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uDF, D )
 
       CALL DeallocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
