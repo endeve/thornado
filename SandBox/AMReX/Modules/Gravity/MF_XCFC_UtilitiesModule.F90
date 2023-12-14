@@ -123,20 +123,22 @@ MODULE MF_XCFC_UtilitiesModule
   PUBLIC :: ComputePressureTensorTrace_XCFC_MF
 
   INTERFACE MultiplyWithPsi6_MF
-    MODULE PROCEDURE MultiplyWithPsi6_MF_X
+    MODULE PROCEDURE MultiplyWithPsi6_MF_X_AllLevels
+    MODULE PROCEDURE MultiplyWithPsi6_MF_X_SingleLevel
     MODULE PROCEDURE MultiplyWithPsi6_MF_Z
   END INTERFACE MultiplyWithPsi6_MF
 
 CONTAINS
 
 
-  SUBROUTINE MultiplyWithPsi6_MF_X &
-    ( MF_uGF, MF_uCF, Power, OnlyLeafElements_Option )
+  SUBROUTINE MultiplyWithPsi6_MF_X_AllLevels &
+    ( MF_uGF, MF_uCF, Power, OnlyLeafElements_Option, swX_Option )
 
     INTEGER             , INTENT(in)    :: Power
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
     LOGICAL             , INTENT(in), OPTIONAL :: OnlyLeafElements_Option
+    INTEGER             , INTENT(in), OPTIONAL :: swX_Option(3)
 
     TYPE(amrex_box)       :: BX
     TYPE(amrex_mfiter)    :: MFI
@@ -149,12 +151,16 @@ CONTAINS
     INTEGER , CONTIGUOUS, POINTER :: uFM(:,:,:,:)
 
     INTEGER :: iLevel
-    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3), swXX(3)
     LOGICAL :: OnlyLeafElements
 
     OnlyLeafElements = .TRUE.
     IF( PRESENT( OnlyLeafElements_Option ) ) &
       OnlyLeafElements = OnlyLeafElements_Option
+
+    swXX = 0
+    IF( PRESENT( swX_Option ) ) &
+      swXX = swX_Option
 
     DO iLevel = 0, nLevels-1
 
@@ -182,6 +188,8 @@ CONTAINS
         iX_E0 = BX % hi
         iX_B1 = iX_B0 - swX
         iX_E1 = iX_E0 + swX
+        iX_B  = iX_B0 - swXX
+        iX_E  = iX_E0 + swXX
 
         CALL AllocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
@@ -194,25 +202,25 @@ CONTAINS
                  U )
 
         CALL amrex2thornado_X &
-               ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
+               ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B, iX_E, uGF, G )
 
         CALL amrex2thornado_X &
-               ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
+               ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B, iX_E, uCF, U )
 
         IF( OnlyLeafElements )THEN
 
           CALL MultiplyWithPsi6 &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, Power, Mask_Option = uFM )
+                 ( iX_B, iX_E, iX_B1, iX_E1, G, U, Power, Mask_Option = uFM )
 
         ELSE
 
           CALL MultiplyWithPsi6 &
-                 ( iX_B1, iX_E1, iX_B1, iX_E1, G, U, Power )
+                 ( iX_B, iX_E, iX_B1, iX_E1, G, U, Power )
 
         END IF
 
         CALL thornado2amrex_X &
-               ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B1, iX_E1, uCF, U )
+               ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B, iX_E, uCF, U )
 
         CALL DeallocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
@@ -236,7 +244,94 @@ CONTAINS
 
     END DO ! iLevel = 0, nLevels-1
 
-  END SUBROUTINE MultiplyWithPsi6_MF_X
+  END SUBROUTINE MultiplyWithPsi6_MF_X_AllLevels
+
+
+  SUBROUTINE MultiplyWithPsi6_MF_X_SingleLevel &
+    ( MF_uGF, MF_uCF, Power, swX_Option )
+
+    INTEGER             , INTENT(in)    :: Power
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
+    INTEGER             , INTENT(in), OPTIONAL :: swX_Option(3)
+
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3), swXX(3)
+
+    swXX = 0
+    IF( PRESENT( swX_Option ) ) &
+      swXX = swX_Option
+
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL &
+    !$OMP PRIVATE( BX, MFI, G, U, uGF, uCF, &
+    !$OMP          iX_B0, iX_E0, iX_B1, iX_E1 )
+#endif
+
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+
+    DO WHILE( MFI % next() )
+
+      uGF => MF_uGF % DataPtr( MFI )
+      uCF => MF_uCF % DataPtr( MFI )
+
+      BX = MFI % tilebox()
+
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+      iX_B1 = iX_B0 - swX
+      iX_E1 = iX_E0 + swX
+      iX_B  = iX_B0 - swXX
+      iX_E  = iX_E0 + swXX
+
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+               G )
+
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+               U )
+
+      CALL amrex2thornado_X &
+             ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B, iX_E, uGF, G )
+
+      CALL amrex2thornado_X &
+             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B, iX_E, uCF, U )
+
+      CALL MultiplyWithPsi6 &
+             ( iX_B, iX_E, iX_B1, iX_E1, G, U, Power )
+
+      CALL thornado2amrex_X &
+             ( nCF, iX_B1, iX_E1, LBOUND( uCF ), iX_B, iX_E, uCF, U )
+
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+               U )
+
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+               G )
+
+    END DO ! WHILE( MFI % next() )
+
+    CALL amrex_mfiter_destroy( MFI )
+
+#if defined( THORNADO_OMP )
+    !$OMP END PARALLEL
+#endif
+
+  END SUBROUTINE MultiplyWithPsi6_MF_X_SingleLevel
 
 
   SUBROUTINE MultiplyWithPsi6_MF_Z &
