@@ -91,6 +91,12 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
+
+##Dec 15 2023
+1. FlashX/Thornado's package from Mathi,  Flash-X-Repo.tar, runs on Aurora with hdf57 supplied by me. 
+2. Updated Mathi package to the latest delep-Ov and Thornado master, the app compiles and runs fine on Aurora. 
+3. Will try ms69 branch of Thornado with FlashX on Aurora, and also the latest eng-compile and release compiler. 
+
 ##Dec 14 2023
 1. Try FlashX from Mathi on Sunspot
     - it compiles and runs with the original package, but for some combination of np and npp, the run hangs. shaopingquan@x1922c5s7b0n0
