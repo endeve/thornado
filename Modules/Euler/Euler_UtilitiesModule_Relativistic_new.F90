@@ -398,12 +398,12 @@ CONTAINS
 
     IF( eps .LT. epsMin .OR. eps .GT. epsMax )THEN
 
-!      PRINT *, 'IntE (Old), IntE (New): ', eps, epsh
-!      PRINT *, 'q+1=E/D (Old): ', q+One
+      PRINT *, 'IntE (Old), IntE (New): ', eps, epsh
+      PRINT *, 'q+1=E/D (Old): ', q+One
 
       q = ( One + q ) * ( One + epsh ) / ( One + eps ) - One
 
-!      PRINT *, 'q+1=E/D (New): ', q+One
+      PRINT *, 'q+1=E/D (New): ', q+One
 
       eps = epsh
 
@@ -2098,11 +2098,12 @@ CONTAINS
 
     ! --- Eq. C21 ---
 
-    ht = ( One + epst ) * ( One + at )
+    ht = ( One + epsh ) * ( One + at )
 
     ! --- Eq. C22 ---
 
     FunZ = z - r / ht
+
 
   END SUBROUTINE ComputeFunZ_Scalar
 
