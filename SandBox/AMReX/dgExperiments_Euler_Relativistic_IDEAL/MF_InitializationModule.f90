@@ -296,7 +296,7 @@ CONTAINS
         ELSE IF( TRIM( AdvectionProfile ) .EQ. 'Gaussian' )THEN
 
           uPF(iNX,iPF_D) &
-            = D_0 + EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) )
+            = D_0 * EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) )
           uPF(iNX,iPF_V1) = V1
           uPF(iNX,iPF_V2) = V2
           uPF(iNX,iPF_V3) = V3
@@ -1010,7 +1010,7 @@ CONTAINS
         ELSE IF( TRIM( AdvectionProfile ) .EQ. 'Gaussian' )THEN
 
           uPF(iNX,iPF_D) &
-            = D_0 + EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) ) &
+            = D_0 * EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) ) &
                   * EXP( -( X2 - X2_0 )**2 / ( Two * sigmaX2**2 ) )
           uPF(iNX,iPF_V1) = V1
           uPF(iNX,iPF_V2) = V2
@@ -1433,7 +1433,7 @@ CONTAINS
         ELSE IF( TRIM( AdvectionProfile ) .EQ. 'Gaussian' )THEN
 
           uPF(iNX,iPF_D) &
-            = D_0 + EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) ) &
+            = D_0 * EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) ) &
                   * EXP( -( X2 - X2_0 )**2 / ( Two * sigmaX2**2 ) ) &
                   * EXP( -( X3 - X3_0 )**2 / ( Two * sigmaX3**2 ) )
 
