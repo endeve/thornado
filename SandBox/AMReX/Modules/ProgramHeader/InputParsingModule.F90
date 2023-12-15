@@ -97,6 +97,8 @@ MODULE InputParsingModule
   LOGICAL :: UseFluxCorrection_Euler
   LOGICAL :: UseFluxCorrection_TwoMoment
   LOGICAL :: UseAMR
+  LOGICAL :: IsPeriodic(3)
+  INTEGER     , ALLOCATABLE :: IsPeriodicInt(:)
   INTEGER     , ALLOCATABLE :: nX(:)
   INTEGER     , ALLOCATABLE :: RefinementRatio(:)
   INTEGER     , ALLOCATABLE :: StepNo(:)
@@ -119,6 +121,7 @@ CONTAINS
   SUBROUTINE InitializeParameters
 
     TYPE(amrex_parmparse) :: PP
+    INTEGER               :: iDimX
 
 #if defined( THORNADO_AMREX_GIT_HASH )
 
@@ -245,7 +248,17 @@ CONTAINS
                          xL )
       CALL PP % getarr( 'prob_hi', &
                          xR )
+      CALL PP % getarr( 'is_periodic', &
+                        IsPeriodicInt )
     CALL amrex_parmparse_destroy( PP )
+
+    IsPeriodic = .FALSE.
+
+    DO iDimX = 1, amrex_spacedim
+
+      IF( IsPeriodicInt(iDimX) .EQ. 1 ) IsPeriodic(iDimX) = .TRUE.
+
+    END DO
 
     IF     ( coord_sys .EQ. 0 )THEN
 
