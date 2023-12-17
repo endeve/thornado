@@ -702,6 +702,8 @@ CONTAINS
 
     IF( q .LT. Zero )THEN
 
+      ! --- Set q = 0 while keeping D and k constant ---
+
       q = Zero
       r = k
 
