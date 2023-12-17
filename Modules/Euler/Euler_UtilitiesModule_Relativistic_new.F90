@@ -741,7 +741,7 @@ CONTAINS
 
       CALL FindMinimumSpecificInternalEnergy( PF_D, Ye, epsMin )
 
-      PF_E  = PF_E * epsMin
+      PF_E  = PF_D * epsMin
       PF_Ne = Ye * PF_D / AtomicMassUnit
 
       ReComputeConserved = .TRUE.
