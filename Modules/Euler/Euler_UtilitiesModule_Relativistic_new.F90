@@ -129,15 +129,20 @@ MODULE Euler_UtilitiesModule_Relativistic
   REAL(DP), PARAMETER :: kMax               = Two * vMax / ( One + vMax**2 )
   REAL(DP), PARAMETER :: dzMin              = 1.0e-8_DP
 
-  INTEGER, PUBLIC, PARAMETER :: MaxIterations_ComputePrimitive_Euler = 35
+  INTEGER, PUBLIC, PARAMETER :: MaxIterations_ComputePrimitive_Euler = 100
 
+#ifdef MICROPHYSICS_WEAKLIB
+  REAL(DP), PUBLIC :: rhoMin_Euler_GR = Min_D
+#else
   ! --- User must set this in fluid initialization and update device ---
+  REAL(DP), PUBLIC :: rhoMin_Euler_GR = Zero
+#endif
   REAL(DP), PUBLIC :: epsMin_Euler_GR = Zero
 
 #if   defined( THORNADO_OMP_OL )
-  !$OMP DECLARE TARGET( epsMin_Euler_GR )
+  !$OMP DECLARE TARGET( rhoMin_Euler_GR, Min_Euler_GR )
 #elif defined( THORNADO_OACC   )
-  !$ACC DECLARE CREATE( epsMin_Euler_GR )
+  !$ACC DECLARE CREATE( rhoMin_Euler_GR, epsMin_Euler_GR )
 #endif
 
 CONTAINS
@@ -373,7 +378,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: q, eps
     LOGICAL , INTENT(inout) :: ReComputeConserved
 
-    REAL(DP) :: epsMin, epsMax, epsh
+    REAL(DP) :: epsMin, epsMax, epsh, qtmp
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -398,12 +403,15 @@ CONTAINS
 
     IF( eps .LT. epsMin .OR. eps .GT. epsMax )THEN
 
-      PRINT *, 'IntE (Old), IntE (New): ', eps, epsh
-      PRINT *, 'q+1=E/D (Old): ', q+One
+      !PRINT *, 'IntE (Old), IntE (New): ', eps, epsh
 
-      q = ( One + q ) * ( One + epsh ) / ( One + eps ) - One
+      qtmp = ( One + q ) * ( One + epsh ) / ( One + eps ) - One
 
-      PRINT *, 'q+1=E/D (New): ', q+One
+      !PRINT *, 'qold: ', q
+      !PRINT *, 'qnew: ', qtmp
+      !PRINT *, 'qnew/qold: ', qtmp/q
+
+      q = qtmp
 
       eps = epsh
 
@@ -643,7 +651,7 @@ CONTAINS
 
     REAL(DP) :: S, q, r, k, z0
     REAL(DP) :: W, eps, p, h, DhW, VSq, MagV, vScale
-    REAL(DP) :: Ye, epsh, epsMin
+    REAL(DP) :: Ye, epsMin
     INTEGER  :: ITERATION, iErr
     LOGICAL  :: ReComputeConserved
 
@@ -669,16 +677,16 @@ CONTAINS
 
     ! --- Ensure primitive fields can be recovered ---
 
-    IF( CF_D .LT. Min_D )THEN
+    IF( CF_D .LT. rhoMin_Euler_GR )THEN
 
-      PF_D  = Min_D
+      PF_D  = rhoMin_Euler_GR
       PF_V1 = Zero
       PF_V2 = Zero
       PF_V3 = Zero
 
       CALL FindMinimumSpecificInternalEnergy( PF_D, Ye, epsMin )
 
-      PF_E  = PF_E * epsMin
+      PF_E  = PF_D * epsMin
       PF_Ne = Ye * PF_D / AtomicMassUnit
 
       CF_D  = PF_D
@@ -687,6 +695,8 @@ CONTAINS
       CF_S3 = Zero
       CF_E  = PF_E
       CF_Ne = PF_Ne
+
+      RETURN
 
     END IF
 
@@ -722,9 +732,9 @@ CONTAINS
     PF_D  = CF_D  / W
     PF_Ne = CF_Ne / W
 
-    IF( PF_D .LT. Min_D )THEN
+    IF( PF_D .LT. rhoMin_Euler_GR )THEN
 
-      PF_D  = Min_D
+      PF_D  = rhoMin_Euler_GR
       PF_V1 = Zero
       PF_V2 = Zero
       PF_V3 = Zero
@@ -2080,7 +2090,7 @@ CONTAINS
 
 #else
 
-    rhoh = MAX( Min_D, rhot )
+    rhoh = MAX( rhoMin_Euler_GR, rhot )
 
     epsMin = epsMin_Euler_GR
     epsMax = HUGE( One )
