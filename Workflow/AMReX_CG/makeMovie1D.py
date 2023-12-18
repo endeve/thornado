@@ -21,9 +21,13 @@ if __name__ == "__main__":
     # Specify title of figure
     gvS.FigTitle = '{:} with AMR'.format(ProblemName)
 
+    THORNADO_DIR = '/Users/nickroberts/thornado/'
+    #THORNADO_DIR = '/home/kkadoogan/Work/Codes/thornado/'
+
     # Specify directory containing amrex Plotfiles
-    PlotDirectory = '/home/kkadoogan/Work/Codes/\
-thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC/'
+    PlotDirectory \
+      = THORNADO_DIR + \
+          'SandBox/AMReX/Applications/AdiabaticCollapse_XCFC/'
 
     # Specify plot file base name
     PlotBaseName = ProblemName + '.plt'
@@ -105,3 +109,5 @@ thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC/'
 
     import os
     os.system( 'rm -rf __pycache__ ' )
+    os.system( 'rm -rf GlobalVariables/__pycache__' )
+    os.system( 'rm -rf Utilities/__pycache__' )
