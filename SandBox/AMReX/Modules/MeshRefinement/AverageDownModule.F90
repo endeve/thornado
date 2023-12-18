@@ -33,6 +33,11 @@ MODULE AverageDownModule
     pL2G_c, &
     pF2C_c, &
     vpFineToCoarseProjectionMatrix
+
+  ! --- Local Modules ---
+
+  USE MF_GeometryModule, ONLY: &
+    UpdateSpatialMetric_MF
   USE InputParsingModule, ONLY: &
     DEBUG
   USE MF_TimersModule, ONLY: &
@@ -59,17 +64,25 @@ MODULE AverageDownModule
 CONTAINS
 
 
-  SUBROUTINE AverageDown_PointWise( MF )
+  SUBROUTINE AverageDown_PointWise( MF, UpdateSpatialMetric_Option )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
+    LOGICAL             , INTENT(in), OPTIONAL :: &
+      UpdateSpatialMetric_Option
 
     INTEGER :: iLevel, FinestLevel
+    LOGICAL :: UpdateSpatialMetric
+
+    UpdateSpatialMetric = .FALSE.
+    IF( PRESENT( UpdateSpatialMetric_Option ) ) &
+      UpdateSpatialMetric = UpdateSpatialMetric_Option
 
     FinestLevel = amrex_get_finest_level()
 
     DO iLevel = FinestLevel-1, 0, -1
 
-      CALL AverageDownTo_PointWise( iLevel, MF )
+      CALL AverageDownTo_PointWise &
+             ( iLevel, MF, UpdateSpatialMetric_Option = UpdateSpatialMetric )
 
     END DO
 
@@ -94,16 +107,24 @@ CONTAINS
   END SUBROUTINE AverageDown_Conservative
 
 
-  SUBROUTINE AverageDownTo_PointWise( CoarseLevel, MF )
+  SUBROUTINE AverageDownTo_PointWise &
+    ( CoarseLevel, MF, UpdateSpatialMetric_Option )
 
     INTEGER             , INTENT(in)    :: CoarseLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
+    LOGICAL             , INTENT(in), OPTIONAL :: &
+      UpdateSpatialMetric_Option
 
     INTEGER :: iErr
+    LOGICAL :: UpdateSpatialMetric
 
     CALL TimersStart_AMReX( Timer_AMReX_AverageDown )
 
 #if defined( THORNADO_USE_MESHREFINEMENT )
+
+    UpdateSpatialMetric = .FALSE.
+    IF( PRESENT( UpdateSpatialMetric_Option ) ) &
+      UpdateSpatialMetric = UpdateSpatialMetric_Option
 
     IF( DEBUG )THEN
 
@@ -122,6 +143,12 @@ CONTAINS
            ( MF(CoarseLevel+1), MF(CoarseLevel), &
              MF(CoarseLevel) % nComp(), amrex_ref_ratio(CoarseLevel), &
              nDOFX, nFine, vpFineToCoarseProjectionMatrix )
+
+    IF( UpdateSpatialMetric )THEN
+
+      CALL UpdateSpatialMetric_MF( CoarseLevel, MF(CoarseLevel) )
+
+    END IF
 
 #endif
 

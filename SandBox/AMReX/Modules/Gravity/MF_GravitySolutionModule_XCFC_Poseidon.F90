@@ -244,7 +244,7 @@ CONTAINS
 
     CALL UpdateConformalFactorAndMetric_XCFC_MF( MF_uMF, MF_uGF )
 
-    CALL AverageDown( MF_uGF )
+    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
 
 #endif
 
@@ -288,7 +288,7 @@ CONTAINS
     CALL ComputeLapseShiftCurvature_XCFC_MF_Poseidon &
            ( MF_uGS, MF_uMF )
 
-    CALL AverageDown( MF_uGF )
+    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
 
     CALL ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
 

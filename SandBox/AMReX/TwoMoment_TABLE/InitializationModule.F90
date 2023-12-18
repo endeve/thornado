@@ -383,7 +383,7 @@ CONTAINS
 
     END IF
 
-    CALL AverageDown( MF_uGF )
+    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
     CALL AverageDown( MF_uGF, MF_uCF )
 
     t_old = t_new

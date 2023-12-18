@@ -113,6 +113,8 @@ MODULE InitializationModule
   USE FillPatchModule, ONLY: &
     FillPatch, &
     FillCoarsePatch
+  USE MF_XCFC_UtilitiesModule, ONLY: &
+    MultiplyWithPsi6_MF
   USE TaggingModule, ONLY: &
     TagElements
   USE InputParsingModule, ONLY: &
@@ -246,7 +248,7 @@ CONTAINS
            ( D_Min_Euler_PL_Option    = D_Min_Euler_PL, &
              IntE_Min_Euler_PL_Option = IntE_Min_Euler_PL )
 
-    CALL AverageDown( MF_uGF )
+    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
     CALL AverageDown( MF_uGF, MF_uCF )
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
@@ -366,8 +368,12 @@ CONTAINS
     CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF, &
                           ApplyBoundaryConditions_Euler_Option = .TRUE. )
 
+    CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCF(iLevel), -1 )
+
     CALL ApplyPositivityLimiter_Euler_MF &
            ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCF(iLevel), +1 )
 
   END SUBROUTINE MakeNewLevelFromCoarse
 
@@ -398,23 +404,30 @@ CONTAINS
     TYPE(amrex_distromap) :: DM
     TYPE(amrex_multifab)  :: MF_uGF_tmp, MF_uCF_tmp, MF_uDF_tmp
 
+    INTEGER :: swXX(3)
+
+    swXX = 0
+
     BA = pBA
     DM = pDM
 
-    CALL amrex_multifab_build( MF_uGF_tmp, BA, DM, nDOFX * nGF, swX )
-    CALL amrex_multifab_build( MF_uCF_tmp, BA, DM, nDOFX * nCF, swX )
-    CALL amrex_multifab_build( MF_uDF_tmp, BA, DM, nDOFX * nDF, swX )
+    CALL amrex_multifab_build( MF_uGF_tmp, BA, DM, nDOFX * nGF, swXX )
+    CALL amrex_multifab_build( MF_uCF_tmp, BA, DM, nDOFX * nCF, swXX )
+    CALL amrex_multifab_build( MF_uDF_tmp, BA, DM, nDOFX * nDF, swXX )
 
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, &
-                    ApplyBoundaryConditions_Geometry_Option = .TRUE. )
+    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp )
 
     CALL FillPatch( iLevel, MF_uDF, MF_uDF_tmp )
 
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp, &
-                    ApplyBoundaryConditions_Euler_Option = .TRUE. )
+    CALL FillPatch &
+           ( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp, swX_Option = swXX )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF_tmp, MF_uCF_tmp, -1, swX_Option = swXX )
 
     CALL ApplyPositivityLimiter_Euler_MF &
-           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
+           ( iLevel, MF_uGF_tmp, MF_uCF_tmp, MF_uDF_tmp, swX_Option = swXX )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF_tmp, MF_uCF_tmp, +1, swX_Option = swXX )
 
     CALL ClearLevel( iLevel )
 
@@ -429,9 +442,9 @@ CONTAINS
              ( FluxRegister_Euler(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
                iLevel, nDOFX_X1 * nCF )
 
-    CALL MF_uGF(iLevel) % COPY( MF_uGF_tmp, 1, 1, nDOFX * nGF, swX )
-    CALL MF_uCF(iLevel) % COPY( MF_uCF_tmp, 1, 1, nDOFX * nCF, swX )
-    CALL MF_uDF(iLevel) % COPY( MF_uDF_tmp, 1, 1, nDOFX * nDF, swX )
+    CALL MF_uGF(iLevel) % COPY( MF_uGF_tmp, 1, 1, nDOFX * nGF, swXX )
+    CALL MF_uCF(iLevel) % COPY( MF_uCF_tmp, 1, 1, nDOFX * nCF, swXX )
+    CALL MF_uDF(iLevel) % COPY( MF_uDF_tmp, 1, 1, nDOFX * nDF, swXX )
 
     CALL amrex_multifab_destroy( MF_uDF_tmp )
     CALL amrex_multifab_destroy( MF_uCF_tmp )

@@ -426,7 +426,7 @@ CONTAINS
 
     END IF
 
-    CALL AverageDown( MF_uGF )
+    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
     CALL AverageDown( MF_uGF, MF_uCF )
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
@@ -597,8 +597,12 @@ CONTAINS
     CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF, &
                           ApplyBoundaryConditions_Euler_Option = .TRUE. )
 
+    CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCF(iLevel), -1 )
+
     CALL ApplyPositivityLimiter_Euler_MF &
            ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCF(iLevel), +1 )
 
     ! MF_uCR needs to be permuted
     CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCR )
