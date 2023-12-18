@@ -51,6 +51,7 @@ More information on the external packages, please visit: https://gitlab.devtools
 **DUT** srun -p FM-QZ1J-ICX-PVC -t 1:00:00 --pty /bin/bash
 **get on a node on JLSE:**  `qsub -n 1 -t 300 -q arcticus -I`       
 **get on a node on Sunspot** `qsub -l select=1 -l walltime=30:00 -A Aurora_deployment -q workq -I`
+**get on Aurora** qsub -I -A Aurora_deployment -l select=1,walltime=120:00 -q EarlyAppAccess
 **To git clone weaklib tables from ORNL, we need** `export https_proxy=http://proxy-us.intel.com:912`    (error: SSL certificate problem: self signed certificate in certificate chain) 
 **display GPU serial and rev. number** `sudo /sbin/lspci |grep -i Display`    
 **power cycle a machine** /shared/maint/tool/powercycl_node.sh exaperf-sdpcloud-pc20
@@ -91,6 +92,20 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
+
+## Dec 18-19 2023
+1. merged ms69 on https://github.com/endeve/ with the latest master, and fixed some merge conflict.
+2. Run update ms69 with oneapi/release/2023.12.15.001, the StreamingSineWave cases run fine, but the relaxation cases finished Cycle and output the Error checkout, but got "forrtl: severe (153): allocatable array or pointer is not allocated"
+3. Commented the deallocation statement, the code runs fine. 
+4. Run previously successfully compiled and ran FlashX/Thornado on Aurora, but got the following error:
+<pre>
+generating Makefile
+    ERROR: A Config in your simulation requires the onemkl library
+    but I cannot find any info about it.
+    If you automatically link in that library, create a variable LIB_ONEMKL in
+    your Makefile.h and make it empty
+Error getting info for library onemkl
+</pre>
 
 ##Dec 15 2023
 1. FlashX/Thornado's package from Mathi,  Flash-X-Repo.tar, runs on Aurora with hdf57 supplied by me. 
