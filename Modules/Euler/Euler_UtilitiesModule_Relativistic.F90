@@ -66,6 +66,8 @@ MODULE Euler_UtilitiesModule_Relativistic
     Max_D, &
     Min_T, &
     Max_T, &
+    Min_Y, &
+    Max_Y, &
     ComputeSpecificInternalEnergy_TABLE
   USE UnitsModule, ONLY: &
     AtomicMassUnit
@@ -125,16 +127,20 @@ MODULE Euler_UtilitiesModule_Relativistic
   REAL(DP), PARAMETER :: Offset_z           = 10.0_DP * SqrtTiny
   REAL(DP), PARAMETER :: vMax               = One - 1.0e-05_DP
   REAL(DP), PARAMETER :: kMax               = Two * vMax / ( One + vMax**2 )
+  REAL(DP), PARAMETER :: dzMin              = 1.0e-8_DP
 
-  INTEGER, PUBLIC, PARAMETER :: MaxIterations_ComputePrimitive_Euler = 35
+  INTEGER, PUBLIC, PARAMETER :: MaxIterations_ComputePrimitive_Euler = 100
 
-  ! --- User must set this in fluid initialization and update device ---
+  ! --- User must set this in fluid initialization and update device.
+  !     For problems using a tabulated EOS, rhoMin_Euler_GR = Min_D must
+  !     be set elsewhere ---
+  REAL(DP), PUBLIC :: rhoMin_Euler_GR = Zero
   REAL(DP), PUBLIC :: epsMin_Euler_GR = Zero
 
 #if   defined( THORNADO_OMP_OL )
-  !$OMP DECLARE TARGET( epsMin_Euler_GR )
+  !$OMP DECLARE TARGET( rhoMin_Euler_GR, Min_Euler_GR )
 #elif defined( THORNADO_OACC   )
-  !$ACC DECLARE CREATE( epsMin_Euler_GR )
+  !$ACC DECLARE CREATE( rhoMin_Euler_GR, epsMin_Euler_GR )
 #endif
 
 CONTAINS
@@ -330,6 +336,88 @@ CONTAINS
     CALL TimersStop_Euler( Timer_Euler_ComputePrimitive )
 
   END SUBROUTINE ComputePrimitive_Vector_old
+
+
+  SUBROUTINE FindMinimumSpecificInternalEnergy( PF_D, Ye, epsMin )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: PF_D, Ye
+    REAL(DP), INTENT(out) :: epsMin
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    CALL ComputeSpecificInternalEnergy_TABLE &
+           ( PF_D, ( One + Offset_Temperature ) * Min_T, Ye, epsMin )
+
+#else
+
+    epsMin = epsMin_Euler_GR
+
+#endif
+
+  END SUBROUTINE FindMinimumSpecificInternalEnergy
+
+
+  SUBROUTINE LimitSpecificInternalEnergy &
+    ( PF_D, Ye, q, eps, ReComputeConserved )
+
+#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)    :: PF_D, Ye
+    REAL(DP), INTENT(inout) :: q, eps
+    LOGICAL , INTENT(inout) :: ReComputeConserved
+
+    REAL(DP) :: epsMin, epsMax, epsh, qtmp
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    CALL ComputeSpecificInternalEnergy_TABLE &
+           ( PF_D, ( One + Offset_Temperature ) * Min_T, Ye, epsMin )
+    CALL ComputeSpecificInternalEnergy_TABLE &
+           ( PF_D, ( One - Offset_Temperature ) * Max_T, Ye, epsMax )
+
+    epsMin = ( One + Offset_Epsilon ) * epsMin
+    epsMax = ( One - Offset_Epsilon ) * epsMax
+
+#else
+
+    epsMin = epsMin_Euler_GR
+    epsMax = HUGE( One )
+
+#endif
+
+    epsh = MAX( MIN( epsMax, eps ), epsMin )
+
+    ! --- Eq. C27 ---
+
+    IF( eps .LT. epsMin .OR. eps .GT. epsMax )THEN
+
+      !PRINT *, 'IntE (Old), IntE (New): ', eps, epsh
+
+      qtmp = ( One + q ) * ( One + epsh ) / ( One + eps ) - One
+
+      !PRINT *, 'qold: ', q
+      !PRINT *, 'qnew: ', qtmp
+      !PRINT *, 'qnew/qold: ', qtmp/q
+
+      q = qtmp
+
+      eps = epsh
+
+      ReComputeConserved = .TRUE.
+
+    END IF
+
+  END SUBROUTINE LimitSpecificInternalEnergy
 
 
 !!$  SUBROUTINE ComputePrimitive_Vector_new &
@@ -560,8 +648,10 @@ CONTAINS
       iErr_Option
 
     REAL(DP) :: S, q, r, k, z0
-    REAL(DP) :: W, eps, p, h, DhW
+    REAL(DP) :: W, eps, p, h, DhW, VSq, MagV, vScale
+    REAL(DP) :: Ye, epsMin
     INTEGER  :: ITERATION, iErr
+    LOGICAL  :: ReComputeConserved
 
     ITERATION = 0
     IF( PRESENT( ITERATION_Option ) ) &
@@ -571,6 +661,8 @@ CONTAINS
     IF( PRESENT( iErr_Option ) ) &
       iErr = iErr_Option
 
+    ReComputeConserved = .FALSE.
+
     S = SQRT( CF_S1**2 / GF_Gm11 + CF_S2**2 / GF_Gm22 + CF_S3**2 / GF_Gm33 )
 
     ! --- Eq. C2 ---
@@ -579,18 +671,28 @@ CONTAINS
     r = S    / CF_D
     k = r    / ( One + q )
 
+    Ye = CF_Ne / CF_D * AtomicMassUnit
+
     ! --- Ensure primitive fields can be recovered ---
 
-    IF( CF_D .LT. Min_D )THEN
+    IF( CF_D .LT. rhoMin_Euler_GR )THEN
 
-      PF_D  = 1.01_DP * Min_D
+      PF_D  = rhoMin_Euler_GR
       PF_V1 = Zero
       PF_V2 = Zero
       PF_V3 = Zero
-      PF_E  = MAX( CF_E, SqrtTiny ) ! What to put here
-      PF_Ne = CF_Ne / CF_D
 
-      iErr = 11
+      CALL FindMinimumSpecificInternalEnergy( PF_D, Ye, epsMin )
+
+      PF_E  = PF_D * epsMin
+      PF_Ne = Ye * PF_D / AtomicMassUnit
+
+      CF_D  = PF_D
+      CF_S1 = Zero
+      CF_S2 = Zero
+      CF_S3 = Zero
+      CF_E  = PF_E
+      CF_Ne = PF_Ne
 
       RETURN
 
@@ -598,8 +700,10 @@ CONTAINS
 
     IF( q .LT. Zero )THEN
 
-      r = k
+      ! --- Set q = 0 while keeping D and k constant ---
+
       q = Zero
+      r = k
 
     END IF
 
@@ -610,23 +714,48 @@ CONTAINS
 
     END IF
 
-    ! --- Solve for primitive ---
+#ifdef MICROPHYSICS_WEAKLIB
+
+    CF_Ne = CF_D * MAX( MIN( Max_Y, Ye ), Min_Y ) / AtomicMassUnit
+
+#endif
+
+    ! --- Solve for primitives ---
 
     CALL SolveF_Bisection_Scalar &
            ( CF_D, CF_Ne, q, r, k, z0, iErr, ITERATION )
 
     ! --- Eq. C15 ---
 
-    W     = SQRT( One + z0**2 )
+    W = SQRT( One + z0**2 )
+
     PF_D  = CF_D  / W
     PF_Ne = CF_Ne / W
+
+    IF( PF_D .LT. rhoMin_Euler_GR )THEN
+
+      PF_D  = rhoMin_Euler_GR
+      PF_V1 = Zero
+      PF_V2 = Zero
+      PF_V3 = Zero
+
+      CALL FindMinimumSpecificInternalEnergy( PF_D, Ye, epsMin )
+
+      PF_E  = PF_D * epsMin
+      PF_Ne = Ye * PF_D / AtomicMassUnit
+
+      ReComputeConserved = .TRUE.
+
+    END IF
 
     ! --- Eq. C16 ---
 
     eps = W * q - z0 * r + z0**2 / ( One + W )
 
+    CALL LimitSpecificInternalEnergy( PF_D, Ye, q, eps, ReComputeConserved )
+
     CALL ComputePressureFromSpecificInternalEnergy &
-           ( PF_D, eps, AtomicMassUnit * PF_Ne / PF_D, p )
+           ( PF_D, eps, Ye, p )
 
     h = One + eps + p / PF_D
 
@@ -635,7 +764,43 @@ CONTAINS
     PF_V1 = ( CF_S1 / GF_Gm11 ) / DhW
     PF_V2 = ( CF_S2 / GF_Gm22 ) / DhW
     PF_V3 = ( CF_S3 / GF_Gm33 ) / DhW
-    PF_E  = PF_D * eps
+
+    VSq  = GF_Gm11 * PF_V1**2 + GF_Gm22 * PF_V2**2 + GF_Gm33 * PF_V3**2
+    MagV = SQRT( VSq )
+
+    IF( MagV .GT. vMax )THEN
+
+      vScale = vMax / MagV
+
+      PF_V1 = vScale * PF_V1
+      PF_V2 = vScale * PF_V2
+      PF_V3 = vScale * PF_V3
+
+      VSq = vScale**2 * VSq
+
+      W = One / SQRT( One - VSq )
+
+      PF_D  = CF_D  / W
+      PF_Ne = CF_Ne / W
+
+      CALL LimitSpecificInternalEnergy( PF_D, Ye, q, eps, ReComputeConserved )
+
+    END IF
+
+    PF_E = PF_D * eps
+
+    IF( ReComputeConserved )THEN
+
+      CALL ComputePressureFromSpecificInternalEnergy &
+             ( PF_D, eps, Ye, p )
+
+      CALL ComputeConserved_Scalar &
+             ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+               CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+               GF_Gm11, GF_Gm22, GF_Gm33, &
+               p )
+
+    END IF
 
     IF( PRESENT( ITERATION_Option ) ) &
       ITERATION_Option = ITERATION
@@ -1884,11 +2049,7 @@ CONTAINS
 !!$
 !!$  END SUBROUTINE GetBoundsForBisection
 
-#ifdef MICROPHYSICS_WEAKLIB
-
-  ! --- TABLE EOS Version ---
-
-  SUBROUTINE ComputeFunZ_Scalar( D, Ne, r, z, q, FunZ )
+  SUBROUTINE ComputeFunZ_Scalar( D, Ne, q, r, z, FunZ )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
@@ -1896,68 +2057,63 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)    :: D, Ne, r, z
-    REAL(DP), INTENT(inout) :: q
+    REAL(DP), INTENT(in)    :: D, Ne, q, r, z
     REAL(DP), INTENT(out)   :: FunZ
 
-    REAL(DP) :: epst, at, ht, Wt, epsh, rhoh, ph, Ye, Min_E, Max_E
+    REAL(DP) :: Wt, rhot, epst, rhoh, Ye, epsMin, epsMax, epsh, ph, at, ht
 
     ! --- Eq. C15 ---
 
     Wt = SQRT( One + z**2 )
 
+    rhot = D / Wt
+
     ! --- Eq. C16 ---
 
     epst = Wt * q - z * r + z**2 / ( One + Wt )
 
-    ! --- Eq. C17 ---
-
-    rhoh = MAX( MIN( Max_D, D / Wt ), Min_D )
-
-    ! --- Eq. C18 ---
-
     Ye = Ne * AtomicMassUnit / D
 
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ! --- Eq. C17 ---
+
+    rhoh = MAX( MIN( Max_D, rhot ), Min_D )
+
     CALL ComputeSpecificInternalEnergy_TABLE &
-           ( rhoh, ( One + Offset_Temperature ) * Min_T, Ye, Min_E )
+           ( rhoh, ( One + Offset_Temperature ) * Min_T, Ye, epsMin )
     CALL ComputeSpecificInternalEnergy_TABLE &
-           ( rhoh, ( One - Offset_Temperature ) * Max_T, Ye, Max_E )
+           ( rhoh, ( One - Offset_Temperature ) * Max_T, Ye, epsMax )
 
-    Min_E = ( One + Offset_Epsilon ) * Min_E
-    Max_E = ( One - Offset_Epsilon ) * Max_E
+    epsMin = ( One + Offset_Epsilon ) * epsMin
+    epsMax = ( One - Offset_Epsilon ) * epsMax
 
-    epsh = MAX( MIN( Max_E, epst ), Min_E )
+#else
 
-    ! --- Eq. C27 ---
+    rhoh = MAX( rhoMin_Euler_GR, rhot )
 
-    IF( epst .LT. Min_E )THEN
+    epsMin = epsMin_Euler_GR
+    epsMax = HUGE( One )
 
-      q = ( One + q ) * ( One + epsh ) / ( One + epst ) - One
+#endif
 
-      epst = epsh
-
-    ELSE IF( epst .GT. Max_E )THEN
-
-      q = ( One + q ) * ( One + epsh ) / ( One + epst ) - One
-
-      epst = epsh
-
-    END IF
-
-    ! --- Eqs. C19/C20 ---
+    epsh = MAX( MIN( epsMax, epst ), epsMin )
 
     CALL ComputePressureFromSpecificInternalEnergy &
            ( rhoh, epsh, Ye, ph )
+
+    ! --- Eqs. C19/C20 ---
 
     at = ph / ( rhoh * ( One + epsh ) )
 
     ! --- Eq. C21 ---
 
-    ht = ( One + epst ) * ( One + at )
+    ht = ( One + epsh ) * ( One + at )
 
     ! --- Eq. C22 ---
 
     FunZ = z - r / ht
+
 
   END SUBROUTINE ComputeFunZ_Scalar
 
@@ -1970,7 +2126,7 @@ CONTAINS
 !!$    REAL(DP), INTENT(out)   :: FunZ(N)
 !!$    LOGICAL,  INTENT(inout) :: ITERATE(N)
 !!$
-!!$    REAL(DP) :: Wt, Min_E, Max_E, at, ht
+!!$    REAL(DP) :: Wt, epsMin, epsMax, at, ht
 !!$    REAL(DP) :: epst(N), rhoh(N), Ye(N), epsh(N), ph(N)
 !!$
 !!$    INTEGER :: iX
@@ -1987,14 +2143,14 @@ CONTAINS
 !!$
 !!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
 !!$    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-!!$    !$OMP PRIVATE( Wt, Min_E, Max_E )
+!!$    !$OMP PRIVATE( Wt, epsMin, epsMax )
 !!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
 !!$    !$ACC PARALLEL LOOP GANG VECTOR &
-!!$    !$ACC PRIVATE( Wt, Min_E, Max_E ) &
+!!$    !$ACC PRIVATE( Wt, epsMin, epsMax ) &
 !!$    !$ACC PRESENT( ITERATE, z, epst, q, r, rhoh, D, Ye, Ne, epsh )
 !!$#elif defined( THORNADO_OMP    )
 !!$    !$OMP PARALLEL DO &
-!!$    !$OMP PRIVATE( Wt, Min_E, Max_E )
+!!$    !$OMP PRIVATE( Wt, epsMin, epsMax )
 !!$#endif
 !!$    DO iX = 1, N
 !!$
@@ -2017,32 +2173,32 @@ CONTAINS
 !!$        Ye(iX) = Ne(iX) * AtomicMassUnit / D(iX)
 !!$
 !!$        CALL ComputeSpecificInternalEnergy_TABLE &
-!!$               ( rhoh(iX), ( One + Offset_Temperature ) * Min_T, Ye(iX), Min_E )
+!!$               ( rhoh(iX), ( One + Offset_Temperature ) * Min_T, Ye(iX), epsMin )
 !!$        CALL ComputeSpecificInternalEnergy_TABLE &
-!!$               ( rhoh(iX), ( One - Offset_Temperature ) * Max_T, Ye(iX), Max_E )
+!!$               ( rhoh(iX), ( One - Offset_Temperature ) * Max_T, Ye(iX), epsMax )
 !!$
-!!$        Min_E = ( One + Offset_Epsilon ) * Min_E
-!!$        Max_E = ( One - Offset_Epsilon ) * Max_E
+!!$        epsMin = ( One + Offset_Epsilon ) * epsMin
+!!$        epsMax = ( One - Offset_Epsilon ) * epsMax
 !!$
-!!$        epsh(iX) = MAX( MIN( Max_E, epst(iX) ), Min_E )
+!!$        epsh(iX) = MAX( MIN( epsMax, epst(iX) ), epsMin )
 !!$
 !!$        ! --- Eq. C27 ---
 !!$
-!!$        IF( epst(iX) .LT. Min_E )THEN
+!!$        IF( epst(iX) .LT. epsMin )THEN
 !!$
 !!$          q(iX) = ( One + q(iX) ) &
 !!$                    * ( One + epsh(iX) ) / ( One + epst(iX) ) - One
 !!$
 !!$          epst(iX) = epsh(iX)
 !!$
-!!$        ELSE IF( epst(iX) .GT. Max_E )THEN
+!!$        ELSE IF( epst(iX) .GT. epsMax )THEN
 !!$
 !!$          q(iX) = ( One + q(iX) ) &
 !!$                    * ( One + epsh(iX) ) / ( One + epst(iX) ) - One
 !!$
 !!$          epst(iX) = epsh(iX)
 !!$
-!!$        END IF ! epst(iX) < Min_E || epst(iX) > Max_E
+!!$        END IF ! epst(iX) < epsMin || epst(iX) > epsMax
 !!$
 !!$      END IF ! ITERATE(iX)
 !!$
@@ -2113,126 +2269,6 @@ CONTAINS
 !!$
 !!$  END SUBROUTINE ComputeFunZ_Vector
 
-#else
-
-  ! --- IDEAL EOS Version ---
-
-  SUBROUTINE ComputeFunZ_Scalar( D, Ne, r, z, q, FunZ )
-
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-    !$OMP DECLARE TARGET
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-    !$ACC ROUTINE SEQ
-#endif
-
-    REAL(DP), INTENT(in)    :: D, Ne, r, z
-    REAL(DP), INTENT(inout) :: q
-    REAL(DP), INTENT(out)   :: FunZ
-
-    REAL(DP) :: Wt, rhot, epst, pt, at, Ye, ht
-
-    ! --- Eq. C15 ---
-
-    Wt = SQRT( One + z**2 )
-    rhot = D / Wt
-
-    ! --- Eq. C16 ---
-
-    epst = Wt * q - z * r + z**2 / ( One + Wt )
-
-    IF( epst .LT. epsMin_Euler_GR )THEN
-
-      PRINT *, 'IntE (Old), IntE (New): ', epst, epsMin_Euler_GR
-      PRINT *, 'q+1=E/D (Old): ', q+One
-
-      q = ( One + q ) * ( One + epsMin_Euler_GR ) &
-            / ( One + epst ) - One
-
-      PRINT *, 'q+1=E/D (New): ', q+One
-
-      epst = epsMin_Euler_GR
-
-    END IF
-
-    Ye = Ne * AtomicMassUnit / D
-
-    CALL ComputePressureFromSpecificInternalEnergy &
-           ( rhot, epst, Ye, pt )
-
-    ! --- Eq. C20 ---
-
-    at = pt / ( rhot * ( One + epst ) )
-
-    ! --- Eq. C21 ---
-
-    ht = ( One + epst ) * ( One + at )
-
-    ! --- Eq. C22 ---
-
-    FunZ = z - r / ht
-
-  END SUBROUTINE ComputeFunZ_Scalar
-
-
-!!$  SUBROUTINE ComputeFunZ_Vector( N, D, Ne, r, z, q, FunZ, ITERATE )
-!!$
-!!$    INTEGER,  INTENT(in)    :: N
-!!$    REAL(DP), INTENT(in)    :: D(N), Ne(N), r(N), z(N), q(N)
-!!$    REAL(DP), INTENT(out)   :: FunZ(N)
-!!$    LOGICAL,  INTENT(inout) :: ITERATE(N)
-!!$
-!!$    INTEGER  :: iX
-!!$    REAL(DP) :: Wt, rhot, epst, Ye, pt, at, ht
-!!$
-!!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-!!$    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-!!$    !$OMP PRIVATE( Wt, rhot, epst, Ye, pt, at, ht )
-!!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-!!$    !$ACC PARALLEL LOOP GANG VECTOR &
-!!$    !$ACC PRESENT( D, Ne, r, z, q, FunZ, ITERATE ) &
-!!$    !$ACC PRIVATE( Wt, rhot, epst, Ye, pt, at, ht )
-!!$#elif defined( THORNADO_OMP    )
-!!$    !$OMP PARALLEL DO &
-!!$    !$OMP PRIVATE( Wt, rhot, epst, Ye, pt, at, ht )
-!!$#endif
-!!$    DO iX = 1, N
-!!$
-!!$      IF( ITERATE(iX) )THEN
-!!$
-!!$        ! --- Eq. C15 ---
-!!$
-!!$        Wt = SQRT( One + z(iX)**2 )
-!!$        rhot = D(iX) / Wt
-!!$
-!!$        ! --- Eq. C16 ---
-!!$
-!!$        epst = Wt * q(iX) - z(iX) * r(iX) + z(iX)**2 / ( One + Wt )
-!!$
-!!$        Ye = Ne(iX) * AtomicMassUnit / D(iX)
-!!$
-!!$        CALL ComputePressureFromSpecificInternalEnergy &
-!!$               ( rhot, epst, Ye, pt )
-!!$
-!!$        ! --- Eq. C20 ---
-!!$
-!!$        at = pt / ( rhot * ( One + epst ) )
-!!$
-!!$        ! --- Eq. C21 ---
-!!$
-!!$        ht = ( One + epst ) * ( One + at )
-!!$
-!!$        ! --- Eq. C22 ---
-!!$
-!!$        FunZ(iX) = z(iX) - r(iX) / ht
-!!$
-!!$      END IF ! ITERATE(iX)
-!!$
-!!$    END DO ! iX = 1, N
-!!$
-!!$  END SUBROUTINE ComputeFunZ_Vector
-
-#endif
-
   SUBROUTINE SolveF_Bisection_Scalar &
     ( CF_D, CF_Ne, q, r, k, z0, iErr, ITERATION, dzMin_Option )
 
@@ -2242,40 +2278,34 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)    :: CF_D, CF_Ne, r, k
-    REAL(DP), INTENT(inout) :: q
+    REAL(DP), INTENT(in)    :: CF_D, CF_Ne, q, r, k
     REAL(DP), INTENT(out)   :: z0
-    INTEGER,  INTENT(inout) :: iErr
-    INTEGER,  INTENT(inout) :: ITERATION
+    INTEGER,  INTENT(inout) :: iErr, ITERATION
     REAL(DP), INTENT(in), OPTIONAL :: dzMin_Option
 
     LOGICAL  :: CONVERGED
-    REAL(DP) :: za, zb, zc, dz, dzMin
+    REAL(DP) :: za, zb, zc, dz
     REAL(DP) :: fa, fb, fc
-    !INTEGER  :: MaxIterations_ComputePrimitive_Euler
-
-    dzMin = 1.0e-08_DP
-    IF( PRESENT( dzMin_Option ) ) &
-      dzMin = dzMin_Option
-
-    !MaxIterations_ComputePrimitive_Euler = 4 - INT( LOG( dzMin ) / LOG( Two ) )
 
     ! --- Eq. C23 ---
 
-    za = SQRT( One - Fourth * k**2 )
-    zb = SQRT( One - k**2 )
-    za = Half * k / za - Offset_z
-    zb = k        / zb + Offset_z
+    za = Half * k / SQRT( One - Fourth * k**2 ) - Offset_z
+    zb =        k / SQRT( One -          k**2 ) + Offset_z
 
     ! --- Compute FunZ for upper and lower bounds ---
 
-    CALL ComputeFunZ_Scalar( CF_D, CF_Ne, r, za, q, fa )
-    CALL ComputeFunZ_Scalar( CF_D, CF_Ne, r, zb, q, fb )
+    CALL ComputeFunZ_Scalar( CF_D, CF_Ne, q, r, za, fa )
+    CALL ComputeFunZ_Scalar( CF_D, CF_Ne, q, r, zb, fb )
 
     ! --- Check that sign of FunZ changes across bounds ---
 
-    IF( .NOT. fa * fb .LT. 0 ) &
+    IF( .NOT. fa * fb .LT. 0 )THEN
+
       iErr = 8
+
+      RETURN
+
+    END IF
 
     dz = zb - za
 
@@ -2312,7 +2342,7 @@ CONTAINS
 
       ! --- Compute f(zc) for midpoint zc ---
 
-      CALL ComputeFunZ_Scalar( CF_D, CF_Ne, r, zc, q, fc )
+      CALL ComputeFunZ_Scalar( CF_D, CF_Ne, q, r, zc, fc )
 
       ! --- Change zc to za or zb, depending on sign of fc ---
 
@@ -2366,16 +2396,7 @@ CONTAINS
 !!$    LOGICAL,  INTENT(inout) :: ITERATE(N)
 !!$    REAL(DP), INTENT(in), OPTIONAL :: dzMin_Option
 !!$
-!!$    REAL(DP) :: dzMin
-!!$    INTEGER  :: MaxIterations_ComputePrimitive_Euler
-!!$
 !!$    INTEGER :: ITERATION, iX
-!!$
-!!$    dzMin = 1.0e-08
-!!$    IF( PRESENT( dzMin_Option ) ) &
-!!$      dzMin = dzMin_Option
-!!$
-!!$    MaxIterations_ComputePrimitive_Euler = 4 - INT( LOG( dzMin ) / LOG( Two ) )
 !!$
 !!$    ITERATION = 0
 !!$    DO WHILE( ANY( ITERATE ) &

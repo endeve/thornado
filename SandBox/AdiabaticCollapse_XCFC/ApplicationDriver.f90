@@ -48,7 +48,8 @@ PROGRAM ApplicationDriver
     FinalizeGravitySolver_XCFC
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeFromConserved_Euler_Relativistic, &
-    ComputeTimeStep_Euler_Relativistic
+    ComputeTimeStep_Euler_Relativistic, &
+    rhoMin_Euler_GR
   USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
     InitializeSlopeLimiter_Euler_Relativistic_TABLE, &
     FinalizeSlopeLimiter_Euler_Relativistic_TABLE, &
@@ -213,6 +214,8 @@ PROGRAM ApplicationDriver
              = 'TABLE', &
            EquationOfStateTableName_Option &
              = TRIM( EosTableName ) )
+
+  rhoMin_Euler_GR = Min_D
 
   CALL InitializeSlopeLimiter_Euler_Relativistic_TABLE &
          ( UseSlopeLimiter_Option &

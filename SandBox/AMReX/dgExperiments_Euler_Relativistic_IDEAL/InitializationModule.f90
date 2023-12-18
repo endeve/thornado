@@ -69,12 +69,16 @@ MODULE InitializationModule
     nPF, &
     nAF, &
     nDF
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    rhoMin_Euler_GR, &
+    epsMin_Euler_GR
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
     DP, &
-    Zero
+    Zero, &
+    One
   USE MF_FieldsModule_Geometry, ONLY: &
     CreateFields_Geometry_MF, &
     MF_uGF
@@ -226,8 +230,14 @@ CONTAINS
 
     IF( iRestart .LT. 0 )THEN
 
-      CALL amrex_init_from_scratch( 0.0_DP )
+      rhoMin_Euler_GR = HUGE( One )
+      epsMin_Euler_GR = HUGE( One )
+
+      CALL amrex_init_from_scratch( Zero )
       nLevels = amrex_get_numlevels()
+
+      rhoMin_Euler_GR = 1.0e-20_DP! * rhoMin_Euler_GR
+      epsMin_Euler_GR = 1.0e-20_DP! * epsMin_Euler_GR
 
       SetInitialValues = .TRUE.
 
@@ -240,6 +250,9 @@ CONTAINS
              ( MF_uGF, MF_uCF, MF_uDF )
 
     ELSE
+
+      rhoMin_Euler_GR = 1.0e-20_DP
+      epsMin_Euler_GR = 1.0e-20_DP
 
       CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
 
