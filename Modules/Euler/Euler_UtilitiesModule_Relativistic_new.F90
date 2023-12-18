@@ -131,12 +131,10 @@ MODULE Euler_UtilitiesModule_Relativistic
 
   INTEGER, PUBLIC, PARAMETER :: MaxIterations_ComputePrimitive_Euler = 100
 
-#ifdef MICROPHYSICS_WEAKLIB
-  REAL(DP), PUBLIC :: rhoMin_Euler_GR = Min_D
-#else
-  ! --- User must set this in fluid initialization and update device ---
+  ! --- User must set this in fluid initialization and update device.
+  !     For problems using a tabulated EOS, rhoMin_Euler_GR = Min_D must
+  !     be set elsewhere ---
   REAL(DP), PUBLIC :: rhoMin_Euler_GR = Zero
-#endif
   REAL(DP), PUBLIC :: epsMin_Euler_GR = Zero
 
 #if   defined( THORNADO_OMP_OL )
@@ -2301,8 +2299,13 @@ CONTAINS
 
     ! --- Check that sign of FunZ changes across bounds ---
 
-    IF( .NOT. fa * fb .LT. 0 ) &
+    IF( .NOT. fa * fb .LT. 0 )THEN
+
       iErr = 8
+
+      RETURN
+
+    END IF
 
     dz = zb - za
 
