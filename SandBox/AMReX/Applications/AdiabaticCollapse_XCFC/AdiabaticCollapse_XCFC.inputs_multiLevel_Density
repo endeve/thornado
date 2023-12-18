@@ -9,7 +9,7 @@ thornado.ProgramName = "AdiabaticCollapse_XCFC"
 
 AC.ProgenitorFileName = "../../Progenitors/WH07_15M_Sun.h5"
 
-thornado.iRestart = -1
+thornado.iRestart = 53459
 
 thornado.UsePhysicalUnits = 1
 
@@ -18,11 +18,11 @@ thornado.PlotFileNameRoot = "AdiabaticCollapse_XCFC.plt"
 thornado.t_end   = 3.0e+2
 thornado.iCycleD = 1
 
-thornado.dt_wrt  = 1.0e+0
+thornado.dt_wrt  = 1.0e-1
 thornado.iCycleW = -1
 
 thornado.CheckpointFileNameRoot = "AdiabaticCollapse_XCFC.chk"
-thornado.dt_chk    = 1.0e+1
+thornado.dt_chk    = 1.0e0
 thornado.iCycleChk = -1
 
 thornado.nNodes = 2
@@ -38,10 +38,11 @@ amr.n_cell                  = 512 01 01
 thornado.swX                = 01  00 00
 #amr.max_grid_size_x         = 128
 #amr.blocking_factor_x       = 128
-amr.max_level               = 6
 amr.UseFluxCorrection_Euler = 1
-amr.UseAMR                  = 0
-amr.TagCriteria             = 4.0e3 2.0e3 1.0e3 5.0e2 1.0e2 5.0e1
+amr.RefinementScheme        = "Density"
+amr.max_level               = 9
+amr.TagCriteria             = 1.0e6 1.0e7 1.0e8 1.0e9 1.0e10 1.0e11 1.0e12 1.0e13 1.0e14
+amr.UseAMR                  = 1
 amr.n_error_buf             = 0
 amr.ref_ratio               = 2
 
