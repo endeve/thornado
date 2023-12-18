@@ -23,7 +23,8 @@ MODULE MF_GeometryModule
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
     nNodesX, &
-    swX
+    swX, &
+    bcX
   USE UtilitiesModule, ONLY: &
     NodeNumberX
   USE ReferenceElementModuleX, ONLY: &
@@ -136,26 +137,11 @@ CONTAINS
 
     Mass = Zero
 
-    IF(    ( TRIM( ProgramName ) &
-               .EQ. 'StandingAccretionShock_Relativistic' ) &
-      .OR. ( TRIM( ProgramName ) &
-               .EQ. 'StandingAccretionShock_NonRelativistic' ) )THEN
+    CALL amrex_parmparse_build( PP, 'thornado' )
+      CALL PP % query( 'Mass', Mass )
+    CALL amrex_parmparse_destroy( PP )
 
-      CALL amrex_parmparse_build( PP, 'SAS' )
-        CALL PP % query( 'Mass', Mass )
-      CALL amrex_parmparse_destroy( PP )
-
-      Mass = Mass * SolarMass
-
-    ELSE
-
-      CALL amrex_parmparse_build( PP, 'thornado' )
-        CALL PP % query( 'Mass', Mass )
-      CALL amrex_parmparse_destroy( PP )
-
-      Mass = Mass * SolarMass
-
-    END IF
+    Mass = Mass * SolarMass
 
 #if defined( THORNADO_OMP )
     !$OMP PARALLEL &
@@ -397,83 +383,91 @@ CONTAINS
       iX_B0 = BX % lo
       iX_E0 = BX % hi
 
-      ! --- Lower boundary (Reflecting) ---
+      ! --- Lower boundary ---
 
       IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo( 1 ) )THEN
 
-        DO iGF  = 1       , nGF
-        DO iX3  = iX_B0(3), iX_E0(3)
-        DO iX2  = iX_B0(2), iX_E0(2)
-        DO iNX3 = 1       , nNodesX(3)
-        DO iNX2 = 1       , nNodesX(2)
-        DO iNX1 = 1       , nNodesX(1)
+        IF( bcX(1) .EQ. 30 )THEN
 
-          jNX1 = ( nNodesX(1) - iNX1 ) + 1
+          DO iGF  = 1       , nGF
+          DO iX3  = iX_B0(3), iX_E0(3)
+          DO iX2  = iX_B0(2), iX_E0(2)
+          DO iNX3 = 1       , nNodesX(3)
+          DO iNX2 = 1       , nNodesX(2)
+          DO iNX1 = 1       , nNodesX(1)
 
-          iNX = NodeNumberX( iNX1, iNX2, iNX3 )
-          jNX = NodeNumberX( jNX1, iNX2, iNX3 )
+            jNX1 = ( nNodesX(1) - iNX1 ) + 1
 
-          uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF-1)+iNX) &
-            = uGF(iX_B0(1),iX2,iX3,nDOFX*(iGF-1)+jNX)
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( jNX1, iNX2, iNX3 )
 
-          IF( iGF .EQ. iGF_Beta_1 ) &
             uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF-1)+iNX) &
-              = -uGF(iX_B0(1),iX2,iX3,nDOFX*(iGF-1)+jNX)
+              = uGF(iX_B0(1),iX2,iX3,nDOFX*(iGF-1)+jNX)
 
-        END DO
-        END DO
-        END DO
-        END DO
-        END DO
-        END DO
+            IF( iGF .EQ. iGF_Beta_1 ) &
+              uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF-1)+iNX) &
+                = -uGF(iX_B0(1),iX2,iX3,nDOFX*(iGF-1)+jNX)
 
-      END IF ! Lower boundary
+          END DO
+          END DO
+          END DO
+          END DO
+          END DO
+          END DO
+
+        END IF
+
+      END IF !  Lower boundary
 
       ! --- Upper boundary ---
 
       IF( iX_E0(1) .EQ. amrex_geom(iLevel) % domain % hi( 1 ) )THEN
 
-        nX1_X = ( iX_E0(3) - iX_B0(3) + 1 ) * ( iX_E0(2) - iX_B0(2) + 1 )
+        IF( bcX(1) .EQ. 30 )THEN
 
-        ALLOCATE( G_K(1:nDOFX   ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
-        ALLOCATE( G_F(1:nDOFX_X1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
+          nX1_X = ( iX_E0(3) - iX_B0(3) + 1 ) * ( iX_E0(2) - iX_B0(2) + 1 )
 
-        DO iGF = 1       , nGF
-        DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-        DO iNX = 1       , nDOFX
+          ALLOCATE( G_K(1:nDOFX   ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
+          ALLOCATE( G_F(1:nDOFX_X1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
 
-          G_K(iNX,iX2,iX3,iGF) = uGF(iX_E0(1),iX2,iX3,nDOFX*(iGF-1)+iNX)
+          DO iGF = 1       , nGF
+          DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = iX_B0(2), iX_E0(2)
+          DO iNX = 1       , nDOFX
 
-        END DO
-        END DO
-        END DO
-        END DO
+            G_K(iNX,iX2,iX3,iGF) = uGF(iX_E0(1),iX2,iX3,nDOFX*(iGF-1)+iNX)
 
-        DO iGF = 1, nGF
+          END DO
+          END DO
+          END DO
+          END DO
 
-          CALL MatrixMatrixMultiply &
-                 ( 'N', 'N', nDOFX_X1, nX1_X, nDOFX, One, LX_X1_Up, &
-                   nDOFX_X1,   G_K(1,iX_B0(2),iX_B0(3),iGF), &
-                   nDOFX, Zero,G_F(1,iX_B0(2),iX_B0(3),iGF), &
-                   nDOFX_X1 )
+          DO iGF = 1, nGF
 
-        END DO
+            CALL MatrixMatrixMultiply &
+                   ( 'N', 'N', nDOFX_X1, nX1_X, nDOFX, One, LX_X1_Up, &
+                     nDOFX_X1,   G_K(1,iX_B0(2),iX_B0(3),iGF), &
+                     nDOFX, Zero,G_F(1,iX_B0(2),iX_B0(3),iGF), &
+                     nDOFX_X1 )
 
-        DO iGF = 1       , nGF
-        DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-        DO iNX = 1       , nDOFX
+          END DO
 
-          uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF-1)+iNX) = G_F(1,iX2,iX3,iGF)
+          DO iGF = 1       , nGF
+          DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = iX_B0(2), iX_E0(2)
+          DO iNX = 1       , nDOFX
 
-        END DO
-        END DO
-        END DO
-        END DO
+            uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF-1)+iNX) = G_F(1,iX2,iX3,iGF)
 
-        DEALLOCATE( G_F )
-        DEALLOCATE( G_K )
+          END DO
+          END DO
+          END DO
+          END DO
+
+          DEALLOCATE( G_F )
+          DEALLOCATE( G_K )
+
+        END IF
 
       END IF ! Upper boundary
 

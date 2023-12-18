@@ -7,7 +7,7 @@ debug.DEBUG = 0
 
 thornado.ProgramName = "StandingAccretionShock_Relativistic"
 
-SAS.Mass          = 2.0   # [Msun]
+thornado.Mass     = 2.0   # [Msun]
 SAS.AccretionRate = 0.3   # [Msun/s]
 SAS.ShockRadius   = 150.0 # [km]
 SAS.PreShockK     = 2.0e14 # [km]
