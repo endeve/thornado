@@ -168,6 +168,8 @@ MODULE InitializationModule
   USE FillPatchModule, ONLY: &
     FillPatch, &
     FillCoarsePatch
+  USE MF_XCFC_UtilitiesModule, ONLY: &
+    MultiplyWithPsi6_MF
   USE InputParsingModule, ONLY: &
     InitializeParameters, &
     nLevels, &
