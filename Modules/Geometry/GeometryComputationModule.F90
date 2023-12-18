@@ -19,6 +19,9 @@ MODULE GeometryComputationModule
     iGF_Beta_1,   iGF_Beta_2,   iGF_Beta_3,   &
     iGF_SqrtGm, &
     iGF_Alpha, iGF_Psi, &
+    iGF_K_dd_11, iGF_K_dd_12, iGF_K_dd_13, &
+                 iGF_K_dd_22, iGF_K_dd_23, &
+                              iGF_K_dd_33, &
     nGF
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiply
@@ -343,9 +346,15 @@ CONTAINS
                G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
                G(iNodeX,iX1,iX2,iX3,iGF_SqrtGm) )
 
-      G(iNodeX,iX1,iX2,iX3,iGF_Beta_1) = Zero
-      G(iNodeX,iX1,iX2,iX3,iGF_Beta_2) = Zero
-      G(iNodeX,iX1,iX2,iX3,iGF_Beta_3) = Zero
+      G(iNodeX,iX1,iX2,iX3,iGF_Beta_1)  = Zero
+      G(iNodeX,iX1,iX2,iX3,iGF_Beta_2)  = Zero
+      G(iNodeX,iX1,iX2,iX3,iGF_Beta_3)  = Zero
+      G(iNodeX,iX1,iX2,iX3,iGF_K_dd_11) = Zero
+      G(iNodeX,iX1,iX2,iX3,iGF_K_dd_12) = Zero
+      G(iNodeX,iX1,iX2,iX3,iGF_K_dd_13) = Zero
+      G(iNodeX,iX1,iX2,iX3,iGF_K_dd_22) = Zero
+      G(iNodeX,iX1,iX2,iX3,iGF_K_dd_23) = Zero
+      G(iNodeX,iX1,iX2,iX3,iGF_K_dd_33) = Zero
 
     END DO
     END DO

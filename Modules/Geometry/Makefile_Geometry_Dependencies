@@ -4,6 +4,17 @@ GeometryFieldsModule.o: \
   ProgramHeaderModule.o \
   GeometryFieldsModule.F90
 
+GeometryBoundaryConditionsModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  GeometryComputationModule.o \
+  GeometryBoundaryConditionsModule.f90
+
 GeometryComputationModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
@@ -54,13 +65,29 @@ GravitySolutionModule_Newtonian_Poseidon.o: \
   GeometryFieldsModule.o \
   GravitySolutionModule_Newtonian_Poseidon.F90
 
+GravitySolutionModule_XCFC.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  GeometryComputationModule.o \
+  XCFC_UtilitiesModule.o \
+  GravitySolutionModule_XCFC_Poseidon.o \
+  TimersModule_Euler.o \
+  GravitySolutionModule_XCFC.F90
+
 GravitySolutionModule_XCFC_Poseidon.o: \
   KindModule.o \
   ProgramHeaderModule.o \
+  MeshModule.o \
+  GeometryComputationModule.o \
+  XCFC_UtilitiesModule.o \
+  GravitySolutionModule_XCFC_Poseidon.F90
+
+XCFC_UtilitiesModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
   ReferenceElementModuleX.o \
-  UtilitiesModule.o \
   MeshModule.o \
   GeometryFieldsModule.o \
+  GeometryBoundaryConditionsModule.o \
   GeometryComputationModule.o \
-  TimersModule_Euler.o \
-  GravitySolutionModule_XCFC_Poseidon.F90
+  XCFC_UtilitiesModule.f90

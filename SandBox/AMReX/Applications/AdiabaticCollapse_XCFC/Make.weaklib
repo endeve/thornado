@@ -14,4 +14,3 @@ VPATH_LOCATIONS += $(WEAKLIB_HOME)/Distributions/EOSSource
 f90EXE_sources += wlEOSIOModuleHDF.f90
 f90EXE_sources += wlEquationOfStateTableModule.f90
 F90EXE_sources += wlEOSInversionModule.F90
-

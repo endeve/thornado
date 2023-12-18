@@ -82,6 +82,7 @@ module ThornadoInitializationModule
     CreateFluidFields, &
     DestroyFluidFields
   use RadiationFieldsModule, only: &
+    SetNumberOfSpecies, &
     CreateRadiationFields, &
     DestroyRadiationFields
   use TwoMoment_ClosureModule, only: &
@@ -118,7 +119,7 @@ module ThornadoInitializationModule
 contains
 
   subroutine InitThornado &
-    ( nNodes, nDimsX, nE, swE, eL_MeV, eR_MeV, zoomE, bcE, &
+    ( nNodes, nDimsX, nE, swE, eL_MeV, eR_MeV, zoomE, bcE, nSpecies, &
       EquationOfStateTableName_Option, External_EOS, &
       Gamma_IDEAL_Option, &
       PositivityLimiter_Option, UpperBry1_Option, &
@@ -128,13 +129,24 @@ contains
       OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
       OpacityTableName_NES_Option, OpacityTableName_Pair_Option, &
       OpacityTableName_Brem_Option, &
+      EmAb_Nucleon_MinD_Option, EmAb_Nucleon_MaxD_Option, &
+      EmAb_Nuclei_MinD_Option, EmAb_Nuclei_MaxD_Option, &
+      EmAb_MinD_Option, EmAb_MaxD_Option, &
+      Iso_MinD_Option, Iso_MaxD_Option, &
+      NES_MinD_Option, NES_MaxD_Option, &
+      Pair_MinD_Option, Pair_MaxD_Option, &
+      Brem_MinD_Option, Brem_MaxD_Option, &
+      NNS_MinD_Option, NNS_MaxD_Option, &
+      NuPair_MinD_Option, NuPair_MaxD_Option, &
+      Op_MinD_Option, Op_MaxD_Option, &
       M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
       MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
       Include_NES_Option, Include_Pair_Option, Include_Brem_Option, &
-      Include_LinCorr_Option, wMatrRHS_Option, &
-      ActivateUnits_Option, CoordinateSystem_Option, Verbose_Option )
+      Include_LinCorr_Option, wMatrRHS_Option, FreezeOpacities_Option, &
+      ActivateUnits_Option, CoordinateSystem_Option, &
+      UseChemicalPotentialShift_Option, Verbose_Option )
 
-    integer,  intent(in) :: nNodes, nDimsX, nE, swE, bcE
+    integer,  intent(in) :: nNodes, nDimsX, nE, swE, bcE, nSpecies
     real(dp), intent(in) :: eL_MeV, eR_MeV, zoomE
 
     character(len=*), intent(in), optional :: EquationOfStateTableName_Option
@@ -158,6 +170,16 @@ contains
     character(len=*), intent(in), optional :: OpacityTableName_NES_Option
     character(len=*), intent(in), optional :: OpacityTableName_Pair_Option
     character(len=*), intent(in), optional :: OpacityTableName_Brem_Option
+    real(dp),         intent(in), optional :: EmAb_Nucleon_MinD_Option, EmAb_Nucleon_MaxD_Option
+    real(dp),         intent(in), optional :: EmAb_Nuclei_MinD_Option, EmAb_Nuclei_MaxD_Option
+    real(dp),         intent(in), optional :: EmAb_MinD_Option, EmAb_MaxD_Option
+    real(dp),         intent(in), optional :: Iso_MinD_Option, Iso_MaxD_Option
+    real(dp),         intent(in), optional :: NES_MinD_Option, NES_MaxD_Option
+    real(dp),         intent(in), optional :: Pair_MinD_Option, Pair_MaxD_Option
+    real(dp),         intent(in), optional :: Brem_MinD_Option, Brem_MaxD_Option
+    real(dp),         intent(in), optional :: NNS_MinD_Option, NNS_MaxD_Option
+    real(dp),         intent(in), optional :: NuPair_MinD_Option, NuPair_MaxD_Option
+    real(dp),         intent(in), optional :: Op_MinD_Option, Op_MaxD_Option
     integer,          intent(in), optional :: M_outer_Option
     integer,          intent(in), optional :: M_inner_Option
     integer,          intent(in), optional :: MaxIter_outer_Option
@@ -169,12 +191,14 @@ contains
     logical,          intent(in), optional :: Include_Brem_Option
     logical,          intent(in), optional :: Include_LinCorr_Option
     real(dp),         intent(in), optional :: wMatrRHS_Option(5)
+    logical,          intent(in), optional :: FreezeOpacities_Option
     logical,          intent(in), optional :: ActivateUnits_Option
     character(len=*), intent(in), optional :: CoordinateSystem_Option
     logical,          intent(in), optional :: Verbose_Option
+    logical,          intent(in), optional :: UseChemicalPotentialShift_Option
 
     logical  :: TroubledCellIndicator
-    logical  :: PositivityLimiter, SlopeLimiter, EnergyLimiter, Verbose
+    logical  :: PositivityLimiter, SlopeLimiter, EnergyLimiter, UseChemicalPotentialShift, Verbose
     logical  :: ActivateUnits
     integer  :: nX(3), bcX(3)
     integer  :: i
@@ -216,6 +240,12 @@ contains
       Verbose = Verbose_Option
     ELSE
       Verbose = .FALSE.
+    END IF
+
+    IF( PRESENT(UseChemicalPotentialShift_Option) )THEN
+      UseChemicalPotentialShift = UseChemicalPotentialShift_Option
+    ELSE
+      UseChemicalPotentialShift = .FALSE.
     END IF
 
     IF( PRESENT(UpperBry1_Option) )THEN
@@ -296,6 +326,8 @@ contains
              nE_Option = nE, swE_Option = swE, bcE_Option = bcE, &
              eL_Option = eL, eR_Option = eR, zoomE_Option = zoomE, &
              Verbose_Option = Verbose )
+
+    call SetNumberOfSpecies( nSpecies, Verbose_Option = Verbose )
 
 #ifdef THORNADO_DEBUG
     call DescribeProgramHeader
@@ -385,7 +417,8 @@ contains
     call InitializeEquationOfState_TABLE &
            ( EquationOfStateTableName_Option &
                = EquationOfStateTableName_Option, &
-             Verbose_Option = Verbose , &
+             UseChemicalPotentialShift_Option = UseChemicalPotentialShift, &
+             Verbose_Option = Verbose, &
              External_EOS = External_EOS )
 #else
     call InitializeEquationOfState_IDEAL &
@@ -407,6 +440,46 @@ contains
                = OpacityTableName_Brem_Option, &
              EquationOfStateTableName_Option &
                = EquationOfStateTableName_Option, &
+             EmAb_Nucleon_MinD_Option &
+               = EmAb_Nucleon_MinD_Option, &
+             EmAb_Nucleon_MaxD_Option &
+               = EmAb_Nucleon_MaxD_Option, &
+             EmAb_Nuclei_MinD_Option &
+               = EmAb_Nuclei_MinD_Option, &
+             EmAb_Nuclei_MaxD_Option &
+               = EmAb_Nuclei_MaxD_Option, &
+             EmAb_MinD_Option &
+               = EmAb_MinD_Option, &
+             EmAb_MaxD_Option &
+               = EmAb_MaxD_Option, &
+             Iso_MinD_Option &
+               = Iso_MinD_Option, &
+             Iso_MaxD_Option &
+               = Iso_MaxD_Option, &
+             NES_MinD_Option &
+               = NES_MinD_Option, &
+             NES_MaxD_Option &
+               = NES_MaxD_Option, &
+             Pair_MinD_Option &
+               = Pair_MinD_Option, &
+             Pair_MaxD_Option &
+               = Pair_MaxD_Option, &
+             Brem_MinD_Option &
+               = Brem_MinD_Option, &
+             Brem_MaxD_Option &
+               = Brem_MaxD_Option, &
+             NNS_MinD_Option &
+               = NNS_MinD_Option, &
+             NNS_MaxD_Option &
+               = NNS_MaxD_Option, &
+             NuPair_MinD_Option &
+               = NuPair_MinD_Option, &
+             NuPair_MaxD_Option &
+               = NuPair_MaxD_Option, &
+             Op_MinD_Option &
+               = Op_MinD_Option, &
+             Op_MaxD_Option &
+               = Op_MaxD_Option, &
              Verbose_Option = Verbose )
 
     ! --- For refinement and coarsening of DG data
@@ -448,6 +521,7 @@ contains
              Include_Brem_Option = Include_Brem_Option, &
              Include_LinCorr_Option = Include_LinCorr_Option, &
              wMatrRHS_Option = wMatrRHS_Option, &
+             FreezeOpacities_Option = FreezeOpacities_Option, &
              Verbose_Option = Verbose )
 
   end subroutine InitThornado

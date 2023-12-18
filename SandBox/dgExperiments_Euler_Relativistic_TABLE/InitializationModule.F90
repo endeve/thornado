@@ -60,6 +60,7 @@ MODULE InitializationModule
 
   PUBLIC :: InitializeFields
 
+  REAL(DP), PARAMETER :: DensityUnits = Gram / Centimeter**3
 
 CONTAINS
 
@@ -121,13 +122,19 @@ CONTAINS
     INTEGER  :: iNX, iNX1
     REAL(DP) :: X1
 
-    REAL(DP) :: D_0 = 1.0e12_DP
-    REAL(DP) :: Amp = 1.0e11_DP
-    REAL(DP) :: L   = 1.0e02_DP
+    REAL(DP) :: D_0, V1, V2, V3, P, Ye, Ne
+    REAL(DP) :: Amp
+    REAL(DP) :: L
 
-    D_0 = D_0 * ( Gram / Centimeter**3 )
-    Amp = Amp * ( Gram / Centimeter**3 )
-    L   = L   * Kilometer
+    D_0 = 1.0e12_DP * DensityUnits
+    Amp = 0.1_DP * D_0
+    V1  = 0.1_DP
+    V2  = 0.0_DP
+    V3  = 0.0_DP
+    P   = 1.0e-2_DP * D_0
+    Ye  = 0.3_DP
+
+    L = 1.0e2_DP * Kilometer ! Hard-coded from ApplicationDriver
 
     WRITE(*,*)
     WRITE(*,'(A4,A,A)') &
@@ -136,7 +143,7 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNX = 1, nDOFX
+    DO iNX = 1       , nDOFX
 
       iNX1 = NodeNumberTableX(1,iNX)
 
@@ -146,23 +153,13 @@ CONTAINS
 
         CASE( 'SineWave' )
 
-          uPF(iNX,iX1,iX2,iX3,iPF_D ) &
-            = D_0 + Amp * SIN( TwoPi * X1 / L )
+          uPF(iNX,iX1,iX2,iX3,iPF_D ) = D_0 + Amp * SIN( TwoPi * X1 / L )
+          uPF(iNX,iX1,iX2,iX3,iPF_V1) = V1
+          uPF(iNX,iX1,iX2,iX3,iPF_V2) = V2
+          uPF(iNX,iX1,iX2,iX3,iPF_V3) = V3
 
-          uPF(iNX,iX1,iX2,iX3,iPF_V1) &
-            = 3.0e4_DP * unitsPF(iPF_V1)
-
-          uPF(iNX,iX1,iX2,iX3,iPF_V2) &
-            = 0.0_DP   * unitsPF(iPF_V2)
-
-          uPF(iNX,iX1,iX2,iX3,iPF_V3) &
-            = 0.0_DP   * unitsPF(iPF_V3)
-
-          uAF(iNX,iX1,iX2,iX3,iAF_P ) &
-            = 0.1_DP  * D_0 * SpeedOfLight**2
-
-          uAF(iNX,iX1,iX2,iX3,iAF_Ye) &
-            = 0.3_DP   * unitsAF(iAF_Ye)
+          uAF(iNX,iX1,iX2,iX3,iAF_P ) = P
+          uAF(iNX,iX1,iX2,iX3,iAF_Ye) = Ye
 
         CASE DEFAULT
 

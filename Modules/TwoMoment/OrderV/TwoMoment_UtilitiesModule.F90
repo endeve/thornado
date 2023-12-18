@@ -1,7 +1,7 @@
 MODULE TwoMoment_UtilitiesModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, Two, Three, Five, &
+    DP, Zero, Half, One, Two, Three, Five, Third, &
     SqrtTiny, FourPi
   USE UnitsModule, ONLY: &
     UnitsActive, &
@@ -489,13 +489,16 @@ CONTAINS
     ! --- Initial Guess ---
 !! Mathi: Rich 1
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( iX )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( iX ) &
     !$ACC PRESENT( CVEC, N, G_d_1, G_d_2, G_d_3, &
-    !$ACC          D, I_u_1, I_u_2, I_u_3 )
+    !$ACC          PositionIndexZ, D, I_u_1, I_u_2, I_u_3 )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( iX )
 #endif
     DO iZ = 1, nZ
       CVEC(iCR_N ,iZ) = N    (iZ)
@@ -503,10 +506,12 @@ CONTAINS
       CVEC(iCR_G2,iZ) = G_d_2(iZ)
       CVEC(iCR_G3,iZ) = G_d_3(iZ)
 
+      iX = PositionIndexZ(iZ)
+
       D    (iZ) = N(iZ)
-      I_u_1(iZ) = Zero
-      I_u_2(iZ) = Zero
-      I_u_3(iZ) = Zero
+      I_u_1(iZ) = G_d_1(iZ) / Gm_dd_11(iX)
+      I_u_2(iZ) = G_d_2(iZ) / Gm_dd_22(iX)
+      I_u_3(iZ) = G_d_3(iZ) / Gm_dd_33(iX)
     END DO
 
     CALL TimersStop( Timer_Streaming_NumericalFlux_InOut )
@@ -1490,9 +1495,10 @@ CONTAINS
 
     INTEGER  :: &
       iZ1, iZ2, iZ3, iZ4, iS, iNodeZ, iNodeX
-    REAL(DP) :: &
-      PF(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
-         1:nPF)
+
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: PF
+
+    ALLOCATE( PF(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nPF) )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE FROM( GX, CF, CR )
@@ -1923,13 +1929,20 @@ CONTAINS
     REAL(DP) :: V_d_1, V_d_2, V_d_3, AbsV
     REAL(DP) :: CFL_Eff_X, CFL_Eff_E
     REAL(DP) :: dE_Min, A(3,3), Lambda(3), Alpha_E
-    REAL(DP), DIMENSION(nDOFX,3, &
-                        iZ_B0(2):iZ_E0(2), &
-                        iZ_B0(3):iZ_E0(3), &
-                        iZ_B0(4):iZ_E0(4)) :: &
-      dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
-      dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
-      dV_u_dX3, dV_d_dX3, dGm_dd_dX3
+
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: dV_u_dX1, dV_d_dX1, dGm_dd_dX1
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: dV_u_dX2, dV_d_dX2, dGm_dd_dX2
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: dV_u_dX3, dV_d_dX3, dGm_dd_dX3
+
+    ALLOCATE(   dV_u_dX1(nDOFX,3,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
+    ALLOCATE(   dV_d_dX1(nDOFX,3,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
+    ALLOCATE( dGm_dd_dX1(nDOFX,3,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
+    ALLOCATE(   dV_u_dX2(nDOFX,3,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
+    ALLOCATE(   dV_d_dX2(nDOFX,3,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
+    ALLOCATE( dGm_dd_dX2(nDOFX,3,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
+    ALLOCATE(   dV_u_dX3(nDOFX,3,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
+    ALLOCATE(   dV_d_dX3(nDOFX,3,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
+    ALLOCATE( dGm_dd_dX3(nDOFX,3,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
 
     IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
@@ -2267,10 +2280,15 @@ CONTAINS
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    EF = EddingtonFactor( D, FF )
-
-    a = Half * ( One - EF )
-    b = Half * ( Three * EF - One )
+    IF ( FF <= SqrtTiny ) THEN
+      EF = Third
+      a = Third
+      b = Zero
+    ELSE
+      EF = EddingtonFactor( D, FF )
+      a = Half * ( One - EF )
+      b = Half * ( Three * EF - One )
+    END IF
 
     h_u_1 = I_u_1 / ( FF * D )
 
@@ -2315,10 +2333,15 @@ CONTAINS
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    EF = EddingtonFactor( D, FF )
-
-    a = Half * ( One - EF )
-    b = Half * ( Three * EF - One )
+    IF ( FF <= SqrtTiny ) THEN
+      EF = Third
+      a = Third
+      b = Zero
+    ELSE
+      EF = EddingtonFactor( D, FF )
+      a = Half * ( One - EF )
+      b = Half * ( Three * EF - One )
+    END IF
 
     h_u_2 = I_u_2 / ( FF * D )
 
@@ -2363,10 +2386,15 @@ CONTAINS
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    EF = EddingtonFactor( D, FF )
-
-    a = Half * ( One - EF )
-    b = Half * ( Three * EF - One )
+    IF ( FF <= SqrtTiny ) THEN
+      EF = Third
+      a = Third
+      b = Zero
+    ELSE
+      EF = EddingtonFactor( D, FF )
+      a = Half * ( One - EF )
+      b = Half * ( Three * EF - One )
+    END IF
 
     h_u_3 = I_u_3 / ( FF * D )
 
@@ -2410,10 +2438,15 @@ CONTAINS
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    EF = EddingtonFactor( D, FF )
-
-    a = Half * ( One - EF )
-    b = Half * ( Three * EF - One )
+    IF ( FF <= SqrtTiny ) THEN
+      EF = Third
+      a = Third
+      b = Zero
+    ELSE
+      EF = EddingtonFactor( D, FF )
+      a = Half * ( One - EF )
+      b = Half * ( Three * EF - One )
+    END IF
 
     h_u = [ I_u_1, I_u_2, I_u_3 ] / ( FF * D )
 
@@ -2453,10 +2486,15 @@ CONTAINS
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    EF = EddingtonFactor( D, FF )
-
-    a = Half * ( One - EF )
-    b = Half * ( Three * EF - One )
+    IF ( FF <= SqrtTiny ) THEN
+      EF = Third
+      a = Third
+      b = Zero
+    ELSE
+      EF = EddingtonFactor( D, FF )
+      a = Half * ( One - EF )
+      b = Half * ( Three * EF - One )
+    END IF
 
     h_d_1 = Gm_dd_11 * I_u_1 / ( FF * D )
     h_d_2 = Gm_dd_22 * I_u_2 / ( FF * D )
@@ -2496,11 +2534,16 @@ CONTAINS
     REAL(DP) :: h_d(3), Gm_dd(3,3)
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-                      
-    EF = EddingtonFactor( D, FF )
 
-    a = Half * ( One - EF )
-    b = Half * ( Three * EF - One )
+    IF ( FF <= SqrtTiny ) THEN
+      EF = Third
+      a = Third
+      b = Zero
+    ELSE
+      EF = EddingtonFactor( D, FF )
+      a = Half * ( One - EF )
+      b = Half * ( Three * EF - One )
+    END IF
 
     h_d(1) = Gm_dd_11 * I_u_1 / ( FF * D )
     h_d(2) = Gm_dd_22 * I_u_2 / ( FF * D )
@@ -2539,10 +2582,15 @@ CONTAINS
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    EF = EddingtonFactor( D, FF )
-
-    a = Half * ( One - EF )
-    b = Half * ( Three * EF - One )
+    IF ( FF <= SqrtTiny ) THEN
+      EF = Third
+      a = Third
+      b = Zero
+    ELSE
+      EF = EddingtonFactor( D, FF )
+      a = Half * ( One - EF )
+      b = Half * ( Three * EF - One )
+    END IF
 
     h_u_1 = I_u_1 / ( FF * D )
     h_u_2 = I_u_2 / ( FF * D )
@@ -2587,10 +2635,15 @@ CONTAINS
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    HF = HeatFluxFactor( D, FF )
-
-    a = Half * ( FF - HF )
-    b = Half * ( Five * HF - Three * FF )
+    IF ( FF <= SqrtTiny ) THEN
+      HF = Zero
+      a = Zero
+      b = Zero
+    ELSE
+      HF = HeatFluxFactor( D, FF )
+      a = Half * ( FF - HF )
+      b = Half * ( Five * HF - Three * FF )
+    END IF
 
     h_u = [ I_u_1, I_u_2, I_u_3 ] / ( FF * D )
 
@@ -2636,10 +2689,15 @@ CONTAINS
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    HF = HeatFluxFactor( D, FF )
-
-    a = Half * ( FF - HF )
-    b = Half * ( Five * HF - Three * FF )
+    IF ( FF <= SqrtTiny ) THEN
+      HF = Zero
+      a = Zero
+      b = Zero
+    ELSE
+      HF = HeatFluxFactor( D, FF )
+      a = Half * ( FF - HF )
+      b = Half * ( Five * HF - Three * FF )
+    END IF
 
     h_u_1 = I_u_1 / ( FF * D )
     h_u_2 = I_u_2 / ( FF * D )
@@ -2698,10 +2756,15 @@ CONTAINS
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    HF = HeatFluxFactor( D, FF )
-
-    a = Half * ( FF - HF )
-    b = Half * ( Five * HF - Three * FF )
+    IF ( FF <= SqrtTiny ) THEN
+      HF = Zero
+      a = Zero
+      b = Zero
+    ELSE
+      HF = HeatFluxFactor( D, FF )
+      a = Half * ( FF - HF )
+      b = Half * ( Five * HF - Three * FF )
+    END IF
 
     h_u_1 = I_u_1 / ( FF * D )
     h_u_2 = I_u_2 / ( FF * D )
@@ -2802,82 +2865,30 @@ CONTAINS
 
     ! --- Geometry Fields ---
 
-    REAL(DP) :: &
-      GX_K   (nDOFX,nGF, &
-              iX_B0(2)  :iX_E0(2)  , &
-              iX_B0(3)  :iX_E0(3)  , &
-              iX_B0(1)-1:iX_E0(1)+1)
-    REAL(DP) :: &
-      GX_F   (nDOFX_X1,nGF, &
-              iX_B0(2)  :iX_E0(2)  , &
-              iX_B0(3)  :iX_E0(3)  , &
-              iX_B0(1)  :iX_E0(1)+1)
-    REAL(DP) :: &
-      h_d_F  (nDOFX_X1,3, &
-              iX_B0(2)  :iX_E0(2)  , &
-              iX_B0(3)  :iX_E0(3)  , &
-              iX_B0(1)  :iX_E0(1)+1)
-    REAL(DP) :: &
-      h_d_K  (nDOFX,3, &
-              iX_B0(2)  :iX_E0(2)  , &
-              iX_B0(3)  :iX_E0(3)  , &
-              iX_B0(1)  :iX_E0(1)  )
-    REAL(DP) :: &
-      dh_d_dX1(nDOFX,3, &
-               iX_B0(2)  :iX_E0(2)  , &
-               iX_B0(3)  :iX_E0(3)  , &
-               iX_B0(1)  :iX_E0(1)  )
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: GX_K, GX_F, h_d_F, h_d_K, dh_d_dX1
 
     ! --- Conserved Fluid Fields ---
 
-    REAL(DP) :: &
-      U_F_K(nDOFX,nCF, &
-            iX_B0(2)  :iX_E0(2)  , &
-            iX_B0(3)  :iX_E0(3)  , &
-            iX_B0(1)-1:iX_E0(1)+1)
-    REAL(DP) :: &
-      U_F_L(nDOFX_X1,nCF, &
-            iX_B0(2)  :iX_E0(2)  , &
-            iX_B0(3)  :iX_E0(3)  , &
-            iX_B0(1)  :iX_E0(1)+1)
-    REAL(DP) :: &
-      U_F_R(nDOFX_X1,nCF, &
-            iX_B0(2)  :iX_E0(2)  , &
-            iX_B0(3)  :iX_E0(3)  , &
-            iX_B0(1)  :iX_E0(1)+1)
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: U_F_K, U_F_L, U_F_R
 
     ! --- Velocities ---
 
-    REAL(DP) :: &
-      V_u_X1  (nDOFX_X1,3, &
-               iX_B0(2)  :iX_E0(2)  , &
-               iX_B0(3)  :iX_E0(3)  , &
-               iX_B0(1)  :iX_E0(1)+1)
-    REAL(DP) :: &
-      V_d_X1  (nDOFX_X1,3, &
-               iX_B0(2)  :iX_E0(2)  , &
-               iX_B0(3)  :iX_E0(3)  , &
-               iX_B0(1)  :iX_E0(1)+1)
-    REAL(DP) :: &
-      V_u_K   (nDOFX,3, &
-               iX_B0(2)  :iX_E0(2)  , &
-               iX_B0(3)  :iX_E0(3)  , &
-               iX_B0(1)  :iX_E0(1)  )
-    REAL(DP) :: &
-      V_d_K   (nDOFX,3, &
-               iX_B0(2)  :iX_E0(2)  , &
-               iX_B0(3)  :iX_E0(3)  , &
-               iX_B0(1)  :iX_E0(1)  )
-    REAL(DP) :: &
-      dV_u_dX1(nDOFX,3, &
-               iX_B0(2)  :iX_E0(2)  , &
-               iX_B0(3)  :iX_E0(3)  , &
-               iX_B0(1)  :iX_E0(1)  )
-    REAL(DP) :: &
-      dV_d_dX1(nDOFX,3, &
-               iX_B0(2)  :iX_E0(2)  , &
-               iX_B0(3)  :iX_E0(3)  , &
-               iX_B0(1)  :iX_E0(1)  )
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: V_u_X1, V_d_X1, V_u_K, V_d_K, dV_u_dX1, dV_d_dX1
+
+    ALLOCATE( GX_K    (nDOFX   ,nGF,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)-1:iX_E0(1)+1) )
+    ALLOCATE( GX_F    (nDOFX_X1,nGF,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)+1) )
+    ALLOCATE( h_d_F   (nDOFX_X1,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)+1) )
+    ALLOCATE( h_d_K   (nDOFX   ,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)  ) )
+    ALLOCATE( dh_d_dX1(nDOFX   ,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)  ) )
+    ALLOCATE( U_F_K   (nDOFX   ,nCF,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)-1:iX_E0(1)+1) )
+    ALLOCATE( U_F_L   (nDOFX_X1,nCF,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)+1) )
+    ALLOCATE( U_F_R   (nDOFX_X1,nCF,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)+1) )
+    ALLOCATE( V_u_X1  (nDOFX_X1,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)+1) )
+    ALLOCATE( V_d_X1  (nDOFX_X1,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)+1) )
+    ALLOCATE( V_u_K   (nDOFX   ,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)  ) )
+    ALLOCATE( V_d_K   (nDOFX   ,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)  ) )
+    ALLOCATE( dV_u_dX1(nDOFX   ,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)  ) )
+    ALLOCATE( dV_d_dX1(nDOFX   ,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)  ) )
 
     IF( iX_E0(1) .EQ. iX_B0(1) )THEN
 
@@ -3375,82 +3386,30 @@ CONTAINS
 
     ! --- Geometry Fields ---
 
-    REAL(DP) :: &
-      GX_K   (nDOFX,nGF, &
-              iX_B0(1)  :iX_E0(1)  , &
-              iX_B0(3)  :iX_E0(3)  , &
-              iX_B0(2)-1:iX_E0(2)+1)
-    REAL(DP) :: &
-      GX_F   (nDOFX_X2,nGF, &
-              iX_B0(1)  :iX_E0(1)  , &
-              iX_B0(3)  :iX_E0(3)  , &
-              iX_B0(2)  :iX_E0(2)+1)
-    REAL(DP) :: &
-      h_d_F  (nDOFX_X2,3, &
-              iX_B0(1)  :iX_E0(1)  , &
-              iX_B0(3)  :iX_E0(3)  , &
-              iX_B0(2)  :iX_E0(2)+1)
-    REAL(DP) :: &
-      h_d_K  (nDOFX,3, &
-              iX_B0(1)  :iX_E0(1)  , &
-              iX_B0(3)  :iX_E0(3)  , &
-              iX_B0(2)  :iX_E0(2)  )
-    REAL(DP) :: &
-      dh_d_dX2(nDOFX,3, &
-               iX_B0(1)  :iX_E0(1)  , &
-               iX_B0(3)  :iX_E0(3)  , &
-               iX_B0(2)  :iX_E0(2)  )
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: GX_K, GX_F, h_d_F, h_d_K, dh_d_dX2
 
     ! --- Conserved Fluid Fields ---
 
-    REAL(DP) :: &
-      U_F_K(nDOFX,nCF, &
-            iX_B0(1)  :iX_E0(1)  , &
-            iX_B0(3)  :iX_E0(3)  , &
-            iX_B0(2)-1:iX_E0(2)+1)
-    REAL(DP) :: &
-      U_F_L(nDOFX_X2,nCF, &
-            iX_B0(1)  :iX_E0(1)  , &
-            iX_B0(3)  :iX_E0(3)  , &
-            iX_B0(2)  :iX_E0(2)+1)
-    REAL(DP) :: &
-      U_F_R(nDOFX_X2,nCF, &
-            iX_B0(1)  :iX_E0(1)  , &
-            iX_B0(3)  :iX_E0(3)  , &
-            iX_B0(2)  :iX_E0(2)+1)
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: U_F_K, U_F_L, U_F_R
 
     ! --- Velocities ---
 
-    REAL(DP) :: &
-      V_u_X2  (nDOFX_X2,3, &
-               iX_B0(1)  :iX_E0(1)  , &
-               iX_B0(3)  :iX_E0(3)  , &
-               iX_B0(2)  :iX_E0(2)+1)
-    REAL(DP) :: &
-      V_d_X2  (nDOFX_X2,3, &
-               iX_B0(1)  :iX_E0(1)  , &
-               iX_B0(3)  :iX_E0(3)  , &
-               iX_B0(2)  :iX_E0(2)+1)
-    REAL(DP) :: &
-      V_u_K   (nDOFX,3, &
-               iX_B0(1)  :iX_E0(1)  , &
-               iX_B0(3)  :iX_E0(3)  , &
-               iX_B0(2)  :iX_E0(2)  )
-    REAL(DP) :: &
-      V_d_K   (nDOFX,3, &
-               iX_B0(1)  :iX_E0(1)  , &
-               iX_B0(3)  :iX_E0(3)  , &
-               iX_B0(2)  :iX_E0(2)  )
-    REAL(DP) :: &
-      dV_u_dX2(nDOFX,3, &
-               iX_B0(1)  :iX_E0(1)  , &
-               iX_B0(3)  :iX_E0(3)  , &
-               iX_B0(2)  :iX_E0(2)  )
-    REAL(DP) :: &
-      dV_d_dX2(nDOFX,3, &
-               iX_B0(1)  :iX_E0(1)  , &
-               iX_B0(3)  :iX_E0(3)  , &
-               iX_B0(2)  :iX_E0(2)  )
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: V_u_X2, V_d_X2, V_u_K, V_d_K, dV_u_dX2, dV_d_dX2
+
+    ALLOCATE( GX_K    (nDOFX   ,nGF,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)-1:iX_E0(2)+1) )
+    ALLOCATE( GX_F    (nDOFX_X2,nGF,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)+1) )
+    ALLOCATE( h_d_F   (nDOFX_X2,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)+1) )
+    ALLOCATE( h_d_K   (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)  ) )
+    ALLOCATE( dh_d_dX2(nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)  ) )
+    ALLOCATE( U_F_K   (nDOFX   ,nCF,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)-1:iX_E0(2)+1) )
+    ALLOCATE( U_F_L   (nDOFX_X2,nCF,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)+1) )
+    ALLOCATE( U_F_R   (nDOFX_X2,nCF,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)+1) )
+    ALLOCATE( V_u_X2  (nDOFX_X2,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)+1) )
+    ALLOCATE( V_d_X2  (nDOFX_X2,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)+1) )
+    ALLOCATE( V_u_K   (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)  ) )
+    ALLOCATE( V_d_K   (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)  ) )
+    ALLOCATE( dV_u_dX2(nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)  ) )
+    ALLOCATE( dV_d_dX2(nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)  ) )
 
     IF( iX_E0(2) .EQ. iX_B0(2) )THEN
 
@@ -3949,82 +3908,30 @@ CONTAINS
 
     ! --- Geometry Fields ---
 
-    REAL(DP) :: &
-      GX_K   (nDOFX,nGF, &
-              iX_B0(1)  :iX_E0(1)  , &
-              iX_B0(2)  :iX_E0(2)  , &
-              iX_B0(3)-1:iX_E0(3)+1)
-    REAL(DP) :: &
-      GX_F   (nDOFX_X3,nGF, &
-              iX_B0(1)  :iX_E0(1)  , &
-              iX_B0(2)  :iX_E0(2)  , &
-              iX_B0(3)  :iX_E0(3)+1)
-    REAL(DP) :: &
-      h_d_F  (nDOFX_X3,3, &
-              iX_B0(1)  :iX_E0(1)  , &
-              iX_B0(2)  :iX_E0(2)  , &
-              iX_B0(3)  :iX_E0(3)+1)
-    REAL(DP) :: &
-      h_d_K  (nDOFX,3, &
-              iX_B0(1)  :iX_E0(1)  , &
-              iX_B0(2)  :iX_E0(2)  , &
-              iX_B0(3)  :iX_E0(3)  )
-    REAL(DP) :: &
-      dh_d_dX3(nDOFX,3, &
-               iX_B0(1)  :iX_E0(1)  , &
-               iX_B0(2)  :iX_E0(2)  , &
-               iX_B0(3)  :iX_E0(3)  )
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: GX_K, GX_F, h_d_F, h_d_K, dh_d_dX3
 
     ! --- Conserved Fluid Fields ---
 
-    REAL(DP) :: &
-      U_F_K(nDOFX,nCF, &
-            iX_B0(1)  :iX_E0(1)  , &
-            iX_B0(2)  :iX_E0(2)  , &
-            iX_B0(3)-1:iX_E0(3)+1)
-    REAL(DP) :: &
-      U_F_L(nDOFX_X3,nCF, &
-            iX_B0(1)  :iX_E0(1)  , &
-            iX_B0(2)  :iX_E0(2)  , &
-            iX_B0(3)  :iX_E0(3)+1)
-    REAL(DP) :: &
-      U_F_R(nDOFX_X3,nCF, &
-            iX_B0(1)  :iX_E0(1)  , &
-            iX_B0(2)  :iX_E0(2)  , &
-            iX_B0(3)  :iX_E0(3)+1)
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: U_F_K, U_F_L, U_F_R
 
     ! --- Velocities ---
 
-    REAL(DP) :: &
-      V_u_X3  (nDOFX_X3,3, &
-               iX_B0(1)  :iX_E0(1)  , &
-               iX_B0(2)  :iX_E0(2)  , &
-               iX_B0(3)  :iX_E0(3)+1)
-    REAL(DP) :: &
-      V_d_X3  (nDOFX_X3,3, &
-               iX_B0(1)  :iX_E0(1)  , &
-               iX_B0(2)  :iX_E0(2)  , &
-               iX_B0(3)  :iX_E0(3)+1)
-    REAL(DP) :: &
-      V_u_K   (nDOFX,3, &
-               iX_B0(1)  :iX_E0(1)  , &
-               iX_B0(2)  :iX_E0(2)  , &
-               iX_B0(3)  :iX_E0(3)  )
-    REAL(DP) :: &
-      V_d_K   (nDOFX,3, &
-               iX_B0(1)  :iX_E0(1)  , &
-               iX_B0(2)  :iX_E0(2)  , &
-               iX_B0(3)  :iX_E0(3)  )
-    REAL(DP) :: &
-      dV_u_dX3(nDOFX,3, &
-               iX_B0(1)  :iX_E0(1)  , &
-               iX_B0(2)  :iX_E0(2)  , &
-               iX_B0(3)  :iX_E0(3)  )
-    REAL(DP) :: &
-      dV_d_dX3(nDOFX,3, &
-               iX_B0(1)  :iX_E0(1)  , &
-               iX_B0(2)  :iX_E0(2)  , &
-               iX_B0(3)  :iX_E0(3)  )
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: V_u_X3, V_d_X3, V_u_K, V_d_K, dV_u_dX3, dV_d_dX3
+
+    ALLOCATE( GX_K    (nDOFX   ,nGF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)-1:iX_E0(3)+1) )
+    ALLOCATE( GX_F    (nDOFX_X3,nGF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
+    ALLOCATE( h_d_F   (nDOFX_X3,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
+    ALLOCATE( h_d_K   (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
+    ALLOCATE( dh_d_dX3(nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
+    ALLOCATE( U_F_K   (nDOFX   ,nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)-1:iX_E0(3)+1) )
+    ALLOCATE( U_F_L   (nDOFX_X3,nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
+    ALLOCATE( U_F_R   (nDOFX_X3,nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
+    ALLOCATE( V_u_X3  (nDOFX_X3,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
+    ALLOCATE( V_d_X3  (nDOFX_X3,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
+    ALLOCATE( V_u_K   (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
+    ALLOCATE( V_d_K   (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
+    ALLOCATE( dV_u_dX3(nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
+    ALLOCATE( dV_d_dX3(nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
 
     IF( iX_E0(3) .EQ. iX_B0(3) )THEN
 

@@ -328,7 +328,7 @@ CONTAINS
 
     END ASSOCIATE
 
-    ! --- Read Radiation Variables ---
+    ! --- Read Two-Moment Variables ---
 
     DO iS = 1, nSpecies
 

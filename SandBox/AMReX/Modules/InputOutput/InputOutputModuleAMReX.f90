@@ -4,8 +4,6 @@ MODULE InputOutputModuleAMReX
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module, ONLY: &
-    amrex_spacedim
   USE amrex_plotfile_module, ONLY: &
     amrex_write_plotfile
   USE amrex_string_module, ONLY: &
@@ -15,24 +13,20 @@ MODULE InputOutputModuleAMReX
     amrex_box
   USE amrex_boxarray_module, ONLY: &
     amrex_boxarray, &
-    amrex_boxarray_build, &
-    amrex_boxarray_destroy
+    amrex_boxarray_build
   USE amrex_distromap_module,  ONLY: &
     amrex_distromap,       &
-    amrex_distromap_build, &
-    amrex_distromap_destroy
+    amrex_distromap_build
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_multifab_build, &
     amrex_multifab_destroy, &
     amrex_mfiter, &
     amrex_mfiter_build, &
-    amrex_mfiter_destroy, &
-    amrex_imultifab
+    amrex_mfiter_destroy
   USE amrex_geometry_module, ONLY: &
     amrex_geometry, &
-    amrex_geometry_build, &
-    amrex_geometry_destroy
+    amrex_geometry_build
   USE amrex_amrcore_module, ONLY: &
     amrex_get_amrcore, &
     amrex_get_numlevels, &
@@ -56,14 +50,16 @@ MODULE InputOutputModuleAMReX
     nDOFZ, &
     nDOFE, &
     iZ_B0, &
-    iZ_E0
+    iZ_E0, &
+    swX, &
+    nX, &
+    nE, &
+    nDimsX
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q, &
     nDOFX_X1
   USE ReferenceElementModuleZ, ONLY: &
     nDOFZ_Z2
-  USE ReferenceElementModuleE, ONLY: &
-    WeightsE
   USE ReferenceElementModule, ONLY: &
     Weights_q
   USE MeshModule, ONLY: &
@@ -97,7 +93,8 @@ MODULE InputOutputModuleAMReX
     nPR, &
     ShortNamesGR, &
     unitsGR, &
-    nGR
+    nGR, &
+    nSpecies
   USE UnitsModule, ONLY: &
     UnitsDisplay
 
@@ -105,8 +102,7 @@ MODULE InputOutputModuleAMReX
 
   USE MF_KindModule, ONLY: &
     DP, &
-    Zero, &
-    Two
+    Zero
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -123,25 +119,34 @@ MODULE InputOutputModuleAMReX
     MF_uPR, &
     MF_uGR, &
     FluxRegister_TwoMoment
-  USE FillPatchModule, ONLY: &
-    FillPatch
   USE InputParsingModule, ONLY: &
     nLevels, &
     nMaxLevels, &
     MaxGridSizeX, &
     dt, &
     StepNo, &
-    swX, &
     t_new, &
-    PlotFileBaseName, &
-    nX, &
-    nE, &
-    nSpecies, &
+    PlotFileNameRoot, &
     iRestart, &
     UseTiling, &
     UseFluxCorrection_Euler, &
     UseFluxCorrection_TwoMoment, &
     iOS_CPP
+  USE MF_Euler_TallyModule, ONLY: &
+    BaryonicMass_Initial, &
+    BaryonicMass_OffGrid, &
+    EulerMomentumX1_Initial, &
+    EulerMomentumX1_OffGrid, &
+    EulerMomentumX2_Initial, &
+    EulerMomentumX2_OffGrid, &
+    EulerMomentumX3_Initial, &
+    EulerMomentumX3_OffGrid, &
+    EulerEnergy_Initial, &
+    EulerEnergy_OffGrid, &
+    ElectronNumber_Initial, &
+    ElectronNumber_OffGrid, &
+    ADMMass_Initial, &
+    ADMMass_OffGrid
 
   IMPLICIT NONE
   PRIVATE
@@ -153,32 +158,63 @@ MODULE InputOutputModuleAMReX
   INTERFACE
 
     SUBROUTINE WriteFieldsAMReX_Checkpoint &
-                 ( StepNo, nLevels, dt, time, pBA, &
+                 ( StepNo, nLevels, dt, time, &
+                   BaryonicMassArr   , &
+                   EulerMomentumX1Arr, &
+                   EulerMomentumX2Arr, &
+                   EulerMomentumX3Arr, &
+                   EulerEnergyArr    , &
+                   ElectronNumberArr , &
+                   ADMMassArr        , &
+                   pBA, &
                    iWriteFields_uGF, iWriteFields_uCF, iWriteFields_uCR, &
-                   pMF_uGF_Option, pMF_uCF_Option, pMF_uCR_Option ) BIND(c)
-       IMPORT
-       IMPLICIT NONE
-       INTEGER(c_int),        INTENT(in) :: StepNo(*)
-       INTEGER(c_int), VALUE, INTENT(in) :: nLevels
-       REAL(DP)      ,        INTENT(in) :: dt(*), time(*)
-       TYPE(c_ptr)   ,        INTENT(in) :: pBA(*)
-       INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uGF
-       INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uCF
-       INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uCR
-       TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uGF_Option(*)
-       TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uCF_Option(*)
-       TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uCR_Option(*)
+                   pMF_uGF_Option, pMF_uCF_Option, pMF_uCR_Option, &
+                   Verbose_Option ) BIND(c)
+      IMPORT
+      IMPLICIT NONE
+      INTEGER(c_int),        INTENT(in) :: StepNo(*)
+      INTEGER(c_int), VALUE, INTENT(in) :: nLevels
+      REAL(DP)      ,        INTENT(in) :: dt(*), time(*)
+      REAL(DP)      ,        INTENT(in) :: BaryonicMassArr   (*)
+      REAL(DP)      ,        INTENT(in) :: EulerMomentumX1Arr(*)
+      REAL(DP)      ,        INTENT(in) :: EulerMomentumX2Arr(*)
+      REAL(DP)      ,        INTENT(in) :: EulerMomentumX3Arr(*)
+      REAL(DP)      ,        INTENT(in) :: EulerEnergyArr    (*)
+      REAL(DP)      ,        INTENT(in) :: ElectronNumberArr (*)
+      REAL(DP)      ,        INTENT(in) :: ADMMassArr        (*)
+      TYPE(c_ptr)   ,        INTENT(in) :: pBA(*)
+      INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uGF
+      INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uCF
+      INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uCR
+      TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uGF_Option(*)
+      TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uCF_Option(*)
+      TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uCR_Option(*)
+      INTEGER(c_int),        INTENT(in), OPTIONAL :: Verbose_Option(*)
     END SUBROUTINE WriteFieldsAMReX_Checkpoint
 
     SUBROUTINE ReadHeaderAndBoxArrayData &
                  ( FinestLevelArr, StepNo, dt, Time, &
+                   BaryonicMassArr   , &
+                   EulerMomentumX1Arr, &
+                   EulerMomentumX2Arr, &
+                   EulerMomentumX3Arr, &
+                   EulerEnergyArr    , &
+                   ElectronNumberArr , &
+                   ADMMassArr, &
                    pBA, pDM, iChkFile ) BIND(c)
       IMPORT
       IMPLICIT NONE
       INTEGER(c_int), INTENT(out) :: FinestLevelArr(*)
       INTEGER(c_int), INTENT(out) :: StepNo(*)
-      REAL(DP),       INTENT(out) :: dt(*), Time(*)
-      TYPE(c_ptr),    INTENT(out) :: pBA(*), pDM(*)
+      REAL(DP)      , INTENT(out) :: dt(*), Time(*)
+      REAL(DP)      , INTENT(out) :: BaryonicMassArr   (*)
+      REAL(DP)      , INTENT(out) :: EulerMomentumX1Arr(*)
+      REAL(DP)      , INTENT(out) :: EulerMomentumX2Arr(*)
+      REAL(DP)      , INTENT(out) :: EulerMomentumX3Arr(*)
+      REAL(DP)      , INTENT(out) :: EulerEnergyArr    (*)
+      REAL(DP)      , INTENT(out) :: ElectronNumberArr (*)
+      REAL(DP)      , INTENT(out) :: ADMMassArr        (*)
+      TYPE(c_ptr)   , INTENT(out) :: pBA(*), pDM(*)
       INTEGER(c_int), VALUE       :: iChkFile
     END SUBROUTINE ReadHeaderAndBoxArrayData
 
@@ -200,7 +236,8 @@ CONTAINS
     ( Time, StepNo, MF_uGF, &
       MF_uGF_Option, MF_uCF_Option, MF_uPF_Option, &
       MF_uAF_Option, MF_uDF_Option, &
-      MF_uCR_Option, MF_uPR_Option, MF_uGR_Option, PlotFileNumber_Option )
+      MF_uCR_Option, MF_uPR_Option, MF_uGR_Option, PlotFileNumber_Option, &
+      Verbose_Option )
 
     REAL(DP)            , INTENT(in) :: Time
     INTEGER             , INTENT(in) :: StepNo(0:)
@@ -214,6 +251,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uPR_Option(0:)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uGR_Option(0:)
     INTEGER             , INTENT(in), OPTIONAL :: PlotFileNumber_Option
+    LOGICAL             , INTENT(in), OPTIONAL :: Verbose_Option
 
     CHARACTER(08)                   :: NumberString
     CHARACTER(64)                   :: PlotFileName
@@ -232,6 +270,11 @@ CONTAINS
     INTEGER                         :: iFd, iOS, iLevel, nF, iS, iZ1
     TYPE(amrex_multifab)            :: MF_plt(0:nLevels-1)
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
+    LOGICAL                         :: Verbose
+
+    Verbose = .FALSE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
 
     nF = 7 ! MPI proc, X1_C, X2_C, X3_C, dX1, dX2, dX3
 
@@ -309,9 +352,9 @@ CONTAINS
 
     END IF
 
-    PlotFileName = TRIM( PlotFileBaseName ) // NumberString
+    PlotFileName = TRIM( PlotFileNameRoot ) // NumberString
 
-    IF( amrex_parallel_ioprocessor() )THEN
+    IF( Verbose )THEN
 
       WRITE(*,*)
       WRITE(*,'(6x,A,A)') 'Writing PlotFile ', PlotFileName
@@ -441,7 +484,6 @@ CONTAINS
 
     END IF
 
-
     IF( WriteRF_GR )THEN
 
       DO iS  = 1       , nSpecies
@@ -461,8 +503,6 @@ CONTAINS
       iOS = iOS + nGR * nSpecies
 
     END IF
-
-
 
     DO iLevel = 0, nLevels-1
 
@@ -557,6 +597,7 @@ CONTAINS
         iOS = iOS + nGR * nSpecies
 
       END IF
+
     END DO ! iLevel = 0, nLevels-1
 
     CALL amrex_write_plotfile &
@@ -597,6 +638,14 @@ CONTAINS
     INTEGER :: nXX(3)
     INTEGER :: FinestLevelArr(0:0) ! Hack
 
+    REAL(DP) :: BaryonicMassArr   (0:1)
+    REAL(DP) :: EulerMomentumX1Arr(0:1)
+    REAL(DP) :: EulerMomentumX2Arr(0:1)
+    REAL(DP) :: EulerMomentumX3Arr(0:1)
+    REAL(DP) :: EulerEnergyArr    (0:1)
+    REAL(DP) :: ElectronNumberArr (0:1)
+    REAL(DP) :: ADMMassArr        (0:1)
+
     LOGICAL :: ReadFields_uCF
     LOGICAL :: ReadFields_uCR
 
@@ -615,8 +664,8 @@ CONTAINS
       nXX = nX
 
       nXX(1) = 2**( iLevel ) * nX(1)
-      IF( amrex_spacedim .GT. 1 ) nXX(2) = 2**( iLevel ) * nX(2)
-      IF( amrex_spacedim .GT. 2 ) nXX(3) = 2**( iLevel ) * nX(3)
+      IF( nDimsX .GT. 1 ) nXX(2) = 2**( iLevel ) * nX(2)
+      IF( nDimsX .GT. 2 ) nXX(3) = 2**( iLevel ) * nX(3)
 
       BX = amrex_box( 1 - iOS_CPP, nXX - iOS_CPP )
 
@@ -634,11 +683,34 @@ CONTAINS
     pDM(0:nMaxLevels-1) = DM(0:nMaxLevels-1) % P
 
     CALL ReadHeaderAndBoxArrayData &
-           ( FinestLevelArr, StepNo, dt, t_new, pBA, pDM, iRestart )
+           ( FinestLevelArr, StepNo, dt, t_new, &
+             BaryonicMassArr   , &
+             EulerMomentumX1Arr, &
+             EulerMomentumX2Arr, &
+             EulerMomentumX3Arr, &
+             EulerEnergyArr    , &
+             ElectronNumberArr , &
+             ADMMassArr, &
+             pBA, pDM, iRestart )
 
     FinestLevel = FinestLevelArr(0) ! Hack
     CALL amrex_set_finest_level( FinestLevel )
     nLevels = amrex_get_numlevels()
+
+    BaryonicMass_Initial    = BaryonicMassArr   (0)
+    BaryonicMass_OffGrid    = BaryonicMassArr   (1)
+    EulerMomentumX1_Initial = EulerMomentumX1Arr(0)
+    EulerMomentumX1_OffGrid = EulerMomentumX1Arr(1)
+    EulerMomentumX2_Initial = EulerMomentumX2Arr(0)
+    EulerMomentumX2_OffGrid = EulerMomentumX2Arr(1)
+    EulerMomentumX3_Initial = EulerMomentumX3Arr(0)
+    EulerMomentumX3_OffGrid = EulerMomentumX3Arr(1)
+    EulerEnergy_Initial     = EulerEnergyArr    (0)
+    EulerEnergy_OffGrid     = EulerEnergyArr    (1)
+    ElectronNumber_Initial  = ElectronNumberArr (0)
+    ElectronNumber_OffGrid  = ElectronNumberArr (1)
+    ADMMass_Initial         = ADMMassArr        (0)
+    ADMMass_OffGrid         = ADMMassArr        (1)
 
     DO iLevel = 0, nLevels-1
 
@@ -699,7 +771,6 @@ CONTAINS
                ( MF_uGR(iLevel), BA(iLevel), DM(iLevel), &
                  nDOFX * nGR * nSpecies, swX )
         CALL MF_uGR(iLevel) % SetVal( Zero )
-
 
         ! Assume nDOFZ_Z3 = nDOFZ_Z4 = nDOFZ_Z2
         IF( iLevel .GT. 0 .AND. UseFluxCorrection_TwoMoment )THEN
@@ -805,8 +876,6 @@ CONTAINS
   END SUBROUTINE ComputeCellAverage_X_MF
 
 
-
-
   SUBROUTINE ComputeCellAverage_Z_MF &
     ( nFd, MF_uGF, MF, iOS, Field, MF_plt )
 
@@ -827,7 +896,8 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: G    (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: U    (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
-    REAL(DP)                      :: Eq(1:nDOFE), E(1:nDOFZ), SqrtGM(1:nDOFZ), V_K, SUM2
+    REAL(DP)                      :: Eq(1:nDOFE), E(1:nDOFZ), SqrtGM(1:nDOFZ), &
+                                     V_K, SUM2
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
@@ -951,7 +1021,6 @@ CONTAINS
 
       lo_G = LBOUND( G ); hi_G = UBOUND( G )
       lo_U = LBOUND( U ); hi_U = UBOUND( U )
- 
 
       DO iS = 1, nSpecies
       DO iX3 = BX % lo(3), BX % hi(3)

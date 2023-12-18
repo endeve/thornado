@@ -30,8 +30,6 @@ MODULE FinalizationModule
   USE MeshModule, ONLY: &
     MeshE, &
     DestroyMesh
-  USE EquationOfStateModule, ONLY: &
-    FinalizeEquationOfState
   USE Euler_MeshRefinementModule, ONLY: &
     FinalizeMeshRefinement_Euler
   USE TwoMoment_TimersModule, ONLY: &
@@ -41,6 +39,8 @@ MODULE FinalizationModule
 
   ! --- Local Modules ---
 
+  USE MF_EquationOfStateModule, ONLY: &
+    FinalizeEquationOfState_MF
   USE MF_FieldsModule_Geometry, ONLY: &
     MF_uGF, &
     DestroyFields_Geometry_MF
@@ -75,7 +75,21 @@ MODULE FinalizationModule
     WriteFieldsAMReX_Checkpoint
   USE MF_Euler_TallyModule, ONLY: &
     ComputeTally_Euler_MF, &
-    FinalizeTally_Euler_MF
+    FinalizeTally_Euler_MF, &
+    BaryonicMass_Initial, &
+    BaryonicMass_OffGrid, &
+    EulerMomentumX1_Initial, &
+    EulerMomentumX1_OffGrid, &
+    EulerMomentumX2_Initial, &
+    EulerMomentumX2_OffGrid, &
+    EulerMomentumX3_Initial, &
+    EulerMomentumX3_OffGrid, &
+    EulerEnergy_Initial, &
+    EulerEnergy_OffGrid, &
+    ElectronNumber_Initial, &
+    ElectronNumber_OffGrid, &
+    ADMMass_Initial, &
+    ADMMass_OffGrid
   USE MF_TwoMoment_TallyModule, ONLY: &
     ComputeTally_TwoMoment_MF, &
     FinalizeTally_TwoMoment_MF
@@ -129,6 +143,13 @@ CONTAINS
 
     CALL WriteFieldsAMReX_Checkpoint &
            ( StepNo, nLevels, dt, t_new, &
+             [ BaryonicMass_Initial   , BaryonicMass_OffGrid    ], &
+             [ EulerMomentumX1_Initial, EulerMomentumX1_OffGrid ], &
+             [ EulerMomentumX2_Initial, EulerMomentumX2_OffGrid ], &
+             [ EulerMomentumX3_Initial, EulerMomentumX3_OffGrid ], &
+             [ EulerEnergy_Initial    , EulerEnergy_OffGrid     ], &
+             [ ElectronNumber_Initial , ElectronNumber_OffGrid  ], &
+             [ ADMMass_Initial        , ADMMass_OffGrid         ], &
              MF_uGF % BA % P, &
              iWriteFields_uGF = 1, &
              iWriteFields_uCF = 1, &
@@ -165,7 +186,7 @@ CONTAINS
 
     CALL FinalizePositivityLimiter_Euler_MF
 
-    CALL FinalizeEquationOfState
+    CALL FinalizeEquationOfState_MF
 
     CALL DestroyGeometryFieldsE
 
@@ -192,7 +213,7 @@ CONTAINS
 
     CALL FinalizeTimers
 
-    CALL FinalizeTimers_AMReX
+    CALL FinalizeTimers_AMReX( Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL amrex_amrcore_finalize()
 

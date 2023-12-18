@@ -1,4 +1,5 @@
-# THORNADO_DIR/Modules/EquationOfState
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/EquationOfState
+f90EXE_sources  += MF_EquationOfStateModule.f90
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/EquationOfState
 F90EXE_sources  += EquationOfStateModule.F90

@@ -22,19 +22,31 @@ MODULE MF_GeometryModule
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
-    nNodesX
+    nNodesX, &
+    swX
   USE UtilitiesModule, ONLY: &
     NodeNumberX
   USE ReferenceElementModuleX, ONLY: &
-    nDOFX_X1
+    nDOFX_X1, &
+    NodeNumberTableX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
-    LX_X1_Dn, &
     LX_X1_Up
   USE UnitsModule, ONLY: &
     SolarMass
+  USE MeshModule, ONLY: &
+    MeshX, &
+    NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
-    iGF_Beta_1
+    iGF_h_1, &
+    iGF_h_2, &
+    iGF_h_3, &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33, &
+    iGF_SqrtGm, &
+    iGF_Psi, &
+    iGF_Beta_1, &
+    nGF
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
   USE GravitySolutionModule_Newtonian_PointMass, ONLY: &
@@ -47,6 +59,7 @@ MODULE MF_GeometryModule
   USE MF_KindModule, ONLY: &
     DP, &
     Zero, &
+    SqrtTiny, &
     One
   USE MF_UtilitiesModule, ONLY: &
     thornado2amrex_X, &
@@ -54,23 +67,55 @@ MODULE MF_GeometryModule
     DeallocateArray_X
   USE InputParsingModule, ONLY: &
     nLevels, &
-    swX, &
     UseTiling, &
     ProgramName, &
     SolveGravity_NR
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: ComputeGeometryX_MF
   PUBLIC :: ApplyBoundaryConditions_Geometry_MF
+  PUBLIC :: UpdateSpatialMetric_MF
+
+  INTERFACE ComputeGeometryX_MF
+    MODULE PROCEDURE ComputeGeometryX_MF_AllLevels
+    MODULE PROCEDURE ComputeGeometryX_MF_SingleLevel
+  END INTERFACE ComputeGeometryX_MF
+
+  INTERFACE ApplyBoundaryConditions_Geometry_MF
+    MODULE PROCEDURE ApplyBoundaryConditions_Geometry_MF_AllLevels
+    MODULE PROCEDURE ApplyBoundaryConditions_Geometry_MF_SingleLevel
+  END INTERFACE ApplyBoundaryConditions_Geometry_MF
 
 CONTAINS
 
 
-  SUBROUTINE ComputeGeometryX_MF( MF_uGF )
+  SUBROUTINE ComputeGeometryX_MF_AllLevels( MF_uGF )
 
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+
+    INTEGER :: iLevel
+
+    DO iLevel = 0, nLevels-1
+
+      CALL CreateMesh_MF( iLevel, MeshX )
+
+      CALL ComputeGeometryX_MF_SingleLevel( MF_uGF(iLevel) )
+
+      CALL DestroyMesh_MF( MeshX )
+
+    END DO
+
+  END SUBROUTINE ComputeGeometryX_MF_AllLevels
+
+
+  SUBROUTINE ComputeGeometryX_MF_SingleLevel( MF_uGF )
+
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX
@@ -80,8 +125,6 @@ CONTAINS
 
     REAL(DP), ALLOCATABLE :: G (:,:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-
-    INTEGER :: iLo_G(3), iHi_G(3)
 
     REAL(DP) :: Mass
 
@@ -110,7 +153,7 @@ CONTAINS
 
 #if defined( THORNADO_OMP )
     !$OMP PARALLEL &
-    !$OMP PRIVATE( MFI, BX, iX_B0, iX_E0, iX_B1, iX_E1, G, uGF, iLo_G, iHi_G )
+    !$OMP PRIVATE( MFI, BX, iX_B0, iX_E0, iX_B1, iX_E1, G, uGF )
 #endif
 
     CALL amrex_mfiter_build( MFI, MF_uGF )
@@ -125,9 +168,6 @@ CONTAINS
       iX_E0 = BX % hi
       iX_B1 = iX_B0 - swX
       iX_E1 = iX_E0 + swX
-
-      iLo_G = iX_B1
-      iHi_G = iX_E1
 
       CALL AllocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
@@ -168,46 +208,62 @@ CONTAINS
     !$OMP END PARALLEL
 #endif
 
-  END SUBROUTINE ComputeGeometryX_MF
+  END SUBROUTINE ComputeGeometryX_MF_SingleLevel
 
 
-  SUBROUTINE ApplyBoundaryConditions_Geometry_MF( MF_uGF )
+  SUBROUTINE ApplyBoundaryConditions_Geometry_MF_AllLevels( MF_uGF )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+
+    INTEGER :: iLevel
+
+    DO iLevel = 0, nLevels-1
+
+      CALL ApplyBoundaryConditions_Geometry_MF_SingleLevel &
+             ( iLevel, MF_uGF(iLevel) )
+
+    END DO
+
+  END SUBROUTINE ApplyBoundaryConditions_Geometry_MF_AllLevels
+
+
+  SUBROUTINE ApplyBoundaryConditions_Geometry_MF_SingleLevel( iLevel, MF_uGF )
+
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF
 
     IF( .NOT. amrex_is_all_periodic() )THEN
 
-      CALL ApplyBoundaryConditions_Geometry_MF_X1( MF_uGF )
+      CALL ApplyBoundaryConditions_Geometry_MF_X1( iLevel, MF_uGF )
 
     END IF
 
-  END SUBROUTINE ApplyBoundaryConditions_Geometry_MF
+  END SUBROUTINE ApplyBoundaryConditions_Geometry_MF_SingleLevel
 
 
-  SUBROUTINE ApplyBoundaryConditions_Geometry_MF_X1( MF_uGF )
+  SUBROUTINE UpdateSpatialMetric_MF( MF_uGF, swX_Option )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+    INTEGER             , INTENT(in), OPTIONAL :: swX_Option(3)
 
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
-    INTEGER  :: iX_B0(3), iX_E0(3)
-    INTEGER  :: iLevel, iNX, iX2, iX3, iGF, nX1_X, jNX
-    INTEGER  :: iNX1, iNX2, iNX3, jNX1
+    INTEGER  :: iLevel, iNX, iX1, iX2, iX3, iNX1, iNX2, swXX(3)
+    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP) :: X1, X2, Psi, h1, h2, h3
 
-    REAL(DP), ALLOCATABLE :: G_K(:,:,:,:)
-    REAL(DP), ALLOCATABLE :: G_F(:,:,:,:)
+    swXX = 0
+    IF( PRESENT( swX_Option ) ) &
+      swXX = swX_Option
 
     DO iLevel = 0, nLevels-1
 
-#if defined( THORNADO_OMP )
-      !$OMP PARALLEL &
-      !$OMP PRIVATE( BX, MFI, uGF, iX_B0, iX_E0, iNX, nX1_X, jNX, jNX1 )
-#endif
-
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+
+      CALL CreateMesh_MF( iLevel, MeshX )
 
       DO WHILE( MFI % next() )
 
@@ -217,96 +273,175 @@ CONTAINS
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
+        iX_B1 = iX_B0 - swXX
+        iX_E1 = iX_E0 + swXX
 
-        ! --- Lower boundary (Reflecting) ---
+        DO iX3 = iX_B1(3), iX_E1(3)
+        DO iX2 = iX_B1(2), iX_E1(2)
+        DO iX1 = iX_B1(1), iX_E1(1)
+        DO iNX = 1       , nDOFX
 
-        IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo( 1 ) )THEN
+          iNX1 = NodeNumberTableX(1,iNX)
+          iNX2 = NodeNumberTableX(2,iNX)
 
-          DO iGF  = 1       , nGF
-          DO iX3  = iX_B0(3), iX_E0(3)
-          DO iX2  = iX_B0(2), iX_E0(2)
-          DO iNX3 = 1       , nNodesX(3)
-          DO iNX2 = 1       , nNodesX(2)
-          DO iNX1 = 1       , nNodesX(1)
+          X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+          X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
 
-            jNX1 = ( nNodesX(1) - iNX1 ) + 1
+          Psi = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)
+          h1  = Psi**2
+          h2  = Psi**2 * X1
+          h3  = Psi**2 * X1 * SIN( X2 )
 
-            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
-            jNX = NodeNumberX( jNX1, iNX2, iNX3 )
+          uGF(iX1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) = h1
+          uGF(iX1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) = h2
+          uGF(iX1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX) = h3
 
-            uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF-1)+iNX) &
-              = uGF(iX_B0(1),iX2,iX3,nDOFX*(iGF-1)+jNX)
+          uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX) = MAX( h1**2, SqrtTiny )
+          uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX) = MAX( h2**2, SqrtTiny )
+          uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) = MAX( h3**2, SqrtTiny )
 
-            IF( iGF .EQ. iGF_Beta_1 ) &
-              uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF-1)+iNX) &
-                = -uGF(iX_B0(1),iX2,iX3,nDOFX*(iGF-1)+jNX)
+          uGF(iX1,iX2,iX3,nDOFX*(iGF_SqrtGm-1)+iNX) = h1 * h2 * h3
 
-          END DO
-          END DO
-          END DO
-          END DO
-          END DO
-          END DO
+        END DO
+        END DO
+        END DO
+        END DO
 
-        END IF ! Lower boundary
+      END DO ! WHILE( MFI % next() )
 
-        ! --- Upper boundary ---
-
-        IF( iX_E0(1) .EQ. amrex_geom(iLevel) % domain % hi( 1 ) )THEN
-
-          nX1_X = ( iX_E0(3) - iX_B0(3) + 1 ) * ( iX_E0(2) - iX_B0(2) + 1 )
-
-          ALLOCATE( G_K(1:nDOFX   ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
-          ALLOCATE( G_F(1:nDOFX_X1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
-
-          DO iGF = 1       , nGF
-          DO iX3 = iX_B0(3), iX_E0(3)
-          DO iX2 = iX_B0(2), iX_E0(2)
-          DO iNX = 1       , nDOFX
-
-            G_K(iNX,iX2,iX3,iGF) = uGF(iX_E0(1),iX2,iX3,nDOFX*(iGF-1)+iNX)
-
-          END DO
-          END DO
-          END DO
-          END DO
-
-          DO iGF = 1, nGF
-
-            CALL MatrixMatrixMultiply &
-                   ( 'N', 'N', nDOFX_X1, nX1_X, nDOFX, One, LX_X1_Up, &
-                     nDOFX_X1,   G_K(1,iX_B0(2),iX_B0(3),iGF), &
-                     nDOFX, Zero,G_F(1,iX_B0(2),iX_B0(3),iGF), &
-                     nDOFX_X1 )
-
-          END DO
-
-          DO iGF = 1       , nGF
-          DO iX3 = iX_B0(3), iX_E0(3)
-          DO iX2 = iX_B0(2), iX_E0(2)
-          DO iNX = 1       , nDOFX
-
-            uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF-1)+iNX) = G_F(1,iX2,iX3,iGF)
-
-          END DO
-          END DO
-          END DO
-          END DO
-
-          DEALLOCATE( G_F )
-          DEALLOCATE( G_K )
-
-        END IF ! Upper boundary
-
-      END DO
+      CALL DestroyMesh_MF( MeshX )
 
       CALL amrex_mfiter_destroy( MFI )
 
+    END DO ! iLevel = 0, nLevels-1
+
+  END SUBROUTINE UpdateSpatialMetric_MF
+
+
+  ! --- PRIVATE SUBROUTINES ---
+
+
+  SUBROUTINE ApplyBoundaryConditions_Geometry_MF_X1 &
+    ( iLevel, MF_uGF )
+
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF
+
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+
+    INTEGER  :: iX_B0(3), iX_E0(3)
+    INTEGER  :: iNX, iX2, iX3, iGF, nX1_X, jNX
+    INTEGER  :: iNX1, iNX2, iNX3, jNX1
+
+    REAL(DP), ALLOCATABLE :: G_K(:,:,:,:)
+    REAL(DP), ALLOCATABLE :: G_F(:,:,:,:)
+
 #if defined( THORNADO_OMP )
-      !$OMP END PARALLEL
+    !$OMP PARALLEL &
+    !$OMP PRIVATE( BX, MFI, uGF, iX_B0, iX_E0, iNX, nX1_X, jNX, jNX1 )
 #endif
 
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+
+    DO WHILE( MFI % next() )
+
+      uGF => MF_uGF % DataPtr( MFI )
+
+      BX = MFI % tilebox()
+
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+
+      ! --- Lower boundary (Reflecting) ---
+
+      IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo( 1 ) )THEN
+
+        DO iGF  = 1       , nGF
+        DO iX3  = iX_B0(3), iX_E0(3)
+        DO iX2  = iX_B0(2), iX_E0(2)
+        DO iNX3 = 1       , nNodesX(3)
+        DO iNX2 = 1       , nNodesX(2)
+        DO iNX1 = 1       , nNodesX(1)
+
+          jNX1 = ( nNodesX(1) - iNX1 ) + 1
+
+          iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+          jNX = NodeNumberX( jNX1, iNX2, iNX3 )
+
+          uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF-1)+iNX) &
+            = uGF(iX_B0(1),iX2,iX3,nDOFX*(iGF-1)+jNX)
+
+          IF( iGF .EQ. iGF_Beta_1 ) &
+            uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF-1)+iNX) &
+              = -uGF(iX_B0(1),iX2,iX3,nDOFX*(iGF-1)+jNX)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF ! Lower boundary
+
+      ! --- Upper boundary ---
+
+      IF( iX_E0(1) .EQ. amrex_geom(iLevel) % domain % hi( 1 ) )THEN
+
+        nX1_X = ( iX_E0(3) - iX_B0(3) + 1 ) * ( iX_E0(2) - iX_B0(2) + 1 )
+
+        ALLOCATE( G_K(1:nDOFX   ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
+        ALLOCATE( G_F(1:nDOFX_X1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
+
+        DO iGF = 1       , nGF
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iNX = 1       , nDOFX
+
+          G_K(iNX,iX2,iX3,iGF) = uGF(iX_E0(1),iX2,iX3,nDOFX*(iGF-1)+iNX)
+
+        END DO
+        END DO
+        END DO
+        END DO
+
+        DO iGF = 1, nGF
+
+          CALL MatrixMatrixMultiply &
+                 ( 'N', 'N', nDOFX_X1, nX1_X, nDOFX, One, LX_X1_Up, &
+                   nDOFX_X1,   G_K(1,iX_B0(2),iX_B0(3),iGF), &
+                   nDOFX, Zero,G_F(1,iX_B0(2),iX_B0(3),iGF), &
+                   nDOFX_X1 )
+
+        END DO
+
+        DO iGF = 1       , nGF
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iNX = 1       , nDOFX
+
+          uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF-1)+iNX) = G_F(1,iX2,iX3,iGF)
+
+        END DO
+        END DO
+        END DO
+        END DO
+
+        DEALLOCATE( G_F )
+        DEALLOCATE( G_K )
+
+      END IF ! Upper boundary
+
     END DO
+
+    CALL amrex_mfiter_destroy( MFI )
+
+#if defined( THORNADO_OMP )
+    !$OMP END PARALLEL
+#endif
 
   END SUBROUTINE ApplyBoundaryConditions_Geometry_MF_X1
 

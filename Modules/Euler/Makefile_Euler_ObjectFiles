@@ -23,4 +23,5 @@ EULER = \
   Euler_TallyModule_Relativistic.o \
   Euler_TallyModule.o \
   Euler_dgDiscretizationModule.o \
-  Euler_PerturbationModule.o
+  Euler_PerturbationModule.o \
+  Euler_XCFC_UtilitiesModule.o

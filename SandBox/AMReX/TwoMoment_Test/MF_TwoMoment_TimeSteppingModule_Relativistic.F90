@@ -1,8 +1,11 @@
 MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
 
-
-
   ! --- AMReX Modules ---
+
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse, &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
   USE amrex_fort_module,      ONLY: &
     AR => amrex_real
   USE amrex_box_module,       ONLY: &
@@ -21,10 +24,11 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
     amrex_distromap, &
     amrex_distromap_build, amrex_distromap_destroy
 
-    ! --- thornado Modules ---
+  ! --- thornado Modules ---
+
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nDOFX, nDOFE, &
-    iZ_B0, iZ_B1, iZ_E0, iZ_E1, swX, nX
+    iZ_B0, iZ_B1, iZ_E0, iZ_E1, swX, nX, nDimsX, nNodes
   USE GeometryFieldsModuleE, ONLY: &
     nGE
   USE GeometryFieldsModule, ONLY: &
@@ -33,6 +37,16 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
     nCF
   USE RadiationFieldsModule, ONLY: &
     nCR
+
+  ! --- Local Modules ---
+
+  USE InputParsingModule,                      ONLY: &
+    nLevels, DEBUG, UseTiling, nSpecies
+  USE MF_KindModule, ONLY: &
+    DP, &
+    Zero, &
+    One, &
+    Two
   USE MF_TwoMoment_DiscretizationModule_Streaming_Relativistic, ONLY: &
     ComputeIncrement_TwoMoment_Explicit_MF
   USE MF_TwoMoment_DiscretizationModule_Collisions_Relativistic, ONLY: &
@@ -43,16 +57,8 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
     ApplySlopeLimiter_TwoMoment_MF
   USE MF_FieldsModule_TwoMoment, ONLY: &
     OffGridFlux_TwoMoment_MF
-  ! --- Local Modules ---
-  USE InputParsingModule,                      ONLY: &
-    nLevels, DEBUG, UseTiling, nSpecies
-  USE MF_KindModule, ONLY: &
-    DP, &
-    Zero, &
-    One
   USE MF_TwoMoment_TallyModule, ONLY: &
     IncrementOffGridTally_TwoMoment_MF
-
 
   IMPLICIT NONE
   PRIVATE
@@ -75,7 +81,8 @@ MODULE MF_TwoMoment_TimeSteppingModule_Relativistic
   REAL(AR),            ALLOCATABLE :: Ui(:,:,:,:,:,:,:)
   TYPE(StageDataType), ALLOCATABLE :: StageData(:)
 
-
+  REAL(DP)                 , PUBLIC :: CFL
+  CHARACTER(:), ALLOCATABLE, PUBLIC :: Scheme
 
   PUBLIC :: Initialize_IMEX_RK
   PUBLIC :: Finalize_IMEX_RK
@@ -87,7 +94,6 @@ CONTAINS
 
 
   SUBROUTINE Update_IMEX_RK_MF( t, dt, uGE, MF_uGF, MF_uCF, MF_uCR, GEOM, Verbose_Option )
-
 
     REAL(AR),     INTENT(in)    :: t(0:nLevels-1), dt(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
@@ -117,7 +123,6 @@ CONTAINS
     ! --- Set temporary MultiFabs U and dU to zero --
     DO iLevel = 0, nLevels-1
 
-
       CALL MF_U(iLevel) % setval( 0.0_AR )
       CALL MF_F(iLevel) % setval( 0.0_AR )
 
@@ -131,7 +136,6 @@ CONTAINS
 
     END DO
 
-
     DO iS = 1, nStages
 
       ! --- Copy data from input MultiFab to temporary MultiFab ---
@@ -143,16 +147,14 @@ CONTAINS
                % COPY( MF_uCR(iLevel), 1, 1, &
                        MF_uCR(iLevel) % nComp(), swX )
 
-
         CALL MF_F(iLevel) &
                % COPY( MF_uCF(iLevel), 1, 1, &
                        MF_uCF(iLevel) % nComp(), swX )
-        ! --- Apply boundary conditions to interior domains ---
 
+        ! --- Apply boundary conditions to interior domains ---
 
         CALL MF_U(iLevel) % Fill_Boundary( GEOM(iLevel) )
         CALL MF_F(iLevel) % Fill_Boundary( GEOM(iLevel) )
-
 
         ! --- Copy ghost data from physical boundaries ---
 
@@ -173,13 +175,9 @@ CONTAINS
 
       END DO
 
-
-
       DO iLevel = 0, nLevels-1
 
-
         DO jS = 1, iS - 1
-
 
           IF( a_EX(iS,jS) .NE. 0.0_AR )THEN
             CALL MF_U(iLevel) &
@@ -210,7 +208,6 @@ CONTAINS
 
           END IF
 
-
         END DO ! jS = 1, iS - 1
 
         IF( ANY( a_IM(:,iS) .NE. 0.0_AR ) .OR. ( w_IM(iS) .NE. 0.0_AR ) )THEN
@@ -230,7 +227,6 @@ CONTAINS
           CALL ApplyPositivityLimiter_TwoMoment_MF &
                   ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
 
-
         END IF
 
         IF( ANY( a_EX(:,iS) .NE. 0.0_AR ) .OR. ( w_EX(iS) .NE. 0.0_AR ) )THEN
@@ -242,7 +238,6 @@ CONTAINS
 
           CALL ComputeIncrement_TwoMoment_Explicit_MF &
                ( t, GEOM, MF_uGF, MF_uCF, MF_U, MF_DU_Ex(:,iS), Verbose_Option = Verbose )
-
 
           dM_OffGrid_TwoMoment(:,iLevel) &
             = dM_OffGrid_TwoMoment(:,iLevel) &
@@ -256,65 +251,75 @@ CONTAINS
 
     ! --- Assembly Step ---
 
-  DO iLevel = 0, nLevels-1
-    IF( ANY( a_IM(nStages,:) .NE. w_IM(:) ) .OR. &
-        ANY( a_EX(nStages,:) .NE. w_EX(:) ) )THEN
+    DO iLevel = 0, nLevels-1
 
-      U = uCR
+      IF( ANY( a_IM(nStages,:) .NE. w_IM(:) ) .OR. &
+          ANY( a_EX(nStages,:) .NE. w_EX(:) ) )THEN
 
-      IF (Verbose) THEN
-        PRINT*, "    ASSEMBLY:"
-      END IF
+        U = uCR
+
+        IF (Verbose) THEN
+          PRINT*, "    ASSEMBLY:"
+        END IF
+
         !set Ui to U0 again ask about this
-      DO iS = 1, nStages
+        DO iS = 1, nStages
 
-        IF( w_IM(iS) .NE. 0.0_AR )THEN
+          IF( w_IM(iS) .NE. 0.0_AR )THEN
 
-          CALL MF_U(iLevel) &
-                 % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
-                            dt(iLevel) * w_IM(iS), MF_DU_Im(iLevel,iS), 1, &
-                            1, MF_U(iLevel) % nComp(), swX )
+            CALL MF_U(iLevel) &
+                   % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
+                              dt(iLevel) * w_IM(iS), MF_DU_Im(iLevel,iS), 1, &
+                              1, MF_U(iLevel) % nComp(), swX )
 
-        END IF
+          END IF
 
-        IF( w_EX(iS) .NE. 0.0_AR )THEN
+          IF( w_EX(iS) .NE. 0.0_AR )THEN
 
-          CALL MF_U(iLevel) &
-                 % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
-                            dt(iLevel) * w_EX(iS), MF_DU_Ex(iLevel,iS), 1, &
-                            1, MF_U(iLevel) % nComp(), swX )
+            CALL MF_U(iLevel) &
+                   % LinComb( 1.0_AR,              MF_U(iLevel),    1, &
+                              dt(iLevel) * w_EX(iS), MF_DU_Ex(iLevel,iS), 1, &
+                              1, MF_U(iLevel) % nComp(), swX )
 
-        END IF
+          END IF
 
-      END DO
+        END DO
 
-        CALL ApplySlopeLimiter_TwoMoment_MF &
-                   ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
+          CALL ApplySlopeLimiter_TwoMoment_MF &
+                     ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
 
-        CALL ApplyPositivityLimiter_TwoMoment_MF &
-                   ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
+          CALL ApplyPositivityLimiter_TwoMoment_MF &
+                     ( GEOM, MF_uGF, MF_uCF, MF_U, Verbose_Option = Verbose  )
 
-    END IF
+      END IF
 
-  END DO
+    END DO
 
-  CALL IncrementOffGridTally_TwoMoment_MF( dM_OffGrid_TwoMoment )
+    CALL IncrementOffGridTally_TwoMoment_MF( dM_OffGrid_TwoMoment )
 
-
-  uCR = U
+    uCR = U
 
   END SUBROUTINE Update_IMEX_RK_MF
 
-  SUBROUTINE Initialize_IMEX_RK_MF &
-    ( Scheme, BA, DM, Verbose_Option )
 
-    CHARACTER(LEN=*), INTENT(in) :: Scheme
+  SUBROUTINE Initialize_IMEX_RK_MF &
+    ( BA, DM, Verbose_Option )
+
     TYPE(amrex_boxarray),  INTENT(in)           :: BA(0:nLevels-1)
     TYPE(amrex_distromap), INTENT(in)           :: DM(0:nLevels-1)
     LOGICAL,               INTENT(in), OPTIONAL :: Verbose_Option
 
     INTEGER         :: iS, iLevel
     TYPE(amrex_box) :: BX
+
+    TYPE(amrex_parmparse) :: PP
+
+    CALL amrex_parmparse_build( PP, 'TS' )
+      CALL PP % get( 'CFL', CFL )
+      CALL PP % get( 'Scheme', Scheme )
+    CALL amrex_parmparse_destroy( PP )
+
+    CFL = CFL / ( DBLE( nDimsX ) * ( Two * DBLE( nNodes ) - One ) )
 
     CALL Initialize_IMEX_RK( Scheme, Verbose_Option )
 
@@ -352,7 +357,6 @@ CONTAINS
 
     END DO
 
-
   END SUBROUTINE Initialize_IMEX_RK_MF
 
 
@@ -382,6 +386,7 @@ CONTAINS
     DEALLOCATE( MF_DF_Im)
 
   END SUBROUTINE Finalize_IMEX_RK_MF
+
 
   SUBROUTINE Initialize_IMEX_RK( Scheme, Verbose_Option )
 
@@ -525,16 +530,12 @@ CONTAINS
 
     DO i = 1, nStages
 
-
       CALL AllocateArray7D( StageData(i) % dU_IM )
       CALL AllocateArray7D( StageData(i) % dU_EX )
+
     END DO
 
-
-
-
   END SUBROUTINE Initialize_IMEX_RK
-
 
 
   SUBROUTINE Finalize_IMEX_RK
@@ -598,6 +599,7 @@ CONTAINS
 
   END SUBROUTINE AllocateArray7D
 
+
   SUBROUTINE AllocateArray5D( Array5D )
 
     REAL(AR), ALLOCATABLE, INTENT(inout) :: Array5D(:,:,:,:,:)
@@ -612,6 +614,7 @@ CONTAINS
 
   END SUBROUTINE AllocateArray5D
 
+
   SUBROUTINE DeallocateArray7D( Array7D )
 
     REAL(AR), ALLOCATABLE, INTENT(inout) :: Array7D(:,:,:,:,:,:,:)
@@ -620,6 +623,7 @@ CONTAINS
 
   END SUBROUTINE DeallocateArray7D
 
+
   SUBROUTINE DeallocateArray5D( Array5D )
 
     REAL(AR), ALLOCATABLE, INTENT(inout) :: Array5D(:,:,:,:,:)
@@ -627,7 +631,6 @@ CONTAINS
     DEALLOCATE( Array5D )
 
   END SUBROUTINE DeallocateArray5D
-
 
 
 END MODULE MF_TwoMoment_TimeSteppingModule_Relativistic

@@ -134,13 +134,13 @@ PROGRAM ApplicationDriver
 
       AdvectionProfile = 'SineWave'
 
-      Gamma = 5.0_DP / 3.0_DP
+      Gamma = 4.0_DP / 3.0_DP
       t_end = 10.0_DP
       bcX = [ 1, 0, 0 ]
 
       CoordinateSystem = 'CARTESIAN'
 
-      nX  = [ 64, 1, 1 ]
+      nX  = [ 32, 1, 1 ]
       swX = [ 1, 0, 0 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
@@ -149,7 +149,7 @@ PROGRAM ApplicationDriver
 
       AdvectionProfile = 'SineWaveX1X2'
 
-      Gamma = 5.0_DP / 3.0_DP
+      Gamma = 4.0_DP / 3.0_DP
       t_end = 10.0_DP
       bcX = [ 1, 1, 0 ]
 
@@ -168,8 +168,8 @@ PROGRAM ApplicationDriver
 
         CASE( 'Sod' )
 
-          Gamma = 5.0_DP / 3.0_DP
-          t_end = 0.2_DP
+          Gamma = 4.0_DP / 3.0_DP
+          t_end = 0.4_DP
           bcX   = [ 2, 0, 0 ]
 
         CASE( 'IsolatedShock' )
@@ -260,11 +260,11 @@ PROGRAM ApplicationDriver
 
       CoordinateSystem = 'SPHERICAL'
 
-      Gamma = 5.0_DP / 3.0_DP
-      t_end = 0.5_DP
+      Gamma = 4.0_DP / 3.0_DP
+      t_end = 0.8_DP
       bcX = [ 2, 0, 0 ]
 
-      nX  = [ 256, 1, 1 ]
+      nX  = [ 128, 1, 1 ]
       swX = [ 1, 0, 0 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 2.0_DP, Pi, TwoPi ]
@@ -317,13 +317,13 @@ PROGRAM ApplicationDriver
 
   ! --- DG ---
 
-  nNodes = 1
+  nNodes = 3
   IF( .NOT. nNodes .LE. 4 ) &
     STOP 'nNodes must be less than or equal to four.'
 
   ! --- Time Stepping ---
 
-  nStagesSSPRK = 1
+  nStagesSSPRK = 3
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
 
@@ -331,19 +331,19 @@ PROGRAM ApplicationDriver
 
   ! --- Slope Limiter ---
 
-  UseSlopeLimiter           = .FALSE.
+  UseSlopeLimiter           = .TRUE.
   SlopeLimiterMethod        = 'TVD'
   BetaTVD                   = 1.75_DP
   BetaTVB                   = 0.0_DP
   SlopeTolerance            = 1.0e-6_DP
-  UseCharacteristicLimiting = .FALSE.
-  UseTroubledCellIndicator  = .FALSE.
-  LimiterThresholdParameter = 0.015_DP
-  UseConservativeCorrection = .FALSE.
+  UseCharacteristicLimiting = .TRUE.
+  UseTroubledCellIndicator  = .TRUE.
+  LimiterThresholdParameter = 0.03_DP
+  UseConservativeCorrection = .TRUE.
 
   ! --- Positivity Limiter ---
 
-  UsePositivityLimiter = .FALSE.
+  UsePositivityLimiter = .TRUE.
   Min_1                = 1.0e-13_DP
   Min_2                = 1.0e-13_DP
 

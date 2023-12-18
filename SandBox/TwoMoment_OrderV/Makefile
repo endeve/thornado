@@ -97,7 +97,7 @@ ApplicationDriver_CCSN: \
 	$(LIBRARIES)
 
 clean:
-	rm -f *.o *.mod *.ld *.lst *.acc.s
+	rm -f *.o *.mod *.ld *.lst *.i *.s
 
 clobber: clean
 	rm -f  TwoMomentClosure_$(MACHINE)

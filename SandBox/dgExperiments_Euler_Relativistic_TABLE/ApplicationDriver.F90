@@ -103,14 +103,14 @@ PROGRAM ApplicationDriver
 
   ! --- Slope Limiter ---
 
-  LOGICAL       :: UseSlopeLimiter
-  LOGICAL       :: UseCharacteristicLimiting
-  LOGICAL       :: UseTroubledCellIndicator
-  LOGICAL       :: UseConservativeCorrection
-  CHARACTER(4)  :: SlopeLimiterMethod
-  REAL(DP)      :: SlopeTolerance
-  REAL(DP)      :: BetaTVD, BetaTVB
-  REAL(DP)      :: LimiterThresholdParameter
+  LOGICAL      :: UseSlopeLimiter
+  LOGICAL      :: UseCharacteristicLimiting
+  LOGICAL      :: UseTroubledCellIndicator
+  LOGICAL      :: UseConservativeCorrection
+  CHARACTER(4) :: SlopeLimiterMethod
+  REAL(DP)     :: SlopeTolerance
+  REAL(DP)     :: BetaTVD, BetaTVB
+  REAL(DP)     :: LimiterThresholdParameter
 
   ! --- Positivity Limiter ---
 
@@ -136,15 +136,15 @@ PROGRAM ApplicationDriver
 
       AdvectionProfile = 'SineWave'
 
-      t_end = 1.0e2_DP * Kilometer / ( 3.0e4_DP * Kilometer / Second )
+      t_end = 1.0e2_DP * Kilometer / 0.1_DP
       bcX   = [ 1, 0, 0 ]
 
       CoordinateSystem = 'CARTESIAN'
 
       nX  = [ 16, 1, 1 ]
       swX = [ 1, 0, 0 ]
-      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
-      xR  = [ 1.0e2_DP, 1.0e2_DP, 1.0e2_DP ] * Kilometer
+      xL  = [ 0.0_DP  , 0.0_DP, 0.0_DP ] * Kilometer
+      xR  = [ 1.0e2_DP, 1.0_DP, 1.0_DP ] * Kilometer
 
     CASE( 'RiemannProblem' )
 
@@ -188,19 +188,19 @@ PROGRAM ApplicationDriver
 
   ! --- Slope Limiter ---
 
-  UseSlopeLimiter           = .FALSE.
+  UseSlopeLimiter           = .TRUE.
   SlopeLimiterMethod        = 'TVD'
   BetaTVD                   = 1.75_DP
   BetaTVB                   = 0.0_DP
   SlopeTolerance            = 1.0e-6_DP
   UseCharacteristicLimiting = .FALSE.
   UseTroubledCellIndicator  = .TRUE.
-  LimiterThresholdParameter = 0.015_DP
+  LimiterThresholdParameter = 0.03_DP
   UseConservativeCorrection = .TRUE.
 
   ! --- Positivity Limiter ---
 
-  UsePositivityLimiter = .FALSE.
+  UsePositivityLimiter = .TRUE.
 
   ! === End of User Input ===
 
@@ -276,6 +276,9 @@ PROGRAM ApplicationDriver
   CALL InitializeFluid_SSPRK( nStages = nStagesSSPRK )
   WRITE(*,*)
   WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
+
+  uCF = Zero ! Without this, crashes when copying data in TimeStepper
+  uDF = Zero ! Without this, crashes in IO
 
   CALL InitializeFields &
          ( AdvectionProfile_Option &
