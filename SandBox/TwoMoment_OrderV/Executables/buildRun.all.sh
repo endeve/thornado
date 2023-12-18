@@ -12,8 +12,8 @@ function set_common(){
    export EXASTAR_HOME=/localdisk/quanshao/ExaStar
    export HDF5_INC=${EXASTAR_HOME}/hdf57/include
    export HDF5_LIB=${EXASTAR_HOME}/hdf57/lib64
-   export THORNADO_DIR=${EXASTAR_HOME}/thornado-ms69
-   export WEAKLIB_DIR=${EXASTAR_HOME}/weaklib-new
+   export THORNADO_DIR=${EXASTAR_HOME}/thornado
+   export WEAKLIB_DIR=${EXASTAR_HOME}/weaklib
    export WEAKLIB_TABLES_DIR=${EXASTAR_HOME}/weaklib-tables
    export THORNADO_MACHINE=beacon_intel
 
@@ -150,8 +150,9 @@ BASE_MKL_DATE="2023.08.28"
 BASE_UMD="-dev627"
 export AADEBUG=""
 
-MKL_DATE="2023.08.28"
-module load nightly-mkl-cev_rls/${MKL_DATE}
+#MKL_DATE="2023.08.28"
+MKL_DATE="2023.12.15.001"
+#module load nightly-mkl-cev_rls/${MKL_DATE}
 #COMPILER_DATE="2023.08.27"  ## Slow down and deallocation errors  ////08.28 is an old version 
 #COMPILER_DATE="2023.08.26"   ## Slow down and deallocation errors : Intel(R) Fortran 24.0-1220
 #COMPILER_DATE="2023.08.25"   ## Slow down and deallocation errors : Intel(R) Fortran 24.0-1220
@@ -159,34 +160,35 @@ module load nightly-mkl-cev_rls/${MKL_DATE}
 #COMPILER_DATE="2023.08.23"   ##  Slow down and deallocation errors: Intel(R) Fortran 24.0-1202
 #COMPILER_DATE="2023.08.22"  ## Slow down and deallocation errors : Intel(R) Fortran 24.0-1202
 #COMPILER_DATE="2023.08.21"  ## sycl::_V1::queue::memcpy : Intel(R) Fortran 24.0-1032
-COMPILER_DATE="2023.08.20"  ## MS69 compiler : Intel(R) Fortran 24.0-1177
-#COMPILER_DATE=""
-if [[ -n $COMPILER_DATE ]]; then
-   module swap -f nightly-compiler/${COMPILER_DATE}
-else
-   aaa=`ml list|grep nightly-compiler`
-   ddd=`echo "${aaa#*nightly-compiler/}"`
-   COMPILER_DATE=`echo  $ddd |cut -d ' ' -f1`
-fi
+#COMPILER_DATE="2023.08.20"  ## MS69 compiler : Intel(R) Fortran 24.0-1177
+COMPILER_DATE="2023.12.15.001"
+module load oneapi/release/2023.12.15.001
+#if [[ -n $COMPILER_DATE ]]; then
+#   module swap -f nightly-compiler/${COMPILER_DATE}
+#else
+#   aaa=`ml list|grep nightly-compiler`
+#   ddd=`echo "${aaa#*nightly-compiler/}"`
+#   COMPILER_DATE=`echo  $ddd |cut -d ' ' -f1`
+#fi
 
 #UMD="neo/agama-devel-sp3/682-23.22.26516.18-682"
 #UMD="neo/agama-devel-sp3/693-23.26.26690.13-693"  ##https://jira.devtools.intel.com/browse/GSD-5788
-UMD="neo/agama-devel-sp3/692-23.22.26516.20-692"   ## vtune not work with "collection failed internal error."
+#UMD="neo/agama-devel-sp3/692-23.22.26516.20-692"   ## vtune not work with "collection failed internal error."
 export useAGRF="TRUE"
-if [[ -n $UMD ]]; then
-   #module switch -f intel_compute_runtime/release/agama-devel-551 $UMD
-#   module switch -f intel_compute_runtime/release/agama-devel-627 $UMD
-   module switch -f intel_compute_runtime/release/agama-devel-647 $UMD
-      umdf=`echo $UMD |cut -d '/' -f3`
-      umdf=`echo $umdf |cut -d '-' -f1`
-      umdf="-umd$umdf"
-#      umdf="-Tdebug1IMM1-umd$umdf"
-else
-   aaa=`ml list|grep agama-devel`
-   ddd=`echo "${aaa#*agama-devel-}"`
-   umdf=`echo  $ddd |cut -d ' ' -f1`
-   umdf="-dev$umdf"
-fi
+#if [[ -n $UMD ]]; then
+#   #module switch -f intel_compute_runtime/release/agama-devel-551 $UMD
+##   module switch -f intel_compute_runtime/release/agama-devel-627 $UMD
+#   module switch -f intel_compute_runtime/release/agama-devel-647 $UMD
+#      umdf=`echo $UMD |cut -d '/' -f3`
+#      umdf=`echo $umdf |cut -d '-' -f1`
+#      umdf="-umd$umdf"
+##      umdf="-Tdebug1IMM1-umd$umdf"
+#else
+#   aaa=`ml list|grep agama-devel`
+#   ddd=`echo "${aaa#*agama-devel-}"`
+#   umdf=`echo  $ddd |cut -d ' ' -f1`
+#   umdf="-dev$umdf"
+#fi
 
 #module switch -f mpich/52.2-256/icc-sockets-gpu mpich/51.2/icc-sockets-gpu    ## Needed by 05.15.007.
 

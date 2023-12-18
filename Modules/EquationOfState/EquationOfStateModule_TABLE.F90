@@ -502,7 +502,8 @@ CONTAINS
     DEALLOCATE( Gm_T )
 
     IF ( .NOT. UsingExternalEOS ) THEN
-       DEALLOCATE( EOS )
+!!Shaoping: forrtl: severe (153): allocatable array or pointer is not allocated       
+!!       DEALLOCATE( EOS )
     END IF
 
 #endif
