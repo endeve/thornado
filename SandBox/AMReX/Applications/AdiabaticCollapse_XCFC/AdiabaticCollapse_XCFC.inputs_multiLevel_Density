@@ -9,7 +9,7 @@ thornado.ProgramName = "AdiabaticCollapse_XCFC"
 
 AC.ProgenitorFileName = "../../Progenitors/WH07_15M_Sun.h5"
 
-thornado.iRestart = 53459
+thornado.iRestart = -1
 
 thornado.UsePhysicalUnits = 1
 
@@ -74,5 +74,5 @@ EoS.EquationOfState = "TABLE"
 EoS.EosTableName = "../../EosTables/wl-EOS-SFHo-25-50-100.h5"
 
 # Time-Stepper parameters
-TS.nStages       = 2
-TS.CFL           = 0.5
+TS.nStages = 2
+TS.CFL     = 0.5
