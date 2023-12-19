@@ -123,6 +123,7 @@ ComputePrimitiveTest.o: \
 
 ComputePrimitiveTest_Single.o: \
   KindModule.o \
+  ProgramInitializationModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule.o \
