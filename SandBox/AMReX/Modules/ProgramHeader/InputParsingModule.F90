@@ -24,8 +24,6 @@ MODULE InputParsingModule
     CoordinateSystem
   USE RadiationFieldsModule, ONLY: &
     SetNumberOfSpecies
-  USE MeshModule, ONLY: &
-    MeshType
 
   ! --- Local modules ---
 
@@ -34,9 +32,6 @@ MODULE InputParsingModule
     Zero
   USE MF_ErrorModule, ONLY: &
     DescribeError_MF
-  USE MF_MeshModule, ONLY: &
-    CreateMesh_MF, &
-    DestroyMesh_MF
 
   IMPLICIT NONE
 
@@ -475,7 +470,6 @@ CONTAINS
   SUBROUTINE DescribeProgramHeader_AMReX
 
     CHARACTER(32) :: RFMT, IFMT, MFMT
-    TYPE(MeshType) :: MeshX(3)
     INTEGER :: iLevel, iDimX
     REAL(DP) :: MeshWidths(3,0:nMaxLevels-1)
 
@@ -518,24 +512,26 @@ CONTAINS
 
       DO iLevel = 0, nMaxLevels-1
 
-        CALL CreateMesh_MF( iLevel, MeshX )
+        DO iDimX = 1, nDimsX
 
-        DO iDimX = 1, 3
-
-          MeshWidths(iDimX,iLevel) = MeshX(iDimX) % Width(1)
+          MeshWidths(iDimX,iLevel) &
+            = ( ( xR(iDimX) - xL(iDimX) ) / nX(iDimX) ) / 2**(iLevel)
 
         END DO
 
-        CALL DestroyMesh_MF( MeshX )
-
       END DO
 
-      WRITE(*,TRIM(MFMT))            'MeshWidths (X1):', &
-                                      MeshWidths(1,:), UnitsDisplay % LengthX1Label
-      WRITE(*,TRIM(MFMT))            'MeshWidths (X2):', &
-                                      MeshWidths(2,:), UnitsDisplay % LengthX2Label
-      WRITE(*,TRIM(MFMT))            'MeshWidths (X3):', &
-                                      MeshWidths(3,:), UnitsDisplay % LengthX3Label
+      WRITE(*,TRIM(MFMT)) 'MeshWidths (X1):', &
+                           MeshWidths(1,:) / UnitsDisplay % LengthX1Unit, &
+                                             UnitsDisplay % LengthX1Label
+      IF( nDimsX .GT. 1 ) &
+        WRITE(*,TRIM(MFMT)) 'MeshWidths (X2):', &
+                             MeshWidths(2,:) / UnitsDisplay % LengthX2Unit, &
+                                               UnitsDisplay % LengthX2Label
+      IF( nDimsX .GT. 2 ) &
+        WRITE(*,TRIM(MFMT)) 'MeshWidths (X3):', &
+                             MeshWidths(3,:) / UnitsDisplay % LengthX3Unit, &
+                                               UnitsDisplay % LengthX3Label
       WRITE(*,*)
 
     END IF
