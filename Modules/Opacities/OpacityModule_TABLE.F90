@@ -151,16 +151,6 @@ MODULE OpacityModule_TABLE
   !$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,      &
   !$OMP   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT,  &
   !$OMP   Brem_T, Brem_AT, C1, C2, C1_NuPair, C2_NuPair,  &
-  !$OMP   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD,           &
-  !$OMP   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD,             &
-  !$OMP   EmAb_MinD, EmAb_MaxD,                           &
-  !$OMP   Iso_MinD, Iso_MaxD,                             &
-  !$OMP   NES_MinD, NES_MaxD,                             &
-  !$OMP   Pair_MinD, Pair_MaxD,                           &
-  !$OMP   Brem_MinD, Brem_MaxD,                           &
-  !$OMP   NNS_MinD, NNS_MaxD,                             &
-  !$OMP   NuPair_MinD, NuPair_MaxD,                       &
-  !$OMP   Op_MinD, Op_MaxD,                               &
   !$OMP   use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
   !$OMP   EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
   !$OMP   EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax,   &
@@ -182,16 +172,6 @@ MODULE OpacityModule_TABLE
   !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,      &
   !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT,  & 
   !$ACC   Brem_T, Brem_AT, C1, C2, C1_NuPair, C2_NuPair,  &
-  !$ACC   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD,           &
-  !$ACC   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD,             &
-  !$ACC   EmAb_MinD, EmAb_MaxD,                           &
-  !$ACC   Iso_MinD, Iso_MaxD,                             &
-  !$ACC   NES_MinD, NES_MaxD,                             &
-  !$ACC   Pair_MinD, Pair_MaxD,                           &
-  !$ACC   Brem_MinD, Brem_MaxD,                           &
-  !$ACC   NNS_MinD, NNS_MaxD,                             &
-  !$ACC   NuPair_MinD, NuPair_MaxD,                       &
-  !$ACC   Op_MinD, Op_MaxD,                               &
   !$ACC   use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
   !$ACC   EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
   !$ACC   EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax,   &
