@@ -106,6 +106,30 @@ generating Makefile
     your Makefile.h and make it empty
 Error getting info for library onemkl
 </pre>
+5. with oneapi/release/2023.12.15.001, mpifort's final-ldflags="  -Wl,-z,now", -L/usr/lib -L/usr/lib64 is deleted. So we do not need a special ifort anymore. 
+6. Here are the times and FOMs for oneapi/release/2023.12.15.001 and oneapi/eng-compiler/2023.10.15.002
+<pre>
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables> more timeFOM_2023.12.15.001-2023.12.15.001.txt
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2023.12.15.001   2023.08.20-dev627    TimeDiff   Percentage   |   2023.12.15.001   2023.08.20-dev627    FOM-Diff   Percentage
+                     MKL Date :  2023.12.15.001               2023.08.28
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     5.8566e+00          9.9087e+00      -4.0521e+00   -40.89%            2.1754e+07          1.2858e+07        8.8961e+06    69.19%
+sineWave   [16,16,16]   O3    :     7.1810e+01          1.3476e+02      -6.2947e+01   -46.71%            2.8211e+07          1.5033e+07        1.3178e+07    87.66%
+relax      [8,8,8]      O3    :     2.0401e+01          2.0364e+01       3.6420e-02     0.18%            4.1787e+07          4.1862e+07       -7.4700e+04    -0.18%
+relax      [16,16,16]   O3    :     1.6342e+02          1.6578e+02      -2.3601e+00    -1.42%            4.1732e+07          4.1138e+07        5.9410e+05     1.44%
+
+
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables> more timeFOM_2023.10.15.002-2023.10.15.002.txt
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2023.10.15.002   2023.08.20-dev627    TimeDiff   Percentage   |   2023.10.15.002   2023.08.20-dev627    FOM-Diff   Percentage
+                     MKL Date :  2023.10.15.002               2023.08.28
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     6.5259e+00          9.9087e+00      -3.3828e+00   -34.14%            1.9522e+07          1.2858e+07        6.6649e+06    51.84%
+sineWave   [16,16,16]   O3    :     7.2758e+01          1.3476e+02      -6.2000e+01   -46.01%            2.7844e+07          1.5033e+07        1.2810e+07    85.21%
+relax      [8,8,8]      O3    :     2.1617e+01          2.0364e+01       1.2523e+00     6.15%            3.9437e+07          4.1862e+07       -2.4251e+06    -5.79%
+relax      [16,16,16]   O3    :     1.7675e+02          1.6578e+02       1.0969e+01     6.62%            3.8585e+07          4.1138e+07       -2.5528e+06    -6.21%
+</pre>
 
 ##Dec 15 2023
 1. FlashX/Thornado's package from Mathi,  Flash-X-Repo.tar, runs on Aurora with hdf57 supplied by me. 
