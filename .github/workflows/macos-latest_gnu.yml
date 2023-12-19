@@ -1,6 +1,7 @@
 name: Compile thornado on MacOS (latest) with gnu compilers
 
 on:
+  push:
   schedule:
     - cron: '0 7 * * *'
 
@@ -58,7 +59,7 @@ jobs:
           echo "rm -rf /usr/local/bin/python3*"
                 rm -rf /usr/local/bin/python3*
           echo "brew install open-mpi --cc=gcc-${GCC_MAJOR}"
-                brew install open-mpi --cc=gcc-${GCC_MAJOR}
+                brew install open-mpi --overwrite --force --cc=gcc-${GCC_MAJOR}
           OMPI_VERSION=`ls /usr/local/Cellar/open-mpi`
           echo "/usr/local/Cellar/open-mpi/${OMPI_VERSION}/bin" >> ${GITHUB_PATH}
           echo ""
