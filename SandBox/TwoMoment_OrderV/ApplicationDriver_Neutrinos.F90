@@ -124,7 +124,6 @@ PROGRAM ApplicationDriver_Neutrinos
   SELECT CASE( TRIM( ProgramName ) )
 
     CASE( 'Relaxation' )
-      nX  =[16,16,16]
       nSpecies = 6
       nNodes   = 2
 

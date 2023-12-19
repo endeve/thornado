@@ -2,10 +2,10 @@
 ## VERY IMPORTANT: heap-arrays is needed for the large table of the app
 
 C       = mpic++ --c++11
-FORTRAN = /localdisk/quanshao/ExaStar/mpifort -fc=ifx -fPIC -fpp -xCore-AVX512 ${AADEBUG}
+FORTRAN = mpifort -fc=ifx -fPIC -fpp -xCore-AVX512 ${AADEBUG}
 #-heap-arrays 0 -fpe0 
 #-init=snan -traceback
-FLINKER = /localdisk/quanshao/ExaStar/mpifort -fc=ifx -fPIC -fpp -xCore-AVX512 ${AADEBUG}
+FLINKER = mpifort -fc=ifx -fPIC -fpp -xCore-AVX512 ${AADEBUG}
 #-heap-arrays 0 -fpe0
 #-init=snan -traceback
 # -O0 -fpe0

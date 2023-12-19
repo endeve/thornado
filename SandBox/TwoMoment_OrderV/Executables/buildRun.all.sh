@@ -151,7 +151,7 @@ BASE_UMD="-dev627"
 export AADEBUG=""
 
 #MKL_DATE="2023.08.28"
-MKL_DATE="2023.12.15.001"
+MKL_DATE="2023.10.15.002"
 #module load nightly-mkl-cev_rls/${MKL_DATE}
 #COMPILER_DATE="2023.08.27"  ## Slow down and deallocation errors  ////08.28 is an old version 
 #COMPILER_DATE="2023.08.26"   ## Slow down and deallocation errors : Intel(R) Fortran 24.0-1220
@@ -161,8 +161,9 @@ MKL_DATE="2023.12.15.001"
 #COMPILER_DATE="2023.08.22"  ## Slow down and deallocation errors : Intel(R) Fortran 24.0-1202
 #COMPILER_DATE="2023.08.21"  ## sycl::_V1::queue::memcpy : Intel(R) Fortran 24.0-1032
 #COMPILER_DATE="2023.08.20"  ## MS69 compiler : Intel(R) Fortran 24.0-1177
-COMPILER_DATE="2023.12.15.001"
-module load oneapi/release/2023.12.15.001
+COMPILER_DATE="2023.10.15.002"
+#module load oneapi/release/2023.12.15.001
+module load oneapi/eng-compiler/2023.10.15.002
 #if [[ -n $COMPILER_DATE ]]; then
 #   module swap -f nightly-compiler/${COMPILER_DATE}
 #else
@@ -212,7 +213,7 @@ export useAGRF="TRUE"
 #logFiles=(relax)
 #CaseNames=(Relaxation)
 #userOptions=("MICROPHYSICS=WEAKLIB")
-#gridLines=(127)
+#gridLines=(130)
 
 #opLevels=(O0 O1 O2 O3)
 opLevels=(O3)
@@ -222,7 +223,7 @@ appNames=(ApplicationDriver ApplicationDriver_Neutrinos)
 logFiles=(sineWave relax)
 CaseNames=(SineWaveStreaming Relaxation)
 userOptions=("" "MICROPHYSICS=WEAKLIB")
-gridLines=(85 127)
+gridLines=(85 130)
 
 #grids=("[8,8,8]")
 #gridNames=("")
