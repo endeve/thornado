@@ -1270,13 +1270,11 @@ CONTAINS
 #endif
     DO iN_X = 1, nX_G
       ITERATE_outer(iN_X) = QueryOpacity( D(iN_X) / Unit_D )
-      ITERATE_inner(iN_X) = ITERATE_outer(iN_X)
     END DO
-
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE FROM( ITERATE_outer, ITERATE_inner )
+    !$OMP TARGET UPDATE FROM( ITERATE_outer )
 #elif defined( THORNADO_OACC   )
-    !$ACC UPDATE HOST( ITERATE_outer, ITERATE_inner )
+    !$ACC UPDATE HOST( ITERATE_outer )
 #endif
 
     SqrtGm = SQRT( Gm_dd_11 * Gm_dd_22 * Gm_dd_33 )
@@ -1363,6 +1361,13 @@ CONTAINS
       ! --- Start Inner Loop ---
 
       CALL TimersStart( Timer_Collisions_InnerLoop )
+
+      ITERATE_inner = ITERATE_outer
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET UPDATE TO( ITERATE_inner )
+#elif defined( THORNADO_OACC   )
+      !$ACC UPDATE DEVICE( ITERATE_inner )
+#endif
 
       k_inner = 0
       DO WHILE( ANY( ITERATE_inner(:) ) .AND. k_inner < MaxIter_inner )
@@ -1556,19 +1561,20 @@ CONTAINS
 
 #endif
 
-      CALL CheckErrorFlag_FP &
-             ( Error, k_outer, k_inner, &
-               D, E, Y, T, V_u_1, V_u_2, V_u_3, &
-               Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
       ! --- Check Convergence (outer) ---
 
       CALL TimersStart( Timer_Collisions_CheckOuter )
 
       CALL CheckConvergence_Outer &
-             ( ITERATE_outer, ITERATE_inner, n_FP_outer, k_outer, &
+             ( ITERATE_outer, n_FP_outer, k_outer, &
                nIterations_Outer, FVECm_outer )
+
+      CALL CheckError_FP &
+             ( ITERATE_outer, ITERATE_inner, k_inner, k_outer, Error, &
+               D, E, Y, T, V_u_1, V_u_2, V_u_3, &
+               Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+               Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
+               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
       CALL TimersStop( Timer_Collisions_CheckOuter )
 
@@ -4638,9 +4644,9 @@ CONTAINS
 
 
   SUBROUTINE CheckConvergence_Outer &
-    ( MASK_OUTER, MASK_INNER, n_FP, k_outer, nIterations_Outer, Fm )
+    ( MASK_OUTER, n_FP, k_outer, nIterations_Outer, Fm )
 
-    LOGICAL,  DIMENSION(:)    , INTENT(inout) :: MASK_OUTER, MASK_INNER
+    LOGICAL,  DIMENSION(:)    , INTENT(inout) :: MASK_OUTER
     INTEGER,                    INTENT(in)    :: n_FP, k_outer
     INTEGER,  DIMENSION(:)    , INTENT(inout) :: nIterations_Outer
     REAL(DP), DIMENSION(:,:)  , INTENT(in)    :: Fm
@@ -4671,15 +4677,13 @@ CONTAINS
           MASK_OUTER(iN_X) = .FALSE.
         END IF
 
-        MASK_INNER(iN_X) = MASK_OUTER(iN_X)
-
       END IF
     END DO
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE FROM( MASK_OUTER, MASK_INNER )
+    !$OMP TARGET UPDATE FROM( MASK_OUTER )
 #elif defined( THORNADO_OACC   )
-    !$ACC UPDATE HOST( MASK_OUTER, MASK_INNER )
+    !$ACC UPDATE HOST( MASK_OUTER )
 #endif
 
   END SUBROUTINE CheckConvergence_Outer
@@ -4772,18 +4776,21 @@ CONTAINS
   END FUNCTION WNORM
 
 
-  SUBROUTINE CheckErrorFlag_FP &
-    ( Error, k_outer, k_inner, &
+  SUBROUTINE CheckError_FP &
+    ( MASK_outer, MASK_inner, k_outer, k_inner, Error, &
       D, Y, E, T, V_u_1, V_u_2, V_u_3, &
       Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
     USE mpi
 
-    INTEGER,  DIMENSION(:)    , INTENT(in) :: Error
+    LOGICAL,  DIMENSION(:)    , INTENT(in) :: MASK_outer, MASK_inner
     INTEGER,                    INTENT(in) :: k_outer, k_inner
+    INTEGER,  DIMENSION(:)    , INTENT(in) :: Error
     REAL(DP), DIMENSION(:)    , INTENT(in) :: D, Y, E, T, V_u_1, V_u_2, V_u_3
     REAL(DP), DIMENSION(:,:,:), INTENT(in) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:,:,:), INTENT(in) :: Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3
     REAL(DP), DIMENSION(:)    , INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     INTEGER  :: ierr
@@ -4791,11 +4798,14 @@ CONTAINS
     REAL(DP) :: D_P, T_P, Y_P, E_P, V1_P, V2_P, V3_P
     REAL(DP) :: D0_P, T0_P, Y0_P, E0_P, V10_P, V20_P, V30_P
 
-    IF ( ANY( Error > 0 ) ) THEN
+    IF (        ANY( Error > 0 ) &
+         .or. ( ANY( MASK_inner ) .and. k_inner >= MaxIter_inner ) &
+         .or. ( ANY( MASK_outer ) .and. k_outer >= MaxIter_outer ) ) THEN
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET UPDATE FROM &
       !$OMP ( D, Y, E, T, V_u_1, V_u_2, V_u_3, &
       !$OMP   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      !$OMP   Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
       !$OMP   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       !$OMP   D_old, Y_old, E_old, T_old, V_u_1_old, V_u_2_old, V_u_3_old, &
       !$OMP   Dnu_old, Inu_u_1_old, Inu_u_2_old, Inu_u_3_old )
@@ -4803,12 +4813,15 @@ CONTAINS
       !$ACC UPDATE HOST &
       !$ACC ( D, Y, E, T, V_u_1, V_u_2, V_u_3, &
       !$ACC   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      !$ACC   Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
       !$ACC   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       !$ACC   D_old, Y_old, E_old, T_old, V_u_1_old, V_u_2_old, V_u_3_old, &
       !$ACC   Dnu_old, Inu_u_1_old, Inu_u_2_old, Inu_u_3_old )
 #endif
       DO iN_X = 1, nX_G
-        IF ( Error(iN_X) > 0 ) THEN
+        IF (        Error(iN_X) > 0 &
+             .or. ( MASK_inner(iN_X) .and. k_inner >= MaxIter_inner ) &
+             .or. ( MASK_outer(iN_X) .and. k_outer >= MaxIter_outer ) ) THEN
 
           D_P   = D(iN_X) / Unit_D
           Y_P   = Y(iN_X) / Unit_Y
@@ -4826,22 +4839,31 @@ CONTAINS
           V20_P = V_u_2_old(iN_X) / Unit_V
           V30_P = V_u_3_old(iN_X) / Unit_V
 
-          WRITE(*,*)                     '[SolveNeutrinoMatterCoupling_FP_Nested_AA] Error'
-          WRITE(*,'(a,2i5)')             '             iN_X, Error : ', iN_X, Error(iN_X)
-          WRITE(*,'(a,5x,2i23)')         '        k_outer, k_inner : ', k_outer, k_inner
-          WRITE(*,'(a,5x,7es23.15)')     '   D, Y, E, T, V_u       : ', D_P, Y_P, E_P, T_P, V1_P, V2_P, V3_P
-          WRITE(*,'(a,5x,7es23.15)')     '   D, Y, E, T, V_u (old) : ', D0_P, Y0_P, E0_P, T0_P, V10_P, V20_P, V30_P
+          WRITE(*,*)                      '[SolveNeutrinoMatterCoupling_FP_Nested_AA] Error'
+          WRITE(*,'(a,2i5)')              '             iN_X, Error : ', iN_X, Error(iN_X)
+          WRITE(*,'(a,5x,2i23)')          '        k_outer, k_inner : ', k_outer, k_inner
+          WRITE(*,'(a,5x,7es23.15)')      '   D, Y, E, T, V_u       : ', D_P, Y_P, E_P, T_P, V1_P, V2_P, V3_P
+          WRITE(*,'(a,5x,7es23.15)')      '   D, Y, E, T, V_u (old) : ', D0_P, Y0_P, E0_P, T0_P, V10_P, V20_P, V30_P
 
           DO iS = 1, nSpecies
-          WRITE(*,'(a,5x,i5,100es23.15)') '      iS, Dnu           : ', iS, ( Dnu    (iN_E,iS,iN_X), iN_E = 1, nE_G )
-          WRITE(*,'(a,5x,i5,100es23.15)') '      iS, Inu_u_1       : ', iS, ( Inu_u_1(iN_E,iS,iN_X), iN_E = 1, nE_G )
-          WRITE(*,'(a,5x,i5,100es23.15)') '      iS, Inu_u_2       : ', iS, ( Inu_u_2(iN_E,iS,iN_X), iN_E = 1, nE_G )
-          WRITE(*,'(a,5x,i5,100es23.15)') '      iS, Inu_u_3       : ', iS, ( Inu_u_3(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Dnu           : ', iS, ( Dnu    (iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Inu_u_1       : ', iS, ( Inu_u_1(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Inu_u_2       : ', iS, ( Inu_u_2(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Inu_u_3       : ', iS, ( Inu_u_3(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          END DO
 
-          WRITE(*,'(a,5x,i5,100es23.15)') '      iS, Dnu     (old) : ', iS, ( Dnu_old    (iN_E,iS,iN_X), iN_E = 1, nE_G )
-          WRITE(*,'(a,5x,i5,100es23.15)') '      iS, Inu_u_1 (old) : ', iS, ( Inu_u_1_old(iN_E,iS,iN_X), iN_E = 1, nE_G )
-          WRITE(*,'(a,5x,i5,100es23.15)') '      iS, Inu_u_2 (old) : ', iS, ( Inu_u_2_old(iN_E,iS,iN_X), iN_E = 1, nE_G )
-          WRITE(*,'(a,5x,i5,100es23.15)') '      iS, Inu_u_3 (old) : ', iS, ( Inu_u_3_old(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          DO iS = 1, nSpecies
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Dnu     (old) : ', iS, ( Dnu_old    (iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Inu_u_1 (old) : ', iS, ( Inu_u_1_old(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Inu_u_2 (old) : ', iS, ( Inu_u_2_old(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Inu_u_3 (old) : ', iS, ( Inu_u_3_old(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          END DO
+
+          DO iS = 1, nSpecies
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Nnu           : ', iS, ( Nnu    (iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Gnu_d_1       : ', iS, ( Gnu_d_1(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Gnu_d_2       : ', iS, ( Gnu_d_2(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Gnu_d_3       : ', iS, ( Gnu_d_3(iN_E,iS,iN_X), iN_E = 1, nE_G )
           END DO
 
         END IF
@@ -4849,7 +4871,7 @@ CONTAINS
       CALL MPI_ABORT(MPI_COMM_WORLD,-1,ierr)
     END IF
 
-  END SUBROUTINE CheckErrorFlag_FP
+  END SUBROUTINE CheckError_FP
 
 
 END MODULE TwoMoment_NeutrinoMatterSolverModule
