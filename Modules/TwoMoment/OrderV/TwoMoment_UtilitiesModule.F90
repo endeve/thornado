@@ -698,6 +698,13 @@ CONTAINS
 
     CALL TimersStart( Timer_Streaming_NumericalFlux_InOut )
 
+    CALL CheckError &
+      ( ITERATE, k, &
+        N, G_d_1, G_d_2, G_d_3, &
+        D, I_u_1, I_u_2, I_u_3, &
+        V_u_1, V_u_2, V_u_3, &
+        Gm_dd_11, Gm_dd_22, Gm_dd_33, PositionIndexZ )
+
     IF( PRESENT( nIterations_Option ) ) THEN
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
@@ -728,6 +735,69 @@ CONTAINS
     DEALLOCATE( ITERATE, nIterations )
 
     CALL TimersStop( Timer_Streaming_NumericalFlux_InOut )
+
+  CONTAINS
+
+  SUBROUTINE CheckError &
+    ( MASK, k, &
+      Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
+      Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, PositionIndexZ )
+
+    USE mpi
+
+    LOGICAL,  DIMENSION(:), INTENT(in) :: MASK
+    INTEGER,                INTENT(in) :: k
+    REAL(DP), DIMENSION(:), INTENT(in) :: Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3
+    REAL(DP), DIMENSION(:), INTENT(in) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:), INTENT(in) :: V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    INTEGER,  DIMENSION(:), INTENT(in) :: PositionIndexZ
+
+    INTEGER  :: ierr
+    INTEGER  :: iZ, iX, nZ
+    REAL(DP) :: V1_P, V2_P, V3_P
+
+    nZ = SIZE( Nnu, 1 )
+
+    IF ( ANY( MASK ) .and. k >= MaxIterations ) THEN
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE FROM &
+      !$OMP ( V_u_1, V_u_2, V_u_3, &
+      !$OMP   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      !$OMP   Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
+      !$OMP   Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE HOST &
+      !$ACC ( V_u_1, V_u_2, V_u_3, &
+      !$ACC   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      !$ACC   Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
+      !$ACC   Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#endif
+      DO iZ = 1, nZ
+        IF ( MASK(iZ) ) THEN
+
+          iX = PositionIndexZ(iZ)
+
+          V1_P  = V_u_1(iX) / Unit_V
+          V2_P  = V_u_2(iX) / Unit_V
+          V3_P  = V_u_3(iX) / Unit_V
+
+          WRITE(*,*)                 '[ComputePrimitive_TwoMoment] Error'
+          WRITE(*,'(a,2i5)')         '        iZ, iX : ', iZ, iX
+          WRITE(*,'(a,5x,i23)')      '             k : ', k
+          WRITE(*,'(a,5x,3es23.15)') '           V_u : ', V1_P, V2_P, V3_P
+
+          WRITE(*,'(a,5x,4es23.15)') '    Dnu, Inu_u : ', Dnu(iZ), Inu_u_1(iZ), Inu_u_2(iZ), Inu_u_3(iZ)
+          WRITE(*,'(a,5x,4es23.15)') '    Nnu, Gnu_D : ', Nnu(iZ), Gnu_d_1(iZ), Gnu_d_2(iZ), Gnu_d_3(iZ)
+
+        END IF
+      END DO
+      CALL MPI_ABORT(MPI_COMM_WORLD,-1,ierr)
+    END IF
+
+  END SUBROUTINE CheckError
 
   END SUBROUTINE ComputePrimitive_TwoMoment_Vector_Richardson
 
