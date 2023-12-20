@@ -827,15 +827,16 @@ CONTAINS
     REAL(DP), INTENT(in ), OPTIONAL :: Guess_Option(1:)
     INTEGER,  INTENT(out), OPTIONAL :: Error_Option(1:)
 
+    INTEGER, ALLOCATABLE :: Error(:)
     INTEGER  :: iP, nP
-    INTEGER  :: Error(SIZE(D))
     REAL(DP) :: D_P, E_P, Y_P, T_Lookup, T_Guess
 
+    nP = SIZE( D )
+
+    ALLOCATE( Error(nP) )
     Error = 0
 
 #ifdef MICROPHYSICS_WEAKLIB
-
-    nP = SIZE( D )
 
     IF( PRESENT( Guess_Option ) )THEN
 
@@ -1075,7 +1076,11 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D(1:), Ev(1:), Ne(1:)
     REAL(DP), INTENT(out) :: Cs(1:)
 
-    REAL(DP), DIMENSION(SIZE(D)) :: P, T, Y, Em, Gm
+    INTEGER :: nP
+    REAL(DP), DIMENSION(:), ALLOCATABLE :: P, T, Y, Em, Gm
+    
+    nP = SIZE(D)
+    ALLOCATE( P(nP), T(nP), Y(nP), Em(nP), Gm(nP) )
 
     Em = Ev / D
     Y  = Ne * ( BaryonMass / D )
@@ -1410,9 +1415,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
-    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
       dPdD_Local, dPdT_Local, dPdY_Local
-    REAL(DP), DIMENSION(:)      , POINTER :: &
+    REAL(DP), DIMENSION(:), POINTER :: &
       dPdD      , dPdT      , dPdY
 
     ComputeDerivatives &
@@ -1423,6 +1428,7 @@ CONTAINS
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
+      ALLOCATE( dPdD_Local(nP), dPdT_Local(nP), dPdY_Local(nP) )
 
       IF( PRESENT( dPdD_Option ) )THEN
         dPdD(1:nP) => dPdD_Option(:)
@@ -1523,9 +1529,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
-    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
       dEdD_Local, dEdT_Local, dEdY_Local
-    REAL(DP), DIMENSION(:)      , POINTER :: &
+    REAL(DP), DIMENSION(:), POINTER :: &
       dEdD      , dEdT      , dEdY
 
     ComputeDerivatives &
@@ -1536,6 +1542,7 @@ CONTAINS
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
+      ALLOCATE( dEdD_Local(nP), dEdT_Local(nP), dEdY_Local(nP) )
 
       IF( PRESENT( dEdD_Option ) )THEN
         dEdD(1:nP) => dEdD_Option(:)
@@ -1636,9 +1643,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
-    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
       dMdD_Local, dMdT_Local, dMdY_Local
-    REAL(DP), DIMENSION(:)      , POINTER :: &
+    REAL(DP), DIMENSION(:), POINTER :: &
       dMdD      , dMdT      , dMdY
 
     ComputeDerivatives &
@@ -1649,6 +1656,7 @@ CONTAINS
     IF ( ComputeDerivatives ) THEN
 
       nP = SIZE( D )
+      ALLOCATE( dMdD_Local(nP), dMdT_Local(nP), dMdY_Local(nP) )
 
       IF( PRESENT( dMdD_Option ) )THEN
         dMdD(1:nP) => dMdD_Option(:)
@@ -1749,9 +1757,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
-    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
       dMdD_Local, dMdT_Local, dMdY_Local
-    REAL(DP), DIMENSION(:)      , POINTER :: &
+    REAL(DP), DIMENSION(:), POINTER :: &
       dMdD      , dMdT      , dMdY
 
     ComputeDerivatives &
@@ -1762,6 +1770,7 @@ CONTAINS
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
+      ALLOCATE( dMdD_Local(nP), dMdT_Local(nP), dMdY_Local(nP) )
 
       IF( PRESENT( dMdD_Option ) )THEN
         dMdD(1:nP) => dMdD_Option(:)
@@ -1862,9 +1871,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
-    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
       dMdD_Local, dMdT_Local, dMdY_Local
-    REAL(DP), DIMENSION(:)      , POINTER :: &
+    REAL(DP), DIMENSION(:), POINTER :: &
       dMdD      , dMdT      , dMdY
 
     ComputeDerivatives &
@@ -1875,6 +1884,7 @@ CONTAINS
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
+      ALLOCATE( dMdD_Local(nP), dMdT_Local(nP), dMdY_Local(nP) )
 
       IF( PRESENT( dMdD_Option ) )THEN
         dMdD(1:nP) => dMdD_Option(:)
@@ -1975,9 +1985,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
-    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
       dXdD_Local, dXdT_Local, dXdY_Local
-    REAL(DP), DIMENSION(:)      , POINTER :: &
+    REAL(DP), DIMENSION(:), POINTER :: &
       dXdD      , dXdT      , dXdY
 
     ComputeDerivatives &
@@ -1988,6 +1998,7 @@ CONTAINS
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
+      ALLOCATE( dXdD_Local(nP), dXdT_Local(nP), dXdY_Local(nP) )
 
       IF( PRESENT( dXdD_Option ) )THEN
         dXdD(1:nP) => dXdD_Option(:)
@@ -2088,9 +2099,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
-    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
       dXdD_Local, dXdT_Local, dXdY_Local
-    REAL(DP), DIMENSION(:)      , POINTER :: &
+    REAL(DP), DIMENSION(:), POINTER :: &
       dXdD      , dXdT      , dXdY
 
     ComputeDerivatives &
@@ -2101,6 +2112,7 @@ CONTAINS
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
+      ALLOCATE( dXdD_Local(nP), dXdT_Local(nP), dXdY_Local(nP) )
 
       IF( PRESENT( dXdD_Option ) )THEN
         dXdD(1:nP) => dXdD_Option(:)
@@ -2199,9 +2211,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
-    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
       dXdD_Local, dXdT_Local, dXdY_Local
-    REAL(DP), DIMENSION(:)      , POINTER :: &
+    REAL(DP), DIMENSION(:), POINTER :: &
       dXdD      , dXdT      , dXdY
 
     ComputeDerivatives &
@@ -2212,6 +2224,7 @@ CONTAINS
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
+      ALLOCATE( dXdD_Local(nP), dXdT_Local(nP), dXdY_Local(nP) )
 
       IF( PRESENT( dXdD_Option ) )THEN
         dXdD(1:nP) => dXdD_Option(:)
@@ -2310,9 +2323,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
-    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
       dXdD_Local, dXdT_Local, dXdY_Local
-    REAL(DP), DIMENSION(:)      , POINTER :: &
+    REAL(DP), DIMENSION(:), POINTER :: &
       dXdD      , dXdT      , dXdY
 
     ComputeDerivatives &
@@ -2323,6 +2336,7 @@ CONTAINS
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
+      ALLOCATE( dXdD_Local(nP), dXdT_Local(nP), dXdY_Local(nP) )
 
       IF( PRESENT( dXdD_Option ) )THEN
         dXdD(1:nP) => dXdD_Option(:)

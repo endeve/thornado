@@ -315,17 +315,14 @@ CONTAINS
       dSlope, wSqrtGm, Alpha, uCR_K, &
       C_0, C_X1, C_X2, C_X3, &
       C0_L, C0_R, CL_X1, CL_X2, CL_X3
-    REAL(DP) :: &
-      uCR(1:nDOFX)
-    LOGICAL  :: &
-      TroubledCell &
-           (iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
+    REAL(DP), ALLOCATABLE :: uCR(:)
+    LOGICAL, ALLOCATABLE  :: TroubledCell(:,:,:,:,:)
 
     nE   = iZ_E0(1) - iZ_B0(1) + 1
     nE_G = nE * nDOFE
+
+    ALLOCATE( uCR(nDOFX) )
+    ALLOCATE( TroubledCell(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &

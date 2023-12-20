@@ -310,13 +310,16 @@ CONTAINS
 
     REAL(DP), POINTER :: E_Q(:,:), f0_Q(:,:,:,:)
 
-    REAL(DP) :: f0_K(1:(iE_E-iE_B+1)/nDOFE,1:(iS_E-iS_B+1),1:(iX_E-iX_B+1))
+    REAL(DP), ALLOCATABLE :: f0_K(:,:,:)
+
     REAL(DP) :: N_K, V_K, f0_Min, f0_P, Min_K, Max_K, Theta
     INTEGER  :: iE, iS, iX, iNodeE, iP_E, nE, nS, nX
 
     nE = ( iE_E - iE_B + 1 ) / nDOFE
     nS = ( iS_E - iS_B + 1 )
     nX = ( iX_E - iX_B + 1 )
+
+    ALLOCATE( f0_K(nE,nS,nX) )
 
     ! --- Permute Data ---
 
@@ -504,24 +507,17 @@ CONTAINS
     REAL(DP) :: Min_K, Max_K, Theta
     REAL(DP), POINTER :: E_Q(:,:), D_Q(:,:), T_Q(:,:), Y_Q(:,:)
     REAL(DP), POINTER :: Mnu_Q(:,:), SqrtGm_Q(:,:)
-    REAL(DP), TARGET  :: Mnu(iX_B:iX_E)
-    REAL(DP) :: &
-      Tau_Q(1:nDOFE*nDOFX, &
-            1:(iE_E-iE_B+1)/nDOFE, &
-            1:(iX_E-iX_B+1)/nDOFX)
-    REAL(DP) :: &
-      f0_K (1:(iE_E-iE_B+1)/nDOFE, &
-            1:(iS_E-iS_B+1)      , &
-            1:(iX_E-iX_B+1)/nDOFX)
-    REAL(DP) :: &
-      f0_Q (1:nDOFE*nDOFX, &
-            1:(iE_E-iE_B+1)/nDOFE, &
-            1:(iS_E-iS_B+1)      , &
-            1:(iX_E-iX_B+1)/nDOFX)
+    REAL(DP), ALLOCATABLE, TARGET :: Mnu(:)
+    REAL(DP), ALLOCATABLE :: Tau_Q(:,:,:), f0_K(:,:,:), f0_Q(:,:,:,:)
 
     nE = (iE_E-iE_B+1)/nDOFE ! --- Number of energy  elements
     nX = (iX_E-iE_B+1)/nDOFX ! --- Number of spatial elements
     nS = (iS_E-iS_B+1)       ! --- Number of species
+
+    ALLOCATE( Mnu(iX_B:iX_E) )
+    ALLOCATE( Tau_Q(nDOFE*nDOFX,nE,nX) )
+    ALLOCATE( f0_K(nE,nS,nX) )
+    ALLOCATE( f0_Q(nDOFE*nDOFX,nE,nS,nX) )
 
     ! --- Compute Chemical Potentials ---
 
@@ -711,14 +707,19 @@ CONTAINS
     REAL(DP), INTENT(out) :: df0dY(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: df0dU(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
 
-    REAL(DP) :: Me(iX_B:iX_E), dMedT(iX_B:iX_E), dMedY(iX_B:iX_E)
-    REAL(DP) :: Mp(iX_B:iX_E), dMpdT(iX_B:iX_E), dMpdY(iX_B:iX_E)
-    REAL(DP) :: Mn(iX_B:iX_E), dMndT(iX_B:iX_E), dMndY(iX_B:iX_E)
-    REAL(DP) :: U (iX_B:iX_E), dUdT (iX_B:iX_E), dUdY (iX_B:iX_E), dUdD(iX_B:iX_E)
+    REAL(DP), ALLOCATABLE :: Me(:), dMedT(:), dMedY(:)
+    REAL(DP), ALLOCATABLE :: Mp(:), dMpdT(:), dMpdY(:)
+    REAL(DP), ALLOCATABLE :: Mn(:), dMndT(:), dMndY(:)
+    REAL(DP), ALLOCATABLE :: U (:), dUdT (:), dUdY (:), dUdD(:)
     REAL(DP) :: Mnu          , dMnudT          , dMnudY
 
     REAL(DP) :: kT, df0dT_Y, df0dY_T
     INTEGER  :: iE, iS, iX
+
+    ALLOCATE( Me(iX_B:iX_E), dMedT(iX_B:iX_E), dMedY(iX_B:iX_E) )
+    ALLOCATE( Mp(iX_B:iX_E), dMpdT(iX_B:iX_E), dMpdY(iX_B:iX_E) )
+    ALLOCATE( Mn(iX_B:iX_E), dMndT(iX_B:iX_E), dMndY(iX_B:iX_E) )
+    ALLOCATE( U (iX_B:iX_E), dUdT (iX_B:iX_E), dUdY (iX_B:iX_E), dUdD(iX_B:iX_E) )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -898,13 +899,15 @@ CONTAINS
   REAL(dp), PARAMETER :: kmev  = 8.61733d-11   ! Boltzmann's constant [MeV K^{-1}]
 
   REAL(dp) :: E_node
-  REAL(dp) :: CenterE(nE), WidthE(nE), NodesE(nNodesE)
+  REAL(dp), ALLOCATABLE :: CenterE(:), WidthE(:), NodesE(:)
 
   REAL(dp) :: a, b, f_a, f_b
 
   REAL(dp), DIMENSION(:),   ALLOCATABLE :: Xh, Ah, EC_rate
   REAL(dp), DIMENSION(:,:), ALLOCATABLE :: spec_nodes, spec_fine
   REAL(dp), DIMENSION(:,:), ALLOCATABLE :: spec_elements, spec_elements_nodes
+
+  ALLOCATE( CenterE(nE), WidthE(nE), NodesE(nNodesE) )
 
   ALLOCATE( Xh     (iX_B:iX_E) )
   ALLOCATE( Ah     (iX_B:iX_E) )
@@ -1236,11 +1239,14 @@ CONTAINS
     REAL(DP), INTENT(in)  :: Y(iP_B:iP_E)
     REAL(DP), INTENT(out) :: opEC(iP_B:iP_E,iS_B:iS_E)
 
-    REAL(DP) :: LogE_P(iP_B:iP_E)
-    REAL(DP) :: LogD_P(iP_B:iP_E), LogT_P(iP_B:iP_E), Y_P(iP_B:iP_E)
+    REAL(DP), ALLOCATABLE :: LogE_P(:)
+    REAL(DP), ALLOCATABLE :: LogD_P(:), LogT_P(:), Y_P(:)
     INTEGER  :: iP, iS
 
 #ifdef MICROPHYSICS_WEAKLIB
+
+    ALLOCATE( LogE_P(iP_B:iP_E) )
+    ALLOCATE( LogD_P(iP_B:iP_E), LogT_P(iP_B:iP_E), Y_P(iP_B:iP_E) )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -1337,11 +1343,14 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iMoment
     REAL(DP), INTENT(out) :: opES(iE_B:iE_E,iX_B:iX_E)
 
-    REAL(DP) :: LogE_P(iE_B:iE_E)
-    REAL(DP) :: LogD_P(iX_B:iX_E), LogT_P(iX_B:iX_E), Y_P(iX_B:iX_E)
+    REAL(DP), ALLOCATABLE :: LogE_P(:)
+    REAL(DP), ALLOCATABLE :: LogD_P(:), LogT_P(:), Y_P(:)
     INTEGER  :: iX, iE
 
 #ifdef MICROPHYSICS_WEAKLIB
+
+    ALLOCATE( LogE_P(iE_B:iE_E) )
+    ALLOCATE( LogD_P(iX_B:iX_E), LogT_P(iX_B:iX_E), Y_P(iX_B:iX_E) )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -1444,11 +1453,14 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iMoment
     REAL(DP), INTENT(out) :: opES(iP_B:iP_E)
 
-    REAL(DP) :: LogE_P(iP_B:iP_E)
-    REAL(DP) :: LogD_P(iP_B:iP_E), LogT_P(iP_B:iP_E), Y_P(iP_B:iP_E)
+    REAL(DP), ALLOCATABLE :: LogE_P(:)
+    REAL(DP), ALLOCATABLE :: LogD_P(:), LogT_P(:), Y_P(:)
     INTEGER  :: iP
 
 #ifdef MICROPHYSICS_WEAKLIB
+
+    ALLOCATE( LogE_P(iP_B:iP_E) )
+    ALLOCATE( LogD_P(iP_B:iP_E), LogT_P(iP_B:iP_E), Y_P(iP_B:iP_E) )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -1537,10 +1549,12 @@ CONTAINS
     REAL(DP), INTENT(out) :: H_I (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: H_II(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
-    REAL(DP) :: LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E)
+    REAL(DP), ALLOCATABLE :: LogT_P(:), LogEta_P(:)
     INTEGER  :: iX, iE1, iE2, iH_I, iH_II
 
 #ifdef MICROPHYSICS_WEAKLIB
+
+    ALLOCATE( LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E) )
 
     iH_I  = ( iMoment - 1 ) * 2 + 1
     iH_II = ( iMoment - 1 ) * 2 + 2
@@ -1811,10 +1825,12 @@ CONTAINS
     REAL(DP), INTENT(out) :: J_I (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: J_II(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
-    REAL(DP) :: LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E)
+    REAL(DP), ALLOCATABLE :: LogT_P(:), LogEta_P(:)
     INTEGER  :: iX, iE1, iE2, iJ_I, iJ_II
 
 #ifdef MICROPHYSICS_WEAKLIB
+
+    ALLOCATE( LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E) )
 
     iJ_I  = ( iMoment - 1 ) * 2 + 1
     iJ_II = ( iMoment - 1 ) * 2 + 2
@@ -1911,10 +1927,13 @@ CONTAINS
     REAL(DP), INTENT(out) :: J_I (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: J_II(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
-    REAL(DP) :: LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E), SignEta_P(iX_B:iX_E)
+    REAL(DP), ALLOCATABLE :: LogT_P(:), LogEta_P(:), SignEta_P(:)
     INTEGER  :: iX, iE1, iE2, iJ_I, iJ_II
 
 #ifdef MICROPHYSICS_WEAKLIB
+
+    ALLOCATE( LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E), SignEta_P(iX_B:iX_E) )
+
     IF ( ANY(D/UnitD >= 1d12) ) THEN
 
       iJ_I  = ( iMoment - 1 ) * 2 + 1
@@ -2314,11 +2333,15 @@ CONTAINS
     REAL(DP), INTENT(out) :: S_Sigma(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
     INTEGER  :: iX, iE1, iE2
-    REAL(DP) :: Xp(iX_B:iX_E), Xn(iX_B:iX_E) !Proton and neutron mass fractions
-    REAL(DP) :: LogT_P(iX_B:iX_E)
-    REAL(DP) :: LogDX_P(3,iX_B:iX_E)
+    REAL(DP), ALLOCATABLE :: Xp(:), Xn(:) !Proton and neutron mass fractions
+    REAL(DP), ALLOCATABLE :: LogT_P(:)
+    REAL(DP), ALLOCATABLE :: LogDX_P(:,:)
 
 #ifdef MICROPHYSICS_WEAKLIB
+
+    ALLOCATE( Xp(iX_B:iX_E), Xn(iX_B:iX_E) )
+    ALLOCATE( LogT_P(iX_B:iX_E) )
+    ALLOCATE( LogDX_P(3,iX_B:iX_E) )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &

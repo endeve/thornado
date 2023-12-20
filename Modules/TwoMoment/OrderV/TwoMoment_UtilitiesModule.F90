@@ -132,11 +132,11 @@ CONTAINS
     INTEGER  :: iX, iZ
     INTEGER  :: k, Mk, iM, i, j
 
-    REAL(DP) :: FTMP(4,M), GTMP(4,M)
     REAL(DP) :: k_dd(3,3), SUM1, DET, LMAT(4,4)
     REAL(DP) :: A_d_1, A_d_2, A_d_3
     LOGICAL  :: CONVERGED
 
+    REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: FTMP, GTMP
     REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: FVEC, GVEC
     REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: CVEC, UVEC, FVECm, GVECm, Alpha
     LOGICAL,  DIMENSION(:),     ALLOCATABLE :: ITERATE
@@ -145,6 +145,9 @@ CONTAINS
     nZ = SIZE( N, 1 )
 
     CALL TimersStart( Timer_Streaming_NumericalFlux_InOut )
+
+    ALLOCATE( FTMP(4,M-1) )
+    ALLOCATE( GTMP(4,M-1) )
 
     ALLOCATE( FVEC(4,M,nZ) )
     ALLOCATE( GVEC(4,M,nZ) )
@@ -446,6 +449,7 @@ CONTAINS
     REAL(DP) :: vMag, Omega, vI, vK
     LOGICAL  :: CONVERGED
 
+    REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: FTMP, GTMP
     REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: FVEC, GVEC
     REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: CVEC, UVEC, FVECm, GVECm, Alpha
     LOGICAL,  DIMENSION(:),     ALLOCATABLE :: ITERATE
@@ -454,6 +458,9 @@ CONTAINS
     nZ = SIZE( N, 1 )
 
     CALL TimersStart( Timer_Streaming_NumericalFlux_InOut )
+
+    ALLOCATE( FTMP(4,M-1) )
+    ALLOCATE( GTMP(4,M-1) )
 
     ALLOCATE( FVEC(4,M,nZ) )
     ALLOCATE( GVEC(4,M,nZ) )
