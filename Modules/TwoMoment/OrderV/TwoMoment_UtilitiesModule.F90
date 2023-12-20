@@ -780,9 +780,9 @@ CONTAINS
 
           iX = PositionIndexZ(iZ)
 
-          V1_P  = V_u_1(iX) / Unit_V
-          V2_P  = V_u_2(iX) / Unit_V
-          V3_P  = V_u_3(iX) / Unit_V
+          V1_P  = V_u_1(iX) / SpeedOfLight
+          V2_P  = V_u_2(iX) / SpeedOfLight
+          V3_P  = V_u_3(iX) / SpeedOfLight
 
           WRITE(*,*)                 '[ComputePrimitive_TwoMoment] Error'
           WRITE(*,'(a,2i5)')         '        iZ, iX : ', iZ, iX
