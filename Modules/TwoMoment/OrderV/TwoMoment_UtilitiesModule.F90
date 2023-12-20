@@ -444,7 +444,6 @@ CONTAINS
     INTEGER  :: iX, iZ
     INTEGER  :: k, Mk, iM, i, j
 
-    REAL(DP) :: FTMP(4,M), GTMP(4,M)
     REAL(DP) :: SUM1, k_dd(3,3)
     REAL(DP) :: vMag, Omega, vI, vK
     LOGICAL  :: CONVERGED
