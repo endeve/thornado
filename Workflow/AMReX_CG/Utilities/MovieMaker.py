@@ -365,8 +365,12 @@ def UpdateFrame( t, FileNumberArray, DataDirectory, Field, Action):
 
 
     # Create new time text.
-    time_text.set_text( r'$t={:.3e}\ \left[\mathrm{{{:}}}\right]$' \
-                        .format( Time[0], gvU.TimeUnits ) )
+    if ( gvS.tb < 0.0 ):
+        time_text.set_text( r'$t={:.3e}\ \left[\mathrm{{{:}}}\right]$' \
+                            .format( Time[0], gvU.TimeUnits ) )
+    else:
+        time_text.set_text( r'$t-t_b={:.3e}\ \left[\mathrm{{{:}}}\right]$' \
+                            .format( Time[0]-gvS.tb, gvU.TimeUnits ) )
     retlist += [ time_text ]
 
     # Create new element number text.
