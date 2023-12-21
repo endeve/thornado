@@ -506,17 +506,18 @@ def ApplyMovieSettings( ax, xL, xH, dX10, Field, DataUnits ):
         ax.set_ylabel( gvS.yLabel )
 
     ax.legend( prop = {'size':12} )
-    ax.grid(which='both')
+    ax.grid( which = 'both' )
 
-    ax.set_xlim( xL, xH )
+    if gvS.UseLogScale_Y:
+        ax.set_yscale( 'log' )
     ax.set_ylim( gvS.vmin, gvS.vmax )
 
-    if gvS.UseLogScale_Y: ax.set_yscale( 'log' )
-
     if gvS.UseLogScale_X:
-        xL = max( xL, xL + 0.25 * dX10[0]/9 )
-        ax.set_xlim( xL, xH )
+        xL += 0.25 * dX10[0] / gvS.RefinementLevels
+        xH += 2.0e3
         ax.set_xscale( 'log' )
+
+    ax.set_xlim( xL, xH )
 
     return
 
