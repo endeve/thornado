@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+global yLabel
+yLabel = ''
 global yScale
 yScale = 1.0
 

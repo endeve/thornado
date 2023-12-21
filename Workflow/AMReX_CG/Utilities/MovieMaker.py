@@ -43,36 +43,36 @@ def MakeMovie(  FileNumberArray,    \
         nFiles = len(FileNumberArray)
     else:
         nFiles = 1
-        
-        
+
+
     if type(DataDirectories) is list:
         nDirs = len(DataDirectories)
     else:
         nDirs = 1
-    
-            
+
+
     if type(Field) is list:
         nFields = len(Field)
         if nFields == 1:
             Field = Field[0]
     else:
         nFields = 1
-    
-    
+
+
     if  nFiles == nDirs:
 
         CreateMovie(FileNumberArray,    \
                     Field,              \
                     DataDirectories,    \
                     Action = Action     )
-                                
+
     else:
-    
+
         msg =  "\n MakeMovie Error \n"
         msg += "MakeMovie requires the same number of FileNumberArrays \n"
         msg += "as DataDirectories. One FileNumberArray per DataDirectory \n"
         msg += "must be passed into the routine."
-        
+
         assert(nFiles == nDirs),msg
 
     return
@@ -98,10 +98,10 @@ def CreateMovie(FileNumberArray,    \
     global nSS
     global nDirs
     global nFiles
-    
+
     for i in range(nDirs):
         if DataDirectory[i][-1] != '/': DataDirectory[i] += '/'
-        
+
 #    Data0, DataUnits, X1_C0, dX10, Time = fetchData_AMReX(-1,                 \
 #                                                          FileNumberArray[-1],\
 #                                                          DataDirectory[0],  \
@@ -111,7 +111,7 @@ def CreateMovie(FileNumberArray,    \
                                                           FileNumberArray[0],\
                                                           DataDirectory[0],  \
                                                           Field              )
-                                                          
+
 
     nSS = len(FileNumberArray[0])
 
@@ -134,8 +134,8 @@ def CreateMovie(FileNumberArray,    \
 
     fig = plt.figure()
     ax  = fig.add_subplot( 111 )
-    
-    
+
+
     CreateFrame( ax, xL, xH, dX10, Field, DataUnits )
 
     anim = animation.FuncAnimation( fig,                                        \
@@ -155,7 +155,7 @@ def CreateMovie(FileNumberArray,    \
 
 
     fps = max( 1, nSS / gvS.MovieRunTime )
-    
+
 
 
     print( '\n  Making movie' )
@@ -197,13 +197,13 @@ def CreateFrame( ax, xL, xH, dX10, Field, DataUnits ):
                              marker = '.',                                  \
                              label  = r'$u_{:}\left(t\right)$'.format(i),   \
                              zorder = 10 )
-    
+
         #color  = plt.cm.Set1(i),                       \
-    
+
     if gvS.PlotMesh:
         mesh,     = ax.plot( [],[] )
-    
-    
+
+
     if gvS.ShowIC:
         IC = ['None']*nDirs
         for i in range(nDirs):
@@ -213,8 +213,8 @@ def CreateFrame( ax, xL, xH, dX10, Field, DataUnits ):
                               label  = r'$u_{{{:},0}}\left(t\right)$'.format(i),    \
                               zorder = 1000,                                        \
                               alpha  = 0.5    )
-    
-    
+
+
     if gvS.ShowRefinement:
         RefLines = ['None']*gvS.RefinementLevels
         for i in range(gvS.RefinementLevels):
@@ -242,7 +242,7 @@ def CreateFrame( ax, xL, xH, dX10, Field, DataUnits ):
  #=============================================#
 def InitializeFrame(FileNumberArray, DataDirectory, Field, Action):
 
-    
+
     global time_text
     global elem_text
     global Lines
@@ -252,7 +252,7 @@ def InitializeFrame(FileNumberArray, DataDirectory, Field, Action):
 
     # Initialize empty return list
     retlist = []
-    
+
     # Initialize Empty Lines. Add to Return List.
     for i in range(nDirs):
         Lines[i].set_data([],[])
@@ -267,13 +267,13 @@ def InitializeFrame(FileNumberArray, DataDirectory, Field, Action):
     elem_text.set_text('')
     retlist +=  [ elem_text ]
 
-    
+
     # If requested, initialize mesh. Add to Return List
     if gvS.PlotMesh:
         mesh.set_data([],[])
         retlist += [ mesh ]
-        
-        
+
+
 
 
 
@@ -314,7 +314,7 @@ def InitializeFrame(FileNumberArray, DataDirectory, Field, Action):
             retlist +=  [RefLines[i]]
 
 
-        
+
 
     return tuple(retlist)
 
@@ -356,14 +356,14 @@ def UpdateFrame( t, FileNumberArray, DataDirectory, Field, Action):
 
     Data, nLines = ApplyAction(Data, Action)
 
-    
+
     for i in range(nLines):
         Lines[i].set_data( X1_C[i] , Data[i].flatten())
         retlist += [Lines[i]]
-        
-        
-        
-    
+
+
+
+
     # Create new time text.
     time_text.set_text( r'$t={:.3e}\ \left[\mathrm{{{:}}}\right]$' \
                         .format( Time[0], gvU.TimeUnits ) )
@@ -383,7 +383,7 @@ def UpdateFrame( t, FileNumberArray, DataDirectory, Field, Action):
         retlist += [ mesh ]
 
 
-    
+
     # If requested and amr is true, recreate refinement lines.
     if (gvS.ShowRefinement and gvS.amr):
         bottom, top = plt.ylim()
@@ -489,43 +489,30 @@ def ReadHeader( DataFile ):
  #=============================================#
 def ApplyMovieSettings( ax, xL, xH, dX10, Field, DataUnits ):
 
-#    global IC
-#    global mesh
-    
     ax.set_title( r'$\texttt{{{:}}}$'.format( gvS.FigTitle ), fontsize = 15 )
-    
+
     ax.set_xlabel \
-    ( r'$x^{{1}}\ \left[\mathrm{{{:}}}\right]$'.format( gvU.X1Units ), fontsize = 15 )
+      ( r'$x^{{1}}\ \left[\mathrm{{{:}}}\right]$'.format( gvU.X1Units ), \
+        fontsize = 15 )
 
+    if ( gvS.yLabel == '' ):
+        ax.set_ylabel( Field  + ' ' + r'$\left[\mathrm{{{:}}}\right]$' \
+                                  .format( DataUnits[2:-2] ) )
+    else:
+        ax.set_ylabel( gvS.yLabel )
 
-    ax.set_ylabel( Field  + ' ' + r'$\left[\mathrm{{{:}}}\right]$' \
-                              .format( DataUnits[2:-2] ) )
-    
     ax.legend( prop = {'size':12} )
     ax.grid(which='both')
-
 
     ax.set_xlim( xL, xH )
     ax.set_ylim( gvS.vmin, gvS.vmax )
 
-    #
-    #   Apply Log Scale
-    #
-    print(gvS.UseLogScale_Y)
     if gvS.UseLogScale_Y: ax.set_yscale( 'log' )
-    
+
     if gvS.UseLogScale_X:
         xL = max( xL, xL + 0.25 * dX10[0]/9 )
         ax.set_xlim( xL, xH )
         ax.set_xscale( 'log' )
-
-
-    #
-    #   Apply Extra Lines
-    #
-
-    ax.set_ylim( gvS.vmin, gvS.vmax )
-
 
     return
 
@@ -543,7 +530,7 @@ def ApplyAction( Data, Action):
         if ( Action.lower() == 'reldiff' ):
             NewData = [abs(Data[0][:]-Data[1][:])/abs(Data[0][:])]
             nLines = 1
-            
+
         else:
             NewData = Data
             nLines = len(Data)
