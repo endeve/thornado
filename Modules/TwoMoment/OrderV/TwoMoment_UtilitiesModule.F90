@@ -136,7 +136,6 @@ CONTAINS
     REAL(DP) :: A_d_1, A_d_2, A_d_3
     LOGICAL  :: CONVERGED
 
-    REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: FTMP, GTMP
     REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: FVEC, GVEC
     REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: CVEC, UVEC, FVECm, GVECm, Alpha
     LOGICAL,  DIMENSION(:),     ALLOCATABLE :: ITERATE
@@ -145,9 +144,6 @@ CONTAINS
     nZ = SIZE( N, 1 )
 
     CALL TimersStart( Timer_Streaming_NumericalFlux_InOut )
-
-    ALLOCATE( FTMP(4,M-1) )
-    ALLOCATE( GTMP(4,M-1) )
 
     ALLOCATE( FVEC(4,M,nZ) )
     ALLOCATE( GVEC(4,M,nZ) )
@@ -331,16 +327,16 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iX, CONVERGED, FTMP, GTMP )
+      !$OMP PRIVATE( iX, CONVERGED )
 #elif defined( THORNADO_OACC   )
       !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( iX, CONVERGED, FTMP, GTMP ) &
+      !$ACC PRIVATE( iX, CONVERGED ) &
       !$ACC PRESENT( ITERATE, UVEC, CVEC, GVECm, FVECm, GVEC, FVEC, &
       !$ACC          PositionIndexZ, D, I_u_1, I_u_2, I_u_3, &
       !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations )
 #elif defined( THORNADO_OMP    )
       !$OMP PARALLEL DO &
-      !$OMP PRIVATE( iX, CONVERGED, FTMP, GTMP )
+      !$OMP PRIVATE( iX, CONVERGED )
 #endif
       DO iZ = 1, nZ
         IF ( ITERATE(iZ) ) THEN
@@ -361,14 +357,8 @@ CONTAINS
           ELSE IF ( Mk == M ) THEN
             DO j = 1, Mk - 1
               DO i = 1, 4
-                FTMP(i,j) = FVEC(i,j+1,iZ)
-                GTMP(i,j) = GVEC(i,j+1,iZ)
-              END DO
-            END DO
-            DO j = 1, Mk - 1
-              DO i = 1, 4
-                FVEC(i,j,iZ) = FTMP(i,j)
-                GVEC(i,j,iZ) = GTMP(i,j)
+                FVEC(i,j,iZ) = FVEC(i,j+1,iZ)
+                GVEC(i,j,iZ) = GVEC(i,j+1,iZ)
               END DO
             END DO
           END IF
@@ -449,7 +439,6 @@ CONTAINS
     REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
     LOGICAL  :: CONVERGED
 
-    REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: FTMP, GTMP
     REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: FVEC, GVEC
     REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: CVEC, UVEC, FVECm, GVECm, Alpha
     LOGICAL,  DIMENSION(:),     ALLOCATABLE :: ITERATE
@@ -458,9 +447,6 @@ CONTAINS
     nZ = SIZE( N, 1 )
 
     CALL TimersStart( Timer_Streaming_NumericalFlux_InOut )
-
-    ALLOCATE( FTMP(4,M-1) )
-    ALLOCATE( GTMP(4,M-1) )
 
     ALLOCATE( FVEC(4,M,nZ) )
     ALLOCATE( GVEC(4,M,nZ) )
@@ -642,16 +628,16 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iX, CONVERGED, FTMP, GTMP )
+      !$OMP PRIVATE( iX, CONVERGED )
 #elif defined( THORNADO_OACC   )
       !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( iX, CONVERGED, FTMP, GTMP ) &
+      !$ACC PRIVATE( iX, CONVERGED ) &
       !$ACC PRESENT( ITERATE, UVEC, CVEC, GVECm, FVECm, GVEC, FVEC, &
       !$ACC          PositionIndexZ, D, I_u_1, I_u_2, I_u_3, &
       !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations )
 #elif defined( THORNADO_OMP    )
       !$OMP PARALLEL DO &
-      !$OMP PRIVATE( iX, CONVERGED, FTMP, GTMP )
+      !$OMP PRIVATE( iX, CONVERGED )
 #endif
       DO iZ = 1, nZ
         IF ( ITERATE(iZ) ) THEN
@@ -672,14 +658,8 @@ CONTAINS
           ELSE IF ( Mk == M ) THEN
             DO j = 1, Mk - 1
               DO i = 1, 4
-                FTMP(i,j) = FVEC(i,j+1,iZ)
-                GTMP(i,j) = GVEC(i,j+1,iZ)
-              END DO
-            END DO
-            DO j = 1, Mk - 1
-              DO i = 1, 4
-                FVEC(i,j,iZ) = FTMP(i,j)
-                GVEC(i,j,iZ) = GTMP(i,j)
+                FVEC(i,j,iZ) = FVEC(i,j+1,iZ)
+                GVEC(i,j,iZ) = GVEC(i,j+1,iZ)
               END DO
             END DO
           END IF
