@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+global yScale
+yScale = 1.0
 
 global ProblemName
 global FigTitle
