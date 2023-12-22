@@ -891,17 +891,22 @@ CONTAINS
   INTEGER  :: iE1, iNodeE1, iE2
 
   REAL(dp) :: loctot
-  REAL(dp) :: tmev
 
   REAL(dp) :: Xnuc
   REAL(dp), PARAMETER :: coeff = 2.0d0 * (Pi*SpeedOfLightCGS)**2 &
                                * hbarMeVs**3
-  REAL(dp), PARAMETER :: kmev  = 8.61733d-11   ! Boltzmann's constant [MeV K^{-1}]
 
   REAL(dp) :: E_node
   REAL(dp), ALLOCATABLE :: CenterE(:), WidthE(:), NodesE(:)
 
   REAL(dp) :: a, b, f_a, f_b
+
+  INTEGER  :: iD, iT, iY
+  REAL(dp) :: dD, dT, dY
+  REAL(dp) :: p000, p100, p010, p110, p001, p101, p011, p111
+  INTEGER  :: loD, hiD
+  INTEGER  :: loT, hiT
+  INTEGER  :: loY, hiY
 
   REAL(dp), DIMENSION(:),   ALLOCATABLE :: Xh, Ah, EC_rate
   REAL(dp), DIMENSION(:,:), ALLOCATABLE :: spec_nodes, spec_fine
@@ -946,109 +951,126 @@ CONTAINS
 
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE                                  &
-    !$OMP PRIVATE( D_P, T_P, Y_P, tmev, Xnuc, loctot )             & 
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD                  &
+    !$OMP PRIVATE( D_P, T_P, Y_P, Xnuc, loctot,                     & 
+    !$OMP          iE, iE1, iE2, iNodeE1, E_node, a, b, f_a, f_b,   & 
+    !$OMP          iD, iT, iY, dD, dT, dY,                          &
+    !$OMP          loD, hiD, loT, hiT, loY, hiY,                    &      
+    !$OMP          p000, p100, p010, p110, p001, p101, p011, p111 ) &
     !$OMP MAP    ( to: CenterE, WidthE, NodesE )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG                                       &
-    !$ACC PRIVATE( D_P, T_P, Y_P, tmev, Xnuc, loctot )             & 
-    !$ACC COPYIN ( CenterE, WidthE, NodesE )                       &
-    !$ACC PRESENT( Xh, Ah, EC_rate, OS_EmAb_EC_rate,               &
-    !$ACC          OS_EmAb_EC_spec, EmAb_EC_spec_T, WeightsE,      &
-    !$ACC          f0, EC_nE, EC_dE, EC_iE_max, EC_iNodeE_max,  &
+    !$ACC PARALLEL LOOP GANG LOOP VECTOR                            &
+    !$ACC PRIVATE( D_P, T_P, Y_P, Xnuc, loctot,                     & 
+    !$ACC          iE, iE1, iE2, iNodeE1, E_node, a, b, f_a, f_b,   & 
+    !$ACC          iD, iT, iY, dD, dT, dY,                          &
+    !$ACC          loD, hiD, loT, hiT, loY, hiY,                    &      
+    !$ACC          p000, p100, p010, p110, p001, p101, p011, p111 ) &
+    !$ACC COPYIN ( CenterE, WidthE, NodesE )                        &
+    !$ACC PRESENT( Xh, Ah, EC_rate, OS_EmAb_EC_rate,                &
+    !$ACC          OS_EmAb_EC_spec, EmAb_EC_spec_T, WeightsE,       &
+    !$ACC          f0, EC_nE, EC_dE, EC_iE_max, EC_iNodeE_max,      &
     !$ACC          Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T) 
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO                                              &
-    !$OMP PRIVATE( D_P, T_P, Y_P, tmev, Xnuc, loctot,              & 
-    !$OMP          iE, iE1, iE2, iNodeE1, E_node, a, b, f_a, f_b )
+    !$OMP PARALLEL DO                                               &
+    !$OMP PRIVATE( D_P, T_P, Y_P, Xnuc, loctot,                     & 
+    !$OMP          iE, iE1, iE2, iNodeE1, E_node, a, b, f_a, f_b,   & 
+    !$OMP          iD, iT, iY, dD, dT, dY,                          &
+    !$OMP          loD, hiD, loT, hiT, loY, hiY,                    &      
+    !$OMP          p000, p100, p010, p110, p001, p101, p011, p111 )
 #endif
     DO iX = iX_B, iX_E
 
       IF ( QueryOpacity_EmAb_Nuclei( D(iX) / UnitD ) ) THEN
 
-      D_P = D(iX) / UnitD
-      T_P = T(iX) / UnitT
-      Y_P = Y(iX) / UnitY
+        D_P = D(iX) / UnitD
+        T_P = T(iX) / UnitT
+        Y_P = Y(iX) / UnitY
 
-      IF(     D_P < Ds_EC_T(1) .or. D_P > Ds_EC_T(SIZE(Ds_EC_T)) &
-         .or. T_P < Ts_EC_T(1) .or. T_P > Ts_EC_T(SIZE(Ts_EC_T)) &
-         .or. Y_p < Ys_EC_T(1) .or. Y_P > Ys_EC_T(SIZE(Ys_EC_T)) &
-         .or. Ah(iX) < 40.0d0) CYCLE
+        IF(     D_P <= Ds_EC_T(1) .OR. D_P >= Ds_EC_T(SIZE(Ds_EC_T)) &
+           .OR. T_P <= Ts_EC_T(1) .OR. T_P >= Ts_EC_T(SIZE(Ts_EC_T)) &
+           .OR. Y_p <= Ys_EC_T(1) .OR. Y_P >= Ys_EC_T(SIZE(Ys_EC_T)) &
+           .OR. Ah(iX) <= 40.0d0) CYCLE
 
-        CALL LogInterpolateSingleVariable_3D_Custom_Point &
-             ( D_P,     T_P,     Y_P,  &
-               Ds_EC_T, Ts_EC_T, Ys_EC_T, &
-               OS_EmAb_EC_rate(iNuE), EmAb_EC_rate_T, EC_rate(iX)) 
+        loD = LBOUND(Ds_EC_T,1)
+        hiD = UBOUND(Ds_EC_T,1)
+        loT = LBOUND(Ts_EC_T,1)
+        hiT = UBOUND(Ts_EC_T,1)
+        loY = LBOUND(Ys_EC_T,1)
+        hiY = UBOUND(Ys_EC_T,1)
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP PARALLEL DO SIMD            
-#elif defined(THORNADO_OACC)
-    !$ACC LOOP VECTOR                 
-#endif
+        iD = MAX( loD, MIN( hiD-1, loD &
+           + FLOOR( (hiD-loD)*LOG10(D_P/Ds_EC_T(loD))/LOG10(Ds_EC_T(hiD)/Ds_EC_T(loD)) ) ) )
+        dD = LOG10( D_P / Ds_EC_T(iD) ) / LOG10( Ds_EC_T(iD+1) / Ds_EC_T(iD) )
+
+        iT = MAX( loT, MIN( hiT-1, loT &
+           + FLOOR( (hiT-loT)*LOG10(T_P/Ts_EC_T(loT))/LOG10(Ts_EC_T(hiT)/Ts_EC_T(loT)) ) ) )
+        dT = LOG10( T_P / Ts_EC_T(iT) ) / LOG10( Ts_EC_T(iT+1) / Ts_EC_T(iT) )
+
+        iY = MAX( loY, MIN( hiY-1, loY &
+           + FLOOR( (hiY-loY)*(Y_P-Ys_EC_T(loY))/(Ys_EC_T(hiY)-Ys_EC_T(loY)) ) ) )
+        dY = ( Y_P - Ys_EC_T(iY) ) / ( Ys_EC_T(iY+1) - Ys_EC_T(iY) )
+
+        p000 = EmAb_EC_rate_T(iD  , iT  , iY  )
+        p100 = EmAb_EC_rate_T(iD+1, iT  , iY  )
+        p010 = EmAb_EC_rate_T(iD  , iT+1, iY  )
+        p110 = EmAb_EC_rate_T(iD+1, iT+1, iY  )
+        p001 = EmAb_EC_rate_T(iD  , iT  , iY+1)
+        p101 = EmAb_EC_rate_T(iD+1, iT  , iY+1)
+        p011 = EmAb_EC_rate_T(iD  , iT+1, iY+1)
+        p111 = EmAb_EC_rate_T(iD+1, iT+1, iY+1)
+
+        EC_rate(iX) &
+          = 10.0d0 ** (   ( One - dY ) * (   ( One - dT ) * ( ( One - dD ) * p000 + dD * p100 ) &
+                                           +         dT   * ( ( One - dD ) * p010 + dD * p110 ) ) &
+                        +         dY   * (   ( One - dT ) * ( ( One - dD ) * p001 + dD * p101 ) &
+                                           +         dT   * ( ( One - dD ) * p011 + dD * p111 ) ) ) &
+          - OS_EmAb_EC_rate(iNuE)
+
+        !CALL LogInterpolateSingleVariable_3D_Custom_Point &
+        !     ( D_P,     T_P,     Y_P,  &
+        !       Ds_EC_T, Ts_EC_T, Ys_EC_T, &
+        !       OS_EmAb_EC_rate(iNuE), EmAb_EC_rate_T, EC_rate(iX)) 
+        loctot = 0.0d0
+        DO iE = 1, EC_nE
+          p000 = EmAb_EC_spec_T(iD  , iT  , iY  , iE)
+          p100 = EmAb_EC_spec_T(iD+1, iT  , iY  , iE)
+          p010 = EmAb_EC_spec_T(iD  , iT+1, iY  , iE)
+          p110 = EmAb_EC_spec_T(iD+1, iT+1, iY  , iE)
+          p001 = EmAb_EC_spec_T(iD  , iT  , iY+1, iE)
+          p101 = EmAb_EC_spec_T(iD+1, iT  , iY+1, iE)
+          p011 = EmAb_EC_spec_T(iD  , iT+1, iY+1, iE)
+          p111 = EmAb_EC_spec_T(iD+1, iT+1, iY+1, iE)
+
+          spec_fine(iE,iX) &
+            = 10.0d0 ** (   ( One - dY ) * (   ( One - dT ) * ( ( One - dD ) * p000 + dD * p100 ) &
+                                             +         dT   * ( ( One - dD ) * p010 + dD * p110 ) ) &
+                          +         dY   * (   ( One - dT ) * ( ( One - dD ) * p001 + dD * p101 ) &
+                                             +         dT   * ( ( One - dD ) * p011 + dD * p111 ) ) ) &
+            - OS_EmAb_EC_spec(iNuE)
+
+          !CALL LogInterpolateSingleVariable_3D_Custom_Point &
+          !     ( D_P,     T_P,     Y_P,  &
+          !       Ds_EC_T, Ts_EC_T, Ys_EC_T, &
+          !       OS_EmAb_EC_spec(iNuE), EmAb_EC_spec_T(:,:,:,iE), spec_fine(iE,iX)) 
+
+          loctot = loctot + spec_fine(iE,iX) * EC_dE
+        END DO
+
         DO iE = iE_B, iE_E
           spec_nodes(iE,iX) = 0.0d0
         END DO
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP PARALLEL DO SIMD            
-#elif defined(THORNADO_OACC)
-    !$ACC LOOP VECTOR                 
-#endif
         DO iE = 1, nE
           spec_elements(iE,iX) = 0.0d0
           spec_elements_nodes(iE,iX) = 0.0d0
         END DO
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP PARALLEL DO SIMD            
-#elif defined(THORNADO_OACC)
-    !$ACC LOOP VECTOR                 
-#endif
-        DO iE = 1, EC_nE
-          spec_fine(iE,iX) = 0.0d0
-        END DO
-
-        tmev = T(iX) / UnitT * kmev
-        Xnuc = Xh(iX) / (Ah(iX) / AvogadroConstantMKS) * D(iX) / UnitD 
-
-        loctot = 0.0d0
-#if defined(THORNADO_OMP_OL)
-    !$OMP PARALLEL DO SIMD    &
-    !$OMP REDUCTION(+:loctot)         
-#elif defined(THORNADO_OACC)
-    !$ACC LOOP VECTOR         &
-    !$ACC REDUCTION(+:loctot)         
-#endif
-        DO iE = 1, EC_nE
-          CALL LogInterpolateSingleVariable_3D_Custom_Point &
-               ( D_P,     T_P,     Y_P,  &
-                 Ds_EC_T, Ts_EC_T, Ys_EC_T, &
-                 OS_EmAb_EC_spec(iNuE), EmAb_EC_spec_T(:,:,:,iE), spec_fine(iE,iX)) 
-
-          loctot = loctot + spec_fine(iE,iX) * EC_dE
-
-        END DO
-
-        !renormalise interpolated spectrum to 1
-#if defined(THORNADO_OMP_OL)
-    !$OMP PARALLEL DO SIMD            
-#elif defined(THORNADO_OACC)
-    !$ACC LOOP VECTOR                 
-#endif
+        !renormalise interpolated fine energy grid spectrum to 1
         DO iE = 1, EC_nE
           spec_fine(iE,iX) = spec_fine(iE,iX) / loctot
         ENDDO
-       
-        loctot = 0.0d0
-#if defined(THORNADO_OMP_OL)
-    !$OMP PARALLEL DO SIMD              &
-    !$OMP PRIVATE ( iE, iE1, iNodeE1,   &
-    !$OMP           iE2, E_node, loctot )
-#elif defined(THORNADO_OACC)
-    !$ACC LOOP VECTOR                   &
-    !$ACC PRIVATE ( iE, iE1, iNodeE1,   &
-    !$ACC           iE2, E_node, loctot )
-#endif
+      
+        !calculate spectrum in elements from interpolated fine spectrum 
         DO iE1 = 1, EC_iE_max
           loctot = 0.0d0
           DO iNodeE1 = 1, nNodesE
@@ -1069,13 +1091,7 @@ CONTAINS
           spec_elements_nodes(iE1,iX) = loctot
         ENDDO
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP PARALLEL DO SIMD            &
-    !$OMP PRIVATE (iE1, a, b, f_a, f_b)  
-#elif defined(THORNADO_OACC)
-    !$ACC LOOP VECTOR                 &
-    !$ACC PRIVATE (iE1, a, b, f_a, f_b)
-#endif
+        !integrate fine spectrum over elements for renormlisation
         DO iE = 1, EC_iE_max
 
           IF(EC_kfmin(iE) >= EC_kfmax(iE)) THEN
@@ -1132,13 +1148,9 @@ CONTAINS
 
         ENDDO
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP PARALLEL DO SIMD         &
-    !$OMP PRIVATE ( iE1 )          
-#elif defined(THORNADO_OACC)
-    !$ACC LOOP VECTOR              &
-    !$ACC PRIVATE ( iE1 )         
-#endif
+        Xnuc = Xh(iX) / (Ah(iX) / AvogadroConstantMKS) * D_P 
+
+        !renormalise spectrum at the nodes so that it integrates to 1
         DO iE = iE_B, EC_iNodeE_max
           iE1     = MOD( (iE-1) / nNodesE, nE      ) + 1
 
@@ -1147,11 +1159,6 @@ CONTAINS
 
         ENDDO
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-    !$ACC LOOP VECTOR
-#endif
         DO iE = iE_B, iE_E
 
           !now add Chi from EC table on heavy nuclei to Chi from EmAb on nucleons
