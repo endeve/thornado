@@ -10,7 +10,7 @@ import GlobalVariables.Units    as gvU
 
 from Utilities.Files        import Overwrite, CheckForField, CleanField
 from Utilities.GetFrameData import GetFrameData
-from Utilities.Mesh         import CreateLocations
+
 
 
 #=============================================#
@@ -57,6 +57,7 @@ def MakeProbelmDataDirectory( FileNumberArray,          \
                               PlotBaseName,             \
                               Field,                    \
                               DataDirectory,            \
+                              PlotDataType     = 'AMReX', \
                               forceChoiceD     = False, \
                               overwriteD       = True,  \
                               forceChoiceF     = False, \
@@ -144,6 +145,7 @@ def MakeProbelmDataDirectory( FileNumberArray,          \
                                 PlotBaseName,       \
                                 Field,              \
                                 DataDirectory,      \
+                                PlotDataType,       \
                                 SaveTime = SaveTime,\
                                 SaveX = SaveX,      \
                                 SavedX = SavedX,    \
@@ -166,6 +168,7 @@ def MakeDataFrameDirectories( FileNumberArray,          \
                               PlotBaseName,             \
                               Field,                    \
                               DataDirectory,            \
+                              PlotDataType,             \
                               nProcs           = 1,     \
                               owF              = True,  \
                               SaveTime         = True,  \
@@ -190,6 +193,7 @@ def MakeDataFrameDirectories( FileNumberArray,          \
                                  PlotBaseName,      \
                                  Field,             \
                                  DataDirectory,     \
+                                 PlotDataType,      \
                                  SaveTime,          \
                                  SaveX,             \
                                  SavedX,            \
@@ -232,6 +236,7 @@ def MakeDataFrameDirectories( FileNumberArray,          \
                                           PlotBaseName,   \
                                           Field,          \
                                           DataDirectory,  \
+                                          PlotDataType,   \
                                           SaveTime,       \
                                           SaveX,          \
                                           SavedX,         \
@@ -245,6 +250,7 @@ def MakeDataFrameDirectories( FileNumberArray,          \
                                       PlotBaseName,       \
                                       Field,              \
                                       DataDirectory,      \
+                                      PlotDataType,       \
                                       SaveTime,           \
                                       SaveX,              \
                                       SavedX,             \
@@ -270,6 +276,7 @@ def MakeDataFrameDirectoriesLoop( FileNumberArray,  \
                                   PlotBaseName,     \
                                   Field,            \
                                   DataDirectory,    \
+                                  PlotDataType,     \
                                   SaveTime,         \
                                   SaveX,            \
                                   SavedX,           \
@@ -277,7 +284,6 @@ def MakeDataFrameDirectoriesLoop( FileNumberArray,  \
                                   Verbose           ):
 
     
-
 #    NumPltFiles = FileNumberArray.shape[0]
     NumPltFiles = len(FileNumberArray)
     
@@ -291,9 +297,17 @@ def MakeDataFrameDirectoriesLoop( FileNumberArray,  \
 
         PlotFileNumber = FileNumberArray[i]
         PathDataDirectory = DataDirectory + str(PlotFileNumber) + '/'
-        PathPlotDirectory = PlotDirectory       \
-                          + PlotBaseName    \
-                          + '{:}'.format( str(PlotFileNumber).zfill(8) )
+        
+        if PlotDataType.lower() == 'amrex':
+            PathPlotDirectory = PlotDirectory       \
+                              + PlotBaseName    \
+                              + '{:}'.format( str(PlotFileNumber).zfill(8) )
+        else:
+            PathPlotDirectory = PlotDirectory       \
+                              + PlotBaseName[:-4]   \
+                              + '_'     \
+                              + '{:}'.format( str(PlotFileNumber).zfill(6) )
+        
         
         if not isdir(PathDataDirectory):
         
@@ -301,13 +315,14 @@ def MakeDataFrameDirectoriesLoop( FileNumberArray,  \
                 print( 'Generating data directory: {:} ({:}/{:})'.format \
                     ( PathDataDirectory, i+1, NumPltFiles ) )
                     
-            CreateFrameDirectory( PathDataDirectory, \
-                                  PathPlotDirectory, \
-                                  PlotFileNumber,    \
-                                  Field,             \
-                                  SaveTime,          \
-                                  SaveX,             \
-                                  SavedX             )
+            CreateFrameDirectory_AMReX( PathDataDirectory, \
+                                        PathPlotDirectory, \
+                                        PlotFileNumber,    \
+                                        PlotDataType,      \
+                                        Field,             \
+                                        SaveTime,          \
+                                        SaveX,             \
+                                        SavedX             )
                              
         elif isdir(PathDataDirectory) and owF:
         
@@ -322,13 +337,14 @@ def MakeDataFrameDirectoriesLoop( FileNumberArray,  \
                 print( 'Generating data directory: {:} ({:}/{:})'.format \
                     ( PathDataDirectory, i+1, NumPltFiles ) )
                     
-            CreateFrameDirectory( PathDataDirectory, \
-                                  PathPlotDirectory, \
-                                  PlotFileNumber,    \
-                                  Field,             \
-                                  SaveTime,          \
-                                  SaveX,             \
-                                  SavedX             )
+            CreateFrameDirectory_AMReX( PathDataDirectory, \
+                                        PathPlotDirectory, \
+                                        PlotFileNumber,    \
+                                        PlotDataType,      \
+                                        Field,             \
+                                        SaveTime,          \
+                                        SaveX,             \
+                                        SavedX             )
         
     return
 
@@ -345,13 +361,14 @@ def MakeDataFrameDirectoriesLoop( FileNumberArray,  \
 #   CreateFrameDirectory                        #
 #                                               #
  #=============================================#
-def CreateFrameDirectory( PathDataDirectory,             \
-                          PathPlotDirectory,             \
-                          PlotFileNumber,                \
-                          Field,                         \
-                          SaveTime         = True,       \
-                          SaveX            = True,       \
-                          SavedX           = True        ):
+def CreateFrameDirectory_AMReX( PathDataDirectory,             \
+                                PathPlotDirectory,             \
+                                PlotFileNumber,                \
+                                PlotDataType,                  \
+                                Field,                         \
+                                SaveTime         = True,       \
+                                SaveX            = True,       \
+                                SavedX           = True        ):
 
     if not isdir(PathDataDirectory):
         os.system( 'mkdir {:}'.format(PathDataDirectory) )
@@ -369,38 +386,37 @@ def CreateFrameDirectory( PathDataDirectory,             \
         dX2File  = PathDataDirectory + '{:}.dat'.format( 'dX2' )
         dX3File  = PathDataDirectory + '{:}.dat'.format( 'dX3' )
 
-    
 
-    X1, X2, X3, dX1, dX2, dX3, xL, xH               \
-        = CreateLocations(  PathPlotDirectory,      \
-                            TypeIn = "Leaf"      )
 
-    Data, DataUnits, Time \
+    Data, DataUnits,    \
+    X1, X2, X3,         \
+    dX1, dX2, dX3,      \
+    Time                \
         = GetFrameData( PathPlotDirectory,   \
+                        PlotDataType,        \
                         Field,               \
-                        X1, X2, X3,          \
-                        dX1, dX2, dX3,       \
                         SaveTime             )
 
 
     nX1 = X1.shape[0]
     nX2 = X2.shape[0]
     nX3 = X3.shape[0]
-
+    
+    ndX1 = dX1.shape[0]
+    ndX2 = dX2.shape[0]
+    ndX3 = dX3.shape[0]
 
     nDims = 1
     if nX2 > 1: nDims += 1
     if nX3 > 1: nDims += 1
 
     if   nDims == 1:
-        LoopShape = [ Data.shape[0], 1, 1 ]
+        LoopShape = [ len(Data), 1, 1 ]
         DataShape = '{:d}' \
-                    .format( Data.shape[0] )
+                    .format( len(Data) )
 
     else:
         exit( 'MakeDataFile not implemented for nDims > 1' )
-
-
 
     if not isfile( DataFile ):
 
@@ -417,16 +433,15 @@ def CreateFrameDirectory( PathDataDirectory,             \
             FileOut.write( '# Data Units: {:}\n'  \
                            .format( DataUnits ) )
             FileOut.write( '# Min. value: {:.16e}\n' \
-                           .format( Data.min() ) )
+                           .format( min(Data) ) )
             FileOut.write( '# Max. value: {:.16e}\n' \
-                           .format( Data.max() ) )
+                           .format( max(Data) ) )
 
             np.savetxt( FileOut, Data )
 
         # end with open( DataFile, 'w' ) as FileOut
 
     # end if not isfile( DataFile )
-
     if SaveTime:
         if not isfile( TimeFile ):
 
@@ -449,7 +464,7 @@ def CreateFrameDirectory( PathDataDirectory,             \
                 FileOut.write( '# {:}\n'.format( X1File  ) )
                 FileOut.write( '# X1_C [{:}]\n'.format( gvU.X1Units ) )
 
-                for iX1 in range( LoopShape[0] ):
+                for iX1 in range( nX1 ):
                     FileOut.write( str( X1 [iX1] ) + ' ' )
                 FileOut.write( '\n' )
 
@@ -461,7 +476,7 @@ def CreateFrameDirectory( PathDataDirectory,             \
                 FileOut.write( '# {:}\n'.format( X2File  ) )
                 FileOut.write( '# X2_C [{:}]\n'.format( gvU.X2Units ) )
 
-                for iX2 in range( LoopShape[1] ):
+                for iX2 in range( nX2 ):
                     FileOut.write( str( X2 [iX2] ) + ' ' )
                 FileOut.write( '\n' )
 
@@ -473,7 +488,7 @@ def CreateFrameDirectory( PathDataDirectory,             \
                 FileOut.write( '# {:}\n'.format( X3File  ) )
                 FileOut.write( '# X3_C [{:}]\n'.format( gvU.X3Units ) )
 
-                for iX3 in range( LoopShape[2] ):
+                for iX3 in range( nX3 ):
                     FileOut.write \
                       ( str( X3 [iX3] ) + ' ' )
                 FileOut.write( '\n' )
@@ -489,7 +504,7 @@ def CreateFrameDirectory( PathDataDirectory,             \
                 FileOut.write( '# {:}\n'.format( dX1File  ) )
                 FileOut.write( '# dX1 [{:}]\n'.format( gvU.X1Units ) )
 
-                for iX1 in range( LoopShape[0] ):
+                for iX1 in range( ndX1 ):
                     FileOut.write( str( dX1 [iX1] ) + ' ' )
                 FileOut.write( '\n' )
 
@@ -501,7 +516,7 @@ def CreateFrameDirectory( PathDataDirectory,             \
                 FileOut.write( '# {:}\n'.format( dX2File  ) )
                 FileOut.write( '# dX2 [{:}]\n'.format( gvU.X2Units ) )
 
-                for iX2 in range( LoopShape[1] ):
+                for iX2 in range( ndX2 ):
                     FileOut.write( str( dX2 [iX2] ) + ' ' )
                 FileOut.write( '\n' )
 
@@ -513,6 +528,6 @@ def CreateFrameDirectory( PathDataDirectory,             \
                 FileOut.write( '# {:}\n'.format( dX3File  ) )
                 FileOut.write( '# dX3 [{:}]\n'.format( gvU.X3Units ) )
 
-                for iX3 in range( LoopShape[2] ):
+                for iX3 in range( ndX3 ):
                     FileOut.write( str( dX3 [iX3] ) + ' ' )
                 FileOut.write( '\n' )

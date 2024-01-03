@@ -47,7 +47,9 @@ global RefinementLevels
 
 
 global DataDirectory
+global DataType
 
+global cellAverageFlag
 
 global nSources
 
@@ -94,6 +96,7 @@ MovieRunTime = 10
 ShowRefinement       = False
 RefinementLocations  = []
 
+ReferenceBounce = False
 
 DataDirectory = ''
 

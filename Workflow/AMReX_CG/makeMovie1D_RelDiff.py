@@ -7,11 +7,12 @@ plt.style.use( 'publication.sty' )
 
 
 import GlobalVariables.Settings as gvS
+import Utilities.BounceFinder   as BF
 from GlobalVariables.Units   import SetSpaceTimeUnits
 
 from Utilities.Files         import GetFileNumberArray
 from Utilities.MakeDataArray import MakeProbelmDataDirectory
-from Utilities.MovieMaker    import MakeMovie
+from Utilities.MovieMaker_Dual    import MakeMovie
 
 
 if __name__ == "__main__":
@@ -19,16 +20,27 @@ if __name__ == "__main__":
     #### ========== User Input ==========
 
     # Specify name of problem
-    ProblemName = 'YahilCollapse_XCFC'
+    ProblemName = 'AdiabaticCollapse_XCFC'
 
     # Specify title of figure
     gvS.FigTitle = ProblemName
 
     # Specify directory containing amrex Plotfiles
-    PlotDirectoryA = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/YahilCollapse_XCFC/Data_9Lvls_512/'
+    gvS.nDirs = 2
+    
+    PlotDirectories = ['None']*gvS.nDirs
 
+#    PlotDirectories[0] = '/Users/nickroberts/Downloads/native'
+#    PlotDirectories[1] = '/Users/nickroberts/Downloads/amrex'
 
-    PlotDirectoryB = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/YahilCollapse_XCFC/Data_9Lvls_512/'
+#    PlotDirectories[0] = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC'
+#    PlotDirectories[0] = '/Users/nickroberts/thornado/SandBox/AdiabaticCollapse_XCFC/Output'
+    PlotDirectories[0] = '/Users/nickroberts/thornado_clean/thornado/SandBox/AdiabaticCollapse_XCFC/Output'
+    PlotDirectories[1] = '/Users/nickroberts/thornado_clean/thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC'
+    
+    gvS.DataType = ['None']*gvS.nDirs
+    gvS.DataType[0] = 'Native'
+    gvS.DataType[1] = 'AMReX'
 
     # Specify plot file base name
     PlotBaseName = ProblemName + '.plt'
@@ -70,31 +82,33 @@ if __name__ == "__main__":
     # Use custom limts for y-axis (1D) or colorbar (2D)
     gvS.UseCustomLimits = True
     gvS.vmin = 1.0e-16
-    gvS.vmax = 1.0e-1
+    gvS.vmax = 1.0e1
 
     gvS.MovieRunTime = 10.0 # seconds
 
     gvS.ShowRefinement = True
-    gvS.RefinementLocations = [ 5.0e+4, 2.5E+4, 1.25E+4, 6.25E+3, 3.125E+3, \
-                            1.5625E+3, 7.8125E+2, 3.90625E+2, 1.953125E+2 ]
+    gvS.RefinementLevels = 7
 
+    gvS.ReferenceBounce = False
+    gvS.StopTime        = 9146.03
 
-
-
+    gvS.amr = True
 
 
 
     #### ====== End of User Input =======
 
-    DataDirectoryA = 'DataDirectories/{:s}_A'.format( ProblemName )
-    DataDirectoryB = 'DataDirectories/{:s}_B'.format( ProblemName )
+    DataDirectories = ['None']*gvS.nDirs
+
+    DataDirectories[0] = 'DataDirectories/{:s}_DWN'.format( ProblemName )
+    DataDirectories[1] = 'DataDirectories/{:s}_DWNB'.format( ProblemName )
 
     ID            = '{:s}_{:s}'.format( ProblemName, Field )
-    gvS.MovieName     = 'mov.{:s}.mp4'.format( ID )
+    gvS.MovieName     = 'mov.{:s}_RelDiff.mp4'.format( ID )
 
     # Append "/" to PlotDirectory, if not present
-    if not PlotDirectoryA[-1] == '/': PlotDirectoryA += '/'
-    if not PlotDirectoryB[-1] == '/': PlotDirectoryB += '/'
+    for i in range(gvS.nDirs):
+        if not PlotDirectories[i][-1] == '/': PlotDirectories[i] += '/'
     
     
     #if type(Field) is not list: Field = [ Field ]
@@ -106,39 +120,46 @@ if __name__ == "__main__":
     SetSpaceTimeUnits(CoordinateSystem, UsePhysicalUnits)
 
             
-    FileNumberArrayA = GetFileNumberArray( PlotDirectoryA,     \
-                                           PlotBaseName,       \
-                                           SSi, SSf,           \
-                                           PlotEvery           )
-
-    MakeProbelmDataDirectory( FileNumberArrayA,\
-                              PlotDirectoryA,  \
-                              PlotBaseName,    \
-                              Field,           \
-                              DataDirectoryA   )
+    FileNumberArrays = [['None']]*gvS.nDirs
+    for i in range(gvS.nDirs):
+        FileNumberArrays[i] = GetFileNumberArray( PlotDirectories[i],     \
+                                                  PlotBaseName,       \
+                                                  SSi, SSf,           \
+                                                  PlotEvery           )
 
 
-    SSi = 567 # -1 -> SSi = 0
-    SSf = 2262
-    FileNumberArrayB = GetFileNumberArray( PlotDirectoryB,     \
-                                           PlotBaseName,       \
-                                           SSi, SSf,           \
-                                           PlotEvery           )
-
-    MakeProbelmDataDirectory( FileNumberArrayB,\
-                              PlotDirectoryB,  \
-                              PlotBaseName,    \
-                              Field,           \
-                              DataDirectoryB   )
+        MakeProbelmDataDirectory( FileNumberArrays[i],\
+                                  PlotDirectories[i],  \
+                                  PlotBaseName,    \
+                                  Field,           \
+                                  DataDirectories[i],   \
+                                  gvS.DataType[i]   )
 
 
+
+    if gvS.ReferenceBounce:
+        
+        print( '\n  Finding Bounce Data' )
+        print( '  -------------------' )
+        BF.BounceDensityList = [0.0]*gvS.nDirs
+        BF.BounceTimeList    = [0.0]*gvS.nDirs
+        BF.BounceFrameList   = [0]*gvS.nDirs
+        for i in range(gvS.nDirs):
+            BFrame, BTime, BDensity = BF.FindBounce( PlotDirectories[i],    \
+                                                     PlotBaseName,          \
+                                                     DataDirectories[i],    \
+                                                     gvS.DataType[i]        )
+            
+            BF.BounceDensityList[i] = BDensity
+            BF.BounceFrameList[i]   = BFrame
+            BF.BounceTimeList[i]    = BTime
 
     
 
-    MakeMovie( [FileNumberArrayA, FileNumberArrayB], \
-               [Field],                              \
-               [DataDirectoryA, DataDirectoryB],     \
-               Action = 'RelDiff'    )
+    MakeMovie( FileNumberArrays,    \
+               [Field],             \
+               DataDirectories,     \
+               Action = 'RelDiff'   )
 
 
 

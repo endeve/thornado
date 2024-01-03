@@ -25,7 +25,8 @@ if __name__ == "__main__":
     gvS.FigTitle = '{:} with AMR'.format(ProblemName)
 
     # Specify directory containing amrex Plotfiles
-    PlotDirectory = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC/AdCol_AMR_ThirdRun'
+    PlotDirectory = '/Users/nickroberts/thornado/SandBox/AdiabaticCollapse_XCFC/Output'
+    gvS.DataType = 'Native'
 
     # Specify plot file base name
     PlotBaseName = ProblemName + '.plt'
@@ -111,7 +112,8 @@ if __name__ == "__main__":
                               PlotDirectory,   \
                               PlotBaseName,    \
                               Field,           \
-                              DataDirectory    )
+                              DataDirectory,   \
+                              gvS.DataType     )
 
 
     MakeMovie( [FileNumberArray], \

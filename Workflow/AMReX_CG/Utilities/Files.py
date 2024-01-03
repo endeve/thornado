@@ -35,24 +35,29 @@ def GetFileNumberArray( PlotDirectory,      \
       = np.sort( np.array( \
           [ convert( file ) for file in listdir( PlotDirectory ) ] ) )
 
+    
 
     # Filter file list to only those that start with plotBaseName
     fileList = []
     for iFile in range( fileArray.shape[0] ):
-
+        
         sFile = fileArray[iFile]
-        if( sFile[0:len(PlotBaseName)] == PlotBaseName \
-              and sFile[len(PlotBaseName)+1].isdigit() ) :
-            if sFile[-1] == '/' :
-                fileList.append( int(sFile[-9:-1]) )
-            else:
-                fileList.append( int(sFile[-8:]) )
+        if sFile[-1] == '/': sFile = sFile[:-1]
 
-    fileNumbers = np.array( fileList )
+        if sFile[-3:] == '.h5':
+            fileList.append( int(sFile[-9:-3]) )
+        
+        else:
+            if( sFile[0:len(PlotBaseName)] == PlotBaseName \
+                  and sFile[len(PlotBaseName)+1].isdigit() ) :
+                if sFile[-1] == '/' :
+                    fileList.append( int(sFile[-9:-1]) )
+                else:
+                    fileList.append( int(sFile[-8:]) )
+           
+    fileNumbers = np.array( list(set(fileList)) )
     numNumbers = fileNumbers.shape[0]
 
-#    print( fileNumbers )
-#    print( numNumbers )
     
     
     # Warn if list is empty.
@@ -72,12 +77,9 @@ def GetFileNumberArray( PlotDirectory,      \
     fileNumbers.sort()
 
     # Filter File List
-    
-
-    if SSi < 0: SSi = 0
+    if SSi < 0: SSi = int(fileNumbers[0])
     if SSf < 0: SSf = int(fileNumbers[-1])
     
-#    print(SSi,SSf)
     
     if SSf < SSi:
         msg = '\n>>> Final frame comes before initial frame. \n'
@@ -85,9 +87,8 @@ def GetFileNumberArray( PlotDirectory,      \
         assert ( SSf > SSi ), msg
 
 
-
+    
     for SSi_index in range( numNumbers ):
-#        print( fileNumbers[SSi_index] )
         if ( fileNumbers[SSi_index] == SSi ): break
     
     for SSf_index in range( numNumbers-1, SSi_index-2,-1):
@@ -102,23 +103,21 @@ def GetFileNumberArray( PlotDirectory,      \
         assert( SSf_index >= SSi_index ), msg
 
 
-
-
     nSS = SSf_index - SSi_index + 1
     
 
-
-
-
     #   Filter file list to specified range
     fileNumbersLimited = []
-
     for i in range( nSS ):
         fileNumbersLimited.append(fileNumbers[SSi_index+i])
         
-    
+
+
+
     # Filer file number list by PlotEvery value.
     fileNumbersFiltered = np.array( fileNumbersLimited[::PlotEvery] )
+
+
 
     return fileNumbersFiltered
 # END GetFileNumberArray
@@ -189,7 +188,6 @@ def ChoosePlotFile( FileNumberArray,                \
         msg = 'len( argv ) must be > 0 and < 3: len( argv ) = {:d}'.format( n )
 
         arg = ( n > 0 ) & ( n < 3 )
-        print( arg )
         assert arg, msg
 
     # Remove "/" at end of filename, if present

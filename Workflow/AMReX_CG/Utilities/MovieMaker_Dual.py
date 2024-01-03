@@ -103,6 +103,7 @@ def CreateMovie(FileNumberArray,    \
     global nFiles
     global Frame_List
     global nFrames
+    global Data0
     
     nSS = ['None']*nDirs
     for i in range(nDirs):
@@ -127,7 +128,14 @@ def CreateMovie(FileNumberArray,    \
                                     DataDirectory[i]    )
             Time_List[i][j] = Time
 
+#    print("1")
+#    print(Time_List[0])
+#    print("2")
+#    print(Time_List[1])
+
     Frame_List = SynchronizeFrameLists(nDirs,Time_List,nSS)
+    
+    print(Frame_List)
     
     nFrames = len(Frame_List)
 
@@ -150,6 +158,9 @@ def CreateMovie(FileNumberArray,    \
     xH = X1_C0[-1] + 0.5 * dX10[-1]
 
     fig = plt.figure()
+    
+    
+
     ax  = fig.add_subplot( 111 )
     
     
@@ -214,11 +225,11 @@ def CreateFrame( ax, xL, xH, dX10, Field, DataUnits ):
     elem_text = ['None']*nDirs
     for i in range(nDirs):
         time_text[i] = ax.text( 0.1, 0.20-0.05*i, '', transform = ax.transAxes, fontsize = 13 )
-        elem_text[i] = ax.text( 0.48+elem_offset, 0.20-0.05*i, '', transform = ax.transAxes, fontsize = 13 )
+        elem_text[i] = ax.text( 0.50+elem_offset, 0.20-0.05*i, '', transform = ax.transAxes, fontsize = 13 )
         Lines[i], = ax.plot( [],[],                                         \
                              color  = color_list[i],                       \
                              marker = '',                                  \
-                             label  = r'$u_{:}\left(t\right)$'.format(i),   \
+                             label  = r'$u_{:}\left(t\right)$'.format(gvS.DataType[i][0]),   \
                              zorder = 10 )
     
         #color  = plt.cm.Set1(i),                       \
@@ -233,16 +244,16 @@ def CreateFrame( ax, xL, xH, dX10, Field, DataUnits ):
             IC[i], = ax.plot( [],[],                                         \
                               color  = 'k',                       \
                               linestyle = '--',                              \
-                              label  = r'$u_{{{:},0}}\left(t\right)$'.format(i),   \
+                              label  = r'$u_{{{:},0}}\left(t\right)$'.format(gvS.DataType[i][0]),   \
                               zorder = 1000,                                   \
                               alpha  = 0.5    )
     
     
     if gvS.ShowRefinement:
-        RefLines = [['None']*len(gvS.RefinementLocations)]*nDirs
+        RefLines = [['None']*gvS.RefinementLevels]*nDirs
             
         for j in range(1,nDirs):
-            for i in range(len(gvS.RefinementLocations)):
+            for i in range(gvS.RefinementLevels):
                 RefLines[j][i], = ax.plot( [],[],                       \
                                            color     = color_list[j],   \
                                            linestyle = '--',            \
@@ -276,6 +287,7 @@ def InitializeFrame(FileNumberArray, DataDirectory, Field, Action):
     global mesh
     global f_old
     global t_old
+    global Data0
 
     # Initialize empty return list
     retlist = []
@@ -315,17 +327,18 @@ def InitializeFrame(FileNumberArray, DataDirectory, Field, Action):
                                                       FileNumberArray[i],\
                                                       DataDirectory[i],  \
                                                       Field              )
+                                                      
 
-
-    for i in range(nDirs):
-        Lines[i].set_data( X1_C0[i] , Data0[i].flatten())
+    Data1, nLines0 = ApplyAction(Data0, Field, Action)
+    
+    for i in range(nLines0):
+        Lines[i].set_data( X1_C0[i] , Data1[i].flatten())
         retlist += [Lines[i]]
 
 
     if gvS.ShowIC:
-        Data0, nLines0 = ApplyAction(Data0, Action)
-        for i in range(len(Data0)):
-            IC[i].set_data( X1_C0[i], Data0[i] )
+        for i in range(nLines0):
+            IC[i].set_data( X1_C0[i], Data1[i] )
             retlist += [ IC[i] ]
 
     # If requested, initialize refinement lines. Add to Return List
@@ -365,6 +378,8 @@ def UpdateFrame( t, FileNumberArray, DataDirectory, Field, Action):
     global t_old
     global nFrames
     global Frame_List
+    global Data0
+    
 
     print('    {:}/{:}'.format( t+1, nFrames ) )
 
@@ -386,9 +401,8 @@ def UpdateFrame( t, FileNumberArray, DataDirectory, Field, Action):
                                                    DataDirectory[i],  \
                                                    Field              )
 
-    Data, nLines = ApplyAction(Data, Action)
-
-    
+    Data, nLines = ApplyAction(Data, Field, Action)
+#    print("nLines",nLines,len(Data))
     for i in range(nLines):
         Lines[i].set_data( X1_C[i] , Data[i].flatten())
         retlist += [Lines[i]]
@@ -396,10 +410,10 @@ def UpdateFrame( t, FileNumberArray, DataDirectory, Field, Action):
         # Create new time text.
         if gvS.ReferenceBounce:
             time_text[i].set_text( r'$t_{{{:}}}-t_{{b}}  ={:.5e}\ \left[\mathrm{{{:}}}\right]$' \
-                                .format( i, Time[i]-BF.BounceTimeList[i], gvU.TimeUnits ) )
+                                .format( gvS.DataType[i][0], Time[i]-BF.BounceTimeList[i], gvU.TimeUnits ) )
         else:
             time_text[i].set_text( r'$t_{{{:}}}  ={:.5e}\ \left[\mathrm{{{:}}}\right]$' \
-                                .format( i, Time[i], gvU.TimeUnits ) )
+                                .format( gvS.DataType[i][0], Time[i], gvU.TimeUnits ) )
         retlist += [ time_text[i] ]
 
 
@@ -407,7 +421,7 @@ def UpdateFrame( t, FileNumberArray, DataDirectory, Field, Action):
 
         # Create new element number text.
         elem_text[i].set_text( r'$N_{{{:}}}={:}$' \
-                            .format( i, len(X1_C[i] ) ) )
+                            .format( gvS.DataType[i][0], len(X1_C[i] ) ) )
         retlist += [ elem_text[i] ]
 
 
@@ -556,11 +570,11 @@ def ApplyMovieSettings( ax, xL, xH, dX10, Field, DataUnits ):
     ax.set_ylabel( Field  + ' ' + r'$\left[\mathrm{{{:}}}\right]$' \
                               .format( DataUnits[2:-2] ) )
     
-    ax.legend(  bbox_to_anchor=(1.05, 1.0), \
-                prop = {'size':12},         \
-                loc = 'upper right'         )
+    ax.legend(  prop = {'size':12},         \
+                loc = "upper right"          )
+    
     ax.grid(which='both')
-
+#    ax.tight_layout(rect=[0, 0, 0.75, 1])
 
     ax.set_xlim( xL, xH )
     ax.set_ylim( gvS.vmin, gvS.vmax )
@@ -592,14 +606,26 @@ def ApplyMovieSettings( ax, xL, xH, dX10, Field, DataUnits ):
 #   ApplyAction                                 #
 #                                               #
  #=============================================#
-def ApplyAction( Data, Action):
+def ApplyAction( Data, Field, Action):
+
+    global Data0
 
     if len(Data) > 1:
 
         if ( Action.lower() == 'reldiff' ):
+            print(Data[0][:])
+            print("0-------------")
+            print(Data[1][:])
+            print("``````````````````")
             NewData = [abs(Data[0][:]-Data[1][:])/abs(Data[0][:])]
             nLines = 1
             
+        elif (Field == 'PolytropicConstant'):
+
+            NewData = ['None']*nDirs
+            for i in range(nDirs):
+                NewData[i] = Data[i]/Data0[i]
+            nLines = len(NewData)
         else:
             NewData = Data
             nLines = len(Data)

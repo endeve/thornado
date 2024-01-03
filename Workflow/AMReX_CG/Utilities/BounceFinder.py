@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import numpy as np
+import os.path as os
+import GlobalVariables.Units    as gvU
 
 from Utilities.Files        import GetFileNumberArray
 from Utilities.GetFrameData import GetFrameData
@@ -18,9 +20,53 @@ global BounceFrameList
 #   FindBounce                                  #
 #                                               #
  #=============================================#
-def FindBounce( PlotDirectory,    \
-                PlotBaseName ):
+def FindBounce( PlotDirectory,      \
+                PlotBaseName,       \
+                PathDataDirectory,  \
+                DataType        ):
 
+
+    BounceFile = PathDataDirectory + '/' + '{:}.dat'.format( 'Bounce' )
+    Check = os.isfile(BounceFile)
+    
+    if Check:
+    
+        print("Reading Bounce Information")
+        Bounce = np.loadtxt(BounceFile)
+        
+        
+        BounceFrame = int(Bounce[0])
+        BounceTime = Bounce[1]
+        BounceDensity = Bounce[2]
+    
+    else:
+        print("Calculating Bounce Information")
+        BounceFrame, BounceTime, BounceDensity = FindBounceMethod( PlotDirectory,      \
+                                                                   PlotBaseName,       \
+                                                                   PathDataDirectory,  \
+                                                                   DataType,           \
+                                                                   BounceFile          )
+
+
+    return BounceFrame, BounceTime, BounceDensity
+
+
+
+
+
+
+
+
+ #=============================================#
+#                                               #
+#   FindBounceMethod                            #
+#                                               #
+ #=============================================#
+def FindBounceMethod( PlotDirectory,      \
+                      PlotBaseName,       \
+                      PathDataDirectory,  \
+                      DataType,           \
+                      BounceFile          ):
 
     FileNumberArray = GetFileNumberArray( PlotDirectory,    \
                                           PlotBaseName,     \
@@ -42,21 +88,27 @@ def FindBounce( PlotDirectory,    \
     for i in range(NumPltFiles):
 
         PlotFileNumber    = FileNumberArray[i]
-        PathPlotDirectory = PlotDirectory       \
-                          + PlotBaseName        \
-                          + '{:}'.format( str(PlotFileNumber).zfill(8) )
-
+        if DataType.lower() == 'amrex':
+            PathPlotDirectory = PlotDirectory       \
+                              + PlotBaseName    \
+                              + '{:}'.format( str(PlotFileNumber).zfill(8) )
+        else:
+            PathPlotDirectory = PlotDirectory       \
+                              + PlotBaseName[:-4]   \
+                              + '_{:}'.format( str(PlotFileNumber).zfill(6) )
 
 #        X1, X2, X3, dX1, dX2, dX3, xL, xH               \
 #            = CreateLocations(  PathPlotDirectory,      \
 #                                TypeIn = "Leaf"      )
 
 
-        Density, DensityUnits, Time \
+        Density, DensityUnits, \
+        X1, X2, X3,         \
+        dX1, dX2, dX3,      \
+        Time                \
             = GetFrameData( PathPlotDirectory,  \
+                            DataType,           \
                             'PF_D',             \
-                            X1, X2, X3,         \
-                            dX1, dX2, dX3,      \
                             'True'              )
 
 
@@ -68,5 +120,16 @@ def FindBounce( PlotDirectory,    \
             BounceTime    = Time
 
 
-    return BounceFrame, BounceTime, BounceDensity
+    
+    with open( BounceFile, 'w' ) as FileOut:
 
+        FileOut.write( '# {:}\n'.format( BounceFile  ) )
+        FileOut.write( '# frame_bounce t_Bounce [{:}] Central Density at bounce [{:}]\n'.format( gvU.TimeUnits, DensityUnits ),  )
+
+        
+        FileOut.write( str(BounceFrame ) + ' ')
+        FileOut.write( str(BounceTime  ) + ' ')
+        FileOut.write( str(BounceDensity) + ' ')
+        FileOut.write( '\n' )
+
+    return BounceFrame, BounceTime, BounceDensity
