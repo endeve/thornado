@@ -66,8 +66,8 @@ MODULE FinalizationModule
     dt, &
     t_old, &
     t_new
-  USE MF_GravitySolutionModule_XCFC, ONLY: &
-    FinalizeGravitySolver_XCFC_MF
+  USE MF_GravitySolutionModule, ONLY: &
+    FinalizeGravitySolver_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
@@ -118,7 +118,7 @@ CONTAINS
 
     CALL FinalizeFluid_SSPRK_MF
 
-    CALL FinalizeGravitySolver_XCFC_MF
+    CALL FinalizeGravitySolver_MF
 
     CALL FinalizeTally_Euler_MF
 

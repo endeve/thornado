@@ -212,8 +212,8 @@ MODULE InitializationModule
     AverageDown
   USE Euler_MeshRefinementModule, ONLY: &
     InitializeMeshRefinement_Euler
-  USE MF_GravitySolutionModule_XCFC, ONLY: &
-    InitializeGravitySolver_XCFC_MF
+  USE MF_GravitySolutionModule, ONLY: &
+    InitializeGravitySolver_MF
   USE MF_MetricInitializationModule, ONLY: &
     InitializeMetric_MF
   USE MF_TimersModule, ONLY: &
@@ -387,7 +387,7 @@ CONTAINS
 
       CALL CreateMesh_MF( 0, MeshX )
 
-      CALL InitializeGravitySolver_XCFC_MF &
+      CALL InitializeGravitySolver_MF &
              ( Verbose_Option = amrex_parallel_ioprocessor() )
 
       CALL DestroyMesh_MF( MeshX )
@@ -421,7 +421,7 @@ CONTAINS
 
       CALL CreateMesh_MF( 0, MeshX )
 
-      CALL InitializeGravitySolver_XCFC_MF &
+      CALL InitializeGravitySolver_MF &
              ( Verbose_Option = amrex_parallel_ioprocessor() )
 
       CALL DestroyMesh_MF( MeshX )
