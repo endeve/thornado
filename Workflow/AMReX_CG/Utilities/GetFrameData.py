@@ -75,8 +75,11 @@ def GetFrameData( FilePath,              \
     else:                    DataUnits = '[' + DataUnits + ']'
 
 
-    
-    
+    #---- Clean Up ----
+    del ds
+    gc.collect()
+
+
     #---- Return ----
     if SaveTime :
 
@@ -100,12 +103,12 @@ def GetFieldData( ds,                   \
                   CoordinateSystem,     \
                   X1, X2, X3,           \
                   dX1, dX2, dX3         ):
-                  
-        
+
+
     nX1 = X1.shape[0]
     nX2 = X2.shape[0]
     nX3 = X3.shape[0]
-        
+
     Locations = [None]*nX1*nX2*nX3
     for k in range(nX3):
         for j in range(nX2):
@@ -114,11 +117,11 @@ def GetFieldData( ds,                   \
                      + j*nX1        \
                      + i
                 Locations[Here] = np.array([X1[i],X2[j],X3[k]])
-    
-    
-    
-    
-    
+
+
+
+
+
     if Field == 'MPIProcess':
         Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
         DataUnits = ''
@@ -126,7 +129,7 @@ def GetFieldData( ds,                   \
     elif Field == 'PF_D':
         Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
         DataUnits = 'g/cm^3'
-        
+
     elif Field == 'PF_V1':
         Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
         DataUnits = 'km/s'
@@ -263,7 +266,7 @@ def GetFieldData( ds,                   \
     elif Field == 'RelativisticBernoulliConstant':
 
         c = 2.99792458e10
-    
+
         rho   = np.copy( ds.find_field_values_at_points(("boxlib",'PF_D'), Locations ) )
         e     = np.copy( ds.find_field_values_at_points(("boxlib",'PF_E'), Locations ) )
         v1    = np.copy( ds.find_field_values_at_points(("boxlib",'PF_V1'), Locations ) )
@@ -298,7 +301,7 @@ def GetFieldData( ds,                   \
         DataUnits = 'erg/cm^3/(g/cm^3)^(Gamma_{IDEAL})'
 
     elif Field == 'NonRelativisticSpecificEnthalpy':
-    
+
         e   = np.copy( ds.find_field_values_at_points(("boxlib",'PF_E'), Locations ) )
         p   = np.copy( ds.find_field_values_at_points(("boxlib",'AF_P'), Locations ) )
         rho = np.copy( ds.find_field_values_at_points(("boxlib",'PF_D'), Locations ) )
@@ -310,7 +313,7 @@ def GetFieldData( ds,                   \
     elif Field == 'RelativisticSpecificEnthalpy':
 
         c = 2.99792458e10
-        
+
         e   = np.copy( ds.find_field_values_at_points(("boxlib",'PF_E'), Locations ) )
         p   = np.copy( ds.find_field_values_at_points(("boxlib",'AF_P'), Locations ) )
         rho = np.copy( ds.find_field_values_at_points(("boxlib",'PF_D'), Locations ) )
@@ -326,7 +329,7 @@ def GetFieldData( ds,                   \
         Gm11 = np.copy( ds.find_field_values_at_points(("boxlib",'GF_Gm_11'), Locations ) )
         Gm22 = np.copy( ds.find_field_values_at_points(("boxlib",'GF_Gm_11'), Locations ) )
         Gm33 = np.copy( ds.find_field_values_at_points(("boxlib",'GF_Gm_11'), Locations ) )
-        
+
         V1   = np.copy( ds.find_field_values_at_points(("boxlib",'PF_V1'), Locations ) )
         V2   = np.copy( ds.find_field_values_at_points(("boxlib",'PF_V2'), Locations ) )
         V3   = np.copy( ds.find_field_values_at_points(("boxlib",'PF_V3'), Locations ) )
@@ -548,6 +551,8 @@ def GetFieldData( ds,                   \
         print( '  Vorticity' )
 
         assert 0, 'Invalid choice of field'
+
+    Data /= gvS.yScale
 
     return Data, DataUnits
 

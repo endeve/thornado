@@ -135,7 +135,7 @@ def CreateMovie(FileNumberArray,    \
 
     Frame_List = SynchronizeFrameLists(nDirs,Time_List,nSS)
     
-    print(Frame_List)
+#    print(Frame_List)
     
     nFrames = len(Frame_List)
 
@@ -613,10 +613,10 @@ def ApplyAction( Data, Field, Action):
     if len(Data) > 1:
 
         if ( Action.lower() == 'reldiff' ):
-            print(Data[0][:])
-            print("0-------------")
-            print(Data[1][:])
-            print("``````````````````")
+#            print(Data[0][:])
+#            print("0-------------")
+#            print(Data[1][:])
+#            print("``````````````````")
             NewData = [abs(Data[0][:]-Data[1][:])/abs(Data[0][:])]
             nLines = 1
             

@@ -122,12 +122,13 @@ MODULE Euler_UtilitiesModule_Relativistic
     MODULE PROCEDURE ComputeConserved_Vector
   END INTERFACE ComputeConserved_Euler_Relativistic
 
-  REAL(DP), PARAMETER :: Offset_Temperature = 1.0e-12_DP
-  REAL(DP), PARAMETER :: Offset_Epsilon     = 1.0e-12_DP
-  REAL(DP), PARAMETER :: Offset_z           = 10.0_DP * SqrtTiny
-  REAL(DP), PARAMETER :: vMax               = One - 1.0e-05_DP
-  REAL(DP), PARAMETER :: kMax               = Two * vMax / ( One + vMax**2 )
-  REAL(DP), PARAMETER :: dzMin              = 1.0e-8_DP
+  REAL(DP), PARAMETER :: Offset_T   = 1.0e-12_DP
+  REAL(DP), PARAMETER :: Offset_eps = 1.0e-12_DP
+  REAL(DP), PARAMETER :: Offset_Ye  = 1.0e-12_DP
+  REAL(DP), PARAMETER :: Offset_z   = 10.0_DP * SqrtTiny
+  REAL(DP), PARAMETER :: vMax       = One - 1.0e-05_DP
+  REAL(DP), PARAMETER :: kMax       = Two * vMax / ( One + vMax**2 )
+  REAL(DP), PARAMETER :: dzMin      = 1.0e-8_DP
 
   INTEGER, PUBLIC, PARAMETER :: MaxIterations_ComputePrimitive_Euler = 100
 
@@ -352,7 +353,7 @@ CONTAINS
 #ifdef MICROPHYSICS_WEAKLIB
 
     CALL ComputeSpecificInternalEnergy_TABLE &
-           ( PF_D, ( One + Offset_Temperature ) * Min_T, Ye, epsMin )
+           ( PF_D, Min_T + Offset_T * ABS( Min_T ), Ye, epsMin )
 
 #else
 
@@ -381,12 +382,12 @@ CONTAINS
 #ifdef MICROPHYSICS_WEAKLIB
 
     CALL ComputeSpecificInternalEnergy_TABLE &
-           ( PF_D, ( One + Offset_Temperature ) * Min_T, Ye, epsMin )
+           ( PF_D, Min_T + Offset_T * ABS( Min_T ), Ye, epsMin )
     CALL ComputeSpecificInternalEnergy_TABLE &
-           ( PF_D, ( One - Offset_Temperature ) * Max_T, Ye, epsMax )
+           ( PF_D, Max_T - Offset_T * ABS( Max_T ), Ye, epsMax )
 
-    epsMin = ( One + Offset_Epsilon ) * epsMin
-    epsMax = ( One - Offset_Epsilon ) * epsMax
+    epsMin = epsMin + Offset_eps * ABS( epsMin )
+    epsMax = epsMax - Offset_eps * ABS( epsMax )
 
 #else
 
@@ -716,7 +717,10 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    CF_Ne = CF_D * MAX( MIN( Max_Y, Ye ), Min_Y ) / AtomicMassUnit
+    Ye = MAX( MIN( Max_Y - OffSet_Ye * ABS( Max_Y ), Ye ), &
+              Min_Y + Offset_Ye * ABS( Min_Y ) )
+
+    CF_Ne = CF_D / AtomicMassUnit * Ye
 
 #endif
 
@@ -2081,12 +2085,12 @@ CONTAINS
     rhoh = MAX( MIN( Max_D, rhot ), Min_D )
 
     CALL ComputeSpecificInternalEnergy_TABLE &
-           ( rhoh, ( One + Offset_Temperature ) * Min_T, Ye, epsMin )
+           ( rhoh, Min_T + Offset_T * ABS( Min_T ), Ye, epsMin )
     CALL ComputeSpecificInternalEnergy_TABLE &
-           ( rhoh, ( One - Offset_Temperature ) * Max_T, Ye, epsMax )
+           ( rhoh, Max_T - Offset_T * ABS( Max_T ), Ye, epsMax )
 
-    epsMin = ( One + Offset_Epsilon ) * epsMin
-    epsMax = ( One - Offset_Epsilon ) * epsMax
+    epsMin = epsMin + Offset_eps * ABS( epsMin )
+    epsMax = epsMax - Offset_eps * ABS( epsMax )
 
 #else
 
@@ -2173,12 +2177,12 @@ CONTAINS
 !!$        Ye(iX) = Ne(iX) * AtomicMassUnit / D(iX)
 !!$
 !!$        CALL ComputeSpecificInternalEnergy_TABLE &
-!!$               ( rhoh(iX), ( One + Offset_Temperature ) * Min_T, Ye(iX), epsMin )
+!!$               ( rhoh(iX), Min_T + Offset_T * ABS( Min_T ), Ye(iX), epsMin )
 !!$        CALL ComputeSpecificInternalEnergy_TABLE &
-!!$               ( rhoh(iX), ( One - Offset_Temperature ) * Max_T, Ye(iX), epsMax )
+!!$               ( rhoh(iX), Max_T - Offset_T * ABS( Max_T ), Ye(iX), epsMax )
 !!$
-!!$        epsMin = ( One + Offset_Epsilon ) * epsMin
-!!$        epsMax = ( One - Offset_Epsilon ) * epsMax
+!!$        epsMin = epsMin + Offset_eps * ABS( epsMin )
+!!$        epsMax = epsMax - Offset_eps * ABS( epsMax )
 !!$
 !!$        epsh(iX) = MAX( MIN( epsMax, epst(iX) ), epsMin )
 !!$

@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 
+global tb
+tb = -1.0
+global yLabel
+yLabel = ''
+global yScale
+yScale = 1.0
 
 global ProblemName
 global FigTitle

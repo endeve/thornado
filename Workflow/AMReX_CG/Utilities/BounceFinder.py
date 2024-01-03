@@ -83,9 +83,11 @@ def FindBounceMethod( PlotDirectory,      \
     dX1 = np.array([0.0])
     dX2 = np.array([0.0])
     dX3 = np.array([0.0])
-    
+
     BounceDensity = 0.0
     for i in range(NumPltFiles):
+
+        print( '\r {:}/{:}'.format( i, NumPltFiles ), end = '\r' )
 
         PlotFileNumber    = FileNumberArray[i]
         if DataType.lower() == 'amrex':
