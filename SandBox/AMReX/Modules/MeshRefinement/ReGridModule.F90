@@ -45,10 +45,11 @@ MODULE ReGridModule
     ApplyPositivityLimiter_Euler_MF
   USE MF_GeometryModule, ONLY: &
     ApplyBoundaryConditions_Geometry_MF
+  USE MF_GravitySolutionModule, ONLY: &
+    EvolveGravity
   USE MF_GravitySolutionModule_XCFC, ONLY: &
     ComputeConformalFactor_XCFC_MF, &
-    ComputeLapseShiftCurvature_XCFC_MF, &
-    EvolveGravity
+    ComputeLapseShiftCurvature_XCFC_MF
   USE MF_XCFC_UtilitiesModule, ONLY: &
     MultiplyWithPsi6_MF, &
     UpdateConformalFactorAndMetric_XCFC_MF, &

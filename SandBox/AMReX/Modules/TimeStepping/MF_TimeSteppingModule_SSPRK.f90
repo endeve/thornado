@@ -62,10 +62,11 @@ MODULE MF_TimeSteppingModule_SSPRK
     ApplyBoundaryConditions_Geometry_XCFC_MF, &
     ComputeConformalFactorSourcesAndMg_XCFC_MF, &
     ComputePressureTensorTrace_XCFC_MF
+  USE MF_GravitySolutionModule, ONLY: &
+    EvolveGravity
   USE MF_GravitySolutionModule_XCFC, ONLY: &
     ComputeConformalFactor_XCFC_MF, &
-    ComputeLapseShiftCurvature_XCFC_MF, &
-    EvolveGravity
+    ComputeLapseShiftCurvature_XCFC_MF
   USE AverageDownModule, ONLY: &
     AverageDown
   USE FluxCorrectionModule_Euler, ONLY: &

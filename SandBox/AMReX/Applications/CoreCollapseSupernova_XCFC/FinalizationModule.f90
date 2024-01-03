@@ -101,8 +101,8 @@ MODULE FinalizationModule
     dt_TM, &
     t_old, &
     t_new
-  USE MF_GravitySolutionModule_XCFC, ONLY: &
-    FinalizeGravitySolver_XCFC_MF
+  USE MF_GravitySolutionModule, ONLY: &
+    FinalizeGravitySolver_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
@@ -168,7 +168,7 @@ CONTAINS
 
     CALL Finalize_IMEX_RK_MF
 
-    CALL FinalizeGravitySolver_XCFC_MF
+    CALL FinalizeGravitySolver_MF
 
     CALL FinalizeTally_TwoMoment_MF
 
