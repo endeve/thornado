@@ -308,6 +308,13 @@ CONTAINS
     !PRINT*, 'B2: ', dU(:,:,:,:,iCM_B2)
     !PRINT*, 'B3: ', dU(:,:,:,:,iCM_B3)
 
+    IF( UsePowellSource ) THEN
+
+      CALL ComputeIncrement_Powell &
+            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
+
+    END IF
+
     CALL ComputeIncrement_Gravity &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
 
@@ -2913,56 +2920,6 @@ CONTAINS
 
       END IF
 
-      !PRINT*, UsePowellSource
-
-      IF( UsePowellSource ) THEN
-
-        !PRINT*, 'Using Powell source terms.'
-
-        dU(iNX,iX1,iX2,iX3,iCM_S1) = dU(iNX,iX1,iX2,iX3,iCM_S1) &
-                                     - D(iNX,iX1,iX2,iX3,iDM_Div) &
-                                       * ( G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) &
-                                           * U(iNX,iX1,iX2,iX3,iCM_B1) / W**2 &
-                                           + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) &
-                                             * P(iPM_V1) * VdotB )
-
-        dU(iNX,iX1,iX2,iX3,iCM_S2) = dU(iNX,iX1,iX2,iX3,iCM_S2) &
-                                     - D(iNX,iX1,iX2,iX3,iDM_Div) &
-                                       * ( G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
-                                           * U(iNX,iX1,iX2,iX3,iCM_B2) / W**2 &
-                                           + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
-                                             * P(iPM_V2) * VdotB )
-
-        dU(iNX,iX1,iX2,iX3,iCM_S3) = dU(iNX,iX1,iX2,iX3,iCM_S3) &
-                                     - D(iNX,iX1,iX2,iX3,iDM_Div) &
-                                       * ( G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
-                                           * U(iNX,iX1,iX2,iX3,iCM_B3) / W**2 &
-                                           + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
-                                             * P(iPM_V3) * VdotB )
-
-        dU(iNX,iX1,iX2,iX3,iCM_E)  = dU(iNX,iX1,iX2,iX3,iCM_E ) &
-                                     - D(iNX,iX1,iX2,iX3,iDM_Div) * VdotB
-
-        dU(iNX,iX1,iX2,iX3,iCM_B1) = dU(iNX,iX1,iX2,iX3,iCM_B1) &
-                                     - D(iNX,iX1,iX2,iX3,iDM_Div) &
-                                       * ( P(iPM_V1) &
-                                           - G(iNX,iX1,iX2,iX3,iGF_Beta_1) &
-                                             / G(iNX,iX1,iX2,iX3,iGF_Alpha ) )
-
-        dU(iNX,iX1,iX2,iX3,iCM_B2) = dU(iNX,iX1,iX2,iX3,iCM_B2) &
-                                     - D(iNX,iX1,iX2,iX3,iDM_Div) &
-                                       * ( P(iPM_V2) &
-                                           - G(iNX,iX1,iX2,iX3,iGF_Beta_2) &
-                                             / G(iNX,iX1,iX2,iX3,iGF_Alpha ) )
-
-        dU(iNX,iX1,iX2,iX3,iCM_B3) = dU(iNX,iX1,iX2,iX3,iCM_B3) &
-                                     - D(iNX,iX1,iX2,iX3,iDM_Div) &
-                                       * ( P(iPM_V3) &
-                                           - G(iNX,iX1,iX2,iX3,iGF_Beta_3) &
-                                             / G(iNX,iX1,iX2,iX3,iGF_Alpha ) )
-
-      END IF
-
       ! -- X2 increments ---
 
       IF( nDimsX .GT. 1 )THEN
@@ -3127,6 +3084,150 @@ CONTAINS
     END ASSOCIATE ! dX1, dX2, dX3
 
   END SUBROUTINE ComputeIncrement_Geometry_Relativistic
+
+
+  SUBROUTINE ComputeIncrement_Powell &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
+
+   INTEGER, INTENT(in)     :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: &
+      G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+    REAL(DP), INTENT(inout) :: &
+      U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+
+    CALL ComputeIncrement_Powell_Relativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
+
+  END SUBROUTINE ComputeIncrement_Powell
+
+
+  SUBROUTINE ComputeIncrement_Powell_Relativistic &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D,  dU )
+
+    INTEGER, INTENT(in)     :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: &
+      G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+    REAL(DP), INTENT(inout) :: &
+      U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
+
+    INTEGER :: iX1, iX2, iX3, iNX, iCM, iGF
+    INTEGER :: nGF_K
+
+    REAL(DP) :: P(nPM)
+    REAL(DP) :: W, B0u, VdotB, bSq
+
+    ! --- Compute Magnetic Divergence for Powell Sources ---
+
+    CALL ComputeMagneticDivergence_MHD_Relativistic( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+
+    ! --- Contributions from time-independent metric ---
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1       , nDOFX
+
+      CALL ComputePrimitive_MHD  &
+             ( U(   iNX,iX1,iX2,iX3,iCM_D ),  &
+               U(   iNX,iX1,iX2,iX3,iCM_S1),  &
+               U(   iNX,iX1,iX2,iX3,iCM_S2),  &
+               U(   iNX,iX1,iX2,iX3,iCM_S3),  &
+               U(   iNX,iX1,iX2,iX3,iCM_E ),  &
+               U(   iNX,iX1,iX2,iX3,iCM_Ne),  &
+               U(   iNX,iX1,iX2,iX3,iCM_B1),  &
+               U(   iNX,iX1,iX2,iX3,iCM_B2),  &
+               U(   iNX,iX1,iX2,iX3,iCM_B3),  &
+               U(   iNX,iX1,iX2,iX3,iCM_Chi), &
+               P(iPM_D ),  &
+               P(iPM_V1),  &
+               P(iPM_V2),  &
+               P(iPM_V3),  &
+               P(iPM_E ),  &
+               P(iPM_Ne),  &
+               P(iPM_B1),  &
+               P(iPM_B2),  &
+               P(iPM_B3),  &
+               P(iPM_Chi), &
+               G(   iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               G(   iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               G(   iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               G(   iNX,iX1,iX2,iX3,iGF_Alpha   ), &
+               G(   iNX,iX1,iX2,iX3,iGF_Beta_1  ), &
+               G(   iNX,iX1,iX2,iX3,iGF_Beta_2  ), &
+               G(   iNX,iX1,iX2,iX3,iGF_Beta_3  ), &
+               EvolveOnlyMagnetic )
+
+      W   = One &
+            / SQRT( One &
+                    - G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) * P(iPM_V1)**2 &
+                    - G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) * P(iPM_V2)**2 &
+                    - G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) * P(iPM_V3)**2 )
+
+      B0u = ( W / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
+            * ( G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) &
+                * P(iPM_V1) * U(iNX,iX1,iX2,iX3,iCM_B1) &
+                + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
+                  * P(iPM_V2) * U(iNX,iX1,iX2,iX3,iCM_B2) &
+                + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
+                  * P(iPM_V3) * U(iNX,iX1,iX2,iX3,iCM_B3) )
+
+      VdotB = B0u * ( G(iNX,iX1,iX2,iX3,iGF_Alpha) / W )
+
+
+      dU(iNX,iX1,iX2,iX3,iCM_S1) = dU(iNX,iX1,iX2,iX3,iCM_S1) &
+                                   - D(iNX,iX1,iX2,iX3,iDM_Div) &
+                                     * ( G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) &
+                                         * U(iNX,iX1,iX2,iX3,iCM_B1) / W**2 &
+                                         + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) &
+                                           * P(iPM_V1) * VdotB )
+
+      dU(iNX,iX1,iX2,iX3,iCM_S2) = dU(iNX,iX1,iX2,iX3,iCM_S2) &
+                                   - D(iNX,iX1,iX2,iX3,iDM_Div) &
+                                     * ( G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
+                                         * U(iNX,iX1,iX2,iX3,iCM_B2) / W**2 &
+                                         + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
+                                           * P(iPM_V2) * VdotB )
+
+      dU(iNX,iX1,iX2,iX3,iCM_S3) = dU(iNX,iX1,iX2,iX3,iCM_S3) &
+                                   - D(iNX,iX1,iX2,iX3,iDM_Div) &
+                                     * ( G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
+                                         * U(iNX,iX1,iX2,iX3,iCM_B3) / W**2 &
+                                         + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
+                                           * P(iPM_V3) * VdotB )
+
+      dU(iNX,iX1,iX2,iX3,iCM_E)  = dU(iNX,iX1,iX2,iX3,iCM_E ) &
+                                   - D(iNX,iX1,iX2,iX3,iDM_Div) * VdotB
+
+      dU(iNX,iX1,iX2,iX3,iCM_B1) = dU(iNX,iX1,iX2,iX3,iCM_B1) &
+                                   - D(iNX,iX1,iX2,iX3,iDM_Div) &
+                                     * ( P(iPM_V1) &
+                                         - G(iNX,iX1,iX2,iX3,iGF_Beta_1) &
+                                           / G(iNX,iX1,iX2,iX3,iGF_Alpha ) )
+
+      dU(iNX,iX1,iX2,iX3,iCM_B2) = dU(iNX,iX1,iX2,iX3,iCM_B2) &
+                                   - D(iNX,iX1,iX2,iX3,iDM_Div) &
+                                     * ( P(iPM_V2) &
+                                         - G(iNX,iX1,iX2,iX3,iGF_Beta_2) &
+                                           / G(iNX,iX1,iX2,iX3,iGF_Alpha ) )
+
+      dU(iNX,iX1,iX2,iX3,iCM_B3) = dU(iNX,iX1,iX2,iX3,iCM_B3) &
+                                   - D(iNX,iX1,iX2,iX3,iDM_Div) &
+                                     * ( P(iPM_V3) &
+                                         - G(iNX,iX1,iX2,iX3,iGF_Beta_3) &
+                                       / G(iNX,iX1,iX2,iX3,iGF_Alpha ) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeIncrement_Powell_Relativistic
 
 
   SUBROUTINE ComputeIncrement_Gravity &

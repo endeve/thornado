@@ -20,6 +20,7 @@ MODULE TimeSteppingModule_SSPRK
 
   LOGICAL  :: EvolveOnlyMagnetic
   LOGICAL  :: UseDivergenceCleaning
+  LOGICAL  :: UsePowellSource
   INTEGER  :: nStages_SSPRK
   REAL(DP) :: DampingParameter
 
@@ -40,7 +41,8 @@ MODULE TimeSteppingModule_SSPRK
         SuppressBC_Option, &
         EvolveOnlyMagnetic_Option, &
         UseDivergenceCleaning_Option, &
-        DampingParameter_Option )
+        DampingParameter_Option, &
+        UsePowellSource_Option )
       USE KindModule, ONLY: DP
       INTEGER, INTENT(in)     :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -57,7 +59,8 @@ MODULE TimeSteppingModule_SSPRK
       LOGICAL,  INTENT(in), OPTIONAL :: &
         EvolveOnlyMagnetic_Option
       LOGICAL,  INTENT(in), OPTIONAL :: &
-        UseDivergenceCleaning_Option
+        UseDivergenceCleaning_Option, &
+        UsePowellSource_Option
       REAL(DP), INTENT(in), OPTIONAL :: &
         DampingParameter_Option
     END SUBROUTINE MagnetofluidIncrement
@@ -68,12 +71,14 @@ CONTAINS
 
   SUBROUTINE InitializeMagnetofluid_SSPRK &
                ( nStages, EvolveOnlyMagnetic_Option, &
-                 UseDivergenceCleaning_Option, DampingParameter_Option )
+                 UseDivergenceCleaning_Option, DampingParameter_Option, &
+                 UsePowellSource_Option )
 
     INTEGER, INTENT(in) :: nStages
 
     LOGICAL,  INTENT(in), OPTIONAL :: EvolveOnlyMagnetic_Option
     LOGICAL,  INTENT(in), OPTIONAL :: UseDivergenceCleaning_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: UsePowellSource_Option
     REAL(DP), INTENT(in), OPTIONAL :: DampingParameter_Option
 
     INTEGER :: i
@@ -93,6 +98,12 @@ CONTAINS
     IF( PRESENT( UseDivergenceCleaning_Option ) ) THEN
       UseDivergenceCleaning = UseDivergenceCleaning_Option
     END IF
+
+    UsePowellSource = .FALSE.
+    IF( PRESENT( UsePowellSource_Option ) ) THEN
+      UsePowellSource = UsePowellSource_Option
+    END IF
+
 
     nStages_SSPRK = nStages
 
@@ -249,7 +260,8 @@ CONTAINS
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS), &
                  EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic, &
                  UseDivergenceCleaning_Option = UseDivergenceCleaning, &
-                 DampingParameter_Option = DampingParameter )
+                 DampingParameter_Option = DampingParameter, &
+                 UsePowellSource_Option = UsePowellSource )
 
       END IF
 

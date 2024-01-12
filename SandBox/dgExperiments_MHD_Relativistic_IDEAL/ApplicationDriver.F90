@@ -87,6 +87,7 @@ PROGRAM ApplicationDriver
   LOGICAL  :: UseMHD = .TRUE.
   LOGICAL  :: EvolveOnlyMagnetic = .FALSE.
   LOGICAL  :: UseDivergenceCleaning = .FALSE.
+  LOGICAL  :: UsePowellSource = .FALSE.
 
   REAL(DP) :: DampingParameter = 0.0_DP
   REAL(DP) :: Angle = 0.0_DP
@@ -153,6 +154,8 @@ PROGRAM ApplicationDriver
           UseDivergenceCleaning = .FALSE.
 
           AdvectionProfile = 'CPAlfvenX1'
+
+          UsePowellSource = .FALSE.
 
           Gamma = 4.0_DP / 3.0_DP
           t_end = 16.449592691810107_DP
@@ -299,6 +302,8 @@ PROGRAM ApplicationDriver
           UseDivergenceCleaning = .FALSE.
           DampingParameter = 0.0_DP
 
+          UsePowellSource = .FALSE.
+
           AdvectionProfile = 'LoopAdvection'
 
           Gamma = 5.0_DP / 3.0_DP
@@ -444,6 +449,8 @@ PROGRAM ApplicationDriver
 
       UseDivergenceCleaning = .FALSE.
       DampingParameter = 0.0_DP
+
+      UsePowellSource = .FALSE.
 
       bcX = [ 2, 0, 0 ]
 
@@ -665,7 +672,8 @@ PROGRAM ApplicationDriver
   CALL InitializeMagnetofluid_SSPRK &
          ( nStages = nStagesSSPRK, EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic, &
            UseDivergenceCleaning_Option = UseDivergenceCleaning, &
-           DampingParameter_Option = DampingParameter )
+           DampingParameter_Option = DampingParameter, &
+           UsePowellSource_Option = UsePowellSource )
 
   WRITE(*,*)
   WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL
