@@ -117,15 +117,15 @@ MODULE MHD_DiscretizationModule_Relativistic
     uB1_L(:), uB2_L(:), uB3_L(:), uChi_L(:), &
     uD_R(:), uS1_R(:), uS2_R(:), uS3_R(:), uE_R(:), uNe_R(:), &
     uB1_R(:), uB2_R(:), uB3_R(:), uChi_R(:)
- 
+
   REAL(DP), ALLOCATABLE :: &
     pD_K(:), pV1_K(:), pV2_K(:), pV3_K(:), pE_K(:), pNe_K(:), &
     pB1_K(:), pB2_K(:), pB3_K(:), pChi_K(:), &
     pD_L(:), pV1_L(:), pV2_L(:), pV3_L(:), pE_L(:), pNe_L(:), &
-    pB1_L(:), pB2_L(:), pB3_L(:), pChi_L(:), & 
+    pB1_L(:), pB2_L(:), pB3_L(:), pChi_L(:), &
     pD_R(:), pV1_R(:), pV2_R(:), pV3_R(:), pE_R(:), pNe_R(:), &
     pB1_R(:), pB2_R(:), pB3_R(:), pChi_R(:)
- 
+
   INTEGER,  DIMENSION(:,:), ALLOCATABLE :: &
     IndexTableX_F(:,:), IndexTableX_V(:,:)
 
@@ -133,7 +133,7 @@ MODULE MHD_DiscretizationModule_Relativistic
   INTEGER :: nX_X1(3), nX1_X, nNodesX_X1
   INTEGER :: nX_X2(3), nX2_X, nNodesX_X2
   INTEGER :: nX_X3(3), nX3_X, nNodesX_X3
- 
+
 CONTAINS
 
 
@@ -143,7 +143,7 @@ CONTAINS
       EvolveOnlyMagnetic_Option, &
       UseDivergenceCleaning_Option, &
       DampingParameter_Option )
-    
+
     INTEGER,  INTENT(in)            :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)            :: &
@@ -232,7 +232,7 @@ CONTAINS
    !PRINT*, 'S1: ', dU(:,:,:,:,iCM_S1)
    !PRINT*, 'S2: ', dU(:,:,:,:,iCM_S2)
    !PRINT*, 'S3: ', dU(:,:,:,:,iCM_S3)
- 
+
     CALL ComputeIncrement_MHD_Divergence_X2 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
 
@@ -651,7 +651,7 @@ CONTAINS
               pNe_L     (iNX_X), &
               pB1_L     (iNX_X), &
               pB2_L     (iNX_X), &
-              pB3_L     (iNX_X), & 
+              pB3_L     (iNX_X), &
               pChi_L    (iNX_X), &
               Gm_dd_11_F(iNX_X), &
               Gm_dd_22_F(iNX_X), &
@@ -725,7 +725,7 @@ CONTAINS
               pNe_R     (iNX_X), &
               pB1_R     (iNX_X), &
               pB2_R     (iNX_X), &
-              pB3_R     (iNX_X), & 
+              pB3_R     (iNX_X), &
               pChi_R    (iNX_X), &
               Gm_dd_11_F(iNX_X), &
               Gm_dd_22_F(iNX_X), &
@@ -759,7 +759,7 @@ CONTAINS
               UseDivergenceCleaning )
 
       IF( .FALSE. )THEN
-     
+
       !PRINT*
       !PRINT*, 'Right states and flux for iNX_X = ', iNX_X
       !PRINT*, 'D_R:      ', pD_R(iNX_X)
@@ -1255,7 +1255,7 @@ CONTAINS
               pNe_L     (iNX_X), &
               pB1_L     (iNX_X), &
               pB2_L     (iNX_X), &
-              pB3_L     (iNX_X), & 
+              pB3_L     (iNX_X), &
               pChi_L    (iNX_X), &
               Gm_dd_11_F(iNX_X), &
               Gm_dd_22_F(iNX_X), &
@@ -1329,7 +1329,7 @@ CONTAINS
               pNe_R     (iNX_X), &
               pB1_R     (iNX_X), &
               pB2_R     (iNX_X), &
-              pB3_R     (iNX_X), & 
+              pB3_R     (iNX_X), &
               pChi_R    (iNX_X), &
               Gm_dd_11_F(iNX_X), &
               Gm_dd_22_F(iNX_X), &
@@ -1363,7 +1363,7 @@ CONTAINS
               UseDivergenceCleaning )
 
       IF( .FALSE. )THEN
-     
+
      !PRINT*
      !PRINT*, 'Right states and flux for iNX_X = ', iNX_X
      !PRINT*, 'D_R:      ', pD_R(iNX_X)
@@ -1859,7 +1859,7 @@ CONTAINS
               pNe_L     (iNX_X), &
               pB1_L     (iNX_X), &
               pB2_L     (iNX_X), &
-              pB3_L     (iNX_X), & 
+              pB3_L     (iNX_X), &
               pChi_L    (iNX_X), &
               Gm_dd_11_F(iNX_X), &
               Gm_dd_22_F(iNX_X), &
@@ -1933,7 +1933,7 @@ CONTAINS
               pNe_R     (iNX_X), &
               pB1_R     (iNX_X), &
               pB2_R     (iNX_X), &
-              pB3_R     (iNX_X), & 
+              pB3_R     (iNX_X), &
               pChi_R    (iNX_X), &
               Gm_dd_11_F(iNX_X), &
               Gm_dd_22_F(iNX_X), &
@@ -1967,7 +1967,7 @@ CONTAINS
               UseDivergenceCleaning )
 
       IF( .FALSE. )THEN
-     
+
      !PRINT*
      !PRINT*, 'Right states and flux for iNX_X = ', iNX_X
      !PRINT*, 'D_R:      ', pD_R(iNX_X)
@@ -2727,7 +2727,7 @@ CONTAINS
              ( P(iPM_D), P(iPM_E), P(iPM_Ne), Pressure )
 
       W   = One &
-            / SQRT( One & 
+            / SQRT( One &
                     - G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) * P(iPM_V1)**2 &
                     - G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) * P(iPM_V2)**2 &
                     - G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) * P(iPM_V3)**2 )
@@ -2750,7 +2750,7 @@ CONTAINS
               + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
                 * U(iNX,iX1,iX2,iX3,iPM_V2) &
                 * U(iNX,iX1,iX2,iX3,iCM_B2) &
-              + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) & 
+              + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
                 * U(iNX,iX1,iX2,iX3,iPM_V3) &
                 * U(iNX,iX1,iX2,iX3,iCM_B3) )
 
@@ -2763,7 +2763,7 @@ CONTAINS
               + Two * B0u * P(iPM_B1) * G(iNX,iX1,iX2,iX3,iGF_Beta_1) &
               + ( G(iNX,iX1,iX2,iX3,iGF_Alpha) * B0u )**2 &
                 * G(iNX,iX1,iX2,iX3,iGF_Beta_1)**2 )
-              
+
       PressureTensor(2,1,iNX,iX1,iX2,iX3) &
         = ( U(iNX,iX1,iX2,iX3,iCM_S2) * P(iPM_V1) ) &
               / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
@@ -2772,7 +2772,7 @@ CONTAINS
               + B0u * P(iPM_B1) * G(iNX,iX1,iX2,iX3,iGF_Beta_2) &
               + ( G(iNX,iX1,iX2,iX3,iGF_Alpha) * B0u )**2 * G(iNX,iX1,iX2,iX3,iGF_Beta_1) &
                 * G(iNX,iX1,iX2,iX3,iGF_Beta_2) )
- 
+
       PressureTensor(3,1,iNX,iX1,iX2,iX3) &
         = ( U(iNX,iX1,iX2,iX3,iCM_S3) * P(iPM_V1) ) &
               / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
@@ -2855,7 +2855,7 @@ CONTAINS
         !PRINT*, 'Using divergence cleaning for source terms.'
 
         ! --- Eulerian Magnetic Field increment ---
-  
+
         dU(iNX,iX1,iX2,iX3,iCM_B1) &
           = dU(iNX,iX1,iX2,iX3,iCM_B1) &
               - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
@@ -2870,7 +2870,7 @@ CONTAINS
                   * ( - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                             / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11)**2 ) &
                         * dGdX1(iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
-                      + ( dGdX1(iNX,iGF_SqrtGm,iX2,iX3,iX1) & 
+                      + ( dGdX1(iNX,iGF_SqrtGm,iX2,iX3,iX1) &
                             / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) ) )
 
         dU(iNX,iX1,iX2,iX3,iCM_B2) &
@@ -2878,21 +2878,21 @@ CONTAINS
               - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                     * U(iNX,iX1,iX2,iX3,iCM_B1) &
                     * dGdX1(iNX,iGF_Beta_2,iX2,iX3,iX1) )
- 
+
         dU(iNX,iX1,iX2,iX3,iCM_B3) &
           = dU(iNX,iX1,iX2,iX3,iCM_B3) &
               - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                     * U(iNX,iX1,iX2,iX3,iCM_B1) &
                     * dGdX1(iNX,iGF_Beta_3,iX2,iX3,iX1) )
-         
+
         ! --- Divergence violation field increment ---
-  
+
         dU(iNX,iX1,iX2,iX3,iCM_Chi) &
           = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
               - DampingParameter * U(iNX,iX1,iX2,iX3,iCM_Chi) &
               + ( U(iNX,iX1,iX2,iX3,iCM_B1) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
                 * dGdX1(iNX,iGF_Alpha,iX2,iX3,iX1)
-  
+
       END IF
 
       ! -- X2 increments ---
@@ -2930,9 +2930,9 @@ CONTAINS
         IF( UseDivergenceCleaning )THEN
 
           !PRINT*, 'Using divergence cleaning for source terms.'
-  
+
           ! --- Eulerian Magnetic Field increment ---
-    
+
           dU(iNX,iX1,iX2,iX3,iCM_B2) &
             = dU(iNX,iX1,iX2,iX3,iCM_B2) &
                 - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
@@ -2947,28 +2947,28 @@ CONTAINS
                     * ( - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                               / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22)**2 ) &
                           * dGdX2(iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
-                        + ( dGdX2(iNX,iGF_SqrtGm,iX1,iX3,iX2) & 
+                        + ( dGdX2(iNX,iGF_SqrtGm,iX1,iX3,iX2) &
                               / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) ) )
-  
+
           dU(iNX,iX1,iX2,iX3,iCM_B1) &
             = dU(iNX,iX1,iX2,iX3,iCM_B1) &
                 - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                       * U(iNX,iX1,iX2,iX3,iCM_B2) &
                       * dGdX2(iNX,iGF_Beta_1,iX1,iX3,iX2) )
-   
+
           dU(iNX,iX1,iX2,iX3,iCM_B3) &
             = dU(iNX,iX1,iX2,iX3,iCM_B3) &
                 - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                       * U(iNX,iX1,iX2,iX3,iCM_B2) &
                       * dGdX2(iNX,iGF_Beta_3,iX1,iX3,iX2) )
-           
+
           ! --- Divergence violation field increment ---
-    
+
           dU(iNX,iX1,iX2,iX3,iCM_Chi) &
             = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
                 + ( U(iNX,iX1,iX2,iX3,iCM_B2) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
                   * dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2)
-    
+
         END IF
 
       END IF
@@ -3008,9 +3008,9 @@ CONTAINS
         IF( UseDivergenceCleaning )THEN
 
           !PRINT*, 'Using divergence cleaning for source terms.'
-  
+
           ! --- Eulerian Magnetic Field increment ---
-    
+
           dU(iNX,iX1,iX2,iX3,iCM_B3) &
             = dU(iNX,iX1,iX2,iX3,iCM_B3) &
                 - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
@@ -3025,28 +3025,28 @@ CONTAINS
                     * ( - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                               / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33)**2 ) &
                           * dGdX3(iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
-                        + ( dGdX3(iNX,iGF_SqrtGm,iX1,iX2,iX3) & 
+                        + ( dGdX3(iNX,iGF_SqrtGm,iX1,iX2,iX3) &
                               / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ) )
-  
+
           dU(iNX,iX1,iX2,iX3,iCM_B1) &
             = dU(iNX,iX1,iX2,iX3,iCM_B1) &
                 - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                       * U(iNX,iX1,iX2,iX3,iCM_B3) &
                       * dGdX3(iNX,iGF_Beta_1,iX1,iX2,iX3) )
-   
+
           dU(iNX,iX1,iX2,iX3,iCM_B2) &
             = dU(iNX,iX1,iX2,iX3,iCM_B2) &
                 - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                       * U(iNX,iX1,iX2,iX3,iCM_B3) &
                       * dGdX3(iNX,iGF_Beta_3,iX1,iX2,iX3) )
-           
+
           ! --- Divergence violation field increment ---
-    
+
           dU(iNX,iX1,iX2,iX3,iCM_Chi) &
             = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
                 + ( U(iNX,iX1,iX2,iX3,iCM_B3) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
                   * dGdX3(iNX,iGF_Alpha,iX1,iX2,iX3)
-    
+
         END IF
 
       END IF
@@ -3091,7 +3091,7 @@ CONTAINS
   END SUBROUTINE ComputeIncrement_Gravity_Relativistic
 
 
-  SUBROUTINE InitializeIncrement_MHD & 
+  SUBROUTINE InitializeIncrement_MHD &
                ( iX_B0, iX_E0, iX_B1, iX_E1 )
 
     INTEGER,  INTENT(in)           :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -3310,7 +3310,7 @@ CONTAINS
 
   SUBROUTINE FinalizeIncrement_Divergence
 
-    DEALLOCATE( pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, & 
+    DEALLOCATE( pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, &
                 pB1_L, pB2_L, pB3_L, pChi_L )
     DEALLOCATE( pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, &
                 pB1_R, pB2_R, pB3_R, pChi_R )
