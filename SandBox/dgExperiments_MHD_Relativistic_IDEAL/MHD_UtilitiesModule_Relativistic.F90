@@ -751,6 +751,9 @@ CONTAINS
     CALL WeakMagneticDivergence_X1_Relativistic &
       ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, WeakDiv )
 
+    CALL WeakMagneticDivergence_X2_Relativistic &
+      ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, WeakDiv )
+
   END SUBROUTINE ComputeWeakMagneticDivergence_MHD_Relativistic
 
 
@@ -1287,7 +1290,7 @@ CONTAINS
       END DO
 
       Div(iNX,1,iX1,iX3,iX2) = Half * (uCM_L_nCM(iCM_B2) + uCM_R_nCM(iCM_B2)) * SqrtGm_F(iNX_X) &
-                             * dX1(iX1) * dX3(iX3) * WeightsX_X2(iNX) / dX2(iX2)
+                             * dX1(iX1) * dX3(iX3) * WeightsX_X2(iNX)
 
     END DO ! iNX_X
 
@@ -1655,6 +1658,311 @@ CONTAINS
     END ASSOCIATE
 
   END SUBROUTINE WeakMagneticDivergence_X1_Relativistic
+
+
+  SUBROUTINE WeakMagneticDivergence_X2_Relativistic &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, WeakDiv )
+
+    INTEGER,  INTENT(in)  :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF), &
+      U(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCM)
+    REAL(DP), INTENT(inout) :: &
+      WeakDiv(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
+
+    INTEGER :: iNX, iNX_X, iNX_K, iX1, iX2, iX3, iCM, iGF
+    INTEGER :: iXP_B0(3), iXP_E0(3)
+
+    REAL(DP) :: uCM_L_nCM(nCM), uCM_R_nCM(nCM)
+    REAL(DP) :: Div_K
+
+    REAL(DP) :: WeakDiv_X2(nDOFX,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2):iX_E0(2))
+    REAL(DP) :: Div_q(nDOFX,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2):iX_E0(2))
+
+    ! --- Geometry Fields ---
+
+    REAL(DP) :: &
+      G_K(nDOFX, &
+          iX_B0(1)  :iX_E0(1),   &
+          iX_B0(3)  :iX_E0(3),   &
+          iX_B0(2)-1:iX_E0(2)+1, &
+          nGF)
+    REAL(DP) :: &
+      G_F(nDOFX_X1, &
+          iX_B0(1)  :iX_E0(1),   &
+          iX_B0(3)  :iX_E0(3),   &
+          iX_B0(2)  :iX_E0(2)+1, &
+          nGF)
+
+    ! --- Conserved Fluid Fields ---
+
+    REAL(DP) :: &
+      uCM_K(nDOFX, &
+            iX_B0(1)  :iX_E0(1),   &
+            iX_B0(3)  :iX_E0(3),   &
+            iX_B0(2)-1:iX_E0(2)+1, &
+            nCM)
+    REAL(DP) :: &
+      uCM_L(nDOFX_X1, &
+            iX_B0(1)  :iX_E0(1),   &
+            iX_B0(3)  :iX_E0(3),   &
+            iX_B0(2)  :iX_E0(2)+1, &
+            nCM)
+    REAL(DP) :: &
+      uCM_R(nDOFX_X1, &
+            iX_B0(1)  :iX_E0(1),   &
+            iX_B0(3)  :iX_E0(3),   &
+            iX_B0(2)  :iX_E0(2)+1, &
+            nCM)
+
+    ! --- Diagnostic Fields ---
+
+    REAL(DP) :: &
+      Div(nDOFX_X1,iX_B0(1)    :iX_E0(1),   &
+                   iX_B0(3)    :iX_E0(3),   &
+                   iX_B0(2)-1  :iX_E0(2)+1)
+
+    IF( iX_E0(2) .EQ. iX_B0(2) ) RETURN
+
+    ! --- Permuted Limits ---
+
+    iXP_B0(1) = iX_B0(1) ; iXP_E0(1) = iX_E0(1)
+    iXP_B0(2) = iX_B0(3) ; iXP_E0(2) = iX_E0(3)
+    iXP_B0(3) = iX_B0(2) ; iXP_E0(3) = iX_E0(2)
+
+    ASSOCIATE( dX1 => MeshX(1) % Width, dX2 => MeshX(2) % Width, dX3 => MeshX(3) % Width )
+
+    CALL InitializeIncrement_MagneticDivergence &
+           ( iXP_B0, iXP_E0, nDOFX_X2, &
+             G_K, G_F, uCM_K, uCM_L, uCM_R )
+
+    ! --- Permute data ---
+
+    DO iGF = 1           , nGF
+    DO iX2 = iX_B0(2) - 1, iX_E0(2) + 1
+    DO iX3 = iX_B0(3)    , iX_E0(3)
+    DO iX1 = iX_B0(1)    , iX_E0(1)
+    DO iNX = 1           , nDOFX
+
+      G_K(iNX,iX1,iX3,iX2,iGF) = G(iNX,iX1,iX2,iX3,iGF)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    DO iCM = 1           , nCM
+    DO iX2 = iX_B0(2) - 1, iX_E0(2) + 1
+    DO iX3 = iX_B0(3)    , iX_E0(3)
+    DO iX1 = iX_B0(1)    , iX_E0(1)
+    DO iNX = 1           , nDOFX
+
+      uCM_K(iNX,iX1,iX3,iX2,iCM) = U(iNX,iX1,iX2,iX3,iCM    )
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    DO iX2 = iX_B0(2)        , iX_E0(2)
+    DO iX3 = iX_B0(3)        , iX_E0(3)
+    DO iX1 = iX_B0(1)        , iX_E0(1)
+    DO iNX = 1               , nDOFX
+
+      WeakDiv_X2(iNX,iX1,iX3,iX2) = 0.0_DP
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    !---------------------
+    ! --- Surface Term ---
+    !---------------------
+
+    ! --- Interpolate Geometry Fields on Shared Face ---
+
+    ! --- Face States (Average of Left and Right States) ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+             G_K(1,iX_B0(1),iX_B0(3),iX_B0(2)-1,iGF_h_1), nDOFX, Zero, &
+             G_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_h_1), nDOFX_X2 )
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+             G_K(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_h_1), nDOFX, Half, &
+             G_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_h_1), nDOFX_X2 )
+
+    ! --- Scale factor (X2) ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+             G_K(1,iX_B0(1),iX_B0(3),iX_B0(2)-1,iGF_h_2), nDOFX, Zero, &
+             G_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_h_2), nDOFX_X2 )
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+             G_K(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_h_2), nDOFX, Half, &
+             G_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_h_2), nDOFX_X2 )
+
+    ! --- Scale factor (X3) ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+             G_K(1,iX_B0(1),iX_B0(3),iX_B0(2)-1,iGF_h_3), nDOFX, Zero, &
+             G_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_h_3), nDOFX_X2 )
+    CALL MatrixMatrixMultiply &
+           ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+             G_K(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_h_3), nDOFX, Half, &
+             G_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iGF_h_3), nDOFX_X2 )
+
+    ! --- Compute metric and metric determinant on faces ---
+
+    ! --- Compute metric and metric determinant on faces ---
+
+    DO iX2   = iX_B0(2), iX_E0(2) + 1
+    DO iX3   = iX_B0(3), iX_E0(3)
+    DO iX1   = iX_B0(1), iX_E0(1)
+    DO iNX_X = 1       , nDOFX_X2
+
+      G_F             (iNX_X,iX1,iX3,iX2,iGF_h_1) &
+        = MAX( G_F    (iNX_X,iX1,iX3,iX2,iGF_h_1), SqrtTiny )
+      G_F             (iNX_X,iX1,iX3,iX2,iGF_h_2) &
+        = MAX( G_F    (iNX_X,iX1,iX3,iX2,iGF_h_2), SqrtTiny )
+      G_F             (iNX_X,iX1,iX3,iX2,iGF_h_3) &
+        = MAX( G_F    (iNX_X,iX1,iX3,iX2,iGF_h_3), SqrtTiny )
+
+      G_F             (iNX_X,iX1,iX3,iX2,iGF_Gm_dd_11) &
+        = MAX( G_F    (iNX_X,iX1,iX3,iX2,iGF_h_1     )**2, SqrtTiny )
+      G_F             (iNX_X,iX1,iX3,iX2,iGF_Gm_dd_22) &
+        = MAX( G_F    (iNX_X,iX1,iX3,iX2,iGF_h_2     )**2, SqrtTiny )
+      G_F             (iNX_X,iX1,iX3,iX2,iGF_Gm_dd_33) &
+        = MAX( G_F    (iNX_X,iX1,iX3,iX2,iGF_h_3     )**2, SqrtTiny )
+
+      G_F             (iNX_X,iX1,iX3,iX2,iGF_SqrtGm) &
+        = MAX( G_F    (iNX_X,iX1,iX3,iX2,iGF_h_1   ) &
+                 * G_F(iNX_X,iX1,iX3,iX2,iGF_h_2   ) &
+                 * G_F(iNX_X,iX1,iX3,iX2,iGF_h_3   ), SqrtTiny )
+
+      G_F             (iNX_X,iX1,iX3,iX2,iGF_Alpha) &
+        = MAX( G_F    (iNX_X,iX1,iX3,iX2,iGF_Alpha), SqrtTiny )
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    ! --- Interpolate Fluid Fields ---
+
+    DO iCM = 1, nCM
+
+      ! --- Interpolate Left State ---
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, One, LX_X2_Up, nDOFX_X2, &
+               uCM_K(1,iX_B0(1),iX_B0(3),iX_B0(2)-1,iCM), nDOFX, Zero, &
+               uCM_L(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iCM), nDOFX_X2 )
+
+      ! --- Interpolate Right State ---
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, One, LX_X2_Dn, nDOFX_X2, &
+               uCM_K(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iCM), nDOFX, Zero, &
+               uCM_R(1,iX_B0(1),iX_B0(3),iX_B0(2)  ,iCM), nDOFX_X2 )
+
+    END DO
+
+    DO iNX_X = 1, nNodesX_X2
+
+      iNX = IndexTableX_F(1,iNX_X)
+      iX1 = IndexTableX_F(2,iNX_X)
+      iX3 = IndexTableX_F(3,iNX_X)
+      iX2 = IndexTableX_F(4,iNX_X)
+
+      DO iCM = 1, nCM
+
+        uCM_L_nCM(iCM) = uCM_L(iNX,iX1,iX3,iX2,iCM)
+        uCM_R_nCM(iCM) = uCM_R(iNX,iX1,iX3,iX2,iCM)
+
+      END DO
+
+      Div(iNX,iX1,iX3,iX2) = Half * (uCM_L_nCM(iCM_B2) + uCM_R_nCM(iCM_B2)) * SqrtGm_F(iNX_X) &
+                             * dX1(iX1) * dX3(iX3) * WeightsX_X2(iNX)
+
+    END DO ! iNX_X
+
+    ! --- Surface Contribution ---
+
+    ! --- Contribution from Left Face ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K, nDOFX_X2, - One, LX_X1_Dn, nDOFX_X2, &
+             Div(1,iX_B0(1),iX_B0(3),iX_B0(2) ), &
+             nDOFX_X2, Zero, WeakDiv_X2, nDOFX )
+
+    ! --- Contribution from Right Face
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K, nDOFX_X2, + One, LX_X1_Up, nDOFX_X2, &
+             Div(1,iX_B0(1),iX_B0(3),iX_B0(2)+1 ), &
+             nDOFX_X2, One, WeakDiv_X2, nDOFX )
+
+    DO iNX_K = 1, nNodesX_K
+
+      iNX = IndexTableX_V(1,iNX_K)
+      iX1 = IndexTableX_V(2,iNX_K)
+      iX3 = IndexTableX_V(3,iNX_K)
+      iX2 = IndexTableX_V(4,iNX_K)
+
+      Div_K = uCM_K(iNX,iX1,iX3,iX2,iCM_B1)
+
+      Div_q(iNX,iX1,iX3,iX2) &
+        = Div_K &
+            * SqrtGm_K(iNX_K) &
+            * dX1(iX1) * dX3(iX3) * WeightsX_q(iNX)
+
+    END DO
+
+    ! --- Contribution from Volume ---
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nX_K, nDOFX, One, dLXdX2_q, nDOFX, &
+             Div_q, nDOFX, -One, WeakDiv_X2, nDOFX )
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1       , nDOFX
+
+      WeakDiv(iNX,iX1,iX2,iX3) &
+        = WeakDiv(iNX,iX1,iX2,iX3) &
+            + WeakDiv_X2(iNX,iX1,iX3,iX2)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = 1, sWX(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1, nDOFX
+
+      WeakDiv(iNX,iX1,iX_B0(2)-iX2,iX3) = 0.0_DP
+      WeakDiv(iNX,iX1,ix_B0(2)+iX2,iX3) = 0.0_DP
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL FinalizeIncrement_MagneticDivergence
+
+    END ASSOCIATE
+
+  END SUBROUTINE WeakMagneticDivergence_X2_Relativistic
 
 
   SUBROUTINE InitializeIncrement &
