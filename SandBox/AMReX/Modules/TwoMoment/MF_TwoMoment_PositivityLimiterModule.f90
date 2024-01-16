@@ -13,14 +13,16 @@ MODULE MF_TwoMoment_PositivityLimiterModule
     amrex_mfiter_destroy
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse, &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
 
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
     swX, &
-    swE, &
     nDOFX, &
-    nDOFE, &
     nDOFZ, &
     iE_B0, &
     iE_E0, &
@@ -29,10 +31,10 @@ MODULE MF_TwoMoment_PositivityLimiterModule
   USE GeometryFieldsModule, ONLY: &
     nGF
   USE GeometryFieldsModuleE, ONLY: &
-    nGE, &
     uGE
   USE RadiationFieldsModule, ONLY: &
-    nCR
+    nCR, &
+    nSpecies
   USE FluidFieldsModule, ONLY: &
     nCF
   USE TwoMoment_PositivityLimiterModule, ONLY: &
@@ -53,11 +55,7 @@ MODULE MF_TwoMoment_PositivityLimiterModule
     AllocateArray_Z, &
     DeallocateArray_Z
   USE InputParsingModule, ONLY: &
-    UsePositivityLimiter_TwoMoment, &
-    Min_1_TwoMoment, &
-    Min_2_TwoMoment, &
     nLevels, &
-    nSpecies, &
     UseTiling, &
     nE
 
@@ -68,16 +66,34 @@ MODULE MF_TwoMoment_PositivityLimiterModule
   PUBLIC :: FinalizePositivityLimiter_TwoMoment_MF
   PUBLIC :: ApplyPositivityLimiter_TwoMoment_MF
 
+  LOGICAL :: UsePositivityLimiter
+
 CONTAINS
 
 
   SUBROUTINE InitializePositivityLimiter_TwoMoment_MF
 
+    TYPE(amrex_parmparse) :: PP
+
+    REAL(DP) :: Min_1, Min_2
+
+    UsePositivityLimiter = .TRUE.
+    Min_1                = 1.0e-12_DP
+    Min_2                = 1.0e-12_DP
+    CALL amrex_parmparse_build( PP, 'PL' )
+      CALL PP % query( 'UsePositivityLimiter_TwoMoment', &
+                        UsePositivityLimiter )
+      CALL PP % query( 'Min_1_TwoMoment', &
+                        Min_1 )
+      CALL PP % query( 'Min_2_TwoMoment', &
+                        Min_2 )
+    CALL amrex_parmparse_destroy( PP )
+
     CALL InitializePositivityLimiter_TwoMoment &
-           ( Min_1_Option = Min_1_TwoMoment, &
-             Min_2_Option = Min_2_TwoMoment, &
+           ( Min_1_Option = Min_1, &
+             Min_2_Option = Min_2, &
              UsePositivityLimiter_Option &
-               = UsePositivityLimiter_TwoMoment, &
+               = UsePositivityLimiter, &
              Verbose_Option = amrex_parallel_ioprocessor() )
 
   END SUBROUTINE InitializePositivityLimiter_TwoMoment_MF

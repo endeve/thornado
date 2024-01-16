@@ -400,7 +400,7 @@ CONTAINS
 !!$
 !!$    CALL TimersStart_Euler( Timer_Euler_CP_Bisection )
 !!$
-!!$    CALL SolveZ_Bisection_Vector &
+!!$    CALL SolveF_Bisection_Vector &
 !!$           ( N, uD, uNe, q, r, k, &
 !!$             za, zb, fa, fb, &
 !!$             dz, zc, fc, ITERATE )
@@ -612,7 +612,7 @@ CONTAINS
 
     ! --- Solve for primitive ---
 
-    CALL SolveZ_Bisection_Scalar &
+    CALL SolveF_Bisection_Scalar &
            ( CF_D, CF_Ne, q, r, k, z0, iErr, ITERATION )
 
     ! --- Eq. C15 ---
@@ -2233,7 +2233,7 @@ CONTAINS
 
 #endif
 
-  SUBROUTINE SolveZ_Bisection_Scalar &
+  SUBROUTINE SolveF_Bisection_Scalar &
     ( CF_D, CF_Ne, q, r, k, z0, iErr, ITERATION, dzMin_Option )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
@@ -2351,10 +2351,10 @@ CONTAINS
 
     z0 = zc
 
-  END SUBROUTINE SolveZ_Bisection_Scalar
+  END SUBROUTINE SolveF_Bisection_Scalar
 
 
-!!$  SUBROUTINE SolveZ_Bisection_Vector &
+!!$  SUBROUTINE SolveF_Bisection_Vector &
 !!$    ( N, uD, uNe, q, r, k, &
 !!$      za, zb, fa, fb, &
 !!$      dz, zc, fc, ITERATE, dzMin_Option )
@@ -2463,6 +2463,6 @@ CONTAINS
 !!$
 !!$    END DO ! WHILE( ANY( ITERATE ) .AND. ITERATION .LT. MaxIterations_ComputePrimitive_Euler )
 !!$
-!!$  END SUBROUTINE SolveZ_Bisection_Vector
+!!$  END SUBROUTINE SolveF_Bisection_Vector
 
 END MODULE Euler_UtilitiesModule_Relativistic

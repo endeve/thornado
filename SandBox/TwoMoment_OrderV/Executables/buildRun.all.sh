@@ -145,11 +145,11 @@ module load oneapi/eng-compiler/2023.10.15.002
 #module switch -f mpich/52.2-256/icc-sockets-gpu mpich/51.2/icc-sockets-gpu    ## Needed by 05.15.007.
 
 ### New compiler working with mkl nighlty.
-MKL_DATE="2023.10.15.002"
+#MKL_DATE="2023.10.15.002"
 #module load nightly-mkl-cev_nightly/${MKL_DATE}
 #module load nightly-mkl-cev_rls/${MKL_DATE}
 #COMPILER_DATE="2023.08.20"
-#COMPILER_DATE=""
+COMPILER_DATE="2023.10.15.002"
 if false; then
    if [[ -n $COMPILER_DATE ]]; then
       module swap -f nightly-compiler/${COMPILER_DATE}
@@ -264,7 +264,7 @@ fi
 
 set_common
 
-timeFOMLog="timeFOM_${COMPILER_DATE}-${MKL_DATE}.txt${umdf}$AADEBUG"
+timeFOMLog="timeFOM_${COMPILER_DATE}.txt${umdf}$AADEBUG"
 if [[ -z $ACTION || "$1" == "FOM" ]];then
    rm -rf $timeFOMLog
    echo "                                                        Time(seconds)                             |                      Figure of Merit (FOM)">>$timeFOMLog
@@ -288,8 +288,8 @@ do
          fi
 
          export OP_LEVEL=$op
-         export LOG_FILE=${logFiles[jj]}.${OP_LEVEL}.${COMPILER_DATE}-${MKL_DATE}${umdf}${gridNames[ii]}${faction}$AADEBUG
-         export LOG_BASE=${logFiles[jj]}.${OP_LEVEL}.${BASE_DATE}${MKL_BASE_DATE}${BASE_UMD}${gridNames[ii]}$AADEBUG
+         export LOG_FILE=${logFiles[jj]}.${OP_LEVEL}.${COMPILER_DATE}${umdf}${gridNames[ii]}${faction}$AADEBUG
+         export LOG_BASE=${logFiles[jj]}.${OP_LEVEL}.${BASE_DATE}${BASE_UMD}${gridNames[ii]}$AADEBUG
          export USER_OPTION=${userOptions[jj]}
 
          if [[ "$ACTION" == "vtune" ]]; then

@@ -7,8 +7,6 @@ MODULE MF_InitializationModule
     amrex_mfiter_build, &
     amrex_mfiter_destroy, &
     amrex_mfiter
-  USE amrex_geometry_module, ONLY: &
-    amrex_geometry
   USE amrex_amrcore_module, ONLY: &
     amrex_geom
   USE amrex_parallel_module, ONLY: &
@@ -19,12 +17,12 @@ MODULE MF_InitializationModule
     amrex_parmparse
 
   USE ProgramHeaderModule, ONLY: &
-    nNodesX, &
     nDOFX, &
     nDOFE, &
     nDOFZ
   USE MeshModule, ONLY: &
     MeshX, &
+    MeshE, &
     NodeCoordinate
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
@@ -32,7 +30,6 @@ MODULE MF_InitializationModule
     ComputeThermodynamicStates_Primitive, &
     ApplyEquationOfState
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
@@ -40,22 +37,21 @@ MODULE MF_InitializationModule
     iGF_Beta_1, &
     iGF_Beta_2, &
     iGF_Beta_3
+  USE UnitsModule, ONLY: &
+    UnitsDisplay
   USE FluidFieldsModule, ONLY: &
-    nCF, &
     iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
-    nPF, &
     iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
-    nAF, &
     iAF_P, &
     iAF_T, &
     iAF_Ye, &
@@ -70,24 +66,25 @@ MODULE MF_InitializationModule
     iAF_Xh, &
     iAF_Gm
   USE RadiationFieldsModule, ONLY: &
-    nCR, &
     iCR_N, &
     iCR_G1, &
     iCR_G2, &
     iCR_G3, &
-    nPR, &
+    nCR, &
     iPR_D, &
     iPR_I1, &
     iPR_I2, &
-    iPR_I3
+    iPR_I3, &
+    nPR, &
+    nSpecies
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_Euler_Relativistic
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeConserved_TwoMoment
   USE UtilitiesModule, ONLY: &
     Locate, &
-    Interpolate1D_Linear
-
+    Interpolate1D_Linear, &
+    Interpolate2D_BiLinear
   USE MF_KindModule, ONLY: &
     DP, &
     Zero
@@ -96,12 +93,7 @@ MODULE MF_InitializationModule
     ReadProgenitor1D
   USE InputParsingModule, ONLY: &
     ProgramName, &
-    nLevels, &
-    xL, &
-    xR, &
-    nX, &
     swX, &
-    nSpecies, &
     nE, &
     UseTiling
 
@@ -114,28 +106,25 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields_MF &
-    ( iLevel, MF_uGF, MF_uCF, MF_uCR )
+    ( iLevel, MF_uGF, MF_uCF, MF_uPF, MF_uAF, MF_uCR, MF_uPR )
 
     INTEGER             , INTENT(in)    :: iLevel
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF, MF_uCF, MF_uCR
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: &
+      MF_uCF, MF_uPF, MF_uAF, MF_uCR, MF_uPR
 
     ! --- thornado ---
 
     INTEGER  :: iX1, iX2, iX3, iZ1, iS
-    INTEGER  :: iNX, iNX1, iNZ, iNX_Z
-    REAL(DP) :: X1
-    REAL(DP) :: uGF_K(nDOFX,nGF)
-    REAL(DP) :: uCF_K(nDOFX,nCF)
-    REAL(DP) :: uPF_K(nDOFX,nPF)
-    REAL(DP) :: uAF_K(nDOFX,nAF)
+    INTEGER  :: iNX, iNX1, iNZ, iNX_Z, iN_E
+    REAL(DP) :: X1, Eq
     REAL(DP) :: uCR_K(nDOFZ,nE,nCR,nSpecies)
     REAL(DP) :: uPR_K(nDOFZ,nE,nPR,nSpecies)
 
     ! --- AMReX ---
 
-    INTEGER                       :: lo_G(4), hi_G(4)
-    INTEGER                       :: lo_F(4), hi_F(4)
-    INTEGER                       :: lo_R(4), hi_R(4)
+    INTEGER                       :: lo_CR(4), hi_CR(4)
+    INTEGER                       :: lo_PR(4), hi_PR(4)
     INTEGER                       :: iX_B(3), iX_E(3)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
@@ -143,13 +132,24 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uPR(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uPF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uAF(:,:,:,:)
+
+    REAL(DP) :: R_custom(1:542), D_custom(1:542), Ye_custom(1:542), T_custom(1:542)
+    REAL(DP) :: Dnu_custom(1:542,1:20)
+    REAL(DP) :: Dnubar_custom(1:542,1:20)
+    REAL(DP) :: Inu_custom(1:542,1:20)
+    REAL(DP) :: Inubar_custom(1:542,1:20)
+    REAL(DP) :: E_custom(1:20)
 
     ! --- Problem-dependent parameters ---
 
     CHARACTER(LEN=:), ALLOCATABLE :: ProgenitorFileName
     TYPE(ProgenitorType1D)        :: P1D
     LOGICAL                       :: Verbose
-
+    LOGICAL                       :: Custom_Start
+ 
     CALL amrex_parmparse_build( PP, 'AC' )
       CALL PP % get( 'ProgenitorFileName', ProgenitorFileName )
     CALL amrex_parmparse_destroy( PP )
@@ -177,37 +177,43 @@ CONTAINS
         T1D => P1D % Temperature, &
         Y1D => P1D % ElectronFraction )
 
-    uGF_K = Zero
-    uCF_K = Zero
-    uPF_K = Zero
-    uAF_K = Zero
     uCR_K = Zero
     uPR_K = Zero
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+
+
+    Custom_Start = .FALSE.
+
+    IF ( Custom_Start ) THEN
+
+      CALL ReadCustom_Fluid( 1, 542, R_custom, D_custom, Ye_custom, T_custom )
+
+      CALL ReadCustom_Transport( 1, 542, 1, 20, &
+             Dnu_custom, Dnubar_custom, Inu_custom, Inubar_custom, E_custom )
+
+    END IF
+
 
     DO WHILE( MFI % next() )
 
       uGF => MF_uGF % DataPtr( MFI )
       uCF => MF_uCF % DataPtr( MFI )
       uCR => MF_uCR % DataPtr( MFI )
+      uPR => MF_uPR % DataPtr( MFI )
+      uPF => MF_uPF % DataPtr( MFI )
+      uAF => MF_uAF % DataPtr( MFI )
 
       BX = MFI % tilebox()
 
-      lo_G = LBOUND( uGF )
-      hi_G = UBOUND( uGF )
+      lo_CR = LBOUND( uCR )
+      hi_CR = UBOUND( uCR )
 
-      lo_F = LBOUND( uCF )
-      hi_F = UBOUND( uCF )
-
-      lo_R = LBOUND( uCR )
-      hi_R = UBOUND( uCR )
+      lo_PR = LBOUND( uPR )
+      hi_PR = UBOUND( uPR )
 
       iX_B = BX % lo
       iX_E = BX % hi
-
-      IF( BX % lo(1) .EQ. amrex_geom(iLevel) % domain % lo( 1 ) ) &
-        iX_B(1) = iX_B(1) - swX(1)
 
       IF( BX % hi(1) .EQ. amrex_geom(iLevel) % domain % hi( 1 ) ) &
         iX_E(1) = iX_E(1) + swX(1)
@@ -216,74 +222,96 @@ CONTAINS
       DO iX2 = iX_B(2), iX_E(2)
       DO iX1 = iX_B(1), iX_E(1)
 
-        uGF_K &
-          = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
-
         DO iNX = 1, nDOFX
 
           iNX1 = NodeNumberTableX(1,iNX)
 
           X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
 
-          uPF_K(iNX,iPF_D) &
+          uPF(iX1,iX2,iX3,nDOFX*(iPF_D -1)+iNX) &
             = Interpolate1D( R1D, D1D, SIZE( R1D ), X1 )
 
-          uPF_K(iNX,iPF_V1) &
+          uPF(iX1,iX2,iX3,nDOFX*(iPF_V1-1)+iNX) &
             = Interpolate1D( R1D, V1D, SIZE( R1D ), X1 )
 
-          uPF_K(iNX,iPF_V2) &
+          uPF(iX1,iX2,iX3,nDOFX*(iPF_V2-1)+iNX) &
             = Zero
 
-          uPF_K(iNX,iPF_V3) &
+          uPF(iX1,iX2,iX3,nDOFX*(iPF_V3-1)+iNX) &
             = Zero
 
-          uAF_K(iNX,iAF_T) &
+          uAF(iX1,iX2,iX3,nDOFX*(iAF_T -1)+iNX) &
             = Interpolate1D( R1D, T1D, SIZE( R1D ), X1 )
 
-          uAF_K(iNX,iAF_Ye) &
+          uAF(iX1,iX2,iX3,nDOFX*(iAF_Ye-1)+iNX) &
             = Interpolate1D( R1D, Y1D, SIZE( R1D ), X1 )
 
+
+
+          IF ( Custom_Start ) THEN
+
+            uPF(iX1,iX2,iX3,nDOFX*(iPF_D -1)+iNX) &
+              = Interpolate1D( R_custom, D_custom, SIZE( R_custom ), X1 )
+
+            uPF(iX1,iX2,iX3,nDOFX*(iPF_V1-1)+iNX) &
+              = Zero
+
+            uPF(iX1,iX2,iX3,nDOFX*(iPF_V2-1)+iNX) &
+              = Zero
+
+            uPF(iX1,iX2,iX3,nDOFX*(iPF_V3-1)+iNX) &
+              = Zero
+
+            uAF(iX1,iX2,iX3,nDOFX*(iAF_T -1)+iNX) &
+              = Interpolate1D( R_custom, T_custom, SIZE( R_custom ), X1 )
+
+            uAF(iX1,iX2,iX3,nDOFX*(iAF_Ye-1)+iNX) &
+              = Interpolate1D( R_custom, Ye_custom, SIZE( R_custom ), X1 )
+
+          END IF
+
+
           CALL ComputeThermodynamicStates_Primitive &
-                 ( uPF_K(iNX,iPF_D ), &
-                   uAF_K(iNX,iAF_T ), &
-                   uAF_K(iNX,iAF_Ye), &
-                   uPF_K(iNX,iPF_E ), &
-                   uAF_K(iNX,iAF_E ), &
-                   uPF_K(iNX,iPF_Ne) )
+                 ( uPF(iX1,iX2,iX3,nDOFX*(iPF_D -1)+iNX), &
+                   uAF(iX1,iX2,iX3,nDOFX*(iAF_T -1)+iNX), &
+                   uAF(iX1,iX2,iX3,nDOFX*(iAF_Ye-1)+iNX), &
+                   uPF(iX1,iX2,iX3,nDOFX*(iPF_E -1)+iNX), &
+                   uAF(iX1,iX2,iX3,nDOFX*(iAF_E -1)+iNX), &
+                   uPF(iX1,iX2,iX3,nDOFX*(iPF_Ne-1)+iNX) )
 
           CALL ApplyEquationOfState &
-                  ( uPF_K(iNX,iPF_D ), &
-                    uAF_K(iNX,iAF_T ), &
-                    uAF_K(iNX,iAF_Ye), &
-                    uAF_K(iNX,iAF_P ), &
-                    uAF_K(iNX,iAF_S ), &
-                    uAF_K(iNX,iAF_E ), &
-                    uAF_K(iNX,iAF_Me), &
-                    uAF_K(iNX,iAF_Mp), &
-                    uAF_K(iNX,iAF_Mn), &
-                    uAF_K(iNX,iAF_Xp), &
-                    uAF_K(iNX,iAF_Xn), &
-                    uAF_K(iNX,iAF_Xa), &
-                    uAF_K(iNX,iAF_Xh), &
-                    uAF_K(iNX,iAF_Gm) )
+                  ( uPF(iX1,iX2,iX3,nDOFX*(iPF_D -1)+iNX), &
+                    uAF(iX1,iX2,iX3,nDOFX*(iAF_T -1)+iNX), &
+                    uAF(iX1,iX2,iX3,nDOFX*(iAF_Ye-1)+iNX), &
+                    uAF(iX1,iX2,iX3,nDOFX*(iAF_P -1)+iNX), &
+                    uAF(iX1,iX2,iX3,nDOFX*(iAF_S -1)+iNX), &
+                    uAF(iX1,iX2,iX3,nDOFX*(iAF_E -1)+iNX), &
+                    uAF(iX1,iX2,iX3,nDOFX*(iAF_Me-1)+iNX), &
+                    uAF(iX1,iX2,iX3,nDOFX*(iAF_Mp-1)+iNX), &
+                    uAF(iX1,iX2,iX3,nDOFX*(iAF_Mn-1)+iNX), &
+                    uAF(iX1,iX2,iX3,nDOFX*(iAF_Xp-1)+iNX), &
+                    uAF(iX1,iX2,iX3,nDOFX*(iAF_Xn-1)+iNX), &
+                    uAF(iX1,iX2,iX3,nDOFX*(iAF_Xa-1)+iNX), &
+                    uAF(iX1,iX2,iX3,nDOFX*(iAF_Xh-1)+iNX), &
+                    uAF(iX1,iX2,iX3,nDOFX*(iAF_Gm-1)+iNX) )
 
           CALL ComputeConserved_Euler_Relativistic &
-                 ( uPF_K(iNX,iPF_D ), &
-                   uPF_K(iNX,iPF_V1), &
-                   uPF_K(iNX,iPF_V2), &
-                   uPF_K(iNX,iPF_V3), &
-                   uPF_K(iNX,iPF_E ), &
-                   uPF_K(iNX,iPF_Ne), &
-                   uCF_K(iNX,iCF_D ), &
-                   uCF_K(iNX,iCF_S1), &
-                   uCF_K(iNX,iCF_S2), &
-                   uCF_K(iNX,iCF_S3), &
-                   uCF_K(iNX,iCF_E ), &
-                   uCF_K(iNX,iCF_Ne), &
-                   uGF_K(iNX,iGF_Gm_dd_11), &
-                   uGF_K(iNX,iGF_Gm_dd_22), &
-                   uGF_K(iNX,iGF_Gm_dd_33), &
-                   uAF_K(iNX,iAF_P) )
+                 ( uPF(iX1,iX2,iX3,nDOFX*(iPF_D       -1)+iNX), &
+                   uPF(iX1,iX2,iX3,nDOFX*(iPF_V1      -1)+iNX), &
+                   uPF(iX1,iX2,iX3,nDOFX*(iPF_V2      -1)+iNX), &
+                   uPF(iX1,iX2,iX3,nDOFX*(iPF_V3      -1)+iNX), &
+                   uPF(iX1,iX2,iX3,nDOFX*(iPF_E       -1)+iNX), &
+                   uPF(iX1,iX2,iX3,nDOFX*(iPF_Ne      -1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_D       -1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1      -1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2      -1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3      -1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E       -1)+iNX), &
+                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne      -1)+iNX), &
+                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
+                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
+                   uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
+                   uAF(iX1,iX2,iX3,nDOFX*(iAF_P       -1)+iNX) )
 
           ! --- Initialize radiation fields ---
 
@@ -299,27 +327,65 @@ CONTAINS
               uPR_K(iNZ,iZ1,iPR_I2,iS) = Zero
               uPR_K(iNZ,iZ1,iPR_I3,iS) = Zero
 
-              CALL ComputeConserved_TwoMoment &
-                     ( uPR_K(iNZ,iZ1,iPR_D ,iS),  &
-                       uPR_K(iNZ,iZ1,iPR_I1,iS),  &
-                       uPR_K(iNZ,iZ1,iPR_I2,iS),  &
-                       uPR_K(iNZ,iZ1,iPR_I3,iS),  &
-                       uCR_K(iNZ,iZ1,iCR_N ,iS),  &
-                       uCR_K(iNZ,iZ1,iCR_G1,iS),  &
-                       uCR_K(iNZ,iZ1,iCR_G2,iS),  &
-                       uCR_K(iNZ,iZ1,iCR_G3,iS),  &
-                       uPF_K(iNX_Z,iPF_V1),       &
-                       uPF_K(iNX_Z,iPF_V2),       &
-                       uPF_K(iNX_Z,iPF_V3),       &
-                       uGF_K(iNX_Z,iGF_Gm_dd_11), &
-                       uGF_K(iNX_Z,iGF_Gm_dd_22), &
-                       uGF_K(iNX_Z,iGF_Gm_dd_33), &
-                       0.0_DP, 0.0_DP, 0.0_DP,    & ! off-diagonal metric comp.
-                       uGF_K(iNX_Z,iGF_Alpha),    &
-                       uGF_K(iNX_Z,iGF_Beta_1),   &
-                       uGF_K(iNX_Z,iGF_Beta_2),   &
-                       uGF_K(iNX_Z,iGF_Beta_3) )
 
+             IF ( Custom_Start ) THEN
+
+               iN_E = MOD( (iNZ-1)        , nDOFE ) + 1
+
+               Eq = NodeCoordinate( MeshE, iZ1, iN_E )
+               IF (iS .EQ. 1) THEN
+
+                 uPR_K(iNZ,iZ1,iPR_D ,iS) &
+                   = Interpolate2D( R_custom, E_custom, Dnu_custom, &
+                                    SIZE(R_custom), SIZE(E_custom), X1, Eq )
+
+                 uPR_K(iNZ,iZ1,iPR_I1,iS) &
+                   = Interpolate2D( R_custom, E_custom, Inu_custom, &
+                                    SIZE(R_custom), SIZE(E_custom), X1, Eq )
+
+                 uPR_K(iNZ,iZ1,iPR_I2,iS) = Zero
+
+                 uPR_K(iNZ,iZ1,iPR_I3,iS) = Zero
+
+               ELSE IF (iS .EQ. 2) THEN
+
+                 uPR_K(iNZ,iZ1,iPR_D ,iS) &
+                   = Interpolate2D( R_custom, E_custom, Dnubar_custom, &
+                                    SIZE(R_custom), SIZE(E_custom), X1, Eq )
+
+                 uPR_K(iNZ,iZ1,iPR_I1,iS) &
+                   = Interpolate2D( R_custom, E_custom, Inubar_custom, &
+                                    SIZE(R_custom), SIZE(E_custom), X1, Eq )
+
+                 uPR_K(iNZ,iZ1,iPR_I2,iS) = Zero
+
+                 uPR_K(iNZ,iZ1,iPR_I3,iS) = Zero
+
+               END IF
+             END IF
+
+
+
+              CALL ComputeConserved_TwoMoment &
+                     ( uPR_K(iNZ,iZ1,iPR_D ,iS), &
+                       uPR_K(iNZ,iZ1,iPR_I1,iS), &
+                       uPR_K(iNZ,iZ1,iPR_I2,iS), &
+                       uPR_K(iNZ,iZ1,iPR_I3,iS), &
+                       uCR_K(iNZ,iZ1,iCR_N ,iS), &
+                       uCR_K(iNZ,iZ1,iCR_G1,iS), &
+                       uCR_K(iNZ,iZ1,iCR_G2,iS), &
+                       uCR_K(iNZ,iZ1,iCR_G3,iS), &
+                       uPF(iX1,iX2,iX3,nDOFX*(iPF_V1      -1)+iNX_Z), &
+                       uPF(iX1,iX2,iX3,nDOFX*(iPF_V2      -1)+iNX_Z), &
+                       uPF(iX1,iX2,iX3,nDOFX*(iPF_V3      -1)+iNX_Z), &
+                       uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX_Z), &
+                       uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX_Z), &
+                       uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX_Z), &
+                       0.0_DP, 0.0_DP, 0.0_DP, & ! off-diagonal metric comp.
+                       uGF(iX1,iX2,iX3,nDOFX*(iGF_Alpha   -1)+iNX_Z), &
+                       uGF(iX1,iX2,iX3,nDOFX*(iGF_Beta_1  -1)+iNX_Z), &
+                       uGF(iX1,iX2,iX3,nDOFX*(iGF_Beta_2  -1)+iNX_Z), &
+                       uGF(iX1,iX2,iX3,nDOFX*(iGF_Beta_3  -1)+iNX_Z) )
 
             END DO ! iNZ = 1, nDOFZ
 
@@ -328,11 +394,11 @@ CONTAINS
 
         END DO ! iNX = 1, nDOFX
 
-        uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
-          = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
+        uPR(iX1,iX2,iX3,lo_PR(4):hi_PR(4)) &
+          = RESHAPE( uPR_K, [ hi_PR(4) - lo_PR(4) + 1 ] )
 
-        uCR(iX1,iX2,iX3,lo_R(4):hi_R(4)) &
-          = RESHAPE( uCR_K, [ hi_R(4) - lo_R(4) + 1 ] )
+        uCR(iX1,iX2,iX3,lo_CR(4):hi_CR(4)) &
+          = RESHAPE( uCR_K, [ hi_CR(4) - lo_CR(4) + 1 ] )
 
       END DO
       END DO
@@ -384,6 +450,135 @@ CONTAINS
     RETURN
 
   END FUNCTION Interpolate1D
+
+  REAL(DP) FUNCTION Interpolate2D( x, E, U, n, n2, xq, Eq )
+ 
+    INTEGER,                   INTENT(in) :: n, n2
+    REAL(DP), DIMENSION(n),    INTENT(in) :: x
+    REAL(DP), DIMENSION(n2),   INTENT(in) :: E
+    REAL(DP), DIMENSION(n,n2), INTENT(in) :: U
+    REAL(DP),                  INTENT(in) :: xq, Eq
+ 
+    INTEGER :: i, j
+ 
+    i = Locate( xq, x, n )
+    j = Locate( Eq, E, n2 )
+ 
+    IF( i .EQ. 0 )THEN
+ 
+      ! --- Extrapolate Left ---
+ 
+      Interpolate2D &
+        = Interpolate2D_BiLinear( xq, x(1), x(2), Eq, E(j), E(j+1), U(1,j), U(1,j+1), U(2,j), U(2,j+1) )
+ 
+    ELSE IF( j .EQ. 0 )THEN
+ 
+      Interpolate2D &
+        = Interpolate2D_BiLinear( xq, x(i), x(i+1), Eq,  E(1), E(2), U(i,1), U(i,2), U(i+1,1), U(i+1,2) )
+ 
+    ELSE IF( i .EQ. 0 .AND. j .EQ. 0 )THEN
+      Interpolate2D &
+        = Interpolate2D_BiLinear( xq, x(1), x(2), Eq,  E(1), E(2), U(1,1), U(1,2), U(2,1), U(2,2) )
+ 
+    ELSE IF( i .EQ. n )THEN
+ 
+      ! --- Extrapolate Right ---
+ 
+      Interpolate2D &
+        = Interpolate2D_BiLinear( xq, x(n-1), x(n), Eq,  E(j), E(j+1), U(n-1,j), U(n-1,j+1), U(n,j), U(n,j+1) )
+ 
+    ELSE IF( j .EQ. n2 )THEN
+ 
+      Interpolate2D &
+        = Interpolate2D_BiLinear( xq, x(i), x(i+1), Eq,  E(n2-1), E(n2), U(i,n2-1), U(i,n2), U(i+1,n2-1), U(i+1,n2) )
+ 
+    ELSE IF( i .EQ. n .AND. j .EQ. n2 )THEN
+ 
+      Interpolate2D &
+        = Interpolate2D_BiLinear( xq, x(n-1), x(n), Eq,  E(n2-1), E(n2), U(n-1,n2-1), U(n-1,n2), U(n,n2-1), U(n,n2) )
+ 
+    ELSE
+ 
+      Interpolate2D &
+        = Interpolate2D_BiLinear( xq, x(i), x(i+1), Eq,  E(j), E(j+1), U(i,j), U(i,j+1), U(i+1,j), U(i+1,j+1) )
+ 
+    END IF
+ 
+    RETURN
+ 
+  END FUNCTION Interpolate2D
+ 
+  SUBROUTINE ReadCustom_Fluid( iX_B1, iX_E1, R, D, Ye, T )
+
+    INTEGER,  INTENT(in)  :: iX_B1, iX_E1
+    REAL(DP), INTENT(out) :: R(iX_B1:), D(iX_B1:), Ye(iX_B1:), T(iX_B1:)
+
+    INTEGER               :: iX1
+
+
+
+    OPEN( UNIT = 101, FILE = "./Custom/fluidvariables.dat", status='old' )
+
+    DO iX1 = iX_B1, iX_E1
+      READ(101, *) R(iX1), D(iX1), Ye(iX1), T(iX1)
+
+      R(iX1) = R(iX1) * UnitsDisplay % LengthX1Unit
+      D(iX1) = D(iX1) * UnitsDisplay % MassDensityUnit
+      T(iX1) = T(iX1) * UnitsDisplay % TemperatureUnit
+
+    END DO
+
+    CLOSE( 101 )
+
+  END SUBROUTINE
+
+
+  SUBROUTINE ReadCustom_Transport( iX_B1, iX_E1, iE_B1, iE_E1, Dnu, Dnubar, Inu, Inubar, E )
+
+    INTEGER,  INTENT(in)  :: iX_B1, iX_E1, iE_B1, iE_E1
+    REAL(DP), INTENT(out) :: Dnu(iX_B1:, iE_B1:)
+    REAL(DP), INTENT(out) :: Dnubar(iX_B1:, iE_B1:)
+    REAL(DP), INTENT(out) :: Inu(iX_B1:, iE_B1:)
+    REAL(DP), INTENT(out) :: Inubar(iX_B1:, iE_B1:)
+    REAL(DP), INTENT(out) :: E(iE_B1:)
+
+    INTEGER               :: iX1, iE
+
+
+
+    OPEN( UNIT = 101, FILE = "./Custom/NeutrinoD.dat", status='old' )
+    OPEN( UNIT = 102, FILE = "./Custom/NeutrinoDbar.dat", status='old' )
+    OPEN( UNIT = 103, FILE = "./Custom/NeutrinoI.dat", status='old' )
+    OPEN( UNIT = 104, FILE = "./Custom/NeutrinoIbar.dat", status='old' )
+    OPEN( UNIT = 105, FILE = "./Custom/E.dat", status='old' )
+
+    DO iX1 = iX_B1, iX_E1
+
+       READ(101, *) Dnu(iX1,:)
+       READ(102, *) Dnubar(iX1,:)
+       READ(103, *) Inu(iX1,:)
+       READ(104, *) Inubar(iX1,:)
+
+    END DO
+
+
+    DO iE = iE_B1, iE_E1
+
+       READ(105, *) E(iE)
+
+      E(iE) = E(iE) * UnitsDisplay % EnergyUnit
+    END DO
+
+    CLOSE( 101 )
+    CLOSE( 102 )
+    CLOSE( 103 )
+    CLOSE( 104 )
+    CLOSE( 105 )
+
+
+  END SUBROUTINE
+
+
 
 
 END MODULE MF_InitializationModule

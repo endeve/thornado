@@ -33,7 +33,21 @@ PROGRAM main
   USE MF_TwoMoment_TallyModule,         ONLY: &
     ComputeTally_TwoMoment_MF
   USE MF_Euler_TallyModule,         ONLY: &
-    ComputeTally_Euler_MF
+    ComputeTally_Euler_MF, &
+    BaryonicMass_Initial, &
+    BaryonicMass_OffGrid, &
+    EulerMomentumX1_Initial, &
+    EulerMomentumX1_OffGrid, &
+    EulerMomentumX2_Initial, &
+    EulerMomentumX2_OffGrid, &
+    EulerMomentumX3_Initial, &
+    EulerMomentumX3_OffGrid, &
+    EulerEnergy_Initial, &
+    EulerEnergy_OffGrid, &
+    ElectronNumber_Initial, &
+    ElectronNumber_OffGrid, &
+    ADMMass_Initial, &
+    ADMMass_OffGrid
   USE InitializationModule,             ONLY: &
     InitializeProgram
   USE FinalizationModule,               ONLY: &
@@ -48,14 +62,14 @@ PROGRAM main
     xL,        &
     nNodes,    &
     t_end,     &
-    CFL,       &
     t_wrt,     &
     dt_wrt,    &
     dt_rel
   USE ProgramHeaderModule,  ONLY: &
     nDOFZ
   USE MF_TwoMoment_TimeSteppingModule_Relativistic,      ONLY: &
-    Update_IMEX_RK_MF
+    Update_IMEX_RK_MF, &
+    CFL
 
   ! --- thornado Modules ---
   USE InputOutputModuleAMReX, ONLY: &
@@ -133,7 +147,7 @@ num = 1
      CALL ComputeFromConserved_Euler_MF &
             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-     CALL ComputeGray_TwoMoment_MF & 
+     CALL ComputeGray_TwoMoment_MF &
             ( MF_uGF, MF_uPF, MF_uCR, MF_uPR, MF_uGR )
 
      CALL WriteFieldsAMReX_PlotFile &
@@ -150,6 +164,13 @@ num = 1
 
      CALL WriteFieldsAMReX_Checkpoint &
             ( StepNo, nLevels, dt, t_new, &
+              [ BaryonicMass_Initial   , BaryonicMass_OffGrid    ], &
+              [ EulerMomentumX1_Initial, EulerMomentumX1_OffGrid ], &
+              [ EulerMomentumX2_Initial, EulerMomentumX2_OffGrid ], &
+              [ EulerMomentumX3_Initial, EulerMomentumX3_OffGrid ], &
+              [ EulerEnergy_Initial    , EulerEnergy_OffGrid     ], &
+              [ ElectronNumber_Initial , ElectronNumber_OffGrid  ], &
+              [ ADMMass_Initial        , ADMMass_OffGrid         ], &
               MF_uGF % BA % P, &
               iWriteFields_uGF = 1, &
               iWriteFields_uCF = 1, &
@@ -169,7 +190,7 @@ num = 1
 
   CALL ComputeFromConserved_Euler_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-  CALL ComputeGray_TwoMoment_MF & 
+  CALL ComputeGray_TwoMoment_MF &
             ( MF_uGF, MF_uPF, MF_uCR, MF_uPR, MF_uGR )
 
   CALL ShowVariableFromMultiFab(0,MF_uPR(0),1, WriteToFile_Option = .TRUE.)

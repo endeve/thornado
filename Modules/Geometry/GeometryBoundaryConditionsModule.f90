@@ -8,19 +8,27 @@ MODULE GeometryBoundaryConditionsModule
   USE UtilitiesModule, ONLY: &
     NodeNumberX, &
     NodeNumber
+  USE ReferenceElementModuleX, ONLY: &
+    nDOFX_X1
+  USE ReferenceElementModuleX_Lagrange, ONLY: &
+    LX_X1_Up
   USE MeshModule, ONLY: &
     MeshX, &
     MeshE, &
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
     CoordinateSystem, &
-    uGF, nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+    uGF, nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, iGF_Beta_1
+  USE GeometryComputationModule, ONLY: &
+    ComputeGeometryX_FromScaleFactors
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: ApplyBoundaryConditions_GeometryX
   PUBLIC :: ApplyBoundaryConditions_Geometry
+  PUBLIC :: ApplyBoundaryConditions_Geometry_X1_Inner_Reflecting
+  PUBLIC :: ApplyBoundaryConditions_Geometry_X1_Outer_ExtrapolateToFace
 
 CONTAINS
 
@@ -210,7 +218,7 @@ CONTAINS
 
   SUBROUTINE ApplyBoundaryConditions_Geometry_X1
 
-    INTEGER  :: iE, iX1, iX2, iX3
+    INTEGER  :: iE, iX2, iX3
     INTEGER  :: iNodeE, iNodeX1, iNodeX2, iNodeX3, iNode
     REAL(DP) :: E, X1_Inner, X1_Outer, X2, X3
 
@@ -249,6 +257,89 @@ CONTAINS
     END DO
 
   END SUBROUTINE ApplyBoundaryConditions_Geometry_X1
+
+
+  SUBROUTINE ApplyBoundaryConditions_Geometry_X1_Inner_Reflecting &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G )
+
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER :: iX1, iX2, iX3
+    INTEGER :: iNX1, iNX2, iNX3, iNX
+    INTEGER :: jNX1, jNX
+    INTEGER :: iGF
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = 1       , swX  (1)
+
+      DO iNX3 = 1, nNodesX(3)
+      DO iNX2 = 1, nNodesX(2)
+      DO iNX1 = 1, nNodesX(1)
+
+        jNX1 = ( nNodesX(1) - iNX1 ) + 1
+
+        iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+        jNX = NodeNumberX( jNX1, iNX2, iNX3 )
+
+        DO iGF = 1, nGF
+
+          G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF) &
+            = +G(jNX,iX_B0(1),iX2,iX3,iGF)
+
+        END DO
+
+        G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_Beta_1) &
+          = -G(jNX,iX_B0(1),iX2,iX3,iGF_Beta_1)
+
+      END DO
+      END DO
+      END DO
+
+      CALL ComputeGeometryX_FromScaleFactors( G(:,iX_B0(1)-iX1,iX2,iX3,:) )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ApplyBoundaryConditions_Geometry_X1_Inner_Reflecting
+
+
+  SUBROUTINE ApplyBoundaryConditions_Geometry_X1_Outer_ExtrapolateToFace &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G )
+
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    REAL(DP) :: G_F(nDOFX_X1,nGF)
+
+    INTEGER :: iX1, iX2, iX3
+    INTEGER :: iGF
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = 1       , swX  (1)
+
+      DO iGF = 1, nGF
+
+        G_F(:,iGF) = MATMUL( LX_X1_Up, G(:,iX_E0(1),iX2,iX3,iGF) )
+
+        G(:,iX_E0(1)+iX1,iX2,iX3,iGF) = G_F(1,iGF)
+
+      END DO
+
+      CALL ComputeGeometryX_FromScaleFactors( G(:,iX_E0(1)+iX1,iX2,iX3,:) )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ApplyBoundaryConditions_Geometry_X1_Outer_ExtrapolateToFace
 
 
 END MODULE GeometryBoundaryConditionsModule

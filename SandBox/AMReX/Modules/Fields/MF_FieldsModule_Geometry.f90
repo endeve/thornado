@@ -5,6 +5,15 @@ MODULE MF_FieldsModule_Geometry
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_multifab_destroy
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_ioprocessor
+
+  ! --- thornado Modules ---
+
+  USE GeometryFieldsModule, ONLY: &
+    CoordinateSystem, &
+    DescribeGeometryFields, &
+    SetUnitsGeometryFields
 
   ! --- Local Modules ---
 
@@ -29,6 +38,11 @@ CONTAINS
   SUBROUTINE CreateFields_Geometry_MF
 
     ALLOCATE( MF_uGF(0:nMaxLevels-1) )
+
+    CALL SetUnitsGeometryFields
+
+    CALL DescribeGeometryFields( TRIM( CoordinateSystem ), &
+                                 amrex_parallel_ioprocessor() )
 
   END SUBROUTINE CreateFields_Geometry_MF
 

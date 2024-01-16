@@ -106,6 +106,18 @@ relax      [8,8,8]      O3    :     1.9639e+01          1.9943e+01      -3.0391e
 relax      [16,16,16]   O3    :     1.4534e+02          1.6671e+02      -2.1372e+01   -12.82%            4.6925e+07          4.0910e+07        6.0159e+06    14.71%
 quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables>
 </pre>
+2. Merged ms-daily with the latest master and runs it using oneapi/eng-compiler/2023.10.15.002 on PVC04 with OpenSuSE 15.4 and here is time:
+<pre>
+cat timeFOM_2023.10.15.002.txt682.20
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2023.10.15.002682.20   2023.5.007-dev647    TimeDiff   Percentage   |   2023.10.15.002682.20   2023.5.007-dev647    FOM-Diff   Percentage
+                     MKL Date :
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     4.8301e+00          0.0000e+00       4.8301e+00     0.00%            2.6376e+07          0.0000e+00        2.6376e+07     0.00%
+sineWave   [16,16,16]   O3    :     6.7553e+01          0.0000e+00       6.7553e+01     0.00%            2.9989e+07          0.0000e+00        2.9989e+07     0.00%
+relax      [8,8,8]      O3    :     1.5276e+02          0.0000e+00       1.5276e+02     0.00%            4.4645e+07          0.0000e+00        4.4645e+07     0.00%
+relax      [16,16,16]   O3    :     1.5345e+02          0.0000e+00       1.5345e+02     0.00%            4.4444e+07          0.0000e+00        4.4444e+07     0.00%
+</pre>
 
 ## Dec 18-19 2023
 1. merged ms69 on https://github.com/endeve/ with the latest master, and fixed some merge conflict.

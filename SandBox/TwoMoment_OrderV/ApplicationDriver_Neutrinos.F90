@@ -72,6 +72,7 @@ PROGRAM ApplicationDriver_Neutrinos
   LOGICAL       :: Include_Pair
   LOGICAL       :: Include_Brem
   LOGICAL       :: Include_LinCorr
+  LOGICAL       :: FreezeOpacities
   INTEGER       :: RestartFileNumber
   INTEGER       :: nSpecies
   INTEGER       :: nNodes
@@ -86,6 +87,7 @@ PROGRAM ApplicationDriver_Neutrinos
   REAL(DP)      :: t, dt, dt_CFL, dt_0, dt_MAX, dt_RATE, t_end
   REAL(DP)      :: Rtol_outer, Rtol_inner
   REAL(DP)      :: wMatterRHS(5)
+  REAL(DP)      :: DnuMax
 
   ProgramName = 'Relaxation'
 
@@ -113,6 +115,8 @@ PROGRAM ApplicationDriver_Neutrinos
   Include_Brem    = .TRUE.
   Include_LinCorr = .FALSE.
   wMatterRHS      = [ One, One, One, One, One ]
+  DnuMax          = HUGE( One )
+  FreezeOpacities = .FALSE.
 
   nEquidistantX = 1
   dEquidistantX = 1.0_DP * Kilometer
@@ -120,7 +124,7 @@ PROGRAM ApplicationDriver_Neutrinos
   SELECT CASE( TRIM( ProgramName ) )
 
     CASE( 'Relaxation' )
-
+      nX  =[16,16,16]
       nSpecies = 6
       nNodes   = 2
 
@@ -163,13 +167,13 @@ PROGRAM ApplicationDriver_Neutrinos
       nSpecies = 6
       nNodes   = 2
 
-      nX    = [ 200, 1, 1 ]
+      nX    = [ 256, 1, 1 ]
       xL    = [ 0.0_DP           , 0.0_DP, 0.0_DP ]
-      xR    = [ 5.0d2 * Kilometer, Pi    , TwoPi  ]
+      xR    = [ 5.12d2 * Kilometer, Pi    , TwoPi  ]
       bcX   = [ 31, 1, 1 ]
       ZoomX = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-      nEquidistantX = 50
+      nEquidistantX = 0
       dEquidistantX = 1.0_DP * Kilometer
 
       nE    = 16
@@ -196,6 +200,8 @@ PROGRAM ApplicationDriver_Neutrinos
       ProfileName = 'input_thornado_VX_100ms.dat'
 
       wMatterRHS = [ One, One, Zero, Zero, Zero ] ! --- Keep Velocity Fixed
+
+      FreezeOpacities = .FALSE. ! --- Keep opacities fixed during iterations?
 
     CASE( 'EquilibriumAdvection' )
 
@@ -627,6 +633,10 @@ CONTAINS
                = Include_LinCorr, &
              wMatrRHS_Option &
                = wMatterRHS, &
+             DnuMax_Option &
+               = DnuMax, &
+             FreezeOpacities_Option &
+               = FreezeOpacities, &
              Verbose_Option &
                = .TRUE. )
 

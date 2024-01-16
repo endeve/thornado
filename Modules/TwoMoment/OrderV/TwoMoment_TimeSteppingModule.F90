@@ -598,6 +598,28 @@ CONTAINS
         w_IM(2)   = a_IM(3,2)
         w_IM(3)   = a_IM(3,3)
 
+      CASE ( 'IMEX_RKCB2' )
+
+        ! --- Coefficients from Cavaglieri & Bewley (2015) ---
+	! --- JCP, 286, 172-193 ------------------------------
+
+        nStages = 3
+
+        CALL AllocateButcherTables
+
+        a_EX(2,1) = 0.4_DP
+        a_EX(3,2) = 1.0_DP
+
+        w_EX(2)   = 5.0_DP / 6.0_DP
+        w_EX(3)   = 1.0_DP / 6.0_DP
+
+        a_IM(2,2) = 0.4_DP
+        a_IM(3,2) = 5.0_DP / 6.0_DP
+        a_IM(3,3) = 1.0_DP / 6.0_DP
+
+        w_IM(2)   = 5.0_DP / 6.0_DP
+        w_IM(3)   = 1.0_DP / 6.0_DP
+
       CASE DEFAULT
 
         WRITE(*,*)
@@ -613,6 +635,7 @@ CONTAINS
         WRITE(*,'(A6,A)') '', 'BackwardEuler'
         WRITE(*,'(A6,A)') '', 'IMEX_ARS_111'
         WRITE(*,'(A6,A)') '', 'IMEX_PDARS'
+        WRITE(*,'(A6,A)') '', 'IMEX_RKCB2'
         WRITE(*,*)
         STOP
 

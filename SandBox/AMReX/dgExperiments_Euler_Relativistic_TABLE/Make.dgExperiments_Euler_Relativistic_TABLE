@@ -1,0 +1,9 @@
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
+f90EXE_sources  += MF_InitializationModule.f90
+f90EXE_sources  += InitializationModule.f90
+f90EXE_sources  += FinalizationModule.f90
+f90EXE_sources  += ApplicationDriver.f90
+f90EXE_sources  += TaggingModule.f90
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/TimeStepping
+f90EXE_sources  += MF_TimeSteppingModule_SSPRK.f90

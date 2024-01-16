@@ -11,7 +11,6 @@ MODULE MaskModule
   USE amrex_distromap_module, ONLY: &
     amrex_distromap
   USE amrex_multifab_module, ONLY: &
-    amrex_multifab, &
     amrex_imultifab, &
     amrex_imultifab_build, &
     amrex_imultifab_destroy, &
@@ -23,11 +22,15 @@ MODULE MaskModule
   USE amrex_geometry_module, ONLY: &
     amrex_is_periodic
 
+  ! --- thornado Modules ---
+
+  USE ProgramHeaderModule, ONLY: &
+    swX
+
   ! --- Local Modules ---
 
   USE InputParsingModule, ONLY: &
     nLevels, &
-    swX, &
     UseTiling
 
   IMPLICIT NONE

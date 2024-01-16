@@ -5,9 +5,9 @@ FORTRAN = mpif90 -cpp
 FLINKER = mpif90
 
 DEBUG    = -g -O0 -ggdb -fcheck=bounds -fbacktrace -Wuninitialized -Wunused \
-              -ffpe-trap=invalid,zero,overflow,underflow  \
-           -ffpe-summary=invalid,zero,overflow,underflow \
-           -fallow-argument-mismatch -finit-real=snan -ftrapv
+           -ffpe-trap=invalid,zero -finit-real=snan -finit-integer=2147483647 \
+	   -ftrapv -ffree-line-length-none -fno-range-check \
+	   -fno-second-underscore -fimplicit-none
 OPTIMIZE = -g -O2 -fallow-argument-mismatch
 
 SUFFIX_f90 =

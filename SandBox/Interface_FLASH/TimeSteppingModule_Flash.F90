@@ -134,48 +134,16 @@ CONTAINS
       OffGridFluxR   (2*nCR), &
       OffGridFluxR_T0(2*nCR), &
       OffGridFluxR_T1(2*nCR)
-    REAL(DP) :: &
-      U0_F &
-        (1:nDOFX, &
-         iZ_B1(2):iZ_E1(2), &
-         iZ_B1(3):iZ_E1(3), &
-         iZ_B1(4):iZ_E1(4), &
-         1:nCF), &
-      Q1_F &
-        (1:nDOFX, &
-         iZ_B1(2):iZ_E1(2), &
-         iZ_B1(3):iZ_E1(3), &
-         iZ_B1(4):iZ_E1(4), &
-         1:nCF)
-    REAL(DP) :: &
-      U0_R &
-        (1:nDOF, &
-         iZ_B1(1):iZ_E1(1), &
-         iZ_B1(2):iZ_E1(2), &
-         iZ_B1(3):iZ_E1(3), &
-         iZ_B1(4):iZ_E1(4), &
-         1:nCR,1:nSpecies), &
-      T0_R &
-        (1:nDOF, &
-         iZ_B1(1):iZ_E1(1), &
-         iZ_B1(2):iZ_E1(2), &
-         iZ_B1(3):iZ_E1(3), &
-         iZ_B1(4):iZ_E1(4), &
-         1:nCR,1:nSpecies), &
-      T1_R &
-        (1:nDOF, &
-         iZ_B1(1):iZ_E1(1), &
-         iZ_B1(2):iZ_E1(2), &
-         iZ_B1(3):iZ_E1(3), &
-         iZ_B1(4):iZ_E1(4), &
-         1:nCR,1:nSpecies), &
-      Q1_R &
-        (1:nDOF, &
-         iZ_B1(1):iZ_E1(1), &
-         iZ_B1(2):iZ_E1(2), &
-         iZ_B1(3):iZ_E1(3), &
-         iZ_B1(4):iZ_E1(4), &
-         1:nCR,1:nSpecies)
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:)     :: U0_F, Q1_F
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:,:,:) :: U0_R, T0_R, T1_R, Q1_R
+
+    ALLOCATE( U0_F(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF) )
+    ALLOCATE( Q1_F(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF) )
+
+    ALLOCATE( U0_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+    ALLOCATE( T0_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+    ALLOCATE( T1_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+    ALLOCATE( Q1_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
 
     IF( PRESENT( Explicit_Option ) )THEN
       Explicit = Explicit_Option
@@ -217,19 +185,19 @@ CONTAINS
     IF( ANY(IEEE_IS_NAN(U_R)) ) PRINT*, 'NaN when enter TimeStep'
 #endif
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: U_F, U_R, uGE, uGF ) &
-    !$OMP MAP( alloc: U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R )
-#elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC COPYIN( U_F, U_R, uGE, uGF ) &
-    !$ACC CREATE( U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R )
-#endif
-
     U0_F = Zero; Q1_F = Zero
 
     U0_R = Zero; T0_R = Zero; T1_R = Zero; Q1_R = Zero
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: U_F, U_R, uGE, uGF, &
+    !$OMP          U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( U_F, U_R, uGE, uGF, &
+    !$ACC         U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R )
+#endif
 
     OffGridFluxR = Zero
 
@@ -388,7 +356,6 @@ CONTAINS
     ! --- Implicit Step ---
 
     IF( Implicit )THEN
-
       CALL ComputeIncrement_TwoMoment_Implicit &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, dt, &
                uGE, uGF, &
@@ -989,7 +956,15 @@ CONTAINS
         DO iX1 = 1, swX1
         DO iNX = 1, nDOFX
 
-          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF) = MIN( U(iNX,iX_B0(1),iX2,iX3,iCF), Zero )
+          IF( iCF == iCF_S1 )THEN
+
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF) = MIN( U(iNX,iX_B0(1),iX2,iX3,iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF) = U(iNX,iX_B0(1),iX2,iX3,iCF)
+
+          END IF
 
         END DO
         END DO
@@ -1017,7 +992,15 @@ CONTAINS
         DO iX1 = 1, swX1
         DO iNX = 1, nDOFX
 
-          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) = MAX( U(iNX,iX_E0(1),iX2,iX3,iCF), Zero )
+          IF( iCF == iCF_S1 )THEN
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) = MAX( U(iNX,iX_E0(1),iX2,iX3,iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) = U(iNX,iX_E0(1),iX2,iX3,iCF)
+
+          END IF
 
         END DO
         END DO
@@ -1184,7 +1167,15 @@ CONTAINS
         DO iX1 = 1, swX1
         DO iNX = 1, nDOFX
 
-          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) = MAX( U(iNX,iX_E0(1),iX2,iX3,iCF), Zero )
+          IF( iCF == iCF_S1 )THEN
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) = MAX( U(iNX,iX_E0(1),iX2,iX3,iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) = U(iNX,iX_E0(1),iX2,iX3,iCF)
+
+          END IF
 
         END DO
         END DO
@@ -1237,7 +1228,15 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1, nDOFX
 
-          U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF) = MIN( U(iNX,iX1,iX_E0(2)-(iX2-1),iX3,iCF), Zero )
+          IF( iCF == iCF_S2 )THEN
+
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF) = MIN( U(iNX,iX1,iX_B0(2),iX3,iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF) = U(iNX,iX1,iX_B0(2),iX3,iCF)
+
+          END IF
 
         END DO
         END DO
@@ -1265,7 +1264,15 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1, nDOFX
 
-          U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = MAX( U(iNX,iX1,iX_B0(2)+(iX2-1),iX3,iCF), Zero )
+          IF( iCF == iCF_S2 )THEN
+
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = MAX( U(iNX,iX1,iX_E0(2),iX3,iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = U(iNX,iX1,iX_E0(2),iX3,iCF)
+
+          END IF
 
         END DO
         END DO
@@ -1432,7 +1439,15 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1, nDOFX
 
-          U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = MAX( U(iNX,iX1,iX_B0(2)+(iX2-1),iX3,iCF), Zero )
+          IF( iCF == iCF_S2 )THEN
+
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = MAX( U(iNX,iX1,iX_E0(2),iX3,iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) = U(iNX,iX1,iX_E0(2),iX3,iCF)
+
+          END IF
 
         END DO
         END DO
@@ -1485,7 +1500,15 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1, nDOFX
 
-          U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF) = MIN( U(iNX,iX1,iX2,iX_B0(3),iCF), Zero )
+          IF( iCF == iCF_S3 )THEN
+
+            U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF) = MIN( U(iNX,iX1,iX2,iX_B0(3),iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF) = U(iNX,iX1,iX2,iX_B0(3),iCF)
+
+          END IF
 
         END DO
         END DO
@@ -1513,7 +1536,15 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1, nDOFX
 
-          U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF) = MAX( U(iNX,iX1,iX2,iX_E0(3),iCF), Zero )
+          IF( iCF == iCF_S3 )THEN
+
+            U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF) = MAX( U(iNX,iX1,iX2,iX_E0(3),iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF) = U(iNX,iX1,iX2,iX_E0(3),iCF)
+
+          END IF
 
         END DO
         END DO
@@ -1680,7 +1711,15 @@ CONTAINS
         DO iX1 = iX_B0(1), iX_E0(1)
         DO iNX = 1, nDOFX
 
-          U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF) = MAX( U(iNX,iX1,iX2,iX_E0(3),iCF), Zero )
+          IF( iCF == iCF_S3 )THEN
+
+            U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF) = MAX( U(iNX,iX1,iX2,iX_E0(3),iCF), Zero )
+
+          ELSE
+
+            U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF) = U(iNX,iX1,iX2,iX_E0(3),iCF)
+
+          END IF
 
         END DO
         END DO

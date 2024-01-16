@@ -1,7 +1,7 @@
 MODULE RadiationFieldsModule
 
   USE KindModule, ONLY: &
-    DP, One
+    DP, One, Zero
   USE ProgramHeaderModule, ONLY: &
     nDOF, nDOFX
 
@@ -170,13 +170,20 @@ MODULE RadiationFieldsModule
 CONTAINS
 
 
-  SUBROUTINE SetNumberOfSpecies( nS )
+  SUBROUTINE SetNumberOfSpecies( nS, Verbose_Option )
 
     INTEGER, INTENT(in) :: nS
+    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
 
     nSpecies = nS
 
-    IF( Verbose )THEN
+    IF( PRESENT( Verbose_Option ) )THEN
+      IF( Verbose_Option )THEN
+        WRITE(*,*)
+        WRITE(*,'(A5,A29,I2.2)') &
+          '', 'Radiation Fields, nSpecies = ', nSpecies
+      END IF
+    ELSE
       WRITE(*,*)
       WRITE(*,'(A5,A29,I2.2)') &
         '', 'Radiation Fields, nSpecies = ', nSpecies
@@ -213,7 +220,7 @@ CONTAINS
     IF( PRESENT( nSpecies_Option ) ) &
       nS = nSpecies_Option
 
-    CALL SetNumberOfSpecies( nS )
+    CALL SetNumberOfSpecies( nS, Verbose_Option = Verbose )
 
     CALL CreateRadiationFields_Conserved ( nX, swX, nE, swE )
     CALL CreateRadiationFields_Primitive ( nX, swX, nE, swE )
@@ -241,12 +248,14 @@ CONTAINS
             1-swX(3):nX(3)+swX(3), &
             1:nCR, 1:nSpecies) )
 
+    uCR = Zero
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: uCR )
+    !$OMP MAP( to: uCR )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( uCR )
+    !$ACC COPYIN( uCR )
 #endif
 
   END SUBROUTINE CreateRadiationFields_Conserved
@@ -287,12 +296,14 @@ CONTAINS
             1-swX(3):nX(3)+swX(3), &
             1:nPR, 1:nSpecies) )
 
+    uPR = Zero
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: uPR )
+    !$OMP MAP( to: uPR )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( uPR )
+    !$ACC COPYIN( uPR )
 #endif
 
   END SUBROUTINE CreateRadiationFields_Primitive
@@ -344,12 +355,14 @@ CONTAINS
             1-swX(3):nX(3)+swX(3), &
             1:nAR, 1:nSpecies) )
 
+    uAR = Zero
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: uAR )
+    !$OMP MAP( to: uAR )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( uAR )
+    !$ACC COPYIN( uAR )
 #endif
 
   END SUBROUTINE CreateRadiationFields_Auxiliary
@@ -377,12 +390,14 @@ CONTAINS
             1-swX(3):nX(3)+swX(3), &
             1:nGR, 1:nSpecies) )
 
+    uGR = Zero
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: uGR )
+    !$OMP MAP( to: uGR )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( uGR )
+    !$ACC COPYIN( uGR )
 #endif
 
   END SUBROUTINE CreateRadiationFields_Gray
@@ -408,12 +423,14 @@ CONTAINS
                   1-swX(3):nX(3)+swX(3), &
                   1:nDR) )
 
+    uDR = Zero
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: uDR )
+    !$OMP MAP( to: uDR )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( uDR )
+    !$ACC COPYIN( uDR )
 #endif
 
   END SUBROUTINE CreateRadiationFields_Diagnostic

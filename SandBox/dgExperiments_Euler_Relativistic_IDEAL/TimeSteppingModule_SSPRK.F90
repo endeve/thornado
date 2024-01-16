@@ -265,11 +265,15 @@ CONTAINS
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
-        CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
+        IF( iS .NE. 1)THEN
 
-        CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
+          CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
+
+          CALL ApplyPositivityLimiter_Euler_Relativistic_IDEAL &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
+
+        END IF
 
         CALL ComputeIncrement_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &

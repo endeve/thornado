@@ -5,14 +5,11 @@
 DEBUG = 1
 
 thornado.ProgramName = "SineWaveStreaming"
-thornado.Scheme = "SSPRK2"
 
 thornado.t_end     = 1.0     # Final time
 thornado.dt_wrt    = 1.0e+1      # Write time interval
 thornado.dt_chk    = 1.0e+1      # Time increment to write checkpoint-file
 thornado.nNodes    = 2        # Number of DG nodes in each active dimension
-thornado.nStages    = 2        # Number of DG nodes in each active dimension
-thornado.CFL       = 0.5      # CFL number
 thornado.bcX       = 00 00 00 # Boundary conditions
 thornado.bcZ_TwoMoment = 1 00 00 00 # Boundary conditions
 thornado.swX       = 01 00 00 # Stencil width (nGhostCells) in each dimension remember to change this
@@ -54,3 +51,10 @@ amr.TagCriteria       = 1.0
 amr.UseFluxCorrection_TwoMoment = 0
 amr.UseFluxCorrection_Euler = 0
 amr.n_error_buf              = 0
+
+# Time-Steppingn parameters
+TS.Scheme = "SSPRK2"
+TS.CFL    = 0.5      # CFL number
+
+EoS.EquationOfState = "IDEAL"
+EoS.Gamma_IDEAL     = 1.3333333333333333
