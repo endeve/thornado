@@ -140,76 +140,83 @@ export useAGRF="TRUE"
 
 #export COMPILER_DATE=".2023.05.15.003-rc11"
 #export COMPILER_DATE="2023.5.007"
-#module load oneapi/eng-compiler/2023.05.15.007
+module load oneapi/eng-compiler/2023.10.15.002
 #module load oneapi/eng-compiler/${COMPILER_DATE}
 #module switch -f mpich/52.2-256/icc-sockets-gpu mpich/51.2/icc-sockets-gpu    ## Needed by 05.15.007.
 
 ### New compiler working with mkl nighlty.
-MKL_DATE="2023.10.12"
-module load nightly-mkl-cev_nightly/${MKL_DATE}
+MKL_DATE="2023.10.15.002"
+#module load nightly-mkl-cev_nightly/${MKL_DATE}
 #module load nightly-mkl-cev_rls/${MKL_DATE}
 #COMPILER_DATE="2023.08.20"
 #COMPILER_DATE=""
-if [[ -n $COMPILER_DATE ]]; then
-   module swap -f nightly-compiler/${COMPILER_DATE}
-else
-   aaa=`ml list|grep nightly-compiler`
-   ddd=`echo "${aaa#*nightly-compiler/}"`
-   COMPILER_DATE=`echo  $ddd |cut -d ' ' -f1`
-fi
-IGC_DRIVER="UMD"
-if [[ $IGC_DRIVER == UMD ]]; then
-
-UMD="neo/agama-devel-sp3/728-23.30.26918.14-728"
-if [[ -n $UMD ]]; then
-   module switch -f intel_compute_runtime/release/agama-devel-627 $UMD
-   if [[ $UMD == intel_compute* ]]; then
-      umdf="-dev999"
-      export useAGRF="FALSE"
+if false; then
+   if [[ -n $COMPILER_DATE ]]; then
+      module swap -f nightly-compiler/${COMPILER_DATE}
    else
-      umdf=`echo $UMD |cut -d '/' -f3`
-      umdf=`echo $umdf |cut -d '-' -f1`
-      umdf="-umd$umdf"
-      umdf="-umd$umdf"
+      aaa=`ml list|grep nightly-compiler`
+      ddd=`echo "${aaa#*nightly-compiler/}"`
+      COMPILER_DATE=`echo  $ddd |cut -d ' ' -f1`
    fi
-else
-   aaa=`ml list|grep agama-devel`
-   ddd=`echo "${aaa#*agama-devel-}"`
-   umdf=`echo  $ddd |cut -d ' ' -f1`
-   umdf="-dev$umdf"
 fi
+## choose UMDs
+umdf=682.20
+if false;then
 
-else
-   ### Local umd
-   ###umdf="026559"
-   ###umdf="026560"
-   ###rm -rf sdump-$umdf
-   ###mkdir sdump-$umdf
-   ###export IGC_DumpToCustomDir=sdump-$umdf
-   ###GRAPHICS_RT_INSTALL_DIR=/localdisk/quanshao/sandbox/drivers/devel-${umdf}
-   umdf=75049
-   GRAPHICS_RT_INSTALL_DIR=/localdisk/quanshao/sandbox/drivers/devigc-${umdf}
-   ##GRAPHICS_RT_INSTALL_DIR=/localdisk/quanshao/sandbox/drivers/compigc-${umdf}
-   export PATH=$GRAPHICS_RT_INSTALL_DIR/usr/bin:$PATH
-   export CPATH=$GRAPHICS_RT_INSTALL_DIR/usr/include:$CPATH
-   export LIBRARY_PATH=$GRAPHICS_RT_INSTALL_DIR/usr/lib64:$LIBRARY_PATH
-   export LD_LIBRARY_PATH=$GRAPHICS_RT_INSTALL_DIR/usr/lib64:$LD_LIBRARY_PATH
-   export INCLUDE=$GRAPHICS_RT_INSTALL_DIR/usr/include:$INCLUDE
+   IGC_DRIVER="UMD"
+   if [[ $IGC_DRIVER == UMD ]]; then
 
+      UMD="neo/agama-devel-sp3/728-23.30.26918.14-728"
+      if [[ -n $UMD ]]; then
+         module switch -f intel_compute_runtime/release/agama-devel-627 $UMD
+         if [[ $UMD == intel_compute* ]]; then
+            umdf="-dev999"
+            export useAGRF="FALSE"
+         else
+            umdf=`echo $UMD |cut -d '/' -f3`
+            umdf=`echo $umdf |cut -d '-' -f1`
+            umdf="-umd$umdf"
+            umdf="-umd$umdf"
+         fi
+      else
+         aaa=`ml list|grep agama-devel`
+         ddd=`echo "${aaa#*agama-devel-}"`
+         umdf=`echo  $ddd |cut -d ' ' -f1`
+         umdf="-dev$umdf"
+      fi
+
+   else
+      ### Local umd
+      ###umdf="026559"
+      ###umdf="026560"
+      ###rm -rf sdump-$umdf
+      ###mkdir sdump-$umdf
+      ###export IGC_DumpToCustomDir=sdump-$umdf
+      ###GRAPHICS_RT_INSTALL_DIR=/localdisk/quanshao/sandbox/drivers/devel-${umdf}
+      umdf=75049
+      GRAPHICS_RT_INSTALL_DIR=/localdisk/quanshao/sandbox/drivers/devigc-${umdf}
+      ##GRAPHICS_RT_INSTALL_DIR=/localdisk/quanshao/sandbox/drivers/compigc-${umdf}
+      export PATH=$GRAPHICS_RT_INSTALL_DIR/usr/bin:$PATH
+      export CPATH=$GRAPHICS_RT_INSTALL_DIR/usr/include:$CPATH
+      export LIBRARY_PATH=$GRAPHICS_RT_INSTALL_DIR/usr/lib64:$LIBRARY_PATH
+      export LD_LIBRARY_PATH=$GRAPHICS_RT_INSTALL_DIR/usr/lib64:$LD_LIBRARY_PATH
+      export INCLUDE=$GRAPHICS_RT_INSTALL_DIR/usr/include:$INCLUDE
+
+   fi
 fi
 
 #if action is empty, performance comparison will be done. otherwise there is no performance comparison and just run the app using such as onetrace, vtune etc. so action can be "", "onetrace", "iprof", "vtune", 
 
-opLevels=(O3)
-grids=("[8,8,8]")
-grids=("[16,16,16]")
-gridNames=("")
-gridNames=("-xN16")
-appNames=(ApplicationDriver)
-logFiles=(sineWaveShaderDump)
-CaseNames=(SineWaveStreaming)
-userOptions=("")
-gridLines=(85)
+#opLevels=(O3)
+#grids=("[8,8,8]")
+#grids=("[16,16,16]")
+#gridNames=("")
+#gridNames=("-xN16")
+#appNames=(ApplicationDriver)
+#logFiles=(sineWaveShaderDump)
+#CaseNames=(SineWaveStreaming)
+#userOptions=("")
+#gridLines=(85)
 
 #opLevels=(O3)
 #grids=("[8,8,8]")
@@ -221,14 +228,14 @@ gridLines=(85)
 #gridLines=(127)
 
 #opLevels=(O0 O1 O2 O3)
-#opLevels=(O3)
-#grids=("[8,8,8]" "[16,16,16]")
-#gridNames=("" "-xN16")
-#appNames=(ApplicationDriver ApplicationDriver_Neutrinos)
-#logFiles=(sineWave relax)
-#CaseNames=(SineWaveStreaming Relaxation)
-#userOptions=("" "MICROPHYSICS=WEAKLIB")
-#gridLines=(85 127)
+opLevels=(O3)
+grids=("[8,8,8]" "[16,16,16]")
+gridNames=("" "-xN16")
+appNames=(ApplicationDriver ApplicationDriver_Neutrinos)
+logFiles=(sineWave relax)
+CaseNames=(SineWaveStreaming Relaxation)
+userOptions=("" "MICROPHYSICS=WEAKLIB")
+gridLines=(85 127)
 
 #grids=("[16,16,16]")
 #gridNames=("-xN16")

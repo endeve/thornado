@@ -92,6 +92,20 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
+## Jan 16 2023
+1. Run ms-daily using oneapi/eng-compiler/2023.10.15.002 on PVC04 with OpenSuSE 15.4 and here is time:
+<pre>
+cat timeFOM_-2023.10.15.002.txt682.20
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  682.20   2023.5.007-dev647    TimeDiff   Percentage   |   682.20   2023.5.007-dev647    FOM-Diff   Percentage
+                     MKL Date :  2023.10.15.002
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     9.1035e+00          9.4460e+00      -3.4248e-01    -3.63%            1.3995e+07          1.3487e+07        5.0740e+05     3.76%
+sineWave   [16,16,16]   O3    :     1.3128e+02          1.3354e+02      -2.2577e+00    -1.69%            1.5431e+07          1.5170e+07        2.6090e+05     1.72%
+relax      [8,8,8]      O3    :     1.9639e+01          1.9943e+01      -3.0391e-01    -1.52%            4.3408e+07          4.2746e+07        6.6150e+05     1.55%
+relax      [16,16,16]   O3    :     1.4534e+02          1.6671e+02      -2.1372e+01   -12.82%            4.6925e+07          4.0910e+07        6.0159e+06    14.71%
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables>
+</pre>
 
 ## Dec 18-19 2023
 1. merged ms69 on https://github.com/endeve/ with the latest master, and fixed some merge conflict.
