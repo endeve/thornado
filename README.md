@@ -131,12 +131,12 @@ relax      [8,8,8]      O3    :     2.1617e+01          2.0364e+01       1.2523e
 relax      [16,16,16]   O3    :     1.7675e+02          1.6578e+02       1.0969e+01     6.62%            3.8585e+07          4.1138e+07       -2.5528e+06    -6.21%
 </pre>
 
-##Dec 15 2023
+## Dec 15 2023
 1. FlashX/Thornado's package from Mathi,  Flash-X-Repo.tar, runs on Aurora with hdf57 supplied by me. 
 2. Updated Mathi package to the latest delep-Ov and Thornado master, the app compiles and runs fine on Aurora. 
 3. Will try ms69 branch of Thornado with FlashX on Aurora, and also the latest eng-compile and release compiler. 
 
-##Dec 14 2023
+## Dec 14 2023
 1. Try FlashX from Mathi on Sunspot
     - it compiles and runs with the original package, but for some combination of np and npp, the run hangs. shaopingquan@x1922c5s7b0n0
     - Try to update original package to the newest commit to see whether the code runs or not. 
