@@ -68,6 +68,7 @@ PROGRAM ApplicationDriver_Neutrinos
   LOGICAL       :: PrescribedTimeStep
   LOGICAL       :: Include_NES
   LOGICAL       :: Include_Pair
+  LOGICAL       :: Include_NuPair
   LOGICAL       :: Include_Brem
   LOGICAL       :: Include_LinCorr
   LOGICAL       :: FreezeOpacities
@@ -111,6 +112,7 @@ PROGRAM ApplicationDriver_Neutrinos
   Rtol_inner      = 1.0d-8
   Include_NES     = .TRUE.
   Include_Pair    = .TRUE.
+  Include_NuPair  = .FALSE.
   Include_Brem    = .TRUE.
   Include_LinCorr = .FALSE.
   wMatterRHS      = [ One, One, One, One, One ]
@@ -181,10 +183,15 @@ PROGRAM ApplicationDriver_Neutrinos
 
       TimeSteppingScheme = 'IMEX_PDARS'
 
-      t_end = 1.0d1 * Millisecond
+      t_end = 1.0d2 * Millisecond
+
+      PrescribedTimeStep = .TRUE. ! If .FALSE., explicit CFL will be used.
+      dt_0               = 1.0d-7 * Millisecond
+      dt_MAX             = 1.0d-3 * Millisecond
+      dt_RATE            = 1.01_DP
 
       iCycleD = 1
-      iCycleW = 333
+      iCycleW = 100
       maxCycles = 1000000
 
       EvolveEuler                    = .FALSE.
@@ -508,6 +515,8 @@ CONTAINS
     CALL InitializeEquationOfState_TABLE &
            ( EquationOfStateTableName_Option &
                = EosTableName, &
+             UseChemicalPotentialShift_Option &
+               = .TRUE., &
              Verbose_Option &
                = .TRUE. )
 
@@ -619,6 +628,8 @@ CONTAINS
                = Include_NES, &
              Include_Pair_Option &
                = Include_Pair, &
+             Include_NuPair_Option &
+               = Include_NuPair, &
              Include_Brem_Option &
                = Include_Brem, &
              Include_LinCorr_Option &
