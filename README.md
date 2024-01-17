@@ -92,7 +92,34 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
-## Jan 16 2023
+## Jan 17 2024
+1.  Tried to compile and run ms-daily using nightly-compiler/2024.01.15 on PVC04 with OpenSuSE 15.4. However, the compilation failed with ICE, 
+ <pre>
+
+/tmp/ifx0232330395mTNKUl/ifxl7DfRm.i90: error #5633: **Internal compiler error: segmentation violation signal raised** Please report this error along with the circumstances in which it occurred in a Software Problem Report.  Note: File and line given may not be explicit cause of this error.
+compilation aborted for /localdisk/quanshao/ExaStar/thornado/Modules/TwoMoment/OrderV/TwoMoment_UtilitiesModule.F90 (code 3)
+make: *** [/localdisk/quanshao/ExaStar/thornado/Build/Makefile_Suffixes:6: TwoMoment_UtilitiesModule.o] Error 3
+
+</pre>
+for all 4 cases. The ICE has a JIRA for it, https://jira.devtools.intel.com/browse/CMPLRLLVM-54357
+
+2. ms-daily compiles and runs with oneapi/release/2023.12.15.001, and here are FOMs and Time 
+<pre>
+
+cat timeFOM_2023.12.15.001.txt682.20
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2023.12.15.001682.20   2023.10.15.002682.20    TimeDiff   Percentage   |   2023.12.15.001682.20   2023.10.15.002682.20    FOM-Diff   Percentage
+                     MKL Date :
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     4.8190e+00          4.6583e+00       1.6073e-01     3.45%            2.6438e+07          2.7350e+07       -9.1220e+05    -3.34%
+sineWave   [16,16,16]   O3    :     6.6721e+01          6.9252e+01      -2.5314e+00    -3.66%            3.0363e+07          2.9253e+07        1.1099e+06     3.79%
+relax      [8,8,8]      O3    :     1.4047e+02          1.5096e+02      -1.0484e+01    -6.94%            4.8549e+07          4.5178e+07        3.3716e+06     7.46%
+relax      [16,16,16]   O3    :     1.4116e+02          1.5128e+02      -1.0119e+01    -6.69%            4.8312e+07          4.5081e+07        3.2314e+06     7.17%
+</pre>
+
+3. Increased the Customer Impact of https://jira.devtools.intel.com/browse/CMPLRLLVM-54357 to High, and the JIRA now has been assigned to Michael Shu. 
+4. FlashX/Thornado still hangs in MPI_Scan of amr_sort_morton           164  amr_sort_morton.F90 on the new OpenSuSe 15.4 with oneapi/eng-compiler/2023.10.15.002  on pvc04
+## Jan 16 2024
 1. Run ms-daily using oneapi/eng-compiler/2023.10.15.002 on PVC04 with OpenSuSE 15.4 and here is time:
 <pre>
 cat timeFOM_-2023.10.15.002.txt682.20
