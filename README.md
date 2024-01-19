@@ -92,6 +92,11 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
+## Jan 18-19 2024
+1. Had a meeting with ANL and ORNL develpers, and decided to see whether the master branch of https://github.com/endeve/thornado.git can run StreamingSineWave and Relaxation cases. 
+2. Clone the code and made changes to accomandate the compilation and running on PVC04, /localdisk/quanshao/ExaStar/toAurora/thornado-endeve
+3. Transfered the cod to Aurora and tested for different compiler including eng and release, and the results are store in C:\Users\quanshao\Downloads\ms69\masterBranch-github-endeve.xlsx
+4. Sent an email to ANL and ORNL collaborators about the finds with the file attached to the email. 
 ## Jan 17 2024
 1.  Tried to compile and run ms-daily using nightly-compiler/2024.01.15 on PVC04 with OpenSuSE 15.4. However, the compilation failed with ICE, 
  <pre>
