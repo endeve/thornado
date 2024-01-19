@@ -388,7 +388,7 @@ CONTAINS
 
 
   SUBROUTINE FillPatch_Conservative_Scalar &
-    ( FineLevel, MF_uGF, MF_uGF_tmp, MF_src, MF_dst, swX_Option, &
+    ( FineLevel, MF_uGF, MF_uGF_tmp, MF_src, MF_dst, &
       ApplyBoundaryConditions_Euler_Option, &
       ApplyBoundaryConditions_Geometry_Option )
 
@@ -396,15 +396,13 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:), MF_uGF_tmp
     TYPE(amrex_multifab), INTENT(inout) :: MF_src(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_dst
-    INTEGER             , INTENT(in), OPTIONAL :: &
-      swX_Option(3)
     LOGICAL             , INTENT(in), OPTIONAL :: &
       ApplyBoundaryConditions_Euler_Option, &
       ApplyBoundaryConditions_Geometry_Option
 
     TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel), SqrtGm_tmp
 
-    INTEGER :: iErr, swXX(3)
+    INTEGER :: iErr
 
     LOGICAL :: ApplyBoundaryConditions_Euler, &
                ApplyBoundaryConditions_Geometry
@@ -430,10 +428,6 @@ CONTAINS
     IF( PRESENT( ApplyBoundaryConditions_Geometry_Option ) ) &
       ApplyBoundaryConditions_Geometry = ApplyBoundaryConditions_Geometry_Option
 
-    swXX = 0
-    IF( PRESENT( swX_Option ) ) &
-      swXX = swX_Option
-
     IF( DEBUG )THEN
 
       CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
@@ -451,20 +445,20 @@ CONTAINS
 
       CALL amrex_multifab_build &
              ( SqrtGm(FineLevel-1), MF_uGF(FineLevel-1) % BA, &
-                                    MF_uGF(FineLevel-1) % DM, nDOFX, swXX )
+                                    MF_uGF(FineLevel-1) % DM, nDOFX, swX )
       CALL amrex_multifab_build &
              ( SqrtGm(FineLevel  ), MF_uGF(FineLevel  ) % BA, &
-                                    MF_uGF(FineLevel  ) % DM, nDOFX, swXX )
+                                    MF_uGF(FineLevel  ) % DM, nDOFX, swX )
       CALL amrex_multifab_build &
              ( SqrtGm_tmp         , MF_uGF_tmp          % BA, &
-                                    MF_uGF_tmp          % DM, nDOFX, swXX )
+                                    MF_uGF_tmp          % DM, nDOFX, swX )
 
       CALL PopulateWithFlatSpaceMetric_MF &
-             ( FineLevel-1, SqrtGm(FineLevel-1), swXX )
+             ( FineLevel-1, SqrtGm(FineLevel-1), swX )
       CALL PopulateWithFlatSpaceMetric_MF &
-             ( FineLevel  , SqrtGm(FineLevel  ), swXX )
+             ( FineLevel  , SqrtGm(FineLevel  ), swX )
       CALL PopulateWithFlatSpaceMetric_MF &
-             ( FineLevel  , SqrtGm_tmp         , swXX )
+             ( FineLevel  , SqrtGm_tmp         , swX )
 
     END IF
 
@@ -851,8 +845,8 @@ CONTAINS
 
 #if defined( THORNADO_OMP )
     !$OMP PARALLEL &
-    !$OMP PRIVATE( BX, MFI, G, uGF, &
-    !$OMP          iX_B0, iX_E0, iX_B, iX_E )
+    !$OMP PRIVATE( BX, MFI, uGF, &
+    !$OMP          iX_B0, iX_E0, iX_B, iX_E, iNX1, iNX2, X1, X2, h1, h2, h3 )
 #endif
 
     CALL amrex_mfiter_build( MFI, MF_SqrtGm, tiling = UseTiling )
