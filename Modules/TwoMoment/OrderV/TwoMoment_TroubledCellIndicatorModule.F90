@@ -35,7 +35,7 @@ MODULE TwoMoment_TroubledCellIndicatorModule
   PUBLIC :: DetectTroubledCells_TwoMoment
 
   LOGICAL               :: UseTroubledCellIndicator
-  INTEGER               :: nE, nE_G
+  INTEGER               :: nE_G
   REAL(DP)              :: C_TCI
   REAL(DP), ALLOCATABLE :: WeightsX_X1_Up(:), WeightsX_X1_Dn(:)
   REAL(DP), ALLOCATABLE :: WeightsX_X2_Up(:), WeightsX_X2_Dn(:)
@@ -294,6 +294,8 @@ CONTAINS
             iZ_B0(4):iZ_E0(4), &
             1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
 
+    nE_G = (iZ_E0(1)-iZ_B0(1)+1) * nDOFE ! --- Global Energy Points
+
     IF( .NOT. UseTroubledCellIndicator )THEN
 
 #if   defined( THORNADO_OMP_OL )
@@ -329,9 +331,6 @@ CONTAINS
     ELSE
       SuppressBC = .FALSE.
     END IF
-
-    nE   = iZ_E0(1) - iZ_B0(1) + 1
-    nE_G = nE * nDOFE ! --- Global Energy Points
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
