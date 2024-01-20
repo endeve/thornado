@@ -47,6 +47,7 @@ MODULE MF_GeometryModule
     iGF_SqrtGm, &
     iGF_Psi, &
     iGF_Beta_1, &
+    iGF_Beta_2, &
     nGF, &
     CoordinateSystem
   USE GeometryComputationModule, ONLY: &
@@ -97,6 +98,8 @@ MODULE MF_GeometryModule
     MODULE PROCEDURE UpdateSpatialMetric_MF_AllLevels
     MODULE PROCEDURE UpdateSpatialMetric_MF_SingleLevel
   END INTERFACE UpdateSpatialMetric_MF
+
+  INTEGER :: swX_GF(3)
 
 CONTAINS
 
@@ -224,9 +227,12 @@ CONTAINS
     INTEGER             , INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF
 
+    swX_GF = swX
+
     IF( .NOT. amrex_is_all_periodic() )THEN
 
       CALL ApplyBoundaryConditions_Geometry_MF_X1( iLevel, MF_uGF )
+      CALL ApplyBoundaryConditions_Geometry_MF_X2( iLevel, MF_uGF )
 
     END IF
 
@@ -384,14 +390,14 @@ CONTAINS
 
       IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo( 1 ) )THEN
 
-        IF( bcX(1) .EQ. 30 .OR. bcX(1) .EQ. 03 )THEN
-
-          CALL ApplyBoundaryConditions_Geometry_X1_Inner_Reflecting &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
-
-        ELSE IF( bcX(1) .EQ. 02 )THEN
+        IF( bcX(1) .EQ. 02 )THEN
 
           CALL ApplyBoundaryConditions_Geometry_X1_Inner_Homogeneous &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
+        ELSE IF( bcX(1) .EQ. 30 .OR. bcX(1) .EQ. 03 )THEN
+
+          CALL ApplyBoundaryConditions_Geometry_X1_Inner_Reflecting &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
         END IF
@@ -402,14 +408,14 @@ CONTAINS
 
       IF( iX_E0(1) .EQ. amrex_geom(iLevel) % domain % hi( 1 ) )THEN
 
-        IF( bcX(1) .EQ. 03 )THEN
-
-          CALL ApplyBoundaryConditions_Geometry_X1_Outer_Reflecting &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
-
-        ELSE IF( bcX(1) .EQ. 02 )THEN
+        IF( bcX(1) .EQ. 02 )THEN
 
           CALL ApplyBoundaryConditions_Geometry_X1_Outer_Homogeneous &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
+        ELSE IF( bcX(1) .EQ. 03 )THEN
+
+          CALL ApplyBoundaryConditions_Geometry_X1_Outer_Reflecting &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
         ! --- Extrapolate ---
@@ -434,21 +440,102 @@ CONTAINS
   END SUBROUTINE ApplyBoundaryConditions_Geometry_MF_X1
 
 
+  SUBROUTINE ApplyBoundaryConditions_Geometry_MF_X2 &
+    ( iLevel, MF_uGF )
+
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF
+
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL &
+    !$OMP PRIVATE( BX, MFI, uGF, iX_B0, iX_E0, iX_B1, iX_E1 )
+#endif
+
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+
+    DO WHILE( MFI % next() )
+
+      uGF => MF_uGF % DataPtr( MFI )
+
+      BX = MFI % tilebox()
+
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+      iX_B1 = iX_B0 - swX
+      iX_E1 = iX_E0 + swX
+
+      ! --- Lower boundary ---
+
+      IF( iX_B0(2) .EQ. amrex_geom(iLevel) % domain % lo( 2 ) )THEN
+
+        IF( bcX(2) .EQ. 02 )THEN
+
+          CALL ApplyBoundaryConditions_Geometry_X2_Inner_Homogeneous &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
+        ELSE IF( bcX(2) .EQ. 03 )THEN
+
+          CALL ApplyBoundaryConditions_Geometry_X2_Inner_Reflecting &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
+        END IF
+
+      END IF !  Lower boundary
+
+      ! --- Higher boundary ---
+
+      IF( iX_E0(2) .EQ. amrex_geom(iLevel) % domain % hi( 2 ) )THEN
+
+        IF( bcX(2) .EQ. 02 )THEN
+
+          CALL ApplyBoundaryConditions_Geometry_X2_Outer_Homogeneous &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
+        ELSE IF( bcX(2) .EQ. 03 )THEN
+
+          CALL ApplyBoundaryConditions_Geometry_X2_Outer_Reflecting &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
+        END IF
+
+      END IF ! Higher boundary
+
+    END DO
+
+    CALL amrex_mfiter_destroy( MFI )
+
+#if defined( THORNADO_OMP )
+    !$OMP END PARALLEL
+#endif
+
+  END SUBROUTINE ApplyBoundaryConditions_Geometry_MF_X2
+
+
   SUBROUTINE ApplyBoundaryConditions_Geometry_X1_Inner_Homogeneous &
     ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
     INTEGER , INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: uGF(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iGF, iX3, iX2, iNX
+    INTEGER :: iNX, iX2, iX3, iGF, iX_B(3), iX_E(3)
+
+    iX_B = iX_B0 - swX_GF
+    iX_E = iX_E0 + swX_GF
 
 #if defined( THORNADO_OMP )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
-    DO iGF  = 1       , nGF
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iNX  = 1       , nDOFX
+    DO iGF  = 1      , nGF
+    DO iX3  = iX_B(3), iX_E(3)
+    DO iX2  = iX_B(2), iX_E(2)
+    DO iNX  = 1      , nDOFX
 
       uGF(iX_B0(1)-1,iX2,iX3,nDOFX*(iGF-1)+iNX) &
         = uGF(iX_B0(1),iX2,iX3,nDOFX*(iGF-1)+iNX)
@@ -467,15 +554,18 @@ CONTAINS
     INTEGER , INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: uGF(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iGF, iX3, iX2, iNX
+    INTEGER :: iNX, iX2, iX3, iGF, iX_B(3), iX_E(3)
+
+    iX_B = iX_B0 - swX_GF
+    iX_E = iX_E0 + swX_GF
 
 #if defined( THORNADO_OMP )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
-    DO iGF  = 1       , nGF
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iNX  = 1       , nDOFX
+    DO iGF  = 1      , nGF
+    DO iX3  = iX_B(3), iX_E(3)
+    DO iX2  = iX_B(2), iX_E(2)
+    DO iNX  = 1      , nDOFX
 
       uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF-1)+iNX) &
         = uGF(iX_E0(1),iX2,iX3,nDOFX*(iGF-1)+iNX)
@@ -494,19 +584,22 @@ CONTAINS
     INTEGER , INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: uGF(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iGF, iX2, iX3, iNX1, iNX2, iNX3
+    INTEGER :: iNX1, iNX2, iNX3, iX2, iX3, iGF, iX_B(3), iX_E(3)
     INTEGER :: iNX, jNX, jNX1
+
+    iX_B = iX_B0 - swX_GF
+    iX_E = iX_E0 + swX_GF
 
 #if defined( THORNADO_OMP )
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( iNX, jNX, jNX1 )
 #endif
-    DO iGF  = 1       , nGF
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iNX3 = 1       , nNodesX(3)
-    DO iNX2 = 1       , nNodesX(2)
-    DO iNX1 = 1       , nNodesX(1)
+    DO iGF  = 1      , nGF
+    DO iX3  = iX_B(3), iX_E(3)
+    DO iX2  = iX_B(2), iX_E(2)
+    DO iNX3 = 1      , nNodesX(3)
+    DO iNX2 = 1      , nNodesX(2)
+    DO iNX1 = 1      , nNodesX(1)
 
       jNX1 = ( nNodesX(1) - iNX1 ) + 1
 
@@ -536,19 +629,22 @@ CONTAINS
     INTEGER , INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout) :: uGF(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iGF, iX2, iX3, iNX1, iNX2, iNX3
+    INTEGER :: iNX1, iNX2, iNX3, iX2, iX3, iGF, iX_B(3), iX_E(3)
     INTEGER :: iNX, jNX, jNX1
+
+    iX_B = iX_B0 - swX_GF
+    iX_E = iX_E0 + swX_GF
 
 #if defined( THORNADO_OMP )
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( iNX, jNX, jNX1 )
 #endif
-    DO iGF  = 1       , nGF
-    DO iX3  = iX_B0(3), iX_E0(3)
-    DO iX2  = iX_B0(2), iX_E0(2)
-    DO iNX3 = 1       , nNodesX(3)
-    DO iNX2 = 1       , nNodesX(2)
-    DO iNX1 = 1       , nNodesX(1)
+    DO iGF  = 1      , nGF
+    DO iX3  = iX_B(3), iX_E(3)
+    DO iX2  = iX_B(2), iX_E(2)
+    DO iNX3 = 1      , nNodesX(3)
+    DO iNX2 = 1      , nNodesX(2)
+    DO iNX1 = 1      , nNodesX(1)
 
       jNX1 = ( nNodesX(1) - iNX1 ) + 1
 
@@ -581,20 +677,23 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: G_K(:,:,:,:)
     REAL(DP), ALLOCATABLE :: G_F(:,:,:,:)
 
-    INTEGER :: iNX, iX2, iX3, iGF, nX1_X
+    INTEGER :: iNX, iX2, iX3, iGF, nX1_X, iX_B(3), iX_E(3)
 
-    nX1_X = ( iX_E0(3) - iX_B0(3) + 1 ) * ( iX_E0(2) - iX_B0(2) + 1 )
+    iX_B = iX_B0 - swX_GF
+    iX_E = iX_E0 + swX_GF
 
-    ALLOCATE( G_K(1:nDOFX   ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
-    ALLOCATE( G_F(1:nDOFX_X1,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nGF) )
+    nX1_X = ( iX_E(3) - iX_B(3) + 1 ) * ( iX_E(2) - iX_B(2) + 1 )
+
+    ALLOCATE( G_K(1:nDOFX   ,iX_B(2):iX_E(2),iX_B(3):iX_E(3),1:nGF) )
+    ALLOCATE( G_F(1:nDOFX_X1,iX_B(2):iX_E(2),iX_B(3):iX_E(3),1:nGF) )
 
 #if defined( THORNADO_OMP )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
-    DO iGF = 1       , nGF
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iNX = 1       , nDOFX
+    DO iGF = 1      , nGF
+    DO iX3 = iX_B(3), iX_E(3)
+    DO iX2 = iX_B(2), iX_E(2)
+    DO iNX = 1      , nDOFX
 
       G_K(iNX,iX2,iX3,iGF) = uGF(iX_E0(1),iX2,iX3,nDOFX*(iGF-1)+iNX)
 
@@ -607,8 +706,8 @@ CONTAINS
 
       CALL MatrixMatrixMultiply &
              ( 'N', 'N', nDOFX_X1, nX1_X, nDOFX, One, LX_X1_Up, &
-               nDOFX_X1,   G_K(1,iX_B0(2),iX_B0(3),iGF), &
-               nDOFX, Zero,G_F(1,iX_B0(2),iX_B0(3),iGF), &
+               nDOFX_X1,   G_K(1,iX_B(2),iX_B(3),iGF), &
+               nDOFX, Zero,G_F(1,iX_B(2),iX_B(3),iGF), &
                nDOFX_X1 )
 
     END DO
@@ -616,10 +715,10 @@ CONTAINS
 #if defined( THORNADO_OMP )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
-    DO iGF = 1       , nGF
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iNX = 1       , nDOFX
+    DO iGF = 1      , nGF
+    DO iX3 = iX_B(3), iX_E(3)
+    DO iX2 = iX_B(2), iX_E(2)
+    DO iNX = 1      , nDOFX
 
       uGF(iX_E0(1)+1,iX2,iX3,nDOFX*(iGF-1)+iNX) = G_F(1,iX2,iX3,iGF)
 
@@ -632,6 +731,156 @@ CONTAINS
     DEALLOCATE( G_K )
 
   END SUBROUTINE ApplyBoundaryConditions_Geometry_X1_Outer_Extrapolate
+
+
+  SUBROUTINE ApplyBoundaryConditions_Geometry_X2_Inner_Homogeneous &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
+    INTEGER , INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: uGF(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER :: iNX, iX1, iX3, iGF, iX_B(3), iX_E(3)
+
+    iX_B = iX_B0 - swX_GF
+    iX_E = iX_E0 + swX_GF
+
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iGF  = 1      , nGF
+    DO iX3  = iX_B(3), iX_E(3)
+    DO iX1  = iX_B(1), iX_E(1)
+    DO iNX  = 1      , nDOFX
+
+      uGF(iX1,iX_B0(2)-1,iX3,nDOFX*(iGF-1)+iNX) &
+        = uGF(iX1,iX_B0(2),iX3,nDOFX*(iGF-1)+iNX)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ApplyBoundaryConditions_Geometry_X2_Inner_Homogeneous
+
+
+  SUBROUTINE ApplyBoundaryConditions_Geometry_X2_Outer_Homogeneous &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
+    INTEGER , INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: uGF(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER :: iNX, iX1, iX3, iGF, iX_B(3), iX_E(3)
+
+    iX_B = iX_B0 - swX_GF
+    iX_E = iX_E0 + swX_GF
+
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iGF  = 1      , nGF
+    DO iX3  = iX_B(3), iX_E(3)
+    DO iX1  = iX_B(1), iX_E(1)
+    DO iNX  = 1      , nDOFX
+
+      uGF(iX1,iX_E0(2)+1,iX3,nDOFX*(iGF-1)+iNX) &
+        = uGF(iX1,iX_E0(2),iX3,nDOFX*(iGF-1)+iNX)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ApplyBoundaryConditions_Geometry_X2_Outer_Homogeneous
+
+
+  SUBROUTINE ApplyBoundaryConditions_Geometry_X2_Inner_Reflecting &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
+    INTEGER , INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: uGF(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER :: iNX1, iNX2, iNX3, iX1, iX3, iGF, iX_B(3), iX_E(3)
+    INTEGER :: iNX, jNX, jNX2
+
+    iX_B = iX_B0 - swX_GF
+    iX_E = iX_E0 + swX_GF
+
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( iNX, jNX, jNX2 )
+#endif
+    DO iGF  = 1      , nGF
+    DO iX3  = iX_B(3), iX_E(3)
+    DO iX1  = iX_B(1), iX_E(1)
+    DO iNX3 = 1      , nNodesX(3)
+    DO iNX2 = 1      , nNodesX(2)
+    DO iNX1 = 1      , nNodesX(1)
+
+      jNX2 = ( nNodesX(2) - iNX2 ) + 1
+
+      iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+      jNX = NodeNumberX( iNX1, jNX2, iNX3 )
+
+      uGF(iX1,iX_B0(2)-1,iX3,nDOFX*(iGF-1)+iNX) &
+        = uGF(iX1,iX_B0(1),iX3,nDOFX*(iGF-1)+jNX)
+
+      IF( iGF .EQ. iGF_Beta_2 ) &
+        uGF(iX1,iX_B0(2)-1,iX3,nDOFX*(iGF-1)+iNX) &
+          = -uGF(iX1,iX_B0(2),iX3,nDOFX*(iGF-1)+jNX)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ApplyBoundaryConditions_Geometry_X2_Inner_Reflecting
+
+
+  SUBROUTINE ApplyBoundaryConditions_Geometry_X2_Outer_Reflecting &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
+    INTEGER , INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: uGF(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER :: iNX1, iNX2, iNX3, iX1, iX3, iGF, iX_B(3), iX_E(3)
+    INTEGER :: iNX, jNX, jNX2
+
+    iX_B = iX_B0 - swX_GF
+    iX_E = iX_E0 + swX_GF
+
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( iNX, jNX, jNX2 )
+#endif
+    DO iGF  = 1      , nGF
+    DO iX3  = iX_B(3), iX_E(3)
+    DO iX1  = iX_B(1), iX_E(1)
+    DO iNX3 = 1      , nNodesX(3)
+    DO iNX2 = 1      , nNodesX(2)
+    DO iNX1 = 1      , nNodesX(1)
+
+      jNX2 = ( nNodesX(2) - iNX2 ) + 1
+
+      iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+      jNX = NodeNumberX( iNX1, jNX2, iNX3 )
+
+      uGF(iX1,iX_E0(2)+1,iX3,nDOFX*(iGF-1)+iNX) &
+        = uGF(iX1,iX_E0(1),iX3,nDOFX*(iGF-1)+jNX)
+
+      IF( iGF .EQ. iGF_Beta_2 ) &
+        uGF(iX1,iX_E0(2)+1,iX3,nDOFX*(iGF-1)+iNX) &
+          = -uGF(iX1,iX_E0(2),iX3,nDOFX*(iGF-1)+jNX)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ApplyBoundaryConditions_Geometry_X2_Outer_Reflecting
 
 
 END MODULE MF_GeometryModule
