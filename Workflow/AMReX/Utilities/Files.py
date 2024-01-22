@@ -67,7 +67,7 @@ def GetFileNumberArray \
     fileNumbers.sort()
 
     # Filter File List
-    if SSi < 0: SSi = 0
+    if SSi < 0: SSi = np.int64( fileNumbers[0] )
     if SSf < 0: SSf = np.int64( fileNumbers[-1] )
 
     if SSf < SSi:
