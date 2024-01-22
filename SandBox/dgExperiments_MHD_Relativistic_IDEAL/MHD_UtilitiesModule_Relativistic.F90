@@ -1337,7 +1337,7 @@ CONTAINS
     DO iX1 = iX_B0(1),     iX_E0(1)
     DO iNX = 1       , nDOFX
 
-      D(iNX,iX1,iX2,iX3,iDM_Div) = uDM_K(1,1,iX1,iX3,iX2) + D(iNX,iX1,iX2,iX3,iDM_Div) / Vol(iX1,iX2,iX3)
+      D(iNX,iX1,iX2,iX3,iDM_Div) = uDM_K(1,1,iX1,iX3,iX2) / Vol(iX1,iX2,iX3) + D(iNX,iX1,iX2,iX3,iDM_Div)
 
     END DO
     END DO
