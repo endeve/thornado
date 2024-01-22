@@ -1378,6 +1378,11 @@ CONTAINS
     REAL(DP) :: WeakDiv_X1(nDOFX,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1):iX_E0(1))
     REAL(DP) :: Div_q(nDOFX,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1):iX_E0(1))
 
+    REAL(DP) :: &
+      Vol(iX_B0(1):iX_E0(1), &
+          iX_B0(2):iX_E0(2), &
+          iX_B0(1):iX_E0(3) )
+
     ! --- Geometry Fields ---
 
     REAL(DP) :: &
@@ -1623,8 +1628,23 @@ CONTAINS
     ! --- Contribution from Volume ---
 
     CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFX, nX_K, nDOFX, One, dLXdX1_q, nDOFX, &
-             Div_q, nDOFX, -One, WeakDiv_X1, nDOFX )
+           ( 'T', 'N', nDOFX, nX_K, nDOFX, -One, dLXdX1_q, nDOFX, &
+             Div_q, nDOFX, One, WeakDiv_X1, nDOFX )
+
+    Vol = Zero
+
+    DO iX3 = iX_B0(3),     iX_E0(3)
+    DO iX2 = iX_B0(2),     iX_E0(2)
+    DO iX1 = iX_B0(1),     iX_E0(1)
+    DO iNX = 1       ,     nDOFX
+
+      Vol(iX1,iX2,iX3) = Vol(iX1,iX2,iX3) + WeightsX_q(iNX) * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                         * dX1(iX1) * dX2(iX2) * dX3(iX3)
+
+    END DO
+    END DO
+    END DO
+    END DO
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -1633,7 +1653,7 @@ CONTAINS
 
       WeakDiv(iNX,iX1,iX2,iX3) &
         = WeakDiv(iNX,iX1,iX2,iX3) &
-            + WeakDiv_X1(iNX,iX2,iX3,iX1)
+            + WeakDiv_X1(iNX,iX2,iX3,iX1) / Vol(iX1,iX2,iX3)
 
     END DO
     END DO
@@ -1679,6 +1699,11 @@ CONTAINS
 
     REAL(DP) :: WeakDiv_X2(nDOFX,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2):iX_E0(2))
     REAL(DP) :: Div_q(nDOFX,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2):iX_E0(2))
+
+    REAL(DP) :: &
+      Vol(iX_B0(1):iX_E0(1), &
+          iX_B0(2):iX_E0(2), &
+          iX_B0(1):iX_E0(3) )
 
     ! --- Geometry Fields ---
 
@@ -1898,14 +1923,14 @@ CONTAINS
     ! --- Contribution from Left Face ---
 
     CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFX, nX_K, nDOFX_X2, - One, LX_X1_Dn, nDOFX_X2, &
+           ( 'T', 'N', nDOFX, nX_K, nDOFX_X2, - One, LX_X2_Dn, nDOFX_X2, &
              Div(1,iX_B0(1),iX_B0(3),iX_B0(2) ), &
              nDOFX_X2, Zero, WeakDiv_X2, nDOFX )
 
     ! --- Contribution from Right Face
 
     CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFX, nX_K, nDOFX_X2, + One, LX_X1_Up, nDOFX_X2, &
+           ( 'T', 'N', nDOFX, nX_K, nDOFX_X2, + One, LX_X2_Up, nDOFX_X2, &
              Div(1,iX_B0(1),iX_B0(3),iX_B0(2)+1 ), &
              nDOFX_X2, One, WeakDiv_X2, nDOFX )
 
@@ -1916,7 +1941,7 @@ CONTAINS
       iX3 = IndexTableX_V(3,iNX_K)
       iX2 = IndexTableX_V(4,iNX_K)
 
-      Div_K = uCM_K(iNX,iX1,iX3,iX2,iCM_B1)
+      Div_K = uCM_K(iNX,iX1,iX3,iX2,iCM_B2)
 
       Div_q(iNX,iX1,iX3,iX2) &
         = Div_K &
@@ -1928,8 +1953,23 @@ CONTAINS
     ! --- Contribution from Volume ---
 
     CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFX, nX_K, nDOFX, One, dLXdX2_q, nDOFX, &
-             Div_q, nDOFX, -One, WeakDiv_X2, nDOFX )
+           ( 'T', 'N', nDOFX, nX_K, nDOFX, -One, dLXdX2_q, nDOFX, &
+             Div_q, nDOFX, One, WeakDiv_X2, nDOFX )
+
+    Vol = Zero
+
+    DO iX3 = iX_B0(3),     iX_E0(3)
+    DO iX2 = iX_B0(2),     iX_E0(2)
+    DO iX1 = iX_B0(1),     iX_E0(1)
+    DO iNX = 1       ,     nDOFX
+
+      Vol(iX1,iX2,iX3) = Vol(iX1,iX2,iX3) + WeightsX_q(iNX) * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                         * dX1(iX1) * dX2(iX2) * dX3(iX3)
+
+    END DO
+    END DO
+    END DO
+    END DO
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -1938,7 +1978,7 @@ CONTAINS
 
       WeakDiv(iNX,iX1,iX2,iX3) &
         = WeakDiv(iNX,iX1,iX2,iX3) &
-            + WeakDiv_X2(iNX,iX1,iX3,iX2)
+            + WeakDiv_X2(iNX,iX1,iX3,iX2) / Vol(iX1,iX2,iX3)
 
     END DO
     END DO
