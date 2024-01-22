@@ -38,8 +38,9 @@ def GetFrameData( FilePath,              \
 
     X1, X2, X3, dX1, dX2, dX3, xL, xH               \
         = CreateLocations( FilePath, TypeIn = DataType )
-    
+
     if DataType.lower() == "amrex":
+
         # https://yt-project.org/doc/faq/index.html#how-can-i-change-yt-s-log-level
         yt.funcs.mylog.setLevel(40) # Suppress yt warnings
 
@@ -58,8 +59,7 @@ def GetFrameData( FilePath,              \
         #---- Clean Up ----
         del ds
         gc.collect()
-        
-    
+
     elif DataType.lower() == "native":
         Data, DataUnits,    \
         X1, X2, X3,         \
@@ -70,13 +70,10 @@ def GetFrameData( FilePath,              \
                                     gvS.CoordinateSystem,   \
                                     X1, X2, X3,             \
                                     dX1, dX2, dX3           )
-    
+
     if not gvS.UsePhysicalUnits: DataUnits = '[]'
     else:                    DataUnits = '[' + DataUnits + ']'
 
-
-    #---- Clean Up ----
-    gc.collect()
 
 
     #---- Return ----
@@ -573,9 +570,9 @@ def GetFieldData_Native( Path,                  \
                          CoordinateSystem,      \
                          X1, X2, X3,            \
                          dX1, dX2, dX3          ):
-                  
+
     gvS.cellAverageFlag = True
-         
+
     PathRoot = Path[:-6]
     FrameNumber = Path[-6:]
     FF_root = PathRoot + 'FluidFields_'
@@ -585,10 +582,10 @@ def GetFieldData_Native( Path,                  \
 
     DataFileName_FF = FF_root + str( FrameNumber ) + '.h5'
     DataFileName_GF = GF_root + str( FrameNumber ) + '.h5'
-    
+
     Data_FF      = h5.File( DataFileName_FF, 'r' )
     Data_GF      = h5.File( DataFileName_GF, 'r' )
-    
+
     FF = Data_FF['Fluid Fields']
     GF = Data_GF['Geometry Fields']
 
@@ -598,10 +595,10 @@ def GetFieldData_Native( Path,                  \
     CF = FF[ 'Conserved' ]
     AF = FF[ 'Auxiliary' ]
     DF = FF[ 'Diagnostic' ]
-    
-    
+
+
     Time = Data_FF[ 'Time' ][0]
-    
+
     if Field == 'PF_D':
         Data = PF[ 'Comoving Baryon Density'   ][:][0][0]
         if gvS.cellAverageFlag:
@@ -762,7 +759,7 @@ def GetFieldData_Native( Path,                  \
     elif Field == 'RelativisticBernoulliConstant':
 
         c = 2.99792458e10
-    
+
         rho   = PF[ 'Comoving Baryon Density'   ][:][0][0]
         e     = PF[ 'Internal Energy Density'   ][:][0][0]
         v1    = PF[ 'Three-Velocity (1)'        ][:][0][0]
@@ -794,7 +791,7 @@ def GetFieldData_Native( Path,                  \
         if gvS.cellAverageFlag:
             nX1 = len(dX1)
             SqrtGM = GF[ 'Sqrt Spatial Metric Determinant'  ][:][0][0]
-            
+
 #            Data = [[PF_D], [AF_P], [AF_Gm]]
 #
 #            Data, X1 = computeCellAverage(Data, SqrtGM, X1, nX1 )
@@ -807,7 +804,7 @@ def GetFieldData_Native( Path,                  \
         DataUnits = 'erg/cm^3/(g/cm^3)^(Gamma_{IDEAL})'
 
     elif Field == 'NonRelativisticSpecificEnthalpy':
-    
+
         e   = PF[ 'Internal Energy Density'   ][:][0][0]
         p   = AF[ 'Pressure'                  ][:][0][0]
         rho = PF[ 'Comoving Baryon Density'   ][:][0][0]
@@ -819,7 +816,7 @@ def GetFieldData_Native( Path,                  \
     elif Field == 'RelativisticSpecificEnthalpy':
 
         c = 2.99792458e10
-        
+
         e   = PF[ 'Internal Energy Density'   ][:][0][0]
         p   = AF[ 'Pressure'                  ][:][0][0]
         rho = PF[ 'Comoving Baryon Density'   ][:][0][0]
@@ -835,7 +832,7 @@ def GetFieldData_Native( Path,                  \
         Gm11 = GF[ 'Spatial Metric Component (11)'    ][:][0][0]
         Gm22 = GF[ 'Spatial Metric Component (22)'    ][:][0][0]
         Gm33 = GF[ 'Spatial Metric Component (33)'    ][:][0][0]
-        
+
         V1   = PF[ 'Three-Velocity (1)'        ][:][0][0]
         V2   = PF[ 'Three-Velocity (2)'        ][:][0][0]
         V3   = PF[ 'Three-Velocity (3)'        ][:][0][0]
@@ -1058,6 +1055,6 @@ def GetFieldData_Native( Path,                  \
         print( '  Vorticity' )
 
         assert 0, 'Invalid choice of field'
-        
-        
+
+
     return Data, DataUnits, X1, X2, X3, dX1, dX2, dX3, Time

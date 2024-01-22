@@ -170,7 +170,7 @@ CONTAINS
 #if defined( THORNADO_OMP )
       !$OMP PARALLEL &
       !$OMP PRIVATE( BX, MFI, G, U, uGF, uCF, uFM, &
-      !$OMP          iX_B0, iX_E0, iX_B1, iX_E1 )
+      !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, iX_B, iX_E )
 #endif
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )

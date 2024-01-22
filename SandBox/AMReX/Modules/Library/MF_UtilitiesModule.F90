@@ -388,6 +388,9 @@ END IF
 
     CALL TimersStart_AMReX( Timer_AMReX_PermuteData_X )
 
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iFd = 1, nFields
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)
@@ -420,6 +423,9 @@ END IF
 
     CALL TimersStart_AMReX( Timer_AMReX_PermuteData_X )
 
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iFd = 1, nFields
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)

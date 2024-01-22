@@ -143,86 +143,6 @@ CONTAINS
   SUBROUTINE ComputeIncrement_Euler_MF_SingleLevel &
     ( iLevel, MF_uGF, MF_uCF, MF_uDF, MF_duCF )
 
-!    DO iLevel = 0, nLevels-1
-!
-!      ! --- Apply boundary conditions to interior domains ---
-!
-!      CALL FillPatch( iLevel, MF_uGF )
-!      CALL FillPatch( iLevel, MF_uGF, MF_uDF )
-!      CALL FillPatch( iLevel, MF_uGF, MF_uCF )
-!      CALL ApplyPositivityLimiter_Euler_MF &
-!             ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
-!
-!      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
-!
-!      DO WHILE( MFI % next() )
-!
-!        uGF  => MF_uGF(iLevel) % DataPtr( MFI )
-!        uCF  => MF_uCF(iLevel) % DataPtr( MFI )
-!        uDF  => MF_uDF(iLevel) % DataPtr( MFI )
-!
-!        iLo_MF = LBOUND( uGF )
-!
-!        BX = MFI % tilebox()
-!
-!        iX_B0 = BX % lo
-!        iX_E0 = BX % hi
-!        iX_B1 = BX % lo - swX
-!        iX_E1 = BX % hi + swX
-!
-!        CALL AllocateArray_X &
-!               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-!                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
-!                 G )
-!
-!        CALL AllocateArray_X &
-!               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-!                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
-!                 U )
-!
-!        CALL AllocateArray_X &
-!               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-!                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDF ], &
-!                 D )
-!
-!        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
-!
-!        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
-!
-!        CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
-!
-!        ! --- Apply boundary conditions to physical boundaries ---
-!
-!        CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
-!
-!        CALL ApplyBoundaryConditions_Euler_MF &
-!               ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
-!
-!        CALL DetectShocks_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
-!
-!        CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
-!
-!        CALL DeallocateArray_X &
-!               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-!                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDF ], &
-!                 D )
-!
-!        CALL DeallocateArray_X &
-!               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-!                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
-!                 U )
-!
-!        CALL DeallocateArray_X &
-!               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-!                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
-!                 G )
-!
-!      END DO
-!
-!      CALL amrex_mfiter_destroy( MFI )
-!
-!    END DO
-
     INTEGER,              INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
@@ -255,9 +175,6 @@ CONTAINS
     LOGICAL              :: Nodal(nDimsX)
 
     TYPE(EdgeMap) :: Edge_Map
-
-    ! --- Maybe don't need to apply boundary conditions since
-    !     they're applied in the shock detector ---
 
     ! --- Apply boundary conditions to interior domains ---
 

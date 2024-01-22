@@ -31,7 +31,8 @@ MODULE TwoMoment_OpacityModule
 CONTAINS
 
 
-  SUBROUTINE SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi, Sigma, Verbose_Option )
+  SUBROUTINE SetOpacities &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi, Sigma, Verbose_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
