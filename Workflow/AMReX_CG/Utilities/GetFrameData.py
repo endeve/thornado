@@ -76,7 +76,6 @@ def GetFrameData( FilePath,              \
 
 
     #---- Clean Up ----
-    del ds
     gc.collect()
 
 

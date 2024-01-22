@@ -61,6 +61,7 @@ global nSources
 
 global amr
 
+global SaveFig
 
 # Default Settings
 
@@ -109,3 +110,6 @@ DataDirectory = ''
 nSources = 1
 
 amr = False
+
+
+SaveFig = True

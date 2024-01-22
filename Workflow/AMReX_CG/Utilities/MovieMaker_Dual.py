@@ -98,7 +98,6 @@ def CreateMovie(FileNumberArray,    \
     global X1_C0
     global dX10
     global nSS
-    global nSS_Max
     global nDirs
     global nFiles
     global Frame_List
@@ -116,24 +115,15 @@ def CreateMovie(FileNumberArray,    \
                                                           DataDirectory[0],  \
                                                           Field              )
                                                           
-    nSS_Max = max(nSS)
     
-    Time_List = [];
-    for i in range(nDirs):
-        Time_List.append(['None']*nSS[i])
-        for j in range(nSS[i]):
-            
-            Time = fetchTime_AMReX( j,                  \
-                                    FileNumberArray[i], \
-                                    DataDirectory[i]    )
-            Time_List[i][j] = Time
+
 
 #    print("1")
 #    print(Time_List[0])
 #    print("2")
 #    print(Time_List[1])
 
-    Frame_List = SynchronizeFrameLists(nDirs,Time_List,nSS)
+    Frame_List = SynchronizeFrameLists(nDirs,nSS,'Time')
     
 #    print(Frame_List)
     
@@ -373,7 +363,6 @@ def UpdateFrame( t, FileNumberArray, DataDirectory, Field, Action):
     global RefLines
     global IC
     global mesh
-    global nSS_Max
     global f_old
     global t_old
     global nFrames
