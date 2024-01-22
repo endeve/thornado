@@ -374,6 +374,12 @@ CONTAINS
     CALL amrex_multifab_build( MF_uAF(iLevel), BA, DM, nDOFX * nAF, swX )
     CALL amrex_multifab_build( MF_uDF(iLevel), BA, DM, nDOFX * nDF, swX )
 
+    CALL MF_uGF(iLevel) % SetVal( Zero )
+    CALL MF_uCF(iLevel) % SetVal( Zero )
+    CALL MF_uDF(iLevel) % SetVal( Zero )
+    CALL MF_uPF(iLevel) % SetVal( Zero )
+    CALL MF_uAF(iLevel) % SetVal( Zero )
+
     IF( iLevel .GT. 0 .AND. UseFluxCorrection_Euler ) &
       CALL amrex_fluxregister_build &
              ( FluxRegister_Euler(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
@@ -429,6 +435,10 @@ CONTAINS
     CALL amrex_multifab_build( MF_uGF_tmp, BA, DM, nDOFX * nGF, swX )
     CALL amrex_multifab_build( MF_uCF_tmp, BA, DM, nDOFX * nCF, swX )
     CALL amrex_multifab_build( MF_uDF_tmp, BA, DM, nDOFX * nDF, swX )
+
+    CALL MF_uGF_tmp % SetVal( Zero )
+    CALL MF_uCF_tmp % SetVal( Zero )
+    CALL MF_uDF_tmp % SetVal( Zero )
 
     CALL FillPatch &
            ( iLevel, MF_uGF, MF_uGF_tmp, &
