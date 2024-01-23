@@ -90,8 +90,28 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 `ZEX_NUMBER_OF_CCS=0:1`
 </pre>
 
-JIRA issues: https://jira.devtools.intel.com/browse/CMPLRLIBS-34388
 # Activities, progress, and results
+## Jan 22 2024
+1. It is found that they are UDM discrepencies of eng-compiler between PVC04 and Aurora, i.e.
+<pre>
+for oneapi/eng-compiler/2023.10.15.002, PVC04 loads agama-devel-682.20 while Aurora loads agama-devel-682.22
+for oneapi/eng-compiler/2023.12.15.002, PVC04 loads agama-devel-682.20, while Aurora loads stable-736.25
+</pre>
+2. When load oneapi/eng-compiler/2023.05.15.007, the following messages displayed
+<pre>
+ROOT A21_SDK_CCLROOT directory /soft/compilers/oneapi/2023.05.15.001/oneapi/ccl/2021.9.0 is not accessible!
+ROOT A21_SDK_ROOT directory /soft/compilers/oneapi/2023.05.15.001/oneapi is not accessible!
+ROOT A21_SDK_DPLROOT directory /soft/compilers/oneapi/2023.05.15.001/oneapi/dpl/2022.1.0-20230504 is not accessible!
+Directory /soft/compilers/oneapi/2023.05.15.001/oneapi/dal/2023.1.1/lib is not accessible!
+Directory /soft/compilers/oneapi/2023.05.15.001/oneapi/tbb/2021.9.0/lib/intel64/gcc4.8 is not accessible!
+Directory /soft/compilers/oneapi/2023.05.15.001/oneapi/dnnl/2023.1.0/cpu_dpcpp_gpu_dpcpp/lib is not accessible!
+
+</pre>
+discussed it with Brian, and found out the messages is due to " To save space, Chris has removed some stuff.  If you don't need any of the things it isn't finding, you can proceed.
+
+3. On PVC04 oneapi/eng-compiler/2023.10.15.002 show the same issue with master branch of endeve's reporistory as it on Aurora even the UMD is different. Aurora loads agama-devel-682.22, while PVC loads agama-devel-682.20. So oneapi/eng-compiler/2023.10.15.002 will be used to clean up the code. 
+4. ms-daily merged with master 2c39d1445801f2ae63e13ec56d20ee27857588de compiles and run on PVC04 with oneapi/eng-compiler/2023.10.15.002.
+
 ## Jan 18-19 2024
 1. Had a meeting with ANL and ORNL develpers, and decided to see whether the master branch of https://github.com/endeve/thornado.git can run StreamingSineWave and Relaxation cases. 
 2. Clone the code and made changes to accomandate the compilation and running on PVC04, /localdisk/quanshao/ExaStar/toAurora/thornado-endeve
