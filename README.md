@@ -91,6 +91,18 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Jan 23 2024
+1. Found out two bugs, i.e. one being the code bug, and the other one was considered a bug for compiler by ORNL developer, and now the master branch with a commit number of 2c39d1445801f2ae63e13ec56d20ee27857588de runs on PVC04 with the two bug fixes. Here is the run time:
+<pre>
+
+cat timeFOM_eng-23.10.15.002-Jan10-2c39d.txt
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  eng-23.10.15.002-Jan10-2c39d   eng-23/05.15.007    TimeDiff   Percentage   |   eng-23.10.15.002-Jan10-2c39d   eng-23/05.15.007    FOM-Diff   Percentage
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWaveDebug [8,8,8]      O3    :     3.8464e+00          0.0000e+00       3.8464e+00     0.00%            0.0000e+00          0.0000e+00        0.0000e+00     0.00%
+</pre>
+2. Will try to get a reproducer for the second bug tomorrow. 
+
 ## Jan 22 2024
 1. It is found that they are UDM discrepencies of eng-compiler between PVC04 and Aurora, i.e.
 <pre>
