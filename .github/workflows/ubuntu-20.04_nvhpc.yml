@@ -3,6 +3,7 @@
 name: Compile thornado on Ubuntu 20.04 with nvhpc compilers
 
 on:
+  push:
   schedule:
     - cron: '0 7 * * *'
 
@@ -136,7 +137,7 @@ jobs:
           echo "make install"
                 make install
 
-      - name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
+      - name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables (OACC)
         run: |
           source /etc/profile.d/modules.sh
           module load ${NVHPC_MOD}
@@ -145,6 +146,19 @@ jobs:
                HYDRO=RELATIVISTIC \
                USE_GPU=TRUE \
                USE_OACC=TRUE \
+               USE_CUBLAS=TRUE \
+               ApplicationDriver
+          make clobber
+
+      - name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables (OMP_OL)
+        run: |
+          source /etc/profile.d/modules.sh
+          module load ${NVHPC_MOD}
+          cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
+          make OPT_LEVEL=DEBUG \
+               HYDRO=RELATIVISTIC \
+               USE_GPU=TRUE \
+               USE_OMP_OL=TRUE \
                USE_CUBLAS=TRUE \
                ApplicationDriver
           make clobber
