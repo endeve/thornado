@@ -139,7 +139,7 @@ MODULE Euler_UtilitiesModule_Relativistic
   REAL(DP), PUBLIC :: epsMin_Euler_GR = Zero
 
 #if   defined( THORNADO_OMP_OL )
-  !$OMP DECLARE TARGET( rhoMin_Euler_GR, Min_Euler_GR )
+  !$OMP DECLARE TARGET( rhoMin_Euler_GR, epsMin_Euler_GR )
 #elif defined( THORNADO_OACC   )
   !$ACC DECLARE CREATE( rhoMin_Euler_GR, epsMin_Euler_GR )
 #endif
