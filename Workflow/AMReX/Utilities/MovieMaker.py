@@ -40,9 +40,9 @@ def MakeMovie(  FileNumberArray,    \
     global nDirs
     global nLines
     global nFiles
-    
-    
-    
+
+
+
 
     # Check if FileNumberArray and DataDirectories are lists
     if type(FileNumberArray) is list:
@@ -63,8 +63,8 @@ def MakeMovie(  FileNumberArray,    \
             Field = Field[0]
     else:
         nFields = 1
-        
-    
+
+
     if Action == 'RelDiff':
         nLines = 1
     else:
@@ -112,7 +112,7 @@ def CreateMovie(FileNumberArray,    \
     global nFiles
 
     global nPlots
-    
+
     global xhi
     global xlo
 
@@ -145,7 +145,7 @@ def CreateMovie(FileNumberArray,    \
             gvS.vmax = gvS.vmax*1.1
 
     nX = np.shape(X1_C0)
-    
+
     xL = X1_C0[0 ] - 0.5 * dX10[0 ]
     xH = X1_C0[-1] + 0.5 * dX10[-1]
 
@@ -154,7 +154,7 @@ def CreateMovie(FileNumberArray,    \
     nPlots = 1
     fig,ax = plt.subplots(nPlots)
 #    ax  = fig.add_subplot( 111 )
-    
+
 
     CreateFrame( ax, xL, xH, dX10, Field, DataUnits )
 
@@ -448,9 +448,12 @@ def ApplyMovieSettings( ax, xL, xH, dX10, Field, DataUnits ):
 
     ax.set_title( r'$\texttt{{{:}}}$'.format( gvS.FigTitle ), fontsize = 15 )
 
-    ax.set_xlabel \
-      ( r'$x^{{1}}\ \left[\mathrm{{{:}}}\right]$'.format( gvU.X1Units ), \
-        fontsize = 15 )
+    if ( gvS.xLabel == '' ):
+      ax.set_xlabel \
+        ( r'$x^{{1}}\ \left[\mathrm{{{:}}}\right]$'.format( gvU.X1Units ), \
+          fontsize = 15 )
+    else:
+        ax.set_xlabel( gvS.xLabel )
 
     if ( gvS.yLabel == '' ):
         ax.set_ylabel( Field  + ' ' + r'$\left[\mathrm{{{:}}}\right]$' \
@@ -458,7 +461,7 @@ def ApplyMovieSettings( ax, xL, xH, dX10, Field, DataUnits ):
     else:
         ax.set_ylabel( gvS.yLabel )
 
-    
+
     ax.legend(  prop = {'size':12},         \
                 loc = "lower right"          )
     ax.grid(which='both')
