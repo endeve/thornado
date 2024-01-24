@@ -3003,9 +3003,12 @@ CONTAINS
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
 
+!! Shaoping Deleted mapping for MeshE%* as this causes crash when running
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
+    !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4, &  
+!!    MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
+!!    !$OMP MAP( to: &
     !$OMP          nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3 ) &
     !$OMP MAP( alloc: uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
 #elif defined( THORNADO_OACC   )
