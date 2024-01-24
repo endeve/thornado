@@ -91,6 +91,20 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Jan 24 2024
+1. Tried a 5-liner reproducer, actually, it is 114 line of code, but did not replicate the error of 
+<pre>
+Libomptarget message: explicit extension not allowed: host address specified is 0x000000000806ba90 (672 bytes), but device allocation maps to host at 0x000000000806ba90 (224 bytes)
+Libomptarget error: Call to getTargetPointer returned null pointer (device failure or illegal mapping).
+Libomptarget error: Run with
+Libomptarget error: LIBOMPTARGET_DEBUG=1 to display basic debug information.
+Libomptarget error: LIBOMPTARGET_DEBUG=2 to display calls to the compute runtime.
+Libomptarget error: LIBOMPTARGET_INFO=4 to dump host-target pointer mappings.
+TwoMoment_DiscretizationModule_Streaming.F90:216:216: Libomptarget fatal error 1: failure of target construct while offloading is mandatory
+</pre>
+
+2. By reducing the Thorando original code, a reproducer is obtained, and the compile line is "ifx -fPIC -fpp -O3 -g  -fiopenmp -fopenmp-targets=spir64  associateDupMap.F90 -o associateDupMap.exe", will file a jira tommorrow.
+
 ## Jan 23 2024
 1. Found out two bugs, i.e. one being the code bug, and the other one was considered a bug for compiler by ORNL developer, and now the master branch with a commit number of 2c39d1445801f2ae63e13ec56d20ee27857588de runs on PVC04 with the two bug fixes. Here is the run time:
 <pre>
