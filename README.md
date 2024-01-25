@@ -91,6 +91,11 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Jan 25 2024
+1. Filed a JIRA regarding the crash due to mapping Fortran custom-type variables inside an associated struct, and here is the link: https://jira.devtools.intel.com/browse/CMPLRLLVM-55553
+2. Revert 4 files in ms-daily to master-working branch under quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/toAurora/thornado-intl, and SineWaveStreaming and Relaxation compiles and runs fine with oneapi/eng-compiler/2023.10.15.002
+3. Reverting Modules/TwoMoment/TwoMoment_NeutrinoMatterSolverModule.F90 to maser-working caused the relaxation case crashed due to "wlEOSInversionModule ERROR: Second Argument (E, P, or S) Outside Table Bounds". Will investigate tommorrow to see which workaround(s) is(are) needed to successfully run the case. 
+
 ## Jan 24 2024
 1. Tried a 5-liner reproducer, actually, it is 114 line of code, but did not replicate the error of 
 <pre>
