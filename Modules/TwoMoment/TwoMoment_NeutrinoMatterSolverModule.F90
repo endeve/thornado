@@ -1570,8 +1570,8 @@ CONTAINS
                nIterations_Outer, FVECm_outer )
 
       CALL CheckError_FP &
-             ( ITERATE_outer, ITERATE_inner, k_inner, k_outer, Error, &
-               D, E, Y, T, V_u_1, V_u_2, V_u_3, &
+             ( ITERATE_outer, ITERATE_inner, k_outer, k_inner, Error, &
+               D, Y, E, T, V_u_1, V_u_2, V_u_3, &
                Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
                Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
                Gm_dd_11, Gm_dd_22, Gm_dd_33 )
@@ -1959,7 +1959,6 @@ CONTAINS
       Eta_Pair_P       => Eta_Pair_T      (:,:,1:nX)
       Chi_NuPair_P     => Chi_NuPair_T    (:,:,1:nX)
       Eta_NuPair_P     => Eta_NuPair_T    (:,:,1:nX)
-      Eta_Pair_P       => Eta_Pair_T      (:,:,1:nX)
       Chi_Brem_P       => Chi_Brem_T      (:,:,1:nX)
       Eta_Brem_P       => Eta_Brem_T      (:,:,1:nX)
 

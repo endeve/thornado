@@ -1941,10 +1941,8 @@ CONTAINS
 
     ALLOCATE( LogT_P(iX_B:iX_E), LogEta_P(iX_B:iX_E), SignEta_P(iX_B:iX_E) )
 
-    IF ( ANY(D/UnitD >= 1d12) ) THEN
-
-      iJ_I  = ( iMoment - 1 ) * 2 + 1
-      iJ_II = ( iMoment - 1 ) * 2 + 2
+    iJ_I  = ( iMoment - 1 ) * 2 + 1
+    iJ_II = ( iMoment - 1 ) * 2 + 2
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -1958,8 +1956,8 @@ CONTAINS
 
     ! --- Compute Electron Neutrino Chemical Potential ---
 
-      CALL ComputeElectronNeutrinoChemicalPotential_TABLE &
-             ( D, T, Y, LogEta_P )
+    CALL ComputeElectronNeutrinoChemicalPotential_TABLE &
+           ( D, T, Y, LogEta_P )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
@@ -1968,28 +1966,28 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
-      DO iX = iX_B, iX_E
+    DO iX = iX_B, iX_E
 
-        LogT_P   (iX) = LOG10( T(iX) / UnitT )
-        !The J_I and J_II have the following symmetry w.r.t. the sign of Eta:
-        !J_I(-Eta) = J_II(Eta), so we store a sign to select the correct J_I/J_II 
-        !depending on the sign of Eta
-        SignEta_P(iX) = MAX(SIGN(One,LogEta_P(iX)),Zero)
-        LogEta_P (iX) = LOG10( ABS(LogEta_P(iX)) &
-                              / ( BoltzmannConstant * T(iX) ) / UnitEta )
-      END DO
+      LogT_P   (iX) = LOG10( T(iX) / UnitT )
+      !The J_I and J_II have the following symmetry w.r.t. the sign of Eta:
+      !J_I(-Eta) = J_II(Eta), so we store a sign to select the correct J_I/J_II 
+      !depending on the sign of Eta
+      SignEta_P(iX) = MAX(SIGN(One,LogEta_P(iX)),Zero)
+      LogEta_P (iX) = LOG10( ABS(LogEta_P(iX)) &
+                            / ( BoltzmannConstant * T(iX) ) / UnitEta )
+    END DO
 
-      ! --- Interpolate JI  ---
+    ! --- Interpolate JI  ---
 
-      CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
-             ( LogT_P, LogEta_P, LogTs_T, LogEtas_T, &
-               OS_Pair(1,iJ_I), Pair_AT(:,:,:,:,iJ_I,1), J_I )
+    CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
+           ( LogT_P, LogEta_P, LogTs_T, LogEtas_T, &
+             OS_Pair(1,iJ_I), Pair_AT(:,:,:,:,iJ_I,1), J_I )
 
-      ! --- Interpolate JII ---
+    ! --- Interpolate JII ---
 
-      CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
-             ( LogT_P, LogEta_P, LogTs_T, LogEtas_T, &
-               OS_Pair(1,iJ_II), Pair_AT(:,:,:,:,iJ_II,1), J_II )
+    CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
+           ( LogT_P, LogEta_P, LogTs_T, LogEtas_T, &
+             OS_Pair(1,iJ_II), Pair_AT(:,:,:,:,iJ_II,1), J_II )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
@@ -1998,16 +1996,16 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
-      DO iX  = iX_B, iX_E
-      DO iE2 = iE_B, iE_E
-      DO iE1 = iE_B, iE_E
+    DO iX  = iX_B, iX_E
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
 
-        J_I (iE1,iE2,iX) = SignEta_P(iX)*J_I (iE1,iE2,iX) + (One-SignEta_P(iX))*J_II(iE1,iE2,iX)
-        J_II(iE1,iE2,iX) = SignEta_P(iX)*J_II(iE1,iE2,iX) + (One-SignEta_P(iX))*J_I (iE1,iE2,iX)
+      J_I (iE1,iE2,iX) = SignEta_P(iX)*J_I (iE1,iE2,iX) + (One-SignEta_P(iX))*J_II(iE1,iE2,iX)
+      J_II(iE1,iE2,iX) = SignEta_P(iX)*J_II(iE1,iE2,iX) + (One-SignEta_P(iX))*J_I (iE1,iE2,iX)
     
-      END DO
-      END DO
-      END DO
+    END DO
+    END DO
+    END DO
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -2020,28 +2018,6 @@ CONTAINS
 
     !$ACC WAIT(1)
 #endif
-
-    ELSE
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP MAP( from: J_I, J_II)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC COPYOUT( J_I, J_II)
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(3)
-#endif
-      DO iX  = iX_B, iX_E
-      DO iE2 = iE_B, iE_E
-      DO iE1 = iE_B, iE_E
-        J_I (iE1,iE2,iX) = Zero
-        J_II(iE1,iE2,iX) = Zero
-      END DO
-      END DO
-      END DO
-
-    END IF
 
 #else
 
@@ -2193,7 +2169,9 @@ CONTAINS
         SUM1 = Zero
         SUM2 = Zero
 
-        IF ( QueryOpacity_NuPair( D(iX) / UnitD ) ) THEN
+        IF ( QueryOpacity_NuPair( D(iX) / UnitD ) &
+            .AND. ALL(ABS((J(:,iNuE    ,iX)-J0(:,iNuE    ,iX))/J0(:,iNuE    ,iX))<=0.1d0) &
+            .AND. ALL(ABS((J(:,iNuE_Bar,iX)-J0(:,iNuE_Bar,iX))/J0(:,iNuE_Bar,iX))<=0.1d0) ) THEN
 
           DO iE1 = iE_B, iE_E
 
