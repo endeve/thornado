@@ -91,6 +91,32 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Jan 26 2024
+1. By reverting back to master code for the following files, both SineWaveStreaming and Relaxation cases compiles and runs, but there is a significant slowdown. Here are the files:
+<pre>
+Modules/EquationOfState/EquationOfStateModule_TABLE.F90
+Modules/Euler/Euler_PositivityLimiterModule_NonRelativistic_TABLE.F90
+Modules/Euler/Euler_SlopeLimiterModule_Relativistic_IDEAL_WENO.F90
+Modules/Opacities/NeutrinoOpacitiesComputationModule.F90
+Modules/TwoMoment/TwoMoment_NeutrinoMatterSolverModule.F90
+
+</pre>
+and here are the running times
+
+<pre>
+AppName     Grid      OpLevel :      revert back to master   original ms-daily   
+-----------------------------    ----------------------------------------------
+sineWaveDD05 [8,8,8]      O3    :     4.5787e+00          4.6835e+00
+sineWaveDD05 [16,16,16]   O3    :     6.7899e+01          6.6798e+01
+relaxDD05    [8,8,8]      O3    :     2.9179e+01          2.0310e+01
+relaxDD05    [16,16,16]   O3    :     2.1294e+02          1.4598e+02
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/toAurora/thornado-intl/SandBox/TwoMoment_OrderV/Executables>
+</pre>
+The slow down is caused by 
+   - removing num_team(nX_G) for line 2247 and 2280; slow down by 10-20%
+   - reverting back to original SolveLS_FP; slow down by 20-30%
+of Modules/TwoMoment/TwoMoment_NeutrinoMatterSolverModule.F90
+2. However, using original ShiftRHS_FP caused "wlEOSInversionModule ERROR: Second Argument" and the run crashes. 
 ## Jan 25 2024
 1. Filed a JIRA regarding the crash due to mapping Fortran custom-type variables inside an associated struct, and here is the link: https://jira.devtools.intel.com/browse/CMPLRLLVM-55553
 2. Revert 4 files in ms-daily to master-working branch under quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/toAurora/thornado-intl, and SineWaveStreaming and Relaxation compiles and runs fine with oneapi/eng-compiler/2023.10.15.002
