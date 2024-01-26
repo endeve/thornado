@@ -2471,7 +2471,7 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
         ! --- Quadratic Form Matrix ---
-
+        
         A(:,1) = Half * [ Two * dV_u_dX1(iNodeX,1,iZ2,iZ3,iZ4), &
                                 dV_u_dX2(iNodeX,1,iZ2,iZ3,iZ4)  &
                               + dV_u_dX1(iNodeX,2,iZ2,iZ3,iZ4), &
@@ -3006,9 +3006,8 @@ CONTAINS
 !! Shaoping Deleted mapping for MeshE%* as this causes crash when running
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4, &  
-!!    MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
-!!    !$OMP MAP( to: &
+!!    !$OMP MAP( to: MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
+    !$OMP MAP( to: &
     !$OMP          nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3 ) &
     !$OMP MAP( alloc: uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
 #elif defined( THORNADO_OACC   )

@@ -78,7 +78,7 @@ MODULE DeviceModule
     omp_get_default_device, &
     omp_is_initial_device, &
     omp_target_is_present
-  USE omp_lib, ONLY : omp_get_num_devices
+ USE omp_lib, ONLY : omp_get_num_devices
 #endif
 
 #if defined(THORNADO_OACC)
@@ -149,14 +149,13 @@ CONTAINS
 #if defined(THORNADO_GPU)
     CALL MPI_COMM_RANK( MPI_COMM_WORLD, myrank, ierr )
     CALL MPI_COMM_SIZE( MPI_COMM_WORLD, nranks, ierr )
+!! Shaoping. To avoid call MPI_FINALIZE twices which leads to "In MPIR_Free_contextid, the context id is not in use (Internal MPI error!)"    
+    ndevices = omp_get_num_devices() 
 #if defined(THORNADO_CUDA)
     ierr = cudaGetDeviceCount( ndevices )
 #elif defined(THORNADO_HIP)
     CALL hipCheck( hipGetDeviceCount( ndevices ) )
-#elif defined(THORNADO_OMP_OL)
-    ndevices = omp_get_num_devices()
 #endif
-    
     IF ( ndevices > 0 ) THEN
       mydevice = MOD( myrank, ndevices )
     ELSE
@@ -167,12 +166,14 @@ CONTAINS
     ierr = cudaSetDevice( mydevice )
 #elif defined(THORNADO_HIP)
     CALL hipCheck( hipSetDevice( mydevice ) )
-#elif defined(THORNADO_OMP_OL)
-    CALL omp_set_default_device( mydevice )
 #endif
 #else
     mydevice = -1
     ndevices = 0
+#endif
+#if defined(THORNADO_OMP_OL)
+    ndevices = omp_get_num_devices() 
+    CALL omp_set_default_device( mydevice )
 #endif
 
     ! Setup linear algebra library handles
