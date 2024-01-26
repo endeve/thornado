@@ -8,8 +8,6 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     amrex_parmparse_destroy
   USE amrex_multifab_module, ONLY: &
     amrex_multifab
-  USE amrex_parallel_module, ONLY: &
-    amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
 
@@ -75,11 +73,19 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
 CONTAINS
 
 
-  SUBROUTINE InitializeGravitySolver_XCFC_MF_Poseidon
+  SUBROUTINE InitializeGravitySolver_XCFC_MF_Poseidon( Verbose_Option )
+
+    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     TYPE(amrex_parmparse) :: PP
+
+    LOGICAL :: Verbose
+
+    Verbose = .FALSE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
 
     FillGhostCells = .FALSE.
     CALL amrex_parmparse_build( PP, 'poseidon' )
@@ -89,7 +95,7 @@ CONTAINS
     swX_GS = 0
     IF( FillGhostCells ) swX_GS = swX
 
-    IF( amrex_parallel_ioprocessor() )THEN
+    IF( Verbose )THEN
 
       WRITE(*,*)
       WRITE(*,'(4x,A)') &
@@ -244,7 +250,7 @@ CONTAINS
 
     CALL UpdateConformalFactorAndMetric_XCFC_MF( MF_uMF, MF_uGF )
 
-    CALL AverageDown( MF_uGF )
+    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
 
 #endif
 
@@ -288,7 +294,7 @@ CONTAINS
     CALL ComputeLapseShiftCurvature_XCFC_MF_Poseidon &
            ( MF_uGS, MF_uMF )
 
-    CALL AverageDown( MF_uGF )
+    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
 
     CALL ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
 

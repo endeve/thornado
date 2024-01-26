@@ -7,6 +7,12 @@ PROGRAM ApplicationDriver
     Two, &
     Pi, &
     TwoPi
+  USE ProgramHeaderModule, ONLY: &
+    iX_B0, &
+    iX_B1, &
+    iX_E0, &
+    iX_E1, &
+    nDimsX
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram, &
     FinalizeProgram
@@ -16,6 +22,10 @@ PROGRAM ApplicationDriver
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange, &
     FinalizeReferenceElementX_Lagrange
+  USE UnitsModule, ONLY: &
+    Kilometer, &
+    Millisecond, &
+    UnitsDisplay
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState, &
     FinalizeEquationOfState
@@ -26,14 +36,20 @@ PROGRAM ApplicationDriver
     Max_T, &
     Min_Y, &
     Max_Y
-  USE ProgramHeaderModule, ONLY: &
-    iX_B0, &
-    iX_B1, &
-    iX_E0, &
-    iX_E1, &
-    nDimsX
-  USE InitializationModule_Relativistic, ONLY: &
-    InitializeFields_Relativistic
+  USE GeometryFieldsModule, ONLY: &
+    uGF
+  USE FluidFieldsModule, ONLY: &
+    uCF, &
+    uPF, &
+    uAF, &
+    uDF
+  USE GravitySolutionModule_XCFC, ONLY: &
+    InitializeGravitySolver_XCFC, &
+    FinalizeGravitySolver_XCFC
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    ComputeFromConserved_Euler_Relativistic, &
+    ComputeTimeStep_Euler_Relativistic, &
+    rhoMin_Euler_GR
   USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
     InitializeSlopeLimiter_Euler_Relativistic_TABLE, &
     FinalizeSlopeLimiter_Euler_Relativistic_TABLE, &
@@ -42,38 +58,25 @@ PROGRAM ApplicationDriver
     InitializePositivityLimiter_Euler_Relativistic_TABLE, &
     FinalizePositivityLimiter_Euler_Relativistic_TABLE, &
     ApplyPositivityLimiter_Euler_Relativistic_TABLE
-  USE Euler_UtilitiesModule_Relativistic, ONLY: &
-    ComputeFromConserved_Euler_Relativistic, &
-    ComputeTimeStep_Euler_Relativistic
-  USE InputOutputModuleHDF, ONLY: &
-    WriteFieldsHDF, &
-    ReadFieldsHDF
-  USE FluidFieldsModule, ONLY: &
-    uCF, &
-    uPF, &
-    uAF, &
-    uDF
-  USE GeometryFieldsModule, ONLY: &
-    uGF
-  USE GravitySolutionModule_XCFC, ONLY: &
-    InitializeGravitySolver_XCFC, &
-    FinalizeGravitySolver_XCFC
   USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit
-  USE TimeSteppingModule_SSPRK, ONLY: &
-    InitializeFluid_SSPRK, &
-    FinalizeFluid_SSPRK, &
-    UpdateFluid_SSPRK
-  USE UnitsModule, ONLY: &
-    Kilometer, &
-    Millisecond, &
-    UnitsDisplay
   USE Euler_TallyModule_Relativistic, ONLY: &
     InitializeTally_Euler_Relativistic, &
     FinalizeTally_Euler_Relativistic, &
     ComputeTally_Euler_Relativistic
   USE Euler_XCFC_UtilitiesModule, ONLY: &
+    InitializeMetric_Euler, &
     ComputeNewtonianPotential_SphericalSymmetry
+  USE InitializationModule_Relativistic, ONLY: &
+    InitializeFields_Relativistic
+  USE TimeSteppingModule_SSPRK, ONLY: &
+    InitializeFluid_SSPRK, &
+    FinalizeFluid_SSPRK, &
+    UpdateFluid_SSPRK, &
+    EvolveGravity
+  USE InputOutputModuleHDF, ONLY: &
+    WriteFieldsHDF, &
+    ReadFieldsHDF
   USE TimersModule_Euler, ONLY: &
     TimeIt_Euler, &
     InitializeTimers_Euler, &
@@ -149,6 +152,8 @@ PROGRAM ApplicationDriver
 
   ! --- Time Stepping ---
 
+  EvolveGravity = .TRUE.
+
   nStagesSSPRK = 2
   IF( .NOT. nStagesSSPRK .LE. 3 ) &
     STOP 'nStagesSSPRK must be less than or equal to three.'
@@ -210,6 +215,8 @@ PROGRAM ApplicationDriver
            EquationOfStateTableName_Option &
              = TRIM( EosTableName ) )
 
+  rhoMin_Euler_GR = Min_D
+
   CALL InitializeSlopeLimiter_Euler_Relativistic_TABLE &
          ( UseSlopeLimiter_Option &
              = UseSlopeLimiter, &
@@ -247,6 +254,21 @@ PROGRAM ApplicationDriver
 
   CALL InitializeFields_Relativistic &
          ( ProgenitorFileName_Option = TRIM( ProgenitorFileName ) )
+
+  CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+
+  CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+
+  CALL InitializeMetric_Euler &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+  CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+
+  CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
   IF( RestartFileNumber .LT. 0 )THEN
 

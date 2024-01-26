@@ -4,10 +4,6 @@ MODULE MF_GravitySolutionModule_XCFC
 
   USE amrex_multifab_module, ONLY: &
     amrex_multifab
-  USE amrex_parmparse_module, ONLY: &
-    amrex_parmparse, &
-    amrex_parmparse_build, &
-    amrex_parmparse_destroy
 
   ! --- Local Modules ---
 
@@ -29,8 +25,6 @@ MODULE MF_GravitySolutionModule_XCFC
   PUBLIC :: ComputeConformalFactor_XCFC_MF
   PUBLIC :: ComputeLapseShiftCurvature_XCFC_MF
 
-  LOGICAL, PUBLIC :: EvolveGravity
-
 CONTAINS
 
 
@@ -38,7 +32,7 @@ CONTAINS
 
     LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
 
-    TYPE(amrex_parmparse) :: PP
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
     LOGICAL :: Verbose
 
@@ -46,26 +40,8 @@ CONTAINS
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
-    ! --- Initialized to flat space in amrex_init_from_scratch ---
-
-    EvolveGravity = .TRUE.
-    CALL amrex_parmparse_build( PP, 'GS' )
-      CALL PP % query( 'EvolveGravity', EvolveGravity )
-    CALL amrex_parmparse_destroy( PP )
-
-    IF( Verbose )THEN
-
-      WRITE(*,*)
-      WRITE(*,'(4x,A)')   'INFO: Gravity Solver'
-      WRITE(*,'(4x,A)')   '--------------------'
-      WRITE(*,*)
-      WRITE(*,'(6x,A18,L)') 'EvolveGravity: ', EvolveGravity
-
-    END IF
-
-#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
-
-    CALL InitializeGravitySolver_XCFC_MF_Poseidon
+    CALL InitializeGravitySolver_XCFC_MF_Poseidon &
+           ( Verbose_Option = Verbose )
 
 #endif
 

@@ -192,9 +192,11 @@ CONTAINS
     PerturbationType      = 'StepFunction'
     WriteNodal1DIC_SAS    = .FALSE.
     nX_LeastSquares       = 5
-    CALL amrex_parmparse_build( PP, 'SAS' )
+    CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % get  ( 'Mass', &
                         MassPNS )
+    CALL amrex_parmparse_destroy( PP )
+    CALL amrex_parmparse_build( PP, 'SAS' )
       CALL PP % get  ( 'AccretionRate', &
                         AccretionRate )
       CALL PP % get  ( 'ShockRadius', &

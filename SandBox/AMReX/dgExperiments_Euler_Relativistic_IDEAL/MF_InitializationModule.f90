@@ -54,6 +54,7 @@ MODULE MF_InitializationModule
   USE Euler_UtilitiesModule, ONLY: &
     ComputeConserved_Euler
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    rhoMin_Euler_GR, &
     epsMin_Euler_GR
 
   ! --- Local Modules ---
@@ -296,7 +297,7 @@ CONTAINS
         ELSE IF( TRIM( AdvectionProfile ) .EQ. 'Gaussian' )THEN
 
           uPF(iNX,iPF_D) &
-            = D_0 + EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) )
+            = D_0 * EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) )
           uPF(iNX,iPF_V1) = V1
           uPF(iNX,iPF_V2) = V2
           uPF(iNX,iPF_V3) = V3
@@ -1010,7 +1011,7 @@ CONTAINS
         ELSE IF( TRIM( AdvectionProfile ) .EQ. 'Gaussian' )THEN
 
           uPF(iNX,iPF_D) &
-            = D_0 + EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) ) &
+            = D_0 * EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) ) &
                   * EXP( -( X2 - X2_0 )**2 / ( Two * sigmaX2**2 ) )
           uPF(iNX,iPF_V1) = V1
           uPF(iNX,iPF_V2) = V2
@@ -1124,8 +1125,6 @@ CONTAINS
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
-    epsMin_Euler_GR = HUGE( One )
-
     DO WHILE( MFI % next() )
 
       uGF => MF_uGF % DataPtr( MFI )
@@ -1230,6 +1229,8 @@ CONTAINS
                  G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
                  Pressure )
 
+        rhoMin_Euler_GR &
+          = MIN( rhoMin_Euler_GR, uPF(iNX,iPF_D) )
         epsMin_Euler_GR &
           = MIN( epsMin_Euler_GR, uPF(iNX,iPF_E) / uPF(iNX,iPF_D) )
 
@@ -1258,9 +1259,8 @@ CONTAINS
 
     END DO
 
+    CALL amrex_parallel_reduce_min( rhoMin_Euler_GR )
     CALL amrex_parallel_reduce_min( epsMin_Euler_GR )
-
-    epsMin_Euler_GR = 1.0e-12_DP * epsMin_Euler_GR
 
     CALL amrex_mfiter_destroy( MFI )
 
@@ -1433,7 +1433,7 @@ CONTAINS
         ELSE IF( TRIM( AdvectionProfile ) .EQ. 'Gaussian' )THEN
 
           uPF(iNX,iPF_D) &
-            = D_0 + EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) ) &
+            = D_0 * EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) ) &
                   * EXP( -( X2 - X2_0 )**2 / ( Two * sigmaX2**2 ) ) &
                   * EXP( -( X3 - X3_0 )**2 / ( Two * sigmaX3**2 ) )
 

@@ -11,6 +11,8 @@ MODULE FillPatchModule
     amrex_mfiter, &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
+  USE amrex_box_module, ONLY: &
+    amrex_box
   USE amrex_amr_module, ONLY: &
     amrex_geom, &
     amrex_ref_ratio
@@ -38,10 +40,14 @@ MODULE FillPatchModule
     nDOFX, &
     swX, &
     nDimsX
+  USE ReferenceElementModuleX, ONLY: &
+    NodeNumberTableX
   USE MeshModule, ONLY: &
-    MeshX
+    MeshType, &
+    NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
-    iGF_SqrtGm
+    iGF_SqrtGm, &
+    CoordinateSystem
   USE Euler_MeshRefinementModule, ONLY: &
     nFine, &
     vpCoarseToFineProjectionMatrix
@@ -50,7 +56,8 @@ MODULE FillPatchModule
 
   USE MF_KindModule, ONLY: &
     DP, &
-    Zero
+    Zero, &
+    One
   USE InputParsingModule, ONLY: &
     UseTiling, &
     DEBUG
@@ -58,7 +65,8 @@ MODULE FillPatchModule
     CreateMesh_MF, &
     DestroyMesh_MF
   USE MF_GeometryModule, ONLY: &
-    ApplyBoundaryConditions_Geometry_MF
+    ApplyBoundaryConditions_Geometry_MF, &
+    UpdateSpatialMetric_MF
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler_MF
   USE MF_TimersModule, ONLY: &
@@ -72,12 +80,13 @@ MODULE FillPatchModule
   PUBLIC :: FillPatch, FillCoarsePatch
 
   INTERFACE FillPatch
-    MODULE PROCEDURE FillPatch_PointWise_Scalar
+    MODULE PROCEDURE FillPatch_PointWise_Scalar ! Only called by RemakeLevel
     MODULE PROCEDURE FillPatch_PointWise_Vector
-    MODULE PROCEDURE FillPatch_Conservative_Scalar
+    MODULE PROCEDURE FillPatch_Conservative_Scalar ! Only called by RemakeLevel
     MODULE PROCEDURE FillPatch_Conservative_Vector
   END INTERFACE FillPatch
 
+  ! Only called by FillCoarsePatch
   INTERFACE FillCoarsePatch
     MODULE PROCEDURE FillCoarsePatch_PointWise
     MODULE PROCEDURE FillCoarsePatch_Conservative
@@ -289,18 +298,21 @@ CONTAINS
   SUBROUTINE FillCoarsePatch_PointWise &
     ( FineLevel, MF, &
       ApplyBoundaryConditions_Euler_Option, &
-      ApplyBoundaryConditions_Geometry_Option )
+      ApplyBoundaryConditions_Geometry_Option, &
+      UpdateSpatialMetric_Option )
 
     INTEGER             , INTENT(in)    :: FineLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
     LOGICAL             , INTENT(in), OPTIONAL :: &
       ApplyBoundaryConditions_Euler_Option, &
-      ApplyBoundaryConditions_Geometry_Option
+      ApplyBoundaryConditions_Geometry_Option, &
+      UpdateSpatialMetric_Option
 
 #if defined( THORNADO_USE_MESHREFINEMENT )
 
     LOGICAL :: ApplyBoundaryConditions_Euler, &
-               ApplyBoundaryConditions_Geometry
+               ApplyBoundaryConditions_Geometry, &
+               UpdateSpatialMetric
 
     INTEGER :: iErr
 
@@ -320,6 +332,10 @@ CONTAINS
     ApplyBoundaryConditions_Geometry = .FALSE.
     IF( PRESENT( ApplyBoundaryConditions_Geometry_Option ) ) &
       ApplyBoundaryConditions_Geometry = ApplyBoundaryConditions_Geometry_Option
+
+    UpdateSpatialMetric = .FALSE.
+    IF( PRESENT( UpdateSpatialMetric_Option ) ) &
+      UpdateSpatialMetric = UpdateSpatialMetric_Option
 
     IF( DEBUG )THEN
 
@@ -352,6 +368,12 @@ CONTAINS
     DEALLOCATE( hi_bc )
     DEALLOCATE( lo_bc )
 
+    IF( UpdateSpatialMetric )THEN
+
+      CALL UpdateSpatialMetric_MF( FineLevel, MF(FineLevel) )
+
+    END IF
+
     IF( ApplyBoundaryConditions_Geometry ) &
       CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF(FineLevel) )
 
@@ -374,7 +396,7 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:), MF_uGF_tmp
     TYPE(amrex_multifab), INTENT(inout) :: MF_src(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_dst
-    LOGICAL             , INTENT(in)   , OPTIONAL :: &
+    LOGICAL             , INTENT(in), OPTIONAL :: &
       ApplyBoundaryConditions_Euler_Option, &
       ApplyBoundaryConditions_Geometry_Option
 
@@ -428,17 +450,15 @@ CONTAINS
              ( SqrtGm(FineLevel  ), MF_uGF(FineLevel  ) % BA, &
                                     MF_uGF(FineLevel  ) % DM, nDOFX, swX )
       CALL amrex_multifab_build &
-             ( SqrtGm_tmp, MF_uGF_tmp % BA, &
-                           MF_uGF_tmp % DM, nDOFX, swX )
+             ( SqrtGm_tmp         , MF_uGF_tmp          % BA, &
+                                    MF_uGF_tmp          % DM, nDOFX, swX )
 
-      CALL SqrtGm(FineLevel-1) % COPY &
-             ( MF_uGF(FineLevel-1), nDOFX*(iGF_SqrtGm-1)+1, 1, nDOFX, swX )
-
-      CALL SqrtGm(FineLevel  ) % COPY &
-             ( MF_uGF(FineLevel  ), nDOFX*(iGF_SqrtGm-1)+1, 1, nDOFX, swX )
-
-      CALL SqrtGm_tmp % COPY &
-             ( MF_uGF_tmp         , nDOFX*(iGF_SqrtGm-1)+1, 1, nDOFX, swX )
+      CALL PopulateWithFlatSpaceMetric_MF &
+             ( FineLevel-1, SqrtGm(FineLevel-1), swX )
+      CALL PopulateWithFlatSpaceMetric_MF &
+             ( FineLevel  , SqrtGm(FineLevel  ), swX )
+      CALL PopulateWithFlatSpaceMetric_MF &
+             ( FineLevel  , SqrtGm_tmp         , swX )
 
     END IF
 
@@ -591,12 +611,12 @@ CONTAINS
       hi_bc = amrex_bc_bogus
 
       CALL amrex_fillpatch &
-             ( MF(FineLevel), &
-               t_old_crse, MF(FineLevel-1), &
-               t_new_crse, MF(FineLevel-1), &
+             ( MF(FineLevel), SqrtGm(FineLevel), &
+               t_old_crse, MF(FineLevel-1), SqrtGm(FineLevel-1), &
+               t_new_crse, MF(FineLevel-1), SqrtGm(FineLevel-1), &
                amrex_geom(FineLevel-1), FillPhysicalBC_Dummy, &
-               t_old_fine, MF(FineLevel  ), &
-               t_new_fine, MF(FineLevel  ), &
+               t_old_fine, MF(FineLevel  ), SqrtGm(FineLevel  ), &
+               t_new_fine, MF(FineLevel  ), SqrtGm(FineLevel  ), &
                amrex_geom(FineLevel  ), FillPhysicalBC_Dummy, &
                t, 1, 1, MF(FineLevel) % nComp(), &
                amrex_ref_ratio(FineLevel-1), &
@@ -682,15 +702,14 @@ CONTAINS
              ( SqrtGm(FineLevel-1), MF_uGF(FineLevel-1) % BA, &
                                     MF_uGF(FineLevel-1) % DM, nDOFX, swX )
 
-      CALL SqrtGm(FineLevel-1) % COPY &
-             ( MF_uGF(FineLevel-1), nDOFX*(iGF_SqrtGm-1)+1, 1, nDOFX, swX )
-
       CALL amrex_multifab_build &
              ( SqrtGm(FineLevel  ), MF_uGF(FineLevel  ) % BA, &
                                     MF_uGF(FineLevel  ) % DM, nDOFX, swX )
 
-      CALL SqrtGm(FineLevel) % COPY &
-             ( MF_uGF(FineLevel  ), nDOFX*(iGF_SqrtGm-1)+1, 1, nDOFX, swX )
+      CALL PopulateWithFlatSpaceMetric_MF &
+             ( FineLevel-1, SqrtGm(FineLevel-1), swX )
+      CALL PopulateWithFlatSpaceMetric_MF &
+             ( FineLevel  , SqrtGm(FineLevel  ), swX )
 
     END IF
 
@@ -805,6 +824,93 @@ CONTAINS
     END IF
 
   END SUBROUTINE FillPhysicalBC_Dummy
+
+
+  SUBROUTINE PopulateWithFlatSpaceMetric_MF( iLevel, MF_SqrtGm, swXX )
+
+    INTEGER             , INTENT(in)  :: iLevel, swXX(3)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_SqrtGm
+
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+
+    TYPE(MeshType) :: MeshXX(3)
+    INTEGER  :: iX_B0(3), iX_E0(3), iX_B(3), iX_E(3)
+    INTEGER  :: iX1, iX2, iX3, iNX, iNX1, iNX2
+    REAL(DP) :: X1, X2, h1, h2, h3
+
+    CALL CreateMesh_MF( iLevel, MeshXX )
+
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL &
+    !$OMP PRIVATE( BX, MFI, uGF, &
+    !$OMP          iX_B0, iX_E0, iX_B, iX_E, iNX1, iNX2, X1, X2, h1, h2, h3 )
+#endif
+
+    CALL amrex_mfiter_build( MFI, MF_SqrtGm, tiling = UseTiling )
+
+    DO WHILE( MFI % next() )
+
+      uGF => MF_SqrtGm % DataPtr( MFI )
+
+      BX = MFI % tilebox()
+
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+      iX_B  = iX_B0 - swXX
+      iX_E  = iX_E0 + swXX
+
+      DO iX3 = iX_B(3), iX_E(3)
+      DO iX2 = iX_B(2), iX_E(2)
+      DO iX1 = iX_B(1), iX_E(1)
+      DO iNX = 1      , nDOFX
+
+        iNX1 = NodeNumberTableX(1,iNX)
+        iNX2 = NodeNumberTableX(2,iNX)
+
+        X1 = NodeCoordinate( MeshXX(1), iX1, iNX1 )
+        X2 = NodeCoordinate( MeshXX(2), iX2, iNX2 )
+
+        IF( TRIM( CoordinateSystem ) .EQ. 'CYLINDIRCAL' )THEN
+
+          h1  = One
+          h2  = One
+          h3  = ABS( X1 )
+
+        ELSE IF( TRIM( CoordinateSystem ) .EQ. 'SPHERICAL' )THEN
+
+          h1  = One
+          h2  = ABS( X1 )
+          h3  = ABS( X1 * SIN( X2 ) )
+
+        ELSE
+
+          h1  = One
+          h2  = One
+          h3  = One
+
+        END IF
+
+        uGF(iX1,iX2,iX3,iNX) = h1 * h2 * h3
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END DO ! WHILE( MFI % next() )
+
+    CALL amrex_mfiter_destroy( MFI )
+
+#if defined( THORNADO_OMP )
+    !$OMP END PARALLEL
+#endif
+
+    CALL DestroyMesh_MF( MeshXX )
+
+  END SUBROUTINE PopulateWithFlatSpaceMetric_MF
 
 
 END MODULE FillPatchModule

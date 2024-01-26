@@ -146,7 +146,8 @@ MODULE InputOutputModuleAMReX
     ElectronNumber_Initial, &
     ElectronNumber_OffGrid, &
     ADMMass_Initial, &
-    ADMMass_OffGrid
+    ADMMass_OffGrid, &
+    ADMMass_Interior
 
   IMPLICIT NONE
   PRIVATE
@@ -644,7 +645,7 @@ CONTAINS
     REAL(DP) :: EulerMomentumX3Arr(0:1)
     REAL(DP) :: EulerEnergyArr    (0:1)
     REAL(DP) :: ElectronNumberArr (0:1)
-    REAL(DP) :: ADMMassArr        (0:1)
+    REAL(DP) :: ADMMassArr        (0:2)
 
     LOGICAL :: ReadFields_uCF
     LOGICAL :: ReadFields_uCR
@@ -711,6 +712,7 @@ CONTAINS
     ElectronNumber_OffGrid  = ElectronNumberArr (1)
     ADMMass_Initial         = ADMMassArr        (0)
     ADMMass_OffGrid         = ADMMassArr        (1)
+    ADMMass_Interior        = ADMMassArr        (2)
 
     DO iLevel = 0, nLevels-1
 

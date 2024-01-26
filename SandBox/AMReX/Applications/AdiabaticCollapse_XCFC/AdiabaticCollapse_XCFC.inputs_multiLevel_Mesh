@@ -18,11 +18,11 @@ thornado.PlotFileNameRoot = "AdiabaticCollapse_XCFC.plt"
 thornado.t_end   = 3.0e+2
 thornado.iCycleD = 1
 
-thornado.dt_wrt  = 1.0e+0
+thornado.dt_wrt  = 1.0e-1
 thornado.iCycleW = -1
 
 thornado.CheckpointFileNameRoot = "AdiabaticCollapse_XCFC.chk"
-thornado.dt_chk    = 1.0e+1
+thornado.dt_chk    = 1.0e+0
 thornado.iCycleChk = -1
 
 thornado.nNodes = 2
@@ -38,10 +38,11 @@ amr.n_cell                  = 512 01 01
 thornado.swX                = 01  00 00
 #amr.max_grid_size_x         = 128
 #amr.blocking_factor_x       = 128
-amr.max_level               = 6
 amr.UseFluxCorrection_Euler = 1
-amr.UseAMR                  = 0
+amr.RefinementScheme        = "Mesh"
+amr.max_level               = 6
 amr.TagCriteria             = 4.0e3 2.0e3 1.0e3 5.0e2 1.0e2 5.0e1
+amr.UseAMR                  = 0
 amr.n_error_buf             = 0
 amr.ref_ratio               = 2
 

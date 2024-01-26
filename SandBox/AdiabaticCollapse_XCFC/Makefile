@@ -76,16 +76,11 @@ ProgenitorModule.o: \
 
 InitializationModule_Relativistic.o: \
   KindModule.o \
+  UtilitiesModule.o \
   ProgramHeaderModule.o \
   MeshModule.o \
-  UtilitiesModule.o \
-  XCFC_UtilitiesModule.o \
-  GravitySolutionModule_XCFC.o \
-  Euler_XCFC_UtilitiesModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
-  Euler_SlopeLimiterModule_Relativistic_TABLE.o \
-  Euler_PositivityLimiterModule_Relativistic_TABLE.o \
   Euler_UtilitiesModule_Relativistic.o \
   EquationOfStateModule.o \
   ProgenitorModule.o \
@@ -108,26 +103,26 @@ TimeSteppingModule_SSPRK.o: \
 
 ApplicationDriver.o: \
   KindModule.o \
+  ProgramHeaderModule.o \
   ProgramInitializationModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModuleX_Lagrange.o \
+  UnitsModule.o \
   EquationOfStateModule.o \
   EquationOfStateModule_TABLE.o \
-  ProgramHeaderModule.o \
-  InitializationModule_Relativistic.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  GravitySolutionModule_XCFC.o \
+  Euler_UtilitiesModule_Relativistic.o \
   Euler_SlopeLimiterModule_Relativistic_TABLE.o \
   Euler_PositivityLimiterModule_Relativistic_TABLE.o \
-  Euler_UtilitiesModule_Relativistic.o \
-  InputOutputModuleHDF.o \
-  FluidFieldsModule.o \
-  GeometryFieldsModule.o \
-  GravitySolutionModule_XCFC.o \
   Euler_dgDiscretizationModule.o \
-  TimeSteppingModule_SSPRK.o \
-  UnitsModule.o \
   Euler_TallyModule_Relativistic.o \
-  TimersModule_Euler.o \
   Euler_XCFC_UtilitiesModule.o \
+  InitializationModule_Relativistic.o \
+  TimeSteppingModule_SSPRK.o \
+  InputOutputModuleHDF.o \
+  TimersModule_Euler.o \
   ApplicationDriver.f90
 
 ComputePrimitiveTest.o: \

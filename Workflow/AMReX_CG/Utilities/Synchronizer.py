@@ -39,7 +39,7 @@ def SynchronizeFrameLists(nDirs,TimeLists,nSS):
  #=============================================#
 def Synchronizer(nDirs,TimeLists,nSS):
 
-    SyncTol = 1.0E-2
+    SyncTol = 1.0E-3
 
     FrameList = [];
     PrevFrame = [0]*nDirs
@@ -53,9 +53,8 @@ def Synchronizer(nDirs,TimeLists,nSS):
             MinTime = TimeLists[0][PrevFrame[0]]
         MinTimeListIndex = [0]
         
-        
 #        for i in range(1,nDirs):
-        i = 0
+        i = 1
         while i < nDirs:
             if gvS.ReferenceBounce:
                 CurTime = TimeLists[i][PrevFrame[i]] - BF.BounceTimeList[i]
@@ -63,19 +62,21 @@ def Synchronizer(nDirs,TimeLists,nSS):
                 CurTime = TimeLists[i][PrevFrame[i]]
                 
 #           Locate the next time from all of the lists
-            if CurTime < MinTime:
-                MinTime = CurTime
-                MinTimeListIndex = [i]
-                i = 1
-            elif abs(CurTime - MinTime) <= SyncTol*MinTime:
+            if abs(CurTime - MinTime) <= SyncTol:
 #           If more than one list has the minimum time, note it.
                 MinTimeListIndex.append(i)
+            if CurTime < MinTime-SyncTol:
+                MinTime = CurTime
+                MinTimeListIndex = [i]
+                i = 0
+
             i += 1
         
 #       Advance the frames with minimum time
         for i in range(len(MinTimeListIndex)):
             j = MinTimeListIndex[i]
             PrevFrame[j] = min(PrevFrame[j]+1,nSS[j]-1)
+            
 
 #       Add frames to list
         FrameList.append(PrevFrame[:])
@@ -134,4 +135,5 @@ def Synchronizer(nDirs,TimeLists,nSS):
             FrameList.append(PrevFrame[:])
 
         
+#    exit()
     return FrameList

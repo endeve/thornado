@@ -24,6 +24,8 @@ MODULE ReGridModule
 
   ! --- Local Modules ---
 
+  USE FillPatchModule, ONLY: &
+    FillPatch
   USE AverageDownModule, ONLY: &
     AverageDown
   USE MF_Euler_UtilitiesModule, ONLY: &
@@ -43,10 +45,11 @@ MODULE ReGridModule
     ApplyPositivityLimiter_Euler_MF
   USE MF_GeometryModule, ONLY: &
     ApplyBoundaryConditions_Geometry_MF
+  USE MF_GravitySolutionModule, ONLY: &
+    EvolveGravity
   USE MF_GravitySolutionModule_XCFC, ONLY: &
     ComputeConformalFactor_XCFC_MF, &
-    ComputeLapseShiftCurvature_XCFC_MF, &
-    EvolveGravity
+    ComputeLapseShiftCurvature_XCFC_MF
   USE MF_XCFC_UtilitiesModule, ONLY: &
     MultiplyWithPsi6_MF, &
     UpdateConformalFactorAndMetric_XCFC_MF, &
@@ -78,14 +81,6 @@ CONTAINS
 
     INTEGER :: iLevel, iErr
 
-    LOGICAL :: DoReGrid
-
-    IF( DEBUG )THEN
-
-      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
-
-    END IF
-
     IF( .NOT. UseAMR ) RETURN
 
     IF( .NOT. PerformRegrid ) RETURN
@@ -104,20 +99,21 @@ CONTAINS
 
     END IF
 
+    CALL MultiplyWithPsi6_MF &
+           ( MF_uGF, MF_uCF, +1, OnlyLeafElements_Option = .FALSE. )
+
     CALL amrex_regrid( 0, t_new(0) )
 
     nLevels = amrex_get_numlevels()
 
-    CALL AverageDown( MF_uGF )
-    CALL AverageDown( MF_uDF )
-    CALL AverageDown( MF_uGF, MF_uCF )
-
-    CALL ApplyBoundaryConditions_Geometry_MF( MF_uGF )
+    CALL MultiplyWithPsi6_MF &
+           ( MF_uGF, MF_uCF, -1, OnlyLeafElements_Option = .FALSE. )
 
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
 
-    CALL ApplyBoundaryConditions_Euler_MF( MF_uCF )
+    CALL MultiplyWithPsi6_MF &
+           ( MF_uGF, MF_uCF, +1, OnlyLeafElements_Option = .FALSE. )
 
     IF( EvolveGravity )THEN
 
@@ -134,8 +130,6 @@ CONTAINS
         CALL MF_uMF(iLevel) % SetVal( Zero ) ! remove this after debugging
 
       END DO
-
-      CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, +1 )
 
 #ifndef THORNADO_NOTRANSPORT
 
@@ -155,8 +149,6 @@ CONTAINS
 
 #endif
 
-      CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, -1 )
-
       DO iLevel = 0, nLevels-1
 
         CALL amrex_multifab_destroy( MF_uMF(iLevel) )
@@ -165,6 +157,18 @@ CONTAINS
       END DO
 
     END IF ! EvolveGravity
+
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, -1 )
+
+    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
+    CALL AverageDown( MF_uGF, MF_uCF )
+
+    CALL ApplyPositivityLimiter_Euler_MF &
+           ( MF_uGF, MF_uCF, MF_uDF )
+
+    CALL ApplyBoundaryConditions_Geometry_MF( MF_uGF )
+
+    CALL ApplyBoundaryConditions_Euler_MF( MF_uCF )
 
     ! --- nLevels <= nMaxLevels; entire arrays t_old(0:nMaxLevels-1) and
     !     t_new(0:nMaxLevels-1) must have valid data ---
@@ -232,7 +236,7 @@ CONTAINS
     CALL UpdateConformalFactorAndMetric_XCFC_MF &
            ( MF_uMF, MF_uGF )
 
-    CALL AverageDown( MF_uGF )
+    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
 
   END SUBROUTINE ComputeConformalFactor
 
@@ -274,7 +278,7 @@ CONTAINS
     CALL UpdateLapseShiftCurvature_XCFC_MF &
            ( MF_uMF, MF_uGF )
 
-    CALL AverageDown( MF_uGF )
+    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
 
     CALL ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
 

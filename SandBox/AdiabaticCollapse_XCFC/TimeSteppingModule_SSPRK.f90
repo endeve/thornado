@@ -11,8 +11,9 @@ MODULE TimeSteppingModule_SSPRK
     iX_E1, &
     nDOFX
   USE GeometryFieldsModule, ONLY: &
-    iGF_Psi, &
     nGF
+  USE FluidFieldsModule, ONLY: &
+    nCF
   USE XCFC_UtilitiesModule, ONLY: &
     MultiplyWithPsi6, &
     nGS, &
@@ -24,19 +25,13 @@ MODULE TimeSteppingModule_SSPRK
   USE GravitySolutionModule_XCFC, ONLY: &
     ComputeConformalFactor_XCFC, &
     ComputeLapseShiftCurvature_XCFC
-  USE FluidFieldsModule, ONLY: &
-    nCF
+  USE Euler_XCFC_UtilitiesModule, ONLY: &
+    ComputeConformalFactorSourcesAndMg_XCFC_Euler, &
+    ComputePressureTensorTrace_XCFC_Euler
   USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
     ApplySlopeLimiter_Euler_Relativistic_TABLE
   USE Euler_PositivityLimiterModule_Relativistic_TABLE, ONLY: &
     ApplyPositivityLimiter_Euler_Relativistic_TABLE
-  USE Euler_XCFC_UtilitiesModule, ONLY: &
-    ComputeConformalFactorSourcesAndMg_XCFC_Euler, &
-    ComputePressureTensorTrace_XCFC_Euler
-  USE TimersModule_Euler, ONLY: &
-    TimersStart_Euler, &
-    TimersStop_Euler,  &
-    Timer_Euler_UpdateFluid
   USE Euler_dgDiscretizationModule, ONLY: &
     OffGridFlux_Euler_X1_Inner, &
     OffGridFlux_Euler_X1_Outer, &
@@ -46,6 +41,10 @@ MODULE TimeSteppingModule_SSPRK
     OffGridFlux_Euler_X3_Outer
   USE Euler_TallyModule_Relativistic, ONLY: &
     IncrementOffGridTally_Euler_Relativistic
+  USE TimersModule_Euler, ONLY: &
+    TimersStart_Euler, &
+    TimersStop_Euler,  &
+    Timer_Euler_UpdateFluid
 
   IMPLICIT NONE
   PRIVATE
@@ -57,6 +56,8 @@ MODULE TimeSteppingModule_SSPRK
 
   REAL(DP), DIMENSION(:,:,:,:,:),   ALLOCATABLE :: Ustar
   REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE :: Dstar
+
+  LOGICAL, PUBLIC :: EvolveGravity
 
   PUBLIC :: InitializeFluid_SSPRK
   PUBLIC :: UpdateFluid_SSPRK
@@ -225,7 +226,7 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
 
-    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, +1 )
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, +1 ) ! Ustar = psi^6 * U
 
     Dstar = Zero ! --- Increment
 
@@ -244,13 +245,30 @@ CONTAINS
 
       END DO
 
+      ! To match amrex implementation
+
+      IF( iS .GT. 1 )THEN
+
+        CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, -1 )
+
+        CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar )
+
+        CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, +1 )
+
+      END IF
+
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
-        IF( iS .NE. 1 )THEN
+        IF( iS .NE. 1 )THEN ! At first stage, U and psi are known
 
-          CALL ComputeConformalFactor &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
+          IF( EvolveGravity )THEN
+
+            CALL ComputeConformalFactor &
+                   ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
+
+          END IF
 
           CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, -1 )
 
@@ -262,13 +280,17 @@ CONTAINS
 
           CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, +1 )
 
-          CALL ComputeConformalFactor &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
+          IF( EvolveGravity )THEN
 
-          CALL ComputeLapseShiftCurvature &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
+            CALL ComputeConformalFactor &
+                   ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
 
-        END IF
+            CALL ComputeLapseShiftCurvature &
+                   ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
+
+          END IF
+
+        END IF !( iS .NE. 1 )
 
         CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, -1 )
 
@@ -305,8 +327,21 @@ CONTAINS
 
     END DO
 
-    CALL ComputeConformalFactor &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, M, GS )
+    ! To match amrex implementation
+
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, -1 )
+
+    CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, +1 )
+
+    IF( EvolveGravity )THEN
+
+      CALL ComputeConformalFactor &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, M, GS )
+
+    END IF
 
     CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, -1 )
 
@@ -318,11 +353,15 @@ CONTAINS
 
     CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, +1 )
 
-    CALL ComputeConformalFactor &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, M, GS )
+    IF( EvolveGravity )THEN
 
-    CALL ComputeLapseShiftCurvature &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, M, GS )
+      CALL ComputeConformalFactor &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, M, GS )
+
+      CALL ComputeLapseShiftCurvature &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, M, GS )
+
+    END IF
 
     CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, -1 )
 
