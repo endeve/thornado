@@ -186,7 +186,7 @@ PROGRAM ApplicationDriver_Neutrinos
       t_end = 1.0d2 * Millisecond
 
       PrescribedTimeStep = .TRUE. ! If .FALSE., explicit CFL will be used.
-      dt_0               = 1.0d-7 * Millisecond
+      dt_0               = 1.0d-3 * Millisecond
       dt_MAX             = 1.0d-3 * Millisecond
       dt_RATE            = 1.01_DP
 
@@ -205,6 +205,11 @@ PROGRAM ApplicationDriver_Neutrinos
 
       wMatterRHS = [ One, One, Zero, Zero, Zero ] ! --- Keep Velocity Fixed
 
+      Include_NES     = .TRUE.
+      Include_Pair    = .TRUE.
+      Include_NuPair  = .TRUE.
+      Include_Brem    = .TRUE.
+      Include_LinCorr = .FALSE.
       FreezeOpacities = .FALSE. ! --- Keep opacities fixed during iterations?
 
     CASE( 'EquilibriumAdvection' )
