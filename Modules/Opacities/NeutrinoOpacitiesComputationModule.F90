@@ -2169,9 +2169,7 @@ CONTAINS
         SUM1 = Zero
         SUM2 = Zero
 
-        IF ( QueryOpacity_NuPair( D(iX) / UnitD ) &
-            .AND. ALL(ABS((J(:,iNuE    ,iX)-J0(:,iNuE    ,iX))/J0(:,iNuE    ,iX))<=0.1d0) &
-            .AND. ALL(ABS((J(:,iNuE_Bar,iX)-J0(:,iNuE_Bar,iX))/J0(:,iNuE_Bar,iX))<=0.1d0) ) THEN
+        IF ( QueryOpacity_NuPair( D(iX) / UnitD ) ) THEN
 
           DO iE1 = iE_B, iE_E
 
