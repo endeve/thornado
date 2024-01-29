@@ -51,7 +51,8 @@ More information on the external packages, please visit: https://gitlab.devtools
 **DUT** srun -p FM-QZ1J-ICX-PVC -t 1:00:00 --pty /bin/bash
 **get on a node on JLSE:**  `qsub -n 1 -t 300 -q arcticus -I`       
 **get on a node on Sunspot** `qsub -l select=1 -l walltime=30:00 -A Aurora_deployment -q workq -I`
-**get on Aurora** qsub -I -A Aurora_deployment -l select=1,walltime=120:00 -q EarlyAppAccess
+**get on Aurora** qsub -I -A Aurora_deployment -l select=1,walltime=120:00 -q LustreApps
+**get on Aurora** qsub -I -A Aurora_deployment -l select=1,walltime=120:00 -q EarlyAppAccess 
 **To git clone weaklib tables from ORNL, we need** `export https_proxy=http://proxy-us.intel.com:912`    (error: SSL certificate problem: self signed certificate in certificate chain) 
 **display GPU serial and rev. number** `sudo /sbin/lspci |grep -i Display`    
 **power cycle a machine** /shared/maint/tool/powercycl_node.sh exaperf-sdpcloud-pc20
@@ -91,6 +92,10 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Jan 27 2024
+1. Performed a systematic tests on the performance improvement of stand-alone SineWaveStreaming and Relaxation cases on PVC04 using oneapi/eng-compiler/2023.10.15.002. It seems that the unroll only improves the performance by less than 5%. Create master-without-Mathi-Unroll and  master-without-Mathi-Unroll and pushed them to https://github.com/endeve/thornado.git. notified Mathi with this foundings to see whether something/code changes is/are missed in these experiments. 
+2. Tested master-nre on Aurora, and it seems that compilation on Aurora is 10X slower than the compilation on our PVC04
+3. Modified the build and run script to create log file for compilation only with "-BLD" in it and also create independent executables for 8x8x8 and 16x16x16 cases.
 ## Jan 26 2024
 1. By reverting back to master code for the following files, both SineWaveStreaming and Relaxation cases compiles and runs, but there is a significant slowdown. Here are the files:
 <pre>
