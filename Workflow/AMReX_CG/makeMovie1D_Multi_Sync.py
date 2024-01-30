@@ -31,15 +31,31 @@ if __name__ == "__main__":
     
     PlotDirectories = ['None']*gvS.nDirs
 
-    PlotDirectories[0] = 'Directory of First Data Set'
-    PlotDirectories[1] = 'Directory of Second Data Set'
+#    PlotDirectories[0] = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/YahilCollapse_XCFC/SingleLevel_4096_1rank'
+#    PlotDirectories[1] = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/YahilCollapse_XCFC/SingleLevel_4096_1box'
+#    PlotDirectories[2] = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/YahilCollapse_XCFC/SingleLevel_4096'
+
+#    PlotDirectories[0] = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC'
+#    PlotDirectories[1] = '/Users/nickroberts/thornado/SandBox/AdiabaticCollapse_XCFC/Output'
+    
+    PlotDirectories[0] = '/Users/nickroberts/thornado_clean/thornado/SandBox/AdiabaticCollapse_XCFC/Output'
+    PlotDirectories[1] = '/Users/nickroberts/thornado_clean/thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC'
+
+#    PlotDirectories[1] = '/Users/nickroberts/thornado/SandBox/YahilCollapse_XCFC/SingleLevel_4096'
 #    PlotDirectories[1] = 'Directory of Third Data Set. Don't forget to change gvS.nDirs.'
+
+    gvS.DataType = ['None']*gvS.nDirs
+    gvS.DataType[1] = 'AMReX'
+#    gvS.DataType[1] = 'AMReX'
+#    gvS.DataType[2] = 'AMReX'
+    gvS.DataType[0] = 'Native'
+
 
     # Specify plot file base name
     PlotBaseName = ProblemName + '.plt'
 
     # Specify field to plot
-    Field = 'GF_Beta_1'
+    Field = 'PF_D'
 
     # Specify to plot in log-scale
     gvS.UseLogScale_X  = True
@@ -74,16 +90,16 @@ if __name__ == "__main__":
 
     # Use custom limts for y-axis (1D) or colorbar (2D)
     gvS.UseCustomLimits = False
-    gvS.vmin = 0.70
+    gvS.vmin = 0.6
     gvS.vmax = 1.02
 
     gvS.MovieRunTime = 10.0 # seconds
 
     gvS.ReferenceBounce = False
-    gvS.StopTime        = 10000
+    gvS.StopTime        = 9146.03
 
     gvS.ShowRefinement = True
-    gvS.RefinementLevels = 9
+    gvS.RefinementLevels = 7
 
     gvS.amr = True
 
@@ -94,10 +110,18 @@ if __name__ == "__main__":
     #### ====== End of User Input =======
 
     DataDirectories = ['None']*gvS.nDirs
-    DataDirectories[0] = 'DataDirectories/{:s}_StaticMesh'.format( ProblemName )
+#    DataDirectories[0] = 'DataDirectories/{:s}_StaticMesh'.format( ProblemName )
 #    DataDirectories[0] = 'DataDirectories/{:s}_FirstRun'.format( ProblemName )
 #    DataDirectories[1] = 'DataDirectories/{:s}_SecondRun'.format( ProblemName )
-    DataDirectories[1] = 'DataDirectories/{:s}_ThirdRun'.format( ProblemName )
+#    DataDirectories[1] = 'DataDirectories/{:s}_ThirdRun'.format( ProblemName )
+
+#    DataDirectories[0] = 'DataDirectories/{:s}_AMReX_1rank'.format( ProblemName )
+#    DataDirectories[1] = 'DataDirectories/{:s}_AMReX_1box'.format( ProblemName )
+#    DataDirectories[2] = 'DataDirectories/{:s}_AMReX_free'.format( ProblemName )
+
+    DataDirectories[0] = 'DataDirectories/{:s}_DWN'.format( ProblemName )
+    DataDirectories[1] = 'DataDirectories/{:s}_DWNB'.format( ProblemName )
+
 
     ID            = '{:s}_{:s}'.format( ProblemName, Field )
     gvS.MovieName     = 'mov.{:s}.mp4'.format( ID )
@@ -117,7 +141,6 @@ if __name__ == "__main__":
     SetSpaceTimeUnits(CoordinateSystem, UsePhysicalUnits)
 
 
-
                              
 
     FileNumberArrays = [['None']]*gvS.nDirs
@@ -127,11 +150,13 @@ if __name__ == "__main__":
                                                   SSi, SSf,           \
                                                   PlotEvery           )
 
+
         MakeProbelmDataDirectory( FileNumberArrays[i],\
                                   PlotDirectories[i],  \
                                   PlotBaseName,    \
                                   Field,           \
-                                  DataDirectories[i]   )
+                                  DataDirectories[i],   \
+                                  gvS.DataType[i]   )
 
 
 
@@ -143,18 +168,20 @@ if __name__ == "__main__":
         BF.BounceTimeList    = [0.0]*gvS.nDirs
         BF.BounceFrameList   = [0]*gvS.nDirs
         for i in range(gvS.nDirs):
-            BFrame, BTime, BDensity = BF.FindBounce( PlotDirectories[i],   \
-                                                  PlotBaseName          )
+            BFrame, BTime, BDensity = BF.FindBounce( PlotDirectories[i],    \
+                                                     PlotBaseName,          \
+                                                     DataDirectories[i],    \
+                                                     gvS.DataType[i]        )
             
             BF.BounceDensityList[i] = BDensity
             BF.BounceFrameList[i]   = BFrame
             BF.BounceTimeList[i]    = BTime
     
 
-    MakeMovie( FileNumberArrays, \
-               [Field],                              \
+    MakeMovie( FileNumberArrays,    \
+               [Field],             \
                DataDirectories,     \
-               Action = 'None'    )
+               Action = 'None'      )
 
 
 

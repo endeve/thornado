@@ -1,0 +1,7 @@
+# THORNADO_DIR/SandBox/AMReX/Applications/PoissonSolverTests_Newtonian
+
+f90EXE_sources += MF_InitializationModule.f90
+f90EXE_sources += InitializationModule.f90
+f90EXE_sources += FinalizationModule.f90
+f90EXE_sources += ApplicationDriver.f90
+f90EXE_sources += TaggingModule.f90

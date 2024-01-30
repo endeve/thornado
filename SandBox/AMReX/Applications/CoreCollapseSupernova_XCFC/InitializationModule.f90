@@ -168,6 +168,8 @@ MODULE InitializationModule
   USE FillPatchModule, ONLY: &
     FillPatch, &
     FillCoarsePatch
+  USE MF_XCFC_UtilitiesModule, ONLY: &
+    MultiplyWithPsi6_MF
   USE InputParsingModule, ONLY: &
     InitializeParameters, &
     nLevels, &
@@ -210,11 +212,10 @@ MODULE InitializationModule
     AverageDown
   USE Euler_MeshRefinementModule, ONLY: &
     InitializeMeshRefinement_Euler
-  USE MF_GravitySolutionModule_XCFC, ONLY: &
-    InitializeGravitySolver_XCFC_MF
+  USE MF_GravitySolutionModule, ONLY: &
+    InitializeGravitySolver_MF
   USE MF_MetricInitializationModule, ONLY: &
-    InitializeMetric_MF, &
-    InitializeMetricFromCheckpoint_MF
+    InitializeMetric_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
@@ -231,7 +232,7 @@ CONTAINS
 
   SUBROUTINE InitializeProgram
 
-    LOGICAL :: SetInitialValues
+    LOGICAL :: SetInitialValues, FixInteriorADMMass
 
     CALL amrex_init()
 
@@ -367,7 +368,8 @@ CONTAINS
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
 
-      SetInitialValues = .TRUE.
+      SetInitialValues   = .TRUE.
+      FixInteriorADMMass = .FALSE.
 
       CALL InitializeTally_Euler_MF
 
@@ -385,7 +387,7 @@ CONTAINS
 
       CALL CreateMesh_MF( 0, MeshX )
 
-      CALL InitializeGravitySolver_XCFC_MF &
+      CALL InitializeGravitySolver_MF &
              ( Verbose_Option = amrex_parallel_ioprocessor() )
 
       CALL DestroyMesh_MF( MeshX )
@@ -411,23 +413,22 @@ CONTAINS
              ( ReadFields_uCF_Option = .TRUE., &
                ReadFields_uCR_Option = .TRUE. )
 
-      SetInitialValues = .FALSE.
+      SetInitialValues   = .FALSE.
+      FixInteriorADMMass = .TRUE.
 
       CALL InitializeTally_Euler_MF &
              ( InitializeFromCheckpoint_Option = .TRUE. )
 
       CALL CreateMesh_MF( 0, MeshX )
 
-      CALL InitializeGravitySolver_XCFC_MF &
+      CALL InitializeGravitySolver_MF &
              ( Verbose_Option = amrex_parallel_ioprocessor() )
-
-      CALL InitializeMetricFromCheckpoint_MF( MF_uGF, MF_uCF, MF_uCR )
 
       CALL DestroyMesh_MF( MeshX )
 
     END IF
 
-    CALL AverageDown( MF_uGF )
+    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
     CALL AverageDown( MF_uGF, MF_uCF )
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
@@ -463,6 +464,7 @@ CONTAINS
     CALL ComputeTally_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, &
              SetInitialValues_Option = SetInitialValues, &
+             FixInteriorADMMass_Option = FixInteriorADMMass, &
              Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL ComputeTally_TwoMoment_MF &
@@ -597,8 +599,12 @@ CONTAINS
     CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF, &
                           ApplyBoundaryConditions_Euler_Option = .TRUE. )
 
+    CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCF(iLevel), -1 )
+
     CALL ApplyPositivityLimiter_Euler_MF &
            ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCF(iLevel), +1 )
 
     ! MF_uCR needs to be permuted
     CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCR )

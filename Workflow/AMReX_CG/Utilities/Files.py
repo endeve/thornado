@@ -17,11 +17,11 @@ from charade import detect
 #=============================================#
 
 
- #=============================================#
-#                                               #
-#   GetFileNumberArray                          #
-#                                               #
- #=============================================#
+#=============================================#
+#                                             #
+#   GetFileNumberArray                        #
+#                                             #
+#=============================================#
 def GetFileNumberArray( PlotDirectory,      \
                         PlotBaseName,       \
                         SSi = -1,           \
@@ -35,26 +35,35 @@ def GetFileNumberArray( PlotDirectory,      \
       = np.sort( np.array( \
           [ convert( file ) for file in listdir( PlotDirectory ) ] ) )
 
+    
 
     # Filter file list to only those that start with plotBaseName
     fileList = []
     for iFile in range( fileArray.shape[0] ):
-
+        
         sFile = fileArray[iFile]
         if( sFile[0:len(PlotBaseName)] == PlotBaseName \
-              and sFile[len(PlotBaseName)+1].isdigit() ) :
+              and sFile[len(PlotBaseName)+1].isdigit() \
+              and '.old.' not in sFile ) :
             if sFile[-1] == '/' :
                 fileList.append( int(sFile[-9:-1]) )
             else:
                 fileList.append( int(sFile[-8:]) )
 
-    fileNumbers = np.array( fileList )
+        if sFile[-3:] == '.h5':
+            fileList.append( int(sFile[-9:-3]) )
+        
+        else:
+            if( sFile[0:len(PlotBaseName)] == PlotBaseName \
+                  and sFile[len(PlotBaseName)+1].isdigit() ) :
+                if sFile[-1] == '/' :
+                    fileList.append( int(sFile[-9:-1]) )
+                else:
+                    fileList.append( int(sFile[-8:]) )
+           
+    fileNumbers = np.array( list(set(fileList)) )
     numNumbers = fileNumbers.shape[0]
 
-#    print( fileNumbers )
-#    print( numNumbers )
-    
-    
     # Warn if list is empty.
     if not fileNumbers.shape[0] > 0:
 
@@ -66,75 +75,56 @@ def GetFileNumberArray( PlotDirectory,      \
 
         assert ( fileNumbers.shape[0] > 0 ), msg
 
-
-
     # Sort Numbers
     fileNumbers.sort()
 
     # Filter File List
-    
-
     if SSi < 0: SSi = 0
     if SSf < 0: SSf = int(fileNumbers[-1])
-    
-#    print(SSi,SSf)
-    
+
     if SSf < SSi:
         msg = '\n>>> Final frame comes before initial frame. \n'
         msg += '>>> Check SSf > SSi.'
         assert ( SSf > SSi ), msg
 
-
-
     for SSi_index in range( numNumbers ):
-#        print( fileNumbers[SSi_index] )
         if ( fileNumbers[SSi_index] == SSi ): break
-    
+
     for SSf_index in range( numNumbers-1, SSi_index-2,-1):
         if ( fileNumbers[SSf_index] == SSf ): break
-    
+
     if not SSi_index <= numNumbers-1:
         msg = '\n>>> SSi does not correspond to a plot data directory.\n'
         assert( SSi_index < numNumbers-1 ), msg
-    
+
     if not SSf_index >= SSi_index:
         msg = '\n>>> SSf does not correspond to a plot data directory.\n'
         assert( SSf_index >= SSi_index ), msg
 
-
-
-
     nSS = SSf_index - SSi_index + 1
-    
-
-
 
 
     #   Filter file list to specified range
     fileNumbersLimited = []
-
     for i in range( nSS ):
         fileNumbersLimited.append(fileNumbers[SSi_index+i])
-        
-    
+
+
     # Filer file number list by PlotEvery value.
-    fileNumbersFiltered = np.array( fileNumbersLimited[::PlotEvery] )
+    fileNumbersFiltered \
+      = np.array( fileNumbersLimited[SSi:SSf+1:PlotEvery] )
+
+
 
     return fileNumbersFiltered
 # END GetFileNumberArray
 
 
-
-
-
-
-
-
- #=============================================#
-#                                               #
-#   convert                                     #
-#                                               #
- #=============================================#
+#=============================================#
+#                                             #
+#   convert                                   #
+#                                             #
+#=============================================#
 def convert( s ):
 
     """from https://www.geeksforgeeks.org/python-character-encoding/"""
@@ -151,17 +141,13 @@ def convert( s ):
         return s.decode()
     else:
         return s.decode(encoding)
-        
-        
-        
-        
-        
-        
- #=============================================#
-#                                               #
-#   ChoosePlotFile                              #
-#                                               #
- #=============================================#
+
+
+#=============================================#
+#                                             #
+#   ChoosePlotFile                            #
+#                                             #
+#=============================================#
 def ChoosePlotFile( FileNumberArray,                \
                     PlotBaseName = 'plt',       \
                     argv = [ 'a' ],                 \
@@ -180,7 +166,6 @@ def ChoosePlotFile( FileNumberArray,                \
         else:
 
             File = PlotBaseName + '{:}'.format( argv[1].zfill(8) )
-    
 
     else:
 
@@ -189,7 +174,6 @@ def ChoosePlotFile( FileNumberArray,                \
         msg = 'len( argv ) must be > 0 and < 3: len( argv ) = {:d}'.format( n )
 
         arg = ( n > 0 ) & ( n < 3 )
-        print( arg )
         assert arg, msg
 
     # Remove "/" at end of filename, if present
@@ -200,15 +184,11 @@ def ChoosePlotFile( FileNumberArray,                \
     return File
 
 
-
-
-
-
- #=============================================#
-#                                               #
-#   Overwrite                                   #
-#                                               #
- #=============================================#
+#=============================================#
+#                                             #
+#   Overwrite                                 #
+#                                             #
+#=============================================#
 def Overwrite( FileOrDirName, ForceChoice = False, OW = False ):
 
     if ForceChoice: return OW
@@ -234,14 +214,11 @@ def Overwrite( FileOrDirName, ForceChoice = False, OW = False ):
     return OW
 
 
-
-
-
- #=============================================#
-#                                               #
-#   CheckForField                               #
-#                                               #
- #=============================================#
+#=============================================#
+#                                             #
+#   CheckForField                             #
+#                                             #
+#=============================================#
 def CheckForField(  Field,          \
                     DataDirectory,  \
                     FileNumberArray ):
@@ -251,38 +228,37 @@ def CheckForField(  Field,          \
     Found_Flag = False
     PathToFirstField = ''
     for i in range(FileNumberArray.shape[0]):
-        
+
         FilePath = DataDirectory + str(FileNumberArray[i]) + '/' + '{:}.dat'.format(Field)
-        
+
         if isfile( FilePath ):
             Found_Flag = True
             PathToFirstField = FilePath
             break
-        
+
     return PathToFirstField, Found_Flag
 
 
-
- #=============================================#
-#                                               #
-#   CleanField                                  #
-#                                               #
- #=============================================#
+#=============================================#
+#                                             #
+#   CleanField                                #
+#                                             #
+#=============================================#
 def CleanField( Field,          \
                 DataDirectory,  \
                 FileNumberArray ):
-     
+
     import os
     from os      import scandir
     from os.path import isfile
-     
+
     # Create list of all directories in DataDirectory
     DirectoryArray = [f.path for f in scandir(DataDirectory) if f.is_dir()]
-    
-    
+
+
     for i in range(len(DirectoryArray)):
         FilePath = DirectoryArray[i] + '/' + '{:}.dat'.format(Field)
-    
+
         if isfile(FilePath):
             os.system('rm {:}'.format(FilePath))
 

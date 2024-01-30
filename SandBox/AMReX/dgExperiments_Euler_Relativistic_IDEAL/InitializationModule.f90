@@ -69,12 +69,16 @@ MODULE InitializationModule
     nPF, &
     nAF, &
     nDF
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    rhoMin_Euler_GR, &
+    epsMin_Euler_GR
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
     DP, &
-    Zero
+    Zero, &
+    One
   USE MF_FieldsModule_Geometry, ONLY: &
     CreateFields_Geometry_MF, &
     MF_uGF
@@ -110,6 +114,8 @@ MODULE InitializationModule
   USE FillPatchModule, ONLY: &
     FillPatch, &
     FillCoarsePatch
+  USE MF_XCFC_UtilitiesModule, ONLY: &
+    MultiplyWithPsi6_MF
   USE TaggingModule, ONLY: &
     TagElements_Advection1D, &
     TagElements_RiemannProblem1D, &
@@ -224,8 +230,14 @@ CONTAINS
 
     IF( iRestart .LT. 0 )THEN
 
-      CALL amrex_init_from_scratch( 0.0_DP )
+      rhoMin_Euler_GR = HUGE( One )
+      epsMin_Euler_GR = HUGE( One )
+
+      CALL amrex_init_from_scratch( Zero )
       nLevels = amrex_get_numlevels()
+
+      rhoMin_Euler_GR = 1.0e-20_DP! * rhoMin_Euler_GR
+      epsMin_Euler_GR = 1.0e-20_DP! * epsMin_Euler_GR
 
       SetInitialValues = .TRUE.
 
@@ -239,6 +251,9 @@ CONTAINS
 
     ELSE
 
+      rhoMin_Euler_GR = 1.0e-20_DP
+      epsMin_Euler_GR = 1.0e-20_DP
+
       CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
 
       SetInitialValues = .FALSE.
@@ -248,7 +263,7 @@ CONTAINS
 
     END IF
 
-    CALL AverageDown( MF_uGF )
+    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
     CALL AverageDown( MF_uGF, MF_uCF )
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
@@ -355,21 +370,32 @@ CONTAINS
     CALL amrex_multifab_build( MF_uPF(iLevel), BA, DM, nDOFX * nPF, swX )
     CALL amrex_multifab_build( MF_uAF(iLevel), BA, DM, nDOFX * nAF, swX )
 
+    CALL MF_uGF(iLevel) % SetVal( Zero )
+    CALL MF_uCF(iLevel) % SetVal( Zero )
+    CALL MF_uDF(iLevel) % SetVal( Zero )
+    CALL MF_uPF(iLevel) % SetVal( Zero )
+    CALL MF_uAF(iLevel) % SetVal( Zero )
+
     IF( iLevel .GT. 0 .AND. UseFluxCorrection_Euler ) &
       CALL amrex_fluxregister_build &
              ( FluxRegister_Euler(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
                iLevel, nDOFX_X1 * nCF )
 
     CALL FillCoarsePatch( iLevel, MF_uGF, &
-                          ApplyBoundaryConditions_Geometry_Option = .TRUE. )
+                          ApplyBoundaryConditions_Geometry_Option = .TRUE., &
+                          UpdateSpatialMetric_Option = .TRUE. )
 
     CALL FillCoarsePatch( iLevel, MF_uDF )
 
     CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF, &
                           ApplyBoundaryConditions_Euler_Option = .TRUE. )
 
+    CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCF(iLevel), -1 )
+
     CALL ApplyPositivityLimiter_Euler_MF &
            ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCF(iLevel), +1 )
 
   END SUBROUTINE MakeNewLevelFromCoarse
 
@@ -407,16 +433,26 @@ CONTAINS
     CALL amrex_multifab_build( MF_uCF_tmp, BA, DM, nDOFX * nCF, swX )
     CALL amrex_multifab_build( MF_uDF_tmp, BA, DM, nDOFX * nDF, swX )
 
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, &
-                    ApplyBoundaryConditions_Geometry_Option = .TRUE. )
+    CALL MF_uGF_tmp % SetVal( Zero )
+    CALL MF_uCF_tmp % SetVal( Zero )
+    CALL MF_uDF_tmp % SetVal( Zero )
+
+    CALL FillPatch &
+           ( iLevel, MF_uGF, MF_uGF_tmp, &
+             ApplyBoundaryConditions_Geometry_Option = .TRUE. )
 
     CALL FillPatch( iLevel, MF_uDF, MF_uDF_tmp )
 
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp, &
-                    ApplyBoundaryConditions_Euler_Option = .TRUE. )
+    CALL FillPatch &
+           ( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp, &
+             ApplyBoundaryConditions_Euler_Option = .TRUE. )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF_tmp, MF_uCF_tmp, -1, swX_Option = swX )
 
     CALL ApplyPositivityLimiter_Euler_MF &
-           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
+           ( iLevel, MF_uGF_tmp, MF_uCF_tmp, MF_uDF_tmp, swX_Option = swX )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF_tmp, MF_uCF_tmp, +1, swX_Option = swX )
 
     CALL ClearLevel( iLevel )
 

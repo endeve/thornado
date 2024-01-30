@@ -1432,7 +1432,7 @@ CONTAINS
     DO iX3 = iX_B1(3), iX_E1(3)
     DO iX2 = iX_B1(2), iX_E1(2)
     DO iX1 = iX_B1(1), iX_E1(1)
-    DO iNX = 1, nDOFX
+    DO iNX = 1       , nDOFX
 
       D(iNX,iX1,iX2,iX3,iDF_Sh_X1) = Zero
       D(iNX,iX1,iX2,iX3,iDF_Sh_X2) = Zero

@@ -58,15 +58,16 @@ MODULE FinalizationModule
     ElectronNumber_Initial, &
     ElectronNumber_OffGrid, &
     ADMMass_Initial, &
-    ADMMass_OffGrid
+    ADMMass_OffGrid, &
+    ADMMass_Interior
   USE InputParsingModule, ONLY: &
     nLevels, &
     StepNo, &
     dt, &
     t_old, &
     t_new
-  USE MF_GravitySolutionModule_XCFC, ONLY: &
-    FinalizeGravitySolver_XCFC_MF
+  USE MF_GravitySolutionModule, ONLY: &
+    FinalizeGravitySolver_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
@@ -104,7 +105,8 @@ CONTAINS
              [ EulerMomentumX3_Initial, EulerMomentumX3_OffGrid ], &
              [ EulerEnergy_Initial    , EulerEnergy_OffGrid     ], &
              [ ElectronNumber_Initial , ElectronNumber_OffGrid  ], &
-             [ ADMMass_Initial        , ADMMass_OffGrid         ], &
+             [ ADMMass_Initial        , ADMMass_OffGrid, &
+               ADMMass_Interior ], &
              MF_uGF % BA % P, &
              iWriteFields_uGF = 1, &
              iWriteFields_uCF = 1, &
@@ -116,7 +118,7 @@ CONTAINS
 
     CALL FinalizeFluid_SSPRK_MF
 
-    CALL FinalizeGravitySolver_XCFC_MF
+    CALL FinalizeGravitySolver_MF
 
     CALL FinalizeTally_Euler_MF
 

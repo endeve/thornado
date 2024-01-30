@@ -86,6 +86,7 @@ MODULE  MF_Euler_dgDiscretizationModule
     nLevels, &
     UseTiling, &
     UseFluxCorrection_Euler, &
+    IsPeriodic, &
     DEBUG
   USE FillPatchModule, ONLY: &
     FillPatch
@@ -507,26 +508,37 @@ CONTAINS
 
     ! --- dM = Minterior - Minitial + ( OffGrid_Outer - OffGrid_Inner ) ---
 
-    IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo(1) ) &
-      OffGridFlux_Euler_MF(:,iLevel) &
-        = OffGridFlux_Euler_MF(:,iLevel) - OffGridFlux_Euler_X1_Inner
-    IF( iX_E0(1) .EQ. amrex_geom(iLevel) % domain % hi(1) ) &
-      OffGridFlux_Euler_MF(:,iLevel) &
-        = OffGridFlux_Euler_MF(:,iLevel) + OffGridFlux_Euler_X1_Outer
+    IF( .NOT. IsPeriodic(1) )THEN
 
-    IF( iX_B0(2) .EQ. amrex_geom(iLevel) % domain % lo(2) ) &
-      OffGridFlux_Euler_MF(:,iLevel) &
-        = OffGridFlux_Euler_MF(:,iLevel) - OffGridFlux_Euler_X2_Inner
-    IF( iX_E0(2) .EQ. amrex_geom(iLevel) % domain % hi(2) ) &
-      OffGridFlux_Euler_MF(:,iLevel) &
-        = OffGridFlux_Euler_MF(:,iLevel) + OffGridFlux_Euler_X2_Outer
+      IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo(1) ) &
+        OffGridFlux_Euler_MF(:,iLevel) &
+          = OffGridFlux_Euler_MF(:,iLevel) - OffGridFlux_Euler_X1_Inner
+      IF( iX_E0(1) .EQ. amrex_geom(iLevel) % domain % hi(1) ) &
+        OffGridFlux_Euler_MF(:,iLevel) &
+          = OffGridFlux_Euler_MF(:,iLevel) + OffGridFlux_Euler_X1_Outer
 
-    IF( iX_B0(3) .EQ. amrex_geom(iLevel) % domain % lo(3) ) &
-      OffGridFlux_Euler_MF(:,iLevel) &
-        = OffGridFlux_Euler_MF(:,iLevel) - OffGridFlux_Euler_X3_Inner
-    IF( iX_E0(3) .EQ. amrex_geom(iLevel) % domain % hi(3) ) &
-      OffGridFlux_Euler_MF(:,iLevel) &
-        = OffGridFlux_Euler_MF(:,iLevel) + OffGridFlux_Euler_X3_Outer
+    END IF
+
+    IF( .NOT. IsPeriodic(2) )THEN
+
+      IF( iX_B0(2) .EQ. amrex_geom(iLevel) % domain % lo(2) ) &
+        OffGridFlux_Euler_MF(:,iLevel) &
+          = OffGridFlux_Euler_MF(:,iLevel) - OffGridFlux_Euler_X2_Inner
+      IF( iX_E0(2) .EQ. amrex_geom(iLevel) % domain % hi(2) ) &
+        OffGridFlux_Euler_MF(:,iLevel) &
+          = OffGridFlux_Euler_MF(:,iLevel) + OffGridFlux_Euler_X2_Outer
+
+    END IF
+
+    IF( .NOT. IsPeriodic(3) )THEN
+
+      IF( iX_B0(3) .EQ. amrex_geom(iLevel) % domain % lo(3) ) &
+        OffGridFlux_Euler_MF(:,iLevel) &
+          = OffGridFlux_Euler_MF(:,iLevel) - OffGridFlux_Euler_X3_Inner
+      IF( iX_E0(3) .EQ. amrex_geom(iLevel) % domain % hi(3) ) &
+        OffGridFlux_Euler_MF(:,iLevel) &
+          = OffGridFlux_Euler_MF(:,iLevel) + OffGridFlux_Euler_X3_Outer
+    END IF
 
   END SUBROUTINE IncrementOffGridTally_Euler
 

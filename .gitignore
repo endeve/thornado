@@ -35,6 +35,7 @@ pgipar*
 *thornado_*
 *Backtrace.*
 *Tally*dat
+*__pycache__
 
 # Doxygen
 Documents/html

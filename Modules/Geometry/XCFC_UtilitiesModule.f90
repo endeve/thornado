@@ -277,16 +277,30 @@ CONTAINS
 
 
   SUBROUTINE UpdateConformalFactorAndMetric_XCFC &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, M, G, Mask_Option )
 
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: M(1:,iX_B0(1)-swX_GS(1):, &
                                     iX_B0(2)-swX_GS(2):, &
                                     iX_B0(3)-swX_GS(3):,1:)
     REAL(DP), INTENT(inout) :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    INTEGER , INTENT(in), OPTIONAL :: &
+      Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER  :: iX1, iX2, iX3, iNX, iNX1, iNX2, iX_B(3), iX_E(3)
     REAL(DP) :: X1, X2, Psi
+
+    INTEGER :: Mask(iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1)
+
+    IF( PRESENT( Mask_Option ) )THEN
+
+      Mask = Mask_Option
+
+    ELSE
+
+      Mask = iLeaf
+
+    END IF
 
     iX_B = iX_B0 - swX_GS
     iX_E = iX_E0 + swX_GS
@@ -294,6 +308,8 @@ CONTAINS
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)
     DO iX1 = iX_B(1), iX_E(1)
+
+      IF( IsNotLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
       DO iNX = 1, nDOFX
 
@@ -322,15 +338,29 @@ CONTAINS
 
 
   SUBROUTINE UpdateLapseShiftCurvature_XCFC &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, M, G, Mask_Option )
 
     INTEGER,  INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: M(1:,iX_B0(1)-swX_GS(1):, &
                                     iX_B0(2)-swX_GS(2):, &
                                     iX_B0(3)-swX_GS(3):,1:)
     REAL(DP), INTENT(inout) :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    INTEGER , INTENT(in), OPTIONAL :: &
+      Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iNX, iX1, iX2, iX3, iX_B(3), iX_E(3)
+
+    INTEGER :: Mask(iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1)
+
+    IF( PRESENT( Mask_Option ) )THEN
+
+      Mask = Mask_Option
+
+    ELSE
+
+      Mask = iLeaf
+
+    END IF
 
     iX_B = iX_B0 - swX_GS
     iX_E = iX_E0 + swX_GS
@@ -338,6 +368,8 @@ CONTAINS
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)
     DO iX1 = iX_B(1), iX_E(1)
+
+      IF( IsNotLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
       DO iNX = 1, nDOFX
 

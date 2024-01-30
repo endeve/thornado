@@ -10,6 +10,7 @@ import GlobalVariables.Settings as gvS
 import GlobalVariables.Units    as gvU
 
 from Utilities.GetPlotData  import GetPlotData
+from Utilities.GetFrameData import GetFrameData
 
 """
 
@@ -28,18 +29,30 @@ Alernate usage, plot specific file in PlotDirectory:
 #### ========== User Input ==========
 
 # Specify name of problem
-ProblemName = 'YahilCollapse_XCFC'
+ProblemName = 'AdiabaticCollapse_XCFC'
 
 # Specify title of figure
 FigTitle = ProblemName
 
 # Specify directory containing amrex Plotfiles
-PlotDirectoryA = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/YahilCollapse_XCFC/Data_9Lvls_512/'
-FrameNumberA = 0# -1  # -1 -> argv, or last frame
+gvS.nDirs = 2
 
+PlotDirectories = ['None']*gvS.nDirs
 
-PlotDirectoryB = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/YahilCollapse_XCFC/Data_9Lvls_512/'
-FrameNumberB = 13 # -1 -> argv, or last frame
+#PlotDirectories[0] = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC'
+#PlotDirectories[1] = '/Users/nickroberts/thornado/SandBox/AdiabaticCollapse_XCFC/Output'
+
+PlotDirectories[0] = '/Users/nickroberts/thornado_clean/thornado/SandBox/AdiabaticCollapse_XCFC/Output'
+PlotDirectories[1] = '/Users/nickroberts/thornado_clean/thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC'
+    
+gvS.DataType = ['None']*gvS.nDirs
+#gvS.DataType[0] = 'AMReX'
+#gvS.DataType[1] = 'Native'
+ 
+gvS.DataType[0] = 'Native'
+gvS.DataType[1] = 'AMReX'
+ 
+FrameNumber = 0 # -1 -> argv, or last frame
 
 
 
@@ -61,20 +74,32 @@ UsePhysicalUnits = False
 CoordinateSystem = 'cartesian'
 
 # Max level of refinement to plot (-1 plots leaf elements)
-MaxLevel = -1
+gvS.MaxLevel = -1
+
+# Include initial conditions in movie?
+gvS.ShowIC = True
+
+gvS.PlotMesh = False
 
 # Write extra info to screen
-Verbose = True
+gvS.Verbose = True
 
 # Use custom limts for y-axis (1D) or colorbar (2D)
-UseCustomLimits = False
-vmin = 0.0
-vmax = 2.0
+gvS.UseCustomLimits = True
+gvS.vmin = 1.0e-16
+gvS.vmax = 1.0e1
 
-ShowRefinement = True
-RefinementLocations = [ 5.0e+4, 2.5E+4, 1.25E+4, 6.25E+3, 3.125E+3, \
-                        1.5625E+3, 7.8125E+2, 3.90625E+2, 1.953125E+2 ]
+gvS.MovieRunTime = 10.0 # seconds
 
+gvS.ShowRefinement = True
+gvS.RefinementLevels = 7
+
+gvS.ReferenceBounce = False
+
+
+gvS.amr = True
+    
+    
 # Save figure (True) or plot figure (False)
 SaveFig = False
 
@@ -93,52 +118,62 @@ polar = False
 if CoordinateSystem == 'spherical':
     polar = True
 
-ID      = '{:s}_{:s}'.format( ProblemName, Field )
-FigName = 'fig.{:s}.png'.format( ID )
+DataDirectories = ['None']*gvS.nDirs
+
+DataDirectories[0] = 'DataDirectories/{:s}_DWN'.format( ProblemName )
+DataDirectories[1] = 'DataDirectories/{:s}_DWNB'.format( ProblemName )
+
+ID            = '{:s}_{:s}'.format( ProblemName, Field )
+gvS.MovieName     = 'mov.{:s}_RelDiff.mp4'.format( ID )
 
 # Append "/" to PlotDirectory, if not present
-if not PlotDirectoryA[-1] == '/': PlotDirectoryA += '/'
-if not PlotDirectoryB[-1] == '/': PlotDirectoryB += '/'
+for i in range(gvS.nDirs):
+    if not PlotDirectories[i][-1] == '/': PlotDirectories[i] += '/'
 
 
 gvU.SetSpaceTimeUnits(CoordinateSystem, UsePhysicalUnits)
 
 
-DataA, DataUnitA, TimeA,    \
-X1A, X2A, X3A,              \
-dX1A, dX2A, dX3A, xLA, xHA = GetPlotData( PlotDirectoryA,   \
-                                          PlotBaseName,     \
-                                          Field,            \
-                                          FrameNumberA,     \
-                                          argv,             \
-                                          Verbose           )
-
- 
- 
-DataB, DataUnitB, TimeB,    \
-X1B, X2B, X3B,              \
-dX1B, dX2B, dX3B, xLB, xHB = GetPlotData( PlotDirectoryB,   \
-                                          PlotBaseName,     \
-                                          Field,            \
-                                          FrameNumberB,     \
-                                          argv,             \
-                                          Verbose           )
- 
+Data = ['None']*gvS.nDirs
+DataUnits = ['None']*gvS.nDirs
+X1 = ['None']*gvS.nDirs
+X2 = ['None']*gvS.nDirs
+X3 = ['None']*gvS.nDirs
+Time = ['None']*gvS.nDirs
+dX1 = ['None']*gvS.nDirs
+dX2 = ['None']*gvS.nDirs
+dX3 = ['None']*gvS.nDirs
+xL = ['None']*gvS.nDirs
+xH = ['None']*gvS.nDirs
 
 
+for i in range(gvS.nDirs):
+
+    Data[i], DataUnits[i], Time[i],    \
+    X1[i], X2[i], X3[i],              \
+    dX1[i], dX2[i], dX3[i] = GetPlotData( PlotDirectories[i],     \
+                                                        PlotBaseName,           \
+                                                        Field,                  \
+                                                        gvS.DataType[i],        \
+                                                        FrameNumber,            \
+                                                        argv,                   \
+                                                        gvS.Verbose             )
+
+
+    xL[i] = X1[i][0 ] - 0.5 * dX1[i][0 ]
+    xH[i] = X1[i][-1] + 0.5 * dX1[i][-1]
 
 
 
-
-if (any(X1A != X1B)):
+if (any(X1[0] != X1[1])):
     msg = "\nRaidal meshes do not match. \n"
     msg +=" Can not do a proper relative difference.\n"
     exit(msg)
 
 
-nX1 = X1A.shape[0]
-nX2 = X2A.shape[0]
-nX3 = X3A.shape[0]
+nX1 = X1[0].shape[0]
+nX2 = X2[0].shape[0]
+nX3 = X3[0].shape[0]
 
 
 nDims = 1
@@ -150,32 +185,32 @@ if nDims == 1:
     fig, ax = plt.subplots( 1, 1 )
     
     
-    RelDiff = abs(DataA-DataB)/abs(DataA)
+    RelDiff = abs(Data[0]-Data[1])/abs(Data[0])
 
-    ax.plot( X1A, RelDiff, 'k.' )
+    ax.plot( X1[0], RelDiff, 'k.' )
     
     
     if UseLogScale_X:
         ax.set_xscale( 'log' )
-        print(xLA[0], 0.0 + 0.25 * dX1A[0])
-        xLA = [ max( xLA[0], 0.0 + 0.25 * dX1A[0] ), 0 ]
+        print(xL[0][0], 0.0 + 0.25 * dX1[0][0])
+        xLA = [ 0.0 + 0.25 * dX1[0][0], 0 ]
         
     if UseLogScale_Y: ax.set_yscale( 'log' )
     
     if UseCustomLimits: ax.set_ylim( vmin, vmax )
     
-    if ShowRefinement:
-        bottom, top = plt.ylim()
-        ax.plot( (RefinementLocations[:], RefinementLocations[:]), \
-                 (top, bottom),     \
-                 scaley = False,    \
-                 color  = 'red',    \
-                 zorder = 0,        \
-                 alpha  = 0.4       )
+#    if ShowRefinement:
+#        bottom, top = plt.ylim()
+#        ax.plot( (RefinementLocations[:], RefinementLocations[:]), \
+#                 (top, bottom),     \
+#                 scaley = False,    \
+#                 color  = 'red',    \
+#                 zorder = 0,        \
+#                 alpha  = 0.4       )
 
 
 
-    ax.set_xlim( xLA[0], xHA[0] )
+    ax.set_xlim( xL[0][0], xH[0][0] )
     ax.set_xlabel \
       ( r'$x^{{1}}\ \left[\mathrm{{{:}}}\right]$'.format( gvU.X1Units ), \
         fontsize = 15 )

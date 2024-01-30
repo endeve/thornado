@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import numpy as np
+import h5py as h5
 import yt
 import math
 
@@ -22,14 +23,17 @@ import math
  #=============================================#
 def CreateLocations(File,               \
                     MaxLevel = -1,      \
-                    TypeIn = "Leaf"     ):
-
+                    TypeIn = "AMReX"     ):
 
     CheckMeshType(TypeIn)
 
-    if TypeIn.lower() == "leaf":
+    if TypeIn.lower() == "amrex":
         X1, X2, X3, dX1, dX2, dX3, xL, xH           \
             = CreateLeafLocations(  File            )
+            
+    elif TypeIn.lower() == "native":
+        X1, X2, X3, dX1, dX2, dX3, xL, xH           \
+            = CreateNativeLocations(  File          )
     
     elif TypeIn.lower() == "uniform":
         X1, X2, X3, dX1, dX2, dX3, xL, xH           \
@@ -111,8 +115,36 @@ def CreateLeafLocations( File ):
     
     
     
+ #=============================================#
+#                                               #
+#   CreateNativeLocations                       #
+#                                               #
+ #=============================================#
+def CreateNativeLocations( File ):
+
+    PathRoot = File[:-6]
+    FrameNumber = File[-6:]
+    FF_root = PathRoot + 'FluidFields_'
+
+    DataFileName = FF_root + str( FrameNumber ) + '.h5'
+    Data_FF      = h5.File( DataFileName, 'r' )
+
+    # Get the spatial grid
+    X    = Data_FF[ 'Spatial Grid' ]
+    X1   = np.array( X[ 'X1' ] )
+    X2   = np.array( X[ 'X2' ] )
+    X3   = np.array( X[ 'X3' ] )
+    X1_C = np.array( X[ 'X1_C' ] )
+    X2_C = np.array( X[ 'X2_C' ] )
+    X3_C = np.array( X[ 'X3_C' ] )
+    dX1  = np.array( X[ 'dX1' ] )
+    dX2  = np.array( X[ 'dX2' ] )
+    dX3  = np.array( X[ 'dX3' ] )
     
-    
+    xL = [X1_C[0]-dX1[0]/2.0,X2_C[0]-dX2[0]/2.0,X3_C[0]-dX3[0]/2.0]
+    xH = [X1_C[-1]+dX1[-1]/2.0,X2_C[-1]+dX2[-1]/2.0,X3_C[-1]+dX3[-1]/2.0]
+        
+    return X1, X2, X3, dX1, dX2, dX3, xL, xH
     
     
     
@@ -197,12 +229,13 @@ def CreateUniformLocations( File,               \
  #=============================================#
 def CheckMeshType( TypeIn ):
 
-    Types = set(Type.lower() for Type in ("Leaf","Uniform"))
+    Types = set(Type.lower() for Type in ("amrex","native","uniform"))
     
     msg =  "\n\n Invalid mesh type: {:}. \n".format( TypeIn )
     msg += "\n Acceptable types: \n"
     msg += "-------------------\n"
-    msg += "Leaf \n"
+    msg += "AMReX \n"
+    msg += "Native \n"
     msg += "Uniform \n"
     assert( TypeIn.lower() in Types ), msg
     

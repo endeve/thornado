@@ -2,44 +2,25 @@ MODULE InitializationModule_Relativistic
 
   USE KindModule, ONLY: &
     DP, &
-    Zero, &
-    Half
+    Zero
+  USE UtilitiesModule, ONLY: &
+    Locate, &
+    NodeNumberX, &
+    Interpolate1D_Linear
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
-    nDOFX, &
     nNodesX, &
     iX_B0, &
-    iX_B1, &
     iX_E0, &
     iX_E1
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
-  USE UtilitiesModule, ONLY: &
-    Locate, &
-    NodeNumberX, &
-    Interpolate1D_Linear
-  USE XCFC_UtilitiesModule, ONLY: &
-    MultiplyWithPsi6, &
-    nGS, &
-    nMF, &
-    UpdateConformalFactorAndMetric_XCFC, &
-    UpdateLapseShiftCurvature_XCFC, &
-    ApplyBoundaryConditions_Geometry_XCFC
-  USE GravitySolutionModule_XCFC, ONLY: &
-    ComputeConformalFactor_XCFC, &
-    ComputeLapseShiftCurvature_XCFC
-  USE Euler_XCFC_UtilitiesModule, ONLY: &
-    ComputeConformalFactorSourcesAndMg_XCFC_Euler, &
-    ComputePressureTensorTrace_XCFC_Euler
   USE GeometryFieldsModule, ONLY: &
     uGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
-    iGF_Gm_dd_33, &
-    iGF_Alpha,    &
-    iGF_Psi, &
-    nGF
+    iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
     uPF, &
     iPF_D, &
@@ -55,7 +36,6 @@ MODULE InitializationModule_Relativistic
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
-    nCF, &
     uAF, &
     iAF_P, &
     iAF_T, &
@@ -69,15 +49,9 @@ MODULE InitializationModule_Relativistic
     iAF_Xn, &
     iAF_Xa, &
     iAF_Xh, &
-    iAF_Gm, &
-    uDF
-  USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
-    ApplySlopeLimiter_Euler_Relativistic_TABLE
-  USE Euler_PositivityLimiterModule_Relativistic_TABLE, ONLY: &
-    ApplyPositivityLimiter_Euler_Relativistic_TABLE
+    iAF_Gm
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
-    ComputeConserved_Euler_Relativistic, &
-    ComputeFromConserved_Euler_Relativistic
+    ComputeConserved_Euler_Relativistic
   USE EquationOfStateModule, ONLY: &
     ComputeThermodynamicStates_Primitive, &
     ApplyEquationOfState
@@ -136,30 +110,6 @@ CONTAINS
     INTEGER                :: iNodeX1, iNodeX2, iNodeX3, iNodeX
     REAL(DP)               :: X1
     TYPE(ProgenitorType1D) :: P1D
-
-    REAL(DP) :: uGS(nDOFX,iX_B0(1):iX_E0(1), &
-                          iX_B0(2):iX_E0(2), &
-                          iX_B0(3):iX_E0(3),nGS)
-    REAL(DP) :: uMF(nDOFX,iX_B0(1):iX_E0(1), &
-                          iX_B0(2):iX_E0(2), &
-                          iX_B0(3):iX_E0(3),nMF)
-
-    INTEGER  :: ITER
-    REAL(DP) :: dAlpha, dPsi
-    LOGICAL  :: CONVERGED
-
-    REAL(DP) :: dAl1(nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3))
-    REAL(DP) :: dCF1(nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3))
-    REAL(DP) :: dAl2(nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3))
-    REAL(DP) :: dCF2(nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3))
 
     WRITE(*,*)
     WRITE(*,'(6x,A,A)') &
@@ -259,87 +209,6 @@ CONTAINS
 
     END ASSOCIATE ! R1D, etc
 
-    ! --- Iterate to incorporate gravity in initial conditions ---
-
-    CONVERGED = .FALSE.
-    ITER = 0
-
-    DO WHILE( .NOT. CONVERGED )
-
-      ITER = ITER + 1
-
-      dAl1 = uGF(:,iX_B0(1):iX_E0(1), &
-                   iX_B0(2):iX_E0(2), &
-                   iX_B0(3):iX_E0(3),iGF_Alpha)
-      dCF1 = uGF(:,iX_B0(1):iX_E0(1), &
-                   iX_B0(2):iX_E0(2), &
-                   iX_B0(3):iX_E0(3),iGF_Psi  )
-
-      CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, +1 )
-
-      CALL ComputeConformalFactor &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
-
-      CALL ComputeLapseShiftCurvature &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
-
-      dAl2 = uGF(:,iX_B0(1):iX_E0(1), &
-                   iX_B0(2):iX_E0(2), &
-                   iX_B0(3):iX_E0(3),iGF_Alpha)
-      dCF2 = uGF(:,iX_B0(1):iX_E0(1), &
-                   iX_B0(2):iX_E0(2), &
-                   iX_B0(3):iX_E0(3),iGF_Psi  )
-
-      dAlpha = MINVAL( ABS( dAl2 - dAl1 ) / ( Half * ( dAl1 + dAl2 ) ) )
-      dPsi   = MINVAL( ABS( dCF2 - dCF1 ) / ( Half * ( dCF1 + dCF2 ) ) )
-
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E1(1)
-
-        CALL ComputeConserved_Euler_Relativistic &
-               ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
-                 uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
-                 uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
-                 uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
-                 uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
-                 uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
-                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 uAF(:,iX1,iX2,iX3,iAF_P) )
-
-      END DO
-      END DO
-      END DO
-
-      IF( MAX( dAlpha, dPsi ) .LT. 1.0e-13_DP ) CONVERGED = .TRUE.
-
-      IF( ITER .EQ. 10 )THEN
-
-        WRITE(*,*) 'Could not initialize fields. Exiting...'
-        STOP
-
-      END IF
-
-    END DO
-
-    CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
-
-    CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
-
-    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, +1 )
-
-    CALL ComputeConformalFactor &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
-
-    CALL ComputeLapseShiftCurvature &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uMF, uGS )
-
-    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, -1 )
-
   END SUBROUTINE InitializeFields_AdiabaticCollapse_XCFC
 
 
@@ -377,55 +246,6 @@ CONTAINS
     RETURN
 
   END FUNCTION Interpolate1D
-
-
-  SUBROUTINE ComputeConformalFactor &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
-
-    INTEGER , INTENT(in)    :: &
-      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(inout) :: &
-      G    (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nGF), &
-      Ustar(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nCF), &
-      M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF), &
-      GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
-
-    CALL ComputeConformalFactorSourcesAndMg_XCFC_Euler &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
-
-    CALL ComputeConformalFactor_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
-
-    CALL UpdateConformalFactorAndMetric_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
-
-  END SUBROUTINE ComputeConformalFactor
-
-
-  SUBROUTINE ComputeLapseShiftCurvature &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, M, GS )
-
-    INTEGER , INTENT(in)    :: &
-      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(inout) :: &
-      G    (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nGF), &
-      Ustar(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),nCF), &
-      M    (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nMF), &
-      GS   (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),nGS)
-
-    CALL ComputePressureTensorTrace_XCFC_Euler &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, Ustar, GS )
-
-    CALL ComputeLapseShiftCurvature_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, GS, M )
-
-    CALL UpdateLapseShiftCurvature_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, M, G )
-
-    CALL ApplyBoundaryConditions_Geometry_XCFC &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G )
-
-  END SUBROUTINE ComputeLapseShiftCurvature
 
 
 END MODULE InitializationModule_Relativistic

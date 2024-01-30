@@ -22,6 +22,7 @@ from Utilities.Files        import GetFileNumberArray, ChoosePlotFile
 def GetPlotData( PlotDirectory,     \
                  PlotBaseName,      \
                  Field,             \
+                 DataType,          \
                  FrameNumber = -1,  \
                  argv = ['a'],      \
                  Verbose = "False"  ):
@@ -42,14 +43,12 @@ def GetPlotData( PlotDirectory,     \
 
     File = PlotDirectory + FileName
 
-    X1_C, X2_C, X3_C, dX1, dX2, dX3, xL, xH             \
-        = CreateLocations(  File, TypeIn = "Leaf"      )
-
-    Data, DataUnit, Time \
-        = GetFrameData( File,               \
-                        Field,              \
-                        X1_C, X2_C, X3_C,   \
-                        dX1, dX2, dX3       )
+    Data, DataUnit,     \
+    X1_C, X2_C, X3_C,   \
+    dX1, dX2, dX3,      \
+    Time = GetFrameData( File,       \
+                        DataType,    \
+                        Field        )
 
 
-    return Data, DataUnit, Time, X1_C, X2_C, X3_C, dX1, dX2, dX3, xL, xH
+    return Data, DataUnit, Time, X1_C, X2_C, X3_C, dX1, dX2, dX3

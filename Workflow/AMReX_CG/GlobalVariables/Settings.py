@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 
+global tb
+tb = -1.0
+global yLabel
+yLabel = ''
+global yScale
+yScale = 1.0
 
 global ProblemName
 global FigTitle
@@ -47,7 +53,9 @@ global RefinementLevels
 
 
 global DataDirectory
+global DataType
 
+global cellAverageFlag
 
 global nSources
 
@@ -94,6 +102,7 @@ MovieRunTime = 10
 ShowRefinement       = False
 RefinementLocations  = []
 
+ReferenceBounce = False
 
 DataDirectory = ''
 

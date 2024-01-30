@@ -152,6 +152,7 @@ extern "C"
       HeaderFile << ElectronNumberArr [1] << "\n";
       HeaderFile << ADMMassArr        [0] << "\n";
       HeaderFile << ADMMassArr        [1] << "\n";
+      HeaderFile << ADMMassArr        [2] << "\n"; // ADMMass_Interior
 
       // Write the BoxArray at each level
       for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )
@@ -227,6 +228,7 @@ extern "C"
     Real ElectronNumber_OffGrid;
     Real ADMMass_Initial;
     Real ADMMass_OffGrid;
+    Real ADMMass_Interior;
 
     ParmParse pp("thornado");
     chk_file = "chk";
@@ -342,6 +344,9 @@ extern "C"
     is >> ADMMass_OffGrid;
     GotoNextLine( is );
     ADMMassArr[1] = ADMMass_OffGrid;
+    is >> ADMMass_Interior;
+    GotoNextLine( is );
+    ADMMassArr[2] = ADMMass_Interior;
 
     // Read in level 'iLevel' BoxArray from Header
     for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )

@@ -2,7 +2,11 @@ PROGRAM ComputePrimitiveTest_Single
 
   USE KindModule, ONLY: &
     DP, &
+    Zero, &
     One
+  USE ProgramInitializationModule, ONLY: &
+    InitializeProgram, &
+    FinalizeProgram
   USE GeometryFieldsModule, ONLY: &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
@@ -57,37 +61,71 @@ PROGRAM ComputePrimitiveTest_Single
   REAL(DP), PARAMETER :: UnitsGm22 = One
   REAL(DP), PARAMETER :: UnitsGm33 = One
 
-  INTEGER  :: iErr
-  REAL(DP) :: Gamma_IDEAL
-  REAL(DP) :: G(nGF), U(nCF), P(nPF)
+  INTEGER      :: iErr, ITERATION, iX_B0(3), iX_E0(3), iNX, iX1, iX2, iX3
+  REAL(DP)     :: Gamma_IDEAL, X1_C, X2_C, X3_C, dX1, dX2, dX3
+  REAL(DP)     :: G(nGF), U(nCF), P(nPF)
+  CHARACTER(2) :: iDimX
 
-  iErr = 0
-  Gamma_IDEAL = 4.0_DP / 3.0_DP
+  CHARACTER(256) :: ProgramName      = 'ComputePrimitiveTest_Single'
+  CHARACTER(256) :: CoordinateSystem = 'SPHERICAL'
+  LOGICAL        :: ActivateUnits    = .TRUE.
+
+  iErr         = 0
+  ITERATION    = 0
+  Gamma_IDEAL = 1.30_DP!4.0_DP / 3.0_DP
+
+  CALL InitializeProgram &
+         ( ProgramName_Option &
+             = TRIM( ProgramName ), &
+           CoordinateSystem_Option &
+             = TRIM( CoordinateSystem ), &
+           ActivateUnits_Option &
+             = ActivateUnits, &
+           BasicInitialization_Option &
+             = .TRUE. )
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option = 'IDEAL', &
            Gamma_IDEAL_Option = Gamma_IDEAL, &
            Verbose_Option = .TRUE. )
 
-  U(iCF_D       ) =  4.7052933109437282E-017_DP
-  U(iCF_S1      ) = -1.5254676338844351E-017_DP
-  U(iCF_S2      ) =  0.0000000000000000E+000_DP
-  U(iCF_S3      ) =  0.0000000000000000E+000_DP
-  U(iCF_E       ) =  2.2061209954548441E-018_DP
-  U(iCF_Ne      ) =  0.0000000000000000E+000_DP
-  G(iGF_Gm_dd_11) =  1.0950993657030816E+000_DP
-  G(iGF_Gm_dd_22) =  8.8703048621949596E+009_DP
-  G(iGF_Gm_dd_33) =  8.8703048621949596E+009_DP
+  ITERATION=           00000026
+  iNX=  00000002
+  iDimX= 'X1'
+  iX1=1
+  iX2=1
+  iX3=1
+  iX_B0=[                00000,  00001,  00001]
+  iX_E0=[                00031,  00001,  00001]
+  X1_C=  +2.929688E+002_DP * Kilometer
+  X2_C=  +1.570796E+000_DP
+  X3_C=  +3.141593E+000_DP
+  dX1=   +1.953125E+002_DP * Kilometer
+  dX2=   +3.141593E+000_DP
+  dX3=   +6.283185E+000_DP
+  U(iCF_D       ) = +7.4207342150334740E+009_DP * ( Gram / Centimeter**3 )
+  U(iCF_S1      ) = -1.1594721657221886E+019_DP * ( Gram / Centimeter**2 / Second )
+  U(iCF_S2      ) = +0.0000000000000000E+000_DP
+  U(iCF_S3      ) = +0.0000000000000000E+000_DP
+  U(iCF_E       ) = +8.8927190722882423E+027_DP * ( Erg / Centimeter**3 )
+  U(iCF_Ne      ) = +0.0000000000000000E+000_DP
+  G(iGF_Gm_dd_11) = +1.0179343532647396E+000_DP
+  G(iGF_Gm_dd_22) = +3.8864700701499372E+004_DP * Kilometer**2
+  G(iGF_Gm_dd_33) = +3.8864700701499372E+004_DP * Kilometer**2
 
   CALL ComputePrimitive_Euler_Relativistic &
     ( U(iCF_D ), U(iCF_S1), U(iCF_S2), U(iCF_S3), U(iCF_E), U(iCF_Ne), &
       P(iPF_D ), P(iPF_V1), P(iPF_V2), P(iPF_V3), P(iPF_E), P(iPF_Ne), &
-      G(iGF_Gm_dd_11), G(iGF_Gm_dd_22), G(iGF_Gm_dd_33), iErr )
+      G(iGF_Gm_dd_11), G(iGF_Gm_dd_22), G(iGF_Gm_dd_33), &
+      ITERATION_Option = Iteration, iErr_Option = iErr )
 
   CALL DescribeError_Euler &
     ( iErr, &
-      Int_Option = [ 1 ], &
-      Real_Option = [ U(iCF_D ), &
+      Int_Option = [ ITERATION, iNX, iX_B0(1), iX_B0(2), iX_B0(3), &
+                                     iX_E0(1), iX_E0(2), iX_E0(3), &
+                                iNX, iX1     , iX2     , iX3 ], &
+      Real_Option = [ X1_C, X2_C, X3_C, dX1, dX2, dX3, &
+                      U(iCF_D ), &
                       U(iCF_S1), &
                       U(iCF_S2), &
                       U(iCF_S3), &
@@ -102,5 +140,7 @@ PROGRAM ComputePrimitiveTest_Single
   PRINT '(A,ES24.16E3)', 'PF_E : ', P(iPF_E ) / UnitsE
 
   CALL FinalizeEquationOfState
+
+  CALL FinalizeProgram
 
 END PROGRAM ComputePrimitiveTest_Single
