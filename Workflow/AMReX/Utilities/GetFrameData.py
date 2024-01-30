@@ -198,6 +198,10 @@ def GetFieldData( ds,                   \
         Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
         DataUnits = 'km/s'
 
+    elif Field == 'GF_Phi_N':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        DataUnits = 'erg/g'
+
     elif Field == 'GF_Gm_11':
         Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
         DataUnits = ''
@@ -527,6 +531,7 @@ def GetFieldData( ds,                   \
         print( '  AF_T' )
         print( '  AF_S' )
         print( '  AF_Cs' )
+        print( '  GF_Phi_N' )
         print( '  GF_Gm_11' )
         print( '  GF_Gm_22' )
         print( '  GF_Gm_33' )
