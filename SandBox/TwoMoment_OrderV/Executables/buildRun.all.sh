@@ -29,7 +29,6 @@ function set_common(){
    export LD_LIBRARY_PATH=${HDF5_LIB}:$LD_LIBRARY_PATH
    #export LIBOMPTARGET_PLUGIN=LEVEL0
    #export ONEAPI_DEVICE_FILTER=level_zero:gpu
-   ##export LIBOMPTARGET_PLUGIN=OPENCL
    #export LIBOMPTARGET_DEBUG=4
    #export EnableImplicitScaling=1
    export ZE_AFFINITY_MASK=0.0
@@ -41,14 +40,6 @@ function set_common(){
    export LIBOMPTARGET_LEVEL_ZERO_MEMORY_POOL=device,128,64,16384
    export FI_PROVIDER=sockets
 
-#   export IGC_ShaderDumpEnable=1
-#   export IGC_ShowFullVectorsInShaderDumps=1
-
-   #export LIBOMPTARGET_LEVEL_ZERO_COMMAND_BATCH=copy,8
-   export IGC_EnableZEBinary=0
-   #export IGC_ForceOCLSIMDWidth=16
-   #export LIBOMPTARGET_LEVEL_ZERO_USE_IMMEDIATE_COMMAND_LIST=0
-   #export SYCL_PI_LEVEL_ZERO_USE_IMMEDIATE_COMMANDLISTS=0
 }
 
 ###########################################################################################
@@ -62,6 +53,8 @@ function buildApp(){
 
    make clean
    ( time make -j 16 $APP_NAME ${USER_OPTION} USE_OMP_OL=TRUE USE_GPU=TRUE USE_CUDA=FALSE USE_ONEMKL=TRUE ) |& tee -a $LOG_FILE
+   mv ${APP_NAME}_${THORNADO_MACHINE} $exeName
+   echo "${exeName} has been build" 
 }
 
 ###########################################################################################
@@ -83,35 +76,35 @@ function runApp(){
 
    if [[ "$ACTION" == "iprof" ]]; then
       module load iprof/0.11.2
-      ( time iprof ./${APP_NAME}_${THORNADO_MACHINE} ) |& tee -a $LOG_FILE
+      ( time iprof ./${exeName} ) |& tee -a $LOG_FILE
    elif [[ "$ACTION" == "onetrace" ]]; then
       module use /nfs/pdx/home/roymoore/modules
       module load onetrace
-      (time onetrace -h -d  ./${APP_NAME}_${THORNADO_MACHINE} ) |& tee -a $LOG_FILE
-      #(time onetrace -h -d -v ./${APP_NAME}_${THORNADO_MACHINE} ) |& tee -a $LOG_FILE
+      (time onetrace -h -d  ./${exeName} ) |& tee -a $LOG_FILE
+      #(time onetrace -h -d -v ./${exeName} ) |& tee -a $LOG_FILE
    elif [[ "$ACTION" == "vtune" ]]; then
       set -x
        vtune -version
-      #(time (vtune -collect gpu-hotspots -knob characterization-mode=global-local-accesses -data-limit=0 -r ${VT_OUTPUT} ./${APP_NAME}_${THORNADO_MACHINE})) |& tee -a $OUTPUT_LOG
-      (time (vtune -collect gpu-hotspots -data-limit=0 -r ${VT_OUTPUT} ./${APP_NAME}_${THORNADO_MACHINE})) |& tee -a $OUTPUT_LOG
+      #(time (vtune -collect gpu-hotspots -knob characterization-mode=global-local-accesses -data-limit=0 -r ${VT_OUTPUT} ./${exeName})) |& tee -a $OUTPUT_LOG
+      (time (vtune -collect gpu-hotspots -data-limit=0 -r ${VT_OUTPUT} ./${exeName})) |& tee -a $OUTPUT_LOG
       set +x
    elif [[ "$ACTION" == "advisor" ]]; then
       module use /nfs/pdx/home/mheckel/modules/modulefiles_nightly
       module load nightly-advisor/23.2.0.614354
       #module load nightly-advisor/23.1.0.613762  ## VERY slow and require old binary. 
       #module load nightly-advisor/23.1.0.613901
-      time(advisor --collect=roofline --data-limit=0 --profile-gpu --project-dir=/localdisk/quanshao/ExaStar/thornado-ms69/SandBox/TwoMoment_OrderV/Executables/advisor-sineWave-umd692 -- ./${APP_NAME}_${THORNADO_MACHINE}) |& tee -a $OUTPUT_LOG
+      time(advisor --collect=roofline --data-limit=0 --profile-gpu --project-dir=/localdisk/quanshao/ExaStar/thornado-ms69/SandBox/TwoMoment_OrderV/Executables/advisor-sineWave-umd692 -- ./${exeName}) |& tee -a $OUTPUT_LOG
    else
 #      echo "FI_PROVIDER="$FI_PROVIDER
 #      gdb-oneapi ./ApplicationDriver_beacon_intel
-      ( time ./${APP_NAME}_${THORNADO_MACHINE} ) |& tee -a $LOG_FILE
+      ( time ./${exeName} ) |& tee -a $LOG_FILE
    fi
 
-   #(time /nfs/pdx/home/mheckel/pti-gpu/tools/bin/onetrace -h -d -v ./${APP_NAME}_${THORNADO_MACHINE} ) |& tee -a $LOG_FILE
-   #( time  gdb-oneapi ./${APP_NAME}_${THORNADO_MACHINE}) |& tee $OUTPUT_LOG
-   #valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --track-fds=yes ./${APP_NAME}_${THORNADO_MACHINE}|& tee -a $OUTPUT_LOG
-   #(vtune -collect gpu-hotspots -knob target-gpu=0:154:0.0 -ring-buffer 10 -r $VT_OUTPUT ./${APP_NAME}_${THORNADO_MACHINE}) |& tee -a $OUTPUT_LOG
-    #(vtune -collect gpu-hotspots -knob target-gpu=0:154:0.0 -r $VT_OUTPUT ./${APP_NAME}_${THORNADO_MACHINE}) |& tee -a $OUTPUT_LOG
+   #(time /nfs/pdx/home/mheckel/pti-gpu/tools/bin/onetrace -h -d -v ./${exeName} ) |& tee -a $LOG_FILE
+   #( time  gdb-oneapi ./${exeName}) |& tee $OUTPUT_LOG
+   #valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --track-fds=yes ./${exeName}|& tee -a $OUTPUT_LOG
+   #(vtune -collect gpu-hotspots -knob target-gpu=0:154:0.0 -ring-buffer 10 -r $VT_OUTPUT ./${exeName}) |& tee -a $OUTPUT_LOG
+    #(vtune -collect gpu-hotspots -knob target-gpu=0:154:0.0 -r $VT_OUTPUT ./${exeName}) |& tee -a $OUTPUT_LOG
 ##   vtune-backend --allow-remote-access --enable-server-profiling --reset-passphrase --web-port 8080 --data-directory=${VT_OUTPUT}
 
    echo "Log file:" $LOG_FILE "writting finished"
@@ -121,13 +114,6 @@ function runApp(){
 ###########################################################################################
 ###  Main 
 ###########################################################################################
-
-module purge
-
-#export COMPILER_DATE="2023.5.007"
-#module load oneapi/eng-compiler/2023.05.15.007
-#module load oneapi/eng-compiler/${COMPILER_DATE}
-#module switch -f mpich/52.2-256/icc-sockets-gpu mpich/51.2/icc-sockets-gpu    ## Needed by 05.15.007.
 
 #ACTION="iprof"
 #ACTION="perf"
@@ -145,12 +131,9 @@ BASE_CMP_DATE="eng-23/05.15.007"
 #BASE_UMD="-dev682.20"
 export AADEBUG=""
 export useAGRF="TRUE"
+module purge
 module load oneapi/eng-compiler/2023.10.15.002
-COMPILER_DATE="eng-23.10.15.002-Jan10-2c39d" 
-#umdf="-dev682.20"
-#module load oneapi/eng-compiler/2023.05.15.007
-#COMPILER_DATE="eng-23.05.15.007-org" 
-
+COMPILER_DATE="eng-23.10.15.002" 
 umdf=""
 
 #if action is empty, performance comparison will be done. otherwise there is no performance comparison and just run the app using such as onetrace, vtune etc. so action can be "", "onetrace", "iprof", "vtune", 
@@ -159,11 +142,11 @@ opLevels=(O3)
 #grids=("[64, 1, 1]" "[8, 8, 8]" "[16, 16, 16]")
 #gridNames=("64-1-1" "" "-xN16")
 grids=( "[8, 8, 8]" "[16, 16, 16]")
-gridNames=("" "-xN16")
+gridNames=("-xN8" "-xN16")
 #grids=( "[8, 8, 8]")
 #gridNames=("")
 appNames=(ApplicationDriver ApplicationDriver_Neutrinos)
-logFiles=(sineWaveWOMathi relaxWOMathi)
+logFiles=(sineWaveNRE relaxNRE)
 CaseNames=(SineWaveStreaming Relaxation)
 userOptions=("" "MICROPHYSICS=WEAKLIB")
 gridLines=(84 129)
@@ -205,7 +188,6 @@ do
          fi
 
          export OP_LEVEL=$op
-         export LOG_FILE=${logFiles[jj]}.${OP_LEVEL}.${COMPILER_DATE}${umdf}${gridNames[ii]}${faction}$AADEBUG
          export LOG_BASE=${logFiles[jj]}.${OP_LEVEL}.${BASE_CMP_DATE}${BASE_UMD}${gridNames[ii]}$AADEBUG
          export USER_OPTION=${userOptions[jj]}
 
@@ -221,41 +203,50 @@ do
          else 
             #echo $USER_OPTION
             echo "Building and/or running" ${logFiles[jj]} "using Op-level "${OP_LEVEL} 
-            rm $LOG_FILE
+            export exeName=${APP_NAME}_${THORNADO_MACHINE}${gridNames[ii]}
 
             if [[ "$1" == -[rR]* ]]; then
+               LOG_FILE=${logFiles[jj]}.${OP_LEVEL}.${COMPILER_DATE}${umdf}${gridNames[ii]}${faction}$AADEBUG
+               export LOG_FILE
+               rm $LOG_FILE
                echo ""
-               echo "Runing ${CaseNames[jj]} ..."
+               echo "Runing ${CaseNames[jj]} with a grid of ${grids[ii]} ..."
                echo ""
-               if [ -f "${APP_NAME}_${THORNADO_MACHINE}" ];then
-                  echo "$op ${grids[ii]} ${appNames[jj]}"
+               if [ -f "${exeName}" ];then
+                  echo "./${exeName}}"
                   runApp
                else
-                  echo "The executable does not exist", ${APP_NAME}_${THORNADO_MACHINE}
+                  echo "The executable does not exist", ${exeName}
                fi
             elif [[ "$1" == -[bB]* ]]; then
+               LOG_FILE=${logFiles[jj]}-BLD.${OP_LEVEL}.${COMPILER_DATE}${umdf}${gridNames[ii]}${faction}$AADEBUG
+               export LOG_FILE
+               rm $LOG_FILE
+               rm ${exeName}
                echo ""
-               echo "Compiling ${CaseNames[jj]} ..."
+               echo "Compiling ${CaseNames[jj]} with a grid of ${grids[ii]} ..."
                echo ""
-               rm ${APP_NAME}_${THORNADO_MACHINE}
                buildApp
             else
-               rm ${APP_NAME}_${THORNADO_MACHINE}
+               LOG_FILE=${logFiles[jj]}.${OP_LEVEL}.${COMPILER_DATE}${umdf}${gridNames[ii]}${faction}$AADEBUG
+               export LOG_FILE
+               rm $LOG_FILE
+               rm ${exeName}
                echo ""
-               echo "Compiling and Running ${CaseNames[jj]} ..."
+               echo "Compiling and Running ${CaseNames[jj]} with a grid of ${grids[ii]} ..."
                echo ""
                buildApp
-               if [ -f "${APP_NAME}_${THORNADO_MACHINE}" ];then
-                  echo "$op ${grids[ii]} ${appNames[jj]}"
+               if [ -f "${exeName}" ];then
+                  echo "./${exeName}"
                   runApp
                else
-                  echo "The executable does not exist", ${APP_NAME}_${THORNADO_MACHINE}
+                  echo "The executable does not exist", ${exeName}
                fi
             fi   
          fi
 
          ## compare IMEX_TIME to the BASE_DATE
-         if [[ -z $ACTION ]];then
+         if [[ -z $ACTION && "$1" != -[bB]* ]]; then
             baseTime=`grep Timer_IMEX $LOG_BASE |cut -d':' -f2`
             baseTime=`echo $baseTime |cut -d ' ' -f1`
             baseTime=`printf "%.6f" $baseTime`
@@ -290,7 +281,7 @@ do
 done
 done
 
-if [[ -z $ACTION ]];then
+if [[ -z $ACTION && "$1" != -[bB]* ]];then
    echo
    echo " Performance Comparison between compiler $COMPILER_DATE and $BASE_DATE"
    echo 
