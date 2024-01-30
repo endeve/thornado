@@ -106,8 +106,8 @@ dX1, dX2, dX3, xL, xH = GetPlotData( PlotDirectory,     \
                                      Field,             \
                                      argv = argv,       \
                                      Verbose = Verbose  )
- 
- 
+
+
 
 
 
@@ -129,16 +129,16 @@ if nDims == 1:
     fig, ax = plt.subplots( 1, 1 )
 
     ax.plot( X1_C, Data, 'k.' )
-    
-    
+
+
     if UseLogScale_X:
         ax.set_xscale( 'log' )
         xL = [ max( xL[0], 0.0 + 0.25 * dX1[0] ), 0 ]
-        
+
     if UseLogScale_Y: ax.set_yscale( 'log' )
-    
+
     if UseCustomLimits: ax.set_ylim( vmin, vmax )
-    
+
     if ShowRefinement:
         bottom, top = plt.ylim()
         ax.plot( (RefinementLocations[:], RefinementLocations[:]), \
@@ -154,7 +154,7 @@ if nDims == 1:
     ax.set_xlabel \
       ( r'$x^{{1}}\ \left[\mathrm{{{:}}}\right]$'.format( gvU.X1Units ), \
         fontsize = 15 )
-        
+
     ax.set_ylabel( Field + ' ' + '$'+DataUnit+'$' )
     ax.grid()
     ax.set_title( r'$\texttt{{{:}}}$'.format( FigTitle ), fontsize = 15 )
