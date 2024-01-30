@@ -4,8 +4,6 @@ MODULE MF_Euler_TallyModule
 
   USE amrex_box_module, ONLY: &
     amrex_box
-  USE amrex_geometry_module, ONLY: &
-    amrex_geometry
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse, &
     amrex_parmparse_build, &
@@ -19,29 +17,26 @@ MODULE MF_Euler_TallyModule
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_reduce_sum
-  USE amrex_amr_module, ONLY: &
-    amrex_geom
 
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
-    nNodesX, &
-    nDimsX
+    swX
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q
   USE UnitsModule, ONLY: &
     UnitsDisplay
   USE MeshModule, ONLY: &
-    MeshType, &
-    CreateMesh, &
-    DestroyMesh
+    MeshType
   USE GeometryFieldsModule, ONLY: &
     iGF_SqrtGm, &
-    nGF, &
-    CoordinateSystem
+    nGF
   USE FluidFieldsModule, ONLY: &
     iCF_D, &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
     iCF_E, &
     iCF_Ne, &
     nCF
@@ -52,13 +47,9 @@ MODULE MF_Euler_TallyModule
     DP, &
     Zero
   USE InputParsingModule, ONLY: &
-    nX, &
     nLevels, &
     ProgramName, &
-    UseTiling, &
-    xL, &
-    xR, &
-    swX
+    UseTiling
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -97,12 +88,33 @@ MODULE MF_Euler_TallyModule
   REAL(DP)         :: BaryonicMass_Interior_OMP
   REAL(DP)         :: BaryonicMass_Change
 
-  CHARACTER(SL)    :: Energy_FileName
-  REAL(DP), PUBLIC :: Energy_Initial
-  REAL(DP), PUBLIC :: Energy_OffGrid
-  REAL(DP)         :: Energy_Interior
-  REAL(DP)         :: Energy_Interior_OMP
-  REAL(DP)         :: Energy_Change
+  CHARACTER(SL)    :: EulerMomentumX1_FileName
+  REAL(DP), PUBLIC :: EulerMomentumX1_Initial
+  REAL(DP), PUBLIC :: EulerMomentumX1_OffGrid
+  REAL(DP)         :: EulerMomentumX1_Interior
+  REAL(DP)         :: EulerMomentumX1_Interior_OMP
+  REAL(DP)         :: EulerMomentumX1_Change
+
+  CHARACTER(SL)    :: EulerMomentumX2_FileName
+  REAL(DP), PUBLIC :: EulerMomentumX2_Initial
+  REAL(DP), PUBLIC :: EulerMomentumX2_OffGrid
+  REAL(DP)         :: EulerMomentumX2_Interior
+  REAL(DP)         :: EulerMomentumX2_Interior_OMP
+  REAL(DP)         :: EulerMomentumX2_Change
+
+  CHARACTER(SL)    :: EulerMomentumX3_FileName
+  REAL(DP), PUBLIC :: EulerMomentumX3_Initial
+  REAL(DP), PUBLIC :: EulerMomentumX3_OffGrid
+  REAL(DP)         :: EulerMomentumX3_Interior
+  REAL(DP)         :: EulerMomentumX3_Interior_OMP
+  REAL(DP)         :: EulerMomentumX3_Change
+
+  CHARACTER(SL)    :: EulerEnergy_FileName
+  REAL(DP), PUBLIC :: EulerEnergy_Initial
+  REAL(DP), PUBLIC :: EulerEnergy_OffGrid
+  REAL(DP)         :: EulerEnergy_Interior
+  REAL(DP)         :: EulerEnergy_Interior_OMP
+  REAL(DP)         :: EulerEnergy_Change
 
   CHARACTER(SL)    :: ElectronNumber_FileName
   REAL(DP), PUBLIC :: ElectronNumber_Initial
@@ -114,7 +126,7 @@ MODULE MF_Euler_TallyModule
   CHARACTER(SL)    :: ADMMass_FileName
   REAL(DP), PUBLIC :: ADMMass_Initial
   REAL(DP), PUBLIC :: ADMMass_OffGrid
-  REAL(DP)         :: ADMMass_Interior
+  REAL(DP), PUBLIC :: ADMMass_Interior
   REAL(DP)         :: ADMMass_Change
 
 CONTAINS
@@ -130,14 +142,12 @@ CONTAINS
     CHARACTER(:), ALLOCATABLE :: TallyFileNameRoot_Euler
 
     CHARACTER(SL) :: FileNameRoot
-    INTEGER       :: FileUnit
 
     LOGICAL :: InitializeFromCheckpoint
 
     TYPE(amrex_parmparse) :: PP
 
     CHARACTER(SL) :: TimeLabel
-    CHARACTER(SL) :: InteriorLabel, InitialLabel, OffGridLabel, ChangeLabel
 
     SuppressTally = .FALSE.
     IF( PRESENT( SuppressTally_Option ) ) &
@@ -159,164 +169,146 @@ CONTAINS
 
       FileNameRoot = TRIM( TallyFileNameRoot_Euler )
 
+      TimeLabel     &
+        = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
+
       ! --- Baryonic Mass ---
 
       BaryonicMass_FileName &
         = TRIM( FileNameRoot ) // '_BaryonicMass.dat'
 
-      TimeLabel     &
-        = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
-      InteriorLabel &
-        = 'Interior [' // TRIM( UnitsDisplay % MassLabel ) // ']'
-      OffGridLabel  &
-        = 'Off Grid [' // TRIM( UnitsDisplay % MassLabel ) // ']'
-      InitialLabel  &
-        = 'Initial ['  // TRIM( UnitsDisplay % MassLabel ) // ']'
-      ChangeLabel   &
-        = 'Change ['   // TRIM( UnitsDisplay % MassLabel ) // ']'
+      CALL CreateFile &
+             ( BaryonicMass_FileName, UnitsDisplay % MassLabel, TimeLabel )
 
-      CALL CheckFileExistenceAndAppend( BaryonicMass_FileName )
+      ! --- Euler Momentum (X1) ---
 
-      OPEN( NEWUNIT = FileUnit, FILE = TRIM( BaryonicMass_FileName ) )
+      EulerMomentumX1_FileName &
+        = TRIM( FileNameRoot ) // '_EulerMomentumX1.dat'
 
-      WRITE(FileUnit,'(5(A25,x))') &
-        TRIM( TimeLabel ), TRIM( InteriorLabel ), TRIM( OffGridLabel ), &
-        TRIM( InitialLabel ), TRIM( ChangeLabel )
+      CALL CreateFile &
+             ( EulerMomentumX1_FileName, &
+               UnitsDisplay % MomentumX1Label, TimeLabel )
 
-      CLOSE( FileUnit )
+      ! --- Euler Momentum (X2) ---
 
-      ! --- Energy ---
+      EulerMomentumX2_FileName &
+        = TRIM( FileNameRoot ) // '_EulerMomentumX2.dat'
 
-      Energy_FileName &
-        = TRIM( FileNameRoot ) // '_Energy.dat'
+      CALL CreateFile &
+             ( EulerMomentumX2_FileName, &
+               UnitsDisplay % MomentumX2Label, TimeLabel )
 
-      TimeLabel     &
-        = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
-      InteriorLabel &
-        = 'Interior [' // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
-      OffGridLabel  &
-        = 'Off Grid [' // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
-      InitialLabel  &
-        = 'Initial ['  // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
-      ChangeLabel   &
-        = 'Change ['   // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
+      ! --- Euler Momentum (X3) ---
 
-      CALL CheckFileExistenceAndAppend( Energy_FileName )
+      EulerMomentumX3_FileName &
+        = TRIM( FileNameRoot ) // '_EulerMomentumX3.dat'
 
-      OPEN( NEWUNIT = FileUnit, FILE = TRIM( Energy_FileName ) )
+      CALL CreateFile &
+             ( EulerMomentumX3_FileName, &
+               UnitsDisplay % MomentumX3Label, TimeLabel )
 
-      WRITE(FileUnit,'(5(A25,x))') &
-        TRIM( TimeLabel ), TRIM( InteriorLabel ), TRIM( OffGridLabel ), &
-        TRIM( InitialLabel ), TRIM( ChangeLabel )
+      ! --- Euler Energy ---
 
-      CLOSE( FileUnit )
+      EulerEnergy_FileName &
+        = TRIM( FileNameRoot ) // '_EulerEnergy.dat'
+
+      CALL CreateFile &
+             ( EulerEnergy_FileName, &
+               UnitsDisplay % EnergyGlobalLabel, TimeLabel )
 
       ! --- Electron Number ---
 
       ElectronNumber_FileName &
         = TRIM( FileNameRoot ) // '_ElectronNumber.dat'
 
-      TimeLabel     &
-        = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
-      InteriorLabel &
-        = 'Interior [' // '' // ']'
-      OffGridLabel  &
-        = 'Off Grid [' // '' // ']'
-      InitialLabel  &
-        = 'Initial ['  // '' // ']'
-      ChangeLabel   &
-        = 'Change ['   // '' // ']'
+#ifdef MICROPHYSICS_WEAKLIB
 
-      CALL CheckFileExistenceAndAppend( ElectronNumber_FileName )
+      CALL CreateFile &
+             ( ElectronNumber_FileName, &
+               UnitsDisplay % ParticleDensityLabel, TimeLabel )
 
-      OPEN( NEWUNIT = FileUnit, FILE = TRIM( ElectronNumber_FileName ) )
-
-      WRITE(FileUnit,'(5(A25,x))') &
-        TRIM( TimeLabel ), TRIM( InteriorLabel ), TRIM( OffGridLabel ), &
-        TRIM( InitialLabel ), TRIM( ChangeLabel )
-
-      CLOSE( FileUnit )
-
-#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
+#endif
 
       ! --- ADM Mass ---
 
       ADMMass_FileName &
         = TRIM( FileNameRoot ) // '_ADMMass.dat'
 
-      TimeLabel     &
-        = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
-      InteriorLabel &
-        = 'Interior [' // TRIM( UnitsDisplay % MassLabel ) // ']'
-      OffGridLabel  &
-        = 'Off Grid [' // TRIM( UnitsDisplay % MassLabel ) // ']'
-      InitialLabel  &
-        = 'Initial ['  // TRIM( UnitsDisplay % MassLabel ) // ']'
-      ChangeLabel   &
-        = 'Change ['   // TRIM( UnitsDisplay % MassLabel ) // ']'
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
-      CALL CheckFileExistenceAndAppend( ADMMass_FileName )
-
-      OPEN( NEWUNIT = FileUnit, FILE = TRIM( ADMMass_FileName ) )
-
-      WRITE(FileUnit,'(5(A25,x))') &
-        TRIM( TimeLabel ), TRIM( InteriorLabel ), TRIM( OffGridLabel ), &
-        TRIM( InitialLabel ), TRIM( ChangeLabel )
-
-      CLOSE( FileUnit )
+      CALL CreateFile &
+             ( ADMMass_FileName, UnitsDisplay % EnergyGlobalLabel, TimeLabel )
 
 #endif
-
-    END IF
-
-    IF( .NOT. InitializeFromCheckpoint )THEN
-
-      BaryonicMass_Initial = Zero
-      BaryonicMass_OffGrid = Zero
-
-      Energy_Initial = Zero
-      Energy_OffGrid = Zero
-
-      ElectronNumber_Initial = Zero
-      ElectronNumber_OffGrid = Zero
-
-      ADMMass_Initial = Zero
-      ADMMass_OffGrid = Zero
 
     END IF
 
     BaryonicMass_Interior = Zero
     BaryonicMass_Change   = Zero
 
-    Energy_Interior = Zero
-    Energy_Change   = Zero
+    EulerMomentumX1_Interior = Zero
+    EulerMomentumX1_Change   = Zero
+
+    EulerMomentumX2_Interior = Zero
+    EulerMomentumX2_Change   = Zero
+
+    EulerMomentumX3_Interior = Zero
+    EulerMomentumX3_Change   = Zero
+
+    EulerEnergy_Interior = Zero
+    EulerEnergy_Change   = Zero
 
     ElectronNumber_Interior = Zero
     ElectronNumber_Change   = Zero
 
-    ADMMass_Interior = Zero
-    ADMMass_Change   = Zero
+    ADMMass_Change = Zero
+
+    IF( .NOT. InitializeFromCheckpoint )THEN
+
+      BaryonicMass_Initial = Zero
+      BaryonicMass_OffGrid = Zero
+
+      EulerMomentumX1_Initial = Zero
+      EulerMomentumX1_OffGrid = Zero
+
+      EulerMomentumX2_Initial = Zero
+      EulerMomentumX2_OffGrid = Zero
+
+      EulerMomentumX3_Initial = Zero
+      EulerMomentumX3_OffGrid = Zero
+
+      EulerEnergy_Initial = Zero
+      EulerEnergy_OffGrid = Zero
+
+      ElectronNumber_Initial = Zero
+      ElectronNumber_OffGrid = Zero
+
+      ADMMass_Initial  = Zero
+      ADMMass_OffGrid  = Zero
+      ADMMass_Interior = Zero
+
+    END IF
 
   END SUBROUTINE InitializeTally_Euler_MF
 
 
   SUBROUTINE ComputeTally_Euler_MF &
     ( Time, MF_uGF, MF_uCF, SetInitialValues_Option, &
-      WriteTally_Option, Verbose_Option )
+      WriteTally_Option, FixInteriorADMMass_Option, Verbose_Option )
 
     REAL(DP),             INTENT(in) :: Time  (0:)
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:)
     LOGICAL,              INTENT(in), OPTIONAL :: SetInitialValues_Option
     LOGICAL,              INTENT(in), OPTIONAL :: WriteTally_Option
+    LOGICAL,              INTENT(in), OPTIONAL :: FixInteriorADMMass_Option
     LOGICAL,              INTENT(in), OPTIONAL :: Verbose_Option
 
-    LOGICAL :: SetInitialValues
-    LOGICAL :: Verbose
+    LOGICAL :: SetInitialValues, FixInteriorADMMass
     LOGICAL :: WriteTally
+    LOGICAL :: Verbose
 
     INTEGER                       :: iX_B0(3), iX_E0(3)
-    INTEGER                       :: iX_B1(3), iX_E1(3)
     INTEGER                       :: iLevel, iLo_MF(4)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
@@ -342,14 +334,22 @@ CONTAINS
     IF( PRESENT( WriteTally_Option ) ) &
       WriteTally = WriteTally_Option
 
+    FixInteriorADMMass = .FALSE.
+    IF( PRESENT( FixInteriorADMMass_Option ) ) &
+      FixInteriorADMMass = FixInteriorADMMass_Option
+
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
-    BaryonicMass_Interior   = Zero
-    Energy_Interior         = Zero
-    ElectronNumber_Interior = Zero
-    ADMMass_Interior        = Zero
+    BaryonicMass_Interior    = Zero
+    EulerMomentumX1_Interior = Zero
+    EulerMomentumX2_Interior = Zero
+    EulerMomentumX3_Interior = Zero
+    EulerEnergy_Interior     = Zero
+    ElectronNumber_Interior  = Zero
+    IF( .NOT. FixInteriorADMMass ) &
+      ADMMass_Interior = Zero
 
     DO iLevel = 0, nLevels-1
 
@@ -357,16 +357,22 @@ CONTAINS
 
       CALL CreateMesh_MF( iLevel, MeshX )
 
-      BaryonicMass_Interior_OMP   = Zero
-      Energy_Interior_OMP         = Zero
-      ElectronNumber_Interior_OMP = Zero
+      BaryonicMass_Interior_OMP    = Zero
+      EulerMomentumX1_Interior_OMP = Zero
+      EulerMomentumX2_Interior_OMP = Zero
+      EulerMomentumX3_Interior_OMP = Zero
+      EulerEnergy_Interior_OMP     = Zero
+      ElectronNumber_Interior_OMP  = Zero
 
 #if defined( THORNADO_OMP )
       !$OMP PARALLEL &
-      !$OMP PRIVATE( iX_B0, iX_E0, iX_B1, iX_E1, iLo_MF, &
+      !$OMP PRIVATE( iX_B0, iX_E0, iLo_MF, &
       !$OMP          BX, MFI, FineMask, uGF, uCF, G, U, d3X ) &
       !$OMP REDUCTION( +:BaryonicMass_Interior_OMP, &
-      !$OMP              Energy_Interior_OMP, &
+      !$OMP              EulerMomentumX1_Interior_OMP, &
+      !$OMP              EulerMomentumX2_Interior_OMP, &
+      !$OMP              EulerMomentumX3_Interior_OMP, &
+      !$OMP              EulerEnergy_Interior_OMP, &
       !$OMP              ElectronNumber_Interior_OMP )
 #endif
 
@@ -384,9 +390,6 @@ CONTAINS
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
-
-        iX_B1 = iX_B0 - swX
-        iX_E1 = iX_E0 + swX
 
         CALL AllocateArray_X &
                ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
@@ -419,8 +422,29 @@ CONTAINS
                     * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                     * U(iNX,iX1,iX2,iX3,iCF_D)
 
-          Energy_Interior_OMP &
-            = Energy_Interior_OMP &
+          EulerMomentumX1_Interior_OMP &
+            = EulerMomentumX1_Interior_OMP &
+                + d3X &
+                    * WeightsX_q(iNX) &
+                    * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                    * U(iNX,iX1,iX2,iX3,iCF_S1)
+
+          EulerMomentumX2_Interior_OMP &
+            = EulerMomentumX2_Interior_OMP &
+                + d3X &
+                    * WeightsX_q(iNX) &
+                    * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                    * U(iNX,iX1,iX2,iX3,iCF_S2)
+
+          EulerMomentumX3_Interior_OMP &
+            = EulerMomentumX3_Interior_OMP &
+                + d3X &
+                    * WeightsX_q(iNX) &
+                    * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                    * U(iNX,iX1,iX2,iX3,iCF_S3)
+
+          EulerEnergy_Interior_OMP &
+            = EulerEnergy_Interior_OMP &
                 + d3X &
                     * WeightsX_q(iNX) &
                     * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
@@ -457,11 +481,17 @@ CONTAINS
 #endif
 
       BaryonicMass_Interior &
-        = BaryonicMass_Interior   + BaryonicMass_Interior_OMP
-      Energy_Interior &
-        = Energy_Interior         + Energy_Interior_OMP
+        = BaryonicMass_Interior    + BaryonicMass_Interior_OMP
+      EulerMomentumX1_Interior &
+        = EulerMomentumX1_Interior + EulerMomentumX1_Interior_OMP
+      EulerMomentumX2_Interior &
+        = EulerMomentumX2_Interior + EulerMomentumX2_Interior_OMP
+      EulerMomentumX3_Interior &
+        = EulerMomentumX3_Interior + EulerMomentumX3_Interior_OMP
+      EulerEnergy_Interior &
+        = EulerEnergy_Interior     + EulerEnergy_Interior_OMP
       ElectronNumber_Interior &
-        = ElectronNumber_Interior + ElectronNumber_Interior_OMP
+        = ElectronNumber_Interior  + ElectronNumber_Interior_OMP
 
       CALL DestroyMesh_MF( MeshX )
 
@@ -471,25 +501,31 @@ CONTAINS
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
-    CALL Calc_ADM_Mass( ADMMass_Interior )
+    IF( .NOT. FixInteriorADMMass ) &
+      CALL Calc_ADM_Mass( ADMMass_Interior )
+
+#else
+
+    ADMMass_Interior = Zero
 
 #endif
 
-    CALL amrex_parallel_reduce_sum( BaryonicMass_Interior   )
-    CALL amrex_parallel_reduce_sum( Energy_Interior         )
-    CALL amrex_parallel_reduce_sum( ElectronNumber_Interior )
+    CALL amrex_parallel_reduce_sum( BaryonicMass_Interior    )
+    CALL amrex_parallel_reduce_sum( EulerMomentumX1_Interior )
+    CALL amrex_parallel_reduce_sum( EulerMomentumX2_Interior )
+    CALL amrex_parallel_reduce_sum( EulerMomentumX3_Interior )
+    CALL amrex_parallel_reduce_sum( EulerEnergy_Interior     )
+    CALL amrex_parallel_reduce_sum( ElectronNumber_Interior  )
 
     IF( SetInitialValues )THEN
 
-      BaryonicMass_Initial   = BaryonicMass_Interior
-      Energy_Initial         = Energy_Interior
-      ElectronNumber_Initial = ElectronNumber_Interior
-
-#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
-
-      ADMMass_Initial = ADMMass_Interior
-
-#endif
+      BaryonicMass_Initial    = BaryonicMass_Interior
+      EulerMomentumX1_Initial = EulerMomentumX1_Interior
+      EulerMomentumX2_Initial = EulerMomentumX2_Interior
+      EulerMomentumX3_Initial = EulerMomentumX3_Interior
+      EulerEnergy_Initial     = EulerEnergy_Interior
+      ElectronNumber_Initial  = ElectronNumber_Interior
+      ADMMass_Initial         = ADMMass_Interior
 
     END IF
 
@@ -497,23 +533,31 @@ CONTAINS
 
     BaryonicMass_Change &
       = BaryonicMass_Interior &
-          - BaryonicMass_Initial + BaryonicMass_OffGrid
+          - BaryonicMass_Initial    + BaryonicMass_OffGrid
 
-    Energy_Change &
-      = Energy_Interior &
-          - Energy_Initial + Energy_OffGrid
+    EulerMomentumX1_Change &
+      = EulerMomentumX1_Interior &
+          - EulerMomentumX1_Initial + EulerMomentumX1_OffGrid
+
+    EulerMomentumX2_Change &
+      = EulerMomentumX2_Interior &
+          - EulerMomentumX2_Initial + EulerMomentumX2_OffGrid
+
+    EulerMomentumX3_Change &
+      = EulerMomentumX3_Interior &
+          - EulerMomentumX3_Initial + EulerMomentumX3_OffGrid
+
+    EulerEnergy_Change &
+      = EulerEnergy_Interior &
+          - EulerEnergy_Initial     + EulerEnergy_OffGrid
 
     ElectronNumber_Change &
       = ElectronNumber_Interior &
-          - ElectronNumber_Initial + ElectronNumber_OffGrid
-
-#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
+          - ElectronNumber_Initial  + ElectronNumber_OffGrid
 
     ADMMass_Change &
       = ADMMass_Interior &
-          - ( ADMMass_Initial + ADMMass_OffGrid )
-
-#endif
+          - ADMMass_Initial + ADMMass_OffGrid
 
     IF( WriteTally ) &
       CALL WriteTally_Euler( Time(0) )
@@ -534,20 +578,25 @@ CONTAINS
     DO iLevel = 0, nLevels-1
 
       BaryonicMass_OffGrid &
-        = BaryonicMass_OffGrid + dM(iCF_D,iLevel)
+        = BaryonicMass_OffGrid    + dM(iCF_D ,iLevel)
 
-      Energy_OffGrid &
-        = Energy_OffGrid + dM(iCF_E,iLevel)
+      EulerMomentumX1_OffGrid &
+        = EulerMomentumX1_OffGrid + dM(iCF_S1,iLevel)
+
+      EulerMomentumX2_OffGrid &
+        = EulerMomentumX2_OffGrid + dM(iCF_S2,iLevel)
+
+      EulerMomentumX3_OffGrid &
+        = EulerMomentumX3_OffGrid + dM(iCF_S3,iLevel)
+
+      EulerEnergy_OffGrid &
+        = EulerEnergy_OffGrid     + dM(iCF_E ,iLevel)
 
       ElectronNumber_OffGrid &
-        = ElectronNumber_OffGrid + dM(iCF_Ne,iLevel)
-
-#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
+        = ElectronNumber_OffGrid  + dM(iCF_Ne,iLevel)
 
       ADMMass_OffGrid &
         = Zero
-
-#endif
 
     END DO
 
@@ -568,69 +617,83 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: Time
 
-    INTEGER :: FileUnit
-
     IF( amrex_parallel_ioprocessor() )THEN
 
       ! --- Baryonic Mass ---
 
-      OPEN( NEWUNIT = FileUnit, FILE = TRIM( BaryonicMass_FileName ), &
-            POSITION = 'APPEND', ACTION = 'WRITE' )
+      CALL WriteTallyToFile &
+             ( BaryonicMass_FileName, Time, UnitsDisplay % TimeUnit, &
+               BaryonicMass_Interior, &
+               BaryonicMass_Initial, &
+               BaryonicMass_OffGrid, &
+               BaryonicMass_Change, &
+               UnitsDisplay % MassUnit )
 
-      WRITE( FileUnit, '(5(ES25.16E3,1x))' ) &
-        Time / UnitsDisplay % TimeUnit, &
-        BaryonicMass_Interior / UnitsDisplay % MassUnit, &
-        BaryonicMass_OffGrid  / UnitsDisplay % MassUnit, &
-        BaryonicMass_Initial  / UnitsDisplay % MassUnit, &
-        BaryonicMass_Change   / UnitsDisplay % MassUnit
+      ! --- Euler Momentum (X1) ---
 
-      CLOSE( FileUnit )
+      CALL WriteTallyToFile &
+             ( EulerMomentumX1_FileName, Time, UnitsDisplay % TimeUnit, &
+               EulerMomentumX1_Interior, &
+               EulerMomentumX1_Initial, &
+               EulerMomentumX1_OffGrid, &
+               EulerMomentumX1_Change, &
+               UnitsDisplay % MomentumX1Unit )
 
-      ! --- Energy ---
+      ! --- Euler Momentum (X2) ---
 
-      OPEN( NEWUNIT = FileUnit, FILE = TRIM( Energy_FileName ), &
-            POSITION = 'APPEND', ACTION = 'WRITE' )
+      CALL WriteTallyToFile &
+             ( EulerMomentumX2_FileName, Time, UnitsDisplay % TimeUnit, &
+               EulerMomentumX2_Interior, &
+               EulerMomentumX2_Initial, &
+               EulerMomentumX2_OffGrid, &
+               EulerMomentumX2_Change, &
+               UnitsDisplay % MomentumX2Unit )
 
-      WRITE( FileUnit, '(5(ES25.16E3,1x))' ) &
-        Time / UnitsDisplay % TimeUnit, &
-        Energy_Interior / UnitsDisplay % EnergyGlobalUnit, &
-        Energy_OffGrid  / UnitsDisplay % EnergyGlobalUnit, &
-        Energy_Initial  / UnitsDisplay % EnergyGlobalUnit, &
-        Energy_Change   / UnitsDisplay % EnergyGlobalUnit
+      ! --- Euler Momentum (X3) ---
 
-      CLOSE( FileUnit )
+      CALL WriteTallyToFile &
+             ( EulerMomentumX3_FileName, Time, UnitsDisplay % TimeUnit, &
+               EulerMomentumX3_Interior, &
+               EulerMomentumX3_Initial, &
+               EulerMomentumX3_OffGrid, &
+               EulerMomentumX3_Change, &
+               UnitsDisplay % MomentumX3Unit )
 
-      CLOSE( FileUnit )
+      ! --- Euler Energy ---
+
+      CALL WriteTallyToFile &
+             ( EulerEnergy_FileName, Time, UnitsDisplay % TimeUnit, &
+               EulerEnergy_Interior, &
+               EulerEnergy_Initial, &
+               EulerEnergy_OffGrid, &
+               EulerEnergy_Change, &
+               UnitsDisplay % EnergyGlobalUnit )
+
+#ifdef MICROPHYSICS_WEAKLIB
 
       ! --- Electron Number ---
 
-      OPEN( NEWUNIT = FileUnit, FILE = TRIM( ElectronNumber_FileName ), &
-            POSITION = 'APPEND', ACTION = 'WRITE' )
+      CALL WriteTallyToFile &
+             ( ElectronNumber_FileName, Time, UnitsDisplay % TimeUnit, &
+               ElectronNumber_Interior, &
+               ElectronNumber_Initial, &
+               ElectronNumber_OffGrid, &
+               ElectronNumber_Change, &
+               UnitsDisplay % ParticleDensityUnit )
 
-      WRITE( FileUnit, '(5(ES25.16E3,1x))' ) &
-        Time / UnitsDisplay % TimeUnit, &
-        ElectronNumber_Interior, &
-        ElectronNumber_OffGrid , &
-        ElectronNumber_Initial , &
-        ElectronNumber_Change
-
-      CLOSE( FileUnit )
+#endif
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
       ! --- ADM Mass ---
 
-      OPEN( NEWUNIT = FileUnit, FILE = TRIM( ADMMass_FileName ), &
-            POSITION = 'APPEND', ACTION = 'WRITE' )
-
-      WRITE( FileUnit, '(5(ES25.16E3,1x))' ) &
-        Time / UnitsDisplay % TimeUnit, &
-        ADMMass_Interior / UnitsDisplay % MassUnit, &
-        ADMMass_OffGrid  / UnitsDisplay % MassUnit, &
-        ADMMass_Initial  / UnitsDisplay % MassUnit, &
-        ADMMass_Change   / UnitsDisplay % MassUnit
-
-      CLOSE( FileUnit )
+      CALL WriteTallyToFile &
+             ( ADMMass_FileName, Time, UnitsDisplay % TimeUnit, &
+               ADMMass_Interior, &
+               ADMMass_Initial, &
+               ADMMass_OffGrid, &
+               ADMMass_Change, &
+               UnitsDisplay % EnergyGlobalUnit )
 
 #endif
 
@@ -643,10 +706,6 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: Time
 
-    CHARACTER(32) :: FMT
-
-    FMT = '(6x,A40,ES15.7E3,x,A)'
-
     IF( amrex_parallel_ioprocessor() )THEN
 
       WRITE(*,*)
@@ -654,79 +713,68 @@ CONTAINS
         '', 'Euler Tally. t = ', &
         Time / UnitsDisplay % TimeUnit, &
         UnitsDisplay % TimeLabel
-      WRITE(*,*)
-      WRITE(*,TRIM(FMT)) &
-        'Baryonic Mass Interior.: ', &
-        BaryonicMass_Interior / UnitsDisplay % MassUnit, &
-        UnitsDisplay % MassLabel
-      WRITE(*,TRIM(FMT)) &
-        'Baryonic Mass Initial..: ', &
-        BaryonicMass_Initial  / UnitsDisplay % MassUnit, &
-        UnitsDisplay % MassLabel
-      WRITE(*,TRIM(FMT)) &
-        'Baryonic Mass Off Grid.: ', &
-        BaryonicMass_OffGrid  / UnitsDisplay % MassUnit, &
-        UnitsDisplay % MassLabel
-      WRITE(*,TRIM(FMT)) &
-        'Baryonic Mass Change...: ', &
-        BaryonicMass_Change   / UnitsDisplay % MassUnit, &
-        UnitsDisplay % MassLabel
 
-      WRITE(*,*)
-      WRITE(*,TRIM(FMT)) &
-        'Energy Interior.: ', &
-        Energy_Interior / UnitsDisplay % EnergyGlobalUnit, &
-        UnitsDisplay % EnergyGlobalLabel
-      WRITE(*,TRIM(FMT)) &
-        'Energy Initial..: ', &
-        Energy_Initial  / UnitsDisplay % EnergyGlobalUnit, &
-        UnitsDisplay % EnergyGlobalLabel
-      WRITE(*,TRIM(FMT)) &
-        'Energy Off Grid.: ', &
-        Energy_OffGrid  / UnitsDisplay % EnergyGlobalUnit, &
-        UnitsDisplay % EnergyGlobalLabel
-      WRITE(*,TRIM(FMT)) &
-        'Energy Change...: ', &
-        Energy_Change   / UnitsDisplay % EnergyGlobalUnit, &
-        UnitsDisplay % EnergyGlobalLabel
+      CALL WriteTallyToScreen( 'Baryonic Mass', &
+                               BaryonicMass_Interior, &
+                               BaryonicMass_Initial, &
+                               BaryonicMass_OffGrid, &
+                               BaryonicMass_Change, &
+                               UnitsDisplay % MassUnit, &
+                               UnitsDisplay % MassLabel )
 
-      WRITE(*,*)
-      WRITE(*,TRIM(FMT)) &
-        'Electron Number Interior.: ', &
-        ElectronNumber_Interior, &
-        ''
-      WRITE(*,TRIM(FMT)) &
-        'Electron Number Initial..: ', &
-        ElectronNumber_Initial, &
-        ''
-      WRITE(*,TRIM(FMT)) &
-        'Electron Number Off Grid.: ', &
-        ElectronNumber_OffGrid, &
-        ''
-      WRITE(*,TRIM(FMT)) &
-        'Electron Number Change...: ', &
-        ElectronNumber_Change, &
-        ''
+      CALL WriteTallyToScreen( 'Euler Momentum (X1)', &
+                               EulerMomentumX1_Interior, &
+                               EulerMomentumX1_Initial, &
+                               EulerMomentumX1_OffGrid, &
+                               EulerMomentumX1_Change, &
+                               UnitsDisplay % MomentumX1Unit, &
+                               UnitsDisplay % MomentumX1Label )
+
+      CALL WriteTallyToScreen( 'Euler Momentum (X2)', &
+                               EulerMomentumX2_Interior, &
+                               EulerMomentumX2_Initial, &
+                               EulerMomentumX2_OffGrid, &
+                               EulerMomentumX2_Change, &
+                               UnitsDisplay % MomentumX2Unit, &
+                               UnitsDisplay % MomentumX2Label )
+
+      CALL WriteTallyToScreen( 'Euler Momentum (X3)', &
+                               EulerMomentumX3_Interior, &
+                               EulerMomentumX3_Initial, &
+                               EulerMomentumX3_OffGrid, &
+                               EulerMomentumX3_Change, &
+                               UnitsDisplay % MomentumX3Unit, &
+                               UnitsDisplay % MomentumX3Label )
+
+      CALL WriteTallyToScreen( 'Euler Energy', &
+                               EulerEnergy_Interior, &
+                               EulerEnergy_Initial, &
+                               EulerEnergy_OffGrid, &
+                               EulerEnergy_Change, &
+                               UnitsDisplay % EnergyGlobalUnit, &
+                               UnitsDisplay % EnergyGlobalLabel )
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+      CALL WriteTallyToScreen( 'Electron Number', &
+                               ElectronNumber_Interior, &
+                               ElectronNumber_Initial, &
+                               ElectronNumber_OffGrid, &
+                               ElectronNumber_Change, &
+                               UnitsDisplay % ParticleDensityUnit, &
+                               UnitsDisplay % ParticleDensityLabel )
+
+#endif
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
-      WRITE(*,*)
-      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-        '', 'ADM Mass Interior.: ', &
-        ADMMass_Interior / UnitsDisplay % MassUnit, &
-        UnitsDisplay % MassLabel
-      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-        '', 'ADM Mass Initial..: ', &
-        ADMMass_Initial  / UnitsDisplay % MassUnit, &
-        UnitsDisplay % MassLabel
-      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-        '', 'ADM Mass Off Grid.: ', &
-        ADMMass_OffGrid  / UnitsDisplay % MassUnit, &
-        UnitsDisplay % MassLabel
-      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-        '', 'ADM Mass Change...: ', &
-        ADMMass_Change   / UnitsDisplay % MassUnit, &
-        UnitsDisplay % MassLabel
+      CALL WriteTallyToScreen( 'ADM Mass', &
+                               ADMMass_Interior, &
+                               ADMMass_Initial, &
+                               ADMMass_OffGrid, &
+                               ADMMass_Change, &
+                               UnitsDisplay % EnergyGlobalUnit, &
+                               UnitsDisplay % EnergyGlobalLabel )
 
 #endif
 
@@ -774,6 +822,87 @@ CONTAINS
     END IF
 
   END SUBROUTINE CheckFileExistenceAndAppend
+
+
+  SUBROUTINE CreateFile( FileName, UnitsLabel, TimeLabel )
+
+    CHARACTER(*), INTENT(inout) :: FileName
+    CHARACTER(*), INTENT(in)    :: UnitsLabel, TimeLabel
+
+    INTEGER       :: FileUnit
+    CHARACTER(SL) :: InteriorLabel, InitialLabel, OffGridLabel, ChangeLabel
+
+    InteriorLabel &
+      = 'Interior [' // TRIM( UnitsLabel ) // ']'
+    OffGridLabel  &
+      = 'Off Grid [' // TRIM( UnitsLabel ) // ']'
+    InitialLabel  &
+      = 'Initial ['  // TRIM( UnitsLabel ) // ']'
+    ChangeLabel   &
+      = 'Change ['   // TRIM( UnitsLabel ) // ']'
+
+    CALL CheckFileExistenceAndAppend( FileName )
+
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( FileName ) )
+
+    WRITE(FileUnit,'(5(A25,x))') &
+      TRIM( TimeLabel ), TRIM( InteriorLabel ), TRIM( OffGridLabel ), &
+      TRIM( InitialLabel ), TRIM( ChangeLabel )
+
+    CLOSE( FileUnit )
+
+  END SUBROUTINE CreateFile
+
+
+  SUBROUTINE WriteTallyToScreen &
+    ( FieldName, Interior, Initial, OffGrid, Change, Units, Label )
+
+    CHARACTER(*), INTENT(in) :: FieldName, Label
+    REAL(DP)    , INTENT(in) :: Interior, Initial, OffGrid, Change, Units
+
+    CHARACTER(32) :: FMT
+
+    FMT = '(6x,A40,ES15.7E3,x,A)'
+
+    WRITE(*,*)
+    WRITE(*,TRIM(FMT)) &
+      TRIM( FieldName ) // ' Interior.: ', Interior / Units, TRIM( Label )
+    WRITE(*,TRIM(FMT)) &
+      TRIM( FieldName ) // ' Initial..: ', Initial  / Units, TRIM( Label )
+    WRITE(*,TRIM(FMT)) &
+      TRIM( FieldName ) // ' Off Grid.: ', OffGrid  / Units, TRIM( Label )
+    WRITE(*,TRIM(FMT)) &
+      TRIM( FieldName ) // ' Change...: ', Change   / Units, TRIM( Label )
+
+  END SUBROUTINE WriteTallyToScreen
+
+
+  SUBROUTINE WriteTallyToFile &
+    ( FileName, Time, TimeUnit, &
+      Interior, Initial, OffGrid, Change, Units )
+
+    CHARACTER(*), INTENT(in) :: FileName
+    REAL(DP)    , INTENT(in) :: Time, TimeUnit, &
+                                Interior, Initial, OffGrid, Change, Units
+
+    INTEGER       :: FileUnit
+    CHARACTER(32) :: FMT
+
+    FMT = '(5(ES25.16E3,1x))'
+
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( FileName ), &
+          POSITION = 'APPEND', ACTION = 'WRITE' )
+
+    WRITE( FileUnit, TRIM(FMT) ) &
+      Time     / TimeUnit, &
+      Interior / Units, &
+      OffGrid  / Units, &
+      Initial  / Units, &
+      Change   / Units
+
+    CLOSE( FileUnit )
+
+  END SUBROUTINE WriteTallyToFile
 
 
 END MODULE MF_Euler_TallyModule

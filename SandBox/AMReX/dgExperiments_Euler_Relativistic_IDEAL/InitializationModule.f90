@@ -6,8 +6,6 @@ MODULE InitializationModule
 
   USE amrex_init_module, ONLY: &
     amrex_init
-  USE amrex_fort_module, ONLY: &
-    amrex_spacedim
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse, &
     amrex_parmparse_build, &
@@ -42,8 +40,8 @@ MODULE InitializationModule
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
+    ProgramName, &
     nDOFX, &
-    nNodesX, &
     DescribeProgramHeaderX
   USE PolynomialBasisModule_Lagrange, ONLY: &
     InitializePolynomialBasis_Lagrange
@@ -65,22 +63,15 @@ MODULE InitializationModule
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
-    CoordinateSystem, &
-    DescribeGeometryFields, &
-    SetUnitsGeometryFields
+    nGF
   USE FluidFieldsModule, ONLY: &
     nCF, &
     nPF, &
     nAF, &
-    nDF, &
-    DescribeFluidFields_Primitive, &
-    DescribeFluidFields_Conserved, &
-    DescribeFluidFields_Auxiliary, &
-    DescribeFluidFields_Diagnostic, &
-    SetUnitsFluidFields
-  USE EquationOfStateModule, ONLY: &
-    InitializeEquationOfState
+    nDF
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    rhoMin_Euler_GR, &
+    epsMin_Euler_GR
 
   ! --- Local Modules ---
 
@@ -91,6 +82,8 @@ MODULE InitializationModule
   USE MF_FieldsModule_Geometry, ONLY: &
     CreateFields_Geometry_MF, &
     MF_uGF
+  USE MF_GeometryModule, ONLY: &
+    ComputeGeometryX_MF
   USE MF_FieldsModule_Euler, ONLY: &
     CreateFields_Euler_MF, &
     MF_uCF, &
@@ -98,6 +91,8 @@ MODULE InitializationModule
     MF_uAF, &
     MF_uDF, &
     FluxRegister_Euler
+  USE MF_EquationOfStateModule, ONLY: &
+    InitializeEquationOfState_MF
   USE MF_Euler_SlopeLimiterModule, ONLY: &
     InitializeSlopeLimiter_Euler_MF, &
     ApplySlopeLimiter_Euler_MF
@@ -106,6 +101,8 @@ MODULE InitializationModule
     ApplyPositivityLimiter_Euler_MF
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK_MF
+  USE MF_InitializationModule, ONLY: &
+    InitializeFields_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
   USE MF_MeshModule, ONLY: &
@@ -117,6 +114,16 @@ MODULE InitializationModule
   USE FillPatchModule, ONLY: &
     FillPatch, &
     FillCoarsePatch
+  USE MF_XCFC_UtilitiesModule, ONLY: &
+    MultiplyWithPsi6_MF
+  USE TaggingModule, ONLY: &
+    TagElements_Advection1D, &
+    TagElements_RiemannProblem1D, &
+    TagElements_RiemannProblem2D, &
+    TagElements_Advection2D, &
+    TagElements_KelvinHelmholtz2D, &
+    TagElements_Advection3D, &
+    TagElements_uCF
   USE InputParsingModule, ONLY: &
     InitializeParameters, &
     nLevels, &
@@ -133,17 +140,7 @@ MODULE InitializationModule
     dt_chk, &
     UseTiling, &
     UseFluxCorrection_Euler, &
-    MaxGridSizeX, &
-    BlockingFactor, &
-    xL, &
-    xR, &
-    EquationOfState, &
-    Gamma_IDEAL, &
-    EosTableName, &
-    ProgramName, &
     TagCriteria, &
-    nRefinementBuffer, &
-    UseAMR, &
     DescribeProgramHeader_AMReX
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
@@ -209,34 +206,7 @@ CONTAINS
 
     CALL InitializeMeshRefinement_Euler
 
-    CALL SetUnitsGeometryFields
-
-    CALL DescribeFluidFields_Conserved ( amrex_parallel_ioprocessor() )
-
-    CALL DescribeFluidFields_Primitive ( amrex_parallel_ioprocessor() )
-
-    CALL DescribeFluidFields_Auxiliary ( amrex_parallel_ioprocessor() )
-
-    CALL DescribeFluidFields_Diagnostic( amrex_parallel_ioprocessor() )
-
-    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
-                              Verbose_Option = amrex_parallel_ioprocessor() )
-
-    IF( TRIM( EquationOfState ) .EQ. 'TABLE' )THEN
-
-      CALL InitializeEquationOfState &
-             ( EquationOfState_Option = EquationOfState, &
-               EquationOfStateTableName_Option = EosTableName, &
-               Verbose_Option = amrex_parallel_ioprocessor() )
-
-    ELSE
-
-      CALL InitializeEquationOfState &
-               ( EquationOfState_Option = EquationOfState, &
-                 Gamma_IDEAL_Option = Gamma_IDEAL, &
-                 Verbose_Option = amrex_parallel_ioprocessor() )
-
-    END IF
+    CALL InitializeEquationOfState_MF
 
     CALL InitializePositivityLimiter_Euler_MF
 
@@ -260,8 +230,14 @@ CONTAINS
 
     IF( iRestart .LT. 0 )THEN
 
-      CALL amrex_init_from_scratch( 0.0_DP )
+      rhoMin_Euler_GR = HUGE( One )
+      epsMin_Euler_GR = HUGE( One )
+
+      CALL amrex_init_from_scratch( Zero )
       nLevels = amrex_get_numlevels()
+
+      rhoMin_Euler_GR = 1.0e-20_DP! * rhoMin_Euler_GR
+      epsMin_Euler_GR = 1.0e-20_DP! * epsMin_Euler_GR
 
       SetInitialValues = .TRUE.
 
@@ -275,6 +251,9 @@ CONTAINS
 
     ELSE
 
+      rhoMin_Euler_GR = 1.0e-20_DP
+      epsMin_Euler_GR = 1.0e-20_DP
+
       CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
 
       SetInitialValues = .FALSE.
@@ -284,9 +263,10 @@ CONTAINS
 
     END IF
 
-    CALL AverageDown( MF_uGF )
-    CALL AverageDown &
-           ( MF_uGF, MF_uCF, MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
+    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
+    CALL AverageDown( MF_uGF, MF_uCF )
+    CALL ApplyPositivityLimiter_Euler_MF &
+           ( MF_uGF, MF_uCF, MF_uDF )
 
     t_old = t_new
     t_chk = t_new(0) + dt_chk
@@ -319,12 +299,6 @@ CONTAINS
 
 
   SUBROUTINE MakeNewLevelFromScratch( iLevel, Time, pBA, pDM ) BIND(c)
-
-    USE MF_GeometryModule, ONLY: &
-      ComputeGeometryX_MF
-
-    USE MF_InitializationModule, ONLY: &
-      InitializeFields_MF
 
     INTEGER,     INTENT(in), VALUE :: iLevel
     REAL(DP),    INTENT(in), VALUE :: Time
@@ -392,20 +366,36 @@ CONTAINS
 
     CALL amrex_multifab_build( MF_uGF(iLevel), BA, DM, nDOFX * nGF, swX )
     CALL amrex_multifab_build( MF_uCF(iLevel), BA, DM, nDOFX * nCF, swX )
+    CALL amrex_multifab_build( MF_uDF(iLevel), BA, DM, nDOFX * nDF, swX )
     CALL amrex_multifab_build( MF_uPF(iLevel), BA, DM, nDOFX * nPF, swX )
     CALL amrex_multifab_build( MF_uAF(iLevel), BA, DM, nDOFX * nAF, swX )
-    CALL amrex_multifab_build( MF_uDF(iLevel), BA, DM, nDOFX * nDF, swX )
+
+    CALL MF_uGF(iLevel) % SetVal( Zero )
+    CALL MF_uCF(iLevel) % SetVal( Zero )
+    CALL MF_uDF(iLevel) % SetVal( Zero )
+    CALL MF_uPF(iLevel) % SetVal( Zero )
+    CALL MF_uAF(iLevel) % SetVal( Zero )
 
     IF( iLevel .GT. 0 .AND. UseFluxCorrection_Euler ) &
       CALL amrex_fluxregister_build &
              ( FluxRegister_Euler(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
                iLevel, nDOFX_X1 * nCF )
 
-    CALL FillCoarsePatch( iLevel, MF_uGF )
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uDF )
-    CALL FillCoarsePatch &
-           ( iLevel, MF_uGF, MF_uCF, &
-             MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
+    CALL FillCoarsePatch( iLevel, MF_uGF, &
+                          ApplyBoundaryConditions_Geometry_Option = .TRUE., &
+                          UpdateSpatialMetric_Option = .TRUE. )
+
+    CALL FillCoarsePatch( iLevel, MF_uDF )
+
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF, &
+                          ApplyBoundaryConditions_Euler_Option = .TRUE. )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCF(iLevel), -1 )
+
+    CALL ApplyPositivityLimiter_Euler_MF &
+           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCF(iLevel), +1 )
 
   END SUBROUTINE MakeNewLevelFromCoarse
 
@@ -428,35 +418,49 @@ CONTAINS
 
   SUBROUTINE RemakeLevel( iLevel, Time, pBA, pDM ) BIND(c)
 
-    INTEGER,     INTENT(in), VALUE :: iLevel
-    REAL(DP),    INTENT(in), VALUE :: Time
+    INTEGER    , INTENT(in), VALUE :: iLevel
+    REAL(DP)   , INTENT(in), VALUE :: Time
     TYPE(c_ptr), INTENT(in), VALUE :: pBA, pDM
 
     TYPE(amrex_boxarray)  :: BA
     TYPE(amrex_distromap) :: DM
-    TYPE(amrex_multifab)  :: MF_uGF_tmp, MF_uCF_tmp, MF_uPF_tmp, &
-                             MF_uAF_tmp, MF_uDF_tmp
+    TYPE(amrex_multifab)  :: MF_uGF_tmp, MF_uCF_tmp, MF_uDF_tmp
 
     BA = pBA
     DM = pDM
 
     CALL amrex_multifab_build( MF_uGF_tmp, BA, DM, nDOFX * nGF, swX )
     CALL amrex_multifab_build( MF_uCF_tmp, BA, DM, nDOFX * nCF, swX )
-    CALL amrex_multifab_build( MF_uPF_tmp, BA, DM, nDOFX * nPF, swX )
-    CALL amrex_multifab_build( MF_uAF_tmp, BA, DM, nDOFX * nAF, swX )
     CALL amrex_multifab_build( MF_uDF_tmp, BA, DM, nDOFX * nDF, swX )
 
-    CALL FillPatch( iLevel, MF_uGF        , MF_uGF_tmp )
-    CALL FillPatch( iLevel, MF_uGF, MF_uDF, MF_uDF_tmp )
-    CALL FillPatch( iLevel, MF_uGF, MF_uCF, MF_uCF_tmp )
+    CALL MF_uGF_tmp % SetVal( Zero )
+    CALL MF_uCF_tmp % SetVal( Zero )
+    CALL MF_uDF_tmp % SetVal( Zero )
+
+    CALL FillPatch &
+           ( iLevel, MF_uGF, MF_uGF_tmp, &
+             ApplyBoundaryConditions_Geometry_Option = .TRUE. )
+
+    CALL FillPatch( iLevel, MF_uDF, MF_uDF_tmp )
+
+    CALL FillPatch &
+           ( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp, &
+             ApplyBoundaryConditions_Euler_Option = .TRUE. )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF_tmp, MF_uCF_tmp, -1, swX_Option = swX )
+
+    CALL ApplyPositivityLimiter_Euler_MF &
+           ( iLevel, MF_uGF_tmp, MF_uCF_tmp, MF_uDF_tmp, swX_Option = swX )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF_tmp, MF_uCF_tmp, +1, swX_Option = swX )
 
     CALL ClearLevel( iLevel )
 
     CALL amrex_multifab_build( MF_uGF(iLevel), BA, DM, nDOFX * nGF, swX )
     CALL amrex_multifab_build( MF_uCF(iLevel), BA, DM, nDOFX * nCF, swX )
+    CALL amrex_multifab_build( MF_uDF(iLevel), BA, DM, nDOFX * nDF, swX )
     CALL amrex_multifab_build( MF_uPF(iLevel), BA, DM, nDOFX * nPF, swX )
     CALL amrex_multifab_build( MF_uAF(iLevel), BA, DM, nDOFX * nAF, swX )
-    CALL amrex_multifab_build( MF_uDF(iLevel), BA, DM, nDOFX * nDF, swX )
 
     IF( iLevel .GT. 0 .AND. UseFluxCorrection_Euler ) &
       CALL amrex_fluxregister_build &
@@ -468,8 +472,6 @@ CONTAINS
     CALL MF_uDF(iLevel) % COPY( MF_uDF_tmp, 1, 1, nDOFX * nDF, swX )
 
     CALL amrex_multifab_destroy( MF_uDF_tmp )
-    CALL amrex_multifab_destroy( MF_uAF_tmp )
-    CALL amrex_multifab_destroy( MF_uPF_tmp )
     CALL amrex_multifab_destroy( MF_uCF_tmp )
     CALL amrex_multifab_destroy( MF_uGF_tmp )
 
@@ -477,15 +479,6 @@ CONTAINS
 
 
   SUBROUTINE ErrorEstimate( iLevel, cp, Time, SetTag, ClearTag ) BIND(c)
-
-    USE TaggingModule, ONLY: &
-      TagElements_Advection1D, &
-      TagElements_RiemannProblem1D, &
-      TagElements_RiemannProblem2D, &
-      TagElements_Advection2D, &
-      TagElements_KelvinHelmholtz2D, &
-      TagElements_Advection3D, &
-      TagElements_uCF
 
     INTEGER,                INTENT(in), VALUE :: iLevel
     TYPE(c_ptr),            INTENT(in), VALUE :: cp

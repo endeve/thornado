@@ -182,8 +182,7 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
         dim_array = [nX[0] * 2**MaxLevel, nX[1] * 2**MaxLevel, nX[2]]
     else:
         dim_array = nX * 2**MaxLevel
-        
-    
+
     """
     https://yt-project.org/doc/reference/api/
     yt.data_objects.construction_data_containers.html#yt.data_objects.
@@ -338,6 +337,14 @@ def GetData( DataDirectory, PlotFileBaseName, Field, \
 
         if   CoordinateSystem == 'cartesian'  : DataUnits = ''
         elif CoordinateSystem == 'cylindrical': DataUnits = 'km^2'
+        elif CoordinateSystem == 'spherical'  : DataUnits = 'km^2'
+
+    elif Field == 'GF_SqrtGm':
+
+        Data = np.copy( CoveringGrid[Field].to_ndarray() )
+
+        if   CoordinateSystem == 'cartesian'  : DataUnits = ''
+        elif CoordinateSystem == 'cylindrical': DataUnits = 'km'
         elif CoordinateSystem == 'spherical'  : DataUnits = 'km^2'
 
     elif Field == 'GF_K_11':

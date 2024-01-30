@@ -133,8 +133,8 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
                 DataFile = FileDirectory + '{:}.dat'.format( Field )
 
                 if Verbose:
-                    print( '  Generating data file: {:} ({:}/{:})'.format \
-                             ( DataFile, j, fileArray.shape[0] ) )
+                    print( '\r  Generating data file: {:} ({:}/{:})'.format \
+                             ( DataFile, j, fileArray.shape[0] ), end = '\r' )
 
                 Data, DataUnits, \
                   X1, X2, X3, dX1, dX2, dX3, xL, xH, nX, Time \
@@ -408,8 +408,9 @@ def MakeDataFile( Field, PlotfileDirectory, DataDirectory, \
                     DataFile = FileDirectory + '{:}.dat'.format( Field )
 
                     if Verbose:
-                        print( 'Generating data file: {:} ({:}/{:})'.format \
-                                 ( DataFile, j, fileArray.shape[0] ) )
+                        print( '\r  Generating data file: {:} ({:}/{:})' \
+                               .format( DataFile, j, fileArray.shape[0] ), \
+                               end = '\r' )
 
                     Data, DataUnits, \
                       X1, X2, X3, dX1, dX2, dX3, xL, xH, nX \

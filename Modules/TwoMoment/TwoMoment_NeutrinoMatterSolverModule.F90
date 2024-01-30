@@ -141,7 +141,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
 
   ! --- Solver scratch arrays ---
 
-  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE :: DnuNorm
+  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE :: DnuNorm, Fnorm0
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: C_Dnu, Dnu_old
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: C_Inu_d_1, Inu_u_1_old
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: C_Inu_d_2, Inu_u_2_old
@@ -210,6 +210,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   INTEGER  :: M_FP
   REAL(DP) :: Rtol_outer
   REAL(DP) :: Rtol_inner
+  REAL(DP) :: Atol_inner
   REAL(DP) :: wMatrRHS(nMatterEquations)
   REAL(DP) :: DnuMax
   LOGICAL  :: FreezeOpacities
@@ -294,6 +295,7 @@ CONTAINS
     FourPiEp2 = FourPi * E_N * E_N
 
     ALLOCATE( DnuNorm(nSpecies,nX_G) )
+    ALLOCATE( Fnorm0 (nSpecies,nX_G) )
 
     ALLOCATE( C_Dnu    (nE_G,nSpecies,nX_G) )
     ALLOCATE( C_Inu_d_1(nE_G,nSpecies,nX_G) )
@@ -451,6 +453,7 @@ CONTAINS
     !$OMP MAP( to: E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, wMatrRHS ) &
     !$OMP MAP( alloc: INFO, &
     !$OMP             DnuNorm, &
+    !$OMP             Fnorm0, &
     !$OMP             C_Dnu, &
     !$OMP             C_Inu_d_1, &
     !$OMP             C_Inu_d_2, &
@@ -502,6 +505,7 @@ CONTAINS
     !$ACC COPYIN( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, wMatrRHS ) &
     !$ACC CREATE( INFO, &
     !$ACC         DnuNorm, &
+    !$ACC         Fnorm0, &
     !$ACC         C_Dnu, &
     !$ACC         C_Inu_d_1, &
     !$ACC         C_Inu_d_2, &
@@ -766,17 +770,18 @@ CONTAINS
 
   SUBROUTINE InitializeNeutrinoMatterSolverParameters &
     ( M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
-      MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
-      Include_NES_Option, Include_Pair_Option, Include_Brem_Option, &
-      Include_LinCorr_Option, wMatrRHS_Option, DnuMax_Option, &
-      FreezeOpacities_Option, Verbose_Option )
+      MaxIter_inner_Option, Rtol_outer_Option, Rtol_inner_Option, &
+      Atol_inner_Option, Include_NES_Option, Include_Pair_Option, &
+      Include_Brem_Option, Include_LinCorr_Option, wMatrRHS_Option, &
+      DnuMax_Option, FreezeOpacities_Option, Verbose_Option )
 
     INTEGER , INTENT(in), OPTIONAL :: M_outer_Option
     INTEGER , INTENT(in), OPTIONAL :: M_inner_Option
     INTEGER , INTENT(in), OPTIONAL :: MaxIter_outer_Option
     INTEGER , INTENT(in), OPTIONAL :: MaxIter_inner_Option
-    REAL(DP), INTENT(in), OPTIONAL :: Rtol_inner_Option
     REAL(DP), INTENT(in), OPTIONAL :: Rtol_outer_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Rtol_inner_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Atol_inner_option
     LOGICAL , INTENT(in), OPTIONAL :: Include_NES_Option
     LOGICAL , INTENT(in), OPTIONAL :: Include_Pair_Option
     LOGICAL , INTENT(in), OPTIONAL :: Include_Brem_Option
@@ -814,16 +819,22 @@ CONTAINS
       MaxIter_inner = 100
     END IF
 
+    IF( PRESENT( Rtol_outer_Option ) )THEN
+      Rtol_outer = Rtol_outer_Option
+    ELSE
+      Rtol_outer = 1.0d-08
+    END IF
+
     IF( PRESENT( Rtol_inner_Option ) )THEN
       Rtol_inner = Rtol_inner_Option
     ELSE
       Rtol_inner = 1.0d-08
     END IF
 
-    IF( PRESENT( Rtol_outer_Option ) )THEN
-      Rtol_outer = Rtol_outer_Option
+    IF( PRESENT( Atol_inner_Option ) )THEN
+      Atol_inner = Atol_inner_Option
     ELSE
-      Rtol_outer = 1.0d-08
+      Atol_inner = 1.0d-02 * Rtol_inner
     END IF
 
     IF( PRESENT( Include_NES_Option ) )THEN
@@ -887,6 +898,7 @@ CONTAINS
       WRITE(*,'(A4,A32,I6.6)')     '', 'M_inner: '        , M_inner
       WRITE(*,'(A4,A32,I6.6)')     '', 'MaxIter_inner: '  , MaxIter_inner
       WRITE(*,'(A4,A32,ES10.3E3)') '', 'Rtol_inner: '     , Rtol_inner
+      WRITE(*,'(A4,A32,ES10.3E3)') '', 'Atol_inner: '     , Atol_inner
       WRITE(*,*)
       WRITE(*,'(A4,A32,L1)')       '', 'Include_NES: '    , Include_NES
       WRITE(*,'(A4,A32,L1)')       '', 'Include_Pair: '   , Include_Pair
@@ -919,6 +931,7 @@ CONTAINS
     !$OMP MAP( release: E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, wMatrRHS, &
     !$OMP               INFO, &
     !$OMP               DnuNorm, &
+    !$OMP               Fnorm0, &
     !$OMP               C_Dnu, &
     !$OMP               C_Inu_d_1, &
     !$OMP               C_Inu_d_2, &
@@ -970,6 +983,7 @@ CONTAINS
     !$ACC DELETE( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, wMatrRHS, &
     !$ACC         INFO, &
     !$ACC         DnuNorm, &
+    !$ACC         Fnorm0, &
     !$ACC         C_Dnu, &
     !$ACC         C_Inu_d_1, &
     !$ACC         C_Inu_d_2, &
@@ -1021,6 +1035,7 @@ CONTAINS
     DEALLOCATE( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2 )
     DEALLOCATE( INFO )
     DEALLOCATE( DnuNorm )
+    DEALLOCATE( Fnorm0 )
     DEALLOCATE( C_Dnu )
     DEALLOCATE( C_Inu_d_1 )
     DEALLOCATE( C_Inu_d_2 )
@@ -1285,7 +1300,7 @@ CONTAINS
         CALL TimersStart( Timer_Collisions_ComputeRates )
 
         CALL ComputeRates_Packed &
-               ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, ITERATE_inner, nX_P_inner, &
+               ( D, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, ITERATE_inner, nX_P_inner, &
                  PackIndex_inner, UnpackIndex_inner, nX_P_outer )
 
         CALL TimersStop( Timer_Collisions_ComputeRates )
@@ -1764,8 +1779,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeRates_Packed &
-    ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, MASK, nX_P, PackIndex, UnpackIndex, nX_P0 )
+    ( D, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, MASK, nX_P, PackIndex, UnpackIndex, nX_P0 )
 
+    REAL(DP), DIMENSION(:),     INTENT(in), TARGET   :: D
     REAL(DP), DIMENSION(:,:,:), INTENT(in), TARGET   :: Dnu
     REAL(DP), DIMENSION(:,:,:), INTENT(in), TARGET   :: Inu_u_1
     REAL(DP), DIMENSION(:,:,:), INTENT(in), TARGET   :: Inu_u_2
@@ -1775,6 +1791,7 @@ CONTAINS
     INTEGER,  DIMENSION(:),     INTENT(in), OPTIONAL :: PackIndex, UnpackIndex
     INTEGER,                    INTENT(in), OPTIONAL :: nX_P0
 
+    REAL(DP), DIMENSION(:)    , POINTER :: D_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Dnu_P, Dnu_0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Inu_u_1_P, Inu_u_2_P, Inu_u_3_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_NES_P , Eta_NES_P
@@ -1813,8 +1830,12 @@ CONTAINS
 
       ! --- Pack Arrays ---
 
+      D_P => D_T(1:nX)
+
+      CALL ArrayPack( nX, UnpackIndex, D, D_P )
+
       Dnu_P     => Dnu_T    (:,:,1:nX)
-      Dnu_0_P    => Dnu_0_T   (:,:,1:nX)
+      Dnu_0_P   => Dnu_0_T  (:,:,1:nX)
       Inu_u_1_P => Inu_u_1_T(:,:,1:nX)
       Inu_u_2_P => Inu_u_2_T(:,:,1:nX)
       Inu_u_3_P => Inu_u_3_T(:,:,1:nX)
@@ -1886,6 +1907,8 @@ CONTAINS
 
     ELSE
 
+      D_P => D(:)
+
       Dnu_P            => Dnu           (:,:,:)
       Dnu_0_P          => Dnu_0         (:,:,:)
       Inu_u_1_P        => Inu_u_1       (:,:,:)
@@ -1937,7 +1960,7 @@ CONTAINS
     CALL TimersStart( Timer_OpacityRate_NES )
 
     CALL ComputeNeutrinoOpacityRates_NES &
-           ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, Dnu_P, Dnu_0_P, H_I_0_P, H_II_0_P, &
+           ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, H_I_0_P, H_II_0_P, &
              Eta_NES_P, Chi_NES_P )
 
     IF( Include_LinCorr )THEN
@@ -1945,7 +1968,7 @@ CONTAINS
       ! --- Compute Linear Rate Corrections (NES) ---
 
       CALL ComputeNeutrinoOpacityRates_LinearCorrections_NES &
-             ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, &
+             ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, &
                Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, Dnu_0_P, H_I_1_P, H_II_1_P, &
                L_NES__In__u_1_P, L_NES__In__u_2_P, L_NES__In__u_3_P, &
                L_NES__Out_u_1_P, L_NES__Out_u_2_P, L_NES__Out_u_3_P )
@@ -1959,7 +1982,7 @@ CONTAINS
     CALL TimersStart( Timer_OpacityRate_Pair )
 
     CALL ComputeNeutrinoOpacityRates_Pair &
-           ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, Dnu_P, Dnu_0_P, J_I_0_P, J_II_0_P, &
+           ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, J_I_0_P, J_II_0_P, &
              Eta_Pair_P, Chi_Pair_P )
 
     IF( Include_LinCorr )THEN
@@ -1967,7 +1990,7 @@ CONTAINS
       ! --- Compute Linear Rate Corrections (Pair) ---
 
       CALL ComputeNeutrinoOpacityRates_LinearCorrections_Pair &
-             ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, &
+             ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, &
                Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, Dnu_0_P, J_I_1_P, J_II_1_P, &
                L_Pair_Pro_u_1_P, L_Pair_Pro_u_2_P, L_Pair_Pro_u_3_P, &
                L_Pair_Ann_u_1_P, L_Pair_Ann_u_2_P, L_Pair_Ann_u_3_P )
@@ -1981,7 +2004,7 @@ CONTAINS
     CALL TimersStart( Timer_OpacityRate_Brem )
 
     CALL ComputeNeutrinoOpacityRates_Brem &
-           ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, Dnu_P, Dnu_0_P, S_Sigma_P, &
+           ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, S_Sigma_P, &
              Eta_Brem_P, Chi_Brem_P )
 
     IF( Include_LinCorr )THEN
@@ -1989,7 +2012,7 @@ CONTAINS
       ! --- Compute Linear Rate Corrections (Brem) ---
 
       CALL ComputeNeutrinoOpacityRates_LinearCorrections_Brem &
-             ( 1, nE_G, 1, nSpecies, 1, nX, W2_N, &
+             ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, &
                Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, Dnu_0_P, S_Sigma_P, &
                L_Brem_Pro_u_1_P, L_Brem_Pro_u_2_P, L_Brem_Pro_u_3_P, &
                L_Brem_Ann_u_1_P, L_Brem_Ann_u_2_P, L_Brem_Ann_u_3_P )
@@ -2626,18 +2649,60 @@ CONTAINS
 
       ! --- Include Old Matter State in Constant (C) Terms ---
 
-      C_D    (iN_X) &
-        = W * U_D(iN_X) 
-      C_Y    (iN_X) &
-        = U_Y(iN_X) + SUM_Y * S_Y(iN_X)
-      C_Ef   (iN_X) &
-        = ( Tau_f + SUM_Ef ) * S_Ef  (iN_X) / cD_old(iN_X)
-      C_V_d_1(iN_X) &
-        = ( SJ(1) + SUM_V1 ) * S_V_d_1(iN_X) / cD_old(iN_X)
-      C_V_d_2(iN_X) &
-        = ( SJ(2) + SUM_V2 ) * S_V_d_2(iN_X) / cD_old(iN_X)
-      C_V_d_3(iN_X) &
-        = ( SJ(3) + SUM_V3 ) * S_V_d_3(iN_X) / cD_old(iN_X)
+
+      IF ( wMatrRHS(iD) .EQ. 1.0_DP) THEN
+        C_D    (iN_X) &
+          = W * U_D(iN_X)
+      ELSE  
+        C_D    (iN_X) &
+          = U_D(iN_X)
+      END IF
+
+      IF ( wMatrRHS(iY) .EQ. 1.0_DP) THEN
+        C_Y    (iN_X) &
+          = U_Y(iN_X) + SUM_Y * S_Y(iN_X)
+      ELSE
+        C_Y    (iN_X) &
+          = U_Y(iN_X)
+      END IF
+       
+      IF ( wMatrRHS(iEF) .EQ. 1.0_DP) THEN
+        C_Ef   (iN_X) &
+          = ( Tau_f + SUM_Ef ) * S_Ef  (iN_X) / cD_old(iN_X)
+      ELSE
+        C_Ef   (iN_X) &
+          = U_Ef(iN_X)
+      END IF
+
+      IF ( wMatrRHS(iV1) .EQ. 1.0_DP) THEN
+        C_V_d_1(iN_X) &
+          = ( SJ(1) + SUM_V1 ) * S_V_d_1(iN_X) / cD_old(iN_X)
+      ELSE
+        C_V_d_1(iN_X) &
+          = U_V_d_1(iN_X)
+      END IF
+
+
+      IF ( wMatrRHS(iV2) .EQ. 1.0_DP) THEN
+        C_V_d_2(iN_X) &
+          = ( SJ(2) + SUM_V2 ) * S_V_d_2(iN_X) / cD_old(iN_X)
+      ELSE
+        C_V_d_2(iN_X) &
+          = U_V_d_2(iN_X)
+      END IF
+
+
+      IF ( wMatrRHS(iV3) .EQ. 1.0_DP) THEN
+        C_V_d_3(iN_X) &
+          = ( SJ(3) + SUM_V3 ) * S_V_d_3(iN_X) / cD_old(iN_X)
+      ELSE
+        C_V_d_3(iN_X) &
+          = U_V_d_3(iN_X)
+      END IF
+
+
+
+
 
     END DO
 
@@ -3046,18 +3111,67 @@ CONTAINS
 
         h = ( 1.0_DP + E(iN_X) + P(iN_X) / D(iN_X) ) 
 
-        G_D    (iN_X)  = ( 1.0_DP / W ) * C_D  (iN_X) 
-        G_Y    (iN_X)  = C_Y    (iN_X) - ( AtomicMassUnit / cD_old(iN_X) ) * SUM_Y * S_Y(iN_X)
-        G_Ef   (iN_X)  = S_Ef(iN_X) * ( 1.0_DP - W ) / W**2 * ( W + ( W + 1.0_DP) * P(iN_X) / D(iN_X) ) &
-                       + 1.0_DP / W * C_Ef(iN_X) - S_Ef(iN_X) / ( W * cD_old(iN_X) ) * SUM_Ef 
-        G_V_d_1(iN_X)  = 1.0_DP / ( h * W ) * (  C_V_d_1(iN_X) - SUM_V1 * S_V_d_1(iN_X) / cD_old(iN_X) ) 
-        G_V_d_2(iN_X)  = 1.0_DP / ( h * W ) * (  C_V_d_2(iN_X) - SUM_V2 * S_V_d_2(iN_X) / cD_old(iN_X) ) 
-        G_V_d_3(iN_X)  = 1.0_DP / ( h * W ) * (  C_V_d_3(iN_X) - SUM_V3 * S_V_d_3(iN_X) / cD_old(iN_X) ) 
+        IF ( wMatrRHS(iD) .EQ. 1.0_DP) THEN
+          G_D    (iN_X)  = ( 1.0_DP / W ) * C_D  (iN_X) 
+        ELSE  
+          G_D    (iN_X) &
+            = C_D(iN_X)
+        END IF
+
+        IF ( wMatrRHS(iY) .EQ. 1.0_DP) THEN
+          G_Y    (iN_X) &
+            = C_Y    (iN_X) - ( AtomicMassUnit / cD_old(iN_X) ) * SUM_Y * S_Y(iN_X)
+        ELSE
+          G_Y    (iN_X) &
+            = C_Y(iN_X)
+        END IF
+         
+        IF ( wMatrRHS(iEF) .EQ. 1.0_DP) THEN
+          G_Ef   (iN_X)  = S_Ef(iN_X) * ( 1.0_DP - W ) / W**2 * ( W + ( W + 1.0_DP) * P(iN_X) / D(iN_X) ) &
+                         + 1.0_DP / W * C_Ef(iN_X) - S_Ef(iN_X) / ( W * cD_old(iN_X) ) * SUM_Ef 
+        ELSE
+          G_Ef   (iN_X) &
+            = C_Ef(iN_X)
+        END IF
+
+        IF ( wMatrRHS(iV1) .EQ. 1.0_DP) THEN
+          G_V_d_1(iN_X)  &
+            = 1.0_DP / ( h * W ) * (  C_V_d_1(iN_X) - SUM_V1 * S_V_d_1(iN_X) / cD_old(iN_X) ) 
+        ELSE
+          G_V_d_1(iN_X) &
+            = C_V_d_1(iN_X)
+        END IF
+
+
+        IF ( wMatrRHS(iV2) .EQ. 1.0_DP) THEN
+          G_V_d_2(iN_X) &
+            = 1.0_DP / ( h * W ) * (  C_V_d_2(iN_X) - SUM_V2 * S_V_d_2(iN_X) / cD_old(iN_X) ) 
+        ELSE
+          G_V_d_2(iN_X) &
+            = C_V_d_2(iN_X)
+        END IF
+
+
+        IF ( wMatrRHS(iV3) .EQ. 1.0_DP) THEN
+          G_V_d_3(iN_X) &
+            = 1.0_DP / ( h * W ) * (  C_V_d_3(iN_X) - SUM_V3 * S_V_d_3(iN_X) / cD_old(iN_X) ) 
+        ELSE
+          G_V_d_3(iN_X) &
+            = C_V_d_3(iN_X)
+        END IF
+
+
+        
 
         IF( MoveLeft .EQ. 1) THEN
+          IF ( wMatrRHS(iEF) .EQ. 1.0_DP) THEN
+            G_Ef(iN_X) = ( 1.0_DP / W ) * C_Ef(iN_X) - S_Ef(iN_X) / ( W * cD_old(iN_X) ) * SUM_Ef &
+                       + S_Ef(iN_X) * ( 1.0_DP - W ) / W**2 *  ( W + 1.0_DP) * P(iN_X) / D(iN_X) 
+          ELSE
+            G_Ef   (iN_X) &
+              = C_Ef(iN_X)
+          END IF
 
-          G_Ef(iN_X) = ( 1.0_DP / W ) * C_Ef(iN_X) - S_Ef(iN_X) / ( W * cD_old(iN_X) ) * SUM_Ef &
-                     + S_Ef(iN_X) * ( 1.0_DP - W ) / W**2 *  ( W + 1.0_DP) * P(iN_X) / D(iN_X) 
         END IF
 
         Gm(iD ,iN_X) = G_D    (iN_X)
@@ -3069,7 +3183,7 @@ CONTAINS
 
         Fm(iD ,iN_X) = G_D    (iN_X) - U_D  (iN_X)
         Fm(iY ,iN_X) = G_Y    (iN_X) - U_Y    (iN_X)
-        Fm(iEf,iN_X) = G_Ef   (iN_X)  - U_Ef  (iN_X)
+        Fm(iEf,iN_X) = G_Ef   (iN_X) - U_Ef  (iN_X)
         Fm(iV1,iN_X) = G_V_d_1(iN_X) - U_V_d_1(iN_X)
         Fm(iV2,iN_X) = G_V_d_2(iN_X) - U_V_d_2(iN_X)
         Fm(iV3,iN_X) = G_V_d_3(iN_X) - U_V_d_3(iN_X)
@@ -3580,8 +3694,8 @@ CONTAINS
 
         Gm(iOS+iCR_N,iN_X) &
           = ( One - Omega(iN_X) ) *     Dnu(iN_E,iS,iN_X) &
-           + Omega(iN_X)   *  ( C_Dnu(iN_E,iS,iN_X) - vDotInu + dt * Eta_T ) &
-              / ( W + dt * Chi_T )
+           + Omega(iN_X)   *  ( C_Dnu(iN_E,iS,iN_X) - vDotInu + dt * Alpha(iN_X) * Eta_T ) &
+              / ( W + dt * Alpha(iN_X) * Chi_T )
 
         Fm(iOS+iCR_N,iN_X) &
           = Gm(iOS+iCR_N,iN_X) - Dnu(iN_E,iS,iN_X)
@@ -3591,7 +3705,7 @@ CONTAINS
         Gm(iOS+iCR_G1,iN_X) &
           = ( One - Omega(iN_X) ) *     Inu_d_1 &
             +       Omega(iN_X)   * ( C_Inu_d_1(iN_E,iS,iN_X) - vDotK_d_1 ) &
-                                    / ( W + dt * Kappa )
+                                    / ( W + dt * Alpha(iN_X) * Kappa )
 
         Fm(iOS+iCR_G1,iN_X) &
           = Gm(iOS+iCR_G1,iN_X) - Inu_d_1
@@ -3601,7 +3715,7 @@ CONTAINS
         Gm(iOS+iCR_G2,iN_X) &
           = ( One - Omega(iN_X) ) *     Inu_d_2 &
             +       Omega(iN_X)   * ( C_Inu_d_2(iN_E,iS,iN_X) - vDotK_d_2 ) &
-                                    / ( W + dt * Kappa )
+                                    / ( W + dt * Alpha(iN_X) * Kappa )
 
         Fm(iOS+iCR_G2,iN_X) &
           = Gm(iOS+iCR_G2,iN_X) - Inu_d_2
@@ -3611,7 +3725,7 @@ CONTAINS
         Gm(iOS+iCR_G3,iN_X) &
           = ( One - Omega(iN_X) ) *     Inu_d_3 &
             +       Omega(iN_X)   * ( C_Inu_d_3(iN_E,iS,iN_x) - vDotK_d_3 ) &
-                                    / ( W + dt * Kappa )
+                                    / ( W + dt * Alpha(iN_X) * Kappa )
 
         Fm(iOS+iCR_G3,iN_X) &
           = Gm(iOS+iCR_G3,iN_X) - Inu_d_3
@@ -4363,12 +4477,20 @@ CONTAINS
 
           Fnorm = SQRT( MAX( Fnorm_N, Fnorm_G1, Fnorm_G2, Fnorm_G3 ) )
 
-          CONVERGED = CONVERGED .AND. ( Fnorm <= Rtol_inner * DnuNorm(iS,iN_X) )
+          IF( k_inner == 1 )THEN
+
+            Fnorm0(iS,iN_X) = Fnorm
+
+          END IF
+
+          CONVERGED = CONVERGED .AND. &
+                      ( ( Fnorm <= Rtol_inner * DnuNorm(iS,iN_X) ) .OR. &
+                        ( Fnorm <= Atol_inner * Fnorm0 (iS,iN_X) ) )
 
         END DO
 
-        nIterations_Inner(iN_X) &
-          = nIterations_Inner(iN_X) + 1
+        nIterations_Inner(iN_X) = nIterations_Inner(iN_X) + 1
+
         IF( CONVERGED )THEN
           MASK(iN_X) = .FALSE.
         END IF

@@ -6,6 +6,8 @@ MODULE FinalizationModule
     amrex_finalize
   USE amrex_amrcore_module, ONLY: &
     amrex_amrcore_finalize
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
 
@@ -13,13 +15,13 @@ MODULE FinalizationModule
     FinalizeReferenceElementX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     FinalizeReferenceElementX_Lagrange
-  USE EquationOfStateModule, ONLY: &
-    FinalizeEquationOfState
   USE Euler_MeshRefinementModule, ONLY: &
     FinalizeMeshRefinement_Euler
 
   ! --- Local Modules ---
 
+  USE MF_EquationOfStateModule, ONLY: &
+    FinalizeEquationOfState_MF
   USE MF_FieldsModule_Geometry, ONLY: &
     MF_uGF, &
     DestroyFields_Geometry_MF
@@ -45,20 +47,27 @@ MODULE FinalizationModule
     FinalizeTally_Euler_MF, &
     BaryonicMass_Initial, &
     BaryonicMass_OffGrid, &
-    Energy_Initial, &
-    Energy_OffGrid, &
+    EulerMomentumX1_Initial, &
+    EulerMomentumX1_OffGrid, &
+    EulerMomentumX2_Initial, &
+    EulerMomentumX2_OffGrid, &
+    EulerMomentumX3_Initial, &
+    EulerMomentumX3_OffGrid, &
+    EulerEnergy_Initial, &
+    EulerEnergy_OffGrid, &
     ElectronNumber_Initial, &
     ElectronNumber_OffGrid, &
     ADMMass_Initial, &
-    ADMMass_OffGrid
+    ADMMass_OffGrid, &
+    ADMMass_Interior
   USE InputParsingModule, ONLY: &
     nLevels, &
     StepNo, &
     dt, &
     t_old, &
     t_new
-  USE MF_GravitySolutionModule_XCFC, ONLY: &
-    FinalizeGravitySolver_XCFC_MF
+  USE MF_GravitySolutionModule, ONLY: &
+    FinalizeGravitySolver_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
@@ -90,10 +99,14 @@ CONTAINS
 
     CALL WriteFieldsAMReX_Checkpoint &
            ( StepNo, nLevels, dt, t_new, &
-             [ BaryonicMass_Initial  , BaryonicMass_OffGrid   ], &
-             [ Energy_Initial        , Energy_OffGrid         ], &
-             [ ElectronNumber_Initial, ElectronNumber_OffGrid ], &
-             [ ADMMass_Initial       , ADMMass_OffGrid        ], &
+             [ BaryonicMass_Initial   , BaryonicMass_OffGrid    ], &
+             [ EulerMomentumX1_Initial, EulerMomentumX1_OffGrid ], &
+             [ EulerMomentumX2_Initial, EulerMomentumX2_OffGrid ], &
+             [ EulerMomentumX3_Initial, EulerMomentumX3_OffGrid ], &
+             [ EulerEnergy_Initial    , EulerEnergy_OffGrid     ], &
+             [ ElectronNumber_Initial , ElectronNumber_OffGrid  ], &
+             [ ADMMass_Initial        , ADMMass_OffGrid, &
+               ADMMass_Interior ], &
              MF_uGF % BA % P, &
              iWriteFields_uGF = 1, &
              iWriteFields_uCF = 1, &
@@ -105,7 +118,7 @@ CONTAINS
 
     CALL FinalizeFluid_SSPRK_MF
 
-    CALL FinalizeGravitySolver_XCFC_MF
+    CALL FinalizeGravitySolver_MF
 
     CALL FinalizeTally_Euler_MF
 
@@ -118,7 +131,7 @@ CONTAINS
 
     CALL FinalizePositivityLimiter_Euler_MF
 
-    CALL FinalizeEquationOfState
+    CALL FinalizeEquationOfState_MF
 
     CALL FinalizeMeshRefinement_Euler
 
@@ -130,7 +143,7 @@ CONTAINS
 
     CALL TimersStop_AMReX( Timer_AMReX_Finalize )
 
-    CALL FinalizeTimers_AMReX
+    CALL FinalizeTimers_AMReX( Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL amrex_amrcore_finalize()
 

@@ -6,8 +6,6 @@ MODULE MF_Euler_SlopeLimiterModule
 
   USE amrex_box_module, ONLY: &
     amrex_box
-  USE amrex_amrcore_module, ONLY: &
-    amrex_geom
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_mfiter, &
@@ -24,7 +22,8 @@ MODULE MF_Euler_SlopeLimiterModule
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
-    nDOFX
+    nDOFX, &
+    swX
   USE MeshModule, ONLY: &
     MeshX
   USE FluidFieldsModule, ONLY: &
@@ -48,7 +47,6 @@ MODULE MF_Euler_SlopeLimiterModule
     DeallocateArray_X
   USE InputParsingModule, ONLY: &
     nLevels, &
-    swX, &
     UseTiling, &
     DEBUG
   USE MF_MeshModule, ONLY: &
@@ -59,6 +57,8 @@ MODULE MF_Euler_SlopeLimiterModule
   USE MF_EdgeMapModule, ONLY: &
     EdgeMap, &
     ConstructEdgeMap
+  USE AverageDownModule, ONLY: &
+    AverageDown
   USE FillPatchModule, ONLY: &
     FillPatch
 
@@ -183,6 +183,9 @@ CONTAINS
 
     END DO
 
+    CALL AverageDown( MF_uGF, MF_uCF )
+    CALL AverageDown( MF_uGF, MF_uDF )
+
   END SUBROUTINE ApplySlopeLimiter_Euler_MF_MultipleLevels
 
 
@@ -217,9 +220,7 @@ CONTAINS
 
     CALL FillPatch( iLevel, MF_uGF )
     CALL FillPatch( iLevel, MF_uGF, MF_uDF )
-    CALL FillPatch &
-           ( iLevel, MF_uGF, MF_uCF, &
-             MF_uDF, ApplyPositivityLimiter_Option = .FALSE. )
+    CALL FillPatch( iLevel, MF_uGF, MF_uCF )
 
     CALL CreateMesh_MF( iLevel, MeshX )
 

@@ -7,7 +7,7 @@ debug.DEBUG = 0
 
 thornado.ProgramName = "StandingAccretionShock_Relativistic"
 
-SAS.Mass          = 2.0   # [Msun]
+thornado.Mass     = 2.0   # [Msun]
 SAS.AccretionRate = 0.3   # [Msun/s]
 SAS.ShockRadius   = 150.0 # [km]
 SAS.PreShockK     = 2.0e14 # [km]
@@ -36,10 +36,7 @@ thornado.CheckpointFileNameRoot = "StandingAccretionShock_Relativistic.chk"
 thornado.dt_chk    = 1.0e+3
 thornado.iCycleChk = -1
 
-thornado.nNodes  = 3
-thornado.nStages = 3
-
-thornado.CFL = 0.5
+thornado.nNodes = 3
 
 thornado.bcX         = 100 00 00
 geometry.is_periodic = 0  1  1
@@ -78,3 +75,7 @@ PL.Min_2_Euler                = 1.0e-13
 # Equation of state parameters
 EoS.EquationOfState = "IDEAL"
 EoS.Gamma_IDEAL = 1.3333333333333333
+
+# Time-Stepping parameters
+TS.nStages = 3
+TS.CFL     = 0.5

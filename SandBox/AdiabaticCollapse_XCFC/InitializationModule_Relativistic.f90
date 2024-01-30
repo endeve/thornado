@@ -2,38 +2,25 @@ MODULE InitializationModule_Relativistic
 
   USE KindModule, ONLY: &
     DP, &
-    Zero, &
-    Half
+    Zero
+  USE UtilitiesModule, ONLY: &
+    Locate, &
+    NodeNumberX, &
+    Interpolate1D_Linear
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
-    nDOFX, &
     nNodesX, &
     iX_B0, &
-    iX_B1, &
     iX_E0, &
     iX_E1
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
-  USE UtilitiesModule, ONLY: &
-    Locate, &
-    NodeNumberX, &
-    Interpolate1D_Linear
-  USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
-    ComputeConformalFactor_Poseidon, &
-    ComputeGeometry_Poseidon
-  USE Poseidon_UtilitiesModule, ONLY: &
-    MultiplyByPsi6, &
-    DivideByPsi6, &
-    ComputeMatterSources_Poseidon, &
-    ComputePressureTensorTrace_Poseidon
   USE GeometryFieldsModule, ONLY: &
     uGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
-    iGF_Gm_dd_33, &
-    iGF_Alpha,    &
-    iGF_Psi
+    iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
     uPF, &
     iPF_D, &
@@ -62,15 +49,9 @@ MODULE InitializationModule_Relativistic
     iAF_Xn, &
     iAF_Xa, &
     iAF_Xh, &
-    iAF_Gm, &
-    uDF
-  USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
-    ApplySlopeLimiter_Euler_Relativistic_TABLE
-  USE Euler_PositivityLimiterModule_Relativistic_TABLE, ONLY: &
-    ApplyPositivityLimiter_Euler_Relativistic_TABLE
+    iAF_Gm
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
-    ComputeConserved_Euler_Relativistic, &
-    ComputeFromConserved_Euler_Relativistic
+    ComputeConserved_Euler_Relativistic
   USE EquationOfStateModule, ONLY: &
     ComputeThermodynamicStates_Primitive, &
     ApplyEquationOfState
@@ -129,36 +110,6 @@ CONTAINS
     INTEGER                :: iNodeX1, iNodeX2, iNodeX3, iNodeX
     REAL(DP)               :: X1
     TYPE(ProgenitorType1D) :: P1D
-
-    REAL(DP) :: E (nDOFX,iX_B0(1):iX_E0(1), &
-                         iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3))
-    REAL(DP) :: Si(nDOFX,iX_B0(1):iX_E0(1), &
-                         iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3),3)
-    REAL(DP) :: S (nDOFX,iX_B0(1):iX_E0(1), &
-                         iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3))
-    REAL(DP) :: Mg(nDOFX,iX_B0(1):iX_E0(1), &
-                         iX_B0(2):iX_E0(2), &
-                         iX_B0(3):iX_E0(3))
-
-    INTEGER  :: ITER
-    REAL(DP) :: dAlpha, dPsi
-    LOGICAL  :: CONVERGED
-
-    REAL(DP) :: dAl1(nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3))
-    REAL(DP) :: dCF1(nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3))
-    REAL(DP) :: dAl2(nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3))
-    REAL(DP) :: dCF2(nDOFX,iX_B0(1):iX_E0(1), &
-                           iX_B0(2):iX_E0(2), &
-                           iX_B0(3):iX_E0(3))
 
     WRITE(*,*)
     WRITE(*,'(6x,A,A)') &
@@ -257,99 +208,6 @@ CONTAINS
     END DO
 
     END ASSOCIATE ! R1D, etc
-
-    ! --- Iterate to incorporate gravity in initial conditions ---
-
-    CONVERGED = .FALSE.
-    ITER = 0
-
-    DO WHILE( .NOT. CONVERGED )
-
-      ITER = ITER + 1
-
-      dAl1 = uGF(:,iX_B0(1):iX_E0(1), &
-                   iX_B0(2):iX_E0(2), &
-                   iX_B0(3):iX_E0(3),iGF_Alpha)
-      dCF1 = uGF(:,iX_B0(1):iX_E0(1), &
-                   iX_B0(2):iX_E0(2), &
-                   iX_B0(3):iX_E0(3),iGF_Psi  )
-
-      CALL MultiplyByPsi6( iX_B1, iX_E1, uGF, uCF )
-
-      CALL ComputeMatterSources_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, E, Si, Mg )
-
-      CALL ComputeConformalFactor_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, uGF )
-
-      CALL ComputePressureTensorTrace_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, S )
-
-      CALL ComputeGeometry_Poseidon &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, uGF )
-
-      dAl2 = uGF(:,iX_B0(1):iX_E0(1), &
-                   iX_B0(2):iX_E0(2), &
-                   iX_B0(3):iX_E0(3),iGF_Alpha)
-      dCF2 = uGF(:,iX_B0(1):iX_E0(1), &
-                   iX_B0(2):iX_E0(2), &
-                   iX_B0(3):iX_E0(3),iGF_Psi  )
-
-      dAlpha = MINVAL( ABS( dAl2 - dAl1 ) / ( Half * ( dAl1 + dAl2 ) ) )
-      dPsi   = MINVAL( ABS( dCF2 - dCF1 ) / ( Half * ( dCF1 + dCF2 ) ) )
-
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E1(1)
-
-        CALL ComputeConserved_Euler_Relativistic &
-               ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
-                 uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
-                 uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
-                 uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
-                 uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
-                 uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
-                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 uAF(:,iX1,iX2,iX3,iAF_P) )
-
-      END DO
-      END DO
-      END DO
-
-      IF( MAX( dAlpha, dPsi ) .LT. 1.0e-13_DP ) CONVERGED = .TRUE.
-
-      IF( ITER .EQ. 10 )THEN
-
-        WRITE(*,*) 'Could not initialize fields. Exiting...'
-        STOP
-
-      END IF
-
-    END DO
-
-    CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
-
-    CALL ApplyPositivityLimiter_Euler_Relativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
-
-    CALL MultiplyByPsi6( iX_B1, iX_E1, uGF, uCF )
-
-    CALL ComputeMatterSources_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, E, Si, Mg )
-
-    CALL ComputeConformalFactor_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, E, Si, Mg, uGF )
-
-    CALL ComputePressureTensorTrace_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, S )
-
-    CALL ComputeGeometry_Poseidon &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, E, S, Si, uGF )
-
-    CALL DivideByPsi6( iX_B1, iX_E1, uGF, uCF )
 
   END SUBROUTINE InitializeFields_AdiabaticCollapse_XCFC
 

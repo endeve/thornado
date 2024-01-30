@@ -24,15 +24,14 @@ MODULE MF_Euler_TimersModule
     Timer_Euler_DD_TCI, &
     Timer_Euler_DD_SD, &
     Timer_Euler_SlopeLimiter, &
+    Timer_Euler_SL_CharDecomp, &
     Timer_Euler_PositivityLimiter, &
-    Timer_Euler_BoundaryConditions, &
-    Timer_Euler_SL_CharDecomp
+    Timer_Euler_BoundaryConditions
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
-    DP, &
-    Zero
+    DP
 
   IMPLICIT NONE
   PRIVATE
@@ -45,7 +44,7 @@ MODULE MF_Euler_TimersModule
   PUBLIC :: TimersStop_AMReX_Euler
   PUBLIC :: TimersWtime_AMReX
 
-  LOGICAL,  PUBLIC :: TimeIt_AMReX_Euler = .FALSE.
+  LOGICAL, PUBLIC :: TimeIt_AMReX_Euler = .FALSE.
 
   INTEGER :: iT_DG  = 1
   INTEGER :: iT_INC = 2
@@ -88,14 +87,16 @@ CONTAINS
   END SUBROUTINE InitializeTimers_AMReX_Euler
 
 
-  SUBROUTINE FinalizeTimers_AMReX_Euler( Timer_ProgramAve )
+  SUBROUTINE FinalizeTimers_AMReX_Euler( Timer_ProgramAve, Verbose_Option )
 
     REAL(DP), INTENT(in) :: Timer_ProgramAve
+    LOGICAL , INTENT(in), OPTIONAL :: Verbose_Option
 
     REAL(DP) :: Timer(nTimers)
     REAL(DP) :: TimerSum(nTimers), TimerMin(nTimers), &
                 TimerMax(nTimers), TimerAve(nTimers)
     CHARACTER(nChar) :: Label(nTimers)
+    LOGICAL          :: Verbose
 
     INTEGER :: iT
 
@@ -105,6 +106,10 @@ CONTAINS
       OutMMS = '(10x,A,ES13.6E3,A,A,ES13.6E3,A,A,ES13.6E3,A)'
 
     IF( .NOT. TimeIt_AMReX_Euler ) RETURN
+
+    Verbose = .FALSE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
 
     CALL FinalizeTimers_Euler &
            ( Verbose_Option = .FALSE., &
@@ -130,7 +135,7 @@ CONTAINS
 
     END DO
 
-    IF( amrex_parallel_ioprocessor() )THEN
+    IF( Verbose )THEN
 
       WRITE(*,'(4x,A)') 'Timers Summary (Euler)'
       WRITE(*,'(4x,A)') '----------------------'
@@ -228,8 +233,8 @@ CONTAINS
       TimerAve, TimerMin, TimerMax, TimerSum )
 
     CHARACTER(nChar), INTENT(in) :: OutFMT, OutMMS, Label
-    REAL(DP), INTENT(in) :: TimerAve_P
-    REAL(DP), INTENT(in) :: TimerAve, TimerMin, TimerMax, TimerSum
+    REAL(DP)        , INTENT(in) :: TimerAve_P
+    REAL(DP)        , INTENT(in) :: TimerAve, TimerMin, TimerMax, TimerSum
 
     WRITE(*,TRIM(OutFMT)) &
       Label, ' : ', TimerAve, ' s = ', TimerAve / TimerAve_P

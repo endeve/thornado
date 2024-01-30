@@ -66,7 +66,6 @@ MODULE InitializationModule_Relativistic
 
   PUBLIC :: InitializeFields_Relativistic
 
-
 CONTAINS
 
 
@@ -287,13 +286,13 @@ CONTAINS
 
           CASE( 'SmoothTANH' )
 
-            u0(qNodeX,iPF_D) = 2.0d0 + TANH( X / X0 )
+            u0(qNodeX,iPF_D) = 2.0_DP + TANH( X / X0 )
 
           CASE( 'SinCosTANH' )
 
             theta = Half * ( One - TANH( X / X0 ) )
 
-            u0(qNodeX,iPF_D) = 1.0d0 + theta * COS( TwoPi * X ) &
+            u0(qNodeX,iPF_D) = 1.0_DP + theta * COS( TwoPi * X ) &
                                  + ( One - theta ) * SIN( TwoPi * X )
 
           CASE( 'IsolatedContact' )
@@ -376,13 +375,12 @@ CONTAINS
 
           CASE( 'SineWave' )
 
-            uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = One + 0.1_DP * SIN( TwoPi * X1 )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = One + 0.1_DP * SIN( TwoPi * X1 )
             uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
             uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
             uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-            uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0_DP
-            uPF(iNodeX,iX1,iX2,iX3,iPF_E )  &
-              = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
 
           CASE( 'TopHat' )
 
@@ -396,12 +394,11 @@ CONTAINS
 
             END IF
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uAF(iNodeX,iX1,iX2,iX3,iAF_P)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-                = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
 
           CASE DEFAULT
 
@@ -418,6 +415,10 @@ CONTAINS
         END SELECT
 
       END DO
+
+      CALL ComputePressureFromPrimitive_IDEAL &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E), &
+               uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P) )
 
       CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
@@ -466,34 +467,31 @@ CONTAINS
 
           CASE( 'SineWaveX1' )
 
-            uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = One + 0.1_DP * SIN( TwoPi * X1 )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = One + 0.1_DP * SIN( TwoPi * X1 )
             uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP
             uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
             uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-            uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0_DP
-            uPF(iNodeX,iX1,iX2,iX3,iPF_E )  &
-              = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
 
           CASE( 'SineWaveX2' )
 
-            uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = One + 0.1_DP * SIN( TwoPi * X2 )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = One + 0.1_DP * SIN( TwoPi * X2 )
             uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
             uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.1_DP
             uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-            uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0_DP
-            uPF(iNodeX,iX1,iX2,iX3,iPF_E )  &
-              = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
 
           CASE( 'SineWaveX1X2' )
 
-            uPF(iNodeX,iX1,iX2,iX3,iPF_D)  &
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
               = One + 0.1_DP * SIN( SQRT( Two ) * TwoPi * ( X1 + X2 ) )
             uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.1_DP / SQRT( Two )
             uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.1_DP / SQRT( Two )
             uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-            uAF(iNodeX,iX1,iX2,iX3,iAF_P ) = 1.0_DP
-            uPF(iNodeX,iX1,iX2,iX3,iPF_E )  &
-              = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
 
           CASE DEFAULT
 
@@ -511,6 +509,10 @@ CONTAINS
         END SELECT
 
       END DO
+
+      CALL ComputePressureFromPrimitive_IDEAL &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E), &
+               uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P) )
 
       CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
@@ -543,7 +545,8 @@ CONTAINS
     INTEGER  :: iNodeX, iNodeX1
     REAL(DP) :: X1, XD, Vs
 
-    REAL(DP) :: LeftState(nPF), RightState(nPF)
+    REAL(DP) :: LeftState(nPF), RightState(nPF), &
+                LeftStatePressure, RightStatePressure
 
     WRITE(*,*)
     WRITE(*,'(A4,A,A)') &
@@ -561,35 +564,41 @@ CONTAINS
         LeftState(iPF_V2) = 0.0_DP
         LeftState(iPF_V3) = 0.0_DP
         LeftState(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+        LeftState(iPF_Ne) = 0.0_DP
 
         RightState(iPF_D ) = 0.125_DP
         RightState(iPF_V1) = 0.0_DP
         RightState(iPF_V2) = 0.0_DP
         RightState(iPF_V3) = 0.0_DP
         RightState(iPF_E ) = 0.1_DP / ( Gamma_IDEAL - One )
+        RightState(iPF_Ne) = 0.0_DP
 
       CASE( 'IsolatedShock' )
 
         Vs = 0.01_DP
         XD = Half
 
-        RightState(iPF_D)  = 1.0_DP
+        RightState(iPF_D ) = 1.0_DP
         RightState(iPF_V1) = -0.9_DP
         RightState(iPF_V2) = 0.0_DP
         RightState(iPF_V3) = 0.0_DP
-        RightState(iPF_E)  = 1.0_DP / ( Gamma_IDEAL - One )
+        RightStatePressure = 1.0_DP
+        RightState(iPF_E ) = RightStatePressure / ( Gamma_IDEAL - One )
+        RightState(iPF_Ne) = 0.0_DP
 
         CALL ComputeLeftState &
                ( Vs,                 &
                  RightState(iPF_D ), &
                  RightState(iPF_V1), &
-                 RightState(iPF_E ) * ( Gamma_IDEAL - One ), &
+                 RightStatePressure, &
                  LeftState (iPF_D ), &
                  LeftState (iPF_V1), &
-                 LeftState (iPF_E ) )
+                 LeftStatePressure )
 
         LeftState(iPF_V2) = 0.0_DP
         LeftState(iPF_V3) = 0.0_DP
+        LeftState(iPF_E ) = LeftStatePressure / ( Gamma_IDEAL - One )
+        LeftState(iPF_Ne) = 0.0_DP
 
       CASE( 'IsolatedContact' )
 
@@ -601,12 +610,14 @@ CONTAINS
         LeftState(iPF_V2) = 0.0_DP
         LeftState(iPF_V3) = 0.0_DP
         LeftState(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+        LeftState(iPF_Ne) = 0.0_DP
 
         RightState(iPF_D ) = 1.0_DP
         RightState(iPF_V1) = Vs
         RightState(iPF_V2) = 0.0_DP
         RightState(iPF_V3) = 0.0_DP
         RightState(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+        RightState(iPF_Ne) = 0.0_DP
 
       CASE( 'MBProblem1' )
 
@@ -617,12 +628,14 @@ CONTAINS
         LeftState(iPF_V2) = 0.0_DP
         LeftState(iPF_V3) = 0.0_DP
         LeftState(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+        LeftState(iPF_Ne) = 0.0_DP
 
         RightState(iPF_D ) = 1.0_DP
         RightState(iPF_V1) = 0.0_DP
         RightState(iPF_V2) = 0.0_DP
         RightState(iPF_V3) = 0.0_DP
         RightState(iPF_E ) = 10.0_DP / ( Gamma_IDEAL - One )
+        RightState(iPF_Ne) = 0.0_DP
 
       CASE( 'MBProblem4' )
 
@@ -633,12 +646,14 @@ CONTAINS
         LeftState(iPF_V2) = 0.0_DP
         LeftState(iPF_V3) = 0.0_DP
         LeftState(iPF_E ) = 1.0e3_DP / ( Gamma_IDEAL - One )
+        LeftState(iPF_Ne) = 0.0_DP
 
         RightState(iPF_D ) = 1.0_DP
         RightState(iPF_V1) = 0.0_DP
         RightState(iPF_V2) = 0.0_DP
         RightState(iPF_V3) = 0.0_DP
         RightState(iPF_E ) = 1.0e-2_DP / ( Gamma_IDEAL - One )
+        RightState(iPF_Ne) = 0.0_DP
 
       CASE( 'PerturbedShockTube' )
 
@@ -649,12 +664,14 @@ CONTAINS
         LeftState(iPF_V2) = 0.0_DP
         LeftState(iPF_V3) = 0.0_DP
         LeftState(iPF_E ) = 50.0_DP / ( Gamma_IDEAL - One )
+        LeftState(iPF_Ne) = 0.0_DP
 
         RightState(iPF_D ) = 0.0_DP ! --- Dummy ---
         RightState(iPF_V1) = 0.0_DP
         RightState(iPF_V2) = 0.0_DP
         RightState(iPF_V3) = 0.0_DP
         RightState(iPF_E ) = 5.0_DP / ( Gamma_IDEAL - One )
+        RightState(iPF_Ne) = 0.0_DP
 
       CASE( 'ShockReflection' )
 
@@ -665,6 +682,7 @@ CONTAINS
         LeftState(iPF_V2) = 0.0_DP
         LeftState(iPF_V3) = 0.0_DP
         LeftState(iPF_E ) = 0.01_DP / ( Gamma_IDEAL - One )
+        LeftState(iPF_Ne) = 0.0_DP
 
         ! --- All of these are dummies ---
         RightState(iPF_D ) = 0.0_DP
@@ -672,6 +690,7 @@ CONTAINS
         RightState(iPF_V2) = 0.0_DP
         RightState(iPF_V3) = 0.0_DP
         RightState(iPF_E ) = 0.0_DP
+        RightState(iPF_Ne) = 0.0_DP
 
       CASE DEFAULT
 
@@ -745,6 +764,7 @@ CONTAINS
           uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = LeftState(iPF_V2)
           uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = LeftState(iPF_V3)
           uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = LeftState(iPF_E )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = LeftState(iPF_Ne)
 
         ELSE
 
@@ -753,6 +773,7 @@ CONTAINS
           uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = RightState(iPF_V2)
           uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = RightState(iPF_V3)
           uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = RightState(iPF_E )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = RightState(iPF_Ne)
 
           IF( TRIM( RiemannProblemName ) .EQ. 'PerturbedShockTube' ) &
             uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
@@ -763,7 +784,7 @@ CONTAINS
       END DO
 
       CALL ComputePressureFromPrimitive_IDEAL &
-             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E ), &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E), &
                uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P) )
 
       CALL ComputeConserved_Euler_Relativistic &
@@ -794,6 +815,7 @@ CONTAINS
     REAL(DP) :: X1, X2, X1D, X2D, Vs
 
     REAL(DP) :: NE(nPF), NW(nPF), SW(nPF), SE(nPF)
+    REAL(DP) :: pNE, pNW, pSW, pSE ! Pressures
 
     WRITE(*,*)
     WRITE(*,'(A4,A,A)') &
@@ -812,24 +834,28 @@ CONTAINS
         NE(iPF_V2) = 0.0_DP
         NE(iPF_V3) = 0.0_DP
         NE(iPF_E ) = 0.01_DP / ( Gamma_IDEAL - One )
+        NE(iPF_Ne) = 0.0_DP
 
         NW(iPF_D ) = 0.1_DP
         NW(iPF_V1) = 0.99_DP
         NW(iPF_V2) = 0.0_DP
         NW(iPF_V3) = 0.0_DP
         NW(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+        NW(iPF_Ne) = 0.0_DP
 
         SW(iPF_D ) = 0.5_DP
         SW(iPF_V1) = 0.0_DP
         SW(iPF_V2) = 0.0_DP
         SW(iPF_V3) = 0.0_DP
         SW(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+        SW(iPF_Ne) = 0.0_DP
 
         SE(iPF_D ) = 0.1_DP
         SE(iPF_V1) = 0.0_DP
         SE(iPF_V2) = 0.99_DP
         SE(iPF_V3) = 0.0_DP
         SE(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+        SE(iPF_Ne) = 0.0_DP
 
       CASE( 'IsolatedShock' )
 
@@ -842,37 +868,45 @@ CONTAINS
         NE(iPF_V1) = -0.9_DP
         NE(iPF_V2) = 0.0_DP
         NE(iPF_V3) = 0.0_DP
-        NE(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+        pNE        = 1.0_DP
+        NE(iPF_E ) = pNE / ( Gamma_IDEAL - One )
+        NE(iPF_Ne) = 0.0_DP
 
         CALL ComputeLeftState &
                ( Vs, &
                  NE(iPF_D ), &
                  NE(iPF_V1), &
-                 NE(iPF_E ) * ( Gamma_IDEAL - One ), &
+                 pNE       , &
                  NW(iPF_D ), &
                  NW(iPF_V1), &
-                 NW(iPF_E ) )
+                 pNW )
 
         NW(iPF_V2) = 0.0_DP
         NW(iPF_V3) = 0.0_DP
+        NW(iPF_E ) = pNW / ( Gamma_IDEAL - One )
+        NW(iPF_Ne) = 0.0_DP
 
         SE(iPF_D ) = 1.0_DP
         SE(iPF_V1) = -0.9_DP
         SE(iPF_V2) = 0.0_DP
         SE(iPF_V3) = 0.0_DP
-        SE(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+        pSE        = 1.0_DP
+        SE(iPF_E ) = pSE / ( Gamma_IDEAL - One )
+        SE(iPF_Ne) = 0.0_DP
 
         CALL ComputeLeftState &
                ( Vs, &
                  SE(iPF_D ), &
                  SE(iPF_V1), &
-                 SE(iPF_E ) * ( Gamma_IDEAL - One ), &
+                 pSE       , &
                  SW(iPF_D ), &
                  SW(iPF_V1), &
-                 SW(iPF_E ) )
+                 pSW )
 
         SW(iPF_V2) = 0.0_DP
         SW(iPF_V3) = 0.0_DP
+        SW(iPF_E ) = pSW / ( Gamma_IDEAL - One )
+        SW(iPF_Ne) = 0.0_DP
 
       CASE DEFAULT
 
@@ -954,6 +988,7 @@ CONTAINS
           uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = NE(iPF_V2)
           uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = NE(iPF_V3)
           uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = NE(iPF_E )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = NE(iPF_Ne)
 
         ! --- NW ---
         ELSE IF( X1 .LE. X1D .AND. X2 .GT. X2D )THEN
@@ -963,6 +998,7 @@ CONTAINS
           uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = NW(iPF_V2)
           uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = NW(iPF_V3)
           uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = NW(iPF_E )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = NW(iPF_Ne)
 
         ! --- SW ---
         ELSE IF( X1 .LE. X1D .AND. X2 .LE. X2D )THEN
@@ -972,6 +1008,7 @@ CONTAINS
           uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = SW(iPF_V2)
           uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = SW(iPF_V3)
           uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = SW(iPF_E )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = SW(iPF_Ne)
 
         ! --- SE ---
         ELSE
@@ -981,13 +1018,14 @@ CONTAINS
           uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = SE(iPF_V2)
           uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = SE(iPF_V3)
           uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = SE(iPF_E )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = SE(iPF_Ne)
 
         END IF
 
       END DO
 
       CALL ComputePressureFromPrimitive_IDEAL &
-             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E ), &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E), &
                uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P) )
 
       CALL ComputeConserved_Euler_Relativistic &
@@ -1037,16 +1075,18 @@ CONTAINS
         LeftState(iPF_V2) = 0.0_DP
         LeftState(iPF_V3) = 0.0_DP
         LeftState(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+        LeftState(iPF_Ne) = 0.0_DP
 
         RightState(iPF_D ) = 0.125_DP
         RightState(iPF_V1) = 0.0_DP
         RightState(iPF_V2) = 0.0_DP
         RightState(iPF_V3) = 0.0_DP
         RightState(iPF_E ) = 0.1_DP / ( Gamma_IDEAL - One )
+        RightState(iPF_Ne) = 0.0_DP
 
       CASE( 'ConstantSpherical' )
 
-        XD = 1.0_DP
+        XD = HUGE( One )
 
         LeftState(iPF_D ) = 1.0_DP
         LeftState(iPF_V1) = 0.0_DP
@@ -1054,11 +1094,7 @@ CONTAINS
         LeftState(iPF_V3) = 0.0_DP
         LeftState(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
 
-        RightState(iPF_D ) = LeftState(iPF_D )
-        RightState(iPF_V1) = LeftState(iPF_V1)
-        RightState(iPF_V2) = LeftState(iPF_V2)
-        RightState(iPF_V3) = LeftState(iPF_V3)
-        RightState(iPF_E ) = LeftState(iPF_E )
+        RightState = LeftState
 
       CASE DEFAULT
 
@@ -1107,39 +1143,31 @@ CONTAINS
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-        SELECT CASE ( TRIM( RiemannProblemName ) )
+        IF( X1 .LE. XD )THEN
 
-          CASE( 'SphericalSod' )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = LeftState(iPF_D )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = LeftState(iPF_V1)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = LeftState(iPF_V2)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = LeftState(iPF_V3)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = LeftState(iPF_E )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = LeftState(iPF_Ne)
 
-            IF( X1 .LE. XD )THEN
+        ELSE
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = LeftState(iPF_D )
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = LeftState(iPF_V1)
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = LeftState(iPF_V2)
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = LeftState(iPF_V3)
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = LeftState(iPF_E )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = RightState(iPF_D )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = RightState(iPF_V1)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = RightState(iPF_V2)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = RightState(iPF_V3)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = RightState(iPF_E )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = RightState(iPF_Ne)
 
-            ELSE
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = RightState(iPF_D )
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = RightState(iPF_V1)
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = RightState(iPF_V2)
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = RightState(iPF_V3)
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = RightState(iPF_E )
-
-            END IF
-
-          CASE( 'ConstantSpherical' )
-
-            uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = LeftState(iPF_D )
-            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = LeftState(iPF_V1)
-            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = LeftState(iPF_V2)
-            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = LeftState(iPF_V3)
-            uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = LeftState(iPF_E )
-
-        END SELECT
+        END IF
 
       END DO
+
+      CALL ComputePressureFromPrimitive_IDEAL &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E), &
+               uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P) )
 
       CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
@@ -1187,31 +1215,31 @@ CONTAINS
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
-        IF( X1 <= X_D)THEN
+        IF( X1 <= X_D )THEN
 
-          uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.0_DP
           uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
           uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
           uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-          uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-            = Eblast / ( FourPi / Three * X_D**3 )
-          uAF(iNodeX,iX1,iX2,iX3,iAF_P)  &
-            = ( Gamma_IDEAL - One ) * uPF(iNodeX,iX1,iX2,iX3,iPF_E)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = Eblast / ( FourPi / Three * X_D**3 )
+          uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
 
         ELSE
 
-          uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = 1.0_DP
           uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
           uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
           uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-          uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
-            = 1.0d-5
-          uAF(iNodeX,iX1,iX2,iX3,iAF_P)  &
-            = ( Gamma_IDEAL - One ) * uPF(iNodeX,iX1,iX2,iX3,iPF_E)
+          uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 1.0e-5_DP
+          uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
 
         END IF
 
       END DO
+
+      CALL ComputePressureFromPrimitive_IDEAL &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E), &
+               uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P) )
 
       CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
@@ -1276,7 +1304,7 @@ CONTAINS
 
         IF( X2 .GT. Zero )THEN
 
-          uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
             = rho0 + rho1 * TANH( ( X2 - X2_Offset ) / a )
           uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
             = Vshear      * TANH( ( X2 - X2_Offset ) / a )
@@ -1292,7 +1320,7 @@ CONTAINS
 
         ELSE
 
-          uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
             = rho0 - rho1 * TANH( ( X2 + X2_Offset ) / a )
           uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
             = -Vshear     * TANH( ( X2 + X2_Offset ) / a )
@@ -1313,11 +1341,13 @@ CONTAINS
 
         END IF
 
-        uAF(iNodeX,iX1,iX2,iX3,iAF_P) = One
-        uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
-          = uAF(iNodeX,iX1,iX2,iX3,iAF_P) / ( Gamma_IDEAL - One )
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E) = 1.0_DP / ( Gamma_IDEAL - One )
 
       END DO
+
+      CALL ComputePressureFromPrimitive_IDEAL &
+             ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E), &
+               uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P) )
 
       CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
@@ -1349,9 +1379,6 @@ CONTAINS
     REAL(DP), INTENT(out) ::     DL, VL, PL
 
     CALL ApplyJumpConditions_LeftState( Vs, DR, VR, PR, DL, VL, PL )
-
-    ! --- Return energy-density instead of pressure ---
-    PL = PL / ( Gamma_IDEAL - One )
 
   END SUBROUTINE ComputeLeftState
 

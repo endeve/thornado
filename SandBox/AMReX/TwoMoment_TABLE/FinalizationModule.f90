@@ -23,8 +23,6 @@ MODULE FinalizationModule
     FinalizeReferenceElement
   USE GeometryFieldsModuleE, ONLY: &
     DestroyGeometryFieldsE
-  USE EquationOfStateModule, ONLY: &
-    FinalizeEquationOfState
   USE TwoMoment_OpacityModule, ONLY: &
     DestroyOpacities
   USE TwoMoment_TimersModule, ONLY: &
@@ -32,6 +30,8 @@ MODULE FinalizationModule
 
   ! --- Local Modules ---
 
+  USE MF_EquationOfStateModule, ONLY: &
+    FinalizeEquationOfState_MF
   USE MF_FieldsModule_Geometry, ONLY: &
     MF_uGF, &
     DestroyFields_Geometry_MF
@@ -100,7 +100,7 @@ CONTAINS
 
     !CALL DestroyOpacities
 
-    CALL FinalizeEquationOfState
+    CALL FinalizeEquationOfState_MF
 
     CALL DestroyGeometryFieldsE
 

@@ -9,8 +9,6 @@ thornado.t_end     = 5.0e-1   # Final time
 thornado.dt_wrt    = -2.5e-2   # Time increment to write plot-file
 thornado.dt_chk    = -2.5e-2   # Time increment to write checkpoint-file
 thornado.nNodes    = 3        # Number of DG nodes in each active dimension
-thornado.nStages   = 3        # Number of SSP-RK stages for time integration
-thornado.CFL       = 0.5      # CFL number
 thornado.bcX       = 03 03 00 # Boundary conditions
 thornado.swX       = 01 01 00 # Stencil width (nGhostCells) in each dimension
 thornado.iCycleD   = 0001     # MOD this number to display info
@@ -49,3 +47,7 @@ PL.Min_2                = 1.0e-12
 # Equation of State parameters
 EoS.EosTableName = "wl-EOS-SFHo-25-50-100.h5"
 EoS.EquationOfState = "TABLE"
+
+# Time-Stepping parameters
+TS.nStages = 3        # Number of SSP-RK stages for time integration
+TS.CFL     = 0.5      # CFL number

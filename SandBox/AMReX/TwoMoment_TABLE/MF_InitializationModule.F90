@@ -28,14 +28,17 @@ MODULE MF_InitializationModule
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
   USE ProgramHeaderModule, ONLY: &
+    ProgramName, &
     nDOFX, &
     nX, &
     swX, &
     nNodesX, &
     nDOFE, &
+    xL, &
+    xR, &
+    nE, &
     nDOFZ
   USE RadiationFieldsModule, ONLY: &
-    nPR, &
     iCR_N, &
     iCR_G1, &
     iCR_G2, &
@@ -44,23 +47,24 @@ MODULE MF_InitializationModule
     iPR_D, &
     iPR_I1, &
     iPR_I2, &
-    iPR_I3
+    iPR_I3, &
+    nPR, &
+    nSpecies
   USE FluidFieldsModule, ONLY: &
-    nCF, &
     iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
-    nPF, &
+    nCF, &
     iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
-    nAF, &
+    nPF, &
     iAF_P, &
     iAF_T, &
     iAF_Ye, &
@@ -73,9 +77,9 @@ MODULE MF_InitializationModule
     iAF_Xp, &
     iAF_Xn, &
     iAF_Xa, &
-    iAF_Xh
+    iAF_Xh, &
+    nAF
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
@@ -88,10 +92,11 @@ MODULE MF_InitializationModule
     iGF_h_3, &
     iGF_Phi_N, &
     iGF_Psi, &
-    iGF_SqrtGm
+    iGF_SqrtGm, &
+    nGF
   USE TwoMoment_OpacityModule, ONLY: &
-   uOP, &
-   iOP_Sigma
+    uOP, &
+    iOP_Sigma
   USE MeshModule, ONLY: &
     MeshType, &
     CreateMesh, &
@@ -104,6 +109,7 @@ MODULE MF_InitializationModule
     ComputeConserved_TwoMoment
   USE UnitsModule, ONLY: &
     UnitsDisplay, &
+    SolarMass, &
     SpeedOfLight, &
     Erg, &
     Gram, &
@@ -122,15 +128,8 @@ MODULE MF_InitializationModule
   USE MF_ErrorModule, ONLY: &
     DescribeError_MF
   USE InputParsingModule, ONLY: &
-    ProgramName, &
     nLevels, &
-    xL, &
-    xR, &
-    nE, &
-    nSpecies, &
-    Mass, &
-    UseTiling, &
-    R0
+    UseTiling
 
   IMPLICIT NONE
   PRIVATE
@@ -146,6 +145,7 @@ CONTAINS
     INTEGER,              INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR, MF_uCF
+
     IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
 
       WRITE(*,*)
@@ -166,6 +166,7 @@ CONTAINS
 
         CALL InitializeFields_Relaxation &
                ( iLevel, MF_uGF, MF_uCR, MF_uCF )
+
       CASE DEFAULT
 
         CALL DescribeError_MF &
@@ -1104,10 +1105,20 @@ CONTAINS
 !!$    INTEGER                       :: lo_F(4), hi_F(4)
 !!$    TYPE(amrex_box)               :: BX
 !!$    TYPE(amrex_mfiter)            :: MFI
+!!$    TYPE(amrex_parmparse)         :: PP
 !!$    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 !!$    REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
 !!$    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-!!$    REAL(DP)                      :: W, R, Theta
+!!$    REAL(DP)                      :: W, R, Theta, Mass, R0
+!!$
+!!$    Mass = Zero
+!!$    R0   = Zero
+!!$    CALL amrex_parmparse_build( PP, 'ST' )
+!!$      CALL PP % query( 'Mass', Mass )
+!!$      CALL PP % query( 'R0'  , R0   )
+!!$    CALL amrex_parmparse_destroy( PP )
+!!$    Mass = Mass * SolarMass
+!!$    R0   = R0   * UnitsDisplay % LengthX1Unit
 !!$
 !!$    uCR_K = Zero
 !!$    uPF_K = Zero
@@ -1171,7 +1182,9 @@ CONTAINS
 !!$            uPF_K(iNodeX,iPF_Ne) = 0.0_DP
 !!$
 !!$            CALL ComputeAlphaPsi( Mass, R, R0, theta, uGF_K(iNodeX,:) )
+!!$
 !!$          END DO
+!!$
 !!$        CALL ComputePressureFromPrimitive &
 !!$                 ( uPF_K(:,iPF_D), uPF_K(:,iPF_E), uPF_K(:,iPF_Ne), &
 !!$                   uAF_K(:,iAF_P) )
@@ -1320,7 +1333,7 @@ CONTAINS
 !    REAL(DP), PARAMETER :: D_0   = 1.022d13 * Gram / Centimeter**3
 !    REAL(DP), PARAMETER :: T_0   = 1.617d1 * MeV
 !    REAL(DP), PARAMETER :: Y_0   = 0.1421_DP
-    
+
 !    REAL(DP), PARAMETER :: D_0   = 1.032d14 * Gram / Centimeter**3
 !    REAL(DP), PARAMETER :: T_0   = 1.50d1 * MeV
 !    REAL(DP), PARAMETER :: Y_0   = 0.27_DP
