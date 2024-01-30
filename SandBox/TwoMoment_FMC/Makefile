@@ -18,9 +18,9 @@ ApplicationDriver: \
 	TwoMoment_InputOutputModule_FMC.o \
 	TwoMoment_UtilitiesModule_FMC.o \
   TwoMoment_PositivityLimiterModule_FMC.o \
+  TwoMoment_OpacityModule_FMC.o \
   TwoMoment_DiscretizationModule_Streaming_FMC.o \
   TwoMoment_DiscretizationModule_Collisions_FMC.o \
-  TwoMoment_OpacityModule_FMC.o \
   TwoMoment_TimeSteppingModule_FMC.o \
   InitializationModule.o \
 	ApplicationDriver.o
@@ -30,9 +30,9 @@ ApplicationDriver: \
 	TwoMoment_InputOutputModule_FMC.o \
 	TwoMoment_UtilitiesModule_FMC.o \
   TwoMoment_PositivityLimiterModule_FMC.o \
+  TwoMoment_OpacityModule_FMC.o \
   TwoMoment_DiscretizationModule_Streaming_FMC.o \
   TwoMoment_DiscretizationModule_Collisions_FMC.o \
-  TwoMoment_OpacityModule_FMC.o \
   TwoMoment_TimeSteppingModule_FMC.o \
   InitializationModule.o \
 	ApplicationDriver.o \
@@ -78,19 +78,45 @@ TwoMoment_UtilitiesModule_FMC.o: \
   TwoMoment_ClosureModule.o \
   TwoMoment_UtilitiesModule_FMC.F90
 
-TwoMoment_TimeSteppingModule_FMC.o: \
-  TwoMoment_PositivityLimiterModule_FMC.o \
-  TwoMoment_DiscretizationModule_Streaming_FMC.o \
-  TwoMoment_TimeSteppingModule_FMC.F90
-
-TwoMoment_DiscretizationModule_Streaming_FMC.o: \
-  TwoMoment_DiscretizationModule_Streaming_FMC.F90
-
-TwoMoment_DiscretizationModule_Collisions_FMC.o: \
-  TwoMoment_DiscretizationModule_Collisions_FMC.F90
-
 TwoMoment_PositivityLimiterModule_FMC.o: \
   TwoMoment_PositivityLimiterModule_FMC.F90
 
 TwoMoment_OpacityModule_FMC.o: \
   TwoMoment_OpacityModule_FMC.F90
+
+TwoMoment_DiscretizationModule_Streaming_FMC.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  TwoMoment_TimersModule.o \
+  LinearAlgebraModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  ReferenceElementModule.o \
+  ReferenceElementModule_Lagrange.o \
+  MeshModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_BoundaryConditionsModule.o \
+  TwoMoment_FieldsModule_FMC.o \
+  TwoMoment_BoundaryConditionsModule.o \
+  TwoMoment_UtilitiesModule_FMC.o \
+  TwoMoment_DiscretizationModule_Streaming_FMC.F90
+
+TwoMoment_DiscretizationModule_Collisions_FMC.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  FluidFieldsModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryFieldsModule.o \
+  TwoMoment_FieldsModule_FMC.o \
+  TwoMoment_TimersModule.o \
+  TwoMoment_UtilitiesModule_FMC.o \
+  TwoMoment_OpacityModule_FMC.o \
+  TwoMoment_ClosureModule.o \
+  TwoMoment_DiscretizationModule_Collisions_FMC.F90
+
+TwoMoment_TimeSteppingModule_FMC.o: \
+  TwoMoment_PositivityLimiterModule_FMC.o \
+  TwoMoment_DiscretizationModule_Streaming_FMC.o \
+  TwoMoment_TimeSteppingModule_FMC.F90
