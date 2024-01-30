@@ -78,6 +78,8 @@ MODULE DeviceModule
     omp_get_default_device, &
     omp_is_initial_device, &
     omp_target_is_present
+  USE omp_lib, ONLY : &
+    omp_get_num_devices
 #endif
 
 #if defined(THORNADO_OACC)
@@ -152,6 +154,8 @@ CONTAINS
     ierr = cudaGetDeviceCount( ndevices )
 #elif defined(THORNADO_HIP)
     CALL hipCheck( hipGetDeviceCount( ndevices ) )
+#elif defined(THORNADO_OMP_OL)
+    ndevices = omp_get_num_devices()
 #endif
     IF ( ndevices > 0 ) THEN
       mydevice = MOD( myrank, ndevices )
@@ -163,11 +167,14 @@ CONTAINS
     ierr = cudaSetDevice( mydevice )
 #elif defined(THORNADO_HIP)
     CALL hipCheck( hipSetDevice( mydevice ) )
+#elif defined(THORNADO_OMP_OL)
+    CALL omp_set_default_device( mydevice )
 #endif
 #else
     mydevice = -1
     ndevices = 0
 #endif
+
 #if defined(THORNADO_OMP_OL)
     CALL omp_set_default_device( mydevice )
 #endif
