@@ -92,7 +92,22 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
-## Jan 27 2024
+## Jan 30 2024
+1.  The modified build run script has now tested on PVC04 and Aurora. It is working. 
+2. The compilation time of the 4 cases, i.e., SineWaveStreaming and Relaxation cases with a grid of 8x8x8 and 16x16x16 costs 45m4.619s in total on Aurora:
+<pre>
+real    12m1.155s
+user    2m50.682s
+sys     2m37.618s
+ApplicationDriver_Neutrinos_beacon_intel-xN16 has been build
+
+real    45m4.619s
+user    10m57.202s
+sys     9m46.881s
+shaopingquan@x4711c3s5b0n0:~/ExaStar/thornado-nre/SandBox/TwoMoment_OrderV/Executables>
+</pre>
+
+## Jan 29 2024
 1. Performed a systematic tests on the performance improvement of stand-alone SineWaveStreaming and Relaxation cases on PVC04 using oneapi/eng-compiler/2023.10.15.002. It seems that the unroll only improves the performance by less than 5%. Create master-without-Mathi-Unroll and  master-without-Mathi-Unroll and pushed them to https://github.com/endeve/thornado.git. notified Mathi with this foundings to see whether something/code changes is/are missed in these experiments. 
 2. Tested master-nre on Aurora, and it seems that compilation on Aurora is 10X slower than the compilation on our PVC04
 3. Modified the build and run script to create log file for compilation only with "-BLD" in it and also create independent executables for 8x8x8 and 16x16x16 cases.
