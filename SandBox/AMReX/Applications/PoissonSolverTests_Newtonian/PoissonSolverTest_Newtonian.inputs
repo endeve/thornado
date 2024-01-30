@@ -3,7 +3,16 @@
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
 
-debug.DEBUG = 0
+debug.DEBUG = 1
+
+# ###############
+
+inputs.rho_c       = 1.50e2 # g/cc
+inputs.SolarRadius = 6.95e5 # kilometers
+inputs.R_star      = 2.0 # solar radii
+inputs.r_c         = 0.2 # solar radii
+
+##################
 
 thornado.ProgramName = "PoissonSolverTest_Newtonian"
 
