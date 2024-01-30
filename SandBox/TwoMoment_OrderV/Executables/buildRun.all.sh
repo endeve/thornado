@@ -12,8 +12,8 @@ function set_common(){
    export EXASTAR_HOME=/localdisk/quanshao/ExaStar
    export HDF5_INC=${EXASTAR_HOME}/hdf57/include
    export HDF5_LIB=${EXASTAR_HOME}/hdf57/lib64
-   export THORNADO_DIR=${EXASTAR_HOME}/toAurora/thornado-endeve
-   export WEAKLIB_DIR=${EXASTAR_HOME}/toAurora/weaklib
+   export THORNADO_DIR=${EXASTAR_HOME}/thornado-nre
+   export WEAKLIB_DIR=${EXASTAR_HOME}/weaklib
    export WEAKLIB_TABLES_DIR=${EXASTAR_HOME}/toAurora/weaklib-tables
    export THORNADO_MACHINE=beacon_intel
 
