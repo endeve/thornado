@@ -143,6 +143,8 @@ MODULE InitializationModule
     Timer_AMReX_Initialize
   USE MF_GravitySolutionModule, ONLY: &
     InitializeGravitySolver_MF
+  USE MF_GravitySolutionModule_Newtonian_Poseidon, ONLY: &
+    ComputeGravitationalPotential_Newtonian_MF_Poseidon
 
   IMPLICIT NONE
   PRIVATE
@@ -238,6 +240,8 @@ CONTAINS
     CALL DestroyMesh_MF( MeshX )
 
     ! Call Newtonian gravity solve here
+
+    Call ComputeGravitationalPotential_Newtonian_MF_Poseidon( MF_uCF, MF_uGF )
 
     CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
     CALL AverageDown( MF_uGF, MF_uCF )
