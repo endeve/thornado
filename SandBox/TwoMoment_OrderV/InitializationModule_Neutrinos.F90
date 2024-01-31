@@ -139,8 +139,8 @@ CONTAINS
 
         DO iNodeE = 1, nDOFE
 
-          iNodeZ = (iNodeX-1) * nDOFE + iNodeE
-          iN_E   = (iNodeE-1) * nDOFE + iNodeE
+          iNodeZ = (iNodeX - 1 ) * nDOFE + iNodeE
+          iN_E   = (iE     - 1 ) * nDOFE + iNodeE
            
           uPR(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) = tmp_nu(iN_E)
      

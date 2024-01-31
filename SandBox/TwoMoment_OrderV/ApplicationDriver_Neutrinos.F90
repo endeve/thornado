@@ -141,7 +141,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
         nX    = [ 1, 1, 1 ]
         xL    = [ 0.0_DP            , 0.0_DP, 0.0_DP ]
-        xR    = [ 1.0_DP * Kilometer, Pi    , TwoPi  ]
+        xR    = [ 8.0_DP * Kilometer, Pi    , TwoPi  ]
         bcX   = [ 0, 0, 0 ]
         ZoomX = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
@@ -154,13 +154,14 @@ PROGRAM ApplicationDriver_Neutrinos
         bcE   = 10
         ZoomE = 1.266038160710160_DP
 
-        TimeSteppingScheme = 'IMEX_PDARS'
+        !TimeSteppingScheme = 'IMEX_PDARS'
+        TimeSteppingScheme = 'BackwardEuler'
 
         t_end = 1.0d0 * Millisecond
 
         PrescribedTimeStep = .TRUE. ! If .FALSE., explicit CFL will be used.
-        dt_0               = 1.0d-3 * Millisecond
-        dt_MAX             = 1.0d-3 * Millisecond
+        dt_0               = 8.895d-3 * Millisecond
+        dt_MAX             = 8.895d-3 * Millisecond
         dt_RATE            = 1.01_DP
 
         iCycleD = 1
@@ -171,17 +172,30 @@ PROGRAM ApplicationDriver_Neutrinos
         UseSlopeLimiter_Euler          = .FALSE.
         UseSlopeLimiter_TwoMoment      = .FALSE.
         UsePositivityLimiter_Euler     = .FALSE.
-        UsePositivityLimiter_TwoMoment = .TRUE.
-        UseEnergyLimiter_TwoMoment     = .TRUE.
-
-        wMatterRHS = [ One, One, One, One, One ]
+        UsePositivityLimiter_TwoMoment = .FALSE.
+        UseEnergyLimiter_TwoMoment     = .FALSE.
 
         Include_NES     = .TRUE.
         Include_Pair    = .TRUE.
-        Include_NuPair  = .TRUE.
+        Include_NuPair  = .FALSE.
         Include_Brem    = .TRUE.
         Include_LinCorr = .FALSE.
         FreezeOpacities = .FALSE. ! --- Keep opacities fixed during iterations?
+        DnuMax          = One
+        M_outer         = 2
+        MaxIter_outer   = 100
+        Rtol_outer      = 1.0d-8
+        M_inner         = 2
+        MaxIter_inner   = 100
+        Rtol_inner      = 1.0d-8
+        Include_NES     = .TRUE.
+        Include_Pair    = .TRUE.
+        Include_NuPair  = .FALSE.
+        Include_Brem    = .TRUE.
+        Include_LinCorr = .FALSE.
+        wMatterRHS      = [ One, One, One, One, One ]
+        DnuMax          = One
+        FreezeOpacities = .FALSE.
 
       ELSE
 
@@ -306,7 +320,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
   CALL InitializeDriver
 
-  CALL InitializeFields( ProfileName, 'test_old_state_iN_X_1.dat' )
+  CALL InitializeFields( ProfileName, 'test_old_state_iN_X_4.dat' )
 
   CALL ComputeFromConserved_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
