@@ -17,7 +17,7 @@ MODULE TwoMoment_OpacityModule_FMC
     IMPLICIT NONE
     PRIVATE
   
-    INTEGER, PUBLIC :: iOP_D0    = 1
+    INTEGER, PUBLIC :: iOP_J0    = 1
     INTEGER, PUBLIC :: iOP_Chi   = 2
     INTEGER, PUBLIC :: iOP_Sigma = 3
     INTEGER, PUBLIC :: nOP       = 3
@@ -31,14 +31,14 @@ MODULE TwoMoment_OpacityModule_FMC
   CONTAINS
   
   
-    SUBROUTINE SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi, Sigma, Verbose_Option )
+    SUBROUTINE SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, J0, Chi, Sigma, Verbose_Option )
   
       ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
   
       INTEGER,  INTENT(in) :: &
         iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
       REAL(DP), INTENT(in) :: &
-        D0, Chi, Sigma
+        J0, Chi, Sigma
       LOGICAL,  INTENT(in), OPTIONAL :: Verbose_Option
   
       LOGICAL :: Verbose
@@ -53,7 +53,7 @@ MODULE TwoMoment_OpacityModule_FMC
         WRITE(*,*)
         WRITE(*,'(A5,A)') '', 'Setting Opacities:'
         WRITE(*,*)
-        WRITE(*,'(A7,A8,ES10.4E2)') '',    'D0 = ', D0
+        WRITE(*,'(A7,A8,ES10.4E2)') '',    'J0 = ', J0
         WRITE(*,'(A7,A8,ES10.4E2)') '',   'Chi = ', Chi
         WRITE(*,'(A7,A8,ES10.4E2)') '', 'Sigma = ', Sigma
       END IF
@@ -68,12 +68,12 @@ MODULE TwoMoment_OpacityModule_FMC
         CASE( 'HomogeneousSphere1D' )
   
           CALL SetOpacities_HomogeneousSphere1D &
-                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi )
+                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, J0, Chi )
   
         CASE( 'HomogeneousSphere2D' )
   
           CALL SetOpacities_HomogeneousSphere2D &
-                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi )
+                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, J0, Chi )
   
         CASE( 'ShadowCasting2D_Cartesian' )
   
@@ -87,7 +87,7 @@ MODULE TwoMoment_OpacityModule_FMC
   
         CASE DEFAULT
   
-          uOP(:,:,:,:,:,iOP_D0   ,:) = D0
+          uOP(:,:,:,:,:,iOP_J0   ,:) = J0
           uOP(:,:,:,:,:,iOP_Chi  ,:) = Chi
           uOP(:,:,:,:,:,iOP_Sigma,:) = Sigma
   
@@ -147,7 +147,7 @@ MODULE TwoMoment_OpacityModule_FMC
   
           END IF
   
-          uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_D0   ,iS) = One / ( EXP(E) - One )
+          uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_J0   ,iS) = One / ( EXP(E) - One )
           uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Sigma,iS) = Zero
   
         END DO
@@ -162,14 +162,14 @@ MODULE TwoMoment_OpacityModule_FMC
   
   
     SUBROUTINE SetOpacities_HomogeneousSphere1D &
-      ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi )
+      ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, J0, Chi )
   
       ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
   
       INTEGER,  INTENT(in) :: &
         iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
       REAL(DP), INTENT(in) :: &
-        D0, Chi
+        J0, Chi
   
       REAL(DP), PARAMETER :: R_0 = 1.0d-00 ! --- Radius of Sphere
       REAL(DP), PARAMETER :: L_R = 1.0d-08 ! --- Smoothing Lenght
@@ -189,8 +189,8 @@ MODULE TwoMoment_OpacityModule_FMC
   
           Radius = NodeCoordinate( MeshX(1), iZ2, iNodeZ2 )
   
-          uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_D0   ,iS) &
-            = D0
+          uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_J0   ,iS) &
+            = J0
           uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Chi  ,iS) &
             = Chi * Half * ( One - TANH( ( Radius - R_0 ) / L_R ) )
           uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Sigma,iS) &
@@ -208,14 +208,14 @@ MODULE TwoMoment_OpacityModule_FMC
   
   
     SUBROUTINE SetOpacities_HomogeneousSphere2D &
-      ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi )
+      ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, J0, Chi )
   
       ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
   
       INTEGER,  INTENT(in) :: &
         iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
       REAL(DP), INTENT(in) :: &
-        D0, Chi
+        J0, Chi
   
       REAL(DP), PARAMETER :: R_0 = 1.0d-00 ! --- Radius of Sphere
       REAL(DP), PARAMETER :: L_R = 1.0d-01 ! --- Smoothing Lenght
@@ -251,8 +251,8 @@ MODULE TwoMoment_OpacityModule_FMC
   
           END IF
   
-          uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_D0   ,iS) &
-            = D0 * Spectrum
+          uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_J0   ,iS) &
+            = J0 * Spectrum
           uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Chi  ,iS) &
             = Chi * Half * ( One - TANH( ( R_C - R_0 ) / L_R ) )
           uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Sigma,iS) &
@@ -281,7 +281,8 @@ MODULE TwoMoment_OpacityModule_FMC
       REAL(DP), PARAMETER :: R_0_S = 1.5d+00 ! --- Radius of Radiating Region
   
       INTEGER  :: iNodeZ, iNodeZ2, iNodeZ3, iZ1, iZ2, iZ3, iZ4, iS
-      REAL(DP) :: X1, X2, Distance_A, Distance_S, D0_loc, Chi_loc
+      REAL(DP) :: X1, X2, Distance_A, Distance_S, J0_loc, Chi_loc
+      REAL(DP) :: WindowFunction
   
       DO iS  = 1, nSpecies
       DO iZ4 = iZ_B1(4), iZ_E1(4)
@@ -300,7 +301,7 @@ MODULE TwoMoment_OpacityModule_FMC
           ! Distance to Center of Absorbing Region (x,y) = ( 11, 0 )
           Distance_A = SQRT( (X1 - 1.1d1 )**2 + X2**2 )
           Chi_loc = Zero
-          D0_loc  = Zero
+          J0_loc  = Zero
   
           IF( Distance_A <= R_0_A )THEN ! Inside Absorbing Region
              Chi_loc = 10.d0
@@ -308,13 +309,17 @@ MODULE TwoMoment_OpacityModule_FMC
             ! Distance to Center of Radiation Region (x,y) = ( 3, 0 )
              Distance_S = SQRT( (X1 - 3.0d0 )**2 + X2**2 )
              IF( Distance_S <= R_0_S )THEN ! Inside Radiating Region
-               Chi_loc = 10.d0 * EXP( - 2.0d0 * ( Distance_S / R_0_S )**2 )
-               D0_loc  = 1.0d-1
+              !  WindowFunction & ! --- Smoothing ---
+              !   = MAX( 1.0d-16, Half * ( One - TANH((Distance_S - R_0_S)/0.05_DP) ) )
+               Chi_loc &
+                = 10.d0 * EXP( - ( 4.0_DP * Distance_S / R_0_S )**2 )! * WindowFunction
+               J0_loc &
+                = 1.0d-1! * WindowFunction
              END IF
           END IF
   
-          uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_D0   ,iS) &
-            = D0_loc
+          uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_J0   ,iS) &
+            = J0_loc
           uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Chi  ,iS) &
             = Chi_loc
           uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Sigma,iS) &
@@ -343,7 +348,7 @@ MODULE TwoMoment_OpacityModule_FMC
       REAL(DP), PARAMETER :: R_S = 1.5d+00 ! --- Radius of Radiating Region
   
       INTEGER  :: iNodeZ, iNodeZ2, iNodeZ3, iZ1, iZ2, iZ3, iZ4, iS
-      REAL(DP) :: X1, X2, Radius, Distance_A, WindowFunction, D0, Chi
+      REAL(DP) :: X1, X2, Radius, Distance_A, WindowFunction, J0, Chi
   
       DO iS  = 1, nSpecies
       DO iZ4 = iZ_B1(4), iZ_E1(4)
@@ -365,7 +370,7 @@ MODULE TwoMoment_OpacityModule_FMC
   
           Distance_A = SQRT( ( X1 - 8.0d0 )**2 + X2**2 )
   
-          D0  = Zero
+          J0  = Zero
           Chi = Zero
   
           IF( Distance_A <= R_A )THEN ! --- Inside Absorbing Region
@@ -378,11 +383,11 @@ MODULE TwoMoment_OpacityModule_FMC
               = MAX( 1.0d-16, Half * ( One - TANH((Radius-R_S)/0.05_DP) ) )
   
             Chi = 10.d0 * EXP( - 2.0d0 * ( Radius / R_S )**2 ) * WindowFunction
-            D0  = 1.0d-1 * WindowFunction
+            J0  = 1.0d-1 * WindowFunction
   
           END IF
   
-          uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_D0   ,iS) = D0
+          uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_J0   ,iS) = J0
           uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Chi  ,iS) = Chi
           uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Sigma,iS) = Zero
   
