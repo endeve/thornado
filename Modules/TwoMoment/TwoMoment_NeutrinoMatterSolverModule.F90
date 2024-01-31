@@ -12,6 +12,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     Erg, &
     Gram, &
     MeV, &
+    Kelvin, &
     SpeedOfLight
   USE ProgramHeaderModule, ONLY: &
     nNodesZ, &
@@ -65,7 +66,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeTemperatureFromSpecificInternalEnergy_TABLE, &
     ComputeSpecificInternalEnergy_TABLE, &
-    ComputePressure_TABLE
+    ComputePressure_TABLE, &
+    Min_D, Min_T, Min_Y
   USE OpacityModule_TABLE, ONLY: &
     QueryOpacity
   USE NeutrinoOpacitiesComputationModule, ONLY: &
@@ -420,7 +422,7 @@ CONTAINS
     ALLOCATE( Inu_u_2_T(nE_G,nSpecies,nX_G) )
     ALLOCATE( Inu_u_3_T(nE_G,nSpecies,nX_G) )
 
-    ALLOCATE(             Dnu_0_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(          Dnu_0_T(nE_G,nSpecies,nX_G) )
     ALLOCATE(      Sigma_Iso_T(nE_G,         nX_G) )
     ALLOCATE(      Phi_0_Iso_T(nE_G,         nX_G) )
     ALLOCATE(      Phi_1_Iso_T(nE_G,         nX_G) )
@@ -4820,6 +4822,9 @@ CONTAINS
     INTEGER  :: iN_E, iN_X, iS
     REAL(DP) :: D_P, T_P, Y_P, E_P, V1_P, V2_P, V3_P
     REAL(DP) :: D0_P, T0_P, Y0_P, E0_P, V10_P, V20_P, V30_P
+    REAL(DP) :: Min_E, Min_E_0
+
+    CHARACTER(len=100) :: old_state_filename
 
     IF (        ANY( Error > 0 ) &
          .or. ( ANY( MASK_inner ) .and. k_inner >= MaxIter_inner ) &
@@ -4846,6 +4851,12 @@ CONTAINS
              .or. ( MASK_inner(iN_X) .and. k_inner >= MaxIter_inner ) &
              .or. ( MASK_outer(iN_X) .and. k_outer >= MaxIter_outer ) ) THEN
 
+
+          WRITE(old_state_filename,*) iN_X
+          old_state_filename = "old_state_iN_X_"//TRIM(ADJUSTL(old_state_filename))//".dat"
+
+          OPEN (UNIT=17, FILE=old_state_filename,ACTION='write')
+
           D_P   = D(iN_X) / Unit_D
           Y_P   = Y(iN_X) / Unit_Y
           E_P   = E(iN_X) / Unit_E
@@ -4862,11 +4873,25 @@ CONTAINS
           V20_P = V_u_2_old(iN_X) / Unit_V
           V30_P = V_u_3_old(iN_X) / Unit_V
 
+          CALL ComputeSpecificInternalEnergy_TABLE(D(iN_X),     Min_T, Y(iN_X),     Min_E)
+          CALL ComputeSpecificInternalEnergy_TABLE(D_old(iN_X), Min_T, Y_old(iN_X), Min_E_0)
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE FROM &
+      !$OMP ( Min_E, Min_E_0 )
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE HOST &
+      !$ACC ( Min_E, Min_E_0 )
+#endif
+
+          WRITE(17,'(7es23.15)') D0_P, T0_P, Y0_P, E0_P, V10_P, V20_P, V30_P
+          WRITE(17,'(i5)')       nE_G
+
           WRITE(*,*)                      '[SolveNeutrinoMatterCoupling_FP_Nested_AA] Error'
-          WRITE(*,'(a,2i5)')              '             iN_X, Error : ', iN_X, Error(iN_X)
-          WRITE(*,'(a,5x,2i23)')          '        k_outer, k_inner : ', k_outer, k_inner
-          WRITE(*,'(a,5x,7es23.15)')      '   D, Y, E, T, V_u       : ', D_P, Y_P, E_P, T_P, V1_P, V2_P, V3_P
-          WRITE(*,'(a,5x,7es23.15)')      '   D, Y, E, T, V_u (old) : ', D0_P, Y0_P, E0_P, T0_P, V10_P, V20_P, V30_P
+          WRITE(*,'(a,2i5)')              '              iN_X, Error : ', iN_X, Error(iN_X)
+          WRITE(*,'(a,5x,2i23)')          '         k_outer, k_inner : ', k_outer, k_inner
+          WRITE(*,'(a,5x,7es23.15)')      '    D, Y, E, T, V_u       : ', D_P, Y_P, E_P, T_P, V1_P, V2_P, V3_P
+          WRITE(*,'(a,5x,7es23.15)')      '    D, Y, E, T, V_u (old) : ', D0_P, Y0_P, E0_P, T0_P, V10_P, V20_P, V30_P
+          WRITE(*,'(a,5x,2es23.15)')      '         Min E, Min E old : ', Min_E / Unit_e, Min_E_0 / Unit_E
 
           DO iS = 1, nSpecies
           WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Dnu           : ', iS, ( Dnu    (iN_E,iS,iN_X), iN_E = 1, nE_G )
@@ -4880,7 +4905,14 @@ CONTAINS
           WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Inu_u_1 (old) : ', iS, ( Inu_u_1_old(iN_E,iS,iN_X), iN_E = 1, nE_G )
           WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Inu_u_2 (old) : ', iS, ( Inu_u_2_old(iN_E,iS,iN_X), iN_E = 1, nE_G )
           WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Inu_u_3 (old) : ', iS, ( Inu_u_3_old(iN_E,iS,iN_X), iN_E = 1, nE_G )
+
+          WRITE(17,'(i5,100es23.15)') iS,( Dnu_old    (iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(17,'(i5,100es23.15)') iS,( Inu_u_1_old(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(17,'(i5,100es23.15)') iS,( Inu_u_2_old(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(17,'(i5,100es23.15)') iS,( Inu_u_3_old(iN_E,iS,iN_X), iN_E = 1, nE_G )
           END DO
+
+          CLOSE(17)
 
           DO iS = 1, nSpecies
           WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Nnu           : ', iS, ( Nnu    (iN_E,iS,iN_X), iN_E = 1, nE_G )

@@ -87,9 +87,11 @@ PROGRAM ApplicationDriver_Neutrinos
   REAL(DP)      :: Rtol_outer, Rtol_inner
   REAL(DP)      :: wMatterRHS(5)
   REAL(DP)      :: DnuMax
+  LOGICAL       :: Relaxation_restart_from_file
 
-  !ProgramName = 'Relaxation'
-  ProgramName = 'DeleptonizationWave1D'
+  ProgramName = 'Relaxation'
+  Relaxation_restart_from_file = .TRUE. 
+  !ProgramName = 'DeleptonizationWave1D'
 
   CoordinateSystem = 'CARTESIAN'
 
@@ -128,36 +130,86 @@ PROGRAM ApplicationDriver_Neutrinos
 
       nSpecies = 6
       nNodes   = 2
-
-      nX  = [ 1, 1, 1 ]
-      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
-      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
-      bcX = [ 0, 0, 0 ]
-
       nE    = 16
       eL    = 0.0d0 * MeV
       eR    = 3.0d2 * MeV
       bcE   = 0
       ZoomE = 1.266038160710160_DP
 
-      TimeSteppingScheme = 'BackwardEuler'
+      IF( Relaxation_restart_from_file ) THEN
+        CoordinateSystem = 'SPHERICAL'
 
-      t_end = 1.0d2 * Millisecond
+        nX    = [ 1, 1, 1 ]
+        xL    = [ 0.0_DP            , 0.0_DP, 0.0_DP ]
+        xR    = [ 1.0_DP * Kilometer, Pi    , TwoPi  ]
+        bcX   = [ 0, 0, 0 ]
+        ZoomX = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-      PrescribedTimeStep = .TRUE.
-      dt_0               = 1.0d-4 * Millisecond
-      dt_MAX             = 1.0d+1 * Millisecond
-      dt_RATE            = 1.04_DP
-      iCycleD            = 1
-      iCycleW            = 1
-      maxCycles          = 100000
+        nEquidistantX = 0
+        dEquidistantX = 1.0_DP * Kilometer
 
-      EvolveEuler                    = .FALSE.
-      UseSlopeLimiter_Euler          = .FALSE.
-      UseSlopeLimiter_TwoMoment      = .FALSE.
-      UsePositivityLimiter_Euler     = .FALSE.
-      UsePositivityLimiter_TwoMoment = .FALSE.
-      UseEnergyLimiter_TwoMoment     = .FALSE.
+        nE    = 16
+        eL    = 0.0d0 * MeV
+        eR    = 3.0d2 * MeV
+        bcE   = 10
+        ZoomE = 1.266038160710160_DP
+
+        TimeSteppingScheme = 'IMEX_PDARS'
+
+        t_end = 1.0d0 * Millisecond
+
+        PrescribedTimeStep = .TRUE. ! If .FALSE., explicit CFL will be used.
+        dt_0               = 1.0d-3 * Millisecond
+        dt_MAX             = 1.0d-3 * Millisecond
+        dt_RATE            = 1.01_DP
+
+        iCycleD = 1
+        iCycleW = 100
+        maxCycles = 1000000
+
+        EvolveEuler                    = .FALSE.
+        UseSlopeLimiter_Euler          = .FALSE.
+        UseSlopeLimiter_TwoMoment      = .FALSE.
+        UsePositivityLimiter_Euler     = .FALSE.
+        UsePositivityLimiter_TwoMoment = .TRUE.
+        UseEnergyLimiter_TwoMoment     = .TRUE.
+
+        wMatterRHS = [ One, One, One, One, One ]
+
+        Include_NES     = .TRUE.
+        Include_Pair    = .TRUE.
+        Include_NuPair  = .TRUE.
+        Include_Brem    = .TRUE.
+        Include_LinCorr = .FALSE.
+        FreezeOpacities = .FALSE. ! --- Keep opacities fixed during iterations?
+
+      ELSE
+
+        nX  = [ 1, 1, 1 ]
+        xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
+        xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
+        bcX = [ 0, 0, 0 ]
+
+        TimeSteppingScheme = 'BackwardEuler'
+
+        t_end = 1.0d2 * Millisecond
+
+        PrescribedTimeStep = .TRUE.
+        dt_0               = 1.0d-4 * Millisecond
+        dt_MAX             = 1.0d+1 * Millisecond
+        dt_RATE            = 1.04_DP
+        iCycleD            = 1
+        iCycleW            = 1
+        maxCycles          = 100000
+
+        EvolveEuler                    = .FALSE.
+        UseSlopeLimiter_Euler          = .FALSE.
+        UseSlopeLimiter_TwoMoment      = .FALSE.
+        UsePositivityLimiter_Euler     = .FALSE.
+        UsePositivityLimiter_TwoMoment = .FALSE.
+        UseEnergyLimiter_TwoMoment     = .FALSE.
+      
+      ENDIF
 
     CASE( 'DeleptonizationWave1D' )
 
@@ -254,7 +306,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
   CALL InitializeDriver
 
-  CALL InitializeFields( ProfileName )
+  CALL InitializeFields( ProfileName, 'test_old_state_iN_X_1.dat' )
 
   CALL ComputeFromConserved_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )

@@ -59,9 +59,10 @@ MODULE InitializationModule_Neutrinos
 CONTAINS
 
 
-  SUBROUTINE InitializeFields( ProfileName )
+  SUBROUTINE InitializeFields( ProfileName, FileName )
 
     CHARACTER(LEN=*), INTENT(in) :: ProfileName
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: FileName
 
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') '', 'INFO: ', TRIM( ProgramName )
@@ -70,7 +71,7 @@ CONTAINS
 
        CASE( 'Relaxation' )
 
-         CALL InitializeFields_Relaxation
+         CALL InitializeFields_Relaxation(FileName)
 
        CASE( 'DeleptonizationWave1D' )
 
@@ -91,20 +92,120 @@ CONTAINS
   END SUBROUTINE InitializeFields
 
 
-  SUBROUTINE InitializeFields_Relaxation
+  SUBROUTINE InitializeFields_Relaxation(FileName)
 
-    REAL(DP), PARAMETER :: D_0   = 1.032d12 * Gram / Centimeter**3
-    REAL(DP), PARAMETER :: T_0   = 7.588d0 * MeV
-    REAL(DP), PARAMETER :: Y_0   = 0.1347_DP
-    REAL(DP), PARAMETER :: V_u_1 = 0.1_DP * SpeedOfLight
-    REAL(DP), PARAMETER :: V_u_2 = 0.0_DP * SpeedOfLight
-    REAL(DP), PARAMETER :: V_u_3 = 0.0_DP * SpeedOfLight
-    REAL(DP), PARAMETER :: Mu_0  = 0.0_DP ! \in [-1,1]
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: FileName
 
     INTEGER  :: iE, iX1, iX2, iX3, iS, iNodeE, iNodeX, iNodeZ
+    INTEGER  :: iCR, iN_E
     REAL(DP) :: kT, E, f_E
 
-    ! --- Fluid Fields ---
+    REAL(DP) :: D_0, T_0, Y_0, E_0, V_u_1, V_u_2, V_u_3
+    REAL(DP) :: Mu_0
+
+    REAL(DP), DIMENSION(iE_E0*nDOFE) :: tmp_nu
+
+    INTEGER  :: tmp_int, nE_G
+
+
+    IF( PRESENT (FileName) ) THEN
+
+      OPEN( UNIT=17,file=FileName,&
+            ACCESS='sequential', FORM='formatted', ACTION='read')
+
+      READ(17,*) D_0, T_0, Y_0, E_0, V_u_1, V_u_2, V_u_3
+      READ(17,*) nE_G
+
+      IF((iE_E0 - iE_B0 + 1) * nDOFE /= nE_G) THEN
+        WRITE(*,*) 'The energy grids in the data file and simulation are different, aborting.'
+        STOP
+      ENDIF
+
+      D_0   = D_0 * Gram / Centimeter**3
+      T_0   = T_0 * MeV
+      V_u_1 = V_u_1 * SpeedOfLight
+      V_u_2 = V_u_2 * SpeedOfLight
+      V_u_3 = V_u_3 * SpeedOfLight
+
+      DO iS  = 1, nSpecies
+      DO iCR = 1, nCR
+        READ(17,*) tmp_int, tmp_nu
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNodeX = 1, nDOFX
+        DO iE  = iE_B0   , iE_E0
+
+        DO iNodeE = 1, nDOFE
+
+          iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+          iN_E   = (iNodeE-1) * nDOFE + iNodeE
+           
+          uPR(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) = tmp_nu(iN_E)
+     
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+      END DO
+      END DO
+
+      CLOSE(17)
+
+    ELSE
+
+      D_0   = 1.032d12 * Gram / Centimeter**3
+      T_0   = 7.588d0 * MeV
+      Y_0   = 0.1347_DP
+      V_u_1 = 0.1_DP * SpeedOfLight
+      V_u_2 = 0.0_DP * SpeedOfLight
+      V_u_3 = 0.0_DP * SpeedOfLight
+      Mu_0  = 0.0_DP ! \in [-1,1]
+
+      ! --- Radiation Fields ---
+
+      DO iS  = 1       , nSpecies
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iE  = iE_B0   , iE_E0
+
+        DO iNodeX = 1, nDOFX
+        DO iNodeE = 1, nDOFE
+
+          iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+
+          kT = BoltzmannConstant * uAF(iNodeX,iX1,iX2,iX3,iAF_T)
+
+          E = NodeCoordinate( MeshE, iE, iNodeE )
+
+          f_E = MAX( 0.99_DP * EXP( - ( E - Two*kT )**2 &
+                                      / ( Two*(1.0d1*MeV)**2 ) ), 1.0d-99 )
+
+          uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D,iS) &
+            = f_E * 0.50_DP * ( One - Mu_0 )
+
+          uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS) &
+            = f_E * 0.25_DP * ( One - Mu_0**2 )
+
+          uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS) = Zero
+          uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS) = Zero
+
+        END DO
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    ! --- Fluid Fields Conserved Variables ---
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -167,7 +268,8 @@ CONTAINS
     END DO
     END DO
 
-    ! --- Radiation Fields ---
+   
+    ! --- Radiation Fields Conserved Variables ---
 
     DO iS  = 1       , nSpecies
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -179,22 +281,6 @@ CONTAINS
       DO iNodeE = 1, nDOFE
 
         iNodeZ = (iNodeX-1) * nDOFE + iNodeE
-
-        kT = BoltzmannConstant * uAF(iNodeX,iX1,iX2,iX3,iAF_T)
-
-        E = NodeCoordinate( MeshE, iE, iNodeE )
-
-        f_E = MAX( 0.99_DP * EXP( - ( E - Two*kT )**2 &
-                                    / ( Two*(1.0d1*MeV)**2 ) ), 1.0d-99 )
-
-        uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D,iS) &
-          = f_E * 0.50_DP * ( One - Mu_0 )
-
-        uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS) &
-          = f_E * 0.25_DP * ( One - Mu_0**2 )
-
-        uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS) = Zero
-        uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS) = Zero
 
         CALL ComputeConserved_TwoMoment &
                ( uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS), &
@@ -212,14 +298,15 @@ CONTAINS
                  uGF(iNodeX   ,iX1,iX2,iX3,iGF_Gm_dd_22),  &
                  uGF(iNodeX   ,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
+        END DO
+        END DO
+
+      END DO
+      END DO
+      END DO
       END DO
       END DO
 
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
 
   END SUBROUTINE InitializeFields_Relaxation
 
