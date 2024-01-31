@@ -52,12 +52,12 @@ MODULE TwoMoment_TimeSteppingModule_FMC
 
   INTERFACE
     SUBROUTINE ImplicitIncrement &
-      ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_M, dU_M )
+      ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, U_M, dU_M )
       USE KindModule           , ONLY: DP
       USE ProgramHeaderModule  , ONLY: nDOFX, nDOFE, nDOFZ
       USE GeometryFieldsModuleE, ONLY: nGE
       USE GeometryFieldsModule , ONLY: nGF
-      USE FluidFieldsModule    , ONLY: nCF
+      USE FluidFieldsModule    , ONLY: nPF
       USE TwoMoment_FieldsModule_FMC, ONLY: nCM, nSpecies
       INTEGER,  INTENT(in)    :: &
         iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
@@ -73,6 +73,12 @@ MODULE TwoMoment_TimeSteppingModule_FMC
              iZ_B1(3):iZ_E1(3), &
              iZ_B1(4):iZ_E1(4), &
              1:nGF)
+      REAL(DP), INTENT(in) :: &
+        U_F (1:nDOFX, &
+             iZ_B1(2):iZ_E1(2), &
+             iZ_B1(3):iZ_E1(3), &
+             iZ_B1(4):iZ_E1(4), &
+             1:nPF)
       REAL(DP), INTENT(in) :: &
         U_M (1:nDOFZ, &
              iZ_B1(1):iZ_E1(1), &
@@ -173,11 +179,12 @@ CONTAINS
       END DO !jS = 1, iS -1
 
       ! --- Implicit Solve ---
+
       IF( ANY( a_IM(:,iS) .NE. Zero ) .OR. ( w_IM(iS) .NE. Zero ) )THEN
 
         CALL ComputeIncrement_TwoMoment_Implicit &
           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, &
-            Mi, StageData(iS) % dM_IM)
+            U, Mi, StageData(iS) % dM_IM)
 
         CALL AddToArray ( One, Mi, dt * a_IM(iS,iS), StageData(iS) % dM_IM )
 
@@ -189,13 +196,20 @@ CONTAINS
 
       ! --- Explicit Solve ---
 
+      IF( ANY( a_EX(:,iS) .NE. Zero ) .OR. ( w_EX(iS) .NE. Zero ) )THEN
+
       CALL ComputeIncrement_TwoMoment_Explicit &
         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
           U, Mi, StageData(iS) % dM_EX )
 
       ! StageData(iS) % OffGridFlux_M = OffGridFlux_TwoMoment
 
+      END IF
+
     END DO !iS = 1, nStages
+
+    ! print*, StageData(2) % dM_IM
+    ! STOP
 
     ! --- Assembly Step ---
 
@@ -224,11 +238,11 @@ CONTAINS
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, Mi )
 
-      CALL CopyArray( M, One, Mi )
-
       ! --- Offgrid? ---
 
     END IF
+
+    CALL CopyArray( M, One, Mi )
 
   END SUBROUTINE Update_IMEX_RK
 
