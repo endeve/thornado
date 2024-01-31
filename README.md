@@ -92,6 +92,9 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Jan 31 2024
+1. Helped proof-reading the rebuttal of reviewers' comments
+2. Started to learn reframe 
 ## Jan 30 2024
 1.  The modified build run script has now tested on PVC04 and Aurora. It is working. 
 2. The compilation time of the 4 cases, i.e., SineWaveStreaming and Relaxation cases with a grid of 8x8x8 and 16x16x16 costs 45m4.619s in total on Aurora:
