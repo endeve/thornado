@@ -92,6 +92,8 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Feb 01 2024
+1. Continued learning reframe and put thornado to reframe framework
 ## Jan 31 2024
 1. Helped proof-reading the rebuttal of reviewers' comments
 2. Started to learn reframe 
