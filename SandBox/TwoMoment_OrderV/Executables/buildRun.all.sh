@@ -130,9 +130,8 @@ module purge
 if [[ -n $ACTION ]];then
    faction="-$ACTION"
 fi
-
-BASE_DATE="2023.5.007"
-BASE_UMD="-dev647"
+BASE_DATE="2023.10.15.002"
+BASE_UMD="682.20"
 MKL_BASE_DATE="" ## A underline is need before the date string for clarity
 #export AADEBUG="-g"
 export useAGRF="TRUE"
@@ -140,7 +139,8 @@ export useAGRF="TRUE"
 
 #export COMPILER_DATE=".2023.05.15.003-rc11"
 #export COMPILER_DATE="2023.5.007"
-module load oneapi/eng-compiler/2023.10.15.002
+#module load oneapi/eng-compiler/2023.10.15.002
+#module load nightly-compiler/2024.01.15
 #module load oneapi/eng-compiler/${COMPILER_DATE}
 #module switch -f mpich/52.2-256/icc-sockets-gpu mpich/51.2/icc-sockets-gpu    ## Needed by 05.15.007.
 
@@ -148,8 +148,22 @@ module load oneapi/eng-compiler/2023.10.15.002
 #MKL_DATE="2023.10.15.002"
 #module load nightly-mkl-cev_nightly/${MKL_DATE}
 #module load nightly-mkl-cev_rls/${MKL_DATE}
-#COMPILER_DATE="2023.08.20"
-COMPILER_DATE="2023.10.15.002"
+#
+#module load oneapi/release/2023.12.15.001
+#COMPILER_DATE="rls-23.12.15.001"
+
+#module load oneapi/release/2023.10.15.001
+#COMPILER_DATE="rls-23.10.15.001"
+#module load oneapi/release/2023.05.15.001
+#COMPILER_DATE="rls-23.05.15.001"
+
+module load oneapi/eng-compiler/2023.10.15.002
+COMPILER_DATE="eng-23.10.15.002"
+#module load  oneapi/eng-compiler/2023.05.15.007
+#COMPILER_DATE="eng-23.05.15.007"
+#module load oneapi/eng-compiler/2023.12.15.002
+#COMPILER_DATE="eng-23.12.15.002"
+
 if false; then
    if [[ -n $COMPILER_DATE ]]; then
       module swap -f nightly-compiler/${COMPILER_DATE}
@@ -160,7 +174,7 @@ if false; then
    fi
 fi
 ## choose UMDs
-umdf=682.20
+#umdf=682.20
 if false;then
 
    IGC_DRIVER="UMD"
@@ -225,7 +239,7 @@ fi
 #logFiles=(relax)
 #CaseNames=(Relaxation)
 #userOptions=("MICROPHYSICS=WEAKLIB")
-#gridLines=(127)
+#gridLines=(131)
 
 #opLevels=(O0 O1 O2 O3)
 opLevels=(O3)
@@ -235,7 +249,7 @@ appNames=(ApplicationDriver ApplicationDriver_Neutrinos)
 logFiles=(sineWave relax)
 CaseNames=(SineWaveStreaming Relaxation)
 userOptions=("" "MICROPHYSICS=WEAKLIB")
-gridLines=(85 127)
+gridLines=(85 131)
 
 #grids=("[16,16,16]")
 #gridNames=("-xN16")
@@ -248,7 +262,7 @@ gridLines=(85 127)
 #logFiles=(relax)
 #CaseNames=(Relaxation)
 #userOptions=("MICROPHYSICS=WEAKLIB")
-#gridLines=(127)
+#gridLines=(131)
 
 if [[ "$ACTION" == "vtune" ]]; then
    opLevels=(O3)

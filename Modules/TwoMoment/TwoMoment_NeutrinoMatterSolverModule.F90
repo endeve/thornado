@@ -2242,6 +2242,7 @@ CONTAINS
     REAL(DP) :: Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3
     REAL(DP) :: SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3
 
+!! Shaoping: Speedup the simulation by 10-20% 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE num_teams(nX_G) &
     !$OMP PRIVATE( vDotV, SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
@@ -2804,6 +2805,7 @@ CONTAINS
     REAL(DP) :: Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3
     REAL(DP) :: SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3
 
+!! Shaoping: Speedup the simulation by 10-20% 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE num_teams(nX_G) &
     !$OMP PRIVATE( SUM_Y, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
@@ -3373,9 +3375,9 @@ CONTAINS
     ( MASK, Fm, Gm, dt, &
       Dnu, Inu_u_1, Inu_u_2, Inu_u_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
+!! Shaoping: small bug. Fm Gm's original value never used, but they got changed
     LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
-    REAL(DP), DIMENSION(:,:)  , INTENT(out) :: Fm, Gm
+    REAL(DP), DIMENSION(:,:)  , INTENT(out)   :: Fm, Gm
     REAL(DP),                   INTENT(in)    :: dt
     REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: V_u_1, V_u_2, V_u_3
