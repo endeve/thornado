@@ -25,8 +25,8 @@ FileNumberArray \
         1 )
 
 # For a single file, replace `FileNumberArray[-1]` with cycle number;
-# e.g., plt00001310 --> str( 1310 )
-ds = yt.load( PlotDirectory + PlotBaseName + FileNumberArray[-1].zfill( 8 ) )
+# e.g., plt00001310 --> 1310
+ds = yt.load( PlotDirectory + PlotBaseName + str( FileNumberArray[-1] ).zfill( 8 ) )
 
 # Get lower and higher boundaries and convert them to numpy arrays
 xL = ds.domain_left_edge.to_ndarray()
@@ -39,9 +39,11 @@ LengthUnitX = [ 'code_length', 'code_length' ]
 xLabel = r'$x$'
 yLabel = r'$y$'
 
+PlotTitle = 'dZB2002'
+
 # Set center and width of plot window
 center = 0.5 * ( xL + xH )
-width  = xH - xL
+width  = 1.0 * ( xH - xL )
 
 # Zoom in?
 Zoom = 1.0
@@ -69,7 +71,8 @@ ShowMinorTicksXY = True
 ShowMinorTicksZ = True
 
 # Show mesh
-ShowMesh = False
+ShowMesh  = True
+MeshAlpha = 0.5
 
 # Overplot contours
 OverplotContours = False
@@ -91,7 +94,7 @@ slc.set_axes_unit( LengthUnitX )
 
 #slc.annotate_grids()
 if ( ShowMesh ) : slc.annotate_cell_edges \
-                    ( line_width = 1.0e-12, alpha = 1.0, color = 'black' )
+                    ( line_width = 1.0e-12, alpha = MeshAlpha, color = 'black' )
 
 slc.set_cmap( blField, cmap )
 
@@ -111,15 +114,11 @@ slc.set_log( Field, log = UseLogScaleZ )
 slc.set_minorticks         ( Field, ShowMinorTicksXY )
 slc.set_colorbar_minorticks( Field, ShowMinorTicksZ  )
 
+slc.annotate_title( PlotTitle )
+
 slc.set_xlabel( xLabel )
 slc.set_ylabel( yLabel )
 
-#slc._setup_plots()
-#plt = slc.plots[bl,Field]
-#ax = plt.axes
-#ax.set_xlim( xL[0], xH[0] )
-#ax.set_ylim( xL[1], xH[1] )
-
 slc.zoom( Zoom )
 
-slc.save()
+slc.save( FigName )
