@@ -781,14 +781,14 @@ CONTAINS
            ( uD_L, uS1_L, uS2_L, uS3_L, uE_L, uNe_L, &
              pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
-             iDimX_Option = 'X1', IndexTable_Option = IndexTableX_F, &
+             iDimX_Option = 'X1 (L)', IndexTable_Option = IndexTableX_F, &
              iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL ComputePrimitive_Euler &
            ( uD_R, uS1_R, uS2_R, uS3_R, uE_R, uNe_R, &
              pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
-             iDimX_Option = 'X1', IndexTable_Option = IndexTableX_F, &
+             iDimX_Option = 'X1 (R)', IndexTable_Option = IndexTableX_F, &
              iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL TimersStop_Euler( Timer_Euler_DG_ComputePrimitive )
@@ -1013,7 +1013,7 @@ CONTAINS
            ( uD_K, uS1_K, uS2_K, uS3_K, uE_K, uNe_K, &
              pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, &
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
-             iDimX_Option = 'X1', IndexTable_Option = IndexTableX_V, &
+             iDimX_Option = 'X1 (V)', IndexTable_Option = IndexTableX_V, &
              iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL TimersStop_Euler( Timer_Euler_DG_ComputePrimitive )
@@ -1536,14 +1536,14 @@ CONTAINS
            ( uD_L, uS1_L, uS2_L, uS3_L, uE_L, uNe_L, &
              pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
-             iDimX_Option = 'X2', IndexTable_Option = IndexTableX_F, &
+             iDimX_Option = 'X2 (L)', IndexTable_Option = IndexTableX_F, &
              iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL ComputePrimitive_Euler &
            ( uD_R, uS1_R, uS2_R, uS3_R, uE_R, uNe_R, &
              pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
-             iDimX_Option = 'X2', IndexTable_Option = IndexTableX_F, &
+             iDimX_Option = 'X2 (R)', IndexTable_Option = IndexTableX_F, &
              iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL TimersStop_Euler( Timer_Euler_DG_ComputePrimitive )
@@ -1768,7 +1768,7 @@ CONTAINS
            ( uD_K, uS1_K, uS2_K, uS3_K, uE_K, uNe_K, &
              pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, &
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
-             iDimX_Option = 'X2', IndexTable_Option = IndexTableX_V, &
+             iDimX_Option = 'X2 (V)', IndexTable_Option = IndexTableX_V, &
              iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL TimersStop_Euler( Timer_Euler_DG_ComputePrimitive )
@@ -2290,14 +2290,14 @@ CONTAINS
            ( uD_L, uS1_L, uS2_L, uS3_L, uE_L, uNe_L, &
              pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
-             iDimX_Option = 'X3', IndexTable_Option = IndexTableX_F, &
+             iDimX_Option = 'X3 (L)', IndexTable_Option = IndexTableX_F, &
              iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL ComputePrimitive_Euler &
            ( uD_R, uS1_R, uS2_R, uS3_R, uE_R, uNe_R, &
              pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
-             iDimX_Option = 'X3', IndexTable_Option = IndexTableX_F, &
+             iDimX_Option = 'X3 (R)', IndexTable_Option = IndexTableX_F, &
              iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL TimersStop_Euler( Timer_Euler_DG_ComputePrimitive )
@@ -2522,7 +2522,7 @@ CONTAINS
            ( uD_K, uS1_K, uS2_K, uS3_K, uE_K, uNe_K, &
              pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, &
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
-             iDimX_Option = 'X3', IndexTable_Option = IndexTableX_F, &
+             iDimX_Option = 'X3 (V)', IndexTable_Option = IndexTableX_F, &
              iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL TimersStop_Euler( Timer_Euler_DG_ComputePrimitive )
