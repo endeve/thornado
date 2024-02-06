@@ -1701,15 +1701,15 @@ CONTAINS
                             MeshX(1) % Width (iX1), &
                             MeshX(2) % Width (iX2), &
                             MeshX(3) % Width (iX3), &
-                            U(iNX,iX1,iX2,iX3,iCF_D ), &
-                            U(iNX,iX1,iX2,iX3,iCF_S1), &
-                            U(iNX,iX1,iX2,iX3,iCF_S2), &
-                            U(iNX,iX1,iX2,iX3,iCF_S3), &
-                            U(iNX,iX1,iX2,iX3,iCF_E ), &
-                            U(iNX,iX1,iX2,iX3,iCF_Ne), &
-                            G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                            G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                            G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ], &
+                            U(1,iX1,iX2,iX3,iCF_D ), &
+                            U(1,iX1,iX2,iX3,iCF_S1), &
+                            U(1,iX1,iX2,iX3,iCF_S2), &
+                            U(1,iX1,iX2,iX3,iCF_S3), &
+                            U(1,iX1,iX2,iX3,iCF_E ), &
+                            U(1,iX1,iX2,iX3,iCF_Ne), &
+                            G(1,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                            G(1,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                            G(1,iX1,iX2,iX3,iGF_Gm_dd_33) ], &
             Char_Option = [ 'NA' ], &
             Message_Option &
               = 'Calling from DetectShocks_Euler' )

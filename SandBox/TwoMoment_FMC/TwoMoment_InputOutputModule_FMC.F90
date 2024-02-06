@@ -23,6 +23,12 @@ MODULE TwoMoment_InputOutputModule_FMC
     FromField3D, &
     Field4D, &
     FromField4D
+  USE FluidFieldsModule, ONLY: &
+    uCF, nCF, namesCF, unitsCF, &
+    uPF, nPF, namesPF, unitsPF, &
+    uAF, nAF, namesAF, unitsAF, &
+    uDF, nDF, namesDF, unitsDF, &
+    Shock, Theta1, Theta2, Theta3
   USE TwoMoment_FieldsModule_FMC, ONLY: &
     nSpecies, &
     uCM, nCM, namesCM, unitsCM, &
@@ -37,21 +43,214 @@ MODULE TwoMoment_InputOutputModule_FMC
 
   CHARACTER(9),  PARAMETER :: &
     OutputDirectory = '../Output'
+  CHARACTER(11), PARAMETER :: &
+    FluidSuffix     = 'FluidFields'
   CHARACTER(15), PARAMETER :: &
     TwoMomentSuffix = 'TwoMomentFields'
   INTEGER :: FileNumber = 0
 
   INTEGER :: HDFERR
 
+  PUBLIC :: WriteFluidFieldsHDF
   PUBLIC :: WriteTwoMomentFieldsHDF
   PUBLIC :: ReadTwoMomentFieldsHDF
 
 CONTAINS
 
-
-  SUBROUTINE WriteTwoMomentFieldsHDF( Time )
+  SUBROUTINE WriteFluidFieldsHDF( Time )
 
     REAL(DP), INTENT(in) :: Time
+
+    CHARACTER(6)   :: FileNumberString
+    CHARACTER(256) :: FileName
+    CHARACTER(256) :: GroupName
+    CHARACTER(256) :: GroupName2
+    CHARACTER(256) :: DatasetName
+    INTEGER        :: iFF
+    INTEGER(HID_T) :: FILE_ID
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM( uCF, uPF, uAF, uDF )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST( uCF, uPF, uAF, uDF )
+#endif
+
+    WRITE( FileNumberString, FMT='(i6.6)') FileNumber
+
+    FileName &
+      = OutputDirectory // '/' // &
+        TRIM( ProgramName ) // '_' // &
+        FluidSuffix // '_' // &
+        FileNumberString // '.h5'
+
+    CALL H5OPEN_F( HDFERR )
+
+    CALL H5FCREATE_F( TRIM( FileName ), H5F_ACC_TRUNC_F, FILE_ID, HDFERR )
+
+    ASSOCIATE( U => UnitsDisplay )
+
+    ! --- Write Time ---
+
+    DatasetName = '/Time'
+
+    CALL WriteDataset1DHDF &
+           ( [ Time ] / U % TimeUnit, DatasetName, FILE_ID )
+
+    ! --- Write Spatial Grid ---
+
+    GroupName = 'Spatial Grid'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ) , FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X1'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshX(1),nX(1),nNodesX(1)) &
+               / U % LengthX1Unit, DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X2'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshX(2),nX(2),nNodesX(2)) &
+               / U % LengthX2Unit, DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X3'
+
+    CALL WriteDataset1DHDF &
+           ( NodeCoordinates(MeshX(3),nX(3),nNodesX(3)) &
+               / U % LengthX3Unit, DatasetName, FILE_ID )
+
+    ! --- Write Cell Center Coordinates ---
+
+    DatasetName = TRIM( GroupName ) // '/X1_C'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(1) % Center(1:nX(1)) / U % LengthX1Unit, &
+             DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X2_C'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(2) % Center(1:nX(2)) / U % LengthX2Unit, &
+             DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/X3_C'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(3) % Center(1:nX(3)) / U % LengthX3Unit, &
+             DatasetName, FILE_ID )
+
+    ! --- Write Cell Widths ---
+
+    DatasetName = TRIM( GroupName ) // '/dX1'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(1) % Width(1:nX(1)) / U % LengthX1Unit, &
+             DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/dX2'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(2) % Width(1:nX(2)) / U % LengthX2Unit, &
+             DatasetName, FILE_ID )
+
+    DatasetName = TRIM( GroupName ) // '/dX3'
+
+    CALL WriteDataset1DHDF &
+           ( MeshX(3) % Width(1:nX(3)) / U % LengthX3Unit, &
+             DatasetName, FILE_ID )
+
+    END ASSOCIATE ! U
+
+    ! --- Write Fluid Variables ---
+
+    GroupName = 'Fluid Fields'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
+
+    ! --- Conserved ---
+
+    GroupName2 = TRIM( GroupName ) // '/Conserved'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName2 ), FILE_ID )
+
+    DO iFF = 1, nCF
+
+      DatasetName = TRIM( GroupName2 ) // '/' // TRIM( namesCF(iFF) )
+
+      CALL WriteDataset3DHDF &
+             ( Field3D &
+                 ( uCF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF), nX, nNodesX, &
+                   nDOFX, NodeNumberTableX ) / unitsCF(iFF), &
+               DatasetName, FILE_ID )
+
+    END DO
+
+    ! --- Primitive ---
+
+    GroupName2 = TRIM( GroupName ) // '/Primitive'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName2 ), FILE_ID )
+
+    DO iFF = 1, nPF
+
+      DatasetName = TRIM( GroupName2 ) // '/' // TRIM( namesPF(iFF) )
+
+      CALL WriteDataset3DHDF &
+             ( Field3D &
+                 ( uPF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF), nX, nNodesX, &
+                   nDOFX, NodeNumberTableX ) / unitsPF(iFF), &
+               DatasetName, FILE_ID )
+
+    END DO
+
+    ! --- Auxiliary ---
+
+    GroupName2 = TRIM( GroupName ) // '/Auxiliary'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName2 ), FILE_ID )
+
+    DO iFF = 1, nAF
+
+      DatasetName = TRIM( GroupName2 ) // '/' // TRIM( namesAF(iFF) )
+
+      CALL WriteDataset3DHDF &
+             ( Field3D &
+                 ( uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF), nX, nNodesX, &
+                   nDOFX, NodeNumberTableX ) / unitsAF(iFF), &
+               DatasetName, FILE_ID )
+
+    END DO
+
+    ! --- Diagnostic ---
+
+    GroupName2 = TRIM( GroupName ) // '/Diagnostic'
+
+    CALL CreateGroupHDF( FileName, TRIM( GroupName2 ), FILE_ID )
+
+    DO iFF = 1, nDF
+
+      DatasetName = TRIM( GroupName2 ) // '/' // TRIM( namesDF(iFF) )
+
+      CALL WriteDataset3DHDF &
+             ( Field3D &
+                 ( uDF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF), nX, nNodesX, &
+                   nDOFX, NodeNumberTableX ) / unitsDF(iFF), &
+               DatasetName, FILE_ID )
+
+    END DO
+
+    CALL H5FCLOSE_F( FILE_ID, HDFERR )
+
+    CALL H5CLOSE_F( HDFERR )
+
+  END SUBROUTINE WriteFluidFieldsHDF
+
+
+  SUBROUTINE WriteTwoMomentFieldsHDF( Time, ReadFileNumber )
+
+    REAL(DP), INTENT(in) :: Time
+    INTEGER, INTENT(in), OPTIONAL :: ReadFileNumber
 
     CHARACTER(2)   :: String2
     CHARACTER(6)   :: FileNumberString
@@ -67,6 +266,13 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE HOST( uCM, uPM, uAM, uGM )
 #endif
+
+    IF( PRESENT(ReadFileNumber) .AND. FileNumber == 0 )THEN
+      
+      FileNumber = ReadFileNumber
+
+    END IF
+      
 
     WRITE( FileNumberString, FMT='(i6.6)') FileNumber
 

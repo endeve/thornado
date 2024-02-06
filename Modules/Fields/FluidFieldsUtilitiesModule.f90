@@ -18,6 +18,7 @@ CONTAINS
 !!$    CellAverage &
 !!$      = DOT_PRODUCT( WeightsF, uF * VJ ) &
 !!$        / DOT_PRODUCT( WeightsF, VJ )
+    CellAverage = -HUGE( 1.0_DP )
 
     RETURN
   END FUNCTION CellAverage

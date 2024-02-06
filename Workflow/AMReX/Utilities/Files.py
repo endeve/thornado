@@ -22,46 +22,34 @@ from charade import detect
 #   GetFileNumberArray                        #
 #                                             #
 #=============================================#
-def GetFileNumberArray( PlotDirectory,      \
-                        PlotBaseName,       \
-                        SSi = -1,           \
-                        SSf = -1,           \
-                        PlotEvery = 1       ):
+def GetFileNumberArray \
+      ( PlotDirectory, PlotBaseName, \
+        SSi               = -1, \
+        SSf               = -1, \
+        PlotEvery         = 1 , \
+        snapshotIndexList = [] ):
 
     from os import listdir
+
+    N = len( PlotBaseName )
 
     # Create list of all files in plotDirectory
     fileArray \
       = np.sort( np.array( \
           [ convert( file ) for file in listdir( PlotDirectory ) ] ) )
 
-    
-
     # Filter file list to only those that start with plotBaseName
     fileList = []
     for iFile in range( fileArray.shape[0] ):
-        
-        sFile = fileArray[iFile]
-        if( sFile[0:len(PlotBaseName)] == PlotBaseName \
-              and sFile[len(PlotBaseName)+1].isdigit() \
-              and '.old.' not in sFile ) :
-            if sFile[-1] == '/' :
-                fileList.append( int(sFile[-9:-1]) )
-            else:
-                fileList.append( int(sFile[-8:]) )
 
-        if sFile[-3:] == '.h5':
+        sFile = fileArray[iFile]
+
+        if ( sFile[0:N] == PlotBaseName and sFile[N+1].isdigit() ) :
+            fileList.append( np.int64( sFile[N:N+8] ) )
+        elif ( sFile[-3:] == '.h5' ) :
             fileList.append( int(sFile[-9:-3]) )
-        
-        else:
-            if( sFile[0:len(PlotBaseName)] == PlotBaseName \
-                  and sFile[len(PlotBaseName)+1].isdigit() ) :
-                if sFile[-1] == '/' :
-                    fileList.append( int(sFile[-9:-1]) )
-                else:
-                    fileList.append( int(sFile[-8:]) )
-           
-    fileNumbers = np.array( list(set(fileList)) )
+
+    fileNumbers = np.array( fileList )
     numNumbers = fileNumbers.shape[0]
 
     # Warn if list is empty.
@@ -79,8 +67,8 @@ def GetFileNumberArray( PlotDirectory,      \
     fileNumbers.sort()
 
     # Filter File List
-    if SSi < 0: SSi = 0
-    if SSf < 0: SSf = int(fileNumbers[-1])
+    if SSi < 0: SSi = np.int64( fileNumbers[0] )
+    if SSf < 0: SSf = np.int64( fileNumbers[-1] )
 
     if SSf < SSi:
         msg = '\n>>> Final frame comes before initial frame. \n'
@@ -103,18 +91,20 @@ def GetFileNumberArray( PlotDirectory,      \
 
     nSS = SSf_index - SSi_index + 1
 
-
     #   Filter file list to specified range
     fileNumbersLimited = []
     for i in range( nSS ):
         fileNumbersLimited.append(fileNumbers[SSi_index+i])
 
-
-    # Filer file number list by PlotEvery value.
-    fileNumbersFiltered \
-      = np.array( fileNumbersLimited[SSi:SSf+1:PlotEvery] )
-
-
+    if ( len( snapshotIndexList ) == 0 ) :
+        # Filer file number list by PlotEvery value.
+        fileNumbersFiltered \
+          = np.array( fileNumbersLimited[SSi:SSf+1:PlotEvery] )
+    else :
+        fileNumbersFiltered \
+          = np.empty( len( snapshotIndexList ), dtype = np.int64 )
+        for i in range( len( snapshotIndexList ) ):
+            fileNumbersFiltered[i] = fileNumbers[snapshotIndexList[i]]
 
     return fileNumbersFiltered
 # END GetFileNumberArray

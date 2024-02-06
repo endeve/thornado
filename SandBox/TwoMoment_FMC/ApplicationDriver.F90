@@ -1,7 +1,7 @@
 PROGRAM ApplicationDriver
 
   USE KindModule, ONLY: &
-    DP, SqrtTiny, One, Zero
+    DP, SqrtTiny, One, Zero, TwoPi
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_E0, iX_B1, iX_E1, &
     iE_B0, iE_E0, iE_B1, iE_E1, &
@@ -17,7 +17,9 @@ PROGRAM ApplicationDriver
   USE TwoMoment_FieldsModule_FMC, ONLY: &
     uCM, uPM, uAM, uGM
   USE TwoMoment_InputOutputModule_FMC, ONLY: &
-    WriteTwoMomentFieldsHDF
+    ReadTwoMomentFieldsHDF, &
+    WriteTwoMomentFieldsHDF, &
+    WriteFluidFieldsHDF
   USE TwoMoment_UtilitiesModule_FMC, ONLY: &
     ComputeFromConserved_TwoMoment_FMC, &
     HeatFluxTensorComponents_uuu, &
@@ -41,17 +43,19 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: TimeSteppingScheme
   LOGICAL       :: UsePositivityLimiter
   LOGICAL       :: UseEnergyLimiter
+  LOGICAL       :: Restart
   INTEGER       :: nNodes
   INTEGER       :: nSpecies = 1
   INTEGER       :: nE, bcE, nX(3), bcX(3)
   INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
+  INTEGER       :: ReadFileNumber
   REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
   REAL(DP)      :: eL, eR, ZoomE = One
-  REAL(DP)      :: t, t_end, dt, dt_CFL, V_0(3), CFL
+  REAL(DP)      :: t, t_end, dt, dt_CFL, LengthScale, V_0(3), CFL
   REAL(DP)      :: J_0, Chi, Sigma
   REAL(DP) :: l_uuu_munurho(0:3,0:3,0:3), l_ddd_ijk(1:3,1:3,1:3), l_uud_munurho(0:3,0:3,0:3)
 
-  ProgramName = 'StreamingDopplerShift'
+  ProgramName = 'TransparentVortex'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -59,7 +63,7 @@ PROGRAM ApplicationDriver
 
       ! --- Minerbo Closure Only ---
 
-      nX  = [ 32, 1, 1 ]
+      nX  = [ 256, 1, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
       bcX = [ 1, 1, 1 ]
@@ -69,14 +73,14 @@ PROGRAM ApplicationDriver
       eR  = 1.0_DP
       bcE = 1
 
-      nNodes = 1
+      nNodes = 3
 
-      TimeSteppingScheme = 'SSPRK2'
+      TimeSteppingScheme = 'SSPRK3'
       ! TimeSteppingScheme = 'IMEX_PDARS'
 
       t_end   = 1.0d-0
       iCycleD = 1
-      iCycleW = 100
+      iCycleW = 1000
       maxCycles = 10000
 
       V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
@@ -84,6 +88,8 @@ PROGRAM ApplicationDriver
       J_0   = 0.0_DP
       Chi   = 0.0_DP
       Sigma = 0.0_DP
+
+      UsePositivityLimiter = .FALSE.
 
     CASE( 'SineWaveDiffusion' )
 
@@ -118,6 +124,8 @@ PROGRAM ApplicationDriver
       Sigma = 2.6666666_DP 
       !Sigma = 533.33333333_DP
 
+      UsePositivityLimiter = .FALSE.
+
     CASE( 'StreamingDopplerShift' )
 
       Spectrum = 'Fermi-Dirac'
@@ -131,7 +139,7 @@ PROGRAM ApplicationDriver
         xR  = [ 1.0d1, 1.0d0, 1.0d0 ]
         bcX = [ 12, 1, 1 ]
 
-        V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
+        V_0 = [ 0.9_DP, 0.0_DP, 0.0_DP ]
 
       ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
 
@@ -165,16 +173,16 @@ PROGRAM ApplicationDriver
       eL    = 0.0d0
       eR    = 5.0d1
       bcE   = 11
-      zoomE = 1.0_DP
+      zoomE = 1.1_DP
 
-      nNodes = 2
+      nNodes = 3
 
-      TimeSteppingScheme = 'SSPRK2'
+      TimeSteppingScheme = 'SSPRK3'
 
       t_end   = 2.0d+1
       iCycleD = 1
-      iCycleW = 200
-      maxCycles = 15000000
+      iCycleW = 1000000
+      maxCycles = 38000000
 
       J_0   = 0.0_DP
       Chi   = 0.0_DP
@@ -185,6 +193,224 @@ PROGRAM ApplicationDriver
       UseEnergyLimiter     = .TRUE.
 
       ! UseRealizabilityTimeStep = .TRUE.
+
+    CASE( 'TransparentShock' )
+
+      Direction = 'X' ! --- (X,Y, or Z)
+
+      LengthScale = 1.0d-2 ! --- Shock Width
+
+      IF(     TRIM( Direction ) .EQ. 'X' )THEN
+
+        nX  = [ 80, 1, 1 ]
+        xL  = [ 0.0d0, 0.0_DP, 0.0_DP ]
+        xR  = [ 2.0d0, 1.0_DP, 1.0_DP ]
+        bcX = [ 12, 1, 1 ]
+
+        V_0 = [ -0.5_DP, 0.0_DP, 0.0_DP ]
+
+      ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
+
+        nX  = [ 2, 80, 1 ] ! Should the 2's be 1's?
+        xL  = [ 0.0d0, 0.0_DP, 0.0_DP ]
+        xR  = [ 1.0d0, 2.0_DP, 1.0_DP ]
+        bcX = [ 1, 12, 1 ]
+
+        V_0 = [ 0.0_DP, - 0.1_DP, 0.0_DP ]
+
+      ELSEIF( TRIM( Direction ) .EQ. 'Z' )THEN
+
+        nX  = [ 2, 2, 80 ] ! Should the 2's be 1's?
+        xL  = [ 0.0d0, 0.0_DP, 0.0_DP ]
+        xR  = [ 1.0d0, 1.0_DP, 2.0_DP ]
+        bcX = [ 1, 1, 12 ]
+
+        V_0 = [ 0.0_DP, 0.0_DP, - 0.1_DP ]
+
+      ELSE
+
+        WRITE(*,*)
+        WRITE(*,'(A6,A)') &
+          '', 'TransparentShock.  Direction must be X, Y, or Z'
+        WRITE(*,*)
+        STOP
+
+      END IF
+
+      ! nE  = 32
+      nE  = 64
+      eL  = 0.0d0
+      ! eR  = 5.0d1
+      eR  = 1.0d2
+      bcE = 11
+
+      nNodes = 3
+
+      TimeSteppingScheme = 'SSPRK3'
+
+      t_end   = 3.0d0
+      iCycleD = 1
+      iCycleW = 40000
+      maxCycles = 1000000
+
+      J_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 0.0_DP
+
+      ! UseSlopeLimiter      = .FALSE.
+      UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .TRUE.
+      Restart              = .FALSE.
+      ReadFileNumber       = 6
+
+      ! UseRealizabilityTimeStep = .TRUE.
+
+    CASE( 'TransparentVortex' )
+
+      Direction = 'X' ! --- (X or Y)
+
+      nX  = [ 48, 48, 1 ]
+      xL  = [ - 5.0_DP, - 5.0_DP, - 0.5_DP ]
+      xR  = [ + 5.0_DP, + 5.0_DP, + 0.5_DP ]
+
+      IF(     TRIM( Direction ) .EQ. 'X' )THEN
+
+        bcX = [ 12, 3, 1 ]
+
+      ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
+
+        bcX = [ 3, 12, 1 ]
+
+      ELSE
+
+        WRITE(*,*)
+        WRITE(*,'(A6,A)') &
+          '', 'TransparentVortex.  Direction must be X or Y'
+        WRITE(*,*)
+        STOP
+
+      END IF
+
+      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
+
+      nE  = 32
+      eL  = 0.0d0
+      eR  = 5.0d1
+      bcE = 11
+
+      nNodes = 3
+
+      TimeSteppingScheme = 'SSPRK3'
+
+      t_end   = 2.0d+1
+      iCycleD = 1
+      iCycleW = 1000
+      maxCycles = 1000000
+
+      J_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 0.0_DP
+
+      ! UseSlopeLimiter      = .FALSE.
+      UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .TRUE.
+
+      ! UseRealizabilityTimeStep = .TRUE.
+
+    CASE( 'GaussianDiffusion1D' )
+
+      nX  = [ 96, 1, 1 ]
+      xL  = [ 0.0_DP, - 0.5_DP, - 0.5_DP ]
+      xR  = [ 3.0_DP, + 0.5_DP, + 0.5_DP ]
+      bcX = [ 1, 1, 1 ]
+
+      nE  = 1
+      eL  = 0.0d0
+      eR  = 1.0d0
+      bcE = 1
+
+      nNodes = 3
+
+      TimeSteppingScheme = 'IMEX_PDARS'
+
+      t_end     = 10.0_DP
+      iCycleD   = 10
+      iCycleW   = 1000
+      maxCycles = 1000000
+
+      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
+
+      J_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 3200.0_DP
+
+      ! UseSlopeLimiter      = .FALSE.
+      UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .FALSE.
+      
+    CASE( 'DiffusionMovingMed' )
+
+      nX  = [ 100, 1, 1 ]
+      xL  = [ - 3.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 3.0_DP, 1.0_DP, 1.0_DP ]
+      bcX = [ 1, 1, 1 ]
+
+      nE  = 1
+      eL  = 0.0d0
+      eR  = 1.0d0
+      bcE = 1
+
+      nNodes = 3
+
+      TimeSteppingScheme = 'IMEX_PDARS'
+
+      t_end = 1.0_DP
+      iCycleD = 10
+      iCycleW = 200
+      maxCycles = 1000000
+
+      V_0 = [ 0.5_DP, 0.0_DP, 0.0_DP ]
+
+      J_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 1.0d3
+
+      UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .FALSE.
+      Restart              = .FALSE.
+
+    CASE( 'ShadowCasting2D_Cartesian' )
+
+      nX  = [ 300, 200, 1 ]
+      xL  = [ 00.0_DP, - 5.0_DP, 0.0_DP ]
+      xR  = [ 15.0_DP, + 5.0_DP,  TwoPi ]
+      bcX = [ 2, 2, 1 ]
+
+      nE  = 1
+      eL  = 0.0d0
+      eR  = 1.0d0
+      bcE = 1
+
+      nNodes = 3
+
+      TimeSteppingScheme = 'IMEX_PDARS'
+
+      t_end   = 1.5d+1
+      iCycleD = 1
+      iCycleW = 100
+      maxCycles = 1000000
+
+      V_0 = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+
+      J_0   = 0.0_DP
+      Chi   = 0.0_DP
+      Sigma = 0.0_DP
+
+      ! UseSlopeLimiter      = .FALSE.
+      UsePositivityLimiter = .TRUE.
+      UseEnergyLimiter     = .FALSE.
+      Restart              = .FALSE.
+
 
   CASE DEFAULT
 
@@ -203,16 +429,28 @@ PROGRAM ApplicationDriver
 
   ! --- Set Initial Condition ---
 
-  CALL InitializeFields( V_0 , Direction, Spectrum )
+  CALL InitializeFields( V_0 , LengthScale, Direction, Spectrum )
 
   t = 0.0_DP
 
+  CALL WriteFluidFieldsHDF( t )
+
   ! --- Write Initial Condition ---
 
-  CALL ComputeFromConserved_TwoMoment_FMC &
-         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uPF, uCM, uPM, uAM, uGM )
+  IF( Restart )THEN
 
-  CALL WriteTwoMomentFieldsHDF( t )
+    CALL ReadTwoMomentFieldsHDF( ReadFileNumber , t )
+
+    CALL WriteTwoMomentFieldsHDF ( t, ReadFileNumber )
+
+  ELSE
+
+    CALL ComputeFromConserved_TwoMoment_FMC &
+          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uPF, uCM, uPM, uAM, uGM )
+
+    CALL WriteTwoMomentFieldsHDF( t )
+
+  END IF
 
   ! --- Evolve ---
 
@@ -222,7 +460,7 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
 
   iCycle = 0
-  CFL = 0.3_DP
+  CFL = 1.0_DP !change to 1_DP or see how large it can get
   DO WHILE( t < t_end .AND. iCycle < maxCycles )
 
     iCycle = iCycle + 1
@@ -233,7 +471,10 @@ PROGRAM ApplicationDriver
     !        ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, CFL, dt )
 
     CALL ComputeTimeStep_TwoMoment_Realizable &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uPF, CFL, dt )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uPF, CFL, dt, .TRUE. )
+
+    ! print*, 'dt = ', dt
+    ! STOP
 
     IF ( t + dt > t_end )THEN
 
