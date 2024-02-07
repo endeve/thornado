@@ -14,6 +14,8 @@ ProblemName = 'RiemannProblem2D_dZB2002'
 #PlotDirectory = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/YahilCollapse_XCFC/'
 PlotDirectory = '/home/kkadoogan/Work/Codes/thornado/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL/'
 
+FigName = 'fig.png'
+
 # Specify plot file base name
 PlotBaseName = ProblemName + '.plt'
 
@@ -121,4 +123,7 @@ slc.set_ylabel( yLabel )
 
 slc.zoom( Zoom )
 
-slc.save( FigName )
+try:
+    slc.save( FigName )
+except:
+    slc.save()
