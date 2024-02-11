@@ -22,7 +22,8 @@ MODULE MHD_DiscretizationModule_Relativistic
     WeightsX_X1, &
     WeightsX_X2, &
     WeightsX_X3, &
-    WeightsX_q
+    WeightsX_q, &
+    NodeNumberTableX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     dLXdX1_q, &
     dLXdX2_q, &
@@ -34,7 +35,8 @@ MODULE MHD_DiscretizationModule_Relativistic
     LX_X3_Dn, &
     LX_X3_Up
   USE MeshModule, ONLY: &
-    MeshX
+    MeshX, &
+    NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
     nGF, &
     iGF_h_1, &
@@ -312,7 +314,7 @@ CONTAINS
     IF( UsePowellSource ) THEN
 
       CALL ComputeIncrement_Powell &
-            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
 
     END IF
 
@@ -2760,19 +2762,44 @@ CONTAINS
 
       VdotB = B0u * ( G(iNX,iX1,iX2,iX3,iGF_Alpha) / W )
 
+     !PRINT*
+     !PRINT*, 'W: ', W
+     !PRINT*, 'W**2: ', W**2
+     !PRINT*, 'B1: ', U(iNX,iX1,iX2,iX3,iCM_B1)
+     !PRINT*, 'B2: ', U(iNX,iX1,iX2,iX3,iCM_B2)
+     !PRINT*, 'B3: ', U(iNX,iX1,iX2,iX3,iCM_B3)
+     !PRINT*, 'V1: ', P(iPM_V1)
+     !PRINT*, 'V2: ', P(iPM_V2)
+     !PRINT*, 'V3: ', P(iPM_V3)
+     !PRINT*
+
       bSq = ( 1.0_DP / W**2 ) &
             * ( G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) * U(iNX,iX1,iX2,iX3,iCM_B1)**2 &
                 + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) * U(iNX,iX1,iX2,iX3,iCM_B2)**2 &
                 + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) * U(iNX,iX1,iX2,iX3,iCM_B3)**2 ) &
             + ( G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) &
-                * U(iNX,iX1,iX2,iX3,iPM_V1) &
+                * P(iPM_V1) &
                 * U(iNX,iX1,iX2,iX3,iCM_B1) &
               + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
-                * U(iNX,iX1,iX2,iX3,iPM_V2) &
+                * P(iPM_V2) &
                 * U(iNX,iX1,iX2,iX3,iCM_B2) &
               + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
-                * U(iNX,iX1,iX2,iX3,iPM_V3) &
+                * P(iPM_V3) &
                 * U(iNX,iX1,iX2,iX3,iCM_B3) )
+
+!      bSq = ( 1.0_DP / W**2 ) &
+!            * ( G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) * U(iNX,iX1,iX2,iX3,iCM_B1)**2 &
+!                + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) * U(iNX,iX1,iX2,iX3,iCM_B2)**2 &
+!                + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) * U(iNX,iX1,iX2,iX3,iCM_B3)**2 ) &
+!            + ( G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) &
+!                * U(iNX,iX1,iX2,iX3,iPM_V1) &
+!                * U(iNX,iX1,iX2,iX3,iCM_B1) &
+!              + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
+!                * U(iNX,iX1,iX2,iX3,iPM_V2) &
+!                * U(iNX,iX1,iX2,iX3,iCM_B2) &
+!              + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
+!                * U(iNX,iX1,iX2,iX3,iPM_V3) &
+!                * U(iNX,iX1,iX2,iX3,iCM_B3) )
 
       Pressure = Pressure + bSq / 2.0_DP
 
@@ -3082,7 +3109,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Powell &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
 
    INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -3090,16 +3117,17 @@ CONTAINS
       G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
       U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
       dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
     CALL ComputeIncrement_Powell_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
 
   END SUBROUTINE ComputeIncrement_Powell
 
 
   SUBROUTINE ComputeIncrement_Powell_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -3107,6 +3135,7 @@ CONTAINS
       G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
     REAL(DP), INTENT(inout) :: &
       U (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
+      D (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
       dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
     REAL(DP) :: WeakDiv(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
@@ -3116,16 +3145,44 @@ CONTAINS
     REAL(DP) :: P(nPM)
     REAL(DP) :: W, B0u, VdotB, bSq
 
+    REAL(DP) :: WeakDivSum
+
+    ! --- Debugging
+
+    INTEGER  :: iNodeX1
+    REAL(DP) :: X1, X1_C, X1_W, X1_L, X1_R
+
     ! --- Compute Magnetic Divergence for Powell Sources ---
 
+    CALL ComputeMagneticDivergence_MHD_Relativistic    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
     CALL ComputeWeakMagneticDivergence_MHD_Relativistic( iX_B0, iX_E0, iX_B1, iX_E1, G, U, WeakDiv )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
+
+    WeakDivSum = Zero
+
     DO iNX = 1       , nDOFX
 
-      !PRINT*, 'Weak Div. : ', WeakDiv(iNX,iX1,iX2,iX3)
+      WeakDivSum = WeakDivSum + WeakDiv(iNX,iX1,iX2,iX3)
+
+      iNodeX1 = NodeNumberTableX(1,iNX)
+      X1   = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+      X1_C = MeshX(1) % Center(iX1)
+      X1_W = MeshX(1) % Width(iX1)
+      X1_L = X1_C - X1_W / Two
+      X1_R = X1_C + X1_W / Two
+
+      !PRINT*
+      !PRINT*, 'In cell       :', iX1, iX2, iX3
+      !PRINT*, 'At node       :', iNX
+      !PRINT*, 'X1            :', X1
+      !PRINT*, 'X1_C          :', X1_C
+      !PRINT*, 'X1_W          :', X1_W
+      !PRINT*, 'X1_L          :', X1_L
+      !PRINT*, 'X1_R          :', X1_R
+      !PRINT*, 'Weak Div.     :', WeakDiv(iNX,iX1,iX2,iX3)
 
       CALL ComputePrimitive_MHD  &
              ( U(   iNX,iX1,iX2,iX3,iCM_D ),  &
@@ -3170,6 +3227,8 @@ CONTAINS
                 + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
                   * P(iPM_V3) * U(iNX,iX1,iX2,iX3,iCM_B3) )
 
+      WeakDiv(iNX,iX1,iX2,iX3) = D(iNX,iX1,iX2,iX3,iDM_Div)
+
       dU(iNX,iX1,iX2,iX3,iCM_S1) = dU(iNX,iX1,iX2,iX3,iCM_S1) &
                                    - WeakDiv(iNX,iX1,iX2,iX3) &
                                      * G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) &
@@ -3210,6 +3269,13 @@ CONTAINS
                                            / G(iNX,iX1,iX2,iX3,iGF_Alpha ) )
 
     END DO
+
+    !PRINT*
+    !PRINT*, 'Avg. Div.     : ', D(1,iX1,iX2,iX3,iDM_Div)
+    !PRINT*, 'Weak Div. Sum : ', WeakDivSum
+    !PRINT*, 'Diff.         : ', D(1,iX1,iX2,iX3,iDM_Div) -  WeakDivSum
+    !PRINT*
+
     END DO
     END DO
     END DO
