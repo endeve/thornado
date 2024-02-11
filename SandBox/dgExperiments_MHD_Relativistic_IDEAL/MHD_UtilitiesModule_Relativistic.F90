@@ -1444,7 +1444,7 @@ CONTAINS
     REAL(DP) :: &
       Div(nDOFX_X1,iX_B0(2)    :iX_E0(2),   &
                    iX_B0(3)    :iX_E0(3),   &
-                   iX_B0(1)-1  :iX_E0(1)+1)
+                   iX_B0(1)    :iX_E0(1)+1)
 
     IF( iX_E0(1) .EQ. iX_B0(1) ) RETURN
 
@@ -1672,8 +1672,7 @@ CONTAINS
     DO iNX = 1       , nDOFX
 
       WeakDiv(iNX,iX1,iX2,iX3) &
-        = WeakDiv(iNX,iX1,iX2,iX3) &
-            + WeakDiv_X1(iNX,iX2,iX3,iX1) / Vol(iX1,iX2,iX3)
+        = WeakDiv_X1(iNX,iX2,iX3,iX1) / Vol(iX1,iX2,iX3)
 
     END DO
     END DO
