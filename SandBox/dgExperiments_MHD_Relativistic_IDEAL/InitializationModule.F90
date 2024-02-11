@@ -86,7 +86,7 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Relativistic_MHD &
                ( AdvectionProfile_Option, SmoothProfile_Option, &
-                 ConstantDensity_Option, ConstNonZeroV_Option, &
+                 ConstantDensity_Option, &
                  Angle_Option, RiemannProblemName_Option, &
                  MMBlastWaveB0_Option, MMBlastWavePhi_Option, &
                  OTScaleFactor_Option, EvolveOnlyMagnetic_Option )
@@ -96,7 +96,6 @@ CONTAINS
     LOGICAL,          INTENT(in), OPTIONAL :: EvolveOnlyMagnetic_Option
     LOGICAL,          INTENT(in), OPTIONAL :: SmoothProfile_Option
     LOGICAL,          INTENT(in), OPTIONAL :: ConstantDensity_Option
-    LOGICAL,          INTENT(in), OPTIONAL :: ConstNonZeroV_Option
     REAL(DP),         INTENT(in), OPTIONAL :: Angle_Option
     REAL(DP),         INTENT(in), OPTIONAL :: MMBlastWaveB0_Option
     REAL(DP),         INTENT(in), OPTIONAL :: MMBlastWavePhi_Option
@@ -106,7 +105,6 @@ CONTAINS
     CHARACTER(LEN=64) :: RiemannProblemName = 'IsolatedContact'
     LOGICAL           :: SmoothProfile = .TRUE.
     LOGICAL           :: ConstantDensity = .TRUE.
-    LOGICAL           :: ConstNonZeroV = .FALSE.
     REAL(DP)          :: Angle = Pi / Four
     REAL(DP)          :: MMBlastWaveB0 = 0.5_DP
     REAL(DP)          :: MMBlastWavePhi = 0.0_DP
@@ -124,9 +122,6 @@ CONTAINS
 
     IF( PRESENT( ConstantDensity_Option ) ) &
       ConstantDensity = ConstantDensity_Option
-
-    IF( PRESENT( ConstNonZeroV_Option ) ) &
-      ConstNonZeroV = ConstNonZeroV_Option
 
     IF( PRESENT( Angle_Option ) ) &
       Angle = Angle_Option
@@ -174,7 +169,7 @@ CONTAINS
       CASE( 'Cleaning2D' )
 
         CALL InitializeFields_Cleaning2D &
-               ( ConstantDensity, ConstNonZeroV, EvolveOnlyMagnetic )
+               ( ConstantDensity, EvolveOnlyMagnetic )
 
       CASE( 'Riemann1D' )
 
@@ -544,67 +539,41 @@ CONTAINS
 
           CASE( 'LoopAdvection' )
 
-            IF( SQRT( X1**2 + X2**2 ) .LE. 0.3_DP )THEN
+            V1 = One / Two
+            V2 = Zero
+            V3 = Zero
 
-              V1 = One / Two
-              V2 = Zero
-              V3 = Zero
+            W = One / SQRT( One - V1**2  - V2**2 - V3**2 )
 
-              W = One / SQRT( One - V1**2  - V2**2 - V3**2 )
+            uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = V1
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = V2
+            uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = V3
 
-              uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
-              uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = V1
-              uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = V2
-              uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = V3
-              uAM(iNodeX,iX1,iX2,iX3,iAM_P ) = Three
-              uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
+            uAM(iNodeX,iX1,iX2,iX3,iAM_P ) = Three
+            uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
                 = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
 
-              VdotB = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
-                        * ( -1.0d-3 * ( X2 / SQRT( X1**2 + X2**2 ) ) ) &
-                        + uPM(iNodeX,iX1,iX2,iX3,iPM_V2) &
-                            * ( 1.0d-3 * ( X1 / SQRT( X1**2 + X2**2 ) ) )
+            IF( SQRT( X1**2 + X2**2 ) .LE. 0.3_DP )THEN
 
-              V1_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) &
-                             - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_1) &
-                                 / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
-
-              V2_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V2) &
-                             - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2) &
-                                 / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
-
-              V3_Transport = uPM(iNodeX,iX1,iX2,iX3,iPM_V3) &
-                             - ( uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3) &
-                                 / uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha ) )
-
-              uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = W * VdotB * V1_Transport &
-                                               + ( -1.0d-3 * ( X2 / SQRT( X1**2 + X2**2 ) ) ) / W
-              uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = W * VdotB * V2_Transport &
-                                               + (  1.0d-3 * ( X1 / SQRT( X1**2 + X2**2 ) ) ) / W
-              uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = W * VdotB * V3_Transport
-              uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
+              CB1 = -1.0d-3 * ( X2 / SQRT( X1**2 + X2**2) )
+              CB2 =  1.0d-3 * ( X1 / SQRT( X1**2 + X2**2) )
+              CB3 = Zero
 
             ELSE
 
-              V1 = One / Two
-              V2 = Zero
-              V3 = Zero
-
-              W = One / SQRT( One - V1**2 - V2**2 - V3**2 )
-
-              uPM(iNodeX,iX1,iX2,iX3,iPM_D ) = One
-              uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = V1
-              uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = V2
-              uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = V3
-              uAM(iNodeX,iX1,iX2,iX3,iAM_P ) = Three
-              uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
-                = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
-              uPM(iNodeX,iX1,iX2,iX3,iPM_B1 ) = 0.0_DP
-              uPM(iNodeX,iX1,iX2,iX3,iPM_B2 ) = 0.0_DP
-              uPM(iNodeX,iX1,iX2,iX3,iPM_B3 ) = 0.0_DP
-              uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
+              CB1 = Zero
+              CB2 = Zero
+              CB3 = Zero
 
             END IF
+
+            VdotB = V1 * CB1 + V2 * CB2 + V3 * CB3
+
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = W * VdotB * V1 + CB1 / W
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = W * VdotB * V2 + CB2 / W
+            uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = W * VdotB * V3 + CB3 / W
+            uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
           CASE DEFAULT
 
@@ -819,6 +788,7 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iNodeX, iNodeX1
     REAL(DP) :: X1
+    REAL(DP) :: V1, V2, V3, W, CB1, CB2, CB3, VdotB
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -830,40 +800,52 @@ CONTAINS
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
 
+        V1 = Zero
+        V2 = Zero
+        V3 = Zero
+
+        W = One / SQRT( One - V1**2 - V2**2 - V3**2 )
+
         uPM(iNodeX,iX1,iX2,iX3,iPM_D)  = One
-        uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = 0.0_DP
-        uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = 0.0_DP
-        uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = 0.0_DP
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = V1
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = V2
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = V3
         uAM(iNodeX,iX1,iX2,iX3,iAM_P ) = One
         uPM(iNodeX,iX1,iX2,iX3,iPM_E )  &
           = uAM(iNodeX,iX1,iX2,iX3,iAM_P) / ( Gamma_IDEAL - One )
 
         IF( SmoothProfile )THEN
 
-          IF( ( X1 >= -1.0_DP ) .AND. ( X1 <= -0.6_DP ) )THEN
-            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.0_DP
-          ELSE IF( ( X1 >= 0.6_DP ) .AND. ( X1 <= 1.0_DP ) )THEN
-            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.0_DP
+          IF( ( X1 >= -One ) .AND. ( X1 <= -0.6_DP ) )THEN
+            CB1 = Zero
+          ELSE IF( ( X1 >= 0.6_DP ) .AND. ( X1 <= One ) )THEN
+            CB1 = Zero
           ELSE
-            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = EXP( -( X1 / 0.11_DP )**2 / Two )
+            CB1 = EXP( -( X1 / 0.11_DP )**2 / Two )
           END IF
 
         ELSE
 
           IF( ( X1 > -0.8_DP ) .AND. ( X1 <= -0.6_DP ) )THEN
-            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = -Two * ( X1 + 0.8_DP )
+            CB1 = -Two * ( X1 + 0.8_DP )
           ELSE IF( ( X1 > -0.6_DP ) .AND. ( X1 <= 0.6_DP ) )THEN
-            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = EXP( -( X1 / 0.11_DP )**2 / Two )
-          ELSE IF( ( X1 > 0.6_DP ) .AND. ( X1 <= 1.0_DP ) )THEN
-            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.5_DP
+            CB1 = EXP( -( X1 / 0.11_DP )**2 / Two )
+          ELSE IF( ( X1 > 0.6_DP ) .AND. ( X1 < One ) )THEN
+            CB1 = Half
           ELSE
-            uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = 0.0_DP
+            CB1 = Zero
           END IF
 
         END IF
 
-        uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = 0.0_DP
-        uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = 0.0_DP
+        CB2 = Zero
+        CB3 = Zero
+
+        VdotB = V1 * CB1 + V2 * CB2 + V3 * CB3
+
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = W * VdotB * V1 + CB1 / W
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = W * VdotB * V2 + CB2 / W
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = W * VdotB * V3 + CB3 / W
         uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
 
       END DO
@@ -896,14 +878,13 @@ CONTAINS
   END SUBROUTINE InitializeFields_Cleaning1D
 
 
-  SUBROUTINE InitializeFields_Cleaning2D( ConstantDensity, ConstNonZeroV, EvolveOnlyMagnetic )
+  SUBROUTINE InitializeFields_Cleaning2D( ConstantDensity, EvolveOnlyMagnetic )
 
     ! 2D divergence cleaning test from Section 5.2 of
     ! Derigs et al. (2018) with option to use
     ! constant density.
 
     LOGICAL, INTENT(in) :: ConstantDensity
-    LOGICAL, INTENT(in) :: ConstNonZeroV
     LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
     INTEGER  :: iX1, iX2, iX3
@@ -944,19 +925,9 @@ CONTAINS
 
         END IF
 
-        IF( ConstNonZeroV )THEN
-
-          V1 = One / Two
-          V2 = One / Two
-          V3 = Zero
-
-        ELSE
-
-          V1 = Zero
-          V2 = Zero
-          V3 = Zero
-
-        END IF
+        V1 = Zero
+        V2 = Zero
+        V3 = Zero
 
         W = One / SQRT( One - V1**2 - V2**2 - V3**2 )
 
@@ -1469,27 +1440,27 @@ CONTAINS
     WRITE(*,*)
     WRITE(*,'(6x,A)') 'Right State:'
     WRITE(*,*)
-    WRITE(*,'(8x,A,ES14.6E3)') 'PM_D   = ', RightState(iPM_D  )
-    WRITE(*,'(8x,A,ES14.6E3)') 'PM_V1  = ', RightState(iPM_V1 )
-    WRITE(*,'(8x,A,ES14.6E3)') 'PM_V2  = ', RightState(iPM_V2 )
-    WRITE(*,'(8x,A,ES14.6E3)') 'PM_V3  = ', RightState(iPM_V3 )
-    WRITE(*,'(8x,A,ES14.6E3)') 'PM_E   = ', RightState(iPM_E  )
-    WRITE(*,'(8x,A,ES14.6E3)') 'PM_B1  = ', RightState(iPM_B1 )
-    WRITE(*,'(8x,A,ES14.6E3)') 'PM_B2  = ', RightState(iPM_B2 )
-    WRITE(*,'(8x,A,ES14.6E3)') 'PM_B3  = ', RightState(iPM_B3 )
-    WRITE(*,'(8x,A,ES14.6E3)') 'PM_Chi = ', RightState(iPM_Chi)
+    WRITE(*,'(8x,A,ES24.16E3)') 'PM_D   = ', RightState(iPM_D  )
+    WRITE(*,'(8x,A,ES24.16E3)') 'PM_V1  = ', RightState(iPM_V1 )
+    WRITE(*,'(8x,A,ES24.16E3)') 'PM_V2  = ', RightState(iPM_V2 )
+    WRITE(*,'(8x,A,ES24.16E3)') 'PM_V3  = ', RightState(iPM_V3 )
+    WRITE(*,'(8x,A,ES24.16E3)') 'PM_E   = ', RightState(iPM_E  )
+    WRITE(*,'(8x,A,ES24.16E3)') 'PM_B1  = ', RightState(iPM_B1 )
+    WRITE(*,'(8x,A,ES24.16E3)') 'PM_B2  = ', RightState(iPM_B2 )
+    WRITE(*,'(8x,A,ES24.16E3)') 'PM_B3  = ', RightState(iPM_B3 )
+    WRITE(*,'(8x,A,ES24.16E3)') 'PM_Chi = ', RightState(iPM_Chi)
     WRITE(*,*)
     WRITE(*,'(6x,A)') 'Left State:'
     WRITE(*,*)
-    WRITE(*,'(8x,A,ES14.6E3)') 'PM_D   = ', LeftState(iPM_D  )
-    WRITE(*,'(8x,A,ES14.6E3)') 'PM_V1  = ', LeftState(iPM_V1 )
-    WRITE(*,'(8x,A,ES14.6E3)') 'PM_V2  = ', LeftState(iPM_V2 )
-    WRITE(*,'(8x,A,ES14.6E3)') 'PM_V3  = ', LeftState(iPM_V3 )
-    WRITE(*,'(8x,A,ES14.6E3)') 'PM_E   = ', LeftState(iPM_E  )
-    WRITE(*,'(8x,A,ES14.6E3)') 'PM_B1  = ', LeftState(iPM_B1 )
-    WRITE(*,'(8x,A,ES14.6E3)') 'PM_B2  = ', LeftState(iPM_B2 )
-    WRITE(*,'(8x,A,ES14.6E3)') 'PM_B3  = ', LeftState(iPM_B3 )
-    WRITE(*,'(8x,A,ES14.6E3)') 'PM_Chi = ', LeftState(iPM_Chi)
+    WRITE(*,'(8x,A,ES24.16E3)') 'PM_D   = ', LeftState(iPM_D  )
+    WRITE(*,'(8x,A,ES24.16E3)') 'PM_V1  = ', LeftState(iPM_V1 )
+    WRITE(*,'(8x,A,ES24.16E3)') 'PM_V2  = ', LeftState(iPM_V2 )
+    WRITE(*,'(8x,A,ES24.16E3)') 'PM_V3  = ', LeftState(iPM_V3 )
+    WRITE(*,'(8x,A,ES24.16E3)') 'PM_E   = ', LeftState(iPM_E  )
+    WRITE(*,'(8x,A,ES24.16E3)') 'PM_B1  = ', LeftState(iPM_B1 )
+    WRITE(*,'(8x,A,ES24.16E3)') 'PM_B2  = ', LeftState(iPM_B2 )
+    WRITE(*,'(8x,A,ES24.16E3)') 'PM_B3  = ', LeftState(iPM_B3 )
+    WRITE(*,'(8x,A,ES24.16E3)') 'PM_Chi = ', LeftState(iPM_Chi)
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
