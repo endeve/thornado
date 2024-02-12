@@ -92,7 +92,12 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
-## Feb 01 2024
+## Feb 12 2024
+1. thornado's sineWaveStreaming with 8x8x8 is now in reframe. Need to find a way to setup the reference for the performance test
+## Feb 05-09 2024
+
+1. Continued learning reframe and putting thonado to reframe
+## Feb 01-02 2024
 1. Continued learning reframe and put thornado to reframe framework
 ## Jan 31 2024
 1. Helped proof-reading the rebuttal of reviewers' comments
