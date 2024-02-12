@@ -188,7 +188,8 @@ CONTAINS
     ! --- Problem-dependent Parameters ---
 
     CHARACTER(LEN=:), ALLOCATABLE :: AdvectionProfile
-    REAL(DP) :: W, CB1, CB2, CB3, VdotB
+    REAL(DP) :: W, CB1, CB2, CB3, V1, V2, V3, VdotB
+    REAL(DP) :: Eta, k, h, VA
 
     AdvectionProfile = 'HydroSineWaveX1'
     CALL amrex_parmparse_build( PP, 'thornado' )
@@ -205,6 +206,7 @@ CONTAINS
         .AND. TRIM( AdvectionProfile ) .NE. 'MagneticSineWaveX3' &
         .AND. TRIM( AdvectionProfile ) .NE. 'CPAlfvenX1' &
         .AND. TRIM( AdvectionProfile ) .NE. 'CPAlfvenX2' &
+        .AND. TRIM( AdvectionProfile ) .NE. 'CPAlfvenX3' &
         .AND. TRIM( AdvectionProfile ) .NE. 'CPAlfvenOblique' &
         .AND. TRIM( AdvectionProfile ) .NE. 'LoopAdvection2D' &
         .AND. TRIM( AdvectionProfile ) .NE. 'LoopAdvection3D' )THEN
@@ -226,6 +228,7 @@ CONTAINS
         WRITE(*,'(A)') '  MagneticSineWaveX3'
         WRITE(*,'(A)') '  CPAlfvenX1'
         WRITE(*,'(A)') '  CPAlfvenX2'
+        WRITE(*,'(A)') '  CPAlfvenX3'
         WRITE(*,'(A)') '  CPAlfvenOblique'
         WRITE(*,'(A)') '  LoopAdvection2D'
         WRITE(*,'(A)') '  LoopAdvection3D'
@@ -384,6 +387,123 @@ CONTAINS
               uPM_K(iNX,iPM_B1)  = 1.0d-4 * SIN( TwoPi * X3 )
               uPM_K(iNX,iPM_B2)  = 1.0d-4 * COS( TwoPi * X3 )
               uPM_K(iNX,iPM_B3)  = 1.0d-4
+              uPM_K(iNX,iPM_Chi) = Zero
+
+            ELSE IF( TRIM( AdvectionProfile ) .EQ. 'CPAlfvenX1' )THEN
+
+              ! Circularly polarized Alfven wave with the exact solution
+              ! from Del Zanna et al. (2007) and Mattia and Mignone (2022).
+
+              Eta = One
+              k   = One
+              h   = One + Gamma_IDEAL / ( Gamma_IDEAL - One )
+              VA  = SQRT( ( Two / ( h + ( One + Eta**2 ) ) ) &
+                          * ( One / ( One + SQRT( One - ( Two * Eta / ( h + ( One + Eta**2 ) ) )**2 ) ) ) )
+
+              W = One / SQRT( One - VA**2 * Eta**2 )
+
+              CB1 = One
+              CB2 = Eta * COS( k * X1 )
+              CB3 = Eta * SIN( k * X1 )
+
+              V1 = Zero
+              V2 = -VA * CB2
+              V3 = -VA * CB3
+
+              uPM_K(iNX,iPM_D )  = One
+              uPM_K(iNX,iPM_V1) = V1
+              uPM_K(iNX,iPM_V2) = V2
+              uPM_K(iNX,iPM_V3) = V3
+              uAM_K(iNX,iAM_P )  = One
+              uPM_K(iNX,iPM_E )  &
+                = uAM_K(iNX,iAM_P) / ( Gamma_IDEAL - One )
+
+              VdotB = -VA * Eta**2
+
+              uPM_K(iNX,iPM_B1) &
+                = W * VdotB * V1 + CB1 / W
+              uPM_K(iNX,iPM_B2) &
+                = W * VdotB * V2 + CB2 / W
+              uPM_K(iNX,iPM_B3) &
+                = W * VdotB * V3 + CB3 / W
+              uPM_K(iNX,iPM_Chi) = Zero
+
+            ELSE IF( TRIM( AdvectionProfile ) .EQ. 'CPAlfvenX2' )THEN
+
+              ! Circularly polarized Alfven wave with the exact solution
+              ! from Del Zanna et al. (2007) and Mattia and Mignone (2022).
+
+              Eta = One
+              k   = One
+              h   = One + Gamma_IDEAL / ( Gamma_IDEAL - One )
+              VA  = SQRT( ( Two / ( h + ( One + Eta**2 ) ) ) &
+                          * ( One / ( One + SQRT( One - ( Two * Eta / ( h + ( One + Eta**2 ) ) )**2 ) ) ) )
+
+              W = One / SQRT( One - VA**2 * Eta**2 )
+
+              CB1 = Eta * COS( k * X2 )
+              CB2 = One
+              CB3 = Eta * SIN( k * X2 )
+
+              V1 = -VA * CB1
+              V2 = Zero
+              V3 = -VA * CB3
+
+              uPM_K(iNX,iPM_D )  = One
+              uPM_K(iNX,iPM_V1) = V1
+              uPM_K(iNX,iPM_V2) = V2
+              uPM_K(iNX,iPM_V3) = V3
+              uAM_K(iNX,iAM_P )  = One
+              uPM_K(iNX,iPM_E )  &
+                = uAM_K(iNX,iAM_P) / ( Gamma_IDEAL - One )
+
+              VdotB = -VA * Eta**2
+
+              uPM_K(iNX,iPM_B1) &
+                = W * VdotB * V1 + CB1 / W
+              uPM_K(iNX,iPM_B2) &
+                = W * VdotB * V2 + CB2 / W
+              uPM_K(iNX,iPM_B3) &
+                = W * VdotB * V3 + CB3 / W
+              uPM_K(iNX,iPM_Chi) = Zero
+
+            ELSE IF( TRIM( AdvectionProfile ) .EQ. 'CPAlfvenX3' )THEN
+
+              ! Circularly polarized Alfven wave with the exact solution
+              ! from Del Zanna et al. (2007) and Mattia and Mignone (2022).
+
+              Eta = One
+              k   = One
+              h   = One + Gamma_IDEAL / ( Gamma_IDEAL - One )
+              VA  = SQRT( ( Two / ( h + ( One + Eta**2 ) ) ) &
+                          * ( One / ( One + SQRT( One - ( Two * Eta / ( h + ( One + Eta**2 ) ) )**2 ) ) ) )
+
+              W = One / SQRT( One - VA**2 * Eta**2 )
+
+              CB1 = Eta * COS( k * X3 )
+              CB2 = Eta * SIN( k * X3 )
+              CB3 = One
+
+              V1 = -VA * CB1
+              V2 = -VA * CB2
+              V3 = Zero
+
+              uPM_K(iNX,iPM_D )  = One
+              uPM_K(iNX,iPM_V1) = V1
+              uPM_K(iNX,iPM_V2) = V2
+              uPM_K(iNX,iPM_V3) = V3
+              uAM_K(iNX,iAM_P )  = One
+              uPM_K(iNX,iPM_E )  &
+                = uAM_K(iNX,iAM_P) / ( Gamma_IDEAL - One )
+
+              VdotB = -VA * Eta**2
+
+              uPM_K(iNX,iPM_B1) &
+                = W * VdotB * V1 + CB1 / W
+              uPM_K(iNX,iPM_B2) &
+                = W * VdotB * V2 + CB2 / W
+              uPM_K(iNX,iPM_B3) &
+                = W * VdotB * V3 + CB3 / W
               uPM_K(iNX,iPM_Chi) = Zero
 
             ELSE IF( TRIM( AdvectionProfile ) .EQ. 'LoopAdvection2D' )THEN
