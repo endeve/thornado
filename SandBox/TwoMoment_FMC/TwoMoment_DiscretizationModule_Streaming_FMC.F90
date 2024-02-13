@@ -49,7 +49,7 @@ MODULE TwoMoment_DiscretizationModule_Streaming_FMC
     ApplyBoundaryConditions_TwoMoment
   USE TwoMoment_UtilitiesModule_FMC, ONLY: &
     ComputeConserved_TwoMoment_FMC, &
-    ComputePrimitive_TwoMoment_Richardson_FMC, &
+    ComputePrimitive_TwoMoment_FMC, &
     Flux_X1, &
     Flux_X2, &
     Flux_X3, &
@@ -635,7 +635,7 @@ CONTAINS
 
       ! --- Left State Primitive ---
 
-      CALL ComputePrimitive_TwoMoment_Richardson_FMC &
+      CALL ComputePrimitive_TwoMoment_FMC &
               ( E_L(iZ_F), &
                 F_d_1_L(iZ_F), &
                 F_d_2_L(iZ_F), &
@@ -653,7 +653,7 @@ CONTAINS
 
       ! --- Right State Primitive ---
 
-      CALL ComputePrimitive_TwoMoment_Richardson_FMC &
+      CALL ComputePrimitive_TwoMoment_FMC &
               ( E_R(iZ_F), &
                 F_d_1_R(iZ_F), &
                 F_d_2_R(iZ_F), &
@@ -771,7 +771,7 @@ CONTAINS
 
       iX_K = PositionIndexZ_K(iZ_K)
 
-      CALL ComputePrimitive_TwoMoment_Richardson_FMC &
+      CALL ComputePrimitive_TwoMoment_FMC &
             ( E_K(iZ_K), &
               F_d_1_K(iZ_K), &
               F_d_2_K(iZ_K), &
@@ -1168,7 +1168,7 @@ CONTAINS
 
       ! --- Left State Primitive ---
 
-      CALL ComputePrimitive_TwoMoment_Richardson_FMC &
+      CALL ComputePrimitive_TwoMoment_FMC &
               ( E_L(iZ_F), &
                 F_d_1_L(iZ_F), &
                 F_d_2_L(iZ_F), &
@@ -1186,7 +1186,7 @@ CONTAINS
 
       ! --- Right State Primitive ---
 
-      CALL ComputePrimitive_TwoMoment_Richardson_FMC &
+      CALL ComputePrimitive_TwoMoment_FMC &
               ( E_R(iZ_F), &
                 F_d_1_R(iZ_F), &
                 F_d_2_R(iZ_F), &
@@ -1304,7 +1304,7 @@ CONTAINS
 
       iX_K = PositionIndexZ_K(iZ_K)
 
-      CALL ComputePrimitive_TwoMoment_Richardson_FMC &
+      CALL ComputePrimitive_TwoMoment_FMC &
             ( E_K(iZ_K), &
               F_d_1_K(iZ_K), &
               F_d_2_K(iZ_K), &
@@ -1701,7 +1701,7 @@ CONTAINS
 
       ! --- Left State Primitive ---
 
-      CALL ComputePrimitive_TwoMoment_Richardson_FMC &
+      CALL ComputePrimitive_TwoMoment_FMC &
               ( E_L(iZ_F), &
                 F_d_1_L(iZ_F), &
                 F_d_2_L(iZ_F), &
@@ -1719,7 +1719,7 @@ CONTAINS
 
       ! --- Right State Primitive ---
 
-      CALL ComputePrimitive_TwoMoment_Richardson_FMC &
+      CALL ComputePrimitive_TwoMoment_FMC &
               ( E_R(iZ_F), &
                 F_d_1_R(iZ_F), &
                 F_d_2_R(iZ_F), &
@@ -1837,7 +1837,7 @@ CONTAINS
 
       iX_K = PositionIndexZ_K(iZ_K)
 
-      CALL ComputePrimitive_TwoMoment_Richardson_FMC &
+      CALL ComputePrimitive_TwoMoment_FMC &
             ( E_K(iZ_K), &
               F_d_1_K(iZ_K), &
               F_d_2_K(iZ_K), &
@@ -2170,7 +2170,7 @@ CONTAINS
 
       ! --- Left State Primitive ---
 
-      CALL ComputePrimitive_TwoMoment_Richardson_FMC &
+      CALL ComputePrimitive_TwoMoment_FMC &
               ( E_L(iZ_F), &
                 F_d_1_L(iZ_F), &
                 F_d_2_L(iZ_F), &
@@ -2188,7 +2188,7 @@ CONTAINS
 
       ! --- Right State Primitive ---
 
-      CALL ComputePrimitive_TwoMoment_Richardson_FMC &
+      CALL ComputePrimitive_TwoMoment_FMC &
               ( E_R(iZ_F), &
                 F_d_1_R(iZ_F), &
                 F_d_2_R(iZ_F), &
@@ -2324,7 +2324,7 @@ CONTAINS
 
       iX_K = PositionIndexZ_K(iZ_K)
 
-      CALL ComputePrimitive_TwoMoment_Richardson_FMC &
+      CALL ComputePrimitive_TwoMoment_FMC &
             ( E_K(iZ_K), &
               F_d_1_K(iZ_K), &
               F_d_2_K(iZ_K), &
