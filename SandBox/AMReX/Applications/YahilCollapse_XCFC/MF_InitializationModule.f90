@@ -4,30 +4,30 @@ MODULE MF_InitializationModule
     amrex_box
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
+    amrex_mfiter, &
     amrex_mfiter_build, &
-    amrex_mfiter_destroy, &
-    amrex_mfiter
-  USE amrex_geometry_module, ONLY: &
-    amrex_geometry
+    amrex_mfiter_destroy
   USE amrex_amrcore_module, ONLY: &
     amrex_geom
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor
   USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse, &
     amrex_parmparse_build, &
-    amrex_parmparse_destroy, &
-    amrex_parmparse
+    amrex_parmparse_destroy
 
   USE ProgramHeaderModule, ONLY: &
-    nNodesX, &
-    nDOFX
+    ProgramName, &
+    nDOFX, &
+    swX
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
   USE EquationOfStateModule_IDEAL, ONLY: &
-    ComputePressureFromPrimitive_IDEAL
+    ComputePressureFromPrimitive_IDEAL, &
+    Gamma_IDEAL
   USE UnitsModule, ONLY: &
     Gram, &
     Erg, &
@@ -36,39 +36,23 @@ MODULE MF_InitializationModule
     Millisecond, &
     GravitationalConstant
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
-    nCF, &
     iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
-    nPF, &
     iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
-    nAF, &
-    iAF_P, &
-    iAF_T, &
-    iAF_Ye, &
-    iAF_S, &
-    iAF_E, &
-    iAF_Me, &
-    iAF_Mp, &
-    iAF_Mn, &
-    iAF_Xp, &
-    iAF_Xn, &
-    iAF_Xa, &
-    iAF_Xh, &
-    iAF_Gm
+    iAF_P
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_Euler_Relativistic
   USE UtilitiesModule, ONLY: &
@@ -85,15 +69,7 @@ MODULE MF_InitializationModule
     Four, &
     FourPi
   USE InputParsingModule, ONLY: &
-    ProgramName, &
-    nLevels, &
-    xL, &
-    xR, &
-    nX, &
-    swX, &
-    UseTiling, &
-    Gamma_IDEAL, &
-    iOS_CPP
+    UseTiling
 
   IMPLICIT NONE
   PRIVATE
@@ -104,10 +80,11 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields_MF &
-    ( iLevel, MF_uGF, MF_uCF )
+    ( iLevel, MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF, MF_uPF, MF_uAF
 
     LOGICAL :: Verbose
 
@@ -168,7 +145,7 @@ CONTAINS
                * GravitationalConstant**( ( One - Three * Gamma_IDEAL ) / Two )
 
     CALL InitializeFields_YahilCollapse_FromScratch &
-           ( iLevel, MF_uGF, MF_uCF, &
+           ( iLevel, MF_uGF, MF_uCF, MF_uPF, MF_uAF, &
              dXdr, drhodD, dvdV, dmdM, PolytropicConstant, &
              CoreRadius, D0, CollapseTime, TotalEnclosedMass )
 
@@ -253,32 +230,32 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields_YahilCollapse_FromScratch &
-    ( iLevel, MF_uGF, MF_uCF, &
+    ( iLevel, MF_uGF, MF_uCF, MF_uPF, MF_uAF, &
       dXdr, drhodD, dvdV, dmdM, PolytropicConstant, &
       CoreRadius, D0, CollapseTime, TotalEnclosedMass )
 
-    INTEGER, INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
-    REAL(DP), INTENT(in)  :: dXdr, drhodD, dvdV, dmdM, PolytropicConstant, &
-                             CoreRadius, D0, CollapseTime
-    REAL(DP), INTENT(out) :: TotalEnclosedMass
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF, MF_uPF, MF_uAF
+    REAL(DP)            , INTENT(in)    :: dXdr, drhodD, dvdV, dmdM, &
+                                           PolytropicConstant, &
+                                           CoreRadius, D0, CollapseTime
+    REAL(DP)            , INTENT(out)   :: TotalEnclosedMass
 
     INTEGER               :: N, iX1, iX2, iX3, iX_L, iNX, iNX1
     REAL(DP)              :: dr, dX, XX, R
     REAL(DP), ALLOCATABLE :: X(:), D(:), U(:), V(:), M(:), &
                              Numer(:), Denom(:)
 
-    REAL(DP) :: uPF_K(nDOFX,nPF)
-    REAL(DP) :: uAF_K(nDOFX,nAF)
     INTEGER, PARAMETER :: NX = 2048
 
-    INTEGER                       :: lo_G(4), hi_G(4)
-    INTEGER                       :: lo_F(4), hi_F(4)
     INTEGER                       :: iX_B(3), iX_E(3)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uPF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uAF(:,:,:,:)
 
     dr = 1.0e-2_DP * Kilometer
     dX = dXdr * dr
@@ -312,14 +289,10 @@ CONTAINS
 
       uGF => MF_uGF % DataPtr( MFI )
       uCF => MF_uCF % DataPtr( MFI )
+      uPF => MF_uPF % DataPtr( MFI )
+      uAF => MF_uAF % DataPtr( MFI )
 
       BX = MFI % tilebox()
-
-      lo_G = LBOUND( uGF )
-      hi_G = UBOUND( uGF )
-
-      lo_F = LBOUND( uCF )
-      hi_F = UBOUND( uCF )
 
       iX_B = BX % lo
       iX_E = BX % hi
@@ -330,7 +303,7 @@ CONTAINS
       DO iX3 = iX_B(3), iX_E(3)
       DO iX2 = iX_B(2), iX_E(2)
       DO iX1 = iX_B(1), iX_E(1)
-      DO iNX = 1, nDOFX
+      DO iNX = 1      , nDOFX
 
         iNX1 = NodeNumberTableX(1,iNX)
 
@@ -339,42 +312,48 @@ CONTAINS
 
         iX_L = Locate( XX, X, N )
 
-        uPF_K(iNX,iPF_D ) &
+        uPF(iX1,iX2,iX3,nDOFX*(iPF_D -1)+iNX) &
           = drhodD * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
                                                D(iX_L), D(iX_L+1) )
 
-        uPF_K(iNX,iPF_V1) &
+        uPF(iX1,iX2,iX3,nDOFX*(iPF_V1-1)+iNX) &
           = dvdV   * Interpolate1D_Linear( XX, X(iX_L), X(iX_L+1), &
                                                V(iX_L), V(iX_L+1) )
 
-        uPF_K(iNX,iPF_V2) = Zero
+        uPF(iX1,iX2,iX3,nDOFX*(iPF_V2-1)+iNX) = Zero
 
-        uPF_K(iNX,iPF_V3) = Zero
+        uPF(iX1,iX2,iX3,nDOFX*(iPF_V3-1)+iNX) = Zero
 
-        uPF_K(iNX,iPF_E ) &
-          = PolytropicConstant * uPF_K(iNX,iPF_D)**( Gamma_IDEAL ) &
+        uPF(iX1,iX2,iX3,nDOFX*(iPF_E -1)+iNX) &
+          = PolytropicConstant &
+              * uPF(iX1,iX2,iX3,nDOFX*(iPF_D -1)+iNX)**( Gamma_IDEAL ) &
               / ( Gamma_IDEAL - One )
 
-        uPF_K(iNX,iPF_Ne) = Zero
+        uPF(iX1,iX2,iX3,nDOFX*(iPF_Ne-1)+iNX) = Zero
 
         CALL ComputePressureFromPrimitive_IDEAL &
-               ( uPF_K(iNX,iPF_D ), uPF_K(iNX,iPF_E), &
-                 uPF_K(iNX,iPF_Ne), uAF_K(iNX,iAF_P) )
+               ( uPF(iX1,iX2,iX3,nDOFX*(iPF_D -1)+iNX), &
+                 uPF(iX1,iX2,iX3,nDOFX*(iPF_E -1)+iNX), &
+                 uPF(iX1,iX2,iX3,nDOFX*(iPF_Ne-1)+iNX), &
+                 uAF(iX1,iX2,iX3,nDOFX*(iAF_P -1)+iNX) )
 
         CALL ComputeConserved_Euler_Relativistic &
-               ( uPF_K(iNX,iPF_D ), uPF_K(iNX,iPF_V1), &
-                 uPF_K(iNX,iPF_V2), uPF_K(iNX,iPF_V3), &
-                 uPF_K(iNX,iPF_E ), uPF_K(iNX,iPF_Ne), &
-                 uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNX), &
-                 uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNX), &
-                 uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNX), &
-                 uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNX), &
-                 uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNX), &
-                 uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNX), &
+               ( uPF(iX1,iX2,iX3,nDOFX*(iPF_D       -1)+iNX), &
+                 uPF(iX1,iX2,iX3,nDOFX*(iPF_V1      -1)+iNX), &
+                 uPF(iX1,iX2,iX3,nDOFX*(iPF_V2      -1)+iNX), &
+                 uPF(iX1,iX2,iX3,nDOFX*(iPF_V3      -1)+iNX), &
+                 uPF(iX1,iX2,iX3,nDOFX*(iPF_E       -1)+iNX), &
+                 uPF(iX1,iX2,iX3,nDOFX*(iPF_Ne      -1)+iNX), &
+                 uCF(iX1,iX2,iX3,nDOFX*(iCF_D       -1)+iNX), &
+                 uCF(iX1,iX2,iX3,nDOFX*(iCF_S1      -1)+iNX), &
+                 uCF(iX1,iX2,iX3,nDOFX*(iCF_S2      -1)+iNX), &
+                 uCF(iX1,iX2,iX3,nDOFX*(iCF_S3      -1)+iNX), &
+                 uCF(iX1,iX2,iX3,nDOFX*(iCF_E       -1)+iNX), &
+                 uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne      -1)+iNX), &
                  uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
                  uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
                  uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
-                 uAF_K(iNX,iAF_P) )
+                 uAF(iX1,iX2,iX3,nDOFX*(iAF_P       -1)+iNX) )
 
       END DO
       END DO
@@ -382,6 +361,8 @@ CONTAINS
       END DO
 
     END DO ! WHILE MFI % next()
+
+    CALL amrex_mfiter_destroy( MFI )
 
     DEALLOCATE( M )
     DEALLOCATE( V )

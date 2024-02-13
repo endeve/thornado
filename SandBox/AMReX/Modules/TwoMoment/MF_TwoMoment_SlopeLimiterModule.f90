@@ -13,14 +13,16 @@ MODULE MF_TwoMoment_SlopeLimiterModule
     amrex_mfiter_destroy
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse, &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
 
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
     swX, &
-    swE, &
     nDOFX, &
-    nDOFE, &
     nDOFZ, &
     iE_B0, &
     iE_E0, &
@@ -31,16 +33,19 @@ MODULE MF_TwoMoment_SlopeLimiterModule
   USE GeometryFieldsModule, ONLY: &
     nGF
   USE GeometryFieldsModuleE, ONLY: &
-    nGE, &
     uGE
   USE RadiationFieldsModule, ONLY: &
-    nCR
+    nCR, &
+    nSpecies
   USE FluidFieldsModule, ONLY: &
     nCF
   USE TwoMoment_SlopeLimiterModule, ONLY: &
     InitializeSlopeLimiter_TwoMoment, &
     FinalizeSlopeLimiter_TwoMoment, &
     ApplySlopeLimiter_TwoMoment
+  USE TwoMoment_TroubledCellIndicatorModule, ONLY: &
+    InitializeTroubledCellIndicator_TwoMoment, &
+    FinalizeTroubledCellIndicator_TwoMoment
 
   ! --- Local Modules ---
 
@@ -55,10 +60,7 @@ MODULE MF_TwoMoment_SlopeLimiterModule
     AllocateArray_Z, &
     DeallocateArray_Z
   USE InputParsingModule, ONLY: &
-    UseSlopeLimiter_TwoMoment, &
-    BetaTVD_TwoMoment, &
     nLevels, &
-    nSpecies, &
     UseTiling, &
     nE
   USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
@@ -77,16 +79,34 @@ MODULE MF_TwoMoment_SlopeLimiterModule
   PUBLIC :: FinalizeSlopeLimiter_TwoMoment_MF
   PUBLIC :: ApplySlopeLimiter_TwoMoment_MF
 
+  LOGICAL :: UseSlopeLimiter
+
 CONTAINS
 
 
   SUBROUTINE InitializeSlopeLimiter_TwoMoment_MF
 
+    TYPE(amrex_parmparse) :: PP
+
+    REAL(DP) :: BetaTVD
+
+    UseSlopeLimiter = .TRUE.
+    BetaTVD         = 1.75_DP
+    CALL amrex_parmparse_build( PP, 'SL' )
+      CALL PP % query( 'UseSlopeLimiter_TwoMoment', &
+                        UseSlopeLimiter )
+      CALL PP % query( 'BetaTVD_TwoMoment', &
+                        BetaTVD )
+    CALL amrex_parmparse_destroy( PP )
 
     CALL InitializeSlopeLimiter_TwoMoment &
-           ( BetaTVD_Option = BetaTVD_TwoMoment, &
+           ( BetaTVD_Option = BetaTVD, &
              UseSlopeLimiter_Option &
-               = UseSlopeLimiter_TwoMoment, &
+               = UseSlopeLimiter, &
+             Verbose_Option = amrex_parallel_ioprocessor() )
+
+    CALL InitializeTroubledCellIndicator_TwoMoment &
+           ( UseTroubledCellIndicator_Option = .TRUE., C_TCI_Option = 0.1_DP, &
              Verbose_Option = amrex_parallel_ioprocessor() )
 
   END SUBROUTINE InitializeSlopeLimiter_TwoMoment_MF
@@ -95,6 +115,8 @@ CONTAINS
   SUBROUTINE FinalizeSlopeLimiter_TwoMoment_MF
 
     CALL FinalizeSlopeLimiter_TwoMoment
+
+    CALL FinalizeTroubledCellIndicator_TwoMoment
 
   END SUBROUTINE FinalizeSlopeLimiter_TwoMoment_MF
 
@@ -214,11 +236,14 @@ CONTAINS
         CALL ApplyBoundaryConditions_TwoMoment_MF &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )
 
+       ! CALL ApplySlopeLimiter_TwoMoment &
+       !        ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, &
+       !          SuppressBC_Option = .TRUE., &
+       !          Verbose_Option = Verbose )
+
         CALL ApplySlopeLimiter_TwoMoment &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, &
-                 SuppressBC_Option = .TRUE., &
-                 Verbose_Option = Verbose )
-
+                 SuppressBC_Option = .TRUE. )
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uCR, U )

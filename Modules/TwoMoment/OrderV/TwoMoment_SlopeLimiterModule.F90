@@ -402,13 +402,17 @@ CONTAINS
         C0_L = Zero
         DO iNodeX = 1, nDOFX
           iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
-          C0_L = C0_L + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2-1,iZ3,iZ4,iCR,iS)
+          C0_L = C0_L &
+               + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2-1,iZ3,iZ4,iCR,iS)
         END DO
+
         C0_R = Zero
         DO iNodeX = 1, nDOFX
           iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
-          C0_R = C0_R + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2+1,iZ3,iZ4,iCR,iS)
+          C0_R = C0_R &
+               + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2+1,iZ3,iZ4,iCR,iS)
         END DO
+
         CL_X1 &
           = MinModB( C_X1, &
                      BetaTVD * ( C_0 - C0_L ), &
@@ -416,43 +420,59 @@ CONTAINS
                      dX1(iZ2), BetaTVB )
 
         IF ( iZ_B0(3) /= iZ_E0(3) ) THEN
+
           C0_L = Zero
           DO iNodeX = 1, nDOFX
             iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
-            C0_L = C0_L + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2,iZ3-1,iZ4,iCR,iS)
+            C0_L = C0_L &
+                 + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2,iZ3-1,iZ4,iCR,iS)
           END DO
+
           C0_R = Zero
           DO iNodeX = 1, nDOFX
             iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
-            C0_R = C0_R + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2,iZ3+1,iZ4,iCR,iS)
+            C0_R = C0_R &
+                 + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2,iZ3+1,iZ4,iCR,iS)
           END DO
+
           CL_X2 &
             = MinModB( C_X2, &
                        BetaTVD * ( C_0 - C0_L ), &
                        BetaTVD * ( C0_R - C_0 ), &
                        dX2(iZ3), BetaTVB )
+
         ELSE
+
           CL_X2 = C_X2
+
         END IF
 
         IF ( iZ_B0(4) /= iZ_E0(4) ) THEN
+
           C0_L = Zero
           DO iNodeX = 1, nDOFX
             iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
-            C0_L = C0_L + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4-1,iCR,iS)
+            C0_L = C0_L &
+                 + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4-1,iCR,iS)
           END DO
+
           C0_R = Zero
           DO iNodeX = 1, nDOFX
             iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
-            C0_R = C0_R + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4+1,iCR,iS)
+            C0_R = C0_R &
+                 + N2M_Vec_0(iNodeX) * U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4+1,iCR,iS)
           END DO
+
           CL_X3 &
             = MinModB( C_X3, &
                        BetaTVD * ( C_0 - C0_L ), &
                        BetaTVD * ( C0_R - C_0 ), &
                        dX3(iZ4), BetaTVB )
+
         ELSE
+
           CL_X3 = C_X3
+
         END IF
 
         dSlope &
@@ -484,15 +504,20 @@ CONTAINS
           END DO
 
           IF( ABS( Alpha ) > Zero )THEN
+
             DO iNodeX = 1, nDOFX
+
               iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+
               U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) = uCR(iNodeX) * uCR_K / Alpha
+
             END DO
+
           END IF
 
         END IF
 
-      END IF
+      END IF ! TroubledCell(iZ2,iZ3,iZ4,iE_G,iS)
 
     END DO
     END DO

@@ -20,37 +20,41 @@ MODULE MF_InitializationModule
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
+    ProgramName, &
+    swX, &
     nDOFX
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
+  USE EquationOfStateModule_IDEAL, ONLY: &
+    ComputePressureFromPrimitive_IDEAL, &
+    Gamma_IDEAL
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
-    iGF_Gm_dd_33
+    iGF_Gm_dd_33, &
+    nGF
   USE FluidFieldsModule, ONLY: &
-    nCF, &
     iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
-    nPF, &
+    nCF, &
     iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
-    nAF, &
-    iAF_P
+    nPF
   USE Euler_UtilitiesModule, ONLY: &
     ComputeConserved_Euler
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    rhoMin_Euler_GR, &
     epsMin_Euler_GR
 
   ! --- Local Modules ---
@@ -68,9 +72,6 @@ MODULE MF_InitializationModule
     AllocateArray_X, &
     DeallocateArray_X
   USE InputParsingModule, ONLY: &
-    swX, &
-    Gamma_IDEAL, &
-    ProgramName, &
     UseTiling
   USE MF_ErrorModule, ONLY: &
     DescribeError_MF
@@ -91,8 +92,9 @@ CONTAINS
   SUBROUTINE InitializeFields_MF &
     ( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
 
@@ -145,8 +147,9 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Advection1D( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX
@@ -155,7 +158,7 @@ CONTAINS
     INTEGER  :: iNX, iX1, iX2, iX3
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP) :: uPF(nDOFX,nPF)
-    REAL(DP) :: uAF(nDOFX,nAF)
+    REAL(DP) :: Pressure
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
@@ -172,7 +175,7 @@ CONTAINS
 
     CHARACTER(:), ALLOCATABLE :: AdvectionProfile
 
-    REAL(DP) :: D_0, V1, V2, V3, P
+    REAL(DP) :: D_0, V1, V2, V3, P, Ne
     REAL(DP) :: Amp
     REAL(DP) :: X1_0
     REAL(DP) :: sigmaX1
@@ -193,6 +196,7 @@ CONTAINS
         V2 = 0.0_DP
         V3 = 0.0_DP
         P  = 1.0_DP
+        Ne = 0.0_DP
 
         IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
 
@@ -219,6 +223,7 @@ CONTAINS
         V2 = 0.0_DP
         V3 = 0.0_DP
         P  = 1.0_DP
+        Ne = 0.0_DP
 
         IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
 
@@ -282,29 +287,28 @@ CONTAINS
 
         IF( TRIM( AdvectionProfile ) .EQ. 'SineWaveX1' )THEN
 
-          uAF(iNX,iAF_P ) = P
-
           uPF(iNX,iPF_D ) = D_0 + Amp * SIN( TwoPi * X1 )
           uPF(iNX,iPF_V1) = V1
           uPF(iNX,iPF_V2) = V2
           uPF(iNX,iPF_V3) = V3
-          uPF(iNX,iPF_E ) = uAF(iNX,iAF_P) / ( Gamma_IDEAL - One )
-          uPF(iNX,iPF_Ne) = Zero
+          uPF(iNX,iPF_E ) = P / ( Gamma_IDEAL - One )
+          uPF(iNX,iPF_Ne) = Ne
 
         ELSE IF( TRIM( AdvectionProfile ) .EQ. 'Gaussian' )THEN
 
-          uAF(iNX,iAF_P ) = P
-
           uPF(iNX,iPF_D) &
-            = D_0 + EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) )
-
+            = D_0 * EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) )
           uPF(iNX,iPF_V1) = V1
           uPF(iNX,iPF_V2) = V2
           uPF(iNX,iPF_V3) = V3
-          uPF(iNX,iPF_E ) = uAF(iNX,iAF_P) / ( Gamma_IDEAL - One )
-          uPF(iNX,iPF_Ne) = Zero
+          uPF(iNX,iPF_E ) = P / ( Gamma_IDEAL - One )
+          uPF(iNX,iPF_Ne) = Ne
 
         END IF
+
+        CALL ComputePressureFromPrimitive_IDEAL &
+               ( uPF(iNX,iPF_D ), uPF(iNX,iPF_E), &
+                 uPF(iNX,iPF_Ne), Pressure )
 
         CALL ComputeConserved_Euler &
                ( uPF(iNX,iPF_D ), &
@@ -322,7 +326,7 @@ CONTAINS
                  G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 uAF(iNX,iAF_P) )
+                 Pressure )
 
       END DO
       END DO
@@ -356,8 +360,9 @@ CONTAINS
 
   SUBROUTINE InitializeFields_RiemannProblem1D( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX
@@ -366,7 +371,7 @@ CONTAINS
     INTEGER  :: iNX, iX1, iX2, iX3
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP) :: uPF(nDOFX,nPF)
-    REAL(DP) :: uAF(nDOFX,nAF)
+    REAL(DP) :: Pressure
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
@@ -384,7 +389,6 @@ CONTAINS
     CHARACTER(:), ALLOCATABLE :: RiemannProblemName
 
     REAL(DP) :: uPF_L(nPF), uPF_R(nPF)
-    REAL(DP) :: uAF_L(nAF), uAF_R(nAF)
 
     RiemannProblemName = 'Sod'
     CALL amrex_parmparse_build( PP, 'thornado' )
@@ -397,44 +401,36 @@ CONTAINS
 
         X1_D = 0.5_DP
 
-        uAF_L(iAF_P ) = 1.0_DP
-
         uPF_L(iPF_D ) = 1.0_DP
         uPF_L(iPF_V1) = 0.0_DP
         uPF_L(iPF_V2) = 0.0_DP
         uPF_L(iPF_V3) = 0.0_DP
-        uPF_L(iPF_E ) = uAF_L(iAF_P) / ( Gamma_IDEAL - One )
+        uPF_L(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
         uPF_L(iPF_Ne) = 0.0_DP
-
-        uAF_R(iAF_P ) = 0.1_DP
 
         uPF_R(iPF_D ) = 0.125_DP
         uPF_R(iPF_V1) = 0.0_DP
         uPF_R(iPF_V2) = 0.0_DP
         uPF_R(iPF_V3) = 0.0_DP
-        uPF_R(iPF_E ) = uAF_R(iAF_P) / ( Gamma_IDEAL - One )
+        uPF_R(iPF_E ) = 0.1_DP / ( Gamma_IDEAL - One )
         uPF_R(iPF_Ne) = 0.0_DP
 
       CASE( 'SphericalSod' )
 
         X1_D = 1.0_DP
 
-        uAF_L(iAF_P ) = 1.0_DP
-
         uPF_L(iPF_D ) = 1.0_DP
         uPF_L(iPF_V1) = 0.0_DP
         uPF_L(iPF_V2) = 0.0_DP
         uPF_L(iPF_V3) = 0.0_DP
-        uPF_L(iPF_E ) = uAF_L(iAF_P) / ( Gamma_IDEAL - One )
+        uPF_L(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
         uPF_L(iPF_Ne) = 0.0_DP
-
-        uAF_R(iAF_P ) = 0.1_DP
 
         uPF_R(iPF_D ) = 0.125_DP
         uPF_R(iPF_V1) = 0.0_DP
         uPF_R(iPF_V2) = 0.0_DP
         uPF_R(iPF_V3) = 0.0_DP
-        uPF_R(iPF_E ) = uAF_R(iAF_P) / ( Gamma_IDEAL - One )
+        uPF_R(iPF_E ) = 0.1_DP / ( Gamma_IDEAL - One )
         uPF_R(iPF_Ne) = 0.0_DP
 
       CASE DEFAULT
@@ -452,8 +448,8 @@ CONTAINS
       WRITE(*,*)
       WRITE(*,'(8x,A,F5.3)') 'X1_D: ', X1_D
       WRITE(*,*)
-      WRITE(*,'(8x,A)')     'Left State'
-      WRITE(*,'(8x,A)')     '----------'
+      WRITE(*,'(8x,A)')      'Left State'
+      WRITE(*,'(8x,A)')      '----------'
       WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_D ): ', uPF_L(iPF_D )
       WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V1): ', uPF_L(iPF_V2)
       WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V2): ', uPF_L(iPF_V3)
@@ -461,8 +457,8 @@ CONTAINS
       WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_E ): ', uPF_L(iPF_E )
       WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_Ne): ', uPF_L(iPF_Ne)
       WRITE(*,*)
-      WRITE(*,'(8x,A)')     'Right State'
-      WRITE(*,'(8x,A)')     '-----------'
+      WRITE(*,'(8x,A)')      'Right State'
+      WRITE(*,'(8x,A)')      '-----------'
       WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_D ): ', uPF_R(iPF_D )
       WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V1): ', uPF_R(iPF_V2)
       WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V2): ', uPF_R(iPF_V3)
@@ -517,8 +513,6 @@ CONTAINS
           uPF(iNX,iPF_E ) = uPF_L(iPF_E )
           uPF(iNX,iPF_Ne) = uPF_L(iPF_Ne)
 
-          uAF(iNX,iAF_P) = uAF_L(iAF_P)
-
         ELSE
 
           uPF(iNX,iPF_D ) = uPF_R(iPF_D )
@@ -528,9 +522,11 @@ CONTAINS
           uPF(iNX,iPF_E ) = uPF_R(iPF_E )
           uPF(iNX,iPF_Ne) = uPF_R(iPF_Ne)
 
-          uAF(iNX,iAF_P) = uAF_R(iAF_P)
-
         END IF
+
+        CALL ComputePressureFromPrimitive_IDEAL &
+               ( uPF(iNX,iPF_D ), uPF(iNX,iPF_E), &
+                 uPF(iNX,iPF_Ne), Pressure )
 
         CALL ComputeConserved_Euler &
                ( uPF(iNX,iPF_D ), &
@@ -548,7 +544,7 @@ CONTAINS
                  G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 uAF(iNX,iAF_P) )
+                 Pressure )
 
       END DO
       END DO
@@ -582,8 +578,9 @@ CONTAINS
 
   SUBROUTINE InitializeFields_RiemannProblem2D( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX
@@ -592,7 +589,7 @@ CONTAINS
     INTEGER  :: iNX, iX1, iX2, iX3
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP) :: uPF(nDOFX,nPF)
-    REAL(DP) :: uAF(nDOFX,nAF)
+    REAL(DP) :: Pressure
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
@@ -610,7 +607,6 @@ CONTAINS
     CHARACTER(:), ALLOCATABLE :: RiemannProblemName
 
     REAL(DP) :: uPF_NW(nPF), uPF_NE(nPF), uPF_SW(nPF), uPF_SE(nPF)
-    REAL(DP) :: uAF_NW(nAF), uAF_NE(nAF), uAF_SW(nAF), uAF_SE(nAF)
 
     RiemannProblemName = 'Sod'
     CALL amrex_parmparse_build( PP, 'thornado' )
@@ -624,26 +620,22 @@ CONTAINS
         X1_D = 0.5_DP
         X2_D = 0.5_DP
 
-        uAF_SW(iAF_P ) = 1.0_DP
         uPF_SW(iPF_D ) = 1.0_DP
         uPF_SW(iPF_V1) = 0.0_DP
         uPF_SW(iPF_V2) = 0.0_DP
         uPF_SW(iPF_V3) = 0.0_DP
-        uPF_SW(iPF_E ) = uAF_SW(iAF_P) / ( Gamma_IDEAL - One )
+        uPF_SW(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
         uPF_SW(iPF_Ne) = 0.0_DP
 
-        uAF_SE(iAF_P ) = 0.1_DP
         uPF_SE(iPF_D ) = 0.125_DP
         uPF_SE(iPF_V1) = 0.0_DP
         uPF_SE(iPF_V2) = 0.0_DP
         uPF_SE(iPF_V3) = 0.0_DP
-        uPF_SE(iPF_E ) = uAF_SE(iAF_P) / ( Gamma_IDEAL - One )
+        uPF_SE(iPF_E ) = 0.1_DP / ( Gamma_IDEAL - One )
         uPF_SE(iPF_Ne) = 0.0_DP
 
         uPF_NE = uPF_SE
         uPF_NW = uPF_SE
-        uAF_NE = uAF_SE
-        uAF_NW = uAF_SE
 
       CASE( 'dZB2002' )
 
@@ -654,32 +646,28 @@ CONTAINS
         uPF_NE(iPF_V1) = 0.0_DP
         uPF_NE(iPF_V2) = 0.0_DP
         uPF_NE(iPF_V3) = 0.0_DP
-        uAF_NE(iAF_P ) = 0.01_DP
-        uPF_NE(iPF_E ) = uAF_NE(iAF_P) / ( Gamma_IDEAL - One )
+        uPF_NE(iPF_E ) = 0.01_DP / ( Gamma_IDEAL - One )
         uPF_NE(iPF_Ne) = 0.0_DP
 
         uPF_NW(iPF_D ) = 0.1_DP
         uPF_NW(iPF_V1) = 0.99_DP
         uPF_NW(iPF_V2) = 0.0_DP
         uPF_NW(iPF_V3) = 0.0_DP
-        uAF_NW(iAF_P ) = 1.0_DP
-        uPF_NW(iPF_E ) = uAF_NW(iAF_P) / ( Gamma_IDEAL - One )
+        uPF_NW(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
         uPF_NW(iPF_Ne) = 0.0_DP
 
         uPF_SW(iPF_D ) = 0.5_DP
         uPF_SW(iPF_V1) = 0.0_DP
         uPF_SW(iPF_V2) = 0.0_DP
         uPF_SW(iPF_V3) = 0.0_DP
-        uAF_SW(iAF_P ) = 1.0_DP
-        uPF_SW(iPF_E ) = uAF_SW(iAF_P) / ( Gamma_IDEAL - One )
+        uPF_SW(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
         uPF_SW(iPF_Ne) = 0.0_DP
 
         uPF_SE(iPF_D ) = 0.1_DP
         uPF_SE(iPF_V1) = 0.0_DP
         uPF_SE(iPF_V2) = 0.99_DP
         uPF_SE(iPF_V3) = 0.0_DP
-        uAF_SE(iAF_P ) = 1.0_DP
-        uPF_SE(iPF_E ) = uAF_SE(iAF_P) / ( Gamma_IDEAL - One )
+        uPF_SE(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
         uPF_SE(iPF_Ne) = 0.0_DP
 
       CASE DEFAULT
@@ -783,8 +771,6 @@ CONTAINS
           uPF(iNX,iPF_E ) = uPF_NW(iPF_E )
           uPF(iNX,iPF_Ne) = uPF_NW(iPF_Ne)
 
-          uAF(iNX,iAF_P ) = uAF_NW(iAF_P)
-
         ELSE IF( X1 .GT. X1_D .AND. X2 .GT. X2_D )THEN
 
           uPF(iNX,iPF_D ) = uPF_NE(iPF_D )
@@ -793,8 +779,6 @@ CONTAINS
           uPF(iNX,iPF_V3) = uPF_NE(iPF_V3)
           uPF(iNX,iPF_E ) = uPF_NE(iPF_E )
           uPF(iNX,iPF_Ne) = uPF_NE(iPF_Ne)
-
-          uAF(iNX,iAF_P ) = uAF_NE(iAF_P)
 
         ELSE IF( X1 .LT. X1_D .AND. X2 .LT. X2_D )THEN
 
@@ -805,8 +789,6 @@ CONTAINS
           uPF(iNX,iPF_E ) = uPF_SW(iPF_E )
           uPF(iNX,iPF_Ne) = uPF_SW(iPF_Ne)
 
-          uAF(iNX,iAF_P ) = uAF_SW(iAF_P)
-
         ELSE
 
           uPF(iNX,iPF_D ) = uPF_SE(iPF_D )
@@ -816,9 +798,11 @@ CONTAINS
           uPF(iNX,iPF_E ) = uPF_SE(iPF_E )
           uPF(iNX,iPF_Ne) = uPF_SE(iPF_Ne)
 
-          uAF(iNX,iAF_P ) = uAF_SE(iAF_P)
-
         END IF
+
+        CALL ComputePressureFromPrimitive_IDEAL &
+               ( uPF(iNX,iPF_D ), uPF(iNX,iPF_E), &
+                 uPF(iNX,iPF_Ne), Pressure )
 
         CALL ComputeConserved_Euler &
                ( uPF(iNX,iPF_D ), &
@@ -836,7 +820,7 @@ CONTAINS
                  G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 uAF(iNX,iAF_P) )
+                 Pressure )
 
       END DO
       END DO
@@ -870,8 +854,9 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Advection2D( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX
@@ -880,7 +865,7 @@ CONTAINS
     INTEGER  :: iNX, iX1, iX2, iX3
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP) :: uPF(nDOFX,nPF)
-    REAL(DP) :: uAF(nDOFX,nAF)
+    REAL(DP) :: Pressure
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
@@ -897,7 +882,7 @@ CONTAINS
 
     CHARACTER(:), ALLOCATABLE :: AdvectionProfile
 
-    REAL(DP) :: D_0, V1, V2, V3, P
+    REAL(DP) :: D_0, V1, V2, V3, P, Ne
     REAL(DP) :: Amp
     REAL(DP) :: X1_0, X2_0
     REAL(DP) :: sigmaX1, sigmaX2
@@ -918,6 +903,7 @@ CONTAINS
         V2 = 0.0_DP
         V3 = 0.0_DP
         P  = 1.0_DP
+        Ne = 0.0_DP
 
         IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
 
@@ -946,6 +932,7 @@ CONTAINS
         V2 = 0.0_DP
         V3 = 0.0_DP
         P  = 1.0_DP
+        Ne = 0.0_DP
 
         IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
 
@@ -1014,30 +1001,29 @@ CONTAINS
 
         IF( TRIM( AdvectionProfile ) .EQ. 'SineWaveX1' )THEN
 
-          uAF(iNX,iAF_P ) = P
-
           uPF(iNX,iPF_D ) = D_0 + Amp * SIN( TwoPi * X1 )
           uPF(iNX,iPF_V1) = V1
           uPF(iNX,iPF_V2) = V2
           uPF(iNX,iPF_V3) = V3
-          uPF(iNX,iPF_E ) = uAF(iNX,iAF_P) / ( Gamma_IDEAL - One )
-          uPF(iNX,iPF_Ne) = Zero
+          uPF(iNX,iPF_E ) = P / ( Gamma_IDEAL - One )
+          uPF(iNX,iPF_Ne) = Ne
 
         ELSE IF( TRIM( AdvectionProfile ) .EQ. 'Gaussian' )THEN
 
-          uAF(iNX,iAF_P ) = P
-
           uPF(iNX,iPF_D) &
-            = D_0 + EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) ) &
+            = D_0 * EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) ) &
                   * EXP( -( X2 - X2_0 )**2 / ( Two * sigmaX2**2 ) )
-
           uPF(iNX,iPF_V1) = V1
           uPF(iNX,iPF_V2) = V2
           uPF(iNX,iPF_V3) = V3
-          uPF(iNX,iPF_E ) = uAF(iNX,iAF_P) / ( Gamma_IDEAL - One )
-          uPF(iNX,iPF_Ne) = Zero
+          uPF(iNX,iPF_E ) = P / ( Gamma_IDEAL - One )
+          uPF(iNX,iPF_Ne) = Ne
 
         END IF
+
+        CALL ComputePressureFromPrimitive_IDEAL &
+               ( uPF(iNX,iPF_D ), uPF(iNX,iPF_E), &
+                 uPF(iNX,iPF_Ne), Pressure )
 
         CALL ComputeConserved_Euler &
                ( uPF(iNX,iPF_D ), &
@@ -1055,7 +1041,7 @@ CONTAINS
                  G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 uAF(iNX,iAF_P) )
+                 Pressure )
 
       END DO
       END DO
@@ -1091,8 +1077,9 @@ CONTAINS
   !     Radice & Rezzolla, (2012), AA, 547, A26 ---
   SUBROUTINE InitializeFields_KelvinHelmholtz2D( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -1100,7 +1087,7 @@ CONTAINS
     INTEGER  :: iNX, iX1, iX2, iX3
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP) :: uPF(nDOFX,nPF)
-    REAL(DP) :: uAF(nDOFX,nAF)
+    REAL(DP) :: Pressure
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
@@ -1137,8 +1124,6 @@ CONTAINS
     END IF
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
-
-    epsMin_Euler_GR = HUGE( One )
 
     DO WHILE( MFI % next() )
 
@@ -1218,10 +1203,13 @@ CONTAINS
 
         END IF
 
-        uAF(iNX,iAF_P ) = One
         uPF(iNX,iPF_V3) = Zero
-        uPF(iNX,iPF_E)  = uAF(iNX,iAF_P) / ( Gamma_IDEAL - One )
+        uPF(iNX,iPF_E ) = One / ( Gamma_IDEAL - One )
         uPF(iNX,iPF_Ne) = Zero
+
+        CALL ComputePressureFromPrimitive_IDEAL &
+               ( uPF(iNX,iPF_D ), uPF(iNX,iPF_E), &
+                 uPF(iNX,iPF_Ne), Pressure )
 
         CALL ComputeConserved_Euler &
                ( uPF(iNX,iPF_D ), &
@@ -1239,8 +1227,10 @@ CONTAINS
                  G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 uAF(iNX,iAF_P) )
+                 Pressure )
 
+        rhoMin_Euler_GR &
+          = MIN( rhoMin_Euler_GR, uPF(iNX,iPF_D) )
         epsMin_Euler_GR &
           = MIN( epsMin_Euler_GR, uPF(iNX,iPF_E) / uPF(iNX,iPF_D) )
 
@@ -1269,9 +1259,8 @@ CONTAINS
 
     END DO
 
+    CALL amrex_parallel_reduce_min( rhoMin_Euler_GR )
     CALL amrex_parallel_reduce_min( epsMin_Euler_GR )
-
-    epsMin_Euler_GR = 1.0e-12_DP * epsMin_Euler_GR
 
     CALL amrex_mfiter_destroy( MFI )
 
@@ -1280,8 +1269,9 @@ CONTAINS
 
   SUBROUTINE InitializeFields_Advection3D( iLevel, MF_uGF, MF_uCF )
 
-    INTEGER             , INTENT(in) :: iLevel
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF, MF_uCF
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX
@@ -1290,7 +1280,7 @@ CONTAINS
     INTEGER  :: iNX, iX1, iX2, iX3
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP) :: uPF(nDOFX,nPF)
-    REAL(DP) :: uAF(nDOFX,nAF)
+    REAL(DP) :: Pressure
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
@@ -1307,7 +1297,7 @@ CONTAINS
 
     CHARACTER(:), ALLOCATABLE :: AdvectionProfile
 
-    REAL(DP) :: D_0, V1, V2, V3, P
+    REAL(DP) :: D_0, V1, V2, V3, P, Ne
     REAL(DP) :: Amp
     REAL(DP) :: X1_0, X2_0, X3_0
     REAL(DP) :: sigmaX1, sigmaX2, sigmaX3
@@ -1328,6 +1318,7 @@ CONTAINS
         V2 = 0.0_DP
         V3 = 0.0_DP
         P  = 1.0_DP
+        Ne = 0.0_DP
 
         IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
 
@@ -1358,6 +1349,7 @@ CONTAINS
         V2 = 0.0_DP
         V3 = 0.0_DP
         P  = 1.0_DP
+        Ne = 0.0_DP
 
         IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
 
@@ -1431,31 +1423,31 @@ CONTAINS
 
         IF( TRIM( AdvectionProfile ) .EQ. 'SineWaveX1' )THEN
 
-          uAF(iNX,iAF_P ) = P
-
           uPF(iNX,iPF_D ) = D_0 + Amp * SIN( TwoPi * X1 )
           uPF(iNX,iPF_V1) = V1
           uPF(iNX,iPF_V2) = V2
           uPF(iNX,iPF_V3) = V3
-          uPF(iNX,iPF_E ) = uAF(iNX,iAF_P) / ( Gamma_IDEAL - One )
+          uPF(iNX,iPF_E ) = P / ( Gamma_IDEAL - One )
           uPF(iNX,iPF_Ne) = Zero
 
         ELSE IF( TRIM( AdvectionProfile ) .EQ. 'Gaussian' )THEN
 
-          uAF(iNX,iAF_P ) = P
-
           uPF(iNX,iPF_D) &
-            = D_0 + EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) ) &
+            = D_0 * EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) ) &
                   * EXP( -( X2 - X2_0 )**2 / ( Two * sigmaX2**2 ) ) &
                   * EXP( -( X3 - X3_0 )**2 / ( Two * sigmaX3**2 ) )
 
           uPF(iNX,iPF_V1) = V1
           uPF(iNX,iPF_V2) = V2
           uPF(iNX,iPF_V3) = V3
-          uPF(iNX,iPF_E ) = uAF(iNX,iAF_P) / ( Gamma_IDEAL - One )
+          uPF(iNX,iPF_E ) = P / ( Gamma_IDEAL - One )
           uPF(iNX,iPF_Ne) = Zero
 
         END IF
+
+        CALL ComputePressureFromPrimitive_IDEAL &
+               ( uPF(iNX,iPF_D ), uPF(iNX,iPF_E), &
+                 uPF(iNX,iPF_Ne), Pressure )
 
         CALL ComputeConserved_Euler &
                ( uPF(iNX,iPF_D ), &
@@ -1473,7 +1465,7 @@ CONTAINS
                  G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 uAF(iNX,iAF_P) )
+                 Pressure )
 
       END DO
       END DO

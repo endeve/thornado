@@ -1962,13 +1962,16 @@ CONTAINS
     ! --- mode to maintain the cell average.     ---
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( Correction, Term )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, LimitedCell, WeightsX_q, LegendreX, SqrtGm, &
-    !$ACC          U_M, Vol, U_K )
+    !$ACC          U_M, Vol, U_K ) &
+    !$ACC PRIVATE( Correction, Term )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( Correction, Term )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -2695,6 +2698,8 @@ CONTAINS
 
 !!$      CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
 !!$             ( 1, GK, UK, R, invR )
+      invR = -HUGE( One )
+      R    = -HUGE( One )
 
       DO iCF = 1, nCF
       DO jCF = 1, nCF
@@ -2740,6 +2745,9 @@ CONTAINS
 
 !!$        CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
 !!$               ( 2, GK, UK, R, invR )
+
+        invR = -HUGE( One )
+        R    = -HUGE( One)
 
         DO iCF = 1, nCF
         DO jCF = 1, nCF
@@ -2787,6 +2795,9 @@ CONTAINS
 
 !!$        CALL ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL &
 !!$               ( 3, GK, UK, R, invR )
+
+        invR = -HUGE( One )
+        R    = -HUGE( One )
 
         DO iCF = 1, nCF
         DO jCF = 1, nCF

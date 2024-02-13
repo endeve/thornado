@@ -2,124 +2,657 @@
 
 name: Compile thornado on Ubuntu 20.04 with gnu compilers
 
-on: [ push, pull_request ]
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '0 7 * * *'
 
 jobs:
-  compile-with-amrex_gnu:
+  build:
+    outputs:
+      HDF5_INC:     ${{ steps.getenv.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ steps.getenv.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ steps.getenv.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ steps.getenv.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ steps.getenv.outputs.THORNADO_DIR }}
+      WEAKLIB_DIR:  ${{ steps.getenv.outputs.WEAKLIB_DIR  }}
+      AMREX_DIR:    ${{ steps.getenv.outputs.AMREX_DIR    }}
+      POSEIDON_DIR: ${{ steps.getenv.outputs.POSEIDON_DIR }}
     name: Compile thornado on Ubuntu 20.04 with gnu compilers
     runs-on: ubuntu-20.04
     env:
       THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
     steps:
+      - name: Find Libraries
+        id: getenv
+        run: |
+          echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_OUTPUT}
+          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_OUTPUT}
+          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_OUTPUT}
+          echo "BLAS_LIB=/usr/lib/x86_64-linux-gnu"             >> ${GITHUB_OUTPUT}
+          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"               >> ${GITHUB_OUTPUT}
+          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"        >> ${GITHUB_OUTPUT}
+          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_OUTPUT}
+          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_OUTPUT}
+#          echo ""
+#          echo "find /usr -name \"*hdf5.mod\""
+#                find /usr -name  "*hdf5.mod"
+#          echo ""
+#          echo "find /usr -name \"*libhdf5*\""
+#                find /usr -name  "*libhdf5*"
+#          echo ""
+#          echo "find /usr -name \"*liblapack*\""
+#                find /usr -name  "*liblapack*"
+#          echo ""
+#          echo "find /usr -name \"*lib*blas*\""
+#                find /usr -name  "*lib*blas*"
+
+  dgExperiments_Euler_NonRelativistic_IDEAL_native:
+    name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+    steps:
       - name: Checkout thornado
         uses: actions/checkout@v3
-
-      - name: Checkout weaklib
-        uses: actions/checkout@v3
-        with:
-          repository: starkiller-astro/weaklib
-          path: weaklib
-
-      - name: Checkout poseidon
-        uses: actions/checkout@v3
-        with:
-          repository: jrober50/Poseidon
-          path: poseidon
-          ref: Development
-
-      - name: Checkout amrex
-        uses: actions/checkout@v3
-        with:
-          repository: dunhamsj/amrex
-          path: amrex
-          ref: MeshRefinement_DG
-
       - name: Update Ubuntu
         run: |
           sudo apt-get -y install \
             libhdf5-dev \
             libopenmpi-dev
           sudo apt-get -y update
-
-      - name: Find Libraries and Set Environment Variables
-        run: |
-          echo ""
-          echo "find /usr -name \"*hdf5.mod\""
-                find /usr -name  "*hdf5.mod"
-          echo ""
-          echo "find /usr -name \"*libhdf5*\""
-                find /usr -name  "*libhdf5*"
-          echo ""
-          echo "find /usr -name \"*liblapack*\""
-                find /usr -name  "*liblapack*"
-          echo ""
-          echo "find /usr -name \"*lib*blas*\""
-                find /usr -name  "*lib*blas*"
-          echo "HDF5_INC=/usr/include/hdf5/serial"              >> ${GITHUB_ENV}
-          echo "HDF5_LIB=/usr/lib/x86_64-linux-gnu/hdf5/serial" >> ${GITHUB_ENV}
-          echo "LAPACK_LIB=/usr/lib/x86_64-linux-gnu"           >> ${GITHUB_ENV}
-          echo "BLAS_LIB=/usr/lib/x86_64-linux-gnu"             >> ${GITHUB_ENV}
-          echo "THORNADO_DIR=${GITHUB_WORKSPACE}"               >> ${GITHUB_ENV}
-          echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"        >> ${GITHUB_ENV}
-          echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"            >> ${GITHUB_ENV}
-          echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon"      >> ${GITHUB_ENV}
-
-      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
+      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
           make
           make clobber
 
-      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
+  dgExperiments_Euler_NonRelativistic_TABLE_native:
+    name: Compile SandBox/dgExperiments_Euler_NonRelativistic_TABLE
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+      WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
+      POSEIDON_DIR: ${{ needs.build.outputs.POSEIDON_DIR }}
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+      - name: Checkout weaklib
+        uses: actions/checkout@v3
+        with:
+          repository: starkiller-astro/weaklib
+          path: weaklib
+      - name: Checkout poseidon
+        uses: actions/checkout@v3
+        with:
+          repository: jrober50/Poseidon
+          path: poseidon
+          ref: Development
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
+          sudo apt-get -y update
+      - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_TABLE/
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
           make
           make clobber
 
-      - name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
+  dgExperiments_Euler_Relativistic_IDEAL_native:
+    name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
+          sudo apt-get -y update
+      - name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
-          make
+          make -j -l6
           make clobber
 
-      - name: Compile SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables
+  dgExperiments_Euler_Relativistic_TABLE_native:
+    name: Compile SandBox/dgExperiments_Euler_Relativistic_TABLE
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+      WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+      - name: Checkout weaklib
+        uses: actions/checkout@v3
+        with:
+          repository: starkiller-astro/weaklib
+          path: weaklib
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
+          sudo apt-get -y update
+      - name: Compile SandBox/dgExperiments_Euler_Relativistic_TABLE
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables
           make
           make clobber
 
+  YahilCollapse_XCFC_native:
+    name: Compile SandBox/YahilCollapse_XCFC
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+      POSEIDON_DIR: ${{ needs.build.outputs.POSEIDON_DIR }}
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+      - name: Checkout poseidon
+        uses: actions/checkout@v3
+        with:
+          repository: jrober50/Poseidon
+          path: poseidon
+          ref: Development
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
+          sudo apt-get -y update
+      - name: Compile SandBox/YahilCollapse_XCFC
+        run: |
+          cd ${THORNADO_DIR}/SandBox/YahilCollapse_XCFC/Executables
+          make
+          make clobber
+
+  AdiabaticCollapse_XCFC_native:
+    name: Compile SandBox/AdiabaticCollapse_XCFC
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+      WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
+      POSEIDON_DIR: ${{ needs.build.outputs.POSEIDON_DIR }}
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+      - name: Checkout weaklib
+        uses: actions/checkout@v3
+        with:
+          repository: starkiller-astro/weaklib
+          path: weaklib
+      - name: Checkout poseidon
+        uses: actions/checkout@v3
+        with:
+          repository: jrober50/Poseidon
+          path: poseidon
+          ref: Development
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
+          sudo apt-get -y update
+      - name: Compile SandBox/AdiabaticCollapse_XCFC
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AdiabaticCollapse_XCFC/Executables
+          make
+          make clobber
+
+  dgExperiments_Euler_Relativistic_IDEAL_amrex_1D:
+    name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+      AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+      - name: Checkout amrex
+        uses: actions/checkout@v3
+        with:
+          repository: dunhamsj/amrex
+          path: amrex
+          ref: MeshRefinement_DG
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
+          sudo apt-get -y update
+      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+          make DIM=1 -j -l6
+          make realclean
+
+  dgExperiments_Euler_Relativistic_IDEAL_amrex_2D:
+    name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+      AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+      - name: Checkout amrex
+        uses: actions/checkout@v3
+        with:
+          repository: dunhamsj/amrex
+          path: amrex
+          ref: MeshRefinement_DG
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
+          sudo apt-get -y update
+      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+          make DIM=2 -j -l6
+          make realclean
+
+  dgExperiments_Euler_Relativistic_IDEAL_amrex_3D:
+    name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+      AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+      - name: Checkout amrex
+        uses: actions/checkout@v3
+        with:
+          repository: dunhamsj/amrex
+          path: amrex
+          ref: MeshRefinement_DG
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
+          sudo apt-get -y update
+      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+          make DIM=3 -j -l6
+          make realclean
+
+  dgExperiments_Euler_Relativistic_TABLE_amrex:
+    name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+      AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
+      WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+      - name: Checkout amrex
+        uses: actions/checkout@v3
+        with:
+          repository: dunhamsj/amrex
+          path: amrex
+          ref: MeshRefinement_DG
+      - name: Checkout weaklib
+        uses: actions/checkout@v3
+        with:
+          repository: starkiller-astro/weaklib
+          path: weaklib
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
+          sudo apt-get -y update
       - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
-          make
+          make -j -l6
           make realclean
 
-          #      - name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
-          #        run: |
-          #          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
-          #          make
-          #          make realclean
-
+  StandingAccretionShock_NonRelativistic_amrex:
+    name: Compile SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+      AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+      - name: Checkout amrex
+        uses: actions/checkout@v3
+        with:
+          repository: dunhamsj/amrex
+          path: amrex
+          ref: MeshRefinement_DG
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
+          sudo apt-get -y update
       - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
-          make
+          make -j -l6
           make realclean
 
+  StandingAccretionShock_Relativistic_amrex:
+    name: Compile SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+      AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+      - name: Checkout amrex
+        uses: actions/checkout@v3
+        with:
+          repository: dunhamsj/amrex
+          path: amrex
+          ref: MeshRefinement_DG
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
+          sudo apt-get -y update
       - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
-          make
+          make -j -l6
           make realclean
 
-          #      - name: Compile SandBox/AMReX/Applications/YahilCollapse_XCFC
-          #        run: |
-          #          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/YahilCollapse_XCFC
-          #          make
-          #          make realclean
+  YahilCollapse_XCFC_amrex:
+    name: Compile SandBox/AMReX/Applications/YahilCollapse_XCFC
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+      AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
+      POSEIDON_DIR: ${{ needs.build.outputs.POSEIDON_DIR }}
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+      - name: Checkout amrex
+        uses: actions/checkout@v3
+        with:
+          repository: dunhamsj/amrex
+          path: amrex
+          ref: MeshRefinement_DG
+      - name: Checkout poseidon
+        uses: actions/checkout@v3
+        with:
+          repository: jrober50/Poseidon
+          path: poseidon
+          ref: Development
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
+          sudo apt-get -y update
+      - name: Compile SandBox/AMReX/Applications/YahilCollapse_XCFC
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/YahilCollapse_XCFC
+          make -j -l6
+          make realclean
 
+  AdiabaticCollapse_XCFC_amrex:
+    name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+      AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
+      POSEIDON_DIR: ${{ needs.build.outputs.POSEIDON_DIR }}
+      WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+      - name: Checkout amrex
+        uses: actions/checkout@v3
+        with:
+          repository: dunhamsj/amrex
+          path: amrex
+          ref: MeshRefinement_DG
+      - name: Checkout poseidon
+        uses: actions/checkout@v3
+        with:
+          repository: jrober50/Poseidon
+          path: poseidon
+          ref: Development
+      - name: Checkout weaklib
+        uses: actions/checkout@v3
+        with:
+          repository: starkiller-astro/weaklib
+          path: weaklib
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
+          sudo apt-get -y update
+      - name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
+          make -j -l6
+          make realclean
+
+  TwoMoment_Test_amrex:
+    name: Compile SandBox/AMReX/TwoMoment_Test
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+      AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
+      WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+      - name: Checkout amrex
+        uses: actions/checkout@v3
+        with:
+          repository: dunhamsj/amrex
+          path: amrex
+          ref: MeshRefinement_DG
+      - name: Checkout weaklib
+        uses: actions/checkout@v3
+        with:
+          repository: starkiller-astro/weaklib
+          path: weaklib
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
+          sudo apt-get -y update
       - name: Compile SandBox/AMReX/TwoMoment_Test
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/TwoMoment_Test
-          make
+          make -j -l6
+          make realclean
+
+  TwoMoment_TABLE_amrex:
+    name: Compile SandBox/AMReX/TwoMoment_TABLE
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+      AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
+      WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+      - name: Checkout amrex
+        uses: actions/checkout@v3
+        with:
+          repository: dunhamsj/amrex
+          path: amrex
+          ref: MeshRefinement_DG
+      - name: Checkout weaklib
+        uses: actions/checkout@v3
+        with:
+          repository: starkiller-astro/weaklib
+          path: weaklib
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
+          sudo apt-get -y update
+      - name: Compile SandBox/AMReX/TwoMoment_TABLE
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/TwoMoment_TABLE
+          make -j -l6
+          make realclean
+
+  CoreCollapseSupernova_XCFC_amrex:
+    name: Compile SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+      AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
+      POSEIDON_DIR: ${{ needs.build.outputs.POSEIDON_DIR }}
+      WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+      - name: Checkout amrex
+        uses: actions/checkout@v3
+        with:
+          repository: dunhamsj/amrex
+          path: amrex
+          ref: MeshRefinement_DG
+      - name: Checkout poseidon
+        uses: actions/checkout@v3
+        with:
+          repository: jrober50/Poseidon
+          path: poseidon
+          ref: Development
+      - name: Checkout weaklib
+        uses: actions/checkout@v3
+        with:
+          repository: starkiller-astro/weaklib
+          path: weaklib
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
+          sudo apt-get -y update
+      - name: Compile SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
+          make -j -l6
           make realclean

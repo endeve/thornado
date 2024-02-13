@@ -21,8 +21,6 @@ MODULE MF_UtilitiesModule
     amrex_parallel_ioprocessor, &
     amrex_parallel_reduce_sum, &
     amrex_parallel_myproc
-  USE amrex_amrcore_module, ONLY: &
-    amrex_geom
 
   ! --- thornado Modules ---
 
@@ -35,42 +33,41 @@ MODULE MF_UtilitiesModule
     iE_B0, &
     iE_E0, &
     iE_B1, &
-    iE_E1
+    iE_E1, &
+    nX, &
+    nE, &
+    swX, &
+    swE
   USE MeshModule, ONLY: &
     MeshType, &
     NodeCoordinate
   USE UnitsModule, ONLY: &
     MeV
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
-    iGF_SqrtGm, &
     iGF_Alpha, &
     iGF_Beta_1, &
     iGF_Beta_2, &
-    iGF_Beta_3
+    iGF_Beta_3, &
+    nGF
   USE FluidFieldsModule, ONLY: &
-    nCF, &
     iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
-    nPF, &
+    nCF, &
     iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
-    iPF_D, &
-    iPF_E, &
-    iPF_Ne, &
+    nPF, &
     unitsPF, &
-    nAF, &
     iAF_P, &
     iAF_T, &
     iAF_Ye, &
@@ -85,18 +82,20 @@ MODULE MF_UtilitiesModule
     iAF_Xn, &
     iAF_Xa, &
     iAF_Xh, &
+    nAF, &
     unitsAF
   USE RadiationFieldsModule, ONLY: &
-    nCR, &
     iCR_N, &
     iCR_G1, &
     iCR_G2, &
     iCR_G3, &
-    nPR, &
+    nCR, &
     iPR_D, &
     iPR_I1, &
     iPR_I2, &
-    iPR_I3
+    iPR_I3, &
+    nPR, &
+    nSpecies
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeAuxiliary_Fluid_TABLE, &
     ApplyEquationOfState_TABLE
@@ -118,11 +117,6 @@ MODULE MF_UtilitiesModule
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
-    nX, &
-    nE, &
-    swX, &
-    swE, &
-    nSpecies, &
     StepNo
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
@@ -146,7 +140,6 @@ MODULE MF_UtilitiesModule
 
   PUBLIC :: ShowVariableFromMultiFab
   PUBLIC :: ShowVariableFromMultiFab_Single
-  PUBLIC :: MultiplyWithMetric
   PUBLIC :: amrex2thornado_X
   PUBLIC :: thornado2amrex_X
   PUBLIC :: amrex2thornado_Z
@@ -168,11 +161,6 @@ MODULE MF_UtilitiesModule
   PUBLIC :: AllocateArray_Integrated
   PUBLIC :: DeallocateArray_Integrated
   PUBLIC :: PrintBoxArray
-
-  INTERFACE MultiplyWithMetric
-    MODULE PROCEDURE MultiplyWithMetric_uGF
-    MODULE PROCEDURE MultiplyWithMetric_uCF
-  END INTERFACE MultiplyWithMetric
 
   INTERFACE ShowVariableFromMultiFab
     MODULE PROCEDURE ShowVariableFromMultiFab_Single
@@ -243,8 +231,12 @@ CONTAINS
       IF( WriteToFile )THEN
 
         iFileNo = 100 + amrex_parallel_myproc()
-
-        FileNameBase = 'NodalData'
+IF(iField .EQ. 1) THEN
+        FileNameBase = 'NodalData1'
+END IF
+IF(iField .EQ. 2) THEN
+        FileNameBase = 'NodalData2'
+END IF
         IF( PRESENT( FileNameBase_Option ) ) &
           FileNameBase = TRIM( FileNameBase_Option )
 
@@ -316,11 +308,15 @@ CONTAINS
 
         CLOSE( iFileNo )
 
-      ELSE IF( ANY( FineMask(:,:,:,1) .EQ. 0 ) )THEN
+      ELSE IF( PRESENT( iMF_FineMask_Option ) )THEN
 
-        WRITE(*,*)
+        IF( ANY( FineMask(:,:,:,1) .EQ. 0 ) )THEN
 
-      END IF
+          WRITE(*,*)
+
+        END IF
+
+     END IF
 
     END DO ! WHILE( MFI % next() )
 
@@ -378,158 +374,6 @@ CONTAINS
   END SUBROUTINE ShowVariableFromMultiFab_Vector
 
 
-  SUBROUTINE MultiplyWithMetric_uGF &
-    ( iLevel, MF_uGF, nFd, Power, swXX_Option )
-
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
-    INTEGER             , INTENT(in)    :: iLevel, nFd, Power
-    INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
-
-    INTEGER            :: iX1, iX2, iX3, iNX, iFd, swXX(3)
-    INTEGER            :: lo_G(4), hi_G(4)
-    INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI
-    REAL(DP)           :: G_K(nDOFX,nFd)
-
-    REAL(DP)                      :: SqrtGm(nDOFX)
-    REAL(DP), CONTIGUOUS, POINTER :: G(:,:,:,:)
-
-    swXX = swX
-    IF( PRESENT( swXX_Option ) ) &
-      swXX = swXX_Option
-
-#if defined( THORNADO_OMP )
-    !$OMP PARALLEL &
-    !$OMP PRIVATE( lo_G, hi_G, iX_B0, iX_E0, iX_B1, iX_E1, &
-    !$OMP          BX, MFI, G_K, SqrtGm, G )
-#endif
-
-    CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
-
-    DO WHILE( MFI % next() )
-
-      G => MF_uGF(iLevel) % DataPtr( MFI )
-
-      lo_G = LBOUND( G ); hi_G = UBOUND( G )
-
-      BX = MFI % tilebox()
-
-      iX_B0 = BX % lo
-      iX_E0 = BX % hi
-      iX_B1 = iX_B0 - swXX
-      iX_E1 = iX_E0 + swXX
-
-      DO iX3 = iX_B1(3), iX_E1(3)
-      DO iX2 = iX_B1(2), iX_E1(2)
-      DO iX1 = iX_B1(1), iX_E1(1)
-
-        G_K(1:nDOFX,1:nFd) &
-          = RESHAPE( G(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nFd ] )
-
-        DO iNX = 1, nDOFX
-
-          SqrtGm(iNX) = SQRT( G_K(iNX,iGF_SqrtGm) )
-
-        END DO
-
-        DO iFd = 1, nFd
-        DO iNX = 1, nDOFX
-
-          G_K(iNX,iFd) = G_K(iNX,iFd) * SqrtGm(iNX)**( Power )
-
-        END DO
-        END DO
-
-      END DO
-      END DO
-      END DO
-
-    END DO ! WHILE( MFI % next() )
-
-    CALL amrex_mfiter_destroy( MFI )
-
-#if defined( THORNADO_OMP )
-    !$OMP END PARALLEL
-#endif
-
-  END SUBROUTINE MultiplyWithMetric_uGF
-
-
-  SUBROUTINE MultiplyWithMetric_uCF &
-    ( iLevel, MF_SqrtGm, MF, nFd, Power, swXX_Option )
-
-    TYPE(amrex_multifab), INTENT(in)    :: MF_SqrtGm
-    TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
-    INTEGER             , INTENT(in)    :: iLevel, nFd, Power
-    INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
-
-    INTEGER            :: iX1, iX2, iX3, iNX, iFd, swXX(3)
-    INTEGER            :: lo_F(4), hi_F(4)
-    INTEGER            :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI
-    REAL(DP)           :: F_K(nDOFX,nFd)
-
-    REAL(DP), CONTIGUOUS, POINTER :: SqrtGm  (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: F       (:,:,:,:)
-
-    swXX = swX
-    IF( PRESENT( swXX_Option ) ) &
-      swXX = swXX_Option
-
-#if defined( THORNADO_OMP )
-    !$OMP PARALLEL &
-    !$OMP PRIVATE( lo_F, hi_F, iX_B0, iX_E0, iX_B1, iX_E1, &
-    !$OMP          BX, MFI, F_K, SqrtGm, F )
-#endif
-
-    CALL amrex_mfiter_build( MFI, MF(iLevel), tiling = UseTiling )
-
-    DO WHILE( MFI % next() )
-
-      SqrtGm => MF_SqrtGm  % DataPtr( MFI )
-      F      => MF(iLevel) % DataPtr( MFI )
-
-      lo_F = LBOUND( F ); hi_F = UBOUND( F )
-
-      BX = MFI % tilebox()
-
-      iX_B0 = BX % lo
-      iX_E0 = BX % hi
-      iX_B1 = iX_B0 - swXX
-      iX_E1 = iX_E0 + swXX
-
-      DO iX3 = iX_B1(3), iX_E1(3)
-      DO iX2 = iX_B1(2), iX_E1(2)
-      DO iX1 = iX_B1(1), iX_E1(1)
-
-        F_K(1:nDOFX,1:nFd) &
-          = RESHAPE( F(iX1,iX2,iX3,lo_F(4):hi_F(4)), [ nDOFX, nFd ] )
-
-        DO iFd = 1, nFd
-        DO iNX = 1, nDOFX
-
-          F_K(iNX,iFd) = F_K(iNX,iFd) * SqrtGm(iX1,iX2,iX3,iNX)**( Power )
-
-        END DO
-        END DO
-
-      END DO
-      END DO
-      END DO
-
-    END DO ! WHILE( MFI % next() )
-
-    CALL amrex_mfiter_destroy( MFI )
-
-#if defined( THORNADO_OMP )
-    !$OMP END PARALLEL
-#endif
-
-  END SUBROUTINE MultiplyWithMetric_uCF
-
-
   SUBROUTINE amrex2thornado_X &
     ( nFields, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, Data_amrex, Data_thornado )
 
@@ -544,6 +388,9 @@ CONTAINS
 
     CALL TimersStart_AMReX( Timer_AMReX_PermuteData_X )
 
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iFd = 1, nFields
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)
@@ -576,6 +423,9 @@ CONTAINS
 
     CALL TimersStart_AMReX( Timer_AMReX_PermuteData_X )
 
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
     DO iFd = 1, nFields
     DO iX3 = iX_B(3), iX_E(3)
     DO iX2 = iX_B(2), iX_E(2)
@@ -752,6 +602,7 @@ CONTAINS
 
   END SUBROUTINE thornado2amrex_Integrated
 
+
   SUBROUTINE thornado2amrex_X_F &
     ( nDOFX_X, nFields, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, &
       Data_amrex, Data_thornado )
@@ -833,7 +684,7 @@ CONTAINS
                           iZ_B (4), iZ_E (4), iE_B, iE_E,             &
                           iX_B (3), iX_E (3), iEL, iER, iLo_MF(4),    &
                           iLevel, nCompGF, nCompCF, nCompCR,          &
-                          iX1, iX2, iX3, iCF, iGF, iCR, i,            &
+                          iX1, iX2, iX3, iCF, iGF, iCR,               &
                           iZ1, iZ2, iZ3, iZ4, iS, iE,                 &
                           iNodeZ,                                     &
                           iNodeX, iNodeX1, iNodeX2, iNodeX3, iNodeE
@@ -942,24 +793,13 @@ CONTAINS
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
 
+        iZ_B0(1)   = iE_B0
+        iZ_E0(1)   = iE_E0
+        iZ_B0(2:4) = iX_B0
+        iZ_E0(2:4) = iX_E0
+
         iX_B = iX_B0
         iX_E = iX_E0
-
-        i=1
-
-        DO WHILE (i<=4)
-
-          IF (i==1) THEN
-
-            iZ_B0(i)=iE_B0
-            iZ_E0(i)=iE_E0
-          ELSE
-
-            iZ_B0(i)=iX_B0(i-1)
-            iZ_E0(i)=iX_E0(i-1)
-          END IF
-          i = i + 1
-        END DO
 
         IF( iX_B0(1) .EQ. 1     ) iX_B(1) = 1     - swX(1)
         IF( iX_B0(2) .EQ. 1     ) iX_B(2) = 1     - swX(2)
@@ -967,29 +807,17 @@ CONTAINS
         IF( iX_E0(1) .EQ. nX(1) ) iX_E(1) = nX(1) + swX(1)
         IF( iX_E0(2) .EQ. nX(2) ) iX_E(2) = nX(2) + swX(2)
         IF( iX_E0(3) .EQ. nX(3) ) iX_E(3) = nX(3) + swX(3)
-        IF( iE_B0 .EQ. 1     ) iE_B = 1     - swE
-        IF( iE_E0 .EQ. nE ) iE_E = nE + swE
+        IF( iE_B0    .EQ. 1     ) iE_B    = 1     - swE
+        IF( iE_E0    .EQ. nE    ) iE_E    = nE    + swE
 
-
-        i=1
-
-        DO WHILE (i<=4)
-
-          IF (i==1) THEN
-
-            iZ_B(i)=iE_B
-            iZ_E(i)=iE_E
-            iZ_B1(i)=iE_B1
-            iZ_E1(i)=iE_E1
-          ELSE
-
-            iZ_B(i)=iX_B(i-1)
-            iZ_E(i)=iX_E(i-1)
-            iZ_B1(i)=iX_B1(i-1)
-            iZ_E1(i)=iX_E1(i-1)
-          END IF
-          i = i + 1
-        END DO
+        iZ_B (1)   = iE_B
+        iZ_E (1)   = iE_E
+        iZ_B1(1)   = iE_B1
+        iZ_E1(1)   = iE_E1
+        iZ_B (2:4) = iX_B
+        iZ_E (2:4) = iX_E
+        iZ_B1(2:4) = iX_B1
+        iZ_E1(2:4) = iX_E1
 
         CALL amrex2thornado_X( nGF, iX_B, iX_E, iLo_MF, iX_B, iX_E, uGF, &
                                G(1:nDOFX,iX_B(1):iX_E(1), &
@@ -1010,8 +838,6 @@ CONTAINS
                             iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
 
         CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
-
-
 
         CALL ApplyBoundaryConditions_TwoMoment_MF &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, CR, Edge_Map )
@@ -1049,7 +875,6 @@ CONTAINS
     DO iZ1    = 1-swE, nE+swE
     DO iNodeZ = 1       , nDOFZ
 
-
       DO iCR = 1, nCR
 
         CALL amrex_parallel_reduce_sum( CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) )
@@ -1085,7 +910,6 @@ CONTAINS
                  G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
-
 
       END DO
       END DO
@@ -1147,17 +971,16 @@ CONTAINS
       OPEN( UNIT = 109, FILE = TRIM( FileNameBase ) // 'D_middle.dat'      )
       OPEN( UNIT = 110, FILE = TRIM( FileNameBase ) // 'D_spatial.dat'      )
 
-
       ! --- Hacked to work only for 1D and 2D problems ---
-      DO iS = 1, nSpecies
+      DO iS      = 1, nSpecies
       DO iX3     = 1, nX(3)
       DO iNodeX3 = 1, nNodesX(3)
 
         DO iX2     = 1, nX(2)
         DO iNodeX2 = 1, nNodesX(2)
-
         DO iX1     = 1, nX(1)
         DO iNodeX1 = 1, nNodesX(1)
+
           IF     ( iNodeX1 .EQ. 1 )THEN
 
             iEL = 1
@@ -1175,13 +998,14 @@ CONTAINS
 
           END IF
 
-          DO iE = 1, nE
+          DO iE     = 1, nE
           DO iNodeE = iEL, iER
-            D = PR(iNodeE,iE,iX1,iX2,iX3,iPR_D,iS)
+
+            D  = PR(iNodeE,iE,iX1,iX2,iX3,iPR_D ,iS)
             I1 = PR(iNodeE,iE,iX1,iX2,iX3,iPR_I1,iS)
             I2 = PR(iNodeE,iE,iX1,iX2,iX3,iPR_I2,iS)
             I3 = PR(iNodeE,iE,iX1,iX2,iX3,iPR_I3,iS)
-            N = CR(iNodeE,iE,iX1,iX2,iX3,iCR_N,iS)
+            N  = CR(iNodeE,iE,iX1,iX2,iX3,iCR_N ,iS)
             G1 = CR(iNodeE,iE,iX1,iX2,iX3,iCR_G1,iS)
             G2 = CR(iNodeE,iE,iX1,iX2,iX3,iCR_G2,iS)
             G3 = CR(iNodeE,iE,iX1,iX2,iX3,iCR_G3,iS)
@@ -1210,21 +1034,23 @@ CONTAINS
               WRITE(110,'(ES24.16E3,1x)',ADVANCE='NO') &
                 D
             END IF
-          END DO
-          END DO
-        WRITE(101,*)
-        WRITE(102,*)
-        WRITE(103,*)
-        WRITE(104,*)
-        WRITE(105,*)
-        WRITE(106,*)
-        WRITE(107,*)
-        WRITE(108,*)
-        END DO
-        END DO
-        END DO
-        END DO
 
+          END DO
+          END DO
+
+          WRITE(101,*)
+          WRITE(102,*)
+          WRITE(103,*)
+          WRITE(104,*)
+          WRITE(105,*)
+          WRITE(106,*)
+          WRITE(107,*)
+          WRITE(108,*)
+
+        END DO
+        END DO
+        END DO
+        END DO
 
       END DO
       END DO
@@ -1320,15 +1146,16 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: AF(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: PF(:,:,:,:,:)
 
-    REAL(DP) :: Mu(1:nDOFX), num
+    REAL(DP) :: Mu(1:nDOFX)
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
-    INTEGER :: iX1, iX2, iX3, l
+    INTEGER :: iX1, iX2, iX3
 
     character(len=64) :: nm
     CHARACTER(LEN=16) :: FMT
 
     WRITE(FMT,'(A3,I3.3,A10)') '(SP', nDOFX, 'ES25.16E3)'
+
     DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
@@ -1371,27 +1198,26 @@ CONTAINS
 
         CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCF, U )
 
-
         DO iX3 = 1, nX(3)
         DO iX2 = 1, nX(2)
         DO iX1 = 1, nX(1)
 
           CALL ComputePrimitive_Euler_Relativistic &
-               ( U(:,iX1,iX2,iX3,iCF_D ),       &
-                 U(:,iX1,iX2,iX3,iCF_S1),       &
-                 U(:,iX1,iX2,iX3,iCF_S2),       &
-                 U(:,iX1,iX2,iX3,iCF_S3),       &
-                 U(:,iX1,iX2,iX3,iCF_E ),       &
-                 U(:,iX1,iX2,iX3,iCF_Ne),       &
-                 PF(:,iX1,iX2,iX3,iPF_D ),       &
-                 PF(:,iX1,iX2,iX3,iPF_V1),       &
-                 PF(:,iX1,iX2,iX3,iPF_V2),       &
-                 PF(:,iX1,iX2,iX3,iPF_V3),       &
-                 PF(:,iX1,iX2,iX3,iPF_E ),       &
-                 PF(:,iX1,iX2,iX3,iPF_Ne),       &
-                 G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+               ( U (:,iX1,iX2,iX3,iCF_D       ), &
+                 U (:,iX1,iX2,iX3,iCF_S1      ), &
+                 U (:,iX1,iX2,iX3,iCF_S2      ), &
+                 U (:,iX1,iX2,iX3,iCF_S3      ), &
+                 U (:,iX1,iX2,iX3,iCF_E       ), &
+                 U (:,iX1,iX2,iX3,iCF_Ne      ), &
+                 PF(:,iX1,iX2,iX3,iPF_D       ), &
+                 PF(:,iX1,iX2,iX3,iPF_V1      ), &
+                 PF(:,iX1,iX2,iX3,iPF_V2      ), &
+                 PF(:,iX1,iX2,iX3,iPF_V3      ), &
+                 PF(:,iX1,iX2,iX3,iPF_E       ), &
+                 PF(:,iX1,iX2,iX3,iPF_Ne      ), &
+                 G (:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 G (:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 G (:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
            CALL ComputeAuxiliary_Fluid_TABLE &
                ( PF(:,iX1,iX2,iX3,iPF_D ), &
@@ -1404,8 +1230,6 @@ CONTAINS
                  AF(:,iX1,iX2,iX3,iAF_E ), &
                  AF(:,iX1,iX2,iX3,iAF_Gm), &
                  AF(:,iX1,iX2,iX3,iAF_Cs) )
-
-
 
           CALL ApplyEquationOfState_TABLE &
                ( PF(:,iX1,iX2,iX3,iPF_D ), &
@@ -1423,10 +1247,10 @@ CONTAINS
                  AF(:,iX1,iX2,iX3,iAF_Xh), &
                  AF(:,iX1,iX2,iX3,iAF_Gm) )
 
+        END DO
+        END DO
+        END DO
 
-        END DO
-        END DO
-        END DO
         WRITE(nm,*) n
 
         nm = ADJUSTL(nm)
@@ -1440,13 +1264,13 @@ CONTAINS
         OPEN( UNIT = 107, FILE = 'E.dat'      )
         OPEN( UNIT = 108, FILE = 'T'//trim(nm) //'.dat'      )
 
-
         DO iX3 = 1, nX(3)
         DO iX2 = 1, nX(2)
         DO iX1 = 1, nX(1)
 
-          Mu(:) = AF(:,iX1,iX2,iX3,iAF_Me) + AF(:,iX1,iX2,iX3,iAF_Mp) - AF(:,iX1,iX2,iX3,iAF_Mn)
-
+          Mu(:) &
+            = AF(:,iX1,iX2,iX3,iAF_Me) &
+                + AF(:,iX1,iX2,iX3,iAF_Mp) - AF(:,iX1,iX2,iX3,iAF_Mn)
 
           WRITE(101,FMT) &
             PF(:,iX1,iX2,iX3,iPF_D) &
@@ -1479,6 +1303,7 @@ CONTAINS
           WRITE(108,FMT) &
             AF(:,iX1,iX2,iX3,iAF_T) &
               / MeV
+
         END DO
         END DO
         END DO
@@ -1584,14 +1409,12 @@ CONTAINS
     INTEGER ,              INTENT(in)    :: iLo(6), iHi(6)
     REAL(DP), ALLOCATABLE, INTENT(inout) :: A(:,:,:,:,:,:)
 
-
     ALLOCATE( A(iLo(1):iHi(1), &
                 iLo(2):iHi(2), &
                 iLo(3):iHi(3), &
                 iLo(4):iHi(4), &
                 iLo(5):iHi(5), &
                 iLo(6):iHi(6)) )
-
 
   END SUBROUTINE AllocateArray_Integrated
 
@@ -1601,11 +1424,10 @@ CONTAINS
     INTEGER ,              INTENT(in)    :: iLo(6), iHi(6)
     REAL(DP), ALLOCATABLE, INTENT(inout) :: A(:,:,:,:,:,:)
 
-
     DEALLOCATE( A )
 
-
   END SUBROUTINE DeallocateArray_Integrated
+
 
   SUBROUTINE amrex2amrex_permute_Z &
     ( nFields, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, iLo_MF, &
@@ -1615,24 +1437,24 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iE_B0, iE_E0, iZ_B1(4), iZ_E1(4), iLo_MF(4), &
                              iZ_B(4), iZ_E(4)
     REAL(DP), INTENT(in)  :: &
-      Data_amrex           (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+      Data_amrex        (iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
     REAL(DP), INTENT(out) :: &
-      Data_amrex_permute   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+      Data_amrex_permute(iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
 
-    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iD, iNodeZ, iD_permute, iNodeX, iNodeE
-
-    iD_permute = 0
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iD, iNodeZ, iD_permute, &
+               iNodeX, iNodeE
 
     DO iZ4 = iZ_B(4), iZ_E(4)
     DO iZ3 = iZ_B(3), iZ_E(3)
     DO iZ2 = iZ_B(2), iZ_E(2)
 
-      DO iS  = 1      , nS
+      iD_permute = 0
+
+      DO iS     = 1    , nS
       DO iZ1    = iE_B0, iE_E0 ! always want iZ1 to not include ghost cells
       DO iNodeE = 1    , nDOFE
       DO iNodeX = 1    , nDOFX
-      DO iFd = 1      , nFields
-
+      DO iFd    = 1    , nFields
 
         iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
 
@@ -1650,13 +1472,13 @@ CONTAINS
       END DO
       END DO
       END DO
-iD_permute = 0
-    END DO
-    END DO
-    END DO
 
+    END DO
+    END DO
+    END DO
 
   END SUBROUTINE amrex2amrex_permute_Z
+
 
   SUBROUTINE amrex_permute2amrex_Z &
     ( nFields, nS, nE, iE_B0, iE_E0, iZ_B1, iZ_E1, iLo_MF, &
@@ -1666,24 +1488,24 @@ iD_permute = 0
     INTEGER,  INTENT(in)  :: iE_B0, iE_E0, iZ_B1(4), iZ_E1(4), iLo_MF(4), &
                              iZ_B(4), iZ_E(4)
     REAL(DP), INTENT(in)  :: &
-      Data_amrex_permute    (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+      Data_amrex_permute(iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
     REAL(DP), INTENT(out) :: &
-      Data_amrex            (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
+      Data_amrex        (iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
 
-    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iD, iNodeZ, iD_permute, iNodeX, iNodeE
-
-    iD_permute = 0
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iD, iNodeZ, iD_permute, &
+               iNodeX, iNodeE
 
     DO iZ4 = iZ_B(4), iZ_E(4)
     DO iZ3 = iZ_B(3), iZ_E(3)
     DO iZ2 = iZ_B(2), iZ_E(2)
 
-      DO iS  = 1      , nS
+      iD_permute = 0
+
+      DO iS     = 1    , nS
       DO iZ1    = iE_B0, iE_E0 ! always want iZ1 to not include ghost cells
       DO iNodeE = 1    , nDOFE
       DO iNodeX = 1    , nDOFX
-      DO iFd = 1      , nFields
-
+      DO iFd    = 1    , nFields
 
         iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
 
@@ -1700,14 +1522,12 @@ iD_permute = 0
       END DO
       END DO
       END DO
-iD_permute = 0
-    END DO
-    END DO
-    END DO
 
+    END DO
+    END DO
+    END DO
 
   END SUBROUTINE amrex_permute2amrex_Z
-
 
 
   SUBROUTINE MF_amrex2amrex_permute_Z_Level &
@@ -1717,11 +1537,10 @@ iD_permute = 0
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCR
-    TYPE(amrex_multifab), INTENT(inout)   :: MF_uCR_permute
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCR_permute
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
-
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCR (:,:,:,:)
@@ -1730,7 +1549,6 @@ iD_permute = 0
     INTEGER :: iLo_MF(4)
     INTEGER :: iZ_E0(4), iZ_E1(4), iZ_B0(4), iZ_B1(4)
     INTEGER :: iX_E0(3), iX_E1(3), iX_B0(3), iX_B1(3)
-
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
@@ -1743,19 +1561,15 @@ iD_permute = 0
       iX_B1 = BX % lo - swX
       iX_E1 = BX % hi + swX
 
+      iZ_B0(1)   = iE_B0
+      iZ_E0(1)   = iE_E0
+      iZ_B0(2:4) = iX_B0
+      iZ_E0(2:4) = iX_E0
 
-
-      iZ_B0(1)=iE_B0
-      iZ_E0(1)=iE_E0
-
-      iZ_B0(2:4)=iX_B0(1:3)
-      iZ_E0(2:4)=iX_E0(1:3)
-
-      iZ_B1(1)=iE_B1
-      iZ_E1(1)=iE_E1
-
-      iZ_B1(2:4)=iX_B1(1:3)
-      iZ_E1(2:4)=iX_E1(1:3)
+      iZ_B1(1)   = iE_B1
+      iZ_E1(1)   = iE_E1
+      iZ_B1(2:4) = iX_B1
+      iZ_E1(2:4) = iX_E1
 
       uGF  => MF_uGF % DataPtr( MFI )
       uCR  => MF_uCR % DataPtr( MFI )
@@ -1771,12 +1585,8 @@ iD_permute = 0
 
     CALL amrex_mfiter_destroy( MFI )
 
-
-
-
-
-
   END SUBROUTINE MF_amrex2amrex_permute_Z_Level
+
 
   SUBROUTINE MF_amrex_permute2amrex_Z_Level &
     ( iLevel, nFields, MF_uGF, MF_uCR, MF_uCR_permute )
@@ -1790,7 +1600,6 @@ iD_permute = 0
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-
     REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCR (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCR_permute(:,:,:,:)
@@ -1801,6 +1610,7 @@ iD_permute = 0
     INTEGER :: iX_E0(3), iX_E1(3), iX_B0(3), iX_B1(3)
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+
     DO WHILE( MFI % next() )
 
       BX = MFI % tilebox()
@@ -1810,20 +1620,15 @@ iD_permute = 0
       iX_B1 = BX % lo - swX
       iX_E1 = BX % hi + swX
 
+      iZ_B0(1)   = iE_B0
+      iZ_E0(1)   = iE_E0
+      iZ_B0(2:4) = iX_B0
+      iZ_E0(2:4) = iX_E0
 
-
-      iZ_B0(1)=iE_B0
-      iZ_E0(1)=iE_E0
-
-      iZ_B0(2:4)=iX_B0(1:3)
-      iZ_E0(2:4)=iX_E0(1:3)
-
-      iZ_B1(1)=iE_B1
-      iZ_E1(1)=iE_E1
-
-      iZ_B1(2:4)=iX_B1(1:3)
-      iZ_E1(2:4)=iX_E1(1:3)
-
+      iZ_B1(1)   = iE_B1
+      iZ_E1(1)   = iE_E1
+      iZ_B1(2:4) = iX_B1
+      iZ_E1(2:4) = iX_E1
 
       uGF  => MF_uGF  % DataPtr( MFI )
       uCR  => MF_uCR  % DataPtr( MFI )
@@ -1838,11 +1643,6 @@ iD_permute = 0
     END DO
 
     CALL amrex_mfiter_destroy( MFI )
-
-
-
-
-
 
   END SUBROUTINE MF_amrex_permute2amrex_Z_Level
 

@@ -77,6 +77,10 @@ MODULE InitializationModule
     MeshE,      &
     CreateMesh, &
     DestroyMesh
+  USE UnitsModule, ONLY: &
+    Centimeter, &
+    SolarMass, &
+    UnitsDisplay
   USE RadiationFieldsModule,            ONLY: &
     nCR,      &
     nPR,      &
@@ -165,13 +169,6 @@ MODULE InitializationModule
     nSpecies,                  &
     V_0,                       &
     Gamma_IDEAL,               &
-    D_0,                       &
-    Chi,                       &
-    Sigma,                     &
-    kT,                        &
-    E0,                        &
-    mu0,                       &
-    R0,                        &
     EquationOfState,           &
     EosTableName,              &
     OpacityTableName_AbEm,     &
@@ -184,7 +181,6 @@ MODULE InitializationModule
     UsePositivityLimiter,      &
     UseSlopeLimiter,      &
     BetaTVD,      &
-    Direction,    &
     MyAmrInit
   USE MF_InitializationModule,          ONLY: &
     MF_InitializeFields
@@ -202,8 +198,6 @@ MODULE InitializationModule
     ComputeFromConserved_TwoMoment_MF
   USE MF_Euler_UtilitiesModule,     ONLY: &
     ComputeFromConserved_Euler_MF
-
-
 
   IMPLICIT NONE
   PRIVATE
@@ -223,6 +217,10 @@ CONTAINS
 
     INTEGER               :: iLevel, iDim, FileUnit
     TYPE(amrex_box)       :: BX
+    TYPE(amrex_parmparse) :: PP
+
+    CHARACTER(:), ALLOCATABLE :: Direction
+    REAL(DP)                  :: Mass, R0, kT, Mu0, E0, D_0, Chi, Sigma
 
     ! --- Initialize AMReX --
     CALL amrex_init()
@@ -346,8 +344,8 @@ CONTAINS
 
     CALL CreateGeometryFields( nX, swX, CoordinateSystem_Option = 'CARTESIAN', &
                                Verbose_Option = amrex_parallel_ioprocessor()  )
-   
-    
+
+
 
 
 !    CALL CreateFluidFields( nX, swX, CoordinateSystem_Option = 'SPHERICAL', &
@@ -400,6 +398,36 @@ CONTAINS
 
       CALL CreateOpacities &
          ( nX, [ 1, 1, 1 ], nE, 1, Verbose_Option = amrex_parallel_ioprocessor() )
+
+      Direction=''
+      CALL amrex_parmparse_build( PP, 'thornado' )
+        CALL pp % query( 'Direction', Direction )
+      CALL amrex_parmparse_destroy( PP )
+
+      Mass  = Zero
+      R0    = Zero
+      E0    = Zero
+      Mu0   = Zero
+      kT    = Zero
+      D_0   = Zero
+      Chi   = Zero
+      Sigma = Zero
+      CALL amrex_parmparse_build( PP, 'ST' )
+        CALL PP % query( 'Mass'  , Mass  )
+        CALL PP % query( 'R0'    , R0    )
+        CALL PP % query( 'Mu0'   , Mu0   )
+        CALL PP % query( 'E0'    , E0    )
+        CALL PP % query( 'kT'    , kT    )
+        CALL PP % query( 'D_0'   , D_0   )
+        CALL PP % query( 'Chi'   , Chi   )
+        CALL PP % query( 'Sigma' , Sigma )
+      CALL amrex_parmparse_destroy( PP )
+      Chi  = Chi  * ( 1.0_DP / Centimeter )
+      Mass = Mass * SolarMass
+      E0   = E0   * UnitsDisplay % EnergyUnit
+      mu0  = mu0  * UnitsDisplay % EnergyUnit
+      kT   = kT   * UnitsDisplay % EnergyUnit
+      R0   = R0   * UnitsDisplay % LengthX1Unit
 
       CALL SetOpacities( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma, kT, E0, mu0, R0, &
                        Verbose_Option = amrex_parallel_ioprocessor()  )

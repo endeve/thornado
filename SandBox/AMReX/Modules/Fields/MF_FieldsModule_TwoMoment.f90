@@ -8,11 +8,16 @@ MODULE MF_FieldsModule_TwoMoment
   USE amrex_fluxregister_module, ONLY: &
     amrex_fluxregister, &
     amrex_fluxregister_destroy
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
 
   USE RadiationFieldsModule, ONLY: &
-    nCR
+    nCR, &
+    DescribeRadiationFields_Conserved, &
+    DescribeRadiationFields_Primitive, &
+    SetUnitsRadiationFields
 
   ! --- Local Modules ---
 
@@ -42,7 +47,6 @@ MODULE MF_FieldsModule_TwoMoment
 
   REAL(DP), ALLOCATABLE, PUBLIC :: OffGridFlux_TwoMoment_MF(:,:)
 
-
   PUBLIC :: CreateFields_TwoMoment_MF
   PUBLIC :: DestroyFields_TwoMoment_MF
 
@@ -59,6 +63,11 @@ CONTAINS
     ALLOCATE( FluxRegister_TwoMoment(0:nMaxLevels-1) )
 
     ALLOCATE( OffGridFlux_TwoMoment_MF(1:2*nCR,0:nMaxLevels-1) )
+
+    CALL SetUnitsRadiationFields
+
+    CALL DescribeRadiationFields_Conserved( amrex_parallel_ioprocessor() )
+    CALL DescribeRadiationFields_Primitive( amrex_parallel_ioprocessor() )
 
   END SUBROUTINE CreateFields_TwoMoment_MF
 
@@ -77,7 +86,6 @@ CONTAINS
       CALL amrex_multifab_destroy( MF_uCR(iLevel) )
       CALL amrex_multifab_destroy( MF_uGR(iLevel) )
       CALL amrex_multifab_destroy( MF_Permute(iLevel) )
-
 
     END DO
 

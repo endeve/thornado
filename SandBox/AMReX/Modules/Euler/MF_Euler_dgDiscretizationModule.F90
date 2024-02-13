@@ -23,7 +23,8 @@ MODULE  MF_Euler_dgDiscretizationModule
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
-    nDimsX
+    nDimsX, &
+    swX
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, &
     nDOFX_X2, &
@@ -46,7 +47,16 @@ MODULE  MF_Euler_dgDiscretizationModule
   USE Euler_DiscontinuityDetectionModule, ONLY: &
     DetectShocks_Euler
   USE Euler_MeshRefinementModule, ONLY: &
-    FaceRatio
+    FaceRatio, &
+    WeightsX_X1c, &
+    WeightsX_X2c, &
+    WeightsX_X3c, &
+    nFineX_X1, &
+    nFineX_X2, &
+    nFineX_X3, &
+    vpLX_X1_Refined, &
+    vpLX_X2_Refined, &
+    vpLX_X3_Refined
 
   ! --- Local Modules ---
 
@@ -67,14 +77,16 @@ MODULE  MF_Euler_dgDiscretizationModule
     DestroyMesh_MF
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler_MF
+  USE MF_Euler_PositivityLimiterModule, ONLY: &
+    ApplyPositivityLimiter_Euler_MF
   USE MF_EdgeMapModule, ONLY: &
     EdgeMap,          &
     ConstructEdgeMap
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
-    swX, &
     UseFluxCorrection_Euler, &
+    IsPeriodic, &
     DEBUG
   USE FillPatchModule, ONLY: &
     FillPatch
@@ -131,86 +143,6 @@ CONTAINS
   SUBROUTINE ComputeIncrement_Euler_MF_SingleLevel &
     ( iLevel, MF_uGF, MF_uCF, MF_uDF, MF_duCF )
 
-!    DO iLevel = 0, nLevels-1
-!
-!      ! --- Apply boundary conditions to interior domains ---
-!
-!      CALL FillPatch( iLevel, MF_uGF )
-!      CALL FillPatch( iLevel, MF_uGF, MF_uDF )
-!      CALL FillPatch &
-!             ( iLevel, MF_uGF, MF_uCF, &
-!               MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
-!
-!      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
-!
-!      DO WHILE( MFI % next() )
-!
-!        uGF  => MF_uGF(iLevel) % DataPtr( MFI )
-!        uCF  => MF_uCF(iLevel) % DataPtr( MFI )
-!        uDF  => MF_uDF(iLevel) % DataPtr( MFI )
-!
-!        iLo_MF = LBOUND( uGF )
-!
-!        BX = MFI % tilebox()
-!
-!        iX_B0 = BX % lo
-!        iX_E0 = BX % hi
-!        iX_B1 = BX % lo - swX
-!        iX_E1 = BX % hi + swX
-!
-!        CALL AllocateArray_X &
-!               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-!                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
-!                 G )
-!
-!        CALL AllocateArray_X &
-!               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-!                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
-!                 U )
-!
-!        CALL AllocateArray_X &
-!               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-!                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDF ], &
-!                 D )
-!
-!        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
-!
-!        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
-!
-!        CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
-!
-!        ! --- Apply boundary conditions to physical boundaries ---
-!
-!        CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
-!
-!        CALL ApplyBoundaryConditions_Euler_MF &
-!               ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
-!
-!        CALL DetectShocks_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
-!
-!        CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
-!
-!        CALL DeallocateArray_X &
-!               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-!                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDF ], &
-!                 D )
-!
-!        CALL DeallocateArray_X &
-!               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-!                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
-!                 U )
-!
-!        CALL DeallocateArray_X &
-!               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-!                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
-!                 G )
-!
-!      END DO
-!
-!      CALL amrex_mfiter_destroy( MFI )
-!
-!    END DO
-
     INTEGER,              INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
@@ -244,16 +176,13 @@ CONTAINS
 
     TYPE(EdgeMap) :: Edge_Map
 
-    ! --- Maybe don't need to apply boundary conditions since
-    !     they're applied in the shock detector ---
-
     ! --- Apply boundary conditions to interior domains ---
 
     CALL FillPatch( iLevel, MF_uGF )
     CALL FillPatch( iLevel, MF_uGF, MF_uDF )
-    CALL FillPatch &
-           ( iLevel, MF_uGF, MF_uCF, &
-             MF_uDF, ApplyPositivityLimiter_Option = .TRUE. )
+    CALL FillPatch( iLevel, MF_uGF, MF_uCF )
+    CALL ApplyPositivityLimiter_Euler_MF &
+           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
 
     CALL MF_duCF % SetVal( Zero )
 
@@ -357,6 +286,8 @@ CONTAINS
       CALL ApplyBoundaryConditions_Euler_MF &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
+      CALL DetectShocks_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+
       CALL ComputeIncrement_Euler_DG_Explicit &
              ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
                SuppressBC_Option = .TRUE., &
@@ -454,11 +385,20 @@ CONTAINS
     IF( UseFluxCorrection_Euler )THEN
 
       IF( iLevel .GT. 0 ) &
-        CALL FluxRegister_Euler &
-               ( iLevel   ) % FineAdd_DG ( SurfaceFluxes, nCF, FaceRatio )
+        CALL FluxRegister_Euler(iLevel  ) &
+               % FineAdd_DG &
+                  ( SurfaceFluxes, nCF, FaceRatio, &
+                    nDOFX_X1, nDOFX_X2, nDOFX_X3, &
+                    nFineX_X1, nFineX_X2, nFineX_X3, &
+                    WeightsX_X1c,  WeightsX_X2c, WeightsX_X3c, &
+                    vpLX_X1_Refined, vpLX_X2_Refined, vpLX_X3_Refined )
 
       IF( iLevel .LT. amrex_get_finest_level() ) &
-        CALL FluxRegister_Euler( iLevel+1 ) % CrseInit_DG( SurfaceFluxes, nCF )
+        CALL FluxRegister_Euler(iLevel+1) &
+               % CrseInit_DG &
+                   ( SurfaceFluxes, nCF, &
+                     nDOFX_X1, nDOFX_X2, nDOFX_X3, &
+                     WeightsX_X1c,  WeightsX_X2c, WeightsX_X3c )
 
     END IF ! UseFluxCorrection_Euler
 
@@ -485,26 +425,37 @@ CONTAINS
 
     ! --- dM = Minterior - Minitial + ( OffGrid_Outer - OffGrid_Inner ) ---
 
-    IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo(1) ) &
-      OffGridFlux_Euler_MF(:,iLevel) &
-        = OffGridFlux_Euler_MF(:,iLevel) - OffGridFlux_Euler_X1_Inner
-    IF( iX_E0(1) .EQ. amrex_geom(iLevel) % domain % hi(1) ) &
-      OffGridFlux_Euler_MF(:,iLevel) &
-        = OffGridFlux_Euler_MF(:,iLevel) + OffGridFlux_Euler_X1_Outer
+    IF( .NOT. IsPeriodic(1) )THEN
 
-    IF( iX_B0(2) .EQ. amrex_geom(iLevel) % domain % lo(2) ) &
-      OffGridFlux_Euler_MF(:,iLevel) &
-        = OffGridFlux_Euler_MF(:,iLevel) - OffGridFlux_Euler_X2_Inner
-    IF( iX_E0(2) .EQ. amrex_geom(iLevel) % domain % hi(2) ) &
-      OffGridFlux_Euler_MF(:,iLevel) &
-        = OffGridFlux_Euler_MF(:,iLevel) + OffGridFlux_Euler_X2_Outer
+      IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo(1) ) &
+        OffGridFlux_Euler_MF(:,iLevel) &
+          = OffGridFlux_Euler_MF(:,iLevel) - OffGridFlux_Euler_X1_Inner
+      IF( iX_E0(1) .EQ. amrex_geom(iLevel) % domain % hi(1) ) &
+        OffGridFlux_Euler_MF(:,iLevel) &
+          = OffGridFlux_Euler_MF(:,iLevel) + OffGridFlux_Euler_X1_Outer
 
-    IF( iX_B0(3) .EQ. amrex_geom(iLevel) % domain % lo(3) ) &
-      OffGridFlux_Euler_MF(:,iLevel) &
-        = OffGridFlux_Euler_MF(:,iLevel) - OffGridFlux_Euler_X3_Inner
-    IF( iX_E0(3) .EQ. amrex_geom(iLevel) % domain % hi(3) ) &
-      OffGridFlux_Euler_MF(:,iLevel) &
-        = OffGridFlux_Euler_MF(:,iLevel) + OffGridFlux_Euler_X3_Outer
+    END IF
+
+    IF( .NOT. IsPeriodic(2) )THEN
+
+      IF( iX_B0(2) .EQ. amrex_geom(iLevel) % domain % lo(2) ) &
+        OffGridFlux_Euler_MF(:,iLevel) &
+          = OffGridFlux_Euler_MF(:,iLevel) - OffGridFlux_Euler_X2_Inner
+      IF( iX_E0(2) .EQ. amrex_geom(iLevel) % domain % hi(2) ) &
+        OffGridFlux_Euler_MF(:,iLevel) &
+          = OffGridFlux_Euler_MF(:,iLevel) + OffGridFlux_Euler_X2_Outer
+
+    END IF
+
+    IF( .NOT. IsPeriodic(3) )THEN
+
+      IF( iX_B0(3) .EQ. amrex_geom(iLevel) % domain % lo(3) ) &
+        OffGridFlux_Euler_MF(:,iLevel) &
+          = OffGridFlux_Euler_MF(:,iLevel) - OffGridFlux_Euler_X3_Inner
+      IF( iX_E0(3) .EQ. amrex_geom(iLevel) % domain % hi(3) ) &
+        OffGridFlux_Euler_MF(:,iLevel) &
+          = OffGridFlux_Euler_MF(:,iLevel) + OffGridFlux_Euler_X3_Outer
+    END IF
 
   END SUBROUTINE IncrementOffGridTally_Euler
 

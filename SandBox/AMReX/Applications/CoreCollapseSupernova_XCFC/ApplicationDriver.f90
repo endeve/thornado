@@ -42,7 +42,8 @@ PROGRAM main
     ComputeFromConserved_TwoMoment_MF, &
     ComputeGray_TwoMoment_MF
   USE MF_TimeSteppingModule_IMEX, ONLY: &
-    Update_IMEX_RK_MF
+    Update_IMEX_RK_MF, &
+    CFL
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
@@ -50,12 +51,19 @@ PROGRAM main
     ComputeTally_Euler_MF, &
     BaryonicMass_Initial, &
     BaryonicMass_OffGrid, &
-    Energy_Initial, &
-    Energy_OffGrid, &
+    EulerMomentumX1_Initial, &
+    EulerMomentumX1_OffGrid, &
+    EulerMomentumX2_Initial, &
+    EulerMomentumX2_OffGrid, &
+    EulerMomentumX3_Initial, &
+    EulerMomentumX3_OffGrid, &
+    EulerEnergy_Initial, &
+    EulerEnergy_OffGrid, &
     ElectronNumber_Initial, &
     ElectronNumber_OffGrid, &
     ADMMass_Initial, &
-    ADMMass_OffGrid
+    ADMMass_OffGrid, &
+    ADMMass_Interior
   USE MF_TwoMoment_TallyModule, ONLY: &
     ComputeTally_TwoMoment_MF
   USE AverageDownModule, ONLY: &
@@ -68,7 +76,6 @@ PROGRAM main
     t_old, &
     dt, &
     dt_TM, &
-    CFL, &
     iCycleD, &
     iCycleW, &
     iCycleChk, &
@@ -95,7 +102,7 @@ PROGRAM main
 
   INCLUDE 'mpif.h'
 
-  INTEGER  :: iLevel, iErr
+  INTEGER  :: iErr
   LOGICAL  :: wrt, chk
   REAL(DP) :: Timer_Evolution
 
@@ -311,10 +318,14 @@ CONTAINS
 
       CALL WriteFieldsAMReX_Checkpoint &
              ( StepNo, nLevels, dt, t_new, &
-               [ BaryonicMass_Initial  , BaryonicMass_OffGrid   ], &
-               [ Energy_Initial        , Energy_OffGrid         ], &
-               [ ElectronNumber_Initial, ElectronNumber_OffGrid ], &
-               [ ADMMass_Initial       , ADMMass_OffGrid        ], &
+               [ BaryonicMass_Initial   , BaryonicMass_OffGrid    ], &
+               [ EulerMomentumX1_Initial, EulerMomentumX1_OffGrid ], &
+               [ EulerMomentumX2_Initial, EulerMomentumX2_OffGrid ], &
+               [ EulerMomentumX3_Initial, EulerMomentumX3_OffGrid ], &
+               [ EulerEnergy_Initial    , EulerEnergy_OffGrid     ], &
+               [ ElectronNumber_Initial , ElectronNumber_OffGrid  ], &
+               [ ADMMass_Initial        , ADMMass_OffGrid, &
+                 ADMMass_Interior ], &
                MF_uGF % BA % P, &
                iWriteFields_uGF = 1, &
                iWriteFields_uCF = 1, &

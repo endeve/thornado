@@ -8,11 +8,20 @@ MODULE MF_FieldsModule_Euler
   USE amrex_fluxregister_module, ONLY: &
     amrex_fluxregister, &
     amrex_fluxregister_destroy
+  USE amrex_parallel_module, ONLY: &
+    amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
 
+  USE GeometryFieldsModule, ONLY: &
+    CoordinateSystem
   USE FluidFieldsModule, ONLY: &
-    nCF
+    nCF, &
+    DescribeFluidFields_Conserved, &
+    DescribeFluidFields_Primitive, &
+    DescribeFluidFields_Auxiliary, &
+    DescribeFluidFields_Diagnostic, &
+    SetUnitsFluidFields
 
   ! --- Local Modules ---
 
@@ -60,6 +69,14 @@ CONTAINS
     ALLOCATE( FluxRegister_Euler(0:nMaxLevels-1) )
 
     ALLOCATE( OffGridFlux_Euler_MF(1:nCF,0:nMaxLevels-1) )
+
+    CALL SetUnitsFluidFields( TRIM( CoordinateSystem ), &
+                              Verbose_Option = amrex_parallel_ioprocessor() )
+
+    CALL DescribeFluidFields_Conserved ( amrex_parallel_ioprocessor() )
+    CALL DescribeFluidFields_Primitive ( amrex_parallel_ioprocessor() )
+    CALL DescribeFluidFields_Auxiliary ( amrex_parallel_ioprocessor() )
+    CALL DescribeFluidFields_Diagnostic( amrex_parallel_ioprocessor() )
 
   END SUBROUTINE CreateFields_Euler_MF
 

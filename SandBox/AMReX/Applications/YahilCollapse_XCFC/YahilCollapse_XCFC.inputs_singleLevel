@@ -19,7 +19,7 @@ thornado.UsePhysicalUnits = 1
 
 thornado.TallyFileNameRoot_Euler = "YahilCollapse_XCFC.Tally"
 thornado.PlotFileNameRoot = "YahilCollapse_XCFC.plt"
-thornado.t_end   = 3.0e+2
+thornado.t_end   = 1.5e+2
 thornado.iCycleD = 1
 
 thornado.dt_wrt  = 1.0e-1
@@ -29,10 +29,7 @@ thornado.CheckpointFileNameRoot = "YahilCollapse_XCFC.chk"
 thornado.dt_chk    = 1.0e+0
 thornado.iCycleChk = -1
 
-thornado.nNodes  = 2
-thornado.nStages = 2
-
-thornado.CFL = 0.5
+thornado.nNodes = 2
 
 thornado.bcX         = 30 00 00
 geometry.is_periodic = 0  1  1
@@ -53,6 +50,7 @@ amr.n_error_buf             = 0
 amr.ref_ratio               = 2
 
 # Poseidon parameters
+GS.EvolveGravity           = 1
 poseidon.fem_degree        = 1
 poseidon.l_limit           = 0
 poseidon.max_fp_iters      = 20
@@ -76,7 +74,9 @@ PL.Min_1_Euler                = 1.0e-13
 PL.Min_2_Euler                = 1.0e-13
 
 # Equation of state parameters
-EoS.Gamma_IDEAL = 1.30
+EoS.EquationOfState = "IDEAL"
+EoS.Gamma_IDEAL     = 1.30
 
 # Time-Stepping parameters
-TS.EvolveGravity = 1
+TS.nStages       = 2
+TS.CFL           = 0.5

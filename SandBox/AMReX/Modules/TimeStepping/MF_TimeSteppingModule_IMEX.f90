@@ -2,6 +2,10 @@ MODULE MF_TimeSteppingModule_IMEX
 
   ! --- AMReX Modules ---
 
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse, &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_multifab_build, &
@@ -13,15 +17,23 @@ MODULE MF_TimeSteppingModule_IMEX
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
-    nDOFE, &
     nDOFZ, &
     iE_B0, &
     iE_E0, &
-    swX
+    iE_B1, &
+    iE_E1, &
+    swX, &
+    nE, &
+    nDimsX, &
+    nNodes
   USE FluidFieldsModule, ONLY: &
     nCF
   USE RadiationFieldsModule, ONLY: &
-    nCR
+    nCR, &
+    nSpecies
+  USE XCFC_UtilitiesModule, ONLY: &
+    nGS, &
+    nMF
   USE MF_TwoMoment_DiscretizationModule_Streaming_Relativistic, ONLY: &
     ComputeIncrement_TwoMoment_Explicit_MF
   USE MF_TwoMoment_DiscretizationModule_Collisions_Neutrinos_GR, ONLY: &
@@ -29,13 +41,13 @@ MODULE MF_TimeSteppingModule_IMEX
   USE MF_FieldsModule_TwoMoment, ONLY: &
     OffGridFlux_TwoMoment_MF
 
-
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
     DP, &
     Zero, &
-    One
+    One, &
+    Two
   USE MF_ErrorModule, ONLY: &
     DescribeError_MF
   USE MF_FieldsModule_Geometry, ONLY: &
@@ -48,11 +60,7 @@ MODULE MF_TimeSteppingModule_IMEX
   USE InputParsingModule, ONLY: &
     t_new, &
     dt, &
-    nLevels, &
-    nMaxLevels, &
-!    DEBUG, &
-    nE, &
-    nSpecies
+    nMaxLevels
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler_MF
   USE MF_Euler_SlopeLimiterModule, ONLY: &
@@ -63,14 +71,20 @@ MODULE MF_TimeSteppingModule_IMEX
     ApplySlopeLimiter_TwoMoment_MF
   USE MF_Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_MF
-  USE XCFC_UtilitiesModule, ONLY: &
-    nGS, &
-    MultiplyWithPsi6_MF
+  USE MF_XCFC_UtilitiesModule, ONLY: &
+    MultiplyWithPsi6_MF, &
+    UpdateConformalFactorAndMetric_XCFC_MF, &
+    UpdateLapseShiftCurvature_XCFC_MF, &
+    ApplyBoundaryConditions_Geometry_XCFC_MF, &
+    ComputeConformalFactorSourcesAndMg_XCFC_MF, &
+    ComputePressureTensorTrace_XCFC_MF
+  USE MF_GravitySolutionModule, ONLY: &
+    EvolveGravity
   USE MF_GravitySolutionModule_XCFC, ONLY: &
-    ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF, &
-    ComputeConformalFactor_MF, &
-    ComputePressureTensorTrace_XCFC_TwoMoment_MF, &
-    ComputeGeometry_MF
+    ComputeConformalFactor_XCFC_MF, &
+    ComputeLapseShiftCurvature_XCFC_MF
+  USE AverageDownModule, ONLY: &
+    AverageDown
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
@@ -78,7 +92,6 @@ MODULE MF_TimeSteppingModule_IMEX
     Timer_AMReX_GravitySolve
   USE MF_TwoMoment_TallyModule, ONLY: &
     IncrementOffGridTally_TwoMoment_MF
-
 
   IMPLICIT NONE
   PRIVATE
@@ -94,6 +107,9 @@ MODULE MF_TimeSteppingModule_IMEX
   PUBLIC :: Finalize_IMEX_RK_MF
   PUBLIC :: Update_IMEX_RK_MF
 
+  REAL(DP)                 , PUBLIC :: CFL
+  CHARACTER(:), ALLOCATABLE, PUBLIC :: Scheme
+
   LOGICAL, PARAMETER :: DEBUG = .FALSE.
 
 CONTAINS
@@ -108,6 +124,7 @@ CONTAINS
     TYPE(amrex_multifab) :: MF_DF_Im(0:nMaxLevels-1,1:nStages)
     TYPE(amrex_multifab) :: MF_DF_Ex(0:nMaxLevels-1,1:nStages)
     TYPE(amrex_multifab) :: MF_uGS  (0:nMaxLevels-1          )
+    TYPE(amrex_multifab) :: MF_uMF  (0:nMaxLevels-1          )
 
     TYPE(amrex_multifab) :: MF_R0   (0:nMaxLevels-1          )
     TYPE(amrex_multifab) :: MF_F0   (0:nMaxLevels-1          )
@@ -119,7 +136,6 @@ CONTAINS
 
     CALL TimersStart_AMReX( Timer_AMReX_UpdateFluid )
 
-
     iLevel = 0 ! temporary hack
     dM_OffGrid_Euler     = Zero
     dM_OffGrid_TwoMoment = Zero
@@ -129,16 +145,29 @@ CONTAINS
 
     IF( DEBUG ) WRITE(*,'(A)') 'Entering Update_IMEX_RK_MF'
 
-    CALL amrex_multifab_build &
-           ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-             nDOFX * nGS, 0 )
+    IF( EvolveGravity )THEN
 
-    IF( DEBUG ) &
-      CALL MF_uGS(iLevel) % SetVal( Zero )
+      CALL amrex_multifab_build &
+             ( MF_uGS(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX * nGS, 0 )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
+      CALL amrex_multifab_build &
+             ( MF_uMF(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
+               nDOFX * nMF, 0 )
+
+      IF( DEBUG )THEN
+
+        CALL MF_uGS(iLevel) % SetVal( Zero )
+
+        CALL MF_uMF(iLevel) % SetVal( Zero )
+
+      END IF
+
+    END IF
+
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, +1 )
     CALL MultiplyWithPsi6_MF &
-           ( MF_uGF, +1, nDOFE, iE_B0, iE_E0, nSpecies, MF_uCR )
+           ( iE_B0, iE_E0, iE_B1, iE_E1, MF_uGF, MF_uCR, +1 )
 
     CALL amrex_multifab_build &
            ( MF_F0(iLevel), MF_uCF(iLevel) % BA, &
@@ -233,6 +262,7 @@ CONTAINS
           END IF ! EvolveEuler
 
           IF( EvolveTwoMoment )THEN
+
             CALL ApplySlopeLimiter_TwoMoment_MF &
                    ( GEOM, MF_uGF, MF_F, MF_R, &
                      Verbose_Option = .FALSE.  )
@@ -300,16 +330,17 @@ CONTAINS
 
           IF( iS .NE. 1 )THEN
 
-            CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
+            IF( EvolveGravity )THEN
 
-            CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
-                   ( MF_uGF, MF_F, MF_R, MF_uGS )
+              CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
 
-            CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
+              CALL ComputeConformalFactor( MF_uGF, MF_F, MF_R, MF_uGS, MF_uMF )
 
-            CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_F )
+              CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
-            CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
+            END IF
+
+            CALL MultiplyWithPsi6_MF( MF_uGF, MF_F, -1 )
 
             CALL ApplySlopeLimiter_Euler_MF &
                    ( MF_uGF, MF_F, MF_uDF )
@@ -317,25 +348,24 @@ CONTAINS
             CALL ApplyPositivityLimiter_Euler_MF &
                    ( MF_uGF, MF_F, MF_uDF )
 
-            CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
+            CALL MultiplyWithPsi6_MF( MF_uGF, MF_F, +1 )
 
-            CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_F )
+            IF( EvolveGravity )THEN
 
-            CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
-                   ( MF_uGF, MF_F, MF_R, MF_uGS )
+              CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
 
-            CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
+              CALL ComputeConformalFactor( MF_uGF, MF_F, MF_R, MF_uGS, MF_uMF )
 
-            CALL ComputePressureTensorTrace_XCFC_TwoMoment_MF &
-                   ( MF_uGF, MF_F, MF_R, MF_uGS )
+              CALL ComputeLapseShiftCurvature &
+                     ( MF_uGF, MF_F, MF_R, MF_uGS, MF_uMF )
 
-            CALL ComputeGeometry_MF( MF_uGS, MF_uGF )
+              CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
-            CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
+            END IF
 
           END IF ! iS .NE. 1
 
-          CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_F )
+          CALL MultiplyWithPsi6_MF( MF_uGF, MF_F, -1 )
 
           CALL ComputeIncrement_Euler_MF &
                  ( MF_uGF, MF_F, MF_uDF, MF_DF_Ex(:,iS) )
@@ -351,8 +381,6 @@ CONTAINS
           dM_OffGrid_TwoMoment(:,iLevel) &
             = dM_OffGrid_TwoMoment(:,iLevel) &
             + dt(iLevel) * w_EX(iS) * OffGridFlux_TwoMoment_MF(:,iLevel)
-
-
 
         END IF ! EvolveTwoMoment
 
@@ -420,9 +448,9 @@ CONTAINS
         CALL ApplyPositivityLimiter_Euler_MF &
                ( MF_uGF, MF_F, MF_uDF )
 
-     END IF ! EvolveEuler
+      END IF ! EvolveEuler
 
-     IF( EvolveTwoMoment )THEN
+      IF( EvolveTwoMoment )THEN
 
         CALL ApplySlopeLimiter_TwoMoment_MF &
                ( GEOM, MF_uGF, MF_F, MF_R, &
@@ -440,16 +468,17 @@ CONTAINS
     CALL MF_uCF(iLevel) % COPY( MF_F(iLevel), 1, 1, nCompCF, swX )
     CALL MF_uCR(iLevel) % COPY( MF_R(iLevel), 1, 1, nCompCR, swX )
 
-    CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
+    IF( EvolveGravity )THEN
 
-    CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
-           ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
+      CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
 
-    CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
+      CALL ComputeConformalFactor( MF_uGF, MF_uCF, MF_uCR, MF_uGS, MF_uMF )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
+      CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
-    CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
+    END IF
+
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, -1 )
 
     CALL ApplySlopeLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
@@ -457,24 +486,23 @@ CONTAINS
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
 
-    CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, +1 )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, +1, 1, 1, 1, 1, MF_uCF )
+    IF( EvolveGravity )THEN
 
-    CALL ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment_MF &
-           ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
+      CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
 
-    CALL ComputeConformalFactor_MF( MF_uGS, MF_uGF )
+      CALL ComputeConformalFactor( MF_uGF, MF_uCF, MF_uCR, MF_uGS, MF_uMF )
 
-    CALL ComputePressureTensorTrace_XCFC_TwoMoment_MF( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
+      CALL ComputeLapseShiftCurvature &
+             ( MF_uGF, MF_uCF, MF_uCR, MF_uGS, MF_uMF )
 
-    CALL ComputeGeometry_MF( MF_uGS, MF_uGF )
+      CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, -1, 1, 1, 1, 1, MF_uCF )
-    CALL MultiplyWithPsi6_MF &
-           ( MF_uGF, -1, nDOFE, iE_B0, iE_E0, nSpecies, MF_uCR )
+      CALL amrex_multifab_destroy( MF_uMF(iLevel) )
+      CALL amrex_multifab_destroy( MF_uGS(iLevel) )
 
-    CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
+    END IF
 
     DO iS = 1, nStages
 
@@ -485,6 +513,9 @@ CONTAINS
 
     END DO ! iS = 0, nStages
 
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, -1 )
+    CALL MultiplyWithPsi6_MF &
+           ( iE_B0, iE_E0, iE_B1, iE_E1, MF_uGF, MF_uCR, -1 )
 
     CALL IncrementOffGridTally_TwoMoment_MF( dM_OffGrid_TwoMoment )
 
@@ -492,7 +523,6 @@ CONTAINS
     CALL amrex_multifab_destroy( MF_F  (iLevel) )
     CALL amrex_multifab_destroy( MF_R0 (iLevel) )
     CALL amrex_multifab_destroy( MF_F0 (iLevel) )
-    CALL amrex_multifab_destroy( MF_uGS(iLevel) )
 
     IF( DEBUG ) WRITE(*,'(A)') 'Leaving Update_IMEX_RK_MF'
 
@@ -502,20 +532,22 @@ CONTAINS
 
 
   SUBROUTINE Initialize_IMEX_RK_MF &
-    ( Scheme, EvolveEuler_Option, EvolveTwoMoment_Option, Verbose_Option )
+    ( Verbose_Option )
 
-    CHARACTER(LEN=*), INTENT(in) :: Scheme
-    LOGICAL         , INTENT(in), OPTIONAL :: EvolveEuler_Option
-    LOGICAL         , INTENT(in), OPTIONAL :: EvolveTwoMoment_Option
     LOGICAL         , INTENT(in), OPTIONAL :: Verbose_Option
 
-    EvolveEuler = .FALSE.
-    IF( PRESENT( EvolveEuler_Option ) ) &
-      EvolveEuler = EvolveEuler_Option
+    TYPE(amrex_parmparse) :: PP
 
-    EvolveTwoMoment = .FALSE.
-    IF( PRESENT( EvolveTwoMoment_Option ) ) &
-      EvolveTwoMoment = EvolveTwoMoment_Option
+    EvolveEuler     = .TRUE.
+    EvolveTwoMoment = .TRUE.
+    CALL amrex_parmparse_build( PP, 'TS' )
+      CALL PP % get  ( 'Scheme'         , Scheme )
+      CALL PP % get  ( 'CFL'            , CFL )
+      CALL PP % query( 'EvolveEuler'    , EvolveEuler )
+      CALL PP % query( 'EvolveTwoMoment', EvolveTwoMoment )
+    CALL amrex_parmparse_destroy( PP )
+
+    CFL = CFL / ( DBLE( nDimsX ) * ( Two * DBLE( nNodes ) - One ) )
 
     Verbose = .FALSE.
     IF( PRESENT( Verbose_Option ) ) &
@@ -545,7 +577,9 @@ CONTAINS
       WRITE(*,'(4x,A)')   'INFO: Time-stepper'
       WRITE(*,'(4x,A)')   '------------------'
       WRITE(*,*)
-      WRITE(*,'(6x,A,A)') 'IMEX-RK Scheme: ', TRIM( Scheme )
+      WRITE(*,'(6x,A18,A)') 'IMEX-RK Scheme: ', TRIM( Scheme )
+      WRITE(*,'(6x,A18,L)') 'EvolveEuler: ', EvolveEuler
+      WRITE(*,'(6x,A18,L)') 'EvolveTwoMoment: ', EvolveTwoMoment
 
     END IF
 
@@ -691,6 +725,53 @@ CONTAINS
     a_EX = Zero
 
   END SUBROUTINE AllocateButcherTables
+
+
+  SUBROUTINE ComputeConformalFactor( MF_uGF, MF_uCF, MF_uCR, MF_uGS, MF_uMF )
+
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:)
+
+    CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
+           ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
+
+    CALL ComputeConformalFactor_XCFC_MF &
+           ( MF_uGS, MF_uMF )
+
+    CALL UpdateConformalFactorAndMetric_XCFC_MF &
+           ( MF_uMF, MF_uGF )
+
+    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
+
+  END SUBROUTINE ComputeConformalFactor
+
+
+  SUBROUTINE ComputeLapseShiftCurvature &
+    ( MF_uGF, MF_uCF, MF_uCR, MF_uGS, MF_uMF )
+
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:)
+
+    CALL ComputePressureTensorTrace_XCFC_MF &
+           ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
+
+    CALL ComputeLapseShiftCurvature_XCFC_MF &
+           ( MF_uGS, MF_uMF )
+
+    CALL UpdateLapseShiftCurvature_XCFC_MF &
+           ( MF_uMF, MF_uGF )
+
+    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
+
+    CALL ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
+
+  END SUBROUTINE ComputeLapseShiftCurvature
 
 
 END MODULE MF_TimeSteppingModule_IMEX

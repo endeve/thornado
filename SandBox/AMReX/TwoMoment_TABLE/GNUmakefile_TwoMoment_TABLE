@@ -68,6 +68,7 @@ include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.MeshRefinement
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.ProgramHeader
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Euler
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.TwoMoment
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Gravity
 include Make.TwoMoment_TABLE
 
 # Include rules for compilation

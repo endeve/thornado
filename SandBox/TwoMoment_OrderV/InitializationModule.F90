@@ -18,7 +18,7 @@ MODULE InitializationModule
     MeshE, &
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
-    uGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+    uGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, iGF_h_1, iGF_h_2
   USE FluidFieldsModule, ONLY: &
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
@@ -96,6 +96,10 @@ CONTAINS
 
         CALL InitializeFields_TransparentVortex &
                ( V_0, Direction )
+
+      CASE( 'TransparentVortex_Spherical' )
+
+        CALL InitializeFields_TransparentVortex_Spherical( V_0 )
 
       CASE( 'RadiatingSphere' )
 
@@ -1917,6 +1921,225 @@ CONTAINS
     END DO
 
   END SUBROUTINE SetInnerBoundary_TransparentVortex
+
+
+  SUBROUTINE InitializeFields_TransparentVortex_Spherical( V_0 )
+
+    REAL(DP),     INTENT(in) :: V_0(3)
+
+    REAL(DP), PARAMETER :: X_0 = 6.0_DP / SQRT( 2.0_DP )
+    REAL(DP), PARAMETER :: Y_0 = 6.0_DP / SQRT( 2.0_DP )
+    REAL(DP), PARAMETER :: D_1 = 1.0_DP
+    REAL(DP), PARAMETER :: D_2 = 0.4_DP
+
+    INTEGER  :: iNodeX, iX1, iX2, iX3
+    INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
+    INTEGER  :: iNodeX1, iNodeX2
+    REAL(DP) :: Beta, R, Theta, X, Y, R_0, AbsV, V_X, V_Y
+
+    Beta = SQRT( V_0(1)**2 + V_0(2)**2 + V_0(3)**2 )
+
+    ! --- Fluid Fields ---
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+        R     = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        Theta = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+        X = R * SIN( Theta )
+        Y = R * COS( Theta )
+
+        R_0 = SQRT( ( X - X_0 )**2 + ( Y - Y_0 )**2 )
+
+        AbsV = Beta * EXP( - ( R_0 - D_1 )**2 / D_2**2 )
+
+        V_X = - AbsV * ( Y - Y_0 ) / R_0
+        V_Y =   AbsV * ( X - X_0 ) / R_0
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
+          = 1.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+          = ( SIN( Theta ) * V_X + COS( Theta ) * V_Y ) &
+            / uGF(iNodeX,iX1,iX2,iX3,iGF_h_1 )
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+          = ( COS( Theta ) * V_X - SIN( Theta ) * V_Y ) &
+            / uGF(iNodeX,iX1,iX2,iX3,iGF_h_2 )
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+          = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) &
+          = 0.1_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) &
+          = 0.0_DP
+
+        CALL ComputeConserved_Euler_NonRelativistic &
+               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    ! --- Radiation Fields ---
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iNodeZ = 1, nDOFZ
+
+        iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
+
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) = 1.0d-8
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) = 0.0_DP
+        
+        CALL ComputeConserved_TwoMoment &
+               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V1),        &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V2),        &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V3),        &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+      
+         END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL SetInnerBoundary_TransparentVortex_Spherical
+
+  END SUBROUTINE InitializeFields_TransparentVortex_Spherical
+
+
+  SUBROUTINE SetInnerBoundary_TransparentVortex_Spherical
+
+    INTEGER  :: iNodeX, iX1, iX2, iX3, iNodeE
+    INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
+    REAL(DP) :: E
+
+    ! --- Fluid Fields ---
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B1(1), iX_B1(1)
+
+      DO iNodeX = 1, nDOFX
+
+        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = One
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 1.0d-1
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = Zero
+
+        CALL ComputeConserved_Euler_NonRelativistic &
+               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    ! --- Radiation Fields ---
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B1(2), iZ_B1(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iNodeZ = 1, nDOFZ
+
+        iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
+        iNodeE = MOD( (iNodeZ-1)        , nDOFE ) + 1
+
+        E = NodeCoordinate( MeshE, iZ1, iNodeE )
+
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
+          = One / ( EXP( E / Three - Three ) + One )
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
+          = 0.5_DP * uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS)
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
+          = 0.0_DP
+        uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) &
+          = 0.0_DP
+
+        CALL ComputeConserved_TwoMoment &
+               ( uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+                 uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V1),        &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V2),        &
+                 uPF(iNodeX,iZ2,iZ3,iZ4,iPF_V3),        &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
+                 uGF(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+      
+         END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE SetInnerBoundary_TransparentVortex_Spherical
 
 
   SUBROUTINE InitializeFields_RadiatingSphere

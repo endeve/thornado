@@ -36,20 +36,20 @@ MODULE MF_TwoMoment_UtilitiesModule
     iPR_I1,  &
     iPR_I2,  &
     iPR_I3,  &
-    iGR_N,   &
-    iGR_D,   &
-    iGR_I1,  &
+    iGR_N,   &      
+    iGR_D,   & 
+    iGR_I1,  & 
     iGR_I2,  &
-    iGR_I3,  &
-    iGR_J,   &
-    iGR_H1,  &
-    iGR_H2,  &
-    iGR_H3,  &
+    iGR_I3,  & 
+    iGR_J,   & 
+    iGR_H1,  & 
+    iGR_H2,  & 
+    iGR_H3,  & 
     iGR_RMS, &
-    iGR_F,   &
-    iGR_K,   &
-    iGR_Q,   &
-    nGR,     &
+    iGR_F,   & 
+    iGR_K,   & 
+    iGR_Q,   & 
+    nGR,     & 
     LeptonNumber
   USE FluidFieldsModule, ONLY: &
     nCF, &
@@ -103,7 +103,10 @@ MODULE MF_TwoMoment_UtilitiesModule
     AtomicMassUnit, &
     SpeedOfLight, &
     PlanckConstant
-
+  USE TwoMoment_ClosureModule, ONLY: &
+    FluxFactor_Relativistic, &
+    EddingtonFactor, &
+    HeatFluxFactor
 
   ! --- Local Modules ---
 
@@ -778,12 +781,10 @@ CONTAINS
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                  [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
                  G )
-
         CALL AllocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                  [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nPF ], &
                  PF )
-
         CALL AllocateArray_Z &
                ( [ 1       , &
                    iZ_B1(1), &
@@ -859,6 +860,8 @@ CONTAINS
                ( nGR, nSpecies, iX_B1, iX_E1, &
                  iLo_MF, iX_B0, iX_E0, uGR, GR )
 
+
+
         CALL DeallocateArray_Integrated &
                ( [ 1       , &
                    iX_B1(1), &
@@ -918,6 +921,8 @@ CONTAINS
                  [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
                  G )
 
+
+
       END DO
 
       CALL amrex_mfiter_destroy( MFI )
@@ -955,6 +960,9 @@ CONTAINS
     REAL(DP) :: W3(1:nDOFE,iZ_B0(1):iZ_E0(1))
     REAL(DP) :: W3_RMS(1:nDOFE,iZ_B0(1):iZ_E0(1))
     REAL(DP) :: W5_RMS(1:nDOFE,iZ_B0(1):iZ_E0(1))
+    REAL(DP) :: &
+      AR(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:3,1:nSpecies)
 
     IF( UnitsActive )THEN
 
@@ -965,6 +973,9 @@ CONTAINS
       hc3 = One
 
     END IF
+
+
+    CALL Compute_Auxiliary(iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, PF, PR, AR) 
 
     ! --- Integration Weights ---
 
@@ -986,7 +997,7 @@ CONTAINS
       W5_RMS(iNodeE,iZ1) = W2(iNodeE,iZ1) * ( E / E_0 )**3
 
 
-
+    
     END DO
     END DO
     END ASSOCIATE ! dZ1
@@ -1071,6 +1082,21 @@ CONTAINS
             = RMS_Int5 &
                 + W5_RMS(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
 
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_F,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_F,iS) &
+                + W2(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS) &
+                    * AR(iNodeZ,iZ1,iZ2,iZ3,iZ4,1,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_K,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_K,iS) &
+                + W2(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS) &
+                    * AR(iNodeZ,iZ1,iZ2,iZ3,iZ4,2,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_Q,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_Q,iS) &
+                + W2(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS) &
+                    * AR(iNodeZ,iZ1,iZ2,iZ3,iZ4,3,iS)
+
 
         END DO
         END DO
@@ -1079,14 +1105,96 @@ CONTAINS
           = E_0 * SQRT( RMS_Int5 / RMS_Int3 )
 
 
+        GR(iNodeX,iZ2,iZ3,iZ4,iGR_F,iS) &
+          = GR(iNodeX,iZ2,iZ3,iZ4,iGR_F,iS) &
+              / GR(iNodeX,iZ2,iZ3,iZ4,iGR_D,iS)
+
+        GR(iNodeX,iZ2,iZ3,iZ4,iGR_K,iS) &
+          = GR(iNodeX,iZ2,iZ3,iZ4,iGR_K,iS) &
+              / GR(iNodeX,iZ2,iZ3,iZ4,iGR_D,iS)
+
+        GR(iNodeX,iZ2,iZ3,iZ4,iGR_Q,iS) &
+          = GR(iNodeX,iZ2,iZ3,iZ4,iGR_Q,iS) &
+              / GR(iNodeX,iZ2,iZ3,iZ4,iGR_D,iS)
+
       END DO
 
     END DO
     END DO
     END DO
     END DO
-
+    
   END SUBROUTINE ComputeGray_TwoMoment
 
 
+  SUBROUTINE Compute_Auxiliary(iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, PF, PR, AR) 
+
+    INTEGER,  INTENT(in)  :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)  :: &
+      GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+         1:nGF)
+    REAL(DP), INTENT(in)  :: &
+      PF(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+         1:nPF)
+    REAL(DP), INTENT(in)  :: &
+      PR(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:nPR,1:nSpecies)
+
+    REAL(DP), INTENT(out)  :: &
+      AR(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:3,1:nSpecies)
+
+
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iNodeZ, iNodeE, iNodeX
+    REAL(DP) :: FF
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iNodeX = 1, nDOFX
+      DO iNodeE = 1, nDOFE
+
+        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+
+        FF = FluxFactor_Relativistic &
+               ( PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+                 PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+                 PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+                 PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
+                 GX(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
+                 GX(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
+                 GX(iNodeX    ,iZ2,iZ3,iZ4,iGF_Gm_dd_33), &
+                 GX(iNodeX    ,iZ2,iZ3,iZ4,iGF_Alpha), &
+                 GX(iNodeX    ,iZ2,iZ3,iZ4,iGF_Beta_1), &
+                 GX(iNodeX    ,iZ2,iZ3,iZ4,iGF_Beta_2), &
+                 GX(iNodeX    ,iZ2,iZ3,iZ4,iGF_Beta_3), &
+                 PF(iNodeX    ,iZ2,iZ3,iZ4,iPF_V1), &
+                 PF(iNodeX    ,iZ2,iZ3,iZ4,iPF_V2), &
+                 PF(iNodeX    ,iZ2,iZ3,iZ4,iPF_V3) )
+
+        AR(iNodeZ,iZ1,iZ2,iZ3,iZ4,1,iS) &
+          = FF
+
+        AR(iNodeZ,iZ1,iZ2,iZ3,iZ4,2,iS) &
+          = EddingtonFactor( PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS), FF )
+
+        AR(iNodeZ,iZ1,iZ2,iZ3,iZ4,3,iS) &
+          = HeatFluxFactor ( PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS), FF )
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+
+  END SUBROUTINE Compute_Auxiliary
+ 
 END MODULE MF_TwoMoment_UtilitiesModule

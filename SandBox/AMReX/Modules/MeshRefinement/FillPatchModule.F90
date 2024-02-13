@@ -4,8 +4,6 @@ MODULE FillPatchModule
 
   ! --- AMReX Modules ---
 
-  USE amrex_fort_module, ONLY: &
-    amrex_spacedim
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_multifab_build, &
@@ -13,11 +11,13 @@ MODULE FillPatchModule
     amrex_mfiter, &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
+  USE amrex_box_module, ONLY: &
+    amrex_box
   USE amrex_amr_module, ONLY: &
     amrex_geom, &
     amrex_ref_ratio
 #if defined( THORNADO_USE_MESHREFINEMENT )
-  USE amrex_amr_module, ONLY: &
+  USE amrex_interpolater_module, ONLY: &
     amrex_interp_dg
 #endif
   USE amrex_fillpatch_module, ONLY: &
@@ -37,27 +37,38 @@ MODULE FillPatchModule
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
-    nNodes, &
     nDOFX, &
+    swX, &
     nDimsX
+  USE ReferenceElementModuleX, ONLY: &
+    NodeNumberTableX
+  USE MeshModule, ONLY: &
+    MeshType, &
+    NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
-    iGF_SqrtGm
+    iGF_SqrtGm, &
+    CoordinateSystem
+  USE Euler_MeshRefinementModule, ONLY: &
+    nFine, &
+    vpCoarseToFineProjectionMatrix
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
-    DP
-  USE MF_UtilitiesModule, ONLY: &
-    MultiplyWithMetric
+    DP, &
+    Zero, &
+    One
   USE InputParsingModule, ONLY: &
-    nLevels, &
     UseTiling, &
-    t_old, &
-    t_new, &
-    swX, &
     DEBUG
-  USE MF_Euler_PositivityLimiterModule, ONLY: &
-    ApplyPositivityLimiter_Euler_MF
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
+  USE MF_GeometryModule, ONLY: &
+    ApplyBoundaryConditions_Geometry_MF, &
+    UpdateSpatialMetric_MF
+  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_Euler_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
@@ -69,522 +80,80 @@ MODULE FillPatchModule
   PUBLIC :: FillPatch, FillCoarsePatch
 
   INTERFACE FillPatch
-    MODULE PROCEDURE FillPatch_Scalar_WithMetric_Geometry
-    MODULE PROCEDURE FillPatch_Scalar_WithMetric_Fluid
-    MODULE PROCEDURE FillPatch_Vector_WithMetric_Geometry
-    MODULE PROCEDURE FillPatch_Vector_WithMetric_Fluid
+    MODULE PROCEDURE FillPatch_PointWise_Scalar ! Only called by RemakeLevel
+    MODULE PROCEDURE FillPatch_PointWise_Vector
+    MODULE PROCEDURE FillPatch_Conservative_Scalar ! Only called by RemakeLevel
+    MODULE PROCEDURE FillPatch_Conservative_Vector
   END INTERFACE FillPatch
 
+  ! Only called by FillCoarsePatch
   INTERFACE FillCoarsePatch
-    MODULE PROCEDURE FillCoarsePatch_Geometry
-    MODULE PROCEDURE FillCoarsePatch_Fluid
+    MODULE PROCEDURE FillCoarsePatch_PointWise
+    MODULE PROCEDURE FillCoarsePatch_Conservative
   END INTERFACE FillCoarsePatch
-
-  INTEGER, PARAMETER :: swXX(3) = [ 0, 0, 0 ]
 
 CONTAINS
 
 
-  SUBROUTINE FillPatch_Scalar_WithMetric_Geometry &
-    ( FineLevel, MF_uGF, MF_dst )
-
-    INTEGER             , INTENT(in)    :: FineLevel
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_dst
-
-    INTEGER, PARAMETER :: sComp = 1, dComp = 1
-
-    INTEGER :: nF, iErr
-
-    CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
-
-    nF = MF_dst % nComp() / nDOFX
-
-    IF( DEBUG )THEN
-
-      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
-
-      IF( amrex_parallel_ioprocessor() )THEN
-
-        WRITE(*,'(4x,A,I3.3)') &
-          'CALL FillPatch_Scalar_WithMetric_Geometry, FineLevel: ', FineLevel
-
-      END IF
-
-    END IF
-
-    IF( FineLevel .GT. 0 )THEN
-
-      CALL MultiplyWithMetric &
-             ( FineLevel-1, MF_uGF, nF, +1, swXX_Option = swXX )
-
-      CALL MultiplyWithMetric &
-             ( FineLevel  , MF_uGF, nF, +1, swXX_Option = swXX )
-
-    END IF
-
-    CALL FillPatch_Scalar( FineLevel, MF_uGF, MF_dst )
-
-    IF( FineLevel .GT. 0 )THEN
-
-      CALL MultiplyWithMetric &
-             ( FineLevel-1, MF_uGF, nF, -1, swXX_Option = swXX )
-
-      CALL MultiplyWithMetric &
-             ( FineLevel  , MF_uGF, nF, -1, swXX_Option = swXX )
-
-    END IF
-
-    CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
-
-  END SUBROUTINE FillPatch_Scalar_WithMetric_Geometry
-
-
-  SUBROUTINE FillPatch_Scalar_WithMetric_Fluid &
-    ( FineLevel, MF_uGF, MF_src, MF_dst, &
-      MF_uDF, ApplyPositivityLimiter_Option )
-
-    INTEGER             , INTENT(in)    :: FineLevel
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_src(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_dst
-    TYPE(amrex_multifab), INTENT(inout), OPTIONAL :: &
-      MF_uDF(0:)
-    LOGICAL             , INTENT(in)   , OPTIONAL :: &
-      ApplyPositivityLimiter_Option
-
-    INTEGER, PARAMETER :: sComp = 1, dComp = 1
-
-    TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel)
-
-    INTEGER :: nF, iErr
-
-    LOGICAL :: ApplyPositivityLimiter
-
-    CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
-
-    ApplyPositivityLimiter = .FALSE.
-    IF( PRESENT( ApplyPositivityLimiter_Option ) ) &
-      ApplyPositivityLimiter = ApplyPositivityLimiter_Option
-
-    nF = MF_dst % nComp() / nDOFX
-
-    IF( DEBUG )THEN
-
-      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
-
-      IF( amrex_parallel_ioprocessor() )THEN
-
-        WRITE(*,'(4x,A,I3.3)') &
-          'CALL FillPatch_Scalar_WithMetric_Fluid, FineLevel: ', FineLevel
-
-      END IF
-
-    END IF
-
-    IF( FineLevel .GT. 0 )THEN
-
-      CALL amrex_multifab_build &
-             ( SqrtGm(FineLevel-1), MF_uGF(FineLevel-1) % BA, &
-                                    MF_uGF(FineLevel-1) % DM, nDOFX, swX )
-
-      CALL SqrtGm(FineLevel-1) % COPY &
-             ( MF_uGF(FineLevel-1), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
-
-      CALL MultiplyWithMetric &
-             ( FineLevel-1, SqrtGm(FineLevel-1), MF_src, nF, +1, &
-               swXX_Option = swXX )
-
-      CALL amrex_multifab_build &
-             ( SqrtGm(FineLevel  ), MF_uGF(FineLevel  ) % BA, &
-                                    MF_uGF(FineLevel  ) % DM, nDOFX, swX )
-
-      CALL SqrtGm(FineLevel  ) % COPY &
-             ( MF_uGF(FineLevel  ), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
-
-      CALL MultiplyWithMetric &
-             ( FineLevel  , SqrtGm(FineLevel  ), MF_src, nF, +1, &
-               swXX_Option = swXX )
-
-    END IF
-
-    CALL FillPatch_Scalar( FineLevel, MF_src, MF_dst )
-
-    IF( FineLevel .GT. 0 )THEN
-
-      CALL MultiplyWithMetric &
-             ( FineLevel-1, SqrtGm(FineLevel-1), MF_src, nF, -1, &
-               swXX_Option = swXX )
-      CALL MultiplyWithMetric &
-             ( FineLevel  , SqrtGm(FineLevel  ), MF_src, nF, -1, &
-               swXX_Option = swXX )
-
-      CALL amrex_multifab_destroy( SqrtGm(FineLevel-1) )
-      CALL amrex_multifab_destroy( SqrtGm(FineLevel  ) )
-
-    END IF
-
-    IF( ApplyPositivityLimiter ) &
-      CALL ApplyPositivityLimiter_Euler_MF &
-             ( FineLevel, &
-               MF_uGF(FineLevel), MF_dst, MF_uDF(FineLevel) )
-
-    CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
-
-  END SUBROUTINE FillPatch_Scalar_WithMetric_Fluid
-
-
-  SUBROUTINE FillPatch_Vector_WithMetric_Geometry( FineLevel, MF_uGF )
-
-    INTEGER             , INTENT(in)    :: FineLevel
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
-
-    INTEGER, PARAMETER :: sComp = 1, dComp = 1
-
-    INTEGER :: nF, iErr
-
-    CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
-
-    nF = MF_uGF(0) % nComp() / nDOFX
-
-    IF( DEBUG )THEN
-
-      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
-
-      WRITE(*,'(4x,A,I3.3)') &
-        'CALL FillPatch_Vector_WithMetric_Geometry, FineLevel: ', FineLevel
-
-    END IF
-
-    IF( FineLevel .GT. 0 )THEN
-
-      CALL MultiplyWithMetric &
-             ( FineLevel-1, MF_uGF, nF, +1, swXX_Option = swXX )
-
-      CALL MultiplyWithMetric &
-             ( FineLevel  , MF_uGF, nF, +1, swXX_Option = swXX )
-
-    END IF
-
-    CALL FillPatch_Vector( FineLevel, MF_uGF )
-
-    IF( FineLevel .GT. 0 )THEN
-
-      CALL MultiplyWithMetric &
-             ( FineLevel-1, MF_uGF, nF, -1, swXX_Option = swXX )
-
-      CALL MultiplyWithMetric &
-             ( FineLevel  , MF_uGF, nF, -1, swXX_Option = swXX )
-
-    END IF
-
-    CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
-
-  END SUBROUTINE FillPatch_Vector_WithMetric_Geometry
-
-
-  SUBROUTINE FillPatch_Vector_WithMetric_Fluid &
-    ( FineLevel, MF_uGF, MF, MF_uDF, ApplyPositivityLimiter_Option )
-
-    INTEGER             , INTENT(in)    :: FineLevel
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF    (0:)
-    TYPE(amrex_multifab), INTENT(inout), OPTIONAL :: &
-      MF_uDF(0:)
-    LOGICAL             , INTENT(in)   , OPTIONAL :: &
-      ApplyPositivityLimiter_Option
-
-    INTEGER, PARAMETER :: sComp = 1, dComp = 1
-
-    TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel)
-
-    INTEGER :: nF, iErr
-
-    LOGICAL :: ApplyPositivityLimiter
-
-    CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
-
-    ApplyPositivityLimiter = .FALSE.
-    IF( PRESENT( ApplyPositivityLimiter_Option ) ) &
-      ApplyPositivityLimiter = ApplyPositivityLimiter_Option
-
-    nF = MF(0) % nComp() / nDOFX
-
-    IF( DEBUG )THEN
-
-      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
-
-      WRITE(*,'(4x,A,I3.3)') &
-        'CALL FillPatch_Vector_WithMetric_Fluid, FineLevel: ', FineLevel
-
-    END IF
-
-    IF( FineLevel .GT. 0 )THEN
-
-      CALL amrex_multifab_build &
-             ( SqrtGm(FineLevel-1), MF_uGF(FineLevel-1) % BA, &
-                                    MF_uGF(FineLevel-1) % DM, nDOFX, swX )
-
-      CALL SqrtGm(FineLevel-1) % COPY &
-             ( MF_uGF(FineLevel-1), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
-
-      CALL MultiplyWithMetric &
-             ( FineLevel-1, SqrtGm(FineLevel-1), MF, nF, +1, &
-               swXX_Option = swXX )
-
-      CALL amrex_multifab_build &
-             ( SqrtGm(FineLevel  ), MF_uGF(FineLevel  ) % BA, &
-                                    MF_uGF(FineLevel  ) % DM, nDOFX, swX )
-
-      CALL SqrtGm(FineLevel  ) % COPY &
-             ( MF_uGF(FineLevel  ), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
-
-      CALL MultiplyWithMetric &
-             ( FineLevel  , SqrtGm(FineLevel  ), MF, nF, +1, &
-               swXX_Option = swXX )
-
-    END IF
-
-    CALL FillPatch_Vector( FineLevel, MF )
-
-    IF( FineLevel .GT. 0 )THEN
-
-      CALL MultiplyWithMetric &
-             ( FineLevel-1, SqrtGm(FineLevel-1), MF, nF, -1, &
-               swXX_Option = swXX )
-      CALL MultiplyWithMetric &
-             ( FineLevel  , SqrtGm(FineLevel  ), MF, nF, -1, &
-               swXX_Option = swXX )
-
-      CALL amrex_multifab_destroy( SqrtGm(FineLevel-1) )
-      CALL amrex_multifab_destroy( SqrtGm(FineLevel  ) )
-
-    END IF
-
-    IF( ApplyPositivityLimiter ) &
-      CALL ApplyPositivityLimiter_Euler_MF &
-             ( FineLevel, &
-               MF_uGF(FineLevel), MF(FineLevel), MF_uDF(FineLevel) )
-
-    CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
-
-  END SUBROUTINE FillPatch_Vector_WithMetric_Fluid
-
-
-  SUBROUTINE FillCoarsePatch_Geometry( FineLevel, MF_uGF )
-
-    INTEGER             , INTENT(in)    :: FineLevel
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
-
-    INTEGER, PARAMETER :: sComp = 1, dComp = 1
-
-    INTEGER :: nF, iErr
-
-    nF = MF_uGF(0) % nComp() / nDOFX
-
-    IF( DEBUG )THEN
-
-      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
-
-      WRITE(*,'(4x,A,I3.3)') &
-        'CALL FillCoarsePatch_Geometry, FineLevel: ', FineLevel
-
-    END IF
-
-    IF( FineLevel .GT. 0 ) &
-      CALL MultiplyWithMetric &
-             ( FineLevel-1, MF_uGF, nF, +1, swXX_Option = swXX )
-
-    CALL FillCoarsePatch_Vector( FineLevel, MF_uGF )
-
-    IF( FineLevel .GT. 0 )THEN
-
-      CALL MultiplyWithMetric &
-             ( FineLevel-1, MF_uGF, nF, -1, swXX_Option = swXX )
-
-      CALL MultiplyWithMetric &
-             ( FineLevel  , MF_uGF, nF, -1, swXX_Option = swXX )
-
-    END IF
-
-  END SUBROUTINE FillCoarsePatch_Geometry
-
-
-  SUBROUTINE FillCoarsePatch_Fluid &
-    ( FineLevel, MF_uGF, MF, MF_uDF, ApplyPositivityLimiter_Option )
-
-    INTEGER             , INTENT(in)    :: FineLevel
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF    (0:)
-    TYPE(amrex_multifab), INTENT(inout), OPTIONAL :: &
-      MF_uDF(0:)
-    LOGICAL             , INTENT(in)   , OPTIONAL :: &
-      ApplyPositivityLimiter_Option
-
-    INTEGER, PARAMETER :: sComp = 1, dComp = 1
-
-    TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel)
-
-    INTEGER :: nF, iErr
-
-    LOGICAL :: ApplyPositivityLimiter
-
-    CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
-
-    ApplyPositivityLimiter = .FALSE.
-    IF( PRESENT( ApplyPositivityLimiter_Option ) ) &
-      ApplyPositivityLimiter = ApplyPositivityLimiter_Option
-
-    nF = MF(0) % nComp() / nDOFX
-
-    IF( DEBUG )THEN
-
-      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
-
-      WRITE(*,'(4x,A,I3.3)') &
-        'CALL FillCoarsePatch_Fluid, FineLevel: ', FineLevel
-
-    END IF
-
-    IF( FineLevel .GT. 0 )THEN
-
-      CALL amrex_multifab_build &
-             ( SqrtGm(FineLevel-1), MF_uGF(FineLevel-1) % BA, &
-                                    MF_uGF(FineLevel-1) % DM, nDOFX, swX )
-
-      CALL SqrtGm(FineLevel-1) % COPY &
-             ( MF_uGF(FineLevel-1), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
-
-      CALL MultiplyWithMetric &
-             ( FineLevel-1, SqrtGm(FineLevel-1), MF, nF, +1, &
-               swXX_Option = swXX )
-
-    END IF
-
-    CALL FillCoarsePatch_Vector( FineLevel, MF )
-
-    IF( FineLevel .GT. 0 )THEN
-
-      CALL MultiplyWithMetric &
-             ( FineLevel-1, SqrtGm(FineLevel-1), MF, nF, -1, &
-               swXX_Option = swXX )
-
-      CALL amrex_multifab_destroy( SqrtGm(FineLevel-1) )
-
-      CALL amrex_multifab_build &
-             ( SqrtGm(FineLevel), MF_uGF(FineLevel) % BA, &
-                                  MF_uGF(FineLevel) % DM, nDOFX, swX )
-
-      CALL SqrtGm(FineLevel) % COPY &
-             ( MF_uGF(FineLevel), 1+nDOFX*(iGF_SqrtGm-1), 1, nDOFX, swX )
-
-      CALL MultiplyWithMetric &
-             ( FineLevel  , SqrtGm(FineLevel  ), MF, nF, -1, &
-               swXX_Option = swXX )
-
-      CALL amrex_multifab_destroy( SqrtGm(FineLevel  ) )
-
-    END IF
-
-    IF( ApplyPositivityLimiter ) &
-      CALL ApplyPositivityLimiter_Euler_MF &
-             ( FineLevel, &
-               MF_uGF(FineLevel), MF(FineLevel), MF_uDF(FineLevel) )
-
-    CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
-
-  END SUBROUTINE FillCoarsePatch_Fluid
-
-
-  ! --- PRIVATE SUBROUTINES ---
-
-
-  SUBROUTINE FillPatch_Scalar( FineLevel, MF_src, MF_dst )
-
-    INTEGER             , INTENT(in)    :: FineLevel
-    TYPE(amrex_multifab), INTENT(in)    :: MF_src(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_dst
-
-    INTEGER, PARAMETER :: sComp = 1, dComp = 1
-
-    INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
-
-    ! Dummy variables. Only matter when interpolating in time
-    REAL(DP), PARAMETER :: t_old_crse = 0.0_DP
-    REAL(DP), PARAMETER :: t_new_crse = 0.0_DP
-    REAL(DP), PARAMETER :: t_old_fine = 0.0_DP
-    REAL(DP), PARAMETER :: t_new_fine = 0.0_DP
-    REAL(DP), PARAMETER :: t          = 0.0_DP
-
-    ! Assume MF_old_crse = MF_new_crse = MF_old_fine = MF_new_fine = MF
-    ! Assume t_old_crse  = t_new_crse  = t_old_fine  = t_new_fine  = t
-
-    IF( FineLevel .EQ. 0 )THEN
-
-      CALL amrex_fillpatch( MF_dst, &
-                            t_old_fine, MF_src(FineLevel), &
-                            t_new_fine, MF_src(FineLevel), &
-                            amrex_geom(FineLevel), FillPhysicalBC_Dummy, &
-                            t, sComp, dComp, MF_dst % nComp() )
-
-    ELSE
-
-#if defined( THORNADO_USE_MESHREFINEMENT )
-
-      ALLOCATE( lo_bc(1:nDimsX,MF_src(FineLevel)%ncomp()) )
-      ALLOCATE( hi_bc(1:nDimsX,MF_src(FineLevel)%ncomp()) )
-
-      lo_bc = amrex_bc_bogus
-      hi_bc = amrex_bc_bogus
-
-      CALL amrex_fillpatch( MF_dst, &
-                            t_old_crse, MF_src(FineLevel-1), &
-                            t_new_crse, MF_src(FineLevel-1), &
-                            amrex_geom(FineLevel-1), FillPhysicalBC_Dummy, &
-                            t_old_fine, MF_src(FineLevel  ), &
-                            t_new_fine, MF_src(FineLevel  ), &
-                            amrex_geom(FineLevel  ), FillPhysicalBC_Dummy, &
-                            t, sComp, dComp, MF_dst % nComp(), &
-                            amrex_ref_ratio(FineLevel-1), &
-                            amrex_interp_dg, &
-                            lo_bc, hi_bc )
-
-      DEALLOCATE( hi_bc )
-      DEALLOCATE( lo_bc )
-
-#endif
-
-    END IF
-
-  END SUBROUTINE FillPatch_Scalar
-
-
-  SUBROUTINE FillPatch_Vector( FineLevel, MF )
+  SUBROUTINE FillPatch_PointWise_Scalar &
+    ( FineLevel, MF, MF_dst, &
+      ApplyBoundaryConditions_Euler_Option, &
+      ApplyBoundaryConditions_Geometry_Option )
 
     INTEGER             , INTENT(in)    :: FineLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_dst
+    LOGICAL             , INTENT(in), OPTIONAL :: &
+      ApplyBoundaryConditions_Euler_Option, &
+      ApplyBoundaryConditions_Geometry_Option
 
-    INTEGER, PARAMETER :: sComp = 1, dComp = 1
+    LOGICAL :: ApplyBoundaryConditions_Euler, &
+               ApplyBoundaryConditions_Geometry
+
+    INTEGER :: iErr
 
     INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
 
-    ! Dummy variables. Only matter when interpolating in time
-    REAL(DP), PARAMETER :: t_old_crse = 0.0_DP
-    REAL(DP), PARAMETER :: t_new_crse = 0.0_DP
-    REAL(DP), PARAMETER :: t_old_fine = 0.0_DP
-    REAL(DP), PARAMETER :: t_new_fine = 0.0_DP
-    REAL(DP), PARAMETER :: t          = 0.0_DP
+    ! Dummy variables. They only matter when interpolating in time
+    REAL(DP), PARAMETER :: t_old_crse = Zero
+    REAL(DP), PARAMETER :: t_new_crse = Zero
+    REAL(DP), PARAMETER :: t_old_fine = Zero
+    REAL(DP), PARAMETER :: t_new_fine = Zero
+    REAL(DP), PARAMETER :: t          = Zero
+
+    CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
+
+    ApplyBoundaryConditions_Euler = .FALSE.
+    IF( PRESENT( ApplyBoundaryConditions_Euler_Option ) ) &
+      ApplyBoundaryConditions_Euler = ApplyBoundaryConditions_Euler_Option
+
+    ApplyBoundaryConditions_Geometry = .FALSE.
+    IF( PRESENT( ApplyBoundaryConditions_Geometry_Option ) ) &
+      ApplyBoundaryConditions_Geometry = ApplyBoundaryConditions_Geometry_Option
+
+    IF( DEBUG )THEN
+
+      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+      IF( amrex_parallel_ioprocessor() )THEN
+
+        WRITE(*,'(4x,A,I3.3)') &
+          'CALL FillPatch_PointWise_Scalar, FineLevel: ', FineLevel
+
+      END IF
+
+    END IF
 
     ! Assume MF_old_crse = MF_new_crse = MF_old_fine = MF_new_fine = MF
-    ! Assume t_old_crse  = t_new_crse  = t_old_fine  = t_new_fine  = t
 
     IF( FineLevel .EQ. 0 )THEN
 
-      CALL amrex_fillpatch( MF(FineLevel), &
-                            t_old_fine, MF(FineLevel), &
-                            t_new_fine, MF(FineLevel), &
-                            amrex_geom(FineLevel), FillPhysicalBC_Dummy, &
-                            t, sComp, dComp, MF(FineLevel) % nComp() )
+      CALL amrex_fillpatch &
+             ( MF_dst, &
+               t_old_fine, MF(FineLevel), &
+               t_new_fine, MF(FineLevel), &
+               amrex_geom(FineLevel), FillPhysicalBC_Dummy, &
+               t, 1, 1, MF_dst % nComp() )
 
     ELSE
 
@@ -596,17 +165,19 @@ CONTAINS
       lo_bc = amrex_bc_bogus
       hi_bc = amrex_bc_bogus
 
-      CALL amrex_fillpatch( MF(FineLevel), &
-                            t_old_crse, MF(FineLevel-1), &
-                            t_new_crse, MF(FineLevel-1), &
-                            amrex_geom(FineLevel-1), FillPhysicalBC_Dummy, &
-                            t_old_fine, MF(FineLevel  ), &
-                            t_new_fine, MF(FineLevel  ), &
-                            amrex_geom(FineLevel  ), FillPhysicalBC_Dummy, &
-                            t, sComp, dComp, MF(FineLevel) % nComp(), &
-                            amrex_ref_ratio(FineLevel-1), &
-                            amrex_interp_dg, &
-                            lo_bc, hi_bc )
+      CALL amrex_fillpatch &
+             ( MF_dst, &
+               t_old_crse, MF(FineLevel-1), &
+               t_new_crse, MF(FineLevel-1), &
+               amrex_geom(FineLevel-1), FillPhysicalBC_Dummy, &
+               t_old_fine, MF(FineLevel  ), &
+               t_new_fine, MF(FineLevel  ), &
+               amrex_geom(FineLevel  ), FillPhysicalBC_Dummy, &
+               t, 1, 1, MF_dst % nComp(), &
+               amrex_ref_ratio(FineLevel-1), &
+               amrex_interp_dg, &
+               lo_bc, hi_bc, &
+               nFine, nDOFX, vpCoarseToFineProjectionMatrix )
 
       DEALLOCATE( hi_bc )
       DEALLOCATE( lo_bc )
@@ -615,27 +186,167 @@ CONTAINS
 
     END IF
 
-  END SUBROUTINE FillPatch_Vector
+    IF( ApplyBoundaryConditions_Geometry ) &
+      CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF_dst )
+
+    IF( ApplyBoundaryConditions_Euler ) &
+      CALL ApplyBoundaryConditions_Euler_MF( FineLevel, MF_dst )
+
+    CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
+
+  END SUBROUTINE FillPatch_PointWise_Scalar
 
 
-  SUBROUTINE FillCoarsePatch_Vector( FineLevel, MF )
+  SUBROUTINE FillPatch_PointWise_Vector &
+    ( FineLevel, MF, &
+      ApplyBoundaryConditions_Euler_Option, &
+      ApplyBoundaryConditions_Geometry_Option )
 
     INTEGER             , INTENT(in)    :: FineLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
+    LOGICAL             , INTENT(in), OPTIONAL :: &
+      ApplyBoundaryConditions_Euler_Option, &
+      ApplyBoundaryConditions_Geometry_Option
 
-    INTEGER, PARAMETER :: sComp = 1, dComp = 1
+    LOGICAL :: ApplyBoundaryConditions_Euler, &
+               ApplyBoundaryConditions_Geometry
+
+    INTEGER :: iErr
 
     INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
 
     ! Dummy variables. Only matter when interpolating in time
-    REAL(DP), PARAMETER :: t_old_crse = 0.0_DP
-    REAL(DP), PARAMETER :: t_new_crse = 0.0_DP
-    REAL(DP), PARAMETER :: t          = 0.0_DP
+    REAL(DP), PARAMETER :: t_old_crse = Zero
+    REAL(DP), PARAMETER :: t_new_crse = Zero
+    REAL(DP), PARAMETER :: t_old_fine = Zero
+    REAL(DP), PARAMETER :: t_new_fine = Zero
+    REAL(DP), PARAMETER :: t          = Zero
 
-    ! Assume MF_old_crse = MF_new_crse = MF
-    ! Assume t_old_crse  = t_new_crse  = t
+    CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
+
+    ApplyBoundaryConditions_Euler = .FALSE.
+    IF( PRESENT( ApplyBoundaryConditions_Euler_Option ) ) &
+      ApplyBoundaryConditions_Euler = ApplyBoundaryConditions_Euler_Option
+
+    ApplyBoundaryConditions_Geometry = .FALSE.
+    IF( PRESENT( ApplyBoundaryConditions_Geometry_Option ) ) &
+      ApplyBoundaryConditions_Geometry = ApplyBoundaryConditions_Geometry_Option
+
+    IF( DEBUG )THEN
+
+      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+      WRITE(*,'(4x,A,I3.3)') &
+        'CALL FillPatch_PointWise_Vector, FineLevel: ', FineLevel
+
+    END IF
+
+    ! Assume MF_old_crse = MF_new_crse = MF_old_fine = MF_new_fine = MF
+    ! Assume t_old_crse  = t_new_crse  = t_old_fine  = t_new_fine  = t
+
+    IF( FineLevel .EQ. 0 )THEN
+
+      CALL amrex_fillpatch &
+             ( MF(FineLevel), &
+               t_old_fine, MF(FineLevel), &
+               t_new_fine, MF(FineLevel), &
+               amrex_geom(FineLevel), FillPhysicalBC_Dummy, &
+               t, 1, 1, MF(FineLevel) % nComp() )
+
+    ELSE
 
 #if defined( THORNADO_USE_MESHREFINEMENT )
+
+      ALLOCATE( lo_bc(1:nDimsX,MF(FineLevel)%ncomp()) )
+      ALLOCATE( hi_bc(1:nDimsX,MF(FineLevel)%ncomp()) )
+
+      lo_bc = amrex_bc_bogus
+      hi_bc = amrex_bc_bogus
+
+      CALL amrex_fillpatch &
+             ( MF(FineLevel), &
+               t_old_crse, MF(FineLevel-1), &
+               t_new_crse, MF(FineLevel-1), &
+               amrex_geom(FineLevel-1), FillPhysicalBC_Dummy, &
+               t_old_fine, MF(FineLevel  ), &
+               t_new_fine, MF(FineLevel  ), &
+               amrex_geom(FineLevel  ), FillPhysicalBC_Dummy, &
+               t, 1, 1, MF(FineLevel) % nComp(), &
+               amrex_ref_ratio(FineLevel-1), &
+               amrex_interp_dg, &
+               lo_bc, hi_bc, &
+               nFine, nDOFX, vpCoarseToFineProjectionMatrix )
+
+      DEALLOCATE( hi_bc )
+      DEALLOCATE( lo_bc )
+
+#endif
+
+    END IF
+
+    IF( ApplyBoundaryConditions_Geometry ) &
+      CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF(FineLevel) )
+
+    IF( ApplyBoundaryConditions_Euler ) &
+      CALL ApplyBoundaryConditions_Euler_MF( FineLevel, MF(FineLevel) )
+
+    CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
+
+  END SUBROUTINE FillPatch_PointWise_Vector
+
+
+  SUBROUTINE FillCoarsePatch_PointWise &
+    ( FineLevel, MF, &
+      ApplyBoundaryConditions_Euler_Option, &
+      ApplyBoundaryConditions_Geometry_Option, &
+      UpdateSpatialMetric_Option )
+
+    INTEGER             , INTENT(in)    :: FineLevel
+    TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
+    LOGICAL             , INTENT(in), OPTIONAL :: &
+      ApplyBoundaryConditions_Euler_Option, &
+      ApplyBoundaryConditions_Geometry_Option, &
+      UpdateSpatialMetric_Option
+
+#if defined( THORNADO_USE_MESHREFINEMENT )
+
+    LOGICAL :: ApplyBoundaryConditions_Euler, &
+               ApplyBoundaryConditions_Geometry, &
+               UpdateSpatialMetric
+
+    INTEGER :: iErr
+
+    INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
+
+    ! Dummy variables. Only matter when interpolating in time
+    REAL(DP), PARAMETER :: t_old_crse = Zero
+    REAL(DP), PARAMETER :: t_new_crse = Zero
+    REAL(DP), PARAMETER :: t          = Zero
+
+    CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
+
+    ApplyBoundaryConditions_Euler = .FALSE.
+    IF( PRESENT( ApplyBoundaryConditions_Euler_Option ) ) &
+      ApplyBoundaryConditions_Euler = ApplyBoundaryConditions_Euler_Option
+
+    ApplyBoundaryConditions_Geometry = .FALSE.
+    IF( PRESENT( ApplyBoundaryConditions_Geometry_Option ) ) &
+      ApplyBoundaryConditions_Geometry = ApplyBoundaryConditions_Geometry_Option
+
+    UpdateSpatialMetric = .FALSE.
+    IF( PRESENT( UpdateSpatialMetric_Option ) ) &
+      UpdateSpatialMetric = UpdateSpatialMetric_Option
+
+    IF( DEBUG )THEN
+
+      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+      WRITE(*,'(4x,A,I3.3)') &
+        'CALL FillCoarsePatch_PointWise, FineLevel: ', FineLevel
+
+    END IF
+
+    ! Assume MF_old_crse = MF_new_crse = MF
 
     ALLOCATE( lo_bc(1:nDimsX,MF(FineLevel)%ncomp()) )
     ALLOCATE( hi_bc(1:nDimsX,MF(FineLevel)%ncomp()) )
@@ -649,16 +360,405 @@ CONTAINS
              t_new_crse, MF(FineLevel-1), &
              amrex_geom(FineLevel-1), FillPhysicalBC_Dummy, &
              amrex_geom(FineLevel  ), FillPhysicalBC_Dummy, &
-             t, sComp, dComp, MF(FineLevel) % nComp(), &
+             t, MF(FineLevel) % nComp(), &
              amrex_ref_ratio(FineLevel-1), &
-             amrex_interp_dg, lo_bc, hi_bc )
+             amrex_interp_dg, lo_bc, hi_bc, &
+             nFine, nDOFX, vpCoarseToFineProjectionMatrix )
 
     DEALLOCATE( hi_bc )
     DEALLOCATE( lo_bc )
 
+    IF( UpdateSpatialMetric )THEN
+
+      CALL UpdateSpatialMetric_MF( FineLevel, MF(FineLevel) )
+
+    END IF
+
+    IF( ApplyBoundaryConditions_Geometry ) &
+      CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF(FineLevel) )
+
+    IF( ApplyBoundaryConditions_Euler ) &
+      CALL ApplyBoundaryConditions_Euler_MF( FineLevel, MF(FineLevel) )
+
+    CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
+
 #endif
 
-  END SUBROUTINE FillCoarsePatch_Vector
+  END SUBROUTINE FillCoarsePatch_PointWise
+
+
+  SUBROUTINE FillPatch_Conservative_Scalar &
+    ( FineLevel, MF_uGF, MF_uGF_tmp, MF_src, MF_dst, &
+      ApplyBoundaryConditions_Euler_Option, &
+      ApplyBoundaryConditions_Geometry_Option )
+
+    INTEGER             , INTENT(in)    :: FineLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:), MF_uGF_tmp
+    TYPE(amrex_multifab), INTENT(inout) :: MF_src(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_dst
+    LOGICAL             , INTENT(in), OPTIONAL :: &
+      ApplyBoundaryConditions_Euler_Option, &
+      ApplyBoundaryConditions_Geometry_Option
+
+    TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel), SqrtGm_tmp
+
+    INTEGER :: iErr
+
+    LOGICAL :: ApplyBoundaryConditions_Euler, &
+               ApplyBoundaryConditions_Geometry
+
+    INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
+
+    ! Dummy variables. Only matter when interpolating in time
+    REAL(DP), PARAMETER :: t_old_crse = Zero
+    REAL(DP), PARAMETER :: t_new_crse = Zero
+    REAL(DP), PARAMETER :: t_old_fine = Zero
+    REAL(DP), PARAMETER :: t_new_fine = Zero
+    REAL(DP), PARAMETER :: t          = Zero
+
+    ! Assume MF_old_crse = MF_new_crse = MF_old_fine = MF_new_fine = MF
+
+    CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
+
+    ApplyBoundaryConditions_Euler = .FALSE.
+    IF( PRESENT( ApplyBoundaryConditions_Euler_Option ) ) &
+      ApplyBoundaryConditions_Euler = ApplyBoundaryConditions_Euler_Option
+
+    ApplyBoundaryConditions_Geometry = .FALSE.
+    IF( PRESENT( ApplyBoundaryConditions_Geometry_Option ) ) &
+      ApplyBoundaryConditions_Geometry = ApplyBoundaryConditions_Geometry_Option
+
+    IF( DEBUG )THEN
+
+      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+      IF( amrex_parallel_ioprocessor() )THEN
+
+        WRITE(*,'(4x,A,I3.3)') &
+          'CALL FillPatch_Conservative_Scalar, FineLevel: ', FineLevel
+
+      END IF
+
+    END IF
+
+    IF( FineLevel .GT. 0 )THEN
+
+      CALL amrex_multifab_build &
+             ( SqrtGm(FineLevel-1), MF_uGF(FineLevel-1) % BA, &
+                                    MF_uGF(FineLevel-1) % DM, nDOFX, swX )
+      CALL amrex_multifab_build &
+             ( SqrtGm(FineLevel  ), MF_uGF(FineLevel  ) % BA, &
+                                    MF_uGF(FineLevel  ) % DM, nDOFX, swX )
+      CALL amrex_multifab_build &
+             ( SqrtGm_tmp         , MF_uGF_tmp          % BA, &
+                                    MF_uGF_tmp          % DM, nDOFX, swX )
+
+      CALL PopulateWithFlatSpaceMetric_MF &
+             ( FineLevel-1, SqrtGm(FineLevel-1), swX )
+      CALL PopulateWithFlatSpaceMetric_MF &
+             ( FineLevel  , SqrtGm(FineLevel  ), swX )
+      CALL PopulateWithFlatSpaceMetric_MF &
+             ( FineLevel  , SqrtGm_tmp         , swX )
+
+    END IF
+
+    IF( FineLevel .EQ. 0 )THEN
+
+      CALL amrex_fillpatch &
+             ( MF_dst, &
+               t_old_fine, MF_src(FineLevel), &
+               t_new_fine, MF_src(FineLevel), &
+               amrex_geom(FineLevel), FillPhysicalBC_Dummy, &
+               t, 1, 1, MF_dst % nComp() )
+
+    ELSE
+
+#if defined( THORNADO_USE_MESHREFINEMENT )
+
+      ALLOCATE( lo_bc(1:nDimsX,MF_src(FineLevel)%ncomp()) )
+      ALLOCATE( hi_bc(1:nDimsX,MF_src(FineLevel)%ncomp()) )
+
+      lo_bc = amrex_bc_bogus
+      hi_bc = amrex_bc_bogus
+
+      CALL amrex_fillpatch &
+             ( MF_dst, SqrtGm_tmp, &
+               t_old_crse, MF_src(FineLevel-1), SqrtGm(FineLevel-1), &
+               t_new_crse, MF_src(FineLevel-1), SqrtGm(FineLevel-1), &
+               amrex_geom(FineLevel-1), FillPhysicalBC_Dummy, &
+               t_old_fine, MF_src(FineLevel  ), SqrtGm(FineLevel  ), &
+               t_new_fine, MF_src(FineLevel  ), SqrtGm(FineLevel  ), &
+               amrex_geom(FineLevel  ), FillPhysicalBC_Dummy, &
+               t, 1, 1, MF_dst % nComp(), &
+               amrex_ref_ratio(FineLevel-1), &
+               amrex_interp_dg, &
+               lo_bc, hi_bc, &
+               nFine, nDOFX, vpCoarseToFineProjectionMatrix )
+
+      DEALLOCATE( hi_bc )
+      DEALLOCATE( lo_bc )
+
+#endif
+
+    END IF
+
+    IF( ApplyBoundaryConditions_Geometry ) &
+      CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF_dst )
+
+    IF( ApplyBoundaryConditions_Euler ) &
+      CALL ApplyBoundaryConditions_Euler_MF( FineLevel, MF_dst )
+
+    IF( FineLevel .GT. 0 )THEN
+
+      CALL amrex_multifab_destroy( SqrtGm_tmp )
+
+      CALL amrex_multifab_destroy( SqrtGm(FineLevel  ) )
+
+      CALL amrex_multifab_destroy( SqrtGm(FineLevel-1) )
+
+    END IF
+
+    CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
+
+  END SUBROUTINE FillPatch_Conservative_Scalar
+
+
+  SUBROUTINE FillPatch_Conservative_Vector &
+    ( FineLevel, MF_uGF, MF, &
+      ApplyBoundaryConditions_Euler_Option, &
+      ApplyBoundaryConditions_Geometry_Option )
+
+    INTEGER             , INTENT(in)    :: FineLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF    (0:)
+    LOGICAL             , INTENT(in)   , OPTIONAL :: &
+      ApplyBoundaryConditions_Euler_Option, &
+      ApplyBoundaryConditions_Geometry_Option
+
+    TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel)
+
+    INTEGER :: iErr
+
+    LOGICAL :: ApplyBoundaryConditions_Euler, &
+               ApplyBoundaryConditions_Geometry
+
+    INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
+
+    ! Dummy variables. Only matter when interpolating in time
+    REAL(DP), PARAMETER :: t_old_crse = Zero
+    REAL(DP), PARAMETER :: t_new_crse = Zero
+    REAL(DP), PARAMETER :: t_old_fine = Zero
+    REAL(DP), PARAMETER :: t_new_fine = Zero
+    REAL(DP), PARAMETER :: t          = Zero
+
+    CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
+
+    ApplyBoundaryConditions_Euler = .FALSE.
+    IF( PRESENT( ApplyBoundaryConditions_Euler_Option ) ) &
+      ApplyBoundaryConditions_Euler = ApplyBoundaryConditions_Euler_Option
+
+    ApplyBoundaryConditions_Geometry = .FALSE.
+    IF( PRESENT( ApplyBoundaryConditions_Geometry_Option ) ) &
+      ApplyBoundaryConditions_Geometry = ApplyBoundaryConditions_Geometry_Option
+
+    IF( DEBUG )THEN
+
+      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+      WRITE(*,'(4x,A,I3.3)') &
+        'CALL FillPatch_Conservative_Vector, FineLevel: ', FineLevel
+
+    END IF
+
+    IF( FineLevel .GT. 0 )THEN
+
+      CALL amrex_multifab_build &
+             ( SqrtGm(FineLevel-1), MF_uGF(FineLevel-1) % BA, &
+                                    MF_uGF(FineLevel-1) % DM, nDOFX, swX )
+
+      CALL SqrtGm(FineLevel-1) % COPY &
+             ( MF_uGF(FineLevel-1), nDOFX*(iGF_SqrtGm-1)+1, 1, nDOFX, swX )
+
+      CALL amrex_multifab_build &
+             ( SqrtGm(FineLevel  ), MF_uGF(FineLevel  ) % BA, &
+                                    MF_uGF(FineLevel  ) % DM, nDOFX, swX )
+
+      CALL SqrtGm(FineLevel  ) % COPY &
+             ( MF_uGF(FineLevel  ), nDOFX*(iGF_SqrtGm-1)+1, 1, nDOFX, swX )
+
+    END IF
+
+    ! Assume MF_old_crse = MF_new_crse = MF_old_fine = MF_new_fine = MF
+    ! Assume t_old_crse  = t_new_crse  = t_old_fine  = t_new_fine  = t
+
+    IF( FineLevel .EQ. 0 )THEN
+
+      CALL amrex_fillpatch &
+             ( MF(FineLevel), &
+               t_old_fine, MF(FineLevel), &
+               t_new_fine, MF(FineLevel), &
+               amrex_geom(FineLevel), FillPhysicalBC_Dummy, &
+               t, 1, 1, MF(FineLevel) % nComp() )
+
+    ELSE
+
+#if defined( THORNADO_USE_MESHREFINEMENT )
+
+      ALLOCATE( lo_bc(1:nDimsX,MF(FineLevel)%ncomp()) )
+      ALLOCATE( hi_bc(1:nDimsX,MF(FineLevel)%ncomp()) )
+
+      lo_bc = amrex_bc_bogus
+      hi_bc = amrex_bc_bogus
+
+      CALL amrex_fillpatch &
+             ( MF(FineLevel), SqrtGm(FineLevel), &
+               t_old_crse, MF(FineLevel-1), SqrtGm(FineLevel-1), &
+               t_new_crse, MF(FineLevel-1), SqrtGm(FineLevel-1), &
+               amrex_geom(FineLevel-1), FillPhysicalBC_Dummy, &
+               t_old_fine, MF(FineLevel  ), SqrtGm(FineLevel  ), &
+               t_new_fine, MF(FineLevel  ), SqrtGm(FineLevel  ), &
+               amrex_geom(FineLevel  ), FillPhysicalBC_Dummy, &
+               t, 1, 1, MF(FineLevel) % nComp(), &
+               amrex_ref_ratio(FineLevel-1), &
+               amrex_interp_dg, &
+               lo_bc, hi_bc, &
+               nFine, nDOFX, vpCoarseToFineProjectionMatrix )
+
+      DEALLOCATE( hi_bc )
+      DEALLOCATE( lo_bc )
+
+#endif
+
+    END IF
+
+    IF( ApplyBoundaryConditions_Geometry ) &
+      CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF(FineLevel) )
+
+    IF( ApplyBoundaryConditions_Euler ) &
+      CALL ApplyBoundaryConditions_Euler_MF( FineLevel, MF(FineLevel) )
+
+    IF( FineLevel .GT. 0 )THEN
+
+      CALL amrex_multifab_destroy( SqrtGm(FineLevel-1) )
+      CALL amrex_multifab_destroy( SqrtGm(FineLevel  ) )
+
+    END IF
+
+    CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
+
+  END SUBROUTINE FillPatch_Conservative_Vector
+
+
+  SUBROUTINE FillCoarsePatch_Conservative &
+    ( FineLevel, MF_uGF, MF, &
+      ApplyBoundaryConditions_Euler_Option, &
+      ApplyBoundaryConditions_Geometry_Option )
+
+    INTEGER             , INTENT(in)    :: FineLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF    (0:)
+    LOGICAL             , INTENT(in)   , OPTIONAL :: &
+      ApplyBoundaryConditions_Euler_Option, &
+      ApplyBoundaryConditions_Geometry_Option
+
+#if defined( THORNADO_USE_MESHREFINEMENT )
+
+    TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel)
+
+    INTEGER :: iErr
+
+    LOGICAL :: ApplyBoundaryConditions_Euler, &
+               ApplyBoundaryConditions_Geometry
+
+    INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
+
+    ! Dummy variables. Only matter when interpolating in time
+    REAL(DP), PARAMETER :: t_old_crse = Zero
+    REAL(DP), PARAMETER :: t_new_crse = Zero
+    REAL(DP), PARAMETER :: t          = Zero
+
+    CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
+
+    ApplyBoundaryConditions_Euler = .FALSE.
+    IF( PRESENT( ApplyBoundaryConditions_Euler_Option ) ) &
+      ApplyBoundaryConditions_Euler = ApplyBoundaryConditions_Euler_Option
+
+    ApplyBoundaryConditions_Geometry = .FALSE.
+    IF( PRESENT( ApplyBoundaryConditions_Geometry_Option ) ) &
+      ApplyBoundaryConditions_Geometry = ApplyBoundaryConditions_Geometry_Option
+
+    IF( DEBUG )THEN
+
+      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+      WRITE(*,'(4x,A,I3.3)') &
+        'CALL FillCoarsePatch_Conservative, FineLevel: ', FineLevel
+
+    END IF
+
+    IF( FineLevel .GT. 0 )THEN
+
+      CALL amrex_multifab_build &
+             ( SqrtGm(FineLevel-1), MF_uGF(FineLevel-1) % BA, &
+                                    MF_uGF(FineLevel-1) % DM, nDOFX, swX )
+
+      CALL amrex_multifab_build &
+             ( SqrtGm(FineLevel  ), MF_uGF(FineLevel  ) % BA, &
+                                    MF_uGF(FineLevel  ) % DM, nDOFX, swX )
+
+      CALL PopulateWithFlatSpaceMetric_MF &
+             ( FineLevel-1, SqrtGm(FineLevel-1), swX )
+      CALL PopulateWithFlatSpaceMetric_MF &
+             ( FineLevel  , SqrtGm(FineLevel  ), swX )
+
+    END IF
+
+    ! Assume MF_old_crse = MF_new_crse = MF
+    ! Assume t_old_crse  = t_new_crse  = t
+
+    ALLOCATE( lo_bc(1:nDimsX,MF(FineLevel)%ncomp()) )
+    ALLOCATE( hi_bc(1:nDimsX,MF(FineLevel)%ncomp()) )
+
+    lo_bc = amrex_bc_bogus
+    hi_bc = amrex_bc_bogus
+
+    CALL amrex_fillcoarsepatch &
+           ( MF(FineLevel), SqrtGm(FineLevel), &
+             t_old_crse, MF(FineLevel-1), SqrtGm(FineLevel-1), &
+             t_new_crse, MF(FineLevel-1), SqrtGm(FineLevel-1), &
+             amrex_geom(FineLevel-1), FillPhysicalBC_Dummy, &
+             amrex_geom(FineLevel  ), FillPhysicalBC_Dummy, &
+             t, MF(FineLevel) % nComp(), &
+             amrex_ref_ratio(FineLevel-1), &
+             amrex_interp_dg, &
+             lo_bc, hi_bc, &
+             nFine, nDOFX, vpCoarseToFineProjectionMatrix )
+
+    DEALLOCATE( hi_bc )
+    DEALLOCATE( lo_bc )
+
+    IF( ApplyBoundaryConditions_Geometry ) &
+      CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF(FineLevel) )
+
+    IF( ApplyBoundaryConditions_Euler ) &
+      CALL ApplyBoundaryConditions_Euler_MF( FineLevel, MF(FineLevel) )
+
+    IF( FineLevel .GT. 0 )THEN
+
+      CALL amrex_multifab_destroy( SqrtGm(FineLevel-1) )
+
+      CALL amrex_multifab_destroy( SqrtGm(FineLevel  ) )
+
+    END IF
+
+    CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
+
+#endif
+
+  END SUBROUTINE FillCoarsePatch_Conservative
+
+
+  ! --- PRIVATE SUBROUTINES ---
 
 
   SUBROUTINE FillPhysicalBC_Dummy( pMF, sComp, nComp, Time, pGEOM ) BIND(c)
@@ -719,9 +819,98 @@ CONTAINS
 
       END DO
 
+      CALL amrex_mfiter_destroy( MFI )
+
     END IF
 
   END SUBROUTINE FillPhysicalBC_Dummy
+
+
+  SUBROUTINE PopulateWithFlatSpaceMetric_MF( iLevel, MF_SqrtGm, swXX )
+
+    INTEGER             , INTENT(in)  :: iLevel, swXX(3)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_SqrtGm
+
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+
+    TYPE(MeshType) :: MeshXX(3)
+    INTEGER  :: iX_B0(3), iX_E0(3), iX_B(3), iX_E(3)
+    INTEGER  :: iX1, iX2, iX3, iNX, iNX1, iNX2
+    REAL(DP) :: X1, X2, h1, h2, h3
+
+    CALL CreateMesh_MF( iLevel, MeshXX )
+
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL &
+    !$OMP PRIVATE( BX, MFI, uGF, &
+    !$OMP          iX_B0, iX_E0, iX_B, iX_E, iNX1, iNX2, X1, X2, h1, h2, h3 )
+#endif
+
+    CALL amrex_mfiter_build( MFI, MF_SqrtGm, tiling = UseTiling )
+
+    DO WHILE( MFI % next() )
+
+      uGF => MF_SqrtGm % DataPtr( MFI )
+
+      BX = MFI % tilebox()
+
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+      iX_B  = iX_B0 - swXX
+      iX_E  = iX_E0 + swXX
+
+      DO iX3 = iX_B(3), iX_E(3)
+      DO iX2 = iX_B(2), iX_E(2)
+      DO iX1 = iX_B(1), iX_E(1)
+      DO iNX = 1      , nDOFX
+
+        iNX1 = NodeNumberTableX(1,iNX)
+        iNX2 = NodeNumberTableX(2,iNX)
+
+        X1 = NodeCoordinate( MeshXX(1), iX1, iNX1 )
+        X2 = NodeCoordinate( MeshXX(2), iX2, iNX2 )
+
+        IF( TRIM( CoordinateSystem ) .EQ. 'CYLINDIRCAL' )THEN
+
+          h1  = One
+          h2  = One
+          h3  = ABS( X1 )
+
+        ELSE IF( TRIM( CoordinateSystem ) .EQ. 'SPHERICAL' )THEN
+
+          h1  = One
+          h2  = ABS( X1 )
+          h3  = ABS( X1 * SIN( X2 ) )
+
+        ELSE
+
+          h1  = One
+          h2  = One
+          h3  = One
+
+        END IF
+
+        uGF(iX1,iX2,iX3,iNX) = h1 * h2 * h3
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END DO ! WHILE( MFI % next() )
+
+    CALL amrex_mfiter_destroy( MFI )
+
+#if defined( THORNADO_OMP )
+    !$OMP END PARALLEL
+#endif
+
+    CALL DestroyMesh_MF( MeshXX )
+
+  END SUBROUTINE PopulateWithFlatSpaceMetric_MF
 
 
 END MODULE FillPatchModule
