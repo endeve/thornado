@@ -92,6 +92,8 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Feb 13 2024
+1. Figured out the regression of the reframe run of Thornado sineWaveStreaming case with 8x8x8. The reason is the missing environment variables such as ZE_AFFINITY_MASK, and Memory Pool. Updated the test file in Todd's directory. 
 ## Feb 12 2024
 1. thornado's sineWaveStreaming with 8x8x8 is now in reframe. Need to find a way to setup the reference for the performance test
 ## Feb 05-09 2024
