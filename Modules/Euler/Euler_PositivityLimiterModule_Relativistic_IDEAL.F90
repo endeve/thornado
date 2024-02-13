@@ -502,15 +502,15 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( Theta_P )
+    !$OMP PRIVATE( Theta_P, q )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRESENT( U_K, U_Q, U_P, g1P, g2P, g3P, Theta_q, &
     !$ACC          iErr, NegativeStates ) &
-    !$ACC PRIVATE( Theta_P )
+    !$ACC PRIVATE( Theta_P, q )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( Theta_P )
+    !$OMP PRIVATE( Theta_P, q )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
