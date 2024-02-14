@@ -38,8 +38,8 @@ def GetPlotData( PlotDirectory,     \
     FileName = ChoosePlotFile( FileNumberArray,     \
                                PlotBaseName,        \
                                argv = argv,         \
+                               DataType = DataType, \
                                Verbose = Verbose    )
-
 
     File = PlotDirectory + FileName
 
