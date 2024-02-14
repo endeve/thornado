@@ -138,9 +138,9 @@ export useAGRF="TRUE"
 
 
 #export COMPILER_DATE=".2023.05.15.003-rc11"
-#export COMPILER_DATE="2023.5.007"
 #module load oneapi/eng-compiler/2023.10.15.002
-#module load nightly-compiler/2024.01.15
+#module load nightly-compiler/2024.02.13
+#export COMPILER_DATE="2024.02.13"
 #module load oneapi/eng-compiler/${COMPILER_DATE}
 #module switch -f mpich/52.2-256/icc-sockets-gpu mpich/51.2/icc-sockets-gpu    ## Needed by 05.15.007.
 
@@ -246,7 +246,7 @@ opLevels=(O3)
 grids=("[8,8,8]" "[16,16,16]")
 gridNames=("" "-xN16")
 appNames=(ApplicationDriver ApplicationDriver_Neutrinos)
-logFiles=(sineWave relax)
+logFiles=(sineWave01 relax01)
 CaseNames=(SineWaveStreaming Relaxation)
 userOptions=("" "MICROPHYSICS=WEAKLIB")
 gridLines=(85 131)
