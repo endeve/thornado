@@ -92,6 +92,25 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Feb 14 2014
+1. Thornado compilation fails with nightly-compiler/2024.02.13, the failure is recorded in https://jira.devtools.intel.com/browse/CMPLRLLVM-51851. Good news is https://jira.devtools.intel.com/browse/CMPLRLLVM-54357 has been fixed. 
+2. Added Relaxation to reframe, but got errors like:
+<pre>
+[ RUN      ] fetchThornado ~sdpcloud /566261ee @sdpcloud:pvc+oneapi-eng
+[       OK ] (1/5) fetchThornado ~sdpcloud /566261ee @sdpcloud:pvc+oneapi-eng
+[ RUN      ] buildThorando %app_name=ApplicationDriver_Neutrinos ~sdpcloud:pvc+oneapi-eng /e54257b3 @sdpcloud:pvc+oneapi-eng
+[ RUN      ] buildThorando %app_name=ApplicationDriver ~sdpcloud:pvc+oneapi-eng /72a372cc @sdpcloud:pvc+oneapi-eng
+[     FAIL ] (2/5) buildThorando %app_name=ApplicationDriver ~sdpcloud:pvc+oneapi-eng /72a372cc @sdpcloud:pvc+oneapi-eng
+==> test failed during 'compile_wait': test staged in '/nfs/pdx/home/revans/epc_rfm_shared/quanshao/stage/sdpcloud/pvc/oneapi-eng/buildThorando_72a372cc'
+[     FAIL ] (3/5) runThorando %thornado_build.app_name=ApplicationDriver /78b180db @sdpcloud:pvc+oneapi-eng
+==> test failed during 'startup': test staged in None
+[       OK ] (4/5) buildThorando %app_name=ApplicationDriver_Neutrinos ~sdpcloud:pvc+oneapi-eng /e54257b3 @sdpcloud:pvc+oneapi-eng
+[ RUN      ] runThorando %thornado_build.app_name=ApplicationDriver_Neutrinos /af3b3f53 @sdpcloud:pvc+oneapi-eng
+[       OK ] (5/5) runThorando %thornado_build.app_name=ApplicationDriver_Neutrinos /af3b3f53 @sdpcloud:pvc+oneapi-eng
+[----------] all spawned checks have finished
+
+[  FAILED  ] Ran 5/5 test case(s) from 5 check(s) (2 failure(s), 0 skipped, 0 aborted)
+</pre>
 ## Feb 13 2024
 1. Figured out the regression of the reframe run of Thornado sineWaveStreaming case with 8x8x8. The reason is the missing environment variables such as ZE_AFFINITY_MASK, and Memory Pool. Updated the test file in Todd's directory. 
 ## Feb 12 2024
