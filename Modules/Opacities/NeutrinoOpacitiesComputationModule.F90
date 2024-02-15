@@ -959,7 +959,7 @@ CONTAINS
     !$OMP          p000, p100, p010, p110, p001, p101, p011, p111 ) &
     !$OMP MAP    ( to: CenterE, WidthE, NodesE )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG LOOP VECTOR                            &
+    !$ACC PARALLEL LOOP GANG VECTOR                                 &
     !$ACC PRIVATE( D_P, T_P, Y_P, Xnuc, loctot,                     & 
     !$ACC          iE, iE1, iE2, iNodeE1, E_node, a, b, f_a, f_b,   & 
     !$ACC          iD, iT, iY, dD, dT, dY,                          &
