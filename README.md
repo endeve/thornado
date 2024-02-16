@@ -92,6 +92,9 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Feb 15-16 2014
+1. Added a fix which updates Iterations for the inner and outer loop in Thornado to master branch.
+2. Thornado's 4 cases are now in Reframe with the error check and performance monitor.
 ## Feb 14 2014
 1. Thornado compilation fails with nightly-compiler/2024.02.13, the failure is recorded in https://jira.devtools.intel.com/browse/CMPLRLLVM-51851. Good news is https://jira.devtools.intel.com/browse/CMPLRLLVM-54357 has been fixed. 
 2. Added Relaxation to reframe, but got errors like:
