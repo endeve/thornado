@@ -4520,7 +4520,7 @@ CONTAINS
     END DO
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE FROM( MASK , nIterations_Inner )
+    !$OMP TARGET UPDATE FROM( MASK, nIterations_Inner )
 #elif defined( THORNADO_OACC   )
     !$ACC UPDATE HOST( MASK, nIterations_Inner )
 #endif
