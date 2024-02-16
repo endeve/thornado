@@ -4127,8 +4127,7 @@ CONTAINS
 
     LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
     INTEGER,                    INTENT(in)    :: n_FP, M, Mk
-!! Shaoping : Fm and Gm's passed-in value is not used. These two variables are only overwritten. 
-    REAL(DP), DIMENSION(:,:)  , INTENT(out)   :: Fm, Gm, B
+    REAL(DP), DIMENSION(:,:)  , INTENT(inout)   :: Fm, Gm, B
     REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: F, G, A
     REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Alpha, TAU
     INTEGER,                    INTENT(in)    :: LWORK
@@ -4370,48 +4369,83 @@ CONTAINS
 
   END SUBROUTINE SolveLS_FP
 
-  
-
-!! Shaoping : The use of private temporary arrays for teams tends out to be giving random and wrong values, and is also slower than this one
-!without temporary arrays
 
   SUBROUTINE ShiftRHS_FP( MASK, n_FP, M, Mk, F, G )
+
      LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
      INTEGER,                    INTENT(in)    :: n_FP, M, Mk
      REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: F, G
 
-     INTEGER  :: iN_X, iFP, iM, k
-
-     IF ( Mk == M ) THEN
+    INTEGER  :: iN_X, iFP, iM
+#if   defined( THORNADO_OMP_OL )
+    REAL(DP) :: FTMP(1:n_FP,1:M, 1:nX_G)
+    REAL(DP) :: GTMP(1:n_FP,1:M, 1:nX_G)
+#else
+    REAL(DP) :: FTMP(1:n_FP,1:M)
+    REAL(DP) :: GTMP(1:n_FP,1:M)
+#endif
+    IF ( Mk == M ) THEN
 
 #if   defined( THORNADO_OMP_OL )
-        !$OMP TARGET TEAMS DISTRIBUTE
+      !$OMP TARGET PRIVATE( FTMP, GTMP )
+      !$OMP TARGET TEAMS DISTRIBUTE 
 #elif defined( THORNADO_OACC   )
-        !$ACC PARALLEL LOOP GANG
+      !$ACC PARALLEL LOOP GANG &
+      !$ACC PRIVATE( FTMP, GTMP )
 #elif defined( THORNADO_OMP    )
-        !$OMP PARALLEL DO
+      !$OMP PARALLEL DO &
+      !$OMP PRIVATE( FTMP, GTMP )
 #endif
       DO iN_X = 1, nX_G
         IF( MASK(iN_X) )THEN
 
 #if   defined( THORNADO_OMP_OL )
-        !$OMP PARALLEL DO SIMD COLLAPSE(2)
+          !$OMP PARALLEL DO SIMD COLLAPSE(2)
+          DO iM  = 1, Mk-1
+          DO iFP = 1, n_FP
+            FTMP(iFP,iM, iN_X) = F(iFP,iM+1,iN_X)
+            GTMP(iFP,iM, iN_X) = G(iFP,iM+1,iN_X)
+          END DO
+          END DO
 #elif defined( THORNADO_OACC   )
-        !$ACC LOOP VECTOR COLLAPSE(2)
+          !$ACC LOOP VECTOR COLLAPSE(2)
+          DO iM  = 1, Mk-1
+          DO iFP = 1, n_FP
+            FTMP(iFP,iM) = F(iFP,iM+1,iN_X)
+            GTMP(iFP,iM) = G(iFP,iM+1,iN_X)
+          END DO
+          END DO
 #endif
-            DO iM  = 1, Mk-1
-            DO iFP = 1, n_FP
-               F(iFP,iM,iN_X) = F(iFP,iM+1,iN_X)
-               G(iFP,iM,iN_X) = G(iFP,iM+1,iN_X)
-            END DO
-            END DO
+          
 
-          END IF
-        END DO
+#if   defined( THORNADO_OMP_OL )
+          !$OMP PARALLEL DO SIMD COLLAPSE(2)
+          DO iM  = 1, Mk-1
+          DO iFP = 1, n_FP
+            F(iFP,iM,iN_X) = FTMP(iFP,iM, iN_X)
+            G(iFP,iM,iN_X) = GTMP(iFP,iM, iN_X)
+          END DO
+          END DO
+#elif defined( THORNADO_OACC   )
+          !$ACC LOOP VECTOR COLLAPSE(2)
+          DO iM  = 1, Mk-1
+          DO iFP = 1, n_FP
+            F(iFP,iM,iN_X) = FTMP(iFP,iM)
+            G(iFP,iM,iN_X) = GTMP(iFP,iM)
+          END DO
+          END DO
+#endif
 
-     END IF
+        END IF
+      END DO
+#if   defined( THORNADO_OMP_OL )
+          !$OMP END TARGET
+#endif           
+
+    END IF
 
   END SUBROUTINE ShiftRHS_FP
+
 
   SUBROUTINE CheckConvergence_Inner &
     ( MASK, n_FP, k_inner, nIterations_Inner, Fm )
@@ -4488,7 +4522,7 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET UPDATE FROM( MASK , nIterations_Inner )
 #elif defined( THORNADO_OACC   )
-    !$ACC UPDATE HOST( MASK )
+    !$ACC UPDATE HOST( MASK, nIterations_Inner )
 #endif
 
   END SUBROUTINE CheckConvergence_Inner
@@ -4534,9 +4568,9 @@ CONTAINS
     END DO
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE FROM( MASK_OUTER, MASK_INNER, nIterations_Outer)
+    !$OMP TARGET UPDATE FROM( MASK_OUTER, MASK_INNER, nIterations_Outer )
 #elif defined( THORNADO_OACC   )
-    !$ACC UPDATE HOST( MASK_OUTER, MASK_INNER )
+    !$ACC UPDATE HOST( MASK_OUTER, MASK_INNER, nIterations_Outer )
 #endif
 
   END SUBROUTINE CheckConvergence_Outer
