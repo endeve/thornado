@@ -6,16 +6,16 @@ from sys import argv
 import GlobalVariables.Settings as gvS
 import Utilities.BounceFinder   as BF
 
+from Utilities.FetchData import fetchTime_AMReX, fetchCenDen_AMReX
+
 #=============================================#
 #   Included Routines
 #
 #   SychronizeFrameList
 #
 #=============================================#
-def SynchronizeFrameLists(nDirs,nSS,SyncBy):
-
-    
-    
+def SynchronizeFrameLists(nDirs,nSS, FileNumberArray, DataDirectory, SyncBy):
+        
     if SyncBy == 'Time':
         TimeList = [];
         for i in range(nDirs):
@@ -29,27 +29,70 @@ def SynchronizeFrameLists(nDirs,nSS,SyncBy):
         
         
         SubFrameList = Synchronizer_Time(nDirs,TimeList,nSS)
-    else if SyncBy == 'Density':
+        
+    elif SyncBy == 'Bounce':
+    
+        # Check for bounce data
+        if ( BF.BounceTimeList == 0.0 ):
+            exit("Must be run with 'gvS.ReferenceBounce = True'. ")
+    
+
+
         DensityList = [];
         for i in range(nDirs):
-            Density_List.append(['None']*nSS[i])
-            for j in range(nSS[i]):
-                
+            DensityList.append(['None']*BF.BounceFrameList[i])
+            for j in range(BF.BounceFrameList[i]):
                 Density = fetchCenDen_AMReX( j,                  \
                                              FileNumberArray[i], \
                                              DataDirectory[i]    )
                 DensityList[i][j] = Density
-        SubFrameList = Synchronizer_Density(nDirs,DensityList,nSS)
-    
-    
+
+        SubFrameListA = Synchronizer_Density(nDirs,DensityList,BF.BounceFrameList)
+        SubFrameLengthA = len(SubFrameListA)
+
+
+
+        nSS_Time = [0.0]*nDirs
+        TimeList = []
+        for i in range(nDirs):
+            nSS_Time[i] = nSS[i]-BF.BounceFrameList[i]
+            TimeList.append(['None']*nSS_Time[i])
+            for j in range(nSS_Time[i]):
+                Time = fetchTime_AMReX(BF.BounceFrameList[i]+j, \
+                                       FileNumberArray[i], \
+                                       DataDirectory[i]    )
+                
+                TimeList[i][j] = Time
+                
+        SubFrameListB = Synchronizer_Time(nDirs,TimeList,nSS_Time)
+        SubFrameLengthB = len(SubFrameListB)
+
+        for i in range(nDirs):
+            for j in range(SubFrameLengthB):
+                SubFrameListB[j][i] = SubFrameListB[j][i] + BF.BounceFrameList[i]
+
+        SubFrameList = [];
+        for i in range(SubFrameLengthA):
+            SubFrameList.append(SubFrameListA[i][:])
+        for i in range(SubFrameLengthB):
+            SubFrameList.append(SubFrameListB[i][:])
+        
+        
     SubFrameLength = len(SubFrameList)
-    
+
     FrameList = [];
     PrevFrame = [0]*nDirs
     FrameList.append(PrevFrame)
     for i in range(SubFrameLength):
         FrameList.append(SubFrameList[i][:])
 
+
+
+
+#    print('FrameList')
+#    for i in range(len(FrameList)):
+#        print(FrameList[i])
+#    exit()
     return FrameList
 
 
@@ -68,41 +111,32 @@ def Synchronizer_Time(nDirs,TimeLists,nSS):
 #   Sort the lists until you reach the end of one.
     ListsFinished = 0
     while ListsFinished == 0:
-        if gvS.ReferenceBounce:
-            MinTime = TimeLists[0][PrevFrame[0]] - BF.BounceTimeList[0]
-        else:
-            MinTime = TimeLists[0][PrevFrame[0]]
-        MinTimeListIndex = [0]
-        
-#        for i in range(1,nDirs):
-        i = 1
-        while i < nDirs:
-            if gvS.ReferenceBounce:
-                CurTime = TimeLists[i][PrevFrame[i]] - BF.BounceTimeList[i]
-            else:
-                CurTime = TimeLists[i][PrevFrame[i]]
-                
-#           Locate the next time from all of the lists
-            if abs(CurTime - MinTime) <= SyncTol:
-#           If more than one list has the minimum time, note it.
-                MinTimeListIndex.append(i)
-            if CurTime < MinTime-SyncTol:
-                MinTime = CurTime
-                MinTimeListIndex = [i]
-                i = 0
+    
+#       Find the current minimum time
+        CurTimes = []
+        for i in range(nDirs):
+            CurTimes.append(TimeLists[i][PrevFrame[i]])
+        MinTime = min(CurTimes)
 
-            i += 1
+
+#       Identify all times within a tolerance of the min.
+        MinTimeListIndex = []
+        for i in range(nDirs):
+            Time = TimeLists[i][PrevFrame[i]]
+            if abs(Time - MinTime) <= SyncTol*MinTime:
+                MinTimeListIndex.append(i)
+        
         
 #       Advance the frames with minimum time
         for i in range(len(MinTimeListIndex)):
             j = MinTimeListIndex[i]
-            PrevFrame[j] = min(PrevFrame[j]+1,nSS[j]-1)
+            PrevFrame[j] = min(PrevFrame[j]+1,nSS[j])
             
 
 #       Add frames to list
         FrameList.append(PrevFrame[:])
         
-
+        
 #       Detect if a list is at it's end.
         EoL_Flag = [0]*nDirs
         for i in range(nDirs):
@@ -141,7 +175,7 @@ def Synchronizer_Time(nDirs,TimeLists,nSS):
         
         
 #       Recursive call.
-        SubFrameList = Synchronizer(NewnDirs,NewTimeLists,NewnSS)
+        SubFrameList = Synchronizer_Time(NewnDirs,NewTimeLists,NewnSS)
 
  
 #       Add returned list to FrameList and fill in frames for finished list(s).
@@ -156,7 +190,6 @@ def Synchronizer_Time(nDirs,TimeLists,nSS):
             FrameList.append(PrevFrame[:])
 
         
-#    exit()
     return FrameList
 
 
@@ -178,35 +211,35 @@ def Synchronizer_Density(nDirs,DensityLists,nSS):
 
     FrameList = [];
     PrevFrame = [0]*nDirs
+
     
 #   Sort the lists until you reach the end of one.
     ListsFinished = 0
     while ListsFinished == 0:
 
-        MinDen = DensityLists[0][PrevFrame[0]]
-        MinDenListIndex = [0]
+#       Find the current minimum density
+        CurDensity = []
+        for i in range(nDirs):
+            CurDensity.append(DensityLists[i][PrevFrame[i]])
+        MinDen = min(CurDensity)
         
-#        for i in range(1,nDirs):
-        i = 1
-        while i < nDirs:
-
-            CurDen = DensityLists[i][PrevFrame[i]]
-                
-#           Locate the next time from all of the lists
-            if abs(CurDen - MinDen) <= SyncTol:
-#           If more than one list has the minimum time, note it.
+        
+        
+#       Identify all densities within a tolerance of the min.
+        MinDenListIndex = []
+        for i in range(nDirs):
+            
+            Density = DensityLists[i][PrevFrame[i]]
+            if abs(Density - MinDen) <= SyncTol*MinDen:
                 MinDenListIndex.append(i)
-            if CurDen < MinDen-SyncTol:
-                MinDen = CurDen
-                MinDenListIndex = [i]
-                i = 0
-
-            i += 1
         
-#       Advance the frames with minimum time
+        
+        
+        
+#       Advance the frames with minimum density
         for i in range(len(MinDenListIndex)):
             j = MinDenListIndex[i]
-            PrevFrame[j] = min(PrevFrame[j]+1,nSS[j]-1)
+            PrevFrame[j] = min(PrevFrame[j]+1,nSS[j])
             
 
 #       Add frames to list
@@ -219,13 +252,6 @@ def Synchronizer_Density(nDirs,DensityLists,nSS):
             if PrevFrame[i] == nSS[i]-1:
                 EoL_Flag[i] = 1
                 
-                
-#       Detect if a list has reached the stop time.
-        for i in range(nDirs):
-            if EoL_Flag[i] == 0:
-                curDen = DensityLists[i][PrevFrame[i]]
-                if curDen > gvS.StopDen:
-                    EoL_Flag[i] = 1
 
 #       If ListsFinished > 0, while loop ends.
         ListsFinished = sum(EoL_Flag)
@@ -249,7 +275,7 @@ def Synchronizer_Density(nDirs,DensityLists,nSS):
         
         
 #       Recursive call.
-        SubFrameList = Synchronizer(NewnDirs,NewDebLists,NewnSS)
+        SubFrameList = Synchronizer_Density(NewnDirs,NewDenLists,NewnSS)
 
  
 #       Add returned list to FrameList and fill in frames for finished list(s).
@@ -264,5 +290,4 @@ def Synchronizer_Density(nDirs,DensityLists,nSS):
             FrameList.append(PrevFrame[:])
 
         
-#    exit()
     return FrameList

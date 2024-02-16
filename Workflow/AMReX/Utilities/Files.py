@@ -49,6 +49,8 @@ def GetFileNumberArray \
         elif ( sFile[-3:] == '.h5' ) :
             fileList.append( int(sFile[-9:-3]) )
 
+    
+
     fileNumbers = np.array( fileList )
     numNumbers = fileNumbers.shape[0]
 
@@ -69,6 +71,7 @@ def GetFileNumberArray \
     # Filter File List
     if SSi < 0: SSi = np.int64( fileNumbers[0] )
     if SSf < 0: SSf = np.int64( fileNumbers[-1] )
+
 
     if SSf < SSi:
         msg = '\n>>> Final frame comes before initial frame. \n'
@@ -91,20 +94,26 @@ def GetFileNumberArray \
 
     nSS = SSf_index - SSi_index + 1
 
+
     #   Filter file list to specified range
     fileNumbersLimited = []
     for i in range( nSS ):
         fileNumbersLimited.append(fileNumbers[SSi_index+i])
 
+
     if ( len( snapshotIndexList ) == 0 ) :
-        # Filer file number list by PlotEvery value.
+        # Filter file number list by PlotEvery value.
+        Here = 0
+        There = len(fileNumbersLimited)
         fileNumbersFiltered \
-          = np.array( fileNumbersLimited[SSi:SSf+1:PlotEvery] )
+          = np.array( fileNumbersLimited[Here:There:PlotEvery] )
     else :
+        # Filter file number list by user defined snapshotIndexList
         fileNumbersFiltered \
           = np.empty( len( snapshotIndexList ), dtype = np.int64 )
         for i in range( len( snapshotIndexList ) ):
             fileNumbersFiltered[i] = fileNumbers[snapshotIndexList[i]]
+
 
     return fileNumbersFiltered
 # END GetFileNumberArray
@@ -138,10 +147,12 @@ def convert( s ):
 #   ChoosePlotFile                            #
 #                                             #
 #=============================================#
-def ChoosePlotFile( FileNumberArray,                \
+def ChoosePlotFile( FileNumberArray,            \
                     PlotBaseName = 'plt',       \
-                    argv = [ 'a' ],                 \
+                    argv = [ 'a' ],             \
+                    DataType = "AMReX",         \
                     Verbose = False ):
+
 
     if len( argv ) == 1:
 
@@ -154,9 +165,11 @@ def ChoosePlotFile( FileNumberArray,                \
             File = argv[1]
 
         else:
-
-            File = PlotBaseName + '{:}'.format( argv[1].zfill(8) )
-
+            if DataType.lower() == 'amrex':
+                File = PlotBaseName + '{:}'.format( argv[1].zfill(8) )
+            else:
+                File = PlotBaseName[:-4]+'_{:}'.format( argv[1].zfill(6) )
+                
     else:
 
         n = len( argv )
