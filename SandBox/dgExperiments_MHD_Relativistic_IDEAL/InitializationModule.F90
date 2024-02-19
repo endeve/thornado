@@ -1627,7 +1627,7 @@ CONTAINS
     INTEGER iX1, iX2, iX3
     INTEGER iNodeX, iNodeX1, iNodeX2
     REAL(DP) :: X1, X2
-    REAL(DP) :: VSq, W
+    REAL(DP) :: V1, V2, V3, VSq, W
     REAL(DP) :: CB1, CB2, CB3, VdotB
 
     ! --- 2D Orszag-Tang vortex based on the approach taken  ---
@@ -1646,32 +1646,34 @@ CONTAINS
         X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
         X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
-        uPM(iNodeX,iX1,iX2,iX3,iPM_D   ) = Gamma_IDEAL**2 / ( FourPi )
-        uPM(iNodeX,iX1,iX2,iX3,iPM_V1  ) = -SIN( TwoPi * X2 ) / OTScaleFactor
-        uPM(iNodeX,iX1,iX2,iX3,iPM_V2  ) =  SIN( TwoPi * X1 ) / OTScaleFactor
-        uPM(iNodeX,iX1,iX2,iX3,iPM_V3  ) = Zero
-        uPM(iNodeX,iX1,iX2,iX3,iPM_E   ) = Gamma_IDEAL &
-                                           / ( FourPi * ( Gamma_IDEAL - One ) &
-                                               * OTScaleFactor**2 )
-
-        VSq = uPM(iNodeX,iX1,iX2,iX3,iPM_V1)**2 &
-              + uPM(iNodeX,iX1,iX2,iX3,iPM_V2)**2 &
-              + uPM(iNodeX,iX1,iX2,iX3,iPM_V3)**2
-
-        W = One / ( One - VSq )
+        V1 = -SIN( TwoPi * X2 ) / OTScaleFactor
+        V2 =  SIN( TwoPi * X1 ) / OTScaleFactor
+        V3 = Zero
 
         CB1 = -SIN( TwoPi  * X2 ) / ( SQRT( FourPi ) * OTScaleFactor )
         CB2 =  SIN( FourPi * X1 ) / ( SQRT( FourPi ) * OTScaleFactor )
         CB3 =  Zero
 
-        VdotB = uPM(iNodeX,iX1,iX2,iX3,iPM_V1) * CB1 &
-                * uPM(iNodeX,iX1,iX2,iX3,iPM_V2) * CB2 &
-                * uPM(iNodeX,iX1,iX2,iX3,iPM_V3) * CB3
-
-        uPM(iNodeX,iX1,iX2,iX3,iPM_B1 ) = W * VdotB * uPM(iNodeX,iX1,iX2,iX3,iPM_V1) + CB1 / W
-        uPM(iNodeX,iX1,iX2,iX3,iPM_B2 ) = W * VdotB * uPM(iNodeX,iX1,iX2,iX3,iPM_V2) + CB2 / W
-        uPM(iNodeX,iX1,iX2,iX3,iPM_B3 ) = W * VdotB * uPM(iNodeX,iX1,iX2,iX3,iPM_V3) + CB3 / W
+        uPM(iNodeX,iX1,iX2,iX3,iPM_D   ) = Gamma_IDEAL**2 / ( FourPi )
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V1  ) = V1
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V2  ) = V2
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V3  ) = V3
+        uPM(iNodeX,iX1,iX2,iX3,iPM_E   ) = Gamma_IDEAL &
+                                           / ( FourPi * ( Gamma_IDEAL - One ) &
+                                               * OTScaleFactor**2 )
         uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = Zero
+
+        VSq = V1**2 + V2**2 + V3**2
+
+        VdotB = V1 * CB1 &
+                + V2 * CB2 &
+                + V3 * CB3
+
+        W = One / SQRT( One - VSq )
+
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B1 ) = W * VdotB * V1 + CB1 / W
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B2 ) = W * VdotB * V2 + CB2 / W
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B3 ) = W * VdotB * V3 + CB3 / W
 
       END DO
 
