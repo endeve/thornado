@@ -48,7 +48,6 @@ def GetFrameData( FilePath,              \
 
         Time = ds.current_time.to_ndarray()
 
-
         # --- Get Data ---
         Data, DataUnits = GetFieldData( ds,                     \
                                         Field,                  \
@@ -91,6 +90,102 @@ def GetFrameData( FilePath,              \
 
  #=============================================#
 #                                               #
+#   GetFrameData                                #
+#                                               #
+ #=============================================#
+def GetCentralDensity( FilePath,    \
+                       DataType     ):
+
+    import yt
+    import numpy as np
+    CoordSystemCheck()
+
+    X1, X2, X3, dX1, dX2, dX3, xL, xH               \
+        = CreateLocations( FilePath, TypeIn = DataType )
+
+
+    if DataType.lower() == "amrex":
+        # https://yt-project.org/doc/faq/index.html#how-can
+        yt.funcs.mylog.setLevel(40) # Suppress yt warnings
+        ds = yt.load( '{:}'.format( FilePath ) )
+        Time = ds.current_time.to_ndarray()
+        # --- Get Data ---
+
+        Locations = [np.array([X1[0],X2[0],X3[0]])];
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",'PF_D'), Locations  ) )
+        DataUnits = 'g/cm^3'
+
+        #---- Clean Up ----
+        del ds
+        gc.collect()
+
+    elif DataType.lower() == "native":
+        Data, DataUnits,    \
+        X1, X2, X3,         \
+        dX1, dX2, dX3,      \
+        Time                \
+             = GetFieldData_Native( FilePath,                   \
+                                    'PF_D',                      \
+                                    gvS.CoordinateSystem,       \
+                                    X1, X2, X3,                 \
+                                    dX1, dX2, dX3 )
+
+
+
+    return Data, DataUnits, Time
+
+
+
+
+
+
+ #=============================================#
+#                                               #
+#   GetTimeData                                 #
+#                                               #
+ #=============================================#
+def GetTimeData( FilePath,    \
+                 DataType     ):
+
+    import yt
+    import numpy as np
+
+    CoordSystemCheck()
+
+    X1, X2, X3, dX1, dX2, dX3, xL, xH               \
+        = CreateLocations( FilePath, TypeIn = DataType )
+
+    if DataType.lower() == "amrex":
+
+        # https://yt-project.org/doc/faq/index.html#how-can
+        yt.funcs.mylog.setLevel(40) # Suppress yt warnings
+        ds = yt.load( '{:}'.format( FilePath ) )
+
+        # --- Get Data ---
+        Time = ds.current_time.to_ndarray()
+
+        #---- Clean Up ----
+        del ds
+        gc.collect()
+
+    elif DataType.lower() == "native":
+
+        PathRoot = FilePath[:-6]
+        FrameNumber = FilePath[-6:]
+
+        FF_root = PathRoot + 'FluidFields_'
+
+        DataFileName_FF = FF_root + str( FrameNumber ) + '.h5'
+
+        Data_FF      = h5.File( DataFileName_FF, 'r' )
+
+        Time = Data_FF[ 'Time' ][0]
+
+    return Time
+
+
+ #=============================================#
+#                                               #
 #   GetFieldData                                #
 #                                               #
  #=============================================#
@@ -113,10 +208,6 @@ def GetFieldData( ds,                   \
                      + j*nX1        \
                      + i
                 Locations[Here] = np.array([X1[i],X2[j],X3[k]])
-
-
-
-
 
     if Field == 'MPIProcess':
         Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
@@ -556,9 +647,6 @@ def GetFieldData( ds,                   \
     Data /= gvS.yScale
 
     return Data, DataUnits
-
-
-
 
 
 

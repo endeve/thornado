@@ -4660,9 +4660,9 @@ CONTAINS
     END DO
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE FROM( MASK )
+    !$OMP TARGET UPDATE FROM( MASK, nIterations_Inner )
 #elif defined( THORNADO_OACC   )
-    !$ACC UPDATE HOST( MASK )
+    !$ACC UPDATE HOST( MASK, nIterations_Inner )
 #endif
 
   END SUBROUTINE CheckConvergence_Inner
@@ -4706,9 +4706,9 @@ CONTAINS
     END DO
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET UPDATE FROM( MASK_OUTER )
+    !$OMP TARGET UPDATE FROM( MASK_OUTER, MASK_INNER, nIterations_Outer )
 #elif defined( THORNADO_OACC   )
-    !$ACC UPDATE HOST( MASK_OUTER )
+    !$ACC UPDATE HOST( MASK_OUTER, MASK_INNER, nIterations_Outer )
 #endif
 
   END SUBROUTINE CheckConvergence_Outer

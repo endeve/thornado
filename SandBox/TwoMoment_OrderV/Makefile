@@ -21,8 +21,13 @@ endif
 
 VPATH += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
 
+<<<<<<< HEAD
 DEFINES += $(PP)THORNADO_EULER_NOGPU
 DEFINES += -DTHORNADO_DEBUG
+=======
+#DEFINES += $(PP)THORNADO_EULER_NOGPU
+#DEFINES += -DTHORNADO_DEBUG
+>>>>>>> master
 
 .DEFAULT_GOAL := all
 
@@ -259,5 +264,7 @@ ifeq ($(PE_ENV),CRAY)
 TwoMoment_PositivityLimiterModule.o : TwoMoment_PositivityLimiterModule.F90
 	$(FORTRAN) -c $(DEFINES) $(FLAGS) $(filter-out -qrealsize=8,$(F90FLAGS)) -h ipa1 $< -o $@
 TwoMoment_NeutrinoMatterSolverModule.o : TwoMoment_NeutrinoMatterSolverModule.F90
+	$(FORTRAN) -c $(DEFINES) $(FLAGS) $(filter-out -qrealsize=8,$(F90FLAGS)) -h ipa1 $< -o $@
+Euler_XCFC_UtilitiesModule.o : Euler_XCFC_UtilitiesModule.f90
 	$(FORTRAN) -c $(DEFINES) $(FLAGS) $(filter-out -qrealsize=8,$(F90FLAGS)) -h ipa1 $< -o $@
 endif

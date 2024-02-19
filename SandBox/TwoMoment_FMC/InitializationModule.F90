@@ -585,7 +585,7 @@ CONTAINS
     INTEGER  :: iNodeX, iX1, iX2, iX3, i, iXi
     INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
     INTEGER  :: iNodeX1, iNodeX2, iNodeX3, iNodeXi
-    REAL(DP) :: X1, X2, X3, Xi
+    REAL(DP) :: X1, X2, X3, Xi, X1_C
     REAL(DP) :: SUM_K, SUM_KPF
     REAL(DP) :: uPF_smooth(nDOFX, &
                            iX_B0(1):iX_E0(1), &
@@ -663,6 +663,7 @@ CONTAINS
 
     !       iNodeX1 = NodeNumberTableX(1,iNodeX)
     !       X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+    !       X1_C = MeshX(1) % Center(iX1)
 
     !       SUM_K = Zero
     !       SUM_KPF = Zero
@@ -674,15 +675,15 @@ CONTAINS
 
     !         Xi = NodeCoordinate( MeshX(1), iXi, iNodeXi )
 
-    !         ! IF( ABS(Xi-X1)<dX1(iX1) )THEN
+    !         IF( ABS(Xi-X1_C)<3.0_DP * dX1(iX1) / 2.0_DP )THEN
 
-    !         SUM_K = SUM_K + &
-    !                 EXP(-((X1-Xi)**2)/(Two*(dX1(iX1)/2.0_DP)**2))
+    !           SUM_K = SUM_K + &
+    !                   EXP(-((X1-Xi)**2)/(Two*(dX1(iX1)/4.0_DP)**2))
 
-    !         SUM_KPF = SUM_KPF + &
-    !                   EXP(-((X1-Xi)**2)/(Two*(dX1(iX1)/2.0_DP)**2)) * uPF(iNodeXi,iXi,iX2,iX3,iPF_V1)
+    !           SUM_KPF = SUM_KPF + &
+    !                     EXP(-((X1-Xi)**2)/(Two*(dX1(iX1)/4.0_DP)**2)) * uPF(iNodeXi,iXi,iX2,iX3,iPF_V1)
 
-    !         ! END IF
+    !         END IF
 
     !       END DO
     !       END DO
