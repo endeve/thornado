@@ -90,12 +90,12 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF, MF_uPF, MF_uAF
 
-    CALL InitializeFields_Pochik_test( iLevel, MF_uGF, MF_uCF )
+    CALL InitializeFields_Poisson_Newtonian_test( iLevel, MF_uGF, MF_uCF )
 
   END SUBROUTINE InitializeFields_MF
 
 
-SUBROUTINE InitializeFields_Pochik_test( iLevel, MF_uGF, MF_uCF )
+SUBROUTINE InitializeFields_Poisson_Newtonian_test( iLevel, MF_uGF, MF_uCF )
 
     INTEGER             , INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
@@ -122,9 +122,6 @@ SUBROUTINE InitializeFields_Pochik_test( iLevel, MF_uGF, MF_uCF )
 
     INTEGER  :: iNX1
     REAL(DP) :: X1
-
-   ! -- New Variables introduced --
-
     REAL(DP) :: rho_c
     REAL(DP) :: R_star
     REAL(DP) :: SolarRadius
@@ -143,12 +140,12 @@ SUBROUTINE InitializeFields_Pochik_test( iLevel, MF_uGF, MF_uCF )
 
     IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
 
-      WRITE(*,'(6x,A)')   'Pochik-test'
+      WRITE(*,'(6x,A)')   'Poseidon Newtonian - test'
       WRITE(*,'(6x,A,A)') '-----------------'
       WRITE(*,*)
-      WRITE(*,'(8x,A,F5.3)') '     R: ', SolarRadius
-      WRITE(*,'(8x,A,F5.3)') 'rho_c: ', rho_c
-      WRITE(*,'(8x,A,F5.3)') ' R_star: ', R_star
+      WRITE(*,'(8x,A,ES15.6E3)') '     R in kilometers: ', SolarRadius / Kilometer
+      WRITE(*,'(8x,A,ES15.6E3)') 'rho_c in g/cc: ', rho_c / ( Gram / Centimeter**3 )
+      WRITE(*,'(8x,A,ES15.6E3)') ' R_star: in Solar Radius', R_star / SolarRadius
 
       WRITE(*,*)
 
@@ -190,7 +187,7 @@ SUBROUTINE InitializeFields_Pochik_test( iLevel, MF_uGF, MF_uCF )
 
         X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
 
-  ! ---My version of rho from 4.3 in Pochik et. al 2021 ---
+  ! --- Density profile from section 4.3 in Pochik et. al 2021 ---
 
         IF( X1 .LE. SolarRadius )THEN
 
@@ -198,7 +195,7 @@ SUBROUTINE InitializeFields_Pochik_test( iLevel, MF_uGF, MF_uCF )
 
         ELSE
 
-	         uPF(iNX,iPF_D) = Zero
+	         uPF(iNX,iPF_D) = 1.0e-16_DP * rho_c
 
         END IF
 
@@ -257,7 +254,7 @@ SUBROUTINE InitializeFields_Pochik_test( iLevel, MF_uGF, MF_uCF )
 
     CALL amrex_mfiter_destroy( MFI )
 
-  END SUBROUTINE InitializeFields_Pochik_test
+  END SUBROUTINE InitializeFields_Poisson_Newtonian_test
 
 
 END MODULE MF_InitializationModule
