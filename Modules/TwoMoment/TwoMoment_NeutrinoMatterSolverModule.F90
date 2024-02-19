@@ -1584,7 +1584,7 @@ CONTAINS
       CALL TimersStart( Timer_Collisions_CheckOuter )
 
       CALL CheckConvergence_Outer &
-             ( ITERATE_outer, n_FP_outer, k_outer, &
+             ( ITERATE_outer, ITERATE_inner, n_FP_outer, k_outer, &
                nIterations_Outer, FVECm_outer )
 
       CALL CheckError_FP &
