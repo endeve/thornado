@@ -4669,9 +4669,9 @@ CONTAINS
 
 
   SUBROUTINE CheckConvergence_Outer &
-    ( MASK_OUTER, n_FP, k_outer, nIterations_Outer, Fm )
+    ( MASK_OUTER, MASK_INNER, n_FP, k_outer, nIterations_Outer, Fm )
 
-    LOGICAL,  DIMENSION(:)    , INTENT(inout) :: MASK_OUTER
+    LOGICAL,  DIMENSION(:)    , INTENT(inout) :: MASK_OUTER, MASK_INNER
     INTEGER,                    INTENT(in)    :: n_FP, k_outer
     INTEGER,  DIMENSION(:)    , INTENT(inout) :: nIterations_Outer
     REAL(DP), DIMENSION(:,:)  , INTENT(in)    :: Fm
@@ -4701,6 +4701,8 @@ CONTAINS
         IF( CONVERGED )THEN
           MASK_OUTER(iN_X) = .FALSE.
         END IF
+
+        MASK_INNER(iN_X) = MASK_OUTER(iN_X)
 
       END IF
     END DO
