@@ -214,7 +214,7 @@ elif [[ $THORNADO_MACHINE == summit_nvhpc ]]; then
 
   echo
 
-  module load nvhpc/22.5
+  module load nvhpc/23.9
   module load spectrum-mpi
   module load hdf5
   module load netlib-lapack

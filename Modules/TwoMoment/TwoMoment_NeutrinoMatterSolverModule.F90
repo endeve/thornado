@@ -4875,13 +4875,6 @@ CONTAINS
 
           CALL ComputeSpecificInternalEnergy_TABLE(D(iN_X),     Min_T, Y(iN_X),     Min_E)
           CALL ComputeSpecificInternalEnergy_TABLE(D_old(iN_X), Min_T, Y_old(iN_X), Min_E_0)
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET UPDATE FROM &
-      !$OMP ( Min_E, Min_E_0 )
-#elif defined(THORNADO_OACC)
-      !$ACC UPDATE HOST &
-      !$ACC ( Min_E, Min_E_0 )
-#endif
 
           WRITE(17,'(7es23.15)') D0_P, T0_P, Y0_P, E0_P, V10_P, V20_P, V30_P
           WRITE(17,'(i5)')       nE_G
