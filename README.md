@@ -92,10 +92,16 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
-## Feb 15-16 2014
+## Feb 20 2024
+1. Thornado still fails to compile using nightly-compiler/2024.02.19 due to https://jira.devtools.intel.com/browse/CMPLRLLVM-51851
+2. Thornado compilation failed with libraries-built-oneapi/hdf5/1.12.1-parallel. This is that the module only set HDF5_ROOT Env, but not HDF5_INC and HDF5_LIB. Modified buildRun.all.sh and the code compiled and runs. 
+3. continued work on reframe with Thornado to make the code more general.
+
+
+## Feb 15-16 2024
 1. Added a fix which updates Iterations for the inner and outer loop in Thornado to master branch.
 2. Thornado's 4 cases are now in Reframe with the error check and performance monitor.
-## Feb 14 2014
+## Feb 14 2024
 1. Thornado compilation fails with nightly-compiler/2024.02.13, the failure is recorded in https://jira.devtools.intel.com/browse/CMPLRLLVM-51851. Good news is https://jira.devtools.intel.com/browse/CMPLRLLVM-54357 has been fixed. 
 2. Added Relaxation to reframe, but got errors like:
 <pre>
