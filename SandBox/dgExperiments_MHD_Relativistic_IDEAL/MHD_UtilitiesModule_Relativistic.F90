@@ -824,7 +824,7 @@ CONTAINS
     REAL(DP) :: &
       Vol(iX_B0(1):iX_E0(1), &
           iX_B0(2):iX_E0(2), &
-          iX_B0(1):iX_E0(3) )
+          iX_B0(3):iX_E0(3) )
 
     REAL(DP) :: &
       Ones(nDOFX_X1)
@@ -1126,7 +1126,7 @@ CONTAINS
     REAL(DP) :: &
       Vol(iX_B0(1):iX_E0(1), &
           iX_B0(2):iX_E0(2), &
-          iX_B0(1):iX_E0(3) )
+          iX_B0(3):iX_E0(3) )
 
     REAL(DP) :: &
       Ones(nDOFX_X2)
@@ -1251,9 +1251,6 @@ CONTAINS
         = MAX( G_F    (iNX_X,iX1,iX3,iX2,iGF_h_1   ) &
                  * G_F(iNX_X,iX1,iX3,iX2,iGF_h_2   ) &
                  * G_F(iNX_X,iX1,iX3,iX2,iGF_h_3   ), SqrtTiny )
-
-      G_F             (iNX_X,iX1,iX3,iX2,iGF_Alpha) &
-        = MAX( G_F    (iNX_X,iX1,iX3,iX2,iGF_Alpha), SqrtTiny )
 
     END DO
     END DO
@@ -1401,7 +1398,7 @@ CONTAINS
     REAL(DP) :: &
       Vol(iX_B0(1):iX_E0(1), &
           iX_B0(2):iX_E0(2), &
-          iX_B0(1):iX_E0(3) )
+          iX_B0(3):iX_E0(3) )
 
     ! --- Geometry Fields ---
 
@@ -1889,9 +1886,6 @@ CONTAINS
         = MAX( G_F    (iNX_X,iX1,iX3,iX2,iGF_h_1   ) &
                  * G_F(iNX_X,iX1,iX3,iX2,iGF_h_2   ) &
                  * G_F(iNX_X,iX1,iX3,iX2,iGF_h_3   ), SqrtTiny )
-
-      G_F             (iNX_X,iX1,iX3,iX2,iGF_Alpha) &
-        = MAX( G_F    (iNX_X,iX1,iX3,iX2,iGF_Alpha), SqrtTiny )
 
     END DO
     END DO
