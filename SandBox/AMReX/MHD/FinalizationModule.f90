@@ -23,6 +23,8 @@ MODULE FinalizationModule
     DestroyMesh
   USE EquationOfStateModule,            ONLY: &
     FinalizeEquationOfState
+  USE MHD_SlopeLimiterModule,           ONLY: &
+    FinalizeSlopeLimiter_MHD
 
   ! --- Local Modules ---
 
@@ -48,6 +50,8 @@ CONTAINS
     INTEGER :: iLevel, iDim
 
     CALL MF_FinalizeMagnetofluid_SSPRK
+
+    CALL FinalizeSlopeLimiter_MHD
 
     CALL FinalizeEquationOfState
 

@@ -65,6 +65,8 @@ MODULE InitializationModule
     DescribeFields_Auxiliary,  &
     DescribeFields_Diagnostic, &
     SetUnitsFields
+  USE MHD_SlopeLimiterModule,           ONLY: &
+    InitializeSlopeLimiter_MHD
   USE PolynomialBasisMappingModule,     ONLY: &
     InitializePolynomialBasisMapping
   USE PolynomialBasisModule_Lagrange,   ONLY: &
@@ -89,6 +91,8 @@ MODULE InitializationModule
     MF_ComputeFromConserved
   USE MF_GeometryModule,                ONLY: &
     MF_ComputeGeometryX
+  USE MF_MHD_SlopeLimiterModule, ONLY: &
+    MF_ApplySlopeLimiter_MHD
   USE MF_InitializationModule,          ONLY: &
     MF_InitializeFields
   USE MF_TimeSteppingModule_SSPRK,      ONLY: &
@@ -118,6 +122,12 @@ MODULE InitializationModule
     ProgramName,               &
     CoordSys,                  &
     UsePhysicalUnits,          &
+    UseSlopeLimiter,           &
+    SlopeLimiterMethod,        &
+    SlopeTolerance,            &
+    BetaTVD,                   &
+    BetaTVB,                   &
+    UseConservativeCorrection, &
     Gamma_IDEAL,               &
     EquationOfState,           &
     StepNo,                    &
@@ -306,6 +316,22 @@ CONTAINS
     CALL SetUnitsFields( TRIM( CoordinateSystem ), &
                               Verbose_Option = amrex_parallel_ioprocessor() )
 
+    CALL InitializeSlopeLimiter_MHD &
+           ( BetaTVD_Option &
+               = BetaTVD, &
+             BetaTVB_Option &
+               = BetaTVB, &
+             SlopeTolerance_Option &
+               = SlopeTolerance, &
+             UseSlopeLimiter_Option &
+               = UseSlopeLimiter, &
+             SlopeLimiterMethod_Option &
+               = SlopeLimiterMethod, &
+             UseConservativeCorrection_Option &
+               = UseConservativeCorrection, &
+             Verbose_Option &
+               = amrex_parallel_ioprocessor() )
+
     CALL InitializeEquationOfState &
            ( EquationOfState_Option = EquationOfState, &
              Gamma_IDEAL_Option = Gamma_IDEAL, &
@@ -320,6 +346,8 @@ CONTAINS
       CFL * ( DBLE( amrex_spacedim ) * ( Two * DBLE( nNodes ) - One ) )
 
     IF( iRestart .LT. 0 )THEN
+
+      CALL MF_ApplySlopeLimiter_MHD( MF_uGF, MF_uCM, MF_uDM, GEOM )
 
       CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCM, GEOM )
 

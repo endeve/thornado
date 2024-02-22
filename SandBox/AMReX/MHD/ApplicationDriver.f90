@@ -22,7 +22,8 @@ PROGRAM ApplicationDriver
     WriteNodalDataToFile
   USE MF_MHD_UtilitiesModule,           ONLY: &
     MF_ComputeFromConserved, &
-    MF_ComputeTimeStep
+    MF_ComputeTimeStep, &
+    MF_ComputeMagneticDivergence
   USE MF_MHD_dgDiscretizationModule,    ONLY: &
     MF_ComputeIncrement_MHD
   USE MF_TimeSteppingModule_SSPRK,      ONLY: &
@@ -164,6 +165,8 @@ PROGRAM ApplicationDriver
 
       CALL MF_ComputeFromConserved( MF_uGF, MF_uCM, MF_uPM, MF_uAM )
 
+      CALL MF_ComputeMagneticDivergence( MF_uGF, MF_uCM, MF_uDM )
+
       CALL WriteFieldsAMReX_PlotFile &
              ( t(0), StepNo, &
                MF_uGF_Option = MF_uGF, &
@@ -199,6 +202,8 @@ PROGRAM ApplicationDriver
   StepNo = StepNo + 1
 
   CALL MF_ComputeFromConserved( MF_uGF, MF_uCM, MF_uPM, MF_uAM )
+
+  CALL MF_ComputeMagneticDivergence( MF_uGF, MF_uCM, MF_uDM )
 
   CALL WriteFieldsAMReX_Checkpoint &
          ( StepNo, nLevels, dt, t, &

@@ -70,6 +70,13 @@ MODULE InputParsingModule
   LOGICAL          , SAVE        :: WriteNodalData
   LOGICAL          , SAVE        :: DEBUG
 
+  ! --- Slope limiter ---
+
+  LOGICAL                       :: UseSlopeLimiter
+  CHARACTER(LEN=:), ALLOCATABLE :: SlopeLimiterMethod
+  REAL(DP)                      :: BetaTVD, BetaTVB, SlopeTolerance
+  LOGICAL                       :: UseConservativeCorrection
+
   ! --- Equation Of State ---
 
   REAL(DP)                      :: Gamma_IDEAL
@@ -224,6 +231,20 @@ CONTAINS
     MaxGridSizeX = [ MaxGridSizeX1, MaxGridSizeX2, MaxGridSizeX3 ]
     nLevels = MaxLevel + 1
 
+    ! --- Slope limiter parameters SL.* ---
+    UseSlopeLimiter           = .TRUE.
+    SlopeLimiterMethod        = 'TVD'
+    BetaTVD                   = 1.75_DP
+    BetaTVB                   = Zero
+    SlopeTolerance            = 1.0e-6_DP
+    UseConservativeCorrection = .TRUE.
+    CALL amrex_parmparse_build( PP, 'SL' )
+      CALL PP % query( 'UseSlopeLimiter'          , UseSlopeLimiter           )
+      CALL PP % query( 'SlopeLimiterMethod'       , SlopeLimiterMethod        )
+      CALL PP % query( 'BetaTVD'                  , BetaTVD                   )
+      CALL PP % query( 'BetaTVB'                  , BetaTVB                   )
+      CALL PP % query( 'SlopeTolerance'           , SlopeTolerance            )
+      CALL PP % query( 'UseConservativeCorrection', UseConservativeCorrection )
     CALL amrex_parmparse_destroy( PP )
 
     ! --- Equation of state parameters EoS.* ---

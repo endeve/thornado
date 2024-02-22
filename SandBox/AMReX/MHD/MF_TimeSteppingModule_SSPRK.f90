@@ -39,6 +39,8 @@ MODULE MF_TimeSteppingModule_SSPRK
     DP, &
     Zero, &
     One
+  USE MF_MHD_SlopeLimiterModule,        ONLY: &
+    MF_ApplySlopeLimiter_MHD
   USE InputParsingModule,               ONLY: &
     nLevels, &
     UseTiling, &
@@ -296,6 +298,10 @@ CONTAINS
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
+        IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplySlopeLimiter_MHD (1)'
+
+        CALL MF_ApplySlopeLimiter_MHD( MF_uGF, MF_U, MF_uDM, GEOM )
+
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ComputeIncrement_MHD'
 
         CALL MF_ComputeIncrement_MHD( GEOM, MF_uGF, MF_U, MF_uDM, MF_D(:,iS) )
@@ -317,6 +323,10 @@ CONTAINS
       END DO
 
     END DO
+
+    IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplySlopeLimiter_Euler (2)'
+
+    CALL MF_ApplySlopeLimiter_MHD( MF_uGF, MF_uCM, MF_uDM, GEOM )
 
   END SUBROUTINE MF_UpdateMagnetofluid_SSPRK
 
