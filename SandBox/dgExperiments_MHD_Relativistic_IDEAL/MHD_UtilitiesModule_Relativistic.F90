@@ -989,8 +989,9 @@ CONTAINS
 
       END DO
 
-      Div(iNX,1,iX2,iX3,iX1) = Half * (uCM_L_nCM(iCM_B1) + uCM_R_nCM(iCM_B1)) * SqrtGm_F(iNX_X) &
-                             * dX2(iX2) * dX3(iX3) * WeightsX_X1(iNX)
+      Div(iNX,1,iX2,iX3,iX1) = Half * (uCM_L_nCM(iCM_B1) + uCM_R_nCM(iCM_B1)) &
+                               * SqrtGm_F(iNX_X) * dX2(iX2) * dX3(iX3) &
+                               * WeightsX_X1(iNX)
 
     END DO ! iNX_X
 
@@ -1019,8 +1020,9 @@ CONTAINS
     DO iX1 = iX_B0(1),     iX_E0(1)
     DO iNX = 1       ,     nDOFX
 
-      Vol(iX1,iX2,iX3) = Vol(iX1,iX2,iX3) + WeightsX_q(iNX) * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                         * dX1(iX1) * dX2(iX2) * dX3(iX3)
+      Vol(iX1,iX2,iX3) = Vol(iX1,iX2,iX3) + WeightsX_q(iNX) &
+                                            * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                                            * dX1(iX1) * dX2(iX2) * dX3(iX3)
 
     END DO
     END DO
@@ -1291,8 +1293,9 @@ CONTAINS
 
       END DO
 
-      Div(iNX,1,iX1,iX3,iX2) = Half * (uCM_L_nCM(iCM_B2) + uCM_R_nCM(iCM_B2)) * SqrtGm_F(iNX_X) &
-                             * dX1(iX1) * dX3(iX3) * WeightsX_X2(iNX)
+      Div(iNX,1,iX1,iX3,iX2) = Half * (uCM_L_nCM(iCM_B2) + uCM_R_nCM(iCM_B2)) &
+                               * SqrtGm_F(iNX_X) * dX1(iX1) * dX3(iX3) &
+                               * WeightsX_X2(iNX)
 
     END DO ! iNX_X
 
@@ -1321,8 +1324,9 @@ CONTAINS
     DO iX1 = iX_B0(1),     iX_E0(1)
     DO iNX = 1       ,     nDOFX
 
-      Vol(iX1,iX2,iX3) = Vol(iX1,iX2,iX3) + WeightsX_q(iNX) * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                         * dX1(iX1) * dX2(iX2) * dX3(iX3)
+      Vol(iX1,iX2,iX3) = Vol(iX1,iX2,iX3) + WeightsX_q(iNX) &
+                                            * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                                            * dX1(iX1) * dX2(iX2) * dX3(iX3)
 
     END DO
     END DO
@@ -1605,8 +1609,9 @@ CONTAINS
 
       END DO
 
-      Div(iNX,iX2,iX3,iX1) = Half * (uCM_L_nCM(iCM_B1) + uCM_R_nCM(iCM_B1)) * SqrtGm_F(iNX_X) &
-                             * dX2(iX2) * dX3(iX3) * WeightsX_X1(iNX)
+      Div(iNX,iX2,iX3,iX1) = Half * (uCM_L_nCM(iCM_B1) + uCM_R_nCM(iCM_B1)) &
+                             * SqrtGm_F(iNX_X) * dX2(iX2) * dX3(iX3) &
+                             * WeightsX_X1(iNX)
 
     END DO ! iNX_X
 
@@ -1655,8 +1660,9 @@ CONTAINS
     DO iX1 = iX_B0(1),     iX_E0(1)
     DO iNX = 1       ,     nDOFX
 
-      Vol(iX1,iX2,iX3) = Vol(iX1,iX2,iX3) + WeightsX_q(iNX) * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                         * dX1(iX1) * dX2(iX2) * dX3(iX3)
+      Vol(iX1,iX2,iX3) = Vol(iX1,iX2,iX3) + WeightsX_q(iNX) &
+                                            * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                                            * dX1(iX1) * dX2(iX2) * dX3(iX3)
 
     END DO
     END DO
@@ -1926,8 +1932,9 @@ CONTAINS
 
       END DO
 
-      Div(iNX,iX1,iX3,iX2) = Half * (uCM_L_nCM(iCM_B2) + uCM_R_nCM(iCM_B2)) * SqrtGm_F(iNX_X) &
-                             * dX1(iX1) * dX3(iX3) * WeightsX_X2(iNX)
+      Div(iNX,iX1,iX3,iX2) = Half * (uCM_L_nCM(iCM_B2) + uCM_R_nCM(iCM_B2)) &
+                             * SqrtGm_F(iNX_X) * dX1(iX1) * dX3(iX3) &
+                             * WeightsX_X2(iNX)
 
     END DO ! iNX_X
 
@@ -1976,8 +1983,9 @@ CONTAINS
     DO iX1 = iX_B0(1),     iX_E0(1)
     DO iNX = 1       ,     nDOFX
 
-      Vol(iX1,iX2,iX3) = Vol(iX1,iX2,iX3) + WeightsX_q(iNX) * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                         * dX1(iX1) * dX2(iX2) * dX3(iX3)
+      Vol(iX1,iX2,iX3) = Vol(iX1,iX2,iX3) + WeightsX_q(iNX) &
+                                            * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                                            * dX1(iX1) * dX2(iX2) * dX3(iX3)
 
     END DO
     END DO
