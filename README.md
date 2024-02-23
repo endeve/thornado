@@ -92,7 +92,7 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
-## Feb 21-22 2024
+## Feb 21-23 2024
 1. Made reframe with Thornado runs both locally and remotely. Need more tests to verify this. 
 2. Added hostname info to the code so the node on which the tests are running can be see on the screen output. 
 3. Tested performance regression due to not set num_teams and not move paralll do around, corresponding to https://jira.devtools.intel.com/browse/CMPLRLLVM-49108 and  https://jira.devtools.intel.com/browse/CMPLRLLVM-49464, respectively. Here is the performance data
@@ -105,12 +105,12 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 Software stack is oneapi/eng-compiler/2023.10.15.002 and intel_compute_runtime/release/agama-devel-682.20
 Time is in seconds and the average of three runs. 
 
+4. enhanced nodelist output by incorporating $SLURM_JOB_NODELIST
 
 ## Feb 20 2024
 1. Thornado still fails to compile using nightly-compiler/2024.02.19 due to https://jira.devtools.intel.com/browse/CMPLRLLVM-51851
 2. Thornado compilation failed with libraries-built-oneapi/hdf5/1.12.1-parallel. This is that the module only set HDF5_ROOT Env, but not HDF5_INC and HDF5_LIB. Modified buildRun.all.sh and the code compiled and runs. 
 3. continued work on reframe with Thornado to make the code more general.
-
 
 ## Feb 15-16 2024
 1. Added a fix which updates Iterations for the inner and outer loop in Thornado to master branch.
