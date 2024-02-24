@@ -142,6 +142,10 @@ CONTAINS
 
         CALL InitializeFields_Advection( MF_uGF, MF_uCM )
 
+      CASE( 'Cleaning2D' )
+
+        CALL InitializeFields_Cleaning2D( MF_uGF, MF_uCM )
+
       CASE( 'OrszagTang2D' )
 
         CALL InitializeFields_OrszagTang2D( MF_uGF, MF_uCM )
@@ -153,6 +157,7 @@ CONTAINS
           WRITE(*,'(4x,A,A)') 'Unknown Program: ', TRIM( ProgramName )
           WRITE(*,'(4x,A)')   'Valid Options:'
           WRITE(*,'(6x,A)')     'Advection'
+          WRITE(*,'(6x,A)')     'Cleaning2D'
           WRITE(*,'(6x,A)')     'OrszagTang2D'
           WRITE(*,'(6x,A)')     'MagnetizedKH_3D'
         END IF
@@ -793,6 +798,198 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_OrszagTang2D
+
+
+  SUBROUTINE InitializeFields_Cleaning2D( MF_uGF, MF_uCM )
+
+    ! 2D divergence cleaning test from Section 5.2 of
+    ! Derigs et al. (2018) with option to use
+    ! constant density.
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCM(0:nLevels-1)
+
+    ! --- thornado ---
+
+    INTEGER        :: iDim
+    INTEGER        :: iX1, iX2, iX3
+    INTEGER        :: iNX, iNX1, iNX2, iNX3
+    REAL(DP)       :: X1, X2, X3
+    REAL(DP)       :: uGF_K(nDOFX,nGF)
+    REAL(DP)       :: uCM_K(nDOFX,nCM)
+    REAL(DP)       :: uPM_K(nDOFX,nPM)
+    REAL(DP)       :: uAM_K(nDOFX,nAM)
+    TYPE(MeshType) :: MeshX(3)
+
+    ! --- AMReX ---
+
+    INTEGER                       :: iLevel
+    INTEGER                       :: lo_G(4), hi_G(4)
+    INTEGER                       :: lo_F(4), hi_F(4)
+    TYPE(amrex_box)               :: BX
+    TYPE(amrex_mfiter)            :: MFI
+    TYPE(amrex_parmparse)         :: PP
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCM(:,:,:,:)
+
+    ! --- Problem-dependent Parameters ---
+
+    LOGICAL  :: ConstantDensity
+    REAL(DP) :: CB1, CB2, CB3, D, V1, V2, V3, VSq, W, VdotB
+    REAL(DP) :: R, R0
+
+    R0 = One / SQRT( 8.0_DP )
+
+    ConstantDensity = .TRUE.
+    CALL amrex_parmparse_build( PP, 'thornado' )
+      CALL PP % query( 'ConstantDensity', ConstantDensity )
+    CALL amrex_parmparse_destroy( PP )
+
+    uGF_K = Zero
+    uCM_K = Zero
+    uPM_K = Zero
+    uAM_K = Zero
+
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
+               xL(iDim), xR(iDim) )
+
+    END DO
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCM => MF_uCM(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
+
+        lo_F = LBOUND( uCM )
+        hi_F = UBOUND( uCM )
+
+        DO iX3 = BX % lo(3), BX % hi(3)
+        DO iX2 = BX % lo(2), BX % hi(2)
+        DO iX1 = BX % lo(1), BX % hi(1)
+
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+          DO iNX = 1, nDOFX
+
+            iNX1 = NodeNumberTableX(1,iNX)
+            iNX2 = NodeNumberTableX(2,iNX)
+            iNX3 = NodeNumberTableX(3,iNX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
+            X3 = NodeCoordinate( MeshX(3), iX3, iNX3 )
+
+            R = SQRT( X1**2 + X2**2 )
+
+            IF( ConstantDensity )THEN
+
+              D = One
+
+            ELSE
+
+              IF( X1 .LE. 0.5_DP )THEN
+                D = One
+              ELSE
+                D = Two
+              END IF
+
+            END IF
+
+            V1 = Zero
+            V2 = Zero
+            V3 = Zero
+
+            IF( R .LE. R0 )THEN
+
+              CB1 = ( One / SQRT( FourPi ) ) &
+                    * ( ( R / R0 )**8 - Two * ( R / R0 )**4 + One )
+
+            ELSE
+
+              CB1 = Zero
+
+            END IF
+
+            CB2 = Zero
+            CB3 = One / SQRT( FourPi )
+
+            uPM_K(iNX,iPM_D )  = D
+            uPM_K(iNX,iPM_V1)  = V1
+            uPM_K(iNX,iPM_V2)  = V2
+            uPM_K(iNX,iPM_V3)  = V3
+            uPM_K(iNX,iPM_E )  = 6.0_DP / ( Gamma_IDEAL - One )
+            uPM_K(iNX,iPM_Chi) = Zero
+
+            VSq = V1**2 + V2**2 + V3**2
+
+            VdotB = V1 * CB1 &
+                    + V2 * CB2 &
+                    + V3 * CB3
+
+            W = One / SQRT( One - VSq )
+
+            uPM_K(iNX,iPM_B1) = W * VdotB * V1 + CB1 / W
+            uPM_K(iNX,iPM_B2) = W * VdotB * V2 + CB2 / W
+            uPM_K(iNX,iPM_B3) = W * VdotB * V3 + CB3 / W
+
+          END DO
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPM_K(:,iPM_D), uPM_K(:,iPM_E), uPM_K(:,iPM_Ne), &
+                   uAM_K(:,iAM_P) )
+
+          CALL ComputeConserved_MHD &
+                 ( uPM_K(:,iPM_D ), uPM_K(:,iPM_V1), uPM_K(:,iPM_V2), &
+                   uPM_K(:,iPM_V3), uPM_K(:,iPM_E ), uPM_K(:,iPM_Ne), &
+                   uPM_K(:,iPM_B1), uPM_K(:,iPM_B2), uPM_K(:,iPM_B3), &
+                   uPM_K(:,iPM_Chi), &
+                   uCM_K(:,iCM_D  ), uCM_K(:,iCM_S1), uCM_K(:,iCM_S2), &
+                   uCM_K(:,iCM_S3 ), uCM_K(:,iCM_E ), uCM_K(:,iCM_Ne), &
+                   uCM_K(:,iCM_B1 ), uCM_K(:,iCM_B2), uCM_K(:,iCM_B3), &
+                   uCM_K(:,iCM_Chi), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uGF_K(:,iGF_Alpha   ), &
+                   uGF_K(:,iGF_Beta_1  ), &
+                   uGF_K(:,iGF_Beta_2  ), &
+                   uGF_K(:,iGF_Beta_3  ), &
+                   uAM_K(:,iAM_P), &
+                   EvolveOnlyMagnetic )
+
+          uCM(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCM_K, [ hi_F(4) - lo_F(4) + 1 ] )
+
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+    DO iDim = 1, 3
+
+      CALL DestroyMesh( MeshX(iDim) )
+
+    END DO
+
+  END SUBROUTINE InitializeFields_Cleaning2D
 
 
 END MODULE MF_InitializationModule_Relativistic_IDEAL
