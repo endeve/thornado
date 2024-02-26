@@ -141,7 +141,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
 
   ! --- Solver scratch arrays ---
 
-  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE :: DnuNorm
+  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE :: DnuNorm, Fnorm0
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: C_Dnu, Dnu_old
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: C_Inu_d_1, Inu_u_1_old
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: C_Inu_d_2, Inu_u_2_old
@@ -210,6 +210,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   INTEGER  :: M_FP
   REAL(DP) :: Rtol_outer
   REAL(DP) :: Rtol_inner
+  REAL(DP) :: Atol_inner
   REAL(DP) :: wMatrRHS(nMatterEquations)
   REAL(DP) :: DnuMax
   LOGICAL  :: FreezeOpacities
@@ -294,6 +295,7 @@ CONTAINS
     FourPiEp2 = FourPi * E_N * E_N
 
     ALLOCATE( DnuNorm(nSpecies,nX_G) )
+    ALLOCATE( Fnorm0 (nSpecies,nX_G) )
 
     ALLOCATE( C_Dnu    (nE_G,nSpecies,nX_G) )
     ALLOCATE( C_Inu_d_1(nE_G,nSpecies,nX_G) )
@@ -451,6 +453,7 @@ CONTAINS
     !$OMP MAP( to: E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, wMatrRHS ) &
     !$OMP MAP( alloc: INFO, &
     !$OMP             DnuNorm, &
+    !$OMP             Fnorm0, &
     !$OMP             C_Dnu, &
     !$OMP             C_Inu_d_1, &
     !$OMP             C_Inu_d_2, &
@@ -502,6 +505,7 @@ CONTAINS
     !$ACC COPYIN( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, wMatrRHS ) &
     !$ACC CREATE( INFO, &
     !$ACC         DnuNorm, &
+    !$ACC         Fnorm0, &
     !$ACC         C_Dnu, &
     !$ACC         C_Inu_d_1, &
     !$ACC         C_Inu_d_2, &
@@ -766,17 +770,18 @@ CONTAINS
 
   SUBROUTINE InitializeNeutrinoMatterSolverParameters &
     ( M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
-      MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
-      Include_NES_Option, Include_Pair_Option, Include_Brem_Option, &
-      Include_LinCorr_Option, wMatrRHS_Option, DnuMax_Option, &
-      FreezeOpacities_Option, Verbose_Option )
+      MaxIter_inner_Option, Rtol_outer_Option, Rtol_inner_Option, &
+      Atol_inner_Option, Include_NES_Option, Include_Pair_Option, &
+      Include_Brem_Option, Include_LinCorr_Option, wMatrRHS_Option, &
+      DnuMax_Option, FreezeOpacities_Option, Verbose_Option )
 
     INTEGER , INTENT(in), OPTIONAL :: M_outer_Option
     INTEGER , INTENT(in), OPTIONAL :: M_inner_Option
     INTEGER , INTENT(in), OPTIONAL :: MaxIter_outer_Option
     INTEGER , INTENT(in), OPTIONAL :: MaxIter_inner_Option
-    REAL(DP), INTENT(in), OPTIONAL :: Rtol_inner_Option
     REAL(DP), INTENT(in), OPTIONAL :: Rtol_outer_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Rtol_inner_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Atol_inner_option
     LOGICAL , INTENT(in), OPTIONAL :: Include_NES_Option
     LOGICAL , INTENT(in), OPTIONAL :: Include_Pair_Option
     LOGICAL , INTENT(in), OPTIONAL :: Include_Brem_Option
@@ -814,16 +819,22 @@ CONTAINS
       MaxIter_inner = 100
     END IF
 
+    IF( PRESENT( Rtol_outer_Option ) )THEN
+      Rtol_outer = Rtol_outer_Option
+    ELSE
+      Rtol_outer = 1.0d-08
+    END IF
+
     IF( PRESENT( Rtol_inner_Option ) )THEN
       Rtol_inner = Rtol_inner_Option
     ELSE
       Rtol_inner = 1.0d-08
     END IF
 
-    IF( PRESENT( Rtol_outer_Option ) )THEN
-      Rtol_outer = Rtol_outer_Option
+    IF( PRESENT( Atol_inner_Option ) )THEN
+      Atol_inner = Atol_inner_Option
     ELSE
-      Rtol_outer = 1.0d-08
+      Atol_inner = 1.0d-02 * Rtol_inner
     END IF
 
     IF( PRESENT( Include_NES_Option ) )THEN
@@ -887,6 +898,7 @@ CONTAINS
       WRITE(*,'(A4,A32,I6.6)')     '', 'M_inner: '        , M_inner
       WRITE(*,'(A4,A32,I6.6)')     '', 'MaxIter_inner: '  , MaxIter_inner
       WRITE(*,'(A4,A32,ES10.3E3)') '', 'Rtol_inner: '     , Rtol_inner
+      WRITE(*,'(A4,A32,ES10.3E3)') '', 'Atol_inner: '     , Atol_inner
       WRITE(*,*)
       WRITE(*,'(A4,A32,L1)')       '', 'Include_NES: '    , Include_NES
       WRITE(*,'(A4,A32,L1)')       '', 'Include_Pair: '   , Include_Pair
@@ -919,6 +931,7 @@ CONTAINS
     !$OMP MAP( release: E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, wMatrRHS, &
     !$OMP               INFO, &
     !$OMP               DnuNorm, &
+    !$OMP               Fnorm0, &
     !$OMP               C_Dnu, &
     !$OMP               C_Inu_d_1, &
     !$OMP               C_Inu_d_2, &
@@ -970,6 +983,7 @@ CONTAINS
     !$ACC DELETE( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, wMatrRHS, &
     !$ACC         INFO, &
     !$ACC         DnuNorm, &
+    !$ACC         Fnorm0, &
     !$ACC         C_Dnu, &
     !$ACC         C_Inu_d_1, &
     !$ACC         C_Inu_d_2, &
@@ -1021,6 +1035,7 @@ CONTAINS
     DEALLOCATE( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2 )
     DEALLOCATE( INFO )
     DEALLOCATE( DnuNorm )
+    DEALLOCATE( Fnorm0 )
     DEALLOCATE( C_Dnu )
     DEALLOCATE( C_Inu_d_1 )
     DEALLOCATE( C_Inu_d_2 )
@@ -4462,12 +4477,20 @@ CONTAINS
 
           Fnorm = SQRT( MAX( Fnorm_N, Fnorm_G1, Fnorm_G2, Fnorm_G3 ) )
 
-          CONVERGED = CONVERGED .AND. ( Fnorm <= Rtol_inner * DnuNorm(iS,iN_X) )
+          IF( k_inner == 1 )THEN
+
+            Fnorm0(iS,iN_X) = Fnorm
+
+          END IF
+
+          CONVERGED = CONVERGED .AND. &
+                      ( ( Fnorm <= Rtol_inner * DnuNorm(iS,iN_X) ) .OR. &
+                        ( Fnorm <= Atol_inner * Fnorm0 (iS,iN_X) ) )
 
         END DO
 
-        nIterations_Inner(iN_X) &
-          = nIterations_Inner(iN_X) + 1
+        nIterations_Inner(iN_X) = nIterations_Inner(iN_X) + 1
+
         IF( CONVERGED )THEN
           MASK(iN_X) = .FALSE.
         END IF
