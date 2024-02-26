@@ -92,6 +92,9 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Feb 26 2024
+1. The JIRA https://jira.devtools.intel.com/browse/GSD-8244 was not fixed, but given a flag setting as a workaround: `IGC_ForcePerThreadPrivateMemorySize= 14478`, and  `ulimit -s unlimited`
+2. Thornado compilation still fails due to https://jira.devtools.intel.com/browse/CMPLRLLVM-51851
 ## Feb 21-23 2024
 1. Made reframe with Thornado runs both locally and remotely. Need more tests to verify this. 
 2. Added hostname info to the code so the node on which the tests are running can be see on the screen output. 
