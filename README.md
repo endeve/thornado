@@ -92,6 +92,65 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Feb 27 2024
+1. Thornado and FlashX with Thornado run failed with the following error: 
+<pre>
+Target LEVEL_ZERO RTL --> Error: findDevices:zeInit failed with error code 2013265921, ZE_RESULT_ERROR_UNINITIALIZED
+Libomptarget --> No devices supported in this RTL
+Libomptarget --> RTLs loaded!
+Libomptarget --> No RTL found for image 0x0000000000fb8f80!
+Libomptarget --> Done registering entries!
+and then
+Libomptarget --> Entering data update region for device 0 with 13 mappings
+Libomptarget --> Call to omp_get_num_devices returning 0
+Libomptarget --> omp_get_num_devices() == 0 but offload is manadatory
+Libomptarget error: No images found compatible with the installed hardware. Found (empty)
+ProgramHeaderModule.F90:262:262: Libomptarget fatal error 1: failure of target construct while offloading is mandatory
+forrtl: error (76): Abort trap signal
+</pre>
+Discussed with Brian, and he suggested to do a sycl-ls, but it shows no GPU detected
+<pre>
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/Flash-X> sycl-ls
+Warning: ONEAPI_DEVICE_SELECTOR environment variable is set to level_zero:gpu.
+To see device ids, please unset ONEAPI_DEVICE_SELECTOR.
+</pre>
+However, 'sudo /sbin/lspci |grep -i Display' shows obd6(rev 2f). So it seems to be a software repavement issue. 
+
+2. FlashX with Thornado run hangs and ctrl+c shows:
+<pre>
+ *** Wrote plotfile to streamingsinewave_hdf5_plt_cnt_0000 ****
+ Initial plotfile written
+ Driver init all done
+^Cforrtl: error (69): process interrupted (SIGINT)
+Image              PC                Routine            Line        Source
+libpthread-2.31.s  000014C1C795F8C0  Unknown               Unknown  Unknown
+libze_intel_gpu.s  000014C1C15CC059  Unknown               Unknown  Unknown
+libze_intel_gpu.s  000014C1C15C8F59  Unknown               Unknown  Unknown
+libomptarget.rtl.  000014C1C2AC6C1C  __tgt_rtl_synchro     Unknown  Unknown
+libomptarget.so    000014C1C7E4E10C  Unknown               Unknown  Unknown
+libomptarget.so    000014C1C7E47E04  __tgt_target_kern     Unknown  Unknown
+libomptarget.so    000014C1C7E6B646  __tgt_target_team     Unknown  Unknown
+flashx             0000000000AD1BE3  computeincrement_        2530  TwoMoment_DiscretizationModule_Streaming.F90
+flashx             0000000000AA22CF  computeincrement_         310  TwoMoment_DiscretizationModule_Streaming.F90
+flashx             000000000097044E  update_imex_pdars         299  TimeSteppingModule_Flash.F90
+flashx             00000000004FC0BE  radtrans                  298  RadTrans_OMP_OL.F90
+flashx             000000000051B2B8  timeadvance                54  TimeAdvance.F90
+flashx             000000000041D32F  driver_evolveall          174  Driver_evolveAll.F90
+flashx             00000000006E3D73  flashx                     54  main.F90
+flashx             0000000000410DBD  Unknown               Unknown  Unknown
+libc-2.31.so       000014C1C75892BD  __libc_start_main     Unknown  Unknown
+flashx             0000000000410CEA  Unknown               Unknown  Unknown
+</pre>
+
+3. with export LIBOMPTARGET_LEVEL_ZERO_USE_IMMEDIATE_COMMAND_LIST=0, the run hangs earlier:
+<pre>
+flashx             00000000008CF59F  computegeometryx_         153  GeometryComputationModule.F90
+flashx             00000000008CE85F  computegeometryx           99  GeometryComputationModule.F90
+flashx             000000000096B3B1  initthornado_patc         575  ThornadoInitializationModule.F90
+flashx             0000000000511810  simulation_initbl         114  Simulation_initBlock.F90
+</pre>
+
+4. Aurora uses oneapi/eng-compiler/2022.12.30.003 and intel_compute_runtime/release/agama-devel-551
 ## Feb 26 2024
 1. The JIRA https://jira.devtools.intel.com/browse/GSD-8244 was not fixed, but given a flag setting as a workaround: `IGC_ForcePerThreadPrivateMemorySize= 14478`, and  `ulimit -s unlimited`
 2. Thornado compilation still fails due to https://jira.devtools.intel.com/browse/CMPLRLLVM-51851
