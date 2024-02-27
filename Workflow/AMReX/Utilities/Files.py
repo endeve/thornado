@@ -45,7 +45,7 @@ def GetFileNumberArray \
         sFile = fileArray[iFile]
 
         if ( sFile[0:N] == PlotBaseName and sFile[N+1].isdigit() ) :
-            fileList.append( np.int64( sFile[N:N+9] ) )
+            fileList.append( np.int64( sFile[N:N+8] ) )
         elif ( sFile[-3:] == '.h5' ) :
             fileList.append( int(sFile[-9:-3]) )
 
