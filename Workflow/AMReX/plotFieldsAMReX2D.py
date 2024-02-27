@@ -3,118 +3,89 @@
 import numpy as np
 import yt
 
-import GlobalVariables.Settings as gvS
-
 from Utilities.Files import GetFileNumberArray
 
 ### Beginning of user input ###
 
 # Specify name of problem
+ProblemName = 'RiemannProblem2D_dZB2002'
 
-ProblemName = 'YahilCollapse_XCFC'
-PlotTitle = ProblemName
-suffix = 'png'
-figName = 'fig.{:}.{:}'.format( PlotTitle, suffix )
-coordinateSystem = 'spherical'
-
-gvS.PlotDirectory = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/YahilCollapse_XCFC/'
-#gvS.PlotDirectory = '/home/kkadoogan/Work/Codes/thornado/SandBox/AMReX/Applications/YahilCollapse_XCFC/'
+# Specify directory containing amrex Plotfiles
+#PlotDirectory = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/YahilCollapse_XCFC/'
+PlotDirectory = '/home/kkadoogan/Work/Codes/thornado/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL/'
 
 # Specify plot file base name
 PlotBaseName = ProblemName + '.plt'
 
 FileNumberArray \
   = GetFileNumberArray \
-      ( gvS.PlotDirectory, \
+      ( PlotDirectory, \
         PlotBaseName, \
         -1, -1, \
         1 )
 
-ds = yt.load( gvS.PlotDirectory \
-                + PlotBaseName + str( FileNumberArray[-1] ).zfill( 8 ) )
+# For a single file, replace `FileNumberArray[-1]` with cycle number,
+# e.g., plt00001310 --> str( 1310 )
+ds = yt.load( PlotDirectory + PlotBaseName + FileNumberArray[-1].zfill( 8 ) )
 
-# Units for axes (dimensionless -> code_length)
-LengthUnitX = [ 'code_length', 'code_length' ]
+# Get lower and higher boundaries and convert them to numpy arrays
+xL = ds.domain_left_edge.to_ndarray()
+xH = ds.domain_right_edge.to_ndarray()
 
-# Set xlabel and ylabel
-xLabel = r'$r$'
-yLabel = r'$z$'
-
-# Zoom in?
-Zoom = 1.0
+'''
+Get list of plotting options here:
+https://yt-project.org/doc/reference/api/yt.visualization.plot_container.html
+'''
 
 # Specify field to plot
-Field = 'PF_D'
-
-# Label for colorbar (z-axis)
-zLabel = r'$\rho\,\left[\mathrm{g\,cm}^{3}\right]$'
+Field = 'AF_P'
 
 # Colormap for plot
-cmap = 'viridis'
+cmap = 'Purples'
 
-# Use custom limits for colorbar
-UseCustomZmin = False ; zmin = 0.01
-UseCustomZmax = False ; zmax = 5.0e1
+# Label for colorbar
+cLabel = r'$p$'
 
-# Use log scale for z-axis
-UseLogScaleZ = True
+# Use custom limits for x-axis
+UseCustomZmin = True ; zmin = 0.01
+UseCustomZmax = True ; zmax = 5.0e1
 
-# Include minor tickmarks (x,Y)
-ShowMinorTicksXY = True
+UseLogScale_Z = True
 
-# Include minor tickmarks (Z)
-ShowMinorTicksZ = True
-
-# Show mesh
-ShowMesh = False
-MeshAlpha = 0.5
-
-# Overplot contours
-OverplotContours = False
-nLevels = 5
+# Set xlabel and ylabel
+xLabel = r'$x$'
+yLabel = r'$y$'
 
 ### End of user input ###
 
 bl = 'boxlib'
 blField = (bl,Field)
 
-if ( coordinateSystem == 'spherical' ) :
-    axis = 'phi'
-else:
-    axis = 'z'
-
-slc \
-  = yt.SlicePlot \
-      ( ds, axis, blField, \
-        origin = 'native' )
-
-slc.set_axes_unit( LengthUnitX )
-
-if ( ShowMesh and coordinateSystem != 'spherical' ) :
-    slc.annotate_cell_edges \
-      ( line_width = 1.0e-12, alpha = MeshAlpha, color = 'black' )
+slc = yt.SlicePlot( ds, 'z', blField, origin = 'native' )
 
 slc.set_cmap( blField, cmap )
 
-slc.set_colorbar_label( Field, zLabel )
+slc.set_colorbar_label( Field, cLabel )
 
 if ( not UseCustomZmin ) : zmin = 'min'
 if ( not UseCustomZmax ) : zmax = 'max'
 
 slc.set_zlim( Field, zmin = zmin, zmax = zmax )
 
-if ( OverplotContours ) :
-    slc.annotate_contour \
-      ( blField, levels = nLevels, clim = (zmin,zmax) )
+#slc.annotate_contour( blField, levels = 5, clim = (zmin,zmax) )
 
-slc.set_log( Field, log = UseLogScaleZ )
+if ( UseLogScale_Z ) : slc.set_log( Field, log = UseLogScale_Z )
 
-slc.set_minorticks         ( Field, ShowMinorTicksXY )
-slc.set_colorbar_minorticks( Field, ShowMinorTicksZ  )
+slc.set_minorticks         ( Field, True )
+slc.set_colorbar_minorticks( Field, True )
 
 slc.set_xlabel( xLabel )
 slc.set_ylabel( yLabel )
 
-slc.zoom( Zoom )
+#slc._setup_plots()
+#plt = slc.plots[bl,Field]
+#ax = plt.axes
+#ax.set_xlim( xL[0], xH[0] )
+#ax.set_ylim( xL[1], xH[1] )
 
-slc.save( figName, suffix = suffix, mpl_kwargs = {'bbox_inches':'tight'} )
+slc.save()
