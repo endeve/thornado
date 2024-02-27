@@ -147,10 +147,12 @@ def convert( s ):
 #   ChoosePlotFile                            #
 #                                             #
 #=============================================#
-def ChoosePlotFile( FileNumberArray,                \
+def ChoosePlotFile( FileNumberArray,            \
                     PlotBaseName = 'plt',       \
-                    argv = [ 'a' ],                 \
+                    argv = [ 'a' ],             \
+                    DataType = "AMReX",         \
                     Verbose = False ):
+
 
     if len( argv ) == 1:
 
@@ -163,9 +165,11 @@ def ChoosePlotFile( FileNumberArray,                \
             File = argv[1]
 
         else:
-
-            File = PlotBaseName + '{:}'.format( argv[1].zfill(8) )
-
+            if DataType.lower() == 'amrex':
+                File = PlotBaseName + '{:}'.format( argv[1].zfill(8) )
+            else:
+                File = PlotBaseName[:-4]+'_{:}'.format( argv[1].zfill(6) )
+                
     else:
 
         n = len( argv )
