@@ -822,7 +822,7 @@ CONTAINS
       jNX = NodeNumberX( iNX1, jNX2, iNX3 )
 
       uGF(iX1,iX_B0(2)-1,iX3,nDOFX*(iGF-1)+iNX) &
-        = uGF(iX1,iX_B0(2),iX3,nDOFX*(iGF-1)+jNX)
+        = uGF(iX1,iX_B0(1),iX3,nDOFX*(iGF-1)+jNX)
 
       IF( iGF .EQ. iGF_Beta_2 ) &
         uGF(iX1,iX_B0(2)-1,iX3,nDOFX*(iGF-1)+iNX) &
