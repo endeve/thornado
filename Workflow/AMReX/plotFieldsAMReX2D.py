@@ -24,7 +24,7 @@ FileNumberArray \
         -1, -1, \
         1 )
 
-# For a single file, replace `FileNumberArray[-1]` with cycle number,
+# For a single file, replace `FileNumberArray[-1]` with cycle number;
 # e.g., plt00001310 --> str( 1310 )
 ds = yt.load( PlotDirectory + PlotBaseName + FileNumberArray[-1].zfill( 8 ) )
 
@@ -32,52 +32,84 @@ ds = yt.load( PlotDirectory + PlotBaseName + FileNumberArray[-1].zfill( 8 ) )
 xL = ds.domain_left_edge.to_ndarray()
 xH = ds.domain_right_edge.to_ndarray()
 
-'''
-Get list of plotting options here:
-https://yt-project.org/doc/reference/api/yt.visualization.plot_container.html
-'''
-
-# Specify field to plot
-Field = 'AF_P'
-
-# Colormap for plot
-cmap = 'Purples'
-
-# Label for colorbar
-cLabel = r'$p$'
-
-# Use custom limits for x-axis
-UseCustomZmin = True ; zmin = 0.01
-UseCustomZmax = True ; zmax = 5.0e1
-
-UseLogScale_Z = True
+# Units for axes (dimensionless -> code_length)
+LengthUnitX = [ 'code_length', 'code_length' ]
 
 # Set xlabel and ylabel
 xLabel = r'$x$'
 yLabel = r'$y$'
+
+# Set center and width of plot window
+center = 0.5 * ( xL + xH )
+width  = xH - xL
+
+# Zoom in?
+Zoom = 1.0
+
+# Specify field to plot
+Field = 'PF_D'
+
+# Colormap for plot
+cmap = 'viridis'
+
+# Label for colorbar (z-axis)
+zLabel = r'$\rho$'
+
+# Use custom limits for colorbar
+UseCustomZmin = False ; zmin = 0.01
+UseCustomZmax = False ; zmax = 5.0e1
+
+# Use log scale for z-axis
+UseLogScaleZ = False
+
+# Include minor tickmarks (x,Y)
+ShowMinorTicksXY = True
+
+# Include minor tickmarks (Z)
+ShowMinorTicksZ = True
+
+# Show mesh
+ShowMesh = False
+
+# Overplot contours
+OverplotContours = False
+nLevels = 5
 
 ### End of user input ###
 
 bl = 'boxlib'
 blField = (bl,Field)
 
-slc = yt.SlicePlot( ds, 'z', blField, origin = 'native' )
+slc \
+  = yt.SlicePlot \
+      ( ds, 'z', blField, \
+        origin = 'native', \
+        center = center, \
+        width = width )
+
+slc.set_axes_unit( LengthUnitX )
+
+#slc.annotate_grids()
+if ( ShowMesh ) : slc.annotate_cell_edges \
+                    ( line_width = 1.0e-12, alpha = 1.0, color = 'black' )
 
 slc.set_cmap( blField, cmap )
 
-slc.set_colorbar_label( Field, cLabel )
+slc.set_colorbar_label( Field, zLabel )
 
 if ( not UseCustomZmin ) : zmin = 'min'
 if ( not UseCustomZmax ) : zmax = 'max'
 
 slc.set_zlim( Field, zmin = zmin, zmax = zmax )
 
-#slc.annotate_contour( blField, levels = 5, clim = (zmin,zmax) )
+if ( OverplotContours ) :
+    slc.annotate_contour \
+      ( blField, levels = nLevels, clim = (zmin,zmax) )
 
-if ( UseLogScale_Z ) : slc.set_log( Field, log = UseLogScale_Z )
+slc.set_log( Field, log = UseLogScaleZ )
 
-slc.set_minorticks         ( Field, True )
-slc.set_colorbar_minorticks( Field, True )
+slc.set_minorticks         ( Field, ShowMinorTicksXY )
+slc.set_colorbar_minorticks( Field, ShowMinorTicksZ  )
 
 slc.set_xlabel( xLabel )
 slc.set_ylabel( yLabel )
@@ -87,5 +119,7 @@ slc.set_ylabel( yLabel )
 #ax = plt.axes
 #ax.set_xlim( xL[0], xH[0] )
 #ax.set_ylim( xL[1], xH[1] )
+
+slc.zoom( Zoom )
 
 slc.save()
