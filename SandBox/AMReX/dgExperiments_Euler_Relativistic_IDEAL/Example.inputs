@@ -119,7 +119,7 @@ SL.SlopeTolerance_Euler            = 1.0e-6
 SL.UseCharacteristicLimiting_Euler = 1
 SL.UseTroubledCellIndicator_Euler  = 1
 SL.LimiterThresholdParameter_Euler = 0.03
-SL.UseConservativeCorrection       = 1
+SL.UseConservativeCorrection_Euler       = 1
 
 # Parameters for Euler poositivity-limiter
 PL.UsePositivityLimiter_Euler = 1
