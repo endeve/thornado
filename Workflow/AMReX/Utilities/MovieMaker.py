@@ -476,7 +476,10 @@ def ApplyMovieSettings( ax, xL, xH, dX10, Field, DataUnits ):
         xH += 2.0e3
         ax.set_xscale( 'log' )
 
-    ax.set_xlim( xL, xH )
+    try:
+        ax.set_xlim( gvS.xL, gvS.xH )
+    except:
+        ax.set_xlim( xL, xH )
 
     return
 
