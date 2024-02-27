@@ -94,8 +94,6 @@ def MakeProbelmDataDirectory( FileNumberArray,          \
 
     overwriteD = Overwrite( DataDirectory, ForceChoice = forceChoiceD, OW = overwriteD )
 
-
-
     nProc = max( 1, cpu_count() // 2 )
 
     if overwriteD:

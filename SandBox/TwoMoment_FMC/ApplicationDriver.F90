@@ -44,6 +44,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UsePositivityLimiter
   LOGICAL       :: UseEnergyLimiter
   LOGICAL       :: Restart
+  LOGICAL       :: UseNewtons
   INTEGER       :: nNodes
   INTEGER       :: nSpecies = 1
   INTEGER       :: nE, bcE, nX(3), bcX(3)
@@ -90,6 +91,7 @@ PROGRAM ApplicationDriver
       Sigma = 0.0_DP
 
       UsePositivityLimiter = .FALSE.
+      UseNewtons           = .FALSE.
 
     CASE( 'SineWaveDiffusion' )
 
@@ -125,6 +127,7 @@ PROGRAM ApplicationDriver
       !Sigma = 533.33333333_DP
 
       UsePositivityLimiter = .FALSE.
+      UseNewtons           = .FALSE.
 
     CASE( 'StreamingDopplerShift' )
 
@@ -139,7 +142,7 @@ PROGRAM ApplicationDriver
         xR  = [ 1.0d1, 1.0d0, 1.0d0 ]
         bcX = [ 12, 1, 1 ]
 
-        V_0 = [ 0.9_DP, 0.0_DP, 0.0_DP ]
+        V_0 = [ 0.0_DP, 0.0_DP, 0.0_DP ]
 
       ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
 
@@ -191,6 +194,7 @@ PROGRAM ApplicationDriver
       ! UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
       UseEnergyLimiter     = .TRUE.
+      UseNewtons           = .FALSE.
 
       ! UseRealizabilityTimeStep = .TRUE.
 
@@ -198,7 +202,7 @@ PROGRAM ApplicationDriver
 
       Direction = 'X' ! --- (X,Y, or Z)
 
-      LengthScale = 1.0d-2 ! --- Shock Width
+      LengthScale = 1.0d-3 ! --- Shock Width
 
       IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
@@ -241,8 +245,9 @@ PROGRAM ApplicationDriver
       nE  = 64
       eL  = 0.0d0
       ! eR  = 5.0d1
-      eR  = 1.0d2
+      eR  = 3.0d2
       bcE = 11
+      zoomE = 1.1_DP
 
       nNodes = 3
 
@@ -250,8 +255,8 @@ PROGRAM ApplicationDriver
 
       t_end   = 3.0d0
       iCycleD = 1
-      iCycleW = 40000
-      maxCycles = 1000000
+      iCycleW = 100000
+      maxCycles = 2000000
 
       J_0   = 0.0_DP
       Chi   = 0.0_DP
@@ -262,6 +267,7 @@ PROGRAM ApplicationDriver
       UseEnergyLimiter     = .TRUE.
       Restart              = .FALSE.
       ReadFileNumber       = 6
+      UseNewtons           = .FALSE.
 
       ! UseRealizabilityTimeStep = .TRUE.
 
@@ -291,7 +297,7 @@ PROGRAM ApplicationDriver
 
       END IF
 
-      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
+      V_0 = [ 0.3_DP, 0.0_DP, 0.0_DP ]
 
       nE  = 32
       eL  = 0.0d0
@@ -314,6 +320,7 @@ PROGRAM ApplicationDriver
       ! UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
       UseEnergyLimiter     = .TRUE.
+      UseNewtons           = .FALSE.
 
       ! UseRealizabilityTimeStep = .TRUE.
 
@@ -347,6 +354,7 @@ PROGRAM ApplicationDriver
       ! UseSlopeLimiter      = .FALSE.
       UsePositivityLimiter = .TRUE.
       UseEnergyLimiter     = .FALSE.
+      UseNewtons           = .FALSE.
       
     CASE( 'DiffusionMovingMed' )
 
@@ -378,6 +386,7 @@ PROGRAM ApplicationDriver
       UsePositivityLimiter = .TRUE.
       UseEnergyLimiter     = .FALSE.
       Restart              = .FALSE.
+      UseNewtons           = .FALSE.
 
     CASE( 'ShadowCasting2D_Cartesian' )
 
@@ -410,6 +419,7 @@ PROGRAM ApplicationDriver
       UsePositivityLimiter = .TRUE.
       UseEnergyLimiter     = .FALSE.
       Restart              = .FALSE.
+      UseNewtons           = .FALSE.
 
 
   CASE DEFAULT
@@ -549,6 +559,8 @@ CONTAINS
       CreateOpacities
     USE TwoMoment_PositivityLimiterModule_FMC, ONLY: &
       InitializePositivityLimiter_TwoMoment
+    USE TwoMoment_UtilitiesModule_FMC, ONLY: &
+      Initialize_MomentConversion
     USE TwoMoment_TimeSteppingModule_FMC, ONLY: &
       Initialize_IMEX_RK
 
@@ -632,6 +644,10 @@ CONTAINS
                = UsePositivityLimiter, &
              Verbose_Option &
                = .TRUE. )
+
+    ! --- Initialize Iterative Solver for Moment Conversion ---
+
+    CALL Initialize_MomentConversion( Newtons_Option = UseNewtons )
 
     ! --- Initialize Time Stepper ---
 
