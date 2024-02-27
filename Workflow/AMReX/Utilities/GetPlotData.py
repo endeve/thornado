@@ -34,11 +34,13 @@ def GetPlotData( PlotDirectory,     \
         argv = ['a',str(FrameNumber)]
 
 
+    print('DTA',DataType)
     FileName \
       = ChoosePlotFile \
-          ( FileNumberArray, \
-            PlotBaseName   , \
-            argv = argv    , \
+          ( FileNumberArray,    \
+            PlotBaseName   ,    \
+            argv = argv    ,    \
+            DataType = DataType,\
             Verbose = Verbose )
 
     File = PlotDirectory + FileName
