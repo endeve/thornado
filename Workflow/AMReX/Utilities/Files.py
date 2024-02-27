@@ -45,9 +45,11 @@ def GetFileNumberArray \
         sFile = fileArray[iFile]
 
         if ( sFile[0:N] == PlotBaseName and sFile[N+1].isdigit() ) :
-            fileList.append( np.int64( sFile[N:N+8] ) )
+            fileList.append( np.int64( sFile[N:N+9] ) )
         elif ( sFile[-3:] == '.h5' ) :
             fileList.append( int(sFile[-9:-3]) )
+
+    
 
     fileNumbers = np.array( fileList )
     numNumbers = fileNumbers.shape[0]
@@ -70,6 +72,7 @@ def GetFileNumberArray \
     if SSi < 0: SSi = np.int64( fileNumbers[0] )
     if SSf < 0: SSf = np.int64( fileNumbers[-1] )
 
+
     if SSf < SSi:
         msg = '\n>>> Final frame comes before initial frame. \n'
         msg += '>>> Check SSf > SSi.'
@@ -91,20 +94,26 @@ def GetFileNumberArray \
 
     nSS = SSf_index - SSi_index + 1
 
+
     #   Filter file list to specified range
     fileNumbersLimited = []
     for i in range( nSS ):
         fileNumbersLimited.append(fileNumbers[SSi_index+i])
 
+
     if ( len( snapshotIndexList ) == 0 ) :
-        # Filer file number list by PlotEvery value.
+        # Filter file number list by PlotEvery value.
+        Here = 0
+        There = len(fileNumbersLimited)
         fileNumbersFiltered \
-          = np.array( fileNumbersLimited[SSi:SSf+1:PlotEvery] )
+          = np.array( fileNumbersLimited[Here:There:PlotEvery] )
     else :
+        # Filter file number list by user defined snapshotIndexList
         fileNumbersFiltered \
           = np.empty( len( snapshotIndexList ), dtype = np.int64 )
         for i in range( len( snapshotIndexList ) ):
             fileNumbersFiltered[i] = fileNumbers[snapshotIndexList[i]]
+
 
     return fileNumbersFiltered
 # END GetFileNumberArray

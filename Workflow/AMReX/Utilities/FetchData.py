@@ -2,14 +2,6 @@
 
 import numpy as np
 from sys import argv
-from matplotlib import animation
-from functools import partial
-import matplotlib.pyplot as plt
-plt.style.use( 'publication.sty' )
-
-
-
-
 
 
 
@@ -20,8 +12,6 @@ plt.style.use( 'publication.sty' )
  #=============================================#
 def fetchData_AMReX(t, FileNumberArray, DataDirectory, Field ):
 
-#    print(FileNumberArray)
-#    print(FileNumberArray[t])
     FileDirectory = DataDirectory + str(FileNumberArray[t]) + '/'
 
     TimeFile = FileDirectory + '{:}.dat'.format( 'Time' )
@@ -92,3 +82,39 @@ def ReadHeader( DataFile ):
     f.close()
 
     return DataShape, DataUnits, MinVal, MaxVal
+
+
+
+
+ #=============================================#
+#                                               #
+#   fetchTime_AMReX                             #
+#                                               #
+ #=============================================#
+def fetchTime_AMReX(t, FileNumberArray, DataDirectory ):
+
+    FileDirectory = DataDirectory + str(FileNumberArray[t]) + '/'
+
+    TimeFile = FileDirectory + '{:}.dat'.format( 'Time' )
+
+    Time = np.loadtxt( TimeFile )
+
+    return Time
+
+
+
+ #=============================================#
+#                                               #
+#   fetchData_AMReX                             #
+#                                               #
+ #=============================================#
+def fetchCenDen_AMReX(t, FileNumberArray, DataDirectory ):
+
+    FileDirectory = DataDirectory + str(FileNumberArray[t]) + '/'
+
+    DataFile = FileDirectory + '{:}.dat'.format( 'PF_D' )
+
+    DataShape, DataUnits, MinVal, MaxVal = ReadHeader( DataFile )
+    
+
+    return MaxVal
