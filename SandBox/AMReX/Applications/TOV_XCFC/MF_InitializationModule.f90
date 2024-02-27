@@ -229,24 +229,24 @@ CONTAINS
               ( X1, RadiusArr(iX_L), RadiusArr(iX_L+1), &
                     PsiArr   (iX_L), PsiArr   (iX_L+1) )
 
-        uGF(iX1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) &
+        uGF    (iX1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) &
           = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**2
-        uGF(iX1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) &
+        uGF    (iX1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) &
           = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**2 * X1
-        uGF(iX1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX) &
+        uGF    (iX1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX) &
           = uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX)**2 * X1 * SIN( X2 )
 
-        uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX) &
-        = uGF(iX1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX)**2
-        uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX) &
-        = uGF(iX1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX)**2
-        uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) &
-        = uGF(iX1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX)**2
+        uGF    (iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX) &
+          = uGF(iX1,iX2,iX3,nDOFX*(iGF_h_1     -1)+iNX)**2
+        uGF    (iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX) &
+          = uGF(iX1,iX2,iX3,nDOFX*(iGF_h_2     -1)+iNX)**2
+        uGF    (iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) &
+          = uGF(iX1,iX2,iX3,nDOFX*(iGF_h_3     -1)+iNX)**2
 
         uGF(iX1,iX2,iX3,nDOFX*(iGF_SqrtGm-1)+iNX) &
-          =   uGF(iX1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX)**1 &
-            * uGF(iX1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX)**1 &
-            * uGF(iX1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX)**1
+          =   uGF(iX1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) &
+            * uGF(iX1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) &
+            * uGF(iX1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX)
 
         uGF(iX1,iX2,iX3,nDOFX*(iGF_Beta_1 -1)+iNX) = Zero
         uGF(iX1,iX2,iX3,nDOFX*(iGF_Beta_2 -1)+iNX) = Zero
@@ -267,9 +267,9 @@ CONTAINS
         uPF(iX1,iX2,iX3,nDOFX*(iPF_V2-1)+iNX) = Zero
         uPF(iX1,iX2,iX3,nDOFX*(iPF_V3-1)+iNX) = Zero
 
-        uPF(iX1,iX2,iX3,nDOFX*(iPF_E -1)+iNX) &
+        uPF(iX1,iX2,iX3,nDOFX*(iPF_E-1)+iNX) &
           = Interpolate1D_Linear &
-              ( X1, RadiusArr  (iX_L), RadiusArr (iX_L+1), &
+              ( X1, RadiusArr  (iX_L), RadiusArr  (iX_L+1), &
                     PressureArr(iX_L), PressureArr(iX_L+1) ) &
               / ( Gamma_IDEAL - One )
 
