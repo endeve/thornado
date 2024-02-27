@@ -12,6 +12,8 @@ MODULE MF_MHD_UtilitiesModule
   USE amrex_parallel_module,    ONLY: &
     amrex_parallel_reduce_min, &
     amrex_parallel_ioprocessor
+  USE amrex_amr_module, ONLY: &
+    amrex_geom
 
   ! --- thornado Modules ---
 
@@ -244,6 +246,10 @@ CONTAINS
 
     DO iLevel = 0, nLevels-1
 
+      CALL MF_uGF(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
+      CALL MF_uCM(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
+      CALL MF_uDM(iLevel) % Fill_Boundary( amrex_geom(iLevel) )
+
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
@@ -273,16 +279,16 @@ CONTAINS
                             iX_B1(2):iX_E1(2), &
                             iX_B1(3):iX_E1(3),1:nDM) )
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
-        CALL amrex2thornado_X( nCM, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCM, U )
+        CALL amrex2thornado_X( nCM, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCM, U )
 
-        CALL amrex2thornado_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uDM, D )
+        CALL amrex2thornado_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDM, D )
 
         CALL ComputeMagneticDivergence_MHD_Relativistic &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
-        CALL thornado2amrex_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uDM, D )
+        CALL thornado2amrex_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDM, D )
 
         DEALLOCATE( D )
 
