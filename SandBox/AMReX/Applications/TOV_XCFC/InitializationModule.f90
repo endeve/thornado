@@ -160,6 +160,7 @@ CONTAINS
 
   SUBROUTINE InitializeProgram
 
+    INTEGER :: iLevel
     LOGICAL :: SetInitialValues, FixInteriorADMMass
 
     CALL amrex_init()
@@ -227,6 +228,14 @@ CONTAINS
 
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
+
+      DO iLevel = 0, nLevels-1
+
+        CALL FillPatch &
+               ( iLevel, MF_uGF, &
+                 ApplyBoundaryConditions_Geometry_Option = .TRUE. )
+
+      END DO
 
       SetInitialValues   = .TRUE.
       FixInteriorADMMass = .FALSE.
