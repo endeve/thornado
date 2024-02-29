@@ -78,6 +78,7 @@ MODULE MF_InitializationModule
     Zero, &
     One, &
     Two, &
+    Three, &
     TwoPi, &
     FourPi
   USE InputParsingModule, ONLY: &
@@ -386,7 +387,7 @@ CONTAINS
           = GravitationalMass &
               + FourPi * Radius**2 &
                   * ( DensityArr(iX1) + Pressure / ( Gamma_IDEAL - One ) &
-                        + Pressure + Two * Pressure ) &
+                        + Pressure + Three * Pressure ) &
                   * Phi * Psi**5 * DeltaR
 
         IF( Pressure .LT. 1.0e-8_DP * CentralPressure )THEN
