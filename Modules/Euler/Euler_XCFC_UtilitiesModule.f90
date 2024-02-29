@@ -200,9 +200,9 @@ CONTAINS
          EnthalpyDensity = uPF(iPF_D) + uPF(iPF_E) + Pressure
 
          GS(iNX,iX1,iX2,iX3,iGS_Mg) &
-           = Two * EnthalpyDensity * LorentzFactor**2 &
-               * ( One - BetaDotV / uGF(iGF_Alpha) ) &
-                   - EnthalpyDensity + Two * Pressure &
+           = ( Two * EnthalpyDensity * LorentzFactor**2 &
+                 * ( One - BetaDotV / uGF(iGF_Alpha) ) &
+                     - EnthalpyDensity + Two * Pressure ) &
                * uGF(iGF_Alpha) * uGF(iGF_SqrtGm)
 
       END DO
