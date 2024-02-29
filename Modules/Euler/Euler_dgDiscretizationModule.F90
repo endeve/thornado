@@ -4391,7 +4391,7 @@ CONTAINS
 !!$      G_Up_X1         (iNX,iGF_Gm_dd_33,iX2,iX3,iX1) &
 !!$        = MAX( G_Up_X1(iNX,iGF_h_3     ,iX2,iX3,iX1)**2, SqrtTiny )
 !!$
-!!$      G_Up_X1        (iNX,iGF_SqrtGm,iX2,iX3,iX1) &
+!!$      G_Up_X1             (iNX,iGF_SqrtGm,iX2,iX3,iX1) &
 !!$        = MAX( G_Up_X1    (iNX,iGF_h_1   ,iX2,iX3,iX1) &
 !!$                 * G_Up_X1(iNX,iGF_h_2   ,iX2,iX3,iX1) &
 !!$                 * G_Up_X1(iNX,iGF_h_3   ,iX2,iX3,iX1), SqrtTiny )
@@ -4403,7 +4403,7 @@ CONTAINS
 !!$      G_Dn_X1         (iNX,iGF_Gm_dd_33,iX2,iX3,iX1) &
 !!$        = MAX( G_Dn_X1(iNX,iGF_h_3     ,iX2,iX3,iX1)**2, SqrtTiny )
 !!$
-!!$      G_Dn_X1        (iNX,iGF_SqrtGm,iX2,iX3,iX1) &
+!!$      G_Dn_X1             (iNX,iGF_SqrtGm,iX2,iX3,iX1) &
 !!$        = MAX( G_Dn_X1    (iNX,iGF_h_1   ,iX2,iX3,iX1) &
 !!$                 * G_Dn_X1(iNX,iGF_h_2   ,iX2,iX3,iX1) &
 !!$                 * G_Dn_X1(iNX,iGF_h_3   ,iX2,iX3,iX1), SqrtTiny )
@@ -4651,6 +4651,9 @@ CONTAINS
 
       CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 
+      ! --- Define field at interface as average of solutions interpolated
+      !     to upper and lower faces ---
+
       CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
 
       CALL MatrixMatrixMultiply &
@@ -4671,47 +4674,49 @@ CONTAINS
                G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Half, &
                G_Dn_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
 
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-      !$ACC PRESENT( iX_B0, iX_E0, G_Up_X2, G_Dn_X2 )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(4)
-#endif
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iNX = 1       , nDOFX_X2
-
-        G_Up_X2         (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
-          = MAX( G_Up_X2(iNX,iGF_h_1     ,iX1,iX3,iX2)**2, SqrtTiny )
-        G_Up_X2         (iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
-          = MAX( G_Up_X2(iNX,iGF_h_2     ,iX1,iX3,iX2)**2, SqrtTiny )
-        G_Up_X2         (iNX,iGF_Gm_dd_33,iX1,iX3,iX2) &
-          = MAX( G_Up_X2(iNX,iGF_h_3     ,iX1,iX3,iX2)**2, SqrtTiny )
-
-        G_Up_X2        (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
-          = MAX( G_Up_X2    (iNX,iGF_h_1   ,iX1,iX3,iX2) &
-                   * G_Up_X2(iNX,iGF_h_2   ,iX1,iX3,iX2) &
-                   * G_Up_X2(iNX,iGF_h_3   ,iX1,iX3,iX2), SqrtTiny )
-
-        G_Dn_X2         (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
-          = MAX( G_Dn_X2(iNX,iGF_h_1     ,iX1,iX3,iX2)**2, SqrtTiny )
-        G_Dn_X2         (iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
-          = MAX( G_Dn_X2(iNX,iGF_h_2     ,iX1,iX3,iX2)**2, SqrtTiny )
-        G_Dn_X2         (iNX,iGF_Gm_dd_33,iX1,iX3,iX2) &
-          = MAX( G_Dn_X2(iNX,iGF_h_3     ,iX1,iX3,iX2)**2, SqrtTiny )
-
-        G_Dn_X2        (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
-          = MAX( G_Dn_X2    (iNX,iGF_h_1   ,iX1,iX3,iX2) &
-                   * G_Dn_X2(iNX,iGF_h_2   ,iX1,iX3,iX2) &
-                   * G_Dn_X2(iNX,iGF_h_3   ,iX1,iX3,iX2), SqrtTiny )
-
-      END DO
-      END DO
-      END DO
-      END DO
+!!$      ! --- Compute metric on faces from scale factors ---
+!!$
+!!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!!$      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+!!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!!$      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+!!$      !$ACC PRESENT( iX_B0, iX_E0, G_Up_X2, G_Dn_X2 )
+!!$#elif defined( THORNADO_OMP    )
+!!$      !$OMP PARALLEL DO COLLAPSE(4)
+!!$#endif
+!!$      DO iX2 = iX_B0(2), iX_E0(2)
+!!$      DO iX3 = iX_B0(3), iX_E0(3)
+!!$      DO iX1 = iX_B0(1), iX_E0(1)
+!!$      DO iNX = 1       , nDOFX_X2
+!!$
+!!$        G_Up_X2         (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
+!!$          = MAX( G_Up_X2(iNX,iGF_h_1     ,iX1,iX3,iX2)**2, SqrtTiny )
+!!$        G_Up_X2         (iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+!!$          = MAX( G_Up_X2(iNX,iGF_h_2     ,iX1,iX3,iX2)**2, SqrtTiny )
+!!$        G_Up_X2         (iNX,iGF_Gm_dd_33,iX1,iX3,iX2) &
+!!$          = MAX( G_Up_X2(iNX,iGF_h_3     ,iX1,iX3,iX2)**2, SqrtTiny )
+!!$
+!!$        G_Up_X2             (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
+!!$          = MAX( G_Up_X2    (iNX,iGF_h_1   ,iX1,iX3,iX2) &
+!!$                   * G_Up_X2(iNX,iGF_h_2   ,iX1,iX3,iX2) &
+!!$                   * G_Up_X2(iNX,iGF_h_3   ,iX1,iX3,iX2), SqrtTiny )
+!!$
+!!$        G_Dn_X2         (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
+!!$          = MAX( G_Dn_X2(iNX,iGF_h_1     ,iX1,iX3,iX2)**2, SqrtTiny )
+!!$        G_Dn_X2         (iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+!!$          = MAX( G_Dn_X2(iNX,iGF_h_2     ,iX1,iX3,iX2)**2, SqrtTiny )
+!!$        G_Dn_X2         (iNX,iGF_Gm_dd_33,iX1,iX3,iX2) &
+!!$          = MAX( G_Dn_X2(iNX,iGF_h_3     ,iX1,iX3,iX2)**2, SqrtTiny )
+!!$
+!!$        G_Dn_X2             (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
+!!$          = MAX( G_Dn_X2    (iNX,iGF_h_1   ,iX1,iX3,iX2) &
+!!$                   * G_Dn_X2(iNX,iGF_h_2   ,iX1,iX3,iX2) &
+!!$                   * G_Dn_X2(iNX,iGF_h_3   ,iX1,iX3,iX2), SqrtTiny )
+!!$
+!!$      END DO
+!!$      END DO
+!!$      END DO
+!!$      END DO
 
       CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
@@ -4953,6 +4958,9 @@ CONTAINS
 
       CALL TimersStop_Euler( Timer_Euler_DG_Permute )
 
+      ! --- Define field at interface as average of solutions interpolated
+      !     to upper and lower faces ---
+
       CALL TimersStart_Euler( Timer_Euler_DG_Interpolate )
 
       CALL MatrixMatrixMultiply &
@@ -4973,47 +4981,49 @@ CONTAINS
                G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX, Half, &
                G_Dn_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
 
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
-#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-      !$ACC PRESENT( iX_B0, iX_E0, G_Up_X3, G_Dn_X3 )
-#elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(4)
-#endif
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iNX = 1       , nDOFX_X3
-
-        G_Up_X3         (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
-          = MAX( G_Up_X3(iNX,iGF_h_1     ,iX1,iX2,iX3)**2, SqrtTiny )
-        G_Up_X3         (iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
-          = MAX( G_Up_X3(iNX,iGF_h_2     ,iX1,iX2,iX3)**2, SqrtTiny )
-        G_Up_X3         (iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
-          = MAX( G_Up_X3(iNX,iGF_h_3     ,iX1,iX2,iX3)**2, SqrtTiny )
-
-        G_Up_X3        (iNX,iGF_SqrtGm,iX1,iX2,iX3) &
-          = MAX( G_Up_X3    (iNX,iGF_h_1   ,iX1,iX2,iX3) &
-                   * G_Up_X3(iNX,iGF_h_2   ,iX1,iX2,iX3) &
-                   * G_Up_X3(iNX,iGF_h_3   ,iX1,iX2,iX3), SqrtTiny )
-
-        G_Dn_X3         (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
-          = MAX( G_Dn_X3(iNX,iGF_h_1     ,iX1,iX2,iX3)**2, SqrtTiny )
-        G_Dn_X3         (iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
-          = MAX( G_Dn_X3(iNX,iGF_h_2     ,iX1,iX2,iX3)**2, SqrtTiny )
-        G_Dn_X3         (iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
-          = MAX( G_Dn_X3(iNX,iGF_h_3     ,iX1,iX2,iX3)**2, SqrtTiny )
-
-        G_Dn_X3        (iNX,iGF_SqrtGm,iX1,iX2,iX3) &
-          = MAX( G_Dn_X3    (iNX,iGF_h_1   ,iX1,iX2,iX3) &
-                   * G_Dn_X3(iNX,iGF_h_2   ,iX1,iX2,iX3) &
-                   * G_Dn_X3(iNX,iGF_h_3   ,iX1,iX2,iX3), SqrtTiny )
-
-      END DO
-      END DO
-      END DO
-      END DO
+!!$      ! --- Compute metric on faces from scale factors ---
+!!$
+!!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+!!$      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+!!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
+!!$      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+!!$      !$ACC PRESENT( iX_B0, iX_E0, G_Up_X3, G_Dn_X3 )
+!!$#elif defined( THORNADO_OMP    )
+!!$      !$OMP PARALLEL DO COLLAPSE(4)
+!!$#endif
+!!$      DO iX3 = iX_B0(3), iX_E0(3)
+!!$      DO iX2 = iX_B0(2), iX_E0(2)
+!!$      DO iX1 = iX_B0(1), iX_E0(1)
+!!$      DO iNX = 1       , nDOFX_X3
+!!$
+!!$        G_Up_X3         (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
+!!$          = MAX( G_Up_X3(iNX,iGF_h_1     ,iX1,iX2,iX3)**2, SqrtTiny )
+!!$        G_Up_X3         (iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
+!!$          = MAX( G_Up_X3(iNX,iGF_h_2     ,iX1,iX2,iX3)**2, SqrtTiny )
+!!$        G_Up_X3         (iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
+!!$          = MAX( G_Up_X3(iNX,iGF_h_3     ,iX1,iX2,iX3)**2, SqrtTiny )
+!!$
+!!$        G_Up_X3             (iNX,iGF_SqrtGm,iX1,iX2,iX3) &
+!!$          = MAX( G_Up_X3    (iNX,iGF_h_1   ,iX1,iX2,iX3) &
+!!$                   * G_Up_X3(iNX,iGF_h_2   ,iX1,iX2,iX3) &
+!!$                   * G_Up_X3(iNX,iGF_h_3   ,iX1,iX2,iX3), SqrtTiny )
+!!$
+!!$        G_Dn_X3         (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
+!!$          = MAX( G_Dn_X3(iNX,iGF_h_1     ,iX1,iX2,iX3)**2, SqrtTiny )
+!!$        G_Dn_X3         (iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
+!!$          = MAX( G_Dn_X3(iNX,iGF_h_2     ,iX1,iX2,iX3)**2, SqrtTiny )
+!!$        G_Dn_X3         (iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
+!!$          = MAX( G_Dn_X3(iNX,iGF_h_3     ,iX1,iX2,iX3)**2, SqrtTiny )
+!!$
+!!$        G_Dn_X3             (iNX,iGF_SqrtGm,iX1,iX2,iX3) &
+!!$          = MAX( G_Dn_X3    (iNX,iGF_h_1   ,iX1,iX2,iX3) &
+!!$                   * G_Dn_X3(iNX,iGF_h_2   ,iX1,iX2,iX3) &
+!!$                   * G_Dn_X3(iNX,iGF_h_3   ,iX1,iX2,iX3), SqrtTiny )
+!!$
+!!$      END DO
+!!$      END DO
+!!$      END DO
+!!$      END DO
 
       CALL TimersStop_Euler( Timer_Euler_DG_Interpolate )
 
@@ -5139,5 +5149,6 @@ CONTAINS
     END ASSOCIATE ! dX3
 
   END SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X3
+
 
 END MODULE Euler_dgDiscretizationModule
