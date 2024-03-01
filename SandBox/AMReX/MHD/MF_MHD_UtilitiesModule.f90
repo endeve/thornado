@@ -227,9 +227,9 @@ CONTAINS
   SUBROUTINE MF_ComputeMagneticDivergence( MF_uGF, MF_uCM, MF_uDM )
 
     TYPE(amrex_multifab), INTENT(in)    :: &
-      MF_uGF(0:nLevels-1), MF_uCM(0:nLevels-1)
+      MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: &
-      MF_uDM(0:nLevels-1)
+      MF_uDM(0:nLevels-1), MF_uCM(0:nLevels-1)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -289,6 +289,8 @@ CONTAINS
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
         CALL thornado2amrex_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDM, D )
+
+        CALL thornado2amrex_X( nCM, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCM, U )
 
         DEALLOCATE( D )
 

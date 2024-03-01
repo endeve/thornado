@@ -87,6 +87,8 @@ MODULE MHD_UtilitiesModule_Relativistic
     iDM_Sh_X2, &
     iDM_Sh_X3, &
     iDM_Div
+  USE MHD_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_MHD
   USE EquationOfStateModule, ONLY: &
     ComputeSoundSpeedFromPrimitive, &
     ComputeAuxiliary_Fluid, &
@@ -705,10 +707,14 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)  :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(out) :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    CALL ApplyBoundaryConditions_MHD &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL InitializeIncrement &
       ( iX_B0, iX_E0, iX_B1, iX_E1 )
