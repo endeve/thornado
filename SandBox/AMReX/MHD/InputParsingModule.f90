@@ -87,6 +87,7 @@ MODULE InputParsingModule
   LOGICAL  :: EvolveOnlyMagnetic
   LOGICAL  :: UseDivergenceCleaning
   REAL(DP) :: DampingParameter
+  LOGICAL  :: UsePowellSource
 
   ! --- AMReX  ---
 
@@ -259,10 +260,12 @@ CONTAINS
     EvolveOnlyMagnetic    = .FALSE.
     UseDivergenceCleaning = .FALSE.
     DampingParameter      = 0.0_DP
+    UsePowellSource       = .FALSE.
     CALL amrex_parmparse_build( PP, 'MHD' )
       CALL PP % query( 'EvolveOnlyMagnetic'   , EvolveOnlyMagnetic    )
       CALL PP % query( 'UseDivergenceCleaning', UseDivergenceCleaning )
       CALL PP % query( 'DampingParameter'     , DampingParameter      )
+      CALL PP % query( 'UsePowellSource'      , UsePowellSource       )
     CALL amrex_parmparse_destroy( PP )
 
     CALL InitializeProgramHeader &

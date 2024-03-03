@@ -43,6 +43,7 @@ MODULE  MF_MHD_dgDiscretizationModule
     EvolveOnlyMagnetic, &
     UseDivergenceCleaning, &
     DampingParameter, &
+    UsePowellSource, &
     WriteNodalData, &
     StepNo
   USE MF_MHD_BoundaryConditionsModule,  ONLY: &
@@ -226,7 +227,8 @@ CONTAINS
                  SuppressBC_Option = .TRUE., &
                  EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic, &
                  UseDivergenceCleaning_Option = UseDivergenceCleaning, &
-                 DampingParameter_Option = DampingParameter )
+                 DampingParameter_Option = DampingParameter, &
+                 UsePowellSource_Option = UsePowellSource )
 
         CALL thornado2amrex_X &
                ( nCM, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, duCM, dU )
