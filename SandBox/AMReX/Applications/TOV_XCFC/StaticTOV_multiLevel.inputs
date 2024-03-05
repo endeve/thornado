@@ -1,4 +1,4 @@
-##### TOV_XCFC_singleLevel.inputs #####
+##### StaticTOV_multiLevel.inputs #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
@@ -14,15 +14,15 @@ thornado.iRestart = -1
 
 thornado.UsePhysicalUnits = 1
 
-thornado.TallyFileNameRoot_Euler = "TOV_XCFC_singleLevel.Tally"
-thornado.PlotFileNameRoot = "TOV_XCFC_singleLevel.plt"
+thornado.TallyFileNameRoot_Euler = "StaticTOV_multiLevel.Tally"
+thornado.PlotFileNameRoot = "StaticTOV_multiLevel.plt"
 thornado.t_end   = 1.0e1
 thornado.iCycleD = 10
 
 thornado.dt_wrt  = 1.0e-1
 thornado.iCycleW = -1
 
-thornado.CheckpointFileNameRoot = "TOV_XCFC_singleLevel.chk"
+thornado.CheckpointFileNameRoot = "StaticTOV_multiLevel.chk"
 thornado.dt_chk    = 1.1e+1
 thornado.iCycleChk = -1
 
@@ -35,14 +35,14 @@ geometry.coord_sys = 2
 geometry.prob_lo   = 000.0 0.0               0.0
 geometry.prob_hi   = 1.0e1 3.1415926535897931 6.2831853071795862
 
-amr.n_cell                  = 128 01 01
+amr.n_cell                  = 32 01 01
 thornado.swX                = 01  00 00
-amr.max_grid_size_x         = 128
-amr.blocking_factor_x       = 128
-amr.max_level               = 0
-amr.UseFluxCorrection_Euler = 0
+#amr.max_grid_size_x         = 128
+#amr.blocking_factor_x       = 128
+amr.max_level               = 4
+amr.UseFluxCorrection_Euler = 1
 amr.UseAMR                  = 0
-amr.TagCriteria             = 0.0
+amr.TagCriteria             = 9.0 6.0 3.0 1.0
 amr.n_error_buf             = 0
 amr.ref_ratio               = 2
 
