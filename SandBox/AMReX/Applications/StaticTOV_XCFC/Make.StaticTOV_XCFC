@@ -1,4 +1,4 @@
-# THORNADO_DIR/SandBox/AMReX/Applications/TOV_XCFC
+# THORNADO_DIR/SandBox/AMReX/Applications/StaticTOV_XCFC
 
 f90EXE_sources += MF_InitializationModule.f90
 f90EXE_sources += InitializationModule.f90
