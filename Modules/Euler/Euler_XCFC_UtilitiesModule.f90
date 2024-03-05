@@ -142,8 +142,8 @@ CONTAINS
         GS(iNX,iX1,iX2,iX3,iGS_S3) = U(iNX,iX1,iX2,iX3,iCF_S3)
 
         ! --- Compute gravitational mass integrand
-        !     (Eq. (12.45) from Rezzolla & Zanotti.
-        !     valid only for stationary, axisymmetric spacetimes ---
+        !     (Eq. (12.45) from Rezzolla & Zanotti, Relativistic Hyrodynamics.
+        !     valid only for stationary, axisymmetric spacetimes) ---
 
         DO iGF = 1, nGF
 
