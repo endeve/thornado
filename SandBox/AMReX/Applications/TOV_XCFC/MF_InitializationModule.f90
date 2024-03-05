@@ -355,6 +355,8 @@ CONTAINS
 
       ITER = ITER + 1
 
+      NeutronStarRadius = -One
+
       DO iX1 = 1, N
 
         RadiusArr  (iX1) = Radius
@@ -387,10 +389,11 @@ CONTAINS
           = GravitationalMass &
               + FourPi * Radius**2 &
                   * ( DensityArr(iX1) + Pressure / ( Gamma_IDEAL - One ) &
-                        + Pressure + Three * Pressure ) &
+                        + Three * Pressure ) &
                   * Phi * Psi**5 * DeltaR
 
-        IF( Pressure .LT. 1.0e-8_DP * CentralPressure )THEN
+        IF( Pressure .LT. 1.0e-8_DP * CentralPressure &
+              .AND. NeutronStarRadius .LT. Zero )THEN
 
           NeutronStarRadius = Radius
 
