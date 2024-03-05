@@ -35,24 +35,16 @@ geometry.coord_sys = 2
 geometry.prob_lo   = 000.0 0.0               0.0
 geometry.prob_hi   = 1.0e1 3.1415926535897931 6.2831853071795862
 
-amr.n_cell                  = 32 01 01
+amr.n_cell                  = 128 01 01
 thornado.swX                = 01  00 00
-#amr.max_grid_size_x         = 128
-#amr.blocking_factor_x       = 128
+#amr.max_grid_size_x         = 32
+#amr.blocking_factor_x       = 32
 amr.max_level               = 4
 amr.UseFluxCorrection_Euler = 1
 amr.UseAMR                  = 0
 amr.TagCriteria             = 9.0 6.0 3.0 1.0
 amr.n_error_buf             = 0
 amr.ref_ratio               = 2
-
-# Poseidon parameters
-GS.EvolveGravity           = 0
-poseidon.fem_degree        = 1
-poseidon.l_limit           = 0
-poseidon.max_fp_iters      = 20
-poseidon.anderson_m        = 3
-poseidon.converge_criteria = 1.0e-08
 
 # Slope limiter parameters
 SL.UseSlopeLimiter_Euler           = 1
@@ -75,5 +67,5 @@ EoS.EquationOfState = "IDEAL"
 EoS.Gamma_IDEAL     = 2.0
 
 # Time-Stepping parameters
-TS.nStages       = 2
-TS.CFL           = 0.5
+TS.nStages = 2
+TS.CFL     = 0.5
