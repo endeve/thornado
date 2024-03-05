@@ -54,14 +54,15 @@ More information on the external packages, please visit: https://gitlab.devtools
 **get on Aurora** qsub -I -A Aurora_deployment -l select=1,walltime=120:00 -q LustreApps
 **get on Aurora** qsub -I -A Aurora_deployment -l select=1,walltime=120:00 -q EarlyAppAccess 
 **To git clone weaklib tables from ORNL, we need** `export https_proxy=http://proxy-us.intel.com:912`    (error: SSL certificate problem: self signed certificate in certificate chain) 
+**pip install need proxy pip install --proxy=http://proxy-us.intel.com:912    numpy***
 **display GPU serial and rev. number** `sudo /sbin/lspci |grep -i Display`    
 **power cycle a machine** /shared/maint/tool/powercycl_node.sh exaperf-sdpcloud-pc20
 **autoconf** module load spack autoconf
 **Working weaklib and it's tables** exaperf-sdpcloud-pvc12.jf.intel.com:/localdisk/quanshao/ExaStar/weaklib   weaklib-tables.
 **limit GPU power** `xpu-smi config -d 0 --powerlimit 500` to 50W
 ` gdb-oneapi -q -ex "b 34" -ex "run" -ex "info devices" --args ./a.out`
+`ZET_ENABLE_PROGRAM_DEBUGGING=1 IGC_StackOverflowDetection=1 gdb-oneapi -q   ./flashx`
     ![](./pics-readme/)
-
 #############################################       
 # Enable implicit scaling     
 #############################################        
@@ -92,7 +93,32 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
-## Feb 27 2024
+
+## Mar 04 2024
+1. Thornado compilation contiuned failure due to https://jira.devtools.intel.com/browse/CMPLRLLVM-51851 with nightly 0303, and oneapi/release/2023.12.15.001 (ifx what gives Intel(R) Fortran 24.0-1238.2). 
+<pre>
+ifx: error #10106: Fatal error in /opt/exaperf/nightly/compiler/2024.03.03/linux/bin/compiler/xfortcom, terminated by kill signal
+compilation aborted for /tmp/ifx1929401698TSKnh6/ifxj7J4j7.bc (code 1)
+make: *** [/localdisk/quanshao/ExaStar/thornado/Build/Makefile_Suffixes:6: TwoMoment_PositivityLimiterModule.o] Error 1
+</pre>
+2. Thornado works with  oneapi/release/2023.10.15.001 and here is the performance data:
+<pre>
+cat timeFOM_2023.10.15.001.txt
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2023.10.15.001   2023.10.15.002682.20    TimeDiff   Percentage   |   2023.10.15.001   2023.10.15.002682.20    FOM-Diff   Percentage
+                     MKL Date :
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     6.4206e+00          4.6583e+00       1.7624e+00    37.83%            1.9843e+07          2.7350e+07       -7.5071e+06   -27.45%
+sineWave   [16,16,16]   O3    :     6.0537e+01          6.9252e+01      -8.7152e+00   -12.58%            3.3464e+07          2.9253e+07        4.2114e+06    14.40%
+relax      [8,8,8]      O3    :     2.3743e+01          1.5096e+02      -1.2721e+02   -84.27%            3.5905e+07          4.5178e+07       -9.2725e+06   -20.52%
+relax      [16,16,16]   O3    :     1.6528e+02          1.5128e+02       1.4002e+01     9.26%            4.1262e+07          4.5081e+07       -3.8189e+06    -8.47%
+
+</pre>
+
+## Mar 01 2024
+1. Thornado compilation failed due to https://jira.devtools.intel.com/browse/CMPLRLLVM-51851
+2. Continue learning of Reframe
+## Feb 27-29 2024
 1. Thornado and FlashX with Thornado run failed with the following error: 
 <pre>
 Target LEVEL_ZERO RTL --> Error: findDevices:zeInit failed with error code 2013265921, ZE_RESULT_ERROR_UNINITIALIZED
