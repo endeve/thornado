@@ -94,6 +94,9 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 # Activities, progress, and results
 
+## Mar 05 24
+1. Thornado compilation failed due to https://jira.devtools.intel.com/browse/CMPLRLLVM-51851 with nightly 0304, as ifx -what gives Intel(R) Fortran 24.0-1571. The fix is in 24-1594
+
 ## Mar 04 2024
 1. Thornado compilation contiuned failure due to https://jira.devtools.intel.com/browse/CMPLRLLVM-51851 with nightly 0303, and oneapi/release/2023.12.15.001 (ifx what gives Intel(R) Fortran 24.0-1238.2). 
 <pre>
