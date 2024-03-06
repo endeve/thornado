@@ -93,9 +93,43 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Mar 06 2024
+1. Thonrado ms-daily compiled with nightly 0305. SineWaveStreaming runs find, but Relaxation apps get NaNs. And so is master-nre branch. 
+2. with `module switch -f intel_compute_runtime/release/stable-736.25 neo/agama-devel-sp4/847-24.05.28454.14-847` for nightly 0305, got following errors:
+<pre>
+  INFO: Initializing Program: Relaxation
 
-## Mar 05 24
+omptarget error: Run with
+omptarget error: LIBOMPTARGET_DEBUG=1 to display basic debug information.
+omptarget error: LIBOMPTARGET_DEBUG=2 to display calls to the compute runtime.
+omptarget error: LIBOMPTARGET_INFO=4 to dump host-target pointer mappings.
+omptarget error: No images found compatible with the installed hardware. Found 0 image(s): ()
+omptarget error: Source location information not present. Compile with -g or -gline-tables-only.
+omptarget fatal error 1: failure of target construct while offloading is mandatory
+forrtl: error (76): Abort trap signal
+Image              PC                Routine            Line        Source
+libpthread-2.31.s  00001488249FF8C0  Unknown               Unknown  Unknown
+libc-2.31.so       000014882463ECDB  gsignal               Unknown  Unknown
+libc-2.31.so       0000148824640375  abort                 Unknown  Unknown
+libomptarget.so    00001488250384C6  Unknown               Unknown  Unknown
+libomptarget.so    000014882503883D  Unknown               Unknown  Unknown
+libomptarget.so    000014882502DB36  Unknown               Unknown  Unknown
+libomptarget.so    000014882502F779  __tgt_target_data     Unknown  Unknown
+ApplicationDriver  0000000000466505  Unknown               Unknown  Unknown
+ApplicationDriver  00000000004660AC  Unknown               Unknown  Unknown
+ApplicationDriver  00000000008ED66C  Unknown               Unknown  Unknown
+ApplicationDriver  00000000008FB2C4  Unknown               Unknown  Unknown
+ApplicationDriver  00000000008FAED0  Unknown               Unknown  Unknown
+ApplicationDriver  0000000000415F8D  Unknown               Unknown  Unknown
+libc-2.31.so       00001488246292BD  __libc_start_main     Unknown  Unknown
+ApplicationDriver  0000000000415EBA  Unknown               Unknown  Unknown
+./buildRun.all.sh: line 73: 105444 Aborted                 (core dumped) ./${APP_NAME}_${THORNADO_MACHINE}
+</pre>
+3. The reason is the mpi has issue with gpu awareness. setting MPIR_CVAR_ENABLE_GPU=0, ZE_FLAT_DEVICE_HIERARCHY=COMPOSITE, and any combination of ZE_AFFINITY_MASK makes work. 
+4. `module switch -f intel_compute_runtime/release/stable-736.25 neo/agama-devel-sp4/847-24.05.28454.14-847` unsets ZE_FLAT_DEVICE_HIERARCHY. Brian put a note in system issues. 
+## Mar 05 2024
 1. Thornado compilation failed due to https://jira.devtools.intel.com/browse/CMPLRLLVM-51851 with nightly 0304, as ifx -what gives Intel(R) Fortran 24.0-1571. The fix is in 24-1594
+2. Thornado in Reframe does not run if run remotely, but runs fine locally on Aurora.
 
 ## Mar 04 2024
 1. Thornado compilation contiuned failure due to https://jira.devtools.intel.com/browse/CMPLRLLVM-51851 with nightly 0303, and oneapi/release/2023.12.15.001 (ifx what gives Intel(R) Fortran 24.0-1238.2). 
