@@ -93,6 +93,44 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Mar 07 2024
+1. Thornado compiles fine with nightly 0306, but failed to run due to "error while loading shared libraries: libomptarget.so: cannot open shared object file: No such file or directory". Brian pointed out this in the OneAPI Discussions channel, and the fix is `LD_LIBRARY_PATH=/exaperf/nightly/compiler/2024.03.06/linux/lib/x86_64-unknown-linux-gnu:$LD_LIBRARY_PATH`, it was usually in `/exaperf/nightly/compiler/2024.03.05/linux/lib/`
+2. Thornado runs with night 0306 and neo/agama-devel-sp4/847-24.05.28454.14-847, and the fix above and her is the time (the default udf gives nan)
+<pre>
+cat timeFOM_2024.03.06.txt
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2024.03.06   2023.10.15.002682.20    TimeDiff   Percentage   |   2024.03.06   2023.10.15.002682.20    FOM-Diff   Percentage
+                     MKL Date :
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave01 [8,8,8]      O3    :     5.6332e+00          0.0000e+00       5.6332e+00     0.00%            2.2616e+07          0.0000e+00        2.2616e+07     0.00%
+sineWave01 [16,16,16]   O3    :     5.6103e+01          0.0000e+00       5.6103e+01     0.00%            3.6109e+07          0.0000e+00        3.6109e+07     0.00%
+relax01    [8,8,8]      O3    :     2.1669e+01          0.0000e+00       2.1669e+01     0.00%            3.9341e+07          0.0000e+00        3.9341e+07     0.00%
+relax01    [16,16,16]   O3    :     1.4727e+02          0.0000e+00       1.4727e+02     0.00%            4.6310e+07          0.0000e+00        4.6310e+07     0.00%
+</pre>
+<pre>
+cat timeFOM_2024.03.05.txt
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2024.03.05   2023.10.15.002682.20    TimeDiff   Percentage   |   2024.03.05   2023.10.15.002682.20    FOM-Diff   Percentage
+                     MKL Date :
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     5.7094e+00          4.6583e+00       1.0511e+00    22.56%            2.2315e+07          2.7350e+07       -5.0351e+06   -18.41%
+sineWave   [16,16,16]   O3    :     5.6002e+01          6.9252e+01      -1.3251e+01   -19.13%            3.6175e+07          2.9253e+07        6.9218e+06    23.66%
+relax      [8,8,8]      O3    :     2.1586e+01          1.5096e+02      -1.2937e+02   -85.70%            3.9492e+07          4.5178e+07       -5.6858e+06   -12.59%
+relax      [16,16,16]   O3    :     1.4783e+02          1.5128e+02      -3.4468e+00    -2.28%            4.6132e+07          4.5081e+07        1.0511e+06     2.33%
+</pre>
+Compared to 2023.08.20, there is huge improvement in [16,16,16] case, but there is slightly regression in [8,8,8] case
+<pre>
+cat timeFOM_2023.08.20-2023.08.28.txt-umd692
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2023.08.20-umd692   2023.08.20-dev627    TimeDiff   Percentage   |   2023.08.20-umd692   2023.08.20-dev627    FOM-Diff   Percentage
+                     MKL Date :  2023.08.28               2023.08.28
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     5.6065e+00          9.4682e+00      -3.8617e+00   -40.79%            2.2724e+07          1.3456e+07        9.2681e+06    68.88%
+sineWave   [16,16,16]   O3    :     7.0337e+01          1.3478e+02      -6.4441e+01   -47.81%            2.8802e+07          1.5031e+07        1.3771e+07    91.62%
+relax      [8,8,8]      O3    :     2.0817e+01          2.0464e+01       3.5318e-01     1.73%            4.0952e+07          4.1659e+07       -7.0680e+05    -1.70%
+relax      [16,16,16]   O3    :     1.7703e+02          1.6591e+02       1.1119e+01     6.70%            3.8525e+07          4.1107e+07       -2.5818e+06    -6.28%
+</pre>
+
 ## Mar 06 2024
 1. Thonrado ms-daily compiled with nightly 0305. SineWaveStreaming runs find, but Relaxation apps get NaNs. And so is master-nre branch. 
 2. with `module switch -f intel_compute_runtime/release/stable-736.25 neo/agama-devel-sp4/847-24.05.28454.14-847` for nightly 0305, got following errors:

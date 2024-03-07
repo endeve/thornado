@@ -2284,17 +2284,23 @@ CONTAINS
       EF = Third
       a = Third
       b = Zero
+
+      h_u_1 = Zero
+
+      h_d_1 = Zero
+      h_d_2 = Zero
+      h_d_3 = Zero
     ELSE
       EF = EddingtonFactor( D, FF )
       a = Half * ( One - EF )
       b = Half * ( Three * EF - One )
+
+      h_u_1 = I_u_1 / ( FF * D )
+
+      h_d_1 = Gm_dd_11 * I_u_1 / ( FF * D )
+      h_d_2 = Gm_dd_22 * I_u_2 / ( FF * D )
+      h_d_3 = Gm_dd_33 * I_u_3 / ( FF * D )
     END IF
-
-    h_u_1 = I_u_1 / ( FF * D )
-
-    h_d_1 = Gm_dd_11 * I_u_1 / ( FF * D )
-    h_d_2 = Gm_dd_22 * I_u_2 / ( FF * D )
-    h_d_3 = Gm_dd_33 * I_u_3 / ( FF * D )
 
     K_ud_11 = ( a + b * h_u_1 * h_d_1 ) * D
     K_ud_12 = (     b * h_u_1 * h_d_2 ) * D
@@ -2337,17 +2343,23 @@ CONTAINS
       EF = Third
       a = Third
       b = Zero
+
+      h_u_2 = Zero
+
+      h_d_1 = Zero
+      h_d_2 = Zero
+      h_d_3 = Zero
     ELSE
       EF = EddingtonFactor( D, FF )
       a = Half * ( One - EF )
       b = Half * ( Three * EF - One )
+
+      h_u_2 = I_u_2 / ( FF * D )
+
+      h_d_1 = Gm_dd_11 * I_u_1 / ( FF * D )
+      h_d_2 = Gm_dd_22 * I_u_2 / ( FF * D )
+      h_d_3 = Gm_dd_33 * I_u_3 / ( FF * D )
     END IF
-
-    h_u_2 = I_u_2 / ( FF * D )
-
-    h_d_1 = Gm_dd_11 * I_u_1 / ( FF * D )
-    h_d_2 = Gm_dd_22 * I_u_2 / ( FF * D )
-    h_d_3 = Gm_dd_33 * I_u_3 / ( FF * D )
 
     K_ud_21 = (     b * h_u_2 * h_d_1 ) * D
     K_ud_22 = ( a + b * h_u_2 * h_d_2 ) * D
@@ -2390,17 +2402,23 @@ CONTAINS
       EF = Third
       a = Third
       b = Zero
+
+      h_u_3 = Zero
+
+      h_d_1 = Zero
+      h_d_2 = Zero
+      h_d_3 = Zero
     ELSE
       EF = EddingtonFactor( D, FF )
       a = Half * ( One - EF )
       b = Half * ( Three * EF - One )
+
+      h_u_3 = I_u_3 / ( FF * D )
+
+      h_d_1 = Gm_dd_11 * I_u_1 / ( FF * D )
+      h_d_2 = Gm_dd_22 * I_u_2 / ( FF * D )
+      h_d_3 = Gm_dd_33 * I_u_3 / ( FF * D )
     END IF
-
-    h_u_3 = I_u_3 / ( FF * D )
-
-    h_d_1 = Gm_dd_11 * I_u_1 / ( FF * D )
-    h_d_2 = Gm_dd_22 * I_u_2 / ( FF * D )
-    h_d_3 = Gm_dd_33 * I_u_3 / ( FF * D )
 
     K_ud_31 = (     b * h_u_3 * h_d_1 ) * D
     K_ud_32 = (     b * h_u_3 * h_d_2 ) * D
@@ -2442,13 +2460,15 @@ CONTAINS
       EF = Third
       a = Third
       b = Zero
+
+      h_u = Zero
     ELSE
       EF = EddingtonFactor( D, FF )
       a = Half * ( One - EF )
       b = Half * ( Three * EF - One )
-    END IF
 
-    h_u = [ I_u_1, I_u_2, I_u_3 ] / ( FF * D )
+      h_u = [ I_u_1, I_u_2, I_u_3 ] / ( FF * D )
+    END IF
 
     Gm_uu      = Zero
     Gm_uu(1,1) = One / Gm_dd_11
@@ -2490,15 +2510,19 @@ CONTAINS
       EF = Third
       a = Third
       b = Zero
+
+      h_d_1 = Zero
+      h_d_2 = Zero
+      h_d_3 = Zero
     ELSE
       EF = EddingtonFactor( D, FF )
       a = Half * ( One - EF )
       b = Half * ( Three * EF - One )
-    END IF
 
-    h_d_1 = Gm_dd_11 * I_u_1 / ( FF * D )
-    h_d_2 = Gm_dd_22 * I_u_2 / ( FF * D )
-    h_d_3 = Gm_dd_33 * I_u_3 / ( FF * D )
+      h_d_1 = Gm_dd_11 * I_u_1 / ( FF * D )
+      h_d_2 = Gm_dd_22 * I_u_2 / ( FF * D )
+      h_d_3 = Gm_dd_33 * I_u_3 / ( FF * D )
+    END IF
 
     ! --- Diagonal Eddington Tensor Components ---
 
@@ -2539,15 +2563,17 @@ CONTAINS
       EF = Third
       a = Third
       b = Zero
+
+      h_d = Zero
     ELSE
       EF = EddingtonFactor( D, FF )
       a = Half * ( One - EF )
       b = Half * ( Three * EF - One )
-    END IF
 
-    h_d(1) = Gm_dd_11 * I_u_1 / ( FF * D )
-    h_d(2) = Gm_dd_22 * I_u_2 / ( FF * D )
-    h_d(3) = Gm_dd_33 * I_u_3 / ( FF * D )
+      h_d(1) = Gm_dd_11 * I_u_1 / ( FF * D )
+      h_d(2) = Gm_dd_22 * I_u_2 / ( FF * D )
+      h_d(3) = Gm_dd_33 * I_u_3 / ( FF * D )
+    END IF
 
     Gm_dd = Zero
     Gm_dd(1,1) = Gm_dd_11
@@ -2586,15 +2612,19 @@ CONTAINS
       EF = Third
       a = Third
       b = Zero
+
+      h_u_1 = Zero
+      h_u_2 = Zero
+      h_u_3 = Zero
     ELSE
       EF = EddingtonFactor( D, FF )
       a = Half * ( One - EF )
       b = Half * ( Three * EF - One )
-    END IF
 
-    h_u_1 = I_u_1 / ( FF * D )
-    h_u_2 = I_u_2 / ( FF * D )
-    h_u_3 = I_u_3 / ( FF * D )
+      h_u_1 = I_u_1 / ( FF * D )
+      h_u_2 = I_u_2 / ( FF * D )
+      h_u_3 = I_u_3 / ( FF * D )
+    END IF
 
     h_d_1 = Gm_dd_11 * h_u_1
     h_d_2 = Gm_dd_22 * h_u_2
@@ -2639,13 +2669,15 @@ CONTAINS
       HF = Zero
       a = Zero
       b = Zero
+
+      h_u = Zero
     ELSE
       HF = HeatFluxFactor( D, FF )
       a = Half * ( FF - HF )
       b = Half * ( Five * HF - Three * FF )
-    END IF
 
-    h_u = [ I_u_1, I_u_2, I_u_3 ] / ( FF * D )
+      h_u = [ I_u_1, I_u_2, I_u_3 ] / ( FF * D )
+    END IF
 
     Gm_uu      = Zero
     Gm_uu(1,1) = One / Gm_dd_11
@@ -2693,15 +2725,19 @@ CONTAINS
       HF = Zero
       a = Zero
       b = Zero
+
+      h_u_1 = Zero
+      h_u_2 = Zero
+      h_u_3 = Zero
     ELSE
       HF = HeatFluxFactor( D, FF )
       a = Half * ( FF - HF )
       b = Half * ( Five * HF - Three * FF )
-    END IF
 
-    h_u_1 = I_u_1 / ( FF * D )
-    h_u_2 = I_u_2 / ( FF * D )
-    h_u_3 = I_u_3 / ( FF * D )
+      h_u_1 = I_u_1 / ( FF * D )
+      h_u_2 = I_u_2 / ( FF * D )
+      h_u_3 = I_u_3 / ( FF * D )
+    END IF
 
     h_d_1 = Gm_dd_11 * h_u_1
     h_d_2 = Gm_dd_22 * h_u_2
@@ -2760,15 +2796,19 @@ CONTAINS
       HF = Zero
       a = Zero
       b = Zero
+
+      h_u_1 = Zero
+      h_u_2 = Zero
+      h_u_3 = Zero
     ELSE
       HF = HeatFluxFactor( D, FF )
       a = Half * ( FF - HF )
       b = Half * ( Five * HF - Three * FF )
-    END IF
 
-    h_u_1 = I_u_1 / ( FF * D )
-    h_u_2 = I_u_2 / ( FF * D )
-    h_u_3 = I_u_3 / ( FF * D )
+      h_u_1 = I_u_1 / ( FF * D )
+      h_u_2 = I_u_2 / ( FF * D )
+      h_u_3 = I_u_3 / ( FF * D )
+    END IF
 
     h_d_1 = Gm_dd_11 * h_u_1
     h_d_2 = Gm_dd_22 * h_u_2

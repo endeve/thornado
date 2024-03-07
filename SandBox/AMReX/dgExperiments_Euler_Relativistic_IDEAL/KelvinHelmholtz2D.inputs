@@ -9,7 +9,7 @@ thornado.ProgramName = "KelvinHelmholtz2D"
 
 thornado.nNodes  = 03
 thornado.t_end   = 3.0e0
-thornado.iCycleD = 10
+thornado.iCycleD = 1
 thornado.dt_wrt  = 3.0e-2
 thornado.dt_chk  = 3.0e-1
 
@@ -28,14 +28,14 @@ geometry.prob_hi   = +0.5 +1.0 1.0 # Upper domain size
 
 thornado.swX                = 01 01 00
 amr.n_cell                  = 016 032 01 # Number of cells in each dimension
-amr.max_grid_size_x         = 8
-amr.max_grid_size_y         = 8
+amr.max_grid_size_x         = 4
+amr.max_grid_size_y         = 4
 amr.blocking_factor_x       = 4
 amr.blocking_factor_y       = 4
-amr.max_level               = 0
-amr.UseAMR                  = 0
-amr.UseFluxCorrection_Euler = 0
-amr.TagCriteria             = 0.25 0.5 0.75
+amr.max_level               = 3
+amr.UseAMR                  = 1
+amr.UseFluxCorrection_Euler = 1
+amr.TagCriteria             = 1.0 1.5 2.0
 amr.n_error_buf             = 0
 amr.ref_ratio               = 2
 amr.UseTiling               = 0

@@ -12,7 +12,9 @@ include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
 
 .DEFAULT_GOAL := all
 
-all: ApplicationDriver ComputePrimitiveTest
+all: ApplicationDriver \
+	ComputePrimitiveTest \
+	ComputePrimitiveTest_Single
 
 ApplicationDriver: \
 	$(weaklib) \
@@ -36,6 +38,16 @@ ComputePrimitiveTest: \
 	$(weaklib) \
 	$(thornado) \
 	ComputePrimitiveTest.o \
+	$(LIBRARIES)
+
+ComputePrimitiveTest_Single: \
+	$(weaklib) \
+	$(thornado) \
+	ComputePrimitiveTest_Single.o
+	$(FLINKER) $(FLAGS) -o ComputePrimitiveTest_Single_$(MACHINE) \
+	$(weaklib) \
+	$(thornado) \
+	ComputePrimitiveTest_Single.o \
 	$(LIBRARIES)
 
 clean:
@@ -107,3 +119,15 @@ ComputePrimitiveTest.o: \
   Euler_ErrorModule.o \
   TimersModule_Euler.o \
   ComputePrimitiveTest.F90
+
+ComputePrimitiveTest_Single.o: \
+  KindModule.o \
+  ProgramInitializationModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule_TABLE.o \
+  EquationOfStateModule.o \
+  Euler_UtilitiesModule_Relativistic.o \
+  Euler_ErrorModule.o \
+  UnitsModule.o \
+  ComputePrimitiveTest_Single.F90

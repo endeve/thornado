@@ -490,7 +490,7 @@ CONTAINS
     CALL UpdateConformalFactorAndMetric_XCFC_MF &
            ( MF_uMF, MF_uGF )
 
-    CALL AverageDown( MF_uGF )
+    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
 
   END SUBROUTINE ComputeConformalFactor
 
@@ -532,7 +532,7 @@ CONTAINS
     CALL UpdateLapseShiftCurvature_XCFC_MF &
            ( MF_uMF, MF_uGF )
 
-    CALL AverageDown( MF_uGF )
+    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
 
     CALL ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
 

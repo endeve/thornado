@@ -110,6 +110,8 @@ MODULE InitializationModule
   USE FillPatchModule, ONLY: &
     FillPatch, &
     FillCoarsePatch
+  USE MF_XCFC_UtilitiesModule, ONLY: &
+    MultiplyWithPsi6_MF
   USE TaggingModule, ONLY: &
     TagElements, &
     TagElements_Density
@@ -143,11 +145,10 @@ MODULE InitializationModule
     TimersStop_AMReX, &
     InitializeTimers_AMReX, &
     Timer_AMReX_Initialize
-  USE MF_GravitySolutionModule_XCFC, ONLY: &
-    InitializeGravitySolver_XCFC_MF
+  USE MF_GravitySolutionModule, ONLY: &
+    InitializeGravitySolver_MF
   USE MF_MetricInitializationModule, ONLY: &
-    InitializeMetric_MF, &
-    InitializeMetricFromCheckpoint_MF
+    InitializeMetric_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -159,7 +160,7 @@ CONTAINS
 
   SUBROUTINE InitializeProgram
 
-    LOGICAL :: SetInitialValues
+    LOGICAL :: SetInitialValues, FixInteriorADMMass
 
     CALL amrex_init()
 
@@ -227,7 +228,8 @@ CONTAINS
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
 
-      SetInitialValues = .TRUE.
+      SetInitialValues   = .TRUE.
+      FixInteriorADMMass = .FALSE.
 
       CALL InitializeTally_Euler_MF
 
@@ -239,7 +241,7 @@ CONTAINS
 
       CALL CreateMesh_MF( 0, MeshX )
 
-      CALL InitializeGravitySolver_XCFC_MF &
+      CALL InitializeGravitySolver_MF &
              ( Verbose_Option = amrex_parallel_ioprocessor() )
 
       CALL DestroyMesh_MF( MeshX )
@@ -256,23 +258,22 @@ CONTAINS
 
       CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
 
-      SetInitialValues = .FALSE.
+      SetInitialValues   = .FALSE.
+      FixInteriorADMMass = .TRUE.
 
       CALL InitializeTally_Euler_MF &
              ( InitializeFromCheckpoint_Option = .TRUE. )
 
       CALL CreateMesh_MF( 0, MeshX )
 
-      CALL InitializeGravitySolver_XCFC_MF &
+      CALL InitializeGravitySolver_MF &
              ( Verbose_Option = amrex_parallel_ioprocessor() )
-
-      CALL InitializeMetricFromCheckpoint_MF( MF_uGF, MF_uCF )
 
       CALL DestroyMesh_MF( MeshX )
 
     END IF
 
-    CALL AverageDown( MF_uGF )
+    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
     CALL AverageDown( MF_uGF, MF_uCF )
     CALL ApplyPositivityLimiter_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uDF )
@@ -300,6 +301,7 @@ CONTAINS
     CALL ComputeTally_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, &
              SetInitialValues_Option = SetInitialValues, &
+             FixInteriorADMMass_Option = FixInteriorADMMass, &
              Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL TimersStop_AMReX( Timer_AMReX_Initialize )
@@ -381,21 +383,32 @@ CONTAINS
     CALL amrex_multifab_build( MF_uAF(iLevel), BA, DM, nDOFX * nAF, swX )
     CALL amrex_multifab_build( MF_uDF(iLevel), BA, DM, nDOFX * nDF, swX )
 
+    CALL MF_uGF(iLevel) % SetVal( Zero )
+    CALL MF_uCF(iLevel) % SetVal( Zero )
+    CALL MF_uDF(iLevel) % SetVal( Zero )
+    CALL MF_uPF(iLevel) % SetVal( Zero )
+    CALL MF_uAF(iLevel) % SetVal( Zero )
+
     IF( iLevel .GT. 0 .AND. UseFluxCorrection_Euler ) &
       CALL amrex_fluxregister_build &
              ( FluxRegister_Euler(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
                iLevel, nDOFX_X1 * nCF )
 
     CALL FillCoarsePatch( iLevel, MF_uGF, &
-                          ApplyBoundaryConditions_Geometry_Option = .TRUE. )
+                          ApplyBoundaryConditions_Geometry_Option = .TRUE., &
+                          UpdateSpatialMetric_Option = .TRUE. )
 
     CALL FillCoarsePatch( iLevel, MF_uDF )
 
     CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF, &
                           ApplyBoundaryConditions_Euler_Option = .TRUE. )
 
+    CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCF(iLevel), -1 )
+
     CALL ApplyPositivityLimiter_Euler_MF &
            ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCF(iLevel), +1 )
 
   END SUBROUTINE MakeNewLevelFromCoarse
 
@@ -433,16 +446,26 @@ CONTAINS
     CALL amrex_multifab_build( MF_uCF_tmp, BA, DM, nDOFX * nCF, swX )
     CALL amrex_multifab_build( MF_uDF_tmp, BA, DM, nDOFX * nDF, swX )
 
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, &
-                    ApplyBoundaryConditions_Geometry_Option = .TRUE. )
+    CALL MF_uGF_tmp % SetVal( Zero )
+    CALL MF_uCF_tmp % SetVal( Zero )
+    CALL MF_uDF_tmp % SetVal( Zero )
+
+    CALL FillPatch &
+           ( iLevel, MF_uGF, MF_uGF_tmp, &
+             ApplyBoundaryConditions_Geometry_Option = .TRUE. )
 
     CALL FillPatch( iLevel, MF_uDF, MF_uDF_tmp )
 
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp, &
-                    ApplyBoundaryConditions_Euler_Option = .TRUE. )
+    CALL FillPatch &
+           ( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp, &
+             ApplyBoundaryConditions_Euler_Option = .TRUE. )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF_tmp, MF_uCF_tmp, -1, swX_Option = swX )
 
     CALL ApplyPositivityLimiter_Euler_MF &
-           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
+           ( iLevel, MF_uGF_tmp, MF_uCF_tmp, MF_uDF_tmp, swX_Option = swX )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF_tmp, MF_uCF_tmp, +1, swX_Option = swX )
 
     CALL ClearLevel( iLevel )
 

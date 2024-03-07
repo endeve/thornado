@@ -97,6 +97,8 @@ MODULE InputParsingModule
   LOGICAL :: UseFluxCorrection_Euler
   LOGICAL :: UseFluxCorrection_TwoMoment
   LOGICAL :: UseAMR
+  LOGICAL :: IsPeriodic(3)
+  INTEGER     , ALLOCATABLE :: IsPeriodicInt(:)
   INTEGER     , ALLOCATABLE :: nX(:)
   INTEGER     , ALLOCATABLE :: RefinementRatio(:)
   INTEGER     , ALLOCATABLE :: StepNo(:)
@@ -119,6 +121,7 @@ CONTAINS
   SUBROUTINE InitializeParameters
 
     TYPE(amrex_parmparse) :: PP
+    INTEGER               :: iDimX
 
 #if defined( THORNADO_AMREX_GIT_HASH )
 
@@ -245,7 +248,17 @@ CONTAINS
                          xL )
       CALL PP % getarr( 'prob_hi', &
                          xR )
+      CALL PP % getarr( 'is_periodic', &
+                        IsPeriodicInt )
     CALL amrex_parmparse_destroy( PP )
+
+    IsPeriodic = .FALSE.
+
+    DO iDimX = 1, amrex_spacedim
+
+      IF( IsPeriodicInt(iDimX) .EQ. 1 ) IsPeriodic(iDimX) = .TRUE.
+
+    END DO
 
     IF     ( coord_sys .EQ. 0 )THEN
 
@@ -456,10 +469,16 @@ CONTAINS
 
   SUBROUTINE DescribeProgramHeader_AMReX
 
-    CHARACTER(32) :: RFMT, IFMT
+    CHARACTER(32) :: RFMT, IFMT, MFMT, TagUnits
+    INTEGER :: iLevel, iDimX
+    REAL(DP) :: MeshWidths(3,0:nMaxLevels-1)
 
-    WRITE(RFMT,'(A,I2.2,A)') '(4x,A26,1x,', nMaxLevels, 'ES11.3E3)'
-    WRITE(IFMT,'(A,I2.2,A)') '(4x,A26,1x,', nMaxLevels, 'I3.2)'
+    TagUnits = ''
+    IF( TRIM( RefinementScheme ) .EQ. 'Mesh' )THEN
+      TagUnits = TRIM( UnitsDisplay % LengthX1Label )
+    ELSE IF( TRIM( RefinementScheme ) .EQ. 'Density' )THEN
+      TagUnits = TRIM( UnitsDisplay % MassDensityLabel )
+    END IF
 
     IF( .NOT. ALLOCATED( TagCriteria ) )THEN
       ALLOCATE( TagCriteria(nMaxLevels) )
@@ -470,6 +489,10 @@ CONTAINS
       ALLOCATE( nRefinementBuffer(nMaxLevels) )
       nRefinementBuffer = 1
     END IF
+
+    WRITE(RFMT,'(A,I2.2,A)') '(4x,A26,1x,', SIZE( TagCriteria ), 'ES11.3E3,x,A)'
+    WRITE(IFMT,'(A,I2.2,A)') '(4x,A26,1x,', SIZE( nRefinementBuffer ), 'I3.2)'
+    WRITE(MFMT,'(A,I2.2,A)') '(4x,A26,1x,', nMaxLevels, 'ES11.3E3,x,A)'
 
     IF( amrex_parallel_ioprocessor() )THEN
 
@@ -489,10 +512,33 @@ CONTAINS
                                       UseTiling
       WRITE(*,'(4x,A26,1x,L)')       'UseAMR:', &
                                       UseAMR
-      WRITE(*,TRIM(RFMT))            'TagCriteria:', &
-                                      TagCriteria
       WRITE(*,TRIM(IFMT))            'nRefinementBuffer:', &
                                       nRefinementBuffer
+      WRITE(*,TRIM(RFMT))            'TagCriteria:', &
+                                      TagCriteria, TRIM( TagUnits )
+
+      DO iLevel = 0, nMaxLevels-1
+
+        DO iDimX = 1, nDimsX
+
+          MeshWidths(iDimX,iLevel) &
+            = ( ( xR(iDimX) - xL(iDimX) ) / nX(iDimX) ) / 2**(iLevel)
+
+        END DO
+
+      END DO
+
+      WRITE(*,TRIM(MFMT)) 'MeshWidths (X1):', &
+                           MeshWidths(1,:) / UnitsDisplay % LengthX1Unit, &
+                                       TRIM( UnitsDisplay % LengthX1Label )
+      IF( nDimsX .GT. 1 ) &
+        WRITE(*,TRIM(MFMT)) 'MeshWidths (X2):', &
+                             MeshWidths(2,:) / UnitsDisplay % LengthX2Unit, &
+                                         TRIM( UnitsDisplay % LengthX2Label )
+      IF( nDimsX .GT. 2 ) &
+        WRITE(*,TRIM(MFMT)) 'MeshWidths (X3):', &
+                             MeshWidths(3,:) / UnitsDisplay % LengthX3Unit, &
+                                         TRIM( UnitsDisplay % LengthX3Label )
       WRITE(*,*)
 
     END IF

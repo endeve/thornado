@@ -126,7 +126,7 @@ MODULE MF_Euler_TallyModule
   CHARACTER(SL)    :: ADMMass_FileName
   REAL(DP), PUBLIC :: ADMMass_Initial
   REAL(DP), PUBLIC :: ADMMass_OffGrid
-  REAL(DP)         :: ADMMass_Interior
+  REAL(DP), PUBLIC :: ADMMass_Interior
   REAL(DP)         :: ADMMass_Change
 
 CONTAINS
@@ -261,8 +261,7 @@ CONTAINS
     ElectronNumber_Interior = Zero
     ElectronNumber_Change   = Zero
 
-    ADMMass_Interior = Zero
-    ADMMass_Change   = Zero
+    ADMMass_Change = Zero
 
     IF( .NOT. InitializeFromCheckpoint )THEN
 
@@ -284,8 +283,9 @@ CONTAINS
       ElectronNumber_Initial = Zero
       ElectronNumber_OffGrid = Zero
 
-      ADMMass_Initial = Zero
-      ADMMass_OffGrid = Zero
+      ADMMass_Initial  = Zero
+      ADMMass_OffGrid  = Zero
+      ADMMass_Interior = Zero
 
     END IF
 
@@ -294,16 +294,17 @@ CONTAINS
 
   SUBROUTINE ComputeTally_Euler_MF &
     ( Time, MF_uGF, MF_uCF, SetInitialValues_Option, &
-      WriteTally_Option, Verbose_Option )
+      WriteTally_Option, FixInteriorADMMass_Option, Verbose_Option )
 
     REAL(DP),             INTENT(in) :: Time  (0:)
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:)
     LOGICAL,              INTENT(in), OPTIONAL :: SetInitialValues_Option
     LOGICAL,              INTENT(in), OPTIONAL :: WriteTally_Option
+    LOGICAL,              INTENT(in), OPTIONAL :: FixInteriorADMMass_Option
     LOGICAL,              INTENT(in), OPTIONAL :: Verbose_Option
 
-    LOGICAL :: SetInitialValues
+    LOGICAL :: SetInitialValues, FixInteriorADMMass
     LOGICAL :: WriteTally
     LOGICAL :: Verbose
 
@@ -333,6 +334,10 @@ CONTAINS
     IF( PRESENT( WriteTally_Option ) ) &
       WriteTally = WriteTally_Option
 
+    FixInteriorADMMass = .FALSE.
+    IF( PRESENT( FixInteriorADMMass_Option ) ) &
+      FixInteriorADMMass = FixInteriorADMMass_Option
+
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
@@ -343,7 +348,8 @@ CONTAINS
     EulerMomentumX3_Interior = Zero
     EulerEnergy_Interior     = Zero
     ElectronNumber_Interior  = Zero
-    ADMMass_Interior         = Zero
+    IF( .NOT. FixInteriorADMMass ) &
+      ADMMass_Interior = Zero
 
     DO iLevel = 0, nLevels-1
 
@@ -495,7 +501,8 @@ CONTAINS
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
-    CALL Calc_ADM_Mass( ADMMass_Interior )
+    IF( .NOT. FixInteriorADMMass ) &
+      CALL Calc_ADM_Mass( ADMMass_Interior )
 
 #else
 

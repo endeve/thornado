@@ -14,6 +14,10 @@ MODULE MF_EquationOfStateModule
   USE EquationOfStateModule, ONLY: &
     InitializeEquationOfState, &
     FinalizeEquationOfState
+  USE EquationOfStateModule_TABLE, ONLY: &
+    Min_D
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    rhoMin_Euler_GR
 
   ! --- Local Modules ---
 
@@ -58,6 +62,8 @@ CONTAINS
              ( EquationOfState_Option          = TRIM( EquationOfState ), &
                EquationOfStateTableName_Option = TRIM( EosTableName ), &
                Verbose_Option = amrex_parallel_ioprocessor() )
+
+      rhoMin_Euler_GR = Min_D
 
     ELSE IF( TRIM( EquationOfState ) .EQ. 'IDEAL' )THEN
 

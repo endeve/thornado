@@ -62,7 +62,8 @@ PROGRAM main
     ElectronNumber_Initial, &
     ElectronNumber_OffGrid, &
     ADMMass_Initial, &
-    ADMMass_OffGrid
+    ADMMass_OffGrid, &
+    ADMMass_Interior
   USE MF_TwoMoment_TallyModule, ONLY: &
     ComputeTally_TwoMoment_MF
   USE AverageDownModule, ONLY: &
@@ -323,7 +324,8 @@ CONTAINS
                [ EulerMomentumX3_Initial, EulerMomentumX3_OffGrid ], &
                [ EulerEnergy_Initial    , EulerEnergy_OffGrid     ], &
                [ ElectronNumber_Initial , ElectronNumber_OffGrid  ], &
-               [ ADMMass_Initial        , ADMMass_OffGrid         ], &
+               [ ADMMass_Initial        , ADMMass_OffGrid, &
+                 ADMMass_Interior ], &
                MF_uGF % BA % P, &
                iWriteFields_uGF = 1, &
                iWriteFields_uCF = 1, &

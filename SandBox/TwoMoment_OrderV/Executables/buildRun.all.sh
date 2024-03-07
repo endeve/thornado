@@ -22,7 +22,9 @@ function set_common(){
 
 ## for running
 
-#   export MPIR_CVAR_ENABLE_GPU=0
+   export MPIR_CVAR_ENABLE_GPU=0
+   export ZE_FLAT_DEVICE_HIERARCHY=COMPOSITE
+   export ZE_AFFINITY_MASK=0.0
    #export MKL_VERBOSE=2
    export LTTNG_HOME=$EXASTAR_HOME
    mkdir -p $LTTNG_HOME
@@ -30,9 +32,9 @@ function set_common(){
    #export LIBOMPTARGET_PLUGIN=LEVEL0
    #export ONEAPI_DEVICE_FILTER=level_zero:gpu
    ##export LIBOMPTARGET_PLUGIN=OPENCL
-   ##export LIBOMPTARGET_DEBUG=1
+#   export LIBOMPTARGET_DEBUG=2
+#   export LIBOMPTARGET_INFO=4
    #export EnableImplicitScaling=1
-   export ZE_AFFINITY_MASK=0.0
    #export LIBOMPTARGET_PLUGIN_PROFILE=T
    export OMP_TARGET_OFFLOAD=MANDATORY
    export OMP_NUM_THREADS=1
@@ -157,13 +159,16 @@ export useAGRF="TRUE"
 #module load oneapi/release/2023.05.15.001
 #COMPILER_DATE="rls-23.05.15.001"
 
-module load oneapi/eng-compiler/2023.10.15.002
-COMPILER_DATE="eng-23.10.15.002"
+#module load oneapi/eng-compiler/2023.10.15.002
+#COMPILER_DATE="eng-23.10.15.002"
 #module load  oneapi/eng-compiler/2023.05.15.007
 #COMPILER_DATE="eng-23.05.15.007"
 #module load oneapi/eng-compiler/2023.12.15.002
 #COMPILER_DATE="eng-23.12.15.002"
-
+COMPILER_DATE=2024.03.05
+module load nightly-compiler/${COMPILER_DATE}
+module switch -f intel_compute_runtime/release/stable-736.25 neo/agama-devel-sp4/847-24.05.28454.14-847
+#LD_LIBRARY_PATH=/exaperf/nightly/compiler/2024.03.06/linux/lib/x86_64-unknown-linux-gnu:$LD_LIBRARY_PATH
 if false; then
    if [[ -n $COMPILER_DATE ]]; then
       module swap -f nightly-compiler/${COMPILER_DATE}
@@ -246,20 +251,22 @@ opLevels=(O3)
 grids=("[8,8,8]" "[16,16,16]")
 gridNames=("" "-xN16")
 appNames=(ApplicationDriver ApplicationDriver_Neutrinos)
-logFiles=(sineWave01 relax01)
+logFiles=(sineWave relax)
 CaseNames=(SineWaveStreaming Relaxation)
 userOptions=("" "MICROPHYSICS=WEAKLIB")
 gridLines=(85 131)
 
 #grids=("[16,16,16]")
 #gridNames=("-xN16")
+#grids=("[8,8,8]")
+#gridNames=("")
 #appNames=(ApplicationDriver)
 #logFiles=(sineWave)
 #CaseNames=(SineWaveStreaming)
 #userOptions=("")
 #gridLines=(85)
 #appNames=(ApplicationDriver_Neutrinos)
-#logFiles=(relax)
+#logFiles=(relaxUmd847)
 #CaseNames=(Relaxation)
 #userOptions=("MICROPHYSICS=WEAKLIB")
 #gridLines=(131)

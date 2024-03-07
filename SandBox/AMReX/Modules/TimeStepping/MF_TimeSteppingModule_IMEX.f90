@@ -78,10 +78,11 @@ MODULE MF_TimeSteppingModule_IMEX
     ApplyBoundaryConditions_Geometry_XCFC_MF, &
     ComputeConformalFactorSourcesAndMg_XCFC_MF, &
     ComputePressureTensorTrace_XCFC_MF
+  USE MF_GravitySolutionModule, ONLY: &
+    EvolveGravity
   USE MF_GravitySolutionModule_XCFC, ONLY: &
     ComputeConformalFactor_XCFC_MF, &
-    ComputeLapseShiftCurvature_XCFC_MF, &
-    EvolveGravity
+    ComputeLapseShiftCurvature_XCFC_MF
   USE AverageDownModule, ONLY: &
     AverageDown
   USE MF_TimersModule, ONLY: &
@@ -743,7 +744,7 @@ CONTAINS
     CALL UpdateConformalFactorAndMetric_XCFC_MF &
            ( MF_uMF, MF_uGF )
 
-    CALL AverageDown( MF_uGF )
+    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
 
   END SUBROUTINE ComputeConformalFactor
 
@@ -766,7 +767,7 @@ CONTAINS
     CALL UpdateLapseShiftCurvature_XCFC_MF &
            ( MF_uMF, MF_uGF )
 
-    CALL AverageDown( MF_uGF )
+    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
 
     CALL ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
 

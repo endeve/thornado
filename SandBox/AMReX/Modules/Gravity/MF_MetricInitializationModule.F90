@@ -5,7 +5,7 @@ MODULE MF_MetricInitializationModule
   USE amrex_multifab_module, ONLY: &
     amrex_multifab
 
-  USE MF_GravitySolutionModule_XCFC, ONLY: &
+  USE MF_GravitySolutionModule, ONLY: &
     EvolveGravity
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
