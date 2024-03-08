@@ -53,6 +53,9 @@ MODULE MF_InitializationModule
     iGF_K_dd_22, &
     iGF_K_dd_23, &
     iGF_K_dd_33
+  USE GeometryComputationModule, ONLY: &
+    ConformalFactor, &
+    LapseFunction
   USE FluidFieldsModule, ONLY: &
     iCF_D, &
     iCF_S1, &
@@ -77,10 +80,10 @@ MODULE MF_InitializationModule
     SqrtTiny, &
     Zero, &
     One, &
-    Two, &
     Three, &
     TwoPi, &
-    FourPi
+    FourPi, &
+    Half
   USE InputParsingModule, ONLY: &
     xR, &
     UseTiling
@@ -92,9 +95,10 @@ MODULE MF_InitializationModule
 
   REAL(DP) :: PolytropicConstant
   REAL(DP) :: CentralPressure
+  REAL(DP) :: CentralDensity
   REAL(DP) :: GravitationalMass
   REAL(DP) :: NeutronStarRadius
-  REAL(DP), PARAMETER :: DeltaR = 1.0e-4_DP * Kilometer
+  REAL(DP), PARAMETER :: DeltaR    = 1.0e-4_DP * Kilometer
   REAL(DP), PARAMETER :: TOLERANCE = 1.0e-10_DP
 
 CONTAINS
@@ -131,11 +135,9 @@ CONTAINS
     REAL(DP), ALLOCATABLE, DIMENSION(:) :: &
       RadiusArr, DensityArr, PressureArr, AlphaArr, PsiArr
 
-    REAL(DP) :: CentralDensity
-
     CALL amrex_parmparse_build( PP, 'TOV' )
-      CALL PP % get( 'CentralDensity'     , CentralDensity     )
-      CALL PP % get( 'PolytropicConstant' , PolytropicConstant )
+      CALL PP % get( 'CentralDensity'    , CentralDensity     )
+      CALL PP % get( 'PolytropicConstant', PolytropicConstant )
     CALL amrex_parmparse_destroy( PP )
 
     CentralDensity &
@@ -146,7 +148,7 @@ CONTAINS
 
     CentralPressure = PolytropicConstant * CentralDensity**( Gamma_IDEAL )
 
-    N = ( xR(1) + 5.0_DP * Kilometer ) / DeltaR
+    N = ( xR(1) + 3.0_DP * Kilometer ) / DeltaR
 
     ALLOCATE( RadiusArr  (N) )
     ALLOCATE( DensityArr (N) )
@@ -329,25 +331,12 @@ CONTAINS
                              AlphaArr(N), PsiArr(N)
 
     LOGICAL :: CONVERGED
-    INTEGER :: ITER, iX1, iXX1
+    INTEGER :: ITER
     INTEGER, PARAMETER :: MAX_ITER = 100
+    REAL(DP) :: Psi0, Phi0
 
-    REAL(DP) :: Radius, Pressure, Psi, Phi, Epsi, Ephi
-    REAL(DP) :: PressureN, EpsiN, EphiN
-    REAL(DP) :: Alpha_Iso, Psi_Iso, dAlpha, dPsi
-    REAL(DP) :: Alpha0
-    REAL(DP) :: Psi0
-
-    Alpha0 = 0.8_DP
-    Psi0   = 1.4_DP
-
-    Radius   = SqrtTiny * Kilometer
-    Pressure = CentralPressure
-    Psi      = Psi0
-    Phi      = Alpha0 * Psi0
-    Epsi     = Zero
-    Ephi     = Zero
-    GravitationalMass = Zero
+    Psi0 = 1.4_DP
+    Phi0 = 1.2_DP
 
     ITER = 0
     CONVERGED = .FALSE.
@@ -355,119 +344,160 @@ CONTAINS
 
       ITER = ITER + 1
 
-      NeutronStarRadius = -One
-
-      DO iX1 = 1, N
-
-        RadiusArr  (iX1) = Radius
-        PressureArr(iX1) = Pressure
-        DensityArr (iX1) &
-          = ( Pressure / PolytropicConstant )**( One / Gamma_IDEAL )
-
-        PressureN &
-          = Pressure &
-              + DeltaR &
-                  * dpdr &
-                      ( Radius, DensityArr(iX1), Pressure, &
-                        Psi, Phi, Epsi, Ephi )
-
-        EpsiN = Epsi + DeltaR * dEpsidr( Radius, Pressure, Psi )
-        EphiN = Ephi + DeltaR * dEphidr( Radius, Pressure, Psi, Phi )
-
-        Radius = Radius + DeltaR
-        Psi    = Psi    + DeltaR * dPsidr( Radius, EpsiN )
-        Phi    = Phi    + DeltaR * dPhidr( Radius, EphiN )
-
-        PsiArr  (iX1) = Psi
-        AlphaArr(iX1) = Phi / Psi
-
-        Pressure = PressureN
-        Epsi     = EpsiN
-        Ephi     = EphiN
-
-        GravitationalMass &
-          = GravitationalMass &
-              + FourPi * Radius**2 &
-                  * ( DensityArr(iX1) + Pressure / ( Gamma_IDEAL - One ) &
-                        + Three * Pressure ) &
-                  * Phi * Psi**5 * DeltaR
-
-        IF( Pressure .LT. 1.0e-8_DP * CentralPressure &
-              .AND. NeutronStarRadius .LT. Zero )THEN
-
-          NeutronStarRadius = Radius
-
-          Alpha_Iso =   ( One - GravitationalMass / ( Two * Radius ) ) &
-                      / ( One + GravitationalMass / ( Two * Radius ) )
-          Psi_Iso   = One + GravitationalMass / ( Two * Radius )
-
-          dAlpha = Alpha_Iso - AlphaArr(iX1)
-          dPsi   = Psi_Iso   - PsiArr  (iX1)
-
-          IF( MAX( ABS( dAlpha ) / Alpha_Iso, ABS( dPsi ) / Psi_Iso ) &
-                .LT. TOLERANCE )THEN
-
-            CONVERGED = .TRUE.
-
-            ! --- For Locate function to work properly ---
-            DO iXX1 = iX1, N
-
-              RadiusArr(iXX1) = RadiusArr(iXX1-1) + DeltaR
-
-            END DO
-
-          ELSE
-
-            Alpha0 = Alpha0 + dAlpha
-            Psi0   = Psi0   + dPsi
-
-            Radius   = SqrtTiny * Kilometer
-            Pressure = CentralPressure
-            Psi      = Psi0
-            Phi      = Alpha0 * Psi0
-            Epsi     = Zero
-            Ephi     = Zero
-            GravitationalMass = Zero
-
-          END IF
-
-          EXIT
-
-        END IF ! Pressure .LT. 1.0e-8_DP * CentralPressure
-
-      END DO ! iX1 = 1, N
+      CALL IntegrateOutwards &
+             ( N, RadiusArr, DensityArr, PressureArr, AlphaArr, PsiArr, &
+               CONVERGED, Psi0, Phi0 )
 
     END DO ! WHILE
 
   END SUBROUTINE IntegrateTOVEquation
 
 
-  REAL(DP) FUNCTION dpdr( r, rho, p, Psi, Phi, Epsi, Ephi )
+  SUBROUTINE IntegrateOutwards &
+    ( N, RadiusArr, DensityArr, PressureArr, AlphaArr, PsiArr, &
+      CONVERGED, Psi0, Phi0 )
 
-    REAL(DP), INTENT(in) :: r, rho, p, Psi, Phi, Epsi, Ephi
+    INTEGER , INTENT(in)    :: N
+    REAL(DP), INTENT(out)   :: RadiusArr(N), DensityArr(N), PressureArr(N), &
+                               AlphaArr(N), PsiArr(N)
+    LOGICAL , INTENT(inout) :: CONVERGED
+    REAL(DP), INTENT(inout) :: Psi0, Phi0
 
-    REAL(DP) :: Lapse, e
+    INTEGER :: i, j
 
-    e = p / ( Gamma_IDEAL - One )
+    REAL(DP) :: ra, Epsi_ra, Ephi_ra, PsiPrime_ra, PhiPrime_ra, Mass
+    REAL(DP) :: Radius, Density, Pressure
+    REAL(DP) :: Psi, Phi, Epsi, Ephi
+    REAL(DP) :: PsiR, PhiR, dPsi, dPhi
+    REAL(DP) :: PressureN, InternalEnergyDensity, PsiPrime, PhiPrime
 
-    Lapse = Phi / Psi
+    ra          = Zero
+    Epsi_ra     = Zero
+    Ephi_ra     = Zero
+    PsiPrime_ra = Zero
+    PhiPrime_ra = Zero
+    Mass        = Zero
 
-    dpdr = - ( rho + e + p ) &
-             * ( dPhidr( r, Ephi ) - Lapse * dPsidr( r, Epsi ) ) / Phi
+    Radius   = SqrtTiny
+    Density  = CentralDensity
+    Pressure = CentralPressure
+    Psi      = Psi0
+    Phi      = Phi0
+    Epsi     = Epsi_ra
+    Ephi     = Epsi_ra
+
+    RadiusArr  (1) = Radius
+    PressureArr(1) = Pressure
+    DensityArr (1) = Density
+    PsiArr     (1) = Psi
+    AlphaArr   (1) = Phi / Psi
+
+    DO i = 2, N
+
+      Density &
+        = ( Pressure / PolytropicConstant )**( One / Gamma_IDEAL )
+
+      InternalEnergyDensity &
+        = Pressure / ( Gamma_IDEAL - One )
+
+      PsiPrime = dPsidr( Radius, Epsi, ra, PsiPrime_ra, Epsi_ra )
+      PhiPrime = dPhidr( Radius, Ephi, ra, PhiPrime_ra, Ephi_ra )
+
+      PressureN &
+        = Pressure &
+            + DeltaR &
+                * dpdr( Radius, Density, InternalEnergyDensity, Pressure, &
+                        Phi, PhiPrime, Psi, PsiPrime )
+
+      Epsi &
+        = Epsi &
+            + DeltaR * dEpsidr( Radius, Density, InternalEnergyDensity, Psi )
+      Ephi &
+        = Ephi &
+            + DeltaR * dEphidr( Radius, Density, InternalEnergyDensity, &
+                                Pressure, Psi, Phi )
+
+      Radius = Radius + DeltaR
+      Psi    = Psi + DeltaR * dPsidr( Radius, Epsi, ra, PsiPrime_ra, Epsi_ra )
+      Phi    = Phi + DeltaR * dPhidr( Radius, Ephi, ra, PhiPrime_ra, Ephi_ra )
+
+      Pressure = PressureN
+
+      Density &
+        = ( Pressure / PolytropicConstant )**( One / Gamma_IDEAL )
+
+      InternalEnergyDensity &
+        = Pressure / ( Gamma_IDEAL - One )
+
+      Mass &
+        = Mass &
+            + FourPi * Radius**2 &
+                * ( Density + InternalEnergyDensity + Three * Pressure ) &
+                * Phi * Psi**5 * DeltaR
+
+      RadiusArr  (i) = Radius
+      DensityArr (i) = Density
+      PressureArr(i) = Pressure
+      PsiArr     (i) = Psi
+      AlphaArr   (i) = Phi / Psi
+
+      IF( Pressure .LT. 1.0e-8_DP * CentralPressure )THEN
+
+        NeutronStarRadius = Radius
+        GravitationalMass = Mass
+
+        PsiR = Psi_Iso( NeutronStarRadius, GravitationalMass )
+        PhiR = Phi_Iso( NeutronStarRadius, GravitationalMass )
+
+        dPsi = PsiR - Psi
+        dPhi = PhiR - Phi
+
+        IF( MAX( ABS( dPsi ) / PsiR, ABS( dPhi ) / PhiR ) .LT. TOLERANCE )THEN
+
+          CONVERGED = .TRUE.
+
+          ! --- Extrapolate beyond neutron star surface
+          !     with constant hydro and isotropic metric ---
+
+          DO j = i + 1, N
+
+            RadiusArr  (j) = RadiusArr(j-1) + DeltaR
+            PressureArr(j) = Pressure
+            DensityArr (j) = Density
+            PsiArr     (j) = Psi_Iso( RadiusArr(j), GravitationalMass )
+            AlphaArr   (j) = Phi_Iso( RadiusArr(j), GravitationalMass )
+
+          END DO
+
+        ELSE
+
+          Psi0 = Psi0 + dPsi
+          Phi0 = Phi0 + dPhi
+
+        END IF
+
+        EXIT
+
+      END IF ! Pressure .LT. 1.0e-8_DP * CentralPressure
+
+    END DO ! i = 2, N
+
+  END SUBROUTINE IntegrateOutwards
+
+
+  REAL(DP) FUNCTION dpdr( r, rho, e, p, Phi, PhiPrime, Psi, PsiPrime )
+
+    REAL(DP), INTENT(in) :: r, rho, e, p, Phi, PhiPrime, Psi, PsiPrime
+
+    dpdr = - ( rho + e + p ) * ( PhiPrime / Phi - PsiPrime / Psi )
 
     RETURN
   END FUNCTION dpdr
 
 
-  REAL(DP) FUNCTION dEpsidr( r, p, Psi )
+  REAL(DP) FUNCTION dEpsidr( r, rho, e, Psi )
 
-    REAL(DP), INTENT(in) :: r, p, Psi
-
-    REAL(DP) :: rho, e
-
-    rho = ( p / PolytropicConstant )**( One / Gamma_IDEAL )
-
-    e = p / ( Gamma_IDEAL - One )
+    REAL(DP), INTENT(in) :: r, rho, e, Psi
 
     dEpsidr = TwoPi * Psi**5 * ( rho + e ) * r**2
 
@@ -475,15 +505,9 @@ CONTAINS
   END FUNCTION dEpsidr
 
 
-  REAL(DP) FUNCTION dEphidr( r, p, Psi, Phi )
+  REAL(DP) FUNCTION dEphidr( r, rho, e, p, Psi, Phi )
 
-    REAL(DP), INTENT(in) :: r, p, Psi, Phi
-
-    REAL(DP) :: rho, e
-
-    rho = ( p / PolytropicConstant )**( One / Gamma_IDEAL )
-
-    e = p / ( Gamma_IDEAL - One )
+    REAL(DP), INTENT(in) :: r, rho, e, p, Psi, Phi
 
     dEphidr = TwoPi * Phi * Psi**4 * ( rho + e + 6.0_DP * p ) * r**2
 
@@ -491,24 +515,44 @@ CONTAINS
   END FUNCTION dEphidr
 
 
-  REAL(DP) FUNCTION dPsidr( r, Epsi )
+  REAL(DP) FUNCTION dPsidr( r, Epsi, ra, PsiPrime_ra, Epsi_ra )
 
-    REAL(DP), INTENT(in) :: r, Epsi
+    REAL(DP), INTENT(in) :: r, Epsi, ra, PsiPrime_ra, Epsi_ra
 
-    dPsidr = -Epsi / r**2
+    dPsidr = One / r**2 * ( ra**2 * PsiPrime_ra - Epsi + Epsi_ra )
 
     RETURN
   END FUNCTION dPsidr
 
 
-  REAL(DP) FUNCTION dPhidr( r, Ephi )
+  REAL(DP) FUNCTION dPhidr( r, Ephi, ra, PhiPrime_ra, Ephi_ra )
 
-    REAL(DP), INTENT(in) :: r, Ephi
+    REAL(DP), INTENT(in) :: r, Ephi, ra, PhiPrime_ra, Ephi_ra
 
-    dPhidr = Ephi / r**2
+    dPhidr = One / r**2 * ( ra**2 * PhiPrime_ra + Ephi - Ephi_ra )
 
     RETURN
   END FUNCTION dPhidr
+
+
+  REAL(DP) FUNCTION Psi_Iso( r, M )
+
+    REAL(DP), INTENT(in) :: r, M
+
+    Psi_Iso = ConformalFactor( r, M )
+
+    RETURN
+  END FUNCTION Psi_Iso
+
+
+  REAL(DP) FUNCTION Phi_Iso( r, M )
+
+    REAL(DP), INTENT(in) :: r, M
+
+    Phi_Iso = Psi_Iso( r, M ) * LapseFunction( r, M )
+
+    RETURN
+  END FUNCTION Phi_Iso
 
 
 END MODULE MF_InitializationModule
