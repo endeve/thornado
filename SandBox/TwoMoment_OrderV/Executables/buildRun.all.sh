@@ -165,10 +165,10 @@ export useAGRF="TRUE"
 #COMPILER_DATE="eng-23.05.15.007"
 #module load oneapi/eng-compiler/2023.12.15.002
 #COMPILER_DATE="eng-23.12.15.002"
-COMPILER_DATE=2024.03.05
+COMPILER_DATE=2024.03.07
 module load nightly-compiler/${COMPILER_DATE}
 module switch -f intel_compute_runtime/release/stable-736.25 neo/agama-devel-sp4/847-24.05.28454.14-847
-#LD_LIBRARY_PATH=/exaperf/nightly/compiler/2024.03.06/linux/lib/x86_64-unknown-linux-gnu:$LD_LIBRARY_PATH
+LD_LIBRARY_PATH=/exaperf/nightly/compiler/2024.03.06/linux/lib/x86_64-unknown-linux-gnu:$LD_LIBRARY_PATH
 if false; then
    if [[ -n $COMPILER_DATE ]]; then
       module swap -f nightly-compiler/${COMPILER_DATE}
