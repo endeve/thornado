@@ -93,6 +93,33 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Mar 08 2024
+1. removed unnecessary workarounds (i.e., not speedup the simulation, not affect the results), ms-daily is now aligned with master-nre. The only difference is the ms-daily has the FOM output. Here is the time comparison between ms-daily and master-nre
+   - ms-daily
+<pre>
+cat timeFOM_2024.03.07.txt
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2024.03.07   2023.10.15.002682.20    TimeDiff   Percentage   |   2024.03.07   2023.10.15.002682.20    FOM-Diff   Percentage
+                     MKL Date :
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     3.5454e+00          4.6583e+00      -1.1128e+00   -23.89%            5.9891e+06          2.7350e+07       -2.1361e+07   -78.10%
+sineWave   [16,16,16]   O3    :     1.3415e+01          6.9252e+01      -5.5838e+01   -80.63%            2.5170e+07          2.9253e+07       -4.0834e+06   -13.96%
+relax      [8,8,8]      O3    :     2.2692e+01          1.5096e+02      -1.2827e+02   -84.97%            3.7569e+07          4.5178e+07       -7.6091e+06   -16.84%
+relax      [16,16,16]   O3    :     1.5960e+02          1.5128e+02       8.3139e+00     5.50%            4.2733e+07          4.5081e+07       -2.3484e+06    -5.21%
+</pre>
+
+   - master-nre 
+<pre>
+
+cat timeFOM_2024.03.07.txt
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2024.03.07   eng-23/05.15.007    TimeDiff   Percentage   |   2024.03.07   eng-23/05.15.007    FOM-Diff   Percentage
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWaveNRE [8,       8,        8]           O3    :     3.5339e+00          0.0000e+00       3.5339e+00     0.00%            0.0000e+00          0.0000e+00        0.0000e+00     0.00%
+sineWaveNRE [16,      16,       16]          O3    :     1.3531e+01          0.0000e+00       1.3531e+01     0.00%            0.0000e+00          0.0000e+00        0.0000e+00     0.00%
+relaxNRE   [8,       8,        8]           O3    :     2.2642e+01          0.0000e+00       2.2642e+01     0.00%            0.0000e+00          0.0000e+00        0.0000e+00     0.00%
+relaxNRE   [16,      16,       16]          O3    :     1.6000e+02          0.0000e+00       1.6000e+02     0.00%            0.0000e+00          0.0000e+00        0.0000e+00     0.00%
+</pre>
 ## Mar 07 2024
 1. Thornado compiles fine with nightly 0306, but failed to run due to "error while loading shared libraries: libomptarget.so: cannot open shared object file: No such file or directory". Brian pointed out this in the OneAPI Discussions channel, and the fix is `LD_LIBRARY_PATH=/exaperf/nightly/compiler/2024.03.06/linux/lib/x86_64-unknown-linux-gnu:$LD_LIBRARY_PATH`, it was usually in `/exaperf/nightly/compiler/2024.03.05/linux/lib/`
 2. Thornado runs with night 0306 and neo/agama-devel-sp4/847-24.05.28454.14-847, and the fix above and her is the time (the default udf gives nan)
