@@ -93,6 +93,33 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Mar 09 2023
+1. Recaliborated the thornado run based on oneapi/eng-compiler/2023.10.15.002 ( three runs has been performed, and the last run data was chosen)
+2. libomptarget.so has been moved back to its original location since nightly 03.08. so LD_LIBRARY_PATH is no longer needed for newer nightlies.    
+3. Running nightly 03.10 and umd849, and umd851. Here are the resuls:
+<pre>
+cat timeFOM_2024.03.10.txt-umd849
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2024.03.10-umd849   2023.10.15.002    TimeDiff   Percentage   |   2024.03.10-umd849   2023.10.15.002    FOM-Diff   Percentage
+                     MKL Date :
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     3.4928e+00          2.9053e+00       5.8747e-01    20.22%            6.0792e+06          7.3085e+06       -1.2292e+06   -16.82%
+sineWave   [16,16,16]   O3    :     1.3562e+01          1.2129e+01       1.4335e+00    11.82%            2.4896e+07          2.7838e+07       -2.9425e+06   -10.57%
+relax      [8,8,8]      O3    :     2.2249e+01          2.2466e+01      -2.1780e-01    -0.97%            3.8316e+07          3.7945e+07        3.7150e+05     0.98%
+relax      [16,16,16]   O3    :     1.6127e+02          1.6439e+02      -3.1192e+00    -1.90%            4.2290e+07          4.1488e+07        8.0240e+05     1.93%
+</pre>
+
+<pre>
+cat timeFOM_2024.03.10.txt-umd851
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2024.03.10-umd851   2023.10.15.002    TimeDiff   Percentage   |   2024.03.10-umd851   2023.10.15.002    FOM-Diff   Percentage
+                     MKL Date :
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     3.4613e+00          2.9053e+00       5.5595e-01    19.14%            6.1346e+06          7.3085e+06       -1.1739e+06   -16.06%
+sineWave   [16,16,16]   O3    :     1.3822e+01          1.2129e+01       1.6936e+00    13.96%            2.4427e+07          2.7838e+07       -3.4110e+06   -12.25%
+relax      [8,8,8]      O3    :     2.2546e+01          2.2466e+01       7.9720e-02     0.35%            3.7811e+07          3.7945e+07       -1.3410e+05    -0.35%
+relax      [16,16,16]   O3    :     1.5891e+02          1.6439e+02      -5.4795e+00    -3.33%            4.2918e+07          4.1488e+07        1.4305e+06     3.45%
+</pre>
 ## Mar 08 2024
 1. removed unnecessary workarounds (i.e., not speedup the simulation, not affect the results), ms-daily is now aligned with master-nre. The only difference is the ms-daily has the FOM output. Here is the time comparison between ms-daily and master-nre
    - ms-daily
