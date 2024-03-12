@@ -2,40 +2,19 @@ PROGRAM main
 
   ! --- AMReX Modules ---
 
-  USE amrex_box_module, ONLY: &
-    amrex_box
-  USE amrex_multifab_module, ONLY: &
-    amrex_mfiter, &
-    amrex_mfiter_build, &
-    amrex_mfiter_destroy, &
-    amrex_imultifab
-  USE amrex_amrcore_module, ONLY: &
-    amrex_geom
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
-    amrex_parallel_communicator, &
-    amrex_parallel_reduce_max
+    amrex_parallel_communicator
 
   ! --- thornado Modules ---
 
-  USE ProgramHeaderModule, ONLY: &
-    nDOFX
   USE UnitsModule, ONLY: &
-    UnitsDisplay, &
-    Gram, &
-    Centimeter
-  USE FluidFieldsModule, ONLY: &
-    iPF_D
+    UnitsDisplay
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
-    DP, &
-    One
-  USE MaskModule, ONLY: &
-    CreateFineMask, &
-    DestroyFineMask, &
-    IsNotLeafElement
+    DP
   USE MF_FieldsModule_Geometry, ONLY: &
     MF_uGF
   USE MF_FieldsModule_Euler, ONLY: &
@@ -87,8 +66,7 @@ PROGRAM main
     t_chk, &
     dt_wrt, &
     dt_chk, &
-    DEBUG, &
-    UseTiling
+    DEBUG
   USE MF_Euler_TimersModule, ONLY: &
     TimeIt_AMReX_Euler
   USE MF_TimersModule, ONLY: &
@@ -104,7 +82,7 @@ PROGRAM main
 
   INCLUDE 'mpif.h'
 
-  INTEGER  :: iErr, iLevel
+  INTEGER  :: iErr
   LOGICAL  :: wrt, chk
   REAL(DP) :: Timer_Evolution
 
@@ -316,7 +294,8 @@ CONTAINS
                pMF_uCF_Option = MF_uCF % P )
 
       CALL FinalizeTimers_AMReX &
-             ( RestartProgramTimer_Option = .TRUE. )
+             ( RestartProgramTimer_Option = .TRUE., &
+               Verbose_Option = amrex_parallel_ioprocessor() )
 
       chk = .FALSE.
 
