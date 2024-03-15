@@ -93,7 +93,48 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
-## Mar 09 2023
+## Mar 15 2024
+1. By running a large number of cases with unitrace, LIBOMPTARGET_PLUGIN_PROFILE, and unitrace + LIBOMPTARGET_PLUGIN_PROFILE, it is found that unitrace alone gives crazy times, while both LIBOMPTARGET_PLUGIN_PROFILE, and unitrace + LIBOMPTARGET_PLUGIN_PROFILE produce reasonable times.
+<pre>
+[3:26 PM] Quan, Shaoping
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/Flash-X> egrep 'l3784|Kernel 48' ompProfOnly03.log
+Kernel 48                 : __omp_offloading_802_3400a0_twomoment_discretizationmodule_streaming_mp_computeoffgridflux__l3784
+Kernel 48                 :     177.11      0.05      0.04      0.10    133.26      0.04      0.03      0.05   3520.00
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/Flash-X> egrep 'l3784|Kernel 48' unitraceWompProf03.log
+                     __omp_offloading_802_3400a1_twomoment_discretizationmodule_streaming_mp_computeoffgridflux__l3784[SIMD32 {448; 1; 1} {1024; 1; 1}],        3520,           132752160,     0.08,               37713,               30560,               49440
+                     __omp_offloading_802_3400a1_twomoment_discretizationmodule_streaming_mp_computeoffgridflux__l3784[SIMD32 {448; 1; 1} {1024; 1; 1}],                  62                 32                         0                       0
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/Flash-X> egrep 'l3784|Kernel 48' unitraceOnly03.log
+                     __omp_offloading_802_34009e_twomoment_discretizationmodule_streaming_mp_computeoffgridflux__l3784[SIMD32 {448; 1; 1} {1024; 1; 1}],        3520,       1406900594480,     0.34,           399687668,                 880,        272675167040
+                     __omp_offloading_802_34009e_twomoment_discretizationmodule_streaming_mp_computeoffgridflux__l3784[SIMD32 {448; 1; 1} {1024; 1; 1}],                  62                 32                         0                       0
+For "I3784/Kernel 48"  unitrace is 1406900.59(ms), while LPP is 133.26(ms) and unitrace+LPP has 132.75 (ms)
+</pre>
+
+2. Discussed with Marcus, he was not aware anybody else experiencing similar issue. However, he will try to run qmcpack to see whether the similar issue will happen. 
+## Mar 13-14
+1. Ran FlashX with Thornado on PVC04 on 1 and 2 ranks, but did not get a good scaling. Here is the command line `mpiexec -n 1 -env ZE_AFFINITY_MASK=0.0 ./flashx : -n 1 -env ZE_AFFINITY_MASK=0.1 ./flashx.` Single rank run took 2353.952 seconds in Evolution, while it is 1757.821 for 2rank run. It is found that this code is compiled with -O0. So Run the case with -O3, and here are the times: 1417.227 and 1030.872.
+2. Ran FlashX with Thornado on PVC16 which has 2 cards, but the scaling is even worse: 2992.436, 2319.263, and 2338.571.
+3. Discussed with Brain. The command line seems correct. 
+4. Trying to do a profiling to gain some insights.
+
+## Mar 11-12 2024
+1. Thornado runs with nightly 03.11
+2. Mathi's version of FlashX with Thornado runs successfully on PVC04 with two workarounds. a) add  DEFINES += -DTHORNADO_EULER_NOGPU to $FLASH_HOME/lib/thornado/source/SandBox/Interface_FLASH/Makefile.Flash b) remove/comment out the update to device of Mesh(1)%Width, .... in ./Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90
+3. Default FlashX and thornado works also with nightly 03.11 and the above two workarounds.
+4.  Default FlashX with thornado master-nre works with nightly 03.11 and only DEFINES += -DTHORNADO_EULER_NOGPU
+5. Without commented out the updates to device of Mesh(1)%Width, we got
+<pre>
+ Driver init all done
+omptarget message: explicit extension not allowed: host address specified is 0x00007ffca1d874e8 (72 bytes), but device allocation maps to host at 0x00007ffca1d87510 (72 bytes)
+omptarget error: Call to getTargetPointer returned null pointer (device failure or illegal mapping).
+omptarget error: Run with
+omptarget error: LIBOMPTARGET_DEBUG=1 to display basic debug information.
+omptarget error: LIBOMPTARGET_DEBUG=2 to display calls to the compute runtime.
+omptarget error: LIBOMPTARGET_INFO=4 to dump host-target pointer mappings.
+</pre>
+
+This has been recorded to https://jira.devtools.intel.com/browse/CMPLRLLVM-55553
+
+## Mar 11 2024
 1. Recaliborated the thornado run based on oneapi/eng-compiler/2023.10.15.002 ( three runs has been performed, and the last run data was chosen)
 2. libomptarget.so has been moved back to its original location since nightly 03.08. so LD_LIBRARY_PATH is no longer needed for newer nightlies.    
 3. Running nightly 03.10 and umd849, and umd851. Here are the resuls:
