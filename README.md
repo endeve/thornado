@@ -93,6 +93,8 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Mar 18 2024
+1. Run FlashX with unitrace and vtune in different ways. It is found out that vtune works, however, we need do `sudo /opt/sepdk/src/rmmod-sep; sudo /opt/sepdk/src/insmod-sep` to make vtune work. Discussed with Marcus, and it seems to me that he is now convinced that our profiling tool, i.e., unitrace might have issue. We run cases in a systematic way to generate a table to show where the overheads are. 
 ## Mar 15 2024
 1. By running a large number of cases with unitrace, LIBOMPTARGET_PLUGIN_PROFILE, and unitrace + LIBOMPTARGET_PLUGIN_PROFILE, it is found that unitrace alone gives crazy times, while both LIBOMPTARGET_PLUGIN_PROFILE, and unitrace + LIBOMPTARGET_PLUGIN_PROFILE produce reasonable times.
 <pre>
