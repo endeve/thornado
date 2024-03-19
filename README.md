@@ -95,7 +95,7 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 # Activities, progress, and results
 ## Mar 19 2024
 1. Did a systematic runs of FlashX/Thornado to see the overheads of LPP, unitrace, and vtune. Here are the results:
-![unitraceLPPvtuneOverheads](./pics-readme/unitraceLPPvtune-overheads-2024-03-10.png)
+![unitraceLPPvtuneOverheads](./pics-readme/unitraceLPPvtune-overheads-2024-03-19.png)
 
 ## Mar 18 2024
 1. Run FlashX with unitrace and vtune in different ways. It is found out that vtune works, however, we need do `sudo /opt/sepdk/src/rmmod-sep; sudo /opt/sepdk/src/insmod-sep` to make vtune work. Discussed with Marcus, and it seems to me that he is now convinced that our profiling tool, i.e., unitrace might have issue. We run cases in a systematic way to generate a table to show where the overheads are. 
