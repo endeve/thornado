@@ -251,10 +251,7 @@ CONTAINS
     !$OMP TARGET UPDATE TO &
     !$OMP   ( UseSlopeLimiter, UseCharacteristicLimiting, &
     !$OMP     UseConservativeCorrection, &
-    !$OMP     BetaTVD, BetaTVB, SlopeTolerance, I_6x6)
-
-!! Shaoping: Need to use" TARGET ENTER DATA MAP(always" directive for LegendreX, otherwise the allocatable array will not be mapped/updated correctly.
-    !$OMP TARGET ENTER DATA MAP (always, to: LegendreX )
+    !$OMP     BetaTVD, BetaTVB, SlopeTolerance, I_6x6, LegendreX )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC UPDATE DEVICE &
     !$ACC   ( UseSlopeLimiter, UseCharacteristicLimiting, &
@@ -505,9 +502,6 @@ CONTAINS
 
   SUBROUTINE FinalizeSlopeLimiter_Euler_Relativistic_IDEAL
 
-#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
-   !$OMP TARGET EXIT DATA MAP( release:  LegendreX)
-#endif
     DEALLOCATE( LegendreX )
 
     CALL FinalizeTroubledCellIndicator_Euler
@@ -1358,13 +1352,13 @@ CONTAINS
     ! --- mode to maintain the cell average.     ---
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(4)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, LimitedCell, WeightsX_q, LegendreX, SqrtGm, &
     !$ACC          U_M, Vol, U_K )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO SIMD COLLAPSE(4)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)

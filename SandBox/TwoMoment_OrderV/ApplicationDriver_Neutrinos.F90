@@ -10,8 +10,7 @@ PROGRAM ApplicationDriver_Neutrinos
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_E0, iX_B1, iX_E1, &
     iE_B0, iE_E0, iE_B1, iE_E1, &
-    iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
-    nDimsX
+    iZ_B0, iZ_E0, iZ_B1, iZ_E1, nDimsX
   USE GeometryFieldsModule, ONLY: &
     uGF
   USE GeometryFieldsModuleE, ONLY: &
@@ -149,9 +148,7 @@ PROGRAM ApplicationDriver_Neutrinos
       dt_RATE            = 1.04_DP
       iCycleD            = 1
       iCycleW            = 1000
-!!      iCycleW            = 1
       maxCycles          = 100000
-!!      maxCycles          = 2
 
       EvolveEuler                    = .FALSE.
       UseSlopeLimiter_Euler          = .FALSE.

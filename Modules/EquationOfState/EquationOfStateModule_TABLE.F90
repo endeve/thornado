@@ -467,15 +467,6 @@ CONTAINS
   SUBROUTINE FinalizeEquationOfState_TABLE
 
 #ifdef MICROPHYSICS_WEAKLIB
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP(release: D_T, T_T, Y_T, &
-    !$OMP   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMe, UnitMp, UnitMn, &
-    !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
-    !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, P_T, S_T, &
-    !$OMP   E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Gm_T, &
-    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
-#endif
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -500,9 +491,9 @@ CONTAINS
     DEALLOCATE( Xa_T )
     DEALLOCATE( Xh_T )
     DEALLOCATE( Gm_T )
-!! Shaoping : work around https://jira.devtools.intel.com/browse/CMPLRLLVM-51515
+
     IF ( .NOT. UsingExternalEOS ) THEN
-!!       DEALLOCATE( EOS )
+       DEALLOCATE( EOS )
     END IF
 
 #endif
@@ -864,10 +855,9 @@ CONTAINS
       DO iP = 1, nP
         IF ( Error(iP) > 0 ) THEN
           CALL DescribeEOSInversionError( Error(iP) )
-!! Shaoping : As D, E, Y are passed in as intent(in), and they are not updated on GPU so we do no tneed UPDATE FROM.           
 #if defined(THORNADO_OMP_OL)
-!!          !$OMP TARGET UPDATE FROM &
-!!          !$OMP ( D(iP), E(iP), Y(iP) )
+          !$OMP TARGET UPDATE FROM &
+          !$OMP ( D(iP), E(iP), Y(iP) )
 #elif defined(THORNADO_OACC)
           !$ACC UPDATE HOST &
           !$ACC ( D(iP), E(iP), Y(iP) )
@@ -1203,17 +1193,16 @@ CONTAINS
     END DO
 
     IF ( ANY( Error > 0 ) ) THEN
-!! Shaoping: make sense to update once from TARGET.       
-#if defined(THORNADO_OMP_OL)
-          !$OMP TARGET UPDATE FROM &
-          !$OMP ( D, Em, Y )
-#elif defined(THORNADO_OACC)
-          !$ACC UPDATE HOST &
-          !$ACC ( D, Em, Y )
-#endif
       DO iP = 1, nP
         IF ( Error(iP) > 0 ) THEN
           CALL DescribeEOSInversionError( Error(iP) )
+#if defined(THORNADO_OMP_OL)
+          !$OMP TARGET UPDATE FROM &
+          !$OMP ( D(iP), Em(iP), Y(iP) )
+#elif defined(THORNADO_OACC)
+          !$ACC UPDATE HOST &
+          !$ACC ( D(iP), Em(iP), Y(iP) )
+#endif
           D_P = D(iP)  / ( Gram / Centimeter**3 )
           E_P = Em(iP) / ( Erg / Gram )
           Y_P = Y(iP)

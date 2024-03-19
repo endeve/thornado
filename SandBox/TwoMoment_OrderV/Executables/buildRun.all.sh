@@ -133,42 +133,17 @@ if [[ -n $ACTION ]];then
    faction="-$ACTION"
 fi
 BASE_DATE="2023.10.15.002"
-BASE_UMD="682.20"
+#BASE_UMD="682.20"
 MKL_BASE_DATE="" ## A underline is need before the date string for clarity
 #export AADEBUG="-g"
 export useAGRF="TRUE"
 
 
-#export COMPILER_DATE=".2023.05.15.003-rc11"
-#module load oneapi/eng-compiler/2023.10.15.002
-#module load nightly-compiler/2024.02.13
-#export COMPILER_DATE="2024.02.13"
+#COMPILER_DATE='2023.10.15.002'
 #module load oneapi/eng-compiler/${COMPILER_DATE}
-#module switch -f mpich/52.2-256/icc-sockets-gpu mpich/51.2/icc-sockets-gpu    ## Needed by 05.15.007.
-
-### New compiler working with mkl nighlty.
-#MKL_DATE="2023.10.15.002"
-#module load nightly-mkl-cev_nightly/${MKL_DATE}
-#module load nightly-mkl-cev_rls/${MKL_DATE}
-#
-#module load oneapi/release/2023.12.15.001
-#COMPILER_DATE="rls-23.12.15.001"
-
-#module load oneapi/release/2023.10.15.001
-#COMPILER_DATE="rls-23.10.15.001"
-#module load oneapi/release/2023.05.15.001
-#COMPILER_DATE="rls-23.05.15.001"
-
-#module load oneapi/eng-compiler/2023.10.15.002
-#COMPILER_DATE="eng-23.10.15.002"
-#module load  oneapi/eng-compiler/2023.05.15.007
-#COMPILER_DATE="eng-23.05.15.007"
-#module load oneapi/eng-compiler/2023.12.15.002
-#COMPILER_DATE="eng-23.12.15.002"
-COMPILER_DATE=2024.03.07
+COMPILER_DATE=2024.03.17
 module load nightly-compiler/${COMPILER_DATE}
-module switch -f intel_compute_runtime/release/stable-736.25 neo/agama-devel-sp4/847-24.05.28454.14-847
-LD_LIBRARY_PATH=/exaperf/nightly/compiler/2024.03.06/linux/lib/x86_64-unknown-linux-gnu:$LD_LIBRARY_PATH
+#LD_LIBRARY_PATH=/exaperf/nightly/compiler/2024.03.06/linux/lib/x86_64-unknown-linux-gnu:$LD_LIBRARY_PATH
 if false; then
    if [[ -n $COMPILER_DATE ]]; then
       module swap -f nightly-compiler/${COMPILER_DATE}
@@ -180,21 +155,22 @@ if false; then
 fi
 ## choose UMDs
 #umdf=682.20
-if false;then
+
+if true; then
 
    IGC_DRIVER="UMD"
    if [[ $IGC_DRIVER == UMD ]]; then
 
-      UMD="neo/agama-devel-sp3/728-23.30.26918.14-728"
+#      UMD="neo/agama-devel-sp4/851-24.05.28454.17-849"
+      UMD="neo/agama-devel-sp4/855-24.05.28454.23-854"
       if [[ -n $UMD ]]; then
-         module switch -f intel_compute_runtime/release/agama-devel-627 $UMD
+         module switch -f intel_compute_runtime/release/stable-736.25 $UMD
          if [[ $UMD == intel_compute* ]]; then
             umdf="-dev999"
             export useAGRF="FALSE"
          else
             umdf=`echo $UMD |cut -d '/' -f3`
             umdf=`echo $umdf |cut -d '-' -f1`
-            umdf="-umd$umdf"
             umdf="-umd$umdf"
          fi
       else
@@ -244,7 +220,7 @@ fi
 #logFiles=(relax)
 #CaseNames=(Relaxation)
 #userOptions=("MICROPHYSICS=WEAKLIB")
-#gridLines=(131)
+#gridLines=(130)
 
 #opLevels=(O0 O1 O2 O3)
 opLevels=(O3)
@@ -254,7 +230,7 @@ appNames=(ApplicationDriver ApplicationDriver_Neutrinos)
 logFiles=(sineWave relax)
 CaseNames=(SineWaveStreaming Relaxation)
 userOptions=("" "MICROPHYSICS=WEAKLIB")
-gridLines=(85 131)
+gridLines=(85 130)
 
 #grids=("[16,16,16]")
 #gridNames=("-xN16")
@@ -269,7 +245,7 @@ gridLines=(85 131)
 #logFiles=(relaxUmd847)
 #CaseNames=(Relaxation)
 #userOptions=("MICROPHYSICS=WEAKLIB")
-#gridLines=(131)
+#gridLines=(130)
 
 if [[ "$ACTION" == "vtune" ]]; then
    opLevels=(O3)

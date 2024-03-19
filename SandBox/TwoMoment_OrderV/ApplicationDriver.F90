@@ -6,8 +6,7 @@ PROGRAM ApplicationDriver
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_E0, iX_B1, iX_E1, &
     iE_B0, iE_E0, iE_B1, iE_E1, &
-    iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
-    nDimsX
+    iZ_B0, iZ_E0, iZ_B1, iZ_E1, nDimsX
   USE GeometryFieldsModule, ONLY: &
     uGF
   USE GeometryFieldsModuleE, ONLY: &
@@ -82,10 +81,8 @@ PROGRAM ApplicationDriver
     CASE( 'SineWaveStreaming' )
 
       ! --- Minerbo Closure Only ---
+
       nX  =[16,16,16]
-      !nX  = [ 16, 16, 16 ]
-      !nX  = [ 32, 32, 32 ]
-!!      nX  = [ 64, 1, 1 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
       bcX = [ 1, 1, 1 ]
@@ -95,8 +92,7 @@ PROGRAM ApplicationDriver
       eR  = 1.0_DP
       bcE = 1
 
-      nSpecies = 6
-!!      nSpecies = 1
+      nSpecies = 1
       nNodes = 2
 
       TimeSteppingScheme = 'SSPRK2'
@@ -104,12 +100,7 @@ PROGRAM ApplicationDriver
       t_end   = 1.0d-0
       iCycleD = 1
       iCycleW = 100
-!!      iCycleW = 1000
-!!      iCycleW = 1
-!!      maxCycles = 1
-!!      maxCycles = 10
       maxCycles = 10000
-!!      maxCycles = 10
 
       V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
 

@@ -272,11 +272,6 @@ CONTAINS
 
   SUBROUTINE FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
 
-#if   defined( THORNADO_OMP_OL )
-!! Shaoping: need exit data construct 
-     !$OMP TARGET EXIT DATA MAP (release: InterpMat )
-#endif
-
     IF( ALLOCATED( InterpMat ) )THEN
 
 #if   defined( THORNADO_OMP_OL )
