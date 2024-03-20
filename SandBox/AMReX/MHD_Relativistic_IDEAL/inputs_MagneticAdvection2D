@@ -1,4 +1,4 @@
-##### inputs_Advection1D #####
+##### inputs_MagneticAdvection2D #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
@@ -28,7 +28,7 @@ thornado.nStages = 1 # Number of SSP-RK stages for time integration
 
 thornado.CFL = 0.5 # CFL number
 
-thornado.bcX         = 1 1 1 # Boundary conditions
+thornado.bcX         = 1 1 0 # Boundary conditions
 geometry.is_periodic = 1 1 1  # Periodic BCs: 0 (no), 1 (yes)
 
 geometry.coord_sys = 0           # CARTESIAN
