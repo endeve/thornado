@@ -93,10 +93,24 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
-## Mar 19 2024
+## Mar 19-20 2024
 1. Did a systematic runs of FlashX/Thornado to see the overheads of LPP, unitrace, and vtune. Here are the results:
 ![unitraceLPPvtuneOverheads](./pics-readme/unitraceLPPvtune-overheads-2024-03-19.png)
-
+2. Ran FlashX with Thornado new case on 1 rank and 2 rank with LPP, but the total time scaling is not great, although the device time of all the kernels seems scaling well.     
+<pre>
+1 rank:
+   Total Host Time: 1339969.22 (msec), Total Device Time 477837.31 (msec)
+2 ranks: 
+   Total Host Time: 1678088.98 (msec), Total Device Time 481576.55 (msec)
+      [0:0] Host Time : 832804.70 (msec), Device Time [0:0] 240081.54 (msec)
+      [0:1] Host Time : 845284.28 (msec), Device Time [0:1] 241495.01 (msec)
+</pre>
+3. iprof has issues with FlashX Thornado run
+<pre>
+terminate called after throwing an instance of 'sycl::_V1::runtime_error'
+  what():  pi::getPlugin couldn't find plugin -59 (PI_ERROR_INVALID_OPERATION)
+forrtl: error (76): Abort trap signal
+</pre>
 ## Mar 18 2024
 1. Run FlashX with unitrace and vtune in different ways. It is found out that vtune works, however, we need do `sudo /opt/sepdk/src/rmmod-sep; sudo /opt/sepdk/src/insmod-sep` to make vtune work. Discussed with Marcus, and it seems to me that he is now convinced that our profiling tool, i.e., unitrace might have issue. We run cases in a systematic way to generate a table to show where the overheads are. 
 ## Mar 15 2024
