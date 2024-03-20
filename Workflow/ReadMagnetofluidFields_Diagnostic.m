@@ -1,5 +1,5 @@
 function...
-  [ Time, X1, X2, X3, TCI, Shock_X1, Shock_X2, Shock_X3, Theta_1, Theta_2, Theta_3, Min_E, Max_E ]...
+  [ Time, X1, X2, X3, TCI, Shock_X1, Shock_X2, Shock_X3, Theta_1, Theta_2, Theta_3, Min_E, Max_E, Div ]...
     = ReadMagnetofluidFields_Diagnostic( AppName, FileNumber, Directory )
 
   if( exist( 'Directory', 'var' ) )
@@ -24,5 +24,6 @@ function...
   Theta_3  = h5read( FileName, '/Magnetofluid Fields/Diagnostic/Theta 3' );
   Min_E    = h5read( FileName, '/Magnetofluid Fields/Diagnostic/Min E' );
   Max_E    = h5read( FileName, '/Magnetofluid Fields/Diagnostic/Max E' );
+  Div      = h5read( FileName, '/Magnetofluid Fields/Diagnostic/Div');
 
 end
