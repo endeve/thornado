@@ -109,6 +109,8 @@ if __name__ == "__main__":
                [Field],           \
                [DataDirectory]    )
 
+    print( '\n  Saved {:}'.format( gvS.MovieName ) )
+
     import os
     os.system( 'rm -rf __pycache__ ' )
     os.system( 'rm -rf GlobalVariables/__pycache__' )

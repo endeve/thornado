@@ -65,7 +65,7 @@ def MakeProbelmDataDirectory( FileNumberArray,          \
                               SaveTime         = True,  \
                               SaveX            = True,  \
                               SavedX           = True   ):
-                     
+
     """
     Generate a directory with the following structure for each plotfile
     (the example uses plotfile PlotBaseName.08675309)
@@ -82,7 +82,7 @@ def MakeProbelmDataDirectory( FileNumberArray,          \
     """
 
     print( '\n  Running MakeDataFile' )
-    
+
     print(   '  --------------------' )
 
     if DataDirectory[-1] != '/': DataDirectory += '/'
@@ -90,25 +90,23 @@ def MakeProbelmDataDirectory( FileNumberArray,          \
 
     print( '\n  DataDirectory: {:}\n'.format( DataDirectory ) )
     print( '\n  PlotDirectory: {:}\n'.format( PlotDirectory ) )
-    
-    
-    overwriteD = Overwrite( DataDirectory, ForceChoice = forceChoiceD, OW = overwriteD )
 
-    
+
+    overwriteD = Overwrite( DataDirectory, ForceChoice = forceChoiceD, OW = overwriteD )
 
     nProc = max( 1, cpu_count() // 2 )
 
     if overwriteD:
-    
-        
+
+
         os.system( 'rm -rf {:}'.format( DataDirectory ) )
         os.system(  'mkdir {:}'.format( DataDirectory ) )
-    
-                    
+
+
         print( '  Generating {:} with {:} processes...\n'.format \
              ( DataDirectory, nProc ) )
 
-            
+
 
     else: # overwriteD == False
 
@@ -118,8 +116,8 @@ def MakeProbelmDataDirectory( FileNumberArray,          \
         PathDataDirectory, Flag = CheckForField(Field,          \
                                                 DataDirectory,  \
                                                 FileNumberArray     )
-        
-        
+
+
         #   If data related to specified field exists, ask user
         # if they wish it to be overwritten.
         if Flag:
@@ -127,17 +125,17 @@ def MakeProbelmDataDirectory( FileNumberArray,          \
                                     ForceChoice = forceChoiceF,\
                                     OW = overwriteF            )
 
-        
+
         if overwriteF:
-        
+
             #   If user wishes to overwrite existing data,
             # this cleans the existing data directories.
             CleanField( Field,          \
                         DataDirectory,  \
                         FileNumberArray     )
-        
-    
-    
+
+
+
     #   Creates a data directory with sub-directories containing
     # data needed to produce plots.
     MakeDataFrameDirectories(   FileNumberArray,    \
@@ -185,8 +183,8 @@ def MakeDataFrameDirectories( FileNumberArray,          \
                   / np.float64( nProcs ) * nFiles )
             iHi = np.int64( np.float64( i + 1 ) \
                   / np.float64( nProcs ) * nFiles )
-            
-        
+
+
             p = Process( target=MakeDataFrameDirectoriesLoop,  \
                          args = (FileNumberArray[iLo:iHi],   \
                                  PlotDirectory,     \
@@ -199,11 +197,11 @@ def MakeDataFrameDirectories( FileNumberArray,          \
                                  SavedX,            \
                                  owF,               \
                                  gvS.Verbose,       )          )
-            
-            
+
+
             p.start()
             processes.append( p )
-        
+
         [ p.join() for p in processes ]
 
 
@@ -283,13 +281,13 @@ def MakeDataFrameDirectoriesLoop( FileNumberArray,  \
                                   owF,              \
                                   Verbose           ):
 
-    
+
 #    NumPltFiles = FileNumberArray.shape[0]
     NumPltFiles = len(FileNumberArray)
-    
+
     for i in range(NumPltFiles):
 
-    
+
         printProcMem = False
         if printProcMem:
             print( 'mem: {:.3e} kB'.format \
@@ -297,7 +295,7 @@ def MakeDataFrameDirectoriesLoop( FileNumberArray,  \
 
         PlotFileNumber = FileNumberArray[i]
         PathDataDirectory = DataDirectory + str(PlotFileNumber) + '/'
-        
+
         if PlotDataType.lower() == 'amrex':
             PathPlotDirectory = PlotDirectory       \
                               + PlotBaseName    \
@@ -307,14 +305,14 @@ def MakeDataFrameDirectoriesLoop( FileNumberArray,  \
                               + PlotBaseName[:-4]   \
                               + '_'     \
                               + '{:}'.format( str(PlotFileNumber).zfill(6) )
-        
-        
+
+
         if not isdir(PathDataDirectory):
-        
+
             if Verbose:
                 print( 'Generating data directory: {:} ({:}/{:})'.format \
                     ( PathDataDirectory, i+1, NumPltFiles ) )
-                    
+
             CreateFrameDirectory_AMReX( PathDataDirectory, \
                                         PathPlotDirectory, \
                                         PlotFileNumber,    \
@@ -323,20 +321,20 @@ def MakeDataFrameDirectoriesLoop( FileNumberArray,  \
                                         SaveTime,          \
                                         SaveX,             \
                                         SavedX             )
-                             
+
         elif isdir(PathDataDirectory) and owF:
-        
+
             PathFieldDirectory = PathDataDirectory         \
                                + '{:}.dat'.format( Field )
 
             os.system( 'rm -rf {:}'.format( PathFieldDirectory ) )
-            
-            
-            
+
+
+
             if Verbose:
                 print( 'Generating data directory: {:} ({:}/{:})'.format \
                     ( PathDataDirectory, i+1, NumPltFiles ) )
-                    
+
             CreateFrameDirectory_AMReX( PathDataDirectory, \
                                         PathPlotDirectory, \
                                         PlotFileNumber,    \
@@ -345,7 +343,7 @@ def MakeDataFrameDirectoriesLoop( FileNumberArray,  \
                                         SaveTime,          \
                                         SaveX,             \
                                         SavedX             )
-        
+
     return
 
 
@@ -401,7 +399,7 @@ def CreateFrameDirectory_AMReX( PathDataDirectory,             \
     nX1 = X1.shape[0]
     nX2 = X2.shape[0]
     nX3 = X3.shape[0]
-    
+
     ndX1 = dX1.shape[0]
     ndX2 = dX2.shape[0]
     ndX3 = dX3.shape[0]

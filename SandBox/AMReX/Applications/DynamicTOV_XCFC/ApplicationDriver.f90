@@ -47,7 +47,8 @@ PROGRAM main
     ElectronNumber_Initial, &
     ElectronNumber_OffGrid, &
     ADMMass_Initial, &
-    ADMMass_OffGrid
+    ADMMass_OffGrid, &
+    ADMMass_Interior
   USE MF_TimeSteppingModule_SSPRK, ONLY: &
     UpdateFluid_SSPRK_MF, &
     CFL
@@ -74,6 +75,8 @@ PROGRAM main
     TimersStop_AMReX, &
     Timer_AMReX_InputOutput, &
     FinalizeTimers_AMReX
+  USE ReGridModule, ONLY: &
+    ReGrid
 
   IMPLICIT NONE
 
@@ -83,7 +86,7 @@ PROGRAM main
   LOGICAL  :: wrt, chk
   REAL(DP) :: Timer_Evolution
 
-  TimeIt_AMReX      = .TRUE.
+  TimeIt_AMReX       = .TRUE.
   TimeIt_AMReX_Euler = .TRUE.
 
   wrt = .FALSE.
@@ -101,6 +104,8 @@ PROGRAM main
     StepNo = StepNo + 1
 
     t_old = t_new
+
+    CALL ReGrid
 
     CALL ComputeTimeStep_Euler_MF( MF_uGF, MF_uCF, CFL, dt )
 
@@ -279,7 +284,8 @@ CONTAINS
                [ EulerMomentumX3_Initial, EulerMomentumX3_OffGrid ], &
                [ EulerEnergy_Initial    , EulerEnergy_OffGrid     ], &
                [ ElectronNumber_Initial , ElectronNumber_OffGrid  ], &
-               [ ADMMass_Initial        , ADMMass_OffGrid         ], &
+               [ ADMMass_Initial        , ADMMass_OffGrid, &
+                 ADMMass_Interior ], &
                MF_uGF % BA % P, &
                iWriteFields_uGF = 1, &
                iWriteFields_uCF = 1, &

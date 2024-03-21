@@ -309,6 +309,12 @@ def GetFieldData( ds,                   \
         elif CoordinateSystem == 'cylindrical': DataUnits = 'km^2'
         elif CoordinateSystem == 'spherical'  : DataUnits = 'km^2'
 
+    elif Field == 'GF_SqrtGm':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        if   CoordinateSystem == 'cartesian'  : DataUnits = ''
+        elif CoordinateSystem == 'cylindrical': DataUnits = 'km'
+        elif CoordinateSystem == 'spherical'  : DataUnits = 'km^2'
+
     elif Field == 'GF_K_11':
         Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
         if   CoordinateSystem == 'cartesian'  : DataUnits = ''
@@ -626,6 +632,7 @@ def GetFieldData( ds,                   \
         print( '  GF_Gm_11' )
         print( '  GF_Gm_22' )
         print( '  GF_Gm_33' )
+        print( '  GF_SqrtGm' )
         print( '  GF_K_11' )
         print( '  GF_Psi' )
         print( '  GF_Alpha' )
