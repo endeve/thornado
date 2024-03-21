@@ -6,13 +6,13 @@ import matplotlib.pyplot as plt
 plt.style.use( 'publication.sty' )
 
 
-import GlobalVariables.Settings as gvS
-import Utilities.BounceFinder   as BF
-from GlobalVariables.Units   import SetSpaceTimeUnits
+import GlobalVariables.Settings     as gvS
+import Utilities.BounceFinder       as BF
+from GlobalVariables.Units          import SetSpaceTimeUnits
 
-from Utilities.Files         import GetFileNumberArray
-from Utilities.MakeDataArray import MakeProbelmDataDirectory
-from Utilities.MovieMaker_Dual    import MakeMovie
+from Utilities.Files                import GetFileNumberArray
+from Utilities.MakeDataDirectory    import MakeProblemDataDirectory
+from Utilities.MovieMaker_Dual      import MakeMovie
 
 
 if __name__ == "__main__":
@@ -128,7 +128,7 @@ if __name__ == "__main__":
                                                   PlotEvery           )
 
 
-        MakeProbelmDataDirectory( FileNumberArrays[i],\
+        MakeProblemDataDirectory( FileNumberArrays[i],\
                                   PlotDirectories[i],  \
                                   PlotBaseName,    \
                                   Field,           \
