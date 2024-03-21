@@ -93,7 +93,7 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
-## Mar 19-20 2024
+## Mar 19-21 2024
 1. Did a systematic runs of FlashX/Thornado to see the overheads of LPP, unitrace, and vtune. Here are the results:
 ![unitraceLPPvtuneOverheads](./pics-readme/unitraceLPPvtune-overheads-2024-03-19.png)
 2. Ran FlashX with Thornado new case on 1 rank and 2 rank with LPP, but the total time scaling is not great, although the device time of all the kernels seems scaling well.     
