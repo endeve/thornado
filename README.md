@@ -93,6 +93,13 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Mar 22 2024
+1. Thornado runs fine with nightlies, 0319, 0320, 0321
+2. Here are some finding related to the scalability of FlashX with Thornado.
+  - Hydro seems not offloaded to GPU at all. It took 29.44 seconds for serial run. 
+    -  arm_guadcell is mpich based cod, not offloaded to GPU at all. It took 23.95 seconds. This is believed to be related to PARAMESH, as I am not familiar with PARAMESH, I do not know the scalability. However, from my runs, it took 18.93 seconds.  The scalability is not good. 
+    - computeFluxes is not offloaded either, nor is conserveFluxes,update solution. 
+  - RadTran, need to figure out which FORTRAN file is used.  
 ## Mar 19-21 2024
 1. Did a systematic runs of FlashX/Thornado to see the overheads of LPP, unitrace, and vtune. Here are the results:
 ![unitraceLPPvtuneOverheads](./pics-readme/unitraceLPPvtune-overheads-2024-03-19.png)
