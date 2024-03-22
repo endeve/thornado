@@ -14,6 +14,13 @@ MODULE TimeSteppingModule_SSPRK
     nCM
   USE MHD_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
     ApplySlopeLimiter_MHD_Relativistic_IDEAL
+  USE MHD_DiscretizationModule_Relativistic, ONLY: &
+    OffGridFlux_MHD_X1_Inner, &
+    OffGridFlux_MHD_X1_Outer, &
+    OffGridFlux_MHD_X2_Inner, &
+    OffGridFlux_MHD_X2_Outer, &
+    OffGridFlux_MHD_X3_Inner, &
+    OffGridFlux_MHD_X3_Outer
 
   IMPLICIT NONE
   PRIVATE
@@ -42,7 +49,10 @@ MODULE TimeSteppingModule_SSPRK
         EvolveOnlyMagnetic_Option, &
         UseDivergenceCleaning_Option, &
         DampingParameter_Option, &
-        UsePowellSource_Option )
+        UsePowellSource_Option, &
+        SurfaceFlux_X1_Option, &
+        SurfaceFlux_X2_Option, &
+        SurfaceFlux_X3_Option )
       USE KindModule, ONLY: DP
       INTEGER, INTENT(in)     :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -63,6 +73,10 @@ MODULE TimeSteppingModule_SSPRK
         UsePowellSource_Option
       REAL(DP), INTENT(in), OPTIONAL :: &
         DampingParameter_Option
+      REAL(DP), INTENT(out), OPTIONAL :: &
+        SurfaceFlux_X1_Option(:,:,:,:,:), &
+        SurfaceFlux_X2_Option(:,:,:,:,:), &
+        SurfaceFlux_X3_Option(:,:,:,:,:) 
     END SUBROUTINE MagnetofluidIncrement
   END INTERFACE
 
@@ -103,7 +117,6 @@ CONTAINS
     IF( PRESENT( UsePowellSource_Option ) ) THEN
       UsePowellSource = UsePowellSource_Option
     END IF
-
 
     nStages_SSPRK = nStages
 
@@ -217,10 +230,13 @@ CONTAINS
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     PROCEDURE (MagnetofluidIncrement) :: &
       ComputeIncrement_Magnetofluid
-    LOGICAL :: DEBUG = .FALSE.
 
     INTEGER :: iNX, iX1, iX2, iX3, iCM
     INTEGER :: iS, jS
+
+    REAL(DP) :: dM_OffGrid_MHD(nCM)
+
+    dM_OffGrid_MHD = Zero
 
     DO iS = 1, nStages_SSPRK
 
@@ -262,6 +278,17 @@ CONTAINS
                  UseDivergenceCleaning_Option = UseDivergenceCleaning, &
                  DampingParameter_Option = DampingParameter, &
                  UsePowellSource_Option = UsePowellSource )
+
+        dM_OffGrid_MHD &
+          = dM_OffGrid_MHD &
+              + dt * w_SSPRK(iS) &
+                  * (   OffGridFlux_MHD_X1_Outer &
+                      - OffGridFlux_MHD_X1_Inner &
+                      + OffGridFlux_MHD_X2_Outer &
+                      - OffGridFlux_MHD_X2_Inner &
+                      + OffGridFlux_MHD_X3_Outer &
+                      - OffGridFlux_MHD_X3_Inner )
+
 
       END IF
 

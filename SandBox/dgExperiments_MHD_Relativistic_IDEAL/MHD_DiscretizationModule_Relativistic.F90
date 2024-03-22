@@ -11,6 +11,7 @@ MODULE MHD_DiscretizationModule_Relativistic
     Three, &
     Four
   USE ProgramHeaderModule, ONLY: &
+    nNodesX, &
     nDOFX, &
     nDimsX
   USE LinearAlgebraModule, ONLY: &
@@ -35,8 +36,7 @@ MODULE MHD_DiscretizationModule_Relativistic
     LX_X3_Dn, &
     LX_X3_Up
   USE MeshModule, ONLY: &
-    MeshX, &
-    NodeCoordinate
+    MeshX
   USE GeometryFieldsModule, ONLY: &
     nGF, &
     iGF_h_1, &
@@ -51,10 +51,15 @@ MODULE MHD_DiscretizationModule_Relativistic
     iGF_Beta_1, &
     iGF_Beta_2, &
     iGF_Beta_3, &
+    iGF_K_dd_11, &
+    iGF_K_dd_12, &
+    iGF_K_dd_13, &
+    iGF_K_dd_22, &
+    iGF_K_dd_23, &
+    iGF_K_dd_33, &
     iGF_Phi_N, &
     CoordinateSystem
   USE MagnetofluidFieldsModule, ONLY: &
-    nCM, &
     iCM_D, &
     iCM_S1, &
     iCM_S2, &
@@ -65,7 +70,7 @@ MODULE MHD_DiscretizationModule_Relativistic
     iCM_B2, &
     iCM_B3, &
     iCM_Chi, &
-    nPM, &
+    nCM, &
     iPM_D, &
     iPM_V1, &
     iPM_V2, &
@@ -76,11 +81,12 @@ MODULE MHD_DiscretizationModule_Relativistic
     iPM_B2, &
     iPM_B3, &
     iPM_Chi, &
-    nDM, &
+    nPM, &
     iDM_Sh_X1, &
     iDM_Sh_X2, &
     iDM_Sh_X3, &
-    iDM_Div
+    iDM_Div, &
+    nDM
   USE MHD_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_MHD
   USE MHD_UtilitiesModule, ONLY: &
@@ -141,6 +147,13 @@ MODULE MHD_DiscretizationModule_Relativistic
   INTEGER :: nX_X2(3), nX2_X, nNodesX_X2
   INTEGER :: nX_X3(3), nX3_X, nNodesX_X3
 
+  REAL(DP), PUBLIC :: OffGridFlux_MHD_X1_Inner(nCM), &
+                      OffGridFlux_MHD_X1_Outer(nCM), &
+                      OffGridFlux_MHD_X2_Inner(nCM), &
+                      OffGridFlux_MHD_X2_Outer(nCM), &
+                      OffGridFlux_MHD_X3_Inner(nCM), &
+                      OffGridFlux_MHD_X3_Outer(nCM)
+
 CONTAINS
 
 
@@ -150,12 +163,20 @@ CONTAINS
       EvolveOnlyMagnetic_Option, &
       UseDivergenceCleaning_Option, &
       DampingParameter_Option, &
-      UsePowellSource_Option )
+      UsePowellSource_Option, &
+      SurfaceFlux_X1_Option, &
+      SurfaceFlux_X2_Option, &
+      SurfaceFlux_X3_Option )
 
     INTEGER,  INTENT(in)            :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)            :: &
       G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout)         :: &
+      U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      D (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(out)           :: &
+      dU(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     LOGICAL,  INTENT(in),  OPTIONAL :: &
       SuppressBC_Option
     LOGICAL,  INTENT(in),  OPTIONAL :: &
@@ -164,11 +185,33 @@ CONTAINS
       UsePowellSource_Option
     REAL(DP), INTENT(in),  OPTIONAL :: &
       DampingParameter_Option
-    REAL(DP), INTENT(inout)         :: &
-      U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-      D (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out)           :: &
-      dU(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      SurfaceFlux_X1_Option(:,:,:,:,:), &
+      SurfaceFlux_X2_Option(:,:,:,:,:), &
+      SurfaceFlux_X3_Option(:,:,:,:,:)
+
+    ! -- Surface flux for coarse/fine corrections ---
+
+    REAL(DP) :: &
+      SurfaceFlux_X1(nDOFX_X1, &
+          iX_B0(1):iX_E0(1)+1, &
+          iX_B0(2):iX_E0(2), &
+          iX_B0(3):iX_E0(3), &
+          nCM)
+
+    REAL(DP) :: &
+      SurfaceFlux_X2(nDOFX_X2, &
+          iX_B0(1):iX_E0(1), &
+          iX_B0(2):iX_E0(2)+1, &
+          iX_B0(3):iX_E0(3), &
+          nCM)
+
+    REAL(DP) :: &
+      SurfaceFlux_X3(nDOFX_X3, &
+          iX_B0(1):iX_E0(1), &
+          iX_B0(2):iX_E0(2), &
+          iX_B0(3):iX_E0(3)+1, &
+          nCM)
 
     INTEGER  :: iNX, iX1, iX2, iX3, iCM
     LOGICAL  :: SuppressBC
@@ -216,7 +259,7 @@ CONTAINS
     DO iX1 = iX_B1(1), iX_E1(1)
     DO iNX = 1, nDOFX
 
-      tau(iNX,iX1,iX2,iX3) = One
+      tau(iNX,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Psi)**6
 
     END DO
     END DO
@@ -237,8 +280,15 @@ CONTAINS
     END DO
     END DO
 
+    OffGridFlux_MHD_X1_Inner = Zero
+    OffGridFlux_MHD_X1_Outer = Zero
+    OffGridFlux_MHD_X2_Inner = Zero
+    OffGridFlux_MHD_X2_Outer = Zero
+    OffGridFlux_MHD_X3_Inner = Zero
+    OffGridFlux_MHD_X3_Outer = Zero
+
     CALL ComputeIncrement_MHD_Divergence_X1 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X1 )
 
    !PRINT*
    !PRINT*, 'Increments after X1 divergence.'
@@ -247,7 +297,7 @@ CONTAINS
    !PRINT*, 'S3: ', dU(:,:,:,:,iCM_S3)
 
     CALL ComputeIncrement_MHD_Divergence_X2 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X2 )
 
    !PRINT*
    !PRINT*, 'Increments after X2 divergence.'
@@ -259,7 +309,19 @@ CONTAINS
     !PRINT*, 'B3: ', dU(:,:,:,:,iCM_B3)
 
     CALL ComputeIncrement_MHD_Divergence_X3 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X3 )
+
+    IF( PRESENT( SurfaceFlux_X1_Option ) )THEN
+     SurfaceFlux_X1_Option = SurfaceFlux_X1
+    END IF
+
+    IF( PRESENT( SurfaceFlux_X2_Option ) )THEN
+     SurfaceFlux_X2_Option = SurfaceFlux_X2
+    END IF
+
+    IF( PRESENT( SurfaceFlux_X3_Option ) )THEN
+     SurfaceFlux_X3_Option = SurfaceFlux_X3
+    END IF
 
     ! --- Multiply Inverse Mass Matrix ---
 
@@ -338,7 +400,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_MHD_Divergence_X1 &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X1 )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -348,6 +410,10 @@ CONTAINS
       D (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nDM)
     REAL(DP), INTENT(inout) :: &
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCM)
+    REAL(DP), INTENT(out)   :: &
+      SurfaceFlux_X1(1:nDOFX_X1,iX_B0(1):iX_E0(1)+1, &
+                                iX_B0(2):iX_E0(2), &
+                                iX_B0(3):iX_E0(3),1:nCM)
 
     INTEGER  :: iNX, iNX_X, iNX_K, iX1, iX2, iX3, iCM, iGF
     INTEGER  :: iXP_B0(3), iXP_E0(3)
@@ -648,6 +714,10 @@ CONTAINS
              Alpha_F, Beta_1_F, Beta_2_F, Beta_3_F, &
              EvolveOnlyMagnetic )
 
+    NumericalFlux  = Zero
+    Flux_q         = Zero
+    SurfaceFlux_X1 = Zero
+
     DO iNX_X = 1, nNodesX_X1
 
       ! --- Left state ---
@@ -829,6 +899,9 @@ CONTAINS
 
       DO iCM = 1, nCM
 
+        SurfaceFlux_X1(iNX,iX1,iX2,iX3,iCM) &
+          = Flux_F(iCM) * Alpha_F(iNX_X) * SqrtGm_F(iNX_X)
+
         NumericalFlux(iNX,iCM,iX2,iX3,iX1) &
           = Flux_F(iCM) &
               * Alpha_F(iNX_X) * SqrtGm_F(iNX_X) * dX2(iX2) * dX3(iX3) &
@@ -936,13 +1009,33 @@ CONTAINS
 
     CALL FinalizeIncrement_Divergence
 
+    ! --- Off-Grid Fluxes for Conservation Tally ---
+
+    DO iX3   = iX_B0(3), iX_E0(3)
+    DO iX2   = iX_B0(2), iX_E0(2)
+    DO iCM   = 1       , nCM
+    DO iNX_X = 1       , nDOFX_X1
+
+      OffGridFlux_MHD_X1_Inner(iCM) &
+        = OffGridFlux_MHD_X1_Inner(iCM) &
+            + NumericalFlux(iNX_X,iCM,iX2,iX3,iX_B0(1))
+
+      OffGridFlux_MHD_X1_Outer(iCM) &
+        = OffGridFlux_MHD_X1_Outer(iCM) &
+            + NumericalFlux(iNX_X,iCM,iX2,iX3,iX_E0(1)+1)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
     END ASSOCIATE
 
   END SUBROUTINE ComputeIncrement_MHD_Divergence_X1
 
 
   SUBROUTINE ComputeIncrement_MHD_Divergence_X2 &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X2 )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -952,6 +1045,10 @@ CONTAINS
       D (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nDM)
     REAL(DP), INTENT(inout) :: &
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCM)
+    REAL(DP), INTENT(out)   :: &
+      SurfaceFlux_X2(1:nDOFX_X2,iX_B0(1):iX_E0(1), &
+                                iX_B0(2):iX_E0(2)+1, &
+                                iX_B0(3):iX_E0(3),1:nCM)
 
     INTEGER  :: iNX, iNX_X, iNX_K, iX1, iX2, iX3, iCM, iGF
     INTEGER  :: iXP_B0(3), iXP_E0(3)
@@ -1252,6 +1349,11 @@ CONTAINS
              Alpha_F, Beta_1_F, Beta_2_F, Beta_3_F, &
              EvolveOnlyMagnetic )
 
+    ! Initializations needed in debug mode
+    NumericalFlux  = Zero
+    Flux_q         = Zero
+    SurfaceFlux_X2 = Zero
+
     DO iNX_X = 1, nNodesX_X2
 
       ! --- Left state ---
@@ -1433,6 +1535,9 @@ CONTAINS
 
       DO iCM = 1, nCM
 
+        SurfaceFlux_X2(iNX,iX1,iX2,iX3,iCM) &
+          = Flux_F(iCM) * Alpha_F(iNX_X) * SqrtGm_F(iNX_X)
+
         NumericalFlux(iNX,iCM,iX1,iX3,iX2) &
           = Flux_F(iCM) &
               * Alpha_F(iNX_X) * SqrtGm_F(iNX_X) * dX1(iX1) * dX3(iX3) &
@@ -1540,13 +1645,33 @@ CONTAINS
 
     CALL FinalizeIncrement_Divergence
 
+    ! --- Off-Grid Fluxes for Conservation Tally ---
+
+    DO iX3   = iX_B0(3), iX_E0(3)
+    DO iX1   = iX_B0(1), iX_E0(1)
+    DO iCM   = 1       , nCM
+    DO iNX_X = 1       , nDOFX_X2
+
+      OffGridFlux_MHD_X2_Inner(iCM) &
+        = OffGridFlux_MHD_X2_Inner(iCM) &
+            + NumericalFlux(iNX_X,iCM,iX1,iX3,iX_B0(2))
+
+      OffGridFlux_MHD_X2_Outer(iCM) &
+        = OffGridFlux_MHD_X2_Outer(iCM) &
+            + NumericalFlux(iNX_X,iCM,iX1,iX3,iX_E0(2)+1)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
     END ASSOCIATE
 
   END SUBROUTINE ComputeIncrement_MHD_Divergence_X2
 
 
   SUBROUTINE ComputeIncrement_MHD_Divergence_X3 &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X3 )
 
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -1556,6 +1681,10 @@ CONTAINS
       D (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nDM)
     REAL(DP), INTENT(inout) :: &
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCM)
+    REAL(DP), INTENT(out)   :: &
+      SurfaceFlux_X3(1:nDOFX_X3,iX_B0(1):iX_E0(1), &
+                                iX_B0(2):iX_E0(2), &
+                                iX_B0(3):iX_E0(3)+1,1:nCM)
 
     INTEGER  :: iNX, iNX_X, iNX_K, iX1, iX2, iX3, iCM, iGF
     INTEGER  :: iXP_B0(3), iXP_E0(3)
@@ -1856,6 +1985,11 @@ CONTAINS
              Alpha_F, Beta_1_F, Beta_2_F, Beta_3_F, &
              EvolveOnlyMagnetic )
 
+    ! Initializations needed in debug mode
+    NumericalFlux  = Zero
+    Flux_q         = Zero
+    SurfaceFlux_X3 = Zero
+
     DO iNX_X = 1, nNodesX_X3
 
       ! --- Left state ---
@@ -2037,6 +2171,9 @@ CONTAINS
 
       DO iCM = 1, nCM
 
+        SurfaceFlux_X3(iNX,iX1,iX2,iX3,iCM) &
+          = Flux_F(iCM) * Alpha_F(iNX_X) * SqrtGm_F(iNX_X)
+
         NumericalFlux(iNX,iCM,iX1,iX2,iX3) &
           = Flux_F(iCM) &
               * Alpha_F(iNX_X) * SqrtGm_F(iNX_X) * dX1(iX1) * dX2(iX2) &
@@ -2144,6 +2281,24 @@ CONTAINS
 
     CALL FinalizeIncrement_Divergence
 
+    DO iX2   = iX_B0(2), iX_E0(2)
+    DO iX1   = iX_B0(1), iX_E0(1)
+    DO iCM   = 1       , nCM
+    DO iNX_X = 1       , nDOFX_X3
+
+      OffGridFlux_MHD_X3_Inner(iCM) &
+        = OffGridFlux_MHD_X3_Inner(iCM) &
+            + NumericalFlux(iNX_X,iCM,iX1,iX2,iX_B0(3))
+
+      OffGridFlux_MHD_X3_Outer(iCM) &
+        = OffGridFlux_MHD_X3_Outer(iCM) &
+            + NumericalFlux(iNX_X,iCM,iX1,iX2,iX_E0(3)+1)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
     END ASSOCIATE
 
   END SUBROUTINE ComputeIncrement_MHD_Divergence_X3
@@ -2174,16 +2329,15 @@ CONTAINS
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)           :: &
       G (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
+    REAL(DP), INTENT(inout)        :: &
+      U (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCM)
     REAL(DP), INTENT(in)           :: &
       tau(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
     REAL(DP), INTENT(inout)        :: &
-      U (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCM), &
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCM)
 
-    INTEGER :: iX1, iX2, iX3, iNX, iCM, iGF
-    INTEGER :: nK(3), nGF_K
+    INTEGER :: iNX, iX1, iX2, iX3
 
-    REAL(DP) :: DivGridVolume
     REAL(DP) :: P(nPM)
     REAL(DP) :: Pressure
     REAL(DP) :: W, B0u, VdotB, bSq
@@ -2191,515 +2345,29 @@ CONTAINS
                                           iX_B0(2):iX_E0(2), &
                                           iX_B0(3):iX_E0(3))
 
-    REAL(DP) :: G_K_X1 (nDOFX,   nGF,iX_B0(2)  :iX_E0(2), &
-                                     iX_B0(3)  :iX_E0(3), &
-                                     iX_B0(1)-1:iX_E0(1)+1)
-    REAL(DP) :: G_Dn_X1(nDOFX_X1,nGF,iX_B0(2)  :iX_E0(2), &
-                                     iX_B0(3)  :iX_E0(3), &
-                                     iX_B0(1)  :iX_E0(1))
-    REAL(DP) :: G_Up_X1(nDOFX_X1,nGF,iX_B0(2)  :iX_E0(2), &
-                                     iX_B0(3)  :iX_E0(3), &
-                                     iX_B0(1)  :iX_E0(1))
     REAL(DP) :: dGdX1  (nDOFX,   nGF,iX_B0(2)  :iX_E0(2), &
                                      iX_B0(3)  :iX_E0(3), &
                                      iX_B0(1)  :iX_E0(1))
-
-    REAL(DP) :: G_K_X2 (nDOFX,   nGF,iX_B0(1)  :iX_E0(1), &
-                                     iX_B0(3)  :iX_E0(3), &
-                                     iX_B0(2)-1:iX_E0(2)+1)
-    REAL(DP) :: G_Dn_X2(nDOFX_X2,nGF,iX_B0(1)  :iX_E0(1), &
-                                     iX_B0(3)  :iX_E0(3), &
-                                     iX_B0(2)  :iX_E0(2))
-    REAL(DP) :: G_Up_X2(nDOFX_X2,nGF,iX_B0(1)  :iX_E0(1), &
-                                     iX_B0(3)  :iX_E0(3), &
-                                     iX_B0(2)  :iX_E0(2))
     REAL(DP) :: dGdX2  (nDOFX,   nGF,iX_B0(1)  :iX_E0(1), &
                                      iX_B0(3)  :iX_E0(3), &
                                      iX_B0(2)  :iX_E0(2))
-
-    REAL(DP) :: G_K_X3 (nDOFX,   nGF,iX_B0(1)  :iX_E0(1), &
-                                     iX_B0(2)  :iX_E0(2), &
-                                     iX_B0(3)-1:iX_E0(3)+1)
-    REAL(DP) :: G_Dn_X3(nDOFX_X3,nGF,iX_B0(1)  :iX_E0(1), &
-                                     iX_B0(2)  :iX_E0(2), &
-                                     iX_B0(3)  :iX_E0(3))
-    REAL(DP) :: G_Up_X3(nDOFX_X3,nGF,iX_B0(1)  :iX_E0(1), &
-                                     iX_B0(2)  :iX_E0(2), &
-                                     iX_B0(3)  :iX_E0(3))
     REAL(DP) :: dGdX3  (nDOFX,   nGF,iX_B0(1)  :iX_E0(1), &
                                      iX_B0(2)  :iX_E0(2), &
                                      iX_B0(3)  :iX_E0(3))
 
-    REAL(DP) :: GradPsiF(nDOFX)
+    CALL ComputeDerivatives_Geometry_Relativistic_X1 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX1 )
 
-    ASSOCIATE( dX1 => MeshX(1) % Width, &
-               dX2 => MeshX(2) % Width, &
-               dX3 => MeshX(3) % Width )
+    CALL ComputeDerivatives_Geometry_Relativistic_X2 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX2 )
+
+    CALL ComputeDerivatives_Geometry_Relativistic_X3 &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX3 )
 
    !PRINT*, 'iX_B0: ', iX_B0
    !PRINT*, 'iX_E0: ', iX_E0
    !PRINT*, 'iX_B1: ', iX_B1
    !PRINT*, 'iX_E1: ', iX_E1
-
-    nK = iX_E0 - iX_B0 + 1
-    nGF_K = nGF * PRODUCT( nK )
-
-    ! --- Permute data ---
-
-    DO iX1 = iX_B0(1) - 1, iX_E0(1) + 1
-    DO iX3 = iX_B0(3)    , iX_E0(3)
-    DO iX2 = iX_B0(2)    , iX_E0(2)
-    DO iGF = 1           , nGF
-    DO iNX = 1           , nDOFX
-
-      G_K_X1(iNX,iGF,iX2,iX3,iX1) = G(iNX,iX1,iX2,iX3,iGF)
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    IF( nDimsX .GT. 1 )THEN
-
-      DO iX2 = iX_B0(2) - 1, iX_E0(2) + 1
-      DO iX3 = iX_B0(3)    , iX_E0(3)
-      DO iX1 = iX_B0(1)    , iX_E0(1)
-      DO iGF = 1           , nGF
-      DO iNX = 1           , nDOFX
-
-        G_K_X2(iNX,iGF,iX1,iX3,iX2) = G(iNX,iX1,iX2,iX3,iGF)
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-    END IF
-
-    IF( nDimsX .GT. 2 )THEN
-
-      DO iX3 = iX_B0(3) - 1, iX_E0(3) + 1
-      DO iX2 = iX_B0(2)    , iX_E0(2)
-      DO iX1 = iX_B0(1)    , iX_E0(1)
-      DO iGF = 1           , nGF
-      DO iNX = 1           , nDOFX
-
-        G_K_X3(iNX,iGF,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF)
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-    END IF
-
-    ! --- Interpolate to faces ---
-
-    ! --- X1 ---
-
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X1, nGF_K, nDOFX, One , LX_X1_Up, nDOFX_X1, &
-             G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Zero, &
-             G_Up_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X1, nGF_K, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-             G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX, Half, &
-             G_Up_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
-
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X1, nGF_K, nDOFX, One , LX_X1_Up, nDOFX_X1, &
-             G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)-1), nDOFX, Zero, &
-             G_Dn_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
-    CALL MatrixMatrixMultiply &
-           ( 'N', 'N', nDOFX_X1, nGF_K, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
-             G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Half, &
-             G_Dn_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
-
-      ! --- Compute metric on faces from scale factors ---
-
-    DO iX1 = iX_B0(1), iX_E0(1)
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iNX = 1       , nDOFX_X1
-
-      G_Up_X1         (iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
-        = MAX( G_Up_X1(iNX,iGF_h_1     ,iX2,iX3,iX1)**2, SqrtTiny )
-      G_Up_X1         (iNX,iGF_Gm_dd_22,iX2,iX3,iX1) &
-        = MAX( G_Up_X1(iNX,iGF_h_2     ,iX2,iX3,iX1)**2, SqrtTiny )
-      G_Up_X1         (iNX,iGF_Gm_dd_33,iX2,iX3,iX1) &
-        = MAX( G_Up_X1(iNX,iGF_h_3     ,iX2,iX3,iX1)**2, SqrtTiny )
-
-      G_Up_X1        (iNX,iGF_SqrtGm   ,iX2,iX3,iX1) &
-        = MAX( G_Up_X1    (iNX,iGF_h_1      ,iX2,iX3,iX1) &
-                 * G_Up_X1(iNX,iGF_h_2      ,iX2,iX3,iX1) &
-                 * G_Up_X1(iNX,iGF_h_3      ,iX2,iX3,iX1), SqrtTiny )
-
-      G_Dn_X1         (iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
-        = MAX( G_Dn_X1(iNX,iGF_h_1     ,iX2,iX3,iX1)**2, SqrtTiny )
-      G_Dn_X1         (iNX,iGF_Gm_dd_22,iX2,iX3,iX1) &
-        = MAX( G_Dn_X1(iNX,iGF_h_2     ,iX2,iX3,iX1)**2, SqrtTiny )
-      G_Dn_X1         (iNX,iGF_Gm_dd_33,iX2,iX3,iX1) &
-        = MAX( G_Dn_X1(iNX,iGF_h_3     ,iX2,iX3,iX1)**2, SqrtTiny )
-
-      G_Dn_X1        (iNX,iGF_SqrtGm   ,iX2,iX3,iX1) &
-        = MAX( G_Dn_X1    (iNX,iGF_h_1      ,iX2,iX3,iX1) &
-                 * G_Dn_X1(iNX,iGF_h_2      ,iX2,iX3,iX1) &
-                 * G_Dn_X1(iNX,iGF_h_3      ,iX2,iX3,iX1), SqrtTiny )
-
-    END DO
-    END DO
-    END DO
-    END DO
-
-    IF( nDimsX .GT. 1 )THEN
-
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, One , LX_X2_Up, nDOFX_X2, &
-               G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Zero, &
-               G_Up_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
-               G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)+1), nDOFX, Half, &
-               G_Up_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
-
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, One , LX_X2_Up, nDOFX_X2, &
-               G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)-1), nDOFX, Zero, &
-               G_Dn_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
-               G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Half, &
-               G_Dn_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
-
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iNX = 1       , nDOFX_X2
-
-        G_Up_X2         (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
-          = MAX( G_Up_X2(iNX,iGF_h_1     ,iX1,iX3,iX2)**2, SqrtTiny )
-        G_Up_X2         (iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
-          = MAX( G_Up_X2(iNX,iGF_h_2     ,iX1,iX3,iX2)**2, SqrtTiny )
-        G_Up_X2         (iNX,iGF_Gm_dd_33,iX1,iX3,iX2) &
-          = MAX( G_Up_X2(iNX,iGF_h_3     ,iX1,iX3,iX2)**2, SqrtTiny )
-
-        G_Up_X2        (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
-          = MAX( G_Up_X2    (iNX,iGF_h_1   ,iX1,iX3,iX2) &
-                   * G_Up_X2(iNX,iGF_h_2   ,iX1,iX3,iX2) &
-                   * G_Up_X2(iNX,iGF_h_3   ,iX1,iX3,iX2), SqrtTiny )
-
-        G_Dn_X2         (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
-          = MAX( G_Dn_X2(iNX,iGF_h_1     ,iX1,iX3,iX2)**2, SqrtTiny )
-        G_Dn_X2         (iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
-          = MAX( G_Dn_X2(iNX,iGF_h_2     ,iX1,iX3,iX2)**2, SqrtTiny )
-        G_Dn_X2         (iNX,iGF_Gm_dd_33,iX1,iX3,iX2) &
-          = MAX( G_Dn_X2(iNX,iGF_h_3     ,iX1,iX3,iX2)**2, SqrtTiny )
-
-        G_Dn_X2        (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
-          = MAX( G_Dn_X2    (iNX,iGF_h_1   ,iX1,iX3,iX2) &
-                   * G_Dn_X2(iNX,iGF_h_2   ,iX1,iX3,iX2) &
-                   * G_Dn_X2(iNX,iGF_h_3   ,iX1,iX3,iX2), SqrtTiny )
-
-      END DO
-      END DO
-      END DO
-      END DO
-
-    END IF
-
-    IF( nDimsX .GT. 2 )THEN
-
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X3, nGF_K, nDOFX, One , LX_X3_Up, nDOFX_X3, &
-               G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX, Zero, &
-               G_Up_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X3, nGF_K, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
-               G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)+1), nDOFX, Half, &
-               G_Up_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
-
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X3, nGF_K, nDOFX, One , LX_X3_Up, nDOFX_X3, &
-               G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)-1), nDOFX, Zero, &
-               G_Dn_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
-      CALL MatrixMatrixMultiply &
-             ( 'N', 'N', nDOFX_X3, nGF_K, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
-               G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX, Half, &
-               G_Dn_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
-
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iNX = 1       , nDOFX_X3
-
-        G_Up_X3         (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
-          = MAX( G_Up_X3(iNX,iGF_h_1     ,iX1,iX2,iX3)**2, SqrtTiny )
-        G_Up_X3         (iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
-          = MAX( G_Up_X3(iNX,iGF_h_2     ,iX1,iX2,iX3)**2, SqrtTiny )
-        G_Up_X3         (iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
-          = MAX( G_Up_X3(iNX,iGF_h_3     ,iX1,iX2,iX3)**2, SqrtTiny )
-
-        G_Up_X3        (iNX,iGF_SqrtGm,iX1,iX2,iX3) &
-          = MAX( G_Up_X3    (iNX,iGF_h_1   ,iX1,iX2,iX3) &
-                   * G_Up_X3(iNX,iGF_h_2   ,iX1,iX2,iX3) &
-                   * G_Up_X3(iNX,iGF_h_3   ,iX1,iX2,iX3), SqrtTiny )
-
-        G_Dn_X3         (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
-          = MAX( G_Dn_X3(iNX,iGF_h_1     ,iX1,iX2,iX3)**2, SqrtTiny )
-        G_Dn_X3         (iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
-          = MAX( G_Dn_X3(iNX,iGF_h_2     ,iX1,iX2,iX3)**2, SqrtTiny )
-        G_Dn_X3         (iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
-          = MAX( G_Dn_X3(iNX,iGF_h_3     ,iX1,iX2,iX3)**2, SqrtTiny )
-
-        G_Dn_X3        (iNX,iGF_SqrtGm,iX1,iX2,iX3) &
-          = MAX( G_Dn_X3    (iNX,iGF_h_1   ,iX1,iX2,iX3) &
-                   * G_Dn_X3(iNX,iGF_h_2   ,iX1,iX2,iX3) &
-                   * G_Dn_X3(iNX,iGF_h_3   ,iX1,iX2,iX3), SqrtTiny )
-
-      END DO
-      END DO
-      END DO
-      END DO
-
-    END IF
-
-    ! --- Compute derivatives (X1) ---
-
-    DO iX1 = iX_B0(1), iX_E0(1)
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iGF = 1       , nGF
-    DO iNX = 1       , nDOFX_X1
-
-      G_Dn_X1(iNX,iGF,iX2,iX3,iX1) &
-        = G_Dn_X1(iNX,iGF,iX2,iX3,iX1) * WeightsX_X1(iNX)
-
-      G_Up_X1(iNX,iGF,iX2,iX3,iX1) &
-        = G_Up_X1(iNX,iGF,iX2,iX3,iX1) * WeightsX_X1(iNX)
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    DO iX1 = iX_B0(1), iX_E0(1)
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iGF = 1       , nGF
-    DO iNX = 1       , nDOFX
-
-      G_K_X1(iNX,iGF,iX2,iX3,iX1) &
-        = G_K_X1(iNX,iGF,iX2,iX3,iX1) * WeightsX_q(iNX)
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFX, nGF_K, nDOFX_X1, +One, LX_X1_Up, nDOFX_X1, &
-             G_Up_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)), nDOFX_X1, Zero, &
-             dGdX1, nDOFX )
-
-    CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFX, nGF_K, nDOFX_X1, -One, LX_X1_Dn, nDOFX_X1, &
-             G_Dn_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)), nDOFX_X1, One,  &
-             dGdX1, nDOFX )
-
-    CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFX, nGF_K, nDOFX   , -One, dLXdX1_q, nDOFX   , &
-             G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)), nDOFX   , One , &
-             dGdX1, nDOFX )
-
-    DO iX1 = iX_B0(1), iX_E0(1)
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iGF = 1       , nGF
-    DO iNX = 1       , nDOFX
-
-      dGdX1(iNX,iGF,iX2,iX3,iX1) &
-        = dGdX1(iNX,iGF,iX2,iX3,iX1) / ( WeightsX_q(iNX) * dX1(iX1) )
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    IF( nDimsX .GT. 1 )THEN
-
-      ! --- Compute derivatives (X2)
-
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iGF = 1       , nGF
-      DO iNX = 1       , nDOFX_X2
-
-        G_Dn_X2(iNX,iGF,iX1,iX3,iX2) &
-          = G_Dn_X2(iNX,iGF,iX1,iX3,iX2) * WeightsX_X2(iNX)
-
-        G_Up_X2(iNX,iGF,iX1,iX3,iX2) &
-          = G_Up_X2(iNX,iGF,iX1,iX3,iX2) * WeightsX_X2(iNX)
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-      DO iX2 = iX_B0(2) - 1, iX_E0(2) + 1
-      DO iX3 = iX_B0(3)    , iX_E0(3)
-      DO iX1 = iX_B0(1)    , iX_E0(1)
-      DO iGF = 1           , nGF
-      DO iNX = 1           , nDOFX
-
-        G_K_X2(iNX,iGF,iX1,iX3,iX2) &
-          = G_K_X2(iNX,iGF,iX1,iX3,iX2) * WeightsX_q(iNX)
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-      CALL MatrixMatrixMultiply &
-             ( 'T', 'N', nDOFX, nGF_K, nDOFX_X2, +One, LX_X2_Up, nDOFX_X2, &
-               G_Up_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)), nDOFX_X2, Zero, &
-               dGdX2, nDOFX )
-
-      CALL MatrixMatrixMultiply &
-             ( 'T', 'N', nDOFX, nGF_K, nDOFX_X2, -One, LX_X2_Dn, nDOFX_X2, &
-               G_Dn_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)), nDOFX_X2, One,  &
-               dGdX2, nDOFX )
-
-      CALL MatrixMatrixMultiply &
-             ( 'T', 'N', nDOFX, nGF_K, nDOFX   , -One, dLXdX2_q, nDOFX   , &
-               G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)), nDOFX   , One , &
-               dGdX2, nDOFX )
-
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iGF = 1       , nGF
-      DO iNX = 1       , nDOFX
-
-        dGdX2(iNX,iGF,iX1,iX3,iX2) &
-          = dGdX2(iNX,iGF,iX1,iX3,iX2) / ( WeightsX_q(iNX) * dX2(iX2) )
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-    ELSE
-
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iGF = 1       , nGF
-      DO iNX = 1       , nDOFX
-
-        dGdX2(iNX,iGF,iX1,iX3,iX2) = Zero
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-    END IF
-
-    IF( nDimsX .GT. 2 )THEN
-
-      ! --- Compute derivatives (X3)
-
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iGF = 1       , nGF
-      DO iNX = 1       , nDOFX_X3
-
-        G_Dn_X3(iNX,iGF,iX1,iX2,iX3) &
-          = G_Dn_X3(iNX,iGF,iX1,iX2,iX3) * WeightsX_X3(iNX)
-
-        G_Up_X3(iNX,iGF,iX1,iX2,iX3) &
-          = G_Up_X3(iNX,iGF,iX1,iX2,iX3) * WeightsX_X3(iNX)
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-      DO iX3 = iX_B0(3) - 1, iX_E0(3) + 1
-      DO iX2 = iX_B0(2)    , iX_E0(2)
-      DO iX1 = iX_B0(1)    , iX_E0(1)
-      DO iGF = 1           , nGF
-      DO iNX = 1           , nDOFX
-
-        G_K_X3(iNX,iGF,iX1,iX2,iX3) &
-          = G_K_X3(iNX,iGF,iX1,iX2,iX3) * WeightsX_q(iNX)
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-      CALL MatrixMatrixMultiply &
-             ( 'T', 'N', nDOFX, nGF_K, nDOFX_X3, +One, LX_X3_Up, nDOFX_X3, &
-               G_Up_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)), nDOFX_X3, Zero, &
-               dGdX3, nDOFX )
-
-      CALL MatrixMatrixMultiply &
-             ( 'T', 'N', nDOFX, nGF_K, nDOFX_X3, -One, LX_X3_Dn, nDOFX_X3, &
-               G_Dn_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)), nDOFX_X3, One,  &
-               dGdX3, nDOFX )
-
-      CALL MatrixMatrixMultiply &
-             ( 'T', 'N', nDOFX, nGF_K, nDOFX   , -One, dLXdX3_q, nDOFX   , &
-               G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)), nDOFX   , One , &
-               dGdX3, nDOFX )
-
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iGF = 1       , nGF
-      DO iNX = 1       , nDOFX
-
-        dGdX3(iNX,iGF,iX1,iX2,iX3) &
-          = dGdX3(iNX,iGF,iX1,iX2,iX3) / ( WeightsX_q(iNX) * dX3(iX3) )
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-    ELSE
-
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
-      DO iGF = 1       , nGF
-      DO iNX = 1       , nDOFX
-
-        dGdX3(iNX,iGF,iX1,iX2,iX3) = Zero
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-    END IF
 
     ! --- Contributions from time-independent metric ---
 
@@ -3103,7 +2771,47 @@ CONTAINS
     END DO
     END DO
 
-    END ASSOCIATE ! dX1, dX2, dX3
+    ! --- Contributions from time-dependent metric ---
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1       , nDOFX
+
+      dU(iNX,iX1,iX2,iX3,iCM_E) &
+        = dU(iNX,iX1,iX2,iX3,iCM_E) &
+            + tau(iNX,iX1,iX2,iX3) * G(iNX,iX1,iX2,iX3,iGF_Alpha) &
+                 * (    PressureTensor(1,1,iNX,iX1,iX2,iX3) &
+                          * G(iNX,iX1,iX2,iX3,iGF_K_dd_11) &
+                     +  PressureTensor(2,2,iNX,iX1,iX2,iX3) &
+                         * G(iNX,iX1,iX2,iX3,iGF_K_dd_22) &
+                     +  PressureTensor(3,3,iNX,iX1,iX2,iX3) &
+                         * G(iNX,iX1,iX2,iX3,iGF_K_dd_33) &
+                     + Two * PressureTensor(1,2,iNX,iX1,iX2,iX3) &
+                         * G(iNX,iX1,iX2,iX3,iGF_K_dd_12) &
+                     + Two * PressureTensor(1,3,iNX,iX1,iX2,iX3) &
+                         * G(iNX,iX1,iX2,iX3,iGF_K_dd_13) &
+                     + Two * PressureTensor(2,3,iNX,iX1,iX2,iX3) &
+                         * G(iNX,iX1,iX2,iX3,iGF_K_dd_23) )
+
+      IF( UseDivergenceCleaning)THEN
+
+        dU(iNX,iX1,iX2,iX3,iCM_Chi) &
+          = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
+              - tau(iNX,iX1,iX2,iX3) * G(iNX,iX1,iX2,iX3,iGF_Alpha) &
+                 * (   G(iNX,iX1,iX2,iX3,iGF_K_dd_11) &
+                       / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) &
+                     + G(iNX,iX1,iX2,iX3,iGF_K_dd_22) &
+                       / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
+                     + G(iNX,iX1,iX2,iX3,iGF_K_dd_33) &
+                       / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ) &
+                 * U(iNX,iX1,iX2,iX3,iCM_Chi)
+      END IF
+
+    END DO
+    END DO
+    END DO
+    END DO
 
   END SUBROUTINE ComputeIncrement_Geometry_Relativistic
 
@@ -3161,18 +2869,7 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-    WeakDivSum = Zero
-
     DO iNX = 1       , nDOFX
-
-      WeakDivSum = WeakDivSum + WeakDiv(iNX,iX1,iX2,iX3)
-
-      iNodeX1 = NodeNumberTableX(1,iNX)
-      X1   = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-      X1_C = MeshX(1) % Center(iX1)
-      X1_W = MeshX(1) % Width(iX1)
-      X1_L = X1_C - X1_W / Two
-      X1_R = X1_C + X1_W / Two
 
       !PRINT*
       !PRINT*, 'In cell       :', iX1, iX2, iX3
@@ -3550,6 +3247,660 @@ CONTAINS
              uB1_R, uB2_R, uB3_R, uChi_R )
 
   END SUBROUTINE FinalizeIncrement_Divergence
+
+
+  SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X1 &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX1 )
+
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: &
+      G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
+    REAL(DP), INTENT(inout) :: &
+      dGdX1(1:nDOFX,1:nGF,iX_B0(2):iX_E0(2), &
+                          iX_B0(3):iX_E0(3), &
+                          iX_B0(1):iX_E0(1))
+
+    INTEGER :: jNX, iNX, iX1, iX2, iX3, iGF
+    INTEGER :: nK(3), nGF_K
+
+    REAL(DP) :: G_K_X1 (nDOFX,   nGF,iX_B0(2)  :iX_E0(2), &
+                                     iX_B0(3)  :iX_E0(3), &
+                                     iX_B0(1)-1:iX_E0(1)+1)
+    REAL(DP) :: G_Dn_X1(nDOFX_X1,nGF,iX_B0(2)  :iX_E0(2), &
+                                     iX_B0(3)  :iX_E0(3), &
+                                     iX_B0(1)  :iX_E0(1))
+    REAL(DP) :: G_Up_X1(nDOFX_X1,nGF,iX_B0(2)  :iX_E0(2), &
+                                     iX_B0(3)  :iX_E0(3), &
+                                     iX_B0(1)  :iX_E0(1))
+
+    ASSOCIATE( dX1 => MeshX(1) % Width )
+
+    IF( nNodesX(1) .GT. 1 )THEN
+
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iGF = 1       , nGF
+      DO iNX = 1       , nDOFX
+
+        dGdX1(iNX,iGF,iX2,iX3,iX1) = Zero
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iGF = 1       , nGF
+      DO iNX = 1       , nDOFX
+      DO jNX = 1       , nDOFX
+
+        dGdX1(iNX,iGF,iX2,iX3,iX1) &
+          = dGdX1(iNX,iGF,iX2,iX3,iX1) &
+              + G(jNX,iX1,iX2,iX3,iGF) * dLXdX1_q(iNX,jNX) / dX1(iX1)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    ELSE ! nNodesX(1) .EQ. 1
+
+      nK    = iX_E0 - iX_B0 + 1
+      nGF_K = nGF * PRODUCT( nK )
+
+      DO iX1 = iX_B0(1) - 1, iX_E0(1) + 1
+      DO iX3 = iX_B0(3)    , iX_E0(3)
+      DO iX2 = iX_B0(2)    , iX_E0(2)
+      DO iGF = 1           , nGF
+      DO iNX = 1           , nDOFX
+
+        G_K_X1(iNX,iGF,iX2,iX3,iX1) = G(iNX,iX1,iX2,iX3,iGF)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X1, nGF_K, nDOFX, One , LX_X1_Up, nDOFX_X1, &
+               G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Zero, &
+               G_Up_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X1, nGF_K, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+               G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX, Half, &
+               G_Up_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X1, nGF_K, nDOFX, One , LX_X1_Up, nDOFX_X1, &
+               G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)-1), nDOFX, Zero, &
+               G_Dn_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X1, nGF_K, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+               G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX, Half, &
+               G_Dn_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1 )
+
+      ! --- Compute metric on faces from scale factors ---
+
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iNX = 1       , nDOFX_X1
+
+        G_Up_X1         (iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
+          = MAX( G_Up_X1(iNX,iGF_h_1     ,iX2,iX3,iX1)**2, SqrtTiny )
+        G_Up_X1         (iNX,iGF_Gm_dd_22,iX2,iX3,iX1) &
+          = MAX( G_Up_X1(iNX,iGF_h_2     ,iX2,iX3,iX1)**2, SqrtTiny )
+        G_Up_X1         (iNX,iGF_Gm_dd_33,iX2,iX3,iX1) &
+          = MAX( G_Up_X1(iNX,iGF_h_3     ,iX2,iX3,iX1)**2, SqrtTiny )
+
+        G_Up_X1        (iNX,iGF_SqrtGm,iX2,iX3,iX1) &
+          = MAX( G_Up_X1    (iNX,iGF_h_1   ,iX2,iX3,iX1) &
+                   * G_Up_X1(iNX,iGF_h_2   ,iX2,iX3,iX1) &
+                   * G_Up_X1(iNX,iGF_h_3   ,iX2,iX3,iX1), SqrtTiny )
+
+        G_Dn_X1         (iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
+          = MAX( G_Dn_X1(iNX,iGF_h_1     ,iX2,iX3,iX1)**2, SqrtTiny )
+        G_Dn_X1         (iNX,iGF_Gm_dd_22,iX2,iX3,iX1) &
+          = MAX( G_Dn_X1(iNX,iGF_h_2     ,iX2,iX3,iX1)**2, SqrtTiny )
+        G_Dn_X1         (iNX,iGF_Gm_dd_33,iX2,iX3,iX1) &
+          = MAX( G_Dn_X1(iNX,iGF_h_3     ,iX2,iX3,iX1)**2, SqrtTiny )
+
+        G_Dn_X1        (iNX,iGF_SqrtGm,iX2,iX3,iX1) &
+          = MAX( G_Dn_X1    (iNX,iGF_h_1   ,iX2,iX3,iX1) &
+                   * G_Dn_X1(iNX,iGF_h_2   ,iX2,iX3,iX1) &
+                   * G_Dn_X1(iNX,iGF_h_3   ,iX2,iX3,iX1), SqrtTiny )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      ! --- Compute derivatives ---
+
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iGF = 1       , nGF
+      DO iNX = 1       , nDOFX_X1
+
+        G_Dn_X1(iNX,iGF,iX2,iX3,iX1) &
+          = G_Dn_X1(iNX,iGF,iX2,iX3,iX1) * WeightsX_X1(iNX)
+
+        G_Up_X1(iNX,iGF,iX2,iX3,iX1) &
+          = G_Up_X1(iNX,iGF,iX2,iX3,iX1) * WeightsX_X1(iNX)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iGF = 1       , nGF
+      DO iNX = 1       , nDOFX
+
+        G_K_X1(iNX,iGF,iX2,iX3,iX1) &
+          = G_K_X1(iNX,iGF,iX2,iX3,iX1) * WeightsX_q(iNX)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL MatrixMatrixMultiply &
+             ( 'T', 'N', nDOFX, nGF_K, nDOFX_X1, +One, LX_X1_Up, nDOFX_X1, &
+               G_Up_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)), nDOFX_X1, Zero, &
+               dGdX1, nDOFX )
+
+      CALL MatrixMatrixMultiply &
+             ( 'T', 'N', nDOFX, nGF_K, nDOFX_X1, -One, LX_X1_Dn, nDOFX_X1, &
+               G_Dn_X1(1,1,iX_B0(2),iX_B0(3),iX_B0(1)), nDOFX_X1, One,  &
+               dGdX1, nDOFX )
+
+      CALL MatrixMatrixMultiply &
+             ( 'T', 'N', nDOFX, nGF_K, nDOFX   , -One, dLXdX1_q, nDOFX   , &
+               G_K_X1 (1,1,iX_B0(2),iX_B0(3),iX_B0(1)), nDOFX   , One , &
+               dGdX1, nDOFX )
+
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iGF = 1       , nGF
+      DO iNX = 1       , nDOFX
+
+        dGdX1(iNX,iGF,iX2,iX3,iX1) &
+          = dGdX1(iNX,iGF,iX2,iX3,iX1) / ( WeightsX_q(iNX) * dX1(iX1) )
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF ! nNodesX(1) .GT. 1
+
+    END ASSOCIATE ! dX1
+
+  END SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X1
+
+
+  SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X2 &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX2 )
+
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: &
+      G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
+    REAL(DP), INTENT(inout) :: &
+      dGdX2(1:nDOFX,1:nGF,iX_B0(1):iX_E0(1), &
+                          iX_B0(3):iX_E0(3), &
+                          iX_B0(2):iX_E0(2))
+
+    INTEGER :: jNX, iNX, iX1, iX2, iX3, iGF
+    INTEGER :: nK(3), nGF_K
+
+    REAL(DP) :: G_K_X2 (nDOFX,   nGF,iX_B0(1)  :iX_E0(1), &
+                                     iX_B0(3)  :iX_E0(3), &
+                                     iX_B0(2)-1:iX_E0(2)+1)
+    REAL(DP) :: G_Dn_X2(nDOFX_X2,nGF,iX_B0(1)  :iX_E0(1), &
+                                     iX_B0(3)  :iX_E0(3), &
+                                     iX_B0(2)  :iX_E0(2))
+    REAL(DP) :: G_Up_X2(nDOFX_X2,nGF,iX_B0(1)  :iX_E0(1), &
+                                     iX_B0(3)  :iX_E0(3), &
+                                     iX_B0(2)  :iX_E0(2))
+
+    ASSOCIATE( dX2 => MeshX(2) % Width )
+
+    IF( nDimsX .LT. 2 )THEN
+
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iGF = 1       , nGF
+      DO iNX = 1       , nDOFX
+
+        dGdX2(iNX,iGF,iX1,iX3,iX2) = Zero
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    ELSE
+
+      IF( nNodesX(2) .GT. 1 )THEN
+
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iGF = 1       , nGF
+        DO iNX = 1       , nDOFX
+
+          dGdX2(iNX,iGF,iX1,iX3,iX2) = Zero
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iGF = 1       , nGF
+        DO iNX = 1       , nDOFX
+        DO jNX = 1       , nDOFX
+
+          dGdX2(iNX,iGF,iX1,iX3,iX2) &
+            = dGdX2(iNX,iGF,iX1,iX3,iX2) &
+                + G(jNX,iX1,iX2,iX3,iGF) * dLXdX2_q(iNX,jNX) / dX2(iX2)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      ELSE ! nNodesX(2) .EQ. 1
+
+        nK    = iX_E0 - iX_B0 + 1
+        nGF_K = nGF * PRODUCT( nK )
+
+        DO iX2 = iX_B0(2) - 1, iX_E0(2) + 1
+        DO iX3 = iX_B0(3)    , iX_E0(3)
+        DO iX1 = iX_B0(1)    , iX_E0(1)
+        DO iGF = 1           , nGF
+        DO iNX = 1           , nDOFX
+
+          G_K_X2(iNX,iGF,iX1,iX3,iX2) = G(iNX,iX1,iX2,iX3,iGF)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+        CALL MatrixMatrixMultiply &
+               ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, One , LX_X2_Up, nDOFX_X2, &
+                 G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Zero, &
+                 G_Up_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+        CALL MatrixMatrixMultiply &
+               ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+                 G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)+1), nDOFX, Half, &
+                 G_Up_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+
+        CALL MatrixMatrixMultiply &
+               ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, One , LX_X2_Up, nDOFX_X2, &
+                 G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)-1), nDOFX, Zero, &
+                 G_Dn_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+        CALL MatrixMatrixMultiply &
+               ( 'N', 'N', nDOFX_X2, nGF_K, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+                 G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX, Half, &
+                 G_Dn_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2 )
+
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1       , nDOFX_X2
+
+          G_Up_X2         (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
+            = MAX( G_Up_X2(iNX,iGF_h_1     ,iX1,iX3,iX2)**2, SqrtTiny )
+          G_Up_X2         (iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+            = MAX( G_Up_X2(iNX,iGF_h_2     ,iX1,iX3,iX2)**2, SqrtTiny )
+          G_Up_X2         (iNX,iGF_Gm_dd_33,iX1,iX3,iX2) &
+            = MAX( G_Up_X2(iNX,iGF_h_3     ,iX1,iX3,iX2)**2, SqrtTiny )
+
+          G_Up_X2        (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
+            = MAX( G_Up_X2    (iNX,iGF_h_1   ,iX1,iX3,iX2) &
+                     * G_Up_X2(iNX,iGF_h_2   ,iX1,iX3,iX2) &
+                     * G_Up_X2(iNX,iGF_h_3   ,iX1,iX3,iX2), SqrtTiny )
+
+          G_Dn_X2         (iNX,iGF_Gm_dd_11,iX1,iX3,iX2) &
+            = MAX( G_Dn_X2(iNX,iGF_h_1     ,iX1,iX3,iX2)**2, SqrtTiny )
+          G_Dn_X2         (iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
+            = MAX( G_Dn_X2(iNX,iGF_h_2     ,iX1,iX3,iX2)**2, SqrtTiny )
+          G_Dn_X2         (iNX,iGF_Gm_dd_33,iX1,iX3,iX2) &
+            = MAX( G_Dn_X2(iNX,iGF_h_3     ,iX1,iX3,iX2)**2, SqrtTiny )
+
+          G_Dn_X2        (iNX,iGF_SqrtGm,iX1,iX3,iX2) &
+            = MAX( G_Dn_X2    (iNX,iGF_h_1   ,iX1,iX3,iX2) &
+                     * G_Dn_X2(iNX,iGF_h_2   ,iX1,iX3,iX2) &
+                     * G_Dn_X2(iNX,iGF_h_3   ,iX1,iX3,iX2), SqrtTiny )
+
+        END DO
+        END DO
+        END DO
+        END DO
+
+        ! --- Compute derivatives ---
+
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iGF = 1       , nGF
+        DO iNX = 1       , nDOFX_X2
+
+          G_Dn_X2(iNX,iGF,iX1,iX3,iX2) &
+            = G_Dn_X2(iNX,iGF,iX1,iX3,iX2) * WeightsX_X2(iNX)
+
+          G_Up_X2(iNX,iGF,iX1,iX3,iX2) &
+            = G_Up_X2(iNX,iGF,iX1,iX3,iX2) * WeightsX_X2(iNX)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+        DO iX2 = iX_B0(2) - 1, iX_E0(2) + 1
+        DO iX3 = iX_B0(3)    , iX_E0(3)
+        DO iX1 = iX_B0(1)    , iX_E0(1)
+        DO iGF = 1           , nGF
+        DO iNX = 1           , nDOFX
+
+          G_K_X2(iNX,iGF,iX1,iX3,iX2) &
+            = G_K_X2(iNX,iGF,iX1,iX3,iX2) * WeightsX_q(iNX)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+        CALL MatrixMatrixMultiply &
+               ( 'T', 'N', nDOFX, nGF_K, nDOFX_X2, +One, LX_X2_Up, nDOFX_X2, &
+                 G_Up_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)), nDOFX_X2, Zero, &
+                 dGdX2, nDOFX )
+
+        CALL MatrixMatrixMultiply &
+               ( 'T', 'N', nDOFX, nGF_K, nDOFX_X2, -One, LX_X2_Dn, nDOFX_X2, &
+                 G_Dn_X2(1,1,iX_B0(1),iX_B0(3),iX_B0(2)), nDOFX_X2, One,  &
+                 dGdX2, nDOFX )
+
+        CALL MatrixMatrixMultiply &
+               ( 'T', 'N', nDOFX, nGF_K, nDOFX   , -One, dLXdX2_q, nDOFX   , &
+                 G_K_X2 (1,1,iX_B0(1),iX_B0(3),iX_B0(2)), nDOFX   , One , &
+                 dGdX2, nDOFX )
+
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iGF = 1       , nGF
+        DO iNX = 1       , nDOFX
+
+          dGdX2(iNX,iGF,iX1,iX3,iX2) &
+            = dGdX2(iNX,iGF,iX1,iX3,iX2) / ( WeightsX_q(iNX) * dX2(iX2) )
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF ! nNodesX(2) .GT. 1
+
+    END IF ! nDimsX .LT. 2
+
+    END ASSOCIATE ! dX2
+
+  END SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X2
+
+
+  SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X3 &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, dGdX3 )
+
+    INTEGER,  INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)    :: &
+      G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF)
+    REAL(DP), INTENT(inout) :: &
+      dGdX3(1:nDOFX,1:nGF,iX_B0(1):iX_E0(1), &
+                          iX_B0(2):iX_E0(2), &
+                          iX_B0(3):iX_E0(3))
+
+    INTEGER :: jNX, iNX, iX1, iX2, iX3, iGF
+    INTEGER :: nK(3), nGF_K
+
+    REAL(DP) :: G_K_X3 (nDOFX,   nGF,iX_B0(1)  :iX_E0(1), &
+                                     iX_B0(2)  :iX_E0(2), &
+                                     iX_B0(3)-1:iX_E0(3)+1)
+    REAL(DP) :: G_Dn_X3(nDOFX_X3,nGF,iX_B0(1)  :iX_E0(1), &
+                                     iX_B0(2)  :iX_E0(2), &
+                                     iX_B0(3)  :iX_E0(3))
+    REAL(DP) :: G_Up_X3(nDOFX_X3,nGF,iX_B0(1)  :iX_E0(1), &
+                                     iX_B0(2)  :iX_E0(2), &
+                                     iX_B0(3)  :iX_E0(3))
+
+    ASSOCIATE( dX3 => MeshX(3) % Width )
+
+    IF( nDimsX .LT. 3 )THEN
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iGF = 1       , nGF
+      DO iNX = 1       , nDOFX
+
+        dGdX3(iNX,iGF,iX1,iX2,iX3) = Zero
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    ELSE
+
+      IF( nNodesX(3) .GT. 1 )THEN
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iGF = 1       , nGF
+        DO iNX = 1       , nDOFX
+
+          dGdX3(iNX,iGF,iX1,iX2,iX3) = Zero
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iGF = 1       , nGF
+        DO iNX = 1       , nDOFX
+        DO jNX = 1       , nDOFX
+
+          dGdX3(iNX,iGF,iX1,iX2,iX3) &
+            = dGdX3(iNX,iGF,iX1,iX2,iX3) &
+                + G(jNX,iX1,iX2,iX3,iGF) * dLXdX3_q(iNX,jNX) / dX3(iX3)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      ELSE ! nNodesX(3) .EQ. 1
+
+        nK    = iX_E0 - iX_B0 + 1
+        nGF_K = nGF * PRODUCT( nK )
+
+        DO iX3 = iX_B0(3) - 1, iX_E0(3) + 1
+        DO iX2 = iX_B0(2)    , iX_E0(2)
+        DO iX1 = iX_B0(1)    , iX_E0(1)
+        DO iGF = 1           , nGF
+        DO iNX = 1           , nDOFX
+
+          G_K_X3(iNX,iGF,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+        CALL MatrixMatrixMultiply &
+               ( 'N', 'N', nDOFX_X3, nGF_K, nDOFX, One , LX_X3_Up, nDOFX_X3, &
+                 G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX, Zero, &
+                 G_Up_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
+        CALL MatrixMatrixMultiply &
+               ( 'N', 'N', nDOFX_X3, nGF_K, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
+                 G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)+1), nDOFX, Half, &
+                 G_Up_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
+
+        CALL MatrixMatrixMultiply &
+               ( 'N', 'N', nDOFX_X3, nGF_K, nDOFX, One , LX_X3_Up, nDOFX_X3, &
+                 G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)-1), nDOFX, Zero, &
+                 G_Dn_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
+        CALL MatrixMatrixMultiply &
+               ( 'N', 'N', nDOFX_X3, nGF_K, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
+                 G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX, Half, &
+                 G_Dn_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3 )
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1       , nDOFX_X3
+
+          G_Up_X3         (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
+            = MAX( G_Up_X3(iNX,iGF_h_1     ,iX1,iX2,iX3)**2, SqrtTiny )
+          G_Up_X3         (iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
+            = MAX( G_Up_X3(iNX,iGF_h_2     ,iX1,iX2,iX3)**2, SqrtTiny )
+          G_Up_X3         (iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
+            = MAX( G_Up_X3(iNX,iGF_h_3     ,iX1,iX2,iX3)**2, SqrtTiny )
+
+          G_Up_X3        (iNX,iGF_SqrtGm,iX1,iX2,iX3) &
+            = MAX( G_Up_X3    (iNX,iGF_h_1   ,iX1,iX2,iX3) &
+                     * G_Up_X3(iNX,iGF_h_2   ,iX1,iX2,iX3) &
+                     * G_Up_X3(iNX,iGF_h_3   ,iX1,iX2,iX3), SqrtTiny )
+
+          G_Dn_X3         (iNX,iGF_Gm_dd_11,iX1,iX2,iX3) &
+            = MAX( G_Dn_X3(iNX,iGF_h_1     ,iX1,iX2,iX3)**2, SqrtTiny )
+          G_Dn_X3         (iNX,iGF_Gm_dd_22,iX1,iX2,iX3) &
+            = MAX( G_Dn_X3(iNX,iGF_h_2     ,iX1,iX2,iX3)**2, SqrtTiny )
+          G_Dn_X3         (iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
+            = MAX( G_Dn_X3(iNX,iGF_h_3     ,iX1,iX2,iX3)**2, SqrtTiny )
+
+          G_Dn_X3        (iNX,iGF_SqrtGm,iX1,iX2,iX3) &
+            = MAX( G_Dn_X3    (iNX,iGF_h_1   ,iX1,iX2,iX3) &
+                     * G_Dn_X3(iNX,iGF_h_2   ,iX1,iX2,iX3) &
+                     * G_Dn_X3(iNX,iGF_h_3   ,iX1,iX2,iX3), SqrtTiny )
+
+        END DO
+        END DO
+        END DO
+        END DO
+
+        ! --- Compute derivatives ---
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iGF = 1       , nGF
+        DO iNX = 1       , nDOFX_X3
+
+          G_Dn_X3(iNX,iGF,iX1,iX2,iX3) &
+            = G_Dn_X3(iNX,iGF,iX1,iX2,iX3) * WeightsX_X3(iNX)
+
+          G_Up_X3(iNX,iGF,iX1,iX2,iX3) &
+            = G_Up_X3(iNX,iGF,iX1,iX2,iX3) * WeightsX_X3(iNX)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+        DO iX3 = iX_B0(3) - 1, iX_E0(3) + 1
+        DO iX2 = iX_B0(2)    , iX_E0(2)
+        DO iX1 = iX_B0(1)    , iX_E0(1)
+        DO iGF = 1           , nGF
+        DO iNX = 1           , nDOFX
+
+          G_K_X3(iNX,iGF,iX1,iX2,iX3) &
+            = G_K_X3(iNX,iGF,iX1,iX2,iX3) * WeightsX_q(iNX)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+        CALL MatrixMatrixMultiply &
+               ( 'T', 'N', nDOFX, nGF_K, nDOFX_X3, +One, LX_X3_Up, nDOFX_X3, &
+                 G_Up_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)), nDOFX_X3, Zero, &
+                 dGdX3, nDOFX )
+
+        CALL MatrixMatrixMultiply &
+               ( 'T', 'N', nDOFX, nGF_K, nDOFX_X3, -One, LX_X3_Dn, nDOFX_X3, &
+                 G_Dn_X3(1,1,iX_B0(1),iX_B0(2),iX_B0(3)), nDOFX_X3, One,  &
+                 dGdX3, nDOFX )
+
+        CALL MatrixMatrixMultiply &
+               ( 'T', 'N', nDOFX, nGF_K, nDOFX   , -One, dLXdX3_q, nDOFX   , &
+                 G_K_X3 (1,1,iX_B0(1),iX_B0(2),iX_B0(3)), nDOFX   , One , &
+                 dGdX3, nDOFX )
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iGF = 1       , nGF
+        DO iNX = 1       , nDOFX
+
+          dGdX3(iNX,iGF,iX1,iX2,iX3) &
+            = dGdX3(iNX,iGF,iX1,iX2,iX3) / ( WeightsX_q(iNX) * dX3(iX3) )
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF ! nNodesX(3) .GT. 1
+
+    END IF ! nDimsX .LT. 3
+
+    END ASSOCIATE ! dX3
+
+  END SUBROUTINE ComputeDerivatives_Geometry_Relativistic_X3
 
 
 END MODULE MHD_DiscretizationModule_Relativistic
