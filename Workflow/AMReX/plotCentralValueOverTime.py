@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 
 import numpy as np
+from sys import argv
 import matplotlib.pyplot as plt
 plt.style.use( 'publication.sty' )
 
-import GlobalVariables.Settings     as gvS
-from GlobalVariables.Units          import SetSpaceTimeUnits
+import GlobalVariables.Settings as gvS
+from GlobalVariables.Units   import SetSpaceTimeUnits
 
-from Utilities.Files                import GetFileNumberArray
-from Utilities.MakeDataDirectory    import MakeProblemDataDirectory
-from Utilities.MovieMaker           import MakeMovie
+from Utilities.Files                        import GetFileNumberArray
+from Utilities.MakeDataDirectory            import MakeProblemDataDirectory
+from Utilities.MakeCentralValueOverTimePlot import MakeCentralValueOverTimePlot
+from Utilities.BounceFinder                 import CreateBounceData
 
 if __name__ == "__main__":
 
@@ -18,23 +20,20 @@ if __name__ == "__main__":
     # Specify name of problem
     ProblemName = 'AdiabaticCollapse_XCFC'
 
-    # Specify title of figure
-    gvS.FigTitle = '{:} with AMR'.format(ProblemName)
-
     THORNADO_DIR = '/Users/nickroberts/thornado/'
     #THORNADO_DIR = '/home/kkadoogan/Work/Codes/thornado/'
 
     # Specify directory containing amrex Plotfiles
     PlotDirectory \
       = THORNADO_DIR + \
-          'SandBox/AdiabaticCollapse_XCFC/Output'
-    gvS.DataType = 'Native'
+          'SandBox/AMReX/Applications/AdiabaticCollapse_XCFC/AdiabaticCollapse_XCFC_AMR_dr0.25km'
+    gvS.DataType = 'AMReX'
 
     # Specify plot file base name
     PlotBaseName = ProblemName + '.plt'
 
     # Specify field to plot
-    Field = 'PF_D'
+    Field = 'GF_Alpha'
 
     # Specify to plot in log-scale
     gvS.UseLogScale_X  = True
@@ -67,23 +66,20 @@ if __name__ == "__main__":
     gvS.Verbose = True
 
     # Use custom limts for y-axis
-    gvS.UseCustomLimits = False
-    gvS.vmin            = -35000.0
-    gvS.vmax            = 0.0
+    gvS.UseCustomLimits = True
+    gvS.vmin            = 1E5
+    gvS.vmax            = 1E16
 
-    gvS.MovieRunTime = 10.0 # seconds
-
-    gvS.ShowRefinement = True
-    gvS.RefinementLevels = 9
-
-    gvS.amr = True
+    gvS.SaveFig         = True
+    
+#    gvS.yScale          = 1
+    gvS.yScale          = 8192
 
     #### ====== End of User Input =======
 
-    DataDirectory = 'DataDirectories/{:s}'.format( ProblemName )
+    DataDirectory = 'DataDirectories/{:s}_AMR025km_AMR'.format( ProblemName )
 
-    ID            = '{:s}_{:s}'.format( ProblemName, Field )
-    gvS.MovieName = 'mov.{:s}.mp4'.format( ID )
+    gvS.FigTitle = 'fig.{:s}_CentralValueOverTime.png'.format( ProblemName )
 
     # Append "/" to PlotDirectory, if not present
     if not PlotDirectory[-1] == '/': PlotDirectory += '/'
@@ -105,13 +101,18 @@ if __name__ == "__main__":
                               DataDirectory,   \
                               gvS.DataType     )
 
-    MakeMovie( [FileNumberArray], \
-               [Field],           \
-               [DataDirectory]    )
+    CreateBounceData( [PlotDirectory],  \
+                      PlotBaseName,     \
+                      [DataDirectory],  \
+                      [gvS.DataType]      )
 
-    print( '\n  Saved {:}'.format( gvS.MovieName ) )
+    MakeCentralValueOverTimePlot( Field,             \
+                                  [FileNumberArray], \
+                                  [DataDirectory]    )
+
 
     import os
     os.system( 'rm -rf __pycache__ ' )
     os.system( 'rm -rf GlobalVariables/__pycache__' )
     os.system( 'rm -rf Utilities/__pycache__' )
+
