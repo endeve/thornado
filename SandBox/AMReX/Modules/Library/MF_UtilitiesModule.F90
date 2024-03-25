@@ -181,13 +181,14 @@ CONTAINS
 
 
   SUBROUTINE ShowVariableFromMultiFab_Single &
-    ( iLevel, MF, iField, iMF_FineMask_Option, &
+    ( iLevel, MF, iField, iMF_FineMask_Option, UseFineMask_Option, &
       swXX_Option, WriteToFile_Option, FileNameBase_Option )
 
     INTEGER              , INTENT(in) :: iLevel, iField
     TYPE(amrex_multifab) , INTENT(in) :: MF
     TYPE(amrex_imultifab), INTENT(in), OPTIONAL :: iMF_FineMask_Option
     INTEGER              , INTENT(in), OPTIONAL :: swXX_Option(3)
+    LOGICAL              , INTENT(in), OPTIONAL :: UseFineMask_Option
     LOGICAL              , INTENT(in), OPTIONAL :: WriteToFile_Option
     CHARACTER(*)         , INTENT(in), OPTIONAL :: FileNameBase_Option
 
@@ -199,7 +200,7 @@ CONTAINS
     INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
     INTEGER                       :: swXX(3)
     INTEGER                       :: iFileNo
-    LOGICAL                       :: WriteToFile
+    LOGICAL                       :: UseFineMask, WriteToFile
     CHARACTER(128)                :: FMT
     CHARACTER(128)                :: FileNameBase, FileName
 
@@ -211,6 +212,9 @@ CONTAINS
 
     swXX = 0
     IF( PRESENT( swXX_Option ) ) swXX = swXX_Option
+
+    UseFineMask = .TRUE.
+    IF( PRESENT( UseFineMask_Option ) ) UseFineMask = UseFineMask_Option
 
     WriteToFile = .FALSE.
     IF( PRESENT( WriteToFile_Option ) ) WriteToFile = WriteToFile_Option
@@ -264,7 +268,7 @@ END IF
       DO iX2 = iX_B1(2), iX_E1(2)
       DO iX1 = iX_B1(1), iX_E1(1)
 
-        IF( PRESENT( iMF_FineMask_Option ) )THEN
+        IF( PRESENT( iMF_FineMask_Option ) .AND. UseFineMask )THEN
 
           IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
@@ -330,18 +334,20 @@ END IF
 
 
   SUBROUTINE ShowVariableFromMultiFab_Vector &
-    ( MF, iField, swXX_Option, WriteToFile_Option, FileNameBase_Option )
+    ( MF, iField, swXX_Option, UseFineMask_Option, &
+      WriteToFile_Option, FileNameBase_Option )
 
     INTEGER             , INTENT(in) :: iField
     TYPE(amrex_multifab), INTENT(in) :: MF(0:)
     INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
+    LOGICAL             , INTENT(in), OPTIONAL :: UseFineMask_Option
     LOGICAL             , INTENT(in), OPTIONAL :: WriteToFile_Option
     CHARACTER(*)        , INTENT(in), OPTIONAL :: FileNameBase_Option
 
     INTEGER :: iLevel
 
     INTEGER        :: swXX(3)
-    LOGICAL        :: WriteToFile
+    LOGICAL        :: UseFineMask, WriteToFile
     CHARACTER(128) :: FileNameBase
 
     TYPE(amrex_imultifab) :: iMF_FineMask
@@ -349,8 +355,13 @@ END IF
     swXX = 0
     IF( PRESENT( swXX_Option ) ) swXX = swXX_Option
 
+    UseFineMask = .TRUE.
+    IF( PRESENT( UseFineMask_Option ) ) &
+      UseFineMask = UseFineMask_Option
+
     WriteToFile = .FALSE.
-    IF( PRESENT( WriteToFile_Option ) ) WriteToFile = WriteToFile_Option
+    IF( PRESENT( WriteToFile_Option ) ) &
+      WriteToFile = WriteToFile_Option
 
     FileNameBase = ''
     IF( PRESENT( FileNameBase_Option ) ) &
@@ -363,6 +374,7 @@ END IF
       CALL ShowVariableFromMultiFab_Single &
              ( iLevel, MF(iLevel), iField, &
                iMF_FineMask_Option = iMF_FineMask, &
+               UseFineMask_Option = UseFineMask, &
                swXX_Option = swXX, &
                WriteToFile_Option = WriteToFile, &
                FileNameBase_Option = TRIM( FileNameBase ) )
