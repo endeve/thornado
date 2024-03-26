@@ -623,7 +623,8 @@ CONTAINS
 
     END IF ! nLevels .EQ. 1
 
-    epsMin_Euler_GR = HUGE( One )
+    IF( iLevel .EQ. 0 ) &
+      epsMin_Euler_GR = HUGE( One )
 
     ! --- With perturbation ---
 
@@ -752,8 +753,9 @@ CONTAINS
 
           END IF ! Apply perturbation
 
-          epsMin_Euler_GR &
-            = MIN( epsMin_Euler_GR, uPF_K(iNX,iPF_E) / uPF_K(iNX,iPF_D) )
+          IF( iLevel .EQ. 0 ) &
+            epsMin_Euler_GR &
+              = MIN( epsMin_Euler_GR, uPF_K(iNX,iPF_E) / uPF_K(iNX,iPF_D) )
 
         END DO !iNX
 
@@ -782,9 +784,13 @@ CONTAINS
 
     CALL amrex_mfiter_destroy( MFI )
 
-    CALL amrex_parallel_reduce_min( epsMin_Euler_GR )
+    IF( iLevel .EQ. 0 )THEN
 
-    epsMin_Euler_GR = 1.0e-06_DP * epsMin_Euler_GR
+      CALL amrex_parallel_reduce_min( epsMin_Euler_GR )
+
+      epsMin_Euler_GR = 1.0e-06_DP * epsMin_Euler_GR
+
+    END IF
 
     DEALLOCATE( Field   )
     DEALLOCATE( P )
@@ -792,7 +798,7 @@ CONTAINS
     DEALLOCATE( D )
     DEALLOCATE( R )
 
-    IF( ResetEndTime ) &
+    IF( ResetEndTime .AND. iLevel .EQ. 0 ) &
       t_end = 1.00e2_DP * AdvectionTime
 
     IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
@@ -899,13 +905,11 @@ CONTAINS
 
     X1 = Zero
 
-    indG = 0
-
     DO iX1 = iX_B1(1), iX_E1(1)
 
       DO iNX1 = 1, nNodesX(1)
 
-        indG = indG + 1
+        indG = GetGlobalIndex( iX1, iNX1 )
 
         dX1 = NodeCoordinate( MeshX(1), iX1, iNX1 ) - X1
         X1  = NodeCoordinate( MeshX(1), iX1, iNX1 )
@@ -975,29 +979,33 @@ CONTAINS
 
     TYPE(amrex_parmparse) :: PP
     CHARACTER(LEN=256)    :: FileName
-
-    nLeafNodes = 0
+    INTEGER               :: FileNo
 
     CALL amrex_parmparse_build( PP, 'SAS' )
       CALL PP % get  ( 'FileName_Nodal1DIC_SAS', &
                         FileName_Nodal1DIC_SAS )
     CALL amrex_parmparse_destroy( PP )
+
     WRITE(FileName,'(A)') TRIM( FileName_Nodal1DIC_SAS ) // '_PF_D.dat'
+
+    nLeafNodes = 0
 
     ! Get number of entries in file:
     ! https://stackoverflow.com/questions/30692424/
     ! how-can-i-read-the-number-of-lines-in-fortran-90-from-a-text-file
-    OPEN( 100, FILE = 'PF_D.dat' )
+    OPEN( FileNo, FILE = TRIM( FileName ) )
+
+      CALL ReadHeader( FileNo )
 
       DO
 
-        READ( 100, *, END = 10 )
+        READ( FileNo, *, END = 10 )
 
         nLeafNodes = nLeafNodes + 1
 
       END DO
 
-    10 CLOSE( 100 )
+    10 CLOSE( FileNo )
 
   END SUBROUTINE GetNumberOfLeafNodes
 
@@ -1024,15 +1032,16 @@ CONTAINS
                         FileName_Nodal1DIC_SAS )
     CALL amrex_parmparse_destroy( PP )
 
-    OPEN( UNIT = FileNo, FILE = TRIM( FileName_Nodal1DIC_SAS ) )
+    OPEN( UNIT = FileNo, FILE = TRIM( FileName_Nodal1DIC_SAS ) // '_BC.dat' )
 
-    READ(FileNo,*) FMT
     READ(FileNo,*) ExpD
     READ(FileNo,*) ExpE
 
     CLOSE( FileNo )
 
-    OPEN( UNIT = FileNo, FILE = 'X1n.dat' )
+    OPEN( UNIT = FileNo, FILE = TRIM( FileName_Nodal1DIC_SAS ) // '_X1n.dat' )
+
+      CALL ReadHeader( FileNo )
 
       DO i = 1, nLeafNodes
 
@@ -1042,7 +1051,9 @@ CONTAINS
 
     CLOSE( FileNo )
 
-    OPEN( UNIT = FileNo, FILE = 'PF_D.dat' )
+    OPEN( UNIT = FileNo, FILE = TRIM( FileName_Nodal1DIC_SAS ) // '_PF_D.dat' )
+
+      CALL ReadHeader( FileNo )
 
       DO i = 1, nLeafNodes
 
@@ -1052,7 +1063,9 @@ CONTAINS
 
     CLOSE( FileNo )
 
-    OPEN( UNIT = FileNo, FILE = 'PF_V1.dat' )
+    OPEN( UNIT = FileNo, FILE = TRIM( FileName_Nodal1DIC_SAS ) // '_PF_V1.dat' )
+
+      CALL ReadHeader( FileNo )
 
       DO i = 1, nLeafNodes
 
@@ -1062,7 +1075,9 @@ CONTAINS
 
     CLOSE( FileNo )
 
-    OPEN( UNIT = FileNo, FILE = 'AF_P.dat' )
+    OPEN( UNIT = FileNo, FILE = TRIM( FileName_Nodal1DIC_SAS ) // '_AF_P.dat' )
+
+      CALL ReadHeader( FileNo )
 
       DO i = 1, nLeafNodes
 
@@ -1387,6 +1402,16 @@ CONTAINS
 
     RETURN
   END FUNCTION GetGlobalIndex
+
+  SUBROUTINE ReadHeader( FileNo )
+
+    INTEGER, INTENT(in) :: FileNo
+
+    READ(FileNo,*)
+    READ(FileNo,*)
+    READ(FileNo,*)
+
+  END SUBROUTINE ReadHeader
 
 
 END MODULE MF_InitializationModule
