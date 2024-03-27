@@ -98,7 +98,7 @@ CONTAINS
       Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     REAL(DP) :: uGF(nGF), uCF(nCF), uPF(nPF), Psi6, Pressure, &
-                LorentzFactor, Enthalpy, BetaDotV
+                LorentzFactor, EnthalpyDensity, BetaDotV
     INTEGER :: iNX, iX1, iX2, iX3, iGF, iCF
 
     INTEGER :: ITERATION(1:nDOFX,iX_B0(1):iX_E0(1), &
@@ -141,7 +141,9 @@ CONTAINS
         GS(iNX,iX1,iX2,iX3,iGS_S2) = U(iNX,iX1,iX2,iX3,iCF_S2)
         GS(iNX,iX1,iX2,iX3,iGS_S3) = U(iNX,iX1,iX2,iX3,iCF_S3)
 
-        ! --- Compute gravitational mass ---
+        ! --- Compute gravitational mass integrand
+        !     (Eq. (12.45) from Rezzolla & Zanotti, Relativistic Hyrodynamics.
+        !     valid only for stationary, axisymmetric spacetimes) ---
 
         DO iGF = 1, nGF
 
@@ -195,12 +197,13 @@ CONTAINS
                     + uGF(iGF_Gm_dd_22) * uGF(iGF_Beta_2) * uPF(iPF_V2) &
                     + uGF(iGF_Gm_dd_33) * uGF(iGF_Beta_3) * uPF(iPF_V3)
 
-         Enthalpy = uPF(iPF_D) + uPF(iPF_E) + Pressure
+         EnthalpyDensity = uPF(iPF_D) + uPF(iPF_E) + Pressure
 
          GS(iNX,iX1,iX2,iX3,iGS_Mg) &
-           = ( Enthalpy * ( Two * LorentzFactor**2             &
-                 * ( One - BetaDotV / uGF(iGF_Alpha) ) - One ) &
-                 + Two * Pressure ) * uGF(iGF_Alpha) * uGF(iGF_SqrtGm)
+           = ( Two * EnthalpyDensity * LorentzFactor**2 &
+                 * ( One - BetaDotV / uGF(iGF_Alpha) ) &
+                     - EnthalpyDensity + Two * Pressure ) &
+               * uGF(iGF_Alpha) * uGF(iGF_SqrtGm)
 
       END DO
 
