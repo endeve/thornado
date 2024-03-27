@@ -16,7 +16,7 @@ from Utilities.GetFrameData import GetFrameData
 #=============================================#
 #   Included Routines
 #
-#   MakeProbelmDataDirectory
+#   MakeProblemDataDirectory
 #   MakeDataFrameDirectories
 #   MakeDataFrameDirectoriesLoop
 #   CreateFrameDirectory
@@ -25,7 +25,7 @@ from Utilities.GetFrameData import GetFrameData
 #
 #  Code Structure
 #
-#   MakeProbelmDataDirectory             ( Queries for overwrite states.   )
+#   MakeProblemDataDirectory             ( Queries for overwrite states.   )
 #   \=> MakeDataFrameDirectories         ( Divides work amoung available processes.)
 #       \=> MakeDataFrameDirectoriesLoop ( Applies overwriteF.  )
 #           \=> CreateFrameDirectory     ( Creates and fills individual frame directory.)
@@ -49,10 +49,10 @@ from Utilities.GetFrameData import GetFrameData
 
  #=============================================#
 #                                               #
-#   MakeProbelmDataDirectory                    #
+#   MakeProblemDataDirectory                    #
 #                                               #
  #=============================================#
-def MakeProbelmDataDirectory( FileNumberArray,          \
+def MakeProblemDataDirectory( FileNumberArray,          \
                               PlotDirectory,            \
                               PlotBaseName,             \
                               Field,                    \
