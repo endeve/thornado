@@ -137,5 +137,5 @@ if ( __name__ == '__main__' ) :
 
     import matplotlib.pyplot as plt
 
-    plt.plot( x1n / Kilometer, un / MassDensityUnit )
+    plt.plot( x1n / Kilometer, un / MassDensityUnit, 'k.' )
     plt.show()
