@@ -93,6 +93,16 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Mar 27 2024
+1. Thornado runs with nightly 03.26 (Intel(R) Fortran 24.0-1634) and umd862 
+2. Continued putting FlashX with Thornado to Reframe.
+## Mar 26 2024
+1. Thornado runs with nightly 03.24 and umd862 
+2. Continued putting FlashX with Thornado to Reframe.
+## Mar 25 2024
+1. Thornado runs with nightly 03.24 and neo/agama-devel-sp4/860-24.05.28454.24-858
+2. Started put FlashX with Thornado to Reframe.
+3. Addressed the confusion of cmplrllvm-40308
 ## Mar 22 2024
 1. Thornado runs fine with nightlies, 0319, 0320, 0321
 2. Here are some finding related to the scalability of FlashX with Thornado.
