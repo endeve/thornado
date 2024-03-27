@@ -20,7 +20,8 @@ MODULE MF_UtilitiesModule
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_reduce_sum, &
-    amrex_parallel_myproc
+    amrex_parallel_myproc, &
+    amrex_parallel_communicator
 
   ! --- thornado Modules ---
 
@@ -117,7 +118,8 @@ MODULE MF_UtilitiesModule
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
-    StepNo
+    StepNo, &
+    PlotFileNameRoot
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -192,7 +194,7 @@ CONTAINS
     LOGICAL              , INTENT(in), OPTIONAL :: WriteToFile_Option
     CHARACTER(*)         , INTENT(in), OPTIONAL :: FileNameBase_Option
 
-    INTEGER                       :: iX1, iX2, iX3, iNX
+    INTEGER                       :: iX1, iX2, iX3, iNX, iErr
     INTEGER                       :: lo(4), hi(4), iX_B1(3), iX_E1(3)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
@@ -230,23 +232,35 @@ CONTAINS
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
+    IF( WriteToFile )THEN
+
+      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+      IF( amrex_parallel_ioprocessor() )THEN
+
+        WRITE(FileName,'(A,I8.8,A)') &
+          TRIM( PlotFileNameRoot ), StepNo(0), '_nodal/'
+
+        CALL SYSTEM( 'mkdir -p ' // TRIM( FileName ) // ' 2>/dev/null' )
+
+      END IF
+
+      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+    END IF
+
     DO WHILE( MFI % next() )
 
       IF( WriteToFile )THEN
 
         iFileNo = 100 + amrex_parallel_myproc()
-IF(iField .EQ. 1) THEN
-        FileNameBase = 'NodalData1'
-END IF
-IF(iField .EQ. 2) THEN
-        FileNameBase = 'NodalData2'
-END IF
+
         IF( PRESENT( FileNameBase_Option ) ) &
           FileNameBase = TRIM( FileNameBase_Option )
 
-        WRITE(FileName,'(A,A,I3.3,A,I8.8,A)') &
-          TRIM( FileNameBase ), '_proc', &
-          amrex_parallel_myproc(), '_', StepNo(0), '.dat'
+        WRITE(FileName,'(A,I8.8,A,I3.3,A)') &
+          TRIM( PlotFileNameRoot ), StepNo(0), '_nodal/' &
+          // TRIM( FileNameBase ) // '_proc', amrex_parallel_myproc(), '.dat'
 
         OPEN( iFileNo, FILE = TRIM( FileName ), POSITION = 'APPEND' )
 
