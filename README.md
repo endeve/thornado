@@ -93,6 +93,9 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Mar 28-29 2024
+1. Thornado runs with nightly 03.27/03.28 (Intel(R) Fortran 24.0-1634/Intel(R) Fortran 24.0-1640) and umd862, and so is Thornado reframe, but with umd805
+2. FashX with Thornado is now in Reframe.
 ## Mar 27 2024
 1. Thornado runs with nightly 03.26 (Intel(R) Fortran 24.0-1634) and umd862 
 2. Continued putting FlashX with Thornado to Reframe.
