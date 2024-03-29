@@ -1015,7 +1015,6 @@ CONTAINS
     INTEGER,  INTENT(in)  :: nLeafNodes
     REAL(DP), INTENT(out) :: R(:), D(:), V(:), P(:)
 
-    CHARACTER(LEN=256)    :: FMT, FileName
     INTEGER               :: i, FileNo
     TYPE(amrex_parmparse) :: PP
 
