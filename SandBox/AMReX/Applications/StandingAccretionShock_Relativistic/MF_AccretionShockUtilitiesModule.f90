@@ -76,6 +76,10 @@ MODULE MF_AccretionShockUtilitiesModule
     CreateFineMask, &
     DestroyFineMask, &
     IsNotLeafElement
+  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_Euler_MF
+  USE MF_GeometryModule, ONLY: &
+    ApplyBoundaryConditions_Geometry_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -149,10 +153,12 @@ CONTAINS
   END SUBROUTINE WriteNodal1DICToFile_SAS
 
 
-  SUBROUTINE ComputePowerInLegendreModes( MF_uGF, MF_uPF )
+  SUBROUTINE ComputePowerInLegendreModes( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in) :: MF_uPF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(out)   :: MF_uPF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(out)   :: MF_uAF(0:nLevels-1)
 
     TYPE(amrex_multifab) :: PowerDensity      (0:nLevels-1)
     TYPE(amrex_multifab) :: RadialPowerDensity(0:nLevels-1)
@@ -170,6 +176,19 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
 
     IF( .NOT. ComputePowerInSitu ) RETURN
+
+    CALL ApplyBoundaryConditions_Geometry_MF( MF_uGF )
+    CALL ApplyBoundaryConditions_Euler_MF   ( MF_uCF )
+
+    DO iLevel = 0, nLevels - 1
+
+      CALL FillPatch( iLevel, MF_uGF )
+      CALL FillPatch( iLevel, MF_uGF, MF_uCF )
+
+    END DO
+
+    CALL ComputeFromConserved_Euler_MF &
+           ( MF_uGF, MF_uCF, MF_uPF, MF_uAF, swXX_Option = [ 0, 1, 0 ] )
 
     Power = Zero
 
