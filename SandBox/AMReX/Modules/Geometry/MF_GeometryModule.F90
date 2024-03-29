@@ -229,12 +229,16 @@ CONTAINS
 
     swX_GF = swX
 
+    CALL CreateMesh_MF( iLevel, MeshX )
+
     IF( .NOT. amrex_is_all_periodic() )THEN
 
       CALL ApplyBoundaryConditions_Geometry_MF_X1( iLevel, MF_uGF )
       CALL ApplyBoundaryConditions_Geometry_MF_X2( iLevel, MF_uGF )
 
     END IF
+
+    CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE ApplyBoundaryConditions_Geometry_MF_SingleLevel
 
