@@ -155,10 +155,10 @@ CONTAINS
 
   SUBROUTINE ComputePowerInLegendreModes( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(out)   :: MF_uPF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(out)   :: MF_uAF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uPF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uAF(0:)
 
     TYPE(amrex_multifab) :: PowerDensity      (0:nLevels-1)
     TYPE(amrex_multifab) :: RadialPowerDensity(0:nLevels-1)
@@ -184,6 +184,13 @@ CONTAINS
 
       CALL FillPatch( iLevel, MF_uGF )
       CALL FillPatch( iLevel, MF_uGF, MF_uCF )
+
+    END DO
+
+    DO iLevel = 0, nLevels-1
+
+      CALL MF_uPF(iLevel) % SetVal( Zero )
+      CALL MF_uAF(iLevel) % SetVal( Zero )
 
     END DO
 
@@ -232,10 +239,10 @@ CONTAINS
 
   SUBROUTINE ComputePowerDensity( MF_uGF, MF_uPF, PowerDensity, Psi_K )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF      (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uPF      (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: PowerDensity(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: Psi_K       (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF      (0:)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uPF      (0:)
+    TYPE(amrex_multifab), INTENT(inout) :: PowerDensity(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: Psi_K       (0:)
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX
@@ -333,8 +340,8 @@ CONTAINS
 
   SUBROUTINE ComputeRadialPowerDensity( PowerDensity, RadialPowerDensity )
 
-    TYPE(amrex_multifab), INTENT(in)    :: PowerDensity      (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: RadialPowerDensity(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: PowerDensity      (0:)
+    TYPE(amrex_multifab), INTENT(inout) :: RadialPowerDensity(0:)
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX
@@ -411,8 +418,8 @@ CONTAINS
 
   SUBROUTINE ComputePower( Psi_K, RadialPowerDensity, Power )
 
-    TYPE(amrex_multifab), INTENT(in)    :: Psi_K             (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: RadialPowerDensity(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: Psi_K             (0:)
+    TYPE(amrex_multifab), INTENT(in)    :: RadialPowerDensity(0:)
     REAL(DP)            , INTENT(inout) :: Power(0:nLeg-1)
 
     TYPE(amrex_mfiter)    :: MFI
