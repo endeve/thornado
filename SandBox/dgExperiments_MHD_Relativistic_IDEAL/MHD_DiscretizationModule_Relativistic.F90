@@ -3145,44 +3145,16 @@ CONTAINS
     REAL(DP) :: P(nPM)
     REAL(DP) :: W, B0u, VdotB, bSq
 
-    REAL(DP) :: WeakDivSum
-
-    ! --- Debugging
-
-    INTEGER  :: iNodeX1
-    REAL(DP) :: X1, X1_C, X1_W, X1_L, X1_R
-
     ! --- Compute Magnetic Divergence for Powell Sources ---
 
     CALL ComputeMagneticDivergence_MHD_Relativistic    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
-    CALL ComputeWeakMagneticDivergence_MHD_Relativistic( iX_B0, iX_E0, iX_B1, iX_E1, G, U, WeakDiv )
+    !CALL ComputeWeakMagneticDivergence_MHD_Relativistic( iX_B0, iX_E0, iX_B1, iX_E1, G, U, WeakDiv )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-    WeakDivSum = Zero
-
     DO iNX = 1       , nDOFX
-
-      WeakDivSum = WeakDivSum + WeakDiv(iNX,iX1,iX2,iX3)
-
-      iNodeX1 = NodeNumberTableX(1,iNX)
-      X1   = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-      X1_C = MeshX(1) % Center(iX1)
-      X1_W = MeshX(1) % Width(iX1)
-      X1_L = X1_C - X1_W / Two
-      X1_R = X1_C + X1_W / Two
-
-      !PRINT*
-      !PRINT*, 'In cell       :', iX1, iX2, iX3
-      !PRINT*, 'At node       :', iNX
-      !PRINT*, 'X1            :', X1
-      !PRINT*, 'X1_C          :', X1_C
-      !PRINT*, 'X1_W          :', X1_W
-      !PRINT*, 'X1_L          :', X1_L
-      !PRINT*, 'X1_R          :', X1_R
-      !PRINT*, 'Weak Div.     :', WeakDiv(iNX,iX1,iX2,iX3)
 
       CALL ComputePrimitive_MHD  &
              ( U(   iNX,iX1,iX2,iX3,iCM_D ),  &
