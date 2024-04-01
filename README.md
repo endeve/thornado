@@ -93,6 +93,14 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+
+## Apr 01 2024
+1. num_teams fix is not in nightly 03.31. ifx -what of this nightly shows Intel(R) Fortran 24.0-1640, and run of teamSize.f90 gives 
+<pre>
+Target LEVEL_ZERO RTL --> Number of teams = {896, 1, 1}
+Target LEVEL_ZERO RTL --> Number of teams = {1, 4096, 1}
+</pre>
+2. Tried OpenMC with reframe, the python script in /nfs/pdx/home/revans/performance.platform.rfm_testfiles/openmc.py is working, but /nfs/pdx/home/revans/epc_rfm_testfiles/openmc.py does not work.
 ## Mar 28-29 2024
 1. Thornado runs with nightly 03.27/03.28 (Intel(R) Fortran 24.0-1634/Intel(R) Fortran 24.0-1640) and umd862, and so is Thornado reframe, but with umd805
 2. FashX with Thornado is now in Reframe.
