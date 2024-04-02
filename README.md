@@ -93,6 +93,18 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Apr 02 2024
+1. Flashx's evolution time is 857s on pvc04 while FlashX with reframe only runs in 405s on pvc02 Try to figure it out. 
+  - With reframe script, we got "OpenMP thread stack size:       8 MB" while with my own script, it is 4 MB. `export OMP_STACKSIZE="8M"` helps to change it to 8 MB, but did not help the running time. 
+  - run rfm_job.sh on pvc04, and the evolution time is good, i.e., 383s. so computint node is not the problem.
+  - run local compiled flashx with rfm_job.sh, the eveloution time is good, i.e. around 383s.
+  - run local compiled flashx with buildRun.sh, the evolution is is bad. 
+  - change the run command line to include gpu_wrapper.sh, did not effect evolution time
+  - unset LIBOMPTARGET_LEVEL_ZERO_USE_IMMEDIATE_COMMAND_LIST, evolution time reduced to 527s from 875s
+  - unset OMP_PROC_BIND and MPI_CVAR_ENABLE_GPU reduces the time to 384.6s, the same as the reframe run on pvc04 localdisk. 
+  - testing MPI_CVAR_ENABLE_GPU effects by unset it only. It reduce the evolution time to 386s. So OMP_PROC_BIND does not have significant effect on running time. 
+2. Change the script of flashx to reflect the above findings. 
+3. Tried to run jobs on PVC16, and the Previously running GPU job is hanging for around 10 minutes at the beginning of the run. then "srun: Job 41023 step creation temporarily disabled, retrying (Requested nodes are busy)".
 
 ## Apr 01 2024
 1. num_teams fix is not in nightly 03.31. ifx -what of this nightly shows Intel(R) Fortran 24.0-1640, and run of teamSize.f90 gives 
