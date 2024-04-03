@@ -163,6 +163,8 @@ MODULE MF_UtilitiesModule
   PUBLIC :: AllocateArray_Integrated
   PUBLIC :: DeallocateArray_Integrated
   PUBLIC :: PrintBoxArray
+  PUBLIC :: IndLo_X
+  PUBLIC :: IndHi_X
 
   INTERFACE ShowVariableFromMultiFab
     MODULE PROCEDURE ShowVariableFromMultiFab_Single
@@ -1680,6 +1682,24 @@ CONTAINS
     CALL print_boxarray( BA % p )
 
   END SUBROUTINE PrintBoxArray
+
+
+  INTEGER FUNCTION indLo_X( nDOFX, iF_X )
+
+    INTEGER, INTENT(in) :: nDOFX, iF_X
+
+    indLo_X = nDOFX * ( iF_X - 1 ) + 1
+
+  END FUNCTION indLo_X
+
+
+  INTEGER FUNCTION indHi_X( nDOFX, iF_X )
+
+    INTEGER, INTENT(in) :: nDOFX, iF_X
+
+    indHi_X = nDOFX * iF_X
+
+  END FUNCTION indHi_X
 
 
 END MODULE MF_UtilitiesModule
