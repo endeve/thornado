@@ -38,6 +38,7 @@ More information on the external packages, please visit: https://gitlab.devtools
 9. run buildRun.sh under ${FLASH_HOME}
     - Add .o file name to Makefile.Flash and the path of source files to $(THORNADO_DIR)/Build/Makefile_Path
     - ./build.sh is written in line 130 of libUtils.py, which call the library's libinfo.py
+10. If you just srun to the node, then you may need to `unset SLURM_TASKS_PER_NODE` to run mpiexec, but If you do the srun to the node, then in another terminal ssh to it, then you shouldn't need to.    
 
 # Tricks and commands
 **sudo usermod -a -G render <username>** to make sycl-ls work
@@ -53,6 +54,9 @@ More information on the external packages, please visit: https://gitlab.devtools
 **get on a node on Sunspot** `qsub -l select=1 -l walltime=30:00 -A Aurora_deployment -q workq -I`
 **get on Aurora** qsub -I -A Aurora_deployment -l select=1,walltime=120:00 -q LustreApps
 **get on Aurora** qsub -I -A Aurora_deployment -l select=1,walltime=120:00 -q EarlyAppAccess 
+**borealis guide**  https://wiki.ith.intel.com/display/OPS/HPCM+user+guide
+**get on borealis** ssh borealis-uan1.hpe.jf.intel.com
+
 **To git clone weaklib tables from ORNL, we need** `export https_proxy=http://proxy-us.intel.com:912`    (error: SSL certificate problem: self signed certificate in certificate chain) 
 **pip install need proxy pip install --proxy=http://proxy-us.intel.com:912    numpy***
 **display GPU serial and rev. number** `sudo /sbin/lspci |grep -i Display`    
@@ -93,6 +97,74 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Apr 10-12 2024
+1. Learning Aurora Burn-in's tools, issues, aims, and anlysis by setting in the dialy meetings and reading docs
+2. Learning awk and more advanced bash script to be ready to automate the script used by Aurora burn-in team
+3. Run FlashX with Thornado on PVC16 and get pretty good scaling, and here are some data for 4x4x4:
+<pre>
+#MPI-rank total time			evolution		rt-imex	
+ 1  13m43	823	1	815.627	1	640.524	1
+ 2  7m9	    429	1.918414918	421.265	1.936137586	332.042	1.929045121
+ 4  3m54	234	3.517094017	226.019	3.608665643	176.874	3.621357577
+</pre>
+For 8x8x8, we have
+<pre>
+#MPI-rank total time			evolution		rt-imex	
+ 1  73m55s	4435	1	4419.778	1	2649.652	1
+ 2   37m58s	2278	1.946883231	2267.209	1.949435628	1366.393	1.939158061
+ 4  20m8	1208	3.671357616	1198.351	3.688216558	725.575	3.651796162
+</pre>
+## Apr 08-09 2024
+
+1. Thornado has libsycl.so versoin issue with nighlty 04.07 as Brain noted that "Starting with 4.5  nightly compiler, they have moved to libsycl.so.8.  This means you need to use an MKL that uses libsycl.so.8.". Thornado has libsycl.so version issue with both nightly-mkl-cev_nightly/2024.04.04 and nightly-mkl-develop/2024.04.04. zypper search on PVC04 show the latest mkl is 04.04. So we will not use the latest compiler. 
+2. Tried to run FlashX/Thornado using multiple pvcs node of spdcloud, but failed with errors:
+<pre>
+/soft/restricted/CNDA/mpich/52.2/mpich-ofi-sockets-icc-default-gpu-drop52/bin/hydra_pmi_proxy: error while loading shared libraries: libze_loader.so.1: cannot open shared object file: No such file or directory
+[mpiexec@exaperf-sdpcloud-pvc04.jf.intel.com] ui_cmd_cb (mpiexec/pmiserv_pmci.c:53): Launch proxy failed.
+[mpiexec@exaperf-sdpcloud-pvc04.jf.intel.com] HYDT_dmxu_poll_wait_for_event (lib/tools/demux/demux_poll.c:76): callback returned error status
+[mpiexec@exaperf-sdpcloud-pvc04.jf.intel.com] HYD_pmci_wait_for_completion (mpiexec/pmiserv_pmci.c:184): error waiting for event
+[mpiexec@exaperf-sdpcloud-pvc04.jf.intel.com] main (mpiexec/mpiexec.c:221): process manager error waiting for completion
+</pre>
+it turned out the our spdcloud is not setup for multinode runs.
+
+
+## Apr 04-05 2024
+1. Run flashX 4x4x4 and 8x8x8 case to get the scaling data. Optimizing the scalability.
+2. It is also found that the run on pvc16 seems slower 10-15% compared to runs on pvc04
+3. Will be run some perftool to help understand why.
+## Apr 03 2024
+1. Without `MPIR_CVAR_ENABLE_GPU=0`, thornado runs failed with mpi related errors: 
+<pre>
+ApplicationDriver_beacon_intel:91526 terminated with signal 11 at PC=152e4725f37e SP=7ffe42c822d8.  Backtrace:
+/lib64/libpthread.so.0(+0x168c0)[0x152e4e04d8c0]
+/exaperf/neo/agama-devel-sp4/867-24.09.28717.16-867/usr/lib64/libze_intel_gpu.so.1(+0x13e37e)[0x152e4725f37e]
+/exaperf/neo/agama-devel-sp4/867-24.09.28717.16-867/usr/lib64/libze_intel_gpu.so.1(+0x13fe4b)[0x152e47260e4b]
+/exaperf/neo/agama-devel-sp4/867-24.09.28717.16-867/usr/lib64/libze_intel_gpu.so.1(+0x121d72)[0x152e47242d72]
+/soft/restricted/CNDA/mpich/52.2/mpich-ofi-sockets-icc-default-gpu-drop52/lib/libmpi.so.12(+0x423e006)[0x152e53400006]
+/soft/restricted/CNDA/mpich/52.2/mpich-ofi-sockets-icc-default-gpu-drop52/lib/libmpi.so.12(+0x423d226)[0x152e533ff226]
+/soft/restricted/CNDA/mpich/52.2/mpich-ofi-sockets-icc-default-gpu-drop52/lib/libmpi.so.12(+0xc1e9a6)[0x152e4fde09a6]
+/soft/restricted/CNDA/mpich/52.2/mpich-ofi-sockets-icc-default-gpu-drop52/lib/libmpi.so.12(+0x9b7a92)[0x152e4fb79a92]
+/soft/restricted/CNDA/mpich/52.2/mpich-ofi-sockets-icc-default-gpu-drop52/lib/libmpi.so.12(+0x9cf654)[0x152e4fb91654]
+/soft/restricted/CNDA/mpich/52.2/mpich-ofi-sockets-icc-default-gpu-drop52/lib/libmpi.so.12(+0x9cf4b9)[0x152e4fb914b9]
+/soft/restricted/CNDA/mpich/52.2/mpich-ofi-sockets-icc-default-gpu-drop52/lib/libmpi.so.12(MPI_Init+0x6)[0x152e4f274fc6]
+/soft/restricted/CNDA/mpich/52.2/mpich-ofi-sockets-icc-default-gpu-drop52/lib/libmpifort.so.12(MPI_INIT+0x29)[0x152e5aafc449]
+./ApplicationDriver_beacon_intel[0x8977ff]
+./ApplicationDriver_beacon_intel[0x8b6393]
+./ApplicationDriver_beacon_intel[0x8b2cb4]
+./ApplicationDriver_beacon_intel[0x4159cd]
+/lib64/libc.so.6(__libc_start_main+0xef)[0x152e4dc772bd]
+./ApplicationDriver_beacon_intel[0x4158fa]
+
+</pre>
+2. The run of flashx on pvc16 using 4 GPUs tiles and 4 ranks has page faults:
+<pre>
+[753150.097787] i915 0000:3a:00.0: page fault @ 0x01010000057ce000, ccs0 in flashx [26308]
+[753887.571699] i915 0000:3a:00.0: page fault @ 0x01010000057ce000, ccs0 in flashx [95851]
+[753887.628278] i915 0000:9a:00.0: page fault @ 0x01010000057ce000, ccs0 in flashx [95853]
+[753887.644851] i915 0000:9a:00.0: page fault @ 0x01010000057ce000, ccs4 in flashx [95854]
+[753887.651302] i915 0000:3a:00.0: page fault @ 0x01010000057ce000, ccs4 in flashx [95852]
+</pre>
+
 ## Apr 02 2024
 1. Flashx's evolution time is 857s on pvc04 while FlashX with reframe only runs in 405s on pvc02 Try to figure it out. 
   - With reframe script, we got "OpenMP thread stack size:       8 MB" while with my own script, it is 4 MB. `export OMP_STACKSIZE="8M"` helps to change it to 8 MB, but did not help the running time. 
