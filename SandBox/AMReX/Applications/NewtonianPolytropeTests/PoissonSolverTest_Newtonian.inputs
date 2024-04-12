@@ -1,0 +1,77 @@
+##### PoissonSolverTest_Newtonian.inputs_singleLevel #####
+
+# For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+# For all REAL types, use "e" and not "d", i.e. 1.0e3
+
+debug.DEBUG = 1
+
+# ###############
+
+inputs.rho_c       = 4.0e14 # g/cc
+inputs.R_neutron_star = 30.0 # km
+inputs.Outer_Domain  = 21.0 #km
+
+##################
+
+thornado.ProgramName = "Hydrostatic_Polytrope"
+
+thornado.iRestart = -1
+
+thornado.UsePhysicalUnits = 1
+
+thornado.t_end   = 14 #ms
+
+thornado.PlotFileNameRoot = "Hydrostatic_Polytrope.plt"
+thornado.iCycleW = 1
+
+thornado.CheckpointFileNameRoot = "Hydrostatic_Polytrope.chk"
+thornado.iCycleChk = 1
+
+thornado.nNodes = 3
+
+thornado.bcX         = 30 00 00
+geometry.is_periodic = 0  1  1
+
+geometry.coord_sys = 2
+geometry.prob_lo   = 000.0 0.0               0.0
+geometry.prob_hi   = 21.0 3.1415926535897931 6.2831853071795862
+
+amr.n_cell                  = 16 01 01
+thornado.swX                = 01  00 00
+#amr.max_grid_size_x         = 512
+#amr.blocking_factor_x       = 512
+amr.max_level               = 0
+amr.UseFluxCorrection_Euler = 0
+amr.UseAMR                  = 0
+amr.TagCriteria             = 0.0
+amr.n_error_buf             = 0
+amr.ref_ratio               = 2
+
+# Poseidon parameters
+GS.EvolveGravity    = 1
+poseidon.fem_degree = 2
+poseidon.l_limit    = 0
+
+# Slope limiter parameters
+SL.UseSlopeLimiter_Euler           = 0
+SL.SlopeLimiterMethod_Euler        = "TVD"
+SL.BetaTVD_Euler                   = 1.75e+0
+SL.BetaTVB_Euler                   = 0.00e+0
+SL.SlopeTolerance_Euler            = 1.00e-6
+SL.UseCharacteristicLimiting_Euler = 0
+SL.UseTroubledCellIndicator_Euler  = 0
+SL.LimiterThresholdParameter_Euler = 5.00e-3
+SL.UseConservativeCorrection_Euler = 1
+
+# Positivity limiter parameters
+PL.UsePositivityLimiter_Euler = 1
+PL.Min_1_Euler                = 1.0e-13
+PL.Min_2_Euler                = 1.0e-13
+
+# Equation of state parameters
+EoS.EquationOfState = "IDEAL"
+EoS.Gamma_IDEAL     = 2.0
+
+# Time-Stepping parameters
+TS.nStages       = 3
+TS.CFL           = 0.5
