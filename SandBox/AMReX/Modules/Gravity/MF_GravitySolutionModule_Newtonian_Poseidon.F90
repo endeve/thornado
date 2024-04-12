@@ -74,8 +74,8 @@ MODULE MF_GravitySolutionModule_Newtonian_Poseidon
   USE InputParsingModule, ONLY: &
     xR, &
     nLevels, &
-    UseTiling
-
+    UseTiling, &
+    ProgramName
   USE MF_GeometryModule, ONLY: &
     ApplyBoundaryConditions_Geometry_MF
 
@@ -237,7 +237,7 @@ CONTAINS
 
       REAL(DP)              :: GravitationalMass
       TYPE(amrex_multifab)  :: MF_uGS(0:nLevels-1)
-      CHARACTER(LEN=:), ALLOCATABLE :: ProgramName
+
 
       TYPE(amrex_parmparse) :: PP
       REAL(DP) :: Phi_r, Phi_r_converted, P_c, rho_c, r_c, SolarRadius, R_star, Domain
@@ -311,47 +311,43 @@ CONTAINS
 
         CASE DEFAULT 
 
-          !Phi_r_outer  = Enclosed_mass/x(R)
+          CALL ComputeEnclosedMass_MF( MF_uGS, GravitationalMass )
 
-        !CALL ComputeEnclosedMass_MF( MF_uGS, GravitationalMass )!
+          Phi_r_outer  = -GravitationalMass / xR(1)
 
-!          Phi_r_outer = GravitationalMass!
-
-!                    WRITE(*,'(4x,A)') &
-!            '------------------------------------------'
-!          WRITE(*,*)
-!          WRITE(*,'(4x,A)')'Using Outer Boundary Values using Enclosed Mass '
-!          WRITE(*,'(8x,A,ES15.6E3)')'Phi_r in CGS: ', Phi_r_converted
-!          WRITE(*,'(4x,A)') &
-!            '------------------------------------------'
+          WRITE(*,'(4x,A)') &
+            '------------------------------------------'
+          WRITE(*,*)
+          WRITE(*,'(4x,A)')'Using Outer Boundary Values using Enclosed Mass '
+          WRITE(*,'(8x,A,ES15.6E3)')'Phi_r in CGS: ', Phi_r_outer / ( Erg / Gram )
+          WRITE(*,'(4x,A)') &
+            '------------------------------------------'
 
     END SELECT
 
   END SUBROUTINE ComputeBoundaryValues
 
 
+  SUBROUTINE ComputeEnclosedMass_MF( MF_uGS, GravitationalMass )!
 
-
-  !SUBROUTINE ComputeEnclosedMass_MF( MF_uGS, GravitationalMass )!
-
-!    TYPE(amrex_multifab), INTENT(in)  :: MF_uGS(0:)
-!    REAL(DP)            , INTENT(out) :: GravitationalMass!
+    TYPE(amrex_multifab), INTENT(in)  :: MF_uGS(0:)
+    REAL(DP)            , INTENT(out) :: GravitationalMass!
 
 !    TYPE(amrex_box)       :: BX
 !    TYPE(amrex_mfiter)    :: MFI
-!    TYPE(amrex_imultifab) :: iMF_FineMask!
+!    TYPE(amrex_imultifab) :: iMF_FineMask!!
 
 !    REAL(DP), ALLOCATABLE :: GS(:,:,:,:,:)
 !    REAL(DP), CONTIGUOUS, POINTER :: uGS(:,:,:,:)
-!    INTEGER , CONTIGUOUS, POINTER :: uFM(:,:,:,:)!
+!    INTEGER , CONTIGUOUS, POINTER :: uFM(:,:,:,:)!!
 
 !    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLevel
 !    INTEGER , INTENT(in), OPTIONAL :: Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 !    !
 
-!    IF( PRESENT( Mask_Option ) )THEN!
+!    IF( PRESENT( Mask_Option ) )THEN!!
 
-!      Mask = Mask_Option!
+!      Mask = Mask_Option!!
 
 !    ELSE!
 
@@ -359,73 +355,73 @@ CONTAINS
 
 !    ENDIF!
 
-!    ! --- Assuming 1D spherical symmetry ---!
+!    ! --- Assuming 1D spherical symmetry ---!!
 
-!    GravitationalMass = Zero!
+!    GravitationalMass = Zero!!
 
-!    DO iLevel = 0, nLevels-1!
+!    DO iLevel = 0, nLevels-1!!
 
-!      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGS % BA, MF_uGS % DM )!
+!      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGS % BA, MF_uGS % DM )!!
 
-!      CALL CreateMesh_MF( iLevel, MeshX )!
+!      CALL CreateMesh_MF( iLevel, MeshX )!!
 
 !#if defined( THORNADO_OMP )
 !      !$OMP PARALLEL &
 !      !$OMP PRIVATE( BX, MFI, GS, uGS, uFM, &
 !      !$OMP          iX_B0, iX_E0, iX_B1, iX_E1 ) &
 !      !$OMP REDUCTION( +:GravitationalMass )
-!#endif!
+!#endif!!
 
-!      CALL amrex_mfiter_build( MFI, MF_uGS(iLevel), tiling = UseTiling )!
+!      CALL amrex_mfiter_build( MFI, MF_uGS(iLevel), tiling = UseTiling )!!
 
-!      DO WHILE( MFI % next() )!
+!      DO WHILE( MFI % next() )!!
 
 !        uGS => MF_uGS(iLevel) % DataPtr( MFI )
-!        uFM => iMF_FineMask   % DataPtr( MFI )!
+!        uFM => iMF_FineMask   % DataPtr( MFI )!!
 
-!        BX = MFI % tilebox()!
+!        BX = MFI % tilebox()!!
 
 !        iX_B0 = BX % lo
 !        iX_E0 = BX % hi
 !        iX_B1 = iX_B0 - swX
-!        iX_E1 = iX_E0 + swX!
+!        iX_E1 = iX_E0 + swX!!
 
 !        CALL AllocateArray_X &
 !               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
 !                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nGS ], &
-!                 GS )!
+!                 GS )!!
 
 !        CALL amrex2thornado_X &
-!               ( nGS, iX_B0, iX_E0, LBOUND( uGS ), iX_B0, iX_E0, uGS, GS )!
+!               ( nGS, iX_B0, iX_E0, LBOUND( uGS ), iX_B0, iX_E0, uGS, GS )!!
 
 !        !CALL ComputeTotalEnclosedMass &
 !               !( iX_B0, iX_E0, iX_B1, iX_E1, GS, GravitationalMass , Mask_Option = uFM  )
 !        CALL ComputeTotalEnclosedMass &
 !                ( iX_B0, iX_E0, iX_B1, iX_E1, GS, GS(1:,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),iGS_D), GravitationalMass, &
-!    Mask_Option = uFM )!
+!    Mask_Option = uFM )!!
 
 !        CALL DeallocateArray_X &
 !               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
 !                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nGS ], &
-!                 GS )!
+!                 GS )!!
 
-!      END DO ! WHILE( MFI % next() )!
+!      END DO ! WHILE( MFI % next() )!!
 
-!      CALL amrex_mfiter_destroy( MFI )!
+!      CALL amrex_mfiter_destroy( MFI )!!
 
 !#if defined( THORNADO_OMP )
 !      !$OMP END PARALLEL
-!#endif!
+!#endif!!
 
-!      CALL DestroyMesh_MF( MeshX )!
+!      CALL DestroyMesh_MF( MeshX )!!
 
-!      CALL DestroyFineMask( iMF_FineMask )!
+!      CALL DestroyFineMask( iMF_FineMask )!!
 
-!    END DO ! iLevel = 0, nLevels-1!
+!    END DO ! iLevel = 0, nLevels-1!!
 
 !    CALL amrex_parallel_reduce_sum( GravitationalMass )!
 
-!    END SUBROUTINE ComputeEnclosedMass_MF
+    END SUBROUTINE ComputeEnclosedMass_MF
 
 
 END MODULE MF_GravitySolutionModule_Newtonian_Poseidon
