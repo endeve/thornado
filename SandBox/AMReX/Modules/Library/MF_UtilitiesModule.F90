@@ -206,7 +206,7 @@ CONTAINS
     INTEGER                       :: iFileNo
     LOGICAL                       :: UseFineMask, WriteToFile
     CHARACTER(128)                :: FMT
-    CHARACTER(128)                :: FileNameBase, FileName
+    CHARACTER(128)                :: FileNameBase, FileName, DirName
 
     TYPE(MeshType) :: MeshX(3)
 
@@ -236,16 +236,13 @@ CONTAINS
 
     IF( WriteToFile )THEN
 
+      WRITE(DirName,'(A,I8.8,A)') &
+        TRIM( PlotFileNameRoot ), StepNo(0), '_nodal/'
+
       CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
 
-      IF( amrex_parallel_ioprocessor() )THEN
-
-        WRITE(FileName,'(A,I8.8,A)') &
-          TRIM( PlotFileNameRoot ), StepNo(0), '_nodal/'
-
-        CALL SYSTEM( 'mkdir -p ' // TRIM( FileName ) // ' 2>/dev/null' )
-
-      END IF
+      IF( amrex_parallel_ioprocessor() ) &
+        CALL SYSTEM( 'mkdir -p ' // TRIM( DirName ) // ' 2>/dev/null' )
 
       CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
 
@@ -257,12 +254,13 @@ CONTAINS
 
         iFileNo = 100 + amrex_parallel_myproc()
 
+        FileNameBase = 'nodalData'
         IF( PRESENT( FileNameBase_Option ) ) &
           FileNameBase = TRIM( FileNameBase_Option )
 
-        WRITE(FileName,'(A,I8.8,A,I3.3,A)') &
-          TRIM( PlotFileNameRoot ), StepNo(0), '_nodal/' &
-          // TRIM( FileNameBase ) // '_proc', amrex_parallel_myproc(), '.dat'
+        WRITE(FileName,'(A,I3.3,A)') &
+          TRIM( DirName ) // TRIM( FileNameBase ) // '_proc', &
+          amrex_parallel_myproc(), '.dat'
 
         OPEN( iFileNo, FILE = TRIM( FileName ), POSITION = 'APPEND' )
 
