@@ -4,7 +4,9 @@ MODULE MF_AccretionShockUtilitiesModule
 
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
-    amrex_parallel_reduce_sum
+    amrex_parallel_communicator, &
+    amrex_parallel_reduce_sum, &
+    amrex_parallel_myproc
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse, &
     amrex_parmparse_build, &
@@ -19,17 +21,28 @@ MODULE MF_AccretionShockUtilitiesModule
     amrex_mfiter, &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
+  USE amrex_amrcore_module, ONLY: &
+    amrex_geom
 
   ! --- thornado Modules ---
 
+  USE UtilitiesModule, ONLY: &
+    thornado_abort
   USE ProgramHeaderModule, ONLY: &
     swX, &
     nDimsX, &
-    nDOFX
+    nDOFX, &
+    nNodesX
   USE ReferenceElementModuleX, ONLY: &
-    WeightsX_q
+    WeightsX1, &
+    WeightsX2, &
+    WeightsX_q, &
+    NodeNumberTableX
+  USE ReferenceElementModuleX_Lagrange, ONLY: &
+    dLXdX2_q
   USE MeshModule, ONLY: &
-    MeshType
+    MeshType, &
+    NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
     iGF_SqrtGm, &
     iGF_Psi
@@ -66,12 +79,18 @@ MODULE MF_AccretionShockUtilitiesModule
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
   USE MF_UtilitiesModule, ONLY: &
-    ShowVariableFromMultiFab
+    ShowVariableFromMultiFab, &
+    IndLo_X, &
+    IndHi_X
   USE InputParsingModule, ONLY: &
     nLevels, &
-    t_new
+    t_new, &
+    StepNo, &
+    PlotFileNameRoot
   USE FillPatchModule, ONLY: &
     FillPatch
+  USE AverageDownModule, ONLY: &
+    AverageDown
   USE MaskModule, ONLY: &
     CreateFineMask, &
     DestroyFineMask, &
@@ -91,6 +110,7 @@ MODULE MF_AccretionShockUtilitiesModule
   CHARACTER(LEN=:), PUBLIC, ALLOCATABLE :: FileName_Nodal1DIC_SAS
 
   INTEGER, PARAMETER :: nLeg = 5 ! number of Legendre polynomials
+  INTEGER, PARAMETER :: SL = 256
 
   LOGICAL :: ComputePowerInSitu
 
@@ -101,9 +121,9 @@ CONTAINS
 
     TYPE(amrex_parmparse) :: PP
 
-    INTEGER :: iLevel
+    INTEGER :: iLevel, iErr
 
-    CHARACTER(256) :: FileName
+    CHARACTER(256) :: FileName, DirName
 
     IF( nDimsX .GT. 1 ) RETURN
 
@@ -125,25 +145,37 @@ CONTAINS
 
     WRITE(FileName,'(A)') TRIM( FileName_Nodal1DIC_SAS ) // '_PF_D'
     CALL ShowVariableFromMultiFab &
-      ( MF_uPF, iPF_D, swXX_Option = swX, UseFineMask_Option = .FALSE., &
-        WriteToFile_Option = .TRUE., &
-        FileNameBase_Option = TRIM( FileName ) )
+           ( MF_uPF, iPF_D, swXX_Option = swX, UseFineMask_Option = .FALSE., &
+             WriteToFile_Option = .TRUE., &
+             FileNameBase_Option = TRIM( FileName ) )
 
     WRITE(FileName,'(A)') TRIM( FileName_Nodal1DIC_SAS ) // '_PF_V1'
     CALL ShowVariableFromMultiFab &
-      ( MF_uPF, iPF_V1, swXX_Option = swX, UseFineMask_Option = .FALSE., &
-        WriteToFile_Option = .TRUE., &
-        FileNameBase_Option = TRIM( FileName ) )
+           ( MF_uPF, iPF_V1, swXX_Option = swX, UseFineMask_Option = .FALSE., &
+             WriteToFile_Option = .TRUE., &
+             FileNameBase_Option = TRIM( FileName ) )
 
     WRITE(FileName,'(A)') TRIM( FileName_Nodal1DIC_SAS ) // '_AF_P'
     CALL ShowVariableFromMultiFab &
-      ( MF_uAF, iAF_P, swXX_Option = swX, UseFineMask_Option = .FALSE., &
-        WriteToFile_Option = .TRUE., &
-        FileNameBase_Option = TRIM( FileName ) )
+           ( MF_uAF, iAF_P, swXX_Option = swX, UseFineMask_Option = .FALSE., &
+             WriteToFile_Option = .TRUE., &
+             FileNameBase_Option = TRIM( FileName ) )
 
     IF( amrex_parallel_ioprocessor() )THEN
 
-      OPEN( UNIT = 101, FILE = TRIM( FileName_Nodal1DIC_SAS ) // '_BC.dat' )
+      WRITE(DirName,'(A,I8.8,A)') &
+        TRIM( PlotFileNameRoot ), StepNo(0), '_nodal/'
+
+      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+      IF( amrex_parallel_ioprocessor() ) &
+        CALL SYSTEM( 'mkdir -p ' // TRIM( DirName ) // ' 2>/dev/null' )
+
+      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+      OPEN( UNIT = 101, &
+            FILE = TRIM( DirName ) &
+                     // TRIM( FileName_Nodal1DIC_SAS ) // '_BC.dat' )
 
       WRITE(101,'(ES24.16E3)') ExpD
       WRITE(101,'(ES24.16E3)') ExpE
@@ -160,13 +192,13 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uPF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uAF(0:)
 
-    TYPE(amrex_multifab) :: PowerDensity      (0:nLevels-1)
-    TYPE(amrex_multifab) :: RadialPowerDensity(0:nLevels-1)
-    TYPE(amrex_multifab) :: Psi_K             (0:nLevels-1)
+    TYPE(amrex_multifab) :: DivV2(0:nLevels-1)
 
-    INTEGER :: iLevel
+    INTEGER :: iLevel, nX
 
     REAL(DP) :: Power(0:nLeg-1)
+    REAL(DP), ALLOCATABLE :: G(:,:)
+    REAL(DP), ALLOCATABLE :: Psi(:)
 
     TYPE(amrex_parmparse) :: PP
 
@@ -197,101 +229,81 @@ CONTAINS
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF, swXX_Option = [ 0, 1, 0 ] )
 
-    Power = Zero
-
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
-             ( PowerDensity(iLevel), &
-               MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, 1, swX )
-      CALL PowerDensity      (iLevel) % SetVal( Zero )
-
-      CALL amrex_multifab_build &
-             ( RadialPowerDensity(iLevel), &
-               MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, nLeg, 0 )
-      CALL RadialPowerDensity(iLevel) % SetVal( Zero )
-
-      CALL amrex_multifab_build &
-             ( Psi_K(iLevel), &
-               MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, 1, 0 )
-      CALL Psi_K(iLevel) % SetVal( Zero )
+             ( DivV2(iLevel), &
+               MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, nDOFX, 0 )
+      CALL DivV2(iLevel) % SetVal( Zero )
 
     END DO
 
-    CALL ComputePowerDensity( MF_uGF, MF_uPF, PowerDensity, Psi_K )
+    CALL ComputeDivV2( MF_uPF, DivV2 )
 
-    CALL ComputeRadialPowerDensity( PowerDensity, RadialPowerDensity )
+    nX = amrex_geom(0) % domain % hi(1) - amrex_geom(0) % domain % lo(1) + 1
 
-    CALL ComputePower( Psi_K, RadialPowerDensity, Power )
+    ALLOCATE( G(0:nLeg-1,1:nX*nNodesX(1)) )
+    ALLOCATE( Psi       (1:nX*nNodesX(1)) )
+
+    CALL ComputePowerDensity( MF_uGF, DivV2, G, Psi )
+
+    CALL ComputePower( G, Psi, Power )
 
     CALL WriteToFile( Power )
 
+    DEALLOCATE( Psi )
+    DEALLOCATE( G   )
+
     DO iLevel = 0, nLevels-1
 
-      CALL amrex_multifab_destroy( Psi_K             (iLevel) )
-      CALL amrex_multifab_destroy( RadialPowerDensity(iLevel) )
-      CALL amrex_multifab_destroy( PowerDensity      (iLevel) )
+      CALL amrex_multifab_destroy( DivV2(iLevel) )
 
     END DO
 
   END SUBROUTINE ComputePowerInLegendreModes
 
 
-  SUBROUTINE ComputePowerDensity( MF_uGF, MF_uPF, PowerDensity, Psi_K )
+  SUBROUTINE ComputeDivV2( MF_uPF, DivV2 )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF      (0:)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uPF      (0:)
-    TYPE(amrex_multifab), INTENT(inout) :: PowerDensity(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: Psi_K       (0:)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uPF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: DivV2 (0:)
 
     TYPE(amrex_mfiter)    :: MFI
     TYPE(amrex_box)       :: BX
     TYPE(amrex_imultifab) :: iMF_FineMask
 
-    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX1, iX2, iX3
-    INTEGER :: iLevel, iLo_G, iHi_G, iLo_F, iHi_F, iLo_P, iHi_P
+    INTEGER :: iX_B0(3), iX_E0(3), iX1, iX2, iX3, iNX, iNX2
+    INTEGER :: iLevel, iLo, iHi
 
     INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: Psi     (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uPF     (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: PD      (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: dV2     (:,:,:,:)
 
-    REAL(DP) :: V2_K(2), VolK(2), X2(3)
+    REAL(DP) :: X2, dV2dX2(nDOFX)
 
     TYPE(MeshType) :: MeshX(3)
 
-    iLo_G = 1+nDOFX*(iGF_SqrtGm-1)
-    iHi_G = nDOFX*iGF_SqrtGm
-
-    iLo_F = 1+nDOFX*(iPF_V2-1)
-    iHi_F = nDOFX*iPF_V2
-
-    iLo_P = 1+nDOFX*(iGF_Psi-1)
-    iHi_P = nDOFX*iGF_Psi
+    iLo = IndLo_X( nDOFX, iPF_V2 )
+    iHi = IndHi_X( nDOFX, iPF_V2 )
 
     DO iLevel = 0, nLevels-1
 
-      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uPF % BA, MF_uPF % DM )
 
       CALL CreateMesh_MF( iLevel, MeshX )
 
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel) )
+      CALL amrex_mfiter_build( MFI, MF_uPF(iLevel) )
 
       DO WHILE( MFI % next() )
 
         FineMask => iMF_FineMask         % DataPtr( MFI )
-        uGF      => MF_uGF      (iLevel) % DataPtr( MFI )
-        Psi      => Psi_K       (iLevel) % DataPtr( MFI )
         uPF      => MF_uPF      (iLevel) % DataPtr( MFI )
-        PD       => PowerDensity(iLevel) % DataPtr( MFI )
+        dV2      => DivV2       (iLevel) % DataPtr( MFI )
 
         BX = MFI % TileBox()
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
-        iX_B1 = iX_B0 - swX
-        iX_E1 = iX_E0 + swX
 
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
@@ -299,27 +311,22 @@ CONTAINS
 
           IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
-          VolK(1) = SUM( WeightsX_q * uGF(iX1,iX2-1,iX3,iLo_G:iHi_G) )
-          VolK(2) = SUM( WeightsX_q * uGF(iX1,iX2+1,iX3,iLo_G:iHi_G) )
+          dV2dX2 &
+            = One / MeshX(2) % Width(iX2) &
+                * MATMUL( dLXdX2_q, uPF(iX1,iX2,iX3,iLo:iHi) )
 
-          V2_K(1) = SUM( WeightsX_q * uGF(iX1,iX2-1,iX3,iLo_G:iHi_G) &
-                                    * uPF(iX1,iX2-1,iX3,iLo_F:iHi_F) ) / VolK(1)
-          V2_K(2) = SUM( WeightsX_q * uGF(iX1,iX2+1,iX3,iLo_G:iHi_G) &
-                                    * uPF(iX1,iX2+1,iX3,iLo_F:iHi_F) ) / VolK(2)
+          DO iNX = 1, nDOFX
 
-          X2(1) = MeshX(2) % Center(iX2-1)
-          X2(2) = MeshX(2) % Center(iX2+1)
-          X2(3) = MeshX(2) % Center(iX2  )
+            iNX2 = NodeNumberTableX(2,iNX)
 
-          PD(iX1,iX2,iX3,1) &
-            = One / SIN( X2(3) ) &
-                * ( V2_K(2) * SIN( X2(2) ) - V2_K(1) * SIN( X2(1) ) ) &
-                / ( X2(2) - X2(1) )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
 
-          Psi(iX1,iX2,iX3,1) &
-            = SUM( WeightsX_q * uGF(iX1,iX2,iX3,iLo_G:iHi_G) &
-                              * uGF(iX1,iX2,iX3,iLo_P:iHi_P) ) &
-               / SUM( WeightsX_q * uGF(iX1,iX2,iX3,iLo_G:iHi_G) )
+            dV2(iX1,iX2,iX3,iNX) &
+              = dV2(iX1,iX2,iX3,iNX) &
+                  + dV2dX2(iNX) * SIN( X2 ) &
+                  + uPF(iX1,iX2,iX3,iLo+iNX-1) * COS( X2 )
+
+          END DO
 
         END DO
         END DO
@@ -335,109 +342,158 @@ CONTAINS
 
     END DO ! iLevel
 
-  END SUBROUTINE ComputePowerDensity
+    CALL AverageDown( DivV2 )
+
+  END SUBROUTINE ComputeDivV2
 
 
-  SUBROUTINE ComputeRadialPowerDensity( PowerDensity, RadialPowerDensity )
+  SUBROUTINE ComputePowerDensity( MF_uGF, DivV2, G, Psi )
 
-    TYPE(amrex_multifab), INTENT(in)    :: PowerDensity      (0:)
-    TYPE(amrex_multifab), INTENT(inout) :: RadialPowerDensity(0:)
+    TYPE(amrex_multifab), INTENT(in)  :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(in)  :: DivV2 (0:)
+    REAL(DP)            , INTENT(out) :: G(0:,1:)
+    REAL(DP)            , INTENT(out) :: Psi (1:)
 
-    TYPE(amrex_mfiter)    :: MFI
-    TYPE(amrex_box)       :: BX
-    TYPE(amrex_imultifab) :: iMF_FineMask
+    TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_box)    :: BX
 
-    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX1, iX2, ell
-    INTEGER :: iLevel
+    INTEGER :: iX_B0(3), iX_E0(3), iX1, iX2, iNX1, jNX(nNodesX(2))
+    INTEGER :: ell, iDOFX1
 
-    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: PD      (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: RPD     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: dV2(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
 
-    REAL(DP) :: X2, dX2
+    REAL(DP) :: dX2, X2(nNodesX(2)), Pell(nNodesX(2))
 
     TYPE(MeshType) :: MeshX(3)
 
-    DO iLevel = 0, nLevels-1
+real(dp)::Pell2(0:nLeg-1,nNodesX(2)),PP(0:nLeg-1,0:nLeg-1)
+integer::ell1,ell2
+logical::debug
+debug=.false.
+if(debug)pp=zero
 
-      CALL CreateFineMask &
-             ( iLevel, iMF_FineMask, PowerDensity % BA, PowerDensity % DM )
+    Psi = Zero
+    G   = Zero
 
-      CALL CreateMesh_MF( iLevel, MeshX )
+    CALL CreateMesh_MF( 0, MeshX )
 
-      CALL amrex_mfiter_build( MFI, PowerDensity(iLevel) )
+    CALL amrex_mfiter_build( MFI, DivV2(0) )
 
-      DO WHILE( MFI % next() )
+    DO WHILE( MFI % next() )
 
-        FineMask => iMF_FineMask               % DataPtr( MFI )
-        PD       => PowerDensity      (iLevel) % DataPtr( MFI )
-        RPD      => RadialPowerDensity(iLevel) % DataPtr( MFI )
+      dV2 => DivV2 (0) % DataPtr( MFI )
+      uGF => MF_uGF(0) % DataPtr( MFI )
 
-        BX = MFI % TileBox()
+      BX = MFI % TileBox()
 
-        iX_B0 = BX % lo
-        iX_E0 = BX % hi
-        iX_B1 = iX_B0 - swX
-        iX_E1 = iX_E0 + swX
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+
+      DO ell = 0, nLeg-1
 
         DO iX1 = iX_B0(1), iX_E0(1)
 
-          DO iX2 = iX_B0(2), iX_E0(2)
+          DO iNX1 = 1, nNodesX(1)
 
-            IF( IsNotLeafElement( FineMask(iX1,iX2,iX_B0(3),1) ) ) CYCLE
+            iDOFX1 &
+              = ( iX1 - amrex_geom(0) % domain % lo(1) ) * nNodesX(1) + iNX1
 
-            X2  = MeshX(2) % Center(iX2)
-            dX2 = MeshX(2) % Width (iX2)
+            ! --- Assume psi is spherically-symmetric ---
+            IF( ell .EQ.0 ) &
+              Psi(iDOFX1) = uGF(iX1,iX_B0(2),iX_B0(3),nDOFX*(iGF_Psi-1)+iNX1)
 
-            DO ell = 0, nLeg-1
+            CALL GetjNX( iNX1, jNX )
 
-              RPD(iX1,iX_B0(2),iX_B0(3),ell+1) &
-                = RPD(iX1,iX_B0(2),iX_B0(3),ell+1) &
-                    + PD(iX1,iX2,iX_B0(3),1) &
-                        * LegendrePolynomial( ell, COS( X2 ) ) &
-                        * SIN( X2 ) * dX2
+            DO iX2 = iX_B0(2), iX_E0(2)
 
-            END DO ! ell
+              dX2 = MeshX(2) % Width (iX2)
+              X2  = MeshX(2) % Center(iX2) + MeshX(2) % Nodes * dX2
 
-          END DO ! iX2
+              CALL ComputeLegendrePolynomial( ell, COS( X2 ), Pell )
+
+              G(ell,iDOFX1) &
+                = G(ell,iDOFX1) &
+                    + dX2 * SUM( WeightsX2 &
+                                 * dV2(iX1,iX2,iX_B0(3),jNX) * Pell )
+
+if(debug)then
+if(ix1.eq.amrex_geom(0)%domain%lo(1).and.inx1.eq.1.and.ell.eq.0)then
+do ell1=0,nleg-1
+do ell2=0,nleg-1
+CALL ComputeLegendrePolynomial( ell1, COS( X2 ), Pell2(ell1,:) )
+CALL ComputeLegendrePolynomial( ell2, COS( X2 ), Pell2(ell2,:) )
+PP(ell1,ell2) &
+  = PP(ell1,ell2) &
+      + dX2 * SUM( WeightsX2 * Pell2(ell1,:) * Pell2(ell2,:) * SIN( X2 ) )
+enddo
+enddo
+endif
+endif
+
+            END DO ! iX2
+
+          END DO ! iNX1
 
         END DO ! iX1
 
-      END DO ! WHILE
+      END DO ! ell
 
-      CALL amrex_mfiter_destroy( MFI )
+    END DO ! WHILE
 
-      CALL DestroyMesh_MF( MeshX )
+    CALL amrex_mfiter_destroy( MFI )
 
-      CALL DestroyFineMask( iMF_FineMask )
+    CALL DestroyMesh_MF( MeshX )
 
-    END DO ! iLevel
+    DO iX1 = amrex_geom(0) % domain % lo(1), amrex_geom(0) % domain % hi(1)
 
-  END SUBROUTINE ComputeRadialPowerDensity
+      DO iNX1 = 1, nNodesX(1)
+
+        iDOFX1 &
+          = ( iX1 - amrex_geom(0) % domain % lo(1) ) * nNodesX(1) + iNX1
+
+        CALL amrex_parallel_reduce_sum( Psi(iDOFX1) )
+
+        DO ell = 0, nLeg-1
+
+          CALL amrex_parallel_reduce_sum( G(ell,iDOFX1) )
+
+        END DO
+
+      END DO
+
+    END DO
+
+if(debug)then
+do ell1 = 0, nleg-1
+do ell2 = 0, nleg-1
+call amrex_parallel_reduce_sum( pp(ell1,ell2) )
+end do
+end do
+if(amrex_parallel_ioprocessor())then
+do ell1 = 0, nleg-1
+print'(5ES13.3E3)',PP(ell1,:)
+enddo
+call thornado_abort
+endif
+endif
+  END SUBROUTINE ComputePowerDensity
 
 
-  SUBROUTINE ComputePower( Psi_K, RadialPowerDensity, Power )
+  SUBROUTINE ComputePower( G, Psi, Power )
 
-    TYPE(amrex_multifab), INTENT(in)    :: Psi_K             (0:)
-    TYPE(amrex_multifab), INTENT(in)    :: RadialPowerDensity(0:)
-    REAL(DP)            , INTENT(inout) :: Power(0:nLeg-1)
+    REAL(DP) , INTENT(in)  :: G(0:,1:), Psi(1:)
+    REAL(DP) , INTENT(out) :: Power(0:)
 
-    TYPE(amrex_mfiter)    :: MFI
-    TYPE(amrex_box)       :: BX
-    TYPE(amrex_imultifab) :: iMF_FineMask
+    INTEGER :: iX1, ell, iLo, iHi
 
-    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX1, ell
-    INTEGER :: iLevel
-
-    INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: Psi     (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: RPD     (:,:,:,:)
-
-    REAL(DP) :: X1, dX1, ra, rb, ShockRadius
+    REAL(DP) :: X1(nNodesX(1)), dX1, ra, rb, ShockRadius
 
     TYPE(MeshType) :: MeshX(3)
 
     TYPE(amrex_parmparse) :: PP
+
+    IF( .NOT. amrex_parallel_ioprocessor() ) RETURN
 
     ra = 0.8_DP
     rb = 0.9_DP
@@ -450,68 +506,34 @@ CONTAINS
     ra = ra * ShockRadius * Kilometer
     rb = rb * ShockRadius * Kilometer
 
-    DO iLevel = 0, nLevels-1
+    Power = Zero
 
-      CALL CreateFineMask &
-             ( iLevel, iMF_FineMask, Psi_K % BA, Psi_K % DM )
+    CALL CreateMesh_MF( 0, MeshX )
 
-      CALL CreateMesh_MF( iLevel, MeshX )
+    DO iX1 = amrex_geom(0) % domain % lo(1), amrex_geom(0) % domain % hi(1)
 
-      CALL amrex_mfiter_build( MFI, Psi_K(iLevel) )
+      IF( .NOT. ( MeshX(1) % Center(iX1) .GT. ra &
+            .AND. MeshX(1) % Center(iX1) .LT. rb ) ) CYCLE
 
-      DO WHILE( MFI % next() )
+      dX1 = MeshX(1) % Width (iX1)
+      X1  = MeshX(1) % Center(iX1) + MeshX(1) % Nodes * dX1
 
-        FineMask => iMF_FineMask               % DataPtr( MFI )
-        Psi      => Psi_K             (iLevel) % DataPtr( MFI )
-        RPD      => RadialPowerDensity(iLevel) % DataPtr( MFI )
+      iLo = ( iX1 - amrex_geom(0) % domain % lo(1) ) * nNodesX(1) + 1
+      iHi = iLo + nNodesX(1) - 1
 
-        BX = MFI % TileBox()
+      DO ell = 0, nLeg-1
 
-        iX_B0 = BX % lo
-        iX_E0 = BX % hi
-        iX_B1 = iX_B0 - swX
-        iX_E1 = iX_E0 + swX
+        Power(ell) &
+          = Power(ell) &
+              + FourPi &
+                  * SUM( WeightsX1 * G(ell,iLo:iHi)**2 * Psi(iLo:iHi)**6 &
+                           * X1**2 ) * dX1
 
-        DO iX1 = iX_B0(1), iX_E0(1)
+     END DO ! ell
 
-          IF( IsNotLeafElement( FineMask(iX1,iX_B0(2),iX_B0(3),1) ) ) CYCLE
+    END DO ! iX1
 
-            X1  = MeshX(1) % Center(iX1)
-            dX1 = MeshX(1) % Width (iX1)
-
-            IF( X1 .GT. ra .AND. X1 .LT. rb )THEN
-
-              DO ell = 0, nLeg-1
-
-                Power(ell) &
-                  = Power(ell) &
-                      + RPD(iX1,iX_B0(2),iX_B0(3),ell+1)**2 &
-                          * Psi(iX1,iX_B0(2),iX_B0(3),1)**6 &
-                          * X1**2 * dX1
-
-              END DO ! ell
-
-          END IF
-
-        END DO ! iX1
-
-      END DO ! WHILE
-
-      CALL amrex_mfiter_destroy( MFI )
-
-      CALL DestroyMesh_MF( MeshX )
-
-      CALL DestroyFineMask( iMF_FineMask )
-
-    END DO ! iLevel
-
-    Power = FourPi * Power
-
-    DO ell = 0, nLeg-1
-
-      CALL amrex_parallel_reduce_sum( Power(ell) )
-
-    END DO
+    CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE ComputePower
 
@@ -522,33 +544,38 @@ CONTAINS
 
     TYPE(amrex_parmparse) :: PP
 
+    INTEGER, PARAMETER :: FileNameLen = 256
     CHARACTER(256) :: FMT
-    CHARACTER(:), ALLOCATABLE :: PowerFileName
+    CHARACTER(:), ALLOCATABLE :: PowerFileName_T
+    CHARACTER(FileNameLen) :: PowerFileName
+
+    IF( .NOT. amrex_parallel_ioprocessor() ) RETURN
 
     CALL amrex_parmparse_build( PP, 'SAS' )
-      CALL PP % get( 'PowerFileName', PowerFileName )
+      CALL PP % get( 'PowerFileName', PowerFileName_T )
     CALL amrex_parmparse_destroy( PP )
 
     WRITE(FMT,'(A3,I2.2,A10)') '(SP', nLeg+1, 'ES25.16E3)'
 
-    IF( amrex_parallel_ioprocessor() )THEN
+    PowerFileName = TRIM( PowerFileName_T )
 
-      OPEN( 100, FILE = TRIM( PowerFileName ), POSITION = 'APPEND' )
+    CALL CheckFileExistenceAndAppend( FileNameLen, PowerFileName )
 
-      WRITE(100,TRIM(FMT)) &
-        t_new(0) / Millisecond, Power / ( Centimeter**3 / Second**2 )
+    OPEN( 100, FILE = TRIM( PowerFileName ), POSITION = 'APPEND' )
 
-      CLOSE( 100 )
+    WRITE(100,TRIM(FMT)) &
+      t_new(0) / Millisecond, Power / ( Centimeter**3 / Second**2 )
 
-    END IF
+    CLOSE( 100 )
 
   END SUBROUTINE WriteToFile
 
 
-  REAL(DP) FUNCTION LegendrePolynomial( ell, x ) RESULT( Pell )
+  SUBROUTINE ComputeLegendrePolynomial( ell, x, Pell )
 
-    INTEGER , INTENT(in) :: ell
-    REAL(DP), INTENT(in) :: x
+    INTEGER , INTENT(in)   :: ell
+    REAL(DP), INTENT(in)   :: x   (nNodesX(2))
+    REAL(DP), INTENT(out)  :: Pell(nNodesX(2))
 
     SELECT CASE( ell )
 
@@ -576,8 +603,66 @@ CONTAINS
 
     END SELECT
 
-    RETURN
-  END FUNCTION LegendrePolynomial
+  END SUBROUTINE ComputeLegendrePolynomial
+
+
+  SUBROUTINE GetjNX( iNX1, jNX )
+
+    INTEGER, INTENT(in)  :: iNX1
+    INTEGER, INTENT(out) :: jNX(nNodesX(2))
+
+    INTEGER :: i
+
+    jNX(1) = iNX1
+
+    DO i = 2, nNodesX(2)
+
+      jNX(i) = jNX(i-1) + nNodesX(2)
+
+    END DO
+
+  END SUBROUTINE GetjNX
+
+
+  RECURSIVE SUBROUTINE CheckFileExistenceAndAppend &
+    ( FileNameLen, FileName, IntSuffix_Option )
+
+    INTEGER                   , INTENT(in)    :: FileNameLen
+    CHARACTER(LEN=FileNameLen), INTENT(inout) :: FileName
+    INTEGER                   , INTENT(inout), OPTIONAL :: IntSuffix_Option
+
+    LOGICAL :: IsFile
+    INTEGER :: IntSuffix
+    INTEGER :: SL_T
+
+    IntSuffix = 1
+    IF( PRESENT( IntSuffix_Option ) ) &
+      IntSuffix = IntSuffix_Option
+
+    SL_T = LEN( TRIM( FileName ) )
+
+    INQUIRE( FILE = TRIM( FileName ), EXIST = IsFile )
+
+    IF( IsFile )THEN
+
+      IF( FileName(SL_T-3:SL_T) .EQ. '.dat' )THEN
+
+        WRITE(FileName,'(A,A,I2.2)') TRIM( FileName ), '_', IntSuffix
+
+      ELSE
+
+        WRITE(FileName(SL_T-1:SL_T),'(I2.2)') IntSuffix
+
+      END IF
+
+      IntSuffix = IntSuffix + 1
+
+      CALL CheckFileExistenceAndAppend &
+             ( FileNameLen, FileName, IntSuffix_Option = IntSuffix )
+
+    END IF
+
+  END SUBROUTINE CheckFileExistenceAndAppend
 
 
 END MODULE MF_AccretionShockUtilitiesModule
