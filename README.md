@@ -56,7 +56,8 @@ More information on the external packages, please visit: https://gitlab.devtools
 **get on Aurora** qsub -I -A Aurora_deployment -l select=1,walltime=120:00 -q EarlyAppAccess 
 **borealis guide**  https://wiki.ith.intel.com/display/OPS/HPCM+user+guide
 **get on borealis** ssh borealis-uan1.hpe.jf.intel.com
-
+**pbs reserve a node starting 07:34 for 8 hours** psb_rsub -R 0734 -D 08:00:00
+**pbs get on the reserved node**  qsub -q <Reservation ID> -I -l walltime=09:00:00
 **To git clone weaklib tables from ORNL, we need** `export https_proxy=http://proxy-us.intel.com:912`    (error: SSL certificate problem: self signed certificate in certificate chain) 
 **pip install need proxy pip install --proxy=http://proxy-us.intel.com:912    numpy***
 **display GPU serial and rev. number** `sudo /sbin/lspci |grep -i Display`    
@@ -64,6 +65,8 @@ More information on the external packages, please visit: https://gitlab.devtools
 **autoconf** module load spack autoconf
 **Working weaklib and it's tables** exaperf-sdpcloud-pvc12.jf.intel.com:/localdisk/quanshao/ExaStar/weaklib   weaklib-tables.
 **limit GPU power** `xpu-smi config -d 0 --powerlimit 500` to 50W
+**srun not work with mpi, unset SLURM_TASKS_PER_NODE** or ssh to the node. "When you srun into a system, it sets a bunch of variable behind your back" by Brian. 
+**get number cores and threads**  sudo /usr/sbin/dmidecode  -t processor | grep -E '(Core Count|Thread Count)'
 ` gdb-oneapi -q -ex "b 34" -ex "run" -ex "info devices" --args ./a.out`
 `ZET_ENABLE_PROGRAM_DEBUGGING=1 IGC_StackOverflowDetection=1 gdb-oneapi -q   ./flashx`
     ![](./pics-readme/)
@@ -97,6 +100,29 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## April 17-19 2024
+1. Modules/Library/LinearAlgebraModule.F90 uses DGEMM and it’s variations.
+2. Learnt to run cxi tools on Borealis. 
+## April 16 2024
+1. Although Thornado works with nightly-mkl-cev_nightly/2024.04.14, and this MKL point to the latest nightly compilers. But the latest nightly compilers do not point to the latest MKL library. So Thornado has the issue with libsycl.so version. Put a note in OneAPI Discussions Channel. 
+2. contined experiments on FlashX run on Borealis to see the effects of gpu_wrapper/wrapper_hbm_quad.sh.
+## Apr 15 2024
+1. With  nightly-mkl-cev_nightly/2024.04.14, Thornado runs fine, and here is the run times
+<pre>
+cat timeFOM_2024.04.14.txt-umd871
+ifx -what     : Intel(R) Fortran 24.0-1652
+ifx --version : ifx (IFX) dev.x.0 Mainline 20240414
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2024.04.14-umd871   2023.10.15.002    TimeDiff   Percentage   |   2024.04.14-umd871   2023.10.15.002    FOM-Diff   Percentage
+                     MKL Date :                 2024.04.04
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     3.1078e+00          2.9053e+00       2.0246e-01     6.97%            6.8324e+06          7.3085e+06       -4.7612e+05    -6.51%
+sineWave   [16,16,16]   O3    :     1.2165e+01          1.2129e+01       3.5910e-02     0.30%            2.7756e+07          2.7838e+07       -8.2200e+04    -0.30%
+relax      [8,8,8]      O3    :     2.1474e+01          2.2466e+01      -9.9284e-01    -4.42%            3.9699e+07          3.7945e+07        1.7544e+06     4.62%
+relax      [16,16,16]   O3    :     1.5402e+02          1.6439e+02      -1.0370e+01    -6.31%            4.4281e+07          4.1488e+07        2.7934e+06     6.73%
+</pre>
+2. Started to run scaling of FlashX/Thornado on Borealis machine. 
+
 ## Apr 10-12 2024
 1. Learning Aurora Burn-in's tools, issues, aims, and anlysis by setting in the dialy meetings and reading docs
 2. Learning awk and more advanced bash script to be ready to automate the script used by Aurora burn-in team
