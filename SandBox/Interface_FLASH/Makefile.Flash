@@ -80,6 +80,7 @@ OBJS = \
        QuadratureModule.o \
        LagrangePolynomialsModule.o \
        PolynomialBasisModuleX_Lagrange.o \
+       PolynomialBasisModuleX_Legendre.o \
        LinearAlgebraModule.o \
        DeviceModule.o \
        ReferenceElementModuleE.o \
