@@ -21,13 +21,8 @@ endif
 
 VPATH += $(THORNADO_DIR)/SandBox/TwoMoment_OrderV
 
-<<<<<<< HEAD
-DEFINES += $(PP)THORNADO_EULER_NOGPU
-DEFINES += -DTHORNADO_DEBUG
-=======
 #DEFINES += $(PP)THORNADO_EULER_NOGPU
 #DEFINES += -DTHORNADO_DEBUG
->>>>>>> master
 
 .DEFAULT_GOAL := all
 
