@@ -100,10 +100,28 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
-## April 22 2024
+## April 29 2024
+1. According to Brain, "nightly-mkl-cev_nightly/2024.04.26 looks like it works with the 4.28 nightly compiler.". Tried run Thornado with nightly-compiler/2024.04.28, and the linking failed due to libsycl.so.7. so nightly 4.28 does not point to nightly-mkl-cev_nightly/2024.04.26.
+2. However, "module load ightly-mkl-cev_nightly/2024.04.26" makes Thornado compile and run. Here is the result:
+```
+cat timeFOM_2024.04.28.txt-umd871
+ifx -what     : Intel(R) Fortran 24.0-1690
+ifx --version : ifx (IFX) dev.x.0 Mainline 20240428
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2024.04.28-umd871   2023.10.15.002    TimeDiff   Percentage   |   2024.04.28-umd871   2023.10.15.002    FOM-Diff   Percentage
+                     MKL Date :                 2024.04.04
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     3.1731e+00          2.9053e+00       2.6774e-01     9.22%            6.6918e+06          7.3085e+06       -6.1667e+05    -8.44%
+sineWave   [16,16,16]   O3    :     2.8222e+02          1.2129e+01       2.7009e+02  2226.90%            1.1964e+06          2.7838e+07       -2.6642e+07   -95.70%
+relax      [8,8,8]      O3    :     2.1844e+01          2.2466e+01      -6.2246e-01    -2.77%            3.9026e+07          3.7945e+07        1.0813e+06     2.85%
+relax      [16,16,16]   O3    :     1.5541e+02          1.6439e+02      -8.9734e+00    -5.46%            4.3883e+07          4.1488e+07        2.3954e+06     5.77%
+```
+
+## April 22-26 2024
 1. nightly-mkl-cev_nightly/2024.04.14 with nightly 2024.04.21 has "undefined reference" related to mkl libraries, and thus Thornado compilation failed. According to Brain, "Starting with 4.19 the nightly compiler doesn't want to play nice.  Looks like they did a SYCL update that breaks lots of things"
 2. Working on Borealis to run reframe and other system performance tools/apps/software.
 3. Trying to setup reframe configuration and run thornado on Borealis. 
+4. Learning HPL stalls and hangs 
 ## April 17-20 2024
 1. Modules/Library/LinearAlgebraModule.F90 uses DGEMM and it’s variations.
 2. Learnt to run cxi tools on Borealis. 
