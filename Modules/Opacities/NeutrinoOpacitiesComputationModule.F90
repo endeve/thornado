@@ -135,7 +135,6 @@ MODULE NeutrinoOpacitiesComputationModule
   REAL(DP), PARAMETER :: UnitNES  = One / ( Centimeter * MeV**3 )
   REAL(DP), PARAMETER :: UnitPair = One / ( Centimeter * MeV**3 )
   REAL(DP), PARAMETER :: UnitBrem = One / ( Centimeter * MeV**3 )
-  REAL(DP), PARAMETER :: f0_Max   = One - EPSILON( One )
 
   REAL(DP), PARAMETER :: C_A      = -1.26d0/2.0d0 ! C_A from HR98
   REAL(DP), PARAMETER :: G_F      = 1.166d-11 ! G_F from HR98 in [MeV**-2]
@@ -298,7 +297,7 @@ CONTAINS
 
 
   SUBROUTINE LimitEquilibriumDistributions_DG &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, f0 )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, f0, f0_Max_Option )
 
     ! --- Equilibrium Neutrino Distributions (Multiple D,T,Y) ---
 
@@ -307,13 +306,20 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)   , TARGET :: E(iE_B:iE_E)
     REAL(DP), INTENT(inout), TARGET :: f0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+    REAL(DP), INTENT(in),  OPTIONAL :: f0_Max_Option
 
     REAL(DP), POINTER :: E_Q(:,:), f0_Q(:,:,:,:)
 
     REAL(DP), ALLOCATABLE :: f0_K(:,:,:)
 
-    REAL(DP) :: N_K, V_K, f0_Min, f0_P, Min_K, Max_K, Theta
+    REAL(DP) :: N_K, V_K, f0_Min, f0_Max, f0_P, Min_K, Max_K, Theta
     INTEGER  :: iE, iS, iX, iNodeE, iP_E, nE, nS, nX
+
+    IF ( PRESENT( f0_Max_Option ) ) THEN
+      f0_Max = MIN( f0_Max_Option, One - EPSILON( One ) )
+    ELSE
+      f0_Max = One - EPSILON( One )
+    ENDIF
 
     nE = ( iE_E - iE_B + 1 ) / nDOFE
     nS = ( iS_E - iS_B + 1 )
@@ -441,7 +447,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeEquilibriumDistributions_DG_E &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0 )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0, f0_Max_Option )
 
     ! --- Equilibrium Neutrino Distributions (Multiple D,T,Y) ---
 
@@ -453,6 +459,15 @@ CONTAINS
     REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
     REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
     REAL(DP), INTENT(out) :: f0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+    REAL(DP), INTENT(in), OPTIONAL :: f0_Max_Option
+
+    REAL(DP) :: f0_Max
+
+    IF ( PRESENT( f0_Max_Option ) ) THEN
+      f0_Max = MIN( f0_Max_Option, One - EPSILON( One ) )
+    ELSE
+      f0_Max = One - EPSILON( One )
+    ENDIF
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -468,7 +483,7 @@ CONTAINS
            ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0 )
 
     CALL LimitEquilibriumDistributions_DG &
-           ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, f0 )
+           ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, f0, f0_Max )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -484,7 +499,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeEquilibriumDistributions_DG_Z &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, SqrtGm, f0 )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, SqrtGm, f0, f0_Max_Option )
 
     INTEGER,  INTENT(in)          :: iE_B, iE_E
     INTEGER,  INTENT(in)          :: iS_B, iS_E
@@ -495,6 +510,7 @@ CONTAINS
     REAL(DP), INTENT(in) , TARGET :: Y                     (iX_B:iX_E)
     REAL(DP), INTENT(in) , TARGET :: SqrtGm                (iX_B:iX_E)
     REAL(DP), INTENT(out), TARGET :: f0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+    REAL(DP), INTENT(in), OPTIONAL:: f0_Max_Option
 
     REAL(DP), PARAMETER :: f0_Min = SqrtTiny
     REAL(DP), PARAMETER :: EXPP   = EXP( + One )
@@ -504,11 +520,17 @@ CONTAINS
     INTEGER  :: iE, iX, iS, iS0, iP
     INTEGER  :: iNodeE, iNodeX, iNodeZ
     REAL(DP) :: kT, M, Exponent, N_K, V_K, f0_P
-    REAL(DP) :: Min_K, Max_K, Theta
+    REAL(DP) :: Min_K, Max_K, Theta, f0_Max
     REAL(DP), POINTER :: E_Q(:,:), D_Q(:,:), T_Q(:,:), Y_Q(:,:)
     REAL(DP), POINTER :: Mnu_Q(:,:), SqrtGm_Q(:,:)
     REAL(DP), ALLOCATABLE, TARGET :: Mnu(:)
     REAL(DP), ALLOCATABLE :: Tau_Q(:,:,:), f0_K(:,:,:), f0_Q(:,:,:,:)
+
+    IF ( PRESENT( f0_Max_Option ) ) THEN
+      f0_Max = MIN( f0_Max_Option, One - EPSILON( One ) )
+    ELSE
+      f0_Max = One - EPSILON( One )
+    ENDIF
 
     nE = (iE_E-iE_B+1)/nDOFE ! --- Number of energy  elements
     nX = (iX_E-iE_B+1)/nDOFX ! --- Number of spatial elements

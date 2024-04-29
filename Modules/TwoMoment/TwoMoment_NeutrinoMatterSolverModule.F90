@@ -583,7 +583,6 @@ CONTAINS
     !$ACC         Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T )
 #endif
 
-    IF ( .NOT. Include_NES ) THEN
 
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
@@ -595,7 +594,7 @@ CONTAINS
       DO iN_X = 1, nX_G
       DO iE2  = 1, nE_G
       DO iE1  = 1, nE_G
-
+!NES
         H_I_0   (iE1,iE2,iN_X) = Zero
         H_I_1   (iE1,iE2,iN_X) = Zero
         H_II_0  (iE1,iE2,iN_X) = Zero
@@ -604,12 +603,29 @@ CONTAINS
         H_I_1_T (iE1,iE2,iN_X) = Zero
         H_II_0_T(iE1,iE2,iN_X) = Zero
         H_II_1_T(iE1,iE2,iN_X) = Zero
+!Pair
+        J_I_0   (iE1,iE2,iN_X) = Zero
+        J_I_1   (iE1,iE2,iN_X) = Zero
+        J_II_0  (iE1,iE2,iN_X) = Zero
+        J_II_1  (iE1,iE2,iN_X) = Zero
+        J_I_0_T (iE1,iE2,iN_X) = Zero
+        J_I_1_T (iE1,iE2,iN_X) = Zero
+        J_II_0_T(iE1,iE2,iN_X) = Zero
+        J_II_1_T(iE1,iE2,iN_X) = Zero
+!NuPair
+        Nu_J_I_0   (iE1,iE2,iN_X) = Zero
+        Nu_J_II_0  (iE1,iE2,iN_X) = Zero
+        Nu_J_I_0_T (iE1,iE2,iN_X) = Zero
+        Nu_J_II_0_T(iE1,iE2,iN_X) = Zero
+
+!Brem
+        S_Sigma  (iE1,iE2,iN_X) = Zero
+        S_Sigma_T(iE1,iE2,iN_X) = Zero
 
       END DO
       END DO
       END DO
 
-    END IF
 
     IF ( .NOT. Include_Pair ) THEN
 
@@ -1309,7 +1325,7 @@ CONTAINS
 
 #elif defined( TWOMOMENT_ORDER_V )
 
-    CALL LimitNeutrinoDistribution_OrderV ( Dnu ) ! --- Enforce Dnu < 1
+    CALL LimitNeutrinoDistribution_OrderV ( Dnu ) ! --- Enforce Dnu < user supplied limit
 
     CALL InitializeRHS_OrderV &
            ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, D, Y, E, T, V_u_1, V_u_2, V_u_3, &
@@ -1484,6 +1500,13 @@ CONTAINS
         CALL CheckConvergence_Inner &
                ( ITERATE_inner, n_FP_inner, k_inner, &
                  nIterations_Inner, FVECm_inner )
+
+        CALL CheckError_Inner &
+               ( ITERATE_inner, k_outer, k_inner, &
+                 D, Y, E, T, V_u_1, V_u_2, V_u_3, &
+                 Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                 Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
+                 Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
         CALL TimersStop( Timer_Collisions_CheckInner )
 
@@ -1750,7 +1773,7 @@ CONTAINS
     CALL TimersStart( Timer_Opacity_LimitD0 )
 
     CALL LimitEquilibriumDistributions_DG &
-           ( 1, nE_G, 1, nSpecies, 1, nX, E_N, Dnu_0_P )
+           ( 1, nE_G, 1, nSpecies, 1, nX, E_N, Dnu_0_P, DnuMax )
 
     CALL TimersStop( Timer_Opacity_LimitD0 )
 
@@ -2009,8 +2032,8 @@ CONTAINS
       J_II_0_P         => J_II_0_T        (:,:,1:nX)
       J_II_1_P         => J_II_1_T        (:,:,1:nX)
 
-      Nu_J_I_0_P       => Nu_J_I_0_T         (:,:,1:nX)
-      Nu_J_II_0_P      => Nu_J_II_0_T        (:,:,1:nX)
+      Nu_J_I_0_P       => Nu_J_I_0_T      (:,:,1:nX)
+      Nu_J_II_0_P      => Nu_J_II_0_T     (:,:,1:nX)
 
       S_Sigma_P        => S_Sigma_T       (:,:,1:nX)
 
@@ -4801,6 +4824,121 @@ CONTAINS
 
     RETURN
   END FUNCTION WNORM
+
+
+  SUBROUTINE CheckError_Inner &
+    ( MASK_inner, k_outer, k_inner, &
+      D, Y, E, T, V_u_1, V_u_2, V_u_3, &
+      Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    USE mpi
+
+    LOGICAL,  DIMENSION(:)    , INTENT(in) :: MASK_inner
+    INTEGER,                    INTENT(in) :: k_outer, k_inner
+    REAL(DP), DIMENSION(:)    , INTENT(in) :: D, Y, E, T, V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:,:,:), INTENT(in) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:,:,:), INTENT(in) :: Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3
+    REAL(DP), DIMENSION(:)    , INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+
+    INTEGER  :: ierr
+    INTEGER  :: iN_E, iN_X, iS
+    REAL(DP) :: D_P, T_P, Y_P, E_P, V1_P, V2_P, V3_P
+    REAL(DP) :: D0_P, T0_P, Y0_P, E0_P, V10_P, V20_P, V30_P
+    REAL(DP) :: Min_E, Min_E_0
+
+    CHARACTER(len=100) :: old_state_filename
+
+    IF ( ( ANY( MASK_inner ) .and. k_inner >= MaxIter_inner ) ) THEN
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE FROM &
+      !$OMP ( D, Y, E, T, V_u_1, V_u_2, V_u_3, &
+      !$OMP   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      !$OMP   Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
+      !$OMP   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      !$OMP   D_old, Y_old, E_old, T_old, V_u_1_old, V_u_2_old, V_u_3_old, &
+      !$OMP   Dnu_old, Inu_u_1_old, Inu_u_2_old, Inu_u_3_old )
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE HOST &
+      !$ACC ( D, Y, E, T, V_u_1, V_u_2, V_u_3, &
+      !$ACC   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      !$ACC   Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
+      !$ACC   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      !$ACC   D_old, Y_old, E_old, T_old, V_u_1_old, V_u_2_old, V_u_3_old, &
+      !$ACC   Dnu_old, Inu_u_1_old, Inu_u_2_old, Inu_u_3_old )
+#endif
+      DO iN_X = 1, nX_G
+        IF ( ( MASK_inner(iN_X) .and. k_inner >= MaxIter_inner ) ) THEN
+
+          WRITE(old_state_filename,*) iN_X
+          old_state_filename = "old_state_iN_X_"//TRIM(ADJUSTL(old_state_filename))//".dat"
+
+          OPEN (UNIT=17, FILE=old_state_filename,ACTION='write')
+
+          D_P   = D(iN_X) / Unit_D
+          Y_P   = Y(iN_X) / Unit_Y
+          E_P   = E(iN_X) / Unit_E
+          T_P   = T(iN_X) / Unit_T
+          V1_P  = V_u_1(iN_X) / Unit_V
+          V2_P  = V_u_2(iN_X) / Unit_V
+          V3_P  = V_u_3(iN_X) / Unit_V
+
+          D0_P  = D_old(iN_X) / Unit_D
+          T0_P  = T_old(iN_X) / Unit_T
+          Y0_P  = Y_old(iN_X) / Unit_Y
+          E0_P  = E_old(iN_X) / Unit_E
+          V10_P = V_u_1_old(iN_X) / Unit_V
+          V20_P = V_u_2_old(iN_X) / Unit_V
+          V30_P = V_u_3_old(iN_X) / Unit_V
+
+          CALL ComputeSpecificInternalEnergy_TABLE(D(iN_X),     Min_T, Y(iN_X),     Min_E)
+          CALL ComputeSpecificInternalEnergy_TABLE(D_old(iN_X), Min_T, Y_old(iN_X), Min_E_0)
+
+          WRITE(17,'(7es23.15)') D0_P, T0_P, Y0_P, E0_P, V10_P, V20_P, V30_P
+          WRITE(17,'(i5)')       nE_G
+
+          WRITE(*,*)                      '[SolveNeutrinoMatterCoupling_FP_Nested_AA] Non-coverged inner loop'
+          WRITE(*,'(a,2i5)')              '              iN_X        : ', iN_X
+          WRITE(*,'(a,5x,2i23)')          '         k_outer, k_inner : ', k_outer, k_inner
+          WRITE(*,'(a,5x,7es23.15)')      '    D, Y, E, T, V_u       : ', D_P, Y_P, E_P, T_P, V1_P, V2_P, V3_P
+          WRITE(*,'(a,5x,7es23.15)')      '    D, Y, E, T, V_u (old) : ', D0_P, Y0_P, E0_P, T0_P, V10_P, V20_P, V30_P
+          WRITE(*,'(a,5x,2es23.15)')      '         Min E, Min E old : ', Min_E / Unit_e, Min_E_0 / Unit_E
+
+          DO iS = 1, nSpecies
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Dnu           : ', iS, ( Dnu    (iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Inu_u_1       : ', iS, ( Inu_u_1(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Inu_u_2       : ', iS, ( Inu_u_2(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Inu_u_3       : ', iS, ( Inu_u_3(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          END DO
+
+          DO iS = 1, nSpecies
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Dnu     (old) : ', iS, ( Dnu_old    (iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Inu_u_1 (old) : ', iS, ( Inu_u_1_old(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Inu_u_2 (old) : ', iS, ( Inu_u_2_old(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Inu_u_3 (old) : ', iS, ( Inu_u_3_old(iN_E,iS,iN_X), iN_E = 1, nE_G )
+
+          WRITE(17,'(i5,100es23.15)') iS,( Dnu_old    (iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(17,'(i5,100es23.15)') iS,( Inu_u_1_old(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(17,'(i5,100es23.15)') iS,( Inu_u_2_old(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(17,'(i5,100es23.15)') iS,( Inu_u_3_old(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          END DO
+
+          CLOSE(17)
+
+          DO iS = 1, nSpecies
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Nnu           : ', iS, ( Nnu    (iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Gnu_d_1       : ', iS, ( Gnu_d_1(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Gnu_d_2       : ', iS, ( Gnu_d_2(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          WRITE(*,'(a,5x,i5,100es23.15)') '       iS, Gnu_d_3       : ', iS, ( Gnu_d_3(iN_E,iS,iN_X), iN_E = 1, nE_G )
+          END DO
+
+        END IF
+      END DO
+      CALL MPI_ABORT(MPI_COMM_WORLD,-1,ierr)
+    END IF
+
+  END SUBROUTINE CheckError_Inner
 
 
   SUBROUTINE CheckError_FP &
