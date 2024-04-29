@@ -6,15 +6,16 @@ import matplotlib.pyplot as plt
 plt.style.use( 'publication.sty' )
 
 
-import GlobalVariables.Settings as gvS
-import GlobalVariables.Units    as gvU
+import GlobalVariables.Settings     as gvS
+import GlobalVariables.Units        as gvU
 
-from Utilities.GetPlotData  import GetPlotData
-from Utilities.Files        import GetFileNumberArray
-from Utilities.MakeDataArray import MakeProbelmDataDirectory
+import Utilities.BounceFinder       as BF
+import Utilities.DecadeFinder       as DF
 
-import Utilities.BounceFinder   as BF
-import Utilities.DecadeFinder   as DF
+from Utilities.GetPlotData          import GetPlotData
+from Utilities.Files                import GetFileNumberArray
+from Utilities.MakeDataDirectory    import MakeProblemDataDirectory
+
 
 if __name__ == "__main__":
     #### ========== User Input ==========
@@ -92,7 +93,7 @@ if __name__ == "__main__":
                                                   PlotBaseName,         \
                                                   -1, -1,  1            )
 
-        MakeProbelmDataDirectory( FileNumberArrays[i],\
+        MakeProblemDataDirectory( FileNumberArrays[i],\
                                   PlotDirectories[i],  \
                                   PlotBaseName,    \
                                   Field,           \

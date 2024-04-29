@@ -35,6 +35,8 @@ MODULE MF_InitializationModule
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
+  USE UtilitiesModule, ONLY: &
+    Interpolate1D_Linear
   USE GeometryFieldsModule, ONLY: &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
@@ -161,17 +163,18 @@ CONTAINS
     REAL(DP) :: rPerturbationInner
     REAL(DP) :: rPerturbationOuter
 
-    INTEGER  :: iX1_1, iX1_2, iNX1_1, iNX1_2, indC
+    INTEGER  :: iX1_1, iX1_2, iNX1_1, iNX1_2, indC, nLeafNodes, indG, indG_1
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3)
     REAL(DP) :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_1, P_2, uPert
     REAL(DP) :: BernoulliConstant
     REAL(DP) :: D0, V0, P0
     REAL(DP) :: K_1, K_2, Mdot, AdvectionTime, PreShockK
     REAL(DP) :: eta, etaC, sigma_eta, rC
-    REAL(DP), ALLOCATABLE :: D    (:,:)
-    REAL(DP), ALLOCATABLE :: V    (:,:)
-    REAL(DP), ALLOCATABLE :: P    (:,:)
-    REAL(DP), ALLOCATABLE :: Field(:,:)
+    REAL(DP), ALLOCATABLE :: R    (:)
+    REAL(DP), ALLOCATABLE :: D    (:)
+    REAL(DP), ALLOCATABLE :: V    (:)
+    REAL(DP), ALLOCATABLE :: P    (:)
+    REAL(DP), ALLOCATABLE :: Field(:)
     LOGICAL               :: InitializeFromFile, &
                              ResetEndTime, &
                              FirstPreShockElement, &
@@ -323,22 +326,33 @@ CONTAINS
     nX = amrex_geom(iLevel) % domain % hi &
            - amrex_geom(iLevel) % domain % lo + 1
 
-    ALLOCATE( D    (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
-    ALLOCATE( V    (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
-    ALLOCATE( P    (1:nNodesX(1),iX_B1(1):iX_E1(1)) )
-    ALLOCATE( Field(1:nNodesX(1),iX_B1(1):iX_E1(1)) )
-
     IF( InitializeFromFile )THEN
 
-      CALL ReadFluidFieldsFromFile( iX_B1, iX_E1, D, V, P )
+      CALL GetNumberOfLeafNodes( nLeafNodes )
+
+      ALLOCATE( R    (nLeafNodes) )
+      ALLOCATE( D    (nLeafNodes) )
+      ALLOCATE( V    (nLeafNodes) )
+      ALLOCATE( P    (nLeafNodes) )
+      ALLOCATE( Field(nLeafNodes) )
+
+      CALL ReadFluidFieldsFromFile( nLeafNodes, R, D, V, P )
 
     ELSE
+
+      nLeafNodes = nNodesX(1) * ( iX_E1(1) - iX_B1(1) + 1 )
+
+      ALLOCATE( R    (nLeafNodes) )
+      ALLOCATE( D    (nLeafNodes) )
+      ALLOCATE( V    (nLeafNodes) )
+      ALLOCATE( P    (nLeafNodes) )
+      ALLOCATE( Field(nLeafNodes) )
 
       ! --- Quantities with _1 are pre-shock, those with _2 are post-shock ---
 
       CALL LocateFirstUnShockedElement &
              ( iX_B1, iX_E1, ShockRadius, &
-               iX1_1, iX1_2, iNX1_1, iNX1_2, X1_1, X1_2, &
+               iX1_1, iX1_2, iNX1_1, iNX1_2, X1_1, X1_2, indG_1, &
                FirstPreShockElement, AllPreShockElements, AllPostShockElements )
 
       IF( .NOT. AllPostShockElements )THEN
@@ -359,16 +373,20 @@ CONTAINS
 
             X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
 
+            indG = GetGlobalIndex( iX1, iNX1 )
+
+            R(indG) = X1
+
             IF( X1 .LE. ShockRadius ) CYCLE
 
             CALL NewtonRaphson_SAS &
                    ( X1, MassPNS, Mdot, BernoulliConstant, K_1, &
                      D0, V0, P0, &
-                     D(iNX1,iX1), V(iNX1,iX1), P(iNX1,iX1) )
+                     D(indG), V(indG), P(indG) )
 
-            D0 = D(iNX1,iX1)
-            V0 = V(iNX1,iX1)
-            P0 = P(iNX1,iX1)
+            D0 = D(indG)
+            V0 = V(indG)
+            P0 = P(indG)
 
           END DO
 
@@ -380,9 +398,9 @@ CONTAINS
 
         ! --- Apply Jump Conditions ---
 
-        D_1 = D(iNX1_1,iX1_1)
-        V_1 = V(iNX1_1,iX1_1)
-        P_1 = P(iNX1_1,iX1_1)
+        D_1 = D(indG_1)
+        V_1 = V(indG_1)
+        P_1 = P(indG_1)
 
         CALL ApplyJumpConditions_SAS &
                ( MassPNS, Mdot, ShockRadius, &
@@ -440,24 +458,28 @@ CONTAINS
 
           DO iNX1 = nNodesX(1), 1, -1
 
+            indG = GetGlobalIndex( iX1, iNX1 )
+
             X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+
+            R(indG) = X1
 
             IF( X1 .GT. ShockRadius ) CYCLE
 
             CALL NewtonRaphson_SAS &
                    ( X1, MassPNS, Mdot, BernoulliConstant, K_2, &
                      D0, V0, P0, &
-                     D(iNX1,iX1), V(iNX1,iX1), P(iNX1,iX1) )
+                     D(indG), V(indG), P(indG) )
 
-            D0 = D(iNX1,iX1)
-            V0 = V(iNX1,iX1)
-            P0 = P(iNX1,iX1)
+            D0 = D(indG)
+            V0 = V(indG)
+            P0 = P(indG)
 
             AdvectionTime &
               = AdvectionTime &
                   - WeightsX1(iNX1) * MeshX(1) % Width(iX1) &
                   *  ConformalFactor( X1, MassPNS )**2 &
-                  / ( LapseFunction( X1, MassPNS ) * V(iNX1,iX1) )
+                  / ( LapseFunction( X1, MassPNS ) * V(indG) )
 
           END DO
 
@@ -514,12 +536,25 @@ CONTAINS
 
             iNX1 = NodeNumberTableX(1,iNX)
 
-            uPF_K(iNX,iPF_D ) = D(iNX1,iX1)
-            uPF_K(iNX,iPF_V1) = V(iNX1,iX1)
+            X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+
+            indG = Locate( X1, R, SIZE( R ) )
+
+            uPF_K(iNX,iPF_D ) &
+              = Interpolate1D_Linear &
+                  ( X1, R(indG), R(indG+1), &
+                        D(indG), D(indG+1) )
+            uPF_K(iNX,iPF_V1) &
+              = Interpolate1D_Linear &
+                  ( X1, R(indG), R(indG+1), &
+                        V(indG), V(indG+1) )
             uPF_K(iNX,iPF_V2) = Zero
             uPF_K(iNX,iPF_V3) = Zero
-            uAF_K(iNX,iAF_P ) = P(iNX1,iX1)
-            uPF_K(iNX,iPF_E ) = P(iNX1,iX1) / ( Gamma_IDEAL - One )
+            uAF_K(iNX,iAF_P ) &
+              = Interpolate1D_Linear &
+                  ( X1, R(indG), R(indG+1), &
+                        P(indG), P(indG+1) )
+            uPF_K(iNX,iPF_E ) = uAF_K(iNX,iAF_P) / ( Gamma_IDEAL - One )
             uPF_K(iNX,iPF_Ne) = Zero
 
           END DO !iNX
@@ -588,11 +623,12 @@ CONTAINS
 
     END IF ! nLevels .EQ. 1
 
-    epsMin_Euler_GR = HUGE( One )
+    IF( iLevel .EQ. 0 ) &
+      epsMin_Euler_GR = HUGE( One )
 
     ! --- With perturbation ---
 
-    indC = Locate( rC, MeshX(1) % Center, nX(1) )
+    indC = Locate( rC, R, SIZE( R ) )
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
@@ -638,21 +674,34 @@ CONTAINS
           iNX1 = NodeNumberTableX(1,iNX)
           iNX2 = NodeNumberTableX(2,iNX)
 
-          uPF_K(iNX,iPF_D ) = D(iNX1,iX1)
-          uPF_K(iNX,iPF_V1) = V(iNX1,iX1)
+          X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+
+          indG = Locate( X1, R, SIZE( R ) )
+
+          uPF_K(iNX,iPF_D ) &
+            = Interpolate1D_Linear &
+                ( X1, R(indG), R(indG+1), &
+                      D(indG), D(indG+1) )
+          uPF_K(iNX,iPF_V1) &
+            = Interpolate1D_Linear &
+                ( X1, R(indG), R(indG+1), &
+                      V(indG), V(indG+1) )
           uPF_K(iNX,iPF_V2) = Zero
           uPF_K(iNX,iPF_V3) = Zero
-          uAF_K(iNX,iAF_P ) = P(iNX1,iX1)
-          uPF_K(iNX,iPF_E ) = P(iNX1,iX1) / ( Gamma_IDEAL - One )
+          uAF_K(iNX,iAF_P ) &
+            = Interpolate1D_Linear &
+                ( X1, R(indG), R(indG+1), &
+                      P(indG), P(indG+1) )
+          uPF_K(iNX,iPF_E ) = uAF_K(iNX,iAF_P) / ( Gamma_IDEAL - One )
+          uPF_K(iNX,iPF_Ne) = Zero
 
           IF( ApplyPerturbation )THEN
 
-            X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
             X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
 
             eta = MapRadiusToEta( X1, ShockRadius )
 
-            uPert = Field(iNX1,iX1)
+            uPert = Field(indG)
 
             IF( TRIM( PerturbationType ) .EQ. 'Gaussian' )THEN
 
@@ -661,15 +710,15 @@ CONTAINS
                 IF( nDimsX .EQ. 1 .OR. PerturbationOrder .EQ. 0 )THEN
 
                   uPert &
-                    = Field(iNX1,iX1) &
-                        + Field(1,indC) * PerturbationAmplitude &
+                    = Field(indG) &
+                        + Field(indC) * PerturbationAmplitude &
                         * EXP( -( eta - etaC )**2 / ( Two * sigma_eta**2 ) )
 
                 ELSE
 
                   uPert &
-                    = Field(iNX1,iX1) &
-                        + Field(1,indC) * PerturbationAmplitude * COS( X2 ) &
+                    = Field(indG) &
+                        + Field(indC) * PerturbationAmplitude * COS( X2 ) &
                         * EXP( -( eta - etaC )**2 / ( Two * sigma_eta**2 ) )
 
                 END IF ! nDimsX .EQ. 1 .OR. PerturbationOrder .EQ. 0
@@ -685,12 +734,12 @@ CONTAINS
 
                 IF( PerturbationOrder .EQ. 0 ) &
                   uPert &
-                    = Field(iNX1,iX1) &
+                    = Field(indG) &
                         * ( One + PerturbationAmplitude )
 
                 IF( PerturbationOrder .EQ. 1 ) &
                   uPert &
-                    = Field(iNX1,iX1) &
+                    = Field(indG) &
                         * ( One + PerturbationAmplitude * COS( X2 ) )
 
               END IF ! rInner <= X1 <= rOuter
@@ -704,8 +753,9 @@ CONTAINS
 
           END IF ! Apply perturbation
 
-          epsMin_Euler_GR &
-            = MIN( epsMin_Euler_GR, uPF_K(iNX,iPF_E) / uPF_K(iNX,iPF_D) )
+          IF( iLevel .EQ. 0 ) &
+            epsMin_Euler_GR &
+              = MIN( epsMin_Euler_GR, uPF_K(iNX,iPF_E) / uPF_K(iNX,iPF_D) )
 
         END DO !iNX
 
@@ -734,16 +784,21 @@ CONTAINS
 
     CALL amrex_mfiter_destroy( MFI )
 
-    CALL amrex_parallel_reduce_min( epsMin_Euler_GR )
+    IF( iLevel .EQ. 0 )THEN
 
-    epsMin_Euler_GR = 1.0e-06_DP * epsMin_Euler_GR
+      CALL amrex_parallel_reduce_min( epsMin_Euler_GR )
+
+      epsMin_Euler_GR = 1.0e-06_DP * epsMin_Euler_GR
+
+    END IF
 
     DEALLOCATE( Field   )
     DEALLOCATE( P )
     DEALLOCATE( V )
     DEALLOCATE( D )
+    DEALLOCATE( R )
 
-    IF( ResetEndTime ) &
+    IF( ResetEndTime .AND. iLevel .EQ. 0 ) &
       t_end = 1.00e2_DP * AdvectionTime
 
     IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
@@ -830,19 +885,19 @@ CONTAINS
 
   SUBROUTINE LocateFirstUnShockedElement &
     ( iX_B1, iX_E1, ShockRadius, &
-      iX1_1, iX1_2, iNX1_1, iNX1_2, X1_1, X1_2, &
+      iX1_1, iX1_2, iNX1_1, iNX1_2, X1_1, X1_2, indG_1, &
       FirstPreShockElement, AllPreShockElements, AllPostShockElements )
 
     INTEGER , INTENT(in)  :: iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)  :: ShockRadius
-    INTEGER , INTENT(out) :: iX1_1, iX1_2, iNX1_1, iNX1_2
+    INTEGER , INTENT(out) :: iX1_1, iX1_2, iNX1_1, iNX1_2, indG_1
     REAL(DP), INTENT(out) :: X1_1, X1_2
     LOGICAL , INTENT(out) :: FirstPreShockElement, &
                              AllPreShockElements, &
                              AllPostShockElements
 
     REAL(DP) :: X1, dX1
-    INTEGER  :: iX1, iNX1, nPreShockElements, nPostShockElements
+    INTEGER  :: iX1, iNX1, nPreShockElements, nPostShockElements, indG
 
     FirstPreShockElement  = .FALSE.
     nPreShockElements     = 0
@@ -853,6 +908,8 @@ CONTAINS
     DO iX1 = iX_B1(1), iX_E1(1)
 
       DO iNX1 = 1, nNodesX(1)
+
+        indG = GetGlobalIndex( iX1, iNX1 )
 
         dX1 = NodeCoordinate( MeshX(1), iX1, iNX1 ) - X1
         X1  = NodeCoordinate( MeshX(1), iX1, iNX1 )
@@ -873,6 +930,8 @@ CONTAINS
           iNX1_1 = iNX1
           X1_1   = X1
           X1_2   = X1 - dX1
+
+          indG_1 = indG
 
           IF( iNX1_1 .EQ. 1 )THEN
 
@@ -914,13 +973,50 @@ CONTAINS
   END SUBROUTINE LocateFirstUnShockedElement
 
 
-  SUBROUTINE ReadFluidFieldsFromFile( iX_B1, iX_E1, D, V, P )
+  SUBROUTINE GetNumberOfLeafNodes( nLeafNodes )
 
-    INTEGER,  INTENT(in)  :: iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(out) :: D(1:,iX_B1(1):), V(1:,iX_B1(1):), P(1:,iX_B1(1):)
+    INTEGER, INTENT(out) :: nLeafNodes
 
-    CHARACTER(LEN=16)     :: FMT
-    INTEGER               :: iX1
+    TYPE(amrex_parmparse) :: PP
+    CHARACTER(LEN=256)    :: FileName
+    INTEGER               :: FileNo
+
+    CALL amrex_parmparse_build( PP, 'SAS' )
+      CALL PP % get  ( 'FileName_Nodal1DIC_SAS', &
+                        FileName_Nodal1DIC_SAS )
+    CALL amrex_parmparse_destroy( PP )
+
+    WRITE(FileName,'(A)') TRIM( FileName_Nodal1DIC_SAS ) // '_PF_D.dat'
+
+    nLeafNodes = 0
+
+    ! Get number of entries in file:
+    ! https://stackoverflow.com/questions/30692424/
+    ! how-can-i-read-the-number-of-lines-in-fortran-90-from-a-text-file
+    OPEN( FileNo, FILE = TRIM( FileName ) )
+
+      CALL ReadHeader( FileNo )
+
+      DO
+
+        READ( FileNo, *, END = 10 )
+
+        nLeafNodes = nLeafNodes + 1
+
+      END DO
+
+    10 CLOSE( FileNo )
+
+  END SUBROUTINE GetNumberOfLeafNodes
+
+
+  SUBROUTINE ReadFluidFieldsFromFile( nLeafNodes, R, D, V, P )
+
+    INTEGER,  INTENT(in)  :: nLeafNodes
+    REAL(DP), INTENT(out) :: R(:), D(:), V(:), P(:)
+
+    CHARACTER(LEN=256)    :: FMT, FileName
+    INTEGER               :: i, FileNo
     TYPE(amrex_parmparse) :: PP
 
     IF( nLevels .GT. 1 )THEN
@@ -936,21 +1032,60 @@ CONTAINS
                         FileName_Nodal1DIC_SAS )
     CALL amrex_parmparse_destroy( PP )
 
-    OPEN( UNIT = 101, FILE = TRIM( FileName_Nodal1DIC_SAS ) )
+    OPEN( UNIT = FileNo, FILE = TRIM( FileName_Nodal1DIC_SAS ) // '_BC.dat' )
 
-    READ(101,*) ExpD
-    READ(101,*) ExpE
-    READ(101,*) FMT
+    READ(FileNo,*) ExpD
+    READ(FileNo,*) ExpE
 
-    DO iX1 = iX_B1(1), iX_E1(1)
+    CLOSE( FileNo )
 
-      READ(101,TRIM(FMT)) D(:,iX1)
-      READ(101,TRIM(FMT)) V(:,iX1)
-      READ(101,TRIM(FMT)) P(:,iX1)
+    OPEN( UNIT = FileNo, FILE = TRIM( FileName_Nodal1DIC_SAS ) // '_X1n.dat' )
 
-    END DO
+      CALL ReadHeader( FileNo )
 
-    CLOSE( 101 )
+      DO i = 1, nLeafNodes
+
+        READ(FileNo,'(ES25.18E2)') R(i)
+
+      END DO
+
+    CLOSE( FileNo )
+
+    OPEN( UNIT = FileNo, FILE = TRIM( FileName_Nodal1DIC_SAS ) // '_PF_D.dat' )
+
+      CALL ReadHeader( FileNo )
+
+      DO i = 1, nLeafNodes
+
+        READ(FileNo,'(ES25.18E2)') D(i)
+
+      END DO
+
+    CLOSE( FileNo )
+
+    OPEN( UNIT = FileNo, FILE = TRIM( FileName_Nodal1DIC_SAS ) // '_PF_V1.dat' )
+
+      CALL ReadHeader( FileNo )
+
+      DO i = 1, nLeafNodes
+
+        READ(FileNo,'(ES25.18E2)') V(i)
+
+      END DO
+
+    CLOSE( FileNo )
+
+    OPEN( UNIT = FileNo, FILE = TRIM( FileName_Nodal1DIC_SAS ) // '_AF_P.dat' )
+
+      CALL ReadHeader( FileNo )
+
+      DO i = 1, nLeafNodes
+
+        READ(FileNo,'(ES25.18E2)') P(i)
+
+      END DO
+
+    CLOSE( FileNo )
 
   END SUBROUTINE ReadFluidFieldsFromFile
 
@@ -1256,6 +1391,27 @@ CONTAINS
 
     RETURN
   END FUNCTION MapEtaToRadius
+
+
+  INTEGER FUNCTION GetGlobalIndex( iX1, iNX1 )
+
+    INTEGER, INTENT(in) :: iX1, iNX1
+
+    GetGlobalIndex &
+      = nNodesX(1) * ( iX1 + swX(1) ) + iNX1
+
+    RETURN
+  END FUNCTION GetGlobalIndex
+
+  SUBROUTINE ReadHeader( FileNo )
+
+    INTEGER, INTENT(in) :: FileNo
+
+    READ(FileNo,*)
+    READ(FileNo,*)
+    READ(FileNo,*)
+
+  END SUBROUTINE ReadHeader
 
 
 END MODULE MF_InitializationModule
