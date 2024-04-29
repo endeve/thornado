@@ -431,7 +431,7 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
-    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iX1 = iX_B0(1), iX_E0(1)
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iNX = 1, nDOFX
