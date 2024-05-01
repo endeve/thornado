@@ -85,6 +85,8 @@ MODULE MF_GravitySolutionModule_Newtonian_Poseidon
     ProgramName
   USE MF_GeometryModule, ONLY: &
     ApplyBoundaryConditions_Geometry_MF
+  USE AverageDownModule, ONLY: &
+    AverageDown
 
 #ifdef GRAVITY_SOLVER_POSEIDON_NEWTONIAN
 
@@ -218,6 +220,8 @@ CONTAINS
      CALL amrex_multifab_destroy( MF_uMF(iLevel) )
 
    END DO
+
+   CALL AverageDown( MF_uGF )
 
    CALL ApplyBoundaryConditions_Geometry_MF(MF_uGF)
 
