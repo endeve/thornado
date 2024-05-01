@@ -67,8 +67,21 @@ More information on the external packages, please visit: https://gitlab.devtools
 **limit GPU power** `xpu-smi config -d 0 --powerlimit 500` to 50W
 **srun not work with mpi, unset SLURM_TASKS_PER_NODE** or ssh to the node. "When you srun into a system, it sets a bunch of variable behind your back" by Brian. 
 **get number cores and threads**  sudo /usr/sbin/dmidecode  -t processor | grep -E '(Core Count|Thread Count)'
+**emon edp work** source /opt/intel/sep/sep_vars.sh
 ` gdb-oneapi -q -ex "b 34" -ex "run" -ex "info devices" --args ./a.out`
 `ZET_ENABLE_PROGRAM_DEBUGGING=1 IGC_StackOverflowDetection=1 gdb-oneapi -q   ./flashx`
+
+**Python virtual enviroment**
+- install python3 : sudo -E apt-get update; sudo -E apt-get upgrade; sudo -E apt-get install python3; sudo -E apt-get install python3-pip python3-dev virtualenv
+- create a virtual environment: python3 -m venv .venv
+- Activate the virtual environment: source .venv/bin/activate
+- Install dependencies: python -m pip install . 
+- deactive: .venv\scripts\deactivate
+- Need to setup proxy.
+```
+  set HTTP_PROXY=http://<http-proxy.address>:<port>
+  set HTTPS_PROXY=http://<https-proxy.address>:<port>
+```
     ![](./pics-readme/)
 #############################################       
 # Enable implicit scaling     
@@ -100,6 +113,53 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## May 1 2024
+1. Thornado runs fine with nightly 04.22, nightly-mkl-cev_nightly/2024.04.26, neo/agama-devel-sp4/895-24.13.29138.18-893. ifx -what gives Intel(R) Fortran 24.0-1665. 
+2. SineWaveStreaming 16x16x16 gives NaNs with nightly 04.23, nightly-mkl-cev_nightly/2024.04.26, neo/agama-devel-sp4/895-24.13.29138.18-893. ifx -what gives Intel(R) Fortran 24.0-1690. So the issue starts with **04.24/Intel(R) Fortran 24.0-1690**
+   - NaNs seen for the 1st cycle 
+   ```
+         Evolving from t = 0.00E+00 to t = 1.00E+00
+
+        Cycle = 00000001  t = 0.000000E+00 dt = 6.250000E-03
+
+        Two-Moment Tally O(v/c). t = 6.25E-03
+
+            Neutrino Lepton Number Interior.:              NaN
+            Neutrino Lepton Number Initial..:  2.30383461E+000
+            Neutrino Lepton Number Off Grid.:              NaN
+            Neutrino Lepton Number Change...:              NaN
+
+            Neutrino Energy Interior........:              NaN
+            Neutrino Energy Initial.........:  1.90066356E+000
+            Neutrino Energy Off Grid........:              NaN
+            Neutrino Energy Change..........:              NaN
+            Neutrino Energy PL..............:  0.00000000E+000
+   ```
+  - M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS) has very large value on Cycle=1 and NaNs on Cycle=2; -5.191046912084579E+284 for Cycle=1. ComputeTally_TwoMoment-> ComputeTally in Modules/TwoMoment/OrderV/TwoMoment_TallyModule.F90
+  - CR in ComputeGray_TwoMoment already has NaNs and huge values. CR is passed as INTENT(in) in ComputeFromConserved_TwoMoment which calls  ComputeGray_TwoMoment
+  - This indicates that uCR might get corrupted inside  Update_IMEX_RK, which is M variable. 
+  - StageData(iS) % dM_EX has infinity values at Stage iS=1 in ./Modules/TwoMoment/OrderV/TwoMoment_TimeSteppingModule.F90 : 368, so dM_EX get wrong value inside ComputeIncrement_TwoMoment_Explicit.
+  - Monitoring dU_R value in /Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90: 194, dU_z in ComputeIncrement_ObserverCorrections get wrong values and then contaminate dU_R. 
+  - Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90 :2917
+
+3.  Intel(R) Fortran 24.0-1693/ifx (IFX) dev.x.0 Mainline 20240430 fixed the issue of non-optimal num_teams in !$OMP TARGET TEAMS DISTRIBUTE directive of CMPLRLLVM-49108.
+## April 30 2024
+1.Run Thornado with nightly 04.26, 04.27, 04.28 and 04.28, and also with neo/agama-devel-sp4/871-24.09.28717.17-868 and neo/agama-devel-sp4/895-24.13.29138.18-893 respectively. It is found that sineWaveStreaming case with 16x16x16 produces NaN, but the other three cases runs fine. Need to figure out whether it is a compiler issue or a UMD issue. 
+2. Tried to convert emon data to CSV/XSLS files. There are issues, however, by contacting EDP group, Ryan P. Mclaughlin put some meta data to the emon.dat, and it then worked: `emon -process-pyedp pyedp_config.txt`, and here is the meta data:
+```
+    GPU5: deviceid=0x0bd6 domain=0x1 bus=0x42 device=0x0 function=0x0
+        tile0: deviceid=0x09a7 domain=0x1 bus=0x43 device=0x0 function=0x1 guid=0x41fe79a5
+## the added meta file to make the above command run        
+++  EDP Configuration:        
+++  EDP events file:Not\Sure\Of\Path\config\edp\sapphirerapids_server_events_private.txt
+++  Hybrid Platform: No
+++  EDP metric file:sapphirerapids_server_private.xml
+++  EDP chart file:chart_format_sapphirerapids_server_private.txt
+
+RAM Features:                                                                                                                                                                                                        (Package/Memory Controller/Channel)
+```
+The reason is that when we collect the data, we did not use -collect-edp option with emon. The metric and chart files are usually located under ##sep/config/edp
+Standalone edp, it is located under ##sep/config/edp/pyedp, and copy this to your local directory and put emon data file to a directory on the same level. Get you venv and 
 ## April 29 2024
 1. According to Brain, "nightly-mkl-cev_nightly/2024.04.26 looks like it works with the 4.28 nightly compiler.". Tried run Thornado with nightly-compiler/2024.04.28, and the linking failed due to libsycl.so.7. so nightly 4.28 does not point to nightly-mkl-cev_nightly/2024.04.26.
 2. However, "module load ightly-mkl-cev_nightly/2024.04.26" makes Thornado compile and run. Here is the result:
@@ -116,6 +176,25 @@ sineWave   [16,16,16]   O3    :     2.8222e+02          1.2129e+01       2.7009e
 relax      [8,8,8]      O3    :     2.1844e+01          2.2466e+01      -6.2246e-01    -2.77%            3.9026e+07          3.7945e+07        1.0813e+06     2.85%
 relax      [16,16,16]   O3    :     1.5541e+02          1.6439e+02      -8.9734e+00    -5.46%            4.3883e+07          4.1488e+07        2.3954e+06     5.77%
 ```
+3. Proof reading ICPP 2024 Thornado paper. 
+4. CMPLRLLVM-55553 was reportedly fixed, but it was reopenned as openmp50_gpuF/jr55553_alloc run failed. https://jira.devtools.intel.com/browse/CMPLRLLVM-55553
+```
+bash-5.1$ ./jr55553_alloc.exe
+ running here
+ hahahahahhahhaha
+   2.00000000000000        2.00000000000000        2.00000000000000
+   2.00000000000000        2.00000000000000        2.00000000000000
+   2.00000000000000        2.00000000000000        2.00000000000000
+   2.00000000000000        3.00000000000000        3.00000000000000
+   3.00000000000000        3.00000000000000        3.00000000000000
+   3.00000000000000        3.00000000000000        3.00000000000000
+   3.00000000000000        3.00000000000000        4.00000000000000
+   4.00000000000000        4.00000000000000        4.00000000000000
+   4.00000000000000        4.00000000000000        4.00000000000000
+   4.00000000000000        4.00000000000000        4.00000000000000
+ Failed
+```
+5. Tried to install Emon Data Processor Tool (EDP) on pvc04 and borealis. Both failed. PVC04, python version is old, needs 3.7 and above, Borealis: no sudo right to install. Asked system admin to install python3.7 and above on PVC04. Also asked Francesca to install EDP tools if she has the access. 
 
 ## April 22-26 2024
 1. nightly-mkl-cev_nightly/2024.04.14 with nightly 2024.04.21 has "undefined reference" related to mkl libraries, and thus Thornado compilation failed. According to Brain, "Starting with 4.19 the nightly compiler doesn't want to play nice.  Looks like they did a SYCL update that breaks lots of things"
