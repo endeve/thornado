@@ -140,7 +140,9 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
   - This indicates that uCR might get corrupted inside  Update_IMEX_RK, which is M variable. 
   - StageData(iS) % dM_EX has infinity values at Stage iS=1 in ./Modules/TwoMoment/OrderV/TwoMoment_TimeSteppingModule.F90 : 368, so dM_EX get wrong value inside ComputeIncrement_TwoMoment_Explicit.
   - Monitoring dU_R value in /Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90: 194, dU_z in ComputeIncrement_ObserverCorrections get wrong values and then contaminate dU_R. 
-  - Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90 :2917
+  - Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90 :2907, dU_Z has infinities. Flux_K and dFlux_K do not have infinities
+  - In the same file as the above one, now it seems that  NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ1) has infinities; now it seems that Alpha(iNodeZ_E,iZ2,iZ3,iZ4) has infinities. 
+  - However, adding a print statement inside the loop calculating Alpha makes the infinity value of Alpha goes away. Need to double check it. 
 
 3.  Intel(R) Fortran 24.0-1693/ifx (IFX) dev.x.0 Mainline 20240430 fixed the issue of non-optimal num_teams in !$OMP TARGET TEAMS DISTRIBUTE directive of CMPLRLLVM-49108.
 ## April 30 2024
