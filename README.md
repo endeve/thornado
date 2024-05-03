@@ -113,7 +113,14 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
-## May 1 2024
+## May 3 2024
+1. Thornado's 16x16x16 sineWaveStreaming case fails with nightly 2024.05.02/ifx -what     : Intel(R) Fortran 24.0-1693
+2. Try to get a reduced Thornado code to reproduce the issue. Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90
+  - 2434,2450d  5.486130481668135E+303; then 2328, 2352d   5.486130481668135E+303; 
+  - write out dV_u_dX1, dV_u_dX2, and dV_u_dX3, and then read from file: fort.111, fort.112, and fort.113 and !$OMP TARGET UPDATE TO(dV_u_dX1,dV_u_dX2, dV_u_dX3) still produce 5.486130481668135E+303
+  - 2313,2326d  5.486130481668135E+303;
+  - It seems that nightly 04.22 also gives huge values. So need start over again.
+## May 1-2 2024
 1. Thornado runs fine with nightly 04.22, nightly-mkl-cev_nightly/2024.04.26, neo/agama-devel-sp4/895-24.13.29138.18-893. ifx -what gives Intel(R) Fortran 24.0-1665. 
 2. SineWaveStreaming 16x16x16 gives NaNs with nightly 04.23, nightly-mkl-cev_nightly/2024.04.26, neo/agama-devel-sp4/895-24.13.29138.18-893. ifx -what gives Intel(R) Fortran 24.0-1690. So the issue starts with **04.24/Intel(R) Fortran 24.0-1690**
    - NaNs seen for the 1st cycle 
