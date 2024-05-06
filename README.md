@@ -56,6 +56,7 @@ More information on the external packages, please visit: https://gitlab.devtools
 **get on Aurora** qsub -I -A Aurora_deployment -l select=1,walltime=120:00 -q EarlyAppAccess 
 **borealis guide**  https://wiki.ith.intel.com/display/OPS/HPCM+user+guide
 **get on borealis** ssh borealis-uan1.hpe.jf.intel.com
+**profile mpi** by `export LD_PRELOAD=/home/revans/perftools/lib/libmpiP.so`
 **pbs reserve a node starting 07:34 for 8 hours** psb_rsub -R 0734 -D 08:00:00
 **pbs get on the reserved node**  qsub -q <Reservation ID> -I -l walltime=09:00:00
 **To git clone weaklib tables from ORNL, we need** `export https_proxy=http://proxy-us.intel.com:912`    (error: SSL certificate problem: self signed certificate in certificate chain) 
@@ -113,6 +114,22 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## May 06 2024
+1. Working on Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90; however, it is found that even for 04.22 nightly, sineWaveStreaming 16x16x16 has NaNs. Revert back to original to see what is the issue. 
+2. It seems to be related to write-out frequency. If iCycleW=1 the above case has NaNs. Now testing for all the case with `iCycleW            = 1` using nightly 04.22
+3. With CycleW =1 and nightly 04.22, every case ran fine. So, CycleW does not play a role in the NaNs. Now, it is believed that as make clean was not used for the 04.22 compilation and run, the file which produces NaNs still was compiled by 04.23. 
+4. Lambda has infinities, but writting Lambda out to a LambdaAll(nDOFX, iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4), 3) make the infinities go away. 
+5. Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90:
+  - write out dV_u_dX1, dV_u_dX2, and dV_u_dX3, and then read from file: fort.511, fort.512, and fort.513 and !$OMP TARGET UPDATE TO(dV_u_dX1,dV_u_dX2, dV_u_dX3) still produce 5.486130481668135E+303
+  - write out dV_u_dX1, dV_u_dX2, and dV_u_dX3 with nightly 04.22 to fort.41[1-3] and compare with fort.51[1-3] of nightly 04.23. They are the same. 
+  - 2430, 2450d reproduces NaNs, 2410, 2437d makes infinities goes away and so does the NaNs (revert this lines)
+  - 2328,2409d reproduces NaNs, 2311, 2327d reproduces NaNs
+  - try the code with 04.22, and it did not have NaNs or infinites. The code runs fine.
+  - With `stop` just after printing out Alpha if Alpha is inifinity, 04.22 did not see inifinities, but 04.23 saw. 
+  - To see values of uV[1-3]\_K effects on infinities.It seems that we need the calculation. 
+  - setting Gm\_dd\_??K and uS?\_K and uFD\K to some fixed values made infinities go away.  So the calculation is need to reproduce NaNs.                                                                                              
+6. Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90 is almost smallest (with the fewest subroutines).  Need to remove extra variables.  
+
 ## May 3 2024
 1. Thornado's 16x16x16 sineWaveStreaming case fails with nightly 2024.05.02/ifx -what     : Intel(R) Fortran 24.0-1693
 2. Try to get a reduced Thornado code to reproduce the issue. Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90
