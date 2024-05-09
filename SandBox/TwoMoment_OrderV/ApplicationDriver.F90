@@ -6,7 +6,8 @@ PROGRAM ApplicationDriver
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_E0, iX_B1, iX_E1, &
     iE_B0, iE_E0, iE_B1, iE_E1, &
-    iZ_B0, iZ_E0, iZ_B1, iZ_E1
+    iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    nDimsX
   USE GeometryFieldsModule, ONLY: &
     uGF
   USE GeometryFieldsModuleE, ONLY: &
@@ -37,6 +38,7 @@ PROGRAM ApplicationDriver
     ComputeError
   USE TwoMoment_TallyModule_OrderV, ONLY: &
     ComputeTally
+  USE TwoMoment_TimersModule_OrderV, ONLY: Timer_IMEX
 
   IMPLICIT NONE
 
@@ -60,9 +62,25 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: D_0, Chi, Sigma, C_TCI, C_CFL
   REAL(DP)      :: LengthScale
 
+  INTEGER :: i, argc
+  CHARACTER(len=32) :: arg, trimmed
+
   CoordinateSystem = 'CARTESIAN'
 
   ProgramName = 'SineWaveStreaming'
+
+   !! Read nX from command-line
+  argc = command_argument_count()
+  !print *, argc
+
+  DO i = 1, argc
+     CALL get_command_argument(i, arg)
+     IF (LEN_TRIM(arg) == 0) EXIT
+
+    ! WRITE (*,*) TRIM(arg)
+     trimmed = TRIM(arg)
+     READ(trimmed,"(I)") nX(i)
+  END DO
 
   nSpecies = 1
 
@@ -80,7 +98,8 @@ PROGRAM ApplicationDriver
 
       ! --- Minerbo Closure Only ---
 
-      nX  = [ 8, 8, 8 ]
+      !nX  = [ 16, 16, 16 ]
+      !nX  = [ 8, 8, 8 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
       bcX = [ 1, 1, 1 ]
@@ -845,6 +864,13 @@ PROGRAM ApplicationDriver
   CALL ComputeTally( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR )
 
   CALL ComputeError( t )
+
+  !! Compute Figure of Merit (FOM)
+  WRITE(*,*)
+  WRITE(*,'(A,I16)') "Grids :", nX(1)*nX(2)*nX(3)
+  WRITE(*,'(A,e14.6)') "IMEX_Time :", Timer_IMEX
+  WRITE(*,'(A,e14.6)') "FOM :", 1.0*nE*nSpecies*4*nNodes**(nDimsX+1)*nX(1)*nX(2)*nX(3)*iCycle/Timer_IMEX
+  !WRITE(*,'(A,4I6, I16, I10, e14.6)') "xxxx is :", nE,nSpecies,nNodes,(nDimsX+1),nX(1)*nX(2)*nX(3),iCycle,Timer_IMEX
 
   ! --- Auxiliary Finalization ---
 
