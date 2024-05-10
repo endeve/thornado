@@ -114,6 +114,68 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## May 10 2024
+1. Move related file to /localdisk/quanshao/sandbox/AlphaInfinity and see whether these file can reproduce the issue:
+   - ApplicationDriver.F90
+   - ProgramHeaderModule.F90 (checked)
+   - ProgramInitializationModule.f90 (checked)
+   - TwoMoment_DiscretizationModule_Streaming.F90 (checked)
+   - TwoMoment_TimeSteppingModule.F90 (checked)
+The following file only uses 0/1/2 modules   
+   - KindModule.f90 (0)
+   - GeometryFieldsModule.F90 (2, KindModule, ProgramHeaderModule)
+   - GeometryFieldsModuleE.F90 (2, KindModule, ProgramHeaderModule)
+   - FluidFieldsModule.F90 (2, KindModule, ProgramHeaderModule)
+   - RadiationFieldsModule.F90 (2, KindModule, ProgramHeaderModule)
+   - LinearAlgebraModule.F90 (2, KindModule, DeviceModule)
+   - DeviceModule.F90 (1, KindModule)
+   - ReferenceElementModuleX.F90 (2, KindModule, ProgramHeaderModule)
+   - ReferenceElementModule.F90 (2, KindModule, ProgramHeaderModule)
+   - MeshModule.F90 (1, KindModule) 
+   - OpenMPModule.f90
+   - PhysicalConstantsModule.f90
+   - UnitsModule.f90
+2. Extracted files does not reproduce inifities, but 
+```
+omptarget message: explicit extension not allowed: host address specified is 0x0000000000000000 (29859840 bytes), but device allocation maps to host at 0x0000000000811610 (224 bytes)
+omptarget error: Call to getTargetPointer returned null pointer (device failure or illegal mapping).
+omptarget error: Run with
+omptarget error: LIBOMPTARGET_DEBUG=1 to display basic debug information.
+omptarget error: LIBOMPTARGET_DEBUG=2 to display calls to the compute runtime.
+omptarget error: LIBOMPTARGET_INFO=4 to dump host-target pointer mappings.
+omptarget error: Source location information not present. Compile with -g or -gline-tables-only.
+omptarget fatal error 1: failure of target construct while offloading is mandatory
+forrtl: error (76): Abort trap signal
+```
+## May 09 2024
+1. Continue on reducing ApplicationDriver.F90
+   - almost done
+2. working on ./Modules/Runtime/ProgramInitializationModule.f90
+   - Removed Finalize_Program
+
+## May 08 2024
+1. Starting for what left yesterday, Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90
+   - 0423 produces inifinites, but not 0422 (confirmed)
+   - 297, 308d 0423 produces inifinites, but not 0422
+   - removing any of ComputeIncrement_Divergence_X[1-3] will cause 0422 produce infinities, so reducing ComputeIncrement_Divergence_X[1-3]
+   - :937,965d cause 0422 infinities. dU_R = dU_R + dU_Z
+   - 925, 935d 0422 fine, 0423 infinities; so is 878,924d; so is 865, 876d;:842, 864d;816, 840d;691, 814d; 645,693d;575,612d;553, 575d; 494, 526d;468,492d;
+   - Seems assignment loops for uGF_K, uCF_K, uCR_K, and dU_R are essential for reproducing the issue in  ComputeIncrement_Divergence_X1. 
+   - 852,1142d 0422 fine, 0423 infinities;760,820d;683, 698d for ComputeIncrement_Divergence_X2
+   - 1101,1391d 0422 fine, 0423 infinities;1009,1069d;930,949d for ComputeIncrement_Divergence_X3
+2. Removing extra/unnecessary variables and dependendicies Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90
+3. Working on reducing Modules/TwoMoment/OrderV/TwoMoment_TimeSteppingModule.F90
+   - 384,500d;deleting if blocks;
+3. Working on ApplicationDriver.F90
+   - 884, 899d;do while loop for cycles only left with  Update_IMEX_RK; 795, 805d; only InitializeDriver and Update_IMEX_RK left. 
+   - working on reducing InitializeDriver 
+## May 07 2024
+1. Try reduced  Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90 with nightly 04.22 and the latest nightlies (0506). both of them gives inifinities. So restart again. Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90
+  - 2525, 2962d 0423 has infinities while 0422 does not. 
+  - write out dV_u_dX1, dV_u_dX2, and dV_u_dX3, and then read from file: fort.511, fort.512, and fort.513 and !$OMP TARGET UPDATE TO(dV_u_dX1,dV_u_dX2, dV_u_dX3) still produce 5.486130481668135E+303, but 0422 does not.
+  - 2309, 2325d  0422 does not have infinities, while 0423 produces inifinities
+  - read uS1_K,uS2_K,uS3_K,  Gm_dd_11_K,  Gm_dd_22_K, Gm_dd_33_K, uFD_K from fort.701 and !$OMP TARGET UPDATE TO  reproduce infinities with 0423, but not 0422.
+  - 
 ## May 06 2024
 1. Working on Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90; however, it is found that even for 04.22 nightly, sineWaveStreaming 16x16x16 has NaNs. Revert back to original to see what is the issue. 
 2. It seems to be related to write-out frequency. If iCycleW=1 the above case has NaNs. Now testing for all the case with `iCycleW            = 1` using nightly 04.22
