@@ -156,7 +156,7 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
-    REAL(DP), INTENT(out), OPTIONAL :: &
+    REAL(DP), INTENT(inout), OPTIONAL :: &
       uDR_Option &
           (iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
@@ -372,12 +372,12 @@ CONTAINS
 #elif defined(THORNADO_OMP   )
       !$OMP PARALLEL DO COLLAPSE(3)
 #endif
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = iX_B1(3), iX_E1(3)
+      DO iX2 = iX_B1(2), iX_E1(2)
+      DO iX1 = iX_B1(1), iX_E1(1)
 
-        uDR_Option(iX1,iX2,iX3,iDR_iter_outer) = 1.0_DP
-        uDR_Option(iX1,iX2,iX3,iDR_iter_inner) = 1.0_DP
+        uDR_Option(iX1,iX2,iX3,iDR_iter_outer) = 0.0_DP
+        uDR_Option(iX1,iX2,iX3,iDR_iter_inner) = 0.0_DP
 
       END DO
       END DO
@@ -405,17 +405,22 @@ CONTAINS
                + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
                + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
 
-        nIterations_Inner(iN_X) &
-          = FLOOR(   DBLE( nIterations_Inner(iN_X) ) &
-                   / DBLE( nIterations_Outer(iN_X) ) )
+        IF ( nIterations_Outer(iN_X) == 0 ) THEN
+          nIterations_Inner(iN_X) = 0
+        ELSE
+          nIterations_Inner(iN_X) &
+            = FLOOR(   REAL( nIterations_Inner(iN_X), DP ) &
+                     / REAL( nIterations_Outer(iN_X), DP ) )
+
+        ENDIF
 
         uDR_Option(iX1,iX2,iX3,iDR_iter_outer) &
           = MAX( uDR_Option(iX1,iX2,iX3,iDR_iter_outer), &
-                 REAL( nIterations_Outer(iN_X) ) )
+                 REAL( nIterations_Outer(iN_X), DP ) )
 
         uDR_Option(iX1,iX2,iX3,iDR_iter_inner) &
           = MAX( uDR_Option(iX1,iX2,iX3,iDR_iter_inner), &
-                 REAL( nIterations_Inner(iN_X) ) )
+                 REAL( nIterations_Inner(iN_X), DP ) )
 
       END DO
       END DO

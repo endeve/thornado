@@ -18,6 +18,7 @@ global PlotBaseName
 
 global Field
 
+global nDirs
 
 global UseLogScale_X
 global UseLogScale_Y
@@ -74,6 +75,8 @@ PlotDirectory = ''
 PlotBaseName  = ''
 
 Field = ''
+
+nDirs = 1
 
 UseLogScale_X = True
 UseLogScale_Y = True

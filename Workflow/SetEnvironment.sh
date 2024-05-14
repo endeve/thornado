@@ -214,7 +214,7 @@ elif [[ $THORNADO_MACHINE == summit_nvhpc ]]; then
 
   echo
 
-  module load nvhpc/22.5
+  module load nvhpc/23.9
   module load spectrum-mpi
   module load hdf5
   module load netlib-lapack
@@ -257,8 +257,8 @@ elif [[ $THORNADO_MACHINE == frontier_cce ]]; then
 
   module use /ccs/home/jaharris/modulefiles/frontier
   
-  module load cpe/23.09
-  module load PrgEnv-cray cce/16.0.1 cray-hdf5-parallel craype-accel-amd-gfx90a rocm/5.5.1 hipfort/5.5.1
+  module load cpe/23.12
+  module load PrgEnv-cray cce/17.0.0 cray-hdf5-parallel craype-accel-amd-gfx90a rocm/5.7.1 hipfort/5.7.1
   module unload darshan-runtime
 
   module -t list
