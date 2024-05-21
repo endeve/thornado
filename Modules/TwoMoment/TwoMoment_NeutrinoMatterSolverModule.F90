@@ -230,6 +230,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
 
   INTEGER,  DIMENSION(:)    , ALLOCATABLE, TARGET :: Error_T
   REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: D_T, T_T, Y_T, E_T
+  REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: T0_T, Y0_T
   REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: SqrtGm_T
 
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Dnu_T
@@ -415,6 +416,9 @@ CONTAINS
     ALLOCATE( Y_T(nX_G) )
     ALLOCATE( E_T(nX_G) )
 
+    ALLOCATE( T0_T(nX_G) )
+    ALLOCATE( Y0_T(nX_G) )
+
     ALLOCATE( SqrtGm_T(nX_G) )
 
     ALLOCATE(     Dnu_T(nE_G,nSpecies,nX_G) )
@@ -508,6 +512,7 @@ CONTAINS
     !$OMP             H_I_1, H_II_1, J_I_1, J_II_1, &
     !$OMP             Nu_J_I_0, Nu_J_II_0, S_Sigma, &
     !$OMP             D_T, T_T, Y_T, E_T, Error_T,  &
+    !$OMP             T0_T, Y0_T, &
     !$OMP             SqrtGm_T, &
     !$OMP             Dnu_T, Inu_u_1_T, Inu_u_2_T, Inu_u_3_T, &
     !$OMP             Dnu_0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
@@ -564,6 +569,7 @@ CONTAINS
     !$ACC         H_I_1, H_II_1, J_I_1, J_II_1, &
     !$ACC         Nu_J_I_0, Nu_J_II_0, S_Sigma, &
     !$ACC         D_T, T_T, Y_T, E_T, Error_T, &
+    !$ACC         T0_T, Y0_T, &
     !$ACC         SqrtGm_T, &
     !$ACC         Dnu_T, Inu_u_1_T, Inu_u_2_T, Inu_u_3_T, &
     !$ACC         Dnu_0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
@@ -1043,6 +1049,7 @@ CONTAINS
     !$OMP               H_I_1, H_II_1, J_I_1, J_II_1, &
     !$OMP               Nu_J_I_0, Nu_J_II_0, S_Sigma, &
     !$OMP               D_T, T_T, Y_T, E_T, Error_T,  &
+    !$OMP               T0_T, Y0_T, &
     !$OMP               SqrtGm_T, &
     !$OMP               Dnu_T, Inu_u_1_T, Inu_u_2_T, Inu_u_3_T, &
     !$OMP               Dnu_0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
@@ -1099,6 +1106,7 @@ CONTAINS
     !$ACC         H_I_1, H_II_1, J_I_1, J_II_1, &
     !$ACC         Nu_J_I_0, Nu_J_II_0, S_Sigma, &
     !$ACC         D_T, T_T, Y_T, E_T, Error_T,  &
+    !$ACC         T0_T, Y0_T, &
     !$ACC         SqrtGm_T, &
     !$ACC         Dnu_T, Inu_u_1_T, Inu_u_2_T, Inu_u_3_T, &
     !$ACC         Dnu_0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
@@ -1155,6 +1163,7 @@ CONTAINS
     DEALLOCATE( H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma )
     DEALLOCATE( Nu_J_I_0, Nu_J_II_0 )
     DEALLOCATE( D_T, T_T, Y_T, E_T, SqrtGm_T, Error_T )
+    DEALLOCATE( T0_T, Y0_T )
     DEALLOCATE( Dnu_T, Inu_u_1_T, Inu_u_2_T, Inu_u_3_T )
     DEALLOCATE( Dnu_0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T )
     DEALLOCATE( Chi_EmAb_T, Eta_EmAb_T )
@@ -1353,7 +1362,8 @@ CONTAINS
 
     CALL ComputeOpacities_Packed &
            ( D, T, Y, SqrtGm, ITERATE_outer, nX_P_outer, &
-             PackIndex_outer, UnpackIndex_outer )
+             PackIndex_outer, UnpackIndex_outer, &
+             T0 = T_old, Y0 = Y_old )
 
     CALL TimersStop( Timer_Collisions_ComputeOpacity )
 
@@ -1384,7 +1394,8 @@ CONTAINS
 
           CALL ComputeOpacities_Packed &
                  ( D, T, Y, SqrtGm, ITERATE_outer, nX_P_outer, &
-                   PackIndex_outer, UnpackIndex_outer )
+                   PackIndex_outer, UnpackIndex_outer, &
+                   T0 = T_old, Y0 = Y_old )
 
           CALL TimersStop( Timer_Collisions_ComputeOpacity )
 
@@ -1659,16 +1670,19 @@ CONTAINS
 
 
   SUBROUTINE ComputeOpacities_Packed &
-    ( D, T, Y, SqrtGm, MASK, nX_P, PackIndex, UnpackIndex, nX_P0 )
+    ( D, T, Y, SqrtGm, MASK, nX_P, PackIndex, &
+      UnpackIndex, nX_P0, T0, Y0 )
 
     REAL(DP), DIMENSION(:), INTENT(in), TARGET   :: D, T, Y, SqrtGm
     LOGICAL,  DIMENSION(:), INTENT(in), OPTIONAL :: MASK
     INTEGER,                INTENT(in), OPTIONAL :: nX_P
     INTEGER,  DIMENSION(:), INTENT(in), OPTIONAL :: PackIndex, UnpackIndex
     INTEGER,                INTENT(in), OPTIONAL :: nX_P0
+    REAL(DP), DIMENSION(:), INTENT(in), TARGET, OPTIONAL :: T0, Y0
 
     INTEGER                             :: nX, nX0, iX, iE
     REAL(DP), DIMENSION(:)    , POINTER :: D_P, T_P, Y_P, SqrtGm_P
+    REAL(DP), DIMENSION(:)    , POINTER :: T0_P, Y0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Dnu_0_P
     REAL(DP), DIMENSION(:,:)  , POINTER :: Sigma_Iso_P
     REAL(DP), DIMENSION(:,:)  , POINTER :: Phi_0_Iso_P
@@ -1701,6 +1715,30 @@ CONTAINS
       T_P => T_T(1:nX)
       Y_P => Y_T(1:nX)
 
+      IF ( PRESENT ( T0 ) ) THEN
+        T0_P => T0_T(1:nX)
+
+        CALL ArrayPack &
+               (nX, UnpackIndex, T0, T0_P ) 
+      ELSE
+        T0_P => T_T(1:nX)
+
+        CALL ArrayPack &
+               (nX, UnpackIndex, T, T0_P ) 
+      ENDIF
+
+      IF ( PRESENT ( Y0 ) ) THEN
+        Y0_P => Y0_T(1:nX)
+
+        CALL ArrayPack &
+               (nX, UnpackIndex, Y0, Y0_P ) 
+      ELSE
+        Y0_P => Y_T(1:nX)
+
+        CALL ArrayPack &
+               (nX, UnpackIndex, Y, Y0_P ) 
+      ENDIF
+
       SqrtGm_P => SqrtGm_T(1:nX)
 
       CALL ArrayPack &
@@ -1732,6 +1770,18 @@ CONTAINS
       D_P => D(:)
       T_P => T(:)
       Y_P => Y(:)
+
+      IF ( PRESENT ( T0 ) ) THEN
+        T0_P => T0(:)
+      ELSE
+        T0_P => T(:)
+      ENDIF
+
+      IF ( PRESENT ( Y0 ) ) THEN
+        Y0_P => Y0(:)
+      ELSE
+        Y0_P => Y(:)
+      ENDIF
 
       SqrtGm_P => SqrtGm(:)
 
@@ -1782,7 +1832,8 @@ CONTAINS
     CALL TimersStart( Timer_Opacity_EC )
 
     CALL ComputeNeutrinoOpacities_EC &
-           ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Y_P, Dnu_0_P, Chi_EmAb_P )
+           ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Y_P, Dnu_0_P, Chi_EmAb_P, &
+             T_old = T0_P, Y_old = Y0_P )
 
     CALL TimersStop( Timer_Opacity_EC )
 
