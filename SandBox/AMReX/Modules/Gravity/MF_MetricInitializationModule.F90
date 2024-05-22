@@ -5,9 +5,6 @@ MODULE MF_MetricInitializationModule
   USE amrex_multifab_module, ONLY: &
     amrex_multifab
 
-  USE MF_GravitySolutionModule, ONLY: &
-    EvolveGravity
-
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
   USE MF_MetricInitializationModule_XCFC_Poseidon, ONLY: &
@@ -47,8 +44,6 @@ CONTAINS
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
-    IF( .NOT. EvolveGravity ) RETURN
-
 #ifndef THORNADO_NOTRANSPORT
 
     CALL InitializeMetric_XCFC_MF_Poseidon &
@@ -83,8 +78,6 @@ CONTAINS
 #endif
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
-
-    IF( .NOT. EvolveGravity ) RETURN
 
 #ifndef THORNADO_NOTRANSPORT
 

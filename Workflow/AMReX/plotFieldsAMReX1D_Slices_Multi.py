@@ -11,7 +11,6 @@ import GlobalVariables.Units    as gvU
 
 from Utilities.GetPlotData  import GetPlotData
 from Utilities.Files        import GetFileNumberArray
-from Utilities.MakeDataArray import MakeProbelmDataDirectory
 
 import Utilities.DecadeFinder   as DF
 import Utilities.TimeFinder     as TF

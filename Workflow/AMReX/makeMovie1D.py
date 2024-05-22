@@ -4,12 +4,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.style.use( 'publication.sty' )
 
-import GlobalVariables.Settings as gvS
-from GlobalVariables.Units   import SetSpaceTimeUnits
+import GlobalVariables.Settings     as gvS
+from GlobalVariables.Units          import SetSpaceTimeUnits
 
-from Utilities.Files         import GetFileNumberArray
-from Utilities.MakeDataArray import MakeProbelmDataDirectory
-from Utilities.MovieMaker    import MakeMovie
+from Utilities.Files                import GetFileNumberArray
+from Utilities.MakeDataDirectory    import MakeProblemDataDirectory
+from Utilities.MovieMaker           import MakeMovie
 
 if __name__ == "__main__":
 
@@ -98,7 +98,7 @@ if __name__ == "__main__":
                                           SSi, SSf,           \
                                           PlotEvery           )
 
-    MakeProbelmDataDirectory( FileNumberArray, \
+    MakeProblemDataDirectory( FileNumberArray, \
                               PlotDirectory,   \
                               PlotBaseName,    \
                               Field,           \
@@ -108,6 +108,8 @@ if __name__ == "__main__":
     MakeMovie( [FileNumberArray], \
                [Field],           \
                [DataDirectory]    )
+
+    print( '\n  Saved {:}'.format( gvS.MovieName ) )
 
     import os
     os.system( 'rm -rf __pycache__ ' )

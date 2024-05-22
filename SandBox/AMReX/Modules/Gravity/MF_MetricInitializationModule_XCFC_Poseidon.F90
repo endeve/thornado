@@ -157,7 +157,7 @@ CONTAINS
     REAL(DP) :: MaxLF, MaxCF
 
     REAL(DP), PARAMETER :: TOLERANCE = 1.0e-13_DP
-    INTEGER , PARAMETER :: MAX_ITER = 10
+    INTEGER , PARAMETER :: MAX_ITER = 100
 
     DO iLevel = 0, nLevels-1
 
