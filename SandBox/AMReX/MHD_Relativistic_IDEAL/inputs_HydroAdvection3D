@@ -1,4 +1,4 @@
-##### inputs_Advection1D #####
+##### inputs_HydroAdvection3D #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
@@ -37,11 +37,11 @@ geometry.prob_hi   = 1.0 1.0 1.0 # Upper domain size
 
 amr.n_cell            = 02 02 128 # Number of cells in each dimension
 thornado.swX          = 01 01 01 # Stencil width (nGhostCells) in each dimension
-amr.max_grid_size_x   = 1
+amr.max_grid_size_x   = 2
 amr.blocking_factor_x = 1
-amr.max_grid_size_y   = 1
+amr.max_grid_size_y   = 2
 amr.blocking_factor_y = 1
-amr.max_grid_size_z   = 1
+amr.max_grid_size_z   = 128
 amr.blocking_factor_z = 1
 amr.max_level         = 0
 
