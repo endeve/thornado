@@ -1,4 +1,12 @@
 #!/bin/bash
+###
+# Benchmarking script for Thornado on sunspot.alcf.anl apps streaming sinewave(ssw) and relaxation
+# Argument-options: 
+# 0. no arguments runs the both apps
+# 1. -s* or -S* to run the app ssw only
+# 2. -r* or -R* to run the app relaxation only
+# 3. -o* or O* to collect numbers for already obtained results  
+###
 
 function set_common(){
 
@@ -10,13 +18,9 @@ function set_common(){
    #module restore
    #module load oneapi/eng-compiler/2023.05.15.007
    #module load oneapi/release/2023.12.15.001 #Seems losing perfomance
-   #module load oneapi/eng-compiler/2023.10.15.002
+   module load oneapi/eng-compiler/2023.10.15.002
    #module load mpich/51.2/icc-all-pmix-gpu
 
-   export OP_LEVEL=O3
-   export LOG_FILE=sineWave_iprof_.${OP_LEVEL}.10.15.006
-   rm $LOG_FILE
-   export APP_NAME=ApplicationDriver
    export EXASTAR_HOME=/home/mthavappiragasam/lcf/ExaStar
    #export HDF5_ROOT=${EXASTAR_HOME}/hdf5-1.10.7
    export HDF5_ROOT=${EXASTAR_HOME}/hdf5/1.13.3-intel
@@ -25,16 +29,28 @@ function set_common(){
    export THORNADO_DIR=${EXASTAR_HOME}/thornado-bench
    export WEAKLIB_DIR=${EXASTAR_HOME}/weaklib
    export WEAKLIB_TABLES_DIR=${EXASTAR_HOME}/weaklib-tables
-   export THORNADO_MACHINE=sunspot_intel
+   export THORNADO_MACHINE=sunspot.alcf.anl
 
    export IGC_OverrideOCLMaxParamSize=4096
-   #export OMP_NUM_THREADS=1
 }
 
 function runApp(){
    module list |& tee -a $LOG_FILE
-   # echo some env variables to $LOG_FILE   
 
+   export LD_LIBRARY_PATH=${HDF5_LIB}:$LD_LIBRARY_PATH
+   export LIBOMPTARGET_PLUGIN=LEVEL0
+   export LIBOMPTARGET_DEBUG=0
+   export EnableImplicitScaling=0
+   export ZE_AFFINITY_MASK=0.0
+   #export LIBOMPTARGET_PLUGIN_PROFILE=T
+   #export OMP_TARGET_OFFLOAD=DISABLED
+   export OMP_TARGET_OFFLOAD=MANDATORY
+   export OMP_NUM_THREADS=1
+   ulimit -s unlimited
+   #ulimit -n 20480
+   export LIBOMPTARGET_LEVEL_ZERO_MEMORY_POOL=device,256,128,32768
+
+   # echo some env variables to $LOG_FILE   
    echo "ZE_AFFINITY_MASK="${ZE_AFFINITY_MASK}                                |& tee -a $LOG_FILE
    echo "EnableImplicitScaling="${EnableImplicitScaling}                      |& tee -a $LOG_FILE
    echo "LIBOMPTARGET_LEVEL_ZERO_MEMORY_POOL="${LIBOMPTARGET_LEVEL_ZERO_MEMORY_POOL}  |& tee -a $LOG_FILE
@@ -58,12 +74,20 @@ logFiles=(sineWave relax)
 
 for ((jj=0; jj<${#appNames[@]}; jj++));
 do
+   if [[ "$1" == -[rR]* ]]; then # Just run the app, relaxation
+	   if ((jj==0)); then jj=1
+	   fi 
+   elif [[ "$1" == -[sS]* ]]; then # Just run the app, sinewave streaming (ssw)
+		   if ((jj==1)); then break
+		   fi
+   fi
+
    export APP_NAME=${appNames[jj]}
    for ((ii=0; ii<${#grids[@]}; ii++));
    do
         nX=${grids[ii]}
         export LOG_FILE=${logFiles[jj]}_${gridNames[ii]}.${THORNADO_MACHINE}
-        if [[ "$1" == -[rR]* ]]; then
+        if [[ "$1" == -[oO]* ]]; then # Just collect data form the already generated result
             echo ""
             echo "Gathering performance data from $LOG_FILE"
             echo ""
