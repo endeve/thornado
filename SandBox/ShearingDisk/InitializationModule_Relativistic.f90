@@ -129,14 +129,14 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: PressureArr(:), DensityArr(:), V3Arr(:), &
                              AlphaArr(:), PsiArr(:), X1Arr(:)
 
-    FileName = "/home/jbuffal/thornado_MHD_3D/Workflow/MHD/ShearingDisk/GR_norot_NRparams.hdf5"
+    FileName = "/home/jbuffal/thornado_MHD_3D/Workflow/MHD/ShearingDisk/GR_norot.h5"
 
     ! --- Populate arrays ---
 
     CALL H5OPEN_F( HDFERR )
 
-    PRINT*, FileName
-    PRINT*, TRIM( FileName )
+    !PRINT*, FileName
+    !PRINT*, TRIM( FileName )
 
     CALL H5FOPEN_F( TRIM( FileName ), H5F_ACC_RDONLY_F, FILE_ID, HDFERR )
 
@@ -150,23 +150,23 @@ CONTAINS
     CALL ReadDataset1DHDF( PsiArr,      '/psi',   FILE_ID )
     CALL ReadDataset1DHDF( AlphaArr,    '/alpha', FILE_ID )
     CALL ReadDataset1DHDF( X1Arr,       '/r',     FILE_ID )
-    CALL ReadDataset1DHDF( PressureArr, '/p',     FILE_ID )
+    CALL ReadDataset1DHDF( PressureArr, '/pres',  FILE_ID )
     CALL ReadDataset1DHDF( DensityArr,  '/rho',   FILE_ID )
-    CALL ReadDataset1DHDF( V3Arr,       '/omega', FILE_ID )
+    CALL ReadDataset1DHDF( V3Arr,       '/V3',    FILE_ID )
 
     X1Arr       = X1Arr       * Centimeter
     DensityArr  = DensityArr  * ( Gram / Centimeter**3 )
     PressureArr = PressureArr * ( Erg  / Centimeter**3 )
     V3Arr       = V3Arr       * ( One  / Second )
 
-    PRINT*, "First: ", DensityArr(1) / ( Gram / Centimeter**3 )
-    PRINT*, "Last: ", DensityArr(nX) / ( Gram / Centimeter**3 )
+    !PRINT*, "First: ", DensityArr(1) / ( Gram / Centimeter**3 )
+    !PRINT*, "Last: ", DensityArr(nX) / ( Gram / Centimeter**3 )
 
     ! --- Map to 3D domain ---
 
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
 
       DO iNodeX = 1, nDOFX
 
@@ -180,7 +180,7 @@ CONTAINS
 
         ! --- Geometry Fields ---
 
-        PRINT*, 'Interpolating geometry fields.'
+        !PRINT*, 'Interpolating geometry fields.'
 
         uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha) &
           = Interpolate1D( X1Arr, AlphaArr, SIZE( X1Arr ), X1 )
@@ -203,19 +203,19 @@ CONTAINS
 
         ! --- Fluid Fields ---
 
-        PRINT*, 'Interpolating fluid fields.'
-        PRINT*, 'Density.'
+        !PRINT*, 'Interpolating fluid fields.'
+        !PRINT*, 'Density.'
 
         uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
           = Interpolate1D( X1Arr, DensityArr, SIZE( X1Arr ), X1 )
 
-        PRINT*, 'Velocity.'
+        !PRINT*, 'Velocity.'
         uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = Zero
         uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
           = Interpolate1D( X1Arr, V3Arr, SIZE( X1Arr ), X1 )
 
-        PRINT*, 'Internal energy density.'
+        !PRINT*, 'Internal energy density.'
         uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
           = Interpolate1D( X1Arr, PressureArr, SIZE( X1Arr ), X1 ) &
             / ( Gamma_IDEAL - One )
@@ -240,24 +240,6 @@ CONTAINS
 
     END DO
     END DO
-    END DO
-
-    ! --- Apply homogeneous boundary conditions to geometry fields (X1) ---
-
-    DO iGF = 1, nGF
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = 1, swX(1)
-
-        uGF(:,iX_B0(1)-iX1,iX2,iX3,iGF) &
-          = uGF(:,iX_B0(1),iX2,iX3,iGF)
-
-        uGF(:,iX_E0(1)+iX1,iX2,iX3,iGF) &
-          = uGF(:,iX_E0(1),iX2,iX3,iGF)
-
-      END DO
-      END DO
-      END DO
     END DO
 
     DEALLOCATE( X1Arr, PsiArr, AlphaArr, DensityArr, V3Arr, PressureArr )
@@ -295,7 +277,7 @@ CONTAINS
 
     i = Locate( xq, x, n )
 
-    PRINT*, 'i: ', i
+    !PRINT*, 'i: ', i
 
     IF( i == 0 )THEN
 
@@ -304,10 +286,10 @@ CONTAINS
       Interpolate1D &
         = Interpolate1D_Linear( xq, x(1), x(2), y(1), y(2) )
 
-      PRINT*, 'x(1): ', x(1)
-      PRINT*, 'x(2): ', x(2)
-      PRINT*, 'y(1): ', y(1)
-      PRINT*, 'y(2): ', y(2)
+      !PRINT*, 'x(1): ', x(1)
+      !PRINT*, 'x(2): ', x(2)
+      !PRINT*, 'y(1): ', y(1)
+      !PRINT*, 'y(2): ', y(2)
 
     ELSE IF( i == n )THEN
 
@@ -316,10 +298,10 @@ CONTAINS
       Interpolate1D &
         = Interpolate1D_Linear( xq, x(n-1), x(n), y(n-1), y(n) )
 
-      PRINT*, 'x(n-1): ', x(n-1)
-      PRINT*, 'x(n): ',   x(n)
-      PRINT*, 'y(n-1): ', y(n-1)
-      PRINT*, 'y(n): ',   y(n)
+      !PRINT*, 'x(n-1): ', x(n-1)
+      !PRINT*, 'x(n): ',   x(n)
+      !PRINT*, 'y(n-1): ', y(n-1)
+      !PRINT*, 'y(n): ',   y(n)
 
 
     ELSE
@@ -327,10 +309,10 @@ CONTAINS
       Interpolate1D &
         = Interpolate1D_Linear( xq, x(i), x(i+1), y(i), y(i+1) )
 
-      PRINT*, 'x(i): ', x(i)
-      PRINT*, 'x(i+1): ', x(i+1)
-      PRINT*, 'y(i): ', y(i)
-      PRINT*, 'y(i+1): ', y(i+1)
+      !PRINT*, 'x(i): ', x(i)
+      !PRINT*, 'x(i+1): ', x(i+1)
+      !PRINT*, 'y(i): ', y(i)
+      !PRINT*, 'y(i+1): ', y(i+1)
 
     END IF
 
