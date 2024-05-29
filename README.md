@@ -116,8 +116,9 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 # Activities, progress, and results
 ## May 28-29 2024
 1. Got 32 node on Borealis and did successfully run FlashX/Thornado sineWaveStreaming case with 256 cpu-core-and-gpu-tiles. Here is the scaling data of the case:
-| #nodes |	# rank |	rate	|total time	|total time in seconds|		parallel efficiency %|	evolution time in seconds|	ratio|	parallel efficiency %	|rt-imex time in seconds|	ratio|	parallel efficiency %|
-| :----: |:----: |:----: |:----: |    :----: |     :----: |           :----: |                                       :----: |:----: |:----: |              :----: |                        :----: |:----: |
+
+|#nodes|#rank |ratio|total time|total time in seconds|ratio|parallel efficiency %|	evolution time in seconds|ratio|parallel efficiency %|rt-imex time in seconds|ratio|parallel efficiency %|
+| :----: |:----: |:----: |:----: |    :----: |     :----: |           :----: |   :----: |  :----:       |:----: |            :----: |        :----: |:----: |
 |1	|4	|1	    |642m14.700s	|38534.7	|1	            |100	        |38434.094	|1          	|100	        |21214.033	|1	            |100 |
 |1	|8	|2	    |331m43.191s	|19903.191	|1.936106627	|96.80533137	|19829.96	|1.938183133	|96.90915665	|10898.392	|1.946528717	|97.32643586|
 |2	|16	|4	    |169m28.836s	|10168.836	|3.789489771	|94.73724426	|10115.033	|3.799700307	|94.99250769	|5512.042	|3.84867042	    |96.2167605|
