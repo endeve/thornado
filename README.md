@@ -58,7 +58,7 @@ More information on the external packages, please visit: https://gitlab.devtools
 **get on borealis** ssh borealis-uan1.hpe.jf.intel.com
 **profile mpi** by `export LD_PRELOAD=/home/revans/perftools/lib/libmpiP.so`
 **pbs reserve a node starting 07:34 for 8 hours** psb_rsub -R 0734 -D 08:00:00
-**pbs get on the reserved node**  qsub -q <Reservation ID> -I -l walltime=09:00:00
+**pbs get on the reserved node**  qsub -q <Reservation ID> -I -l nodes=2 -l walltime=09:00:00
 **To git clone weaklib tables from ORNL, we need** `export https_proxy=http://proxy-us.intel.com:912`    (error: SSL certificate problem: self signed certificate in certificate chain) 
 **pip install need proxy pip install --proxy=http://proxy-us.intel.com:912    numpy***
 **display GPU serial and rev. number** `sudo /sbin/lspci |grep -i Display`    
@@ -114,6 +114,49 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## May 28-29 2024
+1. Got 32 node on Borealis and did successfully run FlashX/Thornado sineWaveStreaming case with 256 cpu-core-and-gpu-tiles. Here is the scaling data of the case:
+| #nodes |	# rank |	rate	|total time	|total time in seconds|		parallel efficiency %|	evolution time in seconds|	ratio|	parallel efficiency %	|rt-imex time in seconds|	ratio|	parallel efficiency %|
+| :----: |:----: |:----: |:----: |    :----: |     :----: |           :----: |                                       :----: |:----: |:----: |              :----: |                        :----: |:----: |
+|1	|4	|1	    |642m14.700s	|38534.7	|1	            |100	        |38434.094	|1          	|100	        |21214.033	|1	            |100 |
+|1	|8	|2	    |331m43.191s	|19903.191	|1.936106627	|96.80533137	|19829.96	|1.938183133	|96.90915665	|10898.392	|1.946528717	|97.32643586|
+|2	|16	|4	    |169m28.836s	|10168.836	|3.789489771	|94.73724426	|10115.033	|3.799700307	|94.99250769	|5512.042	|3.84867042	    |96.2167605|
+|4	|32	|8	    |86m17.519s	    |5176.519	|7.44413379	    |93.05167237	|5124.984	|7.499358827	|93.74198534	|2780.055	|7.630796153	|95.38495192|
+|8	|64	|16	    |44m15.184s	    |2655.184	|14.5130055	    |90.70628439	|2602.639	|14.76735498	|92.29596863	|1381.134	|15.35986588	|95.99916174|
+|16	|128	|32	|23m36.690s	    |1416.69	|27.2005167	    |85.00161468	|1337.929	|28.72655724	|89.77049137	|689.288	|30.77673338	|96.17729182|
+|32	|256	|64	|13min19.131s	|799.131	|48.22075479	|75.34492937	|723.53	    |53.12024933	|83.00038958	|374.222	|56.68836413	|88.57556895|
+
+## May 26 2024
+1. Got on Borealis and tried to run Flashx/Thornado with 256 mpi ranks, but got 
+```
+Abort(15): Fatal error in internal_Init_thread: Other MPI error
+Abort(15): Fatal error in internal_Init_thread: Other MPI error
+Abort(15): Fatal error in internal_Init_thread: Other MPI error
+x1001c7s3b0n0.hostmgmt2001.cm.jf.intel.com: rank 110 exited with code 15
+x1001c7s3b0n0.hostmgmt2001.cm.jf.intel.com: rank 104 died from signal 15
+```
+Having or not having export FI_PROVIDER=sockets does not help. both get the similar mpi errors. 
+## May 22-23 2024
+1. Got a reproducer with 35+ source files and filed a jira for inifinities starting from 0423 nightly. https://jira.devtools.intel.com/browse/CMPLRLLVM-58740
+2. Run tests suggested by Lorri, and the runs indicate: 1) Optimization level does have effects on the simulation results. for -O0, and -O1, all the nightlies produces Good results, while for -O2, we got Bad results for all the compilers. 2) AOT and JIT seem not affecting the simulations. 2) -check uninit seems not working. Reported all these to the JIRA and Lorri. 
+
+## May 20-21 2024
+1. Created a repository for the reducing Thornado to replicate the inifinities appearing from nightly 0423. The address of the repo is: /nfs/site/home/quanshao/git-repo/thornado-infinities.git
+2. /opt is full and as a result the newest nightlied did not get populated to pvc04, so pruned the nightlies and installed nightly 0422 and 0423 and umd895.
+3. Continue to reduce the number of file and simplify the content of each remaining neccessarily needed source files. 
+## May 16-17 2024
+1. Tried to run FlashX 8x8x8-100x1600x800-16x16x16-500 case on Borealis, but got ping failure this morning on several nodes such as  x1002c2s4b0n0 and x1001c7s3b0n0 when I run my mpi jobs even I am on the node
+. Reported to System Usage and Health channel.
+2. Continuing reducing number of files and also the content of source files. 
+3. Tried current reproducer on pvc19, and saw the exactly same issue as the one on pvc04 (05-17-2024, 03:45pm)
+## May 14-15 2024
+1. Re-reduce Thornado package to reproduce infinities
+2. Running Flashx with nxb=8, nyb=8, nzb=8, and maxblocks=5000, and xmax=100, ymax=1600, zmax=800, and nblockx=16, nblocky=16, nblockz=8 on borealis. Serial run / 1 mpi rank run fails due to cannot find another block with (maxblocks=500). But with 16/8/4 mpi ranks, the case rans. 8 and 4 mpi ranks run has been cancel due to cluster time limitation. Currently 16 mpi ranks are running. 
+3. /localdisk/quanshao/sandbox/thornado-infinities/ buildRunLocal.sh
+
+## May 13 2024
+1. Redued too much so that the extracted files does not reproduce the original mapping issue on dU_R, but on U_R. Need redo the work from 22 and 11 files in the Thornado package. What a life. 
+
 ## May 10 2024
 1. Move related file to /localdisk/quanshao/sandbox/AlphaInfinity and see whether these file can reproduce the issue:
    - ApplicationDriver.F90
@@ -4490,7 +4533,7 @@ From the following figures, we can see that compiler currently cannot perform lo
  ![result-removedTempArrayinShiftRHS_FP-2022-09-21](./pics-readme/result-removedTempArrayinShiftRHS_FP-2022-09-21.png "CPU and GPU resluts agreed with new ShiftRHS_FP by removing the private arrays")
 
 2. With the above fix and the fixes in weaklib, the relaxation code is running and compared well with the cpu runs. Here shows  the comparison for xN=8 runs.
-
+fgg
  ![relaxation-GPU-CPU-agreed-2022-09-21](./pics-readme/relaxation-GPU-CPU-agreed-2022-09-21.png "Relaxation case CPU and GPU results agreed" )
 
 3. Push the code to intel github as ms68-daily 
