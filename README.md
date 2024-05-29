@@ -115,7 +115,7 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 
 # Activities, progress, and results
 ## May 28-29 2024
-1. Got 32 node on Borealis and did successfully run FlashX/Thornado sineWaveStreaming case with 256 cpu-core-and-gpu-tiles. Here is the scaling data of the case:
+1. Got 32 nodes on Borealis and did successfully run FlashX/Thornado sineWaveStreaming case with 256 cpu-core-and-gpu-tiles. Here is the scaling data of the case:
 
 |#nodes|#rank |ratio|total time|total time in seconds|ratio|parallel efficiency %|	evolution time in seconds|ratio|parallel efficiency %|rt-imex time in seconds|ratio|parallel efficiency %|
 | :----: |:----: |:----: |:----: |    :----: |     :----: |           :----: |   :----: |  :----:       |:----: |            :----: |        :----: |:----: |
