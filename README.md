@@ -48,6 +48,7 @@ More information on the external packages, please visit: https://gitlab.devtools
 **check GPU speed:**                     `sudo /opt/scripts/check_speed.sh`
 **get default /opt/exaperf/modulefiles** `/opt/scripts/update_nightly.sh`    
 **remove nightlies and agamas** ` sudo /shared/maint/tools/prune_nightly.py`
+**reboot machine** `sudo /shared/maint/tools/powercycle_node.sh exaperf-sdpcloud-pvc04`
 **ortce** ortce-skl.jf.intel.com/
 **DUT** srun -p FM-QZ1J-ICX-PVC -t 1:00:00 --pty /bin/bash
 **get on a node on JLSE:**  `qsub -n 1 -t 300 -q arcticus -I`       
@@ -71,7 +72,7 @@ More information on the external packages, please visit: https://gitlab.devtools
 **emon edp work** source /opt/intel/sep/sep_vars.sh
 ` gdb-oneapi -q -ex "b 34" -ex "run" -ex "info devices" --args ./a.out`
 `ZET_ENABLE_PROGRAM_DEBUGGING=1 IGC_StackOverflowDetection=1 gdb-oneapi -q   ./flashx`
-
+**Borealis node issue** x1001c2s3b0n0-> no standarded PVC version. 
 **Python virtual enviroment**
 - install python3 : sudo -E apt-get update; sudo -E apt-get upgrade; sudo -E apt-get install python3; sudo -E apt-get install python3-pip python3-dev virtualenv
 - create a virtual environment: python3 -m venv .venv
@@ -114,6 +115,94 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## June 10 2024
+1. As the runs using multiple CCSs are not stable, either hanging or ping failing, Marcus and Carlos suggested to test on our pvc machines. It was also suggested that memory pool settting may crash machine or lead to catastrophic failure. So run the case with out memory pool setting on pvc, and the run was successful. 
+2. Starting to see memory pool effects on the run. 
+3. The study of memory pool effects on Flashx performance seems to be very difficult as the hangs rate is about 50+% for most of the runs using 4 CCSs/stack on PVC04  (8 mpi ranks):
+```    
+mem pool setting      hang rate
+4,32,128                     1/5
+8,32,256                     3/5
+16, 32,512                  2/4
+8,64,512                     4/4    
+```
+4. Here is the memory pool effects on Flashx performance:
+```
+		nomem	4_32-128	8_32-256	16_32-512	8_64-512
+rt_imex average		451.527	1046.405	423.095	423.569	NA
+rt_imex min		422.802	962.66	396.464	393.641	NA
+rt_imex max		469.863	1121.189	436.216	439.887	NA
+real time		13m50.918s	25m4.284s	12m57.681s	12m59.048s	NA
+hang rate		0/1	5-Jan	5-Mar	4-Feb	4-Apr
+    
+```    
+## June 06-07 2024
+1. Run Run FlashX/Thornado on Borealis using ZEX_NUMBER_OF_CCS: 0:2,1:2,2:2,3:2,4:2,5:2 with 64 mpi ranks on 4 nodes. but got hangs.
+2. with NCCS=4, FlashX/Thornado run gets "ping failed on x1002c0s1b0n0: No reply from x1002c3s5b0n0.hostmgmt2002.cm.jf.intel.com after 108s"
+## June 05 2024
+1. Run FlashX/Thornado on Borealis using ZEX_NUMBER_OF_CCS: 0:2,1:2,2:2,3:2,4:2,5:2 with 32 mpi ranks on 2 nodes. but got 
+```
+ping failed on x1001c1s2b0n0: No reply from x1001c1s6b0n0.hostmgmt2001.cm.jf.intel.com after 108s
+```
+2. Also got 
+```
+[I am rank 29 on x1001c2s3b0n0] Localrank=13, Affinity mask = 0.1, Core affinity =  57, Mem node = 0
+Abort(15): Fatal error in internal_Init_thread: Other MPI error
+Abort(15): Fatal error in internal_Init_thread: Other MPI error
+Abort(15): Fatal error in internal_Init_thread: Other MPI error
+x1001c2s3b0n0.hostmgmt2001.cm.jf.intel.com: rank 22 exited with code 15
+x1001c2s3b0n0.hostmgmt2001.cm.jf.intel.com: rank 16 died from signal 15
+```
+3. Got mpi error on Borealis, but the real reason is the GPU numeration error:
+```
+quanshao@x1001c2s3b0n0:~/ExaStar/Flash-X/32rnks> sycl-ls
+[opencl:cpu:0] Intel(R) OpenCL, Intel(R) Xeon(R) CPU Max 9470C OpenCL 3.0 (Build 0) [2023.17.11.0.30_160000.prerelease]    
+```
+suppose to see
+```
+quanshao@x1001c4s0b0n0:~> sycl-ls
+[opencl:cpu:0] Intel(R) OpenCL, Intel(R) Xeon(R) CPU Max 9470C OpenCL 3.0 (Build 0) [2023.17.11.0.30_160000.prerelease]
+[opencl:gpu:1] Intel(R) OpenCL Graphics, Intel(R) Data Center GPU Max 1550 OpenCL 3.0 NEO  [23.30.26918.50]
+[opencl:gpu:2] Intel(R) OpenCL Graphics, Intel(R) Data Center GPU Max 1550 OpenCL 3.0 NEO  [23.30.26918.50]
+[opencl:gpu:3] Intel(R) OpenCL Graphics, Intel(R) Data Center GPU Max 1550 OpenCL 3.0 NEO  [23.30.26918.50]
+[opencl:gpu:4] Intel(R) OpenCL Graphics, Intel(R) Data Center GPU Max 1550 OpenCL 3.0 NEO  [23.30.26918.50]
+[opencl:gpu:5] Intel(R) OpenCL Graphics, Intel(R) Data Center GPU Max 1550 OpenCL 3.0 NEO  [23.30.26918.50]
+[opencl:gpu:6] Intel(R) OpenCL Graphics, Intel(R) Data Center GPU Max 1550 OpenCL 3.0 NEO  [23.30.26918.50]
+[opencl:gpu:7] Intel(R) OpenCL Graphics, Intel(R) Data Center GPU Max 1550 OpenCL 3.0 NEO  [23.30.26918.50]
+[opencl:gpu:8] Intel(R) OpenCL Graphics, Intel(R) Data Center GPU Max 1550 OpenCL 3.0 NEO  [23.30.26918.50]
+[opencl:gpu:9] Intel(R) OpenCL Graphics, Intel(R) Data Center GPU Max 1550 OpenCL 3.0 NEO  [23.30.26918.50]
+[opencl:gpu:10] Intel(R) OpenCL Graphics, Intel(R) Data Center GPU Max 1550 OpenCL 3.0 NEO  [23.30.26918.50]
+[opencl:gpu:11] Intel(R) OpenCL Graphics, Intel(R) Data Center GPU Max 1550 OpenCL 3.0 NEO  [23.30.26918.50]
+[opencl:gpu:12] Intel(R) OpenCL Graphics, Intel(R) Data Center GPU Max 1550 OpenCL 3.0 NEO  [23.30.26918.50]
+[ext_oneapi_level_zero:gpu:0] Intel(R) Level-Zero, Intel(R) Data Center GPU Max 1550 1.3 [1.3.26918]
+[ext_oneapi_level_zero:gpu:1] Intel(R) Level-Zero, Intel(R) Data Center GPU Max 1550 1.3 [1.3.26918]
+[ext_oneapi_level_zero:gpu:2] Intel(R) Level-Zero, Intel(R) Data Center GPU Max 1550 1.3 [1.3.26918]
+[ext_oneapi_level_zero:gpu:3] Intel(R) Level-Zero, Intel(R) Data Center GPU Max 1550 1.3 [1.3.26918]
+[ext_oneapi_level_zero:gpu:4] Intel(R) Level-Zero, Intel(R) Data Center GPU Max 1550 1.3 [1.3.26918]
+[ext_oneapi_level_zero:gpu:5] Intel(R) Level-Zero, Intel(R) Data Center GPU Max 1550 1.3 [1.3.26918]
+[ext_oneapi_level_zero:gpu:6] Intel(R) Level-Zero, Intel(R) Data Center GPU Max 1550 1.3 [1.3.26918]
+[ext_oneapi_level_zero:gpu:7] Intel(R) Level-Zero, Intel(R) Data Center GPU Max 1550 1.3 [1.3.26918]
+[ext_oneapi_level_zero:gpu:8] Intel(R) Level-Zero, Intel(R) Data Center GPU Max 1550 1.3 [1.3.26918]
+[ext_oneapi_level_zero:gpu:9] Intel(R) Level-Zero, Intel(R) Data Center GPU Max 1550 1.3 [1.3.26918]
+[ext_oneapi_level_zero:gpu:10] Intel(R) Level-Zero, Intel(R) Data Center GPU Max 1550 1.3 [1.3.26918]
+[ext_oneapi_level_zero:gpu:11] Intel(R) Level-Zero, Intel(R) Data Center GPU Max 1550 1.3 [1.3.26918]    
+```    
+## June 04 2024
+1. Changed the buildRun script to use export A21_SDK_MKLROOT_OVERRIDE=/exaperf/nightly/mkl-cev_nightly/2024.06.02, so the ifx nightly can be tested. 
+2. The SineWaveStreaming 16x16x16 still gets NaNs for nightly 2024.06.03.
+## June 03 2024
+1. Learning HPL and the reframe of HPL
+2. Learnt running apps with ZEX_NUMBER_OF_CCS=0:4, and will give it a try tomorrow. 
+## May 30-31 2024
+1. SineWaveStreaming 16x16x16 still gets NaNs with nightly 0530,  Intel(R) Fortran 25.0-1051.
+2. reframe of Thornado not working
+  - oneapi/eng-compiler/2023.10.15.002 is the default, but it is not complete and when loading it there are errors like: 'ERROR: Unable to locate a modulefile for 'spack/linux-opensuse_leap15-x86_64'
+  ERROR: Requirement 'spack/linux-opensuse_leap15-x86_64' is not loaded'
+  - Try to make it work. 1) by adding 'local=True' and using nightly-mkl-cev_nightly/2024.04.26, and module swap -f nightly-compiler/2024.04.22. 
+  - Also needs 'MPIR_CVAR_ENABLE_GPU'     : r'0'
+3. Reframe with Thornado does not compile with oneapi/eng-compiler/2023.12.15.002 and oneapi/eng-compiler/2024.04.15.002  
+
+4. Learning HPL software
 ## May 28-29 2024
 1. Got 32 nodes on Borealis and did successfully run FlashX/Thornado sineWaveStreaming case with 256 cpu-core-and-gpu-tiles. Here is the scaling data of the case:
 
@@ -126,7 +215,18 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 |8	|64	|16	    |44m15.184s	    |2655.184	|14.5130055	    |90.70628439	|2602.639	|14.76735498	|92.29596863	|1381.134	|15.35986588	|95.99916174|
 |16	|128	|32	|23m36.690s	    |1416.69	|27.2005167	    |85.00161468	|1337.929	|28.72655724	|89.77049137	|689.288	|30.77673338	|96.17729182|
 |32	|256	|64	|13min19.131s	|799.131	|48.22075479	|75.34492937	|723.53	    |53.12024933	|83.00038958	|374.222	|56.68836413	|88.57556895|
-
+2. sineWaveStreaming 16x16x16 case still gets NaN with nightly 0528. Here is the result:
+```
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables> grep NaN *2024.05.28-umd895*
+sineWave.O3.2024.05.28-umd895-xN16:            Neutrino Lepton Number Interior.:              NaN
+sineWave.O3.2024.05.28-umd895-xN16:            Neutrino Lepton Number Off Grid.:              NaN
+sineWave.O3.2024.05.28-umd895-xN16:            Neutrino Lepton Number Change...:              NaN
+sineWave.O3.2024.05.28-umd895-xN16:            Neutrino Energy Interior........:              NaN
+sineWave.O3.2024.05.28-umd895-xN16:            Neutrino Energy Off Grid........:              NaN
+sineWave.O3.2024.05.28-umd895-xN16:            Neutrino Energy Change..........:              NaN
+sineWave.O3.2024.05.28-umd895-xN16:            Neutrino Momentum 1 Interior....:              NaN
+sineWave.O3.2024.05.28-umd895-xN16:            Neutrino Momentum 1 Off Grid....:              NaN
+```
 ## May 26 2024
 1. Got on Borealis and tried to run Flashx/Thornado with 256 mpi ranks, but got 
 ```
