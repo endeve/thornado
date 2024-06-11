@@ -135,6 +135,8 @@ mem pool setting      hang rate
 |rt_imex max|		469.863|473.662|	1121.189|	436.216|	439.887|	NA|
 |real time|		13m50.918s|	13m52.926s|25m4.284s|	12m57.681s|	12m59.048s|	NA|
 |hang rate|		0/1| 0/2|	1/5|	3/5|	2/4|	4/4|
+
+3. FlashX runs with 16 ranks with 4CCSs of each tile on PVC16 which is a 2 GPU system with non memory pool setting ( default one)
     
 ## June 06-07 2024
 1. Run Run FlashX/Thornado on Borealis using ZEX_NUMBER_OF_CCS: 0:2,1:2,2:2,3:2,4:2,5:2 with 64 mpi ranks on 4 nodes. but got hangs.
