@@ -115,7 +115,7 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
-## June 10 2024
+## June 10-11 2024
 1. As the runs using multiple CCSs are not stable, either hanging or ping failing, Marcus and Carlos suggested to test on our pvc machines. It was also suggested that memory pool settting may crash machine or lead to catastrophic failure. So run the case with out memory pool setting on pvc, and the run was successful. 
 2. Starting to see memory pool effects on the run. 
 3. The study of memory pool effects on Flashx performance seems to be very difficult as the hangs rate is about 50+% for most of the runs using 4 CCSs/stack on PVC04  (8 mpi ranks):
@@ -128,13 +128,13 @@ mem pool setting      hang rate
 ```
 4. Here is the memory pool effects on Flashx performance:
 
-|      | nomem |4_32-128|8_32-256|	16_32-512|	8_64-512|
-| :---:| :---:| :---:| :---:| :---:| :---:|    
-|rt_imex average|		451.527|	1046.405|	423.095|	423.569|	NA|
-|rt_imex min|		422.802|	962.66|	396.464|	393.641|	NA|
-|rt_imex max|		469.863|	1121.189|	436.216|	439.887|	NA|
-|real time|		13m50.918s|	25m4.284s|	12m57.681s|	12m59.048s|	NA|
-|hang rate|		0/1|	1/5|	3/5|	2/4|	4/4|
+|      | nomem|default 1_4-256 |4_32-128|8_32-256|	16_32-512|	8_64-512|
+| :---:| :---:| :---: | :---:| :---:| :---:| :---:|    
+|rt_imex average|		451.527|450.841|	1046.405|	423.095|	423.569|	NA|
+|rt_imex min|		422.802|422.993|	962.66|	396.464|	393.641|	NA|
+|rt_imex max|		469.863|473.662|	1121.189|	436.216|	439.887|	NA|
+|real time|		13m50.918s|	13m52.926s|25m4.284s|	12m57.681s|	12m59.048s|	NA|
+|hang rate|		0/1| 0/2|	1/5|	3/5|	2/4|	4/4|
     
 ## June 06-07 2024
 1. Run Run FlashX/Thornado on Borealis using ZEX_NUMBER_OF_CCS: 0:2,1:2,2:2,3:2,4:2,5:2 with 64 mpi ranks on 4 nodes. but got hangs.
