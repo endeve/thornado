@@ -127,6 +127,7 @@ mem pool setting      hang rate
 8,64,512                     4/4    
 ```
 4. Here is the memory pool effects on Flashx performance:
+
 |  aa    | nomem |4_32-128|8_32-256|	16_32-512|	8_64-512|
 | :---:| :---:| :---:| :---:| :---:| :---:|    
 |rt_imex average|		451.527|	1046.405|	423.095|	423.569|	NA|
