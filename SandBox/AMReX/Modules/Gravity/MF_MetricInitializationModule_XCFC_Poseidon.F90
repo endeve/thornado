@@ -124,7 +124,7 @@ CONTAINS
 #ifndef THORNADO_NOTRANSPORT
 
   SUBROUTINE InitializeMetric_XCFC_MF_Poseidon &
-    ( MF_uGF, MF_uCF, MF_uCR, MF_uPF, MF_uAF )
+    ( MF_uGF, MF_uCF, MF_uCR, MF_uPF, MF_uAF, TOLERANCE_Option )
 
 #else
 
