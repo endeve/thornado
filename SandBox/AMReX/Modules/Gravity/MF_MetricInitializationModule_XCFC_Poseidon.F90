@@ -129,7 +129,7 @@ CONTAINS
 #else
 
   SUBROUTINE InitializeMetric_XCFC_MF_Poseidon &
-    ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+    ( MF_uGF, MF_uCF, MF_uPF, MF_uAF, TOLERANCE_Option )
 
 #endif
 
@@ -140,6 +140,7 @@ CONTAINS
 #endif
     TYPE(amrex_multifab), INTENT(in)    :: MF_uPF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uAF(0:nLevels-1)
+    REAL(DP)            , INTENT(in), OPTIONAL :: TOLERANCE_Option
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
@@ -153,11 +154,15 @@ CONTAINS
     TYPE(amrex_multifab) :: dCF   (0:nLevels-1)
 
     LOGICAL  :: CONVERGED
+    REAL(DP) :: TOLERANCE
+    INTEGER, PARAMETER :: MAX_ITER = 100
+
     INTEGER  :: iLevel, ITER, iNX
     REAL(DP) :: MaxLF, MaxCF
 
-    REAL(DP), PARAMETER :: TOLERANCE = 1.0e-13_DP
-    INTEGER , PARAMETER :: MAX_ITER = 100
+    TOLERANCE = 1.0e-13_DP
+    IF( PRESENT( TOLERANCE_Option ) ) &
+      TOLERANCE = TOLERANCE_Option
 
     DO iLevel = 0, nLevels-1
 
