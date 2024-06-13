@@ -1,5 +1,7 @@
 MODULE MF_GravitySolutionModule_Newtonian_Poseidon
 
+  use mf_utilitiesmodule
+
   ! --- AMReX Modules ---
 
   USE amrex_multifab_module, ONLY: &
@@ -154,7 +156,7 @@ CONTAINS
              Source_PQ_xlocs              = MeshX(3) % Nodes, &
              Source_Units                 = 'G',              &
              Source_Radial_Boundary_Units = 'km',             &
-	           Newtonian_Mode_Option        = .TRUE. ,          &
+	     Newtonian_Mode_Option        = .TRUE. ,          &
              Verbose_Option               = .TRUE.,           &
              Print_Setup_Option           = .TRUE.,           &
              Print_Results_Option         = .FALSE. )
@@ -174,10 +176,10 @@ CONTAINS
     REAL(DP) :: Phi_r_outer
     INTEGER  :: iLevel
 
-    TYPE(amrex_multifab) :: MF_uGS(0:SIZE(MF_uCF)-1)
-    TYPE(amrex_multifab) :: MF_uMF(0:SIZE(MF_uGF)-1)
+    TYPE(amrex_multifab) :: MF_uGS(0:nLevels-1)
+    TYPE(amrex_multifab) :: MF_uMF(0:nLevels-1)
 
-    DO iLevel = 0, SIZE(MF_uCF)-1
+    DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
               ( MF_uMF(iLevel), MF_uCF(iLevel) % BA, &
@@ -191,6 +193,8 @@ CONTAINS
              ( MF_uCF(iLevel), nDOFX*(iCF_D-1)+1, 1, nDOFX, 0 )
 
     END DO
+
+call showvariablefrommultifab(mf_ugs,1)    
 
     CALL Poseidon_Input_Sources( MF_uGS )
 
@@ -210,7 +214,7 @@ CONTAINS
 
    CALL Poseidon_Return_Newtonian_Potential( MF_uMF )
 
-   DO iLevel = 0, SIZE(MF_uGF)-1
+   DO iLevel = 0, nLevels-1
 
      CALL MF_uGF(iLevel) % COPY &
             ( MF_uMF(iLevel), 1, nDOFX*(iGF_Phi_N-1)+1, nDOFX, 0 )
@@ -223,7 +227,11 @@ CONTAINS
 
    CALL AverageDown( MF_uGF )
 
-   CALL ApplyBoundaryConditions_Geometry_MF(MF_uGF)
+   CALL ApplyBoundaryConditions_Geometry_MF( MF_uGF )
+
+
+
+
 
 #endif
 
