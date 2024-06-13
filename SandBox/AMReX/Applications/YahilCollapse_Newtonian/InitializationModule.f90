@@ -410,7 +410,7 @@ CONTAINS
     CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCF(iLevel), -1 )
 
     CALL ApplyPositivityLimiter_Euler_MF &
-           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
+          ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
 
     CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCF(iLevel), +1 )
 
