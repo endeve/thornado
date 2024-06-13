@@ -54,6 +54,7 @@ global StopTime
 global ShowRefinement
 global RefinementLevels
 
+global MarkDensityCliff
 
 global DataDirectory
 global DataType
@@ -109,6 +110,8 @@ ShowRefinement       = False
 RefinementLocations  = []
 
 ReferenceBounce = False
+
+MarkDensityCliff = False
 
 DataDirectory = ''
 

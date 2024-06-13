@@ -228,6 +228,8 @@ def CheckForField(  Field,          \
 
     from os.path import isfile
 
+    if not DataDirectory[-1] == '/': DataDirectory += '/'
+
     Found_Flag = False
     PathToFirstField = ''
     for i in range(FileNumberArray.shape[0]):
@@ -266,3 +268,30 @@ def CleanField( Field,          \
             os.system('rm {:}'.format(FilePath))
 
     return
+
+
+
+
+
+#=============================================#
+#                                             #
+#   CleanField                                #
+#                                             #
+#=============================================#
+def CreatePlotPath( Directory,      \
+                    BaseName,       \
+                    FileNumber,     \
+                    DataType        ):
+
+    if DataType.lower() == 'amrex':
+        Path = Directory        \
+             + BaseName         \
+             + '{:}'.format( str(FileNumber).zfill(8) )
+    elif DataType.lower() == 'native':
+        Path = Directory        \
+             + BaseName[:-4]    \
+             + '_{:}'.format( str(FileNumber).zfill(6) )
+    else:
+        print("Error in CreatePlotPath. Bad DataType. Input: ",DataType)
+
+    return Path
