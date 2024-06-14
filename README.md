@@ -41,39 +41,40 @@ More information on the external packages, please visit: https://gitlab.devtools
 10. If you just srun to the node, then you may need to `unset SLURM_TASKS_PER_NODE` to run mpiexec, but If you do the srun to the node, then in another terminal ssh to it, then you shouldn't need to.    
 
 # Tricks and commands
-**sudo usermod -a -G render <username>** to make sycl-ls work
-**exaperf-sdpcloud-ats1.jf.intel.com  IP Address:**    10.165.9.163          
-**exaperf-sdpcloud-pvc09.jf.intel.com IP Address:**    10.23.153.3        pvc12: 10.23.153.76   pvc19: 10.23.153.179 
-**restart machine:**                     `sudo systemctl restart autofs`    
-**check GPU speed:**                     `sudo /opt/scripts/check_speed.sh`
-**get default /opt/exaperf/modulefiles** `/opt/scripts/update_nightly.sh`    
-**remove nightlies and agamas** ` sudo /shared/maint/tools/prune_nightly.py`
-**reboot machine** `sudo /shared/maint/tools/powercycle_node.sh exaperf-sdpcloud-pvc04`
-**ortce** ortce-skl.jf.intel.com/
-**DUT** srun -p FM-QZ1J-ICX-PVC -t 1:00:00 --pty /bin/bash
-**get on a node on JLSE:**  `qsub -n 1 -t 300 -q arcticus -I`       
-**get on a node on Sunspot** `qsub -l select=1 -l walltime=30:00 -A Aurora_deployment -q workq -I`
-**get on Aurora** qsub -I -A Aurora_deployment -l select=1,walltime=120:00 -q LustreApps
-**get on Aurora** qsub -I -A Aurora_deployment -l select=1,walltime=120:00 -q EarlyAppAccess 
-**borealis guide**  https://wiki.ith.intel.com/display/OPS/HPCM+user+guide
-**get on borealis** ssh borealis-uan1.hpe.jf.intel.com
-**profile mpi** by `export LD_PRELOAD=/home/revans/perftools/lib/libmpiP.so`
-**pbs reserve a node starting 07:34 for 8 hours** psb_rsub -R 0734 -D 08:00:00
-**pbs get on the reserved node**  qsub -q <Reservation ID> -I -l nodes=2 -l walltime=09:00:00
-**To git clone weaklib tables from ORNL, we need** `export https_proxy=http://proxy-us.intel.com:912`    (error: SSL certificate problem: self signed certificate in certificate chain) 
-**pip install need proxy pip install --proxy=http://proxy-us.intel.com:912    numpy***
-**display GPU serial and rev. number** `sudo /sbin/lspci |grep -i Display`    
-**power cycle a machine** /shared/maint/tool/powercycl_node.sh exaperf-sdpcloud-pc20
-**autoconf** module load spack autoconf
-**Working weaklib and it's tables** exaperf-sdpcloud-pvc12.jf.intel.com:/localdisk/quanshao/ExaStar/weaklib   weaklib-tables.
-**limit GPU power** `xpu-smi config -d 0 --powerlimit 500` to 50W
-**srun not work with mpi, unset SLURM_TASKS_PER_NODE** or ssh to the node. "When you srun into a system, it sets a bunch of variable behind your back" by Brian. 
-**get number cores and threads**  sudo /usr/sbin/dmidecode  -t processor | grep -E '(Core Count|Thread Count)'
-**emon edp work** source /opt/intel/sep/sep_vars.sh
-` gdb-oneapi -q -ex "b 34" -ex "run" -ex "info devices" --args ./a.out`
-`ZET_ENABLE_PROGRAM_DEBUGGING=1 IGC_StackOverflowDetection=1 gdb-oneapi -q   ./flashx`
-**Borealis node issue** x1001c2s3b0n0-> no standarded PVC version. 
-**Python virtual enviroment**
+**sudo usermod -a -G render <username>** to make sycl-ls work     
+**exaperf-sdpcloud-ats1.jf.intel.com  IP Address:**    10.165.9.163             
+**exaperf-sdpcloud-pvc09.jf.intel.com IP Address:**    10.23.153.3        pvc12: 10.23.153.76   pvc19: 10.23.153.179       
+**restart machine:**                     `sudo systemctl restart autofs`          
+**check GPU speed:**                     `sudo /opt/scripts/check_speed.sh`       
+**get default /opt/exaperf/modulefiles** `/opt/scripts/update_nightly.sh`          
+**remove nightlies and agamas** ` sudo /shared/maint/tools/prune_nightly.py`       
+**reboot machine** `sudo /shared/maint/tools/powercycle_node.sh exaperf-sdpcloud-pvc04`        
+**ortce** ortce-skl.jf.intel.com/         
+**DUT** srun -p FM-QZ1J-ICX-PVC -t 1:00:00 --pty /bin/bash       
+**get on a node on JLSE:**  `qsub -n 1 -t 300 -q arcticus -I`          
+**get on a node on Sunspot** `qsub -l select=1 -l walltime=30:00 -A Aurora_deployment -q workq -I`      
+**get on Aurora** qsub -I -A Aurora_deployment -l select=1,walltime=120:00 -q LustreApps        
+**get on Aurora** qsub -I -A Aurora_deployment -l select=1,walltime=120:00 -q EarlyAppAccess       
+**borealis guide**  https://wiki.ith.intel.com/display/OPS/HPCM+user+guide       
+**get on borealis** ssh borealis-uan1.hpe.jf.intel.com        
+**profile mpi** by `export LD_PRELOAD=/home/revans/perftools/lib/libmpiP.so`         
+**pbs reserve a node starting 07:34 for 8 hours** psb_rsub -R 0734 -D 08:00:00         
+**pbs get on the reserved node**  qsub -q <Reservation ID> -I -l nodes=2 -l walltime=09:00:00      
+**To git clone weaklib tables from ORNL, we need** `export https_proxy=http://proxy-us.intel.com:912`    (error: SSL certificate problem: self signed certificate in certificate chain)      
+**pip install need proxy pip install --proxy=http://proxy-us.intel.com:912    numpy***      
+**display GPU serial and rev. number** `sudo /sbin/lspci |grep -i Display`       
+**power cycle a machine** /shared/maint/tool/powercycl_node.sh exaperf-sdpcloud-pc20        
+**autoconf** module load spack autoconf        
+**Working weaklib and it's tables** exaperf-sdpcloud-pvc12.jf.intel.com:/localdisk/quanshao/ExaStar/weaklib   weaklib-tables.      
+**limit GPU power** `xpu-smi config -d 0 --powerlimit 500` to 50W      
+**srun not work with mpi, unset SLURM_TASKS_PER_NODE** or ssh to the node. "When you srun into a system, it sets a bunch of variable behind your back" by Brian.      
+**get number cores and threads**  sudo /usr/sbin/dmidecode  -t processor | grep -E '(Core Count|Thread Count)'     
+**emon edp work** source /opt/intel/sep/sep_vars.sh        
+` gdb-oneapi -q -ex "b 34" -ex "run" -ex "info devices" --args ./a.out`         
+`ZET_ENABLE_PROGRAM_DEBUGGING=1 IGC_StackOverflowDetection=1 gdb-oneapi -q   ./flashx`       
+**Borealis node issue** x1001c2s3b0n0-> no standarded PVC version.      some nodes only have 2 numa node available, such as x1001c3s0b0n0 
+
+**Python virtual enviroment**     
 - install python3 : sudo -E apt-get update; sudo -E apt-get upgrade; sudo -E apt-get install python3; sudo -E apt-get install python3-pip python3-dev virtualenv
 - create a virtual environment: python3 -m venv .venv
 - Activate the virtual environment: source .venv/bin/activate
@@ -115,6 +116,13 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## June 14 2024
+1. `export MPIR_CVAR_ENABLE_GPU=0` make the multinode 4CCS/stack FlashX run. 
+2. Adding `export FI_CXI_DEFAULT_CQ_SIZE=131072` resulted ping failed errors for 3 runs out  of total 4 runs. 3
+3. Run script and wrapper_gpu_numa.sh seem working now. Will test them next week.
+## June 12-13 2024
+1. Learning memory layout and optimization of CPU MAX 
+2. Run FlashX/Thornado on Borealis with memory optimization and cpu binding.
 ## June 10-11 2024
 1. As the runs using multiple CCSs are not stable, either hanging or ping failing, Marcus and Carlos suggested to test on our pvc machines. It was also suggested that memory pool settting may crash machine or lead to catastrophic failure. So run the case with out memory pool setting on pvc, and the run was successful. 
 2. Starting to see memory pool effects on the run. 
