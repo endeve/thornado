@@ -69,6 +69,7 @@ InitializationModule.o: \
   UnitsModule.o \
   QuadratureModule.o \
   PolynomialBasisModule_Lagrange.o \
+  UtilitiesModule.o \
   InitializationModule.F90
 
 TimeSteppingModule_SSPRK.o: \

@@ -57,6 +57,10 @@ PROGRAM ApplicationDriver
     InitializeMagnetofluid_SSPRK, &
     FinalizeMagnetofluid_SSPRK, &
     UpdateMagnetofluid_SSPRK
+  USE UnitsModule, ONLY: &
+    Centimeter, &
+    Millisecond, &
+    UnitsDisplay
 
   IMPLICIT NONE
 
@@ -577,6 +581,26 @@ PROGRAM ApplicationDriver
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
+    CASE( 'ShearingDisk_Unperturbed' )
+
+      ActivateUnits = .TRUE.
+
+      EvolveOnlyMagnetic = .FALSE.
+
+      UseDivergenceCleaning = .FALSE.
+      DampingParameter = 0.0_DP
+
+      Gamma = 4.0_DP / 3.0_DP
+      t_end = 10e0 * Millisecond
+      bcX = [ 0, 0, 0 ]
+
+      CoordinateSystem = 'CYLINDRICAL'
+
+      nX  = [ 128, 1, 1 ]
+      swX = [ 1, 0, 0 ]
+      xL  = [ 1.45d6 * Centimeter, -0.5d5 * Centimeter, Zero ]
+      xR  = [ 1.65d6 * Centimeter,  0.5d5 * Centimeter, TwoPi]
+
     CASE DEFAULT
 
       WRITE(*,*)
@@ -590,6 +614,7 @@ PROGRAM ApplicationDriver
       WRITE(*,'(A)')     '  Riemann1D'
       WRITE(*,'(A)')     '  MMBlastWave2D'
       WRITE(*,'(A)')     '  OrszagTang2D'
+      WRITE(*,'(A)')     '  ShearingDisk_Unperturbed'
       WRITE(*,'(A)')     'Stopping...'
       STOP
 
