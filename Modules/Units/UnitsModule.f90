@@ -81,7 +81,8 @@ MODULE UnitsModule
     DisplayLabel_EnergyDensity     = 'erg/cm^3', &
     DisplayLabel_Pressure          = 'erg/cm^3', &
     DisplayLabel_Temperature       = 'K', &
-    DisplayLabel_MagneticField     = 'Gauss'
+    DisplayLabel_MagneticField_L   = 'Gauss', &
+    DisplayLabel_MagneticField_A   = 'Gauss/cm'
 
   REAL(DP), PRIVATE, PARAMETER :: &
     DisplayUnit_Length_L          = Kilometer, &
@@ -101,7 +102,8 @@ MODULE UnitsModule
     DisplayUnit_EnergyDensity     = Erg / Centimeter**3, &
     DisplayUnit_Pressure          = Erg / Centimeter**3, &
     DisplayUnit_Temperature       = Kelvin, &
-    DisplayUnit_MagneticField     = Gauss
+    DisplayUnit_MagneticField_L   = Gauss, &
+    DisplayUnit_MagneticField_A   = Gauss / Centimeter
 
   TYPE, PRIVATE :: UnitsDisplayType
     LOGICAL  :: &
@@ -128,7 +130,9 @@ MODULE UnitsModule
       EnergyDensityLabel     = DisplayLabel_Null, &
       PressureLabel          = DisplayLabel_Null, &
       TemperatureLabel       = DisplayLabel_Null, &
-      MagneticFieldLabel     = DisplayLabel_Null
+      MagneticFieldX1Label   = DisplayLabel_Null, &
+      MagneticFieldX2Label   = DisplayLabel_Null, &
+      MagneticFieldX3Label   = DisplayLabel_Null
     REAL(DP) :: &
       LengthX1Unit          = 1.0_DP, &
       LengthX2Unit          = 1.0_DP, &
@@ -151,7 +155,9 @@ MODULE UnitsModule
       EnergyDensityUnit     = 1.0_DP, &
       PressureUnit          = 1.0_DP, &
       TemperatureUnit       = 1.0_DP, &
-      MagneticFieldUnit     = 1.0_DP
+      MagneticFieldX1Unit   = 1.0_DP, &
+      MagneticFieldX2Unit   = 1.0_DP, &
+      MagneticFieldX3Unit   = 1.0_DP
   END type UnitsDisplayType
 
   TYPE(UnitsDisplayType), PUBLIC :: UnitsDisplay
@@ -201,6 +207,10 @@ CONTAINS
         UnitsDisplay % MomentumDensityX2Label = DisplayLabel_MomentumDensity_L
         UnitsDisplay % MomentumDensityX3Label = DisplayLabel_MomentumDensity_L
 
+        UnitsDisplay % MagneticFieldX1Label = DisplayLabel_MagneticField_L
+        UnitsDisplay % MagneticFieldX2Label = DisplayLabel_MagneticField_L
+        UnitsDisplay % MagneticFieldX3Label = DisplayLabel_MagneticField_L
+
       CASE( 'CYLINDRICAL' )
 
         UnitsDisplay % LengthX1Label = DisplayLabel_Length_L
@@ -218,6 +228,10 @@ CONTAINS
         UnitsDisplay % MomentumDensityX1Label = DisplayLabel_MomentumDensity_L
         UnitsDisplay % MomentumDensityX2Label = DisplayLabel_MomentumDensity_L
         UnitsDisplay % MomentumDensityX3Label = DisplayLabel_MomentumDensity_A
+
+        UnitsDisplay % MagneticFieldX1Label = DisplayLabel_MagneticField_L
+        UnitsDisplay % MagneticFieldX2Label = DisplayLabel_MagneticField_L
+        UnitsDisplay % MagneticFieldX3Label = DisplayLabel_MagneticField_A
 
       CASE( 'SPHERICAL' )
 
@@ -237,6 +251,10 @@ CONTAINS
         UnitsDisplay % MomentumDensityX2Label = DisplayLabel_MomentumDensity_A
         UnitsDisplay % MomentumDensityX3Label = DisplayLabel_MomentumDensity_A
 
+        UnitsDisplay % MagneticFieldX1Label = DisplayLabel_MagneticField_L
+        UnitsDisplay % MagneticFieldX2Label = DisplayLabel_MagneticField_A
+        UnitsDisplay % MagneticFieldX3Label = DisplayLabel_MagneticField_A
+
       CASE DEFAULT
 
         WRITE(*,*) 'Invalid choice for coodinate system: ', &
@@ -249,7 +267,6 @@ CONTAINS
     UnitsDisplay % EnergyDensityLabel   = DisplayLabel_EnergyDensity
     UnitsDisplay % PressureLabel        = DisplayLabel_Pressure
     UnitsDisplay % TemperatureLabel     = DisplayLabel_Temperature
-    UnitsDisplay % MagneticFieldLabel   = DisplayLabel_MagneticField
 
     UnitsDisplay % TimeUnit            = DisplayUnit_Time
     UnitsDisplay % MassUnit            = DisplayUnit_Mass
@@ -276,6 +293,10 @@ CONTAINS
         UnitsDisplay % MomentumDensityX2Unit = DisplayUnit_MomentumDensity_L
         UnitsDisplay % MomentumDensityX3Unit = DisplayUnit_MomentumDensity_L
 
+        UnitsDisplay % MagneticFieldX1Unit = DisplayUnit_MagneticField_L
+        UnitsDisplay % MagneticFieldX2Unit = DisplayUnit_MagneticField_L
+        UnitsDisplay % MagneticFieldX3Unit = DisplayUnit_MagneticField_L
+
       CASE( 'CYLINDRICAL' )
 
         UnitsDisplay % LengthX1Unit = DisplayUnit_Length_L
@@ -293,6 +314,10 @@ CONTAINS
         UnitsDisplay % MomentumDensityX1Unit = DisplayUnit_MomentumDensity_L
         UnitsDisplay % MomentumDensityX2Unit = DisplayUnit_MomentumDensity_L
         UnitsDisplay % MomentumDensityX3Unit = DisplayUnit_MomentumDensity_A
+
+        UnitsDisplay % MagneticFieldX1Unit = DisplayUnit_MagneticField_L
+        UnitsDisplay % MagneticFieldX2Unit = DisplayUnit_MagneticField_L
+        UnitsDisplay % MagneticFieldX3Unit = DisplayUnit_MagneticField_A
 
       CASE( 'SPHERICAL' )
 
@@ -312,6 +337,10 @@ CONTAINS
         UnitsDisplay % MomentumDensityX2Unit = DisplayUnit_MomentumDensity_A
         UnitsDisplay % MomentumDensityX3Unit = DisplayUnit_MomentumDensity_A
 
+        UnitsDisplay % MagneticFieldX1Unit = DisplayUnit_MagneticField_L
+        UnitsDisplay % MagneticFieldX2Unit = DisplayUnit_MagneticField_A
+        UnitsDisplay % MagneticFieldX3Unit = DisplayUnit_MagneticField_A
+
       CASE DEFAULT
 
         WRITE(*,*) 'Invalid choice for coodinate system: ', &
@@ -324,7 +353,6 @@ CONTAINS
     UnitsDisplay % EnergyDensityUnit   = DisplayUnit_EnergyDensity
     UnitsDisplay % PressureUnit        = DisplayUnit_Pressure
     UnitsDisplay % TemperatureUnit     = DisplayUnit_Temperature
-    UnitsDisplay % MagneticFieldUnit   = DisplayUnit_MagneticField
 
   END SUBROUTINE ActivateUnitsDisplay
 
@@ -400,10 +428,16 @@ CONTAINS
     WRITE(*,'(A7,A29,A)') &
       '', 'Temperature Units: ', &
       TRIM( UnitsDisplay % TemperatureLabel )
-    WRITE(*,'(A7,A24,A)') &
-      '', 'Magnetic Field Units: ', &
-      TRIM( UnitsDisplay % MagneticFieldLabel )
-    WRITE(*,*)
+    WRITE(*,'(A7,A29,A)') &
+      '', 'Magnetic Field (X1) Units: ', &
+      TRIM( UnitsDisplay % MagneticFieldX1Label )
+    WRITE(*,'(A7,A29,A)') &
+      '', 'Magnetic Field (X2) Units: ', &
+      TRIM( UnitsDisplay % MagneticFieldX2Label )
+    WRITE(*,'(A7,A29,A)') &
+      '', 'Magnetic Field (X3) Units: ', &
+      TRIM( UnitsDisplay % MagneticFieldX3Label )
+   WRITE(*,*)
 
   END SUBROUTINE DescribeUnitsDisplay
 
