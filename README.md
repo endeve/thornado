@@ -116,6 +116,9 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## June 17 2024
+1. Modified buildRun.sh and wrapper_gpu_numa.sh file to run Flashx with cpu binding and multiple CCSs
+2. Launched more than 10 jobs for FlashX on Borealis, some of them got ping failure errors, and some of then hanged. But eventually all of them hangs due to system's EPO. Will try on Tuesday. 
 ## June 14 2024
 1. `export MPIR_CVAR_ENABLE_GPU=0` make the multinode 4CCS/stack FlashX run. 
 2. Adding `export FI_CXI_DEFAULT_CQ_SIZE=131072` resulted ping failed errors for 3 runs out  of total 4 runs. 3
