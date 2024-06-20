@@ -10,7 +10,8 @@ PROGRAM ApplicationDriver_Neutrinos
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_E0, iX_B1, iX_E1, &
     iE_B0, iE_E0, iE_B1, iE_E1, &
-    iZ_B0, iZ_E0, iZ_B1, iZ_E1
+    iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    nDimsX
   USE GeometryFieldsModule, ONLY: &
     uGF
   USE GeometryFieldsModuleE, ONLY: &
@@ -46,6 +47,7 @@ PROGRAM ApplicationDriver_Neutrinos
     ComputeError
   USE TwoMoment_TallyModule_OrderV, ONLY: &
     ComputeTally
+  USE TwoMoment_TimersModule_OrderV, ONLY: Timer_IMEX
 
   IMPLICIT NONE
 
@@ -85,9 +87,24 @@ PROGRAM ApplicationDriver_Neutrinos
   REAL(DP)      :: Rtol_outer, Rtol_inner
   REAL(DP)      :: wMatterRHS(5)
 
-  ProgramName = 'Relaxation'
+  INTEGER :: i, argc
+  CHARACTER(len=32) :: arg, trimmed
 
   CoordinateSystem = 'CARTESIAN'
+  ProgramName = 'Relaxation'
+
+  !! Read nX from command-line
+  argc = command_argument_count()
+  !print *, argc
+
+  DO i = 1, argc
+     CALL get_command_argument(i, arg)
+     IF (LEN_TRIM(arg) == 0) EXIT
+
+    ! WRITE (*,*) TRIM(arg)
+     trimmed = TRIM(arg)
+     READ(trimmed,"(I)") nX(i)
+  END DO
 
   EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
   OpacityTableName_AbEm = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5'
@@ -122,7 +139,8 @@ PROGRAM ApplicationDriver_Neutrinos
       nSpecies = 6
       nNodes   = 2
 
-      nX  = [ 8, 8, 8 ]
+      !nX  = [ 8, 8, 8 ]
+      nX  = [ 16, 16, 16 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
       bcX = [ 0, 0, 0 ]
@@ -142,9 +160,10 @@ PROGRAM ApplicationDriver_Neutrinos
       dt_MAX             = 1.0d+1 * Millisecond
       dt_RATE            = 1.04_DP
       iCycleD            = 1
-!!      iCycleW            = 100
-      iCycleW            = 1
+      !iCycleW            = 100
+      iCycleW            = 100
       maxCycles          = 100000
+      !maxCycles          = 10
 
       EvolveEuler                    = .FALSE.
       UseSlopeLimiter_Euler          = .FALSE.
@@ -373,6 +392,14 @@ PROGRAM ApplicationDriver_Neutrinos
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR )
 
   CALL ComputeError( t )
+
+  !! Compute Figure of Merit (FOM)
+  WRITE(*,*)
+  WRITE(*,'(A,I16)') "Grids :", nX(1)*nX(2)*nX(3)
+  WRITE(*,'(A,e14.6)') "IMEX_Time :", Timer_IMEX
+  WRITE(*,'(A,e14.6)') "FOM :", 1.0*nE*nSpecies*4*nNodes**(nDimsX+1)*nX(1)*nX(2)*nX(3)*iCycle/Timer_IMEX
+  !WRITE(*,'(A,4I6, I16, I10, e14.6)') "xxxx is :", nE,nSpecies,nNodes,(nDimsX+1),nX(1)*nX(2)*nX(3),iCycle,Timer_IMEX
+  
 
   CALL FinalizeDriver
 

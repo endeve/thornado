@@ -2,9 +2,9 @@
 ## VERY IMPORTANT: heap-arrays is needed for the large table of the app
 
 C       = mpic++ --c++11
-FORTRAN = mpifort -fPIC -fpp -xCore-AVX512  -heap-arrays 0 -fpe0
+FORTRAN =  mpifort -fc=ifx -fPIC -fpp -xCore-AVX512 #mpifort -fPIC -fpp -xCore-AVX512 #  -heap-arrays 0 -fpe0
 #-init=snan -traceback
-FLINKER = mpifort -fPIC -fpp -xCore-AVX512  -heap-arrays 0 -fpe0
+FLINKER =  mpifort -fc=ifx -fPIC -fpp -xCore-AVX512 #mpifort -fPIC -fpp -xCore-AVX512 # -heap-arrays 0 -fpe0
 #-init=snan -traceback
 # -O0 -fpe0
 
@@ -24,6 +24,8 @@ ifeq ($(USE_OMP),TRUE)
   OPENMP = -fiopenmp
 else ifeq ($(USE_OMP_OL),TRUE)
   OPENMP = -fiopenmp -fopenmp-targets=spir64_gen -Xopenmp-target-backend "-device 12.60.7"
+  #OPENMP = -fiopenmp -fopenmp-targets=spir64_gen -Xopenmp-target-backend "-device 12.60.7 -options -ze-opt-large-register-file"
+
 #PVC rev B AOT 
  #_gen -Xopenmp-target-backend "-device 12.60.7"
 #ATS AOT  

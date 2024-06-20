@@ -1,11 +1,14 @@
 MACHINE = $(THORNADO_MACHINE)
 
-OPT_LEVEL = DEBUG
+OPT_LEVEL ?= OPTIMIZE
 FLAGS     = $(FLAGS_$(OPT_LEVEL))
 
-include ./Build/Makefile_Build
+USE_GPU    ?= FALSE
+USE_OMP_OL ?= FALSE
+USE_OACC   ?= FALSE
+USE_CUBLAS ?= FALSE
+USE_ROCM   ?= FALSE
+USE_MAGMA  ?= FALSE
+USE_OMP    ?= FALSE
 
-thornado: $(thornado)
-
-clean:
-	rm -f *.o *.mod
+include ${THORNADO_DIR}/SandBox/TwoMoment_OrderV/Makefile

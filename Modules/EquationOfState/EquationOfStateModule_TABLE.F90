@@ -989,6 +989,8 @@ CONTAINS
     ( D, Ev, Ne, T, Em, Y )
 
     REAL(DP), DIMENSION(1:), INTENT(in)  :: D, Ev, Ne
+    !! Mathi: intent of the D must be inout
+    !!REAL(DP), DIMENSION(1:), INTENT(inout)  :: D
     REAL(DP), DIMENSION(1:), INTENT(out) :: T, Em, Y
 
     INTEGER :: iP, nP, Error(SIZE(D))
@@ -1002,8 +1004,8 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP MAP( to: D, Ev, Ne , D_T, T_T, Y_T, E_T) &
-    !$OMP MAP( from: T, Em, Y, Error )
+    !$OMP MAP( to: D, Ev, Ne) &
+    !$OMP MAP( from: T, Em, Y, Error ) 
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC COPYIN( D, Ev, Ne ) &
@@ -1022,16 +1024,16 @@ CONTAINS
     END DO
 
     IF ( ANY( Error > 0 ) ) THEN
+#if defined(THORNADO_OMP_OL)
+          !$OMP TARGET UPDATE FROM &
+          !$OMP ( D, Em, Y )
+#elif defined(THORNADO_OACC)
+          !$ACC UPDATE HOST &
+          !$ACC ( D, Em, Y )
+#endif
       DO iP = 1, nP
         IF ( Error(iP) > 0 ) THEN
           CALL DescribeEOSInversionError( Error(iP) )
-#if defined(THORNADO_OMP_OL)
-          !$OMP TARGET UPDATE FROM &
-          !$OMP ( D(iP), Em(iP), Y(iP) )
-#elif defined(THORNADO_OACC)
-          !$ACC UPDATE HOST &
-          !$ACC ( D(iP), Em(iP), Y(iP) )
-#endif
           D_P = D(iP)  / ( Gram / Centimeter**3 )
           E_P = Em(iP) / ( Erg / Gram )
           Y_P = Y(iP)
