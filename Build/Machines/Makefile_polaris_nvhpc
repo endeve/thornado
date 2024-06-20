@@ -1,0 +1,48 @@
+## Makefile definitions for Summit with PGI compiler
+
+
+
+#C       = mpic++ --c++11
+C       = CC --c++11
+#FORTRAN = mpif90 -Mpreprocess
+FORTRAN = ftn -Mpreprocess
+#FORTRAN = nvfortran -Mpreprocess
+#FLINKER = mpif90
+FLINKER = ftn
+#FLINKER = nvfortran
+
+DEBUG    = -g -O0 -Mbounds -Mnoopenmp -Ktrap=fp
+OPTIMIZE = -g -O2 
+
+SUFFIX_f90 =
+
+MDEFS =
+PP    = -D
+
+ifeq ($(USE_OMP),TRUE)
+  OPENMP = -mp=multicore,ompt
+else ifeq ($(USE_OMP_OL),TRUE)
+  OPENMP = -mp=gpu -gpu=cc80,ptxinfo -Minfo=accel
+endif
+
+ifeq ($(USE_OACC),TRUE)
+  OPENACC = -acc -gpu=cc80,ptxinfo -Minfo=accel
+endif
+
+INCLUDE_CUDA     = -I$(CUDA_ROOT)/include
+INCLUDE_HDF5     = -I$(HDF5_ROOT)/include/
+INCLUDE_LAPACK   = -I$(NETLIB_LAPACK_ROOT)/include
+#INCLUDE_LAPACK   = -I$(ESSL_ROOT)/include -I$(NETLIB_LAPACK_ROOT)/include
+INCLUDE_MAGMA    = -I$(MAGMA_ROOT)/include
+INCLUDE_PETSC    =
+INCLUDE_POSEIDON =
+INCLUDE_ROCM     =
+
+LIBRARIES_CUDA     = -cudalib=cusparse,cusolver,cublas #--noexecstack
+LIBRARIES_HDF5     = -L$(HDF5_ROOT)/lib -lhdf5_fortran -lhdf5 -lz
+LIBRARIES_LAPACK   = -L$(NETLIB_LAPACK_ROOT)/lib64/ -llapack -lblas
+#LIBRARIES_LAPACK   = -L$(ESSL_ROOT)/lib64 -lessl -L$(NETLIB_LAPACK_ROOT) -llapack -lblas
+LIBRARIES_MAGMA    = -L$(MAGMA_ROOT)/lib -lmagma
+LIBRARIES_PETSC    =
+LIBRARIES_POSEIDON =
+LIBRARIES_ROCM     =
