@@ -116,7 +116,9 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
-## June 17 2024
+## June 20-21 2024
+1. FlashX/Thornado SineWaveStreaming case runs on pvc16, a 2 GPUs nodes, with 2CCSs and also 4CCSs. With a total simulation time for  2CCS = 20m23.353s, 4CCS =  13m22.448s
+## June 17-18 2024
 1. Modified buildRun.sh and wrapper_gpu_numa.sh file to run Flashx with cpu binding and multiple CCSs
 2. Launched more than 10 jobs for FlashX on Borealis, some of them got ping failure errors, and some of then hanged. But eventually all of them hangs due to system's EPO. Will try on Tuesday. 
 ## June 14 2024
