@@ -73,6 +73,7 @@ More information on the external packages, please visit: https://gitlab.devtools
 ` gdb-oneapi -q -ex "b 34" -ex "run" -ex "info devices" --args ./a.out`         
 `ZET_ENABLE_PROGRAM_DEBUGGING=1 IGC_StackOverflowDetection=1 gdb-oneapi -q   ./flashx`       
 **Borealis node issue** x1001c2s3b0n0-> no standarded PVC version.      some nodes only have 2 numa node available, such as x1001c3s0b0n0 
+**Walltime** qstat -wxf JobID | grep "wall"
 
 **Python virtual enviroment**     
 - install python3 : sudo -E apt-get update; sudo -E apt-get upgrade; sudo -E apt-get install python3; sudo -E apt-get install python3-pip python3-dev virtualenv
@@ -116,6 +117,11 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## June 24-25
+1. Had FlashX/Thornado Hackthon in the morning. 
+2. Continue running the case on Borealis using multiple CCS modes
+3. It seems that using all 6 GPUs make the multi-ccs runs more successfull, i.e., less ping failed errors. Need further investigation. 
+
 ## June 20-21 2024
 1. FlashX/Thornado SineWaveStreaming case runs on pvc16, a 2 GPUs nodes, with 2CCSs and also 4CCSs. With a total simulation time for  2CCS = 20m23.353s, 4CCS =  13m22.448s
 ## June 17-18 2024
