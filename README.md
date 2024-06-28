@@ -117,6 +117,10 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## June 26-28
+1. Continue trail runs of multiple CCS on Borealis. It seems now with GPU aware MPI, multiple CCS runs seems more stable. Need more tests
+2. Preparing slide for the work of Thornado and Flash-X to be presented to Senior colleagues. 
+3. It seems that setting `export MPIR_CVAR_ENABLE_GPU=0` does not affect the simulation time in any significant way. 
 ## June 24-25
 1. Had FlashX/Thornado Hackthon in the morning. 
 2. Continue running the case on Borealis using multiple CCS modes
