@@ -117,7 +117,27 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
-## June 26-28
+## July 02 2024
+1. with 0701 nightly-compiler and nightly-mkl-cev_nightly, the small Relaxation case still gets NaNs
+2. With 0701 nightly-compiler the /localdisk/quanshao/sandbox/thornado-infinities on pvc04 still get large numbers:  alpha  5.486130440793325E+303
+3. A sweep runs of Relaxation case:
+  - 0701 NaNs  MKL 0701 UMD default
+  - 0629 NaNs  MKL 0629 UMD default
+  - 0615 NaNs  MKL 0701 UMD default
+  - 0601 NaNs  MKL 0701 UMD default
+  - 0601 Success  MKL 0701 UMD 933
+  - 0701 Success  MKL 0701 UMD 933
+
+## July 01 2024
+1. Thornado still has libsycl.so.7  version issue with nightly-compiler/2024.06.29
+2. With new mkl nightly, i.e., `module load nightly-mkl-cev_nightly/2024.06.27`, StreamingSineWave cases run fine, but the small Relaxation case get NaNs. Need further investigation. Here is the module list result: 
+```
+Currently Loaded Modulefiles:
+ 1) mpich/52.2-256/icc-sockets-gpu <aL>                3) oneapi/eng-compiler/2023.12.15.002 <aL>   5) nightly-mkl-cev_nightly/2024.06.27
+ 2) intel_compute_runtime/release/stable-736.25 <aL>   4) nightly-compiler/2024.06.29 <aL>
+```
+
+## June 26-28 2024
 1. Continue trail runs of multiple CCS on Borealis. It seems now with GPU aware MPI, multiple CCS runs seems more stable. Need more tests
 2. Preparing slide for the work of Thornado and Flash-X to be presented to Senior colleagues. 
 3. It seems that setting `export MPIR_CVAR_ENABLE_GPU=0` does not affect the simulation time in any significant way. 
