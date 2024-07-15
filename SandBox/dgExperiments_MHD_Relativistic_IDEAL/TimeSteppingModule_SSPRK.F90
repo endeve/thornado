@@ -230,36 +230,25 @@ CONTAINS
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     PROCEDURE (MagnetofluidIncrement) :: &
       ComputeIncrement_Magnetofluid
-
-    INTEGER :: iNX, iX1, iX2, iX3, iCM
     INTEGER :: iS, jS
 
     REAL(DP) :: dM_OffGrid_MHD(nCM)
 
     dM_OffGrid_MHD = Zero
 
+    U_SSPRK = Zero ! --- State
+    D_SSPRK = Zero ! --- Increment
+
     DO iS = 1, nStages_SSPRK
 
-      DO iCM = 1, nCM
-      DO iX3 = iX_B1(3), iX_E1(3)
-      DO iX2 = iX_B1(2), iX_E1(2)
-      DO iX1 = iX_B1(1), iX_E1(1)
-      DO iNX = 1, nDOFX
-
-        U_SSPRK(iNX,iX1,iX2,iX3,iCM) = U(iNX,iX1,iX2,iX3,iCM)
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
+      U_SSPRK = U
 
       DO jS = 1, iS - 1
 
         IF( a_SSPRK(iS,jS) .NE. Zero )THEN
 
           CALL AddIncrement_Magnetofluid &
-                 ( jS, One, U_SSPRK, dt * a_SSPRK(iS,jS), D_SSPRK )
+                 ( One, U_SSPRK, dt * a_SSPRK(iS,jS), D_SSPRK(:,:,:,:,:,jS) )
 
         END IF
 
@@ -273,11 +262,7 @@ CONTAINS
 
         CALL ComputeIncrement_Magnetofluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
-                 G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS), &
-                 EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic, &
-                 UseDivergenceCleaning_Option = UseDivergenceCleaning, &
-                 DampingParameter_Option = DampingParameter, &
-                 UsePowellSource_Option = UsePowellSource )
+                 G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
 
         dM_OffGrid_MHD &
           = dM_OffGrid_MHD &
@@ -289,7 +274,6 @@ CONTAINS
                       + OffGridFlux_MHD_X3_Outer &
                       - OffGridFlux_MHD_X3_Inner )
 
-
       END IF
 
     END DO
@@ -299,7 +283,7 @@ CONTAINS
       IF( w_SSPRK(iS) .NE. Zero )THEN
 
         CALL AddIncrement_Magnetofluid &
-               ( iS, One, U, dt * w_SSPRK(iS), D_SSPRK )
+               ( One, U, dt * w_SSPRK(iS), D_SSPRK(:,:,:,:,:,iS) )
 
       END IF
 
@@ -311,52 +295,48 @@ CONTAINS
   END SUBROUTINE UpdateMagnetofluid_SSPRK
 
 
-  SUBROUTINE AddIncrement_Magnetofluid( iS, alpha, U, beta, D )
+  SUBROUTINE AddIncrement_Magnetofluid( alpha, U, beta, D )
 
-    INTEGER,  INTENT(in)    :: &
-      iS
     REAL(DP), INTENT(in)    :: &
       alpha, beta
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)    :: &
-      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iNX, iX1, iX2, iX3, iCM
+    INTEGER :: iCM, iX1, iX2, iX3
 
     DO iCM = 1, nCM
-    DO iX3 = iX_B1(3), iX_E1(3)
-    DO iX2 = iX_B1(2), iX_E1(2)
-    DO iX1 = iX_B1(1), iX_E1(1)
-    DO iNX = 1, nDOFX
+      DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+          DO iX1 = iX_B0(1), iX_E0(1)
 
-      IF( EvolveOnlyMagnetic )THEN
+            IF( EvolveOnlyMagnetic )THEN
 
-        IF( iCM .LE. 6 )THEN
+               IF( iCM .LE. 6 )THEN
 
-          U(iNX,iX1,iX2,iX3,iCM) &
-            = U(iNX,iX1,iX2,iX3,iCM)
+                 U(:,iX1,iX2,iX3,iCM) &
+                   = U(:,iX1,iX2,iX3,iCM)
 
-        ELSE
+               ELSE
 
-          U(iNX,iX1,iX2,iX3,iCM) &
-            = alpha * U(iNX,iX1,iX2,iX3,iCM) &
-              + beta * D(iNX,iX1,iX2,iX3,iCM,iS)
+                 U(:,iX1,iX2,iX3,iCM) &
+                   = alpha * U(:,iX1,iX2,iX3,iCM) &
+                     + beta * D(:,iX1,iX2,iX3,iCM)
 
-        END IF
+               END IF
 
-      ELSE
+            ELSE
 
-        U(iNX,iX1,iX2,iX3,iCM) &
-          = alpha * U(iNX,iX1,iX2,iX3,iCM) &
-            + beta * D(iNX,iX1,iX2,iX3,iCM,iS)
+              U(:,iX1,iX2,iX3,iCM) &
+                = alpha * U(:,iX1,iX2,iX3,iCM) &
+                  + beta * D(:,iX1,iX2,iX3,iCM)
 
-      END IF
+            END IF
 
-    END DO
-    END DO
-    END DO
-    END DO
+          END DO
+        END DO
+      END DO
     END DO
 
   END SUBROUTINE AddIncrement_Magnetofluid
