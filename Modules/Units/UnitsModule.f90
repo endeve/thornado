@@ -82,7 +82,7 @@ MODULE UnitsModule
     DisplayLabel_Pressure          = 'erg/cm^3', &
     DisplayLabel_Temperature       = 'K', &
     DisplayLabel_MagneticField_L   = 'Gauss', &
-    DisplayLabel_MagneticField_A   = 'Gauss cm'
+    DisplayLabel_MagneticField_A   = 'Gauss/cm'
 
   REAL(DP), PRIVATE, PARAMETER :: &
     DisplayUnit_Length_L          = Kilometer, &
@@ -103,7 +103,7 @@ MODULE UnitsModule
     DisplayUnit_Pressure          = Erg / Centimeter**3, &
     DisplayUnit_Temperature       = Kelvin, &
     DisplayUnit_MagneticField_L   = Gauss, &
-    DisplayUnit_MagneticField_A   = Gauss * Centimeter
+    DisplayUnit_MagneticField_A   = Gauss / Centimeter
 
   TYPE, PRIVATE :: UnitsDisplayType
     LOGICAL  :: &

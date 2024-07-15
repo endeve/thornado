@@ -455,7 +455,7 @@ CONTAINS
 
           unitsCM(iCM_B1)  = Gauss
           unitsCM(iCM_B2)  = Gauss
-          unitsCM(iCM_B3)  = Gauss * Centimeter
+          unitsCM(iCM_B3)  = Gauss / Centimeter
 
         CASE( 'SPHERICAL' )
 
@@ -464,8 +464,8 @@ CONTAINS
           unitsCM(iCM_S3) = Gram / Centimeter / Second
 
           unitsCM(iCM_B1)  = Gauss
-          unitsCM(iCM_B2)  = Gauss * Centimeter
-          unitsCM(iCM_B3)  = Gauss * Centimeter
+          unitsCM(iCM_B2)  = Gauss / Centimeter
+          unitsCM(iCM_B3)  = Gauss / Centimeter
 
         CASE DEFAULT
 
