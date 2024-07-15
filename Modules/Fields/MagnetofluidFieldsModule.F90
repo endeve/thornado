@@ -434,14 +434,49 @@ CONTAINS
       ! --- Conserved ---
 
       unitsCM(iCM_D)   = Gram / Centimeter**3
-      unitsCM(iCM_S1)  = Gram / Centimeter**2 / Second
-      unitsCM(iCM_S2)  = Gram / Centimeter**2 / Second
-      unitsCM(iCM_S3)  = Gram / Centimeter**2 / Second
+
+      SELECT CASE( TRIM( CoordinateSystem ) )
+
+        CASE( 'CARTESIAN' )
+
+          unitsCM(iCM_S1) = Gram / Centimeter**2 / Second
+          unitsCM(iCM_S2) = Gram / Centimeter**2 / Second
+          unitsCM(iCM_S3) = Gram / Centimeter**2 / Second
+
+          unitsCM(iCM_B1)  = Gauss
+          unitsCM(iCM_B2)  = Gauss
+          unitsCM(iCM_B3)  = Gauss
+
+        CASE( 'CYLINDRICAL' )
+
+          unitsCM(iCM_S1) = Gram / Centimeter**2 / Second
+          unitsCM(iCM_S2) = Gram / Centimeter**2 / Second
+          unitsCM(iCM_S3) = Gram / Centimeter / Second
+
+          unitsCM(iCM_B1)  = Gauss
+          unitsCM(iCM_B2)  = Gauss
+          unitsCM(iCM_B3)  = Gauss * Centimeter
+
+        CASE( 'SPHERICAL' )
+
+          unitsCM(iCM_S1) = Gram / Centimeter**2 / Second
+          unitsCM(iCM_S2) = Gram / Centimeter / Second
+          unitsCM(iCM_S3) = Gram / Centimeter / Second
+
+          unitsCM(iCM_B1)  = Gauss
+          unitsCM(iCM_B2)  = Gauss * Centimeter
+          unitsCM(iCM_B3)  = Gauss * Centimeter
+
+        CASE DEFAULT
+
+          WRITE(*,*) 'Invalid choice of coordinate system: ', CoordinateSystem
+          WRITE(*,*) 'Stopping...'
+          STOP
+
+      END SELECT
+
       unitsCM(iCM_E)   = Erg / Centimeter**3
       unitsCM(iCM_Ne)  = One / Centimeter**3
-      unitsCM(iCM_B1)  = Gauss 
-      unitsCM(iCM_B2)  = Gauss
-      unitsCM(iCM_B3)  = Gauss
       unitsCM(iCM_Chi) = Gauss * Kilometer / Second
 
       ! --- Primitive ---
@@ -456,17 +491,29 @@ CONTAINS
           unitsPM(iPM_V2) = Kilometer / Second
           unitsPM(iPM_V3) = Kilometer / Second
 
+          unitsPM(iPM_B1)  = Gauss
+          unitsPM(iPM_B2)  = Gauss
+          unitsPM(iPM_B3)  = Gauss
+
         CASE( 'CYLINDRICAL' )
 
           unitsPM(iPM_V1) = Kilometer / Second
           unitsPM(iPM_V2) = Kilometer / Second
           unitsPM(iPM_V3) = One / Second
 
+          unitsPM(iPM_B1)  = Gauss
+          unitsPM(iPM_B2)  = Gauss
+          unitsPM(iPM_B3)  = Gauss * Centimeter
+
         CASE( 'SPHERICAL' )
 
           unitsPM(iPM_V1) = Kilometer / Second
           unitsPM(iPM_V2) = One / Second
           unitsPM(iPM_V3) = One / Second
+
+          unitsPM(iPM_B1)  = Gauss
+          unitsPM(iPM_B2)  = Gauss * Centimeter
+          unitsPM(iPM_B3)  = Gauss * Centimeter
 
         CASE DEFAULT
 
@@ -479,9 +526,6 @@ CONTAINS
       unitsPM(iPM_E)  = Erg / Centimeter**3
       unitsPM(iPM_Ne) = One / Centimeter**3
 
-      unitsPM(iPM_B1)  = Gauss
-      unitsPM(iPM_B2)  = Gauss
-      unitsPM(iPM_B3)  = Gauss
       unitsPM(iPM_Chi) = Gauss * Kilometer / Second
 
       ! --- Auxiliary ---
