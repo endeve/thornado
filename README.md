@@ -117,6 +117,110 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Juyl 17 2024
+1. Thornado runs with good performance with nightly-compiler/2024.07.16, neo/agama-devel-sp4/948-24.26.30049.6-948, nightly-mkl-cev_nightly/2024.07.10
+2. Removed `!$OMP DECLARE TARGET` of ComputePrimitive_TwoMoment_Scalar_Richardson in Modules/TwoMoment/OrderV/TwoMoment_UtilitiesModule.F90, and simulation time for the calculation in ComputeFromConserved_TwoMoment reduced to 0.174 seconds from 0.178 seconds with it. So leave the code alone as it might be called somewhere else. 
+
+## July 15-16 2024
+1. Thornado runs with good performance with nightly-compiler/2024.07.13, neo/agama-devel-sp4/945-24.26.30049.6-940, nightly-mkl-cev_nightly/2024.07.10
+3. Started debugging blowup of FlashX/Thornado medium case. 
+  - uPR in ComputeError_SineWaveStreaming of ./source/Simulation/SimulationMain/StreamingSineWave/Simulation_finalize.F90 are on order of e+60+. 
+  - Driver_finalizeAll.F90:  call Simulation_finalize()
+  - main.F90:  call Driver_finalizeAll ( )
+  - Driver_evolveAll.F90:subroutine Driver_evolveAll() : Driver_evolveAll.F90 -> ../source/Driver/DriverMain/Unsplit/Driver_evolveAll.F90
+  - RadTrans_OMP_OL.F90 is created from source/physics/RadTrans/RadTransMain/TwoMoment/Thornado/RadTrans.F90-mc file. So there is no softlink for this file inside StreamingSineWave compilation/run directory.                                                        
+## July 10-12 2024
+1. Thornado runs with good performance with nightly-compiler/2024.07.10, neo/agama-devel-sp4/944-24.26.30049.6-940, nightly-mkl-cev_nightly/2024.07.09
+2. Thornado runs with good performance:
+```
+cat timeFOM_2024.07.09lmkl.txt-umd941
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2024.07.09lmkl-umd941   2023.10.15.002    TimeDiff   Percentage   |   2024.07.09lmkl-umd941   2023.10.15.002    FOM-Diff   Percentage
+                     MKL Date :  2024.07.08
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     2.9632e+00          2.9053e+00       5.7889e-02     1.99%            7.1657e+06          7.3085e+06       -1.4277e+05    -1.95%
+sineWave   [16,16,16]   O3    :     1.2070e+01          1.2129e+01      -5.8220e-02    -0.48%            2.7972e+07          2.7838e+07        1.3430e+05     0.48%
+relax      [8,8,8]      O3    :     2.1362e+01          2.2466e+01      -1.1043e+00    -4.92%            3.9906e+07          3.7945e+07        1.9615e+06     5.17%
+relax      [16,16,16]   O3    :     1.5877e+02          1.6439e+02      -5.6191e+00    -3.42%            4.2956e+07          4.1488e+07        1.4683e+06     3.54%
+
+Currently Loaded Modulefiles:
+ 1) mpich/52.2-256/icc-sockets-gpu <aL>       3) nightly-compiler/2024.07.09 <aL>     5) neo/agama-devel-sp4/941-24.26.30049.6-940
+ 2) oneapi/eng-compiler/2023.12.15.002 <aL>   4) nightly-mkl-cev_nightly/2024.07.08
+```
+3. Thornado runs with neo/agama-devel-sp4/943-24.26.30049.6-940, nightly-compiler/2024.07.09, nightly-mkl-cev_nightly/2024.07.08
+## July 09 2024
+1. Modified the build and run script to display timeFOM file more neatly.
+2. Thornado runs with latest: nightly-mkl-cev_nightly/2024.07.07, nightly-compiler/2024.07.08, and neo/agama-devel-sp4/941-24.26.30049.6-940, and here is the timeFOM file:
+```
+quanshao@exaperf-sdpcloud-pvc04:/localdisk/quanshao/ExaStar/thornado/SandBox/TwoMoment_OrderV/Executables> cat timeFOM_2024.07.08lmkl.txt-umd941
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2024.07.08lmkl-umd941   2023.10.15.002    TimeDiff   Percentage   |   2024.07.08lmkl-umd941   2023.10.15.002    FOM-Diff   Percentage
+                     MKL Date :  2024.07.07
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     3.0707e+00          2.9053e+00       1.6537e-01     5.69%            6.9149e+06          7.3085e+06       -3.9360e+05    -5.39%
+sineWave   [16,16,16]   O3    :     1.2423e+01          1.2129e+01       2.9402e-01     2.42%            2.7179e+07          2.7838e+07       -6.5890e+05    -2.37%
+relax      [8,8,8]      O3    :     2.1242e+01          2.2466e+01      -1.2248e+00    -5.45%            4.0133e+07          3.7945e+07        2.1879e+06     5.77%
+relax      [16,16,16]   O3    :     1.5831e+02          1.6439e+02      -6.0729e+00    -3.69%            4.3079e+07          4.1488e+07        1.5914e+06     3.84%
+
+Currently Loaded Modulefiles:
+ 1) mpich/52.2-256/icc-sockets-gpu <aL>       3) nightly-compiler/2024.07.08 <aL>     5) neo/agama-devel-sp4/941-24.26.30049.6-940
+ 2) oneapi/eng-compiler/2023.12.15.002 <aL>   4) nightly-mkl-cev_nightly/2024.07.07
+
+ Intel(R) Fortran 25.0-1108
+```
+## July 08 2024
+1. Thornado runs fine with nightly-mkl-cev_nightly/2024.07.01, nightly-compiler/2024.07.06, and neo/agama-devel-sp4/941-24.26.30049.6-940. Here is the result:
+```
+Currently Loaded Modulefiles:
+ 1) mpich/52.2-256/icc-sockets-gpu <aL>       3) nightly-compiler/2024.07.06 <aL>     5) neo/agama-devel-sp4/941-24.26.30049.6-940
+ 2) oneapi/eng-compiler/2023.12.15.002 <aL>   4) nightly-mkl-cev_nightly/2024.07.01
+
+Key:
+<module-tag>  <aL>=auto-loaded
+ Intel(R) Fortran 25.0-1108
+
+ Performance Comparison between compiler 2024.07.06lmkl and 2023.10.15.002
+
+cat timeFOM_2024.07.06lmkl.txt-umd941
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2024.07.06lmkl-umd941   2023.10.15.002    TimeDiff   Percentage   |   2024.07.06lmkl-umd941   2023.10.15.002    FOM-Diff   Percentage
+                     MKL Date :  2024.07.01
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     3.0046e+00          2.9053e+00       9.9260e-02     3.42%            7.0670e+06          7.3085e+06       -2.4144e+05    -3.30%
+sineWave   [16,16,16]   O3    :     1.2380e+01          1.2129e+01       2.5126e-01     2.07%            2.7273e+07          2.7838e+07       -5.6500e+05    -2.03%
+relax      [8,8,8]      O3    :     2.1170e+01          2.2466e+01      -1.2969e+00    -5.77%            4.0270e+07          3.7945e+07        2.3247e+06     6.13%
+relax      [16,16,16]   O3    :     1.5826e+02          1.6439e+02      -6.1243e+00    -3.73%            4.3093e+07          4.1488e+07        1.6054e+06     3.87%
+```
+
+while Streaming Sine Wave 16x16x16 failed  with nightly-mkl-cev_nightly/2024.07.01, nightly-compiler/2024.07.06, and neo/agama-devel-sp4/936-24.22.29735.24-935. Here is the result
+
+```
+Currently Loaded Modulefiles:
+ 1) mpich/52.2-256/icc-sockets-gpu <aL>       3) nightly-compiler/2024.07.06 <aL>     5) neo/agama-devel-sp4/936-24.22.29735.24-935
+ 2) oneapi/eng-compiler/2023.12.15.002 <aL>   4) nightly-mkl-cev_nightly/2024.07.01
+ Intel(R) Fortran 25.0-1108
+
+ Performance Comparison between compiler 2024.07.06lmkl and 2023.10.15.002
+
+cat timeFOM_2024.07.06lmkl.txt-umd936
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2024.07.06lmkl-umd936   2023.10.15.002    TimeDiff   Percentage   |   2024.07.06lmkl-umd936   2023.10.15.002    FOM-Diff   Percentage
+                     MKL Date :  2024.07.01
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     3.2478e+00          2.9053e+00       3.4242e-01    11.79%            6.5379e+06          7.3085e+06       -7.7055e+05   -10.54%
+sineWave   [16,16,16]   O3    :     2.7545e+02          1.2129e+01       2.6332e+02  2171.05%            1.2258e+06          2.7838e+07       -2.6612e+07   -95.60%
+relax      [8,8,8]      O3    :     2.1185e+01          2.2466e+01      -1.2816e+00    -5.70%            4.0241e+07          3.7945e+07        2.2956e+06     6.05%
+relax      [16,16,16]   O3    :     1.5397e+02          1.6439e+02      -1.0414e+01    -6.33%            4.4293e+07          4.1488e+07        2.8059e+06     6.76% 
+```
+
+This indicates that UMD plays a role?
+
+2. It seems the infinity issue of the reproducer of  JIRA https://jira.devtools.intel.com/browse/CMPLRLLVM-58740 is gone using 3) nightly-compiler/2024.07.06   4) neo/agama-devel-sp4/941-24.26.30049.6-940. It is difficult to say the issue is fixed as initial tests show it is relatd to ifx not the runtime. (??????)
+
+## July 03 2024
+1. FlashX with Thornado get `/localdisk/quanshao/ExaStar/Flash-X/wrapper_gpu_numa.sh: line 59: 72447 Segmentation fault      (core dumped) numactl --preferred=$MY_MEM_NODE $*` using `module load nightly-mkl-cev_nightly/2024.07.01` and `module switch -f intel_compute_runtime/release/stable-736.25 neo/agama-devel-sp4/908-24.17.29377.17-907`.
+2. It does not ran with ` export A21_SDK_MKLROOT_OVERRIDE=/exaperf/nightly/mkl-cev_nightly/2024.06.26` and ` module load nightly-compiler/2024.06.20` with error of Seg fault.
+3. PVC16 turned out only have 1 GPU available. Erik will create a ticket for the issue. 
 ## July 02 2024
 1. with 0701 nightly-compiler and nightly-mkl-cev_nightly, the small Relaxation case still gets NaNs
 2. With 0701 nightly-compiler the /localdisk/quanshao/sandbox/thornado-infinities on pvc04 still get large numbers:  alpha  5.486130440793325E+303

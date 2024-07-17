@@ -22,13 +22,26 @@ function set_common(){
 
 ## for running
 
-   export MPIR_CVAR_ENABLE_GPU=0
+   export FI_PROVIDER=sockets
    export ZE_FLAT_DEVICE_HIERARCHY=COMPOSITE
+   export MPIR_CVAR_ENABLE_GPU=0
    export ZE_AFFINITY_MASK=0.0
-   #export MKL_VERBOSE=2
    export LTTNG_HOME=$EXASTAR_HOME
    mkdir -p $LTTNG_HOME
    export LD_LIBRARY_PATH=${HDF5_LIB}:$LD_LIBRARY_PATH
+   export OMP_TARGET_OFFLOAD=MANDATORY
+   export OMP_NUM_THREADS=1
+   ulimit -s unlimited
+   export LIBOMPTARGET_LEVEL_ZERO_MEMORY_POOL=device,128,64,16384
+
+#   export IGC_ShaderDumpEnable=1
+#   export IGC_ShowFullVectorsInShaderDumps=1
+   #export LIBOMPTARGET_LEVEL_ZERO_COMMAND_BATCH=copy,8
+   #export IGC_EnableZEBinary=0
+   #export IGC_ForceOCLSIMDWidth=16
+   #export LIBOMPTARGET_LEVEL_ZERO_USE_IMMEDIATE_COMMAND_LIST=0
+   #export SYCL_PI_LEVEL_ZERO_USE_IMMEDIATE_COMMANDLISTS=0
+   #export MKL_VERBOSE=2
    #export LIBOMPTARGET_PLUGIN=LEVEL0
    #export ONEAPI_DEVICE_FILTER=level_zero:gpu
    ##export LIBOMPTARGET_PLUGIN=OPENCL
@@ -36,22 +49,7 @@ function set_common(){
 #   export LIBOMPTARGET_INFO=4
    #export EnableImplicitScaling=1
    #export LIBOMPTARGET_PLUGIN_PROFILE=T
-   export OMP_TARGET_OFFLOAD=MANDATORY
-   export OMP_NUM_THREADS=1
-   ulimit -s unlimited
    #ulimit -n 20480
-   #export LIBOMPTARGET_LEVEL0_MEMORY_POOL=device,128,64,16384
-   export LIBOMPTARGET_LEVEL_ZERO_MEMORY_POOL=device,128,64,16384
-   export FI_PROVIDER=sockets
-
-#   export IGC_ShaderDumpEnable=1
-#   export IGC_ShowFullVectorsInShaderDumps=1
-
-   #export LIBOMPTARGET_LEVEL_ZERO_COMMAND_BATCH=copy,8
-   #export IGC_EnableZEBinary=0
-   #export IGC_ForceOCLSIMDWidth=16
-   #export LIBOMPTARGET_LEVEL_ZERO_USE_IMMEDIATE_COMMAND_LIST=0
-   #export SYCL_PI_LEVEL_ZERO_USE_IMMEDIATE_COMMANDLISTS=0
 }
 
 ###########################################################################################
@@ -120,7 +118,6 @@ function runApp(){
 module purge
 
 #export A21_SDK_MKLROOT_OVERRIDE=/exaperf/nightly/mkl-cev/2022.11.02 ## Latest nightly, i.e. 2022-10-06, uses this mkl
-#export A21_SDK_MKLROOT_OVERRIDE=/exaperf/nightly/mkl-cev/2023.04.19 ## Latest nightly, i.e. 2023-05-01 use this mkl 
 
 #ACTION="iprof"
 #ACTION="perf"
@@ -139,18 +136,25 @@ MKL_BASE_DATE="" ## A underline is need before the date string for clarity
 export useAGRF="TRUE"
 
 
-#COMPILER_DATE='2023.10.15.002'
-#module load oneapi/eng-compiler/${COMPILER_DATE}
-COMPILER_DATE=2024.03.17
-module load nightly-compiler/${COMPILER_DATE}
+#export A21_SDK_MKLROOT_OVERRIDE=/exaperf/nightly/mkl-cev_nightly/2024.06.02
+#COMPILER_DATE=2024.06.29
+if [[ "$1" == "22" ]];then
+    COMPILER_DATE=2024.04.22
+elif [[ "$1" == "23" ]];then
+    COMPILER_DATE=2024.04.23
+fi    
+#module load nightly-compiler/${COMPILER_DATE}
+MKL_DATE=2024.07.10
+module load nightly-mkl-cev_nightly/$MKL_DATE
+#COMPILER_DATE=2024.06.01
 #LD_LIBRARY_PATH=/exaperf/nightly/compiler/2024.03.06/linux/lib/x86_64-unknown-linux-gnu:$LD_LIBRARY_PATH
-if false; then
+if true; then
    if [[ -n $COMPILER_DATE ]]; then
       module swap -f nightly-compiler/${COMPILER_DATE}
    else
       aaa=`ml list|grep nightly-compiler`
       ddd=`echo "${aaa#*nightly-compiler/}"`
-      COMPILER_DATE=`echo  $ddd |cut -d ' ' -f1`
+      COMPILER_DATE=`echo  $ddd |cut -d ' ' -f1`lmkl
    fi
 fi
 ## choose UMDs
@@ -160,9 +164,13 @@ if true; then
 
    IGC_DRIVER="UMD"
    if [[ $IGC_DRIVER == UMD ]]; then
-
-#      UMD="neo/agama-devel-sp4/851-24.05.28454.17-849"
-      UMD="neo/agama-devel-sp4/855-24.05.28454.23-854"
+#      UMD="neo/agama-devel-sp4/933-24.22.29735.21-930"
+#      UMD="neo/agama-devel-sp4/936-24.22.29735.24-935"
+#      UMD="neo/agama-devel-sp4/941-24.26.30049.6-940"
+#      UMD="neo/agama-devel-sp4/943-24.26.30049.6-940"
+#      UMD="neo/agama-devel-sp4/944-24.26.30049.6-940"
+#      UMD="neo/agama-devel-sp4/945-24.26.30049.6-940"
+      UMD="neo/agama-devel-sp4/948-24.26.30049.6-948"
       if [[ -n $UMD ]]; then
          module switch -f intel_compute_runtime/release/stable-736.25 $UMD
          if [[ $UMD == intel_compute* ]]; then
@@ -187,7 +195,7 @@ if true; then
       ###rm -rf sdump-$umdf
       ###mkdir sdump-$umdf
       ###export IGC_DumpToCustomDir=sdump-$umdf
-      ###GRAPHICS_RT_INSTALL_DIR=/localdisk/quanshao/sandbox/drivers/devel-${umdf}
+      e##GRAPHICS_RT_INSTALL_DIR=/localdisk/quanshao/sandbox/drivers/devel-${umdf}
       umdf=75049
       GRAPHICS_RT_INSTALL_DIR=/localdisk/quanshao/sandbox/drivers/devigc-${umdf}
       ##GRAPHICS_RT_INSTALL_DIR=/localdisk/quanshao/sandbox/drivers/compigc-${umdf}
@@ -232,15 +240,15 @@ CaseNames=(SineWaveStreaming Relaxation)
 userOptions=("" "MICROPHYSICS=WEAKLIB")
 gridLines=(85 130)
 
-#grids=("[16,16,16]")
-#gridNames=("-xN16")
+grids=("[16,16,16]")
+gridNames=("-xN16")
 #grids=("[8,8,8]")
 #gridNames=("")
-#appNames=(ApplicationDriver)
-#logFiles=(sineWave)
-#CaseNames=(SineWaveStreaming)
-#userOptions=("")
-#gridLines=(85)
+appNames=(ApplicationDriver)
+logFiles=(sineWave)
+CaseNames=(SineWaveStreaming)
+userOptions=("")
+gridLines=(85)
 #appNames=(ApplicationDriver_Neutrinos)
 #logFiles=(relaxUmd847)
 #CaseNames=(Relaxation)
@@ -369,10 +377,13 @@ do
    done
 done
 done
-
+echo "  " |& tee -a $timeFOMLog
+ml list |& tee -a $timeFOMLog
+tail -n 2 $timeFOMLog |wc -c|xargs -I {} truncate $timeFOMLog -s -{}
+ifx -what bb.f90 |& tee -a $timeFOMLog
 if [[ -z $ACTION ]];then
    echo
-   echo " Performance Comparison between compiler $COMPILER_DATE and $BASE_DATE"
+   echo "Performance Comparison between compiler $COMPILER_DATE and $BASE_DATE"
    echo 
 
    echo "cat $timeFOMLog"
