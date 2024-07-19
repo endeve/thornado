@@ -48,7 +48,7 @@ TimeSteppingModule_SSPRK.o: \
   Euler_PositivityLimiterModule_Relativistic_IDEAL.o \
   TimersModule_Euler.o \
   Euler_dgDiscretizationModule.o \
-  TimeSteppingModule_SSPRK.f90
+  TimeSteppingModule_SSPRK.F90
 
 ApplicationDriver.o: \
   KindModule.o \
