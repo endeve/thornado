@@ -222,14 +222,14 @@ CONTAINS
 
 
   FUNCTION Eigenvalues_MHD &
-    ( Vi, Cs, Gmii, D, V1, V2, V3, E, Ne, &
+    ( Vi, Cs, Gmii, Shifti, D, V1, V2, V3, E, Ne, &
       B1, B2, B3, Chi, &
       Gm11, Gm22, Gm33, &
       Lapse, Shift_X1, Shift_X2, Shift_X3, &
       UseDivergenceCleaning )
 
     LOGICAL,  INTENT(in) :: UseDivergenceCleaning
-    REAL(DP), INTENT(in) :: Vi, Cs, Gmii
+    REAL(DP), INTENT(in) :: Vi, Cs, Gmii, Shifti
 
     ! --- Only needed for relativistic code ---
     REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, &
@@ -240,7 +240,7 @@ CONTAINS
     REAL(DP) :: Eigenvalues_MHD(2)
 
     Eigenvalues_MHD = Eigenvalues_MHD_Relativistic &
-                          ( Vi, Cs, Gmii, D, V1, V2, V3, E, Ne, &
+                          ( Vi, Cs, Gmii, Shifti, D, V1, V2, V3, E, Ne, &
                             B1, B2, B3, Chi, &
                             Gm11, Gm22, Gm33, &
                             Lapse, Shift_X1, Shift_X2, Shift_X3, &

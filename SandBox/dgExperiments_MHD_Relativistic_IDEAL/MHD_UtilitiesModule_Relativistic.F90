@@ -2357,6 +2357,7 @@ CONTAINS
           = Eigenvalues_MHD_Relativistic &
               ( P(iPM_V1+(iDimX-1)), Cs, &
                 G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11+(iDimX-1)), &
+                G(iNX,iX1,iX2,iX3,iGF_Beta_1+(iDimX-1)), &
                 P(iPM_D), P(iPM_V1), P(iPM_V2), P(iPM_V3), &
                 P(iPM_E), P(iPM_Ne), &
                 P(iPM_B1), P(iPM_B2), P(iPM_B3), P(iPM_Chi), &
@@ -2392,13 +2393,13 @@ CONTAINS
 
 
   FUNCTION Eigenvalues_MHD_Relativistic &
-    ( Vi, Cs, Gmii, D, V1, V2, V3, E, Ne, &
+    ( Vi, Cs, Gmii, Shifti, D, V1, V2, V3, E, Ne, &
       B1, B2, B3, Chi, Gm11, Gm22, Gm33, &
       Lapse, Shift1, Shift2, Shift3, &
       UseDivergenceCleaning )
 
     LOGICAL,  INTENT(in) :: UseDivergenceCleaning
-    REAL(DP), INTENT(in) :: Vi, Cs, Gmii, D, V1, V2, V3, E, Ne, &
+    REAL(DP), INTENT(in) :: Vi, Cs, Gmii, Shifti, D, V1, V2, V3, E, Ne, &
                             B1, B2, B3, Chi, Gm11, Gm22, Gm33, Lapse, &
                             Shift1, Shift2, Shift3
 
@@ -2497,8 +2498,8 @@ CONTAINS
                     - ( One - aSq ) * Vi**2 ) ) ) &
           / ( One - VSq * aSq )
 
-      !Eigenvalues_MHD_Relativistic(1) = 0.90_DP + 0.005_DP
-      !  = Lapse * Eigenvalues_MHD_Relativistic(1) - Shift1
+      Eigenvalues_MHD_Relativistic(1) &
+        = Lapse * Eigenvalues_MHD_Relativistic(1) - Shifti
 
       Eigenvalues_MHD_Relativistic(2) &
          = ( ( One - aSq ) * Vi &
@@ -2507,8 +2508,8 @@ CONTAINS
                     - ( One - aSq ) * Vi**2 ) ) ) &
           / ( One - VSq * aSq )
 
-      !Eigenvalues_MHD_Relativistic(2) = 0.90_DP - 0.005_DP
-      !  = Lapse * Eigenvalues_MHD_Relativistic(2) - Shift1
+      Eigenvalues_MHD_Relativistic(2) &
+        = Lapse * Eigenvalues_MHD_Relativistic(2) - Shifti
 
     END IF
 
