@@ -117,9 +117,67 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## July 18-19 2024
+
+1. Debugging
+  - ./lib/thornado/source/SandBox/Interface_FLASH/TimeSteppingModule_Flash.F90
+  - NaN was found for T1_R just before call to AddFields_Radiation( iZ_B0_SW, iZ_E0_SW, One, Half * dt, U_R,  T1_R, U_R )
+  - T1_R gets NaN after call to ComputeIncrement_TwoMoment_Explicit(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R, T1_R ), while U_R, U_F do not get NaNs
+  - working with 14 nodes now while with 16 nodes before. Run the previous case with 14 nodes.Connection to exaperf-sdpcloud-pvc04.jf.intel.com closed by remote host.
+  - NaN for dU_R afer ComputeIncrement_Divergence_X1 in ./lib/thornado/source/Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90
+  - when NumericalFlux is NaN, uCR_X1_L(iCR) = 0.54897732022751 , but uCR_X1_R(iCR) is -inf, Flux_L(iCR)=0.54897732022706, Flux_R(iCR) = inf
+  - When ANY(IEEE_IS_NAN(Flux_R)) .or. (.not.( ANY(IEEE_IS_FINITE(Flux_R))), uD_R (iZ_F)= huge number, uI1_R (iZ_F)=-inf, uI3_R (iZ_F)=nan,uI3_R (iZ_F)=huge numberi, uV1_F(iX_F)= -3.327922472030773E+070, uV2_F(iX_F)=0, uV3_F(iX_F)=0 
+  - uN_R, uG1_R, uG2_R, uG3_R are all having valid values for ComputePrimitive_TwoMoment on line 697 of ./lib/thornado/source/Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90 
+  -- ii_cc = 3 shows large values, but ii_cc = 2 does not.
+
+  - ./lib/thornado/source/SandBox/Interface_FLASH/TimeSteppingModule_Flash.F90  ./lib/thornado/source/Modules/TwoMoment/OrderV/TwoMoment_UtilitiesModule.F90 TimeAdvance.F90 Driver_evolveAll.F90
+
+2. nightly-mkl-cev_nightly/2024.07.10 does not work with nightly-compiler/2024.07.17, For thornado, it throws the following errors:
+```
+/usr/lib64/gcc/x86_64-suse-linux/7/../../../../x86_64-suse-linux/bin/ld: /exaperf/nightly/mkl-cev_nightly/2024.07.10/lib/libmkl_sycl_blas.so: undefined reference to `sycl::_V1::detail::make_context(unsigned long, std::function<void (sycl::_V1::exception_list)> const&, sycl::_V1::backend)'
+/usr/lib64/gcc/x86_64-suse-linux/7/../../../../x86_64-suse-linux/bin/ld: /exaperf/nightly/mkl-cev_nightly/2024.07.10/lib/libmkl_sycl_blas.so: undefined reference to `sycl::_V1::ext::oneapi::level_zero::make_context(std::vector<sycl::_V1::device, std::allocator<sycl::_V1::device> > const&, unsigned long, bool)'
+/usr/lib64/gcc/x86_64-suse-linux/7/../../../../x86_64-suse-linux/bin/ld: /exaperf/nightly/mkl-cev_nightly/2024.07.10/lib/libmkl_sycl_blas.so: undefined reference to `sycl::_V1::ext::oneapi::level_zero::make_queue(sycl::_V1::context const&, sycl::_V1::device const&, unsigned long, bool, bool, sycl::_V1::property_list const&)'
+/usr/lib64/gcc/x86_64-suse-linux/7/../../../../x86_64-suse-linux/bin/ld: /exaperf/nightly/mkl-cev_nightly/2024.07.10/lib/libmkl_sycl_blas.so: undefined reference to `sycl::_V1::ext::oneapi::level_zero::make_platform(unsigned long)'
+/usr/lib64/gcc/x86_64-suse-linux/7/../../../../x86_64-suse-linux/bin/ld: /exaperf/nightly/mkl-cev_nightly/2024.07.10/lib/libmkl_sycl_blas.so: undefined reference to `sycl::_V1::ext::oneapi::level_zero::make_device(sycl::_V1::platform const&, unsigned long)'
+```
+
+and Currently Loaded Modulefiles are:
+```
+1) mpich/52.2-256/icc-sockets-gpu <aL>       3) nightly-compiler/2024.07.17 <aL>     5) neo/agama-devel-sp4/948-24.26.30049.6-948
+2) oneapi/eng-compiler/2023.12.15.002 <aL>   4) nightly-mkl-cev_nightly/2024.07.10
+```
 ## Juyl 17 2024
 1. Thornado runs with good performance with nightly-compiler/2024.07.16, neo/agama-devel-sp4/948-24.26.30049.6-948, nightly-mkl-cev_nightly/2024.07.10
-2. Removed `!$OMP DECLARE TARGET` of ComputePrimitive_TwoMoment_Scalar_Richardson in Modules/TwoMoment/OrderV/TwoMoment_UtilitiesModule.F90, and simulation time for the calculation in ComputeFromConserved_TwoMoment reduced to 0.174 seconds from 0.178 seconds with it. So leave the code alone as it might be called somewhere else. 
+
+2. ` IF( ANY(IEEE_IS_NAN(U_R)) ) PRINT*, 'NaN when enter TimeStep'` compiles
+
+3. Removed `!$OMP DECLARE TARGET` of ComputePrimitive_TwoMoment_Scalar_Richardson in Modules/TwoMoment/OrderV/TwoMoment_UtilitiesModule.F90, and simulation time for the calculation in ComputeFromConserved_TwoMoment reduced to 0.174 seconds from 0.178 seconds with it. So leave the code alone as it might be called somewhere else. 
+4. CR variable has huge values even before the output of cycle, dt, dx information in ComputePrimitive_TwoMoment of TwoMoment_UtilitiesModule.F90 . Here is the code and the output:
+```
+     if(icount<10 .and. (abs(PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS))>1.0e4 .or. abs(PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS))>1.0e4 .or. &
+                          abs(PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS))>1.0e4 .or. abs(PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS))>1.0e4)) then
+                          icount = icount + 1
+        print*, CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS),CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+        CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS),  PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+        PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS),PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS),PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
+                        PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1), &
+                 PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2), &
+                 PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3)
+```
+and 
+```
+ Initial plotfile written
+ Driver init all done
+ Quan22 :           1           1           2
+  1.146094684915520E+069  1.146094684915520E+069  1.853853972488080E-018
+  1.853853972488080E-018  1.041904259014109E+069  1.041904259014109E+069
+  1.685321793170982E-018  1.685321793170982E-018  0.100000000000000
+  0.000000000000000E+000  0.000000000000000E+000
+ -3.070951452727156E+068 -3.070951452727156E+068  1.853853972487581E-018
+  1.853853972487581E-018 -2.791774047933292E+068 -2.791774047933293E+068
+  1.685321793170235E-018  1.685321793170235E-018  0.100000000000000
+  0.000000000000000E+000  0.000000000000000E+000
+```
 
 ## July 15-16 2024
 1. Thornado runs with good performance with nightly-compiler/2024.07.13, neo/agama-devel-sp4/945-24.26.30049.6-940, nightly-mkl-cev_nightly/2024.07.10
