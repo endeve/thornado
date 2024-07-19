@@ -129,18 +129,13 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: PressureArr(:), DensityArr(:), V3Arr(:), &
                              AlphaArr(:), PsiArr(:), X1Arr(:)
 
-    FileName = "/home/jbuffal/thornado_MHD_3D/Workflow/MHD/ShearingDisk/GR_norot.h5"
+    FileName = "/home/jbuffal/thornado_MHD_3D/Workflow/MHD/ShearingDisk/GR_LR_diffrot.h5"
 
     ! --- Populate arrays ---
 
     CALL H5OPEN_F( HDFERR )
 
-    !PRINT*, FileName
-    !PRINT*, TRIM( FileName )
-
     CALL H5FOPEN_F( TRIM( FileName ), H5F_ACC_RDONLY_F, FILE_ID, HDFERR )
-
-    !CALL ReadDataset1DHDF( nX, '/size', FILE_ID )
 
     nX = 10000
 
@@ -159,9 +154,6 @@ CONTAINS
     PressureArr = PressureArr * ( Erg  / Centimeter**3 )
     V3Arr       = V3Arr       * ( One  / Second )
 
-    !PRINT*, "First: ", DensityArr(1) / ( Gram / Centimeter**3 )
-    !PRINT*, "Last: ", DensityArr(nX) / ( Gram / Centimeter**3 )
-
     ! --- Map to 3D domain ---
 
     DO iX3 = iX_B1(3), iX_E1(3)
@@ -179,8 +171,6 @@ CONTAINS
         X3 = NodeCoordinate( MeshX(3), iX3, iNodeX3 )
 
         ! --- Geometry Fields ---
-
-        !PRINT*, 'Interpolating geometry fields.'
 
         uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha) &
           = Interpolate1D( X1Arr, AlphaArr, SIZE( X1Arr ), X1 )
@@ -203,19 +193,14 @@ CONTAINS
 
         ! --- Fluid Fields ---
 
-        !PRINT*, 'Interpolating fluid fields.'
-        !PRINT*, 'Density.'
-
         uPF(iNodeX,iX1,iX2,iX3,iPF_D) &
           = Interpolate1D( X1Arr, DensityArr, SIZE( X1Arr ), X1 )
 
-        !PRINT*, 'Velocity.'
         uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = Zero
         uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
           = Interpolate1D( X1Arr, V3Arr, SIZE( X1Arr ), X1 )
 
-        !PRINT*, 'Internal energy density.'
         uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
           = Interpolate1D( X1Arr, PressureArr, SIZE( X1Arr ), X1 ) &
             / ( Gamma_IDEAL - One )

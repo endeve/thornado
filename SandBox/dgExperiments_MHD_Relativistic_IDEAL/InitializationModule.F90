@@ -1740,6 +1740,7 @@ CONTAINS
     INTEGER        :: iX1, iX2, iX3, iNodeX, iNodeX1, iNodeX2, iNodeX3, &
                       jNodeX, jNodeX1, iL, nX, iGF
     REAL(DP) :: X1, X2, X3
+    REAL(DP) :: V1, V2, V3, VSq, W, CB1, CB2, CB3, VdotB
     REAL(DP), ALLOCATABLE :: PressureArr(:), DensityArr(:), V3Arr(:), &
                              AlphaArr(:), PsiArr(:), X1Arr(:)
 
@@ -1749,12 +1750,7 @@ CONTAINS
 
     CALL H5OPEN_F( HDFERR )
 
-    !PRINT*, FileName
-    !PRINT*, TRIM( FileName )
-
     CALL H5FOPEN_F( TRIM( FileName ), H5F_ACC_RDONLY_F, FILE_ID, HDFERR )
-
-    !CALL ReadDataset1DHDF( nX, '/size', FILE_ID )
 
     nX = 10000
 
@@ -1791,8 +1787,6 @@ CONTAINS
 
         ! --- Geometry Fields ---
 
-        !PRINT*, 'Interpolating geometry fields.'
-
         uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha) &
           = Interpolate1D( X1Arr, AlphaArr, SIZE( X1Arr ), X1 )
 
@@ -1814,29 +1808,40 @@ CONTAINS
 
         ! --- Fluid Fields ---
 
-        !PRINT*, 'Interpolating fluid fields.'
-        !PRINT*, 'Density.'
-
         uPM(iNodeX,iX1,iX2,iX3,iPM_D) &
           = Interpolate1D( X1Arr, DensityArr, SIZE( X1Arr ), X1 )
 
-        !PRINT*, 'Velocity.'
-        uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = Zero
-        uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = Zero
-        uPM(iNodeX,iX1,iX2,iX3,iPM_V3) &
-          = Interpolate1D( X1Arr, V3Arr, SIZE( X1Arr ), X1 )
+        V1 = Zero
+        V2 = Zero
+        V3 = Interpolate1D( X1Arr, V3Arr, SIZE( X1Arr ), X1 )
 
-        !PRINT*, 'Internal energy density.'
+        VSq = uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) * V1**2 &
+              + uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) * V2**2 &
+              + uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) * V3**2
+
+        W = One / SQRT( One - VSq )
+
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V1) = V1
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V2) = V2
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V3) = V3
+
         uPM(iNodeX,iX1,iX2,iX3,iPM_E) &
           = Interpolate1D( X1Arr, PressureArr, SIZE( X1Arr ), X1 ) &
             / ( Gamma_IDEAL - One )
 
-        !PRINT*, 'Co-moving magnetic field.'
-        uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = Zero
-        uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = Four * 1.0d12 * Gauss
-        uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = Zero
-!        uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = Zero
+        CB1 = Zero
+        CB2 = Zero
+        CB3 = Zero
 
+        VdotB = uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) * V1 * CB1 &
+                + uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) * V2 * CB2 &
+                + uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) * V3 * CB3
+
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B1) = W * VdotB * V1 + CB1 / W
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B2) = W * VdotB * V2 + CB2 / W
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B3) = W * VdotB * V3 + CB3 / W
+
+        uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = Zero
 
       END DO
 
