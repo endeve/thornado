@@ -59,8 +59,7 @@ MODULE TimeSteppingModule_SSPRK
       REAL(DP), INTENT(in)    :: &
         G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       REAL(DP), INTENT(inout) :: &
-        U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-      REAL(DP), INTENT(inout) :: &
+        U (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
         D (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       REAL(DP), INTENT(out)   :: &
         dU(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
@@ -230,6 +229,8 @@ CONTAINS
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     PROCEDURE (MagnetofluidIncrement) :: &
       ComputeIncrement_Magnetofluid
+
+    INTEGER :: iNX, iX1, iX2, iX3, iCM
     INTEGER :: iS, jS
 
     REAL(DP) :: dM_OffGrid_MHD(nCM)
@@ -241,14 +242,26 @@ CONTAINS
 
     DO iS = 1, nStages_SSPRK
 
-      U_SSPRK = U
+      DO iCM = 1, nCM
+      DO iX3 = iX_B1(3), iX_E1(3)
+      DO iX2 = iX_B1(2), iX_E1(2)
+      DO iX1 = iX_B1(1), iX_E1(1)
+      DO iNX = 1, nDOFX
+
+        U_SSPRK(iNX,iX1,iX2,iX3,iCM) = U(iNX,iX1,iX2,iX3,iCM)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
 
       DO jS = 1, iS - 1
 
         IF( a_SSPRK(iS,jS) .NE. Zero )THEN
 
           CALL AddIncrement_Magnetofluid &
-                 ( One, U_SSPRK, dt * a_SSPRK(iS,jS), D_SSPRK(:,:,:,:,:,jS) )
+                 ( jS, One, U_SSPRK, dt * a_SSPRK(iS,jS), D_SSPRK )
 
         END IF
 
@@ -257,8 +270,12 @@ CONTAINS
       IF( ANY( a_SSPRK(:,iS) .NE. Zero ) &
           .OR. ( w_SSPRK(iS) .NE. Zero ) )THEN
 
-        CALL ApplySlopeLimiter_MHD_Relativistic_IDEAL &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
+        IF( iS .NE. 1)THEN
+
+          CALL ApplySlopeLimiter_MHD_Relativistic_IDEAL &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
+
+        END IF
 
         CALL ComputeIncrement_Magnetofluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -283,7 +300,7 @@ CONTAINS
       IF( w_SSPRK(iS) .NE. Zero )THEN
 
         CALL AddIncrement_Magnetofluid &
-               ( One, U, dt * w_SSPRK(iS), D_SSPRK(:,:,:,:,:,iS) )
+               ( iS, One, U, dt * w_SSPRK(iS), D_SSPRK )
 
       END IF
 
@@ -295,48 +312,52 @@ CONTAINS
   END SUBROUTINE UpdateMagnetofluid_SSPRK
 
 
-  SUBROUTINE AddIncrement_Magnetofluid( alpha, U, beta, D )
+  SUBROUTINE AddIncrement_Magnetofluid( iS, alpha, U, beta, D )
 
+    INTEGER,  INTENT(in)    :: &
+      iS
     REAL(DP), INTENT(in)    :: &
       alpha, beta
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)    :: &
-      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:,1:)
 
-    INTEGER :: iCM, iX1, iX2, iX3
+    INTEGER :: iNX, iX1, iX2, iX3, iCM
 
     DO iCM = 1, nCM
-      DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-          DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iNX = 1, nDOFX
 
-            IF( EvolveOnlyMagnetic )THEN
+      IF( EvolveOnlyMagnetic )THEN
 
-               IF( iCM .LE. 6 )THEN
+        IF( iCM .LE. 6 )THEN
 
-                 U(:,iX1,iX2,iX3,iCM) &
-                   = U(:,iX1,iX2,iX3,iCM)
+          U(iNX,iX1,iX2,iX3,iCM) &
+            = U(iNX,iX1,iX2,iX3,iCM)
 
-               ELSE
+        ELSE
 
-                 U(:,iX1,iX2,iX3,iCM) &
-                   = alpha * U(:,iX1,iX2,iX3,iCM) &
-                     + beta * D(:,iX1,iX2,iX3,iCM)
+          U(iNX,iX1,iX2,iX3,iCM) &
+            = alpha * U(iNX,iX1,iX2,iX3,iCM) &
+                + beta * D(iNX,iX1,iX2,iX3,iCM,iS)
 
-               END IF
+        END IF
 
-            ELSE
+      ELSE
 
-              U(:,iX1,iX2,iX3,iCM) &
-                = alpha * U(:,iX1,iX2,iX3,iCM) &
-                  + beta * D(:,iX1,iX2,iX3,iCM)
+          U(iNX,iX1,iX2,iX3,iCM) &
+            = alpha * U(iNX,iX1,iX2,iX3,iCM) &
+                + beta * D(iNX,iX1,iX2,iX3,iCM,iS)
 
-            END IF
+      END IF
 
-          END DO
-        END DO
-      END DO
+    END DO
+    END DO
+    END DO
+    END DO
     END DO
 
   END SUBROUTINE AddIncrement_Magnetofluid
