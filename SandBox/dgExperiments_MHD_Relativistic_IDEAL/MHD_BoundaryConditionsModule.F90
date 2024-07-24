@@ -6,14 +6,22 @@ MODULE MHD_BoundaryConditionsModule
     MeshX, &
     NodeCoordinate
   USE ProgramHeaderModule, ONLY: &
+    ProgramName, &
     bcX, &
     swX, &
     nDOFX, &
-    nNodesX
+    nNodesX, &
+    nX
+  USE ReferenceElementModuleX, ONLY: &
+    NodeNumberTableX
+  USE InputOutputUtilitiesModule, ONLY: &
+    FromField3D
   USE UtilitiesModule, ONLY: &
     NodeNumberX
   USE MagnetofluidFieldsModule, ONLY: &
     nCM, &
+    namesCM, &
+    unitsCM, &
     iCM_D, &
     iCM_S1, &
     iCM_S2, &
@@ -24,6 +32,8 @@ MODULE MHD_BoundaryConditionsModule
     iCM_B2, &
     iCM_B3, &
     iCM_Chi
+
+  USE HDF5
 
   IMPLICIT NONE
   PRIVATE
@@ -40,6 +50,12 @@ MODULE MHD_BoundaryConditionsModule
   REAL(DP), PUBLIC :: ExpD
   REAL(DP), PUBLIC :: ExpE
 
+  CHARACTER(9),  PARAMETER :: &
+    OutputDirectory    = '../Output'
+  CHARACTER(18), PARAMETER :: &
+    MagnetofluidSuffix = 'MagnetofluidFields'
+  INTEGER :: FileNumber = 0
+  INTEGER :: HDFERR
 
 CONTAINS
 
@@ -101,6 +117,33 @@ CONTAINS
       iApplyBC
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    CHARACTER(6)   :: FileNumberString
+    CHARACTER(256) :: FileName
+    CHARACTER(256) :: GroupName
+    CHARACTER(256) :: DatasetName
+
+    INTEGER(HID_T) :: FILE_ID
+
+    REAL(DP) :: CD_I(1:nDOFX,1:nX(1), &
+                             1:nX(2), &
+                             1:nX(3))
+
+    REAL(DP) :: S1_I(1:nDOFX,1:nX(1), &
+                             1:nX(2), &
+                             1:nX(3))
+
+    REAL(DP) :: S2_I(1:nDOFX,1:nX(1), &
+                             1:nX(2), &
+                             1:nX(3))
+
+    REAL(DP) :: S3_I(1:nDOFX,1:nX(1), &
+                             1:nX(2), &
+                             1:nX(3))
+
+    REAL(DP) :: Dataset3D(nX(1)*nNodesX(1), &
+                          nX(2)*nNodesX(2), &
+                          nX(3)*nNodesX(3))
 
     INTEGER  :: iCM, iX1, iX2, iX3
     INTEGER  :: iNX, iNX_0
@@ -563,6 +606,122 @@ CONTAINS
               = U(iNX,iX_E0(1),iX2,iX3,iCM)
 
         END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+    CASE( 44 ) ! Custom BCs for relativistic shearing disk.
+
+        IF( ApplyOuterBC_MHD( iApplyBC ) .OR. ApplyInnerBC_MHD( iApplyBC ) )THEN
+
+          WRITE( FileNumberString, FMT='(i6.6)') FileNumber
+
+          FileName &
+            = OutputDirectory // '/' // &
+              TRIM( ProgramName ) // '_' // &
+              MagnetofluidSuffix // '_' // &
+              FileNumberString // '.h5'
+
+          CALL H5OPEN_F( HDFERR )
+
+          CALL H5FOPEN_F( TRIM( FileName ), H5F_ACC_RDONLY_F, FILE_ID, HDFERR )
+
+          GroupName = 'Magnetofluid Fields/Conserved'
+
+          DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCM(1) )
+
+          CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
+
+          CD_I(1:nDOFX,1:nX(1),1:nX(2),1:nX(3)) &
+            = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+                * unitsCM(1)
+
+          DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCM(2) )
+
+          CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
+
+          S1_I(1:nDOFX,1:nX(1),1:nX(2),1:nX(3)) &
+            = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+                * unitsCM(2)
+
+          DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCM(3) )
+
+          CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
+
+          S2_I(1:nDOFX,1:nX(1),1:nX(2),1:nX(3)) &
+            = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+                * unitsCM(3)
+
+          DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCM(4) )
+
+          CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
+
+          S3_I(1:nDOFX,1:nX(1),1:nX(2),1:nX(3)) &
+            = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+                * unitsCM(4)
+
+      END IF
+
+      ! --- Inner Boundary --
+
+      IF( ApplyOuterBC_MHD( iApplyBC ) )THEN
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX(1)
+        DO iNX = 1, nDOFX
+
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,1) &
+            = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,1) &
+              - CD_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3)
+
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,2) &
+            = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,2) &
+              - S1_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3)
+
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,3) &
+            = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,3) &
+              - S2_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3)
+
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,4) &
+            = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,4) &
+              - S3_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3)
+
+        END DO
+        END DO
+        END DO
+        END DO
+
+       END IF
+
+      ! --- Outer Boundary --
+
+      IF( ApplyOuterBC_MHD( iApplyBC ) )THEN
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX(1)
+        DO iNX = 1, nDOFX
+
+          U(iNX,iX_E0(1)+iX1,iX2,iX3,1) &
+            = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,1) &
+              - CD_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3)
+
+          U(iNX,iX_E0(1)+iX1,iX2,iX3,2) &
+            = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,2) &
+              - S1_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3)
+
+          U(iNX,iX_E0(1)+iX1,iX2,iX3,3) &
+            = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,3) &
+              - S2_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3)
+
+          U(iNX,iX_E0(1)+iX1,iX2,iX3,4) &
+            = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,4) &
+              - S3_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3)
+
         END DO
         END DO
         END DO
@@ -1035,6 +1194,26 @@ CONTAINS
     END SELECT
 
   END SUBROUTINE ApplyBC_MHD_X3
+
+
+  SUBROUTINE ReadDataset3DHDF( Dataset, DatasetName, FILE_ID )
+
+    REAL(DP),         INTENT(out) :: Dataset(:,:,:)
+    CHARACTER(LEN=*), INTENT(in)  :: DatasetName
+    INTEGER(HID_T),   INTENT(in)  :: FILE_ID
+
+    INTEGER(HID_T) :: DATASET_ID
+    INTEGER(HID_T) :: DATASIZE(3)
+
+    DATASIZE = SHAPE( Dataset )
+
+    CALL H5DOPEN_F( FILE_ID, TRIM( DatasetName ), DATASET_ID, HDFERR )
+
+    CALL H5DREAD_F( DATASET_ID, H5T_NATIVE_DOUBLE, Dataset, DATASIZE, HDFERR )
+
+    CALL H5DCLOSE_F( DATASET_ID, HDFERR )
+
+  END SUBROUTINE ReadDataset3DHDF
 
 
 END MODULE MHD_BoundaryConditionsModule
