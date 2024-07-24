@@ -117,6 +117,23 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## July 22 2024
+1. The libmkl_sycl_blas.so issue still persists with  nightly-mkl-cev_nightly/2024.07.18 and nightly-compiler/2024.07.21.
+1. The libmkl_sycl_blas.so issue still persists with  nightly-mkl-cev_nightly/2024.07.21 and nightly-compiler/2024.07.22.
+1. The libmkl_sycl_blas.so issue still persists with  nightly-mkl-cev_nightly/2024.07.22 and nightly-compiler/2024.07.23.
+2. Debugging:
+   - focusing on ./lib/thornado/source/SandBox/Interface_FLASH/TimeSteppingModule_Flash.F90 and ./lib/thornado/source/Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90
+   - ii_cc == 3, NaN appears. debug08.txt with ii_cc==2 versus debug09.txt with ii_cc==3  (seems not correct)
+   - ii_cc == 2, NumericalFlux gets Nan after line 830 of  ComputeIncrement_Divergence_X1. ii_cc==1 did not show Nans ("GGGG"): debug09.txt versus debug10.txt
+   - half of the ranks get NaNs for uI1_R. grep uIIII debug11.txt |wc -l shows 24 with 4 nodes. 
+   - now focusing on ComputePrimitive_TwoMoment. That is ComputePrimitive_TwoMoment_Vector_Richardson in ./lib/thornado/source/Modules/TwoMoment/OrderV/TwoMoment_UtilitiesModule.F90 
+   - 2-node run showed the same NaN issue, but it took 15 minutes. So stick with 4node runs
+   - U_R and U_F have large values at the beginging of the ComputeIncrement_Divergence_X1 of ./lib/thornado/source/Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90
+   - U_R has Large Value after AddFields_Radiation at line 344 of ./lib/thornado/source/SandBox/Interface_FLASH/TimeSteppingModule_Flash.F90
+   - T0_R has Large Value before AddFields_Radiation at line 344. 
+   - T0_R has large value afer first ComputeIncrement_TwoMoment_Explicit in line 305 of ./lib/thornado/source/SandBox/Interface_FLASH/TimeSteppingModule_Flash.F90; while for the small case, T0_R does not have any element which is large than 1.0e4. 
+   - Will focuing on ComputeIncrement_Divergence_X2  and ComputeIncrement_Divergence_X3, and ComputeIncrement_ObserverCorrections of ./lib/thornado/source/Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90
+
 ## July 18-19 2024
 
 1. Debugging
