@@ -35,7 +35,7 @@ MODULE MHD_UtilitiesModule_Relativistic
     LX_X2_Dn, &
     LX_X2_Up, &
     LX_X3_Dn, &
-    LX_X3_Up 
+    LX_X3_Up
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
@@ -134,12 +134,12 @@ MODULE MHD_UtilitiesModule_Relativistic
     uB1_L(:), uB2_L(:), uB3_L(:), uChi_L(:), &
     uD_R(:), uS1_R(:), uS2_R(:), uS3_R(:), uE_R(:), uNe_R(:), &
     uB1_R(:), uB2_R(:), uB3_R(:), uChi_R(:)
- 
+
   REAL(DP), ALLOCATABLE :: &
     pD_K(:), pV1_K(:), pV2_K(:), pV3_K(:), pE_K(:), pNe_K(:), &
     pB1_K(:), pB2_K(:), pB3_K(:), pChi_K(:), &
     pD_L(:), pV1_L(:), pV2_L(:), pV3_L(:), pE_L(:), pNe_L(:), &
-    pB1_L(:), pB2_L(:), pB3_L(:), pChi_L(:), & 
+    pB1_L(:), pB2_L(:), pB3_L(:), pChi_L(:), &
     pD_R(:), pV1_R(:), pV2_R(:), pV3_R(:), pE_R(:), pNe_R(:), &
     pB1_R(:), pB2_R(:), pB3_R(:), pChi_R(:)
 
@@ -273,7 +273,7 @@ CONTAINS
    !PRINT*, 'rd2: ', rd2
    !PRINT*, 'rd3: ', rd3
 
-    ru1 = rd1 / GF_Gm11 
+    ru1 = rd1 / GF_Gm11
     ru2 = rd2 / GF_Gm22
     ru3 = rd3 / GF_Gm33
 
@@ -328,12 +328,12 @@ CONTAINS
            ( Min_D, Min_T, Min_Y, MinEps )
 
     !*, 'MinEps: ', MinEps
- 
+
 
     ! --- Not valid. Need better method of getting         ---
     ! --- minimum enthalpy (and deal with ideal gas case). ---
 
-    h0 = One + MinEps + Min_P / Min_D  
+    h0 = One + MinEps + Min_P / Min_D
 
     !*, 'h0: ', /0
 
@@ -343,7 +343,7 @@ CONTAINS
 
 #endif
 
-    ! --- Upper velocity limit (Eqs. 32 and 33) --- 
+    ! --- Upper velocity limit (Eqs. 32 and 33) ---
 
     z0 = r / h0
 
@@ -356,7 +356,7 @@ CONTAINS
     CALL SolveMu_Bisection &
            ( D_bar, Ne_bar, q, r, &
              bSq, rb, h0, v0, mu )
- 
+
    !PRINT*, 'mu: ', mu
 
     ! --- Eq. 26 ---
@@ -383,7 +383,7 @@ CONTAINS
 
    !PRINT*, 'PM_V1: ', PM_V1
    !PRINT*, 'PM_V2: ', PM_V2
-   !PRINT*, 'PM_V3: ', PM_V3 
+   !PRINT*, 'PM_V3: ', PM_V3
 
     VSq = PM_V1**2 * GF_Gm11 + PM_V2**2 * GF_Gm22 + PM_V3**2 * GF_Gm33
 
@@ -415,35 +415,35 @@ CONTAINS
 
     CALL ComputePressureFromPrimitive &
            ( PM_D, PM_E, PM_Ne, AM_P )
- 
+
    !PRINT*, 'mu: ', One / ( W * ( One + eps + AM_P / PM_D ) )
 
     B0u = ( W / GF_alpha ) &
             * ( GF_Gm11 * PM_V1 * CM_B1 &
                 + GF_Gm22 * PM_V2 * CM_B2 &
                 + GF_Gm33 * PM_V3 * CM_B3 )
-                      
+
    !PRINT* , 'B0u: ', B0u
-                            
+
     PM_B1 = ( CM_B1 / W ) + GF_Alpha * B0u &
-                            * ( PM_V1 - ( GF_Beta1 / GF_Alpha ) ) 
+                            * ( PM_V1 - ( GF_Beta1 / GF_Alpha ) )
    !PRINT*, 'PM_B1: ', PM_B1
- 
+
     PM_B2 = ( CM_B2 / W ) + GF_Alpha * B0u &
                             * ( PM_V2 - ( GF_Beta2 / GF_Alpha ) )
 
    !PRINT*, 'PM_B2: ', PM_B2
- 
+
     PM_B3 = ( CM_B3 / W ) + GF_Alpha * B0u &
                             * ( PM_V3 - ( GF_Beta3 / GF_Alpha ) )
 
    !PRINT*, 'PM_B3: ', PM_B3
- 
+
     PM_Chi = CM_Chi
 
     CALL ComputeSoundSpeedFromPrimitive &
            ( PM_D, PM_E, PM_Ne, Cs )
- 
+
    !PRINT*, 'Cs: ', Cs
 
    !PRINT*, 'Master Function Derivative Bound: ', One - VSq * Cs**2
@@ -552,7 +552,7 @@ CONTAINS
     VSq = GF_Gm11 * PM_V1**2 + GF_Gm22 * PM_V2**2 + GF_Gm33 * PM_V3**2
     W = One / SQRT( One - VSq )
 
-   !PRINT*, 'VSq: ', VSq 
+   !PRINT*, 'VSq: ', VSq
    !PRINT*, 'W: ', W
 
     B0u = ( GF_Gm11 * PM_V1 * PM_B1 &
@@ -568,7 +568,7 @@ CONTAINS
           + ( GF_Gm11 * GF_Beta1 * PM_B1 &
               + GF_Gm22 * GF_Beta2 * PM_B2 &
               + GF_Gm33 * GF_Beta3 * PM_B3 )
-                 
+
    !PRINT*, 'B0u: ', B0u
    !PRINT*, 'B0d: ', B0d
 
@@ -620,7 +620,7 @@ CONTAINS
 
     CM_Ne  = W * PM_Ne
     CM_B1  = -W * GF_Alpha * B0u * ( PM_V1 - ( GF_Beta1 / GF_Alpha  ) ) &
-             + W * PM_B1 
+             + W * PM_B1
     CM_B2  = -W * GF_Alpha * B0u * ( PM_V2 - ( GF_Beta2 / GF_Alpha  ) ) &
              + W * PM_B2
     CM_B3  = -W * GF_Alpha * B0u * ( PM_V3 - ( GF_Beta3 / GF_Alpha  ) ) &
@@ -2053,7 +2053,7 @@ CONTAINS
     END ASSOCIATE ! dX1, etc.
 
   END SUBROUTINE InitializeIncrement
-  
+
 
   SUBROUTINE InitializeIncrement_MagneticDivergence &
     ( iXP_B0, iXP_E0, nDOFX_X, G_K, G_F, uCM_K, uCM_L, uCM_R)
@@ -2347,7 +2347,7 @@ CONTAINS
 
       CALL ComputeSoundSpeedFromPrimitive &
              ( P(iPM_D), P(iPM_E), P(iPM_Ne), Cs )
- 
+
      !PRINT*, 'Sound speed: ', Cs
 
       DO iDimX = 1, nDimsX
@@ -2430,7 +2430,7 @@ CONTAINS
    !PRINT*, 'Shift1: ', Shift1
    !PRINT*, 'Shift2: ', Shift2
    !PRINT*, 'Shift3: ', Shift3
-   !PRINT*, '-------------------------------------' 
+   !PRINT*, '-------------------------------------'
    !PRINT*
 
     VSq = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
@@ -2444,7 +2444,7 @@ CONTAINS
 
     CALL ComputePressureFromPrimitive &
            ( D, E, Ne, P )
- 
+
    !PRINT*, 'Pressure: ', P
 
     h = One + E + P / D
@@ -2488,7 +2488,7 @@ CONTAINS
       Eigenvalues_MHD_Relativistic(2) = -One
 
     ELSE
- 
+
       ! Estimate of max/min fast magnetosonic
       ! eigenvalues from Del Zanna et al. (2007)
 
@@ -2524,7 +2524,7 @@ CONTAINS
   !> @param Shift The first contravariant component of the shift-vector.
   FUNCTION Flux_X1_MHD_Relativistic &
     ( D, V1, V2, V3, E, Ne, B1, B2, B3, Chi, &
-      P, Gm11, Gm22, Gm33, Lapse, & 
+      P, Gm11, Gm22, Gm33, Lapse, &
       Shift1, Shift2, Shift3, &
       UseDivergenceCleaning )
 
@@ -2561,7 +2561,7 @@ CONTAINS
   !PRINT*, '-----------------------------------------'
   !PRINT*
 
-    VSq   = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2 
+    VSq   = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
     W   = One / SQRT( One - VSq )
 
     B0u = ( Gm11 * V1 * B1 &
@@ -2674,7 +2674,7 @@ CONTAINS
   !> @param Shift The first contravariant component of the shift-vector.
   FUNCTION Flux_X2_MHD_Relativistic &
     ( D, V1, V2, V3, E, Ne, B1, B2, B3, Chi, &
-      P, Gm11, Gm22, Gm33, Lapse, & 
+      P, Gm11, Gm22, Gm33, Lapse, &
       Shift1, Shift2, Shift3, &
       UseDivergenceCleaning )
 
@@ -2711,7 +2711,7 @@ CONTAINS
   !PRINT*, '-----------------------------------------'
   !PRINT*
 
-    VSq   = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2 
+    VSq   = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
     W   = One / SQRT( One - VSq )
 
     B0u = ( Gm11 * V1 * B1 &
@@ -2824,7 +2824,7 @@ CONTAINS
   !> @param Shift The first contravariant component of the shift-vector.
   FUNCTION Flux_X3_MHD_Relativistic &
     ( D, V1, V2, V3, E, Ne, B1, B2, B3, Chi, &
-      P, Gm11, Gm22, Gm33, Lapse, & 
+      P, Gm11, Gm22, Gm33, Lapse, &
       Shift1, Shift2, Shift3, &
       UseDivergenceCleaning )
 
@@ -2861,7 +2861,7 @@ CONTAINS
   !PRINT*, '-----------------------------------------'
   !PRINT*
 
-    VSq   = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2 
+    VSq   = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
     W   = One / SQRT( One - VSq )
 
     B0u = ( Gm11 * V1 * B1 &
@@ -3090,7 +3090,7 @@ CONTAINS
 
    !PRINT*, 'nu: ', nu
 
-    ! --- Eq. 44 --- 
+    ! --- Eq. 44 ---
 
    !PRINT*, 'mu: ', mu
    !PRINT*, '1 / ( nu + r_barSq * mu ): ', One / ( nu + r_barSq * mu )
@@ -3123,7 +3123,7 @@ CONTAINS
 
     !*, 'r_barSq: ', r_barSq
 
-    ! --- Eq. 49 --- 
+    ! --- Eq. 49 ---
 
     f = mu * SQRT( h0**2 + r_barSq ) - One
 
@@ -3145,7 +3145,7 @@ CONTAINS
 
     x = One / ( One + mu * bSq )
 
-    dx = -bSq / ( One + mu * bSq )**2 
+    dx = -bSq / ( One + mu * bSq )**2
 
     ! --- Eq. 38 ---
 
@@ -3153,9 +3153,9 @@ CONTAINS
 
     dr_barSq = Two * r**2 * x * dx + ( x + mu * dx + x**2 + Two * mu * x * dx ) * rb**2
 
-    df = SQRT( h0**2 + r_barSq ) + ( mu / Two ) * ( dr_barSq / SQRT( h0**2 + r_barSq ) ) 
+    df = SQRT( h0**2 + r_barSq ) + ( mu / Two ) * ( dr_barSq / SQRT( h0**2 + r_barSq ) )
 
-  END SUBROUTINE 
+  END SUBROUTINE
 
 
   SUBROUTINE SolveMuBound_NewtonRaphson &
@@ -3207,7 +3207,7 @@ CONTAINS
 
      !PRINT*, 'df: ', df
 
-      muN = muO - f / df 
+      muN = muO - f / df
 
      !PRINT*, 'muN: ', muN
 
@@ -3221,11 +3221,11 @@ CONTAINS
 
     END DO
 
-    mu = muO  
+    mu = muO
 
   END SUBROUTINE
 
-  
+
   SUBROUTINE SolveMu_Bisection &
                ( D_bar, Ne_bar, q, r, &
                  bSq, rb, h0, v0, mu )
@@ -3262,7 +3262,7 @@ CONTAINS
 
    !PRINT*
 
-   !PRINT*, 'Computing function for lower bound: ', mua 
+   !PRINT*, 'Computing function for lower bound: ', mua
 
    !PRINT*, '------------------------------------------------------------'
 
@@ -3274,7 +3274,7 @@ CONTAINS
 
    !PRINT*, 'Computing function for upper bound: ', mub
 
-   !PRINT*, '------------------------------------------------------------'    
+   !PRINT*, '------------------------------------------------------------'
 
     CALL ComputeFunMu( D_bar, Ne_bar, q, r, bSq, rb, v0, mub, fb )
 
@@ -3344,7 +3344,7 @@ CONTAINS
 
    !PRINT*, 'mu, dmu: ', mu, dmu
 
-  END SUBROUTINE SolveMu_Bisection 
+  END SUBROUTINE SolveMu_Bisection
 
   ! --- Algorithm 4.1 of Alefeld and Porta (1995) ---
 
