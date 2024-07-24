@@ -53,6 +53,10 @@ PROGRAM ApplicationDriver
     ComputeIncrement_MHD_DG_Explicit
   USE UnitsModule, ONLY: &
     UnitsDisplay
+  USE MHD_TallyModule_Relativistic, ONLY: &
+    InitializeTally_MHD_Relativistic, &
+    FinalizeTally_MHD_Relativistic, &
+    ComputeTally_MHD_Relativistic
   USE TimeSteppingModule_SSPRK, ONLY: &
     InitializeMagnetofluid_SSPRK, &
     FinalizeMagnetofluid_SSPRK, &
@@ -73,6 +77,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: SmoothProfile, ConstantDensity
   LOGICAL       :: wrt
   LOGICAL       :: UseSlopeLimiter
+  LOGICAL       :: SuppressTally
   CHARACTER(4)  :: SlopeLimiterMethod
   LOGICAL       :: UseConservativeCorrection
   REAL(DP)      :: SlopeTolerance
@@ -100,6 +105,8 @@ PROGRAM ApplicationDriver
   REAL(DP) :: MMBlastWavePhi = 0.0_DP
 
   REAL(DP) :: OTScaleFactor = 100.0_DP
+
+  SuppressTally = .FALSE.
 
   ProgramName = 'Advection1D'
   AdvectionProfile = 'HydroSineWaveX1'
@@ -763,6 +770,14 @@ PROGRAM ApplicationDriver
   t_wrt = t + dt_wrt
   wrt = .FALSE.
 
+  CALL InitializeTally_MHD_Relativistic &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, &
+           SuppressTally_Option = SuppressTally )
+
+  CALL ComputeTally_MHD_Relativistic &
+       ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, Time = t, &
+         SetInitialValues_Option = .TRUE., Verbose_Option = .FALSE. )
+
   iCycle = 0
   Timer_Evolution = MPI_WTIME()
   DO WHILE( t .LT. t_end )
@@ -827,6 +842,10 @@ PROGRAM ApplicationDriver
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF )
 
+      CALL ComputeTally_MHD_Relativistic &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, Time = t, &
+             Verbose_Option = .FALSE. )
+
       wrt = .FALSE.
 
     END IF
@@ -847,6 +866,11 @@ PROGRAM ApplicationDriver
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF )
+
+  CALL ComputeTally_MHD_Relativistic &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, Time = t )
+
+  CALL FinalizeTally_MHD_Relativistic
 
   CALL FinalizeMagnetofluid_SSPRK
 

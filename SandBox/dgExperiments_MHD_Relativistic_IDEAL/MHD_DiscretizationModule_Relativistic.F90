@@ -2428,6 +2428,8 @@ CONTAINS
 
     CALL FinalizeIncrement_Divergence
 
+    ! --- Off-Grid Fluxes for Conservation Tally ---
+
     DO iX2   = iX_B0(2), iX_E0(2)
     DO iX1   = iX_B0(1), iX_E0(1)
     DO iCM   = 1       , nCM

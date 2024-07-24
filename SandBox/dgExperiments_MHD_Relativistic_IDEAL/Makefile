@@ -16,6 +16,8 @@ ApplicationDriver: \
         MHD_UtilitiesModule_Relativistic.o \
         MHD_UtilitiesModule.o \
         MHD_BoundaryConditionsModule.o \
+        MHD_TallyModule_Relativistic.o \
+        MHD_TallyModule.o \
         MHD_SlopeLimiterModule_Relativistic_IDEAL.o \
         MHD_SlopeLimiterModule.o \
         MHD_DiscretizationModule_Relativistic.o \
@@ -28,6 +30,8 @@ ApplicationDriver: \
         MHD_UtilitiesModule_Relativistic.o \
         MHD_UtilitiesModule.o \
         MHD_BoundaryConditionsModule.o \
+        MHD_TallyModule_Relativistic.o \
+        MHD_TallyModule.o \
         MHD_SlopeLimiterModule_Relativistic_IDEAL.o \
         MHD_SlopeLimiterModule.o \
         MHD_DiscretizationModule_Relativistic.o \
@@ -55,6 +59,7 @@ ApplicationDriver.o: \
   GeometryComputationModule.o \
   InitializationModule.o \
   UnitsModule.o \
+  MHD_TallyModule_Relativistic.o \
   ApplicationDriver.F90
 
 InitializationModule.o: \
@@ -77,6 +82,7 @@ TimeSteppingModule_SSPRK.o: \
   ProgramHeaderModule.o \
   MagnetofluidFieldsModule.o \
   MHD_DiscretizationModule_Relativistic.o \
+  MHD_TallyModule_Relativistic.o \
   TimeSteppingModule_SSPRK.F90
 
 MHD_BoundaryConditionsModule.o: \
@@ -102,6 +108,22 @@ MHD_DiscretizationModule_Relativistic.o: \
   MHD_UtilitiesModule_Relativistic.o \
   EquationOfStateModule.o \
   MHD_DiscretizationModule_Relativistic.F90
+
+MHD_TallyModule_Relativistic.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  MagnetofluidFieldsModule.o \
+  UnitsModule.o \
+  MHD_TallyModule_Relativistic.F90
+
+MHD_TallyModule.o: \
+  KindModule.o \
+  MagnetofluidFieldsModule.o \
+  MHD_TallyModule_Relativistic.o \
+  MHD_TallyModule.F90
 
 MHD_SlopeLimiterModule.o: \
   KindModule.o \

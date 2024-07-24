@@ -21,6 +21,8 @@ MODULE TimeSteppingModule_SSPRK
     OffGridFlux_MHD_X2_Outer, &
     OffGridFlux_MHD_X3_Inner, &
     OffGridFlux_MHD_X3_Outer
+  USE MHD_TallyModule_Relativistic, ONLY: &
+    IncrementOffGridTally_MHD_Relativistic
 
   IMPLICIT NONE
   PRIVATE
@@ -309,6 +311,8 @@ CONTAINS
 
     CALL ApplySlopeLimiter_MHD_Relativistic_IDEAL &
            ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+
+    CALL IncrementOffGridTally_MHD_Relativistic( dM_OffGrid_MHD )
 
   END SUBROUTINE UpdateMagnetofluid_SSPRK
 
