@@ -702,8 +702,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeMagneticDivergence_MHD_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+    ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
+    REAL(DP), INTENT(in)  :: t
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)  :: &
@@ -714,7 +715,7 @@ CONTAINS
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     CALL ApplyBoundaryConditions_MHD &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+             ( t, iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL InitializeIncrement &
       ( iX_B0, iX_E0, iX_B1, iX_E1 )

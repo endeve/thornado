@@ -83,10 +83,13 @@ MHD_BoundaryConditionsModule.o: \
   KindModule.o \
   MeshModule.o \
   ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  InputOutputUtilitiesModule.o \
+  UtilitiesModule.o \
   MagnetofluidFieldsModule.o \
   MHD_BoundaryConditionsModule.F90
 
-MHD_dgDiscretizationModule.o: \
+MHD_DiscretizationModule_Relativistic.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   LinearAlgebraModule.o \

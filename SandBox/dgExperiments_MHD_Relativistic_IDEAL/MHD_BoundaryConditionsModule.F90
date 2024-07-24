@@ -1,7 +1,8 @@
 MODULE MHD_BoundaryConditionsModule
 
   USE KindModule, ONLY: &
-    DP
+    DP, &
+    Zero
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
@@ -85,8 +86,9 @@ CONTAINS
 
 
   SUBROUTINE ApplyBoundaryConditions_MHD &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC_Option )
+    ( t, iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC_Option )
 
+    REAL(DP), INTENT(in)           :: t
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(inout)        :: &
@@ -101,17 +103,18 @@ CONTAINS
     IF( PRESENT( iApplyBC_Option ) ) &
       iApplyBC = iApplyBC_Option
 
-    CALL ApplyBC_MHD_X1( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC(1) )
+    CALL ApplyBC_MHD_X1( t, iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC(1) )
 
-    CALL ApplyBC_MHD_X2( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC(2) )
+    CALL ApplyBC_MHD_X2( t, iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC(2) )
 
-    CALL ApplyBC_MHD_X3( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC(3) )
+    CALL ApplyBC_MHD_X3( t, iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC(3) )
 
   END SUBROUTINE ApplyBoundaryConditions_MHD
 
 
-  SUBROUTINE ApplyBC_MHD_X1( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
+  SUBROUTINE ApplyBC_MHD_X1( t, iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
 
+    REAL(DP), INTENT(in)    :: t
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
       iApplyBC
@@ -615,6 +618,8 @@ CONTAINS
 
     CASE( 44 ) ! Custom BCs for relativistic shearing disk.
 
+      IF( t .NE. Zero )THEN
+
         IF( ApplyOuterBC_MHD( iApplyBC ) .OR. ApplyInnerBC_MHD( iApplyBC ) )THEN
 
           WRITE( FileNumberString, FMT='(i6.6)') FileNumber
@@ -663,69 +668,75 @@ CONTAINS
             = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
                 * unitsCM(4)
 
-      END IF
+        END IF
 
-      ! --- Inner Boundary --
+        ! --- Inner Boundary --
 
-      IF( ApplyOuterBC_MHD( iApplyBC ) )THEN
+        IF( ApplyOuterBC_MHD( iApplyBC ) )THEN
 
-        DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = 1, swX(1)
-        DO iNX = 1, nDOFX
+          DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = iX_B0(2), iX_E0(2)
+          DO iX1 = 1, swX(1)
+          DO iNX = 1, nDOFX
 
-          U(iNX,iX_B0(1)-iX1,iX2,iX3,1) &
-            = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,1) &
-              - CD_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,1) &
+              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,1) &
+                - CD_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3)
 
-          U(iNX,iX_B0(1)-iX1,iX2,iX3,2) &
-            = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,2) &
-              - S1_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,2) &
+              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,2) &
+                - S1_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3)
 
-          U(iNX,iX_B0(1)-iX1,iX2,iX3,3) &
-            = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,3) &
-              - S2_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,3) &
+              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,3) &
+                - S2_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3)
 
-          U(iNX,iX_B0(1)-iX1,iX2,iX3,4) &
-            = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,4) &
-              - S3_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,4) &
+              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,4) &
+                - S3_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3)
 
-        END DO
-        END DO
-        END DO
-        END DO
+          END DO
+          END DO
+          END DO
+          END DO
 
-       END IF
+        END IF
 
-      ! --- Outer Boundary --
+        ! --- Outer Boundary --
 
-      IF( ApplyOuterBC_MHD( iApplyBC ) )THEN
+        IF( ApplyOuterBC_MHD( iApplyBC ) )THEN
 
-        DO iX3 = iX_B0(3), iX_E0(3)
-        DO iX2 = iX_B0(2), iX_E0(2)
-        DO iX1 = 1, swX(1)
-        DO iNX = 1, nDOFX
+          DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = iX_B0(2), iX_E0(2)
+          DO iX1 = 1, swX(1)
+          DO iNX = 1, nDOFX
 
-          U(iNX,iX_E0(1)+iX1,iX2,iX3,1) &
-            = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,1) &
-              - CD_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,1) &
+              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,1) &
+                - CD_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3)
 
-          U(iNX,iX_E0(1)+iX1,iX2,iX3,2) &
-            = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,2) &
-              - S1_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,2) &
+              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,2) &
+                - S1_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3)
 
-          U(iNX,iX_E0(1)+iX1,iX2,iX3,3) &
-            = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,3) &
-              - S2_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,3) &
+              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,3) &
+                - S2_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3)
 
-          U(iNX,iX_E0(1)+iX1,iX2,iX3,4) &
-            = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,4) &
-              - S3_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,4) &
+              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,4) &
+                - S3_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3)
 
-        END DO
-        END DO
-        END DO
-        END DO
+          END DO
+          END DO
+          END DO
+          END DO
+
+        END IF
+
+      ELSE
+
+        RETURN
 
       END IF
 
@@ -736,8 +747,9 @@ CONTAINS
   END SUBROUTINE ApplyBC_MHD_X1
 
 
-  SUBROUTINE ApplyBC_MHD_X2( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
+  SUBROUTINE ApplyBC_MHD_X2( t, iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
 
+    REAL(DP), INTENT(in)    :: t
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
       iApplyBC
@@ -1058,8 +1070,9 @@ CONTAINS
   END SUBROUTINE ApplyBC_MHD_X2
 
 
-  SUBROUTINE ApplyBC_MHD_X3( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
+  SUBROUTINE ApplyBC_MHD_X3( t, iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
 
+    REAL(DP), INTENT(in)    :: t
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
       iApplyBC

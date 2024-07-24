@@ -158,7 +158,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_MHD_DG_Explicit &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
+    ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
       SuppressBC_Option, &
       EvolveOnlyMagnetic_Option, &
       UseDivergenceCleaning_Option, &
@@ -168,6 +168,7 @@ CONTAINS
       SurfaceFlux_X2_Option, &
       SurfaceFlux_X3_Option )
 
+    REAL(DP), INTENT(in)            :: t
     INTEGER,  INTENT(in)            :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)            :: &
@@ -247,7 +248,7 @@ CONTAINS
     IF( .NOT. SuppressBC )THEN
 
       CALL ApplyBoundaryConditions_MHD &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+             ( t, iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     END IF
 
@@ -403,7 +404,7 @@ CONTAINS
     IF( UsePowellSource ) THEN
 
       CALL ComputeIncrement_Powell &
-            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
+            ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
 
     END IF
 
@@ -2942,9 +2943,10 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Powell &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
+    ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
 
-   INTEGER, INTENT(in)     :: &
+   REAL(DP), INTENT(in)    :: t
+   INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
@@ -2954,15 +2956,16 @@ CONTAINS
       dU(:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
     CALL ComputeIncrement_Powell_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
+           ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
 
   END SUBROUTINE ComputeIncrement_Powell
 
 
   SUBROUTINE ComputeIncrement_Powell_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
+    ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU )
 
-    INTEGER, INTENT(in)     :: &
+    REAL(DP), INTENT(in)    :: t
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       G (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
@@ -2980,7 +2983,7 @@ CONTAINS
 
     ! --- Compute Magnetic Divergence for Powell Sources ---
 
-    CALL ComputeMagneticDivergence_MHD_Relativistic    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+    CALL ComputeMagneticDivergence_MHD_Relativistic    ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
     !CALL ComputeWeakMagneticDivergence_MHD_Relativistic( iX_B0, iX_E0, iX_B1, iX_E1, G, U, WeakDiv )
 
     DO iX3 = iX_B0(3), iX_E0(3)

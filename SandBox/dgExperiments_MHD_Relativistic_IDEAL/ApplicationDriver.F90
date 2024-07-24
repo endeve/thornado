@@ -589,6 +589,7 @@ PROGRAM ApplicationDriver
 
       UseDivergenceCleaning = .FALSE.
       DampingParameter = 0.0_DP
+      UsePowellSource = .FALSE.
 
       Gamma = 4.0_DP / 3.0_DP
       t_end = 10e0 * Millisecond
@@ -729,14 +730,14 @@ PROGRAM ApplicationDriver
   IF( RestartFileNumber .LT. 0 )THEN
 
     CALL ApplySlopeLimiter_MHD_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
+           ( t, iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
 
     CALL ComputeFromConserved_MHD_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM, &
              EvolveOnlyMagnetic )
 
     CALL ComputeMagneticDivergence_MHD_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
+           ( t, iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
 
     CALL WriteFieldsHDF &
            ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF )
@@ -821,7 +822,7 @@ PROGRAM ApplicationDriver
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM, EvolveOnlyMagnetic )
 
       CALL ComputeMagneticDivergence_MHD_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
+           ( t, iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
 
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF )
@@ -842,7 +843,7 @@ PROGRAM ApplicationDriver
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM, EvolveOnlyMagnetic )
 
   CALL ComputeMagneticDivergence_MHD_Relativistic &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
+         ( t, iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF )

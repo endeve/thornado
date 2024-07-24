@@ -44,7 +44,7 @@ MODULE TimeSteppingModule_SSPRK
 
   INTERFACE
     SUBROUTINE MagnetofluidIncrement &
-      ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
+      ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
         SuppressBC_Option, &
         EvolveOnlyMagnetic_Option, &
         UseDivergenceCleaning_Option, &
@@ -54,7 +54,8 @@ MODULE TimeSteppingModule_SSPRK
         SurfaceFlux_X2_Option, &
         SurfaceFlux_X3_Option )
       USE KindModule, ONLY: DP
-      INTEGER, INTENT(in)     :: &
+      REAL(DP), INTENT(in)     :: t
+      INTEGER,  INTENT(in)     :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
       REAL(DP), INTENT(in)    :: &
         G (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
@@ -273,12 +274,12 @@ CONTAINS
         IF( iS .NE. 1)THEN
 
           CALL ApplySlopeLimiter_MHD_Relativistic_IDEAL &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
+                 ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
 
         END IF
 
         CALL ComputeIncrement_Magnetofluid &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, &
+               ( t, iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
 
         dM_OffGrid_MHD &
@@ -307,7 +308,7 @@ CONTAINS
     END DO
 
     CALL ApplySlopeLimiter_MHD_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+           ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
   END SUBROUTINE UpdateMagnetofluid_SSPRK
 

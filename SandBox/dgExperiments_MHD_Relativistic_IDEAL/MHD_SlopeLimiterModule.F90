@@ -54,8 +54,9 @@ CONTAINS
 
 
   SUBROUTINE ApplySlopeLimiter_MHD &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option, iApplyBC_Option )
+    ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option, iApplyBC_Option )
 
+    REAL(DP), INTENT(in)           :: t
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)           :: &
@@ -81,7 +82,7 @@ CONTAINS
       iApplyBC = iApplyBC_Option
 
     CALL ApplySlopeLimiter_MHD_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
+           ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
              SuppressBC_Option = SuppressBC, iApplyBC_Option = iApplyBC )
 
   END SUBROUTINE ApplySlopeLimiter_MHD
