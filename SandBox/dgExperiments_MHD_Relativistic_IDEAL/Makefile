@@ -166,3 +166,10 @@ MHD_UtilitiesModule_Relativistic.o: \
   EquationOfStateModule_TABLE.o \
   UnitsModule.o \
   MHD_UtilitiesModule_Relativistic.F90
+
+MHD_ErrorModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  UtilitiesModule.o \
+  GeometryFieldsModule.o \
+  MHD_ErrorModule.f90
