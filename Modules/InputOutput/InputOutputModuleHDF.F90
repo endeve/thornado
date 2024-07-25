@@ -159,7 +159,7 @@ CONTAINS
 
     IF( WriteOP )THEN
 
-      CALL WriteNeutrinoOpacitiesHDF( Time )
+      CALL WriteNeutrinoOpacitiesHDF( Time, WriteGhost )
 
     END IF
 
@@ -1465,9 +1465,10 @@ CONTAINS
   END SUBROUTINE ReadRadiationFieldsHDF
 
 
-  SUBROUTINE WriteNeutrinoOpacitiesHDF( Time )
+  SUBROUTINE WriteNeutrinoOpacitiesHDF( Time, WriteGhost )
 
     REAL(DP), INTENT(in) :: Time
+    LOGICAL,  INTENT(in) :: WriteGhost
 
     CHARACTER(2)   :: String2
     CHARACTER(6)   :: FileNumberString
@@ -1505,6 +1506,28 @@ CONTAINS
 
     CALL CreateGroupHDF( FileName, TRIM( GroupName ) , FILE_ID )
 
+    IF( WriteGhost )THEN
+
+      DatasetName = TRIM( GroupName ) // '/X1'
+
+      CALL WriteDataset1DHDF &
+             ( NodeCoordinates(MeshX(1),iX_B1(1),iX_E1(1),nNodesX(1)) &
+                 / U % LengthX1Unit, DatasetName, FILE_ID )
+
+      DatasetName = TRIM( GroupName ) // '/X2'
+
+      CALL WriteDataset1DHDF &
+             ( NodeCoordinates(MeshX(2),iX_B1(2),iX_E1(2),nNodesX(2)) &
+                 / U % LengthX2Unit, DatasetName, FILE_ID )
+
+      DatasetName = TRIM( GroupName ) // '/X3'
+
+      CALL WriteDataset1DHDF &
+             ( NodeCoordinates(MeshX(3),iX_B1(3),iX_E1(3),nNodesX(3)) &
+                 / U % LengthX3Unit, DatasetName, FILE_ID )
+
+    ELSE
+
       DatasetName = TRIM( GroupName ) // '/X1'
 
       CALL WriteDataset1DHDF &
@@ -1523,17 +1546,31 @@ CONTAINS
              ( NodeCoordinates(MeshX(3),iX_B0(3),iX_E0(3),nNodesX(3)) &
                  / U % LengthX3Unit, DatasetName, FILE_ID )
 
+    END IF
+
     ! --- Write Energy Grid ---
 
     GroupName = 'Energy Grid'
 
     CALL CreateGroupHDF( FileName, TRIM( GroupName ), FILE_ID )
 
-    DatasetName = TRIM( GroupName ) // '/E'
+    IF( WriteGhost )THEN
 
-    CALL WriteDataset1DHDF &
-           ( NodeCoordinates(MeshE,iE_B0,iE_E0,nNodesE) &
-               / U % EnergyUnit, DatasetName, FILE_ID )
+      DatasetName = TRIM( GroupName ) // '/E'
+
+      CALL WriteDataset1DHDF &
+             ( NodeCoordinates(MeshE,iE_B1,iE_E1,nNodesE) &
+                 / U % EnergyUnit, DatasetName, FILE_ID )
+
+    ELSE
+
+      DatasetName = TRIM( GroupName ) // '/E'
+
+      CALL WriteDataset1DHDF &
+             ( NodeCoordinates(MeshE,iE_B0,iE_E0,nNodesE) &
+                 / U % EnergyUnit, DatasetName, FILE_ID )
+
+    END IF
 
     END ASSOCIATE ! U
 
@@ -1555,28 +1592,61 @@ CONTAINS
 
       DatasetName = TRIM( GroupNameSpecies ) // '/' // TRIM( namesEQ )
 
-      CALL WriteDataset4DHDF &
-             ( Opacity4D &
-                 ( f_EQ(:,iS,:), nE, nNodesE, nDOFE, nX, nNodesX, nDOFX, &
-                   NodeNumberTableX ) / unitsEQ, DatasetName, FILE_ID )
+      IF( WriteGhost )THEN
+
+        CALL WriteDataset4DHDF &
+               ( Opacity4D &
+                   ( f_EQ(:,iS,:), nE+2*swE, nNodesE, nDOFE, nX+2*swX, nNodesX, nDOFX, &
+                     NodeNumberTableX ) / unitsEQ, DatasetName, FILE_ID )
+
+      ELSE
+
+        CALL WriteDataset4DHDF &
+               ( Opacity4D &
+                   ( f_EQ(:,iS,:), nE, nNodesE, nDOFE, nX, nNodesX, nDOFX, &
+                     NodeNumberTableX ) / unitsEQ, DatasetName, FILE_ID )
+
+      END IF
 
       ! --- Electron Capture Opacities ---
 
       DatasetName = TRIM( GroupNameSpecies ) // '/' // TRIM( namesEC )
 
-      CALL WriteDataset4DHDF &
-             ( Opacity4D &
-                 ( opEC(:,iS,:), nE, nNodesE, nDOFE, nX, nNodesX, nDOFX, &
-                   NodeNumberTableX ) / unitsEC , DatasetName, FILE_ID )
+      IF( WriteGhost )THEN
+
+        CALL WriteDataset4DHDF &
+               ( Opacity4D &
+                   ( opEC(:,iS,:), nE+2*swE, nNodesE, nDOFE, nX+2*swX, nNodesX, nDOFX, &
+                     NodeNumberTableX ) / unitsEC , DatasetName, FILE_ID )
+
+      ELSE
+
+        CALL WriteDataset4DHDF &
+               ( Opacity4D &
+                   ( opEC(:,iS,:), nE, nNodesE, nDOFE, nX, nNodesX, nDOFX, &
+                     NodeNumberTableX ) / unitsEC , DatasetName, FILE_ID )
+
+      END IF
 
       ! --- Elastic Scattering Opacities ---
 
       DatasetName = TRIM( GroupNameSpecies ) // '/' // TRIM( namesES )
 
-      CALL WriteDataset4DHDF &
-             ( Opacity4D &
-                 ( opES(:,iS,:), nE, nNodesE, nDOFE, nX, nNodesX, nDOFX, &
-                   NodeNumberTableX ) / unitsES, DatasetName, FILE_ID )
+      IF( WriteGhost )THEN
+
+        CALL WriteDataset4DHDF &
+               ( Opacity4D &
+                   ( opES(:,iS,:), nE+2*swE, nNodesE, nDOFE, nX+2*swX, nNodesX, nDOFX, &
+                     NodeNumberTableX ) / unitsES, DatasetName, FILE_ID )
+
+      ELSE
+
+        CALL WriteDataset4DHDF &
+               ( Opacity4D &
+                   ( opES(:,iS,:), nE, nNodesE, nDOFE, nX, nNodesX, nDOFX, &
+                     NodeNumberTableX ) / unitsES, DatasetName, FILE_ID )
+
+      END IF
 
     END DO
 
