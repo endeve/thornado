@@ -147,7 +147,7 @@ CONTAINS
 
     IF( WriteFF )THEN
 
-      CALL WriteFluidFieldsHDF( Time )
+      CALL WriteFluidFieldsHDF( Time, WriteGhost )
 
     END IF
 
@@ -389,7 +389,10 @@ CONTAINS
 
         CALL WriteDataset3DHDF &
                ( Field3D &
-                   ( uGF(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),iGF), nX+2*swX, nNodesX, &
+                   ( uGF(1:nDOFX, &
+                         iX_B1(1):iX_E1(1), &
+                         iX_B1(2):iX_E1(2), &
+                         iX_B1(3):iX_E1(3),iGF), nX+2*swX, nNodesX, &
                      nDOFX, NodeNumberTableX ) / unitsGF(iGF), &
                  DatasetName, FILE_ID )
 
@@ -397,7 +400,10 @@ CONTAINS
 
         CALL WriteDataset3DHDF &
                ( Field3D &
-                   ( uGF(1:nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iGF), nX, nNodesX, &
+                   ( uGF(1:nDOFX, &
+                         iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3),iGF), nX, nNodesX, &
                      nDOFX, NodeNumberTableX ) / unitsGF(iGF), &
                  DatasetName, FILE_ID )
 
@@ -480,9 +486,10 @@ CONTAINS
   END SUBROUTINE ReadGeometryFieldsHDF
 
 
-  SUBROUTINE WriteFluidFieldsHDF( Time )
+  SUBROUTINE WriteFluidFieldsHDF( Time, WriteGhost )
 
     REAL(DP), INTENT(in) :: Time
+    LOGICAL,  INTENT(in) :: WriteGhost
 
     CHARACTER(6)   :: FileNumberString
     CHARACTER(256) :: FileName
@@ -525,6 +532,68 @@ CONTAINS
 
     CALL CreateGroupHDF( FileName, TRIM( GroupName ) , FILE_ID )
 
+    IF( WriteGhost )THEN
+
+      DatasetName = TRIM( GroupName ) // '/X1'
+
+      CALL WriteDataset1DHDF &
+             ( NodeCoordinates(MeshX(1),iX_B1(1),iX_E1(1),nNodesX(1)) &
+                 / U % LengthX1Unit, DatasetName, FILE_ID )
+
+      DatasetName = TRIM( GroupName ) // '/X2'
+
+      CALL WriteDataset1DHDF &
+             ( NodeCoordinates(MeshX(2),iX_B1(2),iX_E1(2),nNodesX(2)) &
+                 / U % LengthX2Unit, DatasetName, FILE_ID )
+
+      DatasetName = TRIM( GroupName ) // '/X3'
+
+      CALL WriteDataset1DHDF &
+             ( NodeCoordinates(MeshX(3),iX_B1(3),iX_E1(3),nNodesX(3)) &
+                 / U % LengthX3Unit, DatasetName, FILE_ID )
+
+      ! --- Write Cell Center Coordinates ---
+
+      DatasetName = TRIM( GroupName ) // '/X1_C'
+
+      CALL WriteDataset1DHDF &
+             ( MeshX(1) % Center(iX_B1(1):iX_E1(1)) / U % LengthX1Unit, &
+               DatasetName, FILE_ID )
+
+      DatasetName = TRIM( GroupName ) // '/X2_C'
+
+      CALL WriteDataset1DHDF &
+             ( MeshX(2) % Center(iX_B1(2):iX_E1(2)) / U % LengthX2Unit, &
+               DatasetName, FILE_ID )
+
+      DatasetName = TRIM( GroupName ) // '/X3_C'
+
+      CALL WriteDataset1DHDF &
+             ( MeshX(3) % Center(iX_B1(3):iX_E1(3)) / U % LengthX3Unit, &
+               DatasetName, FILE_ID )
+
+      ! --- Write Cell Widths ---
+
+      DatasetName = TRIM( GroupName ) // '/dX1'
+
+      CALL WriteDataset1DHDF &
+             ( MeshX(1) % Width(iX_B1(1):iX_E1(1)) / U % LengthX1Unit, &
+               DatasetName, FILE_ID )
+
+      DatasetName = TRIM( GroupName ) // '/dX2'
+
+      CALL WriteDataset1DHDF &
+             ( MeshX(2) % Width(iX_B1(2):iX_E1(2)) / U % LengthX2Unit, &
+               DatasetName, FILE_ID )
+
+      DatasetName = TRIM( GroupName ) // '/dX3'
+
+      CALL WriteDataset1DHDF &
+             ( MeshX(3) % Width(iX_B1(3):iX_E1(3)) / U % LengthX3Unit, &
+               DatasetName, FILE_ID )
+
+    ELSE
+
       DatasetName = TRIM( GroupName ) // '/X1'
 
       CALL WriteDataset1DHDF &
@@ -543,45 +612,47 @@ CONTAINS
              ( NodeCoordinates(MeshX(3),iX_B0(3),iX_E0(3),nNodesX(3)) &
                  / U % LengthX3Unit, DatasetName, FILE_ID )
 
-    ! --- Write Cell Center Coordinates ---
+      ! --- Write Cell Center Coordinates ---
 
-    DatasetName = TRIM( GroupName ) // '/X1_C'
+      DatasetName = TRIM( GroupName ) // '/X1_C'
 
-    CALL WriteDataset1DHDF &
-           ( MeshX(1) % Center(1:nX(1)) / U % LengthX1Unit, &
-             DatasetName, FILE_ID )
+      CALL WriteDataset1DHDF &
+             ( MeshX(1) % Center(iX_B0(1):iX_E0(1)) / U % LengthX1Unit, &
+               DatasetName, FILE_ID )
 
-    DatasetName = TRIM( GroupName ) // '/X2_C'
+      DatasetName = TRIM( GroupName ) // '/X2_C'
 
-    CALL WriteDataset1DHDF &
-           ( MeshX(2) % Center(1:nX(2)) / U % LengthX2Unit, &
-             DatasetName, FILE_ID )
+      CALL WriteDataset1DHDF &
+             ( MeshX(2) % Center(iX_B0(2):iX_E0(2)) / U % LengthX2Unit, &
+               DatasetName, FILE_ID )
 
-    DatasetName = TRIM( GroupName ) // '/X3_C'
+      DatasetName = TRIM( GroupName ) // '/X3_C'
 
-    CALL WriteDataset1DHDF &
-           ( MeshX(3) % Center(1:nX(3)) / U % LengthX3Unit, &
-             DatasetName, FILE_ID )
+      CALL WriteDataset1DHDF &
+             ( MeshX(3) % Center(iX_B0(3):iX_E0(3)) / U % LengthX3Unit, &
+               DatasetName, FILE_ID )
 
-    ! --- Write Cell Widths ---
+      ! --- Write Cell Widths ---
 
-    DatasetName = TRIM( GroupName ) // '/dX1'
+      DatasetName = TRIM( GroupName ) // '/dX1'
 
-    CALL WriteDataset1DHDF &
-           ( MeshX(1) % Width(1:nX(1)) / U % LengthX1Unit, &
-             DatasetName, FILE_ID )
+      CALL WriteDataset1DHDF &
+             ( MeshX(1) % Width(iX_B0(1):iX_E0(1)) / U % LengthX1Unit, &
+               DatasetName, FILE_ID )
 
-    DatasetName = TRIM( GroupName ) // '/dX2'
+      DatasetName = TRIM( GroupName ) // '/dX2'
 
-    CALL WriteDataset1DHDF &
-           ( MeshX(2) % Width(1:nX(2)) / U % LengthX2Unit, &
-             DatasetName, FILE_ID )
+      CALL WriteDataset1DHDF &
+             ( MeshX(2) % Width(iX_B0(2):iX_E0(2)) / U % LengthX2Unit, &
+               DatasetName, FILE_ID )
 
-    DatasetName = TRIM( GroupName ) // '/dX3'
+      DatasetName = TRIM( GroupName ) // '/dX3'
 
-    CALL WriteDataset1DHDF &
-           ( MeshX(3) % Width(1:nX(3)) / U % LengthX3Unit, &
-             DatasetName, FILE_ID )
+      CALL WriteDataset1DHDF &
+             ( MeshX(3) % Width(iX_B0(3):iX_E0(3)) / U % LengthX3Unit, &
+               DatasetName, FILE_ID )
+
+    END IF
 
     END ASSOCIATE ! U
 
@@ -601,11 +672,29 @@ CONTAINS
 
       DatasetName = TRIM( GroupName2 ) // '/' // TRIM( namesCF(iFF) )
 
-      CALL WriteDataset3DHDF &
-             ( Field3D &
-                 ( uCF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF), nX, nNodesX, &
-                   nDOFX, NodeNumberTableX ) / unitsCF(iFF), &
-               DatasetName, FILE_ID )
+      IF( WriteGhost )THEN
+
+        CALL WriteDataset3DHDF &
+               ( Field3D &
+                   ( uCF(1:nDOFX, &
+                         iX_B1(1):iX_E1(1), &
+                         iX_B1(2):iX_E1(2), &
+                         iX_B1(3):iX_E1(3),iFF), nX+2*swX, nNodesX, &
+                     nDOFX, NodeNumberTableX ) / unitsCF(iFF), &
+                 DatasetName, FILE_ID )
+
+      ELSE
+
+        CALL WriteDataset3DHDF &
+               ( Field3D &
+                   ( uCF(1:nDOFX, &
+                         iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3),iFF), nX, nNodesX, &
+                     nDOFX, NodeNumberTableX ) / unitsCF(iFF), &
+                 DatasetName, FILE_ID )
+
+      END IF
 
     END DO
 
@@ -619,11 +708,29 @@ CONTAINS
 
       DatasetName = TRIM( GroupName2 ) // '/' // TRIM( namesPF(iFF) )
 
-      CALL WriteDataset3DHDF &
-             ( Field3D &
-                 ( uPF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF), nX, nNodesX, &
-                   nDOFX, NodeNumberTableX ) / unitsPF(iFF), &
-               DatasetName, FILE_ID )
+      IF( WriteGhost )THEN
+
+        CALL WriteDataset3DHDF &
+               ( Field3D &
+                   ( uPF(1:nDOFX, &
+                         iX_B1(1):iX_E1(1), &
+                         iX_B1(2):iX_E1(2), &
+                         iX_B1(3):iX_E1(3),iFF), nX+2*swX, nNodesX, &
+                     nDOFX, NodeNumberTableX ) / unitsPF(iFF), &
+                 DatasetName, FILE_ID )
+
+      ELSE
+
+        CALL WriteDataset3DHDF &
+               ( Field3D &
+                   ( uPF(1:nDOFX, &
+                         iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3),iFF), nX, nNodesX, &
+                     nDOFX, NodeNumberTableX ) / unitsPF(iFF), &
+                 DatasetName, FILE_ID )
+
+      END IF
 
     END DO
 
@@ -637,11 +744,29 @@ CONTAINS
 
       DatasetName = TRIM( GroupName2 ) // '/' // TRIM( namesAF(iFF) )
 
-      CALL WriteDataset3DHDF &
-             ( Field3D &
-                 ( uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF), nX, nNodesX, &
-                   nDOFX, NodeNumberTableX ) / unitsAF(iFF), &
-               DatasetName, FILE_ID )
+      IF( WriteGhost )THEN
+
+        CALL WriteDataset3DHDF &
+               ( Field3D &
+                   ( uAF(1:nDOFX, &
+                         iX_B1(1):iX_E1(1), &
+                         iX_B1(2):iX_E1(2), &
+                         iX_B1(3):iX_E1(3),iFF), nX+2*swX, nNodesX, &
+                     nDOFX, NodeNumberTableX ) / unitsAF(iFF), &
+                 DatasetName, FILE_ID )
+
+      ELSE
+
+        CALL WriteDataset3DHDF &
+               ( Field3D &
+                   ( uAF(1:nDOFX, &
+                         iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3),iFF), nX, nNodesX, &
+                     nDOFX, NodeNumberTableX ) / unitsAF(iFF), &
+                 DatasetName, FILE_ID )
+
+      END IF
 
     END DO
 
@@ -655,11 +780,29 @@ CONTAINS
 
       DatasetName = TRIM( GroupName2 ) // '/' // TRIM( namesDF(iFF) )
 
-      CALL WriteDataset3DHDF &
-             ( Field3D &
-                 ( uDF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF), nX, nNodesX, &
-                   nDOFX, NodeNumberTableX ) / unitsDF(iFF), &
-               DatasetName, FILE_ID )
+      IF( WriteGhost )THEN
+
+        CALL WriteDataset3DHDF &
+               ( Field3D &
+                   ( uDF(1:nDOFX, &
+                         iX_B1(1):iX_E1(1), &
+                         iX_B1(2):iX_E1(2), &
+                         iX_B1(3):iX_E1(3),iFF), nX+2*swX, nNodesX, &
+                     nDOFX, NodeNumberTableX ) / unitsDF(iFF), &
+                 DatasetName, FILE_ID )
+
+      ELSE
+
+        CALL WriteDataset3DHDF &
+               ( Field3D &
+                   ( uDF(1:nDOFX, &
+                         iX_B0(1):iX_E0(1), &
+                         iX_B0(2):iX_E0(2), &
+                         iX_B0(3):iX_E0(3),iFF), nX, nNodesX, &
+                     nDOFX, NodeNumberTableX ) / unitsDF(iFF), &
+                 DatasetName, FILE_ID )
+
+      END IF
 
     END DO
 
