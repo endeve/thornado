@@ -926,12 +926,12 @@ CONTAINS
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iNX, iX1, iX2, iX3, iAF, ErrorExists
-    INTEGER :: ITERATION(1:nDOFX,iX_B0(1):iX_E0(1), &
-                                 iX_B0(2):iX_E0(2), &
-                                 iX_B0(3):iX_E0(3))
-    INTEGER :: iErr     (1:nDOFX,iX_B0(1):iX_E0(1), &
-                                 iX_B0(2):iX_E0(2), &
-                                 iX_B0(3):iX_E0(3))
+    INTEGER :: ITERATION(1:nDOFX,iX_B1(1):iX_E1(1), &
+                                 iX_B1(2):iX_E1(2), &
+                                 iX_B1(3):iX_E1(3))
+    INTEGER :: iErr     (1:nDOFX,iX_B1(1):iX_E1(1), &
+                                 iX_B1(2):iX_E1(2), &
+                                 iX_B1(3):iX_E1(3))
 
     CALL TimersStart_Euler( Timer_Euler_ComputeFromConserved )
 
@@ -983,14 +983,14 @@ CONTAINS
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC REDUCTION( +:ErrorExists ) &
-    !$ACC PRESENT( iX_B0, iX_E0, G, U, P, A, iErr )
+    !$ACC PRESENT( iX_B1, iX_E1, G, U, P, A, iErr )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4) &
     !$OMP REDUCTION( +:ErrorExists )
 #endif
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
     DO iNX = 1, nDOFX
 
       ITERATION(iNX,iX1,iX2,iX3) = 0
@@ -1076,9 +1076,9 @@ CONTAINS
 
     IF( ErrorExists .GT. 0 )THEN
 
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX3 = iX_B1(3), iX_E1(3)
+      DO iX2 = iX_B1(2), iX_E1(2)
+      DO iX1 = iX_B1(1), iX_E1(1)
       DO iNX = 1       , nDOFX
 
         IF( iErr(iNX,iX1,iX2,iX3) .NE. 0 )THEN
@@ -1086,8 +1086,8 @@ CONTAINS
           CALL DescribeError_Euler &
             ( iErr(iNX,iX1,iX2,iX3), &
               Int_Option = [ ITERATION(iNX,iX1,iX2,iX3), 99999999, &
-                             iX_B0(1), iX_B0(2), iX_B0(3), &
-                             iX_E0(1), iX_E0(2), iX_E0(3), &
+                             iX_B1(1), iX_B1(2), iX_B1(3), &
+                             iX_E1(1), iX_E1(2), iX_E1(3), &
                              iNX, iX1, iX2, iX3 ], &
               Real_Option = [ MeshX(1) % Center(iX1), &
                               MeshX(2) % Center(iX2), &

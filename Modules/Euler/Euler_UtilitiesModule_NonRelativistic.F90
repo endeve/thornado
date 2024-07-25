@@ -251,9 +251,9 @@ CONTAINS
     !$ACC UPDATE HOST( G, U )
 #endif
 
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
 
       A(1:nDOFX,iX1,iX2,iX3,:) = Zero
 
