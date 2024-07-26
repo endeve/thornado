@@ -275,6 +275,8 @@ PROGRAM ApplicationDriver
 
   END IF
 
+  SuppressBC = .FALSE.
+
   CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
