@@ -52,8 +52,6 @@ MODULE MF_Euler_SlopeLimiterModule
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
-  USE MF_Euler_BoundaryConditionsModule, ONLY: &
-    ApplyBoundaryConditions_Euler_MF
   USE MF_EdgeMapModule, ONLY: &
     EdgeMap, &
     ConstructEdgeMap
@@ -279,7 +277,7 @@ CONTAINS
 
       CALL ApplySlopeLimiter_Euler &
              ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-               SuppressBC_Option = .TRUE., iApplyBC_Option = iApplyBC )
+               iApplyBC_Option = iApplyBC )
 
       CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCF, U )
 
