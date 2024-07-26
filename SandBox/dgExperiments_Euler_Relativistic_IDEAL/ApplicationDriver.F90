@@ -454,7 +454,7 @@ PROGRAM ApplicationDriver
 #endif
 
     CALL WriteFieldsHDF &
-         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF, WriteGhost_Option = .TRUE. )
+         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF, WriteGhost_Option = .FALSE. )
 
   ELSE
 
@@ -562,7 +562,7 @@ PROGRAM ApplicationDriver
 #endif
 
       CALL WriteFieldsHDF &
-             ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF, WriteGhost_Option = .TRUE. )
+             ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF, WriteGhost_Option = .FALSE. )
 
       CALL ComputeTally_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t, &
@@ -594,7 +594,7 @@ PROGRAM ApplicationDriver
 #endif
 
   CALL WriteFieldsHDF &
-         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF, WriteGhost_Option = .TRUE. )
+         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF, WriteGhost_Option = .FALSE. )
 
   CALL ComputeTally_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )
