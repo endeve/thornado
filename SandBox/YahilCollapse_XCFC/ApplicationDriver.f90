@@ -39,6 +39,8 @@ PROGRAM ApplicationDriver
     uPF, &
     uAF, &
     uDF
+  USE Euler_BoundaryConditionsModule, ONLY: &
+   ApplyBoundaryConditions_Euler
   USE GravitySolutionModule_XCFC, ONLY: &
     InitializeGravitySolver_XCFC, &
     FinalizeGravitySolver_XCFC
@@ -90,6 +92,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: CoordinateSystem
   CHARACTER(64) :: FileName
   LOGICAL       :: wrt
+  LOGICAL       :: SuppressBC
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
@@ -266,6 +269,12 @@ PROGRAM ApplicationDriver
            CoreRadius_Option      = CoreRadius,      &
            CollapseTime_Option    = CollapseTime )
 
+  IF( .NOT. SuppressBC )THEN
+    CALL ApplyBoundaryConditions_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uCF )
+
+  END IF
+
   CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
@@ -274,6 +283,12 @@ PROGRAM ApplicationDriver
 
   CALL InitializeMetric_Euler &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+  IF( .NOT. SuppressBC )THEN
+    CALL ApplyBoundaryConditions_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uCF )
+
+  END IF
 
   CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
