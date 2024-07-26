@@ -50,6 +50,7 @@ TimeSteppingModule_SSPRK.o: \
   ProgramHeaderModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
+  Euler_BoundaryConditionsModule.o \
   XCFC_UtilitiesModule.o \
   GravitySolutionModule_XCFC.o \
   Euler_XCFC_UtilitiesModule.o \
