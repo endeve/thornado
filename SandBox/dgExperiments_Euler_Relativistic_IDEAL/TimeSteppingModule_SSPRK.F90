@@ -12,6 +12,8 @@ MODULE TimeSteppingModule_SSPRK
     nDOFX
   USE FluidFieldsModule, ONLY: &
     nCF
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_Euler
   USE Euler_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
     ApplySlopeLimiter_Euler_Relativistic_IDEAL
   USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
@@ -33,6 +35,7 @@ MODULE TimeSteppingModule_SSPRK
   IMPLICIT NONE
   PRIVATE
 
+  LOGICAL :: SuppressBC
   INTEGER :: nStages_SSPRK
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: c_SSPRK
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: w_SSPRK
@@ -215,6 +218,8 @@ CONTAINS
 
     REAL(DP) :: dM_OffGrid_Euler(nCF)
 
+    SuppressBC = .FALSE.
+
     dM_OffGrid_Euler = Zero
 
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
@@ -267,6 +272,12 @@ CONTAINS
 
         IF( iS .NE. 1)THEN
 
+          IF( .NOT. SuppressBC )THEN
+            CALL ApplyBoundaryConditions_Euler &
+                   ( iX_B0, iX_E0, iX_B1, iX_E1, U_SSPRK )
+
+          END IF
+
           CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
 
@@ -303,6 +314,12 @@ CONTAINS
       END IF
 
     END DO
+
+    IF( .NOT. SuppressBC )THEN
+      CALL ApplyBoundaryConditions_Euler &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+
+    END IF
 
     CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )

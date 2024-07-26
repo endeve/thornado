@@ -2,8 +2,6 @@ MODULE Euler_SlopeLimiterModule
 
   USE KindModule, ONLY: &
     DP
-  USE Euler_BoundaryConditionsModule, ONLY: &
-    iApplyBC_Euler_Both
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -157,7 +155,7 @@ CONTAINS
 
 
   SUBROUTINE ApplySlopeLimiter_Euler &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option, iApplyBC_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -167,35 +165,18 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout)        :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    LOGICAL,  INTENT(in), OPTIONAL :: &
-      SuppressBC_Option
-    INTEGER,  INTENT(in), OPTIONAL :: &
-      iApplyBC_Option(3)
-
-    LOGICAL :: SuppressBC
-    INTEGER :: iApplyBC(3)
-
-    SuppressBC = .FALSE.
-    IF( PRESENT( SuppressBC_Option ) ) &
-      SuppressBC = SuppressBC_Option
-
-    iApplyBC = iApplyBC_Euler_Both
-    IF( PRESENT( iApplyBC_Option ) ) &
-      iApplyBC = iApplyBC_Option
 
 #ifdef MICROPHYSICS_WEAKLIB
 
 #ifdef HYDRO_RELATIVISTIC
 
     CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-             SuppressBC_Option = SuppressBC, iApplyBC_Option = iApplyBC )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
 #else
 
     CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-             SuppressBC_Option = SuppressBC, iApplyBC_Option = iApplyBC )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
 #endif
 
@@ -204,15 +185,12 @@ CONTAINS
 #ifdef HYDRO_RELATIVISTIC
 
     CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-             SuppressBC_Option = SuppressBC, iApplyBC_Option = iApplyBC )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
 #else
 
     CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
-             SuppressBC_Option = SuppressBC, iApplyBC_Option = iApplyBC )
-
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 #endif
 
 #endif

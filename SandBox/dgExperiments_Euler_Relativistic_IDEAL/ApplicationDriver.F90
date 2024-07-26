@@ -50,6 +50,8 @@ PROGRAM ApplicationDriver
     uDF
   USE GeometryFieldsModule, ONLY: &
     uGF
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_Euler
   USE Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_DG_Explicit
   USE TimeSteppingModule_SSPRK, ONLY: &
@@ -81,6 +83,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: RiemannProblemName
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: wrt
+  LOGICAL       :: SuppressBC
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
@@ -427,6 +430,14 @@ PROGRAM ApplicationDriver
 
   IF( RestartFileNumber .LT. 0 )THEN
 
+    SuppressBC = .FALSE.
+
+    IF( .NOT. SuppressBC )THEN
+      CALL ApplyBoundaryConditions_Euler &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uCF )
+
+    END IF
+
     CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
@@ -443,7 +454,7 @@ PROGRAM ApplicationDriver
 #endif
 
     CALL WriteFieldsHDF &
-         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF, WriteGhost_Option = .TRUE. )
 
   ELSE
 
@@ -551,7 +562,7 @@ PROGRAM ApplicationDriver
 #endif
 
       CALL WriteFieldsHDF &
-             ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+             ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF, WriteGhost_Option = .TRUE. )
 
       CALL ComputeTally_Euler_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t, &
@@ -583,7 +594,7 @@ PROGRAM ApplicationDriver
 #endif
 
   CALL WriteFieldsHDF &
-         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF )
+         ( t, WriteGF_Option = WriteGF, WriteFF_Option = WriteFF, WriteGhost_Option = .TRUE. )
 
   CALL ComputeTally_Euler_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, Time = t )

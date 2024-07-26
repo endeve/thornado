@@ -59,8 +59,7 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyInnerBC_Euler, &
     ApplyOuterBC_Euler, &
-    iApplyBC_Euler_Both, &
-    ApplyBoundaryConditions_Euler
+    iApplyBC_Euler_Both
   USE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL, ONLY: &
     ComputeCharacteristicDecomposition_Euler_Relativistic_IDEAL
   USE Euler_DiscontinuityDetectionModule, ONLY: &
@@ -311,7 +310,7 @@ CONTAINS
 
 
   SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option, iApplyBC_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -321,12 +320,7 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout)        :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    LOGICAL,  INTENT(in), OPTIONAL :: &
-      SuppressBC_Option
-    INTEGER,  INTENT(in), OPTIONAL :: &
-      iApplyBC_Option(3)
 
-    LOGICAL  :: SuppressBC
     LOGICAL  :: ExcludeInnerGhostCell(3), ExcludeOuterGhostCell(3)
     INTEGER  :: iNX, iX1, iX2, iX3, iCF
     INTEGER  :: iApplyBC(3)
@@ -441,19 +435,9 @@ CONTAINS
     nCF_BE1 = nCF * nX_BE1
     nGF_BE0 = 8   * nX_BE0
 
-    iApplyBC = iApplyBC_Euler_Both
-    IF( PRESENT( iApplyBC_Option ) ) &
-       iApplyBC = iApplyBC_Option
-
-    SuppressBC = .FALSE.
-    IF( PRESENT( SuppressBC_Option ) ) &
-      SuppressBC = SuppressBC_Option
-
     CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )
 
-    IF( .NOT. SuppressBC ) &
-      CALL ApplyBoundaryConditions_Euler &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+    iApplyBC = iApplyBC_Euler_Both
 
     CALL DetectTroubledCells_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )
