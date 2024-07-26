@@ -35,7 +35,7 @@ MODULE TimeSteppingModule_SSPRK
   IMPLICIT NONE
   PRIVATE
 
-  LOGICAL :: SuprressBC
+  LOGICAL :: SuppressBC
   INTEGER :: nStages_SSPRK
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: c_SSPRK
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: w_SSPRK
@@ -246,7 +246,7 @@ CONTAINS
 
     REAL(DP) :: dM_OffGrid_Euler(nCF)
 
-    SuppresBC = .FALSE.
+    SuppressBC = .FALSE.
 
     dM_OffGrid_Euler = Zero
 
