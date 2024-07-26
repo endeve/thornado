@@ -39,6 +39,8 @@ PROGRAM ApplicationDriver
     uPF, &
     uAF, &
     uDF
+  USE Euler_BoundaryConditionsMoudle, ONLY: &
+    ApplyBoundaryConditions_Euler
   USE InitializationModule, ONLY: &
     InitializeFields
   USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
@@ -90,6 +92,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: CoordinateSystem
   CHARACTER(64) :: EosTableName
   LOGICAL       :: wrt
+  LOGICAL       :: SuprressBC
   INTEGER       :: iCycle, iCycleD, iCycleW
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
   INTEGER       :: nStagesSSPRK
@@ -285,6 +288,14 @@ PROGRAM ApplicationDriver
              = TRIM( AdvectionProfile ) )
 
   IF( RestartFileNumber .LT. 0 )THEN
+
+    SuppressBC = .FALSE.
+
+    IF( .NOT. SuppressBC )THEN
+      CALL ApplyBoundaryConditions_Euler &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, uCF )
+
+    END IF
 
     CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
