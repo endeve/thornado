@@ -28,6 +28,8 @@ PROGRAM ApplicationDriver
     nCF, nPF, nAF, &
     uCF, uPF, uAF, &
     uDF
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_Euler
   USE InitializationModule, ONLY: &
     InitializeFields
   USE TimeSteppingModule_SSPRK, ONLY: &
@@ -69,6 +71,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: RiemannProblemName
   CHARACTER(32) :: CoordinateSystem
   LOGICAL       :: wrt
+  LOGICAL       :: SuppressBC
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
@@ -104,13 +107,13 @@ PROGRAM ApplicationDriver
 
       Gamma = 1.4_DP
 
-      nX = [ 64, 64, 1 ]
+      nX = [ 8, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-      bcX = [ 1, 1, 0 ]
+      bcX = [ 1, 0, 0 ]
 
-      nNodes = 2
+      nNodes = 1
 
       BetaTVD = 1.80_DP
       BetaTVB = 0.0d+00
@@ -396,6 +399,14 @@ PROGRAM ApplicationDriver
 
   END IF
 
+  SuppressBC = .FALSE.
+
+  IF( .NOT. SuppressBC )THEN
+    CALL ApplyBoundaryConditions_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uCF )
+
+  END IF
+
   CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
@@ -412,7 +423,7 @@ PROGRAM ApplicationDriver
 
   CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
-  CALL InitializeFluid_SSPRK( nStages = 3 )
+  CALL InitializeFluid_SSPRK( nStages = 1 )
 
   ! --- Evolve ---
 
