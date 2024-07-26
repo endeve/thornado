@@ -77,6 +77,7 @@ TimeSteppingModule_SSPRK.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   FluidFieldsModule.o \
+  Euler_BoundaryConditionsModule.o \
   Euler_SlopeLimiterModule_Relativistic_IDEAL.o \
   Euler_PositivityLimiterModule_Relativistic_IDEAL.o \
   TimersModule_Euler.o \
@@ -98,6 +99,7 @@ ApplicationDriver.o: \
   Euler_UtilitiesModule_Relativistic.o \
   InputOutputModuleHDF.o \
   FluidFieldsModule.o \
+  Euler_BoundaryConditionsModule.o \
   GeometryFieldsModule.o \
   Euler_dgDiscretizationModule.o \
   TimeSteppingModule_SSPRK.o \
