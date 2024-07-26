@@ -168,7 +168,7 @@ CONTAINS
     REAL(DP), INTENT(inout)        :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     INTEGER, INTENT(in), OPTIONAL :: &
-      iApplyBC_Option
+      iApplyBC_Option(3)
 
     INTEGER :: iApplyBC(3)
 
