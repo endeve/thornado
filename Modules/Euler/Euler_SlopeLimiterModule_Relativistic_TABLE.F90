@@ -878,7 +878,7 @@ CONTAINS
 
 
   SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_TABLE &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, SuppressBC_Option, iApplyBC_Option )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iApplyBC_Option )
 
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -888,12 +888,9 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout)        :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    LOGICAL,  INTENT(in), OPTIONAL :: &
-      SuppressBC_Option
     INTEGER,  INTENT(in), OPTIONAL :: &
       iApplyBC_Option(3)
 
-    LOGICAL  :: SuppressBC
     LOGICAL  :: ExcludeInnerGhostCell(3), ExcludeOuterGhostCell(3)
     INTEGER  :: iNX, iX1, iX2, iX3, iCF
     INTEGER  :: iApplyBC(3)
@@ -1076,15 +1073,7 @@ CONTAINS
     IF( PRESENT( iApplyBC_Option ) ) &
        iApplyBC = iApplyBC_Option
 
-    SuppressBC = .FALSE.
-    IF( PRESENT( SuppressBC_Option ) ) &
-      SuppressBC = SuppressBC_Option
-
     CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )
-
-    IF( .NOT. SuppressBC ) &
-      CALL ApplyBoundaryConditions_Euler &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
 
     CALL DetectTroubledCells_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )
