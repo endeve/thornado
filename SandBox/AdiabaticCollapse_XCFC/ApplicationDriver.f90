@@ -43,6 +43,8 @@ PROGRAM ApplicationDriver
     uPF, &
     uAF, &
     uDF
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_Euler
   USE GravitySolutionModule_XCFC, ONLY: &
     InitializeGravitySolver_XCFC, &
     FinalizeGravitySolver_XCFC
@@ -95,6 +97,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: CoordinateSystem
   CHARACTER(64) :: EosTableName
   LOGICAL       :: wrt
+  LOGICAL       :: SuppressBC
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
@@ -255,6 +258,14 @@ PROGRAM ApplicationDriver
   CALL InitializeFields_Relativistic &
          ( ProgenitorFileName_Option = TRIM( ProgenitorFileName ) )
 
+  SuppressBC = .FALSE.
+
+  IF( .NOT. SuppressBC )THEN
+    CALL ApplyBoundaryConditions_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uCF )
+
+  END IF
+
   CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
@@ -263,6 +274,12 @@ PROGRAM ApplicationDriver
 
   CALL InitializeMetric_Euler &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
+
+  IF( .NOT. SuppressBC )THEN
+    CALL ApplyBoundaryConditions_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uCF )
+
+  END IF
 
   CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
