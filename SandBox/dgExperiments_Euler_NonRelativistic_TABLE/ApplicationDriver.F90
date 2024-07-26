@@ -38,6 +38,8 @@ PROGRAM ApplicationDriver
   USE FluidFieldsModule, ONLY: &
     uCF, iCF_D, uPF, uAF, uDF, &
     ResetFluidFields_Diagnostic
+  USE Euler_BoundaryConditionsMoudle, ONLY: &
+    ApplyBoundaryConditions_Euler
   USE GravitySolutionModule_Newtonian_Poseidon, ONLY: &
     InitializeGravitySolver_Newtonian_Poseidon, &
     FinalizeGravitySolver_Newtonian_Poseidon, &
@@ -82,6 +84,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32)  :: ProgenitorFile
   LOGICAL        :: CustomRadialGrid
   LOGICAL        :: wrt
+  LOGICAL        :: SuppressBC
   LOGICAL        :: UseSlopeLimiter
   LOGICAL        :: UseCharacteristicLimiting
   LOGICAL        :: UseTroubledCellIndicator
@@ -470,6 +473,14 @@ PROGRAM ApplicationDriver
 #elif defined( THORNADO_OACC   )
       !$ACC UPDATE DEVICE( uCF )
 #endif
+
+  SuppressBC = .FALSE.
+
+  IF( .NOT. SuppressBC )THEN
+    CALL ApplyBoundaryConditions_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uCF )
+
+  END IF
 
   CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
