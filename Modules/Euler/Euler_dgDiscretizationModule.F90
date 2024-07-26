@@ -161,6 +161,7 @@ CONTAINS
 
   SUBROUTINE ComputeIncrement_Euler_DG_Explicit &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
+      SuppressBC_Option,     &
       SurfaceFlux_X1_Option, &
       SurfaceFlux_X2_Option, &
       SurfaceFlux_X3_Option )
@@ -174,6 +175,8 @@ CONTAINS
       D (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(out)   :: &
       dU(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    LOGICAL,  INTENT(in),  OPTIONAL :: &
+      SuppressBC_Option
     REAL(DP), INTENT(out), OPTIONAL :: &
       SurfaceFlux_X1_Option(:,:,:,:,:), &
       SurfaceFlux_X2_Option(:,:,:,:,:), &
@@ -231,6 +234,8 @@ CONTAINS
     CALL TimersStop_Euler( Timer_Euler_DG )
 
     SuppressBC = .FALSE.
+    IF( PRESENT( SuppressBC_Option ) ) &
+      SuppressBC = SuppressBC_Option
 
     IF( .NOT. SuppressBC )THEN
 
