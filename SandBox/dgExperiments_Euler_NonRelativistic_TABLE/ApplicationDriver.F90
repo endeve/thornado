@@ -38,7 +38,7 @@ PROGRAM ApplicationDriver
   USE FluidFieldsModule, ONLY: &
     uCF, iCF_D, uPF, uAF, uDF, &
     ResetFluidFields_Diagnostic
-  USE Euler_BoundaryConditionsMoudle, ONLY: &
+  USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE GravitySolutionModule_Newtonian_Poseidon, ONLY: &
     InitializeGravitySolver_Newtonian_Poseidon, &
