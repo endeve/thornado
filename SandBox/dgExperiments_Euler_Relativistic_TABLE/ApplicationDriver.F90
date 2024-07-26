@@ -39,7 +39,7 @@ PROGRAM ApplicationDriver
     uPF, &
     uAF, &
     uDF
-  USE Euler_BoundaryConditionsMoudle, ONLY: &
+  USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE InitializationModule, ONLY: &
     InitializeFields
