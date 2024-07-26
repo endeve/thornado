@@ -12,6 +12,8 @@ MODULE TimeSteppingModule_SSPRK
     nDOFX
   USE FluidFieldsModule, ONLY: &
     nCF
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_Euler
   USE Euler_SlopeLimiterModule_Relativistic_TABLE, ONLY: &
     ApplySlopeLimiter_Euler_Relativistic_TABLE
   USE Euler_PositivityLimiterModule_Relativistic_TABLE, ONLY: &
@@ -33,6 +35,7 @@ MODULE TimeSteppingModule_SSPRK
   IMPLICIT NONE
   PRIVATE
 
+  LOGICAL :: SuppressBC
   INTEGER :: nStages_SSPRK
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: c_SSPRK
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: w_SSPRK
@@ -48,7 +51,6 @@ MODULE TimeSteppingModule_SSPRK
   INTERFACE
     SUBROUTINE FluidIncrement &
       ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
-        SuppressBC_Option, &
         SurfaceFlux_X1_Option, &
         SurfaceFlux_X2_Option, &
         SurfaceFlux_X3_Option )
@@ -62,8 +64,6 @@ MODULE TimeSteppingModule_SSPRK
         D (1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
       REAL(DP), INTENT(out)   :: &
         dU(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-      LOGICAL,  INTENT(in),  OPTIONAL :: &
-        SuppressBC_Option
       REAL(DP), INTENT(out), OPTIONAL :: &
         SurfaceFlux_X1_Option(:,:,:,:,:), &
         SurfaceFlux_X2_Option(:,:,:,:,:), &
@@ -219,6 +219,8 @@ CONTAINS
 
     REAL(DP) :: dM_OffGrid_Euler(nCF)
 
+    SuppressBC = .FALSE.
+
     dM_OffGrid_Euler = Zero
 
     CALL TimersStart_Euler( Timer_Euler_UpdateFluid )
@@ -272,6 +274,12 @@ CONTAINS
 
         IF( iS .NE. 1 )THEN
 
+          IF( .NOT. SuppressBC )THEN
+            CALL ApplyBoundaryConditions_Euler &
+                   ( iX_B0, iX_E0, iX_B1, iX_E1, U_SSPRK )
+
+          END IF
+
           CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
 
@@ -308,6 +316,12 @@ CONTAINS
       END IF
 
     END DO
+
+    IF( .NOT. SuppressBC )THEN
+      CALL ApplyBoundaryConditions_Euler &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U )
+
+    END IF
 
     CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
