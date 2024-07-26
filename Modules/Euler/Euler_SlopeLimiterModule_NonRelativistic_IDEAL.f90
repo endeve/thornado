@@ -177,7 +177,7 @@ CONTAINS
 
 
   SUBROUTINE ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iApplyBC_Option )
 
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -187,6 +187,8 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout)        :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    INTEGER,  INTENT(in), OPTIONAL :: &
+      iApplyBC_Option(3)
 
     LOGICAL  :: LimitedCell(nCF,iX_B0(1):iX_E0(1), &
                                 iX_B0(2):iX_E0(2), &
@@ -215,6 +217,8 @@ CONTAINS
     U_M = Zero
 
     iApplyBC = iApplyBC_Euler_Both
+    IF( PRESENT( iApplyBC_Option ) ) &
+      iApplyBC = iApplyBC_Option
 
     CALL DetectTroubledCells_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )

@@ -2,6 +2,8 @@ MODULE Euler_SlopeLimiterModule
 
   USE KindModule, ONLY: &
     DP
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    iApplyBC_Euler_Both
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -155,7 +157,7 @@ CONTAINS
 
 
   SUBROUTINE ApplySlopeLimiter_Euler &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iApplyBC_Option )
 
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -165,18 +167,26 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout)        :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    INTEGER, INTENT(in), OPTIONAL :: &
+      iApplyBC_Option
+
+    INTEGER :: iApplyBC(3)
+
+    iApplyBC = iApplyBC_Euler_Both
+    IF( PRESENT( iApplyBC_Option ) ) &
+      iApplyBC = iApplyBC_Option
 
 #ifdef MICROPHYSICS_WEAKLIB
 
 #ifdef HYDRO_RELATIVISTIC
 
     CALL ApplySlopeLimiter_Euler_Relativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iApplyBC_Option = iApplyBC )
 
 #else
 
     CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iApplyBC_Option = iApplyBC )
 
 #endif
 
@@ -185,12 +195,12 @@ CONTAINS
 #ifdef HYDRO_RELATIVISTIC
 
     CALL ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iApplyBC_Option = iApplyBC )
 
 #else
 
     CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iApplyBC_Option = iApplyBC )
 #endif
 
 #endif

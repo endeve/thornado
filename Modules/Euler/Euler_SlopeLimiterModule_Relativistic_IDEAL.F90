@@ -310,7 +310,7 @@ CONTAINS
 
 
   SUBROUTINE ApplySlopeLimiter_Euler_Relativistic_IDEAL &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iApplyBC_Option )
 
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -320,6 +320,8 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout)        :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    INTEGER,  INTENT(in), OPTIONAL :: &
+      iApplyBC_Option(3)
 
     LOGICAL  :: ExcludeInnerGhostCell(3), ExcludeOuterGhostCell(3)
     INTEGER  :: iNX, iX1, iX2, iX3, iCF
@@ -438,6 +440,8 @@ CONTAINS
     CALL TimersStop_Euler( Timer_Euler_SlopeLimiter )
 
     iApplyBC = iApplyBC_Euler_Both
+    IF( PRESENT( iApplyBC_Option ) ) &
+      iApplyBC = iApplyBC_Option
 
     CALL DetectTroubledCells_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )
