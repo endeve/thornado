@@ -52,6 +52,8 @@ MODULE MF_Euler_SlopeLimiterModule
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
+  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_Euler_MF
   USE MF_EdgeMapModule, ONLY: &
     EdgeMap, &
     ConstructEdgeMap
