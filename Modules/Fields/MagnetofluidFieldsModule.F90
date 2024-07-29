@@ -98,27 +98,34 @@ MODULE MagnetofluidFieldsModule
   ! --- Auxiliary Magnetofluid Fields ---
 
   INTEGER, PUBLIC, PARAMETER :: iAM_P  = 01 ! Pressure
-  INTEGER, PUBLIC, PARAMETER :: iAM_T  = 02 ! Temperature
-  INTEGER, PUBLIC, PARAMETER :: iAM_Ye = 03 ! Electron Fraction
-  INTEGER, PUBLIC, PARAMETER :: iAM_S  = 04 ! Entropy Per Baryon
-  INTEGER, PUBLIC, PARAMETER :: iAM_E  = 05 ! Specific Internal Energy
-  INTEGER, PUBLIC, PARAMETER :: iAM_Me = 06 ! Electron Chemical Potential
-  INTEGER, PUBLIC, PARAMETER :: iAM_Mp = 07 ! Proton Chemical Potential
-  INTEGER, PUBLIC, PARAMETER :: iAM_Mn = 08 ! Neutron Chemical Potential
-  INTEGER, PUBLIC, PARAMETER :: iAM_Xp = 09 ! Proton Mass Fraction
-  INTEGER, PUBLIC, PARAMETER :: iAM_Xn = 10 ! Neutron Mass Fraction
-  INTEGER, PUBLIC, PARAMETER :: iAM_Xa = 11 ! Alpha Mass Fraction
-  INTEGER, PUBLIC, PARAMETER :: iAM_Xh = 12 ! Heavy Mass Fraction
-  INTEGER, PUBLIC, PARAMETER :: iAM_Gm = 13 ! Ratio of Specific Heats
-  INTEGER, PUBLIC, PARAMETER :: iAM_Cs = 14 ! Sound Speed
-  INTEGER, PUBLIC, PARAMETER :: nAM    = 14 ! n AuxiliaryMagneto Fields
+  INTEGER, PUBLIC, PARAMETER :: iAM_Pb = 02 ! Magnetic Pressure
+  INTEGER, PUBLIC, PARAMETER :: iAM_T  = 03 ! Temperature
+  INTEGER, PUBLIC, PARAMETER :: iAM_Ye = 04 ! Electron Fraction
+  INTEGER, PUBLIC, PARAMETER :: iAM_S  = 05 ! Entropy Per Baryon
+  INTEGER, PUBLIC, PARAMETER :: iAM_E  = 06 ! Specific Internal Energy
+  INTEGER, PUBLIC, PARAMETER :: iAM_h  = 07 ! Specific Enthalpy
+  INTEGER, PUBLIC, PARAMETER :: iAM_hb = 08 ! Specific Magnetic Enthalpy
+  INTEGER, PUBLIC, PARAMETER :: iAM_Me = 09 ! Electron Chemical Potential
+  INTEGER, PUBLIC, PARAMETER :: iAM_Mp = 10 ! Proton Chemical Potential
+  INTEGER, PUBLIC, PARAMETER :: iAM_Mn = 11 ! Neutron Chemical Potential
+  INTEGER, PUBLIC, PARAMETER :: iAM_Xp = 12 ! Proton Mass Fraction
+  INTEGER, PUBLIC, PARAMETER :: iAM_Xn = 13 ! Neutron Mass Fraction
+  INTEGER, PUBLIC, PARAMETER :: iAM_Xa = 14 ! Alpha Mass Fraction
+  INTEGER, PUBLIC, PARAMETER :: iAM_Xh = 15 ! Heavy Mass Fraction
+  INTEGER, PUBLIC, PARAMETER :: iAM_Gm = 16 ! Ratio of Specific Heats
+  INTEGER, PUBLIC, PARAMETER :: iAM_Cs = 17 ! Sound Speed
+  INTEGER, PUBLIC, PARAMETER :: iAM_Ca = 18 ! Alfven Speed
+  INTEGER, PUBLIC, PARAMETER :: nAM    = 18 ! n AuxiliaryMagneto Fields
 
   CHARACTER(32), DIMENSION(nAM), PUBLIC, PARAMETER :: &
     namesAM = [ 'Pressure                        ', &
+                'Magnetic Pressure               ', &
                 'Temperature                     ', &
                 'Electron Fraction               ', &
                 'Entropy Per Baryon              ', &
                 'Specific Internal Energy        ', &
+                'Specific Enthalpy               ', &
+                'Specific Magnetic Enthalpy      ', &
                 'Electron Chemical Potential     ', &
                 'Proton Chemical Potential       ', &
                 'Neutron Chemical Potential      ', &
@@ -127,14 +134,18 @@ MODULE MagnetofluidFieldsModule
                 'Alpha Mass Fraction             ', &
                 'Heavy Mass Fraction             ', &
                 'Ratio of Specific Heats (Gamma) ', &
-                'Sound Speed                     ' ]
+                'Sound Speed                     ', &
+                'Alfven Speed                    ' ]
 
   CHARACTER(10),  DIMENSION(nAM), PUBLIC, PARAMETER :: &
     ShortNamesAM = [ 'AM_P      ', &
+                     'AM_Pb     ', &
                      'AM_T      ', &
                      'AM_Ye     ', &
                      'AM_S      ', &
                      'AM_E      ', &
+                     'AM_h      ', &
+                     'AM_hb     ', &
                      'AM_Me     ', &
                      'AM_Mp     ', &
                      'AM_Mn     ', &
@@ -143,7 +154,8 @@ MODULE MagnetofluidFieldsModule
                      'AM_Xa     ', &
                      'AM_Xh     ', &
                      'AM_Gm     ', &
-                     'AM_Cs     ' ]
+                     'AM_Cs     ', &
+                     'AM_Ca     ' ]
 
   REAL(DP), DIMENSION(nAM), PUBLIC :: unitsAM
 
@@ -531,10 +543,13 @@ CONTAINS
       ! --- Auxiliary ---
 
       unitsAM(iAM_P)  = Erg / Centimeter**3
+      unitsAM(iAM_P)  = Erg / Centimeter**3
       unitsAM(iAM_T)  = Kelvin
       unitsAM(iAM_Ye) = One
       unitsAM(iAM_S)  = BoltzmannConstant
       unitsAM(iAM_E)  = Erg / Gram
+      unitsAM(iAM_h)  = Erg / Gram
+      unitsAM(iAM_hb) = Erg / Gram
       unitsAM(iAM_Me) = MeV
       unitsAM(iAM_Mp) = MeV
       unitsAM(iAM_Mn) = MeV
@@ -543,6 +558,7 @@ CONTAINS
       unitsAM(iAM_Xa) = One
       unitsAM(iAM_Xh) = One
       unitsAM(iAM_Gm) = One
+      unitsAM(iAM_Cs) = Kilometer / Second
       unitsAM(iAM_Cs) = Kilometer / Second
 
       ! --- Diagnostic ---
