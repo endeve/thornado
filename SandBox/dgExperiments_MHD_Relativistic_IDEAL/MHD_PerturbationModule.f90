@@ -95,7 +95,6 @@ CONTAINS
     INTEGER,  INTENT(in), OPTIONAL :: Rand_Points_Option
     REAL(DP), INTENT(in), OPTIONAL :: Rand_Amplitude_Option
 
-    INTEGER  :: Size1, Size2, Size3, SizeN
     INTEGER  :: iPoint
     REAL(DP) :: Rand1, Rand2, Rand3
     REAL(DP) :: RandN
@@ -112,25 +111,32 @@ CONTAINS
       Rand_Points = 0
     END IF
 
+    ALLOCATE( Rand_X1(Rand_Points) )
+    ALLOCATE( Rand_X2(Rand_Points) )
+    ALLOCATE( Rand_X3(Rand_Points) )
+    ALLOCATE( Rand_NodeX(Rand_Points) )
+
     IF( Rand_Points > 0 )THEN
 
       DO iPoint = 1, Rand_Points
-  
-        CALL RANDOM_SEED  ( SIZE = Size1 )
+
+        CALL RANDOM_SEED  ()
         CALL RANDOM_NUMBER( Rand1 )
-  
-        CALL RANDOM_SEED  ( SIZE = Size2 )
+
+        CALL RANDOM_SEED  ()
         CALL RANDOM_NUMBER( Rand2 )
-  
-        CALL RANDOM_SEED  ( SIZE = Size3 )
+
+        CALL RANDOM_SEED  ()
         CALL RANDOM_NUMBER( Rand3 )
-  
-        CALL RANDOM_SEED  ( SIZE = SizeN )
+
+        CALL RANDOM_SEED  ()
         CALL RANDOM_NUMBER( RandN )
-  
+
         Rand_X1(iPoint) = CEILING( Rand1 * ( Size_X1 ) )
         Rand_X2(iPoint) = CEILING( Rand2 * ( Size_X2 ) )
-        Rand_X3(iPoint) = CEILING( Rand3 * ( Size_X3 ) )  
+        Rand_X3(iPoint) = CEILING( Rand3 * ( Size_X3 ) )
+
+        Rand_NodeX(iPoint) = CEILING( RandN * ( Size_NodeX ) )
 
       END DO
 
@@ -165,15 +171,15 @@ CONTAINS
 
       CALL ComputeFromConserved_MHD_Relativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, EvolveOnlyMagnetic )
-  
+
       P(Rand_NodeX(:),Rand_X1(:),Rand_X2(:),Rand_X3(:),iPM_V1) &
         = ( One + Rand_Amplitude ) &
           * P(Rand_NodeX(:),Rand_X1(:),Rand_X2(:),Rand_X3(:),iPM_V1)
-  
+
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
-  
+
        CALL ComputeConserved_MHD_Relativistic &
                ( P(:,iX1,iX2,iX3,iPM_D ), P(:,iX1,iX2,iX3,iPM_V1 ), &
                  P(:,iX1,iX2,iX3,iPM_V2), P(:,iX1,iX2,iX3,iPM_V3 ), &
@@ -194,7 +200,7 @@ CONTAINS
                  G(:,iX1,iX2,iX3,iGF_Beta_3  ), &
                  A(:,iX1,iX2,iX3,iAM_P       ), &
                  EvolveOnlyMagnetic )
-  
+
       END DO
       END DO
       END DO
@@ -213,6 +219,7 @@ CONTAINS
     DEALLOCATE( Rand_X1 )
     DEALLOCATE( Rand_X2 )
     DEALLOCATE( Rand_X3 )
+    DEALLOCATE( Rand_NodeX )
 
   END SUBROUTINE FinalizeRandPerturbations
 
