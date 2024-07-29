@@ -65,6 +65,10 @@ PROGRAM ApplicationDriver
     Centimeter, &
     Millisecond, &
     UnitsDisplay
+  USE MHD_PerturbationModule, ONLY: &
+    InitializeRandPerturbations, &
+    ApplyRandPerturbations, &
+    FinalizeRandPerturbations
 
   IMPLICIT NONE
 
@@ -734,6 +738,8 @@ PROGRAM ApplicationDriver
            EvolveOnlyMagnetic_Option &
              = EvolveOnlyMagnetic )
 
+  CALL InitializeRandPerturbations( nX(1), nX(2), nX(3), nNodes, 1, One )
+
   IF( RestartFileNumber .LT. 0 )THEN
 
     CALL ApplySlopeLimiter_MHD_Relativistic_IDEAL &
@@ -756,6 +762,8 @@ PROGRAM ApplicationDriver
              ReadMF_Option = .TRUE., ReadGF_Option = .TRUE. )
 
   END IF
+
+  CALL ApplyRandPerturbations( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, EvolveOnlyMagnetic )
 
   iCycleD = 10
   dt_wrt = 1.0e-2 * ( t_end - t ); iCycleW = -1
@@ -871,6 +879,8 @@ PROGRAM ApplicationDriver
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, Time = t )
 
   CALL FinalizeTally_MHD_Relativistic
+
+  CALL FinalizeRandPerturbations
 
   CALL FinalizeMagnetofluid_SSPRK
 
