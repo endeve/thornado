@@ -16,6 +16,7 @@ MODULE EquationOfStateModule_IDEAL
   PUBLIC :: ComputePressureFromSpecificInternalEnergy_IDEAL
   PUBLIC :: ComputeSoundSpeedFromPrimitive_IDEAL
   PUBLIC :: ComputeAuxiliary_Fluid_IDEAL
+  PUBLIC :: ComputeAuxiliary_Magnetofluid_IDEAL
 
   INTERFACE ComputePressureFromPrimitive_IDEAL
     MODULE PROCEDURE ComputePressureFromPrimitive_IDEAL_Scalar
@@ -41,6 +42,12 @@ MODULE EquationOfStateModule_IDEAL
     MODULE PROCEDURE ComputeAuxiliary_Fluid_IDEAL_Scalar
     MODULE PROCEDURE ComputeAuxiliary_Fluid_IDEAL_Vector
   END INTERFACE ComputeAuxiliary_Fluid_IDEAL
+
+  INTERFACE ComputeAuxiliary_Magnetofluid_IDEAL
+    MODULE PROCEDURE ComputeAuxiliary_Magnetofluid_IDEAL_Scalar
+    MODULE PROCEDURE ComputeAuxiliary_Magnetofluid_IDEAL_Vector
+  END INTERFACE ComputeAuxiliary_Magnetofluid_IDEAL
+
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET( Gamma_IDEAL )
@@ -275,6 +282,52 @@ CONTAINS
     END DO
 
   END SUBROUTINE ComputeAuxiliary_Fluid_IDEAL_Vector
+
+
+  SUBROUTINE ComputeAuxiliary_Magnetofluid_IDEAL_Scalar &
+    ( D, V1, V2, V3, Ev, Ne, B1, B2, B3, P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: D, V1, V2, V3, Ev, Ne, B1, B2, B3
+    REAL(DP), INTENT(out) :: P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca
+
+    P  = ( Gamma_IDEAL - 1.0_DP ) * Ev
+    Gm = Gamma_IDEAL
+    Em = Ev / D
+    CALL ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne, Cs )
+
+    T = 0.0_DP
+    Y = 0.0_DP
+    S = 0.0_DP
+
+  END SUBROUTINE ComputeAuxiliary_Magnetofluid_IDEAL_Scalar
+
+
+  SUBROUTINE ComputeAuxiliary_Magnetofluid_IDEAL_Vector &
+    ( D, V1, V2, V3, Ev, Ne, B1, B2, B3, P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
+
+    REAL(DP), INTENT(in)  :: D(:), V1(:), V2(:), V3(:), Ev(:), Ne(:), &
+                             B1(:), B2(:), B3(:)
+    REAL(DP), INTENT(out) :: P(:), Pb(:), T (:), Y (:), S(:), Em(:), &
+                             h(:), hb(:), Gm(:), Cs(:), Ca(:)
+
+    INTEGER :: i
+
+    DO i = 1, SIZE( D )
+
+      CALL ComputeAuxiliary_Magnetofluid_IDEAL_Scalar &
+             ( D(i), V1(i), V2(i), V3(i), Ev(i), Ne(i), B1(i), B2(i), B3(i), &
+               P(i), Pb(i), T(i), Y(i), S(i), Em(i), h(i), hb(i), &
+               Gm(i), Cs(i), Ca(i) )
+
+    END DO
+
+  END SUBROUTINE ComputeAuxiliary_Magnetofluid_IDEAL_Vector
 
 
 END MODULE EquationOfStateModule_IDEAL

@@ -85,6 +85,7 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputePressureFromSpecificInternalEnergy_TABLE
   PUBLIC :: ComputeSoundSpeedFromPrimitive_TABLE
   PUBLIC :: ComputeAuxiliary_Fluid_TABLE
+  PUBLIC :: ComputeAuxiliary_Magnetofluid_TABLE
   PUBLIC :: ComputePressure_TABLE
   PUBLIC :: ComputeSpecificInternalEnergy_TABLE
   PUBLIC :: ComputeElectronChemicalPotential_TABLE
@@ -141,6 +142,11 @@ MODULE EquationOfStateModule_TABLE
     MODULE PROCEDURE ComputeAuxiliary_Fluid_TABLE_Scalar
     MODULE PROCEDURE ComputeAuxiliary_Fluid_TABLE_Vector
   END INTERFACE ComputeAuxiliary_Fluid_TABLE
+
+  INTERFACE ComputeAuxiliary_Magnetofluid_TABLE
+    MODULE PROCEDURE ComputeAuxiliary_Magnetofluid_TABLE_Scalar
+    MODULE PROCEDURE ComputeAuxiliary_Magnetofluid_TABLE_Vector
+  END INTERFACE ComputeAuxiliary_Magnetofluid_TABLE
 
   INTERFACE ComputeTemperatureFromSpecificInternalEnergy_TABLE
     MODULE PROCEDURE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_NG_NE
@@ -1269,6 +1275,65 @@ CONTAINS
     END DO
 
   END SUBROUTINE ComputeAuxiliary_Fluid_TABLE_Vector
+
+
+  SUBROUTINE ComputeAuxiliary_Magnetofluid_TABLE_Scalar &
+    ( D, V1, V2, V3, Ev, Ne, B1, B2, B3, P, Pb, T, Y, S, Em, &
+      h, hb, Gm, Cs, Ca )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: D, V1, V2, V3, Ev, Ne, B1, B2, B3
+    REAL(DP), INTENT(out) :: P, Pb, T, Y, S, Em, Gm, h, hb, Cs, Ca
+
+    Em = Ev / D
+    Y  = Ne * ( BaryonMass / D )
+
+    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
+           ( D, Em, Y, T )
+
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, P, P_T, OS_P, Units_V = UnitP )
+
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, S, S_T, OS_S, Units_V = UnitS )
+
+    CALL ComputeDependentVariable_TABLE_Scalar &
+           ( D, T, Y, Gm, Gm_T, OS_Gm, Units_V = UnitGm )
+
+    Cs = SQRT( Gm * P / D )
+
+  END SUBROUTINE ComputeAuxiliary_Magnetofluid_TABLE_Scalar
+
+
+  SUBROUTINE ComputeAuxiliary_Magnetofluid_TABLE_Vector &
+    ( D, V1, V2, V3, Ev, Ne, B1, B2, B3, P, Pb, T, Y, S, Em, &
+      h, hb, Gm, Cs, Ca )
+
+    REAL(DP), INTENT(in)  :: D(1:), V1(1:), V2(1:), V3(1:), Ev(1:), Ne(1:), &
+                             B1(1:), B2(1:), B3(1:)
+    REAL(DP), INTENT(out) :: P(1:), Pb(1:), T (1:), Y (1:), S(1:), Em(1:), &
+                             h(1:), hb(1:), Gm(1:), Cs(1:), Ca(1:)
+
+    INTEGER :: iP, nP
+
+    nP = SIZE( D )
+
+    DO iP = 1, nP
+
+      CALL ComputeAuxiliary_Magnetofluid_TABLE_Scalar &
+             ( D(iP), V1(iP), V2(iP), V3(iP), Ev(iP), Ne(iP), &
+               B1(iP), B2(iP), B3(iP), &
+               P (iP), Pb(iP), T (iP), Y (iP), S(iP), Em(iP), &
+               h (iP), hb(iP), Gm(iP), Cs(iP), Ca(iP) )
+
+    END DO
+
+  END SUBROUTINE ComputeAuxiliary_Magnetofluid_TABLE_Vector
 
 
   SUBROUTINE ComputePressure_TABLE_Scalar &

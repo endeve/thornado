@@ -8,7 +8,8 @@ MODULE EquationOfStateModule
     ComputePressureFromPrimitive_IDEAL, &
     ComputePressureFromSpecificInternalEnergy_IDEAL, &
     ComputeSoundSpeedFromPrimitive_IDEAL, &
-    ComputeAuxiliary_Fluid_IDEAL
+    ComputeAuxiliary_Fluid_IDEAL, &
+    ComputeAuxiliary_Magnetofluid_IDEAL
   USE EquationOfStateModule_TABLE, ONLY: &
     InitializeEquationOfState_TABLE, &
     ApplyEquationOfState_TABLE, &
@@ -21,6 +22,7 @@ MODULE EquationOfStateModule
     ComputePressureFromSpecificInternalEnergy_TABLE, &
     ComputeSoundSpeedFromPrimitive_TABLE, &
     ComputeAuxiliary_Fluid_TABLE, &
+    ComputeAuxiliary_Magnetofluid_TABLE, &
     ComputeSpecificInternalEnergy_TABLE, &
     ComputeElectronChemicalPotential_TABLE, &
     ComputeProtonChemicalPotential_TABLE, &
@@ -44,6 +46,7 @@ MODULE EquationOfStateModule
   PUBLIC :: ComputeInternalEnergyDensityFromPressure
   PUBLIC :: ComputeSoundSpeedFromPrimitive
   PUBLIC :: ComputeAuxiliary_Fluid
+  PUBLIC :: ComputeAuxiliary_Magnetofluid
   PUBLIC :: ComputeThermodynamicStates_Primitive
   PUBLIC :: ComputeThermodynamicStates_Auxiliary
   PUBLIC :: ComputeTemperatureFromSpecificInternalEnergy
@@ -91,6 +94,11 @@ MODULE EquationOfStateModule
     MODULE PROCEDURE ComputeAuxiliary_Fluid_Scalar
     MODULE PROCEDURE ComputeAuxiliary_Fluid_Vector
   END INTERFACE ComputeAuxiliary_Fluid
+
+  INTERFACE ComputeAuxiliary_Magnetofluid
+    MODULE PROCEDURE ComputeAuxiliary_Magnetofluid_Scalar
+    MODULE PROCEDURE ComputeAuxiliary_Magnetofluid_Vector
+  END INTERFACE ComputeAuxiliary_Magnetofluid
 
   INTERFACE ComputeThermodynamicStates_Primitive
     MODULE PROCEDURE ComputeThermodynamicStates_Primitive_Scalar
@@ -718,6 +726,57 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeAuxiliary_Fluid_Vector
+
+
+  SUBROUTINE ComputeAuxiliary_Magnetofluid_Scalar &
+    ( D, V1, V2, V3, Ev, Ne, B1, B2, B3, P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: D, V1, V2, V3, Ev, Ne, B1, B2, B3
+    REAL(DP), INTENT(out) :: P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    CALL ComputeAuxiliary_Magnetofluid_TABLE( D, V1, V2, V3, Ev, Ne, B1, B2, B3, &
+                                       P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
+
+#else
+
+    CALL ComputeAuxiliary_Magnetofluid_IDEAL( D, V1, V2, V3, Ev, Ne, B1, B2, B3, &
+                                       P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
+
+#endif
+
+  END SUBROUTINE ComputeAuxiliary_Magnetofluid_Scalar
+
+
+  SUBROUTINE ComputeAuxiliary_Magnetofluid_Vector &
+    ( D, V1, V2, V3, Ev, Ne, B1, B2, B3, &
+      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
+
+    REAL(DP), INTENT(in)  :: D(:), V1(:), V2(:), V3(:), Ev(:), Ne(:), &
+                             B1(:), B2(:), B3(:)
+    REAL(DP), INTENT(out) :: P(:), Pb(:), T (:), Y (:), S(:), &
+                             Em(:), h(:), hb(:), Gm(:), Cs(:), Ca(:)
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    CALL ComputeAuxiliary_Magnetofluid_IDEAL( D, V1, V2, V3, Ev, Ne, B1, B2, B3, &
+                                       P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
+
+#else
+
+    CALL ComputeAuxiliary_Magnetofluid_TABLE( D, V1, V2, V3, Ev, Ne, B1, B2, B3, &
+                                       P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
+
+#endif
+
+  END SUBROUTINE ComputeAuxiliary_Magnetofluid_Vector
 
 
   ! --- ComputeThermodynamicStates_Primitive ---
