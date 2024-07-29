@@ -174,14 +174,14 @@ CONTAINS
                U(:,iX1,iX2,iX3,iCM_S2), U(:,iX1,iX2,iX3,iCM_S3 ), &
                U(:,iX1,iX2,iX3,iCM_E ), U(:,iX1,iX2,iX3,iCM_Ne ), &
                U(:,iX1,iX2,iX3,iCM_B1), U(:,iX1,iX2,iX3,iCM_B2 ), &
-               U(:,iX1,iX2,iX3,iCM_B3), U(:,iX1,iX2,iX3,iCM_B3 ), &
+               U(:,iX1,iX2,iX3,iCM_B3), U(:,iX1,iX2,iX3,iCM_Chi), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
                G(:,iX1,iX2,iX3,iGF_Alpha   ), &
                G(:,iX1,iX2,iX3,iGF_Beta_1  ), &
-               G(:,iX1,iX2,iX3,iGF_Beta_1  ), &
-               G(:,iX1,iX2,iX3,iGF_Beta_1  ), &
+               G(:,iX1,iX2,iX3,iGF_Beta_2  ), &
+               G(:,iX1,iX2,iX3,iGF_Beta_3  ), &
                EvolveOnlyMagnetic )
 
     END DO
