@@ -76,12 +76,16 @@ MODULE MHD_UtilitiesModule_Relativistic
     iPM_Chi, &
     nAM, &
     iAM_P, &
+    iAM_Pb, &
     iAM_T, &
     iAM_Ye, &
     iAM_S, &
     iAM_E, &
+    iAM_h, &
+    iAM_hb, &
     iAM_Gm, &
     iAM_Cs, &
+    iAM_Ca, &
     nDM, &
     iDM_Sh_X1, &
     iDM_Sh_X2, &
@@ -91,7 +95,7 @@ MODULE MHD_UtilitiesModule_Relativistic
     ApplyBoundaryConditions_MHD
   USE EquationOfStateModule, ONLY: &
     ComputeSoundSpeedFromPrimitive, &
-    ComputeAuxiliary_Fluid, &
+    ComputeAuxiliary_Magnetofluid, &
     ComputePressure, &
     ComputePressureFromPrimitive, &
     ComputePressureFromSpecificInternalEnergy, &
@@ -2255,17 +2259,27 @@ CONTAINS
                G   (iNX,iX1,iX2,iX3,iGF_Beta_3), &
                EvolveOnlyMagnetic )
 
-      CALL ComputeAuxiliary_Fluid &
+      CALL ComputeAuxiliary_Magnetofluid &
              ( P(iNX,iX1,iX2,iX3,iPM_D ), &
+               P(iNX,iX1,iX2,iX3,iPM_V1), &
+               P(iNX,iX1,iX2,iX3,iPM_V2), &
+               P(iNX,iX1,iX2,iX3,iPM_V3), &
                P(iNX,iX1,iX2,iX3,iPM_E ), &
                P(iNX,iX1,iX2,iX3,iPM_Ne), &
+               P(iNX,iX1,iX2,iX3,iPM_B1), &
+               P(iNX,iX1,iX2,iX3,iPM_B2), &
+               P(iNX,iX1,iX2,iX3,iPM_B3), &
                A(iNX,iX1,iX2,iX3,iAM_P ), &
+               A(iNX,iX1,iX2,iX3,iAM_Pb), &
                A(iNX,iX1,iX2,iX3,iAM_T ), &
                A(iNX,iX1,iX2,iX3,iAM_Ye), &
                A(iNX,iX1,iX2,iX3,iAM_S ), &
                A(iNX,iX1,iX2,iX3,iAM_E ), &
+               A(iNX,iX1,iX2,iX3,iAM_h ), &
+               A(iNX,iX1,iX2,iX3,iAM_hb), &
                A(iNX,iX1,iX2,iX3,iAM_Gm), &
-               A(iNX,iX1,iX2,iX3,iAM_Cs) )
+               A(iNX,iX1,iX2,iX3,iAM_Cs), &
+               A(iNX,iX1,iX2,iX3,iAM_Ca) )
 
     END DO
     END DO
