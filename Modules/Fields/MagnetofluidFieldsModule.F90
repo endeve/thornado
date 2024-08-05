@@ -543,7 +543,7 @@ CONTAINS
       ! --- Auxiliary ---
 
       unitsAM(iAM_P)  = Erg / Centimeter**3
-      unitsAM(iAM_P)  = Erg / Centimeter**3
+      unitsAM(iAM_Pb) = Erg / Centimeter**3
       unitsAM(iAM_T)  = Kelvin
       unitsAM(iAM_Ye) = One
       unitsAM(iAM_S)  = BoltzmannConstant
@@ -559,7 +559,7 @@ CONTAINS
       unitsAM(iAM_Xh) = One
       unitsAM(iAM_Gm) = One
       unitsAM(iAM_Cs) = Kilometer / Second
-      unitsAM(iAM_Cs) = Kilometer / Second
+      unitsAM(iAM_Ca) = Kilometer / Second
 
       ! --- Diagnostic ---
 
