@@ -7,7 +7,10 @@ MODULE EquationOfStateModule
     ComputeInternalEnergyDensityFromPressure_IDEAL, &
     ComputePressureFromPrimitive_IDEAL, &
     ComputePressureFromSpecificInternalEnergy_IDEAL, &
+    ComputeEnthalpyFromPrimitive_IDEAL, &
+    ComputeMagneticEnthalpyFromPrimitive_IDEAL, &
     ComputeSoundSpeedFromPrimitive_IDEAL, &
+    ComputeAlfvenSpeedFromPrimitive_IDEAL, &
     ComputeAuxiliary_Fluid_IDEAL, &
     ComputeAuxiliary_Magnetofluid_IDEAL
   USE EquationOfStateModule_TABLE, ONLY: &
@@ -43,6 +46,7 @@ MODULE EquationOfStateModule
   PUBLIC :: ComputeSpecificInternalEnergy
   PUBLIC :: ComputePressureFromPrimitive
   PUBLIC :: ComputePressureFromSpecificInternalEnergy
+  PUBLIC :: ComputeEnthalpyFromPrimitive
   PUBLIC :: ComputeInternalEnergyDensityFromPressure
   PUBLIC :: ComputeSoundSpeedFromPrimitive
   PUBLIC :: ComputeAuxiliary_Fluid
@@ -79,6 +83,11 @@ MODULE EquationOfStateModule
     MODULE PROCEDURE ComputePressureFromSpecificInternalEnergy_Scalar
     MODULE PROCEDURE ComputePressureFromSpecificInternalEnergy_Vector
   END INTERFACE ComputePressureFromSpecificInternalEnergy
+
+  INTERFACE ComputeEnthalpyFromPrimitive
+    MODULE PROCEDURE ComputeEnthalpyFromPrimitive_Scalar
+    MODULE PROCEDURE ComputeEnthalpyFromPrimitive_Vector
+  END INTERFACE ComputeEnthalpyFromPrimitive
 
   INTERFACE ComputeInternalEnergyDensityFromPressure
     MODULE PROCEDURE ComputeInternalEnergyDensityFromPressure_Scalar
@@ -550,6 +559,27 @@ CONTAINS
   END SUBROUTINE ComputePressureFromPrimitive_Vector
 
 
+  SUBROUTINE ComputeEnthalpyFromPrimitive_Scalar &
+    ( D, Ev, Ne, h )
+
+    REAL(DP), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), INTENT(out) :: h
+
+    CALL ComputeEnthalpyFromPrimitive_IDEAL( D, Ev, Ne, h )
+
+  END SUBROUTINE ComputeEnthalpyFromPrimitive_Scalar
+
+
+  SUBROUTINE ComputeEnthalpyFromPrimitive_Vector &
+    ( D, Ev, Ne, h )
+
+    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
+    REAL(DP), INTENT(out) :: h(:)
+
+    CALL ComputeEnthalpyFromPrimitive_IDEAL( D, Ev, Ne, h )
+
+  END SUBROUTINE ComputeEnthalpyFromPrimitive_Vector
+
   ! --- ComputePressureFromSpecificInternalEnergy ---
 
 
@@ -729,52 +759,48 @@ CONTAINS
 
 
   SUBROUTINE ComputeAuxiliary_Magnetofluid_Scalar &
-    ( D, V1, V2, V3, Ev, Ne, B1, B2, B3, P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
+    ( D, V1, V2, V3, Ev, Ne,         &
+      B1, B2, B3,                    &
+      Gm11, Gm22, Gm33,              &
+      Lapse, Shift1, Shift2, Shift3, &
+      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ
-#endif
-
-    REAL(DP), INTENT(in)  :: D, V1, V2, V3, Ev, Ne, B1, B2, B3
+    REAL(DP), INTENT(in)  :: D, V1, V2, V3, Ev, Ne, &
+                             B1, B2, B3,            &
+                             Gm11, Gm22, Gm33,      &
+                             Lapse, Shift1, Shift2, Shift3
     REAL(DP), INTENT(out) :: P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca
 
-#ifdef MICROPHYSICS_WEAKLIB
-
-    CALL ComputeAuxiliary_Magnetofluid_TABLE( D, V1, V2, V3, Ev, Ne, B1, B2, B3, &
-                                       P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
-
-#else
-
-    CALL ComputeAuxiliary_Magnetofluid_IDEAL( D, V1, V2, V3, Ev, Ne, B1, B2, B3, &
-                                       P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
-
-#endif
+    CALL ComputeAuxiliary_Magnetofluid_IDEAL( D, V1, V2, V3, Ev, Ne,         &
+                                              B1, B2, B3,                    &
+                                              Gm11, Gm22, Gm33,              &
+                                              Lapse, Shift1, Shift2, Shift3, &
+                                              P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
 
   END SUBROUTINE ComputeAuxiliary_Magnetofluid_Scalar
 
 
   SUBROUTINE ComputeAuxiliary_Magnetofluid_Vector &
-    ( D, V1, V2, V3, Ev, Ne, B1, B2, B3, &
+    ( D, V1, V2, V3, Ev, Ne,         &
+      B1, B2, B3,                    &
+      Gm11, Gm22, Gm33,              &
+      Lapse, Shift1, Shift2, Shift3, &
       P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
 
     REAL(DP), INTENT(in)  :: D(:), V1(:), V2(:), V3(:), Ev(:), Ne(:), &
-                             B1(:), B2(:), B3(:)
+                             B1(:), B2(:), B3(:),                     &
+                             Gm11(:), Gm22(:), Gm33(:),               &
+                             Lapse(:), Shift1(:), Shift2(:), Shift3(:)
     REAL(DP), INTENT(out) :: P(:), Pb(:), T (:), Y (:), S(:), &
                              Em(:), h(:), hb(:), Gm(:), Cs(:), Ca(:)
 
-#ifdef MICROPHYSICS_WEAKLIB
 
-    CALL ComputeAuxiliary_Magnetofluid_IDEAL( D, V1, V2, V3, Ev, Ne, B1, B2, B3, &
-                                       P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
-
-#else
-
-    CALL ComputeAuxiliary_Magnetofluid_TABLE( D, V1, V2, V3, Ev, Ne, B1, B2, B3, &
-                                       P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
-
-#endif
+    CALL ComputeAuxiliary_Magnetofluid_IDEAL &
+           ( D, V1, V2, V3, Ev, Ne, &
+             B1, B2, B3,            &
+             Gm11, Gm22, Gm33,      &
+             Lapse, Shift1, Shift2, Shift3, &
+             P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
 
   END SUBROUTINE ComputeAuxiliary_Magnetofluid_Vector
 

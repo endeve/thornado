@@ -2269,6 +2269,13 @@ CONTAINS
                P(iNX,iX1,iX2,iX3,iPM_B1), &
                P(iNX,iX1,iX2,iX3,iPM_B2), &
                P(iNX,iX1,iX2,iX3,iPM_B3), &
+               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               G(iNX,iX1,iX2,iX3,iGF_Alpha), &
+               G(iNX,iX1,iX2,iX3,iGF_Beta_1), &
+               G(iNX,iX1,iX2,iX3,iGF_Beta_2), &
+               G(iNX,iX1,iX2,iX3,iGF_Beta_3), &
                A(iNX,iX1,iX2,iX3,iAM_P ), &
                A(iNX,iX1,iX2,iX3,iAM_Pb), &
                A(iNX,iX1,iX2,iX3,iAM_T ), &

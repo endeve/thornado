@@ -1,7 +1,7 @@
 MODULE EquationOfStateModule_IDEAL
 
   USE KindModule, ONLY: &
-    DP, One
+    DP, Zero, One
 
   IMPLICIT NONE
   PRIVATE
@@ -14,7 +14,10 @@ MODULE EquationOfStateModule_IDEAL
   PUBLIC :: ComputeInternalEnergyDensityFromPressure_IDEAL
   PUBLIC :: ComputePressureFromPrimitive_IDEAL
   PUBLIC :: ComputePressureFromSpecificInternalEnergy_IDEAL
+  PUBLIC :: ComputeEnthalpyFromPrimitive_IDEAL
+  PUBLIC :: ComputeMagneticEnthalpyFromPrimitive_IDEAL
   PUBLIC :: ComputeSoundSpeedFromPrimitive_IDEAL
+  PUBLIC :: ComputeAlfvenSpeedFromPrimitive_IDEAL
   PUBLIC :: ComputeAuxiliary_Fluid_IDEAL
   PUBLIC :: ComputeAuxiliary_Magnetofluid_IDEAL
 
@@ -33,10 +36,25 @@ MODULE EquationOfStateModule_IDEAL
     MODULE PROCEDURE ComputeInternalEnergyDensityFromPressure_IDEAL_Vector
   END INTERFACE ComputeInternalEnergyDensityFromPressure_IDEAL
 
+  INTERFACE ComputeEnthalpyFromPrimitive_IDEAL
+    MODULE PROCEDURE ComputeEnthalpyFromPrimitive_IDEAL_Scalar
+    MODULE PROCEDURE ComputeEnthalpyFromPrimitive_IDEAL_Vector
+  END INTERFACE ComputeEnthalpyFromPrimitive_IDEAL
+
+  INTERFACE ComputeMagneticEnthalpyFromPrimitive_IDEAL
+    MODULE PROCEDURE ComputeMagneticEnthalpyFromPrimitive_IDEAL_Scalar
+    MODULE PROCEDURE ComputeMagneticEnthalpyFromPrimitive_IDEAL_Vector
+  END INTERFACE ComputeMagneticEnthalpyFromPrimitive_IDEAL
+
   INTERFACE ComputeSoundSpeedFromPrimitive_IDEAL
     MODULE PROCEDURE ComputeSoundSpeedFromPrimitive_IDEAL_Scalar
     MODULE PROCEDURE ComputeSoundSpeedFromPrimitive_IDEAL_Vector
   END INTERFACE ComputeSoundSpeedFromPrimitive_IDEAL
+
+  INTERFACE ComputeAlfvenSpeedFromPrimitive_IDEAL
+    MODULE PROCEDURE ComputeAlfvenSpeedFromPrimitive_IDEAL_Scalar
+    MODULE PROCEDURE ComputeAlfvenSpeedFromPrimitive_IDEAL_Vector
+  END INTERFACE ComputeAlfvenSpeedFromPrimitive_IDEAL
 
   INTERFACE ComputeAuxiliary_Fluid_IDEAL
     MODULE PROCEDURE ComputeAuxiliary_Fluid_IDEAL_Scalar
@@ -119,6 +137,78 @@ CONTAINS
     Ev = P / ( Gamma_IDEAL - 1.0_DP )
 
   END SUBROUTINE ComputeInternalEnergyDensityFromPressure_IDEAL_Vector
+
+
+  SUBROUTINE ComputeEnthalpyFromPrimitive_IDEAL_Scalar &
+    ( D, Ev, Ne, h )
+
+    REAL(DP), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), INTENT(out) :: h
+
+    REAL(DP) :: P
+
+    CALL ComputePressureFromPrimitive_IDEAL( D, Ev, Ne, P)
+
+    h = One + (Ev + P) / D
+
+  END SUBROUTINE ComputeEnthalpyFromPrimitive_IDEAL_Scalar
+
+
+  SUBROUTINE ComputeEnthalpyFromPrimitive_IDEAL_Vector &
+    ( D, Ev, Ne, h )
+
+    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
+    REAL(DP), INTENT(out) :: h(:)
+
+    INTEGER :: i
+
+    DO i = 1, SIZE( D )
+
+      CALL ComputeEnthalpyFromPrimitive_IDEAL_Scalar &
+             ( D(i), Ev(i), Ne(i), h(i) )
+
+    END DO
+
+  END SUBROUTINE ComputeEnthalpyFromPrimitive_IDEAL_Vector
+
+
+  SUBROUTINE ComputeMagneticEnthalpyFromPrimitive_IDEAL_Scalar &
+    ( D, V1, V2, V3, B1, B2, B3, &
+      Gm11, Gm22, Gm33,          &
+      Lapse, Shift1, Shift2, Shift3, hb )
+
+    REAL(DP), INTENT(in)  :: D, V1, V2, V3, B1, B2, B3, &
+                             Gm11, Gm22, Gm33,          &
+                             Lapse, Shift1, Shift2, Shift3
+    REAL(DP), INTENT(out) :: hb
+
+    hb = Zero ! Placeholder.
+
+  END SUBROUTINE ComputeMagneticEnthalpyFromPrimitive_IDEAL_Scalar
+
+
+  SUBROUTINE ComputeMagneticEnthalpyFromPrimitive_IDEAL_Vector &
+    ( D, V1, V2, V3, B1, B2, B3, &
+      Gm11, Gm22, Gm33,          &
+      Lapse, Shift1, Shift2, Shift3, hb )
+
+    REAL(DP), INTENT(in)  :: D(:), V1(:), V2(:), V3(:), B1(:), B2(:), B3(:), &
+                             Gm11(:), Gm22(:), Gm33(:),                      &
+                             Lapse(:), Shift1(:), Shift2(:), Shift3(:)
+    REAL(DP), INTENT(out) :: hb(:)
+
+    INTEGER :: i
+
+    DO i = 1, SIZE( D )
+
+      CALL ComputeMagneticEnthalpyFromPrimitive_IDEAL_Scalar &
+             ( D(i), V1(i), V2(i), V3(i), B1(i), B2(i), B3(i), &
+               Gm11(i), Gm22(i), Gm33(i),                      &
+               Lapse(i), Shift1(i), Shift2(i), Shift3(i), hb(i) )
+
+    END DO
+
+  END SUBROUTINE ComputeMagneticEnthalpyFromPrimitive_IDEAL_Vector
 
 
   SUBROUTINE ComputePressureFromPrimitive_IDEAL_Scalar( D, Ev, Ne, P )
@@ -242,6 +332,58 @@ CONTAINS
 
 #endif
 
+  SUBROUTINE ComputeAlfvenSpeedFromPrimitive_IDEAL_Scalar &
+    ( D, V1, V2, V3, E, Ne, &
+      B1, B2, B3,           &
+      Gm11, Gm22, Gm33,     &
+      Lapse, Shift1, Shift2, Shift3, Ca )
+
+    REAL(DP), INTENT(in)  :: D, V1, V2, V3, E, Ne, &
+                             B1, B2, B3,           &
+                             Gm11, Gm22, Gm33,     &
+                             Lapse, Shift1, Shift2, Shift3
+    REAL(DP), INTENT(out) :: Ca
+
+    REAL(DP) :: h, hb
+
+    CALL ComputeEnthalpyFromPrimitive_IDEAL( D, E, Ne, h )
+
+    CALL ComputeMagneticEnthalpyFromPrimitive_IDEAL &
+           ( D, V1, V2, V3, B1, B2, B3, &
+             Gm11, Gm22, Gm33,          &
+             Lapse, Shift1, Shift2, Shift3, hb )
+
+    Ca = SQRT( D * hb / ( D * ( h + hb ) ) )
+
+  END SUBROUTINE ComputeAlfvenSpeedFromPrimitive_IDEAL_Scalar
+
+
+  SUBROUTINE ComputeAlfvenSpeedFromPrimitive_IDEAL_Vector &
+    ( D, V1, V2, V3, E, Ne, B1, B2, B3, &
+      Gm11, Gm22, Gm33,                 &
+      Lapse, Shift1, Shift2, Shift3, Ca )
+
+    REAL(DP), INTENT(in)  :: D(:), V1(:), V2(:), V3(:), E(:), Ne(:), &
+                             B1(:), B2(:), B3(:),                    &
+                             Gm11(:), Gm22(:), Gm33(:),              &
+                             Lapse(:), Shift1(:), Shift2(:), Shift3(:)
+    REAL(DP), INTENT(out) :: Ca(:)
+
+    INTEGER :: i
+
+    DO i = 1, SIZE( D )
+
+      CALL ComputeAlfvenSpeedFromPrimitive_IDEAL_Scalar &
+             ( D(i), V1(i), V2(i), V3(i), E(i), Ne(i), &
+               B1(i), B2(i), B3(i),                    &
+               Gm11(i), Gm22(i), Gm33(i),              &
+               Lapse(i), Shift1(i), Shift2(i), Shift3(i), Ca(i) )
+
+    END DO
+
+  END SUBROUTINE ComputeAlfvenSpeedFromPrimitive_IDEAL_Vector
+
+
   SUBROUTINE ComputeAuxiliary_Fluid_IDEAL_Scalar &
     ( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )
 
@@ -285,7 +427,11 @@ CONTAINS
 
 
   SUBROUTINE ComputeAuxiliary_Magnetofluid_IDEAL_Scalar &
-    ( D, V1, V2, V3, Ev, Ne, B1, B2, B3, P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
+    ( D, V1, V2, V3, Ev, Ne,         &
+      B1, B2, B3,                    &
+      Gm11, Gm22, Gm33,              &
+      Lapse, Shift1, Shift2, Shift3, &
+      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -293,13 +439,27 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)  :: D, V1, V2, V3, Ev, Ne, B1, B2, B3
+    REAL(DP), INTENT(in)  :: D, V1, V2, V3, Ev, Ne, &
+                             B1, B2, B3,            &
+                             Gm11, Gm22, Gm33,      &
+                             Lapse, Shift1, Shift2, Shift3
     REAL(DP), INTENT(out) :: P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca
 
     P  = ( Gamma_IDEAL - 1.0_DP ) * Ev
+    Pb = Zero
     Gm = Gamma_IDEAL
     Em = Ev / D
     CALL ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne, Cs )
+    CALL ComputeAlfvenSpeedFromPrimitive_IDEAL &
+           ( D, V1, V2, V3, Ev, Ne, &
+             B1, B2, B3,           &
+             Gm11, Gm22, Gm33,     &
+             Lapse, Shift1, Shift2, Shift3, Ca)
+    CALL ComputeEnthalpyFromPrimitive_IDEAL( D, Ev, Ne, h )
+    CALL ComputeMagneticEnthalpyFromPrimitive_IDEAL &
+           ( D, V1, V2, V3, B1, B2, V3, &
+             Gm11, Gm22, Gm33,          &
+             Lapse, Shift1, Shift2, Shift3, hb )
 
     T = 0.0_DP
     Y = 0.0_DP
@@ -309,10 +469,16 @@ CONTAINS
 
 
   SUBROUTINE ComputeAuxiliary_Magnetofluid_IDEAL_Vector &
-    ( D, V1, V2, V3, Ev, Ne, B1, B2, B3, P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
+    ( D, V1, V2, V3, Ev, Ne,         &
+      B1, B2, B3,                    &
+      Gm11, Gm22, Gm33,              &
+      Lapse, Shift1, Shift2, Shift3, &
+      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
 
     REAL(DP), INTENT(in)  :: D(:), V1(:), V2(:), V3(:), Ev(:), Ne(:), &
-                             B1(:), B2(:), B3(:)
+                             B1(:), B2(:), B3(:),                     &
+                             Gm11(:), Gm22(:), Gm33(:),               &
+                             Lapse(:), Shift1(:), Shift2(:), Shift3(:)
     REAL(DP), INTENT(out) :: P(:), Pb(:), T (:), Y (:), S(:), Em(:), &
                              h(:), hb(:), Gm(:), Cs(:), Ca(:)
 
@@ -321,7 +487,10 @@ CONTAINS
     DO i = 1, SIZE( D )
 
       CALL ComputeAuxiliary_Magnetofluid_IDEAL_Scalar &
-             ( D(i), V1(i), V2(i), V3(i), Ev(i), Ne(i), B1(i), B2(i), B3(i), &
+             ( D(i), V1(i), V2(i), V3(i), Ev(i), Ne(i),   &
+               B1(i), B2(i), B3(i),                       &
+               Gm11(i), Gm22(i), Gm33(i),                 &
+               Lapse(i), Shift1(i), Shift2(i), Shift3(i), &
                P(i), Pb(i), T(i), Y(i), S(i), Em(i), h(i), hb(i), &
                Gm(i), Cs(i), Ca(i) )
 
