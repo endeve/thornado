@@ -15,6 +15,7 @@ ApplicationDriver: \
 	$(thornado) \
         MHD_UtilitiesModule_Relativistic.o \
         MHD_UtilitiesModule.o \
+        MHD_PerturbationModule.o \
         MHD_BoundaryConditionsModule.o \
         MHD_TallyModule_Relativistic.o \
         MHD_TallyModule.o \
@@ -29,6 +30,7 @@ ApplicationDriver: \
 	$(thornado) \
         MHD_UtilitiesModule_Relativistic.o \
         MHD_UtilitiesModule.o \
+        MHD_PerturbationModule.o \
         MHD_BoundaryConditionsModule.o \
         MHD_TallyModule_Relativistic.o \
         MHD_TallyModule.o \
@@ -53,6 +55,7 @@ ApplicationDriver.o: \
   GeometryFieldsModule.o \
   MagnetofluidFieldsModule.o \
   MHD_UtilitiesModule_Relativistic.o \
+  MHD_PerturbationModule.o \
   ProgramInitializationModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModuleX_Lagrange.o \
@@ -60,6 +63,7 @@ ApplicationDriver.o: \
   InitializationModule.o \
   UnitsModule.o \
   MHD_TallyModule_Relativistic.o \
+  TimeSteppingModule_SSPRK.o \
   ApplicationDriver.F90
 
 InitializationModule.o: \
@@ -105,6 +109,7 @@ MHD_DiscretizationModule_Relativistic.o: \
   GeometryFieldsModule.o \
   MagnetofluidFieldsModule.o \
   MHD_BoundaryConditionsModule.o \
+  MHD_UtilitiesModule.o \
   MHD_UtilitiesModule_Relativistic.o \
   EquationOfStateModule.o \
   MHD_DiscretizationModule_Relativistic.F90
@@ -173,3 +178,15 @@ MHD_ErrorModule.o: \
   UtilitiesModule.o \
   GeometryFieldsModule.o \
   MHD_ErrorModule.f90
+
+MHD_PerturbationModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  MagnetofluidFieldsModule.o \
+  MHD_UtilitiesModule_Relativistic.o \
+  EquationOfStateModule.o \
+  MHD_PerturbationModule.f90
