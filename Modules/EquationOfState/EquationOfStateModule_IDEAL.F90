@@ -1,7 +1,7 @@
 MODULE EquationOfStateModule_IDEAL
 
   USE KindModule, ONLY: &
-    DP, Zero, One
+    DP, Zero, One, Two
 
   IMPLICIT NONE
   PRIVATE
@@ -13,6 +13,7 @@ MODULE EquationOfStateModule_IDEAL
   PUBLIC :: FinalizeEquationOfState_IDEAL
   PUBLIC :: ComputeInternalEnergyDensityFromPressure_IDEAL
   PUBLIC :: ComputePressureFromPrimitive_IDEAL
+  PUBLIC :: ComputeMagneticPressureFromPrimitive_IDEAL
   PUBLIC :: ComputePressureFromSpecificInternalEnergy_IDEAL
   PUBLIC :: ComputeEnthalpyFromPrimitive_IDEAL
   PUBLIC :: ComputeMagneticEnthalpyFromPrimitive_IDEAL
@@ -25,6 +26,11 @@ MODULE EquationOfStateModule_IDEAL
     MODULE PROCEDURE ComputePressureFromPrimitive_IDEAL_Scalar
     MODULE PROCEDURE ComputePressureFromPrimitive_IDEAL_Vector
   END INTERFACE ComputePressureFromPrimitive_IDEAL
+
+  INTERFACE ComputeMagneticPressureFromPrimitive_IDEAL
+    MODULE PROCEDURE ComputeMagneticPressureFromPrimitive_IDEAL_Scalar
+    MODULE PROCEDURE ComputeMagneticPressureFromPrimitive_IDEAL_Vector
+  END INTERFACE ComputeMagneticPressureFromPrimitive_IDEAL
 
   INTERFACE ComputePressureFromSpecificInternalEnergy_IDEAL
     MODULE PROCEDURE ComputePressureFromSpecificInternalEnergy_IDEAL_Scalar
@@ -173,27 +179,49 @@ CONTAINS
 
 
   SUBROUTINE ComputeMagneticEnthalpyFromPrimitive_IDEAL_Scalar &
-    ( D, V1, V2, V3, B1, B2, B3, &
-      Gm11, Gm22, Gm33,          &
+    ( D, V1, V2, V3,    &
+      B1, B2, B3,       &
+      Gm11, Gm22, Gm33, &
       Lapse, Shift1, Shift2, Shift3, hb )
 
-    REAL(DP), INTENT(in)  :: D, V1, V2, V3, B1, B2, B3, &
-                             Gm11, Gm22, Gm33,          &
+    REAL(DP), INTENT(in)  :: D, V1, V2, V3,    &
+                             B1, B2, B3,       &
+                             Gm11, Gm22, Gm33, &
                              Lapse, Shift1, Shift2, Shift3
     REAL(DP), INTENT(out) :: hb
 
-    hb = Zero ! Placeholder.
+    REAL(DP) :: vdotb, vdotBeta, bdotBeta, bdotb, BetaSq, b0u, b0d, bSq
+
+    vdotb    = Gm11 * V1 * B1 + Gm22 * V2 * B2 + Gm33 * V3 * B3
+
+    bdotb    = Gm11 * B1**2 + Gm22 * B2**2 + Gm33 * B3**2
+
+    vdotBeta = Gm11 * V1 * Shift1 + Gm22 * V2 * Shift2 + Gm33 * V3 * Shift3
+
+    bdotBeta = Gm11 * B1 * Shift1 + Gm22 * B2 * Shift2 + Gm33 * B3 * Shift3
+
+    BetaSq   = Gm11 * Shift1**2 + Gm22 * Shift2**2 + Gm33 * Shift3**2
+
+    b0u = vdotb / ( Lapse - vdotBeta )
+
+    b0d = b0u * ( BetaSq - Lapse**2 ) + bdotBeta
+
+    bSq = b0d * b0u + b0u * bdotBeta + bdotb
+
+    hb  = bSq / D
 
   END SUBROUTINE ComputeMagneticEnthalpyFromPrimitive_IDEAL_Scalar
 
 
   SUBROUTINE ComputeMagneticEnthalpyFromPrimitive_IDEAL_Vector &
-    ( D, V1, V2, V3, B1, B2, B3, &
-      Gm11, Gm22, Gm33,          &
+    ( D, V1, V2, V3,    &
+      B1, B2, B3,       &
+      Gm11, Gm22, Gm33, &
       Lapse, Shift1, Shift2, Shift3, hb )
 
-    REAL(DP), INTENT(in)  :: D(:), V1(:), V2(:), V3(:), B1(:), B2(:), B3(:), &
-                             Gm11(:), Gm22(:), Gm33(:),                      &
+    REAL(DP), INTENT(in)  :: D(:), V1(:), V2(:), V3(:), &
+                             B1(:), B2(:), B3(:),       &
+                             Gm11(:), Gm22(:), Gm33(:), &
                              Lapse(:), Shift1(:), Shift2(:), Shift3(:)
     REAL(DP), INTENT(out) :: hb(:)
 
@@ -235,6 +263,68 @@ CONTAINS
     P(:) = ( Gamma_IDEAL - 1.0_DP ) * Ev(:)
 
   END SUBROUTINE ComputePressureFromPrimitive_IDEAL_Vector
+
+
+  SUBROUTINE ComputeMagneticPressureFromPrimitive_IDEAL_Scalar &
+               ( V1, V2, V3,       &
+                 B1, B2, B3,       &
+                 Gm11, Gm22, Gm33, &
+                 Lapse, Shift1, Shift2, Shift3, Pb )
+
+    REAL(DP), INTENT(in)  :: V1, V2, V3,       &
+                             B1, B2, B3,       &
+                             Gm11, Gm22, Gm33, &
+                             Lapse, Shift1, Shift2, Shift3
+    REAL(DP), INTENT(out) :: Pb
+
+    REAL(DP) :: vdotb, vdotBeta, bdotBeta, bdotb, BetaSq, b0u, b0d, bSq
+
+    vdotb    = Gm11 * V1 * B1 + Gm22 * V2 * B2 + Gm33 * V3 * B3
+
+    bdotb    = Gm11 * B1**2 + Gm22 * B2**2 + Gm33 * B3**2
+
+    vdotBeta = Gm11 * V1 * Shift1 + Gm22 * V2 * Shift2 + Gm33 * V3 * Shift3
+
+    bdotBeta = Gm11 * B1 * Shift1 + Gm22 * B2 * Shift2 + Gm33 * B3 * Shift3
+
+    BetaSq   = Gm11 * Shift1**2 + Gm22 * Shift2**2 + Gm33 * Shift3**2
+
+    b0u = vdotb / ( Lapse - vdotBeta )
+
+    b0d = b0u * ( BetaSq - Lapse**2 ) + bdotBeta
+
+    bSq = b0d * b0u + b0u * bdotBeta + bdotb
+
+    Pb = bSq / Two
+
+  END SUBROUTINE ComputeMagneticPressureFromPrimitive_IDEAL_Scalar
+
+
+  SUBROUTINE ComputeMagneticPressureFromPrimitive_IDEAL_Vector &
+               ( V1, V2, V3,       &
+                 B1, B2, B3,       &
+                 Gm11, Gm22, Gm33, &
+                 Lapse, Shift1, Shift2, Shift3, Pb )
+
+    REAL(DP), INTENT(in)  :: V1(:), V2(:), V3(:),       &
+                             B1(:), B2(:), B3(:),       &
+                             Gm11(:), Gm22(:), Gm33(:), &
+                             Lapse(:), Shift1(:), Shift2(:), Shift3(:)
+    REAL(DP), INTENT(out) :: Pb(:)
+
+    INTEGER :: i
+
+    DO i = 1, SIZE( V1 )
+
+      CALL ComputeMagneticPressureFromPrimitive_IDEAL_Scalar &
+             ( V1(i), V2(i), V3(i),       &
+               B1(i), B2(i), B3(i),       &
+               Gm11(i), Gm22(i), Gm33(i), &
+               Lapse(i), Shift1(i), Shift2(i), Shift3(i), Pb(i) )
+
+    END DO
+
+  END SUBROUTINE ComputeMagneticPressureFromPrimitive_IDEAL_Vector
 
 
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_IDEAL_Scalar &

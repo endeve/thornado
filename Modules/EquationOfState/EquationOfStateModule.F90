@@ -6,6 +6,7 @@ MODULE EquationOfStateModule
     InitializeEquationOfState_IDEAL, &
     ComputeInternalEnergyDensityFromPressure_IDEAL, &
     ComputePressureFromPrimitive_IDEAL, &
+    ComputeMagneticPressureFromPrimitive_IDEAL, &
     ComputePressureFromSpecificInternalEnergy_IDEAL, &
     ComputeEnthalpyFromPrimitive_IDEAL, &
     ComputeMagneticEnthalpyFromPrimitive_IDEAL, &
@@ -45,8 +46,10 @@ MODULE EquationOfStateModule
   PUBLIC :: ComputePressure
   PUBLIC :: ComputeSpecificInternalEnergy
   PUBLIC :: ComputePressureFromPrimitive
+  PUBLIC :: ComputeMagneticPressureFromPrimitive
   PUBLIC :: ComputePressureFromSpecificInternalEnergy
   PUBLIC :: ComputeEnthalpyFromPrimitive
+  PUBLIC :: ComputeMagneticEnthalpyFromPrimitive
   PUBLIC :: ComputeInternalEnergyDensityFromPressure
   PUBLIC :: ComputeSoundSpeedFromPrimitive
   PUBLIC :: ComputeAuxiliary_Fluid
@@ -79,6 +82,11 @@ MODULE EquationOfStateModule
     MODULE PROCEDURE ComputePressureFromPrimitive_Vector
   END INTERFACE ComputePressureFromPrimitive
 
+  INTERFACE ComputeMagneticPressureFromPrimitive
+    MODULE PROCEDURE ComputeMagneticPressureFromPrimitive_Scalar
+    MODULE PROCEDURE ComputeMagneticPressureFromPrimitive_Vector
+  END INTERFACE ComputeMagneticPressureFromPrimitive
+
   INTERFACE ComputePressureFromSpecificInternalEnergy
     MODULE PROCEDURE ComputePressureFromSpecificInternalEnergy_Scalar
     MODULE PROCEDURE ComputePressureFromSpecificInternalEnergy_Vector
@@ -88,6 +96,11 @@ MODULE EquationOfStateModule
     MODULE PROCEDURE ComputeEnthalpyFromPrimitive_Scalar
     MODULE PROCEDURE ComputeEnthalpyFromPrimitive_Vector
   END INTERFACE ComputeEnthalpyFromPrimitive
+
+  INTERFACE ComputeMagneticEnthalpyFromPrimitive
+    MODULE PROCEDURE ComputeMagneticEnthalpyFromPrimitive_Scalar
+    MODULE PROCEDURE ComputeMagneticEnthalpyFromPrimitive_Vector
+  END INTERFACE ComputeMagneticEnthalpyFromPrimitive
 
   INTERFACE ComputeInternalEnergyDensityFromPressure
     MODULE PROCEDURE ComputeInternalEnergyDensityFromPressure_Scalar
@@ -559,6 +572,48 @@ CONTAINS
   END SUBROUTINE ComputePressureFromPrimitive_Vector
 
 
+  SUBROUTINE ComputeMagneticPressureFromPrimitive_Scalar &
+    ( V1, V2, V3,       &
+      B1, B2, B3,       &
+      Gm11, Gm22, Gm33, &
+      Lapse, Shift1, Shift2, Shift3, Pb )
+
+    REAL(DP), INTENT(in)  :: V1, V2, V3,       &
+                             B1, B2, B3,       &
+                             Gm11, Gm22, Gm33, &
+                             Lapse, Shift1, Shift2, Shift3
+    REAL(DP), INTENT(out) :: Pb
+
+    CALL ComputeMagneticPressureFromPrimitive_IDEAL &
+           ( V1, V2, V3,       &
+             B1, B2, B3,       &
+             Gm11, Gm22, Gm33, &
+             Lapse, Shift1, Shift2, Shift3, Pb )
+
+  END SUBROUTINE ComputeMagneticPressureFromPrimitive_Scalar
+
+
+  SUBROUTINE ComputeMagneticPressureFromPrimitive_Vector &
+    ( V1, V2, V3,       &
+      B1, B2, B3,       &
+      Gm11, Gm22, Gm33, &
+      Lapse, Shift1, Shift2, Shift3, Pb )
+
+    REAL(DP), INTENT(in)  :: V1(:), V2(:), V3(:),       &
+                             B1(:), B2(:), B3(:),       &
+                             Gm11(:), Gm22(:), Gm33(:), &
+                             Lapse(:), Shift1(:), Shift2(:), Shift3(:)
+    REAL(DP), INTENT(out) :: Pb(:)
+
+    CALL ComputeMagneticPressureFromPrimitive_IDEAL &
+           ( V1, V2, V3,       &
+             B1, B2, B3,       &
+             Gm11, Gm22, Gm33, &
+             Lapse, Shift1, Shift2, Shift3, Pb )
+
+  END SUBROUTINE ComputeMagneticPressureFromPrimitive_Vector
+
+
   SUBROUTINE ComputeEnthalpyFromPrimitive_Scalar &
     ( D, Ev, Ne, h )
 
@@ -580,7 +635,49 @@ CONTAINS
 
   END SUBROUTINE ComputeEnthalpyFromPrimitive_Vector
 
-  ! --- ComputePressureFromSpecificInternalEnergy ---
+
+  SUBROUTINE ComputeMagneticEnthalpyFromPrimitive_Scalar &
+    ( D, V1, V2, V3,    &
+      B1, B2, B3,       &
+      Gm11, Gm22, Gm33, &
+      Lapse, Shift1, Shift2, Shift3, hb )
+
+    REAL(DP), INTENT(in)  :: D, V1, V2, V3,    &
+                             B1, B2, B3,       &
+                             Gm11, Gm22, Gm33, &
+                             Lapse, Shift1, Shift2, Shift3
+    REAL(DP), INTENT(out) :: hb
+
+    CALL ComputeMagneticEnthalpyFromPrimitive_IDEAL &
+           ( D, V1, V2, V3,    &
+             B1, B2, B3,       &
+             Gm11, Gm22, Gm33, &
+             Lapse, Shift1, Shift2, Shift3, hb )
+
+  END SUBROUTINE ComputeMagneticEnthalpyFromPrimitive_Scalar
+
+
+  SUBROUTINE ComputeMagneticEnthalpyFromPrimitive_Vector &
+    ( D, V1, V2, V3,    &
+      B1, B2, B3,       &
+      Gm11, Gm22, Gm33, &
+      Lapse, Shift1, Shift2, Shift3, hb )
+
+    REAL(DP), INTENT(in)  :: D(:), V1(:), V2(:), V3(:), &
+                             B1(:), B2(:), B3(:),       &
+                             Gm11(:), Gm22(:), Gm33(:), &
+                             Lapse(:), Shift1(:), Shift2(:), Shift3(:)
+    REAL(DP), INTENT(out) :: hb(:)
+
+    CALL ComputeMagneticEnthalpyFromPrimitive_IDEAL &
+           ( D, V1, V2, V3,    &
+             B1, B2, B3,       &
+             Gm11, Gm22, Gm33, &
+             Lapse, Shift1, Shift2, Shift3, hb )
+
+  END SUBROUTINE ComputeMagneticEnthalpyFromPrimitive_Vector
+
+ ! --- ComputePressureFromSpecificInternalEnergy ---
 
 
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_Scalar &
