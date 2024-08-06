@@ -9,7 +9,7 @@ MODULE MHD_CharacteristicDecompositionModule
 
 #ifdef HYDRO_RELATIVISTIC
 
-!  USE MHD_CharacteristicDecompositionModule_Relativistic_IDEAL
+  USE MHD_CharacteristicDecompositionModule_Relativistic_IDEAL
 
 #endif
 
@@ -24,18 +24,19 @@ CONTAINS
 
 
   SUBROUTINE ComputeCharacteristicDecomposition_MHD &
-    ( iDim, G, U, R, invR )
+    ( iDim, G, U, EvolveOnlyMagnetic, R, invR )
 
     INTEGER,  INTENT(in)    :: iDim
     REAL(DP), INTENT(in)    :: G(nGF)
     REAL(DP), INTENT(inout) :: U(nCM)
+    LOGICAL,  INTENT(in)    :: EvolveOnlyMagnetic
     REAL(DP), INTENT(out)   :: R(nCM,nCM)
     REAL(DP), INTENT(out)   :: invR(nCM,nCM)
 
 #ifdef HYDRO_RELATIVISTIC
 
-!    CALL ComputeCharacteristicDecomposition_MHD_Relativistic_IDEAL &
-!           ( iDim, G, U, R, invR )
+    CALL ComputeCharacteristicDecomposition_MHD_Relativistic_IDEAL &
+           ( iDim, G, U, EvolveOnlyMagnetic, R, invR )
 
 #endif
 

@@ -19,6 +19,7 @@ ApplicationDriver: \
         MHD_BoundaryConditionsModule.o \
         MHD_TallyModule_Relativistic.o \
         MHD_TallyModule.o \
+        MHD_CharacteristicDecompositionModule_Relativistic_IDEAL.o \
         MHD_CharacteristicDecompositionModule.o \
         MHD_SlopeLimiterModule_Relativistic_IDEAL.o \
         MHD_SlopeLimiterModule.o \
@@ -35,6 +36,7 @@ ApplicationDriver: \
         MHD_BoundaryConditionsModule.o \
         MHD_TallyModule_Relativistic.o \
         MHD_TallyModule.o \
+        MHD_CharacteristicDecompositionModule_Relativistic_IDEAL.o \
         MHD_CharacteristicDecompositionModule.o \
         MHD_SlopeLimiterModule_Relativistic_IDEAL.o \
         MHD_SlopeLimiterModule.o \
@@ -153,9 +155,18 @@ MHD_SlopeLimiterModule_Relativistic_IDEAL.o: \
   MHD_BoundaryConditionsModule.o \
   MHD_SlopeLimiterModule_Relativistic_IDEAL.F90
 
+MHD_CharacteristicDecompositionModule_Relativistic_IDEAL.o: \
+  KindModule.o \
+  GeometryFieldsModule.o \
+  MagnetofluidFieldsModule.o \
+  MHD_UtilitiesModule_Relativistic.o \
+  EquationOfStateModule.o \
+  MHD_CharacteristicDecompositionModule_Relativistic_IDEAL.f90
+
 MHD_CharacteristicDecompositionModule.o: \
   KindModule.o \
   MagnetofluidFieldsModule.o \
+  MHD_CharacteristicDecompositionModule_Relativistic_IDEAL.o \
   MHD_CharacteristicDecompositionModule.F90
 
 MHD_UtilitiesModule.o: \
