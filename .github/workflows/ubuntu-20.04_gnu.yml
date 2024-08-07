@@ -171,7 +171,7 @@ jobs:
           make
           make clobber
 
-dgExperiments_MHD_Relativistic_IDEAL_native:
+  dgExperiments_MHD_Relativistic_IDEAL_native:
     name: Compile SandBox/dgExperiments_MHD_Relativistic_IDEAL
     needs: build
     runs-on: ubuntu-20.04
@@ -196,7 +196,6 @@ dgExperiments_MHD_Relativistic_IDEAL_native:
           cd ${THORNADO_DIR}/SandBox/dgExperiments_MHD_Relativistic_IDEAL/Executables
           make -j -l6
           make clobber
-
 
   YahilCollapse_XCFC_native:
     name: Compile SandBox/YahilCollapse_XCFC
