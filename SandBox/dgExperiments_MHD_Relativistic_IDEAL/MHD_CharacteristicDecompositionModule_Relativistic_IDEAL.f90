@@ -141,6 +141,77 @@ CONTAINS
   END SUBROUTINE ComputeCharacteristicDecomposition_MHD_Relativistic_IDEAL
 
 
+  SUBROUTINE ComputeCharacteristicDecomposition_Numeric( R, invR, dFdU )
+
+    REAL(DP), INTENT(in)  :: dFdU(nCM,nCM)
+    REAL(DP), INTENT(out) :: R(nCM,nCM)
+    REAL(DP), INTENT(out) :: invR(nCM,nCM)
+    REAL(DP)              :: Lambda(nCM,nCM)
+
+    INTEGER  :: i, INFO, LWORK
+    INTEGER  :: IPIV(nCM)
+
+    REAL(DP)              :: WR(nCM)
+    REAL(DP)              :: WI(nCM)
+    REAL(DP)              :: TEMP(1)
+    REAL(DP)              :: dFdU_Copy(nCM,nCM)
+    REAL(DP)              :: invR_Copy(nCM,nCM)
+    REAL(DP), ALLOCATABLE :: WORK1(:), WORK2(:)
+
+    ! --- Copy to avoid overwriting dFdU ---
+
+    dFdU_Copy = dFdU
+
+    ! --- Necessary workplace query to get LWORK. ----
+
+    CALL DGEEV( 'V', 'N', nCM, dFdU_Copy, nCM, WR, &
+                WI, invR, nCM, 0, nCM, TEMP, &
+                -1, INFO )
+
+    LWORK = TEMP(1)
+    ALLOCATE( WORK1(LWORK) )
+
+    Lambda(:,:) = Zero
+
+    ! --- Actual computation of eigedecomposition. ---
+
+    CALL DGEEV( 'V', 'N', nCM, dFdU_Copy, nCM, WR, &
+                WI, invR, nCM, 0, nCM, WORK1,  &
+                LWORK, INFO )
+
+    invR = TRANSPOSE( invR )
+
+    invR_Copy = invR
+
+    CALL DGETRF( nCM, nCM, invR_Copy, nCM, IPIV, INFO )
+
+    LWORK = -1
+    CALL DGETRI( nCM, invR_Copy, nCM, IPIV, TEMP, LWORK, INFO )
+
+    LWORK = TEMP(1)
+    ALLOCATE( WORK2(LWORK) )
+
+    CALL DGETRI( nCM, invR_Copy, nCM, IPIV, WORK2, LWORK, INFO )
+
+    R = invR_Copy
+
+    IF ( ( INFO .NE. 0 ) .OR. ( ANY( ABS( WI ) > 1d-15 ) ) ) THEN
+
+      PRINT*, 'INFO: ', INFO
+      PRINT*, 'WR: ', WR
+      PRINT*, 'WI: ', WI
+
+      DO i = 1, 6
+
+        PRINT*, 'Lambda(i,:) : ', Lambda(i,:)
+
+      END DO
+
+    END IF
+
+   END SUBROUTINE ComputeCharacteristicDecomposition_Numeric
+
+
   SUBROUTINE ComputeFluxJacobian_X1 &
     ( D, Vu1, Vu2, Vu3, Vd1, Vd2, Vd3, VSq,   &
       bu0, bu1, bu2, bu3, bd1, bd2, bd3, &
@@ -152,7 +223,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: W, h, hStar
     REAL(DP), INTENT(out) :: dFdU_X1(nCM,nCM)
 
- END SUBROUTINE ComputeFluxJacobian_X1
+  END SUBROUTINE ComputeFluxJacobian_X1
 
 
 END MODULE MHD_CharacteristicDecompositionModule_Relativistic_IDEAL
