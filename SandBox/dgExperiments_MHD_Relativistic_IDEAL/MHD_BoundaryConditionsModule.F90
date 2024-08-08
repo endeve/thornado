@@ -681,19 +681,23 @@ CONTAINS
 
             U(iNX,iX_B0(1)-iX1,iX2,iX3,1) &
               = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,1) &
-                - CD_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3)
+                - CD_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
+                + CD_I(iNX,iX_B0(1)-iX1,iX2,iX3)
 
             U(iNX,iX_B0(1)-iX1,iX2,iX3,2) &
               = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,2) &
-                - S1_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3)
+                - S1_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
+                + S1_I(iNX,iX_B0(1)-iX1,iX2,iX3)
 
             U(iNX,iX_B0(1)-iX1,iX2,iX3,3) &
               = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,3) &
-                - S2_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3)
+                - S2_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
+                + S2_I(iNX,iX_B0(1)-iX1,iX2,iX3)
 
             U(iNX,iX_B0(1)-iX1,iX2,iX3,4) &
               = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,4) &
-                - S3_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3)
+                - S3_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
+                + S3_I(iNX,iX_B0(1)-iX1,iX2,iX3)
 
           END DO
           END DO
@@ -713,19 +717,23 @@ CONTAINS
 
             U(iNX,iX_E0(1)+iX1,iX2,iX3,1) &
               = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,1) &
-                - CD_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3)
+                - CD_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
+                + CD_I(iNX,iX_E0(1)+iX1,iX2,iX3)
 
             U(iNX,iX_E0(1)+iX1,iX2,iX3,2) &
               = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,2) &
-                - S1_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3)
+                - S1_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
+                + S1_I(iNX,iX_E0(1)+iX1,iX2,iX3)
 
             U(iNX,iX_E0(1)+iX1,iX2,iX3,3) &
               = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,3) &
-                - S2_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3)
+                - S2_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
+                + S2_I(iNX,iX_E0(1)+iX1,iX2,iX3)
 
             U(iNX,iX_E0(1)+iX1,iX2,iX3,4) &
               = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,4) &
-                - S3_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3)
+                - S3_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
+                + S3_I(iNX,iX_E0(1)+iX1,iX2,iX3)
 
           END DO
           END DO
