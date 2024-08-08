@@ -4,7 +4,8 @@ MODULE MHD_CharacteristicDecompositionModule_Relativistic_IDEAL
     DP, &
     Zero, &
     Half, &
-    One
+    One,  &
+    Two
   USE GeometryFieldsModule, ONLY: &
     nGF, &
     iGF_Gm_dd_11, &
@@ -133,6 +134,7 @@ CONTAINS
         CALL ComputeFluxJacobian_X1 &
                ( D, Vu1, Vu2, Vu3, Vd1, Vd2, Vd3, VSq, &
                  bu0, bu1, bu2, bu3, bd1, bd2, bd3,    &
+                 Gmdd11, Gmdd22, Gmdd33,               &
                  W, h, hStar, dFdU )
     END SELECT
 
@@ -201,7 +203,7 @@ CONTAINS
       PRINT*, 'WR: ', WR
       PRINT*, 'WI: ', WI
 
-      DO i = 1, 6
+      DO i = 1, 10
 
         PRINT*, 'Lambda(i,:) : ', Lambda(i,:)
 
@@ -214,14 +216,115 @@ CONTAINS
 
   SUBROUTINE ComputeFluxJacobian_X1 &
     ( D, Vu1, Vu2, Vu3, Vd1, Vd2, Vd3, VSq,   &
-      bu0, bu1, bu2, bu3, bd1, bd2, bd3, &
+      bu0, bu1, bu2, bu3, bd1, bd2, bd3,      &
+      Gmdd11, Gmdd22, Gmdd33,                 &
       W, h, hStar, dFdU_X1 )
 
     REAL(DP), INTENT(in)  :: D
     REAL(DP), INTENT(in)  :: Vu1, Vu2, Vu3, Vd1, Vd2, Vd3, VSq
     REAL(DP), INTENT(in)  :: bu0, bu1, bu2, bu3, bd1, bd2, bd3
+    REAL(DP), INTENT(in)  :: Gmdd11, Gmdd22, Gmdd33
     REAL(DP), INTENT(in)  :: W, h, hStar
     REAL(DP), INTENT(out) :: dFdU_X1(nCM,nCM)
+
+    ! --- Upper 1st Index, Lower 2nd Index ---
+
+    REAL(DP) :: b0b1, b0b2, b0b3
+    REAL(DP) :: b1b1, b1b2, b1b3
+    REAL(DP) :: b2b1, b2b2, b2b3
+    REAL(DP) :: b3b1, b3b2, b3b3
+
+    ! --- Upper 1st Index, Lower 2nd Index ---
+
+    REAL(DP) :: v1v1, v1v2, v1v3
+    REAL(DP) :: v2v1, v2v2, v2v3
+    REAL(DP) :: v3v1, v3v2, v3v3
+
+    ! --- Upper 1st Index, Upper 2nd Index ---
+
+    REAL(DP) :: v1b1, v1b2, v1b3
+    REAL(DP) :: v2b1, v2b2, v2b3
+    REAL(DP) :: v3b1, v3b2, v3b3
+
+    ! --- Upper 1st Index, Lower 2nd Index
+
+    REAL(DP) :: b0v1, b0v2, b0v3
+
+    ! --- Upper 1st Index, Lower 2nd Index ---
+
+    REAL(DP) :: del11, del12, del13
+    REAL(DP) :: del21, del22, del23
+    REAL(DP) :: del31, del32, del33
+
+    ! --- Lower 1st Index, Lower 2nd Index ---
+
+    REAL(DP) :: gm11, gm12, gm13
+    REAL(DP) :: gm21, gm22, gm23
+    REAL(DP) :: gm31, gm32, gm33
+
+    REAL(DP) :: Z, G
+
+    b0b1 = bu0 * bd1
+    b0b2 = bu0 * bd2
+    b0b3 = bu0 * bd3
+
+    b1b1 = bu1 * bd1
+    b1b2 = bu1 * bd2
+    b1b3 = bu1 * bd3
+    b2b1 = bu2 * bd1
+    b2b2 = bu2 * bd2
+    b2b3 = bu2 * bd3
+    b3b1 = bu3 * bd1
+    b3b2 = bu3 * bd2
+    b3b3 = bu3 * bd3
+
+    v1v1 = vu1 * vd1
+    v1v2 = vu1 * vd2
+    v1v3 = vu1 * vd3
+    v2v1 = vu2 * vd1
+    v2v2 = vu2 * vd2
+    v2v3 = vu2 * vd3
+    v3v1 = vu3 * vd1
+    v3v2 = vu3 * vd2
+    v3v3 = vu3 * vd3
+
+    v1b1 = vu1 * bu1
+    v1b2 = vu1 * bu2
+    v1b3 = vu1 * bu3
+    v2b1 = vu2 * bu1
+    v2b2 = vu2 * bu2
+    v2b3 = vu2 * bu3
+    v3b1 = vu3 * bu1
+    v3b2 = vu3 * bu2
+    v3b3 = vu3 * bu3
+
+    del11 = One
+    del12 = Zero
+    del13 = Zero
+    del21 = Zero
+    del22 = One
+    del23 = Zero
+    del31 = Zero
+    del32 = Zero
+    del33 = One
+
+    gm11 = Gmdd11
+    gm12 = Zero
+    gm13 = Zero
+    gm21 = Zero
+    gm22 = Gmdd22
+    gm23 = Zero
+    gm31 = Zero
+    gm32 = Zero
+    gm33 = Gmdd33
+
+    ! --- Helper Expressions --
+
+    Z = D * hStar * W**2
+
+    G = Gamma_IDEAL / ( Gamma_IDEAL - One )
+
+    ! --- Temp ---
 
     dFdU_X1(1,:) &
       = [ W * Vu1,                      &
@@ -236,112 +339,135 @@ CONTAINS
           Zero ]
 
     dFdU_X1(2,:) &
-      = [ W**2 * Vu1 * Vd1,             &
-          D * W**3 * Vd1 * Vu1 + D * W, &
-          D * W**3 * Vd2 * Vu1,         &
-          D * W**3 * Vd3 * Vu1,         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
+      = [ W**2 * v1v1,                                                  &
+          -b0b1 * ( del11 + Two * W**2 * v1v1 ) &
+          + Z * ( Two * W**2 * vd1 * v1v1 + del11 * vd1 + gm11 * vu1 ), &
+          -b0b2 * ( del11 + Two * W**2 * v1v1 ) &
+          + Z * ( Two * W**2 * vd2 * v1v1 + del12 * vd1 + gm12 * vu1 ), &
+          -b0b3 * ( del11 + Two * W**2 * v1v1 ) &
+          + Z * ( Two * W**2 * vd3 * v1v1 + del13 * vd1 + gm13 * vu1 ), &
+          del11 + G * W**2 * v1v1,                                      &
+          Zero,                                                         &
+          ( -b0v1 + bd1 ) * ( del11 + Two * W**2 * v1v1 ) &
+          - bd1 * del11 - gm11 * bu1,                                   &
+          ( -b0v2 + bd2 ) * ( del11 + Two * W**2 * v1v1 ) &
+          - bd1 * del12 - gm12 * bu1,                                   &
+          ( -b0v3 + bd3 ) * ( del11 + Two * W**2 * v1v1 ) &
+          - bd1 * del13 - gm13 * bu1,                                   &
           Zero ]
 
     dFdU_X1(3,:) &
-      = [ W**2 * Vu1 * Vd2,             &
-          D * W**3 * Vd1 * Vu1 + D * W, &
-          D * W**3 * Vd2 * Vu1,         &
-          D * W**3 * Vd3 * Vu1,         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
+      = [ W**2 * v1v2,                                                  &
+          -b0b1 * ( del12 + Two * W**2 * v1v2 ) &
+          + Z * ( Two * W**2 * vd1 * v1v2 + del11 * vd2 + gm21 * vu1 ), &
+          -b0b2 * ( del12 + Two * W**2 * v1v2 ) &
+          + Z * ( Two * W**2 * vd2 * v1v2 + del12 * vd2 + gm22 * vu1 ), &
+          -b0b3 * ( del12 + Two * W**2 * v1v2 ) &
+          + Z * ( Two * W**2 * vd3 * v1v2 + del13 * vd2 + gm23 * vu1 ), &
+          del12 + G * W**2 * v1v2,                                      &
+          Zero,                                                         &
+          ( -b0v1 + bd1 ) * ( del12 + Two * W**2 * v1v2 ) &
+          - bd2 * del11 - gm21 * bu1,                                   &
+          ( -b0v2 + bd2 ) * ( del12 + Two * W**2 * v1v2 ) &
+          - bd2 * del12 - gm22 * bu1,                                   &
+          ( -b0v3 + bd3 ) * ( del12 + Two * W**2 * v1v2 ) &
+          - bd2 * del13 - gm23 * bu1,                                   &
           Zero ]
 
-    dFdU_X1(4,:) &
-      = [ W**2 * Vu1 * Vd3,             &
-          D * W**3 * Vd1 * Vu1 + D * W, &
-          D * W**3 * Vd2 * Vu1,         &
-          D * W**3 * Vd3 * Vu1,         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
+    dFdU_X1(2,:) &
+      = [ W**2 * v1v1,                                                  &
+          -b0b1 * ( del13 + Two * W**2 * v1v3 ) &
+          + Z * ( Two * W**2 * vd1 * v1v3 + del11 * vd3 + gm31 * vu1 ), &
+          -b0b2 * ( del13 + Two * W**2 * v1v3 ) &
+          + Z * ( Two * W**2 * vd2 * v1v3 + del12 * vd3 + gm32 * vu1 ), &
+          -b0b3 * ( del13 + Two * W**2 * v1v3 ) &
+          + Z * ( Two * W**2 * vd3 * v1v3 + del13 * vd3 + gm33 * vu1 ), &
+          del13 + G * W**2 * v1v3,                                      &
+          Zero,                                                         &
+          ( -b0v1 + bd1 ) * ( del13 + Two * W**2 * v1v3 ) &
+          - bd3 * del11 - gm31 * bu1,                                   &
+          ( -b0v2 + bd2 ) * ( del13 + Two * W**2 * v1v3 ) &
+          - bd3 * del12 - gm32 * bu1,                                   &
+          ( -b0v3 + bd3 ) * ( del13 + Two * W**2 * v1v3 ) &
+          - bd3 * del13 - gm33 * bu1,                                   &
           Zero ]
 
     dFdU_X1(5,:) &
-      = [ W,                            &
-          D * W**3 * Vd1 * Vu1 + D * W, &
-          D * W**3 * Vd2 * Vu1,         &
-          D * W**3 * Vd3 * Vu1,         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
+      = [ ( W**2 - W ) * vu1,            &
+          Z * ( Two * W**2 * v1v1 + del11 ) - Two * W**2 * b0b1 * vu1 - b1b1 &
+          - D * W**3 * v1v1 - D * W * del11, &
+          Z * ( Two * W**2 * v1v2 + del12 ) - Two * W**2 * b0b2 * vu1 - b1b2 &
+          - D * W**3 * v1v2 - D * W * del12, &
+          Z * ( Two * W**2 * v1v3 + del13 ) - Two * W**2 * b0b3 * vu1 - b1b3 &
+          - D * W**3 * v1v3 - D * W * del13, &
+          G * W**2 * vu1,            &
+          Zero,            &
+          Two * ( -b0v1 + bd1 ) * W**2 * vu1 - bu1 * vd1 - bu0 * del11, &
+          Two * ( -b0v2 + bd2 ) * W**2 * vu1 - bu1 * vd2 - bu0 * del12, &
+          Two * ( -b0v3 + bd3 ) * W**2 * vu1 - bu1 * vd3 - bu0 * del13, &
           Zero ]
 
     dFdU_X1(6,:) &
-      = [ ( W**2 - W ) * Vu1,           &
-          D * W**3 * Vd1 * Vu1 + D * W, &
-          D * W**3 * Vd2 * Vu1,         &
-          D * W**3 * Vd3 * Vu1,         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
+      = [ Zero, &
+          Zero, &
+          Zero, &
+          Zero, &
+          Zero, &
+          Zero, &
+          Zero, &
+          Zero, &
+          Zero, &
           Zero ]
 
     dFdU_X1(7,:) &
-      = [ Zero,                         &
-          D * W**3 * Vd1 * Vu1 + D * W, &
-          D * W**3 * Vd2 * Vu1,         &
-          D * W**3 * Vd3 * Vu1,         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
+      = [ Zero,                                                             &
+          W**3 * vd1 * ( v1b1 - v1b1 ) + W * ( del11 * bu1 - del11 * bu1 ), &
+          W**3 * vd2 * ( v1b1 - v1b1 ) + W * ( del12 * bu1 - del12 * bu1 ), &
+          W**3 * vd3 * ( v1b1 - v1b1 ) + W * ( del13 * bu1 - del13 * bu1 ), &
+          Zero,                                                             &
+          Zero,                                                             &
+          W * ( vu1 * del11 - vu1 * del11 ),                                &
+          W * ( vu1 * del12 - vu1 * del12 ),                                &
+          W * ( vu1 * del13 - vu1 * del13 ),                                &
           Zero ]
 
     dFdU_X1(8,:) &
-      = [ Zero,                         &
-          D * W**3 * Vd1 * Vu1 + D * W, &
-          D * W**3 * Vd2 * Vu1,         &
-          D * W**3 * Vd3 * Vu1,         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
+      = [ Zero,            &
+          W**3 * vd1 * ( v1b2 - v2b1 ) + W * ( del11 * bu2 - del21 * bu1 ), &
+          W**3 * vd2 * ( v1b2 - v2b1 ) + W * ( del12 * bu2 - del22 * bu1 ), &
+          W**3 * vd3 * ( v1b2 - v2b1 ) + W * ( del13 * bu2 - del23 * bu1 ), &
+          Zero,            &
+          Zero,            &
+          W * ( vu1 * del21 - vu2 * del11 ),            &
+          W * ( vu1 * del22 - vu2 * del12 ),            &
+          W * ( vu1 * del23 - vu2 * del13 ),            &
           Zero ]
 
     dFdU_X1(9,:) &
-      = [ Zero,                         &
-          D * W**3 * Vd1 * Vu1 + D * W, &
-          D * W**3 * Vd2 * Vu1,         &
-          D * W**3 * Vd3 * Vu1,         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
+      = [ Zero,            &
+          W**3 * vd1 * ( v1b3 - v3b1 ) + W * ( del11 * bu3 - del31 * bu1 ), &
+          W**3 * vd2 * ( v1b3 - v3b1 ) + W * ( del12 * bu3 - del32 * bu1 ), &
+          W**3 * vd3 * ( v1b3 - v3b1 ) + W * ( del13 * bu3 - del33 * bu1 ), &
+          Zero,            &
+          Zero,            &
+          W * ( vu1 * del31 - vu3 * del11 ),            &
+          W * ( vu1 * del32 - vu3 * del12 ),            &
+          W * ( vu1 * del33 - vu3 * del13 ),            &
           Zero ]
 
     dFdU_X1(10,:) &
-      = [ Zero,                         &
-          D * W**3 * Vd1 * Vu1 + D * W, &
-          D * W**3 * Vd2 * Vu1,         &
-          D * W**3 * Vd3 * Vu1,         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
+      = [ Zero, &
+          Zero, &
+          Zero, &
+          Zero, &
+          Zero, &
+          Zero, &
+          Zero, &
+          Zero, &
+          Zero, &
           Zero ]
+
+    ! --- ---
 
   END SUBROUTINE ComputeFluxJacobian_X1
 
