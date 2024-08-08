@@ -136,7 +136,7 @@ CONTAINS
                  W, h, hStar, dFdU )
     END SELECT
 
-    !CALL ComputeCharacteristicDecomposition_Numeric( R, invR, dFdU )
+    CALL ComputeCharacteristicDecomposition_Numeric( R, invR, dFdU )
 
   END SUBROUTINE ComputeCharacteristicDecomposition_MHD_Relativistic_IDEAL
 
@@ -209,7 +209,7 @@ CONTAINS
 
     END IF
 
-   END SUBROUTINE ComputeCharacteristicDecomposition_Numeric
+  END SUBROUTINE ComputeCharacteristicDecomposition_Numeric
 
 
   SUBROUTINE ComputeFluxJacobian_X1 &
@@ -222,6 +222,126 @@ CONTAINS
     REAL(DP), INTENT(in)  :: bu0, bu1, bu2, bu3, bd1, bd2, bd3
     REAL(DP), INTENT(in)  :: W, h, hStar
     REAL(DP), INTENT(out) :: dFdU_X1(nCM,nCM)
+
+    dFdU_X1(1,:) &
+      = [ W * Vu1,                      &
+          D * W**3 * Vd1 * Vu1 + D * W, &
+          D * W**3 * Vd2 * Vu1,         &
+          D * W**3 * Vd3 * Vu1,         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero ]
+
+    dFdU_X1(2,:) &
+      = [ W**2 * Vu1 * Vd1,             &
+          D * W**3 * Vd1 * Vu1 + D * W, &
+          D * W**3 * Vd2 * Vu1,         &
+          D * W**3 * Vd3 * Vu1,         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero ]
+
+    dFdU_X1(3,:) &
+      = [ W**2 * Vu1 * Vd2,             &
+          D * W**3 * Vd1 * Vu1 + D * W, &
+          D * W**3 * Vd2 * Vu1,         &
+          D * W**3 * Vd3 * Vu1,         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero ]
+
+    dFdU_X1(4,:) &
+      = [ W**2 * Vu1 * Vd3,             &
+          D * W**3 * Vd1 * Vu1 + D * W, &
+          D * W**3 * Vd2 * Vu1,         &
+          D * W**3 * Vd3 * Vu1,         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero ]
+
+    dFdU_X1(5,:) &
+      = [ W,                            &
+          D * W**3 * Vd1 * Vu1 + D * W, &
+          D * W**3 * Vd2 * Vu1,         &
+          D * W**3 * Vd3 * Vu1,         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero ]
+
+    dFdU_X1(6,:) &
+      = [ ( W**2 - W ) * Vu1,           &
+          D * W**3 * Vd1 * Vu1 + D * W, &
+          D * W**3 * Vd2 * Vu1,         &
+          D * W**3 * Vd3 * Vu1,         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero ]
+
+    dFdU_X1(7,:) &
+      = [ Zero,                         &
+          D * W**3 * Vd1 * Vu1 + D * W, &
+          D * W**3 * Vd2 * Vu1,         &
+          D * W**3 * Vd3 * Vu1,         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero ]
+
+    dFdU_X1(8,:) &
+      = [ Zero,                         &
+          D * W**3 * Vd1 * Vu1 + D * W, &
+          D * W**3 * Vd2 * Vu1,         &
+          D * W**3 * Vd3 * Vu1,         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero ]
+
+    dFdU_X1(9,:) &
+      = [ Zero,                         &
+          D * W**3 * Vd1 * Vu1 + D * W, &
+          D * W**3 * Vd2 * Vu1,         &
+          D * W**3 * Vd3 * Vu1,         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero ]
+
+    dFdU_X1(10,:) &
+      = [ Zero,                         &
+          D * W**3 * Vd1 * Vu1 + D * W, &
+          D * W**3 * Vd2 * Vu1,         &
+          D * W**3 * Vd3 * Vu1,         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero,                         &
+          Zero ]
 
   END SUBROUTINE ComputeFluxJacobian_X1
 
