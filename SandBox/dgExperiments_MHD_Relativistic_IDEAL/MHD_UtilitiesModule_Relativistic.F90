@@ -193,7 +193,7 @@ CONTAINS
       PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
       PM_B1, PM_B2, PM_B3, PM_Chi
 
-    REAL(DP) :: B0u, B1, B2, B3
+    REAL(DP) :: b0u, B1, B2, B3
     REAL(DP) :: D, D_bar, tau, Ne, Ne_bar
     REAL(DP) :: Sd1, Sd2, Sd3
     REAL(DP) :: q, q_bar
@@ -309,7 +309,7 @@ CONTAINS
 
     bSq = ( bu1 * bd1 + bu2 * bd2 + bu3 * bd3 )
 
-   !PRINT*, 'bSq: ', bSq
+   !PRINT*, ': ', bSq
 
     ! --- Contraction of r with b ---
 
@@ -422,23 +422,23 @@ CONTAINS
 
    !PRINT*, 'mu: ', One / ( W * ( One + eps + AM_P / PM_D ) )
 
-    B0u = ( W / GF_alpha ) &
+    b0u = ( W / GF_alpha ) &
             * ( GF_Gm11 * PM_V1 * CM_B1 &
                 + GF_Gm22 * PM_V2 * CM_B2 &
                 + GF_Gm33 * PM_V3 * CM_B3 )
 
-   !PRINT* , 'B0u: ', B0u
+   !PRINT* , 'b0u: ', b0u
 
-    PM_B1 = ( CM_B1 / W ) + GF_Alpha * B0u &
+    PM_B1 = ( CM_B1 / W ) + GF_Alpha * b0u &
                             * ( PM_V1 - ( GF_Beta1 / GF_Alpha ) )
    !PRINT*, 'PM_B1: ', PM_B1
 
-    PM_B2 = ( CM_B2 / W ) + GF_Alpha * B0u &
+    PM_B2 = ( CM_B2 / W ) + GF_Alpha * b0u &
                             * ( PM_V2 - ( GF_Beta2 / GF_Alpha ) )
 
    !PRINT*, 'PM_B2: ', PM_B2
 
-    PM_B3 = ( CM_B3 / W ) + GF_Alpha * B0u &
+    PM_B3 = ( CM_B3 / W ) + GF_Alpha * b0u &
                             * ( PM_V3 - ( GF_Beta3 / GF_Alpha ) )
 
    !PRINT*, 'PM_B3: ', PM_B3
@@ -538,7 +538,7 @@ CONTAINS
                              CM_E, CM_Ne, CM_B1, CM_B2, &
                              CM_B3, CM_Chi
 
-    REAL(DP) :: VSq, W, B0u, B0d, BSq, h, hStar, p, pStar
+    REAL(DP) :: VSq, W, b0u, b0d, bSq, h, hStar, p, pStar
 
    !PRINT*
    !PRINT*, 'Computing conserved variables.'
@@ -559,37 +559,37 @@ CONTAINS
    !PRINT*, 'VSq: ', VSq
    !PRINT*, 'W: ', W
 
-    B0u = ( GF_Gm11 * PM_V1 * PM_B1 &
+    b0u = ( GF_Gm11 * PM_V1 * PM_B1 &
              + GF_Gm22 * PM_V2 * PM_B2 &
              + GF_Gm33 * PM_V3 * PM_B3 ) &
          / ( GF_Alpha - GF_Gm11 * PM_V1 * GF_Beta1 &
              - GF_Gm22 * PM_V2 * GF_Beta2 &
              - GF_Gm33 * PM_V3 * GF_Beta3 )
 
-    B0d = B0u * ( - GF_Alpha**2 + GF_Gm11 * GF_Beta1**2 &
+    b0d = b0u * ( - GF_Alpha**2 + GF_Gm11 * GF_Beta1**2 &
                                 + GF_Gm22 * GF_Beta2**2 &
                                 + GF_Gm33 * GF_Beta3**2 ) &
           + ( GF_Gm11 * GF_Beta1 * PM_B1 &
               + GF_Gm22 * GF_Beta2 * PM_B2 &
               + GF_Gm33 * GF_Beta3 * PM_B3 )
 
-   !PRINT*, 'B0u: ', B0u
-   !PRINT*, 'B0d: ', B0d
+   !PRINT*, 'b0u: ', B0u
+   !PRINT*, 'b0d: ', B0d
 
-    BSq = B0d * B0u &
-          + B0u * ( GF_Gm11 * GF_Beta1 * PM_B1 &
+   bSq = b0d * b0u &
+          + b0u * ( GF_Gm11 * GF_Beta1 * PM_B1 &
                     + GF_Gm22 * GF_Beta2 * PM_B2 &
                     + GF_Gm33 * GF_Beta3 * PM_B3 ) &
           + ( GF_Gm11 * PM_B1**2 &
               + GF_Gm22 * PM_B2**2 &
               + GF_Gm33 * PM_B3**2 )
 
-   !PRINT*, 'BSq: ', BSq
+   !PRINT*, ': ', bSq
 
     h = One + ( PM_E + AM_P ) / PM_D
     p = AM_P
-    hStar = h + BSq / PM_D
-    pStar = p + BSq / 2.0_DP
+    hStar = h + bSq / PM_D
+    pStar = p + bSq / 2.0_DP
 
    !PRINT*, 'hStar: ', hStar
    !PRINT*, 'pStar: ', pStar
@@ -601,15 +601,15 @@ CONTAINS
      !PRINT*, 'Magnetofluid coupling on for primitive-to-conserved.'
 
       CM_S1  = hStar * W**2 * PM_D * GF_Gm11 * PM_V1 &
-               - GF_Alpha * B0u**2 * ( GF_Gm11 * GF_Beta1 ) &
-               - GF_Alpha * B0u * ( GF_Gm11 * PM_B1 )
+               - GF_Alpha * b0u**2 * ( GF_Gm11 * GF_Beta1 ) &
+               - GF_Alpha * b0u * ( GF_Gm11 * PM_B1 )
       CM_S2  = hStar * W**2 * PM_D * GF_Gm22 * PM_V2 &
-               - GF_Alpha * B0u**2 * ( GF_Gm22 * GF_Beta2 ) &
-               - GF_Alpha * B0u * ( GF_Gm22 * PM_B2 )
+               - GF_Alpha * b0u**2 * ( GF_Gm22 * GF_Beta2 ) &
+               - GF_Alpha * b0u * ( GF_Gm22 * PM_B2 )
       CM_S3  = hStar * W**2 * PM_D * GF_Gm33 * PM_V3 &
-               - GF_Alpha * B0u**2 * ( GF_Gm33 * GF_Beta3 ) &
-               - GF_Alpha * B0u * ( GF_Gm33 * PM_B3 )
-      CM_E   = hStar * W**2 * PM_D - pStar - ( GF_Alpha * B0u )**2 - W * PM_D
+               - GF_Alpha * b0u**2 * ( GF_Gm33 * GF_Beta3 ) &
+               - GF_Alpha * b0u * ( GF_Gm33 * PM_B3 )
+      CM_E   = hStar * W**2 * PM_D - pStar - ( GF_Alpha * b0u )**2 - W * PM_D
 
     ELSE
 
@@ -623,11 +623,11 @@ CONTAINS
     END IF
 
     CM_Ne  = W * PM_Ne
-    CM_B1  = -W * GF_Alpha * B0u * ( PM_V1 - ( GF_Beta1 / GF_Alpha  ) ) &
+    CM_B1  = -W * GF_Alpha * b0u * ( PM_V1 - ( GF_Beta1 / GF_Alpha  ) ) &
              + W * PM_B1
-    CM_B2  = -W * GF_Alpha * B0u * ( PM_V2 - ( GF_Beta2 / GF_Alpha  ) ) &
+    CM_B2  = -W * GF_Alpha * b0u * ( PM_V2 - ( GF_Beta2 / GF_Alpha  ) ) &
              + W * PM_B2
-    CM_B3  = -W * GF_Alpha * B0u * ( PM_V3 - ( GF_Beta3 / GF_Alpha  ) ) &
+    CM_B3  = -W * GF_Alpha * b0u * ( PM_V3 - ( GF_Beta3 / GF_Alpha  ) ) &
              + W * PM_B3
     CM_Chi = PM_Chi
 
@@ -2425,7 +2425,7 @@ CONTAINS
                             B1, B2, B3, Chi, Gm11, Gm22, Gm33, Lapse, &
                             Shift1, Shift2, Shift3
 
-    REAL(DP) :: VSq, W, P, h, B0u, B0d, BSq, &
+    REAL(DP) :: VSq, W, P, h, b0u, b0d, bSq, &
                 Ca, aSq, Eigenvalues_MHD_Relativistic(2)
 
    !PRINT*
@@ -2472,7 +2472,7 @@ CONTAINS
 
    !PRINT*, 'Non-magnetic enthalpy: ', h
 
-    B0u = ( Gm11 * V1 * B1 &
+    b0u = ( Gm11 * V1 * B1 &
             + Gm22 * V2 * B2 &
             + Gm33 * V3 * B3 ) &
           / ( Lapse &
@@ -2480,20 +2480,20 @@ CONTAINS
               - Gm22 * V2 * Shift2 &
               - Gm33 * V3 * Shift3 )
 
-    B0d =  - ( Lapse / W ) &
+    b0d =  - ( Lapse / W ) &
              * ( Gm11 * V1 * B1 &
                  + Gm22 * V2 * B2 &
                  + Gm33 * V3 * B3 )
 
-    BSq = B0d * B0u &
-          + B0u * ( Gm11 * Shift1 * B1 &
+    bSq = b0d * b0u &
+          + b0u * ( Gm11 * Shift1 * B1 &
                     + Gm22 * Shift2 * B2 &
                     + Gm33 * Shift3 * B3 ) &
           + ( Gm11 * B1**2 &
               + Gm22 * B2**2 &
               + Gm33 * B3**2 )
 
-    Ca = SQRT( BSq / ( D * h + BSq ) )
+    Ca = SQRT( bSq / ( D * h + bSq ) )
 
    !PRINT*, 'The Alfven speed is: ', Ca
 
@@ -2555,7 +2555,7 @@ CONTAINS
                             Gm11, Gm22, Gm33, Lapse, &
                             Shift1, Shift2, Shift3
 
-    REAL(DP) :: VSq, W, Pstar, h, hStar, B0u, B0d, BSq, Flux_X1_MHD_Relativistic(nCM)
+    REAL(DP) :: VSq, W, Pstar, h, hStar, b0u, b0d, bSq, Flux_X1_MHD_Relativistic(nCM)
 
 
   !PRINT*
@@ -2585,7 +2585,7 @@ CONTAINS
     VSq   = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
     W   = One / SQRT( One - VSq )
 
-    B0u = ( Gm11 * V1 * B1 &
+    b0u = ( Gm11 * V1 * B1 &
             + Gm22 * V2 * B2 &
             + Gm33 * V3 * B3 ) &
           / ( Lapse &
@@ -2593,21 +2593,21 @@ CONTAINS
               - Gm22 * V2 * Shift2 &
               - Gm33 * V3 * Shift3 )
 
-    B0d =  - ( Lapse / W ) &
+    b0d =  - ( Lapse / W ) &
              * ( Gm11 * V1 * B1 &
                  + Gm22 * V2 * B2 &
                  + Gm33 * V3 * B3 )
 
-    BSq = B0d * B0u &
-          + B0u * ( Gm11 * Shift1 * B1 &
+    bSq = b0d * b0u &
+          + b0u * ( Gm11 * Shift1 * B1 &
                     + Gm22 * Shift2 * B2 &
                     + Gm33 * Shift3 * B3 ) &
           + ( Gm11 * B1**2 &
               + Gm22 * B2**2 &
               + Gm33 * B3**2 )
 
-    hStar = One + ( E + P ) / D + BSq / D
-    pStar = P + BSq / 2.0_DP
+    hStar = One + ( E + P ) / D + bSq / D
+    pStar = p +  bSq / 2.0_DP
 
     Flux_X1_MHD_Relativistic(iCM_D)  &
       = D * W * ( V1 - Shift1 / Lapse )
@@ -2616,29 +2616,29 @@ CONTAINS
 
     Flux_X1_MHD_Relativistic(iCM_S1) &
       = D * hStar * W**2 * Gm11 * V1  * ( V1 - Shift1 / Lapse ) + pStar &
-        - Gm11 * ( B1**2 + B0u * B1 * Shift1 &
-                   + ( Lapse * B0u )**2 * Shift1**2 )
+        - Gm11 * ( B1**2 + b0u * B1 * Shift1 &
+                   + ( Lapse * b0u )**2 * Shift1**2 )
 
    !PRINT*, 'iCM_S1 Flux: ', Flux_X1_MHD_Relativistic(iCM_S1)
 
     Flux_X1_MHD_Relativistic(iCM_S2) &
       = D * hStar * W**2 * Gm22 * V2  * ( V1 - Shift1 / Lapse ) &
-        - Gm22 * ( B1 * B2 + B0u * B1 * Shift2 &
-                   + ( Lapse * B0u )**2 * Shift1 * Shift2 )
+        - Gm22 * ( B1 * B2 + b0u * B1 * Shift2 &
+                   + ( Lapse * b0u )**2 * Shift1 * Shift2 )
 
    !PRINT*, 'iCM_S2 Flux: ', Flux_X1_MHD_Relativistic(iCM_S2)
 
     Flux_X1_MHD_Relativistic(iCM_S3) &
       = D * hStar * W**2 * Gm33 * V3  * ( V1 - Shift1 / Lapse ) &
-        - Gm33 * ( B1 * B3 + B0u * B1 * Shift3 &
-                   + ( Lapse * B0u )**2 * Shift1 * Shift3 )
+        - Gm33 * ( B1 * B3 + b0u * B1 * Shift3 &
+                   + ( Lapse * b0u )**2 * Shift1 * Shift3 )
 
    !PRINT*, 'iCM_S3 Flux: ', Flux_X1_MHD_Relativistic(iCM_S3)
 
     Flux_X1_MHD_Relativistic(iCM_E)  &
       = D * W * ( hStar * W - One ) * ( V1 - Shift1 / Lapse ) &
         + Shift1 / Lapse * pStar &
-        - Lapse * B0u * B1 + Two * Lapse * (B0u)**2 * Shift1
+        - Lapse * b0u * B1 + Two * Lapse * (b0u)**2 * Shift1
 
    !PRINT*, 'iCM_E Flux: ', Flux_X1_MHD_Relativistic(iCM_E)
 
@@ -2650,22 +2650,22 @@ CONTAINS
     IF( UseDivergenceCleaning )THEN
 
       Flux_X1_MHD_Relativistic(iCM_B1) &
-        = Lapse * W * B0u * ( V1 - ( Shift1 / Lapse ) ) * ( Shift1 / Lapse ) &
+        = Lapse * W * b0u * ( V1 - ( Shift1 / Lapse ) ) * ( Shift1 / Lapse ) &
           - W * ( Shift1 / Lapse ) * B1 &
           + ( Chi / Gm11 )
 
       Flux_X1_MHD_Relativistic(iCM_B2) &
-        = Lapse * W * B0u * ( V1 - ( Shift1 / Lapse ) ) * ( Shift2 / Lapse ) &
+        = Lapse * W * b0u * ( V1 - ( Shift1 / Lapse ) ) * ( Shift2 / Lapse ) &
           + W * V1 * B2 - W * V2 * B1 &
           - W * ( Shift1 / Lapse ) * B2
 
       Flux_X1_MHD_Relativistic(iCM_B3) &
-        = Lapse * W * B0u * ( V1 - ( Shift1 / Lapse ) ) * ( Shift3 / Lapse ) &
+        = Lapse * W * b0u * ( V1 - ( Shift1 / Lapse ) ) * ( Shift3 / Lapse ) &
           + W * V1 * B3 - W * V3 * B1 &
           - W * ( Shift1 / Lapse ) * B3
 
       Flux_X1_MHD_Relativistic(iCM_Chi) &
-        = - Lapse * W * B0u * ( V1 - ( Shift1 / Lapse ) ) + W * B1 - Chi * ( Shift1 / Lapse )
+        = - Lapse * W * b0u * ( V1 - ( Shift1 / Lapse ) ) + W * B1 - Chi * ( Shift1 / Lapse )
 
     ELSE
 
@@ -2705,7 +2705,7 @@ CONTAINS
                             Gm11, Gm22, Gm33, Lapse, &
                             Shift1, Shift2, Shift3
 
-    REAL(DP) :: VSq, W, Pstar, h, hStar, B0u, B0d, BSq, Flux_X2_MHD_Relativistic(nCM)
+    REAL(DP) :: VSq, W, Pstar, h, hStar, b0u, b0d, bSq, Flux_X2_MHD_Relativistic(nCM)
 
 
   !PRINT*
@@ -2735,7 +2735,7 @@ CONTAINS
     VSq   = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
     W   = One / SQRT( One - VSq )
 
-    B0u = ( Gm11 * V1 * B1 &
+    b0u = ( Gm11 * V1 * B1 &
             + Gm22 * V2 * B2 &
             + Gm33 * V3 * B3 ) &
           / ( Lapse &
@@ -2743,21 +2743,21 @@ CONTAINS
               - Gm22 * V2 * Shift2 &
               - Gm33 * V3 * Shift3 )
 
-    B0d =  - ( Lapse / W ) &
+    b0d =  - ( Lapse / W ) &
              * ( Gm11 * V1 * B1 &
                  + Gm22 * V2 * B2 &
                  + Gm33 * V3 * B3 )
 
-    BSq = B0d * B0u &
-          + B0u * ( Gm11 * Shift1 * B1 &
+    bSq = b0d * b0u &
+          + b0u * ( Gm11 * Shift1 * B1 &
                     + Gm22 * Shift2 * B2 &
                     + Gm33 * Shift3 * B3 ) &
           + ( Gm11 * B1**2 &
               + Gm22 * B2**2 &
               + Gm33 * B3**2 )
 
-    hStar = One + ( E + P ) / D + BSq / D
-    pStar = P + BSq / 2.0_DP
+    hStar = One + ( E + P ) / D + bSq / D
+    pStar = P + bSq / 2.0_DP
 
     Flux_X2_MHD_Relativistic(iCM_D)  &
       = D * W * ( V2 - Shift2 / Lapse )
@@ -2766,29 +2766,29 @@ CONTAINS
 
     Flux_X2_MHD_Relativistic(iCM_S1) &
       = D * hStar * W**2 * Gm11 * V1  * ( V2 - Shift2 / Lapse ) &
-        - Gm11 * ( B2 * B1 + B0u * B2 * Shift1 &
-                   + ( Lapse * B0u )**2 * Shift2 * Shift1 )
+        - Gm11 * ( B2 * B1 + b0u * B2 * Shift1 &
+                   + ( Lapse * b0u )**2 * Shift2 * Shift1 )
 
    !PRINT*, 'iCM_S1 Flux: ', Flux_X2_MHD_Relativistic(iCM_S1)
 
     Flux_X2_MHD_Relativistic(iCM_S2) &
       = D * hStar * W**2 * Gm22 * V2  * ( V2 - Shift2 / Lapse ) + pStar &
-        - Gm22 * ( B2**2 + B0u * B2 * Shift2 &
-                   + ( Lapse * B0u )**2 * Shift2**2 )
+        - Gm22 * ( B2**2 + b0u * B2 * Shift2 &
+                   + ( Lapse * b0u )**2 * Shift2**2 )
 
    !PRINT*, 'iCM_S2 Flux: ', Flux_X2_MHD_Relativistic(iCM_S2)
 
     Flux_X2_MHD_Relativistic(iCM_S3) &
       = D * hStar * W**2 * Gm33 * V3  * ( V2 - Shift2 / Lapse ) &
-        - Gm33 * ( B2 * B3 + B0u * B2 * Shift3 &
-                   + ( Lapse * B0u )**2 * Shift2 * Shift3 )
+        - Gm33 * ( B2 * B3 + b0u * B2 * Shift3 &
+                   + ( Lapse * b0u )**2 * Shift2 * Shift3 )
 
    !PRINT*, 'iCM_S3 Flux: ', Flux_X2_MHD_Relativistic(iCM_S3)
 
     Flux_X2_MHD_Relativistic(iCM_E)  &
       = D * W * ( hStar * W - One ) * ( V2 - Shift2 / Lapse ) &
         + Shift2 / Lapse * pStar &
-        - Lapse * B0u * B2 + Two * Lapse * (B0u)**2 * Shift2
+        - Lapse * b0u * B2 + Two * Lapse * (B0u)**2 * Shift2
 
    !PRINT*, 'iCM_E Flux: ', Flux_X2_MHD_Relativistic(iCM_E)
 
@@ -2800,22 +2800,22 @@ CONTAINS
     IF( UseDivergenceCleaning )THEN
 
       Flux_X2_MHD_Relativistic(iCM_B1) &
-        = Lapse * W * B0u * ( V2 - ( Shift2 / Lapse ) ) * ( Shift1 / Lapse ) &
+        = Lapse * W * b0u * ( V2 - ( Shift2 / Lapse ) ) * ( Shift1 / Lapse ) &
           + W * V2 * B1 - W * V1 * B2 &
           - W * ( Shift2 / Lapse ) * B1
 
       Flux_X2_MHD_Relativistic(iCM_B2) &
-        = Lapse * W * B0u * ( V2 - ( Shift2 / Lapse ) ) * ( Shift2 / Lapse ) &
+        = Lapse * W * b0u * ( V2 - ( Shift2 / Lapse ) ) * ( Shift2 / Lapse ) &
           - W * ( Shift2 / Lapse ) * B2 &
           + ( Chi / Gm22 )
 
       Flux_X2_MHD_Relativistic(iCM_B3) &
-        = Lapse * W * B0u * ( V2 - ( Shift2 / Lapse ) ) * ( Shift3 / Lapse ) &
+        = Lapse * W * b0u * ( V2 - ( Shift2 / Lapse ) ) * ( Shift3 / Lapse ) &
           + W * V2 * B3 - W * V3 * B2 &
           - W * ( Shift2 / Lapse ) * B3
 
       Flux_X2_MHD_Relativistic(iCM_Chi) &
-        = - Lapse * W * B0u * ( V2 - ( Shift2 / Lapse ) )  + W * B2 - Chi * ( Shift2 / Lapse )
+        = - Lapse * W * b0u * ( V2 - ( Shift2 / Lapse ) )  + W * B2 - Chi * ( Shift2 / Lapse )
 
     ELSE
 
@@ -2855,7 +2855,7 @@ CONTAINS
                             Gm11, Gm22, Gm33, Lapse, &
                             Shift1, Shift2, Shift3
 
-    REAL(DP) :: VSq, W, Pstar, h, hStar, B0u, B0d, BSq, Flux_X3_MHD_Relativistic(nCM)
+    REAL(DP) :: VSq, W, Pstar, h, hStar, b0u, b0d, bSq, Flux_X3_MHD_Relativistic(nCM)
 
 
   !PRINT*
@@ -2885,7 +2885,7 @@ CONTAINS
     VSq   = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
     W   = One / SQRT( One - VSq )
 
-    B0u = ( Gm11 * V1 * B1 &
+    b0u = ( Gm11 * V1 * B1 &
             + Gm22 * V2 * B2 &
             + Gm33 * V3 * B3 ) &
           / ( Lapse &
@@ -2893,21 +2893,21 @@ CONTAINS
               - Gm22 * V2 * Shift2 &
               - Gm33 * V3 * Shift3 )
 
-    B0d =  - ( Lapse / W ) &
+    b0d =  - ( Lapse / W ) &
              * ( Gm11 * V1 * B1 &
                  + Gm22 * V2 * B2 &
                  + Gm33 * V3 * B3 )
 
-    BSq = B0d * B0u &
-          + B0u * ( Gm11 * Shift1 * B1 &
+    bSq = b0d * b0u &
+          + b0u * ( Gm11 * Shift1 * B1 &
                     + Gm22 * Shift2 * B2 &
                     + Gm33 * Shift3 * B3 ) &
           + ( Gm11 * B1**2 &
               + Gm22 * B2**2 &
               + Gm33 * B3**2 )
 
-    hStar = One + ( E + P ) / D + BSq / D
-    pStar = P + BSq / 2.0_DP
+    hStar = One + ( E + P ) / D + bSq / D
+    pStar = P + bSq / 2.0_DP
 
     Flux_X3_MHD_Relativistic(iCM_D)  &
       = D * W * ( V3 - Shift3 / Lapse )
@@ -2916,29 +2916,29 @@ CONTAINS
 
     Flux_X3_MHD_Relativistic(iCM_S1) &
       = D * hStar * W**2 * Gm11 * V1  * ( V3 - Shift3 / Lapse ) &
-        - Gm11 * ( B3 * B1 + B0u * B3 * Shift1 &
-                   + ( Lapse * B0u )**2 * Shift3 * Shift1 )
+        - Gm11 * ( B3 * B1 + b0u * B3 * Shift1 &
+                   + ( Lapse * b0u )**2 * Shift3 * Shift1 )
 
    !PRINT*, 'iCM_S1 Flux: ', Flux_X2_MHD_Relativistic(iCM_S1)
 
     Flux_X3_MHD_Relativistic(iCM_S2) &
       = D * hStar * W**2 * Gm22 * V2  * ( V3 - Shift3 / Lapse ) &
-        - Gm22 * ( B3 * B2 + B0u * B3 * Shift2 &
-                   + ( Lapse * B0u )**2 * Shift3 * Shift2 )
+        - Gm22 * ( B3 * B2 + b0u * B3 * Shift2 &
+                   + ( Lapse * b0u )**2 * Shift3 * Shift2 )
 
    !PRINT*, 'iCM_S2 Flux: ', Flux_X2_MHD_Relativistic(iCM_S2)
 
     Flux_X3_MHD_Relativistic(iCM_S3) &
       = D * hStar * W**2 * Gm33 * V3  * ( V3 - Shift3 / Lapse ) + pStar &
-        - Gm33 * ( B3**2 + B0u * B3 * Shift3 &
-                   + ( Lapse * B0u )**2 * Shift3**2 )
+        - Gm33 * ( B3**2 + b0u * B3 * Shift3 &
+                   + ( Lapse * b0u )**2 * Shift3**2 )
 
    !PRINT*, 'iCM_S3 Flux: ', Flux_X2_MHD_Relativistic(iCM_S3)
 
     Flux_X3_MHD_Relativistic(iCM_E)  &
       = D * W * ( hStar * W - One ) * ( V3 - Shift3 / Lapse ) &
         + Shift3 / Lapse * pStar &
-        - Lapse * B0u * B3 + Two * Lapse * (B0u)**2 * Shift3
+        - Lapse * b0u * B3 + Two * Lapse * (B0u)**2 * Shift3
 
    !PRINT*, 'iCM_E Flux: ', Flux_X2_MHD_Relativistic(iCM_E)
 
@@ -2950,22 +2950,22 @@ CONTAINS
     IF( UseDivergenceCleaning )THEN
 
       Flux_X3_MHD_Relativistic(iCM_B1) &
-        = Lapse * W * B0u * ( V3 - ( Shift3 / Lapse ) ) * ( Shift1 / Lapse ) &
+        = Lapse * W * b0u * ( V3 - ( Shift3 / Lapse ) ) * ( Shift1 / Lapse ) &
           + W * V3 * B1 - W * V1 * B3 &
           - W * ( Shift3 / Lapse ) * B1
 
       Flux_X3_MHD_Relativistic(iCM_B2) &
-        = Lapse * W * B0u * ( V3 - ( Shift3 / Lapse ) ) * ( Shift2 / Lapse ) &
+        = Lapse * W * b0u * ( V3 - ( Shift3 / Lapse ) ) * ( Shift2 / Lapse ) &
           + W * V3 * B2 - W * V2 * B3 &
           - W * ( Shift3 / Lapse ) * B2 &
           + ( Chi / Gm33 )
 
       Flux_X3_MHD_Relativistic(iCM_B3) &
-        = Lapse * W * B0u * ( V3 - ( Shift3 / Lapse ) ) * ( Shift3 / Lapse ) &
+        = Lapse * W * b0u * ( V3 - ( Shift3 / Lapse ) ) * ( Shift3 / Lapse ) &
           - W * ( Shift3 / Lapse ) * B3
 
       Flux_X3_MHD_Relativistic(iCM_Chi) &
-        = - Lapse * W * B0u * ( V3 - ( Shift3 / Lapse ) )  + W * B3 - Chi * ( Shift3 / Lapse )
+        = - Lapse * W * b0u * ( V3 - ( Shift3 / Lapse ) )  + W * B3 - Chi * ( Shift3 / Lapse )
 
     ELSE
 
@@ -3045,7 +3045,7 @@ CONTAINS
 
     ! See lines 178 and 146 of RePrimAnd's con2prim_imhd.cc file (think this is correct).
 
-    q_bar = q - Half * bSq - Half * mu**2 * x**2 * ( bSq * r**2 - rb**2 )
+    q_bar = q - Half *  - Half * mu**2 * x**2 * ( bSq * r**2 - rb**2 )
 
     !PRINT*, 'q_bar: ', q_bar
 
@@ -3166,7 +3166,7 @@ CONTAINS
 
     x = One / ( One + mu * bSq )
 
-    dx = -bSq / ( One + mu * bSq )**2
+    dx = - bSq / ( One + mu * bSq )**2
 
     ! --- Eq. 38 ---
 
