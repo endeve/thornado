@@ -117,10 +117,139 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
-## July 22 2024
+## Aug 08-09 2024
+1. Working on ./Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90 to get a reproducer which can be used to replicate the slown down. 
+2. Got a reproducer, but it cannot replicate the slowness of DGEMM using newer mkl and nightly ifx
+3. The slowness is noticed starting from nightly 0725 and mkl 0805, but only for sineWaveStreaming case. The simulation time for sineWaveStreaming case 8x8x8 is 2.8 --> 10.05 -->35.5 (s), while for 16x16x16, it is 11.9-->26.6->80.5.  The following is the detail of timeFOM*.
+```
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2024.07.16-umd957   2023.10.15.002    TimeDiff   Percentage   |   2024.07.16-umd957   2023.10.15.002    FOM-Diff   Percentage
+                     MKL Date :  2024.07.10
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWaveDgemm [8,8,8]      O3    :     2.8239e+00          0.0000e+00       2.8239e+00     0.00%            7.5192e+06          0.0000e+00        7.5192e+06     0.00%
+sineWaveDgemm [16,16,16]   O3    :     1.1897e+01          0.0000e+00       1.1897e+01     0.00%            2.8381e+07          0.0000e+00        2.8381e+07     0.00%
+relaxDgemm [8,8,8]      O3       :     2.1782e+01          0.0000e+00       2.1782e+01     0.00%            3.9138e+07          0.0000e+00        3.9138e+07     0.00%
+relaxDgemm [16,16,16]   O3       :     1.5829e+02          0.0000e+00       1.5829e+02     0.00%            4.3086e+07          0.0000e+00        4.3086e+07     0.00%
+
+Currently Loaded Modulefiles:
+ 1) mpich/52.2-256/icc-sockets-gpu <aL>   2) nightly-mkl-cev_nightly/2024.07.10   3) oneapi/eng-compiler/2023.12.15.002 <aL>   4) nightly-compiler/2024.07.16   5) neo/agama-devel-sp4/957-24.26.30049.6-956
+
+ Intel(R) Fortran 25.0-1122
+```
+and 
+```
+AppName     Grid      OpLevel :  2024.07.25-umd957   2023.10.15.002    TimeDiff   Percentage   |   2024.07.25-umd957   2023.10.15.002    FOM-Diff   Percentage
+                     MKL Date :  2024.08.05
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWaveDgemm [8,8,8]      O3    :     1.0048e+01          0.0000e+00       1.0048e+01     0.00%            2.1133e+06          0.0000e+00        2.1133e+06     0.00%
+sineWaveDgemm [16,16,16]   O3    :     2.6605e+01          0.0000e+00       2.6605e+01     0.00%            1.2691e+07          0.0000e+00        1.2691e+07     0.00%
+relaxDgemm [8,8,8]      O3       :     2.1480e+01          0.0000e+00       2.1480e+01     0.00%            3.9688e+07          0.0000e+00        3.9688e+07     0.00%
+relaxDgemm [16,16,16]   O3       :     1.5829e+02          0.0000e+00       1.5829e+02     0.00%            4.3084e+07          0.0000e+00        4.3084e+07     0.00%
+
+Currently Loaded Modulefiles:
+ 1) mpich/52.2-256/icc-sockets-gpu <aL>   2) nightly-mkl-cev_nightly/2024.08.05   3) oneapi/eng-compiler/2023.12.15.002 <aL>   4) nightly-compiler/2024.07.25   5) neo/agama-devel-sp4/957-24.26.30049.6-956
+
+ Intel(R) Fortran 25.0-1155
+```
+and 
+```
+AppName     Grid      OpLevel :  2024.08.08lmkl-umd957   2023.10.15.002    TimeDiff   Percentage   |   2024.08.08lmkl-umd957   2023.10.15.002    FOM-Diff   Percentage
+                     MKL Date :  2024.08.05
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWaveDgemm [8,8,8]      O3    :     3.5489e+01          0.0000e+00       3.5489e+01     0.00%            5.9832e+05          0.0000e+00        5.9832e+05     0.00%
+sineWaveDgemm [16,16,16]   O3    :     8.0474e+01          0.0000e+00       8.0474e+01     0.00%            4.1957e+06          0.0000e+00        4.1957e+06     0.00%
+relaxDgemm [8,8,8]      O3       :     2.1440e+01          0.0000e+00       2.1440e+01     0.00%            3.9761e+07          0.0000e+00        3.9761e+07     0.00%
+relaxDgemm [16,16,16]   O3       :     1.5828e+02          0.0000e+00       1.5828e+02     0.00%            4.3087e+07          0.0000e+00        4.3087e+07     0.00%
+
+Currently Loaded Modulefiles:
+ 1) mpich/52.2-256/icc-sockets-gpu <aL>   2) nightly-mkl-cev_nightly/2024.08.05  3) oneapi/eng-compiler/2023.12.15.002 <aL>  4) nightly-compiler/2024.08.08 <aL>   5) neo/agama-devel-sp4/957-24.26.30049.6-956
+
+ Intel(R) Fortran 25.0-1175
+```
+
+## Aug 05-07 2024
+1. Thornado now runs with nightly-mkl-cev_nightly/2024.08.05, nightly-compiler/2024.07.25; and also nightly-compiler/2024.08.06, nightly-mkl-cev_nightly/2024.08.05. The UMD used is neo/agama-devel-sp4/957-24.26.30049.6-956
+2. However, it is noticed that for SineWaveStreaming 16x16x16 case, there is a significant slowdown. Here are the times for 0806 and 0805:
+```
+       Timer_Total                              :     8.227890E+01 s
+         Timer_IMEX                             :     8.054414E+01 s
+         Timer_Euler                            :     0.000000E+00 s
+         Timer_Poisson                          :     0.000000E+00 s
+         Timer_Streaming                        :     8.000303E+01 s
+           Timer_Streaming_Divergence           :     4.878557E+01 s 6.097965E-01
+           Timer_Streaming_ObserverCorrections  :     3.091077E+01 s 3.863700E-01
+           Timer_Streaming_Derivatives          :     2.202796E+01 s
+           Timer_Streaming_Eigenvalues          :     2.205873E-02 s
+           Timer_Streaming_NumericalFlux        :     3.435314E-01 s
+           Timer_Streaming_NumericalFlux_InOut  :     1.230816E+00 s
+           Timer_Streaming_NumericalFlux_RHS    :     1.377594E+00 s
+           Timer_Streaming_NumericalFlux_LS     :     9.524536E-01 s
+           Timer_Streaming_NumericalFlux_Update :     1.828335E+00 s
+           Timer_Streaming_PrimitiveTwoMoment   :     5.783524E+00 s
+           Timer_Streaming_Sources              :     7.573390E-02 s
+           Timer_Streaming_LinearAlgebra        :     6.947534E+01 s
+```
+and here are the times for 0725 and 0805:
+```
+       Timer_Total                              :     3.100674E+01 s
+         Timer_IMEX                             :     2.924879E+01 s
+         Timer_Euler                            :     0.000000E+00 s
+         Timer_Poisson                          :     0.000000E+00 s
+         Timer_Streaming                        :     2.871228E+01 s
+           Timer_Streaming_Divergence           :     1.820530E+01 s 6.340596E-01
+           Timer_Streaming_ObserverCorrections  :     1.011786E+01 s 3.523880E-01
+           Timer_Streaming_Derivatives          :     5.462302E+00 s
+           Timer_Streaming_Eigenvalues          :     2.090406E-02 s
+           Timer_Streaming_NumericalFlux        :     4.696724E-01 s
+           Timer_Streaming_NumericalFlux_InOut  :     2.034979E+00 s
+           Timer_Streaming_NumericalFlux_RHS    :     1.643557E+00 s
+           Timer_Streaming_NumericalFlux_LS     :     9.631162E-01 s
+           Timer_Streaming_NumericalFlux_Update :     1.997929E+00 s
+           Timer_Streaming_PrimitiveTwoMoment   :     7.033522E+00 s
+```
+
+3. It is found that the slowdown is mainly from MatrixMatrixMultiply in ./Modules/Library/LinearAlgebraModule.F90. For 0725, it uses 
+```
+ timeMM   3.900527954101562E-004
+ timeMM   3.938674926757812E-004
+ timeMM   3.910064697265625E-004
+ timeMM   3.840923309326172E-004
+ timeMM   3.900527954101562E-004
+ timeMM   4.758834838867188E-004
+ timeMM   4.210472106933594E-004
+ timeMM   4.801750183105469E-004
+```
+while for 0806:
+```
+ timeMM   1.430034637451172E-003
+ timeMM   1.435041427612305E-003
+ timeMM   1.419067382812500E-003
+ timeMM   1.430988311767578E-003
+ timeMM   1.533985137939453E-003
+ timeMM   1.446962356567383E-003
+ timeMM   1.559019088745117E-003
+```
+It is 3-4 times slower. 
+
+4. FlashX/Thornado medium case runs on 32 nodes with each node having 12 mpi-ranks, but the simulation hangs (kind of) in the first few time step (4, and 7 for example). 16-node runs go much further than 32-node. 16-node run goes to 50 or more cycles. but eventually, it also hangs (or a cycle take several tens of minutes). 
+
+## July 29- Aug 02 2024
+1. The libmkl_sycl_blas.so issue still persists with nightly-compiler/2024.07.28 and nightly-mkl-cev_nightly/2024.07.23
+1. The libmkl_sycl_blas.so issue still persists with nightly-compiler/2024.07.29 and nightly-mkl-cev_nightly/2024.07.10
+1. The libmkl_sycl_blas.so issue still persists with nightly-compiler/2024.07.30 and nightly-mkl-cev_nightly/2024.07.10
+2. Focusing on ComputeIncrement_ObserverCorrections
+   - minval(NumericalFlux) is -7.238532107247369E-104 for the medium case, while it is -3.077805185212568E-190 for the small case. The output is done just after NumericalFlux is computed in the "DO iZ_F = 1, nNodesZ_E" do loop in line 2724 to line 2850. 
+   - NumericalFlux min is around  -5.89995035892448e-15 just after the call of NumericalFlux_LLF, while it is -16367201983319694245009382371210820292568989991327537527299955990877700096.00000000000000, a huge number for the medium case.  ` if(NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ1)<-1.0e-190) print*,tmp*1.0e15`
+   - For small case uPR_L(iCR) = 0.52911861181325, uPR_R(iCR) =  0.51896512183457, Flux_L(iCR)=-5.89995035892448e-15, Flux_R(iCR)=-5.89995035892448e-15, Alpha(iNodeZ_E,iZ2,iZ3,iZ4)= 14.21432331553435e-15.
+   - For medium case uPR_L(iCR)=0.53351156957470, uPR_R(iCR) =  0.42558907421058,Flux_L(iCR)= -9.13847529052755e-15, Flux_R(iCR)= 4.54899324247841e-15, Alpha(iNodeZ_E,iZ2,iZ3,iZ4)= 294845299012704872358361257989937687755927433087300287034413885845391000199038754267070464.00000000000000 
+   - so it is the Alpha variable that makes huge differences in small and medium cases. Alpha is Eigenvalues and computed by calling EigenvaluesSymmetric3 subroutine. Focusing on line 2667 of ./lib/thornado/source/Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90
+   - It seems that  EigenvaluesSymmetric3 on GPU gives wrong results, while correct solution is given on CPU. Need further investigation. https://www.wolframalpha.com/input?i2d=true&i=%7B%7B1.421085471520200E-014%2C-4.440892098500626E-016%2C-4.440892098500626E-016%7D%2C%7B-4.440892098500626E-016%2C0%2C0%7D%2C%7B-4.440892098500626E-016%2C0%2C0%7D%7D gives similar results as the ones on CPU. 
+## July 22-26 2024
 1. The libmkl_sycl_blas.so issue still persists with  nightly-mkl-cev_nightly/2024.07.18 and nightly-compiler/2024.07.21.
 1. The libmkl_sycl_blas.so issue still persists with  nightly-mkl-cev_nightly/2024.07.21 and nightly-compiler/2024.07.22.
 1. The libmkl_sycl_blas.so issue still persists with  nightly-mkl-cev_nightly/2024.07.22 and nightly-compiler/2024.07.23.
+1. The libmkl_sycl_blas.so issue still persists with  nightly-mkl-cev_nightly/2024.07.10 and nightly-compiler/2024.07.25
+1. The libmkl_sycl_blas.so issue still persists with  nightly-mkl-cev_nightly/2024.07.23 and nightly-compiler/2024.07.25
 2. Debugging:
    - focusing on ./lib/thornado/source/SandBox/Interface_FLASH/TimeSteppingModule_Flash.F90 and ./lib/thornado/source/Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90
    - ii_cc == 3, NaN appears. debug08.txt with ii_cc==2 versus debug09.txt with ii_cc==3  (seems not correct)
@@ -133,6 +262,9 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
    - T0_R has Large Value before AddFields_Radiation at line 344. 
    - T0_R has large value afer first ComputeIncrement_TwoMoment_Explicit in line 305 of ./lib/thornado/source/SandBox/Interface_FLASH/TimeSteppingModule_Flash.F90; while for the small case, T0_R does not have any element which is large than 1.0e4. 
    - Will focuing on ComputeIncrement_Divergence_X2  and ComputeIncrement_Divergence_X3, and ComputeIncrement_ObserverCorrections of ./lib/thornado/source/Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90
+   - print, "MaxVal0133 ", maxval(dU_R) on line 343 indicates that the maxval of the medium case is "MaxVal0133   1.166296780049810E-103", while it is  MaxVal0133   1.324346461715838E-176. This happens after ComputeIncrement_ObserverCorrections. The maxval after ComputeIncrement_Divergence_X1/2/3 for the medium case is even smaller than the one for the small case. So will focus on ComputeIncrement_ObserverCorrections. 
+   - if(NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ1)<-7.0e-150)print*, Weights_E(iNodeZ_E): 0.125; EdgeEnergyCubed: 0.0, uPR_L(iCR)=0.53351156957470,uPR_R(iCR)=0.53351156957470; Flux_L(iCR)=0; Flux_R(iCR)=0; however, EdgeEnergyCubed*1.0e40 =000
+   - Output xZ1(iZ1), dZ1(iZ1)*Half, EdgeEnergyCubed on CPU and found out that EdgeEnergyCubed can be as small as zero and as 4.528725731725774E-174  ./lib/thornado/source/Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90
 
 ## July 18-19 2024
 
