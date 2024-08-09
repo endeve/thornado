@@ -374,7 +374,7 @@ CONTAINS
           - bd2 * del13 - gm23 * bu1,                                   &
           Zero ]
 
-    dFdU_X1(2,:) &
+    dFdU_X1(4,:) &
       = [ W**2 * v1v1,                                                  &
           -b0b1 * ( del13 + Two * W**2 * v1v3 ) &
           + Z * ( Two * W**2 * vd1 * v1v3 + del11 * vd3 + gm31 * vu1 ), &
