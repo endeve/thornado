@@ -153,6 +153,7 @@ MHD_SlopeLimiterModule_Relativistic_IDEAL.o: \
   GeometryFieldsModule.o \
   MagnetofluidFieldsModule.o \
   MHD_BoundaryConditionsModule.o \
+  MHD_CharacteristicDecompositionModule_Relativistic_IDEAL.o \
   MHD_SlopeLimiterModule_Relativistic_IDEAL.F90
 
 MHD_CharacteristicDecompositionModule_Relativistic_IDEAL.o: \

@@ -39,6 +39,7 @@ MODULE MHD_SlopeLimiterModule_Relativistic_IDEAL
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
+    nGF, &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
@@ -60,6 +61,8 @@ MODULE MHD_SlopeLimiterModule_Relativistic_IDEAL
     ApplyOuterBC_MHD, &
     iApplyBC_MHD_Both, &
     ApplyBoundaryConditions_MHD
+  USE MHD_CharacteristicDecompositionModule_Relativistic_IDEAL, ONLY: &
+    ComputeCharacteristicDecomposition_MHD_Relativistic_IDEAL
 
   IMPLICIT NONE
   PRIVATE
@@ -69,7 +72,9 @@ MODULE MHD_SlopeLimiterModule_Relativistic_IDEAL
   PUBLIC :: ApplySlopeLimiter_MHD_Relativistic_IDEAL
 
   LOGICAL      :: UseSlopeLimiter
+  LOGICAL      :: UseCharacteristicLimiting
   LOGICAL      :: UseConservativeCorrection
+  LOGICAL      :: EvolveOnlyMagnetic
   CHARACTER(4) :: SlopeLimiterMethod
 
   ! --- TVD Limiter ---
@@ -94,15 +99,19 @@ CONTAINS
       BetaTVB_Option,                   &
       SlopeTolerance_Option,            &
       UseConservativeCorrection_Option, &
-      Verbose_Option )
+      UseCharacteristicLimiting_Option, &
+      Verbose_Option,                   &
+      EvolveOnlyMagnetic_Option )
 
     REAL(DP), INTENT(in),     OPTIONAL :: &
       BetaTVD_Option, BetaTVB_Option, &
       SlopeTolerance_Option
     LOGICAL,  INTENT(in),     OPTIONAL :: &
       UseSlopeLimiter_Option, &
+      UseCharacteristicLimiting_Option, &
       UseConservativeCorrection_Option, &
-      Verbose_Option
+      Verbose_Option,                   &
+      EvolveOnlyMagnetic_Option
     CHARACTER(*), INTENT(in), OPTIONAL :: &
       SlopeLimiterMethod_Option
 
@@ -116,6 +125,12 @@ CONTAINS
     SlopeLimiterMethod = 'TVD'
     IF( PRESENT( SlopeLimiterMethod_Option ) ) &
       SlopeLimiterMethod = SlopeLimiterMethod_Option
+
+    IF( PRESENT( UseCharacteristicLimiting_Option ) )THEN
+      UseCharacteristicLimiting = UseCharacteristicLimiting_Option
+    ELSE
+      UseCharacteristicLimiting = .FALSE.
+    END IF
 
     BetaTVD = One
     IF( PRESENT( BetaTVD_Option ) ) &
@@ -136,6 +151,10 @@ CONTAINS
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
+
+    EvolveOnlyMagnetic = .FALSE.
+    IF( PRESENT( EvolveOnlyMagnetic_Option ) ) &
+      EvolveOnlyMagnetic = EvolveOnlyMagnetic_Option
 
     IF( Verbose )THEN
 
@@ -165,6 +184,8 @@ CONTAINS
       END IF
 
       WRITE(*,*)
+      WRITE(*,'(A4,A27,L1)'      ) '', 'UseCharacteristicLimiting: ' , &
+        UseCharacteristicLimiting
       WRITE(*,'(A6,A27,L1)'       ) '', 'UseConservativeCorrection: ' , &
         UseConservativeCorrection
 
@@ -460,6 +481,42 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, U_M, &
              ExcludeInnerGhostCell, ExcludeOuterGhostCell, &
              a1, b1, c1, a2, b2, c2, a3, b3, c3 )
+
+    IF( UseCharacteristicLimiting )THEN
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX = 1, nDOFX
+
+        G_X(iNX,1,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11)
+        G_X(iNX,2,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22)
+        G_X(iNX,3,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33)
+        G_X(iNX,4,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_SqrtGm  )**2
+        G_X(iNX,5,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Alpha   )
+        G_X(iNX,6,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Beta_1  )
+        G_X(iNX,7,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Beta_2  )
+        G_X(iNX,8,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Beta_3  )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL MatrixVectorMultiply &
+             ( 'T', nDOFX, nGF_BE0, One, G_X, nDOFX, &
+               WeightsX_q, 1, Zero, G_K, 1 )
+
+      CALL ComputeEigenvectorMatrices &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, G_K, U_M, &
+               R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
+
+      CALL MultiplyWithInverseEigenvectorMatrices &
+             ( iX_B0, iX_E0, invR_X1, invR_X2, invR_X3, &
+               a1, b1, c1, a2, b2, c2, a3, b3, c3 )
+
+    END IF
+
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -876,6 +933,462 @@ CONTAINS
     END IF
 
   END SUBROUTINE ComputeMinModArguments
+
+
+  SUBROUTINE ComputeEigenvectorMatrices &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G_K, U_M, &
+      R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
+
+    INTEGER,  INTENT(in)  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: G_K(8        ,iX_B0(1):iX_E0(1), &
+                                           iX_B0(2):iX_E0(2), &
+                                           iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(in)  :: U_M(nDOFX,nCM,iX_B1(1):iX_E1(1), &
+                                           iX_B1(2):iX_E1(2), &
+                                           iX_B1(3):iX_E1(3))
+
+    REAL(DP), INTENT(out) :: R_X1(   nCM,nCM,iX_B0(1):iX_E0(1), &
+                                             iX_B0(2):iX_E0(2), &
+                                             iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(out) :: invR_X1(nCM,nCM,iX_B0(1):iX_E0(1), &
+                                             iX_B0(2):iX_E0(2), &
+                                             iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(out) :: R_X2(   nCM,nCM,iX_B0(1):iX_E0(1), &
+                                             iX_B0(2):iX_E0(2), &
+                                             iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(out) :: invR_X2(nCM,nCM,iX_B0(1):iX_E0(1), &
+                                             iX_B0(2):iX_E0(2), &
+                                             iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(out) :: R_X3(   nCM,nCM,iX_B0(1):iX_E0(1), &
+                                             iX_B0(2):iX_E0(2), &
+                                             iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(out) :: invR_X3(nCM,nCM,iX_B0(1):iX_E0(1), &
+                                             iX_B0(2):iX_E0(2), &
+                                             iX_B0(3):iX_E0(3))
+
+    INTEGER :: iX1, iX2, iX3, iGF, iCM, jCM
+
+    REAL(DP) :: R(nCM,nCM), invR(nCM,nCM), UK(nCM), GK(nGF)
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iGF = 1, 8
+
+        GK(iGF) = G_K(iGF,iX1,iX2,iX3)
+
+      END DO
+
+      DO iCM = 1, nCM
+
+        UK(iCM) = U_M(1,iCM,iX1,iX2,iX3)
+
+      END DO
+
+      CALL ComputeCharacteristicDecomposition_MHD_Relativistic_IDEAL &
+             ( 1, GK, UK, EvolveOnlyMagnetic, R, invR )
+
+      DO iCM = 1, nCM
+      DO jCM = 1, nCM
+
+        R_X1   (jCM,iCM,iX1,iX2,iX3) = R   (iCM,jCM)
+        invR_X1(jCM,iCM,iX1,iX2,iX3) = invR(iCM,jCM)
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    IF( nDimsX .GT. 1 )THEN
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        DO iGF = 1, 8
+
+          GK(iGF) = G_K(iGF,iX1,iX2,iX3)
+
+        END DO
+
+        DO iCM = 1, nCM
+
+          UK(iCM) = U_M(1,iCM,iX1,iX2,iX3)
+
+        END DO
+
+        CALL ComputeCharacteristicDecomposition_MHD_Relativistic_IDEAL &
+               ( 2, GK, UK, EvolveOnlyMagnetic, R, invR )
+
+        DO iCM = 1, nCM
+        DO jCM = 1, nCM
+
+          R_X2   (jCM,iCM,iX1,iX2,iX3) = R   (iCM,jCM)
+          invR_X2(jCM,iCM,iX1,iX2,iX3) = invR(iCM,jCM)
+
+        END DO
+        END DO
+
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF( nDimsX .GT. 2 )THEN
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        DO iGF = 1, 8
+
+          GK(iGF) = G_K(iGF,iX1,iX2,iX3)
+
+        END DO
+
+        DO iCM = 1, nCM
+
+          UK(iCM) = U_M(1,iCM,iX1,iX2,iX3)
+
+        END DO
+
+        CALL ComputeCharacteristicDecomposition_MHD_Relativistic_IDEAL &
+               ( 3, GK, UK, EvolveOnlyMagnetic, R, invR )
+
+        DO iCM = 1, nCM
+        DO jCM = 1, nCM
+
+          R_X3   (jCM,iCM,iX1,iX2,iX3) = R   (iCM,jCM)
+          invR_X3(jCM,iCM,iX1,iX2,iX3) = invR(iCM,jCM)
+
+        END DO
+        END DO
+
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+  END SUBROUTINE ComputeEigenvectorMatrices
+
+
+  SUBROUTINE MultiplyWithInverseEigenvectorMatrices &
+    ( iX_B0, iX_E0, invR_X1, invR_X2, invR_X3, &
+      a1, b1, c1, a2, b2, c2, a3, b3, c3 )
+
+    INTEGER,  INTENT(in)  :: iX_B0(3), iX_E0(3)
+
+    REAL(DP), INTENT(in) :: invR_X1(nCM,nCM,iX_B0(1):iX_E0(1), &
+                                            iX_B0(2):iX_E0(2), &
+                                            iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(in) :: invR_X2(nCM,nCM,iX_B0(1):iX_E0(1), &
+                                            iX_B0(2):iX_E0(2), &
+                                            iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(in) :: invR_X3(nCM,nCM,iX_B0(1):iX_E0(1), &
+                                            iX_B0(2):iX_E0(2), &
+                                            iX_B0(3):iX_E0(3))
+
+    REAL(DP), INTENT(inout) :: a1(nCM,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: b1(nCM,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: c1(nCM,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: a2(nCM,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: b2(nCM,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: c2(nCM,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: a3(nCM,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: b3(nCM,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: c3(nCM,iX_B0(1):iX_E0(1), &
+                                      iX_B0(2):iX_E0(2), &
+                                      iX_B0(3):iX_E0(3))
+
+    REAL(DP) :: a1t(nCM,iX_B0(1):iX_E0(1), &
+                        iX_B0(2):iX_E0(2), &
+                        iX_B0(3):iX_E0(3))
+    REAL(DP) :: b1t(nCM,iX_B0(1):iX_E0(1), &
+                        iX_B0(2):iX_E0(2), &
+                        iX_B0(3):iX_E0(3))
+    REAL(DP) :: c1t(nCM,iX_B0(1):iX_E0(1), &
+                        iX_B0(2):iX_E0(2), &
+                        iX_B0(3):iX_E0(3))
+    REAL(DP) :: a2t(nCM,iX_B0(1):iX_E0(1), &
+                        iX_B0(2):iX_E0(2), &
+                        iX_B0(3):iX_E0(3))
+    REAL(DP) :: b2t(nCM,iX_B0(1):iX_E0(1), &
+                        iX_B0(2):iX_E0(2), &
+                        iX_B0(3):iX_E0(3))
+    REAL(DP) :: c2t(nCM,iX_B0(1):iX_E0(1), &
+                        iX_B0(2):iX_E0(2), &
+                        iX_B0(3):iX_E0(3))
+    REAL(DP) :: a3t(nCM,iX_B0(1):iX_E0(1), &
+                        iX_B0(2):iX_E0(2), &
+                        iX_B0(3):iX_E0(3))
+    REAL(DP) :: b3t(nCM,iX_B0(1):iX_E0(1), &
+                        iX_B0(2):iX_E0(2), &
+                        iX_B0(3):iX_E0(3))
+    REAL(DP) :: c3t(nCM,iX_B0(1):iX_E0(1), &
+                        iX_B0(2):iX_E0(2), &
+                        iX_B0(3):iX_E0(3))
+
+    INTEGER :: iX1, iX2, iX3, iCM, jCM
+
+    REAL(DP) :: Sum_a, Sum_b, Sum_c
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCM = 1, nCM
+
+      a1t(iCM,iX1,iX2,iX3) = a1(iCM,iX1,iX2,iX3)
+      b1t(iCM,iX1,iX2,iX3) = b1(iCM,iX1,iX2,iX3)
+      c1t(iCM,iX1,iX2,iX3) = c1(iCM,iX1,iX2,iX3)
+
+      a2t(iCM,iX1,iX2,iX3) = a2(iCM,iX1,iX2,iX3)
+      b2t(iCM,iX1,iX2,iX3) = b2(iCM,iX1,iX2,iX3)
+      c2t(iCM,iX1,iX2,iX3) = c2(iCM,iX1,iX2,iX3)
+
+      a3t(iCM,iX1,iX2,iX3) = a2(iCM,iX1,iX2,iX3)
+      b3t(iCM,iX1,iX2,iX3) = b2(iCM,iX1,iX2,iX3)
+      c3t(iCM,iX1,iX2,iX3) = c2(iCM,iX1,iX2,iX3)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCM = 1, nCM
+
+      Sum_a = Zero
+      Sum_b = Zero
+      Sum_c = Zero
+
+      DO jCM = 1, nCM
+
+        Sum_a = Sum_a + invR_X1(jCM,iCM,iX1,iX2,iX3) * a1t(jCM,iX1,iX2,iX3)
+        Sum_b = Sum_b + invR_X1(jCM,iCM,iX1,iX2,iX3) * b1t(jCM,iX1,iX2,iX3)
+        Sum_c = Sum_c + invR_X1(jCM,iCM,iX1,iX2,iX3) * c1t(jCM,iX1,iX2,iX3)
+
+      END DO
+
+      a1(iCM,iX1,iX2,iX3) = Sum_a
+      b1(iCM,iX1,iX2,iX3) = Sum_b
+      c1(iCM,iX1,iX2,iX3) = Sum_c
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    IF( nDimsX .GT. 1 )THEN
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iCM = 1, nCM
+
+        Sum_a = Zero
+        Sum_b = Zero
+        Sum_c = Zero
+
+        DO jCM = 1, nCM
+
+          Sum_a = Sum_a + invR_X2(jCM,iCM,iX1,iX2,iX3) * a2t(jCM,iX1,iX2,iX3)
+          Sum_b = Sum_b + invR_X2(jCM,iCM,iX1,iX2,iX3) * b2t(jCM,iX1,iX2,iX3)
+          Sum_c = Sum_c + invR_X2(jCM,iCM,iX1,iX2,iX3) * c2t(jCM,iX1,iX2,iX3)
+
+        END DO
+
+        a2(iCM,iX1,iX2,iX3) = Sum_a
+        b2(iCM,iX1,iX2,iX3) = Sum_b
+        c2(iCM,iX1,iX2,iX3) = Sum_c
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF( nDimsX .GT. 2 )THEN
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iCM = 1, nCM
+
+        Sum_a = Zero
+        Sum_b = Zero
+        Sum_c = Zero
+
+        DO jCM = 1, nCM
+
+          Sum_a = Sum_a + invR_X3(jCM,iCM,iX1,iX2,iX3) * a3t(jCM,iX1,iX2,iX3)
+          Sum_b = Sum_b + invR_X3(jCM,iCM,iX1,iX2,iX3) * b3t(jCM,iX1,iX2,iX3)
+          Sum_c = Sum_c + invR_X3(jCM,iCM,iX1,iX2,iX3) * c3t(jCM,iX1,iX2,iX3)
+
+        END DO
+
+        a3(iCM,iX1,iX2,iX3) = Sum_a
+        b3(iCM,iX1,iX2,iX3) = Sum_b
+        c3(iCM,iX1,iX2,iX3) = Sum_c
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+  END SUBROUTINE MultiplyWithInverseEigenvectorMatrices
+
+
+  SUBROUTINE MultiplyWithEigenvectorMatrices &
+    ( iX_B0, iX_E0, R_X1, R_X2, R_X3, dU_X1, dU_X2, dU_X3 )
+
+    INTEGER,  INTENT(in)  :: iX_B0(3), iX_E0(3)
+
+    REAL(DP), INTENT(in) :: R_X1(nCM,nCM,iX_B0(1):iX_E0(1), &
+                                         iX_B0(2):iX_E0(2), &
+                                         iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(in) :: R_X2(nCM,nCM,iX_B0(1):iX_E0(1), &
+                                         iX_B0(2):iX_E0(2), &
+                                         iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(in) :: R_X3(nCM,nCM,iX_B0(1):iX_E0(1), &
+                                         iX_B0(2):iX_E0(2), &
+                                         iX_B0(3):iX_E0(3))
+
+    REAL(DP), INTENT(inout) :: dU_X1(nCM,iX_B0(1):iX_E0(1), &
+                                         iX_B0(2):iX_E0(2), &
+                                         iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: dU_X2(nCM,iX_B0(1):iX_E0(1), &
+                                         iX_B0(2):iX_E0(2), &
+                                         iX_B0(3):iX_E0(3))
+    REAL(DP), INTENT(inout) :: dU_X3(nCM,iX_B0(1):iX_E0(1), &
+                                         iX_B0(2):iX_E0(2), &
+                                         iX_B0(3):iX_E0(3))
+
+    REAL(DP) :: dU_X1t(nCM,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3))
+    REAL(DP) :: dU_X2t(nCM,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3))
+    REAL(DP) :: dU_X3t(nCM,iX_B0(1):iX_E0(1), &
+                           iX_B0(2):iX_E0(2), &
+                           iX_B0(3):iX_E0(3))
+
+    INTEGER :: iX1, iX2, iX3, iCM, jCM
+
+    REAL(DP) :: Sum_X1, Sum_X2, Sum_X3
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCM = 1, nCM
+
+      dU_X1t(iCM,iX1,iX2,iX3) = dU_X1(iCM,iX1,iX2,iX3)
+      dU_X2t(iCM,iX1,iX2,iX3) = dU_X2(iCM,iX1,iX2,iX3)
+      dU_X3t(iCM,iX1,iX2,iX3) = dU_X3(iCM,iX1,iX2,iX3)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iCM = 1, nCM
+
+      Sum_X1 = Zero
+
+      DO jCM = 1, nCM
+
+        Sum_X1 &
+          = Sum_X1 + R_X1(jCM,iCM,iX1,iX2,iX3) * dU_X1t(jCM,iX1,iX2,iX3)
+
+      END DO
+
+      dU_X1(iCM,iX1,iX2,iX3) = Sum_X1
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    IF( nDimsX .GT. 1 )THEN
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iCM = 1, nCM
+
+        Sum_X2 = Zero
+
+        DO jCM = 1, nCM
+
+          Sum_X2 &
+            = Sum_X2 + R_X2(jCM,iCM,iX1,iX2,iX3) * dU_X2t(jCM,iX1,iX2,iX3)
+
+        END DO
+
+        dU_X2(iCM,iX1,iX2,iX3) = Sum_X2
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+    IF( nDimsX .GT. 2 )THEN
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iCM = 1, nCM
+
+        Sum_X3 = Zero
+
+        DO jCM = 1, nCM
+
+          Sum_X3 &
+            = Sum_X3 + R_X3(jCM,iCM,iX1,iX2,iX3) * dU_X3t(jCM,iX1,iX2,iX3)
+
+        END DO
+
+        dU_X3(iCM,iX1,iX2,iX3) = Sum_X3
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
+  END SUBROUTINE MultiplyWithEigenvectorMatrices
 
 
 END MODULE MHD_SlopeLimiterModule_Relativistic_IDEAL
