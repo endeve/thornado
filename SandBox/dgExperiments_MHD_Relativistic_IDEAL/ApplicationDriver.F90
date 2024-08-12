@@ -26,7 +26,8 @@ PROGRAM ApplicationDriver
     iX_B1, &
     iX_E0, &
     iX_E1, &
-    nDimsX
+    nDimsX, &
+    nDOFX
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX
   USE InitializationModule, ONLY: &
@@ -101,6 +102,7 @@ PROGRAM ApplicationDriver
   LOGICAL  :: EvolveOnlyMagnetic = .FALSE.
   LOGICAL  :: UseDivergenceCleaning = .FALSE.
   LOGICAL  :: UsePowellSource = .FALSE.
+  LOGICAL  :: ApplyRandomPerturbations = .FALSE.
 
   REAL(DP) :: DampingParameter = 0.0_DP
   REAL(DP) :: Angle = 0.0_DP
@@ -738,7 +740,11 @@ PROGRAM ApplicationDriver
            EvolveOnlyMagnetic_Option &
              = EvolveOnlyMagnetic )
 
-  CALL InitializeRandPerturbations( nX(1), nX(2), nX(3), nNodes, 1, One )
+  IF( ApplyRandomPerturbations )THEN
+
+    CALL InitializeRandPerturbations( nX(1), nX(2), nX(3), nDOFX, 20, 1.0d-2 )
+
+  END IF
 
   IF( RestartFileNumber .LT. 0 )THEN
 
@@ -763,7 +769,11 @@ PROGRAM ApplicationDriver
 
   END IF
 
-  CALL ApplyRandPerturbations( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, EvolveOnlyMagnetic )
+  IF( ApplyRandomPerturbations )THEN
+
+    CALL ApplyRandPerturbations( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, EvolveOnlyMagnetic )
+
+  END IF
 
   iCycleD = 10
   dt_wrt = 1.0e-2 * ( t_end - t ); iCycleW = -1
@@ -880,7 +890,11 @@ PROGRAM ApplicationDriver
 
   CALL FinalizeTally_MHD_Relativistic
 
-  CALL FinalizeRandPerturbations
+  IF( ApplyRandomPerturbations )THEN
+
+    CALL FinalizeRandPerturbations
+
+  END IF
 
   CALL FinalizeMagnetofluid_SSPRK
 
