@@ -117,6 +117,14 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Aug 12 2024
+1. 'git --no-pager branch' is the command to show git branch names in the terminal, not in a editor, or in .gitconfig [core] pager = less -F 0X.
+2. dt utility rerun is needed after the switching to new home folder. Following https://1source.intel.com/onboard to set intel github auto-authorization. 
+3. with the release of new mkl, i.e., nightly-mkl-cev_nightly/2024.08.08, there is a significantly slowdown of dgemm in Thornado runs: 
+  Left:     nightly-compiler/2024.07.16, nightly-mkl-cev_nightly/2024.07.10 
+  Middle:   nightly-compiler/2024.07.25, nightly-mkl-cev_nightly/2024.08.05
+  Right:    nightly-compiler/2024.08.08, nightly-mkl-cev_nightly/2024.08.05
+ ![dgemmSlownDown](./pics-readme/dgemm-slowdown2024-08-12.png)
 ## Aug 08-09 2024
 1. Working on ./Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90 to get a reproducer which can be used to replicate the slown down. 
 2. Got a reproducer, but it cannot replicate the slowness of DGEMM using newer mkl and nightly ifx
