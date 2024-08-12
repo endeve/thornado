@@ -157,7 +157,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iX1, iX2, iX3
+    INTEGER :: iX1, iX2, iX3, iPoint
 
     REAL(DP) :: &
       P(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nPM)
@@ -172,9 +172,15 @@ CONTAINS
       CALL ComputeFromConserved_MHD_Relativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, EvolveOnlyMagnetic )
 
-      P(Rand_NodeX(:),Rand_X1(:),Rand_X2(:),Rand_X3(:),iPM_V1) &
-        = ( One + Rand_Amplitude ) &
-          * P(Rand_NodeX(:),Rand_X1(:),Rand_X2(:),Rand_X3(:),iPM_V1)
+      DO iPoint = 1, Rand_Points
+
+        P(Rand_NodeX(iPoint),Rand_X1(iPoint),Rand_X2(iPoint),Rand_X3(iPoint),iPM_V1) &
+          = Rand_Amplitude &
+              * NodeCoordinate( MeshX(1), Rand_X1(iPoint), &
+                                NodeNumberTableX( 1, Rand_NodeX(iPoint) ) ) &
+              * P(Rand_NodeX(iPoint),Rand_X1(iPoint),Rand_X2(iPoint),Rand_X3(iPoint),iPM_V3)
+
+      END DO
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
