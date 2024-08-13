@@ -574,6 +574,10 @@ CONTAINS
 
     END IF
 
+    IF( UseCharacteristicLimiting ) &
+      CALL MultiplyWithEigenvectorMatrices &
+             ( iX_B0, iX_E0, R_X1, R_X2, R_X3, dU_X1, dU_X2, dU_X3 )
+
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
@@ -968,7 +972,7 @@ CONTAINS
 
     INTEGER :: iX1, iX2, iX3, iGF, iCM, jCM
 
-    REAL(DP) :: R(nCM,nCM), invR(nCM,nCM), UK(nCM), GK(nGF)
+    REAL(DP) :: R(nCM,nCM), invR(nCM,nCM), UK(nCM), GK(8)
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
