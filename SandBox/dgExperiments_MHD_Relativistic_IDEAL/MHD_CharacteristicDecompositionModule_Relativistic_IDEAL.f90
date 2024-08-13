@@ -26,8 +26,7 @@ MODULE MHD_CharacteristicDecompositionModule_Relativistic_IDEAL
     iCM_B1, &
     iCM_B2, &
     iCM_B3, &
-    iCM_Chi, &
-    nPM
+    iCM_Chi
   USE MHD_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_MHD_Relativistic
   USE EquationOfStateModule_IDEAL, ONLY: &
@@ -37,6 +36,8 @@ MODULE MHD_CharacteristicDecompositionModule_Relativistic_IDEAL
     ComputeEnthalpyFromPrimitive, &
     ComputeMagneticEnthalpyFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
+  USE LinearAlgebraModule, ONLY: &
+    MatrixMatrixMultiply
 
   IMPLICIT NONE
   PRIVATE
@@ -63,8 +64,8 @@ CONTAINS
                               bu1, bu2, bu3, bu0, bd1, bd2, bd3, bd0, &
                               h, hb, hStar
 
-    REAL(DP) :: dUdV(nCM,nPM)
-    REAL(DP) :: dFdV(nCM,nPM)
+    REAL(DP) :: dUdV(nCM,nCM)
+    REAL(DP) :: dFdV(nCM,nCM)
     REAL(DP) :: dFdU(nCM,nCM)
 
     CALL ComputePrimitive_MHD_Relativistic &
@@ -746,9 +747,24 @@ CONTAINS
 
   SUBROUTINE ComputeConservedFluxJacobian_Numeric( dUdV, dFdV, dFdU )
 
-    REAL(DP), INTENT(in)  :: dUdV(nCM,nPM)
-    REAL(DP), INTENT(in)  :: dFdV(nCM,nPM)
+    REAL(DP), INTENT(in)  :: dUdV(nCM,nCM)
+    REAL(DP), INTENT(in)  :: dFdV(nCM,nCM)
     REAL(DP), INTENT(out) :: dFdU(nCM,nCM)
+
+    INTEGER  :: INFO, LWORK
+    INTEGER  :: IPIV(nCM)
+    REAL(DP) :: TEMP(1)
+    REAL(DP) :: dVdU(nCM,nCM)
+
+    ! --- Compute inverse of dUdV ---
+
+    CALL DGETRF( nCM, nCM, dVdU, nCM, IPIV, INFO )
+
+    LWORK = -1
+
+    CALL DGETRI( nCM, dVdU, nCM, IPIV, TEMP, LWORK, INFO )
+
+    CALL MatrixMatrixMultiply( 'N', 'N', nCM, nCM, nCM, One, dVdU, nCM, dFdV, nCM, Zero, dFdU, nCM )
 
   END SUBROUTINE ComputeConservedFluxJacobian_Numeric
 
