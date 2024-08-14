@@ -62,7 +62,7 @@ CONTAINS
                               Lapse, Shift1, Shift2, Shift3
     REAL(DP) :: Vu1, Vu2, Vu3, Vd1, Vd2, Vd3, VSq, W,   &
                               bu1, bu2, bu3, bu0, bd1, bd2, bd3, bd0, &
-                              h, hb, hStar
+                              h, hb, hStar, Ye
 
     REAL(DP) :: dUdV(nCM,nCM)
     REAL(DP) :: dFdV(nCM,nCM)
