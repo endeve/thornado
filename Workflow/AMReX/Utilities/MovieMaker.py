@@ -133,8 +133,7 @@ def CreateMovie(FileNumberArray,    \
                                                           DataDirectory[0],  \
                                                           Field              )
 
-
-    nSS = len(FileNumberArray[0])
+    nSS = min( [ len( f ) for f in FileNumberArray ] )
 
     if not gvS.UseCustomLimits:
         gvS.vmin = +np.inf
@@ -220,10 +219,17 @@ def CreateFrame( ax, xL, xH, dX10, Field, DataUnits ):
     Lines = ['None']*nLines
     time_text = ['None']*nLines
     elem_text = ['None']*nLines
+
+    try:
+        label = gvS.label
+    except:
+        label = []
+        for i in range(nLines):
+            label.append( r'$u_{:}\left(t\right)$'.format( i + 1 ) )
+
     for i in range(nLines):
-        Lines[i], = ax.plot( [],[],                                         \
-                             color  = 'blue',                               \
-                             label  = r'$u_{:}\left(t\right)$'.format(i),   \
+        Lines[i], = ax.plot( [],[],'.',                                         \
+                             label  = label[i],   \
                              zorder = 10 )
 
         time_text[i] = ax.text( 0.1, 0.15, '', transform = ax.transAxes, fontsize = 13 )
@@ -421,7 +427,7 @@ def UpdateFrame( t, FileNumberArray, DataDirectory, Field, Action):
 
         # Create new element number text.
         elem_text[i].set_text( r'$Elements: {:}$' \
-                            .format( len(X1_C[0] ) ) )
+                            .format( len(X1_C[i] ) ) )
         retlist += [ elem_text[i] ]
 
 
