@@ -82,8 +82,7 @@ MODULE MF_InitializationModule
     One, &
     Three, &
     TwoPi, &
-    FourPi, &
-    Half
+    FourPi
   USE InputParsingModule, ONLY: &
     xR, &
     UseTiling
@@ -148,7 +147,7 @@ CONTAINS
 
     CentralPressure = PolytropicConstant * CentralDensity**( Gamma_IDEAL )
 
-    N = ( xR(1) + 3.0_DP * Kilometer ) / DeltaR
+    N = ( 15.0_DP * Kilometer ) / DeltaR
 
     ALLOCATE( RadiusArr  (N) )
     ALLOCATE( DensityArr (N) )
@@ -344,16 +343,16 @@ CONTAINS
 
       ITER = ITER + 1
 
-      CALL IntegrateOutwards &
+      CALL IntegrateOutwards_FirstOrderODEs &
              ( N, RadiusArr, DensityArr, PressureArr, AlphaArr, PsiArr, &
                CONVERGED, Psi0, Phi0 )
 
-    END DO ! WHILE
+    END DO
 
   END SUBROUTINE IntegrateTOVEquation
 
 
-  SUBROUTINE IntegrateOutwards &
+  SUBROUTINE IntegrateOutwards_FirstOrderODEs &
     ( N, RadiusArr, DensityArr, PressureArr, AlphaArr, PsiArr, &
       CONVERGED, Psi0, Phi0 )
 
@@ -369,7 +368,8 @@ CONTAINS
     REAL(DP) :: Radius, Density, Pressure
     REAL(DP) :: Psi, Phi, Epsi, Ephi
     REAL(DP) :: PsiR, PhiR, dPsi, dPhi
-    REAL(DP) :: PressureN, InternalEnergyDensity, PsiPrime, PhiPrime
+    REAL(DP) :: InternalEnergyDensity, PsiPrime, PhiPrime, pPrime, &
+                EpsiPrime, EphiPrime
 
     ra          = Zero
     Epsi_ra     = Zero
@@ -394,34 +394,33 @@ CONTAINS
 
     DO i = 2, N
 
+      ! --- Compute derivatives at step i-1 ---
+
       Density &
         = ( Pressure / PolytropicConstant )**( One / Gamma_IDEAL )
 
       InternalEnergyDensity &
         = Pressure / ( Gamma_IDEAL - One )
 
-      PsiPrime = dPsidr( Radius, Epsi, ra, PsiPrime_ra, Epsi_ra )
-      PhiPrime = dPhidr( Radius, Ephi, ra, PhiPrime_ra, Ephi_ra )
-
-      PressureN &
-        = Pressure &
-            + DeltaR &
-                * dpdr( Radius, Density, InternalEnergyDensity, Pressure, &
+      PsiPrime  = dPsidr( Radius, Epsi, ra, PsiPrime_ra, Epsi_ra )
+      PhiPrime  = dPhidr( Radius, Ephi, ra, PhiPrime_ra, Ephi_ra )
+      EpsiPrime = dEpsidr( Radius, Density, InternalEnergyDensity, Psi )
+      EphiPrime = dEphidr( Radius, Density, InternalEnergyDensity, &
+                           Pressure, Psi, Phi )
+      pPrime    = dpdr( Radius, Density, InternalEnergyDensity, Pressure, &
                         Phi, PhiPrime, Psi, PsiPrime )
 
-      Epsi &
-        = Epsi &
-            + DeltaR * dEpsidr( Radius, Density, InternalEnergyDensity, Psi )
-      Ephi &
-        = Ephi &
-            + DeltaR * dEphidr( Radius, Density, InternalEnergyDensity, &
-                                Pressure, Psi, Phi )
+      ! --- Update fields ---
+
+      Epsi     = Epsi     + DeltaR * EpsiPrime
+      Ephi     = Ephi     + DeltaR * EphiPrime
+      Psi      = Psi      + DeltaR * PsiPrime
+      Phi      = Phi      + DeltaR * PhiPrime
+      Pressure = Pressure + DeltaR * pPrime
+
+      ! --- Compute enclosed mass at step i ---
 
       Radius = Radius + DeltaR
-      Psi    = Psi + DeltaR * dPsidr( Radius, Epsi, ra, PsiPrime_ra, Epsi_ra )
-      Phi    = Phi + DeltaR * dPhidr( Radius, Ephi, ra, PhiPrime_ra, Ephi_ra )
-
-      Pressure = PressureN
 
       Density &
         = ( Pressure / PolytropicConstant )**( One / Gamma_IDEAL )
@@ -461,11 +460,17 @@ CONTAINS
 
           DO j = i + 1, N
 
-            RadiusArr  (j) = RadiusArr(j-1) + DeltaR
-            PressureArr(j) = Pressure
+            Radius = RadiusArr(j-1) + DeltaR
+
+            RadiusArr  (j) = Radius
             DensityArr (j) = Density
-            PsiArr     (j) = Psi_Iso( RadiusArr(j), GravitationalMass )
-            AlphaArr   (j) = Phi_Iso( RadiusArr(j), GravitationalMass )
+            PressureArr(j) = Pressure
+
+            Psi = Psi_Iso( Radius, GravitationalMass )
+            Phi = Phi_Iso( Radius, GravitationalMass )
+
+            PsiArr  (j) = Psi
+            AlphaArr(j) = Phi / Psi
 
           END DO
 
@@ -482,7 +487,7 @@ CONTAINS
 
     END DO ! i = 2, N
 
-  END SUBROUTINE IntegrateOutwards
+  END SUBROUTINE IntegrateOutwards_FirstOrderODEs
 
 
   REAL(DP) FUNCTION dpdr( r, rho, e, p, Phi, PhiPrime, Psi, PsiPrime )
