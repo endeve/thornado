@@ -72,7 +72,7 @@ MODULE MF_TimeSteppingModule_IMEX
   USE MF_Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_MF
   USE MF_GeometryModule, ONLY: &
-    ApplyBoundaryConditions_Geometry_MF, &
+    ApplyBoundaryConditions_Geometry_MF
   USE MF_XCFC_UtilitiesModule, ONLY: &
     MultiplyWithPsi6_MF, &
     UpdateConformalFactorAndMetric_XCFC_MF, &
