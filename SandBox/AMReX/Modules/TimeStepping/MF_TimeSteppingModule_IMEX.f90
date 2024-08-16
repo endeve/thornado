@@ -71,11 +71,12 @@ MODULE MF_TimeSteppingModule_IMEX
     ApplySlopeLimiter_TwoMoment_MF
   USE MF_Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_MF
+  USE MF_GeometryModule, ONLY: &
+    ApplyBoundaryConditions_Geometry_MF, &
   USE MF_XCFC_UtilitiesModule, ONLY: &
     MultiplyWithPsi6_MF, &
     UpdateConformalFactorAndMetric_XCFC_MF, &
     UpdateLapseShiftCurvature_XCFC_MF, &
-    ApplyBoundaryConditions_Geometry_XCFC_MF, &
     ComputeConformalFactorSourcesAndMg_XCFC_MF, &
     ComputePressureTensorTrace_XCFC_MF
   USE MF_GravitySolutionModule, ONLY: &
@@ -769,7 +770,7 @@ CONTAINS
 
     CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
 
-    CALL ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
+    CALL ApplyBoundaryConditions_Geometry_MF( MF_uGF )
 
   END SUBROUTINE ComputeLapseShiftCurvature
 

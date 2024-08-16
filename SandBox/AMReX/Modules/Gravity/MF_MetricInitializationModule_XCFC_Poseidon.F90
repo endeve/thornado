@@ -79,11 +79,12 @@ MODULE MF_MetricInitializationModule_XCFC_Poseidon
     UseTiling
   USE AverageDownModule, ONLY: &
     AverageDown
+  USE MF_GeometryModule, ONLY: &
+    ApplyBoundaryConditions_Geometry_MF
   USE MF_XCFC_UtilitiesModule, ONLY: &
     MultiplyWithPsi6_MF, &
     UpdateConformalFactorAndMetric_XCFC_MF, &
     UpdateLapseShiftCurvature_XCFC_MF, &
-    ApplyBoundaryConditions_Geometry_XCFC_MF, &
     ComputeGravitationalMass_MF
   USE MaskModule, ONLY: &
     CreateFineMask, &
@@ -539,7 +540,7 @@ CONTAINS
 
     CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
 
-    CALL ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
+    CALL ApplyBoundaryConditions_Geometry_MF( MF_uGF )
 
   END SUBROUTINE ComputeLapseShiftCurvature
 

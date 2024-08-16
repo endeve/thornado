@@ -54,7 +54,6 @@ MODULE ReGridModule
     MultiplyWithPsi6_MF, &
     UpdateConformalFactorAndMetric_XCFC_MF, &
     UpdateLapseShiftCurvature_XCFC_MF, &
-    ApplyBoundaryConditions_Geometry_XCFC_MF, &
     ComputeConformalFactorSourcesAndMg_XCFC_MF, &
     ComputePressureTensorTrace_XCFC_MF
   USE MF_GravitySolutionModule_Newtonian_Poseidon, ONLY: &
@@ -161,7 +160,7 @@ CONTAINS
       END DO
 
 #else
-      
+
       CALL ComputeGravitationalPotential_Newtonian_MF_Poseidon( MF_uCF, MF_uGF )
 
 #endif
@@ -290,7 +289,7 @@ CONTAINS
 
     CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
 
-    CALL ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
+    CALL ApplyBoundaryConditions_Geometry_MF( MF_uGF )
 
   END SUBROUTINE ComputeLapseShiftCurvature
 
