@@ -148,7 +148,7 @@ CONTAINS
                ( D, Vu1, Vu2, Vu3, Vd1, Vd2, Vd3, VSq, &
                  bu0, bu1, bu2, bu3, bd1, bd2, bd3,    &
                  Gmdd11, Gmdd22, Gmdd33,               &
-                 W, h, hStar, dFdV )
+                 W, h, hStar, Ye, dFdV )
 
     END SELECT
 
@@ -304,6 +304,10 @@ CONTAINS
     v3v1 = vu3 * vd1
     v3v2 = vu3 * vd2
     v3v3 = vu3 * vd3
+
+    b0v1 = bu0 * vd1
+    b0v2 = bu0 * vd2
+    b0v3 = bu0 * vd3
 
     v1b1 = vu1 * bu1
     v1b2 = vu1 * bu2
@@ -493,13 +497,13 @@ CONTAINS
     ( D, Vu1, Vu2, Vu3, Vd1, Vd2, Vd3, VSq,   &
       bu0, bu1, bu2, bu3, bd1, bd2, bd3,      &
       Gmdd11, Gmdd22, Gmdd33,                 &
-      W, h, hStar, dFdV_X1 )
+      W, h, hStar, Ye, dFdV_X1 )
 
     REAL(DP), INTENT(in)  :: D
     REAL(DP), INTENT(in)  :: Vu1, Vu2, Vu3, Vd1, Vd2, Vd3, VSq
     REAL(DP), INTENT(in)  :: bu0, bu1, bu2, bu3, bd1, bd2, bd3
     REAL(DP), INTENT(in)  :: Gmdd11, Gmdd22, Gmdd33
-    REAL(DP), INTENT(in)  :: W, h, hStar
+    REAL(DP), INTENT(in)  :: W, h, hStar, Ye
     REAL(DP), INTENT(out) :: dFdV_X1(nCM,nCM)
 
     ! --- Upper 1st Index, Lower 2nd Index ---
@@ -563,6 +567,10 @@ CONTAINS
     v3v2 = vu3 * vd2
     v3v3 = vu3 * vd3
 
+    b0v1 = bu0 * vd1
+    b0v2 = bu0 * vd2
+    b0v3 = bu0 * vd3
+
     v1b1 = vu1 * bu1
     v1b2 = vu1 * bu2
     v1b3 = vu1 * bu3
@@ -602,15 +610,15 @@ CONTAINS
     ! --- Temp ---
 
     dFdV_X1(1,:) &
-      = [ W * Vu1,                      &
-          D * W**3 * Vd1 * Vu1 + D * W, &
-          D * W**3 * Vd2 * Vu1,         &
-          D * W**3 * Vd3 * Vu1,         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
-          Zero,                         &
+      = [ W * Vu1,                              &
+          D * W**3 * Vd1 * Vu1 + D * W * del11, &
+          D * W**3 * Vd2 * Vu1 + D * W * del12, &
+          D * W**3 * Vd3 * Vu1 + D * W * del13, &
+          Zero,                                 &
+          Zero,                                 &
+          Zero,                                 &
+          Zero,                                 &
+          Zero,                                 &
           Zero ]
 
     dFdV_X1(2,:) &
@@ -683,15 +691,15 @@ CONTAINS
           Zero ]
 
     dFdV_X1(6,:) &
-      = [ Zero, &
-          Zero, &
-          Zero, &
-          Zero, &
-          Zero, &
-          Zero, &
-          Zero, &
-          Zero, &
-          Zero, &
+      = [ Ye * W * vu1,                                   &
+          D * Ye * W**3 * Vd1 * Vu1 + D * Ye * W * del11, &
+          D * Ye * W**3 * Vd2 * Vu1 + D * Ye * W * del12, &
+          D * Ye * W**3 * Vd3 * Vu1 + D * Ye * W * del13, &
+          Zero,                                           &
+          D * W * vu1,                                    &
+          Zero,                                           &
+          Zero,                                           &
+          Zero,                                           &
           Zero ]
 
     dFdV_X1(7,:) &
@@ -759,6 +767,8 @@ CONTAINS
     REAL(DP) :: dVdU(nCM,nCM)
 
     ! --- Compute inverse of dUdV ---
+
+    dVdU = dUdV
 
     CALL DGETRF( nCM, nCM, dVdU, nCM, IPIV, INFO )
 
