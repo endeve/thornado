@@ -197,6 +197,7 @@ jobs:
           make -j -l6
           make clobber
       - name: Run Advection 1D Problem
+        run: |
           ./ApplicationDriver_$THORNADO_MACHINE
 
   YahilCollapse_XCFC_native:
