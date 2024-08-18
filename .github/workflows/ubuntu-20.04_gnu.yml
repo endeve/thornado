@@ -198,6 +198,7 @@ jobs:
           make clobber
       - name: Run Advection 1D Problem
         run: |
+          cd ${THORNADO_DIR}/SandBox/dgExperiments_MHD_Relativistic_IDEAL/Executables
           ./ApplicationDriver_$THORNADO_MACHINE
 
   YahilCollapse_XCFC_native:
