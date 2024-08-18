@@ -194,7 +194,7 @@ jobs:
       - name: Compile SandBox/dgExperiments_MHD_Relativistic_IDEAL
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_MHD_Relativistic_IDEAL/Executables
-          make -j -l6
+          make
           make clobber
 
   YahilCollapse_XCFC_native:
