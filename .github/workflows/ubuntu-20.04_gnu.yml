@@ -189,7 +189,9 @@ jobs:
         run: |
           sudo apt-get -y install \
             libhdf5-dev \
-            libopenmpi-dev
+            libopenmpi-dev \
+            python3-matplotlib \
+            python3-h5py
           sudo apt-get -y update
       - name: Compile SandBox/dgExperiments_MHD_Relativistic_IDEAL
         run: |
@@ -197,8 +199,11 @@ jobs:
           make -j -l6
       - name: Run Advection 1D Problem
         run: |
-          cd ${THORNADO_DIR}/SandBox/dgExperiments_MHD_Relativistic_IDEAL/Executables
-          ./ApplicationDriver_$THORNADO_MACHINE
+          ./ApplicationDriver_${THORNADO_MACHINE}
+      - name: Plot Advection 1D Problem
+        run: |
+          cd ${THORNADO_DIR}/Workflow/Native/Python
+          python3 Plot1D.py
 
   YahilCollapse_XCFC_native:
     name: Compile SandBox/YahilCollapse_XCFC
