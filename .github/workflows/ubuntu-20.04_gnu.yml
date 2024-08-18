@@ -71,7 +71,7 @@ jobs:
       - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
-          make
+          make -j -l6
           make clobber
 
   dgExperiments_Euler_NonRelativistic_TABLE_native:
@@ -110,7 +110,7 @@ jobs:
       - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_TABLE/
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
-          make
+          make -j -l6
           make clobber
 
   dgExperiments_Euler_Relativistic_IDEAL_native:
@@ -168,7 +168,7 @@ jobs:
       - name: Compile SandBox/dgExperiments_Euler_Relativistic_TABLE
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables
-          make
+          make -j -l6
           make clobber
 
   dgExperiments_MHD_Relativistic_IDEAL_native:
@@ -194,7 +194,7 @@ jobs:
       - name: Compile SandBox/dgExperiments_MHD_Relativistic_IDEAL
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_MHD_Relativistic_IDEAL/Executables
-          make
+          make -j -l6
           make clobber
 
   YahilCollapse_XCFC_native:
@@ -227,7 +227,7 @@ jobs:
       - name: Compile SandBox/YahilCollapse_XCFC
         run: |
           cd ${THORNADO_DIR}/SandBox/YahilCollapse_XCFC/Executables
-          make
+          make -j -l6
           make clobber
 
   AdiabaticCollapse_XCFC_native:
@@ -266,7 +266,7 @@ jobs:
       - name: Compile SandBox/AdiabaticCollapse_XCFC
         run: |
           cd ${THORNADO_DIR}/SandBox/AdiabaticCollapse_XCFC/Executables
-          make
+          make -j -l6
           make clobber
 
   dgExperiments_Euler_Relativistic_IDEAL_amrex_1D:
