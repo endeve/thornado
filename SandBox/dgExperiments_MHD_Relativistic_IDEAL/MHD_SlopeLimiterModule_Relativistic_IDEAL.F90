@@ -63,6 +63,11 @@ MODULE MHD_SlopeLimiterModule_Relativistic_IDEAL
     ApplyBoundaryConditions_MHD
   USE MHD_CharacteristicDecompositionModule_Relativistic_IDEAL, ONLY: &
     ComputeCharacteristicDecomposition_MHD_Relativistic_IDEAL
+  USE Euler_DiscontinuityDetectionModule, ONLY: &
+    InitializeTroubledCellIndicator_Euler, &
+    FinalizeTroubledCellIndicator_Euler, &
+    LimiterThreshold, &
+    DetectTroubledCells_Euler
 
   IMPLICIT NONE
   PRIVATE
@@ -100,6 +105,8 @@ CONTAINS
       SlopeTolerance_Option,            &
       UseConservativeCorrection_Option, &
       UseCharacteristicLimiting_Option, &
+      UseTroubledCellIndicator_Option,  &
+      LimiterThresholdParameter_Option, &
       Verbose_Option,                   &
       EvolveOnlyMagnetic_Option )
 
@@ -148,6 +155,14 @@ CONTAINS
     IF( PRESENT( UseConservativeCorrection_Option ) ) &
       UseConservativeCorrection = UseConservativeCorrection_Option
 
+    UseTroubledCellIndicator = .TRUE.
+    IF( PRESENT( UseTroubledCellIndicator_Option ) ) &
+      UseTroubledCellIndicator = UseTroubledCellIndicator_Option
+
+    LimiterThresholdParameter = 0.03_DP
+    IF( PRESENT( LimiterThresholdParameter_Option ) ) &
+      LimiterThresholdParameter = LimiterThresholdParameter_Option
+
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
@@ -186,6 +201,14 @@ CONTAINS
       WRITE(*,*)
       WRITE(*,'(A4,A27,L1)'      ) '', 'UseCharacteristicLimiting: ' , &
         UseCharacteristicLimiting
+      WRITE(*,'(A6,A27,L1)'       ) '', 'UseConservativeCorrection: ' , &
+        UseConservativeCorrection
+      WRITE(*,*)
+      WRITE(*,'(A6,A27,L1)'       ) '', 'UseTroubledCellIndicator: ' , &
+        UseTroubledCellIndicator
+      WRITE(*,'(A6,A27,ES10.3E3)' ) '', 'LimiterThreshold: ' , &
+        LimiterThreshold
+      WRITE(*,*)
       WRITE(*,'(A6,A27,L1)'       ) '', 'UseConservativeCorrection: ' , &
         UseConservativeCorrection
 
@@ -388,6 +411,9 @@ CONTAINS
     IF( .NOT. SuppressBC ) &
       CALL ApplyBoundaryConditions_MHD &
              ( t, iX_B0, iX_E0, iX_B1, iX_E1, U )
+
+    CALL DetectTroubledCells_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )
 
     ExcludeInnerGhostCell = .FALSE.
     ExcludeOuterGhostCell = .FALSE.
@@ -633,6 +659,8 @@ CONTAINS
     DO iCM = 1, nCM
 
       LimitedCell(iCM,iX1,iX2,iX3) = .FALSE.
+
+      IF( D(1,iX1,iX2,iX3,iDF_TCI) .LT. LimiterThreshold ) CYCLE
 
       IF( SlopeDifference(iCM,iX1,iX2,iX3) &
             .GT. SlopeTolerance * ABS( U_M(1,iCM,iX1,iX2,iX3) ) )THEN

@@ -111,9 +111,11 @@ MHD_DiscontinuityDetectionModule.o: \
   PolynomialBasisModuleX_Lagrange.o \
   GeometryFieldsModule.o \
   MagnetofluidFieldsModule.o \
+  MHD_UtilitiesModule.o \
   EquationOfStateModule.o \
   UtilitiesModule.o \
   TimersModule_Euler.o \
+  MHD_ErrorModule.o \
   MHD_DiscontinuityDetectionModule.F90
 
 MHD_DiscretizationModule_Relativistic.o: \
@@ -167,6 +169,7 @@ MHD_SlopeLimiterModule_Relativistic_IDEAL.o: \
   MagnetofluidFieldsModule.o \
   MHD_BoundaryConditionsModule.o \
   MHD_CharacteristicDecompositionModule_Relativistic_IDEAL.o \
+  MHD_DiscontinuityDetectionModule.o \
   MHD_SlopeLimiterModule_Relativistic_IDEAL.F90
 
 MHD_CharacteristicDecompositionModule_Relativistic_IDEAL.o: \

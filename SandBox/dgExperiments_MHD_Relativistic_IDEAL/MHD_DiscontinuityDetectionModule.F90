@@ -876,7 +876,7 @@ CONTAINS
 
     ! --- Compute cell-averages of neighbors (X3) ---
 
-    CALG MatrixVectorMultiply &
+    CALL MatrixVectorMultiply &
            ( 'T', nDOFX, nF_K, One, &
              U_X3   (1,1,iX_B0(1),iX_B0(2),iX_B0(3)-1), &
              nDOFX, WeightsX_X3_P, 1, Zero, &
@@ -1024,7 +1024,7 @@ CONTAINS
                       iX_E1(2) - iX_B1(2) + 1, &
                       iX_E1(3) - iX_B1(3) + 1 ] )
 
-    nCM_X = nCF * nK_X
+    nCM_X = nCM * nK_X
     nGF_X = 7   * nK_X
 
      DO iX1 = iX_B1(1), iX_E1(1)
@@ -1123,12 +1123,12 @@ CONTAINS
       GK(6,iX1,iX2,iX3) = GK(6,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
       GK(7,iX1,iX2,iX3) = GK(7,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
 
-      UK(iCM_D ,iX1,iX2,iX3) = UK(iCF_D ,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
-      UK(iCM_S1,iX1,iX2,iX3) = UK(iCF_S1,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
-      UK(iCM_S2,iX1,iX2,iX3) = UK(iCF_S2,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
-      UK(iCM_S3,iX1,iX2,iX3) = UK(iCF_S3,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
-      UK(iCM_E ,iX1,iX2,iX3) = UK(iCF_E ,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
-      UK(iCM_Ne,iX1,iX2,iX3) = UK(iCF_Ne,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCM_D ,iX1,iX2,iX3) = UK(iCM_D ,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCM_S1,iX1,iX2,iX3) = UK(iCM_S1,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCM_S2,iX1,iX2,iX3) = UK(iCM_S2,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCM_S3,iX1,iX2,iX3) = UK(iCM_S3,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCM_E ,iX1,iX2,iX3) = UK(iCM_E ,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCM_Ne,iX1,iX2,iX3) = UK(iCM_Ne,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
 
       CALL ComputePrimitive_MHD &
            ( UK(iCM_D ,iX1,iX2,iX3), &
