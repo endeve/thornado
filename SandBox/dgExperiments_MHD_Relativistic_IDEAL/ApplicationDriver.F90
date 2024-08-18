@@ -511,6 +511,13 @@ PROGRAM ApplicationDriver
 
           nX  = [ 400, 1, 1 ]
 
+        CASE( 'HydroShockTube2' )
+
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = 0.55_DP
+
+          nX  = [ 800, 1, 1 ]
+
         CASE( 'ShockTube2' )
 
           Gamma = 5.0_DP / 3.0_DP
@@ -555,6 +562,7 @@ PROGRAM ApplicationDriver
           WRITE(*,'(A)')     '  RotationalWave'
           WRITE(*,'(A)')     '  HydroShockTube1'
           WRITE(*,'(A)')     '  ShockTube1'
+          WRITE(*,'(A)')     '  HydroShockTube2'
           WRITE(*,'(A)')     '  ShockTube2'
           WRITE(*,'(A)')     '  HydroShockTube3'
           WRITE(*,'(A)')     '  ShockTube3'
