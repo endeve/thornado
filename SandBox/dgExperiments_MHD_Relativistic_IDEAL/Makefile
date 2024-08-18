@@ -103,6 +103,19 @@ MHD_BoundaryConditionsModule.o: \
   MagnetofluidFieldsModule.o \
   MHD_BoundaryConditionsModule.F90
 
+MHD_DiscontinuityDetectionModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  LinearAlgebraModule.o \
+  PolynomialBasisModuleX_Lagrange.o \
+  GeometryFieldsModule.o \
+  MagnetofluidFieldsModule.o \
+  EquationOfStateModule.o \
+  UtilitiesModule.o \
+  TimersModule_Euler.o \
+  MHD_DiscontinuityDetectionModule.F90
+
 MHD_DiscretizationModule_Relativistic.o: \
   KindModule.o \
   ProgramHeaderModule.o \
