@@ -1343,7 +1343,7 @@ CONTAINS
 
       CASE( 'ShockTube3' )
 
-        ! --- ST1 from Mattia & Mignone, 2022, MRNAS, ---
+        ! --- ST3 from Mattia & Mignone, 2022, MRNAS, ---
         ! --- 510, 481-499, Table 1                   ---
 
         XD = Half
