@@ -41,6 +41,10 @@ MODULE MHD_DiscontinuityDetectionModule
     iCM_S3, &
     iCM_E, &
     iCM_Ne, &
+    iCM_B1, &
+    iCM_B2, &
+    iCM_B3, &
+    iCM_Chi, &
     nPM, &
     iPM_D, &
     iPM_V1, &
@@ -48,6 +52,10 @@ MODULE MHD_DiscontinuityDetectionModule
     iPM_V3, &
     iPM_E, &
     iPM_Ne, &
+    iPM_B1, &
+    iPM_B2, &
+    iPM_B3, &
+    iPM_Chi, &
     nDM, &
     iDM_TCI, &
     iDM_Sh_X1, &
@@ -958,13 +966,15 @@ CONTAINS
   END SUBROUTINE DetectTroubledCells_MHD_nDimsX_3
 
 
-  SUBROUTINE DetectShocks_MHD( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+  SUBROUTINE DetectShocks_MHD &
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, EvolveOnlyMagnetic, D )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       G(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nGF), &
       U(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCM)
+    LOGICAL,  INTENT(in)    :: EvolveOnlyMagnetic
     REAL(DP), INTENT(inout) :: &
       D(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nDM)
 
@@ -1071,18 +1081,26 @@ CONTAINS
       G_X(iNX,7,iX1,iX2,iX3) &
         = G(iNX,iX1,iX2,iX3,iGF_Beta_3  ) * SqrtGm(iNX,iX1,iX2,iX3)
 
-      U_X(iNX,iCM_D ,iX1,iX2,iX3) &
-        = U(iNX,iX1,iX2,iX3,iCM_D ) * SqrtGm(iNX,iX1,iX2,iX3)
-      U_X(iNX,iCM_S1,iX1,iX2,iX3) &
-        = U(iNX,iX1,iX2,iX3,iCM_S1) * SqrtGm(iNX,iX1,iX2,iX3)
-      U_X(iNX,iCM_S2,iX1,iX2,iX3) &
-        = U(iNX,iX1,iX2,iX3,iCM_S2) * SqrtGm(iNX,iX1,iX2,iX3)
-      U_X(iNX,iCM_S3,iX1,iX2,iX3) &
-        = U(iNX,iX1,iX2,iX3,iCM_S3) * SqrtGm(iNX,iX1,iX2,iX3)
-      U_X(iNX,iCM_E ,iX1,iX2,iX3) &
-        = U(iNX,iX1,iX2,iX3,iCM_E ) * SqrtGm(iNX,iX1,iX2,iX3)
-      U_X(iNX,iCM_Ne,iX1,iX2,iX3) &
-        = U(iNX,iX1,iX2,iX3,iCM_Ne) * SqrtGm(iNX,iX1,iX2,iX3)
+      U_X(iNX,iCM_D  ,iX1,iX2,iX3) &
+        = U(iNX,iX1,iX2,iX3,iCM_D  ) * SqrtGm(iNX,iX1,iX2,iX3)
+      U_X(iNX,iCM_S1 ,iX1,iX2,iX3) &
+        = U(iNX,iX1,iX2,iX3,iCM_S1 ) * SqrtGm(iNX,iX1,iX2,iX3)
+      U_X(iNX,iCM_S2 ,iX1,iX2,iX3) &
+        = U(iNX,iX1,iX2,iX3,iCM_S2 ) * SqrtGm(iNX,iX1,iX2,iX3)
+      U_X(iNX,iCM_S3 ,iX1,iX2,iX3) &
+        = U(iNX,iX1,iX2,iX3,iCM_S3 ) * SqrtGm(iNX,iX1,iX2,iX3)
+      U_X(iNX,iCM_E  ,iX1,iX2,iX3) &
+        = U(iNX,iX1,iX2,iX3,iCM_E  ) * SqrtGm(iNX,iX1,iX2,iX3)
+      U_X(iNX,iCM_Ne ,iX1,iX2,iX3) &
+        = U(iNX,iX1,iX2,iX3,iCM_Ne ) * SqrtGm(iNX,iX1,iX2,iX3)
+      U_X(iNX,iCM_B1 ,iX1,iX2,iX3) &
+        = U(iNX,iX1,iX2,iX3,iCM_B1 ) * SqrtGm(iNX,iX1,iX2,iX3)
+      U_X(iNX,iCM_B2 ,iX1,iX2,iX3) &
+        = U(iNX,iX1,iX2,iX3,iCM_B2 ) * SqrtGm(iNX,iX1,iX2,iX3)
+      U_X(iNX,iCM_B3 ,iX1,iX2,iX3) &
+        = U(iNX,iX1,iX2,iX3,iCM_B3 ) * SqrtGm(iNX,iX1,iX2,iX3)
+      U_X(iNX,iCM_Chi,iX1,iX2,iX3) &
+        = U(iNX,iX1,iX2,iX3,iCM_Chi) * SqrtGm(iNX,iX1,iX2,iX3)
 
     END DO
     END DO
@@ -1123,31 +1141,46 @@ CONTAINS
       GK(6,iX1,iX2,iX3) = GK(6,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
       GK(7,iX1,iX2,iX3) = GK(7,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
 
-      UK(iCM_D ,iX1,iX2,iX3) = UK(iCM_D ,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
-      UK(iCM_S1,iX1,iX2,iX3) = UK(iCM_S1,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
-      UK(iCM_S2,iX1,iX2,iX3) = UK(iCM_S2,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
-      UK(iCM_S3,iX1,iX2,iX3) = UK(iCM_S3,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
-      UK(iCM_E ,iX1,iX2,iX3) = UK(iCM_E ,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
-      UK(iCM_Ne,iX1,iX2,iX3) = UK(iCM_Ne,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCM_D  ,iX1,iX2,iX3) = UK(iCM_D  ,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCM_S1 ,iX1,iX2,iX3) = UK(iCM_S1 ,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCM_S2 ,iX1,iX2,iX3) = UK(iCM_S2 ,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCM_S3 ,iX1,iX2,iX3) = UK(iCM_S3 ,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCM_E  ,iX1,iX2,iX3) = UK(iCM_E  ,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCM_Ne ,iX1,iX2,iX3) = UK(iCM_Ne ,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCM_B1 ,iX1,iX2,iX3) = UK(iCM_B1 ,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCM_B2 ,iX1,iX2,iX3) = UK(iCM_B2 ,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCM_B3 ,iX1,iX2,iX3) = UK(iCM_B3 ,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCM_Chi,iX1,iX2,iX3) = UK(iCM_Chi,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
 
       CALL ComputePrimitive_MHD &
-           ( UK(iCM_D ,iX1,iX2,iX3), &
-             UK(iCM_S1,iX1,iX2,iX3), &
-             UK(iCM_S2,iX1,iX2,iX3), &
-             UK(iCM_S3,iX1,iX2,iX3), &
-             UK(iCM_E ,iX1,iX2,iX3), &
-             UK(iCM_Ne,iX1,iX2,iX3), &
-             PK(iPM_D ,iX1,iX2,iX3), &
-             PK(iPM_V1,iX1,iX2,iX3), &
-             PK(iPM_V2,iX1,iX2,iX3), &
-             PK(iPM_V3,iX1,iX2,iX3), &
-             PK(iPM_E ,iX1,iX2,iX3), &
-             PK(iPM_Ne,iX1,iX2,iX3), &
+           ( UK(iCM_D  ,iX1,iX2,iX3), &
+             UK(iCM_S1 ,iX1,iX2,iX3), &
+             UK(iCM_S2 ,iX1,iX2,iX3), &
+             UK(iCM_S3 ,iX1,iX2,iX3), &
+             UK(iCM_E  ,iX1,iX2,iX3), &
+             UK(iCM_Ne ,iX1,iX2,iX3), &
+             UK(iCM_B1 ,iX1,iX2,iX3), &
+             UK(iCM_B2 ,iX1,iX2,iX3), &
+             UK(iCM_B3 ,iX1,iX2,iX3), &
+             UK(iCM_Chi,iX1,iX2,iX3), &
+             PK(iPM_D  ,iX1,iX2,iX3), &
+             PK(iPM_V1 ,iX1,iX2,iX3), &
+             PK(iPM_V2 ,iX1,iX2,iX3), &
+             PK(iPM_V3 ,iX1,iX2,iX3), &
+             PK(iPM_E  ,iX1,iX2,iX3), &
+             PK(iPM_Ne ,iX1,iX2,iX3), &
+             PK(iPM_B1 ,iX1,iX2,iX3), &
+             PK(iPM_B2 ,iX1,iX2,iX3), &
+             PK(iPM_B3 ,iX1,iX2,iX3), &
+             PK(iPM_Chi,iX1,iX2,iX3), &
              GK(1     ,iX1,iX2,iX3), &
              GK(2     ,iX1,iX2,iX3), &
              GK(3     ,iX1,iX2,iX3), &
-             ITERATION_Option = ITERATION(iX1,iX2,iX3), &
-             iErr_Option      = iErr     (iX1,iX2,iX3) )
+             GK(4     ,iX1,iX2,iX3), &
+             GK(5     ,iX1,iX2,iX3), &
+             GK(6     ,iX1,iX2,iX3), &
+             GK(7     ,iX1,iX2,iX3), &
+             EvolveOnlyMagnetic )
 
       CALL ComputePressureFromPrimitive &
              ( PK(iPM_D ,iX1,iX2,iX3), &

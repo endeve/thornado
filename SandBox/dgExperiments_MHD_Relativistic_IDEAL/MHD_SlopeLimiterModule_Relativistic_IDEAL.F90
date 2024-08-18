@@ -55,7 +55,8 @@ MODULE MHD_SlopeLimiterModule_Relativistic_IDEAL
     iCM_S2, &
     iCM_S3, &
     iCM_E, &
-    iCM_Ne
+    iCM_Ne, &
+    iDM_TCI
   USE MHD_BoundaryConditionsModule, ONLY: &
     ApplyInnerBC_MHD, &
     ApplyOuterBC_MHD, &
@@ -117,13 +118,17 @@ CONTAINS
       UseSlopeLimiter_Option, &
       UseCharacteristicLimiting_Option, &
       UseConservativeCorrection_Option, &
+      UseTroubledCellIndicator_Option,  &
       Verbose_Option,                   &
       EvolveOnlyMagnetic_Option
+    REAL(DP), INTENT(in),     OPTIONAL :: &
+      LimiterThresholdParameter_Option
     CHARACTER(*), INTENT(in), OPTIONAL :: &
       SlopeLimiterMethod_Option
 
     INTEGER  :: i, j, iPol, iNX, iNX1, iNX2, iNX3, qX1, qX2, qX3
-    LOGICAL  :: Verbose
+    LOGICAL  :: Verbose, UseTroubledCellIndicator
+    REAL(DP) :: LimiterThresholdParameter
 
     UseSlopeLimiter = .TRUE.
     IF( PRESENT( UseSlopeLimiter_Option ) ) &
@@ -660,7 +665,7 @@ CONTAINS
 
       LimitedCell(iCM,iX1,iX2,iX3) = .FALSE.
 
-      IF( D(1,iX1,iX2,iX3,iDF_TCI) .LT. LimiterThreshold ) CYCLE
+      IF( D(1,iX1,iX2,iX3,iDM_TCI) .LT. LimiterThreshold ) CYCLE
 
       IF( SlopeDifference(iCM,iX1,iX2,iX3) &
             .GT. SlopeTolerance * ABS( U_M(1,iCM,iX1,iX2,iX3) ) )THEN
