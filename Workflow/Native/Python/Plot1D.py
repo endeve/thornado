@@ -3,28 +3,33 @@ import matplotlib.pyplot as plt
 
 def PlotField1D():
 
-  File = '../../../SandBox/dgExperiments_MHD_Relativistic_IDEAL/Output/Advection1D_MagnetofluidFields_000101.h5'
+  File_I = '../../../SandBox/dgExperiments_MHD_Relativistic_IDEAL/Output/Advection1D_MagnetofluidFields_000000.h5'
+  File_F = '../../../SandBox/dgExperiments_MHD_Relativistic_IDEAL/Output/Advection1D_MagnetofluidFields_000101.h5'
 
-  fH5 = h5.File( File, 'r' );
+  fH5_I = h5.File( File_I, 'r' )
+  fH5_F = h5.File( File_F, 'r' )
 
-  dsetX  = fH5[ 'Spatial Grid'                  ]
-  dsetFF = fH5[ 'Magnetofluid Fields/Conserved' ]
+  dsetX_I  = fH5_I   [ 'Spatial Grid'                  ]
+  dsetFF_I = fH5_I   [ 'Magnetofluid Fields/Conserved' ]
+  X1_I     = dsetX_I [ 'X1'                       ][()]
+  uCF_D_I  = dsetFF_I[ 'Conserved Baryon Density' ][()]
 
-  X1 = dsetX['X1'][()]
-  X2 = dsetX['X2'][()]
-  X3 = dsetX['X3'][()]
+  dsetX_F  = fH5_F   [ 'Spatial Grid'                  ]
+  dsetFF_F = fH5_F   [ 'Magnetofluid Fields/Conserved' ]
+  X1_F     = dsetX_F [ 'X1'                       ][()]
+  uCF_D_F  = dsetFF_F[ 'Conserved Baryon Density' ][()]
 
-  uCF_D  = dsetFF[ 'Conserved Baryon Density'       ][()]
-  uCF_S1 = dsetFF[ 'Conserved Momentum Density (1)' ][()]
-  uCF_S2 = dsetFF[ 'Conserved Momentum Density (2)' ][()]
-  uCF_S3 = dsetFF[ 'Conserved Momentum Density (3)' ][()]
-  uCF_E  = dsetFF[ 'Conserved Energy Density'       ][()]
-  uCF_Ne = dsetFF[ 'Conserved Electron Density'     ][()]
+  plt.plot(X1_I, uCF_D_I[0,0,:])
+  plt.plot(X1_F, uCF_D_F[0,0,:])
 
-  plt.plot(X1, uCF_D[0,0,:])
+  plt.legend( [ 'Initial', 'Final' ] )
+
+  plt.xlabel( 'X1'  )
+  plt.ylabel( 'rho' )
 
   plt.show()
 
-  fH5.close()
+  fH5_I.close()
+  fH5_F.close()
 
 PlotField1D()
