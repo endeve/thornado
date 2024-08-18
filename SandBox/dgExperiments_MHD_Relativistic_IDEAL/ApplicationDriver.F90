@@ -82,6 +82,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: SmoothProfile, ConstantDensity
   LOGICAL       :: wrt
   LOGICAL       :: UseSlopeLimiter
+  LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: SuppressTally
   CHARACTER(4)  :: SlopeLimiterMethod
   LOGICAL       :: UseConservativeCorrection
@@ -594,11 +595,13 @@ PROGRAM ApplicationDriver
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-    CASE( 'ShearingDisk_Unperturbed' )
+    CASE( 'ShearingDisk' )
 
       ActivateUnits = .TRUE.
 
       EvolveOnlyMagnetic = .FALSE.
+
+      ApplyRandomPerturbations = .FALSE.
 
       UseDivergenceCleaning = .FALSE.
       DampingParameter = 0.0_DP
@@ -615,6 +618,7 @@ PROGRAM ApplicationDriver
       xL  = [ 1.45d6 * Centimeter, -0.5d5 * Centimeter, Zero ]
       xR  = [ 1.65d6 * Centimeter,  0.5d5 * Centimeter, TwoPi]
 
+
     CASE DEFAULT
 
       WRITE(*,*)
@@ -628,7 +632,7 @@ PROGRAM ApplicationDriver
       WRITE(*,'(A)')     '  Riemann1D'
       WRITE(*,'(A)')     '  MMBlastWave2D'
       WRITE(*,'(A)')     '  OrszagTang2D'
-      WRITE(*,'(A)')     '  ShearingDisk_Unperturbed'
+      WRITE(*,'(A)')     '  ShearingDisk'
       WRITE(*,'(A)')     'Stopping...'
       STOP
 
@@ -655,6 +659,7 @@ PROGRAM ApplicationDriver
   BetaTVD                   = 1.75_DP
   BetaTVB                   = 0.0_DP
   SlopeTolerance            = 1.0e-6_DP
+  UseCharacteristicLimiting = .FALSE.
   UseConservativeCorrection = .FALSE.
 
   ! === End of User Input ===
@@ -705,6 +710,8 @@ PROGRAM ApplicationDriver
              = BetaTVB, &
            SlopeTolerance_Option &
              = SlopeTolerance, &
+           UseCharacteristicLimiting_Option &
+             = UseCharacteristicLimiting, &
            UseConservativeCorrection_Option &
              = UseConservativeCorrection )
 

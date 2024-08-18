@@ -202,9 +202,9 @@ CONTAINS
 
         CALL InitializeFields_OrszagTang2D( OTScaleFactor, EvolveOnlyMagnetic )
 
-      CASE( 'ShearingDisk_Unperturbed' )
+      CASE( 'ShearingDisk' )
 
-       CALL InitializeFields_ShearingDisk_Unperturbed( EvolveOnlyMagnetic )
+       CALL InitializeFields_ShearingDisk( EvolveOnlyMagnetic )
 
       CASE DEFAULT
 
@@ -1730,7 +1730,7 @@ CONTAINS
   END SUBROUTINE InitializeFields_OrszagTang2D
 
 
-  SUBROUTINE InitializeFields_ShearingDisk_Unperturbed( EvolveOnlyMagnetic )
+  SUBROUTINE InitializeFields_ShearingDisk( EvolveOnlyMagnetic )
 
     LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
@@ -1876,7 +1876,7 @@ CONTAINS
 
     DEALLOCATE( X1Arr, PsiArr, AlphaArr, DensityArr, V3Arr, PressureArr )
 
-  END SUBROUTINE InitializeFields_ShearingDisk_Unperturbed
+  END SUBROUTINE InitializeFields_ShearingDisk
 
 
   SUBROUTINE ReadDataset1DHDF( Dataset, DatasetName, FILE_ID )
