@@ -497,6 +497,13 @@ PROGRAM ApplicationDriver
 
           nX  = [ 400, 1, 1 ]
 
+        CASE( 'HydroShockTube1' )
+
+          Gamma = Two
+          t_end = 0.4_DP
+
+          nX  = [ 400, 1, 1 ]
+
         CASE( 'ShockTube1' )
 
           Gamma = Two
@@ -546,6 +553,7 @@ PROGRAM ApplicationDriver
           WRITE(*,'(A)')     'Valid choices:'
           WRITE(*,'(A)')     '  IsolatedContact'
           WRITE(*,'(A)')     '  RotationalWave'
+          WRITE(*,'(A)')     '  HydroShockTube1'
           WRITE(*,'(A)')     '  ShockTube1'
           WRITE(*,'(A)')     '  ShockTube2'
           WRITE(*,'(A)')     '  HydroShockTube3'

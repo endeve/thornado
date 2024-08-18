@@ -1144,6 +1144,35 @@ CONTAINS
 
         RightState(iPM_Chi) = 0.0_DP
 
+      CASE( 'HydroShockTube1' )
+
+        ! --- Pure hydro version of ST1 from Mattia & Mignone, 2022, MRNAS, ---
+        ! --- 510, 481-499, Table 1                   ---
+
+        XD = Half
+
+        LeftState(iPM_D  ) = 1.0_DP
+        LeftState(iPM_V1 ) = 0.0_DP
+        LeftState(iPM_V2 ) = 0.0_DP
+        LeftState(iPM_V3 ) = 0.0_DP
+        LeftState(iPM_E  ) = 1.0_DP / ( Gamma_IDEAL - One )
+
+        LeftState(iPM_B1 ) = 0.0_DP
+        LeftState(iPM_B2 ) = 0.0_DP
+        LeftState(iPM_B3 ) = 0.0_DP
+        LeftState(iPM_Chi) = 0.0_DP
+
+        RightState(iPM_D  ) = 0.125_DP
+        RightState(iPM_V1 ) = 0.0_DP
+        RightState(iPM_V2 ) = 0.0_DP
+        RightState(iPM_V3 ) = 0.0_DP
+        RightState(iPM_E  ) = 0.1_DP / ( Gamma_IDEAL - One )
+
+        RightState(iPM_B1 ) = 0.0_DP
+        RightState(iPM_B2 ) = 0.0_DP
+        RightState(iPM_B3 ) = 0.0_DP
+        RightState(iPM_Chi) = 0.0_DP
+
       CASE( 'ShockTube1' )
 
         ! --- ST1 from Mattia & Mignone, 2022, MRNAS, ---
