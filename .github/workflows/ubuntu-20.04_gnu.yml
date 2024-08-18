@@ -172,7 +172,7 @@ jobs:
           make clobber
 
   dgExperiments_MHD_Relativistic_IDEAL_native:
-    name: Compile SandBox/dgExperiments_MHD_Relativistic_IDEAL
+    name: Compile SandBox/dgExperiments_MHD_Relativistic_IDEAL and run Advection1D
     needs: build
     runs-on: ubuntu-20.04
     env:
@@ -196,6 +196,8 @@ jobs:
           cd ${THORNADO_DIR}/SandBox/dgExperiments_MHD_Relativistic_IDEAL/Executables
           make -j -l6
           make clobber
+      - name: Run Advection 1D Problem
+          ./ApplicationDriver_$THORNADO_MACHINE
 
   YahilCollapse_XCFC_native:
     name: Compile SandBox/YahilCollapse_XCFC
