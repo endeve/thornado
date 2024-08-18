@@ -195,7 +195,6 @@ jobs:
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_MHD_Relativistic_IDEAL/Executables
           make -j -l6
-          make clobber
       - name: Run Advection 1D Problem
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_MHD_Relativistic_IDEAL/Executables
