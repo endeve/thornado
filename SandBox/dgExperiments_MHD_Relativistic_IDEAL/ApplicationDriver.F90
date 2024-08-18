@@ -113,6 +113,9 @@ PROGRAM ApplicationDriver
 
   REAL(DP) :: OTScaleFactor = 100.0_DP
 
+  INTEGER  :: Rand_Points = 0
+  REAL(DP) :: Rand_Amplitude = Zero
+
   SuppressTally = .FALSE.
 
   ProgramName = 'Advection1D'
@@ -602,6 +605,8 @@ PROGRAM ApplicationDriver
       EvolveOnlyMagnetic = .FALSE.
 
       ApplyRandomPerturbations = .FALSE.
+      Rand_Points = 128 * 64
+      Rand_Amplitude = 1.0d-2
 
       UseDivergenceCleaning = .FALSE.
       DampingParameter = 0.0_DP
@@ -749,7 +754,8 @@ PROGRAM ApplicationDriver
 
   IF( ApplyRandomPerturbations )THEN
 
-    CALL InitializeRandPerturbations( nX(1), nX(2), nX(3), nDOFX, 20, 1.0d-2 )
+    CALL InitializeRandPerturbations &
+           ( nX(1), nX(2), nX(3), nDOFX, Rand_Points, Rand_Amplitude )
 
   END IF
 
