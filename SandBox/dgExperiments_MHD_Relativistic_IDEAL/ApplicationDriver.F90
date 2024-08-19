@@ -83,6 +83,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: wrt
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UseCharacteristicLimiting
+  LOGICAL       :: UseTroubledCellIndicator
   LOGICAL       :: SuppressTally
   CHARACTER(4)  :: SlopeLimiterMethod
   LOGICAL       :: UseConservativeCorrection
@@ -94,6 +95,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: xL(3), xR(3), Gamma
   REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, CFL
   REAL(DP)      :: BetaTVD, BetaTVB
+  REAL(DP)      :: LimiterThresholdParameter
   REAL(DP)      :: ZoomX(3)
   REAL(DP)      :: Timer_Evolution
 
@@ -681,6 +683,8 @@ PROGRAM ApplicationDriver
   BetaTVB                   = 0.0_DP
   SlopeTolerance            = 1.0e-6_DP
   UseCharacteristicLimiting = .FALSE.
+  UseTroubledCellIndicator  = .FALSE.
+  LimiterThresholdParameter = 0.03_DP
   UseConservativeCorrection = .FALSE.
 
   ! === End of User Input ===
