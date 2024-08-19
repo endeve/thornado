@@ -485,6 +485,13 @@ PROGRAM ApplicationDriver
 
       SELECT CASE ( TRIM( RiemannProblemName ) )
 
+        CASE( 'HydroIsolatedContact' )
+
+          Gamma = 5.0_DP / 3.0_DP
+          t_end = One
+
+          nX  = [ 40, 1, 1 ]
+
         CASE( 'IsolatedContact' )
 
           Gamma = 5.0_DP / 3.0_DP
@@ -560,6 +567,7 @@ PROGRAM ApplicationDriver
           WRITE(*,*)
           WRITE(*,'(A21,A)') 'Invalid RiemannProblemName: ', RiemannProblemName
           WRITE(*,'(A)')     'Valid choices:'
+          WRITE(*,'(A)')     '  HydroIsolatedContact'
           WRITE(*,'(A)')     '  IsolatedContact'
           WRITE(*,'(A)')     '  RotationalWave'
           WRITE(*,'(A)')     '  HydroShockTube1'
