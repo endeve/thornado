@@ -117,6 +117,34 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Aug 16 2024
+1. run Resnet50 on pvc04
+2. git clone https://github.com/intel-sandbox/pre.epc.frameworks.ai.pytorch.gpu-models.git pytorch_gpu_models gives:
+```
+Error downloading object: SSD-MobileNetv1/models/mobilenet-v1-ssd-mp-0_675.pth (58694ca): Smudge error: Error downloading SSD-MobileNetv1/models/mobilenet-v1-ssd-mp-0_675.pth (58694cafa60456eeab4e81ae50ff49a01c46ab387bfea5200f047143ecd973a9): [58694cafa60456eeab4e81ae50ff49a01c46ab387bfea5200f047143ecd973a9] Object does not exist on the server: [404] Object does not exist on the server
+```
+The way to fix it is to add "--skip" in smudge and process of .gitconfig file. 
+3. Rerun the reproducer of https://jira.devtools.intel.com/browse/CMPLRLLVM-58740 with the newest ifx (Intel(R) Fortran 25.0-1181/nightly-compiler/2024.08.14) and umds, and here is the summary of umd seeing or not seeing the huge number:
+```
+intel_compute_runtime/release/stable-736.25  :  No
+neo/agama-devel-sp4/949-24.26.30049.6-948 :  No
+neo/agama-devel-sp4/958-24.26.30049.6-956 :  No
+neo/agama-devel-sp4/962-24.26.30049.9-960 :  Yes
+neo/agama-devel-sp4/962-24.26.30049.9-960 :  Yes
+neo/agama-devel-sp4/963-24.26.30049.10-963: Yes
+neo/agama-devel-sp4/966-24.26.30049.10-963 : Yes
+neo/agama-devel-sp4/968-24.31.30508.6-968  :  No
+```
+Based on this finding, a GSD jira issue is created: https://jira.devtools.intel.com/browse/GSD-9752
+## Aug 15 2024
+1. Created a reproducer by reducing Thornado code and extracting source files. The reproducer now has 7 source files. A buildRun script is also created which can be used to run the case using different MKL and ifx combinations. 
+2. Submitted a JIRA for this slowdown, and here is the link: https://jira.devtools.intel.com/browse/MKLD-17795  or initially one to CMPLRLLVM: https://jira.devtools.intel.com/browse/CMPLRLLVM-61077
+## Aug 13-14 2024
+
+1. continue reducing Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90 while make sure the run replicate the slowdown.
+2. Working on ./Modules/TwoMoment/OrderV/TwoMoment_TimeSteppingModule.F90 
+3. Working on SandBox/TwoMoment_OrderV/ApplicationDriver.F90
+4. Working on ./Modules/Library/LinearAlgebraModule.F90
 ## Aug 12 2024
 1. 'git --no-pager branch' is the command to show git branch names in the terminal, not in a editor, or in .gitconfig [core] pager = less -F 0X.
 2. dt utility rerun is needed after the switching to new home folder. Following https://1source.intel.com/onboard to set intel github auto-authorization. 
@@ -125,6 +153,14 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
   Middle:   nightly-compiler/2024.07.25, nightly-mkl-cev_nightly/2024.08.05
   Right:    nightly-compiler/2024.08.08, nightly-mkl-cev_nightly/2024.08.05
  ![dgemmSlownDown](./pics-readme/dgemm-slowdown2024-08-12.png)
+4. However, with newest mkl and nightly there is a around 30% performance improvement of dgemm. 
+  Left:     nightly-compiler/2024.07.16, nightly-mkl-cev_nightly/2024.07.10 
+  Middle:   nightly-compiler/2024.07.25, nightly-mkl-cev_nightly/2024.08.08
+  Right:    nightly-compiler/2024.08.11, nightly-mkl-cev_nightly/2024.08.08
+  ![dgemmSlownDown0808](./pics-readme/dgemm-slowdown2024-08-12-0808mkl.png) 
+5. it looks like that the newer nightly gives the performance improvement:
+  ![dgemmSlownDown0808-0811](./pics-readme/dgemm-slowdown2024-08-12-0808-0811.png)
+
 ## Aug 08-09 2024
 1. Working on ./Modules/TwoMoment/OrderV/TwoMoment_DiscretizationModule_Streaming.F90 to get a reproducer which can be used to replicate the slown down. 
 2. Got a reproducer, but it cannot replicate the slowness of DGEMM using newer mkl and nightly ifx
