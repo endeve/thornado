@@ -144,6 +144,7 @@ CONTAINS
 
   END SUBROUTINE ComputeInternalEnergyDensityFromPressure_IDEAL_Vector
 
+#ifdef HYDRO_RELATIVISTIC
 
   SUBROUTINE ComputeEnthalpyFromPrimitive_IDEAL_Scalar &
     ( D, Ev, Ne, h )
@@ -177,6 +178,41 @@ CONTAINS
 
   END SUBROUTINE ComputeEnthalpyFromPrimitive_IDEAL_Vector
 
+#else
+
+  SUBROUTINE ComputeEnthalpyFromPrimitive_IDEAL_Scalar &
+    ( D, Ev, Ne, h )
+
+    REAL(DP), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), INTENT(out) :: h
+
+    REAL(DP) :: P
+
+    CALL ComputePressureFromPrimitive_IDEAL( D, Ev, Ne, P)
+
+    h = (Ev + P) / D
+
+  END SUBROUTINE ComputeEnthalpyFromPrimitive_IDEAL_Scalar
+
+
+  SUBROUTINE ComputeEnthalpyFromPrimitive_IDEAL_Vector &
+    ( D, Ev, Ne, h )
+
+    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
+    REAL(DP), INTENT(out) :: h(:)
+
+    INTEGER :: i
+
+    DO i = 1, SIZE( D )
+
+      CALL ComputeEnthalpyFromPrimitive_IDEAL_Scalar &
+             ( D(i), Ev(i), Ne(i), h(i) )
+
+    END DO
+
+  END SUBROUTINE ComputeEnthalpyFromPrimitive_IDEAL_Vector
+
+#endif
 
   SUBROUTINE ComputeMagneticEnthalpyFromPrimitive_IDEAL_Scalar &
     ( D, V1, V2, V3,    &
