@@ -21,6 +21,7 @@ ApplicationDriver: \
         MHD_TallyModule.o \
         MHD_CharacteristicDecompositionModule_Relativistic_IDEAL.o \
         MHD_CharacteristicDecompositionModule.o \
+        MHD_DiscontinuityDetectionModule.o \
         MHD_SlopeLimiterModule_Relativistic_IDEAL.o \
         MHD_SlopeLimiterModule.o \
         MHD_DiscretizationModule_Relativistic.o \
@@ -38,6 +39,7 @@ ApplicationDriver: \
         MHD_TallyModule.o \
         MHD_CharacteristicDecompositionModule_Relativistic_IDEAL.o \
         MHD_CharacteristicDecompositionModule.o \
+        MHD_DiscontinuityDetectionModule.o \
         MHD_SlopeLimiterModule_Relativistic_IDEAL.o \
         MHD_SlopeLimiterModule.o \
         MHD_DiscretizationModule_Relativistic.o \
@@ -130,6 +132,7 @@ MHD_DiscretizationModule_Relativistic.o: \
   MHD_BoundaryConditionsModule.o \
   MHD_UtilitiesModule.o \
   MHD_UtilitiesModule_Relativistic.o \
+  MHD_DiscontinuityDetectionModule.o \
   EquationOfStateModule.o \
   MHD_DiscretizationModule_Relativistic.F90
 

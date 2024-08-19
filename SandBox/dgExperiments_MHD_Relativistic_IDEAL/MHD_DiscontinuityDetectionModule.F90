@@ -1284,31 +1284,6 @@ CONTAINS
 
         IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
 
-        CALL DescribeError_MHD &
-          ( iErr(iX1,iX2,iX3), &
-            Int_Option = [ ITERATION(iX1,iX2,iX3), 99999999, &
-                           iX_B0(1), iX_B0(2), iX_B0(3), &
-                           iX_E0(1), iX_E0(2), iX_E0(3), &
-                           99999, iX1, iX2, iX3 ], &
-            Real_Option = [ MeshX(1) % Center(iX1), &
-                            MeshX(2) % Center(iX2), &
-                            MeshX(3) % Center(iX3), &
-                            MeshX(1) % Width (iX1), &
-                            MeshX(2) % Width (iX2), &
-                            MeshX(3) % Width (iX3), &
-                            U(1,iX1,iX2,iX3,iCM_D ), &
-                            U(1,iX1,iX2,iX3,iCM_S1), &
-                            U(1,iX1,iX2,iX3,iCM_S2), &
-                            U(1,iX1,iX2,iX3,iCM_S3), &
-                            U(1,iX1,iX2,iX3,iCM_E ), &
-                            U(1,iX1,iX2,iX3,iCM_Ne), &
-                            G(1,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                            G(1,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                            G(1,iX1,iX2,iX3,iGF_Gm_dd_33) ], &
-            Char_Option = [ 'NA' ], &
-            Message_Option &
-              = 'Calling from DetectShocks_MHD' )
-
       END DO
       END DO
       END DO
