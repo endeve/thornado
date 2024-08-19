@@ -144,7 +144,8 @@ elif [[ "$1" == "23" ]];then
     COMPILER_DATE=2024.04.23
 fi    
 #module load nightly-compiler/${COMPILER_DATE}
-MKL_DATE=2024.07.10
+#MKL_DATE=2024.07.10
+MKL_DATE=2024.08.12
 module load nightly-mkl-cev_nightly/$MKL_DATE
 #COMPILER_DATE=2024.06.01
 #LD_LIBRARY_PATH=/exaperf/nightly/compiler/2024.03.06/linux/lib/x86_64-unknown-linux-gnu:$LD_LIBRARY_PATH
@@ -170,7 +171,8 @@ if true; then
 #      UMD="neo/agama-devel-sp4/943-24.26.30049.6-940"
 #      UMD="neo/agama-devel-sp4/944-24.26.30049.6-940"
 #      UMD="neo/agama-devel-sp4/945-24.26.30049.6-940"
-      UMD="neo/agama-devel-sp4/948-24.26.30049.6-948"
+#      UMD="neo/agama-devel-sp4/948-24.26.30049.6-948"
+      UMD="neo/agama-devel-sp4/971-24.31.30508.6-968"
       if [[ -n $UMD ]]; then
          module switch -f intel_compute_runtime/release/stable-736.25 $UMD
          if [[ $UMD == intel_compute* ]]; then
@@ -240,15 +242,15 @@ CaseNames=(SineWaveStreaming Relaxation)
 userOptions=("" "MICROPHYSICS=WEAKLIB")
 gridLines=(85 130)
 
-grids=("[16,16,16]")
-gridNames=("-xN16")
+#grids=("[16,16,16]")
+#gridNames=("-xN16")
 #grids=("[8,8,8]")
 #gridNames=("")
-appNames=(ApplicationDriver)
-logFiles=(sineWave)
-CaseNames=(SineWaveStreaming)
-userOptions=("")
-gridLines=(85)
+#appNames=(ApplicationDriver)
+#logFiles=(sineWave)
+#CaseNames=(SineWaveStreaming)
+#userOptions=("")
+#gridLines=(85)
 #appNames=(ApplicationDriver_Neutrinos)
 #logFiles=(relaxUmd847)
 #CaseNames=(Relaxation)

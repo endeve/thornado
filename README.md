@@ -135,6 +135,9 @@ Currently Loaded Modulefiles:
  1) mpich/52.2-256/icc-sockets-gpu <aL>       3) nightly-compiler/2024.08.18 <aL>     5) neo/agama-devel-sp4/971-24.31.30508.6-968
  2) oneapi/eng-compiler/2023.12.15.002 <aL>   4) nightly-mkl-cev_nightly/2024.08.12
 ```
+3. A fix to the blowup of the flashx/Thornado large case is the code modification in Flash-X/lib/thornado/source/Modules/Library/LinearAlgebraModule.F90 as shown in: 
+![flashxThornadoLargeCaseBlowupFix](./pics-readme/flashXLargeCaseBlowupFix2024-08-19.png)
+
 ## Aug 16 2024
 1. run Resnet50 on pvc04
 2. git clone https://github.com/intel-sandbox/pre.epc.frameworks.ai.pytorch.gpu-models.git pytorch_gpu_models gives:
