@@ -1515,10 +1515,10 @@ CONTAINS
           'Invalid choice for RiemannProblemName: ', RiemannProblemName
         WRITE(*,'(A)') 'Valid choices:'
          WRITE(*,'(A)') &
-          "  'HydroIsolatedContacnt' - &
+          "  'HydroIsolatedContact' - &
           Pure hydro version of isolated contact problem from Mattia & Mignone, 2022, MRNAS, 510, 481-499, Table 1"
         WRITE(*,'(A)') &
-          "  'IsolatedContacnt' - &
+          "  'IsolatedContact' - &
           Isolated contact problem from Mattia & Mignone, 2022, MRNAS, 510, 481-499, Table 1"
         WRITE(*,'(A)') &
           "  'RotationalWave' - &
