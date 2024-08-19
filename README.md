@@ -117,6 +117,24 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Aug 19 2024
+1. neo/agama-devel-sp4/971-24.31.30508.6-968 still has ocloc name wrong: ocloc-24.31. This was started from neo/agama-devel-sp4/967-24.31.30508.5-967. According to Brain, IGC team knows this, and will fix this issue soon. Currently make a softlink fixes the issue. 
+2. The performance regression still persists for the newest MKL and ifx:
+```
+cat timeFOM_2024.08.18lmkl.txt-umd971
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2024.08.18lmkl-umd971   2023.10.15.002    TimeDiff   Percentage   |   2024.08.18lmkl-umd971   2023.10.15.002    FOM-Diff   Percentage
+                     MKL Date :  2024.08.12
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     2.5922e+01          2.9053e+00       2.3017e+01   792.23%            8.1913e+05          7.3085e+06       -6.4894e+06   -88.79%
+sineWave   [16,16,16]   O3    :     6.1177e+01          1.2129e+01       4.9048e+01   404.40%            5.5191e+06          2.7838e+07       -2.2319e+07   -80.17%
+relax      [8,8,8]      O3    :     2.1541e+01          2.2466e+01      -9.2509e-01    -4.12%            3.9575e+07          3.7945e+07        1.6296e+06     4.29%
+relax      [16,16,16]   O3    :     1.5754e+02          1.6439e+02      -6.8440e+00    -4.16%            4.3290e+07          4.1488e+07        1.8023e+06     4.34%
+
+Currently Loaded Modulefiles:
+ 1) mpich/52.2-256/icc-sockets-gpu <aL>       3) nightly-compiler/2024.08.18 <aL>     5) neo/agama-devel-sp4/971-24.31.30508.6-968
+ 2) oneapi/eng-compiler/2023.12.15.002 <aL>   4) nightly-mkl-cev_nightly/2024.08.12
+```
 ## Aug 16 2024
 1. run Resnet50 on pvc04
 2. git clone https://github.com/intel-sandbox/pre.epc.frameworks.ai.pytorch.gpu-models.git pytorch_gpu_models gives:
