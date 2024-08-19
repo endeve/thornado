@@ -1,6 +1,7 @@
 function...
   [ Time, X1, X2, X3, uGF_H1, uGF_H2, uGF_H3, uGF_Gm11, uGF_Gm22, uGF_Gm33, uGF_SqrtGm,...
-    uGF_Phi_N, uGF_Alpha, uGF_Psi, uGF_Beta1, uGF_Beta2, uGF_Beta3 ]...
+    uGF_Phi_N, uGF_Alpha, uGF_Psi, uGF_Beta1, uGF_Beta2, uGF_Beta3, ...
+    uGF_K11, uGF_K12, uGF_K13, uGF_K22, uGF_K23, uGF_K33]...
     = ReadGeometryFields( AppName, FileNumber, Directory )
 
   if( exist( 'Directory', 'var' ) )
@@ -33,5 +34,13 @@ function...
   uGF_Beta1  = h5read( FileName, '/Geometry Fields/Shift Vector (1)' );
   uGF_Beta2  = h5read( FileName, '/Geometry Fields/Shift Vector (2)' );
   uGF_Beta3  = h5read( FileName, '/Geometry Fields/Shift Vector (3)' );
+  
+  uGF_K11  = h5read( FileName, '/Geometry Fields/Extrinsic Curvature Comp. (11)' );
+  uGF_K12  = h5read( FileName, '/Geometry Fields/Extrinsic Curvature Comp. (12)' );
+  uGF_K13  = h5read( FileName, '/Geometry Fields/Extrinsic Curvature Comp. (13)' );
+  uGF_K22  = h5read( FileName, '/Geometry Fields/Extrinsic Curvature Comp. (22)' );
+  uGF_K23  = h5read( FileName, '/Geometry Fields/Extrinsic Curvature Comp. (23)' );
+  uGF_K33  = h5read( FileName, '/Geometry Fields/Extrinsic Curvature Comp. (33)' );
+  
   
 end
