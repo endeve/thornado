@@ -1042,22 +1042,22 @@ CONTAINS
 
         XD = Half
 
-        LeftState(iPM_D  ) = 10.0_DP
-        LeftState(iPM_V1 ) = 0.0_DP
-        LeftState(iPM_V2 ) = 0.7_DP
-        LeftState(iPM_V3 ) = 0.2_DP
-        LeftState(iPM_E  ) = 1.0_DP / ( Gamma_IDEAL - One )
+        LeftState(iPM_D  ) = 5.9718209694880811e0_DP
+        LeftState(iPM_V1 ) = 0.01_DP
+        LeftState(iPM_V2 ) = 0.0_DP
+        LeftState(iPM_V3 ) = 0.0_DP
+        LeftState(iPM_E  ) = One / ( Gamma_IDEAL - One )
 
         LeftState(iPM_B1 ) = 0.0_DP
         LeftState(iPM_B2 ) = 0.0_DP
         LeftState(iPM_B3 ) = 0.0_DP
         LeftState(iPM_Chi) = 0.0_DP
 
-        RightState(iPM_D  ) = 1.0_DP
-        RightState(iPM_V1 ) = 0.0_DP
-        RightState(iPM_V2 ) = 0.7_DP
-        RightState(iPM_V3 ) = 0.2_DP
-        RightState(iPM_E  ) = 1.0_DP / ( Gamma_IDEAL - One )
+        RightState(iPM_D  ) = One
+        RightState(iPM_V1 ) = 0.01_DP
+        RightState(iPM_V2 ) = 0.0_DP
+        RightState(iPM_V3 ) = 0.0_DP
+        RightState(iPM_E  ) = One / ( Gamma_IDEAL - One )
 
         RightState(iPM_B1 ) = 0.0_DP
         RightState(iPM_B2 ) = 0.0_DP
