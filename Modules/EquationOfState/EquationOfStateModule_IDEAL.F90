@@ -19,6 +19,7 @@ MODULE EquationOfStateModule_IDEAL
   PUBLIC :: ComputeMagneticEnthalpyFromPrimitive_IDEAL
   PUBLIC :: ComputeSoundSpeedFromPrimitive_IDEAL
   PUBLIC :: ComputeAlfvenSpeedFromPrimitive_IDEAL
+  PUBLIC :: ComputeElectricFieldFromPrimitive_IDEAL
   PUBLIC :: ComputeAuxiliary_Fluid_IDEAL
   PUBLIC :: ComputeAuxiliary_Magnetofluid_IDEAL
 
@@ -61,6 +62,11 @@ MODULE EquationOfStateModule_IDEAL
     MODULE PROCEDURE ComputeAlfvenSpeedFromPrimitive_IDEAL_Scalar
     MODULE PROCEDURE ComputeAlfvenSpeedFromPrimitive_IDEAL_Vector
   END INTERFACE ComputeAlfvenSpeedFromPrimitive_IDEAL
+
+  INTERFACE ComputeElectricFieldFromPrimitive_IDEAL
+    MODULE PROCEDURE ComputeElectricFieldFromPrimitive_IDEAL_Scalar
+    MODULE PROCEDURE ComputeElectricFieldFromPrimitive_IDEAL_Vector
+  END INTERFACE ComputeElectricFieldFromPrimitive_IDEAL
 
   INTERFACE ComputeAuxiliary_Fluid_IDEAL
     MODULE PROCEDURE ComputeAuxiliary_Fluid_IDEAL_Scalar
@@ -510,6 +516,72 @@ CONTAINS
   END SUBROUTINE ComputeAlfvenSpeedFromPrimitive_IDEAL_Vector
 
 
+  SUBROUTINE ComputeElectricFieldFromPrimitive_IDEAL_Scalar &
+    ( V1, V2, V3,                    &
+      B1, B2, B3,                    &
+      Gm11, Gm22, Gm33,              &
+      Lapse, Shift1, Shift2, Shift3, &
+      EF1, EF2, EF3 )
+
+    REAL(DP), INTENT(in)  :: V1, V2, V3,       &
+                             B1, B2, B3,       &
+                             Gm11, Gm22, Gm33, &
+                             Lapse, Shift1, Shift2, Shift3
+    REAL(DP), INTENT(out) :: EF1, EF2, EF3
+
+    REAL(DP) :: VSq, W, VdotB, VdotShift, b0u
+    REAL(DP) :: CB1, CB2, CB3
+
+    VSq = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
+
+    W = One / SQRT( One - VSq )
+
+    VdotB = Gm11 * V1 * B1 + Gm22 * V2 * B2 + Gm33 * V3 * B3
+
+    VdotShift = Gm11 * V1 * Shift1 + Gm22 * V2 * Shift2 + Gm33 * V3 * Shift3
+
+    b0u = VdotB / ( Lapse - VdotShift )
+
+    CB1 = - W * Lapse * b0u * ( V1 - Shift1 / Lapse ) + W * B1
+    CB2 = - W * Lapse * b0u * ( V2 - Shift2 / Lapse ) + W * B2
+    CB3 = - W * Lapse * b0u * ( V3 - Shift3 / Lapse ) + W * B3
+
+    EF1 = Gm22 * V2 * Gm33 * CB3 - Gm33 * V3 * Gm22 * CB2
+    EF2 = Gm33 * V3 * Gm11 * CB1 - Gm11 * V1 * Gm33 * CB3
+    EF3 = Gm11 * V1 * Gm22 * CB2 - Gm22 * V2 * Gm11 * CB1
+
+  END SUBROUTINE ComputeElectricFieldFromPrimitive_IDEAL_Scalar
+
+
+  SUBROUTINE ComputeElectricFieldFromPrimitive_IDEAL_Vector &
+    ( V1, V2, V3,                    &
+      B1, B2, B3,                    &
+      Gm11, Gm22, Gm33,              &
+      Lapse, Shift1, Shift2, Shift3, &
+      EF1, EF2, EF3 )
+
+    REAL(DP), INTENT(in)  :: V1(:), V2(:), V3(:),                    &
+                             B1(:), B2(:), B3(:),                    &
+                             Gm11(:), Gm22(:), Gm33(:),              &
+                             Lapse(:), Shift1(:), Shift2(:), Shift3(:)
+    REAL(DP), INTENT(out) :: EF1(:), EF2(:), EF3(:)
+
+    INTEGER :: i
+
+    DO i = 1, SIZE( V1 )
+
+      CALL ComputeElectricFieldFromPrimitive_IDEAL_Scalar &
+             ( V1(i), V2(i), V3(i),                       &
+               B1(i), B2(i), B3(i),                       &
+               Gm11(i), Gm22(i), Gm33(i),                 &
+               Lapse(i), Shift1(i), Shift2(i), Shift3(i), &
+               EF1(i), EF2(i), EF3(i) )
+
+    END DO
+
+  END SUBROUTINE ComputeElectricFieldFromPrimitive_IDEAL_Vector
+
+
   SUBROUTINE ComputeAuxiliary_Fluid_IDEAL_Scalar &
     ( D, Ev, Ne, P, T, Y, S, Em, Gm, Cs )
 
@@ -557,7 +629,7 @@ CONTAINS
       B1, B2, B3,                    &
       Gm11, Gm22, Gm33,              &
       Lapse, Shift1, Shift2, Shift3, &
-      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
+      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3 )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -569,7 +641,7 @@ CONTAINS
                              B1, B2, B3,            &
                              Gm11, Gm22, Gm33,      &
                              Lapse, Shift1, Shift2, Shift3
-    REAL(DP), INTENT(out) :: P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca
+    REAL(DP), INTENT(out) :: P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3
 
     P  = ( Gamma_IDEAL - 1.0_DP ) * Ev
     Pb = Zero
@@ -586,6 +658,12 @@ CONTAINS
            ( D, V1, V2, V3, B1, B2, V3, &
              Gm11, Gm22, Gm33,          &
              Lapse, Shift1, Shift2, Shift3, hb )
+    CALL ComputeElectricFieldFromPrimitive_IDEAL_Scalar &
+           ( V1, V2, V3,                       &
+             B1, B2, B3,                       &
+             Gm11, Gm22, Gm33,                 &
+             Lapse, Shift1, Shift2, Shift3, &
+             EF1, EF2, EF3 )
 
     T = 0.0_DP
     Y = 0.0_DP
@@ -599,14 +677,15 @@ CONTAINS
       B1, B2, B3,                    &
       Gm11, Gm22, Gm33,              &
       Lapse, Shift1, Shift2, Shift3, &
-      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
+      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3 )
 
     REAL(DP), INTENT(in)  :: D(:), V1(:), V2(:), V3(:), Ev(:), Ne(:), &
                              B1(:), B2(:), B3(:),                     &
                              Gm11(:), Gm22(:), Gm33(:),               &
                              Lapse(:), Shift1(:), Shift2(:), Shift3(:)
     REAL(DP), INTENT(out) :: P(:), Pb(:), T (:), Y (:), S(:), Em(:), &
-                             h(:), hb(:), Gm(:), Cs(:), Ca(:)
+                             h(:), hb(:), Gm(:), Cs(:), Ca(:),       &
+                             EF1(:), EF2(:), EF3(:)
 
     INTEGER :: i
 
@@ -618,7 +697,7 @@ CONTAINS
                Gm11(i), Gm22(i), Gm33(i),                 &
                Lapse(i), Shift1(i), Shift2(i), Shift3(i), &
                P(i), Pb(i), T(i), Y(i), S(i), Em(i), h(i), hb(i), &
-               Gm(i), Cs(i), Ca(i) )
+               Gm(i), Cs(i), Ca(i), EF1(i), EF2(i), EF3(i) )
 
     END DO
 

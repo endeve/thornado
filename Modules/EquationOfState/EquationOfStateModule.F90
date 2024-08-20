@@ -12,6 +12,7 @@ MODULE EquationOfStateModule
     ComputeMagneticEnthalpyFromPrimitive_IDEAL, &
     ComputeSoundSpeedFromPrimitive_IDEAL, &
     ComputeAlfvenSpeedFromPrimitive_IDEAL, &
+    ComputeElectricFieldFromPrimitive_IDEAL, &
     ComputeAuxiliary_Fluid_IDEAL, &
     ComputeAuxiliary_Magnetofluid_IDEAL
   USE EquationOfStateModule_TABLE, ONLY: &
@@ -860,19 +861,21 @@ CONTAINS
       B1, B2, B3,                    &
       Gm11, Gm22, Gm33,              &
       Lapse, Shift1, Shift2, Shift3, &
-      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
+      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3 )
 
     REAL(DP), INTENT(in)  :: D, V1, V2, V3, Ev, Ne, &
                              B1, B2, B3,            &
                              Gm11, Gm22, Gm33,      &
                              Lapse, Shift1, Shift2, Shift3
-    REAL(DP), INTENT(out) :: P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca
+    REAL(DP), INTENT(out) :: P, Pb, T, Y, S, Em, h, hb, Gm, &
+                             Cs, Ca, EF1, EF2, EF3
 
     CALL ComputeAuxiliary_Magnetofluid_IDEAL( D, V1, V2, V3, Ev, Ne,         &
                                               B1, B2, B3,                    &
                                               Gm11, Gm22, Gm33,              &
                                               Lapse, Shift1, Shift2, Shift3, &
-                                              P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
+                                              P, Pb, T, Y, S, Em, h, hb, Gm, &
+                                              Cs, Ca, EF1, EF2, EF3 )
 
   END SUBROUTINE ComputeAuxiliary_Magnetofluid_Scalar
 
@@ -882,14 +885,15 @@ CONTAINS
       B1, B2, B3,                    &
       Gm11, Gm22, Gm33,              &
       Lapse, Shift1, Shift2, Shift3, &
-      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
+      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3 )
 
     REAL(DP), INTENT(in)  :: D(:), V1(:), V2(:), V3(:), Ev(:), Ne(:), &
                              B1(:), B2(:), B3(:),                     &
                              Gm11(:), Gm22(:), Gm33(:),               &
                              Lapse(:), Shift1(:), Shift2(:), Shift3(:)
-    REAL(DP), INTENT(out) :: P(:), Pb(:), T (:), Y (:), S(:), &
-                             Em(:), h(:), hb(:), Gm(:), Cs(:), Ca(:)
+    REAL(DP), INTENT(out) :: P(:), Pb(:), T (:), Y (:), S(:),         &
+                             Em(:), h(:), hb(:), Gm(:), Cs(:), Ca(:), &
+                             EF1(:), EF2(:), EF3(:)
 
 
     CALL ComputeAuxiliary_Magnetofluid_IDEAL &
@@ -897,7 +901,7 @@ CONTAINS
              B1, B2, B3,            &
              Gm11, Gm22, Gm33,      &
              Lapse, Shift1, Shift2, Shift3, &
-             P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca )
+             P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3 )
 
   END SUBROUTINE ComputeAuxiliary_Magnetofluid_Vector
 

@@ -86,6 +86,9 @@ MODULE MHD_UtilitiesModule_Relativistic
     iAM_Gm, &
     iAM_Cs, &
     iAM_Ca, &
+    iAM_EF1, &
+    iAM_EF2, &
+    iAM_EF3, &
     nDM, &
     iDM_Sh_X1, &
     iDM_Sh_X2, &
@@ -2276,17 +2279,20 @@ CONTAINS
                G(iNX,iX1,iX2,iX3,iGF_Beta_1), &
                G(iNX,iX1,iX2,iX3,iGF_Beta_2), &
                G(iNX,iX1,iX2,iX3,iGF_Beta_3), &
-               A(iNX,iX1,iX2,iX3,iAM_P ), &
-               A(iNX,iX1,iX2,iX3,iAM_Pb), &
-               A(iNX,iX1,iX2,iX3,iAM_T ), &
-               A(iNX,iX1,iX2,iX3,iAM_Ye), &
-               A(iNX,iX1,iX2,iX3,iAM_S ), &
-               A(iNX,iX1,iX2,iX3,iAM_E ), &
-               A(iNX,iX1,iX2,iX3,iAM_h ), &
-               A(iNX,iX1,iX2,iX3,iAM_hb), &
-               A(iNX,iX1,iX2,iX3,iAM_Gm), &
-               A(iNX,iX1,iX2,iX3,iAM_Cs), &
-               A(iNX,iX1,iX2,iX3,iAM_Ca) )
+               A(iNX,iX1,iX2,iX3,iAM_P ),  &
+               A(iNX,iX1,iX2,iX3,iAM_Pb),  &
+               A(iNX,iX1,iX2,iX3,iAM_T ),  &
+               A(iNX,iX1,iX2,iX3,iAM_Ye),  &
+               A(iNX,iX1,iX2,iX3,iAM_S ),  &
+               A(iNX,iX1,iX2,iX3,iAM_E ),  &
+               A(iNX,iX1,iX2,iX3,iAM_h ),  &
+               A(iNX,iX1,iX2,iX3,iAM_hb),  &
+               A(iNX,iX1,iX2,iX3,iAM_Gm),  &
+               A(iNX,iX1,iX2,iX3,iAM_Cs),  &
+               A(iNX,iX1,iX2,iX3,iAM_Ca),  &
+               A(iNX,iX1,iX2,iX3,iAM_EF1), &
+               A(iNX,iX1,iX2,iX3,iAM_EF2), &
+               A(iNX,iX1,iX2,iX3,iAM_EF3) )
 
     END DO
     END DO
