@@ -661,6 +661,16 @@ jobs:
     name: Run regression tests
     needs: build
     runs-on: ubuntu-20.04
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+      AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
+      POSEIDON_DIR: ${{ needs.build.outputs.POSEIDON_DIR }}
+      WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
