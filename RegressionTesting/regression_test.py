@@ -9,6 +9,7 @@ import shutil
 import sys
 import warnings
 
+import glob
 import numpy as np
 import h5py as h5
 
@@ -43,7 +44,7 @@ class Regression:
     self='./',
     src_dir='../',
     build_dir="../SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables",
-    executable="./ApplicationDriver_bison",
+    executable="./ApplicationDriver_",
   ):
     self.src_dir = src_dir
     self.build_dir = os.path.relpath(build_dir)
@@ -77,6 +78,7 @@ class Regression:
   # End build_code
 
   def run_code(self):
+    self.executable = glob.glob("./" + self.executable + '*')[0]
     if not os.path.isfile(self.executable):
       print(f"Executable '{self.executable}' does not exist!")
       sys.exit(os.EX_SOFTWARE)
