@@ -18,23 +18,6 @@ import h5py as h5
 # ============
 
 
-def soft_equiv(val, ref, tol=1.0e-5):
-  """
-  Soft equivalence of value and reference.
-  """
-  tiny = 1.0e-12
-  numerator = np.fabs(val - ref)
-  denominator = max(np.fabs(ref), tiny)
-
-  if numerator / denominator > tol:
-    return False
-  else:
-    return True
-
-
-# End soft_equiv
-
-
 class Regression:
   """
   regression testing class
@@ -96,9 +79,13 @@ class Regression:
 
     H5_H = h5.File( fn, 'r' )
 
-    PF_D = H5_H[ 'Fluid Fields/Primitive/Comoving Baryon Density' ]
+    PF_D  = H5_H[ 'Fluid Fields/Primitive/Comoving Baryon Density' ][()]
+    PF_V1 = H5_H[ 'Fluid Fields/Primitive/Three-Velocity (1)'      ][()]
+    PF_V2 = H5_H[ 'Fluid Fields/Primitive/Three-Velocity (2)'      ][()]
+    PF_V3 = H5_H[ 'Fluid Fields/Primitive/Three-Velocity (3)'      ][()]
+    PF_E  = H5_H[ 'Fluid Fields/Primitive/Internal Energy Density' ][()]
 
-    return PF_D
+    return PF_D, PF_V1, PF_V2, PF_V3, PF_E
 
   # End load_output
 
@@ -107,22 +94,33 @@ class Regression:
     compare to gold data
     """
     # load sim data
-    PF_D = self.load_output(fn)
+    PF_D, PF_V1, PF_V2, PF_V3, PF_E  = self.load_output(fn)
 
     # load gold
-    PF_D_Gold = self.load_output(fn_gold)
+    PF_D_Gold, PF_V1_Gold, PF_V2_Gold, PF_V3_Gold, \
+    PF_E_Gold  = self.load_output(fn_gold)
 
     # comparison
-    PF_D_Status = np.array_equal(PF_D, PF_D_Gold)
+    PF_D_Status_Eq  = np.array_equal(PF_D,  PF_D_Gold )
+    PF_V1_Status_Eq = np.array_equal(PF_V1, PF_V1_Gold)
+    PF_V2_Status_Eq = np.array_equal(PF_V2, PF_V2_Gold)
+    PF_V3_Status_Eq = np.array_equal(PF_V3, PF_V3_Gold)
+    PF_E_Status_Eq  = np.array_equal(PF_E,  PF_E_Gold )
 
-    success = all([PF_D_Status])
+    equal_success = all([PF_D_Status_Eq,  PF_V1_Status_Eq, \
+                         PF_V2_Status_Eq, PF_V3_Status_Eq,
+                         PF_E_Status_Eq])
 
-    if success:
-      print("Test Passed! :)")
+    if equal_success:
+      print("Equality Tests Passed!")
       return os.EX_OK
     else:
-      print("Some test failed! :(")
-      print(f"Comoving Baryon Density : {PF_D_Status}")
+      print("Failure!")
+      print(f"Comoving Baryon Density : {PF_D_Status_Eq }")
+      print(f"Three-Velocity (1)      : {PF_V1_Status_Eq}")
+      print(f"Three-Velocity (2)      : {PF_V2_Status_Eq}")
+      print(f"Three-Velocity (3)      : {PF_V3_Status_Eq}")
+      print(f"Internal Energy Density : {PF_E_Status_Eq }")
       return os.EX_SOFTWARE
 
 
