@@ -117,14 +117,12 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
-## Aug 22 2024
+## Aug 21-23 2024
 1. The name of ocloc of neo/agama-devel-sp4/978-24.31.30508.6-968 is still ocloc-24.31
 2. The performance regression for StreamingSineWave case still persists. 
-3. 
-## Aug 21 2024
-1. Running FlashX/Thornado medium case 16x16x16 and 16x32x24 on Borealis
-2. It is found that the run for 16x16x16 is almost 2X faster using graphics-compute-runtime/agama-ci-devel-971 than using graphics-compute-runtime/agama-ci-devel-941. For UMD971, the total run time is 29m24.668s, while for UMD941 it is 60m30.472s on 8nodes with 12 mpi ranks on each node (one mpi rank per GPU stack)
-3. However, runs using 2ccs hang after the output of "OMP: Info #277: omp_get_nested routine deprecated, please use omp_get_max_active_levels instead".
+3. Running FlashX/Thornado medium case 16x16x16 and 16x32x24 on Borealis
+4. It is found that the run for 16x16x16 is almost 2X faster using graphics-compute-runtime/agama-ci-devel-971 than using graphics-compute-runtime/agama-ci-devel-941. For UMD971, the total run time is 29m24.668s, while for UMD941 it is 60m30.472s on 8nodes with 12 mpi ranks on each node (one mpi rank per GPU stack)
+5. However, runs using 2ccs hang after the output of "OMP: Info #277: omp_get_nested routine deprecated, please use omp_get_max_active_levels instead".
 ## Aug 19-20 2024
 1. neo/agama-devel-sp4/971-24.31.30508.6-968 still has ocloc name wrong: ocloc-24.31. This was started from neo/agama-devel-sp4/967-24.31.30508.5-967. According to Brain, IGC team knows this, and will fix this issue soon. Currently make a softlink fixes the issue. 
 2. The performance regression still persists for the newest MKL and ifx:
