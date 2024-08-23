@@ -47,7 +47,7 @@ CONTAINS
 
     LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(inout)  :: &
       CM_D, CM_S1, CM_S2, CM_S3, CM_E, CM_Ne, &
       CM_B1, CM_B2, CM_B3, CM_Chi
     REAL(DP), INTENT(out) :: &
@@ -80,7 +80,7 @@ CONTAINS
 
     LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(inout)  :: &
       CM_D(:), CM_S1(:), CM_S2(:), CM_S3(:), CM_E(:), CM_Ne(:), &
       CM_B1(:), CM_B2(:), CM_B3(:), CM_Chi(:)
     REAL(DP), INTENT(out) :: &
@@ -180,12 +180,13 @@ CONTAINS
 
     LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+    REAL(DP), INTENT(in)    :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(out)   :: &
       P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
@@ -204,10 +205,11 @@ CONTAINS
 
     LOGICAL,  INTENT(in)  :: &
       UseDivergenceCleaning
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+    REAL(DP), INTENT(in)    :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)  :: &
       CML

@@ -112,6 +112,8 @@ MODULE MHD_UtilitiesModule_Relativistic
     Max_Y
   USE UnitsModule, ONLY: &
     AtomicMassUnit
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    ComputePrimitive_Euler_Relativistic
 
   IMPLICIT NONE
   PRIVATE
@@ -186,7 +188,7 @@ CONTAINS
 
     LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
-    REAL(DP), INTENT(in)    :: &
+    REAL(DP), INTENT(inout)    :: &
       CM_D, CM_S1, CM_S2, CM_S3, CM_E, CM_Ne, &
       CM_B1, CM_B2, CM_B3, CM_Chi
     REAL(DP), INTENT(in)    :: &
@@ -209,6 +211,21 @@ CONTAINS
     REAL(DP) :: x, W, eps, Vsq
 
     REAL(DP) :: AM_P, Cs
+
+    IF(( CM_B1 .LE. 1.0d-15 ) .AND. ( CM_B2 .LE. 1.0d-15 ) .AND. ( CM_B3 .LE. 1.0d-15 ))THEN
+
+      CALL ComputePrimitive_Euler_Relativistic &
+             ( CM_D, CM_S1, CM_S2, CM_S3, CM_E, CM_Ne, &
+               PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
+               GF_Gm11, GF_Gm22, GF_Gm33 )
+
+      PM_B1 = Zero
+      PM_B2 = Zero
+      PM_B3 = Zero
+
+      RETURN
+
+    END IF
 
     IF( .NOT. EvolveOnlyMagnetic )THEN
 
@@ -404,7 +421,8 @@ CONTAINS
 
     PM_D = D_bar / W
 
-   !PRINT*, 'PM_D: ', PM_D
+    !PRINT*, 'CM_D: ', CM_D
+    !PRINT*, 'PM_D: ', PM_D
 
     PM_Ne = CM_Ne / W
 
@@ -471,7 +489,7 @@ CONTAINS
 
     LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
-    REAL(DP), INTENT(in)    :: &
+    REAL(DP), INTENT(inout)    :: &
       CM_D(:), CM_S1(:), CM_S2(:), CM_S3(:), CM_E(:), CM_Ne(:), &
       CM_B1(:), CM_B2(:), CM_B3(:), CM_Chi(:)
     REAL(DP), INTENT(in)    :: &
@@ -2202,8 +2220,9 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+    REAL(DP), INTENT(in) :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(out) :: &
       P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
@@ -2314,7 +2333,8 @@ CONTAINS
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)  :: &
-      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout)  :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)  :: &
       CFL
@@ -2422,14 +2442,14 @@ CONTAINS
 
   FUNCTION Eigenvalues_MHD_Relativistic &
     ( Vi, Cs, Gmii, Shifti, D, V1, V2, V3, E, Ne, &
-      B1, B2, B3, Chi, Gm11, Gm22, Gm33, &
-      Lapse, Shift1, Shift2, Shift3, &
+      B1, B2, B3, Chi, Gm11, Gm22, Gm33,          &
+      Lapse, Shift1, Shift2, Shift3,              &
       UseDivergenceCleaning )
 
     LOGICAL,  INTENT(in) :: UseDivergenceCleaning
     REAL(DP), INTENT(in) :: Vi, Cs, Gmii, Shifti, D, V1, V2, V3, E, Ne, &
-                            B1, B2, B3, Chi, Gm11, Gm22, Gm33, Lapse, &
-                            Shift1, Shift2, Shift3
+                               B1, B2, B3, Chi, Gm11, Gm22, Gm33, Lapse, &
+                               Shift1, Shift2, Shift3
 
     REAL(DP) :: VSq, W, P, h, b0u, b0d, bSq, &
                 Ca, aSq, Eigenvalues_MHD_Relativistic(2)

@@ -50,12 +50,12 @@ CONTAINS
   SUBROUTINE ComputeCharacteristicDecomposition_MHD_Relativistic_IDEAL &
     ( iDim, G, U, EvolveOnlyMagnetic, R, invR )
 
-    INTEGER,  INTENT(in)  :: iDim
-    REAL(DP), INTENT(in)  :: G(8)
-    REAL(DP), INTENT(in)  :: U(nCM)
-    LOGICAL , INTENT(in)  :: EvolveOnlyMagnetic
-    REAL(DP), INTENT(out) :: R(nCM,nCM)
-    REAL(DP), INTENT(out) :: invR(nCM,nCM)
+    INTEGER,  INTENT(in)     :: iDim
+    REAL(DP), INTENT(in)     :: G(8)
+    REAL(DP), INTENT(inout)  :: U(nCM)
+    LOGICAL , INTENT(in)     :: EvolveOnlyMagnetic
+    REAL(DP), INTENT(out)    :: R(nCM,nCM)
+    REAL(DP), INTENT(out)    :: invR(nCM,nCM)
 
     REAL(DP) :: D, V1, V2, V3, E, Ne, B1, B2, B3, Chi
     REAL(DP) :: Gmdd11, Gmdd22, Gmdd33, DetGm, &
