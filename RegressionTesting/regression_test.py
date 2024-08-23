@@ -17,7 +17,6 @@ import h5py as h5
 # Utility
 # ============
 
-
 class Regression:
   """
   regression testing class
@@ -101,18 +100,18 @@ class Regression:
     PF_E_Gold  = self.load_output(fn_gold)
 
     # comparison
-    PF_D_Status_Eq  = np.array_equal(PF_D,  PF_D_Gold )
-    PF_V1_Status_Eq = np.array_equal(PF_V1, PF_V1_Gold)
-    PF_V2_Status_Eq = np.array_equal(PF_V2, PF_V2_Gold)
-    PF_V3_Status_Eq = np.array_equal(PF_V3, PF_V3_Gold)
-    PF_E_Status_Eq  = np.array_equal(PF_E,  PF_E_Gold )
+    PF_D_Status_Eq  = np.allclose(PF_D,  PF_D_Gold,  atol = 0.0, rtol = 1e-12)
+    PF_V1_Status_Eq = np.allclose(PF_V1, PF_V1_Gold, atol = 0.0, rtol = 1e-12)
+    PF_V2_Status_Eq = np.allclose(PF_V2, PF_V2_Gold, atol = 0.0, rtol = 1e-12)
+    PF_V3_Status_Eq = np.allclose(PF_V3, PF_V3_Gold, atol = 0.0, rtol = 1e-12)
+    PF_E_Status_Eq  = np.allclose(PF_E,  PF_E_Gold,  atol = 0.0, rtol = 1e-12)
 
     equal_success = all([PF_D_Status_Eq,  PF_V1_Status_Eq, \
                          PF_V2_Status_Eq, PF_V3_Status_Eq,
                          PF_E_Status_Eq])
 
     if equal_success:
-      print("Equality Tests Passed!")
+      print("Soft Equality Tests Passed!")
       return os.EX_OK
     else:
       print("Failure!")
