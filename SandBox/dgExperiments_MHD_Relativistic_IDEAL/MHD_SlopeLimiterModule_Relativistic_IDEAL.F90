@@ -64,11 +64,11 @@ MODULE MHD_SlopeLimiterModule_Relativistic_IDEAL
     ApplyBoundaryConditions_MHD
   USE MHD_CharacteristicDecompositionModule_Relativistic_IDEAL, ONLY: &
     ComputeCharacteristicDecomposition_MHD_Relativistic_IDEAL
-  USE Euler_DiscontinuityDetectionModule, ONLY: &
-    InitializeTroubledCellIndicator_Euler, &
-    FinalizeTroubledCellIndicator_Euler, &
+  USE MHD_DiscontinuityDetectionModule, ONLY: &
+    InitializeTroubledCellIndicator_MHD, &
+    FinalizeTroubledCellIndicator_MHD, &
     LimiterThreshold, &
-    DetectTroubledCells_Euler
+    DetectTroubledCells_MHD
 
   IMPLICIT NONE
   PRIVATE
@@ -156,11 +156,11 @@ CONTAINS
     IF( PRESENT( SlopeTolerance_Option ) ) &
       SlopeTolerance = SlopeTolerance_Option
 
-    UseConservativeCorrection = .TRUE.
+    UseConservativeCorrection = .FALSE.
     IF( PRESENT( UseConservativeCorrection_Option ) ) &
       UseConservativeCorrection = UseConservativeCorrection_Option
 
-    UseTroubledCellIndicator = .TRUE.
+    UseTroubledCellIndicator = .FALSE.
     IF( PRESENT( UseTroubledCellIndicator_Option ) ) &
       UseTroubledCellIndicator = UseTroubledCellIndicator_Option
 
@@ -417,7 +417,7 @@ CONTAINS
       CALL ApplyBoundaryConditions_MHD &
              ( t, iX_B0, iX_E0, iX_B1, iX_E1, U )
 
-    CALL DetectTroubledCells_Euler &
+    CALL DetectTroubledCells_MHD &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )
 
     ExcludeInnerGhostCell = .FALSE.
