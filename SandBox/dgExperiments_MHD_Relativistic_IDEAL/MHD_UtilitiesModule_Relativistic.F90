@@ -597,7 +597,7 @@ CONTAINS
    !PRINT*, 'b0u: ', B0u
    !PRINT*, 'b0d: ', B0d
 
-   bSq = b0d * b0u &
+    bSq = b0d * b0u &
           + b0u * ( GF_Gm11 * GF_Beta1 * PM_B1 &
                     + GF_Gm22 * GF_Beta2 * PM_B2 &
                     + GF_Gm33 * GF_Beta3 * PM_B3 ) &
