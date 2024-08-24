@@ -546,9 +546,9 @@ CONTAINS
     CB2 = - W * Lapse * b0u * ( V2 - Shift2 / Lapse ) + W * B2
     CB3 = - W * Lapse * b0u * ( V3 - Shift3 / Lapse ) + W * B3
 
-    EF1 = Gm22 * V2 * Gm33 * CB3 - Gm33 * V3 * Gm22 * CB2
-    EF2 = Gm33 * V3 * Gm11 * CB1 - Gm11 * V1 * Gm33 * CB3
-    EF3 = Gm11 * V1 * Gm22 * CB2 - Gm22 * V2 * Gm11 * CB1
+    EF1 = - ( Gm22 * V2 * Gm33 * CB3 - Gm33 * V3 * Gm22 * CB2 )
+    EF2 = - ( Gm33 * V3 * Gm11 * CB1 - Gm11 * V1 * Gm33 * CB3 )
+    EF3 = - ( Gm11 * V1 * Gm22 * CB2 - Gm22 * V2 * Gm11 * CB1 )
 
   END SUBROUTINE ComputeElectricFieldFromPrimitive_IDEAL_Scalar
 
