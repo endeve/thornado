@@ -2596,7 +2596,7 @@ CONTAINS
                 * U(iNX,iX1,iX2,iX3,iCM_B2) &
               + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
                 * P(iPM_V3) &
-                * U(iNX,iX1,iX2,iX3,iCM_B3) )
+                * U(iNX,iX1,iX2,iX3,iCM_B3) )**2
 
       Pressure = Pressure + bSq / 2.0_DP
 
