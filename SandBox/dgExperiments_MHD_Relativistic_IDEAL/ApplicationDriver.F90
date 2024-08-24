@@ -3,6 +3,7 @@ PROGRAM ApplicationDriver
   USE KindModule, ONLY: &
     DP, &
     Zero, &
+    Half, &
     One, &
     Two, &
     Three, &
@@ -122,7 +123,7 @@ PROGRAM ApplicationDriver
 
   ProgramName = 'Advection1D'
   AdvectionProfile = 'HydroSineWaveX1'
-  RiemannProblemName = 'IsolatedContact'
+  RiemannProblemName = 'HydroIsolatedContact'
 
   swX               = [ 0, 0, 0 ]
   RestartFileNumber = -1
@@ -142,7 +143,7 @@ PROGRAM ApplicationDriver
 
           AdvectionProfile = 'HydroSineWaveX1'
 
-          Gamma = 5.0_DP / 3.0_DP
+          Gamma = 4.0_DP / 3.0_DP
           t_end = 10.0_DP
           bcX = [ 1, 0, 0 ]
 
@@ -487,8 +488,8 @@ PROGRAM ApplicationDriver
 
         CASE( 'HydroIsolatedContact' )
 
-          Gamma = 5.0_DP / 3.0_DP
-          t_end = One
+          Gamma = 4.0_DP / 3.0_DP
+          t_end = 2.0e1_DP
 
           nX  = [ 40, 1, 1 ]
 
@@ -649,6 +650,26 @@ PROGRAM ApplicationDriver
       xL  = [ 1.45d6 * Centimeter, -0.5d5 * Centimeter, Zero ]
       xR  = [ 1.65d6 * Centimeter,  0.5d5 * Centimeter, TwoPi]
 
+    CASE( 'MagneticKH' )
+
+      ActivateUnits = .FALSE.
+
+      EvolveOnlyMagnetic = .FALSE.
+
+      UseDivergenceCleaning = .FALSE.
+      DampingParameter = Zero
+      UsePowellSource = .FALSE.
+
+      Gamma = Four / Three
+      t_end = Three
+      bcX = [ 1, 1, 0 ]
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX  = [ 512, 1024, 1 ]
+      swX = [ 1, 1, 0 ]
+      xL  = [ - Half, - One, Zero ]
+      xR  = [   Half,   One, One  ]
 
     CASE DEFAULT
 
@@ -664,6 +685,7 @@ PROGRAM ApplicationDriver
       WRITE(*,'(A)')     '  MMBlastWave2D'
       WRITE(*,'(A)')     '  OrszagTang2D'
       WRITE(*,'(A)')     '  ShearingDisk'
+      WRITE(*,'(A)')     '  MagneticKH'
       WRITE(*,'(A)')     'Stopping...'
       STOP
 

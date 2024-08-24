@@ -204,7 +204,11 @@ CONTAINS
 
       CASE( 'ShearingDisk' )
 
-       CALL InitializeFields_ShearingDisk( EvolveOnlyMagnetic )
+        CALL InitializeFields_ShearingDisk( EvolveOnlyMagnetic )
+
+      CASE( 'MagneticKH' )
+
+        CALL InitializeFields_MagneticKH( EvolveOnlyMagnetic )
 
       CASE DEFAULT
 
@@ -1974,6 +1978,106 @@ CONTAINS
     DEALLOCATE( X1Arr, PsiArr, AlphaArr, DensityArr, V3Arr, PressureArr )
 
   END SUBROUTINE InitializeFields_ShearingDisk
+
+
+  SUBROUTINE InitializeFields_MagneticKH( EvolveOnlyMagnetic )
+
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
+
+    INTEGER iX1, iX2, iX3
+    INTEGER iNodeX, iNodeX1, iNodeX2
+    REAL(DP) :: X1, X2
+    REAL(DP) :: V1, V2, V3, VSq, W
+    REAL(DP) :: CB1, CB2, CB3, VdotB
+
+    REAL(DP) :: A0, VSh, a, sigma
+    REAL(DP) :: rhoL, rhoH
+
+    A0 = 1.0d-1
+    VSh = Half
+    a = 1.0d-2
+    sigma = 0.1
+
+    rhoL = 1.0d-2
+    rhoH = One
+
+    ! --- 2D magnetic Kelvin-Helmholtz setup from Mattia and Mignone (2022) ---
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+        V1 = DSIGN( One, X2 ) * VSh &
+             * TANH( ( Two * X2 - DSIGN( One, X2 ) ) / ( Two * a ) )
+        V2 = DSIGN( One, X2 ) * A0 * VSh &
+             * SIN( Two * Pi * X1 ) &
+             * EXP( - ( ( Two * X2 - DSIGN( One, X2 ) ) / ( Two * sigma ) )**2 )
+        V3 = Zero
+
+        CB1 = 1.0d-3
+        CB2 = Zero
+        CB3 = Zero
+
+        uPM(iNodeX,iX1,iX2,iX3,iPM_D   ) = Half * ( rhoL + rhoH ) &
+                                           + Half * ( rhoH - rhoL ) * ( V1 / VSh )
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V1  ) = V1
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V2  ) = V2
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V3  ) = V3
+        uPM(iNodeX,iX1,iX2,iX3,iPM_E   ) = One / ( Gamma_IDEAL - One )
+        uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = Zero
+
+        VSq = V1**2 + V2**2 + V3**2
+
+        VdotB = V1 * CB1 &
+                + V2 * CB2 &
+                + V3 * CB3
+
+        W = One / SQRT( One - VSq )
+
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B1 ) = W * VdotB * V1 + CB1 / W
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B2 ) = W * VdotB * V2 + CB2 / W
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B3 ) = W * VdotB * V3 + CB3 / W
+
+      END DO
+
+      CALL ComputePressureFromPrimitive_IDEAL &
+             ( uPM(:,iX1,iX2,iX3,iPM_D ), uPM(:,iX1,iX2,iX3,iPM_E ), &
+               uPM(:,iX1,iX2,iX3,iPM_Ne), uAM(:,iX1,iX2,iX3,iAM_P) )
+
+      CALL ComputeConserved_MHD_Relativistic &
+             ( uPM(:,iX1,iX2,iX3,iPM_D ), uPM(:,iX1,iX2,iX3,iPM_V1),  &
+               uPM(:,iX1,iX2,iX3,iPM_V2), uPM(:,iX1,iX2,iX3,iPM_V3),  &
+               uPM(:,iX1,iX2,iX3,iPM_E ), uPM(:,iX1,iX2,iX3,iPM_Ne),  &
+               uPM(:,iX1,iX2,iX3,iPM_B1), uPM(:,iX1,iX2,iX3,iPM_B2),  &
+               uPM(:,iX1,iX2,iX3,iPM_B3), uPM(:,iX1,iX2,iX3,iPM_Chi), &
+               uCM(:,iX1,iX2,iX3,iCM_D ), uCM(:,iX1,iX2,iX3,iCM_S1),  &
+               uCM(:,iX1,iX2,iX3,iCM_S2), uCM(:,iX1,iX2,iX3,iCM_S3),  &
+               uCM(:,iX1,iX2,iX3,iCM_E ), uCM(:,iX1,iX2,iX3,iCM_Ne),  &
+               uCM(:,iX1,iX2,iX3,iCM_B1), uCM(:,iX1,iX2,iX3,iCM_B2),  &
+               uCM(:,iX1,iX2,iX3,iCM_B3), uCM(:,iX1,iX2,iX3,iCM_Chi), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uGF(:,iX1,iX2,iX3,iGF_Alpha   ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_1  ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_2  ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_3  ), &
+               uAM(:,iX1,iX2,iX3,iAM_P), &
+               EvolveOnlyMagnetic )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_MagneticKH
 
 
   SUBROUTINE ReadDataset1DHDF( Dataset, DatasetName, FILE_ID )
