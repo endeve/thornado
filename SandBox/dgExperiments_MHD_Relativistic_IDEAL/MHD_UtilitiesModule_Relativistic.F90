@@ -2621,10 +2621,12 @@ CONTAINS
               - Gm22 * V2 * Shift2 &
               - Gm33 * V3 * Shift3 )
 
-    b0d =  - ( Lapse / W ) &
-             * ( Gm11 * V1 * B1 &
-                 + Gm22 * V2 * B2 &
-                 + Gm33 * V3 * B3 )
+    b0d = b0u * ( - Lapse**2 + Gm11 * Shift1**2 &
+                                + Gm22 * Shift2**2 &
+                                + Gm33 * Shift3**2 ) &
+          + ( Gm11 * Shift1 * B1 &
+              + Gm22 * Shift2 * B2 &
+              + Gm33 * Shift3 * B3 )
 
     bSq = b0d * b0u &
           + b0u * ( Gm11 * Shift1 * B1 &
@@ -2776,6 +2778,13 @@ CONTAINS
                  + Gm22 * V2 * B2 &
                  + Gm33 * V3 * B3 )
 
+    b0d = b0u * ( - Lapse**2 + Gm11 * Shift1**2 &
+                                + Gm22 * Shift2**2 &
+                                + Gm33 * Shift3**2 ) &
+          + ( Gm11 * Shift1 * B1 &
+              + Gm22 * Shift2 * B2 &
+              + Gm33 * Shift3 * B3 )
+
     bSq = b0d * b0u &
           + b0u * ( Gm11 * Shift1 * B1 &
                     + Gm22 * Shift2 * B2 &
@@ -2921,10 +2930,12 @@ CONTAINS
               - Gm22 * V2 * Shift2 &
               - Gm33 * V3 * Shift3 )
 
-    b0d =  - ( Lapse / W ) &
-             * ( Gm11 * V1 * B1 &
-                 + Gm22 * V2 * B2 &
-                 + Gm33 * V3 * B3 )
+    b0d = b0u * ( - Lapse**2 + Gm11 * Shift1**2 &
+                                + Gm22 * Shift2**2 &
+                                + Gm33 * Shift3**2 ) &
+          + ( Gm11 * Shift1 * B1 &
+              + Gm22 * Shift2 * B2 &
+              + Gm33 * Shift3 * B3 )
 
     bSq = b0d * b0u &
           + b0u * ( Gm11 * Shift1 * B1 &
