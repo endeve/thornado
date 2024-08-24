@@ -208,6 +208,8 @@ MHD_UtilitiesModule_Relativistic.o: \
   EquationOfStateModule.o \
   EquationOfStateModule_TABLE.o \
   UnitsModule.o \
+  Euler_UtilitiesModule_Relativistic.o \
+  Euler_UtilitiesModule.o \
   MHD_UtilitiesModule_Relativistic.F90
 
 MHD_ErrorModule.o: \
