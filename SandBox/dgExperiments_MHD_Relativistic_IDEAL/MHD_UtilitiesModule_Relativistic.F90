@@ -3084,7 +3084,7 @@ CONTAINS
 
     ! See lines 178 and 146 of RePrimAnd's con2prim_imhd.cc file (think this is correct).
 
-    q_bar = q - Half *  - Half * mu**2 * x**2 * ( bSq * r**2 - rb**2 )
+    q_bar = q - Half * bSq - Half * mu**2 * x**2 * ( bSq * r**2 - rb**2 )
 
     !PRINT*, 'q_bar: ', q_bar
 
