@@ -117,6 +117,28 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Aug 26 2024
+1. The name of ocloc of neo/agama-devel-sp4/984-24.31.30508.7-979 is still ocloc-24.31
+2. The slowness of sineWaveStreaming case due to DGEMM still persists
+3. It is noted that compiler suggests to set PrintVerboseGenericControlFlowLog and IGC_StackOverflowDetection=1, but did not observed any differences by setting this enviroment variables. Here is some text emitted from the compiler:
+```
+in function for__update_indices (Enable PrintVerboseGenericControlFlowLog flag to acquire detailed log. Requires debuginfo!)
+```
+and
+```
+To make sure your program runs correctly you can set environmental variable IGC_StackOverflowDetection=1. This flag will print "Stack overflow detected!" if insufficient memory value has led to stack overflow. It should be used for debugging only as it affects performance.Compiling with IGC_StackOverflowDetection may change the target SIMD width of the compiled program - which leads to different amounts of total memory being available "per thread". To prevent this, we can force our targeted SIMD width like this: IGC_ForceOCLSIMDWidth=32. To figure out which SIMD width is used automatically when IGC_StackOverflowDetection isn't used we can investigate shader dumps - files generated with .asm extension (but without "Intel_Symbol_Table_Void_Program" suffix) reveal which SIMD target was generated - for example, "OCL_asm197f4f38f02d7ea6_simd32_entry_0001.asm" reveals that the compilation targeted SIMD32. More about shader dumps can be read here: https://github.com/intel/intel-graphics-compiler/blob/master/documentation/shader_dumps_instruction.md
+```
+4. Run FlashX/Thornado medium case mediumCase16x32x24 on Borealis using 32 nodes, but got 
+```
+ No capable device found
+ No capable device found
+omptarget error: Run with
+omptarget error: LIBOMPTARGET_DEBUG=1 to display basic debug information.
+omptarget error: LIBOMPTARGET_DEBUG=2 to display calls to the compute runtime.
+omptarget error: LIBOMPTARGET_INFO=4 to dump host-target pointer mappings.
+omptarget error: No images found compatible with the installed hardware. Found 0 image(s): ()
+ProgramHeaderModule.F90:262:262: omptarget fatal error 1: failure of target construct while offloading is mandatory
+```
 ## Aug 21-23 2024
 1. The name of ocloc of neo/agama-devel-sp4/978-24.31.30508.6-968 is still ocloc-24.31
 2. The performance regression for StreamingSineWave case still persists. 
