@@ -20,17 +20,18 @@ MODULE InputOutputUtilitiesModule
 CONTAINS
 
 
-  FUNCTION NodeCoordinates( Mesh, nX, nN )
+  FUNCTION NodeCoordinates( Mesh, nX, nN, iB, iE )
 
     REAL(DP) :: NodeCoordinates(nX*nN)
     TYPE(MeshType), INTENT(in) :: Mesh
     INTEGER,        INTENT(in) :: nX
     INTEGER,        INTENT(in) :: nN
+    INTEGER,        INTENT(in) :: iB, iE
 
     INTEGER :: i, j, iNode
 
     iNode = 0
-    DO j = 1, nX
+    DO j = iB, iE
       DO i = 1, nN
         iNode = iNode + 1
         NodeCoordinates(iNode) &
