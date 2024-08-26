@@ -282,7 +282,11 @@ CONTAINS
 
         CALL ComputeIncrement_Magnetofluid &
                ( t, iX_B0, iX_E0, iX_B1, iX_E1, &
-                 G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS) )
+                 G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS), &
+                 EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic, &
+                 UseDivergenceCleaning_Option = UseDivergenceCleaning, &
+                 DampingParameter_Option = DampingParameter, &
+                 UsePowellSource_Option = UsePowellSource )
 
         dM_OffGrid_MHD &
           = dM_OffGrid_MHD &
