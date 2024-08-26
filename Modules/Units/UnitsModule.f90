@@ -82,7 +82,9 @@ MODULE UnitsModule
     DisplayLabel_Pressure          = 'erg/cm^3', &
     DisplayLabel_Temperature       = 'K', &
     DisplayLabel_MagneticField_L   = 'Gauss', &
-    DisplayLabel_MagneticField_A   = 'Gauss/cm'
+    DisplayLabel_MagneticField_A   = 'Gauss/cm', &
+    DisplayLabel_ElectricField_L   = 'Gauss', &
+    DisplayLabel_ElectricField_A   = 'Gauss/cm'
 
   REAL(DP), PRIVATE, PARAMETER :: &
     DisplayUnit_Length_L          = Kilometer, &
@@ -103,7 +105,9 @@ MODULE UnitsModule
     DisplayUnit_Pressure          = Erg / Centimeter**3, &
     DisplayUnit_Temperature       = Kelvin, &
     DisplayUnit_MagneticField_L   = Gauss, &
-    DisplayUnit_MagneticField_A   = Gauss / Centimeter
+    DisplayUnit_MagneticField_A   = Gauss / Centimeter, &
+    DisplayUnit_ElectricField_L   = Gauss, &
+    DisplayUnit_ElectricField_A   = Gauss / Centimeter
 
   TYPE, PRIVATE :: UnitsDisplayType
     LOGICAL  :: &
@@ -132,7 +136,10 @@ MODULE UnitsModule
       TemperatureLabel       = DisplayLabel_Null, &
       MagneticFieldX1Label   = DisplayLabel_Null, &
       MagneticFieldX2Label   = DisplayLabel_Null, &
-      MagneticFieldX3Label   = DisplayLabel_Null
+      MagneticFieldX3Label   = DisplayLabel_Null, &
+      ElectricFieldX1Label   = DisplayLabel_Null, &
+      ElectricFieldX2Label   = DisplayLabel_Null, &
+      ElectricFieldX3Label   = DisplayLabel_Null
     REAL(DP) :: &
       LengthX1Unit          = 1.0_DP, &
       LengthX2Unit          = 1.0_DP, &
@@ -157,7 +164,10 @@ MODULE UnitsModule
       TemperatureUnit       = 1.0_DP, &
       MagneticFieldX1Unit   = 1.0_DP, &
       MagneticFieldX2Unit   = 1.0_DP, &
-      MagneticFieldX3Unit   = 1.0_DP
+      MagneticFieldX3Unit   = 1.0_DP, &
+      ElectricFieldX1Unit   = 1.0_DP, &
+      ElectricFieldX2Unit   = 1.0_DP, &
+      ElectricFieldX3Unit   = 1.0_DP
   END type UnitsDisplayType
 
   TYPE(UnitsDisplayType), PUBLIC :: UnitsDisplay
@@ -211,6 +221,10 @@ CONTAINS
         UnitsDisplay % MagneticFieldX2Label = DisplayLabel_MagneticField_L
         UnitsDisplay % MagneticFieldX3Label = DisplayLabel_MagneticField_L
 
+        UnitsDisplay % ElectricFieldX1Label = DisplayLabel_ElectricField_L
+        UnitsDisplay % ElectricFieldX2Label = DisplayLabel_ElectricField_L
+        UnitsDisplay % ElectricFieldX3Label = DisplayLabel_ElectricField_L
+
       CASE( 'CYLINDRICAL' )
 
         UnitsDisplay % LengthX1Label = DisplayLabel_Length_L
@@ -233,6 +247,10 @@ CONTAINS
         UnitsDisplay % MagneticFieldX2Label = DisplayLabel_MagneticField_L
         UnitsDisplay % MagneticFieldX3Label = DisplayLabel_MagneticField_A
 
+        UnitsDisplay % ElectricFieldX1Label = DisplayLabel_ElectricField_L
+        UnitsDisplay % ElectricFieldX2Label = DisplayLabel_ElectricField_L
+        UnitsDisplay % ElectricFieldX3Label = DisplayLabel_ElectricField_A
+
       CASE( 'SPHERICAL' )
 
         UnitsDisplay % LengthX1Label = DisplayLabel_Length_L
@@ -254,6 +272,10 @@ CONTAINS
         UnitsDisplay % MagneticFieldX1Label = DisplayLabel_MagneticField_L
         UnitsDisplay % MagneticFieldX2Label = DisplayLabel_MagneticField_A
         UnitsDisplay % MagneticFieldX3Label = DisplayLabel_MagneticField_A
+
+        UnitsDisplay % ElectricFieldX1Label = DisplayLabel_ElectricField_L
+        UnitsDisplay % ElectricFieldX2Label = DisplayLabel_ElectricField_A
+        UnitsDisplay % ElectricFieldX3Label = DisplayLabel_ElectricField_A
 
       CASE DEFAULT
 
@@ -297,6 +319,10 @@ CONTAINS
         UnitsDisplay % MagneticFieldX2Unit = DisplayUnit_MagneticField_L
         UnitsDisplay % MagneticFieldX3Unit = DisplayUnit_MagneticField_L
 
+        UnitsDisplay % ElectricFieldX1Unit = DisplayUnit_ElectricField_L
+        UnitsDisplay % ElectricFieldX2Unit = DisplayUnit_ElectricField_L
+        UnitsDisplay % ElectricFieldX3Unit = DisplayUnit_ElectricField_L
+
       CASE( 'CYLINDRICAL' )
 
         UnitsDisplay % LengthX1Unit = DisplayUnit_Length_L
@@ -319,6 +345,10 @@ CONTAINS
         UnitsDisplay % MagneticFieldX2Unit = DisplayUnit_MagneticField_L
         UnitsDisplay % MagneticFieldX3Unit = DisplayUnit_MagneticField_A
 
+        UnitsDisplay % ElectricFieldX1Unit = DisplayUnit_ElectricField_L
+        UnitsDisplay % ElectricFieldX2Unit = DisplayUnit_ElectricField_L
+        UnitsDisplay % ElectricFieldX3Unit = DisplayUnit_ElectricField_A
+
       CASE( 'SPHERICAL' )
 
         UnitsDisplay % LengthX1Unit = DisplayUnit_Length_L
@@ -340,6 +370,10 @@ CONTAINS
         UnitsDisplay % MagneticFieldX1Unit = DisplayUnit_MagneticField_L
         UnitsDisplay % MagneticFieldX2Unit = DisplayUnit_MagneticField_A
         UnitsDisplay % MagneticFieldX3Unit = DisplayUnit_MagneticField_A
+
+        UnitsDisplay % ElectricFieldX1Unit = DisplayUnit_ElectricField_L
+        UnitsDisplay % ElectricFieldX2Unit = DisplayUnit_ElectricField_A
+        UnitsDisplay % ElectricFieldX3Unit = DisplayUnit_ElectricField_A
 
       CASE DEFAULT
 
@@ -437,6 +471,15 @@ CONTAINS
     WRITE(*,'(A7,A29,A)') &
       '', 'Magnetic Field (X3) Units: ', &
       TRIM( UnitsDisplay % MagneticFieldX3Label )
+    WRITE(*,'(A7,A29,A)') &
+      '', 'Electric Field (X1) Units: ', &
+      TRIM( UnitsDisplay % ElectricFieldX1Label )
+    WRITE(*,'(A7,A29,A)') &
+      '', 'Electric Field (X2) Units: ', &
+      TRIM( UnitsDisplay % ElectricFieldX2Label )
+    WRITE(*,'(A7,A29,A)') &
+      '', 'Electric Field (X3) Units: ', &
+      TRIM( UnitsDisplay % ElectricFieldX3Label )
    WRITE(*,*)
 
   END SUBROUTINE DescribeUnitsDisplay

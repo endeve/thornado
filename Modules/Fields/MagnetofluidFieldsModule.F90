@@ -524,7 +524,7 @@ CONTAINS
 
           unitsPM(iPM_B1)  = Gauss
           unitsPM(iPM_B2)  = Gauss
-          unitsPM(iPM_B3)  = Gauss * Centimeter
+          unitsPM(iPM_B3)  = Gauss / Centimeter
 
         CASE( 'SPHERICAL' )
 
@@ -533,8 +533,8 @@ CONTAINS
           unitsPM(iPM_V3) = One / Second
 
           unitsPM(iPM_B1)  = Gauss
-          unitsPM(iPM_B2)  = Gauss * Centimeter
-          unitsPM(iPM_B3)  = Gauss * Centimeter
+          unitsPM(iPM_B2)  = Gauss / Centimeter
+          unitsPM(iPM_B3)  = Gauss / Centimeter
 
         CASE DEFAULT
 
@@ -569,6 +569,34 @@ CONTAINS
       unitsAM(iAM_Gm) = One
       unitsAM(iAM_Cs) = Kilometer / Second
       unitsAM(iAM_Ca) = Kilometer / Second
+
+      SELECT CASE( TRIM( CoordinateSystem ) )
+
+        CASE( 'CARTESIAN' )
+
+          unitsAM(iAM_EF1) = Gauss
+          unitsAM(iAM_EF2) = Gauss
+          unitsAM(iAM_EF3) = Gauss
+
+        CASE( 'CYLINDRICAL' )
+
+          unitsAM(iAM_EF1) = Gauss
+          unitsAM(iAM_EF2) = Gauss
+          unitsAM(iAM_EF3) = Gauss / Centimeter
+
+        CASE( 'SPHERICAL' )
+
+          unitsAM(iAM_EF1)  = Gauss
+          unitsAM(iAM_EF2)  = Gauss / Centimeter
+          unitsAM(iAM_EF3)  = Gauss / Centimeter
+
+        CASE DEFAULT
+
+          WRITE(*,*) 'Invalid choice of coordinate system: ', CoordinateSystem
+          WRITE(*,*) 'Stopping...'
+          STOP
+
+      END SELECT
 
       ! --- Diagnostic ---
 
