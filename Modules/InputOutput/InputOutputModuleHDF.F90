@@ -270,19 +270,11 @@ CONTAINS
       iXB = iX_B1
       iXE = iX_E1
 
-      PRINT*, 'nXT: ', nXT
-      PRINT*, 'iXB: ', iXB
-      PRINT*, 'iXE: ', iXE
-
     ELSE
 
       nXT = nX
       iXB = iX_B0
       iXE = iX_E0
-
-      PRINT*, 'nXT: ', nXT
-      PRINT*, 'iXB: ', iXB
-      PRINT*, 'iXE: ', iXE
 
     END IF
 
@@ -1454,19 +1446,11 @@ CONTAINS
       iXB = iX_B1
       iXE = iX_E1
 
-      PRINT*, 'nXT: ', nXT
-      PRINT*, 'iXB: ', iXB
-      PRINT*, 'iXE: ', iXE
-
     ELSE
 
       nXT = nX
       iXB = iX_B0
       iXE = iX_E0
-
-      PRINT*, 'nXT: ', nXT
-      PRINT*, 'iXB: ', iXB
-      PRINT*, 'iXE: ', iXE
 
     END IF
 
