@@ -1931,7 +1931,7 @@ CONTAINS
             / ( Gamma_IDEAL - One )
 
         CB1 = Zero
-        CB2 = Zero
+        CB2 = 2.0 * 1.0d13 * Gauss
         CB3 = Zero
 
         VdotB = uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) * V1 * CB1 &
