@@ -129,6 +129,7 @@ MODULE MHD_UtilitiesModule_Relativistic
   PUBLIC :: Flux_X2_MHD_Relativistic
   PUBLIC :: Flux_X3_MHD_Relativistic
   PUBLIC :: NumericalFlux_HLL_MHD_Relativistic
+  PUBLIC :: x_from_mu
 
   REAL(DP), POINTER, CONTIGUOUS :: &
     Gm_dd_11_K(:), Gm_dd_22_K(:), Gm_dd_33_K(:), SqrtGm_K(:), &
@@ -385,7 +386,7 @@ CONTAINS
 
     ! --- Eq. 26 ---
 
-    x = One / ( One + mu * bSq )
+    x = x_from_mu( mu, bSq )
 
    !PRINT*, 'x: ', x
 
@@ -3068,7 +3069,7 @@ CONTAINS
 
     ! --- Eq. 26 ---
 
-    x = One / ( One + mu * bSq )
+    x = x_from_mu( mu, bSq )
 
    !PRINT*, 'x: ', x
 
@@ -3173,7 +3174,7 @@ CONTAINS
 
     ! --- Eq. 26 ---
 
-    x = One / ( One + mu * bSq )
+    x = x_from_mu( mu, bSq )
 
     !*, 'x: ', x
 
@@ -3203,7 +3204,7 @@ CONTAINS
 
     ! --- Eq. 26 ---
 
-    x = One / ( One + mu * bSq )
+    x = x_from_mu( mu, bSq )
 
     dx = - bSq / ( One + mu * bSq )**2
 
@@ -3405,6 +3406,17 @@ CONTAINS
    !PRINT*, 'mu, dmu: ', mu, dmu
 
   END SUBROUTINE SolveMu_Bisection
+
+
+  FUNCTION x_from_mu( mu, bSq )
+
+    REAL(DP), INTENT(in) :: mu, bSq
+    REAL(DP)             :: x_from_mu
+
+    x_from_mu = One / ( One + mu * bSq )
+
+    RETURN
+  END FUNCTION
 
   ! --- Algorithm 4.1 of Alefeld and Porta (1995) ---
 
