@@ -130,6 +130,7 @@ MODULE MHD_UtilitiesModule_Relativistic
   PUBLIC :: Flux_X3_MHD_Relativistic
   PUBLIC :: NumericalFlux_HLL_MHD_Relativistic
   PUBLIC :: x_from_mu
+  PUBLIC :: r_barSq_from_mu
 
   REAL(DP), POINTER, CONTIGUOUS :: &
     Gm_dd_11_K(:), Gm_dd_22_K(:), Gm_dd_33_K(:), SqrtGm_K(:), &
@@ -330,7 +331,7 @@ CONTAINS
 
     bSq = ( bu1 * bd1 + bu2 * bd2 + bu3 * bd3 )
 
-   !PRINT*, ': ', bSq
+   !PRINT*, 'bSq: ', bSq
 
     ! --- Contraction of r with b ---
 
@@ -394,7 +395,7 @@ CONTAINS
     ! --- Note: Eq. 39 rewritten using Eqs. 25 and 30 ---
     ! --- to avoid B = 0 degeneracy.                  ---
 
-    r_barSq = r**2 * x**2 + mu * x * ( One + x ) * rb**2
+    r_barSq = r_barSq_from_mu( mu, r, rb, bSq )
 
     q_bar = q - Half * bSq - Half * mu**2 * x**2 * ( bSq * r**2 - rb**2 )
 
@@ -402,9 +403,9 @@ CONTAINS
 
     ! --- Eq. 68 ---
 
-    PM_V1 = mu * x * ( ru1 + mu * rb * bu1 )
-    PM_V2 = mu * x * ( ru2 + mu * rb * bu2 )
-    PM_V3 = mu * x * ( ru3 + mu * rb * bu3 )
+    PM_V1 = mu * x * ( ru1 + ( mu * rb ) * bu1 )
+    PM_V2 = mu * x * ( ru2 + ( mu * rb ) * bu2 )
+    PM_V3 = mu * x * ( ru3 + ( mu * rb ) * bu3 )
 
    !PRINT*, 'PM_V1: ', PM_V1
    !PRINT*, 'PM_V2: ', PM_V2
@@ -3059,7 +3060,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: f
 
     REAL(DP) :: x, r_barSq, q_bar
-    REAL(DP) :: v, W, rho, rho_e, eps
+    REAL(DP) :: v, vSq, W, rho, rho_e, eps
     REAL(DP) :: P, a, h
     REAL(DP) :: nu, nua, nub
 
@@ -3077,7 +3078,7 @@ CONTAINS
     ! --- Note: Eq. 39 rewritten using Eqs. 25 and 30 ---
     ! --- to avoid B = 0 degeneracy.                  ---
 
-    r_barSq = r**2 * x**2 + mu * x * ( One + x ) * rb**2
+    r_barSq = r_barSq_from_mu( mu, r, rb, bSq )
 
    !PRINT*, 'r_barSq: ', r_barSq
 
@@ -3093,7 +3094,9 @@ CONTAINS
 
    !PRINT*, 'v0: ', v0
 
-    v = MIN( mu * SQRT( r_barSq ), v0 )
+    vSq = MIN( mu**2 * r_barSq, v0**2 ) ! Avoid negative issues.
+
+    v = SQRT( vSq )
 
    !PRINT*, 'v: ', v
 
@@ -3180,7 +3183,7 @@ CONTAINS
 
     ! --- Eq. 38 ---
 
-    r_barSq = r**2 * x**2 + mu * x * ( One + x ) * rb**2
+    r_barSq = r_barSq_from_mu( mu, r, rb, bSq )
 
     !*, 'r_barSq: ', r_barSq
 
@@ -3210,7 +3213,7 @@ CONTAINS
 
     ! --- Eq. 38 ---
 
-    r_barSq = r**2 * x**2 + mu * x * ( One + x ) * rb**2
+    r_barSq = r_barSq_from_mu( mu, r, rb, bSq )
 
     dr_barSq = Two * r**2 * x * dx + ( x + mu * dx + x**2 + Two * mu * x * dx ) * rb**2
 
@@ -3236,6 +3239,8 @@ CONTAINS
     INTEGER,  PARAMETER :: MAX_ITER = 4 - INT( LOG( Tolmu ) / LOG( Two ) )
 
    !PRINT*, 'Solving for the upper bound with the Newton-Raphson method.'
+
+   !PRINT*, 'h0: ', h0
 
     muO = One / h0
 
@@ -3345,6 +3350,10 @@ CONTAINS
 
     IF( .NOT. fa * fb .LT. 0 ) THEN
       PRINT*, 'Cannot perform bisection in primitive recovery!'
+      PRINT*, 'mua: ', mua
+      PRINT*, 'mub: ', mub
+      PRINT*, 'fa : ', fa
+      PRINT*, 'fb : ', fb
       STOP
     END IF
 
@@ -3417,6 +3426,21 @@ CONTAINS
 
     RETURN
   END FUNCTION
+
+
+  FUNCTION r_barSq_from_mu( mu, r, rb, bSq )
+
+    REAL(DP), INTENT(in) :: mu, r, rb, bSq
+    REAL(DP) :: x
+    REAL(DP) :: r_barSq_from_mu
+
+    x = x_from_mu( mu, bSq )
+
+    r_barSq_from_mu = x * ( r**2 * x + mu * ( One + x ) * rb**2 )
+
+    RETURN
+  END FUNCTION
+
 
   ! --- Algorithm 4.1 of Alefeld and Porta (1995) ---
 
