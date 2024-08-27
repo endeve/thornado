@@ -101,6 +101,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: Timer_Evolution
 
   LOGICAL  :: WriteGF = .TRUE., WriteMF = .TRUE.
+  LOGICAL  :: WriteGhost = .FALSE.
   LOGICAL  :: ActivateUnits = .FALSE.
   LOGICAL  :: UseMHD = .TRUE.
   LOGICAL  :: EvolveOnlyMagnetic = .FALSE.
@@ -822,7 +823,7 @@ PROGRAM ApplicationDriver
            ( t, iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
 
     CALL WriteFieldsHDF &
-           ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF )
+           ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF, WriteGhost_Option = WriteGhost )
 
   ELSE
 
@@ -921,7 +922,7 @@ PROGRAM ApplicationDriver
            ( t, iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
 
       CALL WriteFieldsHDF &
-             ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF )
+             ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF, WriteGhost_Option = WriteGhost )
 
       CALL ComputeTally_MHD_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, Time = t, &
@@ -946,7 +947,7 @@ PROGRAM ApplicationDriver
          ( t, iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
 
   CALL WriteFieldsHDF &
-         ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF )
+         ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF, WriteGhost_Option = WriteGhost )
 
   CALL ComputeTally_MHD_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, Time = t )
