@@ -10,6 +10,8 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
     SqrtTiny
   USE UtilitiesModule, ONLY: &
     IsCornerCell
+  USE UnitsModule, ONLY: &
+    UnitsDisplay
   USE ProgramHeaderModule, ONLY: &
     nNodesX, &
     nDOFX
@@ -130,8 +132,10 @@ CONTAINS
         '', 'Min_1: ', Min_1
       WRITE(*,'(A6,A27,ES11.4E3)') &
         '', 'Min_2: ', Min_2
-      WRITE(*,'(A6,A27,ES11.4E3)') &
-        '', 'IntE_Min: ', IntE_Min_Euler_PL
+      WRITE(*,'(A6,A27,ES11.4E3,1x,A)') &
+        '', 'IntE_Min: ', &
+        IntE_Min_Euler_PL / UnitsDisplay % EnergyDensityUnit, &
+        UnitsDisplay % EnergyDensityLabel
      END IF
 
     nPP(1:nPS) = 0
