@@ -239,10 +239,10 @@ CONTAINS
       CALL hipblasCheck( hipblasDgeam &
              ( hipblas_handle, itransa, itransb, m, n, alpha, da, lda, beta, db, ldb, dc, ldc ) )
 #elif defined(THORNADO_LA_ONEMKL)
-      !!$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( a, b, c )
+      !!$OMP DISPATCH
       !CALL DGEAM &
       !       ( transa, transb, m, n, alpha, a, lda, beta, b, ldb, c, ldc )
-      !!$OMP END TARGET VARIANT DISPATCH
+      !!$OMP END DISPATCH
 #elif defined(THORNADO_LA_MAGMA)
       IF ( transb  == 'N' ) THEN
         CALL magmablas_dlacpy &
@@ -538,10 +538,10 @@ CONTAINS
              ( hipblas_handle, itransa, itransb, m, n, k, alpha, da, lda, stridea_l, &
                db, ldb, strideb_l, beta, dc, ldc, stridec_l, batchcount ) )
 #elif defined(THORNADO_LA_ONEMKL)
-      !$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( a, b, c )
+      !$OMP DISPATCH 
       CALL DGEMM_BATCH_STRIDED &
              ( transa, transb, m, n, k, alpha, a, lda, stridea, b, ldb, strideb, beta, c, ldc, stridec, batchcount )
-      !$OMP END TARGET VARIANT DISPATCH
+      !$OMP END DISPATCH
 #elif defined(THORNADO_LA_MAGMA)
       CALL magmablas_dgemm_batched_strided &
              ( itransa, itransb, m, n, k, alpha, da, lda, stridea, &
@@ -799,10 +799,10 @@ CONTAINS
       CALL hipblasCheck( hipblasDgemv &
              ( hipblas_handle, itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy ) )
 #elif defined(THORNADO_LA_ONEMKL)
-      !$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( a, x, y )
+      !$OMP DISPATCH
       CALL DGEMV &
              ( trans, m, n, alpha, a, lda, x, incx, beta, y, incy )
-      !$OMP END TARGET VARIANT DISPATCH
+      !$OMP END DISPATCH
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgemv &
              ( itrans, m, n, alpha, da, lda, dx, incx, beta, dy, incy, magma_queue )
@@ -882,10 +882,10 @@ CONTAINS
       CALL hipblasCheck( hipblasDdgmm &
              ( hipblas_handle, hipblas_SIDE_LEFT, m, n, da, lda, dx, incx, dc, ldc ) )
 #elif defined(THORNADO_LA_ONEMKL)
-      !!$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( a, x, c )
+      !!$OMP DISPATCH
       !CALL DDGMM &
       !       ( 'L', m, n, a, lda, x, incx, c, ldc )
-      !!$OMP END TARGET VARIANT DISPATCH
+      !!$OMP END DISPATCH
 #elif defined(THORNADO_LA_MAGMA)
       CALL magmablas_dlacpy &
              ( MagmaFull, m, n, da, lda, dc, ldc, magma_queue )
@@ -974,10 +974,10 @@ CONTAINS
            ( cusolver_handle, m, n, da, lda, lwork )
 #elif defined(THORNADO_LA_ROCM)
 #elif defined(THORNADO_LA_ONEMKL)
-    !$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( a, b, work )
+    !$OMP DISPATCH
     CALL DGELS &
            ( trans, m, n, nrhs, a, lda, b, ldb, work, lwork, info )
-    !$OMP END TARGET VARIANT DISPATCH
+    !$OMP END DISPATCH
     !$OMP TARGET UPDATE FROM( work(1) )
     lwork = INT( work(1) )
 #elif defined(THORNADO_LA_MAGMA)
@@ -1107,10 +1107,10 @@ CONTAINS
 
       END IF
 #elif defined(THORNADO_LA_ONEMKL)
-      !$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( a, b, work )
+      !$OMP DISPATCH
       CALL DGELS &
              ( trans, m, n, nrhs, a, lda, b, ldb, work, lwork, info )
-      !$OMP END TARGET VARIANT DISPATCH
+      !$OMP END DISPATCH
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgels_gpu &
              ( itrans, m, n, nrhs, da, lda, db, ldb, hwork, lwork, info )
@@ -1264,9 +1264,9 @@ CONTAINS
       !CALL rocblasCheck( rocblas_dnrm2( rocblas_handle, n, dx, incx, xnorm ) )
       CALL hipblasCheck( hipblasDnrm2( hipblas_handle, n, dx, incx, hxnorm ) )
 #elif defined(THORNADO_LA_ONEMKL)
-      !$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( x )
+      !$OMP DISPATCH
       xnorm = DNRM2( n, x, incx )
-      !$OMP END TARGET VARIANT DISPATCH
+      !$OMP END DISPATCH
 #elif defined(THORNADO_LA_MAGMA)
       xnorm = magma_dnrm2( n, dx, incx, magma_queue )
 #endif
@@ -1367,9 +1367,9 @@ CONTAINS
       !CALL rocblasCheck( rocblas_daxpy( rocblas_handle, n, alpha, dx, incx, dy, incy ) )
       CALL hipblasCheck( hipblasDaxpy( hipblas_handle, n, alpha, dx, incx, dy, incy ) )
 #elif defined(THORNADO_LA_ONEMKL)
-      !$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( x, y )
+      !$OMP DISPATCH
       CALL DAXPY( n, alpha, x, incx, y, incy )
-      !$OMP END TARGET VARIANT DISPATCH
+      !$OMP END DISPATCH
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_daxpy( n, alpha, dx, incx, dy, incy, magma_queue )
 #endif
