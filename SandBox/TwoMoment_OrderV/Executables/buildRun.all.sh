@@ -33,6 +33,8 @@ function set_common(){
    export OMP_NUM_THREADS=1
    ulimit -s unlimited
    export LIBOMPTARGET_LEVEL_ZERO_MEMORY_POOL=device,128,64,16384
+#   export PrintVerboseGenericControlFlowLog=1
+#   export IGC_StackOverflowDetection=1
 
 #   export IGC_ShaderDumpEnable=1
 #   export IGC_ShowFullVectorsInShaderDumps=1
@@ -145,8 +147,10 @@ elif [[ "$1" == "23" ]];then
 fi    
 #module load nightly-compiler/${COMPILER_DATE}
 #MKL_DATE=2024.07.10
-MKL_DATE=2024.08.12
-module load nightly-mkl-cev_nightly/$MKL_DATE
+MKL_DATE=2024.08.19
+MKL_DATE=2024.08.27
+#module load nightly-mkl-cev_nightly/$MKL_DATE
+module load nightly-mkl-cev_rls/$MKL_DATE
 #COMPILER_DATE=2024.06.01
 #LD_LIBRARY_PATH=/exaperf/nightly/compiler/2024.03.06/linux/lib/x86_64-unknown-linux-gnu:$LD_LIBRARY_PATH
 if true; then
@@ -155,7 +159,7 @@ if true; then
    else
       aaa=`ml list|grep nightly-compiler`
       ddd=`echo "${aaa#*nightly-compiler/}"`
-      COMPILER_DATE=`echo  $ddd |cut -d ' ' -f1`lmkl
+      COMPILER_DATE=`echo  $ddd |cut -d ' ' -f1`
    fi
 fi
 ## choose UMDs
@@ -172,7 +176,9 @@ if true; then
 #      UMD="neo/agama-devel-sp4/944-24.26.30049.6-940"
 #      UMD="neo/agama-devel-sp4/945-24.26.30049.6-940"
 #      UMD="neo/agama-devel-sp4/948-24.26.30049.6-948"
-      UMD="neo/agama-devel-sp4/971-24.31.30508.6-968"
+#      UMD="neo/agama-devel-sp4/971-24.31.30508.6-968"
+       UMD="neo/agama-devel-sp4/978-24.31.30508.6-968"      
+       UMD="neo/agama-devel-sp4/985-24.31.30508.7-985"
       if [[ -n $UMD ]]; then
          module switch -f intel_compute_runtime/release/stable-736.25 $UMD
          if [[ $UMD == intel_compute* ]]; then
@@ -271,7 +277,7 @@ fi
 
 set_common
 
-timeFOMLog="timeFOM_${COMPILER_DATE}.txt${umdf}$AADEBUG"
+timeFOMLog="timeFOM-noptr-${COMPILER_DATE}-mkl${MKL_DATE}.txt${umdf}$AADEBUG"
 if [[ -z $ACTION || "$1" == "FOM" ]];then
    rm -rf $timeFOMLog
    echo "                                                        Time(seconds)                             |                      Figure of Merit (FOM)">>$timeFOMLog
@@ -295,7 +301,7 @@ do
          fi
 
          export OP_LEVEL=$op
-         export LOG_FILE=${logFiles[jj]}.${OP_LEVEL}.${COMPILER_DATE}${umdf}${gridNames[ii]}${faction}$AADEBUG
+         export LOG_FILE=${logFiles[jj]}.${OP_LEVEL}.${COMPILER_DATE}-mkl${MKL_DATE}${umdf}${gridNames[ii]}${faction}$AADEBUG
          export LOG_BASE=${logFiles[jj]}.${OP_LEVEL}.${BASE_DATE}${BASE_UMD}${gridNames[ii]}$AADEBUG
          export USER_OPTION=${userOptions[jj]}
 

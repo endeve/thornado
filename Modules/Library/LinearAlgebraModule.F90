@@ -424,10 +424,10 @@ CONTAINS
       CALL hipblasCheck( hipblasDgemm &
              ( hipblas_handle, itransa, itransb, m, n, k, alpha, da, lda, db, ldb, beta, dc, ldc ) )
 #elif defined(THORNADO_LA_ONEMKL)
-      !$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR( a, b, c )
+      !$OMP DISPATCH
       CALL DGEMM &
              ( transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc )
-      !$OMP END TARGET VARIANT DISPATCH
+      !$OMP END DISPATCH
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgemm &
              ( itransa, itransb, m, n, k, alpha, da, lda, db, ldb, beta, dc, ldc, magma_queue )

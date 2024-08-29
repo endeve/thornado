@@ -117,6 +117,43 @@ objcopy -I elf64-x86-64 --dump-section __openmp_offload_spirv_0=reproducer.spv o
 </pre>
 
 # Activities, progress, and results
+## Aug 29 2024
+1. Tried nightly-mkl-cev_rls/2024.08.27, thornado cases run fine with good performance. 
+```
+Performance Comparison between compiler 2024.08.28 and 2023.10.15.002
+
+cat timeFOM-noptr-2024.08.28-mkl2024.08.27.txt-umd985
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2024.08.28-umd985   2023.10.15.002    TimeDiff   Percentage   |   2024.08.28-umd985   2023.10.15.002    FOM-Diff   Percentage
+                     MKL Date :  2024.08.27
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     2.8824e+00          2.9053e+00      -2.2926e-02    -0.79%            7.3666e+06          7.3085e+06        5.8130e+04     0.80%
+sineWave   [16,16,16]   O3    :     1.1989e+01          1.2129e+01      -1.3944e-01    -1.15%            2.8162e+07          2.7838e+07        3.2380e+05     1.16%
+relax      [8,8,8]      O3    :     2.1660e+01          2.2466e+01      -8.0622e-01    -3.59%            3.9357e+07          3.7945e+07        1.4124e+06     3.72%
+relax      [16,16,16]   O3    :     1.5618e+02          1.6439e+02      -8.2066e+00    -4.99%            4.3668e+07          4.1488e+07        2.1800e+06     5.25%
+
+Currently Loaded Modulefiles:
+ 1) mpich/52.2-256/icc-sockets-gpu <aL>   2) oneapi/eng-compiler/2023.12.15.002 <aL>   3) nightly-compiler/2024.08.28 <aL>   4) nightly-mkl-cev_rls/2024.08.27   5) neo/agama-devel-sp4/985-24.31.30508.7-985
+
+ Intel(R) Fortran 25.0-1205
+```
+## Aug 28 2024
+1. Thornado StreamingSineWave case's performance regression and wrong value are probably due to the deprecation of "!$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR". MKLD-17795 and MKLD-17844 seems all related to this OMP directive.
+2. Changing to "!$OMP DISPATCH" makes the compiler happy and the case runs with good performance:
+```
+cat timeFOM-noptr-2024.08.27-mkl2024.08.25.txt-umd985
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2024.08.27-umd985   2023.10.15.002    TimeDiff   Percentage   |   2024.08.27-umd985   2023.10.15.002    FOM-Diff   Percentage
+                     MKL Date :  2024.08.25
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     2.8581e+00          2.9053e+00      -4.7283e-02    -1.63%            7.4294e+06          7.3085e+06        1.2091e+05     1.65%
+sineWave   [16,16,16]   O3    :     1.2040e+01          1.2129e+01      -8.8780e-02    -0.73%            2.8044e+07          2.7838e+07        2.0530e+05     0.74%
+relax      [8,8,8]      O3    :     2.1757e+01          2.2466e+01      -7.0918e-01    -3.16%            3.9182e+07          3.7945e+07        1.2369e+06     3.26%
+relax      [16,16,16]   O3    :     1.5567e+02          1.6439e+02      -8.7154e+00    -5.30%            4.3810e+07          4.1488e+07        2.3227e+06     5.60%
+``` 
+## Aug 27 2024
+1. Thornado StreamingSineWave case produces NaNs with  nightly-mkl-cev_nightly/2024.08.25. Further tests showed that the NaNs is introduced by the new MKL release not others. 
+2. Tried nightly-mkl-cev_nightly/2024.08.25 on the reproducer of https://jira.devtools.intel.com/browse/MKLD-17795 and find out that the matrix-matrix multiplication results are wrong, however, the performance regression is gone. Modified the reproducer to demonstrated the correctness of the matrix-matrix multiplication results and submitted a JIRA to MKLD as https://jira.devtools.intel.com/browse/MKLD-17844
 ## Aug 26 2024
 1. The name of ocloc of neo/agama-devel-sp4/984-24.31.30508.7-979 is still ocloc-24.31
 2. The slowness of sineWaveStreaming case due to DGEMM still persists
