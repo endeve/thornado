@@ -137,6 +137,44 @@ Currently Loaded Modulefiles:
 
  Intel(R) Fortran 25.0-1205
 ```
+2. Thornado-nre branch does not compile (ICE) or run (NaNs in relaxation cases with currently installed eng-compiler or release: oneapi/eng-compiler/2023.12.15.002, oneapi/eng-compiler/2024.04.15.002, oneapi/release/2023.12.15.001(default), oneapi/release/2024.1
+3. Original ms-daily . so the 2 changes are for speed up only. 
+```
+AppName     Grid      OpLevel :  2024.08.28-umd985   2023.10.15.002    TimeDiff   Percentage   |   2024.08.28-umd985   2023.10.15.002    FOM-Diff   Percentage
+                     MKL Date :  2024.08.27
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     2.8940e+00          2.9053e+00      -1.1328e-02    -0.39%            7.3371e+06          7.3085e+06        2.8610e+04     0.39%
+sineWave   [16,16,16]   O3    :     1.2483e+01          1.2129e+01       3.5452e-01     2.92%            2.7048e+07          2.7838e+07       -7.9060e+05    -2.84%
+relax      [8,8,8]      O3    :     2.1535e+01          2.2466e+01      -9.3194e-01    -4.15%            3.9587e+07          3.7945e+07        1.6422e+06     4.33%
+relax      [16,16,16]   O3    :     1.5731e+02          1.6439e+02      -7.0804e+00    -4.31%            4.3355e+07          4.1488e+07        1.8673e+06     4.50%
+```
+ without num_teams(nX_G) in Modules/TwoMoment/TwoMoment_NeutrinoMatterSolverModule.F90, here is the timeFOM:
+```
+cat timeFOM2024.08.28-mkl2024.08.27.txt-umd985
+                                                        Time(seconds)                             |                      Figure of Merit (FOM)
+AppName     Grid      OpLevel :  2024.08.28-umd985   2023.10.15.002    TimeDiff   Percentage   |   2024.08.28-umd985   2023.10.15.002    FOM-Diff   Percentage
+                     MKL Date :  2024.08.27
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     2.9095e+00          2.9053e+00       4.1860e-03     0.14%            7.2980e+06          7.3085e+06       -1.0510e+04    -0.14%
+sineWave   [16,16,16]   O3    :     1.1912e+01          1.2129e+01      -2.1665e-01    -1.79%            2.8344e+07          2.7838e+07        5.0630e+05     1.82%
+relax      [8,8,8]      O3    :     2.4024e+01          2.2466e+01       1.5576e+00     6.93%            3.5485e+07          3.7945e+07       -2.4602e+06    -6.48%
+relax      [16,16,16]   O3    :     1.7607e+02          1.6439e+02       1.1684e+01     7.11%            3.8734e+07          4.1488e+07       -2.7531e+06    -6.64%
+
+Currently Loaded Modulefiles:
+ 1) mpich/52.2-256/icc-sockets-gpu <aL>   2) oneapi/eng-compiler/2023.12.15.002 <aL>   3) nightly-compiler/2024.08.28 <aL>   4) nightly-mkl-cev_rls/2024.08.27   5) neo/agama-devel-sp4/985-24.31.30508.7-985
+
+ Intel(R) Fortran 25.0-1205
+```
+with !$OMP TARGET TEAMS DISTRIBUTE PARALLEL,  and !$OMP PARALLEL DO SIMD & !$OMP REDUCTION( +: AA11, AB1 ), here are the times:
+```
+AppName     Grid      OpLevel :  2024.08.28-umd985   2023.10.15.002    TimeDiff   Percentage   |   2024.08.28-umd985   2023.10.15.002    FOM-Diff   Percentage
+                     MKL Date :  2024.08.27
+-----------------------------    --------------------------------------------------------------       --------------------------------------------------------------
+sineWave   [8,8,8]      O3    :     2.9276e+00          2.9053e+00       2.2219e-02     0.76%            7.2530e+06          7.3085e+06       -5.5470e+04    -0.76%
+sineWave   [16,16,16]   O3    :     1.2233e+01          1.2129e+01       1.0454e-01     0.86%            2.7600e+07          2.7838e+07       -2.3790e+05    -0.85%
+relax      [8,8,8]      O3    :     2.3948e+01          2.2466e+01       1.4818e+00     6.60%            3.5597e+07          3.7945e+07       -2.3479e+06    -6.19%
+relax      [16,16,16]   O3    :     1.7771e+02          1.6439e+02       1.3327e+01     8.11%            3.8376e+07          4.1488e+07       -3.1113e+06    -7.50%
+```
 ## Aug 28 2024
 1. Thornado StreamingSineWave case's performance regression and wrong value are probably due to the deprecation of "!$OMP TARGET VARIANT DISPATCH USE_DEVICE_PTR". MKLD-17795 and MKLD-17844 seems all related to this OMP directive.
 2. Changing to "!$OMP DISPATCH" makes the compiler happy and the case runs with good performance:

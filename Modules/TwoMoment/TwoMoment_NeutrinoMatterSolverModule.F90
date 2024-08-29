@@ -4127,7 +4127,7 @@ CONTAINS
 
     LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
     INTEGER,                    INTENT(in)    :: n_FP, M, Mk
-    REAL(DP), DIMENSION(:,:)  , INTENT(inout)   :: Fm, Gm, B
+    REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm, B
     REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: F, G, A
     REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Alpha, TAU
     INTEGER,                    INTENT(in)    :: LWORK
