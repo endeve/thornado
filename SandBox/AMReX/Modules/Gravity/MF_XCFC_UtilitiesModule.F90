@@ -39,9 +39,6 @@ MODULE MF_XCFC_UtilitiesModule
   USE GeometryFieldsModuleE, ONLY: &
     iGE_Ep3, &
     uGE
-  USE GeometryBoundaryConditionsModule, ONLY: &
-    ApplyBoundaryConditions_Geometry_X1_Inner_Reflecting, &
-    ApplyBoundaryConditions_Geometry_X1_Outer_ExtrapolateToFace
   USE FluidFieldsModule, ONLY: &
     iCF_D, &
     iCF_S1, &
@@ -115,7 +112,6 @@ MODULE MF_XCFC_UtilitiesModule
   PRIVATE
 
   PUBLIC :: MultiplyWithPsi6_MF
-  PUBLIC :: ApplyBoundaryConditions_Geometry_XCFC_MF
   PUBLIC :: ComputeGravitationalMass_MF
   PUBLIC :: UpdateConformalFactorAndMetric_XCFC_MF
   PUBLIC :: UpdateLapseShiftCurvature_XCFC_MF
@@ -707,16 +703,6 @@ CONTAINS
   END SUBROUTINE ComputeGravitationalMass_MF
 
 
-  SUBROUTINE ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
-
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
-
-    CALL ApplyBoundaryConditions_X1_Inner( MF_uGF )
-    CALL ApplyBoundaryConditions_X1_Outer( MF_uGF )
-
-  END SUBROUTINE ApplyBoundaryConditions_Geometry_XCFC_MF
-
-
 #ifndef THORNADO_NOTRANSPORT
 
   SUBROUTINE ComputeConformalFactorSourcesAndMg_XCFC_MF &
@@ -988,148 +974,6 @@ CONTAINS
 
 
   ! --- PRIVATE SUBROUTINES ---
-
-
-  SUBROUTINE ApplyBoundaryConditions_X1_Inner( MF_uGF )
-
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
-
-    TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI
-
-    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-
-    INTEGER :: iLevel
-    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-
-    ! --- Inner Boundary: Reflecting ---
-
-    DO iLevel = 0, nLevels-1
-
-#if defined( THORNADO_OMP )
-      !$OMP PARALLEL &
-      !$OMP PRIVATE( BX, MFI, G, uGF, iX_B0, iX_E0, iX_B1, iX_E1 )
-#endif
-
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
-
-      DO WHILE( MFI % next() )
-
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-
-        BX = MFI % tilebox()
-
-        iX_B0 = BX % lo
-        iX_E0 = BX % hi
-        iX_B1 = iX_B0 - swX
-        iX_E1 = iX_E0 + swX
-
-        IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo( 1 ) )THEN
-
-          CALL AllocateArray_X &
-                 ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-                   [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
-                   G )
-
-          CALL amrex2thornado_X &
-                 ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
-
-          CALL ApplyBoundaryConditions_Geometry_X1_Inner_Reflecting &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G )
-
-          CALL thornado2amrex_X &
-                 ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
-
-          CALL DeallocateArray_X &
-                 ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-                   [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
-                   G )
-
-        END IF
-
-      END DO ! WHILE( MFI % next() )
-
-      CALL amrex_mfiter_destroy( MFI )
-
-#if defined( THORNADO_OMP )
-      !$OMP END PARALLEL
-#endif
-
-    END DO ! iLevel = 0, nLevels-1
-
-  END SUBROUTINE ApplyBoundaryConditions_X1_Inner
-
-
-  SUBROUTINE ApplyBoundaryConditions_X1_Outer( MF_uGF )
-
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
-
-    TYPE(amrex_box)    :: BX
-    TYPE(amrex_mfiter) :: MFI
-
-    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-
-    INTEGER :: iLevel
-    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-
-    ! --- Outer Boundary: Extrapolate fields to face ---
-
-    DO iLevel = 0, nLevels-1
-
-#if defined( THORNADO_OMP )
-      !$OMP PARALLEL &
-      !$OMP PRIVATE( BX, MFI, G, uGF, iX_B0, iX_E0, iX_B1, iX_E1 )
-#endif
-
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
-
-      DO WHILE( MFI % next() )
-
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-
-        BX = MFI % tilebox()
-
-        iX_B0 = BX % lo
-        iX_E0 = BX % hi
-        iX_B1 = iX_B0 - swX
-        iX_E1 = iX_E0 + swX
-
-        IF( iX_E0(1) .EQ. amrex_geom(iLevel) % domain % hi( 1 ) )THEN
-
-          CALL AllocateArray_X &
-                 ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-                   [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
-                   G )
-
-          CALL amrex2thornado_X &
-                 ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
-
-          CALL ApplyBoundaryConditions_Geometry_X1_Outer_ExtrapolateToFace &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G )
-
-          CALL thornado2amrex_X &
-                 ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
-
-          CALL DeallocateArray_X &
-                 ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-                   [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
-                   G )
-
-        END IF
-
-      END DO ! WHILE( MFI % next() )
-
-      CALL amrex_mfiter_destroy( MFI )
-
-#if defined( THORNADO_OMP )
-      !$OMP END PARALLEL
-#endif
-
-    END DO ! iLevel = 0, nLevels-1
-
-  END SUBROUTINE ApplyBoundaryConditions_X1_Outer
 
 
   SUBROUTINE ComputeConformalFactorSourcesAndMg_XCFC_TwoMoment &

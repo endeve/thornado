@@ -6,21 +6,23 @@ import matplotlib.pyplot as plt
 plt.style.use( 'publication.sty' )
 
 
-import GlobalVariables.Settings as gvS
-import GlobalVariables.Units    as gvU
+import GlobalVariables.Settings     as gvS
+import GlobalVariables.Units        as gvU
 
-from Utilities.GetPlotData  import GetPlotData
-from Utilities.Files        import GetFileNumberArray
-from Utilities.MakeDataArray import MakeProbelmDataDirectory
+import Utilities.BounceFinder       as BF
+import Utilities.DecadeFinder       as DF
+import Utilities.DensityCliffFinder as DCF
 
-import Utilities.BounceFinder   as BF
-import Utilities.DecadeFinder   as DF
+from Utilities.GetPlotData          import GetPlotData
+from Utilities.Files                import GetFileNumberArray
+from Utilities.MakeDataDirectory    import MakeProblemDataDirectory
+
 
 if __name__ == "__main__":
     #### ========== User Input ==========
 
     # Specify name of problem
-    ProblemName = 'AdiabaticCollapse_XCFC'
+    ProblemName = 'YahilCollapse_XCFC'
 
     # Specify title of figure
     gvS.FigTitle = ProblemName
@@ -36,7 +38,7 @@ if __name__ == "__main__":
     PlotDirectories = ['None']*gvS.nDirs
     PlotDirectories[0] \
       = THORNADO_DIR + \
-          'SandBox/AMReX/Applications/AdiabaticCollapse_XCFC/AdiabaticCollapse_XCFC_AMR_dr0.5km'
+          'SandBox/AMReX/Applications/YahilCollapse_XCFC/'
 
 #    PlotDirectories[1] \
 #      = THORNADO_DIR + \
@@ -75,13 +77,14 @@ if __name__ == "__main__":
  
     DataDirectories = ['None']*gvS.nDirs
 
-    DataDirectories[0] = 'DataDirectories/{:s}_AMR05km_AMR'.format( ProblemName )
+    DataDirectories[0] = 'DataDirectories/{:s}_Today'.format( ProblemName )
  
+    gvU.SetSpaceTimeUnits(CoordinateSystem, UsePhysicalUnits)
  
 #   Append "/" to PlotDirectory, if not present
     for i in range(gvS.nDirs):
         if not PlotDirectories[i][-1] == '/': PlotDirectories[i] += '/'
-    
+        if not DataDirectories[i][-1] == '/': DataDirectories[i] += '/'
     
     
         
@@ -92,7 +95,7 @@ if __name__ == "__main__":
                                                   PlotBaseName,         \
                                                   -1, -1,  1            )
 
-        MakeProbelmDataDirectory( FileNumberArrays[i],\
+        MakeProblemDataDirectory( FileNumberArrays[i],\
                                   PlotDirectories[i],  \
                                   PlotBaseName,    \
                                   Field,           \
@@ -114,6 +117,13 @@ if __name__ == "__main__":
                           PlotBaseName,     \
                           DataDirectories,  \
                           gvS.DataType      )
+                          
+                          
+    DCF.CreateCliffData( PlotDirectories,   \
+                         PlotBaseName,      \
+                         DataDirectories,   \
+                         FileNumberArrays,  \
+                         gvS.DataType       )
  
     import os
     os.system( 'rm -rf __pycache__ ' )

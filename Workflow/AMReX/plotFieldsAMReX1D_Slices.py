@@ -6,12 +6,11 @@ import matplotlib.pyplot as plt
 plt.style.use( 'publication.sty' )
 
 
-import GlobalVariables.Settings as gvS
-import GlobalVariables.Units    as gvU
+import GlobalVariables.Settings     as gvS
+import GlobalVariables.Units        as gvU
 
-from Utilities.GetPlotData  import GetPlotData
-from Utilities.Files        import GetFileNumberArray
-from Utilities.MakeDataArray import MakeProbelmDataDirectory
+from Utilities.GetPlotData          import GetPlotData
+from Utilities.Files                import GetFileNumberArray
 
 """
 
@@ -103,17 +102,6 @@ if __name__ == "__main__":
                                           PlotBaseName,       \
                                           SSi, SSf,           \
                                           PlotEvery           )
-
-#    FileNumberSubArray = np.array( [ FileNumberArray[0],        \
-#                                     FileNumberArray[nFiles//2],\
-#                                     FileNumberArray[-1]    ]   )
-
-    MakeProbelmDataDirectory( FileNumberArray, \
-                              PlotDirectory,   \
-                              PlotBaseName,    \
-                              Field,           \
-                              DataDirectory,   \
-                              gvS.DataType     )
 
 
     #### ====== End of User Input =======

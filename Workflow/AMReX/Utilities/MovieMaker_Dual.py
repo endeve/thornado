@@ -205,7 +205,7 @@ def CreateFrame( ax, xL, xH, dX10, Field, DataUnits ):
 
     ColorList = ['blue','red','green']
     LineList  = ['solid','dashed','dotted']
-    LabelList = ['AMR, 0.25 km','AMR, 0.50 km','AMR, 1.00 km']
+    LabelList = ['AMR, 0.5 km','Uni, 0.50 km','AMR, 1.00 km']
     
     elem_offset = 0.0
     if gvS.ReferenceBounce:
@@ -378,7 +378,7 @@ def UpdateFrame( t, FileNumberArray, DataDirectory, Field, Action):
     global nDirs
     
 
-    print('    {:}/{:}'.format( t+1, nFrames ) )
+    print('Creating Frame: {:}/{:} \r'.format( t+1, nFrames ), end='' )
 
 
 

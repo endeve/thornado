@@ -182,7 +182,8 @@ CONTAINS
     CALL FillPatch( iLevel, MF_uGF, MF_uDF )
     CALL FillPatch( iLevel, MF_uGF, MF_uCF )
     CALL ApplyPositivityLimiter_Euler_MF &
-           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
+           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel), &
+             swX_Option = swX )
 
     CALL MF_duCF % SetVal( Zero )
 

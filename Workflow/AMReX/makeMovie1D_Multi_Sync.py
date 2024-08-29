@@ -6,13 +6,13 @@ import matplotlib.pyplot as plt
 plt.style.use( 'publication.sty' )
 
 
-import GlobalVariables.Settings as gvS
-import Utilities.BounceFinder   as BF
-from GlobalVariables.Units      import SetSpaceTimeUnits
+import GlobalVariables.Settings     as gvS
+import Utilities.BounceFinder       as BF
+from GlobalVariables.Units          import SetSpaceTimeUnits
 
-from Utilities.Files            import GetFileNumberArray
-from Utilities.MakeDataArray    import MakeProbelmDataDirectory
-from Utilities.MovieMaker_Dual  import MakeMovie
+from Utilities.Files                import GetFileNumberArray
+from Utilities.MakeDataDirectory    import MakeProblemDataDirectory
+from Utilities.MovieMaker_Dual      import MakeMovie
 #from Utilities.BounceFinder     import FindBounce, BounceDensityList, BounceFrameList, BounceTimeList
 
 
@@ -31,24 +31,21 @@ if __name__ == "__main__":
     
     PlotDirectories = ['None']*gvS.nDirs
 
-#    PlotDirectories[0] = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/YahilCollapse_XCFC/SingleLevel_4096_1rank'
-#    PlotDirectories[1] = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/YahilCollapse_XCFC/SingleLevel_4096_1box'
-#    PlotDirectories[2] = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/YahilCollapse_XCFC/SingleLevel_4096'
-
-#    PlotDirectories[0] = '/Users/nickroberts/thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC'
-#    PlotDirectories[1] = '/Users/nickroberts/thornado/SandBox/AdiabaticCollapse_XCFC/Output'
+    THORNADO_DIR = '/Users/nickroberts/thornado/'
     
-    PlotDirectories[0] = '/Users/nickroberts/thornado_clean/thornado/SandBox/AdiabaticCollapse_XCFC/Output'
-    PlotDirectories[1] = '/Users/nickroberts/thornado_clean/thornado/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC'
+    PlotDirectory[0] \
+          = THORNADO_DIR    \
+          + 'SandBox/AdiabaticCollapse_XCFC/Output'
+          
+    PlotDirectory[1] \
+          = THORNADO_DIR    \
+          + 'SandBox/AMReX/Applications/AdiabaticCollapse_XCFC/AdiabaticCollapse_XCFC_AMR_dr0.25km'
 
-#    PlotDirectories[1] = '/Users/nickroberts/thornado/SandBox/YahilCollapse_XCFC/SingleLevel_4096'
-#    PlotDirectories[1] = 'Directory of Third Data Set. Don't forget to change gvS.nDirs.'
 
     gvS.DataType = ['None']*gvS.nDirs
-    gvS.DataType[1] = 'AMReX'
-#    gvS.DataType[1] = 'AMReX'
-#    gvS.DataType[2] = 'AMReX'
     gvS.DataType[0] = 'Native'
+    gvS.DataType[1] = 'AMReX'
+
 
 
     # Specify plot file base name
@@ -110,14 +107,6 @@ if __name__ == "__main__":
     #### ====== End of User Input =======
 
     DataDirectories = ['None']*gvS.nDirs
-#    DataDirectories[0] = 'DataDirectories/{:s}_StaticMesh'.format( ProblemName )
-#    DataDirectories[0] = 'DataDirectories/{:s}_FirstRun'.format( ProblemName )
-#    DataDirectories[1] = 'DataDirectories/{:s}_SecondRun'.format( ProblemName )
-#    DataDirectories[1] = 'DataDirectories/{:s}_ThirdRun'.format( ProblemName )
-
-#    DataDirectories[0] = 'DataDirectories/{:s}_AMReX_1rank'.format( ProblemName )
-#    DataDirectories[1] = 'DataDirectories/{:s}_AMReX_1box'.format( ProblemName )
-#    DataDirectories[2] = 'DataDirectories/{:s}_AMReX_free'.format( ProblemName )
 
     DataDirectories[0] = 'DataDirectories/{:s}_DWN'.format( ProblemName )
     DataDirectories[1] = 'DataDirectories/{:s}_DWNB'.format( ProblemName )
@@ -151,7 +140,7 @@ if __name__ == "__main__":
                                                   PlotEvery           )
 
 
-        MakeProbelmDataDirectory( FileNumberArrays[i],\
+        MakeProblemDataDirectory( FileNumberArrays[i],\
                                   PlotDirectories[i],  \
                                   PlotBaseName,    \
                                   Field,           \

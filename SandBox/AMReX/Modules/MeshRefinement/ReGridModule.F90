@@ -54,9 +54,10 @@ MODULE ReGridModule
     MultiplyWithPsi6_MF, &
     UpdateConformalFactorAndMetric_XCFC_MF, &
     UpdateLapseShiftCurvature_XCFC_MF, &
-    ApplyBoundaryConditions_Geometry_XCFC_MF, &
     ComputeConformalFactorSourcesAndMg_XCFC_MF, &
     ComputePressureTensorTrace_XCFC_MF
+  USE MF_GravitySolutionModule_Newtonian_Poseidon, ONLY: &
+    ComputeGravitationalPotential_Newtonian_MF_Poseidon
   USE InputParsingModule, ONLY: &
     DEBUG, &
     UseAMR, &
@@ -117,6 +118,8 @@ CONTAINS
 
     IF( EvolveGravity )THEN
 
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
+
       DO iLevel = 0, nLevels-1
 
         CALL amrex_multifab_build &
@@ -155,6 +158,12 @@ CONTAINS
         CALL amrex_multifab_destroy( MF_uGS(iLevel) )
 
       END DO
+
+#else
+
+      CALL ComputeGravitationalPotential_Newtonian_MF_Poseidon( MF_uCF, MF_uGF )
+
+#endif
 
     END IF ! EvolveGravity
 
@@ -280,7 +289,7 @@ CONTAINS
 
     CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
 
-    CALL ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
+    CALL ApplyBoundaryConditions_Geometry_MF( MF_uGF )
 
   END SUBROUTINE ComputeLapseShiftCurvature
 

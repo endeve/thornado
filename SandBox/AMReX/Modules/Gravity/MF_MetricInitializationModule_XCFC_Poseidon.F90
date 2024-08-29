@@ -79,11 +79,12 @@ MODULE MF_MetricInitializationModule_XCFC_Poseidon
     UseTiling
   USE AverageDownModule, ONLY: &
     AverageDown
+  USE MF_GeometryModule, ONLY: &
+    ApplyBoundaryConditions_Geometry_MF
   USE MF_XCFC_UtilitiesModule, ONLY: &
     MultiplyWithPsi6_MF, &
     UpdateConformalFactorAndMetric_XCFC_MF, &
     UpdateLapseShiftCurvature_XCFC_MF, &
-    ApplyBoundaryConditions_Geometry_XCFC_MF, &
     ComputeGravitationalMass_MF
   USE MaskModule, ONLY: &
     CreateFineMask, &
@@ -124,12 +125,12 @@ CONTAINS
 #ifndef THORNADO_NOTRANSPORT
 
   SUBROUTINE InitializeMetric_XCFC_MF_Poseidon &
-    ( MF_uGF, MF_uCF, MF_uCR, MF_uPF, MF_uAF )
+    ( MF_uGF, MF_uCF, MF_uCR, MF_uPF, MF_uAF, TOLERANCE_Option )
 
 #else
 
   SUBROUTINE InitializeMetric_XCFC_MF_Poseidon &
-    ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+    ( MF_uGF, MF_uCF, MF_uPF, MF_uAF, TOLERANCE_Option )
 
 #endif
 
@@ -140,6 +141,7 @@ CONTAINS
 #endif
     TYPE(amrex_multifab), INTENT(in)    :: MF_uPF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uAF(0:nLevels-1)
+    REAL(DP)            , INTENT(in), OPTIONAL :: TOLERANCE_Option
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
@@ -153,11 +155,15 @@ CONTAINS
     TYPE(amrex_multifab) :: dCF   (0:nLevels-1)
 
     LOGICAL  :: CONVERGED
+    REAL(DP) :: TOLERANCE
+    INTEGER, PARAMETER :: MAX_ITER = 100
+
     INTEGER  :: iLevel, ITER, iNX
     REAL(DP) :: MaxLF, MaxCF
 
-    REAL(DP), PARAMETER :: TOLERANCE = 1.0e-13_DP
-    INTEGER , PARAMETER :: MAX_ITER = 10
+    TOLERANCE = 1.0e-13_DP
+    IF( PRESENT( TOLERANCE_Option ) ) &
+      TOLERANCE = TOLERANCE_Option
 
     DO iLevel = 0, nLevels-1
 
@@ -534,7 +540,7 @@ CONTAINS
 
     CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
 
-    CALL ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
+    CALL ApplyBoundaryConditions_Geometry_MF( MF_uGF )
 
   END SUBROUTINE ComputeLapseShiftCurvature
 

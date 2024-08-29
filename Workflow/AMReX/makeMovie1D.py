@@ -4,12 +4,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.style.use( 'publication.sty' )
 
-import GlobalVariables.Settings as gvS
-from GlobalVariables.Units   import SetSpaceTimeUnits
+import GlobalVariables.Settings     as gvS
+from GlobalVariables.Units          import SetSpaceTimeUnits
 
-from Utilities.Files         import GetFileNumberArray
-from Utilities.MakeDataArray import MakeProbelmDataDirectory
-from Utilities.MovieMaker    import MakeMovie
+from Utilities.Files                import GetFileNumberArray
+from Utilities.MakeDataDirectory    import MakeProblemDataDirectory
+from Utilities.MovieMaker           import MakeMovie
 
 if __name__ == "__main__":
 
@@ -19,7 +19,7 @@ if __name__ == "__main__":
     ProblemName = 'AdiabaticCollapse_XCFC'
 
     # Specify title of figure
-    gvS.FigTitle = '{:} with AMR'.format(ProblemName)
+    gvS.FigTitle = '{:}'.format( ProblemName )
 
     THORNADO_DIR = '/Users/nickroberts/thornado/'
     #THORNADO_DIR = '/home/kkadoogan/Work/Codes/thornado/'
@@ -27,8 +27,8 @@ if __name__ == "__main__":
     # Specify directory containing amrex Plotfiles
     PlotDirectory \
       = THORNADO_DIR + \
-          'SandBox/AdiabaticCollapse_XCFC/Output'
-    gvS.DataType = 'Native'
+          'SandBox/AMReX/Applications/AdiabaticCollapse_XCFC/'
+    gvS.DataType = 'AMReX'
 
     # Specify plot file base name
     PlotBaseName = ProblemName + '.plt'
@@ -98,7 +98,7 @@ if __name__ == "__main__":
                                           SSi, SSf,           \
                                           PlotEvery           )
 
-    MakeProbelmDataDirectory( FileNumberArray, \
+    MakeProblemDataDirectory( FileNumberArray, \
                               PlotDirectory,   \
                               PlotBaseName,    \
                               Field,           \
@@ -108,6 +108,8 @@ if __name__ == "__main__":
     MakeMovie( [FileNumberArray], \
                [Field],           \
                [DataDirectory]    )
+
+    print( '\n  Saved {:}'.format( gvS.MovieName ) )
 
     import os
     os.system( 'rm -rf __pycache__ ' )

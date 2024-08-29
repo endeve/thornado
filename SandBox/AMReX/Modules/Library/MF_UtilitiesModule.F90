@@ -20,7 +20,8 @@ MODULE MF_UtilitiesModule
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_reduce_sum, &
-    amrex_parallel_myproc
+    amrex_parallel_myproc, &
+    amrex_parallel_communicator
 
   ! --- thornado Modules ---
 
@@ -117,7 +118,8 @@ MODULE MF_UtilitiesModule
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
-    StepNo
+    StepNo, &
+    PlotFileNameRoot
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -161,6 +163,8 @@ MODULE MF_UtilitiesModule
   PUBLIC :: AllocateArray_Integrated
   PUBLIC :: DeallocateArray_Integrated
   PUBLIC :: PrintBoxArray
+  PUBLIC :: IndLo_X
+  PUBLIC :: IndHi_X
 
   INTERFACE ShowVariableFromMultiFab
     MODULE PROCEDURE ShowVariableFromMultiFab_Single
@@ -181,17 +185,18 @@ CONTAINS
 
 
   SUBROUTINE ShowVariableFromMultiFab_Single &
-    ( iLevel, MF, iField, iMF_FineMask_Option, &
+    ( iLevel, MF, iField, iMF_FineMask_Option, UseFineMask_Option, &
       swXX_Option, WriteToFile_Option, FileNameBase_Option )
 
     INTEGER              , INTENT(in) :: iLevel, iField
     TYPE(amrex_multifab) , INTENT(in) :: MF
     TYPE(amrex_imultifab), INTENT(in), OPTIONAL :: iMF_FineMask_Option
     INTEGER              , INTENT(in), OPTIONAL :: swXX_Option(3)
+    LOGICAL              , INTENT(in), OPTIONAL :: UseFineMask_Option
     LOGICAL              , INTENT(in), OPTIONAL :: WriteToFile_Option
     CHARACTER(*)         , INTENT(in), OPTIONAL :: FileNameBase_Option
 
-    INTEGER                       :: iX1, iX2, iX3, iNX
+    INTEGER                       :: iX1, iX2, iX3, iNX, iErr
     INTEGER                       :: lo(4), hi(4), iX_B1(3), iX_E1(3)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
@@ -199,9 +204,9 @@ CONTAINS
     INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
     INTEGER                       :: swXX(3)
     INTEGER                       :: iFileNo
-    LOGICAL                       :: WriteToFile
+    LOGICAL                       :: UseFineMask, WriteToFile
     CHARACTER(128)                :: FMT
-    CHARACTER(128)                :: FileNameBase, FileName
+    CHARACTER(128)                :: FileNameBase, FileName, DirName
 
     TYPE(MeshType) :: MeshX(3)
 
@@ -211,6 +216,9 @@ CONTAINS
 
     swXX = 0
     IF( PRESENT( swXX_Option ) ) swXX = swXX_Option
+
+    UseFineMask = .TRUE.
+    IF( PRESENT( UseFineMask_Option ) ) UseFineMask = UseFineMask_Option
 
     WriteToFile = .FALSE.
     IF( PRESENT( WriteToFile_Option ) ) WriteToFile = WriteToFile_Option
@@ -226,23 +234,33 @@ CONTAINS
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
+    IF( WriteToFile )THEN
+
+      WRITE(DirName,'(A,I8.8,A)') &
+        TRIM( PlotFileNameRoot ), StepNo(0), '_nodal/'
+
+      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+      IF( amrex_parallel_ioprocessor() ) &
+        CALL SYSTEM( 'mkdir -p ' // TRIM( DirName ) // ' 2>/dev/null' )
+
+      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+    END IF
+
     DO WHILE( MFI % next() )
 
       IF( WriteToFile )THEN
 
         iFileNo = 100 + amrex_parallel_myproc()
-IF(iField .EQ. 1) THEN
-        FileNameBase = 'NodalData1'
-END IF
-IF(iField .EQ. 2) THEN
-        FileNameBase = 'NodalData2'
-END IF
+
+        FileNameBase = 'nodalData'
         IF( PRESENT( FileNameBase_Option ) ) &
           FileNameBase = TRIM( FileNameBase_Option )
 
-        WRITE(FileName,'(A,A,I3.3,A,I8.8,A)') &
-          TRIM( FileNameBase ), '_proc', &
-          amrex_parallel_myproc(), '_', StepNo(0), '.dat'
+        WRITE(FileName,'(A,I3.3,A)') &
+          TRIM( DirName ) // TRIM( FileNameBase ) // '_proc', &
+          amrex_parallel_myproc(), '.dat'
 
         OPEN( iFileNo, FILE = TRIM( FileName ), POSITION = 'APPEND' )
 
@@ -264,7 +282,7 @@ END IF
       DO iX2 = iX_B1(2), iX_E1(2)
       DO iX1 = iX_B1(1), iX_E1(1)
 
-        IF( PRESENT( iMF_FineMask_Option ) )THEN
+        IF( PRESENT( iMF_FineMask_Option ) .AND. UseFineMask )THEN
 
           IF( IsNotLeafElement( FineMask(iX1,iX2,iX3,1) ) ) CYCLE
 
@@ -330,18 +348,20 @@ END IF
 
 
   SUBROUTINE ShowVariableFromMultiFab_Vector &
-    ( MF, iField, swXX_Option, WriteToFile_Option, FileNameBase_Option )
+    ( MF, iField, swXX_Option, UseFineMask_Option, &
+      WriteToFile_Option, FileNameBase_Option )
 
     INTEGER             , INTENT(in) :: iField
     TYPE(amrex_multifab), INTENT(in) :: MF(0:)
     INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
+    LOGICAL             , INTENT(in), OPTIONAL :: UseFineMask_Option
     LOGICAL             , INTENT(in), OPTIONAL :: WriteToFile_Option
     CHARACTER(*)        , INTENT(in), OPTIONAL :: FileNameBase_Option
 
     INTEGER :: iLevel
 
     INTEGER        :: swXX(3)
-    LOGICAL        :: WriteToFile
+    LOGICAL        :: UseFineMask, WriteToFile
     CHARACTER(128) :: FileNameBase
 
     TYPE(amrex_imultifab) :: iMF_FineMask
@@ -349,8 +369,13 @@ END IF
     swXX = 0
     IF( PRESENT( swXX_Option ) ) swXX = swXX_Option
 
+    UseFineMask = .TRUE.
+    IF( PRESENT( UseFineMask_Option ) ) &
+      UseFineMask = UseFineMask_Option
+
     WriteToFile = .FALSE.
-    IF( PRESENT( WriteToFile_Option ) ) WriteToFile = WriteToFile_Option
+    IF( PRESENT( WriteToFile_Option ) ) &
+      WriteToFile = WriteToFile_Option
 
     FileNameBase = ''
     IF( PRESENT( FileNameBase_Option ) ) &
@@ -363,6 +388,7 @@ END IF
       CALL ShowVariableFromMultiFab_Single &
              ( iLevel, MF(iLevel), iField, &
                iMF_FineMask_Option = iMF_FineMask, &
+               UseFineMask_Option = UseFineMask, &
                swXX_Option = swXX, &
                WriteToFile_Option = WriteToFile, &
                FileNameBase_Option = TRIM( FileNameBase ) )
@@ -1654,6 +1680,24 @@ END IF
     CALL print_boxarray( BA % p )
 
   END SUBROUTINE PrintBoxArray
+
+
+  INTEGER FUNCTION indLo_X( nDOFX, iF_X )
+
+    INTEGER, INTENT(in) :: nDOFX, iF_X
+
+    indLo_X = nDOFX * ( iF_X - 1 ) + 1
+
+  END FUNCTION indLo_X
+
+
+  INTEGER FUNCTION indHi_X( nDOFX, iF_X )
+
+    INTEGER, INTENT(in) :: nDOFX, iF_X
+
+    indHi_X = nDOFX * iF_X
+
+  END FUNCTION indHi_X
 
 
 END MODULE MF_UtilitiesModule

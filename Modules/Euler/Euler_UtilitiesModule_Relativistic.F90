@@ -3,9 +3,6 @@
 !> Equation 7.234.
 MODULE Euler_UtilitiesModule_Relativistic
 
-  USE, INTRINSIC :: IEEE_ARITHMETIC, ONLY: &
-    ISNAN => IEEE_IS_NAN
-
   USE KindModule, ONLY: &
     DP, &
     Zero, &
@@ -191,12 +188,12 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    uD, uS1, uS2, uS3, uE, uNe, &
-    !$OMP             Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
+    !$OMP             Gm_dd_11, Gm_dd_22, Gm_dd_33, ErrorExists ) &
     !$OMP MAP( alloc: pD, pV1, pV2, pV3, pE, pNe, ITERATION, iErr )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     uD, uS1, uS2, uS3, uE, uNe, &
-    !$ACC             Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
+    !$ACC             Gm_dd_11, Gm_dd_22, Gm_dd_33, ErrorExists ) &
     !$ACC CREATE(     pD, pV1, pV2, pV3, pE, pNe, ITERATION, iErr )
 #endif
 
@@ -222,9 +219,9 @@ CONTAINS
       iErr     (iNX) = 0
       ITERATION(iNX) = 0
 
-      IF(      ISNAN( uD (iNX) ) .OR. ISNAN( uS1(iNX) ) &
-          .OR. ISNAN( uS2(iNX) ) .OR. ISNAN( uS3(iNX) ) &
-          .OR. ISNAN( uE (iNX) ) .OR. ISNAN( uNe(iNX) ) )THEN
+      IF(      MyISNAN( uD (iNX) ) .OR. MyISNAN( uS1(iNX) ) &
+          .OR. MyISNAN( uS2(iNX) ) .OR. MyISNAN( uS3(iNX) ) &
+          .OR. MyISNAN( uE (iNX) ) .OR. MyISNAN( uNe(iNX) ) )THEN
 
         iErr(iNX) = 13
 
@@ -241,9 +238,9 @@ CONTAINS
                ITERATION_Option = ITERATION(iNX), &
                iErr_Option      = iErr     (iNX) )
 
-      IF(      ISNAN( uD (iNX) ) .OR. ISNAN( uS1(iNX) ) &
-          .OR. ISNAN( uS2(iNX) ) .OR. ISNAN( uS3(iNX) ) &
-          .OR. ISNAN( uE (iNX) ) .OR. ISNAN( uNe(iNX) ) ) iErr(iNX) = 14
+      IF(      MyISNAN( uD (iNX) ) .OR. MyISNAN( uS1(iNX) ) &
+          .OR. MyISNAN( uS2(iNX) ) .OR. MyISNAN( uS3(iNX) ) &
+          .OR. MyISNAN( uE (iNX) ) .OR. MyISNAN( uNe(iNX) ) ) iErr(iNX) = 14
 
       ErrorExists = ErrorExists + iErr(iNX)
 
@@ -256,13 +253,13 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    pD, pV1, pV2, pV3, pE, pNe, &
-    !$OMP               ITERATION, iErr ) &
+    !$OMP               ITERATION, ErrorExists, iErr ) &
     !$OMP MAP( release: uD, uS1, uS2, uS3, uE, uNe, &
     !$OMP               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
     !$ACC COPYOUT(      pD, pV1, pV2, pV3, pE, pNe, &
-    !$ACC               ITERATION, iErr ) &
+    !$ACC               ITERATION, ErrorExists, iErr ) &
     !$ACC DELETE(       uD, uS1, uS2, uS3, uE, uNe, &
     !$ACC               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 #endif
@@ -421,6 +418,29 @@ CONTAINS
   END SUBROUTINE LimitSpecificInternalEnergy
 
 
+  LOGICAL FUNCTION MyISNAN( x )
+
+#if defined( THORNADO_GPU )
+
+    ! Hack
+
+    REAL(DP), INTENT(in) :: x
+
+    MyISNAN = .FALSE.
+
+#else
+
+    USE, INTRINSIC :: IEEE_ARITHMETIC, ONLY: &
+      IEEE_IS_NAN
+
+    REAL(DP), INTENT(in) :: x
+
+    MyISNAN = IEEE_IS_NAN( x )
+
+#endif
+
+  END FUNCTION
+
 !!$  SUBROUTINE ComputePrimitive_Vector_new &
 !!$    ( uD, uS1, uS2, uS3, uE, uNe, &
 !!$      pD, pV1, pV2, pV3, pE, pNe, &
@@ -451,7 +471,7 @@ CONTAINS
 !!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
 !!$    !$OMP TARGET ENTER DATA &
 !!$    !$OMP MAP( to:    uD, uS1, uS2, uS3, uE, uNe, &
-!!$    !$OMP             Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+!!$    !$OMP             Gm_dd_11, Gm_dd_22, Gm_dd_33, ErrorExists, &
 !!$    !$OMP             ITERATE ) &
 !!$    !$OMP MAP( alloc: pD, pV1, pV2, pV3, pE, pNe, &
 !!$    !$OMP             q, r, k, &
@@ -462,7 +482,7 @@ CONTAINS
 !!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
 !!$    !$ACC ENTER DATA &
 !!$    !$ACC COPYIN(     uD, uS1, uS2, uS3, uE, uNe, &
-!!$    !$ACC             Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+!!$    !$ACC             Gm_dd_11, Gm_dd_22, Gm_dd_33, ErrorExists, &
 !!$    !$ACC             ITERATE ) &
 !!$    !$ACC CREATE(     pD, pV1, pV2, pV3, pE, pNe, &
 !!$    !$ACC             q, r, k, &
@@ -579,7 +599,7 @@ CONTAINS
 !!$
 !!$#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
 !!$    !$OMP TARGET EXIT DATA &
-!!$    !$OMP MAP( from:    iErr, &
+!!$    !$OMP MAP( from:    ErrorExists, iErr, &
 !!$    !$OMP               pD, pV1, pV2, pV3, pE, pNe ) &
 !!$    !$OMP MAP( release: uD, uS1, uS2, uS3, uE, uNe, &
 !!$    !$OMP               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
@@ -590,7 +610,7 @@ CONTAINS
 !!$    !$OMP               ITERATE )
 !!$#elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
 !!$    !$ACC EXIT DATA &
-!!$    !$ACC COPYOUT(      iErr, &
+!!$    !$ACC COPYOUT(      ErrorExists, iErr, &
 !!$    !$ACC               pD, pV1, pV2, pV3, pE, pNe ) &
 !!$    !$ACC DELETE(       uD, uS1, uS2, uS3, uE, uNe, &
 !!$    !$ACC               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
@@ -923,11 +943,11 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U ) &
+    !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, ErrorExists ) &
     !$OMP MAP( alloc: P, A, ITERATION, iErr )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U ) &
+    !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, ErrorExists ) &
     !$ACC CREATE(     P, A, ITERATION, iErr )
 #endif
 
@@ -1042,11 +1062,11 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    P, A, ITERATION, iErr ) &
+    !$OMP MAP( from:    P, A, ITERATION, ErrorExists, iErr ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      P, A, ITERATION, iErr ) &
+    !$ACC COPYOUT(      P, A, ITERATION, ErrorExists, iErr ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 #endif
 
@@ -1143,11 +1163,11 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    G, U, iX_B0, iX_E0, dX1, dX2, dX3 ) &
+    !$OMP MAP( to:    G, U, iX_B0, iX_E0, dX1, dX2, dX3, ErrorExists ) &
     !$OMP MAP( alloc: ITERATION, iErr )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     G, U, iX_B0, iX_E0, dX1, dX2, dX3 ) &
+    !$ACC COPYIN(     G, U, iX_B0, iX_E0, dX1, dX2, dX3, ErrorExists ) &
     !$ACC CREATE(     ITERATION, iErr )
 #endif
 
@@ -1242,11 +1262,11 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    ITERATION, iErr ) &
+    !$OMP MAP( from:    ITERATION, ErrorExists, iErr ) &
     !$OMP MAP( release: G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      ITERATION, iErr ) &
+    !$ACC COPYOUT(      ITERATION, ErrorExists, iErr ) &
     !$ACC DELETE(       G, U, iX_B0, iX_E0, dX1, dX2, dX3 )
 #endif
 

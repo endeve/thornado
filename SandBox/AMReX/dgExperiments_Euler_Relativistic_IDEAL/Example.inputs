@@ -10,7 +10,7 @@
 thornado.ProgramName = "Example"
 
 # Number of DG nodes per element
-thornado.nNodes = 03
+thornado.nNodes = 3
 
 # Whether-or-not to use physical units
 thornado.UsePhysicalUnits = 0
@@ -19,8 +19,12 @@ thornado.UsePhysicalUnits = 0
 # If thornado.UsePhysicalUnits = 1 then the units are milliseconds
 thornado.t_end = 1.0e1
 
-# Frequency with which to write to screen
+# Frequency with which to write output to screen
 thornado.iCycleD = 10
+
+# Prefix for plotfile; e.g, a plotfile written on the 100th
+# timestep will be called `Example.plt00000100`
+thornado.PlotFileNameRoot = "Example.plt"
 
 # Frequency with which to write plotfiles.
 # dt_wrt writes every dt_wrt [time units],
@@ -30,9 +34,9 @@ thornado.iCycleD = 10
 thornado.dt_wrt  = 1.0e-1
 thornado.iCycleW = -1
 
-# Prefix for plotfile; e.g, a plotfile written on the 100th
-# timestep will be called `Example.plt00000100`
-thornado.PlotFileNameRoot = "Example.plt"
+# Prefix for checkpoint file; e.g, a checkpoint file written on the 100th
+# timestep will be called `Example.chk00000100`
+thornado.CheckpointFileNameRoot = "Example.chk"
 
 # Frequency with which to write checkpoint files.
 # dt_chk writes every dt_chk [time units],
@@ -42,17 +46,14 @@ thornado.PlotFileNameRoot = "Example.plt"
 thornado.dt_chk    = 1.1e1
 thornado.iCycleChk = -1
 
-# Prefix for checkpoint file; e.g, a checkpoint file written on the 100th
-# timestep will be called `Example.chk00000100`
-thornado.CheckpointFileNameRoot = "Example.chk"
-
 # Prefix for Tally file; e.g, the tally file for
 # the baryonic mass will be called `Example.Tally_BaryonicMass.dat
 thornado.TallyFileNameRoot_Euler = "Example.Tally"
 
 # Boundary conditions for the fluid.
 # See ${THORNADO_DIR}/Modules/Euler/Euler_BoundaryConditionsModule.F90
-# to see which integers corresponds to which boundary conditions
+# to see which integers corresponds to which boundary conditions.
+# These also set the boundary conditions for the geometry
 thornado.bcX = 01 01 01
 
 # Tell AMReX whether a dimension uses periodic boundary conditions.
@@ -96,7 +97,7 @@ amr.UseFluxCorrection_Euler = 1
 
 # Criteria for tagging elements for refinement.
 # See TaggingModule.f90 for meaning of values
-# The number of entries should be equal to min( amr.max_level, 1 )
+# The number of entries should be equal to amr.max_level
 amr.TagCriteria = 0.5 0.7
 
 # Number of padding elements for refinement.
@@ -111,7 +112,7 @@ amr.ref_ratio = 2
 # (see AMReX documentation for details)
 amr.UseTiling = 0
 
-# Parameters for Euler slope-limiter
+# Parameters for Euler slope limiter
 SL.UseSlopeLimiter_Euler           = 1
 SL.BetaTVD_Euler                   = 1.75
 SL.BetaTVB_Euler                   = 0.0
@@ -119,9 +120,9 @@ SL.SlopeTolerance_Euler            = 1.0e-6
 SL.UseCharacteristicLimiting_Euler = 1
 SL.UseTroubledCellIndicator_Euler  = 1
 SL.LimiterThresholdParameter_Euler = 0.03
-SL.UseConservativeCorrection       = 1
+SL.UseConservativeCorrection_Euler = 1
 
-# Parameters for Euler poositivity-limiter
+# Parameters for Euler positivity limiter
 PL.UsePositivityLimiter_Euler = 1
 PL.Min_1_Euler                = 1.0e-13
 PL.Min_2_Euler                = 1.0e-13

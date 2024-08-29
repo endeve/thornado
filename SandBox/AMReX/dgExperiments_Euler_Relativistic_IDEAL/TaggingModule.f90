@@ -149,7 +149,8 @@ CONTAINS
     INTEGER :: iX1, iX2, iX3, indLo, indHi
 
     REAL(DP) :: TagCriteria_this
-    REAL(DP) :: GradD(nDOFX)
+    REAL(DP) :: GradD_X1(nDOFX)
+    REAL(DP) :: GradD_X2(nDOFX)
 
     TagCriteria_this = TagCriteria
 
@@ -160,12 +161,15 @@ CONTAINS
       indLo = 1 + nDOFX * ( iCF_D - 1 )
       indHi = nDOFX * iCF_D
 
-      GradD = ( (   uCF(iX1+1,iX2,iX3,indLo:indHi) &
-                  - uCF(iX1-1,iX2,iX3,indLo:indHi) ) )**2
+      GradD_X1 = ABS(   uCF(iX1+1,iX2,iX3,indLo:indHi) &
+                      - uCF(iX1-1,iX2,iX3,indLo:indHi) ) &
+                   / ( Two * MeshX(1) % Width(iX1) )
+      GradD_X2 = ABS(   uCF(iX1,iX2+1,iX3,indLo:indHi) &
+                      - uCF(iX1,iX2-1,iX3,indLo:indHi) ) &
+                   / ( Two * MeshX(2) % Width(iX2) )
 
-      GradD = uCF(iX1,iX2,iX3,indLo:indHi)!SQRT( GradD )
-
-      IF( ANY( GradD .GT. TagCriteria_this ) )THEN
+      IF(      ANY( GradD_X1 .GT. TagCriteria_this ) &
+          .OR. ANY( GradD_X2 .GT. TagCriteria_this ) )THEN
 
         Tag(iX1,iX2,iX3,1) = SetTag
 

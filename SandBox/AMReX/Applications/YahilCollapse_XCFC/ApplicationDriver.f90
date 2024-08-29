@@ -321,7 +321,8 @@ CONTAINS
                pMF_uCF_Option = MF_uCF % P )
 
       CALL FinalizeTimers_AMReX &
-             ( RestartProgramTimer_Option = .TRUE. )
+             ( RestartProgramTimer_Option = .TRUE., &
+               Verbose_Option = amrex_parallel_ioprocessor() )
 
       chk = .FALSE.
 

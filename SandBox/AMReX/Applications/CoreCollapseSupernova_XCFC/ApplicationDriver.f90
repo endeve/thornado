@@ -6,7 +6,7 @@ PROGRAM main
     amrex_parallel_ioprocessor, &
     amrex_parallel_communicator
   USE amrex_amrcore_module, ONLY: &
-   amrex_geom
+    amrex_geom
 
   ! --- thornado Modules ---
 
@@ -335,7 +335,8 @@ CONTAINS
                pMF_uCR_Option = MF_uCR % P )
 
       CALL FinalizeTimers_AMReX &
-             ( RestartProgramTimer_Option = .TRUE. )
+             ( RestartProgramTimer_Option = .TRUE., &
+               Verbose_Option = amrex_parallel_ioprocessor() )
 
       chk = .FALSE.
 

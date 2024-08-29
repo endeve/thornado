@@ -148,6 +148,8 @@ MODULE InitializationModule
     TimersStop_AMReX, &
     InitializeTimers_AMReX, &
     Timer_AMReX_Initialize
+  USE MF_AccretionShockUtilitiesModule, ONLY: &
+    FileName_Nodal1DIC_SAS
 
   IMPLICIT NONE
   PRIVATE
@@ -243,17 +245,24 @@ CONTAINS
 
       CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
 
+      CALL amrex_parmparse_build( PP, 'SAS' )
+        CALL PP % get  ( 'FileName_Nodal1DIC_SAS', &
+                          FileName_Nodal1DIC_SAS )
+      CALL amrex_parmparse_destroy( PP )
+
+      OPEN( UNIT = 100, FILE = TRIM( FileName_Nodal1DIC_SAS ) // '_BC.dat' )
+
+      READ(100,*) ExpD
+      READ(100,*) ExpE
+
+      CLOSE( 100 )
+
       SetInitialValues = .FALSE.
 
       CALL InitializeTally_Euler_MF &
              ( InitializeFromCheckpoint_Option = .TRUE. )
 
     END IF
-
-    CALL amrex_parmparse_build( PP, "SAS" )
-      CALL PP % query( "ExpD", ExpD )
-      CALL PP % query( "ExpE", ExpE )
-    CALL amrex_parmparse_destroy( PP )
 
     IF( amrex_parallel_ioprocessor() )THEN
 

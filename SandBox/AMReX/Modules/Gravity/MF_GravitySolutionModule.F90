@@ -46,7 +46,7 @@ CONTAINS
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
-    EvolveGravity = .TRUE.
+    EvolveGravity = .FALSE.
     CALL amrex_parmparse_build( PP, 'GS' )
       CALL PP % query( 'EvolveGravity', EvolveGravity )
     CALL amrex_parmparse_destroy( PP )
