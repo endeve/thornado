@@ -277,7 +277,7 @@ fi
 
 set_common
 
-timeFOMLog="timeFOM-noptr-${COMPILER_DATE}-mkl${MKL_DATE}.txt${umdf}$AADEBUG"
+timeFOMLog="timeFOM${COMPILER_DATE}-mkl${MKL_DATE}.txt${umdf}$AADEBUG"
 if [[ -z $ACTION || "$1" == "FOM" ]];then
    rm -rf $timeFOMLog
    echo "                                                        Time(seconds)                             |                      Figure of Merit (FOM)">>$timeFOMLog
@@ -301,7 +301,7 @@ do
          fi
 
          export OP_LEVEL=$op
-         export LOG_FILE=${logFiles[jj]}.${OP_LEVEL}.${COMPILER_DATE}-mkl${MKL_DATE}${umdf}${gridNames[ii]}${faction}$AADEBUG
+         export LOG_FILE=${logFiles[jj]}.${OP_LEVEL}.${COMPILER_DATE}-mkl00${MKL_DATE}${umdf}${gridNames[ii]}${faction}$AADEBUG
          export LOG_BASE=${logFiles[jj]}.${OP_LEVEL}.${BASE_DATE}${BASE_UMD}${gridNames[ii]}$AADEBUG
          export USER_OPTION=${userOptions[jj]}
 
