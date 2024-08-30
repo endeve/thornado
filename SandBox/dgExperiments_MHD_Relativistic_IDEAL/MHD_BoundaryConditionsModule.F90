@@ -128,25 +128,25 @@ CONTAINS
 
     INTEGER(HID_T) :: FILE_ID
 
-    REAL(DP) :: CD_I(1:nDOFX,1:nX(1), &
-                             1:nX(2), &
-                             1:nX(3))
+    REAL(DP) :: CD_I(1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3))
 
-    REAL(DP) :: S1_I(1:nDOFX,1:nX(1), &
-                             1:nX(2), &
-                             1:nX(3))
+    REAL(DP) :: CS1_I(1:nDOFX,iX_B1(1):iX_E1(1), &
+                              iX_B1(2):iX_E1(2), &
+                              iX_B1(3):iX_E1(3))
 
-    REAL(DP) :: S2_I(1:nDOFX,1:nX(1), &
-                             1:nX(2), &
-                             1:nX(3))
+    REAL(DP) :: CS2_I(1:nDOFX,iX_B1(1):iX_E1(1), &
+                              iX_B1(2):iX_E1(2), &
+                              iX_B1(3):iX_E1(3))
 
-    REAL(DP) :: S3_I(1:nDOFX,1:nX(1), &
-                             1:nX(2), &
-                             1:nX(3))
+    REAL(DP) :: CS3_I(1:nDOFX,iX_B1(1):iX_E1(1), &
+                              iX_B1(2):iX_E1(2), &
+                              iX_B1(3):iX_E1(3))
 
-    REAL(DP) :: Dataset3D(nX(1)*nNodesX(1), &
-                          nX(2)*nNodesX(2), &
-                          nX(3)*nNodesX(3))
+    REAL(DP) :: Dataset3D(iX_B1(1):iX_E1(1)*nNodesX(1), &
+                          iX_B1(2):iX_E1(2)*nNodesX(2), &
+                          iX_B1(3):iX_E1(3)*nNodesX(3))
 
     INTEGER  :: iCM, iX1, iX2, iX3
     INTEGER  :: iNX, iNX_0
@@ -640,32 +640,32 @@ CONTAINS
 
           CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
 
-          CD_I(1:nDOFX,1:nX(1),1:nX(2),1:nX(3)) &
-            = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+          CD_I(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) &
+            = FromField3D( Dataset3D, nX + 2 * swX, nNodesX, nDOFX, NodeNumberTableX, iX_B1, iX_E1 ) &
                 * unitsCM(1)
 
           DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCM(2) )
 
           CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
 
-          S1_I(1:nDOFX,1:nX(1),1:nX(2),1:nX(3)) &
-            = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+          CS1_I(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) &
+            = FromField3D( Dataset3D, nX + 2 * swX, nNodesX, nDOFX, NodeNumberTableX, iX_B1, iX_E1 ) &
                 * unitsCM(2)
 
           DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCM(3) )
 
           CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
 
-          S2_I(1:nDOFX,1:nX(1),1:nX(2),1:nX(3)) &
-            = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+          CS2_I(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) &
+            = FromField3D( Dataset3D, nX + 2 * swX, nNodesX, nDOFX, NodeNumberTableX, iX_B1, iX_E1 ) &
                 * unitsCM(3)
 
           DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCM(4) )
 
           CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
 
-          S3_I(1:nDOFX,1:nX(1),1:nX(2),1:nX(3)) &
-            = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+          CS3_I(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) &
+            = FromField3D( Dataset3D, nX + 2 * swX, nNodesX, nDOFX, NodeNumberTableX, iX_B1, iX_E1 ) &
                 * unitsCM(4)
 
         END IF
@@ -686,18 +686,18 @@ CONTAINS
 
             U(iNX,iX_B0(1)-iX1,iX2,iX3,2) &
               = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,2) &
-                - S1_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
-                + S1_I(iNX,iX_B0(1)-iX1,iX2,iX3)
+                - CS1_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
+                + CS1_I(iNX,iX_B0(1)-iX1,iX2,iX3)
 
             U(iNX,iX_B0(1)-iX1,iX2,iX3,3) &
               = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,3) &
-                - S2_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
-                + S2_I(iNX,iX_B0(1)-iX1,iX2,iX3)
+                - CS2_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
+                + CS2_I(iNX,iX_B0(1)-iX1,iX2,iX3)
 
             U(iNX,iX_B0(1)-iX1,iX2,iX3,4) &
               = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,4) &
-                - S3_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
-                + S3_I(iNX,iX_B0(1)-iX1,iX2,iX3)
+                - CS3_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
+                + CS3_I(iNX,iX_B0(1)-iX1,iX2,iX3)
 
           END DO
           END DO
@@ -722,18 +722,18 @@ CONTAINS
 
             U(iNX,iX_E0(1)+iX1,iX2,iX3,2) &
               = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,2) &
-                - S1_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
-                + S1_I(iNX,iX_E0(1)+iX1,iX2,iX3)
+                - CS1_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
+                + CS1_I(iNX,iX_E0(1)+iX1,iX2,iX3)
 
             U(iNX,iX_E0(1)+iX1,iX2,iX3,3) &
               = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,3) &
-                - S2_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
-                + S2_I(iNX,iX_E0(1)+iX1,iX2,iX3)
+                - CS2_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
+                + CS2_I(iNX,iX_E0(1)+iX1,iX2,iX3)
 
             U(iNX,iX_E0(1)+iX1,iX2,iX3,4) &
               = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,4) &
-                - S3_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
-                + S3_I(iNX,iX_E0(1)+iX1,iX2,iX3)
+                - CS3_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
+                + CS3_I(iNX,iX_E0(1)+iX1,iX2,iX3)
 
           END DO
           END DO
