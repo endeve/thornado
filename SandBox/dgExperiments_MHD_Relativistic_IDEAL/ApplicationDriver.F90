@@ -51,6 +51,8 @@ PROGRAM ApplicationDriver
     uDM
   USE GeometryFieldsModule, ONLY: &
     uGF
+  USE MHD_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_MHD
   USE MHD_DiscretizationModule_Relativistic, ONLY: &
     ComputeIncrement_MHD_DG_Explicit
   USE UnitsModule, ONLY: &
@@ -117,7 +119,6 @@ PROGRAM ApplicationDriver
 
   REAL(DP) :: OTScaleFactor = 100.0_DP
 
-  INTEGER  :: Rand_Points = 0
   REAL(DP) :: Rand_Amplitude = Zero
 
   SuppressTally = .FALSE.
@@ -629,12 +630,12 @@ PROGRAM ApplicationDriver
     CASE( 'ShearingDisk' )
 
       ActivateUnits = .TRUE.
+      WriteGhost    = .FALSE. ! Needed for BCs
 
       EvolveOnlyMagnetic = .FALSE.
 
       ApplyRandomPerturbations = .FALSE.
-      Rand_Points = 128 * 64
-      Rand_Amplitude = 1.0d-2
+      Rand_Amplitude = 1.0d-4
 
       UseDivergenceCleaning = .FALSE.
       DampingParameter = 0.0_DP
@@ -647,6 +648,7 @@ PROGRAM ApplicationDriver
       CoordinateSystem = 'CYLINDRICAL'
 
       nX  = [ 128, 1, 1 ]
+      bcX = [ 0, 0, 0 ]
       swX = [ 1, 0, 0 ]
       xL  = [ 1.45d6 * Centimeter, -0.5d5 * Centimeter, Zero ]
       xR  = [ 1.65d6 * Centimeter,  0.5d5 * Centimeter, TwoPi]
@@ -806,7 +808,7 @@ PROGRAM ApplicationDriver
   IF( ApplyRandomPerturbations )THEN
 
     CALL InitializeRandPerturbations &
-           ( nX(1), nX(2), nX(3), nDOFX, Rand_Points, Rand_Amplitude )
+           ( iX_B0, iX_E0, nDOFX, Rand_Amplitude )
 
   END IF
 
@@ -822,6 +824,8 @@ PROGRAM ApplicationDriver
     CALL ComputeMagneticDivergence_MHD_Relativistic &
            ( t, iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
 
+    CALL ApplyBoundaryConditions_MHD( t, iX_B0, iX_E0, iX_B1, iX_E1, uCM )
+
     CALL WriteFieldsHDF &
            ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF, WriteGhost_Option = WriteGhost )
 
@@ -835,7 +839,8 @@ PROGRAM ApplicationDriver
 
   IF( ApplyRandomPerturbations )THEN
 
-    CALL ApplyRandPerturbations( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, EvolveOnlyMagnetic )
+    CALL ApplyRandPerturbations( iX_B0, iX_E0, iX_B1, iX_E1, nDOFX, &
+                                 uGF, uCM, EvolveOnlyMagnetic )
 
   END IF
 
@@ -921,6 +926,8 @@ PROGRAM ApplicationDriver
       CALL ComputeMagneticDivergence_MHD_Relativistic &
            ( t, iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
 
+      CALL ApplyBoundaryConditions_MHD( t, iX_B0, iX_E0, iX_B1, iX_E1, uCM )
+
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF, WriteGhost_Option = WriteGhost )
 
@@ -945,6 +952,8 @@ PROGRAM ApplicationDriver
 
   CALL ComputeMagneticDivergence_MHD_Relativistic &
          ( t, iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
+
+  CALL ApplyBoundaryConditions_MHD( t, iX_B0, iX_E0, iX_B1, iX_E1, uCM )
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF, WriteGhost_Option = WriteGhost )

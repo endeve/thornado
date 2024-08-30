@@ -11,8 +11,6 @@ MODULE MHD_PerturbationModule
     Gram, &
     Centimeter, &
     Kilometer
-  USE ProgramHeaderModule, ONLY: &
-    nDOFX
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
   USE MeshModule, ONLY: &
@@ -78,26 +76,20 @@ MODULE MHD_PerturbationModule
             ApplyRandPerturbations, &
             FinalizeRandPerturbations
 
-  INTEGER,  PUBLIC :: Rand_Points
-  INTEGER,  PUBLIC, ALLOCATABLE :: Rand_X1(:), Rand_X2(:), Rand_X3(:)
-  INTEGER,  PUBLIC, ALLOCATABLE :: Rand_NodeX(:)
   REAL(DP), PUBLIC :: Rand_Amplitude
+  REAL(DP), PUBLIC, ALLOCATABLE :: Random_Amps(:,:,:,:)
 
 CONTAINS
 
 
   SUBROUTINE InitializeRandPerturbations &
-               ( Size_X1, Size_X2, Size_X3, Size_NodeX, &
-                 Rand_Points_Option, Rand_Amplitude_Option )
+               ( iX_B0, iX_E0, nDOFX, Rand_Amplitude_Option )
 
-    INTEGER,  INTENT(in) :: Size_X1, Size_X2, Size_X3
-    INTEGER,  INTENT(in) :: Size_NodeX
-    INTEGER,  INTENT(in), OPTIONAL :: Rand_Points_Option
+    INTEGER,  INTENT(in) :: iX_B0(3), iX_E0(3), nDOFX
     REAL(DP), INTENT(in), OPTIONAL :: Rand_Amplitude_Option
 
-    INTEGER  :: iPoint
-    REAL(DP) :: Rand1, Rand2, Rand3
-    REAL(DP) :: RandN
+    INTEGER :: iNX, iX1, iX2, iX3
+    REAL(DP) :: Rand
 
     IF( PRESENT( Rand_Amplitude_Option ) )THEN
       Rand_Amplitude = Rand_Amplitude_Option
@@ -105,59 +97,44 @@ CONTAINS
       Rand_Amplitude = Zero
     END IF
 
-    IF( PRESENT( Rand_Points_Option ) )THEN
-      Rand_Points = Rand_Points_Option
-    ELSE
-      Rand_Points = 0
-    END IF
+    ALLOCATE(Random_Amps(nDOFX, iX_E0(1) - iX_B0(1) + 1, &
+                                iX_E0(2) - iX_B0(2) + 1, &
+                                iX_E0(3) - iX_B0(3) + 1))
 
-    ALLOCATE( Rand_X1(Rand_Points) )
-    ALLOCATE( Rand_X2(Rand_Points) )
-    ALLOCATE( Rand_X3(Rand_Points) )
-    ALLOCATE( Rand_NodeX(Rand_Points) )
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1, nDOFX
 
-    IF( Rand_Points > 0 )THEN
+      CALL RANDOM_SEED()
 
-      DO iPoint = 1, Rand_Points
+      CALL RANDOM_NUMBER( Rand )
 
-        CALL RANDOM_SEED  ()
-        CALL RANDOM_NUMBER( Rand1 )
+      PRINT*, Rand * 1.0d2
 
-        CALL RANDOM_SEED  ()
-        CALL RANDOM_NUMBER( Rand2 )
+      Random_Amps(iNX,iX1,iX2,iX3) = Rand * 1.0d2 * Rand_Amplitude
 
-        CALL RANDOM_SEED  ()
-        CALL RANDOM_NUMBER( Rand3 )
-
-        CALL RANDOM_SEED  ()
-        CALL RANDOM_NUMBER( RandN )
-
-        Rand_X1(iPoint) = CEILING( Rand1 * ( Size_X1 ) )
-        Rand_X2(iPoint) = CEILING( Rand2 * ( Size_X2 ) )
-        Rand_X3(iPoint) = CEILING( Rand3 * ( Size_X3 ) )
-
-        Rand_NodeX(iPoint) = CEILING( RandN * ( Size_NodeX ) )
-
-      END DO
-
-    END IF
+    END DO
+    END DO
+    END DO
+    END DO
 
   END SUBROUTINE InitializeRandPerturbations
 
 
-  SUBROUTINE ApplyRandPerturbations( iX_B0, iX_E0, iX_B1, iX_E1, G, U, EvolveOnlyMagnetic )
+  SUBROUTINE ApplyRandPerturbations( iX_B0, iX_E0, iX_B1, iX_E1, nDOFX, &
+                                     G, U, EvolveOnlyMagnetic )
 
     ! --- Still in progress. ---
 
+    INTEGER, INTENT(in) :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), nDOFX
     LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
-    INTEGER, INTENT(in) :: &
-      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in) :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iX1, iX2, iX3, iPoint
+    INTEGER :: iNX, iX1, iX2, iX3
 
     REAL(DP) :: &
       P(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nPM)
@@ -167,65 +144,52 @@ CONTAINS
     ! --- Applying the random radial velocity      ---
     ! --- perturbations from Muller & Janka (2017) ---
 
-    IF( Rand_Points > 0 )THEN
-
-      CALL ComputeFromConserved_MHD_Relativistic &
+    CALL ComputeFromConserved_MHD_Relativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, EvolveOnlyMagnetic )
 
-      DO iPoint = 1, Rand_Points
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNX = 1, nDOFX
 
-        P(Rand_NodeX(iPoint),Rand_X1(iPoint),Rand_X2(iPoint),Rand_X3(iPoint),iPM_V1) &
-          = Rand_Amplitude &
-              * NodeCoordinate( MeshX(1), Rand_X1(iPoint), &
-                                NodeNumberTableX( 1, Rand_NodeX(iPoint) ) ) &
-              * P(Rand_NodeX(iPoint),Rand_X1(iPoint),Rand_X2(iPoint),Rand_X3(iPoint),iPM_V3)
+      P(iNX,iX1,iX2,iX3,iPM_V1) &
+        = Random_Amps(iNX,iX1,iX2,iX3) &
+          * NodeCoordinate( MeshX(1), iX1, NodeNumberTableX( 1, iNX ) ) &
+          * P(iNX,iX1,iX2,iX3,iPM_V3)
 
-      END DO
+    END DO
 
-      DO iX3 = iX_B0(3), iX_E0(3)
-      DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
+     CALL ComputeConserved_MHD_Relativistic &
+             ( P(:,iX1,iX2,iX3,iPM_D ), P(:,iX1,iX2,iX3,iPM_V1 ), &
+               P(:,iX1,iX2,iX3,iPM_V2), P(:,iX1,iX2,iX3,iPM_V3 ), &
+               P(:,iX1,iX2,iX3,iPM_E ), P(:,iX1,iX2,iX3,iPM_Ne ), &
+               P(:,iX1,iX2,iX3,iPM_B1), P(:,iX1,iX2,iX3,iPM_B2 ), &
+               P(:,iX1,iX2,iX3,iPM_B3), P(:,iX1,iX2,iX3,iPM_Chi), &
+               U(:,iX1,iX2,iX3,iCM_D ), U(:,iX1,iX2,iX3,iCM_S1 ), &
+               U(:,iX1,iX2,iX3,iCM_S2), U(:,iX1,iX2,iX3,iCM_S3 ), &
+               U(:,iX1,iX2,iX3,iCM_E ), U(:,iX1,iX2,iX3,iCM_Ne ), &
+               U(:,iX1,iX2,iX3,iCM_B1), U(:,iX1,iX2,iX3,iCM_B2 ), &
+               U(:,iX1,iX2,iX3,iCM_B3), U(:,iX1,iX2,iX3,iCM_Chi), &
+               G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               G(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               G(:,iX1,iX2,iX3,iGF_Alpha   ), &
+               G(:,iX1,iX2,iX3,iGF_Beta_1  ), &
+               G(:,iX1,iX2,iX3,iGF_Beta_2  ), &
+               G(:,iX1,iX2,iX3,iGF_Beta_3  ), &
+               A(:,iX1,iX2,iX3,iAM_P       ), &
+               EvolveOnlyMagnetic )
 
-       CALL ComputeConserved_MHD_Relativistic &
-               ( P(:,iX1,iX2,iX3,iPM_D ), P(:,iX1,iX2,iX3,iPM_V1 ), &
-                 P(:,iX1,iX2,iX3,iPM_V2), P(:,iX1,iX2,iX3,iPM_V3 ), &
-                 P(:,iX1,iX2,iX3,iPM_E ), P(:,iX1,iX2,iX3,iPM_Ne ), &
-                 P(:,iX1,iX2,iX3,iPM_B1), P(:,iX1,iX2,iX3,iPM_B2 ), &
-                 P(:,iX1,iX2,iX3,iPM_B3), P(:,iX1,iX2,iX3,iPM_Chi), &
-                 U(:,iX1,iX2,iX3,iCM_D ), U(:,iX1,iX2,iX3,iCM_S1 ), &
-                 U(:,iX1,iX2,iX3,iCM_S2), U(:,iX1,iX2,iX3,iCM_S3 ), &
-                 U(:,iX1,iX2,iX3,iCM_E ), U(:,iX1,iX2,iX3,iCM_Ne ), &
-                 U(:,iX1,iX2,iX3,iCM_B1), U(:,iX1,iX2,iX3,iCM_B2 ), &
-                 U(:,iX1,iX2,iX3,iCM_B3), U(:,iX1,iX2,iX3,iCM_Chi), &
-                 G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 G(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 G(:,iX1,iX2,iX3,iGF_Alpha   ), &
-                 G(:,iX1,iX2,iX3,iGF_Beta_1  ), &
-                 G(:,iX1,iX2,iX3,iGF_Beta_2  ), &
-                 G(:,iX1,iX2,iX3,iGF_Beta_3  ), &
-                 A(:,iX1,iX2,iX3,iAM_P       ), &
-                 EvolveOnlyMagnetic )
-
-      END DO
-      END DO
-      END DO
-
-    ELSE
-
-      RETURN
-
-    END IF
+    END DO
+    END DO
+    END DO
 
   END SUBROUTINE ApplyRandPerturbations
 
 
   SUBROUTINE FinalizeRandPerturbations
 
-    DEALLOCATE( Rand_X1 )
-    DEALLOCATE( Rand_X2 )
-    DEALLOCATE( Rand_X3 )
-    DEALLOCATE( Rand_NodeX )
+    DEALLOCATE( Random_Amps )
 
   END SUBROUTINE FinalizeRandPerturbations
 
