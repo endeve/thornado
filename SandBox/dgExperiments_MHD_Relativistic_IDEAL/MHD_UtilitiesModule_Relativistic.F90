@@ -3123,8 +3123,6 @@ CONTAINS
 
     eps = W * ( q_bar - mu * r_barSq * ( One - mu * W / ( One + W ) ) )
 
-   !PRINT*, 'eps:   ', eps
-
     ! --- Eq. 43 ---
 
     CALL ComputePressureFromSpecificInternalEnergy &
@@ -3292,6 +3290,84 @@ CONTAINS
   END SUBROUTINE
 
 
+  SUBROUTINE SolveMuBound_Bisection &
+               ( r, bSq, rb, h0, mu )
+
+    REAL(DP), INTENT(in) :: r, bSq, rb
+    REAL(DP), INTENT(in) :: h0
+
+    REAL(DP), INTENT(out) :: mu
+
+    LOGICAL             :: CONVERGED
+    INTEGER             :: ITERATION
+    REAL(DP)            :: mua, mub, muc, dmu
+    REAL(DP)            :: fa, fb, fc
+    REAL(DP), PARAMETER :: dmu_min = 1.0d-08
+    INTEGER,  PARAMETER :: MAX_IT = 4 - INT( LOG( dmu_min) / LOG( Two ) )
+
+    mua = Zero
+
+    mub = One / h0
+
+    CALL ComputeAuxiliaryFunMu( r, bSq, rb, h0, mua, fa )
+
+    CALL ComputeAuxiliaryFunMu( r, bSq, rb, h0, mub, fb )
+
+    ! --- Check that sign of FunZ changes across bounds ---
+
+    IF( .NOT. fa * fb .LT. 0 ) THEN
+      PRINT*, 'Cannot perform bisection in primitive recovery!'
+      PRINT*, 'mua: ', mua
+      PRINT*, 'mub: ', mub
+      PRINT*, 'fa : ', fa
+      PRINT*, 'fb : ', fb
+      STOP
+    END IF
+
+    dmu = mub - mua
+
+    ITERATION = 0
+    CONVERGED = .FALSE.
+    DO WHILE ( .NOT. CONVERGED .AND. ITERATION .LT. MAX_IT )
+
+      ITERATION = ITERATION + 1
+
+      dmu = Half * dmu
+
+     !PRINT*, 'dmu: ', dmu
+
+      ! --- Bisection ---
+
+      muc = mua + dmu
+
+      CALL ComputeAuxiliaryFunMu( r, bSq, rb, h0, muc, fc )
+
+      IF( fa * fc .LT. Zero )THEN
+
+        mub = muc
+        fb = fc
+
+      ELSE IF( fa * fc .GT. Zero )THEN
+
+        mua = muc
+        fa = fc
+
+      ELSE
+
+        CONVERGED = .TRUE.
+
+      END IF
+
+      IF( ABS( dmu ) / MAX( ABS( muc ), SqrtTiny ) .LE. dmu_min ) &
+        CONVERGED = .TRUE.
+
+    END DO
+
+    mu = muc
+
+  END SUBROUTINE SolveMuBound_Bisection
+
+
   SUBROUTINE SolveMu_Bisection &
                ( D_bar, Ne_bar, q, r, &
                  bSq, rb, h0, v0, mu )
@@ -3322,7 +3398,9 @@ CONTAINS
 
       mua = Zero
 
-      CALL SolveMuBound_NewtonRaphson( r, bSq, rb, h0, mub )
+      CALL SolveMuBound_Bisection( r, bSq, rb, h0, mub )
+
+      !CALL SolveMuBound_NewtonRaphson( r, bSq, rb, h0, mub )
 
     END IF
 
