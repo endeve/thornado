@@ -409,7 +409,10 @@ def GetFieldData( ds,                   \
 
     elif Field == 'RelativisticSpecificEnthalpy':
 
-        c = 2.99792458e10
+        if gvS.UsePhysicalUnits:
+            c = 2.99792458e10
+        else:
+            c = 1.0
 
         e   = np.copy( ds.find_field_values_at_points(("boxlib",'PF_E'), Locations ) )
         p   = np.copy( ds.find_field_values_at_points(("boxlib",'AF_P'), Locations ) )
