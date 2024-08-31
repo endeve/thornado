@@ -29,7 +29,9 @@ DIM       = 1
 EBASE     = ApplicationDriver
 
 INCLUDE_LOCATIONS += $(LAPACK_INC)
+INCLUDE_LOCATIONS += $(HDF5_INC)
 LIBRARY_LOCATIONS += $(LAPACK_LIB)
+LIBRARY_LOCATIONS += $(HDF5_LIB)
 LIBRARIES += -llapack -lblas
 
 # Set pre-processor directives
