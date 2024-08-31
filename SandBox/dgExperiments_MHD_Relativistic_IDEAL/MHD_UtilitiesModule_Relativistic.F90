@@ -130,6 +130,8 @@ MODULE MHD_UtilitiesModule_Relativistic
   PUBLIC :: Flux_X3_MHD_Relativistic
   PUBLIC :: NumericalFlux_HLL_MHD_Relativistic
   PUBLIC :: NumericalFlux_X1_GFORCE_MHD_Relativistic
+  PUBLIC :: NumericalFlux_X2_GFORCE_MHD_Relativistic
+  PUBLIC :: NumericalFlux_X3_GFORCE_MHD_Relativistic
 
   PUBLIC :: x_from_mu
   PUBLIC :: r_barSq_from_mu
@@ -3113,6 +3115,140 @@ CONTAINS
 
     RETURN
   END FUNCTION NumericalFlux_X1_GFORCE_MHD_Relativistic
+
+
+  !> Compute the GFORCE numerical flux at a given element
+  !> interface, in a given dimension.
+  FUNCTION NumericalFlux_X2_GFORCE_MHD_Relativistic &
+    ( uL, uR, fL, fR, aP, aM, CFL, g, &
+      EvolveOnlyMagnetic, UseDivergenceCleaning )
+
+    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP, aM, CFL, g(7)
+    LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
+
+    REAL(DP) :: tau, omega_g
+    REAL(DP) :: uLW(nCM), pLW(nPM), fLF(nCM), fLW(nCM), aLW(1)
+    REAL(DP) :: D, V1, V2, V3, E, Ne, B1, B2, B3, Chi
+    REAL(DP) :: NumericalFlux_X2_GFORCE_MHD_Relativistic(nCM)
+
+    tau = One / MAX( ABS( aP ), ABS( aM ) )
+
+    omega_g = One / ( One + CFL )
+
+    PRINT*, 'omega_g: ', omega_g
+
+    uLW = ( uR + uL ) / Two - ( tau / Two ) * ( fR - fL )
+
+    CALL ComputePrimitive_Scalar( uLW(iCM_D), &
+                                  uLW(iCM_S1), uLW(iCM_S2), uLW(iCM_S3), &
+                                  uLW(iCM_E ), uLW(iCM_Ne), &
+                                  uLW(iCM_B1), uLW(iCM_B2), uLW(iCM_B3), &
+                                  uLW(iCM_Chi), &
+                                  pLW(iPM_D), &
+                                  pLW(iPM_V1), pLW(iPM_V2), pLW(iPM_V3), &
+                                  pLW(iPM_E ), pLW(iPM_Ne), &
+                                  pLW(iPM_B1), pLW(iPM_B2), pLW(iPM_B3), &
+                                  pLW(iPM_Chi), &
+                                  g(1), &
+                                  g(2), &
+                                  g(3), &
+                                  g(4),    &
+                                  g(5),   &
+                                  g(6),   &
+                                  g(7),   &
+                                  EvolveOnlyMagnetic )
+
+    CALL ComputePressureFromPrimitive &
+           ( pLW(iPM_D), pLW(iPM_E), pLW(iPM_Ne), aLW(1) )
+
+    fLF = ( fR + fL ) / Two - ( One / ( Two * tau ) ) * ( uR - uL )
+
+    fLW = Flux_X2_MHD_Relativistic( pLW(iPM_D), &
+                                    pLW(iPM_V1),  pLW(iPM_V2), pLW(iPM_V3), &
+                                    pLW(iPM_E ),  pLW(iPM_Ne), &
+                                    pLW(iPM_B1),  pLW(iPM_B2), pLW(iPM_V3), &
+                                    pLW(iPM_Chi), aLW(1), &
+                                    g(1), &
+                                    g(2), &
+                                    g(3), &
+                                    g(4),    &
+                                    g(5),   &
+                                    g(6),   &
+                                    g(7),   &
+                                    UseDivergenceCleaning )
+
+    NumericalFlux_X2_GFORCE_MHD_Relativistic &
+      = omega_g * fLW + ( One - omega_g ) * fLF
+
+    RETURN
+  END FUNCTION NumericalFlux_X2_GFORCE_MHD_Relativistic
+
+
+  !> Compute the GFORCE numerical flux at a given element
+  !> interface, in a given dimension.
+  FUNCTION NumericalFlux_X3_GFORCE_MHD_Relativistic &
+    ( uL, uR, fL, fR, aP, aM, CFL, g, &
+      EvolveOnlyMagnetic, UseDivergenceCleaning )
+
+    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP, aM, CFL, g(7)
+    LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
+
+    REAL(DP) :: tau, omega_g
+    REAL(DP) :: uLW(nCM), pLW(nPM), fLF(nCM), fLW(nCM), aLW(1)
+    REAL(DP) :: D, V1, V2, V3, E, Ne, B1, B2, B3, Chi
+    REAL(DP) :: NumericalFlux_X3_GFORCE_MHD_Relativistic(nCM)
+
+    tau = One / MAX( ABS( aP ), ABS( aM ) )
+
+    omega_g = One / ( One + CFL )
+
+    PRINT*, 'omega_g: ', omega_g
+
+    uLW = ( uR + uL ) / Two - ( tau / Two ) * ( fR - fL )
+
+    CALL ComputePrimitive_Scalar( uLW(iCM_D), &
+                                  uLW(iCM_S1), uLW(iCM_S2), uLW(iCM_S3), &
+                                  uLW(iCM_E ), uLW(iCM_Ne), &
+                                  uLW(iCM_B1), uLW(iCM_B2), uLW(iCM_B3), &
+                                  uLW(iCM_Chi), &
+                                  pLW(iPM_D), &
+                                  pLW(iPM_V1), pLW(iPM_V2), pLW(iPM_V3), &
+                                  pLW(iPM_E ), pLW(iPM_Ne), &
+                                  pLW(iPM_B1), pLW(iPM_B2), pLW(iPM_B3), &
+                                  pLW(iPM_Chi), &
+                                  g(1), &
+                                  g(2), &
+                                  g(3), &
+                                  g(4),    &
+                                  g(5),   &
+                                  g(6),   &
+                                  g(7),   &
+                                  EvolveOnlyMagnetic )
+
+    CALL ComputePressureFromPrimitive &
+           ( pLW(iPM_D), pLW(iPM_E), pLW(iPM_Ne), aLW(1) )
+
+    fLF = ( fR + fL ) / Two - ( One / ( Two * tau ) ) * ( uR - uL )
+
+    fLW = Flux_X3_MHD_Relativistic( pLW(iPM_D), &
+                                    pLW(iPM_V1),  pLW(iPM_V2), pLW(iPM_V3), &
+                                    pLW(iPM_E ),  pLW(iPM_Ne), &
+                                    pLW(iPM_B1),  pLW(iPM_B2), pLW(iPM_V3), &
+                                    pLW(iPM_Chi), aLW(1), &
+                                    g(1), &
+                                    g(2), &
+                                    g(3), &
+                                    g(4),    &
+                                    g(5),   &
+                                    g(6),   &
+                                    g(7),   &
+                                    UseDivergenceCleaning )
+
+    NumericalFlux_X3_GFORCE_MHD_Relativistic &
+      = omega_g * fLW + ( One - omega_g ) * fLF
+
+    RETURN
+  END FUNCTION NumericalFlux_X3_GFORCE_MHD_Relativistic
 
 
   ! --- Auxiliary utilities for ComputePrimitive ---

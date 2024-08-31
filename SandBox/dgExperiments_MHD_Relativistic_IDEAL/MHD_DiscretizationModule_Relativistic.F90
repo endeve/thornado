@@ -318,10 +318,10 @@ CONTAINS
     END DO
 
     CALL ComputeIncrement_MHD_Divergence_X2 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X2 )
+           ( CFL, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X2 )
 
     CALL ComputeIncrement_MHD_Divergence_X3 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X3 )
+           ( CFL, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X3 )
 
     IF( PRESENT( SurfaceFlux_X1_Option ) )THEN
      SurfaceFlux_X1_Option = SurfaceFlux_X1
@@ -1195,8 +1195,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_MHD_Divergence_X2 &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X2 )
+    ( CFL, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X2 )
 
+    REAL(DP), INTENT(in)    :: CFL
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
@@ -1693,7 +1694,17 @@ CONTAINS
               Flux_L              , &
               Flux_R              , &
               AlphaPls            , &
-              AlphaMns            )
+              AlphaMns            , &
+              CFL                 , &
+              [ Gm_dd_11_F(iNX_X), &
+                Gm_dd_22_F(iNX_X), &
+                Gm_dd_33_F(iNX_X), &
+                Alpha_F(iNX_X),    &
+                Beta_1_F(iNX_X),   &
+                Beta_2_F(iNX_X),   &
+                Beta_3_F(iNX_X)  ], &
+              EvolveOnlyMagnetic  , &
+              UseDivergenceCleaning )
 
       DO iCM = 1, nCM
 
@@ -1833,8 +1844,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_MHD_Divergence_X3 &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X3 )
+    ( CFL, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X3 )
 
+    REAL(DP), INTENT(in)    :: CFL
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
@@ -2331,7 +2343,17 @@ CONTAINS
               Flux_L              , &
               Flux_R              , &
               AlphaPls            , &
-              AlphaMns            )
+              AlphaMns            , &
+              CFL                 , &
+              [ Gm_dd_11_F(iNX_X), &
+                Gm_dd_22_F(iNX_X), &
+                Gm_dd_33_F(iNX_X), &
+                Alpha_F(iNX_X),    &
+                Beta_1_F(iNX_X),   &
+                Beta_2_F(iNX_X),   &
+                Beta_3_F(iNX_X)  ], &
+              EvolveOnlyMagnetic  , &
+              UseDivergenceCleaning )
 
       DO iCM = 1, nCM
 

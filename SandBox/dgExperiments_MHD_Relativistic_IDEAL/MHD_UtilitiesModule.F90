@@ -362,32 +362,58 @@ CONTAINS
 
 
   FUNCTION NumericalFlux_MHD_X2 &
-    ( uL, uR, fL, fR, aP, aM )
+    ( uL, uR, fL, fR, aP, aM, CFL, &
+      g, EvolveOnlyMagnetic, UseDivergenceCleaning )
 
     REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), &
-                            aP, aM
+                            aP, aM, CFL, g(7)
+    LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
 
     REAL(DP) :: NumericalFlux_MHD_X2(nCM)
+
+#if defined(HYDRO_RIEMANN_SOLVER_GFORCE)
+
+    NumericalFlux_MHD_X2 &
+      = NumericalFlux_MHD_GFORCE_X2 &
+          ( uL, uR, fL, fR, aP, aM, CFL, g, &
+            EvolveOnlyMagnetic, UseDivergenceCleaning )
+
+#else
 
     NumericalFlux_MHD_X2 &
       = NumericalFlux_MHD_HLL &
           ( uL, uR, fL, fR, aP, aM )
+
+#endif
 
     RETURN
   END FUNCTION NumericalFlux_MHD_X2
 
 
   FUNCTION NumericalFlux_MHD_X3 &
-    ( uL, uR, fL, fR, aP, aM )
+    ( uL, uR, fL, fR, aP, aM, CFL, &
+      g, EvolveOnlyMagnetic, UseDivergenceCleaning )
 
     REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), &
-                            aP, aM
+                            aP, aM, CFL, g(7)
+    LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
 
     REAL(DP) :: NumericalFlux_MHD_X3(nCM)
+
+#if defined(HYDRO_RIEMANN_SOLVER_GFORCE)
+
+    NumericalFlux_MHD_X3 &
+      = NumericalFlux_MHD_GFORCE_X3 &
+          ( uL, uR, fL, fR, aP, aM, CFL, g, &
+            EvolveOnlyMagnetic, UseDivergenceCleaning )
+
+#else
 
     NumericalFlux_MHD_X3 &
       = NumericalFlux_MHD_HLL &
           ( uL, uR, fL, fR, aP, aM )
+
+#endif
 
     RETURN
   END FUNCTION NumericalFlux_MHD_X3
@@ -421,6 +447,40 @@ CONTAINS
 
     RETURN
   END FUNCTION NumericalFlux_MHD_GFORCE_X1
+
+
+  FUNCTION NumericalFlux_MHD_GFORCE_X2 &
+             ( uL, uR, fL, fR, aP, aM, CFL, g, &
+               EvolveOnlyMagnetic, UseDivergenceCleaning )
+
+    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP, aM, CFL, g(7)
+    LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
+
+    REAL(DP) :: NumericalFlux_MHD_GFORCE_X2(nCM)
+
+    NumericalFlux_MHD_GFORCE_X2 = NumericalFlux_X2_GFORCE_MHD_Relativistic &
+                                ( uL, uR, fL, fR, aP, aM, CFL, g, &
+                                  EvolveOnlyMagnetic, UseDivergenceCleaning )
+
+    RETURN
+  END FUNCTION NumericalFlux_MHD_GFORCE_X2
+
+
+  FUNCTION NumericalFlux_MHD_GFORCE_X3 &
+             ( uL, uR, fL, fR, aP, aM, CFL, g, &
+               EvolveOnlyMagnetic, UseDivergenceCleaning )
+
+    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP, aM, CFL, g(7)
+    LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
+
+    REAL(DP) :: NumericalFlux_MHD_GFORCE_X3(nCM)
+
+    NumericalFlux_MHD_GFORCE_X3 = NumericalFlux_X3_GFORCE_MHD_Relativistic &
+                                ( uL, uR, fL, fR, aP, aM, CFL, g, &
+                                  EvolveOnlyMagnetic, UseDivergenceCleaning )
+
+    RETURN
+  END FUNCTION NumericalFlux_MHD_GFORCE_X3
 
 
 END MODULE MHD_UtilitiesModule
