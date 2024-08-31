@@ -3068,8 +3068,6 @@ CONTAINS
 
     omega_g = One / ( One + CFL )
 
-    PRINT*, 'omega_g: ', omega_g
-
     uLW = ( uR + uL ) / Two - ( tau / Two ) * ( fR - fL )
 
     CALL ComputePrimitive_Scalar( uLW(iCM_D), &
@@ -3135,8 +3133,6 @@ CONTAINS
 
     omega_g = One / ( One + CFL )
 
-    PRINT*, 'omega_g: ', omega_g
-
     uLW = ( uR + uL ) / Two - ( tau / Two ) * ( fR - fL )
 
     CALL ComputePrimitive_Scalar( uLW(iCM_D), &
@@ -3201,8 +3197,6 @@ CONTAINS
     tau = One / MAX( ABS( aP ), ABS( aM ) )
 
     omega_g = One / ( One + CFL )
-
-    PRINT*, 'omega_g: ', omega_g
 
     uLW = ( uR + uL ) / Two - ( tau / Two ) * ( fR - fL )
 
