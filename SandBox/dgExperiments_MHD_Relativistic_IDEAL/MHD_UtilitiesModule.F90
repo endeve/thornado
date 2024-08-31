@@ -3,6 +3,8 @@ MODULE MHD_UtilitiesModule
   USE KindModule, ONLY: &
     DP, &
     Half
+  USE GeometryFieldsModule, ONLY: &
+    nGF
   USE MagnetofluidFieldsModule, ONLY: &
     nCM
   USE MHD_UtilitiesModule_Relativistic
@@ -331,16 +333,28 @@ CONTAINS
 
 
   FUNCTION NumericalFlux_MHD_X1 &
-    ( uL, uR, fL, fR, aP, aM )
+    ( uL, uR, fL, fR, aP, aM, g, EvolveOnlyMagnetic, UseDivergenceCleaning )
 
     REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), &
-                            aP, aM
+                            aP, aM, g(7)
+    LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
 
     REAL(DP) :: NumericalFlux_MHD_X1(nCM)
+
+#if defined(HYDRO_RIEMANN_SOLVER_GFORCE)
+
+    NumericalFlux_MHD_X1 &
+      = NumericalFlux_MHD_GFORCE_X1 &
+          ( uL, uR, fL, fR, aP, aM, g, &
+            EvolveOnlyMagnetic, UseDivergenceCleaning )
+
+#else
 
     NumericalFlux_MHD_X1 &
       = NumericalFlux_MHD_HLL &
           ( uL, uR, fL, fR, aP, aM )
+
+#endif
 
     RETURN
   END FUNCTION NumericalFlux_MHD_X1
@@ -389,6 +403,23 @@ CONTAINS
 
     RETURN
   END FUNCTION NumericalFlux_MHD_HLL
+
+
+  FUNCTION NumericalFlux_MHD_GFORCE_X1 &
+             ( uL, uR, fL, fR, aP, aM, g, &
+               EvolveOnlyMagnetic, UseDivergenceCleaning )
+
+    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP, aM, g(7)
+    LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
+
+    REAL(DP) :: NumericalFlux_MHD_GFORCE_X1(nCM)
+
+    NumericalFlux_MHD_GFORCE_X1 = NumericalFlux_X1_GFORCE_MHD_Relativistic &
+                                ( uL, uR, fL, fR, aP, aM, g, &
+                                  EvolveOnlyMagnetic, UseDivergenceCleaning )
+
+    RETURN
+  END FUNCTION NumericalFlux_MHD_GFORCE_X1
 
 
 END MODULE MHD_UtilitiesModule

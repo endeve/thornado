@@ -956,7 +956,16 @@ CONTAINS
               Flux_L              , &
               Flux_R              , &
               AlphaPls            , &
-              AlphaMns            )
+              AlphaMns            , &
+              [ Gm_dd_11_F(iNX_X), &
+                Gm_dd_22_F(iNX_X), &
+                Gm_dd_33_F(iNX_X), &
+                Alpha_F(iNX_X),    &
+                Beta_1_F(iNX_X),   &
+                Beta_2_F(iNX_X),   &
+                Beta_3_F(iNX_X)  ], &
+              EvolveOnlyMagnetic  , &
+              UseDivergenceCleaning )
 
      !PRINT*
      !PRINT*, 'uCM_L_nCM: ', uCM_L_nCM
