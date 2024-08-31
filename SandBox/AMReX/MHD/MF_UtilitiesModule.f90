@@ -159,8 +159,9 @@ CONTAINS
   END SUBROUTINE thornado2amrex_X
 
 
-  SUBROUTINE amrex2thornado_X_Global( GEOM, MF, nF, U, ApplyBC_Option )
+  SUBROUTINE amrex2thornado_X_Global( t, GEOM, MF, nF, U, ApplyBC_Option )
 
+    REAL(DP),             INTENT(in)  :: t
     TYPE(amrex_geometry), INTENT(in)  :: GEOM(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)  :: MF(0:nLevels-1)
     INTEGER,              INTENT(in)  :: nF
@@ -212,7 +213,7 @@ CONTAINS
                  ( nF, iX_B1, iX_E1, LBOUND( uA ), iX_B1, iX_E1, uA, uT )
 
           CALL MF_ApplyBoundaryConditions_MHD &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, uT, Edge_Map )
+                 ( t, iX_B0, iX_E0, iX_B1, iX_E1, uT, Edge_Map )
 
           CALL thornado2amrex_X &
                  ( nF, iX_B1, iX_E1, LBOUND( uA ), iX_B1, iX_E1, uA, uT )
@@ -312,8 +313,9 @@ CONTAINS
   END SUBROUTINE ShowVariableFromMultiFab
 
 
-  SUBROUTINE WriteNodalDataToFile( GEOM, MF_uGF, MF_uCM, MF_uDM, FileNameBase )
+  SUBROUTINE WriteNodalDataToFile( t, GEOM, MF_uGF, MF_uCM, MF_uDM, FileNameBase )
 
+    REAL(DP),             INTENT(in) :: t
     TYPE(amrex_geometry), INTENT(in) :: GEOM  (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uCM(0:nLevels-1)
@@ -339,13 +341,13 @@ CONTAINS
                   1:nDM)
 
     CALL amrex2thornado_X_Global &
-           ( GEOM, MF_uGF, nGF, G, ApplyBC_Option = .FALSE. )
+           ( t, GEOM, MF_uGF, nGF, G, ApplyBC_Option = .FALSE. )
 
     CALL amrex2thornado_X_Global &
-           ( GEOM, MF_uCM, nCM, U, ApplyBC_Option = .TRUE. )
+           ( t, GEOM, MF_uCM, nCM, U, ApplyBC_Option = .TRUE. )
 
     CALL amrex2thornado_X_Global &
-           ( GEOM, MF_uDM, nDM, D, ApplyBC_Option = .FALSE. )
+           ( t, GEOM, MF_uDM, nDM, D, ApplyBC_Option = .FALSE. )
 
     IF( amrex_parallel_ioprocessor() )THEN
 

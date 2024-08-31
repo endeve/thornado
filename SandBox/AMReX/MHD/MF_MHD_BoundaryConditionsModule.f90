@@ -43,8 +43,9 @@ CONTAINS
 
 
   SUBROUTINE MF_ApplyBoundaryConditions_MHD &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+    ( t, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
+    REAL(DP),      INTENT(in)    :: t
     INTEGER,       INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP),      INTENT(inout) :: &
@@ -59,7 +60,7 @@ CONTAINS
     IF( DEBUG ) WRITE(*,'(A)') '      CALL ApplyBoundaryConditions_MHD'
 
     CALL ApplyBoundaryConditions_MHD &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
+           ( t, iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
 
   END SUBROUTINE MF_ApplyBoundaryConditions_MHD
 

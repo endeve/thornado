@@ -60,8 +60,9 @@ MODULE  MF_MHD_dgDiscretizationModule
 CONTAINS
 
 
-  SUBROUTINE MF_ComputeIncrement_MHD( GEOM, MF_uGF, MF_uCM, MF_uDM, MF_duCM )
+  SUBROUTINE MF_ComputeIncrement_MHD( t, GEOM, MF_uGF, MF_uCM, MF_uDM, MF_duCM )
 
+    REAL(DP),             INTENT(in)    :: t
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCM (0:nLevels-1)
@@ -218,7 +219,7 @@ CONTAINS
         IF( DEBUG ) WRITE(*,'(A)') '    CALL MF_ApplyBoundaryConditions_MHD'
 
         CALL MF_ApplyBoundaryConditions_MHD &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+               ( t, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
         IF( DEBUG ) WRITE(*,'(A)') '    CALL ComputeIncrement_MHD_DG_Explicit'
 
