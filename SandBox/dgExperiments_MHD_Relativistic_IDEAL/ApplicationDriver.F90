@@ -899,8 +899,8 @@ PROGRAM ApplicationDriver
     END IF
 
     CALL UpdateMagnetoFluid_SSPRK &
-           ( t, dt, uGF, uCM, uDM, &
-             ComputeIncrement_MHD_DG_Explicit )
+           ( t, dt, CFL / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
+             uGF, uCM, uDM, ComputeIncrement_MHD_DG_Explicit )
 
     IF( iCycleW .GT. 0 )THEN
 

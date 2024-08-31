@@ -46,7 +46,7 @@ MODULE TimeSteppingModule_SSPRK
 
   INTERFACE
     SUBROUTINE MagnetofluidIncrement &
-      ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
+      ( t, CFL, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
         SuppressBC_Option, &
         EvolveOnlyMagnetic_Option, &
         UseDivergenceCleaning_Option, &
@@ -56,7 +56,7 @@ MODULE TimeSteppingModule_SSPRK
         SurfaceFlux_X2_Option, &
         SurfaceFlux_X3_Option )
       USE KindModule, ONLY: DP
-      REAL(DP), INTENT(in)     :: t
+      REAL(DP), INTENT(in)     :: t, CFL
       INTEGER,  INTENT(in)     :: &
         iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
       REAL(DP), INTENT(in)    :: &
@@ -220,10 +220,10 @@ CONTAINS
 
 
   SUBROUTINE UpdateMagnetofluid_SSPRK &
-               ( t, dt, G, U, D, ComputeIncrement_Magnetofluid )
+               ( t, dt, CFL, G, U, D, ComputeIncrement_Magnetofluid )
 
     REAL(DP), INTENT(in) :: &
-      t, dt
+      t, dt, CFL
     REAL(DP), INTENT(in) :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
@@ -281,7 +281,7 @@ CONTAINS
         END IF
 
         CALL ComputeIncrement_Magnetofluid &
-               ( t, iX_B0, iX_E0, iX_B1, iX_E1, &
+               ( t, CFL, iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS), &
                  EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic, &
                  UseDivergenceCleaning_Option = UseDivergenceCleaning, &

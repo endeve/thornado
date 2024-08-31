@@ -3051,9 +3051,10 @@ CONTAINS
   !> Compute the GFORCE numerical flux at a given element
   !> interface, in a given dimension.
   FUNCTION NumericalFlux_X1_GFORCE_MHD_Relativistic &
-    ( uL, uR, fL, fR, aP, aM, g, EvolveOnlyMagnetic, UseDivergenceCleaning )
+    ( uL, uR, fL, fR, aP, aM, CFL, g, &
+      EvolveOnlyMagnetic, UseDivergenceCleaning )
 
-    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP, aM, g(7)
+    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP, aM, CFL, g(7)
     LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
 
     REAL(DP) :: tau, omega_g
@@ -3063,7 +3064,9 @@ CONTAINS
 
     tau = One / MAX( ABS( aP ), ABS( aM ) )
 
-    omega_g = One / Two
+    omega_g = One / ( One + CFL )
+
+    PRINT*, 'omega_g: ', omega_g
 
     uLW = ( uR + uL ) / Two - ( tau / Two ) * ( fR - fL )
 

@@ -160,7 +160,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_MHD_DG_Explicit &
-    ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
+    ( t, CFL, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
       SuppressBC_Option, &
       EvolveOnlyMagnetic_Option, &
       UseDivergenceCleaning_Option, &
@@ -171,6 +171,7 @@ CONTAINS
       SurfaceFlux_X3_Option )
 
     REAL(DP), INTENT(in)            :: t
+    REAL(DP), INTENT(in)            :: CFL
     INTEGER,  INTENT(in)            :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)            :: &
@@ -294,7 +295,7 @@ CONTAINS
     OffGridFlux_MHD_X3_Outer = Zero
 
     CALL ComputeIncrement_MHD_Divergence_X1 &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X1 )
+           ( CFL, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X1 )
 
     DO iX3 = iX_B1(3), iX_E1(3)
     DO iX2 = iX_B1(2), iX_E1(2)
@@ -444,8 +445,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_MHD_Divergence_X1 &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X1 )
+    ( CFL, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X1 )
 
+    REAL(DP), INTENT(in)    :: CFL
     INTEGER, INTENT(in)     :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
@@ -957,6 +959,7 @@ CONTAINS
               Flux_R              , &
               AlphaPls            , &
               AlphaMns            , &
+              CFL                 , &
               [ Gm_dd_11_F(iNX_X), &
                 Gm_dd_22_F(iNX_X), &
                 Gm_dd_33_F(iNX_X), &

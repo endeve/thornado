@@ -333,10 +333,11 @@ CONTAINS
 
 
   FUNCTION NumericalFlux_MHD_X1 &
-    ( uL, uR, fL, fR, aP, aM, g, EvolveOnlyMagnetic, UseDivergenceCleaning )
+    ( uL, uR, fL, fR, aP, aM, CFL, &
+      g, EvolveOnlyMagnetic, UseDivergenceCleaning )
 
     REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), &
-                            aP, aM, g(7)
+                            aP, aM, CFL, g(7)
     LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
 
     REAL(DP) :: NumericalFlux_MHD_X1(nCM)
@@ -345,7 +346,7 @@ CONTAINS
 
     NumericalFlux_MHD_X1 &
       = NumericalFlux_MHD_GFORCE_X1 &
-          ( uL, uR, fL, fR, aP, aM, g, &
+          ( uL, uR, fL, fR, aP, aM, CFL, g, &
             EvolveOnlyMagnetic, UseDivergenceCleaning )
 
 #else
@@ -406,16 +407,16 @@ CONTAINS
 
 
   FUNCTION NumericalFlux_MHD_GFORCE_X1 &
-             ( uL, uR, fL, fR, aP, aM, g, &
+             ( uL, uR, fL, fR, aP, aM, CFL, g, &
                EvolveOnlyMagnetic, UseDivergenceCleaning )
 
-    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP, aM, g(7)
+    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP, aM, CFL, g(7)
     LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
 
     REAL(DP) :: NumericalFlux_MHD_GFORCE_X1(nCM)
 
     NumericalFlux_MHD_GFORCE_X1 = NumericalFlux_X1_GFORCE_MHD_Relativistic &
-                                ( uL, uR, fL, fR, aP, aM, g, &
+                                ( uL, uR, fL, fR, aP, aM, CFL, g, &
                                   EvolveOnlyMagnetic, UseDivergenceCleaning )
 
     RETURN
