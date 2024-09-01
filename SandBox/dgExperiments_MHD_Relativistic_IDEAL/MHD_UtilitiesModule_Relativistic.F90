@@ -3391,104 +3391,6 @@ CONTAINS
   END SUBROUTINE ComputeAuxiliaryFunMu
 
 
-  SUBROUTINE ComputeAuxiliaryFunDerivativeMu &
-               ( r, bSq, rb, h0, mu, df )
-
-    REAL(DP), INTENT(in) :: r, bSq, rb
-    REAL(DP), INTENT(in) :: h0
-    REAL(DP), INTENT(in) :: mu
-
-    REAL(DP), INTENT(out) :: df
-
-    REAL(DP) :: x, dx, r_barSq, dr_barSq
-
-    ! --- Eq. 26 ---
-
-    x = x_from_mu( mu, bSq )
-
-    dx = - bSq / ( One + mu * bSq )**2
-
-    ! --- Eq. 38 ---
-
-    r_barSq = r_barSq_from_mu( mu, r, rb, bSq )
-
-    dr_barSq = Two * r**2 * x * dx + ( x + mu * dx + x**2 + Two * mu * x * dx ) * rb**2
-
-    df = SQRT( h0**2 + r_barSq ) + ( mu / Two ) * ( dr_barSq / SQRT( h0**2 + r_barSq ) )
-
-  END SUBROUTINE
-
-
-  SUBROUTINE SolveMuBound_NewtonRaphson &
-               ( r, bSq, rb, h0, mu )
-
-    REAL(DP), INTENT(in) :: r, bSq, rb
-    REAL(DP), INTENT(in) :: h0
-    REAL(DP), INTENT(inout) :: mu
-
-    REAL(DP) :: muO, muN, dmu
-    REAL(DP) :: f, df
-
-    LOGICAL :: CONVERGED
-    INTEGER :: ITER
-    REAL(DP), PARAMETER :: Tolmu = 1.0d-08
-    REAL(DP), PARAMETER :: Tolf = 1.0d-08
-    INTEGER,  PARAMETER :: MAX_ITER = 4 - INT( LOG( Tolmu ) / LOG( Two ) )
-
-   !PRINT*, 'Solving for the upper bound with the Newton-Raphson method.'
-
-   !PRINT*, 'h0: ', h0
-
-    muO = One / h0
-
-   !PRINT*, 'Initial guess: ', One / h0
-
-   !PRINT*, 'MAX_ITER: ', MAX_ITER
-
-    CONVERGED = .FALSE.
-    ITER = 0
-
-    DO WHILE( .NOT. CONVERGED .AND. ITER .LT. MAX_ITER )
-
-      ITER = ITER + 1
-
-     !PRINT*
-     !PRINT*, 'ITER: ', ITER
-     !PRINT*
-
-     !PRINT*, 'muO: ', muO
-
-     !PRINT*, 'Computing the auxiliary function for mu = : ', muO
-
-      CALL ComputeAuxiliaryFunMu( r, bSq, rb, h0, muO, f )
-
-     !PRINT*, 'f: ', f
-
-     !PRINT*, 'Computing the auxiliary function derivative for mu = ', muO
-
-      CALL ComputeAuxiliaryFunDerivativeMu( r, bSq, rb, h0, muO, df )
-
-     !PRINT*, 'df: ', df
-
-      muN = muO - f / df
-
-     !PRINT*, 'muN: ', muN
-
-      dmu = muN - muO
-
-     !PRINT*, 'dmu: ', dmu
-
-      IF( ABS ( dmu / muO ) .LT. Tolmu ) CONVERGED = .TRUE.
-
-      muO = muN
-
-    END DO
-
-    mu = muO
-
-  END SUBROUTINE
-
-
   SUBROUTINE SolveMuBound_Bisection &
                ( r, bSq, rb, h0, mu )
 
@@ -3598,8 +3500,6 @@ CONTAINS
       mua = Zero
 
       CALL SolveMuBound_Bisection( r, bSq, rb, h0, mub )
-
-      !CALL SolveMuBound_NewtonRaphson( r, bSq, rb, h0, mub )
 
     END IF
 
@@ -3718,38 +3618,5 @@ CONTAINS
     RETURN
   END FUNCTION
 
-
-  ! --- Algorithm 4.1 of Alefeld and Porta (1995) ---
-
-!  SUBROUTINE SolveMu_TOM748 &
-!               ( D_bar, Ne_bar, q, ru1, ru2, ru3, r, &
-!                 bu1, bu2, bu3, bSq, rb, h0, v0, mu )
-!
-!    REAL(DP), INTENT(in) :: D_bar, Ne_bar, q
-!    REAL(DP), INTENT(in) :: ru1, ru2, ru3
-!    REAL(DP), INTENT(in) :: bu1, bu2, bu3
-!    REAL(DP), INTENT(in) :: r, bSq, rb
-!    REAL(DP), INTENT(in) :: h0, v0
-!
-!    REAL(DP), INTENT(out) :: mu
-!
-!    REAL(DP) :: mua, mub
-!
-!    mu = Zero
-!
-!    IF( r < h0 ) THEN
-!
-!      mua = Zero
-!      mub = One / h0
-!
-!    ELSE
-!
-!      mua = Zero
-!
-!      CALL SolveMuBound_NewtonRaphson( r, bSq, rb, h0, mub )
-!
-!    END IF
-!
-!  END SUBROUTINE SolveMu_TOM748
 
 END MODULE MHD_UtilitiesModule_Relativistic
