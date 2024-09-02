@@ -37,6 +37,10 @@ PROGRAM ApplicationDriver
     InitializeSlopeLimiter_MHD_Relativistic_IDEAL, &
     FinalizeSlopeLimiter_MHD_Relativistic_IDEAL, &
     ApplySlopeLimiter_MHD_Relativistic_IDEAL
+  USE MHD_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
+    InitializePositivityLimiter_MHD_Relativistic_IDEAL, &
+    FinalizePositivityLimiter_MHD_Relativistic_IDEAL, &
+    ApplyPositivityLimiter_MHD_Relativistic_IDEAL
   USE MHD_UtilitiesModule_Relativistic, ONLY: &
     ComputeFromConserved_MHD_Relativistic, &
     ComputeTimeStep_MHD_Relativistic, &
@@ -85,6 +89,8 @@ PROGRAM ApplicationDriver
   LOGICAL       :: SmoothProfile, ConstantDensity
   LOGICAL       :: wrt
   LOGICAL       :: UseSlopeLimiter
+  LOGICAL       :: UsePositivityLimiter
+  REAL(DP)      :: Min_1, Min_2, Min_3
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
   LOGICAL       :: SuppressTally
@@ -720,6 +726,13 @@ PROGRAM ApplicationDriver
   LimiterThresholdParameter = 0.03_DP
   UseConservativeCorrection = .FALSE.
 
+  ! --- Positivity Limiter ---
+
+  UsePositivityLimiter = .TRUE.
+  Min_1                = 1.0d-13
+  Min_2                = 1.0d-13
+  Min_3                = 1.0d-13
+
   ! === End of User Input ===
 
   CALL InitializeProgram_Basic &
@@ -773,6 +786,13 @@ PROGRAM ApplicationDriver
            UseConservativeCorrection_Option &
              = UseConservativeCorrection )
 
+  CALL InitializePositivityLimiter_MHD_Relativistic_IDEAL &
+         ( UsePositivityLimiter_Option = UsePositivityLimiter, &
+           Verbose_Option = .TRUE., &
+           Min_1_Option = Min_1, &
+           Min_2_Option = Min_2, &
+           Min_3_Option = Min_3 )
+
   CALL InitializeMagnetofluid_SSPRK &
          ( nStages = nStagesSSPRK, EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic, &
            UseDivergenceCleaning_Option = UseDivergenceCleaning, &
@@ -816,6 +836,9 @@ PROGRAM ApplicationDriver
 
     CALL ApplySlopeLimiter_MHD_Relativistic_IDEAL &
            ( t, iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
+
+    CALL ApplyPositivityLimiter_MHD_Relativistic_IDEAL &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM )
 
     CALL ComputeFromConserved_MHD_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM, &
@@ -970,6 +993,8 @@ PROGRAM ApplicationDriver
   END IF
 
   CALL FinalizeMagnetofluid_SSPRK
+
+  CALL FinalizePositivityLimiter_MHD_Relativistic_IDEAL
 
   CALL FinalizeEquationOfState
 

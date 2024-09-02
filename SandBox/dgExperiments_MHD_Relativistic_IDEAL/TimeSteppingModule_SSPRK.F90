@@ -14,6 +14,8 @@ MODULE TimeSteppingModule_SSPRK
     nCM
   USE MHD_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
     ApplySlopeLimiter_MHD_Relativistic_IDEAL
+  USE MHD_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
+    ApplyPositivityLimiter_MHD_Relativistic_IDEAL
   USE MHD_DiscretizationModule_Relativistic, ONLY: &
     OffGridFlux_MHD_X1_Inner, &
     OffGridFlux_MHD_X1_Outer, &
@@ -278,6 +280,9 @@ CONTAINS
           CALL ApplySlopeLimiter_MHD_Relativistic_IDEAL &
                  ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
 
+          CALL ApplyPositivityLimiter_MHD_Relativistic_IDEAL &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
+
         END IF
 
         CALL ComputeIncrement_Magnetofluid &
@@ -315,6 +320,9 @@ CONTAINS
 
     CALL ApplySlopeLimiter_MHD_Relativistic_IDEAL &
            ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+
+    CALL ApplyPositivityLimiter_MHD_Relativistic_IDEAL &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
 
     CALL IncrementOffGridTally_MHD_Relativistic( dM_OffGrid_MHD )
 

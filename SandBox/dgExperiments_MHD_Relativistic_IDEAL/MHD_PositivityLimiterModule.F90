@@ -1,0 +1,93 @@
+MODULE MHD_PositivityLimiterModule
+
+  USE KindModule, ONLY: &
+    DP, &
+    Zero, &
+    One
+
+  USE MHD_PositivityLimiterModule_Relativistic_IDEAL
+
+  IMPLICIT NONE
+  PRIVATE
+
+  PUBLIC :: InitializePositivityLimiter_MHD
+  PUBLIC :: FinalizePositivityLimiter_MHD
+  PUBLIC :: ApplyPositivityLimiter_MHD
+
+
+CONTAINS
+
+
+  SUBROUTINE InitializePositivityLimiter_MHD &
+    ( UsePositivityLimiter_Option, Verbose_Option, &
+      Min_1_Option, Min_2_Option, Min_3_Option, &
+      Max_1_Option, Max_2_Option, Max_3_Option )
+
+    LOGICAL , INTENT(in), OPTIONAL :: UsePositivityLimiter_Option
+    LOGICAL , INTENT(in), OPTIONAL :: Verbose_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option, Max_1_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Min_2_Option, Max_2_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Min_3_Option, Max_3_Option
+
+    LOGICAL  :: UsePositivityLimiter
+    LOGICAL  :: Verbose
+    REAL(DP) :: Min_1, Max_1
+    REAL(DP) :: Min_2, Max_2
+    REAL(DP) :: Min_3, Max_3
+
+    UsePositivityLimiter = .TRUE.
+    IF( PRESENT( UsePositivityLimiter_Option ) ) &
+      UsePositivityLimiter = UsePositivityLimiter_Option
+
+    Verbose = .TRUE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
+
+    Min_1 = - HUGE( One )
+    IF( PRESENT( Min_1_Option ) ) &
+      Min_1 = Min_1_Option
+
+    Min_2 = - HUGE( One )
+    IF( PRESENT( Min_2_Option ) ) &
+      Min_2 = Min_2_Option
+
+    Min_3 = - HUGE( One )
+    IF( PRESENT( Min_3_Option ) ) &
+      Min_3 = Min_3_Option
+
+    CALL InitializePositivityLimiter_MHD_Relativistic_IDEAL &
+           ( UsePositivityLimiter_Option = UsePositivityLimiter, &
+             Verbose_Option              = Verbose, &
+             Min_1_Option                = Min_1, &
+             Min_2_Option                = Min_2, &
+             Min_3_Option                = Min_3 )
+
+  END SUBROUTINE InitializePositivityLimiter_MHD
+
+
+  SUBROUTINE FinalizePositivityLimiter_MHD
+
+    CALL FinalizePositivityLimiter_MHD_Relativistic_IDEAL
+
+  END SUBROUTINE FinalizePositivityLimiter_MHD
+
+
+  SUBROUTINE ApplyPositivityLimiter_MHD &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+
+    INTEGER,  INTENT(in)              :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)              :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout)           :: &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout), OPTIONAL :: &
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    CALL ApplyPositivityLimiter_MHD_Relativistic_IDEAL &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+
+  END SUBROUTINE ApplyPositivityLimiter_MHD
+
+
+END MODULE MHD_PositivityLimiterModule

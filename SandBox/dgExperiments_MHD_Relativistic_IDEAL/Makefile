@@ -22,6 +22,8 @@ ApplicationDriver: \
         MHD_CharacteristicDecompositionModule_Relativistic_IDEAL.o \
         MHD_CharacteristicDecompositionModule.o \
         MHD_DiscontinuityDetectionModule.o \
+        MHD_PositivityLimiterModule_Relativistic_IDEAL.o \
+        MHD_PositivityLimiterModule.o \
         MHD_SlopeLimiterModule_Relativistic_IDEAL.o \
         MHD_SlopeLimiterModule.o \
         MHD_DiscretizationModule_Relativistic.o \
@@ -40,6 +42,8 @@ ApplicationDriver: \
         MHD_CharacteristicDecompositionModule_Relativistic_IDEAL.o \
         MHD_CharacteristicDecompositionModule.o \
         MHD_DiscontinuityDetectionModule.o \
+        MHD_PositivityLimiterModule_Relativistic_IDEAL.o \
+        MHD_PositivityLimiterModule.o \
         MHD_SlopeLimiterModule_Relativistic_IDEAL.o \
         MHD_SlopeLimiterModule.o \
         MHD_DiscretizationModule_Relativistic.o \
@@ -174,6 +178,23 @@ MHD_SlopeLimiterModule_Relativistic_IDEAL.o: \
   MHD_CharacteristicDecompositionModule_Relativistic_IDEAL.o \
   MHD_DiscontinuityDetectionModule.o \
   MHD_SlopeLimiterModule_Relativistic_IDEAL.F90
+
+MHD_PositivityLimiterModule.o: \
+  KindModule.o \
+  MHD_BoundaryConditionsModule.o \
+  MHD_PositivityLimiterModule_Relativistic_IDEAL.o \
+  MHD_PositivityLimiterModule.F90
+
+MHD_PositivityLimiterModule_Relativistic_IDEAL.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  LinearAlgebraModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleX_Lagrange.o \
+  UtilitiesModule.o \
+  GeometryFieldsModule.o \
+  MagnetofluidFieldsModule.o \
+  MHD_PositivityLimiterModule_Relativistic_IDEAL.F90
 
 MHD_CharacteristicDecompositionModule_Relativistic_IDEAL.o: \
   KindModule.o \
