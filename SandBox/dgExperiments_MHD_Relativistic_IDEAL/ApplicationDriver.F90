@@ -728,7 +728,7 @@ PROGRAM ApplicationDriver
 
   ! --- Positivity Limiter ---
 
-  UsePositivityLimiter = .TRUE.
+  UsePositivityLimiter = .FALSE.
   Min_1                = 1.0d-13
   Min_2                = 1.0d-13
   Min_3                = 1.0d-13
