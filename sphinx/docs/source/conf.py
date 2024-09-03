@@ -7,8 +7,6 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'thornado'
-copyright = '2024, Colter Richardson'
-author = 'Colter Richardson,'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

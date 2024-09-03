@@ -10,8 +10,9 @@ Welcome to thornado's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   hydro
-
+   phys
+   math
+   thornado
 
 
 Indices and tables
