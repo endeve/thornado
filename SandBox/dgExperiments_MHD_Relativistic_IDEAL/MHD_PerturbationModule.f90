@@ -5,6 +5,7 @@ MODULE MHD_PerturbationModule
     Zero, &
     Half, &
     One, &
+    Two, &
     Pi, &
     FourPi
   USE UnitsModule, ONLY: &
@@ -77,7 +78,8 @@ MODULE MHD_PerturbationModule
             FinalizeRandPerturbations
 
   REAL(DP), PUBLIC :: Rand_Amplitude
-  REAL(DP), PUBLIC, ALLOCATABLE :: Random_Amps(:,:,:,:)
+  REAL(DP), PUBLIC, ALLOCATABLE :: Random_r(:,:,:,:), Random_z(:,:,:,:), &
+                                   Random_theta(:,:,:,:)
 
 CONTAINS
 
@@ -89,7 +91,7 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL :: Rand_Amplitude_Option
 
     INTEGER :: iNX, iX1, iX2, iX3
-    REAL(DP) :: Rand
+    REAL(DP) :: Rand_r, Rand_z, Rand_theta
 
     IF( PRESENT( Rand_Amplitude_Option ) )THEN
       Rand_Amplitude = Rand_Amplitude_Option
@@ -97,9 +99,15 @@ CONTAINS
       Rand_Amplitude = Zero
     END IF
 
-    ALLOCATE(Random_Amps(nDOFX, iX_E0(1) - iX_B0(1) + 1, &
-                                iX_E0(2) - iX_B0(2) + 1, &
-                                iX_E0(3) - iX_B0(3) + 1))
+    ALLOCATE(Random_r(nDOFX, iX_E0(1) - iX_B0(1) + 1, &
+                             iX_E0(2) - iX_B0(2) + 1, &
+                             iX_E0(3) - iX_B0(3) + 1))
+    ALLOCATE(Random_z(nDOFX, iX_E0(1) - iX_B0(1) + 1, &
+                             iX_E0(2) - iX_B0(2) + 1, &
+                             iX_E0(3) - iX_B0(3) + 1))
+    ALLOCATE(Random_theta(nDOFX, iX_E0(1) - iX_B0(1) + 1, &
+                                 iX_E0(2) - iX_B0(2) + 1, &
+                                 iX_E0(3) - iX_B0(3) + 1))
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -108,11 +116,19 @@ CONTAINS
 
       CALL RANDOM_SEED()
 
-      CALL RANDOM_NUMBER( Rand )
+      CALL RANDOM_NUMBER( Rand_r )
 
-      PRINT*, Rand * 1.0d2
+      CALL RANDOM_SEED()
 
-      Random_Amps(iNX,iX1,iX2,iX3) = Rand * 1.0d2 * Rand_Amplitude
+      CALL RANDOM_NUMBER( Rand_z )
+
+      CALL RANDOM_SEED()
+
+      CALL RANDOM_NUMBER( Rand_theta )
+
+      Random_r(iNX,iX1,iX2,iX3)     = Two * Rand_r - One
+      Random_z(iNX,iX1,iX2,iX3)     = Two * Rand_z - One
+      Random_theta(iNX,iX1,iX2,iX3) = Two * Rand_theta - One
 
     END DO
     END DO
@@ -141,8 +157,8 @@ CONTAINS
     REAL(DP) :: &
       A(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nAM)
 
-    ! --- Applying the random radial velocity      ---
-    ! --- perturbations from Muller & Janka (2017) ---
+    ! --- Applying the random radial velocity       ---
+    ! --- perturbations from Rembiasz et al. (2016) ---
 
     CALL ComputeFromConserved_MHD_Relativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, EvolveOnlyMagnetic )
@@ -153,8 +169,17 @@ CONTAINS
     DO iNX = 1, nDOFX
 
       P(iNX,iX1,iX2,iX3,iPM_V1) &
-        = Random_Amps(iNX,iX1,iX2,iX3) &
+        = 0.1_DP * Rand_Amplitude * Random_r(iNX,iX1,iX2,iX3) &
           * NodeCoordinate( MeshX(1), iX1, NodeNumberTableX( 1, iNX ) ) &
+          * P(iNX,iX1,iX2,iX3,iPM_V3)
+
+      P(iNX,iX1,iX2,iX3,iPM_V2) &
+        = Rand_Amplitude * Random_z(iNX,iX1,iX2,iX3) &
+          * NodeCoordinate( MeshX(1), iX1, NodeNumberTableX( 1, iNX ) ) &
+          * P(iNX,iX1,iX2,iX3,iPM_V3)
+
+      P(iNX,iX1,iX2,iX3,iPM_V3) &
+        = ( One + Rand_Amplitude * Random_theta(iNX,iX1,iX2,iX3) ) &
           * P(iNX,iX1,iX2,iX3,iPM_V3)
 
     END DO
@@ -189,7 +214,9 @@ CONTAINS
 
   SUBROUTINE FinalizeRandPerturbations
 
-    DEALLOCATE( Random_Amps )
+    DEALLOCATE( Random_r )
+    DEALLOCATE( Random_z )
+    DEALLOCATE( Random_theta )
 
   END SUBROUTINE FinalizeRandPerturbations
 
