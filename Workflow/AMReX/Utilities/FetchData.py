@@ -12,6 +12,8 @@ from sys import argv
  #=============================================#
 def fetchData_AMReX(t, FileNumberArray, DataDirectory, Field ):
 
+    if not DataDirectory[-1] == '/': DataDirectory += '/'
+
     FileDirectory = DataDirectory + str(FileNumberArray[t]) + '/'
 
     TimeFile = FileDirectory + '{:}.dat'.format( 'Time' )
@@ -27,6 +29,36 @@ def fetchData_AMReX(t, FileNumberArray, DataDirectory, Field ):
     Data = np.loadtxt( DataFile )
 
     return Data, DataUnits, X1_C, dX1, Time
+
+
+
+
+ #=============================================#
+#                                               #
+#   fetchData_AMReX                             #
+#                                               #
+ #=============================================#
+def fetchData_AMReX_2D(t, FileNumberArray, DataDirectory, Field ):
+
+    FileDirectory = DataDirectory + str(FileNumberArray[t]) + '/'
+
+    TimeFile = FileDirectory + '{:}.dat'.format( 'Time' )
+    X1File   = FileDirectory + '{:}.dat'.format( 'X1' )
+    X2File   = FileDirectory + '{:}.dat'.format( 'X2' )
+    dX1File  = FileDirectory + '{:}.dat'.format( 'dX1' )
+    dX2File  = FileDirectory + '{:}.dat'.format( 'dX2' )
+    DataFile = FileDirectory + '{:}.dat'.format( Field )
+
+    DataShape, DataUnits, MinVal, MaxVal = ReadHeader( DataFile )
+
+    Time = np.loadtxt( TimeFile )
+    X1_C = np.loadtxt( X1File   )
+    X2_C = np.loadtxt( X1File   )
+    dX1  = np.loadtxt( dX1File  )
+    dX2  = np.loadtxt( dX1File  )
+    Data = np.loadtxt( DataFile )
+
+    return Data, DataUnits, X1_C, X2_C, dX1, dX2, Time
 
 
  #=============================================#
@@ -105,7 +137,7 @@ def fetchTime_AMReX(t, FileNumberArray, DataDirectory ):
 
  #=============================================#
 #                                               #
-#   fetchData_AMReX                             #
+#   fetchCenDen_AMReX                           #
 #                                               #
  #=============================================#
 def fetchCenDen_AMReX(t, FileNumberArray, DataDirectory ):
@@ -118,3 +150,56 @@ def fetchCenDen_AMReX(t, FileNumberArray, DataDirectory ):
     
 
     return MaxVal
+
+
+
+ #=============================================#
+#                                               #
+#   fetchMaxVal_AMReX                           #
+#                                               #
+ #=============================================#
+def fetchMaxVal_AMReX(t, FileNumberArray, DataDirectory, Field ):
+
+    FileDirectory = DataDirectory + str(FileNumberArray[t]) + '/'
+
+    DataFile = FileDirectory + '{:}.dat'.format( Field )
+
+    DataShape, DataUnits, MinVal, MaxVal = ReadHeader( DataFile )
+    
+
+    return MaxVal
+
+
+ #=============================================#
+#                                               #
+#   fetchMinVal_AMReX                           #
+#                                               #
+ #=============================================#
+def fetchMinVal_AMReX(t, FileNumberArray, DataDirectory, Field ):
+
+    FileDirectory = DataDirectory + str(FileNumberArray[t]) + '/'
+
+    DataFile = FileDirectory + '{:}.dat'.format( Field )
+
+    DataShape, DataUnits, MinVal, MaxVal = ReadHeader( DataFile )
+    
+
+    return MinVal
+
+
+
+ #=============================================#
+#                                               #
+#   fetchMinVal_AMReX                           #
+#                                               #
+ #=============================================#
+def fetchDensityCliffData(t, FileNumberArray, DataDirectory, Field ):
+
+    FileDirectory = DataDirectory + str(FileNumberArray[t]) + '/'
+
+    DataFile = FileDirectory + '{:}.dat'.format( Field )
+
+    DataShape, DataUnits, MinVal, MaxVal = ReadHeader( DataFile )
+    
+
+    return MinVal

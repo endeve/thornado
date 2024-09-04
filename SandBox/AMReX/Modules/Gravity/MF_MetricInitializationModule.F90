@@ -13,6 +13,9 @@ MODULE MF_MetricInitializationModule
 
 #endif
 
+  USE MF_KindModule, ONLY: &
+    DP
+
   IMPLICIT NONE
   PRIVATE
 
@@ -25,12 +28,12 @@ CONTAINS
 #ifndef THORNADO_NOTRANSPORT
 
   SUBROUTINE InitializeMetric_MF &
-    ( MF_uGF, MF_uCF, MF_uCR, MF_uPF, MF_uAF )
+    ( MF_uGF, MF_uCF, MF_uCR, MF_uPF, MF_uAF, TOLERANCE_option )
 
 #else
 
   SUBROUTINE InitializeMetric_MF &
-    ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+    ( MF_uGF, MF_uCF, MF_uPF, MF_uAF, TOLERANCE_Option )
 
 #endif
 
@@ -41,6 +44,13 @@ CONTAINS
 #endif
     TYPE(amrex_multifab), INTENT(in)    :: MF_uPF(0:)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uAF(0:)
+    REAL(DP)            , INTENT(in), OPTIONAL :: TOLERANCE_Option
+
+    REAL(DP) :: TOLERANCE
+
+    TOLERANCE = 1.0e-13_DP
+    IF( PRESENT( TOLERANCE_Option ) ) &
+      TOLERANCE = TOLERANCE_Option
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
@@ -52,7 +62,7 @@ CONTAINS
 #else
 
     CALL InitializeMetric_XCFC_MF_Poseidon &
-           ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+           ( MF_uGF, MF_uCF, MF_uPF, MF_uAF, TOLERANCE_Option = TOLERANCE )
 
 #endif
 

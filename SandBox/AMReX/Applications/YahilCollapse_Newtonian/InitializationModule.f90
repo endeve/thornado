@@ -69,9 +69,6 @@ MODULE InitializationModule
     nPF, &
     nAF, &
     nDF
-  USE Euler_BoundaryConditionsModule, ONLY: &
-    ExpD, &
-    ExpE
 
   ! --- Local Modules ---
 
@@ -98,8 +95,8 @@ MODULE InitializationModule
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     InitializePositivityLimiter_Euler_MF, &
     ApplyPositivityLimiter_Euler_MF
-  USE MF_TimeSteppingModule_SSPRK, ONLY: &
-    InitializeFluid_SSPRK_MF
+  USE MF_TimeSteppingModule_SSPRK_Newtonian, ONLY: &
+    InitializeFluid_SSPRK_Newtonian_MF
   USE MF_InitializationModule, ONLY: &
     InitializeFields_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
@@ -110,15 +107,14 @@ MODULE InitializationModule
   USE MF_Euler_TallyModule, ONLY: &
     InitializeTally_Euler_MF, &
     ComputeTally_Euler_MF
-  USE MF_ErrorModule, ONLY: &
-    DescribeError_MF
   USE FillPatchModule, ONLY: &
     FillPatch, &
     FillCoarsePatch
   USE MF_XCFC_UtilitiesModule, ONLY: &
     MultiplyWithPsi6_MF
   USE TaggingModule, ONLY: &
-    TagElements
+    TagElements, &
+    TagElements_Density
   USE InputParsingModule, ONLY: &
     InitializeParameters, &
     nLevels, &
@@ -135,6 +131,7 @@ MODULE InitializationModule
     UseTiling, &
     UseFluxCorrection_Euler, &
     TagCriteria, &
+    RefinementScheme, &
     DescribeProgramHeader_AMReX
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
@@ -148,8 +145,12 @@ MODULE InitializationModule
     TimersStop_AMReX, &
     InitializeTimers_AMReX, &
     Timer_AMReX_Initialize
-  USE MF_AccretionShockUtilitiesModule, ONLY: &
-    FileName_Nodal1DIC_SAS
+  USE MF_GravitySolutionModule, ONLY: &
+    InitializeGravitySolver_MF
+  USE MF_GravitySolutionModule_Newtonian_Poseidon, ONLY: &
+    ComputeGravitationalPotential_Newtonian_MF_Poseidon
+  USE MF_MetricInitializationModule, ONLY: &
+    InitializeMetric_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -161,9 +162,7 @@ CONTAINS
 
   SUBROUTINE InitializeProgram
 
-    TYPE(amrex_parmparse) :: PP
-
-    LOGICAL :: SetInitialValues
+    LOGICAL :: SetInitialValues, FixInteriorADMMass
 
     CALL amrex_init()
 
@@ -231,7 +230,8 @@ CONTAINS
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
 
-      SetInitialValues = .TRUE.
+      SetInitialValues   = .TRUE.
+      FixInteriorADMMass = .FALSE.
 
       CALL InitializeTally_Euler_MF
 
@@ -241,40 +241,41 @@ CONTAINS
       CALL ApplyPositivityLimiter_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uDF )
 
+      CALL CreateMesh_MF( 0, MeshX )
+
+      CALL InitializeGravitySolver_MF &
+             ( Verbose_Option = amrex_parallel_ioprocessor() )
+
+      CALL DestroyMesh_MF( MeshX )
+
+      CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+      CALL ApplySlopeLimiter_Euler_MF &
+             ( MF_uGF, MF_uCF, MF_uDF )
+
+      CALL ApplyPositivityLimiter_Euler_MF &
+             ( MF_uGF, MF_uCF, MF_uDF )
+             
+      Call ComputeGravitationalPotential_Newtonian_MF_Poseidon( MF_uCF, MF_uGF )
+
     ELSE
 
       CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
 
-      CALL amrex_parmparse_build( PP, 'SAS' )
-        CALL PP % get  ( 'FileName_Nodal1DIC_SAS', &
-                          FileName_Nodal1DIC_SAS )
-      CALL amrex_parmparse_destroy( PP )
-
-      OPEN( UNIT = 100, FILE = TRIM( FileName_Nodal1DIC_SAS ) // '_BC.dat' )
-
-      READ(100,*) ExpD
-      READ(100,*) ExpE
-
-      CLOSE( 100 )
-
-      SetInitialValues = .FALSE.
+      SetInitialValues   = .FALSE.
+      FixInteriorADMMass = .TRUE.
 
       CALL InitializeTally_Euler_MF &
              ( InitializeFromCheckpoint_Option = .TRUE. )
 
-    END IF
+      CALL CreateMesh_MF( 0, MeshX )
 
-    IF( amrex_parallel_ioprocessor() )THEN
+      CALL InitializeGravitySolver_MF &
+             ( Verbose_Option = amrex_parallel_ioprocessor() )
 
-      WRITE(*,'(6x,A,ES24.16E3)') &
-        'ExpD: ', ExpD
-      WRITE(*,'(6x,A,ES24.16E3)') &
-        'ExpE: ', ExpE
+      CALL DestroyMesh_MF( MeshX )
 
     END IF
-
-    IF( ExpD .LT. Zero .OR. ExpE .LT. Zero ) &
-      CALL DescribeError_MF( 901 )
 
     CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
     CALL AverageDown( MF_uGF, MF_uCF )
@@ -285,7 +286,7 @@ CONTAINS
     t_chk = t_new(0) + dt_chk
     t_wrt = t_new(0) + dt_wrt
 
-    CALL InitializeFluid_SSPRK_MF &
+    CALL InitializeFluid_SSPRK_Newtonian_MF &
            ( Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL DescribeProgramHeader_AMReX
@@ -304,6 +305,7 @@ CONTAINS
     CALL ComputeTally_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, &
              SetInitialValues_Option = SetInitialValues, &
+             FixInteriorADMMass_Option = FixInteriorADMMass, &
              Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL TimersStop_AMReX( Timer_AMReX_Initialize )
@@ -353,7 +355,9 @@ CONTAINS
 
     CALL ComputeGeometryX_MF( MF_uGF(iLevel) )
 
-    CALL InitializeFields_MF( iLevel, MF_uGF(iLevel), MF_uCF(iLevel) )
+    CALL InitializeFields_MF &
+           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), &
+                     MF_uPF(iLevel), MF_uAF(iLevel) )
 
     CALL DestroyMesh_MF( MeshX )
 
@@ -395,7 +399,8 @@ CONTAINS
                iLevel, nDOFX_X1 * nCF )
 
     CALL FillCoarsePatch( iLevel, MF_uGF, &
-                          ApplyBoundaryConditions_Geometry_Option = .TRUE. )
+                          ApplyBoundaryConditions_Geometry_Option = .TRUE., &
+                          UpdateSpatialMetric_Option = .TRUE. )
 
     CALL FillCoarsePatch( iLevel, MF_uDF )
 
@@ -405,7 +410,7 @@ CONTAINS
     CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCF(iLevel), -1 )
 
     CALL ApplyPositivityLimiter_Euler_MF &
-           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
+          ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
 
     CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCF(iLevel), +1 )
 
@@ -531,10 +536,28 @@ CONTAINS
       ! TagCriteria(iLevel+1) because iLevel starts at 0 but
       ! TagCriteria starts with 1
 
-      CALL TagElements &
-             ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-               uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
-               LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+      IF( TRIM( RefinementScheme ) .EQ. 'Density' )THEN
+
+        CALL TagElements_Density &
+               ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                 uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+                 LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+      ELSE IF( TRIM( RefinementScheme ) .EQ. 'Mesh' )THEN
+
+        CALL TagElements &
+               ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                 uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+                 LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+      ELSE
+
+        CALL TagElements &
+               ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
+                 uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+                 LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+      END IF
 
     END DO
 

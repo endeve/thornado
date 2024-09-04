@@ -2,21 +2,45 @@ PROGRAM main
 
   ! --- AMReX Modules ---
 
+  USE amrex_box_module, ONLY: &
+    amrex_box
+  USE amrex_multifab_module, ONLY: &
+    amrex_mfiter, &
+    amrex_mfiter_build, &
+    amrex_mfiter_destroy, &
+    amrex_imultifab
+  USE amrex_amrcore_module, ONLY: &
+    amrex_geom
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
-    amrex_parallel_communicator
+    amrex_parallel_communicator, &
+    amrex_parallel_reduce_max
 
   ! --- thornado Modules ---
 
+  USE ProgramHeaderModule, ONLY: &
+    nDOFX
   USE UnitsModule, ONLY: &
-    UnitsDisplay
+    UnitsDisplay, &
+    Gram, &
+    Centimeter
+  USE FluidFieldsModule, ONLY: &
+    iPF_D, &
+    iCF_D
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
-    DP
+    DP, &
+    One
+  USE MaskModule, ONLY: &
+    CreateFineMask, &
+    DestroyFineMask, &
+    IsNotLeafElement
   USE MF_FieldsModule_Geometry, ONLY: &
     MF_uGF
+  USE GeometryFieldsModule, ONLY: &
+    iGF_Phi_N
   USE MF_FieldsModule_Euler, ONLY: &
     MF_uCF, &
     MF_uPF, &
@@ -47,9 +71,10 @@ PROGRAM main
     ElectronNumber_Initial, &
     ElectronNumber_OffGrid, &
     ADMMass_Initial, &
-    ADMMass_OffGrid
-  USE MF_TimeSteppingModule_SSPRK, ONLY: &
-    UpdateFluid_SSPRK_MF, &
+    ADMMass_OffGrid, &
+    ADMMass_Interior
+  USE MF_TimeSteppingModule_SSPRK_Newtonian, ONLY: &
+    UpdateFluid_SSPRK_Newtonian_MF, &
     CFL
   USE InputParsingModule, ONLY: &
     nLevels, &
@@ -65,25 +90,28 @@ PROGRAM main
     t_chk, &
     dt_wrt, &
     dt_chk, &
-    DEBUG
+    DEBUG, &
+    UseTiling
   USE MF_Euler_TimersModule, ONLY: &
     TimeIt_AMReX_Euler
   USE MF_TimersModule, ONLY: &
     TimeIt_AMReX, &
-    FinalizeTimers_AMReX, &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
-    Timer_AMReX_InputOutput
-  USE MF_AccretionShockUtilitiesModule, ONLY: &
-    ComputePowerInLegendreModes
+    Timer_AMReX_InputOutput, &
+    FinalizeTimers_AMReX
+  USE ReGridModule, ONLY: &
+    ReGrid
+  USE MF_UtilitiesModule
 
   IMPLICIT NONE
 
   INCLUDE 'mpif.h'
 
-  INTEGER  :: iErr
+  INTEGER  :: iErr, iLevel
   LOGICAL  :: wrt, chk
-  REAL(DP) :: Timer_Evolution
+  REAL(DP) :: Timer_Evolution, CentralDensity
+  REAL(DP), PARAMETER :: MaxCentralDensity = 1.0e15_DP * Gram / Centimeter**3
 
   TimeIt_AMReX       = .TRUE.
   TimeIt_AMReX_Euler = .TRUE.
@@ -92,8 +120,8 @@ PROGRAM main
   chk = .FALSE.
 
   CALL InitializeProgram
-
-  CALL ComputePowerInLegendreModes( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+  CALL ShowVariableFromMultifab(MF_uCF, iCF_D, writetofile_option=.TRUE., FileNameBase_Option ='Density')
+  CALL ShowVariableFromMultifab(MF_uGF, iGF_Phi_N, swXX_Option=[0,0,0], writetofile_option=.TRUE., FileNameBase_Option ='Potential')
 
   IF( amrex_parallel_ioprocessor() ) &
       Timer_Evolution = MPI_WTIME()
@@ -105,6 +133,8 @@ PROGRAM main
     StepNo = StepNo + 1
 
     t_old = t_new
+
+    CALL ReGrid
 
     CALL ComputeTimeStep_Euler_MF( MF_uGF, MF_uCF, CFL, dt )
 
@@ -127,11 +157,14 @@ PROGRAM main
       CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
 
       IF( amrex_parallel_ioprocessor() ) &
-        WRITE(*,'(A)') 'CALL UpdateFluid_SSPRK_MF'
+        WRITE(*,'(A)') 'CALL UpdateFluid_SSPRK_Newtonian_MF'
 
     END IF
 
-    CALL UpdateFluid_SSPRK_MF
+    CALL UpdateFluid_SSPRK_Newtonian_MF
+
+    CALL ShowVariableFromMultifab(MF_uCF, iCF_D, writetofile_option=.TRUE., FileNameBase_Option ='Density')
+    CALL ShowVariableFromMultifab(MF_uGF, iGF_Phi_N, swXX_Option=[0,0,0], writetofile_option=.TRUE., FileNameBase_Option ='Potential')
 
     IF( DEBUG )THEN
 
@@ -168,7 +201,12 @@ PROGRAM main
 
     CALL WriteCheckpointFile
 
-  END DO
+    !CALL GetCentralDensity( CentralDensity )
+
+    !IF( CentralDensity .GE. MaxCentralDensity ) EXIT
+
+
+   END DO
 
   ! --- END of evolution ---
 
@@ -228,9 +266,7 @@ CONTAINS
                MF_uPF_Option = MF_uPF, &
                MF_uAF_Option = MF_uAF, &
                MF_uDF_Option = MF_uDF )
-
-      CALL ComputePowerInLegendreModes( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
-
+      !CALL ShowVariableFromMultiFab (MF_uGF, iGF_Phi_N, writetofile_option=.TRUE., FileNameBase_Option= 'Potential')
       CALL ComputeTally_Euler_MF &
              ( t_new, MF_uGF, MF_uCF, Verbose_Option = .TRUE. )
 
@@ -285,7 +321,8 @@ CONTAINS
                [ EulerMomentumX3_Initial, EulerMomentumX3_OffGrid ], &
                [ EulerEnergy_Initial    , EulerEnergy_OffGrid     ], &
                [ ElectronNumber_Initial , ElectronNumber_OffGrid  ], &
-               [ ADMMass_Initial        , ADMMass_OffGrid         ], &
+               [ ADMMass_Initial        , ADMMass_OffGrid, &
+                 ADMMass_Interior ], &
                MF_uGF % BA % P, &
                iWriteFields_uGF = 1, &
                iWriteFields_uCF = 1, &
@@ -294,8 +331,7 @@ CONTAINS
                pMF_uCF_Option = MF_uCF % P )
 
       CALL FinalizeTimers_AMReX &
-             ( RestartProgramTimer_Option = .TRUE., &
-               Verbose_Option = amrex_parallel_ioprocessor() )
+             ( RestartProgramTimer_Option = .TRUE. )
 
       chk = .FALSE.
 
@@ -304,6 +340,70 @@ CONTAINS
     CALL TimersStop_AMReX( Timer_AMReX_InputOutput )
 
   END SUBROUTINE WriteCheckpointFile
+
+
+  SUBROUTINE GetCentralDensity( CentralDensity )
+
+    REAL(DP), INTENT(out) :: CentralDensity
+
+    TYPE(amrex_mfiter)    :: MFI
+    TYPE(amrex_box)       :: BX
+    TYPE(amrex_imultifab) :: iMF_FineMask
+
+    REAL(DP), CONTIGUOUS, POINTER :: uPF(:,:,:,:)
+    INTEGER , CONTIGUOUS, POINTER :: uFM(:,:,:,:)
+
+    INTEGER :: iX_B0(3), iX_E0(3), iX2, iX3
+
+    CALL ComputeFromConserved_Euler_MF &
+           ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+    CentralDensity = -HUGE( One )
+
+    DO iLevel = 0, nLevels-1
+
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uPF % BA, MF_uPF % DM )
+
+      CALL amrex_mfiter_build( MFI, MF_uPF(iLevel), tiling = UseTiling  )
+
+      DO WHILE( MFI % next() )
+
+        uPF => MF_uPF(iLevel) % DataPtr( MFI )
+        uFM => iMF_FineMask   % DataPtr( MFI )
+
+        BX = MFI % TileBox()
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+
+        IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo( 1 ) )THEN
+
+          IF( IsNotLeafElement( uFM(iX_B0(1),iX_B0(2),iX_B0(3),1) ) ) CYCLE
+
+          DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = iX_B0(2), iX_E0(2)
+
+            CentralDensity &
+              = MAX( CentralDensity, uPF(iX_B0(1),iX2,iX3,nDOFX*(iPF_D-1)+1) )
+
+          END DO
+          END DO
+
+        END IF
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+      CALL DestroyFineMask( iMF_FineMask )
+
+    END DO
+
+    CALL amrex_parallel_reduce_max( CentralDensity )
+
+
+
+  END SUBROUTINE GetCentralDensity
 
 
 END PROGRAM main

@@ -51,7 +51,8 @@ MODULE MF_GeometryModule
     nGF, &
     CoordinateSystem
   USE GeometryComputationModule, ONLY: &
-    ComputeGeometryX
+    ComputeGeometryX, &
+    ConformalFactor
   USE GravitySolutionModule_Newtonian_PointMass, ONLY: &
     ComputeGravitationalPotential
   USE LinearAlgebraModule, ONLY: &
@@ -229,12 +230,16 @@ CONTAINS
 
     swX_GF = swX
 
+    CALL CreateMesh_MF( iLevel, MeshX )
+
     IF( .NOT. amrex_is_all_periodic() )THEN
 
       CALL ApplyBoundaryConditions_Geometry_MF_X1( iLevel, MF_uGF )
       CALL ApplyBoundaryConditions_Geometry_MF_X2( iLevel, MF_uGF )
 
     END IF
+
+    CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE ApplyBoundaryConditions_Geometry_MF_SingleLevel
 
@@ -400,6 +405,11 @@ CONTAINS
           CALL ApplyBoundaryConditions_Geometry_X1_Inner_Reflecting &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
+        ELSE IF( bcX(1) .EQ. 100 )THEN
+
+          CALL ApplyBoundaryConditions_Geometry_X1_Inner_SAS_GR &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
         END IF
 
       END IF !  Lower boundary
@@ -423,6 +433,11 @@ CONTAINS
         ELSE IF( bcX(1) .EQ. 30 )THEN
 
           CALL ApplyBoundaryConditions_Geometry_X1_Outer_Extrapolate &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
+        ELSE IF( bcX(1) .EQ. 100 )THEN
+
+          CALL ApplyBoundaryConditions_Geometry_X1_Outer_SAS_GR &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
         END IF
@@ -623,6 +638,69 @@ CONTAINS
   END SUBROUTINE ApplyBoundaryConditions_Geometry_X1_Inner_Reflecting
 
 
+  SUBROUTINE ApplyBoundaryConditions_Geometry_X1_Inner_SAS_GR &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
+    INTEGER , INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: uGF(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER  :: iNX1, iNX2, iNX3, iNX, iX1, iX2, iX3
+    REAL(DP) :: X1, X2, MassPNS, Psi, h1, h2, h3
+
+    TYPE(amrex_parmparse) :: PP
+
+    ! --- Assume going into the PNS doesn't appreciable affect the metric ---
+
+    CALL amrex_parmparse_build( PP, 'SAS' )
+      CALL PP % get  ( 'Mass', MassPNS )
+    CALL amrex_parmparse_destroy( PP )
+    MassPNS = MassPNS * SolarMass
+
+    iX1 = iX_B0(1) - 1
+
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( iNX, jNX, jNX1 )
+#endif
+    DO iX3  = iX_B0(3), iX_E0(3)
+    DO iX2  = iX_B0(2), iX_E0(2)
+    DO iNX3 = 1       , nNodesX(3)
+    DO iNX2 = 1       , nNodesX(2)
+    DO iNX1 = 1       , nNodesX(1)
+
+      iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+
+      X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+      X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
+
+      Psi = ConformalFactor( X1, MassPNS )
+
+      h1 = Psi**2
+      h2 = Psi**2 * ABS( X1 )
+      h3 = Psi**2 * ABS( X1 * SIN( X2 ) )
+
+      uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX) = Psi
+
+      uGF(iX1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) = h1
+      uGF(iX1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) = h2
+      uGF(iX1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX) = h3
+
+      uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX) = MAX( h1**2, SqrtTiny )
+      uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX) = MAX( h2**2, SqrtTiny )
+      uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) = MAX( h3**2, SqrtTiny )
+
+      uGF(iX1,iX2,iX3,nDOFX*(iGF_SqrtGm-1)+iNX) &
+        = MAX( h1 * h2 * h3, SqrtTiny )
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ApplyBoundaryConditions_Geometry_X1_Inner_SAS_GR
+
+
   SUBROUTINE ApplyBoundaryConditions_Geometry_X1_Outer_Reflecting &
     ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
 
@@ -731,6 +809,67 @@ CONTAINS
     DEALLOCATE( G_K )
 
   END SUBROUTINE ApplyBoundaryConditions_Geometry_X1_Outer_Extrapolate
+
+
+  SUBROUTINE ApplyBoundaryConditions_Geometry_X1_Outer_SAS_GR &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
+    INTEGER , INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: uGF(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER  :: iNX1, iNX2, iNX3, iNX, iX1, iX2, iX3
+    REAL(DP) :: X1, X2, MassPNS, Psi, h1, h2, h3
+
+    TYPE(amrex_parmparse) :: PP
+
+    CALL amrex_parmparse_build( PP, 'SAS' )
+      CALL PP % get  ( 'Mass', MassPNS )
+    CALL amrex_parmparse_destroy( PP )
+    MassPNS = MassPNS * SolarMass
+
+    iX1 = iX_E0(1) + 1
+
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( iNX, jNX, jNX1 )
+#endif
+    DO iX3  = iX_B0(3), iX_E0(3)
+    DO iX2  = iX_B0(2), iX_E0(2)
+    DO iNX3 = 1       , nNodesX(3)
+    DO iNX2 = 1       , nNodesX(2)
+    DO iNX1 = 1       , nNodesX(1)
+
+      iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+
+      X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+      X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
+
+      Psi = ConformalFactor( X1, MassPNS )
+
+      h1 = Psi**2
+      h2 = Psi**2 * ABS( X1 )
+      h3 = Psi**2 * ABS( X1 * SIN( X2 ) )
+
+      uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX) = Psi
+
+      uGF(iX1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) = h1
+      uGF(iX1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) = h2
+      uGF(iX1,iX2,iX3,nDOFX*(iGF_h_3-1)+iNX) = h3
+
+      uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX) = MAX( h1**2, SqrtTiny )
+      uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX) = MAX( h2**2, SqrtTiny )
+      uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX) = MAX( h3**2, SqrtTiny )
+
+      uGF(iX1,iX2,iX3,nDOFX*(iGF_SqrtGm-1)+iNX) &
+        = MAX( h1 * h2 * h3, SqrtTiny )
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ApplyBoundaryConditions_Geometry_X1_Outer_SAS_GR
 
 
   SUBROUTINE ApplyBoundaryConditions_Geometry_X2_Inner_Homogeneous &

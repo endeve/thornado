@@ -1,12 +1,12 @@
 MODULE GravitySolutionModule_Newtonian_Poseidon
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, Pi, FourPi
+    DP, Zero, Half, Pi, Two
   USE UnitsModule, ONLY: &
     Kilogram
   USE ProgramHeaderModule, ONLY: &
     nX, nNodesX, &
-    nNodes, xL, xR
+    nNodes, xL, xR, nDimsX
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q
   USE UtilitiesModule, ONLY: &
@@ -44,6 +44,11 @@ MODULE GravitySolutionModule_Newtonian_Poseidon
   PUBLIC :: InitializeGravitySolver_Newtonian_Poseidon
   PUBLIC :: FinalizeGravitySolver_Newtonian_Poseidon
   PUBLIC :: SolveGravity_Newtonian_Poseidon
+  PUBLIC :: ComputeTotalBaryonMass
+
+  ! https://amrex-codes.github.io/amrex/docs_html/Basics.html#fine-mask
+  INTEGER, PARAMETER :: iLeaf    = 0
+  INTEGER, PARAMETER :: iNotLeaf = 1
 
 CONTAINS
 
@@ -100,6 +105,8 @@ CONTAINS
 
 #ifdef GRAVITY_SOLVER_POSEIDON_NEWTON
 
+    BaryonMass = Zero
+
     CALL ComputeTotalBaryonMass &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, D, BaryonMass )
 
@@ -132,32 +139,57 @@ CONTAINS
 
 
   SUBROUTINE ComputeTotalBaryonMass &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, D, Mass )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, D, Mass, Mask_Option )
 
-    INTEGER,  INTENT(in)  :: &
+    INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(in)    :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):)
-    REAL(DP), INTENT(out) :: &
+    REAL(DP), INTENT(inout) :: &
       Mass
+    INTEGER , INTENT(in), OPTIONAL :: &
+      Mask_Option(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iX1, iX2, iX3
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: Mask(iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1)
+    REAL(DP) :: d3X
+
+    IF( PRESENT( Mask_Option ) )THEN
+
+      Mask = Mask_Option
+
+    ELSE
+
+      Mask = iLeaf
+
+    END IF
 
     ASSOCIATE &
-      ( dX1 => MeshX(1) % Width(1:nX(1)) )
+      ( dX1 => MeshX(1) % Width, &
+        dX2 => MeshX(2) % Width, &
+        dX3 => MeshX(3) % Width )
 
-    ! --- Assuming 1D spherical symmetry ---
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
 
-    Mass = Zero
-    DO iX3 = 1, nX(3)
-    DO iX2 = 1, nX(2)
-    DO iX1 = 1, nX(1)
+      IF( IsNotLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
+
+      IF( nDimsX .EQ. 1 )THEN
+
+        d3X = Two / Pi * dX1(iX1) * dX2(iX2) * dX3(iX3)
+
+      ELSE
+
+        d3X = dX1(iX1) * dX2(iX2) * dX3(iX3)
+
+      END IF
 
       Mass &
         = Mass &
-            + FourPi * dX1(iX1) &
+            + d3X &
                 * SUM( WeightsX_q(:) * D(:,iX1,iX2,iX3) &
                          * G(:,iX1,iX2,iX3,iGF_SqrtGm) )
 
@@ -233,6 +265,21 @@ CONTAINS
     END DO
 
   END SUBROUTINE SetBoundaryConditions_X1
+
+
+  LOGICAL FUNCTION IsNotLeafElement( Element )
+
+    INTEGER, INTENT(in) :: Element
+
+    IF( Element .EQ. iNotLeaf )THEN
+      IsNotLeafElement = .TRUE.
+    ELSE
+      IsNotLeafElement = .FALSE.
+    END IF
+
+    RETURN
+  END FUNCTION IsNotLeafElement
+
 
 
 END MODULE GravitySolutionModule_Newtonian_Poseidon
