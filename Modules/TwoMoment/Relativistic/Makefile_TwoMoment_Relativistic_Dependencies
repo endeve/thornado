@@ -24,6 +24,8 @@ TwoMoment_SlopeLimiterModule.o: \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
   TwoMoment_BoundaryConditionsModule.o \
+  TwoMoment_TimersModule.o \
+  TwoMoment_TroubledCellIndicatorModule.o \
   TwoMoment_SlopeLimiterModule.F90
 
 TwoMoment_PositivityLimiterModule.o: \
@@ -70,7 +72,6 @@ TwoMoment_DiscretizationModule_Streaming.o: \
   TwoMoment_ClosureModule.o \
   TwoMoment_BoundaryConditionsModule.o \
   TwoMoment_UtilitiesModule.o \
-  InputParsingModule.o \
   UnitsModule.o \
   TwoMoment_DiscretizationModule_Streaming.F90
 
