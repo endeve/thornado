@@ -840,6 +840,9 @@ PROGRAM ApplicationDriver
     CALL ApplyPositivityLimiter_MHD_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM )
 
+    CALL ApplyPositivityLimiter_MHD_Relativistic_IDEAL &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM )
+
     CALL ComputeFromConserved_MHD_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM, &
              EvolveOnlyMagnetic )
