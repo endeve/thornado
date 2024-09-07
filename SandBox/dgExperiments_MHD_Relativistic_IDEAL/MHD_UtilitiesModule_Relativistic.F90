@@ -3408,7 +3408,7 @@ CONTAINS
 
     mua = Zero
 
-    mub = One / h0
+    mub = One / h0 * ( One + 10.0_DP * dmu_min )
 
     CALL ComputeAuxiliaryFunMu( r, bSq, rb, h0, mua, fa )
 
@@ -3417,7 +3417,7 @@ CONTAINS
     ! --- Check that sign of FunZ changes across bounds ---
 
     IF( .NOT. fa * fb .LT. 0 ) THEN
-      PRINT*, 'Cannot perform bisection in primitive recovery!'
+      PRINT*, 'Cannot perform bisection in primitive recovery (bound calculation)!'
       PRINT*, 'mua: ', mua
       PRINT*, 'mub: ', mub
       PRINT*, 'fa : ', fa
@@ -3491,7 +3491,7 @@ CONTAINS
      !PRINT*, 'r < h0'
 
       mua = Zero
-      mub = One / h0
+      mub = One / h0 * ( One + 10.0_DP * dmu_min )
 
     ELSE
 
@@ -3500,6 +3500,8 @@ CONTAINS
       mua = Zero
 
       CALL SolveMuBound_Bisection( r, bSq, rb, h0, mub )
+
+      mub = mub * ( One + 10.0_DP * dmu_min )
 
     END IF
 
@@ -3526,7 +3528,7 @@ CONTAINS
     ! --- Check that sign of FunZ changes across bounds ---
 
     IF( .NOT. fa * fb .LT. 0 ) THEN
-      PRINT*, 'Cannot perform bisection in primitive recovery!'
+      PRINT*, 'Cannot perform bisection in primitive recovery (master function)!'
       PRINT*, 'mua: ', mua
       PRINT*, 'mub: ', mub
       PRINT*, 'fa : ', fa
