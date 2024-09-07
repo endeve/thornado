@@ -151,11 +151,15 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iNX, iX1, iX2, iX3
+    INTEGER :: iNodeX1, iNodeX2
 
     REAL(DP) :: &
       P(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nPM)
     REAL(DP) :: &
       A(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nAM)
+
+    REAL(DP) :: X1, X2
+    REAL(DP) :: kz
 
     ! --- Applying the random radial velocity       ---
     ! --- perturbations from Rembiasz et al. (2016) ---
@@ -168,15 +172,22 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1, nDOFX
 
+      iNodeX1 = NodeNumberTableX(1, iNX)
+      iNodeX2 = NodeNumberTableX(2, iNX)
+
+      X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+      X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+      kz = Two * Pi / ( Half * Kilometer )
+
       P(iNX,iX1,iX2,iX3,iPM_V1) &
-        = 0.1_DP * Rand_Amplitude * Random_r(iNX,iX1,iX2,iX3) &
-          * NodeCoordinate( MeshX(1), iX1, NodeNumberTableX( 1, iNX ) ) &
-          * P(iNX,iX1,iX2,iX3,iPM_V3)
+        = ( 0.1_DP * Rand_Amplitude * Random_r(iNX,iX1,iX2,iX3) &
+            + 0.2d-5 * SIN( kz * X2 ) ) &
+          * X1 * P(iNX,iX1,iX2,iX3,iPM_V3)
 
       P(iNX,iX1,iX2,iX3,iPM_V2) &
         = Rand_Amplitude * Random_z(iNX,iX1,iX2,iX3) &
-          * NodeCoordinate( MeshX(1), iX1, NodeNumberTableX( 1, iNX ) ) &
-          * P(iNX,iX1,iX2,iX3,iPM_V3)
+          * X1 * P(iNX,iX1,iX2,iX3,iPM_V3)
 
       P(iNX,iX1,iX2,iX3,iPM_V3) &
         = ( One + Rand_Amplitude * Random_theta(iNX,iX1,iX2,iX3) ) &
