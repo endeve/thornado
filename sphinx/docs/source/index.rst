@@ -7,12 +7,12 @@ Welcome to thornado's documentation!
 ====================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
    :caption: Contents:
 
-   phys
-   math
-   thornado
+   hydro
+   radhydro
+   gravity
 
 
 Indices and tables
