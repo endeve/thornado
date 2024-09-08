@@ -6,8 +6,8 @@ for non-relativistic hydrodynamics, general relativistic hydrodynamics,
 and general relativistic magnetohydrodynamics.
 
 .. toctree::
-   :maxdepth: 4
-   :caption: Hydrodynamics Solvers:
+   :maxdepth: 1
+   :caption: Contents:
 
    NRHD
    GRHD

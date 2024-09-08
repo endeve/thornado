@@ -1,4 +1,4 @@
 Gravity Solvers
 ==============
 
-thornado's gravity solvers current consist of Poseidon.
+thornado's gravity solvers currently consist of Poseidon.
