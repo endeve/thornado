@@ -66,4 +66,20 @@ baryon mass density, and evolve the electron mass density
 	\frac{\partial \rho_{e}}{\partial t}
 	+
 	\frac{1}{\sqrt{\gamma}} \frac{\partial}{\partial x^{j}}
-	\left(\sqrt{\gamma} \rho_{e} v^{j}\right) = 0
+	\left(\sqrt{\gamma} \rho_{e} v^{j}\right) = 0.
+
+The conservation equations can then be combined into the single equation
+
+.. math::
+
+	\frac{\partial \bf{U}}{\partial t}
+    +
+	\frac{1}{\sqrt{\gamma}} \frac{\partial}{\partial x^{j}}
+	\left(
+		\sqrt{\gamma} \bf{F}^{j}(\bf{U})
+	\right)
+	=
+	\bf{S}(\bf{U}),
+
+where :math:`\bf{U}` is the vector of conserved variables, :math:`\bf{F}^{j}(\bf{U})` is
+the flux vector in the j-th direction, and :math:`\bf{S}(\bf{U}, \Phi)` is the source vector.
