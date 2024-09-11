@@ -364,7 +364,7 @@ CONTAINS
       CALL WriteDataset3DHDF &
              ( Field3D &
                  ( uGF(1:nDOFX,iXB(1):iXE(1),iXB(2):iXE(2),iXB(3):iXE(3),iGF), nXT, nNodesX, &
-                   nDOFX, NodeNumberTableX ) / unitsGF(iGF), &
+                   nDOFX, NodeNumberTableX, iXB, iXE ) / unitsGF(iGF), &
                DatasetName, FILE_ID )
 
     END DO
@@ -426,7 +426,7 @@ CONTAINS
       CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
 
       uGF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iGF) &
-        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX, iX_B0, iX_E0 ) &
             * unitsGF(iGF)
 
     END DO
@@ -586,7 +586,7 @@ CONTAINS
       CALL WriteDataset3DHDF &
              ( Field3D &
                  ( uCF(1:nDOFX,iXB(1):iXE(1),iXB(2):iXE(2),iXB(3):iXE(3),iFF), nXT, nNodesX, &
-                   nDOFX, NodeNumberTableX ) / unitsCF(iFF), &
+                   nDOFX, NodeNumberTableX, iXB, iXE ) / unitsCF(iFF), &
                DatasetName, FILE_ID )
 
     END DO
@@ -604,7 +604,7 @@ CONTAINS
       CALL WriteDataset3DHDF &
              ( Field3D &
                  ( uPF(1:nDOFX,iXB(1):iXE(1),iXB(2):iXE(2),iXB(3):iXE(3),iFF), nXT, nNodesX, &
-                   nDOFX, NodeNumberTableX ) / unitsPF(iFF), &
+                   nDOFX, NodeNumberTableX, iXB, iXE ) / unitsPF(iFF), &
                DatasetName, FILE_ID )
 
     END DO
@@ -622,7 +622,7 @@ CONTAINS
       CALL WriteDataset3DHDF &
              ( Field3D &
                  ( uAF(1:nDOFX,iXB(1):iXE(1),iXB(2):iXE(2),iXB(3):iXE(3),iFF), nXT, nNodesX, &
-                   nDOFX, NodeNumberTableX ) / unitsAF(iFF), &
+                   nDOFX, NodeNumberTableX, iXB, iXE ) / unitsAF(iFF), &
                DatasetName, FILE_ID )
 
     END DO
@@ -640,7 +640,7 @@ CONTAINS
       CALL WriteDataset3DHDF &
              ( Field3D &
                  ( uDF(1:nDOFX,iXB(1):iXE(1),iXB(2):iXE(2),iXB(3):iXE(3),iFF), nXT, nNodesX, &
-                   nDOFX, NodeNumberTableX ) / unitsDF(iFF), &
+                   nDOFX, NodeNumberTableX, iXB, iXE ) / unitsDF(iFF), &
                DatasetName, FILE_ID )
 
     END DO
@@ -704,7 +704,7 @@ CONTAINS
       CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
 
       uCF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF) &
-        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX, iX_B0, iX_E0 ) &
             * unitsCF(iFF)
 
     END DO
@@ -720,7 +720,7 @@ CONTAINS
       CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
 
       uPF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF) &
-        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX, iX_B0, iX_E0 ) &
             * unitsPF(iFF)
 
     END DO
@@ -736,7 +736,7 @@ CONTAINS
       CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
 
       uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF) &
-        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX, iX_B0, iX_E0 ) &
             * unitsAF(iFF)
 
     END DO
@@ -895,7 +895,7 @@ CONTAINS
       CALL WriteDataset3DHDF &
              ( Field3D &
                  ( uCM(1:nDOFX,iXB(1):iXE(1),iXB(2):iXE(2),iXB(3):iXE(3),iMF), nXT, nNodesX, &
-                   nDOFX, NodeNumberTableX ) / unitsCM(iMF), &
+                   nDOFX, NodeNumberTableX, iXB, iXE ) / unitsCM(iMF), &
                DatasetName, FILE_ID )
 
     END DO
@@ -913,7 +913,7 @@ CONTAINS
       CALL WriteDataset3DHDF &
              ( Field3D &
                  ( uPM(1:nDOFX,iXB(1):iXE(1),iXB(2):iXE(2),iXB(3):iXE(3),iMF), nXT, nNodesX, &
-                   nDOFX, NodeNumberTableX ) / unitsPM(iMF), &
+                   nDOFX, NodeNumberTableX, iXB, iXE ) / unitsPM(iMF), &
                DatasetName, FILE_ID )
 
     END DO
@@ -931,7 +931,7 @@ CONTAINS
       CALL WriteDataset3DHDF &
              ( Field3D &
                  ( uAM(1:nDOFX,iXB(1):iXE(1),iXB(2):iXE(2),iXB(3):iXE(3),iMF), nXT, nNodesX, &
-                   nDOFX, NodeNumberTableX ) / unitsAM(iMF), &
+                   nDOFX, NodeNumberTableX, iXB, iXE ) / unitsAM(iMF), &
                DatasetName, FILE_ID )
 
     END DO
@@ -949,7 +949,7 @@ CONTAINS
       CALL WriteDataset3DHDF &
              ( Field3D &
                  ( uDM(1:nDOFX,iXB(1):iXE(1),iXB(2):iXE(2),iXB(3):iXE(3),iMF), nXT, nNodesX, &
-                   nDOFX, NodeNumberTableX ) / unitsDM(iMF), &
+                   nDOFX, NodeNumberTableX, iXB, iXE ) / unitsDM(iMF), &
                DatasetName, FILE_ID )
 
     END DO
@@ -1013,7 +1013,7 @@ CONTAINS
       CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
 
       uCM(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iMF) &
-        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX, iX_B0, iX_E0 ) &
             * unitsCM(iMF)
 
     END DO
@@ -1029,7 +1029,7 @@ CONTAINS
       CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
 
       uPM(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iMF) &
-        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX, iX_B0, iX_E0 ) &
             * unitsPM(iMF)
 
     END DO
@@ -1045,7 +1045,7 @@ CONTAINS
       CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
 
       uAM(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iMF) &
-        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX ) &
+        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX, iX_B0, iX_E0 ) &
             * unitsAM(iMF)
 
     END DO
@@ -1279,7 +1279,7 @@ CONTAINS
         CALL WriteDataset3DHDF &
              ( Field3D &
                  ( uGR(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iRF,iS), &
-                   nX, nNodesX, nDOFX, NodeNumberTableX ) / unitsGR(iRF), &
+                   nX, nNodesX, nDOFX, NodeNumberTableX, iXB, iXE ) / unitsGR(iRF), &
                DatasetName, FILE_ID )
 
       END DO
@@ -1707,7 +1707,7 @@ CONTAINS
     CALL WriteDataset3DHDF &
            ( Field3D &
                ( SourceTerm(1,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
-                 nDOFX, NodeNumberTableX ) &
+                 nDOFX, NodeNumberTableX, iXB, iXE ) &
                    / ( ( Erg / Centimeter**3 ) / Second ), &
              DatasetName, FILE_ID )
 
@@ -1718,7 +1718,7 @@ CONTAINS
     CALL WriteDataset3DHDF &
            ( Field3D &
                ( SourceTerm(2,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
-                 nDOFX, NodeNumberTableX ) &
+                 nDOFX, NodeNumberTableX, iXB, iXE ) &
                    / ( ( Erg / Centimeter**3 ) / Second ), &
              DatasetName, FILE_ID )
 
@@ -1729,7 +1729,7 @@ CONTAINS
     CALL WriteDataset3DHDF &
            ( Field3D &
                ( SourceTerm(3,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
-                 nDOFX, NodeNumberTableX ) &
+                 nDOFX, NodeNumberTableX, iXB, iXE ) &
                    / ( ( Erg / Centimeter**3 ) / Second ), &
              DatasetName, FILE_ID )
 
@@ -1740,7 +1740,7 @@ CONTAINS
     CALL WriteDataset3DHDF &
            ( Field3D &
                ( SourceTerm(4,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
-                 nDOFX, NodeNumberTableX ) &
+                 nDOFX, NodeNumberTableX, iXB, iXE ) &
                    / ( ( Erg / Centimeter**3 ) / Second ), &
              DatasetName, FILE_ID )
 
@@ -1751,7 +1751,7 @@ CONTAINS
     CALL WriteDataset3DHDF &
            ( Field3D &
                ( SourceTerm(5,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
-                 nDOFX, NodeNumberTableX ) &
+                 nDOFX, NodeNumberTableX, iXB, iXE ) &
                    / ( 1.0_DP / Second ), &
              DatasetName, FILE_ID )
 
@@ -1762,7 +1762,7 @@ CONTAINS
     CALL WriteDataset3DHDF &
            ( Field3D &
                ( SourceTerm(6,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
-                 nDOFX, NodeNumberTableX ) &
+                 nDOFX, NodeNumberTableX, iXB, iXE ) &
                    / ( Centimeter**( -2 ) ), &
              DatasetName, FILE_ID )
 
@@ -1773,7 +1773,7 @@ CONTAINS
     CALL WriteDataset3DHDF &
            ( Field3D &
                ( SourceTerm(7,1:nDOFX,1:nX(1),1:nX(2),1:nX(3)), nX, nNodesX, &
-                 nDOFX, NodeNumberTableX ) &
+                 nDOFX, NodeNumberTableX, iXB, iXE ) &
                    / ( Centimeter**( -1 ) ), &
              DatasetName, FILE_ID )
 

@@ -43,21 +43,21 @@ CONTAINS
   END FUNCTION NodeCoordinates
 
 
-  FUNCTION Field3D( F, nX, nN, nDOF, Tab )
+  FUNCTION Field3D( F, nX, nN, nDOF, Tab, iB, iE )
 
     INTEGER,  INTENT(in) :: &
-      nX(3), nN(3), nDOF, Tab(3,nDOF)
+      nX(3), nN(3), nDOF, Tab(3,nDOF), iB(3), iE(3)
     REAL(DP), INTENT(in) :: &
-      F(nDOF,nX(1),nX(2),nX(3))
+      F(nDOF,iB(1):iE(1),iB(2):iE(2),iB(3):iE(3))
     REAL(DP) :: &
       Field3D(nX(1)*nN(1),nX(2)*nN(2),nX(3)*nN(3))
 
     INTEGER :: iX1, iX2, iX3
     INTEGER :: iN1, iN2, iN3, iNode
 
-    DO iX3 = 1, nX(3)
-    DO iX2 = 1, nX(2)
-    DO iX1 = 1, nX(1)
+    DO iX3 = iB(3), iE(3)
+    DO iX2 = iB(2), iE(2)
+    DO iX1 = iB(1), iE(1)
 
       DO iNode = 1, nDOF
 
@@ -66,7 +66,7 @@ CONTAINS
         iN3 = Tab(3,iNode)
 
         Field3D &
-          ( (iX1-1)*nN(1)+iN1, (iX2-1)*nN(2)+iN2, (iX3-1)*nN(3)+iN3 ) &
+          ( (iX1-iB(1))*nN(1)+iN1, (iX2-iB(2))*nN(2)+iN2, (iX3-iB(3))*nN(3)+iN3 ) &
           = F(iNode,iX1,iX2,iX3)
 
       END DO
@@ -79,21 +79,21 @@ CONTAINS
   END FUNCTION Field3D
 
 
-  FUNCTION Field3D_INT( F, nX, nN, nDOF, Tab )
+  FUNCTION Field3D_INT( F, nX, nN, nDOF, Tab, iB, iE )
 
+    INTEGER,  INTENT(in) :: &
+      nX(3), nN(3), nDOF, Tab(3,nDOF), iB(3), iE(3)
     INTEGER, INTENT(in) :: &
-      nX(3), nN(3), nDOF, Tab(3,nDOF)
-    INTEGER, INTENT(in) :: &
-      F(nDOF,nX(1),nX(2),nX(3))
-    INTEGER             :: &
+      F(nDOF,iB(1):iE(1),iB(2):iE(2),iB(3):iE(3))
+    INTEGER :: &
       Field3D_INT(nX(1)*nN(1),nX(2)*nN(2),nX(3)*nN(3))
 
     INTEGER :: iX1, iX2, iX3
     INTEGER :: iN1, iN2, iN3, iNode
 
-    DO iX3 = 1, nX(3)
-    DO iX2 = 1, nX(2)
-    DO iX1 = 1, nX(1)
+    DO iX3 = iB(3), iE(3)
+    DO iX2 = iB(2), iE(2)
+    DO iX1 = iB(1), iE(1)
 
       DO iNode = 1, nDOF
 
@@ -102,7 +102,7 @@ CONTAINS
         iN3 = Tab(3,iNode)
 
         Field3D_INT &
-          ( (iX1-1)*nN(1)+iN1, (iX2-1)*nN(2)+iN2, (iX3-1)*nN(3)+iN3 ) &
+          ( (iX1-iB(1))*nN(1)+iN1, (iX2-iB(2))*nN(2)+iN2, (iX3-iB(3))*nN(3)+iN3 ) &
           = F(iNode,iX1,iX2,iX3)
 
       END DO
@@ -115,21 +115,21 @@ CONTAINS
   END FUNCTION Field3D_INT
 
 
-  FUNCTION FromField3D( F, nX, nN, nDOF, Tab )
+  FUNCTION FromField3D( F, nX, nN, nDOF, Tab, iB, iE )
 
     INTEGER,  INTENT(in) :: &
-      nX(3), nN(3), nDOF, Tab(3,nDOF)
+      nX(3), nN(3), nDOF, Tab(3,nDOF), iB(3), iE(3)
     REAL(DP), INTENT(in) :: &
       F(nX(1)*nN(1),nX(2)*nN(2),nX(3)*nN(3))
     REAL(DP) :: &
-      FromField3D(nDOF,nX(1),nX(2),nX(3))
+      FromField3D(nDOF,iB(1):iE(1),iB(2):iE(2),iB(3):iE(3))
 
     INTEGER :: iX1, iX2, iX3
     INTEGER :: iN1, iN2, iN3, iNode
 
-    DO iX3 = 1, nX(3)
-    DO iX2 = 1, nX(2)
-    DO iX1 = 1, nX(1)
+    DO iX3 = iB(3), iE(3)
+    DO iX2 = iB(2), iE(2)
+    DO iX1 = iB(1), iE(1)
 
       DO iNode = 1, nDOF
 
@@ -138,7 +138,7 @@ CONTAINS
         iN3 = Tab(3,iNode)
 
         FromField3D(iNode,iX1,iX2,iX3) &
-          = F( (iX1-1)*nN(1)+iN1, (iX2-1)*nN(2)+iN2, (iX3-1)*nN(3)+iN3 )
+          = F( (iX1-iB(1))*nN(1)+iN1, (iX2-iB(2))*nN(2)+iN2, (iX3-iB(3))*nN(3)+iN3 )
 
       END DO
 
