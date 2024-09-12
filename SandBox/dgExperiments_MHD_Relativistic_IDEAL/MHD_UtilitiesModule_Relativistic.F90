@@ -220,9 +220,19 @@ CONTAINS
 
     S = SQRT( CM_S1**2 / GF_Gm11 + CM_S2**2 / GF_Gm22 + CM_S3**2 / GF_Gm33 )
 
-    B = SQRT( GF_Gm11 * CM_B1**2 + GF_Gm22 * CM_B2**2 + GF_Gm33 * CM_B3**2 )
+    IF( EvolveOnlyMagnetic )
 
-    tau = CM_S1 * CM_B1 + CM_S2 * CM_B2 + CM_S3 * CM_B3
+      B = Zero
+
+      tau = Zero
+
+    ELSE
+
+      B = SQRT( GF_Gm11 * CM_B1**2 + GF_Gm22 * CM_B2**2 + GF_Gm33 * CM_B3**2 )
+
+      tau = CM_S1 * CM_B1 + CM_S2 * CM_B2 + CM_S3 * CM_B3
+
+    END IF
 
     alpha_1 = B**2 - ( CM_E + CM_D )
 
