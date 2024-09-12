@@ -7,11 +7,14 @@ MODULE MHD_UtilitiesModule_Relativistic
     DP, &
     Zero, &
     SqrtTiny, &
+    Third, &
     Half, &
     One, &
     Two, &
+    Three, &
     Four, &
-    Fourth
+    Fourth, &
+    Pi
   USE ProgramHeaderModule, ONLY: &
     swX, &
     nDOFX, &
@@ -103,6 +106,8 @@ MODULE MHD_UtilitiesModule_Relativistic
     ComputePressureFromPrimitive, &
     ComputePressureFromSpecificInternalEnergy, &
     ComputeSpecificInternalEnergy
+  USE EquationOfStateModule_IDEAL, ONLY: &
+    Gamma_IDEAL
   USE EquationOfStateModule_TABLE, ONLY: &
     Min_D, &
     Max_D, &
@@ -167,7 +172,7 @@ MODULE MHD_UtilitiesModule_Relativistic
   INTEGER :: nX_X3(3), nX3_X, nNodesX_X3
 
   INTERFACE ComputePrimitive_MHD_Relativistic
-    MODULE PROCEDURE ComputePrimitive_Scalar
+    MODULE PROCEDURE ComputePrimitive_Scalar_NR
     MODULE PROCEDURE ComputePrimitive_Vector
   END INTERFACE ComputePrimitive_MHD_Relativistic
 
@@ -178,6 +183,191 @@ MODULE MHD_UtilitiesModule_Relativistic
 
 
 CONTAINS
+
+
+  SUBROUTINE ComputePrimitive_Scalar_NR &
+    ( CM_D, CM_S1, CM_S2, CM_S3, CM_E, CM_Ne, &
+      CM_B1, CM_B2, CM_B3, CM_Chi, &
+      PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
+      PM_B1, PM_B2, PM_B3, PM_Chi, &
+      GF_Gm11, GF_Gm22, GF_Gm33, &
+      GF_Alpha, GF_Beta1, GF_Beta2, GF_Beta3, &
+      EvolveOnlyMagnetic )
+
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
+
+    REAL(DP), INTENT(inout)    :: &
+      CM_D, CM_S1, CM_S2, CM_S3, CM_E, CM_Ne, &
+      CM_B1, CM_B2, CM_B3, CM_Chi
+    REAL(DP), INTENT(in)    :: &
+      GF_Gm11, GF_Gm22, GF_Gm33, &
+      GF_Alpha, GF_Beta1, GF_Beta2, GF_Beta3
+    REAL(DP), INTENT(out)   :: &
+      PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
+      PM_B1, PM_B2, PM_B3, PM_Chi
+
+    REAL(DP) :: S, B, tau, alpha_1, alpha_2, &
+                eta, beta_1, beta_2, gamma_0
+
+    REAL(DP) :: Xi_d, Xi_0, Xi_1, W, f_0, f_1, df, a_0, delta, &
+                phi_a, X_1, X_2, theta
+
+    REAL(DP) :: Xi, VSq, VdotB
+
+    LOGICAL :: flag
+
+    INTEGER :: N_osc
+
+    S = SQRT( CM_S1**2 / GF_Gm11 + CM_S2**2 / GF_Gm22 + CM_S3**2 / GF_Gm33 )
+
+    B = SQRT( GF_Gm11 * CM_B1**2 + GF_Gm22 * CM_B2**2 + GF_Gm33 * CM_B3**2 )
+
+    tau = CM_S1 * CM_B1 + CM_S2 * CM_B2 + CM_S3 * CM_B3
+
+    alpha_1 = B**2 - ( CM_E + CM_D )
+
+    alpha_2 = B**2 - S
+
+    IF( B .GT. 1.0d-15 )THEN
+
+      beta_1 = tau**2 / B**2
+
+    ELSE
+
+      beta_1 = Zero
+
+    END IF
+
+    beta_2 = S**2 - beta_1
+
+    gamma_0 = ( Gamma_IDEAL - One ) / Gamma_IDEAL
+
+    Xi_d = Third * ( SQRT( alpha_1**2 + Three * ( ( CM_E + CM_D )**2 - ( CM_D**2 + S**2 ) ) ) - Two * alpha_1 )
+
+    eta = Xi_d + B**2
+
+    Xi_0 = Xi_d
+
+    !PRINT*, 'Xi_0**2: ', Xi_0**2
+    !PRINT*, 'S**2: ',    S**2
+    !PRINT*, 'Xi_0**2 - S**2: ', Xi_0**2 - S**2
+
+    !PRINT*, 'One / eta**2 - One / Xi_0**2: ', One / eta**2 - One / Xi_0**2
+    !PRINT*, 'beta_1: ', beta_1
+
+    W = One / SQRT( ( Xi_0 + alpha_2 ) * ( eta + S ) / eta**2 &
+                    + beta_1 * ( One / eta**2 - One / Xi_0**2 ) )
+
+    f_1 = Xi_0 &
+          - gamma_0 * ( Xi_0 / W**2 - CM_D / W ) &
+          - Half * ( B**2 / W**2 + tau**2 / Xi_0**2 ) &
+          + alpha_1
+
+    flag = .TRUE.
+
+    IF( f_1 .GT. Zero )THEN
+
+      a_0 = -Half * ( B**2 * CM_D**2 + tau**2 )
+
+      delta = 27.0_DP * a_0 + Four * alpha_1**3
+
+      IF( delta .GT. Zero )THEN
+
+        theta = ACOS( One + 13.5_DP * a_0 / alpha_1**3 )
+
+        Xi_0 = -Third * alpha_1 &
+                * ( One - Two * COS( Third * theta - Third * Pi ) )
+
+      ELSE
+
+        X_1 = alpha_1**3 + 13.5_DP * a_0
+
+        X_2 = 1.5_DP * SQRT( Three * a_0 * delta )
+
+        !PRINT*, 'X_1: ', X_1
+        !PRINT*, 'X_2: ', X_2
+
+        !PRINT*, 'X_1 - X_2: ', X_1 - X_2
+
+        Xi_0 = -Third * ( alpha_1 &
+                          + SIGN( ABS( X_1 + X_2 )**Third, X_1 + X_2 ) &
+                          + SIGN( ABS( X_1 - X_2 )**Third, X_1 - X_2 ) )
+
+      END IF
+
+      flag = .FALSE.
+
+    END IF
+
+    N_osc = 0
+
+    Xi_1 = Xi_0
+
+    f_0 = Zero
+
+    DO WHILE( ( ABS( Xi_0 - Xi_1 ) > 1.0d-16 ) .AND. ( N_osc .LE. 3 ) )
+
+      eta = Xi_1 + B**2
+
+      phi_a = -( beta_1 / Xi_1**3 + beta_2 / eta**3 )
+
+      IF( flag )THEN
+
+        flag = .FALSE.
+
+      ELSE
+
+        W = One / SQRT( ( Xi_1 + alpha_2 ) * ( eta + S ) / eta**2 &
+                      + beta_1 * ( One / eta**2 - One / Xi_1**2 ) )
+
+        f_1 = Xi_1 - gamma_0 * ( Xi_1 / W**2 - CM_D / W ) &
+              - Half * ( B**2 / W**2 + tau**2 / Xi_1**2 ) + alpha_1
+
+      END IF
+
+      df = One + B**2 * phi_a + tau**2 / Xi_1**3 &
+           - gamma_0 * ( One / W**2 - Two * Xi_1 * phi_a + CM_D * W * phi_a )
+
+      Xi_0 = Xi_1
+
+      Xi_1 = Xi_1 - f_1 / df
+
+      IF( f_0 * f_1 .LT. 0 )THEN
+
+        N_osc = N_osc + 1
+
+      END IF
+
+      f_0 = f_1
+
+    END DO
+
+    Xi = Xi_1
+
+    PM_V1 = ( CM_S1 / GF_Gm11 + tau * CM_B1 / Xi ) / ( Xi + B**2 )
+    PM_V2 = ( CM_S2 / GF_Gm22 + tau * CM_B2 / Xi ) / ( Xi + B**2 )
+    PM_V3 = ( CM_S3 / GF_Gm33 + tau * CM_B3 / Xi ) / ( Xi + B**2 )
+
+    VSq = GF_Gm11 * PM_V1**2 + GF_Gm22 * PM_V2**2 + GF_Gm33 * PM_V3**2
+
+    VdotB = GF_Gm11 * PM_V1 * CM_B1 &
+            + GF_Gm22 * PM_V2 * CM_B2 &
+            + GF_Gm33 * PM_V3 * CM_B3
+
+    W = One / SQRT( One - VSq )
+
+    PM_D = CM_D / W
+    PM_Ne = CM_Ne / W
+
+    PM_E = PM_D * ( Xi / ( CM_D * W ) - One ) / Gamma_IDEAL
+
+    PM_B1 = CM_B1 / W + W * VdotB * ( PM_V1 - GF_Beta1 / GF_Alpha )
+    PM_B2 = CM_B2 / W + W * VdotB * ( PM_V2 - GF_Beta2 / GF_Alpha )
+    PM_B3 = CM_B3 / W + W * VdotB * ( PM_V3 - GF_Beta3 / GF_Alpha )
+
+    PM_Chi = CM_Chi
+
+  END SUBROUTINE ComputePrimitive_Scalar_NR
 
 
   !> Compute the primitive variables from the conserved variables,
@@ -509,7 +699,7 @@ CONTAINS
 
     DO iNX = 1, SIZE( CM_D )
 
-      CALL ComputePrimitive_Scalar &
+      CALL ComputePrimitive_Scalar_NR &
              ( CM_D   (iNX), &
                CM_S1  (iNX), &
                CM_S2  (iNX), &
