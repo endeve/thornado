@@ -262,10 +262,10 @@ CONTAINS
                           iX_B0(2):iX_E0(2), &
                           iX_B0(3):iX_E0(3))
 
-    REAL(DP) :: D_P, S1_P, S2_P, S3_P, Tau_P, B1_P, B2_P, B3_P, &
+    REAL(DP) :: D_P, S1_P, S2_P, S3_P, E_P, B1_P, B2_P, B3_P, &
                 g1_P, g2_P, g3_P
 
-    REAL(DP) :: D_K, S1_K, S2_K, S3_K, Tau_K, B1_K, B2_K, B3_K
+    REAL(DP) :: D_K, S1_K, S2_K, S3_K, E_K, B1_K, B2_K, B3_K
 
     IF( nDOFX .EQ. 1 ) RETURN
 
@@ -416,13 +416,14 @@ CONTAINS
       Min_q_K = HUGE( 1.0_DP )
       DO iPT = 1, nPT
 
-        q_P = Computeq( U_P(iPT,iCM_D ,iX1,iX2,iX3), &
-                        U_P(iPT,iCM_S1,iX1,iX2,iX3), &
-                        U_P(iPT,iCM_S2,iX1,iX2,iX3), &
-                        U_P(iPT,iCM_S3,iX1,iX2,iX3), &
-                        U_P(iPT,iCM_E ,iX1,iX2,iX3), &
-                        g1P(iPT,       iX1,iX2,iX3), &
-                        g2P(iPT,       iX1,iX2,iX3), &
+        q_P = Computeq( U_P(iPT,iCM_D ,iX1,iX2,iX3),  &
+                        U_P(iPT,iCM_S1,iX1,iX2,iX3),  &
+                        U_P(iPT,iCM_S2,iX1,iX2,iX3),  &
+                        U_P(iPT,iCM_S3,iX1,iX2,iX3),  &
+                        U_P(iPT,iCM_E ,iX1,iX2,iX3)   &
+                        + U_P(iPT,iCM_D ,iX1,iX2,iX3), &
+                        g1P(iPT,       iX1,iX2,iX3),  &
+                        g2P(iPT,       iX1,iX2,iX3),  &
                         g3P(iPT,       iX1,iX2,iX3) )
 
       Min_q_K &
@@ -440,7 +441,8 @@ CONTAINS
                         U_K(iCM_S1, iX1,iX2,iX3),    &
                         U_K(iCM_S2, iX1,iX2,iX3),    &
                         U_K(iCM_S3, iX1,iX2,iX3),    &
-                        U_K(iCM_E,  iX1,iX2,iX3),    &
+                        U_K(iCM_E,  iX1,iX2,iX3)     &
+                        + U_K(iCM_D, iX1,iX2,iX3),   &
                         G_K(iGF_h_1,iX1,iX2,iX3)**2, &
                         G_K(iGF_h_2,iX1,iX2,iX3)**2, &
                         G_K(iGF_h_3,iX1,iX2,iX3)**2 )
@@ -472,9 +474,12 @@ CONTAINS
                                 - U_K(iCM_S3,iX1,iX2,iX3) )
 
           U_Q(iNX,iCM_E,iX1,iX2,iX3) &
-            = U_K(iCM_E,iX1,iX2,iX3) &
+            = U_K(iCM_E,iX1,iX2,iX3) + U_K(iCM_D,iX1,iX2,iX3) &
                 + Theta_q * ( U_Q(iNX,iCM_E,iX1,iX2,iX3) &
-                                - U_K(iCM_E,iX1,iX2,iX3) )
+                                + U_Q(iNX,iCM_D,iX1,iX2,iX3) &
+                                - U_K(iCM_E,iX1,iX2,iX3) &
+                                - U_K(iCM_D,iX1,iX2,iX3) ) &
+                - U_Q(iNX,iCM_D,iX1,iX2,iX3)
 
         END DO
 
@@ -503,7 +508,7 @@ CONTAINS
        S1_K = U_K(iCM_S1,iX1,iX2,iX3)
        S2_K = U_K(iCM_S2,iX1,iX2,iX3)
        S3_K = U_K(iCM_S3,iX1,iX2,iX3)
-      Tau_K = U_K(iCM_E, iX1,iX2,iX3)
+        E_K = U_K(iCM_E, iX1,iX2,iX3) + U_K(iCM_D, iX1,iX2,iX3)
        B1_K = U_K(iCM_B1,iX1,iX2,iX3)
        B2_K = U_K(iCM_B2,iX1,iX2,iX3)
        B3_K = U_K(iCM_B3,iX1,iX2,iX3)
@@ -514,7 +519,7 @@ CONTAINS
          S1_P = U_P(iPT,iCM_S1,iX1,iX2,iX3)
          S2_P = U_P(iPT,iCM_S2,iX1,iX2,iX3)
          S3_P = U_P(iPT,iCM_S3,iX1,iX2,iX3)
-        Tau_P = U_P(iPT,iCM_E, iX1,iX2,iX3)
+          E_P = U_P(iPT,iCM_E, iX1,iX2,iX3) + U_P(iPT,iCM_D, iX1,iX2,iX3)
          B1_P = U_P(iPT,iCM_B1,iX1,iX2,iX3)
          B2_P = U_P(iPT,iCM_B2,iX1,iX2,iX3)
          B3_P = U_P(iPT,iCM_B3,iX1,iX2,iX3)
@@ -523,16 +528,16 @@ CONTAINS
          g2_P = g2P(iPT,iX1,iX2,iX3)
          g3_P = g3P(iPT,iX1,iX2,iX3)
 
-        Psi_P = ComputePsi( D_P, S1_P, S2_P, S3_P, Tau_P - Min_3, &
+        Psi_P = ComputePsi( D_P, S1_P, S2_P, S3_P, E_P - Min_3, &
                             B1_P, B2_P, B3_P, g1_P, g2_P, g3_P )
 
         Min_Psi_K &
             = MIN( Min_Psi_K, Psi_P )
 
         CALL SolveTheta_Bisection &
-               ( D_P, S1_P, S2_P, S3_P, Tau_P, &
+               ( D_P, S1_P, S2_P, S3_P, E_P, &
                  B1_P, B2_P, B3_P, &
-                 D_K, S1_K, S2_K, S3_K, Tau_K, &
+                 D_K, S1_K, S2_K, S3_K, E_K, &
                  B1_K, B2_K, B3_K, &
                  g1_P, g2_P, g3_P, Min_3, Theta_Psi_P )
 
@@ -569,9 +574,12 @@ CONTAINS
                                                - U_K(iCM_S3,iX1,iX2,iX3) )
 
           U_Q(iNX,iCM_E,iX1,iX2,iX3) &
-            = U_K(iCM_E,iX1,iX2,iX3) &
+            = U_K(iCM_E,iX1,iX2,iX3) + U_K(iCM_D,iX1,iX2,iX3) &
                 + Theta_Psi(iX1,iX2,iX3) * ( U_Q(iNX,iCM_E,iX1,iX2,iX3) &
-                                               - U_K(iCM_E,iX1,iX2,iX3) )
+                                               + U_Q(iNX,iCM_D,iX1,iX2,iX3) &
+                                               - U_K(iCM_E,iX1,iX2,iX3) &
+                                               - U_K(iCM_D,iX1,iX2,iX3) ) &
+                - U_Q(iNX,iCM_D,iX1,iX2,iX3)
 
           U_Q(iNX,iCM_B1,iX1,iX2,iX3) &
             = U_K(iCM_B1,iX1,iX2,iX3)  &
@@ -634,27 +642,24 @@ CONTAINS
 
 
   FUNCTION Computeq &
-    ( D, S1, S2, S3, tau, g1, g2, g3 ) RESULT( q )
+    ( D, S1, S2, S3, E, g1, g2, g3 ) RESULT( q )
 
-    REAL(DP), INTENT(in) :: D, S1, S2, S3, tau, g1, g2, g3
+    REAL(DP), INTENT(in) :: D, S1, S2, S3, E, g1, g2, g3
 
     REAL(DP) :: q
 
-    q = tau + D &
-          - D * SQRT( One + ( S1**2 / g1 + S2**2 / g2 + S3**2 / g3 ) / D**2 )
+    q = E - D * SQRT( One + ( S1**2 / g1 + S2**2 / g2 + S3**2 / g3 ) / D**2 )
 
     RETURN
   END FUNCTION Computeq
 
 
   FUNCTION ComputePsi &
-    ( D, S1, S2, S3, tau, B1, B2, B3, g1, g2, g3 ) RESULT( Psi )
+    ( D, S1, S2, S3, E, B1, B2, B3, g1, g2, g3 ) RESULT( Psi )
 
-    REAL(DP), INTENT(in) :: D, S1, S2, S3, tau, B1, B2, B3, g1, g2, g3
+    REAL(DP), INTENT(in) :: D, S1, S2, S3, E, B1, B2, B3, g1, g2, g3
 
-    REAL(DP) :: E, SSq, BSq, SdotB, Phi, Psi
-
-    E = tau + D
+    REAL(DP) :: SSq, BSq, SdotB, Phi, Psi
 
     SSq = S1**2 / g1 + S2**2 / g2 + S3**2 / g3
 
@@ -663,6 +668,8 @@ CONTAINS
     SdotB = S1 * B1 + S2 * B2 + S3 * B3
 
     Phi = ComputePhi( D, SSq, E, BSq )
+
+    !PRINT*, 'Phi + BSq - E: ', Phi + BSq - E
 
     Psi = ( Phi - Two * ( BSq - E ) ) * SQRT( Phi + BSq - E ) &
           - SQRT( ( 27.0_DP / Two ) * ( D**2 * BSq + SdotB**2 ) )
@@ -685,12 +692,12 @@ CONTAINS
 
 
   SUBROUTINE SolveTheta_Bisection &
-    ( D_P, S1_P, S2_P, S3_P, Tau_P, B1_P, B2_P, B3_P, &
-      D_K, S1_K, S2_K, S3_K, Tau_K, B1_K, B2_K, B3_K, &
+    ( D_P, S1_P, S2_P, S3_P, E_P, B1_P, B2_P, B3_P, &
+      D_K, S1_K, S2_K, S3_K, E_K, B1_K, B2_K, B3_K, &
       g1_P, g2_P, g3_P, Min_3, Theta_Psi )
 
-    REAL(DP), INTENT(in)    :: D_P, S1_P, S2_P, S3_P, Tau_P, B1_P, B2_P, B3_P, &
-                               D_K, S1_K, S2_K, S3_K, Tau_K, B1_K, B2_K, B3_K, &
+    REAL(DP), INTENT(in)    :: D_P, S1_P, S2_P, S3_P, E_P, B1_P, B2_P, B3_P, &
+                               D_K, S1_K, S2_K, S3_K, E_K, B1_K, B2_K, B3_K, &
                                g1_P, g2_P, g3_P, Min_3
     REAL(DP), INTENT(out)   :: Theta_Psi
 
@@ -708,7 +715,7 @@ CONTAINS
               x_a *  S1_P  + ( One - x_a ) *  S1_K,         &
               x_a *  S2_P  + ( One - x_a ) *  S2_K,         &
               x_a *  S3_P  + ( One - x_a ) *  S3_K,         &
-              x_a * Tau_P  + ( One - x_a ) * Tau_K - Min_3, &
+              x_a *   E_P  + ( One - x_a ) *   E_K - Min_3, &
               x_a *  B1_P  + ( One - x_a ) *  B1_K,         &
               x_a *  B2_P  + ( One - x_a ) *  B2_K,         &
               x_a *  B3_P  + ( One - x_a ) *  B3_K,         &
@@ -720,7 +727,7 @@ CONTAINS
               x_b *  S1_P  + ( One - x_b ) *  S1_K,         &
               x_b *  S2_P  + ( One - x_b ) *  S2_K,         &
               x_b *  S3_P  + ( One - x_b ) *  S3_K,         &
-              x_b * Tau_P  + ( One - x_b ) * Tau_K - Min_3, &
+              x_b *   E_P  + ( One - x_b ) *   E_K - Min_3, &
               x_b *  B1_P  + ( One - x_b ) *  B1_K,         &
               x_b *  B2_P  + ( One - x_b ) *  B2_K,         &
               x_b *  B3_P  + ( One - x_b ) *  B3_K,         &
@@ -751,7 +758,7 @@ CONTAINS
                 x_c *  S1_P  + ( One - x_c ) *  S1_K,         &
                 x_c *  S2_P  + ( One - x_c ) *  S2_K,         &
                 x_c *  S3_P  + ( One - x_c ) *  S3_K,         &
-                x_c * Tau_P  + ( One - x_c ) * Tau_K - Min_3, &
+                x_c *  E_P   + ( One - x_c ) *   E_K - Min_3, &
                 x_c *  B1_P  + ( One - x_c ) *  B1_K,         &
                 x_c *  B2_P  + ( One - x_c ) *  B2_K,         &
                 x_c *  B3_P  + ( One - x_c ) *  B3_K,         &
