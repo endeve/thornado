@@ -220,7 +220,7 @@ CONTAINS
 
     S = SQRT( CM_S1**2 / GF_Gm11 + CM_S2**2 / GF_Gm22 + CM_S3**2 / GF_Gm33 )
 
-    IF( EvolveOnlyMagnetic )
+    IF( EvolveOnlyMagnetic )THEN
 
       B = Zero
 
