@@ -9,6 +9,7 @@ MODULE XCFC_UtilitiesModule
     nDOFX, &
     nDOFE, &
     nDOF, &
+    nDimsX, &
     swE
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q, &
@@ -261,7 +262,15 @@ CONTAINS
 
       IF( IsNotLeafElement( Mask(iX1,iX2,iX3,1) ) ) CYCLE
 
-      d3X = Two / Pi * dX1(iX1) * dX2(iX2) * dX3(iX3)
+      IF( nDimsX .EQ. 1 )THEN
+
+        d3X = Two / Pi * dX1(iX1) * dX2(iX2) * dX3(iX3)
+
+      ELSE
+
+        d3X = dX1(iX1) * dX2(iX2) * dX3(iX3)
+
+      END IF
 
       GravitationalMass &
         = GravitationalMass + d3X                  &

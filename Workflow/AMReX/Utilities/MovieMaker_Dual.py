@@ -12,6 +12,8 @@ import GlobalVariables.Units    as gvU
 import Utilities.BounceFinder   as BF
 from Utilities.RefinementBoundaryFinder import FindRefinementBoundaries
 from Utilities.Synchronizer import SynchronizeFrameLists
+from Utilities.FetchData import fetchData_AMReX, fetchData_Native, ReadHeader
+
 
 #=============================================#
 #   Included Routines
@@ -117,16 +119,13 @@ def CreateMovie(FileNumberArray,    \
                                                           
     
 
-
-#    print("1")
-#    print(Time_List[0])
-#    print("2")
-#    print(Time_List[1])
-
-    Frame_List = SynchronizeFrameLists(nDirs,nSS,'Time')
-    
-#    print(Frame_List)
-    
+#    Frame_List = SynchronizeFrameLists(nDirs,nSS,'Time')
+    Frame_List = SynchronizeFrameLists( nDirs,              \
+                                        nSS,                \
+                                        FileNumberArray,    \
+                                        DataDirectory,      \
+                                        'Bounce'            )
+        
     nFrames = len(Frame_List)
 
 
@@ -204,25 +203,31 @@ def CreateFrame( ax, xL, xH, dX10, Field, DataUnits ):
     global IC
     global mesh
 
-    color_list = ['blue','red','green']
+    ColorList = ['blue','red','green']
+    LineList  = ['solid','dashed','dotted']
+    LabelList = ['AMR, 0.5 km','Uni, 0.50 km','AMR, 1.00 km']
     
     elem_offset = 0.0
     if gvS.ReferenceBounce:
         elem_offset = 0.1
 
+
+
+
+
     Lines = ['None']*nDirs
     time_text = ['None']*nDirs
     elem_text = ['None']*nDirs
     for i in range(nDirs):
-        time_text[i] = ax.text( 0.1, 0.20-0.05*i, '', transform = ax.transAxes, fontsize = 13 )
-        elem_text[i] = ax.text( 0.50+elem_offset, 0.20-0.05*i, '', transform = ax.transAxes, fontsize = 13 )
-        Lines[i], = ax.plot( [],[],                                         \
-                             color  = color_list[i],                       \
-                             marker = '',                                  \
-                             label  = r'$u_{:}\left(t\right)$'.format(gvS.DataType[i][0]),   \
-                             zorder = 10 )
+        time_text[i] = ax.text( 0.05, 0.20-0.05*i, '', transform = ax.transAxes, fontsize = 13 )
+        elem_text[i] = ax.text( 0.45+elem_offset, 0.20-0.05*i, '', transform = ax.transAxes, fontsize = 13 )
+        Lines[i], = ax.plot( [],[],                                                         \
+                             color     = ColorList[i],                                     \
+                             linestyle = LineList[i],                                       \
+                             marker    = '',                                                \
+                             label     = r'$u_{{{:}}}\left(t\right)$'.format(LabelList[i]),     \
+                             zorder    = 10 )
     
-        #color  = plt.cm.Set1(i),                       \
     
     if gvS.PlotMesh:
         mesh,     = ax.plot( [],[] )
@@ -231,22 +236,23 @@ def CreateFrame( ax, xL, xH, dX10, Field, DataUnits ):
     if gvS.ShowIC:
         IC = ['None']*nDirs
         for i in range(nDirs):
-            IC[i], = ax.plot( [],[],                                         \
-                              color  = 'k',                       \
-                              linestyle = '--',                              \
-                              label  = r'$u_{{{:},0}}\left(t\right)$'.format(gvS.DataType[i][0]),   \
-                              zorder = 1000,                                   \
+            IC[i], = ax.plot( [],[],                                                            \
+                              color  = 'k',                                                     \
+                              linestyle = LineList[i],                                          \
+                              label  = r'$u_{{{:}}}\left(0\right)$'.format(LabelList[i]),     \
+                              zorder = 1000,                                                    \
                               alpha  = 0.5    )
     
     
     if gvS.ShowRefinement:
-        RefLines = [['None']*gvS.RefinementLevels]*nDirs
+#        RefLines = [['None']*gvS.RefinementLevels]*nDirs
+        RefLines = [['None'] * gvS.RefinementLevels for i in range(nDirs)]
             
-        for j in range(1,nDirs):
+        for j in range(nDirs):
             for i in range(gvS.RefinementLevels):
                 RefLines[j][i], = ax.plot( [],[],                       \
-                                           color     = color_list[j],   \
-                                           linestyle = '--',            \
+                                           color     = ColorList[j],    \
+                                           linestyle = LineList[j],     \
                                            scaley    = False,           \
                                            zorder    = 0,               \
                                            alpha     = 0.7              )
@@ -278,6 +284,7 @@ def InitializeFrame(FileNumberArray, DataDirectory, Field, Action):
     global f_old
     global t_old
     global Data0
+    global nDirs
 
     # Initialize empty return list
     retlist = []
@@ -334,7 +341,7 @@ def InitializeFrame(FileNumberArray, DataDirectory, Field, Action):
     # If requested, initialize refinement lines. Add to Return List
     if gvS.ShowRefinement:
         bottom, top = plt.ylim()
-        for j in range(1,nDirs):
+        for j in range(nDirs):
             RefinementLocations = FindRefinementBoundaries( dX10[j] )
             for i in range(len(RefinementLocations)):
                 RefLines[j][i].set_data ( [RefinementLocations[i],  \
@@ -368,9 +375,10 @@ def UpdateFrame( t, FileNumberArray, DataDirectory, Field, Action):
     global nFrames
     global Frame_List
     global Data0
+    global nDirs
     
 
-    print('    {:}/{:}'.format( t+1, nFrames ) )
+    print('Creating Frame: {:}/{:} \r'.format( t+1, nFrames ), end='' )
 
 
 
@@ -391,7 +399,7 @@ def UpdateFrame( t, FileNumberArray, DataDirectory, Field, Action):
                                                    Field              )
 
     Data, nLines = ApplyAction(Data, Field, Action)
-#    print("nLines",nLines,len(Data))
+
     for i in range(nLines):
         Lines[i].set_data( X1_C[i] , Data[i].flatten())
         retlist += [Lines[i]]
@@ -429,7 +437,7 @@ def UpdateFrame( t, FileNumberArray, DataDirectory, Field, Action):
     # If requested and amr is true, recreate refinement lines.
     if (gvS.ShowRefinement and gvS.amr):
         bottom, top = plt.ylim()
-        for j in range(1,nDirs):
+        for j in range(nDirs):
             RefinementLocations = FindRefinementBoundaries( dX1[j] )
             for i in range(len(RefinementLocations)):
                 RefLines[j][i].set_data ( [RefinementLocations[i],  \
@@ -443,100 +451,7 @@ def UpdateFrame( t, FileNumberArray, DataDirectory, Field, Action):
 
 
 
- #=============================================#
-#                                               #
-#   fetchData_AMReX                             #
-#                                               #
- #=============================================#
-def fetchData_AMReX(t, FileNumberArray, DataDirectory, Field ):
 
-#    print(FileNumberArray)
-#    print(FileNumberArray[t])
-    FileDirectory = DataDirectory + str(FileNumberArray[t]) + '/'
-
-    TimeFile = FileDirectory + '{:}.dat'.format( 'Time' )
-    X1File   = FileDirectory + '{:}.dat'.format( 'X1' )
-    dX1File  = FileDirectory + '{:}.dat'.format( 'dX1' )
-    DataFile = FileDirectory + '{:}.dat'.format( Field )
-
-    DataShape, DataUnits, MinVal, MaxVal = ReadHeader( DataFile )
-
-    Time = np.loadtxt( TimeFile )
-    X1_C = np.loadtxt( X1File   )
-    dX1  = np.loadtxt( dX1File  )
-    Data = np.loadtxt( DataFile )
-
-    return Data, DataUnits, X1_C, dX1, Time
-
- #=============================================#
-#                                               #
-#   fetchTime_AMReX                             #
-#                                               #
- #=============================================#
-def fetchTime_AMReX(t, FileNumberArray, DataDirectory ):
-
-    FileDirectory = DataDirectory + str(FileNumberArray[t]) + '/'
-
-    TimeFile = FileDirectory + '{:}.dat'.format( 'Time' )
-
-    Time = np.loadtxt( TimeFile )
-
-    return Time
-
-
- #=============================================#
-#                                               #
-#   fetchData_Native                             #
-#                                               #
- #=============================================#
-def fetchData_Native(t, FileNumberArray, DataDirectory, Field ):
-
-
-    FileDirectory = DataDirectory + str(FileNumberArray[t]) + '/'
-
-    TimeFile = FileDirectory + '{:}.dat'.format( 'Time' )
-    X1File   = FileDirectory + '{:}.dat'.format( 'X1' )
-    dX1File  = FileDirectory + '{:}.dat'.format( 'dX1' )
-    DataFile = FileDirectory + '{:}.dat'.format( Field )
-
-    DataShape, DataUnits, MinVal, MaxVal = ReadHeader( DataFile )
-
-    Time = np.loadtxt( TimeFile )
-    X1_C = np.loadtxt( X1File   )
-    dX1  = np.loadtxt( dX1File  )
-    Data = np.loadtxt( DataFile )
-
-    return Data, DataUnits, X1_C, dX1, Time
-
-
-
-
- #=============================================#
-#                                               #
-#   ReadHeader                                  #
-#                                               #
- #=============================================#
-def ReadHeader( DataFile ):
-
-    f = open( DataFile )
-
-    dum = f.readline()
-
-    s = f.readline(); ind = s.find( ':' )+1
-    DataShape = np.array( list( map( np.int64, s[ind:].split() ) ), np.int64 )
-
-    s = f.readline(); ind = s.find( ':' )+1
-    DataUnits = s[ind:]
-
-    s = f.readline(); ind = s.find( ':' )+1
-    MinVal = np.float64( s[ind:] )
-
-    s = f.readline(); ind = s.find( ':' )+1
-    MaxVal = np.float64( s[ind:] )
-
-    f.close()
-
-    return DataShape, DataUnits, MinVal, MaxVal
 
 
 
@@ -602,10 +517,6 @@ def ApplyAction( Data, Field, Action):
     if len(Data) > 1:
 
         if ( Action.lower() == 'reldiff' ):
-#            print(Data[0][:])
-#            print("0-------------")
-#            print(Data[1][:])
-#            print("``````````````````")
             NewData = [abs(Data[0][:]-Data[1][:])/abs(Data[0][:])]
             nLines = 1
             

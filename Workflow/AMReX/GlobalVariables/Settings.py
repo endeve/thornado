@@ -18,6 +18,7 @@ global PlotBaseName
 
 global Field
 
+global nDirs
 
 global UseLogScale_X
 global UseLogScale_Y
@@ -53,6 +54,7 @@ global StopTime
 global ShowRefinement
 global RefinementLevels
 
+global MarkDensityCliff
 
 global DataDirectory
 global DataType
@@ -74,6 +76,8 @@ PlotDirectory = ''
 PlotBaseName  = ''
 
 Field = ''
+
+nDirs = 1
 
 UseLogScale_X = True
 UseLogScale_Y = True
@@ -106,6 +110,8 @@ ShowRefinement       = False
 RefinementLocations  = []
 
 ReferenceBounce = False
+
+MarkDensityCliff = False
 
 DataDirectory = ''
 

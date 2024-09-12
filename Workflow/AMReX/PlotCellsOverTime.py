@@ -9,7 +9,7 @@ import GlobalVariables.Settings as gvS
 from GlobalVariables.Units   import SetSpaceTimeUnits
 
 from Utilities.Files                  import GetFileNumberArray
-from Utilities.MakeDataArray          import MakeProbelmDataDirectory
+from Utilities.MakeDataDirectory      import MakeProblemDataDirectory
 from Utilities.MakeCellsOverTimePlot  import MakeCellsOverTimePlot
 
 if __name__ == "__main__":
@@ -93,7 +93,7 @@ if __name__ == "__main__":
                                           SSi, SSf,           \
                                           PlotEvery           )
 
-    MakeProbelmDataDirectory( FileNumberArray, \
+    MakeProblemDataDirectory( FileNumberArray, \
                               PlotDirectory,   \
                               PlotBaseName,    \
                               Field,           \
