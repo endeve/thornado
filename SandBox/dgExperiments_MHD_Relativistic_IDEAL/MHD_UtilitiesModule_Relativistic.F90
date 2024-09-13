@@ -172,7 +172,7 @@ MODULE MHD_UtilitiesModule_Relativistic
   INTEGER :: nX_X3(3), nX3_X, nNodesX_X3
 
   INTERFACE ComputePrimitive_MHD_Relativistic
-    MODULE PROCEDURE ComputePrimitive_Scalar_NR
+    MODULE PROCEDURE ComputePrimitive_Scalar
     MODULE PROCEDURE ComputePrimitive_Vector
   END INTERFACE ComputePrimitive_MHD_Relativistic
 
@@ -206,7 +206,7 @@ CONTAINS
       PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
       PM_B1, PM_B2, PM_B3, PM_Chi
 
-    REAL(DP) :: S, B, tau, alpha_1, alpha_2, &
+    REAL(DP) :: E, S, B, tau, alpha_1, alpha_2, &
                 eta, beta_1, beta_2, gamma_0
 
     REAL(DP) :: Xi_d, Xi_0, Xi_1, W, f_0, f_1, df, a_0, delta, &
@@ -217,6 +217,8 @@ CONTAINS
     LOGICAL :: flag
 
     INTEGER :: N_osc
+
+    E = CM_E + CM_D
 
     S = SQRT( CM_S1**2 / GF_Gm11 + CM_S2**2 / GF_Gm22 + CM_S3**2 / GF_Gm33 )
 
@@ -234,11 +236,11 @@ CONTAINS
 
     END IF
 
-    alpha_1 = B**2 - ( CM_E + CM_D )
+    alpha_1 = B**2 - E
 
     alpha_2 = B**2 - S
 
-    IF( B .GT. 1.0d-15 )THEN
+    IF( B .GT. Zero )THEN
 
       beta_1 = tau**2 / B**2
 
@@ -252,18 +254,11 @@ CONTAINS
 
     gamma_0 = ( Gamma_IDEAL - One ) / Gamma_IDEAL
 
-    Xi_d = Third * ( SQRT( alpha_1**2 + Three * ( ( CM_E + CM_D )**2 - ( CM_D**2 + S**2 ) ) ) - Two * alpha_1 )
+    Xi_d = Third * ( SQRT( alpha_1**2 + Three * ( E**2 - ( CM_D**2 + S**2 ) ) ) - Two * alpha_1 )
 
     eta = Xi_d + B**2
 
     Xi_0 = Xi_d
-
-    !PRINT*, 'Xi_0**2: ', Xi_0**2
-    !PRINT*, 'S**2: ',    S**2
-    !PRINT*, 'Xi_0**2 - S**2: ', Xi_0**2 - S**2
-
-    !PRINT*, 'One / eta**2 - One / Xi_0**2: ', One / eta**2 - One / Xi_0**2
-    !PRINT*, 'beta_1: ', beta_1
 
     W = One / SQRT( ( Xi_0 + alpha_2 ) * ( eta + S ) / eta**2 &
                     + beta_1 * ( One / eta**2 - One / Xi_0**2 ) )
@@ -294,11 +289,6 @@ CONTAINS
 
         X_2 = 1.5_DP * SQRT( Three * a_0 * delta )
 
-        !PRINT*, 'X_1: ', X_1
-        !PRINT*, 'X_2: ', X_2
-
-        !PRINT*, 'X_1 - X_2: ', X_1 - X_2
-
         Xi_0 = -Third * ( alpha_1 &
                           + SIGN( ABS( X_1 + X_2 )**Third, X_1 + X_2 ) &
                           + SIGN( ABS( X_1 - X_2 )**Third, X_1 - X_2 ) )
@@ -315,7 +305,7 @@ CONTAINS
 
     f_0 = Zero
 
-    DO WHILE( ( ABS( Xi_0 - Xi_1 ) > 1.0d-16 ) .AND. ( N_osc .LE. 3 ) )
+    DO WHILE( ( ABS( Xi_0 - Xi_1 ) > 1.0d-08 ) .AND. ( N_osc .LE. 3 ) )
 
       eta = Xi_1 + B**2
 
@@ -709,7 +699,7 @@ CONTAINS
 
     DO iNX = 1, SIZE( CM_D )
 
-      CALL ComputePrimitive_Scalar_NR &
+      CALL ComputePrimitive_Scalar &
              ( CM_D   (iNX), &
                CM_S1  (iNX), &
                CM_S2  (iNX), &
@@ -3270,24 +3260,24 @@ CONTAINS
 
     uLW = ( uR + uL ) / Two - ( tau / Two ) * ( fR - fL )
 
-    CALL ComputePrimitive_Scalar( uLW(iCM_D), &
-                                  uLW(iCM_S1), uLW(iCM_S2), uLW(iCM_S3), &
-                                  uLW(iCM_E ), uLW(iCM_Ne), &
-                                  uLW(iCM_B1), uLW(iCM_B2), uLW(iCM_B3), &
-                                  uLW(iCM_Chi), &
-                                  pLW(iPM_D), &
-                                  pLW(iPM_V1), pLW(iPM_V2), pLW(iPM_V3), &
-                                  pLW(iPM_E ), pLW(iPM_Ne), &
-                                  pLW(iPM_B1), pLW(iPM_B2), pLW(iPM_B3), &
-                                  pLW(iPM_Chi), &
-                                  g(1), &
-                                  g(2), &
-                                  g(3), &
-                                  g(4),    &
-                                  g(5),   &
-                                  g(6),   &
-                                  g(7),   &
-                                  EvolveOnlyMagnetic )
+    CALL ComputePrimitive_MHD_Relativistic( uLW(iCM_D), &
+                                            uLW(iCM_S1), uLW(iCM_S2), uLW(iCM_S3), &
+                                            uLW(iCM_E ), uLW(iCM_Ne), &
+                                            uLW(iCM_B1), uLW(iCM_B2), uLW(iCM_B3), &
+                                            uLW(iCM_Chi), &
+                                            pLW(iPM_D), &
+                                            pLW(iPM_V1), pLW(iPM_V2), pLW(iPM_V3), &
+                                            pLW(iPM_E ), pLW(iPM_Ne), &
+                                            pLW(iPM_B1), pLW(iPM_B2), pLW(iPM_B3), &
+                                            pLW(iPM_Chi), &
+                                            g(1), &
+                                            g(2), &
+                                            g(3), &
+                                            g(4),    &
+                                            g(5),   &
+                                            g(6),   &
+                                            g(7),   &
+                                            EvolveOnlyMagnetic )
 
     CALL ComputePressureFromPrimitive &
            ( pLW(iPM_D), pLW(iPM_E), pLW(iPM_Ne), aLW(1) )
@@ -3335,24 +3325,24 @@ CONTAINS
 
     uLW = ( uR + uL ) / Two - ( tau / Two ) * ( fR - fL )
 
-    CALL ComputePrimitive_Scalar( uLW(iCM_D), &
-                                  uLW(iCM_S1), uLW(iCM_S2), uLW(iCM_S3), &
-                                  uLW(iCM_E ), uLW(iCM_Ne), &
-                                  uLW(iCM_B1), uLW(iCM_B2), uLW(iCM_B3), &
-                                  uLW(iCM_Chi), &
-                                  pLW(iPM_D), &
-                                  pLW(iPM_V1), pLW(iPM_V2), pLW(iPM_V3), &
-                                  pLW(iPM_E ), pLW(iPM_Ne), &
-                                  pLW(iPM_B1), pLW(iPM_B2), pLW(iPM_B3), &
-                                  pLW(iPM_Chi), &
-                                  g(1), &
-                                  g(2), &
-                                  g(3), &
-                                  g(4),    &
-                                  g(5),   &
-                                  g(6),   &
-                                  g(7),   &
-                                  EvolveOnlyMagnetic )
+    CALL ComputePrimitive_MHD_Relativistic( uLW(iCM_D), &
+                                            uLW(iCM_S1), uLW(iCM_S2), uLW(iCM_S3), &
+                                            uLW(iCM_E ), uLW(iCM_Ne), &
+                                            uLW(iCM_B1), uLW(iCM_B2), uLW(iCM_B3), &
+                                            uLW(iCM_Chi), &
+                                            pLW(iPM_D), &
+                                            pLW(iPM_V1), pLW(iPM_V2), pLW(iPM_V3), &
+                                            pLW(iPM_E ), pLW(iPM_Ne), &
+                                            pLW(iPM_B1), pLW(iPM_B2), pLW(iPM_B3), &
+                                            pLW(iPM_Chi), &
+                                            g(1), &
+                                            g(2), &
+                                            g(3), &
+                                            g(4),    &
+                                            g(5),   &
+                                            g(6),   &
+                                            g(7),   &
+                                            EvolveOnlyMagnetic )
 
     CALL ComputePressureFromPrimitive &
            ( pLW(iPM_D), pLW(iPM_E), pLW(iPM_Ne), aLW(1) )
@@ -3400,24 +3390,24 @@ CONTAINS
 
     uLW = ( uR + uL ) / Two - ( tau / Two ) * ( fR - fL )
 
-    CALL ComputePrimitive_Scalar( uLW(iCM_D), &
-                                  uLW(iCM_S1), uLW(iCM_S2), uLW(iCM_S3), &
-                                  uLW(iCM_E ), uLW(iCM_Ne), &
-                                  uLW(iCM_B1), uLW(iCM_B2), uLW(iCM_B3), &
-                                  uLW(iCM_Chi), &
-                                  pLW(iPM_D), &
-                                  pLW(iPM_V1), pLW(iPM_V2), pLW(iPM_V3), &
-                                  pLW(iPM_E ), pLW(iPM_Ne), &
-                                  pLW(iPM_B1), pLW(iPM_B2), pLW(iPM_B3), &
-                                  pLW(iPM_Chi), &
-                                  g(1), &
-                                  g(2), &
-                                  g(3), &
-                                  g(4),    &
-                                  g(5),   &
-                                  g(6),   &
-                                  g(7),   &
-                                  EvolveOnlyMagnetic )
+    CALL ComputePrimitive_MHD_Relativistic( uLW(iCM_D), &
+                                            uLW(iCM_S1), uLW(iCM_S2), uLW(iCM_S3), &
+                                            uLW(iCM_E ), uLW(iCM_Ne), &
+                                            uLW(iCM_B1), uLW(iCM_B2), uLW(iCM_B3), &
+                                            uLW(iCM_Chi), &
+                                            pLW(iPM_D), &
+                                            pLW(iPM_V1), pLW(iPM_V2), pLW(iPM_V3), &
+                                            pLW(iPM_E ), pLW(iPM_Ne), &
+                                            pLW(iPM_B1), pLW(iPM_B2), pLW(iPM_B3), &
+                                            pLW(iPM_Chi), &
+                                            g(1), &
+                                            g(2), &
+                                            g(3), &
+                                            g(4),    &
+                                            g(5),   &
+                                            g(6),   &
+                                            g(7),   &
+                                            EvolveOnlyMagnetic )
 
     CALL ComputePressureFromPrimitive &
            ( pLW(iPM_D), pLW(iPM_E), pLW(iPM_Ne), aLW(1) )
