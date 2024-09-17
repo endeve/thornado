@@ -305,7 +305,7 @@ CONTAINS
 
     f_0 = Zero
 
-    DO WHILE( ( ABS( Xi_0 - Xi_1 ) > 1.0d-08 ) .AND. ( N_osc .LE. 3 ) )
+    DO
 
       eta = Xi_1 + B**2
 
@@ -339,6 +339,8 @@ CONTAINS
       END IF
 
       f_0 = f_1
+
+      IF( ( ABS( Xi_0 - Xi_1 ) .LE. 1.0d-08 ) .OR. ( N_osc .GT. 3 ) ) EXIT
 
     END DO
 
