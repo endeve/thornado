@@ -38,6 +38,7 @@ MODULE  MF_MHD_dgDiscretizationModule
     WriteNodalDataToFile
   USE InputParsingModule,                 ONLY: &
     nLevels, &
+    CFL, &
     UseTiling, &
     DEBUG, &
     EvolveOnlyMagnetic, &
@@ -224,7 +225,7 @@ CONTAINS
         IF( DEBUG ) WRITE(*,'(A)') '    CALL ComputeIncrement_MHD_DG_Explicit'
 
         CALL ComputeIncrement_MHD_DG_Explicit &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
+               ( t, CFL, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
                  SuppressBC_Option = .TRUE., &
                  EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic, &
                  UseDivergenceCleaning_Option = UseDivergenceCleaning, &

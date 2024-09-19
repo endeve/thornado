@@ -224,8 +224,9 @@ CONTAINS
   END SUBROUTINE MF_ComputeTimeStep
 
 
-  SUBROUTINE MF_ComputeMagneticDivergence( MF_uGF, MF_uCM, MF_uDM )
+  SUBROUTINE MF_ComputeMagneticDivergence( t, MF_uGF, MF_uCM, MF_uDM )
 
+    REAL(DP)            , INTENT(in)    :: t
     TYPE(amrex_multifab), INTENT(in)    :: &
       MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: &
@@ -286,7 +287,7 @@ CONTAINS
         CALL amrex2thornado_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDM, D )
 
         CALL ComputeMagneticDivergence_MHD_Relativistic &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+               ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
         CALL thornado2amrex_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDM, D )
 

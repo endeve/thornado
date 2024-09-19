@@ -347,7 +347,7 @@ CONTAINS
 
     IF( iRestart .LT. 0 )THEN
 
-      CALL MF_ApplySlopeLimiter_MHD( MF_uGF, MF_uCM, MF_uDM, GEOM )
+      CALL MF_ApplySlopeLimiter_MHD( t(0), MF_uGF, MF_uCM, MF_uDM, GEOM )
 
       CALL MF_InitializeFields( TRIM( ProgramName ), MF_uGF, MF_uCM, GEOM )
 

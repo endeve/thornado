@@ -66,13 +66,16 @@ MODULE MF_TimeSteppingModule_SSPRK
 
   INTERFACE
     SUBROUTINE MF_MHD_Increment &
-      ( GEOM, MF_uGF, MF_uCM, MF_uDM, MF_duCM )
+      ( t, GEOM, MF_uGF, MF_uCM, MF_uDM, MF_duCM )
       USE amrex_geometry_module, ONLY: &
         amrex_geometry
       USE amrex_multifab_module, ONLY: &
         amrex_multifab
       USE InputParsingModule,    ONLY: &
         nLevels
+      USE MF_KindModule,         ONLY: &
+        DP
+      REAL(DP)            , INTENT(in)    :: t
       TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
       TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
       TYPE(amrex_multifab), INTENT(in)    :: MF_uCM (0:nLevels-1)
@@ -300,11 +303,11 @@ CONTAINS
 
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplySlopeLimiter_MHD (1)'
 
-        CALL MF_ApplySlopeLimiter_MHD( MF_uGF, MF_U, MF_uDM, GEOM )
+        CALL MF_ApplySlopeLimiter_MHD( t(0), MF_uGF, MF_U, MF_uDM, GEOM )
 
         IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ComputeIncrement_MHD'
 
-        CALL MF_ComputeIncrement_MHD( GEOM, MF_uGF, MF_U, MF_uDM, MF_D(:,iS) )
+        CALL MF_ComputeIncrement_MHD( t(0), GEOM, MF_uGF, MF_U, MF_uDM, MF_D(:,iS) )
 
       END IF
 
@@ -326,7 +329,7 @@ CONTAINS
 
     IF( DEBUG ) WRITE(*,'(A)') '  CALL MF_ApplySlopeLimiter_Euler (2)'
 
-    CALL MF_ApplySlopeLimiter_MHD( MF_uGF, MF_uCM, MF_uDM, GEOM )
+    CALL MF_ApplySlopeLimiter_MHD( t(0), MF_uGF, MF_uCM, MF_uDM, GEOM )
 
   END SUBROUTINE MF_UpdateMagnetofluid_SSPRK
 

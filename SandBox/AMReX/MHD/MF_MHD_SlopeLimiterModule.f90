@@ -53,8 +53,9 @@ MODULE MF_MHD_SlopeLimiterModule
 CONTAINS
 
 
-  SUBROUTINE MF_ApplySlopeLimiter_MHD( MF_uGF, MF_uCM, MF_uDM, GEOM )
+  SUBROUTINE MF_ApplySlopeLimiter_MHD( t, MF_uGF, MF_uCM, MF_uDM, GEOM )
 
+    REAL(DP)            , INTENT(in)    :: t
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCM(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDM(0:nLevels-1)
@@ -131,14 +132,14 @@ CONTAINS
         IF( DEBUG ) WRITE(*,'(A)') '    CALL MF_ApplyBoundaryConditions_MHD'
 
         CALL MF_ApplyBoundaryConditions_MHD &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+               ( t, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
         IF( DEBUG ) WRITE(*,'(A)') '    CALL ApplySlopeLimiter_MHD'
 
         CALL Edge_Map % MHD_GetBC( iApplyBC )
 
         CALL ApplySlopeLimiter_MHD &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
+               ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, &
                  SuppressBC_Option = .TRUE., iApplyBC_Option = iApplyBC )
 
         CALL thornado2amrex_X( nCM, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCM, U )

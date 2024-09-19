@@ -72,7 +72,7 @@ PROGRAM ApplicationDriver
 
     WRITE( NodalFileBaseName, '(I6.6)' ) StepNo
 
-    CALL WriteNodalDataToFile( GEOM, MF_uGF, MF_uCM, MF_uDM, NodalFileBaseName )
+    CALL WriteNodalDataToFile( t(0), GEOM, MF_uGF, MF_uCM, MF_uDM, NodalFileBaseName )
 
   END IF
 
@@ -165,7 +165,7 @@ PROGRAM ApplicationDriver
 
       CALL MF_ComputeFromConserved( MF_uGF, MF_uCM, MF_uPM, MF_uAM )
 
-      CALL MF_ComputeMagneticDivergence( MF_uGF, MF_uCM, MF_uDM )
+      CALL MF_ComputeMagneticDivergence( t(0), MF_uGF, MF_uCM, MF_uDM )
 
       CALL WriteFieldsAMReX_PlotFile &
              ( t(0), StepNo, &
@@ -179,7 +179,7 @@ PROGRAM ApplicationDriver
 
         WRITE( NodalFileBaseName, '(I6.6)' ) StepNo
 
-        CALL WriteNodalDataToFile( GEOM, MF_uGF, MF_uCM, MF_uDM, NodalFileBaseName )
+        CALL WriteNodalDataToFile( t(0), GEOM, MF_uGF, MF_uCM, MF_uDM, NodalFileBaseName )
 
       END IF
 
@@ -203,7 +203,7 @@ PROGRAM ApplicationDriver
 
   CALL MF_ComputeFromConserved( MF_uGF, MF_uCM, MF_uPM, MF_uAM )
 
-  CALL MF_ComputeMagneticDivergence( MF_uGF, MF_uCM, MF_uDM )
+  CALL MF_ComputeMagneticDivergence( t(0), MF_uGF, MF_uCM, MF_uDM )
 
   CALL WriteFieldsAMReX_Checkpoint &
          ( StepNo, nLevels, dt, t, &
@@ -223,7 +223,7 @@ PROGRAM ApplicationDriver
 
     WRITE( NodalFileBaseName, '(I6.6)' ) StepNo
 
-    CALL WriteNodalDataToFile( GEOM, MF_uGF, MF_uCM, MF_uDM, NodalFileBaseName )
+    CALL WriteNodalDataToFile( t(0), GEOM, MF_uGF, MF_uCM, MF_uDM, NodalFileBaseName )
 
   END IF
 
