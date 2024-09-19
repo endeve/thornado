@@ -176,6 +176,10 @@ CONTAINS
     IF( PRESENT( EvolveOnlyMagnetic_Option ) ) &
       EvolveOnlyMagnetic = EvolveOnlyMagnetic_Option
 
+    CALL InitializeTroubledCellIndicator_MHD &
+           ( UseTroubledCellIndicator_Option = UseTroubledCellIndicator, &
+             LimiterThresholdParameter_Option = LimiterThresholdParameter )
+
     IF( Verbose )THEN
 
       WRITE(*,*)
