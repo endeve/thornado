@@ -18,6 +18,7 @@ DEBUG     = TRUE
 
 USE_MPI   = TRUE
 USE_OMP   = FALSE
+USE_HDF5  = TRUE
 
 #COMP      = gnu
 
@@ -32,7 +33,7 @@ INCLUDE_LOCATIONS += $(LAPACK_INC)
 INCLUDE_LOCATIONS += $(HDF5_INC)
 LIBRARY_LOCATIONS += $(LAPACK_LIB)
 LIBRARY_LOCATIONS += $(HDF5_LIB)
-LIBRARIES += -llapack -lblas
+LIBRARIES += -lhdf5 -lhdf5_fortran -llapack -lblas
 
 # Set pre-processor directives
 # This is also where, e.g., USE_HDF5 and USE_PETSC are used
