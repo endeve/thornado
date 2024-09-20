@@ -156,7 +156,7 @@ CONTAINS
     REAL(DP)    , INTENT(in)    :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
     INTEGER     , INTENT(in), OPTIONAL :: &
       iX_B0_Option(3), iX_E0_Option(3)
-    CHARACTER(2), INTENT(in), OPTIONAL :: &
+    CHARACTER(6), INTENT(in), OPTIONAL :: &
       iDimX_Option
     INTEGER     , INTENT(in), OPTIONAL :: &
       IndexTable_Option(:,:)
@@ -166,7 +166,7 @@ CONTAINS
     INTEGER  :: ITERATION(SIZE(uD))
     REAL(DP) :: X1, X2, X3, dX1, dX2, dX3
 
-    CHARACTER(2) :: iDimX
+    CHARACTER(6) :: iDimX
     INTEGER      :: iX_B0(3), iX_E0(3)
 
     iDimX = 'NA'
@@ -286,17 +286,23 @@ CONTAINS
 
           IF( PRESENT( iDimX_Option ) .AND. PRESENT( IndexTable_Option ) )THEN
 
-            IF     ( iDimX .EQ. 'X1' )THEN
+            IF     ( iDimX .EQ. 'X1 (L)' &
+                       .OR. iDimX .EQ. 'X1 (R)' &
+                       .OR. iDimX .EQ. 'X1 (V)' )THEN
               iNXX = IndexTable_Option(1,iNX)
               iX2  = IndexTable_Option(2,iNX)
               iX3  = IndexTable_Option(3,iNX)
               iX1  = IndexTable_Option(4,iNX)
-            ELSE IF( iDimX .EQ. 'X2' )THEN
+            ELSE IF( iDimX .EQ. 'X2 (L)' &
+                       .OR. iDimX .EQ. 'X2 (R)' &
+                       .OR. iDimX .EQ. 'X2 (V)' )THEN
               iNXX = IndexTable_Option(1,iNX)
               iX1  = IndexTable_Option(2,iNX)
               iX3  = IndexTable_Option(3,iNX)
               iX2  = IndexTable_Option(4,iNX)
-            ELSE IF( iDimX .EQ. 'X3' )THEN
+            ELSE IF( iDimX .EQ. 'X3 (L)' &
+                       .OR. iDimX .EQ. 'X3 (R)' &
+                       .OR. iDimX .EQ. 'X3 (V)' )THEN
               iNXX = IndexTable_Option(1,iNX)
               iX1  = IndexTable_Option(2,iNX)
               iX2  = IndexTable_Option(3,iNX)
