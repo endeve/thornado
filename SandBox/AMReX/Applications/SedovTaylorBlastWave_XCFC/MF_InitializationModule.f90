@@ -48,10 +48,12 @@ MODULE MF_InitializationModule
   USE MF_KindModule, ONLY: &
     DP, &
     Zero, &
+    Two, &
     Three, &
     FourPi
   USE InputParsingModule, ONLY: &
-    UseTiling
+    UseTiling, &
+    nMaxLevels
 
   IMPLICIT NONE
   PRIVATE
@@ -59,6 +61,8 @@ MODULE MF_InitializationModule
   PUBLIC :: InitializeFields_MF
 
   REAL(DP), PUBLIC :: IntE_Min_Euler_PL
+  REAL(DP) :: X_D, Eblast, eIntBlast, rho0
+  INTEGER  :: nDetCells
 
 CONTAINS
 
@@ -89,31 +93,35 @@ CONTAINS
     ! --- Problem-Dependent Parameters ---
 
     INTEGER  :: iNX1, iNX2, iNX3, nDetCells
-    REAL(DP) :: X_D, Eblast, X1, X2, X3, Radius, dX1, eIntBlast, rho0
+    REAL(DP) :: X1, X2, X3, Radius, dX1
 
     Verbose = .FALSE.
     IF( amrex_parallel_ioprocessor() .AND. iLevel .EQ. 0 ) Verbose = .TRUE.
 
-    nDetCells = -HUGE( 1 )
-    X_D       = -HUGE( 1.0_DP )
-    CALL amrex_parmparse_build( PP, 'Sedov' )
-      CALL PP % get  ( 'Eblast'   , Eblast )
-      CALL PP % query( 'nDetCells', nDetCells )
-      CALL PP % query( 'X_D'      , X_D )
-    CALL amrex_parmparse_destroy( PP )
+    IF( iLevel .EQ. 0 )THEN
 
-    IF( X_D .LT. Zero )THEN
+      nDetCells = -HUGE( 1 )
+      X_D       = -HUGE( 1.0_DP )
+      CALL amrex_parmparse_build( PP, 'Sedov' )
+        CALL PP % get  ( 'Eblast'   , Eblast )
+        CALL PP % query( 'nDetCells', nDetCells )
+        CALL PP % query( 'X_D'      , X_D )
+      CALL amrex_parmparse_destroy( PP )
 
-      dX1 = MeshX(1) % Width(0)
+      IF( X_D .LT. Zero )THEN
 
-      X_D = dX1 * DBLE( nDetCells )
+        dX1 = MeshX(1) % Width(0)
+
+        X_D = dX1 * DBLE( nDetCells )
+
+      END IF
+
+      eIntBlast = Eblast / ( FourPi / Three * ( X_D / Two**( nMaxLevels-1 ) )**3 )
+
+      ! --- Enforce non-relativistic specific enthalpy ---
+      rho0 = 1.0e2_DP * eIntBlast
 
     END IF
-
-    eIntBlast = Eblast / ( FourPi / Three * X_D**3 )
-
-    ! --- Enforce non-relativistic specific enthalpy ---
-    rho0 = 1.0e2_DP * eIntBlast
 
     IF( Verbose )THEN
 

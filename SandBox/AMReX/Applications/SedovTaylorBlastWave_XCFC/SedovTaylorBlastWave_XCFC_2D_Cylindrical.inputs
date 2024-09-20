@@ -1,4 +1,4 @@
-##### SedovTaylorBlastWave_XCFC_1D_Spherical.inputs #####
+##### SedovTaylorBlastWave_XCFC_2D_Cylindrical.inputs #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
@@ -27,15 +27,15 @@ thornado.iCycleChk = -1
 
 thornado.nNodes = 2
 
-thornado.bcX         = 3 0 0
-geometry.is_periodic = 0 1 1
+thornado.bcX         = 3 2 0
+geometry.is_periodic = 0 0 1
 
-geometry.coord_sys = 2
-geometry.prob_lo   = 0.0e0 0.0                0.0
-geometry.prob_hi   = 1.0e0 3.1415926535897931 6.2831853071795862
+geometry.coord_sys = 1
+geometry.prob_lo   = 0.0e0 -1.0 0.0
+geometry.prob_hi   = 1.0e0 +1.0 6.2831853071795862
 
-amr.n_cell                  = 32 01 01
-thornado.swX                = 01 00 00
+amr.n_cell                  = 32 64 01
+thornado.swX                = 01 01 00
 #amr.max_grid_size_x         = 64
 #amr.blocking_factor_x       = 64
 amr.max_level               = 2

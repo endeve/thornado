@@ -519,7 +519,7 @@ CONTAINS
     TYPE(amrex_tagboxarray) :: Tag
     TYPE(amrex_mfiter)      :: MFI
     TYPE(amrex_box)         :: BX
-    REAL(DP),               CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP),               CONTIGUOUS, POINTER :: uDF(:,:,:,:)
     CHARACTER(KIND=c_char), CONTIGUOUS, POINTER :: TagArr(:,:,:,:)
 
     IF( .NOT. ALLOCATED( TagCriteria ) )THEN
@@ -536,22 +536,22 @@ CONTAINS
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
-    !$OMP PARALLEL PRIVATE( MFI, BX, uCF, TagArr )
-    CALL amrex_mfiter_build( MFI, MF_uCF( iLevel ), Tiling = UseTiling )
+    !$OMP PARALLEL PRIVATE( MFI, BX, uDF, TagArr )
+    CALL amrex_mfiter_build( MFI, MF_uDF( iLevel ), Tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
       BX = MFI % TileBox()
 
-      uCF    => MF_uCF( iLevel ) % DataPtr( MFI )
+      uDF    => MF_uDF( iLevel ) % DataPtr( MFI )
       TagArr => Tag              % DataPtr( MFI )
 
       ! TagCriteria(iLevel+1) because iLevel starts at 0 but
       ! TagCriteria starts with 1
 
       CALL TagElements &
-             ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-               uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+             ( iLevel, BX % lo, BX % hi, LBOUND( uDF ), UBOUND( uDF ), &
+               uDF, TagCriteria(iLevel+1), SetTag, ClearTag, &
                LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
 
     END DO
