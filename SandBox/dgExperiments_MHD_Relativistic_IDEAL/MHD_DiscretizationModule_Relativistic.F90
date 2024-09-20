@@ -101,8 +101,7 @@ MODULE MHD_DiscretizationModule_Relativistic
   USE MHD_DiscontinuityDetectionModule, ONLY: &
     DetectShocks_MHD
   USE MHD_UtilitiesModule_Relativistic, ONLY: &
-   ComputeMagneticDivergence_MHD_Relativistic, &
-   ComputeWeakMagneticDivergence_MHD_Relativistic
+   ComputeMagneticDivergence_MHD_Relativistic
   USE EquationOfStateModule, ONLY: &
     ComputePressureFromPrimitive, &
     ComputeSoundSpeedFromPrimitive
@@ -3025,7 +3024,6 @@ CONTAINS
     ! --- Compute Magnetic Divergence for Powell Sources ---
 
     CALL ComputeMagneticDivergence_MHD_Relativistic    ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
-    !CALL ComputeWeakMagneticDivergence_MHD_Relativistic( iX_B0, iX_E0, iX_B1, iX_E1, G, U, WeakDiv )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
