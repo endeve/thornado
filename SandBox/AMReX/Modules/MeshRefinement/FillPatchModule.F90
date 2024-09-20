@@ -873,7 +873,7 @@ CONTAINS
         X1 = NodeCoordinate( MeshXX(1), iX1, iNX1 )
         X2 = NodeCoordinate( MeshXX(2), iX2, iNX2 )
 
-        IF( TRIM( CoordinateSystem ) .EQ. 'CYLINDIRCAL' )THEN
+        IF( TRIM( CoordinateSystem ) .EQ. 'CYLINDRICAL' )THEN
 
           h1  = One
           h2  = One
