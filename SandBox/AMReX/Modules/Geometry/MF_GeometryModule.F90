@@ -318,7 +318,7 @@ CONTAINS
           h2 = Psi**2 * ABS( X1 )
           h3 = Psi**2 * ABS( X1 * SIN( X2 ) )
 
-        ELSE IF( TRIM( CoordinateSystem ) .EQ. 'CYLINDIRCAL' )THEN
+        ELSE IF( TRIM( CoordinateSystem ) .EQ. 'CYLINDRICAL' )THEN
 
           h1 = Psi**2
           h2 = Psi**2
