@@ -136,7 +136,8 @@ CONTAINS
         '', 'IntE_Min: ', &
         IntE_Min_Euler_PL / UnitsDisplay % EnergyDensityUnit, &
         UnitsDisplay % EnergyDensityLabel
-     END IF
+      WRITE(*,*)
+    END IF
 
     nPP(1:nPS) = 0
     nPP(1)     = PRODUCT( nNodesX(1:3) )
@@ -542,10 +543,28 @@ CONTAINS
                 g2P(iPT   ,iX1,iX2,iX3), &
                 g3P(iPT   ,iX1,iX2,iX3) )
 
-        IF( q .LT. Zero )THEN
+        IF( q .LT. qMin )THEN
 
           U_K(iCF_E,iX1,iX2,iX3) &
             = U_K(iCF_E,iX1,iX2,iX3) + alpha * ( qMin - q )
+
+          q = Computeq &
+                ( U_K(iCF_D ,iX1,iX2,iX3), &
+                  U_K(iCF_S1,iX1,iX2,iX3), &
+                  U_K(iCF_S2,iX1,iX2,iX3), &
+                  U_K(iCF_S3,iX1,iX2,iX3), &
+                  U_K(iCF_E ,iX1,iX2,iX3), &
+                  g1P(iPT   ,iX1,iX2,iX3), &
+                  g2P(iPT   ,iX1,iX2,iX3), &
+                  g3P(iPT   ,iX1,iX2,iX3) )
+
+          IF( q .LT. SqrtTiny )THEN
+
+            U_K(iCF_E,iX1,iX2,iX3) &
+              = U_K(iCF_E,iX1,iX2,iX3) &
+                  + 1.0e-3_DP * U_K(iCF_E,iX1,iX2,iX3)
+
+          END IF
 
         END IF
 
