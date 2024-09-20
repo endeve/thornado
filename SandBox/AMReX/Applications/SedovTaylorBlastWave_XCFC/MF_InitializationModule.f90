@@ -93,7 +93,7 @@ CONTAINS
     ! --- Problem-Dependent Parameters ---
 
     INTEGER  :: iNX1, iNX2, iNX3, nDetCells
-    REAL(DP) :: X1, X2, X3, Radius, dX1
+    REAL(DP) :: X1, X2, X3, Radius, dX1, dX2, dX3
 
     Verbose = .FALSE.
     IF( amrex_parallel_ioprocessor() .AND. iLevel .EQ. 0 ) Verbose = .TRUE.
@@ -110,9 +110,28 @@ CONTAINS
 
       IF( X_D .LT. Zero )THEN
 
-        dX1 = MeshX(1) % Width(0)
+        IF( TRIM( CoordinateSystem ) .EQ. 'CARTESIAN' )THEN
 
-        X_D = dX1 * DBLE( nDetCells )
+          dX1 = MeshX(1) % Width(0)
+
+          X_D = dX1 * DBLE( nDetCells )
+
+        ELSE IF( TRIM( CoordinateSystem ) .EQ. 'CYLINDRICAL' )THEN
+
+          dX1 = MeshX(1) % Width(0)
+          dX2 = MeshX(2) % Width(0)
+
+          X_D = SQRT( dX1**2 + dX2**2 ) * DBLE( nDetCells )
+
+        ELSE
+
+          dX1 = MeshX(1) % Width(0)
+          dX2 = MeshX(2) % Width(0)
+          dX3 = MeshX(3) % Width(0)
+
+          X_D = SQRT( dX1**2 + dX2**2 + dX3**2 ) * DBLE( nDetCells )
+
+        END IF
 
       END IF
 
@@ -179,7 +198,7 @@ CONTAINS
 
         ELSE
 
-          Radius = X1
+          Radius = SQRT( X1**2 )
 
         END IF
 
