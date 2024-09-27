@@ -337,6 +337,10 @@ def GetFieldData( ds,                   \
         Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
         DataUnits = ''
 
+    elif Field == 'DF_Sh_X1':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        DataUnits = ''
+
     # --- Derived Fields ---
 
     elif Field == 'alphaE':
