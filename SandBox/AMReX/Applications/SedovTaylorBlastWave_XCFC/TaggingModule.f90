@@ -7,7 +7,7 @@ MODULE TaggingModule
   USE ProgramHeaderModule, ONLY: &
     nDOFX
   USE FluidFieldsModule, ONLY: &
-    iDF_TCI
+    iDF_Sh_X1
 
   ! --- Local Modules ---
 
@@ -47,7 +47,7 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      indLo = 1 + nDOFX * ( iDF_TCI - 1 )
+      indLo = 1 + nDOFX * ( iDF_Sh_X1 - 1 )
 
       IF( uDF(iX1,iX2,iX3,indLo) .GT. TagCriteria_this )THEN
 
