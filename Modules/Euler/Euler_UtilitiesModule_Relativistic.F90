@@ -122,7 +122,7 @@ MODULE Euler_UtilitiesModule_Relativistic
   REAL(DP), PARAMETER :: Offset_T   = 1.0e-12_DP
   REAL(DP), PARAMETER :: Offset_eps = 1.0e-12_DP
   REAL(DP), PARAMETER :: Offset_Ye  = 1.0e-12_DP
-  REAL(DP), PARAMETER :: Offset_z   = 10.0_DP * SqrtTiny
+  REAL(DP), PARAMETER :: Offset_z   = 1.0e1_DP * SqrtTiny
   REAL(DP), PARAMETER :: vMax       = One - 1.0e-05_DP
   REAL(DP), PARAMETER :: kMax       = Two * vMax / ( One + vMax**2 )
   REAL(DP), PARAMETER :: dzMin      = 1.0e-8_DP
@@ -2145,7 +2145,6 @@ CONTAINS
 
     FunZ = z - r / ht
 
-
   END SUBROUTINE ComputeFunZ_Scalar
 
 
@@ -2330,7 +2329,7 @@ CONTAINS
 
     ! --- Check that sign of FunZ changes across bounds ---
 
-    IF( .NOT. fa * fb .LT. 0 )THEN
+    IF( fa * fb .GT. 0 )THEN
 
       iErr = 8
 
