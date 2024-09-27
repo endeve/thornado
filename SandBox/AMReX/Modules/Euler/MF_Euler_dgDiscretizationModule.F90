@@ -297,6 +297,9 @@ CONTAINS
                SurfaceFlux_X3_Option = SurfaceFlux_X3 )
 
       CALL thornado2amrex_X &
+             ( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
+
+      CALL thornado2amrex_X &
              ( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, duCF, dU )
 
       CALL IncrementOffGridTally_Euler( iLevel, iX_B0, iX_E0 )
