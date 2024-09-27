@@ -23,7 +23,8 @@ MODULE MF_InitializationModule
     MeshX, &
     NodeCoordinate
   USE EquationOfStateModule_IDEAL, ONLY: &
-    ComputePressureFromPrimitive_IDEAL
+    ComputePressureFromPrimitive_IDEAL, &
+    Gamma_IDEAL
   USE GeometryFieldsModule, ONLY: &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
@@ -53,7 +54,8 @@ MODULE MF_InitializationModule
     FourPi
   USE InputParsingModule, ONLY: &
     UseTiling, &
-    nMaxLevels
+    nMaxLevels, &
+    t_end
 
   IMPLICIT NONE
   PRIVATE
@@ -62,6 +64,8 @@ MODULE MF_InitializationModule
 
   REAL(DP), PUBLIC :: IntE_Min_Euler_PL
   REAL(DP) :: X_D, Eblast, eIntBlast, rho0
+  REAL(DP), PARAMETER :: RhoEratio = 1.0e2_DP
+  REAL(DP), PARAMETER :: e1e2ratio = 1.0e-10_DP
   INTEGER  :: nDetCells
 
 CONTAINS
@@ -135,16 +139,16 @@ CONTAINS
 
       END IF
 
-      eIntBlast = Eblast / ( FourPi / Three * ( X_D / Two**( nMaxLevels-1 ) )**3 )
+      eIntBlast = Eblast / ( FourPi / Three * X_D**3 )
 
       ! --- Enforce non-relativistic specific enthalpy ---
-      rho0 = 1.0e2_DP * eIntBlast
+      rho0 = RhoEratio * eIntBlast
 
     END IF
 
     IF( Verbose )THEN
 
-      WRITE(FMT,'(A)') '(A20,ES11.3E3)'
+      WRITE(FMT,'(A)') '(A20,ES24.16E3)'
 
       WRITE(*,*)
       WRITE(*,'(4x,A,A)') 'Initializing: ', TRIM( ProgramName )
@@ -155,6 +159,11 @@ CONTAINS
       WRITE(*,TRIM(FMT)) 'Eblast: ', Eblast
       WRITE(*,TRIM(FMT)) 'eblast: ', eIntBlast
       WRITE(*,TRIM(FMT)) 'rho0: ', rho0
+      WRITE(*,TRIM(FMT)) 'ener0: ', e1e2ratio * eIntBlast
+      WRITE(*,TRIM(FMT)) 'cs0: ', &
+        SQRT( Gamma_IDEAL * ( Gamma_IDEAL - 1.0e0_DP ) &
+                * e1e2ratio / RhoEratio  )
+      WRITE(*,TRIM(FMT)) 't_end: ', t_end
       WRITE(*,*)
 
     END IF
@@ -217,7 +226,7 @@ CONTAINS
 
           ! --- Ensure pre-shock pressure is negligible ---
           uPF(iX1,iX2,iX3,nDOFX*(iPF_E-1)+iNX) &
-            = 1.0e-10_DP * eIntBlast
+            = e1e2ratio * eIntBlast
 
         END IF
 
