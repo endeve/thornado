@@ -110,6 +110,21 @@
     <script src="assets/js/util.js"></script>
     <script src="assets/js/main.js"></script>
 
+    <!-- adapted from https://stackoverflow.com/questions/22292252/css-background-image-slideshow -->
+    <script>
+      var images=new Array( 'images/fig_apj2021.png', 'images/fig_apj2023.png' );
+      var nextimage=0;
+      doSlideshow();
+      function doSlideshow() {
+        if( nextimage >= images.length ) { nextimage = 0; }
+        $( '#banner' )
+        .css( 'background-image', 'url("' + images[nextimage++] + '")' )
+        .fadeIn( 500, function() {
+          setTimeout( doSlideshow, 2000 );
+        });
+      }
+    </script>
+
   </body>
 
 </html>
