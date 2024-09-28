@@ -88,7 +88,7 @@
                 Aliquam luctus et mattis lectus sit amet pulvinar. Nam turpis nisi
                 consequat etiam lorem ipsum dolor sit amet nullam.</p> -->
 
-		The development of thornado is driven by the need for efficient and robust computational tools to model nuclear astrophysics applications, such as core-collapse supernovae, in general relativity.  
+		The development of thornado is driven by the need for efficient and robust computational tools to model nuclear astrophysics applications, in particular core-collapse supernovae, in general relativity.  
 
                 <a name="physics"></a>
                 <p><b>Physics</b> Talk about the physics! Break it up into
@@ -96,8 +96,10 @@
                 </p>
 
                 <a name="numerics"></a>
-                <p><b>Numerics</b> Talk about numerics: what is DG/why use DG, SSPRK
-                   timestepping, limiters.
+                <p><b>Numerics</b> The choice of numerical methods in thornado is largely based on the prominent role &mdash; both physically and computationally &mdash; played by neutrinos in core-collapse supernova models.
+		  Discontinuous Galerkin (DG) methods, a class of finite element methods that approximates solutions using discontinuous piecewise polynomials, combine elements from both spectral and finite volume methods and are an attractive option for solving hyperbolic partial differential equations.  
+		  They are locally conservative, achieve high-order accuracy on a compact stencil, are amenable to <i>hp</i>-adaptivity, can be applied in curvilinear coordinates, and capture the asymptotic diffusion limit without having to resolve the particle mean free path.  
+		  The mathematical formulation of DG methods makes them amenable to rigorous analysis, and they provide the flexibility needed to design methods that preserve important physical constraints and structural properties of the  underlying physical models.
                 </p>
 
                 <a name="performance"></a>
