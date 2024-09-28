@@ -21,6 +21,9 @@
         top: 0;
         overflow: hidden;
         background-color: #333;
+        /* https://stackoverflow.com/questions/47600572/
+           html-overlapping-picture-over-sticky-navbar */
+        z-index: 1;
       }
 
       #navbar a {
@@ -30,7 +33,7 @@
          text-align: center;
          padding: 14px 16px;
          text-decoration: none;
-         font-size: 17px;
+         font-size: 20px;
       }
 
       #navbar a:hover {
@@ -81,7 +84,7 @@
         <a href="#Journal Publications">Journal Publications</a>
         <a href="#Pre-Prints">Pre-Prints</a>
         <a href="#Conference Proceedings">Conference Proceedings</a>
-        <a href="Theses">Theses</a>
+        <a href="#Theses">Theses</a>
       </div>
 
       <!-- Main -->
@@ -288,7 +291,7 @@
 
      <div id="Pre-Prints" class="container">
 
-          <h2 style="text-align:center">Pre-Prints</h2>
+          <h2 style="text-align:center"></br>Pre-Prints</h2>
 
           <section class="wrapper style">
             <div class="container">
@@ -318,7 +321,7 @@
 
       <div id="Conference Proceedings" class="container">
 
-        <h2 style="text-align:center">Conference Proceedings</h2>
+        <h2 style="text-align:center"></br>Conference Proceedings</h2>
 
           <section class="wrapper style">
             <div class="container">
@@ -392,7 +395,7 @@
 
       <div id="Theses" class="container">
 
-        <h2 style="text-align:center">Theses</h2>
+        <h2 style="text-align:center"></br>Theses</h2>
 
       </div>
 
