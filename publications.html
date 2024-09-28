@@ -309,15 +309,21 @@
               <div class="row">
                 <section class="col-12">
                   <div class="box post">
+		    <a href="#" class="image left">
+		      <img src="images/laiu_etal_2020_Figure_5.pdf" alt="" /></a>
                     <div class="inner">
                       <h3>thornado-transport: Anderson- and GPU-accelerated nonlinear solvers for neutrino-matter coupling</h3>
                           <!-- Paper Title Here -->
                       <p> <!-- Descriptive Text -->
-                      Description
+			Algorithms for neutrino-matter coupling are investigated in the context of a spectral two-moment model, discretized with discontinuous Galerkin and implicit-explicit methods, and implemented in thornado. 
+			The model considers electron neutrinos and antineutrinos and tabulated opacities from Bruenn (1985). 
+			The nonlinear system arising from implicit time discretization of the equations governing neutrino-matter coupling is iterated to convergence using Anderson-accelerated fixed-point methods, which avoid formation of Jacobians and inversion of dense linear systems. 
+			Our initial port to GPUs, using both OpenMP and OpenACC, shows an overall speedup of up to ∼ 100x when compared to results using a single CPU core. 
+			These results indicate that the algorithms implemented in thornado are well-suited to GPU acceleration.
                       </p>
                       <p>
-                      Find The Paper:
-                      <a href="https://doi.org/10.1088/1742-6596/1623/1/012013">DOI</a>
+			Access:
+			<a href="https://doi.org/10.1088/1742-6596/1623/1/012013">DOI</a>
                       </p>
                     </div>
                   </div>
