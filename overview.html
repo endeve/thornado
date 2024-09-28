@@ -88,24 +88,25 @@
                 Aliquam luctus et mattis lectus sit amet pulvinar. Nam turpis nisi
                 consequat etiam lorem ipsum dolor sit amet nullam.</p> -->
 
+		The development of thornado is driven by the need for efficient and robust computational tools to model nuclear astrophysics applications, such as core-collapse supernovae, in general relativity.  
+
                 <a name="physics"></a>
-                <h3>physics</h3>
-                <p>Talk about the physics! Break it up into
+                <p><b>Physics</b> Talk about the physics! Break it up into
                   (magneto)hydrodyanmics, gravity, microphysics, and radiation.
                 </p>
 
                 <a name="numerics"></a>
-                <h3>numerics</h3>
-                <p>Talk about numerics: what is DG/why use DG, SSPRK
+                <p><b>Numerics</b> Talk about numerics: what is DG/why use DG, SSPRK
                    timestepping, limiters.
                 </p>
 
                 <a name="performance"></a>
-                <h3>performance</h3>
-                <p>Talk about performance here. Scaling etc.</p>
+                <p><b>Performance</b> Thornado leverages the <a href="https://amrex-codes.github.io/amrex/">AMReX</a> framework for distributed paralelism and adaptive mesh refinement.
+		  For node-level performance and portability, thornado maintains a single code-base that can efficiently execute on different hardware architectures and software environments.
+		  thornado contains three distinct implementations of compiler directives that are managed with C preprocessor macros: traditional OpenMP (CPU multi-core), OpenMP offload (GPU), and OpenACC (GPU).</p>
 
 		<p>
-		  Follow this link to Living Reviews in Computational Astrophysics for further details on the <a href="https://link.springer.com/article/10.1007/s41115-020-00010-8">Physical numerical, and computational challenges of modeling neutrino transport in core-collapse supernovae</a>
+		  Follow this link to <i>Living Reviews in Computational Astrophysics</i> for further details on the <a href="https://link.springer.com/article/10.1007/s41115-020-00010-8">physical, numerical, and computational challenges of modeling neutrino transport in core-collapse supernovae</a>.
 		</p>
 
                 </article>
