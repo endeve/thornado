@@ -21,6 +21,9 @@
         top: 0;
         overflow: hidden;
         background-color: #333;
+        /* https://stackoverflow.com/questions/47600572/
+           html-overlapping-picture-over-sticky-navbar */
+        z-index: 1;
       }
 
       #navbar a {
@@ -30,7 +33,7 @@
          text-align: center;
          padding: 14px 16px;
          text-decoration: none;
-         font-size: 17px;
+         font-size: 20px;
       }
 
       #navbar a:hover {
@@ -81,7 +84,7 @@
         <a href="#Journal Publications">Journal Publications</a>
         <a href="#Pre-Prints">Pre-Prints</a>
         <a href="#Conference Proceedings">Conference Proceedings</a>
-        <a href="Theses">Theses</a>
+        <a href="#Theses">Theses</a>
       </div>
 
       <!-- Main -->
@@ -171,8 +174,8 @@
                           <!-- Paper Title Here -->
                       <p> <!-- Descriptive Text -->
 			In this paper, we develop a realizability-preserving method to simulate the transport of fermions through a static background material using a two-moment model, which is closed using algebraic closures.
-			We employ the discontinuous Galerkin method for spatial discretization combined with implicit-explicit time integration. 
-			Special care is taken to ensure the method preserves strict algebraic bounds on the evolved moments as dictated by Pauli’s exclusion principle. 
+			We employ the discontinuous Galerkin method for spatial discretization combined with implicit-explicit time integration.
+			Special care is taken to ensure the method preserves strict algebraic bounds on the evolved moments as dictated by Pauli’s exclusion principle.
 			Numerical results demonstrate the realizability-preserving properties of the scheme, and we demonstrate that the use of algebraic moment closures not based on Fermi-Dirac statistics can lead to unphysical moments in the context of fermion transport.
                       </p>
                       <p>
@@ -198,10 +201,10 @@
                       <h3>A DG-IMEX Method for Two-moment Neutrino Transport: Nonlinear Solvers for Neutrino–Matter Coupling</h3><!-- Paper Title Here -->
                       <p> <!-- Descriptive Text -->
 			In this paper, we design and compare nonlinear iterative solvers for implicit systems with energy-coupling neutrino–matter interactions.
-			The implicit systems arise from the discretization of a two-moment model, which employs the discontinuous Galerkin method for phase-space discretization and implicit–explicit time integration. 
-			We propose coupled and nested approaches to formulate the nonlinear systems. 
-			For each approach, the resulting systems are solved with Anderson-accelerated fixed-point iteration and Newton’s method. 
-			The performance of these four iterative solvers are compared on relaxation and proto–neutron star deleptonization problems. 
+			The implicit systems arise from the discretization of a two-moment model, which employs the discontinuous Galerkin method for phase-space discretization and implicit–explicit time integration.
+			We propose coupled and nested approaches to formulate the nonlinear systems.
+			For each approach, the resulting systems are solved with Anderson-accelerated fixed-point iteration and Newton’s method.
+			The performance of these four iterative solvers are compared on relaxation and proto–neutron star deleptonization problems.
 			Numerical results suggest that the nested Anderson-accelerated fixed-point solver is more efficient than other solvers for solving implicit nonlinear systems with energy-coupling neutrino–matter interactions.
                       </p>
                       <p>
@@ -289,7 +292,7 @@
 
      <div id="Pre-Prints" class="container">
 
-          <h2 style="text-align:center">Pre-Prints</h2>
+          <h2 style="text-align:center"></br>Pre-Prints</h2>
 
           <section class="wrapper style">
             <div class="container">
@@ -319,7 +322,7 @@
 
       <div id="Conference Proceedings" class="container">
 
-        <h2 style="text-align:center">Conference Proceedings</h2>
+        <h2 style="text-align:center"></br>Conference Proceedings</h2>
 
           <section class="wrapper style">
             <div class="container">
@@ -393,7 +396,24 @@
 
       <div id="Theses" class="container">
 
-        <h2 style="text-align:center">Theses</h2>
+        <h2 style="text-align:center"></br>Theses</h2>
+
+        <section class="wrapper style">
+          <div class="container">
+            <div class="row">
+              <section class="col-12 col-12-narrower">
+                <div class="box post">
+                    <h3>thornado-Hydro, xCFC: A Discontinuous Galerkin
+                    Hydrodynamics Solver for General Relativistic
+                    Core-Collapse Supernova Simulations
+                    (Samuel J. Dunham, PhD Dissertation)</h3>
+                    Access:
+                    <a href="https://ir.vanderbilt.edu/items/88064ba1-7062-4692-94a2-6e506bf4aa46">DOI</a>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
 
       </div>
 
