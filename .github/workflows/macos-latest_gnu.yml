@@ -37,7 +37,7 @@ jobs:
           echo ""
           echo "brew reinstall gcc"
                 brew reinstall gcc
-          GCC_VERSION=`gcc --version | head -n1 | cut -d ' ' -f 4`
+          GCC_VERSION=`ls /usr/local/Cellar/gcc | tail -n1`
           echo "GCC_VERSION=${GCC_VERSION}"
           echo "/usr/local/Cellar/gcc/${GCC_VERSION}/bin" >> ${GITHUB_PATH}
           GCC_MAJOR=`echo ${GCC_VERSION} | cut -d '.' -f 1`
