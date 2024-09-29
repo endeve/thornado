@@ -32,7 +32,7 @@ MODULE InitializationModule
     amrex_box
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor
-  USE amrex_fluxregister_module, ONLY: &
+  USE thornado_amrex_fluxregister_module, ONLY: &
     amrex_fluxregister_build, &
     amrex_fluxregister_destroy
   USE amrex_tagbox_module, ONLY: &

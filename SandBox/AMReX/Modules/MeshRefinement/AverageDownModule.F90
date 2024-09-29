@@ -11,7 +11,7 @@ MODULE AverageDownModule
   USE amrex_amr_module, ONLY: &
     amrex_ref_ratio
 #if defined( THORNADO_USE_MESHREFINEMENT )
-  USE amrex_multifabutil_module, ONLY: &
+  USE thornado_amrex_multifabutil_module, ONLY: &
     amrex_average_down_dg_conservative, &
     amrex_average_down_dg_pointwise, &
     amrex_average_down_cg
