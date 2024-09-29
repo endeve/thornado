@@ -1,5 +1,11 @@
 CEXE_sources   += thornado_AMReX_multifabutil_fi.cpp
 F90EXE_sources += thornado_AMReX_multifabutil_mod.F90
 
+CEXE_sources   += thornado_AMReX_boxarray_fi.cpp
+F90EXE_sources += thornado_AMReX_boxarray_mod.F90
+
+CEXE_sources   += thornado_AMReX_distromap_fi.cpp
+F90EXE_sources += thornado_AMReX_distromap_mod.F90
+
 VPATH_LOCATIONS   += $(THORNADO_HOME)/SandBox/AMReX/Src/F_Interfaces/Base
 INCLUDE_LOCATIONS += $(THORNADO_HOME)/SandBox/AMReX/Src/F_Interfaces/Base
