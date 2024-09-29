@@ -263,7 +263,7 @@ jobs:
         with:
           repository: dunhamsj/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Update Ubuntu
         run: |
           sudo apt-get -y install \

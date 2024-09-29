@@ -30,7 +30,7 @@ jobs:
         with:
           repository: dunhamsj/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Download and install homebrew and dependencies
         run: |
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
