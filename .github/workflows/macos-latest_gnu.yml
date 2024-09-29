@@ -127,65 +127,65 @@ jobs:
       - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL_1D
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
-          make #FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P" DIM=1
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P" DIM=1
           make realclean
 
       - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL_2D
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
-          make #FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P" DIM=2
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P" DIM=2
           make realclean
 
       - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL_3D
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
-          make #FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P" DIM=3
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P" DIM=3
           make realclean
 
       - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
-          make #FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
           make realclean
 
       - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
-          make #FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
           make realclean
 
       - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
-          make #FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
           make realclean
 
       - name: Compile SandBox/AMReX/Applications/YahilCollapse_XCFC
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/YahilCollapse_XCFC
-          make #FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
           make realclean
 
       - name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
-          make #FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
           make realclean
 
       - name: Compile SandBox/AMReX/TwoMoment_Test
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/TwoMoment_Test
-          make #FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
           make realclean
 
       - name: Compile SandBox/AMReX/TwoMoment_TABLLE
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/TwoMoment_TABLE
-          make #FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
           make realclean
 
       - name: Compile SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
-          make #FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
+          make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
           make realclean
