@@ -63,23 +63,23 @@ jobs:
           echo "mpif90 --version"
                 mpif90 --version
           echo ""
-          echo "find /usr/local/Cellar -name \"*hdf5.mod\""
-                find /usr/local/Cellar -name  "*hdf5.mod"
+          echo "find /opt/Homebrew/Cellar -name \"*hdf5.mod\""
+                find /opt/Homebrew/Cellar -name  "*hdf5.mod"
           echo ""
-          echo "find /usr/local/Cellar -name \"*libhdf5*\""
-                find /usr/local/Cellar -name  "*libhdf5*"
+          echo "find /opt/Homebrew/Cellar -name \"*libhdf5*\""
+                find /opt/Homebrew/Cellar -name  "*libhdf5*"
           echo ""
-          echo "find /usr/local/Cellar -name \"*liblapack*\""
-                find /usr/local/Cellar -name  "*liblapack*"
+          echo "find /opt/Homebrew/Cellar -name \"*liblapack*\""
+                find /opt/Homebrew/Cellar -name  "*liblapack*"
           echo ""
-          echo "find /usr/local/Cellar -name \"*lib*blas*\""
-                find /usr/local/Cellar -name  "*lib*blas*"
-          HDF5_VERSION=`ls /usr/local/Cellar/hdf5`
-          echo "HDF5_INC=/usr/local/Cellar/hdf5/${HDF5_VERSION}/include" >> ${GITHUB_ENV}
-          echo "HDF5_LIB=/usr/local/Cellar/hdf5/${HDF5_VERSION}/lib"     >> ${GITHUB_ENV}
-          LAPACK_VERSION=`ls /usr/local/Cellar/lapack`
-          echo "LAPACK_LIB=/usr/local/Cellar/lapack/${LAPACK_VERSION}/lib" >> ${GITHUB_ENV}
-          echo "BLAS_LIB=/usr/local/Cellar/lapack/${LAPACK_VERSION}/lib"   >> ${GITHUB_ENV}
+          echo "find /opt/Homebrew/Cellar -name \"*lib*blas*\""
+                find /opt/Homebrew/Cellar -name  "*lib*blas*"
+          HDF5_VERSION=`ls /opt/Homebrew/Cellar/hdf5`
+          echo "HDF5_INC=/opt/Homebrew/Cellar/hdf5/${HDF5_VERSION}/include" >> ${GITHUB_ENV}
+          echo "HDF5_LIB=/opt/Homebrew/Cellar/hdf5/${HDF5_VERSION}/lib"     >> ${GITHUB_ENV}
+          LAPACK_VERSION=`ls /opt/Homebrew/Cellar/lapack`
+          echo "LAPACK_LIB=/opt/Homebrew/Cellar/lapack/${LAPACK_VERSION}/lib" >> ${GITHUB_ENV}
+          echo "BLAS_LIB=/opt/Homebrew/Cellar/lapack/${LAPACK_VERSION}/lib"   >> ${GITHUB_ENV}
           echo "THORNADO_DIR=${GITHUB_WORKSPACE}"          >> ${GITHUB_ENV}
           echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib"   >> ${GITHUB_ENV}
           echo "AMREX_DIR=${GITHUB_WORKSPACE}/amrex"       >> ${GITHUB_ENV}
