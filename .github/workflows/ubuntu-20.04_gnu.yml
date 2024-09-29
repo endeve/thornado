@@ -3,7 +3,7 @@
 name: Compile thornado on Ubuntu 20.04 with gnu compilers
 
 on:
-  #  push:
+  push:
   pull_request:
   schedule:
     - cron: '0 7 * * *'
@@ -270,7 +270,7 @@ jobs:
             libhdf5-dev \
             libopenmpi-dev
           sudo apt-get -y update
-      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL (1D)
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
           make DIM=1 -j -l6
@@ -303,7 +303,7 @@ jobs:
             libhdf5-dev \
             libopenmpi-dev
           sudo apt-get -y update
-      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL (2D)
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
           make DIM=2 -j -l6
@@ -336,7 +336,7 @@ jobs:
             libhdf5-dev \
             libopenmpi-dev
           sudo apt-get -y update
-      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL (3D)
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
           make DIM=3 -j -l6
