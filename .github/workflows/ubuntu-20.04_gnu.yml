@@ -261,9 +261,9 @@ jobs:
       - name: Checkout amrex
         uses: actions/checkout@v3
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Update Ubuntu
         run: |
           sudo apt-get -y install \
@@ -294,9 +294,9 @@ jobs:
       - name: Checkout amrex
         uses: actions/checkout@v3
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Update Ubuntu
         run: |
           sudo apt-get -y install \
@@ -327,9 +327,9 @@ jobs:
       - name: Checkout amrex
         uses: actions/checkout@v3
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Update Ubuntu
         run: |
           sudo apt-get -y install \
@@ -361,9 +361,9 @@ jobs:
       - name: Checkout amrex
         uses: actions/checkout@v3
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Checkout weaklib
         uses: actions/checkout@v3
         with:
@@ -399,9 +399,9 @@ jobs:
       - name: Checkout amrex
         uses: actions/checkout@v3
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Update Ubuntu
         run: |
           sudo apt-get -y install \
@@ -432,9 +432,9 @@ jobs:
       - name: Checkout amrex
         uses: actions/checkout@v3
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Update Ubuntu
         run: |
           sudo apt-get -y install \
@@ -466,9 +466,9 @@ jobs:
       - name: Checkout amrex
         uses: actions/checkout@v3
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Checkout poseidon
         uses: actions/checkout@v3
         with:
@@ -507,9 +507,9 @@ jobs:
       - name: Checkout amrex
         uses: actions/checkout@v3
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Checkout poseidon
         uses: actions/checkout@v3
         with:
@@ -552,9 +552,9 @@ jobs:
       - name: Checkout amrex
         uses: actions/checkout@v3
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Checkout weaklib
         uses: actions/checkout@v3
         with:
@@ -591,9 +591,9 @@ jobs:
       - name: Checkout amrex
         uses: actions/checkout@v3
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Checkout weaklib
         uses: actions/checkout@v3
         with:
@@ -631,9 +631,9 @@ jobs:
       - name: Checkout amrex
         uses: actions/checkout@v3
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Checkout poseidon
         uses: actions/checkout@v3
         with:

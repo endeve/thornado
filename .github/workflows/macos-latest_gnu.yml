@@ -13,27 +13,23 @@ jobs:
     steps:
       - name: Checkout thornado
         uses: actions/checkout@v3
-
       - name: Checkout weaklib
         uses: actions/checkout@v3
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-
       - name: Checkout poseidon
         uses: actions/checkout@v3
         with:
           repository: jrober50/Poseidon
           path: poseidon
           ref: Development
-
       - name: Checkout amrex
         uses: actions/checkout@v3
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
-
+          ref: development
       - name: Download and install homebrew and dependencies
         run: |
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
