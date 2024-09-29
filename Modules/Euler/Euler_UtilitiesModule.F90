@@ -122,7 +122,7 @@ CONTAINS
       GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
     INTEGER     , INTENT(in), OPTIONAL :: &
       iX_B0_Option(3), iX_E0_Option(3)
-    CHARACTER(2), INTENT(in), OPTIONAL :: &
+    CHARACTER(6), INTENT(in), OPTIONAL :: &
       iDimX_Option
     INTEGER     , INTENT(in), OPTIONAL :: &
       IndexTable_Option(:,:)

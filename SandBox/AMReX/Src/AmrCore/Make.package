@@ -1,0 +1,17 @@
+CEXE_headers += thornado_AMReX_FillPatchUtil.H
+CEXE_headers += thornado_AMReX_FillPatchUtil_I.H
+CEXE_headers += thornado_AMReX_FluxReg_1D_C.H
+CEXE_headers += thornado_AMReX_FluxReg_2D_C.H
+CEXE_headers += thornado_AMReX_FluxReg_3D_C.H
+CEXE_sources += thornado_AMReX_FluxRegister.cpp
+CEXE_headers += thornado_AMReX_FluxRegister.H
+CEXE_headers += thornado_AMReX_FluxReg_C.H
+CEXE_headers += thornado_AMReX_Interp_C.H
+CEXE_headers += thornado_AMReX_Interp_1D_C.H
+CEXE_headers += thornado_AMReX_Interp_2D_C.H
+CEXE_headers += thornado_AMReX_Interp_3D_C.H
+CEXE_headers += thornado_AMReX_Interpolater.H
+CEXE_sources += thornado_AMReX_Interpolater.cpp
+
+VPATH_LOCATIONS   += $(THORNADO_HOME)/SandBox/AMReX/Src/AmrCore
+INCLUDE_LOCATIONS += $(THORNADO_HOME)/SandBox/AMReX/Src/AmrCore

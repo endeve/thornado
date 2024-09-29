@@ -110,8 +110,8 @@ CONTAINS
       Verbose = Verbose_Option
 
     CALL amrex_parmparse_build( PP, 'TS' )
-      CALL PP % get  ( 'nStages'      , nStages )
-      CALL PP % get  ( 'CFL'          , CFL )
+      CALL PP % get  ( 'nStages', nStages )
+      CALL PP % get  ( 'CFL'    , CFL )
     CALL amrex_parmparse_destroy( PP )
 
     CFL = CFL / ( DBLE( nDimsX ) * ( Two * DBLE( nNodes ) - One ) )

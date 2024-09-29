@@ -10,6 +10,8 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
     SqrtTiny
   USE UtilitiesModule, ONLY: &
     IsCornerCell
+  USE UnitsModule, ONLY: &
+    UnitsDisplay
   USE ProgramHeaderModule, ONLY: &
     nNodesX, &
     nDOFX
@@ -65,7 +67,7 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
   INTEGER, PARAMETER    :: nPS = 7  ! Number of Positive Point Sets
   INTEGER               :: nPP(nPS) ! Number of Positive Points Per Set
   INTEGER               :: nPT      ! Total number of Positive Points
-  REAL(DP)              :: Min_1, Min_2
+  REAL(DP)              :: Min_1, Min_2, IntE_Min_Euler_PL
   REAL(DP), ALLOCATABLE :: L_X(:,:)
 
   INTERFACE ComputePointValues
@@ -75,21 +77,23 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
 
 #if   defined( THORNADO_OMP_OL )
   !$OMP DECLARE &
-  !$OMP TARGET( Min_2 )
+  !$OMP TARGET( Min_1, Min_2, IntE_Min_Euler_PL )
 #elif defined( THORNADO_OACC   )
   !$ACC DECLARE &
-  !$ACC CREATE( Min_2 )
+  !$ACC CREATE( Min_1, Min_2, IntE_Min_Euler_PL )
 #endif
 
 CONTAINS
 
 
   SUBROUTINE InitializePositivityLimiter_Euler_Relativistic_IDEAL &
-    ( UsePositivityLimiter_Option, Verbose_Option, Min_1_Option, Min_2_Option )
+    ( UsePositivityLimiter_Option, Verbose_Option, Min_1_Option, Min_2_Option, &
+      IntE_Min_Euler_PL_Option )
 
     LOGICAL,  INTENT(in), OPTIONAL :: UsePositivityLimiter_Option, &
                                       Verbose_Option
-    REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option, Min_2_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option, Min_2_Option, &
+                                      IntE_Min_Euler_PL_Option
 
     INTEGER :: iDim, iNX, iOS
     LOGICAL :: Verbose
@@ -110,6 +114,10 @@ CONTAINS
     IF( PRESENT( Min_2_Option ) ) &
       Min_2 = Min_2_Option
 
+    IntE_Min_Euler_PL = Zero
+    IF( PRESENT( IntE_Min_Euler_PL_Option ) ) &
+      IntE_Min_Euler_PL = IntE_Min_Euler_PL_Option
+
     IF( Verbose )THEN
       WRITE(*,*)
       WRITE(*,'(A)') &
@@ -124,7 +132,12 @@ CONTAINS
         '', 'Min_1: ', Min_1
       WRITE(*,'(A6,A27,ES11.4E3)') &
         '', 'Min_2: ', Min_2
-     END IF
+      WRITE(*,'(A6,A27,ES11.4E3,1x,A)') &
+        '', 'IntE_Min: ', &
+        IntE_Min_Euler_PL / UnitsDisplay % EnergyDensityUnit, &
+        UnitsDisplay % EnergyDensityLabel
+      WRITE(*,*)
+    END IF
 
     nPP(1:nPS) = 0
     nPP(1)     = PRODUCT( nNodesX(1:3) )
@@ -183,10 +196,10 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET UPDATE &
-    !$OMP TO    ( Min_2 )
+    !$OMP TO    ( Min_1, Min_2, IntE_Min_Euler_PL )
 #elif defined( THORNADO_OACC   )
     !$ACC UPDATE &
-    !$ACC DEVICE( Min_2 )
+    !$ACC DEVICE( Min_1, Min_2, IntE_Min_Euler_PL )
 #endif
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
@@ -297,7 +310,7 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_PositivityLimiter )
 
-    qMin  = Zero
+    qMin  = IntE_Min_Euler_PL
     alpha = 1.1_DP
 
     nX_K  = PRODUCT( iX_E0 - iX_B0 + 1 )
@@ -530,10 +543,28 @@ CONTAINS
                 g2P(iPT   ,iX1,iX2,iX3), &
                 g3P(iPT   ,iX1,iX2,iX3) )
 
-        IF( q .LT. Zero )THEN
+        IF( q .LT. qMin )THEN
 
           U_K(iCF_E,iX1,iX2,iX3) &
             = U_K(iCF_E,iX1,iX2,iX3) + alpha * ( qMin - q )
+
+          q = Computeq &
+                ( U_K(iCF_D ,iX1,iX2,iX3), &
+                  U_K(iCF_S1,iX1,iX2,iX3), &
+                  U_K(iCF_S2,iX1,iX2,iX3), &
+                  U_K(iCF_S3,iX1,iX2,iX3), &
+                  U_K(iCF_E ,iX1,iX2,iX3), &
+                  g1P(iPT   ,iX1,iX2,iX3), &
+                  g2P(iPT   ,iX1,iX2,iX3), &
+                  g3P(iPT   ,iX1,iX2,iX3) )
+
+          IF( q .LT. SqrtTiny )THEN
+
+            U_K(iCF_E,iX1,iX2,iX3) &
+              = U_K(iCF_E,iX1,iX2,iX3) &
+                  + 1.0e-3_DP * U_K(iCF_E,iX1,iX2,iX3)
+
+          END IF
 
         END IF
 

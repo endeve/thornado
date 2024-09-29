@@ -17,12 +17,12 @@ MODULE FillPatchModule
     amrex_geom, &
     amrex_ref_ratio
 #if defined( THORNADO_USE_MESHREFINEMENT )
-  USE amrex_interpolater_module, ONLY: &
+  USE thornado_amrex_interpolater_module, ONLY: &
     amrex_interp_dg
 #endif
-  USE amrex_fillpatch_module, ONLY: &
-    amrex_fillpatch, &
-    amrex_fillcoarsepatch
+  USE thornado_amrex_fillpatch_module, ONLY: &
+    thornado_amrex_fillpatch, &
+    thornado_amrex_fillcoarsepatch
   USE amrex_geometry_module, ONLY: &
     amrex_geometry, &
     amrex_is_all_periodic
@@ -148,7 +148,7 @@ CONTAINS
 
     IF( FineLevel .EQ. 0 )THEN
 
-      CALL amrex_fillpatch &
+      CALL thornado_amrex_fillpatch &
              ( MF_dst, &
                t_old_fine, MF(FineLevel), &
                t_new_fine, MF(FineLevel), &
@@ -165,7 +165,7 @@ CONTAINS
       lo_bc = amrex_bc_bogus
       hi_bc = amrex_bc_bogus
 
-      CALL amrex_fillpatch &
+      CALL thornado_amrex_fillpatch &
              ( MF_dst, &
                t_old_crse, MF(FineLevel-1), &
                t_new_crse, MF(FineLevel-1), &
@@ -246,7 +246,7 @@ CONTAINS
 
     IF( FineLevel .EQ. 0 )THEN
 
-      CALL amrex_fillpatch &
+      CALL thornado_amrex_fillpatch &
              ( MF(FineLevel), &
                t_old_fine, MF(FineLevel), &
                t_new_fine, MF(FineLevel), &
@@ -263,7 +263,7 @@ CONTAINS
       lo_bc = amrex_bc_bogus
       hi_bc = amrex_bc_bogus
 
-      CALL amrex_fillpatch &
+      CALL thornado_amrex_fillpatch &
              ( MF(FineLevel), &
                t_old_crse, MF(FineLevel-1), &
                t_new_crse, MF(FineLevel-1), &
@@ -354,7 +354,7 @@ CONTAINS
     lo_bc = amrex_bc_bogus
     hi_bc = amrex_bc_bogus
 
-    CALL amrex_fillcoarsepatch &
+    CALL thornado_amrex_fillcoarsepatch &
            ( MF(FineLevel), &
              t_old_crse, MF(FineLevel-1), &
              t_new_crse, MF(FineLevel-1), &
@@ -464,7 +464,7 @@ CONTAINS
 
     IF( FineLevel .EQ. 0 )THEN
 
-      CALL amrex_fillpatch &
+      CALL thornado_amrex_fillpatch &
              ( MF_dst, &
                t_old_fine, MF_src(FineLevel), &
                t_new_fine, MF_src(FineLevel), &
@@ -481,7 +481,7 @@ CONTAINS
       lo_bc = amrex_bc_bogus
       hi_bc = amrex_bc_bogus
 
-      CALL amrex_fillpatch &
+      CALL thornado_amrex_fillpatch &
              ( MF_dst, SqrtGm_tmp, &
                t_old_crse, MF_src(FineLevel-1), SqrtGm(FineLevel-1), &
                t_new_crse, MF_src(FineLevel-1), SqrtGm(FineLevel-1), &
@@ -593,7 +593,7 @@ CONTAINS
 
     IF( FineLevel .EQ. 0 )THEN
 
-      CALL amrex_fillpatch &
+      CALL thornado_amrex_fillpatch &
              ( MF(FineLevel), &
                t_old_fine, MF(FineLevel), &
                t_new_fine, MF(FineLevel), &
@@ -610,7 +610,7 @@ CONTAINS
       lo_bc = amrex_bc_bogus
       hi_bc = amrex_bc_bogus
 
-      CALL amrex_fillpatch &
+      CALL thornado_amrex_fillpatch &
              ( MF(FineLevel), SqrtGm(FineLevel), &
                t_old_crse, MF(FineLevel-1), SqrtGm(FineLevel-1), &
                t_new_crse, MF(FineLevel-1), SqrtGm(FineLevel-1), &
@@ -722,7 +722,7 @@ CONTAINS
     lo_bc = amrex_bc_bogus
     hi_bc = amrex_bc_bogus
 
-    CALL amrex_fillcoarsepatch &
+    CALL thornado_amrex_fillcoarsepatch &
            ( MF(FineLevel), SqrtGm(FineLevel), &
              t_old_crse, MF(FineLevel-1), SqrtGm(FineLevel-1), &
              t_new_crse, MF(FineLevel-1), SqrtGm(FineLevel-1), &
@@ -873,7 +873,7 @@ CONTAINS
         X1 = NodeCoordinate( MeshXX(1), iX1, iNX1 )
         X2 = NodeCoordinate( MeshXX(2), iX2, iNX2 )
 
-        IF( TRIM( CoordinateSystem ) .EQ. 'CYLINDIRCAL' )THEN
+        IF( TRIM( CoordinateSystem ) .EQ. 'CYLINDRICAL' )THEN
 
           h1  = One
           h2  = One
