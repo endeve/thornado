@@ -451,6 +451,12 @@ CONTAINS
 
     END IF
 
+    IF ( J - SQRT(-(V_u_1*H_d_1+V_u_2*H_d_2+V_u_3*H_d_3)**2 + H_d_1**2+H_d_2**2+H_d_3**2)<0 )THEN
+
+      print *, 'Warning: non-realizable iterate'
+
+    END IF
+
   END SUBROUTINE ComputePrimitive_TwoMoment_Newton_FMC
 
   FUNCTION MomentConversion_Jacobian_Inverse &

@@ -152,11 +152,11 @@ PROGRAM ApplicationDriver
 
       Gamma = 1.4_DP
 
-      nX = [ 128, 16, 1 ]
+      nX = [ 128, 1, 1 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 2.0_DP, Pi,     TwoPi  ]
 
-      bcX = [ 3, 3, 0 ]
+      bcX = [ 3, 0, 0 ]
 
       nNodes = 2
 
