@@ -35,16 +35,16 @@ jobs:
         run: |
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           echo ""
-          echo "brew install gcc"
-                brew install gcc
-          GCC_VERSION=`gcc --version | head -n1 | cut -d ' ' -f 3`
-          echo ${GCC_VERSION}
+          echo "brew reinstall gcc"
+                brew reinstall gcc
+          GCC_VERSION=`gcc --version | head -n1 | cut -d ' ' -f 4`
+          echo "GCC_VERSION=${GCC_VERSION}"
           echo "/usr/local/Cellar/gcc/${GCC_VERSION}/bin" >> ${GITHUB_PATH}
           GCC_MAJOR=`echo ${GCC_VERSION} | cut -d '.' -f 1`
           echo "GCC_MAJOR=${GCC_MAJOR}" >> ${GITHUB_ENV}
           echo ""
-          echo "brew install gfortran"
-                brew install gfortran
+          echo "brew reinstall gfortran"
+                brew reinstall gfortran
           echo "brew install open-mpi"
                 brew install open-mpi
           echo ""
