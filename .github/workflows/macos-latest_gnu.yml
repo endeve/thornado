@@ -37,9 +37,9 @@ jobs:
           echo ""
           echo "brew reinstall gcc"
                 brew reinstall gcc
-          GCC_VERSION=`ls /usr/local/Cellar/gcc | tail -n1`
+          GCC_VERSION=`ls /opt/Homebrew/Cellar/gcc | tail -n1`
           echo "GCC_VERSION=${GCC_VERSION}"
-          echo "/usr/local/Cellar/gcc/${GCC_VERSION}/bin" >> ${GITHUB_PATH}
+          echo "/opt/Homebrew/Cellar/gcc/${GCC_VERSION}/bin" >> ${GITHUB_PATH}
           GCC_MAJOR=`echo ${GCC_VERSION} | cut -d '.' -f 1`
           echo "GCC_MAJOR=${GCC_MAJOR}" >> ${GITHUB_ENV}
           echo ""
