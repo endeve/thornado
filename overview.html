@@ -77,8 +77,7 @@
                 <article>
 
                 <header>
-                <h2>Overview</h2>
-                  <!-- <p>physics</p> -->
+                  <h2>Overview</h2>
                 </header>
 
                 <!-- <span class="image featured"><img src="images/banner.jpg" alt="" /></span> -->
@@ -88,27 +87,37 @@
                 Aliquam luctus et mattis lectus sit amet pulvinar. Nam turpis nisi
                 consequat etiam lorem ipsum dolor sit amet nullam.</p> -->
 
-		The development of thornado is driven by the need for efficient and robust computational tools to model nuclear astrophysics applications, in particular core-collapse supernovae, in general relativity.  
+		<p>
+		  The development of thornado is motivated by the need for efficient and robust computational tools to model nuclear astrophysics applications, in particular core-collapse supernovae, in general relativity.
+		  A parallel development driver is to provide thornado as a platform for exploring the use of discontinuous Galerkin (DG) methods to model core-collapse supernovae.  
+		</p>
 
                 <a name="physics"></a>
-                <p><b>Physics</b> Talk about the physics! Break it up into
-                  (magneto)hydrodyanmics, gravity, microphysics, and radiation.
+                <p><b>Physics</b>
+		  Core-collapse supernovae, the explosive evolutionary end stage of massive stars, are key sites of heavy element production.
+                  They emit electromagnetic radiation, neutrinos, and (likely) gravitational waves, which can provide clues to the physical processes operating in these events, and computer models play an essential role in sharpening our understanding of the supernova explosion mechanism and predicting observational signatures.  
+                  Core-collapse supernovae are truly multiphysics objects, and their modeling involves solving coupled systems of nonlinear partial differential equations, governing the evolution of reacting fluids, gravitational and electromagnetic fields, and neutrinos within the framework of general relativity.
+		  Due to their weak coupling with matter, neutrinos demand a kinetic description, which contributes to the large computational cost of supernova models.
+		  In thornado we aim to balance physical fidelity with computational feasibility by implementing neutrino radiation-hydrodynamics with spectral two-moment neutrino transport using the conformally flat spacetime approximation to general relativity.  
                 </p>
 
                 <a name="numerics"></a>
-                <p><b>Numerics</b> The choice of numerical methods in thornado is largely based on the prominent role &mdash; both physically and computationally &mdash; played by neutrinos in core-collapse supernova models.
-		  Discontinuous Galerkin (DG) methods, a class of finite element methods that approximates solutions using discontinuous piecewise polynomials, combine elements from both spectral and finite volume methods and are an attractive option for solving hyperbolic partial differential equations.  
-		  They are locally conservative, achieve high-order accuracy on a compact stencil, are amenable to <i>hp</i>-adaptivity, can be applied in curvilinear coordinates, and capture the asymptotic diffusion limit without having to resolve the particle mean free path.  
-		  The mathematical formulation of DG methods makes them amenable to rigorous analysis, and they provide the flexibility needed to design methods that preserve important physical constraints and structural properties of the  underlying physical models.
+                <p><b>Numerics</b>
+		  The choice of numerical methods in thornado is largely driven by the prominent role &mdash; both physically and computationally &mdash; played by neutrinos in core-collapse supernova models.
+		  DG methods, a class of finite element methods that approximates solutions using discontinuous piecewise polynomials, combine elements from both spectral and finite volume methods, and are an attractive option for solving hyperbolic partial differential equations.  
+		  They are locally conservative, achieve high-order accuracy on a compact stencil, are amenable to <i>hp</i>-adaptivity, can be applied in curvilinear coordinates, and capture the asymptotic diffusion limit without needing to resolve the particle mean free path.  
+		  The mathematical formulation of DG methods makes them amenable to rigorous analysis, and they provide the flexibility needed to design methods that preserve important physical constraints and structural properties of the  underlying physical models.		  
                 </p>
 
-                <a name="performance"></a>
-                <p><b>Performance</b> Thornado leverages the <a href="https://amrex-codes.github.io/amrex/">AMReX</a> framework for distributed parallelism and adaptive mesh refinement.
-		  For node-level performance and portability, thornado maintains a single code-base that can efficiently execute on different hardware architectures and software environments.
-		  thornado contains three distinct implementations of compiler directives that are managed with C preprocessor macros: traditional OpenMP (CPU multi-core), OpenMP offload (GPU), and OpenACC (GPU).</p>
+                <a name="hpc"></a>
+                <p><b>High-Performance Computing</b>
+		  Thornado leverages <a href="https://amrex-codes.github.io/amrex/">AMReX</a> for distributed parallelism and adaptive mesh refinement.  
+		  For node-level performance and portability of key kernels, thornado maintains a single code-base that can execute on different hardware architectures and software environments.  
+		  thornado contains three distinct implementations of compiler directives managed with C preprocessor macros: traditional OpenMP (CPU multi-core), OpenMP offload (GPU), and OpenACC (GPU).
+		</p>
 
 		<p>
-		  Follow this link to <i>Living Reviews in Computational Astrophysics</i> for further details on the <a href="https://link.springer.com/article/10.1007/s41115-020-00010-8">physical, numerical, and computational challenges of modeling neutrino transport in core-collapse supernovae</a>.
+		  Follow the link to <i>Living Reviews in Computational Astrophysics</i> for further details on the <a href="https://link.springer.com/article/10.1007/s41115-020-00010-8">physical, numerical, and computational challenges of modeling neutrino transport in core-collapse supernovae</a>.
 		</p>
 
                 </article>
