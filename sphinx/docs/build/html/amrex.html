@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Running with AMReX &mdash; thornado  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Gravity Solvers" href="gravity.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            thornado
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="hydro.html">Hydrodynamics Solvers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="radhydro.html">Radiation Hydrodynamics Solvers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gravity.html">Gravity Solvers</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Running with AMReX</a><ul class="simple">
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">thornado</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Running with AMReX</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/amrex.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="running-with-amrex">
+<h1>Running with AMReX<a class="headerlink" href="#running-with-amrex" title="Link to this heading"></a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">##### Example.inputs #####</span>
+
+<span class="c1"># NOTE: this is just an example; there is no application corresponding to this</span>
+<span class="c1"># inputs file</span>
+
+<span class="c1"># For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.</span>
+<span class="c1"># For all REAL types, use &quot;e&quot; and not &quot;d&quot;; i.e., 1.0e3 instead of 1.0d3</span>
+
+<span class="c1"># Name of application you want to run</span>
+<span class="n">thornado</span><span class="o">.</span><span class="n">ProgramName</span> <span class="o">=</span> <span class="s2">&quot;Example&quot;</span>
+
+<span class="c1"># Number of DG nodes per element, per dimension</span>
+<span class="n">thornado</span><span class="o">.</span><span class="n">nNodes</span> <span class="o">=</span> <span class="mi">3</span>
+
+<span class="c1"># Whether-or-not to use physical units</span>
+<span class="n">thornado</span><span class="o">.</span><span class="n">UsePhysicalUnits</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="c1"># End-time of simulation.</span>
+<span class="c1"># If thornado.UsePhysicalUnits = 1 then the units are milliseconds</span>
+<span class="n">thornado</span><span class="o">.</span><span class="n">t_end</span> <span class="o">=</span> <span class="mf">1.0e1</span>
+
+<span class="c1"># Frequency with which to write output to screen</span>
+<span class="n">thornado</span><span class="o">.</span><span class="n">iCycleD</span> <span class="o">=</span> <span class="mi">10</span>
+
+<span class="c1"># Prefix for plotfile; e.g, a plotfile written on the 100th</span>
+<span class="c1"># timestep will be called `Example.plt00000100`</span>
+<span class="n">thornado</span><span class="o">.</span><span class="n">PlotFileNameRoot</span> <span class="o">=</span> <span class="s2">&quot;Example.plt&quot;</span>
+
+<span class="c1"># Frequency with which to write plotfiles.</span>
+<span class="c1"># dt_wrt writes every dt_wrt [time units],</span>
+<span class="c1"># iCycleW writes every iCycleW timesteps.</span>
+<span class="c1"># dt_wrt and iCycleW must have different signs.</span>
+<span class="c1"># If thornado.UsePhysicalUnits = 1 then the units are milliseconds</span>
+<span class="n">thornado</span><span class="o">.</span><span class="n">dt_wrt</span>  <span class="o">=</span> <span class="mf">1.0e-1</span>
+<span class="n">thornado</span><span class="o">.</span><span class="n">iCycleW</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+
+<span class="c1"># Prefix for checkpoint file; e.g, a checkpoint file written on the 100th</span>
+<span class="c1"># timestep will be called `Example.chk00000100`</span>
+<span class="n">thornado</span><span class="o">.</span><span class="n">CheckpointFileNameRoot</span> <span class="o">=</span> <span class="s2">&quot;Example.chk&quot;</span>
+
+<span class="c1"># Frequency with which to write checkpoint files.</span>
+<span class="c1"># dt_chk writes every dt_chk [time units],</span>
+<span class="c1"># iCycleChk writes every iCycleChk timesteps.</span>
+<span class="c1"># dt_chk and iCycleChk must have different signs.</span>
+<span class="c1"># If thornado.UsePhysicalUnits = 1 then the units are milliseconds</span>
+<span class="n">thornado</span><span class="o">.</span><span class="n">dt_chk</span>    <span class="o">=</span> <span class="mf">1.1e1</span>
+<span class="n">thornado</span><span class="o">.</span><span class="n">iCycleChk</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+
+<span class="c1"># Prefix for Tally file; e.g, the tally file for</span>
+<span class="c1"># the baryonic mass will be called `Example.Tally_BaryonicMass.dat</span>
+<span class="n">thornado</span><span class="o">.</span><span class="n">TallyFileNameRoot_Euler</span> <span class="o">=</span> <span class="s2">&quot;Example.Tally&quot;</span>
+
+<span class="c1"># Boundary conditions for the fluid.</span>
+<span class="c1"># See ${THORNADO_DIR}/Modules/Euler/Euler_BoundaryConditionsModule.F90</span>
+<span class="c1"># to see which integers corresponds to which boundary conditions.</span>
+<span class="c1"># These also set the boundary conditions for the geometry</span>
+<span class="n">thornado</span><span class="o">.</span><span class="n">bcX</span> <span class="o">=</span> <span class="mi">100</span> <span class="mi">3</span> <span class="mi">01</span>
+
+<span class="c1"># Tell AMReX whether a dimension uses periodic boundary conditions.</span>
+<span class="c1"># Only the entries corresponding to active dimensions will have any effect</span>
+<span class="n">geometry</span><span class="o">.</span><span class="n">is_periodic</span> <span class="o">=</span> <span class="mi">0</span> <span class="mi">0</span> <span class="mi">1</span>  <span class="c1"># Periodic BCs: 0 (no), 1 (yes)</span>
+
+<span class="c1"># Coordinate system ( 0: CARTESIAN, 1: CYLINDRICAL, 2: SPHERICAL )</span>
+<span class="n">geometry</span><span class="o">.</span><span class="n">coord_sys</span> <span class="o">=</span> <span class="mi">2</span>
+
+<span class="c1"># Lower and upper boundaries in physical space.</span>
+<span class="c1"># If thornado.UsePhysicalUnits = 1 then the units will be dictated</span>
+<span class="c1"># by the coordinate system</span>
+<span class="n">geometry</span><span class="o">.</span><span class="n">prob_lo</span> <span class="o">=</span> <span class="mf">0.0</span> <span class="mf">0.0</span> <span class="mf">0.0</span> <span class="c1"># Lower domain size</span>
+<span class="n">geometry</span><span class="o">.</span><span class="n">prob_hi</span> <span class="o">=</span> <span class="mf">8000.0</span> <span class="mf">3.1415926535897931</span> <span class="mf">6.2831853071795862</span>
+
+<span class="c1"># Number of ghost cells for the spatially-dependent fields</span>
+<span class="c1"># (fluid and geometry)</span>
+<span class="n">thornado</span><span class="o">.</span><span class="n">swX</span> <span class="o">=</span> <span class="mi">01</span> <span class="mi">01</span> <span class="mi">01</span>
+
+<span class="c1"># Number of spatial elements on the coarsest level</span>
+<span class="n">amr</span><span class="o">.</span><span class="n">n_cell</span> <span class="o">=</span> <span class="mi">512</span> <span class="mi">16</span> <span class="mi">32</span>
+
+<span class="c1"># Maximum allowed size of an AMReX grid in each dimension</span>
+<span class="n">amr</span><span class="o">.</span><span class="n">max_grid_size_x</span> <span class="o">=</span> <span class="mi">8</span>
+<span class="n">amr</span><span class="o">.</span><span class="n">max_grid_size_y</span> <span class="o">=</span> <span class="mi">8</span>
+<span class="n">amr</span><span class="o">.</span><span class="n">max_grid_size_z</span> <span class="o">=</span> <span class="mi">8</span>
+
+<span class="c1"># (Roughly) minimum allowed size of an AMReX grid in each dimension</span>
+<span class="n">amr</span><span class="o">.</span><span class="n">blocking_factor_x</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="n">amr</span><span class="o">.</span><span class="n">blocking_factor_y</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="n">amr</span><span class="o">.</span><span class="n">blocking_factor_z</span> <span class="o">=</span> <span class="mi">4</span>
+
+<span class="c1"># Maximum number of refined levels (0 for no refinement)</span>
+<span class="n">amr</span><span class="o">.</span><span class="n">max_level</span> <span class="o">=</span> <span class="mi">2</span>
+
+<span class="c1"># Whether-or-not to use AMR</span>
+<span class="n">amr</span><span class="o">.</span><span class="n">UseAMR</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="c1"># Apply flux corrections at refinement interfaces (Fluid)</span>
+<span class="n">amr</span><span class="o">.</span><span class="n">UseFluxCorrection_Euler</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="c1"># Criteria for tagging elements for refinement.</span>
+<span class="c1"># See TaggingModule.f90 for meaning of values</span>
+<span class="c1"># The number of entries should be equal to amr.max_level</span>
+<span class="n">amr</span><span class="o">.</span><span class="n">TagCriteria</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="mf">0.7</span>
+
+<span class="c1"># Number of padding elements for refinement.</span>
+<span class="c1"># If an element is tagged, ensure that amr.n_error_buf neighbors</span>
+<span class="c1"># in each dimension are also tagged.</span>
+<span class="n">amr</span><span class="o">.</span><span class="n">n_error_buf</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="c1"># Refinement ratio (this MUST be 2)</span>
+<span class="n">amr</span><span class="o">.</span><span class="n">ref_ratio</span> <span class="o">=</span> <span class="mi">2</span>
+
+<span class="c1"># Whether-or-not to use tiling</span>
+<span class="c1"># (see AMReX documentation for details)</span>
+<span class="n">amr</span><span class="o">.</span><span class="n">UseTiling</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="c1"># Parameters for Euler slope limiter</span>
+<span class="n">SL</span><span class="o">.</span><span class="n">UseSlopeLimiter_Euler</span>           <span class="o">=</span> <span class="mi">1</span>
+<span class="n">SL</span><span class="o">.</span><span class="n">BetaTVD_Euler</span>                   <span class="o">=</span> <span class="mf">1.75</span>
+<span class="n">SL</span><span class="o">.</span><span class="n">BetaTVB_Euler</span>                   <span class="o">=</span> <span class="mf">0.0</span>
+<span class="n">SL</span><span class="o">.</span><span class="n">SlopeTolerance_Euler</span>            <span class="o">=</span> <span class="mf">1.0e-6</span>
+<span class="n">SL</span><span class="o">.</span><span class="n">UseCharacteristicLimiting_Euler</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">SL</span><span class="o">.</span><span class="n">UseTroubledCellIndicator_Euler</span>  <span class="o">=</span> <span class="mi">1</span>
+<span class="n">SL</span><span class="o">.</span><span class="n">LimiterThresholdParameter_Euler</span> <span class="o">=</span> <span class="mf">0.03</span>
+<span class="n">SL</span><span class="o">.</span><span class="n">UseConservativeCorrection_Euler</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="c1"># Parameters for Euler positivity limiter</span>
+<span class="n">PL</span><span class="o">.</span><span class="n">UsePositivityLimiter_Euler</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">PL</span><span class="o">.</span><span class="n">Min_1_Euler</span>                <span class="o">=</span> <span class="mf">1.0e-13</span>
+<span class="n">PL</span><span class="o">.</span><span class="n">Min_2_Euler</span>                <span class="o">=</span> <span class="mf">1.0e-13</span>
+
+<span class="c1"># Parameters for equation of state</span>
+<span class="n">EoS</span><span class="o">.</span><span class="n">EquationOfState</span> <span class="o">=</span> <span class="s2">&quot;IDEAL&quot;</span>
+<span class="n">EoS</span><span class="o">.</span><span class="n">Gamma_IDEAL</span>     <span class="o">=</span> <span class="mf">1.3333333333333333</span>
+
+<span class="c1"># Parameters for time-stepping.</span>
+<span class="c1"># All non-transport problems use SSPRK, in</span>
+<span class="c1"># ${THORNADO_DIR}/SandBox/AMReX/Modules/TimeStepping/MF_TimeSteppingModule_SSPRK.f90</span>
+<span class="n">TS</span><span class="o">.</span><span class="n">nStages</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">TS</span><span class="o">.</span><span class="n">CFL</span>     <span class="o">=</span> <span class="mf">0.5</span>
+</pre></div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="gravity.html" class="btn btn-neutral float-left" title="Gravity Solvers" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
