@@ -13,6 +13,7 @@ Welcome to thornado's documentation!
    hydro
    radhydro
    gravity
+   amrex
 
 
 Indices and tables
