@@ -71,8 +71,3 @@ where :math:`\alpha` is the lapse function,
 and :math:`\sqrt{\gamma}` is the square root of the determinant of the spatial
 three-metric.
 (TODO: define the fluxes and sources)
-
-Example inputs file for amrex
-=============================
-
-.. literalinclude:: grhd.Example.inputs
