@@ -45,8 +45,7 @@ MODULE thornado_amrex_fillpatch_module
          sComp, dComp, nComp, &
          pCrseGeom, pFineGeom, fpCrseFillPhysBC, fpFineFillPhysBC, &
          RefRatio, interp, pLoBC, pHiBC, nFineV, nDOFX, &
-         vpCoarseToFineProjectionMatrix, &
-         pre_interp, post_interp ) BIND(c)
+         vpCoarseToFineProjectionMatrix ) BIND(c)
        IMPORT
        IMPLICIT NONE
        TYPE(C_PTR)     , VALUE      :: pMF, pMF_G, pCrseGeom, pFineGeom, &
@@ -54,8 +53,7 @@ MODULE thornado_amrex_fillpatch_module
        TYPE(C_PTR)     , INTENT(in) :: pCrseMF(*), pCrseMF_G(*), &
                                        pFineMF(*), pFineMF_G(*), &
                                        pLoBC(*), pHiBC(*)
-       TYPE(C_FUNPTR)  , VALUE      :: fpCrseFillPhysBC, fpFineFillPhysBC, &
-                                       pre_interp, post_interp
+       TYPE(C_FUNPTR)  , VALUE      :: fpCrseFillPhysBC, fpFineFillPhysBC
        REAL(amrex_real), VALUE      :: Time
        REAL(amrex_real), INTENT(in) :: CrseTime(*), FineTime(*)
        INTEGER         , VALUE      :: nCrse, nFine, sComp, dComp, nComp, &
@@ -70,8 +68,7 @@ MODULE thornado_amrex_fillpatch_module
          sComp, dComp, nComp, &
          pCrseGeom, pFineGeom, fpCrseFillPhysBC, fpFineFillPhysBC, &
          RefRatio, interp, pLoBC, pHiBC, nFineV, nDOFX, &
-         vpCoarseToFineProjectionMatrix, &
-         pre_interp, post_interp ) BIND(c)
+         vpCoarseToFineProjectionMatrix ) BIND(c)
        IMPORT
        IMPLICIT NONE
        TYPE(C_PTR)     , VALUE      :: pMF, pCrseGeom, pFineGeom, &
@@ -79,8 +76,7 @@ MODULE thornado_amrex_fillpatch_module
        TYPE(C_PTR)     , INTENT(in) :: pCrseMF(*), &
                                        pFineMF(*), &
                                        pLoBC(*), pHiBC(*)
-       TYPE(C_FUNPTR)  , VALUE      :: fpCrseFillPhysBC, fpFineFillPhysBC, &
-                                       pre_interp, post_interp
+       TYPE(C_FUNPTR)  , VALUE      :: fpCrseFillPhysBC, fpFineFillPhysBC
        REAL(amrex_real), VALUE      :: Time
        REAL(amrex_real), INTENT(in) :: CrseTime(*), FineTime(*)
        INTEGER         , VALUE      :: nCrse, nFine, sComp, dComp, nComp, &
@@ -92,16 +88,14 @@ MODULE thornado_amrex_fillpatch_module
        ( pMF, pMF_G, Time, &
          pCrseMF, pCrseMF_G, sComp, dComp, nComp, pCrseGeom, pFineGeom, &
          fpCrseFillPhysBC, fpFineFillPhysBC, RefRatio, interp, pLoBC, pHiBC, &
-         nFineV, nDOFX, vpCoarseToFineProjectionMatrix, &
-         pre_interp, post_interp ) BIND(c)
+         nFineV, nDOFX, vpCoarseToFineProjectionMatrix ) BIND(c)
        IMPORT
        IMPLICIT NONE
        TYPE(C_PTR)     , VALUE :: pMF, pMF_G, pCrseMF, pCrseMF_G, &
                                   pCrseGeom, pFineGeom, &
                                   vpCoarseToFineProjectionMatrix
        TYPE(C_PTR), INTENT(in) :: pLoBC(*), pHiBC(*)
-       TYPE(C_FUNPTR)  , VALUE :: fpCrseFillPhysBC, fpFineFillPhysBC, &
-                                  pre_interp, post_interp
+       TYPE(C_FUNPTR)  , VALUE :: fpCrseFillPhysBC, fpFineFillPhysBC
        REAL(amrex_real), VALUE :: Time
        INTEGER         , VALUE :: sComp, dComp, nComp, RefRatio, interp, &
                                   nFineV, nDOFX
@@ -112,16 +106,14 @@ MODULE thornado_amrex_fillpatch_module
        ( pMF, Time, &
          pCrseMF, sComp, dComp, nComp, pCrseGeom, pFineGeom, &
          fpCrseFillPhysBC, fpFineFillPhysBC, RefRatio, interp, pLoBC, pHiBC, &
-         nFineV, nDOFX, vpCoarseToFineProjectionMatrix, &
-         pre_interp, post_interp ) BIND(c)
+         nFineV, nDOFX, vpCoarseToFineProjectionMatrix ) BIND(c)
        IMPORT
        IMPLICIT NONE
        TYPE(C_PTR)     , VALUE :: pMF, pCrseMF, &
                                   pCrseGeom, pFineGeom, &
                                   vpCoarseToFineProjectionMatrix
        TYPE(C_PTR), INTENT(in) :: pLoBC(*), pHiBC(*)
-       TYPE(C_FUNPTR)  , VALUE :: fpCrseFillPhysBC, fpFineFillPhysBC, &
-                                  pre_interp, post_interp
+       TYPE(C_FUNPTR)  , VALUE :: fpCrseFillPhysBC, fpFineFillPhysBC
        REAL(amrex_real), VALUE :: Time
        INTEGER         , VALUE :: sComp, dComp, nComp, RefRatio, interp, &
                                   nFineV, nDOFX
@@ -181,8 +173,7 @@ CONTAINS
       OldTimeFine, OldMFFine, OldMFFine_G, NewTimeFine, NewMFFine, NewMFFine_G, &
       GeomFine, FillPhysBCFine, &
       Time, sComp, dComp, nComp, RefRatio, interp, LoBC, HiBC, &
-      nFineV, nDOFX, vpCoarseToFineProjectionMatrix, &
-      pre_interp, post_interp )
+      nFineV, nDOFX, vpCoarseToFineProjectionMatrix )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF
     TYPE(amrex_multifab), INTENT(in)    :: &
@@ -200,15 +191,12 @@ CONTAINS
       vpCoarseToFineProjectionMatrix
     PROCEDURE(amrex_physbc_proc)        :: &
       FillPhysBCCrse, FillPhysBCFine
-    PROCEDURE(amrex_interp_hook_proc), OPTIONAL :: &
-      pre_interp, post_interp
 
     REAL(amrex_real) :: teps
     REAL(amrex_real) :: CrseTime (2), FineTime (2)
     TYPE(c_ptr)      :: pCrseMF  (2), pFineMF  (2)
     TYPE(c_ptr)      :: pCrseMF_G(2), pFineMF_G(2)
     TYPE(c_ptr)      :: pLoBC(sComp+nComp-1), pHiBC(sComp+nComp-1)
-    TYPE(c_funptr)   :: pre_interp_ptr, post_interp_ptr
     INTEGER          :: nCrse, nFine, iComp
 
     ! Coarse level
@@ -281,12 +269,6 @@ CONTAINS
 
     END DO
 
-    pre_interp_ptr = c_null_funptr
-    IF( PRESENT( pre_interp ) ) pre_interp_ptr = C_FUNLOC( pre_interp )
-
-    post_interp_ptr = c_null_funptr
-    IF( PRESENT( post_interp ) ) post_interp_ptr = C_FUNLOC( post_interp )
-
     ! sComp-1 and dComp-1 because of Fortran index starts with 1
     CALL amrex_fi_fillpatch_dgconservative_two &
            ( MF % p, MF_G % p, Time, &
@@ -295,8 +277,7 @@ CONTAINS
              sComp-1, dComp-1, nComp, GeomCrse % p, GeomFine % p, &
              C_FUNLOC( FillPhysBCCrse ), C_FUNLOC( FillPhysBCFine ), &
              RefRatio, interp, pLoBC, pHiBC, &
-             nFineV, nDOFX, vpCoarseToFineProjectionMatrix, &
-             pre_interp_ptr, post_interp_ptr )
+             nFineV, nDOFX, vpCoarseToFineProjectionMatrix )
 
   END SUBROUTINE amrex_fillpatch_dgconservative_two
 
@@ -308,8 +289,7 @@ CONTAINS
       OldTimeFine, OldMFFine, NewTimeFine, NewMFFine, &
       GeomFine, FillPhysBCFine, &
       Time, sComp, dComp, nComp, RefRatio, interp, LoBC, HiBC, &
-      nFineV, nDOFX, vpCoarseToFineProjectionMatrix, &
-      pre_interp, post_interp )
+      nFineV, nDOFX, vpCoarseToFineProjectionMatrix )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF
     TYPE(amrex_multifab), INTENT(in)    :: &
@@ -327,14 +307,11 @@ CONTAINS
       vpCoarseToFineProjectionMatrix
     PROCEDURE(amrex_physbc_proc)        :: &
       FillPhysBCCrse, FillPhysBCFine
-    PROCEDURE(amrex_interp_hook_proc), OPTIONAL :: &
-      pre_interp, post_interp
 
     REAL(amrex_real) :: teps
     REAL(amrex_real) :: CrseTime (2), FineTime (2)
     TYPE(c_ptr)      :: pCrseMF  (2), pFineMF  (2)
     TYPE(c_ptr)      :: pLoBC(sComp+nComp-1), pHiBC(sComp+nComp-1)
-    TYPE(c_funptr)   :: pre_interp_ptr, post_interp_ptr
     INTEGER          :: nCrse, nFine, iComp
 
     ! Coarse level
@@ -399,12 +376,6 @@ CONTAINS
 
     END DO
 
-    pre_interp_ptr = c_null_funptr
-    IF( PRESENT( pre_interp ) ) pre_interp_ptr = C_FUNLOC( pre_interp )
-
-    post_interp_ptr = c_null_funptr
-    IF( PRESENT( post_interp ) ) post_interp_ptr = C_FUNLOC( post_interp )
-
     ! sComp-1 and dComp-1 because of Fortran index starts with 1
     CALL amrex_fi_fillpatch_dgpointwise_two &
            ( MF % p, Time, &
@@ -413,8 +384,7 @@ CONTAINS
              sComp-1, dComp-1, nComp, GeomCrse % p, GeomFine % p, &
              C_FUNLOC( FillPhysBCCrse ), C_FUNLOC( FillPhysBCFine ), &
              RefRatio, interp, pLoBC, pHiBC, &
-             nFineV, nDOFX, vpCoarseToFineProjectionMatrix, &
-             pre_interp_ptr, post_interp_ptr )
+             nFineV, nDOFX, vpCoarseToFineProjectionMatrix )
 
   END SUBROUTINE amrex_fillpatch_dgpointwise_two
 
@@ -425,8 +395,7 @@ CONTAINS
       NewTimeCrse, NewMFCrse, NewMFCrse_G, &
       CrseGeom, FillPhysBCCrse, FineGeom, FillPhysBCFine, &
       Time, nComp, RefRatio, interp, LoBC, HiBC, &
-      nFineV, nDOFX, vpCoarseToFineProjectionMatrix, &
-      pre_interp, post_interp )
+      nFineV, nDOFX, vpCoarseToFineProjectionMatrix )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF, MF_G
     TYPE(amrex_multifab), INTENT(in)    :: OldMFCrse, OldMFCrse_G, &
@@ -438,14 +407,11 @@ CONTAINS
     REAL(amrex_real)    , INTENT(in)    :: OldTimeCrse, NewTimeCrse, Time
     TYPE(amrex_geometry), INTENT(in)    :: CrseGeom, FineGeom
     PROCEDURE(amrex_physbc_proc)        :: FillPhysBCCrse, FillPhysBCFine
-    PROCEDURE(amrex_interp_hook_proc), OPTIONAL :: pre_interp
-    PROCEDURE(amrex_interp_hook_proc), OPTIONAL :: post_interp
     TYPE(c_ptr)         , INTENT(in)    :: vpCoarseToFineProjectionMatrix
 
     REAL(amrex_real) :: teps
     TYPE(c_ptr)      :: pCrseMF, pCrseMF_G
     TYPE(c_ptr)      :: pLoBC(nComp), pHiBC(nComp)
-    TYPE(c_funptr)   :: pre_interp_ptr, post_interp_ptr
     INTEGER          :: iComp
 
     INTEGER :: sComp, dComp
@@ -487,12 +453,6 @@ CONTAINS
 
     END DO
 
-    pre_interp_ptr = c_null_funptr
-    IF( PRESENT( pre_interp ) ) pre_interp_ptr = C_FUNLOC( pre_interp )
-
-    post_interp_ptr = c_null_funptr
-    IF( PRESENT( post_interp ) ) post_interp_ptr = C_FUNLOC( post_interp )
-
     ! sComp-1 and dComp-1 because of Fortran index starts with 1
     CALL amrex_fi_fillcoarsepatch_dgconservative &
            ( MF % p, MF_G % p, Time, pCrseMF, pCrseMF_G, &
@@ -501,8 +461,7 @@ CONTAINS
              C_FUNLOC( FillPhysBCCrse ), &
              C_FUNLOC( FillPhysBCFine ), &
              RefRatio, interp, pLoBC, pHiBC, &
-             nFineV, nDOFX, vpCoarseToFineProjectionMatrix, &
-             pre_interp_ptr, post_interp_ptr)
+             nFineV, nDOFX, vpCoarseToFineProjectionMatrix )
 
   END SUBROUTINE amrex_fillcoarsepatch_dgconservative
 
@@ -513,8 +472,7 @@ CONTAINS
       NewTimeCrse, NewMFCrse, &
       CrseGeom, FillPhysBCCrse, FineGeom, FillPhysBCFine, &
       Time, nComp, RefRatio, interp, LoBC, HiBC, &
-      nFineV, nDOFX, vpCoarseToFineProjectionMatrix, &
-      pre_interp, post_interp )
+      nFineV, nDOFX, vpCoarseToFineProjectionMatrix )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF
     TYPE(amrex_multifab), INTENT(in)    :: OldMFCrse, &
@@ -526,14 +484,11 @@ CONTAINS
     REAL(amrex_real)    , INTENT(in)    :: OldTimeCrse, NewTimeCrse, Time
     TYPE(amrex_geometry), INTENT(in)    :: CrseGeom, FineGeom
     PROCEDURE(amrex_physbc_proc)        :: FillPhysBCCrse, FillPhysBCFine
-    PROCEDURE(amrex_interp_hook_proc), OPTIONAL :: pre_interp
-    PROCEDURE(amrex_interp_hook_proc), OPTIONAL :: post_interp
     TYPE(c_ptr)         , INTENT(in)    :: vpCoarseToFineProjectionMatrix
 
     REAL(amrex_real) :: teps
     TYPE(c_ptr)      :: pCrseMF
     TYPE(c_ptr)      :: pLoBC(nComp), pHiBC(nComp)
-    TYPE(c_funptr)   :: pre_interp_ptr, post_interp_ptr
     INTEGER          :: iComp
 
     INTEGER :: sComp, dComp
@@ -573,12 +528,6 @@ CONTAINS
 
     END DO
 
-    pre_interp_ptr = c_null_funptr
-    IF( PRESENT( pre_interp ) ) pre_interp_ptr = C_FUNLOC( pre_interp )
-
-    post_interp_ptr = c_null_funptr
-    IF( PRESENT( post_interp ) ) post_interp_ptr = C_FUNLOC( post_interp )
-
     ! sComp-1 and dComp-1 because of Fortran index starts with 1
     CALL amrex_fi_fillcoarsepatch_dgpointwise &
            ( MF % p, Time, pCrseMF, &
@@ -587,8 +536,7 @@ CONTAINS
              C_FUNLOC( FillPhysBCCrse ), &
              C_FUNLOC( FillPhysBCFine ), &
              RefRatio, interp, pLoBC, pHiBC, &
-             nFineV, nDOFX, vpCoarseToFineProjectionMatrix, &
-             pre_interp_ptr, post_interp_ptr)
+             nFineV, nDOFX, vpCoarseToFineProjectionMatrix )
 
   END SUBROUTINE amrex_fillcoarsepatch_dgpointwise
 
