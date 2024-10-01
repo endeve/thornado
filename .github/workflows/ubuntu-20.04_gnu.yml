@@ -61,7 +61,7 @@ jobs:
       THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Update Ubuntu
         run: |
           sudo apt-get -y install \
@@ -89,14 +89,14 @@ jobs:
       POSEIDON_DIR: ${{ needs.build.outputs.POSEIDON_DIR }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout weaklib
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
       - name: Checkout poseidon
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: jrober50/Poseidon
           path: poseidon
@@ -126,7 +126,7 @@ jobs:
       THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Update Ubuntu
         run: |
           sudo apt-get -y install \
@@ -153,9 +153,9 @@ jobs:
       WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout weaklib
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
@@ -185,9 +185,9 @@ jobs:
       POSEIDON_DIR: ${{ needs.build.outputs.POSEIDON_DIR }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout poseidon
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: jrober50/Poseidon
           path: poseidon
@@ -219,14 +219,14 @@ jobs:
       POSEIDON_DIR: ${{ needs.build.outputs.POSEIDON_DIR }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout weaklib
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
       - name: Checkout poseidon
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: jrober50/Poseidon
           path: poseidon
@@ -257,9 +257,9 @@ jobs:
       AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: AMReX-Codes/amrex
           path: amrex
@@ -290,9 +290,9 @@ jobs:
       AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: AMReX-Codes/amrex
           path: amrex
@@ -323,9 +323,9 @@ jobs:
       AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: AMReX-Codes/amrex
           path: amrex
@@ -357,15 +357,15 @@ jobs:
       WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: AMReX-Codes/amrex
           path: amrex
           ref: development
       - name: Checkout weaklib
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
@@ -395,9 +395,9 @@ jobs:
       AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: AMReX-Codes/amrex
           path: amrex
@@ -428,9 +428,9 @@ jobs:
       AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: AMReX-Codes/amrex
           path: amrex
@@ -462,15 +462,15 @@ jobs:
       POSEIDON_DIR: ${{ needs.build.outputs.POSEIDON_DIR }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: AMReX-Codes/amrex
           path: amrex
           ref: development
       - name: Checkout poseidon
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: jrober50/Poseidon
           path: poseidon
@@ -503,21 +503,21 @@ jobs:
       WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: AMReX-Codes/amrex
           path: amrex
           ref: development
       - name: Checkout poseidon
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: jrober50/Poseidon
           path: poseidon
           ref: Development
       - name: Checkout weaklib
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
@@ -548,15 +548,15 @@ jobs:
       WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: AMReX-Codes/amrex
           path: amrex
           ref: development
       - name: Checkout weaklib
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
@@ -587,15 +587,15 @@ jobs:
       WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: AMReX-Codes/amrex
           path: amrex
           ref: development
       - name: Checkout weaklib
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
@@ -627,21 +627,21 @@ jobs:
       WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: AMReX-Codes/amrex
           path: amrex
           ref: development
       - name: Checkout poseidon
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: jrober50/Poseidon
           path: poseidon
           ref: Development
       - name: Checkout weaklib
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: starkiller-astro/weaklib
           path: weaklib

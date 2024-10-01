@@ -12,20 +12,20 @@ jobs:
       THORNADO_MACHINE: gh-runner_macos-latest_gnu
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout weaklib
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
       - name: Checkout poseidon
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: jrober50/Poseidon
           path: poseidon
           ref: Development
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: AMReX-Codes/amrex
           path: amrex
