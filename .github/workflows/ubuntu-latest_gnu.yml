@@ -1,6 +1,6 @@
 # Adapted with permission from Axel Huebl's work with CI from amrex
 
-name: Compile thornado on Ubuntu 20.04 with gnu compilers
+name: Compile thornado on Ubuntu (latest) with gnu compilers
 
 on:
   push:
@@ -19,10 +19,10 @@ jobs:
       WEAKLIB_DIR:  ${{ steps.getenv.outputs.WEAKLIB_DIR  }}
       AMREX_DIR:    ${{ steps.getenv.outputs.AMREX_DIR    }}
       POSEIDON_DIR: ${{ steps.getenv.outputs.POSEIDON_DIR }}
-    name: Compile thornado on Ubuntu 20.04 with gnu compilers
-    runs-on: ubuntu-20.04
+    name: Compile thornado on Ubuntu (latest) with gnu compilers
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
     steps:
       - name: Find Libraries
         id: getenv
@@ -51,9 +51,9 @@ jobs:
   dgExperiments_Euler_NonRelativistic_IDEAL_native:
     name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -77,9 +77,9 @@ jobs:
   dgExperiments_Euler_NonRelativistic_TABLE_native:
     name: Compile SandBox/dgExperiments_Euler_NonRelativistic_TABLE
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -116,9 +116,9 @@ jobs:
   dgExperiments_Euler_Relativistic_IDEAL_native:
     name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -142,9 +142,9 @@ jobs:
   dgExperiments_Euler_Relativistic_TABLE_native:
     name: Compile SandBox/dgExperiments_Euler_Relativistic_TABLE
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -174,9 +174,9 @@ jobs:
   YahilCollapse_XCFC_native:
     name: Compile SandBox/YahilCollapse_XCFC
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -207,9 +207,9 @@ jobs:
   AdiabaticCollapse_XCFC_native:
     name: Compile SandBox/AdiabaticCollapse_XCFC
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -246,9 +246,9 @@ jobs:
   dgExperiments_Euler_Relativistic_IDEAL_amrex_1D:
     name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -279,9 +279,9 @@ jobs:
   dgExperiments_Euler_Relativistic_IDEAL_amrex_2D:
     name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -312,9 +312,9 @@ jobs:
   dgExperiments_Euler_Relativistic_IDEAL_amrex_3D:
     name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -345,9 +345,9 @@ jobs:
   dgExperiments_Euler_Relativistic_TABLE_amrex:
     name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -384,9 +384,9 @@ jobs:
   StandingAccretionShock_NonRelativistic_amrex:
     name: Compile SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -417,9 +417,9 @@ jobs:
   StandingAccretionShock_Relativistic_amrex:
     name: Compile SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -450,9 +450,9 @@ jobs:
   YahilCollapse_XCFC_amrex:
     name: Compile SandBox/AMReX/Applications/YahilCollapse_XCFC
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -490,9 +490,9 @@ jobs:
   AdiabaticCollapse_XCFC_amrex:
     name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -536,9 +536,9 @@ jobs:
   TwoMoment_Test_amrex:
     name: Compile SandBox/AMReX/TwoMoment_Test
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -575,9 +575,9 @@ jobs:
   TwoMoment_TABLE_amrex:
     name: Compile SandBox/AMReX/TwoMoment_TABLE
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -614,9 +614,9 @@ jobs:
   CoreCollapseSupernova_XCFC_amrex:
     name: Compile SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
