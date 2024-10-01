@@ -27,7 +27,7 @@ jobs:
       - name: Checkout amrex
         uses: actions/checkout@v3
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
           ref: development
       - name: Download and install homebrew and dependencies
