@@ -1,0 +1,52 @@
+##### inputs_ShearingDisk2D #####
+
+# For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+# For all REAL types, use "e" and not "d", i.e. 1.0e3
+
+DEBUG = 0
+
+thornado.UsePhysicalUnits = 1
+
+thornado.ProgramName      = "ShearingDisk"
+
+thornado.WriteNodalData = 1
+
+thornado.iRestart = -1 # Checkpoint-file to restart from. Default: -1
+
+thornado.t_end   = 1.0e+1 # Final time
+thornado.iCycleD = -10     # MOD this number to display info
+
+thornado.PlotFileBaseName = "plt"
+thornado.dt_wrt  = 1.0e-2 # Time increment to write plot-file
+thornado.iCycleW = -1     # MOD this number to write plot-file
+
+thornado.CheckpointFileBaseName = "chk"
+thornado.dt_chk    = 1.0e-1 # Time increment to write checkpoint-file
+thornado.iCycleChk = -1     # MOD this number to write checkpoint-file
+
+thornado.nNodes  = 1 # Number of DG nodes in each active dimension
+thornado.nStages = 1 # Number of SSP-RK stages for time integration
+
+thornado.CFL = 0.5 # CFL number
+
+thornado.bcX         = 0 0 0 # Boundary conditions
+geometry.is_periodic = 1 1 1  # Periodic BCs: 0 (no), 1 (yes)
+
+geometry.coord_sys = 1         # CYLINDRICAL
+geometry.prob_lo   = 1.45e+1 -0.5e+0  0.0 # Lower domain size
+geometry.prob_hi   = 1.65e+1  0.5e+0  6.283185307179586 # Upper domain size
+
+amr.n_cell            = 128 64 01 # Number of cells in each dimension
+thornado.swX          = 01 01 00 # Stencil width (nGhostCells) in each dimension
+amr.max_grid_size_x   = 64
+amr.blocking_factor_x = 1
+amr.max_grid_size_y   = 32
+amr.blocking_factor_y = 1
+amr.max_level         = 0
+
+# Equation of state parameters
+EoS.Gamma = 1.33333333333333333 # Ideal Gas EoS Gamma
+
+# MHD parameters
+MHD.EvolveOnlyMagnetic    = 0
+MHD.UseDivergenceCleaning = 0

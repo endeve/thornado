@@ -34,17 +34,21 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     CreateMesh,  &
     DestroyMesh, &
     NodeCoordinate
+  USE GeometryComputationModule, ONLY: &
+    ComputeGeometryX_FromScaleFactors
   USE GeometryFieldsModule,    ONLY: &
     nGF,          &
-    iGF_Alpha,    &
-    iGF_Psi,      &
+    iGF_h_1,      &
+    iGF_h_2,      &
+    iGF_h_3,      &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
     iGF_Alpha, &
     iGF_Beta_1, &
     iGF_Beta_2, &
-    iGF_Beta_3
+    iGF_Beta_3, &
+    iGF_Psi
   USE MagnetofluidFieldsModule,       ONLY: &
     nCM,     &
     iCM_D,   &
@@ -83,9 +87,12 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
     Erg,          &
     SpeedOfLight, &
     GravitationalConstant, &
-    Millisecond
+    Millisecond, &
+    Gauss
   USE UtilitiesModule,         ONLY: &
-    NodeNumberX
+    NodeNumberX, &
+    Locate, &
+    Interpolate1D_Linear
 
   ! --- Local Modules ---
 
@@ -112,8 +119,12 @@ MODULE MF_InitializationModule_Relativistic_IDEAL
   USE MF_UtilitiesModule,      ONLY: &
     amrex2thornado_X_Global
 
+  USE HDF5
+
   IMPLICIT NONE
   PRIVATE
+
+  INTEGER :: HDFERR
 
   PUBLIC :: MF_InitializeFields_Relativistic_IDEAL
 
@@ -154,6 +165,10 @@ CONTAINS
 
         CALL InitializeFields_OrszagTang2D( MF_uGF, MF_uCM )
 
+      CASE( 'ShearingDisk' )
+
+        CALL InitializeFields_ShearingDisk( MF_uGF, MF_uCM )
+
       CASE DEFAULT
 
         IF( amrex_parallel_ioprocessor() )THEN
@@ -165,6 +180,7 @@ CONTAINS
           WRITE(*,'(6x,A)')     'Cleaning2D'
           WRITE(*,'(6x,A)')     'OrszagTang2D'
           WRITE(*,'(6x,A)')     'MagnetizedKH_3D'
+          WRITE(*,'(6x,A)')     'ShearingDisk'
         END IF
 
     END SELECT
@@ -1178,6 +1194,297 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_Cleaning2D
+
+
+  SUBROUTINE InitializeFields_ShearingDisk( MF_uGF, MF_uCM )
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCM(0:nLevels-1)
+
+    ! --- thornado ---
+
+    INTEGER        :: iDim
+    INTEGER        :: iX1, iX2, iX3
+    INTEGER        :: iNX, iNX1, iNX2, iNX3
+    REAL(DP)       :: X1, X2, X3
+    REAL(DP)       :: uGF_K(nDOFX,nGF)
+    REAL(DP)       :: uCM_K(nDOFX,nCM)
+    REAL(DP)       :: uPM_K(nDOFX,nPM)
+    REAL(DP)       :: uAM_K(nDOFX,nAM)
+    TYPE(MeshType) :: MeshX(3)
+
+    ! --- AMReX ---
+
+    INTEGER                       :: iLevel
+    INTEGER                       :: lo_G(4), hi_G(4)
+    INTEGER                       :: lo_F(4), hi_F(4)
+    TYPE(amrex_box)               :: BX
+    TYPE(amrex_mfiter)            :: MFI
+    TYPE(amrex_parmparse)         :: PP
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCM(:,:,:,:)
+
+    ! --- Problem-dependent Parameters ---
+
+    CHARACTER(256) :: FileName
+
+    INTEGER        :: nX_Data
+    INTEGER(HID_T) :: FILE_ID
+
+    REAL(DP) :: CB1, CB2, CB3, V1, V2, V3, VSq, W, VdotB
+    REAL(DP), ALLOCATABLE :: PressureArr(:), DensityArr(:), V3Arr(:), &
+                             AlphaArr(:), PsiArr(:), X1Arr(:)
+
+    FileName &
+      = "/home/jbuffal/thornado_MHD_3D/Workflow/MHD/ShearingDisk/GR_LR_diffrot.h5"
+
+    ! --- Populate arrays ---
+
+    CALL H5OPEN_F( HDFERR )
+
+    CALL H5FOPEN_F( TRIM( FileName ), H5F_ACC_RDONLY_F, FILE_ID, HDFERR )
+
+    nX_Data = 10000
+
+    ALLOCATE( PressureArr(nX_Data), DensityArr(nX_Data), V3Arr(nX_Data), AlphaArr(nX_Data), &
+              PsiArr(nX_Data), X1Arr(nX_Data) )
+
+    CALL ReadDataset1DHDF( PsiArr,      '/psi',   FILE_ID )
+    CALL ReadDataset1DHDF( AlphaArr,    '/alpha', FILE_ID )
+    CALL ReadDataset1DHDF( X1Arr,       '/r',     FILE_ID )
+    CALL ReadDataset1DHDF( PressureArr, '/pres',  FILE_ID )
+    CALL ReadDataset1DHDF( DensityArr,  '/rho',   FILE_ID )
+    CALL ReadDataset1DHDF( V3Arr,       '/V3',    FILE_ID )
+
+    X1Arr       = X1Arr       * Centimeter
+    DensityArr  = DensityArr  * ( Gram / Centimeter**3 )
+    PressureArr = PressureArr * ( Erg  / Centimeter**3 )
+    V3Arr       = V3Arr       * ( One  / Second )
+
+    uGF_K = Zero
+    uCM_K = Zero
+    uPM_K = Zero
+    uAM_K = Zero
+
+    DO iDim = 1, 3
+
+      CALL CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
+               xL(iDim), xR(iDim) )
+
+    END DO
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCM => MF_uCM(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        lo_G = LBOUND( uGF )
+        hi_G = UBOUND( uGF )
+
+        lo_F = LBOUND( uCM )
+        hi_F = UBOUND( uCM )
+
+        DO iX3 = BX % lo(3), BX % hi(3)
+        DO iX2 = BX % lo(2), BX % hi(2)
+        DO iX1 = BX % lo(1), BX % hi(1)
+
+          uGF_K &
+            = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+          DO iNX = 1, nDOFX
+
+            iNX1 = NodeNumberTableX(1,iNX)
+            iNX2 = NodeNumberTableX(2,iNX)
+            iNX3 = NodeNumberTableX(3,iNX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
+            X3 = NodeCoordinate( MeshX(3), iX3, iNX3 )
+
+            uGF_K(iNX,iGF_Alpha) &
+               = Interpolate1D( X1Arr, AlphaArr, SIZE( X1Arr ), X1 )
+
+            uGF_K(iNX,iGF_Psi) &
+               = Interpolate1D( X1Arr, PsiArr, SIZE( X1Arr ), X1 )
+
+            uGF_K(iNX,iGF_h_1) &
+              = uGF_K(iNX,iGF_Psi)**2
+            uGF_K(iNX,iGF_h_2) &
+              = uGF_K(iNX,iGF_Psi)**2
+            uGF_K(iNX,iGF_h_3) &
+              = uGF_K(iNX,iGF_Psi)**2 * X1
+
+            CALL ComputeGeometryX_FromScaleFactors( uGF_K(:,:) )
+
+            uGF_K(iNX,iGF_Beta_1) = Zero
+            uGF_K(iNX,iGF_Beta_2) = Zero
+            uGF_K(iNX,iGF_Beta_3) = Zero
+
+            ! --- Fluid Fields ---
+
+            uPM_K(iNX,iPM_D) &
+              = Interpolate1D( X1Arr, DensityArr, SIZE( X1Arr ), X1 )
+
+            V1 = Zero
+            V2 = Zero
+            V3 = Interpolate1D( X1Arr, V3Arr, SIZE( X1Arr ), X1 )
+
+            VSq = uGF_K(iNX,iGF_Gm_dd_11) * V1**2 &
+                  + uGF_K(iNX,iGF_Gm_dd_22) * V2**2 &
+                  + uGF_K(iNX,iGF_Gm_dd_33) * V3**2
+
+            PRINT*, 'VSq: ', VSq
+
+            W = One / SQRT( One - VSq )
+
+            uPM_K(iNX,iPM_V1) = V1
+            uPM_K(iNX,iPM_V2) = V2
+            uPM_K(iNX,iPM_V3) = V3
+
+            uPM_K(iNX,iPM_E) &
+              = Interpolate1D( X1Arr, PressureArr, SIZE( X1Arr ), X1 ) &
+                / ( Gamma_IDEAL - One )
+
+            CB1 = Zero
+            CB2 = 2.0 * 1.0d13 * Gauss
+            CB3 = Zero
+
+            VdotB = uGF_K(iNX,iGF_Gm_dd_11) * V1 * CB1 &
+                    + uGF_K(iNX,iGF_Gm_dd_22) * V2 * CB2 &
+                    + uGF_K(iNX,iGF_Gm_dd_33) * V3 * CB3
+
+            uPM_K(iNX,iPM_B1) = W * VdotB * V1 + CB1 / W
+            uPM_K(iNX,iPM_B2) = W * VdotB * V2 + CB2 / W
+            uPM_K(iNX,iPM_B3) = W * VdotB * V3 + CB3 / W
+
+            uPM_K(iNX,iPM_Chi) = Zero
+
+          END DO
+
+          CALL ComputePressureFromPrimitive &
+                 ( uPM_K(:,iPM_D), uPM_K(:,iPM_E), uPM_K(:,iPM_Ne), &
+                   uAM_K(:,iAM_P) )
+
+          CALL ComputeConserved_MHD &
+                 ( uPM_K(:,iPM_D ), uPM_K(:,iPM_V1), uPM_K(:,iPM_V2), &
+                   uPM_K(:,iPM_V3), uPM_K(:,iPM_E ), uPM_K(:,iPM_Ne), &
+                   uPM_K(:,iPM_B1), uPM_K(:,iPM_B2), uPM_K(:,iPM_B3), &
+                   uPM_K(:,iPM_Chi), &
+                   uCM_K(:,iCM_D  ), uCM_K(:,iCM_S1), uCM_K(:,iCM_S2), &
+                   uCM_K(:,iCM_S3 ), uCM_K(:,iCM_E ), uCM_K(:,iCM_Ne), &
+                   uCM_K(:,iCM_B1 ), uCM_K(:,iCM_B2), uCM_K(:,iCM_B3), &
+                   uCM_K(:,iCM_Chi), &
+                   uGF_K(:,iGF_Gm_dd_11), &
+                   uGF_K(:,iGF_Gm_dd_22), &
+                   uGF_K(:,iGF_Gm_dd_33), &
+                   uGF_K(:,iGF_Alpha   ), &
+                   uGF_K(:,iGF_Beta_1  ), &
+                   uGF_K(:,iGF_Beta_2  ), &
+                   uGF_K(:,iGF_Beta_3  ), &
+                   uAM_K(:,iAM_P), &
+                   EvolveOnlyMagnetic )
+
+          uCM(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCM_K, [ hi_F(4) - lo_F(4) + 1 ] )
+
+        END DO
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+    END DO
+
+    DO iDim = 1, 3
+
+      CALL DestroyMesh( MeshX(iDim) )
+
+    END DO
+
+  END SUBROUTINE InitializeFields_ShearingDisk
+
+
+  SUBROUTINE ReadDataset1DHDF( Dataset, DatasetName, FILE_ID )
+
+    REAL(DP),         INTENT(out) :: Dataset(:)
+    CHARACTER(LEN=*), INTENT(in)  :: DatasetName
+    INTEGER(HID_T),   INTENT(in)  :: FILE_ID
+
+    INTEGER(HID_T) :: DATASET_ID
+    INTEGER(HID_T) :: DATASIZE(1)
+
+    DATASIZE = SHAPE( Dataset )
+
+    CALL H5DOPEN_F( FILE_ID, TRIM( DatasetName ), DATASET_ID, HDFERR )
+
+    CALL H5DREAD_F( DATASET_ID, H5T_NATIVE_DOUBLE, Dataset, DATASIZE, HDFERR )
+
+    CALL H5DCLOSE_F( DATASET_ID, HDFERR )
+
+  END SUBROUTINE ReadDataset1DHDF
+
+
+  REAL(DP) FUNCTION Interpolate1D( x, y, n, xq )
+
+    INTEGER,                INTENT(in) :: n
+    REAL(DP), DIMENSION(n), INTENT(in) :: x, y
+    REAL(DP),               INTENT(in) :: xq
+
+    INTEGER :: i
+
+    i = Locate( xq, x, n )
+
+    !PRINT*, 'i: ', i
+
+    IF( i == 0 )THEN
+
+      ! --- Extrapolate Left ---
+
+      Interpolate1D &
+        = Interpolate1D_Linear( xq, x(1), x(2), y(1), y(2) )
+
+      !PRINT*, 'x(1): ', x(1)
+      !PRINT*, 'x(2): ', x(2)
+      !PRINT*, 'y(1): ', y(1)
+      !PRINT*, 'y(2): ', y(2)
+
+    ELSE IF( i == n )THEN
+
+      ! --- Extrapolate Right ---
+
+      Interpolate1D &
+        = Interpolate1D_Linear( xq, x(n-1), x(n), y(n-1), y(n) )
+
+      !PRINT*, 'x(n-1): ', x(n-1)
+      !PRINT*, 'x(n): ',   x(n)
+      !PRINT*, 'y(n-1): ', y(n-1)
+      !PRINT*, 'y(n): ',   y(n)
+
+
+    ELSE
+
+      Interpolate1D &
+        = Interpolate1D_Linear( xq, x(i), x(i+1), y(i), y(i+1) )
+
+      !PRINT*, 'x(i): ', x(i)
+      !PRINT*, 'x(i+1): ', x(i+1)
+      !PRINT*, 'y(i): ', y(i)
+      !PRINT*, 'y(i+1): ', y(i+1)
+
+    END IF
+
+    RETURN
+
+  END FUNCTION Interpolate1D
 
 
 END MODULE MF_InitializationModule_Relativistic_IDEAL
