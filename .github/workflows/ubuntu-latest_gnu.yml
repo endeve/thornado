@@ -174,9 +174,9 @@ jobs:
   dgExperiments_MHD_Relativistic_IDEAL_native:
     name: Compile SandBox/dgExperiments_MHD_Relativistic_IDEAL and run Advection1D
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
