@@ -59,9 +59,10 @@ MODULE MF_TimeSteppingModule_SSPRK
     MultiplyWithPsi6_MF, &
     UpdateConformalFactorAndMetric_XCFC_MF, &
     UpdateLapseShiftCurvature_XCFC_MF, &
-    ApplyBoundaryConditions_Geometry_XCFC_MF, &
     ComputeConformalFactorSourcesAndMg_XCFC_MF, &
     ComputePressureTensorTrace_XCFC_MF
+  USE MF_GeometryModule, ONLY: &
+    ApplyBoundaryConditions_Geometry_MF
   USE MF_GravitySolutionModule, ONLY: &
     EvolveGravity
   USE MF_GravitySolutionModule_XCFC, ONLY: &
@@ -109,8 +110,8 @@ CONTAINS
       Verbose = Verbose_Option
 
     CALL amrex_parmparse_build( PP, 'TS' )
-      CALL PP % get  ( 'nStages'      , nStages )
-      CALL PP % get  ( 'CFL'          , CFL )
+      CALL PP % get  ( 'nStages', nStages )
+      CALL PP % get  ( 'CFL'    , CFL )
     CALL amrex_parmparse_destroy( PP )
 
     CFL = CFL / ( DBLE( nDimsX ) * ( Two * DBLE( nNodes ) - One ) )
@@ -493,7 +494,7 @@ CONTAINS
 
     CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
 
-    CALL ApplyBoundaryConditions_Geometry_XCFC_MF( MF_uGF )
+    CALL ApplyBoundaryConditions_Geometry_MF( MF_uGF )
 
   END SUBROUTINE ComputeLapseShiftCurvature
 

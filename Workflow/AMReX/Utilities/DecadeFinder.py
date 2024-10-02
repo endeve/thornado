@@ -5,7 +5,7 @@ import os.path as os
 import GlobalVariables.Units    as gvU
 import GlobalVariables.Settings as gvS
 
-from Utilities.Files        import GetFileNumberArray
+from Utilities.Files        import GetFileNumberArray, CreatePlotPath
 from Utilities.GetFrameData import GetFrameData, GetCentralDensity
 from Utilities.Mesh         import CreateLocations
 
@@ -65,9 +65,10 @@ def FindDecades( PlotDirectory,      \
                  PathDataDirectory,  \
                  DataType        ):
  
-
+    
     DecadeFile = PathDataDirectory + '/' + '{:}.dat'.format( 'Decades' )
     Check = os.isfile(DecadeFile)
+
     
     if Check:
     
@@ -133,19 +134,13 @@ def FindDecadeMethod( PlotDirectory,      \
 
         print( '\r {:}/{:}'.format( i+1, NumPltFiles ), end = '\r' )
 
-        PlotFileNumber    = FileNumberArray[i]
-        if DataType.lower() == 'amrex':
-            PathPlotDirectory = PlotDirectory       \
-                              + PlotBaseName    \
-                              + '{:}'.format( str(PlotFileNumber).zfill(8) )
-        else:
-            PathPlotDirectory = PlotDirectory       \
-                              + PlotBaseName[:-4]   \
-                              + '_{:}'.format( str(PlotFileNumber).zfill(6) )
+        
+        PathPlotDirectory = CreatePlotPath( PlotDirectory,      \
+                                            PlotBaseName,       \
+                                            FileNumberArray[i], \
+                                            DataType            )
 
 
-                            
-                            
         Density, DensityUnits, Time = GetCentralDensity( PathPlotDirectory,  \
                                                          DataType            )
             
@@ -155,7 +150,7 @@ def FindDecadeMethod( PlotDirectory,      \
         if CurDecade > MaxDecade:
             MaxDecade = CurDecade
             Decades.append(MaxDecade)
-            DecadeFrames.append(PlotFileNumber)
+            DecadeFrames.append(FileNumberArray[i])
             DecadeTimes.append(Time.tolist())
 
         if CurDecade >= DecadeLimit: break
@@ -213,15 +208,10 @@ def FindDecadeMethod_Bisect( PlotDirectory,      \
 
         print( '\r {:}/{:}'.format( i, NumPltFiles ), end = '\r' )
 
-        PlotFileNumber    = FileNumberArray[i]
-        if DataType.lower() == 'amrex':
-            PathPlotDirectory = PlotDirectory       \
-                              + PlotBaseName    \
-                              + '{:}'.format( str(PlotFileNumber).zfill(8) )
-        else:
-            PathPlotDirectory = PlotDirectory       \
-                              + PlotBaseName[:-4]   \
-                              + '_{:}'.format( str(PlotFileNumber).zfill(6) )
+        PathPlotDirectory = CreatePlotPath( PlotDirectory,      \
+                                            PlotBaseName,       \
+                                            FileNumberArray[i], \
+                                            DataType            )
 
 #        X1, X2, X3, dX1, dX2, dX3, xL, xH               \
 #            = CreateLocations(  PathPlotDirectory,      \

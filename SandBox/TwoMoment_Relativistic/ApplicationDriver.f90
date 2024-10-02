@@ -1,7 +1,8 @@
 PROGRAM ApplicationDriver
 
   USE KindModule, ONLY: &
-    DP, One, Two
+    DP, Zero, One, Two, &
+    Pi, TwoPi, SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_E0, iX_B1, iX_E1, &
     iE_B0, iE_E0, iE_B1, iE_E1, &
@@ -13,11 +14,13 @@ PROGRAM ApplicationDriver
   USE FluidFieldsModule, ONLY: &
     uCF
   USE RadiationFieldsModule, ONLY: &
-    uCR, uPR
+    uCR, uPR, uAR, uGR
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeFromConserved_TwoMoment
+  USE TwoMoment_PositivityLimiterModule, ONLY: &
+    ApplyPositivityLimiter_TwoMoment
   USE TwoMoment_TimeSteppingModule, ONLY: &
     Initialize_IMEX_RK, &
     Finalize_IMEX_RK, &
@@ -30,6 +33,7 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: CoordinateSystem
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: TimeSteppingScheme
+  LOGICAL       :: UsePositivityLimiter
   INTEGER       :: nNodes
   INTEGER       :: nE, bcE, nX(3), bcX(3)
   INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
@@ -45,16 +49,16 @@ PROGRAM ApplicationDriver
 
     CASE( 'TransparentShock' )
 
-      LengthScale = 1.0d-1 ! --- Shock Width
+      LengthScale = 1.0d-2 ! --- Shock Width
 
       nX  = [ 80, 1, 1 ]
       xL  = [ 0.0d0, 0.0d0, 0.0d0 ]
       xR  = [ 2.0d0, 1.0d0, 1.0d0 ]
       bcX = [ 22, 1, 1 ]
 
-      V_0 = [ + 1.0d-1, 0.0d0, 0.0d0 ]
+      V_0 = [ - 3.0d-1, 0.0d0, 0.0d0 ]
 
-      nE  = 32
+      nE  = 64
       eL  = 0.0d0
       eR  = 5.0d1
       bcE = 10
@@ -67,6 +71,7 @@ PROGRAM ApplicationDriver
       iCycleD   = 1
       iCycleW   = 10
       maxCycles = 1000000
+
 
     CASE DEFAULT
 
@@ -100,7 +105,7 @@ PROGRAM ApplicationDriver
   ! --- Evolve ---
 
   t  = 0.0d0
-  dt = 0.3_DP * MINVAL( (xR-xL)/DBLE(nX) ) / ( Two*DBLE(nNodes-1)+One )
+  dt = 0.01_DP * MINVAL( (xR-xL)/DBLE(nX) ) / ( Two*DBLE(nNodes-1)+One )
 
   WRITE(*,*)
   WRITE(*,'(A6,A,ES8.2E2,A8,ES8.2E2)') &
@@ -132,7 +137,7 @@ PROGRAM ApplicationDriver
     IF( MOD( iCycle, iCycleW ) == 0 )THEN
 
       CALL ComputeFromConserved_TwoMoment &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
       CALL WriteFieldsHDF &
              ( Time = t, &
@@ -145,7 +150,7 @@ PROGRAM ApplicationDriver
   END DO
 
   CALL ComputeFromConserved_TwoMoment &
-         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR )
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
 
   CALL WriteFieldsHDF &
          ( Time = t, &
@@ -190,6 +195,8 @@ CONTAINS
       InitializeEquationOfState
     USE TwoMoment_ClosureModule, ONLY: &
       InitializeClosure_TwoMoment
+    USE TwoMoment_PositivityLimiterModule, ONLY: &
+      InitializePositivityLimiter_TwoMoment
 
     CALL InitializeProgram &
            ( ProgramName_Option &
@@ -258,6 +265,18 @@ CONTAINS
 
     CALL InitializeClosure_TwoMoment
 
+    ! --- Initialize Positivity Limiter ---
+
+    CALL InitializePositivityLimiter_TwoMoment &
+           ( Min_1_Option &
+               = SqrtTiny, &
+             Min_2_Option &
+               = SqrtTiny, &
+             UsePositivityLimiter_Option &
+               = UsePositivityLimiter, &
+             Verbose_Option &
+               = .TRUE. )
+
   END SUBROUTINE InitializeDriver
 
 
@@ -282,7 +301,12 @@ CONTAINS
     USE EquationOfStateModule, ONLY: &
       FinalizeEquationOfState
 
+    USE TwoMoment_PositivityLimiterModule, ONLY: &
+      FinalizePositivityLimiter_TwoMoment
+
     CALL FinalizeEquationOfState
+
+    CALL FinalizePositivityLimiter_TwoMoment
 
     CALL FinalizeReferenceElementX
 

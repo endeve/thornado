@@ -14,13 +14,12 @@ ID_PF_D.dat
 For use in initializing accretion shock problem with multiple levels
 """
 
-nProcs = 4
-StepNo = '00000002'
+nProcs = 16
 nN     = 3
 
 field = [ 'PF_D', 'PF_V1', 'AF_P' ]
 
-ID = 'GR1D_M2.0_Rpns040_Rsh1.50e2'
+ID = 'GR1D_M2.8_Rpns020_Rs6.00e1'
 
 ### END OF USER INPUT
 
@@ -34,8 +33,8 @@ for f in range( len( field ) ):
 
     for i in range( nProcs ):
 
-        data = np.loadtxt( '{:}_{:}_proc{:}_{:}.dat' \
-                           .format( ID, field[f], str( i ).zfill( 3 ), StepNo ) )
+        data = np.loadtxt( '{:}_{:}_proc{:}.dat' \
+                           .format( ID, field[f], str( i ).zfill( 3 ) ) )
 
         ind = np.argsort( data[:,7] )
 

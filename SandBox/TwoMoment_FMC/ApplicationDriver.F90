@@ -56,7 +56,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: J_0, Chi, Sigma
   REAL(DP) :: l_uuu_munurho(0:3,0:3,0:3), l_ddd_ijk(1:3,1:3,1:3), l_uud_munurho(0:3,0:3,0:3)
 
-  ProgramName = 'TransparentVortex'
+  ProgramName = 'StreamingDopplerShift'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -77,7 +77,6 @@ PROGRAM ApplicationDriver
       nNodes = 3
 
       TimeSteppingScheme = 'SSPRK3'
-      ! TimeSteppingScheme = 'IMEX_PDARS'
 
       t_end   = 1.0d-0
       iCycleD = 1
@@ -211,7 +210,7 @@ PROGRAM ApplicationDriver
         xR  = [ 2.0d0, 1.0_DP, 1.0_DP ]
         bcX = [ 12, 1, 1 ]
 
-        V_0 = [ -0.5_DP, 0.0_DP, 0.0_DP ]
+        V_0 = [ -0.1_DP, 0.0_DP, 0.0_DP ]
 
       ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
 
@@ -247,7 +246,8 @@ PROGRAM ApplicationDriver
       ! eR  = 5.0d1
       eR  = 3.0d2
       bcE = 11
-      zoomE = 1.1_DP
+      ! zoomE = 1.1_DP
+      zoomE = 1.119237083677839_DP
 
       nNodes = 3
 
@@ -255,7 +255,7 @@ PROGRAM ApplicationDriver
 
       t_end   = 3.0d0
       iCycleD = 1
-      iCycleW = 100000
+      iCycleW = 680
       maxCycles = 2000000
 
       J_0   = 0.0_DP
@@ -266,7 +266,7 @@ PROGRAM ApplicationDriver
       UsePositivityLimiter = .TRUE.
       UseEnergyLimiter     = .TRUE.
       Restart              = .FALSE.
-      ReadFileNumber       = 6
+      ReadFileNumber       = 1
       UseNewtons           = .FALSE.
 
       ! UseRealizabilityTimeStep = .TRUE.
@@ -297,12 +297,14 @@ PROGRAM ApplicationDriver
 
       END IF
 
-      V_0 = [ 0.3_DP, 0.0_DP, 0.0_DP ]
+      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
 
       nE  = 32
       eL  = 0.0d0
-      eR  = 5.0d1
+      ! eR  = 5.0d1
+      eR  = 3.0d2
       bcE = 11
+      zoomE = 1.119237083677839_DP
 
       nNodes = 3
 
@@ -321,6 +323,8 @@ PROGRAM ApplicationDriver
       UsePositivityLimiter = .TRUE.
       UseEnergyLimiter     = .TRUE.
       UseNewtons           = .FALSE.
+      Restart              = .FALSE.
+      ReadFileNumber       = 2
 
       ! UseRealizabilityTimeStep = .TRUE.
 
@@ -340,7 +344,7 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'IMEX_PDARS'
 
-      t_end     = 10.0_DP
+      t_end     = 30.0_DP
       iCycleD   = 10
       iCycleW   = 1000
       maxCycles = 1000000
@@ -358,7 +362,7 @@ PROGRAM ApplicationDriver
       
     CASE( 'DiffusionMovingMed' )
 
-      nX  = [ 100, 1, 1 ]
+      nX  = [ 75, 1, 1 ]
       xL  = [ - 3.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 3.0_DP, 1.0_DP, 1.0_DP ]
       bcX = [ 1, 1, 1 ]
@@ -372,9 +376,9 @@ PROGRAM ApplicationDriver
 
       TimeSteppingScheme = 'IMEX_PDARS'
 
-      t_end = 1.0_DP
+      t_end = 2.0_DP
       iCycleD = 10
-      iCycleW = 200
+      iCycleW = 1200
       maxCycles = 1000000
 
       V_0 = [ 0.5_DP, 0.0_DP, 0.0_DP ]
