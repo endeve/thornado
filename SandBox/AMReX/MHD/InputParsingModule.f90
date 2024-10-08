@@ -233,7 +233,7 @@ CONTAINS
     nLevels = MaxLevel + 1
 
     ! --- Slope limiter parameters SL.* ---
-    UseSlopeLimiter           = .TRUE.
+    UseSlopeLimiter           = .FALSE.
     SlopeLimiterMethod        = 'TVD'
     BetaTVD                   = 1.75_DP
     BetaTVB                   = Zero

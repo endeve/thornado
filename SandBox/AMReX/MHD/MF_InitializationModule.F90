@@ -26,7 +26,7 @@ CONTAINS
   SUBROUTINE MF_InitializeFields( ProgramName, MF_uGF, MF_uCM, GEOM )
 
     CHARACTER(LEN=*),     INTENT(in)    :: ProgramName
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCM(0:nLevels-1)
     TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels-1)
 
