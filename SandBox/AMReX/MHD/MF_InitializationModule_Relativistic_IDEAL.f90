@@ -136,7 +136,7 @@ CONTAINS
     ( ProgramName, MF_uGF, MF_uCM, GEOM )
 
     CHARACTER(LEN=*),     INTENT(in)    :: ProgramName
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCM(0:nLevels-1)
     TYPE(amrex_geometry), INTENT(in)    :: GEOM  (0:nLevels-1)
 
@@ -1198,7 +1198,7 @@ CONTAINS
 
   SUBROUTINE InitializeFields_ShearingDisk( MF_uGF, MF_uCM )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCM(0:nLevels-1)
 
     ! --- thornado ---
@@ -1269,7 +1269,7 @@ CONTAINS
     DO iDim = 1, 3
 
       CALL CreateMesh &
-             ( MeshX(iDim), nX(iDim), nNodesX(iDim), 0, &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), swX(iDim), &
                xL(iDim), xR(iDim) )
 
     END DO
@@ -1292,8 +1292,8 @@ CONTAINS
         hi_F = UBOUND( uCM )
 
         DO iX3 = BX % lo(3), BX % hi(3)
-        DO iX2 = BX % lo(2), BX % hi(2)
-        DO iX1 = BX % lo(1), BX % hi(1)
+        DO iX2 = BX % lo(2) - swX(2), BX % hi(2) + swX(2)
+        DO iX1 = BX % lo(1) - swX(1), BX % hi(1) + swX(1)
 
           uGF_K &
             = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
@@ -1339,8 +1339,6 @@ CONTAINS
             VSq = uGF_K(iNX,iGF_Gm_dd_11) * V1**2 &
                   + uGF_K(iNX,iGF_Gm_dd_22) * V2**2 &
                   + uGF_K(iNX,iGF_Gm_dd_33) * V3**2
-
-            PRINT*, 'VSq: ', VSq
 
             W = One / SQRT( One - VSq )
 
@@ -1390,6 +1388,9 @@ CONTAINS
                    uGF_K(:,iGF_Beta_3  ), &
                    uAM_K(:,iAM_P), &
                    EvolveOnlyMagnetic )
+
+          uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)) &
+            = RESHAPE( uGF_K, [ hi_G(4) - lo_G(4) + 1 ] )
 
           uCM(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
             = RESHAPE( uCM_K, [ hi_F(4) - lo_F(4) + 1 ] )
