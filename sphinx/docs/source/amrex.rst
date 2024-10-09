@@ -1,14 +1,18 @@
-==================
-Running with AMReX
-==================
-
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Contents:
 
-------------------------------------------
-Evolve GRHD sine wave advection with AMReX
-------------------------------------------
+========
+Examples
+========
+
+------------------
+Running with AMReX
+------------------
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Evolve GRHD sine wave advection
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 0. Download dependencies: HDF5, LAPACK, BLAS, open-mpi (or mpich)
 
@@ -50,8 +54,8 @@ where ``N`` is the desired number of threads (e.g., 20)
     $ mpiexec -n N ./main1d.gnu.MPI.ex Advection1D_Gaussian_test.inputs > out
 where ``N`` is the desired number of MPI processes.
 
--------------------
-Example inputs file
--------------------
+-------------------------
+Example AMReX inputs file
+-------------------------
 
 .. literalinclude:: grhd.Example.inputs
