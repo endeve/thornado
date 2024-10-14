@@ -6,6 +6,33 @@
 Examples
 ========
 
+Here we include three examples of how to compile and run three basic thornado
+applications:
+
+1. A sine wave advection problem with GRHD using only thornado
+
+2. A sine wave advection problem with GRHD using thornado and AMReX
+
+3. A <problem> with :math:`\mathcal{O}\left(v\right)` neutrino transport
+   using only thornado
+
+To use thornado, a user will need some dependencies:
+
+HDF5 (from your package manager, or download the
+`source code <https://www.hdfgroup.org/download-hdf5/source-code/>`_,
+or get it via `github <https://github.com/HDFGroup/hdf5>`_);
+
+LAPACK (from your package manager, or download the
+`source code <https://www.netlib.org/lapack/>`_,
+or get it via `github <https://github.com/Reference-LAPACK/lapack>`_);
+
+BLAS (from your package manager, or download the
+`source code <https://www.netlib.org/blas/>`_)
+(BLAS is included in the LAPACK github repository).
+
+Additionally, if the user wants to use AMReX, they will need to clone their
+`github <https://github.com/AMReX-Codes/amrex>`_ repository.
+
 ------------------
 Running with AMReX
 ------------------
