@@ -74,6 +74,8 @@ PROGRAM main
     TimersStart_AMReX, &
     TimersStop_AMReX, &
     Timer_AMReX_InputOutput
+  USE MF_AccretionShockUtilitiesModule, ONLY: &
+    ComputePowerInLegendreModes
 
   IMPLICIT NONE
 
@@ -90,6 +92,8 @@ PROGRAM main
   chk = .FALSE.
 
   CALL InitializeProgram
+
+  CALL ComputePowerInLegendreModes( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
   IF( amrex_parallel_ioprocessor() ) &
       Timer_Evolution = MPI_WTIME()
@@ -224,6 +228,8 @@ CONTAINS
                MF_uPF_Option = MF_uPF, &
                MF_uAF_Option = MF_uAF, &
                MF_uDF_Option = MF_uDF )
+
+      CALL ComputePowerInLegendreModes( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL ComputeTally_Euler_MF &
              ( t_new, MF_uGF, MF_uCF, Verbose_Option = .TRUE. )

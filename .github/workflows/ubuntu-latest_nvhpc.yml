@@ -1,6 +1,6 @@
 # Adapted with permission from Axel Huebl's work with CI from amrex
 
-name: Compile thornado on Ubuntu 20.04 with nvhpc compilers
+name: Compile thornado on Ubuntu (latest) with nvhpc compilers
 
 on:
   schedule:
@@ -8,10 +8,10 @@ on:
 
 jobs:
   compile-with-nvhpc:
-    name: Compile thornado on Ubuntu 20.04 with nvhpc compilers
-    runs-on: ubuntu-20.04
+    name: Compile thornado on Ubuntu (latest) with nvhpc compilers
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_nvhpc
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_nvhpc
       NVHPC_MAJOR: 23
       NVHPC_MINOR: 3
       CUDA_MAJOR: 12
@@ -21,17 +21,17 @@ jobs:
       OMPI_VERSION: 3.1.5
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Checkout weaklib
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
           ref: weakphys
 
       - name: Checkout poseidon
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: jrober50/Poseidon
           path: poseidon

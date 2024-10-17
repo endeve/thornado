@@ -7,9 +7,12 @@ from functools import partial
 import matplotlib.pyplot as plt
 plt.style.use( 'publication.sty' )
 
-import GlobalVariables.Settings as gvS
-import GlobalVariables.Units    as gvU
-import Utilities.BounceFinder   as BF
+import GlobalVariables.Settings     as gvS
+import GlobalVariables.Units        as gvU
+
+import Utilities.BounceFinder       as BF
+import Utilities.DensityCliffFinder as DCF
+
 from Utilities.FetchData import fetchData_AMReX, fetchData_Native, ReadHeader
 from Utilities.RefinementBoundaryFinder import FindRefinementBoundaries
 
@@ -101,6 +104,7 @@ def CreateMovie(FileNumberArray,    \
 
     global Lines
     global RefLines
+    global DCLine
     global time_text
     global IC
     global mesh
@@ -129,8 +133,7 @@ def CreateMovie(FileNumberArray,    \
                                                           DataDirectory[0],  \
                                                           Field              )
 
-
-    nSS = len(FileNumberArray[0])
+    nSS = min( [ len( f ) for f in FileNumberArray ] )
 
     if not gvS.UseCustomLimits:
         gvS.vmin = +np.inf
@@ -203,6 +206,7 @@ def CreateFrame( ax, xL, xH, dX10, Field, DataUnits ):
     global elem_text
     global Lines
     global RefLines
+    global DCLine
     global IC
     global mesh
 
@@ -215,10 +219,17 @@ def CreateFrame( ax, xL, xH, dX10, Field, DataUnits ):
     Lines = ['None']*nLines
     time_text = ['None']*nLines
     elem_text = ['None']*nLines
+
+    try:
+        label = gvS.label
+    except:
+        label = []
+        for i in range(nLines):
+            label.append( r'$u_{:}\left(t\right)$'.format( i + 1 ) )
+
     for i in range(nLines):
-        Lines[i], = ax.plot( [],[],                                         \
-                             color  = 'blue',                               \
-                             label  = r'$u_{:}\left(t\right)$'.format(i),   \
+        Lines[i], = ax.plot( [],[],'.',                                         \
+                             label  = label[i],   \
                              zorder = 10 )
 
         time_text[i] = ax.text( 0.1, 0.15, '', transform = ax.transAxes, fontsize = 13 )
@@ -251,6 +262,14 @@ def CreateFrame( ax, xL, xH, dX10, Field, DataUnits ):
                                     alpha  = 0.7        )
 
 
+    if gvS.MarkDensityCliff:
+        DCLine, = ax.plot(  [],[],              \
+                            color  = 'black',     \
+                            linestyle = '-.',   \
+                            scaley = False,     \
+                            zorder = 0,         \
+                            alpha  = 0.7        )
+
     ApplyMovieSettings( ax, xL, xH, dX10, Field, DataUnits )
 
     return
@@ -272,6 +291,7 @@ def InitializeFrame(FileNumberArray, DataDirectory, Field, Action):
     global elem_text
     global Lines
     global RefLines
+    global DCLine
     global IC
     global mesh
 
@@ -340,7 +360,11 @@ def InitializeFrame(FileNumberArray, DataDirectory, Field, Action):
             retlist +=  [RefLines[i]]
 
 
-
+    if gvS.MarkDensityCliff:
+        for i in range(nDirs):
+            DC_Radius, DC_Index = DCF.FetchDensityCliff( 0, FileNumberArray[i], DataDirectory[i] )
+            DCLine.set_data( (DC_Radius, DC_Radius), (top, bottom))
+            retlist += [DCLine]
 
     return tuple(retlist)
 
@@ -358,11 +382,12 @@ def UpdateFrame( t, FileNumberArray, DataDirectory, Field, Action):
     global elem_text
     global Lines
     global RefLines
+    global DCLine
     global IC
     global mesh
 
 
-    print('    {:}/{:}'.format( t+1, nSS ) )
+    print('Creating Frame: {:}/{:} \r'.format( t+1, nSS ), end='' )
 
 
 
@@ -402,7 +427,7 @@ def UpdateFrame( t, FileNumberArray, DataDirectory, Field, Action):
 
         # Create new element number text.
         elem_text[i].set_text( r'$Elements: {:}$' \
-                            .format( len(X1_C[0] ) ) )
+                            .format( len(X1_C[i] ) ) )
         retlist += [ elem_text[i] ]
 
 
@@ -426,6 +451,11 @@ def UpdateFrame( t, FileNumberArray, DataDirectory, Field, Action):
         retlist += [RefLines[i]]
 
 
+    if gvS.MarkDensityCliff:
+        for i in range(nDirs):
+            DC_Radius, DC_Index = DCF.FetchDensityCliff( t, FileNumberArray[i], DataDirectory[i] )
+            DCLine.set_data( (DC_Radius, DC_Radius), (top, bottom))
+            retlist += [DCLine]
 
     return tuple(retlist)
 

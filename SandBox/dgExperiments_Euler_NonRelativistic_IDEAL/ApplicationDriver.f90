@@ -74,7 +74,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UseTroubledCellIndicator
   LOGICAL       :: UseConservativeCorrection
   INTEGER       :: iCycle, iCycleD
-  INTEGER       :: nX(3), bcX(3), nNodes
+  INTEGER       :: nX(3), bcX(3), swX(3), nNodes
   INTEGER       :: RestartFileNumber
   REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, wTime
   REAL(DP)      :: xL(3), xR(3), Gamma
@@ -108,6 +108,7 @@ PROGRAM ApplicationDriver
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
+      swX = [ 1, 1, 0 ]
       bcX = [ 1, 1, 0 ]
 
       nNodes = 2
@@ -129,6 +130,7 @@ PROGRAM ApplicationDriver
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
+      swX = [ 1, 0, 0 ]
       bcX = [ 2, 0, 0 ]
 
       nNodes = 3
@@ -152,10 +154,11 @@ PROGRAM ApplicationDriver
 
       Gamma = 1.4_DP
 
-      nX = [ 128, 16, 1 ]
-      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      nX = [ 128, 64, 1 ]
+      xL = [ 1.0d-8, 0.0_DP, 0.0_DP ]
       xR = [ 2.0_DP, Pi,     TwoPi  ]
 
+      swX = [ 1, 1, 0 ]
       bcX = [ 3, 3, 0 ]
 
       nNodes = 2
@@ -185,6 +188,7 @@ PROGRAM ApplicationDriver
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.2_DP, Pi,     TwoPi  ]
 
+      swX = [ 1, 0, 0 ]
       bcX = [ 2, 0, 0 ]
 
       nNodes = 3
@@ -210,6 +214,7 @@ PROGRAM ApplicationDriver
       xL = [ - 5.0_DP, - 5.0_DP, 0.0_DP ]
       xR = [ + 5.0_DP, + 5.0_DP, 1.0_DP ]
 
+      swX = [ 1, 1, 0 ]
       bcX = [ 1, 1, 0 ]
 
       nNodes = 3
@@ -235,6 +240,7 @@ PROGRAM ApplicationDriver
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
+      swX = [ 1, 1, 0 ]
       bcX = [ 1, 1, 0 ]
 
       nNodes = 3
@@ -260,6 +266,7 @@ PROGRAM ApplicationDriver
       xL = [ - 0.25_DP, + 0.25_DP, 0.0_DP ]
       xR = [ - 0.75_DP, + 0.75_DP, 1.0_DP ]
 
+      swX = [ 1, 1, 0 ]
       bcX = [ 1, 3, 0 ]
 
       nNodes = 3
@@ -287,6 +294,7 @@ PROGRAM ApplicationDriver
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 0.3_DP, 0.3_DP, 1.0_DP ]
 
+      swX = [ 1, 1, 0 ]
       bcX = [ 3, 3, 0 ]
 
       nNodes = 3
@@ -312,6 +320,7 @@ PROGRAM ApplicationDriver
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.5_DP, 1.5_DP, 1.0_DP ]
 
+      swX = [ 1, 1, 0 ]
       bcX = [ 31, 31, 0 ]
 
       nNodes = 3
@@ -337,7 +346,7 @@ PROGRAM ApplicationDriver
            nX_Option &
              = nX, &
            swX_Option &
-             = [ 1, 0, 0 ], &
+             = swX, &
            bcX_Option &
              = bcX, &
            xL_Option &

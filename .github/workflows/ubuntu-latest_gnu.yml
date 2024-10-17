@@ -1,6 +1,6 @@
 # Adapted with permission from Axel Huebl's work with CI from amrex
 
-name: Compile thornado on Ubuntu 20.04 with gnu compilers
+name: Compile thornado on Ubuntu (latest) with gnu compilers
 
 on:
   push:
@@ -19,10 +19,10 @@ jobs:
       WEAKLIB_DIR:  ${{ steps.getenv.outputs.WEAKLIB_DIR  }}
       AMREX_DIR:    ${{ steps.getenv.outputs.AMREX_DIR    }}
       POSEIDON_DIR: ${{ steps.getenv.outputs.POSEIDON_DIR }}
-    name: Compile thornado on Ubuntu 20.04 with gnu compilers
-    runs-on: ubuntu-20.04
+    name: Compile thornado on Ubuntu (latest) with gnu compilers
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
     steps:
       - name: Checkout thornado
         uses: actions/checkout@v3
@@ -81,9 +81,9 @@ jobs:
   dgExperiments_Euler_NonRelativistic_IDEAL_native:
     name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -91,7 +91,7 @@ jobs:
       THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Update Ubuntu
         run: |
           sudo apt-get -y install \
@@ -107,9 +107,9 @@ jobs:
   dgExperiments_Euler_NonRelativistic_TABLE_native:
     name: Compile SandBox/dgExperiments_Euler_NonRelativistic_TABLE
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -119,14 +119,14 @@ jobs:
       POSEIDON_DIR: ${{ needs.build.outputs.POSEIDON_DIR }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout weaklib
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
       - name: Checkout poseidon
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: jrober50/Poseidon
           path: poseidon
@@ -146,9 +146,9 @@ jobs:
   dgExperiments_Euler_Relativistic_IDEAL_native:
     name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -156,7 +156,7 @@ jobs:
       THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Update Ubuntu
         run: |
           sudo apt-get -y install \
@@ -172,9 +172,9 @@ jobs:
   dgExperiments_Euler_Relativistic_TABLE_native:
     name: Compile SandBox/dgExperiments_Euler_Relativistic_TABLE
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -183,9 +183,9 @@ jobs:
       WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout weaklib
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
@@ -204,9 +204,9 @@ jobs:
   YahilCollapse_XCFC_native:
     name: Compile SandBox/YahilCollapse_XCFC
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -215,9 +215,9 @@ jobs:
       POSEIDON_DIR: ${{ needs.build.outputs.POSEIDON_DIR }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout poseidon
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: jrober50/Poseidon
           path: poseidon
@@ -237,9 +237,9 @@ jobs:
   AdiabaticCollapse_XCFC_native:
     name: Compile SandBox/AdiabaticCollapse_XCFC
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -249,14 +249,14 @@ jobs:
       POSEIDON_DIR: ${{ needs.build.outputs.POSEIDON_DIR }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout weaklib
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
       - name: Checkout poseidon
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: jrober50/Poseidon
           path: poseidon
@@ -276,9 +276,9 @@ jobs:
   dgExperiments_Euler_Relativistic_IDEAL_amrex_1D:
     name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -287,20 +287,20 @@ jobs:
       AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Update Ubuntu
         run: |
           sudo apt-get -y install \
             libhdf5-dev \
             libopenmpi-dev
           sudo apt-get -y update
-      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL (1D)
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
           make DIM=1 -j -l6
@@ -309,9 +309,9 @@ jobs:
   dgExperiments_Euler_Relativistic_IDEAL_amrex_2D:
     name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -320,20 +320,20 @@ jobs:
       AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Update Ubuntu
         run: |
           sudo apt-get -y install \
             libhdf5-dev \
             libopenmpi-dev
           sudo apt-get -y update
-      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL (2D)
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
           make DIM=2 -j -l6
@@ -342,9 +342,9 @@ jobs:
   dgExperiments_Euler_Relativistic_IDEAL_amrex_3D:
     name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -353,20 +353,20 @@ jobs:
       AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Update Ubuntu
         run: |
           sudo apt-get -y install \
             libhdf5-dev \
             libopenmpi-dev
           sudo apt-get -y update
-      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
+      - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL (3D)
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
           make DIM=3 -j -l6
@@ -375,9 +375,9 @@ jobs:
   dgExperiments_Euler_Relativistic_TABLE_amrex:
     name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -387,15 +387,15 @@ jobs:
       WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Checkout weaklib
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
@@ -414,9 +414,9 @@ jobs:
   StandingAccretionShock_NonRelativistic_amrex:
     name: Compile SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -425,13 +425,13 @@ jobs:
       AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Update Ubuntu
         run: |
           sudo apt-get -y install \
@@ -447,9 +447,9 @@ jobs:
   StandingAccretionShock_Relativistic_amrex:
     name: Compile SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -458,13 +458,13 @@ jobs:
       AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Update Ubuntu
         run: |
           sudo apt-get -y install \
@@ -480,9 +480,9 @@ jobs:
   YahilCollapse_XCFC_amrex:
     name: Compile SandBox/AMReX/Applications/YahilCollapse_XCFC
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -492,15 +492,15 @@ jobs:
       POSEIDON_DIR: ${{ needs.build.outputs.POSEIDON_DIR }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Checkout poseidon
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: jrober50/Poseidon
           path: poseidon
@@ -520,9 +520,9 @@ jobs:
   AdiabaticCollapse_XCFC_amrex:
     name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -533,21 +533,21 @@ jobs:
       WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Checkout poseidon
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: jrober50/Poseidon
           path: poseidon
           ref: Development
       - name: Checkout weaklib
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
@@ -566,9 +566,9 @@ jobs:
   TwoMoment_Test_amrex:
     name: Compile SandBox/AMReX/TwoMoment_Test
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -578,15 +578,15 @@ jobs:
       WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Checkout weaklib
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
@@ -605,9 +605,9 @@ jobs:
   TwoMoment_TABLE_amrex:
     name: Compile SandBox/AMReX/TwoMoment_TABLE
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -617,15 +617,15 @@ jobs:
       WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Checkout weaklib
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
@@ -644,9 +644,9 @@ jobs:
   CoreCollapseSupernova_XCFC_amrex:
     name: Compile SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
-      THORNADO_MACHINE: gh-runner_ubuntu-20.04_gnu
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
       HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
       HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
       LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
@@ -657,21 +657,21 @@ jobs:
       WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout amrex
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          repository: dunhamsj/amrex
+          repository: AMReX-Codes/amrex
           path: amrex
-          ref: MeshRefinement_DG
+          ref: development
       - name: Checkout poseidon
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: jrober50/Poseidon
           path: poseidon
           ref: Development
       - name: Checkout weaklib
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: starkiller-astro/weaklib
           path: weaklib

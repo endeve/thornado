@@ -38,7 +38,7 @@ MODULE InputOutputModuleAMReX
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_myproc
-  USE amrex_fluxregister_module, ONLY: &
+  USE thornado_amrex_fluxregister_module, ONLY: &
     amrex_fluxregister_build
   USE amrex_amr_module, ONLY: &
     amrex_geom

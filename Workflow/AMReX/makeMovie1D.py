@@ -19,7 +19,7 @@ if __name__ == "__main__":
     ProblemName = 'AdiabaticCollapse_XCFC'
 
     # Specify title of figure
-    gvS.FigTitle = '{:} with AMR'.format(ProblemName)
+    gvS.FigTitle = '{:}'.format( ProblemName )
 
     THORNADO_DIR = '/Users/nickroberts/thornado/'
     #THORNADO_DIR = '/home/kkadoogan/Work/Codes/thornado/'
@@ -27,8 +27,8 @@ if __name__ == "__main__":
     # Specify directory containing amrex Plotfiles
     PlotDirectory \
       = THORNADO_DIR + \
-          'SandBox/AdiabaticCollapse_XCFC/Output'
-    gvS.DataType = 'Native'
+          'SandBox/AMReX/Applications/AdiabaticCollapse_XCFC/'
+    gvS.DataType = 'AMReX'
 
     # Specify plot file base name
     PlotBaseName = ProblemName + '.plt'
