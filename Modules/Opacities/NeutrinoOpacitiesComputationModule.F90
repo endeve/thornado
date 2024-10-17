@@ -2531,19 +2531,24 @@ CONTAINS
     REAL(DP) :: SUM1, SUM2
     INTEGER  :: iX, iE1, iE2, iS, iS_A
 
+    !For medium modification from Fischer A&A 593, A103 (2016)
+    !nuclear matter density, 0.16 fm^-3
+    REAL(DP), PARAMETER :: D_0 = 2.656862401594383d14
+    REAL(DP)            :: medium_fac
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Ann, Phi_0_Pro ) &
+    !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Ann, Phi_0_Pro, medium_fac ) &
     !$OMP MAP( to: S_Sigma, W2, J, J0, D ) &
     !$OMP MAP( from: Eta, Chi )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Ann, Phi_0_Pro ) &
+    !$ACC PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Ann, Phi_0_Pro, medium_fac ) &
     !$ACC COPYIN( S_Sigma, W2, J, J0, D ) &
     !$ACC COPYOUT( Eta, Chi )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Ann, Phi_0_Pro )
+    !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Ann, Phi_0_Pro, medium_fac )
 #endif
     DO iX  = iX_B, iX_E
     DO iS  = iS_B, iS_E
@@ -2555,6 +2560,11 @@ CONTAINS
       SUM1 = Zero
       SUM2 = Zero
 
+      !Equation 11 from Fischer Fischer A&A 593, A103 (2016)
+      !medium_fac = (1.0d0 / ( 1.0d0 + 1.0d0/3.0d0 * (D(iX) / UnitD / D_0)**(1.0d0/3.0d0) ) )**6
+      !Set it to one to switch off
+      medium_fac = 1.0d0
+
       IF ( QueryOpacity_Brem( D(iX) / UnitD ) ) THEN
 
         DO iE1 = iE_B, iE_E
@@ -2563,9 +2573,9 @@ CONTAINS
                    / ( ( One - J0(iE2,iS,iX) ) * ( One - J0(iE1,iS_A,iX) ) )
 
           IF ( iE1 <= iE2 ) THEN
-            Phi_0_Ann = S_Sigma(iE1,iE2,iX) * 3.0d0 * Brem_const
+            Phi_0_Ann = S_Sigma(iE1,iE2,iX) * 3.0d0 * Brem_const * medium_fac
           ELSE
-            Phi_0_Ann = S_Sigma(iE2,iE1,iX) * 3.0d0 * Brem_const
+            Phi_0_Ann = S_Sigma(iE2,iE1,iX) * 3.0d0 * Brem_const * medium_fac
           END IF
           Phi_0_Pro = Phi_0_Ann * DetBal
 
