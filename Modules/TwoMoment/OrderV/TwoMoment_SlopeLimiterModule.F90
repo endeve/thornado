@@ -315,23 +315,24 @@ CONTAINS
       dSlope, wSqrtGm, Alpha, uCR_K, &
       C_0, C_X1, C_X2, C_X3, &
       C0_L, C0_R, CL_X1, CL_X2, CL_X3
-    REAL(DP), ALLOCATABLE :: uCR(:)
+    REAL(DP), ALLOCATABLE :: uCR(:,:,:,:,:,:,:)
     LOGICAL, ALLOCATABLE  :: TroubledCell(:,:,:,:,:)
 
     nE   = iZ_E0(1) - iZ_B0(1) + 1
     nE_G = nE * nDOFE
 
-    ALLOCATE( uCR(nDOFX) )
+    ALLOCATE( uCR(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+                  iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
     ALLOCATE( TroubledCell(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: iZ_B0, iZ_E0, GE, GX, U_F, U_R ) &
-    !$OMP MAP( alloc: TroubledCell )
+    !$OMP MAP( alloc: uCR, TroubledCell )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA ASYNC &
     !$ACC COPYIN( iZ_B0, iZ_E0, GE, GX, U_F, U_R ) &
-    !$ACC CREATE( TroubledCell )
+    !$ACC CREATE( uCR, TroubledCell )
 #endif
 
     CALL DetectTroubledCells_TwoMoment &
@@ -348,20 +349,20 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
     !$OMP MAP( to: dX1, dX2, dX3 ) &
     !$OMP PRIVATE( iNodeZ, iNodeE, iZ1, dSlope, wSqrtGm, &
-    !$OMP          C_0, C_X1, C_X2, C_X3, uCR, uCR_K, Alpha, &
+    !$OMP          C_0, C_X1, C_X2, C_X3, uCR_K, Alpha, &
     !$OMP          CL_X1, CL_X2, CL_X3, C0_L, C0_R )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) ASYNC &
     !$ACC COPYIN( dX1, dX2, dX3 ) &
     !$ACC PRIVATE( iNodeZ, iNodeE, iZ1, dSlope, wSqrtGm, &
-    !$ACC          C_0, C_X1, C_X2, C_X3, uCR, uCR_K, Alpha, &
+    !$ACC          C_0, C_X1, C_X2, C_X3, uCR_K, Alpha, &
     !$ACC          CL_X1, CL_X2, CL_X3, C0_L, C0_R ) &
     !$ACC PRESENT( iZ_B0, iZ_E0, TroubledCell, WeightsX_q, GX, U_R, &
     !$ACC          M2N_Vec_0, M2N_Vec_1, M2N_Vec_2, M2N_Vec_3 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( iNodeZ, iNodeE, iZ1, dSlope, wSqrtGm, &
-    !$OMP          C_0, C_X1, C_X2, C_X3, uCR, uCR_K, Alpha, &
+    !$OMP          C_0, C_X1, C_X2, C_X3, uCR_K, Alpha, &
     !$OMP          CL_X1, CL_X2, CL_X3, C0_L, C0_R )
 #endif
     DO iS   = 1       , nSpecies
@@ -378,7 +379,8 @@ CONTAINS
 
         DO iNodeX = 1, nDOFX
           iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
-          uCR(iNodeX) = U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
+          uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) = &
+          U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
         END DO
 
         ! --- Compute Legendre Coefficients ---
@@ -388,10 +390,15 @@ CONTAINS
         C_X2 = Zero
         C_X3 = Zero
         DO iNodeX = 1, nDOFX
-          C_0  = C_0  + N2M_Vec_0(iNodeX) * uCR(iNodeX)
-          C_X1 = C_X1 + N2M_Vec_1(iNodeX) * uCR(iNodeX)
-          C_X2 = C_X2 + N2M_Vec_2(iNodeX) * uCR(iNodeX)
-          C_X3 = C_X3 + N2M_Vec_3(iNodeX) * uCR(iNodeX)
+          iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+          C_0  = C_0  + N2M_Vec_0(iNodeX) * &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
+          C_X1 = C_X1 + N2M_Vec_1(iNodeX) * &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
+          C_X2 = C_X2 + N2M_Vec_2(iNodeX) * &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
+          C_X3 = C_X3 + N2M_Vec_3(iNodeX) * &
+                 uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
         END DO
 
         ! --- Limited Legendre Coefficients ---
@@ -486,17 +493,19 @@ CONTAINS
 
           DO iNodeX = 1, nDOFX
 
+            iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+
             wSqrtGm = WeightsX_q(iNodeX) * GX(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm)
 
-            uCR_K = uCR_K + wSqrtGm * uCR(iNodeX)
+            uCR_K = uCR_K + wSqrtGm * uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
 
-            uCR(iNodeX) &
+            uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
               =   M2N_Vec_0(iNodeX) * C_0 &
                 + M2N_Vec_1(iNodeX) * CL_X1 &
                 + M2N_Vec_2(iNodeX) * CL_X2 &
                 + M2N_Vec_3(iNodeX) * CL_X3
 
-            Alpha = Alpha + wSqrtGm * uCR(iNodeX)
+            Alpha = Alpha + wSqrtGm * uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
 
           END DO
 
@@ -506,7 +515,8 @@ CONTAINS
 
               iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
 
-              U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) = uCR(iNodeX) * uCR_K / Alpha
+              U_R(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) = &
+              uCR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS) * uCR_K / Alpha
 
             END DO
 
