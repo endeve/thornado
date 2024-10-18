@@ -68,7 +68,8 @@ MODULE NeutrinoOpacitiesComputationModule
     QueryOpacity_Brem, &
     QueryOpacity_NuPair
   USE RadiationFieldsModule, ONLY: &
-    iNuE, iNuE_Bar, LeptonNumber
+    iNuE, iNuE_Bar, LeptonNumber, &
+    iNu, iNu_Bar
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -1460,11 +1461,11 @@ CONTAINS
     REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
     REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
     INTEGER,  INTENT(in)  :: iMoment
-    REAL(DP), INTENT(out) :: opES(iE_B:iE_E,iX_B:iX_E)
+    REAL(DP), INTENT(out) :: opES(iE_B:iE_E,iNu:iNu_Bar,iX_B:iX_E)
 
     REAL(DP), ALLOCATABLE :: LogE_P(:)
     REAL(DP), ALLOCATABLE :: LogD_P(:), LogT_P(:), Y_P(:)
-    INTEGER  :: iX, iE
+    INTEGER  :: iX, iE, iC
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -1507,7 +1508,11 @@ CONTAINS
 
     CALL LogInterpolateSingleVariable_1D3D_Custom &
            ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-             OS_Iso(1,iMoment), Iso_T(:,:,:,:,iMoment,1), opES )
+             OS_Iso(iNu,iMoment), Iso_T(:,:,:,:,iMoment,iNu), opES(:,iNu,:) )
+
+    CALL LogInterpolateSingleVariable_1D3D_Custom &
+           ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+             OS_Iso(iNu_Bar,iMoment), Iso_T(:,:,:,:,iMoment,iNu_Bar), opES(:,iNu_Bar,:) )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
@@ -1517,12 +1522,14 @@ CONTAINS
     !$OMP PARALLEL DO COLLAPSE(2)
 #endif
     DO iX = iX_B, iX_E
+    DO iC = iNu,  iNu_Bar
     DO iE = iE_B, iE_E
       IF ( QueryOpacity_Iso( D(iX) / UnitD ) ) THEN
-        opES(iE,iX) = opES(iE,iX) * UnitES
+        opES(iE,iC,iX) = opES(iE,iC,iX) * UnitES
       ELSE
-        opES(iE,iX) = Zero
+        opES(iE,iC,iX) = Zero
       END IF
+    END DO
     END DO
     END DO
 
@@ -1548,8 +1555,10 @@ CONTAINS
     !$OMP PARALLEL DO COLLAPSE(2)
 #endif
     DO iX = iX_B, iX_E
+    DO iC = iNu,  iNu_Bar
     DO iE = iE_B, iE_E
-      opES(iE,iX) = Zero
+      opES(iE,iC,iX) = Zero
+    END DO
     END DO
     END DO
 

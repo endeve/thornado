@@ -20,6 +20,10 @@ MODULE RadiationFieldsModule
 
   REAL(DP), DIMENSION(6), PUBLIC :: LeptonNumber
 
+  INTEGER, PUBLIC, PARAMETER :: nChirals = 2 !Neutrino and Antineutrino
+  INTEGER, PUBLIC, PARAMETER :: iNu      = 1 !Neutrino
+  INTEGER, PUBLIC, PARAMETER :: iNu_Bar  = 2 !Antineutrino
+
   ! --- Eulerian (Conserved) Radiation Fields ---
 
   INTEGER, PUBLIC, PARAMETER :: iCR_N  = 1  ! Eulerian Number Density

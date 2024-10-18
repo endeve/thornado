@@ -90,7 +90,7 @@ PROGRAM ApplicationDriver_Neutrinos
   LOGICAL       :: Relaxation_restart_from_file
 
   ProgramName = 'Relaxation'
-  Relaxation_restart_from_file = .TRUE. 
+  Relaxation_restart_from_file = .FALSE. 
   !ProgramName = 'DeleptonizationWave1D'
 
   CoordinateSystem = 'CARTESIAN'
@@ -320,7 +320,12 @@ PROGRAM ApplicationDriver_Neutrinos
 
   CALL InitializeDriver
 
-  CALL InitializeFields( ProfileName, 'test_old_state_iN_X_4.dat' )
+  IF (Relaxation_restart_from_file) THEN
+    CALL InitializeFields( ProfileName, 'Relaxation_input.dat' )
+  ELSE
+    CALL InitializeFields( ProfileName )
+  ENDIF
+
 
   CALL ComputeFromConserved_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )

@@ -155,6 +155,108 @@ CONTAINS
 
       CLOSE(17)
 
+
+      ! --- Fluid Fields Conserved Variables ---
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        DO iNodeX = 1, nDOFX
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = D_0
+          uAF(iNodeX,iX1,iX2,iX3,iAF_T ) = T_0
+          uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = Y_0
+
+          CALL ComputeThermodynamicStates_Primitive_TABLE &
+                 ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) )
+
+          CALL ApplyEquationOfState_TABLE &
+                 ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_P ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_S ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Me), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Mp), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Mn), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Xp), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Xn), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Xa), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Xh), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Gm) )
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_u_1
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_u_2
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_u_3
+
+          CALL ComputeConserved_Euler_NonRelativistic &
+                 ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                   uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
+                   uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
+                   uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
+                   uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
+                   uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
+                   uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                   uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                   uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                   uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+
+      ! --- Radiation Fields Conserved Variables ---
+
+      DO iS  = 1       , nSpecies
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iE  = iE_B0   , iE_E0
+
+        DO iNodeX = 1, nDOFX
+        DO iNodeE = 1, nDOFE
+
+          iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+
+          CALL ComputeConserved_TwoMoment &
+                 ( uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS), &
+                   uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS), &
+                   uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS), &
+                   uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS), &
+                   uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_N ,iS), &
+                   uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G1,iS), &
+                   uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G2,iS), &
+                   uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G3,iS), &
+                   uPF(iNodeX   ,iX1,iX2,iX3,iPF_V1),        &
+                   uPF(iNodeX   ,iX1,iX2,iX3,iPF_V2),        &
+                   uPF(iNodeX   ,iX1,iX2,iX3,iPF_V3),        &
+                   uGF(iNodeX   ,iX1,iX2,iX3,iGF_Gm_dd_11),  &
+                   uGF(iNodeX   ,iX1,iX2,iX3,iGF_Gm_dd_22),  &
+                   uGF(iNodeX   ,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+          END DO
+          END DO
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
     ELSE
 
       D_0   = 1.032d12 * Gram / Centimeter**3
@@ -164,6 +266,69 @@ CONTAINS
       V_u_2 = 0.0_DP * SpeedOfLight
       V_u_3 = 0.0_DP * SpeedOfLight
       Mu_0  = 0.0_DP ! \in [-1,1]
+
+      ! --- Fluid Fields Conserved Variables ---
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        DO iNodeX = 1, nDOFX
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = D_0
+          uAF(iNodeX,iX1,iX2,iX3,iAF_T ) = T_0
+          uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = Y_0
+
+          CALL ComputeThermodynamicStates_Primitive_TABLE &
+                 ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) )
+
+          CALL ApplyEquationOfState_TABLE &
+                 ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_P ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_S ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Me), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Mp), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Mn), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Xp), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Xn), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Xa), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Xh), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Gm) )
+
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_u_1
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_u_2
+          uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_u_3
+
+          CALL ComputeConserved_Euler_NonRelativistic &
+                 ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                   uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
+                   uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
+                   uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
+                   uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
+                   uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
+                   uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                   uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                   uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                   uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+        END DO
+
+      END DO
+      END DO
+      END DO
 
       ! --- Radiation Fields ---
 
@@ -194,6 +359,22 @@ CONTAINS
           uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS) = Zero
           uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS) = Zero
 
+          CALL ComputeConserved_TwoMoment &
+                 ( uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS), &
+                   uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS), &
+                   uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS), &
+                   uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS), &
+                   uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_N ,iS), &
+                   uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G1,iS), &
+                   uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G2,iS), &
+                   uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G3,iS), &
+                   uPF(iNodeX   ,iX1,iX2,iX3,iPF_V1),        &
+                   uPF(iNodeX   ,iX1,iX2,iX3,iPF_V2),        &
+                   uPF(iNodeX   ,iX1,iX2,iX3,iPF_V3),        &
+                   uGF(iNodeX   ,iX1,iX2,iX3,iGF_Gm_dd_11),  &
+                   uGF(iNodeX   ,iX1,iX2,iX3,iGF_Gm_dd_22),  &
+                   uGF(iNodeX   ,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
         END DO
         END DO
 
@@ -204,110 +385,7 @@ CONTAINS
       END DO
 
     END IF
-
-    ! --- Fluid Fields Conserved Variables ---
-
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
-
-      DO iNodeX = 1, nDOFX
-
-        uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = D_0
-        uAF(iNodeX,iX1,iX2,iX3,iAF_T ) = T_0
-        uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = Y_0
-
-        CALL ComputeThermodynamicStates_Primitive_TABLE &
-               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
-                 uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
-                 uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
-                 uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
-                 uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
-                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) )
-
-        CALL ApplyEquationOfState_TABLE &
-               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
-                 uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
-                 uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
-                 uAF(iNodeX,iX1,iX2,iX3,iAF_P ), &
-                 uAF(iNodeX,iX1,iX2,iX3,iAF_S ), &
-                 uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
-                 uAF(iNodeX,iX1,iX2,iX3,iAF_Me), &
-                 uAF(iNodeX,iX1,iX2,iX3,iAF_Mp), &
-                 uAF(iNodeX,iX1,iX2,iX3,iAF_Mn), &
-                 uAF(iNodeX,iX1,iX2,iX3,iAF_Xp), &
-                 uAF(iNodeX,iX1,iX2,iX3,iAF_Xn), &
-                 uAF(iNodeX,iX1,iX2,iX3,iAF_Xa), &
-                 uAF(iNodeX,iX1,iX2,iX3,iAF_Xh), &
-                 uAF(iNodeX,iX1,iX2,iX3,iAF_Gm) )
-
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_u_1
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_u_2
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_u_3
-
-        CALL ComputeConserved_Euler_NonRelativistic &
-               ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
-                 uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
-                 uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
-                 uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
-                 uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
-                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
-                 uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
-                 uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
-                 uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
-                 uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
-                 uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
-                 uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
-                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
-
-      END DO
-
-    END DO
-    END DO
-    END DO
-
    
-    ! --- Radiation Fields Conserved Variables ---
-
-    DO iS  = 1       , nSpecies
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
-    DO iE  = iE_B0   , iE_E0
-
-      DO iNodeX = 1, nDOFX
-      DO iNodeE = 1, nDOFE
-
-        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
-
-        CALL ComputeConserved_TwoMoment &
-               ( uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS), &
-                 uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS), &
-                 uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS), &
-                 uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS), &
-                 uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_N ,iS), &
-                 uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G1,iS), &
-                 uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G2,iS), &
-                 uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G3,iS), &
-                 uPF(iNodeX   ,iX1,iX2,iX3,iPF_V1),        &
-                 uPF(iNodeX   ,iX1,iX2,iX3,iPF_V2),        &
-                 uPF(iNodeX   ,iX1,iX2,iX3,iPF_V3),        &
-                 uGF(iNodeX   ,iX1,iX2,iX3,iGF_Gm_dd_11),  &
-                 uGF(iNodeX   ,iX1,iX2,iX3,iGF_Gm_dd_22),  &
-                 uGF(iNodeX   ,iX1,iX2,iX3,iGF_Gm_dd_33) )
-
-        END DO
-        END DO
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-
   END SUBROUTINE InitializeFields_Relaxation
 
 

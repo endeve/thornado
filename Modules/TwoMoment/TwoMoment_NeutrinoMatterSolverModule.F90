@@ -61,7 +61,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     nSpecies, &
     iNuE, &
     iNuE_Bar, &
-    LeptonNumber, &
+    LeptonNumber, nChirals, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeTemperatureFromSpecificInternalEnergy_TABLE, &
@@ -166,9 +166,9 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
 
   REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: SqrtGm
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Dnu_0
-  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE, TARGET :: Sigma_Iso
-  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE, TARGET :: Phi_0_Iso
-  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE, TARGET :: Phi_1_Iso
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Sigma_Iso
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Phi_0_Iso
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Phi_1_Iso
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_EmAb, Eta_EmAb
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_NES , Eta_NES
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_Pair, Eta_Pair
@@ -239,9 +239,9 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Inu_u_3_T
 
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Dnu_0_T
-  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE, TARGET :: Sigma_Iso_T
-  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE, TARGET :: Phi_0_Iso_T
-  REAL(DP), DIMENSION(:,:)  , ALLOCATABLE, TARGET :: Phi_1_Iso_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Sigma_Iso_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Phi_0_Iso_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Phi_1_Iso_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_EmAb_T, Eta_EmAb_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_NES_T , Eta_NES_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Chi_Pair_T, Eta_Pair_T
@@ -280,7 +280,7 @@ CONTAINS
 
     INTEGER, INTENT(in) :: iZ_B(4), iZ_E(4)
 
-    INTEGER :: iE1, iE2, iN_E, iS, iN_X
+    INTEGER :: iE1, iE2, iN_E, iS, iN_X, iC
 
     REAL(DP) :: TMP(1)
     REAL(DP), ALLOCATABLE :: AMAT(:,:), BVEC(:)
@@ -365,9 +365,9 @@ CONTAINS
 
     ALLOCATE(         SqrtGm(              nX_G) )
     ALLOCATE(          Dnu_0(nE_G,nSpecies,nX_G) )
-    ALLOCATE(      Sigma_Iso(nE_G,         nX_G) )
-    ALLOCATE(      Phi_0_Iso(nE_G,         nX_G) )
-    ALLOCATE(      Phi_1_Iso(nE_G,         nX_G) )
+    ALLOCATE(      Sigma_Iso(nE_G,nChirals,nX_G) )
+    ALLOCATE(      Phi_0_Iso(nE_G,nChirals,nX_G) )
+    ALLOCATE(      Phi_1_Iso(nE_G,nChirals,nX_G) )
     ALLOCATE(       Chi_EmAb(nE_G,nSpecies,nX_G) )
     ALLOCATE(       Eta_EmAb(nE_G,nSpecies,nX_G) )
     ALLOCATE(        Chi_NES(nE_G,nSpecies,nX_G) )
@@ -427,9 +427,9 @@ CONTAINS
     ALLOCATE( Inu_u_3_T(nE_G,nSpecies,nX_G) )
 
     ALLOCATE(          Dnu_0_T(nE_G,nSpecies,nX_G) )
-    ALLOCATE(      Sigma_Iso_T(nE_G,         nX_G) )
-    ALLOCATE(      Phi_0_Iso_T(nE_G,         nX_G) )
-    ALLOCATE(      Phi_1_Iso_T(nE_G,         nX_G) )
+    ALLOCATE(      Sigma_Iso_T(nE_G,nChirals,nX_G) )
+    ALLOCATE(      Phi_0_Iso_T(nE_G,nChirals,nX_G) )
+    ALLOCATE(      Phi_1_Iso_T(nE_G,nChirals,nX_G) )
     ALLOCATE(       Chi_EmAb_T(nE_G,nSpecies,nX_G) )
     ALLOCATE(       Eta_EmAb_T(nE_G,nSpecies,nX_G) )
     ALLOCATE(        Chi_NES_T(nE_G,nSpecies,nX_G) )
@@ -710,18 +710,20 @@ CONTAINS
     IF ( .NOT. Include_LinCorr ) THEN
 
 #if   defined( THORNADO_OMP_OL )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined( THORNADO_OACC   )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
 #elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(2)
+      !$OMP PARALLEL DO COLLAPSE(3)
 #endif
       DO iN_X = 1, nX_G
+      DO iC   = 1, nChirals
       DO iN_E = 1, nE_G
 
-        Phi_1_Iso  (iN_E,iN_X) = Zero
-        Phi_1_Iso_T(iN_E,iN_X) = Zero
+        Phi_1_Iso  (iN_E,iC,iN_X) = Zero
+        Phi_1_Iso_T(iN_E,iC,iN_X) = Zero
 
+      END DO
       END DO
       END DO
 
@@ -1680,13 +1682,13 @@ CONTAINS
     INTEGER,                INTENT(in), OPTIONAL :: nX_P0
     REAL(DP), DIMENSION(:), INTENT(in), TARGET, OPTIONAL :: T0, Y0
 
-    INTEGER                             :: nX, nX0, iX, iE
+    INTEGER                             :: nX, nX0, iX, iE, iC
     REAL(DP), DIMENSION(:)    , POINTER :: D_P, T_P, Y_P, SqrtGm_P
     REAL(DP), DIMENSION(:)    , POINTER :: T0_P, Y0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Dnu_0_P
-    REAL(DP), DIMENSION(:,:)  , POINTER :: Sigma_Iso_P
-    REAL(DP), DIMENSION(:,:)  , POINTER :: Phi_0_Iso_P
-    REAL(DP), DIMENSION(:,:)  , POINTER :: Phi_1_Iso_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Sigma_Iso_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_0_Iso_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Phi_1_Iso_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_EmAb_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: H_I_0_P, H_II_0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: H_I_1_P, H_II_1_P
@@ -1745,9 +1747,9 @@ CONTAINS
              ( nX, UnpackIndex, D, T, Y, SqrtGm, D_P, T_P, Y_P, SqrtGm_P )
 
       Dnu_0_P     => Dnu_0_T    (:,:,1:nX)
-      Sigma_Iso_P => Sigma_Iso_T(  :,1:nX)
-      Phi_0_Iso_P => Phi_0_Iso_T(  :,1:nX)
-      Phi_1_Iso_P => Phi_1_Iso_T(  :,1:nX)
+      Sigma_Iso_P => Sigma_Iso_T(:,:,1:nX)
+      Phi_0_Iso_P => Phi_0_Iso_T(:,:,1:nX)
+      Phi_1_Iso_P => Phi_1_Iso_T(:,:,1:nX)
       Chi_EmAb_P  => Chi_EmAb_T (:,:,1:nX)
 
       H_I_0_P     => H_I_0_T    (:,:,1:nX)
@@ -1786,9 +1788,9 @@ CONTAINS
       SqrtGm_P => SqrtGm(:)
 
       Dnu_0_P     => Dnu_0    (:,:,:)
-      Sigma_Iso_P => Sigma_Iso(  :,:)
-      Phi_0_Iso_P => Phi_0_Iso(  :,:)
-      Phi_1_Iso_P => Phi_1_Iso(  :,:)
+      Sigma_Iso_P => Sigma_Iso(:,:,:)
+      Phi_0_Iso_P => Phi_0_Iso(:,:,:)
+      Phi_1_Iso_P => Phi_1_Iso(:,:,:)
       Chi_EmAb_P  => Chi_EmAb (:,:,:)
 
       H_I_0_P     => H_I_0    (:,:,:)
@@ -1852,18 +1854,20 @@ CONTAINS
     END IF
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(2)
+    !$OMP PARALLEL DO COLLAPSE(3)
 #endif
     DO iX = 1, nX
+    DO iC = 1, nChirals
     DO iE = 1, nE_G
 
-      Sigma_Iso_P(iE,iX) &
-        = FourPiEp2(iE) * ( Phi_0_Iso_P(iE,iX) - Third * Phi_1_Iso_P(iE,iX) )
+      Sigma_Iso_P(iE,iC,iX) &
+        = FourPiEp2(iE) * ( Phi_0_Iso_P(iE,iC,iX) - Third * Phi_1_Iso_P(iE,iC,iX) )
 
+    END DO
     END DO
     END DO
 
@@ -3431,7 +3435,7 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
-    INTEGER  :: iN_E, iN_X, iS, iOS
+    INTEGER  :: iN_E, iN_X, iS, iOS, iC
     REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
     REAL(DP) :: Eta_T, Chi_T, Kappa
     REAL(DP) :: L_u_1, L_u_2, L_u_3, L_d_1, L_d_2, L_d_3
@@ -3441,17 +3445,17 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$OMP          Eta_T, Chi_T, Kappa, L_u_1, L_u_2, L_u_3, &
-    !$OMP          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS )
+    !$OMP          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS, iC )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$ACC          Eta_T, Chi_T, Kappa, L_u_1, L_u_2, L_u_3, &
-    !$ACC          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS )
+    !$ACC          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS, iC )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$OMP          Eta_T, Chi_T, Kappa, L_u_1, L_u_2, L_u_3, &
-    !$OMP          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS )
+    !$OMP          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS, iC )
 #endif
 
     DO iN_X = 1, nX_G
@@ -3486,7 +3490,9 @@ CONTAINS
 
         ! --- Number Flux Opacity ---
 
-        Kappa = Chi_T + Sigma_Iso(iN_E,iN_X)
+        iC = nChirals - (LeptonNumber(iS) + 1) / nChirals
+
+        Kappa = Chi_T + Sigma_Iso(iN_E,iC,iN_X)
 
         ! --- Linear Correction Terms ---
 
@@ -3624,7 +3630,7 @@ CONTAINS
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: V_u_1, V_u_2, V_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
-    INTEGER  :: iN_E, iN_X, iS, iOS
+    INTEGER  :: iN_E, iN_X, iS, iOS, iC
     REAL(DP) :: vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3
     REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
     REAL(DP) :: Eta_T, Chi_T, Kappa
@@ -3636,19 +3642,19 @@ CONTAINS
     !$OMP PRIVATE( vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
     !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$OMP          Eta_T, Chi_T, Kappa, L_u_1, L_u_2, L_u_3, &
-    !$OMP          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS )
+    !$OMP          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS, iC )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
     !$ACC          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$ACC          Eta_T, Chi_T, Kappa, L_u_1, L_u_2, L_u_3, &
-    !$ACC          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS )
+    !$ACC          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS, iC )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
     !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$OMP          Eta_T, Chi_T, Kappa, L_u_1, L_u_2, L_u_3, &
-    !$OMP          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS )
+    !$OMP          L_d_1, L_d_2, L_d_3, L_N, L_G1, L_G2, L_G3, iOS, iC )
 #endif
 
     DO iN_X = 1, nX_G
@@ -3700,7 +3706,9 @@ CONTAINS
 
         ! --- Number Flux Opacity ---
 
-        Kappa = Chi_T + Sigma_Iso(iN_E,iN_X)
+        iC = nChirals - (LeptonNumber(iS) + 1) / nChirals
+
+        Kappa = Chi_T + Sigma_Iso(iN_E,iC,iN_X)
 
         ! --- Linear Correction Terms ---
 
@@ -3819,7 +3827,7 @@ CONTAINS
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Alpha, Beta_u_1, Beta_u_2, Beta_u_3
 
 
-    INTEGER  :: iN_E, iN_X, iS, iOS
+    INTEGER  :: iN_E, iN_X, iS, iOS, iC
     REAL(DP) :: k_dd(3,3), vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, W, vDotV 
     REAL(DP) :: Eta_T, Chi_T, Kappa
     REAL(DP) :: Inu_d_1, Inu_d_2, Inu_d_3, B_d_1, B_d_2, B_d_3, Det
@@ -3829,17 +3837,17 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( B_d_1, B_d_2, B_d_3, Det, Inu_d_1, Inu_d_2, Inu_d_3, &
     !$OMP          vDotInu, W, k_dd, vDotV, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
-    !$OMP          Eta_T, Chi_T, Kappa, iOS )
+    !$OMP          Eta_T, Chi_T, Kappa, iOS, iC )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( B_d_1, B_d_2, B_d_3, Det, Inu_d_1, Inu_d_2, Inu_d_3, &
     !$ACC          vDotInu, W, k_dd, vDotV, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
-    !$ACC          Eta_T, Chi_T, Kappa, iOS )
+    !$ACC          Eta_T, Chi_T, Kappa, iOS, iC )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( B_d_1, B_d_2, B_d_3, Det, Inu_d_1, Inu_d_2, Inu_d_3, &
     !$OMP          vDotInu, W, k_dd, vDotV, vDotK_d_1, vDotK_d_2, vDotK_d_3, &
-    !$OMP          Eta_T, Chi_T, Kappa, iOS )
+    !$OMP          Eta_T, Chi_T, Kappa, iOS, iC )
 #endif
     DO iS   = 1, nSpecies
     DO iN_X = 1, nX_G
@@ -3918,7 +3926,9 @@ CONTAINS
 
         ! --- Number Flux Opacity ---
 
-        Kappa = Chi_T + Sigma_Iso(iN_E,iN_X)
+        iC = nChirals - (LeptonNumber(iS) + 1) / nChirals
+
+        Kappa = Chi_T + Sigma_Iso(iN_E,iC,iN_X)
 
         iOS = ( (iN_E-1) + (iS-1) * nE_G ) * nCR
 
