@@ -1,7 +1,7 @@
 ## Makefile definitions for Mac with GNU compiler
 
 C       = mpic++ --c++11
-FORTRAN = mpif90 -cpp -g -fbacktrace -ffpe-trap=invalid,zero,overflow -ffpe-summary=invalid,zero,overflow -fbounds-check -Wuninitialized -fcheck=all,no-array-temps -finit-real=snan
+FORTRAN = mpif90 -cpp
 FLINKER = mpif90
 
 DEBUG    = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
@@ -23,7 +23,7 @@ ifeq ($(USE_OACC),TRUE)
 endif
 
 INCLUDE_CUDA     =
-INCLUDE_HDF5     = -I/usr/local/include
+INCLUDE_HDF5     = -I/usr/local/Cellar/hdf5/1.14.4.3/include
 INCLUDE_LAPACK   = -framework Accelerate
 INCLUDE_MAGMA    =
 INCLUDE_PETSC    =
@@ -31,7 +31,7 @@ INCLUDE_POSEIDON =
 INCLUDE_ROCM     =
 
 LIBRARIES_CUDA     =
-LIBRARIES_HDF5     = -L/usr/local/lib -lhdf5_fortran -lhdf5
+LIBRARIES_HDF5     = -L/usr/local/Cellar/hdf5/1.14.4.3/lib -lhdf5_fortran -lhdf5
 LIBRARIES_LAPACK   = -framework Accelerate
 LIBRARIES_MAGMA    =
 LIBRARIES_PETSC    =
