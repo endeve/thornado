@@ -834,7 +834,8 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacities_EC &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0, opEC )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0, opEC, &
+      T_old, Y_old )
 
     ! --- Electron Capture Opacities (Multiple D,T,Y) ---
 
@@ -847,6 +848,8 @@ CONTAINS
     REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
     REAL(DP), INTENT(in)  :: f0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: opEC(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+    REAL(DP), INTENT(in), OPTIONAL :: T_old(iX_B:iX_E)
+    REAL(DP), INTENT(in), OPTIONAL :: Y_old(iX_B:iX_E)
 
     REAL(DP) :: LogE_P
     REAL(DP) :: LogD_P, LogT_P
@@ -930,7 +933,7 @@ CONTAINS
   INTEGER  :: loT, hiT
   INTEGER  :: loY, hiY
 
-  REAL(dp), DIMENSION(:),   ALLOCATABLE :: Xh, Ah, EC_rate
+  REAL(dp), DIMENSION(:),   ALLOCATABLE :: Xh, Ah, Ah_old, EC_rate, T0, Y0
   REAL(dp), DIMENSION(:,:), ALLOCATABLE :: spec_nodes, spec_fine
   REAL(dp), DIMENSION(:,:), ALLOCATABLE :: spec_elements, spec_elements_nodes
 
@@ -938,7 +941,10 @@ CONTAINS
 
   ALLOCATE( Xh     (iX_B:iX_E) )
   ALLOCATE( Ah     (iX_B:iX_E) )
+  ALLOCATE( Ah_old (iX_B:iX_E) )
   ALLOCATE( EC_rate(iX_B:iX_E) )
+  ALLOCATE( T0     (iX_B:iX_E) )
+  ALLOCATE( Y0     (iX_B:iX_E) )
 
   ALLOCATE( spec_nodes         (iE_B:iE_E,iX_B:iX_E) )
   ALLOCATE( spec_fine          (EC_nE,    iX_B:iX_E) )
@@ -950,16 +956,80 @@ CONTAINS
   NodesE(:)  = MeshE % Nodes(:)
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP TARGET ENTER DATA                         &
-  !$OMP MAP( to: f0 )                             &
-  !$OMP MAP( alloc: Xh, Ah, EC_rate,              & 
-  !$OMP      spec_nodes, spec_elements,           &
+  !$OMP TARGET ENTER DATA    &
+  !$OMP MAP( alloc: T0, Y0 ) 
+#elif defined(THORNADO_OACC)
+  !$ACC ENTER DATA           &
+  !$ACC CREATE( T0, Y0 )
+#endif
+
+  IF( PRESENT ( T_old ) ) THEN
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &  
+    !$OMP MAP( to:    T_old ) 
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC COPYIN  ( T_old )         &
+    !$ACC PRESENT ( T0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iX = iX_B, iX_E
+      T0(iX) = T_old(iX)
+    END DO
+  ELSE
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT  ( T0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iX = iX_B, iX_E
+      T0(iX) = T(iX)
+    END DO
+  ENDIF
+
+  IF( PRESENT ( Y_old ) ) THEN
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &  
+    !$OMP MAP( to:    Y_old )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC COPYIN  ( Y_old )   &
+    !$ACC PRESENT ( Y0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iX = iX_B, iX_E
+      Y0(iX) = Y_old(iX)
+    END DO
+  ELSE
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT ( Y0 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iX = iX_B, iX_E
+      Y0(iX) = Y(iX)
+    END DO
+  ENDIF
+
+#if defined(THORNADO_OMP_OL)
+  !$OMP TARGET ENTER DATA                    &
+  !$OMP MAP( to: f0 )                        &
+  !$OMP MAP( alloc: Xh, Ah, Ah_old, EC_rate, & 
+  !$OMP      spec_nodes, spec_elements,      &
   !$OMP      spec_elements_nodes, spec_fine )
 #elif defined(THORNADO_OACC)
-  !$ACC ENTER DATA                                &
-  !$ACC COPYIN( f0 )                              &    
-  !$ACC CREATE( Xh, Ah, EC_rate,                  &
-  !$ACC         spec_nodes, spec_elements,        &
+  !$ACC ENTER DATA                           &
+  !$ACC COPYIN( f0 )                         &    
+  !$ACC CREATE( Xh, Ah, Ah_old, EC_rate,     &
+  !$ACC         spec_nodes, spec_elements,   &
   !$ACC         spec_elements_nodes, spec_fine )
 #endif
 
@@ -971,33 +1041,37 @@ CONTAINS
     CALL ComputeHeavyMassNumber_TABLE &
            ( D, T, Y, Ah )
 
+    CALL ComputeHeavyMassNumber_TABLE &
+           ( D, T0, Y0, Ah_old )
+
+
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD                  &
-    !$OMP PRIVATE( D_P, T_P, Y_P, Xnuc, loctot,                     & 
-    !$OMP          iE, iE1, iE2, iNodeE1, E_node, a, b, f_a, f_b,   & 
-    !$OMP          iD, iT, iY, dD, dT, dY,                          &
-    !$OMP          loD, hiD, loT, hiT, loY, hiY,                    &      
-    !$OMP          p000, p100, p010, p110, p001, p101, p011, p111 ) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD                   &
+    !$OMP PRIVATE( D_P, T_P, Y_P, Xnuc, loctot,                      & 
+    !$OMP          iE, iE1, iE2, iNodeE1, E_node, a, b, f_a, f_b,    & 
+    !$OMP          iD, iT, iY, dD, dT, dY,                           &
+    !$OMP          loD, hiD, loT, hiT, loY, hiY,                     &      
+    !$OMP          p000, p100, p010, p110, p001, p101, p011, p111 )  &
     !$OMP MAP    ( to: CenterE, WidthE, NodesE )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR                                 &
-    !$ACC PRIVATE( D_P, T_P, Y_P, Xnuc, loctot,                     & 
-    !$ACC          iE, iE1, iE2, iNodeE1, E_node, a, b, f_a, f_b,   & 
-    !$ACC          iD, iT, iY, dD, dT, dY,                          &
-    !$ACC          loD, hiD, loT, hiT, loY, hiY,                    &      
-    !$ACC          p000, p100, p010, p110, p001, p101, p011, p111 ) &
-    !$ACC COPYIN ( CenterE, WidthE, NodesE )                        &
-    !$ACC PRESENT( Xh, Ah, EC_rate, OS_EmAb_EC_rate,                &
-    !$ACC          OS_EmAb_EC_spec, EmAb_EC_spec_T, WeightsE,       &
-    !$ACC          f0, EC_nE, EC_dE, EC_iE_max, EC_iNodeE_max,      &
+    !$ACC PARALLEL LOOP GANG VECTOR                                  &
+    !$ACC PRIVATE( D_P, T_P, Y_P, Xnuc, loctot,                      & 
+    !$ACC          iE, iE1, iE2, iNodeE1, E_node, a, b, f_a, f_b,    & 
+    !$ACC          iD, iT, iY, dD, dT, dY,                           &
+    !$ACC          loD, hiD, loT, hiT, loY, hiY,                     &      
+    !$ACC          p000, p100, p010, p110, p001, p101, p011, p111 )  &
+    !$ACC COPYIN ( CenterE, WidthE, NodesE )                         &
+    !$ACC PRESENT( Xh, Ah, Ah_old, T0, Y0, EC_rate, OS_EmAb_EC_rate, &
+    !$ACC          OS_EmAb_EC_spec, EmAb_EC_spec_T, WeightsE,        &
+    !$ACC          f0, EC_nE, EC_dE, EC_iE_max, EC_iNodeE_max,       &
     !$ACC          Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T) 
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO                                               &
-    !$OMP PRIVATE( D_P, T_P, Y_P, Xnuc, loctot,                     & 
-    !$OMP          iE, iE1, iE2, iNodeE1, E_node, a, b, f_a, f_b,   & 
-    !$OMP          iD, iT, iY, dD, dT, dY,                          &
-    !$OMP          loD, hiD, loT, hiT, loY, hiY,                    &      
+    !$OMP PARALLEL DO                                                &
+    !$OMP PRIVATE( D_P, T_P, Y_P, Xnuc, loctot,                      & 
+    !$OMP          iE, iE1, iE2, iNodeE1, E_node, a, b, f_a, f_b,    & 
+    !$OMP          iD, iT, iY, dD, dT, dY,                           &
+    !$OMP          loD, hiD, loT, hiT, loY, hiY,                     &      
     !$OMP          p000, p100, p010, p110, p001, p101, p011, p111 )
 #endif
     DO iX = iX_B, iX_E
@@ -1005,13 +1079,19 @@ CONTAINS
       IF ( QueryOpacity_EmAb_Nuclei( D(iX) / UnitD ) ) THEN
 
         D_P = D(iX) / UnitD
-        T_P = T(iX) / UnitT
-        Y_P = Y(iX) / UnitY
+        !T_P = T(iX) / UnitT
+        !Y_P = Y(iX) / UnitY
+
+        !If T_old and Y_old were present, use the old state to 
+        !calculate the interpolation indices, otherwise the 
+        !current state is used, ie T0 = T, Y0 = Y
+        T_P = T0(iX) / UnitT
+        Y_P = Y0(iX) / UnitY
 
         IF(     D_P <= Ds_EC_T(1) .OR. D_P >= Ds_EC_T(SIZE(Ds_EC_T)) &
            .OR. T_P <= Ts_EC_T(1) .OR. T_P >= Ts_EC_T(SIZE(Ts_EC_T)) &
-           .OR. Y_p <= Ys_EC_T(1) .OR. Y_P >= Ys_EC_T(SIZE(Ys_EC_T)) &
-           .OR. Ah(iX) <= 40.0d0) CYCLE
+           .OR. Y_P <= Ys_EC_T(1) .OR. Y_P >= Ys_EC_T(SIZE(Ys_EC_T)) &
+           .OR. Ah_old(iX) <= 40.0d0) CYCLE
 
         loD = LBOUND(Ds_EC_T,1)
         hiD = UBOUND(Ds_EC_T,1)
@@ -1026,10 +1106,16 @@ CONTAINS
 
         iT = MAX( loT, MIN( hiT-1, loT &
            + FLOOR( (hiT-loT)*LOG10(T_P/Ts_EC_T(loT))/LOG10(Ts_EC_T(hiT)/Ts_EC_T(loT)) ) ) )
+        
+        !Do the actual interpolation/extrapolation with the current state 
+        T_P = T(iX) / UnitT
         dT = LOG10( T_P / Ts_EC_T(iT) ) / LOG10( Ts_EC_T(iT+1) / Ts_EC_T(iT) )
 
         iY = MAX( loY, MIN( hiY-1, loY &
            + FLOOR( (hiY-loY)*(Y_P-Ys_EC_T(loY))/(Ys_EC_T(hiY)-Ys_EC_T(loY)) ) ) )
+
+        !Do the actual interpolation/extrapolation with the current state 
+        Y_P = Y(iX) / UnitY
         dY = ( Y_P - Ys_EC_T(iY) ) / ( Ys_EC_T(iY+1) - Ys_EC_T(iY) )
 
         p000 = EmAb_EC_rate_T(iD  , iT  , iY  )
@@ -1194,22 +1280,26 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA                                &
-    !$OMP MAP( release: f0, Xh, Ah, EC_rate,              &
-    !$OMP               spec_nodes, spec_elements,        &
-    !$OMP               spec_elements_nodes, spec_fine,   &
+    !$OMP TARGET EXIT DATA                                   &
+    !$OMP MAP( release: f0, Xh, Ah, Ah_old, EC_rate, T0, Y0, &
+    !$OMP               spec_nodes, spec_elements,           &
+    !$OMP               spec_elements_nodes, spec_fine,      &
     !$OMP               CenterE, WidthE, NodesE )     
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA                                       &
-    !$ACC DELETE  (     f0, Xh, Ah, EC_rate,              &
-    !$ACC               spec_nodes, spec_elements,        &
-    !$ACC               spec_elements_nodes, spec_fine,   &
+    !$ACC EXIT DATA                                          &
+    !$ACC DELETE  (     f0, Xh, Ah, Ah_old, EC_rate, T0, Y0, &
+    !$ACC               spec_nodes, spec_elements,           &
+    !$ACC               spec_elements_nodes, spec_fine,      &
     !$ACC               CenterE, WidthE, NodesE )     
 #endif
 
   DEALLOCATE( Xh      )
   DEALLOCATE( Ah      )
+  DEALLOCATE( Ah_old  )
   DEALLOCATE( EC_rate )
+
+  DEALLOCATE( T0 )
+  DEALLOCATE( Y0 )
 
   DEALLOCATE( spec_nodes          )
   DEALLOCATE( spec_fine           )
@@ -1221,12 +1311,12 @@ CONTAINS
   ENDIF
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA          &
-    !$OMP MAP (release: E, D, T, Y) &
+    !$OMP TARGET EXIT DATA           &
+    !$OMP MAP (release: E, D, T, Y ) &
     !$OMP MAP (from: opEC )
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA                 &
-    !$ACC DELETE (E, D, T, Y )      &
+    !$ACC EXIT DATA                  &
+    !$ACC DELETE (E, D, T, Y )       &
     !$ACC COPYOUT ( opEC )
 #endif
 
