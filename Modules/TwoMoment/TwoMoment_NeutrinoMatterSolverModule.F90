@@ -991,12 +991,12 @@ CONTAINS
       WRITE(*,'(A4,A32,L1)')       '', 'Include_Brem: '   , Include_Brem
       WRITE(*,'(A4,A32,L1)')       '', 'Include_LinCorr: ', Include_LinCorr
       WRITE(*,*)
-!!$      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iY ): '  , INT(wMatrRHS(iY ))
-!!$      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iEf): '  , INT(wMatrRHS(iEf))
-!!$      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iV1): '  , INT(wMatrRHS(iV1))
-!!$      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iV2): '  , INT(wMatrRHS(iV2))
-!!$      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iV3): '  , INT(wMatrRHS(iV3))
-!!$      WRITE(*,*)
+      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iY ): '  , INT(wMatrRHS(iY ))
+      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iEf): '  , INT(wMatrRHS(iEf))
+      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iV1): '  , INT(wMatrRHS(iV1))
+      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iV2): '  , INT(wMatrRHS(iV2))
+      WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iV3): '  , INT(wMatrRHS(iV3))
+      WRITE(*,*)
       WRITE(*,'(A4,A32,ES10.3E3)') '', 'DnuMax: '         , DnuMax
       WRITE(*,'(A4,A32,L1)')       '', 'FreezeOpacities: ', FreezeOpacities
       WRITE(*,*)
