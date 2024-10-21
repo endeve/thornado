@@ -24,6 +24,7 @@ include $(THORNADO_DIR)/Build/Makefile_Path
 include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
 ## DEFINES   += -DTHORNADO_DEBUG
+DEFINES += -DTHORNADO_EULER_NOGPU
 
 # BUILDFLAG can be passed to the Makefile to choose specific
 # compilation flags (one of OPT,TEST,DEBUG).
