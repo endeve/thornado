@@ -1,4 +1,4 @@
-MODULE MF_EquationOfStateModule
+MODULE MF_EquationOfStateModule_MHD
 
   ! --- AMReX Modules ---
 
@@ -16,8 +16,8 @@ MODULE MF_EquationOfStateModule
     FinalizeEquationOfState
   USE EquationOfStateModule_TABLE, ONLY: &
     Min_D
-  USE Euler_UtilitiesModule_Relativistic, ONLY: &
-    rhoMin_Euler_GR
+  USE MHD_UtilitiesModule_Relativistic, ONLY: &
+    rhoMin_MHD_GR
 
   ! --- Local Modules ---
 
@@ -63,7 +63,7 @@ CONTAINS
                EquationOfStateTableName_Option = TRIM( EosTableName ), &
                Verbose_Option = amrex_parallel_ioprocessor() )
 
-      rhoMin_Euler_GR = Min_D
+      rhoMin_MHD_GR = Min_D
 
     ELSE IF( TRIM( EquationOfState ) .EQ. 'IDEAL' )THEN
 
@@ -89,4 +89,4 @@ CONTAINS
   END SUBROUTINE FinalizeEquationOfState_MF
 
 
-END MODULE MF_EquationOfStateModule
+END MODULE MF_EquationOfStateModule_MHD

@@ -1,4 +1,4 @@
-MODULE InputOutputModuleAMReX_Euler
+MODULE InputOutputModuleAMReX_MHD
 
   USE ISO_C_BINDING
 
@@ -71,19 +71,19 @@ MODULE InputOutputModuleAMReX_Euler
     unitsGF, &
     nGF, &
     iGF_SqrtGm
-  USE FluidFieldsModule, ONLY: &
-    ShortNamesCF, &
-    unitsCF, &
-    nCF, &
-    ShortNamesPF, &
-    unitsPF, &
-    nPF, &
-    ShortNamesAF, &
-    unitsAF, &
-    nAF, &
-    ShortNamesDF, &
-    unitsDF, &
-    nDF
+  USE MagnetofluidFieldsModule, ONLY: &
+    ShortNamesCM, &
+    unitsCM, &
+    nCM, &
+    ShortNamesPM, &
+    unitsPM, &
+    nPM, &
+    ShortNamesAM, &
+    unitsAM, &
+    nAM, &
+    ShortNamesDM, &
+    unitsDM, &
+    nDM
   USE RadiationFieldsModule, ONLY: &
     ShortNamesCR, &
     unitsCR, &
@@ -108,12 +108,12 @@ MODULE InputOutputModuleAMReX_Euler
     DestroyMesh_MF
   USE MF_FieldsModule_Geometry, ONLY: &
     MF_uGF
-  USE MF_FieldsModule_Euler, ONLY: &
-    MF_uCF, &
-    MF_uPF, &
-    MF_uAF, &
-    MF_uDF, &
-    FluxRegister_Euler
+  USE MF_FieldsModule_MHD, ONLY: &
+    MF_uCM, &
+    MF_uPM, &
+    MF_uAM, &
+    MF_uDM, &
+    FluxRegister_MHD
   USE MF_FieldsModule_TwoMoment, ONLY: &
     MF_uCR, &
     MF_uPR, &
@@ -129,22 +129,30 @@ MODULE InputOutputModuleAMReX_Euler
     PlotFileNameRoot, &
     iRestart, &
     UseTiling, &
-    UseFluxCorrection_Euler, &
+    UseFluxCorrection_MHD, &
     UseFluxCorrection_TwoMoment, &
     iOS_CPP
-  USE MF_Euler_TallyModule, ONLY: &
+  USE MF_MHD_TallyModule, ONLY: &
     BaryonicMass_Initial, &
     BaryonicMass_OffGrid, &
-    EulerMomentumX1_Initial, &
-    EulerMomentumX1_OffGrid, &
-    EulerMomentumX2_Initial, &
-    EulerMomentumX2_OffGrid, &
-    EulerMomentumX3_Initial, &
-    EulerMomentumX3_OffGrid, &
-    EulerEnergy_Initial, &
-    EulerEnergy_OffGrid, &
+    MHDMomentumX1_Initial, &
+    MHDMomentumX1_OffGrid, &
+    MHDMomentumX2_Initial, &
+    MHDMomentumX2_OffGrid, &
+    MHDMomentumX3_Initial, &
+    MHDMomentumX3_OffGrid, &
+    MHDEnergy_Initial, &
+    MHDEnergy_OffGrid, &
     ElectronNumber_Initial, &
     ElectronNumber_OffGrid, &
+    MHDMagFieldX1_Initial, &
+    MHDMagFieldX1_OffGrid, &
+    MHDMagFieldX2_Initial, &
+    MHDMagFieldX2_OffGrid, &
+    MHDMagFieldX3_Initial, &
+    MHDMagFieldX3_OffGrid, &
+    MHDCleaningField_Initial, &
+    MHDCleaningField_OffGrid, &
     ADMMass_Initial, &
     ADMMass_OffGrid, &
     ADMMass_Interior
@@ -161,15 +169,19 @@ MODULE InputOutputModuleAMReX_Euler
     SUBROUTINE WriteFieldsAMReX_Checkpoint &
                  ( StepNo, nLevels, dt, time, &
                    BaryonicMassArr   , &
-                   EulerMomentumX1Arr, &
-                   EulerMomentumX2Arr, &
-                   EulerMomentumX3Arr, &
-                   EulerEnergyArr    , &
+                   MHDMomentumX1Arr, &
+                   MHDMomentumX2Arr, &
+                   MHDMomentumX3Arr, &
+                   MHDEnergyArr    , &
                    ElectronNumberArr , &
+                   MHDMagFieldX1Arr, &
+                   MHDMagFieldX2Arr, &
+                   MHDMagFieldX3Arr, &
+                   MHDCleaningFieldArr, &
                    ADMMassArr        , &
                    pBA, &
-                   iWriteFields_uGF, iWriteFields_uCF, iWriteFields_uCR, &
-                   pMF_uGF_Option, pMF_uCF_Option, pMF_uCR_Option, &
+                   iWriteFields_uGF, iWriteFields_uCM, iWriteFields_uCR, &
+                   pMF_uGF_Option, pMF_uCM_Option, pMF_uCR_Option, &
                    Verbose_Option ) BIND(c)
       IMPORT
       IMPLICIT NONE
@@ -177,18 +189,22 @@ MODULE InputOutputModuleAMReX_Euler
       INTEGER(c_int), VALUE, INTENT(in) :: nLevels
       REAL(DP)      ,        INTENT(in) :: dt(*), time(*)
       REAL(DP)      ,        INTENT(in) :: BaryonicMassArr   (*)
-      REAL(DP)      ,        INTENT(in) :: EulerMomentumX1Arr(*)
-      REAL(DP)      ,        INTENT(in) :: EulerMomentumX2Arr(*)
-      REAL(DP)      ,        INTENT(in) :: EulerMomentumX3Arr(*)
-      REAL(DP)      ,        INTENT(in) :: EulerEnergyArr    (*)
+      REAL(DP)      ,        INTENT(in) :: MHDMomentumX1Arr(*)
+      REAL(DP)      ,        INTENT(in) :: MHDMomentumX2Arr(*)
+      REAL(DP)      ,        INTENT(in) :: MHDMomentumX3Arr(*)
+      REAL(DP)      ,        INTENT(in) :: MHDEnergyArr    (*)
       REAL(DP)      ,        INTENT(in) :: ElectronNumberArr (*)
+      REAL(DP)      ,        INTENT(in) :: MHDMagFieldX1Arr(*)
+      REAL(DP)      ,        INTENT(in) :: MHDMagFieldX2Arr(*)
+      REAL(DP)      ,        INTENT(in) :: MHDMagFieldX3Arr(*)
+      REAL(DP)      ,        INTENT(in) :: MHDCleaningFieldArr(*)
       REAL(DP)      ,        INTENT(in) :: ADMMassArr        (*)
       TYPE(c_ptr)   ,        INTENT(in) :: pBA(*)
       INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uGF
-      INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uCF
+      INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uCM
       INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uCR
       TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uGF_Option(*)
-      TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uCF_Option(*)
+      TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uCM_Option(*)
       TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uCR_Option(*)
       INTEGER(c_int),        INTENT(in), OPTIONAL :: Verbose_Option(*)
     END SUBROUTINE WriteFieldsAMReX_Checkpoint
@@ -196,11 +212,15 @@ MODULE InputOutputModuleAMReX_Euler
     SUBROUTINE ReadHeaderAndBoxArrayData &
                  ( FinestLevelArr, StepNo, dt, Time, &
                    BaryonicMassArr   , &
-                   EulerMomentumX1Arr, &
-                   EulerMomentumX2Arr, &
-                   EulerMomentumX3Arr, &
-                   EulerEnergyArr    , &
+                   MHDMomentumX1Arr, &
+                   MHDMomentumX2Arr, &
+                   MHDMomentumX3Arr, &
+                   MHDEnergyArr    , &
                    ElectronNumberArr , &
+                   MHDMagFieldX1Arr, &
+                   MHDMagFieldX2Arr, &
+                   MHDMagFieldX3Arr, &
+                   MHDCleaningFieldArr, &
                    ADMMassArr, &
                    pBA, pDM, iChkFile ) BIND(c)
       IMPORT
@@ -209,11 +229,15 @@ MODULE InputOutputModuleAMReX_Euler
       INTEGER(c_int), INTENT(out) :: StepNo(*)
       REAL(DP)      , INTENT(out) :: dt(*), Time(*)
       REAL(DP)      , INTENT(out) :: BaryonicMassArr   (*)
-      REAL(DP)      , INTENT(out) :: EulerMomentumX1Arr(*)
-      REAL(DP)      , INTENT(out) :: EulerMomentumX2Arr(*)
-      REAL(DP)      , INTENT(out) :: EulerMomentumX3Arr(*)
-      REAL(DP)      , INTENT(out) :: EulerEnergyArr    (*)
+      REAL(DP)      , INTENT(out) :: MHDMomentumX1Arr(*)
+      REAL(DP)      , INTENT(out) :: MHDMomentumX2Arr(*)
+      REAL(DP)      , INTENT(out) :: MHDMomentumX3Arr(*)
+      REAL(DP)      , INTENT(out) :: MHDEnergyArr    (*)
       REAL(DP)      , INTENT(out) :: ElectronNumberArr (*)
+      REAL(DP)      , INTENT(out) :: MHDMagFieldX1Arr(*)
+      REAL(DP)      , INTENT(out) :: MHDMagFieldX2Arr(*)
+      REAL(DP)      , INTENT(out) :: MHDMagFieldX3Arr(*)
+      REAL(DP)      , INTENT(out) :: MHDCleaningFieldArr(*)
       REAL(DP)      , INTENT(out) :: ADMMassArr        (*)
       TYPE(c_ptr)   , INTENT(out) :: pBA(*), pDM(*)
       INTEGER(c_int), VALUE       :: iChkFile
@@ -235,8 +259,8 @@ CONTAINS
 
   SUBROUTINE WriteFieldsAMReX_PlotFile &
     ( Time, StepNo, MF_uGF, &
-      MF_uGF_Option, MF_uCF_Option, MF_uPF_Option, &
-      MF_uAF_Option, MF_uDF_Option, &
+      MF_uGF_Option, MF_uCM_Option, MF_uPM_Option, &
+      MF_uAM_Option, MF_uDM_Option, &
       MF_uCR_Option, MF_uPR_Option, MF_uGR_Option, PlotFileNumber_Option, &
       Verbose_Option )
 
@@ -244,10 +268,10 @@ CONTAINS
     INTEGER             , INTENT(in) :: StepNo(0:)
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uGF_Option(0:)
-    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uCF_Option(0:)
-    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uPF_Option(0:)
-    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uAF_Option(0:)
-    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uDF_Option(0:)
+    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uCM_Option(0:)
+    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uPM_Option(0:)
+    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uAM_Option(0:)
+    TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uDM_Option(0:)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uCR_Option(0:)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uPR_Option(0:)
     TYPE(amrex_multifab), INTENT(in), OPTIONAL :: MF_uGR_Option(0:)
@@ -261,10 +285,10 @@ CONTAINS
     CHARACTER(32)                   :: ShortNamesGR_Z
     CHARACTER(3)                    :: iSC, iZ1C
     LOGICAL                         :: WriteGF
-    LOGICAL                         :: WriteFF_C
-    LOGICAL                         :: WriteFF_P
-    LOGICAL                         :: WriteFF_A
-    LOGICAL                         :: WriteFF_D
+    LOGICAL                         :: WriteMF_C
+    LOGICAL                         :: WriteMF_P
+    LOGICAL                         :: WriteMF_A
+    LOGICAL                         :: WriteMF_D
     LOGICAL                         :: WriteRF_C
     LOGICAL                         :: WriteRF_P
     LOGICAL                         :: WriteRF_GR
@@ -287,35 +311,35 @@ CONTAINS
 
     END IF
 
-    WriteFF_C = .FALSE.
-    IF( PRESENT( MF_uCF_Option ) )THEN
+    WriteMF_C = .FALSE.
+    IF( PRESENT( MF_uCM_Option ) )THEN
 
-      WriteFF_C = .TRUE.
-      nF = nF + nCF
-
-    END IF
-
-    WriteFF_P = .FALSE.
-    IF( PRESENT( MF_uPF_Option ) )THEN
-
-      WriteFF_P = .TRUE.
-      nF = nF + nPF
+      WriteMF_C = .TRUE.
+      nF = nF + nCM
 
     END IF
 
-    WriteFF_A = .FALSE.
-    IF( PRESENT( MF_uAF_Option ) )THEN
+    WriteMF_P = .FALSE.
+    IF( PRESENT( MF_uPM_Option ) )THEN
 
-      WriteFF_A = .TRUE.
-      nF = nF + nAF
+      WriteMF_P = .TRUE.
+      nF = nF + nPM
 
     END IF
 
-    WriteFF_D = .FALSE.
-    IF( PRESENT( MF_uDF_Option ) )THEN
+    WriteMF_A = .FALSE.
+    IF( PRESENT( MF_uAM_Option ) )THEN
 
-      WriteFF_D = .TRUE.
-      nF = nF + nDF
+      WriteMF_A = .TRUE.
+      nF = nF + nAM
+
+    END IF
+
+    WriteMF_D = .FALSE.
+    IF( PRESENT( MF_uDM_Option ) )THEN
+
+      WriteMF_D = .TRUE.
+      nF = nF + nDM
 
     END IF
 
@@ -387,55 +411,55 @@ CONTAINS
 
     END IF
 
-    IF( WriteFF_C )THEN
+    IF( WriteMF_C )THEN
 
-      DO iFd = 1, nCF
+      DO iFd = 1, nCM
 
         CALL amrex_string_build &
-               ( VarNames( iFd + iOS ), TRIM( ShortNamesCF(iFd) ) )
+               ( VarNames( iFd + iOS ), TRIM( ShortNamesCM(iFd) ) )
 
       END DO
 
-      iOS = iOS + nCF
+      iOS = iOS + nCM
 
     END IF
 
-    IF( WriteFF_P )THEN
+    IF( WriteMF_P )THEN
 
-      DO iFd = 1, nPF
+      DO iFd = 1, nPM
 
         CALL amrex_string_build &
-               ( VarNames( iFd + iOS ), TRIM( ShortNamesPF(iFd) ) )
+               ( VarNames( iFd + iOS ), TRIM( ShortNamesPM(iFd) ) )
 
       END DO
 
-      iOS = iOS + nPF
+      iOS = iOS + nPM
 
     END IF
 
-    IF( WriteFF_A )THEN
+    IF( WriteMF_A )THEN
 
-      DO iFd = 1, nAF
+      DO iFd = 1, nAM
 
         CALL amrex_string_build &
-               ( VarNames( iFd + iOS ), TRIM( ShortNamesAF(iFd) ) )
+               ( VarNames( iFd + iOS ), TRIM( ShortNamesAM(iFd) ) )
 
       END DO
 
-      iOS = iOS + nAF
+      iOS = iOS + nAM
 
     END IF
 
-    IF( WriteFF_D )THEN
+    IF( WriteMF_D )THEN
 
-      DO iFd = 1, nDF
+      DO iFd = 1, nDM
 
         CALL amrex_string_build &
-               ( VarNames( iFd + iOS ), TRIM( ShortNamesDF(iFd) ) )
+               ( VarNames( iFd + iOS ), TRIM( ShortNamesDM(iFd) ) )
 
       END DO
 
-      iOS = iOS + nDF
+      iOS = iOS + nDM
 
     END IF
 
@@ -529,43 +553,43 @@ CONTAINS
 
       END IF
 
-      IF( WriteFF_C )THEN
+      IF( WriteMF_C )THEN
 
         CALL ComputeCellAverage_X_MF &
-               ( nCF, MF_uGF(iLevel), MF_uCF_Option(iLevel), &
-                 iOS, 'CF', MF_plt(iLevel) )
+               ( nCM, MF_uGF(iLevel), MF_uCM_Option(iLevel), &
+                 iOS, 'CM', MF_plt(iLevel) )
 
-        iOS = iOS + nCF
+        iOS = iOS + nCM
 
       END IF
 
-      IF( WriteFF_P )THEN
+      IF( WriteMF_P )THEN
 
         CALL ComputeCellAverage_X_MF &
-               ( nPF, MF_uGF(iLevel), MF_uPF_Option(iLevel), &
-                 iOS, 'PF', MF_plt(iLevel) )
+               ( nPM, MF_uGF(iLevel), MF_uPM_Option(iLevel), &
+                 iOS, 'PM', MF_plt(iLevel) )
 
-        iOS = iOS + nPF
+        iOS = iOS + nPM
 
       END IF
 
-      IF( WriteFF_A )THEN
+      IF( WriteMF_A )THEN
 
         CALL ComputeCellAverage_X_MF &
-               ( nAF, MF_uGF(iLevel), MF_uAF_Option(iLevel), &
-                 iOS, 'AF', MF_plt(iLevel) )
+               ( nAM, MF_uGF(iLevel), MF_uAM_Option(iLevel), &
+                 iOS, 'AM', MF_plt(iLevel) )
 
-        iOS = iOS + nAF
+        iOS = iOS + nAM
 
       END IF
 
-      IF( WriteFF_D )THEN
+      IF( WriteMF_D )THEN
 
         CALL ComputeCellAverage_X_MF &
-               ( nDF, MF_uGF(iLevel), MF_uDF_Option(iLevel), &
-                 iOS, 'DF', MF_plt(iLevel) )
+               ( nDM, MF_uGF(iLevel), MF_uDM_Option(iLevel), &
+                 iOS, 'DM', MF_plt(iLevel) )
 
-        iOS = iOS + nDF
+        iOS = iOS + nDM
 
       END IF
 
@@ -618,16 +642,16 @@ CONTAINS
 
 
   SUBROUTINE ReadCheckpointFile &
-    ( ReadFields_uCF_Option, ReadFields_uCR_Option )
+    ( ReadFields_uCM_Option, ReadFields_uCR_Option )
 
-    LOGICAL, INTENT(in), OPTIONAL :: ReadFields_uCF_Option
+    LOGICAL, INTENT(in), OPTIONAL :: ReadFields_uCM_Option
     LOGICAL, INTENT(in), OPTIONAL :: ReadFields_uCR_Option
 
     INTEGER     :: iLevel, FinestLevel
     TYPE(c_ptr) :: pBA(0:nMaxLevels-1)
     TYPE(c_ptr) :: pDM(0:nMaxLevels-1)
     TYPE(c_ptr) :: pGF(0:nMaxLevels-1)
-    TYPE(c_ptr) :: pCF(0:nMaxLevels-1)
+    TYPE(c_ptr) :: pCM(0:nMaxLevels-1)
     TYPE(c_ptr) :: pCR(0:nMaxLevels-1)
     TYPE(c_ptr) :: amrcore
 
@@ -640,19 +664,23 @@ CONTAINS
     INTEGER :: FinestLevelArr(0:0) ! Hack
 
     REAL(DP) :: BaryonicMassArr   (0:1)
-    REAL(DP) :: EulerMomentumX1Arr(0:1)
-    REAL(DP) :: EulerMomentumX2Arr(0:1)
-    REAL(DP) :: EulerMomentumX3Arr(0:1)
-    REAL(DP) :: EulerEnergyArr    (0:1)
+    REAL(DP) :: MHDMomentumX1Arr(0:1)
+    REAL(DP) :: MHDMomentumX2Arr(0:1)
+    REAL(DP) :: MHDMomentumX3Arr(0:1)
+    REAL(DP) :: MHDEnergyArr    (0:1)
     REAL(DP) :: ElectronNumberArr (0:1)
+    REAL(DP) :: MHDMagFieldX1Arr(0:1)
+    REAL(DP) :: MHDMagFieldX2Arr(0:1)
+    REAL(DP) :: MHDMagFieldX3Arr(0:1)
+    REAL(DP) :: MHDCleaningFieldArr(0:1)
     REAL(DP) :: ADMMassArr        (0:2)
 
-    LOGICAL :: ReadFields_uCF
+    LOGICAL :: ReadFields_uCM
     LOGICAL :: ReadFields_uCR
 
-    ReadFields_uCF = .FALSE.
-    IF( PRESENT( ReadFields_uCF_Option ) ) &
-      ReadFields_uCF = ReadFields_uCF_Option
+    ReadFields_uCM = .FALSE.
+    IF( PRESENT( ReadFields_uCM_Option ) ) &
+      ReadFields_uCM = ReadFields_uCM_Option
 
     ReadFields_uCR = .FALSE.
     IF( PRESENT( ReadFields_uCR_Option ) ) &
@@ -686,11 +714,15 @@ CONTAINS
     CALL ReadHeaderAndBoxArrayData &
            ( FinestLevelArr, StepNo, dt, t_new, &
              BaryonicMassArr   , &
-             EulerMomentumX1Arr, &
-             EulerMomentumX2Arr, &
-             EulerMomentumX3Arr, &
-             EulerEnergyArr    , &
+             MHDMomentumX1Arr, &
+             MHDMomentumX2Arr, &
+             MHDMomentumX3Arr, &
+             MHDEnergyArr    , &
              ElectronNumberArr , &
+             MHDMagFieldX1Arr, &
+             MHDMagFieldX2Arr, &
+             MHDMagFieldX3Arr, &
+             MHDCleaningFieldArr, &
              ADMMassArr, &
              pBA, pDM, iRestart )
 
@@ -700,16 +732,24 @@ CONTAINS
 
     BaryonicMass_Initial    = BaryonicMassArr   (0)
     BaryonicMass_OffGrid    = BaryonicMassArr   (1)
-    EulerMomentumX1_Initial = EulerMomentumX1Arr(0)
-    EulerMomentumX1_OffGrid = EulerMomentumX1Arr(1)
-    EulerMomentumX2_Initial = EulerMomentumX2Arr(0)
-    EulerMomentumX2_OffGrid = EulerMomentumX2Arr(1)
-    EulerMomentumX3_Initial = EulerMomentumX3Arr(0)
-    EulerMomentumX3_OffGrid = EulerMomentumX3Arr(1)
-    EulerEnergy_Initial     = EulerEnergyArr    (0)
-    EulerEnergy_OffGrid     = EulerEnergyArr    (1)
+    MHDMomentumX1_Initial = MHDMomentumX1Arr(0)
+    MHDMomentumX1_OffGrid = MHDMomentumX1Arr(1)
+    MHDMomentumX2_Initial = MHDMomentumX2Arr(0)
+    MHDMomentumX2_OffGrid = MHDMomentumX2Arr(1)
+    MHDMomentumX3_Initial = MHDMomentumX3Arr(0)
+    MHDMomentumX3_OffGrid = MHDMomentumX3Arr(1)
+    MHDEnergy_Initial     = MHDEnergyArr    (0)
+    MHDEnergy_OffGrid     = MHDEnergyArr    (1)
     ElectronNumber_Initial  = ElectronNumberArr (0)
     ElectronNumber_OffGrid  = ElectronNumberArr (1)
+    MHDMagFieldX1_Initial = MHDMagFieldX1Arr(0)
+    MHDMagFieldX1_OffGrid = MHDMagFieldX1Arr(1)
+    MHDMagFieldX2_Initial = MHDMagFieldX2Arr(0)
+    MHDMagFieldX2_OffGrid = MHDMagFieldX2Arr(1)
+    MHDMagFieldX3_Initial = MHDMagFieldX3Arr(0)
+    MHDMagFieldX3_OffGrid = MHDMagFieldX3Arr(1)
+    MHDCleaningField_Initial = MHDCleaningFieldArr(0)
+    MHDCleaningField_OffGrid = MHDCleaningFieldArr(1)
     ADMMass_Initial         = ADMMassArr        (0)
     ADMMass_OffGrid         = ADMMassArr        (1)
     ADMMass_Interior        = ADMMassArr        (2)
@@ -727,30 +767,30 @@ CONTAINS
              ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX )
       CALL MF_uGF(iLevel) % SetVal( Zero )
 
-      IF( ReadFields_uCF )THEN
+      IF( ReadFields_uCM )THEN
 
         CALL amrex_multifab_build &
-               ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
-        CALL MF_uCF(iLevel) % SetVal( Zero )
+               ( MF_uCM(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCM, swX )
+        CALL MF_uCM(iLevel) % SetVal( Zero )
 
         CALL amrex_multifab_build &
-               ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX )
-        CALL MF_uPF(iLevel) % SetVal( Zero )
+               ( MF_uPM(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPM, swX )
+        CALL MF_uPM(iLevel) % SetVal( Zero )
 
         CALL amrex_multifab_build &
-               ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX )
-        CALL MF_uAF(iLevel) % SetVal( Zero )
+               ( MF_uAM(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAM, swX )
+        CALL MF_uAM(iLevel) % SetVal( Zero )
 
         CALL amrex_multifab_build &
-               ( MF_uDF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nDF, swX )
-        CALL MF_uDF(iLevel) % SetVal( Zero )
+               ( MF_uDM(iLevel), BA(iLevel), DM(iLevel), nDOFX * nDM, swX )
+        CALL MF_uDM(iLevel) % SetVal( Zero )
 
         ! Assume nDOFX_X2 = nDOFX_X3 = nDOFX_X1
-        IF( iLevel .GT. 0 .AND. UseFluxCorrection_Euler )THEN
+        IF( iLevel .GT. 0 .AND. UseFluxCorrection_MHD )THEN
 
           CALL amrex_fluxregister_build &
-                 ( FluxRegister_Euler(iLevel), BA(iLevel), DM(iLevel), &
-                   amrex_ref_ratio(iLevel-1), iLevel, nDOFX_X1*nCF )
+                 ( FluxRegister_MHD(iLevel), BA(iLevel), DM(iLevel), &
+                   amrex_ref_ratio(iLevel-1), iLevel, nDOFX_X1*nCM )
 
         END IF
 
@@ -791,10 +831,10 @@ CONTAINS
     pGF(0:nLevels-1) = MF_uGF(0:nLevels-1) % P
     CALL ReadMultiFabData( FinestLevel, pGF, 0, iRestart )
 
-    IF( ReadFields_uCF )THEN
+    IF( ReadFields_uCM )THEN
 
-      pCF(0:nLevels-1) = MF_uCF(0:nLevels-1) % P
-      CALL ReadMultiFabData( FinestLevel, pCF, 1, iRestart )
+      pCM(0:nLevels-1) = MF_uCM(0:nLevels-1) % P
+      CALL ReadMultiFabData( FinestLevel, pCM, 1, iRestart )
 
     END IF
 
@@ -1074,35 +1114,35 @@ CONTAINS
 
         END DO
 
-      CASE( 'CF' )
+      CASE( 'CM' )
 
         DO iFd = 1, nFd
 
-          U_plt(:,:,:,iFd+iOS) = U_plt(:,:,:,iFd+iOS) / unitsCF(iFd)
+          U_plt(:,:,:,iFd+iOS) = U_plt(:,:,:,iFd+iOS) / unitsCM(iFd)
 
         END DO
 
-      CASE( 'PF' )
+      CASE( 'PM' )
 
         DO iFd = 1, nFd
 
-          U_plt(:,:,:,iFd+iOS) = U_plt(:,:,:,iFd+iOS) / unitsPF(iFd)
+          U_plt(:,:,:,iFd+iOS) = U_plt(:,:,:,iFd+iOS) / unitsPM(iFd)
 
         END DO
 
-      CASE( 'AF' )
+      CASE( 'AM' )
 
         DO iFd = 1, nFd
 
-          U_plt(:,:,:,iFd+iOS) = U_plt(:,:,:,iFd+iOS) / unitsAF(iFd)
+          U_plt(:,:,:,iFd+iOS) = U_plt(:,:,:,iFd+iOS) / unitsAM(iFd)
 
         END DO
 
-      CASE( 'DF' )
+      CASE( 'DM' )
 
         DO iFd = 1, nFd
 
-          U_plt(:,:,:,iFd+iOS) = U_plt(:,:,:,iFd+iOS) / unitsDF(iFd)
+          U_plt(:,:,:,iFd+iOS) = U_plt(:,:,:,iFd+iOS) / unitsDM(iFd)
 
         END DO
 
@@ -1239,4 +1279,4 @@ CONTAINS
   END SUBROUTINE WriteMesh
 
 
-END MODULE InputOutputModuleAMReX_Euler
+END MODULE InputOutputModuleAMReX_MHD

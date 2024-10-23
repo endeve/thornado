@@ -21,19 +21,24 @@ CONTAINS
   SUBROUTINE InitializePositivityLimiter_MHD &
     ( UsePositivityLimiter_Option, Verbose_Option, &
       Min_1_Option, Min_2_Option, Min_3_Option, &
-      Max_1_Option, Max_2_Option, Max_3_Option )
+      Max_1_Option, Max_2_Option, Max_3_Option, &
+      D_Min_MHD_PL_Option, IntE_Min_MHD_PL_Option )
 
     LOGICAL , INTENT(in), OPTIONAL :: UsePositivityLimiter_Option
     LOGICAL , INTENT(in), OPTIONAL :: Verbose_Option
     REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option, Max_1_Option
     REAL(DP), INTENT(in), OPTIONAL :: Min_2_Option, Max_2_Option
     REAL(DP), INTENT(in), OPTIONAL :: Min_3_Option, Max_3_Option
+    REAL(DP), INTENT(in), OPTIONAL :: D_Min_MHD_PL_Option
+    REAL(DP), INTENT(in), OPTIONAL :: IntE_Min_MHD_PL_Option
 
     LOGICAL  :: UsePositivityLimiter
     LOGICAL  :: Verbose
     REAL(DP) :: Min_1, Max_1
     REAL(DP) :: Min_2, Max_2
     REAL(DP) :: Min_3, Max_3
+    REAL(DP) :: D_Min_MHD_PL
+    REAL(DP) :: IntE_Min_MHD_PL
 
     UsePositivityLimiter = .TRUE.
     IF( PRESENT( UsePositivityLimiter_Option ) ) &
@@ -55,12 +60,22 @@ CONTAINS
     IF( PRESENT( Min_3_Option ) ) &
       Min_3 = Min_3_Option
 
+    D_Min_MHD_PL = Zero
+    IF( PRESENT( D_Min_MHD_PL_Option ) ) &
+      D_Min_MHD_PL = D_Min_MHD_PL_Option
+
+    IntE_Min_MHD_PL = Zero
+    IF( PRESENT( IntE_Min_MHD_PL_Option ) ) &
+      IntE_Min_MHD_PL = IntE_Min_MHD_PL_Option
+
     CALL InitializePositivityLimiter_MHD_Relativistic_IDEAL &
            ( UsePositivityLimiter_Option = UsePositivityLimiter, &
              Verbose_Option              = Verbose, &
              Min_1_Option                = Min_1, &
              Min_2_Option                = Min_2, &
-             Min_3_Option                = Min_3 )
+             Min_3_Option                = Min_3, &
+             D_Min_MHD_PL_Option         = D_Min_MHD_PL,  &
+             IntE_Min_MHD_PL_Option      = IntE_Min_MHD_PL )
 
   END SUBROUTINE InitializePositivityLimiter_MHD
 

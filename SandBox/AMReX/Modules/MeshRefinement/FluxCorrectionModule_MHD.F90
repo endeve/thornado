@@ -1,4 +1,4 @@
-MODULE FluxCorrectionModule_Euler
+MODULE FluxCorrectionModule_MHD
 
   ! --- AMReX Modules ---
 
@@ -15,13 +15,13 @@ MODULE FluxCorrectionModule_Euler
     MeshX
   USE GeometryFieldsModule, ONLY: &
     iGF_SqrtGm
-  USE FluidFieldsModule, ONLY: &
-    nCF
+  USE MagnetofluidFieldsModule, ONLY: &
+    nCM
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, &
     nDOFX_X2, &
     nDOFX_X3
-  USE Euler_MeshRefinementModule, ONLY: &
+  USE MHD_MeshRefinementModule, ONLY: &
     pNodeNumberTableX_X1_c, &
     pNodeNumberTableX_X2_c, &
     pNodeNumberTableX_X3_c, &
@@ -35,9 +35,9 @@ MODULE FluxCorrectionModule_Euler
 
   ! --- Local Modules ---
 
-  USE MF_FieldsModule_Euler, ONLY: &
-    FluxRegister_Euler
-  USE AverageDownModule_Euler, ONLY: &
+  USE MF_FieldsModule_MHD, ONLY: &
+    FluxRegister_MHD
+  USE AverageDownModule_MHD, ONLY: &
     AverageDown
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
@@ -49,17 +49,17 @@ MODULE FluxCorrectionModule_Euler
   IMPLICIT NONE
   PRIVATE
 
-  PUBLIC :: ApplyFluxCorrection_Euler_MF
+  PUBLIC :: ApplyFluxCorrection_MHD_MF
 
-  INTERFACE ApplyFluxCorrection_Euler_MF
-    MODULE PROCEDURE ApplyFluxCorrection_Euler_MF_SingleLevel
-    MODULE PROCEDURE ApplyFluxCorrection_Euler_MF_MultipleLevels
-  END INTERFACE ApplyFluxCorrection_Euler_MF
+  INTERFACE ApplyFluxCorrection_MHD_MF
+    MODULE PROCEDURE ApplyFluxCorrection_MHD_MF_SingleLevel
+    MODULE PROCEDURE ApplyFluxCorrection_MHD_MF_MultipleLevels
+  END INTERFACE ApplyFluxCorrection_MHD_MF
 
 CONTAINS
 
 
-  SUBROUTINE ApplyFluxCorrection_Euler_MF_MultipleLevels( MF_uGF, MF )
+  SUBROUTINE ApplyFluxCorrection_MHD_MF_MultipleLevels( MF_uGF, MF )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF    (0:)
@@ -69,16 +69,16 @@ CONTAINS
     DO iLevel = 0, nLevels-1
 
       IF( iLevel .GT. 0 ) &
-        CALL ApplyFluxCorrection_Euler_MF_SingleLevel( iLevel, MF_uGF, MF )
+        CALL ApplyFluxCorrection_MHD_MF_SingleLevel( iLevel, MF_uGF, MF )
 
     END DO
 
     CALL AverageDown( MF_uGF, MF )
 
-  END SUBROUTINE ApplyFluxCorrection_Euler_MF_MultipleLevels
+  END SUBROUTINE ApplyFluxCorrection_MHD_MF_MultipleLevels
 
 
-  SUBROUTINE ApplyFluxCorrection_Euler_MF_SingleLevel( FineLevel, MF_uGF, MF )
+  SUBROUTINE ApplyFluxCorrection_MHD_MF_SingleLevel( FineLevel, MF_uGF, MF )
 
     INTEGER             , INTENT(in)    :: FineLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
@@ -91,7 +91,7 @@ CONTAINS
       CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
 
       WRITE(*,'(4x,A,I3.3)') &
-        'CALL ApplyFluxCorrection_Euler_MF_SingleLevel, FineLevel: ', FineLevel
+        'CALL ApplyFluxCorrection_MHD_MF_SingleLevel, FineLevel: ', FineLevel
 
     END IF
 
@@ -103,9 +103,9 @@ CONTAINS
                dX2 => MeshX(2) % Width, &
                dX3 => MeshX(3) % Width )
 
-    CALL FluxRegister_Euler( FineLevel ) &
+    CALL FluxRegister_MHD( FineLevel ) &
            % reflux_dg( MF_uGF(FineLevel-1), MF(FineLevel-1), &
-                        nDOFX, nDOFX_X1, nDOFX_X2, nDOFX_X3, nCF, iGF_SqrtGm, &
+                        nDOFX, nDOFX_X1, nDOFX_X2, nDOFX_X3, nCM, iGF_SqrtGm, &
                         pNodeNumberTableX_X1_c, &
                         pNodeNumberTableX_X2_c, &
                         pNodeNumberTableX_X3_c, &
@@ -121,7 +121,7 @@ CONTAINS
 
 #endif
 
-  END SUBROUTINE ApplyFluxCorrection_Euler_MF_SingleLevel
+  END SUBROUTINE ApplyFluxCorrection_MHD_MF_SingleLevel
 
 
-END MODULE FluxCorrectionModule_Euler
+END MODULE FluxCorrectionModule_MHD

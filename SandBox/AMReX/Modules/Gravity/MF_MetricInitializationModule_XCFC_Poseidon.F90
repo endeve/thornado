@@ -70,14 +70,14 @@ MODULE MF_MetricInitializationModule_XCFC_Poseidon
     DP, &
     Zero, &
     One
-  USE MF_Euler_UtilitiesModule, ONLY: &
-    ComputeConserved_Euler_MF
+  USE MF_MHD_UtilitiesModule, ONLY: &
+    ComputeConserved_MHD_MF
   USE MF_ErrorModule, ONLY: &
     DescribeError_MF
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling
-  USE AverageDownModule, ONLY: &
+  USE AverageDownModule_MHD, ONLY: &
     AverageDown
   USE MF_GeometryModule, ONLY: &
     ApplyBoundaryConditions_Geometry_MF

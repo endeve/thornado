@@ -43,8 +43,8 @@ MODULE MF_GravitySolutionModule_Newtonian_Poseidon
     GravitationalConstant, &
     Centimeter
   USE FluidFieldsModule, ONLY: &
-    iCF_D, &
-    iAF_Cs
+    iCM_D, &
+    iAM_Cs
   USE GeometryFieldsModule, ONLY: &
     iGF_Phi_N, &
     iGF_SqrtGm, &
@@ -87,7 +87,7 @@ MODULE MF_GravitySolutionModule_Newtonian_Poseidon
     ProgramName
   USE MF_GeometryModule, ONLY: &
     ApplyBoundaryConditions_Geometry_MF
-  USE AverageDownModule, ONLY: &
+  USE AverageDownModule_MHD, ONLY: &
     AverageDown
 
 #ifdef GRAVITY_SOLVER_POSEIDON_NEWTONIAN
@@ -166,9 +166,9 @@ CONTAINS
   END SUBROUTINE InitializeGravitySolver_Newtonian_MF_Poseidon
 
 
-  SUBROUTINE ComputeGravitationalPotential_Newtonian_MF_Poseidon( MF_uCF, MF_uGF )
+  SUBROUTINE ComputeGravitationalPotential_Newtonian_MF_Poseidon( MF_uCM, MF_uGF )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:) ! Gravity Sources
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCM(0:) ! Gravity Sources
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
 
 #ifdef GRAVITY_SOLVER_POSEIDON_NEWTONIAN
@@ -182,15 +182,15 @@ CONTAINS
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
-              ( MF_uMF(iLevel), MF_uCF(iLevel) % BA, &
-                                MF_uCF(iLevel) % DM, nDOFX, 0 )
+              ( MF_uMF(iLevel), MF_uCM(iLevel) % BA, &
+                                MF_uCM(iLevel) % DM, nDOFX, 0 )
 
       CALL amrex_multifab_build &
-             ( MF_uGS(iLevel), MF_uCF(iLevel) % BA, &
-                               MF_uCF(iLevel) % DM, nGS * nDOFX, 0 )
+             ( MF_uGS(iLevel), MF_uCM(iLevel) % BA, &
+                               MF_uCM(iLevel) % DM, nGS * nDOFX, 0 )
 
       CALL MF_uGS(iLevel) % COPY &
-             ( MF_uCF(iLevel), nDOFX*(iCF_D-1)+1, 1, nDOFX, 0 )
+             ( MF_uCM(iLevel), nDOFX*(iCM_D-1)+1, 1, nDOFX, 0 )
 
     END DO
 
@@ -324,7 +324,7 @@ call showvariablefrommultifab(mf_ugs,1)
           WRITE(*,*)
           WRITE(*,'(4x,A)')'Using Outer Boundary Values for Polytrope Test '
           WRITE(*,'(8x,A,ES15.6E3)')'Phi_r in CGS: ', Phi_r_converted
-          WRITE(*,'(8x,A,ES15.6E3)')'Sound Speed in Kilometer/Second: ', iAF_Cs/( Kilometer / Second)
+          WRITE(*,'(8x,A,ES15.6E3)')'Sound Speed in Kilometer/Second: ', iAF_Cm/( Kilometer / Second)
           WRITE(*,'(4x,A)') &
             '------------------------------------------'
 

@@ -53,6 +53,13 @@ MODULE InputParsingModule
   INTEGER              :: nE, nSpecies, swE, bcE
   REAL(DP)             :: eL, eR, zoomE
 
+  ! --- MHD ---
+
+  LOGICAL  :: EvolveOnlyMagnetic
+  LOGICAL  :: UseDivergenceCleaning
+  REAL(DP) :: DampingParameter
+  LOGICAL  :: UsePowellSource
+
   ! --- Opacity Tables ---
 
   CHARACTER(:), ALLOCATABLE :: OpacityTableName_AbEm
@@ -95,6 +102,7 @@ MODULE InputParsingModule
   INTEGER :: nMaxLevels
   LOGICAL :: UseTiling
   LOGICAL :: UseFluxCorrection_Euler
+  LOGICAL :: UseFluxCorrection_MHD
   LOGICAL :: UseFluxCorrection_TwoMoment
   LOGICAL :: UseAMR
   LOGICAL :: IsPeriodic(3)
@@ -158,25 +166,29 @@ CONTAINS
 
     ! --- thornado Parameters thornado.* ---
 
-    UsePhysicalUnits = .FALSE.
-    PlotFileNameRoot = 'plt'
-    iCycleD          = 10
-    iCycleW          = -1
-    iCycleChk        = -1
-    iRestart         = -1
-    dt_wrt           = -1.0_DP
-    dt_chk           = -1.0_DP
-    dt_rel           = 0.0_DP
-    iReGrid          = 1
-    SolveGravity_NR  = .FALSE.
-    nE               = 1
-    nSpecies         = 1
-    swE              = 0
-    bcE              = 0
-    bcZ_TwoMoment    = [ 0, 0, 0, 0 ]
-    eL               = 0.0_DP
-    eR               = 1.0_DP
-    zoomE            = 1.0_DP
+    UsePhysicalUnits      = .FALSE.
+    PlotFileNameRoot      = 'plt'
+    iCycleD               = 10
+    iCycleW               = -1
+    iCycleChk             = -1
+    iRestart              = -1
+    dt_wrt                = -1.0_DP
+    dt_chk                = -1.0_DP
+    dt_rel                = 0.0_DP
+    iReGrid               = 1
+    SolveGravity_NR       = .FALSE.
+    nE                    = 1
+    nSpecies              = 1
+    swE                   = 0
+    bcE                   = 0
+    bcZ_TwoMoment         = [ 0, 0, 0, 0 ]
+    eL                    = 0.0_DP
+    eR                    = 1.0_DP
+    zoomE                 = 1.0_DP
+    EvolveOnlyMagnetic    = .FALSE.
+    UseDivergenceCleaning = .FALSE.
+    DampingParameter      = 0.0_DP
+    UsePowellSource       = .FALSE.
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % get   ( 'ProgramName', &
                          ProgramName )
@@ -226,6 +238,14 @@ CONTAINS
                          eR )
       CALL PP % query ( 'zoomE', &
                          zoomE )
+      CALL PP % query ( 'EvolveOnlyMagnetic', &
+                         EvolveOnlyMagnetic )
+      CALL PP % query ( 'UseDivergenceCleaning', &
+                         UseDivergenceCleaning )
+      CALL PP % query ( 'DampingParameter', &
+                         DampingParameter )
+      CALL PP % query ( 'UsePowellSource', &
+                         UsePowellSource )
     CALL amrex_parmparse_destroy( PP )
 
     CALL SetNumberOfSpecies &
@@ -390,6 +410,7 @@ CONTAINS
     END IF
     UseAMR                      = .FALSE.
     UseFluxCorrection_Euler     = .FALSE.
+    UseFluxCorrection_MHD       = .FALSE.
     UseFluxCorrection_TwoMoment = .FALSE.
     UseTiling                   = .FALSE.
     RefinementScheme            = ''
@@ -415,6 +436,8 @@ CONTAINS
                            UseAMR )
         CALL PP % query ( 'UseFluxCorrection_Euler', &
                            UseFluxCorrection_Euler )
+        CALL PP % query ( 'UseFluxCorrection_MHD', &
+                           UseFluxCorrection_MHD )
         CALL PP % query ( 'UseFluxCorrection_TwoMoment', &
                            UseFluxCorrection_TwoMoment )
         CALL PP % query ( 'RefinementScheme', &
@@ -508,6 +531,8 @@ CONTAINS
                                       iReGrid
       WRITE(*,'(4x,A26,1x,L)')       'UseFluxCorrection_Euler:', &
                                       UseFluxCorrection_Euler
+      WRITE(*,'(4x,A26,1x,L)')       'UseFluxCorrection_MHD:', &
+                                      UseFluxCorrection_MHD
       WRITE(*,'(4x,A26,1x,L)')       'UseTiling:', &
                                       UseTiling
       WRITE(*,'(4x,A26,1x,L)')       'UseAMR:', &

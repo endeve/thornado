@@ -1,0 +1,28 @@
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/MHD
+f90EXE_sources  += MF_MHD_BoundaryConditionsModule.f90
+F90EXE_sources  += MF_MHD_dgDiscretizationModule.F90
+F90EXE_sources  += MF_MHD_PositivityLimiterModule.F90
+F90EXE_sources  += MF_MHD_SlopeLimiterModule.F90
+F90EXE_sources  += MF_MHD_TallyModule.F90
+f90EXE_sources  += MF_MHD_TimersModule.f90
+F90EXE_sources  += MF_MHD_UtilitiesModule.F90
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/dgExperiments_MHD_Relativistic_IDEAL
+F90EXE_sources  += MHD_UtilitiesModule_Relativistic.F90
+F90EXE_sources  += MHD_UtilitiesModule.F90
+F90EXE_sources  += MHD_ErrorModule.F90
+F90EXE_sources  += MHD_DiscontinuityDetectionModule.F90
+F90EXE_sources  += MHD_DiscretizationModule_Relativistic.F90
+F90EXE_sources  += MHD_BoundaryConditionsModule.F90
+f90EXE_sources  += MHD_CharacteristicDecompositionModule_Relativistic_IDEAL.f90
+F90EXE_sources  += MHD_CharacteristicDecompositionModule.F90
+F90EXE_sources  += MHD_SlopeLimiterModule_Relativistic_IDEAL.F90
+F90EXE_sources  += MHD_SlopeLimiterModule.F90
+F90EXE_sources  += MHD_PositivityLimiterModule_Relativistic_IDEAL.F90
+F90EXE_sources  += MHD_PositivityLimiterModule.F90
+F90EXE_sources  += MHD_MeshRefinementModule.F90
+f90EXE_sources  += MHD_XCFC_UtilitiesModule.f90
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Euler
+F90EXE_sources  += Euler_UtilitiesModule_Relativistic.F90
+f90EXE_sources  += Euler_ErrorModule.f90

@@ -1,4 +1,4 @@
-MODULE MF_TimeSteppingModule_SSPRK
+MODULE MF_TimeSteppingModule_SSPRK_MHD
 
   ! --- AMReX Modules ---
 
@@ -21,8 +21,8 @@ MODULE MF_TimeSteppingModule_SSPRK
     nNodes, &
     nDimsX, &
     swX
-  USE FluidFieldsModule, ONLY: &
-    nCF
+  USE MagnetofluidFieldsModule, ONLY: &
+    nCM
   USE XCFC_UtilitiesModule, ONLY: &
     nGS, &
     nMF, &
@@ -38,23 +38,23 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE InputParsingModule, ONLY: &
     nLevels, &
     nMaxLevels, &
-    UseFluxCorrection_Euler, &
+    UseFluxCorrection_MHD, &
     dt, &
     DEBUG
   USE MF_FieldsModule_Geometry, ONLY: &
     MF_uGF
-  USE MF_FieldsModule_Euler, ONLY: &
-    MF_uCF, &
-    MF_uDF, &
-    OffGridFlux_Euler_MF
-  USE MF_Euler_SlopeLimiterModule, ONLY: &
-    ApplySlopeLimiter_Euler_MF
-  USE MF_Euler_PositivityLimiterModule, ONLY: &
-    ApplyPositivityLimiter_Euler_MF
-  USE MF_Euler_dgDiscretizationModule, ONLY: &
-    ComputeIncrement_Euler_MF
-  USE MF_Euler_TallyModule, ONLY: &
-    IncrementOffGridTally_Euler_MF
+  USE MF_FieldsModule_MHD, ONLY: &
+    MF_uCM, &
+    MF_uDM, &
+    OffGridFlux_MHD_MF
+  USE MF_MHD_SlopeLimiterModule, ONLY: &
+    ApplySlopeLimiter_MHD_MF
+  USE MF_MHD_PositivityLimiterModule, ONLY: &
+    ApplyPositivityLimiter_MHD_MF
+  USE MF_MHD_dgDiscretizationModule, ONLY: &
+    ComputeIncrement_MHD_MF
+  USE MF_MHD_TallyModule, ONLY: &
+    IncrementOffGridTally_MHD_MF
   USE MF_XCFC_UtilitiesModule, ONLY: &
     MultiplyWithPsi6_MF, &
     UpdateConformalFactorAndMetric_XCFC_MF, &
@@ -68,11 +68,11 @@ MODULE MF_TimeSteppingModule_SSPRK
   USE MF_GravitySolutionModule_XCFC, ONLY: &
     ComputeConformalFactor_XCFC_MF, &
     ComputeLapseShiftCurvature_XCFC_MF
-  USE AverageDownModule, ONLY: &
+  USE AverageDownModule_MHD, ONLY: &
     AverageDown
-  USE FluxCorrectionModule_Euler, ONLY: &
-    ApplyFluxCorrection_Euler_MF
-  USE MF_TimersModule, ONLY: &
+  USE FluxCorrectionModule_MHD, ONLY: &
+    ApplyFluxCorrection_MHD_MF
+  USE MF_TimersModule_MHD, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
     Timer_AMReX_UpdateFluid, &
@@ -159,13 +159,13 @@ CONTAINS
     INTEGER :: iS, jS, nCompCF
     INTEGER :: iLevel, iErr
 
-    REAL(DP) :: dM_OffGrid_Euler(1:nCF,0:nMaxLevels-1)
+    REAL(DP) :: dM_OffGrid_MHD(1:nCM,0:nMaxLevels-1)
 
     CALL TimersStart_AMReX( Timer_AMReX_UpdateFluid )
 
-    dM_OffGrid_Euler = Zero
+    dM_OffGrid_MHD = Zero
 
-    nCompCF = nDOFX * nCF
+    nCompCF = nDOFX * nCM
 
     IF( EvolveGravity )THEN
 
@@ -185,7 +185,7 @@ CONTAINS
 
     END IF ! EvolveGravity
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, +1 )
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCM, +1 )
 
     DO iS = 1, nStages
 
@@ -206,14 +206,14 @@ CONTAINS
       DO iLevel = 0, nLevels-1
 
         CALL amrex_multifab_build &
-               ( MF_U(iS,iLevel), MF_uCF(iLevel) % BA, &
-                 MF_uCF(iLevel) % DM, nCompCF, swX )
+               ( MF_U(iS,iLevel), MF_uCM(iLevel) % BA, &
+                 MF_uCM(iLevel) % DM, nCompCF, swX )
 
-        CALL MF_U(iS,iLevel) % COPY( MF_uCF(iLevel), 1, 1, nCompCF, swX )
+        CALL MF_U(iS,iLevel) % COPY( MF_uCM(iLevel), 1, 1, nCompCF, swX )
 
         CALL amrex_multifab_build &
-               ( MF_D(iS,iLevel), MF_uCF(iLevel) % BA, &
-                 MF_uCF(iLevel) % DM, nCompCF, swX )
+               ( MF_D(iS,iLevel), MF_uCM(iLevel) % BA, &
+                 MF_uCM(iLevel) % DM, nCompCF, swX )
 
       END DO ! iLevel = 0, nLevels-1
 
@@ -240,8 +240,8 @@ CONTAINS
         CALL MultiplyWithPsi6_MF( MF_uGF, MF_U(iS,:), -1 )
 
         CALL AverageDown( MF_uGF, MF_U(iS,:) )
-        CALL ApplyPositivityLimiter_Euler_MF &
-               ( MF_uGF, MF_U(iS,:), MF_uDF )
+        CALL ApplyPositivityLimiter_MHD_MF &
+               ( MF_uGF, MF_U(iS,:), MF_uDM )
 
         CALL MultiplyWithPsi6_MF( MF_uGF, MF_U(iS,:), +1 )
 
@@ -264,11 +264,11 @@ CONTAINS
 
           CALL MultiplyWithPsi6_MF( MF_uGF, MF_U(iS,:), -1 )
 
-          CALL ApplySlopeLimiter_Euler_MF &
-                 ( MF_uGF, MF_U(iS,:), MF_uDF )
+          CALL ApplySlopeLimiter_MHD_MF &
+                 ( MF_uGF, MF_U(iS,:), MF_uDM )
 
-          CALL ApplyPositivityLimiter_Euler_MF &
-                 ( MF_uGF, MF_U(iS,:), MF_uDF )
+          CALL ApplyPositivityLimiter_MHD_MF &
+                 ( MF_uGF, MF_U(iS,:), MF_uDM )
 
           CALL MultiplyWithPsi6_MF( MF_uGF, MF_U(iS,:), +1 )
 
@@ -291,22 +291,22 @@ CONTAINS
         CALL MultiplyWithPsi6_MF( MF_uGF, MF_U(iS,:), -1 )
 
         ! Come in with U, leave with \psi^6 * dU
-        CALL ComputeIncrement_Euler_MF &
-               ( MF_uGF, MF_U(iS,:), MF_uDF, MF_D(iS,:) )
+        CALL ComputeIncrement_MHD_MF &
+               ( MF_uGF, MF_U(iS,:), MF_uDM, MF_D(iS,:) )
 
         DO iLevel = 0, nLevels-1
 
-          dM_OffGrid_Euler(:,iLevel) &
-            = dM_OffGrid_Euler(:,iLevel) &
-                + dt(iLevel) * w_SSPRK(iS) * OffGridFlux_Euler_MF(:,iLevel)
+          dM_OffGrid_MHD(:,iLevel) &
+            = dM_OffGrid_MHD(:,iLevel) &
+                + dt(iLevel) * w_SSPRK(iS) * OffGridFlux_MHD_MF(:,iLevel)
 
         END DO
 
-        IF( nLevels .GT. 1 .AND. UseFluxCorrection_Euler )THEN
+        IF( nLevels .GT. 1 .AND. UseFluxCorrection_MHD )THEN
 
           CALL MultiplyWithPsi6_MF( MF_uGF, MF_D(iS,:), -1 )
 
-          CALL ApplyFluxCorrection_Euler_MF( MF_uGF, MF_D(iS,:) )
+          CALL ApplyFluxCorrection_MHD_MF( MF_uGF, MF_D(iS,:) )
 
           CALL MultiplyWithPsi6_MF( MF_uGF, MF_D(iS,:), +1 )
 
@@ -322,8 +322,8 @@ CONTAINS
 
         DO iLevel = 0, nLevels-1
 
-          CALL MF_uCF(iLevel) &
-                 % LinComb( One, MF_uCF(iLevel), 1, &
+          CALL MF_uCM(iLevel) &
+                 % LinComb( One, MF_uCM(iLevel), 1, &
                             dt(iLevel) * w_SSPRK(iS), MF_D(iS,iLevel), 1, 1, &
                             nCompCF, 0 )
 
@@ -333,13 +333,13 @@ CONTAINS
 
     END DO ! iS = 1, nStages
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, -1 )
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCM, -1 )
 
-    CALL AverageDown( MF_uGF, MF_uCF )
-    CALL ApplyPositivityLimiter_Euler_MF &
-           ( MF_uGF, MF_uCF, MF_uDF )
+    CALL AverageDown( MF_uGF, MF_uCM )
+    CALL ApplyPositivityLimiter_MHD_MF &
+           ( MF_uGF, MF_uCM, MF_uDM )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, +1 )
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCM, +1 )
 
     DO iLevel = 0, nLevels-1
 
@@ -356,29 +356,29 @@ CONTAINS
 
       CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
 
-      CALL ComputeConformalFactor( MF_uGF, MF_uCF, MF_uGS, MF_uMF )
+      CALL ComputeConformalFactor( MF_uGF, MF_uCM, MF_uGS, MF_uMF )
 
       CALL TimersStop_AMReX( Timer_AMReX_GravitySolve )
 
     END IF ! EvolveGravity
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, -1 )
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCM, -1 )
 
-    CALL ApplySlopeLimiter_Euler_MF &
-           ( MF_uGF, MF_uCF, MF_uDF )
+    CALL ApplySlopeLimiter_MHD_MF &
+           ( MF_uGF, MF_uCM, MF_uDM )
 
-    CALL ApplyPositivityLimiter_Euler_MF &
-           ( MF_uGF, MF_uCF, MF_uDF )
+    CALL ApplyPositivityLimiter_MHD_MF &
+           ( MF_uGF, MF_uCM, MF_uDM )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, +1 )
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCM, +1 )
 
     IF( EvolveGravity )THEN
 
       CALL TimersStart_AMReX( Timer_AMReX_GravitySolve )
 
-      CALL ComputeConformalFactor( MF_uGF, MF_uCF, MF_uGS, MF_uMF )
+      CALL ComputeConformalFactor( MF_uGF, MF_uCM, MF_uGS, MF_uMF )
 
-      CALL ComputeLapseShiftCurvature( MF_uGF, MF_uCF, MF_uGS, MF_uMF )
+      CALL ComputeLapseShiftCurvature( MF_uGF, MF_uCM, MF_uGS, MF_uMF )
 
       DO iLevel = 0, nLevels-1
 
@@ -391,9 +391,9 @@ CONTAINS
 
     END IF ! EvolveGravity
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, -1 )
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCM, -1 )
 
-    CALL IncrementOffGridTally_Euler_MF( dM_OffGrid_Euler )
+    CALL IncrementOffGridTally_MHD_MF( dM_OffGrid_MHD )
 
     CALL TimersStop_AMReX( Timer_AMReX_UpdateFluid )
 
@@ -455,15 +455,15 @@ CONTAINS
   END SUBROUTINE AllocateButcherTables_SSPRK
 
 
-  SUBROUTINE ComputeConformalFactor( MF_uGF, MF_uCF, MF_uGS, MF_uMF )
+  SUBROUTINE ComputeConformalFactor( MF_uGF, MF_uCM, MF_uGS, MF_uMF )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCM(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:)
 
     CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
-           ( MF_uGF, MF_uCF, MF_uGS )
+           ( MF_uGF, MF_uCM, MF_uGS )
 
     CALL ComputeConformalFactor_XCFC_MF &
            ( MF_uGS, MF_uMF )
@@ -476,15 +476,15 @@ CONTAINS
   END SUBROUTINE ComputeConformalFactor
 
 
-  SUBROUTINE ComputeLapseShiftCurvature( MF_uGF, MF_uCF, MF_uGS, MF_uMF )
+  SUBROUTINE ComputeLapseShiftCurvature( MF_uGF, MF_uCM, MF_uGS, MF_uMF )
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCM(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGS(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uMF(0:)
 
     CALL ComputePressureTensorTrace_XCFC_MF &
-           ( MF_uGF, MF_uCF, MF_uGS )
+           ( MF_uGF, MF_uCM, MF_uGS )
 
     CALL ComputeLapseShiftCurvature_XCFC_MF &
            ( MF_uGS, MF_uMF )
@@ -499,4 +499,4 @@ CONTAINS
   END SUBROUTINE ComputeLapseShiftCurvature
 
 
-END MODULE MF_TimeSteppingModule_SSPRK
+END MODULE MF_TimeSteppingModule_SSPRK_MHD
