@@ -16,28 +16,6 @@ namespace
 
 namespace {
 
-  using INTERP_HOOK = void (*)(const int* lo, const int*hi,
-                               Real* d, const int* dlo, const int* dhi, int nd,
-                               int icomp, int ncomp);
-
-  class FIInterpHook
-  {
-  public:
-      explicit FIInterpHook (INTERP_HOOK a_f) : m_f(a_f) {}
-      void operator() (FArrayBox& fab, const Box& bx, int icomp, int ncomp) const
-      {
-          if (m_f) {
-              m_f(BL_TO_FORTRAN_BOX(bx),
-                  BL_TO_FORTRAN_ANYD(fab), fab.nComp(),
-                  icomp+1, ncomp);
-              // m_f is a fortran function expecting 1-based index
-          }
-      }
-
-  private:
-      INTERP_HOOK m_f;
-  };
-
   extern "C"
   {
 
@@ -53,8 +31,7 @@ namespace {
                FPhysBC::fill_physbc_funptr_t fpFineFillPhysBC,
                int RefRatio, int interp_id,
                int * pLoBC[], int * pHiBC[],
-               int nFineV, int nDOFX, void * vpCoarseToFineProjectionMatrix,
-               INTERP_HOOK pre_interp, INTERP_HOOK post_interp )
+               int nFineV, int nDOFX, void * vpCoarseToFineProjectionMatrix )
       {
           Vector<BCRec> bcs;
           for ( int iComp = 0; iComp < nComp; ++iComp ) {
@@ -98,8 +75,7 @@ namespace {
                FPhysBC::fill_physbc_funptr_t fpFineFillPhysBC,
                int RefRatio, int interp_id,
                int * pLoBC[], int * pHiBC[],
-               int nFineV, int nDOFX, void * vpCoarseToFineProjectionMatrix,
-               INTERP_HOOK pre_interp, INTERP_HOOK post_interp )
+               int nFineV, int nDOFX, void * vpCoarseToFineProjectionMatrix )
       {
           Vector<BCRec> bcs;
           for ( int iComp = 0; iComp < nComp; ++iComp ) {
@@ -138,8 +114,7 @@ namespace {
                FPhysBC::fill_physbc_funptr_t fpFillPhysBCFine,
                int RefRatio, int interp_id,
                int * pLoBC[], int * pHiBC[],
-               int nFineV, int nDOFX, void * vpCoarseToFineProjectionMatrix,
-               INTERP_HOOK pre_interp, INTERP_HOOK post_interp)
+               int nFineV, int nDOFX, void * vpCoarseToFineProjectionMatrix )
       {
           Vector<BCRec> bcs;
           for ( int iComp = 0; iComp < nComp; ++iComp) {
@@ -174,8 +149,7 @@ namespace {
                FPhysBC::fill_physbc_funptr_t fpFillPhysBCFine,
                int RefRatio, int interp_id,
                int * pLoBC[], int * pHiBC[],
-               int nFineV, int nDOFX, void * vpCoarseToFineProjectionMatrix,
-               INTERP_HOOK pre_interp, INTERP_HOOK post_interp)
+               int nFineV, int nDOFX, void * vpCoarseToFineProjectionMatrix )
       {
           Vector<BCRec> bcs;
           for ( int iComp = 0; iComp < nComp; ++iComp) {

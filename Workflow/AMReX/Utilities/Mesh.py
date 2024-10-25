@@ -50,11 +50,11 @@ def CreateLocations(File,               \
 
 
 
- #=============================================#
+#=============================================#
 #                                               #
 #   CreateLeafLocations                         #
 #                                               #
- #=============================================#
+#=============================================#
 def CreateLeafLocations( File ):
 
     yt.funcs.mylog.setLevel(40) # Suppress yt warnings
@@ -71,32 +71,76 @@ def CreateLeafLocations( File ):
 
     X1  = []
     dX1 = []
-    for lvl in range(ds.max_level+1):
+    X2  = []
+    dX2 = []
+    X3  = []
+    dX3 = []
 
-        grids = ds.index.select_grids(lvl)
+    for lvl in range( ds.max_level + 1 ):
+
+        grids = ds.index.select_grids( lvl )
 
         for grid in grids:
-            for cell in range(grid.ActiveDimensions[0]):
-                X1_C = grid["boxlib","X1_C"]
-                dX1g = grid["boxlib","dX1"]
 
-                if grid.child_mask[cell]:
-                    X1 .append( X1_C[cell].value[0][0] )
-                    dX1.append( dX1g[cell].value[0][0] )
+            X1_C = grid["boxlib","X1_C"]
+            dX1g = grid["boxlib","dX1"]
+            X2_C = grid["boxlib","X2_C"]
+            dX2g = grid["boxlib","dX2"]
+            X3_C = grid["boxlib","X3_C"]
+            dX3g = grid["boxlib","dX3"]
 
-    if   ( gvS.CoordinateSystem.lower() == 'cartesian' ) :
+            for iX1 in range( grid.child_mask.shape[0] ):
+                for iX2 in range( grid.child_mask.shape[1] ):
+                    for iX3 in range( grid.child_mask.shape[2] ):
 
-      X2  = [ 0.5 ]
-      X3  = [ 0.5 ]
-      dX2 = [ 1.0 ]
-      dX3 = [ 1.0 ]
+                        if ( grid.child_mask[iX1,iX2,iX3] ) :
 
-    elif ( gvS.CoordinateSystem.lower() == 'spherical' ) :
+                            X1 .append( np.float64( X1_C[iX1,iX2,iX3] ) )
+                            dX1.append( np.float64( dX1g[iX1,iX2,iX3] ) )
+                            X2 .append( np.float64( X2_C[iX1,iX2,iX3] ) )
+                            dX2.append( np.float64( dX2g[iX1,iX2,iX3] ) )
+                            X3 .append( np.float64( X3_C[iX1,iX2,iX3] ) )
+                            dX3.append( np.float64( dX3g[iX1,iX2,iX3] ) )
 
-      X2  = [ math.pi/2.0 ]
-      X3  = [ math.pi ]
-      dX2 = [ math.pi ]
-      dX3 = [ 2.0*math.pi ]
+    if ( nDimsX == 1 ) :
+
+        if   ( gvS.CoordinateSystem.lower() == 'cartesian' ) :
+
+          X2  = [ 0.5 ]
+          dX2 = [ 1.0 ]
+          X3  = [ 0.5 ]
+          dX3 = [ 1.0 ]
+
+        elif ( gvS.CoordinateSystem.lower() == 'cylindrical' ) :
+
+          X2  = [ 0.5 ]
+          dX2 = [ 1.0 ]
+          X3  = [ np.pi ]
+          dX3 = [ 2.0 * np.pi ]
+
+        elif ( gvS.CoordinateSystem.lower() == 'spherical' ) :
+
+          X2  = [ np.pi / 2.0 ]
+          dX2 = [ np.pi ]
+          X3  = [ np.pi ]
+          dX3 = [ 2.0 * np.pi ]
+
+    if ( nDimsX == 2 ) :
+
+        if   ( gvS.CoordinateSystem.lower() == 'cartesian' ) :
+
+          X3  = [ 0.5 ]
+          dX3 = [ 1.0 ]
+
+        elif ( gvS.CoordinateSystem.lower() == 'cylindrical' ) :
+
+          X3  = [ np.pi ]
+          dX3 = [ 2.0 * np.pi ]
+
+        elif ( gvS.CoordinateSystem.lower() == 'spherical' ) :
+
+          X3  = [ np.pi ]
+          dX3 = [ 2.0 * np.pi ]
 
     X1  = np.array( X1  )
     X2  = np.array( X2  )

@@ -2808,7 +2808,7 @@ CONTAINS
         CALL ComputePressureFromPrimitive &
                ( P(iPF_D), P(iPF_E), P(iPF_Ne), Pressure )
 
-        Pi_du_22 = U(iNodeX,iX1,iX2,iX3,iCF_S1) * P(iPF_V2) + Pressure
+        Pi_du_22 = U(iNodeX,iX1,iX2,iX3,iCF_S2) * P(iPF_V2) + Pressure
         Pi_du_33 = U(iNodeX,iX1,iX2,iX3,iCF_S3) * P(iPF_V3) + Pressure
 
         dU(iNodeX,iX1,iX2,iX3,iCF_S1) &
