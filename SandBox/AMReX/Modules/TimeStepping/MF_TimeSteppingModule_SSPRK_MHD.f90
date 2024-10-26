@@ -241,7 +241,7 @@ CONTAINS
 
         CALL AverageDown( MF_uGF, MF_U(iS,:) )
         CALL ApplyPositivityLimiter_MHD_MF &
-               ( MF_uGF, MF_U(iS,:), MF_uDM )
+               ( 0.0_DP, MF_uGF, MF_U(iS,:), MF_uDM )
 
         CALL MultiplyWithPsi6_MF( MF_uGF, MF_U(iS,:), +1 )
 
@@ -265,10 +265,10 @@ CONTAINS
           CALL MultiplyWithPsi6_MF( MF_uGF, MF_U(iS,:), -1 )
 
           CALL ApplySlopeLimiter_MHD_MF &
-                 ( MF_uGF, MF_U(iS,:), MF_uDM )
+                 ( 0.0_DP, MF_uGF, MF_U(iS,:), MF_uDM )
 
           CALL ApplyPositivityLimiter_MHD_MF &
-                 ( MF_uGF, MF_U(iS,:), MF_uDM )
+                 ( 0.0_DP, MF_uGF, MF_U(iS,:), MF_uDM )
 
           CALL MultiplyWithPsi6_MF( MF_uGF, MF_U(iS,:), +1 )
 
@@ -337,7 +337,7 @@ CONTAINS
 
     CALL AverageDown( MF_uGF, MF_uCM )
     CALL ApplyPositivityLimiter_MHD_MF &
-           ( MF_uGF, MF_uCM, MF_uDM )
+           ( 0.0_DP, MF_uGF, MF_uCM, MF_uDM )
 
     CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCM, +1 )
 
@@ -365,10 +365,10 @@ CONTAINS
     CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCM, -1 )
 
     CALL ApplySlopeLimiter_MHD_MF &
-           ( MF_uGF, MF_uCM, MF_uDM )
+           ( 0.0_DP, MF_uGF, MF_uCM, MF_uDM )
 
     CALL ApplyPositivityLimiter_MHD_MF &
-           ( MF_uGF, MF_uCM, MF_uDM )
+           ( 0.0_DP, MF_uGF, MF_uCM, MF_uDM )
 
     CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCM, +1 )
 

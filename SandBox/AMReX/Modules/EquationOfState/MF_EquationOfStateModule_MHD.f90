@@ -16,8 +16,6 @@ MODULE MF_EquationOfStateModule_MHD
     FinalizeEquationOfState
   USE EquationOfStateModule_TABLE, ONLY: &
     Min_D
-  USE MHD_UtilitiesModule_Relativistic, ONLY: &
-    rhoMin_MHD_GR
 
   ! --- Local Modules ---
 
@@ -62,8 +60,6 @@ CONTAINS
              ( EquationOfState_Option          = TRIM( EquationOfState ), &
                EquationOfStateTableName_Option = TRIM( EosTableName ), &
                Verbose_Option = amrex_parallel_ioprocessor() )
-
-      rhoMin_MHD_GR = Min_D
 
     ELSE IF( TRIM( EquationOfState ) .EQ. 'IDEAL' )THEN
 

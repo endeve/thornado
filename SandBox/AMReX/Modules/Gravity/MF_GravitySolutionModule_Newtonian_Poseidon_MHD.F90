@@ -42,7 +42,7 @@ MODULE MF_GravitySolutionModule_Newtonian_Poseidon
     Second, &
     GravitationalConstant, &
     Centimeter
-  USE FluidFieldsModule, ONLY: &
+  USE MagnetofluidFieldsModule, ONLY: &
     iCM_D, &
     iAM_Cs
   USE GeometryFieldsModule, ONLY: &
@@ -324,7 +324,7 @@ call showvariablefrommultifab(mf_ugs,1)
           WRITE(*,*)
           WRITE(*,'(4x,A)')'Using Outer Boundary Values for Polytrope Test '
           WRITE(*,'(8x,A,ES15.6E3)')'Phi_r in CGS: ', Phi_r_converted
-          WRITE(*,'(8x,A,ES15.6E3)')'Sound Speed in Kilometer/Second: ', iAF_Cm/( Kilometer / Second)
+          WRITE(*,'(8x,A,ES15.6E3)')'Sound Speed in Kilometer/Second: ', iAM_Cs/( Kilometer / Second)
           WRITE(*,'(4x,A)') &
             '------------------------------------------'
 
