@@ -359,7 +359,7 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( 0.0_DP, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
@@ -590,7 +590,7 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( 0.0_DP, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
@@ -879,7 +879,7 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( 0.0_DP, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
@@ -1113,7 +1113,7 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( 0.0_DP, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
@@ -1312,7 +1312,7 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( 0.0_DP, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
@@ -1555,7 +1555,7 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( 0.0_DP, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
