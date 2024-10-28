@@ -270,6 +270,8 @@ CONTAINS
                  1-swX(3):nX(3)+swX(3), &
                  1:nCM) )
 
+    uCM = Zero
+
   END SUBROUTINE CreateFields_Conserved
 
 
@@ -304,6 +306,8 @@ CONTAINS
                   1-swX(2):nX(2)+swX(2), &
                   1-swX(3):nX(3)+swX(3), &
                   1:nPM) )
+
+    uPM = Zero
 
   END SUBROUTINE CreateFields_Primitive
 
@@ -340,6 +344,8 @@ CONTAINS
                   1-swX(3):nX(3)+swX(3), &
                   1:nAM) )
 
+    uAM = Zero
+
   END SUBROUTINE CreateFields_Auxiliary
 
 
@@ -374,6 +380,8 @@ CONTAINS
                   1-swX(2):nX(2)+swX(2), &
                   1-swX(3):nX(3)+swX(3), &
                   1:nDM) )
+
+    uDM = Zero
 
   END SUBROUTINE CreateFields_Diagnostic
 
