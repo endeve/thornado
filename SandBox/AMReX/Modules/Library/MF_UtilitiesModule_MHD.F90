@@ -60,6 +60,10 @@ MODULE MF_UtilitiesModule
     iCM_S3, &
     iCM_E, &
     iCM_Ne, &
+    iCM_B1, &
+    iCM_B2, &
+    iCM_B3, &
+    iCM_Chi, &
     nCM, &
     iPM_D, &
     iPM_V1, &
@@ -67,6 +71,10 @@ MODULE MF_UtilitiesModule
     iPM_V3, &
     iPM_E, &
     iPM_Ne, &
+    iPM_B1, &
+    iPM_B2, &
+    iPM_B3, &
+    iPM_Chi, &
     nPM, &
     unitsPM, &
     iAM_P, &
@@ -695,11 +703,11 @@ CONTAINS
   END SUBROUTINE amrex2thornado_X_F
 
 
-  SUBROUTINE WriteNodalDataToFile( GEOM, MF_uGF, MF_uCF, MF_uCR, FileNameBase )
+  SUBROUTINE WriteNodalDataToFile( GEOM, MF_uGF, MF_uCM, MF_uCR, FileNameBase )
 
     TYPE(amrex_geometry), INTENT(in) :: GEOM  (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in) :: MF_uCM(0:nLevels-1)
     TYPE(amrex_multifab), INTENT(in) :: MF_uCR(0:nLevels-1)
     CHARACTER(LEN=*)    , INTENT(in) :: FileNameBase
 
@@ -709,8 +717,8 @@ CONTAINS
                           iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4),     &
                           iZ_B (4), iZ_E (4), iE_B, iE_E,             &
                           iX_B (3), iX_E (3), iEL, iER, iLo_MF(4),    &
-                          iLevel, nCompGF, nCompCF, nCompCR,          &
-                          iX1, iX2, iX3, iCF, iGF, iCR,               &
+                          iLevel, nCompGF, nCompCM, nCompCR,          &
+                          iX1, iX2, iX3, iCM, iGF, iCR,               &
                           iZ1, iZ2, iZ3, iZ4, iS, iE,                 &
                           iNodeZ,                                     &
                           iNodeX, iNodeX1, iNodeX2, iNodeX3, iNodeE
@@ -719,12 +727,12 @@ CONTAINS
     TYPE(EdgeMap)      :: Edge_Map
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCM (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCR (:,:,:,:)
 
     REAL(DP), ALLOCATABLE :: G (:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: CF (:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: PF (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: CM (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: PM (:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: CR (:,:,:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: PR (:,:,:,:,:,:,:)
 
@@ -771,17 +779,17 @@ CONTAINS
 
     CALL AllocateArray_X &
            ( [ 1    , 1    -swX(1), 1    -swX(2), 1    -swX(3), 1   ], &
-             [ nDOFX, nX(1)+swX(1), nX(2)+swX(2), nX(3)+swX(3), nCF ], &
-             CF )
+             [ nDOFX, nX(1)+swX(1), nX(2)+swX(2), nX(3)+swX(3), nCM ], &
+             CM )
 
     CALL AllocateArray_X &
            ( [ 1    , 1    -swX(1), 1    -swX(2), 1    -swX(3), 1   ], &
-             [ nDOFX, nX(1)+swX(1), nX(2)+swX(2), nX(3)+swX(3), nPF ], &
-             PF )
+             [ nDOFX, nX(1)+swX(1), nX(2)+swX(2), nX(3)+swX(3), nPM ], &
+             PM )
 
     G  = 0.0_DP
-    CF = 0.0_DP
-    PF = 0.0_DP
+    CM = 0.0_DP
+    PM = 0.0_DP
     CR = 0.0_DP
     PR = 0.0_DP
 
@@ -793,7 +801,7 @@ CONTAINS
 
       CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
-      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      CALL MF_uCM(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
       CALL MF_uCR(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
@@ -804,8 +812,8 @@ CONTAINS
         uGF     => MF_uGF(iLevel) % DataPtr( MFI )
         nCompGF =  MF_uGF(iLevel) % nComp()
 
-        uCF     => MF_uCF(iLevel) % DataPtr( MFI )
-        nCompCF =  MF_uCF(iLevel) % nComp()
+        uCM     => MF_uCM(iLevel) % DataPtr( MFI )
+        nCompCM =  MF_uCM(iLevel) % nComp()
 
         uCR     => MF_uCR(iLevel) % DataPtr( MFI )
         nCompCR =  MF_uCr(iLevel) % nComp()
@@ -850,10 +858,10 @@ CONTAINS
                                          iX_B(2):iX_E(2), &
                                          iX_B(3):iX_E(3),1:nGF) )
 
-        CALL amrex2thornado_X( nCF, iX_B, iX_E, iLo_MF, iX_B, iX_E, uCF, &
-                               CF(1:nDOFX,iX_B(1):iX_E(1), &
+        CALL amrex2thornado_X( nCM, iX_B, iX_E, iLo_MF, iX_B, iX_E, uCM, &
+                               CM(1:nDOFX,iX_B(1):iX_E(1), &
                                           iX_B(2):iX_E(2), &
-                                          iX_B(3):iX_E(3),1:nCF) )
+                                          iX_B(3):iX_E(3),1:nCM) )
 
         CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
@@ -883,9 +891,9 @@ CONTAINS
 
       END DO
 
-      DO iCF = 1, nCF
+      DO iCM = 1, nCM
 
-        CALL amrex_parallel_reduce_sum( CF(iNodeX,iX1,iX2,iX3,iCF) )
+        CALL amrex_parallel_reduce_sum( CM(iNodeX,iX1,iX2,iX3,iCM) )
 
       END DO
 
@@ -921,21 +929,33 @@ CONTAINS
       DO iX1 = 1, nX(1)
 
         CALL ComputePrimitive_MHD_Relativistic &
-               ( CF(:,iX1,iX2,iX3,iCF_D ),       &
-                 CF(:,iX1,iX2,iX3,iCF_S1),       &
-                 CF(:,iX1,iX2,iX3,iCF_S2),       &
-                 CF(:,iX1,iX2,iX3,iCF_S3),       &
-                 CF(:,iX1,iX2,iX3,iCF_E ),       &
-                 CF(:,iX1,iX2,iX3,iCF_Ne),       &
-                 PF(:,iX1,iX2,iX3,iPF_D ),       &
-                 PF(:,iX1,iX2,iX3,iPF_V1),       &
-                 PF(:,iX1,iX2,iX3,iPF_V2),       &
-                 PF(:,iX1,iX2,iX3,iPF_V3),       &
-                 PF(:,iX1,iX2,iX3,iPF_E ),       &
-                 PF(:,iX1,iX2,iX3,iPF_Ne),       &
+               ( CM(:,iX1,iX2,iX3,iCM_D  ),     &
+                 CM(:,iX1,iX2,iX3,iCM_S1 ),     &
+                 CM(:,iX1,iX2,iX3,iCM_S2 ),     &
+                 CM(:,iX1,iX2,iX3,iCM_S3 ),     &
+                 CM(:,iX1,iX2,iX3,iCM_E  ),     &
+                 CM(:,iX1,iX2,iX3,iCM_Ne ),     &
+                 CM(:,iX1,iX2,iX3,iCM_B1 ),     &
+                 CM(:,iX1,iX2,iX3,iCM_B2 ),     &
+                 CM(:,iX1,iX2,iX3,iCM_B3 ),     &
+                 CM(:,iX1,iX2,iX3,iCM_Chi),     &
+                 PM(:,iX1,iX2,iX3,iPM_D  ),     &
+                 PM(:,iX1,iX2,iX3,iPM_V1 ),     &
+                 PM(:,iX1,iX2,iX3,iPM_V2 ),     &
+                 PM(:,iX1,iX2,iX3,iPM_V3 ),     &
+                 PM(:,iX1,iX2,iX3,iPM_E  ),     &
+                 PM(:,iX1,iX2,iX3,iPM_Ne ),     &
+                 PM(:,iX1,iX2,iX3,iPM_B1 ),     &
+                 PM(:,iX1,iX2,iX3,iPM_B2 ),     &
+                 PM(:,iX1,iX2,iX3,iPM_B3 ),     &
+                 PM(:,iX1,iX2,iX3,iPM_Chi),     &
                  G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+                 G(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 G(:,iX1,iX2,iX3,iGF_Alpha   ), &
+                 G(:,iX1,iX2,iX3,iGF_Beta_1  ), &
+                 G(:,iX1,iX2,iX3,iGF_Beta_2  ), &
+                 G(:,iX1,iX2,iX3,iGF_Beta_3  ) )
 
       END DO
       END DO
@@ -964,9 +984,9 @@ CONTAINS
                  PR(iNodeZ,iZ1,iZ2,iZ3,iZ4, iPR_I1, iS), &
                  PR(iNodeZ,iZ1,iZ2,iZ3,iZ4, iPR_I2, iS), &
                  PR(iNodeZ,iZ1,iZ2,iZ3,iZ4, iPR_I3, iS), &
-                 PF(iNodeX,iZ2,iZ3,iZ4, iPF_V1), &
-                 PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2), &
-                 PF(iNodeX,iZ2,iZ3,iZ4, iPF_V3), &
+                 PM(iNodeX,iZ2,iZ3,iZ4, iPM_V1), &
+                 PM(iNodeX,iZ2,iZ3,iZ4,iPM_V2), &
+                 PM(iNodeX,iZ2,iZ3,iZ4, iPM_V3), &
                  G (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
                  G (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
                  G (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33), &
@@ -1098,13 +1118,13 @@ CONTAINS
 
     CALL DeallocateArray_X &
            ( [ 1    , 1    -swX(1), 1    -swX(2), 1    -swX(3), 1   ], &
-             [ nDOFX, nX(1)+swX(1), nX(2)+swX(2), nX(3)+swX(3), nPF ], &
-             PF )
+             [ nDOFX, nX(1)+swX(1), nX(2)+swX(2), nX(3)+swX(3), nPM ], &
+             PM )
 
     CALL DeallocateArray_X &
            ( [ 1    , 1    -swX(1), 1    -swX(2), 1    -swX(3), 1   ], &
-             [ nDOFX, nX(1)+swX(1), nX(2)+swX(2), nX(3)+swX(3), nCF ], &
-             CF )
+             [ nDOFX, nX(1)+swX(1), nX(2)+swX(2), nX(3)+swX(3), nCM ], &
+             CM )
 
     CALL DeallocateArray_X &
            ( [ 1    , 1    -swX(1), 1    -swX(2), 1    -swX(3), 1   ], &
@@ -1152,10 +1172,10 @@ CONTAINS
   END SUBROUTINE WriteNodalDataToFile
 
 
-  SUBROUTINE WriteMHDToFile( MF_uCF, MF_uGF, n )
+  SUBROUTINE WriteMHDToFile( MF_uCM, MF_uGF, n )
 
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in) :: MF_uCM(0:nLevels-1)
     INTEGER, INTENT(in) :: n
 
 #ifndef THORNADO_NOTRANSPORT
@@ -1164,7 +1184,7 @@ CONTAINS
     TYPE(amrex_box)    :: BX
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCM(:,:,:,:)
 
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
@@ -1189,7 +1209,7 @@ CONTAINS
       DO WHILE( MFI % next() )
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+        uCM => MF_uCM(iLevel) % DataPtr( MFI )
 
         iLo_MF = LBOUND( uGF )
 
@@ -1207,7 +1227,7 @@ CONTAINS
 
         CALL AllocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCM ], &
                  U )
 
         CALL AllocateArray_X &
@@ -1222,56 +1242,56 @@ CONTAINS
 
         CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
 
-        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCF, U )
+        CALL amrex2thornado_X( nCM, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCM, U )
 
         DO iX3 = 1, nX(3)
         DO iX2 = 1, nX(2)
         DO iX1 = 1, nX(1)
 
           CALL ComputePrimitive_MHD_Relativistic &
-               ( U (:,iX1,iX2,iX3,iCF_D       ), &
-                 U (:,iX1,iX2,iX3,iCF_S1      ), &
-                 U (:,iX1,iX2,iX3,iCF_S2      ), &
-                 U (:,iX1,iX2,iX3,iCF_S3      ), &
-                 U (:,iX1,iX2,iX3,iCF_E       ), &
-                 U (:,iX1,iX2,iX3,iCF_Ne      ), &
-                 PF(:,iX1,iX2,iX3,iPF_D       ), &
-                 PF(:,iX1,iX2,iX3,iPF_V1      ), &
-                 PF(:,iX1,iX2,iX3,iPF_V2      ), &
-                 PF(:,iX1,iX2,iX3,iPF_V3      ), &
-                 PF(:,iX1,iX2,iX3,iPF_E       ), &
-                 PF(:,iX1,iX2,iX3,iPF_Ne      ), &
+               ( U (:,iX1,iX2,iX3,iCM_D       ), &
+                 U (:,iX1,iX2,iX3,iCM_S1      ), &
+                 U (:,iX1,iX2,iX3,iCM_S2      ), &
+                 U (:,iX1,iX2,iX3,iCM_S3      ), &
+                 U (:,iX1,iX2,iX3,iCM_E       ), &
+                 U (:,iX1,iX2,iX3,iCM_Ne      ), &
+                 PM(:,iX1,iX2,iX3,iPM_D       ), &
+                 PM(:,iX1,iX2,iX3,iPM_V1      ), &
+                 PM(:,iX1,iX2,iX3,iPM_V2      ), &
+                 PM(:,iX1,iX2,iX3,iPM_V3      ), &
+                 PM(:,iX1,iX2,iX3,iPM_E       ), &
+                 PM(:,iX1,iX2,iX3,iPM_Ne      ), &
                  G (:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G (:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  G (:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
            CALL ComputeAuxiliary_Fluid_TABLE &
-               ( PF(:,iX1,iX2,iX3,iPF_D ), &
-                 PF(:,iX1,iX2,iX3,iPF_E ), &
-                 PF(:,iX1,iX2,iX3,iPF_Ne), &
-                 AF(:,iX1,iX2,iX3,iAF_P ), &
-                 AF(:,iX1,iX2,iX3,iAF_T ), &
-                 AF(:,iX1,iX2,iX3,iAF_Ye), &
-                 AF(:,iX1,iX2,iX3,iAF_S ), &
-                 AF(:,iX1,iX2,iX3,iAF_E ), &
-                 AF(:,iX1,iX2,iX3,iAF_Gm), &
-                 AF(:,iX1,iX2,iX3,iAF_Cs) )
+               ( PM(:,iX1,iX2,iX3,iPM_D ), &
+                 PM(:,iX1,iX2,iX3,iPM_E ), &
+                 PM(:,iX1,iX2,iX3,iPM_Ne), &
+                 AM(:,iX1,iX2,iX3,iAM_P ), &
+                 AM(:,iX1,iX2,iX3,iAM_T ), &
+                 AM(:,iX1,iX2,iX3,iAM_Ye), &
+                 AM(:,iX1,iX2,iX3,iAM_S ), &
+                 AM(:,iX1,iX2,iX3,iAM_E ), &
+                 AM(:,iX1,iX2,iX3,iAM_Gm), &
+                 AM(:,iX1,iX2,iX3,iAM_Cs) )
 
           CALL ApplyEquationOfState_TABLE &
-               ( PF(:,iX1,iX2,iX3,iPF_D ), &
-                 AF(:,iX1,iX2,iX3,iAF_T ), &
-                 AF(:,iX1,iX2,iX3,iAF_Ye), &
-                 AF(:,iX1,iX2,iX3,iAF_P ), &
-                 AF(:,iX1,iX2,iX3,iAF_S ), &
-                 AF(:,iX1,iX2,iX3,iAF_E ), &
-                 AF(:,iX1,iX2,iX3,iAF_Me), &
-                 AF(:,iX1,iX2,iX3,iAF_Mp), &
-                 AF(:,iX1,iX2,iX3,iAF_Mn), &
-                 AF(:,iX1,iX2,iX3,iAF_Xp), &
-                 AF(:,iX1,iX2,iX3,iAF_Xn), &
-                 AF(:,iX1,iX2,iX3,iAF_Xa), &
-                 AF(:,iX1,iX2,iX3,iAF_Xh), &
-                 AF(:,iX1,iX2,iX3,iAF_Gm) )
+               ( PM(:,iX1,iX2,iX3,iPM_D ), &
+                 AM(:,iX1,iX2,iX3,iAM_T ), &
+                 AM(:,iX1,iX2,iX3,iAM_Ye), &
+                 AM(:,iX1,iX2,iX3,iAM_P ), &
+                 AM(:,iX1,iX2,iX3,iAM_S ), &
+                 AM(:,iX1,iX2,iX3,iAM_E ), &
+                 AM(:,iX1,iX2,iX3,iAM_Me), &
+                 AM(:,iX1,iX2,iX3,iAM_Mp), &
+                 AM(:,iX1,iX2,iX3,iAM_Mn), &
+                 AM(:,iX1,iX2,iX3,iAM_Xp), &
+                 AM(:,iX1,iX2,iX3,iAM_Xn), &
+                 AM(:,iX1,iX2,iX3,iAM_Xa), &
+                 AM(:,iX1,iX2,iX3,iAM_Xh), &
+                 AM(:,iX1,iX2,iX3,iAM_Gm) )
 
         END DO
         END DO
@@ -1295,39 +1315,39 @@ CONTAINS
         DO iX1 = 1, nX(1)
 
           Mu(:) &
-            = AF(:,iX1,iX2,iX3,iAF_Me) &
-                + AF(:,iX1,iX2,iX3,iAF_Mp) - AF(:,iX1,iX2,iX3,iAF_Mn)
+            = AM(:,iX1,iX2,iX3,iAM_Me) &
+                + AM(:,iX1,iX2,iX3,iAM_Mp) - AF(:,iX1,iX2,iX3,iAF_Mn)
 
           WRITE(101,FMT) &
-            PF(:,iX1,iX2,iX3,iPF_D) &
-              / unitsPF(iPF_D)
+            PM(:,iX1,iX2,iX3,iPM_D) &
+              / unitsPM(iPM_D)
 
           WRITE(102,FMT) &
-            PF(:,iX1,iX2,iX3,iPF_V1) &
-              / unitsPF(iPF_V1)
+            PM(:,iX1,iX2,iX3,iPM_V1) &
+              / unitsPM(iPM_V1)
 
           WRITE(103,FMT) &
-            PF(:,iX1,iX2,iX3,iPF_V2) &
-              / unitsPF(iPF_V2)
+            PM(:,iX1,iX2,iX3,iPM_V2) &
+              / unitsPM(iPM_V2)
 
           WRITE(104,FMT) &
-            PF(:,iX1,iX2,iX3,iPF_V3) &
-              / unitsPF(iPF_V3)
+            PM(:,iX1,iX2,iX3,iPM_V3) &
+              / unitsPM(iPM_V3)
 
           WRITE(105,FMT) &
-            AF(:,iX1,iX2,iX3,iAF_Ye) &
-              / unitsAF(iAF_Ye)
+            AM(:,iX1,iX2,iX3,iAM_Ye) &
+              / unitsAM(iAM_Ye)
 
           WRITE(106,FMT) &
             Mu(:) &
-              / unitsAF(iAF_Me)
+              / unitsAM(iAM_Me)
 
           WRITE(107,FMT) &
-            PF(:,iX1,iX2,iX3,iPF_E) &
-              / unitsPF(iPF_E)
+            PM(:,iX1,iX2,iX3,iPM_E) &
+              / unitsPM(iPM_E)
 
           WRITE(108,FMT) &
-            AF(:,iX1,iX2,iX3,iAF_T) &
+            AM(:,iX1,iX2,iX3,iAM_T) &
               / MeV
 
         END DO
@@ -1336,17 +1356,17 @@ CONTAINS
 
         CALL DeallocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nAF ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nAM ], &
                  AM )
 
         CALL DeallocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nPF ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nPM ], &
                  PM )
 
         CALL DeallocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCM ], &
                  U )
 
         CALL DeallocateArray_X &

@@ -24,9 +24,9 @@ MODULE MF_MHD_PositivityLimiterModule
     nDOFX
   USE MeshModule, ONLY: &
     MeshX
-  USE FluidFieldsModule, ONLY: &
-    nCF, &
-    nDF
+  USE MagnetofluidFieldsModule, ONLY: &
+    nCM, &
+    nDM
   USE GeometryFieldsModule, ONLY: &
     nGF
   USE EquationOfStateModule, ONLY: &
@@ -152,12 +152,12 @@ CONTAINS
 
 
   SUBROUTINE ApplyPositivityLimiter_MHD_MF_MultipleLevels &
-    ( t, MF_uGF, MF_uCF, MF_uDF, swX_Option )
+    ( t, MF_uGF, MF_uCM, MF_uDM, swX_Option )
 
-    REAL(DP)            , INTENT(in)    :: t
+    REAL(DP)            , INTENT(in)    :: t(0:)
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCM(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDM(0:)
     INTEGER             , INTENT(in), OPTIONAL :: swX_Option(3)
 
     INTEGER :: iLevel, iErr, swXX(3)
@@ -183,7 +183,8 @@ CONTAINS
       END IF ! DEBUG
 
       CALL ApplyPositivityLimiter_MHD_MF_SingleLevel &
-             ( t, iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel), &
+             ( t(iLevel), iLevel, MF_uGF(iLevel), MF_uCM(iLevel), &
+               MF_uDM(iLevel), &
                swX_Option = swXX )
 
     END DO ! iLevel = 0, nLevels-1
@@ -192,21 +193,21 @@ CONTAINS
 
 
   SUBROUTINE ApplyPositivityLimiter_MHD_MF_SingleLevel &
-    ( t, iLevel, MF_uGF, MF_uCF, MF_uDF, swX_Option )
+    ( t, iLevel, MF_uGF, MF_uCM, MF_uDM, swX_Option )
 
     REAL(DP)            , INTENT(in)    :: t
     INTEGER             , INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uDF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCM
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDM
     INTEGER             , INTENT(in), OPTIONAL :: swX_Option(3)
 
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uDF (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCM (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDM (:,:,:,:)
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
@@ -228,7 +229,7 @@ CONTAINS
 
 #if defined( THORNADO_OMP )
     !$OMP PARALLEL &
-    !$OMP PRIVATE( BX, MFI, uGF, uCF, uDF, G, U, D, &
+    !$OMP PRIVATE( BX, MFI, uGF, uCM, uDM, G, U, D, &
     !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, iX_B, iX_E, iLo_MF, Edge_Map )
 #endif
 
@@ -237,8 +238,8 @@ CONTAINS
     DO WHILE( MFI % next() )
 
       uGF => MF_uGF % DataPtr( MFI )
-      uCF => MF_uCF % DataPtr( MFI )
-      uDF => MF_uDF % DataPtr( MFI )
+      uCM => MF_uCM % DataPtr( MFI )
+      uDM => MF_uDM % DataPtr( MFI )
 
       iLo_MF = LBOUND( uGF )
 
@@ -258,19 +259,19 @@ CONTAINS
 
       CALL AllocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCM ], &
                U )
 
       CALL AllocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDF ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
                D )
 
       CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uGF, G )
 
-      CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uCF, U )
+      CALL amrex2thornado_X( nCM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uCM, U )
 
-      CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uDF, D )
+      CALL amrex2thornado_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uDM, D )
 
       ! --- Apply boundary conditions to physical boundaries
       !     (needed for AMR) ---
@@ -283,18 +284,18 @@ CONTAINS
       CALL ApplyPositivityLimiter_MHD &
              ( iX_B , iX_E , iX_B1, iX_E1, G, U, D )
 
-      CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uCF, U )
+      CALL thornado2amrex_X( nCM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uCM, U )
 
-      CALL thornado2amrex_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uDF, D )
+      CALL thornado2amrex_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uDM, D )
 
       CALL DeallocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDF ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
                D )
 
       CALL DeallocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCM ], &
                U )
 
       CALL DeallocateArray_X &

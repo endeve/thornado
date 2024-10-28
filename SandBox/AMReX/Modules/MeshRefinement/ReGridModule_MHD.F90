@@ -111,7 +111,7 @@ CONTAINS
            ( MF_uGF, MF_uCM, -1, OnlyLeafElements_Option = .FALSE. )
 
     CALL ApplyPositivityLimiter_MHD_MF &
-           ( t_old(0), MF_uGF, MF_uCM, MF_uDM )
+           ( t_new, MF_uGF, MF_uCM, MF_uDM )
 
     CALL MultiplyWithPsi6_MF &
            ( MF_uGF, MF_uCM, +1, OnlyLeafElements_Option = .FALSE. )
@@ -173,11 +173,11 @@ CONTAINS
     CALL AverageDown( MF_uGF, MF_uCM )
 
     CALL ApplyPositivityLimiter_MHD_MF &
-           ( t_old(0), MF_uGF, MF_uCM, MF_uDM )
+           ( t_new, MF_uGF, MF_uCM, MF_uDM )
 
     CALL ApplyBoundaryConditions_Geometry_MF( MF_uGF )
 
-    CALL ApplyBoundaryConditions_MHD_MF( t_old(0), MF_uCM )
+    CALL ApplyBoundaryConditions_MHD_MF( t_new, MF_uCM )
 
     ! --- nLevels <= nMaxLevels; entire arrays t_old(0:nMaxLevels-1) and
     !     t_new(0:nMaxLevels-1) must have valid data ---

@@ -57,14 +57,14 @@ CONTAINS
 
   SUBROUTINE ApplyBoundaryConditions_MHD_MF_MultiLevel( t, MF_uCM )
 
-    REAL(DP),             INTENT(in   ) :: t
+    REAL(DP),             INTENT(in   ) :: t(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCM(0:)
 
     INTEGER :: iLevel
 
     DO iLevel = 0, nLevels-1
 
-      CALL ApplyBoundaryConditions_MHD_MF( t, iLevel, MF_uCM(iLevel) )
+      CALL ApplyBoundaryConditions_MHD_MF( t(iLevel), iLevel, MF_uCM(iLevel) )
 
     END DO
 

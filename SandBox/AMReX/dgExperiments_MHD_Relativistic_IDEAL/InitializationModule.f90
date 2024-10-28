@@ -235,10 +235,10 @@ CONTAINS
       CALL InitializeTally_MHD_MF
 
       CALL ApplySlopeLimiter_MHD_MF &
-             ( t_new(0), MF_uGF, MF_uCM, MF_uDM )
+             ( t_new, MF_uGF, MF_uCM, MF_uDM )
 
       CALL ApplyPositivityLimiter_MHD_MF &
-             ( t_new(0), MF_uGF, MF_uCM, MF_uDM )
+             ( t_new, MF_uGF, MF_uCM, MF_uDM )
 
     ELSE
 
@@ -254,7 +254,7 @@ CONTAINS
     CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
     CALL AverageDown( MF_uGF, MF_uCM )
     CALL ApplyPositivityLimiter_MHD_MF &
-           ( t_new(0), MF_uGF, MF_uCM, MF_uDM )
+           ( t_new, MF_uGF, MF_uCM, MF_uDM )
 
     t_old = t_new
     t_chk = t_new(0) + dt_chk

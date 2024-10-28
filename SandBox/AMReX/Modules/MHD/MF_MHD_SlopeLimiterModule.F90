@@ -146,7 +146,7 @@ CONTAINS
   SUBROUTINE ApplySlopeLimiter_MHD_MF_MultipleLevels &
     ( t, MF_uGF, MF_uCM, MF_uDM )
 
-    REAL(DP)            , INTENT(in)    :: t
+    REAL(DP)            , INTENT(in)    :: t(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCM(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDM(0:)
@@ -170,7 +170,7 @@ CONTAINS
       END IF
 
       CALL ApplySlopeLimiter_MHD_MF_SingleLevel &
-             ( t, iLevel, MF_uGF, MF_uCM, MF_uDM )
+             ( t(iLevel), iLevel, MF_uGF, MF_uCM, MF_uDM )
 
     END DO
 
