@@ -1,0 +1,138 @@
+##### Example.inputs #####
+
+# NOTE: this is just an example; there is no application corresponding to this
+# inputs file
+
+# For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+# For all REAL types, use "e" and not "d"; i.e., 1.0e3 instead of 1.0d3
+
+# Name of application you want to run
+thornado.ProgramName = "ShearingDisk"
+
+# Number of DG nodes per element
+thornado.nNodes = 1
+
+# Whether-or-not to use physical units
+thornado.UsePhysicalUnits = 1
+
+# End-time of simulation.
+# If thornado.UsePhysicalUnits = 1 then the units are milliseconds
+thornado.t_end = 1.0e1
+
+# Frequency with which to write output to screen
+thornado.iCycleD = 10
+
+# Prefix for plotfile; e.g, a plotfile written on the 100th
+# timestep will be called `Example.plt00000100`
+thornado.PlotFileNameRoot = "ShearingDisk2D.plt"
+
+# Frequency with which to write plotfiles.
+# dt_wrt writes every dt_wrt [time units],
+# iCycleW writes every iCycleW timesteps.
+# dt_wrt and iCycleW must have different signs.
+# If thornado.UsePhysicalUnits = 1 then the units are milliseconds
+thornado.dt_wrt  = 1.0e-1
+thornado.iCycleW = -1
+
+# Prefix for checkpoint file; e.g, a checkpoint file written on the 100th
+# timestep will be called `Example.chk00000100`
+thornado.CheckpointFileNameRoot = "ShearingDisk2D.chk"
+
+# Frequency with which to write checkpoint files.
+# dt_chk writes every dt_chk [time units],
+# iCycleChk writes every iCycleChk timesteps.
+# dt_chk and iCycleChk must have different signs.
+# If thornado.UsePhysicalUnits = 1 then the units are milliseconds
+thornado.dt_chk    = 1.0e0
+thornado.iCycleChk = -1
+
+# Prefix for Tally file; e.g, the tally file for
+# the baryonic mass will be called `Example.Tally_BaryonicMass.dat
+thornado.TallyFileNameRoot_MHD = "ShearingDisk2D.Tally"
+
+# Boundary conditions for the fluid.
+# See ${THORNADO_DIR}/Modules/MHD/MHD_BoundaryConditionsModule.F90
+# to see which integers corresponds to which boundary conditions.
+# These also set the boundary conditions for the geometry
+thornado.bcX = 00 00 01
+
+# Tell AMReX whether a dimension uses periodic boundary conditions.
+# Only the entries corresponding to active dimensions will have any effect
+geometry.is_periodic = 0 0 1  # Periodic BCs: 0 (no), 1 (yes)
+
+# Coordinate system ( 0: CARTESIAN, 1: CYLINDRICAL, 2: SPHERICAL )
+geometry.coord_sys = 1
+
+# Lower and upper boundaries in physical space.
+# If thornado.UsePhysicalUnits = 1 then the units will be dictated
+# by the coordinate system
+geometry.prob_lo   = 1.45e+1 -0.5e+0  0.0 # Lower domain size
+geometry.prob_hi   = 1.65e+1  0.5e+0  6.283185307179586 # Upper domain size
+
+# Number of ghost cells for the spatially-dependent fields
+# (fluid and geometry)
+thornado.swX = 01 01 00
+
+# Number of spatial elements on the coarsest level
+amr.n_cell = 128 02 01
+
+# Maximum allowed size of an AMReX grid in each dimension
+amr.max_grid_size_x = 128
+amr.max_grid_size_y = 2
+amr.max_grid_size_z = 1
+
+# (Roughly) minimum allowed size of an AMReX grid in each dimension
+amr.blocking_factor_x = 1
+amr.blocking_factor_y = 1
+amr.blocking_factor_z = 1
+
+# Maximum number of refined levels (0 for no refinement)
+amr.max_level = 0
+
+# Whether-or-not to use AMR
+amr.UseAMR = 0
+
+# Apply flux corrections at refinement interfaces (Fluid)
+amr.UseFluxCorrection_MHD = 0
+
+# Criteria for tagging elements for refinement.
+# See TaggingModule.f90 for meaning of values
+# The number of entries should be equal to amr.max_level
+amr.TagCriteria = 0.0
+
+# Number of padding elements for refinement.
+# If an element is tagged, ensure that amr.n_error_buf neighbors
+# in each dimension are also tagged.
+amr.n_error_buf = 0
+
+# Refinement ratio (this MUST be 2)
+amr.ref_ratio = 2
+
+# Whether-or-not to use tiling
+# (see AMReX documentation for details)
+amr.UseTiling = 0
+
+# Parameters for MHD slope limiter
+SL.UseSlopeLimiter_MHD           = 0
+SL.BetaTVD_MHD                   = 1.75
+SL.BetaTVB_MHD                   = 0.0
+SL.SlopeTolerance_MHD            = 1.0e-6
+SL.UseCharacteristicLimiting_MHD = 0
+SL.UseTroubledCellIndicator_MHD  = 0
+SL.LimiterThresholdParameter_MHD = 0.03
+SL.UseConservativeCorrection_MHD = 0
+
+# Parameters for MHD positivity limiter
+PL.UsePositivityLimiter_MHD = 0
+PL.Min_1_MHD                = 1.0e-13
+PL.Min_2_MHD                = 1.0e-13
+
+# Parameters for equation of state
+EoS.EquationOfState = "IDEAL"
+EoS.Gamma_IDEAL     = 1.3333333333333333
+
+# Parameters for time-stepping.
+# All non-transport problems use SSPRK, in
+# ${THORNADO_DIR}/SandBox/AMReX/Modules/TimeStepping/MF_TimeSteppingModule_SSPRK.f90
+TS.nStages = 1
+TS.CFL     = 0.5
