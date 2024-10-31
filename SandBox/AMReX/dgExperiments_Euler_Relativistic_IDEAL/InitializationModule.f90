@@ -441,7 +441,9 @@ CONTAINS
            ( iLevel, MF_uGF, MF_uGF_tmp, &
              ApplyBoundaryConditions_Geometry_Option = .TRUE. )
 
-    CALL FillPatch( iLevel, MF_uDF, MF_uDF_tmp )
+    CALL FillPatch &
+           ( iLevel, MF_uDF, MF_uDF_tmp, &
+             ApplyBoundaryConditions_Diagnostic_Option = .TRUE. )
 
     CALL FillPatch &
            ( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp, &

@@ -219,7 +219,7 @@ CONTAINS
     ! --- Apply boundary conditions to interior domains ---
 
     CALL FillPatch( iLevel, MF_uGF )
-    CALL FillPatch( iLevel, MF_uGF, MF_uDF )
+    CALL FillPatch( iLevel, MF_uDF )
     CALL FillPatch( iLevel, MF_uGF, MF_uCF )
 
     CALL CreateMesh_MF( iLevel, MeshX )
