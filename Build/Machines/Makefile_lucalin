@@ -23,15 +23,15 @@ ifeq ($(USE_OACC),TRUE)
 endif
 
 INCLUDE_CUDA     =
-INCLUDE_HDF5     = -I/usr/local/hdf5-1.10.5/hdf5/include
-INCLUDE_LAPACK   = -I/usr/include
+INCLUDE_HDF5     = -I/usr/local/hdf5-mpich/include
+INCLUDE_LAPACK   = -I/usr/local/lapack-3.12.0_mpich
 INCLUDE_MAGMA    =
 INCLUDE_PETSC    =
 INCLUDE_ROCM     =
 
 LIBRARIES_CUDA     =
-LIBRARIES_HDF5     = -L/usr/local/hdf5-1.10.5/hdf5/lib -lhdf5_fortran -lhdf5
-LIBRARIES_LAPACK   = -L/usr/lib/x86_64-linux-gnu/lapack -llapack -lblas
+LIBRARIES_HDF5     = -L/usr/local/hdf5-mpich/lib -lhdf5_fortran -lhdf5
+LIBRARIES_LAPACK   = -L/usr/local/lapack-3.12.0_mpich -llapack -lblas
 LIBRARIES_MAGMA    =
 LIBRARIES_PETSC    =
 LIBRARIES_ROCM     =

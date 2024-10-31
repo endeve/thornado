@@ -7,6 +7,7 @@ $(THORNADO_DIR)/Modules/Mesh: \
 $(THORNADO_DIR)/Modules/Geometry: \
 $(THORNADO_DIR)/Modules/Fields: \
 $(THORNADO_DIR)/Modules/EquationOfState: \
+$(THORNADO_DIR)/Modules/EquationOfState/BaryonsPlusLeptons: \
 $(THORNADO_DIR)/Modules/Opacities: \
 $(THORNADO_DIR)/Modules/InputOutput: \
 $(THORNADO_DIR)/Modules/Euler: \

@@ -6,6 +6,7 @@ include $(THORNADO_DIR)/Modules/Geometry/Makefile_Geometry_Dependencies
 include $(THORNADO_DIR)/Modules/Mesh/Makefile_Mesh_Dependencies
 include $(THORNADO_DIR)/Modules/Fields/Makefile_Fields_Dependencies
 include $(THORNADO_DIR)/Modules/EquationOfState/Makefile_EquationOfState_Dependencies
+include $(THORNADO_DIR)/Modules/EquationOfState/BaryonsPlusLeptons/Makefile_EquationOfStateComponents_Dependencies
 include $(THORNADO_DIR)/Modules/Opacities/Makefile_Opacities_Dependencies
 include $(THORNADO_DIR)/Modules/InputOutput/Makefile_InputOutput_Dependencies
 include $(THORNADO_DIR)/Modules/Euler/Makefile_Euler_Dependencies

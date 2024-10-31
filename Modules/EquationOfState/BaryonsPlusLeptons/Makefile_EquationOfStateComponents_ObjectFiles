@@ -1,0 +1,3 @@
+EQUATION_OF_STATE = \
+  EquationOfStateComponentsModule_TABLE.o \
+  EquationOfStateComponentsModule.o

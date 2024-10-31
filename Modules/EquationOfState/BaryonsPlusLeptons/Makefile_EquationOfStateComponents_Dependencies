@@ -1,0 +1,23 @@
+EquationOfStateComponentsModule_TABLE.o: \
+  wlIOModuleHDF.o \
+  wlEOSIOModuleHDF.o \
+  wlEquationOfStateTableModule.o \
+  wlEOSComponentsCombinedInversionModule.o \
+  wlEOSComponentsSeparateInversionModule.o \
+  wlInterpolationModule.o \
+  wlLeptonEOSModule.o \
+  wlElectronEOS.o \
+  wlMuonEOS.o \
+  wlHelmMuonIOModuleHDF.o \
+  wlBolligSoundSpeed.o \
+  wlEosConstantsModule.o \
+  wlInterpolationUtilitiesModule.o \
+  KindModule.o \
+  UnitsModule.o \
+  EquationOfStateComponentsModule_TABLE.F90
+
+EquationOfStateComponentsModule.o: \
+  KindModule.o \
+  EquationOfStateComponentsModule_TABLE.o \
+  UnitsModule.o \
+  EquationOfStateComponentsModule.F90
