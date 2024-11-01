@@ -75,13 +75,8 @@ MODULE  MF_Euler_dgDiscretizationModule
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
-  USE MF_Euler_BoundaryConditionsModule, ONLY: &
-    ApplyBoundaryConditions_Euler_MF
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler_MF
-  USE MF_EdgeMapModule, ONLY: &
-    EdgeMap,          &
-    ConstructEdgeMap
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
@@ -174,13 +169,17 @@ CONTAINS
     INTEGER              :: iDimX, nGhost(nDimsX), nDOFX_X(3)
     LOGICAL              :: Nodal(nDimsX)
 
-    TYPE(EdgeMap) :: Edge_Map
-
     ! --- Apply boundary conditions to interior domains ---
 
-    CALL FillPatch( iLevel, MF_uGF )
-    CALL FillPatch( iLevel, MF_uDF )
-    CALL FillPatch( iLevel, MF_uGF, MF_uCF )
+    CALL FillPatch &
+           ( iLevel, MF_uGF, &
+             ApplyBoundaryConditions_Geometry_Option = .TRUE. )
+    CALL FillPatch &
+           ( iLevel, MF_uDF )
+    CALL FillPatch &
+           ( iLevel, MF_uGF, MF_uCF, &
+             ApplyBoundaryConditions_Euler_Option = .TRUE.  )
+
     CALL ApplyPositivityLimiter_Euler_MF &
            ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel), &
              swX_Option = swX )
@@ -214,7 +213,7 @@ CONTAINS
 !     !$OMP PRIVATE( MFI, BX, uGF, uCF, uDF, duCF, G, U, D, dU, &
 !     !$OMP          uSurfaceFlux_X1, uSurfaceFlux_X2, uSurfaceFlux_X3, &
 !     !$OMP           SurfaceFlux_X1,  SurfaceFlux_X2,  SurfaceFlux_X3, &
-!     !$OMP           iX_B0, iX_E0, iX_B1, iX_E1, iLo_MF, Edge_Map )
+!     !$OMP           iX_B0, iX_E0, iX_B1, iX_E1, iLo_MF )
 ! #endif
 
     CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
@@ -279,13 +278,6 @@ CONTAINS
       CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
 
       CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
-
-      ! --- Apply boundary conditions to physical boundaries ---
-
-      CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
-
-      CALL ApplyBoundaryConditions_Euler_MF &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
       CALL DetectShocks_Euler( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 

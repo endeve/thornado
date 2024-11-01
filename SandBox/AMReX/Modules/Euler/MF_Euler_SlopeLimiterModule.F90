@@ -52,8 +52,6 @@ MODULE MF_Euler_SlopeLimiterModule
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
-  USE MF_Euler_BoundaryConditionsModule, ONLY: &
-    ApplyBoundaryConditions_Euler_MF
   USE MF_EdgeMapModule, ONLY: &
     EdgeMap, &
     ConstructEdgeMap
@@ -218,9 +216,14 @@ CONTAINS
 
     ! --- Apply boundary conditions to interior domains ---
 
-    CALL FillPatch( iLevel, MF_uGF )
-    CALL FillPatch( iLevel, MF_uDF )
-    CALL FillPatch( iLevel, MF_uGF, MF_uCF )
+    CALL FillPatch &
+           ( iLevel, MF_uGF, &
+             ApplyBoundaryConditions_Geometry_Option = .TRUE. )
+    CALL FillPatch &
+           ( iLevel, MF_uDF )
+    CALL FillPatch &
+           ( iLevel, MF_uGF, MF_uCF, &
+             ApplyBoundaryConditions_Euler_Option = .TRUE. )
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
@@ -268,12 +271,9 @@ CONTAINS
 
       CALL amrex2thornado_X( nDF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDF, D )
 
-      ! --- Apply boundary conditions to physical boundaries ---
+      ! --- Slope-limiter uses iApplyBC ---
 
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
-
-      CALL ApplyBoundaryConditions_Euler_MF &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
       CALL Edge_Map % GetBC( iApplyBC )
 
