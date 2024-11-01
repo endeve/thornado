@@ -147,11 +147,16 @@ CONTAINS
     IF( PRESENT( Min_2_Option ) ) &
       Min_2 = Min_2_Option
 
+    IntE_Min_Euler_PL = Zero
+    IF( PRESENT( IntE_Min_Euler_PL_Option ) ) &
+      IntE_Min_Euler_PL = IntE_Min_Euler_PL_Option
+
     CALL InitializePositivityLimiter_Euler_Relativistic_IDEAL &
            ( UsePositivityLimiter_Option = UsePositivityLimiter, &
              Verbose_Option              = Verbose, &
              Min_1_Option                = Min_1, &
-             Min_2_Option                = Min_2 )
+             Min_2_Option                = Min_2, &
+             IntE_Min_Euler_PL_Option    = IntE_Min_Euler_PL )
 
 #else
 

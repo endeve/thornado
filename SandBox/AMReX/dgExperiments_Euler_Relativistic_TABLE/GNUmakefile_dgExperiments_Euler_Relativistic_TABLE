@@ -34,12 +34,6 @@ include $(AMREX_HOME)/Tools/GNUMake/Make.defs
 # Include basic AMReX framework
 include $(AMREX_HOME)/Src/Base/Make.package
 
-ifneq ("$(wildcard $(AMREX_HOME)/Src/DG/Make.package)","")
-  # Requires amrex fork from github.com:dunhamsj/amrex
-  # Branch: MeshRefinement_DG
-  include $(AMREX_HOME)/Src/DG/Make.package
-endif
-
 # Include directories and source files needed from amrex
 include $(AMREX_HOME)/Src/Boundary/Make.package
 include $(AMREX_HOME)/Src/AmrCore/Make.package
@@ -48,6 +42,12 @@ include $(AMREX_HOME)/Src/F_Interfaces/AmrCore/Make.package
 
 # Include directories and source files needed from weaklib
 include Make.weaklib
+
+# Include custom amrex directories and source files
+include $(THORNADO_HOME)/SandBox/AMReX/Src/F_Interfaces/AmrCore/Make.package
+include $(THORNADO_HOME)/SandBox/AMReX/Src/F_Interfaces/Base/Make.package
+include $(THORNADO_HOME)/SandBox/AMReX/Src/Base/Make.package
+include $(THORNADO_HOME)/SandBox/AMReX/Src/AmrCore/Make.package
 
 # Include directories and source files needed from thornado
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.git

@@ -5,7 +5,7 @@ MODULE MF_FieldsModule_TwoMoment
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_multifab_destroy
-  USE amrex_fluxregister_module, ONLY: &
+  USE thornado_amrex_fluxregister_module, ONLY: &
     amrex_fluxregister, &
     amrex_fluxregister_destroy
   USE amrex_parallel_module, ONLY: &

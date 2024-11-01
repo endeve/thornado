@@ -122,7 +122,7 @@ MODULE Euler_UtilitiesModule_Relativistic
   REAL(DP), PARAMETER :: Offset_T   = 1.0e-12_DP
   REAL(DP), PARAMETER :: Offset_eps = 1.0e-12_DP
   REAL(DP), PARAMETER :: Offset_Ye  = 1.0e-12_DP
-  REAL(DP), PARAMETER :: Offset_z   = 10.0_DP * SqrtTiny
+  REAL(DP), PARAMETER :: Offset_z   = 1.0e1_DP * SqrtTiny
   REAL(DP), PARAMETER :: vMax       = One - 1.0e-05_DP
   REAL(DP), PARAMETER :: kMax       = Two * vMax / ( One + vMax**2 )
   REAL(DP), PARAMETER :: dzMin      = 1.0e-8_DP
@@ -156,7 +156,7 @@ CONTAINS
     REAL(DP)    , INTENT(in)    :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
     INTEGER     , INTENT(in), OPTIONAL :: &
       iX_B0_Option(3), iX_E0_Option(3)
-    CHARACTER(2), INTENT(in), OPTIONAL :: &
+    CHARACTER(6), INTENT(in), OPTIONAL :: &
       iDimX_Option
     INTEGER     , INTENT(in), OPTIONAL :: &
       IndexTable_Option(:,:)
@@ -166,7 +166,7 @@ CONTAINS
     INTEGER  :: ITERATION(SIZE(uD))
     REAL(DP) :: X1, X2, X3, dX1, dX2, dX3
 
-    CHARACTER(2) :: iDimX
+    CHARACTER(6) :: iDimX
     INTEGER      :: iX_B0(3), iX_E0(3)
 
     iDimX = 'NA'
@@ -286,17 +286,23 @@ CONTAINS
 
           IF( PRESENT( iDimX_Option ) .AND. PRESENT( IndexTable_Option ) )THEN
 
-            IF     ( iDimX .EQ. 'X1' )THEN
+            IF     ( iDimX .EQ. 'X1 (L)' &
+                       .OR. iDimX .EQ. 'X1 (R)' &
+                       .OR. iDimX .EQ. 'X1 (V)' )THEN
               iNXX = IndexTable_Option(1,iNX)
               iX2  = IndexTable_Option(2,iNX)
               iX3  = IndexTable_Option(3,iNX)
               iX1  = IndexTable_Option(4,iNX)
-            ELSE IF( iDimX .EQ. 'X2' )THEN
+            ELSE IF( iDimX .EQ. 'X2 (L)' &
+                       .OR. iDimX .EQ. 'X2 (R)' &
+                       .OR. iDimX .EQ. 'X2 (V)' )THEN
               iNXX = IndexTable_Option(1,iNX)
               iX1  = IndexTable_Option(2,iNX)
               iX3  = IndexTable_Option(3,iNX)
               iX2  = IndexTable_Option(4,iNX)
-            ELSE IF( iDimX .EQ. 'X3' )THEN
+            ELSE IF( iDimX .EQ. 'X3 (L)' &
+                       .OR. iDimX .EQ. 'X3 (R)' &
+                       .OR. iDimX .EQ. 'X3 (V)' )THEN
               iNXX = IndexTable_Option(1,iNX)
               iX1  = IndexTable_Option(2,iNX)
               iX2  = IndexTable_Option(3,iNX)
@@ -854,18 +860,19 @@ CONTAINS
     REAL(DP), INTENT(out) :: CF_D, CF_S1, CF_S2, CF_S3, &
                              CF_E, CF_Ne
 
-    REAL(DP) :: VSq, W, h
+    REAL(DP) :: VSq, W, rhoh
 
     VSq = Gm11 * PF_V1**2 + Gm22 * PF_V2**2 + Gm33 * PF_V3**2
 
     W = One / SQRT( One - VSq )
-    h = One + ( PF_E + AF_P ) / PF_D
+    rhoh = PF_D + PF_E + AF_P
 
     CF_D  = W * PF_D
-    CF_S1 = h * W**2 * PF_D * Gm11 * PF_V1
-    CF_S2 = h * W**2 * PF_D * Gm22 * PF_V2
-    CF_S3 = h * W**2 * PF_D * Gm33 * PF_V3
-    CF_E  = h * W**2 * PF_D - AF_P - W * PF_D
+    CF_S1 = rhoh * W**2 * Gm11 * PF_V1
+    CF_S2 = rhoh * W**2 * Gm22 * PF_V2
+    CF_S3 = rhoh * W**2 * Gm33 * PF_V3
+    ! This way of writing CF_E is more accurate when e+p << rho
+    CF_E  = PF_D * W**3 * VSq / ( W + One ) + PF_E * W**2 + AF_P * W**2 * VSq
     CF_Ne = W * PF_Ne
 
   END SUBROUTINE ComputeConserved_Scalar
@@ -2138,7 +2145,6 @@ CONTAINS
 
     FunZ = z - r / ht
 
-
   END SUBROUTINE ComputeFunZ_Scalar
 
 
@@ -2323,7 +2329,7 @@ CONTAINS
 
     ! --- Check that sign of FunZ changes across bounds ---
 
-    IF( .NOT. fa * fb .LT. 0 )THEN
+    IF( fa * fb .GT. 0 )THEN
 
       iErr = 8
 
