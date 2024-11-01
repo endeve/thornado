@@ -16,7 +16,8 @@ MODULE MF_InitializationModule
 
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
-    nDOFX
+    nDOFX, &
+    swX
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
   USE MeshModule, ONLY: &
@@ -118,14 +119,14 @@ CONTAINS
 
           dX1 = MeshX(1) % Width(0)
 
-          X_D = dX1 * DBLE( nDetCells )
+          X_D = SQRT( dX1**2 )
 
         ELSE IF( TRIM( CoordinateSystem ) .EQ. 'CYLINDRICAL' )THEN
 
           dX1 = MeshX(1) % Width(0)
           dX2 = MeshX(2) % Width(0)
 
-          X_D = SQRT( dX1**2 + dX2**2 ) * DBLE( nDetCells )
+          X_D = SQRT( dX1**2 + dX2**2 )
 
         ELSE
 
@@ -133,7 +134,7 @@ CONTAINS
           dX2 = MeshX(2) % Width(0)
           dX3 = MeshX(3) % Width(0)
 
-          X_D = SQRT( dX1**2 + dX2**2 + dX3**2 ) * DBLE( nDetCells )
+          X_D = SQRT( dX1**2 + dX2**2 + dX3**2 )
 
         END IF
 
@@ -186,7 +187,7 @@ CONTAINS
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX1 = iX_B0(1), iX_E0(1) + swX(1)
       DO iNX = 1       , nDOFX
 
         iNX1 = NodeNumberTableX(1,iNX)
