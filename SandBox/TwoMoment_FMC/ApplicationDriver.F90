@@ -56,7 +56,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: J_0, Chi, Sigma
   REAL(DP) :: l_uuu_munurho(0:3,0:3,0:3), l_ddd_ijk(1:3,1:3,1:3), l_uud_munurho(0:3,0:3,0:3)
 
-  ProgramName = 'StreamingDopplerShift'
+  ProgramName = 'TransparentShock'
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -201,16 +201,16 @@ PROGRAM ApplicationDriver
 
       Direction = 'X' ! --- (X,Y, or Z)
 
-      LengthScale = 1.0d-3 ! --- Shock Width
+      LengthScale = 1.0d-2 ! --- Shock Width
 
       IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
-        nX  = [ 80, 1, 1 ]
+        nX  = [ 40, 1, 1 ]
         xL  = [ 0.0d0, 0.0_DP, 0.0_DP ]
         xR  = [ 2.0d0, 1.0_DP, 1.0_DP ]
         bcX = [ 12, 1, 1 ]
 
-        V_0 = [ -0.1_DP, 0.0_DP, 0.0_DP ]
+        V_0 = [ -0.5_DP, 0.0_DP, 0.0_DP ]
 
       ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
 
@@ -240,11 +240,13 @@ PROGRAM ApplicationDriver
 
       END IF
 
-      ! nE  = 32
-      nE  = 64
+      nE  = 32
+      ! nE  = 64
+      ! nE  = 128
       eL  = 0.0d0
-      ! eR  = 5.0d1
+      ! eR  = 1.0d2
       eR  = 3.0d2
+      ! eR  = 6.0d2
       bcE = 11
       ! zoomE = 1.1_DP
       zoomE = 1.119237083677839_DP
@@ -255,7 +257,8 @@ PROGRAM ApplicationDriver
 
       t_end   = 3.0d0
       iCycleD = 1
-      iCycleW = 680
+      ! iCycleW = 50000
+      iCycleW = 10000
       maxCycles = 2000000
 
       J_0   = 0.0_DP

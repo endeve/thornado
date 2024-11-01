@@ -187,9 +187,9 @@ CONTAINS
         !      SQRT ( CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F1 ,iS)**2 + &
         !             CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F2 ,iS)**2 + &
         !             CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F3 ,iS)**2 ) ) THEN
-          ! print *, 'E  = ', CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E ,iS)
-          ! print *, 'F1 = ', CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F1 ,iS)
-          ! STOP
+        !   print *, 'E  = ', CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E ,iS)
+        !   print *, 'F1 = ', CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F1 ,iS)
+        !   STOP
         ! END IF
 
         CALL ComputePrimitive_TwoMoment_FMC &
@@ -207,6 +207,18 @@ CONTAINS
                  GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
                  GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
                  GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+
+        ! IF ( PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS) < &
+        !      SQRT ( - (PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1) * PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1 ,iS) + &
+        !                PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2) * PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H2 ,iS) + &
+        !                PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3) * PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H3 ,iS) )**2 + &
+        !             PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1 ,iS)**2 + &
+        !             PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H2 ,iS)**2 + &
+        !             PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H3 ,iS)**2 ) ) THEN
+        !   print *, 'J  = ', PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS)
+        !   print *, 'H1 = ', PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1 ,iS)
+        !   STOP
+        ! END IF
 
       END DO
 
@@ -272,10 +284,23 @@ CONTAINS
 
     ! --- Initial guess ---
 
+    ! IF (E < Zero) THEN
+    !   print *, "E = ", E
+    !   Write(*,*)
+    ! END IF
+
     CALL ComputeHatMomentsFromConserved &
       ( E, F_d_1, F_d_2, F_d_3, E_hat, F_hat_d_1, F_hat_d_2, F_hat_d_3, &
         V_u_1, V_u_2, V_u_3, &
         Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    ! IF (E_hat < SQRT(-(V_u_1*F_hat_d_1)**2+F_hat_d_1**2) ) THEN
+    !     Write(*,*) 'E = ',E
+    !     Write(*,*) 'F_d_1 = ',SQRT(F_d_1**2)
+    !     Write(*,*) 'E_hat = ',E_hat
+    !     Write(*,*) 'F_hat = ',SQRT(-(V_u_1*F_hat_d_1)**2+F_hat_d_1**2)
+    !     STOP
+    ! END IF
 
     ! print *, J, H_d_1
 
@@ -290,8 +315,14 @@ CONTAINS
            + V_u_2 * Gm_dd_22 * V_u_2 &
            + V_u_3 * Gm_dd_33 * V_u_3
     W = One / SQRT ( One - vMagSq )
-    lambda = One / ( W + W * SQRT( vMagSq ) )
+    ! lambda = One / ( W + W * SQRT( vMagSq ) )
+    lambda = One / ( One + SQRT( vMagSq ) )
     
+    ! IF (E_hat < Zero) THEN
+    !   print *, "E_hat = ", E_hat
+    !   Write(*,*)
+    ! END IF
+
     J = E_hat / W
     H_d_1 = F_hat_d_1 / W
     H_d_2 = F_hat_d_2 / W
@@ -302,12 +333,13 @@ CONTAINS
     DO WHILE( .NOT. CONVERGED .AND. iteration < MaxIterations )
 
       iteration = iteration + 1
-
-      ! ! print *, "V_u_1 = ", V_u_1
-      ! print *, "J     = ", J
-      ! print *, "H_d_1 = ", H_d_1
-      ! Write(*,*)
-
+      ! IF (J < Zero) THEN
+      !   print *, "V_u_1 = ", V_u_1
+      !   print *, "J     = ", J
+      !   print *, "H_d_1 = ", H_d_1
+      !   Write(*,*)
+      ! END IF
+      ! Write(*,*) 'J = ',J, ' E_hat = ',E_hat,' vMag = ',Sqrt(vMagSq)
       k_dd = EddingtonTensorComponents_dd &
         ( J, H_d_1, H_d_2, H_d_3, V_u_1, V_u_2, V_u_3, &
           Gm_dd_11, Gm_dd_22, Gm_dd_33 )
@@ -328,10 +360,10 @@ CONTAINS
 
       ! --- Compute next iterate ---
 
-      J = J - lambda * fvec_0
-      H_d_1 = H_d_1 - lambda * fvec_1
-      H_d_2 = H_d_2 - lambda * fvec_2
-      H_d_3 = H_d_3 - lambda * fvec_3
+      J = J - lambda / W * fvec_0
+      H_d_1 = H_d_1 - lambda / W * fvec_1
+      H_d_2 = H_d_2 - lambda / W * fvec_2
+      H_d_3 = H_d_3 - lambda / W * fvec_3
       
       CONVERGED = SQRT( fvec_0**2 + fvec_1**2 + fvec_2**2 +fvec_3**2 ) < TOL
 
@@ -931,7 +963,7 @@ CONTAINS
     !            + H_u_1**2 + H_u_2**2 + H_u_3**2 ) / J
     FF = MIN( MAX( SQRT( -(V_u_1 * H_u_1 + V_u_2 * H_u_2 + V_u_3 * H_u_3)**2 &
                          + H_u_1**2 + H_u_2**2 + H_u_3**2 ) &
-                         / MAX( J, SqrtTiny ), &
+                         / MAX( ABS(J), SqrtTiny ), &
                    SqrtTiny ), &
               One )
     HF = HeatFluxFactor(J, FF)
@@ -941,9 +973,9 @@ CONTAINS
            + V_u_3 * Gm_dd_33 * V_u_3
     W = One / SQRT ( One - vMagSq )
 
-    h_hat_u_1 = H_u_1 / ( MAX( FF*J, SqrtTiny ) )!( FF * MAX( ABS(J), SqrtTiny ) )
-    h_hat_u_2 = H_u_2 / ( MAX( FF*J, SqrtTiny ) )!( FF * MAX( ABS(J), SqrtTiny ) )
-    h_hat_u_3 = H_u_3 / ( MAX( FF*J, SqrtTiny ) )!( FF * MAX( ABS(J), SqrtTiny ) )
+    h_hat_u_1 = H_u_1 / ( MAX( FF*ABS(J), SqrtTiny ) )!( FF * MAX( ABS(J), SqrtTiny ) )
+    h_hat_u_2 = H_u_2 / ( MAX( FF*ABS(J), SqrtTiny ) )!( FF * MAX( ABS(J), SqrtTiny ) )
+    h_hat_u_3 = H_u_3 / ( MAX( FF*ABS(J), SqrtTiny ) )!( FF * MAX( ABS(J), SqrtTiny ) )
 
     h_uu_11 = Gm_dd_11 + W**2 * V_u_1 * V_u_1
     h_uu_12 = W**2 * V_u_1 * V_u_2
@@ -996,7 +1028,7 @@ CONTAINS
                 + b * (h_hat_u_3 * h_hat_u_3 * h_hat_u_3)
 
     ! --- 0th components ---
-
+    
     l_uuu_011 = V_u_1 * l_uuu_111 + V_u_2 * l_uuu_211 + V_u_3 * l_uuu_311
     l_uuu_012 = V_u_1 * l_uuu_112 + V_u_2 * l_uuu_212 + V_u_3 * l_uuu_312
     l_uuu_013 = V_u_1 * l_uuu_113 + V_u_2 * l_uuu_213 + V_u_3 * l_uuu_313
@@ -1926,10 +1958,10 @@ CONTAINS
 
     END DO
     k_uu(0,0) = V_u_1 * k_uu(1,0) + V_u_2 * k_uu(2,0) + V_u_3 * k_uu(3,0)
-
+    
     CALL HeatFluxTensorComponents_uuu &
       ( J, H_d_1, H_d_2, H_d_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-        V_u_1, V_u_2, V_u_3, l_uuu )
+        V_u_1, V_u_2, V_u_3, l_uuu )  
 
     Jacobian_U(0,:) = Zero ! Assuming velocity is constan wrt to time
     Jacobian_U(1,:) = [ dV_d_0_dX1, dV_d_1_dX1, dV_d_2_dX1, dV_d_3_dX1 ]
@@ -1957,7 +1989,10 @@ CONTAINS
         Flux_E(4) = Flux_E(4) + Q_uuu(3,nu,rho) * Jacobian_U(nu,rho)
       END DO
     END DO
-    Flux_E = -Flux_E
+    Flux_E(1) = -Flux_E(1)
+    Flux_E(2) = -Flux_E(2)
+    Flux_E(3) = -Flux_E(3)
+    Flux_E(4) = -Flux_E(4)
     RETURN
 
   END FUNCTION Flux_E
