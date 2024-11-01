@@ -376,8 +376,6 @@ CONTAINS
 
     CALL amrex_parallel_reduce_sum( OffGridFlux_Euler_MF(:,iLevel), nCF )
 
-#if defined( THORNADO_USE_MESHREFINEMENT )
-
     IF( UseFluxCorrection_Euler )THEN
 
       IF( iLevel .GT. 0 ) &
@@ -397,8 +395,6 @@ CONTAINS
                      WeightsX_X1c,  WeightsX_X2c, WeightsX_X3c )
 
     END IF ! UseFluxCorrection_Euler
-
-#endif
 
     DO iDimX = 1, nDimsX
 
