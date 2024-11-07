@@ -238,7 +238,7 @@ MHD_ErrorModule.o: \
   UnitsModule.o \
   UtilitiesModule.o \
   GeometryFieldsModule.o \
-  MHD_ErrorModule.f90
+  MHD_ErrorModule.F90
 
 MHD_PerturbationModule.o: \
   KindModule.o \
