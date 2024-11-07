@@ -94,6 +94,7 @@ MODULE MF_InitializationModule
     Half, &
     One, &
     Two, &
+    Pi, &
     TwoPi
   USE MF_UtilitiesModule, ONLY: &
     thornado2amrex_X, &
@@ -102,7 +103,9 @@ MODULE MF_InitializationModule
     DeallocateArray_X
   USE InputParsingModule, ONLY: &
     UseTiling, &
-    EvolveOnlyMagnetic
+    EvolveOnlyMagnetic, &
+    ApplyPerturbations, &
+    Rand_Amplitude
   USE MF_ErrorModule, ONLY: &
     DescribeError_MF
   USE MF_EdgeMapModule, ONLY: &
@@ -1645,6 +1648,10 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: PressureArr(:), DensityArr(:), V3Arr(:), &
                              AlphaArr(:), PsiArr(:), X1Arr(:)
 
+    REAL(DP) :: kz
+    REAL(DP) :: Rand_r, Rand_z, Rand_theta
+    REAL(DP) :: Random_r, Random_z, Random_theta
+
     uPM = Zero
 
     FileName &
@@ -1758,6 +1765,35 @@ CONTAINS
         uPM(iNX,iPM_V1) = V1
         uPM(iNX,iPM_V2) = V2
         uPM(iNX,iPM_V3) = V3
+
+        IF( ApplyPerturbations )THEN
+
+          PRINT*, 'Applying perturbations.'
+
+          CALL RANDOM_SEED()
+          CALL RANDOM_NUMBER( Rand_r )
+
+          CALL RANDOM_SEED()
+          CALL RANDOM_NUMBER( Rand_z )
+
+          CALL RANDOM_SEED()
+          CALL RANDOM_NUMBER( Rand_theta )
+
+          Random_r       =  Two * Rand_r - One
+          Random_z       =  Two * Rand_z - One
+          Random_theta   =  Two * Rand_theta - One
+
+          kz = Two * Pi / ( Half * Kilometer )
+
+          uPM(iNX,iPM_V1) = ( 0.1_DP * Rand_Amplitude * Random_r &
+                              + 0.2d-5 * SIN( kz * X2 ) ) &
+                            * X1 * uPM(iNX,iPM_V3) 
+          uPM(iNX,iPM_V2) = Rand_Amplitude * Random_z &
+                            * X1 * uPM(iNX,iPM_V3) 
+          uPM(iNX,iPM_V3) = ( One + Rand_Amplitude * Random_theta ) &
+                            * uPM(iNX,iPM_V3)
+
+        END IF
 
         uPM(iNX,iPM_E) &
           = Interpolate1D( X1Arr, PressureArr, SIZE( X1Arr ), X1 ) &

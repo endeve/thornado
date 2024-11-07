@@ -123,6 +123,11 @@ MODULE InputParsingModule
   LOGICAL                   :: WriteNodalData
   CHARACTER(:), ALLOCATABLE :: NodalDataFileName
 
+  ! --- shearing disk ---
+
+  LOGICAL  :: ApplyPerturbations
+  REAL(DP) :: Rand_Amplitude
+
 CONTAINS
 
 
@@ -451,6 +456,21 @@ CONTAINS
                            RefinementRatio )
       CALL PP % query   ( 'UseTiling', &
                            UseTiling )
+    CALL amrex_parmparse_destroy( PP )
+
+    ! --- Parameters SD.* ---
+
+    ApplyPerturbations = .FALSE.
+    Rand_Amplitude     = 0.0_DP
+
+    CALL amrex_parmparse_build( PP, 'SD' )
+
+      CALL PP % query( 'ApplyPerturbations', &
+                        ApplyPerturbations )
+
+      CALL PP % query( 'Rand_Amplitude', &
+                        Rand_Amplitude )
+
     CALL amrex_parmparse_destroy( PP )
 
     MaxGridSizeX   = [ MaxGridSizeX1   , MaxGridSizeX2   , MaxGridSizeX3    ]
