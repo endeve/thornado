@@ -616,137 +616,137 @@ CONTAINS
 
       END IF
 
-!    CASE( 44 ) ! Custom BCs for relativistic shearing disk.
-!
-!      IF( t .NE. Zero )THEN
-!
-!        IF( ApplyOuterBC_MHD( iApplyBC ) .OR. ApplyInnerBC_MHD( iApplyBC ) )THEN
-!
-!          WRITE( FileNumberString, FMT='(i6.6)') FileNumber
-!
-!          FileName &
-!            = OutputDirectory // '/' // &
-!              TRIM( ProgramName ) // '_' // &
-!              MagnetofluidSuffix // '_' // &
-!              FileNumberString // '.h5'
-!
-!          CALL H5OPEN_F( HDFERR )
-!
-!          CALL H5FOPEN_F( TRIM( FileName ), H5F_ACC_RDONLY_F, FILE_ID, HDFERR )
-!
-!          GroupName = 'Magnetofluid Fields/Conserved'
-!
-!          DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCM(1) )
-!
-!          CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
-!
-!          CD_I(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) &
-!            = FromField3D( Dataset3D, nX + 2 * swX, nNodesX, nDOFX, NodeNumberTableX, iX_B1, iX_E1 ) &
-!                * unitsCM(1)
-!
-!          DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCM(2) )
-!
-!          CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
-!
-!          CS1_I(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) &
-!            = FromField3D( Dataset3D, nX + 2 * swX, nNodesX, nDOFX, NodeNumberTableX, iX_B1, iX_E1 ) &
-!                * unitsCM(2)
-!
-!          DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCM(3) )
-!
-!          CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
-!
-!          CS2_I(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) &
-!            = FromField3D( Dataset3D, nX + 2 * swX, nNodesX, nDOFX, NodeNumberTableX, iX_B1, iX_E1 ) &
-!                * unitsCM(3)
-!
-!          DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCM(4) )
-!
-!          CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
-!
-!          CS3_I(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) &
-!            = FromField3D( Dataset3D, nX + 2 * swX, nNodesX, nDOFX, NodeNumberTableX, iX_B1, iX_E1 ) &
-!                * unitsCM(4)
-!
-!        END IF
-!
-!        ! --- Inner Boundary --
-!
-!        IF( ApplyOuterBC_MHD( iApplyBC ) )THEN
-!
-!          DO iX3 = iX_B0(3), iX_E0(3)
-!          DO iX2 = iX_B0(2), iX_E0(2)
-!          DO iX1 = 1, swX(1)
-!          DO iNX = 1, nDOFX
-!
-!            U(iNX,iX_B0(1)-iX1,iX2,iX3,1) &
-!              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,1) &
-!                - CD_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
-!                + CD_I(iNX,iX_B0(1)-iX1,iX2,iX3)
-!
-!            U(iNX,iX_B0(1)-iX1,iX2,iX3,2) &
-!              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,2) &
-!                - CS1_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
-!                + CS1_I(iNX,iX_B0(1)-iX1,iX2,iX3)
-!
-!            U(iNX,iX_B0(1)-iX1,iX2,iX3,3) &
-!              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,3) &
-!                - CS2_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
-!                + CS2_I(iNX,iX_B0(1)-iX1,iX2,iX3)
-!
-!            U(iNX,iX_B0(1)-iX1,iX2,iX3,4) &
-!              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,4) &
-!                - CS3_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
-!                + CS3_I(iNX,iX_B0(1)-iX1,iX2,iX3)
-!
-!          END DO
-!          END DO
-!          END DO
-!          END DO
-!
-!        END IF
-!
-!        ! --- Outer Boundary --
-!
-!        IF( ApplyOuterBC_MHD( iApplyBC ) )THEN
-!
-!          DO iX3 = iX_B0(3), iX_E0(3)
-!          DO iX2 = iX_B0(2), iX_E0(2)
-!          DO iX1 = 1, swX(1)
-!          DO iNX = 1, nDOFX
-!
-!            U(iNX,iX_E0(1)+iX1,iX2,iX3,1) &
-!              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,1) &
-!                - CD_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
-!                + CD_I(iNX,iX_E0(1)+iX1,iX2,iX3)
-!
-!            U(iNX,iX_E0(1)+iX1,iX2,iX3,2) &
-!              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,2) &
-!                - CS1_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
-!                + CS1_I(iNX,iX_E0(1)+iX1,iX2,iX3)
-!
-!            U(iNX,iX_E0(1)+iX1,iX2,iX3,3) &
-!              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,3) &
-!                - CS2_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
-!                + CS2_I(iNX,iX_E0(1)+iX1,iX2,iX3)
-!
-!            U(iNX,iX_E0(1)+iX1,iX2,iX3,4) &
-!              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,4) &
-!                - CS3_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
-!                + CS3_I(iNX,iX_E0(1)+iX1,iX2,iX3)
-!
-!          END DO
-!          END DO
-!          END DO
-!          END DO
-!
-!        END IF
-!
-!      ELSE
-!
-!        RETURN
-!
-!      END IF
+    CASE( 44 ) ! Custom BCs for relativistic shearing disk.
+
+      IF( t .NE. Zero )THEN
+
+        IF( ApplyOuterBC_MHD( iApplyBC ) .OR. ApplyInnerBC_MHD( iApplyBC ) )THEN
+
+          WRITE( FileNumberString, FMT='(i6.6)') FileNumber
+
+          FileName &
+            = OutputDirectory // '/' // &
+              TRIM( ProgramName ) // '_' // &
+              MagnetofluidSuffix // '_' // &
+              FileNumberString // '.h5'
+
+          CALL H5OPEN_F( HDFERR )
+
+          CALL H5FOPEN_F( TRIM( FileName ), H5F_ACC_RDONLY_F, FILE_ID, HDFERR )
+
+          GroupName = 'Magnetofluid Fields/Conserved'
+
+          DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCM(1) )
+
+          CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
+
+          CD_I(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) &
+            = FromField3D( Dataset3D, nX + 2 * swX, nNodesX, nDOFX, NodeNumberTableX, iX_B1, iX_E1 ) &
+                * unitsCM(1)
+
+          DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCM(2) )
+
+          CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
+
+          CS1_I(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) &
+            = FromField3D( Dataset3D, nX + 2 * swX, nNodesX, nDOFX, NodeNumberTableX, iX_B1, iX_E1 ) &
+                * unitsCM(2)
+
+          DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCM(3) )
+
+          CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
+
+          CS2_I(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) &
+            = FromField3D( Dataset3D, nX + 2 * swX, nNodesX, nDOFX, NodeNumberTableX, iX_B1, iX_E1 ) &
+                * unitsCM(3)
+
+          DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCM(4) )
+
+          CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
+
+          CS3_I(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) &
+            = FromField3D( Dataset3D, nX + 2 * swX, nNodesX, nDOFX, NodeNumberTableX, iX_B1, iX_E1 ) &
+                * unitsCM(4)
+
+        END IF
+
+        ! --- Inner Boundary --
+
+        IF( ApplyOuterBC_MHD( iApplyBC ) )THEN
+
+          DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = iX_B0(2), iX_E0(2)
+          DO iX1 = 1, swX(1)
+          DO iNX = 1, nDOFX
+
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,1) &
+              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,1) &
+                - CD_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
+                + CD_I(iNX,iX_B0(1)-iX1,iX2,iX3)
+
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,2) &
+              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,2) &
+                - CS1_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
+                + CS1_I(iNX,iX_B0(1)-iX1,iX2,iX3)
+
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,3) &
+              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,3) &
+                - CS2_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
+                + CS2_I(iNX,iX_B0(1)-iX1,iX2,iX3)
+
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,4) &
+              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,4) &
+                - CS3_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
+                + CS3_I(iNX,iX_B0(1)-iX1,iX2,iX3)
+
+          END DO
+          END DO
+          END DO
+          END DO
+
+        END IF
+
+        ! --- Outer Boundary --
+
+        IF( ApplyOuterBC_MHD( iApplyBC ) )THEN
+
+          DO iX3 = iX_B0(3), iX_E0(3)
+          DO iX2 = iX_B0(2), iX_E0(2)
+          DO iX1 = 1, swX(1)
+          DO iNX = 1, nDOFX
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,1) &
+              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,1) &
+                - CD_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
+                + CD_I(iNX,iX_E0(1)+iX1,iX2,iX3)
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,2) &
+              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,2) &
+                - CS1_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
+                + CS1_I(iNX,iX_E0(1)+iX1,iX2,iX3)
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,3) &
+              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,3) &
+                - CS2_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
+                + CS2_I(iNX,iX_E0(1)+iX1,iX2,iX3)
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,4) &
+              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,4) &
+                - CS3_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
+                + CS3_I(iNX,iX_E0(1)+iX1,iX2,iX3)
+
+          END DO
+          END DO
+          END DO
+          END DO
+
+        END IF
+
+      ELSE
+
+        RETURN
+
+      END IF
 
     CASE DEFAULT
 
