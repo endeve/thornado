@@ -1838,6 +1838,7 @@ CONTAINS
     CHARACTER(256) :: FileName
 
     INTEGER(HID_T) :: FILE_ID
+    INTEGER        :: nX
     INTEGER        :: iX1, iX2, iX3, iNodeX, iNodeX1, iNodeX2, iNodeX3
     REAL(DP) :: X1, X2, X3
     REAL(DP) :: V1, V2, V3, VSq, W, CB1, CB2, CB3, VdotB
