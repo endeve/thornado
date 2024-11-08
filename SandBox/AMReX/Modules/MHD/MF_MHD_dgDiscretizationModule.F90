@@ -113,8 +113,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_MHD_MF_MultipleLevels &
-    ( MF_uGF, MF_uCM, MF_uDM, MF_duCM )
+    ( t, MF_uGF, MF_uCM, MF_uDM, MF_duCM )
 
+    REAL(DP),             INTENT(in   ) :: t      (0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF (0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCM (0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDM (0:)
@@ -137,7 +138,7 @@ CONTAINS
       END IF
 
       CALL ComputeIncrement_MHD_MF_SingleLevel &
-             ( 0.0_DP, iLevel, MF_uGF, MF_uCM, MF_uDM, MF_duCM(iLevel) )
+             ( t(iLevel), iLevel, MF_uGF, MF_uCM, MF_uDM, MF_duCM(iLevel) )
 
     END DO
 
@@ -189,7 +190,7 @@ CONTAINS
     CALL FillPatch( iLevel, MF_uGF, MF_uDM )
     CALL FillPatch( iLevel, MF_uGF, MF_uCM )
     CALL ApplyPositivityLimiter_MHD_MF &
-           ( 0.0_DP, iLevel, MF_uGF(iLevel), MF_uCM(iLevel), MF_uDM(iLevel), &
+           ( t, iLevel, MF_uGF(iLevel), MF_uCM(iLevel), MF_uDM(iLevel), &
              swX_Option = swX )
 
     CALL MF_duCM % SetVal( Zero )
@@ -292,13 +293,13 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( 0.0_DP, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+             ( t, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
       CALL DetectShocks_MHD( iX_B0, iX_E0, iX_B1, iX_E1, G, U, &
                              EvolveOnlyMagnetic, D )
 
       CALL ComputeIncrement_MHD_DG_Explicit &
-             ( 0.0_DP, 1.0_DP, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
+             ( t, 1.0_DP, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
                SuppressBC_Option = .TRUE., &
                EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic, &
                UseDivergenceCleaning_Option = UseDivergenceCleaning, &
