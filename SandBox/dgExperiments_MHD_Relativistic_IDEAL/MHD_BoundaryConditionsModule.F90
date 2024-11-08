@@ -2,7 +2,8 @@ MODULE MHD_BoundaryConditionsModule
 
   USE KindModule, ONLY: &
     DP, &
-    Zero
+    Zero, &
+    One
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
@@ -11,18 +12,17 @@ MODULE MHD_BoundaryConditionsModule
     bcX, &
     swX, &
     nDOFX, &
-    nNodesX, &
-    nX
+    nNodesX
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
   USE InputOutputUtilitiesModule, ONLY: &
     FromField3D
   USE UtilitiesModule, ONLY: &
-    NodeNumberX
+    NodeNumberX, &
+    Locate, &
+    Interpolate1D_Linear
   USE MagnetofluidFieldsModule, ONLY: &
     nCM, &
-    namesCM, &
-    unitsCM, &
     iCM_D, &
     iCM_S1, &
     iCM_S2, &
@@ -32,7 +32,46 @@ MODULE MHD_BoundaryConditionsModule
     iCM_B1, &
     iCM_B2, &
     iCM_B3, &
-    iCM_Chi
+    iCM_Chi, &
+    nPM, &
+    iPM_D, &
+    iPM_V1, &
+    iPM_V2, &
+    iPM_V3, &
+    iPM_E, &
+    iPM_Ne, &
+    iPM_B1, &
+    iPM_B2, &
+    iPM_B3, &
+    iPM_Chi, &
+    nAM, &
+    iAM_P
+  USE GeometryComputationModule, ONLY: &
+    ComputeGeometryX_FromScaleFactors
+  USE GeometryFieldsModule, ONLY: &
+    nGF, &
+    iGF_h_1, &
+    iGF_h_2, &
+    iGF_h_3, &
+    iGF_Gm_dd_11, &
+    iGF_Gm_dd_22, &
+    iGF_Gm_dd_33, &
+    iGF_Alpha, &
+    iGF_Beta_1, &
+    iGF_Beta_2, &
+    iGF_Beta_3, &
+    iGF_Psi
+  USE UnitsModule, ONLY: &
+    Gram, &
+    Centimeter, &
+    Erg, &
+    Second, &
+    Gauss
+  USE EquationOfStateModule_IDEAL, ONLY: &
+    Gamma_IDEAL, &
+    ComputePressureFromPrimitive_IDEAL
+  USE MHD_UtilitiesModule_Relativistic, ONLY: &
+    ComputeConserved_MHD_Relativistic
 
   USE HDF5
 
@@ -128,6 +167,21 @@ CONTAINS
 
     INTEGER(HID_T) :: FILE_ID
 
+    REAL(DP), ALLOCATABLE :: PressureArr(:), DensityArr(:), V3Arr(:), &
+                             AlphaArr(:), PsiArr(:), X1Arr(:)
+
+    REAL(DP) :: P(1:nDOFX,iX_B1(1):iX_E1(1), &
+                          iX_B1(2):iX_E1(2), &
+                          iX_B1(3):iX_E1(3),1:nPM)
+
+    REAL(DP) :: A(1:nDOFX,iX_B1(1):iX_E1(1), &
+                          iX_B1(2):iX_E1(2), &
+                          iX_B1(3):iX_E1(3),1:nAM)
+
+    REAL(DP) :: G(1:nDOFX,iX_B1(1):iX_E1(1), &
+                          iX_B1(2):iX_E1(2), &
+                          iX_B1(3):iX_E1(3),1:nGF)
+
     REAL(DP) :: CD_I(1:nDOFX,iX_B1(1):iX_E1(1), &
                              iX_B1(2):iX_E1(2), &
                              iX_B1(3):iX_E1(3))
@@ -144,13 +198,41 @@ CONTAINS
                               iX_B1(2):iX_E1(2), &
                               iX_B1(3):iX_E1(3))
 
+    REAL(DP) :: CE_I(1:nDOFX,iX_B1(1):iX_E1(1), &
+                             iX_B1(2):iX_E1(2), &
+                             iX_B1(3):iX_E1(3))
+
+    REAL(DP) :: CNe_I(1:nDOFX,iX_B1(1):iX_E1(1), &
+                              iX_B1(2):iX_E1(2), &
+                              iX_B1(3):iX_E1(3))
+
+    REAL(DP) :: CB1_I(1:nDOFX,iX_B1(1):iX_E1(1), &
+                              iX_B1(2):iX_E1(2), &
+                              iX_B1(3):iX_E1(3))
+
+    REAL(DP) :: CB2_I(1:nDOFX,iX_B1(1):iX_E1(1), &
+                              iX_B1(2):iX_E1(2), &
+                              iX_B1(3):iX_E1(3))
+
+    REAL(DP) :: CB3_I(1:nDOFX,iX_B1(1):iX_E1(1), &
+                              iX_B1(2):iX_E1(2), &
+                              iX_B1(3):iX_E1(3))
+
+    REAL(DP) :: CChi_I(1:nDOFX,iX_B1(1):iX_E1(1), &
+                               iX_B1(2):iX_E1(2), &
+                               iX_B1(3):iX_E1(3))
+
     REAL(DP) :: Dataset3D(iX_B1(1):iX_E1(1)*nNodesX(1), &
                           iX_B1(2):iX_E1(2)*nNodesX(2), &
                           iX_B1(3):iX_E1(3)*nNodesX(3))
 
+    INTEGER  :: nX
     INTEGER  :: iCM, iX1, iX2, iX3
     INTEGER  :: iNX, iNX_0
     INTEGER  :: iNX1, iNX2, iNX3, jNX, jNX1
+    REAL(DP) :: X1, X2, X3
+    REAL(DP) :: V1, V2, V3, VSq, W
+    REAL(DP) :: CB1, CB2, CB3, VdotB
     REAL(DP) :: D_0, E_0, R_0, R_q
 
     SELECT CASE ( bcX(1) )
@@ -622,51 +704,139 @@ CONTAINS
 
         IF( ApplyOuterBC_MHD( iApplyBC ) .OR. ApplyInnerBC_MHD( iApplyBC ) )THEN
 
-          WRITE( FileNumberString, FMT='(i6.6)') FileNumber
+          FileName = "/home/jbuffal/thornado_MHD_3D/Workflow/MHD/ShearingDisk/GR_LR_diffrot.h5"
 
-          FileName &
-            = OutputDirectory // '/' // &
-              TRIM( ProgramName ) // '_' // &
-              MagnetofluidSuffix // '_' // &
-              FileNumberString // '.h5'
+          ! --- Populate arrays ---
 
           CALL H5OPEN_F( HDFERR )
 
           CALL H5FOPEN_F( TRIM( FileName ), H5F_ACC_RDONLY_F, FILE_ID, HDFERR )
 
-          GroupName = 'Magnetofluid Fields/Conserved'
+          nX = 10000
 
-          DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCM(1) )
+          ALLOCATE( PressureArr(nX), DensityArr(nX), V3Arr(nX), AlphaArr(nX), &
+                    PsiArr(nX), X1Arr(nX) )
 
-          CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
+          CALL ReadDataset1DHDF( PsiArr,      '/psi',   FILE_ID )
+          CALL ReadDataset1DHDF( AlphaArr,    '/alpha', FILE_ID )
+          CALL ReadDataset1DHDF( X1Arr,       '/r',     FILE_ID )
+          CALL ReadDataset1DHDF( PressureArr, '/pres',  FILE_ID )
+          CALL ReadDataset1DHDF( DensityArr,  '/rho',   FILE_ID )
+          CALL ReadDataset1DHDF( V3Arr,       '/V3',    FILE_ID )
 
-          CD_I(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) &
-            = FromField3D( Dataset3D, nX + 2 * swX, nNodesX, nDOFX, NodeNumberTableX, iX_B1, iX_E1 ) &
-                * unitsCM(1)
+          X1Arr       = X1Arr       * Centimeter
+          DensityArr  = DensityArr  * ( Gram / Centimeter**3 )
+          PressureArr = PressureArr * ( Erg  / Centimeter**3 )
+          V3Arr       = V3Arr       * ( One  / Second )
 
-          DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCM(2) )
+          ! --- Map to 3D domain ---
 
-          CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
+          DO iX3 = iX_B1(3), iX_E1(3)
+          DO iX2 = iX_B1(2), iX_E1(2)
+          DO iX1 = iX_B1(1), iX_E1(1)
 
-          CS1_I(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) &
-            = FromField3D( Dataset3D, nX + 2 * swX, nNodesX, nDOFX, NodeNumberTableX, iX_B1, iX_E1 ) &
-                * unitsCM(2)
+            DO iNX = 1, nDOFX
 
-          DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCM(3) )
+              iNX1 = NodeNumberTableX(1,iNX)
+              iNX2 = NodeNumberTableX(2,iNX)
+              iNX3 = NodeNumberTableX(3,iNX)
 
-          CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
+              X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+              X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
+              X3 = NodeCoordinate( MeshX(3), iX3, iNX3 )
 
-          CS2_I(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) &
-            = FromField3D( Dataset3D, nX + 2 * swX, nNodesX, nDOFX, NodeNumberTableX, iX_B1, iX_E1 ) &
-                * unitsCM(3)
+              ! --- Geometry Fields ---
 
-          DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCM(4) )
+              G(iNX,iX1,iX2,iX3,iGF_Alpha) &
+                = Interpolate1D( X1Arr, AlphaArr, SIZE( X1Arr ), X1 )
 
-          CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
+              G(iNX,iX1,iX2,iX3,iGF_Psi) &
+                = Interpolate1D( X1Arr, PsiArr, SIZE( X1Arr ), X1 )
 
-          CS3_I(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) &
-            = FromField3D( Dataset3D, nX + 2 * swX, nNodesX, nDOFX, NodeNumberTableX, iX_B1, iX_E1 ) &
-                * unitsCM(4)
+              G(iNX,iX1,iX2,iX3,iGF_h_1) &
+                = G(iNX,iX1,iX2,iX3,iGF_Psi)**2
+              G(iNX,iX1,iX2,iX3,iGF_h_2) &
+                = G(iNX,iX1,iX2,iX3,iGF_Psi)**2
+              G(iNX,iX1,iX2,iX3,iGF_h_3) &
+                = G(iNX,iX1,iX2,iX3,iGF_Psi)**2 * X1
+
+              CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
+
+              G(iNX,iX1,iX2,iX3,iGF_Beta_1) = Zero
+              G(iNX,iX1,iX2,iX3,iGF_Beta_2) = Zero
+              G(iNX,iX1,iX2,iX3,iGF_Beta_3) = Zero
+
+              ! --- Fluid Fields ---
+
+              P(iNX,iX1,iX2,iX3,iPM_D) &
+                = Interpolate1D( X1Arr, DensityArr, SIZE( X1Arr ), X1 )
+
+              V1 = Zero
+              V2 = Zero
+              V3 = Interpolate1D( X1Arr, V3Arr, SIZE( X1Arr ), X1 )
+
+              VSq = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) * V1**2 &
+                    + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) * V2**2 &
+                    + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) * V3**2
+
+              W = One / SQRT( One - VSq )
+
+              P(iNX,iX1,iX2,iX3,iPM_V1) = V1
+              P(iNX,iX1,iX2,iX3,iPM_V2) = V2
+              P(iNX,iX1,iX2,iX3,iPM_V3) = V3
+
+              P(iNX,iX1,iX2,iX3,iPM_E) &
+                = Interpolate1D( X1Arr, PressureArr, SIZE( X1Arr ), X1 ) &
+                  / ( Gamma_IDEAL - One )
+
+              P(iNX,iX1,iX2,iX3,iPM_Ne) = Zero
+
+              CB1 = Zero
+              CB2 = 2.0 * 1.0d13 * Gauss
+              CB3 = Zero
+
+              VdotB = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) * V1 * CB1 &
+                      + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) * V2 * CB2 &
+                      + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) * V3 * CB3
+
+              P(iNX,iX1,iX2,iX3,iPM_B1) = W * VdotB * V1 + CB1 / W
+              P(iNX,iX1,iX2,iX3,iPM_B2) = W * VdotB * V2 + CB2 / W
+              P(iNX,iX1,iX2,iX3,iPM_B3) = W * VdotB * V3 + CB3 / W
+
+              P(iNX,iX1,iX2,iX3,iPM_Chi) = Zero
+
+            END DO
+
+            CALL ComputePressureFromPrimitive_IDEAL &
+                   ( P(:,iX1,iX2,iX3,iPM_D ), P(:,iX1,iX2,iX3,iPM_E ), &
+                     P(:,iX1,iX2,iX3,iPM_Ne), A(:,iX1,iX2,iX3,iAM_P) )
+
+            CALL ComputeConserved_MHD_Relativistic &
+                   ( P(:,iX1,iX2,iX3,iPM_D ), P(:,iX1,iX2,iX3,iPM_V1),  &
+                     P(:,iX1,iX2,iX3,iPM_V2), P(:,iX1,iX2,iX3,iPM_V3),  &
+                     P(:,iX1,iX2,iX3,iPM_E ), P(:,iX1,iX2,iX3,iPM_Ne),  &
+                     P(:,iX1,iX2,iX3,iPM_B1), P(:,iX1,iX2,iX3,iPM_B2),  &
+                     P(:,iX1,iX2,iX3,iPM_B3), P(:,iX1,iX2,iX3,iPM_Chi), &
+                     CD_I (:,iX1,iX2,iX3),    CS1_I(:,iX1,iX2,iX3),     &
+                     CS2_I(:,iX1,iX2,iX3),    CS3_I(:,iX1,iX2,iX3),     &
+                     CE_I (:,iX1,iX2,iX3),    CNe_I(:,iX1,iX2,iX3),     &
+                     CB1_I(:,iX1,iX2,iX3),    CB2_I(:,iX1,iX2,iX3),     &
+                     CB3_I(:,iX1,iX2,iX3),    CChi_I(:,iX1,iX2,iX3),    &
+                     G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                     G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                     G(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                     G(:,iX1,iX2,iX3,iGF_Alpha   ), &
+                     G(:,iX1,iX2,iX3,iGF_Beta_1  ), &
+                     G(:,iX1,iX2,iX3,iGF_Beta_2  ), &
+                     G(:,iX1,iX2,iX3,iGF_Beta_3  ), &
+                     A(:,iX1,iX2,iX3,iAM_P), &
+                     .FALSE. )
+
+          END DO
+          END DO
+          END DO
+
+          DEALLOCATE( X1Arr, PsiArr, AlphaArr, DensityArr, V3Arr, PressureArr )
 
         END IF
 
@@ -1235,6 +1405,80 @@ CONTAINS
     CALL H5DCLOSE_F( DATASET_ID, HDFERR )
 
   END SUBROUTINE ReadDataset3DHDF
+
+
+  SUBROUTINE ReadDataset1DHDF( Dataset, DatasetName, FILE_ID )
+
+    REAL(DP),         INTENT(out) :: Dataset(:)
+    CHARACTER(LEN=*), INTENT(in)  :: DatasetName
+    INTEGER(HID_T),   INTENT(in)  :: FILE_ID
+
+    INTEGER(HID_T) :: DATASET_ID
+    INTEGER(HID_T) :: DATASIZE(1)
+
+    DATASIZE = SHAPE( Dataset )
+
+    CALL H5DOPEN_F( FILE_ID, TRIM( DatasetName ), DATASET_ID, HDFERR )
+
+    CALL H5DREAD_F( DATASET_ID, H5T_NATIVE_DOUBLE, Dataset, DATASIZE, HDFERR )
+
+    CALL H5DCLOSE_F( DATASET_ID, HDFERR )
+
+  END SUBROUTINE ReadDataset1DHDF
+
+
+  REAL(DP) FUNCTION Interpolate1D( x, y, n, xq )
+
+    INTEGER,                INTENT(in) :: n
+    REAL(DP), DIMENSION(n), INTENT(in) :: x, y
+    REAL(DP),               INTENT(in) :: xq
+
+    INTEGER :: i
+
+    i = Locate( xq, x, n )
+
+    !PRINT*, 'i: ', i
+
+    IF( i == 0 )THEN
+
+      ! --- Extrapolate Left ---
+
+      Interpolate1D &
+        = Interpolate1D_Linear( xq, x(1), x(2), y(1), y(2) )
+
+      !PRINT*, 'x(1): ', x(1)
+      !PRINT*, 'x(2): ', x(2)
+      !PRINT*, 'y(1): ', y(1)
+      !PRINT*, 'y(2): ', y(2)
+
+    ELSE IF( i == n )THEN
+
+      ! --- Extrapolate Right ---
+
+      Interpolate1D &
+        = Interpolate1D_Linear( xq, x(n-1), x(n), y(n-1), y(n) )
+
+      !PRINT*, 'x(n-1): ', x(n-1)
+      !PRINT*, 'x(n): ',   x(n)
+      !PRINT*, 'y(n-1): ', y(n-1)
+      !PRINT*, 'y(n): ',   y(n)
+
+
+    ELSE
+
+      Interpolate1D &
+        = Interpolate1D_Linear( xq, x(i), x(i+1), y(i), y(i+1) )
+
+      !PRINT*, 'x(i): ', x(i)
+      !PRINT*, 'x(i+1): ', x(i+1)
+      !PRINT*, 'y(i): ', y(i)
+      !PRINT*, 'y(i+1): ', y(i+1)
+
+    END IF
+
+    RETURN
+
+  END FUNCTION Interpolate1D
 
 
 END MODULE MHD_BoundaryConditionsModule
