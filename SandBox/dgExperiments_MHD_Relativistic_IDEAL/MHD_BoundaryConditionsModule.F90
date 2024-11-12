@@ -753,6 +753,10 @@ CONTAINS
               G(iNX,iX1,iX2,iX3,iGF_Psi) &
                 = Interpolate1D( X1Arr, PsiArr, SIZE( X1Arr ), X1 )
 
+              G(iNX,iX1,iX2,iX3,iGF_Beta_1) = Zero
+              G(iNX,iX1,iX2,iX3,iGF_Beta_2) = Zero
+              G(iNX,iX1,iX2,iX3,iGF_Beta_3) = Zero
+
               G(iNX,iX1,iX2,iX3,iGF_h_1) &
                 = G(iNX,iX1,iX2,iX3,iGF_Psi)**2
               G(iNX,iX1,iX2,iX3,iGF_h_2) &
@@ -760,11 +764,19 @@ CONTAINS
               G(iNX,iX1,iX2,iX3,iGF_h_3) &
                 = G(iNX,iX1,iX2,iX3,iGF_Psi)**2 * X1
 
-              CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
+            END DO
 
-              G(iNX,iX1,iX2,iX3,iGF_Beta_1) = Zero
-              G(iNX,iX1,iX2,iX3,iGF_Beta_2) = Zero
-              G(iNX,iX1,iX2,iX3,iGF_Beta_3) = Zero
+            CALL ComputeGeometryX_FromScaleFactors( G(:,iX1,iX2,iX3,:) )
+
+            DO iNX = 1, nDOFX
+
+              iNX1 = NodeNumberTableX(1,iNX)
+              iNX2 = NodeNumberTableX(2,iNX)
+              iNX3 = NodeNumberTableX(3,iNX)
+
+              X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+              X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
+              X3 = NodeCoordinate( MeshX(3), iX3, iNX3 )
 
               ! --- Fluid Fields ---
 
