@@ -19,9 +19,11 @@ CONTAINS
 
   SUBROUTINE InitializeSlopeLimiter_MHD &
     ( BetaTVD_Option, BetaTVB_Option, SlopeTolerance_Option, &
-      UseSlopeLimiter_Option, &
-      SlopeLimiterMethod_Option, &
-      UseConservativeCorrection_Option, Verbose_Option )
+      UseSlopeLimiter_Option, UseCharacteristicLimiting_Option, &
+      UseTroubledCellIndicator_Option, SlopeLimiterMethod_Option, &
+      LimiterThresholdParameter_Option, &
+      UseConservativeCorrection_Option, Verbose_Option, &
+      EvolveOnlyMagnetic_Option )
 
     REAL(DP),         INTENT(in), OPTIONAL :: &
       BetaTVD_Option, BetaTVB_Option
@@ -29,8 +31,13 @@ CONTAINS
       SlopeTolerance_Option
     LOGICAL,          INTENT(in), OPTIONAL :: &
       UseSlopeLimiter_Option, &
+      UseCharacteristicLimiting_Option, &
+      UseTroubledCellIndicator_Option, &
       UseConservativeCorrection_Option, &
-      Verbose_Option
+      Verbose_Option, &
+      EvolveOnlyMagnetic_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: &
+      LimiterThresholdParameter_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
       SlopeLimiterMethod_Option
 
@@ -41,7 +48,11 @@ CONTAINS
              BetaTVB_Option,                   &
              SlopeTolerance_Option,            &
              UseConservativeCorrection_Option, &
-             Verbose_Option )
+             UseCharacteristicLimiting_Option, &
+             UseTroubledCellIndicator_Option,  &
+             LimiterThresholdParameter_Option, &
+             Verbose_Option,                   &
+             EvolveOnlyMagnetic_Option )
 
   END SUBROUTINE InitializeSlopeLimiter_MHD
 
