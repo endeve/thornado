@@ -16,7 +16,10 @@ GF_Gm_dd_22 = 1.0
 GF_Gm_dd_33 = 1.0
 
 thornado.nNodes = 01
-thornado.t_end = 1.0e100 # dummy
+
+thornado.t_end  = 1.0e100 # dummy
+thornado.dt_wrt = 1.0e100 # dummy
+thornado.dt_chk = 1.0e100 # dummy
 
 thornado.bcX         = 01 00 00
 geometry.is_periodic = 1 1 1  # Periodic BCs: 0 (no), 1 (yes)
