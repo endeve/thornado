@@ -33,7 +33,7 @@ MODULE InitializationModule
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
     amrex_parallel_myproc
-  USE amrex_fluxregister_module, ONLY: &
+  USE thornado_amrex_fluxregister_module, ONLY: &
     amrex_fluxregister_build, &
     amrex_fluxregister_destroy
   USE amrex_tagbox_module, ONLY: &
@@ -626,30 +626,35 @@ CONTAINS
     TYPE(amrex_distromap) :: DM
     TYPE(amrex_multifab)  :: MF_uGF_tmp, MF_uCF_tmp, MF_uDF_tmp
 
-    INTEGER :: swXX(3)
-
-    swXX = swX
-
     BA = pBA
     DM = pDM
 
-    CALL amrex_multifab_build( MF_uGF_tmp, BA, DM, nDOFX * nGF, swXX )
-    CALL amrex_multifab_build( MF_uCF_tmp, BA, DM, nDOFX * nCF, swXX )
-    CALL amrex_multifab_build( MF_uDF_tmp, BA, DM, nDOFX * nDF, swXX )
+    CALL amrex_multifab_build( MF_uGF_tmp, BA, DM, nDOFX * nGF, swX )
+    CALL amrex_multifab_build( MF_uCF_tmp, BA, DM, nDOFX * nCF, swX )
+    CALL amrex_multifab_build( MF_uDF_tmp, BA, DM, nDOFX * nDF, swX )
 
-    CALL FillPatch( iLevel, MF_uGF, MF_uGF_tmp )
-
-    CALL FillPatch( iLevel, MF_uDF, MF_uDF_tmp )
+    CALL MF_uGF_tmp % SetVal( Zero )
+    CALL MF_uCF_tmp % SetVal( Zero )
+    CALL MF_uDF_tmp % SetVal( Zero )
 
     CALL FillPatch &
-           ( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp, swX_Option = swXX )
+           ( iLevel, MF_uGF, MF_uGF_tmp, &
+             ApplyBoundaryConditions_Geometry_Option = .TRUE. )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF_tmp, MF_uCF_tmp, -1, swX_Option = swXX )
+    CALL FillPatch &
+           ( iLevel, MF_uDF, MF_uDF_tmp, &
+             ApplyBoundaryConditions_Diagnostic_Option = .TRUE. )
+
+    CALL FillPatch &
+           ( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp, &
+             ApplyBoundaryConditions_Euler_Option = .TRUE. )
+
+    CALL MultiplyWithPsi6_MF( MF_uGF_tmp, MF_uCF_tmp, -1, swX_Option = swX )
 
     CALL ApplyPositivityLimiter_Euler_MF &
-           ( iLevel, MF_uGF_tmp, MF_uCF_tmp, MF_uDF_tmp, swX_Option = swXX )
+           ( iLevel, MF_uGF_tmp, MF_uCF_tmp, MF_uDF_tmp, swX_Option = swX )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF_tmp, MF_uCF_tmp, +1, swX_Option = swXX )
+    CALL MultiplyWithPsi6_MF( MF_uGF_tmp, MF_uCF_tmp, +1, swX_Option = swX )
 
     CALL ClearLevel( iLevel )
 
@@ -664,9 +669,9 @@ CONTAINS
              ( FluxRegister_Euler(iLevel), BA, DM, amrex_ref_ratio(iLevel-1), &
                iLevel, nDOFX_X1 * nCF )
 
-    CALL MF_uGF(iLevel) % COPY( MF_uGF_tmp, 1, 1, nDOFX * nGF, swXX )
-    CALL MF_uCF(iLevel) % COPY( MF_uCF_tmp, 1, 1, nDOFX * nCF, swXX )
-    CALL MF_uDF(iLevel) % COPY( MF_uDF_tmp, 1, 1, nDOFX * nDF, swXX )
+    CALL MF_uGF(iLevel) % COPY( MF_uGF_tmp, 1, 1, nDOFX * nGF, swX )
+    CALL MF_uCF(iLevel) % COPY( MF_uCF_tmp, 1, 1, nDOFX * nCF, swX )
+    CALL MF_uDF(iLevel) % COPY( MF_uDF_tmp, 1, 1, nDOFX * nDF, swX )
 
     CALL amrex_multifab_destroy( MF_uDF_tmp )
     CALL amrex_multifab_destroy( MF_uCF_tmp )
