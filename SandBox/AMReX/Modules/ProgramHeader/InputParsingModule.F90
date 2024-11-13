@@ -161,8 +161,8 @@ CONTAINS
     UsePhysicalUnits = .FALSE.
     PlotFileNameRoot = 'plt'
     iCycleD          = 10
-    iCycleW          = 1
-    iCycleChk        = 1
+    iCycleW          = -1
+    iCycleChk        = -1
     iRestart         = -1
     dt_wrt           = -1.0_DP
     dt_chk           = -1.0_DP
