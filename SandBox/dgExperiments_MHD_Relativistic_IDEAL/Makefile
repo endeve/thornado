@@ -107,6 +107,11 @@ MHD_BoundaryConditionsModule.o: \
   InputOutputUtilitiesModule.o \
   UtilitiesModule.o \
   MagnetofluidFieldsModule.o \
+  GeometryComputationModule.o \
+  GeometryFieldsModule.o \
+  UnitsModule.o \
+  EquationOfStateModule_IDEAL.o \
+  MHD_UtilitiesModule_Relativistic.o \
   MHD_BoundaryConditionsModule.F90
 
 MHD_DiscontinuityDetectionModule.o: \
@@ -225,7 +230,6 @@ MHD_UtilitiesModule_Relativistic.o: \
   MeshModule.o \
   GeometryFieldsModule.o \
   MagnetofluidFieldsModule.o \
-  MHD_BoundaryConditionsModule.o \
   EquationOfStateModule.o \
   EquationOfStateModule_TABLE.o \
   UnitsModule.o \
