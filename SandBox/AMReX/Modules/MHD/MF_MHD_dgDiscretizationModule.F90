@@ -79,7 +79,7 @@ MODULE  MF_MHD_dgDiscretizationModule
     ApplyBoundaryConditions_MHD_MF
   USE MF_MHD_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_MHD_MF
-  USE MF_EdgeMapModule, ONLY: &
+  USE MF_EdgeMapModule_MHD, ONLY: &
     EdgeMap,          &
     ConstructEdgeMap
   USE InputParsingModule, ONLY: &

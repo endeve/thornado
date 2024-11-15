@@ -45,7 +45,7 @@ MODULE ReGridModule
     ApplyPositivityLimiter_MHD_MF
   USE MF_GeometryModule, ONLY: &
     ApplyBoundaryConditions_Geometry_MF
-  USE MF_GravitySolutionModule, ONLY: &
+  USE MF_GravitySolutionModule_MHD, ONLY: &
     EvolveGravity
   USE MF_GravitySolutionModule_XCFC, ONLY: &
     ComputeConformalFactor_XCFC_MF, &

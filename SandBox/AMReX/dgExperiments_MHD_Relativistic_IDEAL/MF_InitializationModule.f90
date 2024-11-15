@@ -108,7 +108,7 @@ MODULE MF_InitializationModule
     Rand_Amplitude
   USE MF_ErrorModule, ONLY: &
     DescribeError_MF
-  USE MF_EdgeMapModule, ONLY: &
+  USE MF_EdgeMapModule_MHD, ONLY: &
     EdgeMap, &
     ConstructEdgeMap
   USE MF_MHD_BoundaryConditionsModule, ONLY: &

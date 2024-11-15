@@ -54,7 +54,7 @@ MODULE MF_MHD_SlopeLimiterModule
     DestroyMesh_MF
   USE MF_MHD_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_MHD_MF
-  USE MF_EdgeMapModule, ONLY: &
+  USE MF_EdgeMapModule_MHD, ONLY: &
     EdgeMap, &
     ConstructEdgeMap
   USE AverageDownModule_MHD, ONLY: &

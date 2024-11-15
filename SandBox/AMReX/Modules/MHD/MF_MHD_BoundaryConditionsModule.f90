@@ -26,7 +26,7 @@ MODULE MF_MHD_BoundaryConditionsModule
 
   USE MF_KindModule, ONLY: &
     DP
-  USE MF_EdgeMapModule, ONLY: &
+  USE MF_EdgeMapModule_MHD, ONLY: &
     EdgeMap, &
     ConstructEdgeMap
   USE MF_MeshModule, ONLY: &

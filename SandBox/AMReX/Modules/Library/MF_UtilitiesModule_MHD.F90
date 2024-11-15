@@ -141,7 +141,7 @@ MODULE MF_UtilitiesModule
     Timer_AMReX_Allocate_X, &
     Timer_AMReX_Allocate_Z, &
     Timer_AMReX_PermuteData_X
-  USE MF_EdgeMapModule, ONLY: &
+  USE MF_EdgeMapModule_MHD, ONLY: &
     ConstructEdgeMap, &
     EdgeMap
 

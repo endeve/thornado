@@ -1,11 +1,11 @@
 VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/Gravity
-F90EXE_sources  += MF_GravitySolutionModule.F90
-F90EXE_sources  += MF_GravitySolutionModule_Newtonian.F90
+F90EXE_sources  += MF_GravitySolutionModule_MHD.F90
+F90EXE_sources  += MF_GravitySolutionModule_Newtonian_MHD.F90
 F90EXE_sources  += MF_GravitySolutionModule_Newtonian_Poseidon_MHD.F90
-F90EXE_sources  += MF_GravitySolutionModule_XCFC.F90
+F90EXE_sources  += MF_GravitySolutionModule_XCFC_MHD.F90
 F90EXE_sources  += MF_GravitySolutionModule_XCFC_Poseidon_MHD.F90
 F90EXE_sources  += MF_XCFC_UtilitiesModule_MHD.F90
-F90EXE_sources  += MF_MetricInitializationModule.F90
+F90EXE_sources  += MF_MetricInitializationModule_MHD.F90
 F90EXE_sources  += MF_MetricInitializationModule_XCFC_Poseidon_MHD.F90
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Geometry
