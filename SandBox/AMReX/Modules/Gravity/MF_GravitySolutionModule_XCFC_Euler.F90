@@ -9,7 +9,7 @@ MODULE MF_GravitySolutionModule_XCFC
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
-  USE MF_GravitySolutionModule_XCFC_Poseidon, ONLY: &
+  USE MF_GravitySolutionModule_XCFC_Poseidon_Euler, ONLY: &
     InitializeGravitySolver_XCFC_MF_Poseidon, &
     FinalizeGravitySolver_XCFC_MF_Poseidon, &
     ComputeConformalFactor_XCFC_MF_Poseidon, &

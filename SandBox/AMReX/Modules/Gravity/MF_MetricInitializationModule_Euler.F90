@@ -7,7 +7,7 @@ MODULE MF_MetricInitializationModule
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
-  USE MF_MetricInitializationModule_XCFC_Poseidon, ONLY: &
+  USE MF_MetricInitializationModule_XCFC_Poseidon_Euler, ONLY: &
     InitializeMetric_XCFC_MF_Poseidon, &
     InitializeMetricFromCheckpoint_XCFC_MF_Poseidon
 

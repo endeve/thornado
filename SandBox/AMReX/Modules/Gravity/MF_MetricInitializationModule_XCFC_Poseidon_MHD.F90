@@ -1,4 +1,4 @@
-MODULE MF_MetricInitializationModule_XCFC_Poseidon
+MODULE MF_MetricInitializationModule_XCFC_Poseidon_MHD
 
   ! --- AMReX Modules ---
 
@@ -43,8 +43,8 @@ MODULE MF_MetricInitializationModule_XCFC_Poseidon
   USE GeometryComputationModule, ONLY: &
     LapseFunction, &
     ConformalFactor
-  USE FluidFieldsModule, ONLY: &
-    nCF
+  USE MagnetofluidFieldsModule, ONLY: &
+    nCM
   USE RadiationFieldsModule, ONLY: &
     nCR, &
     nSpecies
@@ -125,22 +125,22 @@ CONTAINS
 #ifndef THORNADO_NOTRANSPORT
 
   SUBROUTINE InitializeMetric_XCFC_MF_Poseidon &
-    ( MF_uGF, MF_uCF, MF_uCR, MF_uPF, MF_uAF, TOLERANCE_Option )
+    ( MF_uGF, MF_uCM, MF_uCR, MF_uPM, MF_uAM, TOLERANCE_Option )
 
 #else
 
   SUBROUTINE InitializeMetric_XCFC_MF_Poseidon &
-    ( MF_uGF, MF_uCF, MF_uPF, MF_uAF, TOLERANCE_Option )
+    ( MF_uGF, MF_uCM, MF_uPM, MF_uAM, TOLERANCE_Option )
 
 #endif
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCM(0:nLevels-1)
 #ifndef THORNADO_NOTRANSPORT
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:nLevels-1)
 #endif
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uPF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uAF(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uPM(0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uAM(0:nLevels-1)
     REAL(DP)            , INTENT(in), OPTIONAL :: TOLERANCE_Option
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
@@ -231,29 +231,29 @@ CONTAINS
 
       END DO
 
-      CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, +1 )
+      CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCM, +1 )
 
 #ifndef THORNADO_NOTRANSPORT
 
       CALL MultiplyWithPsi6_MF( iE_B0, iE_E0, iE_B1, iE_E1, MF_uGF, MF_uCR, +1 )
 
       CALL ComputeConformalFactor &
-             ( MF_uGF, MF_uCF, MF_uCR, MF_uGS, MF_uMF )
+             ( MF_uGF, MF_uCM, MF_uCR, MF_uGS, MF_uMF )
 
       CALL ComputeLapseShiftCurvature &
-             ( MF_uGF, MF_uCF, MF_uCR, MF_uGS, MF_uMF )
+             ( MF_uGF, MF_uCM, MF_uCR, MF_uGS, MF_uMF )
 
       CALL MultiplyWithPsi6_MF( iE_B0, iE_E0, iE_B1, iE_E1, MF_uGF, MF_uCR, -1 )
 
 #else
 
-      CALL ComputeConformalFactor( MF_uGF, MF_uCF, MF_uGS, MF_uMF )
+      CALL ComputeConformalFactor( MF_uGF, MF_uCM, MF_uGS, MF_uMF )
 
-      CALL ComputeLapseShiftCurvature( MF_uGF, MF_uCF, MF_uGS, MF_uMF )
+      CALL ComputeLapseShiftCurvature( MF_uGF, MF_uCM, MF_uGS, MF_uMF )
 
 #endif
 
-      CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF, -1 )
+      CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCM, -1 )
 
       DO iLevel = 0, nLevels-1
 
@@ -285,7 +285,7 @@ CONTAINS
       CALL amrex_parallel_reduce_max( MaxLF )
       CALL amrex_parallel_reduce_max( MaxCF )
 
-      CALL ComputeConserved_Euler_MF( MF_uGF, MF_uPF, MF_uAF, MF_uCF )
+      CALL ComputeConserved_Euler_MF( MF_uGF, MF_uPM, MF_uAM, MF_uCM )
 
       IF( amrex_parallel_ioprocessor() )THEN
 
@@ -324,17 +324,17 @@ CONTAINS
 #ifndef THORNADO_NOTRANSPORT
 
   SUBROUTINE InitializeMetricFromCheckpoint_XCFC_MF_Poseidon &
-    ( MF_uGF, MF_uCF, MF_uCR )
+    ( MF_uGF, MF_uCM, MF_uCR )
 
 #else
 
   SUBROUTINE InitializeMetricFromCheckpoint_XCFC_MF_Poseidon &
-    ( MF_uGF, MF_uCF )
+    ( MF_uGF, MF_uCM )
 
 #endif
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCM(0:)
 #ifndef THORNADO_NOTRANSPORT
     TYPE(amrex_multifab), INTENT(in)    :: MF_uCR(0:)
 #endif
@@ -343,7 +343,7 @@ CONTAINS
 
     TYPE(amrex_multifab)  :: MF_uGS    (0:nLevels-1), &
                              MF_uMF    (0:nLevels-1), &
-                             MF_uCF_tmp(0:nLevels-1)
+                             MF_uCM_tmp(0:nLevels-1)
 #ifndef THORNADO_NOTRANSPORT
     TYPE(amrex_multifab)  :: MF_uCR_tmp(0:nLevels-1)
 #endif
@@ -356,12 +356,12 @@ CONTAINS
     DO iLevel = 0, nLevels-1
 
       CALL amrex_multifab_build &
-             ( MF_uCF_tmp(iLevel), MF_uCF(iLevel) % BA, MF_uCF(iLevel) % DM, &
-               nDOFX * nCF, swX )
-      CALL MF_uCF_tmp(iLevel) % SetVal( Zero )
+             ( MF_uCM_tmp(iLevel), MF_uCM(iLevel) % BA, MF_uCM(iLevel) % DM, &
+               nDOFX * nCM, swX )
+      CALL MF_uCM_tmp(iLevel) % SetVal( Zero )
 
-      CALL MF_uCF_tmp(iLevel) % COPY &
-             ( MF_uCF(iLevel), 1, 1, nDOFX * nCF, swX )
+      CALL MF_uCM_tmp(iLevel) % COPY &
+             ( MF_uCM(iLevel), 1, 1, nDOFX * nCM, swX )
 
 #ifndef THORNADO_NOTRANSPORT
 
@@ -387,7 +387,7 @@ CONTAINS
 
     END DO
 
-    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCF_tmp, +1 )
+    CALL MultiplyWithPsi6_MF( MF_uGF, MF_uCM_tmp, +1 )
 
 #ifndef THORNADO_NOTRANSPORT
 
@@ -395,17 +395,17 @@ CONTAINS
            ( iE_B0, iE_E0, iE_B1, iE_E1, MF_uGF, MF_uCR_tmp, +1 )
 
     CALL ComputeConformalFactor &
-           ( MF_uGF, MF_uCF_tmp, MF_uCR_tmp, MF_uGS, MF_uMF )
+           ( MF_uGF, MF_uCM_tmp, MF_uCR_tmp, MF_uGS, MF_uMF )
 
     CALL ComputeLapseShiftCurvature &
-           ( MF_uGF, MF_uCF_tmp, MF_uCR_tmp, MF_uGS, MF_uMF )
+           ( MF_uGF, MF_uCM_tmp, MF_uCR_tmp, MF_uGS, MF_uMF )
 
 #else
 
-    CALL ComputeConformalFactor( MF_uGF, MF_uCF_tmp, MF_uGS, MF_uMF )
+    CALL ComputeConformalFactor( MF_uGF, MF_uCM_tmp, MF_uGS, MF_uMF )
 
     CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
-           ( MF_uGF, MF_uCF_tmp, MF_uGS )
+           ( MF_uGF, MF_uCM_tmp, MF_uGS )
 
 #endif
 
@@ -447,7 +447,7 @@ CONTAINS
 #ifndef THORNADO_NOTRANSPORT
       CALL amrex_multifab_destroy( MF_uCR_tmp(iLevel) )
 #endif
-      CALL amrex_multifab_destroy( MF_uCF_tmp(iLevel) )
+      CALL amrex_multifab_destroy( MF_uCM_tmp(iLevel) )
       CALL amrex_multifab_destroy( MF_uMF    (iLevel) )
       CALL amrex_multifab_destroy( MF_uGS    (iLevel) )
 
@@ -461,17 +461,17 @@ CONTAINS
 #ifndef THORNADO_NOTRANSPORT
 
   SUBROUTINE ComputeConformalFactor &
-    ( MF_uGF, MF_uCF, MF_uCR, MF_uGS, MF_uMF )
+    ( MF_uGF, MF_uCM, MF_uCR, MF_uGS, MF_uMF )
 
 #else
 
   SUBROUTINE ComputeConformalFactor &
-    ( MF_uGF, MF_uCF, MF_uGS, MF_uMF )
+    ( MF_uGF, MF_uCM, MF_uGS, MF_uMF )
 
 #endif
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCM(0:)
 #ifndef THORNADO_NOTRANSPORT
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:)
 #endif
@@ -481,12 +481,12 @@ CONTAINS
 #ifndef THORNADO_NOTRANSPORT
 
     CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
-           ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
+           ( MF_uGF, MF_uCM, MF_uCR, MF_uGS )
 
 #else
 
     CALL ComputeConformalFactorSourcesAndMg_XCFC_MF &
-           ( MF_uGF, MF_uCF, MF_uGS )
+           ( MF_uGF, MF_uCM, MF_uGS )
 
 #endif
 
@@ -504,17 +504,17 @@ CONTAINS
 #ifndef THORNADO_NOTRANSPORT
 
   SUBROUTINE ComputeLapseShiftCurvature &
-    ( MF_uGF, MF_uCF, MF_uCR, MF_uGS, MF_uMF )
+    ( MF_uGF, MF_uCM, MF_uCR, MF_uGS, MF_uMF )
 
 #else
 
   SUBROUTINE ComputeLapseShiftCurvature &
-    ( MF_uGF, MF_uCF, MF_uGS, MF_uMF )
+    ( MF_uGF, MF_uCM, MF_uGS, MF_uMF )
 
 #endif
 
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCM(0:)
 #ifndef THORNADO_NOTRANSPORT
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:)
 #endif
@@ -524,12 +524,12 @@ CONTAINS
 #ifndef THORNADO_NOTRANSPORT
 
     CALL ComputePressureTensorTrace_XCFC_MF &
-           ( MF_uGF, MF_uCF, MF_uCR, MF_uGS )
+           ( MF_uGF, MF_uCM, MF_uCR, MF_uGS )
 
 #else
 
     CALL ComputePressureTensorTrace_XCFC_MF &
-           ( MF_uGF, MF_uCF, MF_uGS )
+           ( MF_uGF, MF_uCM, MF_uGS )
 #endif
 
     CALL ComputeLapseShiftCurvature_XCFC_MF &
@@ -636,4 +636,4 @@ CONTAINS
   END SUBROUTINE PopulateMF_uMF
 
 
-END MODULE MF_MetricInitializationModule_XCFC_Poseidon
+END MODULE MF_MetricInitializationModule_XCFC_Poseidon_MHD

@@ -24,9 +24,9 @@ MODULE ReGridModule
 
   ! --- Local Modules ---
 
-  USE FillPatchModule, ONLY: &
+  USE FillPatchModule_Euler, ONLY: &
     FillPatch
-  USE AverageDownModule, ONLY: &
+  USE AverageDownModule_Euler, ONLY: &
     AverageDown
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
@@ -45,7 +45,7 @@ MODULE ReGridModule
     ApplyPositivityLimiter_Euler_MF
   USE MF_GeometryModule, ONLY: &
     ApplyBoundaryConditions_Geometry_MF
-  USE MF_GravitySolutionModule, ONLY: &
+  USE MF_GravitySolutionModule_Euler, ONLY: &
     EvolveGravity
   USE MF_GravitySolutionModule_XCFC, ONLY: &
     ComputeConformalFactor_XCFC_MF, &

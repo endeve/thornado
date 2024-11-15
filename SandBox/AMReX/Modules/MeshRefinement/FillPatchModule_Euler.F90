@@ -1,4 +1,4 @@
-MODULE FillPatchModule
+MODULE FillPatchModule_Euler
 
   USE ISO_C_BINDING
 
@@ -69,7 +69,7 @@ MODULE FillPatchModule
     UpdateSpatialMetric_MF
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler_MF
-  USE MF_TimersModule, ONLY: &
+  USE MF_TimersModule_Euler, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
     Timer_AMReX_FillPatch
@@ -913,4 +913,4 @@ CONTAINS
   END SUBROUTINE PopulateWithFlatSpaceMetric_MF
 
 
-END MODULE FillPatchModule
+END MODULE FillPatchModule_Euler

@@ -8,7 +8,7 @@ MODULE MF_GravitySolutionModule_Newtonian
 
 #ifdef GRAVITY_SOLVER_POSEIDON_NEWTONIAN
 
-  USE MF_GravitySolutionModule_Newtonian_Poseidon, ONLY: &
+  USE MF_GravitySolutionModule_Newtonian_Poseidon_Euler, ONLY: &
     InitializeGravitySolver_Newtonian_MF_Poseidon, &
     FinalizeGravitySolver_Newtonian_MF_Poseidon
 

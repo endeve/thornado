@@ -63,7 +63,7 @@ MODULE MF_Euler_PositivityLimiterModule
     DestroyMesh_MF
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler_MF
-  USE MF_EdgeMapModule, ONLY: &
+  USE MF_EdgeMapModule_Euler, ONLY: &
     ConstructEdgeMap, &
     EdgeMap
 

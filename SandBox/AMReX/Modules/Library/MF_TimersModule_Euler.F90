@@ -1,4 +1,4 @@
-MODULE MF_TimersModule
+MODULE MF_TimersModule_Euler
 
   ! --- AMReX Modules ---
 
@@ -334,4 +334,4 @@ CONTAINS
   END SUBROUTINE WriteTimer
 
 
-END MODULE MF_TimersModule
+END MODULE MF_TimersModule_Euler

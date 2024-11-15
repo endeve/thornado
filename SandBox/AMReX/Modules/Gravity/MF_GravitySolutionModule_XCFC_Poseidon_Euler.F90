@@ -29,7 +29,7 @@ MODULE MF_GravitySolutionModule_XCFC_Poseidon
     DP, &
     Zero, &
     Half
-  USE AverageDownModule, ONLY: &
+  USE AverageDownModule_Euler, ONLY: &
     AverageDown
   USE MF_GeometryModule, ONLY: &
     ApplyBoundaryConditions_Geometry_MF

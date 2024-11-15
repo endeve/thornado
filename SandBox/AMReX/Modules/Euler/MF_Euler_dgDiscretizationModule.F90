@@ -79,7 +79,7 @@ MODULE  MF_Euler_dgDiscretizationModule
     ApplyBoundaryConditions_Euler_MF
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_Euler_MF
-  USE MF_EdgeMapModule, ONLY: &
+  USE MF_EdgeMapModule_Euler, ONLY: &
     EdgeMap,          &
     ConstructEdgeMap
   USE InputParsingModule, ONLY: &
@@ -88,9 +88,9 @@ MODULE  MF_Euler_dgDiscretizationModule
     UseFluxCorrection_Euler, &
     IsPeriodic, &
     DEBUG
-  USE FillPatchModule, ONLY: &
+  USE FillPatchModule_Euler, ONLY: &
     FillPatch
-  USE AverageDownModule, ONLY: &
+  USE AverageDownModule_Euler, ONLY: &
     AverageDown
 
   IMPLICIT NONE

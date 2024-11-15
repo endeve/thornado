@@ -73,7 +73,7 @@ MODULE MF_Euler_UtilitiesModule
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
-  USE MF_TimersModule, ONLY: &
+  USE MF_TimersModule_Euler, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
     Timer_AMReX_ComputeTimeStep_Euler

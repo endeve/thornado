@@ -1,4 +1,4 @@
-MODULE MF_GravitySolutionModule
+MODULE MF_GravitySolutionModule_Euler
 
   ! --- AMReX Modules ---
 
@@ -11,13 +11,13 @@ MODULE MF_GravitySolutionModule
 
 #ifdef GRAVITY_SOLVER_POSEIDON_XCFC
 
-  USE MF_GravitySolutionModule_XCFC, ONLY: &
+  USE MF_GravitySolutionModule_XCFC_Euler, ONLY: &
     InitializeGravitySolver_XCFC_MF, &
     FinalizeGravitySolver_XCFC_MF
 
 #elif GRAVITY_SOLVER_POSEIDON_NEWTONIAN
 
-  USE MF_GravitySolutionModule_Newtonian, ONLY: &
+  USE MF_GravitySolutionModule_Newtonian_Euler, ONLY: &
     InitializeGravitySolver_Newtonian_MF, &
     FinalizeGravitySolver_Newtonian_MF
 
@@ -93,4 +93,4 @@ CONTAINS
   END SUBROUTINE FinalizeGravitySolver_MF
 
 
-END MODULE MF_GravitySolutionModule
+END MODULE MF_GravitySolutionModule_Euler

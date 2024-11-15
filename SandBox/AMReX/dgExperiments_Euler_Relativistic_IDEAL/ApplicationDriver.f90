@@ -29,7 +29,7 @@ PROGRAM main
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeTimeStep_Euler_MF, &
     ComputeFromConserved_Euler_MF
-  USE InputOutputModuleAMReX, ONLY: &
+  USE InputOutputModuleAMReX_Euler, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
   USE MF_Euler_TallyModule, ONLY: &
@@ -48,7 +48,7 @@ PROGRAM main
     ElectronNumber_OffGrid, &
     ADMMass_Initial, &
     ADMMass_OffGrid
-  USE MF_TimeSteppingModule_SSPRK, ONLY: &
+  USE MF_TimeSteppingModule_SSPRK_Euler, ONLY: &
     UpdateFluid_SSPRK_MF, &
     CFL
   USE InputParsingModule, ONLY: &
@@ -66,7 +66,7 @@ PROGRAM main
     dt_wrt, &
     dt_chk, &
     DEBUG
-  USE MF_TimersModule, ONLY: &
+  USE MF_TimersModule_Euler, ONLY: &
     TimeIt_AMReX, &
     TimersStart_AMReX, &
     TimersStop_AMReX, &

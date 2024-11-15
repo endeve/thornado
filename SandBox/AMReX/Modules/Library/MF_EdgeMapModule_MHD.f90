@@ -1,4 +1,4 @@
-MODULE MF_EdgeMapModule
+MODULE MF_EdgeMapModule_MHD
 
   ! --- AMReX Modules ---
 
@@ -98,4 +98,4 @@ CONTAINS
   END SUBROUTINE EdgeMap_GetBC
 
 
-END MODULE MF_EdgeMapModule
+END MODULE MF_EdgeMapModule_MHD

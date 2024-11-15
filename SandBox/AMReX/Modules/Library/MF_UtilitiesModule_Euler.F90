@@ -127,13 +127,13 @@ MODULE MF_UtilitiesModule
   USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_TwoMoment_MF
 #endif
-  USE MF_TimersModule, ONLY: &
+  USE MF_TimersModule_Euler, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
     Timer_AMReX_Allocate_X, &
     Timer_AMReX_Allocate_Z, &
     Timer_AMReX_PermuteData_X
-  USE MF_EdgeMapModule, ONLY: &
+  USE MF_EdgeMapModule_Euler, ONLY: &
     ConstructEdgeMap, &
     EdgeMap
 

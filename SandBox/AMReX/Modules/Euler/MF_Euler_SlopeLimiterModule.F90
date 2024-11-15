@@ -54,12 +54,12 @@ MODULE MF_Euler_SlopeLimiterModule
     DestroyMesh_MF
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler_MF
-  USE MF_EdgeMapModule, ONLY: &
+  USE MF_EdgeMapModule_Euler, ONLY: &
     EdgeMap, &
     ConstructEdgeMap
-  USE AverageDownModule, ONLY: &
+  USE AverageDownModule_Euler, ONLY: &
     AverageDown
-  USE FillPatchModule, ONLY: &
+  USE FillPatchModule_Euler, ONLY: &
     FillPatch
 
   IMPLICIT NONE

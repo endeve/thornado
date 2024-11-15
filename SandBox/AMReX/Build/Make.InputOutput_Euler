@@ -1,10 +1,8 @@
 VPATH_LOCATIONS   += $(THORNADO_DIR)/SandBox/AMReX/Modules/InputOutput
 INCLUDE_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/InputOutput
-#CEXE_sources      += Restart_Euler.cpp
-CEXE_sources      += Restart_MHD.cpp
+CEXE_sources      += Restart_Euler.cpp
 CEXE_headers      += Restart.H
-#f90EXE_sources    += InputOutputModuleAMReX_Euler.f90
-f90EXE_sources    += InputOutputModuleAMReX_MHD.f90
+f90EXE_sources    += InputOutputModuleAMReX_Euler.f90
 
 VPATH_LOCATIONS   += $(THORNADO_DIR)/Modules/InputOutput
 f90EXE_sources    += InputOutputUtilitiesModule.f90

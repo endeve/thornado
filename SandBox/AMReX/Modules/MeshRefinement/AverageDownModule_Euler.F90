@@ -1,4 +1,4 @@
-MODULE AverageDownModule
+MODULE AverageDownModule_Euler
 
   ! --- AMReX Modules ---
 
@@ -40,7 +40,7 @@ MODULE AverageDownModule
     UpdateSpatialMetric_MF
   USE InputParsingModule, ONLY: &
     DEBUG
-  USE MF_TimersModule, ONLY: &
+  USE MF_TimersModule_Euler, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
     Timer_AMReX_AverageDown
@@ -215,4 +215,4 @@ CONTAINS
   END SUBROUTINE AverageDownTo_Conservative
 
 
-END MODULE AverageDownModule
+END MODULE AverageDownModule_Euler
