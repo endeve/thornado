@@ -32,7 +32,7 @@ PROGRAM main
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeTimeStep_Euler_MF, &
     ComputeFromConserved_Euler_MF
-  USE InputOutputModuleAMReX, ONLY: &
+  USE InputOutputModuleAMReX_Euler, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
   USE MF_Euler_TallyModule, ONLY: &
@@ -52,7 +52,7 @@ PROGRAM main
     ADMMass_Initial, &
     ADMMass_OffGrid, &
     ADMMass_Interior
-  USE MF_TimeSteppingModule_SSPRK, ONLY: &
+  USE MF_TimeSteppingModule_SSPRK_Euler, ONLY: &
     UpdateFluid_SSPRK_MF, &
     CFL
   USE InputParsingModule, ONLY: &
@@ -72,13 +72,13 @@ PROGRAM main
     DEBUG
   USE MF_Euler_TimersModule, ONLY: &
     TimeIt_AMReX_Euler
-  USE MF_TimersModule, ONLY: &
+  USE MF_TimersModule_Euler, ONLY: &
     TimeIt_AMReX, &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
     Timer_AMReX_InputOutput, &
     FinalizeTimers_AMReX
-  USE ReGridModule, ONLY: &
+  USE ReGridModule_Euler, ONLY: &
     ReGrid
 
   IMPLICIT NONE

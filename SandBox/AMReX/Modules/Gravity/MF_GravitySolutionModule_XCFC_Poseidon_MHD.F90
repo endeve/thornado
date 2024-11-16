@@ -1,4 +1,4 @@
-MODULE MF_GravitySolutionModule_XCFC_Poseidon
+MODULE MF_GravitySolutionModule_XCFC_Poseidon_MHD
 
   ! --- AMReX Modules ---
 
@@ -304,4 +304,4 @@ CONTAINS
   END SUBROUTINE ComputeLapseShiftCurvature
 
 
-END MODULE MF_GravitySolutionModule_XCFC_Poseidon
+END MODULE MF_GravitySolutionModule_XCFC_Poseidon_MHD

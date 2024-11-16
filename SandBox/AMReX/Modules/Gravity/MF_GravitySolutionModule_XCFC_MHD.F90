@@ -1,4 +1,4 @@
-MODULE MF_GravitySolutionModule_XCFC
+MODULE MF_GravitySolutionModule_XCFC_MHD
 
   ! --- AMReX Modules ---
 
@@ -87,4 +87,4 @@ CONTAINS
   END SUBROUTINE ComputeLapseShiftCurvature_XCFC_MF
 
 
-END MODULE MF_GravitySolutionModule_XCFC
+END MODULE MF_GravitySolutionModule_XCFC_MHD

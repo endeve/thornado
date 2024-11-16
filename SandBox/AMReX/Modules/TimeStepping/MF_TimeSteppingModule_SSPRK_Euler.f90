@@ -65,7 +65,7 @@ MODULE MF_TimeSteppingModule_SSPRK_Euler
     ApplyBoundaryConditions_Geometry_MF
   USE MF_GravitySolutionModule_Euler, ONLY: &
     EvolveGravity
-  USE MF_GravitySolutionModule_XCFC, ONLY: &
+  USE MF_GravitySolutionModule_XCFC_Euler, ONLY: &
     ComputeConformalFactor_XCFC_MF, &
     ComputeLapseShiftCurvature_XCFC_MF
   USE AverageDownModule_Euler, ONLY: &

@@ -90,7 +90,7 @@ MODULE MF_MetricInitializationModule_XCFC_Poseidon_Euler
     CreateFineMask, &
     DestroyFineMask, &
     IsNotLeafElement
-  USE MF_GravitySolutionModule_XCFC, ONLY: &
+  USE MF_GravitySolutionModule_XCFC_Euler, ONLY: &
     ComputeConformalFactor_XCFC_MF, &
     ComputeLapseShiftCurvature_XCFC_MF
   USE MF_XCFC_UtilitiesModule, ONLY: &

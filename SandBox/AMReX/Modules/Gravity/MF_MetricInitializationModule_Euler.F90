@@ -1,4 +1,4 @@
-MODULE MF_MetricInitializationModule
+MODULE MF_MetricInitializationModule_Euler
 
   ! --- AMReX Modules ---
 
@@ -106,4 +106,4 @@ CONTAINS
   END SUBROUTINE InitializeMetricFromCheckpoint_MF
 
 
-END MODULE MF_MetricInitializationModule
+END MODULE MF_MetricInitializationModule_Euler
