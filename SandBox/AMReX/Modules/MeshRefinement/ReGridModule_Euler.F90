@@ -1,4 +1,4 @@
-MODULE ReGridModule
+MODULE ReGridModule_Euler
 
   ! --- AMReX Modules ---
 
@@ -304,4 +304,4 @@ CONTAINS
   END FUNCTION PerformReGrid
 
 
-END MODULE ReGridModule
+END MODULE ReGridModule_Euler

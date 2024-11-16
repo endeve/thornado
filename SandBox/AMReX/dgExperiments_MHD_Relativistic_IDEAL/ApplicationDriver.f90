@@ -82,7 +82,7 @@ PROGRAM main
     FinalizeTimers_AMReX
   USE MF_MHD_TimersModule, ONLY: &
     TimeIt_AMReX_MHD
-  USE ReGridModule, ONLY: &
+  USE ReGridModule_MHD, ONLY: &
     ReGrid
 
   IMPLICIT NONE

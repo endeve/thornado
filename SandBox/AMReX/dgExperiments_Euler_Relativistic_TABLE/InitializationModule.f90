@@ -87,7 +87,7 @@ MODULE InitializationModule
     FluxRegister_Euler
   USE MF_GeometryModule, ONLY: &
     ComputeGeometryX_MF
-  USE MF_EquationOfStateModule, ONLY: &
+  USE MF_EquationOfStateModule_Euler, ONLY: &
     InitializeEquationOfState_MF
   USE MF_Euler_SlopeLimiterModule, ONLY: &
     InitializeSlopeLimiter_Euler_MF, &
@@ -95,7 +95,7 @@ MODULE InitializationModule
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     InitializePositivityLimiter_Euler_MF, &
     ApplyPositivityLimiter_Euler_MF
-  USE MF_TimeSteppingModule_SSPRK, ONLY: &
+  USE MF_TimeSteppingModule_SSPRK_Euler, ONLY: &
     InitializeFluid_SSPRK_MF
   USE MF_InitializationModule, ONLY: &
     InitializeFields_MF
@@ -107,7 +107,7 @@ MODULE InitializationModule
   USE MF_Euler_TallyModule, ONLY: &
     InitializeTally_Euler_MF, &
     ComputeTally_Euler_MF
-  USE FillPatchModule, ONLY: &
+  USE FillPatchModule_Euler, ONLY: &
     FillPatch, &
     FillCoarsePatch
   USE MF_XCFC_UtilitiesModule, ONLY: &
@@ -137,14 +137,14 @@ MODULE InitializationModule
     UseFluxCorrection_Euler, &
     TagCriteria, &
     DescribeProgramHeader_AMReX
-  USE InputOutputModuleAMReX, ONLY: &
+  USE InputOutputModuleAMReX_Euler, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     ReadCheckpointFile
-  USE AverageDownModule, ONLY: &
+  USE AverageDownModule_Euler, ONLY: &
     AverageDown
   USE Euler_MeshRefinementModule, ONLY: &
     InitializeMeshRefinement_Euler
-  USE MF_TimersModule, ONLY: &
+  USE MF_TimersModule_Euler, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
     InitializeTimers_AMReX, &
