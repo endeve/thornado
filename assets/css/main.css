@@ -3368,3 +3368,16 @@ input, select, textarea {
 			}
 
 	}
+.quickstart {
+  text-align: center;
+}
+.codebox {
+  padding    : 1px;
+  background : #FFFFC5;
+  color      : #000000;
+  word-wrap  : break-word;
+  width      : 80%;
+  text-align : center;
+  margin     : auto;
+}
+

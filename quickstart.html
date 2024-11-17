@@ -13,6 +13,7 @@
     <meta name="viewport"
           content="width=device-width, initial-scale=1, user-scalable=no" />
     <link rel="stylesheet" href="assets/css/main.css" />
+    <link href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css" rel="stylesheet">
   </head>
 
   <body class="is-preload">
@@ -62,49 +63,63 @@
 
               <section class="wrapper style">
 
-                <div class="container">
-                <header class="major">
+                <div class="quickstart" >
+
                   <h2>Quick Start</h2>
-                </header>
-                </div>
 
-                <div class="container">
-                <header class="major">
-                <h3><span class="icon fa-download"></span>
-                  &nbsp;&nbsp;Clone</h3>
-                git clone https://github.com/endeve/thornado.git <br>
-                </header>
-                </div>
+                  <h3>
+                    <!-- <span class="icon fa-download"></span>&nbsp;&nbsp; -->
+                    Clone
+                  </h3>
 
-                <div class="container">
-                <header class="major">
-                <h3><span class="icon fa-cogs"></span>
-                  &nbsp;&nbsp;&nbsp;Setup your environment</h3>
-                export THORNADO_DIR=/path/to/thornado <br>
-                export THORNADO_MACHINE=unique_user_label <br>
-                Create a file in $THORNADO_DIR/Build/Machines to point to your
-                HDF5 and LAPACK
-                </header>
-                </div>
+                  <div class="codebox">
+                    $ git clone https://github.com/endeve/thornado.git
+                  </div>
 
-                <div class="container">
-                <header class="major">
-                <h3><span class="icon fa-magic"></span>
-                  &nbsp;&nbsp;Compile</h3>
-                Problems are compiled in their own directory, e.g., <br>
-                cd $THORNADO_DIR/Sandbox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables <br>
-                make
-                </header>
-                </div>
+                  <br>
 
-                <div class="container">
-                <header class="major">
-                <h3><span class="icon fa-laptop"></span>
-                  &nbsp;&nbsp;&nbsp;Run</h3>
-                Executable names being with "ApplicationDriver" and are suffixed
-                with your $THORNADO_MACHINE environment variable. <br>
-                ./ApplicationDriver_Frodo
-                </header>
+                  <h3>
+                    <!-- <span class="icon fa-cogs"></span>&nbsp;&nbsp;&nbsp; -->
+                    Setup your environment
+                  </h3>
+
+                  <div class="codebox">
+                    $ export THORNADO_DIR=/path/to/thornado <br>
+                    $ export THORNADO_MACHINE=your_user_name
+                  </div>
+                  <br>
+                  Using
+                  <a href="generateMakefile.py" download="generateMakefile.py">
+                  generateMakefile.py</a>
+                  (requires python),
+                  define compilers and locations to HDF5 and LAPACK.
+                  <br>
+                  <br>
+
+                  <h3>
+                    <!-- <span class="icon fa-magic"></span>&nbsp;&nbsp; -->
+                    Compile
+                  </h3>
+
+                  Problems are compiled in their own directory; e.g.,
+                  <br>
+                  <div class="codebox">
+                    $ cd ${THORNADO_DIR}/Sandbox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables <br>
+                    $ make
+                  </div>
+
+                  <br>
+
+                  <h3>
+                    <!-- <span class="icon fa-laptop"></span>&nbsp;&nbsp;&nbsp; -->
+                    Run
+                  </h3>
+                  Executable names being with "ApplicationDriver" and are suffixed
+                  with $THORNADO_MACHINE. <br>
+                  <div class="codebox">
+                    $ ./ApplicationDriver_your_user_name
+                  </div>
+
                 </div>
 
               </section>
