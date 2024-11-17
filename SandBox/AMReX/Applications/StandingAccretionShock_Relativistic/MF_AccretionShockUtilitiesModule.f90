@@ -87,9 +87,9 @@ MODULE MF_AccretionShockUtilitiesModule
     t_new, &
     StepNo, &
     PlotFileNameRoot
-  USE FillPatchModule, ONLY: &
+  USE FillPatchModule_Euler, ONLY: &
     FillPatch
-  USE AverageDownModule, ONLY: &
+  USE AverageDownModule_Euler, ONLY: &
     AverageDown
   USE MaskModule, ONLY: &
     CreateFineMask, &

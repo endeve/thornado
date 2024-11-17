@@ -105,7 +105,7 @@ MODULE MF_InitializationModule
   USE MF_AccretionShockUtilitiesModule, ONLY: &
     FileName_Nodal1DIC_SAS, &
     WriteNodal1DIC_SAS
-  USE InputOutputModuleAMReX, ONLY: &
+  USE InputOutputModuleAMReX_Euler, ONLY: &
     WriteFieldsAMReX_PlotFile
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
