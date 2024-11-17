@@ -74,7 +74,7 @@ PROGRAM main
     FinalizeTimers_AMReX
   USE MF_Euler_TimersModule, ONLY: &
     TimeIt_AMReX_Euler
-  USE ReGridModule, ONLY: &
+  USE ReGridModule_Euler, ONLY: &
     ReGrid
 
   IMPLICIT NONE
