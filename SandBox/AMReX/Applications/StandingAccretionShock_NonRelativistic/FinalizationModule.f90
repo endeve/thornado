@@ -20,7 +20,7 @@ MODULE FinalizationModule
 
   ! --- Local Modules ---
 
-  USE MF_EquationOfStateModule, ONLY: &
+  USE MF_EquationOfStateModule_Euler, ONLY: &
     FinalizeEquationOfState_MF
   USE MF_FieldsModule_Geometry, ONLY: &
     MF_uGF, &
@@ -35,11 +35,11 @@ MODULE FinalizationModule
     FinalizeSlopeLimiter_Euler_MF
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     FinalizePositivityLimiter_Euler_MF
-  USE MF_TimeSteppingModule_SSPRK, ONLY: &
+  USE MF_TimeSteppingModule_SSPRK_Euler, ONLY: &
     FinalizeFluid_SSPRK_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
-  USE InputOutputModuleAMReX, ONLY: &
+  USE InputOutputModuleAMReX_Euler, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
   USE MF_Euler_TallyModule, ONLY: &
@@ -65,7 +65,7 @@ MODULE FinalizationModule
     dt, &
     t_old, &
     t_new
-  USE MF_TimersModule, ONLY: &
+  USE MF_TimersModule_Euler, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
     Timer_AMReX_Finalize, &
