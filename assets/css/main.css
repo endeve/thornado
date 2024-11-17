@@ -2758,6 +2758,11 @@ input, select, textarea {
 					color: #37c0fb !important;
 				}
 
+		.wrapper.style4 {
+			background-color : #ffffff;
+			color            : #000000;
+		}
+
 /* CTA */
 
 	#cta {
