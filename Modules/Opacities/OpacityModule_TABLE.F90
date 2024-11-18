@@ -349,6 +349,8 @@ CONTAINS
 
     CALL FinalizeHDF( )
 
+    nPointsE = nE * nNodesE
+
     ! --- Thermodynamic State Indices ---
 
     iD_T = OPACITIES % TS % Indices % iRho
