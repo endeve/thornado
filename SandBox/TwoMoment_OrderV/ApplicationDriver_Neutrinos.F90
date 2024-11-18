@@ -54,7 +54,7 @@ PROGRAM ApplicationDriver_Neutrinos
   CHARACTER(32) :: CoordinateSystem
   CHARACTER(64) :: ProfileName
   CHARACTER(64) :: EosTableName
-  CHARACTER(64) :: OpacityTableName_AbEm
+  CHARACTER(64) :: OpacityTableName_EmAb
   CHARACTER(64) :: OpacityTableName_Iso
   CHARACTER(64) :: OpacityTableName_NES
   CHARACTER(64) :: OpacityTableName_Pair
@@ -68,6 +68,7 @@ PROGRAM ApplicationDriver_Neutrinos
   LOGICAL       :: PrescribedTimeStep
   LOGICAL       :: Include_NES
   LOGICAL       :: Include_Pair
+  LOGICAL       :: Include_NuPair
   LOGICAL       :: Include_Brem
   LOGICAL       :: Include_LinCorr
   LOGICAL       :: FreezeOpacities
@@ -86,17 +87,20 @@ PROGRAM ApplicationDriver_Neutrinos
   REAL(DP)      :: Rtol_outer, Rtol_inner
   REAL(DP)      :: wMatterRHS(5)
   REAL(DP)      :: DnuMax
+  LOGICAL       :: Relaxation_restart_from_file
 
   ProgramName = 'Relaxation'
+  Relaxation_restart_from_file = .FALSE. 
+  !ProgramName = 'DeleptonizationWave1D'
 
   CoordinateSystem = 'CARTESIAN'
 
   EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
-  OpacityTableName_AbEm = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5'
-  OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5'
-  OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5'
-  OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5'
-  OpacityTableName_Brem = 'wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5'
+  OpacityTableName_EmAb = 'wl-Op-SFHo-15-25-50-E40-EmAb.h5'
+  OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-Iso.h5'
+  OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-NES.h5'
+  OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-Pair.h5'
+  OpacityTableName_Brem = 'wl-Op-SFHo-15-25-50-E40-Brem.h5'
 
   PrescribedTimeStep = .FALSE.
 
@@ -110,6 +114,7 @@ PROGRAM ApplicationDriver_Neutrinos
   Rtol_inner      = 1.0d-8
   Include_NES     = .TRUE.
   Include_Pair    = .TRUE.
+  Include_NuPair  = .FALSE.
   Include_Brem    = .TRUE.
   Include_LinCorr = .FALSE.
   wMatterRHS      = [ One, One, One, One, One ]
@@ -125,36 +130,100 @@ PROGRAM ApplicationDriver_Neutrinos
 
       nSpecies = 6
       nNodes   = 2
-
-      nX  = [ 1, 1, 1 ]
-      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
-      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
-      bcX = [ 0, 0, 0 ]
-
       nE    = 16
       eL    = 0.0d0 * MeV
       eR    = 3.0d2 * MeV
       bcE   = 0
       ZoomE = 1.266038160710160_DP
 
-      TimeSteppingScheme = 'BackwardEuler'
+      IF( Relaxation_restart_from_file ) THEN
+        CoordinateSystem = 'SPHERICAL'
 
-      t_end = 1.0d2 * Millisecond
+        nX    = [ 1, 1, 1 ]
+        xL    = [ 0.0_DP            , 0.0_DP, 0.0_DP ]
+        xR    = [ 8.0_DP * Kilometer, Pi    , TwoPi  ]
+        bcX   = [ 0, 0, 0 ]
+        ZoomX = [ 1.0_DP, 1.0_DP, 1.0_DP ]
 
-      PrescribedTimeStep = .TRUE.
-      dt_0               = 1.0d-4 * Millisecond
-      dt_MAX             = 1.0d+1 * Millisecond
-      dt_RATE            = 1.04_DP
-      iCycleD            = 1
-      iCycleW            = 1
-      maxCycles          = 100000
+        nEquidistantX = 0
+        dEquidistantX = 1.0_DP * Kilometer
 
-      EvolveEuler                    = .FALSE.
-      UseSlopeLimiter_Euler          = .FALSE.
-      UseSlopeLimiter_TwoMoment      = .FALSE.
-      UsePositivityLimiter_Euler     = .FALSE.
-      UsePositivityLimiter_TwoMoment = .FALSE.
-      UseEnergyLimiter_TwoMoment     = .FALSE.
+        nE    = 16
+        eL    = 0.0d0 * MeV
+        eR    = 3.0d2 * MeV
+        bcE   = 10
+        ZoomE = 1.266038160710160_DP
+
+        !TimeSteppingScheme = 'IMEX_PDARS'
+        TimeSteppingScheme = 'BackwardEuler'
+
+        t_end = 1.0d0 * Millisecond
+
+        PrescribedTimeStep = .TRUE. ! If .FALSE., explicit CFL will be used.
+        dt_0               = 8.895d-3 * Millisecond
+        dt_MAX             = 8.895d-3 * Millisecond
+        dt_RATE            = 1.01_DP
+
+        iCycleD = 1
+        iCycleW = 100
+        maxCycles = 1000000
+
+        EvolveEuler                    = .FALSE.
+        UseSlopeLimiter_Euler          = .FALSE.
+        UseSlopeLimiter_TwoMoment      = .FALSE.
+        UsePositivityLimiter_Euler     = .FALSE.
+        UsePositivityLimiter_TwoMoment = .FALSE.
+        UseEnergyLimiter_TwoMoment     = .FALSE.
+
+        Include_NES     = .TRUE.
+        Include_Pair    = .TRUE.
+        Include_NuPair  = .FALSE.
+        Include_Brem    = .TRUE.
+        Include_LinCorr = .FALSE.
+        FreezeOpacities = .FALSE. ! --- Keep opacities fixed during iterations?
+        DnuMax          = One
+        M_outer         = 2
+        MaxIter_outer   = 100
+        Rtol_outer      = 1.0d-8
+        M_inner         = 2
+        MaxIter_inner   = 100
+        Rtol_inner      = 1.0d-8
+        Include_NES     = .TRUE.
+        Include_Pair    = .TRUE.
+        Include_NuPair  = .FALSE.
+        Include_Brem    = .TRUE.
+        Include_LinCorr = .FALSE.
+        wMatterRHS      = [ One, One, One, One, One ]
+        DnuMax          = One
+        FreezeOpacities = .FALSE.
+
+      ELSE
+
+        nX  = [ 1, 1, 1 ]
+        xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
+        xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
+        bcX = [ 0, 0, 0 ]
+
+        TimeSteppingScheme = 'BackwardEuler'
+
+        t_end = 1.0d2 * Millisecond
+
+        PrescribedTimeStep = .TRUE.
+        dt_0               = 1.0d-4 * Millisecond
+        dt_MAX             = 1.0d+1 * Millisecond
+        dt_RATE            = 1.04_DP
+        iCycleD            = 1
+        iCycleW            = 1
+        maxCycles          = 100000
+
+        EvolveEuler                    = .FALSE.
+        UseSlopeLimiter_Euler          = .FALSE.
+        UseSlopeLimiter_TwoMoment      = .FALSE.
+        UsePositivityLimiter_Euler     = .FALSE.
+        UsePositivityLimiter_TwoMoment = .FALSE.
+        UseEnergyLimiter_TwoMoment     = .FALSE.
+      
+      ENDIF
 
     CASE( 'DeleptonizationWave1D' )
 
@@ -180,10 +249,15 @@ PROGRAM ApplicationDriver_Neutrinos
 
       TimeSteppingScheme = 'IMEX_PDARS'
 
-      t_end = 1.0d1 * Millisecond
+      t_end = 1.0d2 * Millisecond
+
+      PrescribedTimeStep = .TRUE. ! If .FALSE., explicit CFL will be used.
+      dt_0               = 1.0d-3 * Millisecond
+      dt_MAX             = 1.0d-3 * Millisecond
+      dt_RATE            = 1.01_DP
 
       iCycleD = 1
-      iCycleW = 333
+      iCycleW = 100
       maxCycles = 1000000
 
       EvolveEuler                    = .FALSE.
@@ -197,6 +271,11 @@ PROGRAM ApplicationDriver_Neutrinos
 
       wMatterRHS = [ One, One, Zero, Zero, Zero ] ! --- Keep Velocity Fixed
 
+      Include_NES     = .TRUE.
+      Include_Pair    = .TRUE.
+      Include_NuPair  = .TRUE.
+      Include_Brem    = .TRUE.
+      Include_LinCorr = .FALSE.
       FreezeOpacities = .FALSE. ! --- Keep opacities fixed during iterations?
 
     CASE( 'EquilibriumAdvection' )
@@ -241,7 +320,12 @@ PROGRAM ApplicationDriver_Neutrinos
 
   CALL InitializeDriver
 
-  CALL InitializeFields( ProfileName )
+  IF (Relaxation_restart_from_file) THEN
+    CALL InitializeFields( ProfileName, 'Relaxation_input.dat' )
+  ELSE
+    CALL InitializeFields( ProfileName )
+  ENDIF
+
 
   CALL ComputeFromConserved_TwoMoment &
          ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, uPR, uAR, uGR )
@@ -507,6 +591,8 @@ CONTAINS
     CALL InitializeEquationOfState_TABLE &
            ( EquationOfStateTableName_Option &
                = EosTableName, &
+             UseChemicalPotentialShift_Option &
+               = .TRUE., &
              Verbose_Option &
                = .TRUE. )
 
@@ -514,7 +600,7 @@ CONTAINS
 
     CALL InitializeOpacities_TABLE &
            ( OpacityTableName_EmAb_Option &
-               = TRIM( OpacityTableName_AbEm ), &
+               = TRIM( OpacityTableName_EmAb ), &
              OpacityTableName_Iso_Option  &
                = TRIM( OpacityTableName_Iso ), &
              OpacityTableName_NES_Option &
@@ -618,6 +704,8 @@ CONTAINS
                = Include_NES, &
              Include_Pair_Option &
                = Include_Pair, &
+             Include_NuPair_Option &
+               = Include_NuPair, &
              Include_Brem_Option &
                = Include_Brem, &
              Include_LinCorr_Option &

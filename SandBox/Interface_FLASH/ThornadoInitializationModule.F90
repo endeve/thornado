@@ -47,6 +47,13 @@ module ThornadoInitializationModule
     FinalizeSubcellReconstruction, &
     CreateSubcellReconstruction, &
     DestroySubcellReconstruction
+  use PolynomialBasisModuleX_Legendre, only: &
+    InitializePolynomialBasisX_Legendre
+  use PolynomialBasisModule_Legendre, only: &
+    InitializePolynomialBasis_Legendre
+  use PolynomialBasisMappingModule, only: &
+    InitializePolynomialBasisMapping, &
+    FinalizePolynomialBasisMapping
 #ifdef MICROPHYSICS_WEAKLIB
   use EquationOfStateModule_TABLE, only: &
     InitializeEquationOfState_TABLE, &
@@ -102,6 +109,9 @@ module ThornadoInitializationModule
   use Euler_PositivityLimiterModule_NonRelativistic_TABLE, only: &
     InitializePositivityLimiter_Euler_NonRelativistic_TABLE, &
     FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
+  use Euler_SlopeLimiterModule_NonRelativistic_TABLE, only: &
+    InitializeSlopeLimiter_Euler_NonRelativistic_TABLE, &
+    FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
   use TwoMoment_NeutrinoMatterSolverModule, only: &
     InitializeNeutrinoMatterSolverParameters
   use TwoMoment_TimersModule, only: &
@@ -126,6 +136,8 @@ contains
       TroubledCellIndicator_Option, C_TCI_Option, &
       SlopeLimiter_Option, &
       EnergyLimiter_Option, &
+      EulerSlopeLimiter_Option, EulerTroubledCellIndicator_Option, &
+      Eos_MinD_Option, &
       OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
       OpacityTableName_NES_Option, OpacityTableName_Pair_Option, &
       OpacityTableName_Brem_Option, &
@@ -141,8 +153,10 @@ contains
       Op_MinD_Option, Op_MaxD_Option, &
       M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
       MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
-      Include_NES_Option, Include_Pair_Option, Include_Brem_Option, &
-      Include_LinCorr_Option, wMatrRHS_Option, FreezeOpacities_Option, &
+      Include_NES_Option, Include_Pair_Option, &
+      Include_NuPair_Option, Include_Brem_Option, &
+      Include_LinCorr_Option, wMatrRHS_Option, &
+      DnuMax_Option, FreezeOpacities_Option , &
       ActivateUnits_Option, CoordinateSystem_Option, &
       UseChemicalPotentialShift_Option, Verbose_Option )
 
@@ -164,7 +178,10 @@ contains
     real(dp),         intent(in), optional :: C_TCI_Option
     logical,          intent(in), optional :: SlopeLimiter_Option
     logical,          intent(in), optional :: EnergyLimiter_Option
+    logical,          intent(in), optional :: EulerSlopeLimiter_Option
+    logical,          intent(in), optional :: EulerTroubledCellIndicator_Option
     real(dp),         intent(in), optional :: UpperBry1_Option
+    real(dp),         intent(in), optional :: Eos_MinD_Option
     character(len=*), intent(in), optional :: OpacityTableName_EmAb_Option
     character(len=*), intent(in), optional :: OpacityTableName_Iso_Option
     character(len=*), intent(in), optional :: OpacityTableName_NES_Option
@@ -188,9 +205,11 @@ contains
     real(dp),         intent(in), optional :: Rtol_outer_Option
     logical,          intent(in), optional :: Include_NES_Option
     logical,          intent(in), optional :: Include_Pair_Option
+    logical,          intent(in), optional :: Include_NuPair_Option
     logical,          intent(in), optional :: Include_Brem_Option
     logical,          intent(in), optional :: Include_LinCorr_Option
     real(dp),         intent(in), optional :: wMatrRHS_Option(5)
+    real(dp),         intent(in), optional :: DnuMax_Option
     logical,          intent(in), optional :: FreezeOpacities_Option
     logical,          intent(in), optional :: ActivateUnits_Option
     character(len=*), intent(in), optional :: CoordinateSystem_Option
@@ -199,6 +218,7 @@ contains
 
     logical  :: TroubledCellIndicator
     logical  :: PositivityLimiter, SlopeLimiter, EnergyLimiter, UseChemicalPotentialShift, Verbose
+    logical  :: EulerSlopeLimiter, EulerTroubledCellIndicator
     logical  :: ActivateUnits
     integer  :: nX(3), bcX(3)
     integer  :: i
@@ -234,6 +254,18 @@ contains
       EnergyLimiter = EnergyLimiter_Option
     ELSE
       EnergyLimiter = .TRUE.
+    END IF
+
+    IF( PRESENT(EulerSlopeLimiter_Option) )THEN
+      EulerSlopeLimiter = EulerSlopeLimiter_Option
+    ELSE
+      EulerSlopeLimiter = .FALSE.
+    END IF
+
+    IF( PRESENT(EulerTroubledCellIndicator_Option) )THEN
+      EulerTroubledCellIndicator = EulerTroubledCellIndicator_Option
+    ELSE
+      EulerTroubledCellIndicator = .FALSE.
     END IF
 
     IF( PRESENT(Verbose_Option) )THEN
@@ -346,8 +378,11 @@ contains
     call InitializeReferenceElement
 
     call InitializePolynomialBasisX_Lagrange
+    call InitializePolynomialBasisX_Legendre
 
     call InitializePolynomialBasis_Lagrange
+
+    call InitializePolynomialBasis_Legendre
 
     call InitializeReferenceElementX_Lagrange
 
@@ -418,6 +453,8 @@ contains
            ( EquationOfStateTableName_Option &
                = EquationOfStateTableName_Option, &
              UseChemicalPotentialShift_Option = UseChemicalPotentialShift, &
+             Eos_MinD_Option &
+               = Eos_MinD_Option, &
              Verbose_Option = Verbose, &
              External_EOS = External_EOS )
 #else
@@ -489,6 +526,20 @@ contains
     ! --- For applying limiter on fluid field
 #if defined TWOMOMENT_ORDER_V
 #if defined MICROPHYSICS_WEAKLIB
+    call InitializeSlopeLimiter_Euler_NonRelativistic_TABLE &
+           ( BetaTVD_Option &
+               = 1.75_DP, &
+             SlopeTolerance_Option &
+               = 1.0d-3, &
+             UseSlopeLimiter_Option &
+               = EulerSlopeLimiter, &
+             UseTroubledCellIndicator_Option &
+               = EulerTroubledCellIndicator, &
+             LimiterThresholdParameter_Option &
+               = 0.03d0, &
+             Verbose_Option &
+               = Verbose )
+
     call InitializePositivityLimiter_Euler_NonRelativistic_TABLE &
            ( UsePositivityLimiter_Option &
                = .TRUE., &
@@ -518,9 +569,11 @@ contains
              Rtol_outer_Option = Rtol_outer_Option, &
              Include_NES_Option = Include_NES_Option, &
              Include_Pair_Option = Include_Pair_Option, &
+             Include_NuPair_Option = Include_NuPair_Option, &
              Include_Brem_Option = Include_Brem_Option, &
              Include_LinCorr_Option = Include_LinCorr_Option, &
              wMatrRHS_Option = wMatrRHS_Option, &
+             DnuMax_Option = DnuMax_Option, &
              FreezeOpacities_Option = FreezeOpacities_Option, &
              Verbose_Option = Verbose )
 
@@ -566,6 +619,7 @@ contains
 #ifdef TWOMOMENT_ORDER_V
 
 #ifdef MICROPHYSICS_WEAKLIB
+    call FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
     call FinalizePositivityLimiter_Euler_NonRelativistic_TABLE
 #endif
 
@@ -644,6 +698,12 @@ contains
            ( nX, swX, nE, swE, nSpecies_Option = nSpecies, &
              Verbose_Option = .FALSE. )
 
+    ! --- For Mapping Between Nodal and Modal Representations ---
+
+    call InitializePolynomialBasisMapping &
+           ( MeshE    % Nodes, MeshX(1) % Nodes, &
+             MeshX(2) % Nodes, MeshX(3) % Nodes )
+
   end subroutine InitThornado_Patch
 
 
@@ -664,6 +724,8 @@ contains
     call DestroyFluidFields
 
     call DestroyRadiationFields
+ 
+    call FinalizePolynomialBasisMapping
 
   end subroutine FreeThornado_Patch
 

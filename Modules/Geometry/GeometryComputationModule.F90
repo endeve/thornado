@@ -216,21 +216,17 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3, iNodeX
     INTEGER  :: nP_X, nX(3)
     REAL(DP) :: x1L_q, x2L_q, x1G_q, x2G_q
-    REAL(DP) :: h_1_L  (nDOFX,iX_B1(1):iX_E1(1), &
-                              iX_B1(2):iX_E1(2), &
-                              iX_B1(3):iX_E1(3))
-    REAL(DP) :: h_2_L  (nDOFX,iX_B1(1):iX_E1(1), &
-                              iX_B1(2):iX_E1(2), &
-                              iX_B1(3):iX_E1(3))
-    REAL(DP) :: h_3_L  (nDOFX,iX_B1(1):iX_E1(1), &
-                              iX_B1(2):iX_E1(2), &
-                              iX_B1(3):iX_E1(3))
-    REAL(DP) :: Alpha_L(nDOFX,iX_B1(1):iX_E1(1), &
-                              iX_B1(2):iX_E1(2), &
-                              iX_B1(3):iX_E1(3))
-    REAL(DP) :: Psi_L  (nDOFX,iX_B1(1):iX_E1(1), &
-                              iX_B1(2):iX_E1(2), &
-                              iX_B1(3):iX_E1(3))
+    REAL(DP), ALLOCATABLE :: h_1_L  (:,:,:,:)
+    REAL(DP), ALLOCATABLE :: h_2_L  (:,:,:,:)
+    REAL(DP), ALLOCATABLE :: h_3_L  (:,:,:,:)
+    REAL(DP), ALLOCATABLE :: Alpha_L(:,:,:,:)
+    REAL(DP), ALLOCATABLE :: Psi_L  (:,:,:,:)
+
+    ALLOCATE( h_1_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) )
+    ALLOCATE( h_2_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) )
+    ALLOCATE( h_3_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) )
+    ALLOCATE( Alpha_L(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) )
+    ALLOCATE( Psi_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) )
 
     nX   = iX_E1 - iX_B1 + 1
     nP_X = PRODUCT( nX )
@@ -393,11 +389,17 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3, iNodeX
     INTEGER  :: nP_X, nX(3)
     REAL(DP) :: x1L_q, x1G_q
-    REAL(DP) :: h_1_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
-    REAL(DP) :: h_2_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
-    REAL(DP) :: h_3_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
-    REAL(DP) :: Alpha_L(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
-    REAL(DP) :: Psi_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
+    REAL(DP), ALLOCATABLE :: h_1_L  (:,:,:,:)
+    REAL(DP), ALLOCATABLE :: h_2_L  (:,:,:,:)
+    REAL(DP), ALLOCATABLE :: h_3_L  (:,:,:,:)
+    REAL(DP), ALLOCATABLE :: Alpha_L(:,:,:,:)
+    REAL(DP), ALLOCATABLE :: Psi_L  (:,:,:,:)
+
+    ALLOCATE( h_1_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) )
+    ALLOCATE( h_2_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) )
+    ALLOCATE( h_3_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) )
+    ALLOCATE( Alpha_L(nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) )
+    ALLOCATE( Psi_L  (nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3)) )
 
     nX   = iX_E1 - iX_B1 + 1
     nP_X = PRODUCT( nX )

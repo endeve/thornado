@@ -5,7 +5,7 @@ FORTRAN = ftn
 FLINKER = ftn
 
 DEBUG    = -g -Og -ggdb -ftrapv -fcheck=bounds,do,mem,pointer -ffpe-trap=invalid,zero,overflow -finit-real=snan -fbacktrace -fallow-argument-mismatch
-OPTIMIZE = -g -O3
+OPTIMIZE = -g -O3 -fallow-argument-mismatch
 
 SUFFIX_f90 =
 

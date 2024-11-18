@@ -46,9 +46,11 @@ MODULE TwoMoment_TimersModule
   REAL(DP), PUBLIC :: Timer_Opacity_ES
   REAL(DP), PUBLIC :: Timer_Opacity_NES
   REAL(DP), PUBLIC :: Timer_Opacity_Pair
+  REAL(DP), PUBLIC :: Timer_Opacity_NuPair
   REAL(DP), PUBLIC :: Timer_Opacity_Brem
   REAL(DP), PUBLIC :: Timer_OpacityRate_NES
   REAL(DP), PUBLIC :: Timer_OpacityRate_Pair
+  REAL(DP), PUBLIC :: Timer_OpacityRate_NuPair
   REAL(DP), PUBLIC :: Timer_OpacityRate_Brem
   REAL(DP), PUBLIC :: Timer_TCI
   REAL(DP), PUBLIC :: Timer_TCI_Permute

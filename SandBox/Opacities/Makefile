@@ -1,5 +1,5 @@
 MICROPHYSICS    = WEAKLIB
-TWOMOMENT_ORDER = ORDER_1
+TWOMOMENT_ORDER = ORDER_V
 
 THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
@@ -15,7 +15,7 @@ DEFINES += $(PP)THORNADO_EULER_NOGPU
 
 .DEFAULT_GOAL := all
 
-all: NeutrinoOpacities NeutrinoOpacities_Profile
+all: NeutrinoOpacities #NeutrinoOpacities_Profile
 
 NeutrinoOpacities: \
 	$(weaklib) \
@@ -27,15 +27,15 @@ NeutrinoOpacities: \
 	NeutrinoOpacities.o \
 	$(LIBRARIES)
 
-NeutrinoOpacities_Profile: \
-	$(weaklib) \
-	$(thornado) \
-	NeutrinoOpacities_Profile.o
-	$(FLINKER) $(FLAGS) -o NeutrinoOpacities_Profile_$(MACHINE) \
-	$(weaklib) \
-	$(thornado) \
-	NeutrinoOpacities_Profile.o \
-	$(LIBRARIES)
+#NeutrinoOpacities_Profile: \
+#	$(weaklib) \
+#	$(thornado) \
+#	NeutrinoOpacities_Profile.o
+#	$(FLINKER) $(FLAGS) -o NeutrinoOpacities_Profile_$(MACHINE) \
+#	$(weaklib) \
+#	$(thornado) \
+#	NeutrinoOpacities_Profile.o \
+#	$(LIBRARIES)
 
 clean:
 	rm -f *.o *.mod *.ld *.s
@@ -58,3 +58,8 @@ NeutrinoOpacities.o: \
   DeviceModule.o \
   TimersModule.o \
   NeutrinoOpacities.F90
+
+ifeq ($(PE_ENV),CRAY)
+TwoMoment_PositivityLimiterModule.o : TwoMoment_PositivityLimiterModule.F90
+	$(FORTRAN) -c $(DEFINES) $(FLAGS) $(filter-out -qrealsize=8,$(F90FLAGS)) -h ipa1 $< -o $@
+endif

@@ -150,24 +150,11 @@ CONTAINS
     INTEGER, PARAMETER :: nE_LeastSquares = 5
     INTEGER  :: i, iZ1, iZ2, iZ3, iZ4, iCR, iS, iNodeX, iNodeE, iNodeZ
     REAL(DP) :: E_K(2), E_R
-    REAL(DP) :: &
-      N_K(2, &
-          iZ_B0(2):iZ_E0(2), &
-          iZ_B0(3):iZ_E0(3), &
-          iZ_B0(4):iZ_E0(4), &
-          1:nSpecies), &
-      a_K(iZ_B0(2):iZ_E0(2), &
-          iZ_B0(3):iZ_E0(3), &
-          iZ_B0(4):iZ_E0(4), &
-          1:nSpecies), &
-      b_K(iZ_B0(2):iZ_E0(2), &
-          iZ_B0(3):iZ_E0(3), &
-          iZ_B0(4):iZ_E0(4), &
-          1:nSpecies)
-    REAL(DP) :: L_lnN( nE_LeastSquares, nDOFE, nDOFX)
-    REAL(DP) :: L_N( nE_LeastSquares, nDOFE, nDOFX)
-    REAL(DP) :: N(nE_LeastSquares, nDOFE), lnN(nE_LeastSquares, nDOFE)
-    REAL(DP) :: E(nE_LeastSquares, nDOFE), A_T(nDOFX), B_T(nDOFX)
+    REAL(DP), ALLOCATABLE :: N_K(:,:,:,:,:), a_K(:,:,:,:), b_K(:,:,:,:)
+    REAL(DP), ALLOCATABLE :: L_lnN(:,:,:)
+    REAL(DP), ALLOCATABLE :: L_N(:,:,:)
+    REAL(DP), ALLOCATABLE :: N(:,:), lnN(:,:)
+    REAL(DP), ALLOCATABLE :: E(:,:), A_T(:), B_T(:)
     CHARACTER(1) :: Direction
    
     Direction = 'X'
@@ -253,6 +240,10 @@ CONTAINS
       END DO
 
     CASE ( 10 ) ! Custom
+
+      ALLOCATE( N_K(2,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nSpecies) )
+      ALLOCATE( a_K(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nSpecies) )
+      ALLOCATE( b_K(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nSpecies) )
 
       ! --- Compute Cell Averaged Density in Last Two Elements ---
 
@@ -437,6 +428,12 @@ CONTAINS
       END DO
 
     CASE ( 22 ) ! Custom
+
+      ALLOCATE( L_lnN( nE_LeastSquares, nDOFE, nDOFX) )
+      ALLOCATE( L_N( nE_LeastSquares, nDOFE, nDOFX) )
+      ALLOCATE( N(nE_LeastSquares, nDOFE), lnN(nE_LeastSquares, nDOFE) )
+      ALLOCATE( E(nE_LeastSquares, nDOFE), A_T(nDOFX), B_T(nDOFX) )
+
       i = 1
 
       DO iS  = 1, nSpecies

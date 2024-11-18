@@ -192,7 +192,8 @@ CONTAINS
                    h * W * Vd3, &
                    h * W * Ap - One, &
                    Zero ]
-        R(:,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
+        R(1:5,6) = Zero
+        R(6,6) = One
 
         ! --- Rezzolla, Eq. (7.251) ---
 
@@ -249,7 +250,8 @@ CONTAINS
                           Vm * Vu3 * ( Two * K - One ) * W**2 * xi, &
                           Np, &
                           Zero ]
-        invR(6,:) = [ Zero, Zero, Zero, Zero, Zero, One ]
+        invR(1:5,6) = Zero
+        invR(6,6) = One
 
 !!$        invR = inv( R )
 
@@ -350,7 +352,8 @@ CONTAINS
                    h * W * Vd3, &
                    h * W * Ap - One, &
                    Zero ]
-        R(:,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
+        R(1:5,6) = Zero
+        R(6,6) = One
 
         ! --- Rezzolla, Eq. (7.251) ---
 
@@ -407,7 +410,8 @@ CONTAINS
                           Vm * Vu3 * ( Two * K - One ) * W**2 * xi, &
                           Np, &
                           Zero ]
-        invR(6,:) = [ Zero, Zero, Zero, Zero, Zero, One ]
+        invR(1:5,6) = Zero
+        invR(6,6) = One
 
 !!$        invR = inv( R )
 
@@ -509,7 +513,8 @@ CONTAINS
                    h * W * ( Vd3 - Vp ), &
                    h * W * Ap - One, &
                    Zero ]
-        R(:,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
+        R(1:5,6) = Zero
+        R(6,6) = One
 
         ! --- Rezzolla, Eq. (7.251) ---
 
@@ -566,7 +571,8 @@ CONTAINS
                             + GAMMA_33 * ( One - K * Am ), &
                           Np, &
                           Zero ]
-        invR(6,:) = [ Zero, Zero, Zero, Zero, Zero, One ]
+        invR(1:5,6) = Zero
+        invR(6,6) = One
 
 !!$        invR = inv( R )
 

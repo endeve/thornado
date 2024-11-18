@@ -234,67 +234,36 @@ CONTAINS
     LOGICAL  :: SuppressBC
     INTEGER  :: iZ2, iZ3, iZ4, iE_G, iS
     REAL(DP) :: TCI
-    REAL(DP) :: & ! --- Cell Averaged Density in Target Cell ---
-      N_K0 (iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
-    REAL(DP) :: & ! --- Cell Averaged Densities from West   Cell Data ---
-      N_KW (iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies), &
-      N_KW0(iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
-    REAL(DP) :: & ! --- Cell Averaged Densities from East   Cell Data ---
-      N_KE (iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies), &
-      N_KE0(iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
-    REAL(DP) :: & ! --- Cell Averaged Densities from South  Cell Data ---
-      N_KS (iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies), &
-      N_KS0(iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
-    REAL(DP) :: & ! --- Cell Averaged Densities from North  Cell Data ---
-      N_KN (iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies), &
-      N_KN0(iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
-    REAL(DP) :: & ! --- Cell Averaged Densities from Bottom Cell Data ---
-      N_KB (iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies), &
-      N_KB0(iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
-    REAL(DP) :: & ! --- Cell Averaged Densities from Top    Cell Data ---
-      N_KT (iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies), &
-      N_KT0(iZ_B0(2):iZ_E0(2), &
-            iZ_B0(3):iZ_E0(3), &
-            iZ_B0(4):iZ_E0(4), &
-            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
+    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: & ! --- Cell Averaged Density in Target Cell ---
+      N_K0
+    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: & ! --- Cell Averaged Densities from West   Cell Data ---
+      N_KW , N_KW0
+    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: & ! --- Cell Averaged Densities from East   Cell Data ---
+      N_KE , N_KE0
+    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: & ! --- Cell Averaged Densities from South  Cell Data ---
+      N_KS , N_KS0
+    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: & ! --- Cell Averaged Densities from North  Cell Data ---
+      N_KN , N_KN0
+    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: & ! --- Cell Averaged Densities from Bottom Cell Data ---
+      N_KB , N_KB0
+    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: & ! --- Cell Averaged Densities from Top    Cell Data ---
+      N_KT , N_KT0
 
     nE_G = (iZ_E0(1)-iZ_B0(1)+1) * nDOFE ! --- Global Energy Points
+
+    ALLOCATE( N_K0 (iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
+    ALLOCATE( N_KW (iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
+    ALLOCATE( N_KW0(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
+    ALLOCATE( N_KE (iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
+    ALLOCATE( N_KE0(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
+    ALLOCATE( N_KS (iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
+    ALLOCATE( N_KS0(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
+    ALLOCATE( N_KN (iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
+    ALLOCATE( N_KN0(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
+    ALLOCATE( N_KB (iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
+    ALLOCATE( N_KB0(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
+    ALLOCATE( N_KT (iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
+    ALLOCATE( N_KT0(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
 
     IF( .NOT. UseTroubledCellIndicator )THEN
 
@@ -479,17 +448,11 @@ CONTAINS
     INTEGER  :: &
       iE, iE_G, iZ2, iZ3, iZ4, iS, &
       iNodeE, iNodeX, iNodeZ, nV_KX
-    REAL(DP) :: &
-      N  (1:nDOFX, &
-          iZ_B0(3):iZ_E0(3), &
-          iZ_B0(4):iZ_E0(4), &
-          1:nE_G,1:nSpecies, &
-          iZ_B0(2)-1:iZ_E0(2)+1)
-    REAL(DP) :: &
-      N_K(iZ_B0(3):iZ_E0(3), &
-          iZ_B0(4):iZ_E0(4), &
-          1:nE_G,1:nSpecies, &
-          iZ_B0(2):iZ_E0(2))
+    REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE :: N
+    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: N_K
+
+    ALLOCATE( N  (1:nDOFX,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies,iZ_B0(2)-1:iZ_E0(2)+1) )
+    ALLOCATE( N_K(iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies,iZ_B0(2):iZ_E0(2)) )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -772,17 +735,11 @@ CONTAINS
     INTEGER  :: &
       iE, iE_G, iZ2, iZ3, iZ4, iS, &
       iNodeE, iNodeX, iNodeZ, nV_KX
-    REAL(DP) :: &
-      N  (1:nDOFX, &
-          iZ_B0(2):iZ_E0(2), &
-          iZ_B0(4):iZ_E0(4), &
-          1:nE_G,1:nSpecies, &
-          iZ_B0(3)-1:iZ_E0(3)+1)
-    REAL(DP) :: &
-      N_K(iZ_B0(2):iZ_E0(2), &
-          iZ_B0(4):iZ_E0(4), &
-          1:nE_G,1:nSpecies, &
-          iZ_B0(3):iZ_E0(3))
+    REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE :: N
+    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: N_K
+
+    ALLOCATE( N  (1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies,iZ_B0(3)-1:iZ_E0(3)+1) )
+    ALLOCATE( N_K(iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies,iZ_B0(3):iZ_E0(3)) )
 
     IF( iZ_E0(3) .EQ. iZ_B0(3) )THEN
 #if   defined( THORNADO_OMP_OL )
@@ -1057,17 +1014,11 @@ CONTAINS
     INTEGER  :: &
       iE, iE_G, iZ2, iZ3, iZ4, iS, &
       iNodeE, iNodeX, iNodeZ, nV_KX
-    REAL(DP) :: &
-      N  (1:nDOFX, &
-          iZ_B0(2):iZ_E0(2), &
-          iZ_B0(3):iZ_E0(3), &
-          1:nE_G,1:nSpecies, &
-          iZ_B0(4)-1:iZ_E0(4)+1)
-    REAL(DP) :: &
-      N_K(iZ_B0(2):iZ_E0(2), &
-          iZ_B0(3):iZ_E0(3), &
-          1:nE_G,1:nSpecies, &
-          iZ_B0(4):iZ_E0(4))
+    REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE :: N
+    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: N_K
+
+    ALLOCATE( N  (1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),1:nE_G,1:nSpecies,iZ_B0(4)-1:iZ_E0(4)+1) )
+    ALLOCATE( N_K(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),1:nE_G,1:nSpecies,iZ_B0(4):iZ_E0(4)) )
 
     IF( iZ_E0(4) .EQ. iZ_B0(4) )THEN
 #if   defined( THORNADO_OMP_OL )
