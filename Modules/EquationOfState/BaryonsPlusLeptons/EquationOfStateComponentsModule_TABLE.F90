@@ -45,8 +45,8 @@ MODULE EquationOfStateComponentsModule_TABLE
     FullMuonEOS, MuonStateType
   USE wlHelmMuonIOModuleHDF, ONLY: &
     ReadHelmholtzTableHDF, ReadMuonTableHDF
-  USE wlBolligSoundSpeed, ONLY: &
-    CalculateBolligSoundSpeed
+  USE wlwlSoundSpeedModule, ONLY: &
+    CalculatewlSoundSpeedModule
   USE wlEosConstantsModule, ONLY: &
     kmev, rmu, kmev_inv, ergmev, me, mmu, cvel
   USE wlInterpolationUtilitiesModule, ONLY: &
@@ -459,7 +459,7 @@ CONTAINS
              
     ! Build full EOS without muons to determine the bounds of the EOS.
     ! Muons should not be so important to cause P, S, and E to go above the 
-    ! bounds already calculated assuming Ymu = 0.
+    ! bounds already calculated assuming Ym = 0.
     DO iRho=1,EOSBary % DV % nPoints(1)
       DO iTemp=1,EOSBary % DV % nPoints(2)
         DO iYp=1,EOSBary % DV % nPoints(3)
@@ -599,7 +599,7 @@ CONTAINS
 
 
   SUBROUTINE ApplyEquationOfState_TABLE_Scalar &
-    ( D, T, Yp, Ye, Ymu, P, S, E, Mue, Mumu, Mup, Mun, Xp, Xn, Xa, Xh )
+    ( D, T, Yp, Ye, Ym, P, S, E, Mue, Mumu, Mup, Mun, Xp, Xn, Xa, Xh )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -607,7 +607,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)  :: D, T, Yp, Ye, Ymu
+    REAL(DP), INTENT(in)  :: D, T, Yp, Ye, Ym
     REAL(DP), INTENT(out) :: P, S, E, Mue, Mumu, Mup, Mun, Xp, Xn, Xa, Xh
 
     REAL(DP) :: Pbary, Sbary, Ebary, Pele, Sele, Eele, &
@@ -631,11 +631,11 @@ CONTAINS
 
     ! Calculate Muon Quantities
     MuonState % t = T
-    MuonState % rhoYmu = D * Ymu
+    MuonState % rhoym = D * Ym
     
     CALL FullMuonEOS(MuonTable, MuonState)
 
-    E_mu = MuonState % e + mmu / rmu * ergmev * Ymu ! add back mass to internal Energy!
+    E_mu = MuonState % e + mmu / rmu * ergmev * Ym ! add back mass to internal Energy!
     P_mu = MuonState % p
     S_mu = MuonState % s
     Mumu = MuonState % mu
@@ -646,19 +646,19 @@ CONTAINS
     ! --- Interpolate Pressure ----------------------------------------
 
     CALL ComputeDependentVariableTotal_Scalar &
-           ( D, T, Yp, Ye, Ymu, P, Pbary_T, OS_P, &
+           ( D, T, Yp, Ye, Ym, P, Pbary_T, OS_P, &
            UnitP, 0.0_dp, 1.0_dp, 0.0_dp )
 
     ! --- Interpolate Entropy Per Baryon ------------------------------
 
     CALL ComputeDependentVariableTotal_Scalar &
-           ( D, T, Yp, Ye, Ymu, S, Sbary_T, OS_S, &
+           ( D, T, Yp, Ye, Ym, S, Sbary_T, OS_S, &
            UnitS, 0.0_dp, 0.0_dp, 1.0_dp )
 
     ! --- Interpolate Specific Internal Energy ------------------------
 
     CALL ComputeDependentVariableTotal_Scalar &
-           ( D, T, Yp, Ye, Ymu, E, Ebary_T, OS_E, &
+           ( D, T, Yp, Ye, Ym, E, Ebary_T, OS_E, &
            UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
 #else
     ! --- Interpolate Pressure ----------------------------------------
@@ -716,9 +716,9 @@ CONTAINS
 
 
   SUBROUTINE ApplyEquationOfState_TABLE_Vector &
-    ( D, T, Yp, Ye, Ymu, P, S, E, Mue, Mumu, Mup, Mun, Xp, Xn, Xa, Xh )
+    ( D, T, Yp, Ye, Ym, P, S, E, Mue, Mumu, Mup, Mun, Xp, Xn, Xa, Xh )
 
-    REAL(DP), INTENT(in)  :: D(1:), T(1:), Yp(1:), Ye(1:), Ymu(1:)
+    REAL(DP), INTENT(in)  :: D(1:), T(1:), Yp(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out) :: P(1:), S(1:), E(1:), Mue(1:), Mumu(1:), Mup(1:), Mun(1:)
     REAL(DP), INTENT(out) :: Xp(1:), Xn(1:), Xa(1:), Xh(1:)
 
@@ -729,7 +729,7 @@ CONTAINS
     DO iP = 1, nP
 
       CALL ApplyEquationOfState_TABLE_Scalar &
-             ( D (iP), T (iP), Yp (iP), Ye (iP), Ymu (iP), P (iP), S (iP), E (iP), &
+             ( D (iP), T (iP), Yp (iP), Ye (iP), Ym (iP), P (iP), S (iP), E (iP), &
              Mue(iP), Mumu(iP), Mup(iP), Mun(iP), Xp(iP), Xn(iP), Xa(iP), Xh(iP) )
 
     END DO
@@ -738,7 +738,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_G_E &
-    ( D, E, Yp, Ye, Ymu, T, Guess, Error )
+    ( D, E, Yp, Ye, Ym, T, Guess, Error )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -746,7 +746,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)            :: D, E, Yp, Ye, Ymu
+    REAL(DP), INTENT(in)            :: D, E, Yp, Ye, Ym
     REAL(DP), INTENT(out)           :: T
     REAL(DP), INTENT(in)            :: Guess
     INTEGER,  INTENT(out)           :: Error
@@ -759,7 +759,7 @@ CONTAINS
     E_P = E / ( Erg / Gram )
     Yp_P = Yp
     Ye_P = Ye
-    Ymu_P = Ymu
+    Ymu_P = Ym
 
     T_Guess = Guess / Kelvin
 
@@ -775,7 +775,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_G_NE &
-    ( D, E, Yp, Ye, Ymu, T, Guess )
+    ( D, E, Yp, Ye, Ym, T, Guess )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -783,7 +783,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)            :: D, E, Yp, Ye, Ymu
+    REAL(DP), INTENT(in)            :: D, E, Yp, Ye, Ym
     REAL(DP), INTENT(out)           :: T
     REAL(DP), INTENT(in)            :: Guess
 
@@ -795,7 +795,7 @@ CONTAINS
     E_P = E / ( Erg / Gram )
     Yp_P = Yp
     Ye_P = Ye
-    Ymu_P = Ymu
+    Ymu_P = Ym
     
     T_Guess = Guess / Kelvin
 
@@ -811,7 +811,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_NG_E &
-    ( D, E, Yp, Ye, Ymu, T, Error )
+    ( D, E, Yp, Ye, Ym, T, Error )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -819,7 +819,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)            :: D, E, Yp, Ye, Ymu
+    REAL(DP), INTENT(in)            :: D, E, Yp, Ye, Ym
     REAL(DP), INTENT(out)           :: T
     INTEGER,  INTENT(out)           :: Error
 
@@ -831,7 +831,7 @@ CONTAINS
     E_P = E / ( Erg / Gram )
     Yp_P = Yp
     Ye_P = Ye
-    Ymu_P = Ymu
+    Ymu_P = Ym
     
     CALL ComputeTemperatureWith_DEYpYl_Single_NoGuess_Error &
            ( D_P, E_P, Yp_P, Ye_P, Ymu_P, Dbary_T, Tbary_T, YPbary_T, Ebary_T, OS_E, &
@@ -845,7 +845,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar_NG_NE &
-    ( D, E, Yp, Ye, Ymu, T )
+    ( D, E, Yp, Ye, Ym, T )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -853,7 +853,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)            :: D, E, Yp, Ye, Ymu
+    REAL(DP), INTENT(in)            :: D, E, Yp, Ye, Ym
     REAL(DP), INTENT(out)           :: T
 
     REAL(DP) :: D_P, E_P, Yp_P, Ye_P, Ymu_P, T_Lookup
@@ -864,7 +864,7 @@ CONTAINS
     E_P = E / ( Erg / Gram )
     Yp_P = Yp
     Ye_P = Ye
-    Ymu_P = Ymu
+    Ymu_P = Ym
     
     CALL ComputeTemperatureWith_DEYpYl_Single_NoGuess_NoError &
            ( D_P, E_P, Yp_P, Ye_P, Ymu_P, Dbary_T, Tbary_T, YPbary_T, Ebary_T, OS_E, &
@@ -878,9 +878,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector &
-    ( D, E, Yp, Ye, Ymu, T, Guess_Option, Error_Option )
+    ( D, E, Yp, Ye, Ym, T, Guess_Option, Error_Option )
 
-    REAL(DP), INTENT(in )           :: D(1:), E(1:), Yp(1:), Ye(1:), Ymu(1:)
+    REAL(DP), INTENT(in )           :: D(1:), E(1:), Yp(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out)           :: T(1:)
     REAL(DP), INTENT(in ), OPTIONAL :: Guess_Option(1:)
     INTEGER,  INTENT(out), OPTIONAL :: Error_Option(1:)
@@ -900,12 +900,12 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( D_P, E_P, Yp_P, Ye_P, Ymu_P, T_Lookup, T_Guess ) &
-    !$OMP MAP( to: D, E, Yp, Ye, Ymu, Dbary_T, Tbary_T, YPbary_T, Ebary_T, Guess_Option ) &
+    !$OMP MAP( to: D, E, Yp, Ye, Ym, Dbary_T, Tbary_T, YPbary_T, Ebary_T, Guess_Option ) &
     !$OMP MAP( from: T, Error )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( D_P, E_P, Yp_P, Ye_P, Ymu_P, T_Lookup, T_Guess ) &
-    !$ACC COPYIN( D, E, Yp, Ye, Ymu, Dbary_T, Tbary_T, YPbary_T, Ebary_T, Guess_Option ) &
+    !$ACC COPYIN( D, E, Yp, Ye, Ym, Dbary_T, Tbary_T, YPbary_T, Ebary_T, Guess_Option ) &
     !$ACC COPYOUT( T, Error )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
@@ -917,7 +917,7 @@ CONTAINS
         E_P = E(iP) / ( Erg / Gram )
         Yp_P = Yp(iP)
         Ye_P = Ye(iP)
-        Ymu_P = Ymu(iP)
+        Ymu_P = Ym(iP)
         
         T_Guess = Guess_Option(iP) / Kelvin
 
@@ -934,12 +934,12 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( D_P, E_P, Yp_P, Ye_P, Ymu_P, T_Lookup ) &
-    !$OMP MAP( to: D, E, Yp, Ye, Ymu, Dbary_T, Tbary_T, YPbary_T, Ebary_T ) &
+    !$OMP MAP( to: D, E, Yp, Ye, Ym, Dbary_T, Tbary_T, YPbary_T, Ebary_T ) &
     !$OMP MAP( from: T, Error )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( D_P, E_P, Yp_P, Ye_P, Ymu_P, T_Lookup ) &
-    !$ACC COPYIN( D, E, Yp, Ye, Ymu, Dbary_T, Tbary_T, YPbary_T, Ebary_T ) &
+    !$ACC COPYIN( D, E, Yp, Ye, Ym, Dbary_T, Tbary_T, YPbary_T, Ebary_T ) &
     !$ACC COPYOUT( T, Error )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
@@ -951,7 +951,7 @@ CONTAINS
         E_P = E(iP) / ( Erg / Gram )
         Yp_P = Yp(iP)
         Ye_P = Ye(iP)
-        Ymu_P = Ymu(iP)
+        Ymu_P = Ym(iP)
         
         CALL ComputeTemperatureWith_DEYpYl_Single_NoGuess_Error &
                ( D_P, E_P, Yp_P, Ye_P, Ymu_P, Dbary_T, Tbary_T, YPbary_T, Ebary_T, OS_E, T_Lookup, &
@@ -978,10 +978,10 @@ CONTAINS
           E_P = E(iP) / ( Erg / Gram )
           Yp_P = Yp(iP)
           Ye_P = Ye(iP)
-          Ymu_P = Ymu(iP)
+          Ymu_P = Ym(iP)
           
           WRITE(*,*) '[ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector] Error'
-          WRITE(*,'(a,i5,3es23.15)') '  iP, D, E, Yp, Ye, Ymu : ', iP, D_P, E_P, Yp_P
+          WRITE(*,'(a,i5,3es23.15)') '  iP, D, E, Yp, Ye, Ym : ', iP, D_P, E_P, Yp_P
         END IF
       END DO
       IF( .NOT. PRESENT( Error_Option ) ) STOP
@@ -1004,17 +1004,17 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, Ev, Ne, Nmu
     REAL(DP), INTENT(out) :: P
 
-    REAL(DP) :: Em, T, Ye, Ymu
+    REAL(DP) :: Em, T, Ye, Ym
 
     Em  = Ev / D              ! --- Internal Energy per Mass
     Ye  = Ne / D * BaryonMass ! --- Electron Fraction
-    Ymu = Ne / D * BaryonMass ! --- Muon Fraction
+    Ym = Ne / D * BaryonMass ! --- Muon Fraction
 
     CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
-           ( D, Em, Ye+Ymu, Ye, Ymu, T )
+           ( D, Em, Ye+Ym, Ye, Ym, T )
 
     CALL ComputePressure_TABLE_Scalar &
-           ( D, T, Ye+Ymu, Ye, Ymu, P )
+           ( D, T, Ye+Ym, Ye, Ym, P )
 
   END SUBROUTINE ComputePressureFromPrimitive_TABLE_Scalar
 
@@ -1038,7 +1038,7 @@ CONTAINS
 
 
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_TABLE_Scalar &
-    ( D, Em, Yp, Ye, Ymu, P )
+    ( D, Em, Yp, Ye, Ym, P )
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET
@@ -1046,7 +1046,7 @@ CONTAINS
   !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)  :: D, Em, Yp, Ye, Ymu
+    REAL(DP), INTENT(in)  :: D, Em, Yp, Ye, Ym
     REAL(DP), INTENT(out) :: P
 
     REAL(DP) :: D_P, E_P, Yp_P, Ye_P, Ymu_P, T_P, T
@@ -1064,7 +1064,7 @@ CONTAINS
     E_P = Em / UnitE
     Yp_P = Yp  / UnitY
     Ye_P = Ye  / UnitY
-    Ymu_P = Ymu  / UnitY
+    Ymu_P = Ym  / UnitY
 
     CALL ComputeTemperatureWith_DEYpYl_Single_NoGuess_NoError &
            ( D_P, E_P, Yp_P, Ye_P, Ymu_P, Dbary_T, Tbary_T, YPbary_T, Ebary_T, OS_E, &
@@ -1075,7 +1075,7 @@ CONTAINS
 #ifdef INVERSION_COMBINED
 
     CALL ComputeDependentVariableTotal_Scalar &
-           ( D, T, Yp, Ye, Ymu, P, Pbary_T, OS_P, &
+           ( D, T, Yp, Ye, Ym, P, Pbary_T, OS_P, &
            UnitP, 0.0_dp, 1.0_dp, 0.0_dp )
 #else
     CALL ComputeDependentVariableBaryons_Scalar &
@@ -1092,7 +1092,7 @@ CONTAINS
 
     ! Calculate Muon Quantities
     MuonState % t = T
-    MuonState % rhoYmu = D * Ymu
+    MuonState % rhoym = D * Ym
 
     CALL FullMuonEOS(MuonTable, MuonState)
     P_mu = MuonState % p
@@ -1105,9 +1105,9 @@ CONTAINS
 
 
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_TABLE_Vector &
-    ( D, Em, Yp, Ye, Ymu, P )
+    ( D, Em, Yp, Ye, Ym, P )
 
-    REAL(DP), INTENT(in)  :: D(:), Em(:), Yp(:), Ye(:), Ymu(:)
+    REAL(DP), INTENT(in)  :: D(:), Em(:), Yp(:), Ye(:), Ym(:)
     REAL(DP), INTENT(out) :: P(:)
 
     INTEGER iP, nP
@@ -1117,7 +1117,7 @@ CONTAINS
     DO iP = 1, nP
 
       CALL ComputePressureFromSpecificInternalEnergy_TABLE_Scalar &
-             ( D(iP), Em(iP), Yp(iP), Ye(iP), Ymu(iP), P(iP) )
+             ( D(iP), Em(iP), Yp(iP), Ye(iP), Ym(iP), P(iP) )
 
     END DO
 
@@ -1125,7 +1125,7 @@ CONTAINS
 
   ! DECIDE HOW TO HANDLE SOUND SPEED BEFORE DOING THIS. SOUND SPEED FROM
   ! EACH Combined COMPONENT MIGHT NOT BE DOABLE, SO FIND A SOLUTION.
-  ! CAREFUL BECAUSE YOU NEED DERIVATIVES AND WHEN YOU VARY BOTH YE AND YMU 
+  ! CAREFUL BECAUSE YOU NEED DERIVATIVES AND WHEN YOU VARY BOTH YE AND Ym 
   ! IT MIGHT NOT BE STRAIGHTFORWARD. CURRENTLY BOLLIG'S FORMULA IS USED
   SUBROUTINE ComputeSoundSpeedFromPrimitive_TABLE_Scalar( D, Ev, Ne, Nmu, Cs )
 
@@ -1138,17 +1138,17 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, Ev, Ne, Nmu
     REAL(DP), INTENT(out) :: Cs
 
-    REAL(DP) :: P, T, Yp, Ye, Ymu, Em, Gm
+    REAL(DP) :: P, T, Yp, Ye, Ym, Em, Gm
 
     Em = Ev / D
     Ye = Ne * ( BaryonMass / D )
-    Ymu = Nmu * ( BaryonMass / D )
-    Yp = Ye + Ymu
+    Ym = Nmu * ( BaryonMass / D )
+    Yp = Ye + Ym
     
     CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
-           ( D, Em, Yp, Ye, Ymu, T )
+           ( D, Em, Yp, Ye, Ym, T )
 
-    CALL CalculateBolligSoundSpeed( D, T, Yp, Ye, Ymu, Dbary_T, Tbary_T, Ypbary_T, &
+    CALL CalculatewlSoundSpeedModule( D, T, Yp, Ye, Ym, Dbary_T, Tbary_T, Ypbary_T, &
         Pbary_T, OS_P, Ebary_T, OS_E, 'Energy', HelmholtzTable, MuonTable, Gm, Cs)
 
     !Cs = SQRT( Gm * P / D )
@@ -1160,7 +1160,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D(1:), Ev(1:), Ne(1:), Nmu(1:)
     REAL(DP), INTENT(out) :: Cs(1:)
 
-    REAL(DP), DIMENSION(SIZE(D)) :: P, T, Yp, Ye, Ymu, Em, Gm
+    REAL(DP), DIMENSION(SIZE(D)) :: P, T, Yp, Ye, Ym, Em, Gm
     
     INTEGER :: iP, nP
     
@@ -1168,15 +1168,15 @@ CONTAINS
     
     Em = Ev / D
     Ye = Ne * ( BaryonMass / D )
-    Ymu = Nmu * ( BaryonMass / D )
-    Yp = Ye + Ymu
+    Ym = Nmu * ( BaryonMass / D )
+    Yp = Ye + Ym
       
     CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector &
-           ( D, Em, Yp, Ye, Ymu, T )
+           ( D, Em, Yp, Ye, Ym, T )
 
     DO iP=1,nP
 
-      CALL CalculateBolligSoundSpeed( D(iP), T(iP), Yp(iP), Ye(iP), Ymu(iP), &
+      CALL CalculatewlSoundSpeedModule( D(iP), T(iP), Yp(iP), Ye(iP), Ym(iP), &
           Dbary_T, Tbary_T, Ypbary_T, Pbary_T, OS_P, Ebary_T, OS_E, &
           'Energy', HelmholtzTable, MuonTable, Gm(iP), Cs(iP))
 
@@ -1185,14 +1185,14 @@ CONTAINS
   END SUBROUTINE ComputeSoundSpeedFromPrimitive_TABLE_Vector
 
 
-  SUBROUTINE ComputeTemperatureFromPressure_TABLE_Scalar( D, P, Yp, Ye, Ymu, T )
+  SUBROUTINE ComputeTemperatureFromPressure_TABLE_Scalar( D, P, Yp, Ye, Ym, T )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)  :: D, P, Yp, Ye, Ymu
+    REAL(DP), INTENT(in)  :: D, P, Yp, Ye, Ym
     REAL(DP), INTENT(out) :: T
 
     INTEGER  :: Error
@@ -1204,7 +1204,7 @@ CONTAINS
     P_P = P / UnitP
     Yp_P = Yp / UnitY
     Ye_P = Ye / UnitY
-    Ymu_P = Ymu / UnitY
+    Ymu_P = Ym / UnitY
 
     CALL ComputeTemperatureWith_DPY_Single_NoGuess_Error &
            ( D_P, P_P, Yp_P, Ye_P, Ymu_P, Dbary_T, Tbary_T, YPbary_T, Pbary_T, OS_P, T_P, &
@@ -1217,9 +1217,9 @@ CONTAINS
   END SUBROUTINE ComputeTemperatureFromPressure_TABLE_Scalar
 
 
-  SUBROUTINE ComputeTemperatureFromPressure_TABLE_Vector( D, P, Yp, Ye, Ymu, T )
+  SUBROUTINE ComputeTemperatureFromPressure_TABLE_Vector( D, P, Yp, Ye, Ym, T )
 
-    REAL(DP), INTENT(in)  :: D(1:), P(1:), Yp(1:), Ye(1:), Ymu(1:)
+    REAL(DP), INTENT(in)  :: D(1:), P(1:), Yp(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out) :: T(1:)
 
     INTEGER :: iP, nP
@@ -1231,7 +1231,7 @@ CONTAINS
     DO iP = 1, nP
 
       CALL ComputeTemperatureFromPressure_TABLE_Scalar &
-             ( D(iP), P(iP), Yp(iP), Ye(iP), Ymu(iP), T(iP) )
+             ( D(iP), P(iP), Yp(iP), Ye(iP), Ym(iP), T(iP) )
 
     END DO
 
@@ -1241,7 +1241,7 @@ CONTAINS
 
   
   SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE_Scalar &
-    ( D, T, Yp, Ye, Ymu, Ev, Em, Ne, Nmu )
+    ( D, T, Yp, Ye, Ym, Ev, Em, Ne, Nmu )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -1249,7 +1249,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)  :: D, T, Yp, Ye, Ymu
+    REAL(DP), INTENT(in)  :: D, T, Yp, Ye, Ym
     REAL(DP), INTENT(out) :: Ev, Em, Ne, Nmu
 #ifdef INVERSION_COMBINED
 #else
@@ -1262,7 +1262,7 @@ CONTAINS
 #ifdef INVERSION_COMBINED
 
     CALL ComputeDependentVariableTotal_Scalar &
-           ( D, T, Yp, Ye, Ymu, Em, Ebary_T, OS_E, &
+           ( D, T, Yp, Ye, Ym, Em, Ebary_T, OS_E, &
            UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
 #else
 
@@ -1280,24 +1280,24 @@ CONTAINS
 
     ! Calculate Muon Quantities
     MuonState % t = T
-    MuonState % rhoYmu = D * Ymu
+    MuonState % rhoym = D * Ym
     
     CALL FullMuonEOS(MuonTable, MuonState)
-    E_mu = MuonState % e + mmu / rmu * ergmev * Ymu ! add back mass to internal Energy!
+    E_mu = MuonState % e + mmu / rmu * ergmev * Ym ! add back mass to internal Energy!
            
     Em = Em + Eele + E_mu
 #endif
 
     Ev  = Em * D                ! --- Internal Energy per Unit Volume
     Ne  = Ye  * D / BaryonMass  ! --- Electrons per Unit Volume
-    Nmu = Ymu  * D / BaryonMass ! --- Muons per Unit Volume
+    Nmu = Ym  * D / BaryonMass ! --- Muons per Unit Volume
 
   END SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE_Scalar
 
   SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE_Vector &
-    ( D, T, Yp, Ye, Ymu, Ev, Em, Ne, Nmu )
+    ( D, T, Yp, Ye, Ym, Ev, Em, Ne, Nmu )
 
-    REAL(DP), INTENT(in)  :: D (1:), T (1:), Yp(1:), Ye(1:), Ymu(1:)
+    REAL(DP), INTENT(in)  :: D (1:), T (1:), Yp(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out) :: Ev(1:), Em(1:), Ne(1:), Nmu(1:)
 
     INTEGER :: iP, nP
@@ -1318,14 +1318,14 @@ CONTAINS
     DO iP = 1, nP
 
       CALL ComputeThermodynamicStates_Primitive_TABLE_Scalar &
-             ( D(iP), T(iP), Yp(iP), Ye(iP), Ymu(iP), Ev(iP), Em(iP), Ne(iP), Nmu(iP) )
+             ( D(iP), T(iP), Yp(iP), Ye(iP), Ym(iP), Ev(iP), Em(iP), Ne(iP), Nmu(iP) )
 
     END DO
 
   END SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE_Vector
 
   SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE_Scalar &
-    ( D, Ev, Ne, Nmu, T, Em, Yp, Ye, Ymu )
+    ( D, Ev, Ne, Nmu, T, Em, Yp, Ye, Ym )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -1334,24 +1334,24 @@ CONTAINS
 #endif
 
     REAL(DP), INTENT(in)  :: D, Ev, Ne, Nmu
-    REAL(DP), INTENT(out) :: T, Em, Yp, Ye, Ymu
+    REAL(DP), INTENT(out) :: T, Em, Yp, Ye, Ym
 
     Em  = Ev  / D              ! --- Internal Energy per Mass
     Ye  = Ne  / D * BaryonMass ! --- Electron Fraction
-    Ymu = Nmu / D * BaryonMass ! --- Muon Fraction
+    Ym = Nmu / D * BaryonMass ! --- Muon Fraction
 
     CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
-           ( D, Em, Yp, Ye, Ymu, T )
+           ( D, Em, Yp, Ye, Ym, T )
 
   END SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE_Scalar
 
   ! THIS SUBROUTINE IS UNTOUCHED, NOT SURE IF IT'S NEEDED WITH BOTH
   ! MUONS AND ELECTRONS, MY GUESS IS NO
   SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE_Vector &
-    ( D, Ev, Ne, Nmu, T, Em, Yp, Ye, Ymu )
+    ( D, Ev, Ne, Nmu, T, Em, Yp, Ye, Ym )
 
     REAL(DP), DIMENSION(1:), INTENT(in)  :: D, Ev, Ne, Nmu
-    REAL(DP), DIMENSION(1:), INTENT(out) :: T, Em, Yp, Ye, Ymu
+    REAL(DP), DIMENSION(1:), INTENT(out) :: T, Em, Yp, Ye, Ym
 
     INTEGER :: iP, nP, Error(SIZE(D))
     REAL(DP) :: D_P, E_P, Yp_P, Ye_P, Ymu_P
@@ -1363,11 +1363,11 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP MAP( to: D, Ev, Ne ) &
-    !$OMP MAP( from: T, Em, Yp, Ye, Ymu, Error )
+    !$OMP MAP( from: T, Em, Yp, Ye, Ym, Error )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC COPYIN( D, Ev, Ne ) &
-    !$ACC COPYOUT( T, Em, Yp, Ye, Ymu, Error )
+    !$ACC COPYOUT( T, Em, Yp, Ye, Ym, Error )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
@@ -1375,10 +1375,10 @@ CONTAINS
 
       Em(iP)  = Ev(iP)  / D(iP)              ! --- Internal Energy per Mass
       Ye(iP)  = Ne(iP)  / D(iP) * BaryonMass ! --- Electron Fraction
-      Ymu(iP) = Nmu(iP) / D(iP) * BaryonMass ! --- Muon Fraction
+      Ym(iP) = Nmu(iP) / D(iP) * BaryonMass ! --- Muon Fraction
 
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
-             ( D(iP), Em(iP), Yp(iP), Ye(iP), Ymu(iP), T(iP), Error(iP) )
+             ( D(iP), Em(iP), Yp(iP), Ye(iP), Ym(iP), T(iP), Error(iP) )
 
     END DO
 
@@ -1399,7 +1399,7 @@ CONTAINS
           Ye_P = Yp(iP)
           Ymu_P = Yp(iP)
           WRITE(*,*)                 '[ComputeThermodynamicStates_Auxiliary_TABLE_Vector] Error'
-          WRITE(*,'(a,i5,5es23.15)') '  iP, D, E, Yp, Ye, Ymu : ', iP, D_P, E_P, Yp_P, Ye_P, Ymu_P
+          WRITE(*,'(a,i5,5es23.15)') '  iP, D, E, Yp, Ye, Ym : ', iP, D_P, E_P, Yp_P, Ye_P, Ymu_P
         END IF
       END DO
       STOP
@@ -1411,7 +1411,7 @@ CONTAINS
 
   ! ! Calculation of sound speed now is more complicated, maybe this subroutine is not needed
   SUBROUTINE ComputeAuxiliary_Fluid_TABLE_Scalar &
-    ( D, Ev, Ne, Nmu, P, T, Yp, Ye, Ymu, S, Em, Gm, Cs )
+    ( D, Ev, Ne, Nmu, P, T, Yp, Ye, Ym, S, Em, Gm, Cs )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -1420,17 +1420,17 @@ CONTAINS
 #endif
 
     REAL(DP), INTENT(in)  :: D, Ev, Ne, Nmu
-    REAL(DP), INTENT(out) :: P, T, Yp, Ye, Ymu, S, Em, Gm, Cs
+    REAL(DP), INTENT(out) :: P, T, Yp, Ye, Ym, S, Em, Gm, Cs
 
     Em  = Ev / D
     Ye  = Ne * ( BaryonMass / D )
-    Ymu = Nmu * ( BaryonMass / D )
-    Yp  = Ye + Ymu
+    Ym = Nmu * ( BaryonMass / D )
+    Yp  = Ye + Ym
 
     CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
-           ( D, Em, Yp, Ye, Ymu, T )
+           ( D, Em, Yp, Ye, Ym, T )
 
-    CALL CalculateBolligSoundSpeed( D, T, Yp, Ye, Ymu, Dbary_T, Tbary_T, Ypbary_T, &
+    CALL CalculatewlSoundSpeedModule( D, T, Yp, Ye, Ym, Dbary_T, Tbary_T, Ypbary_T, &
         Pbary_T, OS_P, Ebary_T, OS_E, 'Energy', HelmholtzTable, MuonTable, Gm, Cs)
 
     !Cs = SQRT( Gm * P / D )
@@ -1439,10 +1439,10 @@ CONTAINS
 
   ! Calculation of sound speed now is more complicated, maybe this subroutine is not needed
   SUBROUTINE ComputeAuxiliary_Fluid_TABLE_Vector &
-    ( D, Ev, Ne, Nmu, P, T, Yp, Ye, Ymu, S, Em, Gm, Cs )
+    ( D, Ev, Ne, Nmu, P, T, Yp, Ye, Ym, S, Em, Gm, Cs )
 
     REAL(DP), INTENT(in)  :: D(1:), Ev(1:), Ne(1:), Nmu(1:)
-    REAL(DP), INTENT(out) :: P(1:), T (1:), Yp(1:), Ye(1:), Ymu(1:), &
+    REAL(DP), INTENT(out) :: P(1:), T (1:), Yp(1:), Ye(1:), Ym(1:), &
                              S(1:), Em(1:), Gm(1:), Cs(1:)
 
     INTEGER :: iP, nP
@@ -1453,7 +1453,7 @@ CONTAINS
 
       CALL ComputeAuxiliary_Fluid_TABLE_Scalar &
              ( D(iP), Ev(iP), Ne(iP), Nmu(iP), &
-               P(iP), T (iP), Yp(iP), Ye(iP), Ymu(iP), &
+               P(iP), T (iP), Yp(iP), Ye(iP), Ym(iP), &
                S(iP), Em(iP), Gm(iP), Cs(iP) )
 
     END DO
@@ -1461,7 +1461,7 @@ CONTAINS
   END SUBROUTINE ComputeAuxiliary_Fluid_TABLE_Vector
 
   SUBROUTINE ComputePressure_TABLE_Scalar &
-    ( D, T, Yp, Ye, Ymu, P, dPdD_Option, dPdT_Option, dPdY_Option )
+    ( D, T, Yp, Ye, Ym, P, dPdD_Option, dPdT_Option, dPdY_Option )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -1469,7 +1469,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)                    :: D, T, Yp, Ye, Ymu
+    REAL(DP), INTENT(in)                    :: D, T, Yp, Ye, Ym
     REAL(DP), INTENT(out)                   :: P
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdD_Option
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdT_Option
@@ -1512,14 +1512,14 @@ CONTAINS
       END IF
 
       CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
-             ( D, T, Yp, Ye, Ymu, P, dPdD, dPdT, dPdYp, Pbary_T, OS_P, &
+             ( D, T, Yp, Ye, Ym, P, dPdD, dPdT, dPdYp, Pbary_T, OS_P, &
              UnitP, 1.0_dp, 0.0_dp, 0.0_dp )
 
     ELSE
 
 #ifdef INVERSION_COMBINED
       CALL ComputeDependentVariableTotal_Scalar &
-             ( D, T, Yp, Ye, Ymu, P, Pbary_T, OS_P, &
+             ( D, T, Yp, Ye, Ym, P, Pbary_T, OS_P, &
              UnitP, 1.0_dp, 0.0_dp, 0.0_dp )
 #else
       CALL ComputeDependentVariableBaryons_Scalar &
@@ -1536,7 +1536,7 @@ CONTAINS
 
       ! Calculate Muon Quantities
       MuonState % t = T
-      MuonState % rhoYmu = D * Ymu
+      MuonState % rhoym = D * Ym
       
       CALL FullMuonEOS(MuonTable, MuonState)
       P_mu = MuonState % p
@@ -1549,9 +1549,9 @@ CONTAINS
   END SUBROUTINE ComputePressure_TABLE_Scalar
 
   SUBROUTINE ComputePressure_TABLE_Vector &
-    ( D, T, Yp, Ye, Ymu, P, dPdD_Option, dPdT_Option, dPdY_Option )
+    ( D, T, Yp, Ye, Ym, P, dPdD_Option, dPdT_Option, dPdY_Option )
 
-    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Yp(1:), Ye(1:), Ymu(1:)
+    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Yp(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out)                   :: P(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdD_Option(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdT_Option(1:)
@@ -1592,13 +1592,13 @@ CONTAINS
       END IF
 
       CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Vector &
-             ( D, T, Yp, Ye, Ymu, P, dPdD, dPdT, dPdYp, Pbary_T, OS_P, &
+             ( D, T, Yp, Ye, Ym, P, dPdD, dPdT, dPdYp, Pbary_T, OS_P, &
              UnitP, 1.0_dp, 0.0_dp, 0.0_dp )
 
     ELSE
 
       CALL ComputeDependentVariableTotal_Vector &
-             ( D, T, Yp, Ye, Ymu, P, Pbary_T, OS_P, &
+             ( D, T, Yp, Ye, Ym, P, Pbary_T, OS_P, &
              UnitP, 1.0_dp, 0.0_dp, 0.0_dp )
 
     END IF
@@ -1607,7 +1607,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeSpecificInternalEnergy_TABLE_Scalar &
-    ( D, T, Yp, Ye, Ymu, E, dEdD_Option, dEdT_Option, dEdY_Option )
+    ( D, T, Yp, Ye, Ym, E, dEdD_Option, dEdT_Option, dEdY_Option )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -1615,7 +1615,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)                    :: D, T, Yp, Ye, Ymu
+    REAL(DP), INTENT(in)                    :: D, T, Yp, Ye, Ym
     REAL(DP), INTENT(out)                   :: E
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdD_Option
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdT_Option
@@ -1658,7 +1658,7 @@ CONTAINS
       END IF
 
       CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
-             ( D, T, Yp, Ye, Ymu, E, dEdD, dEdT, dEdY, Ebary_T, OS_E, &
+             ( D, T, Yp, Ye, Ym, E, dEdD, dEdT, dEdY, Ebary_T, OS_E, &
              UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
 
     ELSE
@@ -1666,7 +1666,7 @@ CONTAINS
 #ifdef INVERSION_COMBINED
 
     CALL ComputeDependentVariableTotal_Scalar &
-           ( D, T, Yp, Ye, Ymu, Em, Ebary_T, OS_E, &
+           ( D, T, Yp, Ye, Ym, Em, Ebary_T, OS_E, &
            UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
 #else
 
@@ -1684,10 +1684,10 @@ CONTAINS
 
     ! Calculate Muon Quantities
     MuonState % t = T
-    MuonState % rhoYmu = D * Ymu
+    MuonState % rhoym = D * Ym
     
     CALL FullMuonEOS(MuonTable, MuonState)
-    E_mu = MuonState % e + mmu / rmu * ergmev * Ymu ! add back mass to internal Energy!
+    E_mu = MuonState % e + mmu / rmu * ergmev * Ym ! add back mass to internal Energy!
            
     E = E + Eele + E_mu
 #endif
@@ -1697,9 +1697,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeSpecificInternalEnergy_TABLE_Vector &
-    ( D, T, Yp, Ye, Ymu, E, dEdD_Option, dEdT_Option, dEdY_Option )
+    ( D, T, Yp, Ye, Ym, E, dEdD_Option, dEdT_Option, dEdY_Option )
 
-    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Yp(1:), Ye(1:), Ymu(1:)
+    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Yp(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out)                   :: E(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdD_Option(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdT_Option(1:)
@@ -1740,13 +1740,13 @@ CONTAINS
       END IF
 
       CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Vector &
-             ( D, T, Yp, Ye, Ymu, E, dEdD, dEdT, dEdY, Ebary_T, OS_E, &
+             ( D, T, Yp, Ye, Ym, E, dEdD, dEdT, dEdY, Ebary_T, OS_E, &
              UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
 
     ELSE
 
       CALL ComputeDependentVariableTotal_Vector &
-             ( D, T, Yp, Ye, Ymu, E, Ebary_T, OS_E, &
+             ( D, T, Yp, Ye, Ym, E, Ebary_T, OS_E, &
              UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
 
     END IF
@@ -1803,7 +1803,7 @@ CONTAINS
   END SUBROUTINE ComputeElectronChemicalPotential_TABLE_Vector
 
   SUBROUTINE ComputeMuonChemicalPotential_TABLE_Scalar &
-    ( D, T, Ymu, M )
+    ( D, T, Ym, M )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -1811,7 +1811,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)  :: D, T, Ymu
+    REAL(DP), INTENT(in)  :: D, T, Ym
     REAL(DP), INTENT(out) :: M
 
     TYPE(MuonStateType) :: MuonState
@@ -1819,7 +1819,7 @@ CONTAINS
     ! Calculate Muon Quantities
     ! Initialize Muon state (Abar and Zbar not needed!!!)
     MuonState % t = T
-    MuonState % rhoYmu = D * Ymu
+    MuonState % rhoym = D * Ym
     
     CALL FullMuonEOS(MuonTable, MuonState)
 
@@ -1829,16 +1829,16 @@ CONTAINS
 
 
   SUBROUTINE ComputeMuonChemicalPotential_TABLE_Vector &
-    ( D, T, Ymu, M )
+    ( D, T, Ym, M )
 
-    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Ymu(1:)
+    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Ym(1:)
     REAL(DP), INTENT(out)                   :: M(1:)
 
     INTEGER :: iP, nP
 
     DO iP=1,nP
       CALL ComputeMuonChemicalPotential_TABLE_Scalar &
-              (D(iP), T(iP), Ymu(iP), M(iP))
+              (D(iP), T(iP), Ym(iP), M(iP))
     END DO
 
   END SUBROUTINE ComputeMuonChemicalPotential_TABLE_Vector
@@ -2300,7 +2300,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeElectronMuonNeutrinoChemicalPotential_TABLE_Scalar &
-    ( D, T, Yp, Ye, Ymu, Mnue, Mnumu )
+    ( D, T, Yp, Ye, Ym, Mnue, Mnumu )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -2308,7 +2308,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)  :: D, T, Yp, Ye, Ymu
+    REAL(DP), INTENT(in)  :: D, T, Yp, Ye, Ym
     REAL(DP), INTENT(out) :: Mnue, Mnumu
 
     REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ymu_P
@@ -2322,7 +2322,7 @@ CONTAINS
     T_P = T / UnitT
     Yp_P = Yp / UnitY
     Ye_P = Ye / UnitY
-    Ymu_P = Ymu / UnitY
+    Ymu_P = Ym / UnitY
 
     CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
       ( D, T, Yp, Mun )
@@ -2334,7 +2334,7 @@ CONTAINS
       ( D, T, Ye, Mue )
       
     CALL ComputeMuonChemicalPotential_TABLE_Scalar &
-      ( D, T, Ymu, Mumu )
+      ( D, T, Ym, Mumu )
 
     Mue  = Mue  * UnitMl
     Mumu = Mumu * UnitMl
@@ -2355,9 +2355,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeElectronMuonNeutrinoChemicalPotential_TABLE_Vector &
-    ( D, T, Yp, Ye, Ymu, Mnue, Mnumu )
+    ( D, T, Yp, Ye, Ym, Mnue, Mnumu )
 
-    REAL(DP), INTENT(in)  :: D(1:), T(1:), Yp(1:), Ye(1:), Ymu(1:)
+    REAL(DP), INTENT(in)  :: D(1:), T(1:), Yp(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out) :: Mnue(1:), Mnumu(1:)
 
     REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ymu_P
@@ -2391,7 +2391,7 @@ CONTAINS
       T_P = T(iP) / UnitT
       Yp_P = Yp(iP) / UnitY
       Ye_P = Ye(iP) / UnitY
-      Ymu_P = Ymu(iP) / UnitY
+      Ymu_P = Ym(iP) / UnitY
 
       CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
         ( D_P, T_P, Yp_P, Mun )
@@ -2534,7 +2534,7 @@ CONTAINS
   END SUBROUTINE ComputeDependentVariableBaryons_Vector
 
   SUBROUTINE ComputeDependentVariableTotal_Scalar &
-    ( D, T, Yp, Ye, Ymu, V, Vbary_T, OS_V, Units_V, &
+    ( D, T, Yp, Ye, Ym, V, Vbary_T, OS_V, Units_V, &
     InputE, InputP, InputS )
 
 #if defined(THORNADO_OMP_OL)
@@ -2543,14 +2543,14 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)  :: D, T, Yp, Ye, Ymu
+    REAL(DP), INTENT(in)  :: D, T, Yp, Ye, Ym
     REAL(DP), INTENT(out) :: V
     REAL(DP), INTENT(in)  :: Vbary_T(1:,1:,1:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
     REAL(DP), INTENT(in)  :: InputE, InputP, InputS
 
     REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ymu_P, V_P
-    REAL(DP) :: Ye_over_Yp, Ymu_over_Yp
+    REAL(DP) :: Ye_over_Yp, Ym_over_Yp
     REAL(DP) :: E_leptons, P_leptons, S_leptons
     REAL(DP) :: Vtot(2,2,2)
     
@@ -2566,10 +2566,10 @@ CONTAINS
     T_P = T / UnitT
     Yp_P = Yp / UnitY
     Ye_P = Ye / UnitY
-    Ymu_P = Ymu / UnitY
+    Ymu_P = Ym / UnitY
 
     Ye_over_Yp = Ye/Yp
-    Ymu_over_Yp = Ymu/Yp
+    Ym_over_Yp = Ym/Yp
 
     ! Now bracket the points 
     SizeDs = SIZE( Dbary_T )
@@ -2595,12 +2595,12 @@ CONTAINS
           CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
 
           MuonState % t = Tbary_T(iT+iL_T-1)
-          MuonState % rhoymu = Dbary_T(iD+iL_D-1) * YPbary_T(iYp+iL_Y-1) * Ymu_over_Yp
+          MuonState % rhoym = Dbary_T(iD+iL_D-1) * YPbary_T(iYp+iL_Y-1) * Ym_over_Yp
           
           CALL FullMuonEOS(MuonTable, MuonState)
           
           E_leptons = ElectronState % e + me / rmu * ergmev * ElectronState % y_e + &
-                        MuonState % e + mmu / rmu * ergmev * YPbary_T(iYp+iL_Y-1) * Ymu_over_Yp
+                        MuonState % e + mmu / rmu * ergmev * YPbary_T(iYp+iL_Y-1) * Ym_over_Yp
           P_leptons = ElectronState % p + MuonState % p
           S_leptons = ElectronState % s + MuonState % s
           
@@ -2627,10 +2627,10 @@ CONTAINS
 
 
   SUBROUTINE ComputeDependentVariableTotal_Vector &
-    ( D, T, Yp, Ye, Ymu, V, Vbary_T, OS_V, Units_V, &
+    ( D, T, Yp, Ye, Ym, V, Vbary_T, OS_V, Units_V, &
     InputE, InputP, InputS )
 
-    REAL(DP), INTENT(in)  :: D(1:), T(1:), Yp(1:), Ye(1:), Ymu(1:)
+    REAL(DP), INTENT(in)  :: D(1:), T(1:), Yp(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out) :: V(1:)
     REAL(DP), INTENT(in)  :: Vbary_T(1:,1:,1:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
@@ -2638,7 +2638,7 @@ CONTAINS
 
     INTEGER  :: iP, nP
     REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ymu_P, V_P
-    REAL(DP) :: Ye_over_Yp, Ymu_over_Yp
+    REAL(DP) :: Ye_over_Yp, Ym_over_Yp
     REAL(DP) :: E_leptons, P_leptons, S_leptons
     REAL(DP) :: Vtot(2,2,2)
     
@@ -2672,10 +2672,10 @@ CONTAINS
       T_P = T(iP) / UnitT
       Yp_P = Yp(iP) / UnitY
       Ye_P = Ye(iP) / UnitY
-      Ymu_P = Ymu(iP) / UnitY
+      Ymu_P = Ym(iP) / UnitY
 
       Ye_over_Yp = Ye(iP)/Yp(iP)
-      Ymu_over_Yp = Ymu(iP)/Yp(iP)
+      Ym_over_Yp = Ym(iP)/Yp(iP)
 
       ! Now bracket the points 
       SizeDs = SIZE( Dbary_T )
@@ -2702,12 +2702,12 @@ CONTAINS
             CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
 
             MuonState % t = Tbary_T(iT+iL_T-1)
-            MuonState % rhoymu = Dbary_T(iD+iL_D-1) * YPbary_T(iYp+iL_Y-1) * Ymu_over_Yp
+            MuonState % rhoym = Dbary_T(iD+iL_D-1) * YPbary_T(iYp+iL_Y-1) * Ym_over_Yp
             
             CALL FullMuonEOS(MuonTable, MuonState)
             
             E_leptons = ElectronState % e + me / rmu * ergmev * ElectronState % y_e + &
-                          MuonState % e + mmu / rmu * ergmev * YPbary_T(iYp+iL_Y-1) * Ymu_over_Yp
+                          MuonState % e + mmu / rmu * ergmev * YPbary_T(iYp+iL_Y-1) * Ym_over_Yp
             P_leptons = ElectronState % p + MuonState % p
             S_leptons = ElectronState % s + MuonState % s
             
@@ -2747,7 +2747,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
-    ( D, T, Yp, Ye, Ymu, V, dVdD, dVdT, dVdYp, Vbary_T, OS_V, Units_V, &
+    ( D, T, Yp, Ye, Ym, V, dVdD, dVdT, dVdYp, Vbary_T, OS_V, Units_V, &
     InputE, InputP, InputS)
 
 #if defined(THORNADO_OMP_OL)
@@ -2756,14 +2756,14 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)  :: D, T, Yp, Ye, Ymu
+    REAL(DP), INTENT(in)  :: D, T, Yp, Ye, Ym
     REAL(DP), INTENT(out) :: V, dVdD, dVdT, dVdYp
     REAL(DP), INTENT(in)  :: Vbary_T(1:,1:,1:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
     REAL(DP), INTENT(in)  :: InputE, InputP, InputS
 
     REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ymu_P, V_P, dV_P(3)
-    REAL(DP) :: Ye_over_Yp, Ymu_over_Yp
+    REAL(DP) :: Ye_over_Yp, Ym_over_Yp
     REAL(DP) :: E_leptons, P_leptons, S_leptons
     REAL(DP) :: Vtot(2,2,2)
     
@@ -2779,10 +2779,10 @@ CONTAINS
     T_P = T / UnitT
     Yp_P = Yp / UnitY
     Ye_P = Ye / UnitY
-    Ymu_P = Ymu / UnitY
+    Ymu_P = Ym / UnitY
 
     Ye_over_Yp = Ye/Yp
-    Ymu_over_Yp = Ymu/Yp
+    Ym_over_Yp = Ym/Yp
 
     ! Now bracket the points 
     SizeDs = SIZE( Dbary_T )
@@ -2809,12 +2809,12 @@ CONTAINS
           CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
 
           MuonState % t = Tbary_T(iT+iL_T-1)
-          MuonState % rhoymu = Dbary_T(iD+iL_D-1) * YPbary_T(iYp+iL_Y-1) * Ymu_over_Yp
+          MuonState % rhoym = Dbary_T(iD+iL_D-1) * YPbary_T(iYp+iL_Y-1) * Ym_over_Yp
           
           CALL FullMuonEOS(MuonTable, MuonState)
           
           E_leptons = ElectronState % e + me / rmu * ergmev * ElectronState % y_e + &
-                        MuonState % e + mmu / rmu * ergmev * YPbary_T(iYp+iL_Y-1) * Ymu_over_Yp
+                        MuonState % e + mmu / rmu * ergmev * YPbary_T(iYp+iL_Y-1) * Ym_over_Yp
           P_leptons = ElectronState % p + MuonState % p
           S_leptons = ElectronState % s + MuonState % s
           
@@ -2848,10 +2848,10 @@ CONTAINS
 
 
   SUBROUTINE ComputeDependentVariableAndDerivativesTotal_TABLE_Vector &
-    ( D, T, Yp, Ye, Ymu, V, dVdD, dVdT, dVdYp, Vbary_T, OS_V, Units_V, &
+    ( D, T, Yp, Ye, Ym, V, dVdD, dVdT, dVdYp, Vbary_T, OS_V, Units_V, &
     InputE, InputP, InputS )
 
-    REAL(DP), INTENT(in)  :: D(1:), T(1:), Yp(1:), Ye(1:), Ymu(1:)
+    REAL(DP), INTENT(in)  :: D(1:), T(1:), Yp(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out) :: V(1:), dVdD(1:), dVdT(1:), dVdYp(1:)
     REAL(DP), INTENT(in)  :: Vbary_T(1:,1:,1:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
@@ -2877,7 +2877,7 @@ CONTAINS
     DO iP = 1, nP
 
       CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
-             ( D(iP), T(iP), Yp(iP), Ye(iP), Ymu(iP), V(iP), dVdD(iP), dVdT(iP), dVdYp(iP), &
+             ( D(iP), T(iP), Yp(iP), Ye(iP), Ym(iP), V(iP), dVdD(iP), dVdT(iP), dVdYp(iP), &
                Vbary_T, OS_V, Units_V, InputE, InputP, InputS )
 
     END DO

@@ -20,11 +20,11 @@ include $(POSEIDON_DIR)/Build/Make.Poseidon_Native
 endif
 
 VPATH += $(THORNADO_DIR)/SandBox/MuonCollapse: \
-VPATH += $(WEAKLIB_DIR)/TableCreator/EOSSource/EquationsOfState/BaryonsPlusLeptons/CommonModules: \
+VPATH += $(WEAKLIB_DIR)/TableCreator/EOSSource/EquationsOfState/BaryonsPlusLeptons/EosBaryLep: \
 ..
 
-include $(WEAKLIB_DIR)/TableCreator/EOSSource/EquationsOfState/BaryonsPlusLeptons/CommonModules/Makefile_CommonModules_Dependencies
-include $(WEAKLIB_DIR)/TableCreator/EOSSource/EquationsOfState/BaryonsPlusLeptons/CommonModules/Makefile_CommonModules_ObjectFiles
+include $(WEAKLIB_DIR)/TableCreator/EOSSource/EquationsOfState/BaryonsPlusLeptons/EosBaryLep/Makefile_EosBaryLep_Dependencies
+include $(WEAKLIB_DIR)/TableCreator/EOSSource/EquationsOfState/BaryonsPlusLeptons/EosBaryLep/Makefile_EosBaryLep_ObjectFiles
 
 
 #DEFINES += $(PP)THORNADO_EULER_NOGPU

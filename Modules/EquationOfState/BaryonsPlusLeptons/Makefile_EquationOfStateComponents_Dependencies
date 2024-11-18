@@ -9,7 +9,7 @@ EquationOfStateComponentsModule_TABLE.o: \
   wlElectronEOS.o \
   wlMuonEOS.o \
   wlHelmMuonIOModuleHDF.o \
-  wlBolligSoundSpeed.o \
+  wlwlSoundSpeedModule.o \
   wlEosConstantsModule.o \
   wlInterpolationUtilitiesModule.o \
   KindModule.o \

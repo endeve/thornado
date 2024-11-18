@@ -165,7 +165,7 @@ CONTAINS
 
 
   SUBROUTINE ApplyEquationOfState_Scalar &
-    ( D, T, Yp, Ye, Ymu, P, S, E, Me, Mmu, Mp, Mn, Xp, Xn, Xa, Xh )
+    ( D, T, Yp, Ye, Ym, P, S, E, Me, Mmu, Mp, Mn, Xp, Xn, Xa, Xh )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP DECLARE TARGET
@@ -173,13 +173,13 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)  :: D, T, Yp, Ye, Ymu
+    REAL(DP), INTENT(in)  :: D, T, Yp, Ye, Ym
     REAL(DP), INTENT(out) :: P, S, E, Me, Mmu, Mp, Mn, Xp, Xn, Xa, Xh
 
 #ifdef MICROPHYSICS_WEAKLIB
 
     CALL ApplyEquationOfState_TABLE &
-           ( D, T, Yp, Ye, Ymu, P, S, E, Me, Mmu, Mp, Mn, Xp, Xn, Xa, Xh )
+           ( D, T, Yp, Ye, Ym, P, S, E, Me, Mmu, Mp, Mn, Xp, Xn, Xa, Xh )
 
 #else
 
@@ -189,16 +189,16 @@ CONTAINS
 
 
   SUBROUTINE ApplyEquationOfState_Vector &
-    ( D, T, Yp, Ye, Ymu, P, S, E, Me, Mmu, Mp, Mn, Xp, Xn, Xa, Xh )
+    ( D, T, Yp, Ye, Ym, P, S, E, Me, Mmu, Mp, Mn, Xp, Xn, Xa, Xh )
 
-    REAL(DP), INTENT(in)  :: D(:), T(:), Yp(:), Ye(:), Ymu(:)
+    REAL(DP), INTENT(in)  :: D(:), T(:), Yp(:), Ye(:), Ym(:)
     REAL(DP), INTENT(out) :: P(:), S(:), E(:), Me(:), Mmu(:), Mp(:), Mn(:)
     REAL(DP), INTENT(out) :: Xp(:), Xn(:), Xa(:), Xh(:)
 
 #ifdef MICROPHYSICS_WEAKLIB
 
     CALL ApplyEquationOfState_TABLE &
-           ( D, T, Yp, Ye, Ymu, P, S, E, Me, Mmu, Mp, Mn, Xp, Xn, Xa, Xh )
+           ( D, T, Yp, Ye, Ym, P, S, E, Me, Mmu, Mp, Mn, Xp, Xn, Xa, Xh )
 
 #else
 
@@ -209,9 +209,9 @@ CONTAINS
 
   ! --- ComputePressure ---
   SUBROUTINE ComputePressure_Scalar &
-    ( D, T, Yp, Ye, Ymu, P, dPdD_Option, dPdT_Option, dPdYp_Option )
+    ( D, T, Yp, Ye, Ym, P, dPdD_Option, dPdT_Option, dPdYp_Option )
 
-    REAL(DP), INTENT(in)                    :: D, T, Yp, Ye, Ymu
+    REAL(DP), INTENT(in)                    :: D, T, Yp, Ye, Ym
     REAL(DP), INTENT(out)                   :: P
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdD_Option
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdT_Option
@@ -249,12 +249,12 @@ CONTAINS
       END IF
 
       CALL ComputePressure_TABLE &
-             ( D, T, Yp, Ye, Ymu, P, dPdD, dPdT, dPdYp )
+             ( D, T, Yp, Ye, Ym, P, dPdD, dPdT, dPdYp )
 
     ELSE
 
       CALL ComputePressure_TABLE &
-             ( D, T, Yp, Ye, Ymu, P )
+             ( D, T, Yp, Ye, Ym, P )
 
     END IF
 
@@ -266,9 +266,9 @@ CONTAINS
 
 
   SUBROUTINE ComputePressure_Vector &
-    ( D, T, Yp, Ye, Ymu, P, dPdD_Option, dPdT_Option, dPdYp_Option )
+    ( D, T, Yp, Ye, Ym, P, dPdD_Option, dPdT_Option, dPdYp_Option )
 
-    REAL(DP), INTENT(in)                    :: D(:), T(:), Yp(:), Ye(:), Ymu(:)
+    REAL(DP), INTENT(in)                    :: D(:), T(:), Yp(:), Ye(:), Ym(:)
     REAL(DP), INTENT(out)                   :: P(:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdD_Option(:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdT_Option(:)
@@ -311,12 +311,12 @@ CONTAINS
       END IF
 
       CALL ComputePressure_TABLE &
-             ( D, T, Yp, Ye, Ymu, P, dPdD, dPdT, dPdYp )
+             ( D, T, Yp, Ye, Ym, P, dPdD, dPdT, dPdYp )
 
     ELSE
 
       CALL ComputePressure_TABLE &
-             ( D, T, Yp, Ye, Ymu, P )
+             ( D, T, Yp, Ye, Ym, P )
 
     END IF
 
@@ -329,9 +329,9 @@ CONTAINS
 
   ! --- ComputeSpecificInternalEnergy ---
   SUBROUTINE ComputeSpecificInternalEnergy_Scalar &
-    ( D, T, Yp, Ye, Ymu, E, dEdD_Option, dEdT_Option, dEdY_Option )
+    ( D, T, Yp, Ye, Ym, E, dEdD_Option, dEdT_Option, dEdY_Option )
 
-    REAL(DP), INTENT(in)                    :: D, T, Yp, Ye, Ymu
+    REAL(DP), INTENT(in)                    :: D, T, Yp, Ye, Ym
     REAL(DP), INTENT(out)                   :: E
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdD_Option
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdT_Option
@@ -369,12 +369,12 @@ CONTAINS
       END IF
 
       CALL ComputeSpecificInternalEnergy_TABLE &
-             ( D, T, Yp, Ye, Ymu, E, dEdD, dEdT, dEdY )
+             ( D, T, Yp, Ye, Ym, E, dEdD, dEdT, dEdY )
 
     ELSE
 
       CALL ComputeSpecificInternalEnergy_TABLE &
-             ( D, T, Yp, Ye, Ymu, E )
+             ( D, T, Yp, Ye, Ym, E )
 
     END IF
 
@@ -386,9 +386,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeSpecificInternalEnergy_Vector &
-    ( D, T, Yp, Ye, Ymu, E, dEdD_Option, dEdT_Option, dEdY_Option )
+    ( D, T, Yp, Ye, Ym, E, dEdD_Option, dEdT_Option, dEdY_Option )
 
-    REAL(DP), INTENT(in)                    :: D(:), T(:), Yp(:), Ye(:), Ymu(:)
+    REAL(DP), INTENT(in)                    :: D(:), T(:), Yp(:), Ye(:), Ym(:)
     REAL(DP), INTENT(out)                   :: E(:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdD_Option(:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdT_Option(:)
@@ -431,12 +431,12 @@ CONTAINS
       END IF
 
       CALL ComputeSpecificInternalEnergy_TABLE &
-             ( D, T, Yp, Ye, Ymu, E, dEdD, dEdT, dEdY )
+             ( D, T, Yp, Ye, Ym, E, dEdD, dEdT, dEdY )
 
     ELSE
 
       CALL ComputeSpecificInternalEnergy_TABLE &
-             ( D, T, Yp, Ye, Ymu, E )
+             ( D, T, Yp, Ye, Ym, E )
 
     END IF
 
@@ -494,7 +494,7 @@ CONTAINS
 
 
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_Scalar &
-    ( D, Em, Yp, Ye, Ymu, P )
+    ( D, Em, Yp, Ye, Ym, P )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -502,12 +502,12 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)  :: D, Em, Yp, Ye, Ymu
+    REAL(DP), INTENT(in)  :: D, Em, Yp, Ye, Ym
     REAL(DP), INTENT(out) :: P
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    CALL ComputePressureFromSpecificInternalEnergy_TABLE( D, Em, Yp, Ye, Ymu, P )
+    CALL ComputePressureFromSpecificInternalEnergy_TABLE( D, Em, Yp, Ye, Ym, P )
 
 #else
 
@@ -519,14 +519,14 @@ CONTAINS
 
 
   SUBROUTINE ComputePressureFromSpecificInternalEnergy_Vector &
-    ( D, Em, Yp, Ye, Ymu, P )
+    ( D, Em, Yp, Ye, Ym, P )
 
-    REAL(DP), INTENT(in)  :: D(:), Em(:), Yp(:), Ye(:), Ymu(:)
+    REAL(DP), INTENT(in)  :: D(:), Em(:), Yp(:), Ye(:), Ym(:)
     REAL(DP), INTENT(out) :: P(:)
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    CALL ComputePressureFromSpecificInternalEnergy_TABLE( D, Em, Yp, Ye, Ymu, P )
+    CALL ComputePressureFromSpecificInternalEnergy_TABLE( D, Em, Yp, Ye, Ym, P )
 
 #else
 
@@ -584,7 +584,7 @@ CONTAINS
   ! --- ComputeAuxiliary_Fluid ---
 
   SUBROUTINE ComputeAuxiliary_Fluid_Scalar &
-    ( D, Ev, Ne, Nmu, P, T, Yp, Ye, Ymu, S, Em, Gm, Cs )
+    ( D, Ev, Ne, Nmu, P, T, Yp, Ye, Ym, S, Em, Gm, Cs )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -593,11 +593,11 @@ CONTAINS
 #endif
 
     REAL(DP), INTENT(in)  :: D, Ev, Ne, Nmu
-    REAL(DP), INTENT(out) :: P, T, Yp, Ye, Ymu, S, Em, Gm, Cs
+    REAL(DP), INTENT(out) :: P, T, Yp, Ye, Ym, S, Em, Gm, Cs
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    CALL ComputeAuxiliary_Fluid_TABLE( D, Ev, Ne, Nmu, P, T, Yp, Ye, Ymu, S, Em, Gm, Cs )
+    CALL ComputeAuxiliary_Fluid_TABLE( D, Ev, Ne, Nmu, P, T, Yp, Ye, Ym, S, Em, Gm, Cs )
 
 #else
 
@@ -607,14 +607,14 @@ CONTAINS
 
 
   SUBROUTINE ComputeAuxiliary_Fluid_Vector &
-    ( D, Ev, Ne, Nmu, P, T, Yp, Ye, Ymu, S, Em, Gm, Cs )
+    ( D, Ev, Ne, Nmu, P, T, Yp, Ye, Ym, S, Em, Gm, Cs )
 
     REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:), Nmu(:)
-    REAL(DP), INTENT(out) :: P(:), T (:), Yp(:), Ye(:), Ymu(:), S(:), Em(:), Gm(:), Cs(:)
+    REAL(DP), INTENT(out) :: P(:), T (:), Yp(:), Ye(:), Ym(:), S(:), Em(:), Gm(:), Cs(:)
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    CALL ComputeAuxiliary_Fluid_TABLE( D, Ev, Ne, Nmu, P, T, Yp, Ye, Ymu, S, Em, Gm, Cs )
+    CALL ComputeAuxiliary_Fluid_TABLE( D, Ev, Ne, Nmu, P, T, Yp, Ye, Ym, S, Em, Gm, Cs )
 
 #else
 
@@ -625,14 +625,14 @@ CONTAINS
   ! --- ComputeThermodynamicStates_Primitive ---
 
   SUBROUTINE ComputeThermodynamicStates_Primitive_Scalar &
-    ( D, T, Yp, Ye, Ymu, Ev, Em, Ne, Nmu )
+    ( D, T, Yp, Ye, Ym, Ev, Em, Ne, Nmu )
 
-    REAL(DP), INTENT(in)  :: D, T, Yp, Ye, Ymu
+    REAL(DP), INTENT(in)  :: D, T, Yp, Ye, Ym
     REAL(DP), INTENT(out) :: Ev, Em, Ne, Nmu
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    CALL ComputeThermodynamicStates_Primitive_TABLE( D, T, Yp, Ye, Ymu, Ev, Em, Ne, Nmu )
+    CALL ComputeThermodynamicStates_Primitive_TABLE( D, T, Yp, Ye, Ym, Ev, Em, Ne, Nmu )
 
 #else
 
@@ -642,14 +642,14 @@ CONTAINS
 
 
   SUBROUTINE ComputeThermodynamicStates_Primitive_Vector &
-    ( D, T, Yp, Ye, Ymu, Ev, Em, Ne, Nmu )
+    ( D, T, Yp, Ye, Ym, Ev, Em, Ne, Nmu )
 
-    REAL(DP), INTENT(in)  :: D (:), T (:), Yp(:), Ye(:), Ymu(:)
+    REAL(DP), INTENT(in)  :: D (:), T (:), Yp(:), Ye(:), Ym(:)
     REAL(DP), INTENT(out) :: Ev(:), Em(:), Ne(:), Nmu(:)
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    CALL ComputeThermodynamicStates_Primitive_TABLE( D, T, Yp, Ye, Ymu, Ev, Em, Ne, Nmu )
+    CALL ComputeThermodynamicStates_Primitive_TABLE( D, T, Yp, Ye, Ym, Ev, Em, Ne, Nmu )
 
 #else
 
@@ -660,14 +660,14 @@ CONTAINS
   ! --- ComputeThermodynamicStates_Auxiliary ---
 
   SUBROUTINE ComputeThermodynamicStates_Auxiliary_Scalar &
-    ( D, Ev, Ne, Nmu, T, Em, Yp, Ye, Ymu )
+    ( D, Ev, Ne, Nmu, T, Em, Yp, Ye, Ym )
 
     REAL(DP), INTENT(in)  :: D, Ev, Ne, Nmu
-    REAL(DP), INTENT(out) :: T, Em, Yp, Ye, Ymu
+    REAL(DP), INTENT(out) :: T, Em, Yp, Ye, Ym
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    CALL ComputeThermodynamicStates_Auxiliary_TABLE( D, Ev, Ne, Nmu, T, Em, Yp, Ye, Ymu )
+    CALL ComputeThermodynamicStates_Auxiliary_TABLE( D, Ev, Ne, Nmu, T, Em, Yp, Ye, Ym )
 
 #else
 
@@ -677,14 +677,14 @@ CONTAINS
 
 
   SUBROUTINE ComputeThermodynamicStates_Auxiliary_Vector &
-    ( D, Ev, Ne, Nmu, T, Em, Yp, Ye, Ymu )
+    ( D, Ev, Ne, Nmu, T, Em, Yp, Ye, Ym )
 
     REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:), Nmu(:)
-    REAL(DP), INTENT(out) :: T(:), Em(:), Yp(:), Ye(:), Ymu(:)
+    REAL(DP), INTENT(out) :: T(:), Em(:), Yp(:), Ye(:), Ym(:)
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    CALL ComputeThermodynamicStates_Auxiliary_TABLE( D, Ev, Ne, Nmu, T, Em, Yp, Ye, Ymu )
+    CALL ComputeThermodynamicStates_Auxiliary_TABLE( D, Ev, Ne, Nmu, T, Em, Yp, Ye, Ym )
 
 #else
 
@@ -695,9 +695,9 @@ CONTAINS
   ! --- ComputeTemperatureFromSpecificInternalEnergy ---
 
   SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_Scalar &
-    ( D, E, Yp, Ye, Ymu, T, Guess_Option, Error_Option )
+    ( D, E, Yp, Ye, Ym, T, Guess_Option, Error_Option )
 
-    REAL(DP), INTENT(in ) :: D, E, Yp, Ye, Ymu
+    REAL(DP), INTENT(in ) :: D, E, Yp, Ye, Ym
     REAL(DP), INTENT(out) :: T
     REAL(DP), INTENT(in ), OPTIONAL :: Guess_Option
     INTEGER,  INTENT(out), OPTIONAL :: Error_Option
@@ -709,12 +709,12 @@ CONTAINS
     IF( PRESENT( Guess_Option ) )THEN
 
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-             ( D, E, Yp, Ye, Ymu, T, Guess_Option, Error )
+             ( D, E, Yp, Ye, Ym, T, Guess_Option, Error )
 
     ELSE
 
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-             ( D, E, Yp, Ye, Ymu, T, Error )
+             ( D, E, Yp, Ye, Ym, T, Error )
 
     END IF
 
@@ -730,9 +730,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_Vector &
-    ( D, E, T, Yp, Ye, Ymu, Guess_Option, Error_Option )
+    ( D, E, T, Yp, Ye, Ym, Guess_Option, Error_Option )
 
-    REAL(DP), INTENT(in ) :: D(:), E(:), Yp(:), Ye(:), Ymu(:)
+    REAL(DP), INTENT(in ) :: D(:), E(:), Yp(:), Ye(:), Ym(:)
     REAL(DP), INTENT(out) :: T(:)
     REAL(DP), INTENT(in ), OPTIONAL :: Guess_Option(:)
     INTEGER,  INTENT(out), OPTIONAL :: Error_Option(:)
@@ -744,12 +744,12 @@ CONTAINS
     IF( PRESENT( Guess_Option ) )THEN
 
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-             ( D, E, Yp, Ye, Ymu, T, Guess_Option, Error )
+             ( D, E, Yp, Ye, Ym, T, Guess_Option, Error )
 
     ELSE
 
        CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-             ( D, E, Yp, Ye, Ymu, T, Error_Option = Error )
+             ( D, E, Yp, Ye, Ym, T, Error_Option = Error )
 
     END IF
 
@@ -766,14 +766,14 @@ CONTAINS
 
   ! --- ComputeTemperatureFromPressure ---
 
-  SUBROUTINE ComputeTemperatureFromPressure_Scalar( D, P, Yp, Ye, Ymu, T )
+  SUBROUTINE ComputeTemperatureFromPressure_Scalar( D, P, Yp, Ye, Ym, T )
 
-    REAL(DP), INTENT(in)  :: D, P, Yp, Ye, Ymu
+    REAL(DP), INTENT(in)  :: D, P, Yp, Ye, Ym
     REAL(DP), INTENT(out) :: T
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    CALL ComputeTemperatureFromPressure_TABLE( D, P, Yp, Ye, Ymu, T )
+    CALL ComputeTemperatureFromPressure_TABLE( D, P, Yp, Ye, Ym, T )
 
 #else
 
@@ -784,14 +784,14 @@ CONTAINS
   END SUBROUTINE ComputeTemperatureFromPressure_Scalar
 
 
-  SUBROUTINE ComputeTemperatureFromPressure_Vector( D, P, Yp, Ye, Ymu, T )
+  SUBROUTINE ComputeTemperatureFromPressure_Vector( D, P, Yp, Ye, Ym, T )
 
-    REAL(DP), INTENT(in)  :: D(:), P(:), Yp(:), Ye(:), Ymu(:)
+    REAL(DP), INTENT(in)  :: D(:), P(:), Yp(:), Ye(:), Ym(:)
     REAL(DP), INTENT(out) :: T(:)
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    CALL ComputeTemperatureFromPressure_TABLE( D, P, Yp, Ye, Ymu, T )
+    CALL ComputeTemperatureFromPressure_TABLE( D, P, Yp, Ye, Ym, T )
 
 #else
 
@@ -843,16 +843,16 @@ CONTAINS
   ! --- ComputeMuonChemicalPotential ---
 
   SUBROUTINE ComputeMuonChemicalPotential_Scalar &
-      ( D, T, Ymu, M )
+      ( D, T, Ym, M )
 
-    REAL(DP), INTENT(in)                    :: D, T, Ymu
+    REAL(DP), INTENT(in)                    :: D, T, Ym
     REAL(DP), INTENT(out)                   :: M
 
 
 #ifdef MICROPHYSICS_WEAKLIB
 
     CALL ComputeMuonChemicalPotential_TABLE &
-           ( D, T, Ymu, M )
+           ( D, T, Ym, M )
 
 #else
 
@@ -862,15 +862,15 @@ CONTAINS
 
 
   SUBROUTINE ComputeMuonChemicalPotential_Vector &
-    ( D, T, Ymu, M )
+    ( D, T, Ym, M )
 
-    REAL(DP), INTENT(in)                    :: D(:), T(:), Ymu(:)
+    REAL(DP), INTENT(in)                    :: D(:), T(:), Ym(:)
     REAL(DP), INTENT(out)                   :: M(:)
     
 #ifdef MICROPHYSICS_WEAKLIB
 
     CALL ComputeMuonChemicalPotential_TABLE &
-           ( D, T, Ymu, M )
+           ( D, T, Ym, M )
 
 #else
 
