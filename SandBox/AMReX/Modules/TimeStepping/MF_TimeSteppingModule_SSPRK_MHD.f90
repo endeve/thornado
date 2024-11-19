@@ -66,7 +66,7 @@ MODULE MF_TimeSteppingModule_SSPRK_MHD
     ApplyBoundaryConditions_Geometry_MF
   USE MF_GravitySolutionModule_MHD, ONLY: &
     EvolveGravity
-  USE MF_GravitySolutionModule_XCFC, ONLY: &
+  USE MF_GravitySolutionModule_XCFC_MHD, ONLY: &
     ComputeConformalFactor_XCFC_MF, &
     ComputeLapseShiftCurvature_XCFC_MF
   USE AverageDownModule_MHD, ONLY: &
