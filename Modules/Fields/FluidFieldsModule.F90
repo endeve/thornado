@@ -18,7 +18,8 @@ MODULE FluidFieldsModule
   INTEGER, PUBLIC, PARAMETER :: iCF_S3 = 4  ! Conserved Momentum Density 3
   INTEGER, PUBLIC, PARAMETER :: iCF_E  = 5  ! Conserved Energy Density
   INTEGER, PUBLIC, PARAMETER :: iCF_Ne = 6  ! Conserved Electron Density
-  INTEGER, PUBLIC, PARAMETER :: nCF    = 6  ! n Conserved Fluid Fields
+  INTEGER, PUBLIC, PARAMETER :: iCF_Nm = 7  ! Conserved Muon Density
+  INTEGER, PUBLIC, PARAMETER :: nCF    = 7  ! n Conserved Fluid Fields
 
   CHARACTER(32), DIMENSION(nCF), PUBLIC, PARAMETER :: &
     namesCF = [ 'Conserved Baryon Density        ', &
@@ -26,7 +27,8 @@ MODULE FluidFieldsModule
                 'Conserved Momentum Density (2)  ', &
                 'Conserved Momentum Density (3)  ', &
                 'Conserved Energy Density        ', &
-                'Conserved Electron Density      ' ]
+                'Conserved Electron Density      ', &
+                'Conserved Muon Density          ' ]
 
   CHARACTER(10),  DIMENSION(nCF), PUBLIC, PARAMETER :: &
     ShortNamesCF = [ 'CF_D      ', &
@@ -34,7 +36,8 @@ MODULE FluidFieldsModule
                      'CF_S2     ', &
                      'CF_S3     ', &
                      'CF_E      ', &
-                     'CF_Ne     ' ]
+                     'CF_Ne     ', &
+                     'CF_Nm     ' ]
 
   REAL(DP), DIMENSION(nCF), PUBLIC :: unitsCF
 
@@ -49,7 +52,8 @@ MODULE FluidFieldsModule
   INTEGER, PUBLIC, PARAMETER :: iPF_V3 = 4  ! Three-Velocity 3
   INTEGER, PUBLIC, PARAMETER :: iPF_E  = 5  ! Internal Energy Density
   INTEGER, PUBLIC, PARAMETER :: iPF_Ne = 6  ! Comoving Electron Density
-  INTEGER, PUBLIC, PARAMETER :: nPF    = 6  ! n Primitive Fluid Fields
+  INTEGER, PUBLIC, PARAMETER :: iPF_Nm = 7  ! Comoving Muon Density
+  INTEGER, PUBLIC, PARAMETER :: nPF    = 7  ! n Primitive Fluid Fields
 
   CHARACTER(32), DIMENSION(nPF), PUBLIC, PARAMETER :: &
     namesPF = [ 'Comoving Baryon Density         ', &
@@ -57,7 +61,8 @@ MODULE FluidFieldsModule
                 'Three-Velocity (2)              ', &
                 'Three-Velocity (3)              ', &
                 'Internal Energy Density         ', &
-                'Comoving Electron Density       ' ]
+                'Comoving Electron Density       ', &
+                'Comoving Muon Density           ' ]
 
   CHARACTER(10),  DIMENSION(nPF), PUBLIC, PARAMETER :: &
     ShortNamesPF = [ 'PF_D      ', &
@@ -65,7 +70,8 @@ MODULE FluidFieldsModule
                      'PF_V2     ', &
                      'PF_V3     ', &
                      'PF_E      ', &
-                     'PF_Ne     ' ]
+                     'PF_Ne     ', &
+                     'PF_Nm     ' ]
 
   REAL(DP), DIMENSION(nPF), PUBLIC :: unitsPF
 
@@ -76,26 +82,30 @@ MODULE FluidFieldsModule
   INTEGER, PUBLIC, PARAMETER :: iAF_P  = 01 ! Pressure
   INTEGER, PUBLIC, PARAMETER :: iAF_T  = 02 ! Temperature
   INTEGER, PUBLIC, PARAMETER :: iAF_Ye = 03 ! Electron Fraction
-  INTEGER, PUBLIC, PARAMETER :: iAF_S  = 04 ! Entropy Per Baryon
-  INTEGER, PUBLIC, PARAMETER :: iAF_E  = 05 ! Specific Internal Energy
-  INTEGER, PUBLIC, PARAMETER :: iAF_Me = 06 ! Electron Chemical Potential
-  INTEGER, PUBLIC, PARAMETER :: iAF_Mp = 07 ! Proton Chemical Potential
-  INTEGER, PUBLIC, PARAMETER :: iAF_Mn = 08 ! Neutron Chemical Potential
-  INTEGER, PUBLIC, PARAMETER :: iAF_Xp = 09 ! Proton Mass Fraction
-  INTEGER, PUBLIC, PARAMETER :: iAF_Xn = 10 ! Neutron Mass Fraction
-  INTEGER, PUBLIC, PARAMETER :: iAF_Xa = 11 ! Alpha Mass Fraction
-  INTEGER, PUBLIC, PARAMETER :: iAF_Xh = 12 ! Heavy Mass Fraction
-  INTEGER, PUBLIC, PARAMETER :: iAF_Gm = 13 ! Ratio of Specific Heats
-  INTEGER, PUBLIC, PARAMETER :: iAF_Cs = 14 ! Sound Speed
-  INTEGER, PUBLIC, PARAMETER :: nAF    = 14 ! n Auxiliary Fluid Fields
+  INTEGER, PUBLIC, PARAMETER :: iAF_Ym = 04 ! Muon Fraction
+  INTEGER, PUBLIC, PARAMETER :: iAF_S  = 05 ! Entropy Per Baryon
+  INTEGER, PUBLIC, PARAMETER :: iAF_E  = 06 ! Specific Internal Energy
+  INTEGER, PUBLIC, PARAMETER :: iAF_Me = 07 ! Electron Chemical Potential
+  INTEGER, PUBLIC, PARAMETER :: iAF_Me = 08 ! Muon Chemical Potential
+  INTEGER, PUBLIC, PARAMETER :: iAF_Mp = 09 ! Proton Chemical Potential
+  INTEGER, PUBLIC, PARAMETER :: iAF_Mn = 10 ! Neutron Chemical Potential
+  INTEGER, PUBLIC, PARAMETER :: iAF_Xp = 11 ! Proton Mass Fraction
+  INTEGER, PUBLIC, PARAMETER :: iAF_Xn = 12 ! Neutron Mass Fraction
+  INTEGER, PUBLIC, PARAMETER :: iAF_Xa = 13 ! Alpha Mass Fraction
+  INTEGER, PUBLIC, PARAMETER :: iAF_Xh = 14 ! Heavy Mass Fraction
+  INTEGER, PUBLIC, PARAMETER :: iAF_Gm = 15 ! Ratio of Specific Heats
+  INTEGER, PUBLIC, PARAMETER :: iAF_Cs = 16 ! Sound Speed
+  INTEGER, PUBLIC, PARAMETER :: nAF    = 16 ! n Auxiliary Fluid Fields
 
   CHARACTER(32), DIMENSION(nAF), PUBLIC, PARAMETER :: &
     namesAF = [ 'Pressure                        ', &
                 'Temperature                     ', &
                 'Electron Fraction               ', &
+                'Muon Fraction                   ', &
                 'Entropy Per Baryon              ', &
                 'Specific Internal Energy        ', &
                 'Electron Chemical Potential     ', &
+                'Muon Chemical Potential         ', &
                 'Proton Chemical Potential       ', &
                 'Neutron Chemical Potential      ', &
                 'Proton Mass Fraction            ', &
@@ -109,9 +119,11 @@ MODULE FluidFieldsModule
     ShortNamesAF = [ 'AF_P      ', &
                      'AF_T      ', &
                      'AF_Ye     ', &
+                     'AF_Ym     ', &
                      'AF_S      ', &
                      'AF_E      ', &
                      'AF_Me     ', &
+                     'AF_Mm     ', &
                      'AF_Mp     ', &
                      'AF_Mn     ', &
                      'AF_Xp     ', &
@@ -510,6 +522,7 @@ CONTAINS
 
       unitsCF(iCF_E)  = Erg / Centimeter**3
       unitsCF(iCF_Ne) = One / Centimeter**3
+      unitsCF(iCF_Nm) = One / Centimeter**3
 
       ! --- Primitive ---
 
@@ -545,15 +558,18 @@ CONTAINS
 
       unitsPF(iPF_E)  = Erg / Centimeter**3
       unitsPF(iPF_Ne) = One / Centimeter**3
+      unitsPF(iPF_Nm) = One / Centimeter**3
 
       ! --- Auxiliary ---
 
       unitsAF(iAF_P)  = Erg / Centimeter**3
       unitsAF(iAF_T)  = Kelvin
       unitsAF(iAF_Ye) = One
+      unitsAF(iAF_Ym) = One
       unitsAF(iAF_S)  = BoltzmannConstant
       unitsAF(iAF_E)  = Erg / Gram
       unitsAF(iAF_Me) = MeV
+      unitsAF(iAF_Mm) = MeV
       unitsAF(iAF_Mp) = MeV
       unitsAF(iAF_Mn) = MeV
       unitsAF(iAF_Xp) = One
