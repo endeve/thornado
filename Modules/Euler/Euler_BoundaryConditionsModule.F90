@@ -19,7 +19,8 @@ MODULE Euler_BoundaryConditionsModule
     iCF_S2, &
     iCF_S3, &
     iCF_E, &
-    iCF_Ne
+    iCF_Ne, &
+    iCF_Nm
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler, &
@@ -336,6 +337,8 @@ CONTAINS
               = + U(jNX,iX_B0(1),iX2,iX3,iCF_E)
             U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) &
               = + U(jNX,iX_B0(1),iX2,iX3,iCF_Ne)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_Nm) &
+              = + U(jNX,iX_B0(1),iX2,iX3,iCF_Nm)
 
           END DO
           END DO
@@ -387,6 +390,8 @@ CONTAINS
               = + U(jNX,iX_E0(1),iX2,iX3,iCF_E)
             U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_Ne) &
               = + U(jNX,iX_E0(1),iX2,iX3,iCF_Ne)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_Nm) &
+              = + U(jNX,iX_E0(1),iX2,iX3,iCF_Nm)
 
           END DO
           END DO
@@ -438,6 +443,8 @@ CONTAINS
                 = + U(jNX,iX_B0(1),iX2,iX3,iCF_E)
               U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) &
                 = + U(jNX,iX_B0(1),iX2,iX3,iCF_Ne)
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_Nm) &
+                = + U(jNX,iX_B0(1),iX2,iX3,iCF_Nm)
 
           END DO
           END DO
@@ -491,6 +498,8 @@ CONTAINS
               = + U(jNX,iX_B0(1),iX2,iX3,iCF_E)
             U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) &
               = + U(jNX,iX_B0(1),iX2,iX3,iCF_Ne)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_Nm) &
+              = + U(jNX,iX_B0(1),iX2,iX3,iCF_Nm)
 
           END DO
           END DO
@@ -602,6 +611,8 @@ CONTAINS
               = + U(jNX,iX_E0(1),iX2,iX3,iCF_E)
             U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_Ne) &
               = + U(jNX,iX_E0(1),iX2,iX3,iCF_Ne)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_Nm) &
+              = + U(jNX,iX_E0(1),iX2,iX3,iCF_Nm)
 
           END DO
           END DO
@@ -956,6 +967,8 @@ CONTAINS
               = + U(jNX,iX1,iX_B0(2),iX3,iCF_E)
             U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_Ne) &
               = + U(jNX,iX1,iX_B0(2),iX3,iCF_Ne)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_Nm) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_Nm)
 
           END DO
           END DO
@@ -1007,6 +1020,8 @@ CONTAINS
               = + U(jNX,iX1,iX_E0(2),iX3,iCF_E)
             U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_Ne) &
               = + U(jNX,iX1,iX_E0(2),iX3,iCF_Ne)
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_Nm) &
+              = + U(jNX,iX1,iX_E0(2),iX3,iCF_Nm)
 
           END DO
           END DO
@@ -1058,6 +1073,8 @@ CONTAINS
               = + U(jNX,iX1,iX_B0(2),iX3,iCF_E)
             U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_Ne) &
               = + U(jNX,iX1,iX_B0(2),iX3,iCF_Ne)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_Nm) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_Nm)
 
           END DO
           END DO
@@ -1111,6 +1128,8 @@ CONTAINS
               = + U(jNX,iX1,iX_B0(2),iX3,iCF_E)
             U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_Ne) &
               = + U(jNX,iX1,iX_B0(2),iX3,iCF_Ne)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_Nm) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_Nm)
 
           END DO
           END DO

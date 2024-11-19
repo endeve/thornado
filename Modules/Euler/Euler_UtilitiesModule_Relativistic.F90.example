@@ -1,0 +1,148 @@
+DO WHILE( ANY( ITERATE ) .AND. ITERATION .LT. MAX_IT )
+
+  ITERATION = ITERATION + 1
+
+  !$ACC PARALLEL LOOP GANG VECTOR
+  DO iP = 1, nP
+    IF ( ITERATE(iP) ) THEN
+      dz(iP) = Half * dz(iP)
+      zc(iP) = za(iP) + dz(iP)
+    END IF
+  END DO
+
+  ! --- Compute f(zc) for midpoint zc ---
+
+  CALL ComputeFunZ_Vector( zc, uD, uNe, r, k, q, fc, ITERATE )
+
+  ! --- Change zc to za or zb, depending on sign of fc ---
+
+  !$ACC PARALLEL LOOP GANG VECTOR
+  DO iP = 1, nP
+    IF ( ITERATE(IP) ) THEN
+
+      IF( fa(iP) * fc(iP) .LT. Zero )THEN
+        zb(iP) = zc(iP)
+        fb(iP) = fc(iP)
+      ELSE IF( fa(iP) * fc(iP) .GT. Zero )THEN
+        za(iP) = zc(iP)
+        fa(iP) = fc(iP)
+      ELSE
+        CONVERGED = .TRUE.
+      END IF
+
+      IF( ABS( dz(iP) ) / MAX( ABS( zc(iP) ), SqrtTiny ) .LE. dz_min ) THEN
+        CONVERGED = .TRUE.
+      END IF
+
+      IF( CONVERGED ) THEN
+        ITERATE(iP) = .FALSE.
+      END IF
+
+      z0(iP) = zc(iP)
+
+    END IF
+  END DO
+
+  !$ACC UPDATE HOST( ITERATE )
+
+END DO
+
+
+SUBROUTINE ComputeFunZ_Vector( z, D, Ne, r, k, q, FunZ, ITERATE )
+
+  REAL(DP), INTENT(in)    :: z(:), D(:), Ne(:), r(:), k(:)
+  REAL(DP), INTENT(inout) :: q(:)
+  REAL(DP), INTENT(out)   :: FunZ(:)
+  LOGICAL,  INTENT(in)    :: ITERATE(:)
+
+  REAL(DP), DIMENSION(SIZE(z)) :: rhoh, Ye
+  REAL(DP), DIMENSION(SIZE(z)) :: epsh
+  REAL(DP), DIMENSION(SIZE(z)) :: epst, th
+
+  REAL(DP) :: T1, T2, MinE, MaxE
+  REAL(DP) :: ph, at, ht, Wt
+
+  INTEGER  :: iP, nP
+
+  nP = SIZE(z)
+
+  !$ACC ENTER DATA &
+  !$ACC CREATE()
+
+  DO iP = 1, nP
+    IF ( ITERATE(iP) ) THEN
+
+    ! --- Eq. C15 ---
+
+    Wt = SQRT( One + z(iP)**2 )
+
+    ! --- Eq. C16 ---
+
+    epst(iP) = Wt * q(iP) - z(iP) * r(iP) + z(iP)**2 / ( One + Wt )
+
+    ! --- Eq. C17 ---
+
+    rhoh(iP) = MAX( MIN( MaxD, D(iP) / Wt ), MinD )
+
+    ! --- Eq. C18 ---
+
+    Ye(iP) = Ne(iP) * AtomicMassUnit / D(iP)
+
+    T1 = ( One + Offset_Temperature ) * MinT
+    T2 = ( One - Offset_Temperature ) * MaxT
+    
+    CALL ComputeSpecificInternalEnergy_TABLE_Scalar &
+           ( rhoh(iP), T1, Ye(iP), MinE )
+    CALL ComputeSpecificInternalEnergy_TABLE_Scalar &
+           ( rhoh(iP), T2, Ye(iP), MaxE )
+
+    MinE = ( One + Offset_Epsilon ) * MinE
+    MaxE = ( One - Offset_Epsilon ) * MaxE
+
+    epsh(iP) = MAX( MIN( MaxE(iP), epst(iP) ), MinE(iP) )
+
+    ! --- Eq. C27 ---
+
+    IF( epst(iP) .LT. MinE )THEN
+      q(iP) = ( One + q(iP) ) * ( One + epsh(iP) ) / ( One + epst(iP) ) - One
+      epst(iP) = epsh(iP)
+    ELSE IF( epst .GT. MaxE )THEN
+      q(iP) = ( One + q(iP) ) * ( One + epsh(iP) ) / ( One + epst(iP) ) - One
+      epst(iP) = epsh(iP)
+    END IF
+
+    END IF
+  END DO
+
+  ! --- Eqs. C19/C20 ---
+
+  DO iP = 1, nP
+    IF( ITERATE(iP) ) THEN
+      CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
+             ( rhoh(iP), epsh(iP), Ye(iP), th(iP) )
+    END IF
+  END DO
+
+  DO iP = 1, nP
+    IF( ITERATE(iP) ) THEN
+
+      CALL ComputePressure_TABLE_Scalar &
+             ( rhoh(iP), th(iP), Ye(iP), ph )
+
+      at = ph / ( rhoh(iP) * ( One + epsh(iP) ) )
+
+      ! --- Eq. C21 ---
+
+      ht = ( One + epst(iP) ) * ( One + at )
+
+      ! --- Eq. C22 ---
+
+      FunZ(iP) = z(iP) - r(iP) / ht
+
+    END IF
+  END DO
+
+  !$ACC EXIT DATA &
+  !$ACC DELETE
+
+END SUBROUTINE ComputeFunZ

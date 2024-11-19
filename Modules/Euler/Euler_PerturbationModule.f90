@@ -30,16 +30,19 @@ MODULE Euler_PerturbationModule
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
+    iPF_Nm, &
     iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
+    iCF_Nm, &
     nAF, &
     iAF_P, &
     iAF_T, &
     iAF_Ye, &
+    iAF_Ym, &
     iAF_S, &
     iAF_E, &
     iAF_Gm, &
@@ -305,9 +308,11 @@ CONTAINS
              ( U(:,iX1,iX2,iX3,iCF_D ), U(:,iX1,iX2,iX3,iCF_S1), &
                U(:,iX1,iX2,iX3,iCF_S2), U(:,iX1,iX2,iX3,iCF_S3), &
                U(:,iX1,iX2,iX3,iCF_E ), U(:,iX1,iX2,iX3,iCF_Ne), &
+               U(:,iX1,iX2,iX3,iCF_Nm), &
                P(:,iX1,iX2,iX3,iPF_D ), P(:,iX1,iX2,iX3,iPF_V1), &
                P(:,iX1,iX2,iX3,iPF_V2), P(:,iX1,iX2,iX3,iPF_V3), &
                P(:,iX1,iX2,iX3,iPF_E ), P(:,iX1,iX2,iX3,iPF_Ne), &
+               P(:,iX1,iX2,iX3,iPF_Nm), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -316,9 +321,11 @@ CONTAINS
              ( P(:,iX1,iX2,iX3,iPF_D  ), &
                P(:,iX1,iX2,iX3,iPF_E  ), &
                P(:,iX1,iX2,iX3,iPF_Ne ), &
+               P(:,iX1,iX2,iX3,iPF_Nm ), &
                A(:,iX1,iX2,iX3,iAF_P  ), &
                A(:,iX1,iX2,iX3,iAF_T  ), &
                A(:,iX1,iX2,iX3,iAF_Ye ), &
+               A(:,iX1,iX2,iX3,iAF_Ym ), &
                A(:,iX1,iX2,iX3,iAF_S  ), &
                A(:,iX1,iX2,iX3,iAF_E  ), &
                A(:,iX1,iX2,iX3,iAF_Gm ), &
@@ -379,9 +386,11 @@ CONTAINS
              ( P(:,iX1,iX2,iX3,iPF_D ), P(:,iX1,iX2,iX3,iPF_V1), &
                P(:,iX1,iX2,iX3,iPF_V2), P(:,iX1,iX2,iX3,iPF_V3), &
                P(:,iX1,iX2,iX3,iPF_E ), P(:,iX1,iX2,iX3,iPF_Ne), &
+               P(:,iX1,iX2,iX3,iPF_Nm), &
                U(:,iX1,iX2,iX3,iCF_D ), U(:,iX1,iX2,iX3,iCF_S1), &
                U(:,iX1,iX2,iX3,iCF_S2), U(:,iX1,iX2,iX3,iCF_S3), &
                U(:,iX1,iX2,iX3,iCF_E ), U(:,iX1,iX2,iX3,iCF_Ne), &
+               U(:,iX1,iX2,iX3,iCF_Nm), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -552,9 +561,11 @@ CONTAINS
                ( P(:,iX1,iX2,iX3,iPF_D ), P(:,iX1,iX2,iX3,iPF_V1), &
                  P(:,iX1,iX2,iX3,iPF_V2), P(:,iX1,iX2,iX3,iPF_V3), &
                  P(:,iX1,iX2,iX3,iPF_E ), P(:,iX1,iX2,iX3,iPF_Ne), &
+                 P(:,iX1,iX2,iX3,iPF_Nm), &
                  U(:,iX1,iX2,iX3,iCF_D ), U(:,iX1,iX2,iX3,iCF_S1), &
                  U(:,iX1,iX2,iX3,iCF_S2), U(:,iX1,iX2,iX3,iCF_S3), &
                  U(:,iX1,iX2,iX3,iCF_E ), U(:,iX1,iX2,iX3,iCF_Ne), &
+                 U(:,iX1,iX2,iX3,iCF_Nm), &
                  G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )

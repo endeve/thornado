@@ -41,6 +41,7 @@ MODULE Euler_DiscontinuityDetectionModule
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
+    iCF_Nm, &
     nPF, &
     iPF_D, &
     iPF_V1, &
@@ -48,6 +49,7 @@ MODULE Euler_DiscontinuityDetectionModule
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
+    iPF_Nm, &
     nDF, &
     iDF_TCI, &
     iDF_Sh_X1, &
@@ -1467,6 +1469,8 @@ CONTAINS
         = U(iNX,iX1,iX2,iX3,iCF_E ) * SqrtGm(iNX,iX1,iX2,iX3)
       U_X(iNX,iCF_Ne,iX1,iX2,iX3) &
         = U(iNX,iX1,iX2,iX3,iCF_Ne) * SqrtGm(iNX,iX1,iX2,iX3)
+      U_X(iNX,iCF_Nm,iX1,iX2,iX3) &
+        = U(iNX,iX1,iX2,iX3,iCF_Nm) * SqrtGm(iNX,iX1,iX2,iX3)
 
     END DO
     END DO
@@ -1530,6 +1534,7 @@ CONTAINS
       UK(iCF_S3,iX1,iX2,iX3) = UK(iCF_S3,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
       UK(iCF_E ,iX1,iX2,iX3) = UK(iCF_E ,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
       UK(iCF_Ne,iX1,iX2,iX3) = UK(iCF_Ne,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
+      UK(iCF_Nm,iX1,iX2,iX3) = UK(iCF_Nm,iX1,iX2,iX3) / Vol(iX1,iX2,iX3)
 
       CALL ComputePrimitive_Euler &
            ( UK(iCF_D ,iX1,iX2,iX3), &
@@ -1538,12 +1543,14 @@ CONTAINS
              UK(iCF_S3,iX1,iX2,iX3), &
              UK(iCF_E ,iX1,iX2,iX3), &
              UK(iCF_Ne,iX1,iX2,iX3), &
+             UK(iCF_Nm,iX1,iX2,iX3), &
              PK(iPF_D ,iX1,iX2,iX3), &
              PK(iPF_V1,iX1,iX2,iX3), &
              PK(iPF_V2,iX1,iX2,iX3), &
              PK(iPF_V3,iX1,iX2,iX3), &
              PK(iPF_E ,iX1,iX2,iX3), &
              PK(iPF_Ne,iX1,iX2,iX3), &
+             PK(iPF_Nm,iX1,iX2,iX3), &
              GK(1     ,iX1,iX2,iX3), &
              GK(2     ,iX1,iX2,iX3), &
              GK(3     ,iX1,iX2,iX3), &
@@ -1554,6 +1561,7 @@ CONTAINS
              ( PK(iPF_D ,iX1,iX2,iX3), &
                PK(iPF_E ,iX1,iX2,iX3), &
                PK(iPF_Ne,iX1,iX2,iX3), &
+               PK(iPF_Nm,iX1,iX2,iX3), &
                PrK(      iX1,iX2,iX3) )
 
       VK(1,iX1,iX2,iX3) &
@@ -1707,6 +1715,7 @@ CONTAINS
                             U(1,iX1,iX2,iX3,iCF_S3), &
                             U(1,iX1,iX2,iX3,iCF_E ), &
                             U(1,iX1,iX2,iX3,iCF_Ne), &
+                            U(1,iX1,iX2,iX3,iCF_Nm), &
                             G(1,iX1,iX2,iX3,iGF_Gm_dd_11), &
                             G(1,iX1,iX2,iX3,iGF_Gm_dd_22), &
                             G(1,iX1,iX2,iX3,iGF_Gm_dd_33) ], &

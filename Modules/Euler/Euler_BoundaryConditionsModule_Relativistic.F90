@@ -13,6 +13,7 @@ MODULE Euler_BoundaryConditionsModule_Relativistic
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, &
     iPF_Ne, &
+    iPF_Nm, &
     nPF,    &
     iPF_D,  &
     iPF_V1, &
