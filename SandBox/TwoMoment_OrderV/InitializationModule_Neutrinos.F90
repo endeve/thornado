@@ -29,15 +29,15 @@ MODULE InitializationModule_Neutrinos
   USE GeometryFieldsModule, ONLY: &
     uGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
-    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    uAF, iAF_P, iAF_T, iAF_Ye, iAF_S, iAF_E, &
-    iAF_Me, iAF_Mp, iAF_Mn, iAF_Xp, iAF_Xn, &
+    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, iCF_Nm, &
+    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, iPF_Nm, &
+    uAF, iAF_P, iAF_T, iAF_Ye, iAF_Ym, iAF_S, iAF_E, &
+    iAF_Me, iAF_Mm, iAF_Mp, iAF_Mn, iAF_Xp, iAF_Xn, &
     iAF_Xa, iAF_Xh, iAF_Gm
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputeConserved_Euler_NonRelativistic
   USE RadiationFieldsModule, ONLY: &
-    nSpecies, iNuE, iNuE_Bar, &
+    nSpecies, iNuE, iNuE_Bar, iNuM, iNuM_Bar, &
     uPR, nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, &
     uCR, nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
   USE TwoMoment_UtilitiesModule, ONLY: &
@@ -172,18 +172,22 @@ CONTAINS
                  ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Ym), &
                    uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
-                   uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) )
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) )
 
           CALL ApplyEquationOfState_TABLE &
                  ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Ym), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_P ), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_S ), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_Me), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Mm), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_Mp), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_Mn), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_Xp), &
@@ -203,12 +207,14 @@ CONTAINS
                    uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                    uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                    uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                    uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                    uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                    uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                    uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                    uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                    uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                   uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                    uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                    uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                    uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -278,23 +284,28 @@ CONTAINS
           uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = D_0
           uAF(iNodeX,iX1,iX2,iX3,iAF_T ) = T_0
           uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = Y_0
+          uAF(iNodeX,iX1,iX2,iX3,iAF_Ym) = Zero
 
           CALL ComputeThermodynamicStates_Primitive_TABLE &
                  ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Ym), &
                    uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
-                   uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) )
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) )
 
           CALL ApplyEquationOfState_TABLE &
                  ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Ym), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_P ), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_S ), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_Me), &
+                   uAF(iNodeX,iX1,iX2,iX3,iAF_Mm), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_Mp), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_Mn), &
                    uAF(iNodeX,iX1,iX2,iX3,iAF_Xp), &
@@ -314,12 +325,14 @@ CONTAINS
                    uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                    uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                    uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                   uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                    uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                    uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                    uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                    uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                    uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                    uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                   uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                    uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                    uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                    uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -396,7 +409,7 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3, iS, iNodeE, iNodeX, iNodeX1, iNodeZ
     INTEGER  :: i, iR, iE, nR, nE
     REAL(DP) :: R, Tau
-    REAL(DP), ALLOCATABLE :: R_P(:), D_P(:), T_P(:), Y_P(:)
+    REAL(DP), ALLOCATABLE :: R_P(:), D_P(:), T_P(:), Ye_P(:), Ym_P(:)
     REAL(DP), ALLOCATABLE :: E_Nu(:), R_Nu(:,:), Chi(:,:,:), fEQ(:,:,:)
     REAL(DP), ALLOCATABLE :: D_Nu_P(:,:,:), I1_Nu_P(:,:,:)
 
@@ -404,7 +417,7 @@ CONTAINS
     WRITE(*,'(A6,A,A)') '', &
       'Initializing from Profile: ', TRIM( ProfileName )
 
-    CALL ReadFluidProfile( ProfileName, R_P, D_P, T_P, Y_P )
+    CALL ReadFluidProfile( ProfileName, R_P, D_P, T_P, Ye_P, Ym_P )
 
     ! --- Fluid Fields ---
 
@@ -427,24 +440,31 @@ CONTAINS
           = Interpolate1D_Linear( R, R_P(iR), R_P(iR+1), T_P(iR), T_P(iR+1) )
 
         uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) &
-          = Interpolate1D_Linear( R, R_P(iR), R_P(iR+1), Y_P(iR), Y_P(iR+1) )
+          = Interpolate1D_Linear( R, R_P(iR), R_P(iR+1), Ye_P(iR), Ye_P(iR+1) )
+
+        uAF(iNodeX,iX1,iX2,iX3,iAF_Ym) &
+          = Interpolate1D_Linear( R, R_P(iR), R_P(iR+1), Ym_P(iR), Ym_P(iR+1) )
 
         CALL ComputeThermodynamicStates_Primitive_TABLE &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_Ym), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
-                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) )
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) )
 
         CALL ApplyEquationOfState_TABLE &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_Ym), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_P ), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_S ), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_Me), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_Mm), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_Mp), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_Mn), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_Xp), &
@@ -464,12 +484,14 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -507,10 +529,10 @@ CONTAINS
     ! --- Neutrino Absorption Opacities and Equilibrium Distributions ---
 
     CALL ComputeEquilibriumDistributions_DG &
-           ( 1, nE, 1, nSpecies, 1, nR, E_Nu, D_P, T_P, Y_P, fEQ )
+           ( 1, nE, 1, nSpecies, 1, nR, E_Nu, D_P, T_P, Ye_P, Ym_P, fEQ )
 
     CALL ComputeNeutrinoOpacities_EC &
-           ( 1, nE, 1, nSpecies, 1, nR, E_Nu, D_P, T_P, Y_P, fEQ, Chi )
+           ( 1, nE, 1, nSpecies, 1, nR, E_Nu, D_P, T_P, Ye_P, Ym_P, fEQ, Chi )
 
     DO iR = 1, nR
 
@@ -629,7 +651,7 @@ CONTAINS
     END DO
     END DO
 
-    DEALLOCATE( R_P, D_P, T_P, Y_P )
+    DEALLOCATE( R_P, D_P, T_P, Ye_P, Ym_P )
     DEALLOCATE( E_Nu, R_Nu, Chi, fEQ )
     DEALLOCATE( D_Nu_P, I1_Nu_P )
 
@@ -659,23 +681,28 @@ CONTAINS
         uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = D_0
         uAF(iNodeX,iX1,iX2,iX3,iAF_T ) = T_0
         uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = Y_0
+        uAF(iNodeX,iX1,iX2,iX3,iAF_Ym) = Zero
 
         CALL ComputeThermodynamicStates_Primitive_TABLE &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_Ym), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
-                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) )
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) )
 
         CALL ApplyEquationOfState_TABLE &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_Ym), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_P ), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_S ), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_Me), &
+                 uAF(iNodeX,iX1,iX2,iX3,iAF_Mn), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_Mp), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_Mn), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_Xp), &
@@ -695,12 +722,14 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -726,13 +755,33 @@ CONTAINS
 
         kT = BoltzmannConstant * uAF(iNodeX,iX1,iX2,iX3,iAF_T)
 
-        Mnu = uAF  (iNodeX,iX1,iX2,iX3,iAF_Me) &
-              + uAF(iNodeX,iX1,iX2,iX3,iAF_Mp) &
-              - uAF(iNodeX,iX1,iX2,iX3,iAF_Mn)
+        IF ( iS == iNuE ) THEN
 
-        IF( iS == iNuE_Bar )THEN
+          Mnu = + uAF(iNodeX,iX1,iX2,iX3,iAF_Me) &
+                + uAF(iNodeX,iX1,iX2,iX3,iAF_Mp) &
+                - uAF(iNodeX,iX1,iX2,iX3,iAF_Mn)
 
-          Mnu = - Mnu
+        ELSE IF ( iS == iNuE_Bar ) THEN
+
+          Mnu = - uAF(iNodeX,iX1,iX2,iX3,iAF_Me) &
+                - uAF(iNodeX,iX1,iX2,iX3,iAF_Mp) &
+                + uAF(iNodeX,iX1,iX2,iX3,iAF_Mn)
+
+        ELSE IF ( iS == iNuM ) THEN
+
+          Mnu = + uAF(iNodeX,iX1,iX2,iX3,iAF_Mm) &
+                + uAF(iNodeX,iX1,iX2,iX3,iAF_Mp) &
+                - uAF(iNodeX,iX1,iX2,iX3,iAF_Mn)
+
+        ELSE IF ( iS == iNuM_Bar ) THEN
+
+          Mnu = - uAF(iNodeX,iX1,iX2,iX3,iAF_Mm) &
+                - uAF(iNodeX,iX1,iX2,iX3,iAF_Mp) &
+                + uAF(iNodeX,iX1,iX2,iX3,iAF_Mn)
+
+        ELSE
+
+          Mnu = Zero
 
         END IF
 
@@ -834,10 +883,10 @@ CONTAINS
   END FUNCTION TRAPEZ
 
 
-  SUBROUTINE ReadFluidProfile( FileName, R, D, T, Y )
+  SUBROUTINE ReadFluidProfile( FileName, R, D, T, Ye, Ym )
 
     CHARACTER(*),          INTENT(in)    :: FileName
-    REAL(DP), ALLOCATABLE, INTENT(inout) :: R(:), D(:), T(:), Y(:)
+    REAL(DP), ALLOCATABLE, INTENT(inout) :: R(:), D(:), T(:), Ye(:), Ym(:)
 
     CHARACTER(LEN=9)      :: Format1 = '(4ES12.3)'
     INTEGER               :: nPoints, iPoint
@@ -868,12 +917,13 @@ CONTAINS
     END DO
     CLOSE( 1, STATUS = 'keep' )
 
-    ALLOCATE( R(nPoints), D(nPoints), T(nPoints), Y(nPoints) )
+    ALLOCATE( R(nPoints), D(nPoints), T(nPoints), Ye(nPoints), Ym(nPoints) )
 
-    R = Data(:,1) * Kilometer
-    D = Data(:,2) * Gram / Centimeter**3
-    T = Data(:,3) * MeV
-    Y = Data(:,4)
+    R  = Data(:,1) * Kilometer
+    D  = Data(:,2) * Gram / Centimeter**3
+    T  = Data(:,3) * MeV
+    Ye = Data(:,4)
+    Ym = Zero
 
     DEALLOCATE( Data )
 
@@ -908,7 +958,7 @@ CONTAINS
     INTEGER  :: iE, iX1, iX2, iX3, iS
     INTEGER  :: iNodeE, iNodeX, iNodeZ
     INTEGER  :: nE, nX(3), nE_P, nX_P, iE_P, iX_P
-    REAL(DP), ALLOCATABLE :: E_P(:), D_P(:), T_P(:), Y_P(:), f0_P(:,:,:)
+    REAL(DP), ALLOCATABLE :: E_P(:), D_P(:), T_P(:), Ye_P(:), Ym_P(:), f0_P(:,:,:)
     REAL(DP) :: MaxError(nSpecies), N0
 
     nE = iE_E0 - iE_B0 + 1
@@ -928,7 +978,8 @@ CONTAINS
 
     ALLOCATE( D_P(nX_P) )
     ALLOCATE( T_P(nX_P) )
-    ALLOCATE( Y_P(nX_P) )
+    ALLOCATE( Ye_P(nX_P) )
+    ALLOCATE( Ym_P(nX_P) )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -940,7 +991,8 @@ CONTAINS
              + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
       D_P(iX_P) = uPF(iNodeX,iX1,iX2,iX3,iPF_D )
       T_P(iX_P) = uAF(iNodeX,iX1,iX2,iX3,iAF_T )
-      Y_P(iX_P) = uAF(iNodeX,iX1,iX2,iX3,iAF_Ye)
+      Ye_P(iX_P) = uAF(iNodeX,iX1,iX2,iX3,iAF_Ye)
+      Ym_P(iX_P) = uAF(iNodeX,iX1,iX2,iX3,iAF_Ym)
     END DO
     END DO
     END DO
@@ -949,7 +1001,7 @@ CONTAINS
     ALLOCATE( f0_P(nE_P,nSpecies,nX_P) )
 
     CALL ComputeEquilibriumDistributions_DG &
-           ( 1, nE_P, 1, nSpecies, 1, nX_P, E_P, D_P, T_P, Y_P, f0_P )
+           ( 1, nE_P, 1, nSpecies, 1, nX_P, E_P, D_P, T_P, Ye_P, Ym_P, f0_P )
 
     MaxError = Zero
 
