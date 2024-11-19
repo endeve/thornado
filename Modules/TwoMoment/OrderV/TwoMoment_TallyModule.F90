@@ -24,8 +24,8 @@ MODULE TwoMoment_TallyModule
   USE GeometryFieldsModule, ONLY: &
     nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, iGF_SqrtGm, iGF_Phi_N
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
+    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, iCF_Nm, &
+    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, iPF_Nm
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputePrimitive_Euler_NonRelativistic
   USE RadiationFieldsModule, ONLY: &
@@ -496,12 +496,14 @@ CONTAINS
                  U (iNodeX,iZ2,iZ3,iZ4,iCF_S3),        &
                  U (iNodeX,iZ2,iZ3,iZ4,iCF_E ),        &
                  U (iNodeX,iZ2,iZ3,iZ4,iCF_Ne),        &
+                 U (iNodeX,iZ2,iZ3,iZ4,iCF_Nm),        &
                  P (iNodeX,iZ2,iZ3,iZ4,iPF_D ),        &
                  P (iNodeX,iZ2,iZ3,iZ4,iPF_V1),        &
                  P (iNodeX,iZ2,iZ3,iZ4,iPF_V2),        &
                  P (iNodeX,iZ2,iZ3,iZ4,iPF_V3),        &
                  P (iNodeX,iZ2,iZ3,iZ4,iPF_E ),        &
                  P (iNodeX,iZ2,iZ3,iZ4,iPF_Ne),        &
+                 P (iNodeX,iZ2,iZ3,iZ4,iPF_Nm),        &
                  GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
                  GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
                  GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
@@ -710,7 +712,8 @@ CONTAINS
               + dX1(iX1) * dX2(iX2) * dX3(iX3)      &
                 * WeightsX_q(iNodeX)                &
                 * GX(iNodeX,iX1,iX2,iX3,iGF_SqrtGm) &
-                * U (iNodeX,iX1,iX2,iX3,iCF_Ne    )
+                * (   U(iNodeX,iX1,iX2,iX3,iCF_Ne)  &
+                    + U(iNodeX,iX1,iX2,iX3,iCF_Nm) )
 
       END DO
 
@@ -846,7 +849,7 @@ CONTAINS
       = FluidEnergy_OffGrid       + dU(iCF_E )
 
     FluidLeptonNumber_OffGrid &
-      = FluidLeptonNumber_OffGrid + dU(iCF_Ne)
+      = FluidLeptonNumber_OffGrid + dU(iCF_Ne) + dU(iCF_Nm)
 
   END SUBROUTINE IncrementOffGridTally_Euler
 

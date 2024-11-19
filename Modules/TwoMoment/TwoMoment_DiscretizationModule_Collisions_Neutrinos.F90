@@ -24,9 +24,9 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
     iGF_Alpha, iGF_Beta_1, iGF_Beta_2, iGF_Beta_3
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    nAF, iAF_T, iAF_E , iAF_Ye, iAF_P
+    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, iCF_Nm, &
+    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, iPF_Nm, &
+    nAF, iAF_T, iAF_E , iAF_Ye, iAF_Ym, iAF_P
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
@@ -208,12 +208,14 @@ CONTAINS
                CF_N(iN_X,iCF_S3), &
                CF_N(iN_X,iCF_E ), &
                CF_N(iN_X,iCF_Ne), &
+               CF_N(iN_X,iCF_Nm), &
                PF_N(iN_X,iPF_D ), &
                PF_N(iN_X,iPF_V1), &
                PF_N(iN_X,iPF_V2), &
                PF_N(iN_X,iPF_V3), &
                PF_N(iN_X,iPF_E ), &
                PF_N(iN_X,iPF_Ne), &
+               PF_N(iN_X,iPF_Nm), &
                GX_N(iN_X,iGF_Gm_dd_11), &
                GX_N(iN_X,iGF_Gm_dd_22), &
                GX_N(iN_X,iGF_Gm_dd_33) )
@@ -231,12 +233,14 @@ CONTAINS
                CF_N(iN_X,iCF_S3), &
                CF_N(iN_X,iCF_E ), &
                CF_N(iN_X,iCF_Ne), &
+               CF_N(iN_X,iCF_Nm), &
                PF_N(iN_X,iPF_D ), &
                PF_N(iN_X,iPF_V1), &
                PF_N(iN_X,iPF_V2), &
                PF_N(iN_X,iPF_V3), &
                PF_N(iN_X,iPF_E ), &
                PF_N(iN_X,iPF_Ne), &
+               PF_N(iN_X,iPF_Nm), &
                GX_N(iN_X,iGF_Gm_dd_11), &
                GX_N(iN_X,iGF_Gm_dd_22), &
                GX_N(iN_X,iGF_Gm_dd_33) )
@@ -255,12 +259,14 @@ CONTAINS
                CF_N(iN_X,iCF_S3), &
                CF_N(iN_X,iCF_E ), &
                CF_N(iN_X,iCF_Ne), &
+               CF_N(iN_X,iCF_Nm), &
                PF_N(iN_X,iPF_D ), &
                PF_N(iN_X,iPF_V1), &
                PF_N(iN_X,iPF_V2), &
                PF_N(iN_X,iPF_V3), &
                PF_N(iN_X,iPF_E ), &
                PF_N(iN_X,iPF_Ne), &
+               PF_N(iN_X,iPF_Nm), &
                GX_N(iN_X,iGF_Gm_dd_11), &
                GX_N(iN_X,iGF_Gm_dd_22), &
                GX_N(iN_X,iGF_Gm_dd_33) )
@@ -324,8 +330,8 @@ CONTAINS
     ! --- EOS Table Lookup ---
 
     CALL ComputeThermodynamicStates_Auxiliary_TABLE &
-           ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
-             AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye) )
+           ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), PF_N(:,iPF_Nm), &
+             AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye), AF_N(:,iAF_Ym) )
 
     ! --- Neutrino-Matter Coupling Solve ---
 
@@ -343,6 +349,7 @@ CONTAINS
              PF_N(:,iPF_D ), &
              AF_N(:,iAF_T ), &
              AF_N(:,iAF_Ye), &
+             AF_N(:,iAF_Ym), &
              AF_N(:,iAF_E ), &
              GX_N(:,iGF_Gm_dd_11), &
              GX_N(:,iGF_Gm_dd_22), &
@@ -528,12 +535,14 @@ CONTAINS
                PF_N(iN_X,iPF_V3), &
                PF_N(iN_X,iPF_E ), &
                PF_N(iN_X,iPF_Ne), &
+               PF_N(iN_X,iPF_Nm), &
                CF_N(iN_X,iCF_D ), &
                CF_N(iN_X,iCF_S1), &
                CF_N(iN_X,iCF_S2), &
                CF_N(iN_X,iCF_S3), &
                CF_N(iN_X,iCF_E ), &
                CF_N(iN_X,iCF_Ne), &
+               CF_N(iN_X,iCF_Nm), &
                GX_N(iN_X,iGF_Gm_dd_11), &
                GX_N(iN_X,iGF_Gm_dd_22), &
                GX_N(iN_X,iGF_Gm_dd_33) )
@@ -547,6 +556,7 @@ CONTAINS
 
       PF_N(iN_X,iPF_E ) = AF_N(iN_X,iAF_E ) * PF_N(iN_X,iPF_D)
       PF_N(iN_X,iPF_Ne) = AF_N(iN_X,iAF_Ye) * PF_N(iN_X,iPF_D) / AtomicMassUnit
+      PF_N(iN_X,iPF_Nm) = AF_N(iN_X,iAF_Ym) * PF_N(iN_X,iPF_D) / AtomicMassUnit
 
       CALL ComputeConserved_Euler_NonRelativistic &
              ( PF_N(iN_X,iPF_D),  &
@@ -555,12 +565,14 @@ CONTAINS
                PF_N(iN_X,iPF_V3), &
                PF_N(iN_X,iPF_E ), &
                PF_N(iN_X,iPF_Ne), &
+               PF_N(iN_X,iPF_Nm), &
                CF_N(iN_X,iCF_D ), &
                CF_N(iN_X,iCF_S1), &
                CF_N(iN_X,iCF_S2), &
                CF_N(iN_X,iCF_S3), &
                CF_N(iN_X,iCF_E ), &
                CF_N(iN_X,iCF_Ne), &
+               CF_N(iN_X,iCF_Nm), &
                GX_N(iN_X,iGF_Gm_dd_11), &
                GX_N(iN_X,iGF_Gm_dd_22), &
                GX_N(iN_X,iGF_Gm_dd_33) )
@@ -572,11 +584,11 @@ CONTAINS
 
 
     CALL ComputeThermodynamicStates_Primitive_TABLE &
-           ( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye), &
-             PF_N(:,iPF_E), AF_N(:,iAF_E), PF_N(:,iPF_Ne) )
+           ( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye), AF_N(:,iAF_Ym), &
+             PF_N(:,iPF_E), AF_N(:,iAF_E), PF_N(:,iPF_Ne), PF_N(:,iPF_Nm) )
 
     CALL ComputePressureFromPrimitive_TABLE & 
-           ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
+           ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), PF_N(:,iPF_Nm), &
              AF_N(:,iAF_P) )
 
 
@@ -589,12 +601,14 @@ CONTAINS
                PF_N(iN_X,iPF_V3), &
                PF_N(iN_X,iPF_E ), &
                PF_N(iN_X,iPF_Ne), &
+               PF_N(iN_X,iPF_Nm), &
                CF_N(iN_X,iCF_D ), &
                CF_N(iN_X,iCF_S1), &
                CF_N(iN_X,iCF_S2), &
                CF_N(iN_X,iCF_S3), &
                CF_N(iN_X,iCF_E ), &
                CF_N(iN_X,iCF_Ne), &
+               CF_N(iN_X,iCF_Nm), &
                GX_N(iN_X,iGF_Gm_dd_11), &
                GX_N(iN_X,iGF_Gm_dd_22), &
                GX_N(iN_X,iGF_Gm_dd_33), &

@@ -11,8 +11,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions
   USE GeometryFieldsModule, ONLY: &
     nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
+    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, iCF_Nm, &
+    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, iPF_Nm
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputePrimitive_Euler_NonRelativistic
   USE RadiationFieldsModule, ONLY: &
@@ -367,12 +367,14 @@ CONTAINS
                CF_N(iCF_S3      ,iN_X), &
                CF_N(iCF_E       ,iN_X), &
                CF_N(iCF_Ne      ,iN_X), &
+               CF_N(iCF_Nm      ,iN_X), &
                PF_N(iPF_D       ,iN_X), &
                PF_N(iPF_V1      ,iN_X), &
                PF_N(iPF_V2      ,iN_X), &
                PF_N(iPF_V3      ,iN_X), &
                PF_N(iPF_E       ,iN_X), &
                PF_N(iPF_Ne      ,iN_X), &
+               PF_N(iPF_Nm      ,iN_X), &
                GX_N(iGF_Gm_dd_11,iN_X), &
                GX_N(iGF_Gm_dd_22,iN_X), &
                GX_N(iGF_Gm_dd_33,iN_X) )

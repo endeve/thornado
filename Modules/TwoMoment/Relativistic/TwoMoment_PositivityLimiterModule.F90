@@ -39,7 +39,7 @@ MODULE TwoMoment_PositivityLimiterModule
     iGF_h_1, iGF_h_2, iGF_h_3
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, &
-    iCF_E, iCF_NE
+    iCF_E, iCF_Ne, iCF_Nm
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
@@ -593,10 +593,17 @@ CONTAINS
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
 
-    REAL(DP) :: NE_Q(nDOFX, &
+    REAL(DP) :: Ne_Q(nDOFX, &
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
-                NE_P(nPT_X  , &
+                Ne_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
+
+    REAL(DP) :: Nm_Q(nDOFX, &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                Nm_P(nPT_X  , &
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
 
@@ -615,7 +622,10 @@ CONTAINS
                  EP_Q(nDOFX  , &
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
-                 NEP_Q(nDOFX  , &
+                 NeP_Q(nDOFX  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                 NmP_Q(nDOFX  , &
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
     REAL(DP) :: DP_P(nPT_X  , &
@@ -633,7 +643,10 @@ CONTAINS
                  EP_P(nPT_X  , &
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
-                 NEP_P(nPT_X  , &
+                 NeP_P(nPT_X  , &
+                     iZ_B0(2):iZ_E0(2), &
+                     iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)), &
+                 NmP_P(nPT_X  , &
                      iZ_B0(2):iZ_E0(2), &
                      iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4))
 
@@ -798,7 +811,8 @@ CONTAINS
       S2_Q(:,iZ2,iZ3,iZ4) = U_F(:,iZ2,iZ3,iZ4,iCF_S2)
       S3_Q(:,iZ2,iZ3,iZ4) = U_F(:,iZ2,iZ3,iZ4,iCF_S3)
       E_Q (:,iZ2,iZ3,iZ4) = U_F(:,iZ2,iZ3,iZ4,iCF_E )
-      NE_Q(:,iZ2,iZ3,iZ4) = U_F(:,iZ2,iZ3,iZ4,iCF_NE)
+      Ne_Q(:,iZ2,iZ3,iZ4) = U_F(:,iZ2,iZ3,iZ4,iCF_Ne)
+      Nm_Q(:,iZ2,iZ3,iZ4) = U_F(:,iZ2,iZ3,iZ4,iCF_Nm)
 
       G_11_Q(:,iZ2,iZ3,iZ4) = GX(:,iZ2,iZ3,iZ4,iGF_Gm_dd_11)
       G_22_Q(:,iZ2,iZ3,iZ4) = GX(:,iZ2,iZ3,iZ4,iGF_Gm_dd_22)
@@ -831,13 +845,15 @@ CONTAINS
                S2_Q  (iNodeX,iZ2,iZ3,iZ4), &
                S3_Q  (iNodeX,iZ2,iZ3,iZ4), &
                E_Q   (iNodeX,iZ2,iZ3,iZ4), &
-               NE_Q  (iNodeX,iZ2,iZ3,iZ4), &
+               Ne_Q  (iNodeX,iZ2,iZ3,iZ4), &
+               Nm_Q  (iNodeX,iZ2,iZ3,iZ4), &
                DP_Q  (iNodeX,iZ2,iZ3,iZ4), &
                V1_Q  (iNodeX,iZ2,iZ3,iZ4), &
                V2_Q  (iNodeX,iZ2,iZ3,iZ4), &
                V3_Q  (iNodeX,iZ2,iZ3,iZ4), &
                EP_Q  (iNodeX,iZ2,iZ3,iZ4), &
-               NEP_Q (iNodeX,iZ2,iZ3,iZ4), &
+               NeP_Q (iNodeX,iZ2,iZ3,iZ4), &
+               NmP_Q (iNodeX,iZ2,iZ3,iZ4), &
                G_11_Q(iNodeX,iZ2,iZ3,iZ4), &
                G_22_Q(iNodeX,iZ2,iZ3,iZ4), &
                G_33_Q(iNodeX,iZ2,iZ3,iZ4), &
@@ -878,6 +894,7 @@ CONTAINS
                               S3_Q  (iNodeX,iZ2,iZ3,iZ4), &
                               E_Q   (iNodeX,iZ2,iZ3,iZ4), &
                               Ne_Q  (iNodeX,iZ2,iZ3,iZ4), &
+                              Nm_Q  (iNodeX,iZ2,iZ3,iZ4), &
                               G_11_Q(iNodeX,iZ2,iZ3,iZ4), &
                               G_22_Q(iNodeX,iZ2,iZ3,iZ4), &
                               G_33_Q(iNodeX,iZ2,iZ3,iZ4) ], &
@@ -909,7 +926,8 @@ CONTAINS
     CALL ComputePointValuesX( iX_B0, iX_E0, S2_Q , S2_P  )
     CALL ComputePointValuesX( iX_B0, iX_E0, S3_Q , S3_P  )
     CALL ComputePointValuesX( iX_B0, iX_E0, E_Q , E_P  )
-    CALL ComputePointValuesX( iX_B0, iX_E0, NE_Q , NE_P  )
+    CALL ComputePointValuesX( iX_B0, iX_E0, Ne_Q , Ne_P  )
+    CALL ComputePointValuesX( iX_B0, iX_E0, Nm_Q , Nm_P  )
 
     CALL ComputePointValuesX( iX_B0, iX_E0, h_d_1_Q , h_d_1_P  )
     CALL ComputePointValuesX( iX_B0, iX_E0, h_d_2_Q , h_d_2_P  )
@@ -942,13 +960,15 @@ CONTAINS
                S2_P  (iP,iZ2,iZ3,iZ4), &
                S3_P  (iP,iZ2,iZ3,iZ4), &
                E_P   (iP,iZ2,iZ3,iZ4), &
-               NE_P  (iP,iZ2,iZ3,iZ4), &
+               Ne_P  (iP,iZ2,iZ3,iZ4), &
+               Nm_P  (iP,iZ2,iZ3,iZ4), &
                DP_P  (iP,iZ2,iZ3,iZ4), &
                V1_P  (iP,iZ2,iZ3,iZ4), &
                V2_P  (iP,iZ2,iZ3,iZ4), &
                V3_P  (iP,iZ2,iZ3,iZ4), &
                EP_P  (iP,iZ2,iZ3,iZ4), &
-               NEP_P (iP,iZ2,iZ3,iZ4), &
+               NeP_P (iP,iZ2,iZ3,iZ4), &
+               NmP_P (iP,iZ2,iZ3,iZ4), &
                G_11_P(iP,iZ2,iZ3,iZ4), &
                G_22_P(iP,iZ2,iZ3,iZ4), &
                G_33_P(iP,iZ2,iZ3,iZ4), &
@@ -989,6 +1009,7 @@ CONTAINS
                               S3_P  (iP,iZ2,iZ3,iZ4), &
                               E_P   (iP,iZ2,iZ3,iZ4), &
                               Ne_P  (iP,iZ2,iZ3,iZ4), &
+                              Nm_P  (iP,iZ2,iZ3,iZ4), &
                               G_11_P(iP,iZ2,iZ3,iZ4), &
                               G_22_P(iP,iZ2,iZ3,iZ4), &
                               G_33_P(iP,iZ2,iZ3,iZ4) ], &
