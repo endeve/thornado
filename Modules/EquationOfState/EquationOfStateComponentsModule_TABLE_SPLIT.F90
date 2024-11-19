@@ -45,10 +45,10 @@ MODULE EquationOfStateComponentsModule_TABLE
     FullMuonEOS, MuonStateType
   USE wlHelmMuonIOModuleHDF, ONLY: &
     ReadHelmholtzTableHDF, ReadMuonTableHDF
-  USE wlwlSoundSpeedModule, ONLY: &
-    CalculatewlSoundSpeedModule
+  USE wlSoundSpeedModule, ONLY: &
+    CalculateSoundSpeed
   USE wlEosConstantsModule, ONLY: &
-    kmev, rmu, kmev_inv, ergmev, me, mmu, cvel
+    rmu, ergmev, mass_ele, mass_mu
   USE wlInterpolationUtilitiesModule, ONLY: &
     Index1D_Lin, Index1D_Log
     
@@ -84,7 +84,7 @@ MODULE EquationOfStateComponentsModule_TABLE
     UnitXp, UnitXn, UnitXa, UnitXh, UnitGm
   REAL(DP), PUBLIC :: &
     OS_P, OS_S, OS_E, OS_Mp, OS_Mn, &
-    OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Mue_placeholder
+    OS_Xp, OS_Xn, OS_Xa, OS_Xh
   REAL(DP), PARAMETER :: &
     BaryonMass = AtomicMassUnit
   REAL(DP) :: minvar, OS_loc
@@ -92,7 +92,7 @@ MODULE EquationOfStateComponentsModule_TABLE
     Dbary_T, Tbary_T, Ypbary_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: &
     Pbary_T, Sbary_T, Ebary_T, Mpbary_T, Mnbary_T, &
-    Xpbary_T, Xnbary_T, Xabary_T, Xhbary_T, Mue_placeholder
+    Xpbary_T, Xnbary_T, Xabary_T, Xhbary_T
 #ifdef MICROPHYSICS_WEAKLIB
   LOGICAL :: UsingExternalEOS
   TYPE(EquationOfStateTableType), POINTER :: EOSBary
@@ -226,20 +226,43 @@ MODULE EquationOfStateComponentsModule_TABLE
     MODULE PROCEDURE ComputeHeavyMassNumber_TABLE_Vector
   END INTERFACE
 
-  INTERFACE ComputeNeutrinoChemicalPotential_TABLE
-    MODULE PROCEDURE ComputeNeutrinoChemicalPotential_TABLE_Scalar
-    MODULE PROCEDURE ComputeNeutrinoChemicalPotential_TABLE_Vector
-  END INTERFACE
+  INTERFACE ComputeElectronNeutrinoChemicalPotential_TABLE
+    MODULE PROCEDURE ComputeElectronNeutrinoChemicalPotential_TABLE_Scalar
+    MODULE PROCEDURE ComputeElectronNeutrinoChemicalPotential_TABLE_Vector
+  END INTERFACE ComputeElectronNeutrinoChemicalPotential_TABLE
 
+  INTERFACE ComputeMuonNeutrinoChemicalPotential_TABLE
+    MODULE PROCEDURE ComputeMuonNeutrinoChemicalPotential_TABLE_Scalar
+    MODULE PROCEDURE ComputeMuonNeutrinoChemicalPotential_TABLE_Vector
+  END INTERFACE ComputeMuonNeutrinoChemicalPotential_TABLE
+  
+  INTERFACE ComputeDependentVariableBaryons
+    MODULE PROCEDURE ComputeDependentVariableBaryons_Scalar
+    MODULE PROCEDURE ComputeDependentVariableBaryons_Vector
+  END INTERFACE ComputeDependentVariableBaryons
+  
+  INTERFACE ComputeDependentVariableAndDerivativesBaryons_TABLE
+    MODULE PROCEDURE ComputeDependentVariableAndDerivativesBaryons_TABLE_Scalar
+    MODULE PROCEDURE ComputeDependentVariableAndDerivativesBaryons_TABLE_Vector
+  END INTERFACE ComputeDependentVariableAndDerivativesBaryons_TABLE
+  
   INTERFACE ComputeDependentVariableTotal
     MODULE PROCEDURE ComputeDependentVariableTotal_Scalar
     MODULE PROCEDURE ComputeDependentVariableTotal_Vector
   END INTERFACE ComputeDependentVariableTotal
 
-  INTERFACE ComputeDependentVariableAndDerivatives_TABLE
+  INTERFACE ComputeDependentVariableAndDerivativesTotal_TABLE
     MODULE PROCEDURE ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar
     MODULE PROCEDURE ComputeDependentVariableAndDerivativesTotal_TABLE_Vector
-  END INTERFACE ComputeDependentVariableAndDerivatives_TABLE
+  END INTERFACE ComputeDependentVariableAndDerivativesTotal_TABLE
+
+  ! Define local constants
+  
+  REAL(dp), PARAMETER  :: ergmev    = 1.602177d-6   ! ergs per MeV
+  REAL(dp), PARAMETER  :: avn       = 6.022141d+23  ! avogadro's number
+  REAL(dp), PARAMETER  :: rmu       = 1.0d0/avn     ! atomic mass unit
+  REAL(dp), PARAMETER  :: mass_ele  = 0.510998d+00  ! electron mass [MeV]
+  REAL(dp), PARAMETER  :: mass_mu   = 105.65837d+00 ! muon mass [MeV]
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET &
@@ -485,12 +508,12 @@ CONTAINS
           ! calculate electron quantities
           CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
 
-          Eele = ElectronState % e + me / rmu * ergmev * ElectronState % Y_e ! add back mass to internal Energy!
+          Eele = ElectronState % e + mass_ele / rmu * ergmev * ElectronState % Y_e ! add back mass to internal Energy!
           Pele = ElectronState % p
           Sele = ElectronState % s
 
           Es(iRho,iTemp,iYp) = 10.0d0**( Ebary_T(iRho,iTemp,iYp) ) + Eele - OS_E
-          Ps(iRho,iTemp,iYp) = 10.0d0**( Pbary_T(iRho,iTemp,iYp) ) + Pele - OS_P
+          Ps(iRho,iTemp,iYp) = ( Pbary_T(iRho,iTemp,iYp) ) + Pele - OS_P
           Ss(iRho,iTemp,iYp) = 10.0d0**( Sbary_T(iRho,iTemp,iYp) ) + Sele - OS_S
 
         ENDDO
@@ -611,7 +634,7 @@ CONTAINS
 
 
   SUBROUTINE ApplyEquationOfState_TABLE_Scalar &
-    ( D, T, Ye, Ym, P, S, E, Mue, Mumu, Mup, Mun, Xp, Xn, Xa, Xh )
+    ( D, T, Ye, Ym, P, S, E, Mue, Mum, Mup, Mun, Xp, Xn, Xa, Xh )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -620,40 +643,15 @@ CONTAINS
 #endif
 
     REAL(DP), INTENT(in)  :: D, T, Ye, Ym
-    REAL(DP), INTENT(out) :: P, S, E, Mue, Mumu, Mup, Mun, Xp, Xn, Xa, Xh
+    REAL(DP), INTENT(out) :: P, S, E, Mue, Mum, Mup, Mun, Xp, Xn, Xa, Xh
 
     REAL(DP) :: Pbary, Sbary, Ebary, Pele, Sele, Eele, &
-                P_mu, S_mu, E_mu
+                P_mu, S_mu, E_mu, Yp
 
     TYPE(ElectronStateType) :: ElectronState
     TYPE(MuonStateType) :: MuonState
-
-    ! Calculate Electron Quantities
-    ! Initialize Electron state (Abar and Zbar not needed!!!)
-    ElectronState % t = T
-    ElectronState % rho = D
-    ElectronState % Y_e = Ye
     
-    CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
-
-    Eele = ElectronState % e + me / rmu * ergmev * ElectronState % Y_e ! add back mass to internal Energy!
-    Pele = ElectronState % p
-    Sele = ElectronState % s
-    Mue = ElectronState % mu_e
-
-    ! Calculate Muon Quantities
-    MuonState % t = T
-    MuonState % rhoym = D * Ym
-    
-    CALL FullMuonEOS(MuonTable, MuonState)
-
-    E_mu = MuonState % e + mmu / rmu * ergmev * Ym ! add back mass to internal Energy!
-    P_mu = MuonState % p
-    S_mu = MuonState % s
-    Mumu = MuonState % mu
-    
-    ! Calculate Baryon quantities
-
+    Yp = Ye + Ym
 #ifdef INVERSION_COMBINED
     ! --- Interpolate Pressure ----------------------------------------
 
@@ -673,20 +671,45 @@ CONTAINS
            ( D, T, Ye, Ym, E, Ebary_T, OS_E, &
            UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
 #else
+
+    ! Calculate Electron Quantities
+    ! Initialize Electron state (Abar and Zbar not needed!!!)
+    ElectronState % t = T
+    ElectronState % rho = D
+    ElectronState % Y_e = Ye
+    
+    CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
+
+    Eele = ElectronState % e + mass_ele / rmu * ergmev * ElectronState % Y_e ! add back mass to internal Energy!
+    Pele = ElectronState % p
+    Sele = ElectronState % s
+    Mue = ElectronState % mu_e
+
+    ! Calculate Muon Quantities
+    MuonState % t = T
+    MuonState % rhoym = D * Ym
+    
+    CALL FullMuonEOS(MuonTable, MuonState)
+
+    E_mu = MuonState % e + mass_mu / rmu * ergmev * Ym ! add back mass to internal Energy!
+    P_mu = MuonState % p
+    S_mu = MuonState % s
+    Mum = MuonState % mu
+
     ! --- Interpolate Pressure ----------------------------------------
 
     CALL ComputeDependentVariableBaryons_Scalar &
-           ( D, T, Ye+Ym, P, Pbary_T, OS_P, UnitP )
+           ( D, T, Ye, Ym, P, Pbary_T, OS_P, UnitP )
 
     ! --- Interpolate Entropy Per Baryon ------------------------------
 
     CALL ComputeDependentVariableBaryons_Scalar &
-           ( D, T, Ye+Ym, S, Sbary_T, OS_S, UnitS )
+           ( D, T, Ye, Ym, S, Sbary_T, OS_S, UnitS )
 
     ! --- Interpolate Specific Internal Energy ------------------------
 
     CALL ComputeDependentVariableBaryons_Scalar &
-           ( D, T, Ye+Ym, E, Ebary_T, OS_E, UnitE )
+           ( D, T, Ye, Ym, E, Ebary_T, OS_E, UnitE )
            
     E = E + Eele + E_mu
     P = P + Pele + P_mu
@@ -697,41 +720,41 @@ CONTAINS
     ! --- Interpolate Proton Chemical Potential -----------------------
 
     CALL ComputeDependentVariableBaryons_Scalar &
-           ( D, T, Ye+Ym, Mup, Mpbary_T, OS_Mp, UnitMp )
+           ( D, T, Yp, Mup, Mpbary_T, OS_Mp, UnitMp )
 
     ! --- Interpolate Neutron Chemical Potential ----------------------
 
     CALL ComputeDependentVariableBaryons_Scalar &
-           ( D, T, Ye+Ym, Mun, Mnbary_T, OS_Mn, UnitMn )
+           ( D, T, Yp, Mun, Mnbary_T, OS_Mn, UnitMn )
 
     ! --- Interpolate Proton Mass Fraction ----------------------------
 
     CALL ComputeDependentVariableBaryons_Scalar &
-           ( D, T, Ye+Ym, Xp, Xpbary_T, OS_Xp, UnitXp )
+           ( D, T, Yp, Xp, Xpbary_T, OS_Xp, UnitXp )
 
     ! --- Interpolate Neutron Mass Fraction ---------------------------
 
     CALL ComputeDependentVariableBaryons_Scalar &
-           ( D, T, Ye+Ym, Xn, Xnbary_T, OS_Xn, UnitXn )
+           ( D, T, Yp, Xn, Xnbary_T, OS_Xn, UnitXn )
 
     ! --- Interpolate Alpha Mass Fraction -----------------------------
 
     CALL ComputeDependentVariableBaryons_Scalar &
-           ( D, T, Ye+Ym, Xa, Xabary_T, OS_Xa, UnitXa )
+           ( D, T, Yp, Xa, Xabary_T, OS_Xa, UnitXa )
 
     ! --- Interpolate Heavy Mass Fraction -----------------------------
 
     CALL ComputeDependentVariableBaryons_Scalar &
-           ( D, T, Ye+Ym, Xh, Xhbary_T, OS_Xh, UnitXh )
+           ( D, T, Yp, Xh, Xhbary_T, OS_Xh, UnitXh )
 
   END SUBROUTINE ApplyEquationOfState_TABLE_Scalar
 
 
   SUBROUTINE ApplyEquationOfState_TABLE_Vector &
-    ( D, T, Ye, Ym, P, S, E, Mue, Mumu, Mup, Mun, Xp, Xn, Xa, Xh )
+    ( D, T, Ye, Ym, P, S, E, Mue, Mum, Mup, Mun, Xp, Xn, Xa, Xh )
 
     REAL(DP), INTENT(in)  :: D(1:), T(1:), Ye(1:), Ym(1:)
-    REAL(DP), INTENT(out) :: P(1:), S(1:), E(1:), Mue(1:), Mumu(1:), Mup(1:), Mun(1:)
+    REAL(DP), INTENT(out) :: P(1:), S(1:), E(1:), Mue(1:), Mum(1:), Mup(1:), Mun(1:)
     REAL(DP), INTENT(out) :: Xp(1:), Xn(1:), Xa(1:), Xh(1:)
 
     INTEGER :: iP, nP
@@ -742,7 +765,7 @@ CONTAINS
 
       CALL ApplyEquationOfState_TABLE_Scalar &
              ( D (iP), T (iP), Ye (iP), Ym (iP), P (iP), S (iP), E (iP), &
-             Mue(iP), Mumu(iP), Mup(iP), Mun(iP), Xp(iP), Xn(iP), Xa(iP), Xh(iP) )
+             Mue(iP), Mum(iP), Mup(iP), Mun(iP), Xp(iP), Xn(iP), Xa(iP), Xh(iP) )
 
     END DO
 
@@ -1009,17 +1032,18 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, Ev, Ne, Nm
     REAL(DP), INTENT(out) :: P
 
-    REAL(DP) :: Em, T, Ye, Ym
+    REAL(DP) :: Em, T, Ye, , Yp
 
     Em  = Ev / D              ! --- Internal Energy per Mass
     Ye  = Ne / D * BaryonMass ! --- Electron Fraction
     Ym = Ne / D * BaryonMass ! --- Muon Fraction
-
+    Yp = Ye + Ym
+  
     CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
-           ( D, Em, Ye+Ym, Ye, Ym, T )
+           ( D, Em, Yp, Ye, Ym, T )
 
     CALL ComputePressure_TABLE_Scalar &
-           ( D, T, Ye+Ym, Ye, Ym, P )
+           ( D, T, Yp, Ye, Ym, P )
 
   END SUBROUTINE ComputePressureFromPrimitive_TABLE_Scalar
 
@@ -1054,7 +1078,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, Em, Ye, Ym
     REAL(DP), INTENT(out) :: P
 
-    REAL(DP) :: D_P, E_P, Ye_P, Ym_P, T_P, T
+    REAL(DP) :: D_P, E_P, Yp_P, Ye_P, Ym_P, T_P, T
 
 #ifdef INVERSION_COMBINED
 #else
@@ -1069,7 +1093,8 @@ CONTAINS
     E_P = Em / UnitE
     Ye_P = Ye  / UnitY
     Ym_P = Ym  / UnitY
-
+    Yp_P = Ye_P + Ym_P
+    
     CALL ComputeTemperatureWith_DEYpYl_Single_NoGuess_NoError &
            ( D_P, E_P, Ye_P, Ym_P, Dbary_T, Tbary_T, Ypbary_T, Ebary_T, OS_E, &
            T_P )
@@ -1079,24 +1104,24 @@ CONTAINS
 #ifdef INVERSION_COMBINED
 
     CALL ComputeDependentVariableTotal_Scalar &
-           ( D, T, Ye, Ym, P, Pbary_T, OS_P, &
+           ( D, T, Ye_P, Ym_P, P, Pbary_T, OS_P, &
            UnitP, 0.0_dp, 1.0_dp, 0.0_dp )
 #else
     CALL ComputeDependentVariableBaryons_Scalar &
-           ( D, T, Ye+Ym, P, Pbary_T, OS_P, UnitP )
+           ( D, T, Ye_P, Ym_P, P, Pbary_T, OS_P, UnitP )
            
     ! Calculate Electron Quantities
     ! Initialize Electron state (Abar and Zbar not needed!!!)
     ElectronState % t = T
     ElectronState % rho = D
-    ElectronState % Y_e = Ye
+    ElectronState % Y_e = Ye_P
     
     CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
     Pele = ElectronState % p
 
     ! Calculate Muon Quantities
     MuonState % t = T
-    MuonState % rhoym = D * Ym
+    MuonState % rhoym = D * Ym_P
 
     CALL FullMuonEOS(MuonTable, MuonState)
     P_mu = MuonState % p
@@ -1252,11 +1277,12 @@ CONTAINS
 
     REAL(DP), INTENT(in)  :: D, T, Ye, Ym
     REAL(DP), INTENT(out) :: Ev, Em, Ne, Nm
+    
 #ifdef INVERSION_COMBINED
 #else
     TYPE(ElectronStateType) :: ElectronState
     TYPE(MuonStateType) :: MuonState
-    REAL(DP) :: Eele, E_mu
+    REAL(DP) :: Eele, E_mu, Yp
 #endif
     ! --- Interpolate Specific Internal Energy ------------------------
 
@@ -1267,8 +1293,9 @@ CONTAINS
            UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
 #else
 
+    Yp = Ye + Ym
     CALL ComputeDependentVariableBaryons_Scalar &
-           ( D, T, Ye+Ym, Em, Ebary_T, OS_E, UnitE )
+           ( D, T, Yp, Em, Ebary_T, OS_E, UnitE )
            
     ! Calculate Electron Quantities
     ! Initialize Electron state (Abar and Zbar not needed!!!)
@@ -1277,14 +1304,14 @@ CONTAINS
     ElectronState % Y_e = Ye
     
     CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
-    Eele = ElectronState % e + me / rmu * ergmev * ElectronState % Y_e ! add back mass to internal Energy!
+    Eele = ElectronState % e + mass_ele / rmu * ergmev * ElectronState % Y_e ! add back mass to internal Energy!
 
     ! Calculate Muon Quantities
     MuonState % t = T
     MuonState % rhoym = D * Ym
     
     CALL FullMuonEOS(MuonTable, MuonState)
-    E_mu = MuonState % e + mmu / rmu * ergmev * Ym ! add back mass to internal Energy!
+    E_mu = MuonState % e + mass_mu / rmu * ergmev * Ym ! add back mass to internal Energy!
            
     Em = Em + Eele + E_mu
 #endif
@@ -1460,7 +1487,7 @@ CONTAINS
   END SUBROUTINE ComputeAuxiliary_Fluid_TABLE_Vector
 
   SUBROUTINE ComputePressure_TABLE_Scalar &
-    ( D, T, Ye, Ym, P, dPdD_Option, dPdT_Option, dPdY_Option )
+    ( D, T, Ye, Ym, P, dPdD_Option, dPdT_Option, dPdYe_Option, dPdYm_Option )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -1472,23 +1499,25 @@ CONTAINS
     REAL(DP), INTENT(out)                   :: P
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdD_Option
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdT_Option
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdY_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdYe_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdYm_Option
 
     LOGICAL :: ComputeDerivatives
-    REAL(DP), TARGET  :: dPdD_Local, dPdT_Local, dPdY_Local
-    REAL(DP), POINTER :: dPdD      , dPdT      , dPdYp
+    REAL(DP), TARGET  :: dPdD_Local, dPdT_Local, dPdYe_Local, dPdYm_Local
+    REAL(DP), POINTER :: dPdD      , dPdT      , dPdYe      , dPdYm
 
 #ifdef INVERSION_COMBINED
 #else
     TYPE(ElectronStateType) :: ElectronState
     TYPE(MuonStateType) :: MuonState
-    REAL(DP) :: Pele, P_mu
+    REAL(DP) :: Pele, P_mu, Yp
 #endif
 
     ComputeDerivatives &
       =      PRESENT( dPdD_Option ) &
         .OR. PRESENT( dPdT_Option ) &
-        .OR. PRESENT( dPdY_Option )
+        .OR. PRESENT( dPdYe_Option ) &
+        .OR. PRESENT( dPdYm_Option )
 
     IF( ComputeDerivatives )THEN
 
@@ -1504,14 +1533,20 @@ CONTAINS
         dPdT => dPdT_Local
       END IF
 
-      IF( PRESENT( dPdY_Option ) )THEN
-        dPdYp => dPdY_Option
+      IF( PRESENT( dPdYe_Option ) )THEN
+        dPdYe => dPdYe_Option
       ELSE
-        dPdYp => dPdY_Local
+        dPdYe => dPdYe_Local
       END IF
 
+      IF( PRESENT( dPdYm_Option ) )THEN
+        dPdYm => dPdYm_Option
+      ELSE
+        dPdYm => dPdYm_Local
+      END IF
+      
       CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
-             ( D, T, Ye, Ym, P, dPdD, dPdT, dPdYp, Pbary_T, OS_P, &
+             ( D, T, Ye, Ym, P, dPdD, dPdT, dPdYe, dPdYm, Pbary_T, OS_P, &
              UnitP, 1.0_dp, 0.0_dp, 0.0_dp )
 
     ELSE
@@ -1521,8 +1556,9 @@ CONTAINS
              ( D, T, Ye, Ym, P, Pbary_T, OS_P, &
              UnitP, 1.0_dp, 0.0_dp, 0.0_dp )
 #else
+      Yp = Ye + Ym
       CALL ComputeDependentVariableBaryons_Scalar &
-             ( D, T, Ye+Ym, P, Pbary_T, OS_P, UnitP )
+             ( D, T, Yp, P, Pbary_T, OS_P, UnitP )
 
       ! Calculate Electron Quantities
       ! Initialize Electron state (Abar and Zbar not needed!!!)
@@ -1548,29 +1584,32 @@ CONTAINS
   END SUBROUTINE ComputePressure_TABLE_Scalar
 
   SUBROUTINE ComputePressure_TABLE_Vector &
-    ( D, T, Ye, Ym, P, dPdD_Option, dPdT_Option, dPdY_Option )
+    ( D, T, Ye, Ym, P, dPdD_Option, dPdT_Option, dPdYe_Option, dPdYm_Option )
 
     REAL(DP), INTENT(in)                    :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out)                   :: P(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdD_Option(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdT_Option(1:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdY_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdYe_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdYm_Option(1:)
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
     REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
-      dPdD_Local, dPdT_Local, dPdY_Local
+      dPdD_Local, dPdT_Local, dPdYe_Local, dPdYm_Local
     REAL(DP), DIMENSION(:)      , POINTER :: &
-      dPdD      , dPdT      , dPdYp
+      dPdD      , dPdT      , dPdYe, dPdYm
 
     ComputeDerivatives &
       =      PRESENT( dPdD_Option ) &
         .OR. PRESENT( dPdT_Option ) &
-        .OR. PRESENT( dPdY_Option )
+        .OR. PRESENT( dPdYe_Option ) &
+        .OR. PRESENT( dPdYm_Option )
 
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
+      ALLOCATE( dPdD_Local(nP), dPdT_Local(nP), dPdYe_Local(nP), dPdYm_Local(nP) )
 
       IF( PRESENT( dPdD_Option ) )THEN
         dPdD(1:nP) => dPdD_Option(:)
@@ -1584,14 +1623,20 @@ CONTAINS
         dPdT(1:nP) => dPdT_Local(:)
       END IF
 
-      IF( PRESENT( dPdY_Option ) )THEN
-        dPdYp(1:nP) => dPdY_Option(:)
+      IF( PRESENT( dPdYe_Option ) )THEN
+        dPdYe(1:nP) => dPdYe_Option(:)
       ELSE
-        dPdYp(1:nP) => dPdY_Local(:)
+        dPdYe(1:nP) => dPdYe_Local(:)
+      END IF
+
+      IF( PRESENT( dPdYm_Option ) )THEN
+        dPdYm(1:nP) => dPdYm_Option(:)
+      ELSE
+        dPdYm(1:nP) => dPdYm_Local(:)
       END IF
 
       CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Vector &
-             ( D, T, Ye, Ym, P, dPdD, dPdT, dPdYp, Pbary_T, OS_P, &
+             ( D, T, Ye, Ym, P, dPdD, dPdT, dPdYe, dPdYm, Pbary_T, OS_P, &
              UnitP, 1.0_dp, 0.0_dp, 0.0_dp )
 
     ELSE
@@ -1606,7 +1651,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeSpecificInternalEnergy_TABLE_Scalar &
-    ( D, T, Ye, Ym, E, dEdD_Option, dEdT_Option, dEdY_Option )
+    ( D, T, Ye, Ym, E, dEdD_Option, dEdT_Option, dEdYe_Option, dEdYm_Option )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -1618,23 +1663,25 @@ CONTAINS
     REAL(DP), INTENT(out)                   :: E
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdD_Option
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdT_Option
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdY_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdYe_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdYm_Option
 
     LOGICAL :: ComputeDerivatives
-    REAL(DP), TARGET  :: dEdD_Local, dEdT_Local, dEdY_Local
-    REAL(DP), POINTER :: dEdD,       dEdT,       dEdY
+    REAL(DP), TARGET  :: dEdD_Local, dEdT_Local, dEdYe_Local, dEdYm_Local
+    REAL(DP), POINTER :: dEdD,       dEdT,       dEdYe, dEdYm
 
 #ifdef INVERSION_COMBINED
 #else
     TYPE(ElectronStateType) :: ElectronState
     TYPE(MuonStateType) :: MuonState
-    REAL(DP) :: Eele, E_mu
+    REAL(DP) :: Yp, Eele, E_mu
 #endif
 
     ComputeDerivatives &
       =      PRESENT( dEdD_Option ) &
         .OR. PRESENT( dEdT_Option ) &
-        .OR. PRESENT( dEdY_Option )
+        .OR. PRESENT( dEdYe_Option ) &
+        .OR. PRESENT( dEdYm_Option )
 
     IF( ComputeDerivatives )THEN
 
@@ -1650,14 +1697,20 @@ CONTAINS
         dEdT => dEdT_Local
       END IF
 
-      IF( PRESENT( dEdY_Option ) )THEN
-        dEdY => dEdY_Option
+      IF( PRESENT( dEdYe_Option ) )THEN
+        dEdYe => dEdYe_Option
       ELSE
-        dEdY => dEdY_Local
+        dEdYe => dEdYe_Local
+      END IF
+
+      IF( PRESENT( dEdYm_Option ) )THEN
+        dEdYm => dEdYm_Option
+      ELSE
+        dEdYm => dEdYm_Local
       END IF
 
       CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
-             ( D, T, Ye, Ym, E, dEdD, dEdT, dEdY, Ebary_T, OS_E, &
+             ( D, T, Ye, Ym, E, dEdD, dEdT, dEdYe, dEdYm, Ebary_T, OS_E, &
              UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
 
     ELSE
@@ -1668,9 +1721,10 @@ CONTAINS
            ( D, T, Ye, Ym, Em, Ebary_T, OS_E, &
            UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
 #else
-
+    
+    Yp = Ye + Ym
     CALL ComputeDependentVariableBaryons_Scalar &
-           ( D, T, Ye+Ym, E, Ebary_T, OS_E, UnitE )
+           ( D, T, Yp, E, Ebary_T, OS_E, UnitE )
            
     ! Calculate Electron Quantities
     ! Initialize Electron state (Abar and Zbar not needed!!!)
@@ -1679,14 +1733,14 @@ CONTAINS
     ElectronState % Y_e = Ye
     
     CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
-    Eele = ElectronState % e + me / rmu * ergmev * ElectronState % Y_e ! add back mass to internal Energy!
+    Eele = ElectronState % e + mass_ele / rmu * ergmev * ElectronState % Y_e ! add back mass to internal Energy!
 
     ! Calculate Muon Quantities
     MuonState % t = T
     MuonState % rhoym = D * Ym
     
     CALL FullMuonEOS(MuonTable, MuonState)
-    E_mu = MuonState % e + mmu / rmu * ergmev * Ym ! add back mass to internal Energy!
+    E_mu = MuonState % e + mass_mu / rmu * ergmev * Ym ! add back mass to internal Energy!
            
     E = E + Eele + E_mu
 #endif
@@ -1696,29 +1750,32 @@ CONTAINS
 
 
   SUBROUTINE ComputeSpecificInternalEnergy_TABLE_Vector &
-    ( D, T, Ye, Ym, E, dEdD_Option, dEdT_Option, dEdY_Option )
+    ( D, T, Ye, Ym, E, dEdD_Option, dEdT_Option, dEdYe_Option, dEdYm_Option )
 
     REAL(DP), INTENT(in)                    :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out)                   :: E(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdD_Option(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdT_Option(1:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdY_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdYe_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdYm_Option(1:)
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
     REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
-      dEdD_Local, dEdT_Local, dEdY_Local
+      dEdD_Local, dEdT_Local, dEdYe_Local, dEdYm_Local
     REAL(DP), DIMENSION(:)      , POINTER :: &
-      dEdD      , dEdT      , dEdY
+      dEdD      , dEdT      , dEdYe, dEdYm
 
     ComputeDerivatives &
       =      PRESENT( dEdD_Option ) &
         .OR. PRESENT( dEdT_Option ) &
-        .OR. PRESENT( dEdY_Option )
+        .OR. PRESENT( dEdYe_Option ) &
+        .OR. PRESENT( dEdYm_Option )
 
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
+      ALLOCATE( dEdD_Local(nP), dEdT_Local(nP), dEdYe_Local(nP), dEdYm_Local(nP) )
 
       IF( PRESENT( dEdD_Option ) )THEN
         dEdD(1:nP) => dEdD_Option(:)
@@ -1732,35 +1789,41 @@ CONTAINS
         dEdT(1:nP) => dEdT_Local(:)
       END IF
 
-      IF( PRESENT( dEdY_Option ) )THEN
-        dEdY(1:nP) => dEdY_Option(:)
+      IF( PRESENT( dEdYe_Option ) )THEN
+        dEdYe(1:nP) => dEdYe_Option(:)
       ELSE
-        dEdY(1:nP) => dEdY_Local(:)
+        dEdYe(1:nP) => dEdYe_Local(:)
+      END IF
+
+      IF( PRESENT( dEdYm_Option ) )THEN
+        dEdYm(1:nP) => dEdYm_Option(:)
+      ELSE
+        dEdYm(1:nP) => dEdYm_Local(:)
       END IF
 
       CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Vector &
-             ( D, T, Ye, Ym, E, dEdD, dEdT, dEdY, Ebary_T, OS_E, &
+             ( D, T, Ye, Ym, E, dEdD, dEdT, dEdYe, dEdYm, Ebary_T, OS_E, &
              UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
 
     ELSE
+
+#ifdef INVERSION_COMBINED
 
       CALL ComputeDependentVariableTotal_Vector &
              ( D, T, Ye, Ym, E, Ebary_T, OS_E, &
              UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
 
+#else
+      ! Not really used
+#endif
+
     END IF
 
   END SUBROUTINE ComputeSpecificInternalEnergy_TABLE_Vector
 
-  ! Notice that only E, S, and P have the option of calculating derivatives.
-  ! I do not see why you would need derivatives of anything else. In case you
-  ! do, then there is no electron or muon contribution for those, so you might have to make 
-  ! new subroutines, and should not use ComputeDependentVariableAndDerivativesTotal_TABLE_Vector,
-  ! but instead create a new one, somthing like ComputeDependentVariableAndDerivativesBaryons_TABLE_Vector
-
-  ! The Mue and Mumu subroutines are special since you only need electron (muon) info
+  ! The Mue and Mum subroutines are special since you only need electron (muon) info
   SUBROUTINE ComputeElectronChemicalPotential_TABLE_Scalar &
-    ( D, T, Ye, M )
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option, dMdYm_Option )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -1768,106 +1831,23 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)  :: D, T, Ye
+    REAL(DP), INTENT(in)  :: D, T, Ye, Ym ! Ym is a dummy variable
     REAL(DP), INTENT(out) :: M
-
-    TYPE(ElectronStateType) :: ElectronState
-    
-    ! Calculate Electron Quantities
-    ! Initialize Electron state (Abar and Zbar not needed!!!)
-    ElectronState % t = T
-    ElectronState % rho = D
-    ElectronState % Y_e = Ye
-    
-    CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
-
-    M = ElectronState % mu_e
-    
-  END SUBROUTINE ComputeElectronChemicalPotential_TABLE_Scalar
-
-
-  SUBROUTINE ComputeElectronChemicalPotential_TABLE_Vector &
-    ( D, T, Ye, M )
-
-    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Ye(1:)
-    REAL(DP), INTENT(out)                   :: M(1:)
-
-    INTEGER :: iP, nP
-
-    DO iP=1,nP
-      CALL ComputeElectronChemicalPotential_TABLE_Scalar &
-              (D(iP), T(iP), Ye(iP), M(iP))
-    END DO
-
-  END SUBROUTINE ComputeElectronChemicalPotential_TABLE_Vector
-
-  SUBROUTINE ComputeMuonChemicalPotential_TABLE_Scalar &
-    ( D, T, Ym, M )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ
-#endif
-
-    REAL(DP), INTENT(in)  :: D, T, Ym
-    REAL(DP), INTENT(out) :: M
-
-    TYPE(MuonStateType) :: MuonState
-    
-    ! Calculate Muon Quantities
-    ! Initialize Muon state (Abar and Zbar not needed!!!)
-    MuonState % t = T
-    MuonState % rhoym = D * Ym
-    
-    CALL FullMuonEOS(MuonTable, MuonState)
-
-    M = MuonState % mu
-    
-  END SUBROUTINE ComputeMuonChemicalPotential_TABLE_Scalar
-
-
-  SUBROUTINE ComputeMuonChemicalPotential_TABLE_Vector &
-    ( D, T, Ym, M )
-
-    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Ym(1:)
-    REAL(DP), INTENT(out)                   :: M(1:)
-
-    INTEGER :: iP, nP
-
-    DO iP=1,nP
-      CALL ComputeMuonChemicalPotential_TABLE_Scalar &
-              (D(iP), T(iP), Ym(iP), M(iP))
-    END DO
-
-  END SUBROUTINE ComputeMuonChemicalPotential_TABLE_Vector
-
-
-  SUBROUTINE ComputeProtonChemicalPotential_TABLE_Scalar &
-    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdY_Option )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ
-#endif
-
-    REAL(DP), INTENT(in)                    :: D, T, Ye, Ym
-    REAL(DP), INTENT(out)                   :: M
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option
-
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYm_Option
+    
     LOGICAL :: ComputeDerivatives
-    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdY_Local
-    REAL(DP), POINTER :: dMdD      , dMdT      , dMdY
-
-    ComputeDerivatives &
-      =      PRESENT( dMdD_Option ) &
-        .OR. PRESENT( dMdT_Option ) &
-        .OR. PRESENT( dMdY_Option )
-
-    IF ( ComputeDerivatives ) THEN
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdYe_Local, dMdYm_Local
+    REAL(DP), POINTER :: dMdD      , dMdT      , dMdYe, dMdYm
+    
+    REAL(DP) :: dD, dT
+	REAL(DP) :: aD, aT
+    
+    TYPE(ElectronStateType) :: ElectronState
+    
+    IF( ComputeDerivatives )THEN
 
       IF( PRESENT( dMdD_Option ) )THEN
         dMdD => dMdD_Option
@@ -1881,19 +1861,320 @@ CONTAINS
         dMdT => dMdT_Local
       END IF
 
-      IF( PRESENT( dMdY_Option ) )THEN
-        dMdY => dMdY_Option
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe => dMdYe_Option
       ELSE
-        dMdY => dMdY_Local
+        dMdYe => dMdYe_Local
       END IF
 
+      IF( PRESENT( dMdYm_Option ) )THEN
+        dMdYm => dMdYm_Option
+      ELSE
+        dMdYm => dMdYm_Local
+      END IF
+    
+      ! ADD STUFF
+      dMdD = 0.0_dp
+      dMdT = 0.0_dp
+      dMdYe = 0.0_dp
+      dMdYm = 0.0_dp
+      
+    ELSE
+      
+      ! Calculate Electron Quantities
+      ! Initialize Electron state (Abar and Zbar not needed!!!)
+      ElectronState % t = T
+      ElectronState % rho = D
+      ElectronState % Y_e = Ye
+      
+      CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
+
+      M = ElectronState % mu_e
+      
+    ENDIF
+      
+  END SUBROUTINE ComputeElectronChemicalPotential_TABLE_Scalar
+
+
+  SUBROUTINE ComputeElectronChemicalPotential_TABLE_Vector &
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option, dMdYm_Option )
+
+    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Ye(1:), Ym(1:) ! Ym is a dummy variable
+    REAL(DP), INTENT(out)                   :: M(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYm_Option
+    
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdYe_Local, dMdYm_Local
+    REAL(DP), POINTER :: dMdD      , dMdT      , dMdYe, dMdYm
+    
+    INTEGER :: iP, nP
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+      ALLOCATE( dMdD_Local(nP), dMdT_Local(nP), dMdYe_Local(nP), dMdYm_Local(nP) )
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD(1:nP) => dMdD_Option(:)
+      ELSE
+        dMdD(1:nP) => dMdD_Local(:)
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT(1:nP) => dMdT_Option(:)
+      ELSE
+        dMdT(1:nP) => dMdT_Local(:)
+      END IF
+
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe(1:nP) => dMdYe_Option(:)
+      ELSE
+        dMdYe(1:nP) => dMdYe_Local(:)
+      END IF
+
+      IF( PRESENT( dMdYm_Option ) )THEN
+        dMdYm(1:nP) => dMdYm_Option(:)
+      ELSE
+        dMdYm(1:nP) => dMdYm_Local(:)
+      END IF
+
+      DO iP=1,nP
+          CALL ComputeElectronChemicalPotential_TABLE_Scalar &
+                (D(iP), T(iP), Ye(iP), Ym(iP), M(iP), dMdD(iP), dMdT(iP), dMdYe(iP), dMdYm(iP))
+      END DO
+
+    ELSE 
+    
+      DO iP=1,nP
+        CALL ComputeElectronChemicalPotential_TABLE_Scalar &
+                (D(iP), T(iP), Ye(iP), Ym(iP), M(iP))
+      END DO
+      
+    END IF
+
+  END SUBROUTINE ComputeElectronChemicalPotential_TABLE_Vector
+
+  SUBROUTINE ComputeMuonChemicalPotential_TABLE_Scalar &
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option, dMdYm_Option )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: D, T, Ye, Ym ! Ye is a dummy variable
+    REAL(DP), INTENT(out) :: M
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYm_Option
+    
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdYe_Local, dMdYm_Local
+    REAL(DP), POINTER :: dMdD      , dMdT      , dMdYe, dMdYm
+    
+    TYPE(MuonStateType) :: MuonState
+    
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdYe_Option ) &
+        .OR. PRESENT( dMdYm_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD => dMdD_Option
+      ELSE
+        dMdD => dMdD_Local
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT => dMdT_Option
+      ELSE
+        dMdT => dMdT_Local
+      END IF
+
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe => dMdYe_Option
+      ELSE
+        dMdYe => dMdYe_Local
+      END IF
+
+      IF( PRESENT( dMdYm_Option ) )THEN
+        dMdYm => dMdYm_Option
+      ELSE
+        dMdYm => dMdYm_Local
+      END IF
+    
+      ! ADD STUFF
+      dMdD = 0.0_dp
+      dMdT = 0.0_dp
+      dMdYe = 0.0_dp
+      dMdYm = 0.0_dp
+      
+      CALL GetIndexAndDelta_Log( D * Ym, MuonTable % rhoym(:), iD, dD )
+      CALL GetIndexAndDelta_Log( T, MuonTable % t(:), iT, dT )
+      
+      aD = 1.0_dp / ( D * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
+      aT = 1.0_dp / ( T * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
+
+      CALL LinearInterpDeriv2D_2DArray_Point &
+             ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % mu), M, &
+               dMdD, dMdT )
+      
+      dMdYm = dMdD * D ! make sure the derivative is wr2 ym, not rhoym
+      dMdD = dMdD * Ym ! make sure the derivative is wr2 rho, not rhoym
+      dMdYe = 0.0_dp
+      
+    ELSE
+
+      MuonState % t = T
+      MuonState % rhoym = D * Ym
+      
+      CALL FullMuonEOS(MuonTable, MuonState)
+
+      M = MuonState % mu_e
+
+    ENDIF
+    
+  END SUBROUTINE ComputeMuonChemicalPotential_TABLE_Scalar
+
+
+  SUBROUTINE ComputeMuonChemicalPotential_TABLE_Vector &
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option, dMdYm_Option )
+
+    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Ye(1:), Ym(1:) ! Ym is a dummy variable
+    REAL(DP), INTENT(out)                   :: M(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYm_Option
+    
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdYe_Local, dMdYm_Local
+    REAL(DP), POINTER :: dMdD      , dMdT      , dMdYe, dMdYm
+    
+    INTEGER :: iP, nP
+    
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdYe_Option ) &
+        .OR. PRESENT( dMdYm_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+      ALLOCATE( dMdD_Local(nP), dMdT_Local(nP), dMdYe_Local(nP), dMdYm_Local(nP) )
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD(1:nP) => dMdD_Option(:)
+      ELSE
+        dMdD(1:nP) => dMdD_Local(:)
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT(1:nP) => dMdT_Option(:)
+      ELSE
+        dMdT(1:nP) => dMdT_Local(:)
+      END IF
+
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe(1:nP) => dMdYe_Option(:)
+      ELSE
+        dMdYe(1:nP) => dMdYe_Local(:)
+      END IF
+
+      IF( PRESENT( dMdYm_Option ) )THEN
+        dMdYm(1:nP) => dMdYm_Option(:)
+      ELSE
+        dMdYm(1:nP) => dMdYm_Local(:)
+      END IF
+
+      DO iP=1,nP
+          CALL ComputeMuonChemicalPotential_TABLE_Scalar &
+                (D(iP), T(iP), Ye(iP), Ym(iP), M(iP), dMdD(iP), dMdT(iP), dMdYe(iP), dMdYm(iP))
+      END DO
+
+    ELSE 
+    
+      DO iP=1,nP
+        CALL ComputeMuonChemicalPotential_TABLE_Scalar &
+                (D(iP), T(iP), Ye(iP), Ym(iP), M(iP))
+      END DO
+      
+    END IF
+
+  END SUBROUTINE ComputeMuonChemicalPotential_TABLE_Vector
+
+
+  SUBROUTINE ComputeProtonChemicalPotential_TABLE_Scalar &
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option, dMdYm_Option )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)                    :: D, T, Ye, Ym
+    REAL(DP), INTENT(out)                   :: M
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYm_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdYe_Local, dMdYm_Local
+    REAL(DP), POINTER :: dMdD      , dMdT      , dMdYe, dMdYm
+    REAL(DP) :: Yp
+    
+    Yp = Ye + Ym
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdYe_Option ) &
+        .OR. PRESENT( dMdYm_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD => dMdD_Option
+      ELSE
+        dMdD => dMdD_Local
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT => dMdT_Option
+      ELSE
+        dMdT => dMdT_Local
+      END IF
+
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe => dMdYe_Option
+      ELSE
+        dMdYe => dMdYe_Local
+      END IF
+
+      IF( PRESENT( dMdYm_Option ) )THEN
+        dMdYm => dMdYm_Option
+      ELSE
+        dMdYm => dMdYm_Local
+      END IF
+      
       CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Scalar &
-             ( D, T, Ye+Ym, M, dMdD, dMdT, dMdY, Mpbary_T, OS_Mp, UnitMp )
+             ( D, T, Yp, M, dMdD, dMdT, dMdYe, dMdYm, Mpbary_T, OS_Mp, UnitMp )
 
     ELSE
 
       CALL ComputeDependentVariableBaryons_Scalar &
-             ( D, T, Ye+Ym, M, Mpbary_T, OS_Mp, UnitMp )
+             ( D, T, Yp, M, Mpbary_T, OS_Mp, UnitMp )
 
     END IF
 
@@ -1902,29 +2183,35 @@ CONTAINS
 
   ! THIS SUBROUTINE IS UNTOUCHED, NOT SURE HOW TO HANDLE IT
   SUBROUTINE ComputeProtonChemicalPotential_TABLE_Vector &
-    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdY_Option )
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option, dMdYm_Option )
 
     REAL(DP), INTENT(in)                    :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out)                   :: M(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(1:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYm_Option(1:)
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
     REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
-      dMdD_Local, dMdT_Local, dMdY_Local
+      dMdD_Local, dMdT_Local, dMdYe_Local, dMdYm_Local
     REAL(DP), DIMENSION(:)      , POINTER :: &
-      dMdD      , dMdT      , dMdY
+      dMdD      , dMdT      , dMdYe, dMdYm
+    REAL(DP) :: Yp
+    
+    Yp = Ye + Ym
 
     ComputeDerivatives &
       =      PRESENT( dMdD_Option ) &
         .OR. PRESENT( dMdT_Option ) &
-        .OR. PRESENT( dMdY_Option )
+        .OR. PRESENT( dMdYe_Option ) &
+        .OR. PRESENT( dMdYm_Option )
 
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
+      ALLOCATE( dMdD_Local(nP), dMdT_Local(nP), dMdYe_Local(nP), dMdYm_Local(nP) )
 
       IF( PRESENT( dMdD_Option ) )THEN
         dMdD(1:nP) => dMdD_Option(:)
@@ -1938,19 +2225,25 @@ CONTAINS
         dMdT(1:nP) => dMdT_Local(:)
       END IF
 
-      IF( PRESENT( dMdY_Option ) )THEN
-        dMdY(1:nP) => dMdY_Option(:)
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe(1:nP) => dMdYe_Option(:)
       ELSE
-        dMdY(1:nP) => dMdY_Local(:)
+        dMdYe(1:nP) => dMdYe_Local(:)
+      END IF
+
+      IF( PRESENT( dMdYm_Option ) )THEN
+        dMdYm(1:nP) => dMdYm_Option(:)
+      ELSE
+        dMdYm(1:nP) => dMdYm_Local(:)
       END IF
 
       CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Vector &
-             ( D, T, Ye+Ym, M, dMdD, dMdT, dMdY, Mpbary_T, OS_Mp, UnitMp )
+             ( D, T, Yp, M, dMdD, dMdT, dMdYe, dMdYm, Mpbary_T, OS_Mp, UnitMp )
 
     ELSE
 
       CALL ComputeDependentVariableBaryons_Vector &
-             ( D, T, Ye+Ym, M, Mpbary_T, OS_Mp, UnitMp )
+             ( D, T, Yp, M, Mpbary_T, OS_Mp, UnitMp )
 
     END IF
 
@@ -1958,7 +2251,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutronChemicalPotential_TABLE_Scalar &
-    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdY_Option )
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option, dMdYm_Option )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -1970,16 +2263,21 @@ CONTAINS
     REAL(DP), INTENT(out)                   :: M
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYm_Option
 
     LOGICAL :: ComputeDerivatives
-    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdY_Local
-    REAL(DP), POINTER :: dMdD      , dMdT      , dMdY
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdYe_Local, dMdYm_Local
+    REAL(DP), POINTER :: dMdD      , dMdT      , dMdYe, dMdYm
+    REAL(DP) :: Yp
+    
+    Yp = Ye + Ym
 
     ComputeDerivatives &
       =      PRESENT( dMdD_Option ) &
         .OR. PRESENT( dMdT_Option ) &
-        .OR. PRESENT( dMdY_Option )
+        .OR. PRESENT( dMdYe_Option ) &
+        .OR. PRESENT( dMdYm_Option )
 
     IF( ComputeDerivatives )THEN
 
@@ -1995,19 +2293,25 @@ CONTAINS
         dMdT => dMdT_Local
       END IF
 
-      IF( PRESENT( dMdY_Option ) )THEN
-        dMdY => dMdY_Option
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe => dMdYe_Option
       ELSE
-        dMdY => dMdY_Local
+        dMdYe => dMdYe_Local
+      END IF
+
+      IF( PRESENT( dMdYm_Option ) )THEN
+        dMdYm => dMdYm_Option
+      ELSE
+        dMdYm => dMdYm_Local
       END IF
 
       CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Scalar &
-             ( D, T, Ye+Ym, M, dMdD, dMdT, dMdY, Mnbary_T, OS_Mn, UnitMn )
+             ( D, T, Yp, M, dMdD, dMdT, dMdYe, dMdYm, Mnbary_T, OS_Mn, UnitMn )
 
     ELSE
 
       CALL ComputeDependentVariableBaryons_Scalar &
-             ( D, T, Ye+Ym, M, Mnbary_T, OS_Mn, UnitMn )
+             ( D, T, Yp, M, Mnbary_T, OS_Mn, UnitMn )
 
     END IF
 
@@ -2015,29 +2319,35 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutronChemicalPotential_TABLE_Vector &
-    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdY_Option )
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option, dMdYm_Option )
 
     REAL(DP), INTENT(in)                    :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out)                   :: M(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(1:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdY_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYm_Option(1:)
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
     REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
-      dMdD_Local, dMdT_Local, dMdY_Local
+      dMdD_Local, dMdT_Local, dMdYe_Local, dMdYm_Local
     REAL(DP), DIMENSION(:)      , POINTER :: &
-      dMdD      , dMdT      , dMdY
+      dMdD      , dMdT      , dMdYe, dMdYm
+    REAL(DP) :: Yp
+    
+    Yp = Ye + Ym
 
     ComputeDerivatives &
       =      PRESENT( dMdD_Option ) &
         .OR. PRESENT( dMdT_Option ) &
-        .OR. PRESENT( dMdY_Option )
+        .OR. PRESENT( dMdYe_Option ) &
+        .OR. PRESENT( dMdYm_Option )
 
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
+      ALLOCATE( dMdD_Local(nP), dMdT_Local(nP), dMdYe_Local(nP), dMdYm_Local(nP) )
 
       IF( PRESENT( dMdD_Option ) )THEN
         dMdD(1:nP) => dMdD_Option(:)
@@ -2051,19 +2361,25 @@ CONTAINS
         dMdT(1:nP) => dMdT_Local(:)
       END IF
 
-      IF( PRESENT( dMdY_Option ) )THEN
-        dMdY(1:nP) => dMdY_Option(:)
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe(1:nP) => dMdYe_Option(:)
       ELSE
-        dMdY(1:nP) => dMdY_Local(:)
+        dMdYe(1:nP) => dMdYe_Local(:)
+      END IF
+
+      IF( PRESENT( dMdYm_Option ) )THEN
+        dMdYm(1:nP) => dMdYm_Option(:)
+      ELSE
+        dMdYm(1:nP) => dMdYm_Local(:)
       END IF
 
       CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Vector &
-             ( D, T, Ye+Ym, M, dMdD, dMdT, dMdY, Mnbary_T, OS_Mn, UnitMn )
+             ( D, T, Yp, M, dMdD, dMdT, dMdYe, dMdYm, Mnbary_T, OS_Mn, UnitMn )
 
     ELSE
 
       CALL ComputeDependentVariableBaryons_Vector &
-             ( D, T, Ye+Ym, M, Mnbary_T, OS_Mn, UnitMn )
+             ( D, T, Yp, M, Mnbary_T, OS_Mn, UnitMn )
 
     END IF
 
@@ -2071,7 +2387,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeProtonMassFraction_TABLE_Scalar &
-    ( D, T, Ye, Ym, X, dXdD_Option, dXdT_Option, dXdY_Option )
+    ( D, T, Ye, Ym, X, dXdD_Option, dXdT_Option, dXdYe_Option, dXdYm_Option )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -2083,18 +2399,23 @@ CONTAINS
     REAL(DP), INTENT(out)                   :: X
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdD_Option
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdT_Option
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdY_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdYe_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdYm_Option
 
     LOGICAL :: ComputeDerivatives
-    REAL(DP), TARGET  :: dXdD_Local, dXdT_Local, dXdY_Local
-    REAL(DP), POINTER :: dXdD      , dXdT      , dXdY
+    REAL(DP), TARGET  :: dXdD_Local, dXdT_Local, dXdYe_Local, dXdYm_Local
+    REAL(DP), POINTER :: dXdD      , dXdT      , dXdYe      , dXdYm
+    REAL(DP) :: Yp
+    
+    Yp = Ye + Ym
 
     ComputeDerivatives &
       =      PRESENT( dXdD_Option ) &
         .OR. PRESENT( dXdT_Option ) &
-        .OR. PRESENT( dXdY_Option )
+        .OR. PRESENT( dXdYe_Option ) &
+        .OR. PRESENT( dXdYm_Option )
 
-    IF ( ComputeDerivatives ) THEN
+    IF( ComputeDerivatives )THEN
 
       IF( PRESENT( dXdD_Option ) )THEN
         dXdD => dXdD_Option
@@ -2108,19 +2429,25 @@ CONTAINS
         dXdT => dXdT_Local
       END IF
 
-      IF( PRESENT( dXdY_Option ) )THEN
-        dXdY => dXdY_Option
+      IF( PRESENT( dXdYe_Option ) )THEN
+        dXdYe => dXdYe_Option
       ELSE
-        dXdY => dXdY_Local
+        dXdYe => dXdYe_Local
+      END IF
+
+      IF( PRESENT( dXdYm_Option ) )THEN
+        dXdYm => dXdYm_Option
+      ELSE
+        dXdYm => dXdYm_Local
       END IF
 
       CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Scalar &
-             ( D, T, Ye+Ym, X, dXdD, dXdT, dXdY, Xpbary_T, OS_Xp, UnitXp )
+             ( D, T, Yp, X, dXdD, dXdT, dXdYe, dXdYm, Xpbary_T, OS_Xp, UnitXp )
 
     ELSE
 
       CALL ComputeDependentVariableBaryons_Scalar &
-             ( D, T, Ye+Ym, X, Xpbary_T, OS_Xp, UnitXp )
+             ( D, T, Yp, X, Xpbary_T, OS_Xp, UnitXp )
 
     END IF
 
@@ -2129,29 +2456,35 @@ CONTAINS
 
   ! THIS SUBROUTINE IS UNTOUCHED, NOT SURE HOW TO HANDLE IT
   SUBROUTINE ComputeProtonMassFraction_TABLE_Vector &
-    ( D, T, Ye, Ym, X, dXdD_Option, dXdT_Option, dXdY_Option )
+    ( D, T, Ye, Ym, X, dXdD_Option, dXdT_Option, dXdYe_Option, dXdYm_Option )
 
     REAL(DP), INTENT(in)                    :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out)                   :: X(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdD_Option(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdT_Option(1:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdY_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdYe_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdYm_Option(1:)
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
     REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
-      dXdD_Local, dXdT_Local, dXdY_Local
+      dXdD_Local, dXdT_Local, dXdYe_Local, dXdYm_Local
     REAL(DP), DIMENSION(:)      , POINTER :: &
-      dXdD      , dXdT      , dXdY
+      dXdD      , dXdT      , dXdYe      , dXdYm_Local
+    REAL(DP) :: Yp
+    
+    Yp = Ye + Ym
 
     ComputeDerivatives &
       =      PRESENT( dXdD_Option ) &
         .OR. PRESENT( dXdT_Option ) &
-        .OR. PRESENT( dXdY_Option )
+        .OR. PRESENT( dXdYe_Option ) &
+        .OR. PRESENT( dXdYm_Option )
 
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
+      ALLOCATE( dXdD_Local(nP), dXdT_Local(nP), dXdYe_Local(nP), dXdYm_Local(nP) )
 
       IF( PRESENT( dXdD_Option ) )THEN
         dXdD(1:nP) => dXdD_Option(:)
@@ -2165,19 +2498,25 @@ CONTAINS
         dXdT(1:nP) => dXdT_Local(:)
       END IF
 
-      IF( PRESENT( dXdY_Option ) )THEN
-        dXdY(1:nP) => dXdY_Option(:)
+      IF( PRESENT( dXdYe_Option ) )THEN
+        dXdYe(1:nP) => dXdYe_Option(:)
       ELSE
-        dXdY(1:nP) => dXdY_Local(:)
+        dXdYe(1:nP) => dXdYe_Local(:)
+      END IF
+
+      IF( PRESENT( dXdYm_Option ) )THEN
+        dXdYm(1:nP) => dXdYm_Option(:)
+      ELSE
+        dXdYm(1:nP) => dXdYm_Local(:)
       END IF
 
       CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Vector &
-             ( D, T, Ye+Ym, X, dXdD, dXdT, dXdY, Xpbary_T, OS_Xp, UnitXp )
+             ( D, T, Yp, X, dXdD, dXdT, dXdYe, dXdYm, Xpbary_T, OS_Xp, UnitXp )
 
     ELSE
 
       CALL ComputeDependentVariableBaryons_Vector &
-             ( D, T, Ye+Ym, X, Xpbary_T, OS_Xp, UnitXp )
+             ( D, T, Yp, X, Xpbary_T, OS_Xp, UnitXp )
 
     END IF
 
@@ -2185,7 +2524,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutronMassFraction_TABLE_Scalar &
-    ( D, T, Ye, Ym, X, dXdD_Option, dXdT_Option, dXdY_Option )
+    ( D, T, Ye, Ym, X, dXdD_Option, dXdT_Option, dXdYe_Option, dXdYm_Option )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -2197,16 +2536,21 @@ CONTAINS
     REAL(DP), INTENT(out)                   :: X
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdD_Option
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdT_Option
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdY_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdYe_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdYm_Option
 
     LOGICAL :: ComputeDerivatives
-    REAL(DP), TARGET  :: dXdD_Local, dXdT_Local, dXdY_Local
-    REAL(DP), POINTER :: dXdD      , dXdT      , dXdY
+    REAL(DP), TARGET  :: dXdD_Local, dXdT_Local, dXdYe_Local, dXdYm_Local
+    REAL(DP), POINTER :: dXdD      , dXdT      , dXdYe      , dXdYm
+    REAL(DP) :: Yp
+    
+    Yp = Ye + Ym
 
     ComputeDerivatives &
       =      PRESENT( dXdD_Option ) &
         .OR. PRESENT( dXdT_Option ) &
-        .OR. PRESENT( dXdY_Option )
+        .OR. PRESENT( dXdYe_Option ) &
+        .OR. PRESENT( dXdYm_Option )
 
     IF( ComputeDerivatives )THEN
 
@@ -2222,50 +2566,60 @@ CONTAINS
         dXdT => dXdT_Local
       END IF
 
-      IF( PRESENT( dXdY_Option ) )THEN
-        dXdY => dXdY_Option
+      IF( PRESENT( dXdYe_Option ) )THEN
+        dXdYe => dXdYe_Option
       ELSE
-        dXdY => dXdY_Local
+        dXdYe => dXdYe_Local
+      END IF
+
+      IF( PRESENT( dXdYm_Option ) )THEN
+        dXdYm => dXdYm_Option
+      ELSE
+        dXdYm => dXdYm_Local
       END IF
 
       CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Scalar &
-             ( D, T, Ye+Ym, X, dXdD, dXdT, dXdY, Xnbary_T, OS_Xn, UnitXn )
+             ( D, T, Yp, X, dXdD, dXdT, dXdYe, dXdYm, Xnbary_T, OS_Xn, UnitXn )
 
     ELSE
 
       CALL ComputeDependentVariableBaryons_Scalar &
-             ( D, T, Ye+Ym, X, Xnbary_T, OS_Xn, UnitXn )
+             ( D, T, Yp, X, Xnbary_T, OS_Xn, UnitXn )
 
     END IF
 
   END SUBROUTINE ComputeNeutronMassFraction_TABLE_Scalar
 
-
-  ! THIS SUBROUTINE IS UNTOUCHED, NOT SURE HOW TO HANDLE IT
   SUBROUTINE ComputeNeutronMassFraction_TABLE_Vector &
-    ( D, T, Ye, Ym, X, dXdD_Option, dXdT_Option, dXdY_Option )
+    ( D, T, Ye, Ym, X, dXdD_Option, dXdT_Option, dXdYe_Option, dXdYm_Option )
 
     REAL(DP), INTENT(in)                    :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out)                   :: X(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdD_Option(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdT_Option(1:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdY_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdYe_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdYm_Option(1:)
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
     REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
-      dXdD_Local, dXdT_Local, dXdY_Local
+      dXdD_Local, dXdT_Local, dXdYe_Local, dXdYm_Local
     REAL(DP), DIMENSION(:)      , POINTER :: &
-      dXdD      , dXdT      , dXdY
+      dXdD      , dXdT      , dXdYe      , dXdYm
+    REAL(DP) :: Yp
+    
+    Yp = Ye + Ym
 
     ComputeDerivatives &
       =      PRESENT( dXdD_Option ) &
         .OR. PRESENT( dXdT_Option ) &
-        .OR. PRESENT( dXdY_Option )
+        .OR. PRESENT( dXdYe_Option ) &
+        .OR. PRESENT( dXdYm_Option )
 
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
+      ALLOCATE( dXdD_Local(nP), dXdT_Local(nP), dXdYe_Local(nP), dXdYm_Local(nP) )
 
       IF( PRESENT( dXdD_Option ) )THEN
         dXdD(1:nP) => dXdD_Option(:)
@@ -2279,19 +2633,25 @@ CONTAINS
         dXdT(1:nP) => dXdT_Local(:)
       END IF
 
-      IF( PRESENT( dXdY_Option ) )THEN
-        dXdY(1:nP) => dXdY_Option(:)
+      IF( PRESENT( dXdYe_Option ) )THEN
+        dXdYe(1:nP) => dXdYe_Option(:)
       ELSE
-        dXdY(1:nP) => dXdY_Local(:)
+        dXdYe(1:nP) => dXdYe_Local(:)
+      END IF
+
+      IF( PRESENT( dXdYm_Option ) )THEN
+        dXdYm(1:nP) => dXdYm_Option(:)
+      ELSE
+        dXdYm(1:nP) => dXdYm_Local(:)
       END IF
 
       CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Vector &
-             ( D, T, Ye+Ym, X, dXdD, dXdT, dXdY, Xnbary_T, OS_Xn, UnitXn )
+             ( D, T, Yp, X, dXdD, dXdT, dXdYe, dXdYm, Xnbary_T, OS_Xn, UnitXn )
 
     ELSE
 
       CALL ComputeDependentVariableBaryons_Vector &
-             ( D, T, Ye+Ym, X, Xnbary_T, OS_Xn, UnitXn )
+             ( D, T, Yp, X, Xnbary_T, OS_Xn, UnitXn )
 
     END IF
 
@@ -2299,7 +2659,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeHeavyMassFraction_TABLE_Scalar &
-    ( D, T, Ye, Ym, X, dXdD_Option, dXdT_Option, dXdY_Option )
+    ( D, T, Ye, Ym, X, dXdD_Option, dXdT_Option, dXdYe_Option, dXdYm_Option )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -2311,18 +2671,23 @@ CONTAINS
     REAL(DP), INTENT(out)                   :: X
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdD_Option
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdT_Option
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdY_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdYe_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdYm_Option
 
     LOGICAL :: ComputeDerivatives
-    REAL(DP), TARGET  :: dXdD_Local, dXdT_Local, dXdY_Local
-    REAL(DP), POINTER :: dXdD      , dXdT      , dXdY
+    REAL(DP), TARGET  :: dXdD_Local, dXdT_Local, dXdYe_Local, dXdYm_Local
+    REAL(DP), POINTER :: dXdD      , dXdT      , dXdYe      , dXdYm
+    REAL(DP) :: Yp
+    
+    Yp = Ye + Ym
 
     ComputeDerivatives &
       =      PRESENT( dXdD_Option ) &
         .OR. PRESENT( dXdT_Option ) &
-        .OR. PRESENT( dXdY_Option )
+        .OR. PRESENT( dXdYe_Option ) &
+        .OR. PRESENT( dXdYm_Option )
 
-    IF ( ComputeDerivatives ) THEN
+    IF( ComputeDerivatives )THEN
 
       IF( PRESENT( dXdD_Option ) )THEN
         dXdD => dXdD_Option
@@ -2336,49 +2701,60 @@ CONTAINS
         dXdT => dXdT_Local
       END IF
 
-      IF( PRESENT( dXdY_Option ) )THEN
-        dXdY => dXdY_Option
+      IF( PRESENT( dXdYe_Option ) )THEN
+        dXdYe => dXdYe_Option
       ELSE
-        dXdY => dXdY_Local
+        dXdYe => dXdYe_Local
+      END IF
+
+      IF( PRESENT( dXdYm_Option ) )THEN
+        dXdYm => dXdYm_Option
+      ELSE
+        dXdYm => dXdYm_Local
       END IF
 
       CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Scalar &
-             ( D, T, Ye+Ym, X, dXdD, dXdT, dXdY, Xhbary_T, OS_Xh, UnitXh )
+             ( D, T, Yp, X, dXdD, dXdT, dXdYe, dXdYm, Xhbary_T, OS_Xh, UnitXh )
 
     ELSE
 
       CALL ComputeDependentVariableBaryons_Scalar &
-             ( D, T, Ye+Ym, X, Xhbary_T, OS_Xh, UnitXh )
+             ( D, T, Yp, X, Xhbary_T, OS_Xh, UnitXh )
 
     END IF
 
   END SUBROUTINE ComputeHeavyMassFraction_TABLE_Scalar
 
   SUBROUTINE ComputeHeavyMassFraction_TABLE_Vector &
-    ( D, T, Ye, Ym, X, dXdD_Option, dXdT_Option, dXdY_Option )
+    ( D, T, Ye, Ym, X, dXdD_Option, dXdT_Option, dXdYe_Option, dXdYm_Option )
 
     REAL(DP), INTENT(in)                    :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out)                   :: X(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdD_Option(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdT_Option(1:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdY_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdYe_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdYm_Option(1:)
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
     REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
-      dXdD_Local, dXdT_Local, dXdY_Local
+      dXdD_Local, dXdT_Local, dXdYe_Local, dXdYm_Local
     REAL(DP), DIMENSION(:), POINTER :: &
-      dXdD      , dXdT      , dXdY
+      dXdD      , dXdT      , dXdYe      , dXdYm
+    REAL(DP) :: Yp
+    
+    Yp = Ye + Ym
 
     ComputeDerivatives &
       =      PRESENT( dXdD_Option ) &
         .OR. PRESENT( dXdT_Option ) &
-        .OR. PRESENT( dXdY_Option )
+        .OR. PRESENT( dXdYe_Option ) &
+        .OR. PRESENT( dXdYm_Option )
 
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
-      ALLOCATE( dXdD_Local(nP), dXdT_Local(nP), dXdY_Local(nP) )
+      ALLOCATE( dXdD_Local(nP), dXdT_Local(nP), dXdYe_Local(nP), dXdYm_Local(nP) )
 
       IF( PRESENT( dXdD_Option ) )THEN
         dXdD(1:nP) => dXdD_Option(:)
@@ -2392,26 +2768,32 @@ CONTAINS
         dXdT(1:nP) => dXdT_Local(:)
       END IF
 
-      IF( PRESENT( dXdY_Option ) )THEN
-        dXdY(1:nP) => dXdY_Option(:)
+      IF( PRESENT( dXdYe_Option ) )THEN
+        dXdYe(1:nP) => dXdYe_Option(:)
       ELSE
-        dXdY(1:nP) => dXdY_Local(:)
+        dXdYe(1:nP) => dXdYe_Local(:)
+      END IF
+
+      IF( PRESENT( dXdYm_Option ) )THEN
+        dXdYm(1:nP) => dXdYm_Option(:)
+      ELSE
+        dXdYm(1:nP) => dXdYm_Local(:)
       END IF
 
       CALL ComputeDependentVariableAndDerivatives_TABLE_Vector &
-             ( D, T, Ye+Ym, X, dXdD, dXdT, dXdY, Xh_T, OS_Xh, Units_V = UnitXh )
+             ( D, T, Yp, X, dXdD, dXdT, dXdYe, dXdYm, Xh_T, OS_Xh, Units_V = UnitXh )
 
     ELSE
 
       CALL ComputeDependentVariable_TABLE_Vector &
-             ( D, T, Ye+Ym, X, Xh_T, OS_Xh, Units_V = UnitXh )
+             ( D, T, Yp, X, Xh_T, OS_Xh, Units_V = UnitXh )
 
     END IF
 
   END SUBROUTINE ComputeHeavyMassFraction_TABLE_Vector
 
   SUBROUTINE ComputeHeavyMassNumber_TABLE_Scalar &
-    ( D, T, Ye, Ym, X, dXdD_Option, dXdT_Option, dXdY_Option )
+    ( D, T, Ye, Ym, X, dXdD_Option, dXdT_Option, dXdYe_Option, dXdYm_Option )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -2423,18 +2805,23 @@ CONTAINS
     REAL(DP), INTENT(out)                   :: X
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdD_Option
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdT_Option
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdY_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdYe_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdYm_Option
 
     LOGICAL :: ComputeDerivatives
-    REAL(DP), TARGET  :: dXdD_Local, dXdT_Local, dXdY_Local
-    REAL(DP), POINTER :: dXdD      , dXdT      , dXdY
+    REAL(DP), TARGET  :: dXdD_Local, dXdT_Local, dXdYe_Local, dXdYm_Local
+    REAL(DP), POINTER :: dXdD      , dXdT      , dXdYe      , dXdYm
+    REAL(DP) :: Yp
+    
+    Yp = Ye + Ym
 
     ComputeDerivatives &
       =      PRESENT( dXdD_Option ) &
         .OR. PRESENT( dXdT_Option ) &
-        .OR. PRESENT( dXdY_Option )
+        .OR. PRESENT( dXdYe_Option ) &
+        .OR. PRESENT( dXdYm_Option )
 
-    IF ( ComputeDerivatives ) THEN
+    IF( ComputeDerivatives )THEN
 
       IF( PRESENT( dXdD_Option ) )THEN
         dXdD => dXdD_Option
@@ -2448,49 +2835,60 @@ CONTAINS
         dXdT => dXdT_Local
       END IF
 
-      IF( PRESENT( dXdY_Option ) )THEN
-        dXdY => dXdY_Option
+      IF( PRESENT( dXdYe_Option ) )THEN
+        dXdYe => dXdYe_Option
       ELSE
-        dXdY => dXdY_Local
+        dXdYe => dXdYe_Local
+      END IF
+
+      IF( PRESENT( dXdYm_Option ) )THEN
+        dXdYm => dXdYm_Option
+      ELSE
+        dXdYm => dXdYm_Local
       END IF
 
       CALL ComputeDependentVariableAndDerivatives_TABLE_Scalar &
-             ( D, T, Ye+Ym, X, dXdD, dXdT, dXdY, Ah_T, OS_Ah, Units_V = UnitAh )
+             ( D, T, Yp, X, dXdD, dXdT, dXdYe, dXdYm, Ah_T, OS_Ah, Units_V = UnitAh )
 
     ELSE
 
       CALL ComputeDependentVariable_TABLE_Scalar &
-             ( D, T, Ye+Ym, X, Ah_T, OS_Ah, Units_V = UnitAh )
+             ( D, T, Yp, X, Ah_T, OS_Ah, Units_V = UnitAh )
 
     END IF
 
   END SUBROUTINE ComputeHeavyMassNumber_TABLE_Scalar
 
   SUBROUTINE ComputeHeavyMassNumber_TABLE_Vector &
-    ( D, T, Ye, Ym, X, dXdD_Option, dXdT_Option, dXdY_Option )
+    ( D, T, Ye, Ym, X, dXdD_Option, dXdT_Option, dXdYe_Option, dXdYm_Option )
 
     REAL(DP), INTENT(in)                    :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out)                   :: X(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdD_Option(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdT_Option(1:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdY_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdYe_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdYm_Option(1:)
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
     REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
-      dXdD_Local, dXdT_Local, dXdY_Local
+      dXdD_Local, dXdT_Local, dXdYe_Local, dXdYm_Local
     REAL(DP), DIMENSION(:), POINTER :: &
-      dXdD      , dXdT      , dXdY
+      dXdD      , dXdT      , dXdYe      , dXdYm
+    REAL(DP) :: Yp
+    
+    Yp = Ye + Ym
 
     ComputeDerivatives &
       =      PRESENT( dXdD_Option ) &
         .OR. PRESENT( dXdT_Option ) &
-        .OR. PRESENT( dXdY_Option )
+        .OR. PRESENT( dXdYe_Option ) &
+        .OR. PRESENT( dXdYm_Option )
 
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
-      ALLOCATE( dXdD_Local(nP), dXdT_Local(nP), dXdY_Local(nP) )
+      ALLOCATE( dXdD_Local(nP), dXdT_Local(nP), dXdYe_Local(nP), dXdYm_Local(nP) )
 
       IF( PRESENT( dXdD_Option ) )THEN
         dXdD(1:nP) => dXdD_Option(:)
@@ -2504,27 +2902,33 @@ CONTAINS
         dXdT(1:nP) => dXdT_Local(:)
       END IF
 
-      IF( PRESENT( dXdY_Option ) )THEN
-        dXdY(1:nP) => dXdY_Option(:)
+      IF( PRESENT( dXdYe_Option ) )THEN
+        dXdYe(1:nP) => dXdYe_Option(:)
       ELSE
-        dXdY(1:nP) => dXdY_Local(:)
+        dXdYe(1:nP) => dXdYe_Local(:)
       END IF
 
+      IF( PRESENT( dXdYm_Option ) )THEN
+        dXdYm(1:nP) => dXdYm_Option(:)
+      ELSE
+        dXdYm(1:nP) => dXdYm_Local(:)
+      END IF
+      
       CALL ComputeDependentVariableAndDerivatives_TABLE_Vector &
-             ( D, T, Ye+Ym, X, dXdD, dXdT, dXdY, Ah_T, OS_Ah, Units_V = UnitAh )
+             ( D, T, Yp, X, dXdD, dXdT, dXdYe, dXdYm, Ah_T, OS_Ah, Units_V = UnitAh )
 
     ELSE
 
       CALL ComputeDependentVariable_TABLE_Vector &
-             ( D, T, Ye+Ym, X, Ah_T, OS_Ah, Units_V = UnitAh )
+             ( D, T, Yp, X, Ah_T, OS_Ah, Units_V = UnitAh )
 
     END IF
 
   END SUBROUTINE ComputeHeavyMassNumber_TABLE_Vector
 
 
-  SUBROUTINE ComputeNeutrinoChemicalPotential_TABLE_Scalar &
-    ( D, T, Ye, Ym, Mnue, Mnumu )
+  SUBROUTINE ComputeElectronNeutrinoChemicalPotential_TABLE_Scalar &
+    ( D, T, Ye, Ym, Munue )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -2533,12 +2937,10 @@ CONTAINS
 #endif
 
     REAL(DP), INTENT(in)  :: D, T, Ye, Ym
-    REAL(DP), INTENT(out) :: Mnue, Mnumu
+    REAL(DP), INTENT(out) :: Munue
 
-    REAL(DP) :: D_P, T_P, Ye_P, Ym_P
-    INTEGER  :: iD, iT, iY
-    REAL(DP) :: dD, dT, dY
-    REAL(DP) :: Mue, Mumu, Mup, Mun
+    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P
+    REAL(DP) :: Mue, Mup, Mun
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -2546,47 +2948,40 @@ CONTAINS
     T_P = T / UnitT
     Ye_P = Ye / UnitY
     Ym_P = Ym / UnitY
-
+    Yp_P = Ye_P + Ym_P
+    
     CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
-      ( D, T, Ye_P+Ym_P, Mun )
+      ( D, T, Ye_P, Ym_P, Mun )
       
     CALL ComputeProtonChemicalPotential_TABLE_Scalar &
-      ( D, T, Ye_P+Ym_P, Mup )
+      ( D, T, Ye_P, Ym_P, Mup )
       
     CALL ComputeElectronChemicalPotential_TABLE_Scalar &
-      ( D, T, Ye_P, Mue )
-      
-    CALL ComputeMuonChemicalPotential_TABLE_Scalar &
-      ( D, T, Ym_P, Mumu )
+      ( D, T, Ye_P, Ym_P, Mue )
 
     Mue  = Mue  * UnitMl
-    Mumu = Mumu * UnitMl
     Mup  = Mup  * UnitMp
     Mun  = Mun  * UnitMn
 
-    Mnue  = ( Mue  + Mup ) - Mun
-    Mnumu = ( Mumu + Mup ) - Mun
+    Munue  = ( Mue  + Mup ) - Mun
 
 #else
 
-    Mnue  = Zero
-    Mnumu = Zero
+    Munue  = Zero
 
 #endif
 
-  END SUBROUTINE ComputeNeutrinoChemicalPotential_TABLE_Scalar
+  END SUBROUTINE ComputeElectronNeutrinoChemicalPotential_TABLE_Scalar
 
 
-  SUBROUTINE ComputeNeutrinoChemicalPotential_TABLE_Vector &
-    ( D, T, Ye, Ym, Mnue, Mnumu )
+  SUBROUTINE ComputeElectronNeutrinoChemicalPotential_TABLE_Vector &
+    ( D, T, Ye, Ym, Munue )
 
     REAL(DP), INTENT(in)  :: D(1:), T(1:), Ye(1:), Ym(1:)
-    REAL(DP), INTENT(out) :: Mnue(1:), Mnumu(1:)
+    REAL(DP), INTENT(out) :: Munue(1:)
 
-    REAL(DP) :: D_P, T_P, Ye_P, Ym_P
-    INTEGER  :: iD, iT, iY
-    REAL(DP) :: dD, dT, dY
-    REAL(DP) :: Mue, Mumu, Mup, Mun
+    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P
+    REAL(DP) :: Mue, Mup, Mun
 
     INTEGER  :: iP, nP
 
@@ -2596,17 +2991,17 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( D_P, T_P, Yp_P, iD, iT, iY, dD, dT, dY, Mue, Mumu, Mup, Mun ) &
+    !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, iD, iT, iY, dD, dT, dY, Mue, Mup, Mun ) &
     !$OMP MAP( to: D, T, Y, Dbary_T, Tbary_T, Ypbary_T, OS_Mp, OS_Mn, Mpbary_T, Mnbary_T ) &
-    !$OMP MAP( from: Mnue, Mnumu )
+    !$OMP MAP( from: Munue )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( D_P, T_P, Yp_P, iD, iT, iY, dD, dT, dY, Mue, Mumu, Mup, Mun ) &
+    !$ACC PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, iD, iT, iY, dD, dT, dY, Mue, Mup, Mun ) &
     !$ACC COPYIN( D, T, Y, Dbary_T, Tbary_T, Ypbary_T, OS_Mp, OS_Mn, Mpbary_T, Mnbary_T ) &
-    !$ACC COPYOUT( Mnue, Mnumu )
+    !$ACC COPYOUT( Munue )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( D_P, T_P, Yp_P, iD, iT, iY, dD, dT, dY, Mue, Mumu, Mup, Mun )
+    !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, iD, iT, iY, dD, dT, dY, Mue, Mup, Mun )
 #endif
     DO iP = 1, nP
 
@@ -2614,26 +3009,22 @@ CONTAINS
       T_P = T(iP) / UnitT
       Ye_P = Ye(iP) / UnitY
       Ym_P = Ym(iP) / UnitY
+      Yp_P = Ye_P + Ym_P
 
       CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
-        ( D_P, T_P, Ye_P+Ym_P, Mun )
+        ( D_P, T_P, Ye_P, Ym_P, Mun )
         
       CALL ComputeProtonChemicalPotential_TABLE_Scalar &
-        ( D_P, T_P, Ye_P+Ym_P, Mup )
+        ( D_P, T_P, Ye_P, Ym_P, Mup )
         
       CALL ComputeElectronChemicalPotential_TABLE_Scalar &
-        ( D_P, T_P, Ye_P, Mue )
-        
-      CALL ComputeMuonChemicalPotential_TABLE_Scalar &
-        ( D_P, T_P, Ym_P, Mumu )
+        ( D_P, T_P, Ye_P, Ym_P, Mue )
 
       Mue  = Mue  * UnitMl
-      Mumu = Mumu * UnitMl
       Mup  = Mup  * UnitMp
       Mun  = Mun  * UnitMn
 
-      Mnue(iP)  = ( Mue  + Mup ) - Mun
-      Mnumu(iP) = ( Mumu + Mup ) - Mun
+      Munue(iP)  = ( Mue  + Mup ) - Mun
 
     END DO
 
@@ -2641,25 +3032,23 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP MAP( from: Mnue, Mnumu )
+    !$OMP MAP( from: Munue )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC COPYOUT( Mnue, Mnumu )
+    !$ACC COPYOUT( Munue )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
     DO iP = 1, nP
-      Mnue(iP) = Zero
-      Mnumu(iP) = Zero
+      Munue(iP) = Zero
     END DO
 
 #endif
 
-  END SUBROUTINE ComputeNeutrinoChemicalPotential_TABLE_Vector
+  END SUBROUTINE ComputeElectronNeutrinoChemicalPotential_TABLE_Vector
 
-
-  SUBROUTINE ComputeDependentVariableBaryons_Scalar &
-    ( D, T, Yp, V, Vbary_T, OS_V, Units_V )
+  SUBROUTINE ComputeMuonNeutrinoChemicalPotential_TABLE_Scalar &
+      ( D, T, Ye, Ym, Munue )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -2667,18 +3056,140 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)  :: D, T, Yp
-    REAL(DP), INTENT(out) :: V
-    REAL(DP), INTENT(in)  :: Vbary_T(1:,1:,1:)
-    REAL(DP), INTENT(in)  :: OS_V, Units_V
+    REAL(DP), INTENT(in)  :: D, T, Ye, Ym
+    REAL(DP), INTENT(out) :: Munue
 
-    REAL(DP) :: D_P, T_P, Yp_P, V_P
+    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P
+    REAL(DP) :: Mum, Mup, Mun
 
 #ifdef MICROPHYSICS_WEAKLIB
 
     D_P = D / UnitD
     T_P = T / UnitT
-    Yp_P = Yp / UnitY
+    Ye_P = Ye / UnitY
+    Ym_P = Ym / UnitY
+    Yp_P = Ye_P + Ym_P
+    
+    CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
+      ( D, T, Ye_P, Ym_P, Mun )
+      
+    CALL ComputeProtonChemicalPotential_TABLE_Scalar &
+      ( D, T, Ye_P, Ym_P, Mup )
+      
+    CALL ComputeMuonChemicalPotential_TABLE_Scalar &
+      ( D, T, Ye_P, Ym_P, Munum )
+
+    Mum  = Mum  * UnitMl
+    Mup  = Mup  * UnitMp
+    Mun  = Mun  * UnitMn
+
+    Munum  = ( Mum  + Mup ) - Mun
+
+#else
+
+    Munum  = Zero
+
+#endif
+
+  END SUBROUTINE ComputeMuonNeutrinoChemicalPotential_TABLE_Scalar
+
+
+  SUBROUTINE ComputeMuonNeutrinoChemicalPotential_TABLE_Vector &
+    ( D, T, Ye, Ym, Munum )
+
+    REAL(DP), INTENT(in)  :: D(1:), T(1:), Ye(1:), Ym(1:)
+    REAL(DP), INTENT(out) :: Munum(1:)
+
+    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P
+    REAL(DP) :: Mup, Mun
+
+    INTEGER  :: iP, nP
+
+    nP = SIZE( D )
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, iD, iT, iY, dD, dT, dY, Mum, Mup, Mun ) &
+    !$OMP MAP( to: D, T, Y, Dbary_T, Tbary_T, Ypbary_T, OS_Mp, OS_Mn, Mpbary_T, Mnbary_T ) &
+    !$OMP MAP( from: Munum )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, iD, iT, iY, dD, dT, dY, Mum, Mup, Mun ) &
+    !$ACC COPYIN( D, T, Y, Dbary_T, Tbary_T, Ypbary_T, OS_Mp, OS_Mn, Mpbary_T, Mnbary_T ) &
+    !$ACC COPYOUT( Munum )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, iD, iT, iY, dD, dT, dY, Mum, Mup, Mun )
+#endif
+    DO iP = 1, nP
+
+      D_P = D(iP) / UnitD
+      T_P = T(iP) / UnitT
+      Ye_P = Ye(iP) / UnitY
+      Ym_P = Ym(iP) / UnitY
+      Yp_P = Ye_P + Ym_P
+
+      CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
+        ( D_P, T_P, Ye_P, Ym_P, Mun )
+        
+      CALL ComputeProtonChemicalPotential_TABLE_Scalar &
+        ( D_P, T_P, Ye_P, Ym_P, Mup )
+        
+      CALL ComputeMuonChemicalPotential_TABLE_Scalar &
+        ( D_P, T_P, Ye_P, Ym_P, Mue )
+
+      Mum  = Mum  * UnitMl
+      Mup  = Mup  * UnitMp
+      Mun  = Mun  * UnitMn
+
+      Munum(iP)  = ( Mum  + Mup ) - Mun
+
+    END DO
+
+#else
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP MAP( from: Munum )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC COPYOUT( Munum )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iP = 1, nP
+      Munum(iP) = Zero
+    END DO
+
+#endif
+
+  END SUBROUTINE ComputeMuonNeutrinoChemicalPotential_TABLE_Vector
+
+  SUBROUTINE ComputeDependentVariableBaryons_Scalar &
+    ( D, T, Ye, Ym, V, Vbary_T, OS_V, Units_V )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: D, T, Ye, Ym
+    REAL(DP), INTENT(out) :: V
+    REAL(DP), INTENT(in)  :: Vbary_T(1:,1:,1:)
+    REAL(DP), INTENT(in)  :: OS_V, Units_V
+
+    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P, V_P
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    D_P = D / UnitD
+    T_P = T / UnitT
+    Ye_P = Yp / UnitY
+    Ym_P = Yp / UnitY
+    Yp_P = Ye_P + Ym_P
 
     CALL LogInterpolateSingleVariable_3D_Custom_Point &
            ( D_P, T_P, Yp_P, Dbary_T, Tbary_T, Ypbary_T, OS_V, Vbary_T, V_P )
@@ -2695,15 +3206,15 @@ CONTAINS
 
 
   SUBROUTINE ComputeDependentVariableBaryons_Vector &
-    ( D, T, Yp, V, Vbary_T, OS_V, Units_V )
+    ( D, T, Ye, Ym, V, Vbary_T, OS_V, Units_V )
 
-    REAL(DP), INTENT(in)  :: D(1:), T(1:), Yp(1:)
+    REAL(DP), INTENT(in)  :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out) :: V(1:)
     REAL(DP), INTENT(in)  :: Vbary_T(1:,1:,1:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
 
     INTEGER  :: iP, nP
-    REAL(DP) :: D_P, T_P, Yp_P, V_P
+    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P, V_P
 
     nP = SIZE( D )
 
@@ -2711,23 +3222,25 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( D_P, T_P, Yp_P, V_P ) &
+      !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, V_P ) &
       !$OMP MAP( to: D, T, Y, Dbary_T, Tbary_T, Ypbary_T, OS_V, Vbary_T ) &
       !$OMP MAP( from: V )
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( D_P, T_P, Yp_P, V_P ) &
+      !$ACC PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, V_P ) &
       !$ACC COPYIN( D, T, Y, Dbary_T, Tbary_T, Ypbary_T, OS_V, Vbary_T ) &
       !$ACC COPYOUT( V )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO &
-      !$OMP PRIVATE( D_P, T_P, Yp_P, V_P )
+      !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, V_P )
 #endif
     DO iP = 1, nP
 
       D_P = D(iP) / UnitD
       T_P = T(iP) / UnitT
-      Yp_P = Yp(iP) / UnitY
+      Ye_P = Ye(iP) / UnitY
+      Ym_P = Ym(iP) / UnitY
+      Yp_P = Ye_P + Ym_P
 
       CALL LogInterpolateSingleVariable_3D_Custom_Point &
              ( D_P, T_P, Yp_P, Dbary_T, Tbary_T, Ypbary_T, OS_V, Vbary_T, V_P )
@@ -2771,10 +3284,10 @@ CONTAINS
     REAL(DP), INTENT(in)  :: OS_V, Units_V
     REAL(DP), INTENT(in)  :: InputE, InputP, InputS
 
-    REAL(DP) :: D_P, T_P, Ye_P, Ym_P, V_P
+    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P, V_P
     REAL(DP) :: Ye_over_Yp, Ym_over_Yp
-    REAL(DP) :: E_leptons, P_leptons, S_leptons
-    REAL(DP) :: Vtot(2,2,2)
+    REAL(DP) :: Vtot(2,2,2), E_leptons(2,2,2), &
+                P_leptons(2,2,2), S_leptons(2,2,2)
     
     INTEGER  :: iD, iT, iYp, iL_D, iL_Y, iL_T
     INTEGER  :: SizeDs, SizeTs, SizeYps
@@ -2788,6 +3301,7 @@ CONTAINS
     T_P = T / UnitT
     Ye_P = Ye / UnitY
     Ym_P = Ym / UnitY
+    Yp_P = Ye_P + Ym_P
 
     Ye_over_Yp = Ye_P/(Ye_P + Ym_P)
     Ym_over_Yp = Ym_P/(Ye_P + Ym_P)
@@ -2820,18 +3334,23 @@ CONTAINS
           
           CALL FullMuonEOS(MuonTable, MuonState)
           
-          E_leptons = ElectronState % e + me / rmu * ergmev * ElectronState % y_e + &
-                        MuonState % e + mmu / rmu * ergmev * Ypbary_T(iYp+iL_Y-1) * Ym_over_Yp
-          P_leptons = ElectronState % p + MuonState % p
-          S_leptons = ElectronState % s + MuonState % s
-          
-          Vtot(iL_D,iL_T,iL_Y) = Vbary_T(iD+iL_D-1,iT+iL_T-1,iYp+iL_Y-1) + &
-              InputE*E_leptons + InputP*P_leptons + InputS*S_leptons
-              
+          E_leptons(iL_D,iL_T,iL_Y) = ElectronState % e + mass_ele / rmu * ergmev * ElectronState % y_e + &
+                        MuonState % e + mass_mu / rmu * ergmev * Ypbary_T(iYp+iL_Y-1) * Ym_over_Yp
+          P_leptons(iL_D,iL_T,iL_Y) = ElectronState % p + MuonState % p
+          S_leptons(iL_D,iL_T,iL_Y) = ElectronState % s + MuonState % s
+
         END DO
       END DO
     END DO
-
+    
+    IF (InputP .EQ. 1.0d0) THEN
+      Vtot(:,:,:) = Vbary_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + P_leptons(:,:,:)
+    ELSE IF (InputE .EQ. 1.0d0) THEN
+      Vtot(:,:,:) = 10.0**Vbary_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + E_leptons(:,:,:)
+    ELSE
+      Vtot(:,:,:) = 10.0**Vbary_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + S_leptons(:,:,:)
+    ENDIF
+    
     CALL LogInterpolateSingleVariable_3D_Custom_Point &
            ( D_P, T_P, Yp_P, Dbary_T(iD:iD+1), Tbary_T(iT:iT+1), Ypbary_T(iYp:iYp+1), &
            OS_V, Vtot, V_P )
@@ -2858,10 +3377,10 @@ CONTAINS
     REAL(DP), INTENT(in)  :: InputE, InputP, InputS
 
     INTEGER  :: iP, nP
-    REAL(DP) :: D_P, T_P, Ye_P, Ym_P, V_P
+    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P, V_P
     REAL(DP) :: Ye_over_Yp, Ym_over_Yp
-    REAL(DP) :: E_leptons, P_leptons, S_leptons
-    REAL(DP) :: Vtot(2,2,2)
+    REAL(DP) :: Vtot(2,2,2), E_leptons(2,2,2), &
+                P_leptons(2,2,2), S_leptons(2,2,2)
     
     INTEGER  :: iD, iT, iYp, iL_D, iL_Y, iL_T
     INTEGER  :: SizeDs, SizeTs, SizeYps
@@ -2875,25 +3394,25 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( D_P, T_P, Yp_P, V_P ) &
+      !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, V_P ) &
       !$OMP MAP( to: D, T, Y, Dbary_T, Tbary_T, Ypbary_T, OS_V, Vbary_T ) &
       !$OMP MAP( from: V )
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( D_P, T_P, Yp_P, V_P ) &
+      !$ACC PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, V_P ) &
       !$ACC COPYIN( D, T, Y, Dbary_T, Tbary_T, Ypbary_T, OS_V, Vbary_T ) &
       !$ACC COPYOUT( V )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO &
-      !$OMP PRIVATE( D_P, T_P, Yp_P, V_P )
+      !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, V_P )
 #endif
     DO iP = 1, nP
 
       D_P = D(iP) / UnitD
       T_P = T(iP) / UnitT
-      Yp_P = Yp(iP) / UnitY
       Ye_P = Ye(iP) / UnitY
       Ym_P = Ym(iP) / UnitY
+      Yp_P = Ye_P + Ym_P
 
       Ye_over_Yp = Ye_P/(Ye_P + Ym_P)
       Ym_over_Yp = Ym_P/(Ye_P + Ym_P)
@@ -2927,17 +3446,22 @@ CONTAINS
             
             CALL FullMuonEOS(MuonTable, MuonState)
             
-            E_leptons = ElectronState % e + me / rmu * ergmev * ElectronState % y_e + &
-                          MuonState % e + mmu / rmu * ergmev * Ypbary_T(iYp+iL_Y-1) * Ym_over_Yp
-            P_leptons = ElectronState % p + MuonState % p
-            S_leptons = ElectronState % s + MuonState % s
+            E_leptons(iL_D,iL_T,iL_Y) = ElectronState % e + mass_ele / rmu * ergmev * ElectronState % y_e + &
+                          MuonState % e + mass_mu / rmu * ergmev * Ypbary_T(iYp+iL_Y-1) * Ym_over_Yp
+            P_leptons(iL_D,iL_T,iL_Y) = ElectronState % p + MuonState % p
+            S_leptons(iL_D,iL_T,iL_Y) = ElectronState % s + MuonState % s
             
-            Vtot(iL_D,iL_T,iL_Y) = Vbary_T(iD+iL_D-1,iT+iL_T-1,iYp+iL_Y-1) + &
-                InputE*E_leptons + InputP*P_leptons + InputS*S_leptons
-              
           END DO
         END DO
       END DO
+
+      IF (InputP .EQ. 1.0d0) THEN
+        Vtot(:,:,:) = Vbary_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + P_leptons(:,:,:)
+      ELSE IF (InputE .EQ. 1.0d0) THEN
+        Vtot(:,:,:) = 10.0**Vbary_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + E_leptons(:,:,:)
+      ELSE
+        Vtot(:,:,:) = 10.0**Vbary_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + S_leptons(:,:,:)
+      ENDIF
 
       CALL LogInterpolateSingleVariable_3D_Custom_Point &
              ( D_P, T_P, Yp_P, Dbary_T(iD:iD+1), Tbary_T(iT:iT+1), Ypbary_T(iYp:iYp+1), &
@@ -2968,7 +3492,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
-    ( D, T, Ye, Ym, V, dVdD, dVdT, dVdYp, Vbary_T, OS_V, Units_V, &
+    ( D, T, Ye, Ym, V, dVdD, dVdT, dVdYe, dVdYm, Vbary_T, OS_V, Units_V, &
     InputE, InputP, InputS)
 
 #if defined(THORNADO_OMP_OL)
@@ -2978,18 +3502,21 @@ CONTAINS
 #endif
 
     REAL(DP), INTENT(in)  :: D, T, Ye, Ym
-    REAL(DP), INTENT(out) :: V, dVdD, dVdT, dVdYp
+    REAL(DP), INTENT(out) :: V, dVdD, dVdT, dVdYe, dVdYm
     REAL(DP), INTENT(in)  :: Vbary_T(1:,1:,1:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
     REAL(DP), INTENT(in)  :: InputE, InputP, InputS
 
     REAL(DP) :: D_P, T_P, Ye_P, Ym_P, V_P, dV_P(3)
     REAL(DP) :: Ye_over_Yp, Ym_over_Yp
-    REAL(DP) :: E_leptons, P_leptons, S_leptons
-    REAL(DP) :: Vtot(2,2,2)
+    REAL(DP) :: Vtot(2,2,2), E_leptons(2,2,2), &
+                P_leptons(2,2,2), S_leptons(2,2,2)
     
     INTEGER  :: iD, iT, iYp, iL_D, iL_Y, iL_T
     INTEGER  :: SizeDs, SizeTs, SizeYps
+    REAL(DP) :: dD, dT
+	REAL(DP) :: aD, aT
+    REAL(DP) :: dVdrhoym, dV_dummy, V_dummy
     
     TYPE(ElectronStateType) :: ElectronState
     TYPE(MuonStateType) :: MuonState
@@ -3000,7 +3527,8 @@ CONTAINS
     T_P = T / UnitT
     Ye_P = Ye / UnitY
     Ym_P = Ym / UnitY
-
+    Yp_P = Ye_P + Ym_P
+    
     Ye_over_Yp = Ye_P/(Ye_P + Ym_P)
     Ym_over_Yp = Ym_P/(Ye_P + Ym_P)
 
@@ -3033,27 +3561,167 @@ CONTAINS
           
           CALL FullMuonEOS(MuonTable, MuonState)
           
-          E_leptons = ElectronState % e + me / rmu * ergmev * ElectronState % y_e + &
-                        MuonState % e + mmu / rmu * ergmev * Ypbary_T(iYp+iL_Y-1) * Ym_over_Yp
-          P_leptons = ElectronState % p + MuonState % p
-          S_leptons = ElectronState % s + MuonState % s
-          
-          Vtot(iL_D,iL_T,iL_Y) = Vbary_T(iD+iL_D-1,iT+iL_T-1,iYp+iL_Y-1) + &
-              InputE*E_leptons + InputP*P_leptons + InputS*S_leptons
+          E_leptons(iL_D,iL_T,iL_Y) = ElectronState % e + mass_ele / rmu * ergmev * ElectronState % y_e + &
+                        MuonState % e + mass_mu / rmu * ergmev * Ypbary_T(iYp+iL_Y-1) * Ym_over_Yp
+          P_leptons(iL_D,iL_T,iL_Y) = ElectronState % p + MuonState % p
+          S_leptons(iL_D,iL_T,iL_Y) = ElectronState % s + MuonState % s
 
         END DO
       END DO
     END DO
+
+    ! Now you have to calculate dVbarydYp, and if you have pressure, you
+    ! have to handle the offset accordingly
+    
+    IF (InputP .EQ. 1.0d0) THEN
+      Vtot(:,:,:) = Vbary_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + P_leptons(:,:,:)
+   
+      Local_Offset = MINVAL(Vbary_T(iD:iD+1,iT:iT+1,iYp:iYp+1))
+      IF (Local_Offset .lt. 0.0_dp) THEN
+          Local_Offset = -1.1d0*Local_Offset
+      ELSE
+          Local_Offset = 0.0_dp
+      ENDIF
+      
+      ! V_P is a dummy variable below
+      CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Yp_P, Dbary_T(iD:iD+1), Tbary_T(iT:iT+1), Ypbary_T(iYp:iYp+1), &
+             Local_Offset, LOG10(Vbary_T + Local_Offset), V_P, dV_P )
+             
+      ! Now calculate electron and muon derivatives
+      ! ELECTRON PART IS EASY -----------------------------------------------------
+      ! Initialize temperature, density, yp, Zbar and Abar
+      ElectronState % t = T
+      ElectronState % rho = D
+      ElectronState % abar = 1.0d0 ! these are only used for ion contribution
+      ElectronState % zbar = 1.0d0 ! these are only used for ion contribution
+      ElectronState % y_e = Ye
+
+      ! calculate electron quantities
+      CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
+
+      dVdYe = D/Ye * ElectronState % dpdr ! This is valid because dPdrho for photons is zero
+      
+      ! NOW MUONS ---------------------------------------------
+      IF (( D * Ym .lt. MuonTable % rhoym(1) ) .or. (T .lt. MuonTable % t(1))) THEN
+        
+        dVdYm = 0.0_dp
+      
+      ELSE
+      
+        CALL GetIndexAndDelta_Log( D * Ym, MuonTable % rhoym(:), iD, dD )
+        CALL GetIndexAndDelta_Log( T, MuonTable % t(:), iT, dT )
+        
+        aD = 1.0_dp / ( D * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
+        aT = 1.0_dp / ( T * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
+
+        CALL LinearInterpDeriv2D_2DArray_Point &
+               ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % p), Pmu, &
+                 dVdrhoym, dVdummy )
+        
+        dVdYm = dVdrhoym * D ! make sure the derivative is wr2 ym, not rhoym
+      END IF
+    
+    ELSE IF (InputE .EQ. 1.0d0) THEN
+
+      Vtot(:,:,:) = 10.0**Vbary_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + E_leptons(:,:,:)
+
+      ! V_P is a dummy variable below
+      CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Yp_P, Dbary_T(iD:iD+1), Tbary_T(iT:iT+1), Ypbary_T(iYp:iYp+1), &
+             OS_V, Vbary_T, V_P, dV_P )
+             
+      ! Now calculate electron and muon derivatives
+      ! ELECTRON PART IS EASY -----------------------------------------------------
+      ! Initialize temperature, density, yp, Zbar and Abar
+      ElectronState % t = T
+      ElectronState % rho = D
+      ElectronState % abar = 1.0d0 ! these are only used for ion contribution
+      ElectronState % zbar = 1.0d0 ! these are only used for ion contribution
+      ElectronState % y_e = Ye
+
+      ! calculate electron quantities
+      CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
+
+      dVdYe = D/Ye * ElectronState % dedr ! This is valid because dPdrho for photons is zero
+      WRITE(*,*) 'Need to get this from Electron EOS, careful'
+      STOP
+      
+      ! NOW MUONS ---------------------------------------------
+      IF (( D * Ym .lt. MuonTable % rhoym(1) ) .or. (T .lt. MuonTable % t(1))) THEN
+        
+        dVdYm = 0.0_dp
+      
+      ELSE
+      
+        CALL GetIndexAndDelta_Log( D * Ym, MuonTable % rhoym(:), iD, dD )
+        CALL GetIndexAndDelta_Log( T, MuonTable % t(:), iT, dT )
+        
+        aD = 1.0_dp / ( D * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
+        aT = 1.0_dp / ( T * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
+
+        CALL LinearInterpDeriv2D_2DArray_Point &
+               ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % e), Vm_dummy, &
+                 dVdrhoym, dV_dummy )
+        
+        dVdYm = dVdrhoym * D ! make sure the derivative is wr2 ym, not rhoym
+      END IF
+             
+    ELSE
+
+      Vtot(:,:,:) = 10.0**Vbary_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + S_leptons(:,:,:)
+
+      ! V_P is a dummy variable below
+      CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Yp_P, Dbary_T(iD:iD+1), Tbary_T(iT:iT+1), Ypbary_T(iYp:iYp+1), &
+             OS_V, Vbary_T, V_P, dV_P )
+             
+      ! Now calculate electron and muon derivatives
+      ! ELECTRON PART IS EASY -----------------------------------------------------
+      ! Initialize temperature, density, yp, Zbar and Abar
+      ElectronState % t = T
+      ElectronState % rho = D
+      ElectronState % abar = 1.0d0 ! these are only used for ion contribution
+      ElectronState % zbar = 1.0d0 ! these are only used for ion contribution
+      ElectronState % y_e = Ye
+
+      ! calculate electron quantities
+      CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
+
+      dVdYe = D/Ye * ElectronState % dsdr ! This is valid because dPdrho for photons is zero
+      WRITE(*,*) 'Need to get this properly from Electron EOS, careful'
+      STOP
+      
+      ! NOW MUONS ---------------------------------------------
+      IF (( D * Ym .lt. MuonTable % rhoym(1) ) .or. (T .lt. MuonTable % t(1))) THEN
+        
+        dVdYm = 0.0_dp
+      
+      ELSE
+      
+        CALL GetIndexAndDelta_Log( D * Ym, MuonTable % rhoym(:), iD, dD )
+        CALL GetIndexAndDelta_Log( T, MuonTable % t(:), iT, dT )
+        
+        aD = 1.0_dp / ( D * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
+        aT = 1.0_dp / ( T * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
+
+        CALL LinearInterpDeriv2D_2DArray_Point &
+               ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % s), Vm_dummy, &
+                 dVdrhoym, dV_dummy )
+        
+        dVdYm = dVdrhoym * D ! make sure the derivative is wr2 ym, not rhoym
+      END IF
+             
+    END IF
     
     CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
-           ( D_P, T_P, Ye_P+Ym_P, Dbary_T(iD:iD+1), Tbary_T(iT:iT+1), Ypbary_T(iYp:iYp+1), &
-           OS_V, Vtot, V_P, dV_P )
+       ( D_P, T_P, Yp_P, Dbary_T(iD:iD+1), Tbary_T(iT:iT+1), Ypbary_T(iYp:iYp+1), &
+       OS_V, Vtot, V_P, dV_P )
              
     V = V_P * Units_V
 
     dVdD = dV_P(1) * Units_V / UnitD
     dVdT = dV_P(2) * Units_V / UnitT
-    dVdYp = dV_P(3) * Units_V / UnitY
 
 #else
 
