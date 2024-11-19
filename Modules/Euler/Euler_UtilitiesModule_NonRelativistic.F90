@@ -23,6 +23,7 @@ MODULE Euler_UtilitiesModule_NonRelativistic
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
+    iCF_Nm, &
     nPF, &
     iPF_D, &
     iPF_V1, &
@@ -30,14 +31,17 @@ MODULE Euler_UtilitiesModule_NonRelativistic
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
+    iPF_Nm, &
     iAF_P, &
     iAF_T, &
     iAF_Ye, &
+    iAF_Ym, &
     iAF_S, &
     iAF_E, &
     iAF_Gm, &
     iAF_Cs, &
     iAF_Me, &
+    iAF_Mm, &
     iAF_Mp, &
     iAF_Mn, &
     iAF_Xp, &
@@ -88,7 +92,7 @@ CONTAINS
 
 
   SUBROUTINE ComputePrimitive_Scalar &
-    ( N, S_1, S_2, S_3, G, Ne, D, V_1, V_2, V_3, E, De, &
+    ( N, S_1, S_2, S_3, G, Ne, Nm, D, V_1, V_2, V_3, E, De, Dm, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
 #if   defined( THORNADO_OMP_OL )
@@ -97,8 +101,8 @@ CONTAINS
   !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in ) :: N, S_1, S_2, S_3, G, Ne
-    REAL(DP), INTENT(out) :: D, V_1, V_2, V_3, E, De
+    REAL(DP), INTENT(in ) :: N, S_1, S_2, S_3, G, Ne, Nm
+    REAL(DP), INTENT(out) :: D, V_1, V_2, V_3, E, De, Dm
     REAL(DP), INTENT(in ) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     ! --- Three-Velocity: Index Up   ---
@@ -112,16 +116,17 @@ CONTAINS
                        + S_2**2 / Gm_dd_22 &
                        + S_3**2 / Gm_dd_33 ) / N
     De  = Ne
+    Dm  = Nm
 
   END SUBROUTINE ComputePrimitive_Scalar
 
 
   SUBROUTINE ComputePrimitive_Vector &
-    ( N, S_1, S_2, S_3, G, Ne, D, V_1, V_2, V_3, E, De, &
+    ( N, S_1, S_2, S_3, G, Ne, Nm, D, V_1, V_2, V_3, E, De, Dm, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: N, S_1, S_2, S_3, G, Ne
-    REAL(DP), DIMENSION(:), INTENT(out) :: D, V_1, V_2, V_3, E, De
+    REAL(DP), DIMENSION(:), INTENT(in)  :: N, S_1, S_2, S_3, G, Ne, Nm
+    REAL(DP), DIMENSION(:), INTENT(out) :: D, V_1, V_2, V_3, E, De, Dm
     REAL(DP), DIMENSION(:), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     ! --- Three-Velocity: Index Up   ---
@@ -131,23 +136,23 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    N, S_1, S_2, S_3, G, Ne, &
+    !$OMP MAP( to:    N, S_1, S_2, S_3, G, Ne, Nm, &
     !$OMP             Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
-    !$OMP MAP( alloc: D, V_1, V_2, V_3, E, De )
+    !$OMP MAP( alloc: D, V_1, V_2, V_3, E, De, Dm )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     N, S_1, S_2, S_3, G, Ne, &
+    !$ACC COPYIN(     N, S_1, S_2, S_3, G, Ne, Nm, &
     !$ACC             Gm_dd_11, Gm_dd_22, Gm_dd_33 ) &
-    !$ACC CREATE(     D, V_1, V_2, V_3, E, De )
+    !$ACC CREATE(     D, V_1, V_2, V_3, E, De, Dm )
 #endif
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT( N, S_1, S_2, S_3, G, Ne, &
+    !$ACC PRESENT( N, S_1, S_2, S_3, G, Ne, Nm, &
     !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-    !$ACC          D, V_1, V_2, V_3, E, De )
+    !$ACC          D, V_1, V_2, V_3, E, De, Dm )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO
 #endif
@@ -161,26 +166,27 @@ CONTAINS
                                    + S_2(iNX)**2 / Gm_dd_22(iNX) &
                                    + S_3(iNX)**2 / Gm_dd_33(iNX) ) / N(iNX)
       De (iNX) = Ne (iNX)
+      Dm (iNX) = Nm (iNX)
 
     END DO
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from:    D, V_1, V_2, V_3, E, De ) &
+    !$OMP MAP( from:    D, V_1, V_2, V_3, E, De, Dm ) &
     !$OMP MAP( release: Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-    !$OMP               N, S_1, S_2, S_3, G, Ne )
+    !$OMP               N, S_1, S_2, S_3, G, Ne, Nm )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT(      D, V_1, V_2, V_3, E, De ) &
+    !$ACC COPYOUT(      D, V_1, V_2, V_3, E, De, Dm ) &
     !$ACC DELETE(       Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-    !$ACC               N, S_1, S_2, S_3, G, Ne )
+    !$ACC               N, S_1, S_2, S_3, G, Ne, Nm )
 #endif
 
   END SUBROUTINE ComputePrimitive_Vector
 
 
   SUBROUTINE ComputeConserved_Scalar &
-    ( D, V_1, V_2, V_3, E, De, N, S_1, S_2, S_3, G, Ne, &
+    ( D, V_1, V_2, V_3, E, De, Dm, N, S_1, S_2, S_3, G, Ne, Nm, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
 #if   defined( THORNADO_OMP_OL )
@@ -189,8 +195,8 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in ) :: D, V_1, V_2, V_3, E, De
-    REAL(DP), INTENT(out) :: N, S_1, S_2, S_3, G, Ne
+    REAL(DP), INTENT(in ) :: D, V_1, V_2, V_3, E, De, Dm
+    REAL(DP), INTENT(out) :: N, S_1, S_2, S_3, G, Ne, Nm
     REAL(DP), INTENT(in ) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     ! --- Three-Velocity: Index Up   ---
@@ -204,16 +210,17 @@ CONTAINS
                            + Gm_dd_22 * V_2**2 &
                            + Gm_dd_33 * V_3**2 )
     Ne  = De
+    Nm  = Dm
 
   END SUBROUTINE ComputeConserved_Scalar
 
 
   SUBROUTINE ComputeConserved_Vector &
-    ( D, V_1, V_2, V_3, E, De, N, S_1, S_2, S_3, G, Ne, &
+    ( D, V_1, V_2, V_3, E, De, Dm, N, S_1, S_2, S_3, G, Ne, Nm, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    REAL(DP), DIMENSION(:), INTENT(in ) :: D, V_1, V_2, V_3, E, De
-    REAL(DP), DIMENSION(:), INTENT(out) :: N, S_1, S_2, S_3, G, Ne
+    REAL(DP), DIMENSION(:), INTENT(in ) :: D, V_1, V_2, V_3, E, De, Dm
+    REAL(DP), DIMENSION(:), INTENT(out) :: N, S_1, S_2, S_3, G, Ne, Nm
     REAL(DP), DIMENSION(:), INTENT(in ) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     ! --- Three-Velocity: Index Up   ---
@@ -227,6 +234,7 @@ CONTAINS
                            + Gm_dd_22 * V_2**2 &
                            + Gm_dd_33 * V_3**2 )
     Ne  = De
+    Nm  = Dm
 
   END SUBROUTINE ComputeConserved_Vector
 
@@ -264,12 +272,14 @@ CONTAINS
                U(1:nDOFX,iX1,iX2,iX3,iCF_S3),        &
                U(1:nDOFX,iX1,iX2,iX3,iCF_E),         &
                U(1:nDOFX,iX1,iX2,iX3,iCF_Ne),        &
+               U(1:nDOFX,iX1,iX2,iX3,iCF_Nm),        &
                P(1:nDOFX,iX1,iX2,iX3,iPF_D),         &
                P(1:nDOFX,iX1,iX2,iX3,iPF_V1),        &
                P(1:nDOFX,iX1,iX2,iX3,iPF_V2),        &
                P(1:nDOFX,iX1,iX2,iX3,iPF_V3),        &
                P(1:nDOFX,iX1,iX2,iX3,iPF_E),         &
                P(1:nDOFX,iX1,iX2,iX3,iPF_Ne),        &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_Nm),        &
                G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
                G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
                G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -278,9 +288,11 @@ CONTAINS
              ( P(1:nDOFX,iX1,iX2,iX3,iPF_D ), &
                P(1:nDOFX,iX1,iX2,iX3,iPF_E ), &
                P(1:nDOFX,iX1,iX2,iX3,iPF_Ne), &
+               P(1:nDOFX,iX1,iX2,iX3,iPF_Nm), &
                A(1:nDOFX,iX1,iX2,iX3,iAF_P ), &
                A(1:nDOFX,iX1,iX2,iX3,iAF_T ), &
                A(1:nDOFX,iX1,iX2,iX3,iAF_Ye), &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_Ym), &
                A(1:nDOFX,iX1,iX2,iX3,iAF_S ), &
                A(1:nDOFX,iX1,iX2,iX3,iAF_E ), &
                A(1:nDOFX,iX1,iX2,iX3,iAF_Gm), &
@@ -290,10 +302,12 @@ CONTAINS
              ( P(1:nDOFX,iX1,iX2,iX3,iPF_D),   &
                A(1:nDOFX,iX1,iX2,iX3,iAF_T),   &
                A(1:nDOFX,iX1,iX2,iX3,iAF_Ye),  &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_Ym),  &
                A(1:nDOFX,iX1,iX2,iX3,iAF_P),   &
                A(1:nDOFX,iX1,iX2,iX3,iAF_S),   &
                A(1:nDOFX,iX1,iX2,iX3,iAF_E),   &
                A(1:nDOFX,iX1,iX2,iX3,iAF_Me),  &
+               A(1:nDOFX,iX1,iX2,iX3,iAF_Mm),  &
                A(1:nDOFX,iX1,iX2,iX3,iAF_Mp),  &
                A(1:nDOFX,iX1,iX2,iX3,iAF_Mn),  &
                A(1:nDOFX,iX1,iX2,iX3,iAF_Xp),  &
@@ -386,14 +400,15 @@ CONTAINS
                  U(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  U(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  U(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 U(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  P(iPF_D ), P(iPF_V1), P(iPF_V2), &
-                 P(iPF_V3), P(iPF_E ), P(iPF_Ne), &
+                 P(iPF_V3), P(iPF_E ), P(iPF_Ne), P(iPF_Nm), &
                  G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
         CALL ComputeSoundSpeedFromPrimitive &
-               ( P(iPF_D), P(iPF_E), P(iPF_Ne), Cs )
+               ( P(iPF_D), P(iPF_E), P(iPF_Ne), P(iPF_Nm), Cs )
 
         DO iDimX = 1, nDimsX
 
@@ -453,7 +468,7 @@ CONTAINS
     REAL(DP), DIMENSION(nCF) :: Eigenvalues_Euler_NonRelativistic
 
     Eigenvalues_Euler_NonRelativistic &
-      = [ Vi - Cs / SQRT( Gmii ), Vi, Vi, Vi, Vi, Vi + Cs / SQRT( Gmii ) ]
+      = [ Vi - Cs / SQRT( Gmii ), Vi, Vi, Vi, Vi, Vi, Vi + Cs / SQRT( Gmii ) ]
 
     RETURN
   END FUNCTION Eigenvalues_Euler_NonRelativistic
@@ -485,7 +500,7 @@ CONTAINS
 
 
   FUNCTION Flux_X1_Euler_NonRelativistic &
-    ( D, V_1, V_2, V_3, E, Ne, P, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+    ( D, V_1, V_2, V_3, E, Ne, Nm, P, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
@@ -494,7 +509,7 @@ CONTAINS
 #endif
 
     REAL(DP)             :: Flux_X1_Euler_NonRelativistic(1:nCF)
-    REAL(DP), INTENT(in) :: D, V_1, V_2, V_3, E, Ne, P
+    REAL(DP), INTENT(in) :: D, V_1, V_2, V_3, E, Ne, Nm, P
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     REAL(DP) :: VSq
@@ -507,13 +522,14 @@ CONTAINS
     Flux_X1_Euler_NonRelativistic(iCF_S3) = D * Gm_dd_33 * V_3 * V_1
     Flux_X1_Euler_NonRelativistic(iCF_E ) = ( E + Half * D * VSq + P ) * V_1
     Flux_X1_Euler_NonRelativistic(iCF_Ne) = Ne * V_1
+    Flux_X1_Euler_NonRelativistic(iCF_Nm) = Nm * V_1
 
     RETURN
   END FUNCTION Flux_X1_Euler_NonRelativistic
 
 
   FUNCTION Flux_X2_Euler_NonRelativistic &
-    ( D, V_1, V_2, V_3, E, Ne, P, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+    ( D, V_1, V_2, V_3, E, Ne, Nm, P, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
@@ -522,7 +538,7 @@ CONTAINS
 #endif
 
     REAL(DP)             :: Flux_X2_Euler_NonRelativistic(1:nCF)
-    REAL(DP), INTENT(in) :: D, V_1, V_2, V_3, E, Ne, P
+    REAL(DP), INTENT(in) :: D, V_1, V_2, V_3, E, Ne, Nm, P
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     REAL(DP) :: VSq
@@ -535,13 +551,14 @@ CONTAINS
     Flux_X2_Euler_NonRelativistic(iCF_S3) = D * Gm_dd_33 * V_3 * V_2
     Flux_X2_Euler_NonRelativistic(iCF_E ) = ( E + Half * D * VSq + P ) * V_2
     Flux_X2_Euler_NonRelativistic(iCF_Ne) = Ne * V_2
+    Flux_X2_Euler_NonRelativistic(iCF_Nm) = Nm * V_2
 
     RETURN
   END FUNCTION Flux_X2_Euler_NonRelativistic
 
 
   FUNCTION Flux_X3_Euler_NonRelativistic &
-    ( D, V_1, V_2, V_3, E, Ne, P, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+    ( D, V_1, V_2, V_3, E, Ne, Nm, P, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
@@ -550,7 +567,7 @@ CONTAINS
 #endif
 
     REAL(DP)             :: Flux_X3_Euler_NonRelativistic(1:nCF)
-    REAL(DP), INTENT(in) :: D, V_1, V_2, V_3, E, Ne, P
+    REAL(DP), INTENT(in) :: D, V_1, V_2, V_3, E, Ne, Nm, P
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     Flux_X3_Euler_NonRelativistic = 0.0_DP
@@ -614,7 +631,7 @@ CONTAINS
 
     REAL(DP) :: NumericalFlux_X1_HLLC_Euler_NonRelativistic(nCF)
 
-    REAL(DP) :: D, V1, V2, V3, P, E, Ne, TMP(nCF)
+    REAL(DP) :: D, V1, V2, V3, P, E, Ne, Nm, TMP(nCF)
 
     IF( aM .EQ. Zero )THEN
 
@@ -637,6 +654,7 @@ CONTAINS
         P  = TMP(iCF_S1) - Gm11 * aC * TMP(iCF_D)
         E  = ( TMP(iCF_E) - aC * P ) / ( aC + aM )
         Ne = TMP(iCF_Ne) / ( aC + aM )
+        Nm = TMP(iCF_Nm) / ( aC + aM )
 
       ELSE
 
@@ -649,6 +667,7 @@ CONTAINS
         P  = TMP(iCF_S1) - Gm11 * aC * TMP(iCF_D)
         E  = ( TMP(iCF_E) - aC * P ) / ( aC - aP )
         Ne = TMP(iCF_Ne) / ( aC - aP )
+        Nm = TMP(iCF_Nm) / ( aC - aP )
 
       END IF
 
@@ -664,6 +683,8 @@ CONTAINS
         = ( E + P ) * V1
       NumericalFlux_X1_HLLC_Euler_NonRelativistic(iCF_Ne) &
         = Ne * V1
+      NumericalFlux_X1_HLLC_Euler_NonRelativistic(iCF_Nm) &
+        = Nm * V1
 
     END IF
 
@@ -685,7 +706,7 @@ CONTAINS
 
     REAL(DP) :: NumericalFlux_X2_HLLC_Euler_NonRelativistic(nCF)
 
-    REAL(DP) :: D, V1, V2, V3, P, E, Ne, TMP(nCF)
+    REAL(DP) :: D, V1, V2, V3, P, E, Ne, Nm, TMP(nCF)
 
     IF( aM .EQ. Zero )THEN
 
@@ -708,6 +729,7 @@ CONTAINS
         P  = TMP(iCF_S2) - Gm22 * aC * TMP(iCF_D)
         E  = ( TMP(iCF_E) - aC * P ) / ( aC + aM )
         Ne = TMP(iCF_Ne) / ( aC + aM )
+        Nm = TMP(iCF_Nm) / ( aC + aM )
 
       ELSE
 
@@ -720,6 +742,7 @@ CONTAINS
         P  = TMP(iCF_S2) - Gm22 * aC * TMP(iCF_D)
         E  = ( TMP(iCF_E) - aC * P ) / ( aC - aP )
         Ne = TMP(iCF_Ne) / ( aC - aP )
+        Nm = TMP(iCF_Nm) / ( aC - aP )
 
       END IF
 
@@ -735,6 +758,8 @@ CONTAINS
         = ( E + P ) * V2
       NumericalFlux_X2_HLLC_Euler_NonRelativistic(iCF_Ne) &
         = Ne * V2
+      NumericalFlux_X2_HLLC_Euler_NonRelativistic(iCF_Nm) &
+        = Nm * V2
 
     END IF
 
@@ -756,7 +781,7 @@ CONTAINS
 
     REAL(DP) :: NumericalFlux_X3_HLLC_Euler_NonRelativistic(nCF)
 
-    REAL(DP) :: D, V1, V2, V3, P, E, Ne, TMP(nCF)
+    REAL(DP) :: D, V1, V2, V3, P, E, Ne, Nm, TMP(nCF)
 
     IF( aM .EQ. Zero )THEN
 
@@ -779,6 +804,7 @@ CONTAINS
         P  = TMP(iCF_S3) - Gm33 * aC * TMP(iCF_D)
         E  = ( TMP(iCF_E) - aC * P ) / ( aC + aM )
         Ne = TMP(iCF_Ne) / ( aC + aM )
+        Nm = TMP(iCF_Nm) / ( aC + aM )
 
       ELSE
 
@@ -791,6 +817,7 @@ CONTAINS
         P  = TMP(iCF_S3) - Gm33 * aC * TMP(iCF_D)
         E  = ( TMP(iCF_E) - aC * P ) / ( aC - aP )
         Ne = TMP(iCF_Ne) / ( aC - aP )
+        Nm = TMP(iCF_Nm) / ( aC - aP )
 
       END IF
 
@@ -806,6 +833,8 @@ CONTAINS
         = ( E + P ) * V3
       NumericalFlux_X3_HLLC_Euler_NonRelativistic(iCF_Ne) &
         = Ne * V3
+      NumericalFlux_X3_HLLC_Euler_NonRelativistic(iCF_Nm) &
+        = Nm * V3
 
     END IF
 

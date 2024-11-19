@@ -34,6 +34,7 @@ MODULE Euler_XCFC_UtilitiesModule
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
+    iCF_Nm, &
     nCF, &
     iPF_D, &
     iPF_V1, &
@@ -41,6 +42,7 @@ MODULE Euler_XCFC_UtilitiesModule
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
+    iPF_Nm, &
     nPF, &
     iAF_P
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
@@ -166,12 +168,14 @@ CONTAINS
                  uCF(iCF_S3), &
                  uCF(iCF_E ), &
                  uCF(iCF_Ne), &
+                 uCF(iCF_Nm), &
                  uPF(iPF_D ), &
                  uPF(iPF_V1), &
                  uPF(iPF_V2), &
                  uPF(iPF_V3), &
                  uPF(iPF_E ), &
                  uPF(iPF_Ne), &
+                 uPF(iPF_Nm), &
                  uGF(iGF_Gm_dd_11), &
                  uGF(iGF_Gm_dd_22), &
                  uGF(iGF_Gm_dd_33), &
@@ -185,7 +189,7 @@ CONTAINS
         END DO
 
          CALL ComputePressureFromPrimitive &
-                ( uPF(iPF_D), uPF(iPF_E), uPF(iPF_Ne), Pressure )
+                ( uPF(iPF_D), uPF(iPF_E), uPF(iPF_Ne), uPF(iPF_Nm), Pressure )
 
          LorentzFactor &
            = One / SQRT( One                              &
@@ -246,6 +250,7 @@ CONTAINS
                               U(iNX,iX1,iX2,iX3,iCF_S3) / Psi6, &
                               U(iNX,iX1,iX2,iX3,iCF_E ) / Psi6, &
                               U(iNX,iX1,iX2,iX3,iCF_Ne) / Psi6, &
+                              U(iNX,iX1,iX2,iX3,iCF_Nm) / Psi6, &
                               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ], &
@@ -335,12 +340,14 @@ CONTAINS
                  uCF(iCF_S3), &
                  uCF(iCF_E ), &
                  uCF(iCF_Ne), &
+                 uCF(iCF_Nm), &
                  uPF(iPF_D ), &
                  uPF(iPF_V1), &
                  uPF(iPF_V2), &
                  uPF(iPF_V3), &
                  uPF(iPF_E ), &
                  uPF(iPF_Ne), &
+                 uPF(iPF_Nm), &
                  uGF(iGF_Gm_dd_11), &
                  uGF(iGF_Gm_dd_22), &
                  uGF(iGF_Gm_dd_33), &
@@ -354,7 +361,7 @@ CONTAINS
         END DO
 
         CALL ComputePressureFromPrimitive &
-               ( uPF(iPF_D), uPF(iPF_E), uPF(iPF_Ne), Pressure )
+               ( uPF(iPF_D), uPF(iPF_E), uPF(iPF_Ne), uPF(iPF_Nm), Pressure )
 
         GS(iNX,iX1,iX2,iX3,iGS_S) &
           = Psi6 * ( uCF(iCF_S1) * uPF(iPF_V1) &
@@ -486,12 +493,14 @@ CONTAINS
                  uPF(iNX,iX1,iX2,iX3,iPF_V3      ), &
                  uPF(iNX,iX1,iX2,iX3,iPF_E       ), &
                  uPF(iNX,iX1,iX2,iX3,iPF_Ne      ), &
+                 uPF(iNX,iX1,iX2,iX3,iPF_Nm      ), &
                  uCF(iNX,iX1,iX2,iX3,iCF_D       ), &
                  uCF(iNX,iX1,iX2,iX3,iCF_S1      ), &
                  uCF(iNX,iX1,iX2,iX3,iCF_S2      ), &
                  uCF(iNX,iX1,iX2,iX3,iCF_S3      ), &
                  uCF(iNX,iX1,iX2,iX3,iCF_E       ), &
                  uCF(iNX,iX1,iX2,iX3,iCF_Ne      ), &
+                 uCF(iNX,iX1,iX2,iX3,iCF_Nm      ), &
                  uGF(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
