@@ -23,8 +23,8 @@ MODULE TwoMoment_UtilitiesModule
     iGF_Beta_2, &
     iGF_Beta_3
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
+    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, iCF_Ne, &
+    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, iPF_Ne
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic
   USE RadiationFieldsModule, ONLY: &
@@ -870,12 +870,14 @@ CONTAINS
                  CF(iNodeX,iZ2,iZ3,iZ4,iCF_S3), &
                  CF(iNodeX,iZ2,iZ3,iZ4,iCF_E ), &
                  CF(iNodeX,iZ2,iZ3,iZ4,iCF_Ne), &
+                 CF(iNodeX,iZ2,iZ3,iZ4,iCF_Nm), &
                  PF(iNodeX,iZ2,iZ3,iZ4,iPF_D ), &
                  PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1), &
                  PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2), &
                  PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3), &
                  PF(iNodeX,iZ2,iZ3,iZ4,iPF_E ), &
                  PF(iNodeX,iZ2,iZ3,iZ4,iPF_Ne), &
+                 PF(iNodeX,iZ2,iZ3,iZ4,iPF_Nm), &
                  GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
                  GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
                  GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
@@ -2885,12 +2887,14 @@ CONTAINS
                  U_F(iNodeX,iZ2,iZ3,iZ4,iCF_S3), &
                  U_F(iNodeX,iZ2,iZ3,iZ4,iCF_E ), &
                  U_F(iNodeX,iZ2,iZ3,iZ4,iCF_Ne), &
+                 U_F(iNodeX,iZ2,iZ3,iZ4,iCF_Nm), &
                  P_F(iNodeX,iPF_D ), &
                  P_F(iNodeX,iPF_V1), &
                  P_F(iNodeX,iPF_V2), &
                  P_F(iNodeX,iPF_V3), &
                  P_F(iNodeX,iPF_E ), &
                  P_F(iNodeX,iPF_Ne), &
+                 P_F(iNodeX,iPF_Nm), &
                  GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
                  GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
                  GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
