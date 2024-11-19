@@ -37,6 +37,7 @@ MODULE Euler_SlopeLimiterModule_NonRelativistic_TABLE
     nCF, &
     iCF_D, &
     iCF_Ne, &
+    iCF_Nm, &
     iDF_TCI
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyInnerBC_Euler,  &
@@ -219,15 +220,18 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3, iGF, iCF
     INTEGER  :: iApplyBC(3)
     REAL(DP) :: dX1, dX2, dX3
-    REAL(DP) :: dY(nDimsX)
+    REAL(DP) :: dYe(nDimsX), dYm(nDimsX)
     REAL(DP) :: SlopeDifference(nCF)
     REAL(DP) :: a(nCF), b(nCF), c(nCF) ! --- Arguments for MinMod (fluid)
-    REAL(DP) :: aY    , bY    , cY     ! --- Arguments for MinMod (Ye)
+    REAL(DP) :: aYe   , bYe   , cYe    ! --- Arguments for MinMod (Ye)
+    REAL(DP) :: aYe   , bYe   , cYe    ! --- Arguments for MinMod (Ym)
     REAL(DP) :: G_K(nGF)
     REAL(DP) :: dU (nCF,nDimsX)
     REAL(DP) :: U_M(nCF,0:2*nDimsX,nDOFX)
-    REAL(DP) :: Y_N(    0:2*nDimsX,nDOFX) ! --- Nodal Ye
-    REAL(DP) :: Y_M(    0:2*nDimsX,nDOFX) ! --- Modal Ye
+    REAL(DP) :: Ye_N(    0:2*nDimsX,nDOFX) ! --- Nodal Ye
+    REAL(DP) :: Ye_M(    0:2*nDimsX,nDOFX) ! --- Modal Ye
+    REAL(DP) :: Ym_N(    0:2*nDimsX,nDOFX) ! --- Nodal Ym
+    REAL(DP) :: Ym_M(    0:2*nDimsX,nDOFX) ! --- Modal Ym
     REAL(DP) :: R_X1(nCF,nCF), invR_X1(nCF,nCF)
     REAL(DP) :: R_X2(nCF,nCF), invR_X2(nCF,nCF)
     REAL(DP) :: R_X3(nCF,nCF), invR_X3(nCF,nCF)
@@ -240,7 +244,11 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
 
+    dU  = Zero
     U_M = Zero
+    R_X1 = Zero ; invR_X1 = Zero
+    R_X2 = Zero ; invR_X2 = Zero
+    R_X3 = Zero ; invR_X3 = Zero
 
     iApplyBC = iApplyBC_Euler_Both
     IF( PRESENT( iApplyBC_Option ) ) &
@@ -373,9 +381,9 @@ CONTAINS
 
         ! --- Componentwise Limiting ---
 
-        R_X1 = I_6x6; invR_X1 = I_6x6
-        R_X2 = I_6x6; invR_X2 = I_6x6
-        R_X3 = I_6x6; invR_X3 = I_6x6
+        R_X1(1:6,1:6) = I_6x6; invR_X1(1:6,1:6) = I_6x6
+        R_X2(1:6,1:6) = I_6x6; invR_X2(1:6,1:6) = I_6x6
+        R_X3(1:6,1:6) = I_6x6; invR_X3(1:6,1:6) = I_6x6
 
       END IF
 
@@ -479,106 +487,211 @@ CONTAINS
 
       ! --- Compute Ye Slopes ---
 
-      Y_N(0,:) = U(:,iX1,iX2,iX3,iCF_Ne) * AtomicMassUnit &
+      Ye_N(0,:) = U(:,iX1,iX2,iX3,iCF_Ne) * AtomicMassUnit &
                  / U(:,iX1,iX2,iX3,iCF_D)
 
-      CALL MapNodalToModal_Fluid( Y_N(0,:), Y_M(0,:) )
+      CALL MapNodalToModal_Fluid( Ye_N(0,:), Ye_M(0,:) )
 
-      Y_N(1,:) = U(:,iX1-1,iX2,iX3,iCF_Ne) * AtomicMassUnit &
+      Ye_N(1,:) = U(:,iX1-1,iX2,iX3,iCF_Ne) * AtomicMassUnit &
                    / U(:,iX1-1,iX2,iX3,iCF_D)
-      Y_N(2,:) = U(:,iX1+1,iX2,iX3,iCF_Ne) * AtomicMassUnit &
+      Ye_N(2,:) = U(:,iX1+1,iX2,iX3,iCF_Ne) * AtomicMassUnit &
                    / U(:,iX1+1,iX2,iX3,iCF_D)
 
-      Y_M(1,1) = DOT_PRODUCT( WeightsX_q, Y_N(1,:) )
-      Y_M(2,1) = DOT_PRODUCT( WeightsX_q, Y_N(2,:) )
+      Ye_M(1,1) = DOT_PRODUCT( WeightsX_q, Ye_N(1,:) )
+      Ye_M(2,1) = DOT_PRODUCT( WeightsX_q, Ye_N(2,:) )
 
-      aY = Y_M(0,2)
+      aYe = Ye_M(0,2)
 
       IF( .NOT. ExcludeOuterGhostCell(1) &
             .AND. .NOT. ExcludeInnerGhostCell(1) )THEN
 
-        bY = BetaTVD * ( Y_M(0,1) - Y_M(1,1) )
-        cY = BetaTVD * ( Y_M(2,1) - Y_M(0,1) )
+        bYe = BetaTVD * ( Ye_M(0,1) - Ye_M(1,1) )
+        cYe = BetaTVD * ( Ye_M(2,1) - Ye_M(0,1) )
 
       ELSE IF( ExcludeInnerGhostCell(1) )THEN
 
-        cY = BetaTVD * ( Y_M(2,1) - Y_M(0,1) )
-        bY = cY
+        cYe = BetaTVD * ( Ye_M(2,1) - Ye_M(0,1) )
+        bYe = cYe
 
       ELSE IF( ExcludeOuterGhostCell(1) )THEN
 
-        cY = BetaTVD * ( Y_M(0,1) - Y_M(1,1) )
-        bY = cY
+        cYe = BetaTVD * ( Ye_M(0,1) - Ye_M(1,1) )
+        bYe = cYe
 
       END IF
 
-      dY(1) = MinModB( aY, bY, cY, dX1, BetaTVB )
+      dYe(1) = MinModB( aYe, bYe, cYe, dX1, BetaTVB )
 
       IF( nDimsX > 1 )THEN
 
-        Y_N(3,:) = U(:,iX1,iX2-1,iX3,iCF_Ne) * AtomicMassUnit &
+        Ye_N(3,:) = U(:,iX1,iX2-1,iX3,iCF_Ne) * AtomicMassUnit &
                      / U(:,iX1,iX2-1,iX3,iCF_D)
-        Y_N(4,:) = U(:,iX1,iX2+1,iX3,iCF_Ne) * AtomicMassUnit &
+        Ye_N(4,:) = U(:,iX1,iX2+1,iX3,iCF_Ne) * AtomicMassUnit &
                      / U(:,iX1,iX2+1,iX3,iCF_D)
 
-        Y_M(3,1) = DOT_PRODUCT( WeightsX_q, Y_N(3,:) )
-        Y_M(4,1) = DOT_PRODUCT( WeightsX_q, Y_N(4,:) )
+        Ye_M(3,1) = DOT_PRODUCT( WeightsX_q, Ye_N(3,:) )
+        Ye_M(4,1) = DOT_PRODUCT( WeightsX_q, Ye_N(4,:) )
 
-        aY = Y_M(0,3)
+        aYe = Ye_M(0,3)
 
         IF( .NOT. ExcludeOuterGhostCell(2) &
               .AND. .NOT. ExcludeInnerGhostCell(2) )THEN
 
-          bY = BetaTVD * ( Y_M(0,1) - Y_M(3,1) )
-          cY = BetaTVD * ( Y_M(4,1) - Y_M(0,1) )
+          bYe = BetaTVD * ( Ye_M(0,1) - Ye_M(3,1) )
+          cYe = BetaTVD * ( Ye_M(4,1) - Ye_M(0,1) )
 
         ELSE IF( ExcludeInnerGhostCell(2) )THEN
 
-          cY = BetaTVD * ( Y_M(4,1) - Y_M(0,1) )
-          bY = cY
+          cYe = BetaTVD * ( Ye_M(4,1) - Ye_M(0,1) )
+          bYe = cYe
 
         ELSE IF( ExcludeOuterGhostCell(1) )THEN
 
-          bY = BetaTVD * ( Y_M(0,1) - Y_M(3,1) )
-          cY = bY
+          bYe = BetaTVD * ( Ye_M(0,1) - Ye_M(3,1) )
+          cYe = bYe
 
         END IF
 
-        dY(2) = MinModB( aY, bY, cY, dX2, BetaTVB )
+        dYe(2) = MinModB( aYe, bYe, cYe, dX2, BetaTVB )
 
       END IF
 
       IF( nDimsX > 2 )THEN
 
-        Y_N(5,:) = U(:,iX1,iX2,iX3-1,iCF_Ne) * AtomicMassUnit &
+        Ye_N(5,:) = U(:,iX1,iX2,iX3-1,iCF_Ne) * AtomicMassUnit &
                      / U(:,iX1,iX2,iX3-1,iCF_D)
-        Y_N(6,:) = U(:,iX1,iX2,iX3+1,iCF_Ne) * AtomicMassUnit &
+        Ye_N(6,:) = U(:,iX1,iX2,iX3+1,iCF_Ne) * AtomicMassUnit &
                      / U(:,iX1,iX2,iX3+1,iCF_D)
 
-        Y_M(5,1) = DOT_PRODUCT( WeightsX_q, Y_N(5,:) )
-        Y_M(6,1) = DOT_PRODUCT( WeightsX_q, Y_N(6,:) )
+        Ye_M(5,1) = DOT_PRODUCT( WeightsX_q, Ye_N(5,:) )
+        Ye_M(6,1) = DOT_PRODUCT( WeightsX_q, Ye_N(6,:) )
 
-        aY = Y_M(0,4)
+        aYe = Ye_M(0,4)
 
         IF( .NOT. ExcludeOuterGhostCell(3) &
               .AND. .NOT. ExcludeInnerGhostCell(3) )THEN
 
-          bY = BetaTVD * ( Y_M(0,1) - Y_M(5,1) )
-          cY = BetaTVD * ( Y_M(6,1) - Y_M(0,1) )
+          bYe = BetaTVD * ( Ye_M(0,1) - Ye_M(5,1) )
+          cYe = BetaTVD * ( Ye_M(6,1) - Ye_M(0,1) )
 
         ELSE IF( ExcludeInnerGhostCell(3) )THEN
 
-          cY = BetaTVD * ( Y_M(6,1) - Y_M(0,1) )
-          bY = cY
+          cYe = BetaTVD * ( Ye_M(6,1) - Ye_M(0,1) )
+          bYe = cYe
 
         ELSE IF( ExcludeOuterGhostCell(3) )THEN
 
-          bY = BetaTVD * ( Y_M(0,1) - Y_M(5,1) )
-          cY = bY
+          bYe = BetaTVD * ( Ye_M(0,1) - Ye_M(5,1) )
+          cYe = bYe
 
         END IF
 
-        dY(3) = MinModB( aY, bY, cY, dX3, BetaTVB )
+        dYe(3) = MinModB( aYe, bYe, cYe, dX3, BetaTVB )
+
+      END IF
+
+      ! --- Compute Ym Slopes ---
+
+      Ym_N(0,:) = U(:,iX1,iX2,iX3,iCF_Nm) * AtomicMassUnit &
+                 / U(:,iX1,iX2,iX3,iCF_D)
+
+      CALL MapNodalToModal_Fluid( Ym_N(0,:), Ym_M(0,:) )
+
+      Ym_N(1,:) = U(:,iX1-1,iX2,iX3,iCF_Nm) * AtomicMassUnit &
+                   / U(:,iX1-1,iX2,iX3,iCF_D)
+      Ym_N(2,:) = U(:,iX1+1,iX2,iX3,iCF_Nm) * AtomicMassUnit &
+                   / U(:,iX1+1,iX2,iX3,iCF_D)
+
+      Ym_M(1,1) = DOT_PRODUCT( WeightsX_q, Ym_N(1,:) )
+      Ym_M(2,1) = DOT_PRODUCT( WeightsX_q, Ym_N(2,:) )
+
+      aYm = Ym_M(0,2)
+
+      IF( .NOT. ExcludeOuterGhostCell(1) &
+            .AND. .NOT. ExcludeInnerGhostCell(1) )THEN
+
+        bYm = BetaTVD * ( Ym_M(0,1) - Ym_M(1,1) )
+        cYm = BetaTVD * ( Ym_M(2,1) - Ym_M(0,1) )
+
+      ELSE IF( ExcludeInnerGhostCell(1) )THEN
+
+        cYm = BetaTVD * ( Ym_M(2,1) - Ym_M(0,1) )
+        bYm = cYm
+
+      ELSE IF( ExcludeOuterGhostCell(1) )THEN
+
+        cYm = BetaTVD * ( Ym_M(0,1) - Ym_M(1,1) )
+        bYm = cYm
+
+      END IF
+
+      dYm(1) = MinModB( aYm, bYm, cYm, dX1, BetaTVB )
+
+      IF( nDimsX > 1 )THEN
+
+        Ym_N(3,:) = U(:,iX1,iX2-1,iX3,iCF_Nm) * AtomicMassUnit &
+                     / U(:,iX1,iX2-1,iX3,iCF_D)
+        Ym_N(4,:) = U(:,iX1,iX2+1,iX3,iCF_NM) * AtomicMassUnit &
+                     / U(:,iX1,iX2+1,iX3,iCF_D)
+
+        Ym_M(3,1) = DOT_PRODUCT( WeightsX_q, Ym_N(3,:) )
+        Ym_M(4,1) = DOT_PRODUCT( WeightsX_q, Ym_N(4,:) )
+
+        aYm = Ym_M(0,3)
+
+        IF( .NOT. ExcludeOuterGhostCell(2) &
+              .AND. .NOT. ExcludeInnerGhostCell(2) )THEN
+
+          bYm = BetaTVD * ( Ym_M(0,1) - Ym_M(3,1) )
+          cYm = BetaTVD * ( Ym_M(4,1) - Ym_M(0,1) )
+
+        ELSE IF( ExcludeInnerGhostCell(2) )THEN
+
+          cYm = BetaTVD * ( Ym_M(4,1) - Ym_M(0,1) )
+          bYm = cYm
+
+        ELSE IF( ExcludeOuterGhostCell(1) )THEN
+
+          bYm = BetaTVD * ( Ym_M(0,1) - Ym_M(3,1) )
+          cYm = bYm
+
+        END IF
+
+        dYm(2) = MinModB( aYm, bYm, cYm, dX2, BetaTVB )
+
+      END IF
+
+      IF( nDimsX > 2 )THEN
+
+        Ym_N(5,:) = U(:,iX1,iX2,iX3-1,iCF_Nm) * AtomicMassUnit &
+                     / U(:,iX1,iX2,iX3-1,iCF_D)
+        Ym_N(6,:) = U(:,iX1,iX2,iX3+1,iCF_Nm) * AtomicMassUnit &
+                     / U(:,iX1,iX2,iX3+1,iCF_D)
+
+        Ym_M(5,1) = DOT_PRODUCT( WeightsX_q, Ym_N(5,:) )
+        Ym_M(6,1) = DOT_PRODUCT( WeightsX_q, Ym_N(6,:) )
+
+        aYm = Ym_M(0,4)
+
+        IF( .NOT. ExcludeOuterGhostCell(3) &
+              .AND. .NOT. ExcludeInnerGhostCell(3) )THEN
+
+          bYm = BetaTVD * ( Ym_M(0,1) - Ym_M(5,1) )
+          cYm = BetaTVD * ( Ym_M(6,1) - Ym_M(0,1) )
+
+        ELSE IF( ExcludeInnerGhostCell(3) )THEN
+
+          cYm = BetaTVD * ( Ym_M(6,1) - Ym_M(0,1) )
+          bYm = cYm
+
+        ELSE IF( ExcludeOuterGhostCell(3) )THEN
+
+          bYm = BetaTVD * ( Ym_M(0,1) - Ym_M(5,1) )
+          cYm = bYm
+
+        END IF
+
+        dYm(3) = MinModB( aYm, bYm, cYm, dX3, BetaTVB )
 
       END IF
 
@@ -612,26 +725,31 @@ CONTAINS
 
       LimitField = SlopeDifference > SlopeTolerance * ABS( U_M(:,0,1) )
 
-      IF( LimitField(iCF_D) .NEQV. LimitField(iCF_Ne) )THEN
+      IF( LimitField(iCF_D) .OR. LimitField(iCF_Ne) .OR. LimitField(iCF_Nm) )THEN
 
         LimitField(iCF_D)  = .TRUE.
         LimitField(iCF_Ne) = .TRUE.
+        LimitField(iCF_Nm) = .TRUE.
 
       END IF
 
-      IF( ABS( Y_M(0,2) - dY(1) ) > SlopeTolerance * ABS( Y_M(0,1) ) )THEN
+      IF( ( ABS( Ye_M(0,2) - dYe(1) ) > SlopeTolerance * ABS( Ye_M(0,1) ) ) .OR. &
+          ( ABS( Ym_M(0,2) - dYm(1) ) > SlopeTolerance * ABS( Ym_M(0,1) ) ) )THEN
 
         LimitField(iCF_D)  = .TRUE.
         LimitField(iCF_Ne) = .TRUE.
+        LimitField(iCF_Nm) = .TRUE.
 
       END IF
 
       IF( nDimsX > 1 )THEN
 
-        IF( ABS( Y_M(0,3) - dY(2) ) > SlopeTolerance * ABS( Y_M(0,1) ) )THEN
+        IF( ( ABS( Ye_M(0,3) - dYe(2) ) > SlopeTolerance * ABS( Ye_M(0,1) ) ) .OR. &
+            ( ABS( Ym_M(0,3) - dYm(2) ) > SlopeTolerance * ABS( Ym_M(0,1) ) ) )THEN
 
           LimitField(iCF_D)  = .TRUE.
           LimitField(iCF_Ne) = .TRUE.
+          LimitField(iCF_Nm) = .TRUE.
 
         END IF
 
@@ -639,10 +757,12 @@ CONTAINS
 
       IF( nDimsX > 2 )THEN
 
-        IF( ABS( Y_M(0,4) - dY(3) ) > SlopeTolerance * ABS( Y_M(0,1) ) )THEN
+        IF( ( ABS( Ye_M(0,4) - dYe(3) ) > SlopeTolerance * ABS( Ye_M(0,1) ) ) .OR. &
+            ( ABS( Ym_M(0,4) - dYm(3) ) > SlopeTolerance * ABS( Ym_M(0,1) ) ) )THEN
 
           LimitField(iCF_D)  = .TRUE.
           LimitField(iCF_Ne) = .TRUE.
+          LimitField(iCF_Nm) = .TRUE.
 
         END IF
 
@@ -654,7 +774,43 @@ CONTAINS
 
           U_M(iCF,0,2:nDOFX) = Zero
 
-          IF( iCF .NE. iCF_Ne )THEN
+          IF( iCF .EQ. iCF_Ne )THEN
+
+            ! --- Electron Density ---
+
+            U_M(iCF,0,2) &
+              = ( U_M(iCF_D,0,1) * dYe(1) + Ye_M(0,1) * dU(iCF_D,1) ) &
+                  / AtomicMassUnit
+
+            IF( nDimsX > 1 ) &
+              U_M(iCF,0,3) &
+                = ( U_M(iCF_D,0,1) * dYe(2) + Ye_M(0,1) * dU(iCF_D,2) ) &
+                    / AtomicMassUnit
+
+            IF( nDimsX > 2 ) &
+              U_M(iCF,0,4) &
+                = ( U_M(iCF_D,0,1) * dYe(3) + Ye_M(0,1) * dU(iCF_D,3) ) &
+                    / AtomicMassUnit
+
+          ELSE IF( iCF .EQ. iCF_Nm )THEN
+
+            ! --- Muon Density ---
+
+            U_M(iCF,0,2) &
+              = ( U_M(iCF_D,0,1) * dYm(1) + Ym_M(0,1) * dU(iCF_D,1) ) &
+                  / AtomicMassUnit
+
+            IF( nDimsX > 1 ) &
+              U_M(iCF,0,3) &
+                = ( U_M(iCF_D,0,1) * dYm(2) + Ym_M(0,1) * dU(iCF_D,2) ) &
+                    / AtomicMassUnit
+
+            IF( nDimsX > 2 ) &
+              U_M(iCF,0,4) &
+                = ( U_M(iCF_D,0,1) * dYm(3) + Ym_M(0,1) * dU(iCF_D,3) ) &
+                    / AtomicMassUnit
+
+          ELSE
 
             U_M(iCF,0,2) = dU(iCF,1)
 
@@ -665,22 +821,6 @@ CONTAINS
               U_M(iCF,0,4) = dU(iCF,3)
 
           ELSE
-
-            ! --- Electron Density ---
-
-            U_M(iCF,0,2) &
-              = ( U_M(iCF_D,0,1) * dY(1) + Y_M(0,1) * dU(iCF_D,1) ) &
-                  / AtomicMassUnit
-
-            IF( nDimsX > 1 ) &
-              U_M(iCF,0,3) &
-                = ( U_M(iCF_D,0,1) * dY(2) + Y_M(0,1) * dU(iCF_D,2) ) &
-                    / AtomicMassUnit
-
-            IF( nDimsX > 2 ) &
-              U_M(iCF,0,4) &
-                = ( U_M(iCF_D,0,1) * dY(3) + Y_M(0,1) * dU(iCF_D,3) ) &
-                    / AtomicMassUnit
 
           END IF
 

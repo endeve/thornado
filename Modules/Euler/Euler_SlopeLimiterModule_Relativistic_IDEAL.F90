@@ -55,6 +55,7 @@ MODULE Euler_SlopeLimiterModule_Relativistic_IDEAL
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
+    iCF_Nm, &
     iDF_TCI
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyInnerBC_Euler, &

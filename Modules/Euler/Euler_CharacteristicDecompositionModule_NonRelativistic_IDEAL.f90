@@ -17,7 +17,8 @@ MODULE Euler_CharacteristicDecompositionModule_NonRelativistic_IDEAL
     iCF_S2, &
     iCF_S3, &
     iCF_E, &
-    iCF_Ne
+    iCF_Ne, &
+    iCF_Nm
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputePrimitive_Euler_NonRelativistic
   USE EquationOfStateModule, ONLY: &
@@ -48,24 +49,24 @@ CONTAINS
     REAL(DP), INTENT(out) :: invR(nCF,nCF)
 
     INTEGER :: i
-    REAL(DP), DIMENSION(1) :: D, V1, V2, V3, Gmdd11, Gmdd22, Gmdd33, Vu1, Vu2, Vu3, E, Ne, P, Cs
+    REAL(DP), DIMENSION(1) :: D, V1, V2, V3, Gmdd11, Gmdd22, Gmdd33, Vu1, Vu2, Vu3, E, Ne, Nm, P, Cs
     REAL(DP), DIMENSION(1) :: Q, K, H, J, Mu1, Mu2, Mu3, Vd1, Vd2, Vd3
 
     CALL TimersStart_Euler( Timer_Euler_SL_CharDecomp )
 
     CALL ComputePrimitive_Euler_NonRelativistic &
            ( [ U(iCF_D ) ], [ U(iCF_S1) ], [ U(iCF_S2) ], &
-             [ U(iCF_S3) ], [ U(iCF_E ) ], [ U(iCF_Ne) ], &
-             D, V1, V2, V3, E, Ne, &
+             [ U(iCF_S3) ], [ U(iCF_E ) ], [ U(iCF_Ne) ], [ U(iCF_Nm) ], &
+             D, V1, V2, V3, E, Ne, Nm, &
              [ G(iGF_Gm_dd_11) ], &
              [ G(iGF_Gm_dd_22) ], &
              [ G(iGF_Gm_dd_33) ] )
 
     CALL ComputePressureFromPrimitive &
-           ( D, E, Ne, P )
+           ( D, E, Ne, Nm, P )
 
     CALL ComputeSoundSpeedFromPrimitive &
-           ( D, E, Ne, Cs )
+           ( D, E, Ne, Nm, Cs )
 
     Gmdd11 = G(iGF_Gm_dd_11)
     Gmdd22 = G(iGF_Gm_dd_22)

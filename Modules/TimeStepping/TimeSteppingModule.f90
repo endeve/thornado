@@ -13,8 +13,8 @@ MODULE TimeSteppingModule
     MeshX
   USE FluidFieldsModule, ONLY: &
     uCF, rhsCF, nCF, &
-    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, nPF, &
-    uAF, iAF_P, iAF_T,  iAF_Ye, iAF_S,  iAF_E, iAF_Gm, iAF_Cs, nAF
+    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, iPF_Nm, nPF, &
+    uAF, iAF_P, iAF_T,  iAF_Ye, iAF_Ym, iAF_S,  iAF_E, iAF_Gm, iAF_Cs, nAF
   USE RadiationFieldsModule, ONLY: &
     uCR, rhsCR, nCR, nSpecies
   USE EquationOfStateModule, ONLY: &
@@ -432,10 +432,12 @@ CONTAINS
 
           CALL ComputeAuxiliary_Fluid &
                  ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_E ), &
-                   uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iAF_P ), &
+                   uPF(:,iX1,iX2,iX3,iPF_Ne), uAF(:,iX1,iX2,iX3,iPF_Nm), &
+                   uAF(:,iX1,iX2,iX3,iAF_P ), &
                    uAF(:,iX1,iX2,iX3,iAF_T ), uAF(:,iX1,iX2,iX3,iAF_Ye), &
-                   uAF(:,iX1,iX2,iX3,iAF_S ), uAF(:,iX1,iX2,iX3,iAF_E ), &
-                   uAF(:,iX1,iX2,iX3,iAF_Gm), uAF(:,iX1,iX2,iX3,iAF_Cs) )
+                   uAF(:,iX1,iX2,iX3,iAF_Ym), uAF(:,iX1,iX2,iX3,iAF_S ), &
+                   uAF(:,iX1,iX2,iX3,iAF_E ), uAF(:,iX1,iX2,iX3,iAF_Gm), &
+                   uAF(:,iX1,iX2,iX3,iAF_Cs) )
 
           DO iNodeX = 1, nDOFX
 
