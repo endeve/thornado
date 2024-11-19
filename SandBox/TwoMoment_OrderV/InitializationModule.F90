@@ -20,8 +20,8 @@ MODULE InitializationModule
   USE GeometryFieldsModule, ONLY: &
     uGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, iGF_h_1, iGF_h_2
   USE FluidFieldsModule, ONLY: &
-    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
+    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, iPF_Nm, &
+    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, iCF_Nm
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputeConserved_Euler_NonRelativistic
   USE RadiationFieldsModule, ONLY: &
@@ -173,6 +173,7 @@ CONTAINS
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_0(3)
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = 0.0_DP
 
       END DO
 
@@ -183,12 +184,14 @@ CONTAINS
                uPF(:,iX1,iX2,iX3,iPF_V3), &
                uPF(:,iX1,iX2,iX3,iPF_E ), &
                uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uPF(:,iX1,iX2,iX3,iPF_Nm), &
                uCF(:,iX1,iX2,iX3,iCF_D ), &
                uCF(:,iX1,iX2,iX3,iCF_S1), &
                uCF(:,iX1,iX2,iX3,iCF_S2), &
                uCF(:,iX1,iX2,iX3,iCF_S3), &
                uCF(:,iX1,iX2,iX3,iCF_E ), &
                uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_Nm), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -312,6 +315,7 @@ CONTAINS
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_0(3)
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = 0.0_DP
 
       END DO
 
@@ -322,12 +326,14 @@ CONTAINS
                uPF(:,iX1,iX2,iX3,iPF_V3), &
                uPF(:,iX1,iX2,iX3,iPF_E ), &
                uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uPF(:,iX1,iX2,iX3,iPF_Nm), &
                uCF(:,iX1,iX2,iX3,iCF_D ), &
                uCF(:,iX1,iX2,iX3,iCF_S1), &
                uCF(:,iX1,iX2,iX3,iCF_S2), &
                uCF(:,iX1,iX2,iX3,iCF_S3), &
                uCF(:,iX1,iX2,iX3,iCF_E ), &
                uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_Nm), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -410,6 +416,7 @@ CONTAINS
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = 0.0_DP
 
       END DO
 
@@ -420,12 +427,14 @@ CONTAINS
                uPF(:,iX1,iX2,iX3,iPF_V3), &
                uPF(:,iX1,iX2,iX3,iPF_E ), &
                uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uPF(:,iX1,iX2,iX3,iPF_Nm), &
                uCF(:,iX1,iX2,iX3,iCF_D ), &
                uCF(:,iX1,iX2,iX3,iCF_S1), &
                uCF(:,iX1,iX2,iX3,iCF_S2), &
                uCF(:,iX1,iX2,iX3,iCF_S3), &
                uCF(:,iX1,iX2,iX3,iCF_E ), &
                uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_Nm), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -528,6 +537,7 @@ CONTAINS
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_0(3)
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = 0.0_DP
 
       END DO
 
@@ -538,12 +548,14 @@ CONTAINS
                uPF(:,iX1,iX2,iX3,iPF_V3), &
                uPF(:,iX1,iX2,iX3,iPF_E ), &
                uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uPF(:,iX1,iX2,iX3,iPF_Nm), &
                uCF(:,iX1,iX2,iX3,iCF_D ), &
                uCF(:,iX1,iX2,iX3,iCF_S1), &
                uCF(:,iX1,iX2,iX3,iCF_S2), &
                uCF(:,iX1,iX2,iX3,iCF_S3), &
                uCF(:,iX1,iX2,iX3,iCF_E ), &
                uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_Nm), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -700,6 +712,7 @@ CONTAINS
 
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = 0.0_DP
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -708,12 +721,14 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -812,6 +827,7 @@ CONTAINS
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = 0.0_DP
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -820,12 +836,14 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -1006,6 +1024,7 @@ CONTAINS
 
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 1.0d-1
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0d-0
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = 0.0d-0
 
 
         CALL ComputeConserved_Euler_NonRelativistic &
@@ -1015,12 +1034,14 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -1114,6 +1135,7 @@ CONTAINS
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 1.0d-1
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = Zero
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -1122,12 +1144,14 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -1288,6 +1312,7 @@ CONTAINS
 
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 1.0d-1
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0d-0
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = 0.0d-0
 
 
         CALL ComputeConserved_Euler_NonRelativistic &
@@ -1297,12 +1322,14 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -1396,6 +1423,7 @@ CONTAINS
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 1.0d-1
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = Zero
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -1404,12 +1432,14 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -1553,6 +1583,7 @@ CONTAINS
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 1.0d-1
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0d-0
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = 0.0d-0
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -1561,12 +1592,14 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -1718,6 +1751,8 @@ CONTAINS
           = 0.1_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) &
           = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) &
+          = 0.0_DP
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -1726,12 +1761,14 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -1822,6 +1859,7 @@ CONTAINS
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 1.0d-1
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = Zero
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -1830,12 +1868,14 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -1977,6 +2017,8 @@ CONTAINS
           = 0.1_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) &
           = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) &
+          = 0.0_DP
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -1985,12 +2027,14 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -2067,6 +2111,7 @@ CONTAINS
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 1.0d-1
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = Zero
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -2075,12 +2120,14 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -2203,6 +2250,7 @@ CONTAINS
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 1.0d-1
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0d-0
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = 0.0d-0
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -2211,12 +2259,14 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -2355,6 +2405,7 @@ CONTAINS
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_0(3)
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = 0.0_DP
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -2363,12 +2414,14 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -2471,6 +2524,7 @@ CONTAINS
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_0(3)
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = 0.0_DP
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -2479,12 +2533,14 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -2605,6 +2661,7 @@ CONTAINS
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = 0.0_DP
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -2613,12 +2670,14 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -2696,6 +2755,7 @@ CONTAINS
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = 0.0_DP
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -2704,12 +2764,14 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -2808,6 +2870,7 @@ CONTAINS
           = - absV * ShapeFunction * X3 / R
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = 0.0_DP
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -2816,12 +2879,14 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -2899,6 +2964,7 @@ CONTAINS
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = 0.0_DP
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -2907,12 +2973,14 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
