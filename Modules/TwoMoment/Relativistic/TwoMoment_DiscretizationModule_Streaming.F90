@@ -61,8 +61,8 @@
     iGF_Beta_2, &
     iGF_Beta_3
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
+    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, iCF_Nm, &
+    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, iPF_Nm
   USE Euler_BoundaryConditionsModule_Relativistic, ONLY: &
     ApplyBoundaryConditions_Euler_Relativistic
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
@@ -751,12 +751,14 @@ CONTAINS
                  uCF_L(iNodeX,iZ3,iZ4,iZ2,iCF_S3), &
                  uCF_L(iNodeX,iZ3,iZ4,iZ2,iCF_E ), &
                  uCF_L(iNodeX,iZ3,iZ4,iZ2,iCF_Ne), &
+                 uCF_L(iNodeX,iZ3,iZ4,iZ2,iCF_Nm), &
                  uPF_L(iPF_D ), &
                  uPF_L(iPF_V1), &
                  uPF_L(iPF_V2), &
                  uPF_L(iPF_V3), &
                  uPF_L(iPF_E ), &
                  uPF_L(iPF_Ne), &
+                 uPF_L(iPF_Nm), &
                  GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_11), &
                  GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_22), &
                  GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_33) )
@@ -769,12 +771,14 @@ CONTAINS
                  uCF_R(iNodeX,iZ3,iZ4,iZ2,iCF_S3), &
                  uCF_R(iNodeX,iZ3,iZ4,iZ2,iCF_E ), &
                  uCF_R(iNodeX,iZ3,iZ4,iZ2,iCF_Ne), &
+                 uCF_R(iNodeX,iZ3,iZ4,iZ2,iCF_Nm), &
                  uPF_R(iPF_D ), &
                  uPF_R(iPF_V1), &
                  uPF_R(iPF_V2), &
                  uPF_R(iPF_V3), &
                  uPF_R(iPF_E ), &
                  uPF_R(iPF_Ne), &
+                 uPF_R(iPF_Nm), &
                  GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_11), &
                  GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_22), &
                  GX_F(iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_33) )
@@ -1115,8 +1119,9 @@ CONTAINS
                  uCF_K(iNodeX      ,iZ3,iZ4,iZ2,iCF_S3), &
                  uCF_K(iNodeX      ,iZ3,iZ4,iZ2,iCF_E ), &
                  uCF_K(iNodeX      ,iZ3,iZ4,iZ2,iCF_Ne), &
+                 uCF_K(iNodeX      ,iZ3,iZ4,iZ2,iCF_Nm), &
                  uPF_K(iPF_D ), uV1_K(iX_K), uV2_K(iX_K),  &
-                 uV3_K(iX_K), uPF_K(iPF_E), uPF_K(iPF_Ne), &
+                 uV3_K(iX_K), uPF_K(iPF_E), uPF_K(iPF_Ne), uPF_K(iPF_Nm), &
                  GX_K (iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_11), &
                  GX_K (iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_22), &
                  GX_K (iNodeX,iZ3,iZ4,iZ2,iGF_Gm_dd_33) )
@@ -1638,12 +1643,14 @@ CONTAINS
                  uCF_L(iNodeX,iZ2,iZ4,iZ3,iCF_S3), &
                  uCF_L(iNodeX,iZ2,iZ4,iZ3,iCF_E ), &
                  uCF_L(iNodeX,iZ2,iZ4,iZ3,iCF_Ne), &
+                 uCF_L(iNodeX,iZ2,iZ4,iZ3,iCF_Nm), &
                  uPF_L(iPF_D ), &
                  uPF_L(iPF_V1), &
                  uPF_L(iPF_V2), &
                  uPF_L(iPF_V3), &
                  uPF_L(iPF_E ), &
                  uPF_L(iPF_Ne), &
+                 uPF_L(iPF_Nm), &
                  GX_F(iNodeX,iZ2,iZ4,iZ3,iGF_Gm_dd_11), &
                  GX_F(iNodeX,iZ2,iZ4,iZ3,iGF_Gm_dd_22), &
                  GX_F(iNodeX,iZ2,iZ4,iZ3,iGF_Gm_dd_33) )
@@ -1656,12 +1663,14 @@ CONTAINS
                  uCF_R(iNodeX,iZ2,iZ4,iZ3,iCF_S3), &
                  uCF_R(iNodeX,iZ2,iZ4,iZ3,iCF_E ), &
                  uCF_R(iNodeX,iZ2,iZ4,iZ3,iCF_Ne), &
+                 uCF_R(iNodeX,iZ2,iZ4,iZ3,iCF_Nm), &
                  uPF_R(iPF_D ), &
                  uPF_R(iPF_V1), &
                  uPF_R(iPF_V2), &
                  uPF_R(iPF_V3), &
                  uPF_R(iPF_E ), &
                  uPF_R(iPF_Ne), &
+                 uPF_R(iPF_Nm), &
                  GX_F(iNodeX,iZ2,iZ4,iZ3,iGF_Gm_dd_11), &
                  GX_F(iNodeX,iZ2,iZ4,iZ3,iGF_Gm_dd_22), &
                  GX_F(iNodeX,iZ2,iZ4,iZ3,iGF_Gm_dd_33) )
@@ -2019,8 +2028,9 @@ CONTAINS
                  uCF_K(iNodeX      ,iZ2,iZ4,iZ3,iCF_S3), &
                  uCF_K(iNodeX      ,iZ2,iZ4,iZ3,iCF_E ), &
                  uCF_K(iNodeX      ,iZ2,iZ4,iZ3,iCF_Ne), &
+                 uCF_K(iNodeX      ,iZ2,iZ4,iZ3,iCF_Nm), &
                  uPF_K(iPF_D ), uV1_K(iX_K), uV2_K(iX_K),  &
-                 uV3_K(iX_K), uPF_K(iPF_E), uPF_K(iPF_Ne), &
+                 uV3_K(iX_K), uPF_K(iPF_E), uPF_K(iPF_Ne), uPF_K(iPF_Nm), &
                  GX_K (iNodeX,iZ2,iZ4,iZ3,iGF_Gm_dd_11), &
                  GX_K (iNodeX,iZ2,iZ4,iZ3,iGF_Gm_dd_22), &
                  GX_K (iNodeX,iZ2,iZ4,iZ3,iGF_Gm_dd_33) )
@@ -2542,12 +2552,14 @@ CONTAINS
                  uCF_L(iNodeX,iZ2,iZ3,iZ4,iCF_S3), &
                  uCF_L(iNodeX,iZ2,iZ3,iZ4,iCF_E ), &
                  uCF_L(iNodeX,iZ2,iZ3,iZ4,iCF_Ne), &
+                 uCF_L(iNodeX,iZ2,iZ3,iZ4,iCF_Nm), &
                  uPF_L(iPF_D ), &
                  uPF_L(iPF_V1), &
                  uPF_L(iPF_V2), &
                  uPF_L(iPF_V3), &
                  uPF_L(iPF_E ), &
                  uPF_L(iPF_Ne), &
+                 uPF_L(iPF_Nm), &
                  GX_F(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
                  GX_F(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
                  GX_F(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
@@ -2560,12 +2572,14 @@ CONTAINS
                  uCF_R(iNodeX,iZ2,iZ3,iZ4,iCF_S3), &
                  uCF_R(iNodeX,iZ2,iZ3,iZ4,iCF_E ), &
                  uCF_R(iNodeX,iZ2,iZ3,iZ4,iCF_Ne), &
+                 uCF_R(iNodeX,iZ2,iZ3,iZ4,iCF_Nm), &
                  uPF_R(iPF_D ), &
                  uPF_R(iPF_V1), &
                  uPF_R(iPF_V2), &
                  uPF_R(iPF_V3), &
                  uPF_R(iPF_E ), &
                  uPF_R(iPF_Ne), &
+                 uPF_R(iPF_Nm), &
                  GX_F(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
                  GX_F(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
                  GX_F(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
@@ -2916,8 +2930,9 @@ CONTAINS
                  uCF_K(iNodeX      ,iZ2,iZ3,iZ4,iCF_S3), &
                  uCF_K(iNodeX      ,iZ2,iZ3,iZ4,iCF_E ), &
                  uCF_K(iNodeX      ,iZ2,iZ3,iZ4,iCF_Ne), &
+                 uCF_K(iNodeX      ,iZ2,iZ3,iZ4,iCF_Nm), &
                  uPF_K(iPF_D ), uV1_K(iX_K), uV2_K(iX_K),  &
-                 uV3_K(iX_K), uPF_K(iPF_E), uPF_K(iPF_Ne), &
+                 uV3_K(iX_K), uPF_K(iPF_E), uPF_K(iPF_Ne), uPF_K(iPF_Nm), &
                  GX_K (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
                  GX_K (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
                  GX_K (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
@@ -3482,8 +3497,9 @@ CONTAINS
                  uCF_K(iNodeX      ,iZ2,iZ3,iZ4,iCF_S3), &
                  uCF_K(iNodeX      ,iZ2,iZ3,iZ4,iCF_E ), &
                  uCF_K(iNodeX      ,iZ2,iZ3,iZ4,iCF_Ne), &
+                 uCF_K(iNodeX      ,iZ2,iZ3,iZ4,iCF_Nm), &
                  uPF_K(iPF_D ), uV1_K(iX_K), uV2_K(iX_K),  &
-                 uV3_K(iX_K), uPF_K(iPF_E), uPF_K(iPF_Ne), &
+                 uV3_K(iX_K), uPF_K(iPF_E), uPF_K(iPF_Ne), uPF_K(iPF_Nm), &
                  uGF_K (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
                  uGF_K (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
                  uGF_K (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
@@ -4171,12 +4187,14 @@ CONTAINS
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uPF(iNodeX,iPF_D,iX1,iX2,iX3), &
                  uPF(iNodeX,iPF_V1,iX1,iX2,iX3), &
                  uPF(iNodeX,iPF_V2,iX1,iX2,iX3), &
                  uPF(iNodeX,iPF_V3,iX1,iX2,iX3), &
                  uPF(iNodeX,iPF_E,iX1,iX2,iX3), &
                  uPF(iNodeX,iPF_Ne,iX1,iX2,iX3), &
+                 uPF(iNodeX,iPF_Nm,iX1,iX2,iX3), &
                  GX (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  GX (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  GX (iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
@@ -4499,12 +4517,14 @@ CONTAINS
                  uCF_L(iNodeX,iX2,iX3,iX1,iCF_S3), &
                  uCF_L(iNodeX,iX2,iX3,iX1,iCF_E ), &
                  uCF_L(iNodeX,iX2,iX3,iX1,iCF_Ne), &
+                 uCF_L(iNodeX,iX2,iX3,iX1,iCF_Nm), &
                  uPF_L(iPF_D ), &
                  uPF_L(iPF_V1), &
                  uPF_L(iPF_V2), &
                  uPF_L(iPF_V3), &
                  uPF_L(iPF_E ), &
                  uPF_L(iPF_Ne), &
+                 uPF_L(iPF_Nm), &
                  GX_F (iNodeX,iGF_Gm_dd_11,iX2,iX3,iX1), &
                  GX_F (iNodeX,iGF_Gm_dd_22,iX2,iX3,iX1), &
                  GX_F (iNodeX,iGF_Gm_dd_33,iX2,iX3,iX1) )
@@ -4517,12 +4537,14 @@ CONTAINS
                  uCF_R(iNodeX,iX2,iX3,iX1,iCF_S3), &
                  uCF_R(iNodeX,iX2,iX3,iX1,iCF_E ), &
                  uCF_R(iNodeX,iX2,iX3,iX1,iCF_Ne), &
+                 uCF_R(iNodeX,iX2,iX3,iX1,iCF_Nm), &
                  uPF_R(iPF_D ), &
                  uPF_R(iPF_V1), &
                  uPF_R(iPF_V2), &
                  uPF_R(iPF_V3), &
                  uPF_R(iPF_E ), &
                  uPF_R(iPF_Ne), &
+                 uPF_R(iPF_Nm), &
                  GX_F (iNodeX,iGF_Gm_dd_11,iX2,iX3,iX1), &
                  GX_F (iNodeX,iGF_Gm_dd_22,iX2,iX3,iX1), &
                  GX_F (iNodeX,iGF_Gm_dd_33,iX2,iX3,iX1) )
@@ -4617,12 +4639,14 @@ CONTAINS
                  uCF_K(iNodeX,iX2,iX3,iX1,iCF_S3), &
                  uCF_K(iNodeX,iX2,iX3,iX1,iCF_E ), &
                  uCF_K(iNodeX,iX2,iX3,iX1,iCF_Ne), &
+                 uCF_K(iNodeX,iX2,iX3,iX1,iCF_Nm), &
                  uPF_K(iPF_D ), &
                  uPF_K(iPF_V1), &
                  uPF_K(iPF_V2), &
                  uPF_K(iPF_V3), &
                  uPF_K(iPF_E ), &
                  uPF_K(iPF_Ne), &
+                 uPF_K(iPF_Nm), &
                  GX_K (iNodeX,iGF_Gm_dd_11,iX2,iX3,iX1), &
                  GX_K (iNodeX,iGF_Gm_dd_22,iX2,iX3,iX1), &
                  GX_K (iNodeX,iGF_Gm_dd_33,iX2,iX3,iX1) )
@@ -5080,12 +5104,14 @@ CONTAINS
                  uCF_L(iNodeX,iCF_S3,iX1,iX3,iX2), &
                  uCF_L(iNodeX,iCF_E ,iX1,iX3,iX2), &
                  uCF_L(iNodeX,iCF_Ne,iX1,iX3,iX2), &
+                 uCF_L(iNodeX,iCF_Nm,iX1,iX3,iX2), &
                  uPF_L(iPF_D ), &
                  uPF_L(iPF_V1), &
                  uPF_L(iPF_V2), &
                  uPF_L(iPF_V3), &
                  uPF_L(iPF_E ), &
                  uPF_L(iPF_Ne), &
+                 uPF_L(iPF_Nm), &
                  GX_F (iNodeX,iGF_Gm_dd_11,iX1,iX3,iX2), &
                  GX_F (iNodeX,iGF_Gm_dd_22,iX1,iX3,iX2), &
                  GX_F (iNodeX,iGF_Gm_dd_33,iX1,iX3,iX2) )
@@ -5099,12 +5125,14 @@ CONTAINS
                  uCF_R(iNodeX,iCF_S3,iX1,iX3,iX2), &
                  uCF_R(iNodeX,iCF_E ,iX1,iX3,iX2), &
                  uCF_R(iNodeX,iCF_Ne,iX1,iX3,iX2), &
+                 uCF_R(iNodeX,iCF_Nm,iX1,iX3,iX2), &
                  uPF_R(iPF_D ), &
                  uPF_R(iPF_V1), &
                  uPF_R(iPF_V2), &
                  uPF_R(iPF_V3), &
                  uPF_R(iPF_E ), &
                  uPF_R(iPF_Ne), &
+                 uPF_R(iPF_Nm), &
                  GX_F (iNodeX,iGF_Gm_dd_11,iX1,iX3,iX2), &
                  GX_F (iNodeX,iGF_Gm_dd_22,iX1,iX3,iX2), &
                  GX_F (iNodeX,iGF_Gm_dd_33,iX1,iX3,iX2) )
@@ -5199,12 +5227,14 @@ CONTAINS
                  uCF_K(iNodeX,iCF_S3,iX1,iX3,iX2), &
                  uCF_K(iNodeX,iCF_E ,iX1,iX3,iX2), &
                  uCF_K(iNodeX,iCF_Ne,iX1,iX3,iX2), &
+                 uCF_K(iNodeX,iCF_Nm,iX1,iX3,iX2), &
                  uPF_K(iPF_D ), &
                  uPF_K(iPF_V1), &
                  uPF_K(iPF_V2), &
                  uPF_K(iPF_V3), &
                  uPF_K(iPF_E ), &
                  uPF_K(iPF_Ne), &
+                 uPF_K(iPF_Nm), &
                  GX_K (iNodeX,iGF_Gm_dd_11,iX1,iX3,iX2), &
                  GX_K (iNodeX,iGF_Gm_dd_22,iX1,iX3,iX2), &
                  GX_K (iNodeX,iGF_Gm_dd_33,iX1,iX3,iX2) )
@@ -5662,12 +5692,14 @@ CONTAINS
                  uCF_L(iNodeX,iCF_S3,iX1,iX2,iX3), &
                  uCF_L(iNodeX,iCF_E ,iX1,iX2,iX3), &
                  uCF_L(iNodeX,iCF_Ne,iX1,iX2,iX3), &
+                 uCF_L(iNodeX,iCF_Nm,iX1,iX2,iX3), &
                  uPF_L(iPF_D ), &
                  uPF_L(iPF_V1), &
                  uPF_L(iPF_V2), &
                  uPF_L(iPF_V3), &
                  uPF_L(iPF_E ), &
                  uPF_L(iPF_Ne), &
+                 uPF_L(iPF_Nm), &
                  GX_F (iNodeX,iGF_Gm_dd_11,iX1,iX2,iX3), &
                  GX_F (iNodeX,iGF_Gm_dd_22,iX1,iX2,iX3), &
                  GX_F (iNodeX,iGF_Gm_dd_33,iX1,iX2,iX3) )
@@ -5681,12 +5713,14 @@ CONTAINS
                  uCF_R(iNodeX,iCF_S3,iX1,iX2,iX3), &
                  uCF_R(iNodeX,iCF_E ,iX1,iX2,iX3), &
                  uCF_R(iNodeX,iCF_Ne,iX1,iX2,iX3), &
+                 uCF_R(iNodeX,iCF_Nm,iX1,iX2,iX3), &
                  uPF_R(iPF_D ), &
                  uPF_R(iPF_V1), &
                  uPF_R(iPF_V2), &
                  uPF_R(iPF_V3), &
                  uPF_R(iPF_E ), &
                  uPF_R(iPF_Ne), &
+                 uPF_R(iPF_Nm), &
                  GX_F (iNodeX,iGF_Gm_dd_11,iX1,iX2,iX3), &
                  GX_F (iNodeX,iGF_Gm_dd_22,iX1,iX2,iX3), &
                  GX_F (iNodeX,iGF_Gm_dd_33,iX1,iX2,iX3) )
@@ -5787,12 +5821,14 @@ CONTAINS
                  uCF_K(iNodeX,iCF_S3,iX1,iX2,iX3), &
                  uCF_K(iNodeX,iCF_E ,iX1,iX2,iX3), &
                  uCF_K(iNodeX,iCF_Ne,iX1,iX2,iX3), &
+                 uCF_K(iNodeX,iCF_Nm,iX1,iX2,iX3), &
                  uPF_K(iPF_D ), &
                  uPF_K(iPF_V1), &
                  uPF_K(iPF_V2), &
                  uPF_K(iPF_V3), &
                  uPF_K(iPF_E ), &
                  uPF_K(iPF_Ne), &
+                 uPF_K(iPF_Nm), &
                  GX_K (iNodeX,iGF_Gm_dd_11,iX1,iX2,iX3), &
                  GX_K (iNodeX,iGF_Gm_dd_22,iX1,iX2,iX3), &
                  GX_K (iNodeX,iGF_Gm_dd_33,iX1,iX2,iX3) )
