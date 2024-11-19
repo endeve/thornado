@@ -23,10 +23,10 @@ MODULE InputOutputModule
   USE GeometryFieldsModule, ONLY: &
     uGF, iGF_Phi_N, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
-    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    uAF, iAF_P, iAF_T, iAF_Ye, iAF_S, iAF_E, iAF_Me, iAF_Mp, &
-    iAF_Mn, iAF_Xp, iAF_Xn, iAF_Xa, iAF_Xh, iAF_Gm, iAF_Cs, &
+    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, iCF_Nm, &
+    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, iPF_Nm, &
+    uAF, iAF_P, iAF_T, iAF_Ye, iAF_Ym, iAF_S, iAF_E, iAF_Me, iAF_Mm, &
+    iAF_Mp, iAF_Mn, iAF_Xp, iAF_Xn, iAF_Xa, iAF_Xh, iAF_Gm, iAF_Cs, &
     Shock
   USE RadiationFieldsModule, ONLY: &
     uCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
@@ -176,6 +176,8 @@ CONTAINS
         / U % EnergyDensityUnit, &
       FluidField1D( uCF(:,1:nX(1),1,1,iCF_Ne), nX(1) ) &
         / U % ParticleDensityUnit, &
+      FluidField1D( uCF(:,1:nX(1),1,1,iCF_Nm), nX(1) ) &
+        / U % ParticleDensityUnit, &
       FluidField1D( uPF(:,1:nX(1),1,1,iPF_D ), nX(1) ) &
         / U % MassDensityUnit, &
       FluidField1D( uPF(:,1:nX(1),1,1,iPF_V1), nX(1) ) &
@@ -188,15 +190,20 @@ CONTAINS
         / U % EnergyDensityUnit, &
       FluidField1D( uPF(:,1:nX(1),1,1,iPF_Ne), nX(1) ) &
         / U % ParticleDensityUnit, &
+      FluidField1D( uPF(:,1:nX(1),1,1,iPF_Nm), nX(1) ) &
+        / U % ParticleDensityUnit, &
       FluidField1D( uAF(:,1:nX(1),1,1,iAF_P ), nX(1) ) &
         / U % PressureUnit, &
       FluidField1D( uAF(:,1:nX(1),1,1,iAF_T ), nX(1) ) &
         / U % TemperatureUnit, &
       FluidField1D( uAF(:,1:nX(1),1,1,iAF_Ye), nX(1) ), &
+      FluidField1D( uAF(:,1:nX(1),1,1,iAF_Ym), nX(1) ), &
       FluidField1D( uAF(:,1:nX(1),1,1,iAF_S ), nX(1) ), &
       FluidField1D( uAF(:,1:nX(1),1,1,iAF_E ), nX(1) ) &
         / ( U % EnergyDensityUnit / U % MassDensityUnit ), &
       FluidField1D( uAF(:,1:nX(1),1,1,iAF_Me), nX(1) ) &
+        / U % EnergyUnit, &
+      FluidField1D( uAF(:,1:nX(1),1,1,iAF_Mm), nX(1) ) &
         / U % EnergyUnit, &
       FluidField1D( uAF(:,1:nX(1),1,1,iAF_Mp), nX(1) ) &
         / U % EnergyUnit, &
@@ -268,6 +275,8 @@ CONTAINS
         / U % EnergyDensityUnit, &
       FluidField1D_N( uCF(:,1:nX(1),1,1,iCF_Ne), nX(1), nNodesX(1) ) &
         / U % ParticleDensityUnit, &
+      FluidField1D_N( uCF(:,1:nX(1),1,1,iCF_Nm), nX(1), nNodesX(1) ) &
+        / U % ParticleDensityUnit, &
       FluidField1D_N( uPF(:,1:nX(1),1,1,iPF_D ), nX(1), nNodesX(1) ) &
         / U % MassDensityUnit, &
       FluidField1D_N( uPF(:,1:nX(1),1,1,iPF_V1), nX(1), nNodesX(1) ) &
@@ -280,15 +289,20 @@ CONTAINS
         / U % EnergyDensityUnit, &
       FluidField1D_N( uPF(:,1:nX(1),1,1,iPF_Ne), nX(1), nNodesX(1) ) &
         / U % ParticleDensityUnit, &
+      FluidField1D_N( uPF(:,1:nX(1),1,1,iPF_Nm), nX(1), nNodesX(1) ) &
+        / U % ParticleDensityUnit, &
       FluidField1D_N( uAF(:,1:nX(1),1,1,iAF_P ), nX(1), nNodesX(1) ) &
         / U % PressureUnit, &
       FluidField1D_N( uAF(:,1:nX(1),1,1,iAF_T ), nX(1), nNodesX(1) ) &
         / U % TemperatureUnit, &
       FluidField1D_N( uAF(:,1:nX(1),1,1,iAF_Ye), nX(1), nNodesX(1) ), &
+      FluidField1D_N( uAF(:,1:nX(1),1,1,iAF_Ym), nX(1), nNodesX(1) ), &
       FluidField1D_N( uAF(:,1:nX(1),1,1,iAF_S ), nX(1), nNodesX(1) ), &
       FluidField1D_N( uAF(:,1:nX(1),1,1,iAF_E ), nX(1), nNodesX(1) ) &
         / ( U % EnergyDensityUnit / U % MassDensityUnit ), &
       FluidField1D_N( uAF(:,1:nX(1),1,1,iAF_Me), nX(1), nNodesX(1) ) &
+        / U % EnergyUnit, &
+      FluidField1D_N( uAF(:,1:nX(1),1,1,iAF_Mm), nX(1), nNodesX(1) ) &
         / U % EnergyUnit, &
       FluidField1D_N( uAF(:,1:nX(1),1,1,iAF_Mp), nX(1), nNodesX(1) ) &
         / U % EnergyUnit, &
@@ -632,6 +646,11 @@ CONTAINS
         ( uPF(:,1:nX(1),1,1,iPF_Ne), nX(1), nNodesX(1) ) &
           / U % ParticleDensityUnit
 
+    WRITE( FUNIT, * ) & ! uPF_Nm
+      FluidFieldRestart1D_Out &
+        ( uPF(:,1:nX(1),1,1,iPF_Nm), nX(1), nNodesX(1) ) &
+          / U % ParticleDensityUnit
+
     WRITE( FUNIT, * ) & ! uAF_P
       FluidFieldRestart1D_Out &
         ( uAF(:,1:nX(1),1,1,iAF_P ), nX(1), nNodesX(1) ) &
@@ -645,6 +664,10 @@ CONTAINS
     WRITE( FUNIT, * ) & ! uAF_Ye
       FluidFieldRestart1D_Out &
         ( uAF(:,1:nX(1),1,1,iAF_Ye), nX(1), nNodesX(1) )
+
+    WRITE( FUNIT, * ) & ! uAF_Ym
+      FluidFieldRestart1D_Out &
+        ( uAF(:,1:nX(1),1,1,iAF_Ym), nX(1), nNodesX(1) )
 
     CLOSE( FUNIT )
 
@@ -757,6 +780,10 @@ CONTAINS
     uPF(:,1:nX(1),1,1,iPF_Ne) &
       = FluidFieldRestart1D_In( RealBuffer1D, nElements, nNodes ) &
           * U % ParticleDensityUnit
+    READ( FUNIT, * ) RealBuffer1D ! uPF_Nm
+    uPF(:,1:nX(1),1,1,iPF_Nm) &
+      = FluidFieldRestart1D_In( RealBuffer1D, nElements, nNodes ) &
+          * U % ParticleDensityUnit
 
     READ( FUNIT, * ) RealBuffer1D ! uAF_P
     uAF(:,1:nX(1),1,1,iAF_P) &
@@ -770,6 +797,10 @@ CONTAINS
 
     READ( FUNIT, * ) RealBuffer1D ! uAF_Ye
     uAF(:,1:nX(1),1,1,iAF_Ye) &
+      = FluidFieldRestart1D_In( RealBuffer1D, nElements, nNodes )
+
+    READ( FUNIT, * ) RealBuffer1D ! uAF_Ym
+    uAF(:,1:nX(1),1,1,iAF_Ym) &
       = FluidFieldRestart1D_In( RealBuffer1D, nElements, nNodes )
 
     DEALLOCATE( RealBuffer1D )
