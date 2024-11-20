@@ -820,8 +820,6 @@ CONTAINS
             IF( nDimsX > 2 ) &
               U_M(iCF,0,4) = dU(iCF,3)
 
-          ELSE
-
           END IF
 
           CALL MapModalToNodal_Fluid &
