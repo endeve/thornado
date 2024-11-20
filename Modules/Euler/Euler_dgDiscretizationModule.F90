@@ -69,6 +69,7 @@ MODULE Euler_dgDiscretizationModule
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
+    iCF_Nm, &
     nCF, &
     iPF_D, &
     iPF_V1, &
@@ -76,6 +77,7 @@ MODULE Euler_dgDiscretizationModule
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
+    iPF_Nm, &
     nPF, &
     iDF_Sh_X1, &
     iDF_Sh_X2, &
@@ -132,14 +134,14 @@ MODULE Euler_dgDiscretizationModule
     Beta_1_F  (:), Beta_2_F  (:), Beta_3_F  (:), Alpha_F (:)
 
   REAL(DP), POINTER, CONTIGUOUS :: &
-    uD_K(:), uS1_K(:), uS2_K(:), uS3_K(:), uE_K(:), uNe_K(:), &
-    uD_L(:), uS1_L(:), uS2_L(:), uS3_L(:), uE_L(:), uNe_L(:), &
-    uD_R(:), uS1_R(:), uS2_R(:), uS3_R(:), uE_R(:), uNe_R(:)
+    uD_K(:), uS1_K(:), uS2_K(:), uS3_K(:), uE_K(:), uNe_K(:), uNm_K(:), &
+    uD_L(:), uS1_L(:), uS2_L(:), uS3_L(:), uE_L(:), uNe_L(:), uNm_L(:), &
+    uD_R(:), uS1_R(:), uS2_R(:), uS3_R(:), uE_R(:), uNe_R(:), uNm_R(:)
 
   REAL(DP), ALLOCATABLE :: &
-    pD_K(:), pV1_K(:), pV2_K(:), pV3_K(:), pE_K(:), pNe_K(:), &
-    pD_L(:), pV1_L(:), pV2_L(:), pV3_L(:), pE_L(:), pNe_L(:), &
-    pD_R(:), pV1_R(:), pV2_R(:), pV3_R(:), pE_R(:), pNe_R(:)
+    pD_K(:), pV1_K(:), pV2_K(:), pV3_K(:), pE_K(:), pNe_K(:), pNm_K(:), &
+    pD_L(:), pV1_L(:), pV2_L(:), pV3_L(:), pE_L(:), pNe_L(:), pNm_L(:), &
+    pD_R(:), pV1_R(:), pV2_R(:), pV3_R(:), pE_R(:), pNe_R(:), pNm_R(:)
 
   INTEGER,  DIMENSION(:,:), ALLOCATABLE :: &
     IndexTableX_F(:,:), IndexTableX_V(:,:)
@@ -778,15 +780,15 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_DG_ComputePrimitive )
 
     CALL ComputePrimitive_Euler &
-           ( uD_L, uS1_L, uS2_L, uS3_L, uE_L, uNe_L, &
-             pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, &
+           ( uD_L, uS1_L, uS2_L, uS3_L, uE_L, uNe_L, uNm_L, &
+             pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, pNm_L, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
              iDimX_Option = 'X1 (L)', IndexTable_Option = IndexTableX_F, &
              iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL ComputePrimitive_Euler &
-           ( uD_R, uS1_R, uS2_R, uS3_R, uE_R, uNe_R, &
-             pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, &
+           ( uD_R, uS1_R, uS2_R, uS3_R, uE_R, uNe_R, uNm_R, &
+             pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, pNm_R, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
              iDimX_Option = 'X1 (R)', IndexTable_Option = IndexTableX_F, &
              iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
@@ -811,8 +813,8 @@ CONTAINS
     !$ACC          EigVals_L, EigVals_R, Flux_L, Flux_R, Flux_F, &
     !$ACC          uCF_L_nCF, uCF_R_nCF, iNX, iX1, iX2, iX3 ) &
     !$ACC REDUCTION( +:ErrorExists ) &
-    !$ACC PRESENT( pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, uD_L, uS1_L, uE_L, &
-    !$ACC          pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, uD_R, uS1_R, uE_R, &
+    !$ACC PRESENT( pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, pNm_L, uD_L, uS1_L, uE_L, &
+    !$ACC          pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, pNm_R, uD_R, uS1_R, uE_R, &
     !$ACC          Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F, &
     !$ACC          Alpha_F, Beta_1_F, &
     !$ACC          iErr, &
@@ -832,10 +834,10 @@ CONTAINS
       ! --- Left state ---
 
       CALL ComputePressureFromPrimitive &
-             ( pD_L(iNX_X), pE_L(iNX_X), pNe_L(iNX_X), P_L  )
+             ( pD_L(iNX_X), pE_L(iNX_X), pNe_L(iNX_X), pNm_L(iNX_X), P_L  )
 
       CALL ComputeSoundSpeedFromPrimitive &
-             ( pD_L(iNX_X), pE_L(iNX_X), pNe_L(iNX_X), Cs_L )
+             ( pD_L(iNX_X), pE_L(iNX_X), pNe_L(iNX_X), pNm_L(iNX_X), Cs_L )
 
       EigVals_L &
         = Eigenvalues_Euler &
@@ -859,6 +861,7 @@ CONTAINS
               pV3_L     (iNX_X), &
               pE_L      (iNX_X), &
               pNe_L     (iNX_X), &
+              pNm_L     (iNX_X), &
               P_L              , &
               Gm_dd_11_F(iNX_X), &
               Gm_dd_22_F(iNX_X), &
@@ -869,10 +872,10 @@ CONTAINS
       ! --- Right state ---
 
       CALL ComputePressureFromPrimitive &
-             ( pD_R(iNX_X), pE_R(iNX_X), pNe_R(iNX_X), P_R  )
+             ( pD_R(iNX_X), pE_R(iNX_X), pNe_R(iNX_X), pNm_R(iNX_X), P_R  )
 
       CALL ComputeSoundSpeedFromPrimitive &
-             ( pD_R(iNX_X), pE_R(iNX_X), pNe_R(iNX_X), Cs_R )
+             ( pD_R(iNX_X), pE_R(iNX_X), pNe_R(iNX_X), pNm_R(iNX_X), Cs_R )
 
       EigVals_R &
         = Eigenvalues_Euler &
@@ -896,6 +899,7 @@ CONTAINS
               pV3_R     (iNX_X), &
               pE_R      (iNX_X), &
               pNe_R     (iNX_X), &
+              pNm_R     (iNX_X), &
               P_R              , &
               Gm_dd_11_F(iNX_X), &
               Gm_dd_22_F(iNX_X), &
@@ -1010,8 +1014,8 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_DG_ComputePrimitive )
 
     CALL ComputePrimitive_Euler &
-           ( uD_K, uS1_K, uS2_K, uS3_K, uE_K, uNe_K, &
-             pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, &
+           ( uD_K, uS1_K, uS2_K, uS3_K, uE_K, uNe_K, uNm_K, &
+             pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, pNm_K, &
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
              iDimX_Option = 'X1 (V)', IndexTable_Option = IndexTableX_V, &
              iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
@@ -1026,7 +1030,7 @@ CONTAINS
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( P_K, Flux_K, iNX, iX1, iX2, iX3 ) &
-    !$ACC PRESENT( pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, &
+    !$ACC PRESENT( pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, pNm_K, &
     !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, Alpha_K, Beta_1_K, &
     !$ACC          Flux_q, SqrtGm_K, dX2, dX3, WeightsX_q, &
     !$ACC          IndexTableX_V )
@@ -1037,7 +1041,7 @@ CONTAINS
     DO iNX_K = 1, nNodesX_K
 
       CALL ComputePressureFromPrimitive &
-             ( pD_K(iNX_K), pE_K(iNX_K), pNe_K(iNX_K), P_K )
+             ( pD_K(iNX_K), pE_K(iNX_K), pNe_K(iNX_K), pNm_K(iNX_K), P_K )
 
       Flux_K &
         = Flux_X1_Euler &
@@ -1047,6 +1051,7 @@ CONTAINS
               pV3_K     (iNX_K), &
               pE_K      (iNX_K), &
               pNe_K     (iNX_K), &
+              pNm_K     (iNX_K), &
               P_K              , &
               Gm_dd_11_K(iNX_K), &
               Gm_dd_22_K(iNX_K), &
@@ -1533,15 +1538,15 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_DG_ComputePrimitive )
 
     CALL ComputePrimitive_Euler &
-           ( uD_L, uS1_L, uS2_L, uS3_L, uE_L, uNe_L, &
-             pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, &
+           ( uD_L, uS1_L, uS2_L, uS3_L, uE_L, uNe_L, uNm_L, &
+             pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, pNm_L, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
              iDimX_Option = 'X2 (L)', IndexTable_Option = IndexTableX_F, &
              iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL ComputePrimitive_Euler &
-           ( uD_R, uS1_R, uS2_R, uS3_R, uE_R, uNe_R, &
-             pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, &
+           ( uD_R, uS1_R, uS2_R, uS3_R, uE_R, uNe_R, uNm_R, &
+             pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, pNm_R, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
              iDimX_Option = 'X2 (R)', IndexTable_Option = IndexTableX_F, &
              iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
@@ -1566,8 +1571,8 @@ CONTAINS
     !$ACC          EigVals_L, EigVals_R, Flux_L, Flux_R, Flux_F, &
     !$ACC          uCF_L_nCF, uCF_R_nCF, iNX, iX1, iX2, iX3 ) &
     !$ACC REDUCTION( +:ErrorExists ) &
-    !$ACC PRESENT( pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, uD_L, uS2_L, uE_L, &
-    !$ACC          pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, uD_R, uS2_R, uE_R, &
+    !$ACC PRESENT( pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, pNm_L, uD_L, uS2_L, uE_L, &
+    !$ACC          pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, pNm_R, uD_R, uS2_R, uE_R, &
     !$ACC          Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F, &
     !$ACC          Alpha_F, Beta_2_F, &
     !$ACC          iErr, &
@@ -1587,10 +1592,10 @@ CONTAINS
       ! --- Left state ---
 
       CALL ComputePressureFromPrimitive &
-             ( pD_L(iNX_X), pE_L(iNX_X), pNe_L(iNX_X), P_L  )
+             ( pD_L(iNX_X), pE_L(iNX_X), pNe_L(iNX_X), pNm_L(iNX_X), P_L  )
 
       CALL ComputeSoundSpeedFromPrimitive &
-             ( pD_L(iNX_X), pE_L(iNX_X), pNe_L(iNX_X), Cs_L )
+             ( pD_L(iNX_X), pE_L(iNX_X), pNe_L(iNX_X), pNm_L(iNX_X), Cs_L )
 
       EigVals_L &
         = Eigenvalues_Euler &
@@ -1614,6 +1619,7 @@ CONTAINS
               pV3_L     (iNX_X), &
               pE_L      (iNX_X), &
               pNe_L     (iNX_X), &
+              pNm_L     (iNX_X), &
               P_L              , &
               Gm_dd_11_F(iNX_X), &
               Gm_dd_22_F(iNX_X), &
@@ -1624,10 +1630,10 @@ CONTAINS
       ! --- Right state ---
 
       CALL ComputePressureFromPrimitive &
-             ( pD_R(iNX_X), pE_R(iNX_X), pNe_R(iNX_X), P_R  )
+             ( pD_R(iNX_X), pE_R(iNX_X), pNe_R(iNX_X), pNm_R(iNX_X), P_R  )
 
       CALL ComputeSoundSpeedFromPrimitive &
-             ( pD_R(iNX_X), pE_R(iNX_X), pNe_R(iNX_X), Cs_R )
+             ( pD_R(iNX_X), pE_R(iNX_X), pNe_R(iNX_X), pNm_R(iNX_X), Cs_R )
 
       EigVals_R &
         = Eigenvalues_Euler &
@@ -1651,6 +1657,7 @@ CONTAINS
               pV3_R     (iNX_X), &
               pE_R      (iNX_X), &
               pNe_R     (iNX_X), &
+              pNm_R     (iNX_X), &
               P_R              , &
               Gm_dd_11_F(iNX_X), &
               Gm_dd_22_F(iNX_X), &
@@ -1765,8 +1772,8 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_DG_ComputePrimitive )
 
     CALL ComputePrimitive_Euler &
-           ( uD_K, uS1_K, uS2_K, uS3_K, uE_K, uNe_K, &
-             pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, &
+           ( uD_K, uS1_K, uS2_K, uS3_K, uE_K, uNe_K, uNm_K, &
+             pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, pNm_K, &
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
              iDimX_Option = 'X2 (V)', IndexTable_Option = IndexTableX_V, &
              iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
@@ -1781,7 +1788,7 @@ CONTAINS
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( P_K, Flux_K, iNX, iX1, iX2, iX3 ) &
-    !$ACC PRESENT( pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, &
+    !$ACC PRESENT( pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, pNm_K, &
     !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, Alpha_K, Beta_2_K, &
     !$ACC          Flux_q, SqrtGm_K, dX1, dX3, WeightsX_q, &
     !$ACC          IndexTableX_V )
@@ -1792,7 +1799,7 @@ CONTAINS
     DO iNX_K = 1, nNodesX_K
 
       CALL ComputePressureFromPrimitive &
-             ( pD_K(iNX_K), pE_K(iNX_K), pNe_K(iNX_K), P_K )
+             ( pD_K(iNX_K), pE_K(iNX_K), pNe_K(iNX_K), pNm_K(iNX_K), P_K )
 
       Flux_K &
         = Flux_X2_Euler &
@@ -1802,6 +1809,7 @@ CONTAINS
               pV3_K     (iNX_K), &
               pE_K      (iNX_K), &
               pNe_K     (iNX_K), &
+              pNm_K     (iNX_K), &
               P_K              , &
               Gm_dd_11_K(iNX_K), &
               Gm_dd_22_K(iNX_K), &
@@ -2287,15 +2295,15 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_DG_ComputePrimitive )
 
     CALL ComputePrimitive_Euler &
-           ( uD_L, uS1_L, uS2_L, uS3_L, uE_L, uNe_L, &
-             pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, &
+           ( uD_L, uS1_L, uS2_L, uS3_L, uE_L, uNe_L, uNm_L, &
+             pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, pNm_L, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
              iDimX_Option = 'X3 (L)', IndexTable_Option = IndexTableX_F, &
              iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
 
     CALL ComputePrimitive_Euler &
-           ( uD_R, uS1_R, uS2_R, uS3_R, uE_R, uNe_R, &
-             pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, &
+           ( uD_R, uS1_R, uS2_R, uS3_R, uE_R, uNe_R, uNm_R, &
+             pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, pNm_R, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
              iDimX_Option = 'X3 (R)', IndexTable_Option = IndexTableX_F, &
              iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
@@ -2320,8 +2328,8 @@ CONTAINS
     !$ACC          EigVals_L, EigVals_R, Flux_L, Flux_R, Flux_F, &
     !$ACC          uCF_L_nCF, uCF_R_nCF, iNX, iX1, iX2, iX3 ) &
     !$ACC REDUCTION( +:ErrorExists ) &
-    !$ACC PRESENT( pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, uD_L, uS3_L, uE_L, &
-    !$ACC          pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, uD_R, uS3_R, uE_R, &
+    !$ACC PRESENT( pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, pNm_L, uD_L, uS3_L, uE_L, &
+    !$ACC          pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, pNm_R, uD_R, uS3_R, uE_R, &
     !$ACC          Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F, &
     !$ACC          Alpha_F, Beta_3_F, &
     !$ACC          iErr, &
@@ -2341,10 +2349,10 @@ CONTAINS
       ! --- Left state ---
 
       CALL ComputePressureFromPrimitive &
-             ( pD_L(iNX_X), pE_L(iNX_X), pNe_L(iNX_X), P_L  )
+             ( pD_L(iNX_X), pE_L(iNX_X), pNe_L(iNX_X), pNm_L(iNX_X), P_L  )
 
       CALL ComputeSoundSpeedFromPrimitive &
-             ( pD_L(iNX_X), pE_L(iNX_X), pNe_L(iNX_X), Cs_L )
+             ( pD_L(iNX_X), pE_L(iNX_X), pNe_L(iNX_X), pNm_L(iNX_X), Cs_L )
 
       EigVals_L &
         = Eigenvalues_Euler &
@@ -2368,6 +2376,7 @@ CONTAINS
               pV3_L     (iNX_X), &
               pE_L      (iNX_X), &
               pNe_L     (iNX_X), &
+              pNm_L     (iNX_X), &
               P_L              , &
               Gm_dd_11_F(iNX_X), &
               Gm_dd_22_F(iNX_X), &
@@ -2378,10 +2387,10 @@ CONTAINS
       ! --- Right state ---
 
       CALL ComputePressureFromPrimitive &
-             ( pD_R(iNX_X), pE_R(iNX_X), pNe_R(iNX_X), P_R  )
+             ( pD_R(iNX_X), pE_R(iNX_X), pNe_R(iNX_X), pNm_R(iNX_X), P_R  )
 
       CALL ComputeSoundSpeedFromPrimitive &
-             ( pD_R(iNX_X), pE_R(iNX_X), pNe_R(iNX_X), Cs_R )
+             ( pD_R(iNX_X), pE_R(iNX_X), pNe_R(iNX_X), pNm_R(iNX_X), Cs_R )
 
       EigVals_R &
         = Eigenvalues_Euler &
@@ -2405,6 +2414,7 @@ CONTAINS
               pV3_R     (iNX_X), &
               pE_R      (iNX_X), &
               pNe_R     (iNX_X), &
+              pNm_R     (iNX_X), &
               P_R              , &
               Gm_dd_11_F(iNX_X), &
               Gm_dd_22_F(iNX_X), &
@@ -2519,8 +2529,8 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_DG_ComputePrimitive )
 
     CALL ComputePrimitive_Euler &
-           ( uD_K, uS1_K, uS2_K, uS3_K, uE_K, uNe_K, &
-             pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, &
+           ( uD_K, uS1_K, uS2_K, uS3_K, uE_K, uNe_K, uNm_K, &
+             pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, pNm_K, &
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
              iDimX_Option = 'X3 (V)', IndexTable_Option = IndexTableX_F, &
              iX_B0_Option = iX_B0, iX_E0_Option = iX_E0 )
@@ -2535,7 +2545,7 @@ CONTAINS
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( P_K, Flux_K, iNX, iX1, iX2, iX3 ) &
-    !$ACC PRESENT( pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, &
+    !$ACC PRESENT( pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, pNm_K, &
     !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, Alpha_K, Beta_3_K, &
     !$ACC          Flux_q, SqrtGm_K, dX1, dX2, WeightsX_q, &
     !$ACC          IndexTableX_V )
@@ -2546,7 +2556,7 @@ CONTAINS
     DO iNX_K = 1, nNodesX_K
 
       CALL ComputePressureFromPrimitive &
-             ( pD_K(iNX_K), pE_K(iNX_K), pNe_K(iNX_K), P_K )
+             ( pD_K(iNX_K), pE_K(iNX_K), pNe_K(iNX_K), pNm_K(iNX_K), P_K )
 
       Flux_K &
         = Flux_X3_Euler &
@@ -2556,6 +2566,7 @@ CONTAINS
               pV3_K     (iNX_K), &
               pE_K      (iNX_K), &
               pNe_K     (iNX_K), &
+              pNm_K     (iNX_K), &
               P_K              , &
               Gm_dd_11_K(iNX_K), &
               Gm_dd_22_K(iNX_K), &
@@ -2799,14 +2810,15 @@ CONTAINS
                  U(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  U(iNodeX,iX1,iX2,iX3,iCF_E ), &
                  U(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 U(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  P(iPF_D ), P(iPF_V1), P(iPF_V2), &
-                 P(iPF_V3), P(iPF_E ), P(iPF_Ne), &
+                 P(iPF_V3), P(iPF_E ), P(iPF_Ne), P(iPF_Nm), &
                  G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
         CALL ComputePressureFromPrimitive &
-               ( P(iPF_D), P(iPF_E), P(iPF_Ne), Pressure )
+               ( P(iPF_D), P(iPF_E), P(iPF_Ne), P(iPF_Nm), Pressure )
 
         Pi_du_22 = U(iNodeX,iX1,iX2,iX3,iCF_S2) * P(iPF_V2) + Pressure
         Pi_du_33 = U(iNodeX,iX1,iX2,iX3,iCF_S3) * P(iPF_V3) + Pressure
@@ -3411,12 +3423,14 @@ CONTAINS
                U(   iNX,iX1,iX2,iX3,iCF_S3), &
                U(   iNX,iX1,iX2,iX3,iCF_E ), &
                U(   iNX,iX1,iX2,iX3,iCF_Ne), &
+               U(   iNX,iX1,iX2,iX3,iCF_Nm), &
                P(iPF_D ), &
                P(iPF_V1), &
                P(iPF_V2), &
                P(iPF_V3), &
                P(iPF_E ), &
                P(iPF_Ne), &
+               P(iPF_Nm), &
                G(   iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                G(   iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                G(   iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
@@ -3426,7 +3440,7 @@ CONTAINS
       ErrorExists = ErrorExists + iErr(iNX,iX1,iX2,iX3)
 
       CALL ComputePressureFromPrimitive &
-             ( P(iPF_D), P(iPF_E), P(iPF_Ne), Pressure )
+             ( P(iPF_D), P(iPF_E), P(iPF_Ne), P(iPF_Nm), Pressure )
 
       PressureTensor(1,1,iNX,iX1,iX2,iX3) &
         = ( U(iNX,iX1,iX2,iX3,iCF_S1) * P(iPF_V1) + Pressure ) &
@@ -3656,6 +3670,7 @@ CONTAINS
                               U(iNX,iX1,iX2,iX3,iCF_S3), &
                               U(iNX,iX1,iX2,iX3,iCF_E ), &
                               U(iNX,iX1,iX2,iX3,iCF_Ne), &
+                              U(iNX,iX1,iX2,iX3,iCF_Nm), &
                               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ], &
@@ -4014,6 +4029,7 @@ CONTAINS
     ALLOCATE( pV3_K(nNodesX_K) )
     ALLOCATE( pE_K (nNodesX_K) )
     ALLOCATE( pNe_K(nNodesX_K) )
+    ALLOCATE( pNm_K(nNodesX_K) )
 
     ASSOCIATE &
       ( dX1 => MeshX(1) % Width, &
@@ -4024,12 +4040,12 @@ CONTAINS
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    dX1, dX2, dX3, &
     !$OMP             nX, nX_X1, nX_X2, nX_X3 ) &
-    !$OMP MAP( alloc: pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K )
+    !$OMP MAP( alloc: pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, pNm_K )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     dX1, dX2, dX3, &
     !$ACC             nX, nX_X1, nX_X2, nX_X3 ) &
-    !$ACC CREATE(     pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K )
+    !$ACC CREATE(     pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, pNm_K )
 #endif
 
     END ASSOCIATE ! dX1, etc.
@@ -4048,17 +4064,17 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: dX1, dX2, dX3, &
     !$OMP               nX, nX_X1, nX_X2, nX_X3, &
-    !$OMP               pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K )
+    !$OMP               pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, pNm_K )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
     !$ACC DELETE(       dX1, dX2, dX3, &
     !$ACC               nX, nX_X1, nX_X2, nX_X3,  &
-    !$ACC               pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K )
+    !$ACC               pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, pNm_K )
 #endif
 
     END ASSOCIATE ! dX1, etc.
 
-    DEALLOCATE( pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K )
+    DEALLOCATE( pD_K, pV1_K, pV2_K, pV3_K, pE_K, pNe_K, pNm_K )
 
   END SUBROUTINE FinalizeIncrement_Euler
 
@@ -4137,6 +4153,7 @@ CONTAINS
     uS3_K(1:nNodesX_K) => uCF_K (:,:,:,iXP_B0(3):iXP_E0(3),iCF_S3)
     uE_K (1:nNodesX_K) => uCF_K (:,:,:,iXP_B0(3):iXP_E0(3),iCF_E )
     uNe_K(1:nNodesX_K) => uCF_K (:,:,:,iXP_B0(3):iXP_E0(3),iCF_Ne)
+    uNm_K(1:nNodesX_K) => uCF_K (:,:,:,iXP_B0(3):iXP_E0(3),iCF_Nm)
 
     uD_L (1:nNodesX_X) => uCF_L (:,:,:,:,iCF_D )
     uS1_L(1:nNodesX_X) => uCF_L (:,:,:,:,iCF_S1)
@@ -4144,6 +4161,7 @@ CONTAINS
     uS3_L(1:nNodesX_X) => uCF_L (:,:,:,:,iCF_S3)
     uE_L (1:nNodesX_X) => uCF_L (:,:,:,:,iCF_E )
     uNe_L(1:nNodesX_X) => uCF_L (:,:,:,:,iCF_Ne)
+    uNm_L(1:nNodesX_X) => uCF_L (:,:,:,:,iCF_Nm)
 
     uD_R (1:nNodesX_X) => uCF_R (:,:,:,:,iCF_D )
     uS1_R(1:nNodesX_X) => uCF_R (:,:,:,:,iCF_S1)
@@ -4151,6 +4169,7 @@ CONTAINS
     uS3_R(1:nNodesX_X) => uCF_R (:,:,:,:,iCF_S3)
     uE_R (1:nNodesX_X) => uCF_R (:,:,:,:,iCF_E )
     uNe_R(1:nNodesX_X) => uCF_R (:,:,:,:,iCF_Ne)
+    uNm_R(1:nNodesX_X) => uCF_R (:,:,:,:,iCF_Nm)
 
     ALLOCATE( pD_L (nNodesX_X) )
     ALLOCATE( pV1_L(nNodesX_X) )
@@ -4158,6 +4177,7 @@ CONTAINS
     ALLOCATE( pV3_L(nNodesX_X) )
     ALLOCATE( pE_L (nNodesX_X) )
     ALLOCATE( pNe_L(nNodesX_X) )
+    ALLOCATE( pNm_L(nNodesX_X) )
 
     ALLOCATE( pD_R (nNodesX_X) )
     ALLOCATE( pV1_R(nNodesX_X) )
@@ -4165,6 +4185,7 @@ CONTAINS
     ALLOCATE( pV3_R(nNodesX_X) )
     ALLOCATE( pE_R (nNodesX_X) )
     ALLOCATE( pNe_R(nNodesX_X) )
+    ALLOCATE( pNm_R(nNodesX_X) )
 
     ALLOCATE( IndexTableX_F(4,nNodesX_X) )
     ALLOCATE( IndexTableX_V(4,nNodesX_K) )
@@ -4206,13 +4227,13 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    IndexTableX_F, IndexTableX_V ) &
-    !$OMP MAP( alloc: pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, &
-    !$OMP             pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R )
+    !$OMP MAP( alloc: pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, pNm_L, &
+    !$OMP             pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, pNm_R )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
     !$ACC COPYIN(     IndexTableX_F, IndexTableX_V ) &
-    !$ACC CREATE(     pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, &
-    !$ACC             pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R )
+    !$ACC CREATE(     pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, pNm_L, &
+    !$ACC             pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, pNm_R )
 #endif
 
   END SUBROUTINE InitializeIncrement_Divergence
@@ -4222,27 +4243,27 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, &
-    !$OMP               pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, &
+    !$OMP MAP( release: pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, pNm_L, &
+    !$OMP               pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, pNm_R, &
     !$OMP               IndexTableX_F, IndexTableX_V )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC EXIT DATA &
-    !$ACC DELETE(       pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, &
-    !$ACC               pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, &
+    !$ACC DELETE(       pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, pNm_L, &
+    !$ACC               pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, pNm_R, &
     !$ACC               IndexTableX_F, IndexTableX_V )
 #endif
 
-    DEALLOCATE( pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L )
-    DEALLOCATE( pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R )
+    DEALLOCATE( pD_L, pV1_L, pV2_L, pV3_L, pE_L, pNe_L, pNm_L )
+    DEALLOCATE( pD_R, pV1_R, pV2_R, pV3_R, pE_R, pNe_R, pNm_R )
     DEALLOCATE( IndexTableX_F, IndexTableX_V )
 
     NULLIFY( Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, SqrtGm_K )
     NULLIFY( Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F )
     NULLIFY(   Beta_1_K,   Beta_2_K,   Beta_3_K,  Alpha_K )
     NULLIFY(   Beta_1_F,   Beta_2_F,   Beta_3_F,  Alpha_F )
-    NULLIFY( uD_K, uS1_K, uS2_K, uS3_K, uE_K, uNe_K )
-    NULLIFY( uD_L, uS1_L, uS2_L, uS3_L, uE_L, uNe_L )
-    NULLIFY( uD_R, uS1_R, uS2_R, uS3_R, uE_R, uNe_R )
+    NULLIFY( uD_K, uS1_K, uS2_K, uS3_K, uE_K, uNe_K, uNm_K )
+    NULLIFY( uD_L, uS1_L, uS2_L, uS3_L, uE_L, uNe_L, uNm_L )
+    NULLIFY( uD_R, uS1_R, uS2_R, uS3_R, uE_R, uNe_R, uNm_R )
 
   END SUBROUTINE FinalizeIncrement_Divergence
 
