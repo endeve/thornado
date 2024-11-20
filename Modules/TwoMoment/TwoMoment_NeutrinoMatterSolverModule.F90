@@ -2510,7 +2510,11 @@ CONTAINS
       ! --- Scaling Factors ---
 
       S_Ye   (iN_X) = One / ( D(iN_X) * Ye(iN_X) / AtomicMassUnit )
-      S_Ym   (iN_X) = One / ( D(iN_X) * Ym(iN_X) / AtomicMassUnit )
+      IF (Ym(iN_X) <= 1d-100) THEN 
+        S_Ym(iN_X) = Zero
+      ELSE
+        S_Ym   (iN_X) = One / ( D(iN_X) * Ym(iN_X) / AtomicMassUnit )
+      END IF
       S_Ef   (iN_X) = One / ( D(iN_X) * Ef )
       S_V_d_1(iN_X) = One / ( D(iN_X) * SpeedOfLight )
       S_V_d_2(iN_X) = One / ( D(iN_X) * SpeedOfLight )

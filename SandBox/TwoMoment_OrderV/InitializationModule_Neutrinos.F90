@@ -167,6 +167,7 @@ CONTAINS
           uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = D_0
           uAF(iNodeX,iX1,iX2,iX3,iAF_T ) = T_0
           uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = Y_0
+          uAF(iNodeX,iX1,iX2,iX3,iAF_Ym) = Zero
 
           CALL ComputeThermodynamicStates_Primitive_TABLE &
                  ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
