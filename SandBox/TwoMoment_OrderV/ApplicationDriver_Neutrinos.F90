@@ -85,7 +85,7 @@ PROGRAM ApplicationDriver_Neutrinos
   REAL(DP)      :: dEquidistantX
   REAL(DP)      :: t, dt, dt_CFL, dt_0, dt_MAX, dt_RATE, t_end
   REAL(DP)      :: Rtol_outer, Rtol_inner
-  REAL(DP)      :: wMatterRHS(5)
+  REAL(DP)      :: wMatterRHS(6)
   REAL(DP)      :: DnuMax
   LOGICAL       :: Relaxation_restart_from_file
 
@@ -117,7 +117,7 @@ PROGRAM ApplicationDriver_Neutrinos
   Include_NuPair  = .FALSE.
   Include_Brem    = .TRUE.
   Include_LinCorr = .FALSE.
-  wMatterRHS      = [ One, One, One, One, One ]
+  wMatterRHS      = [ One, One, One, One, One, One ]
   DnuMax          = HUGE( One )
   FreezeOpacities = .FALSE.
 
@@ -193,7 +193,7 @@ PROGRAM ApplicationDriver_Neutrinos
         Include_NuPair  = .FALSE.
         Include_Brem    = .TRUE.
         Include_LinCorr = .FALSE.
-        wMatterRHS      = [ One, One, One, One, One ]
+        wMatterRHS      = [ One, One, One, One, One, One ]
         DnuMax          = One
         FreezeOpacities = .FALSE.
 
@@ -269,7 +269,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
       ProfileName = 'input_thornado_VX_100ms.dat'
 
-      wMatterRHS = [ One, One, Zero, Zero, Zero ] ! --- Keep Velocity Fixed
+      wMatterRHS = [ One, One, One, Zero, Zero, Zero ] ! --- Keep Velocity Fixed
 
       Include_NES     = .TRUE.
       Include_Pair    = .TRUE.

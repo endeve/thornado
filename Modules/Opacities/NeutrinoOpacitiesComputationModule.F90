@@ -35,6 +35,7 @@ MODULE NeutrinoOpacitiesComputationModule
     InterpMat
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeElectronChemicalPotential_TABLE, &
+    ComputeMuonChemicalPotential_TABLE, &
     ComputeProtonChemicalPotential_TABLE, &
     ComputeNeutronChemicalPotential_TABLE, &
     ComputeSpecificInternalEnergy_TABLE, &

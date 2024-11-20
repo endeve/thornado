@@ -1107,7 +1107,7 @@ CONTAINS
     DEALLOCATE( H_I_0, H_II_0, J_I_0, J_II_0 )
     DEALLOCATE( H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma )
     DEALLOCATE( Nu_J_I_0, Nu_J_II_0 )
-    DEALLOCATE( D_T, T_T, Y_T, E_T, SqrtGm_T, Error_T )
+    DEALLOCATE( D_T, T_T, Ye_T, Ym_T, E_T, SqrtGm_T, Error_T )
     DEALLOCATE( T0_T, Ye0_T, Ym0_T )
     DEALLOCATE( Dnu_T, Inu_u_1_T, Inu_u_2_T, Inu_u_3_T )
     DEALLOCATE( Dnu_0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T )
