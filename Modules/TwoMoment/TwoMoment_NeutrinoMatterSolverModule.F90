@@ -1306,7 +1306,7 @@ CONTAINS
     CALL TimersStart( Timer_Collisions_ComputeOpacity )
 
     CALL ComputeOpacities_Packed &
-           ( D, T, Y, SqrtGm, ITERATE_outer, nX_P_outer, &
+           ( D, T, Ye, Ym, SqrtGm, ITERATE_outer, nX_P_outer, &
              PackIndex_outer, UnpackIndex_outer, &
              T0 = T_old, Ye0 = Ye_old, Ym0 = Ym_old )
 
@@ -1338,7 +1338,7 @@ CONTAINS
           CALL TimersStart( Timer_Collisions_ComputeOpacity )
 
           CALL ComputeOpacities_Packed &
-                 ( D, T, Y, SqrtGm, ITERATE_outer, nX_P_outer, &
+                 ( D, T, Ye, Ym, SqrtGm, ITERATE_outer, nX_P_outer, &
                    PackIndex_outer, UnpackIndex_outer, &
                    T0 = T_old, Ye0 = Ye_old, Ym0 = Ym_old )
 
@@ -4864,7 +4864,7 @@ CONTAINS
 
   SUBROUTINE CheckError_Inner &
     ( MASK_inner, k_outer, k_inner, &
-      D, Ye, Tm, E, T, V_u_1, V_u_2, V_u_3, &
+      D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3, &
       Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
       Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33 )
