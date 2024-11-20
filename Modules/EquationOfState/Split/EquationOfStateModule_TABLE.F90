@@ -1187,8 +1187,8 @@ CONTAINS
     CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
            ( D, Em, Ye, Ym, T )
 
-    CALL CalculatewlSoundSpeedModule( D, T, Ye, Ym, D_T, T_T, Yp_T, &
-        P_T, OS_P, E_T, OS_E, 'Energy', HelmholtzTable, MuonTable, Gm, Cs)
+    CALL CalculateSoundSpeed( D, T, Ye, Ym, D_T, T_T, Yp_T, &
+        P_T, OS_P, E_T, OS_E, HelmholtzTable, MuonTable, Gm, Cs, .true.)
 
     !Cs = SQRT( Gm * P / D )
 
@@ -1214,9 +1214,9 @@ CONTAINS
 
     DO iP=1,nP
 
-      CALL CalculatewlSoundSpeedModule( D(iP), T(iP), Ye(iP), Ym(iP), &
+      CALL CalculateSoundSpeed( D(iP), T(iP), Ye(iP), Ym(iP), &
           D_T, T_T, Yp_T, P_T, OS_P, E_T, OS_E, &
-          'Energy', HelmholtzTable, MuonTable, Gm(iP), Cs(iP))
+          HelmholtzTable, MuonTable, Gm(iP), Cs(iP),.true.)
 
     ENDDO
 
@@ -1466,8 +1466,8 @@ CONTAINS
     CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
            ( D, Em, Ye, Ym, T )
 
-    CALL CalculatewlSoundSpeedModule( D, T, Ye, Ym, D_T, T_T, Yp_T, &
-        P_T, OS_P, E_T, OS_E, 'Energy', HelmholtzTable, MuonTable, Gm, Cs)
+    CALL CalculateSoundSpeed( D, T, Ye, Ym, D_T, T_T, Yp_T, &
+        P_T, OS_P, E_T, OS_E, HelmholtzTable, MuonTable, Gm, Cs, .TRUE.)
 
     !Cs = SQRT( Gm * P / D )
 
@@ -1727,7 +1727,7 @@ CONTAINS
 #ifdef INVERSION_COMBINED
 
     CALL ComputeDependentVariableTotal_Scalar &
-           ( D, T, Ye, Ym, Em, E_T, OS_E, &
+           ( D, T, Ye, Ym, E, E_T, OS_E, &
            UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
 #else
     
@@ -2828,12 +2828,12 @@ CONTAINS
         dXdYm => dXdYm_Local
       END IF
 
-      CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Scalar &
+      CALL ComputeDependentVariableAndDerivativesBaryons_Scalar &
              ( D, T, Ye, Ym, X, dXdD, dXdT, dXdYe, dXdYm, Ah_T, OS_Ah, UnitAh )
 
     ELSE
 
-      CALL ComputeDependentVariableBaryons_TABLE_Scalar &
+      CALL ComputeDependentVariableBaryons_Scalar &
              ( D, T, Ye, Ym, X, Ah_T, OS_Ah, UnitAh )
 
     END IF
@@ -2892,12 +2892,12 @@ CONTAINS
         dXdYm(1:nP) => dXdYm_Local(:)
       END IF
       
-      CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Vector &
+      CALL ComputeDependentVariableAndDerivativesBaryons_Vector &
              ( D, T, Ye, Ym, X, dXdD, dXdT, dXdYe, dXdYm, Ah_T, OS_Ah, UnitAh )
 
     ELSE
 
-      CALL ComputeDependentVariableBaryons_TABLE_Vector &
+      CALL ComputeDependentVariableBaryons_Vector &
              ( D, T, Ye, Ym, X, Ah_T, OS_Ah, UnitAh )
 
     END IF
