@@ -1,4 +1,11 @@
-EQUATION_OF_STATE = \
-  EquationOfStateModule_IDEAL.o \
-  EquationOfStateModule_TABLE.o \
-  EquationOfStateModule.o
+ifeq ($(EOSMODE), TABLE_SPLIT)
+  EQUATION_OF_STATE = \
+    EquationOfStateModule_IDEAL.o \
+    EquationOfStateModule_TABLE_SPLIT.o \
+    EquationOfStateModule.o
+else
+  EQUATION_OF_STATE = \
+    EquationOfStateModule_IDEAL.o \
+    EquationOfStateModule_TABLE.o \
+    EquationOfStateModule.o
+endif
