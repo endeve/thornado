@@ -27,6 +27,23 @@ EquationOfStateModule_TABLE.o: \
   DeviceModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule_TABLE.F90
+
+EquationOfStateModule_TABLE_SPLIT.o: \
+  wlIOModuleHDF.o \
+  wlEOSIOModuleHDF.o \
+  wlEquationOfStateTableModule.o \
+  wlEOSComponentsCombinedInversionModule.o \
+  wlEOSComponentsSeparateInversionModule.o \
+  wlLeptonEOSModule.o \
+  wlElectronEOS.o \
+  wlMuonEOS.o \
+  wlHelmMuonIOModuleHDF.o \
+  wlSoundSpeedModule.o \
+  wlInterpolationUtilitiesModule.o \
+  wlInterpolationModule.o \
+  KindModule.o \
+  UnitsModule.o \
+  EquationOfStateModule_TABLE_SPLIT.F90
 endif
 
 EquationOfStateModule.o: \
