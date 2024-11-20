@@ -86,7 +86,7 @@ MODULE FluidFieldsModule
   INTEGER, PUBLIC, PARAMETER :: iAF_S  = 05 ! Entropy Per Baryon
   INTEGER, PUBLIC, PARAMETER :: iAF_E  = 06 ! Specific Internal Energy
   INTEGER, PUBLIC, PARAMETER :: iAF_Me = 07 ! Electron Chemical Potential
-  INTEGER, PUBLIC, PARAMETER :: iAF_Me = 08 ! Muon Chemical Potential
+  INTEGER, PUBLIC, PARAMETER :: iAF_Mm = 08 ! Muon Chemical Potential
   INTEGER, PUBLIC, PARAMETER :: iAF_Mp = 09 ! Proton Chemical Potential
   INTEGER, PUBLIC, PARAMETER :: iAF_Mn = 10 ! Neutron Chemical Potential
   INTEGER, PUBLIC, PARAMETER :: iAF_Xp = 11 ! Proton Mass Fraction

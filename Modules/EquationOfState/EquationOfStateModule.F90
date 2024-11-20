@@ -748,7 +748,7 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    CALL ComputeThermodynamicStates_Primitive_TABLE( D, T, Y, Ev, Em, Ne )
+    CALL ComputeThermodynamicStates_Primitive_TABLE( D, T, Ye, Ym, Ev, Em, Ne, Nm )
 
 #else
 
@@ -910,9 +910,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeElectronChemicalPotential_Scalar &
-    ( D, T, Ye, M, dMdD_Option, dMdT_Option, dMdYe_Option )
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option )
 
-    REAL(DP), INTENT(in)                    :: D, T, Ye
+    REAL(DP), INTENT(in)                    :: D, T, Ye, Ym
     REAL(DP), INTENT(out)                   :: M
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
@@ -927,7 +927,7 @@ CONTAINS
     ComputeDerivatives &
       =      PRESENT( dMdD_Option ) &
         .OR. PRESENT( dMdT_Option ) &
-        .OR. PRESENT( dMdYp_Option )
+        .OR. PRESENT( dMdYe_Option )
 
     IF( ComputeDerivatives )THEN
 
@@ -943,19 +943,19 @@ CONTAINS
         dMdT => dMdT_Local
       END IF
 
-      IF( PRESENT( dMdYp_Option ) )THEN
+      IF( PRESENT( dMdYe_Option ) )THEN
         dMdYe => dMdYe_Option
       ELSE
         dMdYe => dMdYe_Local
       END IF
 
       CALL ComputeElectronChemicalPotential_TABLE &
-             ( D, T, Ye, M, dMdD, dMdT, dMdYe )
+             ( D, T, Ye, Ym, M, dMdD, dMdT, dMdYe )
 
     ELSE
 
       CALL ComputeElectronChemicalPotential_TABLE &
-             ( D, T, Ye, M )
+             ( D, T, Ye, Ym, M )
 
     END IF
 
@@ -967,9 +967,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeElectronChemicalPotential_Vector &
-    ( D, T, Ye, M, dMdD_Option, dMdT_Option, dMdYe_Option )
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option )
 
-    REAL(DP), INTENT(in)                    :: D(:), T(:), Ye(:)
+    REAL(DP), INTENT(in)                    :: D(:), T(:), Ye(:), Ym(:)
     REAL(DP), INTENT(out)                   :: M(:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(:)
@@ -1005,19 +1005,19 @@ CONTAINS
         dMdT(1:nP) => dMdT_Local(:)
       END IF
 
-      IF( PRESENT( dMdYp_Option ) )THEN
+      IF( PRESENT( dMdYe_Option ) )THEN
         dMdYe(1:nP) => dMdYe_Option(:)
       ELSE
         dMdYe(1:nP) => dMdYe_Local(:)
       END IF
 
       CALL ComputeElectronChemicalPotential_TABLE &
-             ( D, T, Ye, M, dMdD, dMdT, dMdYe )
+             ( D, T, Ye, Ym, M, dMdD, dMdT, dMdYe )
 
     ELSE
 
       CALL ComputeElectronChemicalPotential_TABLE &
-             ( D, T, Ye, M )
+             ( D, T, Ye, Ym, M )
 
     END IF
 
@@ -1032,24 +1032,24 @@ CONTAINS
 
 
   SUBROUTINE ComputeProtonChemicalPotential_Scalar &
-    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYp_Option )
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option )
 
     REAL(DP), INTENT(in)                    :: D, T, Ye, Ym
     REAL(DP), INTENT(out)                   :: M
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYp_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option
 
     LOGICAL :: ComputeDerivatives
-    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdYp_Local
-    REAL(DP), POINTER :: dMdD      , dMdT      , dMdYp
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdYe_Local
+    REAL(DP), POINTER :: dMdD      , dMdT      , dMdYe
 
 #ifdef MICROPHYSICS_WEAKLIB
 
     ComputeDerivatives &
       =      PRESENT( dMdD_Option ) &
         .OR. PRESENT( dMdT_Option ) &
-        .OR. PRESENT( dMdYp_Option )
+        .OR. PRESENT( dMdYe_Option )
 
     IF( ComputeDerivatives )THEN
 
@@ -1065,14 +1065,14 @@ CONTAINS
         dMdT => dMdT_Local
       END IF
 
-      IF( PRESENT( dMdYp_Option ) )THEN
-        dMdYp => dMdYp_Option
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe => dMdYe_Option
       ELSE
-        dMdYp => dMdYp_Local
+        dMdYe => dMdYe_Local
       END IF
 
       CALL ComputeProtonChemicalPotential_TABLE &
-             ( D, T, Ye, Ym, M, dMdD, dMdT, dMdYp )
+             ( D, T, Ye, Ym, M, dMdD, dMdT, dMdYe )
 
     ELSE
 
@@ -1089,27 +1089,27 @@ CONTAINS
 
 
   SUBROUTINE ComputeProtonChemicalPotential_Vector &
-    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYp_Option )
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option )
 
     REAL(DP), INTENT(in)                    :: D(:), T(:), Ye(:), Ym(:)
     REAL(DP), INTENT(out)                   :: M(:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYp_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option(:)
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
     REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
-      dMdD_Local, dMdT_Local, dMdYp_Local
+      dMdD_Local, dMdT_Local, dMdYe_Local
     REAL(DP), DIMENSION(:)      , POINTER :: &
-      dMdD      , dMdT      , dMdYp
+      dMdD      , dMdT      , dMdYe
 
 #ifdef MICROPHYSICS_WEAKLIB
 
     ComputeDerivatives &
       =      PRESENT( dMdD_Option ) &
         .OR. PRESENT( dMdT_Option ) &
-        .OR. PRESENT( dMdYp_Option )
+        .OR. PRESENT( dMdYe_Option )
 
     IF( ComputeDerivatives )THEN
 
@@ -1127,14 +1127,14 @@ CONTAINS
         dMdT(1:nP) => dMdT_Local(:)
       END IF
 
-      IF( PRESENT( dMdYp_Option ) )THEN
-        dMdYp(1:nP) => dMdYp_Option(:)
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe(1:nP) => dMdYe_Option(:)
       ELSE
-        dMdYp(1:nP) => dMdYp_Local(:)
+        dMdYe(1:nP) => dMdYe_Local(:)
       END IF
 
       CALL ComputeProtonChemicalPotential_TABLE &
-             ( D, T, Ye, Ym, M, dMdD, dMdT, dMdYp )
+             ( D, T, Ye, Ym, M, dMdD, dMdT, dMdYe )
 
     ELSE
 
@@ -1154,24 +1154,24 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutronChemicalPotential_Scalar &
-    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYp_Option )
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option )
 
     REAL(DP), INTENT(in)                    :: D, T, Ye, Ym
     REAL(DP), INTENT(out)                   :: M
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYp_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option
 
     LOGICAL :: ComputeDerivatives
-    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdYp_Local
-    REAL(DP), POINTER :: dMdD      , dMdT      , dMdYp
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdYe_Local
+    REAL(DP), POINTER :: dMdD      , dMdT      , dMdYe
 
 #ifdef MICROPHYSICS_WEAKLIB
 
     ComputeDerivatives &
       =      PRESENT( dMdD_Option ) &
         .OR. PRESENT( dMdT_Option ) &
-        .OR. PRESENT( dMdYp_Option )
+        .OR. PRESENT( dMdYe_Option )
 
     IF( ComputeDerivatives )THEN
 
@@ -1187,14 +1187,14 @@ CONTAINS
         dMdT => dMdT_Local
       END IF
 
-      IF( PRESENT( dMdYp_Option ) )THEN
-        dMdYp => dMdYp_Option
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe => dMdYe_Option
       ELSE
-        dMdYp => dMdYp_Local
+        dMdYe => dMdYe_Local
       END IF
 
       CALL ComputeNeutronChemicalPotential_TABLE &
-             ( D, T, Ye, Ym, M, dMdD, dMdT, dMdYp )
+             ( D, T, Ye, Ym, M, dMdD, dMdT, dMdYe )
 
     ELSE
 
@@ -1211,27 +1211,27 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutronChemicalPotential_Vector &
-    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYp_Option )
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option )
 
     REAL(DP), INTENT(in)                    :: D(:), T(:), Ye(:), Ym(:)
     REAL(DP), INTENT(out)                   :: M(:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(:)
-    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYp_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option(:)
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
     REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
-      dMdD_Local, dMdT_Local, dMdYp_Local
+      dMdD_Local, dMdT_Local, dMdYe_Local
     REAL(DP), DIMENSION(:)      , POINTER :: &
-      dMdD      , dMdT      , dMdYp
+      dMdD      , dMdT      , dMdYe
 
 #ifdef MICROPHYSICS_WEAKLIB
 
     ComputeDerivatives &
       =      PRESENT( dMdD_Option ) &
         .OR. PRESENT( dMdT_Option ) &
-        .OR. PRESENT( dMdYp_Option )
+        .OR. PRESENT( dMdYe_Option )
 
     IF( ComputeDerivatives )THEN
 
@@ -1249,14 +1249,14 @@ CONTAINS
         dMdT(1:nP) => dMdT_Local(:)
       END IF
 
-      IF( PRESENT( dMdYp_Option ) )THEN
-        dMdYp(1:nP) => dMdYp_Option(:)
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe(1:nP) => dMdYe_Option(:)
       ELSE
-        dMdYp(1:nP) => dMdYp_Local(:)
+        dMdYe(1:nP) => dMdYe_Local(:)
       END IF
 
       CALL ComputeNeutronChemicalPotential_TABLE &
-             ( D, T, Ye, Ym, M, dMdD, dMdT, dMdYp )
+             ( D, T, Ye, Ym, M, dMdD, dMdT, dMdYe )
 
     ELSE
 

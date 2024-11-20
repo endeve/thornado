@@ -1019,28 +1019,28 @@ CONTAINS
   ENDIF
 
   IF( PRESENT ( Ym_old ) ) THEN
-    #if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL)
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &  
         !$OMP MAP( to: Ym_old )
-    #elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR &
         !$ACC COPYIN  ( Ym_old )   &
         !$ACC PRESENT ( Ym0 )
-    #elif defined(THORNADO_OMP)
+#elif defined(THORNADO_OMP)
         !$OMP PARALLEL DO
-    #endif
+#endif
         DO iX = iX_B, iX_E
           Ym0(iX) = Ym_old(iX)
         END DO
       ELSE
-    #if defined(THORNADO_OMP_OL)
+#if defined(THORNADO_OMP_OL)
         !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-    #elif defined(THORNADO_OACC)
+#elif defined(THORNADO_OACC)
         !$ACC PARALLEL LOOP GANG VECTOR &
         !$ACC PRESENT ( Ym0 )
-    #elif defined(THORNADO_OMP)
+#elif defined(THORNADO_OMP)
         !$OMP PARALLEL DO
-    #endif
+#endif
         DO iX = iX_B, iX_E
           Ym0(iX) = Ym(iX)
         END DO
@@ -1632,7 +1632,7 @@ CONTAINS
     DO iP = iP_B, iP_E
       LogD_P(iP) = LOG10( D(iP) / UnitD )
       LogT_P(iP) = LOG10( T(iP) / UnitT )
-      Yp_P(iP)   = (Ye(iP) + Ym(iX)) / UnitY
+      Yp_P(iP)   = (Ye(iP) + Ym(iP)) / UnitY
       LogE_P(iP) = LOG10( E(iP) / UnitE )
     END DO
 

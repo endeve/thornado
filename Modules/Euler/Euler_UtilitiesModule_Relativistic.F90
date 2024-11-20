@@ -149,14 +149,14 @@ CONTAINS
 
 
   SUBROUTINE ComputePrimitive_Vector_old &
-    ( uD, uS1, uS2, uS3, uE, uNe, &
-      pD, pV1, pV2, pV3, pE, pNe, &
+    ( uD, uS1, uS2, uS3, uE, uNe, uNm, &
+      pD, pV1, pV2, pV3, pE, pNe, pNm, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       iDimX_Option, IndexTable_Option, &
       iX_B0_Option, iX_E0_Option )
 
-    REAL(DP)    , INTENT(inout) :: uD(:), uS1(:), uS2(:), uS3(:), uE(:), uNe(:)
-    REAL(DP)    , INTENT(out)   :: pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:)
+    REAL(DP)    , INTENT(inout) :: uD(:), uS1(:), uS2(:), uS3(:), uE(:), uNe(:), uNm(:)
+    REAL(DP)    , INTENT(out)   :: pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:), pNm(:)
     REAL(DP)    , INTENT(in)    :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
     INTEGER     , INTENT(in), OPTIONAL :: &
       iX_B0_Option(3), iX_E0_Option(3)
@@ -191,14 +191,14 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    uD, uS1, uS2, uS3, uE, uNe, &
+    !$OMP MAP( to:    uD, uS1, uS2, uS3, uE, uNe, uNm, &
     !$OMP             Gm_dd_11, Gm_dd_22, Gm_dd_33, ErrorExists ) &
-    !$OMP MAP( alloc: pD, pV1, pV2, pV3, pE, pNe, ITERATION, iErr )
+    !$OMP MAP( alloc: pD, pV1, pV2, pV3, pE, pNe, pNm, ITERATION, iErr )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     uD, uS1, uS2, uS3, uE, uNe, &
+    !$ACC COPYIN(     uD, uS1, uS2, uS3, uE, uNe, uNm, &
     !$ACC             Gm_dd_11, Gm_dd_22, Gm_dd_33, ErrorExists ) &
-    !$ACC CREATE(     pD, pV1, pV2, pV3, pE, pNe, ITERATION, iErr )
+    !$ACC CREATE(     pD, pV1, pV2, pV3, pE, pNe, pNm, ITERATION, iErr )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_CP_CopyIn )
@@ -211,8 +211,8 @@ CONTAINS
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC REDUCTION( +:ErrorExists ) &
-    !$ACC PRESENT( uD, uS1, uS2, uS3, uE, uNe, &
-    !$ACC          pD, pV1, pV2, pV3, pE, pNe, &
+    !$ACC PRESENT( uD, uS1, uS2, uS3, uE, uNe, uNm, &
+    !$ACC          pD, pV1, pV2, pV3, pE, pNe, pNm, &
     !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, ITERATION, iErr )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
@@ -225,7 +225,8 @@ CONTAINS
 
       IF(      uD (iNX) /= uD (iNX) .OR. uS1(iNX) /= uS1(iNX) &
           .OR. uS2(iNX) /= uS2(iNX) .OR. uS3(iNX) /= uS3(iNX) &
-          .OR. uE (iNX) /= uE (iNX) .OR. uNe(iNX) /= uNe(iNX) )THEN
+          .OR. uE (iNX) /= uE (iNX) .OR. uNe(iNX) /= uNe(iNX) &
+          .OR. uNm(iNX) /= uNm(iNX) )THEN
 
         iErr(iNX) = 13
 
@@ -2426,7 +2427,7 @@ CONTAINS
 
       ! --- Compute f(zc) for midpoint zc ---
 
-      CALL ComputeFunZ_Scalar( CF_D, CF_Ne, q, r, zc, fc )
+      CALL ComputeFunZ_Scalar( CF_D, CF_Ne, CF_Nm, q, r, zc, fc )
 
       ! --- Change zc to za or zb, depending on sign of fc ---
 
