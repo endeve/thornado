@@ -42,7 +42,8 @@ MODULE NeutrinoOpacitiesComputationModule
     ComputeNeutronMassFraction_TABLE, &
     ComputeHeavyMassFraction_TABLE, &
     ComputeHeavyMassNumber_TABLE, &
-    ComputeElectronNeutrinoChemicalPotential_TABLE
+    ComputeElectronNeutrinoChemicalPotential_TABLE, &
+    ComputeMuonNeutrinoChemicalPotential_TABLE
   USE OpacityModule_TABLE, ONLY: &
 #ifdef MICROPHYSICS_WEAKLIB
     OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
@@ -713,7 +714,7 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: Mm(:), dMmdT(:), dMmdYe(:), dMmdYm(:), dMmdD(:)
     REAL(DP), ALLOCATABLE :: Mp(:), dMpdT(:), dMpdYe(:), dMpdYm(:), dMpdD(:)
     REAL(DP), ALLOCATABLE :: Mn(:), dMndT(:), dMndYe(:), dMndYm(:), dMndD(:)
-    REAL(DP), ALLOCATABLE :: U (:), dUdT (:), dUdY (:), dUdD(:)
+    REAL(DP), ALLOCATABLE :: U (:), dUdT (:), dUdY  (:), dUdYe (:), dUdYm(:), dUdD(:)
     REAL(DP) :: Mnu, dMnudT, dMnudY
 
     REAL(DP) :: kT, df0dT_Y, df0dY_T
