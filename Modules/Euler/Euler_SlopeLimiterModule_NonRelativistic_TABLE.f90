@@ -224,7 +224,7 @@ CONTAINS
     REAL(DP) :: SlopeDifference(nCF)
     REAL(DP) :: a(nCF), b(nCF), c(nCF) ! --- Arguments for MinMod (fluid)
     REAL(DP) :: aYe   , bYe   , cYe    ! --- Arguments for MinMod (Ye)
-    REAL(DP) :: aYe   , bYe   , cYe    ! --- Arguments for MinMod (Ym)
+    REAL(DP) :: aYm   , bYm   , cYm    ! --- Arguments for MinMod (Ym)
     REAL(DP) :: G_K(nGF)
     REAL(DP) :: dU (nCF,nDimsX)
     REAL(DP) :: U_M(nCF,0:2*nDimsX,nDOFX)
