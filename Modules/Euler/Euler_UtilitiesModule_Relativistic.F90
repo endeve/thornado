@@ -236,8 +236,8 @@ CONTAINS
       END IF
 
       CALL ComputePrimitive_Scalar &
-             ( uD(iNX), uS1(iNX), uS2(iNX), uS3(iNX), uE(iNX), uNe(iNX), &
-               pD(iNX), pV1(iNX), pV2(iNX), pV3(iNX), pE(iNX), pNe(iNX), &
+             ( uD(iNX), uS1(iNX), uS2(iNX), uS3(iNX), uE(iNX), uNe(iNX), uNm(iNX), &
+               pD(iNX), pV1(iNX), pV2(iNX), pV3(iNX), pE(iNX), pNe(iNX), pNm(iNX), &
                Gm_dd_11(iNX), Gm_dd_22(iNX), Gm_dd_33(iNX), &
                ITERATION_Option = ITERATION(iNX), &
                iErr_Option      = iErr     (iNX) )
@@ -346,7 +346,7 @@ CONTAINS
   END SUBROUTINE ComputePrimitive_Vector_old
 
 
-  SUBROUTINE FindMinimumSpecificInternalEnergy( PF_D, Ye, epsMin )
+  SUBROUTINE FindMinimumSpecificInternalEnergy( PF_D, Ye, Ym, epsMin )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
@@ -354,13 +354,13 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)  :: PF_D, Ye
+    REAL(DP), INTENT(in)  :: PF_D, Ye, Ym
     REAL(DP), INTENT(out) :: epsMin
 
 #ifdef MICROPHYSICS_WEAKLIB
 
     CALL ComputeSpecificInternalEnergy_TABLE &
-           ( PF_D, Min_T + Offset_T * ABS( Min_T ), Ye, epsMin )
+           ( PF_D, Min_T + Offset_T * ABS( Min_T ), Ye, Ym, epsMin )
 
 #else
 
@@ -372,7 +372,7 @@ CONTAINS
 
 
   SUBROUTINE LimitSpecificInternalEnergy &
-    ( PF_D, Ye, q, eps, ReComputeConserved )
+    ( PF_D, Ye, Ym, q, eps, ReComputeConserved )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
@@ -380,7 +380,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)    :: PF_D, Ye
+    REAL(DP), INTENT(in)    :: PF_D, Ye, Ym
     REAL(DP), INTENT(inout) :: q, eps
     LOGICAL , INTENT(inout) :: ReComputeConserved
 
@@ -389,9 +389,9 @@ CONTAINS
 #ifdef MICROPHYSICS_WEAKLIB
 
     CALL ComputeSpecificInternalEnergy_TABLE &
-           ( PF_D, Min_T + Offset_T * ABS( Min_T ), Ye, epsMin )
+           ( PF_D, Min_T + Offset_T * ABS( Min_T ), Ye, Ym, epsMin )
     CALL ComputeSpecificInternalEnergy_TABLE &
-           ( PF_D, Max_T - Offset_T * ABS( Max_T ), Ye, epsMax )
+           ( PF_D, Max_T - Offset_T * ABS( Max_T ), Ye, Ym, epsMax )
 
     epsMin = epsMin + Offset_eps * ABS( epsMin )
     epsMax = epsMax - Offset_eps * ABS( epsMax )
@@ -2141,7 +2141,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)    :: D, Ne, q, r, z
+    REAL(DP), INTENT(in)    :: D, Ne, Nm, q, r, z
     REAL(DP), INTENT(out)   :: FunZ
 
     REAL(DP) :: Wt, rhot, epst, rhoh, Ye, Ym, epsMin, epsMax, epsh, ph, at, ht
