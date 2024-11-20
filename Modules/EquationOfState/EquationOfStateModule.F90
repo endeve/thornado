@@ -379,7 +379,7 @@ CONTAINS
   SUBROUTINE ComputeSpecificInternalEnergy_Scalar &
     ( D, T, Ye, Ym, E, dEdD_Option, dEdT_Option, dEdYp_Option )
 
-    REAL(DP), INTENT(in)                    :: D, T, Y
+    REAL(DP), INTENT(in)                    :: D, T, Ye, Ym
     REAL(DP), INTENT(out)                   :: E
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdD_Option
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdT_Option
@@ -741,7 +741,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeThermodynamicStates_Primitive_Vector &
-    ( D, T, Ye, Ym, Ev, Em, Ne, Ym )
+    ( D, T, Ye, Ym, Ev, Em, Ne, Nm )
 
     REAL(DP), INTENT(in)  :: D (:), T (:), Ye(:), Ym(:)
     REAL(DP), INTENT(out) :: Ev(:), Em(:), Ne(:), Nm(:)
@@ -1154,7 +1154,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutronChemicalPotential_Scalar &
-    ( D, T, Y, Ym, M, dMdD_Option, dMdT_Option, dMdYp_Option )
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYp_Option )
 
     REAL(DP), INTENT(in)                    :: D, T, Ye, Ym
     REAL(DP), INTENT(out)                   :: M
