@@ -647,7 +647,7 @@ CONTAINS
 
 
   SUBROUTINE ApplyEquationOfState_TABLE_Scalar &
-    ( D, T, Ye, Ym, P, S, E, Mue, Mum, Mup, Mun, Xp, Xn, Xa, Xh )
+    ( D, T, Ye, Ym, P, S, E, Mue, Mum, Mup, Mun, Xp, Xn, Xa, Xh, Gm )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -656,7 +656,7 @@ CONTAINS
 #endif
 
     REAL(DP), INTENT(in)  :: D, T, Ye, Ym
-    REAL(DP), INTENT(out) :: P, S, E, Mue, Mum, Mup, Mun, Xp, Xn, Xa, Xh
+    REAL(DP), INTENT(out) :: P, S, E, Mue, Mum, Mup, Mun, Xp, Xn, Xa, Xh, Gm
 
     REAL(DP) :: Pbary, Sbary, Ebary, Pele, Sele, Eele, &
                 P_mu, S_mu, E_mu
@@ -763,11 +763,11 @@ CONTAINS
 
 
   SUBROUTINE ApplyEquationOfState_TABLE_Vector &
-    ( D, T, Ye, Ym, P, S, E, Mue, Mum, Mup, Mun, Xp, Xn, Xa, Xh )
+    ( D, T, Ye, Ym, P, S, E, Mue, Mum, Mup, Mun, Xp, Xn, Xa, Xh, Gm )
 
     REAL(DP), INTENT(in)  :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out) :: P(1:), S(1:), E(1:), Mue(1:), Mum(1:), Mup(1:), Mun(1:)
-    REAL(DP), INTENT(out) :: Xp(1:), Xn(1:), Xa(1:), Xh(1:)
+    REAL(DP), INTENT(out) :: Xp(1:), Xn(1:), Xa(1:), Xh(1:), Gm(1:)
 
     INTEGER :: iP, nP
 
@@ -777,7 +777,7 @@ CONTAINS
 
       CALL ApplyEquationOfState_TABLE_Scalar &
              ( D (iP), T (iP), Ye (iP), Ym (iP), P (iP), S (iP), E (iP), &
-             Mue(iP), Mum(iP), Mup(iP), Mun(iP), Xp(iP), Xn(iP), Xa(iP), Xh(iP) )
+             Mue(iP), Mum(iP), Mup(iP), Mun(iP), Xp(iP), Xn(iP), Xa(iP), Xh(iP), Gm(iP) )
 
     END DO
 

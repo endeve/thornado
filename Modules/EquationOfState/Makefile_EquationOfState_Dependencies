@@ -18,9 +18,9 @@ EquationOfStateModule_TABLE.o: \
 else
 
 ifeq ($(EOSMODE),TABLE_SPLIT)
-  include Split/Makefile_Split_Dependencies
+  include $(THORNADO_DIR)/Modules/EquationOfState/Split/Makefile_Split_Dependencies
 else
-  include Combined/Makefile_Combined_Dependencies
+  include $(THORNADO_DIR)/Modules/EquationOfState/Combined/Makefile_Combined_Dependencies
 endif
 
 endif
