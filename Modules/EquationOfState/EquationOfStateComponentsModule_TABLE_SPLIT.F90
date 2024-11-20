@@ -115,16 +115,18 @@ MODULE EquationOfStateComponentsModule_TABLE
   PUBLIC :: ComputePressure_TABLE
   PUBLIC :: ComputeSpecificInternalEnergy_TABLE
   PUBLIC :: ComputeElectronChemicalPotential_TABLE
+  PUBLIC :: ComputeMuonChemicalPotential_TABLE
   PUBLIC :: ComputeProtonChemicalPotential_TABLE
   PUBLIC :: ComputeNeutronChemicalPotential_TABLE
   PUBLIC :: ComputeProtonMassFraction_TABLE
   PUBLIC :: ComputeNeutronMassFraction_TABLE
   PUBLIC :: ComputeHeavyMassFraction_TABLE
   PUBLIC :: ComputeHeavyMassNumber_TABLE
-  PUBLIC :: ComputeNeutrinoChemicalPotential_TABLE
-
-  REAL(DP), PUBLIC :: Min_D, Min_T, Min_Yp
-  REAL(DP), PUBLIC :: Max_D, Max_T, Max_Yp
+  PUBLIC :: ComputeElectronNeutrinoChemicalPotential_TABLE
+  PUBLIC :: ComputeMuonNeutrinoChemicalPotential_TABLE
+  
+  REAL(DP), PUBLIC :: Min_D, Min_T, Min_Y
+  REAL(DP), PUBLIC :: Max_D, Max_T, Max_Y
 
   INTERFACE ApplyEquationOfState_TABLE
     MODULE PROCEDURE ApplyEquationOfState_TABLE_Scalar
@@ -196,16 +198,26 @@ MODULE EquationOfStateComponentsModule_TABLE
     MODULE PROCEDURE ComputeElectronChemicalPotential_TABLE_Vector
   END INTERFACE
 
+  INTERFACE ComputeMuonChemicalPotential_TABLE
+    MODULE PROCEDURE ComputeMuonChemicalPotential_TABLE_Scalar
+    MODULE PROCEDURE ComputeMuonChemicalPotential_TABLE_Vector
+  END INTERFACE
+  
   INTERFACE ComputeProtonChemicalPotential_TABLE
     MODULE PROCEDURE ComputeProtonChemicalPotential_TABLE_Scalar
     MODULE PROCEDURE ComputeProtonChemicalPotential_TABLE_Vector
   END INTERFACE
 
-  INTERFACE ComputeNeutronChemicalPotential_TABLE
-    MODULE PROCEDURE ComputeNeutronChemicalPotential_TABLE_Scalar
-    MODULE PROCEDURE ComputeNeutronChemicalPotential_TABLE_Vector
+  INTERFACE ComputeElectronNeutrinoChemicalPotential_TABLE
+    MODULE PROCEDURE ComputeElectronNeutrinoChemicalPotential_TABLE_Scalar
+    MODULE PROCEDURE ComputeElectronNeutrinoChemicalPotential_TABLE_Vector
   END INTERFACE
 
+  INTERFACE ComputeMuonNeutrinoChemicalPotential_TABLE
+    MODULE PROCEDURE ComputeMuonNeutrinoChemicalPotential_TABLE_Scalar
+    MODULE PROCEDURE ComputeMuonNeutrinoChemicalPotential_TABLE_Vector
+  END INTERFACE
+  
   INTERFACE ComputeProtonMassFraction_TABLE
     MODULE PROCEDURE ComputeProtonMassFraction_TABLE_Scalar
     MODULE PROCEDURE ComputeProtonMassFraction_TABLE_Vector
@@ -273,7 +285,7 @@ MODULE EquationOfStateComponentsModule_TABLE
   !$OMP   OS_Xa, OS_Xh, &
   !$OMP   Pbary_T, Sbary_T, Ebary_T, Mpbary_T, Mnbary_T, Xpbary_T, Xnbary_T, &
   !$OMP   Xabary_T, Xhbary_T, &
-  !$OMP   Min_D, Min_T, Min_Yp, Max_D, Max_T, Max_Yp )
+  !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( Dbary_T, Tbary_T, Ypbary_T, &
@@ -283,7 +295,7 @@ MODULE EquationOfStateComponentsModule_TABLE
   !$ACC   OS_Xa, OS_Xh, &
   !$ACC   Pbary_T, Sbary_T, Ebary_T, Mpbary_T, Mnbary_T, Xpbary_T, Xnbary_T, &
   !$ACC   Xabary_T, Xhbary_T, &
-  !$ACC   Min_D, Min_T, Min_Yp, Max_D, Max_T, Max_Yp )
+  !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
 #endif
 
 CONTAINS
@@ -402,8 +414,8 @@ CONTAINS
     ALLOCATE( Ypbary_T(EOSBary % TS % nPoints(iYp)) )
     Ypbary_T = EOSBary % TS % States(iYp) % Values
 
-    Min_Yp = MINVAL( Ypbary_T )
-    Max_Yp = MAXVAL( Ypbary_T )
+    Min_Y = MINVAL( Ypbary_T )
+    Max_Y = MAXVAL( Ypbary_T )
 
     ! --- Dependent Variables Indices ---
 
@@ -534,7 +546,7 @@ CONTAINS
     !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, &
     !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, Pbary_T, Sbary_T, &
     !$OMP   Ebary_T, Mpbary_T, Mnbary_T, Xpbary_T, Xnbary_T, Xabary_T, Xhbary_T, &
-    !$OMP   Min_D, Min_T, Min_Yp, Max_D, Max_T, Max_Yp )
+    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( Dbary_T, Tbary_T, Ypbary_T, &
@@ -542,7 +554,7 @@ CONTAINS
     !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, &
     !$ACC   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, Pbary_T, Sbary_T, &
     !$ACC   Ebary_T, Mpbary_T, Mnbary_T, Xpbary_T, Xnbary_T, Xabary_T, Xhbary_T, &
-    !$ACC   Min_D, Min_T, Min_Yp, Max_D, Max_T, Max_Yp )
+    !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
 #endif
 
 #endif
@@ -561,7 +573,7 @@ CONTAINS
     !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, &
     !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, Pbary_T, Sbary_T, &
     !$OMP   Ebary_T, Mpbary_T, Mnbary_T, Xpbary_T, Xnbary_T, Xabary_T, Xhbary_T, &
-    !$OMP   Min_D, Min_T, Min_Yp, Max_D, Max_T, Max_Yp )
+    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
 #endif
 
     DEALLOCATE( Dbary_T, Tbary_T, Ypbary_T )
