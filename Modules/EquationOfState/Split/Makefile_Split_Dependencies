@@ -1,0 +1,16 @@
+EquationOfStateModule_TABLE.o: \
+  wlIOModuleHDF.o \
+  wlEOSIOModuleHDF.o \
+  wlEquationOfStateTableModule.o \
+  wlEOSComponentsCombinedInversionModule.o \
+  wlEOSComponentsSeparateInversionModule.o \
+  wlLeptonEOSModule.o \
+  wlElectronEOS.o \
+  wlMuonEOS.o \
+  wlHelmMuonIOModuleHDF.o \
+  wlSoundSpeedModule.o \
+  wlInterpolationUtilitiesModule.o \
+  wlInterpolationModule.o \
+  KindModule.o \
+  UnitsModule.o \
+  EquationOfStateModule_TABLE.F90

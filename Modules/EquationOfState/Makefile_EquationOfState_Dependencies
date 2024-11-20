@@ -16,34 +16,13 @@ EquationOfStateModule_TABLE.o: \
   FluidFieldsModule.o \
   EquationOfStateModule_TABLE.F90
 else
-EquationOfStateModule_TABLE.o: \
-  wlIOModuleHDF.o \
-  wlEOSIOModuleHDF.o \
-  wlEquationOfStateTableModule.o \
-  wlEOSInversionModule.o \
-  wlInterpolationModule.o \
-  KindModule.o \
-  UnitsModule.o \
-  DeviceModule.o \
-  FluidFieldsModule.o \
-  EquationOfStateModule_TABLE.F90
 
-EquationOfStateModule_TABLE_SPLIT.o: \
-  wlIOModuleHDF.o \
-  wlEOSIOModuleHDF.o \
-  wlEquationOfStateTableModule.o \
-  wlEOSComponentsCombinedInversionModule.o \
-  wlEOSComponentsSeparateInversionModule.o \
-  wlLeptonEOSModule.o \
-  wlElectronEOS.o \
-  wlMuonEOS.o \
-  wlHelmMuonIOModuleHDF.o \
-  wlSoundSpeedModule.o \
-  wlInterpolationUtilitiesModule.o \
-  wlInterpolationModule.o \
-  KindModule.o \
-  UnitsModule.o \
-  EquationOfStateModule_TABLE_SPLIT.F90
+ifeq ($(EOSMODE),TABLE_SPLIT)
+  include Split/Makefile_Split_Dependencies
+else
+  include Combined/Makefile_Combined_Dependencies
+endif
+
 endif
 
 EquationOfStateModule.o: \
