@@ -221,7 +221,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: K, H, Tau, T, Ye, Ym, Vsq, W, Em
 
     REAL(DP), INTENT(in) :: dPdD, dPdT, dPdYe, dPdYm
-    REAL(DP), INTENT(in) :: dEdD, dEdT, dEdYe, dPdYe
+    REAL(DP), INTENT(in) :: dEdD, dEdT, dEdYe, dEdYm
     REAL(DP), INTENT(in) :: dPdE, dPdDe, dPdDm, dPdTau
 
     INTEGER :: i
@@ -587,7 +587,7 @@ CONTAINS
     dFdU_X3(5,5) = Vu3 * ( 1.0_DP + dPdE * Tau )
     dFdU_X3(5,6) = Vu3 * dPdDe
 
-    dFdU_X3(6,1:6) = [ - Vu3 * Y, 0.0_DP, 0.0_DP, Y / Gmdd33, 0.0_DP, Vu3 ]
+    dFdU_X3(6,1:6) = [ - Vu3 * Ye, 0.0_DP, 0.0_DP, Ye / Gmdd33, 0.0_DP, Vu3 ]
 
   END SUBROUTINE ComputeFluxJacobian_X3
 
