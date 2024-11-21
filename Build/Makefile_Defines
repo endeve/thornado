@@ -54,7 +54,7 @@ endif
 THORNADO_GIT_HASH \
   := $(shell \
      cd $(THORNADO_DIR) \
-     && git --no-pager describe --tags --always --dirty \
+     && git --no-pager describe --tags --always --dirty --exclude '*' \
      && cd - > /dev/null)
 DEFINES += $(MDEFS)$(PP)THORNADO_GIT_HASH=\"$(THORNADO_GIT_HASH)\"
 
