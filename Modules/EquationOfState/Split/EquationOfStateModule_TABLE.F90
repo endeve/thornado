@@ -1323,6 +1323,8 @@ CONTAINS
     ElectronState % t = T
     ElectronState % rho = D
     ElectronState % Y_e = Ye
+    ElectronState % abar = One 
+    ElectronState % zbar = Ye
     
     CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
     Eele = ElectronState % e + mass_ele / rmu * ergmev * ElectronState % Y_e ! add back mass to internal Energy!
