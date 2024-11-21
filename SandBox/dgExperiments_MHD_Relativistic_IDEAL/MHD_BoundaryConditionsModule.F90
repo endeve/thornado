@@ -72,6 +72,13 @@ MODULE MHD_BoundaryConditionsModule
     ComputePressureFromPrimitive_IDEAL
   USE MHD_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_MHD_Relativistic
+  USE TimersModule_MHD, ONLY: &
+    TimersStart_MHD, &
+    TimersStop_MHD, &
+    Timer_MHD_BoundaryConditions, &
+    Timer_MHD_BC_ApplyBC, &
+    Timer_MHD_BC_CopyIn, &
+    Timer_MHD_BC_CopyOut
 
   USE HDF5
 
@@ -137,16 +144,32 @@ CONTAINS
 
     INTEGER :: iApplyBC(3)
 
+    CALL TimersStart_MHD( Timer_MHD_BoundaryConditions)
+
     iApplyBC = iApplyBC_MHD_Both
 
     IF( PRESENT( iApplyBC_Option ) ) &
       iApplyBC = iApplyBC_Option
+
+    CALL TimersStart_MHD( Timer_MHD_BC_CopyIn )
+
+    CALL TimersStop_MHD( Timer_MHD_BC_CopyIn )
+
+    CALL TimersStart_MHD( Timer_MHD_BC_ApplyBC )
 
     CALL ApplyBC_MHD_X1( t, iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC(1) )
 
     CALL ApplyBC_MHD_X2( t, iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC(2) )
 
     CALL ApplyBC_MHD_X3( t, iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC(3) )
+
+    CALL TimersStop_MHD( Timer_MHD_BC_ApplyBC )
+
+    CALL TimersStart_MHD( Timer_MHD_BC_CopyOut )
+
+    CALL TimersStop_MHD( Timer_MHD_BC_CopyOut )
+
+    CALL TimersStop_MHD( Timer_MHD_BoundaryConditions )
 
   END SUBROUTINE ApplyBoundaryConditions_MHD
 

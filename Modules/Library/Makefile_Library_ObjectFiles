@@ -3,6 +3,7 @@ LIBRARY = \
   DeviceModule.o \
   TimersModule.o \
   TimersModule_Euler.o \
+  TimersModule_MHD.o \
   LinearAlgebraModule.o \
   QuadratureModule.o \
   UtilitiesModule.o \

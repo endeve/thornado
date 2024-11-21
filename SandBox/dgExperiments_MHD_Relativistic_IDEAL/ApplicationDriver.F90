@@ -77,6 +77,15 @@ PROGRAM ApplicationDriver
     InitializeRandPerturbations, &
     ApplyRandPerturbations, &
     FinalizeRandPerturbations
+  USE TimersModule_MHD, ONLY: &
+    TimeIt_MHD, &
+    InitializeTimers_MHD, &
+    FinalizeTimers_MHD, &
+    TimersStart_MHD, &
+    TimersStop_MHD, &
+    Timer_MHD_InputOutput, &
+    Timer_MHD_Initialize, &
+    Timer_MHD_Finalize
 
   IMPLICIT NONE
 
@@ -128,6 +137,10 @@ PROGRAM ApplicationDriver
   REAL(DP) :: Rand_Amplitude = Zero
 
   SuppressTally = .FALSE.
+
+  TimeIt_MHD = .TRUE.
+  CALL InitializeTimers_MHD
+  CALL TimersStart_MHD( Timer_MHD_Initialize )
 
   ProgramName = 'Advection1D'
   AdvectionProfile = 'HydroSineWaveX1'
@@ -891,6 +904,8 @@ PROGRAM ApplicationDriver
        ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, Time = t, &
          SetInitialValues_Option = .TRUE., Verbose_Option = .FALSE. )
 
+  CALL TimersStop_MHD( Timer_MHD_Initialize )
+
   iCycle = 0
   Timer_Evolution = MPI_WTIME()
   DO WHILE( t .LT. t_end )
@@ -946,6 +961,8 @@ PROGRAM ApplicationDriver
 
     IF( wrt )THEN
 
+      CALL TimersStart_MHD( Timer_MHD_InputOutput )
+
       CALL ComputeFromConserved_MHD_Relativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM, EvolveOnlyMagnetic )
 
@@ -963,6 +980,8 @@ PROGRAM ApplicationDriver
 
       wrt = .FALSE.
 
+      CALL TimersStop_MHD( Timer_MHD_InputOutput )
+
     END IF
 
   END DO
@@ -972,6 +991,8 @@ PROGRAM ApplicationDriver
   WRITE(*,'(A,I8.8,A,ES10.3E3,A)') &
     'Finished ', iCycle, ' cycles in ', Timer_Evolution, ' s'
   WRITE(*,*)
+
+  CALL TimersStart_MHD( Timer_MHD_Finalize )
 
   CALL ComputeFromConserved_MHD_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM, EvolveOnlyMagnetic )
@@ -1008,6 +1029,10 @@ PROGRAM ApplicationDriver
   CALL FinalizeReferenceElementX
 
   CALL FinalizeProgram_Basic( UseMHD_Option = UseMHD )
+
+  CALL TimersStop_MHD( Timer_MHD_Finalize )
+
+  CALL FinalizeTimers_MHD
 
   WRITE(*,*)
   WRITE(*,'(2x,A)') 'git info'
