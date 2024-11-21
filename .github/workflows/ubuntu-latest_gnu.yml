@@ -24,6 +24,36 @@ jobs:
     env:
       THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
     steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v3
+
+      - name: Checkout weaklib
+        uses: actions/checkout@v3
+        with:
+          repository: starkiller-astro/weaklib
+          path: weaklib
+          ref: weakphys
+
+      - name: Checkout poseidon
+        uses: actions/checkout@v3
+        with:
+          repository: jrober50/Poseidon
+          path: poseidon
+          ref: Development
+
+      - name: Checkout amrex
+        uses: actions/checkout@v3
+        with:
+          repository: dunhamsj/amrex
+          path: amrex
+          ref: MeshRefinement_DG
+
+      - name: Update Ubuntu
+        run: |
+          sudo apt-get -y install \
+            libhdf5-dev \
+            libopenmpi-dev
+          sudo apt-get -y update
       - name: Find Libraries
         id: getenv
         run: |
