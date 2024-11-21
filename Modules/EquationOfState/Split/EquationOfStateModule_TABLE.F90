@@ -48,7 +48,9 @@ MODULE EquationOfStateModule_TABLE
   USE wlSoundSpeedModule, ONLY: &
     CalculateSoundSpeed
   USE wlInterpolationUtilitiesModule, ONLY: &
-    Index1D_Lin, Index1D_Log
+    Index1D_Lin, Index1D_Log, &
+    GetIndexAndDelta_Log, GetIndexAndDelta_Lin, &
+    LinearInterpDeriv_Array_Point
     
   ! ----------------------------------------------
 
@@ -242,8 +244,8 @@ MODULE EquationOfStateModule_TABLE
   END INTERFACE
 
   INTERFACE ComputeDependentVariableBaryons
-    MODULE PROCEDURE ComputeDependentVariableBaryons_Scalar
-    MODULE PROCEDURE ComputeDependentVariableBaryons_Vector
+    MODULE PROCEDURE ComputeDependentVariableBaryons_TABLE_Scalar
+    MODULE PROCEDURE ComputeDependentVariableBaryons_TABLE_Vector
   END INTERFACE ComputeDependentVariableBaryons
   
   INTERFACE ComputeDependentVariableAndDerivativesBaryons_TABLE
@@ -252,8 +254,8 @@ MODULE EquationOfStateModule_TABLE
   END INTERFACE ComputeDependentVariableAndDerivativesBaryons_TABLE
   
   INTERFACE ComputeDependentVariableTotal
-    MODULE PROCEDURE ComputeDependentVariableTotal_Scalar
-    MODULE PROCEDURE ComputeDependentVariableTotal_Vector
+    MODULE PROCEDURE ComputeDependentVariableTotal_TABLE_Scalar
+    MODULE PROCEDURE ComputeDependentVariableTotal_TABLE_Vector
   END INTERFACE ComputeDependentVariableTotal
 
   INTERFACE ComputeDependentVariableAndDerivativesTotal_TABLE
@@ -667,19 +669,19 @@ CONTAINS
 #ifdef INVERSION_COMBINED
     ! --- Interpolate Pressure ----------------------------------------
 
-    CALL ComputeDependentVariableTotal_Scalar &
+    CALL ComputeDependentVariableTotal_TABLE_Scalar &
            ( D, T, Ye, Ym, P, P_T, OS_P, &
            UnitP, 0.0_dp, 1.0_dp, 0.0_dp )
 
     ! --- Interpolate Entropy Per Baryon ------------------------------
 
-    CALL ComputeDependentVariableTotal_Scalar &
+    CALL ComputeDependentVariableTotal_TABLE_Scalar &
            ( D, T, Ye, Ym, S, S_T, OS_S, &
            UnitS, 0.0_dp, 0.0_dp, 1.0_dp )
 
     ! --- Interpolate Specific Internal Energy ------------------------
 
-    CALL ComputeDependentVariableTotal_Scalar &
+    CALL ComputeDependentVariableTotal_TABLE_Scalar &
            ( D, T, Ye, Ym, E, E_T, OS_E, &
            UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
 #else
@@ -710,17 +712,17 @@ CONTAINS
 
     ! --- Interpolate Pressure ----------------------------------------
 
-    CALL ComputeDependentVariableBaryons_Scalar &
+    CALL ComputeDependentVariableBaryons_TABLE_Scalar &
            ( D, T, Ye, Ym, P, P_T, OS_P, UnitP )
 
     ! --- Interpolate Entropy Per Baryon ------------------------------
 
-    CALL ComputeDependentVariableBaryons_Scalar &
+    CALL ComputeDependentVariableBaryons_TABLE_Scalar &
            ( D, T, Ye, Ym, S, S_T, OS_S, UnitS )
 
     ! --- Interpolate Specific Internal Energy ------------------------
 
-    CALL ComputeDependentVariableBaryons_Scalar &
+    CALL ComputeDependentVariableBaryons_TABLE_Scalar &
            ( D, T, Ye, Ym, E, E_T, OS_E, UnitE )
            
     E = E + Eele + E_mu
@@ -731,32 +733,32 @@ CONTAINS
 
     ! --- Interpolate Proton Chemical Potential -----------------------
 
-    CALL ComputeDependentVariableBaryons_Scalar &
+    CALL ComputeDependentVariableBaryons_TABLE_Scalar &
            ( D, T, Ye, Ym, Mup, Mp_T, OS_Mp, UnitMp )
 
     ! --- Interpolate Neutron Chemical Potential ----------------------
 
-    CALL ComputeDependentVariableBaryons_Scalar &
+    CALL ComputeDependentVariableBaryons_TABLE_Scalar &
            ( D, T, Ye, Ym, Mun, Mn_T, OS_Mn, UnitMn )
 
     ! --- Interpolate Proton Mass Fraction ----------------------------
 
-    CALL ComputeDependentVariableBaryons_Scalar &
+    CALL ComputeDependentVariableBaryons_TABLE_Scalar &
            ( D, T, Ye, Ym, Xp, Xp_T, OS_Xp, UnitXp )
 
     ! --- Interpolate Neutron Mass Fraction ---------------------------
 
-    CALL ComputeDependentVariableBaryons_Scalar &
+    CALL ComputeDependentVariableBaryons_TABLE_Scalar &
            ( D, T, Ye, Ym, Xn, Xn_T, OS_Xn, UnitXn )
 
     ! --- Interpolate Alpha Mass Fraction -----------------------------
 
-    CALL ComputeDependentVariableBaryons_Scalar &
+    CALL ComputeDependentVariableBaryons_TABLE_Scalar &
            ( D, T, Ye, Ym, Xa, Xa_T, OS_Xa, UnitXa )
 
     ! --- Interpolate Heavy Mass Fraction -----------------------------
 
-    CALL ComputeDependentVariableBaryons_Scalar &
+    CALL ComputeDependentVariableBaryons_TABLE_Scalar &
            ( D, T, Ye, Ym, Xh, Xh_T, OS_Xh, UnitXh )
 
   END SUBROUTINE ApplyEquationOfState_TABLE_Scalar
@@ -1007,7 +1009,7 @@ CONTAINS
     IF ( ANY( Error > 0 ) ) THEN
       DO iP = 1, nP
         IF ( Error(iP) > 0 ) THEN
-          CALL DescribeEOSInversionError( Error(iP) )
+          CALL DescribeEOSComponentsInversionError( Error(iP) )
 #if defined(THORNADO_OMP_OL)
           !$OMP TARGET UPDATE FROM &
           !$OMP ( D(iP), E(iP), Ye(iP), Ym(iP) )
@@ -1114,11 +1116,11 @@ CONTAINS
 
 #ifdef INVERSION_COMBINED
 
-    CALL ComputeDependentVariableTotal_Scalar &
+    CALL ComputeDependentVariableTotal_TABLE_Scalar &
            ( D, T, Ye_P, Ym_P, P, P_T, OS_P, &
            UnitP, 0.0_dp, 1.0_dp, 0.0_dp )
 #else
-    CALL ComputeDependentVariableBaryons_Scalar &
+    CALL ComputeDependentVariableBaryons_TABLE_Scalar &
            ( D, T, Ye_P, Ym_P, P, P_T, OS_P, UnitP )
            
     ! Calculate Electron Quantities
@@ -1243,7 +1245,7 @@ CONTAINS
     Ye_P = Ye / UnitY
     Ym_P = Ym / UnitY
 
-    CALL ComputeTemperatureWith_DPY_Single_NoGuess_Error &
+    CALL ComputeTemperatureWith_DPYpYl_Single_NoGuess_Error &
            ( D_P, P_P, Ye_P, Ym_P, D_T, T_T, Yp_T, P_T, OS_P, T_P, &
              Error )
 
@@ -1299,12 +1301,12 @@ CONTAINS
 
 #ifdef INVERSION_COMBINED
 
-    CALL ComputeDependentVariableTotal_Scalar &
+    CALL ComputeDependentVariableTotal_TABLE_Scalar &
            ( D, T, Ye, Ym, Em, E_T, OS_E, &
            UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
 #else
 
-    CALL ComputeDependentVariableBaryons_Scalar &
+    CALL ComputeDependentVariableBaryons_TABLE_Scalar &
            ( D, T, Ye, Ym, Em, E_T, OS_E, UnitE )
            
     ! Calculate Electron Quantities
@@ -1423,7 +1425,7 @@ CONTAINS
     IF ( ANY( Error > 0 ) ) THEN
       DO iP = 1, nP
         IF ( Error(iP) > 0 ) THEN
-          CALL DescribeEOSInversionError( Error(iP) )
+          CALL DescribeEOSComponentsInversionError( Error(iP) )
 #if defined(THORNADO_OMP_OL)
           !$OMP TARGET UPDATE FROM &
           !$OMP ( D(iP), Em(iP), Ye(iP), Ym(iP) )
@@ -1562,11 +1564,11 @@ CONTAINS
     ELSE
 
 #ifdef INVERSION_COMBINED
-      CALL ComputeDependentVariableTotal_Scalar &
+      CALL ComputeDependentVariableTotal_TABLE_Scalar &
              ( D, T, Ye, Ym, P, P_T, OS_P, &
              UnitP, 1.0_dp, 0.0_dp, 0.0_dp )
 #else
-      CALL ComputeDependentVariableBaryons_Scalar &
+      CALL ComputeDependentVariableBaryons_TABLE_Scalar &
              ( D, T, Ye, Ym, P, P_T, OS_P, UnitP )
 
       ! Calculate Electron Quantities
@@ -1650,7 +1652,7 @@ CONTAINS
 
     ELSE
 
-      CALL ComputeDependentVariableTotal_Vector &
+      CALL ComputeDependentVariableTotal_TABLE_Vector &
              ( D, T, Ye, Ym, P, P_T, OS_P, &
              UnitP, 1.0_dp, 0.0_dp, 0.0_dp )
 
@@ -1726,12 +1728,12 @@ CONTAINS
 
 #ifdef INVERSION_COMBINED
 
-    CALL ComputeDependentVariableTotal_Scalar &
+    CALL ComputeDependentVariableTotal_TABLE_Scalar &
            ( D, T, Ye, Ym, E, E_T, OS_E, &
            UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
 #else
     
-    CALL ComputeDependentVariableBaryons_Scalar &
+    CALL ComputeDependentVariableBaryons_TABLE_Scalar &
            ( D, T, Ye, Ym, E, E_T, OS_E, UnitE )
            
     ! Calculate Electron Quantities
@@ -1817,7 +1819,7 @@ CONTAINS
 
 #ifdef INVERSION_COMBINED
 
-      CALL ComputeDependentVariableTotal_Vector &
+      CALL ComputeDependentVariableTotal_TABLE_Vector &
              ( D, T, Ye, Ym, E, E_T, OS_E, &
              UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
 
@@ -2036,7 +2038,7 @@ CONTAINS
       aD = 1.0_dp / ( D * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
       aT = 1.0_dp / ( T * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
 
-      CALL LinearInterpDeriv2D_2DArray_Point &
+      CALL LinearInterpDeriv_Array_Point &
              ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % mu), M, &
                dMdD, dMdT )
       
@@ -2184,7 +2186,7 @@ CONTAINS
 
     ELSE
 
-      CALL ComputeDependentVariableBaryons_Scalar &
+      CALL ComputeDependentVariableBaryons_TABLE_Scalar &
              ( D, T, Ye, Ym, M, Mp_T, OS_Mp, UnitMp )
 
     END IF
@@ -2250,7 +2252,7 @@ CONTAINS
 
     ELSE
 
-      CALL ComputeDependentVariableBaryons_Vector &
+      CALL ComputeDependentVariableBaryons_TABLE_Vector &
              ( D, T, Ye, Ym, M, Mp_T, OS_Mp, UnitMp )
 
     END IF
@@ -2315,7 +2317,7 @@ CONTAINS
 
     ELSE
 
-      CALL ComputeDependentVariableBaryons_Scalar &
+      CALL ComputeDependentVariableBaryons_TABLE_Scalar &
              ( D, T, Ye, Ym, M, Mn_T, OS_Mn, UnitMn )
 
     END IF
@@ -2380,7 +2382,7 @@ CONTAINS
 
     ELSE
 
-      CALL ComputeDependentVariableBaryons_Vector &
+      CALL ComputeDependentVariableBaryons_TABLE_Vector &
              ( D, T, Ye, Ym, M, Mn_T, OS_Mn, UnitMn )
 
     END IF
@@ -2445,7 +2447,7 @@ CONTAINS
 
     ELSE
 
-      CALL ComputeDependentVariableBaryons_Scalar &
+      CALL ComputeDependentVariableBaryons_TABLE_Scalar &
              ( D, T, Ye, Ym, X, Xp_T, OS_Xp, UnitXp )
 
     END IF
@@ -2511,7 +2513,7 @@ CONTAINS
 
     ELSE
 
-      CALL ComputeDependentVariableBaryons_Vector &
+      CALL ComputeDependentVariableBaryons_TABLE_Vector &
              ( D, T, Ye, Ym, X, Xp_T, OS_Xp, UnitXp )
 
     END IF
@@ -2576,7 +2578,7 @@ CONTAINS
 
     ELSE
 
-      CALL ComputeDependentVariableBaryons_Scalar &
+      CALL ComputeDependentVariableBaryons_TABLE_Scalar &
              ( D, T, Ye, Ym, X, Xn_T, OS_Xn, UnitXn )
 
     END IF
@@ -2640,7 +2642,7 @@ CONTAINS
 
     ELSE
 
-      CALL ComputeDependentVariableBaryons_Vector &
+      CALL ComputeDependentVariableBaryons_TABLE_Vector &
              ( D, T, Ye, Ym, X, Xn_T, OS_Xn, UnitXn )
 
     END IF
@@ -2705,7 +2707,7 @@ CONTAINS
 
     ELSE
 
-      CALL ComputeDependentVariableBaryons_Scalar &
+      CALL ComputeDependentVariableBaryons_TABLE_Scalar &
              ( D, T, Ye, Ym, X, Xh_T, OS_Xh, UnitXh )
 
     END IF
@@ -2828,12 +2830,12 @@ CONTAINS
         dXdYm => dXdYm_Local
       END IF
 
-      CALL ComputeDependentVariableAndDerivativesBaryons_Scalar &
+      CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Scalar &
              ( D, T, Ye, Ym, X, dXdD, dXdT, dXdYe, dXdYm, Ah_T, OS_Ah, UnitAh )
 
     ELSE
 
-      CALL ComputeDependentVariableBaryons_Scalar &
+      CALL ComputeDependentVariableBaryons_TABLE_Scalar &
              ( D, T, Ye, Ym, X, Ah_T, OS_Ah, UnitAh )
 
     END IF
@@ -2892,12 +2894,12 @@ CONTAINS
         dXdYm(1:nP) => dXdYm_Local(:)
       END IF
       
-      CALL ComputeDependentVariableAndDerivativesBaryons_Vector &
+      CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Vector &
              ( D, T, Ye, Ym, X, dXdD, dXdT, dXdYe, dXdYm, Ah_T, OS_Ah, UnitAh )
 
     ELSE
 
-      CALL ComputeDependentVariableBaryons_Vector &
+      CALL ComputeDependentVariableBaryons_TABLE_Vector &
              ( D, T, Ye, Ym, X, Ah_T, OS_Ah, UnitAh )
 
     END IF
@@ -3145,7 +3147,7 @@ CONTAINS
 
   END SUBROUTINE ComputeMuonNeutrinoChemicalPotential_TABLE_Vector
 
-  SUBROUTINE ComputeDependentVariableBaryons_Scalar &
+  SUBROUTINE ComputeDependentVariableBaryons_TABLE_Scalar &
     ( D, T, Ye, Ym, V, V_T, OS_V, Units_V )
 
 #if defined(THORNADO_OMP_OL)
@@ -3180,10 +3182,10 @@ CONTAINS
 
 #endif
 
-  END SUBROUTINE ComputeDependentVariableBaryons_Scalar
+  END SUBROUTINE ComputeDependentVariableBaryons_TABLE_Scalar
 
 
-  SUBROUTINE ComputeDependentVariableBaryons_Vector &
+  SUBROUTINE ComputeDependentVariableBaryons_TABLE_Vector &
     ( D, T, Ye, Ym, V, V_T, OS_V, Units_V )
 
     REAL(DP), INTENT(in)  :: D(1:), T(1:), Ye(1:), Ym(1:)
@@ -3244,9 +3246,9 @@ CONTAINS
 
 #endif
 
-  END SUBROUTINE ComputeDependentVariableBaryons_Vector
+  END SUBROUTINE ComputeDependentVariableBaryons_TABLE_Vector
 
-  SUBROUTINE ComputeDependentVariableTotal_Scalar &
+  SUBROUTINE ComputeDependentVariableTotal_TABLE_Scalar &
     ( D, T, Ye, Ym, V, V_T, OS_V, Units_V, &
     InputE, InputP, InputS )
 
@@ -3341,10 +3343,10 @@ CONTAINS
 
 #endif
 
-  END SUBROUTINE ComputeDependentVariableTotal_Scalar
+  END SUBROUTINE ComputeDependentVariableTotal_TABLE_Scalar
 
 
-  SUBROUTINE ComputeDependentVariableTotal_Vector &
+  SUBROUTINE ComputeDependentVariableTotal_TABLE_Vector &
     ( D, T, Ye, Ym, V, V_T, OS_V, Units_V, &
     InputE, InputP, InputS )
 
@@ -3466,7 +3468,7 @@ CONTAINS
 
 #endif
 
-  END SUBROUTINE ComputeDependentVariableTotal_Vector
+  END SUBROUTINE ComputeDependentVariableTotal_TABLE_Vector
 
 
   SUBROUTINE ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
@@ -3593,7 +3595,7 @@ CONTAINS
         aD = 1.0_dp / ( D * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
         aT = 1.0_dp / ( T * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
 
-        CALL LinearInterpDeriv2D_2DArray_Point &
+        CALL LinearInterpDeriv_Array_Point &
                ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % p), Vdummy, &
                  dVdrhoym, dVdummy )
         
@@ -3638,7 +3640,7 @@ CONTAINS
         aD = 1.0_dp / ( D * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
         aT = 1.0_dp / ( T * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
 
-        CALL LinearInterpDeriv2D_2DArray_Point &
+        CALL LinearInterpDeriv_Array_Point &
                ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % e), Vdummy, &
                  dVdrhoym, dVdummy )
         
@@ -3683,7 +3685,7 @@ CONTAINS
         aD = 1.0_dp / ( D * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
         aT = 1.0_dp / ( T * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
 
-        CALL LinearInterpDeriv2D_2DArray_Point &
+        CALL LinearInterpDeriv_Array_Point &
                ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % s), Vdummy, &
                  dVdrhoym, dVdummy )
         
