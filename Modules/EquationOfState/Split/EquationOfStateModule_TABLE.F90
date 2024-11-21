@@ -520,11 +520,13 @@ CONTAINS
           ElectronState % t    = T_T (iTemp)
           ElectronState % rho  = D_T (iRho)
           ElectronState % Y_e  = Yp_T(iYp)
-          ElectronState % abar = (Xn_T(iRho, iTemp, iYp) + Xp_T(iRho, iTemp, iYp) + &
-                                  Xa_T(iRho, iTemp, iYp) + Xh_T(iRho, iTemp, iYp)) / &
-                                 (Xn_T(iRho, iTemp, iYp) + Xp_T(iRho, iTemp, iYp) + &
-                                  Xa_T(iRho, iTemp, iYp)/4.0d0 + Xh_T(iRho, iTemp, iYp)/Ah_T(iRho, iTemp, iYp))
-          ElectronState % zbar =  Yp_T (iYp) * ElectronState % abar
+          ElectronState % abar = 1.0_dp
+          ElectronState % zbar = 1.0_dp
+          ! ElectronState % abar = (Xn_T(iRho, iTemp, iYp) + Xp_T(iRho, iTemp, iYp) + &
+          !                         Xa_T(iRho, iTemp, iYp) + Xh_T(iRho, iTemp, iYp)) / &
+          !                        (Xn_T(iRho, iTemp, iYp) + Xp_T(iRho, iTemp, iYp) + &
+          !                         Xa_T(iRho, iTemp, iYp)/4.0d0 + Xh_T(iRho, iTemp, iYp)/Ah_T(iRho, iTemp, iYp))
+          ! ElectronState % zbar =  Yp_T (iYp) * ElectronState % abar
           
           ! calculate electron quantities
           CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
