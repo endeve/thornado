@@ -346,6 +346,8 @@ CONTAINS
     IF( .NOT. PRESENT( External_EOS ) ) THEN
 
        ALLOCATE( EOS )
+       ALLOCATE( HelmholtzTable)
+       ALLOCATE( MuonTable )
        UsingExternalEOS = .FALSE.
 
        CALL InitializeHDF( )
@@ -370,9 +372,9 @@ CONTAINS
 
     ! --- Thermodynamic State Indices ---
 
-    iRho = EOS % TS % Indices % iRho
+    iRho  = EOS % TS % Indices % iRho
     iTemp = EOS % TS % Indices % iT
-    iYp = EOS % TS % Indices % iYe
+    iYp   = EOS % TS % Indices % iYe
 
     ! --- Units ---
 
@@ -515,9 +517,14 @@ CONTAINS
         
           ! Now add electron component
           ! Initialize temperature, DensitY, Yp, Zbar and Abar
-          ElectronState % t = T_T(iTemp)
-          ElectronState % rho = D_T(iRho)
-          ElectronState % Y_e = Yp_T(iYp)
+          ElectronState % t    = T_T (iTemp)
+          ElectronState % rho  = D_T (iRho)
+          ElectronState % Y_e  = Yp_T(iYp)
+          ElectronState % abar = (Xn_T(iRho, iTemp, iYp) + Xp_T(iRho, iTemp, iYp) + &
+                                  Xa_T(iRho, iTemp, iYp) + Xh_T(iRho, iTemp, iYp)) / &
+                                 (Xn_T(iRho, iTemp, iYp) + Xp_T(iRho, iTemp, iYp) + &
+                                  Xa_T(iRho, iTemp, iYp)/4.0d0 + Xh_T(iRho, iTemp, iYp)/Ah_T(iRho, iTemp, iYp))
+          ElectronState % zbar =  Yp_T (iYp) * ElectronState % abar
           
           ! calculate electron quantities
           CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
@@ -592,9 +599,9 @@ CONTAINS
     DEALLOCATE( Ah_T )
 
     IF ( .NOT. UsingExternalEOS ) THEN
-       DEALLOCATE( MuonTable )
-       DEALLOCATE( HelmholtzTable )
-       DEALLOCATE( EOS )
+      IF (ASSOCIATED(MuonTable))      DEALLOCATE( MuonTable )
+      IF (ASSOCIATED(HelmholtzTable)) DEALLOCATE( HelmholtzTable )
+      IF (ASSOCIATED(EOS))            DEALLOCATE( EOS )
     END IF
   
 #endif
