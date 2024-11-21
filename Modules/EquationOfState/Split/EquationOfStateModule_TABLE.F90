@@ -699,7 +699,9 @@ CONTAINS
     ! Initialize Electron state (Abar and Zbar not needed!!!)
     ElectronState % t = T
     ElectronState % rho = D
-    ElectronState % Y_e = Ye
+    ElectronState % y_e = Ye
+    ElectronState % abar = One
+    ElectronState % zbar = ElectronState % y_e
     
     CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
 
@@ -883,8 +885,8 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    D_P = D / ( Gram / Centimeter**3 )
-    E_P = E / ( Erg / Gram )
+    D_P  = D / ( Gram / Centimeter**3 )
+    E_P  = E / ( Erg / Gram )
     Ye_P = Ye
     Ym_P = Ym
     
@@ -1396,8 +1398,6 @@ CONTAINS
 
   END SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE_Scalar
 
-  ! THIS SUBROUTINE IS UNTOUCHED, NOT SURE IF IT'S NEEDED WITH BOTH
-  ! MUONS AND ELECTRONS, MY GUESS IS NO
   SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE_Vector &
     ( D, Ev, Ne, Nm, T, Em, Ye, Ym )
 
@@ -1413,19 +1413,19 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP MAP( to: D, Ev, Ne ) &
+    !$OMP MAP( to: D, Ev, Ne, Nm ) &
     !$OMP MAP( from: T, Em, Ye, Ym, Error )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC COPYIN( D, Ev, Ne ) &
+    !$ACC COPYIN( D, Ev, Ne, Nm ) &
     !$ACC COPYOUT( T, Em, Ye, Ym, Error )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
     DO iP = 1, nP
 
-      Em(iP)  = Ev(iP)  / D(iP)              ! --- Internal Energy per Mass
-      Ye(iP)  = Ne(iP)  / D(iP) * BaryonMass ! --- Electron Fraction
+      Em(iP) = Ev(iP) / D(iP)              ! --- Internal Energy per Mass
+      Ye(iP) = Ne(iP) / D(iP) * BaryonMass ! --- Electron Fraction
       Ym(iP) = Nm(iP) / D(iP) * BaryonMass ! --- Muon Fraction
 
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
@@ -1444,8 +1444,8 @@ CONTAINS
           !$ACC UPDATE HOST &
           !$ACC ( D(iP), Em(iP), Ye(iP), Ym(iP) )
 #endif
-          D_P = D(iP)  / ( Gram / Centimeter**3 )
-          E_P = Em(iP) / ( Erg / Gram )
+          D_P  = D(iP)  / ( Gram / Centimeter**3 )
+          E_P  = Em(iP) / ( Erg / Gram )
           Ye_P = Ye(iP)
           Ym_P = Ym(iP)
           WRITE(*,*)                 '[ComputeThermodynamicStates_Auxiliary_TABLE_Vector] Error'
@@ -3316,6 +3316,8 @@ CONTAINS
           ElectronState % t = T_T(iT+iL_T-1)
           ElectronState % rho = D_T(iD+iL_D-1)
           ElectronState % y_e = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
+          ElectronState % abar = One
+          ElectronState % zbar = ElectronState % y_e
           
           ! CALL FullHelmEOS(1, HelmholtzTable, ElectronState, .false., .false.)
           CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
@@ -3428,6 +3430,8 @@ CONTAINS
             ElectronState % t = T_T(iT+iL_T-1)
             ElectronState % rho = D_T(iD+iL_D-1)
             ElectronState % y_e = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
+            ElectronState % abar = One
+            ElectronState % zbar = ElectronState % y_e
             
             ! CALL FullHelmEOS(1, HelmholtzTable, ElectronState, .false., .false.)
             CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
@@ -3543,6 +3547,8 @@ CONTAINS
           ElectronState % t = T_T(iT+iL_T-1)
           ElectronState % rho = D_T(iD+iL_D-1)
           ElectronState % y_e = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
+          ElectronState % abar = One
+          ElectronState % zbar = ElectronState % y_e
           
           ! CALL FullHelmEOS(1, HelmholtzTable, ElectronState, .false., .false.)
           CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
@@ -3585,7 +3591,7 @@ CONTAINS
       ElectronState % t = T
       ElectronState % rho = D
       ElectronState % abar = 1.0d0 ! these are only used for ion contribution
-      ElectronState % zbar = 1.0d0 ! these are only used for ion contribution
+      ElectronState % zbar = Ye ! these are only used for ion contribution
       ElectronState % y_e = Ye
 
       ! calculate electron quantities
