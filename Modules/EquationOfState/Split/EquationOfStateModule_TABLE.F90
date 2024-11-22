@@ -682,19 +682,19 @@ CONTAINS
 
     CALL ComputeDependentVariableTotal_TABLE_Scalar &
            ( D, T, Ye, Ym, P, P_T, OS_P, &
-           UnitP, 0.0_dp, 1.0_dp, 0.0_dp )
+           UnitP, 0, 1, 0 )
 
     ! --- Interpolate Entropy Per Baryon ------------------------------
 
     CALL ComputeDependentVariableTotal_TABLE_Scalar &
            ( D, T, Ye, Ym, S, S_T, OS_S, &
-           UnitS, 0.0_dp, 0.0_dp, 1.0_dp )
+           UnitS, 0, 0, 1 )
 
     ! --- Interpolate Specific Internal Energy ------------------------
 
     CALL ComputeDependentVariableTotal_TABLE_Scalar &
            ( D, T, Ye, Ym, E, E_T, OS_E, &
-           UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
+           UnitE, 1, 0, 0 )
 #else
 
     ! Calculate Electron Quantities
@@ -1131,7 +1131,7 @@ CONTAINS
 
     CALL ComputeDependentVariableTotal_TABLE_Scalar &
            ( D, T, Ye_P, Ym_P, P, P_T, OS_P, &
-           UnitP, 0.0_dp, 1.0_dp, 0.0_dp )
+           UnitP, 0, 1, 0 )
 #else
     CALL ComputeDependentVariableBaryons_TABLE_Scalar &
            ( D, T, Ye_P, Ym_P, P, P_T, OS_P, UnitP )
@@ -1316,7 +1316,7 @@ CONTAINS
 
     CALL ComputeDependentVariableTotal_TABLE_Scalar &
            ( D, T, Ye, Ym, Em, E_T, OS_E, &
-           UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
+           UnitE, 1, 0, 0 )
 #else
 
     CALL ComputeDependentVariableBaryons_TABLE_Scalar &
@@ -1581,7 +1581,7 @@ CONTAINS
 #ifdef INVERSION_SPLIT_TABLE_COMBINED
       CALL ComputeDependentVariableTotal_TABLE_Scalar &
              ( D, T, Ye, Ym, P, P_T, OS_P, &
-             UnitP, 1.0_dp, 0.0_dp, 0.0_dp )
+             UnitP, 1, 0, 0 )
 #else
       CALL ComputeDependentVariableBaryons_TABLE_Scalar &
              ( D, T, Ye, Ym, P, P_T, OS_P, UnitP )
@@ -1591,6 +1591,8 @@ CONTAINS
       ElectronState % t = T
       ElectronState % rho = D
       ElectronState % Y_e = Ye
+      ElectronState % abar = One 
+      ElectronState % zbar = Ye
       
       CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
       Pele = ElectronState % p
@@ -1669,7 +1671,7 @@ CONTAINS
 
       CALL ComputeDependentVariableTotal_TABLE_Vector &
              ( D, T, Ye, Ym, P, P_T, OS_P, &
-             UnitP, 1.0_dp, 0.0_dp, 0.0_dp )
+             UnitP, 1, 0, 0 )
 
     END IF
 
@@ -1745,7 +1747,7 @@ CONTAINS
 
     CALL ComputeDependentVariableTotal_TABLE_Scalar &
            ( D, T, Ye, Ym, E, E_T, OS_E, &
-           UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
+           UnitE, 1, 0, 0 )
 #else
     
     CALL ComputeDependentVariableBaryons_TABLE_Scalar &
@@ -1836,7 +1838,7 @@ CONTAINS
 
       CALL ComputeDependentVariableTotal_TABLE_Vector &
              ( D, T, Ye, Ym, E, E_T, OS_E, &
-             UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
+             UnitE, 1, 0, 0 )
 
 #else
       ! Not really used
@@ -1868,7 +1870,7 @@ CONTAINS
     REAL(DP), POINTER :: dMdD      , dMdT      , dMdYe, dMdYm
     
     REAL(DP) :: dD, dT
-	REAL(DP) :: aD, aT
+	  REAL(DP) :: aD, aT
     
     TYPE(ElectronStateType) :: ElectronState
     
@@ -1908,9 +1910,11 @@ CONTAINS
       
       ! Calculate Electron Quantities
       ! Initialize Electron state (Abar and Zbar not needed!!!)
-      ElectronState % t = T
-      ElectronState % rho = D
-      ElectronState % Y_e = Ye
+      ElectronState % t    = T  / UnitT
+      ElectronState % rho  = D  / UnitD
+      ElectronState % Y_e  = Ye / UnitY
+      ElectronState % abar = One
+      ElectronState % zbar = ElectronState % y_e
       
       CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
 
@@ -1939,9 +1943,10 @@ CONTAINS
 
     INTEGER :: iP, nP
 
+    nP = SIZE( D )
+
     IF( ComputeDerivatives )THEN
 
-      nP = SIZE( D )
       ALLOCATE( dMdD_Local(nP), dMdT_Local(nP), dMdYe_Local(nP), dMdYm_Local(nP) )
 
       IF( PRESENT( dMdD_Option ) )THEN
@@ -2047,8 +2052,8 @@ CONTAINS
       dMdYe = 0.0_dp
       dMdYm = 0.0_dp
       
-      CALL GetIndexAndDelta_Log( D * Ym, MuonTable % rhoym(:), iD, dD )
-      CALL GetIndexAndDelta_Log( T, MuonTable % t(:), iT, dT )
+      CALL GetIndexAndDelta_Log( D * Ym / UnitD, MuonTable % rhoym(:), iD, dD )
+      CALL GetIndexAndDelta_Log( T / UnitT, MuonTable % t(:), iT, dT )
       
       aD = 1.0_dp / ( D * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
       aT = 1.0_dp / ( T * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
@@ -2063,8 +2068,8 @@ CONTAINS
       
     ELSE
 
-      MuonState % t = T
-      MuonState % rhoym = D * Ym
+      MuonState % t = T / UnitT
+      MuonState % rhoym = D * Ym / UnitD
       
       CALL FullMuonEOS(MuonTable, MuonState)
 
@@ -3277,7 +3282,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: V
     REAL(DP), INTENT(in)  :: V_T(1:,1:,1:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
-    REAL(DP), INTENT(in)  :: InputE, InputP, InputS
+    INTEGER,  INTENT(in)  :: InputE, InputP, InputS
 
     REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P, V_P
     REAL(DP) :: Ye_over_Yp, Ym_over_Yp
@@ -3291,15 +3296,15 @@ CONTAINS
     TYPE(MuonStateType) :: MuonState
     
 #ifdef MICROPHYSICS_WEAKLIB
-
+ 
     D_P = D / UnitD
     T_P = T / UnitT
     Ye_P = Ye / UnitY
     Ym_P = Ym / UnitY
     Yp_P = Ye_P + Ym_P
 
-    Ye_over_Yp = Ye_P/(Ye_P + Ym_P)
-    Ym_over_Yp = Ym_P/(Ye_P + Ym_P)
+    Ye_over_Yp = Ye_P/Yp_P
+    Ym_over_Yp = Ym_P/Yp_P
 
     ! Now bracket the points 
     SizeDs = SIZE( D_T )
@@ -3340,9 +3345,9 @@ CONTAINS
       END DO
     END DO
     
-    IF (InputP .EQ. 1.0d0) THEN
+    IF ( InputP == 1 ) THEN
       Vtot(:,:,:) = V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + P_leptons(:,:,:)
-    ELSE IF (InputE .EQ. 1.0d0) THEN
+    ELSE IF ( InputE == 1 ) THEN
       Vtot(:,:,:) = 10.0**V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + E_leptons(:,:,:)
     ELSE
       Vtot(:,:,:) = 10.0**V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + S_leptons(:,:,:)
@@ -3350,7 +3355,7 @@ CONTAINS
     
     CALL LogInterpolateSingleVariable_3D_Custom_Point &
            ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
-           OS_V, Vtot, V_P )
+           OS_V, LOG10(Vtot), V_P )
 
     V = V_P * Units_V
 
@@ -3371,7 +3376,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: V(1:)
     REAL(DP), INTENT(in)  :: V_T(1:,1:,1:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
-    REAL(DP), INTENT(in)  :: InputE, InputP, InputS
+    INTEGER,  INTENT(in)  :: InputE, InputP, InputS
 
     INTEGER  :: iP, nP
     REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P, V_P
@@ -3392,12 +3397,12 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
       !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, V_P ) &
-      !$OMP MAP( to: D, T, Y, D_T, T_T, Yp_T, OS_V, V_T ) &
+      !$OMP MAP( to: D, T, Ye, Ym, D_T, T_T, Yp_T, OS_V, V_T ) &
       !$OMP MAP( from: V )
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR &
       !$ACC PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, V_P ) &
-      !$ACC COPYIN( D, T, Y, D_T, T_T, Yp_T, OS_V, V_T ) &
+      !$ACC COPYIN( D, T, Ye, Ym, D_T, T_T, Yp_T, OS_V, V_T ) &
       !$ACC COPYOUT( V )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO &
@@ -3405,42 +3410,42 @@ CONTAINS
 #endif
     DO iP = 1, nP
 
-      D_P = D(iP) / UnitD
-      T_P = T(iP) / UnitT
+      D_P  = D(iP)  / UnitD
+      T_P  = T(iP)  / UnitT
       Ye_P = Ye(iP) / UnitY
       Ym_P = Ym(iP) / UnitY
       Yp_P = Ye_P + Ym_P
 
-      Ye_over_Yp = Ye_P/(Ye_P + Ym_P)
-      Ym_over_Yp = Ym_P/(Ye_P + Ym_P)
+      Ye_over_Yp = Ye_P/Yp_P
+      Ym_over_Yp = Ym_P/Yp_P
       
       ! Now bracket the points 
-      SizeDs = SIZE( D_T )
-      SizeTs = SIZE( T_T )
+      SizeDs  = SIZE( D_T )
+      SizeTs  = SIZE( T_T )
       SizeYps = SIZE( Yp_T )
 
-      iD = Index1D_Log( D_P, D_T )
-      iT = Index1D_Log( T_P, T_T )
+      iD  = Index1D_Log( D_P,  D_T  )
+      iT  = Index1D_Log( T_P,  T_T  )
       iYp = Index1D_Lin( Yp_P, Yp_T )
 
-      iD = MIN( MAX( 1, iD ), SizeDs - 1 )
-      iT = MIN( MAX( 1, iT ), SizeTs - 1 )
+      iD  = MIN( MAX( 1, iD  ), SizeDs  - 1 )
+      iT  = MIN( MAX( 1, iT  ), SizeTs  - 1 )
       iYp = MIN( MAX( 1, iYp ), SizeYps - 1 )
       
       ! now calculate muon and electron contribution on that specific point
       DO iL_T=1,2
         DO iL_D=1,2
           DO iL_Y=1,2
-            ElectronState % t = T_T(iT+iL_T-1)
-            ElectronState % rho = D_T(iD+iL_D-1)
-            ElectronState % y_e = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
+            ElectronState % t    = T_T(iT+iL_T-1)
+            ElectronState % rho  = D_T(iD+iL_D-1)
+            ElectronState % y_e  = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
             ElectronState % abar = One
             ElectronState % zbar = ElectronState % y_e
             
             ! CALL FullHelmEOS(1, HelmholtzTable, ElectronState, .false., .false.)
             CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
 
-            MuonState % t = T_T(iT+iL_T-1)
+            MuonState % t     = T_T(iT+iL_T-1)
             MuonState % rhoym = D_T(iD+iL_D-1) * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
             
             CALL FullMuonEOS(MuonTable, MuonState)
@@ -3454,9 +3459,9 @@ CONTAINS
         END DO
       END DO
 
-      IF (InputP .EQ. 1.0d0) THEN
-        Vtot(:,:,:) = V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + P_leptons(:,:,:)
-      ELSE IF (InputE .EQ. 1.0d0) THEN
+      IF ( InputP == 1 ) THEN
+        Vtot(:,:,:) = V_T(iD:iD+1,iT:iT+1,iYp:iYp+1)       + P_leptons(:,:,:)
+      ELSE IF ( InputE == 1 ) THEN
         Vtot(:,:,:) = 10.0**V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + E_leptons(:,:,:)
       ELSE
         Vtot(:,:,:) = 10.0**V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + S_leptons(:,:,:)
@@ -3464,7 +3469,7 @@ CONTAINS
 
       CALL LogInterpolateSingleVariable_3D_Custom_Point &
              ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
-             OS_V, Vtot, V_P )
+             OS_V, LOG10(Vtot), V_P )
 
       V(iP) = V_P * Units_V
 
