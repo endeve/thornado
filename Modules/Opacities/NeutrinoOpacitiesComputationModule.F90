@@ -1735,7 +1735,7 @@ CONTAINS
     !$OMP PARALLEL DO
 #endif
     DO iX = iX_B, iX_E
-      LogT_P(iX) = LOG10( T(iX) / UnitT )
+      LogT_P(iX)   = LOG10( T(iX) / UnitT )
       LogEta_P(iX) = LOG10( LogEta_P(iX) / ( BoltzmannConstant * T(iX) ) / UnitEta )
     END DO
 

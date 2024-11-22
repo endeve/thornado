@@ -817,8 +817,8 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    D_P = D / ( Gram / Centimeter**3 )
-    E_P = E / ( Erg / Gram )
+    D_P = D / UnitD
+    E_P = E / UnitE
     Ye_P = Ye
     Ym_P = Ym
 
@@ -852,8 +852,8 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    D_P = D / ( Gram / Centimeter**3 )
-    E_P = E / ( Erg / Gram )
+    D_P = D / UnitD
+    E_P = E / UnitE
     Ye_P = Ye
     Ym_P = Ym
     
@@ -887,8 +887,8 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    D_P  = D / ( Gram / Centimeter**3 )
-    E_P  = E / ( Erg / Gram )
+    D_P  = D / UnitD
+    E_P  = E / UnitE
     Ye_P = Ye
     Ym_P = Ym
     
@@ -919,8 +919,8 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    D_P = D / ( Gram / Centimeter**3 )
-    E_P = E / ( Erg / Gram )
+    D_P = D / UnitD
+    E_P = E / UnitE
     Ye_P = Ye
     Ym_P = Ym
     
@@ -971,8 +971,8 @@ CONTAINS
 #endif
       DO iP = 1, nP
 
-        D_P = D(iP) / ( Gram / Centimeter**3 )
-        E_P = E(iP) / ( Erg / Gram )
+        D_P = D(iP) / UnitD
+        E_P = E(iP) / UnitE
         Ye_P = Ye(iP)
         Ym_P = Ym(iP)
         
@@ -1004,8 +1004,8 @@ CONTAINS
 #endif
       DO iP = 1, nP
 
-        D_P = D(iP) / ( Gram / Centimeter**3 )
-        E_P = E(iP) / ( Erg / Gram )
+        D_P = D(iP) / UnitD
+        E_P = E(iP) / UnitE
         Ye_P = Ye(iP)
         Ym_P = Ym(iP)
         
@@ -1030,8 +1030,8 @@ CONTAINS
           !$ACC UPDATE HOST &
           !$ACC ( D(iP), E(iP), Ye(iP), Ym(iP) )
 #endif
-          D_P = D(iP) / ( Gram / Centimeter**3 )
-          E_P = E(iP) / ( Erg / Gram )
+          D_P = D(iP) / UnitD
+          E_P = E(iP) / UnitE
           Ye_P = Ye(iP)
           Ym_P = Ym(iP)
           
@@ -1061,9 +1061,9 @@ CONTAINS
 
     REAL(DP) :: Em, T, Ye, Ym
 
-    Em  = Ev / D              ! --- Internal Energy per Mass
-    Ye  = Ne / D * BaryonMass ! --- Electron Fraction
-    Ym = Ne / D * BaryonMass ! --- Muon Fraction
+    Em = Ev / D              ! --- Internal Energy per Mass
+    Ye = Ne / D * BaryonMass ! --- Electron Fraction
+    Ym = Nm / D * BaryonMass ! --- Muon Fraction
   
     CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
            ( D, Em, Ye, Ym, T )
@@ -1115,8 +1115,8 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    D_P = D  / UnitD
-    E_P = Em / UnitE
+    D_P  = D  / UnitD
+    E_P  = Em / UnitE
     Ye_P = Ye  / UnitY
     Ym_P = Ym  / UnitY
     Yp_P = Ye_P + Ym_P
@@ -1138,21 +1138,22 @@ CONTAINS
            
     ! Calculate Electron Quantities
     ! Initialize Electron state (Abar and Zbar not needed!!!)
-    ElectronState % t = T
-    ElectronState % rho = D
-    ElectronState % Y_e = Ye_P
+    ElectronState % t   = T    / UnitT
+    ElectronState % rho = D    / UnitD
+    ElectronState % Y_e = Ye_P / UnitY
     
     CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
     Pele = ElectronState % p
 
     ! Calculate Muon Quantities
-    MuonState % t = T
-    MuonState % rhoym = D * Ym_P
+    MuonState % t = T / UnitT
+    MuonState % rhoym = D * Ym_P / UnitD / UnitY
 
     CALL FullMuonEOS(MuonTable, MuonState)
     P_mu = MuonState % p
            
     P = P + Pele + P_mu
+    P = P * UnitP
 #endif
 #endif
 
@@ -1202,8 +1203,8 @@ CONTAINS
     CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
            ( D, Em, Ye, Ym, T )
 
-    CALL CalculateSoundSpeed( D, T, Ye, Ym, D_T, T_T, Yp_T, &
-        P_T, OS_P, E_T, OS_E, HelmholtzTable, MuonTable, Gm, Cs, .true.)
+    CALL CalculateSoundSpeed( D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, D_T, T_T, Yp_T, &
+        P_T, OS_P, E_T, OS_E, HelmholtzTable, MuonTable, Gm, Cs, .FALSE.)
 
     !Cs = SQRT( Gm * P / D )
 
@@ -1229,9 +1230,10 @@ CONTAINS
 
     DO iP=1,nP
 
-      CALL CalculateSoundSpeed( D(iP), T(iP), Ye(iP), Ym(iP), &
+      CALL CalculateSoundSpeed( D(iP) / UnitD, T(iP) / UnitT, &
+          Ye(iP) / UnitY, Ym(iP) / UnitY, &
           D_T, T_T, Yp_T, P_T, OS_P, E_T, OS_E, &
-          HelmholtzTable, MuonTable, Gm(iP), Cs(iP),.true.)
+          HelmholtzTable, MuonTable, Gm(iP), Cs(iP),.FALSE.)
 
     ENDDO
 
@@ -1483,8 +1485,9 @@ CONTAINS
     CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
            ( D, Em, Ye, Ym, T )
 
-    CALL CalculateSoundSpeed( D, T, Ye, Ym, D_T, T_T, Yp_T, &
-        P_T, OS_P, E_T, OS_E, HelmholtzTable, MuonTable, Gm, Cs, .TRUE.)
+    CALL CalculateSoundSpeed( D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, &
+        D_T, T_T, Yp_T, &
+        P_T, OS_P, E_T, OS_E, HelmholtzTable, MuonTable, Gm, Cs, .FALSE.)
 
     !Cs = SQRT( Gm * P / D )
 
@@ -1905,6 +1908,18 @@ CONTAINS
       dMdT = 0.0_dp
       dMdYe = 0.0_dp
       dMdYm = 0.0_dp
+
+      ! Calculate Electron Quantities
+      ! Initialize Electron state (Abar and Zbar not needed!!!)
+      ElectronState % t    = T  / UnitT
+      ElectronState % rho  = D  / UnitD
+      ElectronState % y_e  = Ye / UnitY
+      ElectronState % abar = One
+      ElectronState % zbar = ElectronState % y_e
+      
+      CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
+
+      M = ElectronState % mu_e * UnitMl
       
     ELSE
       
@@ -1912,13 +1927,13 @@ CONTAINS
       ! Initialize Electron state (Abar and Zbar not needed!!!)
       ElectronState % t    = T  / UnitT
       ElectronState % rho  = D  / UnitD
-      ElectronState % Y_e  = Ye / UnitY
+      ElectronState % y_e  = Ye / UnitY
       ElectronState % abar = One
       ElectronState % zbar = ElectronState % y_e
       
       CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
 
-      M = ElectronState % mu_e
+      M = ElectronState % mu_e * UnitMl
       
     ENDIF
       
@@ -2010,6 +2025,7 @@ CONTAINS
     REAL(DP), POINTER :: dMdD      , dMdT      , dMdYe, dMdYm
     
     REAL(DP) :: aD, aT, dD, dT
+    REAL(DP) :: DYm_P, T_P
     INTEGER  :: iD, iT
 
     TYPE(MuonStateType) :: MuonState
@@ -2019,6 +2035,9 @@ CONTAINS
         .OR. PRESENT( dMdT_Option ) &
         .OR. PRESENT( dMdYe_Option ) &
         .OR. PRESENT( dMdYm_Option )
+
+    DYm_P = D * Ym / UnitD
+    T_P   = T / UnitT
 
     IF( ComputeDerivatives )THEN
 
@@ -2052,8 +2071,8 @@ CONTAINS
       dMdYe = 0.0_dp
       dMdYm = 0.0_dp
       
-      CALL GetIndexAndDelta_Log( D * Ym / UnitD, MuonTable % rhoym(:), iD, dD )
-      CALL GetIndexAndDelta_Log( T / UnitT, MuonTable % t(:), iT, dT )
+      CALL GetIndexAndDelta_Log( DYm_P, MuonTable % rhoym(:), iD, dD )
+      CALL GetIndexAndDelta_Log( T_P,   MuonTable % t(:), iT, dT )
       
       aD = 1.0_dp / ( D * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
       aT = 1.0_dp / ( T * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
@@ -2068,14 +2087,15 @@ CONTAINS
       
     ELSE
 
-      MuonState % t = T / UnitT
-      MuonState % rhoym = D * Ym / UnitD
+      MuonState % t = T_P
+      MuonState % rhoym = DYm_P
       
       CALL FullMuonEOS(MuonTable, MuonState)
 
       M = MuonState % mu
 
     ENDIF
+    M = M * UnitMl
     
   END SUBROUTINE ComputeMuonChemicalPotential_TABLE_Scalar
 
@@ -2944,10 +2964,10 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    D_P = D / UnitD
-    T_P = T / UnitT
-    Ye_P = Ye / UnitY
-    Ym_P = Ym / UnitY
+    D_P  = D
+    T_P  = T
+    Ye_P = Ye
+    Ym_P = Ym
     Yp_P = Ye_P + Ym_P
     
     CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
@@ -2959,9 +2979,9 @@ CONTAINS
     CALL ComputeElectronChemicalPotential_TABLE_Scalar &
       ( D, T, Ye_P, Ym_P, Mue )
 
-    Mue  = Mue  * UnitMl
-    Mup  = Mup  * UnitMp
-    Mun  = Mun  * UnitMn
+    Mue  = Mue
+    Mup  = Mup
+    Mun  = Mun
 
     Munue  = ( Mue  + Mup ) - Mun
 
@@ -3005,10 +3025,10 @@ CONTAINS
 #endif
     DO iP = 1, nP
 
-      D_P = D(iP) / UnitD
-      T_P = T(iP) / UnitT
-      Ye_P = Ye(iP) / UnitY
-      Ym_P = Ym(iP) / UnitY
+      D_P  = D(iP)
+      T_P  = T(iP)
+      Ye_P = Ye(iP)
+      Ym_P = Ym(iP)
       Yp_P = Ye_P + Ym_P
 
       CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
@@ -3064,10 +3084,10 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    D_P = D / UnitD
-    T_P = T / UnitT
-    Ye_P = Ye / UnitY
-    Ym_P = Ym / UnitY
+    D_P  = D
+    T_P  = T
+    Ye_P = Ye
+    Ym_P = Ym
     Yp_P = Ye_P + Ym_P
     
     CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
@@ -3125,10 +3145,10 @@ CONTAINS
 #endif
     DO iP = 1, nP
 
-      D_P = D(iP) / UnitD
-      T_P = T(iP) / UnitT
-      Ye_P = Ye(iP) / UnitY
-      Ym_P = Ym(iP) / UnitY
+      D_P  = D(iP)
+      T_P  = T(iP)
+      Ye_P = Ye(iP)
+      Ym_P = Ym(iP)
       Yp_P = Ye_P + Ym_P
 
       CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
