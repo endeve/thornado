@@ -15,7 +15,7 @@ MODULE EquationOfStateModule_TABLE
     ReadEquationOfStateTableHDF
   USE wlEquationOfStateTableModule, ONLY: &
     EquationOfStateTableType
-#ifdef INVERSION_COMBINED
+#ifdef INVERSION_SPLIT_TABLE_COMBINED
   USE wlEOSComponentsCombinedInversionModule, ONLY: &
     InitializeEOSComponentsInversion, &
     ComputeTemperatureWith_DEYpYl_Single_Guess_Error, &
@@ -542,6 +542,8 @@ CONTAINS
         ENDDO
       ENDDO
     ENDDO
+
+    WRITE(*,*) 10**MAXVAL( E_T ), MAXVAL(Es)
     
     CALL InitializeEOSComponentsInversion &
          ( D_T, T_T, Yp_T,  Es, Ps, Ss, &
@@ -675,7 +677,7 @@ CONTAINS
     TYPE(ElectronStateType) :: ElectronState
     TYPE(MuonStateType) :: MuonState
     
-#ifdef INVERSION_COMBINED
+#ifdef INVERSION_SPLIT_TABLE_COMBINED
     ! --- Interpolate Pressure ----------------------------------------
 
     CALL ComputeDependentVariableTotal_TABLE_Scalar &
@@ -1104,7 +1106,7 @@ CONTAINS
 
     REAL(DP) :: D_P, E_P, Yp_P, Ye_P, Ym_P, T_P, T
 
-#ifdef INVERSION_COMBINED
+#ifdef INVERSION_SPLIT_TABLE_COMBINED
 #else
     TYPE(ElectronStateType) :: ElectronState
     TYPE(MuonStateType) :: MuonState
@@ -1125,7 +1127,7 @@ CONTAINS
 
     T = T_P * UnitT
 
-#ifdef INVERSION_COMBINED
+#ifdef INVERSION_SPLIT_TABLE_COMBINED
 
     CALL ComputeDependentVariableTotal_TABLE_Scalar &
            ( D, T, Ye_P, Ym_P, P, P_T, OS_P, &
@@ -1302,7 +1304,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, T, Ye, Ym
     REAL(DP), INTENT(out) :: Ev, Em, Ne, Nm
     
-#ifdef INVERSION_COMBINED
+#ifdef INVERSION_SPLIT_TABLE_COMBINED
 #else
     TYPE(ElectronStateType) :: ElectronState
     TYPE(MuonStateType) :: MuonState
@@ -1310,7 +1312,7 @@ CONTAINS
 #endif
     ! --- Interpolate Specific Internal Energy ------------------------
 
-#ifdef INVERSION_COMBINED
+#ifdef INVERSION_SPLIT_TABLE_COMBINED
 
     CALL ComputeDependentVariableTotal_TABLE_Scalar &
            ( D, T, Ye, Ym, Em, E_T, OS_E, &
@@ -1428,6 +1430,8 @@ CONTAINS
       Ye(iP) = Ne(iP) / D(iP) * BaryonMass ! --- Electron Fraction
       Ym(iP) = Nm(iP) / D(iP) * BaryonMass ! --- Muon Fraction
 
+      WRITE(*,*) Em(iP)
+
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
              ( D(iP), Em(iP), Ye(iP), Ym(iP), T(iP), Error(iP) )
 
@@ -1529,7 +1533,7 @@ CONTAINS
     REAL(DP), TARGET  :: dPdD_Local, dPdT_Local, dPdYe_Local, dPdYm_Local
     REAL(DP), POINTER :: dPdD      , dPdT      , dPdYe      , dPdYm
 
-#ifdef INVERSION_COMBINED
+#ifdef INVERSION_SPLIT_TABLE_COMBINED
 #else
     TYPE(ElectronStateType) :: ElectronState
     TYPE(MuonStateType) :: MuonState
@@ -1574,7 +1578,7 @@ CONTAINS
 
     ELSE
 
-#ifdef INVERSION_COMBINED
+#ifdef INVERSION_SPLIT_TABLE_COMBINED
       CALL ComputeDependentVariableTotal_TABLE_Scalar &
              ( D, T, Ye, Ym, P, P_T, OS_P, &
              UnitP, 1.0_dp, 0.0_dp, 0.0_dp )
@@ -1692,7 +1696,7 @@ CONTAINS
     REAL(DP), TARGET  :: dEdD_Local, dEdT_Local, dEdYe_Local, dEdYm_Local
     REAL(DP), POINTER :: dEdD,       dEdT,       dEdYe, dEdYm
 
-#ifdef INVERSION_COMBINED
+#ifdef INVERSION_SPLIT_TABLE_COMBINED
 #else
     TYPE(ElectronStateType) :: ElectronState
     TYPE(MuonStateType) :: MuonState
@@ -1737,7 +1741,7 @@ CONTAINS
 
     ELSE
 
-#ifdef INVERSION_COMBINED
+#ifdef INVERSION_SPLIT_TABLE_COMBINED
 
     CALL ComputeDependentVariableTotal_TABLE_Scalar &
            ( D, T, Ye, Ym, E, E_T, OS_E, &
@@ -1828,7 +1832,7 @@ CONTAINS
 
     ELSE
 
-#ifdef INVERSION_COMBINED
+#ifdef INVERSION_SPLIT_TABLE_COMBINED
 
       CALL ComputeDependentVariableTotal_TABLE_Vector &
              ( D, T, Ye, Ym, E, E_T, OS_E, &
