@@ -1835,8 +1835,6 @@ CONTAINS
           kz = SQRT( One - ( Two - 1.25_DP )**2 / Four ) &
                * ( uPM(iNX,iPM_V3) / Caz )
 
-          PRINT*, TwoPi / kz
-
           uPM(iNX,iPM_V1) = ( 0.1_DP * Rand_Amplitude * Random_r &
                               + 0.2d-5 * SIN( kz * X2 ) ) &
                             * X1 * uPM(iNX,iPM_V3)
