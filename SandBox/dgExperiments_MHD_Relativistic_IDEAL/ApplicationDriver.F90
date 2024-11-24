@@ -662,12 +662,11 @@ PROGRAM ApplicationDriver
 
       Gamma = 4.0_DP / 3.0_DP
       t_end = 10e0 * Millisecond
-      bcX = [ 0, 0, 0 ]
+      bcX = [ 44, 1, 1 ]
 
       CoordinateSystem = 'CYLINDRICAL'
 
       nX  = [ 128, 1, 1 ]
-      bcX = [ 0, 0, 0 ]
       swX = [ 1, 0, 0 ]
       xL  = [ 1.45d6 * Centimeter, -0.5d5 * Centimeter, Zero ]
       xR  = [ 1.65d6 * Centimeter,  0.5d5 * Centimeter, TwoPi]
