@@ -1,6 +1,7 @@
 name: Compile thornado on MacOS (latest) with gnu compilers
 
 on:
+  push:
   schedule:
     - cron: '0 7 * * *'
 
