@@ -18,6 +18,7 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
+          ref: muonphys
       - name: Checkout poseidon
         uses: actions/checkout@v4
         with:
