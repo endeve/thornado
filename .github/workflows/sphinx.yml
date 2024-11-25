@@ -24,8 +24,8 @@ jobs:
           cp -rp build/html/* ../../build/docs_html
 
       - name: Deploy
-        if: github.event_name == 'push' && github.repository == 'endeve/thornado' && github.ref == 'refs/heads/InterfaceWithPoseidon'
         uses: JamesIves/github-pages-deploy-action@v4.5.0
         with:
-          folder: build
+          folder: .
+          branch: gh-pages
           clean: false
