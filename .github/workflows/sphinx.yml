@@ -19,10 +19,9 @@ jobs:
       - name: Install and Build
         run: |
           mkdir -p build/docs_html
-          mkdir -p Documents/sphinx_documentation
           cd Documents/sphinx_documentation
           make PYTHON="python3" html &> make_source_html.out
-          cp -rp build/html/* build/docs_html
+          cp -rp build/html/* ../../build/docs_html
 
       - name: Deploy
         if: github.event_name == 'push' && github.repository == 'endeve/thornado' && github.ref == 'refs/heads/gh-pages'
