@@ -1,0 +1,138 @@
+##### Example.inputs #####
+
+# NOTE: this is just an example; there is no application corresponding to this
+# inputs file
+
+# For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+# For all REAL types, use "e" and not "d"; i.e., 1.0e3 instead of 1.0d3
+
+# Name of application you want to run
+thornado.ProgramName = "Example"
+
+# Number of DG nodes per element, per dimension
+thornado.nNodes = 3
+
+# Whether-or-not to use physical units
+thornado.UsePhysicalUnits = 0
+
+# End-time of simulation.
+# If thornado.UsePhysicalUnits = 1 then the units are milliseconds
+thornado.t_end = 1.0e1
+
+# Frequency with which to write output to screen
+thornado.iCycleD = 10
+
+# Prefix for plotfile; e.g, a plotfile written on the 100th
+# timestep will be called `Example.plt00000100`
+thornado.PlotFileNameRoot = "Example.plt"
+
+# Frequency with which to write plotfiles.
+# dt_wrt writes every dt_wrt [time units],
+# iCycleW writes every iCycleW timesteps.
+# dt_wrt and iCycleW must have different signs.
+# If thornado.UsePhysicalUnits = 1 then the units are milliseconds
+thornado.dt_wrt  = 1.0e-1
+thornado.iCycleW = -1
+
+# Prefix for checkpoint file; e.g, a checkpoint file written on the 100th
+# timestep will be called `Example.chk00000100`
+thornado.CheckpointFileNameRoot = "Example.chk"
+
+# Frequency with which to write checkpoint files.
+# dt_chk writes every dt_chk [time units],
+# iCycleChk writes every iCycleChk timesteps.
+# dt_chk and iCycleChk must have different signs.
+# If thornado.UsePhysicalUnits = 1 then the units are milliseconds
+thornado.dt_chk    = 1.1e1
+thornado.iCycleChk = -1
+
+# Prefix for Tally file; e.g, the tally file for
+# the baryonic mass will be called `Example.Tally_BaryonicMass.dat
+thornado.TallyFileNameRoot_Euler = "Example.Tally"
+
+# Boundary conditions for the fluid.
+# See ${THORNADO_DIR}/Modules/Euler/Euler_BoundaryConditionsModule.F90
+# to see which integers corresponds to which boundary conditions.
+# These also set the boundary conditions for the geometry
+thornado.bcX = 100 3 01
+
+# Tell AMReX whether a dimension uses periodic boundary conditions.
+# Only the entries corresponding to active dimensions will have any effect
+geometry.is_periodic = 0 0 1  # Periodic BCs: 0 (no), 1 (yes)
+
+# Coordinate system ( 0: CARTESIAN, 1: CYLINDRICAL, 2: SPHERICAL )
+geometry.coord_sys = 2
+
+# Lower and upper boundaries in physical space.
+# If thornado.UsePhysicalUnits = 1 then the units will be dictated
+# by the coordinate system
+geometry.prob_lo = 0.0 0.0 0.0 # Lower domain size
+geometry.prob_hi = 8000.0 3.1415926535897931 6.2831853071795862
+
+# Number of ghost cells for the spatially-dependent fields
+# (fluid and geometry)
+thornado.swX = 01 01 01
+
+# Number of spatial elements on the coarsest level
+amr.n_cell = 512 16 32
+
+# Maximum allowed size of an AMReX grid in each dimension
+amr.max_grid_size_x = 8
+amr.max_grid_size_y = 8
+amr.max_grid_size_z = 8
+
+# (Roughly) minimum allowed size of an AMReX grid in each dimension
+amr.blocking_factor_x = 4
+amr.blocking_factor_y = 4
+amr.blocking_factor_z = 4
+
+# Maximum number of refined levels (0 for no refinement)
+amr.max_level = 2
+
+# Whether-or-not to use AMR
+amr.UseAMR = 1
+
+# Apply flux corrections at refinement interfaces (Fluid)
+amr.UseFluxCorrection_Euler = 1
+
+# Criteria for tagging elements for refinement.
+# See TaggingModule.f90 for meaning of values
+# The number of entries should be equal to amr.max_level
+amr.TagCriteria = 0.5 0.7
+
+# Number of padding elements for refinement.
+# If an element is tagged, ensure that amr.n_error_buf neighbors
+# in each dimension are also tagged.
+amr.n_error_buf = 0
+
+# Refinement ratio (this MUST be 2)
+amr.ref_ratio = 2
+
+# Whether-or-not to use tiling
+# (see AMReX documentation for details)
+amr.UseTiling = 0
+
+# Parameters for Euler slope limiter
+SL.UseSlopeLimiter_Euler           = 1
+SL.BetaTVD_Euler                   = 1.75
+SL.BetaTVB_Euler                   = 0.0
+SL.SlopeTolerance_Euler            = 1.0e-6
+SL.UseCharacteristicLimiting_Euler = 1
+SL.UseTroubledCellIndicator_Euler  = 1
+SL.LimiterThresholdParameter_Euler = 0.03
+SL.UseConservativeCorrection_Euler = 1
+
+# Parameters for Euler positivity limiter
+PL.UsePositivityLimiter_Euler = 1
+PL.Min_1_Euler                = 1.0e-13
+PL.Min_2_Euler                = 1.0e-13
+
+# Parameters for equation of state
+EoS.EquationOfState = "IDEAL"
+EoS.Gamma_IDEAL     = 1.3333333333333333
+
+# Parameters for time-stepping.
+# All non-transport problems use SSPRK, in
+# ${THORNADO_DIR}/SandBox/AMReX/Modules/TimeStepping/MF_TimeSteppingModule_SSPRK.f90
+TS.nStages = 3
+TS.CFL     = 0.5

@@ -1,0 +1,28 @@
+name: "Sphinx: Render docs"
+
+on: push
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install sphinx==5.0.0 sphinx_rtd_theme
+
+      - name: Build sphinx docs
+        run: |
+          cd Documentation/sphinx
+          make PYTHON="python3" html &> make_source_html.out
+
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@v4.5.0
+        with:
+          folder: .
+          clean: false
