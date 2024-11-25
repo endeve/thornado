@@ -1,0 +1,31 @@
+name: "Sphinx: Render docs"
+
+on: push
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install sphinx==5.0.0 sphinx_rtd_theme
+
+      - name: Install and Build
+        run: |
+          mkdir -p build/docs_html
+          cd Documents/sphinx_documentation
+          make PYTHON="python3" html &> make_source_html.out
+          cp -rp build/html/* ../../build/docs_html
+
+      - name: Deploy
+        if: github.event_name == 'push' && github.repository == 'endeve/thornado' && github.ref == 'refs/heads/InterfaceWithPoseidon'
+        uses: JamesIves/github-pages-deploy-action@v4.5.0
+        with:
+          folder: build
+          clean: false
