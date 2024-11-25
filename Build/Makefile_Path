@@ -1,0 +1,23 @@
+VPATH += \
+$(THORNADO_DIR)/Modules/Numbers: \
+$(THORNADO_DIR)/Modules/Units: \
+$(THORNADO_DIR)/Modules/ProgramHeader: \
+$(THORNADO_DIR)/Modules/Library: \
+$(THORNADO_DIR)/Modules/Mesh: \
+$(THORNADO_DIR)/Modules/Geometry: \
+$(THORNADO_DIR)/Modules/Fields: \
+$(THORNADO_DIR)/Modules/EquationOfState: \
+$(THORNADO_DIR)/Modules/Opacities: \
+$(THORNADO_DIR)/Modules/InputOutput: \
+$(THORNADO_DIR)/Modules/Euler: \
+$(THORNADO_DIR)/Modules/TwoMoment: \
+$(THORNADO_DIR)/Modules/Runtime: \
+..
+
+ifeq ($(TWOMOMENT_ORDER),ORDER_1)
+  VPATH += $(THORNADO_DIR)/Modules/TwoMoment/OrderOne
+else ifeq ($(TWOMOMENT_ORDER),ORDER_V)
+  VPATH += $(THORNADO_DIR)/Modules/TwoMoment/OrderV
+else ifeq ($(TWOMOMENT_ORDER),RELATIVISTIC)
+  VPATH += $(THORNADO_DIR)/Modules/TwoMoment/Relativistic
+endif

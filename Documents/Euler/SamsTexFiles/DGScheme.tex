@@ -1,0 +1,20 @@
+\section{Discontinuous Galerkin Scheme}
+\label{sec:dgMethod}
+
+We assume a spacetime metric
+\begin{equation}
+  ds^{2}=-\alpha^{2}\,dt^{2}+\gamma_{ij}\,dx^{i}\,dx^{j},
+\end{equation}
+and consider the system of conservation laws with sources
+\begin{equation}
+  \pd{}{t}\big(\sqrt{\gamma}\,\bU\big)+\sum_{i=1}^{d}\pd{}{i}\big(\alpha\,\sqrt{\gamma}\,\bF^{i}(\bU)\big)=\alpha\,\sqrt{\gamma}\,\bG(\bU),
+  \label{eq:conservationLaws}
+\end{equation}
+where
+\begin{align}
+  \bU
+  &=\big(D,\,S_{j},\,\tau\big)^{\mbox{\tiny T}}
+  =\big(\rho\,W,\,\rho\,h\,W^{2}\,v_{j},\,\rho\,W\left(h\,W-1\right)-p\big)^{\mbox{\tiny T}}, \\
+  \bF^{i}(\bU)
+  &=\big(D\,v^{i},\,\big)^{\mbox{\tiny T}}
+\end{align}

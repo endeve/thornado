@@ -1,0 +1,12 @@
+GEOMETRY = \
+  GeometryFieldsModule.o \
+  GeometryComputationModule.o \
+  GeometryComputationModule_XCFC.o \
+  GeometryBoundaryConditionsModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryComputationModuleE.o \
+  GravitySolutionModule_Newtonian_PointMass.o \
+  GravitySolutionModule_Newtonian_Poseidon.o \
+  GravitySolutionModule_XCFC.o \
+  GravitySolutionModule_XCFC_Poseidon.o \
+  XCFC_UtilitiesModule.o

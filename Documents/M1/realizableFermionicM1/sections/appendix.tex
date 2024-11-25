@@ -1,0 +1,265 @@
+\appendix
+
+\section{Butcher Tableau for IMEX Schemes}
+\label{app:butcherTables}
+
+For easy reference, we include the Butcher tableau for the IMEX schemes considered in this paper, which can be written in the standard double Butcher tableau
+\begin{equation}
+  \begin{array}{c | c}
+    \tilde{\vect{c}} & \tilde{A} \\
+    \hline
+    & \tilde{\vect{w}}^{T}
+  \end{array}
+  \qquad
+  \begin{array}{c | c}
+    \vect{c} & A \\
+    \hline
+    \alpha & \vect{w}^{T}
+  \end{array}.  
+  \label{eq:butcher}
+\end{equation}
+The \emph{explicit tableau} (left; components adorned with a tilde) represents the explicit part of the IMEX scheme, and the \emph{implicit tableau} (right; unadorned components) represents the implicit part of the IMEX scheme.  
+For $s$ stages, $\tilde{A}=(\tilde{a}_{ij})$, $\tilde{a}_{ij}=0$ for $j\ge i$, and $A=(a_{ij})$, $a_{ij}=0$ for $j>i$, are $s\times s$ matrices, and $\tilde{\vect{w}}=(\tilde{w}_{1},\ldots,\tilde{w}_{s})^{T}$ and $\vect{w}=(w_{1},\ldots,w_{s})^{T}$.  
+The vectors $\tilde{\vect{c}}=(\tilde{c}_{1},\ldots,\tilde{c}_{s})^{T}$ and $\vect{c}=(c_{1},\ldots,c_{s})^{T}$, used for non autonomous systems, satisfy $\tilde{c}_{i}=\sum_{j=1}^{i-1}\tilde{a}_{ij}$ and $c_{i}=\sum_{j=1}^{i}a_{ij}$.  
+For the implicit tableau, we have included the scalar $\alpha$, used for the correction step in Eq.~\eqref{eq:imexCorrection}.  
+
+For the analysis of convex-invariant IMEX schemes, additional coefficients are defined \cite{hu_etal_2018} (cf. Eq.~\eqref{eq:imexStagesRewrite}).  
+First, let
+\begin{equation}
+  b_{ii} = \f{1}{a_{ii}}, \quad
+  b_{ij} = -\f{1}{a_{ii}}\sum_{l=j}^{i-1}a_{il}b_{lj}, \quad
+  \tilde{b}_{ij} = -\f{1}{a_{ii}}\Big(\tilde{a}_{ij}+\sum_{l=j+1}^{i-1}a_{il}\tilde{b}_{lj}\Big).  
+\end{equation}
+Then, for IMEX schemes of Type~A \cite{dimarcoPareschi2013},
+\begin{equation}
+  \begin{aligned}
+    c_{i0} &= 1-\sum_{j=1}^{i-1}\sum_{l=j}^{i-1}a_{il}b_{lj}, \quad &
+    c_{ij} &= \sum_{l=j}^{i-1}a_{il}b_{lj}, \\
+    \tilde{c}_{i0} &= 0, \quad &
+    \tilde{c}_{ij} &= \tilde{a}_{ij} + \sum_{l=j+1}^{i-1}a_{il}\tilde{b}_{lj};
+  \end{aligned}
+  \label{eq:positivityCoefficientsA}
+\end{equation}
+for IMEX schemes of Type~ARS \cite{ascher_etal_1997},
+\begin{equation}
+  \begin{aligned}
+    c_{i0} &= 1-\sum_{j=2}^{i-1}\sum_{l=j}^{i-1}a_{il}b_{lj}, \quad &
+    c_{ij} &= \sum_{l=j}^{i-1}a_{il}b_{lj} \\
+    \tilde{c}_{i0} &= \tilde{a}_{i1}+\sum_{j=2}^{i-1}a_{ij}\tilde{b}_{j1}, \quad &
+    \tilde{c}_{ij} &= \tilde{a}_{ij}+\sum_{l=j+1}^{i-1}a_{il}\tilde{b}_{lj}.  
+  \end{aligned}
+  \label{eq:positivityCoefficientsARS}
+\end{equation}
+Note that $c_{i1}=\tilde{c}_{i1}=0$ in Eq.~\eqref{eq:positivityCoefficientsARS} so that $\sum_{j=0}^{i-1}c_{ij}=1$.  
+Also note the difference between the matrix coefficients in Eqs.~\eqref{eq:positivityCoefficientsA} and \eqref{eq:positivityCoefficientsARS} and the vector components defined below Eq.~\eqref{eq:butcher}.  
+
+\paragraph{IMEX PA2}
+
+A second-order accurate, convex-invariant IMEX scheme of type $A$ (the matrix $A$ is invertible) with four implicit solves was given in \cite{hu_etal_2018}.  
+We refer to this scheme as IMEX PA2.  
+For this scheme, the non-zero components of $\tilde{A}$ and $A$ are given by
+\begin{align*}
+  \tilde{a}_{21} &= 0.7369502715, \\
+  \tilde{a}_{31} &= 0.3215281691, \quad \tilde{a}_{32} = 0.6784718309, \\
+  a_{11} &= 0.6286351712, \\
+  a_{21} &= 0.2431004655, \quad a_{22} = 0.1959392570, \\
+  a_{31} &= 0.4803651051, \quad a_{32} = 0.0746432814, \quad a_{33} = 0.4449916135. 
+\end{align*}
+The coefficient in the correction step is $\alpha = 0.2797373792$ and the CFL constant is $c_{\Sch} = 0.5247457524$.
+This scheme is globally stiffly accurate (GSA), so that $\tilde{w}_{i}=\tilde{a}_{3i}$ and $w_{i}=a_{3i}$ for $i\le3$.
+
+\paragraph{IMEX PA2+}
+
+We have found another second-order accurate, convex-invariant IMEX scheme of type $A$ with four implicit solves, which we refer to as IMEX PA2+.  
+This scheme allows for a larger value of $c_{\Sch}$ than IMEX PA2 (i.e., a larger time step while maintaining admissible solutions).  
+The scheme was found by random sampling of the parameter space spanned by the IMEX coefficients and selecting the scheme with the largest $c_{\Sch}$.  
+For IMEX PA2+, $c_{\Sch} = 0.895041066934$. 
+The non-zero components of $\tilde{A}$ and $A$ are given by
+\begin{align*}
+  \tilde{a}_{21} &= 0.909090909090909, \\
+  \tilde{a}_{31} &= 0.450000000000000, \quad \tilde{a}_{32} = 0.550000000000000, \\
+  a_{11} &= 0.521932391842510, \\
+  a_{21} &= 0.479820781424967, \quad a_{22} = 0.002234534340252, \\
+  a_{31} &= 0.499900000000000, \quad a_{32} = 0.001100000000000, \quad a_{33} = 0.499000000000000.
+\end{align*}
+The coefficient in the correction step is $\alpha = 0.260444263529413$.  
+This scheme is also GSA; $\tilde{w}_{i}=\tilde{a}_{3i}$ and $w_{i}=a_{3i}$ for $i\le3$.  
+
+The rest of the IMEX schemes we consider here do not include the correction step in Eq.~\eqref{eq:imexCorrection}; i.e., $\alpha=0$.  
+
+\paragraph{IMEX PC2}
+
+Another IMEX scheme was given in \cite{mcclarren_etal_2008} (referred to there as a semi-implicit predictor-corrector method).  
+This scheme has two implicit solves and can be written in the double Butcher tableau form, and we refer to this scheme as IMEX PC2.  
+The non-zero components of $\tilde{A}$ and $A$ are given by
+\begin{align*}
+  \tilde{a}_{21} &= 0.5, \quad \tilde{a}_{32} = 1, \\
+  a_{22} &= 0.5, \quad a_{33} = 1.0,
+\end{align*}
+$\alpha=0$, and $\tilde{w}_{i}=\tilde{a}_{3i} = w_{i}=a_{3i}$ for $i\le3$.  
+IMEX PC2 is not convex-invariant, since $c_{\Sch} = 0$ (cf. discussion in Section~\ref{sec:imex}).  
+
+\paragraph{IMEX PD-ARS}
+
+We have found a family of convex-invariant, diffusion accurate IMEX schemes of type ARS that are second-order accurate in the streaming limit, which we refer to as IMEX PD-ARS; see \ref{app:PD-ARS}.  
+For these schemes, $c_{\Sch}= 1 - 2\epsilon$ with $\epsilon \in [0, 1/2)$.
+Here we give an example by setting $\epsilon=0.1$:
+\begin{align*}
+  \tilde{a}_{21} & = 1.0, \\
+  \tilde{a}_{31} & = 0.5, \quad \tilde{a}_{32} = 0.5, \\
+  a_{22} & = 1.0, \nonumber \\
+  a_{32} & = 0.4 \,( = 0.5 - \epsilon\,), \quad a_{33} = 0.6 \,( = 0.5 + \epsilon\,). 
+\end{align*}
+This scheme is GSA, $\alpha=0$, and requires two implicit solves per time step (same as IMEX PC2).  
+
+\paragraph{IMEX RKCB2}
+
+We compare the performance of the convex-invariant IMEX schemes with two other (not convex-invariant) IMEX schemes.  
+The first one is the second-order accurate IMEX scheme given in \cite{cavaglieriBewley2015} with two implicit solves.  
+We refer to this scheme as IMEX RKCB2.  
+The non-zero components of $\tilde{A}$ and $A$ are given by
+\begin{align*}
+  \tilde{a}_{21} &= 2/5, \quad \tilde{a}_{32} = 1, \\
+  a_{22} &= 2/5, \nonumber \\
+  a_{32} &= 5/6, \quad a_{33} = 1/6,
+\end{align*}
+$\alpha=0$, and $w_{i} = a_{3i} = \tilde{w}_{i}$ (stiffly accurate \cite{pareschiRusso_2005}).
+
+\paragraph{IMEX SSP2332}
+
+Another scheme that we use for comparison is the second-order accurate IMEX scheme given in \cite{pareschiRusso_2005} with three implicit solves.  
+We refer to this scheme as IMEX SSP2332.  
+The non-zero components of $\tilde{A}$ and $A$ are given by
+\begin{align*}
+  \tilde{a}_{21} &= 1/2, \\
+  \tilde{a}_{31} &= 1/2, \quad \tilde{a}_{32} = 1/2, \\
+  a_{11} &= 1/4, \\
+  a_{22} &= 1/4, \\
+  a_{31} &= 1/3, \quad a_{32} = 1/3, \quad a_{33} = 1/3, 
+\end{align*}
+$\alpha=0$, and $w_{i} = a_{3i} = \tilde{w}_{i}$ (stiffly accurate).
+
+\paragraph{SSPRK2 and SSPRK3}
+
+To compare the performance of the IMEX schemes in the streaming limit (no collisions), we also compute results with explicit strong stability-preserving Runge-Kutta methods \cite{gottlieb_etal_2001}.  
+(All elements of the implicit Butcher tableau are zero.)  
+The optimal second-order accurate, strong-stability-preserving Runge-Kutta scheme (SSPRK2) has the following non-zero components:
+\begin{align}
+  \tilde{a}_{21} &= 1, \nonumber \\ 
+  \tilde{w}_{1}  &= 1/2, \quad \tilde{w}_{2} = 1/2. \nonumber 
+\end{align}
+The optimal third-order accurate, strong-stability-preserving Runge-Kutta scheme (SSPRK3) has the following non-zero components:
+\begin{align}
+  \tilde{a}_{21} &= 1, \nonumber \\
+  \tilde{a}_{31} &= 1/4, \quad \tilde{a}_{32} = 1/4, \nonumber \\
+  \tilde{w}_{1} &= 1/6, \quad \tilde{w}_{2} = 1/6, \quad \tilde{w}_{3} =2/3. \nonumber
+\end{align}
+
+\section{Construction of IMEX Scheme PD-ARS}
+\label{app:PD-ARS}
+
+Here we construct a three-stage PD-IMEX scheme of Type~ARS, conforming to Definition~\ref{def:PD-IMEX}.  
+We refer to the resulting IMEX scheme as PD-ARS.  
+For a 3-stage scheme, the double Butcher tableau is
+\begin{equation}
+  \begin{array}{c | c c c}
+  	         0           & 0                 & 0                   & 0  \\
+  	\tilde{c}_{2} & \tilde{a}_{21} & 0                   & 0  \\
+  	\tilde{c}_{3} & \tilde{a}_{31} & \tilde{a}_{32} & 0  \\ \hline
+  	                   & \tilde{a}_{31} & \tilde{a}_{32} & 0
+  \end{array}
+  \qquad
+  \begin{array}{c | c c c}
+  	     0  & 0  & 0         & 0          \\
+  	c_{2} & 0 & a_{22} & 0          \\
+  	c_{3} & 0 & a_{32} & a_{33}  \\ \hline
+  	         & 0 & a_{32} & a_{33}
+  \end{array}
+\end{equation}
+The problem is then to find the coefficients $\{ \tilde{a}_{21}, \tilde{a}_{31}, \tilde{a}_{32}, a_{22}, a_{32}, a_{33} \}$ satisfying the constraints in Definition~\ref{def:PD-IMEX} while maximizing
+\begin{equation}
+  c_{\Sch} = \min \Big\{\, \dfrac{c_{20}}{\tilde{c}_{20}},\, \dfrac{c_{30}}{\tilde{c}_{30}},\, \dfrac{c_{32}}{\tilde{c}_{32}} \,\Big\}.  
+\end{equation}
+By imposing the equality constraints (i.e., Eqs.~\eqref{eq:diffusionCondition}, \eqref{eq:orderConditionsEx}, and \eqref{eq:implicitConsistency}), the double Butcher tableau can be written in terms of two independent parameters ($x,y\in\bbR$) as
+\begin{equation}
+  \begin{array}{c | c c c}
+  	     0       & 0            & 0 & 0 \\
+  	\frac{1}{2x} & \frac{1}{2x} & 0 & 0 \\
+  	     1       & 1-x          & x & 0 \\ \hline
+  	             & 1-x          & x & 0
+  \end{array}
+  \qquad
+  \begin{array}{c | c c c}
+  	     0       & 0 & 0            & 0 \\
+  	\frac{1}{2x} & 0 & \frac{1}{2x} & 0 \\
+  	     1       & 0 & 1-y          & y \\ \hline
+  	             & 0 & 1-y          & y
+  \end{array}
+\end{equation}
+Computing the relevant coefficients in Eq.~\eqref{eq:positivityCoefficientsARS}, we find $c_{20}=1$, $c_{30}=1-2x(1-y)$, $c_{32}=2x(1-y)$, $\tilde{c}_{20}=\f{1}{2x}$, $\tilde{c}_{30}=(y-x)$, and $\tilde{c}_{32}=x$, so that
+\begin{equation}
+  c_{\Sch} = \min \Big\{\, 2x,\, \f{1-2x(1-y)}{y-x},\, 2(1-y) \,\Big\}.  
+\end{equation}
+The convex-invariant property requires imposing the inequality constraints $a_{22},a_{33}>0$, $c_{20},c_{30},c_{32}\ge0$, and $\tilde{c}_{20},\tilde{c}_{30},\tilde{c}_{32}\ge0$, which imply that
+\begin{equation}
+  0 < x \le y
+  \quad\text{and}\quad
+  0 < y \le 1.
+\end{equation}
+We chose $x=\f{1}{2}$, so that the explicit part of the IMEX scheme is equivalent to the optimal second-order SSP-RK scheme in \cite{gottlieb_etal_2001} (SSPRK2 in \ref{app:butcherTables}).  
+Then, $y=\f{1}{2} + \epsilon$, where $\epsilon \in [0, \frac{1}{2})$, and $c_{\Sch} = 1 - 2\epsilon$ results in the PD-ARS IMEX scheme.  
+Setting $\epsilon = 0$ gives the optimal scheme with $c_{\Sch} = 1$.  
+
+\section{Nonexistence of Three-Stage PD-IMEX Scheme of Type~A}
+\label{app:noTypeA}
+
+Here we prove that a PD-IMEX scheme  of type~A (i.e., conforming to Definition~\ref{def:PD-IMEX}, but with Eq.~\eqref{eq:positivityConditionsTypeA} replacing Eq.~\eqref{eq:positivityConditionsTypeARS} in item 3) does not exist.  
+First, for a three-stage, GSA IMEX scheme of type~A the double Butcher tableau is
+\begin{equation*}
+  \begin{array}{c | c c c}
+  	      0       & 0              & 0              & 0 \\
+  	\tilde{c}_{2} & \tilde{a}_{21} & 0              & 0 \\
+  	\tilde{c}_{3} & \tilde{a}_{31} & \tilde{a}_{32} & 0 \\ \hline
+  	              & \tilde{a}_{31} & \tilde{a}_{32} & 0
+  \end{array}
+  \qquad
+  \begin{array}{c | c c c}
+    c_{1} & a_{11} & 0      & 0      \\
+  	c_{2} & a_{21} & a_{22} & 0      \\
+  	c_{3} & a_{31} & a_{32} & a_{33} \\ \hline
+  	      & a_{31} & a_{32} & a_{33}
+  \end{array}.
+\end{equation*}
+First we consider the equality constraints.  
+Consistency of the implicit coefficients and second-order accuracy in the streaming limit (Eqs.~\eqref{eq:implicitConsistency} and \eqref{eq:orderConditionsEx}, respectively) give
+\begin{align}
+  a_{31} + a_{32} + a_{33} = 1, \quad \tilde{a}_{31} + \tilde{a}_{32} = 1, \quad \text{and}\quad \tilde{a}_{32}\,\tilde{a}_{21} =  \f{1}{2}.
+  \label{eq:1stOrderGeneral}
+\end{align}
+Accuracy in the diffusion limit (Eq.~\eqref{eq:diffusionCondition}) requires 
+\begin{align}
+  \f{\tilde{a}_{21}}{a_{22}} = 1
+  \quad\text{and}\quad 
+  -\f{a_{32}\,\tilde{a}_{21}}{a_{22}\,a_{33}} + \f{\tilde{a}_{31}+\tilde{a}_{32}}{a_{33}} = 1.
+\label{eq:diffusionAccurate}
+\end{align}
+Eq.~\eqref{eq:diffusionAccurate} together with the second constraint in Eq~\eqref{eq:1stOrderGeneral} gives $a_{32}+a_{33}=1$, which together with the first constraint in Eq.~\eqref{eq:1stOrderGeneral} gives
+\begin{align}
+  a_{31} = 0.
+  \label{eq:a31is0}
+\end{align}
+Next we consider the inequality constraints.  
+The convex-invariant property in Eq.~\eqref{eq:positivityConditionsTypeA} requires $a_{11}, a_{22}, a_{33}>0$, and 
+\begin{equation}
+  c_{21} = \frac{a_{21}}{a_{11}} \geq 0, \quad
+  c_{31} = \frac{a_{31}}{a_{11}} - \frac{a_{32}\,a_{21}}{a_{22}\,a_{11}} \geq 0, \quad\text{and}\quad
+  c_{32} = \frac{a_{32}}{a_{22}} \geq 0.
+  \label{eq:constraintsTypeA}
+\end{equation}
+As a consequence, $a_{21}, a_{32} \geq 0$.  
+However, since $a_{31} = 0$, 
+\begin{equation*}
+  c_{31} = - \frac{a_{32}a_{21}}{a_{22}a_{11}} \le 0.  
+\end{equation*}
+Thus the inequality constraints in Eq.~\eqref{eq:constraintsTypeA} hold only for $c_{31} = 0$, which gives $c_{\Sch} = \min \Big\{\,\f{c_{21}}{\tilde{c}_{21}}, \f{c_{31}}{\tilde{c}_{31}}, \f{c_{32}}{\tilde{c}_{32}}\Big\} = 0$.
+Therefore, a three-stage PD-IMEX scheme (Definition~\ref{def:PD-IMEX}) of type~A does not exist.

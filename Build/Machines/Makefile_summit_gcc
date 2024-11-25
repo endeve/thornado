@@ -1,0 +1,37 @@
+## Makefile definitions for Summit with GCC compiler
+
+C       = mpic++ --c++11
+FORTRAN = mpifort -cpp
+FLINKER = mpifort
+
+DEBUG    = -g -Og -ggdb -ftrapv -fcheck=bounds,do,mem,pointer -ffpe-trap=invalid,zero,overflow -fbacktrace
+OPTIMIZE = -g -Ofast -mcpu=power9 -funroll-loops -fprefetch-loop-arrays
+
+SUFFIX_f90 =
+
+MDEFS =
+PP    = -D
+
+ifeq ($(USE_OMP),TRUE)
+  OPENMP = -fopenmp
+else ifeq ($(USE_OMP_OL),TRUE)
+  OPENMP = -fopenmp
+endif
+
+ifeq ($(USE_OACC),TRUE)
+  OPENACC = -fopenacc
+endif
+
+INCLUDE_CUDA     = -I$(OLCF_CUDA_ROOT)/include
+INCLUDE_HDF5     = -I$(OLCF_HDF5_ROOT)/include
+INCLUDE_LAPACK   = -I$(OLCF_ESSL_ROOT)/include -I$(OLCF_NETLIB_LAPACK_ROOT)/include
+INCLUDE_MAGMA    = -I$(OLCF_MAGMA_ROOT)/include
+INCLUDE_PETSC    =
+INCLUDE_ROCM     =
+
+LIBRARIES_CUDA     = -L$(OLCF_CUDA_ROOT)/lib64 -lcusparse -lcusolver -lcublas -lcudart -lcuda
+LIBRARIES_HDF5     = -L$(OLCF_HDF5_ROOT)/lib -lhdf5_fortran -lhdf5
+LIBRARIES_LAPACK   = -L$(OLCF_ESSL_ROOT)/lib64 -lessl -L$(OLCF_NETLIB_LAPACK_ROOT) -llapack -lblas
+LIBRARIES_MAGMA    = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
+LIBRARIES_PETSC    =
+LIBRARIES_ROCM     =

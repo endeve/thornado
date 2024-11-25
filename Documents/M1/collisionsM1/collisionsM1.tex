@@ -1,0 +1,525 @@
+\documentclass[12pt]{article}
+
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{booktabs}
+\usepackage{mathrsfs}
+\usepackage{graphicx}
+\usepackage{cite}
+\usepackage{times}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{lineno}
+\usepackage{yhmath}
+\usepackage{natbib}
+\usepackage{../../definitions}
+\hypersetup{
+  bookmarksnumbered = true,
+  bookmarksopen=false,
+  pdfborder=0 0 0,         % make all links invisible, so the pdf looks good when printed
+  pdffitwindow=true,      % window fit to page when opened
+  pdfnewwindow=true, % links in new window
+  colorlinks=true,           % false: boxed links; true: colored links
+  linkcolor=blue,            % color of internal links
+  citecolor=magenta,    % color of links to bibliography
+  filecolor=magenta,     % color of file links
+  urlcolor=cyan              % color of external links
+}
+
+\DeclareMathOperator*{\argmin}{argmin}
+
+\newcommand{\EC}{\mbox{\tiny{\sc Ec}}}
+\newcommand{\IN}{\mbox{\tiny{\sc In}}}
+\newcommand{\OUT}{\mbox{\tiny{\sc Out}}}
+\newcommand{\NNS}{\mbox{\tiny NNS}} % Neutrino-Nucleon/Nuclei Scattering
+\newcommand{\NES}{\mbox{\tiny{\sc Nes}}} % Neutrino-Electron Scattering
+\newcommand{\PROD}{\mbox{\tiny{\sc Pr}}}
+\newcommand{\ANN}{\mbox{\tiny{\sc An}}}
+\newcommand{\SC}{\mbox{\tiny{\sc Sc}}}      % Scattering
+\newcommand{\TP}{\mbox{\tiny{\sc Tp}}}      % Pair-Processes
+
+\newtheorem{define}{Definition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{prop}{Proposition}
+\newtheorem{rem}{Remark}
+\newtheorem{theorem}{Theorem}
+
+\begin{document}
+
+\title{A Spectral Two-Moment Model \\ for Neutrino-Matter Interactions}
+\author{Eirik Endeve et al.}
+
+\maketitle
+
+\begin{abstract}
+  We derive moment equations from the space homogeneous Boltzmann equation for neutrino transport and develop algorithms to solve the neutrino-matter coupling problem.  
+  Electron-type neutrinos and antineutrinos are coupled to a fluid through emission and absorption, scattering, and pair processes.  
+\end{abstract}
+
+\tableofcontents
+
+\section{Mathematical Model}
+
+\subsection{Boltzmann Equation and Neutrino-Matter Interactions}
+
+We denote the neutrino three-momentum with $\vect{p}=\epsilonNu\,\vect{\ell}(\omegaNu)$, the momentum space volume element with $d\vect{p}=dV_{\epsilonNu}\,d\omegaNu$, where $dV_{\epsilonNu}=\epsilonNu^{2}d\epsilonNu$ is the spherical shell energy volume element, and $d\omega$ is the momentum space angular element.  
+The distribution function $f_{s}$ gives the number of neutrinos per phase-space volume
+\begin{equation}
+  dN_{s}=f_{s}(\vect{x},\vect{p},t)\,d\vect{x}\,d\vect{p}
+  =f_{s}(\vect{x},\omegaNu,\epsilonNu,t)\,d\vect{x}\,d\omegaNu\,dV_{\epsilonNu},
+\end{equation}
+and the equation describing the evolution of neutrino flavor $s$ is given by (e.g., \citep{bruenn_1985})
+\begin{align}
+  \deriv{f_{s}}{t}(\vect{p})
+  & = \big(1-f_{s}(\vect{p})\big)\,\eta_{s}(\vect{p}) - \chi_{s}(\vect{p})\,f_{s}(\vect{p}) \nonumber \\
+  & \hspace{12pt}
+  +\big(1-f_{s}(\vect{p})\big)\int_{\bbR^{3}}R_{s}^{\IN}(\vect{p}',\vect{p})\,f_{s}(\vect{p}')\,d\vect{p}' \nonumber \\
+  & \hspace{12pt}
+  -f_{s}(\vect{p})\int_{\bbR^{3}}R_{s}^{\OUT}(\vect{p}',\vect{p})\,\big(1-f_{s}(\vect{p}')\big)\,d\vect{p}' \nonumber \\
+  & \hspace{12pt}
+  +\big(1-f_{s}(\vect{p})\big)\int_{\bbR^{3}}R_{s}^{\PROD}(\vect{p}',\vect{p})\,\big(1-\bar{f}_{s}(\vect{p}')\big)\,d\vect{p}' \nonumber \\
+  & \hspace{12pt}
+  -f_{s}(\vect{p})\int_{\bbR^{3}}R_{s}^{\ANN}(\vect{p}',\vect{p})\,\bar{f}_{s}(\vect{p}')\,d\vect{p}',
+  \label{eq:homogeneousBoltzmann}
+\end{align}
+where $\eta_{s}$ is the emissivity, $\chi_{s}$ the absorption opacity, $R_{s}^{\IN}$ and $R_{s}^{\OUT}$ scattering rates in and out of the momentum space bin centered on $\vect{p}$, and $R_{s}^{\PROD}$ and $R_{s}^{\ANN}$ are thermal production and annihilation rates due to pair processes.  
+(We have adopted units where the speed of light and the Planck constant are unity.)  
+In the expressions for pair processes, $\bar{f}_{s}$ is the distribution function for antineutrinos of flavor $s$.  
+
+For thermal emission and absorption we define
+\begin{equation}
+  \tilde{\chi}_{s}=\eta_{s}+\chi_{s},
+\end{equation}
+and rewrite
+\begin{equation}
+  \big(1-f_{s}\big)\,\eta_{s}-\chi_{s}\,f_{s}
+  =\tilde{\chi}_{s}\,\big(f_{0,s}-f_{s}\big),
+\end{equation}
+where the equilibrium distribution is
+\begin{equation}
+  f_{0,s}=\f{\eta_{s}}{\eta_{s}+\chi_{s}}.  
+\end{equation}
+In beta equilibrium, $f_{0,s}$ is given by the Fermi-Dirac distribution
+\begin{equation}
+  f_{0,s}=\f{1}{e^{(\varepsilon-\mu_{s})/kT}+1},
+\end{equation}
+where $\mu_{s}$ is the neutrino chemical potential and $T$ is the matter temperature.  
+For electron neutrinos ($s=\nu_{e}$), $\mu_{\nu_{e}}=\mu_{e^{-}}+(\mu_{p}-\mu_{n})$, while for electron antineutrinos ($s=\bar{\nu}_{e}$), $\mu_{\bar{\nu}_{e}}=\mu_{e^{+}}-(\mu_{p}-\mu_{n})$.  
+Here, $\mu_{e^{-(+)}}$ is the electron (positron) chemical potential, $\mu_{n}$ the neutron chemical potential, and $\mu_{p}$ the proton chemical potential, which are evaluated with an appropriate equation of state (EoS).  
+
+We exploit the fact that the scattering and pair process kernels depend on the energies $\varepsilon$ and $\varepsilon'$ and the cosine of the scattering angle $\cos\alpha=\vect{\ell}\cdot\vect{\ell}'$, and introduce the $L$-term Legendre expansion
+\begin{equation}
+  R(\vect{p},\vect{p}')
+  =R(\varepsilon,\varepsilon',\vect{\ell}\cdot\vect{\ell}')
+  \approx\sum_{l=0}^{L}\Phi_{l}(\varepsilon,\varepsilon')\,P_{l}(\vect{\ell}\cdot\vect{\ell}').  
+\end{equation}
+From orthogonality of the Legendre polynomials, we have
+\begin{equation}
+  \Phi_{l}(\varepsilon,\varepsilon')
+  =\f{1}{C_{l}}\int_{-1}^{1}R(\varepsilon,\varepsilon',x)\,P_{l}(x)\,dx,
+\end{equation}
+where $C_{l}$ ($l=0,\ldots,L$) are normalization constants.  
+In the following, as a first approximation, we will only include the isotropic part of the kernels (i.e., $L=0$).  
+
+\subsection{Angular Moment Equations}
+
+In the spectral two-moment model we solve for the zeroth and first moments of the neutrino distribution function, defined respectively as
+\begin{equation}
+  \big\{\,\cJ_{s},\vect{\cH}_{s}\,\big\}(\varepsilon)=\f{1}{4\pi}\int_{\bbS^{2}}f_{s}(\varepsilon,\omega)\,\big\{\,1,\vect{\ell}(\omega)\,\big\}\,d\omega,
+\end{equation}
+with moments for antineutrinos ($\bar{\cJ}_{s}$ and $\bar{\vect{\cH}}_{s}$) defined analogously.  
+Then, the zeroth moment $\cJ_{s}$ ($\bar{\cJ}_{s}$) is the spectral number density of neutrinos (antineutrinos), and the first moment $\vect{\cH}_{s}$ ($\bar{\vect{\cH}}_{s}$) is the spectral number flux density of neutrinos (antineutrinos).  
+Since the distribution function is bounded by $0\le f_{s}\le1$, it can be shown that the moments must satisfy the bounds
+\begin{equation}
+  0\le\cJ_{s}\le1
+  \quad\text{and}\quad
+  |\vect{\cH}_{s}|\le\big(1-\cJ_{s}\big)\,\cJ_{s}.  
+\end{equation}
+(Similar bounds hold for antineutrinos.)
+
+Taking the zeroth moment of Eq.~\eqref{eq:homogeneousBoltzmann} results in the moment equation for the number density
+\begin{equation}
+  \deriv{\cJ_{s}}{t}
+  =\widehat{\eta}_{s} - \widehat{\chi}_{s}\,\cJ_{s},
+  \label{eq:momentNumber}
+\end{equation}
+where we have defined the total emissivity
+\begin{equation}
+  \widehat{\eta}_{s}(\cJ_{s},\bar{\cJ}_{s})
+  =\tilde{\chi}_{s}\,\cJ_{0,s} + \eta_{\SC,s}(\cJ_{s}) + \eta_{\TP,s}(\bar{\cJ}_{s})
+\end{equation}
+and total opacity
+\begin{equation}
+  \widehat{\chi}_{s}(\cJ_{s},\bar{\cJ}_{s})
+  =\tilde{\chi}_{s} + \chi_{\SC,s}(\cJ_{s}) + \chi_{\TP,s}(\bar{\cJ}_{s}).  
+\end{equation}
+We have also defined the scattering emissivity
+\begin{equation}
+  \eta_{\SC,s}(\cJ_{s})
+  =\int_{\bbR^{+}}\Phi_{0,s}^{\IN}(\varepsilon,\varepsilon')\,\cJ_{s}(\varepsilon')\,dV_{\varepsilon'},
+\end{equation}
+the scattering opacity
+\begin{equation}
+  \chi_{\SC,s}(\cJ_{s})
+  =\int_{\bbR^{+}}\big[\,\Phi_{0.s}^{\IN}(\varepsilon,\varepsilon')\,\cJ(\varepsilon')+\Phi_{0,s}^{\Out}(\varepsilon,\varepsilon')\,\big(1-\cJ(\varepsilon')\big)\,\big]\,dV_{\varepsilon'},
+\end{equation}
+the emissivity due to thermal pair processes
+\begin{equation}
+  \eta_{\TP,s}(\bar{\cJ}_{s})
+  =\int_{\bbR^{+}}\Phi_{0,s}^{\PROD}(\varepsilon,\varepsilon')\,\big(1-\bar{\cJ}_{s}(\varepsilon')\big)\,dV_{\varepsilon'},
+\end{equation}
+and the opacity due to thermal pair processes
+\begin{equation}
+  \chi_{\TP,s}(\bar{\cJ}_{s})
+  =\int_{\bbR^{+}}\big[\,\Phi_{0,s}^{\PROD}(\varepsilon,\varepsilon')\,\big(1-\bar{\cJ}_{s}(\varepsilon')\big)+\Phi_{0,s}^{\ANN}(\varepsilon,\varepsilon')\,\bar{\cJ}_{s}(\varepsilon')\,\big]\,dV_{\varepsilon'}.  
+\end{equation}
+Note that the opacities due to scattering and pair processes depend on $\cJ_{s}$ and $\bar{\cJ}_{s}$, respectively, due to the Fermi blocking factors.  
+Since $0\le\cJ_{s},\bar{\cJ}_{s}\le1$, we have $\eta_{\SC,s},\chi_{\SC,s},\eta_{\TP,s},\chi_{\TP,s}\ge0$.  
+Also note that the emissivities and opacities depend on the neutrino energy $\varepsilon$ and local thermodynamic conditions (e.g., density $\rho$, temperature $T$, and electron fraction $Y_{e}$).  
+
+Similarly, taking the first moment of Eq.~\eqref{eq:homogeneousBoltzmann} results in the equation for the number flux density
+\begin{equation}
+  \deriv{\vect{\cH}_{s}}{t}
+  =-\widehat{\chi}_{s}\,\vect{\cH}_{s}.
+  \label{eq:momentFlux}
+\end{equation}
+
+\subsection{Matter Equations}
+
+Neutrino-matter interactions mediate exchange of lepton number, momentum, and energy between matter and neutrinos.  
+As a first approximation, we will assume that the fluid remains static and ignore momentum exchange.  
+Only emission and absorption due to electron capture modify $Y_{e}$, while all processes modify the internal energy.  
+The electron fraction $Y_{e}$ and internal energy $e=\rho\,\epsilon$ evolve according to
+\begin{equation}
+  \rho\deriv{Y_{e}}{t}
+  =-m_{b}\int_{\bbR^{+}}
+  \big[\,
+    \tilde{\chi}_{\nu_{e}}\,\big(\cJ_{0,\nu_{e}}-\cJ_{\nu_{e}}\,\big)
+    -\tilde{\chi}_{\bar{\nu}_{e}}\,\big(\,\cJ_{0,\bar{\nu}_{e}}-\cJ_{\bar{\nu}_{e}}\,\big)
+  \,\big]\,dV_{\varepsilon},
+\end{equation}
+and
+\begin{equation}
+  \rho\deriv{\epsilon}{t}
+  =-\sum_{s}\int_{\bbR^{+}}\big(\,\widehat{\eta}_{s} - \widehat{\chi}_{s}\,\cJ_{s}\,\big)\,\varepsilon\,dV_{\varepsilon},
+\end{equation}
+where $\rho$ is the mass density and $m_{b}$ is the average baryon mass.  
+
+The matter sources are constructed to ensure conservation of lepton number and energy.  
+The neutrino density $J_{s}(\vect{x},t)$ and energy $E_{s}(\vect{x},t)$ are defined as
+\begin{equation}
+  \big\{\,J_{s},\,E_{s}\,\big\}
+  =\int_{\bbR^{+}}\cJ_{s}(\varepsilon)\big\{\,1,\,\varepsilon\,\big\}\,dV_{\varepsilon}.
+\end{equation}
+Lepton number conservation is due to
+\begin{equation}
+  \deriv{}{t}\big(\,J_{\nu_{e}}-J_{\bar{\nu}_{e}}\,\big)+\f{\rho}{m_{b}}\deriv{Y_{e}}{t} = 0,
+\end{equation}
+while energy conservation is due to
+\begin{equation}
+  \sum_{s}\deriv{E_{s}}{t}+\rho\deriv{\epsilon}{t} = 0.
+\end{equation}
+
+\section{Implicit Solvers}
+
+We discuss the implicit solver in the context of a system of electron neutrinos and antineutrinos.  
+We let $\mathcal{J}_{\nu_{e}}\to\mathcal{J}$ and $\mathcal{J}_{\bar{\nu}_{e}}\to\bar{\mathcal{J}}$.  
+The electron fraction is updated from
+\begin{equation}
+  \f{\rho}{m_{b}}\big(Y_{e}^{n+1}-Y_{e}^{n}\big) + \big[\,\big(J^{n+1}-\bar{J}^{n+1}\big)-\big(J^{n}-\bar{J}^{n}\big)\,\big] = 0,
+  \label{eq:electronFractionContinuous}
+\end{equation}
+where
+\begin{equation}
+  \big\{\,J,\bar{J}\,\big\}
+  =\sum_{q=1}^{N_{\varepsilon}}\hat{w}_{q}^{(2)}\,\big\{\,\mathcal{J}_{q},\bar{\mathcal{J}}_{q}\,\big\}
+  \quad\text{with}\quad
+  \hat{w}_{q}^{(2)}=\f{4\pi}{h^{3}}\,w_{q}^{(2)},
+\end{equation}
+where $w_{q}^{(2)}$ are quadrature weights for energy integrals with respect to $dV_{\varepsilon}=\varepsilon^{2}\,d\varepsilon$.  
+Defining $S_{Y_{e}}\equiv \rho\,Y_{e}^{n}/m_{b}$ and $U_{Y_{e}} \equiv Y_{e}/Y_{e}^{n}$, we can write Eq.~\eqref{eq:electronFractionContinuous} in discrete form as
+\begin{equation}
+  F_{Y_{e}}(\vect{U}^{n+1})\equiv
+  U_{Y_{e}}^{n+1} + \sum_{q}\hat{w}_{q}^{(2)}\big(\,\mathcal{J}_{q}^{n+1}-\bar{\mathcal{J}}_{q}^{n+1}\,\big)/S_{Y_{e}} 
+  - \big\{\,1+\sum_{q}\hat{w}_{q}^{(2)}\big(\,\mathcal{J}_{q}^{n}-\bar{\mathcal{J}}_{q}^{n}\,\big)/S_{Y_{e}}\,\big\} = 0.
+  \label{eq:electronFractionDiscrete}
+\end{equation}
+Here we have defined the solution vector $\vect{U}=\big(Y_{e},\epsilon,\vect{\mathcal{J}},\vect{\bar{\mathcal{J}}}\big)^{T}$, where $\vect{\mathcal{J}}=\big(\mathcal{J}_{1},\ldots,\mathcal{J}_{N_{\varepsilon}}\big)^{T}$ and $\vect{\bar{\mathcal{J}}}=\big(\bar{\mathcal{J}}_{1},\ldots,\bar{\mathcal{J}}_{N_{\varepsilon}}\big)^{T}$.  
+We also define the vectors $\vect{u}=\big(Y_{e},\epsilon\big)^{T}$ and $\vect{\mathcal{U}}=\big(\vect{\mathcal{J}},\vect{\bar{\mathcal{J}}}\big)^{T}$.  
+
+The specific internal energy is updated from
+\begin{equation}
+  \rho\,\big(\epsilon^{n+1}-\epsilon^{n}\big)
+  +\big[\,\big(E^{n+1}+\bar{E}^{n+1}\big)-\big(E^{n}+\bar{E}^{n}\big)\,\big] = 0,
+  \label{eq:internalEnergyContinuous}
+\end{equation}
+where
+\begin{equation}
+  \big\{\,E,\bar{E}\,\big\}
+  =\sum_{q=1}^{N_{\varepsilon}}\hat{w}_{q}^{(3)}\,\big\{\,\mathcal{J}_{q},\bar{\mathcal{J}}_{q}\,\big\}
+  \quad\text{with}\quad
+  \hat{w}_{q}^{(3)}=\f{4\pi}{h^{3}}\,w_{q}^{(3)},
+\end{equation}
+where $w_{q}^{(3)}$ are quadrature weights for energy integrals with respect to $\varepsilon\,dV_{\varepsilon}=\varepsilon^{3}\,d\varepsilon$.  
+Defining $S_{\epsilon}\equiv\rho\epsilon^{n}$ and $U_{\epsilon}\equiv\epsilon/\epsilon^{n}$, we can write Eq.~\eqref{eq:internalEnergyContinuous} as
+\begin{equation}
+  F_{\epsilon}(\vect{U}^{n+1})\equiv
+  U_{\epsilon}^{n+1} + \sum_{q}\hat{w}_{q}^{(3)}\big(\,\mathcal{J}_{q}^{n+1}+\bar{\mathcal{J}}_{q}^{n+1}\,\big)/S_{\epsilon}
+  -\big\{\,1+\sum_{q}\hat{w}_{q}^{(3)}\big(\,\mathcal{J}_{q}^{n}+\bar{\mathcal{J}}_{q}^{n}\,\big)/S_{\epsilon}\,\big\} = 0.  
+  \label{eq:internalEnergyDiscrete}
+\end{equation}
+
+The neutrino density is updated from
+\begin{align}
+  \f{\big(\mathcal{J}_{i}^{n+1}-\mathcal{J}_{i}^{n}\big)}{\dt}
+  &=\big[\chi_{\EC}\big]_{i}^{n}\,\big(\mathcal{J}_{0,i}^{n+1}-\mathcal{J}_{i}^{n+1}\big) \nonumber \\
+  &\hspace{12pt}
+  +\sum_{q}w_{q}^{(2)}\,\big[\Phi_{\NES,0}^{\In}\big]_{qi}^{n+1}\,\mathcal{J}_{q}^{n+1} \nonumber \\
+  &\hspace{12pt}
+  -\mathcal{J}_{i}^{n+1}\sum_{q}w_{q}^{(2)}\,\big\{\,\big[\Phi_{\NES,0}^{\In}\big]_{qi}^{n+1}\,\mathcal{J}_{q}^{n+1}+\big[\Phi_{\NES,0}^{\Out}\big]_{qi}^{n+1}\,\big(1-\mathcal{J}_{q}^{n+1}\big)\,\big\} \nonumber \\
+  &\hspace{12pt}
+  + \sum_{q}w_{q}^{(2)}\,\big[\Phi_{\TP,0}^{\PROD}\big]_{qi}^{n+1}\,\big(1-\bar{\mathcal{J}}_{q}^{n+1}\big) \nonumber \\
+  &\hspace{12pt}
+  -\mathcal{J}_{i}^{n+1}\sum_{q}w_{q}^{(2)}\big\{\,\big[\Phi_{\TP,0}^{\PROD}\big]_{qi}^{n+1}\,\big(1-\bar{\mathcal{J}}_{q}^{n+1}\big)+\big[\Phi_{\TP,0}^{\ANN}\big]_{qi}^{n+1}\,\bar{\mathcal{J}}_{q}^{n+1}\,\big\} \nonumber \\
+  &=\big(\big[\eta_{\EC}\big]_{i}^{n+1}+\big[\eta_{\NES}\big]_{i}^{n+1}+\big[\eta_{\TP}\big]_{i}^{n+1}\big) \nonumber \\
+  &\hspace{12pt}
+  -\big(\big[\chi_{\EC}\big]_{i}^{n}+\big[\chi_{\NES}\big]_{i}^{n+1}+\big[\chi_{\TP}\big]_{i}^{n+1}\big)\,\mathcal{J}_{i}^{n+1} \nonumber \\
+  &=\big[\eta\big]_{i}^{n+1} - \big[\chi\big]_{i}^{n+1}\,\mathcal{J}_{i}^{n+1},
+  \label{eq:neutrinoDiscrete}
+\end{align}
+where we have defined
+\begin{align}
+  \big[\eta_{\EC}\big]_{i}^{n+1}
+  &=\big[\chi_{\EC}\big]_{i}^{n}\,\mathcal{J}_{0,i}^{n+1}, \label{eq:ECemissivityNeutrino} \\
+  \big[\eta_{\NES}\big]_{i}^{n+1}
+  &=\sum_{q}w_{q}^{(2)}\,\big[\Phi_{\NES,0}^{\In}\big]_{qi}^{n+1}\,\mathcal{J}_{q}^{n+1}, \label{eq:NESemissivityNeutrino} \\
+  \big[\eta_{\TP}\big]_{i}^{n+1}
+  &=\sum_{q}w_{q}^{(2)}\,\big[\Phi_{\TP,0}^{\PROD}\big]_{qi}^{n+1}\,\big(1-\bar{\mathcal{J}}_{q}^{n+1}\big), \label{eq:PAIRemissivityNeutrino} \\
+  \big[\chi_{\NES}\big]_{i}^{n+1}
+  &=\sum_{q}w_{q}^{(2)}\,\big\{\,\big[\Phi_{\NES,0}^{\In}\big]_{qi}^{n+1}\,\mathcal{J}_{q}^{n+1}+\big[\Phi_{\NES,0}^{\Out}\big]_{qi}^{n+1}\,\big(1-\mathcal{J}_{q}^{n+1}\big)\,\big\} \\
+  &=\big[\eta_{\NES}\big]_{i}^{n+1}+\sum_{q}w_{q}^{(2)}\,\big[\Phi_{\NES,0}^{\Out}\big]_{qi}^{n+1}\,\big(1-\mathcal{J}_{q}^{n+1}\big), \label{eq:NESopacityNeutrino} \\
+  \big[\chi_{\TP}\big]_{i}^{n+1}
+  &=\sum_{q}w_{q}^{(2)}\big\{\,\big[\Phi_{\TP,0}^{\PROD}\big]_{qi}^{n+1}\,\big(1-\bar{\mathcal{J}}_{q}^{n+1}\big)+\big[\Phi_{\TP,0}^{\ANN}\big]_{qi}^{n+1}\,\bar{\mathcal{J}}_{q}^{n+1}\,\big\} \\
+  &=\big[\eta_{\TP}\big]_{i}^{n+1}+\sum_{q}w_{q}^{(2)}\,\big[\Phi_{\TP,0}^{\ANN}\big]_{qi}^{n+1}\,\bar{\mathcal{J}}_{q}^{n+1}, \label{eq:PAIRopacityNeutrino} \\
+  \big[\eta\big]_{i}^{n+1}
+  &=\big[\eta_{\EC}\big]_{i}^{n+1}+\big[\eta_{\NES}\big]_{i}^{n+1}+\big[\eta_{\TP}\big]_{i}^{n+1}, \label{eq:TOTALemissivityNeutrino} \\
+  \big[\chi\big]_{i}^{n+1}
+  &=\big[\chi_{\EC}\big]_{i}^{n}+\big[\chi_{\NES}\big]_{i}^{n+1}+\big[\chi_{\TP}\big]_{i}^{n+1}.  \label{eq:TOTALopacityNeutrino}
+\end{align}
+We rewrite Eq.~\eqref{eq:neutrinoDiscrete} and define
+\begin{equation}
+  \mathcal{F}_{i}(\vect{U}^{n+1})
+  \equiv\big(\,1+\dt\,\big[\chi\big]_{i}^{n+1}\,\big)\,\mathcal{J}_{i}^{n+1}-\big(\,\mathcal{J}_{i}^{n}+\dt\,\big[\eta\big]_{i}^{n+1}\,\big)=0.
+  \label{eq:neutrinoDiscreteResidualForm}
+\end{equation}
+Similarly, the antineutrino density is updated from
+\begin{align}
+  \f{\big(\bar{\mathcal{J}}_{i}^{n+1}-\bar{\mathcal{J}}_{i}^{n}\big)}{\dt}
+  &=\big[\bar{\chi}_{\EC}\big]_{i}^{n}\,\big(\bar{\mathcal{J}}_{0,i}^{n+1}-\bar{\mathcal{J}}_{i}^{n+1}\big) \nonumber \\
+  &\hspace{12pt}
+  +\sum_{q}w_{q}^{(2)}\,\big[\bar{\Phi}_{\NES,0}^{\In}\big]_{qi}^{n+1}\,\bar{\mathcal{J}}_{q}^{n+1} \nonumber \\
+  &\hspace{12pt}
+  -\bar{\mathcal{J}}_{i}^{n+1}\sum_{q}w_{q}^{(2)}\,\big\{\,\big[\bar{\Phi}_{\NES,0}^{\In}\big]_{qi}^{n+1}\,\bar{\mathcal{J}}_{q}^{n+1}+\big[\bar{\Phi}_{\NES,0}^{\Out}\big]_{qi}^{n+1}\,\big(1-\bar{\mathcal{J}}_{q}^{n+1}\big)\,\big\} \nonumber \\
+  &\hspace{12pt}
+  + \sum_{q}w_{q}^{(2)}\,\big[\bar{\Phi}_{\TP,0}^{\PROD}\big]_{qi}^{n+1}\,\big(1-\mathcal{J}_{q}^{n+1}\big) \nonumber \\
+  &\hspace{12pt}
+  -\bar{\mathcal{J}}_{i}^{n+1}\sum_{q}w_{q}^{(2)}\big\{\,\big[\bar{\Phi}_{\TP,0}^{\PROD}\big]_{qi}^{n+1}\,\big(1-\mathcal{J}_{q}^{n+1}\big)+\big[\bar{\Phi}_{\TP,0}^{\ANN}\big]_{qi}^{n+1}\,\mathcal{J}_{q}^{n+1}\,\big\} \nonumber \\
+  &=\big(\,\big[\bar{\eta}_{\EC}\big]_{i}^{n+1}+\big[\bar{\eta}_{\NES}\big]_{i}^{n+1}+\big[\bar{\eta}_{\TP}\big]_{i}^{n+1}\,\big) \nonumber \\
+  &\hspace{12pt}
+  -\big(\,\big[\bar{\chi}_{\EC}\big]_{i}^{n}+\big[\bar{\chi}_{\NES}\big]_{i}^{n+1}+\big[\bar{\chi}_{\TP}\big]_{i}^{n+1}\,\big)\,\bar{\mathcal{J}}_{i}^{n+1} \nonumber \\
+  &=\big[\bar{\eta}\big]_{i}^{n+1} - \big[\bar{\chi}\big]_{i}^{n+1}\,\bar{\mathcal{J}}_{i}^{n+1},
+  \label{eq:antineutrinoDiscrete}
+\end{align}
+where we have defined
+\begin{align}
+  \big[\bar{\eta}_{\EC}\big]_{i}^{n+1}
+  &=\big[\bar{\chi}_{\EC}\big]_{i}^{n}\,\bar{\mathcal{J}}_{0,i}^{n+1}, \label{eq:ECemissivityAntineutrino} \\
+  \big[\bar{\eta}_{\NES}\big]_{i}^{n+1}
+  &=\sum_{q}w_{q}^{(2)}\,\big[\bar{\Phi}_{\NES,0}^{\In}\big]_{qi}^{n+1}\,\bar{\mathcal{J}}_{q}^{n+1}, \label{eq:NESemissivityAntineutrino} \\
+  \big[\bar{\eta}_{\TP}\big]_{i}^{n+1}
+  &=\sum_{q}w_{q}^{(2)}\,\big[\bar{\Phi}_{\TP,0}^{\PROD}\big]_{qi}^{n+1}\,\big(1-\mathcal{J}_{q}^{n+1}\big), \label{eq:PAIRemissivityAntineutrino} \\
+  \big[\bar{\chi}_{\NES}\big]_{i}^{n+1}
+  &=\sum_{q}w_{q}^{(2)}\,\big\{\,\big[\bar{\Phi}_{\NES,0}^{\In}\big]_{qi}^{n+1}\,\bar{\mathcal{J}}_{q}^{n+1}+\big[\bar{\Phi}_{\NES,0}^{\Out}\big]_{qi}^{n+1}\,\big(1-\bar{\mathcal{J}}_{q}^{n+1}\big)\,\big\} \\
+  &=\big[\bar{\eta}_{\NES}\big]_{i}^{n+1}+\sum_{q}w_{q}^{(2)}\,\big[\bar{\Phi}_{\NES,0}^{\Out}\big]_{qi}^{n+1}\,\big(1-\bar{\mathcal{J}}_{q}^{n+1}\big), \label{eq:NESopacityAntineutrino} \\
+  \big[\bar{\chi}_{\TP}\big]_{i}^{n+1}
+  &=\sum_{q}w_{q}^{(2)}\big\{\,\big[\bar{\Phi}_{\TP,0}^{\PROD}\big]_{qi}^{n+1}\,\big(1-\mathcal{J}_{q}^{n+1}\big)+\big[\bar{\Phi}_{\TP,0}^{\ANN}\big]_{qi}^{n+1}\,\mathcal{J}_{q}^{n+1}\,\big\} \\
+  &=\big[\bar{\eta}_{\TP}\big]_{i}^{n+1}+\sum_{q}w_{q}^{(2)}\,\big[\bar{\Phi}_{\TP,0}^{\ANN}\big]_{qi}^{n+1}\,\mathcal{J}_{q}^{n+1}, \label{eq:PAIRopacityAntineutrino} \\
+  \big[\bar{\eta}\big]_{i}^{n+1}
+  &=\big[\bar{\eta}_{\EC}\big]_{i}^{n+1}+\big[\bar{\eta}_{\NES}\big]_{i}^{n+1}+\big[\bar{\eta}_{\TP}\big]_{i}^{n+1}, \label{eq:TOTALemissivityAntineutrino} \\
+  \big[\bar{\chi}\big]_{i}^{n+1}
+  &=\big[\bar{\chi}_{\EC}\big]_{i}^{n}+\big[\bar{\chi}_{\NES}\big]_{i}^{n+1}+\big[\bar{\chi}_{\TP}\big]_{i}^{n+1}. \label{eq:TOTALopacityAntineutrino}
+\end{align}
+We rewrite Eq.~\eqref{eq:antineutrinoDiscrete} and define
+\begin{equation}
+  \bar{\mathcal{F}}_{i}(\vect{U}^{n+1})\equiv
+  \big(\,1+\dt\,\big[\bar{\chi}\big]_{i}^{n+1}\,\big)\,\bar{\mathcal{J}}_{i}^{n+1}-\big(\,\bar{\mathcal{J}}_{i}^{n}+\dt\,\big[\bar{\eta}\big]_{i}^{n+1}\,\big)=0.
+  \label{eq:antineutrinoDiscreteResidualForm}
+\end{equation}
+
+Next, we define
+\begin{align}
+  \vect{\mathcal{F}}(\vect{U})=\big(\,\mathcal{F}_{1}(\vect{U}),\ldots,\mathcal{F}_{N_{\varepsilon}}(\vect{U})\,\big)^{T}, \\
+  \vect{\bar{\mathcal{F}}}(\vect{U})=\big(\,\bar{\mathcal{F}}_{1}(\vect{U}),\ldots,\bar{\mathcal{F}}_{N_{\varepsilon}}(\vect{U})\,\big)^{T}
+\end{align}
+and
+\begin{equation}
+  \vect{F}(\vect{U})=\big(F_{Y_{e}}(\vect{U}),F_{\epsilon}(\vect{U}),\vect{\mathcal{F}}(\vect{U}),\vect{\bar{\mathcal{F}}}(\vect{U})\big)^{T},
+\end{equation}
+so that we can write the coupled nonlinear system consisting of Eqs.~\eqref{eq:electronFractionDiscrete}, \eqref{eq:internalEnergyDiscrete}, \eqref{eq:neutrinoDiscreteResidualForm}, and \eqref{eq:antineutrinoDiscreteResidualForm} in the compact form
+\begin{equation}
+  \vect{F}(\vect{U}) = 0.
+  \label{eq:nonlinearSystemResidualForm}
+\end{equation}
+
+\subsection{Newton's Method}
+
+Newton's method if given by
+\begin{itemize}
+  \item[1.] Set $\vect{U}^{[0]} = \vect{U}^{n}$
+  \item[2.] For $k=1,\ldots,M$ compute
+  \begin{equation}
+    \vect{U}^{[k]}=\vect{U}^{[k-1]} + \delta\vect{U}^{[k-1]}
+  \end{equation}
+  \item[3.] Set $\vect{U}^{n+1}=\vect{U}^{[M]}$,
+\end{itemize}
+where
+\begin{equation}
+  \delta\vect{U}^{[k]} = - \vect{J}(\vect{U}^{[k]})^{-1}\,\vect{F}(\vect{U}^{[k]}), \quad\text{with}\quad \vect{J}(\vect{U}^{[k]})=\vect{F}'(\vect{U}^{[k]}),
+\end{equation}
+and where the number of iterations $M$ is given by suitable convergence criteria.  
+
+From Eq.~\eqref{eq:electronFractionDiscrete}, the elements of the Jacobian matrix are
+\begin{align}
+  \pderiv{F_{Y_{e}}}{Y_{e}}
+  &=\f{1}{Y_{e}^{n}}, \\
+  \pderiv{F_{Y_{e}}}{\epsilon}
+  &=0, \\
+  \pderiv{F_{Y_{e}}}{\mathcal{J}_{j}}
+  &=\f{\hat{w}_{j}^{(2)}}{S_{Y_{e}}}, \\
+  \pderiv{F_{Y_{e}}}{\bar{\mathcal{J}}_{j}}
+  &=-\f{\hat{w}_{j}^{(2)}}{S_{Y_{e}}}.  
+\end{align}
+From Eq.~\eqref{eq:internalEnergyDiscrete}, the elements of the Jacobian matrix are
+\begin{align}
+  \pderiv{F_{\epsilon}}{Y_{e}}
+  &=0, \\
+  \pderiv{F_{\epsilon}}{\epsilon}
+  &=\f{1}{\epsilon^{n}}, \\
+  \pderiv{F_{\epsilon}}{\mathcal{J}_{j}}
+  &=\f{\hat{w}_{j}^{(3)}}{S_{\epsilon}}, \\
+  \pderiv{F_{\epsilon}}{\bar{\mathcal{J}}_{j}}
+  &=\f{\hat{w}_{j}^{(3)}}{S_{\epsilon}}
+\end{align}
+From Eq.~\eqref{eq:neutrinoDiscreteResidualForm}, the elements of the Jacobian are
+\begin{align}
+  \pderiv{\mathcal{F}_{i}}{Y_{e}}
+  &=\dt\,\Big(\,\pderiv{\big[\chi\big]_{i}}{Y_{e}}\,\mathcal{J}_{i}-\pderiv{\big[\eta\big]_{i}}{Y_{e}}\,\Big), \\
+  \pderiv{\mathcal{F}_{i}}{\epsilon}
+  &=\dt\,\Big(\,\pderiv{\big[\chi\big]_{i}}{\epsilon}\,\mathcal{J}_{i}-\pderiv{\big[\eta\big]_{i}}{\epsilon}\,\Big), \\
+  \pderiv{\mathcal{F}_{i}}{\mathcal{J}_{j}}
+  &=\big(\,1+\dt\,\big[\chi\big]_{i}\,\big)\,\delta_{ij}
+  +\dt\,\Big(\,\pderiv{\big[\chi\big]_{i}}{\mathcal{J}_{j}}\,\mathcal{J}_{i}-\pderiv{\big[\eta\big]_{i}}{\mathcal{J}_{j}}\,\Big), \\
+  \pderiv{\mathcal{F}_{i}}{\bar{\mathcal{J}}_{j}}
+  &=\dt\,\Big(\,\pderiv{\big[\chi\big]_{i}}{\bar{\mathcal{J}}_{j}}\,\mathcal{J}_{i}-\pderiv{\big[\eta\big]_{i}}{\bar{\mathcal{J}}_{j}}\,\Big).  
+\end{align}
+The derivatives of neutrino emissivities and opacities with respect to $Y_{e}$ are
+\begin{align}
+  \pderiv{\big[\eta\big]_{i}}{Y_{e}}
+  &=\big[\chi_{\EC}\big]_{i}^{n}\,\pderiv{\mathcal{J}_{0,i}}{Y_{e}} \nonumber \\
+  &\hspace{12pt}
+  +\sum_{q}w_{q}^{(2)}\,\pderiv{\big[\Phi_{\NES,0}^{\In}\big]_{qi}}{Y_{e}}\,\mathcal{J}_{q}^{n+1}
+  +\sum_{q}w_{q}^{(2)}\,\pderiv{\big[\Phi_{\TP,0}^{\PROD}\big]_{qi}}{Y_{e}}\,\big(1-\bar{\mathcal{J}}_{q}^{n+1}\big) , \\
+  \pderiv{\big[\chi\big]_{i}}{Y_{e}}
+  &=\sum_{q}w_{q}^{(2)}\,\Big\{\,\pderiv{\big[\Phi_{\NES,0}^{\In}\big]_{qi}}{Y_{e}}\,\mathcal{J}_{q}^{n+1}+\pderiv{\big[\Phi_{\NES,0}^{\Out}\big]_{qi}}{Y_{e}}\,\big(1-\mathcal{J}_{q}^{n+1}\big)\,\Big\} \nonumber \\
+  &\hspace{12pt}
+  +\sum_{q}w_{q}^{(2)}\Big\{\,\pderiv{\big[\Phi_{\TP,0}^{\PROD}\big]_{qi}}{Y_{e}}\,\big(1-\bar{\mathcal{J}}_{q}^{n+1}\big)+\pderiv{\big[\Phi_{\TP,0}^{\ANN}\big]_{qi}}{Y_{e}}\,\bar{\mathcal{J}}_{q}^{n+1}\,\Big\}.  
+\end{align}
+The derivatives of neutrino emissivities and opacities with respect to $\epsilon$ are
+\begin{align}
+  \pderiv{\big[\eta\big]_{i}}{\epsilon}
+  &=\big[\chi_{\EC}\big]_{i}^{n}\,\pderiv{\mathcal{J}_{0,i}}{\epsilon} \nonumber \\
+  &\hspace{12pt}
+  +\sum_{q}w_{q}^{(2)}\,\pderiv{\big[\Phi_{\NES,0}^{\In}\big]_{qi}}{\epsilon}\,\mathcal{J}_{q}^{n+1}
+  +\sum_{q}w_{q}^{(2)}\,\pderiv{\big[\Phi_{\TP,0}^{\PROD}\big]_{qi}}{\epsilon}\,\big(1-\bar{\mathcal{J}}_{q}^{n+1}\big) , \\
+  \pderiv{\big[\chi\big]_{i}}{\epsilon}
+  &=\sum_{q}w_{q}^{(2)}\,\Big\{\,\pderiv{\big[\Phi_{\NES,0}^{\In}\big]_{qi}}{\epsilon}\,\mathcal{J}_{q}^{n+1}+\pderiv{\big[\Phi_{\NES,0}^{\Out}\big]_{qi}}{\epsilon}\,\big(1-\mathcal{J}_{q}^{n+1}\big)\,\Big\} \nonumber \\
+  &\hspace{12pt}
+  +\sum_{q}w_{q}^{(2)}\Big\{\,\pderiv{\big[\Phi_{\TP,0}^{\PROD}\big]_{qi}}{\epsilon}\,\big(1-\bar{\mathcal{J}}_{q}^{n+1}\big)+\pderiv{\big[\Phi_{\TP,0}^{\ANN}\big]_{qi}}{\epsilon}\,\bar{\mathcal{J}}_{q}^{n+1}\,\Big\}.  
+\end{align}
+The derivatives of neutrino emissivities and opacities with respect to $\mathcal{J}_{j}$ are
+\begin{align}
+  \pderiv{\big[\eta\big]_{i}}{\mathcal{J}_{j}}
+  &=w^{(2)}_{j}\,\big[\Phi_{\NES,0}^{\In}\big]_{ji}, \\
+  \pderiv{\big[\chi\big]_{i}}{\mathcal{J}_{j}}
+  &=w^{(2)}_{j}\,\Big(\,\big[\Phi_{\NES,0}^{\In}\big]_{ji}-\big[\Phi_{\NES,0}^{\Out}\big]_{ji}\,\Big).  
+\end{align}
+The derivatives of neutrino emissivities and opacities with respect to $\bar{\mathcal{J}}_{j}$ are
+\begin{align}
+  \pderiv{\big[\eta\big]_{i}}{\bar{\mathcal{J}}_{j}}
+  &=-w_{j}^{(2)}\,\big[\Phi_{\TP,0}^{\PROD}\big]_{ji} , \\
+  \pderiv{\big[\chi\big]_{i}}{\bar{\mathcal{J}}_{j}}
+  &=w_{j}^{(2)}\,\big(\,\big[\Phi_{\TP,0}^{\ANN}\big]_{ji}-\big[\Phi_{\TP,0}^{\PROD}\big]_{ji}\,\big) .
+\end{align}
+
+\bibliographystyle{plain}
+\bibliography{../../References/references.bib}
+
+\appendix
+
+\section{Kernel Derivatives}
+
+NES and pair kernels are tabulated in terms of temperature $T$ and degeneracy parameter $\eta=\mu_{e}/kT$
+\begin{equation}
+  \Phi=\Phi(T,\eta).  
+\end{equation}
+For solvers based on Newton's method, we need derivatives with respect to internal energy $\epsilon$ and electron fraction $Y_{e}$.  
+\begin{align}
+  d\Phi 
+  &= \Big(\pderiv{\Phi}{T}\Big)_{\eta}\,dT+\Big(\pderiv{\Phi}{\eta}\Big)_{T}\,d\eta \nonumber \\
+  &=\f{1}{kT}\Big(\pderiv{\Phi}{\eta}\Big)_{T}\,\Big(\pderiv{\mu_{e}}{\rho}\Big)_{T,Y_{e}}\,d\rho
+  +\Big\{\,\Big(\pderiv{\Phi}{T}\Big)_{\eta} + \Big(\pderiv{\Phi}{\eta}\Big)_{T}\,\Big[\,\f{1}{kT}\Big(\pderiv{\mu_{e}}{T}\Big)_{\rho,Y_{e}}-\f{\eta}{T}\,\Big]\,\Big\}\,dT \nonumber \\
+  &\hspace{12pt}
+  +\f{1}{kT}\Big(\pderiv{\Phi}{\eta}\Big)_{T}\,\Big(\pderiv{\mu_{e}}{Y_{e}}\Big)_{\rho,T}\,dY_{e},
+  \label{eq:variation_T_Eta}
+\end{align}
+where we used
+\begin{align}
+  d\eta &= \Big(\pderiv{\eta}{\rho}\Big)_{T,Y_{e}}\,d\rho+\Big(\pderiv{\eta}{T}\Big)_{\rho,Y_{e}}\,dT+\Big(\pderiv{\eta}{Y_{e}}\Big)_{\rho,T}\,dY_{e} \nonumber \\
+  &=\f{1}{kT}\Big(\pderiv{\mu_{e}}{\rho}\Big)_{T,Y_{e}}\,d\rho 
+  + \Big[\,\f{1}{kT}\Big(\pderiv{\mu_{e}}{T}\Big)_{\rho,Y_{e}}-\f{\eta}{T}\,\Big]\,dT + \f{1}{kT}\Big(\pderiv{\mu_{e}}{Y_{e}}\Big)_{\rho,T}\,dY_{e}.  
+\end{align}
+
+\begin{align}
+  d\Phi
+  &=\Big(\pderiv{\Phi}{\epsilon}\Big)_{Y_{e}}\,d\epsilon+\Big(\pderiv{\Phi}{Y_{e}}\Big)_{\epsilon}\,dY_{e} \nonumber \\
+  &=\Big(\pderiv{\Phi}{\epsilon}\Big)_{Y_{e}}\,\Big(\pderiv{\epsilon}{\rho}\Big)_{T,Y_{e}}\,d\rho
+  +\Big(\pderiv{\Phi}{\epsilon}\Big)_{Y_{e}}\,\Big(\pderiv{\epsilon}{T}\Big)_{\rho,Y_{e}}\,dT \nonumber \\
+  &\hspace{12pt}
+  +\Big[\,\Big(\pderiv{\Phi}{\epsilon}\Big)_{Y_{e}}\,\Big(\pderiv{\epsilon}{Y_{e}}\Big)_{\rho,T}+\Big(\pderiv{\Phi}{Y_{e}}\Big)_{\epsilon}\,\Big]\,dY_{e},
+  \label{eq:variation_Epsilon_Ye}
+\end{align}
+where we used
+\begin{equation}
+  d\epsilon
+  =\Big(\pderiv{\epsilon}{\rho}\Big)_{T,Y_{e}}\,d\rho+\Big(\pderiv{\epsilon}{T}\Big)_{\rho,Y_{e}}\,dT+\Big(\pderiv{\epsilon}{Y_{e}}\Big)_{\rho,T}\,dY_{e}
+\end{equation}
+Comparing Eq.~\eqref{eq:variation_T_Eta} and Eq.~\eqref{eq:variation_Epsilon_Ye}, we have
+\begin{align}
+  \Big(\pderiv{\Phi}{T}\Big)_{\eta} + \Big[\,\f{1}{kT}\Big(\pderiv{\mu_{e}}{T}\Big)_{\rho,Y_{e}}-\f{\eta}{T}\,\Big]\,\Big(\pderiv{\Phi}{\eta}\Big)_{T}
+  &=\Big(\pderiv{\epsilon}{T}\Big)_{\rho,Y_{e}}\,\Big(\pderiv{\Phi}{\epsilon}\Big)_{Y_{e}}, \\
+  \f{1}{kT}\Big(\pderiv{\mu_{e}}{Y_{e}}\Big)_{\rho,T}\,\Big(\pderiv{\Phi}{\eta}\Big)_{T}
+  &=\Big(\pderiv{\epsilon}{Y_{e}}\Big)_{\rho,T}\,\Big(\pderiv{\Phi}{\epsilon}\Big)_{Y_{e}}+\Big(\pderiv{\Phi}{Y_{e}}\Big)_{\epsilon}
+\end{align}
+Solving for $(\partial\Phi/\partial\epsilon)_{Y_{e}}$ and $(\partial\Phi/\partial Y_{e})_{\epsilon}$ we obtain
+\begin{align}
+  \Big(\pderiv{\Phi}{\epsilon}\Big)_{Y_{e}}
+  &=\Big[\,\f{1}{kT}\Big(\pderiv{\mu_{e}}{T}\Big)_{\rho,Y_{e}}-\f{\eta}{T}\,\Big]/\Big(\pderiv{\epsilon}{T}\Big)_{\rho,Y_{e}}\,\Big(\pderiv{\Phi}{\eta}\Big)_{T} + \Big(\pderiv{\epsilon}{T}\Big)_{\rho,Y_{e}}^{-1}\,\Big(\pderiv{\Phi}{T}\Big)_{\eta}, \\
+  \Big(\pderiv{\Phi}{Y_{e}}\Big)_{\epsilon}
+  &=\Big\{\,\f{1}{kT}\Big(\pderiv{\mu_{e}}{Y_{e}}\Big)_{\rho,T} - \Big(\pderiv{\epsilon}{Y_{e}}\Big)_{\rho,T}\,\Big[\,\f{1}{kT}\Big(\pderiv{\mu_{e}}{T}\Big)_{\rho,Y_{e}}-\f{\eta}{T}\,\Big]/\Big(\pderiv{\epsilon}{T}\Big)_{\rho,Y_{e}}\,\Big\}\,\Big(\pderiv{\Phi}{\eta}\Big)_{T} \nonumber \\
+  &\hspace{12pt}
+  - \Big\{\,\Big(\pderiv{\epsilon}{Y_{e}}\Big)_{\rho,T}/\Big(\pderiv{\epsilon}{T}\Big)_{\rho,Y_{e}}\,\Big\}\,\Big(\pderiv{\Phi}{T}\Big)_{\eta}.
+\end{align}
+
+\end{document}

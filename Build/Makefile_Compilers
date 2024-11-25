@@ -1,0 +1,24 @@
+include $(THORNADO_DIR)/Build/Machines/Makefile_$(MACHINE)
+
+FLAGS_$(OPT_LEVEL) = $($(OPT_LEVEL)) $(OPENMP) $(OPENACC)
+
+INCLUDE            = $(INCLUDE_HDF5) $(INCLUDE_LAPACK) $(INCLUDE_PETSC)
+LIBRARIES          = $(LIBRARIES_HDF5) $(LIBRARIES_LAPACK) $(LIBRARIES_PETSC)
+
+ifeq ($(USE_GPU),TRUE)
+    ifeq ($(USE_CUDA),TRUE)
+        INCLUDE   += $(INCLUDE_CUDA)
+        LIBRARIES += $(LIBRARIES_CUDA)
+    else ifeq ($(USE_HIP),TRUE)
+        INCLUDE   += $(INCLUDE_ROCM)
+        LIBRARIES += $(LIBRARIES_ROCM)
+    endif
+    ifeq ($(USE_ONEMKL),TRUE)
+        INCLUDE   += $(INCLUDE_ONEMKL)
+        LIBRARIES += $(LIBRARIES_ONEMKL)
+    endif
+    ifeq ($(USE_MAGMA),TRUE)
+        INCLUDE   += $(INCLUDE_MAGMA)
+        LIBRARIES += $(LIBRARIES_MAGMA)
+    endif
+endif

@@ -1,0 +1,37 @@
+## Makefile definitions for rmurph
+
+C       = mpic++ --c++11
+FORTRAN = mpif90 -cpp
+FLINKER = mpif90
+
+DEBUG    = -g -ffpe-trap=invalid,zero,overflow -Wall -fcheck=all -fbacktrace -fbounds-check -fallow-argument-mismatch
+OPTIMIZE = -g -O2
+
+SUFFIX_f90 =
+
+MDEFS =
+PP    = -D
+
+ifeq ($(USE_OMP),TRUE)
+  OPENMP = -fopenmp
+else ifeq ($(USE_OMP_OL),TRUE)
+  OPENMP = -fopenmp
+endif
+
+ifeq ($(USE_OACC),TRUE)
+  OPENACC = -fopenacc
+endif
+
+INCLUDE_CUDA     =
+INCLUDE_HDF5     = -I/usr/local/Cellar/hdf5/1.12.0_1/include
+INCLUDE_LAPACK   = -framework Accelerate
+INCLUDE_MAGMA    =
+INCLUDE_PETSC    =
+INCLUDE_ROCM     =
+
+LIBRARIES_CUDA     =
+LIBRARIES_HDF5     = -L/usr/local/Cellar/hdf5/1.12.0_1/lib -lhdf5_fortran -lhdf5
+LIBRARIES_LAPACK   = -framework Accelerate
+LIBRARIES_MAGMA    =
+LIBRARIES_PETSC    =
+LIBRARIES_ROCM     =

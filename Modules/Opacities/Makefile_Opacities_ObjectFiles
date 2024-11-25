@@ -1,0 +1,6 @@
+OPACITIES = \
+  OpacityModule_IDEAL.o \
+  OpacityModule_TABLE.o \
+  OpacityModule.o \
+  NeutrinoOpacitiesModule.o \
+  NeutrinoOpacitiesComputationModule.o

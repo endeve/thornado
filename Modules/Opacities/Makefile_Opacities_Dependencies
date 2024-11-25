@@ -1,0 +1,54 @@
+OpacityModule_IDEAL.o: \
+  KindModule.o \
+  OpacityModule_IDEAL.f90
+
+ifneq ($(MICROPHYSICS),WEAKLIB)
+OpacityModule_TABLE.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  MeshModule.o \
+  OpacityModule_TABLE.F90
+else ifdef LIBNAME
+OpacityModule_TABLE.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  MeshModule.o \
+  OpacityModule_TABLE.F90
+else
+OpacityModule_TABLE.o: \
+  wlIOModuleHDF.o \
+  wlOpacityTableIOModuleHDF.o \
+  wlOpacityTableModule.o \
+  wlInterpolationModule.o \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  MeshModule.o \
+  OpacityModule_TABLE.F90
+endif
+
+OpacityModule.o: \
+  KindModule.o \
+  OpacityModule_IDEAL.o \
+  OpacityModule_TABLE.o \
+  OpacityModule.f90
+
+NeutrinoOpacitiesModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  NeutrinoOpacitiesModule.f90
+
+NeutrinoOpacitiesComputationModule.o: \
+  KindModule.o \
+  PhysicalConstantsModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  LinearAlgebraModule.o \
+  ReferenceElementModuleE.o \
+  ReferenceElementModuleE_Lagrange.o \
+  EquationOfStateModule_TABLE.o \
+  OpacityModule_TABLE.o \
+  RadiationFieldsModule.o \
+  NeutrinoOpacitiesComputationModule.F90

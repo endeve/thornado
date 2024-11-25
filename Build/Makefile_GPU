@@ -1,0 +1,71 @@
+ifeq ($(USE_OACC),TRUE)
+   USE_GPU = TRUE
+endif
+ifeq ($(USE_OMP_OL),TRUE)
+   USE_GPU = TRUE
+endif
+ifeq ($(USE_CUBLAS),TRUE)
+   USE_GPU = TRUE
+   USE_CUDA = TRUE
+   USE_HIP = FALSE
+endif
+ifeq ($(USE_ROCM),TRUE)
+   USE_GPU = TRUE
+   USE_CUDA = FALSE
+   USE_HIP = TRUE
+endif
+ifeq ($(USE_ONEMKL),TRUE)
+   USE_GPU = TRUE
+   USE_CUDA = FALSE
+   USE_HIP = FALSE
+endif
+ifeq ($(USE_MAGMA),TRUE)
+   USE_GPU = TRUE
+endif
+
+USE_GPU ?= FALSE
+ifeq ($(USE_GPU),TRUE)
+
+   USE_OMP   ?= FALSE
+
+   USE_HIP   ?= FALSE
+   ifeq ($(USE_HIP),TRUE)
+      USE_CUDA  ?= FALSE
+   else
+      USE_CUDA  ?= TRUE
+   endif
+
+   USE_OACC  ?= FALSE
+   ifeq ($(USE_OACC),TRUE)
+      USE_OMP_OL ?= FALSE
+   else
+      USE_OMP_OL ?= TRUE
+   endif
+
+   USE_ONEMKL ?= FALSE
+
+   USE_MAGMA ?= FALSE
+   ifeq ($(USE_MAGMA),TRUE)
+      USE_CUBLAS ?= FALSE
+      USE_ROCM   ?= FALSE
+   else
+      ifeq ($(USE_CUDA),TRUE)
+         USE_CUBLAS ?= TRUE
+      else
+         USE_ROCM   ?= TRUE
+      endif
+   endif
+
+else
+
+   USE_OMP    ?= FALSE
+   USE_OACC   ?= FALSE
+   USE_OMP_OL ?= FALSE
+   USE_MAGMA  ?= FALSE
+   USE_CUBLAS ?= FALSE
+   USE_ROCM   ?= FALSE
+   USE_ONEMKL ?= FALSE
+   USE_CUDA   ?= FALSE
+   USE_HIP    ?= FALSE
+
+endif

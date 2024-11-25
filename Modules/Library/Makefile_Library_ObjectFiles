@@ -1,0 +1,55 @@
+LIBRARY = \
+  ArrayUtilitiesModule.o \
+  DeviceModule.o \
+  TimersModule.o \
+  TimersModule_Euler.o \
+  LinearAlgebraModule.o \
+  QuadratureModule.o \
+  UtilitiesModule.o \
+  LagrangePolynomialsModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleE.o \
+  ReferenceElementModuleZ.o \
+  ReferenceElementModule.o \
+  PolynomialBasisModuleX_Lagrange.o \
+  PolynomialBasisModuleX_Legendre.o \
+  PolynomialBasisModuleZ_Lagrange.o \
+  PolynomialBasisModuleZ_Legendre.o \
+  PolynomialBasisModule_Lagrange.o \
+  PolynomialBasisModule_Legendre.o \
+  ReferenceElementModuleX_Lagrange.o \
+  ReferenceElementModuleE_Lagrange.o \
+  ReferenceElementModuleZ_Lagrange.o \
+  ReferenceElementModule_Lagrange.o \
+  PolynomialBasisMappingModule.o \
+  SubcellReconstructionModule.o \
+  MemoryProfilingModule.o
+
+ifeq ($(USE_CUDA),TRUE)
+LIBRARY += \
+  CudaModule.o
+else ifeq ($(USE_HIP),TRUE)
+LIBRARY += \
+  HipModule.o
+endif
+
+ifeq ($(USE_OACC),TRUE)
+LIBRARY += \
+  OpenACCModule.o
+else ifeq ($(USE_OMP_OL),TRUE)
+LIBRARY += \
+  OpenMPModule.o
+endif
+
+ifeq ($(USE_CUBLAS),TRUE)
+LIBRARY += \
+  CublasModule.o CusolverModule.o CusparseModule.o
+else ifeq ($(USE_ROCM),TRUE)
+LIBRARY += \
+  RocblasModule.o RocsolverModule.o RocsparseModule.o HipblasModule.o HipsparseModule.o
+endif
+
+ifeq ($(USE_MAGMA),TRUE)
+LIBRARY += \
+  MagmaModule.o
+endif

@@ -1,0 +1,8 @@
+PhysicalConstantsModule.o: \
+  KindModule.o \
+  PhysicalConstantsModule.f90
+
+UnitsModule.o: \
+  KindModule.o \
+  PhysicalConstantsModule.o \
+  UnitsModule.f90

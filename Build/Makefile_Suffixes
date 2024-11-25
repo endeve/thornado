@@ -1,0 +1,8 @@
+.SUFFIXES: .f95 .f90 .F90 .f .c
+
+.f90.o:
+	$(FORTRAN) -c $(DEFINES) $(FLAGS) $(INCLUDE) $(SUFFIX_f90) $<
+.F90.o:
+	$(FORTRAN) -c $(DEFINES) $(FLAGS) $(INCLUDE) $(SUFFIX_f90) $<
+.c.o:
+	$(C) -c $(FLAGS) $(INCLUDE) -I$(THORNADO_DIR)/SandBox/DeleptonizationWave $<

@@ -1,0 +1,91 @@
+\section{Introduction}
+\label{sec:intro}
+
+In this paper we design numerical methods to solve a two-moment model that governs the transport of particles obeying Fermi-Dirac statistics (e.g., neutrinos), with the ultimate target being nuclear astrophysics applications (e.g., neutrino transport in core-collapse supernovae and compact binary mergers).  
+The numerical method is based on the discontinuous Galerkin (DG) method for spatial discretization and implicit-explicit (IMEX) methods for time integration, and it is designed to preserve certain physical constraints of the underlying model.  
+The latter property is achieved by considering the spatial and temporal discretization together with the closure procedure for the two-moment model.  
+
+In many applications, the particle mean free path is comparable to or exceeds other characteristic length scales in the system under consideration, and non-equilibrium effects may become important.  
+In these situations, a kinetic description based on a particle distribution function may be required.  
+The distribution function, a phase space density $f$ depending on momentum $\vect{p}\in\bbR^{3}$ and position $\vect{x}\in\bbR^{3}$, is defined such that $f(\vect{p},\vect{x},t)$ gives at time $t\in\bbR^{+}$ the number of particles in the phase space volume element $d\vect{p}\,d\vect{x}$ (i.e., $d\cN=f\,d\vect{p}\,d\vect{x}$).  
+The evolution of the distribution function is governed by the Boltzmann equation, which states a balance between phase space advection and particle collisions (see, e.g., \cite{braginskii_1965,chapmanCowling_1970,lifshitzPitaevskii_1981}).  
+
+Solving the Boltzmann equation numerically for $f$ is challenging, in part due to the high dimensionality of phase space.  
+To reduce the dimensionality of the problem and make it more computationally tractable, one may instead solve (approximately) for a finite number of angular moments $\vect{m}_{N}=(m^{(0)},m^{(1)},\ldots,m^{(N)})^{T}$ of the distribution function, defined as
+\begin{equation}
+  m^{(k)}(\varepsilon,\vect{x},t)=\f{1}{4\pi}\int_{\bbS^{2}}f(\omega,\varepsilon,\vect{x},t)\,g^{(k)}(\omega)\,d\omega,
+\end{equation}
+where $\varepsilon=|\vect{p}|$ is the particle energy, $\omega$ is a point on the unit sphere $\bbS^{2}$ indicating the particle propagation direction, and $g^{(k)}$ are momentum space angular weighing functions.  
+In problems where collisions are sufficiently frequent, solving a \emph{truncated moment problem} can provide significant reductions in computational cost since only a few moments are needed to represent the solution accurately.  
+On the other hand, in problems where collisions do not sufficiently isotropize the distribution function, more moments may be needed.  
+In the two-moment model considered here ($N=1$), angular moments representing the particle density and flux (or energy density and momentum) are solved for.  
+Two-moment models for relativistic systems appropriate for nuclear astrophysics applications have been discussed in, e.g., \cite{lindquist_1966,andersonSpiegel_1972,thorne_1981,shibata_etal_2011,cardall_etal_2013a}.  
+However, in this paper, for simplicity (and clarity), we consider a non-relativistic model, leaving extensions to relativistic systems for future work.  
+
+In a truncated moment model, the equation governing the evolution of the \mbox{$N$-th} moment $m^{(N)}$ contains higher moments $\{m^{(k)}\}_{k=N+1}^{M}$ ($M>N$), which must be specified in order to form a closed system of equations.  
+For the two-moment model, the symmetric rank-two Eddington tensor (proportional to the pressure tensor) must be specified.  
+Approaches to this \emph{closure problem} include setting $m^{(k)}=0$, for $k>N$ ($P_N$ equations \cite{brunnerHolloway_2005} and filtered versions thereof \cite{mcclarrenHauck_2010,laboure_etal_2016}), Eddington approximation (when $N=0$) \cite{mihalasMihalas_1999}, Kershaw-type closure \cite{kershaw_1976}, and maximum entropy closure \cite{minerbo_1978,cernohorskyBludman_1994,olbrant_etal_2013}.  
+The closure procedure often results in a system of nonlinear hyperbolic conservation laws, which can be solved using suitable numerical methods (e.g., \cite{leveque_1992}).  
+
+One challenge in solving the closure problem is constructing a sequence of moments that are consistent with a positive distribution function, which typically implies algebraic constraints on the moments \cite{kershaw_1976,levermore_1984}.  
+Moments satisfying these constraints are called \emph{realizable moments} (e.g., \cite{levermore_1996}).  
+When evolving a truncated moment model numerically, maintaining realizable moments is challenging, but necessary in order to ensure the well-posedness of the closure procedure \cite{levermore_1996,junk_1998,hauck_2008}.  
+In addition to putting the validity of the numerical results into question, failure to maintain moment realizability in a numerical model may, in order to continue a simulation, require ad hoc post-processing steps with undesirable consequences such as loss of conservation.  
+
+Here we consider a two-moment model for particles governed by Fermi-Dirac statistics.  
+It is well known from the two-moment model for particles governed by Maxwell-Boltzmann statistics (``classical'' particles with $f\ge0$), that the particle density is nonnegative and the magnitude of the flux vector is bounded by the particle density.  
+(There are further constraints on the components of the Eddington tensor \cite{levermore_1984}.)  
+Furthermore, the set of realizable moments generated by the particle density and flux vector constitutes a convex cone \cite{olbrant_etal_2012}.  
+In the fermionic case, there is also an upper bound on the distribution function (e.g., $f\le1$) because Pauli's exclusion principle prevents particles from occupying the same microscopic state.  
+The fermionic two-moment model has recently been studied theoretically in the context of maximum entropy closures \cite{lareckiBanach_2011,banachLarecki_2013,banachLarecki_2017b} and Kershaw-type closures \cite{banachLarecki_2017a}.  
+Because of the upper bound on the distribution function, the algebraic constraints on realizable moments differ from the classical case with no upper bound, and can lead to significantly different dynamics when the occupancy is high (i.e., when $f$ is close to its upper bound).  
+In the fermionic case, the set of realizable moments generated by the particle density and flux vector is also convex. 
+It is ``eye-shaped'' (as will be shown later; cf. Figure~\ref{fig:RealizableSetFermionic} in Section~\ref{sec:realizability}) and tangent to the classical realizability cone on the end representing low occupancy, but is much more restricted for high occupancy.  
+
+In this paper, the two-moment model is discretized in space using high-order Discontinuous Galerkin (DG) methods (e.g., \cite{cockburnShu_2001,hesthavenWarburton_2008}).  
+DG methods combine elements from both spectral and finite volume methods and are an attractive option for solving hyperbolic partial differential equations (PDEs).  
+They achieve high-order accuracy on a compact stencil; i.e., data is only communicated with nearest neighbors, regardless of the formal order of accuracy, which can lead to a high computation to communication ratio, and favorable parallel scalability on heterogeneous architectures has been demonstrated \cite{klockner_etal_2009}.  
+Furthermore, they can easily be applied to problems involving curvilinear coordinates (e.g., beneficial in numerical relativity \cite{teukolsky_2016}).  
+Importantly, DG methods exhibit favorable properties when collisions with a background are included, as they recover the correct asymptotic behavior in the diffusion limit, characterized by frequent collisions (e.g., \cite{larsenMorel_1989,adams_2001,guermondKanschat_2010}).  
+The DG method was introduced in the 1970s by Reed \& Hill \cite{reedHill_1973} to solve the neutron transport equation, and has undergone remarkable developments since then (see, e.g., \cite{shu_2016} and references therein).  
+
+We are concerned with the development and application of DG methods for the fermionic two-moment model that can preserve the aforementioned algebraic constraints and ensure realizable moments, provided the initial condition is realizable.  
+Our approach is based on the constraint-preserving (CP) framework introduced in \cite{zhangShu_2010a}, and later extended to the Euler equations of gas dynamics in \cite{zhangShu_2010b}.  
+(See, e.g., \cite{xing_etal_2010,zhangShu_2011,olbrant_etal_2012,cheng_etal_2013,zhang_etal_2013,endeve_etal_2015,wuTang_2015} for extensions and applications to other systems.)  
+The main ingredients include (1) a realizability-preserving update for the cell averaged moments based on forward Euler time stepping, which evaluates the polynomial representation of the DG method in a finite number of quadrature points in the local elements and results in a Courant-Friedrichs-Lewy (CFL) condition on the time step; (2) a limiter to modify the polynomial representation to ensure that the algebraic constraints are satisfied point-wise without changing the cell average of the moments; and (3) a time stepping method that can be expressed as a convex combination of Euler steps and therefore preserves the algebraic constraints (possibly with a modified CFL condition).  
+As such, our method is an extension of the realizability-preserving scheme developed by Olbrant el al. \cite{olbrant_etal_2012} for the classical two-moment model.  
+
+The DG discretization leaves the temporal dimension continuous.  
+This semi-discretization leads to a system of ordinary differential equations (ODEs), which can be integrated with standard ODE solvers (i.e., the method of lines approach to solving PDEs).  
+We use implicit-explicit (IMEX) Runge-Kutta (RK) methods \cite{ascher_etal_1997,pareschiRusso_2005} to integrate the two-moment model forward in time.  
+This approach is motivated by the fact that we can resolve time scales associated with particle streaming terms in the moment equations, which will be integrated with explicit methods, while terms associated with collisional interactions with the background induce fast time scales that we do not wish to resolve, and will be integrated with implicit methods.  
+This splitting has some advantages when solving kinetic equations since the collisional interactions may couple across momentum space, but are local in position space, and are easier to parallelize than a fully implicit approach.  
+
+The CP framework of \cite{zhangShu_2010a} achieves high-order (i.e., greater than first-order) accuracy in time by employing strong stability-preserving explicit Runge-Kutta (SSP-RK) methods \cite{shuOsher_1988,gottlieb_etal_2001}, which can be written as a convex combination of forward Euler steps.  
+Unfortunately, this strategy to achieve high-order temporal accuracy does not work as straightforwardly for standard IMEX Runge-Kutta (IMEX-RK) methods because implicit SSP Runge-Kutta methods with greater than first-order accuracy have time step restrictions similar to explicit methods \cite{gottlieb_etal_2001}.  
+To break this ``barrier,'' recently proposed IMEX-RK schemes \cite{chertock_etal_2015,hu_etal_2018} have resorted to first-order accuracy in favor of the SSP property in the standard IMEX-RK scheme, and recover second-order accuracy with a correction step.  
+
+We consider the application of the correction approach to the two-moment model.  
+However, with the correction step from \cite{chertock_etal_2015} we are unable to prove the realizability-preserving property without invoking an overly restrictive time step.  
+With the correction step from \cite{hu_etal_2018} the realizability-preserving property is guaranteed with a time step comparable to that of the forward Euler method applied to the explicit part of the scheme, but the resulting scheme performs poorly in the asymptotic diffusion limit.  
+Because of these challenges, we resort to first-order temporal accuracy, and propose IMEX-RK schemes that are convex-invariant with a time step equal to that of forward Euler on the explicit part, perform well in the diffusion limit, and reduce to a second-order SSP-RK scheme in the streaming limit (no collisions with the background material).  
+
+The realizability-preserving property of the DG-IMEX scheme depends sensitively on the adopted closure procedure.  
+The explicit update of the cell average can, after employing the simple Lax-Friedrichs flux and imposing a suitable CFL condition on the time step, be written as a convex combination.  
+Realizability of the updated cell average is then guaranteed from convexity arguments \cite{zhangShu_2010a}, provided all the elements in the convex combination are realizable.  
+Realizability of individual elements in the convex combination is conditional on the closure procedure (components of the Eddington tensor must be computed to evaluate numerical fluxes).  
+We prove that each element in the convex combination is realizable provided the moments involved in expressing the elements are moments of a distribution function satisfying the bounds implied by Fermi-Dirac statistics (i.e., $0\le f \le 1$).  
+For algebraic two-moment closures, which we consider, the so-called Eddington factor is given by an algebraic expression depending on the evolved moments and completely determines the components of the Eddington tensor.  
+Realizable components of the Eddington tensor demand that the Eddington factor satisfies strict lower and upper bounds (e.g., \cite{levermore_1984,lareckiBanach_2011}).  
+We discuss algebraic closures derived from Fermi-Dirac statistics that satisfy these bounds, and demonstrate with numerical experiments that the DG-IMEX scheme preserves realizability of the moments when these closures are used.  
+We also demonstrate that further approximations to algebraic two-moment closures for modeling particle systems governed by Fermi-Dirac statistics may give results that are incompatible with a bounded distribution and, therefore, unphysical.  
+The example we consider is the Minerbo closure \cite{minerbo_1978}, which can be obtained as the low occupancy limit of the maximum entropy closure of Cernohorsky \& Bludman \cite{cernohorskyBludman_1994}.  
+
+The paper is organized as follows.  
+In Section~\ref{sec:model} we present the two-moment model.  
+In Section~\ref{sec:realizability} we discuss moment realizability for the fermionic two-moment model, while algebraic moment closures are discussed in Section~\ref{sec:algebraicClosure}.  
+In Section~\ref{sec:dg} we briefly introduce the DG method for the two-moment model, while the (convex-invariant) IMEX time stepping methods we use are discussed in Section~\ref{sec:imex}.  
+The main results on the realizability-preserving DG-IMEX method for the fermionic two-moment model are worked out in Sections~\ref{sec:realizableDGIMEX} and \ref{sec:limiter}.  
+In Section~\ref{sec:limiter} we also discuss the realizability-enforcing limiter.  
+Numerical results are presented in Section~\ref{sec:numerical}, and summary and conclusions are given in Section~\ref{sec:conclusions}.  
+Additional details on the IMEX schemes are provided in Appendices.  

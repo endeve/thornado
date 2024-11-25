@@ -1,0 +1,81 @@
+##### StandingAccretionShock_Relativistic #####
+
+# For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+# For all REAL types, use "e" and not "d", i.e. 1.0e3
+
+debug.DEBUG = 0
+
+thornado.ProgramName = "StandingAccretionShock_Relativistic"
+
+thornado.Mass     = 2.0   # [Msun]
+SAS.AccretionRate = 0.3   # [Msun/s]
+SAS.ShockRadius   = 150.0 # [km]
+SAS.PreShockK     = 2.0e14 # [km]
+
+SAS.ApplyPerturbation     = 1
+SAS.PerturbationType      = "StepFunction"
+SAS.PerturbationOrder     = 0
+SAS.PerturbationAmplitude = 1.0e-3
+SAS.rPerturbationInner    = 200.0
+SAS.rPerturbationOuter    = 210.0
+SAS.ResetEndTime          = 0
+
+thornado.iRestart = -1
+
+thornado.UsePhysicalUnits = 1
+
+thornado.TallyFileNameRoot_Euler = "StandingAccretionShock_Relativistic.Tally"
+thornado.PlotFileNameRoot = "StandingAccretionShock_Relativistic.plt"
+thornado.t_end   = 1.0e+1
+thornado.iCycleD = 10
+
+thornado.dt_wrt  = 1.0e-1
+thornado.iCycleW = -1
+
+thornado.CheckpointFileNameRoot = "StandingAccretionShock_Relativistic.chk"
+thornado.dt_chk    = 1.0e+3
+thornado.iCycleChk = -1
+
+thornado.nNodes = 3
+
+thornado.bcX         = 100 00 00
+geometry.is_periodic = 0  1  1
+
+geometry.coord_sys = 2
+geometry.prob_lo   = 4.0e1 0.0               0.0
+geometry.prob_hi   = 2.25e2 3.1415926535897931 6.2831853071795862
+
+amr.n_cell                  = 64 01 01
+thornado.swX                = 01  00 00
+#amr.max_grid_size_x         = 640
+#amr.blocking_factor_x       = 640
+amr.max_level               = 3
+amr.UseFluxCorrection_Euler = 1
+amr.UseAMR                  = 0
+amr.TagCriteria             = 1.55e2 1.25e2 5.0e1
+amr.n_error_buf             = 0
+amr.ref_ratio               = 2
+
+# Slope limiter parameters
+SL.UseSlopeLimiter_Euler           = 1
+SL.SlopeLimiterMethod_Euler        = "TVD"
+SL.BetaTVD_Euler                   = 1.75e+0
+SL.BetaTVB_Euler                   = 0.00e+0
+SL.SlopeTolerance_Euler            = 1.00e-6
+SL.UseCharacteristicLimiting_Euler = 1
+SL.UseTroubledCellIndicator_Euler  = 1
+SL.LimiterThresholdParameter_Euler = 5.00e-3
+SL.UseConservativeCorrection_Euler = 1
+
+# Positivity limiter parameters
+PL.UsePositivityLimiter_Euler = 1
+PL.Min_1_Euler                = 1.0e-13
+PL.Min_2_Euler                = 1.0e-13
+
+# Equation of state parameters
+EoS.EquationOfState = "IDEAL"
+EoS.Gamma_IDEAL = 1.3333333333333333
+
+# Time-Stepping parameters
+TS.nStages = 3
+TS.CFL     = 0.5

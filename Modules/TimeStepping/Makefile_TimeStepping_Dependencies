@@ -1,0 +1,25 @@
+TimeSteppingModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  EquationOfStateModule.o \
+  InputOutputModule.o \
+  TallyModule.o \
+  GravitySolutionModule.o \
+  EulerEquationsUtilitiesModule.o \
+  FluidEvolutionModule.o \
+  RadiationEvolutionModule.o \
+  FluidRadiationCouplingModule.o \
+  BoundaryConditionsModule.o \
+  TimeSteppingModule.f90
+
+TimeSteppingModule_Explicit.o: \
+  KindModule.o \
+  UnitsModule.o \
+  InputOutputModule.o \
+  FluidRadiationCouplingSolutionModule_Explicit.o \
+  TimeSteppingModule_Explicit.f90

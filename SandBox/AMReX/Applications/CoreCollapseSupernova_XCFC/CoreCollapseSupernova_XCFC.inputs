@@ -1,0 +1,113 @@
+##### CoreCollapseSupernova_XCFC #####
+
+# For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+# For all REAL types, use "e" and not "d", i.e. 1.0e3
+
+debug.DEBUG = 0
+
+thornado.ProgramName = "CoreCollapseSupernova_XCFC"
+
+AC.ProgenitorFileName = "../../Progenitors/WH07_15M_Sun.h5"
+
+thornado.iRestart = -1
+
+thornado.UsePhysicalUnits = 1
+
+thornado.TallyFileNameRoot_Euler = "CCSN_Euler.Tally"
+thornado.PlotFileNameRoot = "XCFC.plt"
+thornado.t_end   = 3.0e+2
+thornado.iCycleD = 1
+
+thornado.dt_wrt  = 1.0e-1
+thornado.iCycleW = -1
+
+thornado.CheckpointFileNameRoot = "XCFC.chk"
+thornado.dt_chk    = 1.0e+0
+thornado.iCycleChk = -1
+
+thornado.nNodes = 2
+
+thornado.bcX         = 30 00 00
+geometry.is_periodic = 0  1  1
+
+thornado.bcE = 10
+thornado.bcZ_TwoMoment = 10 30 00 00
+
+
+thornado.nE  = 16
+thornado.swE = 01
+thornado.eL  = 0.0
+thornado.eR  = 300.0
+thornado.zoomE = 1.266038160710160
+thornado.nSpecies = 2
+
+geometry.coord_sys = 2
+geometry.prob_lo   = 000.0 0.0               0.0
+geometry.prob_hi   = 8000.0 3.1415926535897931 6.2831853071795862
+
+amr.n_cell                      = 32 01 01
+thornado.swX                    = 01  00 00
+#amr.max_grid_size_x             = 512
+#amr.blocking_factor_x           = 512
+amr.max_level                   = 0
+amr.ref_ratio                   = 2
+
+# Poseidon parameters
+GS.EvolveGravity           = 1
+poseidon.fem_degree        = 1
+poseidon.l_limit           = 0
+poseidon.max_fp_iters      = 20
+poseidon.anderson_m        = 3
+poseidon.converge_criteria = 1.0e-08
+
+# Slope limiter parameters (Euler)
+SL.UseSlopeLimiter_Euler           = 1
+SL.SlopeLimiterMethod_Euler        = "TVD"
+SL.BetaTVD_Euler                   = 1.75e+0
+SL.BetaTVB_Euler                   = 0.00e+0
+SL.SlopeTolerance_Euler            = 1.00e-6
+SL.UseCharacteristicLimiting_Euler = 0
+SL.UseTroubledCellIndicator_Euler  = 0
+SL.LimiterThresholdParameter_Euler = 5.00e-3
+SL.UseConservativeCorrection_Euler = 1
+
+# Positivity limiter parameters (Euler)
+PL.UsePositivityLimiter_Euler = 1
+
+# Slope limiter parameters (TwoMoment)
+SL.UseSlopeLimiter_TwoMoment = 1
+SL.BetaTVD_TwoMoment         = 1.75e+0
+
+# Positivity limiter parameters (TwoMoment)
+PL.UsePositivityLimiter_TwoMoment = 1
+PL.Min_1_TwoMoment                = 1.0e-50
+PL.Min_2_TwoMoment                = 1.0e-50
+
+# Timestepper parameters
+TS.EvolveEuler     = 1
+TS.EvolveTwoMoment = 1
+TS.Scheme          = "IMEX_PDARS"
+TS.CFL             = 0.5
+
+# Equation of state parameters
+EoS.EquationOfState = "TABLE"
+EoS.EosTableName = "../../EosTables/wl-EOS-SFHo-15-25-50.h5"
+
+# Opacity tables
+OP.OpacityTableName_AbEm = "../../OpacityTables/wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5"
+OP.OpacityTableName_Iso  = "../../OpacityTables/wl-Op-SFHo-15-25-50-E40-B85-Iso.h5"
+#OP.OpacityTableName_NES  = "../../OpacityTables/wl-Op-SFHo-15-25-50-E40-B85-NES.h5"
+#OP.OpacityTableName_Pair = "../../OpacityTables/wl-Op-SFHo-15-25-50-E40-B85-Pair.h5"
+
+# Non-Linear Solve Parameters
+NL.M_outer         = 3
+NL.MaxIter_outer   = 100
+NL.Rtol_outer      = 1.0e-8
+NL.M_inner         = 2
+NL.MaxIter_inner   = 100
+NL.Rtol_inner      = 1.0e-8
+NL.Include_NES     = 0
+NL.Include_Pair    = 0
+NL.Include_Brem    = 0
+NL.Include_LinCorr = 0
+NL.wMatterRHS      = 1.0 1.0 1.0 1.0 1.0 1.0

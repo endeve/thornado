@@ -1,0 +1,158 @@
+ifeq ($(USE_CUDA),TRUE)
+DeviceModule_prereqs += CudaModule.o
+else ifeq ($(USE_HIP),TRUE)
+DeviceModule_prereqs += HipModule.o
+endif
+ifeq ($(USE_OACC),TRUE)
+DeviceModule_prereqs += OpenACCModule.o
+else ifeq ($(USE_OMP_OL),TRUE)
+DeviceModule_prereqs += OpenMPModule.o
+endif
+ifeq ($(USE_CUBLAS),TRUE)
+DeviceModule_prereqs += CublasModule.o CusolverModule.o CusparseModule.o
+else ifeq ($(USE_ROCM),TRUE)
+DeviceModule_prereqs += RocblasModule.o RocsolverModule.o RocsparseModule.o HipblasModule.o HipsparseModule.o
+endif
+ifeq ($(USE_MAGMA),TRUE)
+DeviceModule_prereqs += MagmaModule.o
+endif
+
+MemoryProfilingModule.o: \
+  KindModule.o \
+  MemoryProfilingModule.f90
+
+ArrayUtilitiesModule.o: \
+  KindModule.o \
+  ArrayUtilitiesModule.F90
+
+DeviceModule.o: \
+  $(DeviceModule_prereqs) \
+  KindModule.o \
+  DeviceModule.F90
+
+TimersModule.o: \
+  KindModule.o \
+  TimersModule.f90
+
+TimersModule_Euler.o: \
+  KindModule.o \
+  TimersModule_Euler.f90
+
+LinearAlgebraModule.o: \
+  KindModule.o \
+  DeviceModule.o \
+  LinearAlgebraModule.F90
+
+QuadratureModule.o: \
+  KindModule.o \
+  QuadratureModule.f90
+
+UtilitiesModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.F90
+
+LagrangePolynomialsModule.o: \
+  KindModule.o \
+  LagrangePolynomialsModule.f90
+
+ReferenceElementModuleX.o: \
+  KindModule.o \
+  QuadratureModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.F90
+
+ReferenceElementModuleE.o: \
+  KindModule.o \
+  QuadratureModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleE.F90
+
+ReferenceElementModuleZ.o: \
+  KindModule.o \
+  QuadratureModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleZ.F90
+
+ReferenceElementModule.o: \
+  KindModule.o \
+  QuadratureModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModule.F90
+
+PolynomialBasisModuleX_Lagrange.o: \
+  KindModule.o \
+  QuadratureModule.o \
+  ProgramHeaderModule.o \
+  PolynomialBasisModuleX_Lagrange.f90
+
+PolynomialBasisModuleX_Legendre.o: \
+  KindModule.o \
+  QuadratureModule.o \
+  ProgramHeaderModule.o \
+  PolynomialBasisModuleX_Legendre.f90
+
+PolynomialBasisModuleZ_Lagrange.o: \
+  KindModule.o \
+  PolynomialBasisModuleZ_Lagrange.f90
+
+PolynomialBasisModuleZ_Legendre.o: \
+  KindModule.o \
+  PolynomialBasisModuleZ_Legendre.f90
+
+PolynomialBasisModule_Lagrange.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  QuadratureModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModule.o \
+  PolynomialBasisModule_Lagrange.f90
+
+PolynomialBasisModule_Legendre.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  PolynomialBasisModule_Legendre.f90
+
+ReferenceElementModuleX_Lagrange.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  LagrangePolynomialsModule.o \
+  ReferenceElementModuleX.o \
+  PolynomialBasisModuleX_Lagrange.o \
+  ReferenceElementModuleX_Lagrange.F90
+
+ReferenceElementModuleE_Lagrange.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleE.o \
+  PolynomialBasisModule_Lagrange.o \
+  ReferenceElementModuleE_Lagrange.F90
+
+ReferenceElementModuleZ_Lagrange.o: \
+  KindModule.o \
+  ReferenceElementModuleZ_Lagrange.F90
+
+ReferenceElementModule_Lagrange.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleE.o \
+  PolynomialBasisModule_Lagrange.o \
+  ReferenceElementModule_Lagrange.F90
+
+PolynomialBasisMappingModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  QuadratureModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  PolynomialBasisModule_Legendre.o \
+  PolynomialBasisMappingModule.f90
+
+SubcellReconstructionModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  PolynomialBasisModuleX_Lagrange.o \
+  GeometryFieldsModule.o \
+  MeshModule.o \
+  LinearAlgebraModule.o \
+  SubcellReconstructionModule.F90

@@ -1,0 +1,8 @@
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/Fields
+f90EXE_sources  += MF_FieldsModule_Geometry.f90
+f90EXE_sources  += MF_FieldsModule_Euler.f90
+f90EXE_sources  += MF_FieldsModule_TwoMoment.f90
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Fields
+F90EXE_sources  += FluidFieldsModule.F90
+F90EXE_sources  += RadiationFieldsModule.F90

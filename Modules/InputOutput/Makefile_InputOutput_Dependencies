@@ -1,0 +1,18 @@
+InputOutputUtilitiesModule.o: \
+  KindModule.o \
+  MeshModule.o \
+  InputOutputUtilitiesModule.f90
+
+InputOutputModuleHDF.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModule.o \
+  MeshModule.o \
+  InputOutputUtilitiesModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  NeutrinoOpacitiesModule.o \
+  InputOutputModuleHDF.F90

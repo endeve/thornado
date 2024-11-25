@@ -1,0 +1,76 @@
+\section{Mathematical Model}
+\label{sec:model}
+
+In this section we give a summary of the mathematical model.  
+
+\subsection{Boltzmann Equation}
+
+We consider approximate solutions to the Boltzmann equation for the transport of massless particles through a static material in Cartesian geometry, which, after scaling to dimensionless units, can be written as
+\begin{equation}
+  \pd{f}{t}+\vect{\ell}\cdot\nabla f
+  =\f{1}{\tau}\,\cC(f),
+  \label{eq:boltzmann}
+\end{equation}
+where the distribution function $f\colon(\omega,\varepsilon,\vect{x},t)\in\bbS^{2}\times\bbR^{+}\times\bbR^{3}\times\bbR^{+}\to\bbR^{+}$ gives the number of particles propagating in the direction $\omega\in\bbS^{2}:=\{\,\omega=(\thetaNu,\phiNu)~|~\thetaNu\in[0,\pi],\phiNu\in[0,2\pi)\,\}$, with energy $\varepsilon\in\bbR^{+}$, at position $\vect{x}\in\bbR^{3}$ and time $t\in\bbR^{+}$.  
+Here we use spherical momentum space coordinates $(\varepsilon,\omega)$, and the unit vector $\vect{\ell}(\omega)\in\bbR^{3}$ (independent of $\varepsilon$ and $\vect{x}$) is parallel to the particle three-momentum $\vect{p}=\varepsilon\,\vect{\ell}$.  
+We also define the energy-position coordinates $\vect{z}:=\{\varepsilon,\vect{x}\}\in\bbR^{+}\times\bbR^{3}$.  
+On the right-hand side of Eq.~\eqref{eq:boltzmann}, $\tau$ is the ratio of the particle mean-free path (due to interactions with a background) to some characteristic length scale of the problem.  
+In opaque regions, $\tau\ll1$, while for free streaming particles, $\tau\gg1$.  
+The collision operator, which models emission, absorption, and isotropic and elastic scattering, is given by
+\begin{equation}
+  \cC(f)=\xi\,\big(\,f_{0}-f\,\big)
+  +(1-\xi)\,\big(\,\f{1}{4\pi}\int_{\bbS^{2}}f\,d\omega-f\,\big),
+  \label{eq:collisionTerm}
+\end{equation}
+where $\xi=\sigma_{\Ab}/\sigma_{\Tot}\in[0,1]$ is the ratio of the absorption opacity $\sigma_{\Ab}\,(\ge0)$ to the total opacity $\sigma_{\Tot}=\sigma_{\Ab}+\sigma_{\Scatt}$, and $\sigma_{\Scatt}\,(\ge0)$ is the scattering opacity.  
+In particular, $\xi=1$ models pure emission and absorption, while $\xi=0$ models pure scattering.  
+In general, $\sigma_{\Ab}$ and $\sigma_{\Scatt}$ (and $\tau$ and $\xi$) depend on $\vect{z}$.  
+The equilibrium distribution function is denoted by $f_{0}(\vect{z})$.  
+Here, we consider transport of Fermions (e.g., neutrinos), so the equilibrium distribution function takes the form
+\begin{equation}
+  f_{0}(\vect{z})=\f{1}{e^{(\varepsilon-\mu(\vect{x}))/T(\vect{x})}+1},  
+  \label{eq:fermiDirac}
+\end{equation}
+where the temperature $T$ and the chemical potential $\mu$ depend on properties of the background.  
+
+\subsection{Angular Moment Equations: Two-Moment Model}
+
+The Boltzmann equation is often too expensive to solve directly.  
+Instead, approximate equations for angular moments of the distribution function are solved.  
+To this end, we define the angular moments of the distribution function
+\begin{equation}
+  \big\{\,\cJ,\vect{\cH},\vect{\cK}\,\big\}(\vect{z},t)
+  =\f{1}{4\pi}\int_{\bbS^{2}}f(\omega,\vect{z},t)\,\{\,1,\vect{\ell},\vect{\ell}\otimes\vect{\ell}\,\}\,d\omega.  
+  \label{eq:angularMoments}
+\end{equation}
+We refer to $\cJ$ (zeroth moment) as the particle density, $\vect{\cH}$ (first moment) as the particle flux, and $\vect{\cK}$ (second moment) as the stress tensor.  
+Note that the moments defined in Eq.~\eqref{eq:angularMoments} are \emph{spectral moments} (depending on energy as well as position and time).  
+The \emph{grey moments} (depending only on position and time) are obtained by integration over energy:
+\begin{equation}
+  \big\{\,J,\vect{H},\vect{K}\,\big\}(\vect{x},t)
+  =\int_{\bbR^{+}}\big\{\,\cJ,\vect{\cH},\vect{\cK}\,\big\}(\varepsilon,\vect{x},t)\,\varepsilon^{2}d\varepsilon.  
+\end{equation}
+
+Taking the zeroth and first moments of Eq.~\eqref{eq:boltzmann} gives the two-moment model, comprising a system of conservation laws with sources
+\begin{equation}
+  \pd{\vect{\cM}}{t}+\nabla\cdot\vect{\cF}=\f{1}{\tau}\,\vect{\cC}(\vect{\cM}),
+  \label{eq:momentEquations}
+\end{equation}
+where $\vect{\cM}=(\cJ,\vect{\cH})^{T}$ and $\vect{\cF}=(\vect{\cH},\vect{\cK})^{T}$.  
+Components of the fluxes in each coordinate direction are $\vect{\cF}^{i}=\vect{e}_{i}\cdot\vect{\cF}=(\vect{e}_{i}\cdot\vect{\cH},\vect{e}_{i}\cdot\vect{\cK})^{T}$, where $\vect{e}_{i}$ is the unit vector parallel to the $i$th coordinate direction.  
+On the right-hand side of Eq.~\eqref{eq:momentEquations}, the source term is
+\begin{equation}
+  \vect{\cC}(\vect{\cM})=\vect{\eta}-\vect{\cD}\,\vect{\cM}, 
+  \label{eq:collisionTermMoments}
+\end{equation}
+where $\vect{\eta}=(\xi\,f_{0},\vect{0})^{T}$ and $\vect{\cD}=\mbox{diag}(\xi,\vect{I})$, with $\vect{I}$ the identity matrix.  
+
+In order to close the system given by Eq.~\eqref{eq:momentEquations}, the components of the stress tensor $\vect{\cK}$ must be related to the lower moments through a closure procedure.  
+To this end, Levermore \cite{levermore_1984} defined the Eddington tensor $\vect{k}=\vect{\cK}/\cJ$ and assumed that the radiation field is symmetric about a preferred direction $\widehat{\vect{h}}=\vect{\cH}/|\vect{\cH}|$ so that
+\begin{equation}
+  \vect{k}=\f{1}{2}\big[\,\big(1-\chi\big)\,\vect{I}+\big(3\,\chi-1\big)\,\widehat{\vect{h}}\otimes\widehat{\vect{h}}\,\big],
+  \label{eq:eddingtonTensor}
+\end{equation}
+where $\chi=\chi(\cJ,|\vect{\cH}|)$ is the Eddington factor.  
+The two-moment model is then closed once the Eddington factor is determined from $\cJ$ and $\vect{\cH}$.  
+We will return to the issue of determining the Eddington factor in Section~\ref{sec:algebraicClosure}.  

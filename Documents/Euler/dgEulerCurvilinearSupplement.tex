@@ -1,0 +1,489 @@
+\documentclass[10pt,preprint]{aastex}
+
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{booktabs}
+\usepackage{mathrsfs}
+\usepackage{cite}
+\usepackage{times}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{lineno}
+\usepackage{yhmath}
+\usepackage{natbib}
+\usepackage{../definitions}
+\hypersetup{
+  bookmarksnumbered = true,
+  bookmarksopen=false,
+  pdfborder=0 0 0,         % make all links invisible, so the pdf looks good when printed
+  pdffitwindow=true,      % window fit to page when opened
+  pdfnewwindow=true, % links in new window
+  colorlinks=true,           % false: boxed links; true: colored links
+  linkcolor=blue,            % color of internal links
+  citecolor=magenta,    % color of links to bibliography
+  filecolor=magenta,     % color of file links
+  urlcolor=cyan              % color of external links
+}
+
+\usepackage{graphicx}
+\newtheorem*{remark}{Remark}
+\graphicspath{{Figures/}}
+
+\begin{document}
+
+\title{Nodal Discontinuous Galerkin Method for the Euler Equations of Fluid Dynamics}
+\author{Eirik Endeve\altaffilmark{1}, et al.}
+\altaffiltext{1}{Computational and Applied Mathematics Group, Oak Ridge National Laboratory, Oak Ridge, TN 37831-6354, USA; endevee@ornl.gov}
+
+%\begin{abstract}
+%We present a nodal Discontinuous Galerkin (DG) method for the Euler equations with an eye towards astrophysical hydrodynamics.  
+%We focus on issues related to core-collapse supernova dynamics, which include the use of curvilinear coordinates and a non-ideal (nuclear) equation of state.  
+%\end{abstract}
+
+\tableofcontents
+
+\section{Discontinuous Galerkin Scheme}
+\label{sec:dgMethod}
+
+We consider the system of conservation laws with sources
+\begin{equation}
+  \pd{}{t}\big(\sqrt{\gamma}\,\bU\big)+\sum_{i=1}^{d}\pd{}{x^{i}}\big(\sqrt{\gamma}\,\bF^{i}(\bU)\big)=\sqrt{\gamma}\,\big(\bG(\bU)+\bQ(\bU,\bM)\big),
+  \label{eq:conservationLaws}
+\end{equation}
+where we have split the source term into two contributions; $\bG$ is due to gravity and the use of curvilinear spatial coordinates, while $\bQ$ is due to coupling with an external field $\bM$ (e.g., radiation).  
+
+The semi-discrete DG scheme is given by (letting the test function be given by $\ell_{j}$)
+\begin{align}
+  &\pd{}{t}\int_{\bK}\sqrt{\gamma}\,\bU_{\DG}\,\ell_{j}\,d\bx
+  +\sum_{i=1}^{d}\int_{\tilde{\bK}^{i}}
+  \big(\,
+    \sqrt{\gamma}\,\widehat{\bF}^{i}\,\ell_{j}\big|_{x_{\Hgh}^{i}}
+    -\sqrt{\gamma}\,\widehat{\bF}^{i}\,\ell_{j}\big|_{x_{\Low}^{i}}
+  \,\big)\,d\tilde{\bx}^{i} \nonumber \\
+  &\hspace{12pt}
+  -\sum_{i=1}^{d}\int_{\bK}\sqrt{\gamma}\,\bF^{i}\,(\pd{\ell_{j}}{x^{i}})\,d\bx
+  =\int_{\bK}\sqrt{\gamma}\,\big(\bG+\bQ\big)\,\ell_{j}\,d\bx,
+  \label{eq:dgSemiDiscrete}
+\end{align}
+where $\widehat{\bF}^{i}$ are numerical fluxes; computed by solving Riemann problems on element interfaces.  
+In each element, the DG solution is given by the polynomial expansion
+\begin{equation}
+  \bU_{\DG}(\bx,t)=\sum_{k=1}^{N}\bU_{k}(t)\,\ell_{k}(\bx), 
+\end{equation}
+where the basis $\big\{\ell_{k}\big\}_{k=1}^{N}$ is constructed from a tensor product of one-dimensional Lagrange polynomials based on a set of interpolation points $S=\{\bx_{k}\}_{k=1}^{N}$.  
+We may use Gaussian points, but leave room for flexibility in the specification of these points.  
+We use a polynomial representation of the metric functions as well; e.g.,
+\begin{equation}
+  \sqrt{\gamma}(\bx)=\sum_{k=1}^{N}\widehat{\sqrt{\gamma}}_{k}\,\hat{\ell}_{k}(\bx),
+\end{equation}
+where the basis $\big\{\hat{\ell}_{k}\big\}_{k=1}^{N}$ is also constructed from a tensor product of one-dimensional Lagrange polynomials, but is based on the Lobatto points $\hat{S}=\{\hat{\bx}_{k}\}_{k=1}^{N}$.  
+(The use of Lobatto points will ensure continuity of the metric functions across element interfaces.)  
+We assume that the metric functions are time-independent.  
+Then, once the metric functions are computed analytically in the Lobatto points $\hat{\bx}_{k}\in\hat{S}$, they can be interpolated to the points $\bx_{i}\in S$; e.g.,
+\begin{equation}
+  \sqrt{\gamma}_{i}=\sqrt{\gamma}(\bx_{i})
+  =\sum_{k=1}^{N}\hat{\ell}_{k}(\bx_{i})\,\widehat{\sqrt{\gamma}}_{k}.  
+  \label{eq:l2g}
+\end{equation}
+An example of the interpolation matrix (using Gaussian points in $S$), $L_{ik}^{\mbox{\tiny L2G}}=\hat{\ell}_{k}(\bx_{i})\in\bbR^{N\times N}$, is shown in Figure~\ref{fig:LL2G}.  
+
+\begin{figure}[h]
+  \begin{center}
+     \includegraphics[width=.95\textwidth]{L_L2G.png}
+  \end{center}
+  \caption{}
+  \label{fig:LL2G}
+\end{figure}
+
+We proceed by using the polynomial representation
+\begin{equation}
+  \sqrt{\gamma}(\bx)=\sum_{i=1}^{N}\sqrt{\gamma}_{i}\,\ell_{i}(\bx)
+\end{equation}
+for the metric functions as well, where the basis functions are constructed from points in $S$, and $\sqrt{\gamma}_{i}$ given by Eq.~\eqref{eq:l2g}.  
+Note that these representations are equivalent, and
+\begin{equation}
+  \sqrt{\gamma}(\hat{\bx}_{q})=\sum_{i=1}^{N}\sqrt{\gamma}_{i}\,\ell_{i}(\hat{\bx}_{q})
+  =\sum_{k=1}^{N}\Big(\sum_{i=1}^{N}\hat{\ell}_{k}(\bx_{i})\ell_{i}(\hat{\bx}_{q})\Big)\,\widehat{\sqrt{\gamma}}_{k}
+  =\widehat{\sqrt{\gamma}}_{q}.  
+\end{equation}
+
+Inserting the polynomial representations, we can write the time-derivative term in Eq.~\eqref{eq:dgSemiDiscrete} as
+\begin{equation}
+  \pd{}{t}\int_{\bK}\sqrt{\gamma}\,\bU_{\DG}\,\ell_{j}\,d\bx
+  =\sum_{k=1}^{N}M_{jk}^{(0)}\,\deriv{\bU_{k}}{t},
+\end{equation}
+where the volume mass matrix is given by
+\begin{equation}
+  M_{jk}^{(0)}=\sum_{m=1}^{N}\int_{\bK}\ell_{m}(\bx)\,\ell_{j}(\bx)\,\ell_{k}(\bx)\,d\bx\,\sqrt{\gamma}_{m}.  
+\end{equation}
+For the flux terms, we define a polynomial representation on the surface $\tilde{\bK}^{i}$
+\begin{equation}
+  [\sqrt{\gamma}\widehat{\bF}^{i}](x^{i},\tilde{\bx}^{i})
+  =\sum_{k=1}^{\tilde{N}^{i}}[\sqrt{\gamma}\widehat{\bF}^{i}]_{k}(x^{i})\,\tilde{\ell}_{k}(\tilde{\bx}^{i}),
+\end{equation}
+where the basis functions are based on a set of interpolation points $\tilde{S}^{i}=\{\tilde{\bx}_{k}^{i}\}_{k=1}^{\tilde{N}^{i}}$ on the element surface $\tilde{\bK}^{i}$.  
+Then, the surface integrals are evaluated as
+\begin{equation}
+  \int_{\tilde{\bK}^{i}}\sqrt{\gamma}\,\widehat{\bF}^{i}\,\ell_{j}\big|_{x^{i}}\,d\tilde{\bx}^{i}
+  =\sum_{k=1}^{\tilde{N}^{i}}\widetilde{M}_{jk}^{i}(x^{i})\,[\sqrt{\gamma}\widehat{\bF}^{i}]_{k}(x^{i}),
+\end{equation}
+where the surface mass matrices $\widetilde{M}_{jk}^{i}\in\bbR^{N\times\tilde{N}^{i}}$ are given by
+\begin{equation}
+  \widetilde{M}_{jk}^{i}(x^{i})
+  =\int_{\tilde{\bK}^{i}}\ell_{j}(x^{i},\tilde{\bx}^{i})\,\tilde{\ell}_{k}(\tilde{\bx}^{i})\,d\tilde{\bx}^{i}, 
+\end{equation}
+and plotted in Figure~\ref{fig:SurfMassMats}.  
+
+\begin{figure}[h]
+  \begin{center}
+     \includegraphics[width=1.0\textwidth]{IntegrationMatrices.png}
+  \end{center}
+  \caption{}
+  \label{fig:SurfMassMats}
+\end{figure}
+
+In order to compute numerical fluxes, the evolved quantities and metric functions are interpolated to the relevant surface.  
+For example, to interpolate to $x_{\Low}^{i,+}=\lim_{\delta\to0}x_{\Low}^{i}+\delta$ ($\delta>0$) we evaluate
+\begin{equation}
+  \bU_{k}(x_{\Low}^{i,+})
+  =\bU_{\DG}(x_{\Low}^{i,+},\tilde{\bx}_{k}^{i})
+  =\sum_{l=1}^{N}L_{kl}^{i}(x_{\Low}^{i})\,\bU_{l},
+\end{equation}
+where we have defined the interpolation matrix $L_{kl}^{i}(x_{\Low}^{i})=\ell_{l}(x_{\Low}^{i},\tilde{\bx}_{k}^{i})\in\bbR^{\tilde{N}^{i}\times N}$.  
+Interpolation matrices are shown in Figure~\ref{fig:IntMatsDims}.  
+The metric functions are interpolated similarly.  
+
+\begin{figure}[h]
+  \begin{center}
+     \includegraphics[width=1.0\textwidth]{InterpolationMatricesDims.png}
+  \end{center}
+  \caption{}
+  \label{fig:IntMatsDims}
+\end{figure}
+
+For the volume term and source terms due to gravity and curvilinear coordinates we use the expansions
+\begin{equation}
+  \sqrt{\gamma}\bF^{i}=\sum_{k=1}^{N}[\sqrt{\gamma}\,\bF^{i}]_{k}\,\ell_{k}(\bx)
+  \quad\text{and}\quad
+  \sqrt{\gamma}\bG=\sum_{k=1}^{N}[\sqrt{\gamma}\,\bG]_{k}\,\ell_{k}(\bx)
+\end{equation}
+where the basis functions are based on the points $S$.  
+Then, 
+\begin{equation}
+  \int_{\bK}\sqrt{\gamma}\,\bF^{i}\,(\pd{\ell_{j}}{x^{i}})\,d\bx
+  =\sum_{k=1}^{N}S_{jk}^{i}\,[\sqrt{\gamma}\,\bF^{i}]_{k}
+  \quad\text{and}\quad
+  \int_{\bK}\sqrt{\gamma}\,\bG\,\ell_{j}\,d\bx
+  =\sum_{k=1}^{N}M_{jk}\,[\sqrt{\gamma}\,\bG]_{k},
+\end{equation}
+where
+\begin{equation}
+  S_{jk}^{i}=\int_{\bK}\pderiv{\ell_{j}}{x^{i}}(\bx)\,\ell_{k}(\bx)\,d\bx
+  \quad\text{and}\quad
+  M_{jk}
+  =\int_{\bK}\ell_{j}(\bx)\,\ell_{k}(\bx)\,d\bx.
+\end{equation}
+These matrices are displayed on Figure~\ref{fig:MassStiffMats}.  
+Note again the sparsity patterns.  
+
+\begin{figure}[h]
+  \begin{center}
+     \includegraphics[width=1.0\textwidth]{MassAndStiffnessMatrices.png}
+  \end{center}
+  \caption{}
+  \label{fig:MassStiffMats}
+\end{figure}
+
+For the source terms due to coupling with the external field, we write
+\begin{equation}
+  \bQ=\sum_{k=1}^{N}\bQ_{k}\,\ell_{k}(\bx),
+\end{equation}
+where the basis is constructed from the points in $S$.  
+Then
+\begin{equation}
+  \int_{\bK}\sqrt{\gamma}\,\bQ\,\ell_{j}(\bx)\,d\bx
+  =\sum_{k=1}^{N}M_{jk}^{(0)}\,\bQ_{k}.  
+\end{equation}
+
+We can then write the DG scheme in the compact form
+\begin{equation}
+  M^{(0)}\deriv{\bU}{t}
+  =-\sum_{i=1}^{d}
+  \Big(\,
+    \widetilde{M}^{i}(x_{\Hgh}^{i,-})\,[\sqrt{\gamma}\widehat{\bF}^{i}](x_{\Hgh}^{i})
+    -\widetilde{M}^{i}(x_{\Low}^{i,+})\,[\sqrt{\gamma}\widehat{\bF}^{i}](x_{\Low}^{i})
+    -S^{i}\,[\sqrt{\gamma}\bF^{i}]    
+  \,\Big)
+  +M\,[\sqrt{\gamma}\,\bG]
+  +M^{(0)}\bQ,
+  \label{eq:dgCompact}
+\end{equation}
+where $M^{(0)},M,S^{i}\in\bbR^{N\times N}$ and $\widetilde{M}^{i}\in\bbR^{N\times\tilde{N}^{i}}$.  
+In Eq~\eqref{eq:dgCompact}, $\bU=(\bU_{1},\ldots,\bU_{N})^{\mbox{\tiny T}}$, $[\sqrt{\gamma}\bF^{i}]=([\sqrt{\gamma}\bF^{i}]_{1},\ldots,[\sqrt{\gamma}\bF^{i}]_{N})^{\mbox{\tiny T}}$, $[\sqrt{\gamma}\bG]=([\sqrt{\gamma}\bG]_{1},\ldots,[\sqrt{\gamma}\bG]_{N})^{\mbox{\tiny T}}$, $\bQ=(\bQ_{1},\ldots,\bQ_{N})^{\mbox{\tiny T}}$, and $[\sqrt{\gamma}\widehat{\bF}]^{i}=([\sqrt{\gamma}\widehat{\bF}^{i}]_{1},\ldots,[\sqrt{\gamma}\widehat{\bF}^{i}]_{\tilde{N}^{i}})^{\mbox{\tiny T}}$; i.e., point values within $\bK$ or on the element faces $\tilde{\bK}^{i}$ --- not to be confused with the continuous fields in Eq.~\eqref{eq:conservationLaws}.  
+
+In multi-dimensional problems, the evaluation of $d_{t}\bU$ in Eq.~\eqref{eq:dgCompact} can become costly for several reasons.  
+Assume $d=3$, and that the basis functions are constructed from polynomials of degree $p=3$.  
+Then, $N=(p+1)^{d}=64$.  
+If we use the same polynomial degree to construct the numerical flux on the element interfaces we have $\tilde{N}^{i}=(p+1)^{d-1}=16$.  
+The matrices involve the metric function $\sqrt{\gamma}$, which depends on spatial coordinate $\bx$.  
+We can precompute matrices of the form
+\begin{equation}
+  \int_{\bK}\ell_{m}(\bx)\,\ell_{j}(\bx)\,\ell_{k}(\bx)\,d\bx,
+\end{equation}
+which contains $1024$ entries, and contract with $\sqrt{\gamma}_{m}$ in each element to avoid storing matrices for each element.  
+The contraction operation involves $N^{3}$ operations.  
+Additional (similar) cost is incurred by inverting the mass matrix.  
+We achieve significant computational savings from lumping the mass matrix; i.e., when computing the mass matrix, we use a quadrature where the quadrature points coincide with the interpolation points $S$.  
+Then, the mass matrix takes the following simple (diagonal) form
+\begin{equation}
+  M_{jk}^{(0)}
+  \approx\sum_{m=1}^{N}\sum_{q=1}^{N}w_{q}\,\ell_{m}(\bx_{q})\,\ell_{j}(\bx_{q})\,\ell_{k}(\bx_{q})\,\sqrt{\gamma}_{m}
+  =\delta_{jk}\,w_{k}\,\sqrt{\gamma}_{k},
+\end{equation}
+where $\sqrt{\gamma}_{k}=\sum_{m=1}^{N}\widehat{\sqrt{\gamma}}_{m}\,\hat{\ell}_{m}(\bx_{k})$.  
+In our example with $p=3$ we are using $4$ points to integrate a polynomial of degree $3\times p=9$, while a $4$-point Gaussian quadrature only integrates polynomials of degree $\le 2\times N-1=7$ exactly.  
+
+\begin{figure}[h]
+  \begin{center}
+    \begin{tabular}{cc}
+     \includegraphics[width=0.5\textwidth]{MassMatrix0_G4.png}
+     \includegraphics[width=0.5\textwidth]{MassMatrix0_G5.png}
+    \end{tabular}
+  \end{center}
+  \caption{}
+  \label{fig:MassMats}
+\end{figure}
+
+\section{Cell Averages and Conservation}
+
+The DG method evolves a high-order approximation the solution $\bU$.  
+Each element contains $N$ degrees of freedom $\{\bU_{i}\}_{i=1}^{N}$.  
+Let the cell-average in element $\bK$ be given by
+\begin{equation}
+  \bU_{\bK}=\f{1}{V_{\bK}}\int_{\bK}\bU_{\DG}\,\sqrt{\gamma}\,d\bx,
+  \quad\text{where}\quad
+  V_{\bK}=\int_{\bK}\sqrt{\gamma}\,d\bx.  
+\end{equation}
+The cell volume is computed as
+\begin{equation}
+  V_{\bK}=\sum_{k=1}^{N}w_{k}\sqrt{\gamma}_{k},
+  \quad\text{where}\quad
+  w_{k}=\int_{\bK}\ell_{k}(\bx)\,d\bx, 
+\end{equation}
+while the cell average becomes
+\begin{equation}
+  \bU_{\bK}=\f{1}{V_{\bK}}\sum_{j=1}^{N}\sum_{k=1}^{N}M_{jk}\,\sqrt{\gamma}_{j}\,\bU_{k}.  
+\end{equation}
+Note that $M_{jk}$ is diagonal (cf. Figure~\ref{fig:MassStiffMats}), which simplifies the computation of $\bU_{\bK}$.  
+
+Define the vector of ones $\be^{\mbox{\tiny T}}=(1,\ldots,1)$.  
+Then we see that
+\begin{equation}
+  \be^{\mbox{\tiny T}}\,M^{(0)}\deriv{\bU}{t}=V_{\bK}\deriv{\bU_{\bK}}{t},
+\end{equation}
+since $\sum_{j=1}^{N}\ell_{j}(\bx)=1$.  
+The evolution equation for the cell average is then given by
+\begin{equation}
+  \deriv{\bU_{\bK}}{t}
+  =-\f{1}{V_{\bK}}\Big[\sum_{i=1}^{d}
+  \Big(\,
+    (\tilde{w}^{i})^{\mbox{\tiny T}}[\sqrt{\gamma}\widehat{\bF}^{i}](x^{i}_{\Hgh})
+    -(\tilde{w}^{i})^{\mbox{\tiny T}}[\sqrt{\gamma}\widehat{\bF}^{i}](x^{i}_{\Low})
+  \,\Big)-w^{\mbox{\tiny T}}[\sqrt{\gamma}\bG]\Big]+\bQ_{\bK},
+  \label{eq:dgCellAverage}
+\end{equation}
+where we have defined the surface integral weights
+\begin{equation}
+  \tilde{w}_{k}^{i}=\int_{\tilde{\bK}^{i}}\tilde{\ell}_{k}(\tilde{\bx}^{i})\,d\tilde{\bx}^{i}.  
+\end{equation}
+Equation~\eqref{eq:dgCellAverage} is familiar from the literature on finite volume methods for hyperbolic conservation laws.  
+In the absence of sources, it expresses exact conservation of the cell average quantities $\bU_{\bK}$.  
+
+\section{Source Terms from Geometry Fields}
+
+The source terms from geometry fields (i.e., gravity and curvilinear coordinates) involve spatial derivatives.  
+One could use the polynomial expansions of these fields and simply take derivatives.  
+This approach reduces the order of accuracy in the representation of these fields, and leads to vanishing source terms in the case with polynomial degree $p=0$.  
+To avoid this, we define expansions of derivatives of the geometry fields.  
+To this end, let $f$ represent a geometry field (e.g., $f=\sqrt{\gamma}$) and define $g^{i}=\pderiv{f}{x^{i}}$.  
+Then
+\begin{equation}
+  g_{i}(\bx)=\sum_{k=1}^{N}(g_{i})_{k}\,\ell_{k}(\bx),
+\end{equation}
+where the basis is constructed from points $\bx_{k}\in S$, and
+\begin{align}
+  (g_{i})_{j}
+  &=M_{jj}^{-1}\int_{\bK}g_{i}\,\ell_{j}\,d\bx \nonumber \\
+  &=M_{jj}^{-1}
+  \Big\{\,
+    \int_{\tilde{\bK}^{i}}\big[\,\hat{f}\,\ell_{j}\big|_{x_{\Hgh}^{i}}-\hat{f}\,\ell_{j}\big|_{x_{\Low}^{i}}\,\big]\,d\tilde{\bx}^{i}
+    -\int_{\bK}f\,\pderiv{\ell_{j}}{x^{i}}\,d\bx
+  \,\Big\}.  
+\end{align}
+(Note that $M_{jk}=M_{jj}\delta_{jk}$.)
+By construction, the geometry fields are continuous across element interfaces.  
+(In the $p=0$ case, the geometry fields on the faces are computed by averaging values from elements abutting the face.)  
+Introducing the expansions
+\begin{equation}
+  \hat{f}(x^{i},\tilde{\bx}^{i})=\sum_{k=1}^{\tilde{N}^{i}}\hat{f}_{k}(x^{i})\,\tilde{\ell}_{k}(\tilde{\bx}^{i})
+  \quad\text{and}\quad
+  f(\bx)=\sum_{k=1}^{N}f_{k}\,\ell_{k}(\bx)
+\end{equation}
+on the faces and the interior of $\bK$, we have
+\begin{equation}
+  (g_{i})_{j}=M_{jj}^{-1}
+  \Big\{\,
+    \sum_{k=1}^{\tilde{N}^{i}}
+    \Big(
+      \widetilde{M}_{jk}^{i}(x_{\Hgh}^{i,-})\,\hat{f}_{k}(x_{\Hgh}^{i})
+      -\widetilde{M}_{jk}^{i}(x_{\Low}^{i,+})\,\hat{f}_{k}(x_{\Low}^{i})
+    \Big)
+    -\sum_{k=1}^{N}S_{jk}^{i}\,f_{k}
+  \,\Big\}.  
+  \label{eq:geometryDerivative}
+\end{equation}
+Writing this in matrix form, letting $g_{i}=\big((g_{i})_{1},\ldots,(g_{i})_{N}\big)^{\mbox{\tiny T}}$, $f=\big(f_{1},\ldots,f_{N}\big)^{\mbox{\tiny T}}$, and $\hat{f}=\big(\hat{f}_{1},\ldots,\hat{f}_{\tilde{N}^{i}}\big)^{\mbox{\tiny T}}$, we have
+\begin{equation}
+  g_{i}=M^{-1}\Big\{\widetilde{M}^{i}(x_{\Hgh}^{i,-})\,\hat{f}(x_{\Hgh}^{i})-\widetilde{M}^{i}(x_{\Low}^{i,+})\,\hat{f}(x_{\Low}^{i})-S^{i}f\Big\}.  
+\end{equation}
+
+For a continuous field approximated by $f(\bx)=\sum_{i=1}^{N}f_{k}\,\ell_{k}(\bx)$, these representations are equivalent in the sense that
+\begin{equation}
+  M_{jj}^{-1}\int_{\bK}\big(g_{i}-\pderiv{f}{x^{i}}\big)\,\ell_{j}=0.  
+\end{equation}
+We approximate metric factors $\sqrt{\gamma}$, $\sqrt{\gamma_{11}}$, $\sqrt{\gamma_{22}}$, and $\sqrt{\gamma_{33}}$, and the gravitational potential $\Phi$ with polynomial representations that are continuous across element interfaces, as discussed for $\sqrt{\gamma}$ in Section~\ref{sec:dgMethod}.  
+
+\section{Source Terms from Curvilinear Coordinates}
+
+In the absence of gravity ($\Phi=0$), the geometry sources are purely due to curvilinear coordinates and contribute only to the right-hand side of the momentum equation.  
+We consider the case where $\gamma_{ij}$ is diagonal, and write
+\begin{equation}
+  \f{1}{2}\,P^{ik}\pderiv{\gamma_{ik}}{x^{j}}
+  =\sum_{i=1}^{d}P_{~i}^{i}\f{1}{\sqrt{\gamma_{ii}}}\pderiv{\sqrt{\gamma_{ii}}}{x^{j}}.
+\end{equation}
+
+Next we investigate the balance between the curvilinear sources and the geometry terms in the spatial divergence of the momentum equation.  
+For a fluid associated with an isotropic and spatially homogeneous stress tensor, i.e., $P_{~k}^{i}=P\,\delta_{~k}^{i}$, the balance should be exact so as to not induce artificial flows.  
+The cell average of the $j$-th component of the momentum equation is denoted $(S_{j})_{\bK}$.  
+Under the stated conditions, the evolution equation is given by
+\begin{equation}
+  \deriv{(S_{j})_{\bK}}{t}
+  =-\f{1}{V_{\bK}}
+  \Big[\,
+  \Big(\,
+    (\tilde{w}^{j})^{\mbox{\tiny T}}[\sqrt{\gamma}](x^{j}_{\Hgh})
+    -(\tilde{w}^{j})^{\mbox{\tiny T}}[\sqrt{\gamma}](x^{j}_{\Low})
+  \,\Big)
+  -\sum_{i=1}^{d}w^{\mbox{\tiny T}}
+  \big[\f{\sqrt{\gamma}}{\sqrt{\gamma_{ii}}}\pderiv{\sqrt{\gamma_{ii}}}{x^{j}}\big]
+  \,\Big],
+  \label{eq:MomentumUniformP}
+\end{equation}
+where, without loss of generality, we have set $P=1$.  
+In Cartesian coordinates, the balance is trivial.  
+Next, we consider the balance for the case of spherical polar and cylindrical coordinates.  
+
+\subsection{Spherical Polar Coordinates}
+
+In spherical polar coordinates, we have $\sqrt{\gamma_{11}}=1$, $\sqrt{\gamma_{22}}=r$, $\sqrt{\gamma_{33}}=r\sin\theta$, and $\sqrt{\gamma}=r^{2}\sin\theta$.  
+
+For $j=1$ (the radial component of the momentum equation), we have
+\begin{equation}
+  \sum_{i=1}^{d}w^{\mbox{\tiny T}}
+  \big[\f{\sqrt{\gamma}}{\sqrt{\gamma_{ii}}}\pderiv{\sqrt{\gamma_{ii}}}{x^{j}}\big]
+  =w^{\mbox{\tiny T}}\big[2\,r\,\sin\theta\big]
+  =(\tilde{w}^{1})^{\mbox{\tiny T}}[r_{\Hgh}^{2}\sin\theta]-(\tilde{w}^{1})^{\mbox{\tiny T}}[r_{\Low}^{2}\sin\theta]
+  =(\tilde{w}^{1})^{\mbox{\tiny T}}[\sqrt{\gamma}](r_{\Hgh})-(\tilde{w}^{1})^{\mbox{\tiny T}}[\sqrt{\gamma}](r_{\Low}).  
+\end{equation}
+Hence the balance is exact for a quadrature that integrates polynomials of degree $1$ in the radial direction.  
+
+For $j=2$ (the latitudinal component of the momentum equation), we have
+\begin{equation}
+  \sum_{i=1}^{d}w^{\mbox{\tiny T}}
+  \big[\f{\sqrt{\gamma}}{\sqrt{\gamma_{ii}}}\pderiv{\sqrt{\gamma_{ii}}}{x^{j}}\big]
+  =w^{\mbox{\tiny T}}\big[\sqrt{\gamma_{22}}\,\pderiv{\sqrt{\gamma_{33}}}{x^{2}}\big].  
+\end{equation}
+Since $\sqrt{\gamma_{22}}$ and $\sqrt{\gamma_{33}}$ are approximated by polynomials of degree $1$ in the radial direction and $\sqrt{\gamma_{33}}$ is approximated by a degree $p$ polynomial in the latitudinal direction, the balance is exact if the quadrature exactly integrates polynomials of degree $2$ in the radial direction and degree $p-1$ in the latitudinal direction (e.g., the Gaussian quadrature with $N=2$).  
+By using the approximation in Eq.~\eqref{eq:geometryDerivative}, we also achieve exact balance in the case with $p=0$ polynomials.  
+
+The balance is trivial for $j=3$ (the azimuthal component of the momentum equation).  
+
+\subsection{Cylindrical Coordinates}
+
+In spherical polar coordinates, we have $\sqrt{\gamma_{11}}=1$, $\sqrt{\gamma_{22}}=1$, $\sqrt{\gamma_{33}}=R$, and $\sqrt{\gamma}=R$.  
+
+\section{Source Terms from Gravitational Fields}
+
+For the source terms due to gravitational fields, we investigate conservation of energy.  
+
+\subsection{Time-Independent Gravitational Fields}
+
+Multiplying the mass conservation equation with a time-independent gravitational field $\Phi=\Phi(\bx)$, we obtain
+\begin{equation}
+  \pd{}{t}\big(\sqrt{\gamma}\,\rho\,\Phi\big)
+  +\sum_{i=1}^{d}\pd{}{i}\big(\sqrt{\gamma}\,(\rho\,\Phi\,v^{i})\big)
+  =\sqrt{\gamma}\sum_{i=1}^{d}\rho\,v^{i}\,\pd{\Phi}{i}.
+\end{equation}
+Adding this equation to the fluid energy equation 
+\begin{equation}
+  \pd{}{t}\big(\sqrt{\gamma}\,E\big)
+  +\sum_{i=1}^{d}\pd{}{i}\big(\sqrt{\gamma}\,(E+p)\,v^{i}\big)
+  =-\sqrt{\gamma}\sum_{i=1}^{d}\rho\,v^{i}\,\pd{\Phi}{i},
+\end{equation}
+where we ignore the sources $\bQ$ due to energy exchange with the external field $\bM$, gives the conservation law
+\begin{equation}
+  \pd{}{t}\big(\sqrt{\gamma}\,(E+\rho\,\Phi)\big)
+  +\sum_{i=1}^{d}\big(\sqrt{\gamma}\,(E+p+\rho\,\Phi)\,v^{i}\big)
+  =0.  
+\end{equation}
+
+In the semi-discrete DG representation, the approximation to the mass density $\rho_{\DG}$ satisfies
+\begin{equation}
+  \pd{}{t}\int_{\bK}\sqrt{\gamma}\,\rho_{\DG}\,\ell_{j}\,d\bx
+  +\sum_{i=1}^{d}\int_{\tilde{\bK}^{i}}
+  \Big(
+    \sqrt{\gamma}\,\widehat{\rho v^{i}}\,\ell_{j}\big|_{x_{\Hgh}^{i}}
+    -\sqrt{\gamma}\,\widehat{\rho v^{i}}\,\ell_{j}\big|_{x_{\Low}^{i}}
+  \Big)
+  =\sum_{i=1}^{d}\int_{\bK}\sqrt{\gamma}\,(\rho\,v^{i})\,\pd{\ell_{j}}{i}.  
+\end{equation}
+Contracting this with $\Phi_{j}$, noting that $\Phi(\bx)=\sum_{j=1}^{N}\Phi_{j}\,\ell_{j}(\bx)$, gives
+\begin{equation}
+  \pd{}{t}\big(\rho\Phi\big)_{\bK}
+  +\f{1}{V_{\bK}}\sum_{i=1}^{d}\int_{\tilde{\bK}^{i}}
+  \Big(
+    \sqrt{\gamma}\,\widehat{F}_{g}^{i}\big|_{x_{\Hgh}^{i}}
+    -\sqrt{\gamma}\,\widehat{F}_{g}^{i}\big|_{x_{\Low}^{i}}
+  \Big)
+  =\f{1}{V_{\bK}}\sum_{i=1}^{d}\int_{\bK}\sqrt{\gamma}\,(\rho\,v^{i})\,\pd{\Phi}{i},
+\end{equation}
+where the cell-averaged gravitational energy density is
+\begin{equation}
+  \big(\rho\Phi\big)_{\bK}
+  =\f{1}{V_{\bK}}\int_{\bK}\rho_{\DG}\,\Phi\,\sqrt{\gamma}\,d\bx,
+\end{equation}
+and $\widehat{F}_{g}^{i}=\widehat{\rho \Phi v^{i}}=\widehat{\rho v^{i}}\,\Phi$.  
+
+\begin{remark}
+  The requirement that $\Phi$ is continuous across element interfaces is needed for conservation.
+\end{remark}
+
+The cell-averaged energy density satisfies
+\begin{equation}
+  \pd{E_{\bK}}{t}
+  +\f{1}{V_{\bK}}\sum_{i=1}^{d}\int_{\tilde{\bK}^{i}}
+  \Big(
+    \sqrt{\gamma}\,\widehat{F}_{E}^{i}\big|_{x_{\Hgh}^{i}}
+    -\sqrt{\gamma}\,\widehat{F}_{E}^{i}\big|_{x_{\Low}^{i}}
+  \Big)
+  =-\f{1}{V_{\bK}}\sum_{i=1}^{d}\int_{\bK}\sqrt{\gamma}\,(\rho\,v^{i})\,\pd{\Phi}{i}.  
+\end{equation}
+Thus, adding the equation for the cell-averaged gravitational energy density and the equation for the total fluid energy density results in an exact conservation law for the total (gravitational plus fluid) energy.  
+(Complications may arise when limiters are invoked.)  
+
+\bibliographystyle{apj}
+\bibliography{../References/references.bib}
+
+\end{document}

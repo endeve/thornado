@@ -1,0 +1,35 @@
+## Makefile definitions for jrober
+
+C       = $(MPI_DIR)/bin/mpic++ --c++11
+FORTRAN = $(MPI_DIR)/bin/mpif90 -cpp
+FLINKER = $(MPI_DIR)/bin/mpif90
+
+DEBUG    = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check -fcheck=all
+OPTIMIZE = -g -O2
+
+SUFFIX_f90 =
+
+MDEFS =
+PP    = -D
+
+ifeq ($(USE_OMP),TRUE)
+  OPENMP = -fopenmp
+else ifeq ($(USE_OMP_OL),TRUE)
+  OPENMP = -fopenmp
+endif
+
+ifeq ($(USE_OACC),TRUE)
+  OPENACC = -fopenacc
+endif
+
+INCLUDE_CUDA     =
+INCLUDE_HDF5     = -I$(HDF5_DIR)/include
+INCLUDE_LAPACK   = -framework Accelerate
+INCLUDE_MAGMA    =
+INCLUDE_ROCM     =
+
+LIBRARIES_CUDA     =
+LIBRARIES_HDF5     = -L$(HDF5_DIR)/lib  -lhdf5_fortran -lhdf5
+LIBRARIES_LAPACK   = -framework Accelerate
+LIBRARIES_MAGMA    =
+LIBRARIES_ROCM     =

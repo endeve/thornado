@@ -1,0 +1,37 @@
+## Makefile definitions for Beacon with Intel compiler
+
+C       = mpic++ --c++11
+FORTRAN = mpiifort
+FLINKER = mpiifort
+
+DEBUG    = -g -warn all -fpe0 -fpe-all=0 -ftrapuv -traceback -CB
+OPTIMIZE = -g -fast
+
+SUFFIX_f90 =
+
+MDEFS =
+PP    = -D
+
+ifeq ($(USE_OMP),TRUE)
+  OPENMP = -qopenmp
+else ifeq ($(USE_OMP_OL),TRUE)
+  OPENMP = -qopenmp
+endif
+
+ifeq ($(USE_OACC),TRUE)
+  OPENACC =
+endif
+
+INCLUDE_CUDA     =
+INCLUDE_HDF5     = $(HDF5_INC)
+INCLUDE_LAPACK   = -mkl
+INCLUDE_MAGMA    =
+INCLUDE_PETSC    =
+INCLUDE_ROCM     =
+
+LIBRARIES_CUDA     =
+LIBRARIES_HDF5     = $(HDF5_LIB) -lhdf5_fortran -lhdf5
+LIBRARIES_LAPACK   =
+LIBRARIES_MAGMA    =
+LIBRARIES_PETSC    =
+LIBRARIES_ROCM     =

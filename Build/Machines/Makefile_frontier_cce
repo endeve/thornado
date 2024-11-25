@@ -1,0 +1,46 @@
+## Makefile definitions for Frontier with CCE compiler
+
+C       = CC
+FORTRAN = ftn
+FLINKER = ftn
+
+DEBUG    = -g -G0 -O0 -K trap=fp
+OPTIMIZE = -O2
+
+SUFFIX_f90 =
+
+MDEFS =
+PP    = -D
+
+ifeq ($(USE_OMP),TRUE)
+  OPENMP = -fopenmp
+else ifeq ($(USE_OMP_OL),TRUE)
+  OPENMP = -fopenmp # vector0 needed for now to bypass "invalid bitcast" compiler bug
+endif
+
+ifeq ($(USE_OACC),TRUE)
+  OPENACC = -hacc
+endif
+
+INCLUDE_CUDA     = -I$(CUDA_ROOT)/include
+INCLUDE_HDF5     =
+INCLUDE_LAPACK   =
+INCLUDE_MAGMA    = -I$(OLCF_MAGMA_ROOT)/include
+INCLUDE_PETSC    =
+INCLUDE_ROCM     = -I$(ROCM_PATH)/include -I$(OLCF_HIPFORT_ROOT)/include/hipfort/amdgcn
+
+LIBRARIES_CUDA     = -L$(CUDA_ROOT)/lib64 -lcusparse -lcusolver -lcublas -lcudart -lcuda -L$(CUDA_ROOT)/compat -lcuda
+LIBRARIES_HDF5     = -lhdf5_fortran -lhdf5
+LIBRARIES_LAPACK   =
+LIBRARIES_MAGMA    = -L$(OLCF_MAGMA_ROOT)/lib -lmagma
+LIBRARIES_PETSC    =
+LIBRARIES_ROCM     = -L$(OLCF_HIPFORT_ROOT)/lib -lhipfort-amdgcn -L$(ROCM_PATH)/lib -lrocsparse -lrocsolver -lrocblas -lhipblas -lhipsparse -lamdhip64
+
+wlInterpolationModule.o: wlInterpolationModule.F90
+	$(FORTRAN) -c $(DEFINES) $(FLAGS) -rm $(INCLUDE) $(SUFFIX_f90) $< -o $@
+wlInterpolationUtilitiesModule.o: wlInterpolationUtilitiesModule.F90
+	$(FORTRAN) -c $(DEFINES) $(FLAGS) -rm $(INCLUDE) $(SUFFIX_f90) $< -o $@
+NeutrinoOpacitiesComputationModule.o: NeutrinoOpacitiesComputationModule.F90
+	$(FORTRAN) -c $(DEFINES) $(FLAGS) -rm $(INCLUDE) $(SUFFIX_f90) $< -o $@
+EquationOfStateModule_TABLE.o: EquationOfStateModule_TABLE.F90
+	$(FORTRAN) -c $(DEFINES) $(FLAGS) -rm $(INCLUDE) $(SUFFIX_f90) $< -o $@

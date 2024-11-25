@@ -1,0 +1,74 @@
+\documentclass[a4paper]{jpconf}
+\usepackage{graphicx}
+\usepackage{./definitions}
+\usepackage{lineno,hyperref}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{mathrsfs}
+\usepackage{color}
+\usepackage{url}
+\usepackage[numbers]{natbib}
+
+\newcommand{\ee}[1]{{\color{red} EE:~#1}}
+\newcommand{\rc}[1]{{\color{blue} RC:~#1}}
+\newcommand{\modified}[1]{{\color{red} #1}}
+
+\bibliographystyle{iopart-num}
+
+\begin{document}
+\title{\texttt{thornado}-transport: IMEX schemes for two-moment neutrino transport respecting Fermi-Dirac statistics}
+
+\author{Ran Chu}
+\address{Department of Physics and Astronomy, University of Tennessee, Knoxville, TN 37996-1200}
+\ead{rchu@vols.utk.edu}
+
+\author{Eirik Endeve}
+\address{Computational and Applied Mathematics Group, Oak Ridge National Laboratory, Oak Ridge, TN 37831 USA}
+\address{Department of Physics and Astronomy, University of Tennessee, Knoxville, TN 37996-1200}
+\address{Joint Institute for Computational Sciences, Oak Ridge National Laboratory, Oak Ridge, TN 37831 USA}
+\ead{endevee@ornl.gov}
+
+\author{Cory D. Hauck}
+\address{Computational and Applied Mathematics Group, Oak Ridge National Laboratory, Oak Ridge, TN 37831 USA}
+\address{Department of Mathematics, University of Tennessee, Knoxville, TN 37996-1320}
+\ead{hauckc@ornl.gov}
+
+\author{Anthony Mezzacappa}
+\address{Department of Physics and Astronomy, University of Tennessee, Knoxville, TN 37996-1200}
+\address{Joint Institute for Computational Sciences, Oak Ridge National Laboratory, Oak Ridge, TN 37831 USA}
+\ead{mezz@utk.edu}
+
+\author{Bronson Messer}
+\address{Scientific Computing and Theoretical Physics Groups, Oak Ridge National Laboratory, Oak Ridge, TN 37831 USA}
+\address{Department of Physics and Astronomy, University of Tennessee, Knoxville, TN 37996-1200}
+\ead{bronson@ornl.gov}
+
+\begin{abstract}
+We develop implicit-explicit (IMEX) schemes for neutrino transport in a background material in the context of a two-moment model that evolves the angular moments of a neutrino phase-space distribution function.
+Considering the upper and lower bounds that are introduced by Pauli's exclusion principle on the moments, an algebraic moment closure based on Fermi-Dirac statistics and a convex-invariant time integrator both are demanded.
+A finite-volume/first-order discontinuous Galerkin(DG) method is used to illustrate how an algebraic moment closure based on Fermi-Dirac statistics is needed to satisfy the bounds.
+Several algebraic closures are compared with these bounds in mind, and the Cernohorsky and Bludman closure, which satisfies the bounds, is chosen for our IMEX schemes.
+For the convex-invariant time integrator, two IMEX schemes named PD-ARS have been proposed.
+PD-ARS denotes a convex-invariant IMEX Runge-Kutta scheme that is high-order accurate in the streaming limit, and works well in the diffusion limit.
+Our two PD-ARS schemes use second- and third-order, explicit, strong-stability-preserving Runge-Kutta methods as their explicit part, respectively, and therefore are second- and third-order accurate in the streaming limit, respectively.
+The accuracy and convex-invariance of our PD-ARS schemes are demonstrated in the numerical tests with a third-order DG method for spatial discretization and a simple Lax-Friedrichs flux.
+The method has been implemented in our high-order neutrino-radiation hydrodynamics (\texttt{thornado}) toolkit.
+We show preliminary results employing tabulated neutrino opacities.
+\end{abstract}
+
+\input{sections/intro}
+\input{sections/TwoMoments}
+\input{sections/SpatialDiscretization}
+\input{sections/TimeIntegration}
+\input{sections/Numerical}
+\input{sections/Conclusion}
+\input{sections/Acknowledge}
+
+%\section*{References}
+\bibliography{references/references}
+
+\end{document}
+
+

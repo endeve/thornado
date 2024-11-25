@@ -1,0 +1,62 @@
+\section{Discontinuous Galerkin Method}
+\label{sec:dg}
+
+Here we briefly outline the DG method for the moment equations.  
+(See, e.g., \cite{cockburnShu_2001}, for a comprehensive review on the application of DG methods to solve hyperbolic conservation laws.)  
+Since we do not include any physics that couples the energy dimension, the particle energy $\epsilonNu$ is simply treated as a parameter.  
+For notational convenience, we will suppress explicit energy dependence of the moments.  
+Employing Cartesian coordinates, we write the moment equations in $d$ spatial dimensions as
+\begin{equation}
+  \pd{\vect{\cM}}{t}+\sum_{i=1}^{d}\pderiv{}{x^{i}}\big(\,\vect{\cF}^{i}(\vect{\cM})\,\big)
+  =\frac{1}{\tau}\,\vect{\cC}(\vect{\cM}),
+  \label{eq:angularMomentsCartesian}
+\end{equation}
+where $x^{i}$ is the coordinate along the $i$th coordinate dimension.  
+We divide the spatial domain $D$ into a disjoint union $\mathscr{T}$ of open elements $\bK$, so that $D = \cup_{\bK \in \mathscr{T}}\bK$.  
+We require that each element is a $d$-dimensional box in the logical coordinates; i.e.,
+\begin{equation}
+  \bK=\{\,\vect{x} : x^{i} \in K^{i} := (\xL^{i},\xH^{i}),~|~i=1,\ldots,d\,\}, 
+\end{equation}
+with surface elements denoted $\tilde{\bK}^{i}=\times_{j\ne i}K^{j}$.  
+We let $|\bK|$ denote the volume of an element
+\begin{equation}
+  |\bK| = \int_{\bK}d\vect{x}, \quad\text{where}\quad d\vect{x} = \prod_{i=1}^{d}dx^{i}.  
+\end{equation}
+We also define $\tilde{\vect{x}}^{i}$ as the coordinates orthogonal to the $i$th dimension, so that as a set $\vect{x}=\{\tilde{\vect{x}}^{i},x^{i}\}$.  
+The width of an element in the $i$th dimension is $|K^{i}|=\xH^{i}-\xL^{i}$.  
+
+We let the approximation space for the DG method, $\mathbb{V}^{k}$, be constructed from the tensor product of one-dimensional polynomials of maximal degree $k$.  
+Note that functions in $\mathbb{V}^{k}$ can be discontinuous across element interfaces.  
+The semi-discrete DG problem is to find $\vect{\cM}_{h}\in\mathbb{V}^{k}$ (which approximates $\vect{\cM}$ in Eq.~\eqref{eq:angularMomentsCartesian}) such that
+\begin{align}
+  &\pd{}{t}\int_{\bK}\vect{\cM}_{h}\,v\,d\vect{x}
+  +\sum_{i=1}^{d}\int_{\tilde{\bK}^{i}}
+  \big(\,
+    \widehat{\bcF}^{i}(\vect{\cM}_{h})\,v\big|_{\xH^{i}}
+    -\widehat{\bcF}^{i}(\vect{\cM}_{h})\,v\big|_{\xL^{i}}
+  \,\big)\,d\tilde{\bx}^{i} \nonumber \\
+  &\hspace{24pt}
+  -\sum_{i=1}^{d}\int_{\bK}\bcF^{i}(\vect{\cM}_{h})\,\pderiv{v}{x^{i}}\,d\vect{x}
+  =\f{1}{\tau}\int_{\bK}\bcC(\vect{\cM}_{h})\,v\,d\vect{x},
+  \label{eq:semidiscreteDG}
+\end{align}
+for all $v\in\mathbb{V}^{k}$ and all $\bK\in\mathscr{T}$.  
+
+In Eq.~\eqref{eq:semidiscreteDG}, $\widehat{\bcF}^{i}(\vect{\cM}_{h})$ is a numerical flux, approximating the flux on the surface of $\bK$ with unit normal along the $i$th coordinate direction.  
+It is evaluated with a flux function $\vect{\mathscr{F}}^{i}$ using the DG approximation from both sides of the element interface; i.e.,
+\begin{equation}
+  \widehat{\bcF}^{i}(\vect{\cM}_{h})\big|_{x^{i}}=\vect{\mathscr{F}}^{i}(\vect{\cM}_{h}(x^{i,-},\tilde{\bx}^{i}),\vect{\cM}_{h}(x^{i,+},\tilde{\bx}^{i})),
+\end{equation}
+where superscripts $-/+$ in the arguments of $\vect{\cM}_{h}$ indicate that the function is evaluated to the immediate left/right of $x^{i}$.  
+In this paper we use the simple Lax-Friedrichs (LF) flux given by
+\begin{equation}
+  \vect{\mathscr{F}}_{\mbox{\tiny LF}}^{i}(\vect{\cM}_{a},\vect{\cM}_{b})
+  =\f{1}{2}\,\big(\,\bcF^{i}(\vect{\cM}_{a})+\bcF^{i}(\vect{\cM}_{b})-\alpha^{i}\,(\,\vect{\cM}_{b}-\vect{\cM}_{a}\,)\,\big),
+  \label{eq:fluxFunctionLF}
+\end{equation}
+where $\alpha^{i}$ is the largest eigenvalue (in absolute value) of the flux Jacobian $\partial\bcF^{i}/\partial\vect{\cM}$.  
+For particles propagating at the speed of light, we can simply take $\alpha^{i}=1$ (i.e., the global LF flux).  
+
+\begin{rem}
+For simplicity, in Eq.~\eqref{eq:semidiscreteDG}, we have approximated the opacities $\sigma_{\Ab}$ and $\sigma_{\Scatt}$ (and thus $\xi$ and $\tau$) on the right-hand side of Eq.~\eqref{eq:angularMomentsCartesian} with constants in each element; i.e., $\sigma_{\Ab},\sigma_{\Scatt}\in\bbV^{0}$.  
+\end{rem}

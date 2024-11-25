@@ -1,0 +1,6 @@
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/Mesh
+f90EXE_sources  += MF_MeshModule.f90
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Mesh
+F90EXE_sources  += MeshModule.F90
+

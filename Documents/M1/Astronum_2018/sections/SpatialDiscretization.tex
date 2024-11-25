@@ -1,0 +1,51 @@
+\section{Spatial Discretization}\label{se:SpatialDiscretization}
+
+We discretize the two-moment model with a simple first-order finite volume method to illustrate how the closure affects the realizability-preserving property of the method.  
+By assuming that the moments at time level $t^{n}$ ($\bcM^{n}$) satisfy the bounds in Eq.~\eqref{eq:MomentsBounds}, our goal is to identify sufficient conditions such that the moments at time level $t^{n+1}$ ($\bcM^{n+1}$) also satisfy the bounds.
+To simplify, we limit the discussion to one spatial dimension and employ a uniform Cartesian mesh.  
+(The extension to multiple spatial dimensions and high-order discretization using the discontinuous Galerkin method is given in~\cite{chu_etal_2018}.)
+
+We divide the spatial domain $D$ into $N$ uniform cells and denote the $i$-th cell by $\bK_{i}$, with $i = 1,\ldots,N$; i.e.,
+\begin{equation*}
+  D = \cup_{i = 1}^{N} \bK_{i} \quad \text{with} \quad
+  \bK_{i}=\{\,x : x\in(x_{i-1/2}, x_{i+1/2})\},
+\end{equation*}
+and cell width $\dx = D/N$.  
+The cell-average of the moments is defined as
+\begin{equation}
+  \bcM_{i} = \dfrac{1}{\dx} \int_{\bK_i}\bcM dx.
+\end{equation}
+Integrating Eq.~\eqref{eq:momentEquations} over each cell $\bK_{i}$ gives
+\begin{equation}
+  \dfrac{d \bcM_{i}}{d t} = - \dfrac{1}{\dx} \left( \widehat{\bcF}(\bcM_{i},\bcM_{i+1}) -  \widehat{\bcF}(\bcM_{i-1},\bcM_{i})\right) + \f{1}{\tau}\,\cC(\bcM_{i}),
+  \label{eq:SemiDiscretizatedMomentEquation}
+\end{equation}
+where $\widehat{\bcF}(\vect{\cM}_{a},\vect{\cM}_{b})$ is the numerical flux and $\f{1}{\tau}\,\cC(\bcM_{i})$ is the collision term evaluated with $\bcM_{i}$.
+In this paper we use the global Lax-Friedrichs flux (setting the largest absolute eigenvalue of the flux Jacobian to one):
+\begin{equation}
+  \widehat{\bcF}_{\LF}(\vect{\cM}_{a},\vect{\cM}_{b})
+  =\f{1}{2}\,\big(\,\bcF(\vect{\cM}_{a})+\bcF(\vect{\cM}_{b})-(\,\vect{\cM}_{b}-\vect{\cM}_{a}\,)\,\big).
+  \label{eq:Lax-Friedrichs flux}
+\end{equation}
+By treating the transport term explicitly with forward Euler and the collision term implicitly with backward Euler, we have
+\begin{align}
+  \bcM_{i}^{n+1} = \widetilde{\bcM}^{n}_{i} + \f{\dt}{\tau}\,\cC(\bcM^{n+1}_{i}),
+  \label{eq:MomentIMEX}
+\end{align}
+where we have defined
+\begin{align}
+  \widetilde{\bcM}^{n}_{i} 
+  & = \bcM_{i}^{n} - \frac{\dt}{\dx} \left( \widehat{\bcF}_{\LF}(\bcM^{n}_{i},\bcM^{n}_{i+1}) -  \widehat{\bcF}_{\LF}(\bcM^{n}_{i-1},\bcM^{n}_{i})\right)\nonumber \\
+  & = (1-\beta)\bcM_{i}^{n} + \beta\left[ \f{1}{2}\left( \bcM^{n}_{i+1}-\bcF(\bcM^{n}_{i+1})\right)  + \f{1}{2}\left( \bcM^{n}_{i-1}+\bcF(\bcM^{n}_{i-1})\right)\right],
+  \quad\beta = \frac{\dt}{\dx}.  
+\label{eq:widetildeM}
+\end{align}
+
+Considering Eqs.~\eqref{eq:MomentIMEX} and \eqref{eq:widetildeM} and assuming that $\bcM_{i}^{n}$ is realizable for all $i$, it can be shown (Lemma~3 in~\cite{chu_etal_2018}) that $\bcM^{n+1}_{i}$ is realizable provided $\f{\dt}{\tau} > 0$. 
+%and $\widetilde{\bcM}^{n}_{i}$ is realizable.  
+In Eq.~\eqref{eq:widetildeM}, if $\beta \in [0,1]$, $\widetilde{\bcM}^{n}_{i}$ is expressed as a convex combination of $\bcM_{i}^{n}$ and the expression in the square brackets on the right-hand side of Eq.~\eqref{eq:widetildeM}.  
+It follows that $\widetilde{\bcM}^{n}_{i}$ is realizable if the expression inside the square brackets is realizable.  
+It can be shown (Lemma~2 in~\cite{chu_etal_2018}) that the expression in square brackets is realizable for a distribution satisfying $f\in[0,1]$.  
+For the two-moment model considered here, realizability depends on the algebraic closure.  
+Specifically, if $\bcM_{i}^{n}$ is realizable and the Eddington factor satisfies the bounds in Eq.~\eqref{eq:eddingtonFactorBounds}, then $\bcM^{n+1}_{i}$ is realizable provided $\beta \in [0,1]$.  
+Thus, realizability of $\bcM^{n+1}_{i}$ requires both a closure based on Fermi-Dirac statistics and a Courant-Friedrichs-Lewy (CFL) condition $\dt\le\dx$.  

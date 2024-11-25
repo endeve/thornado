@@ -1,0 +1,15 @@
+ifeq ($(TWOMOMENT_ORDER),ORDER_1)
+  include $(THORNADO_DIR)/Modules/TwoMoment/OrderOne/Makefile_TwoMoment_OrderOne_ObjectFiles
+else ifeq ($(TWOMOMENT_ORDER),ORDER_V)
+  include $(THORNADO_DIR)/Modules/TwoMoment/OrderV/Makefile_TwoMoment_OrderV_ObjectFiles
+else ifeq ($(TWOMOMENT_ORDER),RELATIVISTIC)
+  include $(THORNADO_DIR)/Modules/TwoMoment/Relativistic/Makefile_TwoMoment_Relativistic_ObjectFiles
+endif
+
+TWO_MOMENT += \
+  TwoMoment_TimersModule.o \
+  TwoMoment_ClosureModule.o \
+  TwoMoment_MeshRefinementModule.o \
+  TwoMoment_BoundaryConditionsModule.o \
+  TwoMoment_NeutrinoMatterSolverModule.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos.o

@@ -1,0 +1,112 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1561\cocoasubrtf600
+{\fonttbl\f0\froman\fcharset0 Times-Roman;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue255;}
+{\*\expandedcolortbl;;\cssrgb\c0\c0\c0;\cssrgb\c1680\c19835\c100000;}
+{\*\listtable{\list\listtemplateid1\listhybrid{\listlevel\levelnfc0\levelnfcn0\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{decimal\}.}{\leveltext\leveltemplateid1\'02\'00.;}{\levelnumbers\'01;}\fi-360\li720\lin720 }{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid2\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li1440\lin1440 }{\listname ;}\listid1}
+{\list\listtemplateid2\listhybrid{\listlevel\levelnfc0\levelnfcn0\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{decimal\}.}{\leveltext\leveltemplateid101\'02\'00.;}{\levelnumbers\'01;}\fi-360\li720\lin720 }{\listname ;}\listid2}
+{\list\listtemplateid3\listhybrid{\listlevel\levelnfc0\levelnfcn0\leveljc0\leveljcn0\levelfollow0\levelstartat6\levelspace360\levelindent0{\*\levelmarker \{decimal\}.}{\leveltext\leveltemplateid201\'02\'00.;}{\levelnumbers\'01;}\fi-360\li720\lin720 }{\listname ;}\listid3}}
+{\*\listoverridetable{\listoverride\listid1\listoverridecount0\ls1}{\listoverride\listid2\listoverridecount0\ls2}{\listoverride\listid3\listoverridecount0\ls3}}
+\margl1440\margr1440\vieww23040\viewh15220\viewkind0
+\deftab720
+\pard\pardeftab720\sl300\sa240\partightenfactor0
+
+\f0\fs26\fsmilli13333 \cf2 \expnd0\expndtw0\kerning0
+Dear Nikolai, \
+\
+Below, please find our response to the reviewer comments.  \
+\
+First, we thank the reviewer for thoughtful comments on our manuscript.  \
+We have tried to address all the reviewer comments.  See details below.  \
+\
+The submitted manuscript deals with a recent implementation of the finite element DG discretization for the equation of ideal gas dynamic in the special relativistic and non-relativistic regime. Curvilinear (only 1d polar coordinates have been tested as curvilinear coordinates) coordinates are considered at the level of the PDE, by introducing the spatial metric tensor \uc0\u947 
+\fs18\fsmilli9333 \dn3 ij
+\fs26\fsmilli13333 \up0 . A TVD flux limiter is supplemented to the DG in order to avoid the unphysical production of spurious oscillations whenever discontinuities or steep gradients appear in the conserved variables. 
+\fs24 \
+
+\fs26\fsmilli13333 The paper is well written, the presented research is really interesting and in my opinion it is almost ready for publication. There are indeed, few suggestions to improve the quality of the paper: 
+\fs24 \
+\pard\tx220\tx720\pardeftab720\li720\fi-720\sl300\sa266\partightenfactor0
+\ls1\ilvl0
+\fs26\fsmilli13333 \cf2 \kerning1\expnd0\expndtw0 {\listtext	1.	}\expnd0\expndtw0\kerning0
+the literature review could be extended trying to highlight the main differences with respect to similar and already published works about DG methods for astrophysics and limiting techniques for DG methods for gas-dynamics. In the interest of the authors, I suggest the following papers: \
+\pard\tx940\tx1440\pardeftab720\li1440\fi-1440\sl300\sa266\partightenfactor0
+\ls1\ilvl1\cf2 \kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+Efficient Parallelization of a Shock Capturing for Discontinuous Galerkin Methods using Finite Volume Sub-cells. Sonntag and Munz, Journal of Scientific Computing, 70, 1262: recent development of an alternative technique for limiting DG methods. \uc0\u8232 \
+\ls1\ilvl1\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+A simple shock-capturing technique for high-order discontinuous galerkin methods. Huerta, A., Casoni, E., Peraire, J.: Int. J. Numer. Methods Fluids 69 (10), 1614\'961632 (2012): an alternative point of view for limiting technique. \uc0\u8232 \
+\ls1\ilvl1\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+Solving the relativistic magnetohydrodynamics equations with ADER discontinuous Galerkin methods, a posteriori subcell limiting and adaptive mesh refinement. Zanotti O., Fambri F., Dumbser M., 2015, Mon. Not. R. Astron. Soc., 452, 3010: this is actually DG methods for special-relativistic MHD with FV limiter; \uc0\u8232 \
+\ls1\ilvl1\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+Conformal and covariant Z4 formulation of the Einstein equations: Strongly hyperbolic first-order reduction and solution with discontinuous Galerkin schemes, M. Dumbser, F. Guercilena, S. K\uc0\u32 \u776 oppel, L. Rezzolla, O. Zanotti. Phys. Rev. D , 97, 084053, (2018). DG methods with FV limiting for the Einstein equations. \u8232 Please, don\'92t add these references if you don\'92t need them. More specifically: what is the real novelty of the proposed paper with respect to the references? Could you please highlight the answer in the text and in the abstract? \
+\pard\tx720\tx1440\pardeftab720\sl300\sa266\partightenfactor0
+\cf2 	
+\b \cf3 We thank the referee for pointing out these interesting references to us.  We are seriously considering adopting the techniques in thornado in the future.  We have added to the last paragraph in the introduction pointing out similarities of the approach in thornado with other approaches in the literature, and pointed to these more recent approaches.  Specifically, we modified the last paragraph to read: \'93The \{\\bf t\}oolkit for \{\\bf h\}igh-\{\\bf or\}der \{\\bf n\}eutrino-r\{\\bf ad\}iation hydr\{\\bf o\}dynamics (\\thornado) is being developed to simulate neutrino-radiation hydrodynamics in CCSNe and related applications in nuclear astrophysics.  The spatial discretization of solvers for hyperbolic partial differential equations in \\thornado\\ is based on the DG method, while we foresee using a combination of spectral and continuous finite element methods for solving elliptic equations; e.g., for Newtonian gravity or relativistic gravity employing the conformal flatness approximation \\cite\{wilson_etal_1996\}.  With these approaches, we employ high-order discretization techniques based on a common mathematical framework in all the major model components.  Whether the high-order approach will improve accuracy and efficiency of CCSN models remains to be demonstrated.  However, in this paper, we provide an initial description and encouraging demonstration of the DG method implemented in \\thornado\\ to solve the Euler equations.  We focus on basic tests in one and two spatial dimensions and focus, to some extent, on the implementation of limiters in \\thornado.  We note that others (e.g., \\cite\{radiceRezzolla_2011,schaal_etal_2015,zanotti_etal_2015,dumbser_etal_2018\}) have also investigated the DG method in the context of astrophysical applications and reported encouraging results.  The DG limiting techniques implemented in \\thornado\\ are similar to those used by \\cite\{schaal_etal_2015\}, but is supplemented with a troubled-cell indicator \\cite\{fuShu_2017\} to prevent excessive limiting (e.g., around smooth extrema), and differs from more recent approaches in the literature (e.g., \\cite\{huerta_etal_2012,dumbser_etal_2014,zanotti_etal_2015,sonntagMunz_2017\}), which combine the sub-cell resolution of the DG method with high-order finite-volume techniques to improve the performance of the DG limiting procedure.  While the results with current limiters are encouraging, these latter methods appear as attractive options for future implementation in \\thornado. \'94  We omitted mentioning of the points on alternative limiting procedures in the abstract since we feel it would require adding references, which according to the guidelines are to be avoided.  
+\b0 \cf2 \
+\pard\tx220\tx720\pardeftab720\li720\fi-720\sl300\sa266\partightenfactor0
+\ls2\ilvl0\cf2 \kerning1\expnd0\expndtw0 {\listtext	1.	}\expnd0\expndtw0\kerning0
+many one-dimensional tests have been considered, and the shock-capturing capability of the proposed method has been confirmed by the good results; I think you should then verify the expected order of accuracy of your DG scheme (unlimited and fully limited, separately) against a smooth problem in hydrodynamics, e.g. the 2-D vortex in isentropic flow; \uc0\u8232 
+\b \cf3 We added the isentropic vortex test (now Section 3.1.4), which demonstrates expected order of accuracy of the DG scheme in thornado.
+\b0 \cf2 \
+\ls2\ilvl0\kerning1\expnd0\expndtw0 {\listtext	2.	}\expnd0\expndtw0\kerning0
+equation (8): is the metric time-independent? Intuitively, the answer is positive, but, please, can you add a comment about this fact? \uc0\u8232 
+\b \cf3 Yes, the metric is time-independent.  We now indicate this by the addition of the following sentence below Equation (1): \'93Henceforth, we will assume that the spatial metric is time-independent. \'94
+\b0 \cf2 \
+\ls2\ilvl0\kerning1\expnd0\expndtw0 {\listtext	3.	}\expnd0\expndtw0\kerning0
+equation (11): can you please add few words about the property of the source term? Is your method able to deal with stiff sources? \uc0\u8232 
+\b \cf3 The source term is assumed to be non-stiff.  We added the following sentences to the paragraph below Equation (11): \'93We assume that the source term $\\vect\{S\}(\\vect\{U\}_\{k\})$ is non-stiff so that the equations can be integrated efficiently with explicit methods.  In future applications of the DG method to model CCSNe we plan to use a combination of implicit and explicit methods (e.g., IMEX methods \\cite\{ascher_etal_1997\}) to stably integrate stiff sources due to neutrino-matter interactions.\'94  
+\b0 \cf2 \
+\ls2\ilvl0\kerning1\expnd0\expndtw0 {\listtext	4.	}\expnd0\expndtw0\kerning0
+before equation (12): you write \'92To prevent excessive limiting (e.g., at smooth extrema), we use the troubled-cell indicator (TCI) of [10].\'92... is it possible that you need a column \'92:\'92, instead of the dot \'92.\'92 at the end of the sentence? Otherwise the next sentence does not have a verb, and it is grammatically incorrect. \uc0\u8232 
+\b \cf3 Yes, we replaced the period \'91.\'92 with a colon \'91:\'92
+\b0\fs24 \cf2 \
+\pard\tx220\tx720\pardeftab720\li720\fi-720\sl300\sa266\partightenfactor0
+\ls3\ilvl0
+\fs26\fsmilli13333 \cf2 \kerning1\expnd0\expndtw0 {\listtext	6.	}\expnd0\expndtw0\kerning0
+can you please add a comment about the limiting procedure? e.g.: what happens if you obtain unphysical solutions in the unlimited scheme? I suspect you are not rejecting the -unlimited- solution and computing the -limited- solution (a-posteriori approach) with the limiter. What do you do then? When do you apply the limiter? Is the limiter activated only when you measure steep gradients accordingly to the indicator (12)? What happens if unphysical oscillations or unphysical states are generated at the same time together with steep gradients? \uc0\u8232 
+\b \cf3 We added further details on the limiter application in the last paragraph in Section 2.  See also answer to point 8 below.  
+\b0 \cf2 \
+\ls3\ilvl0\kerning1\expnd0\expndtw0 {\listtext	7.	}\expnd0\expndtw0\kerning0
+Section 3: can you please, summarize Section 3, since the DG discretization is well known and quadrature rules are standards. \uc0\u8232 
+\b \cf3 We feel strongly the need to keep the level of detail on our DG implementation in thornado, and have opted to do so in the revised manuscript. 
+\b0 \cf2  \
+\ls3\ilvl0\kerning1\expnd0\expndtw0 {\listtext	8.	}\expnd0\expndtw0\kerning0
+then, I think, one or two new small paragraphs dealing with some details about the adopted SSP- RK3 method, the chosen TVD-slope limiter, and the adopted techniques to prevent the generation of unphysical states. Indeed, I think you can agree with me that also the choice of these details can make the difference in a numerical simulation. \uc0\u8232 
+\b \cf3 We added another paragraph (last paragraph in section 2) with further details on the Runge-Kutta algorithm and the application of limiters. 
+\b0 \cf2 \
+\ls3\ilvl0\kerning1\expnd0\expndtw0 {\listtext	9.	}\expnd0\expndtw0\kerning0
+is there any specific reason why you use a CFL number 0.1? can you please add the explicit formula for the stability restriction on the time-step size? ( I think two conditions are needed: one for the unlimited scheme, one for the limited)\uc0\u8232 
+\b \cf3 The reason for choosing 0.1 is the stability condition for 2D problems with k=2.  We added explicit expressions for time step restrictions for stability and preventing unphysical states, now Eq. (14).
+\b0 \cf2 \
+\ls3\ilvl0\kerning1\expnd0\expndtw0 {\listtext	10.	}\expnd0\expndtw0\kerning0
+you tested many one-dimensional problems. Can you please add a simple 2d test, with polar symmetry, in Cartesian coordinates? e.g. a 2D explosion problem \uc0\u8232 
+\b \cf3 We added the explosion problem from Liska & Wendroff (now Section 3.1.7).
+\b0 \cf2 \
+\ls3\ilvl0\kerning1\expnd0\expndtw0 {\listtext	11.	}\expnd0\expndtw0\kerning0
+is there any specific reason why don\'92t you take advantages from the high-order resolution of DG schemes? Indeed, you only use k = 2 (third order accuracy in space) but you may reach an arbitrary order of accuracy in space very easily. \uc0\u8232 
+\b \cf3 The only reason is to limit the scope of the paper.  We plan to publish a more detailed methods paper, where we also vary the polynomial degree, at a later time.  However, we included results with k=1 and k=3 for the Isentropic vortex test.  To reflect this, we modified the fourth sentence in Section 3 to read: \'93To limit the scope of this initial study, we use polynomials of degree $k=2$ (except in Section~\\ref\{sec:isentropicVortex\}, where we also use $k=1$ and $k=3$) combined with SSP-RK3 time stepping, and run all the tests with a Courant-Friedrichs-Lewy (CFL) factor of $C=0.1$.\'94
+\b0 \cf2   \
+\ls3\ilvl0\kerning1\expnd0\expndtw0 {\listtext	12.	}\expnd0\expndtw0\kerning0
+Figure 1: can you add, please, the maps of the limiter activation? These are the good tests for the accuracy of the adopted trouble-cell indicator. \uc0\u8232 
+\b \cf3 We have added maps of the limiter activation for these tests (lower panels of Figure 1).
+\b0 \cf2 \
+\ls3\ilvl0\kerning1\expnd0\expndtw0 {\listtext	13.	}\expnd0\expndtw0\kerning0
+section 3.1.3: the chosen limiter does not help in this test, since the TVD clips the maxima and the minima of the conserved variables. \uc0\u8232 
+\b \cf3 Yes.  To indicate this, we inserted the following sentences in the second paragraph of Section 3.1.3: \'93This is expected since the TVD-type limiter clips extrema.  The results improve when the troubled-cell indicator is used. \'94
+\b0 \cf2 \
+\ls3\ilvl0\kerning1\expnd0\expndtw0 {\listtext	14.	}\expnd0\expndtw0\kerning0
+figure 3: Kelvin-Helmholtz instability: can you add the maps of the limiter-activation for time t=2.4? Regarding this test, remember that since you don\'92t have any physical viscosity, you also don\'92t have mesh convergence and the more refined mesh you use, the smaller scales you will see in the flow. \uc0\u8232 
+\b \cf3 We added a figure showing the limiter-activation for time t=2.4
+\b0 \cf2 \
+\ls3\ilvl0\kerning1\expnd0\expndtw0 {\listtext	15.	}\expnd0\expndtw0\kerning0
+Figure 4: can you add please the map of the limiter-activation? \uc0\u8232 
+\b \cf3 With the chosen value of C_TCI, the maps of limiter-activation for this test were not very interesting for the late time plot (t=2.5).  Very few cells are flagged.  In the interest of saving space, we would prefer to omit these plots in the paper.  The purpose of including this test was to demonstrate preservation of symmetry about the x=y line and to compare qualitatively with other published results.  However, we did include maps of limiter activation for the explosion test requested by the referee. 
+\b0 \cf2  \
+\ls3\ilvl0\kerning1\expnd0\expndtw0 {\listtext	16.	}\expnd0\expndtw0\kerning0
+figure 7: can you add please the map of the limiter-activation? \uc0\u8232 
+\b \cf3 We added maps of limiter-activations for both problems (now Figure 10).
+\b0 \cf2 \
+\ls3\ilvl0\kerning1\expnd0\expndtw0 {\listtext	17.	}\expnd0\expndtw0\kerning0
+what type of conservative to primitive transformation are you using? \uc0\u8232 
+\b \cf3 We use the method discussed in appendix D in the book by Rezzolla and Zanotti.  We added the reference and the following sentence in the paragraph below Eq. (16): \'93To recover primitive from conserved variables we have implemented the procedure for analytic equations of state detailed in Appendix~D in \\cite\{rezzollaZanotti_2013\}.\'94
+\b0 \cf2 \
+}

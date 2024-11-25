@@ -1,0 +1,59 @@
+\section{Introduction}
+
+Core-collapse supernovae (CCSNe) are the explosions of massive stars that end their lives.
+They are directly or indirectly responsible for the lion's share of elements heavier than oxygen and play important roles in many astrophysical phenomena, such as neutron star and black hole formation.
+Furthermore, these explosions occur at energies and densities relevant to address fundamental questions in nuclear, particle, and gravitational physics. 
+A solid theoretical framework for the CCSN explosion mechanism may help answer important questions in fundamental physics~\cite{janka_etal_2007}.
+
+One essential part of the explosion mechanism is neutrino transport.
+Neutrino energy deposition is believed to be the major driver of CCSN explosions, except in peculiar cases where rapid rotation is present and magnetohydrodynamic effects may dominate (for reviews, see~\cite{mezzacappa_2005,janka_2012,burrows_2013,muller_2016}).
+Ideally, neutrino transport would be modeled by the Boltzmann transport equation, which is an integro-partial-differential equation evolving a phase-space distribution function $f$~(e.g., see~\cite{mezzacappaBruenn_1993a,mezzacappaBruenn_1993b,mezzacappaBruenn_1993c,mezzacappa_etal_2001,liebendoerfer_etal_2001,liebendoerfer_etal_2004,livne_etal_2004,liebendoerfer_etal_2005,ott_etal_2008,sumiyoshiYamada_2012,nagakura_etal_2014,sumiyoshi_etal_2014,nagakura_etal_2018} for studies of CCSN with Boltzmann transport in various approximate settings).
+Simulating the neutrino transport implies finding a solution of the Boltzmann equation for a specific domain and period, with acceptable accuracy.
+
+However, solving the Boltzmann transport equation with sufficient phase-space resolution and full weak interaction physics is at present too expensive.
+To balance physical fidelity and computational expediency, an approximate method called the two-moment method has been adopted (e.g., see~\cite{kuroda_etal_2016,roberts_etal_2016,just_etal_2018,vartanyan_etal_2018}).
+Using the two-moment method, the evolved variables are the zeroth and first angular moments of the distribution function $f$ -- the spectral particle density $\cJ$ and flux $\bcH$, respectively.
+However, the equation of $\bcH$ includes the second angular moment $\bcK$.
+Knowledge of $\bcK$ is needed to close the two-moment system.
+Therefore, a closure that gives $\bcK$ consistent with $\cJ$ and $\bcH$ is needed.
+The better the closure predicts $\bcK$, the more accurate the two-moment method will be. 
+The two-moment method has been widely applied in the CCSN modeling community with different algebraic closures, such as the Minerbo~\cite{minerbo_1978} closure (e.g.~{O'Connor} and {Couch}~\cite{oConnorCouch_2018}, Pan and et al.~\cite{pan_etal_2018}, Glas et al.~\cite{glas_etal_2018}, and Just et al.~\cite{just_etal_2018}) and the Levermore~\cite{levermore_1984} closure (e.g.~Vartanyan et al.~\cite{vartanyan_etal_2018}, Cabezon et al.~\cite{cabezon_etal_2018}, and Kuroda et al.~\cite{kuroda_etal_2016}). 
+
+Applying the two-moment method does simplify the problem, but doesn't guarantee an affordable solution.
+To be precise, how to discretize the continuous system of equatio
+ns given by the two-moment method and solve the discretized system efficiently remains a question.
+In fact, the time scales of neutrino interactions with the background (they can be $\sim\mathcal{O}(10^{-10})$~second) is short compared to the duration of the CCSN explosion ($\sim\mathcal{O}(1)$~second).  
+This means that $\sim\mathcal{O}(10^{10})$ time steps could be needed for solving the system fully explicitly. 
+On the other hand, solving the moment equations fully implicitly requires inverting global band-structured matrices whose sizes depend on the phase-space discretization.
+Such a global inversion is both expensive and unfriendly to parallelization.
+To circumvent these challenges, implicit-explicit (IMEX) methods are taken into consideration.
+By treating the transport terms in the two-moment equations explicitly and the collision terms implicitly, IMEX methods are subject only to a time step governed by the explicit transport terms, and the matrices to be inverted are block diagonal.
+Therefore, IMEX methods require far fewer time steps compared with a fully explicit method, and the computation for each step is easily parallelizable.
+For the relativistic setting that we have, where the fluid and the neutrinos have comparable propagation speeds, IMEX methods can be efficient.
+
+To model neutrino transport using a two-moment method, two (or at least two) things need to be chosen carefully: an algebraic closure based on Fermi-Dirac statistics for closing the two-moment equations and a convex-invariant, diffusion-accurate IMEX scheme to ensure a physical result.
+A convex-invariant scheme has the following property: if the solution $u^{n}\in W$ and $W$ is a convex set, then $u^{n+1}\in W$.
+Since the neutrino distribution function is bounded ($f\in[0,1]$) by the Pauli exclusion principle, its moments as weighted integrals of a bounded function over the domain $\omega\in\bbS^{2}$ are also bounded.
+We call the moments satisfying the constraints due to Fermi-Dirac statistics \textit{realizable moments} and the realizable $\cJ$ and $\bcH$ define a convex set~\cite{chu_etal_2018}.
+The algebraic closure should give a realizable $\bcK$, and the well-posedness of the closure requires realizable $\cJ$ and $\bcH$.
+This explains why an algebraic closure based on Fermi-Dirac statistics is needed.
+Realizability of $\cJ$ and $\bcH$ after each time step requires a convex-invariant IMEX scheme.
+Since the realizable moments form a convex set, it is possible to construct a realizability-preserving method using a convex-invariant IMEX scheme for two-moment neutrino transport.
+In addition, the physics of neutrino transport in CCSNe requires the IMEX scheme to be diffusion-accurate.
+
+The study of moment realizability and realizability-preserving methods with diffusion-accurate IMEX schemes motivates this work.
+Gottlieb et al.~\cite{gottlieb_etal_2001} showed that standard strong-stability-preserving IMEX schemes cannot have an order higher than first without a restricted time step.
+One way to obtain the second-order (or higher-order) accuracy is to add some correction steps after the standard step~\cite{huangShu_2017,hu_etal_2018}.
+Unfortunately, the correction steps can deteriorate the accuracy of the IMEX scheme in the diffusion limit or restrict the time step.
+To keep things simple, we focus on IMEX schemes without correction steps and require them to be high-order (second or higher order) in the streaming limit and diffusion-accurate.
+We call these IMEX schemes \textit{PD-ARS}.
+
+\texttt{thornado} is our toolkit for high-order neutrino-radiation hydrodynamics based on high-order Runge-Kutta Discontinuous Galerkin (RKDG) methods.
+It is being developed at the University of Tennessee, Knoxville and Oak Ridge National Laboratory.
+It currently includes solvers for the Euler equations for fluid dynamics and the two-moment approximation of the radiative transfer equation~\cite{endeve_etal_2018}.
+In this paper, we focus on the transport methods in \texttt{thornado} with emphasis on IMEX.
+
+This paper is organized as follows: Section~\ref{se:Two-MomentModel} discusses the mathematical model, algebraic closures, and the constraints on the moments and algebraic closures imposed by Fermi-Dirac statistics;
+Section~\ref{se:SpatialDiscretization} gives a first-order finite-volume spatial discretization and shows how the spatial discretization preserves constraints in an IMEX step;
+Section~\ref{se:TimeIntegration} discusses how to use convex combination to construct two PD-ARS schemes, one with second-order accuracy in the streaming limit and the other with third-order accuracy in the same limit;
+Section~\ref{se:NumericalTests} presents the results of the numerical tests, which demonstrate the properties of the PD-ARS schemes; Section~\ref{se:Summary} summarizes the achievements of this paper and discusses future work.

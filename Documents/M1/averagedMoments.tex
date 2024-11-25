@@ -1,0 +1,104 @@
+\documentclass[10pt]{article}
+
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{booktabs}
+\usepackage{mathrsfs}
+\usepackage{graphicx}
+\usepackage{cite}
+\usepackage{times}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{lineno}
+\usepackage{yhmath}
+\usepackage{natbib}
+\usepackage{../definitions}
+\hypersetup{
+  bookmarksnumbered = true,
+  bookmarksopen=false,
+  pdfborder=0 0 0,         % make all links invisible, so the pdf looks good when printed
+  pdffitwindow=true,      % window fit to page when opened
+  pdfnewwindow=true, % links in new window
+  colorlinks=true,           % false: boxed links; true: colored links
+  linkcolor=blue,            % color of internal links
+  citecolor=magenta,    % color of links to bibliography
+  filecolor=magenta,     % color of file links
+  urlcolor=cyan              % color of external links
+}
+
+\newcommand{\ee}[1]{{\color{blue} EE:~#1}}
+\newcommand{\Lo}{\textsc{L}}
+\newcommand{\Hi}{\textsc{H}}
+\newcommand{\trans}{\textsc{T}}
+\newcommand{\dx}{\Delta x}
+
+\newtheorem{define}{Definition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{prop}{Proposition}
+\newtheorem{rem}{Remark}
+\newtheorem{theorem}{Theorem}
+
+\begin{document}
+
+\title{Cell Averaged and Energy Integrated Moments}
+\author{Eirik Endeve}
+
+\maketitle
+
+Moments are defined as weighted integrals of the distribution function; i.e.,
+\begin{equation}
+  \vect{\mathcal{M}}(\varepsilon,\vect{x},t) = \f{1}{4\pi}\int_{\bbS^{2}}f(\omega,\varepsilon,\vect{x},t)\,\vect{w}(\omega)\,d\omega.  
+\end{equation}
+
+We let the computational domain be subdivided into elements
+\begin{equation}
+  \bK^{(p\bq)} = K_{\varepsilon}^{(p)} \times \bK_{\vect{x}}^{(\bq)},
+\end{equation}
+where the $p$th energy space element (energy bin) is
+\begin{equation}
+  K_{\varepsilon}^{(p)} = (\varepsilon_{p-\f{1}{2}},\varepsilon_{p+\f{1}{2}}),
+\end{equation}
+and the $d$-dimensional position space element (equivalent to a finite volume cell) is
+\begin{equation}
+  \bK_{\vect{x}}^{(\bq)} = \big\{\,\vect{x}~:~x^{i}\in(x_{q^{i}-\f{1}{2}}^{i},x_{q^{i}+\f{1}{2}}^{i}),~i=1,\ldots,d\,\big\}.  
+\end{equation}
+We use multi index notation (bold indices) to refer to spatial elements in a multidimensional spatial domain; e.g., $\bq=\{q^{1},\ldots,q^{d}\}$.  
+We define the volume of the element as
+\begin{equation}
+  \Delta V^{(p\bq)} 
+  = \int_{\bK^{(p\bq)}}\varepsilon^{2}\,d\varepsilon\,d\vect{x}
+  = \int_{K_{\varepsilon}^{(p)}}\varepsilon^{2}\,d\varepsilon\,\int_{\bK_{\vect{x}}^{(\bq)}}d\vect{x}
+  = \Delta V_{\varepsilon}^{(p)}\,\Delta V_{\vect{x}}^{(\bq)}.
+\end{equation}
+The factor $\varepsilon^{2}$ comes from using spherical momentum space coordinates.  
+Cartesian position space coordinates are assumed.  
+We also define $\Delta\varepsilon_{p} = \varepsilon_{p+\f{1}{2}}-\varepsilon_{p-\f{1}{2}}$ and $\Delta \vect{x}_{\bq}=\prod_{i=1}^{d}(x_{q^{i}+\f{1}{2}}^{i}-x_{q^{i}-\f{1}{2}}^{i})$.  
+
+The moments are approximated by
+\begin{equation}
+  \vect{\mathcal{M}}_{h}(\varepsilon,\vect{x})=\sum_{p\vect{q}}\chi(\bK^{(p\bq)})\,\vect{\mathcal{M}}_{h}^{(p\bq)}(\varepsilon,\vect{x}),
+\end{equation}
+where $\chi$ is the indicator function, and the approximation in each element $\bK^{(p\bq)}$ is given by
+\begin{equation}
+  \vect{\mathcal{M}}_{h}^{(p\bq)}(\varepsilon,\vect{x}) = \sum_{i\bj}\vect{\mathcal{M}}_{i\bj}^{(p\bq)}\,\ell_{i}(\varepsilon)\,\ell_{\vect{j}}(\vect{x}).  
+  \label{eq:nodalExpansion}
+\end{equation}
+(Here we have suppressed dependence on time $t$ for brevity.)
+In Eq.~\eqref{eq:nodalExpansion}, $\ell_{i}(\varepsilon)$ and $\ell_{\bj}(\vect{x})$ are local basis polynomials, which we take to be Lagrange polynomials constructed from Gaussian quadrature points in each element.  
+
+The element average (average over energy and position nodes in each element) is computed as
+\begin{align}
+  \langle\vect{\mathcal{M}}\rangle^{(p\bq)}
+  &=\f{1}{\Delta V^{(p\bq)}}\int_{\bK^{(p\bq)}}\vect{\mathcal{M}}_{h}^{(p\bq)}(\varepsilon,\vect{x})\,\varepsilon^{2}\,d\varepsilon\,d\vect{x} \nonumber \\
+  &=\f{\Delta\varepsilon_{p}\,\Delta\vect{x}_{\bq}}{\Delta V^{(p\bq)}}\sum_{i\bj}w_{i}\,w_{\bj}\,\varepsilon_{i}^{2}\,\vect{\mathcal{M}}_{i\bj}^{(p\bq)}.  
+\end{align}
+Energy integrated (grey) moments are computed as
+\begin{equation}
+  \vect{M}^{(\bq)}
+  =\f{4\pi}{\Delta V_{\vect{x}}^{(\bq)}}\int_{\bbR^{+}}\int_{\bK_{\vect{x}}^{(\bq)}}\vect{\mathcal{M}}_{h}(\varepsilon,\vect{x})\,\varepsilon^{2}\,d\varepsilon\,d\vect{x}
+  =4\pi\sum_{p}\langle\vect{\mathcal{M}}\rangle^{(p\bq)}\,\Delta V_{\varepsilon}^{(p)}.  
+\end{equation}
+
+\end{document}

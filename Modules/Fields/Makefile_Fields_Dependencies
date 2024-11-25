@@ -1,0 +1,22 @@
+FluidFieldsModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  FluidFieldsModule.F90
+
+FluidFieldsUtilitiesModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  FluidFieldsUtilitiesModule.f90
+
+RadiationFieldsModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  RadiationFieldsModule.F90
+
+RadiationFieldsUtilitiesModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  RadiationFieldsModule.o \
+  RadiationFieldsUtilitiesModule.f90

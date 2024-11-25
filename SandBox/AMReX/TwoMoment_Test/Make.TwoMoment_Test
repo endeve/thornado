@@ -1,0 +1,9 @@
+# THORNADO_DIR/SandBox/AMReX/TwoMoment_Test
+
+F90EXE_sources += InitializationModule.F90
+F90EXE_sources += MF_InitializationModule.F90
+f90EXE_sources += FinalizationModule.f90
+F90EXE_sources += MF_TwoMoment_TimeSteppingModule_Relativistic.F90
+f90EXE_sources += ApplicationDriver.f90
+f90EXE_sources += TaggingModule.f90
+

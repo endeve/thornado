@@ -1,0 +1,3 @@
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Units
+f90EXE_sources  += PhysicalConstantsModule.f90
+f90EXE_sources  += UnitsModule.f90

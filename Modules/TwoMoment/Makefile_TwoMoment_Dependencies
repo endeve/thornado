@@ -1,0 +1,63 @@
+ifeq ($(TWOMOMENT_ORDER),ORDER_1)
+  include $(THORNADO_DIR)/Modules/TwoMoment/OrderOne/Makefile_TwoMoment_OrderOne_Dependencies
+else ifeq ($(TWOMOMENT_ORDER),ORDER_V)
+  include $(THORNADO_DIR)/Modules/TwoMoment/OrderV/Makefile_TwoMoment_OrderV_Dependencies
+else ifeq ($(TWOMOMENT_ORDER),RELATIVISTIC)
+  include $(THORNADO_DIR)/Modules/TwoMoment/Relativistic/Makefile_TwoMoment_Relativistic_Dependencies
+endif
+
+TwoMoment_TimersModule.o: \
+  KindModule.o \
+  TwoMoment_TimersModule.F90
+
+TwoMoment_ClosureModule.o: \
+  KindModule.o \
+  TwoMoment_ClosureModule.F90
+
+TwoMoment_MeshRefinementModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  PolynomialBasisModule_Lagrange.o \
+  LinearAlgebraModule.o \
+  TwoMoment_MeshRefinementModule.F90
+
+TwoMoment_BoundaryConditionsModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModule.o \
+  RadiationFieldsModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  GeometryFieldsModuleE.o \
+  TwoMoment_BoundaryConditionsModule.F90
+
+TwoMoment_NeutrinoMatterSolverModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  TwoMoment_TimersModule.o \
+  ArrayUtilitiesModule.o \
+  LinearAlgebraModule.o \
+  ReferenceElementModuleE.o \
+  MeshModule.o \
+  RadiationFieldsModule.o \
+  EquationOfStateModule_TABLE.o \
+  NeutrinoOpacitiesComputationModule.o \
+  TwoMoment_UtilitiesModule.o \
+  TwoMoment_ClosureModule.o \
+  TwoMoment_NeutrinoMatterSolverModule.F90
+
+TwoMoment_DiscretizationModule_Collisions_Neutrinos.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  GeometryFieldsModuleE.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  EquationOfStateModule_TABLE.o \
+  TwoMoment_NeutrinoMatterSolverModule.o \
+  TwoMoment_UtilitiesModule.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos.F90

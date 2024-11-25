@@ -1,0 +1,9 @@
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/Geometry
+F90EXE_sources  += MF_GeometryModule.F90
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Geometry
+F90EXE_sources  += GeometryFieldsModule.F90
+F90EXE_sources  += GeometryComputationModule.F90
+F90EXE_sources  += GeometryFieldsModuleE.F90
+F90EXE_sources  += GeometryComputationModuleE.F90
+f90EXE_sources  += GeometryBoundaryConditionsModule.f90

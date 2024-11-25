@@ -1,0 +1,219 @@
+\section{Realizability-Preserving DG-IMEX Scheme}
+\label{sec:realizableDGIMEX}
+
+We proceed to develop realizability-preserving DG schemes for the two-moment model based on the IMEX schemes discussed in the previous section (cf. Eqs.~\eqref{imexStages}-\eqref{eq:imexCorrection}).  
+Following the framework in \cite{zhangShu_2010b} for high-order DG schemes, the realizability-preserving DG-IMEX scheme is designed to preserve realizability of cell averages over a time step $\dt$ in each element $\bK$.  
+Realizability of the cell average is leveraged to limit the polynomial approximation $\vect{\cM}_{h}$ in the stages of the IMEX scheme.  
+If the polynomial approximation $\vect{\cM}_{h}$ is not realizable in a finite number of points in $\bK$, the high-order components are damped (see Section~\ref{sec:limiter}).  
+The main result of this section is stated in Theorem~\ref{the:realizableDGIMEX}.  
+The realizability-preserving property of the DG-IMEX scheme is stated in Theorem~\ref{the:realizableDGIMEX2} in Section~\ref{sec:limiter}, after the discussion of the limiter.  
+
+The cell average of the moments is defined as
+\begin{equation}
+  \vect{\cM}_{\bK}
+  =\f{1}{|\bK|}\int_{\bK}\vect{\cM}_{h}\,d\bx.  
+\end{equation}
+With $v=1$ in Eq.~\eqref{eq:semidiscreteDG}, the stage values for the cell average in the IMEX scheme (cf. Eq.~\eqref{eq:imexStagesRewrite}) can be written as
+\begin{align}
+  \cM_{\bK}^{(0)}
+  &=\cM_{\bK}^{n}, \nonumber \\
+  \vect{\cM}_{\bK}^{(i)}
+  &=\sum_{j=0}^{i-1}c_{ij}\,\vect{\cM}_{\bK}^{(ij)}
+  +a_{ii}\,\dt\,\f{1}{\tau}\,\big(\,\vect{\eta}-\vect{\cD}\,\vect{\cM}_{\bK}^{(i)}\,\big), \quad i=1,\ldots,s,
+  \label{eq:imexStagesCellAverage}
+\end{align}
+where $c_{ij}\ge0$, $\sum_{j=0}^{i-1}c_{ij}=1$, $a_{ii}>0$, 
+\begin{equation}
+  \vect{\cM}_{\bK}^{(ij)}
+  =\vect{\cM}_{\bK}^{(j)}-\hat{c}_{ij}\,\dt\,\big\langle\,\nabla\cdot\vect{\cF}(\vect{\cM}_{h}^{(j)})\,\big\rangle_{\bK},
+\end{equation}
+and $\hat{c}_{ij}\ge0$.  
+The cell average of the divergence operator is
+\begin{equation}
+  \big\langle\,\nabla\cdot\vect{\cF}(\vect{\cM}_{h}^{(j)})\,\big\rangle_{\bK}
+  =\f{1}{|\bK|}\sum_{k=1}^{d}\int_{\tilde{\bK}^{k}}
+  \big(\,\widehat{\bcF}^{k}(\vect{\cM}_{h}^{(j)})\big|_{\xH^{k}}-\widehat{\bcF}^{k}(\vect{\cM}_{h}^{(j)})\big|_{\xL^{k}}\,\big)\,d\tilde{\vect{x}}^{k}.  
+\end{equation}
+
+We first establish conditions for realizability of the stage values in Eq.~\eqref{eq:imexStagesCellAverage}.  
+\begin{lemma}
+  Let $\vect{\cM}_{\bK}^{(i)}$ satisfy Eq.~\eqref{eq:imexStagesCellAverage}.
+  Assume that $\vect{\cM}_{\bK}^{(ij)}\in\cR~\forall\,i=1,\ldots,s,\,j\le i-1$.  
+  Then, $\vect{\cM}_{\bK}^{(i)}\in\cR$, for $i=1,\ldots,s$.  
+  \label{lem:imexStagesCellAverage}
+\end{lemma}
+\begin{proof}
+  For $i=1,\ldots,s$, 
+  \begin{equation*}
+    \sum_{j=0}^{i-1}c_{ij}\,\vect{\cM}_{\bK}^{(ij)}\in\cR,
+  \end{equation*}
+  since it is a convex combination of elements in $\bK$.  
+  The Result follows from Lemma~\ref{lem:implicitStep}.  
+\end{proof}
+
+We next establish conditions under which $\vect{\cM}_{\bK}^{(ij)}\in\cR$.  
+\begin{lemma}
+  Let $\{\beta_{k}\}_{k=1}^{d}$ be a set of strictly positive constants satisfying $\sum_{k=1}^{d}\beta_{k}=1$.  
+  If for each $k\in\{1,\ldots,d\}$, 
+  \begin{align}
+    &\vect{\Gamma}^{k}\big[\vect{\cM}_{h}^{(j)};\hat{c}_{ij}\big] \label{eq:realizableGamma} \\
+    &:=\f{1}{|K^{k}|}
+    \Big[\,\int_{K^{k}}\vect{\cM}_{h}^{(j)}\,dx^{k}-\f{\hat{c}_{ij}\,\dt}{\beta_{k}}\big(\,\widehat{\bcF}^{k}(\vect{\cM}_{h}^{(j)})\big|_{\xH^{k}}-\widehat{\bcF}^{k}(\vect{\cM}_{h}^{(j)})\big|_{\xL^{k}}\,\big)\,\Big] \nonumber    
+  \end{align}
+  is realizable, then $\vect{\cM}_{\bK}^{(ij)}\in\cR$.  
+  \label{lem:realizableMij}
+\end{lemma}
+\begin{proof}
+  It is easy to show that $\vect{\cM}_{\bK}^{(ij)}$ can be expressed as the convex combination
+  \begin{equation}
+    \vect{\cM}_{\bK}^{(ij)}
+    =\sum_{k=1}^{d}\beta_{k}\,\f{1}{|\tilde{\vect{\bK}}^{k}|}\int_{\tilde{\bK}^{k}}\vect{\Gamma}^{k}\big[\vect{\cM}_{h}^{(j)};\hat{c}_{ij}\big]\,d\tilde{\vect{x}}^{k}.  
+    \label{eq:cellAverageInTermsOfGamma}
+  \end{equation}
+  The result follows immediately.  
+\end{proof}
+\begin{rem}
+  If a quadrature rule $\tilde{\vect{Q}}^{k}\colon C^{0}(\tilde{\bK}^{k})\to\bbR$, with positive weights, and points defined by the set $\tilde{\vect{S}}^{k}$, is used to approximate the integral over $\tilde{\bK}^{k}$ in Eq.~\eqref{eq:cellAverageInTermsOfGamma}, then it is sufficient for Eq.~\eqref{eq:realizableGamma} to hold in the quadrature points $\tilde{\vect{S}}^{k}\subset\tilde{\bK}^{k}$.  
+\end{rem}
+
+Next, we establish conditions for which Eq.~\eqref{eq:realizableGamma} holds.  
+To this end, let $\hat{Q}^{k}\colon C^{0}(K^{k})\to\bbR$ denote the $N$-point \emph{Gauss-Lobatto (GL)} quadrature rule on the interval $K^{k}=(\xL^{k},\xH^{k})$, with points
+\begin{equation}
+  \hat{S}^{k}=\left\{\xL^{k}=\hat{x}_{1}^{k},\ldots,\hat{x}_{N}^{k}=\xH^{k}\right\}, 
+  \label{eq:quadraturePointsGL}
+\end{equation}
+and weights $\hat{w}_{q} \in (0,1]$, normalized so that $\sum_{q=1}^{N} \hat{w}_{q} = 1$.  
+(The hat is used to denote the GL rule, which includes the endpoints of the interval $K^{k}$.)
+This quadrature integrates polynomials in $x^{k} \in \bbR$ with degree $\le2N-3$ exactly.  
+If $\vect{\cM}_{h}^{(j)}$ is represented by such polynomials, then
+\begin{equation}
+  \int_{K^{k}} \bcM_{h}^{(j)}(x^{k})\,dx^{k} = \hat{Q}^{k}[\bcM_{h}^{(j)}] \equiv
+  |K^{k}| \sum_{q=1}^{N} \hat{w}_{q}\,\bcM_{h}^{(j)}(\hat{x}_{q}^{k}),
+  \label{eq:quadratureRuleGL}
+\end{equation}
+where for simplicity of notation, we have suppressed the explicit dependence on $\tilde{\vect{x}}^{k}$ to denote $\bcM_{h}^{(j)}(\hat{x}_q^{k},\tilde{\vect{x}}^{k}) = \bcM_{h}^{(j)}(\hat{x}_{q}^{k})$.  
+In each element, we also denote $\vect{\cM}_{h}^{(j)}(\hat{x}_{1}^{k})=\vect{\cM}_{h}^{(j)}(\xL^{k,+})$ and $\vect{\cM}_{h}^{(j)}(\hat{x}_{N}^{k})=\vect{\cM}_{h}^{(j)}(\xH^{k,-})$.  
+Similarly, the solution on $\tilde{\vect{\bK}}^{k}$ to the immediate left of $\xL^{k}$ is denoted $\vect{\cM}_{h}^{(j)}(\xL^{k,-})$, and the solution on $\tilde{\vect{\bK}}^{k}$ to the immediate right of $\xH^{k}$ is denoted $\vect{\cM}_{h}^{(j)}(\xH^{k,+})$.  
+
+Using Eq.~\eqref{eq:quadratureRuleGL}, $\vect{\Gamma}^{k}$ can be expressed as the convex combination
+\begin{align}
+  \vect{\Gamma}^{k}\big[\bcM_{h}^{(j)};\hat{c}_{ij}\big]
+  &=\sum_{q=2}^{N-1}\hat{w}_{q}\,\vect{\cM}_{h}^{(j)}(\hat{x}_{q}^{k}) \nonumber \\
+  &\hspace{-12pt}
+  +\hat{w}_{1}\,\big[\,\vect{\cM}_{h}^{(j)}(\xL^{k,+})+\lambda_{ij}^{k}\,\mathscr{F}^{k}\big(\vect{\cM}_{h}^{(j)}(\xL^{k,-}),\vect{\cM}_{h}^{(j)}(\xL^{k,+})\big)\,\big] \nonumber \\
+  &\hspace{-12pt}
+  +\hat{w}_{N}\,\big[\,\vect{\cM}_{h}^{(j)}(\xH^{k,-})-\lambda_{ij}^{k}\,\mathscr{F}^{k}\big(\vect{\cM}_{h}^{(j)}(\xH^{k,-}),\vect{\cM}_{h}^{(j)}(\xH^{k,+})\big)\,\big],
+  \label{eq:realizableGammaConvex}
+\end{align}
+where $\lambda_{ij}^{k}=\hat{c}_{ij}\,\dt/(\beta_{k}\,\hat{w}_{N}\,|K^{k}|)$.  
+(With the GL quadrature rule in Eq.~\eqref{eq:quadratureRuleGL}, $\hat{w}_{1}=\hat{w}_{N}$).  
+The following Lemma establishes sufficient conditions for realizability of $\vect{\Gamma}^{k}\big[\bcM_{h}^{(j)};\hat{c}_{ij}\big]$, and hence $\vect{\cM}_{\bK}^{(ij)}$.  
+\begin{lemma}
+  Assume that $\vect{\cM}_{h}^{(j)}(\hat{x}_{q}^{k})\in\cR$ for all $q=1,\ldots,N$ and all $\bK\in\mathscr{T}$.  
+  Let the time step $\dt$ be chosen so that $\lambda_{ij}^{k}\le1$.  
+  Let the numerical flux be given by the Lax-Friedrichs flux in Eq.~\eqref{eq:fluxFunctionLF} with $\alpha^{k}=1$.  
+  Then $\vect{\Gamma}^{k}\big[\bcM_{h}^{(j)};\hat{c}_{ij}\big]\in\cR$.  
+  \label{lem:realizableGamma}
+\end{lemma}
+\begin{proof}
+  In Eq.~\eqref{eq:realizableGammaConvex}, $\vect{\Gamma}^{k}\big[\bcM_{h}^{(j)};\hat{c}_{ij}\big]$ is expressed as a convex combination.  
+  By assumption, $\vect{\cM}_{h}^{(j)}(\hat{x}_{q}^{k})\in\cR$ ($q=2,\ldots,N-1$).  
+  Thus it remains to show that
+  \begin{align*}
+    &\Phi\big[\,\vect{\cM}_{h}^{(j)}(\xL^{k,-}),\vect{\cM}_{h}^{(j)}(\xL^{k,+}),\vect{\cM}_{h}^{(j)}(\xH^{k,-}),\vect{\cM}_{h}^{(j)}(\xH^{k,+});\hat{c}_{ij}\,\big] \\
+    &\hspace{6pt}
+    :=\f{1}{2}\big[\,\vect{\cM}_{h}^{(j)}(\xL^{k,+})+\lambda_{ij}^{k}\,\mathscr{F}^{k}\big(\vect{\cM}_{h}^{(j)}(\xL^{k,-}),\vect{\cM}_{h}^{(j)}(\xL^{k,+})\big)\,\big] \\
+    &\hspace{18pt}
+    +\f{1}{2}\big[\,\vect{\cM}_{h}^{(j)}(\xH^{k,-})-\lambda_{ij}^{k}\,\mathscr{F}^{k}\big(\vect{\cM}_{h}^{(j)}(\xH^{k,-}),\vect{\cM}_{h}^{(j)}(\xH^{k,+})\big)\,\big]
+  \end{align*}
+  is realizable.  
+  Using the Lax-Friedrichs flux in Eq.~\eqref{eq:fluxFunctionLF}, with $\alpha^{k}=1$ ($k\in\{1,\ldots,d\}$), it is straightforward to show that
+  \begin{equation}
+    \Phi=(1-\lambda_{ij}^{k})\,\Phi_{0} + \f{1}{2}\,\lambda_{ij}^{k}\,\Phi_{1} + \f{1}{2}\,\lambda_{ij}^{k}\,\Phi_{2},
+    \label{eq:phiConvex}
+  \end{equation}
+  where
+  \begin{align*}
+    \Phi_{0} &= \f{1}{2}\,\big(\,\vect{\cM}_{h}^{(j)}(\xL^{k,+})+\vect{\cM}_{h}^{(j)}(\xH^{k,-})\,\big), \\
+    \Phi_{1} &= \Phi^{+}\big[\vect{\cM}_{h}^{(j)}(\xL^{k,-})\big]+\Phi^{-}\big[\vect{\cM}_{h}^{(j)}(\xH^{k,-})\big], \\
+    \Phi_{2} &= \Phi^{+}\big[\vect{\cM}_{h}^{(j)}(\xL^{k,+})\big]+\Phi^{-}\big[\vect{\cM}_{h}^{(j)}(\xH^{k,+})\big],
+  \end{align*}
+  and $\Phi^{\pm}(\vect{\cM})=\f{1}{2}\,\big(\vect{\cM}\pm\vect{e}_{k}\cdot\vect{\cF}^{k}(\vect{\cM})\big)$; cf. Lemma~\ref{lem:explicitStep}.  
+  Since $\lambda_{ij}^{k}\le1$, $\Phi$ is expressed as a convex combination of $\Phi_{0}$, $\Phi_{1}$, and $\Phi_{2}$.  
+  By assumption, $\vect{\cM}_{h}^{(j)}(\xL^{k,-})$, $\vect{\cM}_{h}^{(j)}(\xL^{k,+})$, $\vect{\cM}_{h}^{(j)}(\xH^{k,-})$, $\vect{\cM}_{h}^{(j)}(\xH^{k,+})\in\cR$, which immediately implies realizability of $\Phi_{0}$.  
+  Realizability of $\Phi_{1}$ and $\Phi_{2}$ follows by invoking Lemma~\ref{lem:explicitStep}.  
+  This completes the proof.  
+\end{proof}
+
+\begin{rem}
+  For the IMEX scheme to be realizability-preserving it is sufficient to set the time step such that
+  \begin{equation}
+    \dt \le c_{\Sch}\,\min_{k} \Big(\, \beta_{k}\,\hat{w}_{N}\,|K^{k}| \,\Big),
+    \label{eq:imexTimeStep}
+  \end{equation}
+  where $c_{\Sch}$ is defined in \eqref{eq:imexCFL}.  
+\end{rem}
+
+\begin{rem}
+  Lemma~\eqref{lem:realizableGamma} is proven without specification of $\tilde{\vect{x}}^{k}$.  
+  In the numerical scheme, we need $\vect{\Gamma}^{k}\big[\bcM_{h}^{(j)};\hat{c}_{ij}\big]$ to be realizable in the quadrature set $\tilde{\vect{S}}^{k}$ used to approximate the integral over $\tilde{\bK}^{k}$ in Eq.~\eqref{eq:realizableGamma}.  
+  (Typically, $\tilde{\vect{S}}^{k}$ is a tensor product of Gauss-Legendre quadrature points.)  
+  We thus require $\vect{\cM}_{h}^{(j)}$ to be realizable in the quadrature set $\hat{\vect{S}}^{k}=\tilde{\vect{S}}^{k}\otimes\hat{S}^{k}\subset\bK$, where $\tilde{\vect{S}}^{k}\subset\tilde{\bK}^{k}$, and $\hat{S}^{k}\subset K^{k}$ are the GL quadrature points.  
+\end{rem}
+
+\begin{rem}
+  Lemmas~\ref{lem:imexStagesCellAverage}, \ref{lem:realizableMij}, and \ref{lem:realizableGamma} establish sufficient conditions for realizability of the cell average of each IMEX stage $\vect{\cM}_{\bK}^{(i)}$, for $i=1,\ldots,s$.  
+  Within each IMEX stage, the realizability-enforcing limiter discussed in Section~\ref{sec:limiter} is invoked to ensure that the numerical solution $\vect{\cM}_{h}^{(i)}(\vect{x})$ is realizable in the quadrature points $\hat{\vect{S}}^{k}$, for $k=1,\ldots,d$.  
+\end{rem}
+
+For GSA IMEX schemes, $\tilde{\vect{\cM}}_{\bK}^{n+1}=\vect{\cM}_{\bK}^{(s)}$.  
+For IMEX schemes incorporating the correction step in Eq.~\eqref{eq:imexCorrection}, the cell average at $t^{n+1}$ is obtained by solving
+\begin{equation}
+  \vect{\cM}_{\bK}^{n+1}=\tilde{\vect{\cM}}_{\bK}^{n+1}+\alpha\,\f{\dt^{2}}{\tau^{2}}\,\vect{\cD}\,\big(\,\vect{\eta}-\vect{\cD}\,\vect{\cM}_{\bK}^{n+1}\,\big),
+  \label{eq:imexCorrectionCellAverage}
+\end{equation}
+where $\vect{\eta}$ and $\vect{\cD}$ are defined in Eq.~\eqref{eq:collisionTermMoments}.  
+For these IMEX schemes, realizability of $\vect{\cM}_{\bK}^{n+1}$ is established by the following lemma.  
+\begin{lemma}
+  Suppose that $\tilde{\vect{\cM}}_{\bK}^{n+1}\in\cR$ and $\vect{\cM}_{\bK}^{n+1}$ is obtained by solving Eq.~\eqref{eq:imexCorrectionCellAverage}.  
+  Then $\vect{\cM}_{\bK}^{n+1}\in\cR$.  
+  \label{lem:imexCorrectionCellAverage}
+\end{lemma}
+\begin{proof}
+  The result follows immediately from Lemma~\ref{lem:correctionStep}.  
+\end{proof}
+
+\begin{rem}
+  For IMEX scheme PD-ARS (\ref{app:PD-ARS}), which does not invoke the correction step (i.e., $\alpha=0$), $\vect{\cM}_{\bK}^{n+1}=\vect{\cM}_{\bK}^{(s)}$.  
+\end{rem}
+
+We are now ready to state the main result of this section.  
+\begin{theorem}
+  Consider the stages of the IMEX scheme in Eq.~\eqref{imexStages} applied to the DG discretization of the two-moment model in Eq.~\eqref{eq:semidiscreteDG}.  
+  Suppose that
+  \begin{itemize}
+    \item[1.] For all $k\in\{1,\ldots,d\}$, the Gauss-Lobatto quadrature rule $\hat{Q}^{k}$ is chosen such that Eq.~\eqref{eq:quadratureRuleGL} holds.  
+    \item[2.] For all $k\in\{1,\ldots,d\}$, $\vect{x}\in\hat{\vect{S}}^{k}$, and $0\le j \le i-1<s$, 
+    \begin{equation*}
+      \vect{\cM}_{h}^{(j)}(\vect{x})\in\cR.
+    \end{equation*}
+    \item[3.] The time step $\dt$ is chosen such that Eq.~\eqref{eq:imexTimeStep} holds.  
+  \end{itemize}
+  Then $\vect{\cM}_{\bK}^{(i)}\in\cR$.  
+  \label{the:realizableDGIMEX}
+\end{theorem}
+\begin{proof}
+  The cell average $\vect{\cM}_{\bK}^{(i)}$ is obtained by solving (cf. Eq.~\eqref{eq:imexStagesCellAverage})
+  \begin{equation*}
+    \vect{\cM}_{\bK}^{(i)}
+    =\sum_{j=0}^{i-1}c_{ij}\,\vect{\cM}_{\bK}^{(ij)}
+    +a_{ii}\,\f{\dt}{\tau}\big(\,\vect{\eta}-\vect{\cD}\,\vect{\cM}_{\bK}^{(i)}\,\big),
+  \end{equation*}
+  where, after invoking the quadrature rule $\tilde{\vect{Q}}^{k}$ to integrate over $\tilde{\bK}^{k}$ in Eq.~\eqref{eq:cellAverageInTermsOfGamma},
+  \begin{equation*}
+    \vect{\cM}_{\bK}^{(ij)}
+    =\sum_{k=1}^{d}\f{\beta_{k}}{|\tilde{\bK}^{k}|}\tilde{\vect{Q}}^{k}\big(\vect{\Gamma}^{k}\big[\vect{\cM}_{h}^{(j)};\hat{c}_{ij}\big]\big).  
+  \end{equation*}
+  Since $\vect{\cM}_{h}^{(j)}\in\cR$ on $\hat{\vect{S}}^{k}$, for each $k\in\{1,\ldots,d\}$ and $j\in\{0,\ldots,i-1\}$, it follows from Lemma~\ref{lem:realizableGamma} that $\vect{\Gamma}^{k}\big[\vect{\cM}_{h}^{(j)};\hat{c}_{ij}\big]\in\cR$ on $\tilde{\vect{S}}^{k}$.  
+  Then, realizability of $\vect{\cM}_{\bK}^{(ij)}$ follows from Lemma~\ref{lem:realizableMij}, after which $\vect{\cM}_{\bK}^{(i)}\in\cR$ follows by invoking Lemma~\ref{lem:imexStagesCellAverage}.  
+\end{proof}

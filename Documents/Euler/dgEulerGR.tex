@@ -1,0 +1,54 @@
+\documentclass[10pt,preprint]{aastex}
+
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{booktabs}
+\usepackage{mathrsfs}
+\usepackage{cite}
+\usepackage{times}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{lineno}
+\usepackage{yhmath}
+\usepackage{natbib}
+\usepackage{../definitions}
+\hypersetup{
+  bookmarksnumbered = true,
+  bookmarksopen=false,
+  pdfborder=0 0 0,         % make all links invisible, so the pdf looks good when printed
+  pdffitwindow=true,      % window fit to page when opened
+  pdfnewwindow=true, % links in new window
+  colorlinks=true,           % false: boxed links; true: colored links
+  linkcolor=blue,            % color of internal links
+  citecolor=magenta,    % color of links to bibliography
+  filecolor=magenta,     % color of file links
+  urlcolor=cyan              % color of external links
+}
+
+\usepackage{graphicx}
+\newtheorem{remark}{Remark}
+\graphicspath{{Figures/}}
+
+\usepackage{float}
+
+\begin{document}
+
+\title{Nodal Discontinuous Galerkin Method for the Euler Equations in GR}
+\author{Samuel J Dunham\altaffilmark{1}, Eirik Endeve\altaffilmark{2}, et al.}
+\altaffiltext{1}{Department of Astronomy, Vanderbilt University, 6301 Stevenson Science Center, Nashville TN, 37212, USA; samuel.j.dunham@vanderbilt.edu}
+\altaffiltext{2}{Computational and Applied Mathematics Group, Oak Ridge National Laboratory, Oak Ridge, TN 37831-6354, USA; endevee@ornl.gov}
+
+\tableofcontents
+
+\include{SamsTexFiles/DGScheme}\newpage
+\include{SamsTexFiles/BP_Methods_FirstOrder_DGScheme}\newpage
+\include{SamsTexFiles/Time-Step_Restriction_High-Order}\newpage
+\include{SamsTexFiles/RecoveryOfPrimitiveVariables}\newpage
+\include{SamsTexFiles/LinearInterpolationError}\newpage
+
+\bibliographystyle{apj}
+\bibliography{../References/references.bib}
+
+\end{document}

@@ -1,0 +1,26 @@
+\section{Summary and Outlook}\label{se:Summary}
+
+We have developed IMEX schemes suitable for a two-moment model of neutrino transport that obey Fermi-Dirac statistics.
+The scheme employs algebraic closure based on Fermi-Dirac statistics, high-order discontinuous Galerkin methods for spatial discretization, and convex-invariant time integration to maintain realizability of the moments.  
+Since the realizable domain is convex and its convexity can be inherited by a convex combination, a scheme having convex combinations as its stages can preserve the realizable domain.
+This encouraged us to construct realizability-preserving time integrators, realizability-preserving IMEX schemes, and a method with a realizability-preserving IMEX time integrator and high-order DG method.  
+
+In the applications that motivate this work, the neutrino distribution function can vary from 0 to 1.  
+Hence, we have considered algebraic closures based on Fermi-Dirac statistics for both low and high occupancy.  
+Among the seven algebraic closures we considered -- Kershaw~\cite{kershaw_1976}, Wilson~\cite{wilson_1975,leblancWilson_1970}, Levermore~\cite{levermore_1984}, Minerbo~\cite{minerbo_1978}, Janka 1~\cite{janka_1991}, Janka 2~\cite{janka_1992}, and Cernohorsky \& Bludman~\cite{cernohorskyBludman_1994} -- only the Cernohorsky \& Bludman closure obeys Fermi-Dirac statistics for all occupancies.  
+As a result, we employed the Cernohorsky \& Bludman closure for the neutrino stationary state test in Section~\ref{se: Neutrino Stationary State Test}.
+We also ran our code with Minerbo closure, IMEX PC2, IMEX SSP2332 and IMEXRKCB2 schemes, and the results show that only PD-ARS schemes have stability.
+In addition, closures have impact on the simulation result.
+As we observed, both using PD-ARS scheme, there are $\sim30\%$ difference in the neutrino number densities (and relaxation time) between the results obtained with Minerbo closure and that with CB closure.
+Even though RKCB2 with Minerbo closure luckily survived our test, the results it gave were compromised: they were closer to the results of the PD-ARS scheme with Minerbo closure than to the results of the PD-ARS scheme with CB closure.
+In what way and to what degree the results are in fact compromised either by the closure or by a particular correction step for unrealizable moments are difficult to determine fully and is left for further study.
+
+
+Two PD-ARS schemes are proposed.
+The one with SSPRK2 has second-order accuracy while the other with SSPRK3 has third-order accuracy, and both have the strong-stability preserving property in the streaming limit.  
+Their accuracy was demonstrated on problems with known smooth solutions in streaming, absorption, and scattering-dominated regimes.
+The neutrino transport test with emission, absorption, and isoenergetic scattering through a stationary background, was designed to test the convex-invariance of our PD-ARS schemes. 
+The neutrino stationary state test shows that a method combining an algebraic closure based on Fermi-Dirac statistics and convex-invariant time integration is promising for robust CCSN simulation.
+
+In this work, we adopted Cartesian coordinates, a linear collision term, and a fixed material background.
+More realistic problems of scientific interest, such as with energy-exchanging scattering and relativistic effects, are left for future research.

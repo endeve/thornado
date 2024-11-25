@@ -1,0 +1,64 @@
+\section{Realizability-Enforcing Limiter}
+\label{sec:limiter}
+
+Condition~2 of Theorem~\ref{the:realizableDGIMEX} requires that the polynomial approximation $\vect{\cM}_{h}=\vect{\cM}_{h}^{(j)}$ ($j\in\{0,\ldots,i-1\}$) is realizable in every point in the quadrature set $S=\cup_{k=1}^{d}\hat{\vect{S}}^{k}$.  
+Following Zhang \& Shu \cite{zhangShu_2010a} we use the limiter in \cite{liuOsher_1996} to enforce the bounds on the zeroth moment $\cJ$.  
+%The bound-preserving DG-IMEX method developed in previous sections is designed to preserve realizability of the cell averaged moments, i.e., $\vect{\cM}_{\bK}\in\cR$, provided sufficiently accurate quadratures are used to integrate integrals in the DG method, a CFL condition is satisfied, and that the polynomial approximation $\vect{\cM}_{h}$, at time $t^{n}$, is realizable in a set of quadrature points in each element $\bK$.  
+%We denote this quadrature set by $S=\cup_{k=1}^{d}\hat{\vect{S}}^{k}\subset\bK$.  
+%In the DG method, we use the limiter proposed by Zhang \& Shu \cite{zhangShu_2010a} for scalar conservation laws to enforce the bounds on the zeroth moment $\cJ$ (see also \cite{liuOsher_1996}).  
+We replace the polynomial $\cJ_{h}(\vect{x})$ with the limited polynomial
+\begin{equation}
+  \tilde{\cJ}_{h}(\vect{x})
+  =\vartheta_{1}\,\cJ_{h}(\vect{x})+(1-\vartheta_{1})\,\cJ_{\bK},
+  \label{eq:limitDensity}
+\end{equation}
+where the limiter parameter $\vartheta_{1}$ is given by
+\begin{equation}
+  \vartheta_{1}
+  =\min\Big\{\,\Big|\f{M-\cJ_{\bK}}{M_{S}-\cJ_{\bK}}\Big|,\Big|\f{m-\cJ_{\bK}}{m_{S}-\cJ_{\bK}}\Big|,1\,\Big\},
+\end{equation}
+with $m=0$ and $M=1$, and
+\begin{equation}
+  M_{S}=\max_{\vect{x}\in S}\cJ_{h}(\vect{x})
+  \quad\text{and}\quad
+  m_{S}=\min_{\vect{x}\in S}\cJ_{h}(\vect{x}).  
+\end{equation}
+
+In the next step, we ensure realizability of the moments by following the framework of \cite{zhangShu_2010b}, developed to ensure positivity of the pressure when solving the Euler equations of gas dynamics.  
+We let $\widetilde{\vect{\cM}}_{h}=\big(\tilde{\cJ}_{h},\vect{\cH}_{h}\big)^{T}$.  
+Then, if $\widetilde{\bcM}_{h}$ lies outside $\cR$ for any quadrature point $\vect{x}_{q}\in S$, i.e., $\gamma(\widetilde{\bcM}_{h})<0$, there exists an intersection point of the straight line, $\vect{s}_{q}(\psi)$, connecting $\vect{\cM}_{\bK}\in\cR$ and $\widetilde{\vect{\cM}}_{h}$ evaluated in the troubled quadrature point $\vect{x}_{q}$, denoted $\widetilde{\vect{\cM}}_{q}$, and the boundary of $\cR$.  
+This line is given by the convex combination 
+\begin{equation}
+  \vect{s}_{q}(\psi)=\psi\,\widetilde{\vect{\cM}}_{q}+(1-\psi)\,\bcM_{\bK},
+\end{equation}
+where $\psi\in[0,1]$, and the intersection point $\psi_{q}$ is obtained by solving $\gamma(\bs_{q}(\psi))=0$ for $\psi$, using the bisection algorithm\footnote{In practice, $\psi$ needs not be accurate to many significant digits, and the bisection algorithm can be terminated after a few iterations.}.  
+We then replace the polynomial representation $\widetilde{\vect{\cM}}_{h}\to\widehat{\vect{\cM}}_{h}$, where
+\begin{equation}
+  \widehat{\vect{\cM}}_{h}(\vect{x})=\vartheta_{2}\,\widetilde{\vect{\cM}}_{h}(\vect{x})+(1-\vartheta_{2})\,\vect{\cM}_{\bK},
+  \label{eq:limitMoments}
+\end{equation}
+and $\vartheta_{2}=\min_{q}\psi_{q}$ is the smallest $\psi$ obtained in the element by considering all the troubled quadrature points.  
+This limiter is conservative in the sense that it preserves the cell-average $\widehat{\vect{\cM}}_{\bK}=\widetilde{\vect{\cM}}_{\bK}=\vect{\cM}_{\bK}$.  
+
+The realizability-preserving property of the DG-IMEX scheme results from the following theorem.
+\begin{theorem}
+  Consider the IMEX scheme in Eqs.~\eqref{imexStages}-\eqref{eq:imexCorrection} applied to the DG discretization of the two-moment model in Eq.~\eqref{eq:semidiscreteDG}.  
+  Suppose that
+  \begin{itemize}
+    \item[1.] The conditions of Theorem~\ref{the:realizableDGIMEX} hold.  
+    \item[2.] With $\vect{\cM}_{\bK}^{(i)}\in\cR$, the limiter described above is invoked to enforce 
+    \begin{equation*}
+      \vect{\cM}_{h}^{(i)}(\vect{x})\in\cR ~ \text{for all} ~ \vect{x} \in S.  
+    \end{equation*}
+    \item[3.] The IMEX scheme is GSA.  
+  \end{itemize}
+  Then $\vect{\bcM}_{\bK}^{n+1}\in\cR$.  
+  \label{the:realizableDGIMEX2}
+\end{theorem}
+\begin{proof}
+  By Theorem~\ref{the:realizableDGIMEX} (with $i=1$), we have $\vect{\cM}_{\bK}^{(1)}\in\cR$.  
+  Application of the realizability-enforcing limiter gives $\vect{\cM}_{h}^{(1)}(\vect{x})\in\cR$ for all $\vect{x} \in S$.  
+  Repeated application of these steps give $\vect{\cM}_{h}^{(i)}(\vect{x})\in\cR$ for all $\vect{x} \in S$ and $i\in\{1,\ldots,s\}$.  
+  Since the IMEX scheme is GSA, $\tilde{\vect{\cM}}_{\bK}^{n+1}\in\cR$.  
+  Finally, $\vect{\bcM}_{\bK}^{n+1}\in\cR$ follows from Lemma~\ref{lem:imexCorrectionCellAverage}.  
+\end{proof}

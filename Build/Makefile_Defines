@@ -1,0 +1,79 @@
+MDEFS ?=
+PP ?= -D
+
+HYDRO                  ?= NONRELATIVISTIC
+HYDRO_RIEMANN_SOLVER   ?= HLL
+NEUTRINO_MATTER_SOLVER ?= EMAB
+TWOMOMENT_ORDER        ?= ORDER_1
+
+DEFINES = \
+$(MDEFS)$(PP)MICROPHYSICS_$(MICROPHYSICS) \
+$(MDEFS)$(PP)MOMENT_CLOSURE_$(MOMENT_CLOSURE) \
+$(MDEFS)$(PP)NEUTRINO_MATTER_SOLVER_$(NEUTRINO_MATTER_SOLVER) \
+$(MDEFS)$(PP)TWOMOMENT_$(TWOMOMENT_ORDER) \
+$(MDEFS)$(PP)GRAVITY_SOLVER_$(GRAVITY_SOLVER) \
+$(MDEFS)$(PP)HYDRO_$(HYDRO) \
+$(MDEFS)$(PP)HYDRO_RIEMANN_SOLVER_$(HYDRO_RIEMANN_SOLVER)
+
+ifeq ($(USE_GPU),TRUE)
+   DEFINES      += $(MDEFS)$(PP)THORNADO_GPU
+   ifeq ($(USE_CUDA),TRUE)
+      DEFINES   += $(MDEFS)$(PP)THORNADO_CUDA
+   else ifeq ($(USE_HIP),TRUE)
+      DEFINES   += $(MDEFS)$(PP)THORNADO_HIP
+   endif
+   ifeq ($(USE_OACC),TRUE)
+      DEFINES   += $(MDEFS)$(PP)THORNADO_OACC
+      DEFINES   += $(MDEFS)$(PP)$(MICROPHYSICS)_OACC
+   else ifeq ($(USE_OMP_OL),TRUE)
+      DEFINES   += $(MDEFS)$(PP)THORNADO_OMP_OL
+      DEFINES   += $(MDEFS)$(PP)$(MICROPHYSICS)_OMP_OL
+   endif
+   ifeq ($(USE_MAGMA),TRUE)
+      DEFINES   += $(MDEFS)$(PP)THORNADO_LA_MAGMA
+   else ifeq ($(USE_ROCM),TRUE)
+      DEFINES   += $(MDEFS)$(PP)THORNADO_LA_ROCM
+   else ifeq ($(USE_ONEMKL),TRUE)
+      DEFINES   += $(MDEFS)$(PP)THORNADO_LA_ONEMKL
+   else ifeq ($(USE_CUBLAS),TRUE)
+      DEFINES   += $(MDEFS)$(PP)THORNADO_LA_CUBLAS
+   endif
+else
+   ifeq ($(USE_OMP),TRUE)
+      DEFINES   += $(MDEFS)$(PP)THORNADO_OMP
+      DEFINES   += $(MDEFS)$(PP)$(MICROPHYSICS)_OMP
+   endif
+   DEFINES      += $(MDEFS)$(PP)THORNADO_LA_LAPACK
+endif
+
+# from https://gist.github.com/pch-envision/9dbbc4f9313ec468859631a049188bc4
+# Modified based on Vassili's work in weaklib
+
+THORNADO_GIT_HASH \
+  := $(shell \
+     cd $(THORNADO_DIR) \
+     && git --no-pager describe --tags --always --dirty \
+     && cd - > /dev/null)
+DEFINES += $(MDEFS)$(PP)THORNADO_GIT_HASH=\"$(THORNADO_GIT_HASH)\"
+
+THORNADO_GIT_DATE \
+  := $(firstword \
+     $(shell \
+     cd $(THORNADO_DIR) \
+     && git --no-pager show --date=short --format="%ad" --name-only \
+     && cd - >/dev/null))
+DEFINES += $(MDEFS)$(PP)THORNADO_GIT_DATE=\"$(THORNADO_GIT_DATE)\"
+
+THORNADO_GIT_BRANCH \
+  := $(shell \
+     cd $(THORNADO_DIR) \
+     && git rev-parse --abbrev-ref HEAD \
+     && cd - > /dev/null)
+DEFINES += $(MDEFS)$(PP)THORNADO_GIT_BRANCH=\"$(THORNADO_GIT_BRANCH)\"
+
+THORNADO_GIT_URL \
+  := $(shell \
+     cd $(THORNADO_DIR) \
+     && git config --get remote.origin.url \
+     && cd - > /dev/null)
+DEFINES += $(MDEFS)$(PP)THORNADO_GIT_URL=\"$(THORNADO_GIT_URL)\"

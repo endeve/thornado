@@ -1,0 +1,39 @@
+## Makefile definitions for JLSE with Intel compiler
+
+C       = mpiicx --std=c++11
+FORTRAN = mpiifx
+FLINKER = mpiifx
+
+DEBUG    = -g -fbounds-check
+OPTIMIZE = -g -O2
+
+SUFFIX_f90 =
+
+MDEFS =
+PP    = -D
+
+ifeq ($(USE_OMP),TRUE)
+  OPENMP = -fiopenmp
+else ifeq ($(USE_OMP_OL),TRUE)
+  OPENMP = -fiopenmp -fopenmp-targets=spir64
+endif
+
+ifeq ($(USE_OACC),TRUE)
+  OPENACC =
+endif
+
+INCLUDE_CUDA     =
+INCLUDE_HDF5     = -I${HDF5_ROOT}/include
+INCLUDE_LAPACK   = -qmkl
+INCLUDE_MAGMA    =
+INCLUDE_PETSC    =
+INCLUDE_ROCM     =
+INCLUDE_ONEMKL   = -I${MKLROOT}/include -fpp  -qmkl
+
+LIBRARIES_CUDA     =
+LIBRARIES_HDF5     = -L${HDF5_ROOT}/lib -lhdf5_fortran -lhdf5
+LIBRARIES_LAPACK   =
+LIBRARIES_MAGMA    =
+LIBRARIES_PETSC    =
+LIBRARIES_ROCM     =
+LIBRARIES_ONEMKL   = -fsycl -L${MKLROOT}/lib/intel64 -lmkl_sycl -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lsycl -lOpenCL -lstdc++ -lpthread -lm -ldl

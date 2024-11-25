@@ -1,0 +1,37 @@
+## Makefile definitions for Spock with CCE compiler
+
+C       = CC
+FORTRAN = ftn
+FLINKER = ftn
+
+DEBUG    = -g -G0 -O0
+OPTIMIZE = -G2 -O2
+
+SUFFIX_f90 =
+
+MDEFS =
+PP    = -D
+
+ifeq ($(USE_OMP),TRUE)
+  OPENMP = -fopenmp
+else ifeq ($(USE_OMP_OL),TRUE)
+  OPENMP = -fopenmp
+endif
+
+ifeq ($(USE_OACC),TRUE)
+  OPENACC = -hacc -hacc_model=auto_async_kernel:fast_addr:deep_copy
+endif
+
+INCLUDE_CUDA     =
+INCLUDE_HDF5     =
+INCLUDE_LAPACK   =
+INCLUDE_MAGMA    = -I$(MAGMA_ROOT)/include
+INCLUDE_PETSC    =
+INCLUDE_ROCM     = -I$(ROCM_PATH)/include -I$(OLCF_HIPFORT_ROOT)/include/amdgcn
+
+LIBRARIES_CUDA     =
+LIBRARIES_HDF5     = -lhdf5_fortran -lhdf5
+LIBRARIES_LAPACK   =
+LIBRARIES_MAGMA    = -L$(MAGMA_ROOT)/lib -lmagma
+LIBRARIES_PETSC    =
+LIBRARIES_ROCM     = -L$(ROCM_PATH)/lib -lrocsparse -lrocsolver -lrocblas -lhipblas -lhipsparse -lamdhip64 -L$(OLCF_HIPFORT_ROOT)/lib -lhipfort-amdgcn

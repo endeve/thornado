@@ -1,0 +1,20 @@
+include ../../../Build/Makefile_Build
+
+all: ProgramInitializationTest
+
+ProgramInitializationTest: \
+	$(thornado) ProgramInitializationTest.o
+	$(FLINKER) $(FLAGS) -o ProgramInitializationTest_$(MACHINE) \
+	$(thornado) ProgramInitializationTest.o \
+	$(LIBRARIES)
+
+clean:
+	rm -f *.o *.mod *.ld
+
+clobber: clean
+	rm -f ProgramInitializationTest_$(MACHINE)
+
+ProgramInitializationTest.o: \
+  KindModule.o \
+  ProgramInitializationModule.o \
+  ProgramInitializationTest.f90

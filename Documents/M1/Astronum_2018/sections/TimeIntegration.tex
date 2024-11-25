@@ -1,0 +1,217 @@
+\section{Time Integration} \label{se:TimeIntegration}
+
+Suppose that an algebraic closure based on Fermi-Dirac statistics is used (i.e., the Eddington factor satisfies Eq.~\eqref{eq:eddingtonFactorBounds}).
+Here we consider the construction of an Implicit-Explicit (IMEX) time integration scheme that maintains the bounds in Eq.~\eqref{eq:MomentsBounds}.  
+The semi-discretization of the two-moment model results in a system of ordinary differential equations of the form
+\begin{equation}
+  \dot{\vect{u}} = \vect{\cT}(\vect{u}) + \vect{\cQ}(\vect{u}),
+\end{equation}
+where the solution vector
+\begin{equation}
+  \vect{u}(t) = \left( \bcM_{1}(t),\ldots,\bcM_{N}(t)\right) ^{T}
+\end{equation}
+is the collection of all cell-averaged moments, $\vect{\cT}$ is the transport operator, corresponding to the first term on the right-hand side of Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}, and $\vect{\cQ}$ is the collision operator, corresponding to the second term on the right-hand side of Eq.~\eqref{eq:SemiDiscretizatedMomentEquation}.  
+
+Since the set of realizable moments is convex, convex-invariant schemes, which map the initial values into this set, can be used to design realizability-preserving methods for the two-moment model.
+Ideally, the scheme should also be high-order accurate and work well in the asymptotic diffusion limit (characterized by frequent collisions and long time scales).  
+The following discussion considers the construction of such convex-invariant schemes.  
+
+\subsection{Standard IMEX Schemes}
+
+Treating the transport operator explicitly and the collision operator implicitly, a standard $s$-stage IMEX scheme takes the following form~\cite{pareschiRusso_2005}: 
+\begin{align}
+  \vect{u}^{(i)}
+  &=\vect{u}^{n}
+  +\dt\sum_{j=1}^{i-1}\tilde{a}_{ij}\,\vect{\cT}(\vect{u}^{(j)})
+  +\dt\sum_{j=1}^{i}a_{ij}\,\vect{\cQ}(\vect{u}^{(j)}),
+  \quad i=1,\ldots,s, \label{imexStages} \\
+  \vect{u}^{n+1}
+  &=\vect{u}^{n}
+  +\dt\sum_{i=1}^{s}\tilde{w}_{i}\,\vect{\cT}(\vect{u}^{(i)})
+  +\dt\sum_{i=1}^{s}w_{i}\,\vect{\cQ}(\vect{u}^{(i)}), \label{imexIntermediate} 
+\end{align}
+where $(\tilde{a}_{ij})$ and $(a_{ij})$, coefficients of the $i$-th stage, are elements of matrices $\tilde{A}$ and $A$, respectively.
+The matrices $\tilde{A}$ and $A$ are lower triangular.
+($\tilde{A}$ is strictly lower triangular so that the transport part is explicit.)  
+The vectors $\tilde{\vect{w}}=(\tilde{w}_{1},\ldots,\tilde{w}_{s})^{T}$ and $\vect{w}=(w_{1},\ldots,w_{s})^{T}$ are the weights in the assembly step in Eq.~\eqref{imexIntermediate}.
+These coefficients and weights must satisfy certain order conditions for consistency, accuracy, and other properties.  
+For second-order temporal accuracy, the following conditions are required~\cite{hairer_1981}:
+\begin{equation}
+  \sum_{i=1}^{s}\tilde{w}_{i}=\sum_{i=1}^{s}w_{i}=1,
+  \label{orderConditions1}
+\end{equation}
+and
+\begin{equation}
+  \sum_{i=1}^{s}\tilde{w}_{i}\,\tilde{c}_{i}
+  =\sum_{i=1}^{s}\tilde{w}_{i}\,c_{i}
+  =\sum_{i=1}^{s}w_{i}\,\tilde{c}_{i}
+  =\sum_{i=1}^{s}w_{i}\,c_{i}=\f{1}{2}, 
+  \label{orderConditions2}
+\end{equation}
+where $\tilde{c}_{i} = \sum_{j=1}^{s}\tilde{a}_{ij}$ and $c_{i}=\sum_{j=1}^{s}a_{ij}$.
+
+The IMEX scheme is called globally stiffly accurate (GSA) if the coefficients satisfy~\cite{dimarcoPareschi2013}:
+\begin{equation}
+  a_{si}=w_{i} \quad\text{and}\quad \tilde{a}_{si}=\tilde{w}_{i}, \quad \text{for} \quad i=1,\ldots,s.
+\end{equation}
+Then, $\vect{u}^{n+1} = \vect{u}^{(s)}$, which is simplifying because the assembly step in Eq.~\eqref{imexIntermediate} is omitted.  
+IMEX schemes are further classified by the structure of the implicit matrix $A$.  
+If $A$ is invertible, the IMEX scheme is of type~A~\cite{pareschiRusso_2005}.  
+If $a_{i1} = 0$ for $i=1,\ldots,s$, $w_{1} = 0$, and the submatrix consisting of the last $s-1$ rows and columns is invertible, the IMEX scheme is of type~ARS~\cite{ascher_etal_1997,pareschiRusso_2005}.  
+
+\subsection{Convex-Invariant IMEX Schemes}
+
+To be convex-invariant, the coefficients and weights defining the IMEX scheme must satisfy additional constraints.
+Our goal is to find constraints on $a_{ij}$, $\tilde{a}_{ij}$, $\tilde{w}_{i}$, and $w_{i}$ that enable each $\vect{u}^{(i)}$ in Eq.~\eqref{imexStages} to be expressed as a convex combination of realizable states.  
+Following Hu et al.~\cite{hu_etal_2018}, the stage values in Eq.~\eqref{imexStages} can be rewritten as
+\begin{equation}
+  \vect{u}^{(i)}
+  =\sum_{j=0}^{i-1}c_{ij}\Big[\,\vect{u}^{(j)}+\hat{c}_{ij}\,\dt\,\vect{\cT}(\vect{u}^{(j)})\,\Big] + a_{ii}\,\dt\,\vect{\cQ}(\vect{u}^{(i)}),\quad i=1,\ldots,s,
+  \label{eq:imexStagesRewrite}
+\end{equation}
+where $c_{ij}$ and $\hat{c}_{ij}\equiv\tilde{c}_{ij}/c_{ij}$ are defined in terms of $a_{ij}$ and $\tilde{a}_{ij}$.
+For IMEX schemes of type~ARS, $c_{ij}$ and $\tilde{c}_{ij}$ are given by~\cite{hu_etal_2018}
+    \begin{equation}
+     \begin{aligned}
+      c_{i0} &= 1-\sum_{j=2}^{i-1}\sum_{l=j}^{i-1}a_{il}b_{lj}, \quad &
+      c_{ij} &= \sum_{l=j}^{i-1}a_{il}b_{lj}, \\
+      \tilde{c}_{i0} &= \tilde{a}_{i1}+\sum_{j=2}^{i-1}a_{ij}\tilde{b}_{j1}, \quad &
+      \tilde{c}_{ij} &= \tilde{a}_{ij}+\sum_{l=j+1}^{i-1}a_{il}\tilde{b}_{lj},  
+     \end{aligned}
+     \label{eq:positivityCoefficientsARS}
+    \end{equation}
+    \begin{equation}
+      b_{ii} = \f{1}{a_{ii}}, \quad
+      b_{ij} = -\f{1}{a_{ii}}\sum_{l=j}^{i-1}a_{il}b_{lj}, \quad
+      \tilde{b}_{ij} = -\f{1}{a_{ii}}\Big(\tilde{a}_{ij}+\sum_{l=j+1}^{i-1}a_{il}\tilde{b}_{lj}\Big).  
+    \end{equation}
+Note that $c_{i1}=\tilde{c}_{i1}=0$ in Eq.~\eqref{eq:positivityCoefficientsARS}, so that $\sum_{j=0}^{i-1}c_{ij}=1$.
+
+If the IMEX scheme is GSA, $\vect{u}^{n+1} = \vect{u}^{(s)}$.  
+Moreover, if $c_{ij},\tilde{c}_{ij}\ge0$ and $a_{ii}>0$, each stage in Eq.~\eqref{eq:imexStagesRewrite} is a convex combination of explicit Euler steps (with time step $\hat{c}_{ij}\dt$), followed by an implicit Euler step.  
+Each of the explicit Euler steps has a time step condition that ensures its realizability given by $\hat{c}_{ij}\,\dt\leq\dx$; the CFL condition of the scheme.
+Using results proved in~\cite{chu_etal_2018} and discussed in Section~\ref{se:SpatialDiscretization}, the IMEX scheme is convex-invariant and realizability-preserving for the two-moment model in Section~\ref{se:SpatialDiscretization} provided
+\begin{equation}
+  \max(\hat{c}_{ij})\,\dt \leq \dx.  
+\end{equation}
+(This CFL condition becomes more restrictive with high-order DG spatial discretization~\cite{chu_etal_2018}.)
+
+\subsection{Diffusion Accurate, Convex-Invariant IMEX Schemes}
+
+Accuracy in the diffusion limit is another important property to consider when an IMEX scheme is applied to the two-moment model.  
+In the diffusion limit, the distribution function is nearly isotropic, so $\vect{\cK}\approx\f{1}{3}\,\cJ\,\vect{I}$ and $\vect{\cH}\approx-\f{1}{3}\,\tau\,\nabla\cJ$, and the two-moment model is approximately governed by (e.g., \cite{jinLevermore_1996})
+\begin{equation}
+  \pd{\cJ}{t} + \nabla\cdot\vect{\cH} = 0
+  \quad\text{and}\quad
+  \vect{\cH} = - \tau\,\nabla\cdot\vect{\cK}.  
+  \label{eq:diffusionLimit}
+\end{equation}
+In the context of IMEX schemes, the above relationships imply that the following relations should hold~\cite{chu_etal_2018}:
+\begin{equation}
+   \vect{e}_{i}^{T}A^{-1}\tilde{A}\,\vect{e} = 1, \quad i=1,\ldots,s,
+   \label{diffusionAccuracy}
+\end{equation}
+where $\vect{e}_{i}$ is the $i$th column of the $s\times s$ identity matrix, $\vect{e}$ is the vector of ones, and $A$ and $\tilde{A}$ are the matrices of the coefficients $(\tilde{a}_{ij})$ and $(a_{ij})$.
+Eq.~\eqref{diffusionAccuracy} implies:
+\begin{equation}
+  c_{i} = \tilde{c}_{i}, \quad i=1,\ldots,s.
+\end{equation}
+We have proved in \cite{chu_etal_2018} that only IMEX schemes of type~ARS can be both diffusion accurate and convex-invariant.  
+(Another short proof follows from the fact that IMEX schemes of type~A have $\tilde{c}_1 = 0$ while $c_i \neq 0$.)  
+
+\subsection{PD-ARS IMEX schemes}
+
+Unfortunately, coefficients satisfying the order conditions in Eqs.~\eqref{orderConditions1}-\eqref{orderConditions2} and the conditions for convex-invariance do not exist for the standard IMEX scheme in Eqs.~\eqref{imexStages}-\eqref{imexIntermediate}, unless a small time step is invoked that makes the scheme essentially explicit.  
+To circumvent this problem, correction steps can be introduced after the assembly step in Eq.~\eqref{imexIntermediate} (e.g., \cite{chertock_etal_2015,hu_etal_2018}).  
+However, the correction steps can impose time step constraints for realizability or accuracy in the diffusion limit that ruin the efficiency gains expected from the IMEX scheme.  
+Because of this, we sacrifice overall high-order accuracy, and aim for IMEX schemes that are high-order accurate in the streaming limit, diffusion accurate, and convex-invariant.  
+Combining these requirements we seek GSA IMEX schemes of type~ARS with coefficients satisfying the following constraints~\cite{hu_etal_2018,chu_etal_2018}:
+\begin{enumerate}
+    \item Consistency of the implicit coefficients:
+    \begin{equation}
+      \sum_{i=1}^{s}w_{i}=1.
+    \end{equation}
+    \item High-order accuracy in the streaming limit.
+    For second-order accuracy:
+    \begin{equation}
+      \sum_{i=1}^{s}\tilde{w}_{i}=1
+      \quad\text{and}\quad
+      \sum_{i=1}^{s}\tilde{w}_{i}\,\tilde{c}_{i}=\f{1}{2}.
+      \label{eq:orderConditionsEx}
+    \end{equation}
+    For third-order accuracy: 
+    \begin{equation}
+    \sum_{i=1}^{s}\tilde{w}_{i}=1,
+          \quad
+          \sum_{i=1}^{s}\tilde{w}_{i}\,\tilde{c}_{i}=\f{1}{2},
+          \quad
+          \sum_{i=1}^{s}\tilde{w}_{i}\,\tilde{c_{i}}^2 = \f{1}{3}
+          \quad\text{and}\quad
+          \sum_{i=1}^{s}\tilde{w}_{i}\,\tilde{a_{ij}}\tilde{c}_{j}= \f{1}{6}.
+    \end{equation}
+    \item Diffusion accuracy:
+    \begin{equation}
+      c_{i}=\tilde{c}_{i}, \quad i=1,\ldots,s.
+      \label{eq:diffusionCondition}
+    \end{equation}
+    \item Convex-invariance:
+    \begin{align}
+      &a_{ii}>0, \quad c_{i0},\tilde{c}_{i0}\ge0, \quad \text{for} \quad i=2,\ldots,s, \nonumber \\
+      &\text{and} \quad c_{ij},\tilde{c}_{ij}\ge0, \quad \text{for} \quad i=3,\ldots,s, \quad\text{and}\quad j=2,\ldots,i-1,
+      \label{eq:convexInvariant}
+    \end{align}
+    with $\sum_{j=0}^{i-1}c_{ij}=1$, for $i=1,\ldots,s$, and $c_{\Sch}:=\min_{\substack{i = 2,\ldots,s \\ 
+                  j = 0,2,\ldots,i-1}}\,\f{1}{\hat{c}_{ij}}>0$.
+                  
+    (Note that the greater the $c_{\Sch}$, the larger the time step can be.
+    And $c_{\Sch} \leq 1$.)
+    \item Having less than five stages ($s\le4$)\label{cod:statges}.
+    \item Are globally stiffly accurate: $a_{si}=w_{i}$ and $\tilde{a}_{si}=\tilde{w}_{i},\quad i=1,\ldots,s$. 
+\end{enumerate}
+Fortunately, these IMEX schemes are easy to find.  
+(The constraint in \eqref{cod:statges} is introduced from efficiency considerations to limit the number of implicit solves.)
+We call the IMEX schemes satisfying the above conditions {PD-ARS} (see also Definition~3 in~\cite{chu_etal_2018}), and we provide two optimal PD-ARS schemes below: PD-ARS2 and PD-ARS3, each limiting to the optimal second-order and third-order SSPRK schemes from~\cite{shuOsher_1988}, respectively.
+\subsubsection{PD-ARS2}
+
+The optimal 3-stage PD-ARS, PD-ARS2, in the standard double Butcher tableau form, with explicit tableau ($\tilde{A}$) on the left and implicit tableau ($A$) on the right, is given by
+\begin{align}
+  &\begin{array}{c | c c c}
+  	0 & 0   & 0 & 0 \\
+  	1 & 1   & 0 & 0 \\
+  	1 & 1/2 & 1/2 & 0 \\ \hline
+  	  & 1/2 & 1/2 & 0 
+  \end{array}
+  \qquad
+  \begin{array}{c | c c c}
+  	0 & 0 & 0            & 0            \\
+  	1 & 0 & 1            & 0            \\
+  	1 & 0 & 1/2 & 1/2 \\ \hline
+  	  & 0 & 1/2 & 1/2
+  \end{array}
+\end{align}
+Note its explicit tableau is SSPRK2. 
+For this scheme, only two implicit solves are needed per time step and $c_{\Sch}= 1$, which implies that the time step restriction for preserving moment realizability is only due to the explicit part.  
+
+\subsubsection{PD-ARS3}
+
+The optimal 4-stage PD-ARS, PD-ARS3, is given in its standard double Butcher tableau form (explicit tableau on the left and implicit tableau on the right) by
+\begin{align}
+  &\begin{array}{c | c c c c}
+  	    &     &     &     &  \\
+  	 1  & 1   &     &     &  \\
+  	1/2 & 1/4 & 1/4 &  \\
+  	 1  & 1/6 & 1/6 & 2/3 &  \\ \hline
+  	    & 1/6 & 1/6 & 2/3 &
+  \end{array}
+  \qquad
+  \begin{array}{c | c c c c}
+  	0 & 0 & 0            & 0            \\
+  	1 & 0 & 1            & 0            \\
+  	1/2 & 0 & 1/4 & 1/4 \\ 
+  	1 & 0 & 1/6 & 1/6 & 2/3\\\hline
+  	  & 0 & 1/6 & 1/6 & 2/3
+  \end{array}
+\end{align}
+Its explicit tableau is SSPRK3. 
+This scheme requires three implicit solves per time step, and $c_{\Sch}= 1$.  
+Since PD-ARS3 is not more accurate than PD-ARS2 in collision-dominated regions (see our results in Section~\ref{se:NumericalTests}), it may not offer any practical advantage over PD-ARS2.  

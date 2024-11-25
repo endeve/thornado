@@ -1,0 +1,37 @@
+## Makefile definitions for lucalin
+
+C       = mpic++ --c++11
+FORTRAN = mpif90 -cpp
+FLINKER = mpif90
+
+DEBUG    = -g -fbacktrace -ffpe-trap=invalid,zero -ffpe-summary=invalid,zero -fbounds-check
+OPTIMIZE = -g -O2
+
+SUFFIX_f90 =
+
+MDEFS =
+PP    = -D
+
+ifeq ($(USE_OMP),TRUE)
+  OPENMP = -fopenmp
+else ifeq ($(USE_OMP_OL),TRUE)
+  OPENMP = -fopenmp
+endif
+
+ifeq ($(USE_OACC),TRUE)
+  OPENACC = -fopenacc
+endif
+
+INCLUDE_CUDA     =
+INCLUDE_HDF5     = -I/usr/local/hdf5-1.10.5/hdf5/include
+INCLUDE_LAPACK   = -I/usr/include
+INCLUDE_MAGMA    =
+INCLUDE_PETSC    =
+INCLUDE_ROCM     =
+
+LIBRARIES_CUDA     =
+LIBRARIES_HDF5     = -L/usr/local/hdf5-1.10.5/hdf5/lib -lhdf5_fortran -lhdf5
+LIBRARIES_LAPACK   = -L/usr/lib/x86_64-linux-gnu/lapack -llapack -lblas
+LIBRARIES_MAGMA    =
+LIBRARIES_PETSC    =
+LIBRARIES_ROCM     =

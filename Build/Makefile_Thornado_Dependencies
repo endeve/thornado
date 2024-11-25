@@ -1,0 +1,13 @@
+include $(THORNADO_DIR)/Modules/Numbers/Makefile_Numbers_Dependencies
+include $(THORNADO_DIR)/Modules/Units/Makefile_Units_Dependencies
+include $(THORNADO_DIR)/Modules/ProgramHeader/Makefile_ProgramHeader_Dependencies
+include $(THORNADO_DIR)/Modules/Library/Makefile_Library_Dependencies
+include $(THORNADO_DIR)/Modules/Geometry/Makefile_Geometry_Dependencies
+include $(THORNADO_DIR)/Modules/Mesh/Makefile_Mesh_Dependencies
+include $(THORNADO_DIR)/Modules/Fields/Makefile_Fields_Dependencies
+include $(THORNADO_DIR)/Modules/EquationOfState/Makefile_EquationOfState_Dependencies
+include $(THORNADO_DIR)/Modules/Opacities/Makefile_Opacities_Dependencies
+include $(THORNADO_DIR)/Modules/InputOutput/Makefile_InputOutput_Dependencies
+include $(THORNADO_DIR)/Modules/Euler/Makefile_Euler_Dependencies
+include $(THORNADO_DIR)/Modules/TwoMoment/Makefile_TwoMoment_Dependencies
+include $(THORNADO_DIR)/Modules/Runtime/Makefile_Runtime_Dependencies

@@ -1,0 +1,44 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1561\cocoasubrtf600
+{\fonttbl\f0\fnil\fcharset0 Consolas;}
+{\colortbl;\red255\green255\blue255;\red251\green2\blue7;\red251\green2\blue7;}
+{\*\expandedcolortbl;;\cssrgb\c100000\c14913\c0;\cssrgb\c100000\c14913\c0;}
+\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs18 \cf0 \expnd0\expndtw0\kerning0
+Dear Editor, \
+\
+We would like to thank both reviewers for their comments and positive feedback.  \
+Below, please find point-by-point response to the reviewer comments.  \
+Changes are highlighted in red in the revised manuscript.  \
+\
+Reviewer #1: The paper concerns with the transport of particles in a background medium. For a two-moment model, a realizability-preserving method is proposed, which involves a DG method in space, an IMEX method in time, and a Zhang-Shu type limiter. The method is first order accurate in general. Different algebraic closures strategies are examined in the process to achieve the realizability-preserving property. Overall the paper can be written in a more concise manner, and it fits well the scope of the journal.\'a0\'a0Below are some minor comments:\
+\
+\
+1. In practice, f(w) can be 0 or 1 locally, how come the definition 1\'a0\'a0on p.12 excludes such case?\
+\
+\cf2 We have extended the restrictions on f(w) in definition 1 to include 0 and 1 locally.  \cf0 \
+\
+2. p.12 "The algebraic constraints in Eq. (10 ) are proven in [4 ] (see also [27 , 28 ])". Given eq (10) has the fundamental importance in this work, the authors would want to briefly discuss this condition, at least to state whether (10) is a necessary condition for the moments to be releasable or it is a necessary and sufficient condition. In other words, the authors would want to discuss in what sense eq (10) characterize the reliability of the two moments\
+\
+\cf2 The constraints in Eq (10) (Eq (11) in the revised manuscript) are necessary and sufficient conditions.  \
+We have added a remark (Remark 2 in the revised document) addressing this issue.  \cf0 \
+\
+3. p.28 "However, we have not been able to prove the\
+realizability-preserving property with this approach without invoking a\
+too severe time step restriction." Is this time step restriction\
+observed numerically, or simply a limitation of the analysis technique?\
+\
+\cf2 For the pure absorption case we have found a sufficient time step which guarantees moment realizability.  \
+This time step scales with the square root of the mean-free path parameter \\tau.  \
+We have also observed numerically that the homogeneous sphere problem breaks for stiff problems when this time step restriction is violated.  \
+We added a footnote (now on p.29) stating this.  \cf0 \
+\
+4. Check the possible typo 1 line below line 255\
+\
+\cf3 To clarify our statement, we have modified the first sentence after Eq. (25).  \cf0 \
+\
+\
+Reviewer #2: The authors consider solving Fermionic Two-Moment Model and discuss constructing a scheme with moment realizability without restrictive time step. Due to the stiff nature of the collision source term, IMEX type schemes are usually used to avoid small time steps. In order to achieve any convex invariance such as moment realizability, the authors use the Zhang-Shu method, in which convex combinations of first order IMEX schemes are needed. Unfortunately any such a convex combination without restrictive time steps results in only first order temporal accuracy. In [49], it was shown that one additional correction step can recover second order temporal accuracy with positivity ensured under reasonable time step constraint For BGK equations. The authors have shown the same result as in [49] for the two-moment model but remarked that the performance is poor in the diffusion limit. In order to achieve good performance and moment realizability under suitable time step\
+constraint, the authors propose to give up second order temporal accuracy in the multistage IMEX schemes (but second order accuracy can be restored in the streaming limit). This is not satisfying, even though it is indeed better than the first order IMEX scheme. Nonetheless, this is obviously a very hard problem. Overall, I think this is an interesting paper.}

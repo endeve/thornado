@@ -1,0 +1,4 @@
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/Opacities
+F90EXE_sources  += NeutrinoOpacitiesComputationModule.F90
+f90EXE_sources  += NeutrinoOpacitiesModule.f90
+F90EXE_sources  += OpacityModule_TABLE.F90

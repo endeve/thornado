@@ -1,0 +1,4 @@
+EQUATION_OF_STATE = \
+  EquationOfStateModule_IDEAL.o \
+  EquationOfStateModule_TABLE.o \
+  EquationOfStateModule.o

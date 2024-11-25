@@ -1,0 +1,305 @@
+\documentclass[12pt]{article}
+
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{booktabs}
+\usepackage{mathrsfs}
+\usepackage{graphicx}
+\usepackage{cite}
+\usepackage{times}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{lineno}
+\usepackage{yhmath}
+\usepackage{natbib}
+\usepackage{../../definitions}
+\hypersetup{
+  bookmarksnumbered = true,
+  bookmarksopen=false,
+  pdfborder=0 0 0,         % make all links invisible, so the pdf looks good when printed
+  pdffitwindow=true,      % window fit to page when opened
+  pdfnewwindow=true, % links in new window
+  colorlinks=true,           % false: boxed links; true: colored links
+  linkcolor=blue,            % color of internal links
+  citecolor=magenta,    % color of links to bibliography
+  filecolor=magenta,     % color of file links
+  urlcolor=cyan              % color of external links
+}
+
+
+\newcommand{\IN}{\mbox{\tiny In}}
+\newcommand{\OUT}{\mbox{\tiny Out}}
+\newcommand{\NNS}{\mbox{\tiny NNS}} % Neutrino-Nucleon/Nuclei Scattering
+\newcommand{\NES}{\mbox{\tiny NES}} % Neutrino-Electron Scattering
+\newcommand{\PROD}{\mbox{\tiny Pr}}
+\newcommand{\ANN}{\mbox{\tiny An}}
+\newcommand{\SC}{\mbox{\tiny Sc}}      % Scattering
+\newcommand{\TP}{\mbox{\tiny TP}}      % Pair-Processes
+
+\newtheorem{define}{Definition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{prop}{Proposition}
+\newtheorem{rem}{Remark}
+\newtheorem{theorem}{Theorem}
+
+\def\Ne{{\nu_{e}}}
+\def\ANe{{\bar{\nu}_{e}}}
+\def\quand{\quad\text{and}\quad}
+
+\begin{document}
+
+\title{A writeup on fixed point formulations of the collision solver}
+\author{Paul Laiu}
+
+\maketitle
+
+\section{Background}
+\subsection{Moment Equations}
+The moment equation for the number density
+\begin{equation}
+  \deriv{\cJ_{s}}{t}
+  =\widehat{\eta}_{s} - \widehat{\chi}_{s}\,\cJ_{s},
+  \label{eq:momentNumber}
+\end{equation}
+where we have defined the total emissivity 
+\begin{equation}
+  \widehat{\eta}_{s}(\cJ_{s},\bar{\cJ}_{s})
+  =\tilde{\chi}_{s}\,\cJ_{0,s} + \eta_{\SC,s}(\cJ_{s}) + \eta_{\TP,s}(\bar{\cJ}_{s})
+\end{equation}
+and total opacity
+\begin{equation}
+  \widehat{\chi}_{s}(\cJ_{s},\bar{\cJ}_{s})
+  =\tilde{\chi}_{s} + \chi_{\SC,s}(\cJ_{s}) + \chi_{\TP,s}(\bar{\cJ}_{s}).  
+\end{equation}
+We have also defined the scattering emissivity
+\begin{equation}
+  \eta_{\SC,s}(\cJ_{s})
+  =\int_{\bbR^{+}}\Phi_{0,s}^{\IN}(\varepsilon,\varepsilon')\,\cJ_{s}(\varepsilon')\,dV_{\varepsilon'},
+\end{equation}
+the scattering opacity
+\begin{equation}
+  \chi_{\SC,s}(\cJ_{s})
+  =\int_{\bbR^{+}}\big[\,\Phi_{0.s}^{\IN}(\varepsilon,\varepsilon')\,\cJ(\varepsilon')+\Phi_{0,s}^{\Out}(\varepsilon,\varepsilon')\,\big(1-\cJ(\varepsilon')\big)\,\big]\,dV_{\varepsilon'},
+\end{equation}
+the emissivity due to thermal pair processes
+\begin{equation}
+  \eta_{\TP,s}(\bar{\cJ}_{s})
+  =\int_{\bbR^{+}}\Phi_{0,s}^{\PROD}(\varepsilon,\varepsilon')\,\big(1-\bar{\cJ}_{s}(\varepsilon')\big)\,dV_{\varepsilon'},
+\end{equation}
+and the opacity due to thermal pair processes
+\begin{equation}
+  \chi_{\TP,s}(\bar{\cJ}_{s})
+  =\int_{\bbR^{+}}\big[\,\Phi_{0,s}^{\PROD}(\varepsilon,\varepsilon')\,\big(1-\bar{\cJ}_{s}(\varepsilon')\big)+\Phi_{0,s}^{\ANN}(\varepsilon,\varepsilon')\,\bar{\cJ}_{s}(\varepsilon')\,\big]\,dV_{\varepsilon'}.  
+\end{equation}
+Note that the opacities due to scattering and pair processes depend on $\cJ_{s}$ and $\bar{\cJ}_{s}$, respectively, due to the Fermi blocking factors.  
+Since $0\le\cJ_{s},\bar{\cJ}_{s}\le1$, we have $\eta_{\SC,s},\chi_{\SC,s},\eta_{\TP,s},\chi_{\TP,s}\ge0$.  
+Also note that the emissivities and opacities depend on the neutrino energy $\varepsilon$ and local thermodynamic conditions (e.g., density $\rho$, temperature $T$, and electron fraction $Y_{e}$).  
+
+
+\subsection{Matter Equations}
+
+Neutrino-matter interactions mediate exchange of lepton number, momentum, and energy between matter and neutrinos.  
+As a first approximation, we will assume that the fluid remains static and ignore momentum exchange.  
+Only emission and absorption due to electron capture modify $Y_{e}$, while all processes modify the internal energy.  
+The electron fraction $Y_{e}$ and internal energy $e=\rho\,\epsilon$ evolve according to
+\begin{equation}
+  \rho\deriv{Y_{e}}{t}
+  =-m_{b}\int_{\bbR^{+}}
+  \big[\,
+    \tilde{\chi}_{\nu_{e}}\,\big(\cJ_{0,\nu_{e}}-\cJ_{\nu_{e}}\,\big)
+    -\tilde{\chi}_{\bar{\nu}_{e}}\,\big(\,\cJ_{0,\bar{\nu}_{e}}-\cJ_{\bar{\nu}_{e}}\,\big)
+  \,\big]\,dV_{\varepsilon},
+\end{equation}
+and
+\begin{equation}
+  \rho\deriv{\epsilon}{t}
+  =-\sum_{s}\int_{\bbR^{+}}\big(\,\widehat{\eta}_{s} - \widehat{\chi}_{s}\,\cJ_{s}\,\big)\,\varepsilon\,dV_{\varepsilon},
+\end{equation}
+where $\rho$ is the mass density and $m_{b}$ is the average baryon mass.  
+
+The matter sources are constructed to ensure conservation of lepton number and energy.  
+The neutrino density $J_{s}(\vect{x},t)$ and energy $E_{s}(\vect{x},t)$ are defined as
+\begin{equation}
+  \big\{\,J_{s},\,E_{s}\,\big\}
+  =\int_{\bbR^{+}}\cJ_{s}(\varepsilon)\big\{\,1,\,\varepsilon\,\big\}\,dV_{\varepsilon}.
+\end{equation}
+Lepton number conservation is due to
+\begin{equation}\label{eq:LeptonConservation}
+  \deriv{}{t}\big(\,J_{\nu_{e}}-J_{\bar{\nu}_{e}}\,\big)+\f{\rho}{m_{b}}\deriv{Y_{e}}{t} = 0,
+\end{equation}
+while energy conservation is due to
+\begin{equation}\label{eq:EnergyConservation}
+  \sum_{s}\deriv{E_{s}}{t}+\rho\deriv{\epsilon}{t} = 0.
+\end{equation}
+
+
+\section{Fixed-point formulation}
+
+
+We are interested in solving the number density equation \eqref{eq:momentNumber} with the conservations \eqref{eq:LeptonConservation} and \eqref{eq:EnergyConservation} guaranteed.
+For now, we only consider the electron-type neutrinos and antineutrinos, thus \eqref{eq:LeptonConservation} and \eqref{eq:EnergyConservation} respectively become
+\begin{subequations}
+\begin{equation}\label{eq:LeptonConservationNue}
+  \deriv{}{t}\int_{\bbR^{+}} \left(\cJ_\Ne (\varepsilon) - \cJ_\ANe(\varepsilon)\right) \,dV_{\varepsilon}+\f{\rho}{m_{b}}\deriv{Y_{e}}{t} = 0\:,
+\end{equation}
+and 
+\begin{equation}\label{eq:EnergyConservationNue}
+  \deriv{}{t}\int_{\bbR^{+}}\varepsilon\left( \cJ_\Ne (\varepsilon) + \cJ_\ANe (\varepsilon) \right)\,dV_{\varepsilon}+\rho\deriv{\epsilon}{t} = 0\:,
+\end{equation}
+\end{subequations}
+where $\cJ_\Ne$ and $\cJ_\ANe$ are governed by (with the $\f{1}{c}$)
+\begin{equation}\label{eq:momentNumberNue}
+\f{1}{c}  \deriv{\cJ_\Ne}{t}
+  =\widehat{\eta}_{\Ne} - \widehat{\chi}_{\Ne}\,\cJ_\Ne\:, \quand
+\f{1}{c}  \deriv{\cJ_\ANe}{t}
+  =\widehat{\eta}_{\ANe} - \widehat{\chi}_{\ANe}\,\cJ_{\ANe}
+\end{equation}
+with
+\begin{subequations}
+\begin{equation}
+  \widehat{\eta}_{\Ne}(\cJ_{\Ne},\cJ_{\ANe})
+  =\tilde{\chi}_{\Ne}\,\cJ_{0,\Ne} + \eta_{\SC,\Ne}(\cJ_{\Ne}) + \eta_{\TP,\Ne}(\cJ_{\ANe})\:,
+\end{equation}  
+\begin{equation}
+  \widehat{\eta}_{\ANe}(\cJ_{\Ne},\cJ_{\ANe})
+  =\tilde{\chi}_{\ANe}\,\cJ_{0,\ANe} + \eta_{\SC,\ANe}(\cJ_{\ANe}) + \eta_{\TP,\ANe}(\cJ_{\Ne})\:,
+\end{equation}  
+\end{subequations}
+\begin{subequations}
+\begin{equation}
+  \widehat{\chi}_{\Ne}(\cJ_{\Ne},\cJ_{\ANe})
+  =\tilde{\chi}_{\Ne} + \chi_{\SC,\Ne}(\cJ_{\Ne}) + \chi_{\TP,\Ne}(\cJ_{\ANe})\:,
+\end{equation}
+\begin{equation}
+  \widehat{\chi}_{\ANe}(\cJ_{\Ne},\cJ_{\ANe})
+  =\tilde{\chi}_{\ANe} + \chi_{\SC,\ANe}(\cJ_{\ANe}) + \chi_{\TP,\ANe}(\cJ_{\Ne})\:,
+\end{equation}  
+\end{subequations}
+
+
+\begin{subequations}
+\begin{equation}
+  \eta_{\SC,\Ne}(\cJ_{\Ne})
+  =\int_{\bbR^{+}}\Phi_{0,\Ne}^{\IN}(\varepsilon,\varepsilon')\,\cJ_{\Ne}(\varepsilon')\,dV_{\varepsilon'},
+\end{equation}
+\begin{equation}
+  \eta_{\SC,\ANe}(\cJ_{\ANe})
+  =\int_{\bbR^{+}}\Phi_{0,\ANe}^{\IN}(\varepsilon,\varepsilon')\,\cJ_{\ANe}(\varepsilon')\,dV_{\varepsilon'},
+\end{equation}
+\end{subequations}
+
+\begin{subequations}
+\begin{equation}
+  \chi_{\SC,\Ne}(\cJ_{\Ne})
+  =\int_{\bbR^{+}}\big[\,\Phi_{0,\Ne}^{\IN}(\varepsilon,\varepsilon')\,\cJ_{\Ne}(\varepsilon')+\Phi_{0,\Ne}^{\Out}(\varepsilon,\varepsilon')\,\big(1-\cJ_{\Ne}(\varepsilon')\big)\,\big]\,dV_{\varepsilon'}\:.
+\end{equation}
+\begin{equation}
+  \chi_{\SC,\ANe}(\cJ_{\ANe})
+  =\int_{\bbR^{+}}\big[\,\Phi_{0,\ANe}^{\IN}(\varepsilon,\varepsilon')\,\cJ_{\ANe}(\varepsilon')+\Phi_{0,\ANe}^{\Out}(\varepsilon,\varepsilon')\,\big(1-\cJ_{\ANe}(\varepsilon')\big)\,\big]\,dV_{\varepsilon'}\:.
+\end{equation}
+\end{subequations}
+
+\begin{subequations}
+\begin{equation}
+  \eta_{\TP,\Ne}(\cJ_{\ANe})
+  =\int_{\bbR^{+}}\Phi_{0,\Ne}^{\PROD}(\varepsilon,\varepsilon')\,\big(1 - \cJ_{\ANe}(\varepsilon')\big)\,dV_{\varepsilon'},
+\end{equation}
+\begin{equation}
+  \eta_{\TP,\ANe}(\cJ_{\Ne})
+  =\int_{\bbR^{+}}\Phi_{0,\ANe}^{\PROD}(\varepsilon,\varepsilon')\,\big( 1 - \cJ_{\Ne}(\varepsilon')\big)\,dV_{\varepsilon'},
+\end{equation}
+\end{subequations}
+
+\begin{subequations}
+\begin{equation}
+  \chi_{\TP,\Ne}(\cJ_{\ANe})
+  =\int_{\bbR^{+}} \Phi_{0,\Ne}^{\PROD}(\varepsilon,\varepsilon')\,\big(1-\cJ_{\ANe}(\varepsilon')\big)+\Phi_{0,\Ne}^{\ANN}(\varepsilon,\varepsilon')\,\cJ_{\ANe}(\varepsilon')\,dV_{\varepsilon'}\:,
+\end{equation}
+\begin{equation}
+  \chi_{\TP,\ANe}(\cJ_{\Ne})
+  =\int_{\bbR^{+}} \Phi_{0,\ANe}^{\PROD}(\varepsilon,\varepsilon')\,\big(1 - \cJ_{\Ne}(\varepsilon')\big)+\Phi_{0,\ANe}^{\ANN}(\varepsilon,\varepsilon')\, \cJ_{\Ne}(\varepsilon')\,dV_{\varepsilon'}\:.
+\end{equation}
+\end{subequations}
+
+Discretizing \eqref{eq:LeptonConservationNue}--\eqref{eq:momentNumberNue} in time and using numerical integration gives
+\begin{equation}\label{eq:LeptonConservationNueDis}
+   \sum_{q} w^{(2)}_q \big(\cJ_{\Ne,q}^{n+1} - \cJ_{\Ne,q}^{n}\big)
+ - \sum_{q} w^{(2)}_q \big(\cJ_{\ANe,q}^{n+1} - \cJ_{\ANe,q}^{n}\big)
+ + \f{\rho}{m_{b}} \big(Y_{e}^{n+1} - Y_{e}^{n} \big) = 0\:,
+\end{equation}
+\begin{equation}\label{eq:EnergyConservationNueDis}
+   \sum_{q} w^{(3)}_q \big(\cJ_{\Ne,q}^{n+1} - \cJ_{\Ne,q}^{n}\big)
+ + \sum_{q} w^{(3)}_q \big(\cJ_{\ANe,q}^{n+1} - \cJ_{\ANe,q}^{n}\big)
+ + \rho \big(\epsilon^{n+1} - \epsilon^{n} \big) = 0\:,
+\end{equation}
+and
+\begin{equation}\label{eq:momentNumberNueDis}
+  \cJ_{\Ne}^{n+1} = \f{\cJ_{\Ne}^{n} + c\dt \widehat{\eta}_{\Ne}(\cJ_{\Ne}^{n+1},\cJ_{\ANe}^{n+1})}{1 + c\dt\widehat{\chi}_{\Ne}(\cJ_{\Ne}^{n+1},\cJ_{\ANe}^{n+1})}\:,
+\end{equation}
+\begin{equation}\label{eq:momentNumberNueBarDis}
+  \cJ_{\ANe}^{n+1} = \f{\cJ_{\ANe}^{n} + c\dt \widehat{\eta}_{\ANe}(\cJ_{\Ne}^{n+1},\cJ_{\ANe}^{n+1})}{1 + c\dt\widehat{\chi}_{\ANe}(\cJ_{\Ne}^{n+1},\cJ_{\ANe}^{n+1})}\:.
+\end{equation}
+Here \eqref{eq:momentNumberNueDis}--\eqref{eq:momentNumberNueBarDis} are from the backward Euler discretization
+\begin{equation}
+  \cJ_{s}^{n+1} = \cJ_{s}^{n} + c\dt \big(\widehat{\eta}_{s}(\cJ_{s}^{n+1},\bar{\cJ}_{s}^{n+1}) - \widehat{\chi}_{s}(\cJ_{s}^{n+1},\bar{\cJ}_{s}^{n+1})\,\cJ_{s}^{n+1}\big)\:.
+\end{equation}
+
+
+We propose two fixed-point formulations for \eqref{eq:LeptonConservationNueDis}--\eqref{eq:momentNumberNueBarDis}.
+
+The first one is a fixed-point problem on $(Y_{e}, \,\epsilon,\,\cJ_{\Ne},\,\cJ_{\ANe})$, for which Picard iteration takes the form
+\begin{subequations}
+\begin{equation}\label{eq:}
+Y_{e}^{(k+1)} = Y_{e}^{n} + \f{m_{b}}{\rho} \sum_{q} w^{(2)}_q  (\cJ_{\Ne,q}^{n} - \cJ_{\ANe,q}^{n})  
+- \f{m_{b}}{\rho} \sum_{q} w^{(2)}_q (\cJ_{\Ne,q}^{(k)}-\cJ_{\ANe,q}^{(k)})\:,
+\end{equation}
+\begin{equation}\label{eq:}
+\epsilon^{(k+1)}  = \epsilon^{n} + \f{1}{\rho} \sum_{q} w^{(3)}_q (\cJ_{\Ne,q}^{n} + \cJ_{\ANe,q}^{n}) 
+- \f{1}{\rho} \sum_{q} w^{(3)}_q (\cJ_{\Ne,q}^{(k)}+\cJ_{\ANe,q}^{(k)})\:,   
+\end{equation}
+and
+\begin{equation}\label{eq:}
+  \cJ_{s}^{(k+1)} = \f{\cJ_{s}^{n} + c\dt \widehat{\eta}_{s}^{(k)}(\cJ_{s}^{(k)},\bar{\cJ}_{s}^{(k)})}{1 + c\dt\widehat{\chi}_{s}^{(k)}(\cJ_{s}^{(k)},\bar{\cJ}_{s}^{(k)})}\:,
+\end{equation}
+%\begin{equation}\label{eq:}
+%  \cJ_{\Ne}^{(k+1)} = \f{\cJ_{\Ne}^{n} + c\dt \widehat{\eta}_{\Ne}^{(k)}(\cJ_{\Ne}^{(k)},\cJ_{\ANe}^{(k)})}{1 + c\dt\widehat{\chi}_{\Ne}^{(k)}(\cJ_{\Ne}^{(k)},\cJ_{\ANe}^{(k)})}\:,
+%\end{equation}
+%\begin{equation}\label{eq:}
+%  \cJ_{\ANe}^{(k+1)} = \f{\cJ_{\ANe}^{n} + c\dt \widehat{\eta}_{\ANe}^{(k)}(\cJ_{\Ne}^{(k)},\cJ_{\ANe}^{(k)})}{1 + c\dt\widehat{\chi}_{\ANe}^{(k)}(\cJ_{\Ne}^{(k)},\cJ_{\ANe}^{(k)})}\:,
+%\end{equation}
+\end{subequations}
+where
+\begin{equation}
+\widehat{\eta}_{s}^{(k)}
+  =\tilde{\chi}_{s}\,\cJ_{0,s}^{(k)} + \eta_{\SC,s}^{(k)} + \eta_{\TP,s}^{(k)}\:,\quad
+  \widehat{\chi}_{s}^{(k)}
+  =\tilde{\chi}_{s} + \chi_{\SC,s}^{(k)} + \chi_{\TP,s}^{(k)}
+\end{equation}
+with $\cJ_{0,s}^{(k)}$, $\eta_{\SC,s}^{(k)}$, $\chi_{\SC,s}^{(k)}$, $\eta_{\TP,s}^{(k)}$, and $\chi_{\TP,s}^{(k)}$ evaluated at $(Y_{e}^{(k)}, \,\epsilon^{(k)})$ for $s=\Ne,\,\ANe$.
+
+
+The second formulation is a nested fixed-point problem with the outer one on $(Y_{e}, \,\epsilon)$:
+\begin{subequations}
+\begin{equation}\label{eq:}
+Y_{e}^{(k+1)} = Y_{e}^{n} + \f{m_{b}}{\rho} \sum_{q} w^{(2)}_q  (\cJ_{\Ne,q}^{n} - \cJ_{\ANe,q}^{n})  
+- \f{m_{b}}{\rho} \sum_{q} w^{(2)}_q (\cJ_{\Ne,q}^{(k)}-\cJ_{\ANe,q}^{(k)})\:,
+\end{equation}
+\begin{equation}\label{eq:}
+\epsilon^{(k+1)}  = \epsilon^{n} + \f{1}{\rho} \sum_{q} w^{(3)}_q (\cJ_{\Ne,q}^{n} + \cJ_{\ANe,q}^{n}) 
+- \f{1}{\rho} \sum_{q} w^{(3)}_q (\cJ_{\Ne,q}^{(k)}+\cJ_{\ANe,q}^{(k)})\:,   
+\end{equation}
+and $\cJ_{s,q}^{(k)}$ is given by the solution of an inner fixed-point problem
+\begin{equation}
+  \cJ_{s}^{(k,\ell+1)} = \f{\cJ_{s}^{n} + c\dt \widehat{\eta}_{s}^{(k)}(\cJ_{s}^{(k,\ell)},\bar{\cJ}_{s}^{(k,\ell)})}{1 + c\dt\widehat{\chi}_{s}^{(k)}(\cJ_{s}^{(k,\ell)},\bar{\cJ}_{s}^{(k,\ell)})}
+\end{equation}
+for $s=\Ne,\,\ANe$.
+
+\end{subequations}
+
+
+\bibliographystyle{plain}
+\bibliography{../../References/references.bib}
+
+\end{document}

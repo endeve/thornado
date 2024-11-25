@@ -1,0 +1,2071 @@
+\documentclass[11pt,letterpaper,twoside,english,final]{article} 
+
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{booktabs}
+\usepackage{mathrsfs}
+\usepackage{definitions}
+
+\newcommand{\NES}{\mbox{\tiny NES}}
+\newcommand{\dx}{\Delta x}
+\newcommand{\sumx}{\sum_{i=1}^{d}}
+\newcommand{\thornado}{\texttt{thornado}}
+
+\input{ornlmacro}
+
+\begin{document} 
+
+%\bibliographystyle{plain} 
+\begin{titlepage}
+
+%NOTICE about prelim document
+%delete NOTICE when document become final
+%\vspace{-1.75in}
+%\hspace{-1in}
+%\par
+%\footnotesize
+%\vspace{-.8in} 
+%  \fbox{
+%  \begin{minipage}{0.55\textwidth}
+%   \raggedright
+% \textsf{\textbf{NOTICE: This document contains information of a preliminary nature and is not intended for release.  It is subject to revision or correction and therefore does not represent a final report.}}
+%  \end{minipage}
+%  }
+
+\URCornerWallPaper{1.0}{Graybar.png}
+\ThisURCornerWallPaper{1.0}{Graybar.png} 
+\ClearWallPaper 
+
+
+\begin{flushright}{\textsf{\bfseries{\large{ORNL/TM-2017/501}}}}\\ 
+\end{flushright}
+
+\vspace{.15in} 
+
+\noindent
+\begin{shaded}
+\Huge{\textsf{\bfseries\color{white}{TOWARDS A DISCONTINUOUS GALERKIN METHOD FOR THE MULTI-GROUP TWO-MOMENT MODEL OF NEUTRINO TRANSPORT}}}
+\end{shaded}
+
+\begin{figure}[H]
+\flushright
+\includegraphics[width=4.88in, height=3.47in]{Officiallogo.png} 
+\end{figure}
+
+
+\def\author#1{\large{\textsf{#1}}\\ }
+
+\def\date#1{{\vspace{.25 in}
+
+\large{\bfseries{\textsf{#1}}}\\ }}
+
+\def\authordate#1{
+
+\noindent
+\vskip 6.8pt
+\vtop to0pt{
+\setlength{\parindent}{112mm}
+
+#1\vss}}
+
+\authordate{
+\author{Eirik Endeve}
+\author{Ran Chu}
+\author{Anthony Mezzacappa}
+\author{Bronson Messer}
+\date{\today}}
+
+% delete NOTICE when document become final
+%\DraftBox                    % command for Draft. Not for public release.
+%\NotPublic                % command for Not for public release.
+\ApprovedBox             % command for Approved for public release.
+%\BusSenBox                 % command for Business Sensitive.
+%\OUOBox                    % command for Official Use Only. To add item, open ORNLmacro.tex, make change, and save
+%\ECIBox                      % command for Export Controlled Information
+%\OUOECIBox               % command for OUO and ECI
+%\OUOATBox                % command for Official Use Only and Applied Technology
+%\OUOECIATBox           % command for Official Use Only, Export Controlled Information, and Applied Technology
+%\UCNIBox                   % command for Unclassified Controlled Nuclear Information
+%\CRADABox                % command for CRADA final.
+
+
+\setlength{\parindent}{0pt}
+
+\bigskip
+\noindent
+
+\thispagestyle{fancy}
+\fancyfoot{}
+\fancyfoot[L]{\includegraphics[width=3.72in]{textlogo.png}}
+\renewcommand{\headrulewidth}{0pt}
+\addtolength{\footskip}{0.3in}
+
+
+\end{titlepage}
+
+\newpage
+
+
+ \newpage 
+
+\thispagestyle{empty}                           % Hide when using other pagestyles (Not for public release, OUO, etc.)
+%\thispagestyle{mypagestylepublic}        % Use for "Not for public release." in footer with no page numbers
+%\thispagestyle{mypagestyleempty}    % Use for "OUO" in footer with no page numbers 
+\vspace*{\fill}
+
+
+  \par
+
+  \par
+  \begin{center}
+    \fbox{
+      \parbox{5.61in}{
+        \small
+        \begin{center}
+
+         {\bf\textsf{ DOCUMENT AVAILABILITY}}
+        \end{center}
+    \textsf{Reports produced after January 1, 1996, are generally available free via US Department of Energy (DOE) SciTech Connect. }
+          \\
+          ~
+
+          \hspace{0.5in}{\textsf{\textbf{\emph{ Website:}}}} \textsf{\url{ http://www.osti.gov/scitech/ }}
+          \\
+          ~
+          \\
+            \textsf{Reports produced before January 1, 1996, may be purchased by members of the public from the following source:}
+          \\  
+          ~
+
+          \hspace{0.5in}   \textsf{National Technical Information Service }
+
+          \hspace{0.5in}   \textsf{5285 Port Royal Road }
+
+          \hspace{0.5in}   \textsf{Springfield, VA 22161 }
+
+          \hspace{0.5in} {\textsf{\textbf{\emph{Telephone:}}}}   \textsf{703-605-6000  (1-800-553-6847) }
+
+          \hspace{0.5in} {\textsf{\textbf{\emph{TDD:}}}}   \textsf{703-487-4639 }
+
+          \hspace{0.5in} {\textsf{\textbf{\emph{Fax:}}}}   \textsf{703-605-6900 }
+
+          \hspace{0.5in} {\textsf{\textbf{\emph{E-mail:}}}}   \textsf{\href{mailto:info@ntis.gov}{info@ntis.gov}}
+
+          \hspace{0.5in} {\textsf{\textbf{\emph{Website:}}}}   \textsf{\url{http://classic.ntis.gov/}} 
+          \\
+          ~
+          \\
+          \textsf{Reports are available to DOE employees, DOE contractors, Energy Technology Data Exchange representatives, and International Nuclear Information System representatives from the following source: }
+          \\
+          ~
+
+          \hspace{0.5in}\textsf{Office of Scientific and Technical Information}
+
+          \hspace{0.5in}\textsf{PO Box 62}
+
+          \hspace{0.5in}\textsf{Oak Ridge, TN  37831}
+
+          \hspace{0.5in}{\textsf{\textbf{\emph{Telephone:}}}}\textsf{ 865-576-8401}
+
+          \hspace{0.5in}{\textsf{\textbf{\emph{Fax:}}}}\textsf{ 865-576-5728}
+
+          \hspace{0.5in}{\textsf{\textbf{\emph{E-mail:}}}} \textsf{\href{mailto:reports@osti.gov}{report@osti.gov}}
+
+          \hspace{0.5in}{\textsf{\textbf{\emph{Website:}}}} \textsf{\url{http://www.osti.gov/contact.html}}
+           
+         }
+      }
+  \end{center}
+  \par
+  \vspace{0.1in}
+  \par
+  \begin{center}
+   \small
+    \fbox{\parbox{4in}{
+        
+       \textsf{This report was prepared as an account of work sponsored by an agency of the United States Government. Neither the United States Government nor any agency thereof, nor any of their employees, makes any warranty, express or implied, or assumes any legal liability or responsibility for the accuracy, completeness, or usefulness of any information, apparatus, product, or process disclosed, or represents that its use would not infringe privately owned rights. Reference herein to any specific commercial product, process, or service by trade name, trademark, manufacturer, or otherwise, does not necessarily constitute or imply its endorsement, recommendation, or favoring by the United States Government or any agency thereof. The views and opinions of authors expressed herein do not necessarily state or reflect those of the United States Government or any agency thereof. }}}
+
+  \end{center}
+
+
+\vspace*{\fill}
+
+\newpage
+
+\begin{titlepage}
+%\thispagestyle{mypagestylepublic}        % Use for "Not for public release." in footer with no page numbers
+%\thispagestyle{mypagestyleempty}    % Use for "OUO" in footer with no page numbers 
+
+\begin{flushright}{\textsf{\bfseries{\large{ORNL/TM-2017/501}}}}\\ 
+\end{flushright}
+
+\vspace{0.5in}
+
+\begin{center}
+Computer Science and Mathematics Division
+\end{center}
+
+\vspace{1.25in}
+
+\begin{center}
+{\bf{\large{TOWARDS A DISCONTINUOUS GALERKIN METHOD FOR THE MULTI-GROUP TWO-MOMENT MODEL OF NEUTRINO TRANSPORT}}}\\
+\vspace{0.5in}
+
+Eirik Endeve, Ran Chu, Anthony Mezzacappa, Bronson Messer
+
+\vspace{1.35in}
+
+Date Published: January 2018
+
+\vspace{1.35in}
+
+Prepared by \\
+OAK RIDGE NATIONAL LABORATORY \\
+Oak Ridge, TN 37831-6283 \\
+managed by \\
+UT-Battelle, LLC \\
+for the \\
+US DEPARTMENT OF ENERGY \\
+under contract DE-AC05-00OR22725
+
+\end{center}
+
+\end{titlepage}
+
+
+\clearemptydoublepage 
+\begin{centering}
+\tableofcontents 
+\end{centering}
+
+%\pagestyle{mypagestylepublicpage}      % Use for "Not for public release." in footer with page numbers
+%\thispagestyle{mypagestyle}                  % Use for "OUO" in footer with page numbers
+
+
+\pagenumbering{roman}
+
+\setcounter{page}{3}
+
+\newpage
+
+\clearemptydoublepage
+\phantomsection 
+\begin{centering}
+\listoffigures 
+\end{centering}
+
+\addcontentsline{toc}{section}{LIST OF FIGURES} 
+
+\newpage
+
+\clearemptydoublepage
+\phantomsection 
+\begin{centering}
+\listoftables 
+\end{centering}
+
+\addcontentsline{toc}{section}{LIST OF TABLES} 
+
+\newpage
+
+%\pagestyle{mypagestylepublicpage}      % Use for "Not for public release." in footer with page numbers
+%\thispagestyle{mypagestyle}                  % Use for "OUO" in footer with page numbers
+
+\clearemptydoublepage
+\phantomsection
+\addcontentsline{toc}{section}{ACRONYMS} 
+\begin{center}
+{\bf{ACRONYMS}}
+\end{center}
+
+\begin{table}[h]
+\vspace{-6pt}
+\begin{tabular}{l l} 
+ORNL & Oak Ridge National Laboratory \\
+CCSN & Core-Collapse Supernova \\
+PNS & Proto-Neutron Star \\
+NES & Neutrino-Electron Scattering \\
+SI & Semi-Implicit \\
+IMEX & Implicit-Explicit \\
+SIRK & Semi-Implicit Runge-Kutta \\
+DG & Discontinuous Galerkin \\
+LF & Lax-Friedrichs \\
+HLL & Harten-Lax-van Leer \\
+PDE & Partial Differential Equation \\
+ODE & Ordinary Differential Equation \\
+CFL & Courant-Friedrichs-Lewy \\
+RP & Realizability-Preserving \\
+SSP-RK & Strong Stability-Preserving Runge-Kutta \\
+\end{tabular}
+\end{table}
+
+
+\newpage
+
+\clearemptydoublepage
+\phantomsection
+\addcontentsline{toc}{section}{ADDITIONAL FRONT MATERIAL}
+\begin{center}
+{\bf{ADDITIONAL FRONT MATERIAL}}
+\end{center}
+
+%Material after the Contents, List of Figures, List of Tables, and the Acronym list may include any or all of the following sections and should begin on an odd-numbered page in the order listed below:
+%
+%\noindent{FOREWORD {\color{blue}{\emph {[Note: Spelling is not ``FORWARD.'']}}}\\
+%\noindent{PREFACE}\\
+
+\noindent{ACKNOWLEDGMENTS}\\
+
+This research used resources of the Oak Ridge Leadership Computing Facility, which is a DOE Office of Science User Facility supported under Contract DE-AC05-00OR22725.  
+This research was supported by the Exascale Computing Project (17-SC-20-SC), a collaborative effort of the U.S. Department of Energy Office of Science and the National Nuclear Security Administration.  
+A portion of this research used resources at the Joint Institute for Computational Sciences (JICS), a DOE Office of Science User Facility operated by the Oak Ridge National Laboratory.
+
+thornado{\_}mini uses equation of state and opacity tables and subroutines developed under the WeakLib project.  
+We acknowledge the contributions to WeakLib of W.~Raphael Hix, Ryan Landfield, and Eric J. Lentz.  
+
+%\noindent{EXECUTIVE SUMMARY OR SUMMARY}\\
+%\noindent{ABSTRACT}
+%
+%Each section of the front material begins on an odd-numbered page. The abstract, if very brief, may begin on page 1 inserted above the introduction section.
+%
+%\def\thefootnote{\fnsymbol{ctr}} 
+%\long\def\symbolfootnote[#1]#2{\begingroup
+%\def\thefootnote{\fnsymbol{footnote}}\footnote[#1]{#2}\endgroup}
+%
+%\bigskip
+%\phantomsection
+%\addcontentsline{toc}{section}{GENERAL INFORMATION}
+%\begin{center}
+%{\bf{GENERAL INFORMATION}}
+%\end{center}
+%
+%Document margins are 1 in. all around.
+%
+%Text footnotes are 9 pt., TNR with no space between notes.\symbolfootnote[1]{Footnotes are 9pt., TNR with no space between notes. Footnotes are 9 pt., TNR with no space between notes.} Footnote indicators in text are superscript symbols and should appear in the following order: $\ast$, $\dagger$, $\ddagger$, $\S$, $\ast\ast$, $\dagger\dagger$, $\ddagger\ddagger$. Symbols {\underline {are not}} used as table footnote indicators (see page 4).
+%
+%Footnotes may be used in addition to the author-date citation method, in which case, the footnotes provide additional information to the text, not bibliographic citations.
+
+\newpage
+
+\clearemptydoublepage
+
+\pagenumbering{arabic}
+
+\setcounter{page}{1}
+
+\phantomsection
+\addcontentsline{toc}{section}{ABSTRACT}
+\begin{center}
+{\bf{ABSTRACT}}
+\end{center}
+
+\renewcommand{\thefootnote}{\fnsymbol{footnote}}
+
+We present progress on the development of a Discontinuous Galerkin (DG) method for solving the non-relativistic, multi-group two-moment model for neutrino transport.  
+The method --- ultimately targeted at simulation of neutrino transport in core-collapse supernovae --- includes the use of curvilinear coordinates and tabulated microphysics (i.e., nuclear equation of state and weak interaction rates) to model neutrino-matter coupling.  
+In this report, we provide algorithm details and present results from an extensive set of benchmark problems in one spatial dimension. 
+The algorithms have been implemented in the Toolkit for High-Order Neutrino-Radiation Hydrodynamics (\thornado), and Fortran code used to generate the results has been made available to the public through GitHub.\footnote{https://github.com/ECP-Astro/thornado{\_}mini}
+
+\begin{center}
+  \section{INTRODUCTION}
+\end{center}
+
+The explosion of a massive star (i.e., with mass $\gtrsim8$ solar masses) in a core-collapse supernova (CCSN) is initiated by the collapse of its iron or oxygen-neon-magnesium core, the product of millions of years of stellar evolution. 
+The collapse proceeds to densities exceeding the density of nucleons in the atomic nucleus, at which point the inner core becomes incompressible, ``rebounds," and launches a shock wave into the outer stellar core. 
+This shock wave ultimately propagates through the outer layers of the star and disrupts it in a CCSN explosion. 
+However, before this, the shock wave stalls in the outer core, due to energy losses from neutrino emission and dissociation of heavy nuclei, and turns into an accretion shock.  
+Exactly how the shock wave is revived remains a central question in CCSN theory.  
+After core bounce, about $10^{53}$~ergs of energy in the form of neutrinos and antineutrinos of all three flavors (i.e., electron, muon, and tau neutrinos) is emitted from the proto-neutron star (PNS) at the center of the explosion.  
+Early simulations \citep[e.g.,][]{betheWilson_1985} have shown that energy from these neutrinos can be deposited behind the shock and revive it, and this neutrino-reheating mechanism is central to current CCSN theory.  
+See, e.g., \citet{mezzacappa_2005,janka_2012,burrows_2013,muller_2016}, for comprehensive reviews.  
+
+Today, simulations play an indispensable role in disentangling details of the CCSN explosion mechanism, and in connecting observables to physical processes in the explosion.  
+Observables include nucleosynthetic yields, and optical and neutrino signals.  
+Simulations may also play a role in the future detection and interpretation of gravitational wave signals.  
+As such, CCSNe are multi-messengers, and CCSN models are quintessentially multi-physics --- involving all the known fundamental forces of nature.  
+However, the computational cost of CCSNe models is dominated by solving equations describing the transport of neutrinos and their interaction with the stellar fluid. 
+Neutrinos diffuse away from the PNS, become semi-transparent, and eventually free-streaming --- carrying information about the physical conditions in the exploding star.  
+One of the principal goals of a CCSN model is to compute the lepton and four-momentum exchange between the neutrinos and the stellar fluid.  
+
+Net energy transfer from neutrinos to the stellar fluid occurs in the layer between the so-called \emph{gain radius} and the shock --- the \emph{heating region}.  
+Importantly, in the heating region, the neutrino mean free path exceeds other characteristic length scales (the Knudsen number exceeds unity), and non-equilibrium effects may become important.  
+To capture non-equilibrium effects, a \emph{kinetic description} is required, where the neutrinos are described by the \emph{distribution function} $f(\omegaNu,\epsilonNu,\vect{x},t)$, a phase space density governed by the Boltzmann equation.  
+The distribution function gives, at time $t$, the number of neutrinos at spatial position $\vect{x}\in\mathbb{R}^{3}$, with energy $\epsilonNu\in\mathbb{R}^{+}$, propagating in direction $\omegaNu\in\mathbb{S}^{2}$ --- a seven-dimensional function.  
+
+In this work, we seek to develop efficient methods to model neutrino transport in CCSN simulations.  
+On the one hand, the need for high spatial resolution and unconstrained spatial dimensionality to follow important fluid instabilities as the explosion develops makes direct solution of the Boltzmann equation a formidable computational challenge.  
+On the other hand, neutrino heating rates are particularly sensitive to the neutrino energy distribution, which requires retention of the energy dimension of momentum space.  
+Therefore, to balance manageable computational cost with required physical fidelity, the number of unknowns can be reduced by a truncated moment expansion of the angular dimensions of momentum space; i.e., by solving for a finite number of angular moments of the distribution function
+\begin{equation}
+  \vect{\mathcal{M}}(\epsilonNu,\vect{x},t)=
+  \int_{\mathbb{S}^{2}}f(\omegaNu,\epsilonNu,\vect{x},t)\,\vect{w}(\omegaNu)\,d\omegaNu,
+\end{equation}
+where $\vect{w}$ are momentum space angular weighting functions.  
+The two-moment model \citep[e.g.,][]{andersonSpiegel_1972} is obtained by truncating the moment expansion at the level of the so-called first order moments (akin to an expansion in spherical harmonics up to degree $\ell=1$), so that the unknown moments are the spectral particle density $\cJ$ and particle flux $\bcH$ --- a two-moment model; $\bcM=(\cJ,\bcH)^{T}$.  
+This is the basic system we will consider.  
+Note that the moments depend on the neutrino energy, spatial position, and time, and are governed by a system of nonlinear moment equations.    
+
+The solution to a truncated moment model is confronted with the challenge of specifying higher order moments (e.g., radiation stresses), which appear in the governing moment equations.  
+In this work, the solution to this \emph{closure problem} is approximated by relating these higher order moments to the evolved moments through relatively simple analytic expressions \citep[cf.][]{minerbo_1978,levermore_1984,cernohorskyBludman_1994}.  
+Obviously, this approach limits the fidelity of the model when the angular distribution of the radiation field is highly anisotropic.  
+However, this shortcoming can (at additional computational cost) be alleviated by extending the moment expansion to include more moments, or by solving the Boltzmann equation directly, in regions where higher fidelity is needed.  
+In this approach, the two-moment model becomes a component in a multi-model hierarchy, and the developments described here can be fully leveraged.  
+We note that this multi-model approach introduces additional challenges associated with model coupling.  
+
+The neutrino-radiation hydrodynamics system supports three important time scales: (i) the \emph{radiative time scale} $\tau_{\mbox{\tiny r}}$, governed by the speed of light; (ii) the \emph{fluid time scale} $\tau_{\mbox{\tiny f}}$, governed by the fluid flow and sound speeds; and (iii) the \emph{collision time scale} $\tau_{\mbox{\tiny c}}$, governed by the mean time between neutrino-matter interactions.  
+In the CCSN environment, the flow \emph{and} sound speeds approach significant fractions of the speed of light, while $\tau_{\mbox{\tiny c}}$ is very short in the dense PNS.  
+Thus, we have the time scale ordering: $\tau_{\mbox{\tiny c}}\ll\tau_{\mbox{\tiny r}}\lesssim\tau_{\mbox{\tiny f}}$.  
+We will not resolve the short timescales imposed by collisions in the PNS, but integrate the stiff collision term with \emph{implicit methods}.  
+Streaming terms will be integrated in time using \emph{explicit methods}.  
+This motivates the use of \emph{Semi-Implicit (SI)}, or \emph{Implicit-Explcit (IMEX)}, time integration methods (e.g., \cite{minion_2003,pareschiRusso_2005,chertock_etal_2015}) for optimal balance between stability and efficiency.  
+Specifically, we will use Semi-Implicit Runge-Kutta (SIRK) methods, similar to those discussed by \citet{chertock_etal_2015}.  
+This combination of explicit and implicit methods, as opposed to fully implicit methods, avoids  the need to solve large, distributed systems of algebraic equations for each time step.  
+
+To solve the neutrino transport equations we discretize the moment equations in energy-position space using high-order Discontinuous Galerkin (DG) methods (e.g., \cite{cockburnShu_2001,hesthavenWarburton_2008}).  
+DG methods combine elements from both spectral and finite volume methods, and are an attractive option for solving hyperbolic partial differential equations (PDEs).  
+They achieve high-order accuracy on a compact stencil; i.e., data is only communicated with nearest neighbors, regardless of the formal order of accuracy.  
+This leads to a high computation to communication ratio, and favorable parallel scalability on heterogeneous architectures has been demonstrated \citep{klockner_etal_2009}.  
+DG methods can be used in combination with $hp$-adaptivity \citep{remacle_etal_2003}, where, in addition to grid refinement with AMR, the local polynomial degree can be chosen differently, and independently, in different cells.  
+They can easily be applied to problems involving curvilinear coordinates, which is beneficial in numerical relativity \citep{teukolsky_2016}.  
+Importantly, DG methods, as opposed to, e.g., finite volume methods, exhibit favorable properties when collisions are included.  
+Specifically, without modification, they recover the correct asymptotic behavior in the diffusion limit, characterized by frequent collisions \citep[e.g.,][]{larsenMorel_1989,adams_2001,guermondKanschat_2010}.  
+The DG method was introduced in the 1970s by \citet{reedHill_1973} to solve the neutron transport equation, and has undergone remarkable developments since then \citep[see, e.g.,][and references therein]{shu_2016}.  
+It has only recently received attention from the computational astrophysics community \citep[e.g.,][]{radiceRezzolla_2011,schaal_etal_2015,wuTang_2017}, mainly to solve the Euler equations for ideal hydrodynamics, but also to solve Einstein's field equations \citep{teukolsky_2016}.  
+DG methods have also been considered for the neutrino transport problem in CCSN \citep[e.g.,][]{radice_etal_2013,endeve_etal_2015}.  
+
+The ultimate goal of this work is to develop genuinely multi-dimensional, high-order numerical methods within the DG framework for solving the equations of neutrino-radiation hydrodynamics, that include relativity and full nonlinear coupling to the stellar fluid through a complete set of weak interactions, to enable high fidelity simulations of CCSN explosions.  
+This is a formidable challenge, and, in our opinion, this goal is best achieved in incremental steps.  
+The work reported here is the initial step toward this goal, where we present developments of a DG method for solving the non-relativistic, multi-group two-moment model in one spatial dimension (but sufficiently general to accommodate Cartesian, spherical, and cylindrical spatial coordinates).  
+We have tabulated a basic set of neutrino-matter interactions (electron capture and elastic scattering on nucleons and nuclei, and neutrino-electron scattering, as described by \citet{bruenn_1985}), using a tabulated nuclear equation of state (EoS), and we include lepton and energy exchange with the stellar fluid.  
+The algorithms have been implemented in the Toolkit for High-Order Neutrino-Radiation Hydrodynamics (\thornado), and we provide a limited public release of the algorithms on GitHub (\url{https://github.com/ECP-Astro/thornado_mini}).  
+
+This report is organized as follows:  
+We describe the non-relativistic, multi-group two-moment model we consider in Section~\ref{sec:twoMomentModel}
+We detail the spatial discretization of the two-moment model using the DG method in Section~\ref{sec:dgMethod}  
+The time integration methods used for problems with and without collisions are described in Section~\ref{sec:timeIntegration}  
+Limiting techniques to control nonphysical oscillations and to prevent nonphysical states are described in Section~\ref{sec:limiters}
+We provide details on the tabulated opacities in Section~\ref{sec:opacities}  
+Results from an extensive set of benchmark problems (in Cartesian, spherical, and cylindrical spatial coordinates), covering streaming and collision dominated limits, but with analytic opacities are presented in Section~\ref{sec:numericalBasic}  
+The neutrino-matter coupling method and results from two tests using tabulated opacities are discussed in Section~\ref{sec:numericalTableOpacities} 
+Finally, we summarize and discuss next steps in Section~\ref{sec:summary}  
+
+\begin{center}
+  \item\section{TWO-MOMENT MODEL FOR NEUTRINO TRANSPORT}
+  \label{sec:twoMomentModel}
+\end{center}
+
+Here we give a description of the two-moment model to be solved with the DG method.  
+
+\subsection{BASIC MATHEMATICAL MODEL}
+
+For general curvilinear spatial coordinates $\{x^{i}\}$, the two-moment model for radiation transport takes the form \citep[see, e.g.,][for fully general relativistic treatments]{shibata_etal_2011,cardall_etal_2013a}
+\begin{align}
+  &\f{1}{\sqrt{\gamma}}\pderiv{}{t}\Big(\,\sqrt{\gamma}\,\cJ\,\Big)
+  +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,\cH^{i}\,\Big)
+  =\tilde{\chi}\,\big(\cJ_{0}-\cJ\big) \nonumber \\
+  &\hspace{12pt}
+  +\big(4\pi-\cJ\big)\int_{\bbR^{+}}R^{\In}(\epsilonNu,\epsilonNu')\,\cJ(\epsilonNu')\,dV_{\epsilonNu'}
+  -\cJ\int_{\bbR^{+}}R^{\Out}(\epsilonNu,\epsilonNu')\,\big(4\pi-\cJ(\epsilonNu')\big)\,dV_{\epsilonNu'},
+  \label{eq:momentEquationEnergy}
+\end{align}
+\begin{align}
+  &\f{1}{\sqrt{\gamma}}\pderiv{}{t}\Big(\,\sqrt{\gamma}\,\cH_{j}\,\Big)
+  +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,\cK^{i}_{~j}\,\Big)
+  =\f{1}{2}\,\cK^{ik}\,\pderiv{\gamma_{ik}}{x^{j}}-\kappa\,\cH_{j} \nonumber \\
+  &\hspace{12pt}
+  -\cH_{j}\int_{\bbR^{+}}\big[\,R^{\In}(\epsilonNu,\epsilonNu')\,\cJ(\epsilonNu')+R^{\Out}(\epsilonNu,\epsilonNu')\big(4\pi-\cJ(\epsilonNu')\big)\,\big]\,dV_{\epsilonNu'},
+  \label{eq:momentEquationMomentum}
+\end{align}
+where $\cJ$, $\cH^{i}$, and $\cK^{ij}$ are defined as angular moments of a positive neutrino distribution function $f(\omegaNu,\epsilonNu,\bx,t)$
+\begin{equation}
+  \big\{\,\cJ,\,\cH^{i},\,\cK^{ij}\,\big\}(\epsilonNu,\bx,t)
+  =\int_{\bbS^{2}}f(\omegaNu,\epsilonNu,\bx,t)\,\big\{1,l^{i},l^{i}\,l^{j}\}\,d\omegaNu.  
+  \label{eq:angularMoments}
+\end{equation}
+Here, $\{l^{i}\}$ are components of a unit three-vector proportional to the neutrino three-momentum $\bp=\epsilonNu\,\bl$.  
+(We adopt the Einstein summation convention and let repeated Latin indices run from $1$ to $3$.)
+In a kinetic description, neutrinos are described by the phase space distribution function $f$, and the momentum space coordinates used here are the neutrino energy $\epsilonNu$, and the angles $\thetaNu$ and $\phiNu$ (describing the neutrino propagation direction relative to a local orthonormal basis).  
+In forming the angular moments in Eq.~\eqref{eq:angularMoments}, the integrals extend over the unit sphere
+\begin{equation}
+  \bbS^{2}=\big\{\,(\thetaNu,\phiNu)~|~\thetaNu\in[0,\pi),\,\phiNu\in[0,2\pi)\,\big\}.  
+\end{equation}
+The angular moments in Eq.~\eqref{eq:angularMoments} are related to the neutrino energy density, momentum density, and stress (by $\epsilonNu\,\cJ$, $\epsilonNu\,\cH^{i}$, and $\epsilonNu\,\cK^{ij}$, respectively, see, e.g., \cite{cardall_etal_2013a}).  
+They are functions of the neutrino energy $\epsilonNu$, spatial position $\{x^{i}\}$, and time $t$.  
+
+To model neutrino-matter interactions, we include emission and absorption, (isotropic) elastic scattering on nucleons and nuclei, and neutrino-electron scattering (NES).  
+On the right-hand sides of Eqs.~\eqref{eq:momentEquationEnergy} and \eqref{eq:momentEquationMomentum}, $\tilde{\chi}(\epsilonNu,\bU)$ and $\kappa(\epsilonNu,\bU)=\tilde{\chi}(\epsilonNu,\bU)+\sigma(\epsilonNu,\bU)$ are absorption and transport (absorption plus elastic scattering) opacities, respectively.  
+The absorption opacity $\tilde{\chi}$ is corrected for stimulated absorption \citep[cf.][]{mezzacappaBruenn_1993a}.  
+The NES rates $R^{\In}$ and $R^{\Out}$ are obtained by expanding the full kernels in a Legendre series, retaining only the isotropic part \citep[see, e.g.,][]{cernohorsky_1994}, and the integrals extend over all energies $\bbR^{+}=\{\epsilonNu~|~\epsilonNu\in[0,\infty)\}$.  
+The energy volume element is $dV_{\epsilonNu}=\epsilonNu^{2}d\epsilonNu$.  
+The opacities depend on the neutrino energy and the local thermodynamic state of the fluid $\bU=(\rho,T,Y_{e})^{T}$, where $\rho$ is the (baryon) mass density, $T$ the temperature, and $Y_{e}$ the electron fraction.  
+For simplicity we consider a single neutrino species (electron neutrinos), and we use opacities given by \citet{bruenn_1985}; see Section~\ref{sec:opacities} for further details.  
+In Eq.~\eqref{eq:momentEquationEnergy}, the equilibrium density $\cJ_{0}=4\pi\,f_{0}(\epsilonNu,\bU)$ is computed from the angular moment of the isotropic Fermi-Dirac distribution
+\begin{equation}
+  f_{0}(\epsilonNu,\bU)=\f{1}{e^{(\epsilonNu-\mu_{\nu})/k_{\mbox{\tiny B}}T}+1},
+\end{equation}
+where $k_{\mbox{\tiny B}}$ is Boltzmann's constant, and $\mu_{\nu}=\mu_{p}-\mu_{n}+\mu_{e}$ is the neutrino chemical potential in weak equilibrium.  
+(The chemical potentials of protons, neutrons, and electrons are denoted by $\mu_{p}$, $\mu_{n}$, and $\mu_{e}$, respectively.)
+
+The model given by Eqs.~\eqref{eq:momentEquationEnergy} and \eqref{eq:momentEquationMomentum} is non-relativistic (i.e., it does not include effects due to strong gravitational fields or interactions with a moving fluid), but is expressed in terms of curvilinear coordinates through the spatial metric tensor $\gamma_{ij}$, which gives squared infinitesimal line-element
+\begin{equation}
+  ds_{\vect{x}}^{2}=\gamma_{ij}\,dx^{i}\,dx^{j},
+\end{equation}
+where $\gamma_{ij}$ are the spatial components of the coordinate basis metric tensor.  
+We will make two simplifying assumptions: the metric tensor is (1) diagonal and (2) time-independent.  
+Specifically we assume the following diagonal form
+\begin{equation}
+  \gamma_{ij}
+  =\mbox{diag}\big[\,\gamma_{11},\,\gamma_{22}(x^{1}),\,\gamma_{33}(x^{1},x^{2})\,\big], 
+  \label{eq:threeMetric}
+\end{equation}
+which is sufficiently general to accommodate Cartesian, cylindrical, and spherical polar coordinates (see Table~\ref{tab:metricFunctions} and Appendix~\ref{app:CurvilinearEuler}).  
+Moreover, $\gamma$ is the determinant of the metric tensor, and $\sqrt{\gamma}=\sqrt{\gamma_{11}\gamma_{22}\gamma_{33}}$.  
+The inverse of the spatial metric is denoted $\gamma^{ij}$, so that $\gamma^{ik}\gamma_{kj}=\delta^{i}_{~j}$.  
+We can use the spatial metric to raise and lower indices on spatial vectors and tensors; e.g., $\cH_{j}=\gamma_{jk}\,\cH^{k}$.  
+
+The two-moment system contains the higher order moments $\cK^{ij}$ --- the symmetric stress tensor.  
+In order to form a closed system of equations, the components of the stress tensor must be related to the lower order moments through a closure procedure.  
+Following \citet{levermore_1984}, we write
+\begin{equation}
+  \cK^{i}_{~j}
+  =\f{1}{2}\,\Big[\,(1-\psi)\,\delta^{i}_{~j}+(3\,\psi-1)\,h^{i}\,h_{j}\,\Big]\,\cJ,
+  \label{eq:stressTensor}
+\end{equation}
+where $\psi$ is the Eddington factor, $h^{i}=\cH^{i}/\cH$, and $\cH=\sqrt{\cH_{i}\cH^{i}}$.  
+We also define the flux factor $h=\cH/\cJ$, and use the analytic expression for the Eddington factor \citep{minerbo_1978} given by 
+\begin{equation}
+  \psi(h)=\f{1}{3}+\f{2}{3}\,\Big[\,h^{2}\,\big(\,3-h+3h^{2}\,\big)/5\,\Big],
+  \label{eq:eddingtonFactor}
+\end{equation}
+which approximates the low occupancy limit of the maximum entropy closure for Fermi-Dirac particles given by \citet{cernohorskyBludman_1994}.  
+Specifically, we have $\psi(0)=1/3$ (diffusion limit) and $\psi(1)=1$ (streaming limit).  
+
+\subsection{TWO-MOMENT MODEL AS A SYSTEM OF CONSERVATION LAWS WITH SOURCES}
+
+\begin{table}[h]
+  \caption{Relevant metric functions for Cartesian, Cylindrical, and Spherical coordinate systems.\label{tab:metricFunctions}}
+  \small
+  \vspace{-6pt}
+  \begin{center}
+  \begin{tabular}{ccccccccccc}
+    \midrule
+    Coordinates & $x^{1}$ & $x^{2}$ & $x^{3}$ & $\gamma_{11}$ & $\gamma_{22}$ & $\gamma_{33}$ & $\sqrt{\gamma}$
+    & $\f{1}{\gamma_{22}}\pderiv{\gamma_{22}}{x^{1}}$ & $\f{1}{\gamma_{33}}\pderiv{\gamma_{33}}{x^{1}}$ & $\f{1}{\gamma_{33}}\pderiv{\gamma_{33}}{x^{2}}$ \\
+    \midrule
+    \midrule
+    Cartesian & $x$ & $y$ & $z$ & 1 & 1 & 1 & 1 & 0 & 0 & 0 \\
+    Cylindrical & $R$ & $z$ & $\phi$ & 1 & 1 & $R^{2}$ & $R$ & 0 & $2/R$ & 0 \\
+    Spherical & $r$ & $\theta$ & $\phi$ & 1 & $r^{2}$ & $r^{2}\sin^{2}\theta$ & $r^{2}\sin\theta$ & $2/r$ & $2/r$ & $2\cot\theta$ \\
+    \midrule
+    \midrule
+  \end{tabular}
+  \end{center}
+\end{table}
+
+For the forthcoming description it is useful to write the moment equations in a more compact form.  
+To this end, we define the geometry sources in Eq.~\eqref{eq:momentEquationMomentum} by
+\begin{equation}
+  \cG_{j}
+  =\f{1}{2}\,\cK^{ik}\,\pderiv{\gamma_{ik}}{x^{j}}.  
+\end{equation}
+Specifically, using the time-independent metric tensor in Eq.~\eqref{eq:threeMetric} and writing in terms of $\cK^{i}_{~j}$, the components are
+\begin{equation}
+  \cG_{1}
+  =\f{1}{2}\,\Big(\,\cK^{2}_{~2}\,\f{1}{\gamma_{22}}\pderiv{\gamma_{22}}{x^{1}}+\cK^{3}_{~3}\,\f{1}{\gamma_{33}}\pderiv{\gamma_{33}}{x^{1}}\,\Big), \quad
+  \cG_{2}
+  =\f{1}{2}\,\cK^{3}_{~3}\,\f{1}{\gamma_{33}}\pderiv{\gamma_{33}}{x^{2}}, \quad\text{and}\quad
+  \cG_{3}
+  =0.
+\end{equation}
+(Explicit expressions for metric functions appearing in the geometry sources are listed in Table~\ref{tab:metricFunctions}.)  
+Then, by defining the vector of evolved moments $\bcM=\big(\,\cJ,\,\bcH\,\big)^{T}$, the vector of geometry sources $\bcG(\bcM)=\big(\,0,\,\cG_{1},\,\cG_{2},\,\cG_{3}\,\big)^{T}$, the vector of collision sources $\bcC(\bcM)=\big(\,\tilde{\chi}\,(\cJ_{0}-\cJ)+\cL_{\NES},\,-(\kappa+\kappa_{\NES})\,\bcH\,\big)^{T}$, and the flux vectors $\bcF^{i}(\bcM)=\big(\,\cH^{i},\,\cK_{~1}^{i},\,\cK_{~2}^{i},\,\cK_{~3}^{i}\,\big)^{T}$, we write the system of equations in compact form
+\begin{equation}
+  \f{1}{\sqrt{\gamma}}\pderiv{}{t}\Big(\,\sqrt{\gamma}\,\bcM\,\Big)
+  +\f{1}{\sqrt{\gamma}}\pderiv{}{x^{i}}\Big(\,\sqrt{\gamma}\,\bcF^{i}(\bcM)\,\Big)
+  =\bcG(\bcM)+\bcC(\bcM).
+  \label{eq:momentEquationsCompact}
+\end{equation}
+Here, $\cL_{\NES}$ and $\kappa_{\NES}$ represent the integral operators appearing in Eqs.~\eqref{eq:momentEquationEnergy} and \eqref{eq:momentEquationMomentum}, respectively.  
+Eq.~\eqref{eq:momentEquationsCompact} forms the basis for developing DG methods for neutrino transport.  
+
+\begin{center}
+  \section{DISCONTINUOUS GALERKIN DISCRETIZATION}
+  \label{sec:dgMethod}
+\end{center}
+
+In the DG method, the moments are approximated by a local expansion of the form
+\begin{equation}
+  \bcM_{\DG}(\epsilonNu,\bx,t)
+  =\sum_{\bi=\vect{1}}^{\bN}\bcM_{\bi}(\epsilonNu,t)\,\ell_{\bi}(\bx), 
+\end{equation}
+where basis functions $\ell_{\bi}(\bx)$, which we will take to be polynomials, belong to a function space denoted $\bbV^{k}$ and have local support in a computational cell or element denoted by $\bK$.  
+Here we do not consider relativistic effects, which would lead to energy advection terms in the moment equations \citep[cf.][]{cardall_etal_2013a}.  
+Thus, we treat the neutrino energy simply as a parameter, and do not introduce an expansion in the energy dimension.  
+
+Several books and review articles on the DG method are now available \citep[see, e.g.,][and references therein]{cockburnShu_2001,hesthavenWarburton_2008,shu_2016}, and we will not go into too much detail here.  
+However, we review some key concepts to introduce notation, and, since multiple `flavors' of the DG method have emerged, we emphasize specific choices in our implementation.  
+Specifically, we have implemented a nodal DG method where a tensor product of Legendre-Gauss quadrature points define the interpolation nodes within an element (using Lagrange polynomials).  
+Furthermore, we let these Legendre-Gauss quadrature nodes also define the integration points to evaluate integrals in the DG method using the Legendre-Gauss quadrature rule.  
+This approach, called the spectral-type collocation DG method by \citet{bassi_etal_2013}, leads to particularly simple expressions, and offers computational advantages in quadrature evaluations.  
+
+\subsection{BASIC PRINCIPLES OF THE DG METHOD}
+
+We divide the computational domain $D$ into a disjoint union $\mathcal{T}$ of open elements $\bK$, so that $D = \cup_{\bK \in \mathcal{T}}\bK$.  
+We require that each element is a $d$-dimensional box in the logical coordinates; i.e.,
+\begin{equation}
+  \bK=\{\,\vect{x} : x^{i} \in K^{i} := (\xL^{i},\xH^{i}),~|~i=1,\ldots,d\,\}, 
+\end{equation}
+with the surface elements denoted $\tilde{\bK}^{i}=\otimes_{j\ne i}K^{j}$.  
+We use $V_{\bK}$ to denote the proper volume of the element
+\begin{equation}
+  V_{\bK} = \int_{\bK}dV, \quad\text{where}\quad dV = \sqrt{\gamma}\,\prod_{i=1}^{d}dx^{i}.  
+\end{equation}
+We also define $\bx=\{\tilde{\bx}^{i},x^{i}\}$ and $\dx^{i}=\xH^{i}-\xL^{i}$.  
+
+We let the approximation space for the DG method, $\mathbb{V}^{k}$, be constructed from the tensor product of one-dimensional polynomials of maximal degree $k$.  
+Note that functions in $\mathbb{V}^{k}$ can be discontinuous across element interfaces.  
+The semi-discrete DG problem is to find $\bcM_{\DG}\in\mathbb{V}^{k}$ (which approximates $\bcM$ in Eq.~\eqref{eq:momentEquationsCompact}) such that \citep[cf.][]{cockburnShu_2001}
+\begin{align}
+  &\partial_{t}\int_{\bK}\bcM_{\DG}\,v\,dV
+  +\sumx\int_{\tilde{\bK}^{i}}
+  \big(\,
+    \sqrt{\gamma}\,\widehat{\bcF}^{i}(\bcM_{\DG})\,v\big|_{\xH^{i}}
+    -\sqrt{\gamma}\,\widehat{\bcF}^{i}(\bcM_{\DG})\,v\big|_{\xL^{i}}\,\big)\,d\tilde{\bx}^{i} \nonumber \\
+  &\hspace{24pt}
+  -\sumx\int_{\bK}\bcF^{i}(\bcM_{\DG})\,\pderiv{v}{x^{i}}\,dV
+  =\int_{\bK}\bcG(\bcM_{\DG})\,v\,dV+\int_{\bK}\bcC(\bcM_{\DG})\,v\,dV,
+  \label{eq:semidiscreteDG}
+\end{align}
+for all $v\in\mathbb{V}^{k}$ and all $\bK\in\mathcal{T}$.  
+
+To connect the elements in Eq.~\eqref{eq:semidiscreteDG}, $\widehat{\bcF}^{i}(\bcM_{\DG})$ is a numerical flux approximating the flux on the $i$th surface of $\bK$.  
+For this purpose we define the numerical flux function $\vect{f}^{i}$, which evaluates the numerical flux given values from both sides of an element interface; i.e.,
+\begin{equation}
+  \widehat{\bcF}^{i}(\bcM_{\DG})=\vect{f}^{i}(\bcM_{\DG}(x^{i,-},\tilde{\bx}^{i}),\bcM_{\DG}(x^{i,+},\tilde{\bx}^{i})),
+\end{equation}
+where superscripts $-/+$, e.g., in the arguments of $\bcM_{\DG}(x^{i,-/+},\tilde{\bx}^{i})$, indicate that the function is evaluated to the immediate left/right of $x^{i}$.  
+For example, the simple Lax-Friedrichs (LF) flux, which we have implemented, is given by
+\begin{equation}
+  \vect{f}^{\mbox{\tiny LF},i}(\bcM^{-},\bcM^{+})
+  =\f{1}{2}\,\big(\,\bcF^{i}(\bcM^{-})+\bcF^{i}(\bcM^{+})-\alpha^{i}\,(\,\bcM^{+}-\bcM^{-}\,)\,\big),
+\end{equation}
+where $\alpha^{i}=||\mbox{eig}\big(\partial\bcF^{i}/\partial\bcM\big)||_{\infty}$ is the largest eigenvalue of the flux jacobian.  
+For classical neutrinos, which propagate at the speed of light, we can take $\alpha^{i}=1$ (i.e., the global LF flux).  
+We have also implemented the Harten-Lax-van Leer (HLL) flux \citep{harten_etal_1983}
+\begin{equation}
+  \vect{f}^{\mbox{\tiny HLL},i}(\bcM^{-},\bcM^{+})
+  =\f{\alpha^{+,i}\,\bcF^{i}(\bcM^{-})+\alpha^{-,i}\,\bcF^{i}(\bcM^{+})-\alpha^{-,i}\alpha^{+,i}(\,\bcM^{+}-\bcM^{-}\,)}{\alpha^{-,i}+\alpha^{+,i}},
+\end{equation}
+where $\alpha^{-,i}$ and $\alpha^{+,i}$ are estimates for the largest (in absolute value) wave speed for left-moving and right-moving waves, respectively.  
+
+The approximation space $\mathbb{V}^{k}$ contains the constant functions, and the choice $v=1$ in Eq.~\eqref{eq:semidiscreteDG} gives
+\begin{equation}
+  \partial_{t}\bcM_{\bK}
+  +\f{1}{V_{\bK}}\sumx\int_{\tilde{\bK}^{i}}
+  \big(\,\sqrt{\gamma}\,\widehat{\bcF}^{i}(\bcM_{\DG})\big|_{\xH^{i}}-\sqrt{\gamma}\,\widehat{\bcF}^{i}(\bcM_{\DG})\big|_{\xL^{i}}\,\big)\,d\tilde{\bx}^{i}
+  =\bcG_{\bK}+\bcC_{\bK},
+\end{equation}
+where we have defined the volume averages
+\begin{equation}
+  \bcM_{\bK}=\f{1}{V_{\bK}}\int_{\bK}\bcM_{\DG}\,dV, \quad
+  \bcG_{\bK}=\f{1}{V_{\bK}}\int_{\bK}\bcG(\bcM_{\DG})\,dV  \quad\text{and}\quad
+  \bcC_{\bK}=\f{1}{V_{\bK}}\int_{\bK}\bcC(\bcM_{\DG})\,dV.
+\end{equation}
+This illustrates how the DG method evolves the cell average (similar to finite volume methods).  
+
+\subsection{FURTHER DETAILS ON THE DG DISCRETIZATION OF THE MOMENT EQUATIONS}
+
+Here we provide further details on the DG method in order to arrive at the equations that are actually implemented in our code.  
+We start by introducing some notation, defining the polynomial expansion for $\bcM_{\DG}$, and the quadrature rules used to evaluate the integrals in Eq.~\eqref{eq:semidiscreteDG}.  
+Then, using these rules, we provide explicit expressions for each of the terms in Eq.~\eqref{eq:semidiscreteDG}.  
+
+\subsubsection{Notation and Definitions}
+
+In each element $\bK$, we use a nodal representation in the conserved variables $\bcM$; i.e.,
+\begin{equation}
+  \bcM(\epsilonNu,\bx,t)\approx
+  \bcM_{\DG}(\epsilonNu,\bx,t)=\sum_{\bi=\vect{1}}^{\bN}\bcM_{\bi}(\epsilonNu,t)\,\ell_{\bi}(\bx),
+  \label{eq:conservedNodalExpansion}
+\end{equation}
+where $\ell_{\bi}(\bx)\in\bbV^{k}$ are basis functions.  
+(In the following, to simplify the notation, we will suppress the dependence on $\epsilonNu$ of the moments.)
+Specifically, we use one-dimensional Lagrange polynomials $\ell_{i}(x)$ to construct the multidimensional representation, where
+\begin{equation}
+  \ell_{i}(\eta)=
+  \prod_{\substack{j=1\\j\ne i}}^{N}\f{\eta-\eta_{j}}{\eta_{i}-\eta_{j}}.  
+\end{equation}
+The basis polynomials are defined on the local reference element with coordinates $\eta\in I=[\eta_{\Low},\eta_{\Hgh}]=[-1/2,1/2]$.  
+The global coordinates are then given by $x(\eta)=x_{c}+\eta\,\Delta x$, where the center value is given by the arithmetic mean $x_{c}=(x_{\Low}+x_{\Hgh})/2$.  
+In \eqref{eq:semidiscreteDG}, we also need to evaluate derivatives of the basis functions.  
+For Lagrange polynomials, these are given by
+\begin{equation}
+  \pderiv{\ell_{i}}{\eta}(\eta)
+  =\sum_{\substack{k = 1 \\ k \ne i}}^{N}\f{1}{\eta_{i}-\eta_{k}}
+  \prod_{\substack{j=1 \\ j \ne k}}^{N}\f{\eta-\eta_{j}}{\eta_{i}-\eta_{j}}.  
+\end{equation}
+
+To simplify expressions, we have introduced compact notation.  
+Let $\bi=\{i_{1},\ldots,i_{d}\}$ be a multi-index, and define the multidimensional polynomial as $\ell_{\bi}(\bx)=\prod_{k=1}^{d}\ell_{i_{k}}(x^{k})$.  
+From the property $\ell_{i}(x_{j})=\delta_{ij}$ we have the corresponding multidimensional version $\ell_{\bi}(\bx_{\bj})=\delta_{\bi\bj}$, so that $\bcM_{\DG}(\bx_{\bi},t)=\bcM_{\bi}(t)$; i.e., the expansion coefficients in Eq. \eqref{eq:conservedNodalExpansion} represent the conserved variables defined in the nodes $\bx_{\bi}$.  
+We then have
+\begin{equation}
+  \sum_{\bi=\vect{1}}^{\bN}\bcM_{\bi}(t)\,\ell_{\bi}(\bx)
+  =\sum_{i_{1}=1}^{N}\ldots\sum_{i_{d}=1}^{N}\bcM_{i_{1}\ldots i_{d}}(t)\,\ell_{i_{1}}(x^{1})\ldots\ell_{i_{d}}(x^{d}).  
+\end{equation}
+
+To evaluate the integrals in Eq.~\eqref{eq:semidiscreteDG}, we introduce numerical quadratures.  
+First we define the one-dimensional $N$-point quadrature $Q_{N}^{i}:C^{0}(I^{i})\to\bbR$ with abscissas $\{\eta_{q}\}_{q=1}^{N}$ and weights $\{w_{q}\}_{q=1}^{N}$, normalized such that $\sum_{q=1}^{N}w_{q}=1$.  
+(For example, the $N$-point Legendre-Gauss quadrature, which we will use, integrates polynomials of degree $\le 2N-1$ exactly.)
+If $P(x)$ is such a polynomial, we have
+\begin{equation}
+  \f{1}{\Delta x}\int_{K}P(x)\,dx=\int_{I}P(\eta)\,d\eta=Q_{N}\big[P\big]\equiv\sum_{q=1}^{N}w_{q}\,P(\eta_{q}).  
+\end{equation}
+
+Multi-dimensional integrals are evaluated by tensorization of one-dimensional quadratures.  
+For volume integrals, we define $\bQ_{N}:C^{0}(\bI)\to\bbR$ as the tensor product of one-dimensional $N$-point Legendre-Gauss quadrature rules $\bQ_{N}=\otimes_{i=1}^{d}Q_{N}^{i}$ with abscissas $\{\vect{\eta}_{\bq}\}_{\bq=\vect{1}}^{\bN}$ and weights $\{w_{\bq}\}_{\bq=\vect{1}}^{\bN}$.  
+Here, $\bq=\{q_{i}\}_{i=1}^{d}\in\bbN^{d}$, $\vect{\eta}_{\bq}=\{\eta_{q_{1}}^{1},\ldots,\eta_{q_{d}}^{d}\}$, and $w_{\bq}=w_{q_{1}}\ldots w_{q_{d}}$, so that the multi-dimensional volume integral is evaluated as
+\begin{equation}
+  \f{1}{|\bK|}\int_{\bK}P(\bx)\,d\bx
+  =\int_{\bI}P(\vect{\eta})\,d\vect{\eta}
+  =\bQ_{N}\big[P\big]
+  \equiv\sum_{\bq=\vect{1}}^{\bN}w_{\bq}\,P(\vect{\eta}_{\bq}),
+\end{equation}
+where $P:\bbR^{d}\to\bbR$.  
+Similarly, for surface integrals, we define $\tilde{\bQ}_{N}^{i}:C^{0}(\tilde{\bI}^{i})\to\bbR$ as the tensor product $\tilde{\bQ}_{N}^{i}=\otimes_{j\ne i}Q_{N}^{j}$ and denote the abscissas with $\{\tilde{\vect{\eta}}_{\tilde{\bq}_{i}}^{i}\}_{\tilde{\bq}_{i}=\vect{1}}^{\bN}$ and the weights with $\{w_{\tilde{\bq}_{i}}\}_{\tilde{\bq}_{i}=\vect{1}}^{\bN}$, respectively.  
+Here, the multi-index is $\tilde{\bq}_{i}=\{q_{j}\}_{j\ne i}\in\bbN^{d-1}$, $\tilde{\vect{\eta}}_{\tilde{\bq}_{i}}^{i}=\{\eta_{q_{j}}^{j}\}_{j\ne i}$, and $w_{\tilde{\bq}_{i}}=\prod_{j\ne i}w_{q_{j}}$.  
+Surface integrals are then evaluated as
+\begin{equation}
+  \f{1}{|\tilde{\bK}^{i}|}\int_{\tilde{\bK}^{i}}P(x^{i},\tilde{\bx}^{i})\,d\tilde{\bx}^{i}
+  =\int_{\tilde{\bI}^{i}}P(x^{i},\tilde{\vect{\eta}}^{i})\,d\tilde{\vect{\eta}}^{i}
+  =\tilde{\bQ}_{N}^{i}\big[P\big]
+  \equiv\sum_{\tilde{\bq}_{i}=\vect{1}}^{\bN}w_{\tilde{\bq}_{i}}\,P(x^{i},\tilde{\vect{\eta}}_{\tilde{\bq_{i}}}^{i}).  
+\end{equation}
+
+We now use these definitions to furnish explicit expressions for the discretized moment equations.  
+
+\subsubsection{Explicit Expressions}
+
+Inserting \eqref{eq:conservedNodalExpansion} into \eqref{eq:semidiscreteDG}, with $v(\bx)=\ell_{\bk}(\bx)$ and the quadratures defined above, we obtain
+\begin{equation}
+  \pd{}{t}\int_{\bK}\bcM_{\DG}\,v\,dV
+  \approx w_{\bk}\,\sqrt{\gamma}_{\bk}\,\pd{}{t}\bcM_{\bk}\,|\bK|
+\end{equation}
+for the time derivative term, where $|\bK|=\prod_{i=1}^{d}\Delta x^{i}$.  
+Note that the integration is approximate since we use the Legendre-Gauss quadrature rule with the nodal points given by the expansion in Eq.~\eqref{eq:conservedNodalExpansion}.  
+This leads to a diagonal mass matrix, and simplifies the implementation.  
+Similarly, we obtain
+\begin{equation}
+  \int_{\bK}\bcG(\bcM_{\DG})\,v\,dV
+  \approx w_{\bk}\,\sqrt{\gamma}_{\bk}\,\bcG(\bcM_{\bk})\,|\bK| \quad\text{and}\quad
+  \int_{\bK}\bcC(\bcM_{\DG})\,v\,dV
+  \approx w_{\bk}\,\sqrt{\gamma}_{\bk}\,\bcC(\bcM_{\bk})\,|\bK|
+\end{equation}
+for the source terms.  
+For the surface integrals, we obtain, e.g., 
+\begin{equation}
+  \int_{\tilde{\bK}^{i}}\sqrt{\gamma}\,\widehat{\bcF}^{i}\,v|_{x_{\Hgh}^{i}}\,d\tilde{\bx}^{i}
+  \approx w_{\tilde{\bk}_{i}}\,\sqrt{\gamma}(x_{\Hgh}^{i},\tilde{x}_{\tilde{\bk}_{i}}^{i})\,
+  \widehat{\bcF}^{i}(x_{\Hgh}^{i},\tilde{x}_{\tilde{\bk}_{i}}^{i})\,\ell_{k_{i}}(\eta_{\Hgh})\,|\tilde{\bK}^{i}|,
+\end{equation}
+where $|\tilde{\bK}^{i}|=\prod_{i\ne j}\Delta x^{j}$.  
+(Note that we do not use the Einstein summation convention in the numerical expressions presented in this section.  
+Summation over indices will be explicitly indicated.)  
+Finally, the `volume terms' become
+\begin{equation}
+  \int_{\bK}\bcF^{i}\,\pderiv{v}{x^{i}}\,dV
+  \approx w_{\tilde{\bk}_{i}}\sum_{q_{i}=1}^{N}w_{q_{i}}\,\sqrt{\gamma}(x_{q_{i}}^{i},\tilde{\bx}_{\tilde{\bk}_{i}}^{i})\,
+  \bcF^{i}(x_{q_{i}}^{i},\tilde{\bx}_{\tilde{\bk}_{i}}^{i})\,\pderiv{\ell_{k_{i}}}{\eta^{i}}(\eta_{q_{i}}^{i})\,|\tilde{\bK}^{i}|.  
+\end{equation}
+Combining the terms and dividing through by $w_{\bk}\,\sqrt{\gamma}_{\bk}\,|\bK|$ we obtain the semi-discrete form of the moment equations
+\begin{align}
+  \pd{\bcM_{\bk}}{t}
+  &=
+  -\f{1}{\sqrt{\gamma}_{\bk}}\sum_{i=1}^{d} 
+  \f{1}{w_{k_{i}}\Delta x^{i}}\,
+  \Big(\,
+    \sqrt{\gamma}(x_{\Hgh}^{i},\tilde{x}_{\tilde{\bk}_{i}}^{i})\,\widehat{\bcF}^{i}(x_{\Hgh}^{i},\tilde{x}_{\tilde{\bk}_{i}}^{i})\,\ell_{k_{i}}(\eta_{\Hgh})
+    -\sqrt{\gamma}(x_{\Low}^{i},\tilde{x}_{\tilde{\bk}_{i}}^{i})\,\widehat{\bcF}^{i}(x_{\Low}^{i},\tilde{x}_{\tilde{\bk}_{i}}^{i})\,\ell_{k_{i}}(\eta_{\Low})
+  \,\Big)
+  \nonumber \\
+  &\hspace{12pt}
+  +\f{1}{\sqrt{\gamma}_{\bk}}\sum_{i=1}^{d}\f{1}{w_{k_{i}}\Delta x^{i}}
+  \sum_{q_{i}=1}^{N}w_{q_{i}}\,\sqrt{\gamma}(x_{q_{i}}^{i},\tilde{\bx}_{\tilde{\bk}_{i}}^{i})\,
+  \bcF^{i}(x_{q_{i}}^{i},\tilde{\bx}_{\tilde{\bk}_{i}}^{i})\,\pderiv{\ell_{k_{i}}}{\eta^{i}}(\eta_{q_{i}}^{i})
+  +\bcG(\bcM_{\bk})+\bcC(\bcM_{\bk}).
+  \label{eq:semidiscreteDiscretized}
+\end{align}
+Eq.~\eqref{eq:semidiscreteDiscretized} provides the basis for implementation in our code.  
+
+By defining the cell average
+\begin{equation}
+  \bcM_{\bK}=\f{|\bK|}{V_{\bK}}\sum_{\bk=\vect{1}}^{\bN}w_{\bk}\,\sqrt{\gamma}_{\bk}\,\bcM_{\bk},
+  \label{eq:conservedCellAverage}
+\end{equation}
+we obtain the discrete equation for the cell average by multiplying Eq.~\eqref{eq:semidiscreteDiscretized} with $w_{\bk}\,\sqrt{\gamma}_{\bk}$ and summing over all $\bk$
+\begin{equation}
+  \pd{\bcM_{\bK}}{t}
+  =-\f{1}{V_{\bK}}\sum_{i=1}^{d}\sum_{\tilde{\bk}_{i}=\vect{1}}^{\bN}w_{\tilde{\bk}_{i}}
+  \Big(\,
+    \sqrt{\gamma}(x_{\Hgh}^{i},\tilde{x}_{\tilde{\bk}_{i}}^{i})\,\widehat{\bcF}^{i}(x_{\Hgh}^{i},\tilde{x}_{\tilde{\bk}_{i}}^{i})
+    -\sqrt{\gamma}(x_{\Low}^{i},\tilde{x}_{\tilde{\bk}_{i}}^{i})\,\widehat{\bcF}^{i}(x_{\Low}^{i},\tilde{x}_{\tilde{\bk}_{i}}^{i})
+  \,\Big)\,|\tilde{\bK}^{i}|
+  +\bcG_{\bK}+\bcC_{\bK},
+  \label{eq:semidiscreteDiscretizedCellAverage}
+\end{equation}
+where we have used $\sum_{i=1}^{N}\ell_{i}(\eta)=1$ and $\sum_{i=1}^{N}\partial\ell_{i}/\partial\eta=0$.  
+In the absence of sources, Eq.~\eqref{eq:semidiscreteDiscretizedCellAverage} is conservative.  
+
+This defines the spatial discretization of the moment equations.  
+
+\begin{center}
+  \section{TIME INTEGRATION}
+  \label{sec:timeIntegration}
+\end{center}
+
+For time integration we employ the method of lines.  
+Having specified the spatial discretization for the advection terms and the representation of the collision terms, we consider the discretized moment equations in Eq.~\eqref{eq:semidiscreteDiscretized} as a system of ordinary differential equations (ODEs) to evolve forward in time, and write
+\begin{equation}
+  d_{t}\bcM_{\bk}
+  =\bcF_{\bx}(\bcM)_{\bk}+\bcC(\bcM)_{\bk}
+  \equiv\bcL(\bcM)_{\bk},
+  \label{eq:momentEquationsODEs}
+\end{equation}
+where the operator $\bcF_{\bx},\bcC:\bbR^{d+1}\to\bbR^{d+1}$ represents the discretization of the spatial divergence operator and the collision operator modeling neutrino-matter interactions, respectively.  
+(In the following, to simplify notation, we drop the spatial subscript $\bk$, but note that a system of ODEs is to solved for each spatial point.)
+
+\subsection{EXPLICIT INTEGRATION SCHEME: SSP-RK METHODS}
+\label{sec:explicitTime}
+
+For non-stiff problems, we employ the strong stability-preserving Runge-Kutta (SSP-RK) methods \citep[e.g.,][]{gottlieb_etal_2001}, which, for evolving the moments from $t^{n}$ to $t^{n+1}=t^{n}+\dt$ ($\bcM^{n}\to\bcM^{n+1}$) using $m$ stages, take the general form
+\begin{align}
+  \bcM^{(0)}
+  &=\bcM^{n}, \\
+  \bcM^{(i)}
+  &=\sum_{k=0}^{i-1}\alpha_{ik}\,\big[\,\bcM^{(k)}+\beta_{ik}\,\dt\,\bcL(\bcM^{(k)})\,\big], \quad i=1,\ldots,m 
+  \label{eq:ssprkStages} \\
+  \bcM^{n+1}
+  &=\bcM^{(m)}.  
+\end{align}
+For second- and third-order temporal accuracy (denoted SSP-RK2 and SSP-RK3, respectively), the coefficient matrices $\alpha_{ik}$ and $\beta_{ik}$ are given in Table~\ref{tab:ssprkCoefficients}.  
+Note that $\alpha_{ik},\beta_{ik}\ge0$ and $\sum_{k}\alpha_{ik}=1~\forall i$, so that the RK stages in Eq.~\eqref{eq:ssprkStages} are simply convex combinations of forward Euler steps with time step $\beta_{ik}\,\dt$ \citep{shuOsher_1988}.  
+
+\begin{table}[h]
+  \caption{Optimal coefficients for SSP-RK Methods from \citet{shuOsher_1988} \label{tab:ssprkCoefficients}}
+  \small
+  \vspace{-6pt}
+  \begin{center}
+  \begin{tabular}{cccccccccccccccccc}
+    \midrule
+     SSP-RK2 & $\alpha_{ik}$ & & & & $\beta_{ik}$ & & & SSP-RK3 & $\alpha_{ik}$ & & & & $\beta_{ik}$ \\
+    \midrule
+    \midrule
+      & $1$ & & & & 1 & & & & 1 & & & & 1 \\  
+      & $1/2$ & $1/2$ & & & $0$ & $1$ & & & $3/4$ & $1/4$ & & & 0 & 1  \\
+      & & & & & & & & & $1/3$ & 0 & $2/3$ & & 0 & 0 & 1 \\ 
+    \midrule
+    \midrule
+  \end{tabular}
+  \end{center}
+\end{table}
+
+\subsection{SEMI-IMPLICIT RUNGE-KUTTA METHODS}
+\label{sec:semiImplicitTime}
+
+For stiff problems, the explicit methods in Section~\ref{sec:explicitTime} impose a severe restriction on the time step for numerical stability.  
+In essence, the time step must be chosen small enough to resolve the collision time (the time between subsequent neutrino-matter interactions), which is much shorter than the streaming time (induced by $\bcF_{\bx}$) in regions of dense nuclear matter in a proto-neutron star.  
+
+To overcome this time step restriction, we integrate the collision term with implicit methods.  
+Following \citet{chertock_etal_2015}, we define the forward Euler stages in Eq.~\eqref{eq:ssprkStages}
+\begin{equation}
+  \bcM_{ik}^{\mbox{\tiny FE}}
+  =\bcM^{(k)}+\beta_{ik}\,\dt\,\big(\,\bcF_{\bx}(\bcM^{(k)})+\bcC(\bcM^{(k)})\,\big).  
+\end{equation}
+The semi-implicit Runge-Kutta (SIRK) method is obtained by substituting $\bcM_{ik}^{\mbox{\tiny FE}}\to\bcM_{ik}^{\mbox{\tiny SI}}$, where $\bcM_{ik}^{\mbox{\tiny SI}}$ is obtained by solving the implicit equation
+\begin{equation}
+  \bcM_{ik}^{\mbox{\tiny SI}}
+  =\bcM^{(k)}+\beta_{ik}\,\dt\,\big(\,\bcF_{\bx}(\bcM^{(k)})+\bcC(\bcM_{ik}^{\mbox{\tiny SI}})\,\big).  
+\end{equation}
+As discussed by \citet{chertock_etal_2015}, the time-integration method using Eq.~\eqref{eq:ssprkStages}, with $\bcM_{ik}^{\mbox{\tiny FE}}$ replaced by $\bcM_{ik}^{\mbox{\tiny SI}}$, is at most first-order accurate in time.  
+To increase the temporal accuracy to second order, \citet{chertock_etal_2015} propose a correction step to be applied after the last stage.  
+We defer the development of the correction step \citep[see, e.g.][]{endeveHauck_2017}, and use the first-order accurate time integrator for stiff problems.  
+We note that the SIRK method reduces to the SSP-RK methods in Section~\ref{sec:explicitTime} when $\bcC=0$.  
+
+\begin{center}
+  \section{POLYNOMIAL LIMITING}
+  \label{sec:limiters}
+\end{center}
+
+During time integration we apply limiters that modify the polynomial representation in elements in order to prevent development and growth of nonphysical oscillations (slope limiters; Sec.~\ref{sec:slopeLimiters}), or nonphysical states (positivity limiters; Sec.~\ref{sec:positivityLimiters}).  
+
+\subsection{SLOPE LIMITERS}
+\label{sec:slopeLimiters}
+
+For slope limiting, we introduce the modal expansion
+\begin{equation}
+  \bcM_{\DG}(\bx)=\sum_{\bi=\vect{1}}^{\bN}\bcC_{\bi}\,\phi_{\bi}(\bx),
+  \label{eq:conservedModalExpansion}
+\end{equation}
+where $\{\phi_{\bi}\}_{\bi=\vect{1}}^{\bN}$ are elements of an orthogonal basis and $\bcC_{\bi}$ are the corresponding expansion coefficients (not to be confused with the collision term in Eq.~\eqref{eq:momentEquationsCompact}).  
+Here, we let the orthogonal basis be constructed from the tensor product of one-dimensional, normalized Legendre polynomials up to degree 3; i.e., $\{\phi_{k}(\eta)\}_{k=1}^{4}=\{\,1,\,\eta,\,\eta^{2}-1/12,\,\eta\,(\eta^{2}-3/20)\,\}$.  
+By orthogonality of the basis functions, the expansion coefficients are easily obtained by projection of the nodal representation in Eq.~\eqref{eq:conservedNodalExpansion} onto the modal basis in Eq.~\eqref{eq:conservedModalExpansion}; i.e.,
+\begin{equation}
+  \bcC_{\bi}
+  =\langle\,\phi_{\bi},\,\phi_{\bi}\,\rangle_{\bK}^{-1}\sum_{\bj=\vect{1}}^{\bN}\langle\,\phi_{\bi},\,\ell_{\bj}\,\rangle_{\bK}\,\bcM_{\bj}
+\end{equation}
+where
+\begin{equation}
+  \langle\phi_{\bi},\phi_{\bi}\rangle_{\bK}=\int_{\bK}\phi_{\bi}(\bx)\,\phi_{\bi}(\bx)\,d\bx
+  \quad\text{and}\quad
+  \langle\phi_{\bi},\ell_{\bj}\rangle_{\bK}=\int_{\bK}\phi_{\bi}(\bx)\,\ell_{\bj}(\bx)\,d\bx.
+  \label{eq:projectionIntegrals}
+\end{equation}
+The integrals in Eq.~\eqref{eq:projectionIntegrals} can be computed exactly with a sufficiently accurate quadrature rule.  
+The projection is a linear transformation, and the projection matrix integrals can be computed once and stored at program initialization.  
+Also note that the projection matrix does not depend on the metric function, and is therefore the same for all elements, which limits storage requirements.  
+
+The elements of the multidimensional modal basis are ordered by increasing polynomial degree; i.e., 
+\begin{equation}
+  \{\phi_{1}(\eta^{1})\phi_{1}(\eta^{2})\ldots\phi_{1}(\eta^{d}),\,\phi_{2}(\eta^{1})\phi_{1}(\eta^{2})\ldots\phi_{1}(\eta^{d}),\,\phi_{1}(\eta^{1})\phi_{2}(\eta^{2})\ldots\phi_{1}(\eta^{d}),\ldots\},
+\end{equation}
+so that the first expansion coefficient represents the average value of $\bcM$ in $\bK$, $\bcC_{|\vect{0}|}=\langle\bcM\rangle_{\bK}$ (the coefficient of the basis polynomial with total degree $0$).  
+The second expansion coefficient, $\bcC_{|\vect{1}|}^{1}$ (coefficient of the basis function with total degree $1$ varying in the first dimension), represents the first derivative of $\bcM$ in the first dimension, and so on.  
+
+The limiting procedure first computes, for each dimension $i=1,\ldots,d$, the limited slopes $\widetilde{\bcC}_{|\vect{1}|}^{i}$ by comparing the variation within $\bK$, $\bcC_{|\vect{1}|}^{i}$, with the variation in the cell average by considering the neighboring elements
+\begin{equation}
+  \widetilde{\bcC}_{|\vect{1}|}^{i}
+  =\text{minmodB}
+  \big(\,
+    \bcC_{|\vect{1}|}^{i},\,
+    \beta\,(\langle\bcM\rangle_{\bK}-\langle\bcM\rangle_{\bK}^{i,-}),\,
+    \beta\,(\langle\bcM\rangle_{\bK}^{i,+}-\langle\bcM\rangle_{\bK})
+  \,\big),
+  \label{eq:limitedSlopes}
+\end{equation}
+where the limiter parameter $\beta\in[1,2]$ controls how aggressive limiting is applied.  
+($\beta=2$ is the least aggressive, and, in many cases, leads to the most accurate results.)  
+The $\text{minmodB}$ function is given by \citet{cockburnShu_2001} as
+\begin{equation}
+  \mbox{minmodB}(a,b,c)
+  =\left\{\begin{array}{ll}
+  a \quad\text{if}\quad |a|\le M\,\Delta x^{2} \\
+  \mbox{minmod}(a,b,c) \quad \text{otherwise},
+  \end{array}\right.
+  \label{eq:minmodB}
+\end{equation}
+and the usual $\text{minmod}$ function is given by
+\begin{equation}
+  \mbox{minmod}(a,b,c)
+  =\left\{\begin{array}{ll}
+  s\,\min[\,|a|,|b|,|c|\,] \quad\text{if}\quad s=\mbox{sign}(a)=\mbox{sign}(b)=\mbox{sign}(c) \\
+  0 \quad \text{otherwise}.
+  \end{array}\right.
+  \label{eq:minmod}
+\end{equation}
+In Eq.~\eqref{eq:minmodB}, the parameter $M>0$ is proportional to the second derivative, and can be adjusted to prevent clipping at smooth extrema.  
+For $M=0$, the $\text{minmodB}$ functions reduces to the usual minmod function in Eq.~\eqref{eq:minmod}.  
+In Eq.~\eqref{eq:limitedSlopes}, $\langle\bcM\rangle_{\bK}^{i,-/+}$ is the cell average in the element to the left/right in the $i$-th dimension of the element under consideration.  
+
+After computing the limited slopes in Eq.~\eqref{eq:limitedSlopes}, they are compared with the original slopes.  
+Then, if
+\begin{equation}
+  |\widetilde{\bcC}_{|\vect{1}|}^{i}-\bcC_{|\vect{1}|}^{i}|/\max\big(|\widetilde{\bcC}_{|\vect{1}|}^{i}|,|\bcC_{|\vect{1}|}^{i}|\big)>\text{tol},
+\end{equation}
+where we set $\text{tol}=10^{-2}$, we replace the modal expansion in Eq.~\eqref{eq:conservedModalExpansion} with the limited polynomial
+\begin{equation}
+  \bcM_{\DG}(\bx)
+  \to\widetilde{\bcM}_{\DG}(\bx)
+  =\langle\bcM\rangle_{\bK}+\sum_{i=1}^{d}\widetilde{\bcC}_{|\vect{1}|}^{i}\,\phi_{|\vect{1}|}^{i}(\bx).  
+  \label{eq:conservedModalExpansionLimited}
+\end{equation}
+We limit all the fields in $\bcM$ if the difference in any of the coefficients exceeds the tolerance.  
+This limiting procedure locally destroys the high-order accuracy of the DG method, but leads to non-oscillatory evolution when sharp features are present in the solution.  
+(In our implementation we apply the limiting to characteristic variables, using the eigenvectors given in Appendix~\ref{sec:eigenstructure}, which gives somewhat better results near discontinuities.)
+
+The limiting procedure described here operates on the coefficients of the modal expansion of $\bcM$, not that of $\sqrt{\gamma}\bcM$.  
+As a consequence, the average $\langle\bcM\rangle_{\bK}$ is preserved in the limiting process, and not the average given in Eq.~\eqref{eq:conservedCellAverage}, which defines the conserved quantities governed by the two-moment model in curvilinear coordinates.  
+(We have found that limiting a polynomial expansion of $\sqrt{\gamma}\bcM$ leads to inaccurate results, especially near coordinate singularities.)  
+To enforce conservation, we therefore introduce a correction step, similar in spirit to that discussed by \citet{radiceRezzolla_2011}.  
+To this end we define $\widetilde{\bcC}=\big(\bcC_{|\vect{0}|},\,\widetilde{\bcC}_{|\vect{1}|}^{1},\ldots,\,\widetilde{\bcC}_{|\vect{1}|}^{d}\big)^{T}$ and $\widehat{\bcC}=\big(\widehat{\bcC}_{|\vect{0}|},\,\widehat{\bcC}_{|\vect{1}|}^{1},\ldots,\,\widehat{\bcC}_{|\vect{1}|}^{d}\big)^{T}$, and find $\widehat{\bcC}$ by solving
+\begin{equation}
+  \min_{\widehat{\bcC}}\f{1}{2}||\widetilde{\bcC}-\widehat{\bcC}||^{2}
+\end{equation}
+subject to the constraint
+\begin{equation}
+  \widehat{\bcM}_{\bK}=\f{1}{V_{\bK}}\int_{\bK}\widehat{\bcM}_{\DG}\,\sqrt{\gamma}\,d\bx\equiv\bcM_{\bK}.  
+\end{equation}
+This linear equality-constrained least squares problem can be solved, e.g., using LAPACK's DGGLSE subroutine.  
+
+Unfortunately, the $\text{minmod}$ function in Eq.~\eqref{eq:minmod} can result in excessive dissipation around smooth extrema and destroy high-order accuracy.  
+The $\text{minmodB}$ in Eq.~\eqref{eq:minmodB} prevents this excessive dissipation, but introduces the parameter $M$, which we have found to be difficult to adjust in order to obtain uniformly acceptable results across all the numerical experiments presented later.  
+To alleviate this dependence on the parameter $M$, we have implemented a discontinuity detector based on the subcell resolution idea of \citet{harten_1989}, following the description in \citet{qiuShu_2005}.  
+
+\subsection{POSITIVITY LIMITERS}
+\label{sec:positivityLimiters}
+
+When solving the moment equations, we need to prevent non-physical states from developing.  
+In particular, from the definition of the moments in Eq.~\eqref{eq:angularMoments}, it is easy to show that a positive distribution function implies a positive density $\cJ>0$ and a limited flux density $\cJ-|\bcH|>0$.  
+Failure in maintaining these bounds can lead to an ill-posed closure problem and loss of hyperbolicity for the moment equations.  
+In order to maintain these bounds we adopt the framework of \citet{ZS2010b}, developed for the Euler equations of gas dynamics \citep[see also][]{ZS2010a,ZS2011,OHF2012}.  
+The full details of the application of this framework to the multi-dimensional two-moment method for radiation transfer will be presented elsewhere \citep{endeveHauck_2017}.  
+We give only a brief description here.  
+The bound-preserving methodology introduces the realizable set
+\begin{equation}
+  \cR=\big\{\bcM=\big(\cJ,\bcH\big)^{\mbox{\tiny T}}~|~\cJ\ge\epsilon\quad\text{and}\quad\gamma(\bcM)=\cJ-|\bcH|\ge\epsilon\big\},
+  \label{eq:realizableSet}
+\end{equation}
+where $\epsilon$ is an arbitrarily small positive parameter.  
+The realizable set in Eq.~\eqref{eq:realizableSet} is a convex cone \citep{OHF2012}.  
+Key to the \emph{realizability-preserving} (RP) scheme is to express the updated cell-averages of the moments as positive combinations of elements in $\cR$.  
+Realizability of the cell-average of the updated moments is then guaranteed by convexity arguments.  
+Sufficient conditions include: (i) the polynomial representation of the moments are realizable in a finite set of quadrature points in each element $\bK$, and (ii) the timestep $\dt$ is restricted by a CFL-like condition, which is somewhat stricter than that required for stability.  
+
+Since the RP scheme only guarantees realizability of the cell-averages, polynomial limiting is needed after each timestep (and after each stage in the Runge-Kutta method) to enforce realizability in the quadrature points.  
+This limiting procedure is similar to that described by \citet{ZS2010a} for the Euler equations \citep[see also][]{liuOsher_1996}, and consists of two steps.  
+First, if $\cJ<\epsilon$ for any of the quadrature points, we replace $\cJ_{\DG}\to\widehat{\cJ}_{\DG}$, where the new polynomial representation is given by
+\begin{equation}
+  \widehat{\cJ}_{\DG}=\theta_{1}\,\cJ_{\DG}+(1-\theta_{1})\,\cJ_{\bK},
+\end{equation}
+where
+\begin{equation}
+  \theta_{1}=\min\Big\{1,\f{\cJ_{\bK}-\epsilon}{\cJ_{\bK}-\cJ_{\mbox{\tiny min}}}\Big\},
+\end{equation}
+and $\cJ_{\mbox{\tiny min}}$ is the minimum density in all the quadrature points.  
+(Note that the limiting procedure is conservative, since it leaves the cell average unchanged.)  
+In the second step, we let $\widehat{\bcM}_{\DG}=(\widehat{\cJ}_{\DG},\bcH_{\DG})^{\mbox{\tiny T}}$.  
+Then, if $\widehat{\bcM}_{\DG}$ lies outside $\cR$ for any quadrature point (i.e., $\gamma(\widehat{\bcM}_{\DG})<\epsilon$), there exists an intersection point of the straight line connecting $\bcM_{\bK}\in\cR$ and $\widehat{\bcM}_{\DG}$ evaluated in the troubled quadrature point (denoted $\widehat{\bcM}_{q}$), and the surface of $\cR$.  
+Any point on this line is given by the convex combination $\bs_{q}(\xi)=(1-\xi)\,\bcM_{\bK}+\xi\,\widehat{\bcM}_{q}$, where $\xi\in[0,1]$, and the intersection point is obtained by solving the equation $\gamma(\bs_{q}(\xi))=\epsilon$ for $\xi$.  
+We then replace the polynomial representation $\widehat{\bcM}_{\DG}\to\widetilde{\bcM}_{\DG}$, where
+\begin{equation}
+  \widetilde{\bcM}_{\DG}=\theta_{2}\,\widehat{\bcM}_{\DG}+(1-\theta_{2})\,\bcM_{\DG},
+\end{equation}
+and $\theta_{2}$ is the smallest $\xi$ obtained in the element by considering all the troubled quadrature points.  
+
+\begin{center}
+  \section{NEUTRINO OPACITIES}
+  \label{sec:opacities}
+\end{center}
+
+To model neutrino-matter interactions, we have tabulated a basic --- but important --- set of neutrino opacities for inclusion in simulations presented in Section~\ref{sec:numericalTableOpacities}.  
+We consider a single neutrino specie (electron-type neutrinos), and include the relevant rates due to electron capture on nucleons and nuclei, iso-energetic (elastic) scattering on nucleons and nuclei, and elastic neutrino-electron scattering (NES).  
+For completeness, we provide sufficient detail to arrive at the tabulated opacities relevant for the two-moment model.  
+For further details on the specific opacities we use, see \citet{bruenn_1985}, \citet{mezzacappaBruenn_1993a}, and \citet{mezzacappaBruenn_1993c}.  
+
+As we mentioned in Section~\ref{sec:twoMomentModel} when discussing Eqs.~\eqref{eq:momentEquationEnergy} and \eqref{eq:momentEquationMomentum}, the total opacity (excluding NES) is $\kappa(\epsilonNu,\bU)=\tilde{\chi}(\epsilonNu,\bU)+\sigma(\epsilonNu,\bU)$, where the absorption opacity $\tilde{\chi}(\epsilonNu,\bU)$, corrected for stimulated absorption, is given by the sum of the neutrino emissivity $\eta(\epsilonNu,\bU)$ and the neutrino absorptivity $\chi(\epsilonNu,\bU)$
+\begin{equation}
+  \tilde{\chi}(\epsilonNu,\bU) = \eta(\epsilonNu,\bU) + \chi(\epsilonNu,\bU). 
+\end{equation}
+The scattering opacity $\sigma(\epsilonNu,\bU)$ is due to (isotropic) elastic scattering.   
+Neutrino-electron scattering gives rise to the integral operators involving the rates $R^{\In}(\epsilonNu,\epsilonNu',\bU)$ and $R^{\Out}(\epsilonNu,\epsilonNu',\bU)$.  
+(In the following, to simplify the notation, we will drop the explicit spatial dependence and dependence on material properties $\bU$.)  
+To arrive at the collision terms for the two-moment model, we consider the space-homogeneous Boltzmann equation \citep[e.g., Eq.~(7) in][]{mezzacappaBruenn_1993c}
+\begin{align}
+  \f{1}{c}\deriv{f}{t}(\omegaNu,\epsilonNu,t)
+  & = \eta(\epsilonNu) - \tilde{\chi}(\epsilonNu)\,f(\omegaNu,\epsilonNu,t) \nonumber \\
+  & \hspace{12pt}
+  + \frac{\epsilonNu^2}{c\,(hc)^3} \int_{\bbS^{2}} R_{\IS}(\bl'\cdot\bl,\epsilonNu)\,f(\omega', \epsilonNu,t)\,d\omegaNu'
+  - \frac{\epsilonNu^2}{c\,(hc)^3} f(\omegaNu,\epsilonNu,t) \int_{\bbS^{2}} R_{\IS}(\bl'\cdot\bl,\epsilonNu)\,d\omega' \nonumber \\
+  & \hspace{12pt} 
+  + \frac{1}{c\,(hc)^3}\big(1- f(\omegaNu,\epsilonNu)\big) \, 
+  \int_{\bbR^{+}} \int_{\bbS^{2}}  R^{\In}_{\NES} (\bl'\cdot\bl,\epsilonNu,\epsilonNu')\,f(\omega',\epsilonNu',t)\,d\epsilonNu' \epsilonNu'^{2}\,d\omega' \nonumber \\
+  & \hspace{12pt} 
+  - \frac{1}{c\,(hc)^3} f(\omegaNu,\epsilonNu,t) \int_{\bbR^{+}} 
+  \int_{\bbS^{2}}  R^{\Out}_{\NES} (\bl'\cdot\bl,\epsilonNu,\epsilonNu^{\prime})\,\big(1-f(\omegaNu',\epsilonNu',t )\big)\,d\epsilonNu' \epsilonNu'^{2}\,d\omegaNu',
+  \label{eq:homogeneousBoltzmann}
+\end{align}
+where we have brought back physical constants; i.e., the speed of light $c$ and the Planck constant $h$.  
+In the scattering kernels, $\bl(\omegaNu)=(\cos\vartheta,\sin\vartheta\cos\varphi,\sin\vartheta\sin\varphi)^{\mbox{\tiny T}}$, so that
+\begin{equation}
+ \bl'\cdot\bl  = \mu\mu' + [(1-\mu^2)(1-\mu'^{2})]^{1/2}\cos(\phiNu-\phiNu')
+ \equiv \cos\alpha,
+ \quad(\mu=\cos\thetaNu)
+\end{equation}
+is the cosine of the angle between incoming and outgoing neutrino is the scattering process.  
+In Eq.~\eqref{eq:homogeneousBoltzmann}, the first two terms are due to emission and absorption, the third and fourth terms are due to elastic (isoenergetic) neutrino scattering on nucleons and nuclei, and the last two terms are due to inelastic (non-isoenergetic) neutrino-electron scattering.  
+
+In the following subsections we separately give the collision terms for the two-moment model by taking angular moments of Eq.~\eqref{eq:homogeneousBoltzmann}.  
+(The total collision term in the two-moment model is then given by the sum of the separate terms.)  
+The opacities are computed using the SFHo equation of state \citep{steiner_etal_2013}, and tabulated for densities $\rho\in[1.66\times10^{4},3.16\times10^{15}]$~g~cm$^{-3}$, temperatures $T\in[1.16\times10^{9},1.84\times10^{12}]$~K, and electron fractions $Y_{e}\in[0.01,0.6]$.  
+The neutrino energies are in the range $\epsilonNu\in[0.1,300]$~MeV.  
+We use logarithmic grids to cover the range in density $N_{\rho}=308$, temperature ($N_{T}=161$), and the neutrino energy ($N_{\epsilonNu}=40$), and a linear grid to cover the range in electron fraction ($N_{Y_{e}}=60$).  
+The neutrino electron scattering rates are tabulated in terms of neutrino energies ($\epsilonNu$ and $\epsilonNu'$), temperature, and $\eta=\mu_{\nu}/(k_{\mbox{\tiny B}}T)$.  
+Here we use a logarithmic grid in $\eta\in[1.0\times10^{-8},2.5\times10^{3}]$~MeV, using $N_{\eta}=100$ points.  
+
+\subsection{EMISSION AND ABSORPTION}
+\label{sec:electronCapture}
+
+Electron capture on nucleons and nuclei ($p+e^{-}\rightleftharpoons n+\nu_{e}$) is governed by the corrected absorption opacity $\tilde{\chi}(\epsilonNu)$ 
+\begin{equation}
+  \tilde{\chi}(\epsilonNu) = \chi(\epsilonNu) + \eta(\epsilonNu), 
+\end{equation}
+where $\eta(\epsilonNu)$ is the emissivity (taken as the sum of contributions from nucleons and nuclei)
+\begin{equation}
+  \eta = \eta_{\mbox{\tiny nucleon}} + \eta_{\mbox{\tiny nuclei}},
+\end{equation}
+and $ \chi(\epsilonNu)$ is the absorption opacity.  
+They are related by equilibrium condition
+\begin{equation}
+  \chi(\epsilonNu) = e^{(\epsilonNu-\mu_{\nu})/k_{\mbox{\tiny B}}T}\,\eta(\epsilonNu). 
+\end{equation}
+Therefore,
+\begin{equation}
+  \chi = e^{(\epsilonNu-\mu_{\nu})/k_{\mbox{\tiny B}}T}\,(\eta_{\mbox{\tiny nucleon}} + \eta_{\mbox{\tiny nuclei}}) 
+  \equiv \chi_{\mbox{\tiny nucleon}} + \chi_{\mbox{\tiny nuclei}},
+\end{equation}
+and
+\begin{equation}
+  \eta-\tilde{\chi}\,f=\tilde{\chi}\,\big(\,\eta/\tilde{\chi}-f\,\big)=\tilde{\chi}\,\big(\,f_{0}-f\,\big).  
+\end{equation}
+Thus, the corresponding terms in the moment equations are
+\begin{equation}
+  \f{1}{c}\deriv{\cJ}{t}=\tilde{\chi}\,\big(\,\cJ_{0}-\cJ\,\big)
+  \quad\text{and}\quad
+  \f{1}{c}\deriv{\bcH}{t}=-\tilde{\chi}\,\bcH.  
+\end{equation}
+We use the electron neutrino nucleon absorption opacity $\chi_{\mbox{\tiny nucleon}}$ and emissivity $\eta_{\mbox{\tiny nucleon}}$ as given by Eq.~(C13) and Eq.~(C15), respectively, in \citet{bruenn_1985}, and the electron-neutrino nuclei absorption opacity $\chi_{\mbox{\tiny nuclei}}$ and emissivity $\eta_{\mbox{\tiny nuclei}}$ as given by Eq.~(C29) and Eq.~(C27), respectively, in \citet{bruenn_1985}.  
+We only tabulate the corrected absorption opacity $\tilde{\chi}$, which has units cm$^{-1}$.  
+
+\subsection{ELASTIC SCATTERING}
+\label{sec:elasticScattering}
+
+The isoenergetic scattering kernel $R_{\IS}(\bl'\cdot\bl,\epsilonNu)$ is taken as the sum of contributions from scattering on nucleons and nuclei
+\begin{equation}
+  R_{\IS}(\bl'\cdot\bl,\epsilonNu,\epsilonNu) = R_{\IS}^{\mbox{\tiny nucleon}}(\bl'\cdot\bl,\epsilonNu) + R_{\IS}^{\mbox{\tiny nuclei}}(\bl'\cdot\bl,\epsilonNu),
+\end{equation}
+where $R_{\IS}^{\mbox{\tiny nucleon}}$ and $R_{\IS}^{\mbox{\tiny nuclei}}$ are given by Eq. (35) and Eq. (36), respectively, in \citet{mezzacappaBruenn_1993a}.  
+For inclusion in the two-moment model, these kernels are approximated by a two-term Legendre series
+\begin{align}
+  R_{\IS}(\cos\alpha,\epsilonNu) \approx \f{1}{2} \Phi_{\IS,0}(\epsilonNu) + \f{3}{2}\Phi_{\IS,1}(\epsilonNu)\,\cos\alpha.
+\end{align}
+By orthogonality of the Legendre polynomials ($P_{0}(x)=1,P_{1}(x)=x$), the expansion coefficients are given by
+\begin{equation}
+  \Phi_{\IS,\ell}(\epsilonNu)
+  =\int_{-1}^{+1}R_{\IS}(\cos\alpha,\epsilonNu)\,P_{\ell}(\cos\alpha)\,d\cos\alpha \quad (\ell=0,1).  
+\end{equation}
+These integrals are performed numerically using a 20-point Gauss-Legendre quadrature rule.  
+Inserting the Legendre expansion into Eq.~\eqref{eq:homogeneousBoltzmann} and taking the angular moments gives no contribution to the equation for $\cJ$ (energy conservation), while the contribution to the equation for $\bcH$ is
+\begin{equation}
+  \f{1}{c}\deriv{\bcH}{t}
+  =-\big(\,\sigma_{\IS,0}-\sigma_{\IS,1}\big)\,\bcH,
+\end{equation}
+where we have defined
+\begin{equation}
+  \sigma_{\IS,\ell}(\epsilonNu)
+  =\f{2\pi\,\epsilonNu^{2}}{c\,(hc)^{3}}\,\Phi_{\IS,\ell}(\epsilonNu) \quad (\ell=0,1).  
+\end{equation}
+We tabulate the scattering opacities $\sigma_{\IS,0}$ and $\sigma_{\IS,1}$, which have units cm$^{-1}$, but use only $\sigma_{\IS,0}$ in the numerical experiments in Section~\ref{sec:numericalTableOpacities}, where $\sigma=\sigma_{\IS,0}$ in Eq.~\eqref{eq:momentEquationMomentum}.  
+
+\subsection{NEUTRINO-ELECTRON SCATTERING}
+
+The NES scattering kernel $R_{\NES}^{\Out}(\cos\alpha,\epsilonNu,\epsilonNu')$ is given by Eq.~(9) in \citet{mezzacappaBruenn_1993c}.  
+As we did in the isoenergetic scattering case, we approximate the angular dependence of the scattering kernels by a two-term Legendre expansion; e.g.,
+\begin{equation}
+  R^{\Out}_{\NES}(\cos\alpha,\epsilonNu,\epsilonNu') 
+  \approx \f{1}{2} \Phi_{\NES,0}^{\Out}(\epsilonNu,\epsilonNu') + \f{3}{2}\Phi^{\Out}_{\NES,1}(\epsilonNu,\epsilonNu')\,\cos\alpha,
+\end{equation}
+where
+\begin{equation}
+  \Phi_{\NES,\ell}^{\Out}(\epsilonNu,\epsilonNu')
+  =\int_{-1}^{+1}R_{\NES}^{\Out}(\cos\alpha,\epsilonNu,\epsilonNu')\,P_{\ell}(\cos\alpha)\,d\cos\alpha \quad (\ell=0,1).  
+\end{equation}
+(These integrals are computed numerically using a 30-point Gauss-Legendre quadrature.  
+The in-scattering kernels $\Phi_{\NES,\ell}^{\In}(\epsilonNu,\epsilonNu')$ are obtained from symmetry properties \citep{cernohorsky_1994}
+\begin{equation}
+  \Phi_{\NES,\ell}^{\In}(\epsilonNu,\epsilonNu')=\Phi_{\NES,\ell}^{\Out}(\epsilonNu',\epsilonNu)
+  \quad\text{and}\quad
+  \Phi_{\NES,\ell}^{\Out}(\epsilonNu',\epsilonNu)
+  =e^{-(\epsilonNu-\epsilonNu')/k_{\mbox{\tiny B}}T}\,\Phi_{\NES,\ell}^{\Out}(\epsilonNu,\epsilonNu').
+  \label{eq:symmetryNES}
+\end{equation}
+Inserting the Legendre expansion into Eq.~\eqref{eq:homogeneousBoltzmann}, and taking the zeroth moment (number equation), gives
+\begin{align}
+  \f{1}{c}\deriv{\cJ}{t}
+  &=\big(\,4\pi-\cJ(\epsilonNu)\,\big)\int_{\bbR^{+}}R_{\NES,0}^{\In}(\epsilonNu,\epsilonNu')\,\cJ(\epsilonNu')\,dV_{\epsilonNu'}
+  -\bcH(\epsilonNu)\cdot\int_{\bbR^{+}}R_{\NES,1}^{\In}(\epsilonNu,\epsilonNu')\,\bcH(\epsilonNu')\,dV_{\epsilonNu'} \nonumber \\
+  & \hspace{12pt}
+  -\cJ(\epsilonNu)\int_{\bbR^{+}}R_{\NES,0}^{\Out}(\epsilonNu,\epsilonNu')\,\big(\,4\pi-\cJ(\epsilonNu')\,\big)\,dV_{\epsilonNu'}
+  +\bcH(\epsilonNu)\cdot\int_{\bbR^{+}}R_{\NES,1}^{\Out}(\epsilonNu,\epsilonNu')\,\bcH(\epsilonNu')\,dV_{\epsilonNu'}.  
+\end{align}
+Similarly, taking the first moment (number flux) of Eq.~\eqref{eq:homogeneousBoltzmann} results in
+\begin{align}
+  \f{1}{c}\deriv{\bcH}{t}
+  &=-\bcH(\epsilonNu)\int_{\bbR^{+}}R_{\NES,0}^{\In}(\epsilonNu,\epsilonNu')\,\cJ(\epsilonNu')\,dV_{\epsilonNu'}
+  +\big(\,(4\pi/3)\,\bI-\bcK\,\big)\cdot\int_{\bbR^{+}}R_{\NES,1}^{\In}(\epsilonNu,\epsilonNu')\,\bcH(\epsilonNu')\,dV_{\epsilonNu'} \nonumber \\
+  & \hspace{12pt}
+  -\bcH\int_{\bbR^{+}}R_{\NES,0}^{\Out}(\epsilonNu,\epsilonNu')\,\big(\,4\pi-\cJ(\epsilonNu')\,\big)\,dV_{\epsilonNu'}
+  +\bcK\cdot\int_{\bbR^{+}}R_{\NES,1}^{\Out}(\epsilonNu,\epsilonNu')\,\bcH(\epsilonNu')\,dV_{\epsilonNu'},
+\end{align}
+where we have defined
+\begin{equation}
+  R_{\NES,0}^{\In/\Out}(\epsilonNu,\epsilonNu')
+  =\f{1}{c\,(hc)^{3}}\,\f{1}{2}\,\Phi_{\NES,0}^{\In/\Out}(\epsilonNu,\epsilonNu')
+  \quad\text{and}\quad
+  R_{\NES,1}^{\In/\Out}(\epsilonNu,\epsilonNu')
+  =\f{1}{c\,(hc)^{3}}\,\f{3}{2}\,\Phi_{\NES,1}^{\In/\Out}(\epsilonNu,\epsilonNu').  
+\end{equation}
+We tabulate the scattering kernels $R_{\NES,0}^{\Out}$ and $R_{\NES,1}^{\Out}$, which have units MeV$^{-3}$ cm$^{-1}$, and obtain the in-scattering rates from the symmetry properties in Eq.~\eqref{eq:symmetryNES}.  
+We only use $R_{\NES,0}^{\In/\Out}$ in the numerical experiments in Section~\ref{sec:numericalTableOpacities}, so that $R^{\In/\Out}=R_{\NES,0}^{\In/\Out}$ in Eqs.~\eqref{eq:momentEquationEnergy} and \eqref{eq:momentEquationMomentum}.  
+
+\begin{center}
+  \section{BASIC BENCHMARK PROBLEMS}
+  \label{sec:numericalBasic}
+\end{center}
+
+We benchmark the DG implementation against a series of test problems.  
+We will vary the degree $k$ of the polynomial representation used in DG method from 0 to 3, which we then denote DG($k$).  
+First we consider test problems in the streaming limit.  
+In this case we use the explicit SSP-RK time integrators described in Section~\ref{sec:explicitTime}.  
+The 2-stage and 3-stage methods are denoted SSP-RK2 and SSP-RK3, respectively.  
+As an example, an expected third-order accurate method (for problems with smooth solutions), using DG(2) and SSP-RK3, will then be denoted DG(2)+RK3.  
+For tests involving collisions we use the two-stage Semi-Implicit Runge-Kutta method described in Section~\ref{sec:semiImplicitTime}.  
+When this time integrator is combined with DG($k$) spatial discretization, the method is denoted DG($k$)+SIRK2.  
+
+\subsection{STREAMING SINE WAVE}
+
+To measure the accuracy of the implementation using Cartesian coordinates, and to gauge the performance of the DG scheme using different limiter parameters, we advect a sine wave across the one-dimensional, periodic domain $D=\{x:x\in[0,1]\}$ ten times, until $t=10$.  
+We let the initial condition be given by
+\begin{equation}
+  \cJ(x,t=0)=\cH_{x}(x,t=0)=1+\sin\big(2\pi\,x\big).  
+\end{equation}
+Results are shown in Figure~\ref{fig:streamingSineWave} and Table~\ref{tab:streamingSineWave}.  
+In Figure~\ref{fig:streamingSineWave}, results obtained using the TVD limiter (cf. Eq.~\eqref{eq:minmodB} with $M=0$) with various $\beta$ values are shown.  
+With this limiter, the accuracy of the scheme is severely compromised.  
+The accuracy can be significantly improved with the TVB limiter ($M>0$), but the proper value for $M$ is problem dependent, and difficult to set a priori.  
+Instead, we have implemented the discontinuity detector based on Harten's subcell resolution method as a ``troubled-cell'' indicator \citep{harten_1989,qiuShu_2005}, which prevents limiting in smooth regions.  
+Results using the detector (black open circles) show a significant improvement.  
+In Table~\ref{tab:streamingSineWave} we list convergence results for this latter method, which demonstrates high-order accuracy (i.e., better than second-order) when expected.  
+Unless otherwise noted, we continue to use the discontinuity detector in the remaining numerical experiments.  
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[scale=0.78]{./Figures/StreamingSineWave1D}
+  \vspace{-0.1in}
+  \flushleft\caption[Particle density versus position after ten grid crossings ($t=10$) for the streaming sine wave problem computed with the DG(2)+RK3 scheme using 16 elements.]{Particle density versus position after ten grid crossings ($t=10$) for the streaming sine wave problem computed with the DG(2)+RK3 scheme using 16 elements.  \textmd{We compare results obtained using various limiter parameters (open circles; see text for details) with the analytic solution (dotted line).  Results obtained using the discontinuity detector (D) is denoted with black open circles.}}
+  \label{fig:streamingSineWave}
+\end{figure}
+
+\begin{table}[h]
+  \caption{$L^{\infty}$ error and convergence rates for the streaming sine wave problem.}
+  \small
+  \vspace{-6pt}
+  \begin{center}
+  \label{tab:streamingSineWave}
+  \begin{tabular}{ccccccccc}
+    & \multicolumn{4}{c}{SSP-RK2} & \multicolumn{4}{c}{SSP-RK3} \\
+    \cmidrule(r){2-5} \cmidrule(r){6-9}
+    $N$ & DG(1) & Rate & DG(2) & Rate & DG(2) & Rate & DG(3) & Rate \\
+    \midrule \midrule
+    8     & $3.493\times10^{-1}$ & ---  & $9.082\times10^{-3}$ & ---  & $3.310\times10^{-3}$ & ---  & $1.151\times10^{-4}$  & --- \\
+    16   & $5.793\times10^{-2}$ &2.59& $2.310\times10^{-3}$ &1.98& $2.652\times10^{-4}$ &3.64& $8.929\times10^{-6}$ &3.69 \\
+    32   & $8.423\times10^{-3}$ &2.78& $6.117\times10^{-4}$ &1.92& $3.170\times10^{-5}$ &3.06& $7.911\times10^{-7}$ &3.50 \\
+    64   & $1.314\times10^{-3}$ &2.68& $1.574\times10^{-4}$ &1.96& $3.949\times10^{-6}$ &3.00& $7.843\times10^{-8}$ &3.33 \\
+    128 & $2.336\times10^{-4}$ &2.49& $3.987\times10^{-5}$ &1.98& $4.934\times10^{-7}$ &3.00& $8.524\times10^{-9}$ &3.20 \\
+    256 & $4.736\times10^{-5}$ &2.30& $1.003\times10^{-5}$ &1.99& $6.162\times10^{-8}$ &3.00& $9.997\times10^{-10}$ &3.09 \\
+    \midrule \midrule
+  \end{tabular}
+  \end{center}
+\end{table}
+
+\subsection{SPHERICAL WAVE}
+
+This problem in spherical symmetry is taken from \citet{pons_etal_2000}, and consists of a gaussian-shaped wave propagating in the radial direction.  
+The computational domain is given by $D=\{r:r\in[0.2,10.2]\}$.  
+The analytical solution is given by
+\begin{equation}
+  \cJ(r,t)=\cH_{r}(r,t)
+  =\exp\big[-\big(r-t\big)^{2}\big]/r^{2}.  
+\end{equation}
+We let the boundary conditions be given by the analytical solution, and integrate in time from $t=0$ to $t=7$.  
+
+Snapshots of the solution ($\cJ$ versus $r$), obtained with the DG(2)+RK3 scheme, are shown in Figure~\ref{fig:sphericalWave} for $t=\{2.5,3.5,5.0,7.0\}$ (open circles).  
+For comparison, the analytical solution is plotted with dotted lines.  
+There is good agreement between the numerical and analytical solutions.  
+In Table~\ref{tab:sphericalWave} we list convergence results obtained with the various schemes.  
+High-order accuracy is achieved with the DG(2)+RK3 and DG(3)+RK3 schemes.  
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[scale=0.78]{./Figures/GaussianSphericalWave1D}
+  \vspace{-0.1in}
+  \flushleft\caption[Energy density versus radius at various times for the spherical wave problem computed with the DG(2)+RK3 scheme using 32 elements.]{Energy density versus radius at various times for the spherical wave problem computed with the DG(2)+RK3 scheme using 32 elements.  \textmd{The numerical solution (open circles) is compared to the analytical solution (dotted lines).}}
+  \label{fig:sphericalWave}
+\end{figure}
+
+\begin{table}[h]
+  \caption{$L^{\infty}$ error and convergence rates for the spherical wave problem.}
+  \small
+  \vspace{-6pt}
+  \begin{center}
+  \label{tab:sphericalWave}
+  \begin{tabular}{ccccccccc}
+    & \multicolumn{4}{c}{SSP-RK2} & \multicolumn{4}{c}{SSP-RK3} \\
+    \cmidrule(r){2-5} \cmidrule(r){6-9}
+    $N$ & DG(1) & Rate & DG(2) & Rate & DG(2) & Rate & DG(3) & Rate \\
+    \midrule \midrule
+    32   & $4.648\times10^{-4}$ & ---  & $5.540\times10^{-5}$ & ---   & $4.803\times10^{-5}$ & ---  & $1.707\times10^{-5}$ & --- \\
+    64   & $9.506\times10^{-5}$ &2.29& $1.088\times10^{-5}$ &2.35& $1.373\times10^{-5}$ &1.81& $7.812\times10^{-7}$ &4.45 \\
+    128 & $1.996\times10^{-5}$ &2.25& $1.502\times10^{-6}$ &2.86& $1.836\times10^{-6}$ &2.90& $1.150\times10^{-7}$ &2.76 \\
+    256 & $5.783\times10^{-6}$ &1.79& $2.529\times10^{-7}$ &2.57& $1.895\times10^{-7}$ &3.28& $6.268\times10^{-9}$ &4.20 \\
+    \midrule \midrule
+  \end{tabular}
+  \end{center}
+\end{table}
+
+\subsection{LINE SOURCE}
+
+The line source benchmark \citep[cf.][]{brunner_2002,garrettHauck_2013} is a challenging test for approximate transport algorithms.  
+In cylindrical coordinates, it consists of an initial delta function particle distribution in radius; i.e., $f_{0}=\delta(R)/4\,\pi$.  
+For $t>0$, a cylindrical radiation front propagates radially.  
+Apart from capturing details of the exact transport solution, maintaining realizability ($\bcM\in\cR$ cf. Eq.~\eqref{eq:realizableSet}) of the two-moment solution is challenging.  
+
+This test is computed using cylindrical coordinates on a one-dimensional domain with $R\in[0,1.5]$.  
+To avoid initiating the radiation field with the delta function, we follow the procedure in \citet{garrettHauck_2013}, and approximate the initial condition with an isotropic Gaussian distribution function
+\begin{equation}
+  f_{\mbox{\tiny G},0}
+  =\max\Big[\,\f{1}{8\,\pi\,\sigma_{\mbox{\tiny G}}^{2}}\,e^{-R^{2}/(2\,\sigma_{\mbox{\tiny G}}^{2})},10^{-4}\,\Big],
+\end{equation}
+where we use $\sigma_{\mbox{\tiny G}}=0.03$.  
+We run this test to a final time $t=1.0$.  
+
+In Figure~\ref{fig:lineSource} we plot the density $\cJ$ (left panel) and flux factor $h=|\cH_{1}|/\cJ$ (right panel) for various times during the evolution: $t=0.0$ (red), $t=0.35$ (green), $t=0.65$ (blue), and $t=1.0$ (black).  
+The solid lines are for a high-resolution reference solution obtained with the DG(1)+RK2 scheme using 2048 elements, while the open circles are for a low resolution run using the DG(2)+RK3 scheme and 64 elements.  
+There is good agreement between the two solutions.  
+When comparing the density $\cJ$ with the transport solutions in \citet{garrettHauck_2013}, we observe that the peak of the radiation front reaches the correct location, but otherwise, the two-moment model is not accurate for this problem.  
+This is expected since a high number of angular moments is needed to capture the transport solution.  
+Despite the shortcomings of the two-moment approximation, our implementation maintains $\cJ\ge0$ and $h\in[0,1]$.  
+
+\begin{figure}
+  \centering
+  \begin{tabular}{cc}
+    \includegraphics[scale=0.4]{./Figures/LineSource1D_Density.png} &
+    \includegraphics[scale=0.4]{./Figures/LineSource1D_FluxFactor.png}
+  \end{tabular}
+  \vspace{-0.1in}
+  \flushleft\caption[Results from the line source problem with the two-moment model for various times.]{Results from the line source problem with the two-moment model for various times.  \textmd{In the left panel we plot the radiation density $\cJ$.  In the right panel we plot the flux factor $h=|\cH_{1}|/\cJ$.  Solid lines represent a high resolution (2048 elements) reference solution using the DG(1)+RK2 scheme, while circles are results obtained with the DG(2)+RK3 scheme using 64 elements.  Both solutions maintain the bounds $\cJ>0$ and $h\in[0,1]$.}}
+  \label{fig:lineSource}
+\end{figure}
+
+\subsection{RIEMANN PROBLEM}
+
+To test the ability of the DG method to capture discontinuities without spurious oscillations, we solve the Riemann problem presented by \citet{OHF2012}.  
+This problem is also challenging because the condition $\cJ-|\bcH|>0$ can be violated.  
+To compare with the results of \citet{OHF2012}, we use the Eddington factor due to Levermore \citep{levermore_1984}
+\begin{equation}
+  \psi(h)=\f{1}{3}\big(\,5-2\,\sqrt{4-3\,h^{2}}\,\big).  
+  \label{eq:eddingtonFactorLevermore}
+\end{equation}
+The computational domain extends from $x=-0.05$ to $x=0.1$, and a discontinuity is located at $x_{\mbox{\tiny d}}=0.0$.  
+The initial condition is given by
+\begin{equation}
+  \bcM(x,t=0)=
+  \left\{
+  \begin{array}{l}
+  \bcM_{\mbox{\tiny L}}=\big(1,0.9999,0,0\big)^{T} \quad\text{if}\quad x\le x_{\mbox{\tiny d}} \\
+  \bcM_{\mbox{\tiny R}}=\big(0.5,0,0,0\big)^{T} \quad\text{otherwise}.
+  \end{array}
+  \right.
+  \label{eq:riemannProblem}
+\end{equation}
+Results for $t=0.1$ are shown in Figure~\ref{fig:riemannProblem}.  
+In the left panel we plot the number density and flux, obtained with the third-order method (DG(2)+RK3).  
+The discontinuities remain sharp, and oscillations around the discontinuities are controlled (in part due to limiting of characteristic variables; cf. Section~\ref{sec:slopeLimiters}).  
+In the right panel we plot the number density for three computations: limiting triggered everywhere (blue), no slope limiting (positivity limiting only; red), and limiting triggered by the discontinuity detector (black).  
+In the plot we have zoomed in on the discontinuity around $x=0.075$.  
+Without limiting, significant oscillations are present in the solution.  
+With the slope limiter, the oscillations are essentially removed, while using the discontinuity detector to trigger limiting maintains a sharper discontinuity than when limiting is permitted everywhere.  
+
+\begin{figure}[h]
+  \centering
+  \begin{tabular}{cc}
+    \includegraphics[scale=0.4]{./Figures/RiemannProblem1D} &
+    \includegraphics[scale=0.4]{./Figures/RiemannProblem1D_Limiters}
+  \end{tabular}
+  \vspace{-0.1in}
+  \flushleft\caption[Results from the one-dimensional Riemann problem in Eq.~\eqref{eq:riemannProblem}, obtained with the DG(2)+RK3 scheme using $240$ elements.]{Results from the one-dimensional Riemann problem in Eq.~\eqref{eq:riemannProblem}, obtained with the DG(2)+RK3 method using $240$ elements.  The HLL Riemann solver and the Eddington factor in Eq.~\eqref{eq:eddingtonFactorLevermore} was used to obtain the results.  \textmd{The number density $\cJ$ (black) and the number flux density $\cH_{1}$ (red) are plotted for $t=0.1$.}}
+  \label{fig:riemannProblem}
+\end{figure}
+
+\subsection{SPHERICAL DIFFUSION}
+
+Next, we consider a diffusion problem in spherical symmetry, which involves a constant scattering opacity $\sigma$.  
+This problem is adapted from \citet{abdikamalov_etal_2012} \citep[see also][]{pons_etal_2000,sumiyoshiYamada_2012}.  
+For sufficiently high scattering opacity, the moment equations limit to a diffusion equation for the radiation number density.  
+With a Gaussian initial distribution for the energy density $\cJ_{0}(x)=\exp(-3\,\sigma\,r^{2}/(4\,t_{0}))$, the analytical solution to the limiting diffusion equation is given by
+\begin{equation}
+  \cJ(r,t)=\Big(\f{t_{0}}{t_{0}+t}\Big)^{3/2}\,\exp\Big\{\,-\f{3\,\sigma\,r^{2}}{4\,(t_{0}+t)}\,\Big\},
+\end{equation}
+while the number flux is obtained from $\cH_{r}=-\pd{\cJ}{r}/(3\,\sigma)$.  
+
+We present two versions of this test:  one with $\sigma=10^{-5}$~cm$^{-1}$ (thin test), and one with $\sigma=10^{-1}$~cm$^{-1}$ (thick test).  
+In the thin test, the computational domain extends over $r\in[0,100]$~km, $t_{0}=0.3$~ms, and is run until $t=1$~ms.  
+In the thick test, the computational domain extends over $r\in[0,50]$~km and $t_{0}=0.3$~s, and is run until $t=1$~s.  
+In both tests we use 32 elements and the DG(2)+SIRK2 scheme.  
+With the mean-free path defined as $\lambda=1/\sigma$, the ratio of the mean-free path to the cell width $\Delta r$ is $0.32$ in the thin test, and $6.4\times10^{-5}$ in the thick test.  
+
+Results are plotted in Figure~\ref{fig:diffusionProblem}.  
+There is good agreement between the numerical and analytical solutions, for both the thin and thick cases.  
+
+\begin{figure}[h]
+  \centering
+  \begin{tabular}{cc}
+    \includegraphics[scale=0.38]{./Figures/GaussianSphericalDiffusion_Kappa_1e-5_Density} &
+    \includegraphics[scale=0.38]{./Figures/GaussianSphericalDiffusion_Kappa_1e-5_Flux} \\
+    \includegraphics[scale=0.38]{./Figures/GaussianSphericalDiffusion_Kappa_1e-1_Density} &
+    \includegraphics[scale=0.38]{./Figures/GaussianSphericalDiffusion_Kappa_1e-1_Flux}
+  \end{tabular}
+  \vspace{-0.1in}
+  \flushleft\caption[Results from the diffusion problem in spherical symmetry, obtained with the DG(2)+SIRK2 method using $32$ elements.]{Results from the diffusion problem in spherical symmetry, obtained with the DG(2)+SIRK2 method using $32$ elements.  
+  \textmd{The number density $\cJ$ (left panel) and the number flux density $\cH_{r}$ (right panel) are plotted.  In the upper panels $\sigma=10^{-5}$~cm$^{-1}$, with results plotted for $t=0,0.3,1.0$~ms (red, blue, and black curves, respectively).  In the lower panels $\sigma=10^{-1}$~cm$^{-1}$, with results plotted for $t=0,0.4,1.0$~s (red, blue, and black curves, respectively).  Solid lines represent the analytical solution while open circles represent the element center value of the numerical solution.}}
+  \label{fig:diffusionProblem}
+\end{figure}
+
+\subsection{HOMOGENEOUS SPHERE}
+\label{sec:homogeneousSphere}
+
+The homogeneous sphere test \citep[cf.][]{smit_etal_1997} considers of a sphere with radius $R$.  
+Inside the sphere ($r<R$), the absorption opacity and equilibrium distribution function are set to constant values $\chi=\chi_{0}$ and $f_{0}=1$, respectively.  
+Outside the sphere, the absorption opacity is zero.  
+The steady state solution, obtained by solving the transport equation in spherical symmetry, is given by
+\begin{equation}
+  f_{\mbox{\tiny A}}(r,\mu)=f_{0}\,\big(1-e^{-\chi_{0}\,s(r,\mu)}\big),
+  \label{distributionHomogeneousSphere}
+\end{equation}
+where
+\begin{equation}
+  s(r,\mu)
+  =\left\{
+  \begin{array}{lll}
+    r\,\mu+R\,g(r,\mu) & \mbox{if}\quad r<R, & \mu\in[-1,+1], \\
+    2\,R\,g(r,\mu) & \mbox{if}\quad r \ge R, & \mu\in[(1-(R/r)^{2})^{1/2},+1], \\
+    0 & \mbox{otherwise},
+  \end{array}
+  \right.
+\end{equation}
+and $g(r,\mu)=[1-(r/R)^{2}(1-\mu^{2})]^{1/2}$.  
+
+Similar to \citet{oConnor_2015}, we solve two versions of this test: One where the absorption opacity is set to $\chi_{0}=10^{-4}$~cm$^{-1}$ (thick; similar to the electron capture opacity encountered in the center of a collapsed stellar core), and one where the absorption opacity is set to $\chi_{0}=10^{-6}$~cm$^{-1}$ (thin).  
+Both simulations are run with a computational domain with $r\in[0,500]$~km using 100 uniform elements $\Delta r=5$~km.  
+Thus, in the thick case, the Knudsen number is small, $\mbox{Kn}=(\chi_{0}\,\Delta r)^{-1}=0.02$, while it exceeds unity in the thin case, $\mbox{Kn}=2$.  
+The radius of the sphere is set to $R=100$~km.  
+
+Results are plotted in Figure~\ref{fig:homogeneousSphere1D}.  
+In the left panels we plots results obtained for the thick case, while results for the thin case are plotted in the right panels.  
+We plot the radiation density $\cJ$ in the top panels, the flux factor $\cH_{r}/\cJ$ in the middle panels, and the Eddington factor $\psi$ in the bottom panels.  
+The two-moment model captures the analytic solution reasonably well in both the thin and the thick cases, especially for the density $\cJ$.  
+The discrepancy in the flux and Eddington factors between the numerical results and the analytical solution is comparable to that of other implementations of the two-moment model \citep[e.g.,][]{smit_etal_1997}.  
+
+\begin{figure}[h]
+  \centering
+  \begin{tabular}{cc}
+    \includegraphics[scale=0.4]{./Figures/HomogeneousSphere1D_Chi_1e-4_Density} &
+    \includegraphics[scale=0.4]{./Figures/HomogeneousSphere1D_Chi_1e-6_Density} \\
+    \includegraphics[scale=0.4]{./Figures/HomogeneousSphere1D_Chi_1e-4_FluxFactor} &
+    \includegraphics[scale=0.4]{./Figures/HomogeneousSphere1D_Chi_1e-6_FluxFactor} \\
+    \includegraphics[scale=0.4]{./Figures/HomogeneousSphere1D_Chi_1e-4_EddingtonFactor} &
+    \includegraphics[scale=0.4]{./Figures/HomogeneousSphere1D_Chi_1e-6_EddingtonFactor}
+  \end{tabular}
+  \vspace{-0.1in}
+  \flushleft\caption[Results from solving the Homogeneous sphere problem with the DG(2)+SIRK2 method using $100$ elements.]{Results from solving the Homogeneous sphere problem with the DG(2)+SIRK2 method using $100$ elements.  \textmd{In the left panels, the absorption opacity is set to $\chi_{0}=10^{-4}$~cm$^{-1}$, while in the right panels it is set to $\chi_{0}=10^{-6}$~cm$^{-1}$.  The numerical results (dashed lines) are compared to the analytical solution (solid lines).}}
+  \label{fig:homogeneousSphere1D}
+\end{figure}
+
+\subsection{MILNE'S PROBLEM}
+
+The Milne problem \citep[see, e.g.,][for details]{hummerRybicki_1971} considers isotropic radiation emanating from a source with radius $r=R_{\mbox{\tiny min}}$, propagating through a purely (elastic) scattering atmosphere with an outer boundary at $r=R_{\mbox{\tiny max}}$.  
+Thus, the absorption opacity is zero $\tilde{\chi}=0$, and the scattering opacity is given by a power law in radius
+\begin{equation}
+  \sigma=r^{-n}.  
+  \label{eq:opacityMilne}
+\end{equation}
+\citet{hummerRybicki_1971} computed steady-state solutions for $n=3/2$, $2$, and $3$, and different values of $R_{\mbox{\tiny max}}$ by solving the radiative transfer equation.  
+Here we compare results obtained with the two-moment model with solutions given by \citet{hummerRybicki_1971}.  
+
+With the scattering opacity in Eq.~\eqref{eq:opacityMilne}, the optical depth at radius $r$ is given by
+\begin{equation}
+  \tau(r)=\f{1}{n-1}\big[\,1/r^{n-1}-1/R_{\mbox{\tiny max}}^{n-1}\,\big].
+\end{equation}
+\citet{hummerRybicki_1971} also provide asymptotic solutions for the energy density in the optically thick and thin regimes, which we use to set initial values and boundary conditions when solving the two-moment equations.  
+In the optically thick regime (large $\tau$), the asymptotic value for the energy density is
+\begin{equation}
+  \cJ_{\mbox{\tiny thick}}(r)
+  =\f{3}{r^{2}}\,\Big(\,\f{n-1}{n+1}\,\Big)\,[\,\tau+K\,], 
+  \label{eq:MilneThick}
+\end{equation}
+where $K$ is a constant.  
+In the optically thin regime (small $\tau$), the asymptotic value is
+\begin{equation}
+  \cJ_{\mbox{\tiny thin}}(r)
+  =\f{1}{r^{2}}\,[\,1+\tau\,].  
+\end{equation}
+Our initial condition for the energy density is then set as
+\begin{equation}
+  \cJ_{0}(r)
+  =(1-e^{-\tau(r)})\,\cJ_{\mbox{\tiny thick}}(r)+e^{-\tau(r)}\,\cJ_{\mbox{\tiny thin}}(r),
+\end{equation}
+while the initial momentum density is set as $\cH_{r,0}(r)=1/r^{2}$.  
+These expressions are also used to set boundary conditions, which are held fixed during the computations.  
+(We use solutions provided by \citet{hummerRybicki_1971} in the thick regime to determine values for the constant $K$ in Eq.~\eqref{eq:MilneThick}.)
+With the specified initial and boundary conditions, we evolve the moment equations until a steady state is reached.  
+
+\begin{figure}[h]
+  \centering
+  \begin{tabular}{cc}
+    \includegraphics[scale=0.4]{./Figures/MilneProblem1D_n20.png} &
+    \includegraphics[scale=0.4]{./Figures/MilneProblem1D_n20_EddingtonFactors.png} \\
+    \includegraphics[scale=0.4]{./Figures/MilneProblem1D_n15.png} &
+    \includegraphics[scale=0.4]{./Figures/MilneProblem1D_n30.png}
+  \end{tabular}
+  \vspace{-0.1in}
+  \flushleft\caption[Results of the Milne problem obtained with the two-moment model (solid lines), using the DG(2)+SIRK2 scheme.]{Results of the Milne problem obtained with the two-moment model (solid lines), using the DG(2)+SIRK2 scheme.  \textmd{The two-moment results are compared with solutions provided by \citep{hummerRybicki_1971} (boxes).  See text for details.}}
+  \label{fig:milneProblem1D}
+\end{figure}
+
+Results for various combinations of $n$ and $R_{\mbox{\tiny max}}$, obtained with the DG2+SIRK2 scheme, are plotted in Figure~\ref{fig:milneProblem1D}.  
+The radius of the inner boundary is $R_{\mbox{\tiny min}}=0.01$ in all the models.  
+We use 64 elements for the models with $R_{\mbox{\tiny max}}=0.1$, and 128 elements for the models with $R_{\mbox{\tiny max}}=10$, $30$, and $100$.  
+The size of the innermost (smallest) element is $\Delta r=10^{-3}$, which increases geometrically with radius.  
+
+In the upper left panel in Figure~\ref{fig:milneProblem1D}, we plot $\cJ\times r^{2}$ versus radius for $n=2$, where $R_{\mbox{\tiny max}}=0.1$ (solid black lines) and $R_{\mbox{\tiny max}}=30$ (solid blue lines).  
+These results are compared with solutions given by \citet{hummerRybicki_1971} (black and blue boxes).  
+We also plot the asymptotic values in the thick regime (dashed lines), while the radius where $\tau=1$ is indicated with dotted vertical lines.  
+The the two lower panels show similar results using different values of $n$ and $R_{\mbox{\tiny max}}$.  
+In the lower left panel we plot results for $n=3/2$, with $R_{\mbox{\tiny max}}=0.1$ (black lines) and $R_{\mbox{\tiny max}}=100$.  
+In the lower right panel we plot results for $n=3$, with $R_{\mbox{\tiny max}}=0.1$ (black lines) and $R_{\mbox{\tiny max}}=10$.  
+In the upper right panel we plot flux factors ($\cH_{r}/\cJ$, black lines) and Eddington factors ($\psi$, blue lines) for a model with $n=2$ and $R_{\mbox{\tiny max}}=10$, and compare with results given by \citet{hummerRybicki_1971} (their Table~I; boxes).  
+For this model, we computed results with the Minerbo closure (cf. Eq.~\eqref{eq:eddingtonFactor}; solid lines) and the Levermore closure (cf. Eq.~\eqref{eq:eddingtonFactorLevermore}; dashed lines).  
+As can be seen, there is very little difference between the closure methods, but the results obtained with the Levermore closure are somewhat closer to the results given by \citet{hummerRybicki_1971}.  
+
+Overall, there is quite good agreement between the results obtained with the two-moment model and the transport solutions of \citet{hummerRybicki_1971} when $R_{\mbox{\tiny max}}/R_{\mbox{\tiny min}}=10$.  
+For larger values of this ratio, the agreement is worse, but seems to improve with increasing value of the index $n$ (cf. the blue lines in the lower two panels in Figure~\ref{fig:milneProblem1D}).  
+
+\begin{center}
+  \section{MULTI-GROUP TRANSPORT PROBLEMS WITH TABULATED NEUTRINO OPACITIES}
+  \label{sec:numericalTableOpacities}
+\end{center}
+
+For the tests in this section we employ some of the tabulated opacities described in Section~\ref{sec:opacities}.  
+In Section~\ref{sec:homogeneousSphereTable}, we present a multi-group version of the homogeneous sphere test from Section~\ref{sec:homogeneousSphere}, where the background is kept fixed.  
+In Section~\ref{sec:deleptonizationProblem}, we present a deleptonization problem where the initial background density mimics that of a collapsed stellar core.  
+The deleptonization problem uses the tabulated electron capture and elastic scattering rates on nucleons and nuclei as described in Sections~\ref{sec:electronCapture} and \ref{sec:elasticScattering}.  
+For this problem, the temperature and electron fraction of the background are evolved with the radiation field as described in Section~\ref{sec:couplingElectronCapture} below.  
+The deleptonization problem is distributed with the mini-app, available at \url{https://github.com/ECP-Astro/thornado_mini}.  
+
+When coupling neutrinos to the background fluid, the gain/loss terms involve integrals of the right-hand sides in Eqs.~\eqref{eq:momentEquationEnergy} and \eqref{eq:momentEquationMomentum} over energy space.  
+To simulate multi-group neutrino transport and compute the lepton and energy exchange with the fluid, the infinite energy domain $\bbR^{+}$ is replaced with a finite domain $D^{\epsilonNu}=\{\epsilonNu~|~\epsilonNu\in[0,\epsilonNu_{\mbox{\tiny max}}]\}$.  
+The domain $D^{\epsilonNu}$ is then split up into $N_{\epsilonNu}$ energy bins $K_{i}^{\epsilonNu}=\{\epsilonNu~|~\epsilonNu\in[\epsilonNu_{i-1/2},\epsilonNu_{i+1/2}]\}$, where the width of the $i$th bin is $|K_{i}^{\epsilonNu}|=(\epsilonNu_{i+1/2}-\epsilonNu_{i-1/2})$.  
+Within each bin, we employ a polynomial representation of the radiation fields and solve for nodal values collocated in Gaussian quadrature points.  
+The number of quadrature points $N$ then increases with the degree $k$ of the polynomial representation ($N=k+1$).  
+Integrals of radiation quantities over energy space are then evaluated as
+\begin{equation}
+  \int_{\bbR^{+}}g(\epsilonNu)\,d\epsilonNu
+  \approx\int_{D^{\epsilonNu}}g(\epsilonNu)\,d\epsilonNu
+  =\sum_{i=1}^{N^{\epsilonNu}}\int_{K_{i}^{\epsilonNu}}g(\epsilonNu)\,d\epsilonNu
+  \approx\sum_{i=1}^{N^{\epsilonNu}}|K_{i}^{\epsilonNu}|\sum_{q=1}^{N}w_{q}\,g_{q}=\sum_{j=1}^{M^{\epsilonNu}} W_{j}\,g_{j}=\vect{W}\cdot\vect{g},
+\end{equation}
+where $w_{q}$ are Gaussian quadrature weights (normalized such that $\sum_{q=1}^{N}w_{q}=1$) and $M^{\epsilonNu}=N^{\epsilonNu}\times N$.  
+In constructing the vectors $\vect{W},\vect{g}\in\bbR^{M^{\epsilonNu}}$, their elements are sorted with energy monotonically increasing with $j$; e.g., $\epsilonNu_{j}=\epsilonNu_{i-1/2}+|K_{i}|\times(1/2+\eta_{q}^{\epsilonNu})$ and $W_{j}=|K_{i}^{\epsilonNu}|\,w_{q}$, where $\eta_{q}^{\epsilonNu}$ is the Gaussian quadrature point on the local reference element ($\eta^{\epsilonNu}\in[-1/2,1/2]$), and $j=(i-1)\times N+q$, ($i=1,\ldots,N^{\epsilonNu}$, $q=1,\ldots,N$).  
+
+\subsection{FLUID-RADIATION COUPLING}
+
+\label{sec:couplingElectronCapture}
+
+Electron capture on nucleons and nuclei results in changes to the electron fraction and internal energy of the fluid given by
+\begin{align}
+  d_{t}Y_{e}
+  &=-\f{m_{\mbox{\tiny B}}}{\rho}\int_{\bbR^{+}}\tilde{\chi}\,\big(\cJ_{0}-\cJ\big)\,dV_{\epsilonNu}, \label{eq:electronFractionEmAb} \\
+  d_{t}\epsilon
+  &=-\f{1}{\rho}\int_{\bbR^{+}}\tilde{\chi}\,\big(\cJ_{0}-\cJ\big)\,\epsilonNu\,dV_{\epsilonNu}, \label{eq:internalEnergyEmAb}
+\end{align}
+where $m_{\mbox{\tiny B}}$ is the baryon mass and $\epsilon$ is the specific internal energy.  
+In each implicit step in the SIRK2 scheme discussed in Section~\ref{sec:semiImplicitTime} we solve Eqs.~\eqref{eq:electronFractionEmAb}-\eqref{eq:internalEnergyEmAb} coupled to the collision part of the moment equations.  
+\begin{align}
+  Y_{e}^{n+1}-Y_{e}^{n}
+  &=-\f{m_{\mbox{\tiny B}}}{\rho}\sum_{j=1}^{M^{\epsilonNu}}W_{j}^{(2)}\,\gamma_{j}^{n}\,\big(\cJ_{0,j}^{n+1}-\cJ_{j}^{n+1}\big), \label{eq:electronFractionEmAbDiscrete0} \\
+  \epsilon^{n+1}-\epsilon^{n}
+  &=-\f{1}{\rho}\sum_{j=1}^{M^{\epsilonNu}}W_{j}^{(3)}\,\gamma_{j}^{n}\,\big(\cJ_{0,j}^{n+1}-\cJ_{j}^{n+1}\big), \label{eq:internalEnergyEmAbDiscrete0}
+\end{align}
+where $W_{j}^{(2,3)}=w_{q}\,\epsilonNu_{i,q}^{2,3}\,\Delta\epsilonNu_{i}$ and $\gamma_{j}^{n}=\dt\,\tilde{\chi}_{j}^{n}$.  
+Note that the absorption opacity is defined at the known time level $t^{n}$, which avoids computation of derivatives with respect to temperature and electron fraction.  
+The radiation energy density is updated from
+\begin{equation}
+  \cJ_{j}^{n+1}=\f{\cJ_{j}^{n}+\gamma_{j}^{n}\,\cJ_{0,j}^{n+1}}{1+\gamma_{j}^{n}}, 
+  \label{eq:momentEquationEnergyEmAbDiscrete}
+\end{equation}
+which, when inserted into Eqs.~\eqref{eq:electronFractionEmAbDiscrete0}-\eqref{eq:internalEnergyEmAbDiscrete0}, results in a nonlinear system for the unknowns $Y^{n+1}$ and $\epsilon^{n+1}$
+\begin{align}
+  Y_{e}^{n+1}-Y_{e}^{n}
+  &=-\f{m_{\mbox{\tiny B}}}{\rho}\sum_{j=1}^{M^{\epsilonNu}}W_{j}^{(2)}\,\tilde{\gamma}_{j}^{n}\,\big(\cJ_{0,j}^{n+1}-\cJ_{j}^{n}\big), \label{eq:electronFractionEmAbDiscrete} \\
+  \epsilon^{n+1}-\epsilon^{n}
+  &=-\f{1}{\rho}\sum_{j=1}^{M^{\epsilonNu}}W_{j}^{(3)}\,\tilde{\gamma}_{j}^{n}\,\big(\cJ_{0,j}^{n+1}-\cJ_{j}^{n}\big), \label{eq:internalEnergyEmAbDiscrete}
+\end{align}
+where $\tilde{\gamma}_{j}^{n}=\gamma_{j}^{n}/(1+\gamma_{j}^{n})$.  
+Since the equilibrium density $\cJ_{0,j}$ is a nonlinear function of $Y_{e}$ and $\epsilon$, Eqs.~\eqref{eq:electronFractionEmAbDiscrete}-\eqref{eq:internalEnergyEmAbDiscrete} are solved using Newton's method.  
+Once $Y_{e}^{n+1}$ and $\epsilon^{n+1}$ are obtained, the radiation density is obtained from Eq.~\eqref{eq:momentEquationEnergyEmAbDiscrete}, while the flux is given by
+\begin{equation}
+  \bcH_{j}^{n+1}=\bcH_{j}^{n}/(1+\gamma_{j}^{n}).  
+  \label{eq:momentEquationMomentumEmAbDiscrete}
+\end{equation}
+When elastic scattering is included, the above description remains unchanged, except for $\gamma_{j}^{n}\to\dt\big(\tilde{\chi}_{j}^{n}+\sigma_{j}^{n}\big)$ in Eq.~\eqref{eq:momentEquationMomentumEmAbDiscrete}.  
+
+\begin{table}[h]
+  \caption{Parameters used for problems with tabulated opacities. \label{tab:tabulatedModels}}
+  \small
+  \vspace{-6pt}
+  \begin{center}
+  \begin{tabular}{ccccc}
+    Model & $\rho$ [g~cm$^{-3}$] & $T$ [MeV] & $Y_{e}$ & $\mu_{\nu}$ [MeV] \\
+    \midrule \midrule
+    A & $1.0\times10^{14}$ & 21.0  & 0.25 &   90.65 \\
+    B & $1.0\times10^{13}$ & 16.0 & 0.14 &     4.80 \\
+    C & $1.0\times10^{12}$ &   8.0 & 0.12 & -   0.57 \\
+    D & $1.0\times10^{11}$ &   8.0 & 0.15 & - 10.87 \\
+    \midrule \midrule
+  \end{tabular}
+  \end{center}
+\end{table}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[scale=0.8]{./Figures/HomogeneousSphere_Opacities}
+  \vspace{-0.1in}
+  \caption{Absorption opacities versus energy $\epsilonNu$ using values for $\rho$, $T$, and $Y_{e}$ listed in Table~\ref{tab:tabulatedModels}.}
+  \label{fig:absorptionOpacities_weaklib}
+\end{figure}
+
+\subsection{HOMOGENEOUS SPHERE}
+\label{sec:homogeneousSphereTable}
+
+Here we present results from a multi-group version of the homogeneous sphere problem in Section~\ref{sec:homogeneousSphere}, where we use the tabulated electron capture rates from Section~\ref{sec:electronCapture}.  
+The radius of the sphere is set to $R=100$~km, and the computational domain covers the region $r\in[0,500]$~km.  
+We present two versions of the test, one for dense conditions, where the $\rho=10^{13}$~g~cm$^{-3}$, $T=16$~MeV, and $Y_{e}=0.14$ inside $r=R$ (Model B in Table~\ref{tab:tabulatedModels}), and one where $\rho=10^{11}$~g~cm$^{-3}$, $T=8$~MeV, and $Y_{e}=0.15$ inside $r=R$ (Model D in Table~\ref{tab:tabulatedModels}).  
+The electron capture rates $\tilde{\chi}$ for these conditions are plotted versus energy $\epsilonNu$ in Figure~\ref{fig:absorptionOpacities_weaklib} (blue and magenta lines, respectively).  
+Outside $r=100$~km, we set $\rho=10^{8}$~g~cm$^{-3}$, $T=0.2$~MeV, and $Y_{e}=0.46$ in both models.  
+
+Numerical results, obtained with the DG(2)+SIRK2 scheme using 100 equally sized radial elements and 24 geometrically spaced energy groups covering $\epsilonNu\in[0,300]$~MeV (with a minimum energy bin $\Delta\epsilonNu=1$~MeV), are plotted in Figures \ref{fig:homogeneousSphere1D_weaklib_B} (Model B) and \ref{fig:homogeneousSphere1D_weaklib_D} (Model D).  
+In the upper left panel we plot the average density $J/V_{\epsilonNu}$, where
+\begin{equation}
+  J=\int_{\bbR^{+}}\cJ\,dV_{\epsilonNu}
+  \quad\text{and}\quad
+  V_{\epsilonNu}=\int_{\bbR^{+}}dV_{\epsilonNu}.  
+  \label{eq:averageDensity}
+\end{equation}
+In the lower left panel we plot the average flux factor, defined as
+\begin{equation}
+  f_{r}=\f{1}{J}\int_{\bbR^{+}}\cH_{r}\,dV_{\epsilonNu}.  
+  \label{eq:averageFluxFactor}
+\end{equation}
+In the upper right panel we plot the average Eddington factor, defined as
+\begin{equation}
+  \langle\psi\rangle=\f{1}{J}\int_{\bbR^{+}}\psi\,\cJ\,dV_{\epsilonNu}.  
+\end{equation}
+In the lower right panel we plot the mean energy
+\begin{equation}
+  \langle\epsilonNu\rangle=\f{1}{J}\int_{\bbR^{+}}\cJ\,\epsilonNu\,dV_{\epsilonNu}.  
+  \label{eq:meanEnergy}
+\end{equation}
+In each panel we compare the numerical and analytical results (dashed and solid lines, respectively).  
+As can be seen, the agreement between the numerical and analytical results is similar to that observed in Section~\ref{sec:homogeneousSphere}.  
+
+\begin{figure}[h]
+  \centering
+  \begin{tabular}{cc}
+    \includegraphics[scale=0.4]{./Figures/HomogeneousSphereTable_B_Density} &
+    \includegraphics[scale=0.4]{./Figures/HomogeneousSphereTable_B_EddingtonFactor} \\
+    \includegraphics[scale=0.4]{./Figures/HomogeneousSphereTable_B_FluxFactor} &
+    \includegraphics[scale=0.4]{./Figures/HomogeneousSphereTable_B_MeanEnergy}
+  \end{tabular}
+  \vspace{-0.1in}
+  \flushleft\caption[Results from solving the multi-group Homogeneous sphere problem with the DG(2)+SIRK2 method using $100$ spatial elements and $24$ energy groups.]{Results from solving the multi-group Homogeneous sphere problem with the DG(2)+SIRK2 method using $100$ spatial elements and $24$ energy groups.  \textmd{The material properties from Model~B in Table~\ref{tab:tabulatedModels} are used to compute the neutrino absorption opacities.  We plot the energy-averaged neutrino density (upper left), flux factor (lower left), Eddington factor (upper right), and mean neutrino energy (lower right) versus radius.  The analytical solution is represented by the solid lines, while the numerical solution is given by the dashed lines.}}
+  \label{fig:homogeneousSphere1D_weaklib_B}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \begin{tabular}{cc}
+    \includegraphics[scale=0.4]{./Figures/HomogeneousSphereTable_D_Density} &
+    \includegraphics[scale=0.4]{./Figures/HomogeneousSphereTable_D_EddingtonFactor} \\
+    \includegraphics[scale=0.4]{./Figures/HomogeneousSphereTable_D_FluxFactor} &
+    \includegraphics[scale=0.4]{./Figures/HomogeneousSphereTable_D_MeanEnergy}
+  \end{tabular}
+  \vspace{-0.1in}
+  \caption{Same as Figure~\ref{fig:homogeneousSphere1D_weaklib_B}, but with properties from Model~D in Table~\ref{tab:tabulatedModels} to compute the opacities.}
+  \label{fig:homogeneousSphere1D_weaklib_D}
+\end{figure}
+
+\subsection{DELEPTONIZATION PROBLEM}
+\label{sec:deleptonizationProblem}
+
+We conclude with a problem mimicking deleptonization in a collapsed stellar core.  
+To this end, we adopt analytic profiles for the initial mass density, temperature, and electron fraction:
+\begin{align}
+  \rho(r)
+  &=0.5\times
+  \big\{\,
+    \rho_{\mbox{\tiny max}}\times\big[\,1-\tanh\big(\,(r-R_{\rho})/H_{\rho}\,\big)\,\big]
+    +\rho_{\mbox{\tiny min}}\times\big[\,1-\tanh\big(\,(R_{\rho}-r)/H_{\rho}\,\big)\,\big]
+  \,\big\}, \\
+  T(r)
+  &=0.5\times
+  \big\{\,
+    T_{\mbox{\tiny max}}\times\big[\,1-\tanh\big(\,(r-R_{T})/H_{T}\,\big)\,\big]
+    +T_{\mbox{\tiny min}}\times\big[\,1-\tanh\big(\,(R_{T}-r)/H_{T}\,\big)\,\big]
+  \,\big\}, \\
+  Y_{e}(r)
+  &=0.5\times
+  \big\{\,
+    Y_{e,\mbox{\tiny min}}\times\big[\,1-\tanh\big(\,(r-R_{Y_{e}})/H_{Y_{e}}\,\big)\,\big]
+    +Y_{e,\mbox{\tiny max}}\times\big[\,1-\tanh\big(\,(R_{Y_{e}}-r)/H_{Y_{e}}\,\big)\,\big]
+  \,\big\}.  
+\end{align}
+For the density profile we set $\rho_{\mbox{\tiny min}}=10^{8}$~g~cm$^{-3}$, $\rho_{\mbox{\tiny max}}=4\times10^{14}$~g~cm$^{-3}$, $R_{\rho}=20$~km, and $H_{\rho}=10$~km.  
+Thus, the maximum density is consistent with nuclear matter, and neutrinos will be trapped.  
+As the density decreases with radius, the neutrino mean free path increases, and the neutrinos created by electron capture will be able to escape the computational domain (deleptonization).  
+For the temperature profile we set $T_{\mbox{\tiny min}}=5\times10^{9}$~K, $T_{\mbox{\tiny max}}=2.6\times10^{11}$~K, $R_{T}=25$~km, and $H_{T}=20$~km, while for the electron fraction profile we set $Y_{e,\mbox{\tiny min}}=0.3$, $Y_{e,\mbox{\tiny max}}=0.46$, $R_{Y_{e}}=45$~km, and $H_{Y_{e}}=10$~km.  
+(The initial temperature and electron fraction profiles are plotted as dotted lines in Figure~\ref{fig:deleptonizationProblemFluid}.)
+The radiation field is initialized by setting the distribution function equal to the local Fermi-Dirac distribution.  
+
+In this problem the computational domain covers $r\in[0,100]$~km and $\epsilonNu\in[0,300]$~MeV.  
+We use equally sized spatial elements, while the energy domain is covered by geometrically increasing elements (with the smallest, innermost, energy bin set to $\Delta\epsilonNu=1$~MeV).  
+We evolve until $t=100$~ms.  
+
+In Figure~\ref{fig:deleptonizationProblemFluid} we plot fluid quantities versus radius at select times: $t=0$~ms (the initial condition; dotted lines), $t=3$~ms (dash-dot), $t=10$~ms (dashed), and $t=100$~ms (solid).  
+The results were obtained with the DG(1)+SIRK2 scheme using 200 radial elements and 30 energy bins.  
+We plot the electron fraction (upper left panel); mass fractions of protons plus neutrons (black), alpha particles (red), and heavy nuclei (blue) (upper right panel); temperature (lower left); and entropy per baryon (lower right).  
+
+\begin{figure}[h]
+  \centering
+  \begin{tabular}{cc}
+    \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_ElectronFraction.png} &
+    \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_MassFractions.png} \\
+    \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_Temperature.png} &
+    \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_EntropyPerBaryon.png}
+  \end{tabular}
+  \vspace{-0.1in}
+  \flushleft\caption[Fluid quantities from the deleptonization problem.]{Fluid quantities from the deleptonization problem.  \textmd{Plotted versus radius for various times are: electron fraction (top left), mass fractions of protons plus neutrons (black), alpha particles (red), and the mean heavy nucleus (blue; top right), temperature (bottom left), and entropy per baryon (bottom right).}}
+  \label{fig:deleptonizationProblemFluid}
+\end{figure}
+
+In Figure~\ref{fig:deleptonizationProblemRadiation} we plot radiation quantities versus radius at the same times as in Figure~\ref{fig:deleptonizationProblemFluid}.  
+We plot the energy-integrated density $J$ (upper left; cf. Eq.~\eqref{eq:averageDensity}), the average flux factor $f_{r}$ (upper right; cf. Eq.~\eqref{eq:averageFluxFactor}), and the mean energy $\langle\epsilonNu\rangle$ (lower left; cf. Eq.~\eqref{eq:meanEnergy}).  
+In the lower right panel we plot the luminosity
+\begin{equation}
+  L_{r}=4\pi\,r^{2}\,\int_{\bbR^{+}}\cH_{r}\,\epsilonNu\,dV_{\epsilonNu}.  
+\end{equation}
+In these plots we have also indicated with vertical lines the radius where the optical depth,
+\begin{equation}
+  \tau(r)=\int_{\infty}^{r}\tilde{\chi}\,dr,
+\end{equation}
+equals $2/3$.  
+(The line styles correspond to those of the various radiation quantities.)
+
+\begin{figure}[h]
+  \centering
+  \begin{tabular}{cc}
+    \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_NumberDensity.png} &
+    \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_FluxFactor.png} \\
+    \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_MeanEnergy.png} &
+    \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_Luminosity.png}
+  \end{tabular}
+  \vspace{-0.1in}
+  \flushleft\caption[Radiation quantities from the deleptonization problem.]{Radiation quantities from the deleptonization problem.  \textmd{Plotted versus radius for various times are neutrino number density (top left), flux factor (top right), mean energy (bottom left), and luminosity (bottom right).  The radii where the optical depth $\tau=2/3$ are indicated with vertical lines.}}
+  \label{fig:deleptonizationProblemRadiation}
+\end{figure}
+
+The evolution in this test is driven by electron capture on protons (and the inverse process; i.e., $e^{-}+p\leftrightharpoons n+\nu_{e}$).  
+For $t>0$ the electron fraction begins to decrease in the region between $r=25$~km and $r=80$~km, developing a characteristic ``trough'' in the $Y_{e}$ profile.  
+The minimum is located around $r=50$~km early on, but moves out slightly at later times.  
+The location of the minimum coincides qualitatively with the radius where $\tau=2/3$ (Figure~\ref{fig:deleptonizationProblemRadiation}).  
+The temperature and entropy per baryon responds by increasing with time in the same region (consistent with heating).  
+From the composition (determined by the equation of state), we see that the material consists mostly of neutrons and protons inside $r=25$~km (with $X_{n}\approx0.7$ and $X_{p}\approx0.3$).  
+For $r>80$, the material consists mostly of heavy nuclei.  
+Initially ($t=0$), there is a rather gradual transition from free nucleons to bound nuclei in the region between $r=25$~km and $r=80$~km.  
+At the end of the simulation, the transition from free nucleons to nuclei is rather sharp and has moved out $r\approx70$~km.  
+At this time, as a result of electron capture, the fluid consists mostly of neutrons in the region between $r=35$~km and $r=70$~km ($X_{n}\approx0.85$ and $X_{p}\approx0.15$).  
+Note that we do not include electron anti-neutrinos, so there is no process to produce protons by positron capture on neutrons.  
+
+From plots of the radiation field in Figure~\ref{fig:deleptonizationProblemRadiation}, we see that the neutrinos are diffusive in the dense regions, but transition to streaming at larger radii.  
+The flux factor (upper right panel) is very small inside $r=40$~km, but increases monotonically with radius to about $0.9$ at the outer boundary.  
+In fact, the neutrino number density (upper left panel) is essentially unchanged inside $r=25$~km over the $100$~ms the simulation covers.  
+At larger radii, the neutrinos are transported in the radial direction (cf. the luminosity in the lower right panel), and the the neutrino number density profiles decrease with increasing time.  
+The luminosity is nearly constant in radius for $r>70$~km, but decreases with time from about 600~B~s$^{-1}$ at $t=3$~ms to about 40~B~s$^{-1}$ at $t=100$.  
+($1$~B $\equiv10^{51}$~erg.)
+
+To test the sensitivity of the results to resolution, we compare some of the quantities from the reference solution discussed above to results obtained with the DG(2)+SIRK2 scheme using 64 equally spaced spatial elements and 12 geometrically spaced energy bins (but keeping the smallest energy bin at $\Delta\epsilonNu=1$~MeV).  
+(This represents a factor of $\sim3.5$ reduction in the total number of degrees of freedom.)  
+Results are plotted in Figure~\ref{fig:deleptonizationProblem_Resolution}, where we plot the electron fraction (left panel) and the mean neutrino energy (right panel) versus radius at $t=100$~ms.  
+The results from the reference solution (DG(1)+SIRK2) are represented by solid black curves, while the DG(2)+SIRK2 results are represented by blue open circles.  
+For the electron fraction, the results are practically indistinguishable.  
+The mean energy is underestimated by the DG(2)+SIRK2 scheme inside $r=15$~km.  
+This is due to poor spectral resolution at high neutrino energies.  
+Outside $r=30$~km, where the mean energy is lower, the agreement is very good.  
+
+\begin{figure}
+  \centering
+  \begin{tabular}{cc}
+    \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_ElectronFraction_Resolution.png} &
+    \includegraphics[width=.475\textwidth]{./Figures/DeleptonizationProblem1D_MeanEnergy_Resolution.png}
+  \end{tabular}
+  \vspace{-0.1in}
+  \flushleft\caption[Results for the deleptonization problem where the numerical resolution has been varied.]{Results for the deleptonization problem where the numerical resolution has been varied.  \textmd{The electron fraction (left panel) and mean neutrino energy (right panel) are plotted versus radius for $t=100$~ms.  The black solid line is obtained with the DG(1)+SIRK2 scheme using $N_{r}\times N_{\epsilonNu}=200\times30$ elements, while blue open circles represent results obtained with the DG(2)+SIRK2 scheme using $64\times12$ elements.}}
+  \label{fig:deleptonizationProblem_Resolution}
+\end{figure}
+
+\begin{center}
+  \section{SUMMARY}
+  \label{sec:summary}
+\end{center}
+
+We have presented details of a numerical method for solving the multi-group, two-moment model for neutrino transport.  
+The discontinuous Galerkin (DG) method is used for spatial and energy discretization, while a semi-implicit Runge-Kutta method is used for time integration, where the hyperbolic streaming part is treated explicitly and the stiff terms modeling neutrino-matter interactions are treated implicitly.  
+The method can solve multi-group transport problems in Cartesian, spherical, and cylindrical coordinates in one spatial dimension.  
+We have demonstrated the accuracy of the method with a series of benchmark problems, including smooth problems with analytical solutions, a Riemann problem, diffusion problems in thin and thick regimes, and tests relevant to astrophysics covering both opaque and streaming regimes.  
+We have also detailed the tabulation of an initial set of neutrino-matter interactions (for electron neutrinos) relevant for core-collapse supernova (CCSN) simulations.  
+This initial set includes electron capture and elastic scattering on nucleons and nuclei, and inelastic neutrino-electron scattering (NES).  
+We have also presented results from multi-group simulations that use these tabulated opacities.  
+(Tests involving NES have been deferred to a future publication.)  
+
+The algorithms are implemented in the Toolkit for High-Order Neutrino-Radiation Hydrodynamics (\thornado), and a limited version of the code has been made publicly available on GitHub\footnote{\url{https://github.com/ECP-Astro/thornado_mini}}.  
+This release includes the deleptonization problem (including some of the data) presented in Section~\ref{sec:deleptonizationProblem}.  
+
+The current report details initial steps toward the longer-term goal of deploying high-order DG methods to simulate CCSN explosions.  
+Next steps for the near term include extension to multiple spatial dimensions, inclusion of a larger suite of neutrino-matter interactions, and inclusion of multiple neutrino species (to ultimately include electron, muon, and tau neutrinos, and the corresponding antiparticles).  
+For the longer term, extensions will include coupling to self-gravitating hydrodynamics, relativity, and special attention to preservation of integration constants in neutrino-radiation hydrodynamics simulations.  
+
+\newpage
+\clearemptydoublepage
+
+
+\newpage
+\clearemptydoublepage
+
+\begin{center}
+\section{REFERENCES}
+\end{center}
+
+\bibliography{references.bib}
+
+\bibliographystyle{plainnat}
+
+\clearemptydoublepage
+
+\newpage
+
+\renewcommand{\thepage}{A-\arabic{page}} 
+\setcounter{page}{1}
+%\thispagestyle{mypagestylepublic}        % Use for "Not for public release." in footer with no page numbers
+%\thispagestyle{mypagestyleempty}    % Use for "OUO" in footer with no page numbers  
+\thispagestyle{empty}
+
+\vspace*{4in}
+\phantomsection
+\addcontentsline{toc}{section}{APPENDIX A. EIGENVALUES AND EIGENVECTORS FOR THE TWO-MOMENT MODEL}
+\begin{center}
+{\bf\Large{APPENDIX A. EIGENVALUES AND EIGENVECTORS FOR THE TWO-MOMENT MODEL}}
+\end{center}
+
+\clearemptydoublepage
+
+\newpage
+
+\renewcommand{\thepage}{A-\arabic{page}} 
+\setcounter{page}{3}
+
+\begin{center}
+{\bf\large {APPENDIX A.  EIGENVALUES AND EIGENVECTORS FOR THE TWO-MOMENT MODEL}}
+\end{center}
+
+\label{sec:eigenstructure}
+
+Here we list eigenvalues and eigenvectors for the flux Jacobian associated with the hyperbolic system in Eq.~\eqref{eq:momentEquationsCompact}.  
+These are used to perform limiting in characteristic variables (cf. Section~\ref{sec:slopeLimiters}).  
+To this end, we define the Eddington tensor
+\begin{equation}
+  k^{i}_{~j}=\cK^{i}_{~j}/\cJ,
+\end{equation}
+where $\cK^{i}_{~j}$ is given by Eq.~\eqref{eq:stressTensor}.  
+
+The flux Jacobian is given by
+\begin{equation}
+  \pderiv{\bcF^{i}(\bcM)}{\bcM}
+  =\left[
+  \begin{array}{cccc}
+    0 & \gamma^{i1} & \gamma^{i2} & \gamma^{i3} \\
+    k^{i}_{~1}+\cJ\,\pderiv{k^{i}_{~1}}{\cJ} & \cJ\,\pderiv{k^{i}_{~1}}{\cH_{1}} & \cJ\,\pderiv{k^{i}_{~1}}{\cH_{2}} & \cJ\,\pderiv{k^{i}_{~1}}{\cH_{3}} \\
+    k^{i}_{~2}+\cJ\,\pderiv{k^{i}_{~2}}{\cJ} & \cJ\,\pderiv{k^{i}_{~2}}{\cH_{1}} & \cJ\,\pderiv{k^{i}_{~2}}{\cH_{2}} & \cJ\,\pderiv{k^{i}_{~2}}{\cH_{3}} \\
+    k^{i}_{~3}+\cJ\,\pderiv{k^{i}_{~3}}{\cJ} & \cJ\,\pderiv{k^{i}_{~3}}{\cH_{1}} & \cJ\,\pderiv{k^{i}_{~3}}{\cH_{2}} & \cJ\,\pderiv{k^{i}_{~3}}{\cH_{3}}
+  \end{array}
+  \right].  
+\end{equation}
+We will need the derivatives
+\begin{equation}
+  \pderiv{\psi}{\cJ}=-\f{\cH}{\cJ^{2}}\pderiv{\psi}{h},
+  \quad
+  \pderiv{\psi}{\cH_{k}}=\f{h^{k}}{\cJ}\pderiv{\psi}{h},
+  \quad
+  \pderiv{h^{i}}{\cH_{k}}
+  =\f{1}{\cH}\big(\,\gamma^{ik}-h^{i}\,h^{k}\,\big),
+  \quad\text{and}\quad
+  \pderiv{h_{j}}{\cH_{k}}
+  =\f{1}{\cH}\big(\,\delta^{k}_{~j}-h^{k}\,h_{j}\,\big).
+\end{equation}
+Then, we have
+\begin{equation}
+  \cJ\,\pderiv{k^{i}_{~j}}{\cJ}
+  =\f{1}{2}\,\big[\,\delta^{i}_{~j}-3\,h^{i}\,h_{j}\,\big]\,h\,\pderiv{\psi}{h},
+\end{equation}
+and
+\begin{equation}
+  \cJ\,\pderiv{k^{i}_{~j}}{\cH_{k}}
+  =-\f{1}{2}\,\big[\,\delta^{i}_{~j}-3\,h^{i}\,h_{j}\,\big]\,h^{k}\,\pderiv{\psi}{h}
+  +\f{1}{2}(3\psi-1)\,\big[\,\big(\gamma^{ik}\,h_{j}+h^{i}\,\delta^{k}_{~j}\big)-2\,h^{i}\,h^{k}\,h_{j}\,\big]\,\f{1}{h}.  
+\end{equation}
+
+Computing the flux Jacobian in the $1$-dimension, using the metric tensor in Eq.~\eqref{eq:threeMetric}, and simplifying by setting $h^{2},h^{3}=0$ so that $h^{1}h_{1}=1$, gives
+\begin{equation}
+  \pderiv{\bcF^{1}(\bcM)}{\bcM}
+  =\left[
+  \begin{array}{cccc}
+    0 & 1 & 0 & 0 \\
+    \psi-h\,\psi' & h^{1}\,\psi' & 0 & 0 \\
+    0 & 0 & \f{(3\,\psi-1)\,h^{1}}{2\,h} & 0 \\
+    0 & 0 & 0 & \f{(3\,\psi-1)\,h^{1}}{2\,h}
+  \end{array}
+  \right],
+\end{equation}
+where $\psi'=\partial\psi/\partial h$.  
+The characteristic polynomial is
+\begin{equation}
+  p(\lambda)=\Big[\,\lambda^{2}-h^{1}\,\psi'\,\lambda-\big(\,\psi-h\,\psi\,\big)\Big]\,\Big[\,\f{(3\,\psi-1)\,h^{1}}{2\,h}-\lambda\,\Big]^{2}
+\end{equation}
+so that the eigenvalues are
+\begin{equation}
+  \vect{\lambda}
+  =\{\,\lambda_{1},\,\lambda_{2},\,\lambda_{3},\,\lambda_{4}\,\}
+  =\big\{\,\f{1}{2}\,\big(h^{1}\,\psi'+\sqrt{\Delta}\big),\,\f{1}{2}\,\big(h^{1}\,\psi'-\sqrt{\Delta}\big),\,\f{(3\,\psi-1)\,h^{1}}{2\,h},\,\f{(3\,\psi-1)\,h^{1}}{2\,h}\,\big\},
+\end{equation}
+where $\Delta=(\psi'-2\,h)^{2}+4(\psi-h^{2})$ \citep[cf.][]{pons_etal_2000}.  
+With the Eddington factor in Eq.~\eqref{eq:eddingtonFactor}, we have
+\begin{equation}
+  \psi'(h)=2\,h\,\big(\,2-h+4\,h^{2}\,\big)/5.  
+\end{equation}
+We then have, as expected, $\vect{\lambda}(h=0)=\{\,\sqrt{1/3},\,-\sqrt{1/3},\,0,\,0\,\}$ (diffusion limit) and $\vect{\lambda}(h=1)=\{\,h^{1},\,h^{1},\,h^{1},\,h^{1}\,\}$ (streaming limit).  
+
+The corresponding eigenvectors are given by the columns and rows, respectively of the matrices
+\begin{equation}
+  \cR^{1}
+  =\left[
+  \begin{array}{cccc}
+    1 & 1 & 0 & 0 \\
+    \lambda_{1} & \lambda_{2} & 0 & 0 \\
+    0 & 0 & 1 & 0 \\
+    0 & 0 & 0 & 1
+  \end{array}
+  \right]
+  \quad\text{and}\quad
+  \cL^{1}=(\cR^{1})^{-1}
+  =\left[
+  \begin{array}{cccc}
+  \lambda_{2}/(\lambda_{2}-\lambda_{1}) & 1/(\lambda_{1}-\lambda_{2}) & 0 & 0 \\
+  \lambda_{1}/(\lambda_{1}-\lambda_{2}) & 1/(\lambda_{2}-\lambda_{1}) & 0 & 0 \\
+  0 & 0 & 1 & 0 \\
+  0 & 0 & 0 & 1
+  \end{array}
+  \right].  
+\end{equation}
+
+\newpage
+
+\renewcommand{\thepage}{B-\arabic{page}} 
+\setcounter{page}{1}
+%\thispagestyle{mypagestylepublic}        % Use for "Not for public release." in footer with no page numbers
+%\thispagestyle{mypagestyleempty}    % Use for "OUO" in footer with no page numbers  
+\thispagestyle{empty}
+
+\vspace*{4in}
+\phantomsection
+\addcontentsline{toc}{section}{APPENDIX B. MOMENT EQUATIONS IN COMMONLY USED COORDINATE SYSTEMS}
+\begin{center}
+{\bf\Large{APPENDIX B. MOMENT EQUATIONS IN COMMONLY USED COORDINATE SYSTEMS}}
+\end{center}
+
+\clearemptydoublepage
+
+\newpage
+
+\renewcommand{\thepage}{B-\arabic{page}} 
+\setcounter{page}{3}
+
+\begin{center}
+{\bf\large {APPENDIX B.  MOMENT EQUATIONS IN COMMONLY USED COORDINATE SYSTEMS}}
+\end{center}
+\label{app:CurvilinearEuler}
+
+Here we provide explicit expressions for the hyperbolic part of the moment equations in cylindrical and spherical polar coordinates.  
+
+\subsection{CYLINDRICAL COORDINATES}
+
+Number conservation equation
+\begin{equation}
+  \pderiv{\cJ}{t}
+  +\f{1}{R}\pderiv{}{R}\Big(R\,\cH^{1}\Big)
+  +\pderiv{\cH^{2}}{z}
+  +\pderiv{\cH^{3}}{\phi}=0,
+\end{equation}
+number flux equation ($R$-component)
+\begin{equation}
+  \pderiv{\cH_{1}}{t}
+  +\f{1}{R}\pderiv{}{R}\Big(R\,\cK^{1}_{~1}\Big)
+  +\pderiv{\cK^{2}_{~1}}{z}
+  +\pderiv{\bcK^{3}_{~1}}{\phi}
+  =\f{\cK^{3}_{~3}}{R},
+\end{equation}
+number flux equation ($z$-component)
+\begin{equation}
+  \pderiv{\cH_{2}}{t}
+  +\f{1}{R}\pderiv{}{R}\Big(R\,\cK^{1}_{~2}\Big)
+  +\pderiv{\cK^{2}_{~2}}{z}
+  +\pderiv{\cK^{3}_{~3}}{\phi}=0,
+\end{equation}
+and the number flux equation ($\phi$-component)
+\begin{equation}
+  \pderiv{\cH_{3}}{t}
+  +\f{1}{R}\pderiv{}{R}\Big(R\,\cK^{1}_{~3}\Big)
+  +\pderiv{\cK^{2}_{~2}}{z}
+  +\pderiv{\cK^{3}_{3}}{\phi}=0.
+\end{equation}
+
+\subsection{SPHERICAL COORDINATES}
+
+Number conservation equation
+\begin{equation}
+  \pderiv{\cJ}{t}
+  +\f{1}{r^{2}}\pderiv{}{r}\Big(r^{2}\,\cH^{1}\Big)
+  +\f{1}{\sin\theta}\pderiv{}{\theta}\Big(\sin\theta\,\cH^{2}\Big)
+  +\pderiv{}{\phi}\Big(\cH^{3}\Big)=0,
+\end{equation}
+number flux equation ($r$-component)
+\begin{equation}
+  \pderiv{\cH_{1}}{t}
+  +\f{1}{r^{2}}\pderiv{}{r}\Big(r^{2}\,\cK^{1}_{~1}\Big)
+  +\f{1}{\sin\theta}\pderiv{}{\theta}\Big(\sin\theta\,\cK^{2}_{~1}\Big)
+  +\pderiv{\cK^{3}_{~1}}{\phi}
+  =\big(\cK^{2}_{~2}+\cK^{3}_{~3}\big)\f{1}{r},
+\end{equation}
+number flux equation ($\theta$-component)
+\begin{equation}
+  \pderiv{\cH_{2}}{t}
+  +\f{1}{r^{2}}\pderiv{}{r}\Big(r^{2}\,\cK^{1}_{~2}\Big)
+  +\f{1}{\sin\theta}\pderiv{}{\theta}\Big(\sin\theta\,\cK^{2}_{~2}\Big)
+  +\pderiv{\cK^{3}_{~2}}{\phi}
+  =\cK^{3}_{~3}\cot\theta,
+\end{equation}
+number flux equation ($\phi$-component)
+\begin{equation}
+  \pderiv{\cH_{3}}{t}
+  +\f{1}{r^{2}}\pderiv{}{r}\Big(\,r^{2}\,\cK^{1}_{~3}\,\Big)
+  +\f{1}{\sin\theta}\pderiv{}{\theta}\Big(\sin\theta\,\cK^{2}_{~3}\,\Big)
+  +\pderiv{\cK^{3}_{~3}}{\phi}=0.
+\end{equation}
+
+\end{document}

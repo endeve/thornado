@@ -1,0 +1,172 @@
+\section{Computing the Time-Step Using Higher-Order DG Schemes}
+
+When making the jump to higher-order DG schemes, we can simply do the same as in the first-order scheme, except we compute the quantities in all of the nodal points instead of using a cell-average. This is valid because the cell-average is a convex combination...\sd{Need to expand on this}. The proof starts with the discretized equation valid at each quadrature point, $q$:
+\begin{equation}
+    \bU_{q}^{n+1}=\bU_{q}^{n}+\Delta t\,\cL_{q}^{n},
+\end{equation}
+where $\cL_{q}^{n}$ is a general form of the RHS at time $t^{n}$. If we define a vector $\ol{\bU}\equiv\left(\bU_{1},\cdots,\bU_{q},\cdots,\bU_{Q}\right)^T$, where $Q$ is the total number of quadrature points, and $\ol{\bW}\equiv\left(\bW_{1},\cdots,\bW_{q},\cdots,\bW_{Q}\right)^T$ as a vector of quadrature weights, then we can write the cell-average of $\bU$ as:
+\begin{equation}
+    \bU_{K}\equiv\ol{\bW}^T\ol{\bU}.
+\end{equation}
+If we then compute the cell-average of the above equation, we get:
+\begin{equation}
+    \bU_{K}^{n+1}=\bU_{K}^{n}+\Delta t\,\ol{\bW}^{T}\,\ol{\cL}_{q}^{n}=\ol{\bW}^{T}\left(\ol{\bU}^{n}+\Delta t\,\ol{\cL}^{n}\right)
+\end{equation}
+
+\subsection{High-Order Time-Step Restriction for DG}
+
+\blue{NOTE:} This closely follows Jesse's document CFLCondition.pdf.
+
+Consider the one-dimensional system of hyperbolic balance equations:
+\begin{equation}\label{Eq:HypBalEqns}
+    \pd{\left(\sqrtgm\,\bU\right)}{t}+\pd{\left(\sqrtgm\,\bF^{1}\left(\bU\right)\right)}{1}=\sqrtgm\,\bQ,
+\end{equation}
+where $\bU$ is a vector of conserved variables, $\bF^{1}\left(\bU\right)$ are the fluxes of those conserved variables in the $x^{1}$-direction, $\bQ$ is a source term, and $\sqrtgm$ is the square-root of the determinant of the spatial three-metric.
+
+We define our reference element by:
+\begin{equation}
+    I_{j}\equiv\left\{x^{1}:x^{1}\in\left(x^{1}_{L},x^{1}_{H}\right)=\left(x^{1}_{\jmh},x^{1}_{\jph}\right)\right\}.
+\end{equation}
+
+We proceed by multiplying \eqref{Eq:HypBalEqns} with $v$, where $v=v\left(x^{1}\right)$ is a test function in the DG scheme, and integrate over the $\jth$ element:
+\begin{equation}
+    \int_{I_{j}}\pd{\left(\sqrtgm\,\bU\right)}{t}\,v\,dx^{1}+\int_{I_{j}}\pd{\left(\sqrtgm\,\bF^{1}\left(\bU\right)\right)}{1}\,v\,dx^{1}=\int_{I_{j}}\sqrtgm\,\bQ\,v\,dx^{1}.
+\end{equation}
+We now move the flux term to the RHS and perform integration-by-parts on it, yielding:
+\begin{equation}\label{Eq:IntByParts}
+    \int_{I_{j}}\pd{\left(\sqrtgm\,\bU\right)}{t}\,v\,dx^{1}=-\left[\sqrtgm\,\hat{\bF^{1}}\,v\Big|_{x^{1}_{H}}-\sqrtgm\,\hat{\bF^{1}}\,v\Big|_{x^{1}_{L}}\right]+\int_{I_{j}}\sqrtgm\,\bF^{1}\,\pd{v}{1}\,dx^{1}+\int_{I_{j}}\sqrtgm\,\bQ\,v\,dx^{1},
+\end{equation}
+where $\hat{\bF^{1}}$ is a numerical flux.
+
+\blue{NOTE:} $v=1$ is in the space of test functions for the DG method, \textit{and} $v=1$ yields the cell-average when substituted into \eqref{Eq:IntByParts}, therefore the DG method evolves the cell-average.
+
+Substituting $v=1$ into \eqref{Eq:IntByParts} yields:
+\begin{equation}\label{Eq:CellAverageDG}
+    \int_{I_{j}}\pd{\left(\sqrtgm\,\bU\right)}{t}\,dx^{1}=-\left[\sqrtgm\,\hat{\bF^{1}}\Big|_{x^{1}_{H}}-\sqrtgm\,\hat{\bF^{1}}\Big|_{x^{1}_{L}}\right]+\int_{I_{j}}\sqrtgm\,\bQ\,dx^{1}.
+\end{equation}
+Note that the volume-term has dropped out because the derivative of a constant is equal to zero.
+
+We define the cell-average of a quantity, $\bX=\bX\left(x^{1},t\right)$, as:
+\begin{equation}
+    \ol{\bX}\equiv\f{1}{\Delta V_{j}}\int_{I_{j}}\bX\,\sqrtgm\,dx^{1}.
+\end{equation}
+
+\red{NEW ASSUMPTION:} We assume that the spatial three-metric is explicitly independent of time. This allows us to pull the metric determinant out of the first integral, yielding for \eqref{Eq:CellAverageDG}:
+\begin{equation}
+    \f{d\,\ol{\bU}}{dt}=-\f{1}{\Delta V_{j}}\left[\sqrtgm\,\hat{\bF^{1}}\Big|_{x^{1}_{H}}-\sqrtgm\,\hat{\bF^{1}}\Big|_{x^{1}_{L}}\right]+\ol{\bQ}.
+\end{equation}
+
+\red{NEW ASSUMPTION:} We now specialize this to using the forward-Euler time-stepping algorithm, yielding:
+
+\begin{equation}
+    \ol{\bU}^{n+1}=\ol{\bU}^{n}-\f{\Delta t^{n}_{j}}{\Delta V_{j}}\left[\sqrtgm\,\hat{\bF^{1}}\Big|_{x^{1}_{H}}-\sqrtgm\,\hat{\bF^{1}}\Big|_{x^{1}_{L}}\right]^{n}+\Delta t^{n}_{j}\,\ol{\bQ}^{n}
+\end{equation}
+\blue{NOTE:} Since the spatial three-metric is explicitly independent of time, we don't need to specify the time-step at which the volume is computed (i.e. we don't have to write $\Delta V^{n}_{j}$).
+
+Now we define a parameter $\ve\in\left(0,1\right)$ a la \citet{ZS2011b} and re-write the above equation as:
+\begin{align}
+    \ol{\bU}^{n+1}&=\ve\left\{\ol{\bU}^{n}-\f{\Delta t^{n}_{j}}{\ve\,\Delta V_{j}}\left[\sqrtgm\,\hat{\bF^{1}}\Big|_{x^{1}_{H}}-\sqrtgm\,\hat{\bF^{1}}\Big|_{x^{1}_{L}}\right]^{n}\right\}+\left(1-\ve\right)\left\{\ol{\bU}^{n}+\f{\Delta t^{n}_{j}}{1-\ve}\,\ol{\bQ}^{n}\right\}\\
+    &=\ve\,\ol{\bH}_{1}+\left(1-\ve\right)\ol{\bH}_{2},
+\end{align}
+where
+\begin{equation}\label{Eq:H1}
+    \ol{\bH}_{1}\equiv\ol{\bU}^{n}-\f{\Delta t^{n}_{j}}{\ve\,\Delta V_{j}}\left[\sqrtgm\,\hat{\bF^{1}}\Big|_{x^{1}_{H}}-\sqrtgm\,\hat{\bF^{1}}\Big|_{x^{1}_{L}}\right]^{n},
+\end{equation}
+and
+\begin{equation}
+    \ol{\bH}_{2}\equiv\ol{\bU}^{n}+\f{\Delta t^{n}_{j}}{1-\ve}\,\ol{\bQ}^{n}.
+\end{equation}
+\red{NEW ASSUMPTION:} We assume that $\ol{\bU}^{n}\in\cG$, as defined in \citet{Mignone2005}.
+
+Assuming that $\ol{\bU}^{n}\in\cG$, we now seek to derive the conditions that guarantee $\ol{\bU}^{n+1}\in\cG$.
+
+\subsubsection{The numerical flux term: $\ol{\bH}_{1}$}
+
+We start by numerically computing the cell-average using quadrature with the Gauss-Lobatto quadrature rule. We assume that the DG approximation polynomial for the conserved variables is of order $k$, and that the order of the approximate solution is of order $k+d$, where $d$ is an integer that depends on the metric determinant. For the case of Cartesian coordinates, $d=0$ (because $\sqrtgm\sim x^{0}$), and for spherical-polar coordinates in spherical symmetry, $d=2$ (because $\sqrtgm\sim r^{2}$). Gauss-Lobatto integration will give an exact result if we choose a sufficiently high number, $M$, of quadrature points:
+\begin{equation}
+    2\,M-3\geq k+d\implies M\geq\f{k+d+3}{2}.
+\end{equation}
+
+\blue{NOTE:} We do not use this restriction in the code. We simply take $M$ equal to the number of quadrature points (which is the same as the number of interpolation points). The difference will be accounted for by the presence of the CFL number.
+
+\blue{NOTE:} We now drop the superscript $n$ for the rest of this subsection.
+
+Assuming that we choose a sufficient number of points, we can write the cell-average as:
+\begin{align}
+    \ol{\bU}=\f{1}{\Delta V_{j}}\sum\limits_{q=1}^{M}w_{q}\,\bU_{q}\,\sqrtgm_{q}\,\Delta x_{j}&=\f{\Delta x_{j}}{\Delta V_{j}}\sum\limits_{q=2}^{M-1}w_{q}\,\bU_{q}\,\sqrtgm_{q}+\f{\Delta x_{j}}{\Delta V_{j}}\,w_{1}\,\bU_{1}\,\sqrtgm_{1}+\f{\Delta x_{j}}{\Delta V_{j}}\,w_{M}\,\bU_{M}\,\sqrtgm_{M}\\
+    &=\f{\Delta x_{j}}{\Delta V_{j}}\sum\limits_{q=2}^{M-1}w_{q}\,\bU_{q}\,\sqrtgm_{q}+\f{\Delta x_{j}}{\Delta V_{j}}\,w_{1}\,\bU^{+}_{L}\,\sqrtgm_{L}+\f{\Delta x_{j}}{\Delta V_{j}}\,w_{M}\,\bU^{-}_{H}\,\sqrtgm_{H},\label{Eq:CellAverageGL}
+\end{align}
+where $w_{q}$ are the Gauss-Lobatto quadrature weights and $\bU_{q}=\bU\left(x_{q}\right)$, and $\sqrtgm_{q}=\sqrt{\gamma\left(x_{q}\right)}$. The quantity $\bU^{+}_{L}$ refers to the vector of conserved variables evaluated at the lower interface, but on the higher side, so that it is evaluated \textit{in} the $\jth$ cell. Similarly for $\bU^{-}_{H}$.
+
+Our approach is to use the end-points to balance the troublesome terms in the numerical fluxes.
+
+\red{NEW ASSUMPTION:} We now specialize to the local Lax-Friedrichs flux:
+\begin{align}
+    \hat{\bF}^{1}\Big|_{x^{1}_{L}}&=\hat{\bF}^{1}\left(\bU^{+}_{L},\bU^{-}_{L}\right)=\f{1}{2}\left[\bF^{1}\left(\bU^{+}_{L}\right)+\bF^{1}\left(\bU^{-}_{L}\right)-\alpha_{L}\left(\bU_{L}^{+}-\bU_{L}^{-}\right)\right]\\
+    &=\f{1}{2}\left\{-\alpha_{L}\left[\bU^{+}_{L}-\f{1}{\alpha_{L}}\,\bF^{1}\left(\bU^{+}_{L}\right)\right]+\alpha_{L}\left[\bU^{-}_{L}+\f{1}{\alpha_{L}}\,\bF^{1}\left(\bU^{-}_{L}\right)\right]\right\},
+\end{align}
+and
+\begin{align}
+    \hat{\bF}^{1}\Big|_{x^{1}_{H}}&=\hat{\bF}^{1}\left(\bU^{+}_{H},\bU^{-}_{H}\right)=\f{1}{2}\left[\bF^{1}\left(\bU^{+}_{H}\right)+\bF^{1}\left(\bU^{-}_{H}\right)-\alpha_{H}\left(\bU_{H}^{+}-\bU_{H}^{-}\right)\right]\\
+    &=\f{1}{2}\left\{-\alpha_{H}\left[\bU^{+}_{H}-\f{1}{\alpha_{H}}\,\bF^{1}\left(\bU^{+}_{H}\right)\right]+\alpha_{H}\left[\bU^{-}_{H}+\f{1}{\alpha_{H}}\,\bF^{1}\left(\bU^{-}_{H}\right)\right]\right\},
+\end{align}
+where $\alpha_{H}=\text{max}\left(\alpha_{j},\alpha_{j+1}\right)$ and $\alpha_{L}=\text{max}\left(\alpha_{j-1},\alpha_{j}\right)$ are the largest (in magnitude) wavespeeds as given by the flux-Jacobian.
+Now we substitute these expressions along with \eqref{Eq:CellAverageGL} into \eqref{Eq:H1}:
+\begin{align}
+    \ol{\bH}_{1}=&\f{\Delta x_{j}}{\Delta V_{j}}\sum\limits_{q=2}^{M-1}w_{q}\,\bU_{q}\,\sqrtgm_{q}+\f{\Delta x_{j}}{\Delta V_{j}}\,w_{1}\,\bU^{+}_{L}\,\sqrtgm_{L}+\f{\Delta x_{j}}{\Delta V_{j}}\,w_{M}\,\bU^{-}_{H}\,\sqrtgm_{H}\\
+    &-\f{\Delta t_{j}}{\ve\,\Delta V_{j}}\left[\sqrtgm_{H}\f{1}{2}\left\{-\alpha_{H}\left[\bU^{+}_{H}-\f{1}{\alpha_{H}}\,\bF^{1}\left(\bU^{+}_{H}\right)\right]+\alpha_{H}\left[\bU^{-}_{H}+\f{1}{\alpha_{H}}\,\bF^{1}\left(\bU^{-}_{H}\right)\right]\right\}\right]\\
+    &+\f{\Delta t_{j}}{\ve\,\Delta V_{j}}\left[\sqrtgm_{L}\f{1}{2}\left\{-\alpha_{L}\left[\bU^{+}_{L}-\f{1}{\alpha_{L}}\,\bF^{1}\left(\bU^{+}_{L}\right)\right]+\alpha_{L}\left[\bU^{-}_{L}+\f{1}{\alpha_{L}}\,\bF^{1}\left(\bU^{-}_{L}\right)\right]\right\}\right].
+\end{align}
+Now we combine terms with common factors of the metric determinant:
+\begin{align}
+    \ol{\bH}_{1}=&\f{\Delta x_{j}}{\Delta V_{j}}\sum\limits_{q=2}^{M-1}w_{q}\,\bU_{q}\,\sqrtgm_{q}\\
+    &+\f{\sqrtgm_{L}}{\Delta V_{j}}\left\{\Delta x_{j}\,w_{1}\,\bU^{+}_{L}+\f{\Delta t_{j}\,\alpha_{L}}{2\,\ve}\left(-\left[\bU^{+}_{L}-\f{1}{\alpha_{L}}\,\bF^{1}\left(\bU^{+}_{L}\right)\right]+\left[\bU^{-}_{L}+\f{1}{\alpha_{L}}\,\bF^{1}\left(\bU^{-}_{L}\right)\right]\right)\right\}\\
+    &+\f{\sqrtgm_{H}}{\Delta V_{j}}\left\{\Delta x_{j}\,w_{M}\,\bU^{-}_{H}-\f{\Delta t_{j}\,\alpha_{H}}{2\,\ve}\left(-\left[\bU^{+}_{H}-\f{1}{\alpha_{H}}\,\bF^{1}\left(\bU^{+}_{H}\right)\right]+\left[\bU^{-}_{H}+\f{1}{\alpha_{H}}\,\bF^{1}\left(\bU^{-}_{H}\right)\right]\right)\right\}.
+\end{align}
+Next we factor out $\Delta x_{j}$ and the quadrature weights, yielding:
+\begin{align}
+    \ol{\bH}_{1}=&\f{\Delta x_{j}}{\Delta V_{j}}\sum\limits_{q=2}^{M-1}w_{q}\,\bU_{q}\,\sqrtgm_{q}\\
+    &+\f{\sqrtgm_{L}\,\Delta x_{j}\,w_{1}}{\Delta V_{j}}\left\{\bU^{+}_{L}+\f{\Delta t_{j}\,\alpha_{L}}{2\,\ve\,\Delta x_{j}\,w_{1}}\left(-\left[\bU^{+}_{L}-\f{1}{\alpha_{L}}\,\bF^{1}\left(\bU^{+}_{L}\right)\right]+\left[\bU^{-}_{L}+\f{1}{\alpha_{L}}\,\bF^{1}\left(\bU^{-}_{L}\right)\right]\right)\right\}\\
+    &+\f{\sqrtgm_{H}\,\Delta x_{j}\,w_{M}}{\Delta V_{j}}\left\{\bU^{-}_{H}-\f{\Delta t_{j}\,\alpha_{H}}{2\,\ve\,\Delta x_{j}\,w_{M}}\left(-\left[\bU^{+}_{H}-\f{1}{\alpha_{H}}\,\bF^{1}\left(\bU^{+}_{H}\right)\right]+\left[\bU^{-}_{H}+\f{1}{\alpha_{H}}\,\bF^{1}\left(\bU^{-}_{H}\right)\right]\right)\right\}.
+\end{align}
+Next we re-write the $\bU^{+}_{L}$ and $\bU^{-}_{H}$ that appear with the flux terms:
+\begin{align}
+    \bU^{+}_{L}&=2\,\bU^{+}_{L}-\bU^{+}_{L}\\
+    \bU^{-}_{H}&=2\,\bU^{-}_{H}-\bU^{-}_{H}.
+\end{align}
+This gives:
+\begin{align}
+    \ol{\bH}_{1}=&\f{\Delta x_{j}}{\Delta V_{j}}\sum\limits_{q=2}^{M-1}w_{q}\,\bU_{q}\,\sqrtgm_{q}\\
+    &+\f{\sqrtgm_{L}\,\Delta x_{j}\,w_{1}}{\Delta V_{j}}\left\{\bU^{+}_{L}+\f{\Delta t_{j}\,\alpha_{L}}{2\,\ve\,\Delta x_{j}\,w_{1}}\left(-\left[2\,\bU^{+}_{L}-\bU^{+}_{L}-\f{1}{\alpha_{L}}\,\bF^{1}\left(\bU^{+}_{L}\right)\right]+\left[\bU^{-}_{L}+\f{1}{\alpha_{L}}\,\bF^{1}\left(\bU^{-}_{L}\right)\right]\right)\right\}\\
+    &+\f{\sqrtgm_{H}\,\Delta x_{j}\,w_{M}}{\Delta V_{j}}\left\{\bU^{-}_{H}-\f{\Delta t_{j}\,\alpha_{H}}{2\,\ve\,\Delta x_{j}\,w_{M}}\left(-\left[\bU^{+}_{H}-\f{1}{\alpha_{H}}\,\bF^{1}\left(\bU^{+}_{H}\right)\right]+\left[2\,\bU^{-}_{H}-\bU^{-}_{H}+\f{1}{\alpha_{H}}\,\bF^{1}\left(\bU^{-}_{H}\right)\right]\right)\right\}.
+\end{align}
+This allows us to write the expression with factors similar to those in \citet{Qin2016}. We find:
+\begin{align}
+    \ol{\bH}_{1}=&\f{\Delta x_{j}}{\Delta V_{j}}\sum\limits_{q=2}^{M-1}w_{q}\,\bU_{q}\,\sqrtgm_{q}\\
+    &+\f{\sqrtgm_{L}\,\Delta x_{j}\,w_{1}}{\Delta V_{j}}\left\{\bU^{+}_{L}\left(1-\f{\Delta t_{j}\,\alpha_{L}}{\ve\,\Delta x_{j}\,w_{1}}\right)+\f{\Delta t_{j}\,\alpha_{L}}{2\,\ve\,\Delta x_{j}\,w_{1}}\left(\left[\bU^{+}_{L}+\f{1}{\alpha_{L}}\,\bF^{1}\left(\bU^{+}_{L}\right)\right]+\left[\bU^{-}_{L}+\f{1}{\alpha_{L}}\,\bF^{1}\left(\bU^{-}_{L}\right)\right]\right)\right\}\\
+    &+\f{\sqrtgm_{H}\,\Delta x_{j}\,w_{M}}{\Delta V_{j}}\left\{\bU^{-}_{H}\left(1-\f{\Delta t_{j}\,\alpha_{H}}{\ve\,\Delta x_{j}\,w_{M}}\right)+\f{\Delta t_{j}\,\alpha_{H}}{2\,\ve\,\Delta x_{j}\,w_{M}}\left(\left[\bU^{+}_{H}-\f{1}{\alpha_{H}}\,\bF^{1}\left(\bU^{+}_{H}\right)\right]+\left[\bU^{-}_{H}-\f{1}{\alpha_{H}}\,\bF^{1}\left(\bU^{-}_{H}\right)\right]\right)\right\}.
+\end{align}
+All of the terms in the square brackets are similar the the $\bH$ quantities in \citet{Qin2016} and therefore belong to the set of admissible states, provided that:
+\begin{equation}
+    \alpha_{L/H}=\alpha^{*}\geq\f{\left|v^{1}\right|\left(h+1-2\,h\,\tau\right)\,W^{2}+\sqrt{\tau^{4}\left(h-1\right)^{2}+\tau^{2}\left(h-1\right)\left(h+1-2\,h\,\tau\right)}}{W^{2}\left(h+1-2\,h\,\tau\right)+\tau^{2}\left(h-1\right)},
+\end{equation}
+where $h$ is the relativistic specific enthalpy and
+\begin{equation}
+    \tau\equiv\f{\Gamma-1}{\Gamma},
+\end{equation}
+where $\Gamma$ is the adiabatic index.
+
+We see that the expressions in the curly brackets are convex combinations (given a restriction on $\Delta t_{j}$), because the coefficients sum to unity. Since the quadrature weights are symmetric (so $w_{1}=w_{M}\equiv w_{GL}$), we find that the condition for $\ol{\bH}_{1}\in\cG$ is a time-step restriction:
+\begin{equation}
+\Delta t_{j}<\ve\,\Delta x_{j}\,w_{GL}\,\text{min}\left(\f{1}{\alpha_{L}},\f{1}{\alpha_{H}},\f{1}{\alpha^{*}}\right)
+\end{equation}
+Since we want a time-step that is constant for all elements, we choose:
+\begin{equation}
+\Delta t<\ve\,w_{GL}\,\text{min}_{j}\left(\f{\Delta x_{j}}{\text{max}\left(\alpha_{L},\alpha_{H},\alpha^{*}\right)}\right).
+\end{equation}
+
+\red{NEW ASSUMPTION:} In order for this to work, we also demand that all of the $\bU_{q}$ are within physical bounds.
+
+\blue{NOTE:} We see the effect of the high-order approximation in the presence of the quadrature end-point weight $w_{GL}$. As the order increases, $w_{GL}$ decreases, thus making a tighter restriction on the time-step.
+
+\blue{NOTE:} It is worth noting that this result is \textit{not} independent of the metric, because it is incorporated through the wave-speed in the numerical flux.

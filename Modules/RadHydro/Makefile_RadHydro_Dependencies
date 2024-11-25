@@ -1,0 +1,386 @@
+TallyModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  TallyModule.f90
+
+GravitySolutionUtilitiesModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  GravitySolutionUtilitiesModule.f90
+
+GravitySolutionModule_Newtonian_PointMass_Old.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  GravitySolutionModule_Newtonian_PointMass_Old.f90
+
+GravitySolutionModule_Newtonian_Poseidon_Old.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  GravitySolutionUtilitiesModule.o \
+  GravitySolutionModule_Newtonian_Poseidon_Old.F90
+
+GravitySolutionModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  MeshModule.o \
+  GravitySolutionModule_Newtonian_PointMass_Old.o \
+  GravitySolutionModule_Newtonian_Poseidon_Old.o \
+  GravitySolutionModule.f90
+
+RiemannSolverModule.o: \
+  KindModule.o \
+  FluidFieldsModule.o \
+  GeometryFieldsModule.o \
+  RiemannSolverModule.f90
+
+EulerEquationsUtilitiesModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  ReferenceElementModuleX.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  GravitySolutionModule.o \
+  EulerEquationsUtilitiesModule.f90
+
+EulerEquationsUtilitiesModule_TABLE.o: \
+  KindModule.o \
+  UnitsModule.o \
+  EquationOfStateModule_TABLE.o \
+  EulerEquationsUtilitiesModule_TABLE.f90
+
+EulerEquationsSolutionModule_DG.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule.o \
+  RiemannSolverModule.o \
+  EulerEquationsUtilitiesModule.o \
+  EulerEquationsSolutionModule_DG.f90
+
+EulerEquationsLimiterUtilitiesModule_DG.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  MeshModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  PolynomialBasisMappingModule.o \
+  FluidFieldsModule.o \
+  EulerEquationsLimiterUtilitiesModule_DG.f90
+
+EulerEquationsLimiterModule_DG.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  PolynomialBasisModule_Legendre.o \
+  MeshModule.o \
+  EulerEquationsLimiterUtilitiesModule_DG.o \
+  EulerEquationsLimiterModule_DG.f90
+
+EulerEquationsSlopeLimiterModule_DG_IDEAL.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  PolynomialBasisMappingModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule.o \
+  EulerEquationsUtilitiesModule.o \
+  EulerEquationsLimiterUtilitiesModule_DG.o \
+  EulerEquationsLimiterModule_DG.o \
+  EulerEquationsSlopeLimiterModule_DG_IDEAL.f90
+
+EulerEquationsPositivityLimiterModule_DG_IDEAL.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  PolynomialBasisModule_Legendre.o \
+  PolynomialBasisMappingModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  EulerEquationsUtilitiesModule.o \
+  EulerEquationsLimiterUtilitiesModule_DG.o \
+  EulerEquationsLimiterModule_DG.o \
+  EulerEquationsPositivityLimiterModule_DG_IDEAL.f90
+
+EulerEquationsSlopeLimiterModule_DG_TABLE.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  PolynomialBasisMappingModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule.o \
+  EulerEquationsUtilitiesModule.o \
+  EulerEquationsUtilitiesModule_TABLE.o \
+  EulerEquationsLimiterUtilitiesModule_DG.o \
+  EulerEquationsLimiterModule_DG.o \
+  EulerEquationsSlopeLimiterModule_DG_TABLE.f90
+
+EulerEquationsPositivityLimiterModule_DG_TABLE.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  PolynomialBasisModule_Legendre.o \
+  PolynomialBasisMappingModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule_TABLE.o \
+  EulerEquationsUtilitiesModule.o \
+  EulerEquationsLimiterUtilitiesModule_DG.o \
+  EulerEquationsLimiterModule_DG.o \
+  EulerEquationsPositivityLimiterModule_DG_TABLE.f90
+
+EulerEquationsUtilitiesModule_GR.o: \
+  KindModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule.o \
+  EulerEquationsUtilitiesModule_GR.f90
+
+EulerEquationsSolutionModule_DG_GR.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  EulerEquationsUtilitiesModule_GR.o \
+  EulerEquationsSolutionModule_DG_GR.f90
+
+FluidEvolutionModule.o: \
+  KindModule.o \
+  EquationOfStateModule.o \
+  EulerEquationsSolutionModule_DG.o \
+  EulerEquationsLimiterModule_DG.o \
+  EulerEquationsSlopeLimiterModule_DG_IDEAL.o \
+  EulerEquationsPositivityLimiterModule_DG_IDEAL.o \
+  EulerEquationsSlopeLimiterModule_DG_TABLE.o \
+  EulerEquationsPositivityLimiterModule_DG_TABLE.o \
+  EulerEquationsSolutionModule_DG_GR.o \
+  FluidEvolutionModule.f90
+
+MomentEquationsUtilitiesModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  GeometryFieldsModule.o \
+  RadiationFieldsModule.o \
+  MomentEquationsUtilitiesModule.f90
+
+MomentEquationsSolutionModule_M1_DG.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  RadiationFieldsModule.o \
+  RiemannSolverModule.o \
+  MomentEquationsUtilitiesModule.o \
+  MomentEquationsSolutionModule_M1_DG.f90
+
+MomentEquationsLimiterUtilitiesModule_DG.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModule.o \
+  UtilitiesModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  PolynomialBasisMappingModule.o \
+  MeshModule.o \
+  RadiationFieldsModule.o \
+  MomentEquationsLimiterUtilitiesModule_DG.f90
+
+MomentEquationsLimiterModule_DG.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  PolynomialBasisModule_Legendre.o \
+  MeshModule.o \
+  MomentEquationsLimiterUtilitiesModule_DG.o \
+  MomentEquationsLimiterModule_DG.f90
+
+MomentEquationsSlopeLimiterModule_DG.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  PolynomialBasisMappingModule.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  RadiationFieldsModule.o \
+  MomentEquationsUtilitiesModule.o \
+  MomentEquationsLimiterUtilitiesModule_DG.o \
+  MomentEquationsLimiterModule_DG.o \
+  MomentEquationsSlopeLimiterModule_DG.f90
+
+MomentEquationsPositivityLimiterModule_DG.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModule.o \
+  PolynomialBasisModule_Lagrange.o \
+  PolynomialBasisModule_Legendre.o \
+  PolynomialBasisMappingModule.o \
+  GeometryFieldsModule.o \
+  RadiationFieldsModule.o \
+  MomentEquationsLimiterUtilitiesModule_DG.o \
+  MomentEquationsLimiterModule_DG.o \
+  MomentEquationsPositivityLimiterModule_DG.f90
+
+RadiationEvolutionModule.o: \
+  KindModule.o \
+  MomentEquationsSlopeLimiterModule_DG.o \
+  MomentEquationsPositivityLimiterModule_DG.o \
+  MomentEquationsSolutionModule_M1_DG.o \
+  MomentEquationsLimiterModule_DG.o \
+  RadiationEvolutionModule.f90
+
+FluidRadiationCouplingUtilitiesModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleE.o \
+  UtilitiesModule.o \
+  MeshModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  FluidRadiationCouplingUtilitiesModule.f90
+
+FluidRadiationCouplingSolutionModule_ConstantOpacities.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  MomentEquationsUtilitiesModule.o \
+  FluidRadiationCouplingUtilitiesModule.o \
+  OpacityModule.o \
+  FluidRadiationCouplingSolutionModule_ConstantOpacities.f90
+
+FluidRadiationCouplingSolutionModule_ThermalReservoir.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  MomentEquationsUtilitiesModule.o \
+  FluidRadiationCouplingUtilitiesModule.o \
+  OpacityModule.o \
+  FluidRadiationCouplingSolutionModule_ThermalReservoir.f90
+
+FluidRadiationCouplingSolutionModule_ThermalReservoir.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  MomentEquationsUtilitiesModule.o \
+  FluidRadiationCouplingUtilitiesModule.o \
+  OpacityModule.o \
+  FluidRadiationCouplingSolutionModule_ThermalReservoir.f90
+
+FluidRadiationCouplingSolutionModule_EmissionAbsorption.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  FluidFieldsModule.o \
+  EulerEquationsUtilitiesModule.o \
+  RadiationFieldsModule.o \
+  MomentEquationsUtilitiesModule.o \
+  FluidRadiationCouplingUtilitiesModule.o \
+  EquationOfStateModule.o \
+  OpacityModule.o \
+  FluidRadiationCouplingSolutionModule_EmissionAbsorption.f90
+
+FluidRadiationCouplingSolutionModule_ElasticScattering.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  MomentEquationsUtilitiesModule.o \
+  FluidRadiationCouplingUtilitiesModule.o \
+  OpacityModule.o \
+  FluidRadiationCouplingSolutionModule_ElasticScattering.f90
+
+FluidRadiationCouplingSolutionModule_NES.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  FluidFieldsModule.o \
+  EulerEquationsUtilitiesModule.o \
+  RadiationFieldsModule.o \
+  MomentEquationsUtilitiesModule.o \
+  FluidRadiationCouplingUtilitiesModule.o \
+  EquationOfStateModule.o \
+  OpacityModule.o \
+  FluidRadiationCouplingSolutionModule_NES.f90
+
+FluidRadiationCouplingSolutionModule_B85.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  FluidFieldsModule.o \
+  EulerEquationsUtilitiesModule.o \
+  RadiationFieldsModule.o \
+  MomentEquationsUtilitiesModule.o \
+  FluidRadiationCouplingUtilitiesModule.o \
+  EquationOfStateModule.o \
+  OpacityModule.o \
+  FluidRadiationCouplingSolutionModule_B85.f90
+
+FluidRadiationCouplingSolutionModule_Explicit.o: \
+  KindModule.o \
+  FluidRadiationCouplingSolutionModule_Explicit.f90
+
+FluidRadiationCouplingModule.o: \
+  KindModule.o \
+  FluidRadiationCouplingSolutionModule_ThermalReservoir.o \
+  FluidRadiationCouplingSolutionModule_EmissionAbsorption.o \
+  FluidRadiationCouplingSolutionModule_ElasticScattering.o \
+  FluidRadiationCouplingSolutionModule_NES.o \
+  FluidRadiationCouplingSolutionModule_B85.o \
+  FluidRadiationCouplingModule.f90
+
+ApplicationBoundaryConditionsModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  MeshModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  EquationOfStateModule.o \
+  EulerEquationsUtilitiesModule.o \
+  ApplicationBoundaryConditionsModule.f90
+
+BoundaryConditionsModule.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  ApplicationBoundaryConditionsModule.o \
+  BoundaryConditionsModule.f90

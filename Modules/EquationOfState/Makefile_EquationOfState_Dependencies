@@ -1,0 +1,40 @@
+EquationOfStateModule_IDEAL.o: \
+  KindModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule_IDEAL.F90
+
+ifneq ($(MICROPHYSICS),WEAKLIB)
+EquationOfStateModule_TABLE.o: \
+  KindModule.o \
+  UnitsModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule_TABLE.F90
+else ifdef LIBNAME
+EquationOfStateModule_TABLE.o: \
+  KindModule.o \
+  UnitsModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule_TABLE.F90
+else
+EquationOfStateModule_TABLE.o: \
+  wlIOModuleHDF.o \
+  wlEOSIOModuleHDF.o \
+  wlEquationOfStateTableModule.o \
+  wlEOSInversionModule.o \
+  wlInterpolationModule.o \
+  KindModule.o \
+  UnitsModule.o \
+  DeviceModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule_TABLE.F90
+endif
+
+EquationOfStateModule.o: \
+  KindModule.o \
+  EquationOfStateModule_IDEAL.o \
+  EquationOfStateModule_TABLE.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  UtilitiesModule.o \
+  FluidFieldsModule.o \
+  EquationOfStateModule.F90
