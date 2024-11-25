@@ -91,26 +91,52 @@ MODULE RadiationFieldsModule
   ! --- Grey (Energy-Integrated) Radiation Variables ---
 
   INTEGER, PUBLIC, PARAMETER :: iGR_N   = 1  ! Eulerian   Number Density
-  INTEGER, PUBLIC, PARAMETER :: iGR_D   = 2  ! Lagrangian Number Density
-  INTEGER, PUBLIC, PARAMETER :: iGR_I1  = 3  ! Lagrangian Number Flux 1
-  INTEGER, PUBLIC, PARAMETER :: iGR_I2  = 4  ! Lagrangian Number Flux 2
-  INTEGER, PUBLIC, PARAMETER :: iGR_I3  = 5  ! Lagrangian Number Flux 3
-  INTEGER, PUBLIC, PARAMETER :: iGR_J   = 6  ! Lagrangian Energy Density
-  INTEGER, PUBLIC, PARAMETER :: iGR_H1  = 7  ! Lagrangian Energy Flux 1
-  INTEGER, PUBLIC, PARAMETER :: iGR_H2  = 8  ! Lagrangian Energy Flux 2
-  INTEGER, PUBLIC, PARAMETER :: iGR_H3  = 9  ! Lagrangian Energy Flux 3
-  INTEGER, PUBLIC, PARAMETER :: iGR_RMS = 10 ! RMS Energy
-  INTEGER, PUBLIC, PARAMETER :: iGR_F   = 11 ! Flux Factor
-  INTEGER, PUBLIC, PARAMETER :: iGR_K   = 12 ! Eddington Factor
-  INTEGER, PUBLIC, PARAMETER :: iGR_Q   = 13 ! Heat Flux Factor
-  INTEGER, PUBLIC, PARAMETER :: nGR     = 13 ! n Gray Radiation Fields
+  INTEGER, PUBLIC, PARAMETER :: iGR_G1  = 2  ! Eulerian   Number Flux 1
+  INTEGER, PUBLIC, PARAMETER :: iGR_G2  = 3  ! Eulerian   Number Flux 2
+  INTEGER, PUBLIC, PARAMETER :: iGR_G3  = 4  ! Eulerian   Number Flux 3
+  INTEGER, PUBLIC, PARAMETER :: iGR_D   = 5  ! Lagrangian Number Density
+  INTEGER, PUBLIC, PARAMETER :: iGR_I1  = 6  ! Lagrangian Number Flux 1
+  INTEGER, PUBLIC, PARAMETER :: iGR_I2  = 7  ! Lagrangian Number Flux 2
+  INTEGER, PUBLIC, PARAMETER :: iGR_I3  = 8  ! Lagrangian Number Flux 3
+  INTEGER, PUBLIC, PARAMETER :: iGR_E   = 9  ! Eulerian   Energy Density
+  INTEGER, PUBLIC, PARAMETER :: iGR_P1  = 10 ! Eulerian   Energy Flux 1
+  INTEGER, PUBLIC, PARAMETER :: iGR_P2  = 11 ! Eulerian   Energy Flux 2
+  INTEGER, PUBLIC, PARAMETER :: iGR_P3  = 12 ! Eulerian   Energy Flux 3
+  INTEGER, PUBLIC, PARAMETER :: iGR_S11 = 13 ! Eulerian   Energy Pressure 11
+  INTEGER, PUBLIC, PARAMETER :: iGR_S12 = 14 ! Eulerian   Energy Pressure 12
+  INTEGER, PUBLIC, PARAMETER :: iGR_S13 = 15 ! Eulerian   Energy Pressure 13
+  INTEGER, PUBLIC, PARAMETER :: iGR_S22 = 16 ! Eulerian   Energy Pressure 22
+  INTEGER, PUBLIC, PARAMETER :: iGR_S23 = 17 ! Eulerian   Energy Pressure 23
+  INTEGER, PUBLIC, PARAMETER :: iGR_S33 = 18 ! Eulerian   Energy Pressure 33
+  INTEGER, PUBLIC, PARAMETER :: iGR_J   = 19 ! Lagrangian Energy Density
+  INTEGER, PUBLIC, PARAMETER :: iGR_H1  = 20 ! Lagrangian Energy Flux 1
+  INTEGER, PUBLIC, PARAMETER :: iGR_H2  = 21 ! Lagrangian Energy Flux 2
+  INTEGER, PUBLIC, PARAMETER :: iGR_H3  = 22 ! Lagrangian Energy Flux 3
+  INTEGER, PUBLIC, PARAMETER :: iGR_RMS = 23 ! RMS Energy
+  INTEGER, PUBLIC, PARAMETER :: iGR_F   = 24 ! Flux Factor
+  INTEGER, PUBLIC, PARAMETER :: iGR_K   = 25 ! Eddington Factor
+  INTEGER, PUBLIC, PARAMETER :: iGR_Q   = 26 ! Heat Flux Factor
+  INTEGER, PUBLIC, PARAMETER :: nGR     = 26 ! n Gray Radiation Fields
 
   CHARACTER(34), DIMENSION(nGR), PUBLIC, PARAMETER :: &
     namesGR = [ 'Eulerian Number Density           ', &
+                'Eulerian Number Flux Density (1)  ', &
+                'Eulerian Number Flux Density (2)  ', &
+                'Eulerian Number Flux Density (3)  ', &
                 'Lagrangian Number Density         ', &
                 'Lagrangian Number Flux Density (1)', &
                 'Lagrangian Number Flux Density (2)', &
                 'Lagrangian Number Flux Density (3)', &
+                'Eulerian Energy Density           ', &
+                'Eulerian Energy Flux Density (1)  ', &
+                'Eulerian Energy Flux Density (2)  ', &
+                'Eulerian Energy Flux Density (3)  ', &
+                'Eulerian Energy Pressure (11)     ', &
+                'Eulerian Energy Pressure (12)     ', &
+                'Eulerian Energy Pressure (13)     ', &
+                'Eulerian Energy Pressure (22)     ', &
+                'Eulerian Energy Pressure (23)     ', &
+                'Eulerian Energy Pressure (33)     ', &
                 'Lagrangian Energy Density         ', &
                 'Lagrangian Energy Flux Density (1)', &
                 'Lagrangian Energy Flux Density (2)', &
@@ -122,10 +148,23 @@ MODULE RadiationFieldsModule
 
   CHARACTER(6), DIMENSION(nGR), PUBLIC, PARAMETER :: &
     ShortNamesGR = [ 'GR_N  ', &
+                     'GR_G1 ', &
+                     'GR_G2 ', &
+                     'GR_G3 ', &
                      'GR_D  ', &
                      'GR_I1 ', &
                      'GR_I2 ', &
                      'GR_I3 ', &
+                     'GR_E  ', &
+                     'GR_P1 ', &
+                     'GR_P2 ', &
+                     'GR_P3 ', &
+                     'GR_S11', &
+                     'GR_S12', &
+                     'GR_S13', &
+                     'GR_S22', &
+                     'GR_S23', &
+                     'GR_S33', &
                      'GR_J  ', &
                      'GR_H1 ', &
                      'GR_H2 ', &

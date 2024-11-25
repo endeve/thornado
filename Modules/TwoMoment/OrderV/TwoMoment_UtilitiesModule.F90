@@ -48,8 +48,11 @@ MODULE TwoMoment_UtilitiesModule
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
     nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, &
     nAR, iAR_F, iAR_K , iAR_Q, &
-    nGR, iGR_N, &
+    nGR, iGR_N, iGR_G1, iGR_G2, iGR_G3, &
          iGR_D, iGR_I1, iGR_I2, iGR_I3, &
+         iGR_E, iGR_P1, iGR_P2, iGR_P3, &
+         iGR_S11, iGR_S12, iGR_S13, &
+         iGR_S22, iGR_S23, iGR_S33, &
          iGR_J, iGR_H1, iGR_H2, iGR_H3, &
          iGR_RMS, iGR_F, iGR_K, iGR_Q
   USE TwoMoment_ClosureModule, ONLY: &
@@ -95,6 +98,7 @@ MODULE TwoMoment_UtilitiesModule
   PUBLIC :: FaceVelocity_X1
   PUBLIC :: FaceVelocity_X2
   PUBLIC :: FaceVelocity_X3
+  PUBLIC :: EulerianEnergyMoments
 
   INTERFACE ComputePrimitive_TwoMoment
     MODULE PROCEDURE ComputePrimitive_TwoMoment_Scalar_Richardson
@@ -1657,6 +1661,9 @@ CONTAINS
     REAL(DP) :: W3_RMS(1:nDOFE,iZ_B0(1):iZ_E0(1))
     REAL(DP) :: W5_RMS(1:nDOFE,iZ_B0(1):iZ_E0(1))
 
+    REAL(DP) :: P_d_1, P_d_2, P_d_3
+    REAL(DP) :: S_uu_11, S_uu_12, S_uu_13, S_uu_22, S_uu_23, S_uu_33
+
     IF( UnitsActive )THEN
 
       hc3 = ( PlanckConstant * SpeedOfLight )**3
@@ -1732,6 +1739,18 @@ CONTAINS
             = GR(iNodeX,iZ2,iZ3,iZ4,iGR_N,iS) &
                 + W2(iNodeE,iZ1) * CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS)
 
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_G1,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_G1,iS) &
+                + W2(iNodeE,iZ1) * CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_G2,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_G2,iS) &
+                + W2(iNodeE,iZ1) * CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_G3,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_G3,iS) &
+                + W2(iNodeE,iZ1) * CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS)
+
           GR(iNodeX,iZ2,iZ3,iZ4,iGR_D,iS) &
             = GR(iNodeX,iZ2,iZ3,iZ4,iGR_D,iS) &
                 + W2(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
@@ -1747,6 +1766,51 @@ CONTAINS
           GR(iNodeX,iZ2,iZ3,iZ4,iGR_I3,iS) &
             = GR(iNodeX,iZ2,iZ3,iZ4,iGR_I3,iS) &
                 + W2(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS)
+
+          CALL EulerianEnergyMoments( PR(iNodeX,iZ1,iZ2,iZ3,iZ4,iPR_D,iS),     &
+                                      PR(iNodeX,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS),    &
+                                      PR(iNodeX,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS),    &
+                                      PR(iNodeX,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS),    &
+                                      AR(iNodeX,iZ1,iZ2,iZ3,iZ4,iAR_K,iS),     &
+                                      PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1),       &
+                                      PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2),       &
+                                      PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3),       &
+                                      GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
+                                      GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
+                                      GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33), &
+                                      E, P_d_1, P_d_2, P_d_3,                  &
+                                      S_uu_11, S_uu_12, S_uu_13,               &
+                                      S_uu_22, S_uu_23, S_uu_33 )
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_E,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_E,iS) + W3(iNodeE,iZ1) * E
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_P1,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_P1,iS) + W3(iNodeE,iZ1) * P_d_1
+          
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_P2,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_P2,iS) + W3(iNodeE,iZ1) * P_d_2
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_P3,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_P3,iS) + W3(iNodeE,iZ1) * P_d_3
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_S11,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_S11,iS) + W3(iNodeE,iZ1) * S_uu_11
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_S12,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_S12,iS) + W3(iNodeE,iZ1) * S_uu_12
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_S13,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_S13,iS) + W3(iNodeE,iZ1) * S_uu_13
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_S22,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_S22,iS) + W3(iNodeE,iZ1) * S_uu_22
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_S23,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_S23,iS) + W3(iNodeE,iZ1) * S_uu_23
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_S33,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_S33,iS) + W3(iNodeE,iZ1) * S_uu_33
 
           GR(iNodeX,iZ2,iZ3,iZ4,iGR_J,iS) &
             = GR(iNodeX,iZ2,iZ3,iZ4,iGR_J,iS) &
@@ -4476,6 +4540,95 @@ CONTAINS
 
     RETURN
   END SUBROUTINE FaceVelocity_X3
+
+  SUBROUTINE EulerianEnergyMoments &
+    ( D, I_u_1, I_u_2, I_u_3, FF, &
+      V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      E, P_d_1, P_d_2, P_d_3, &
+      S_uu_11, S_uu_12, S_uu_13, &
+      S_uu_22, S_uu_23, S_uu_33 )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: D, I_u_1, I_u_2, I_u_3, FF
+    REAL(DP), INTENT(in)  ::    V_u_1, V_u_2, V_u_3
+    REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), INTENT(out) :: E, P_d_1, P_d_2, P_d_3
+    REAL(DP), INTENT(out) :: S_uu_11, S_uu_12, S_uu_13, S_uu_22, S_uu_23, S_uu_33
+
+    REAL(DP) :: EF, a, b
+    REAL(DP) :: h_u_1, h_u_2, h_u_3
+    REAL(DP) :: h_d_1, h_d_2, h_d_3
+    REAL(DP) :: K_dd_11, K_dd_12, K_dd_13, K_dd_22, K_dd_23, K_dd_33
+    REAL(DP) :: K_uu_11, K_uu_12, K_uu_13, K_uu_22, K_uu_23, K_uu_33
+
+    IF ( FF <= SqrtTiny ) THEN
+      EF = Third
+      a = Third
+      b = Zero
+
+      h_u_1 = Zero
+      h_u_2 = Zero
+      h_u_3 = Zero
+
+      h_d_1 = Zero
+      h_d_2 = Zero
+      h_d_3 = Zero
+    ELSE
+      EF = EddingtonFactor( D, FF )
+      a = Half * ( One - EF )
+      b = Half * ( Three * EF - One )
+
+      h_u_1 = I_u_1 / ( FF * D )
+      h_u_2 = I_u_2 / ( FF * D )
+      h_u_3 = I_u_3 / ( FF * D )
+
+      h_d_1 = Gm_dd_11 * h_u_1
+      h_d_2 = Gm_dd_22 * h_u_2
+      h_d_3 = Gm_dd_33 * h_u_3
+    END IF
+
+    K_dd_11 = ( a * Gm_dd_11 + b * h_d_1 * h_d_1 ) * D
+    K_dd_12 = (                b * h_d_1 * h_d_2 ) * D
+    K_dd_13 = (                b * h_d_1 * h_d_3 ) * D
+    K_dd_22 = ( a * Gm_dd_22 + b * h_d_2 * h_d_2 ) * D
+    K_dd_23 = (                b * h_d_2 * h_d_3 ) * D
+    K_dd_33 = ( a * Gm_dd_33 + b * h_d_3 * h_d_3 ) * D
+
+    K_uu_11 = ( a / Gm_dd_11 + b * h_u_1 * h_u_1 ) * D
+    K_uu_12 = (                b * h_u_1 * h_u_2 ) * D
+    K_uu_13 = (                b * h_u_1 * h_u_3 ) * D
+    K_uu_22 = ( a / Gm_dd_22 + b * h_u_2 * h_u_2 ) * D
+    K_uu_23 = (                b * h_u_2 * h_u_3 ) * D
+    K_uu_33 = ( a / Gm_dd_33 + b * h_u_3 * h_u_3 ) * D
+
+    ! These will need an extra factor of the energy
+    
+    E = D + Two * ( Gm_dd_11 * V_u_1 * I_u_1 + &
+                    Gm_dd_22 * V_u_2 * I_u_2 + &
+                    Gm_dd_33 * V_u_3 * I_u_3 ) ! + O(v^2)
+
+    P_d_1 = Gm_dd_11 * ( I_u_1 + V_u_1 * D) &
+            + (V_u_1 * K_dd_11 + V_u_2 * K_dd_12 + V_u_3 * K_dd_13)
+    P_d_2 = Gm_dd_22 * ( I_u_2 + V_u_2 * D) &
+            + (V_u_1 * K_dd_12 + V_u_2 * K_dd_22 + V_u_3 * K_dd_23)
+    P_d_3 = Gm_dd_33 * ( I_u_3 + V_u_3 * D) &
+            + (V_u_1 * K_dd_13 + V_u_2 * K_dd_23 + V_u_3 * K_dd_33)
+
+    S_uu_11 = K_uu_11 + Two * I_u_1 * V_u_1
+    S_uu_12 = K_uu_12 + I_u_1 * V_u_2 + I_u_2 * V_u_1
+    S_uu_13 = K_uu_13 + I_u_1 * V_u_3 + I_u_3 * V_u_1
+    S_uu_22 = K_uu_22 + Two * I_u_2 * V_u_2
+    S_uu_23 = K_uu_23 + I_u_2 * V_u_3 + I_u_3 * V_u_2
+    S_uu_33 = K_uu_33 + Two * I_u_3 * V_u_3
+
+    RETURN
+  END SUBROUTINE EulerianEnergyMoments
 
 
 END MODULE TwoMoment_UtilitiesModule
