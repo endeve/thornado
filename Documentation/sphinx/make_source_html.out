@@ -1,0 +1,85 @@
+Running Sphinx v5.0.0
+making output directory... done
+building [mo]: targets for 0 po files that are out of date
+building [html]: targets for 18 source files that are out of date
+updating environment: [new config] 18 added, 0 changed, 0 removed
+reading sources... [  5%] GRHD
+reading sources... [ 11%] GRMHD
+reading sources... [ 16%] GRRHD
+reading sources... [ 22%] NRHD
+reading sources... [ 27%] NRHD_imp
+reading sources... [ 33%] NRHD_imp_a
+reading sources... [ 38%] NRHD_imp_n
+reading sources... [ 44%] NRHD_imp_n_app
+reading sources... [ 50%] NRHD_num
+reading sources... [ 55%] NRHD_phys
+reading sources... [ 61%] O1RHD
+reading sources... [ 66%] OVCRHD
+reading sources... [ 72%] Poseidon
+reading sources... [ 77%] examples
+reading sources... [ 83%] gravity
+reading sources... [ 88%] hydro
+reading sources... [ 94%] index
+reading sources... [100%] radhydro
+
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/NRHD_imp_a.rst:4: WARNING: toctree contains reference to nonexisting document 'NRHD_imp_a_app'
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/NRHD_imp_a.rst:4: WARNING: toctree contains reference to nonexisting document 'NRHD_imp_a_init'
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/NRHD_imp_a.rst:4: WARNING: toctree contains reference to nonexisting document 'NRHD_imp_a_time'
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/NRHD_imp_a.rst:4: WARNING: toctree contains reference to nonexisting document 'NRHD_imp_a_disc'
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/NRHD_imp_a.rst:4: WARNING: toctree contains reference to nonexisting document 'NRHD_imp_a_ptoc'
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/NRHD_imp_a.rst:4: WARNING: toctree contains reference to nonexisting document 'NRHD_imp_a_slope'
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/NRHD_imp_a.rst:4: WARNING: toctree contains reference to nonexisting document 'NRHD_imp_a_pos'
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/NRHD_imp_a.rst:4: WARNING: toctree contains reference to nonexisting document 'NRHD_imp_a_io'
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/NRHD_imp_n.rst:4: WARNING: toctree contains reference to nonexisting document 'NRHD_imp_n_init'
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/NRHD_imp_n.rst:4: WARNING: toctree contains reference to nonexisting document 'NRHD_imp_n_time'
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/NRHD_imp_n.rst:4: WARNING: toctree contains reference to nonexisting document 'NRHD_imp_n_disc'
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/NRHD_imp_n.rst:4: WARNING: toctree contains reference to nonexisting document 'NRHD_imp_n_ptoc'
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/NRHD_imp_n.rst:4: WARNING: toctree contains reference to nonexisting document 'NRHD_imp_n_slope'
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/NRHD_imp_n.rst:4: WARNING: toctree contains reference to nonexisting document 'NRHD_imp_n_pos'
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/NRHD_imp_n.rst:4: WARNING: toctree contains reference to nonexisting document 'NRHD_imp_n_io'
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/examples.rst:7: WARNING: Duplicate explicit target name: "source code".
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/examples.rst:7: WARNING: Duplicate explicit target name: "github".
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/examples.rst:7: WARNING: Duplicate explicit target name: "source code".
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/examples.rst:7: WARNING: Duplicate explicit target name: "github".
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/examples.rst:77: WARNING: Enumerated list ends without a blank line; unexpected unindent.
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/examples.rst:82: WARNING: Enumerated list ends without a blank line; unexpected unindent.
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/gravity.rst:2: WARNING: Title underline too short.
+
+Gravity Solvers
+==============
+looking for now-outdated files... none found
+pickling environment... done
+checking consistency... /home/runner/work/thornado/thornado/Documentation/sphinx/source/GRRHD.rst: WARNING: document isn't included in any toctree
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/O1RHD.rst: WARNING: document isn't included in any toctree
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/OVCRHD.rst: WARNING: document isn't included in any toctree
+/home/runner/work/thornado/thornado/Documentation/sphinx/source/Poseidon.rst: WARNING: document isn't included in any toctree
+done
+preparing documents... done
+writing output... [  5%] GRHD
+writing output... [ 11%] GRMHD
+writing output... [ 16%] GRRHD
+writing output... [ 22%] NRHD
+writing output... [ 27%] NRHD_imp
+writing output... [ 33%] NRHD_imp_a
+writing output... [ 38%] NRHD_imp_n
+writing output... [ 44%] NRHD_imp_n_app
+writing output... [ 50%] NRHD_num
+writing output... [ 55%] NRHD_phys
+writing output... [ 61%] O1RHD
+writing output... [ 66%] OVCRHD
+writing output... [ 72%] Poseidon
+writing output... [ 77%] examples
+writing output... [ 83%] gravity
+writing output... [ 88%] hydro
+writing output... [ 94%] index
+writing output... [100%] radhydro
+
+generating indices... genindex done
+writing additional pages... search done
+copying static files... done
+copying extra files... done
+dumping search index in English (code: en)... done
+dumping object inventory... done
+build succeeded, 26 warnings.
+
+The HTML pages are in build/html.
