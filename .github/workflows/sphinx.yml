@@ -14,7 +14,7 @@ jobs:
       - name: Dependencies
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install sphinx=5.0.0 sphinx_rtd_theme
+          python3 -m pip install sphinx==5.0.0 sphinx_rtd_theme
 
       - name: Install and Build
         run: |
