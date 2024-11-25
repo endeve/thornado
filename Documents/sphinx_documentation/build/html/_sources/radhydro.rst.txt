@@ -1,6 +1,0 @@
-Radiation Hydrodynamics Solvers
-===============================
-
-thornado's radiation hydrodynamics solvers currently consist
-of those for :math:`O(1)`, :math:`O(v/c)`, and fully general relativistic
-neutrino transport
