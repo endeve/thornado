@@ -1,3 +1,0 @@
-TIME_STEPPING = \
-  TimeSteppingModule.o \
-  TimeSteppingModule_Explicit.o

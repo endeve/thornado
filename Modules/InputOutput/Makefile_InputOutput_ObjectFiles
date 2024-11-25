@@ -1,3 +1,0 @@
-INPUT_OUTPUT = \
-  InputOutputUtilitiesModule.o \
-  InputOutputModuleHDF.o

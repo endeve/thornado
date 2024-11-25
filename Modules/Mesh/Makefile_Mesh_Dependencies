@@ -1,4 +1,0 @@
-MeshModule.o: \
-  KindModule.o \
-  QuadratureModule.o \
-  MeshModule.F90

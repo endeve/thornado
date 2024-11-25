@@ -1,2 +1,0 @@
-PROGRAM_HEADER = \
-  ProgramHeaderModule.o

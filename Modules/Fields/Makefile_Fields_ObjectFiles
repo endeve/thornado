@@ -1,5 +1,0 @@
-FIELDS = \
-  FluidFieldsModule.o \
-  FluidFieldsUtilitiesModule.o \
-  RadiationFieldsModule.o \
-  RadiationFieldsUtilitiesModule.o
