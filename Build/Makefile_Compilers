@@ -1,4 +1,4 @@
-GIT_HASH := $(shell git --no-pager describe --tags --always --dirty)
+GIT_HASH := $(shell git --no-pager describe --tags --always --dirty --exclude '*')
 GIT_DATE := $(firstword $(shell git --no-pager show --date=short --format="%ad" --name-only))
 GIT_BRANCH := $(shell git branch | grep "^\*" | sed 's/^..//')
 GIT_URL :=$(shell git config --get remote.origin.url)
