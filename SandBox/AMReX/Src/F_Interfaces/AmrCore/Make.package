@@ -1,9 +1,0 @@
-F90EXE_sources += thornado_AMReX_interpolater_mod.F90
-F90EXE_sources += thornado_AMReX_fillpatch_mod.F90
-F90EXE_sources += thornado_AMReX_fluxregister_mod.F90
-
-CEXE_sources   += thornado_AMReX_fillpatch_fi.cpp
-CEXE_sources   += thornado_AMReX_fluxregister_fi.cpp
-
-VPATH_LOCATIONS   += $(THORNADO_HOME)/SandBox/AMReX/Src/F_Interfaces/AmrCore
-INCLUDE_LOCATIONS += $(THORNADO_HOME)/SandBox/AMReX/Src/F_Interfaces/AmrCore

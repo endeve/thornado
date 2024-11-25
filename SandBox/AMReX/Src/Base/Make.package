@@ -1,8 +1,0 @@
-CEXE_headers  += thornado_AMReX_MultiFabUtil.H
-CEXE_sources  += thornado_AMReX_MultiFabUtil.cpp
-CEXE_headers  += thornado_AMReX_MultiFabUtil_1D_C.H
-CEXE_headers  += thornado_AMReX_MultiFabUtil_2D_C.H
-CEXE_headers  += thornado_AMReX_MultiFabUtil_3D_C.H
-
-VPATH_LOCATIONS   += $(THORNADO_HOME)/SandBox/AMReX/Src/Base
-INCLUDE_LOCATIONS += $(THORNADO_HOME)/SandBox/AMReX/Src/Base
