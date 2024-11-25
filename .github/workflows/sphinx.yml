@@ -20,9 +20,6 @@ jobs:
         run: |
           cd Documents/sphinx_documentation
           make PYTHON="python3" html &> make_source_html.out
-          cd ../..
-          mkdir -p build/docs_html
-          cp -rp Documents/sphinx_documentation/build/html/* build/docs_html
 
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4.5.0
