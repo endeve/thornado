@@ -1,26 +1,32 @@
 name: "Sphinx: Render docs"
 
 on: push
+permissions:
+  contents: write
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
+    - name: Checkout
     - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
-    - name: Build HTML
-      uses: ammaraskar/sphinx-action@8.1.3
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: html-docs
-        path: docs/build/html/
+
+    - name: Dependencies
+      run: |
+        python3 -m pip install --upgrade pip
+        python3 -m pip install sphinx=5.0.0 sphinx_rtd_theme
+
+    - name: Install and Build
+      run: |
+        mkdir -p build/docs_html
+        mkdir -p Documents/sphinx_documentation
+        cd Documents/sphinx_documentation
+        make PYTHON="python3" html &> make_source_html.out
+        cp -rp build/html/* build/docs_html
+
     - name: Deploy
-      uses: peaceiris/actions-gh-pages@v3
-      if: github.ref == 'refs/heads/main'
+      if: github.event_name == 'push' && github.repository == 'endeve/thornado' && github.ref == 'refs/heads/gh-pages'
+      uses: JamesIves/github-pages-deploy-action@v4.5.0
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: docs/build/html
+        folder: build
+        clean: false
