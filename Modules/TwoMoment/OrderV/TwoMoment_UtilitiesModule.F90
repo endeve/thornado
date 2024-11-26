@@ -1771,7 +1771,7 @@ CONTAINS
                                       PR(iNodeX,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS),    &
                                       PR(iNodeX,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS),    &
                                       PR(iNodeX,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS),    &
-                                      AR(iNodeX,iZ1,iZ2,iZ3,iZ4,iAR_K,iS),     &
+                                      AR(iNodeX,iZ1,iZ2,iZ3,iZ4,iAR_F,iS),     &
                                       PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1),       &
                                       PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2),       &
                                       PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3),       &
