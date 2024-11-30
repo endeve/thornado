@@ -37,7 +37,7 @@ extern "C"
            Real MHDMagFieldX1Arr[],
            Real MHDMagFieldX2Arr[],
            Real MHDMagFieldX3Arr[],
-           Real MHDCleaningField[],
+           Real MHDCleaningFieldArr[],
            Real ADMMassArr        [],
            BoxArray** pBA,
            int iWriteFields_uGF = 0,
@@ -154,6 +154,14 @@ extern "C"
       HeaderFile << MHDEnergyArr    [1] << "\n";
       HeaderFile << ElectronNumberArr [0] << "\n";
       HeaderFile << ElectronNumberArr [1] << "\n";
+      HeaderFile << MHDMagFieldX1Arr[0] << "\n";
+      HeaderFile << MHDMagFieldX1Arr[1] << "\n";
+      HeaderFile << MHDMagFieldX2Arr[0] << "\n";
+      HeaderFile << MHDMagFieldX2Arr[1] << "\n";
+      HeaderFile << MHDMagFieldX3Arr[0] << "\n";
+      HeaderFile << MHDMagFieldX3Arr[1] << "\n";
+      HeaderFile << MHDCleaningFieldArr[0] << "\n";
+      HeaderFile << MHDCleaningFieldArr[1] << "\n";
       HeaderFile << ADMMassArr        [0] << "\n";
       HeaderFile << ADMMassArr        [1] << "\n";
       HeaderFile << ADMMassArr        [2] << "\n"; // ADMMass_Interior
@@ -213,6 +221,10 @@ extern "C"
            Real MHDMomentumX3Arr[],
            Real MHDEnergyArr    [],
            Real ElectronNumberArr [],
+           Real MHDMagFieldX1Arr[],
+           Real MHDMagFieldX2Arr[],
+           Real MHDMagFieldX3Arr[],
+           Real MHDCleaningFieldArr[],
            Real ADMMassArr        [],
            BoxArray** pba, DistributionMapping** pdm, int iChkFile )
   {
@@ -230,6 +242,14 @@ extern "C"
     Real MHDEnergy_OffGrid;
     Real ElectronNumber_Initial;
     Real ElectronNumber_OffGrid;
+    Real MHDMagFieldX1_Initial;
+    Real MHDMagFieldX1_OffGrid;
+    Real MHDMagFieldX2_Initial;
+    Real MHDMagFieldX2_OffGrid;
+    Real MHDMagFieldX3_Initial;
+    Real MHDMagFieldX3_OffGrid;
+    Real MHDCleaningField_Initial;
+    Real MHDCleaningField_OffGrid;
     Real ADMMass_Initial;
     Real ADMMass_OffGrid;
     Real ADMMass_Interior;
@@ -341,6 +361,34 @@ extern "C"
     is >> ElectronNumber_OffGrid;
     GotoNextLine( is );
     ElectronNumberArr[1] = ElectronNumber_OffGrid;
+
+    is >> MHDMagFieldX1_Initial;
+    GotoNextLine( is );
+    MHDMagFieldX1Arr[0] = MHDMagFieldX1_Initial;
+    is >> MHDMagFieldX1_OffGrid;
+    GotoNextLine( is );
+    MHDMagFieldX1Arr[1] = MHDMagFieldX1_OffGrid;
+
+    is >> MHDMagFieldX2_Initial;
+    GotoNextLine( is );
+    MHDMagFieldX2Arr[0] = MHDMagFieldX2_Initial;
+    is >> MHDMagFieldX2_OffGrid;
+    GotoNextLine( is );
+    MHDMagFieldX2Arr[1] = MHDMagFieldX2_OffGrid;
+
+    is >> MHDMagFieldX3_Initial;
+    GotoNextLine( is );
+    MHDMagFieldX3Arr[0] = MHDMagFieldX3_Initial;
+    is >> MHDMagFieldX3_OffGrid;
+    GotoNextLine( is );
+    MHDMagFieldX3Arr[1] = MHDMagFieldX3_OffGrid;
+
+    is >> MHDCleaningField_Initial;
+    GotoNextLine( is );
+    MHDCleaningFieldArr[0] = MHDCleaningField_Initial;
+    is >> MHDCleaningField_OffGrid;
+    GotoNextLine( is );
+    MHDCleaningFieldArr[1] = MHDCleaningField_OffGrid;
 
     is >> ADMMass_Initial;
     GotoNextLine( is );
