@@ -515,10 +515,24 @@ CONTAINS
       ! --- Gray Units ---
 
       unitsGR(iGR_N)   = One / Centimeter**3
+      unitsGR(iGR_G1)  = One / Centimeter**2 / Second
+      unitsGR(iGR_G2)  = One / Centimeter**2 / Second
+      unitsGR(iGR_G3)  = One / Centimeter**2 / Second
       unitsGR(iGR_D)   = One / Centimeter**3
       unitsGR(iGR_I1)  = One / Centimeter**2 / Second
       unitsGR(iGR_I2)  = One / Centimeter**2 / Second
       unitsGR(iGR_I3)  = One / Centimeter**2 / Second
+      unitsGR(iGR_E)   = Erg / Centimeter**3
+      unitsGR(iGR_P1)  = Erg / Centimeter**2 / Second
+      unitsGR(iGR_P2)  = Erg / Centimeter**2 / Second
+      unitsGR(iGR_P3)  = Erg / Centimeter**2 / Second
+      unitsGR(iGR_E)   = Erg / Centimeter**3
+      unitsGR(iGR_S11) = Erg / Centimeter    / Second**2
+      unitsGR(iGR_S12) = Erg / Centimeter    / Second**2
+      unitsGR(iGR_S13) = Erg / Centimeter    / Second**2
+      unitsGR(iGR_S22) = Erg / Centimeter    / Second**2
+      unitsGR(iGR_S23) = Erg / Centimeter    / Second**2
+      unitsGR(iGR_S33) = Erg / Centimeter    / Second**2
       unitsGR(iGR_J)   = Erg / Centimeter**3
       unitsGR(iGR_H1)  = Erg / Centimeter**2 / Second
       unitsGR(iGR_H2)  = Erg / Centimeter**2 / Second
