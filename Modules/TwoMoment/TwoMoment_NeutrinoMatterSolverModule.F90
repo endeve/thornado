@@ -786,7 +786,6 @@ CONTAINS
 
   SUBROUTINE InitializeNeutrinoMatterSolverParameters &
     ( M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
-
       MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
       Atol_inner_Option, Include_NES_Option, Include_Pair_Option, &
       Include_NuPair_Option, Include_Brem_Option, Include_LinCorr_Option, &

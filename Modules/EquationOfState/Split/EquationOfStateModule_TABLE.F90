@@ -64,6 +64,7 @@ MODULE EquationOfStateModule_TABLE
     BoltzmannConstant, &
     Gram, &
     Centimeter, &
+    Second, &
     Kelvin, &
     Dyne, &
     Erg, &
@@ -81,7 +82,7 @@ MODULE EquationOfStateModule_TABLE
   REAL(DP) :: &
     UnitD, UnitT, UnitY, &
     UnitP, UnitS, UnitE, UnitMl, UnitMp, UnitMn, &
-    UnitXp, UnitXn, UnitXa, UnitXh, UnitAh
+    UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm
   REAL(DP), PUBLIC :: &
     OS_P, OS_S, OS_E, OS_Mp, OS_Mn, &
     OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Ah
@@ -266,18 +267,12 @@ MODULE EquationOfStateModule_TABLE
   END INTERFACE ComputeDependentVariableAndDerivativesTotal_TABLE
 
   ! Define local constants
-  
-  REAL(dp), PARAMETER  :: ergmev    = 1.602177d-6   ! ergs per MeV
-  REAL(dp), PARAMETER  :: avn       = 6.022141d+23  ! avogadro's number
-  REAL(dp), PARAMETER  :: rmu       = 1.0d0/avn     ! atomic mass unit
-  REAL(dp), PARAMETER  :: mass_ele  = 0.510998d+00  ! electron mass [MeV]
-  REAL(dp), PARAMETER  :: mass_mu   = 105.65837d+00 ! muon mass [MeV]
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET &
   !$OMP ( D_T, T_T, Yp_T, &
   !$OMP   UnitD, UnitT, UnitY, UnitP, UnitS, UnitE, UnitMl, UnitMp, UnitMn, &
-  !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, &
+  !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, &
   !$OMP   OS_P, OS_S, OS_E, OS_Mp, OS_Mn, OS_Xp, OS_Xn, &
   !$OMP   OS_Xa, OS_Xh, OS_Ah, &
   !$OMP   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, &
@@ -287,7 +282,7 @@ MODULE EquationOfStateModule_TABLE
   !$ACC DECLARE CREATE &
   !$ACC ( D_T, T_T, Yp_T, &
   !$ACC   UnitD, UnitT, UnitY, UnitP, UnitS, UnitE, UnitMl, UnitMp, UnitMn, &
-  !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, &
+  !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, &
   !$ACC   OS_P, OS_S, OS_E, OS_Mp, OS_Mn, OS_Xp, OS_Xn, &
   !$ACC   OS_Xa, OS_Xh, OS_Ah, &
   !$ACC   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, &
@@ -395,6 +390,7 @@ CONTAINS
     UnitXa = One
     UnitXh = One
     UnitAh = One
+    UnitGm = One
 
     ! --- Thermodynamic States ---
 
@@ -526,7 +522,7 @@ CONTAINS
           ! calculate electron quantities
           CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
 
-          Eele = ElectronPhotonState % e + mass_ele / rmu * ergmev * ElectronPhotonState % ye ! add back mass to internal Energy!
+          Eele = ElectronPhotonState % e
           Pele = ElectronPhotonState % p
           Sele = ElectronPhotonState % s
 
@@ -549,7 +545,7 @@ CONTAINS
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( always, to: D_T, T_T, Yp_T, &
     !$OMP   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMl, UnitMp, UnitMn, &
-    !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, OS_P, OS_S, OS_E, &
+    !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, OS_P, OS_S, OS_E, &
     !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, P_T, S_T, &
     !$OMP   E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Ah_T, &
     !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
@@ -557,7 +553,7 @@ CONTAINS
     !$ACC UPDATE DEVICE &
     !$ACC ( D_T, T_T, Yp_T, &
     !$ACC   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMl, UnitMp, UnitMn, &
-    !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, OS_P, OS_S, OS_E, &
+    !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, OS_P, OS_S, OS_E, &
     !$ACC   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, P_T, S_T, &
     !$ACC   E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Ah_T, &
     !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
@@ -576,7 +572,7 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: D_T, T_T, Yp_T, &
     !$OMP   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMl, UnitMp, UnitMn, &
-    !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, OS_P, OS_S, OS_E, &
+    !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, OS_P, OS_S, OS_E, &
     !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, P_T, S_T, &
     !$OMP   E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, &
     !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
@@ -684,7 +680,7 @@ CONTAINS
     
     CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
 
-    Eele = ElectronPhotonState % e + mass_ele / rmu * ergmev * ElectronPhotonState % ye ! add back mass to internal Energy!
+    Eele = ElectronPhotonState % e
     Pele = ElectronPhotonState % p
     Sele = ElectronPhotonState % s
     Mue = ElectronPhotonState % mue
@@ -695,7 +691,7 @@ CONTAINS
     
     CALL FullMuonEOS(MuonTable, MuonState)
 
-    E_mu = MuonState % e + mass_mu / rmu * ergmev * Ym ! add back mass to internal Energy!
+    E_mu = MuonState % e
     P_mu = MuonState % p
     S_mu = MuonState % s
     Mum = MuonState % mu
@@ -1108,7 +1104,7 @@ CONTAINS
 
     CALL ComputeDependentVariableTotal_TABLE_Scalar &
            ( D, T, Ye_P, Ym_P, P, P_T, OS_P, &
-           UnitP, 0, 1, 0 )
+           UnitP, 1, 0, 0 )
 #else
     CALL ComputeDependentVariableBaryons_TABLE_Scalar &
            ( D, T, Ye_P, Ym_P, P, P_T, OS_P, UnitP )
@@ -1182,7 +1178,8 @@ CONTAINS
     CALL CalculateSoundSpeed( D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, D_T, T_T, Yp_T, &
         P_T, OS_P, E_T, OS_E, HelmholtzTable, MuonTable, Gm, Cs, .FALSE.)
 
-    !Cs = SQRT( Gm * P / D )
+    Gm = Gm * UnitGm
+    Cs = Cs * Centimeter / Second
 
   END SUBROUTINE ComputeSoundSpeedFromPrimitive_TABLE_Scalar
 
@@ -1210,6 +1207,9 @@ CONTAINS
           Ye(iP) / UnitY, Ym(iP) / UnitY, &
           D_T, T_T, Yp_T, P_T, OS_P, E_T, OS_E, &
           HelmholtzTable, MuonTable, Gm(iP), Cs(iP),.FALSE.)
+
+      Gm(iP) = Gm(iP) * UnitGm
+      Cs(iP) = Cs(iP) * Centimeter / Second
 
     ENDDO
 
@@ -1294,7 +1294,7 @@ CONTAINS
 
     CALL ComputeDependentVariableTotal_TABLE_Scalar &
            ( D, T, Ye, Ym, Em, E_T, OS_E, &
-           UnitE, 1, 0, 0 )
+           UnitE, 0, 1, 0 )
 #else
 
     CALL ComputeDependentVariableBaryons_TABLE_Scalar &
@@ -1307,14 +1307,14 @@ CONTAINS
     ElectronPhotonState % ye  = Ye
     
     CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
-    Eele = ElectronPhotonState % e + mass_ele / rmu * ergmev * ElectronPhotonState % ye ! add back mass to internal Energy!
+    Eele = ElectronPhotonState % e
 
     ! Calculate Muon Quantities
     MuonState % t = T
     MuonState % rhoym = D * Ym
     
     CALL FullMuonEOS(MuonTable, MuonState)
-    E_mu = MuonState % e + mass_mu / rmu * ergmev * Ym ! add back mass to internal Energy!
+    E_mu = MuonState % e
            
     Em = Em + Eele + E_mu
 #endif
@@ -1406,8 +1406,6 @@ CONTAINS
       Ye(iP) = Ne(iP) / D(iP) * BaryonMass ! --- Electron Fraction
       Ym(iP) = Nm(iP) / D(iP) * BaryonMass ! --- Muon Fraction
 
-      WRITE(*,*) Em(iP)
-
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
              ( D(iP), Em(iP), Ye(iP), Ym(iP), T(iP), Error(iP) )
 
@@ -1439,7 +1437,6 @@ CONTAINS
 
   END SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE_Vector
 
-  ! ! Calculation of sound speed now is more complicated, maybe this subroutine is not needed
   SUBROUTINE ComputeAuxiliary_Fluid_TABLE_Scalar &
     ( D, Ev, Ne, Nm, P, T, Ye, Ym, S, Em, Gm, Cs )
 
@@ -1463,11 +1460,11 @@ CONTAINS
         D_T, T_T, Yp_T, &
         P_T, OS_P, E_T, OS_E, HelmholtzTable, MuonTable, Gm, Cs, .FALSE.)
 
-    !Cs = SQRT( Gm * P / D )
+    Gm = Gm * UnitGm
+    Cs = Cs * Centimeter / Second
 
   END SUBROUTINE ComputeAuxiliary_Fluid_TABLE_Scalar
 
-  ! Calculation of sound speed now is more complicated, maybe this subroutine is not needed
   SUBROUTINE ComputeAuxiliary_Fluid_TABLE_Vector &
     ( D, Ev, Ne, Nm, P, T, Ye, Ym, S, Em, Gm, Cs )
 
@@ -1722,7 +1719,7 @@ CONTAINS
 
     CALL ComputeDependentVariableTotal_TABLE_Scalar &
            ( D, T, Ye, Ym, E, E_T, OS_E, &
-           UnitE, 1, 0, 0 )
+           UnitE, 0, 1, 0 )
 #else
     
     CALL ComputeDependentVariableBaryons_TABLE_Scalar &
@@ -1735,14 +1732,14 @@ CONTAINS
     ElectronPhotonState % ye  = Ye
     
     CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
-    Eele = ElectronPhotonState % e + mass_ele / rmu * ergmev * ElectronPhotonState % ye ! add back mass to internal Energy!
+    Eele = ElectronPhotonState % e
 
     ! Calculate Muon Quantities
     MuonState % t = T
     MuonState % rhoym = D * Ym
     
     CALL FullMuonEOS(MuonTable, MuonState)
-    E_mu = MuonState % e + mass_mu / rmu * ergmev * Ym ! add back mass to internal Energy!
+    E_mu = MuonState % e
            
     E = E + Eele + E_mu
 #endif
@@ -1813,7 +1810,7 @@ CONTAINS
 
       CALL ComputeDependentVariableTotal_TABLE_Vector &
              ( D, T, Ye, Ym, E, E_T, OS_E, &
-             UnitE, 1, 0, 0 )
+             UnitE, 0, 1, 0 )
 
 #else
       ! Not really used
@@ -3258,7 +3255,7 @@ CONTAINS
 
   SUBROUTINE ComputeDependentVariableTotal_TABLE_Scalar &
     ( D, T, Ye, Ym, V, V_T, OS_V, Units_V, &
-    ReturnE, ReturnP, ReturnS )
+    ReturnP, ReturnE, ReturnS )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -3270,7 +3267,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: V
     REAL(DP), INTENT(in)  :: V_T(1:,1:,1:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
-    INTEGER,  INTENT(in)  :: ReturnE, ReturnP, ReturnS
+    INTEGER,  INTENT(in)  :: ReturnP, ReturnE, ReturnS
 
     REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P, V_P
     REAL(DP) :: Ye_over_Yp, Ym_over_Yp
@@ -3322,8 +3319,7 @@ CONTAINS
           
           CALL FullMuonEOS(MuonTable, MuonState)
           
-          E_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % e + mass_ele / rmu * ergmev * ElectronPhotonState % ye + &
-                        MuonState % e + mass_mu / rmu * ergmev * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
+          E_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % e + MuonState % e 
           P_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % p + MuonState % p
           S_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % s + MuonState % s
 
@@ -3356,13 +3352,13 @@ CONTAINS
 
   SUBROUTINE ComputeDependentVariableTotal_TABLE_Vector &
     ( D, T, Ye, Ym, V, V_T, OS_V, Units_V, &
-    ReturnE, ReturnP, ReturnS )
+    ReturnP, ReturnE, ReturnS )
 
     REAL(DP), INTENT(in)  :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out) :: V(1:)
     REAL(DP), INTENT(in)  :: V_T(1:,1:,1:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
-    INTEGER,  INTENT(in)  :: ReturnE, ReturnP, ReturnS
+    INTEGER,  INTENT(in)  :: ReturnP, ReturnE, ReturnS
 
     INTEGER  :: iP, nP
     REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P, V_P
@@ -3434,8 +3430,7 @@ CONTAINS
             
             CALL FullMuonEOS(MuonTable, MuonState)
             
-            E_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % e + mass_ele / rmu * ergmev * ElectronPhotonState % ye + &
-                          MuonState % e + mass_mu / rmu * ergmev * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
+            E_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % e + MuonState % e
             P_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % p + MuonState % p
             S_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % s + MuonState % s
             
@@ -3540,8 +3535,7 @@ CONTAINS
           
           CALL FullMuonEOS(MuonTable, MuonState)
           
-          E_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % e + mass_ele / rmu * ergmev * ElectronPhotonState % ye + &
-                        MuonState % e + mass_mu / rmu * ergmev * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
+          E_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % e + MuonState % e
           P_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % p + MuonState % p
           S_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % s + MuonState % s
 
@@ -3653,8 +3647,7 @@ CONTAINS
             
             CALL FullMuonEOS(MuonTable, MuonState)
             
-            E_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % e + mass_ele / rmu * ergmev * ElectronPhotonState % ye + &
-                          MuonState % e + mass_mu / rmu * ergmev * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
+            E_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % e + MuonState % e
             P_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % p + MuonState % p
             S_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % s + MuonState % s
             
@@ -3705,7 +3698,7 @@ CONTAINS
 
   SUBROUTINE ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
     ( D, T, Ye, Ym, V, dVdD, dVdT, dVdYe, dVdYm, V_T, OS_V, Units_V, &
-    ReturnE, ReturnP, ReturnS)
+    ReturnP, ReturnE, ReturnS)
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -3717,7 +3710,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: V, dVdD, dVdT, dVdYe, dVdYm
     REAL(DP), INTENT(in)  :: V_T(1:,1:,1:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
-    INTEGER , INTENT(in)  :: ReturnE, ReturnP, ReturnS
+    INTEGER , INTENT(in)  :: ReturnP, ReturnE, ReturnS
 
     REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P, V_P, dV_P(3), dVbary_P(3)
     REAL(DP) :: Ye_over_Yp, Ym_over_Yp
@@ -3772,8 +3765,7 @@ CONTAINS
           
           CALL FullMuonEOS(MuonTable, MuonState)
           
-          E_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % e + mass_ele / rmu * ergmev * ElectronPhotonState % ye + &
-                        MuonState % e + mass_mu / rmu * ergmev * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
+          E_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % e + MuonState % e
           P_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % p + MuonState % p
           S_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % s + MuonState % s
 
@@ -3952,13 +3944,13 @@ CONTAINS
 
   SUBROUTINE ComputeDependentVariableAndDerivativesTotal_TABLE_Vector &
     ( D, T, Ye, Ym, V, dVdD, dVdT, dVdYe, dVdYm, V_T, OS_V, Units_V, &
-    ReturnE, ReturnP, ReturnS )
+    ReturnP, ReturnE, ReturnS )
 
     REAL(DP), INTENT(in)  :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out) :: V(1:), dVdD(1:), dVdT(1:), dVdYe(1:), dVdYm(1:)
     REAL(DP), INTENT(in)  :: V_T(1:,1:,1:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
-    INTEGER , INTENT(in)  :: ReturnE, ReturnP, ReturnS
+    INTEGER , INTENT(in)  :: ReturnP, ReturnE, ReturnS
 
     INTEGER :: iP, nP
 
@@ -3981,7 +3973,7 @@ CONTAINS
 
       CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
              ( D(iP), T(iP), Ye(iP), Ym(iP), V(iP), dVdD(iP), dVdT(iP), &
-               dVdYe(iP), dVdYm(iP), V_T, OS_V, Units_V, ReturnE, ReturnP, ReturnS )
+               dVdYe(iP), dVdYm(iP), V_T, OS_V, Units_V, ReturnP, ReturnE, ReturnS )
 
     END DO
 

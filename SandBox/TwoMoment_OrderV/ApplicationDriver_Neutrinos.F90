@@ -95,7 +95,9 @@ PROGRAM ApplicationDriver_Neutrinos
 
   CoordinateSystem = 'CARTESIAN'
 
-  EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
+  !EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
+  !EosTableName          = 'BaryonsPlusHelmPlusMuonsEOS_interpolated.h5'
+  EosTableName          = 'BaryonsPlusHelmPlusMuonsEOS.h5'
   OpacityTableName_EmAb = 'wl-Op-SFHo-15-25-50-E40-EmAb.h5'
   OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-Iso.h5'
   OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-NES.h5'

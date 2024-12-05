@@ -39,6 +39,7 @@ MODULE EquationOfStateModule_TABLE
     BoltzmannConstant, &
     Gram, &
     Centimeter, &
+    Second, &
     Kelvin, &
     Dyne, &
     Erg, &

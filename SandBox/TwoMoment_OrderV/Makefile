@@ -256,6 +256,27 @@ InitializationModule_Neutrinos.o: \
   EquationOfStateModule_TABLE.o \
   InitializationModule_Neutrinos.F90
 
+InitializationModule_CCSN.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  TwoMoment_UtilitiesModule.o \
+  EquationOfStateModule_TABLE.o \
+  UtilitiesModule.o \
+  ProgenitorModule.o \
+  InitializationModule_CCSN.F90
+
+ProgenitorModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  UtilitiesModule.o \
+  ProgenitorModule.F90
+
 ifeq ($(PE_ENV),CRAY)
 TwoMoment_PositivityLimiterModule.o : TwoMoment_PositivityLimiterModule.F90
 	$(FORTRAN) -c $(DEFINES) $(FLAGS) $(filter-out -qrealsize=8,$(F90FLAGS)) -h ipa1 $< -o $@

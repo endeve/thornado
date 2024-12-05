@@ -55,7 +55,7 @@ PROGRAM ApplicationDriver_CCSN
   CHARACTER(32) :: TimeSteppingScheme
   CHARACTER(32) :: CoordinateSystem
   CHARACTER(64) :: EosTableName
-  CHARACTER(64) :: OpacityTableName_AbEm
+  CHARACTER(64) :: OpacityTableName_EmAb
   CHARACTER(64) :: OpacityTableName_Iso
   CHARACTER(64) :: OpacityTableName_NES
   CHARACTER(64) :: OpacityTableName_Pair
@@ -86,18 +86,20 @@ PROGRAM ApplicationDriver_CCSN
   REAL(DP)      :: dt_Fluid, dt_Neutrinos
   REAL(DP)      :: dt_Initial, dt_Ramp
   REAL(DP)      :: Rtol_outer, Rtol_inner
-  REAL(DP)      :: wMatterRHS(5)
+  REAL(DP)      :: wMatterRHS(6)
 
   ProgramName = 'CCSN'
 
   CoordinateSystem = 'SPHERICAL'
 
   EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
-  OpacityTableName_AbEm = 'wl-Op-SFHo-15-25-50-E40-B85-AbEm.h5'
-  OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-B85-Iso.h5'
-  OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-B85-NES.h5'
-  OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-B85-Pair.h5'
-  OpacityTableName_Brem = 'wl-Op-SFHo-15-25-50-E40-HR98-Brem.h5'
+  !EosTableName          = 'BaryonsPlusHelmPlusMuonsEOS_interpolated.h5'
+  EosTableName          = 'BaryonsPlusHelmPlusMuonsEOS.h5'
+  OpacityTableName_EmAb = 'wl-Op-SFHo-15-25-50-E40-EmAb.h5'
+  OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-Iso.h5'
+  OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-NES.h5'
+  OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-Pair.h5'
+  OpacityTableName_Brem = 'wl-Op-SFHo-15-25-50-E40-Brem.h5'
 
   ProgenitorFileName = 'WH07_15M_Sun.h5'
 
@@ -171,7 +173,7 @@ PROGRAM ApplicationDriver_CCSN
   Include_Pair    = .TRUE.
   Include_Brem    = .TRUE.
   Include_LinCorr = .FALSE.
-  wMatterRHS      = [ One, One, One, One, One ]
+  wMatterRHS      = [ One, One, One, One, One, One ]
 
   ! --- Auxiliary Initialization ---
 
@@ -496,7 +498,7 @@ CONTAINS
 
     CALL InitializeOpacities_TABLE &
            ( OpacityTableName_EmAb_Option &
-               = TRIM( OpacityTableName_AbEm ), &
+               = TRIM( OpacityTableName_EmAb ), &
              OpacityTableName_Iso_Option  &
                = TRIM( OpacityTableName_Iso ) , &
              OpacityTableName_NES_Option &
