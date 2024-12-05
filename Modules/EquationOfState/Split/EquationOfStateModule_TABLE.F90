@@ -38,9 +38,9 @@ MODULE EquationOfStateModule_TABLE
     LogInterpolateSingleVariable_3D_Custom_Point, &
     LogInterpolateDifferentiateSingleVariable_3D_Custom_Point
   USE wlLeptonEOSModule, ONLY: &
-    HelmholtzEOSType, MuonEOSType
-  USE wlElectronEOS, ONLY: &
-    FullHelmEOS, MinimalHelmEOS_rt, ElectronStateType
+    HelmholtzTableType, MuonEOSType
+  USE wlElectronPhotonEOS, ONLY: &
+    ElectronPhotonEOS, ElectronPhotonStateType
   USE wlMuonEOS, ONLY: &
     FullMuonEOS, MuonStateType
   USE wlHelmMuonIOModuleHDF, ONLY: &
@@ -96,7 +96,7 @@ MODULE EquationOfStateModule_TABLE
 #ifdef MICROPHYSICS_WEAKLIB
   LOGICAL :: UsingExternalEOS
   TYPE(EquationOfStateTableType), POINTER :: EOS
-  TYPE(HelmholtzEOSType), POINTER :: HelmholtzTable
+  TYPE(HelmholtzTableType), POINTER :: HelmholtzTable
   TYPE(MuonEOSType), POINTER :: MuonTable
 #endif
 
@@ -252,12 +252,14 @@ MODULE EquationOfStateModule_TABLE
     MODULE PROCEDURE ComputeDependentVariableAndDerivativesBaryons_TABLE_Scalar
     MODULE PROCEDURE ComputeDependentVariableAndDerivativesBaryons_TABLE_Vector
   END INTERFACE ComputeDependentVariableAndDerivativesBaryons_TABLE
-  
   INTERFACE ComputeDependentVariableTotal
     MODULE PROCEDURE ComputeDependentVariableTotal_TABLE_Scalar
     MODULE PROCEDURE ComputeDependentVariableTotal_TABLE_Vector
   END INTERFACE ComputeDependentVariableTotal
-
+  INTERFACE ComputeTotalPES_TABLE
+    MODULE PROCEDURE ComputeTotalPES_TABLE_Scalar
+    MODULE PROCEDURE ComputeTotalPES_TABLE_Vector
+  END INTERFACE ComputeTotalPES_TABLE
   INTERFACE ComputeDependentVariableAndDerivativesTotal_TABLE
     MODULE PROCEDURE ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar
     MODULE PROCEDURE ComputeDependentVariableAndDerivativesTotal_TABLE_Vector
@@ -315,7 +317,7 @@ CONTAINS
     REAL(DP) :: Eele, Pele, Sele
 
     ! Added variables to handle Combined EOSs
-    TYPE(ElectronStateType) :: ElectronState
+    TYPE(ElectronPhotonStateType) :: ElectronPhotonState
 
     IF( PRESENT( EquationOfStateTableName_Option ) )THEN
        EquationOfStateTableName = TRIM( EquationOfStateTableName_Option )
@@ -516,24 +518,17 @@ CONTAINS
         DO iYp=1,EOS % DV % nPoints(3)
         
           ! Now add electron component
-          ! Initialize temperature, DensitY, Yp, Zbar and Abar
-          ElectronState % t    = T_T (iTemp)
-          ElectronState % rho  = D_T (iRho)
-          ElectronState % Y_e  = Yp_T(iYp)
-          ElectronState % abar = 1.0_dp
-          ElectronState % zbar = 1.0_dp
-          ! ElectronState % abar = (Xn_T(iRho, iTemp, iYp) + Xp_T(iRho, iTemp, iYp) + &
-          !                         Xa_T(iRho, iTemp, iYp) + Xh_T(iRho, iTemp, iYp)) / &
-          !                        (Xn_T(iRho, iTemp, iYp) + Xp_T(iRho, iTemp, iYp) + &
-          !                         Xa_T(iRho, iTemp, iYp)/4.0d0 + Xh_T(iRho, iTemp, iYp)/Ah_T(iRho, iTemp, iYp))
-          ! ElectronState % zbar =  Yp_T (iYp) * ElectronState % abar
-          
-          ! calculate electron quantities
-          CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
+          ! Initialize temperature, DensitY, Ye
+          ElectronPhotonState % t   = T_T (iTemp)
+          ElectronPhotonState % rho = D_T (iRho)
+          ElectronPhotonState % ye  = Yp_T(iYp)
 
-          Eele = ElectronState % e + mass_ele / rmu * ergmev * ElectronState % Y_e ! add back mass to internal Energy!
-          Pele = ElectronState % p
-          Sele = ElectronState % s
+          ! calculate electron quantities
+          CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+
+          Eele = ElectronPhotonState % e + mass_ele / rmu * ergmev * ElectronPhotonState % ye ! add back mass to internal Energy!
+          Pele = ElectronPhotonState % p
+          Sele = ElectronPhotonState % s
 
           Es(iRho,iTemp,iYp) = 10.0d0**( E_T(iRho,iTemp,iYp) ) + Eele - OS_E
           Ps(iRho,iTemp,iYp) = ( P_T(iRho,iTemp,iYp) ) + Pele - OS_P
@@ -542,8 +537,6 @@ CONTAINS
         ENDDO
       ENDDO
     ENDDO
-
-    WRITE(*,*) 10**MAXVAL( E_T ), MAXVAL(Es)
     
     CALL InitializeEOSComponentsInversion &
          ( D_T, T_T, Yp_T,  Es, Ps, Ss, &
@@ -674,43 +667,27 @@ CONTAINS
     REAL(DP) :: Pbary, Sbary, Ebary, Pele, Sele, Eele, &
                 P_mu, S_mu, E_mu
 
-    TYPE(ElectronStateType) :: ElectronState
+    TYPE(ElectronPhotonStateType) :: ElectronPhotonState
     TYPE(MuonStateType) :: MuonState
     
 #ifdef INVERSION_SPLIT_TABLE_COMBINED
-    ! --- Interpolate Pressure ----------------------------------------
 
-    CALL ComputeDependentVariableTotal_TABLE_Scalar &
-           ( D, T, Ye, Ym, P, P_T, OS_P, &
-           UnitP, 0, 1, 0 )
+    CALL ComputeTotalPES_TABLE_Scalar( D, T, Ye, Ym, P, E, S )
 
-    ! --- Interpolate Entropy Per Baryon ------------------------------
-
-    CALL ComputeDependentVariableTotal_TABLE_Scalar &
-           ( D, T, Ye, Ym, S, S_T, OS_S, &
-           UnitS, 0, 0, 1 )
-
-    ! --- Interpolate Specific Internal Energy ------------------------
-
-    CALL ComputeDependentVariableTotal_TABLE_Scalar &
-           ( D, T, Ye, Ym, E, E_T, OS_E, &
-           UnitE, 1, 0, 0 )
 #else
 
     ! Calculate Electron Quantities
-    ! Initialize Electron state (Abar and Zbar not needed!!!)
-    ElectronState % t = T
-    ElectronState % rho = D
-    ElectronState % y_e = Ye
-    ElectronState % abar = One
-    ElectronState % zbar = ElectronState % y_e
+    ! Initialize Electron and Photon state
+    ElectronPhotonState % t = T
+    ElectronPhotonState % rho = D
+    ElectronPhotonState % ye = Ye
     
-    CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
+    CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
 
-    Eele = ElectronState % e + mass_ele / rmu * ergmev * ElectronState % Y_e ! add back mass to internal Energy!
-    Pele = ElectronState % p
-    Sele = ElectronState % s
-    Mue = ElectronState % mu_e
+    Eele = ElectronPhotonState % e + mass_ele / rmu * ergmev * ElectronPhotonState % ye ! add back mass to internal Energy!
+    Pele = ElectronPhotonState % p
+    Sele = ElectronPhotonState % s
+    Mue = ElectronPhotonState % mue
 
     ! Calculate Muon Quantities
     MuonState % t = T
@@ -1108,7 +1085,7 @@ CONTAINS
 
 #ifdef INVERSION_SPLIT_TABLE_COMBINED
 #else
-    TYPE(ElectronStateType) :: ElectronState
+    TYPE(ElectronPhotonStateType) :: ElectronPhotonState
     TYPE(MuonStateType) :: MuonState
     REAL(DP) :: Pele, P_mu
 #endif
@@ -1117,8 +1094,9 @@ CONTAINS
 
     D_P  = D  / UnitD
     E_P  = Em / UnitE
-    Ye_P = Ye  / UnitY
-    Ym_P = Ym  / UnitY
+    Ye_P = Ye / UnitY
+    Ym_P = Ym / UnitY
+
     Yp_P = Ye_P + Ym_P
     
     CALL ComputeTemperatureWith_DEYpYl_Single_NoGuess_NoError &
@@ -1126,7 +1104,6 @@ CONTAINS
            T_P )
 
     T = T_P * UnitT
-
 #ifdef INVERSION_SPLIT_TABLE_COMBINED
 
     CALL ComputeDependentVariableTotal_TABLE_Scalar &
@@ -1137,17 +1114,16 @@ CONTAINS
            ( D, T, Ye_P, Ym_P, P, P_T, OS_P, UnitP )
            
     ! Calculate Electron Quantities
-    ! Initialize Electron state (Abar and Zbar not needed!!!)
-    ElectronState % t   = T    / UnitT
-    ElectronState % rho = D    / UnitD
-    ElectronState % Y_e = Ye_P / UnitY
+    ElectronPhotonState % t   = T_P
+    ElectronPhotonState % rho = D_P
+    ElectronPhotonState % ye  = Ye_P
     
-    CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
-    Pele = ElectronState % p
+    CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+    Pele = ElectronPhotonState % p
 
     ! Calculate Muon Quantities
-    MuonState % t = T / UnitT
-    MuonState % rhoym = D * Ym_P / UnitD / UnitY
+    MuonState % t = T_P
+    MuonState % rhoym = D_P * Ym_P
 
     CALL FullMuonEOS(MuonTable, MuonState)
     P_mu = MuonState % p
@@ -1308,7 +1284,7 @@ CONTAINS
     
 #ifdef INVERSION_SPLIT_TABLE_COMBINED
 #else
-    TYPE(ElectronStateType) :: ElectronState
+    TYPE(ElectronPhotonStateType) :: ElectronPhotonState
     TYPE(MuonStateType) :: MuonState
     REAL(DP) :: Eele, E_mu
 #endif
@@ -1325,15 +1301,13 @@ CONTAINS
            ( D, T, Ye, Ym, Em, E_T, OS_E, UnitE )
            
     ! Calculate Electron Quantities
-    ! Initialize Electron state (Abar and Zbar not needed!!!)
-    ElectronState % t = T
-    ElectronState % rho = D
-    ElectronState % Y_e = Ye
-    ElectronState % abar = One 
-    ElectronState % zbar = Ye
+    ! Initialize Electron and Photon state
+    ElectronPhotonState % t   = T
+    ElectronPhotonState % rho = D
+    ElectronPhotonState % ye  = Ye
     
-    CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
-    Eele = ElectronState % e + mass_ele / rmu * ergmev * ElectronState % Y_e ! add back mass to internal Energy!
+    CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+    Eele = ElectronPhotonState % e + mass_ele / rmu * ergmev * ElectronPhotonState % ye ! add back mass to internal Energy!
 
     ! Calculate Muon Quantities
     MuonState % t = T
@@ -1538,7 +1512,7 @@ CONTAINS
 
 #ifdef INVERSION_SPLIT_TABLE_COMBINED
 #else
-    TYPE(ElectronStateType) :: ElectronState
+    TYPE(ElectronPhotonStateType) :: ElectronPhotonState
     TYPE(MuonStateType) :: MuonState
     REAL(DP) :: Pele, P_mu
 #endif
@@ -1577,7 +1551,7 @@ CONTAINS
       
       CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
              ( D, T, Ye, Ym, P, dPdD, dPdT, dPdYe, dPdYm, P_T, OS_P, &
-             UnitP, 1.0_dp, 0.0_dp, 0.0_dp )
+             UnitP, 1, 0, 0 )
 
     ELSE
 
@@ -1590,15 +1564,13 @@ CONTAINS
              ( D, T, Ye, Ym, P, P_T, OS_P, UnitP )
 
       ! Calculate Electron Quantities
-      ! Initialize Electron state (Abar and Zbar not needed!!!)
-      ElectronState % t = T
-      ElectronState % rho = D
-      ElectronState % Y_e = Ye
-      ElectronState % abar = One 
-      ElectronState % zbar = Ye
+      ! Initialize Electron and Photon state
+      ElectronPhotonState % t   = T
+      ElectronPhotonState % rho = D
+      ElectronPhotonState % ye  = Ye
       
-      CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
-      Pele = ElectronState % p
+      CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+      Pele = ElectronPhotonState % p
 
       ! Calculate Muon Quantities
       MuonState % t = T
@@ -1668,7 +1640,7 @@ CONTAINS
 
       CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Vector &
              ( D, T, Ye, Ym, P, dPdD, dPdT, dPdYe, dPdYm, P_T, OS_P, &
-             UnitP, 1.0_dp, 0.0_dp, 0.0_dp )
+             UnitP, 1, 0, 0 )
 
     ELSE
 
@@ -1703,7 +1675,7 @@ CONTAINS
 
 #ifdef INVERSION_SPLIT_TABLE_COMBINED
 #else
-    TYPE(ElectronStateType) :: ElectronState
+    TYPE(ElectronPhotonStateType) :: ElectronPhotonState
     TYPE(MuonStateType) :: MuonState
     REAL(DP) :: Eele, E_mu
 #endif
@@ -1742,7 +1714,7 @@ CONTAINS
 
       CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
              ( D, T, Ye, Ym, E, dEdD, dEdT, dEdYe, dEdYm, E_T, OS_E, &
-             UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
+             UnitE, 0, 1, 0 )
 
     ELSE
 
@@ -1757,13 +1729,13 @@ CONTAINS
            ( D, T, Ye, Ym, E, E_T, OS_E, UnitE )
            
     ! Calculate Electron Quantities
-    ! Initialize Electron state (Abar and Zbar not needed!!!)
-    ElectronState % t = T
-    ElectronState % rho = D
-    ElectronState % Y_e = Ye
+    ! Initialize Electron and Photon state
+    ElectronPhotonState % t   = T
+    ElectronPhotonState % rho = D
+    ElectronPhotonState % ye  = Ye
     
-    CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
-    Eele = ElectronState % e + mass_ele / rmu * ergmev * ElectronState % Y_e ! add back mass to internal Energy!
+    CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+    Eele = ElectronPhotonState % e + mass_ele / rmu * ergmev * ElectronPhotonState % ye ! add back mass to internal Energy!
 
     ! Calculate Muon Quantities
     MuonState % t = T
@@ -1833,7 +1805,7 @@ CONTAINS
 
       CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Vector &
              ( D, T, Ye, Ym, E, dEdD, dEdT, dEdYe, dEdYm, E_T, OS_E, &
-             UnitE, 1.0_dp, 0.0_dp, 0.0_dp )
+             UnitE, 0, 1, 0 )
 
     ELSE
 
@@ -1875,7 +1847,7 @@ CONTAINS
     REAL(DP) :: dD, dT
 	  REAL(DP) :: aD, aT
     
-    TYPE(ElectronStateType) :: ElectronState
+    TYPE(ElectronPhotonStateType) :: ElectronPhotonState
     
     IF( ComputeDerivatives )THEN
 
@@ -1910,30 +1882,26 @@ CONTAINS
       dMdYm = 0.0_dp
 
       ! Calculate Electron Quantities
-      ! Initialize Electron state (Abar and Zbar not needed!!!)
-      ElectronState % t    = T  / UnitT
-      ElectronState % rho  = D  / UnitD
-      ElectronState % y_e  = Ye / UnitY
-      ElectronState % abar = One
-      ElectronState % zbar = ElectronState % y_e
-      
-      CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
+      ! Initialize Electron and Photon state
+      ElectronPhotonState % t    = T  / UnitT
+      ElectronPhotonState % rho  = D  / UnitD
+      ElectronPhotonState % ye   = Ye / UnitY
 
-      M = ElectronState % mu_e * UnitMl
+      CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+
+      M = ElectronPhotonState % mue * UnitMl
       
     ELSE
       
       ! Calculate Electron Quantities
-      ! Initialize Electron state (Abar and Zbar not needed!!!)
-      ElectronState % t    = T  / UnitT
-      ElectronState % rho  = D  / UnitD
-      ElectronState % y_e  = Ye / UnitY
-      ElectronState % abar = One
-      ElectronState % zbar = ElectronState % y_e
+      ! Initialize Electron and Photon state
+      ElectronPhotonState % t    = T  / UnitT
+      ElectronPhotonState % rho  = D  / UnitD
+      ElectronPhotonState % ye   = Ye / UnitY
       
-      CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
+      CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
 
-      M = ElectronState % mu_e * UnitMl
+      M = ElectronPhotonState % mue * UnitMl
       
     ENDIF
       
@@ -3290,7 +3258,7 @@ CONTAINS
 
   SUBROUTINE ComputeDependentVariableTotal_TABLE_Scalar &
     ( D, T, Ye, Ym, V, V_T, OS_V, Units_V, &
-    InputE, InputP, InputS )
+    ReturnE, ReturnP, ReturnS )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -3302,17 +3270,17 @@ CONTAINS
     REAL(DP), INTENT(out) :: V
     REAL(DP), INTENT(in)  :: V_T(1:,1:,1:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
-    INTEGER,  INTENT(in)  :: InputE, InputP, InputS
+    INTEGER,  INTENT(in)  :: ReturnE, ReturnP, ReturnS
 
     REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P, V_P
     REAL(DP) :: Ye_over_Yp, Ym_over_Yp
-    REAL(DP) :: Vtot(2,2,2), E_leptons(2,2,2), &
-                P_leptons(2,2,2), S_leptons(2,2,2)
+    REAL(DP) :: Vtot(2,2,2), E_LeptPhot(2,2,2), &
+                P_LeptPhot(2,2,2), S_LeptPhot(2,2,2)
     
     INTEGER  :: iD, iT, iYp, iL_D, iL_Y, iL_T
     INTEGER  :: SizeDs, SizeTs, SizeYps
 
-    TYPE(ElectronStateType) :: ElectronState
+    TYPE(ElectronPhotonStateType) :: ElectronPhotonState
     TYPE(MuonStateType) :: MuonState
     
 #ifdef MICROPHYSICS_WEAKLIB
@@ -3327,50 +3295,48 @@ CONTAINS
     Ym_over_Yp = Ym_P/Yp_P
 
     ! Now bracket the points 
-    SizeDs = SIZE( D_T )
-    SizeTs = SIZE( T_T )
+    SizeDs  = SIZE( D_T  )
+    SizeTs  = SIZE( T_T  )
     SizeYps = SIZE( Yp_T )
 
-    iD = Index1D_Log( D_P, D_T )
-    iT = Index1D_Log( T_P, T_T )
+    iD  = Index1D_Log( D_P , D_T  )
+    iT  = Index1D_Log( T_P , T_T  )
     iYp = Index1D_Lin( Yp_P, Yp_T )
 
-    iD = MIN( MAX( 1, iD ), SizeDs - 1 )
-    iT = MIN( MAX( 1, iT ), SizeTs - 1 )
+    iD  = MIN( MAX( 1, iD ) , SizeDs - 1  )
+    iT  = MIN( MAX( 1, iT ) , SizeTs - 1  )
     iYp = MIN( MAX( 1, iYp ), SizeYps - 1 )
 
     DO iL_T=1,2
       DO iL_D=1,2
         DO iL_Y=1,2
-          ElectronState % t = T_T(iT+iL_T-1)
-          ElectronState % rho = D_T(iD+iL_D-1)
-          ElectronState % y_e = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
-          ElectronState % abar = One
-          ElectronState % zbar = ElectronState % y_e
+          ElectronPhotonState % t   = T_T (iT +iL_T-1)
+          ElectronPhotonState % rho = D_T (iD +iL_D-1)
+          ElectronPhotonState % ye  = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
           
-          ! CALL FullHelmEOS(1, HelmholtzTable, ElectronState, .false., .false.)
-          CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
+          ! CALL FullHelmEOS(1, HelmholtzTable, ElectronPhotonState, .false., .false.)
+          CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
 
-          MuonState % t = T_T(iT+iL_T-1)
+          MuonState % t     = T_T(iT+iL_T-1)
           MuonState % rhoym = D_T(iD+iL_D-1) * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
           
           CALL FullMuonEOS(MuonTable, MuonState)
           
-          E_leptons(iL_D,iL_T,iL_Y) = ElectronState % e + mass_ele / rmu * ergmev * ElectronState % y_e + &
+          E_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % e + mass_ele / rmu * ergmev * ElectronPhotonState % ye + &
                         MuonState % e + mass_mu / rmu * ergmev * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
-          P_leptons(iL_D,iL_T,iL_Y) = ElectronState % p + MuonState % p
-          S_leptons(iL_D,iL_T,iL_Y) = ElectronState % s + MuonState % s
+          P_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % p + MuonState % p
+          S_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % s + MuonState % s
 
         END DO
       END DO
     END DO
     
-    IF ( InputP == 1 ) THEN
-      Vtot(:,:,:) = V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + P_leptons(:,:,:)
-    ELSE IF ( InputE == 1 ) THEN
-      Vtot(:,:,:) = 10.0**V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + E_leptons(:,:,:)
+    IF ( ReturnP == 1 ) THEN
+      Vtot(:,:,:) = V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + P_LeptPhot(:,:,:)
+    ELSE IF ( ReturnE == 1 ) THEN
+      Vtot(:,:,:) = 10.0**V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + E_LeptPhot(:,:,:)
     ELSE
-      Vtot(:,:,:) = 10.0**V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + S_leptons(:,:,:)
+      Vtot(:,:,:) = 10.0**V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + S_LeptPhot(:,:,:)
     ENDIF
     
     CALL LogInterpolateSingleVariable_3D_Custom_Point &
@@ -3390,24 +3356,24 @@ CONTAINS
 
   SUBROUTINE ComputeDependentVariableTotal_TABLE_Vector &
     ( D, T, Ye, Ym, V, V_T, OS_V, Units_V, &
-    InputE, InputP, InputS )
+    ReturnE, ReturnP, ReturnS )
 
     REAL(DP), INTENT(in)  :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out) :: V(1:)
     REAL(DP), INTENT(in)  :: V_T(1:,1:,1:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
-    INTEGER,  INTENT(in)  :: InputE, InputP, InputS
+    INTEGER,  INTENT(in)  :: ReturnE, ReturnP, ReturnS
 
     INTEGER  :: iP, nP
     REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P, V_P
     REAL(DP) :: Ye_over_Yp, Ym_over_Yp
-    REAL(DP) :: Vtot(2,2,2), E_leptons(2,2,2), &
-                P_leptons(2,2,2), S_leptons(2,2,2)
+    REAL(DP) :: Vtot(2,2,2), E_LeptPhot(2,2,2), &
+                P_LeptPhot(2,2,2), S_LeptPhot(2,2,2)
     
     INTEGER  :: iD, iT, iYp, iL_D, iL_Y, iL_T
     INTEGER  :: SizeDs, SizeTs, SizeYps
 
-    TYPE(ElectronStateType) :: ElectronState
+    TYPE(ElectronPhotonStateType) :: ElectronPhotonState
     TYPE(MuonStateType) :: MuonState
         
     nP = SIZE( D )
@@ -3456,35 +3422,33 @@ CONTAINS
       DO iL_T=1,2
         DO iL_D=1,2
           DO iL_Y=1,2
-            ElectronState % t    = T_T(iT+iL_T-1)
-            ElectronState % rho  = D_T(iD+iL_D-1)
-            ElectronState % y_e  = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
-            ElectronState % abar = One
-            ElectronState % zbar = ElectronState % y_e
+            ElectronPhotonState % t   = T_T (iT +iL_T-1)
+            ElectronPhotonState % rho = D_T (iD +iL_D-1)
+            ElectronPhotonState % ye  = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
             
-            ! CALL FullHelmEOS(1, HelmholtzTable, ElectronState, .false., .false.)
-            CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
+            ! CALL FullHelmEOS(1, HelmholtzTable, ElectronPhotonState, .false., .false.)
+            CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
 
             MuonState % t     = T_T(iT+iL_T-1)
             MuonState % rhoym = D_T(iD+iL_D-1) * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
             
             CALL FullMuonEOS(MuonTable, MuonState)
             
-            E_leptons(iL_D,iL_T,iL_Y) = ElectronState % e + mass_ele / rmu * ergmev * ElectronState % y_e + &
+            E_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % e + mass_ele / rmu * ergmev * ElectronPhotonState % ye + &
                           MuonState % e + mass_mu / rmu * ergmev * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
-            P_leptons(iL_D,iL_T,iL_Y) = ElectronState % p + MuonState % p
-            S_leptons(iL_D,iL_T,iL_Y) = ElectronState % s + MuonState % s
+            P_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % p + MuonState % p
+            S_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % s + MuonState % s
             
           END DO
         END DO
       END DO
 
-      IF ( InputP == 1 ) THEN
-        Vtot(:,:,:) = V_T(iD:iD+1,iT:iT+1,iYp:iYp+1)       + P_leptons(:,:,:)
-      ELSE IF ( InputE == 1 ) THEN
-        Vtot(:,:,:) = 10.0**V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + E_leptons(:,:,:)
+      IF ( ReturnP == 1 ) THEN
+        Vtot(:,:,:) = V_T(iD:iD+1,iT:iT+1,iYp:iYp+1)       + P_LeptPhot(:,:,:)
+      ELSE IF ( ReturnE == 1 ) THEN
+        Vtot(:,:,:) = 10.0**V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + E_LeptPhot(:,:,:)
       ELSE
-        Vtot(:,:,:) = 10.0**V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + S_leptons(:,:,:)
+        Vtot(:,:,:) = 10.0**V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + S_LeptPhot(:,:,:)
       ENDIF
 
       CALL LogInterpolateSingleVariable_3D_Custom_Point &
@@ -3514,10 +3478,234 @@ CONTAINS
 
   END SUBROUTINE ComputeDependentVariableTotal_TABLE_Vector
 
+  SUBROUTINE ComputeTotalPES_TABLE_Scalar &
+    ( D, T, Ye, Ym, P, E, S )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: D, T, Ye, Ym
+    REAL(DP), INTENT(out) :: P, E, S
+
+    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P, P_P, E_P, S_P
+    REAL(DP) :: Ye_over_Yp, Ym_over_Yp
+    REAL(DP) :: Ptot(2,2,2), Etot(2,2,2), Stot(2,2,2), &
+                E_LeptPhot(2,2,2), P_LeptPhot(2,2,2), S_LeptPhot(2,2,2)
+    
+    INTEGER  :: iD, iT, iYp, iL_D, iL_Y, iL_T
+    INTEGER  :: SizeDs, SizeTs, SizeYps
+
+    TYPE(ElectronPhotonStateType) :: ElectronPhotonState
+    TYPE(MuonStateType) :: MuonState
+    
+#ifdef MICROPHYSICS_WEAKLIB
+ 
+    D_P = D / UnitD
+    T_P = T / UnitT
+    Ye_P = Ye / UnitY
+    Ym_P = Ym / UnitY
+    Yp_P = Ye_P + Ym_P
+
+    Ye_over_Yp = Ye_P/Yp_P
+    Ym_over_Yp = Ym_P/Yp_P
+
+    ! Now bracket the points 
+    SizeDs  = SIZE( D_T  )
+    SizeTs  = SIZE( T_T  )
+    SizeYps = SIZE( Yp_T )
+
+    iD  = Index1D_Log( D_P , D_T  )
+    iT  = Index1D_Log( T_P , T_T  )
+    iYp = Index1D_Lin( Yp_P, Yp_T )
+
+    iD  = MIN( MAX( 1, iD ) , SizeDs - 1  )
+    iT  = MIN( MAX( 1, iT ) , SizeTs - 1  )
+    iYp = MIN( MAX( 1, iYp ), SizeYps - 1 )
+
+    DO iL_T=1,2
+      DO iL_D=1,2
+        DO iL_Y=1,2
+          ElectronPhotonState % t   = T_T (iT +iL_T-1)
+          ElectronPhotonState % rho = D_T (iD +iL_D-1)
+          ElectronPhotonState % ye  = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
+          
+          ! CALL FullHelmEOS(1, HelmholtzTable, ElectronPhotonState, .false., .false.)
+          CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+
+          MuonState % t     = T_T(iT+iL_T-1)
+          MuonState % rhoym = D_T(iD+iL_D-1) * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
+          
+          CALL FullMuonEOS(MuonTable, MuonState)
+          
+          E_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % e + mass_ele / rmu * ergmev * ElectronPhotonState % ye + &
+                        MuonState % e + mass_mu / rmu * ergmev * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
+          P_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % p + MuonState % p
+          S_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % s + MuonState % s
+
+        END DO
+      END DO
+    END DO
+
+    Ptot(:,:,:) = P_T(iD:iD+1,iT:iT+1,iYp:iYp+1)          + P_LeptPhot(:,:,:)
+    Etot(:,:,:) = 10.0_DP**E_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + E_LeptPhot(:,:,:)
+    Stot(:,:,:) = 10.0_DP**S_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + S_LeptPhot(:,:,:)
+
+    CALL LogInterpolateSingleVariable_3D_Custom_Point &
+           ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
+           OS_P, LOG10(Ptot), P_P )
+
+    CALL LogInterpolateSingleVariable_3D_Custom_Point &
+           ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
+           OS_E, LOG10(Etot), E_P )
+
+    CALL LogInterpolateSingleVariable_3D_Custom_Point &
+           ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
+           OS_S, LOG10(Stot), S_P )
+
+    P = P_P * UnitP
+    E = E_P * UnitE
+    S = S_P * UnitS
+
+#else
+
+    V = Zero
+
+#endif
+
+  END SUBROUTINE ComputeTotalPES_TABLE_Scalar
+
+
+  SUBROUTINE ComputeTotalPES_TABLE_Vector &
+    ( D, T, Ye, Ym, P, E, S )
+
+    REAL(DP), INTENT(in)  :: D(1:), T(1:), Ye(1:), Ym(1:)
+    REAL(DP), INTENT(out) :: E(1:), P(1:), S(1:)
+
+    INTEGER  :: iP, nP
+    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P, P_P, E_P, S_P
+    REAL(DP) :: Ye_over_Yp, Ym_over_Yp
+    REAL(DP) :: Ptot(2,2,2), Etot(2,2,2), Stot(2,2,2), &
+                P_LeptPhot(2,2,2), E_LeptPhot(2,2,2), S_LeptPhot(2,2,2)
+    
+    INTEGER  :: iD, iT, iYp, iL_D, iL_Y, iL_T
+    INTEGER  :: SizeDs, SizeTs, SizeYps
+
+    TYPE(ElectronPhotonStateType) :: ElectronPhotonState
+    TYPE(MuonStateType) :: MuonState
+        
+    nP = SIZE( D )
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, P_P, E_P, S_P ) &
+      !$OMP MAP( to: D, T, Ye, Ym, D_T, T_T, Yp_T ) &
+      !$OMP MAP( from: P, E, S )
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR &
+      !$ACC PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, P_P, E_P, S_P ) &
+      !$ACC COPYIN( D, T, Ye, Ym, D_T, T_T, Yp_T ) &
+      !$ACC COPYOUT( P, E, S )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO &
+      !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, P_P, E_P, S_P )
+#endif
+    DO iP = 1, nP
+
+      D_P  = D(iP)  / UnitD
+      T_P  = T(iP)  / UnitT
+      Ye_P = Ye(iP) / UnitY
+      Ym_P = Ym(iP) / UnitY
+      Yp_P = Ye_P + Ym_P
+
+      Ye_over_Yp = Ye_P/Yp_P
+      Ym_over_Yp = Ym_P/Yp_P
+      
+      ! Now bracket the points 
+      SizeDs  = SIZE( D_T )
+      SizeTs  = SIZE( T_T )
+      SizeYps = SIZE( Yp_T )
+
+      iD  = Index1D_Log( D_P,  D_T  )
+      iT  = Index1D_Log( T_P,  T_T  )
+      iYp = Index1D_Lin( Yp_P, Yp_T )
+
+      iD  = MIN( MAX( 1, iD  ), SizeDs  - 1 )
+      iT  = MIN( MAX( 1, iT  ), SizeTs  - 1 )
+      iYp = MIN( MAX( 1, iYp ), SizeYps - 1 )
+      
+      ! now calculate muon and electron contribution on that specific point
+      DO iL_T=1,2
+        DO iL_D=1,2
+          DO iL_Y=1,2
+            ElectronPhotonState % t   = T_T (iT +iL_T-1)
+            ElectronPhotonState % rho = D_T (iD +iL_D-1)
+            ElectronPhotonState % ye  = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
+            
+            CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+
+            MuonState % t     = T_T(iT+iL_T-1)
+            MuonState % rhoym = D_T(iD+iL_D-1) * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
+            
+            CALL FullMuonEOS(MuonTable, MuonState)
+            
+            E_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % e + mass_ele / rmu * ergmev * ElectronPhotonState % ye + &
+                          MuonState % e + mass_mu / rmu * ergmev * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
+            P_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % p + MuonState % p
+            S_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % s + MuonState % s
+            
+          END DO
+        END DO
+      END DO
+
+      Ptot(:,:,:) = P_T(iD:iD+1,iT:iT+1,iYp:iYp+1)          + P_LeptPhot(:,:,:)
+      Etot(:,:,:) = 10.0_DP**E_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + E_LeptPhot(:,:,:)
+      Stot(:,:,:) = 10.0_DP**S_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + S_LeptPhot(:,:,:)
+
+      CALL LogInterpolateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
+             OS_P, LOG10(Ptot), P_P )
+
+      CALL LogInterpolateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
+             OS_E, LOG10(Etot), E_P )
+
+      CALL LogInterpolateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
+             OS_S, LOG10(Stot), S_P )
+
+      P(iP) = P_P * UnitP
+      E(iP) = E_P * UnitE
+      S(iP) = S_P * UnitS
+
+    END DO
+
+#else
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP MAP( from: V )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC COPYOUT( V )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iP = 1, nP
+      V(iP) = Zero
+    END DO
+
+#endif
+
+  END SUBROUTINE ComputeTotalPES_TABLE_Vector
 
   SUBROUTINE ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
     ( D, T, Ye, Ym, V, dVdD, dVdT, dVdYe, dVdYm, V_T, OS_V, Units_V, &
-    InputE, InputP, InputS)
+    ReturnE, ReturnP, ReturnS)
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -3529,12 +3717,12 @@ CONTAINS
     REAL(DP), INTENT(out) :: V, dVdD, dVdT, dVdYe, dVdYm
     REAL(DP), INTENT(in)  :: V_T(1:,1:,1:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
-    REAL(DP), INTENT(in)  :: InputE, InputP, InputS
+    INTEGER , INTENT(in)  :: ReturnE, ReturnP, ReturnS
 
-    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P, V_P, dV_P(3)
+    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P, V_P, dV_P(3), dVbary_P(3)
     REAL(DP) :: Ye_over_Yp, Ym_over_Yp
-    REAL(DP) :: Vtot(2,2,2), E_leptons(2,2,2), &
-                P_leptons(2,2,2), S_leptons(2,2,2)
+    REAL(DP) :: Vtot(2,2,2), E_LeptPhot(2,2,2), &
+                P_LeptPhot(2,2,2), S_LeptPhot(2,2,2)
     
     INTEGER  :: iD, iT, iYp, iL_D, iL_Y, iL_T
     INTEGER  :: SizeDs, SizeTs, SizeYps
@@ -3542,7 +3730,7 @@ CONTAINS
 	  REAL(DP) :: aD, aT
     REAL(DP) :: dVdrhoym, dVdummy, Vdummy, LocalOffset
     
-    TYPE(ElectronStateType) :: ElectronState
+    TYPE(ElectronPhotonStateType) :: ElectronPhotonState
     TYPE(MuonStateType) :: MuonState
     
 #ifdef MICROPHYSICS_WEAKLIB
@@ -3573,24 +3761,21 @@ CONTAINS
     DO iL_T=1,2
       DO iL_D=1,2
         DO iL_Y=1,2
-          ElectronState % t = T_T(iT+iL_T-1)
-          ElectronState % rho = D_T(iD+iL_D-1)
-          ElectronState % y_e = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
-          ElectronState % abar = One
-          ElectronState % zbar = ElectronState % y_e
+          ElectronPhotonState % t   = T_T (iT +iL_T-1)
+          ElectronPhotonState % rho = D_T (iD +iL_D-1)
+          ElectronPhotonState % ye  = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
           
-          ! CALL FullHelmEOS(1, HelmholtzTable, ElectronState, .false., .false.)
-          CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
+          CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
 
           MuonState % t = T_T(iT+iL_T-1)
           MuonState % rhoym = D_T(iD+iL_D-1) * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
           
           CALL FullMuonEOS(MuonTable, MuonState)
           
-          E_leptons(iL_D,iL_T,iL_Y) = ElectronState % e + mass_ele / rmu * ergmev * ElectronState % y_e + &
+          E_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % e + mass_ele / rmu * ergmev * ElectronPhotonState % ye + &
                         MuonState % e + mass_mu / rmu * ergmev * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
-          P_leptons(iL_D,iL_T,iL_Y) = ElectronState % p + MuonState % p
-          S_leptons(iL_D,iL_T,iL_Y) = ElectronState % s + MuonState % s
+          P_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % p + MuonState % p
+          S_LeptPhot(iL_D,iL_T,iL_Y) = ElectronPhotonState % s + MuonState % s
 
         END DO
       END DO
@@ -3598,9 +3783,8 @@ CONTAINS
 
     ! Now you have to calculate dVbarydYp, and if you have pressure, you
     ! have to handle the offset accordingly
-    
-    IF (InputP .EQ. 1.0d0) THEN
-      Vtot(:,:,:) = V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + P_leptons(:,:,:)
+    IF (ReturnP .EQ. 1) THEN
+      Vtot(:,:,:) = V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + P_LeptPhot(:,:,:)
    
       LocalOffset = MINVAL(V_T(iD:iD+1,iT:iT+1,iYp:iYp+1))
       IF (LocalOffset .lt. 0.0_dp) THEN
@@ -3612,21 +3796,24 @@ CONTAINS
       ! V_P is a dummy variable below
       CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
              ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
-             LocalOffset, LOG10(V_T + LocalOffset), V_P, dV_P )
+             LocalOffset, LOG10(V_T + LocalOffset), V_P, dVbary_P )
              
+      ! V_P is a dummy variable below
+      CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
+             OS_P, LOG10(Vtot), V_P, dV_P )
+
       ! Now calculate electron and muon derivatives
-      ! ELECTRON PART IS EASY -----------------------------------------------------
-      ! Initialize temperature, density, yp, Zbar and Abar
-      ElectronState % t = T
-      ElectronState % rho = D
-      ElectronState % abar = 1.0d0 ! these are only used for ion contribution
-      ElectronState % zbar = Ye ! these are only used for ion contribution
-      ElectronState % y_e = Ye
+      ! Initialize temperature, density, ye
+      ElectronPhotonState % t   = T
+      ElectronPhotonState % rho = D
+      ElectronPhotonState % ye  = Ye
 
       ! calculate electron quantities
-      CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
+      CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
 
-      dVdYe = D/Ye * ElectronState % dpdr ! This is valid because dPdrho for photons is zero
+      ! dVdYe = d(Vbary + Vele + Vphot Vmu)dYe = dVbarydYe + d(Vele + Vphot)dYe = dVbarydYp + dVeledYe
+      dVdYe = dVbary_P(3) + D/Ye * ElectronPhotonState % dpdr
       
       ! NOW MUONS ---------------------------------------------
       IF (( D * Ym .lt. MuonTable % rhoym(1) ) .or. (T .lt. MuonTable % t(1))) THEN
@@ -3645,34 +3832,34 @@ CONTAINS
                ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % p), Vdummy, &
                  dVdrhoym, dVdummy )
         
-        dVdYm = dVdrhoym * D ! make sure the derivative is wr2 ym, not rhoym
+        dVdYm = dVbary_P(3) + dVdrhoym * D ! make sure the derivative is wr2 ym, not rhoym
       END IF
-    
-    ELSE IF (InputE .EQ. 1.0d0) THEN
 
-      Vtot(:,:,:) = 10.0**V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + E_leptons(:,:,:)
+    ELSE IF (ReturnE .EQ. 1) THEN
+
+      Vtot(:,:,:) = 10.0**V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + E_LeptPhot(:,:,:)
 
       ! V_P is a dummy variable below
       CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
              ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
-             OS_V, V_T, V_P, dV_P )
+             LocalOffset, LOG10(V_T), V_P, dVbary_P )
+             
+      ! V_P is a dummy variable below
+      CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
+             OS_P, LOG10(Vtot), V_P, dV_P )
              
       ! Now calculate electron and muon derivatives
-      ! ELECTRON PART IS EASY -----------------------------------------------------
-      ! Initialize temperature, density, yp, Zbar and Abar
-      ElectronState % t = T
-      ElectronState % rho = D
-      ElectronState % abar = 1.0d0 ! these are only used for ion contribution
-      ElectronState % zbar = 1.0d0 ! these are only used for ion contribution
-      ElectronState % y_e = Ye
+      ! Initialize temperature, density, ye
+      ElectronPhotonState % t   = T
+      ElectronPhotonState % rho = D
+      ElectronPhotonState % ye  = Ye
 
       ! calculate electron quantities
-      CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
+      CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
 
-      dVdYe = D/Ye * ElectronState % dedr ! This is valid because dPdrho for photons is zero
-      WRITE(*,*) 'Need to get this from Electron EOS, careful'
-      STOP
-      
+      dVdYe = dVbary_P(3) + D/Ye * ElectronPhotonState % dedr ! This is valid because dPdrho for photons is zero
+
       ! NOW MUONS ---------------------------------------------
       IF (( D * Ym .lt. MuonTable % rhoym(1) ) .or. (T .lt. MuonTable % t(1))) THEN
         
@@ -3690,31 +3877,33 @@ CONTAINS
                ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % e), Vdummy, &
                  dVdrhoym, dVdummy )
         
-        dVdYm = dVdrhoym * D ! make sure the derivative is wr2 ym, not rhoym
+        dVdYm = dVbary_P(3) + dVdrhoym * D ! make sure the derivative is wr2 ym, not rhoym
       END IF
              
     ELSE
 
-      Vtot(:,:,:) = 10.0**V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + S_leptons(:,:,:)
+      Vtot(:,:,:) = 10.0**V_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + S_LeptPhot(:,:,:)
 
       ! V_P is a dummy variable below
       CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
              ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
-             OS_V, V_T, V_P, dV_P )
+             LocalOffset, LOG10(V_T), V_P, dVbary_P )
+             
+      ! V_P is a dummy variable below
+      CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
+             OS_P, LOG10(Vtot), V_P, dV_P )
              
       ! Now calculate electron and muon derivatives
-      ! ELECTRON PART IS EASY -----------------------------------------------------
-      ! Initialize temperature, density, yp, Zbar and Abar
-      ElectronState % t = T
-      ElectronState % rho = D
-      ElectronState % abar = 1.0d0 ! these are only used for ion contribution
-      ElectronState % zbar = 1.0d0 ! these are only used for ion contribution
-      ElectronState % y_e = Ye
+      ! Initialize temperature, density, ye
+      ElectronPhotonState % t   = T
+      ElectronPhotonState % rho = D
+      ElectronPhotonState % ye  = Ye
 
       ! calculate electron quantities
-      CALL MinimalHelmEOS_rt(HelmholtzTable, ElectronState)
+      CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
 
-      dVdYe = D/Ye * ElectronState % dsdr ! This is valid because dPdrho for photons is zero
+      dVdYe = dVbary_P(3) + D/Ye * ElectronPhotonState % dsdr
       WRITE(*,*) 'Need to get this properly from Electron EOS, careful'
       STOP
       
@@ -3735,7 +3924,7 @@ CONTAINS
                ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % s), Vdummy, &
                  dVdrhoym, dVdummy )
         
-        dVdYm = dVdrhoym * D ! make sure the derivative is wr2 ym, not rhoym
+        dVdYm = dVbary_P(3) + dVdrhoym * D ! make sure the derivative is wr2 ym, not rhoym
       END IF
              
     END IF
@@ -3763,13 +3952,13 @@ CONTAINS
 
   SUBROUTINE ComputeDependentVariableAndDerivativesTotal_TABLE_Vector &
     ( D, T, Ye, Ym, V, dVdD, dVdT, dVdYe, dVdYm, V_T, OS_V, Units_V, &
-    InputE, InputP, InputS )
+    ReturnE, ReturnP, ReturnS )
 
     REAL(DP), INTENT(in)  :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out) :: V(1:), dVdD(1:), dVdT(1:), dVdYe(1:), dVdYm(1:)
     REAL(DP), INTENT(in)  :: V_T(1:,1:,1:)
     REAL(DP), INTENT(in)  :: OS_V, Units_V
-    REAL(DP), INTENT(in)  :: InputE, InputP, InputS
+    INTEGER , INTENT(in)  :: ReturnE, ReturnP, ReturnS
 
     INTEGER :: iP, nP
 
@@ -3792,7 +3981,7 @@ CONTAINS
 
       CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
              ( D(iP), T(iP), Ye(iP), Ym(iP), V(iP), dVdD(iP), dVdT(iP), &
-               dVdYe(iP), dVdYm(iP), V_T, OS_V, Units_V, InputE, InputP, InputS )
+               dVdYe(iP), dVdYm(iP), V_T, OS_V, Units_V, ReturnE, ReturnP, ReturnS )
 
     END DO
 

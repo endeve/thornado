@@ -5,7 +5,7 @@ EquationOfStateModule_TABLE.o: \
   wlEOSComponentsCombinedInversionModule.o \
   wlEOSComponentsSeparateInversionModule.o \
   wlLeptonEOSModule.o \
-  wlElectronEOS.o \
+  wlElectronPhotonEOS.o \
   wlMuonEOS.o \
   wlHelmMuonIOModuleHDF.o \
   wlSoundSpeedModule.o \
