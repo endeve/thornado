@@ -92,6 +92,13 @@ MODULE MHD_UtilitiesModule_Relativistic
     iAM_EF1, &
     iAM_EF2, &
     iAM_EF3, &
+    iAM_Tem00, &
+    iAM_Tem11, &
+    iAM_Tem22, &
+    iAM_Tem33, &
+    iAM_Tem12, &
+    iAM_Tem13, &
+    iAM_Tem23, &
     nDM, &
     iDM_Sh_X1, &
     iDM_Sh_X2, &
@@ -1825,20 +1832,27 @@ CONTAINS
                G(iNX,iX1,iX2,iX3,iGF_Beta_1), &
                G(iNX,iX1,iX2,iX3,iGF_Beta_2), &
                G(iNX,iX1,iX2,iX3,iGF_Beta_3), &
-               A(iNX,iX1,iX2,iX3,iAM_P ),  &
-               A(iNX,iX1,iX2,iX3,iAM_Pb),  &
-               A(iNX,iX1,iX2,iX3,iAM_T ),  &
-               A(iNX,iX1,iX2,iX3,iAM_Ye),  &
-               A(iNX,iX1,iX2,iX3,iAM_S ),  &
-               A(iNX,iX1,iX2,iX3,iAM_E ),  &
-               A(iNX,iX1,iX2,iX3,iAM_h ),  &
-               A(iNX,iX1,iX2,iX3,iAM_hb),  &
-               A(iNX,iX1,iX2,iX3,iAM_Gm),  &
-               A(iNX,iX1,iX2,iX3,iAM_Cs),  &
-               A(iNX,iX1,iX2,iX3,iAM_Ca),  &
-               A(iNX,iX1,iX2,iX3,iAM_EF1), &
-               A(iNX,iX1,iX2,iX3,iAM_EF2), &
-               A(iNX,iX1,iX2,iX3,iAM_EF3) )
+               A(iNX,iX1,iX2,iX3,iAM_P    ),  &
+               A(iNX,iX1,iX2,iX3,iAM_Pb   ),  &
+               A(iNX,iX1,iX2,iX3,iAM_T    ),  &
+               A(iNX,iX1,iX2,iX3,iAM_Ye   ),  &
+               A(iNX,iX1,iX2,iX3,iAM_S    ),  &
+               A(iNX,iX1,iX2,iX3,iAM_E    ),  &
+               A(iNX,iX1,iX2,iX3,iAM_h    ),  &
+               A(iNX,iX1,iX2,iX3,iAM_hb   ),  &
+               A(iNX,iX1,iX2,iX3,iAM_Gm   ),  &
+               A(iNX,iX1,iX2,iX3,iAM_Cs   ),  &
+               A(iNX,iX1,iX2,iX3,iAM_Ca   ),  &
+               A(iNX,iX1,iX2,iX3,iAM_EF1  ), &
+               A(iNX,iX1,iX2,iX3,iAM_EF2  ), &
+               A(iNX,iX1,iX2,iX3,iAM_EF3  ), &
+               A(iNX,iX1,iX2,iX3,iAM_Tem00), &
+               A(iNX,iX1,iX2,iX3,iAM_Tem11), &
+               A(iNX,iX1,iX2,iX3,iAM_Tem22), &
+               A(iNX,iX1,iX2,iX3,iAM_Tem33), &
+               A(iNX,iX1,iX2,iX3,iAM_Tem12), &
+               A(iNX,iX1,iX2,iX3,iAM_Tem13), &
+               A(iNX,iX1,iX2,iX3,iAM_Tem23) )
 
     END DO
     END DO

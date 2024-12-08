@@ -861,21 +861,26 @@ CONTAINS
       B1, B2, B3,                    &
       Gm11, Gm22, Gm33,              &
       Lapse, Shift1, Shift2, Shift3, &
-      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3 )
+      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3, &
+      Tem00, Tem11, Tem22, Tem33, Tem12, Tem13, Tem23 )
 
     REAL(DP), INTENT(in)  :: D, V1, V2, V3, Ev, Ne, &
                              B1, B2, B3,            &
                              Gm11, Gm22, Gm33,      &
                              Lapse, Shift1, Shift2, Shift3
     REAL(DP), INTENT(out) :: P, Pb, T, Y, S, Em, h, hb, Gm, &
-                             Cs, Ca, EF1, EF2, EF3
+                             Cs, Ca, EF1, EF2, EF3,         &
+                             Tem00, Tem11, Tem22, Tem33,    &
+                             Tem12, Tem13, Tem23
 
     CALL ComputeAuxiliary_Magnetofluid_IDEAL( D, V1, V2, V3, Ev, Ne,         &
                                               B1, B2, B3,                    &
                                               Gm11, Gm22, Gm33,              &
                                               Lapse, Shift1, Shift2, Shift3, &
                                               P, Pb, T, Y, S, Em, h, hb, Gm, &
-                                              Cs, Ca, EF1, EF2, EF3 )
+                                              Cs, Ca, EF1, EF2, EF3,         &
+                                              Tem00, Tem11, Tem22, Tem33,    &
+                                              Tem12, Tem13, Tem23 )
 
   END SUBROUTINE ComputeAuxiliary_Magnetofluid_Scalar
 
@@ -885,7 +890,8 @@ CONTAINS
       B1, B2, B3,                    &
       Gm11, Gm22, Gm33,              &
       Lapse, Shift1, Shift2, Shift3, &
-      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3 )
+      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3, &
+      Tem00, Tem11, Tem22, Tem33, Tem12, Tem13, Tem23 )
 
     REAL(DP), INTENT(in)  :: D(:), V1(:), V2(:), V3(:), Ev(:), Ne(:), &
                              B1(:), B2(:), B3(:),                     &
@@ -893,15 +899,18 @@ CONTAINS
                              Lapse(:), Shift1(:), Shift2(:), Shift3(:)
     REAL(DP), INTENT(out) :: P(:), Pb(:), T (:), Y (:), S(:),         &
                              Em(:), h(:), hb(:), Gm(:), Cs(:), Ca(:), &
-                             EF1(:), EF2(:), EF3(:)
-
+                             EF1(:), EF2(:), EF3(:),                  &
+                             Tem00(:), Tem11(:), Tem22(:), Tem33(:),  &
+                             Tem12(:), Tem13(:), Tem23(:)
 
     CALL ComputeAuxiliary_Magnetofluid_IDEAL &
            ( D, V1, V2, V3, Ev, Ne, &
              B1, B2, B3,            &
              Gm11, Gm22, Gm33,      &
              Lapse, Shift1, Shift2, Shift3, &
-             P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3 )
+             P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3, &
+             Tem00, Tem11, Tem22, Tem33, Tem12, Tem13, Tem23 )
+
 
   END SUBROUTINE ComputeAuxiliary_Magnetofluid_Vector
 

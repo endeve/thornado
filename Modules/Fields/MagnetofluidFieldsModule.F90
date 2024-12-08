@@ -97,28 +97,35 @@ MODULE MagnetofluidFieldsModule
 
   ! --- Auxiliary Magnetofluid Fields ---
 
-  INTEGER, PUBLIC, PARAMETER :: iAM_P   = 01 ! Pressure
-  INTEGER, PUBLIC, PARAMETER :: iAM_Pb  = 02 ! Magnetic Pressure
-  INTEGER, PUBLIC, PARAMETER :: iAM_T   = 03 ! Temperature
-  INTEGER, PUBLIC, PARAMETER :: iAM_Ye  = 04 ! Electron Fraction
-  INTEGER, PUBLIC, PARAMETER :: iAM_S   = 05 ! Entropy Per Baryon
-  INTEGER, PUBLIC, PARAMETER :: iAM_E   = 06 ! Specific Internal Energy
-  INTEGER, PUBLIC, PARAMETER :: iAM_h   = 07 ! Specific Enthalpy
-  INTEGER, PUBLIC, PARAMETER :: iAM_hb  = 08 ! Specific Magnetic Enthalpy
-  INTEGER, PUBLIC, PARAMETER :: iAM_Me  = 09 ! Electron Chemical Potential
-  INTEGER, PUBLIC, PARAMETER :: iAM_Mp  = 10 ! Proton Chemical Potential
-  INTEGER, PUBLIC, PARAMETER :: iAM_Mn  = 11 ! Neutron Chemical Potential
-  INTEGER, PUBLIC, PARAMETER :: iAM_Xp  = 12 ! Proton Mass Fraction
-  INTEGER, PUBLIC, PARAMETER :: iAM_Xn  = 13 ! Neutron Mass Fraction
-  INTEGER, PUBLIC, PARAMETER :: iAM_Xa  = 14 ! Alpha Mass Fraction
-  INTEGER, PUBLIC, PARAMETER :: iAM_Xh  = 15 ! Heavy Mass Fraction
-  INTEGER, PUBLIC, PARAMETER :: iAM_Gm  = 16 ! Ratio of Specific Heats
-  INTEGER, PUBLIC, PARAMETER :: iAM_Cs  = 17 ! Sound Speed
-  INTEGER, PUBLIC, PARAMETER :: iAM_Ca  = 18 ! Alfven Speed
-  INTEGER, PUBLIC, PARAMETER :: iAM_EF1 = 19 ! Eulerian Electric Field (1)
-  INTEGER, PUBLIC, PARAMETER :: iAM_EF2 = 20 ! Eulerian Electric Field (2)
-  INTEGER, PUBLIC, PARAMETER :: iAM_EF3 = 21 ! Eulerian Electric Field (3)
-  INTEGER, PUBLIC, PARAMETER :: nAM     = 21 ! n AuxiliaryMagneto Fields
+  INTEGER, PUBLIC, PARAMETER :: iAM_P     = 01 ! Pressure
+  INTEGER, PUBLIC, PARAMETER :: iAM_Pb    = 02 ! Magnetic Pressure
+  INTEGER, PUBLIC, PARAMETER :: iAM_T     = 03 ! Temperature
+  INTEGER, PUBLIC, PARAMETER :: iAM_Ye    = 04 ! Electron Fraction
+  INTEGER, PUBLIC, PARAMETER :: iAM_S     = 05 ! Entropy Per Baryon
+  INTEGER, PUBLIC, PARAMETER :: iAM_E     = 06 ! Specific Internal Energy
+  INTEGER, PUBLIC, PARAMETER :: iAM_h     = 07 ! Specific Enthalpy
+  INTEGER, PUBLIC, PARAMETER :: iAM_hb    = 08 ! Specific Magnetic Enthalpy
+  INTEGER, PUBLIC, PARAMETER :: iAM_Me    = 09 ! Electron Chemical Potential
+  INTEGER, PUBLIC, PARAMETER :: iAM_Mp    = 10 ! Proton Chemical Potential
+  INTEGER, PUBLIC, PARAMETER :: iAM_Mn    = 11 ! Neutron Chemical Potential
+  INTEGER, PUBLIC, PARAMETER :: iAM_Xp    = 12 ! Proton Mass Fraction
+  INTEGER, PUBLIC, PARAMETER :: iAM_Xn    = 13 ! Neutron Mass Fraction
+  INTEGER, PUBLIC, PARAMETER :: iAM_Xa    = 14 ! Alpha Mass Fraction
+  INTEGER, PUBLIC, PARAMETER :: iAM_Xh    = 15 ! Heavy Mass Fraction
+  INTEGER, PUBLIC, PARAMETER :: iAM_Gm    = 16 ! Ratio of Specific Heats
+  INTEGER, PUBLIC, PARAMETER :: iAM_Cs    = 17 ! Sound Speed
+  INTEGER, PUBLIC, PARAMETER :: iAM_Ca    = 18 ! Alfven Speed
+  INTEGER, PUBLIC, PARAMETER :: iAM_EF1   = 19 ! Eulerian Electric Field (1)
+  INTEGER, PUBLIC, PARAMETER :: iAM_EF2   = 20 ! Eulerian Electric Field (2)
+  INTEGER, PUBLIC, PARAMETER :: iAM_EF3   = 21 ! Eulerian Electric Field (3)
+  INTEGER, PUBLIC, PARAMETER :: iAM_Tem00 = 22 ! EM Stress Tensor (00)
+  INTEGER, PUBLIC, PARAMETER :: iAM_Tem11 = 23 ! EM Stress Tensor (11)
+  INTEGER, PUBLIC, PARAMETER :: iAM_Tem22 = 24 ! EM Stress Tensor (22)
+  INTEGER, PUBLIC, PARAMETER :: iAM_Tem33 = 25 ! EM Stress Tensor (33)
+  INTEGER, PUBLIC, PARAMETER :: iAM_Tem12 = 26 ! EM Stress Tensor (12)
+  INTEGER, PUBLIC, PARAMETER :: iAM_Tem13 = 27 ! EM Stress Tensor (13)
+  INTEGER, PUBLIC, PARAMETER :: iAM_Tem23 = 28 ! EM Stress Tensor (23)
+  INTEGER, PUBLIC, PARAMETER :: nAM       = 28 ! n AuxiliaryMagneto Fields
 
   CHARACTER(32), DIMENSION(nAM), PUBLIC, PARAMETER :: &
     namesAM = [ 'Pressure                        ', &
@@ -141,7 +148,14 @@ MODULE MagnetofluidFieldsModule
                 'Alfven Speed                    ', &
                 'Eulerian Electric Field (1)     ', &
                 'Eulerian Electric Field (2)     ', &
-                'Eulerian Electric Field (3)     ' ]
+                'Eulerian Electric Field (3)     ', &
+                'EM Stress Tensor (00)           ', &
+                'EM Stress Tensor (11)           ', &
+                'EM Stress Tensor (22)           ', &
+                'EM Stress Tensor (33)           ', &
+                'EM Stress Tensor (12)           ', &
+                'EM Stress Tensor (13)           ', &
+                'EM Stress Tensor (23)           ' ]
 
   CHARACTER(10),  DIMENSION(nAM), PUBLIC, PARAMETER :: &
     ShortNamesAM = [ 'AM_P      ', &
@@ -164,7 +178,14 @@ MODULE MagnetofluidFieldsModule
                      'AM_Ca     ', &
                      'AM_EF1    ', &
                      'AM_EF2    ', &
-                     'AM_EF3    ' ]
+                     'AM_EF3    ', &
+                     'AM_Tem00  ', &
+                     'AM_Tem11  ', &
+                     'AM_Tem22  ', &
+                     'AM_Tem33  ', &
+                     'AM_Tem12  ', &
+                     'AM_Tem13  ', &
+                     'AM_Tem23  ' ]
 
   REAL(DP), DIMENSION(nAM), PUBLIC :: unitsAM
 
@@ -577,12 +598,19 @@ CONTAINS
       unitsAM(iAM_Gm) = One
       unitsAM(iAM_Cs) = Kilometer / Second
       unitsAM(iAM_Ca) = Kilometer / Second
+      unitsAM(iAM_Tem00) = Gauss**2 ! Fix later.
+      unitsAM(iAM_Tem11) = unitsPM(iPM_B1)**2
+      unitsAM(iAM_Tem22) = unitsPM(iPM_B2)**2
+      unitsAM(iAM_Tem33) = unitsPM(iPM_B3)**2
+      unitsAM(iAM_Tem12) = unitsPM(iPM_B1) * unitsPM(iPM_B2)
+      unitsAM(iAM_Tem13) = unitsPM(iPM_B1) * unitsPM(iPM_B3)
+      unitsAM(iAM_Tem23) = unitsPM(iPM_B2) * unitsPM(iPM_B3)
 
       SELECT CASE( TRIM( CoordinateSystem ) )
 
         CASE( 'CARTESIAN' )
 
-          unitsAM(iAM_EF1) = Gauss
+          unitsAM(iAM_EF1) = Gauss ! Need to fix?
           unitsAM(iAM_EF2) = Gauss
           unitsAM(iAM_EF3) = Gauss
 

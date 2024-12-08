@@ -20,6 +20,7 @@ MODULE EquationOfStateModule_IDEAL
   PUBLIC :: ComputeSoundSpeedFromPrimitive_IDEAL
   PUBLIC :: ComputeAlfvenSpeedFromPrimitive_IDEAL
   PUBLIC :: ComputeElectricFieldFromPrimitive_IDEAL
+  PUBLIC :: ComputeEMStressTensorFromPrimitive_IDEAL
   PUBLIC :: ComputeAuxiliary_Fluid_IDEAL
   PUBLIC :: ComputeAuxiliary_Magnetofluid_IDEAL
 
@@ -67,6 +68,11 @@ MODULE EquationOfStateModule_IDEAL
     MODULE PROCEDURE ComputeElectricFieldFromPrimitive_IDEAL_Scalar
     MODULE PROCEDURE ComputeElectricFieldFromPrimitive_IDEAL_Vector
   END INTERFACE ComputeElectricFieldFromPrimitive_IDEAL
+
+  INTERFACE ComputeEMStressTensorFromPrimitive_IDEAL
+    MODULE PROCEDURE ComputeEMStressTensorFromPrimitive_IDEAL_Scalar
+    MODULE PROCEDURE ComputeEMStressTensorFromPrimitive_IDEAL_Vector
+  END INTERFACE ComputeEMStressTensorFromPrimitive_IDEAL
 
   INTERFACE ComputeAuxiliary_Fluid_IDEAL
     MODULE PROCEDURE ComputeAuxiliary_Fluid_IDEAL_Scalar
@@ -553,6 +559,98 @@ CONTAINS
   END SUBROUTINE ComputeElectricFieldFromPrimitive_IDEAL_Scalar
 
 
+  SUBROUTINE ComputeEMStressTensorFromPrimitive_IDEAL_Scalar &
+               ( V1, V2, V3,       &
+                 B1, B2, B3,       &
+                 Gm11, Gm22, Gm33, &
+                 Lapse, Shift1, Shift2, Shift3, &
+                 Tem00, Tem11, Tem22, Tem33, Tem12, Tem13, Tem23 )
+
+    REAL(DP), INTENT(in)  :: V1, V2, V3,       &
+                             B1, B2, B3,       &
+                             Gm11, Gm22, Gm33, &
+                             Lapse, Shift1, Shift2, Shift3
+    REAL(DP), INTENT(out) :: Tem00, Tem11, Tem22, Tem33, Tem12, Tem13, Tem23
+
+    REAL(DP) :: vSq, W, vdotb, vdotBeta, bdotBeta, bdotb, BetaSq, b0u, b0d, bSq
+
+    vSq      = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
+
+    W        = One / SQRT( One - vSq )
+
+    vdotb    = Gm11 * V1 * B1 + Gm22 * V2 * B2 + Gm33 * V3 * B3
+
+    bdotb    = Gm11 * B1**2 + Gm22 * B2**2 + Gm33 * B3**2
+
+    vdotBeta = Gm11 * V1 * Shift1 + Gm22 * V2 * Shift2 + Gm33 * V3 * Shift3
+
+    bdotBeta = Gm11 * B1 * Shift1 + Gm22 * B2 * Shift2 + Gm33 * B3 * Shift3
+
+    BetaSq   = Gm11 * Shift1**2 + Gm22 * Shift2**2 + Gm33 * Shift3**2
+
+    b0u = vdotb / ( Lapse - vdotBeta )
+
+    b0d = b0u * ( BetaSq - Lapse**2 ) + bdotBeta
+
+    bSq = b0d * b0u + b0u * bdotBeta + bdotb
+
+    Tem00 = Zero ! Fix later.
+
+    Tem11 = ( W**2 * ( V1 - Shift1 / Lapse ) * ( V1 - Shift1 / Lapse ) &
+              + One / ( Two * Gm11 )                                   &
+              - Shift1 * Shift1 / ( Two * Lapse**2 ) ) * bSq - B1 * B1
+
+    Tem22 = ( W**2 * ( V2 - Shift2 / Lapse ) * ( V2 - Shift2 / Lapse ) &
+              + One / ( Two * Gm22 )                                   &
+              - Shift2 * Shift2 / ( Two * Lapse**2 ) ) * bSq - B2 * B2
+
+    Tem33 = ( W**2 * ( V3 - Shift3 / Lapse ) * ( V3 - Shift3 / Lapse ) &
+              + One / ( Two * Gm33 )                                   &
+              - Shift3 * Shift3 / ( Two * Lapse**2 ) ) * bSq - B3 * B3
+
+    Tem12 = ( W**2 * ( V1 - Shift1 / Lapse ) * ( V2 - Shift2 / Lapse ) &
+              - Shift1 * Shift2 / ( Two * Lapse**2 ) ) * bSq - B1 * B2
+
+    Tem13 = ( W**2 * ( V1 - Shift1 / Lapse ) * ( V3 - Shift3 / Lapse ) &
+              - Shift1 * Shift3 / ( Two * Lapse**2 ) ) * bSq - B1 * B3
+
+    Tem23 = ( W**2 * ( V2 - Shift2 / Lapse ) * ( V3 - Shift3 / Lapse ) &
+              - Shift2 * Shift3 / ( Two * Lapse**2 ) ) * bSq - B2 * B3
+
+  END SUBROUTINE ComputeEMStressTensorFromPrimitive_IDEAL_Scalar
+
+
+  SUBROUTINE ComputeEMStressTensorFromPrimitive_IDEAL_Vector &
+               ( V1, V2, V3,       &
+                 B1, B2, B3,       &
+                 Gm11, Gm22, Gm33, &
+                 Lapse, Shift1, Shift2, Shift3, &
+                 Tem00, Tem11, Tem22, Tem33, Tem12, Tem13, Tem23 )
+
+    REAL(DP), INTENT(in)  :: V1(:), V2(:), V3(:),       &
+                             B1(:), B2(:), B3(:),       &
+                             Gm11(:), Gm22(:), Gm33(:), &
+                             Lapse(:), Shift1(:), Shift2(:), Shift3(:)
+    REAL(DP), INTENT(out) :: Tem00(:), Tem11(:), Tem22(:), Tem33(:), &
+                             Tem12(:), Tem13(:), Tem23(:)
+
+    INTEGER :: i
+
+    DO i = 1, SIZE( V1 )
+
+      CALL ComputeEMStressTensorFromPrimitive_IDEAL_Scalar &
+             ( V1(i), V2(i), V3(i),       &
+               B1(i), B2(i), B3(i),       &
+               Gm11(i), Gm22(i), Gm33(i), &
+               Lapse(i), Shift1(i), Shift2(i), Shift3(i), &
+               Tem00(i), Tem11(i), Tem22(i), Tem33(i), &
+               Tem12(i), Tem13(i), Tem23(i) )
+
+    END DO
+
+  END SUBROUTINE ComputeEMStressTensorFromPrimitive_IDEAL_Vector
+
+
   SUBROUTINE ComputeElectricFieldFromPrimitive_IDEAL_Vector &
     ( V1, V2, V3,                    &
       B1, B2, B3,                    &
@@ -629,7 +727,8 @@ CONTAINS
       B1, B2, B3,                    &
       Gm11, Gm22, Gm33,              &
       Lapse, Shift1, Shift2, Shift3, &
-      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3 )
+      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3, &
+      Tem00, Tem11, Tem22, Tem33, Tem12, Tem13, Tem23 )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -641,7 +740,8 @@ CONTAINS
                              B1, B2, B3,            &
                              Gm11, Gm22, Gm33,      &
                              Lapse, Shift1, Shift2, Shift3
-    REAL(DP), INTENT(out) :: P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3
+    REAL(DP), INTENT(out) :: P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3, &
+                             Tem00, Tem11, Tem22, Tem33, Tem12, Tem13, Tem23
 
     P  = ( Gamma_IDEAL - 1.0_DP ) * Ev
     Pb = Zero
@@ -664,6 +764,12 @@ CONTAINS
              Gm11, Gm22, Gm33,                 &
              Lapse, Shift1, Shift2, Shift3, &
              EF1, EF2, EF3 )
+    CALL ComputeEMStressTensorFromPrimitive_IDEAL_Scalar &
+           ( V1, V2, V3, &
+             B1, B2, B3, &
+             Gm11, Gm22, Gm33, &
+             Lapse, Shift1, Shift2, Shift3, &
+             Tem00, Tem11, Tem22, Tem33, Tem12, Tem13, Tem23 )
 
     T = 0.0_DP
     Y = 0.0_DP
@@ -677,7 +783,8 @@ CONTAINS
       B1, B2, B3,                    &
       Gm11, Gm22, Gm33,              &
       Lapse, Shift1, Shift2, Shift3, &
-      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3 )
+      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3, &
+      Tem00, Tem11, Tem22, Tem33, Tem12, Tem13, Tem23 )
 
     REAL(DP), INTENT(in)  :: D(:), V1(:), V2(:), V3(:), Ev(:), Ne(:), &
                              B1(:), B2(:), B3(:),                     &
@@ -685,7 +792,8 @@ CONTAINS
                              Lapse(:), Shift1(:), Shift2(:), Shift3(:)
     REAL(DP), INTENT(out) :: P(:), Pb(:), T (:), Y (:), S(:), Em(:), &
                              h(:), hb(:), Gm(:), Cs(:), Ca(:),       &
-                             EF1(:), EF2(:), EF3(:)
+                             EF1(:), EF2(:), EF3(:), &
+                             Tem00(:), Tem11(:), Tem22(:), Tem33(:), Tem12(:), Tem13(:), Tem23(:)
 
     INTEGER :: i
 
@@ -697,7 +805,8 @@ CONTAINS
                Gm11(i), Gm22(i), Gm33(i),                 &
                Lapse(i), Shift1(i), Shift2(i), Shift3(i), &
                P(i), Pb(i), T(i), Y(i), S(i), Em(i), h(i), hb(i), &
-               Gm(i), Cs(i), Ca(i), EF1(i), EF2(i), EF3(i) )
+               Gm(i), Cs(i), Ca(i), EF1(i), EF2(i), EF3(i), &
+               Tem00(i), Tem11(i), Tem22(i), Tem33(i), Tem12(i), Tem13(i), Tem23(i) )
 
     END DO
 
