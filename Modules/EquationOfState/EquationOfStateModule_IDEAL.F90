@@ -594,7 +594,7 @@ CONTAINS
 
     bSq = b0d * b0u + b0u * bdotBeta + bdotb
 
-    Tem00 = Zero ! Fix later.
+    Tem00 = ( One / Lapse**2 ) * ( W**2 - Half ) * bSq - b0u**2
 
     Tem11 = ( W**2 * ( V1 - Shift1 / Lapse ) * ( V1 - Shift1 / Lapse ) &
               + One / ( Two * Gm11 )                                   &
