@@ -277,7 +277,7 @@ CONTAINS
              MF_uDM_Option = MF_uDM )
 
     CALL ComputeTally_MHD_MF &
-           ( t_new, MF_uGF, MF_uCM, &
+           ( t_new, MF_uGF, MF_uCM, MF_uAM, &
              SetInitialValues_Option = SetInitialValues, &
              Verbose_Option = amrex_parallel_ioprocessor() )
 

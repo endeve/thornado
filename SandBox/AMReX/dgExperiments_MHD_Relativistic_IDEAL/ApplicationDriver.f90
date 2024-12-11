@@ -238,7 +238,7 @@ CONTAINS
                MF_uDM_Option = MF_uDM )
 
       CALL ComputeTally_MHD_MF &
-             ( t_new, MF_uGF, MF_uCM, Verbose_Option = .TRUE. )
+             ( t_new, MF_uGF, MF_uCM, MF_uAM, Verbose_Option = .TRUE. )
 
       wrt = .FALSE.
 

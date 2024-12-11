@@ -1,7 +1,7 @@
 MODULE EquationOfStateModule_IDEAL
 
   USE KindModule, ONLY: &
-    DP, Zero, One, Two
+    DP, Zero, Half, One, Two
 
   IMPLICIT NONE
   PRIVATE

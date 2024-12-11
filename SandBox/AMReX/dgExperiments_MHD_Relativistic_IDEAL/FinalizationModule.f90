@@ -122,7 +122,7 @@ CONTAINS
              pMF_uGF_Option = MF_uGF % P, &
              pMF_uCM_Option = MF_uCM % P )
 
-    CALL ComputeTally_MHD_MF( t_new, MF_uGF, MF_uCM )
+    CALL ComputeTally_MHD_MF( t_new, MF_uGF, MF_uCM, MF_uAM )
 
     CALL FinalizeFluid_SSPRK_MF
 
