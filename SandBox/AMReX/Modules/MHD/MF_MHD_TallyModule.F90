@@ -43,7 +43,9 @@ MODULE MF_MHD_TallyModule
     iCM_B2, &
     iCM_B3, &
     iCM_Chi, &
-    nCM
+    nCM, &
+    iAM_Tem33, &
+    nAM
 
   ! --- Local Modules ---
 
@@ -161,6 +163,13 @@ MODULE MF_MHD_TallyModule
   REAL(DP), PUBLIC :: ADMMass_Interior
   REAL(DP)         :: ADMMass_Change
 
+  CHARACTER(SL)    :: Tem33_FileName
+  REAL(DP), PUBLIC :: Tem33_Initial
+  REAL(DP), PUBLIC :: Tem33_OffGrid
+  REAL(DP)         :: Tem33_Interior
+  REAL(DP)         :: Tem33_Interior_OMP
+  REAL(DP)         :: Tem33_Change
+
 CONTAINS
 
 
@@ -273,6 +282,12 @@ CONTAINS
 
 #endif
 
+      ! --- Tem33 ---
+
+      Tem33_FileName &
+        = TRIM( FileNameRoot ) // '_Tem33.dat'
+
+
     END IF
 
     BaryonicMass_Interior = Zero
@@ -294,6 +309,9 @@ CONTAINS
     ElectronNumber_Change   = Zero
 
     ADMMass_Change = Zero
+
+    Tem33_Interior = Zero
+    Tem33_Change   = Zero
 
     IF( .NOT. InitializeFromCheckpoint )THEN
 
@@ -319,18 +337,22 @@ CONTAINS
       ADMMass_OffGrid  = Zero
       ADMMass_Interior = Zero
 
+      Tem33_Initial = Zero
+      Tem33_OffGrid = Zero
+
     END IF
 
   END SUBROUTINE InitializeTally_MHD_MF
 
 
   SUBROUTINE ComputeTally_MHD_MF &
-    ( Time, MF_uGF, MF_uCM, SetInitialValues_Option, &
+    ( Time, MF_uGF, MF_uCM, MF_uAM, SetInitialValues_Option, &
       WriteTally_Option, FixInteriorADMMass_Option, Verbose_Option )
 
     REAL(DP),             INTENT(in) :: Time  (0:)
     TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(in) :: MF_uCM(0:)
+    TYPE(amrex_multifab), INTENT(in) :: MF_uAM(0:)
     LOGICAL,              INTENT(in), OPTIONAL :: SetInitialValues_Option
     LOGICAL,              INTENT(in), OPTIONAL :: WriteTally_Option
     LOGICAL,              INTENT(in), OPTIONAL :: FixInteriorADMMass_Option
@@ -347,8 +369,10 @@ CONTAINS
     INTEGER , CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uGF     (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCM     (:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uAM     (:,:,:,:)
     REAL(DP), ALLOCATABLE         :: G     (:,:,:,:,:)
     REAL(DP), ALLOCATABLE         :: U     (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE         :: A     (:,:,:,:,:)
 
     TYPE(amrex_imultifab) :: iMF_FineMask
 
@@ -380,6 +404,7 @@ CONTAINS
     MHDMomentumX3_Interior = Zero
     MHDEnergy_Interior     = Zero
     ElectronNumber_Interior  = Zero
+    Tem33_Interior           = Zero
     IF( .NOT. FixInteriorADMMass ) &
       ADMMass_Interior = Zero
 
@@ -395,6 +420,7 @@ CONTAINS
       MHDMomentumX3_Interior_OMP = Zero
       MHDEnergy_Interior_OMP     = Zero
       ElectronNumber_Interior_OMP  = Zero
+      Tem33_Interior_OMP           = Zero
 
 #if defined( THORNADO_OMP )
       !$OMP PARALLEL &
@@ -415,6 +441,7 @@ CONTAINS
         FineMask => iMF_FineMask   % DataPtr( MFI )
         uGF      => MF_uGF(iLevel) % DataPtr( MFI )
         uCM      => MF_uCM(iLevel) % DataPtr( MFI )
+        uAM      => MF_uAM(iLevel) % DataPtr( MFI )
 
         iLo_MF = LBOUND( uGF )
 
@@ -433,8 +460,14 @@ CONTAINS
                  [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nCM ], &
                  U )
 
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
+                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nAM ], &
+                 A )
+
         CALL amrex2thornado_X( nGF, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uGF, G )
         CALL amrex2thornado_X( nCM, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uCM, U )
+        CALL amrex2thornado_X( nAM, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uAM, A )
 
         d3X =   MeshX(1) % Width(iX_B0(1)) &
               * MeshX(2) % Width(iX_B0(2)) &
@@ -489,10 +522,22 @@ CONTAINS
                     * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                     * U(iNX,iX1,iX2,iX3,iCM_Ne)
 
+          Tem33_Interior_OMP &
+            = Tem33_Interior_OMP &
+                + d3X &
+                    * WeightsX_q(iNX) &
+                    * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                    * A(iNX,iX1,iX2,iX3,iAM_Tem33)
+
         END DO
         END DO
         END DO
         END DO
+
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
+                 [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nAM ], &
+                 A )
 
         CALL DeallocateArray_X &
                ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
@@ -524,6 +569,8 @@ CONTAINS
         = MHDEnergy_Interior     + MHDEnergy_Interior_OMP
       ElectronNumber_Interior &
         = ElectronNumber_Interior  + ElectronNumber_Interior_OMP
+      Tem33_Interior &
+        = Tem33_Interior + Tem33_Interior_OMP
 
       CALL DestroyMesh_MF( MeshX )
 
@@ -548,6 +595,7 @@ CONTAINS
     CALL amrex_parallel_reduce_sum( MHDMomentumX3_Interior )
     CALL amrex_parallel_reduce_sum( MHDEnergy_Interior     )
     CALL amrex_parallel_reduce_sum( ElectronNumber_Interior  )
+    CALL amrex_parallel_reduce_sum( Tem33_Interior )
 
     IF( SetInitialValues )THEN
 
@@ -558,6 +606,7 @@ CONTAINS
       MHDEnergy_Initial     = MHDEnergy_Interior
       ElectronNumber_Initial  = ElectronNumber_Interior
       ADMMass_Initial         = ADMMass_Interior
+      Tem33_Initial         = Tem33_Interior
 
     END IF
 
@@ -590,6 +639,10 @@ CONTAINS
     ADMMass_Change &
       = ADMMass_Interior &
           - ADMMass_Initial + ADMMass_OffGrid
+
+    Tem33_Change &
+      = Tem33_Interior &
+          - Tem33_Initial + Tem33_OffGrid
 
     IF( WriteTally ) &
       CALL WriteTally_MHD( Time(0) )
@@ -629,6 +682,9 @@ CONTAINS
 
       ADMMass_OffGrid &
         = Zero
+
+      Tem33_OffGrid &
+        = Tem33_OffGrid + dM(iAM_Tem33,iLevel)
 
     END DO
 
@@ -729,6 +785,16 @@ CONTAINS
 
 #endif
 
+      ! --- Tem33 ---
+
+      CALL WriteTallyToFile &
+             ( Tem33_FileName, Time, UnitsDisplay % TimeUnit, &
+               Tem33_Interior, &
+               Tem33_Initial, &
+               Tem33_OffGrid, &
+               Tem33_Change, &
+               UnitsDisplay % EnergyGlobalUnit )
+
     END IF
 
   END SUBROUTINE WriteTally_MHD
@@ -809,6 +875,14 @@ CONTAINS
                                UnitsDisplay % EnergyGlobalLabel )
 
 #endif
+
+      CALL WriteTallyToScreen( 'Tem33', &
+                               Tem33_Interior, &
+                               Tem33_Initial, &
+                               Tem33_OffGrid, &
+                               Tem33_Change, &
+                               UnitsDisplay % EnergyGlobalUnit, &
+                               UnitsDisplay % EnergyGlobalLabel )
 
       WRITE(*,*)
 
