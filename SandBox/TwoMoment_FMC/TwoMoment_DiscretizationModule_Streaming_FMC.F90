@@ -2290,6 +2290,11 @@ CONTAINS
               ( uPM_L(iCM), uPM_R(iCM), Flux_L(iCM), Flux_R(iCM), &
                 Alpha(iNodeZ_E,iZ2,iZ3,iZ4) )
 
+        IF (iZ1 == iZ_E0(1)+1) THEN
+          NumericalFlux(iNodeZ_E,iCM,iZ2,iZ3,iZ4,iS,iZ1) &
+            = MAX(Zero, NumericalFlux(iNodeZ_E,iCM,iZ2,iZ3,iZ4,iS,iZ1))
+        END IF
+
         NumericalFlux(iNodeZ_E,iCM,iZ2,iZ3,iZ4,iS,iZ1) &
           = dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
               * Weights_E(iNodeZ_E) * EdgeEnergyCubed &

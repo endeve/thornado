@@ -41,6 +41,8 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: CoordinateSystem = 'CARTESIAN'
   CHARACTER(32) :: TimeSteppingScheme
+  LOGICAL       :: UseSlopeLimiter
+  LOGICAL       :: UseTroubledCellIndicator
   LOGICAL       :: UsePositivityLimiter
   LOGICAL       :: UseEnergyLimiter
   LOGICAL       :: Restart
@@ -53,10 +55,14 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
   REAL(DP)      :: eL, eR, ZoomE = One
   REAL(DP)      :: t, t_end, dt, dt_CFL, LengthScale, V_0(3), CFL
-  REAL(DP)      :: J_0, Chi, Sigma
+  REAL(DP)      :: J_0, Chi, Sigma, C_TCI
   REAL(DP) :: l_uuu_munurho(0:3,0:3,0:3), l_ddd_ijk(1:3,1:3,1:3), l_uud_munurho(0:3,0:3,0:3)
 
   ProgramName = 'TransparentShock'
+
+  C_TCI = One
+  UseTroubledCellIndicator = .FALSE.
+  UseSlopeLimiter          = .FALSE.
 
   SELECT CASE ( TRIM( ProgramName ) )
 
@@ -241,15 +247,14 @@ PROGRAM ApplicationDriver
       END IF
 
       nE  = 32
-      ! nE  = 64
-      ! nE  = 128
+      ! nE  = 48
+      ! nE  = 96
       eL  = 0.0d0
-      ! eR  = 1.0d2
       eR  = 3.0d2
-      ! eR  = 6.0d2
       bcE = 11
-      ! zoomE = 1.1_DP
       zoomE = 1.119237083677839_DP
+      ! zoomE = 1.019368113873667_DP
+      ! zoomE = 1.038647428867211_DP
 
       nNodes = 3
 
@@ -265,12 +270,13 @@ PROGRAM ApplicationDriver
       Chi   = 0.0_DP
       Sigma = 0.0_DP
 
-      ! UseSlopeLimiter      = .FALSE.
-      UsePositivityLimiter = .TRUE.
-      UseEnergyLimiter     = .TRUE.
-      Restart              = .FALSE.
-      ReadFileNumber       = 1
-      UseNewtons           = .FALSE.
+      UseTroubledCellIndicator = .FALSE.
+      UseSlopeLimiter          = .FALSE.
+      UsePositivityLimiter     = .TRUE.
+      UseEnergyLimiter         = .TRUE.
+      Restart                  = .FALSE.
+      ReadFileNumber           = 1
+      UseNewtons               = .FALSE.
 
       ! UseRealizabilityTimeStep = .TRUE.
 
@@ -278,7 +284,7 @@ PROGRAM ApplicationDriver
 
       Direction = 'X' ! --- (X or Y)
 
-      nX  = [ 48, 48, 1 ]
+      nX  = [ 64, 64, 1 ]
       xL  = [ - 5.0_DP, - 5.0_DP, - 0.5_DP ]
       xR  = [ + 5.0_DP, + 5.0_DP, + 0.5_DP ]
 
@@ -300,7 +306,7 @@ PROGRAM ApplicationDriver
 
       END IF
 
-      V_0 = [ 0.1_DP, 0.0_DP, 0.0_DP ]
+      V_0 = [ 0.03_DP, 0.0_DP, 0.0_DP ]
 
       nE  = 32
       eL  = 0.0d0
@@ -315,7 +321,7 @@ PROGRAM ApplicationDriver
 
       t_end   = 2.0d+1
       iCycleD = 1
-      iCycleW = 1000
+      iCycleW = 250
       maxCycles = 1000000
 
       J_0   = 0.0_DP
@@ -464,6 +470,7 @@ PROGRAM ApplicationDriver
 
     CALL ComputeFromConserved_TwoMoment_FMC &
           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uPF, uCM, uPM, uAM, uGM )
+    print *, 'End Recomputation of IC'
 
     CALL WriteTwoMomentFieldsHDF( t )
 
@@ -564,6 +571,10 @@ CONTAINS
       InitializeReferenceElement_Lagrange
     USE TwoMoment_OpacityModule_FMC, ONLY: &
       CreateOpacities
+    USE TwoMoment_TroubledCellIndicatorModule_FMC, ONLY: &
+      InitializeTroubledCellIndicator_TwoMoment
+    USE TwoMoment_SlopeLimiterModule_FMC, ONLY: &
+      InitializeSlopeLimiter_TwoMoment_FMC
     USE TwoMoment_PositivityLimiterModule_FMC, ONLY: &
       InitializePositivityLimiter_TwoMoment
     USE TwoMoment_UtilitiesModule_FMC, ONLY: &
@@ -640,6 +651,26 @@ CONTAINS
     CALL CreateOpacities &
            ( nx, [1, 1, 1], nE, 1, Verbose_Option = .TRUE.)
 
+    ! --- Initialize Troubled Cell Indicator ---
+
+    CALL InitializeTroubledCellIndicator_TwoMoment &
+           ( UseTroubledCellIndicator_Option &
+               = UseTroubledCellIndicator, &
+             C_TCI_Option &
+               = C_TCI, &
+             Verbose_Option &
+               = .TRUE. )
+
+    ! --- Initialize Slope Limiter ---
+
+    CALL InitializeSlopeLimiter_TwoMoment_FMC &
+           ( BetaTVD_Option &
+               = 1.25_DP, &
+             UseSlopeLimiter_Option &
+               = UseSlopeLimiter, &
+             Verbose_Option &
+               = .TRUE. )
+
     ! --- Initialize Positivity Limiter ---
 
     CALL InitializePositivityLimiter_TwoMoment &
@@ -673,6 +704,10 @@ CONTAINS
       Finalize_IMEX_RK
     USE TwoMoment_OpacityModule_FMC, ONLY: &
       DestroyOpacities
+    USE TwoMoment_TroubledCellIndicatorModule_FMC, ONLY: &
+      FinalizeTroubledCellIndicator_TwoMoment
+    USE TwoMoment_SlopeLimiterModule_FMC, ONLY: &
+      FinalizeSlopeLimiter_TwoMoment_FMC
     USE TwoMoment_PositivityLimiterModule_FMC, ONLY: &
       FinalizePositivityLimiter_TwoMoment
     USE ReferenceElementModuleX, ONLY: &
@@ -693,6 +728,10 @@ CONTAINS
     CALL Finalize_IMEX_RK
 
     CALL DestroyOpacities
+
+    CALL FinalizeTroubledCellIndicator_TwoMoment
+
+    CALL FinalizeSlopeLimiter_TwoMoment_FMC
 
     CALL FinalizePositivityLimiter_TwoMoment
 

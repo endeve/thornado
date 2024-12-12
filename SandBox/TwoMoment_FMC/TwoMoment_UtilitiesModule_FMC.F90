@@ -186,7 +186,9 @@ CONTAINS
         ! IF ( CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E ,iS) < &
         !      SQRT ( CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F1 ,iS)**2 + &
         !             CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F2 ,iS)**2 + &
-        !             CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F3 ,iS)**2 ) ) THEN
+        !             CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F3 ,iS)**2 ) &
+        !      .OR. &
+        !      CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E ,iS) < Zero) THEN
         !   print *, 'E  = ', CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E ,iS)
         !   print *, 'F1 = ', CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F1 ,iS)
         !   STOP
@@ -214,10 +216,12 @@ CONTAINS
         !                PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3) * PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H3 ,iS) )**2 + &
         !             PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1 ,iS)**2 + &
         !             PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H2 ,iS)**2 + &
-        !             PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H3 ,iS)**2 ) ) THEN
+        !             PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H3 ,iS)**2 ) &
+        !      .OR. &
+        !      PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS) < Zero) THEN
         !   print *, 'J  = ', PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS)
         !   print *, 'H1 = ', PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1 ,iS)
-        !   STOP
+        !   ! STOP
         ! END IF
 
       END DO
