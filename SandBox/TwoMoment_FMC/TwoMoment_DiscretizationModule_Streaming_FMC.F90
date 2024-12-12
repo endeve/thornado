@@ -146,6 +146,8 @@ MODULE TwoMoment_DiscretizationModule_Streaming_FMC
   INTEGER :: nZ_X2(4), nX2_X, nX2_Z, nNodesX_X2, nNodesZ_X2
   INTEGER :: nZ_X3(4), nX3_X, nX3_Z, nNodesX_X3, nNodesZ_X3
 
+  REAL(DP), PUBLIC :: OffGridFlux_TwoMoment(nCM)
+
 CONTAINS
 
   SUBROUTINE ComputeIncrement_TwoMoment_Explicit &
@@ -219,6 +221,8 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    OffGridFlux_TwoMoment = Zero
 
     CALL ComputeIncrement_Divergence_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_M, dU_M )
@@ -753,6 +757,10 @@ CONTAINS
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)+1), &
              nDOF_X1, One,  dU_Z, nDOFZ )
 
+    ! --- Off-Grid Fluxes for Conservation Tally ---
+
+    CALL ComputeOffGridFlux( iZP_B0, iZP_E0, nDOF_X1, NumericalFlux )
+
     !--------------------
     ! --- Volume Term ---
     !--------------------
@@ -1285,6 +1293,10 @@ CONTAINS
            ( 'T', 'N', nDOFZ, nK_Z*nCM, nDOF_X2, - One, L_X2_Up, nDOF_X2, &
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(2),iZ_B0(4),1,iZ_B0(3)+1), &
              nDOF_X2, One,  dU_Z, nDOFZ )
+
+    ! --- Off-Grid Fluxes for Conservation Tally ---
+
+    CALL ComputeOffGridFlux( iZP_B0, iZP_E0, nDOF_X2, NumericalFlux )
 
     !--------------------
     ! --- Volume Term ---
@@ -1819,6 +1831,10 @@ CONTAINS
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(2),iZ_B0(3),1,iZ_B0(4)+1), &
              nDOF_X3, One,  dU_Z, nDOFZ )
 
+    ! --- Off-Grid Fluxes for Conservation Tally ---
+
+    CALL ComputeOffGridFlux( iZP_B0, iZP_E0, nDOF_X3, NumericalFlux )
+
     !--------------------
     ! --- Volume Term ---
     !--------------------
@@ -2292,7 +2308,7 @@ CONTAINS
 
         IF (iZ1 == iZ_E0(1)+1) THEN
           NumericalFlux(iNodeZ_E,iCM,iZ2,iZ3,iZ4,iS,iZ1) &
-            = MAX(Zero, NumericalFlux(iNodeZ_E,iCM,iZ2,iZ3,iZ4,iS,iZ1))
+            = Zero!MAX(Zero, NumericalFlux(iNodeZ_E,iCM,iZ2,iZ3,iZ4,iS,iZ1))
         END IF
 
         NumericalFlux(iNodeZ_E,iCM,iZ2,iZ3,iZ4,iS,iZ1) &
@@ -2320,6 +2336,10 @@ CONTAINS
            ( 'T', 'N', nDOFZ, nK_Z*nCM, nDOF_E, - One, L_E_Up, nDOF_E, &
              NumericalFlux(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)+1), &
              nDOF_E, One,  dU_Z, nDOFZ )
+
+    ! --- Off-Grid Fluxes for Conservation Tally ---
+    
+    CALL ComputeOffGridFlux( iZP_B0, iZP_E0, nDOF_E, NumericalFlux )
 
     !--------------------
     ! --- Volume Term ---
@@ -2930,5 +2950,73 @@ CONTAINS
     NULLIFY( E_R, F_d_1_R, F_d_2_R, F_d_3_R )
 
   END SUBROUTINE FinalizeIncrement_ObserverCorrections
+
+
+  SUBROUTINE ComputeOffGridFlux( iZP_B0, iZP_E0, nDOFZ_X, NumericalFlux )
+
+    INTEGER, INTENT(in) :: iZP_B0(4), iZP_E0(4) ! Permuted limits
+    INTEGER, INTENT(in) :: nDOFZ_X ! nDOFZ_X1, ...
+
+    REAL(DP), INTENT(in) :: &
+      NumericalFlux(nDOFZ_X,nCM, &
+                    iZP_B0(1):iZP_E0(1)  , &
+                    iZP_B0(2):iZP_E0(2)  , &
+                    iZP_B0(3):iZP_E0(3)  , &
+                    nSpecies, &
+                    iZP_B0(4):iZP_E0(4)+1)
+
+    INTEGER  :: iZP1, iZP2, iZP3, iZP4, iS, iCM
+    INTEGER  :: iNodeZ_X
+    REAL(DP) :: FluxIn, FluxOt
+
+    DO iCM = 1, nCM
+
+      FluxIn = Zero
+
+      DO iS   = 1        , nSpecies
+      DO iZP3 = iZP_B0(3), iZP_E0(3)
+      DO iZP2 = iZP_B0(2), iZP_E0(2)
+      DO iZP1 = iZP_B0(1), iZP_E0(1)
+
+        DO iNodeZ_X = 1, nDOFZ_X
+
+          FluxIn &
+            = FluxIn &
+                + NumericalFlux(iNodeZ_X,iCM,iZP1,iZP2,iZP3,iS,iZP_B0(4))
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      FluxOt = Zero
+
+      DO iS   = 1        , nSpecies
+      DO iZP3 = iZP_B0(3), iZP_E0(3)
+      DO iZP2 = iZP_B0(2), iZP_E0(2)
+      DO iZP1 = iZP_B0(1), iZP_E0(1)
+
+        DO iNodeZ_X = 1, nDOFZ_X
+
+          FluxOt &
+            = FluxOt &
+                + NumericalFlux(iNodeZ_X,iCM,iZP1,iZP2,iZP3,iS,iZP_E0(4)+1)
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      OffGridFlux_TwoMoment(iCM) &
+        = OffGridFlux_TwoMoment(iCM) + FluxIn - FluxOt
+
+    END DO
+
+  END SUBROUTINE ComputeOffGridFlux
+
 
 END MODULE TwoMoment_DiscretizationModule_Streaming_FMC

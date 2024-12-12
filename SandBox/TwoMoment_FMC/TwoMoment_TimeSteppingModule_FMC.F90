@@ -26,13 +26,16 @@ MODULE TwoMoment_TimeSteppingModule_FMC
   USE TwoMoment_PositivityLimiterModule_FMC, ONLY: &
     ApplyPositivityLimiter_TwoMoment
   USE TwoMoment_DiscretizationModule_Streaming_FMC, ONLY: &
-    ComputeIncrement_TwoMoment_Explicit
+    ComputeIncrement_TwoMoment_Explicit, &
+    OffGridFlux_TwoMoment
+  USE TwoMoment_TallyModule_FMC, ONLY: &
+    IncrementOffGridTally_TwoMoment
 
   IMPLICIT NONE
   PRIVATE
 
   TYPE :: StageDataType
-    REAL(DP)              :: OffGridFlux_M(2*nCM)
+    REAL(DP)              :: OffGridFlux(nCM)
     REAL(DP), ALLOCATABLE :: dM_IM(:,:,:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: dM_EX(:,:,:,:,:,:,:)
   END TYPE StageDataType
@@ -143,7 +146,9 @@ CONTAINS
     PROCEDURE(ImplicitIncrement) :: ComputeIncrement_TwoMoment_Implicit
 
     ! --- Local variables ---
-    INTEGER :: iS, jS
+
+    INTEGER  :: iS, jS
+    REAL(DP) :: dM_OffGrid(nCM)
 
     Write(*,*)
     print *,'Update_IMEX_RK'
@@ -162,7 +167,7 @@ CONTAINS
 
         END IF
 
-        IF (a_EX(iS,jS) .NE. Zero)THEN
+        IF( a_EX(iS,jS) .NE. Zero )THEN
 
           CALL AddToArray( One, Mi, dt * a_EX(iS,jS), StageData(jS) % dM_EX )
 
@@ -171,6 +176,7 @@ CONTAINS
         IF( jS==iS - 1)THEN
 
           ! --- Apply Limiters ---
+
           CALL ApplyPositivityLimiter_TwoMoment &
                  ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, Mi )
 
@@ -189,6 +195,7 @@ CONTAINS
         CALL AddToArray ( One, Mi, dt * a_IM(iS,iS), StageData(iS) % dM_IM )
 
         ! --- Apply Limiters ---
+
         CALL ApplyPositivityLimiter_TwoMoment &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, Mi )
 
@@ -198,11 +205,11 @@ CONTAINS
 
       IF( ANY( a_EX(:,iS) .NE. Zero ) .OR. ( w_EX(iS) .NE. Zero ) )THEN
 
-      CALL ComputeIncrement_TwoMoment_Explicit &
-        ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
-          U, Mi, StageData(iS) % dM_EX )
+         CALL ComputeIncrement_TwoMoment_Explicit &
+                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
+                  U, Mi, StageData(iS) % dM_EX )
 
-      ! StageData(iS) % OffGridFlux_M = OffGridFlux_TwoMoment
+         StageData(iS) % OffGridFlux = OffGridFlux_TwoMoment
 
       END IF
 
@@ -235,12 +242,20 @@ CONTAINS
       END DO
 
       ! --- Apply Limiters ---
+
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U, Mi )
 
-      ! --- Offgrid? ---
-
     END IF
+
+    dM_OffGrid = Zero
+    DO iS = 1, nStages
+
+      dM_Offgrid = dM_OffGrid + dt * w_EX(iS) * StageData(iS) % OffGridFlux
+
+    END DO
+
+    CALL IncrementOffGridTally_TwoMoment( dM_OffGrid )
 
     CALL CopyArray( M, One, Mi )
 
@@ -396,7 +411,7 @@ CONTAINS
       CALL AllocateArray( StageData(i) % dM_IM )
       CALL AllocateArray( StageData(i) % dM_EX )
 
-      StageData(i) % OffGridFlux_M = Zero
+      StageData(i) % OffGridFlux = Zero
 
     END DO
 
