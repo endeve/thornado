@@ -92,9 +92,13 @@ PROGRAM ApplicationDriver_CCSN
 
   CoordinateSystem = 'SPHERICAL'
 
+#ifdef EOSMODE_TABLE_COMBINED
   EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
+#else
   !EosTableName          = 'BaryonsPlusHelmPlusMuonsEOS_interpolated.h5'
   EosTableName          = 'BaryonsPlusHelmPlusMuonsEOS.h5'
+#endif
+
   OpacityTableName_EmAb = 'wl-Op-SFHo-15-25-50-E40-EmAb.h5'
   OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-Iso.h5'
   OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-NES.h5'
@@ -108,7 +112,8 @@ PROGRAM ApplicationDriver_CCSN
   ! --- Evolution Parameters ---
 
   t_end   = 3.50d+2 * Millisecond
-  dt_wrt  = 1.00d-0 * Millisecond
+  !t_end   = 1.00d-3 * Millisecond
+  dt_wrt  = 1.00d-4 * Millisecond
   wrt     = .FALSE.
   iCycleD = 10
 

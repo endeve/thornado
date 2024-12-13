@@ -15,8 +15,8 @@ MODULE EquationOfStateModule_TABLE
     ReadEquationOfStateTableHDF
   USE wlEquationOfStateTableModule, ONLY: &
     EquationOfStateTableType
-#ifdef INVERSION_SPLIT_TABLE_COMBINED
-  USE wlEOSComponentsCombinedInversionModule, ONLY: &
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
+  USE wlEOSComponentsSeparateInversionModule, ONLY: &
     InitializeEOSComponentsInversion, &
     ComputeTemperatureWith_DEYpYl_Single_Guess_Error, &
     ComputeTemperatureWith_DEYpYl_Single_Guess_NoError, &
@@ -25,7 +25,7 @@ MODULE EquationOfStateModule_TABLE
     ComputeTemperatureWith_DPYpYl_Single_NoGuess_Error, &
     DescribeEOSComponentsInversionError
 #else
-  USE wlEOSComponentsSeparateInversionModule, ONLY: &
+  USE wlEOSComponentsCombinedInversionModule, ONLY: &
     InitializeEOSComponentsInversion, &
     ComputeTemperatureWith_DEYpYl_Single_Guess_Error, &
     ComputeTemperatureWith_DEYpYl_Single_Guess_NoError, &
@@ -665,56 +665,67 @@ CONTAINS
 
     TYPE(ElectronPhotonStateType) :: ElectronPhotonState
     TYPE(MuonStateType) :: MuonState
-    
-#ifdef INVERSION_SPLIT_TABLE_COMBINED
 
-    CALL ComputeTotalPES_TABLE_Scalar( D, T, Ye, Ym, P, E, S )
-
-#else
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
 
     ! Calculate Electron Quantities
     ! Initialize Electron and Photon state
-    ElectronPhotonState % t = T
-    ElectronPhotonState % rho = D
-    ElectronPhotonState % ye = Ye
-    
+    ElectronPhotonState % t   = T  / UnitT
+    ElectronPhotonState % rho = D  / UnitD
+    ElectronPhotonState % ye  = Ye / UnitY
     CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
 
     Eele = ElectronPhotonState % e
     Pele = ElectronPhotonState % p
     Sele = ElectronPhotonState % s
-    Mue = ElectronPhotonState % mue
+    Mue  = ElectronPhotonState % mue * UnitMl
 
     ! Calculate Muon Quantities
-    MuonState % t = T
-    MuonState % rhoym = D * Ym
-    
+    MuonState % t     = T /UnitT
+    MuonState % rhoym = D * Ym / UnitD / UnitY
     CALL FullMuonEOS(MuonTable, MuonState)
 
     E_mu = MuonState % e
     P_mu = MuonState % p
     S_mu = MuonState % s
-    Mum = MuonState % mu
-
+    Mum  = MuonState % mu * UnitMl
+    
     ! --- Interpolate Pressure ----------------------------------------
 
-    CALL ComputeDependentVariableBaryons_TABLE_Scalar &
-           ( D, T, Ye, Ym, P, P_T, OS_P, UnitP )
+    CALL ComputePressureBaryons_TABLE_Scalar &
+           ( D, T, Ye, Ym, P )
 
     ! --- Interpolate Entropy Per Baryon ------------------------------
 
     CALL ComputeDependentVariableBaryons_TABLE_Scalar &
-           ( D, T, Ye, Ym, S, S_T, OS_S, UnitS )
+           ( D, T, Ye, Ym, S, S_T, OS_S, One )
 
     ! --- Interpolate Specific Internal Energy ------------------------
 
     CALL ComputeDependentVariableBaryons_TABLE_Scalar &
-           ( D, T, Ye, Ym, E, E_T, OS_E, UnitE )
+           ( D, T, Ye, Ym, E, E_T, OS_E, One )
            
-    E = E + Eele + E_mu
-    P = P + Pele + P_mu
-    S = S + Sele + S_mu
-    
+    E = ( E + Eele + E_mu ) * UnitE
+    P = ( P + Pele + P_mu ) * UnitP
+    S = ( S + Sele + S_mu ) * UnitS
+
+#else
+
+  CALL ComputeTotalPES_TABLE_Scalar( D, T, Ye, Ym, P, E, S )
+
+  ! Now take care of checmical potentials
+  ElectronPhotonState % t   = T  / UnitT
+  ElectronPhotonState % rho = D  / UnitD
+  ElectronPhotonState % ye  = Ye / UnitY
+  CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+  Mue  = ElectronPhotonState % mue * UnitMl
+
+  ! Calculate Muon Quantities
+  MuonState % t     = T /UnitT
+  MuonState % rhoym = D * Ym / UnitD / UnitY
+  CALL FullMuonEOS(MuonTable, MuonState)
+  Mum  = MuonState % mu * UnitMl
+
 #endif
 
     ! --- Interpolate Proton Chemical Potential -----------------------
@@ -1079,11 +1090,10 @@ CONTAINS
 
     REAL(DP) :: D_P, E_P, Yp_P, Ye_P, Ym_P, T_P, T
 
-#ifdef INVERSION_SPLIT_TABLE_COMBINED
-#else
-    TYPE(ElectronPhotonStateType) :: ElectronPhotonState
-    TYPE(MuonStateType) :: MuonState
-    REAL(DP) :: Pele, P_mu
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
+  TYPE(ElectronPhotonStateType) :: ElectronPhotonState
+  TYPE(MuonStateType) :: MuonState
+  REAL(DP) :: Pele, P_mu
 #endif
 
 #ifdef MICROPHYSICS_WEAKLIB
@@ -1100,15 +1110,12 @@ CONTAINS
            T_P )
 
     T = T_P * UnitT
-#ifdef INVERSION_SPLIT_TABLE_COMBINED
 
-    CALL ComputeDependentVariableTotal_TABLE_Scalar &
-           ( D, T, Ye_P, Ym_P, P, P_T, OS_P, &
-           UnitP, 1, 0, 0 )
-#else
-    CALL ComputeDependentVariableBaryons_TABLE_Scalar &
-           ( D, T, Ye_P, Ym_P, P, P_T, OS_P, UnitP )
-           
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
+
+    CALL ComputePressureBaryons_TABLE_Scalar &
+           ( D, T, Ye, Ym, P )
+
     ! Calculate Electron Quantities
     ElectronPhotonState % t   = T_P
     ElectronPhotonState % rho = D_P
@@ -1118,14 +1125,19 @@ CONTAINS
     Pele = ElectronPhotonState % p
 
     ! Calculate Muon Quantities
-    MuonState % t = T_P
+    MuonState % t     = T_P
     MuonState % rhoym = D_P * Ym_P
 
     CALL FullMuonEOS(MuonTable, MuonState)
     P_mu = MuonState % p
            
-    P = P + Pele + P_mu
-    P = P * UnitP
+    P = ( P + Pele + P_mu ) * UnitP
+#else
+  
+  CALL ComputeDependentVariableTotal_TABLE_Scalar &
+  ( D, T, Ye, Ym, P, P_T, OS_P, &
+  UnitP, 1, 0, 0 )
+
 #endif
 #endif
 
@@ -1282,46 +1294,46 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, T, Ye, Ym
     REAL(DP), INTENT(out) :: Ev, Em, Ne, Nm
     
-#ifdef INVERSION_SPLIT_TABLE_COMBINED
-#else
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
     TYPE(ElectronPhotonStateType) :: ElectronPhotonState
     TYPE(MuonStateType) :: MuonState
     REAL(DP) :: Eele, E_mu
 #endif
     ! --- Interpolate Specific Internal Energy ------------------------
 
-#ifdef INVERSION_SPLIT_TABLE_COMBINED
-
-    CALL ComputeDependentVariableTotal_TABLE_Scalar &
-           ( D, T, Ye, Ym, Em, E_T, OS_E, &
-           UnitE, 0, 1, 0 )
-#else
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
 
     CALL ComputeDependentVariableBaryons_TABLE_Scalar &
-           ( D, T, Ye, Ym, Em, E_T, OS_E, UnitE )
+           ( D, T, Ye, Ym, Em, E_T, OS_E, One )
            
     ! Calculate Electron Quantities
     ! Initialize Electron and Photon state
-    ElectronPhotonState % t   = T
-    ElectronPhotonState % rho = D
-    ElectronPhotonState % ye  = Ye
-    
+    ElectronPhotonState % t   = T  / UnitT
+    ElectronPhotonState % rho = D  / UnitD
+    ElectronPhotonState % ye  = Ye / UnitY
     CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+
     Eele = ElectronPhotonState % e
 
     ! Calculate Muon Quantities
-    MuonState % t = T
-    MuonState % rhoym = D * Ym
-    
+    MuonState % t = T / UnitT
+    MuonState % rhoym = D * Ym / UnitD / UnitY
     CALL FullMuonEOS(MuonTable, MuonState)
+
     E_mu = MuonState % e
            
-    Em = Em + Eele + E_mu
+    Em = ( Em + Eele + E_mu ) * UnitE
+#else
+  
+  CALL ComputeDependentVariableTotal_TABLE_Scalar &
+          ( D, T, Ye, Ym, Em, E_T, OS_E, &
+          UnitE, 0, 1, 0 )
+
 #endif
 
-    Ev  = Em * D                ! --- Internal Energy per Unit Volume
-    Ne  = Ye  * D / BaryonMass  ! --- Electrons per Unit Volume
-    Nm = Ym  * D / BaryonMass ! --- Muons per Unit Volume
+    Ev = Em * D                ! --- Internal Energy per Unit Volume
+    Ne = Ye * D / BaryonMass  ! --- Electrons per Unit Volume
+    Nm = Ym * D / BaryonMass ! --- Muons per Unit Volume
 
   END SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE_Scalar
 
@@ -1456,9 +1468,15 @@ CONTAINS
     CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
            ( D, Em, Ye, Ym, T )
 
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
     CALL CalculateSoundSpeed( D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, &
-        D_T, T_T, Yp_T, &
-        P_T, OS_P, E_T, OS_E, HelmholtzTable, MuonTable, Gm, Cs, .FALSE.)
+        D_T, T_T, Yp_T, P_T, OS_P, E_T, OS_E, &
+        HelmholtzTable, MuonTable, Gm, Cs, .TRUE.)
+#else
+    CALL CalculateSoundSpeed( D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, &
+        D_T, T_T, Yp_T, P_T, OS_P, E_T, OS_E, &
+        HelmholtzTable, MuonTable, Gm, Cs, .FAlSE.)
+#endif
 
     Gm = Gm * UnitGm
     Cs = Cs * Centimeter / Second
@@ -1507,8 +1525,7 @@ CONTAINS
     REAL(DP), TARGET  :: dPdD_Local, dPdT_Local, dPdYe_Local, dPdYm_Local
     REAL(DP), POINTER :: dPdD      , dPdT      , dPdYe      , dPdYm
 
-#ifdef INVERSION_SPLIT_TABLE_COMBINED
-#else
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
     TYPE(ElectronPhotonStateType) :: ElectronPhotonState
     TYPE(MuonStateType) :: MuonState
     REAL(DP) :: Pele, P_mu
@@ -1546,37 +1563,49 @@ CONTAINS
         dPdYm => dPdYm_Local
       END IF
       
-      CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
-             ( D, T, Ye, Ym, P, dPdD, dPdT, dPdYe, dPdYm, P_T, OS_P, &
-             UnitP, 1, 0, 0 )
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
+
+      WRITE(*,*) 'Still needs to be implemented, can be a bit tedious, maybe I can avoid doing this'
+      STOP
+
+#else
+  
+  CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
+        ( D, T, Ye, Ym, P, dPdD, dPdT, dPdYe, dPdYm, P_T, OS_P, &
+        UnitP, 1, 0, 0 )
+
+#endif
 
     ELSE
 
-#ifdef INVERSION_SPLIT_TABLE_COMBINED
-      CALL ComputeDependentVariableTotal_TABLE_Scalar &
-             ( D, T, Ye, Ym, P, P_T, OS_P, &
-             UnitP, 1, 0, 0 )
-#else
-      CALL ComputeDependentVariableBaryons_TABLE_Scalar &
-             ( D, T, Ye, Ym, P, P_T, OS_P, UnitP )
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
+
+      CALL ComputePressureBaryons_TABLE_Scalar &
+          ( D, T, Ye, Ym, P )
 
       ! Calculate Electron Quantities
       ! Initialize Electron and Photon state
-      ElectronPhotonState % t   = T
-      ElectronPhotonState % rho = D
-      ElectronPhotonState % ye  = Ye
-      
+      ElectronPhotonState % t   = T  / UnitT
+      ElectronPhotonState % rho = D  / UnitD
+      ElectronPhotonState % ye  = Ye / UnitY
       CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+
       Pele = ElectronPhotonState % p
 
       ! Calculate Muon Quantities
-      MuonState % t = T
-      MuonState % rhoym = D * Ym
-      
+      MuonState % t = T / UnitT
+      MuonState % rhoym = D * Ym / UnitD / UnitY
       CALL FullMuonEOS(MuonTable, MuonState)
+
       P_mu = MuonState % p
       
-      P = P + Pele + P_mu
+      P = ( P + Pele + P_mu ) * UnitP
+#else
+
+  CALL ComputeDependentVariableTotal_TABLE_Scalar &
+  ( D, T, Ye, Ym, P, P_T, OS_P, &
+  UnitP, 1, 0, 0 )
+
 #endif
 
     END IF
@@ -1670,8 +1699,7 @@ CONTAINS
     REAL(DP), TARGET  :: dEdD_Local, dEdT_Local, dEdYe_Local, dEdYm_Local
     REAL(DP), POINTER :: dEdD,       dEdT,       dEdYe, dEdYm
 
-#ifdef INVERSION_SPLIT_TABLE_COMBINED
-#else
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
     TYPE(ElectronPhotonStateType) :: ElectronPhotonState
     TYPE(MuonStateType) :: MuonState
     REAL(DP) :: Eele, E_mu
@@ -1709,39 +1737,49 @@ CONTAINS
         dEdYm => dEdYm_Local
       END IF
 
-      CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
-             ( D, T, Ye, Ym, E, dEdD, dEdT, dEdYe, dEdYm, E_T, OS_E, &
-             UnitE, 0, 1, 0 )
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
+
+      WRITE(*,*) 'Still needs to be implemented, can be a bit tedious, maybe I can avoid doing this'
+      STOP
+#else
+  
+  CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
+          ( D, T, Ye, Ym, E, dEdD, dEdT, dEdYe, dEdYm, E_T, OS_E, &
+          UnitE, 0, 1, 0 )
+
+#endif
 
     ELSE
 
-#ifdef INVERSION_SPLIT_TABLE_COMBINED
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
 
-    CALL ComputeDependentVariableTotal_TABLE_Scalar &
-           ( D, T, Ye, Ym, E, E_T, OS_E, &
-           UnitE, 0, 1, 0 )
-#else
-    
     CALL ComputeDependentVariableBaryons_TABLE_Scalar &
-           ( D, T, Ye, Ym, E, E_T, OS_E, UnitE )
+           ( D, T, Ye, Ym, E, E_T, OS_E, One )
            
     ! Calculate Electron Quantities
     ! Initialize Electron and Photon state
-    ElectronPhotonState % t   = T
-    ElectronPhotonState % rho = D
-    ElectronPhotonState % ye  = Ye
-    
+    ElectronPhotonState % t   = T  / UnitT
+    ElectronPhotonState % rho = D  / UnitD
+    ElectronPhotonState % ye  = Ye / UnitY
+
     CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
     Eele = ElectronPhotonState % e
 
     ! Calculate Muon Quantities
-    MuonState % t = T
-    MuonState % rhoym = D * Ym
+    MuonState % t = T / UnitT
+    MuonState % rhoym = D * Ym / UnitD / UnitY
     
     CALL FullMuonEOS(MuonTable, MuonState)
     E_mu = MuonState % e
            
-    E = E + Eele + E_mu
+    E = ( E + Eele + E_mu ) * UnitE
+
+#else
+  
+  CALL ComputeDependentVariableTotal_TABLE_Scalar &
+  ( D, T, Ye, Ym, E, E_T, OS_E, &
+  UnitE, 0, 1, 0 )
+
 #endif
     END IF
 
@@ -1806,14 +1844,17 @@ CONTAINS
 
     ELSE
 
-#ifdef INVERSION_SPLIT_TABLE_COMBINED
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
 
-      CALL ComputeDependentVariableTotal_TABLE_Vector &
-             ( D, T, Ye, Ym, E, E_T, OS_E, &
-             UnitE, 0, 1, 0 )
-
+      WRITE(*,*) 'Not yet implemented in ComputeSpecificInternalEnergy_TABLE_Vector'
+      STOP
+      
 #else
-      ! Not really used
+
+  CALL ComputeDependentVariableTotal_TABLE_Vector &
+          ( D, T, Ye, Ym, E, E_T, OS_E, &
+          UnitE, 0, 1, 0 )
+
 #endif
 
     END IF
@@ -2976,17 +3017,17 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, iD, iT, iY, dD, dT, dY, Mue, Mup, Mun ) &
+    !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, Mue, Mup, Mun ) &
     !$OMP MAP( to: D, T, Y, D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
     !$OMP MAP( from: Munue )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, iD, iT, iY, dD, dT, dY, Mue, Mup, Mun ) &
+    !$ACC PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, Mue, Mup, Mun ) &
     !$ACC COPYIN( D, T, Y, D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
     !$ACC COPYOUT( Munue )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, iD, iT, iY, dD, dT, dY, Mue, Mup, Mun )
+    !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, Mue, Mup, Mun )
 #endif
     DO iP = 1, nP
 
@@ -3096,17 +3137,17 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, iD, iT, iY, dD, dT, dY, Mum, Mup, Mun ) &
+    !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, Mum, Mup, Mun ) &
     !$OMP MAP( to: D, T, Y, D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
     !$OMP MAP( from: Munum )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, iD, iT, iY, dD, dT, dY, Mum, Mup, Mun ) &
+    !$ACC PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, Mum, Mup, Mun ) &
     !$ACC COPYIN( D, T, Y, D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
     !$ACC COPYOUT( Munum )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, iD, iT, iY, dD, dT, dY, Mum, Mup, Mun )
+    !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, Mum, Mup, Mun )
 #endif
     DO iP = 1, nP
 
@@ -3252,6 +3293,69 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeDependentVariableBaryons_TABLE_Vector
+
+  SUBROUTINE ComputePressureBaryons_TABLE_Scalar &
+    ( D, T, Ye, Ym, P )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: D, T, Ye, Ym
+    REAL(DP), INTENT(out) :: P
+
+    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P
+    REAL(DP) :: LocalOffset
+    REAL(DP) :: D_cube(2), T_cube(2), Yp_cube(2), P_cube(2,2,2)
+    INTEGER  :: iD, iT, iYp
+    INTEGER  :: SizeDs, SizeTs, SizeYps
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    D_P  = D  / UnitD
+    T_P  = T  / UnitT
+    Ye_P = Ye / UnitY
+    Ym_P = Ym / UnitY
+    Yp_P = Ye_P + Ym_P
+
+    ! Bracekt points and find the cube in the table
+    SizeDs = SIZE( D_T )
+    SizeTs = SIZE( T_T )
+    SizeYps = SIZE( Yp_T )
+
+    iD  = Index1D_Log( D_P , D_T  )
+    iT  = Index1D_Log( T_P , T_T  )
+    iYp = Index1D_Lin( Yp_P, Yp_T )
+
+    iD  = MIN( MAX( 1, iD ) , SizeDs - 1  )
+    iT  = MIN( MAX( 1, iT ) , SizeTs - 1  )
+    iYp = MIN( MAX( 1, iYp ), SizeYps - 1 )
+
+    P_cube  = P_T (iD:iD+1,iT:iT+1,iYp:iYp+1)
+    D_cube  = D_T (iD:iD+1)
+    T_cube  = T_T (iT:iT+1)
+    Yp_cube = Yp_T(iYp:iYp+1)
+    
+    LocalOffset = MINVAL(P_cube)
+    IF (LocalOffset .lt. 0.0_dp) THEN
+        LocalOffset = -1.1d0*LocalOffset
+    ELSE
+        LocalOffset = 0.0_dp
+    ENDIF
+
+    CALL LogInterpolateSingleVariable_3D_Custom_Point &
+           ( D_P, T_P, Yp_P, D_cube, T_cube, Yp_cube, LocalOffset, &
+           LOG10(P_cube + LocalOffset), P )
+
+#else
+
+    P = Zero
+
+#endif
+
+  END SUBROUTINE ComputePressureBaryons_TABLE_Scalar
 
   SUBROUTINE ComputeDependentVariableTotal_TABLE_Scalar &
     ( D, T, Ye, Ym, V, V_T, OS_V, Units_V, &
@@ -3797,9 +3901,9 @@ CONTAINS
 
       ! Now calculate electron and muon derivatives
       ! Initialize temperature, density, ye
-      ElectronPhotonState % t   = T
-      ElectronPhotonState % rho = D
-      ElectronPhotonState % ye  = Ye
+      ElectronPhotonState % t   = T  / UnitT
+      ElectronPhotonState % rho = D  / UnitD
+      ElectronPhotonState % ye  = Ye / UnitY
 
       ! calculate electron quantities
       CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
@@ -3843,9 +3947,9 @@ CONTAINS
              
       ! Now calculate electron and muon derivatives
       ! Initialize temperature, density, ye
-      ElectronPhotonState % t   = T
-      ElectronPhotonState % rho = D
-      ElectronPhotonState % ye  = Ye
+      ElectronPhotonState % t   = T  / UnitT
+      ElectronPhotonState % rho = D  / UnitD
+      ElectronPhotonState % ye  = Ye / UnitY
 
       ! calculate electron quantities
       CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
@@ -3888,9 +3992,9 @@ CONTAINS
              
       ! Now calculate electron and muon derivatives
       ! Initialize temperature, density, ye
-      ElectronPhotonState % t   = T
-      ElectronPhotonState % rho = D
-      ElectronPhotonState % ye  = Ye
+      ElectronPhotonState % t   = T  / UnitT
+      ElectronPhotonState % rho = D  / UnitD
+      ElectronPhotonState % ye  = Ye / UnitY
 
       ! calculate electron quantities
       CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
@@ -4017,7 +4121,6 @@ CONTAINS
     REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P, V_P, dV_P(3)
 
     INTEGER  :: iD, iT, iYp, iL_D, iL_Y, iL_T
-    INTEGER  :: SizeDs, SizeTs, SizeYps
     
 #ifdef MICROPHYSICS_WEAKLIB
 
