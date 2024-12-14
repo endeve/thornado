@@ -24,7 +24,7 @@ THORNADO_DIR = '/mnt/shared/work/codes/thornado/'
 suffix = ''
 PlotDirectory \
   = THORNADO_DIR + \
-      'SandBox/AMReX/Applications/{0:}{1:}/' \
+      'SandBox/AMReX/Applications/{0:}/' \
       .format( ProblemName, suffix )
 
 # Plotfile base name
@@ -68,7 +68,7 @@ MeshAlpha = 0.5
 OverplotContours = False
 nLevels = 5
 
-prefix = '{0:}{1:}'.format( Field, suffix )
+prefix = '{0:}_2d_{1:}{2:}'.format( ProblemName, Field, suffix )
 
 ### End of user input ###
 
@@ -114,9 +114,7 @@ class timeLabel( PlotCallback ):
 
 def createFrame( index, xx, overwrite ):
 
-    N = xx.shape[0]
-
-    fileName = '{0:}_{1:}.png'.format( prefix, str( index ).zfill( 3 ) )
+    fileName = 'fig.{0:}_{1:}.png'.format( prefix, str( index ).zfill( 3 ) )
 
     if ( ( isfile( fileName ) ) & ( not overwrite ) ) : return
 
@@ -172,7 +170,7 @@ def createFrame( index, xx, overwrite ):
     slc.save( fileName )
 
     print( '  [{:.2f}%] Saved {:}' \
-           .format( index / np.float64( N ) * 100.0, fileName ) )
+           .format( index / np.float64( xx.shape[0] ) * 100.0, fileName ) )
 
 print( '\n  Data directory: {:}'.format( PlotDirectory ) )
 xx = FileNumberArray#[0:-1:10]
@@ -183,7 +181,7 @@ for i in range( xx.shape[0] ):
 movName = 'mov.{:}.mp4'.format( prefix )
 import os
 os.system( \
-'ffmpeg -loglevel quiet -f image2 -framerate 30 -i {0:}_%03d.png -vcodec libx264 -crf 22 {1:}'.format( prefix, movName ) )
+'ffmpeg -loglevel quiet -f image2 -framerate 30 -i fig.{0:}_%03d.png -vcodec libx264 -crf 22 {1:}'.format( prefix, movName ) )
 print( '\n  Saved {:}'.format( movName ) )
 
 '''
