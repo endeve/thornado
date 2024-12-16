@@ -2132,32 +2132,6 @@ CONTAINS
                                  + dV_d_dX3(iNodeX,2,iZ2,iZ3,iZ4), &
                              Two * dV_d_dX3(iNodeX,3,iZ2,iZ3,iZ4) ]
 
-        ! A(:,0) = Half * [ Zero, &
-        !                   dV_d_dX1(iNodeX,0,iZ2,iZ3,iZ4), &
-        !                   dV_d_dX2(iNodeX,0,iZ2,iZ3,iZ4), &
-        !                   dV_d_dX3(iNodeX,0,iZ2,iZ3,iZ4) ]
-
-        ! A(:,1) = Half * [       dV_d_dX1(iNodeX,0,iZ2,iZ3,iZ4), &
-        !                   Two * dV_d_dX1(iNodeX,1,iZ2,iZ3,iZ4), &
-        !                         dV_d_dX2(iNodeX,1,iZ2,iZ3,iZ4)  &
-        !                       + dV_d_dX1(iNodeX,2,iZ2,iZ3,iZ4), &
-        !                         dV_d_dX3(iNodeX,1,iZ2,iZ3,iZ4)  &
-        !                       + dV_d_dX1(iNodeX,3,iZ2,iZ3,iZ4) ]
-        ! A(:,2) = Half * [       dV_d_dX2(iNodeX,0,iZ2,iZ3,iZ4), &
-        !                         dV_d_dX1(iNodeX,2,iZ2,iZ3,iZ4)  &
-        !                       + dV_d_dX2(iNodeX,1,iZ2,iZ3,iZ4), &
-        !                   Two * dV_d_dX2(iNodeX,2,iZ2,iZ3,iZ4), &
-        !                         dV_d_dX3(iNodeX,2,iZ2,iZ3,iZ4)  &
-        !                       + dV_d_dX2(iNodeX,3,iZ2,iZ3,iZ4) ]
-        ! A(:,3) = Half * [       dV_d_dX3(iNodeX,0,iZ2,iZ3,iZ4), &
-        !                         dV_d_dX1(iNodeX,3,iZ2,iZ3,iZ4)  &
-        !                       + dV_d_dX3(iNodeX,1,iZ2,iZ3,iZ4), &
-        !                         dV_d_dX2(iNodeX,3,iZ2,iZ3,iZ4)  &
-        !                       + dV_d_dX3(iNodeX,2,iZ2,iZ3,iZ4), &
-        !                   Two * dV_d_dX3(iNodeX,3,iZ2,iZ3,iZ4) ]
-
-        
-
         CALL EigenvaluesSymmetric3( C_ij, Lambda )
 
         vMag = SQRT( uPF_K(iNodeX,iZ2,iZ3,iZ4,iPF_V1)**2 &
@@ -2305,11 +2279,6 @@ CONTAINS
           = NumericalFlux_LLF &
               ( uPM_L(iCM), uPM_R(iCM), Flux_L(iCM), Flux_R(iCM), &
                 Alpha(iNodeZ_E,iZ2,iZ3,iZ4) )
-
-        IF (iZ1 == iZ_E0(1)+1) THEN
-          NumericalFlux(iNodeZ_E,iCM,iZ2,iZ3,iZ4,iS,iZ1) &
-            = Zero!MAX(Zero, NumericalFlux(iNodeZ_E,iCM,iZ2,iZ3,iZ4,iS,iZ1))
-        END IF
 
         NumericalFlux(iNodeZ_E,iCM,iZ2,iZ3,iZ4,iS,iZ1) &
           = dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &

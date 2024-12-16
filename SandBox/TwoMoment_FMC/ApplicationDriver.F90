@@ -29,10 +29,14 @@ PROGRAM ApplicationDriver
     ComputeTimeStep_TwoMoment_Realizable
   USE TwoMoment_OpacityModule_FMC, ONLY: &
     SetOpacities
+  USE TwoMoment_PositivityLimiterModule_FMC, ONLY: &
+    ApplyPositivityLimiter_TwoMoment
   USE TwoMoment_TimeSteppingModule_FMC, ONLY: &
     Update_IMEX_RK
   USE InitializationModule, ONLY: &
     InitializeFields
+  USE TwoMoment_TallyModule_FMC, ONLY: &
+    ComputeTally
 
   IMPLICIT NONE
 
@@ -54,9 +58,8 @@ PROGRAM ApplicationDriver
   INTEGER       :: ReadFileNumber
   REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
   REAL(DP)      :: eL, eR, ZoomE = One
-  REAL(DP)      :: t, t_end, dt, dt_CFL, LengthScale, V_0(3), CFL
+  REAL(DP)      :: t, t_end, dt, LengthScale, V_0(3), CFL
   REAL(DP)      :: J_0, Chi, Sigma, C_TCI
-  REAL(DP) :: l_uuu_munurho(0:3,0:3,0:3), l_ddd_ijk(1:3,1:3,1:3), l_uud_munurho(0:3,0:3,0:3)
 
   ProgramName = 'TransparentShock'
 
@@ -211,12 +214,12 @@ PROGRAM ApplicationDriver
 
       IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
-        nX  = [ 40, 1, 1 ]
+        nX  = [ 80, 1, 1 ]
         xL  = [ 0.0d0, 0.0_DP, 0.0_DP ]
         xR  = [ 2.0d0, 1.0_DP, 1.0_DP ]
         bcX = [ 12, 1, 1 ]
 
-        V_0 = [ -0.5_DP, 0.0_DP, 0.0_DP ]
+        V_0 = [ - 0.5_DP, 0.0_DP, 0.0_DP ]
 
       ELSEIF( TRIM( Direction ) .EQ. 'Y' )THEN
 
@@ -262,8 +265,7 @@ PROGRAM ApplicationDriver
 
       t_end   = 3.0d0
       iCycleD = 1
-      ! iCycleW = 50000
-      iCycleW = 10000
+      iCycleW = 1300
       maxCycles = 2000000
 
       J_0   = 0.0_DP
@@ -273,12 +275,9 @@ PROGRAM ApplicationDriver
       UseTroubledCellIndicator = .FALSE.
       UseSlopeLimiter          = .FALSE.
       UsePositivityLimiter     = .TRUE.
-      UseEnergyLimiter         = .TRUE.
       Restart                  = .FALSE.
       ReadFileNumber           = 1
       UseNewtons               = .FALSE.
-
-      ! UseRealizabilityTimeStep = .TRUE.
 
     CASE( 'TransparentVortex' )
 
@@ -456,6 +455,9 @@ PROGRAM ApplicationDriver
 
   t = 0.0_DP
 
+  CALL ApplyPositivityLimiter_TwoMoment &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uPF, uCM )
+
   CALL WriteFluidFieldsHDF( t )
 
   ! --- Write Initial Condition ---
@@ -473,6 +475,10 @@ PROGRAM ApplicationDriver
     print *, 'End Recomputation of IC'
 
     CALL WriteTwoMomentFieldsHDF( t )
+
+    CALL ComputeTally &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCM, &
+             SetInitialValues_Option = .TRUE. )
 
   END IF
 
@@ -529,14 +535,20 @@ PROGRAM ApplicationDriver
 
       CALL WriteTwoMomentFieldsHDF( t )
 
+      CALL ComputeTally &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCM )
+
     END IF
 
   END DO
 
   CALL ComputeFromConserved_TwoMoment_FMC &
-  ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uPF, uCM, uPM, uAM, uGM )
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uPF, uCM, uPM, uAM, uGM )
 
   CALL WriteTwoMomentFieldsHDF( t )
+
+  CALL ComputeTally &
+         ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCM )
 
   CALL FinalizeDriver
 
@@ -579,6 +591,8 @@ CONTAINS
       InitializePositivityLimiter_TwoMoment
     USE TwoMoment_UtilitiesModule_FMC, ONLY: &
       Initialize_MomentConversion
+    USE TwoMoment_TallyModule_FMC, ONLY: &
+      InitializeTally
     USE TwoMoment_TimeSteppingModule_FMC, ONLY: &
       Initialize_IMEX_RK
 
@@ -687,6 +701,10 @@ CONTAINS
 
     CALL Initialize_MomentConversion( Newtons_Option = UseNewtons )
 
+    ! --- Initialize Tally ---
+
+    CALL InitializeTally
+
     ! --- Initialize Time Stepper ---
 
     CALL Initialize_IMEX_RK( TRIM( TimeSteppingScheme ) )
@@ -702,6 +720,8 @@ CONTAINS
       FinalizeProgram
     USE TwoMoment_TimeSteppingModule_FMC, ONLY: &
       Finalize_IMEX_RK
+    USE TwoMoment_TallyModule_FMC, ONLY: &
+      FinalizeTally
     USE TwoMoment_OpacityModule_FMC, ONLY: &
       DestroyOpacities
     USE TwoMoment_TroubledCellIndicatorModule_FMC, ONLY: &
@@ -726,6 +746,8 @@ CONTAINS
       FinalizeReferenceElement_Lagrange
     
     CALL Finalize_IMEX_RK
+
+    CALL FinalizeTally
 
     CALL DestroyOpacities
 
