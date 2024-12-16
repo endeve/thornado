@@ -741,15 +741,11 @@ CONTAINS
 
         W = One / SQRT( One - vMagSq )
 
-        ! uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS) = 1.0d-8
-        ! uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1,iS) = 0.0_DP
-        ! uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H2,iS) = 0.0_DP
-        ! uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H3,iS) = 0.0_DP
-        ! Replace J by steady state with a delta parameter
-
         uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS) = 1.0d-8
-        ! uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS) = sSq * E / ( EXP( SQRT(sSQ) * E / Three - Three ) + One )
-        uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1,iS) = (One - delta) * W * uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS)
+        ! uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS) &
+        !  = sSq * E / ( EXP( SQRT(sSQ) * E / Three - Three ) + One )
+        uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1,iS) &
+          = (One - delta) * W * uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J,iS)
         uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H2,iS) = 0.0_DP
         uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H3,iS) = 0.0_DP
         
@@ -856,7 +852,6 @@ CONTAINS
         E = NodeCoordinate( MeshE, iZ1, iNodeE )
 
         uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS) &
-          ! = One / ( EXP( E / Three - Three ) + One )
           = E / ( EXP( E / Three - Three ) + One )
 
         IF(     TRIM( Direction ) .EQ. 'X' )THEN
