@@ -20,11 +20,13 @@ MODULE GravitySolutionModule_XCFC
     iMF_K_dd_23, &
     iMF_K_dd_33, &
     swX_GS
+#ifdef GRAVITY_SOLVER_POSEIDON_XCFC
   USE GravitySolutionModule_XCFC_Poseidon, ONLY: &
     InitializeGravitySolver_XCFC_Poseidon, &
     FinalizeGravitySolver_XCFC_Poseidon, &
     ComputeConformalFactor_XCFC_Poseidon, &
     ComputeLapseShiftCurvature_XCFC_Poseidon
+#endif
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler,  &
