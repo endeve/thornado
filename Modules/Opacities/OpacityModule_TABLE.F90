@@ -15,13 +15,18 @@ MODULE OpacityModule_TABLE
   USE wlInterpolationModule, ONLY: &
     LogInterpolateSingleVariable_1D3D_Custom, &
     LogInterpolateSingleVariable_2D_Custom_Point
+  USE wlGridModule, ONLY: &
+    MakeLogGrid
+  USE wlInterpolationUtilitiesModule, ONLY: &
+    GetIndexAndDelta_Lin, &
+    GetIndexAndDelta_Log
 
   ! ----------------------------------------------
 
 #endif
 
   USE KindModule, ONLY: &
-    DP
+    DP, Zero
   USE UnitsModule, ONLY: &
     Gram, &
     Centimeter, &
@@ -33,6 +38,8 @@ MODULE OpacityModule_TABLE
   USE MeshModule, ONLY: &
     MeshE, &
     NodeCoordinate
+  USE ReferenceElementModuleE, ONLY: &
+    WeightsE
 
   IMPLICIT NONE
   PRIVATE
@@ -56,13 +63,32 @@ MODULE OpacityModule_TABLE
     dE1, dE2
   REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
     Es_T, Ds_T, Ts_T, Ys_T, Etas_T, &
-    LogEs_T, LogDs_T, LogTs_T, LogEtas_T
+    LogEs_T, LogDs_T, LogTs_T, LogEtas_T,  &
+    Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T
+  REAL(DP), PUBLIC :: EC_dE
+  INTEGER, PUBLIC :: EC_nE, EC_iE_max, EC_iNodeE_max
+  INTEGER, DIMENSION(:), ALLOCATABLE, PUBLIC :: &
+    EC_kfmin, EC_kfmax
+  REAL(dp), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: &
+    EC_a, EC_b 
+  INTEGER, DIMENSION(:,:), ALLOCATABLE, PUBLIC :: &
+    EC_ak, EC_bk
   REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
     OS_EmAb
   REAL(DP), DIMENSION(:,:), ALLOCATABLE, PUBLIC :: &
     OS_Iso, OS_NES, OS_Pair, OS_Brem
   REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE, PUBLIC :: &
     EmAb_T
+!EC table spectrum, integrated onto thornados energy elements
+  INTEGER, PUBLIC :: use_EC_table
+  REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
+    OS_EmAb_EC_spec
+  REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
+    OS_EmAb_EC_rate
+  REAL(dp), DIMENSION(:,:,:,:), ALLOCATABLE, PUBLIC :: &
+    EmAb_EC_spec_T
+  REAL(dp), DIMENSION(:,:,:), ALLOCATABLE, PUBLIC :: &
+    EmAb_EC_rate_T
 ! Process_T(able), Process_A(ligned)T(able)
   REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE, PUBLIC :: &
     Iso_T, NES_T, Pair_T, NES_AT, Pair_AT, Brem_T, Brem_AT
@@ -73,7 +99,7 @@ MODULE OpacityModule_TABLE
   LOGICAL :: Use_OpacityTables
 
   REAL(DP), DIMENSION(6), PUBLIC :: &
-    C1, C2
+    C1, C2, C1_NuPair, C2_NuPair
 
   REAL(DP) :: EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD ! density cutoffs for EmAb (free nucleon) opacities
   REAL(DP) :: EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD   ! density cutoffs for EmAb (nuclei) opacities
@@ -88,6 +114,9 @@ MODULE OpacityModule_TABLE
 
   REAL(DP), PARAMETER :: cv       = 0.96d+00 ! weak interaction constant
   REAL(DP), PARAMETER :: ca       = 0.50d+00 ! weak interaction constant
+
+  REAL(DP), PARAMETER :: cv_nu    = 0.50d+00 ! weal interaction constant for electron neutrino pair annihilation  
+  REAL(DP), PARAMETER :: ca_nu    = 0.50d+00 ! weal interaction constant for electron neutrino pair annihilation  
 
   REAL(DP), PARAMETER :: C1_NuE     = ( cv + ca )**2, C2_NuE     = ( cv - ca )**2
   REAL(DP), PARAMETER :: C1_NuE_Bar = ( cv - ca )**2, C2_NuE_Bar = ( cv + ca )**2
@@ -117,35 +146,45 @@ MODULE OpacityModule_TABLE
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET &
-  !$OMP ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T,    &
-  !$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,     &
-  !$OMP   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT, &
-  !$OMP   Brem_T, Brem_AT, C1, C2,                       &
-  !$OMP   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD,          &
-  !$OMP   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD,            &
-  !$OMP   EmAb_MinD, EmAb_MaxD,                          &
-  !$OMP   Iso_MinD, Iso_MaxD,                            &
-  !$OMP   NES_MinD, NES_MaxD,                            &
-  !$OMP   Pair_MinD, Pair_MaxD,                          &
-  !$OMP   Brem_MinD, Brem_MaxD,                          &
-  !$OMP   NNS_MinD, NNS_MaxD,                            &
-  !$OMP   NuPair_MinD, NuPair_MaxD,                      &
+  !$OMP ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T,     &
+  !$OMP   Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T,             &
+  !$OMP   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,      &
+  !$OMP   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT,  &
+  !$OMP   Brem_T, Brem_AT, C1, C2, C1_NuPair, C2_NuPair,  &
+  !$OMP   use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
+  !$OMP   EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
+  !$OMP   EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax,   &
+  !$OMP   EC_a, EC_b, EC_ak, EC_bk,                       &
+  !$OMP   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD,           &
+  !$OMP   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD,             &
+  !$OMP   EmAb_MinD, EmAb_MaxD,                           &
+  !$OMP   Iso_MinD, Iso_MaxD,                             &
+  !$OMP   NES_MinD, NES_MaxD,                             &
+  !$OMP   Pair_MinD, Pair_MaxD,                           &
+  !$OMP   Brem_MinD, Brem_MaxD,                           &
+  !$OMP   NNS_MinD, NNS_MaxD,                             &
+  !$OMP   NuPair_MinD, NuPair_MaxD,                       &
   !$OMP   Op_MinD, Op_MaxD )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
-  !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T,    &
-  !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,     &
-  !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT, & 
-  !$ACC   Brem_T, Brem_AT, C1, C2,                       &
-  !$ACC   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD,          &
-  !$ACC   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD,            &
-  !$ACC   EmAb_MinD, EmAb_MaxD,                          &
-  !$ACC   Iso_MinD, Iso_MaxD,                            &
-  !$ACC   NES_MinD, NES_MaxD,                            &
-  !$ACC   Pair_MinD, Pair_MaxD,                          &
-  !$ACC   Brem_MinD, Brem_MaxD,                          &
-  !$ACC   NNS_MinD, NNS_MaxD,                            &
-  !$ACC   NuPair_MinD, NuPair_MaxD,                      &
+  !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T,     &
+  !$ACC   Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T,             &
+  !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,      &
+  !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT,  & 
+  !$ACC   Brem_T, Brem_AT, C1, C2, C1_NuPair, C2_NuPair,  &
+  !$ACC   use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
+  !$ACC   EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
+  !$ACC   EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax,   &
+  !$ACC   EC_a, EC_b, EC_ak, EC_bk,                       &
+  !$ACC   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD,           &
+  !$ACC   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD,             &
+  !$ACC   EmAb_MinD, EmAb_MaxD,                           &
+  !$ACC   Iso_MinD, Iso_MaxD,                             &
+  !$ACC   NES_MinD, NES_MaxD,                             &
+  !$ACC   Pair_MinD, Pair_MaxD,                           &
+  !$ACC   Brem_MinD, Brem_MaxD,                           &
+  !$ACC   NNS_MinD, NNS_MaxD,                             &
+  !$ACC   NuPair_MinD, NuPair_MaxD,                       &
   !$ACC   Op_MinD, Op_MaxD )
 #endif
 
@@ -196,6 +235,13 @@ CONTAINS
     LOGICAL :: Include_Pair
     LOGICAL :: Include_Brem
     LOGICAL :: Verbose
+
+    ! Helpers for EC table 
+    REAL(dp), DIMENSION(nE)   :: E_cells, dE_cells
+    REAL(dp), DIMENSION(nE+1) :: E_faces
+    INTEGER                   :: k, kk
+    REAL(dp)                  :: EC_E_max
+    REAL(dp)                  :: x
 
     IF( PRESENT( OpacityTableName_EmAb_Option ) &
         .AND. ( LEN_TRIM( OpacityTableName_EmAb_Option ) > 1 ) )THEN
@@ -302,6 +348,8 @@ CONTAINS
              EquationOfStateTableName_Option = EquationOfStateTableName )
 
     CALL FinalizeHDF( )
+
+    nPointsE = nE * nNodesE
 
     ! --- Thermodynamic State Indices ---
 
@@ -424,7 +472,7 @@ CONTAINS
     IF( PRESENT( NuPair_MinD_Option ) )THEN
       NuPair_MinD = NuPair_MinD_Option
     ELSE
-      NuPair_MinD = OPACITIES % EOSTable % TS % minValues( iD_T )
+      NuPair_MinD = 1.0d12
     END IF
 
     IF( PRESENT( NuPair_MaxD_Option ) )THEN
@@ -439,14 +487,14 @@ CONTAINS
       Op_MinD = Op_MinD_Option
     ELSE
       !Op_MinD = MIN( EmAb_MinD, Iso_MinD, NES_MinD, Pair_MinD, Brem_MinD, NNS_MinD, NuPair_MinD )
-      Op_MinD = MIN( EmAb_MinD, Iso_MinD, NES_MinD, Pair_MinD, Brem_MinD )
+      Op_MinD = MIN( EmAb_MinD, Iso_MinD, NES_MinD, Pair_MinD, Brem_MinD, NuPair_MinD )
     END IF
 
     IF( PRESENT( Op_MaxD_Option ) )THEN
       Op_MaxD = Op_MaxD_Option
     ELSE
       !Op_MaxD = MAX( EmAb_MaxD, Iso_MaxD, NES_MaxD, Pair_MaxD, Brem_MaxD, NNS_MaxD, NuPair_MaxD )
-      Op_MaxD = MAX( EmAb_MaxD, Iso_MaxD, NES_MaxD, Pair_MaxD, Brem_MaxD )
+      Op_MaxD = MAX( EmAb_MaxD, Iso_MaxD, NES_MaxD, Pair_MaxD, Brem_MaxD, NuPair_MaxD )
     END IF
 
     ! --- Make Cutoffs Consistent ---
@@ -497,6 +545,13 @@ CONTAINS
     C2 = [ C2_NuE, C2_NuE_Bar, &
            C2_NuM, C2_NuM_Bar, &
            C2_NuT, C2_NuT_Bar ]
+
+    C1_NuPair = [ Zero,                 Zero,                 &
+                  ( cv_nu + ca_nu )**2, ( cv_nu - ca_nu )**2, &
+                  ( cv_nu + ca_nu )**2, ( cv_nu - ca_nu )**2 ]
+    C2_NuPair = [ Zero,                 Zero,                 &
+                  ( cv_nu - ca_nu )**2, ( cv_nu + ca_nu )**2, & 
+                  ( cv_nu - ca_nu )**2, ( cv_nu + ca_nu )**2 ]
 
     ! --- Thermodynamic States ---
 
@@ -613,6 +668,47 @@ CONTAINS
       END DO
     END DO
 
+    IF(OPACITIES % EmAb % nuclei_EC_table .gt. 0) THEN
+
+      ALLOCATE( Ds_EC_T(OPACITIES % EmAb % EC_Table_nRho) )
+      Ds_EC_T = OPACITIES % EmAb % EC_table_rho 
+    
+      ALLOCATE( Ts_EC_T(OPACITIES % EmAb % EC_Table_nT) )
+      Ts_EC_T = OPACITIES % EmAb % EC_table_T 
+
+      ALLOCATE( Ys_EC_T(OPACITIES % EmAb % EC_Table_nYe) )
+      Ys_EC_T = OPACITIES % EmAb % EC_table_Ye 
+
+      ALLOCATE( Es_EC_T(OPACITIES % EmAb % EC_Table_nE) )
+      Es_EC_T = OPACITIES % EmAb % EC_table_E 
+
+      EC_nE   = SIZE(Es_EC_T)
+      EC_dE   = Es_EC_T(2) - Es_EC_T(1)
+
+      ALLOCATE(EC_kfmin(nE))
+      ALLOCATE(EC_kfmax(nE))
+      ALLOCATE(EC_a(nE,2),EC_b(nE,2),EC_ak(nE,2),EC_bk(nE,2))
+
+      ALLOCATE( OS_EmAb_EC_spec (OPACITIES % EmAb% EC_table_nOpacities) )
+      OS_EmAb_EC_spec = OPACITIES % EmAb % EC_table_spec_Offsets(1)
+      ALLOCATE( OS_EmAb_EC_rate (OPACITIES % EmAb% EC_table_nOpacities) )
+      OS_EmAb_EC_rate = OPACITIES % EmAb % EC_table_rate_Offsets(1)
+
+      ALLOCATE( EmAb_EC_spec_T (1:OPACITIES % EmAb % EC_Table_nRho, &
+                                1:OPACITIES % EmAb % EC_Table_nT,   &
+                                1:OPACITIES % EmAb % EC_Table_nYe,  &
+                                1:OPACITIES % EmAb % EC_Table_nE) )
+      EmAb_EC_spec_T(:,:,:,:) = OPACITIES % EmAB &
+                              % EC_table_spec(1) % Values(:,:,:,:)      
+
+      ALLOCATE( EmAb_EC_rate_T (1:OPACITIES % EmAb % EC_Table_nRho, &
+                                1:OPACITIES % EmAb % EC_Table_nT,   &
+                                1:OPACITIES % EmAb % EC_Table_nYe) )
+      EmAb_EC_rate_T(:,:,:)  = OPACITIES % EmAb &
+                              % EC_table_rate(1) % Values(:,:,:)
+
+    ENDIF
+
     ALLOCATE( NES_AT(1:nPointsE, &
                      1:nPointsE, &
                      1:OPACITIES % Scat_NES % nPoints(4), &
@@ -645,6 +741,7 @@ CONTAINS
     !$OMP                  OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
     !$OMP                  EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
     !$OMP                  NES_AT, Pair_AT, Brem_AT, C1, C2, &
+    !$OMP                  C1_NuPair, C2_NuPair, &
     !$OMP                  EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD, &
     !$OMP                  EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD, &
     !$OMP                  EmAb_MinD, EmAb_MaxD, &
@@ -658,9 +755,10 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
-    !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
-    !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
-    !$ACC   NES_AT, Pair_AT, Brem_AT, C1, C2, &
+    !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,  &
+    !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, Brem_T,       &
+    !$ACC   NES_AT, Pair_AT, Brem_AT, C1, C2,           &
+    !$ACC   C1_NuPair, C2_NuPair, &
     !$ACC   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD, &
     !$ACC   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD, &
     !$ACC   EmAb_MinD, EmAb_MaxD, &
@@ -673,8 +771,146 @@ CONTAINS
     !$ACC   Op_MinD, Op_MaxD )
 #endif
 
+    use_EC_table = OPACITIES % EmAb % nuclei_EC_table
+
+    IF( use_EC_table .gt. 0 ) THEN
+
+    ASSOCIATE ( CenterE => MeshE % Center(1:nE), &
+                WidthE  => MeshE % Width(1:nE),  &
+                NodesE  => MeshE % Nodes )
+
+      EC_E_max = Es_EC_T(EC_nE)
+
+      DO k = 1, nE
+        E_cells(k)  = CenterE(k) / MeV
+        dE_cells(k) = WidthE(k)  / MeV
+        E_faces(k)  = (CenterE(k) - 0.5d0*WidthE(k)) / MeV
+      ENDDO 
+      E_faces(nE+1)  = (CenterE(nE) + 0.5d0*WidthE(nE)) / MeV
+
+      EC_iE_max     = 1
+      EC_iNodeE_max = 1
+      DO kk = 1, nPointsE
+        iE1     = MOD( (kk-1) / nNodesE, nE      ) + 1
+        iNodeE1 = MOD( (kk-1)          , nNodesE ) + 1
+        x = NodeCoordinate( CenterE(iE1), WidthE(iE1), NodesE(iNodeE1) ) / MeV
+        if(E_faces(iE1)<=EC_E_max) EC_iE_max     = iE1
+        if(x <= EC_E_max)          EC_iNodeE_max = kk
+      ENDDO
+
+      EC_kfmin = 1
+      EC_kfmax = 1
+      EC_a     = -1.0d0
+      EC_b     = -1.0d0
+      EC_ak    = -1
+      EC_bk    = -1
+ 
+      DO k = 1, EC_iE_max
+        DO kk = 1, EC_nE
+          IF(E_faces(k) .ge. Es_EC_T(kk)) THEN
+            EC_kfmin(k) = kk
+          ELSE
+            EXIT
+          ENDIF
+        ENDDO
+        DO kk = EC_nE, 1, -1
+          IF(E_faces(k+1) .le. Es_EC_T(kk)) THEN
+            EC_kfmax(k) = kk-1
+          ELSE
+            EXIT
+          ENDIF
+        ENDDO
+        IF (EC_kfmax(k).gt.EC_nE) EC_kfmax(k)=EC_nE
+        IF (EC_kfmin(k).gt.EC_nE) EC_kfmin(k)=EC_nE
+        IF (EC_kfmax(k).lt.1)     EC_kfmax(k)=1
+        IF (EC_kfmin(k).lt.1)     EC_kfmin(k)=1
+      ENDDO
+
+      EC_kfmax(EC_iE_max) = EC_nE
+
+      DO k = 1, EC_iE_max
+
+        !thornado energy element is fully contained within
+        !an energy bin of the tabulated EC table
+        IF(EC_kfmin(k) >= EC_kfmax(k)) THEN
+          EC_a (k,1) = E_faces(k)
+          EC_a (k,1) = MAX(EC_a (k,1), 0.0d0)
+          EC_a (k,1) = MIN(EC_a (k,1), Es_EC_T(EC_nE))
+
+          EC_ak(k,1) = EC_kfmin(k)
+          EC_ak(k,1) = MAX(EC_ak(k,1), 1)
+          EC_ak(k,2) = EC_ak(k,1) + 1
+          IF(EC_ak(k,2) > EC_nE) THEN
+            EC_ak(k,2) = EC_nE
+            EC_ak(k,1) = EC_ak(k,2) - 1
+          END IF
+
+          EC_b (k,2) = E_faces(k+1) 
+          EC_b (k,2) = MAX(EC_b (k,2), 0.0d0)
+          EC_b (k,2) = MIN(EC_b (k,2), Es_EC_T(EC_nE))
+
+          EC_bk(k,1) = EC_ak(k,1)
+          EC_bk(k,2) = EC_ak(k,2)
+        ELSE
+          EC_a (k,1) = E_faces(k)
+          EC_a (k,1) = MAX(EC_a (k,1), 0.0d0)
+          EC_a (k,1) = MIN(EC_a (k,1), Es_EC_T(EC_nE))
+
+          EC_ak(k,1) = EC_kfmin(k)
+          EC_ak(k,1) = MAX(EC_ak(k,1), 1)
+          EC_ak(k,2) = EC_ak(k,1) + 1
+          IF(EC_ak(k,2) > EC_nE) THEN
+            EC_ak(k,2) = EC_nE
+            EC_ak(k,1) = EC_ak(k,2) - 1
+          END IF
+
+          EC_b (k,1) = Es_EC_T(EC_kfmin(k)+1)
+          EC_b (k,1) = MAX(EC_b (k,1), 0.0d0)
+          EC_b (k,1) = MIN(EC_b (k,1), Es_EC_T(EC_nE))
+
+          EC_a (k,2) = Es_EC_T(EC_kfmax(k))
+
+          EC_b (k,2) = E_faces(k+1) 
+          EC_b (k,2) = MAX(EC_b (k,2), 0.0d0)
+          EC_b (k,2) = MIN(EC_b (k,2), Es_EC_T(EC_nE))
+
+          EC_bk(k,1) = EC_kfmax(k)
+          EC_bk(k,1) = MAX(EC_bk(k,1), 1)
+          EC_bk(k,2) = EC_bk(k,1) + 1
+          IF(EC_bk(k,2) > EC_nE) THEN
+            EC_bk(k,2) = EC_nE
+            EC_bk(k,1) = EC_bk(k,2) - 1
+          END IF
+
+        ENDIF
+      
+      ENDDO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA                           & 
+    !$OMP MAP( always, to:                            &
+    !$OMP   Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T,       &
+    !$OMP   OS_EmAb_EC_rate, OS_EmAb_EC_spec,         &
+    !$OMP   EmAb_EC_rate_T, EmAb_EC_spec_T,           &
+    !$OMP   EC_nE, EC_dE, EC_iE_max, EC_iNodeE_max,   & 
+    !$OMP   EC_kfmin, EC_kfmax, use_EC_table,         &
+    !$OMP   EC_a, EC_b, EC_ak, EC_bk )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE                               &
+    !$ACC ( Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T,       &
+    !$ACC   OS_EmAb_EC_rate, OS_EmAb_EC_spec,         &
+    !$ACC   EmAb_EC_rate_T, EmAb_EC_spec_T,           &
+    !$ACC   EC_nE, EC_dE, EC_iE_max, EC_iNodeE_max,   &
+    !$ACC   EC_kfmin, EC_kfmax, use_EC_table,         &
+    !$ACC   EC_a, EC_b, EC_ak, EC_bk )
+#endif
+
+    END ASSOCIATE
+    ENDIF
+
+
     ASSOCIATE ( CenterE => MeshE % Center, &
-                WidthE  => MeshE % Width, &
+                WidthE  => MeshE % Width,  &
                 NodesE  => MeshE % Nodes )
 
 #if defined(THORNADO_OMP_OL)
@@ -833,6 +1069,11 @@ CONTAINS
       !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
       !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
       !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2, &
+      !$OMP               C1_NuPair, C2_NuPair, &
+      !$OMP               use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
+      !$OMP               EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
+      !$OMP               EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax,   &
+      !$OMP               EC_a, EC_b, EC_ak, EC_bk, &
       !$OMP               EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD, &
       !$OMP               EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD, &
       !$OMP               EmAb_MinD, EmAb_MaxD, &
@@ -845,13 +1086,27 @@ CONTAINS
       !$OMP               Op_MinD, Op_MaxD )
 #endif
 
-      DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
-      DEALLOCATE( LogEs_T, LogDs_T, LogTs_T, LogEtas_T )
+    DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
+    DEALLOCATE( LogEs_T, LogDs_T, LogTs_T, LogEtas_T )
 
-      DEALLOCATE( OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem )
-      DEALLOCATE( EmAb_T, Iso_T, NES_T, Pair_T, Brem_T )
-      DEALLOCATE( NES_AT, Pair_AT, Brem_AT )
+    DEALLOCATE( OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem )
+    DEALLOCATE( EmAb_T, Iso_T, NES_T, Pair_T, Brem_T )
+    DEALLOCATE( NES_AT, Pair_AT, Brem_AT )
 
+    IF(ALLOCATED(OS_EmAb_EC_spec)) DEALLOCATE(OS_EmAb_EC_spec)
+    IF(ALLOCATED(OS_EmAb_EC_rate)) DEALLOCATE(OS_EmAb_EC_rate)
+    IF(ALLOCATED(EmAb_EC_rate_T )) DEALLOCATE(EmAb_EC_rate_T)
+    IF(ALLOCATED(EmAb_EC_spec_T )) DEALLOCATE(EmAb_EC_spec_T )
+    IF(ALLOCATED(Ds_EC_T))         DEALLOCATE(Ds_EC_T)
+    IF(ALLOCATED(Ts_EC_T))         DEALLOCATE(Ts_EC_T)
+    IF(ALLOCATED(Ys_EC_T))         DEALLOCATE(Ys_EC_T)
+    IF(ALLOCATED(Es_EC_T))         DEALLOCATE(Es_EC_T)
+    IF(ALLOCATED(EC_kfmin))        DEALLOCATE(EC_kfmin)
+    IF(ALLOCATED(EC_kfmax))        DEALLOCATE(EC_kfmax)
+    IF(ALLOCATED(EC_a))            DEALLOCATE(EC_a)
+    IF(ALLOCATED(EC_b))            DEALLOCATE(EC_b)
+    IF(ALLOCATED(EC_ak))           DEALLOCATE(EC_ak)
+    IF(ALLOCATED(EC_bk))           DEALLOCATE(EC_bk)
   END IF
 
 #endif

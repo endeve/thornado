@@ -219,9 +219,9 @@ CONTAINS
       iErr     (iNX) = 0
       ITERATION(iNX) = 0
 
-      IF(      MyISNAN( uD (iNX) ) .OR. MyISNAN( uS1(iNX) ) &
-          .OR. MyISNAN( uS2(iNX) ) .OR. MyISNAN( uS3(iNX) ) &
-          .OR. MyISNAN( uE (iNX) ) .OR. MyISNAN( uNe(iNX) ) )THEN
+      IF(      uD (iNX) /= uD (iNX) .OR. uS1(iNX) /= uS1(iNX) &
+          .OR. uS2(iNX) /= uS2(iNX) .OR. uS3(iNX) /= uS3(iNX) &
+          .OR. uE (iNX) /= uE (iNX) .OR. uNe(iNX) /= uNe(iNX) )THEN
 
         iErr(iNX) = 13
 
@@ -238,9 +238,9 @@ CONTAINS
                ITERATION_Option = ITERATION(iNX), &
                iErr_Option      = iErr     (iNX) )
 
-      IF(      MyISNAN( uD (iNX) ) .OR. MyISNAN( uS1(iNX) ) &
-          .OR. MyISNAN( uS2(iNX) ) .OR. MyISNAN( uS3(iNX) ) &
-          .OR. MyISNAN( uE (iNX) ) .OR. MyISNAN( uNe(iNX) ) ) iErr(iNX) = 14
+      IF(      uD (iNX) /= uD (iNX) .OR. uS1(iNX) /= uS1(iNX) &
+          .OR. uS2(iNX) /= uS2(iNX) .OR. uS3(iNX) /= uS3(iNX) &
+          .OR. uE (iNX) /= uE (iNX) .OR. uNe(iNX) /= uNe(iNX) ) iErr(iNX) = 14
 
       ErrorExists = ErrorExists + iErr(iNX)
 

@@ -1,10 +1,10 @@
 ## Makefile definitions for Summit with GCC compiler
 
 C       = mpic++ --c++11
-FORTRAN = mpifort -cpp
+FORTRAN = mpifort -cpp -Wall -finit-integer=-255 -finit-real=snan
 FLINKER = mpifort
 
-DEBUG    = -g -Og -ggdb -ftrapv -fcheck=bounds,do,mem,pointer -ffpe-trap=invalid,zero,overflow -fbacktrace
+DEBUG    = -g -Og -ggdb -ftrapv -fcheck=all -ffpe-trap=invalid,zero,overflow -fbacktrace
 OPTIMIZE = -g -Ofast -mcpu=power9 -funroll-loops -fprefetch-loop-arrays
 
 SUFFIX_f90 =
@@ -15,7 +15,7 @@ PP    = -D
 ifeq ($(USE_OMP),TRUE)
   OPENMP = -fopenmp
 else ifeq ($(USE_OMP_OL),TRUE)
-  OPENMP = -fopenmp
+  OPENMP = -fopenmp -Wl,-rpath=$(OLCF_GCC_ROOT)/lib64 -lm -foffload=nvptx-none="-Ofast -lm -latomic -misa=sm_35"
 endif
 
 ifeq ($(USE_OACC),TRUE)

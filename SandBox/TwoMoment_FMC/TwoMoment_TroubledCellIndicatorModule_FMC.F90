@@ -1,4 +1,4 @@
-MODULE TwoMoment_TroubledCellIndicatorModule
+MODULE TwoMoment_TroubledCellIndicatorModule_FMC
 
   USE KindModule, ONLY: &
     DP, Zero, One
@@ -21,9 +21,9 @@ MODULE TwoMoment_TroubledCellIndicatorModule
     WeightsX_q
   USE PolynomialBasisModuleX_Lagrange, ONLY: &
     L_X1, L_X2, L_X3
-  USE RadiationFieldsModule, ONLY: &
+  USE TwoMoment_FieldsModule_FMC, ONLY: &
     nSpecies, &
-    nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
+    nCM, iCM_E, iCM_F1, iCM_F2, iCM_F3
   USE TwoMoment_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_TwoMoment
 
@@ -211,17 +211,17 @@ CONTAINS
 
 
   SUBROUTINE DetectTroubledCells_TwoMoment &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, TroubledCell, SuppressBC_Option )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_M, TroubledCell, SuppressBC_Option )
 
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(inout) :: &
-      U_R(1:nDOFZ, &
+      U_M(1:nDOFZ, &
           iZ_B1(1):iZ_E1(1), &
           iZ_B1(2):iZ_E1(2), &
           iZ_B1(3):iZ_E1(3), &
           iZ_B1(4):iZ_E1(4), &
-          1:nCR,1:nSpecies)
+          1:nCM,1:nSpecies)
     LOGICAL, INTENT(out)    :: &
       TroubledCell &
         (iZ_B0(2):iZ_E0(2), &
@@ -234,36 +234,67 @@ CONTAINS
     LOGICAL  :: SuppressBC
     INTEGER  :: iZ2, iZ3, iZ4, iE_G, iS
     REAL(DP) :: TCI
-    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: & ! --- Cell Averaged Density in Target Cell ---
-      N_K0
-    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: & ! --- Cell Averaged Densities from West   Cell Data ---
-      N_KW , N_KW0
-    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: & ! --- Cell Averaged Densities from East   Cell Data ---
-      N_KE , N_KE0
-    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: & ! --- Cell Averaged Densities from South  Cell Data ---
-      N_KS , N_KS0
-    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: & ! --- Cell Averaged Densities from North  Cell Data ---
-      N_KN , N_KN0
-    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: & ! --- Cell Averaged Densities from Bottom Cell Data ---
-      N_KB , N_KB0
-    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: & ! --- Cell Averaged Densities from Top    Cell Data ---
-      N_KT , N_KT0
+    REAL(DP) :: & ! --- Cell Averaged Density in Target Cell ---
+      N_K0 (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
+    REAL(DP) :: & ! --- Cell Averaged Densities from West   Cell Data ---
+      N_KW (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies), &
+      N_KW0(iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
+    REAL(DP) :: & ! --- Cell Averaged Densities from East   Cell Data ---
+      N_KE (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies), &
+      N_KE0(iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
+    REAL(DP) :: & ! --- Cell Averaged Densities from South  Cell Data ---
+      N_KS (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies), &
+      N_KS0(iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
+    REAL(DP) :: & ! --- Cell Averaged Densities from North  Cell Data ---
+      N_KN (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies), &
+      N_KN0(iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
+    REAL(DP) :: & ! --- Cell Averaged Densities from Bottom Cell Data ---
+      N_KB (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies), &
+      N_KB0(iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
+    REAL(DP) :: & ! --- Cell Averaged Densities from Top    Cell Data ---
+      N_KT (iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies), &
+      N_KT0(iZ_B0(2):iZ_E0(2), &
+            iZ_B0(3):iZ_E0(3), &
+            iZ_B0(4):iZ_E0(4), &
+            1:(iZ_E0(1)-iZ_B0(1)+1)*nDOFE,1:nSpecies)
 
     nE_G = (iZ_E0(1)-iZ_B0(1)+1) * nDOFE ! --- Global Energy Points
-
-    ALLOCATE( N_K0 (iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
-    ALLOCATE( N_KW (iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
-    ALLOCATE( N_KW0(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
-    ALLOCATE( N_KE (iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
-    ALLOCATE( N_KE0(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
-    ALLOCATE( N_KS (iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
-    ALLOCATE( N_KS0(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
-    ALLOCATE( N_KN (iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
-    ALLOCATE( N_KN0(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
-    ALLOCATE( N_KB (iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
-    ALLOCATE( N_KB0(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
-    ALLOCATE( N_KT (iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
-    ALLOCATE( N_KT0(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies) )
 
     IF( .NOT. UseTroubledCellIndicator )THEN
 
@@ -303,14 +334,14 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: iZ_B0, iZ_E0, U_R ) &
+    !$OMP MAP( to: iZ_B0, iZ_E0, U_M ) &
     !$OMP MAP( alloc: TroubledCell, N_K0, &
     !$OMP             N_KW, N_KW0, N_KE, N_KE0, &
     !$OMP             N_KS, N_KS0, N_KN, N_KN0, &
     !$OMP             N_KB, N_KB0, N_KT, N_KT0 )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA ASYNC &
-    !$ACC COPYIN( iZ_B0, iZ_E0, U_R ) &
+    !$ACC COPYIN( iZ_B0, iZ_E0, U_M ) &
     !$ACC CREATE( TroubledCell, N_K0, &
     !$ACC         N_KW, N_KW0, N_KE, N_KE0, &
     !$ACC         N_KS, N_KS0, N_KN, N_KN0, &
@@ -320,18 +351,18 @@ CONTAINS
     IF( .NOT. SuppressBC )THEN
 
       CALL ApplyBoundaryConditions_TwoMoment &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_M )
 
     END IF
 
     CALL ComputeCellAverages_X1 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_K0, N_KW, N_KW0, N_KE, N_KE0 )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_M, N_K0, N_KW, N_KW0, N_KE, N_KE0 )
 
     CALL ComputeCellAverages_X2 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_K0, N_KS, N_KS0, N_KN, N_KN0 )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_M, N_K0, N_KS, N_KS0, N_KN, N_KN0 )
 
     CALL ComputeCellAverages_X3 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_K0, N_KB, N_KB0, N_KT, N_KT0 )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_M, N_K0, N_KB, N_KB0, N_KT, N_KT0 )
 
     CALL TimersStart( Timer_TCI_Compute )
 
@@ -390,13 +421,13 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: iZ_B0, iZ_E0, U_R, TroubledCell, N_K0, &
+    !$OMP MAP( release: iZ_B0, iZ_E0, U_M, TroubledCell, N_K0, &
     !$OMP               N_KW, N_KW0, N_KE, N_KE0, &
     !$OMP               N_KS, N_KS0, N_KN, N_KN0, &
     !$OMP               N_KB, N_KB0, N_KT, N_KT0 )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA ASYNC &
-    !$ACC DELETE( iZ_B0, iZ_E0, U_R, TroubledCell, N_K0, &
+    !$ACC DELETE( iZ_B0, iZ_E0, U_M, TroubledCell, N_K0, &
     !$ACC         N_KW, N_KW0, N_KE, N_KE0, &
     !$ACC         N_KS, N_KS0, N_KN, N_KN0, &
     !$ACC         N_KB, N_KB0, N_KT, N_KT0 )
@@ -408,17 +439,17 @@ CONTAINS
 
 
   SUBROUTINE ComputeCellAverages_X1 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_K0, N_KW, N_KW0, N_KE, N_KE0 )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_M, N_K0, N_KW, N_KW0, N_KE, N_KE0 )
 
     INTEGER, INTENT(in) :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(in)  :: &
-      U_R(1:nDOFZ, &
+      U_M(1:nDOFZ, &
           iZ_B1(1):iZ_E1(1), &
           iZ_B1(2):iZ_E1(2), &
           iZ_B1(3):iZ_E1(3), &
           iZ_B1(4):iZ_E1(4), &
-          1:nCR,1:nSpecies)
+          1:nCM,1:nSpecies)
     REAL(DP), INTENT(out) :: &
       N_K0 (iZ_B0(2):iZ_E0(2), &
             iZ_B0(3):iZ_E0(3), &
@@ -448,11 +479,17 @@ CONTAINS
     INTEGER  :: &
       iE, iE_G, iZ2, iZ3, iZ4, iS, &
       iNodeE, iNodeX, iNodeZ, nV_KX
-    REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE :: N
-    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: N_K
-
-    ALLOCATE( N  (1:nDOFX,iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies,iZ_B0(2)-1:iZ_E0(2)+1) )
-    ALLOCATE( N_K(iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies,iZ_B0(2):iZ_E0(2)) )
+    REAL(DP) :: &
+      N  (1:nDOFX, &
+          iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4), &
+          1:nE_G,1:nSpecies, &
+          iZ_B0(2)-1:iZ_E0(2)+1)
+    REAL(DP) :: &
+      N_K(iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4), &
+          1:nE_G,1:nSpecies, &
+          iZ_B0(2):iZ_E0(2))
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -470,7 +507,7 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
     !$ACC PRIVATE( iNodeZ, iE_G ) &
-    !$ACC PRESENT( iZ_B0, iZ_E0, N, U_R )
+    !$ACC PRESENT( iZ_B0, iZ_E0, N, U_M )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(7) &
     !$OMP PRIVATE( iNodeZ, iE_G )
@@ -488,7 +525,7 @@ CONTAINS
         iE_G   = (iE    -1) * nDOFE + iNodeE
 
         N(iNodeX,iZ3,iZ4,iE_G,iS,iZ2) &
-          = U_R(iNodeZ,iE,iZ2,iZ3,iZ4,iCR_N,iS)
+          = U_M(iNodeZ,iE,iZ2,iZ3,iZ4,iCM_E,iS)
 
       END DO
 
@@ -695,17 +732,17 @@ CONTAINS
 
 
   SUBROUTINE ComputeCellAverages_X2 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_K0, N_KS, N_KS0, N_KN, N_KN0 )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_M, N_K0, N_KS, N_KS0, N_KN, N_KN0 )
 
     INTEGER, INTENT(in) :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(in)  :: &
-      U_R(1:nDOFZ, &
+      U_M(1:nDOFZ, &
           iZ_B1(1):iZ_E1(1), &
           iZ_B1(2):iZ_E1(2), &
           iZ_B1(3):iZ_E1(3), &
           iZ_B1(4):iZ_E1(4), &
-          1:nCR,1:nSpecies)
+          1:nCM,1:nSpecies)
     REAL(DP), INTENT(in)  :: &
       N_K0 (iZ_B0(2):iZ_E0(2), &
             iZ_B0(3):iZ_E0(3), &
@@ -735,11 +772,17 @@ CONTAINS
     INTEGER  :: &
       iE, iE_G, iZ2, iZ3, iZ4, iS, &
       iNodeE, iNodeX, iNodeZ, nV_KX
-    REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE :: N
-    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: N_K
-
-    ALLOCATE( N  (1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies,iZ_B0(3)-1:iZ_E0(3)+1) )
-    ALLOCATE( N_K(iZ_B0(2):iZ_E0(2),iZ_B0(4):iZ_E0(4),1:nE_G,1:nSpecies,iZ_B0(3):iZ_E0(3)) )
+    REAL(DP) :: &
+      N  (1:nDOFX, &
+          iZ_B0(2):iZ_E0(2), &
+          iZ_B0(4):iZ_E0(4), &
+          1:nE_G,1:nSpecies, &
+          iZ_B0(3)-1:iZ_E0(3)+1)
+    REAL(DP) :: &
+      N_K(iZ_B0(2):iZ_E0(2), &
+          iZ_B0(4):iZ_E0(4), &
+          1:nE_G,1:nSpecies, &
+          iZ_B0(3):iZ_E0(3))
 
     IF( iZ_E0(3) .EQ. iZ_B0(3) )THEN
 #if   defined( THORNADO_OMP_OL )
@@ -785,7 +828,7 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
     !$ACC PRIVATE( iNodeZ, iE_G ) &
-    !$ACC PRESENT( iZ_B0, iZ_E0, N, U_R )
+    !$ACC PRESENT( iZ_B0, iZ_E0, N, U_M )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(7) &
     !$OMP PRIVATE( iNodeZ, iE_G )
@@ -803,7 +846,7 @@ CONTAINS
         iE_G   = (iE    -1) * nDOFE + iNodeE
 
         N(iNodeX,iZ2,iZ4,iE_G,iS,iZ3) &
-          = U_R(iNodeZ,iE,iZ2,iZ3,iZ4,iCR_N,iS)
+          = U_M(iNodeZ,iE,iZ2,iZ3,iZ4,iCM_E,iS)
 
       END DO
 
@@ -974,17 +1017,17 @@ CONTAINS
 
 
   SUBROUTINE ComputeCellAverages_X3 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, N_K0, N_KB, N_KB0, N_KT, N_KT0 )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_M, N_K0, N_KB, N_KB0, N_KT, N_KT0 )
 
     INTEGER, INTENT(in) :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(in)  :: &
-      U_R(1:nDOFZ, &
+      U_M(1:nDOFZ, &
           iZ_B1(1):iZ_E1(1), &
           iZ_B1(2):iZ_E1(2), &
           iZ_B1(3):iZ_E1(3), &
           iZ_B1(4):iZ_E1(4), &
-          1:nCR,1:nSpecies)
+          1:nCM,1:nSpecies)
     REAL(DP), INTENT(in)  :: &
       N_K0 (iZ_B0(2):iZ_E0(2), &
             iZ_B0(3):iZ_E0(3), &
@@ -1014,11 +1057,17 @@ CONTAINS
     INTEGER  :: &
       iE, iE_G, iZ2, iZ3, iZ4, iS, &
       iNodeE, iNodeX, iNodeZ, nV_KX
-    REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE :: N
-    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: N_K
-
-    ALLOCATE( N  (1:nDOFX,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),1:nE_G,1:nSpecies,iZ_B0(4)-1:iZ_E0(4)+1) )
-    ALLOCATE( N_K(iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),1:nE_G,1:nSpecies,iZ_B0(4):iZ_E0(4)) )
+    REAL(DP) :: &
+      N  (1:nDOFX, &
+          iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3), &
+          1:nE_G,1:nSpecies, &
+          iZ_B0(4)-1:iZ_E0(4)+1)
+    REAL(DP) :: &
+      N_K(iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3), &
+          1:nE_G,1:nSpecies, &
+          iZ_B0(4):iZ_E0(4))
 
     IF( iZ_E0(4) .EQ. iZ_B0(4) )THEN
 #if   defined( THORNADO_OMP_OL )
@@ -1064,7 +1113,7 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) ASYNC &
     !$ACC PRIVATE( iNodeZ, iE_G ) &
-    !$ACC PRESENT( iZ_B0, iZ_E0, N, U_R )
+    !$ACC PRESENT( iZ_B0, iZ_E0, N, U_M )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(7) &
     !$OMP PRIVATE( iNodeZ, iE_G )
@@ -1082,7 +1131,7 @@ CONTAINS
         iE_G   = (iE    -1) * nDOFE + iNodeE
 
         N(iNodeX,iZ2,iZ3,iE_G,iS,iZ4) &
-          = U_R(iNodeZ,iE,iZ2,iZ3,iZ4,iCR_N,iS)
+          = U_M(iNodeZ,iE,iZ2,iZ3,iZ4,iCM_E,iS)
 
       END DO
 
@@ -1252,4 +1301,4 @@ CONTAINS
   END SUBROUTINE ComputeCellAverages_X3
 
 
-END MODULE TwoMoment_TroubledCellIndicatorModule
+END MODULE TwoMoment_TroubledCellIndicatorModule_FMC

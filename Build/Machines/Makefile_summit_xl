@@ -15,7 +15,7 @@ PP    = -D
 ifeq ($(USE_OMP),TRUE)
   OPENMP = -qsmp=omp:noauto
 else ifeq ($(USE_OMP_OL),TRUE)
-  OPENMP = -qsmp=omp:noauto -qoffload
+  OPENMP = -qsmp=omp:noauto -qoffload -qinfo=omperrtrace
 endif
 
 ifeq ($(USE_OACC),TRUE)

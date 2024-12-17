@@ -22,7 +22,8 @@ MODULE TimeSteppingModule_Flash
     nCF, uDF, iCF_D, iCF_S1, iCF_S2, iCF_S3, &
     iCF_E, iCF_Ne
   USE RadiationFieldsModule, ONLY: &
-    nCR, nSpecies, iCR_N, iCR_G1, iCR_G2, iCR_G3
+    nCR, nSpecies, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
+    uDR, nDR
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit
   USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
@@ -33,6 +34,8 @@ MODULE TimeSteppingModule_Flash
     ApplySlopeLimiter_TwoMoment
   USE Euler_PositivityLimiterModule_NonRelativistic_TABLE, ONLY: &
     ApplyPositivityLimiter_Euler_NonRelativistic_TABLE
+  USE Euler_SlopeLimiterModule_NonRelativistic_TABLE, ONLY: &
+    ApplySlopeLimiter_Euler_NonRelativistic_TABLE
 #ifdef TWOMOMENT_ORDER_V
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     OffGridFlux_TwoMoment
@@ -189,35 +192,24 @@ CONTAINS
 
     U0_R = Zero; T0_R = Zero; T1_R = Zero; Q1_R = Zero
 
+    uDR = Zero
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: U_F, U_R, uGE, uGF, &
-    !$OMP          U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R )
+    !$OMP          U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R, uDR )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN( U_F, U_R, uGE, uGF, &
-    !$ACC         U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R )
+    !$ACC         U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R, uDR )
 #endif
 
     OffGridFluxR = Zero
-
-#ifdef TWOMOMENT_ORDER_V
-#if defined MICROPHYSICS_WEAKLIB
-    CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
-#endif
-#endif
 
     ! ----------------------------------------------------------------
     ! --- Positive, Diffusion Accurate IMEX Scheme from Chu et al. ---
     ! --- arXiv:1809.06949 -------------------------------------------
     ! ----------------------------------------------------------------
-
-    CALL AddFields_Fluid &
-           ( iX_B1, iX_E1, One, Zero, U_F, U_F, U0_F )
-
-    CALL AddFields_Radiation &
-           ( iZ_B1, iZ_E1, One, Zero, U_R, U_R, U0_R )
 
     ! ---------------
     ! --- Stage 1 ---
@@ -259,6 +251,41 @@ CONTAINS
     !$ACC ENTER DATA &
     !$ACC COPYIN( iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
 #endif
+
+      ! --- Apply Limiters ---
+
+#ifdef TWOMOMENT_ORDER_V
+#if defined MICROPHYSICS_WEAKLIB
+    CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF, &
+             SuppressBC_Option = .FALSE., &
+             iApplyBC_Option   = [ 0,0,0 ] )
+    CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
+#endif
+      CALL ApplySlopeLimiter_TwoMoment &
+             ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+
+      CALL ApplyPositivityLimiter_TwoMoment &
+             ( iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+#endif
+
+      ! --- Apply Boundary Condition ---
+
+      CALL ApplyBoundaryConditions_Radiation &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC )
+
+#ifdef TWOMOMENT_ORDER_V
+      CALL ApplyBoundaryConditions_Fluid &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC )
+#endif
+
+    CALL AddFields_Fluid &
+           ( iX_B1, iX_E1, One, Zero, U_F, U_F, U0_F )
+
+    CALL AddFields_Radiation &
+           ( iZ_B1, iZ_E1, One, Zero, U_R, U_R, U0_R )
+
 
     ! --- Explicit Step (Radiation Only) ---
 
@@ -351,6 +378,12 @@ CONTAINS
 
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+
+    CALL ApplyBoundaryConditions_Radiation &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC )
+
+    CALL ApplyBoundaryConditions_Fluid &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC )
 #endif
 
     ! --- Implicit Step ---
@@ -360,7 +393,8 @@ CONTAINS
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, dt, &
                uGE, uGF, &
                U_F, Q1_F, &
-               U_R, Q1_R )
+               U_R, Q1_R, &
+               uDR )
 
     ELSE
 
@@ -433,6 +467,12 @@ CONTAINS
 
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+
+    CALL ApplyBoundaryConditions_Radiation &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC )
+
+    CALL ApplyBoundaryConditions_Fluid &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC )
 
 #endif
 
@@ -549,6 +589,12 @@ CONTAINS
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 
+    CALL ApplyBoundaryConditions_Radiation &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC )
+
+    CALL ApplyBoundaryConditions_Fluid &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC )
+
 #endif
 
       ! --- Implicit Step ---
@@ -559,7 +605,8 @@ CONTAINS
                (iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, Half * dt, &
                  uGE, uGF, &
                  U_F, Q1_F, &
-                 U_R, Q1_R )
+                 U_R, Q1_R, &
+                 uDR )
 
       ELSE
 
@@ -631,6 +678,12 @@ CONTAINS
 
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+
+    CALL ApplyBoundaryConditions_Radiation &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC )
+
+    CALL ApplyBoundaryConditions_Fluid &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC )
 #endif
 
     END IF
@@ -657,12 +710,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from: U_F, U_R ) &
+    !$OMP MAP( from: U_F, U_R, uDR ) &
     !$OMP MAP( release: U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R, uGE, uGF, &
     !$OMP               iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC COPYOUT( U_F, U_R ) &
+    !$ACC COPYOUT( U_F, U_R, uDR ) &
     !$ACC DELETE( U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R, uGE, uGF, &
     !$ACC         iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
 #endif

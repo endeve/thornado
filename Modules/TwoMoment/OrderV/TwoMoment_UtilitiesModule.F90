@@ -132,7 +132,6 @@ CONTAINS
     INTEGER  :: iX, iZ
     INTEGER  :: k, Mk, iM, i, j
 
-    REAL(DP) :: FTMP(4,M), GTMP(4,M)
     REAL(DP) :: k_dd(3,3), SUM1, DET, LMAT(4,4)
     REAL(DP) :: A_d_1, A_d_2, A_d_3
     LOGICAL  :: CONVERGED
@@ -328,16 +327,16 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iX, CONVERGED, FTMP, GTMP )
+      !$OMP PRIVATE( iX, CONVERGED )
 #elif defined( THORNADO_OACC   )
       !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( iX, CONVERGED, FTMP, GTMP ) &
+      !$ACC PRIVATE( iX, CONVERGED ) &
       !$ACC PRESENT( ITERATE, UVEC, CVEC, GVECm, FVECm, GVEC, FVEC, &
       !$ACC          PositionIndexZ, D, I_u_1, I_u_2, I_u_3, &
       !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations )
 #elif defined( THORNADO_OMP    )
       !$OMP PARALLEL DO &
-      !$OMP PRIVATE( iX, CONVERGED, FTMP, GTMP )
+      !$OMP PRIVATE( iX, CONVERGED )
 #endif
       DO iZ = 1, nZ
         IF ( ITERATE(iZ) ) THEN
@@ -358,14 +357,8 @@ CONTAINS
           ELSE IF ( Mk == M ) THEN
             DO j = 1, Mk - 1
               DO i = 1, 4
-                FTMP(i,j) = FVEC(i,j+1,iZ)
-                GTMP(i,j) = GVEC(i,j+1,iZ)
-              END DO
-            END DO
-            DO j = 1, Mk - 1
-              DO i = 1, 4
-                FVEC(i,j,iZ) = FTMP(i,j)
-                GVEC(i,j,iZ) = GTMP(i,j)
+                FVEC(i,j,iZ) = FVEC(i,j+1,iZ)
+                GVEC(i,j,iZ) = GVEC(i,j+1,iZ)
               END DO
             END DO
           END IF
@@ -441,9 +434,9 @@ CONTAINS
     INTEGER  :: iX, iZ
     INTEGER  :: k, Mk, iM, i, j
 
-    REAL(DP) :: FTMP(4,M), GTMP(4,M)
-    REAL(DP) :: SUM1, k_dd(3,3)
-    REAL(DP) :: vMag, Omega, vI, vK
+    REAL(DP) :: SUM1
+    REAL(DP) :: vMag, Omega, vI, vK_1, vK_2, vK_3
+    REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
     LOGICAL  :: CONVERGED
 
     REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: FVEC, GVEC
@@ -521,16 +514,19 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iX, k_dd, vMag, Omega, vI, vK )
+      !$OMP PRIVATE( iX, vMag, Omega, vI, vK_1, vK_2, vK_3, &
+      !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
 #elif defined( THORNADO_OACC   )
       !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( iX, k_dd, vMag, Omega, vI, vK ) &
+      !$ACC PRIVATE( iX, vMag, Omega, vI, vK_1, vK_2, vK_3, &
+      !$ACC          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 ) &
       !$ACC PRESENT( ITERATE, UVEC, CVEC, GVEC, FVEC, GVECm, FVECm, &
       !$ACC          PositionIndexZ, D, I_u_1, I_u_2, I_u_3, &
       !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, V_u_1, V_u_2, V_u_3 )
 #elif defined( THORNADO_OMP    )
       !$OMP PARALLEL DO &
-      !$OMP PRIVATE( iX, k_dd, vMag, Omega, vI, vK )
+      !$OMP PRIVATE( iX, vMag, Omega, vI, vK_1, vK_2, vK_3, &
+      !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
 #endif
       DO iZ = 1, nZ
         IF ( ITERATE(iZ) ) THEN
@@ -542,9 +538,23 @@ CONTAINS
           UVEC(iPR_I2,iZ) = I_u_2(iZ) * Gm_dd_22(iX)
           UVEC(iPR_I3,iZ) = I_u_3(iZ) * Gm_dd_33(iX)
 
-          k_dd = EddingtonTensorComponents_dd &
-                   ( D(iZ), I_u_1(iZ), I_u_2(iZ), I_u_3(iZ), &
-                     Gm_dd_11(iX), Gm_dd_22(iX), Gm_dd_33(iX) )
+          CALL ComputeEddingtonTensorComponents_dd &
+                 ( D(iZ), I_u_1(iZ), I_u_2(iZ), I_u_3(iZ), &
+                   Gm_dd_11(iX), Gm_dd_22(iX), Gm_dd_33(iX), &
+                   k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+
+          vK_1 &
+            = ( V_u_1(iX) * k_dd_11 &
+              + V_u_2(iX) * k_dd_12 &
+              + V_u_3(iX) * k_dd_13 ) * D(iZ)
+          vK_2 &
+            = ( V_u_1(iX) * k_dd_12 &
+              + V_u_2(iX) * k_dd_22 &
+              + V_u_3(iX) * k_dd_23 ) * D(iZ)
+          vK_3 &
+            = ( V_u_1(iX) * k_dd_13 &
+              + V_u_2(iX) * k_dd_23 &
+              + V_u_3(iX) * k_dd_33 ) * D(iZ)
 
           vMag = SQRT(   V_u_1(iX) * Gm_dd_11(iX) * V_u_1(iX) &
                        + V_u_2(iX) * Gm_dd_22(iX) * V_u_2(iX) &
@@ -556,19 +566,15 @@ CONTAINS
                + V_u_2(iX) * UVEC(iPR_I2,iZ) &
                + V_u_3(iX) * UVEC(iPR_I3,iZ)
 
-          GVECm(1,iZ) = (One - Omega) * UVEC(iPR_D,iZ) &
-                        + Omega * ( CVEC(iCR_N,iZ) - vI )
+          GVECm(iPR_D ,iZ) = (One - Omega) * UVEC(iPR_D ,iZ) &
+                        + Omega * ( CVEC(iCR_N ,iZ) - vI )
 
-          DO j = 1, 3
-
-            vK =   V_u_1(iX) * k_dd(j,1) &
-                 + V_u_2(iX) * k_dd(j,2) &
-                 + V_u_3(iX) * k_dd(j,3)
-
-            GVECm(j+1,iZ) = (One - Omega) * UVEC(j+1,iZ) &
-                            + Omega * ( CVEC(j+1,iZ) - vK * UVEC(iPR_D,iZ) )
-
-          END DO
+          GVECm(iPR_I1,iZ) = (One - Omega) * UVEC(iPR_I1,iZ) &
+                        + Omega * ( CVEC(iCR_G1,iZ) - vK_1 )
+          GVECm(iPR_I2,iZ) = (One - Omega) * UVEC(iPR_I2,iZ) &
+                        + Omega * ( CVEC(iCR_G2,iZ) - vK_2 )
+          GVECm(iPR_I3,iZ) = (One - Omega) * UVEC(iPR_I3,iZ) &
+                        + Omega * ( CVEC(iCR_G3,iZ) - vK_3 )
 
           DO i = 1, 4
 
@@ -622,16 +628,16 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iX, CONVERGED, FTMP, GTMP )
+      !$OMP PRIVATE( iX, CONVERGED )
 #elif defined( THORNADO_OACC   )
       !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( iX, CONVERGED, FTMP, GTMP ) &
+      !$ACC PRIVATE( iX, CONVERGED ) &
       !$ACC PRESENT( ITERATE, UVEC, CVEC, GVECm, FVECm, GVEC, FVEC, &
       !$ACC          PositionIndexZ, D, I_u_1, I_u_2, I_u_3, &
       !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, nIterations )
 #elif defined( THORNADO_OMP    )
       !$OMP PARALLEL DO &
-      !$OMP PRIVATE( iX, CONVERGED, FTMP, GTMP )
+      !$OMP PRIVATE( iX, CONVERGED )
 #endif
       DO iZ = 1, nZ
         IF ( ITERATE(iZ) ) THEN
@@ -652,14 +658,8 @@ CONTAINS
           ELSE IF ( Mk == M ) THEN
             DO j = 1, Mk - 1
               DO i = 1, 4
-                FTMP(i,j) = FVEC(i,j+1,iZ)
-                GTMP(i,j) = GVEC(i,j+1,iZ)
-              END DO
-            END DO
-            DO j = 1, Mk - 1
-              DO i = 1, 4
-                FVEC(i,j,iZ) = FTMP(i,j)
-                GVEC(i,j,iZ) = GTMP(i,j)
+                FVEC(i,j,iZ) = FVEC(i,j+1,iZ)
+                GVEC(i,j,iZ) = GVEC(i,j+1,iZ)
               END DO
             END DO
           END IF
@@ -677,6 +677,13 @@ CONTAINS
     END DO
 
     CALL TimersStart( Timer_Streaming_NumericalFlux_InOut )
+
+    CALL CheckError &
+      ( ITERATE, k, &
+        N, G_d_1, G_d_2, G_d_3, &
+        D, I_u_1, I_u_2, I_u_3, &
+        V_u_1, V_u_2, V_u_3, &
+        Gm_dd_11, Gm_dd_22, Gm_dd_33, PositionIndexZ )
 
     IF( PRESENT( nIterations_Option ) ) THEN
 #if defined(THORNADO_OMP_OL)
@@ -708,6 +715,69 @@ CONTAINS
     DEALLOCATE( ITERATE, nIterations )
 
     CALL TimersStop( Timer_Streaming_NumericalFlux_InOut )
+
+  CONTAINS
+
+  SUBROUTINE CheckError &
+    ( MASK, k, &
+      Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
+      Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, PositionIndexZ )
+
+    USE mpi
+
+    LOGICAL,  DIMENSION(:), INTENT(in) :: MASK
+    INTEGER,                INTENT(in) :: k
+    REAL(DP), DIMENSION(:), INTENT(in) :: Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3
+    REAL(DP), DIMENSION(:), INTENT(in) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:), INTENT(in) :: V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    INTEGER,  DIMENSION(:), INTENT(in) :: PositionIndexZ
+
+    INTEGER  :: ierr
+    INTEGER  :: iZ, iX, nZ
+    REAL(DP) :: V1_P, V2_P, V3_P
+
+    nZ = SIZE( Nnu, 1 )
+
+    IF ( ANY( MASK ) .and. k >= MaxIterations ) THEN
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE FROM &
+      !$OMP ( V_u_1, V_u_2, V_u_3, &
+      !$OMP   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      !$OMP   Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
+      !$OMP   Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE HOST &
+      !$ACC ( V_u_1, V_u_2, V_u_3, &
+      !$ACC   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      !$ACC   Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
+      !$ACC   Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+#endif
+      DO iZ = 1, nZ
+        IF ( MASK(iZ) ) THEN
+
+          iX = PositionIndexZ(iZ)
+
+          V1_P  = V_u_1(iX) / SpeedOfLight
+          V2_P  = V_u_2(iX) / SpeedOfLight
+          V3_P  = V_u_3(iX) / SpeedOfLight
+
+          WRITE(*,*)                 '[ComputePrimitive_TwoMoment] Error'
+          WRITE(*,'(a,2i5)')         '        iZ, iX : ', iZ, iX
+          WRITE(*,'(a,5x,i23)')      '             k : ', k
+          WRITE(*,'(a,5x,3es23.15)') '           V_u : ', V1_P, V2_P, V3_P
+
+          WRITE(*,'(a,5x,4es23.15)') '    Dnu, Inu_u : ', Dnu(iZ), Inu_u_1(iZ), Inu_u_2(iZ), Inu_u_3(iZ)
+          WRITE(*,'(a,5x,4es23.15)') '    Nnu, Gnu_D : ', Nnu(iZ), Gnu_d_1(iZ), Gnu_d_2(iZ), Gnu_d_3(iZ)
+
+        END IF
+      END DO
+      CALL MPI_ABORT(MPI_COMM_WORLD,-1,ierr)
+    END IF
+
+  END SUBROUTINE CheckError
 
   END SUBROUTINE ComputePrimitive_TwoMoment_Vector_Richardson
 
