@@ -43,35 +43,20 @@ include $(AMREX_HOME)/Src/AmrCore/Make.package
 include $(AMREX_HOME)/Src/F_Interfaces/Base/Make.package
 include $(AMREX_HOME)/Src/F_Interfaces/AmrCore/Make.package
 
-# Include directories and source files needed from weaklib
-include Make.weaklib
-
 # Include custom amrex directories and source files
 include $(THORNADO_HOME)/SandBox/AMReX/Src/F_Interfaces/AmrCore/Make.package
 include $(THORNADO_HOME)/SandBox/AMReX/Src/F_Interfaces/Base/Make.package
 include $(THORNADO_HOME)/SandBox/AMReX/Src/Base/Make.package
 include $(THORNADO_HOME)/SandBox/AMReX/Src/AmrCore/Make.package
 
-# Include directories and source files needed from thornado
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.git
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Library
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Numbers
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.InputOutput
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Units
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.EquationOfState
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Opacities
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Fields
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Geometry
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Mesh
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.MeshRefinement
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.ProgramHeader
+# Include directories and source files needed from thornado, etc.
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.weaklib
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Poseidon
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.thornado
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Euler
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.TwoMoment
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Gravity
-include Make.CoreCollapseSupernova_XCFC
 
-# Include directories and source files needed from Poseidon
-include $(POSEIDON_HOME)/Build/Make.Poseidon
+include Make.CoreCollapseSupernova_XCFC
 
 # Include rules for compilation
 include $(AMREX_HOME)/Tools/GNUMake/Make.rules

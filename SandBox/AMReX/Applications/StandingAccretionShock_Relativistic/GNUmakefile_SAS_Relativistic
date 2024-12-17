@@ -44,20 +44,10 @@ include $(THORNADO_HOME)/SandBox/AMReX/Src/F_Interfaces/Base/Make.package
 include $(THORNADO_HOME)/SandBox/AMReX/Src/Base/Make.package
 include $(THORNADO_HOME)/SandBox/AMReX/Src/AmrCore/Make.package
 
-# Include directories and source files needed from thornado
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.git
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Library
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Numbers
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.InputOutput
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Units
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.EquationOfState
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Fields
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Geometry
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Mesh
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.MeshRefinement
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.ProgramHeader
+# Include directories and source files needed from thornado, etc.
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.thornado
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Euler
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Gravity
+
 include Make.SAS_Relativistic
 
 # Include rules for compilation
