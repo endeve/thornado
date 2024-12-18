@@ -9,7 +9,10 @@ MODULE MF_TimeSteppingModule_SSPRK_MHD
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_multifab_build, &
-    amrex_multifab_destroy
+    amrex_multifab_destroy, &
+    amrex_mfiter, &
+    amrex_mfiter_build, &
+    amrex_mfiter_destroy
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_communicator, &
     amrex_parallel_ioprocessor
@@ -41,7 +44,9 @@ MODULE MF_TimeSteppingModule_SSPRK_MHD
     UseFluxCorrection_MHD, &
     dt, &
     DEBUG, &
-    t_new
+    t_new, &
+    EvolveOnlyMagnetic, &
+    UseTiling
   USE MF_FieldsModule_Geometry, ONLY: &
     MF_uGF
   USE MF_FieldsModule_MHD, ONLY: &
@@ -157,10 +162,14 @@ CONTAINS
     TYPE(amrex_multifab) :: MF_uGS(        0:nMaxLevels-1)
     TYPE(amrex_multifab) :: MF_uMF(        0:nMaxLevels-1)
 
-    INTEGER :: iS, jS, nCompCF
+    INTEGER :: iS, jS, nCompCF, iFd
     INTEGER :: iLevel, iErr
 
     REAL(DP) :: dM_OffGrid_MHD(1:nCM,0:nMaxLevels-1)
+
+    TYPE(amrex_mfiter) :: MFI
+
+    REAL(DP), CONTIGUOUS, POINTER :: D(:,:,:,:)
 
     CALL TimersStart_AMReX( Timer_AMReX_UpdateFluid )
 
@@ -224,11 +233,31 @@ CONTAINS
 
           DO iLevel = 0, nLevels-1
 
-              CALL MF_U(iS,iLevel) &
-                     % LinComb( One, MF_U(iS,iLevel), 1, &
-                                dt(iLevel) * a_SSPRK(iS,jS), &
-                                MF_D(jS,iLevel), 1, &
-                                1, nCompCF, 0 )
+            IF( EvolveOnlyMagnetic )THEN
+
+              CALL amrex_mfiter_build( MFI, MF_D(jS,iLevel), tiling = UseTiling)
+
+              DO WHILE( MFI % next() )
+
+                D => MF_D(jS,iLevel) % DataPtr( MFI )
+
+                DO iFd = 1, 6
+
+                  D(:,:,:,nDOFX*(iFd-1)+1:nDOFX*iFd) = Zero
+
+                END DO
+
+              END DO
+
+              CALL amrex_mfiter_destroy( MFI )
+
+            END IF
+
+            CALL MF_U(iS,iLevel) &
+                   % LinComb( One, MF_U(iS,iLevel), 1, &
+                              dt(iLevel) * a_SSPRK(iS,jS), &
+                              MF_D(jS,iLevel), 1, &
+                              1, nCompCF, 0 )
 
           END DO
 
@@ -322,6 +351,26 @@ CONTAINS
       IF( w_SSPRK(iS) .NE. Zero )THEN
 
         DO iLevel = 0, nLevels-1
+
+          IF( EvolveOnlyMagnetic )THEN
+
+            CALL amrex_mfiter_build( MFI, MF_D(iS,iLevel), tiling = UseTiling)
+
+            DO WHILE( MFI % next() )
+
+            D => MF_D(iS,iLevel) % DataPtr( MFI )
+
+              DO iFd = 1, 6
+
+                D(:,:,:,nDOFX*(iFd-1)+1:nDOFX*iFd) = Zero
+
+              END DO
+
+            END DO
+
+            CALL amrex_mfiter_destroy( MFI )
+
+          END IF
 
           CALL MF_uCM(iLevel) &
                  % LinComb( One, MF_uCM(iLevel), 1, &
