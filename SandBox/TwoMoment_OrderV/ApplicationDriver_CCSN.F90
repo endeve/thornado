@@ -95,8 +95,8 @@ PROGRAM ApplicationDriver_CCSN
 #ifdef EOSMODE_TABLE_COMBINED
   EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
 #else
-  !EosTableName          = 'BaryonsPlusHelmPlusMuonsEOS_interpolated.h5'
-  EosTableName          = 'BaryonsPlusHelmPlusMuonsEOS.h5'
+  EosTableName          = 'BaryonsPlusHelmPlusMuonsEOS_interpolated.h5'
+  !EosTableName          = 'BaryonsPlusHelmPlusMuonsEOS.h5'
 #endif
 
   OpacityTableName_EmAb = 'wl-Op-SFHo-15-25-50-E40-EmAb.h5'
@@ -111,7 +111,7 @@ PROGRAM ApplicationDriver_CCSN
 
   ! --- Evolution Parameters ---
 
-  t_end   = 3.50d+2 * Millisecond
+  t_end   = 1.000d+2 * Millisecond
   !t_end   = 1.00d-3 * Millisecond
   dt_wrt  = 1.00d-4 * Millisecond
   wrt     = .FALSE.
@@ -155,7 +155,7 @@ PROGRAM ApplicationDriver_CCSN
   UseSlopeLimiter_Euler          = .TRUE.
   UsePositivityLimiter_Euler     = .TRUE.
 
-  EvolveTwoMoment                = .TRUE.
+  EvolveTwoMoment                = .FALSE.
   UseSlopeLimiter_TwoMoment      = .FALSE.
   UsePositivityLimiter_TwoMoment = .TRUE.
   UseEnergyLimiter_TwoMoment     = .TRUE.

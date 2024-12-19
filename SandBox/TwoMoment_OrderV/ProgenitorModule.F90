@@ -38,6 +38,7 @@ CONTAINS
 
     INTEGER(HID_T) :: FileID
     INTEGER, DIMENSION(3) :: Dims
+    INTEGER :: iProg
 
     WRITE(*,*)
     WRITE(*,'(A4,A24,A1,A)') &
@@ -68,6 +69,15 @@ CONTAINS
 
     CALL H5close_f( hdferr )
 
+    ! Now Initialize Muon Fraction (typically 0.0 but we need to test the hydro so use 0.02)
+    DO iProg=1,Dims(1)
+      IF (P1D % MassDensity(iProg) >= 1.0d8) THEN
+          P1D % MuonFraction(iProg) = 0.0_dp
+      ELSE
+          P1D % MuonFraction(iProg) = 0.0_dp
+      ENDIF
+    ENDDO
+
     ! --- Convert to Code Units ---
 
     P1D % Radius &
@@ -80,6 +90,8 @@ CONTAINS
       = P1D % Temperature * Kelvin
     P1D % ElectronFraction &
       = P1D % ElectronFraction
+    P1D % MuonFraction &
+      = P1D % MuonFraction
 
   END SUBROUTINE ReadProgenitor1D
 

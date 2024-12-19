@@ -535,7 +535,7 @@ CONTAINS
     ENDDO
     
     CALL InitializeEOSComponentsInversion &
-         ( D_T, T_T, Yp_T,  Es, Ps, Ss, &
+         ( D_T, T_T, Yp_T, Es, Ps, Ss, &
          EquationOfStateTableName, EquationOfStateTableName, &
          Verbose_Option = Verbose )
              
@@ -1188,7 +1188,7 @@ CONTAINS
            ( D, Em, Ye, Ym, T )
 
     CALL CalculateSoundSpeed( D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, D_T, T_T, Yp_T, &
-        P_T, OS_P, E_T, OS_E, HelmholtzTable, MuonTable, Gm, Cs, .FALSE.)
+        P_T, OS_P, E_T, OS_E, S_T, OS_S, HelmholtzTable, MuonTable, Gm, Cs, .FALSE.)
 
     Gm = Gm * UnitGm
     Cs = Cs * Centimeter / Second
@@ -1217,7 +1217,7 @@ CONTAINS
 
       CALL CalculateSoundSpeed( D(iP) / UnitD, T(iP) / UnitT, &
           Ye(iP) / UnitY, Ym(iP) / UnitY, &
-          D_T, T_T, Yp_T, P_T, OS_P, E_T, OS_E, &
+          D_T, T_T, Yp_T, P_T, OS_P, E_T, OS_E, S_T, OS_S, &
           HelmholtzTable, MuonTable, Gm(iP), Cs(iP),.FALSE.)
 
       Gm(iP) = Gm(iP) * UnitGm
@@ -1470,11 +1470,11 @@ CONTAINS
 
 #ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
     CALL CalculateSoundSpeed( D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, &
-        D_T, T_T, Yp_T, P_T, OS_P, E_T, OS_E, &
+        D_T, T_T, Yp_T, P_T, OS_P, E_T, OS_E, S_T, OS_S, &
         HelmholtzTable, MuonTable, Gm, Cs, .TRUE.)
 #else
     CALL CalculateSoundSpeed( D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, &
-        D_T, T_T, Yp_T, P_T, OS_P, E_T, OS_E, &
+        D_T, T_T, Yp_T, P_T, OS_P, E_T, OS_E, S_T, OS_S, &
         HelmholtzTable, MuonTable, Gm, Cs, .FAlSE.)
 #endif
 
