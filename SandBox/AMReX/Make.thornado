@@ -1,21 +1,7 @@
-# XXX_HOME defines the directory in which all the XXX source code is located
-# If you set XXX_HOME as an environment variable, this line will be ignored
-HDF5_HOME     ?= $(HDF5_DIR)
-LAPACK_HOME   ?= $(LAPACK_DIR)
-AMREX_HOME    ?= $(AMREX_DIR)
-THORNADO_HOME ?= $(THORNADO_DIR)
-
 HDF5_INC ?= $(HDF5_HOME)/include
 HDF5_LIB ?= $(HDF5_HOME)/lib
 
 LAPACK_LIB ?= $(LAPACK_HOME)/lib
-
-DEBUG = FALSE
-
-USE_MPI = TRUE
-USE_OMP = FALSE
-
-DIM = 2
 
 EBASE = main
 
@@ -27,6 +13,7 @@ LIBRARY_LOCATIONS += $(LAPACK_LIB)
 LIBRARIES += -llapack -lblas
 
 # Set pre-processor directives
+# This is also where, e.g., USE_HDF5 and USE_PETSC are used
 include $(AMREX_HOME)/Tools/GNUMake/Make.defs
 
 # Include basic AMReX framework
@@ -46,9 +33,6 @@ include $(THORNADO_HOME)/SandBox/AMReX/Src/AmrCore/Make.package
 
 # Include directories and source files needed from thornado, etc.
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.thornado
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Euler
-
-include Make.SedovTaylorBlastWave_XCFC
 
 # Include rules for compilation
 include $(AMREX_HOME)/Tools/GNUMake/Make.rules
