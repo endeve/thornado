@@ -1,4 +1,4 @@
-##### SedovTaylorBlastWave_XCFC_1D_Spherical.inputs #####
+##### SedovTaylorBlastWave_XCFC_3D_Cartesian.inputs #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
@@ -9,6 +9,7 @@ thornado.ProgramName = "SedovTaylorBlastWave_XCFC"
 
 Sedov.nDetCells = 10 # number of cells on finest level
 Sedov.Edet      = 1.0e-3
+Sedov.X_D       = 7.8125e-3 # Value taken from 1D run
 
 thornado.iRestart = -1
 
@@ -17,26 +18,28 @@ thornado.PlotFileNameRoot = "SedovTaylorBlastWave_XCFC.plt"
 thornado.t_end   = 1.0e2
 thornado.iCycleD = 10
 
-thornado.dt_wrt  = 1.0e0
-thornado.iCycleW = -1
+thornado.dt_wrt  = -1.0e0
+thornado.iCycleW = 1
 
 thornado.CheckpointFileNameRoot = "SedovTaylorBlastWave_XCFC.chk"
-thornado.dt_chk    = 1.1e2
-thornado.iCycleChk = -1
+thornado.dt_chk    = -1.1e2
+thornado.iCycleChk = 1
 
 thornado.nNodes = 2
 
-thornado.bcX         = 3 0 0
-geometry.is_periodic = 0 1 1
+thornado.bcX         = 2 2 2
+geometry.is_periodic = 0 0 0
 
-geometry.coord_sys = 2
-geometry.prob_lo   = 0.0e0 0.0                0.0
-geometry.prob_hi   = 1.0e0 3.1415926535897931 6.2831853071795862
+geometry.coord_sys = 0
+geometry.prob_lo   = -1.0 -1.0 -1.0
+geometry.prob_hi   = +1.0 +1.0 +1.0
 
-amr.n_cell                  = 32 01 01
-thornado.swX                = 01 00 00
-#amr.max_grid_size_x         = 64
-#amr.blocking_factor_x       = 64
+amr.n_cell                  = 32 32 32
+thornado.swX                = 01 01 01
+#amr.max_grid_size_x         = 32
+#amr.blocking_factor_x       = 32
+#amr.max_grid_size_y         = 64
+#amr.blocking_factor_y       = 64
 amr.max_level               = 2
 amr.UseFluxCorrection_Euler = 1
 amr.UseAMR                  = 1
