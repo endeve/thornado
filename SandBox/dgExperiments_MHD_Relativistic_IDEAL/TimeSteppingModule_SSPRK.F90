@@ -289,9 +289,6 @@ CONTAINS
           CALL ApplyPositivityLimiter_MHD_Relativistic_IDEAL &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
 
-          CALL ApplyPositivityLimiter_MHD_Relativistic_IDEAL &
-                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
-
           CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, +1 )
 
         END IF
