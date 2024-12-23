@@ -12,6 +12,8 @@ MODULE TimeSteppingModule_SSPRK
     nDOFX
   USE MagnetofluidFieldsModule, ONLY: &
     nCM
+  USE XCFC_UtilitiesModule, ONLY: &
+    MultiplyWithPsi6
   USE MHD_SlopeLimiterModule_Relativistic_IDEAL, ONLY: &
     ApplySlopeLimiter_MHD_Relativistic_IDEAL
   USE MHD_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
@@ -245,6 +247,8 @@ CONTAINS
     U_SSPRK = Zero ! --- State
     D_SSPRK = Zero ! --- Increment
 
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, +1 ) ! U_SSPRK = psi^6 * U
+
     DO iS = 1, nStages_SSPRK
 
       DO iCM = 1, nCM
@@ -277,6 +281,8 @@ CONTAINS
 
         IF( iS .NE. 1)THEN
 
+          CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, -1 )
+
           CALL ApplySlopeLimiter_MHD_Relativistic_IDEAL &
                  ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
 
@@ -286,7 +292,11 @@ CONTAINS
           CALL ApplyPositivityLimiter_MHD_Relativistic_IDEAL &
                  ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
 
+          CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, +1 )
+
         END IF
+
+        CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, -1 )
 
         CALL ComputeIncrement_Magnetofluid &
                ( t, CFL, iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -320,6 +330,8 @@ CONTAINS
       END IF
 
     END DO
+
+    CALL MultiplyWithPsi6( iX_B0, iX_E0, iX_B1, iX_E1, G, U, -1 )
 
     CALL ApplySlopeLimiter_MHD_Relativistic_IDEAL &
            ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
