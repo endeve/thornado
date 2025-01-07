@@ -34,6 +34,9 @@ PROGRAM ApplicationDriver
     InitializeFluid_SSPRK, &
     FinalizeFluid_SSPRK, &
     UpdateFluid_SSPRK
+  Use CellMergingModule, ONLY: &
+    Initialize_CellMerging, &
+    Finalize_CellMerging
   USE Euler_SlopeLimiterModule_NonRelativistic_IDEAL, ONLY: &
     InitializeSlopeLimiter_Euler_NonRelativistic_IDEAL, &
     FinalizeSlopeLimiter_Euler_NonRelativistic_IDEAL, &
@@ -88,7 +91,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'RiemannProblem'
+  ProgramName = 'RiemannProblemSpherical'
 
   RestartFileNumber = -1
 
@@ -399,6 +402,11 @@ PROGRAM ApplicationDriver
              = TRIM( RiemannProblemName ), &
            SedovEnergy_Option = Eblast )
 
+  ! --- Test CellMergingModule ---
+  CALL Initialize_CellMerging( nX )
+  STOP
+  ! --- Test CellMergingModuel ---
+
   IF( RestartFileNumber .GE. 0 )THEN
 
     CALL ReadFieldsHDF( RestartFileNumber, t, ReadFF_Option = .TRUE. )
@@ -519,6 +527,8 @@ PROGRAM ApplicationDriver
   WRITE(*,'(A6,A,I6.6,A,ES12.6E2,A)') &
     '', 'Finished ', iCycle, ' Cycles in ', wTime, ' s'
   WRITE(*,*)
+
+  CALL Finalize_CellMerging( nX )
 
   CALL FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL
 
