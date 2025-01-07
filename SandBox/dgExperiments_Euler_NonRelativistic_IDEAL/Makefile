@@ -10,11 +10,13 @@ ApplicationDriver: \
 	$(thornado) \
 	InitializationModule.o \
 	TimeSteppingModule_SSPRK.o \
+	CellMergingModule.o \
 	ApplicationDriver.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_$(MACHINE) \
 	$(thornado) \
 	InitializationModule.o \
 	TimeSteppingModule_SSPRK.o \
+	CellMergingModule.o \
 	ApplicationDriver.o \
 	$(LIBRARIES)
 
