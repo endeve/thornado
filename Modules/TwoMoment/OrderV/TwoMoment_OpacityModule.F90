@@ -94,10 +94,12 @@ CONTAINS
 
     END SELECT
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( uOP )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE( uOP )
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: uOP )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( uOP )
 #endif
 
   END SUBROUTINE SetOpacities
@@ -432,14 +434,6 @@ CONTAINS
             1:nOP,1:nSpecies) )
 
     uOP = Zero
-
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: uOP )
-#elif defined( THORNADO_OACC   )
-    !$ACC ENTER DATA &
-    !$ACC CREATE( uOP )
-#endif
 
   END SUBROUTINE CreateOpacities
 
