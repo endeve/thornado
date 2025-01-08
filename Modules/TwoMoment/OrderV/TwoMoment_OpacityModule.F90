@@ -94,6 +94,12 @@ CONTAINS
 
     END SELECT
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO( uOP )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE( uOP )
+#endif
+
   END SUBROUTINE SetOpacities
 
 
@@ -425,10 +431,28 @@ CONTAINS
             1-swX(3):nX(3)+swX(3), &
             1:nOP,1:nSpecies) )
 
+    uOP = Zero
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: uOP )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC CREATE( uOP )
+#endif
+
   END SUBROUTINE CreateOpacities
 
 
   SUBROUTINE DestroyOpacities
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: uOP )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( uOP )
+#endif
 
     DEALLOCATE( uOP )
 
