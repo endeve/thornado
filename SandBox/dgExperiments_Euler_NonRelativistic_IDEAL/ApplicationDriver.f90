@@ -403,7 +403,7 @@ PROGRAM ApplicationDriver
            SedovEnergy_Option = Eblast )
 
   ! --- Test CellMergingModule ---
-  CALL Initialize_CellMerging( nX )
+  CALL Initialize_CellMerging( nX, nNodes )
   STOP
   ! --- Test CellMergingModuel ---
 
