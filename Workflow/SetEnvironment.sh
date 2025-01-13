@@ -256,11 +256,16 @@ elif [[ $THORNADO_MACHINE == frontier_cce ]]; then
 
   echo
 
+  module restore
+
   module use /ccs/home/jaharris/modulefiles/frontier
-  
-  module load cpe/23.12
-  module load PrgEnv-cray cce/17.0.0 cray-hdf5-parallel craype-accel-amd-gfx90a rocm/5.7.1 hipfort/5.7.1
+
+  module load cpe/24.07
+  module load PrgEnv-cray cray-hdf5-parallel craype-accel-amd-gfx90a 
+  module load rocm/6.1.3 hipfort/6.1.3 
   module unload darshan-runtime
+
+  export LD_LIBRARY_PATH=${CRAY_LD_LIBRARY_PATH}:${LD_LIBRARY_PATH}
 
   module -t list
   
