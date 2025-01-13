@@ -36,7 +36,8 @@ PROGRAM NeutrinoOpacities
   USE ReferenceElementModuleE_Lagrange, ONLY: &
     InitializeReferenceElementE_Lagrange
   USE RadiationFieldsModule, ONLY: &
-    iNuE, iNuE_Bar, iNuM, iNuM_Bar
+    iNuE, iNuE_Bar, iNuM, iNuM_Bar, &
+    nChirals, LeptonNumber
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     ComputeEquilibriumDistributions, &
     ComputeEquilibriumDistributions_DG, &
@@ -118,7 +119,7 @@ PROGRAM NeutrinoOpacities
     ZoomE      = 1.266038160710160d0
 
   INTEGER :: &
-    mpierr, iE, iX, iS, iNodeE, iN_E, iE1, iE2
+    mpierr, iE, iX, iS, iNodeE, iN_E, iE1, iE2, iC
   REAL(DP) :: &
     kT, DetBal, &
     Timer_ReadEos, &
@@ -154,7 +155,7 @@ PROGRAM NeutrinoOpacities
     Edot_NES_element
   REAL(DP), DIMENSION(nPointsE) :: &
     E, W2
-  REAL(DP), DIMENSION(nPointsE,nPointsX) :: &
+  REAL(DP), DIMENSION(nPointsE,nChirals,nPointsX) :: &
     Sigma_Iso    ! --- Iso-energertic Kernel
   REAL(DP), DIMENSION(nPointsE,nSpecies,nPointsX) :: &
     f0       , & ! --- Equilibrium Distribution
@@ -288,7 +289,7 @@ PROGRAM NeutrinoOpacities
   CALL TimersStart( Timer_ReadEos )
   CALL InitializeEquationOfState_TABLE &
          ( EquationOfStateTableName_Option &
-             = 'EquationOfStateTable.h5', &
+             = 'wl-EOS-SFHo-15-25-50.h5', &
            Verbose_Option = .TRUE. )
   CALL TimersStop( Timer_ReadEos )
 
@@ -309,16 +310,18 @@ PROGRAM NeutrinoOpacities
   !           = 'wl-Op-LS220-25-50-100-E40-HR98-Brem.h5', &
   !         Verbose_Option = .TRUE. ) 
   CALL InitializeOpacities_TABLE &
-         ( OpacityTableName_EmAb_Option &
-             = 'wl-Op-EmAb.h5', &
+         ( EquationOfStateTableName_Option &
+             = 'wl-EOS-SFHo-15-25-50.h5', &
+           OpacityTableName_EmAb_Option &
+             = 'wl-Op-SFHo-15-25-50-E40-EmAb.h5', &
            OpacityTableName_Iso_Option  &
-             = 'wl-Op-Iso.h5',  &
+             = 'wl-Op-SFHo-15-25-50-E40-Iso.h5',  &
            OpacityTableName_NES_Option &
-             = 'wl-Op-NES.h5',  &
+             = 'wl-Op-SFHo-15-25-50-E40-NES.h5',  &
            OpacityTableName_Pair_Option &
-             = 'wl-Op-Pair.h5', &
+             = 'wl-Op-SFHo-15-25-50-E40-Pair.h5', &
            OpacityTableName_Brem_Option &
-             = 'wl-Op-Brem.h5', &
+             = 'wl-Op-SFHo-15-25-50-E40-Brem.h5', &
            Verbose_Option = .TRUE. ) 
   CALL TimersStop( Timer_ReadOpacities )
 
@@ -439,16 +442,20 @@ PROGRAM NeutrinoOpacities
   CALL TimersStop( Timer_Compute_ES )
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+  !$OMP PRIVATE( iC )
 #elif defined(THORNADO_OACC)
   !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-  !$ACC PRESENT( Eta_Iso, Chi_Iso, Sigma_Iso, f0_DG, E  )
+  !$ACC PRESENT( Eta_Iso, Chi_Iso, Sigma_Iso, f0_DG, E  ) &
+  !$ACC PRIVATE( iC )
 #endif
   DO iX = 1, nPointsX
   DO iS = 1, nSpecies
   DO iE = 1, nPointsE
 
-    Chi_Iso(iE,iS,iX) = FourPi * E(iE)**2 * Sigma_Iso(iE,iX)
+    iC = nChirals - (LeptonNumber(iS) + 1) / nChirals
+
+    Chi_Iso(iE,iS,iX) = FourPi * E(iE)**2 * Sigma_Iso(iE,iC,iX)
     Eta_Iso(iE,iS,iX) = Chi_Iso(iE,iS,iX) * f0_DG(iE,iS,iX)
 
   END DO
@@ -539,7 +546,7 @@ PROGRAM NeutrinoOpacities
   Timer_ComputeRate_NuPair = 0.0d0
   CALL TimersStart( Timer_ComputeRate_NuPair )
   CALL ComputeNeutrinoOpacityRates_NuPair &
-         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, &
+         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, D, W2, &
            J, f0_DG, Nu_J_I_0, Nu_J_II_0, Eta_NuPair, Chi_NuPair )
   CALL TimersStop( Timer_ComputeRate_NuPair )
 
