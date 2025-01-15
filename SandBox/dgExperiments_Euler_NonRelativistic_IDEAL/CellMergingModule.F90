@@ -158,7 +158,7 @@ CONTAINS
 
         X1 = NodeCoordinate( MeshX(1), 1, iNodeX1 )
         X2 = NodeCoordinate( MeshX(2), 1, iNodeX2 )
-        print *, "(",X1,",",X2,")"
+        print *, "(",iNodeX1,",",iNodeX2,")=(",X1,",",X2,")"
 
       END DO
 
@@ -237,10 +237,11 @@ CONTAINS
                                    iX_B1(3):iX_E1(3), &
                                    1:nCF)
 
-      INTEGER  :: iNodeX, iX1, iX2, iX3, iCF
+      INTEGER  :: iNodeX, iNodeX1, iNodeX2, iX1, iX2, iX3, iCF
       INTEGER  :: iCell, iFine, iMerge
       INTEGER  :: NodeX(nDOFX) ! will this be necessary?
       REAL(DP) :: xQ(nN), wQ(nN)
+      REAL(DP) :: coeff_sum
       REAL(DP) :: uCF(1:nDOFX, &
                       iX_B0(2):iX_E0(2), &
                       iX_B0(1):iX_E0(1), &
@@ -259,6 +260,8 @@ CONTAINS
       ! Most likely I should combine the Merge and Restrict as a single operation
 
       ! --- Permute node ordering in 2-dimensions ---
+      ! --- Not necessary for computing new coefficients by loop ---
+      ! --- If removed, need to swap iNodeX1 and iFine on Line 330 ---
       IF( nDOFX .EQ. 4 )THEN
 
         NodeX(1) = 1
@@ -272,7 +275,7 @@ CONTAINS
         NodeX(2) = 4
         NodeX(3) = 7
         NodeX(4) = 2
-        NodeX(5) = 1
+        NodeX(5) = 5
         NodeX(6) = 8
         NodeX(7) = 3
         NodeX(8) = 6
@@ -301,31 +304,43 @@ CONTAINS
       
       CALL GetQuadrature( nN, xQ, wQ )
 
-      ! DO iCF = 1, nCF
-      ! DO iX3 = iX_B0(3), iX_E0(3)
-      ! DO iX1 = iX_B0(1), iX_E0(1)
-      ! DO iX2 = iX_B0(2), iX_E0(2)
-      ! DO iNodeX = 1,nDOFX
+      ! Use NodeNumberTableX and the iNodeX1 and iNodeX2 construction
+      ! to get the X1 and X2 values of iNodeX
 
-      !     DO iCell  = 1,MergedMeshX2(iX1) % NCellsPerMerge
-      !     DO iFine  = 1,nN
-      !     DO iMerge = 1,nN
+      DO iCF = 1, nCF
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iNodeX = 1,nDOFX
 
-      !       MergedMeshX2(iX1) % MergedBasisCoeff(iMerge,iFine,iCell) * &
-      !       MergedMeshX2(iX1) % MergedBasisCoeff(iMerge, &
-      !                                            ?, &
-      !                                            MergedMeshX2(iX1) % CellMarker(iX2)) * &
-      !       uCF(?,iX2,iX1,iX3,iCF) / wQ(iMerge)
+        coeff_sum = Zero
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+        
+        DO iCell  = 1,MergedMeshX2(iX1) % NCellsPerMerge
+        DO iFine  = 1,nN
+        DO iMerge = 1,nN
 
-      !     END DO
-      !     END DO
-      !     END DO
+          coeff_sum = &
+            coeff_sum + &
+            MergedMeshX2(iX1) % MergedBasisCoeff(iMerge,iFine,iCell) * &
+            MergedMeshX2(iX1) % MergedBasisCoeff(iMerge, &
+                                                 iNodeX2, &
+                                                 MergedMeshX2(iX1) % CellMarker(iX2)) * &
+            uCF(MOD(iNodeX1-1,nN)*nN+iFine,iX2,iX1,iX3,iCF) / & ! Can use NodeNumberTableX3D(iNodeX1,iFine,iNodeX3) instead?
+            (wQ(iMerge) * wQ(iNodeX2))
 
-      ! END DO
-      ! END DO
-      ! END DO
-      ! END DO
-      ! END DO
+        END DO
+        END DO
+        END DO
+
+        U(iNodeX,iX1,iX2,iX3,iCF) = coeff_sum
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
 
     END SUBROUTINE MergeAndRestrict
 
