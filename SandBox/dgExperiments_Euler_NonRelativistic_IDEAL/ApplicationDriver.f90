@@ -36,6 +36,7 @@ PROGRAM ApplicationDriver
     UpdateFluid_SSPRK
   Use CellMergingModule, ONLY: &
     Initialize_CellMerging, &
+    MergeAndRestrict, &
     Finalize_CellMerging
   USE Euler_SlopeLimiterModule_NonRelativistic_IDEAL, ONLY: &
     InitializeSlopeLimiter_Euler_NonRelativistic_IDEAL, &
@@ -76,6 +77,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
   LOGICAL       :: UseConservativeCorrection
+  LOGICAL       :: UseCellMerging
   INTEGER       :: iCycle, iCycleD
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
   INTEGER       :: RestartFileNumber
@@ -94,6 +96,7 @@ PROGRAM ApplicationDriver
   ProgramName = 'RiemannProblemSpherical'
 
   RestartFileNumber = -1
+  UseCellMerging    = .FALSE.
 
   t = 0.0_DP
 
@@ -157,9 +160,9 @@ PROGRAM ApplicationDriver
 
       Gamma = 1.4_DP
 
-      nX = [ 128, 64, 1 ]
-      xL = [ 1.0d-8, 0.0_DP, 0.0_DP ]
-      xR = [ 2.0_DP, Pi,     TwoPi  ]
+      nX = [ 128, 16, 1 ] ! Change nX(2) to 16?
+      xL = [ 1.0d-8, 1.0d-8, 0.0_DP ]
+      xR = [ 2.0_DP, Pi - 1.0d-8,     TwoPi  ]
 
       swX = [ 1, 1, 0 ]
       bcX = [ 3, 3, 0 ]
@@ -172,8 +175,10 @@ PROGRAM ApplicationDriver
       UseSlopeLimiter           = .TRUE.
       UseCharacteristicLimiting = .TRUE.
 
-      UseTroubledCellIndicator  = .FALSE.
+      UseTroubledCellIndicator  = .TRUE.
       LimiterThresholdParameter = 0.03_DP
+
+      UseCellMerging            = .FALSE.
 
       iCycleD = 1
       t_end   = 5.0d-1
@@ -402,11 +407,6 @@ PROGRAM ApplicationDriver
              = TRIM( RiemannProblemName ), &
            SedovEnergy_Option = Eblast )
 
-  ! --- Test CellMergingModule ---
-  CALL Initialize_CellMerging( nX, nNodes )
-  STOP
-  ! --- Test CellMergingModuel ---
-
   IF( RestartFileNumber .GE. 0 )THEN
 
     CALL ReadFieldsHDF( RestartFileNumber, t, ReadFF_Option = .TRUE. )
@@ -420,6 +420,18 @@ PROGRAM ApplicationDriver
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
   CALL TimersStart_Euler( Timer_Euler_InputOutput )
+
+  ! --- Test CellMergingModule ---
+  IF( UseCellMerging )THEN
+
+    WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'Using Cell Merging'
+
+    CALL Initialize_CellMerging( nX, nNodes )
+  
+    CALL MergeAndRestrict( nNodes, uCF )
+    
+  END IF
+  ! --- Test CellMergingModule ---
 
   CALL ComputeFromConserved_Euler_NonRelativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
@@ -455,7 +467,7 @@ PROGRAM ApplicationDriver
     CALL ComputeTimeStep_Euler_NonRelativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, &
              CFL = 0.5_DP / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
-             TimeStep = dt )
+             TimeStep = dt, Merge_Option = UseCellMerging )
 
     IF( t + dt > t_end )THEN
 
@@ -482,6 +494,10 @@ PROGRAM ApplicationDriver
 
     CALL UpdateFluid_SSPRK &
            ( t, dt, uGF, uCF, uDF, ComputeIncrement_Euler_DG_Explicit )
+
+    IF( UseCellMerging )THEN
+      CALL MergeAndRestrict( nNodes, uCF )
+    END IF
 
     t = t + dt
 
@@ -528,7 +544,9 @@ PROGRAM ApplicationDriver
     '', 'Finished ', iCycle, ' Cycles in ', wTime, ' s'
   WRITE(*,*)
 
-  CALL Finalize_CellMerging( nX )
+  IF(UseCellMerging)THEN
+    CALL Finalize_CellMerging( nX ) ! or a conditional that is passed into initialization
+  END IF
 
   CALL FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL
 
