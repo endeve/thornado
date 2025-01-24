@@ -11,6 +11,8 @@ MODULE Euler_UtilitiesModule_NonRelativistic
     nDimsX
   USE MeshModule, ONLY: &
     MeshX
+  USE CellMergingModule, ONLY: &
+    MergedMeshX2
   USE GeometryFieldsModule, ONLY: &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
@@ -320,7 +322,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeTimeStep_Euler_NonRelativistic &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep )
+               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep, Merge_Option )
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -331,10 +333,21 @@ CONTAINS
       CFL
     REAL(DP), INTENT(out) :: &
       TimeStep
+    LOGICAL, OPTIONAL, INTENT(in) :: &
+      Merge_Option
 
+      ! Add local variable to check if mergeoption is present and set as true or false
+    LOGICAL  :: Merge
     INTEGER  :: iX1, iX2, iX3, iNodeX, iDimX
     REAL(DP) :: dX(3), dt
     REAL(DP) :: P(nPF), Cs, EigVals(nCF)
+
+    Merge = .FALSE.
+    IF(PRESENT(Merge_Option))THEN
+
+      Merge = Merge_Option
+
+    END IF
 
     ASSOCIATE &
       ( dX1 => MeshX(1) % Width, &
@@ -380,7 +393,11 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
         dX(1) = dX1(iX1)
-        dX(2) = dX2(iX2)
+        IF( Merge )THEN
+          dX(2) = MergedMeshX2(iX1) % MergeWidth(iX2)
+        ELSE
+          dX(2) = dX2(iX2)
+        END IF
         dX(3) = dX3(iX3)
 
         CALL ComputePrimitive_Euler_NonRelativistic &
