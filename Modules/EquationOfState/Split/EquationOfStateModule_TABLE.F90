@@ -78,14 +78,14 @@ MODULE EquationOfStateModule_TABLE
   INTEGER :: &
     iRho, iTemp, iYp, &
     iP_T, iS_T, iE_T, iMe_T, iMp_T, iMn_T, &
-    iXp_T, iXn_T, iXa_T, iXh_T, iAh_T
+    iXp_T, iXn_T, iXa_T, iXh_T, iAh_T, iGm_T
   REAL(DP) :: &
     UnitD, UnitT, UnitY, &
     UnitP, UnitS, UnitE, UnitMl, UnitMp, UnitMn, &
     UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm
   REAL(DP), PUBLIC :: &
     OS_P, OS_S, OS_E, OS_Mp, OS_Mn, &
-    OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Ah
+    OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Ah, OS_Gm
   REAL(DP), PARAMETER :: &
     BaryonMass = AtomicMassUnit
   REAL(DP) :: minvar, OS_loc
@@ -93,7 +93,7 @@ MODULE EquationOfStateModule_TABLE
     D_T, T_T, Yp_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: &
     P_T, S_T, E_T, Mp_T, Mn_T, &
-    Xp_T, Xn_T, Xa_T, Xh_T, Ah_T
+    Xp_T, Xn_T, Xa_T, Xh_T, Ah_T, Gm_T
 #ifdef MICROPHYSICS_WEAKLIB
   LOGICAL :: UsingExternalEOS
   TYPE(EquationOfStateTableType), POINTER :: EOS
@@ -274,9 +274,9 @@ MODULE EquationOfStateModule_TABLE
   !$OMP   UnitD, UnitT, UnitY, UnitP, UnitS, UnitE, UnitMl, UnitMp, UnitMn, &
   !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, &
   !$OMP   OS_P, OS_S, OS_E, OS_Mp, OS_Mn, OS_Xp, OS_Xn, &
-  !$OMP   OS_Xa, OS_Xh, OS_Ah, &
+  !$OMP   OS_Xa, OS_Xh, OS_Ah, OS_Gm, &
   !$OMP   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, &
-  !$OMP   Xa_T, Xh_T, Ah_T, &
+  !$OMP   Xa_T, Xh_T, Ah_T, Gm_T, &
   !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
@@ -284,9 +284,9 @@ MODULE EquationOfStateModule_TABLE
   !$ACC   UnitD, UnitT, UnitY, UnitP, UnitS, UnitE, UnitMl, UnitMp, UnitMn, &
   !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, &
   !$ACC   OS_P, OS_S, OS_E, OS_Mp, OS_Mn, OS_Xp, OS_Xn, &
-  !$ACC   OS_Xa, OS_Xh, OS_Ah, &
+  !$ACC   OS_Xa, OS_Xh, OS_Ah, OS_Gm, &
   !$ACC   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, &
-  !$ACC   Xa_T, Xh_T, Ah_T, &
+  !$ACC   Xa_T, Xh_T, Ah_T, Gm_T, &
   !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
 #endif
 
@@ -425,6 +425,7 @@ CONTAINS
     iXa_T = EOS % DV % Indices % iAlphaMassFraction
     iXh_T = EOS % DV % Indices % iHeavyMassFraction
     iAh_T = EOS % DV % Indices % iHeavyMassNumber
+    iGm_T = EOS % DV % Indices % iGamma1
 
     ! --- Dependent Variables Offsets ---
 
@@ -438,6 +439,7 @@ CONTAINS
     OS_Xa = EOS % DV % Offsets(iXa_T)
     OS_Xh = EOS % DV % Offsets(iXh_T)
     OS_Ah = EOS % DV % Offsets(iAh_T)
+    OS_Gm = EOS % DV % Offsets(iGm_T)
 
     ALLOCATE &
       ( P_T (1:EOS % DV % nPoints(1), &
@@ -480,6 +482,11 @@ CONTAINS
             1:EOS % DV % nPoints(2), &
             1:EOS % DV % nPoints(3)) )
 
+    ALLOCATE &
+      ( Gm_T(1:EOS % DV % nPoints(1), &
+            1:EOS % DV % nPoints(2), &
+            1:EOS % DV % nPoints(3)) )
+
     P_T  = EOS % DV % Variables(iP_T ) % Values
     S_T  = EOS % DV % Variables(iS_T ) % Values
     E_T  = EOS % DV % Variables(iE_T ) % Values
@@ -490,6 +497,7 @@ CONTAINS
     Xa_T = EOS % DV % Variables(iXa_T) % Values
     Xh_T = EOS % DV % Variables(iXh_T) % Values
     Ah_T = EOS % DV % Variables(iAh_T) % Values
+    Gm_T = EOS % DV % Variables(iGm_T) % Values
 
     IF ( UseChemicalPotentialShift ) CALL ApplyChemicalPotentialShift_TABLE( Mp_T, Mn_T, OS_Mp, OS_Mn )
 
@@ -547,7 +555,7 @@ CONTAINS
     !$OMP   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMl, UnitMp, UnitMn, &
     !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, OS_P, OS_S, OS_E, &
     !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, P_T, S_T, &
-    !$OMP   E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Ah_T, &
+    !$OMP   E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Ah_T, Gm_T, &
     !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
@@ -555,7 +563,7 @@ CONTAINS
     !$ACC   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMl, UnitMp, UnitMn, &
     !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, OS_P, OS_S, OS_E, &
     !$ACC   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, P_T, S_T, &
-    !$ACC   E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Ah_T, &
+    !$ACC   E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Ah_T, Gm_T, &
     !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
 #endif
 
@@ -590,6 +598,7 @@ CONTAINS
     DEALLOCATE( Xa_T )
     DEALLOCATE( Xh_T )
     DEALLOCATE( Ah_T )
+    DEALLOCATE( Gm_T )
 
     IF ( .NOT. UsingExternalEOS ) THEN
       IF (ASSOCIATED(MuonTable))      DEALLOCATE( MuonTable )
@@ -721,7 +730,7 @@ CONTAINS
   Mue  = ElectronPhotonState % mue * UnitMl
 
   ! Calculate Muon Quantities
-  MuonState % t     = T /UnitT
+  MuonState % t     = T / UnitT
   MuonState % rhoym = D * Ym / UnitD / UnitY
   CALL FullMuonEOS(MuonTable, MuonState)
   Mum  = MuonState % mu * UnitMl
@@ -1187,11 +1196,23 @@ CONTAINS
     CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
            ( D, Em, Ye, Ym, T )
 
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
+    CALL CalculateSoundSpeed( D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, D_T, T_T, Yp_T, &
+        P_T, OS_P, E_T, OS_E, S_T, OS_S, HelmholtzTable, MuonTable, Gm, Cs, .TRUE.)
+#else
     CALL CalculateSoundSpeed( D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, D_T, T_T, Yp_T, &
         P_T, OS_P, E_T, OS_E, S_T, OS_S, HelmholtzTable, MuonTable, Gm, Cs, .FALSE.)
+#endif
 
     Gm = Gm * UnitGm
     Cs = Cs * Centimeter / Second
+
+    ! Temporary sound speed calculation to test accuracy of solver
+    ! CALL ComputeDependentVariableBaryons_TABLE_Scalar &
+    !     ( D, T, Ye, Ym, Gm, Gm_T, OS_Gm, Units_V = 1.0_DP )
+
+    ! CALL ComputePressure_TABLE_Scalar( D, T, Ye, Ym, P)
+    ! Cs = SQRT(Gm * P / D)
 
   END SUBROUTINE ComputeSoundSpeedFromPrimitive_TABLE_Scalar
 
@@ -1215,15 +1236,28 @@ CONTAINS
 
     DO iP=1,nP
 
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
       CALL CalculateSoundSpeed( D(iP) / UnitD, T(iP) / UnitT, &
           Ye(iP) / UnitY, Ym(iP) / UnitY, &
           D_T, T_T, Yp_T, P_T, OS_P, E_T, OS_E, S_T, OS_S, &
-          HelmholtzTable, MuonTable, Gm(iP), Cs(iP),.FALSE.)
-
+          HelmholtzTable, MuonTable, Gm(iP), Cs(iP), .TRUE.)
+#else
+      CALL CalculateSoundSpeed( D(iP) / UnitD, T(iP) / UnitT, &
+          Ye(iP) / UnitY, Ym(iP) / UnitY, &
+          D_T, T_T, Yp_T, P_T, OS_P, E_T, OS_E, S_T, OS_S, &
+          HelmholtzTable, MuonTable, Gm(iP), Cs(iP), .FALSE.)
+#endif
       Gm(iP) = Gm(iP) * UnitGm
       Cs(iP) = Cs(iP) * Centimeter / Second
 
     ENDDO
+
+    ! Temporary sound speed calculation to test accuracy of solver
+    ! CALL ComputeDependentVariableBaryons_TABLE_Vector &
+    !     ( D, T, Ye, Ym, Gm, Gm_T, OS_Gm, Units_V = 1.0_DP )
+
+    ! CALL ComputePressure_TABLE_Vector( D, T, Ye, Ym, P)
+    ! Cs = SQRT( Gm * P / D )
 
   END SUBROUTINE ComputeSoundSpeedFromPrimitive_TABLE_Vector
 
@@ -1481,6 +1515,9 @@ CONTAINS
     Gm = Gm * UnitGm
     Cs = Cs * Centimeter / Second
 
+    ! Temporary sound speed calculation to test accuracy of solver
+    ! Cs = SQRT(Gm * P / D)
+
   END SUBROUTINE ComputeAuxiliary_Fluid_TABLE_Scalar
 
   SUBROUTINE ComputeAuxiliary_Fluid_TABLE_Vector &
@@ -1603,8 +1640,8 @@ CONTAINS
 #else
 
   CALL ComputeDependentVariableTotal_TABLE_Scalar &
-  ( D, T, Ye, Ym, P, P_T, OS_P, &
-  UnitP, 1, 0, 0 )
+      ( D, T, Ye, Ym, P, P_T, OS_P, &
+      UnitP, 1, 0, 0 )
 
 #endif
 
@@ -1744,8 +1781,8 @@ CONTAINS
 #else
   
   CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
-          ( D, T, Ye, Ym, E, dEdD, dEdT, dEdYe, dEdYm, E_T, OS_E, &
-          UnitE, 0, 1, 0 )
+        ( D, T, Ye, Ym, E, dEdD, dEdT, dEdYe, dEdYm, E_T, OS_E, &
+        UnitE, 0, 1, 0 )
 
 #endif
 
@@ -1777,8 +1814,8 @@ CONTAINS
 #else
   
   CALL ComputeDependentVariableTotal_TABLE_Scalar &
-  ( D, T, Ye, Ym, E, E_T, OS_E, &
-  UnitE, 0, 1, 0 )
+      ( D, T, Ye, Ym, E, E_T, OS_E, &
+      UnitE, 0, 1, 0 )
 
 #endif
     END IF
@@ -3415,7 +3452,6 @@ CONTAINS
           ElectronPhotonState % rho = D_T (iD +iL_D-1)
           ElectronPhotonState % ye  = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
           
-          ! CALL FullHelmEOS(1, HelmholtzTable, ElectronPhotonState, .false., .false.)
           CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
 
           MuonState % t     = T_T(iT+iL_T-1)
@@ -4076,8 +4112,8 @@ CONTAINS
     DO iP = 1, nP
 
       CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
-             ( D(iP), T(iP), Ye(iP), Ym(iP), V(iP), dVdD(iP), dVdT(iP), &
-               dVdYe(iP), dVdYm(iP), V_T, OS_V, Units_V, ReturnP, ReturnE, ReturnS )
+          ( D(iP), T(iP), Ye(iP), Ym(iP), V(iP), dVdD(iP), dVdT(iP), &
+            dVdYe(iP), dVdYm(iP), V_T, OS_V, Units_V, ReturnP, ReturnE, ReturnS )
 
     END DO
 

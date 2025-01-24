@@ -96,7 +96,7 @@ PROGRAM ApplicationDriver_CCSN
   EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
 #else
   EosTableName          = 'BaryonsPlusHelmPlusMuonsEOS_interpolated.h5'
-  !EosTableName          = 'BaryonsPlusHelmPlusMuonsEOS.h5'
+  EosTableName          = 'BaryonsPlusHelmPlusMuonsEOS.h5'
 #endif
 
   OpacityTableName_EmAb = 'wl-Op-SFHo-15-25-50-E40-EmAb.h5'
@@ -111,11 +111,11 @@ PROGRAM ApplicationDriver_CCSN
 
   ! --- Evolution Parameters ---
 
-  t_end   = 1.000d+2 * Millisecond
-  !t_end   = 1.00d-3 * Millisecond
-  dt_wrt  = 1.00d-4 * Millisecond
+  t_end   = 20.0d0 * Millisecond
+  !t_end   = 20.00d0  * Millisecond
+  dt_wrt  = 3.00d0 * Millisecond
   wrt     = .FALSE.
-  iCycleD = 10
+  iCycleD = 100
 
   ! --- Position Space Grid Parameters ---
 
@@ -157,8 +157,8 @@ PROGRAM ApplicationDriver_CCSN
 
   EvolveTwoMoment                = .FALSE.
   UseSlopeLimiter_TwoMoment      = .FALSE.
-  UsePositivityLimiter_TwoMoment = .TRUE.
-  UseEnergyLimiter_TwoMoment     = .TRUE.
+  UsePositivityLimiter_TwoMoment = .FALSE.
+  UseEnergyLimiter_TwoMoment     = .FALSE.
 
   IF( EvolveEuler .AND. .NOT. EvolveTwoMoment )THEN
     TimeSteppingScheme = 'SSPRK2'
