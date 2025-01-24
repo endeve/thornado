@@ -423,10 +423,12 @@ CONTAINS
             ELSE
 
               uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.125_DP
+              ! uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP ! uniform IC
               uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
               uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
               uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
               uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 0.1_DP / 0.4_DP
+              ! uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0_DP / 0.4_DP ! uniform IC
 
             END IF
 
