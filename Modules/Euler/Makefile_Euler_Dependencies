@@ -9,6 +9,7 @@ Euler_UtilitiesModule_NonRelativistic.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   MeshModule.o \
+  CellMergingModule.o \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   EquationOfStateModule.o \
