@@ -243,7 +243,7 @@ CONTAINS
       P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iX1, iX2, iX3
+    INTEGER :: iX1, iX2, iX3, iNodeX
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE FROM( G, U )
@@ -255,52 +255,56 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      A(1:nDOFX,iX1,iX2,iX3,:) = Zero
+      DO iNodeX = 1, nDOFX
 
-      CALL ComputePrimitive_Euler_NonRelativistic &
-             ( U(1:nDOFX,iX1,iX2,iX3,iCF_D),         &
-               U(1:nDOFX,iX1,iX2,iX3,iCF_S1),        &
-               U(1:nDOFX,iX1,iX2,iX3,iCF_S2),        &
-               U(1:nDOFX,iX1,iX2,iX3,iCF_S3),        &
-               U(1:nDOFX,iX1,iX2,iX3,iCF_E),         &
-               U(1:nDOFX,iX1,iX2,iX3,iCF_Ne),        &
-               P(1:nDOFX,iX1,iX2,iX3,iPF_D),         &
-               P(1:nDOFX,iX1,iX2,iX3,iPF_V1),        &
-               P(1:nDOFX,iX1,iX2,iX3,iPF_V2),        &
-               P(1:nDOFX,iX1,iX2,iX3,iPF_V3),        &
-               P(1:nDOFX,iX1,iX2,iX3,iPF_E),         &
-               P(1:nDOFX,iX1,iX2,iX3,iPF_Ne),        &
-               G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
-               G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
-               G(1:nDOFX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+        A(iNodeX,iX1,iX2,iX3,:) = Zero
 
-      CALL ComputeAuxiliary_Fluid &
-             ( P(1:nDOFX,iX1,iX2,iX3,iPF_D ), &
-               P(1:nDOFX,iX1,iX2,iX3,iPF_E ), &
-               P(1:nDOFX,iX1,iX2,iX3,iPF_Ne), &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_P ), &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_T ), &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_Ye), &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_S ), &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_E ), &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_Gm), &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_Cs) )
+        CALL ComputePrimitive_Euler_NonRelativistic &
+               ( U(iNodeX,iX1,iX2,iX3,iCF_D),         &
+                 U(iNodeX,iX1,iX2,iX3,iCF_S1),        &
+                 U(iNodeX,iX1,iX2,iX3,iCF_S2),        &
+                 U(iNodeX,iX1,iX2,iX3,iCF_S3),        &
+                 U(iNodeX,iX1,iX2,iX3,iCF_E),         &
+                 U(iNodeX,iX1,iX2,iX3,iCF_Ne),        &
+                 P(iNodeX,iX1,iX2,iX3,iPF_D),         &
+                 P(iNodeX,iX1,iX2,iX3,iPF_V1),        &
+                 P(iNodeX,iX1,iX2,iX3,iPF_V2),        &
+                 P(iNodeX,iX1,iX2,iX3,iPF_V3),        &
+                 P(iNodeX,iX1,iX2,iX3,iPF_E),         &
+                 P(iNodeX,iX1,iX2,iX3,iPF_Ne),        &
+                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
+                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
+                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
-      CALL ApplyEquationOfState &
-             ( P(1:nDOFX,iX1,iX2,iX3,iPF_D),   &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_T),   &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_Ye),  &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_P),   &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_S),   &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_E),   &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_Me),  &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_Mp),  &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_Mn),  &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_Xp),  &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_Xn),  &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_Xa),  &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_Xh),  &
-               A(1:nDOFX,iX1,iX2,iX3,iAF_Gm) )
+        CALL ComputeAuxiliary_Fluid &
+               ( P(iNodeX,iX1,iX2,iX3,iPF_D ), &
+                 P(iNodeX,iX1,iX2,iX3,iPF_E ), &
+                 P(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 A(iNodeX,iX1,iX2,iX3,iAF_P ), &
+                 A(iNodeX,iX1,iX2,iX3,iAF_T ), &
+                 A(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+                 A(iNodeX,iX1,iX2,iX3,iAF_S ), &
+                 A(iNodeX,iX1,iX2,iX3,iAF_E ), &
+                 A(iNodeX,iX1,iX2,iX3,iAF_Gm), &
+                 A(iNodeX,iX1,iX2,iX3,iAF_Cs) )
+
+        CALL ApplyEquationOfState &
+               ( P(iNodeX,iX1,iX2,iX3,iPF_D),   &
+                 A(iNodeX,iX1,iX2,iX3,iAF_T),   &
+                 A(iNodeX,iX1,iX2,iX3,iAF_Ye),  &
+                 A(iNodeX,iX1,iX2,iX3,iAF_P),   &
+                 A(iNodeX,iX1,iX2,iX3,iAF_S),   &
+                 A(iNodeX,iX1,iX2,iX3,iAF_E),   &
+                 A(iNodeX,iX1,iX2,iX3,iAF_Me),  &
+                 A(iNodeX,iX1,iX2,iX3,iAF_Mp),  &
+                 A(iNodeX,iX1,iX2,iX3,iAF_Mn),  &
+                 A(iNodeX,iX1,iX2,iX3,iAF_Xp),  &
+                 A(iNodeX,iX1,iX2,iX3,iAF_Xn),  &
+                 A(iNodeX,iX1,iX2,iX3,iAF_Xa),  &
+                 A(iNodeX,iX1,iX2,iX3,iAF_Xh),  &
+                 A(iNodeX,iX1,iX2,iX3,iAF_Gm) )
+
+       END DO
 
     END DO
     END DO

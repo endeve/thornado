@@ -540,11 +540,11 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: iZ_B0, iZ_E0, GE, GX, U_F, U_R, &
-    !$OMP               TroubledCell )
+    !$OMP               uCR, TroubledCell )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA ASYNC &
     !$ACC DELETE( iZ_B0, iZ_E0, GE, GX, U_F, U_R, &
-    !$ACC         TroubledCell )
+    !$ACC         uCR, TroubledCell )
 #endif
 
   END SUBROUTINE ApplySlopeLimiter_TVD
