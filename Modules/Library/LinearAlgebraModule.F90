@@ -1407,7 +1407,7 @@ CONTAINS
     Lambda(2) = A(2,2)
     Lambda(3) = A(3,3)
 
-    IF ( P1 .gt. SqrtTiny )
+    IF ( P1 .gt. SqrtTiny ) THEN
 
       Q = ( A(1,1) + A(2,2) + A(3,3) ) / 3.0_DP
       P2 = 2.0_DP * P1 &
