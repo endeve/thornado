@@ -1,8 +1,5 @@
 # Adapted with permission from Axel Huebl's work with CI from amrex
 
-# FIXME: Remove `ref: muonphys` on all weaklib checkouts after
-# weaklib issue #42 is resolved
-
 name: Compile thornado on Ubuntu (latest) with gnu compilers
 
 on:
@@ -94,7 +91,6 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-          ref: muonphys
       - name: Checkout poseidon
         uses: actions/checkout@v4
         with:
@@ -151,7 +147,6 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-          ref: muonphys
       - name: Build Dependencies
         run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/dgExperiments_Euler_Relativistic_TABLE
@@ -210,7 +205,6 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-          ref: muonphys
       - name: Checkout poseidon
         uses: actions/checkout@v4
         with:
@@ -339,7 +333,6 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-          ref: muonphys
       - name: Build Dependencies
         run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
@@ -476,7 +469,6 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-          ref: muonphys
       - name: Build Dependencies
         run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
@@ -512,7 +504,6 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-          ref: muonphys
       - name: Build Dependencies
         run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/TwoMoment_Test
@@ -548,7 +539,6 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-          ref: muonphys
       - name: Build Dependencies
         run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/TwoMoment_TABLE
@@ -591,7 +581,6 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-          ref: muonphys
       - name: Build Dependencies
         run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
@@ -628,7 +617,6 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-          ref: muonphys
       - name: Build Dependencies
         run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/UnitTests/CheckInterpolation
@@ -665,7 +653,6 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-          ref: muonphys
       - name: Build Dependencies
         run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/UnitTests/CheckPrimitiveRecovery
