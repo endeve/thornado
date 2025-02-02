@@ -57,6 +57,8 @@ ifeq ($(MICROPHYSICS),WEAKLIB)
   FFLAGS += -I../../../../weaklib/include
 endif
 
+FFLAGS += $(VERSION_FLAGS)
+
 # command for generating a library
 MKLIB = ar -rcs
 
@@ -71,6 +73,7 @@ OBJS = \
        QuadratureModule.o \
        LagrangePolynomialsModule.o \
        PolynomialBasisModuleX_Lagrange.o \
+       PolynomialBasisModuleX_Legendre.o \
        LinearAlgebraModule.o \
        DeviceModule.o \
        ReferenceElementModuleE.o \
@@ -296,4 +299,9 @@ ThornadoInitializationModule.o: \
   TwoMoment_MeshRefinementModule.o \
   TwoMoment_NeutrinoMatterSolverModule.o \
   ThornadoInitializationModule.F90
+endif
+
+ifeq ($(PE_ENV),CRAY)
+TwoMoment_PositivityLimiterModule.o : TwoMoment_PositivityLimiterModule.F90
+	$(FCOMP) $(FFLAGS) $(filter-out -qrealsize=8,$(F90FLAGS)) -h ipa1 $(DEFINES) $< -o $@
 endif

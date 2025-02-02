@@ -16,10 +16,6 @@ MODULE FillPatchModule_Euler
   USE amrex_amr_module, ONLY: &
     amrex_geom, &
     amrex_ref_ratio
-#if defined( THORNADO_USE_MESHREFINEMENT )
-  USE thornado_amrex_interpolater_module, ONLY: &
-    amrex_interp_dg
-#endif
   USE thornado_amrex_fillpatch_module, ONLY: &
     thornado_amrex_fillpatch, &
     thornado_amrex_fillcoarsepatch
@@ -54,6 +50,8 @@ MODULE FillPatchModule_Euler
 
   ! --- Local Modules ---
 
+  USE thornado_amrex_interpolater_module, ONLY: &
+    amrex_interp_dg
   USE MF_KindModule, ONLY: &
     DP, &
     Zero, &
@@ -97,18 +95,18 @@ CONTAINS
 
   SUBROUTINE FillPatch_PointWise_Scalar &
     ( FineLevel, MF, MF_dst, &
-      ApplyBoundaryConditions_Euler_Option, &
-      ApplyBoundaryConditions_Geometry_Option )
+      ApplyBoundaryConditions_Geometry_Option, &
+      ApplyBoundaryConditions_Diagnostic_Option )
 
     INTEGER             , INTENT(in)    :: FineLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_dst
     LOGICAL             , INTENT(in), OPTIONAL :: &
-      ApplyBoundaryConditions_Euler_Option, &
-      ApplyBoundaryConditions_Geometry_Option
+      ApplyBoundaryConditions_Geometry_Option, &
+      ApplyBoundaryConditions_Diagnostic_Option
 
-    LOGICAL :: ApplyBoundaryConditions_Euler, &
-               ApplyBoundaryConditions_Geometry
+    LOGICAL :: ApplyBoundaryConditions_Geometry, &
+               ApplyBoundaryConditions_Diagnostic
 
     INTEGER :: iErr
 
@@ -123,13 +121,15 @@ CONTAINS
 
     CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
 
-    ApplyBoundaryConditions_Euler = .FALSE.
-    IF( PRESENT( ApplyBoundaryConditions_Euler_Option ) ) &
-      ApplyBoundaryConditions_Euler = ApplyBoundaryConditions_Euler_Option
-
     ApplyBoundaryConditions_Geometry = .FALSE.
     IF( PRESENT( ApplyBoundaryConditions_Geometry_Option ) ) &
-      ApplyBoundaryConditions_Geometry = ApplyBoundaryConditions_Geometry_Option
+      ApplyBoundaryConditions_Geometry &
+        = ApplyBoundaryConditions_Geometry_Option
+
+    ApplyBoundaryConditions_Diagnostic = .FALSE.
+    IF( PRESENT( ApplyBoundaryConditions_Diagnostic_Option ) ) &
+      ApplyBoundaryConditions_Diagnostic &
+        = ApplyBoundaryConditions_Diagnostic_Option
 
     IF( DEBUG )THEN
 
@@ -146,6 +146,14 @@ CONTAINS
 
     ! Assume MF_old_crse = MF_new_crse = MF_old_fine = MF_new_fine = MF
 
+    IF( ApplyBoundaryConditions_Geometry )THEN
+      CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF(FineLevel) )
+      CALL UpdateSpatialMetric_MF             ( FineLevel, MF(FineLevel) )
+    END IF
+
+!!$    IF( ApplyBoundaryConditions_Diagnostic ) &
+!!$      CALL ApplyBoundaryConditions_Diagnostic_MF( FineLevel, MF(FineLevel) )
+
     IF( FineLevel .EQ. 0 )THEN
 
       CALL thornado_amrex_fillpatch &
@@ -157,7 +165,14 @@ CONTAINS
 
     ELSE
 
-#if defined( THORNADO_USE_MESHREFINEMENT )
+      IF( ApplyBoundaryConditions_Geometry )THEN
+        CALL ApplyBoundaryConditions_Geometry_MF( FineLevel-1, MF(FineLevel-1) )
+        CALL UpdateSpatialMetric_MF             ( FineLevel-1, MF(FineLevel-1) )
+      END IF
+
+!!$      IF( ApplyBoundaryConditions_Diagnostic ) &
+!!$        CALL ApplyBoundaryConditions_Diagnostic_MF &
+!!$               ( FineLevel-1, MF(FineLevel-1) )
 
       ALLOCATE( lo_bc(1:nDimsX,MF(FineLevel)%ncomp()) )
       ALLOCATE( hi_bc(1:nDimsX,MF(FineLevel)%ncomp()) )
@@ -182,15 +197,15 @@ CONTAINS
       DEALLOCATE( hi_bc )
       DEALLOCATE( lo_bc )
 
-#endif
-
     END IF
 
-    IF( ApplyBoundaryConditions_Geometry ) &
+    IF( ApplyBoundaryConditions_Geometry )THEN
       CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF_dst )
+      CALL UpdateSpatialMetric_MF             ( FineLevel, MF_dst )
+    END IF
 
-    IF( ApplyBoundaryConditions_Euler ) &
-      CALL ApplyBoundaryConditions_Euler_MF( FineLevel, MF_dst )
+!!$    IF( ApplyBoundaryConditions_Diagnostic ) &
+!!$      CALL ApplyBoundaryConditions_Diagnostic_MF( FineLevel, MF_dst )
 
     CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
 
@@ -199,17 +214,17 @@ CONTAINS
 
   SUBROUTINE FillPatch_PointWise_Vector &
     ( FineLevel, MF, &
-      ApplyBoundaryConditions_Euler_Option, &
-      ApplyBoundaryConditions_Geometry_Option )
+      ApplyBoundaryConditions_Geometry_Option, &
+      ApplyBoundaryConditions_Diagnostic_Option )
 
     INTEGER             , INTENT(in)    :: FineLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
     LOGICAL             , INTENT(in), OPTIONAL :: &
-      ApplyBoundaryConditions_Euler_Option, &
-      ApplyBoundaryConditions_Geometry_Option
+      ApplyBoundaryConditions_Geometry_Option, &
+      ApplyBoundaryConditions_Diagnostic_Option
 
-    LOGICAL :: ApplyBoundaryConditions_Euler, &
-               ApplyBoundaryConditions_Geometry
+    LOGICAL :: ApplyBoundaryConditions_Geometry, &
+               ApplyBoundaryConditions_Diagnostic
 
     INTEGER :: iErr
 
@@ -224,13 +239,15 @@ CONTAINS
 
     CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
 
-    ApplyBoundaryConditions_Euler = .FALSE.
-    IF( PRESENT( ApplyBoundaryConditions_Euler_Option ) ) &
-      ApplyBoundaryConditions_Euler = ApplyBoundaryConditions_Euler_Option
-
     ApplyBoundaryConditions_Geometry = .FALSE.
     IF( PRESENT( ApplyBoundaryConditions_Geometry_Option ) ) &
-      ApplyBoundaryConditions_Geometry = ApplyBoundaryConditions_Geometry_Option
+      ApplyBoundaryConditions_Geometry &
+        = ApplyBoundaryConditions_Geometry_Option
+
+    ApplyBoundaryConditions_Diagnostic = .FALSE.
+    IF( PRESENT( ApplyBoundaryConditions_Diagnostic_Option ) ) &
+      ApplyBoundaryConditions_Diagnostic &
+        = ApplyBoundaryConditions_Diagnostic_Option
 
     IF( DEBUG )THEN
 
@@ -244,6 +261,14 @@ CONTAINS
     ! Assume MF_old_crse = MF_new_crse = MF_old_fine = MF_new_fine = MF
     ! Assume t_old_crse  = t_new_crse  = t_old_fine  = t_new_fine  = t
 
+    IF( ApplyBoundaryConditions_Geometry )THEN
+      CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF(FineLevel) )
+      CALL UpdateSpatialMetric_MF             ( FineLevel, MF(FineLevel) )
+    END IF
+
+!!$    IF( ApplyBoundaryConditions_Diagnostic ) &
+!!$      CALL ApplyBoundaryConditions_Diagnostic_MF( FineLevel, MF(FineLevel) )
+
     IF( FineLevel .EQ. 0 )THEN
 
       CALL thornado_amrex_fillpatch &
@@ -255,7 +280,14 @@ CONTAINS
 
     ELSE
 
-#if defined( THORNADO_USE_MESHREFINEMENT )
+      IF( ApplyBoundaryConditions_Geometry )THEN
+        CALL ApplyBoundaryConditions_Geometry_MF( FineLevel-1, MF(FineLevel-1) )
+        CALL UpdateSpatialMetric_MF             ( FineLevel-1, MF(FineLevel-1) )
+      END IF
+
+!!$      IF( ApplyBoundaryConditions_Diagnostic ) &
+!!$        CALL ApplyBoundaryConditions_Diagnostic_MF &
+!!$               ( FineLevel-1, MF(FineLevel-1) )
 
       ALLOCATE( lo_bc(1:nDimsX,MF(FineLevel)%ncomp()) )
       ALLOCATE( hi_bc(1:nDimsX,MF(FineLevel)%ncomp()) )
@@ -280,15 +312,15 @@ CONTAINS
       DEALLOCATE( hi_bc )
       DEALLOCATE( lo_bc )
 
-#endif
-
     END IF
 
-    IF( ApplyBoundaryConditions_Geometry ) &
+    IF( ApplyBoundaryConditions_Geometry )THEN
       CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF(FineLevel) )
+      CALL UpdateSpatialMetric_MF             ( FineLevel, MF(FineLevel) )
+    END IF
 
-    IF( ApplyBoundaryConditions_Euler ) &
-      CALL ApplyBoundaryConditions_Euler_MF( FineLevel, MF(FineLevel) )
+!!$    IF( ApplyBoundaryConditions_Diagnostic ) &
+!!$      CALL ApplyBoundaryConditions_Diagnostic_MF( FineLevel, MF(FineLevel) )
 
     CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
 
@@ -297,22 +329,17 @@ CONTAINS
 
   SUBROUTINE FillCoarsePatch_PointWise &
     ( FineLevel, MF, &
-      ApplyBoundaryConditions_Euler_Option, &
       ApplyBoundaryConditions_Geometry_Option, &
-      UpdateSpatialMetric_Option )
+      ApplyBoundaryConditions_Diagnostic_Option )
 
     INTEGER             , INTENT(in)    :: FineLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
     LOGICAL             , INTENT(in), OPTIONAL :: &
-      ApplyBoundaryConditions_Euler_Option, &
       ApplyBoundaryConditions_Geometry_Option, &
-      UpdateSpatialMetric_Option
+      ApplyBoundaryConditions_Diagnostic_Option
 
-#if defined( THORNADO_USE_MESHREFINEMENT )
-
-    LOGICAL :: ApplyBoundaryConditions_Euler, &
-               ApplyBoundaryConditions_Geometry, &
-               UpdateSpatialMetric
+    LOGICAL :: ApplyBoundaryConditions_Geometry, &
+               ApplyBoundaryConditions_Diagnostic
 
     INTEGER :: iErr
 
@@ -325,17 +352,15 @@ CONTAINS
 
     CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
 
-    ApplyBoundaryConditions_Euler = .FALSE.
-    IF( PRESENT( ApplyBoundaryConditions_Euler_Option ) ) &
-      ApplyBoundaryConditions_Euler = ApplyBoundaryConditions_Euler_Option
-
     ApplyBoundaryConditions_Geometry = .FALSE.
     IF( PRESENT( ApplyBoundaryConditions_Geometry_Option ) ) &
-      ApplyBoundaryConditions_Geometry = ApplyBoundaryConditions_Geometry_Option
+      ApplyBoundaryConditions_Geometry &
+        = ApplyBoundaryConditions_Geometry_Option
 
-    UpdateSpatialMetric = .FALSE.
-    IF( PRESENT( UpdateSpatialMetric_Option ) ) &
-      UpdateSpatialMetric = UpdateSpatialMetric_Option
+    ApplyBoundaryConditions_Diagnostic = .FALSE.
+    IF( PRESENT( ApplyBoundaryConditions_Diagnostic_Option ) ) &
+      ApplyBoundaryConditions_Diagnostic &
+        = ApplyBoundaryConditions_Diagnostic_Option
 
     IF( DEBUG )THEN
 
@@ -345,6 +370,15 @@ CONTAINS
         'CALL FillCoarsePatch_PointWise, FineLevel: ', FineLevel
 
     END IF
+
+    IF( ApplyBoundaryConditions_Geometry )THEN
+      CALL ApplyBoundaryConditions_Geometry_MF( FineLevel-1, MF(FineLevel-1) )
+      CALL UpdateSpatialMetric_MF             ( FineLevel-1, MF(FineLevel-1) )
+    END IF
+
+!!$    IF( ApplyBoundaryConditions_Diagnostic ) &
+!!$      CALL ApplyBoundaryConditions_Diagnostic_MF &
+!!$             ( FineLevel-1, MF(FineLevel-1) )
 
     ! Assume MF_old_crse = MF_new_crse = MF
 
@@ -368,44 +402,36 @@ CONTAINS
     DEALLOCATE( hi_bc )
     DEALLOCATE( lo_bc )
 
-    IF( UpdateSpatialMetric )THEN
-
-      CALL UpdateSpatialMetric_MF( FineLevel, MF(FineLevel) )
-
+    IF( ApplyBoundaryConditions_Geometry )THEN
+      CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF(FineLevel) )
+      CALL UpdateSpatialMetric_MF             ( FineLevel, MF(FineLevel) )
     END IF
 
-    IF( ApplyBoundaryConditions_Geometry ) &
-      CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF(FineLevel) )
-
-    IF( ApplyBoundaryConditions_Euler ) &
-      CALL ApplyBoundaryConditions_Euler_MF( FineLevel, MF(FineLevel) )
+!!$    IF( ApplyBoundaryConditions_Diagnostic ) &
+!!$      CALL ApplyBoundaryConditions_Diagnostic_MF( FineLevel, MF(FineLevel) )
 
     CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
-
-#endif
 
   END SUBROUTINE FillCoarsePatch_PointWise
 
 
   SUBROUTINE FillPatch_Conservative_Scalar &
     ( FineLevel, MF_uGF, MF_uGF_tmp, MF_src, MF_dst, &
-      ApplyBoundaryConditions_Euler_Option, &
-      ApplyBoundaryConditions_Geometry_Option )
+      ApplyBoundaryConditions_Euler_Option )
 
     INTEGER             , INTENT(in)    :: FineLevel
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:), MF_uGF_tmp
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF_tmp
     TYPE(amrex_multifab), INTENT(inout) :: MF_src(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_dst
     LOGICAL             , INTENT(in), OPTIONAL :: &
-      ApplyBoundaryConditions_Euler_Option, &
-      ApplyBoundaryConditions_Geometry_Option
+      ApplyBoundaryConditions_Euler_Option
 
     TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel), SqrtGm_tmp
 
     INTEGER :: iErr
 
-    LOGICAL :: ApplyBoundaryConditions_Euler, &
-               ApplyBoundaryConditions_Geometry
+    LOGICAL :: ApplyBoundaryConditions_Euler
 
     INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
 
@@ -424,10 +450,6 @@ CONTAINS
     IF( PRESENT( ApplyBoundaryConditions_Euler_Option ) ) &
       ApplyBoundaryConditions_Euler = ApplyBoundaryConditions_Euler_Option
 
-    ApplyBoundaryConditions_Geometry = .FALSE.
-    IF( PRESENT( ApplyBoundaryConditions_Geometry_Option ) ) &
-      ApplyBoundaryConditions_Geometry = ApplyBoundaryConditions_Geometry_Option
-
     IF( DEBUG )THEN
 
       CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
@@ -440,6 +462,9 @@ CONTAINS
       END IF
 
     END IF
+
+    IF( ApplyBoundaryConditions_Euler ) &
+      CALL ApplyBoundaryConditions_Euler_MF( FineLevel, MF_src(FineLevel) )
 
     IF( FineLevel .GT. 0 )THEN
 
@@ -473,7 +498,9 @@ CONTAINS
 
     ELSE
 
-#if defined( THORNADO_USE_MESHREFINEMENT )
+      IF( ApplyBoundaryConditions_Euler ) &
+        CALL ApplyBoundaryConditions_Euler_MF &
+               ( FineLevel-1, MF_src(FineLevel-1) )
 
       ALLOCATE( lo_bc(1:nDimsX,MF_src(FineLevel)%ncomp()) )
       ALLOCATE( hi_bc(1:nDimsX,MF_src(FineLevel)%ncomp()) )
@@ -498,12 +525,7 @@ CONTAINS
       DEALLOCATE( hi_bc )
       DEALLOCATE( lo_bc )
 
-#endif
-
     END IF
-
-    IF( ApplyBoundaryConditions_Geometry ) &
-      CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF_dst )
 
     IF( ApplyBoundaryConditions_Euler ) &
       CALL ApplyBoundaryConditions_Euler_MF( FineLevel, MF_dst )
@@ -525,22 +547,19 @@ CONTAINS
 
   SUBROUTINE FillPatch_Conservative_Vector &
     ( FineLevel, MF_uGF, MF, &
-      ApplyBoundaryConditions_Euler_Option, &
-      ApplyBoundaryConditions_Geometry_Option )
+      ApplyBoundaryConditions_Euler_Option )
 
     INTEGER             , INTENT(in)    :: FineLevel
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF    (0:)
     LOGICAL             , INTENT(in)   , OPTIONAL :: &
-      ApplyBoundaryConditions_Euler_Option, &
-      ApplyBoundaryConditions_Geometry_Option
+      ApplyBoundaryConditions_Euler_Option
 
     TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel)
 
     INTEGER :: iErr
 
-    LOGICAL :: ApplyBoundaryConditions_Euler, &
-               ApplyBoundaryConditions_Geometry
+    LOGICAL :: ApplyBoundaryConditions_Euler
 
     INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
 
@@ -557,10 +576,6 @@ CONTAINS
     IF( PRESENT( ApplyBoundaryConditions_Euler_Option ) ) &
       ApplyBoundaryConditions_Euler = ApplyBoundaryConditions_Euler_Option
 
-    ApplyBoundaryConditions_Geometry = .FALSE.
-    IF( PRESENT( ApplyBoundaryConditions_Geometry_Option ) ) &
-      ApplyBoundaryConditions_Geometry = ApplyBoundaryConditions_Geometry_Option
-
     IF( DEBUG )THEN
 
       CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
@@ -570,7 +585,18 @@ CONTAINS
 
     END IF
 
+    CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF_uGF(FineLevel) )
+    CALL UpdateSpatialMetric_MF             ( FineLevel, MF_uGF(FineLevel) )
+
+    IF( ApplyBoundaryConditions_Euler ) &
+      CALL ApplyBoundaryConditions_Euler_MF( FineLevel, MF(FineLevel) )
+
     IF( FineLevel .GT. 0 )THEN
+
+      CALL ApplyBoundaryConditions_Geometry_MF &
+             ( FineLevel-1, MF_uGF(FineLevel-1) )
+      CALL UpdateSpatialMetric_MF &
+             ( FineLevel-1, MF_uGF(FineLevel-1) )
 
       CALL amrex_multifab_build &
              ( SqrtGm(FineLevel-1), MF_uGF(FineLevel-1) % BA, &
@@ -602,7 +628,9 @@ CONTAINS
 
     ELSE
 
-#if defined( THORNADO_USE_MESHREFINEMENT )
+      IF( ApplyBoundaryConditions_Euler ) &
+        CALL ApplyBoundaryConditions_Euler_MF &
+               ( FineLevel-1, MF(FineLevel-1) )
 
       ALLOCATE( lo_bc(1:nDimsX,MF(FineLevel)%ncomp()) )
       ALLOCATE( hi_bc(1:nDimsX,MF(FineLevel)%ncomp()) )
@@ -627,12 +655,7 @@ CONTAINS
       DEALLOCATE( hi_bc )
       DEALLOCATE( lo_bc )
 
-#endif
-
     END IF
-
-    IF( ApplyBoundaryConditions_Geometry ) &
-      CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF(FineLevel) )
 
     IF( ApplyBoundaryConditions_Euler ) &
       CALL ApplyBoundaryConditions_Euler_MF( FineLevel, MF(FineLevel) )
@@ -651,24 +674,19 @@ CONTAINS
 
   SUBROUTINE FillCoarsePatch_Conservative &
     ( FineLevel, MF_uGF, MF, &
-      ApplyBoundaryConditions_Euler_Option, &
-      ApplyBoundaryConditions_Geometry_Option )
+      ApplyBoundaryConditions_Euler_Option )
 
     INTEGER             , INTENT(in)    :: FineLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF    (0:)
-    LOGICAL             , INTENT(in)   , OPTIONAL :: &
-      ApplyBoundaryConditions_Euler_Option, &
-      ApplyBoundaryConditions_Geometry_Option
-
-#if defined( THORNADO_USE_MESHREFINEMENT )
+    LOGICAL             , INTENT(in), OPTIONAL :: &
+      ApplyBoundaryConditions_Euler_Option
 
     TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel)
 
     INTEGER :: iErr
 
-    LOGICAL :: ApplyBoundaryConditions_Euler, &
-               ApplyBoundaryConditions_Geometry
+    LOGICAL :: ApplyBoundaryConditions_Euler
 
     INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
 
@@ -683,10 +701,6 @@ CONTAINS
     IF( PRESENT( ApplyBoundaryConditions_Euler_Option ) ) &
       ApplyBoundaryConditions_Euler = ApplyBoundaryConditions_Euler_Option
 
-    ApplyBoundaryConditions_Geometry = .FALSE.
-    IF( PRESENT( ApplyBoundaryConditions_Geometry_Option ) ) &
-      ApplyBoundaryConditions_Geometry = ApplyBoundaryConditions_Geometry_Option
-
     IF( DEBUG )THEN
 
       CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
@@ -695,6 +709,9 @@ CONTAINS
         'CALL FillCoarsePatch_Conservative, FineLevel: ', FineLevel
 
     END IF
+
+    IF( ApplyBoundaryConditions_Euler ) &
+      CALL ApplyBoundaryConditions_Euler_MF( FineLevel-1, MF(FineLevel-1) )
 
     IF( FineLevel .GT. 0 )THEN
 
@@ -737,9 +754,6 @@ CONTAINS
     DEALLOCATE( hi_bc )
     DEALLOCATE( lo_bc )
 
-    IF( ApplyBoundaryConditions_Geometry ) &
-      CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF(FineLevel) )
-
     IF( ApplyBoundaryConditions_Euler ) &
       CALL ApplyBoundaryConditions_Euler_MF( FineLevel, MF(FineLevel) )
 
@@ -753,8 +767,6 @@ CONTAINS
 
     CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
 
-#endif
-
   END SUBROUTINE FillCoarsePatch_Conservative
 
 
@@ -764,6 +776,8 @@ CONTAINS
   SUBROUTINE FillPhysicalBC_Dummy( pMF, sComp, nComp, Time, pGEOM ) BIND(c)
 
     ! --- No INTENT here because amrex source code doesn't have it ---
+
+    ! --- TODO: remove this subroutine from thornado's amrex interface ---
 
     TYPE(c_ptr)   , VALUE :: pMF, pGEOM
     INTEGER(c_int), VALUE :: sComp, nComp
@@ -775,9 +789,9 @@ CONTAINS
 
     INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
 
-    REAL(DP), CONTIGUOUS, POINTER, DIMENSION(:,:,:,:) :: p
+    REAL(DP), CONTIGUOUS, POINTER :: uF (:,:,:,:)
 
-    INTEGER :: plo(4), phi(4)
+    INTEGER :: indLo(4), indHi(4)
 
     IF( .NOT. amrex_is_all_periodic() )THEN
 
@@ -788,25 +802,25 @@ CONTAINS
 
       DO WHILE( MFI % next() )
 
-        p => mf%dataptr(mfi)
+        uF => MF % DataPtr( MFI )
 
         ! Part of this box is outside the domain
-        IF( .NOT. GEOM % domain % CONTAINS(p) )THEN
+        IF( .NOT. GEOM % domain % CONTAINS( uF ) )THEN
 
-          plo = LBOUND(p)
-          phi = UBOUND(p)
+          indLo = LBOUND( uF )
+          indHi = UBOUND( uF )
 
-          ALLOCATE( lo_bc(1:nDimsX,plo(4):phi(4)) )
-          ALLOCATE( hi_bc(1:nDimsX,plo(4):phi(4)) )
+          ALLOCATE( lo_bc(1:nDimsX,indLo(4):indHi(4)) )
+          ALLOCATE( hi_bc(1:nDimsX,indLo(4):indHi(4)) )
 
           lo_bc = amrex_bc_bogus
           hi_bc = amrex_bc_bogus
 
           CALL amrex_filcc &
-                 ( p, plo, phi, &
+                 ( uF, indLo, indHi, &
                    GEOM % domain % lo, GEOM % domain % hi, &
                    GEOM % dx, &
-                   GEOM % get_physical_location( plo ), &
+                   GEOM % get_physical_location( indLo ), &
                    lo_bc, hi_bc )
 
           ! amrex_filcc doesn't fill EXT_DIR (see amrex_bc_types_module for a list of bc types

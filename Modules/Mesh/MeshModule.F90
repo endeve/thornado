@@ -4,6 +4,8 @@ MODULE MeshModule
     DP, Zero, Half, One
   USE QuadratureModule, ONLY: &
     GetQuadrature
+  USE UnitsModule, ONLY: &
+    MeV
 
   IMPLICIT NONE
   PRIVATE

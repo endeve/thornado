@@ -2,6 +2,7 @@
 
 import numpy as np
 import yt
+from os.path import isfile
 from yt.visualization.volume_rendering.api import \
     BoxSource, CoordinateVectorSource, GridSource, Scene, create_volume_source
 
@@ -13,6 +14,10 @@ yt.set_log_level( 40 )
 
 # Specify name of problem
 ProblemName = 'SedovTaylorBlastWave_XCFC'
+
+Field = 'PF_E'
+
+prefix = '{0:}_3d_{1:}'.format( ProblemName, Field )
 
 # Specify directory containing amrex Plotfiles
 THORNADO_DIR = '/mnt/shared/work/codes/thornado/'
@@ -36,26 +41,27 @@ def mylog10( x ):
     else:
         return x
 
-bounds = ( 1.0e-5, 1.0e-2 )
+bounds = ( 1.0e-5, 1.0e-3 )
 def linramp( vals, minval, maxval ):
     return ( vals - vals.min() ) / ( vals.max() - vals.min() )
 
-def createFrame( index ):
+def createFrame( index, xx, overwrite ):
 
-    print( '  Creating frame {:}/{:}' \
-           .format( index+1, FileNumberArray.shape[0] ) )
+    fileName = 'fig.{0:}_{1:}.png'.format( prefix, str( index ).zfill( 3 ) )
 
-    ds = yt.load( PlotDirectory + '{:}.plt{:}' \
-                  .format( ProblemName, \
-                           str( FileNumberArray[index] ).zfill( 8 ) ) )
+    if ( ( isfile( fileName ) ) & ( not overwrite ) ) : return
 
-    im, sc = yt.volume_render( ds, ('boxlib','PF_E') )
+    ds = yt.load( PlotDirectory + '{:}{:}' \
+                  .format( PlotBaseName, \
+                           str( xx[index] ).zfill( 8 ) ) )
+
+    im, sc = yt.volume_render( ds, ('boxlib',Field) )
 
     cam = sc.get_camera()
-    x = 1.7
-    cam.set_width( [ x, x, x ] )
-#    cam.set_position( [ 1.0, 0.0, 0.0 ] )
-#    cam.set_focus( [ 0.0, 0.0, 0.0 ] )
+    dx, dy, dz = 1.1, 1.1, 1.1
+#    dx, dy, dz = 1.0, 1.0, 1.0
+    cam.set_width( [ dx, dy, dz ] )
+    cam.set_position( [ +1.0, 0.0, 0.0 ], north_vector = [ 0, 0, 1 ] )
 
     source = sc.get_source()
 
@@ -86,7 +92,6 @@ def createFrame( index ):
 #    grid_source = GridSource( ds.all_data(), alpha = 1.0 )
 #    sc.add_source( grid_source )
 
-    fileName = '{:}.png'.format( str( index ).zfill( 3 ) )
     sc.save_annotated \
       ( fileName, \
         text_annotate \
@@ -99,15 +104,25 @@ def createFrame( index ):
                       horizontalalignment = 'center') ] ], \
         sigma_clip = 0.7 )
 
-    print( '  Saved {:}'.format( fileName ) )
+    print( '  [{:.2f}%] Saved {:}' \
+           .format( index / np.float64( xx.shape[0] ) * 100.0, fileName ) )
 
-#createFrame( 0 )
+print( '\n  Data directory: {:}'.format( PlotDirectory ) )
+xx = FileNumberArray#[0:-1:10]
+overwrite = True
 for i in range( 0, FileNumberArray.shape[0], 1 ):
-    createFrame( i )
+    createFrame( i, xx, overwrite )
+
+movName = 'mov.{:}.mp4'.format( prefix )
+import os
+os.system( \
+'ffmpeg -loglevel quiet -f image2 -framerate 30 -i fig.{0:}_%03d.png -vcodec libx264 -crf 22 {1:}'.format( prefix, movName ) )
+print( '\n  Saved {:}'.format( movName ) )
 
 '''
 To make a movie, generate the *.png files
 (be sure to remove the *Render*png files)
 and exectute
-ffmpeg -framerate 30 -pattern_type glob -i '*png' -c:v libx264 -pix_fmy yuv420p out.mp4
+ffmpeg -loglevel quiet -f image2 -framerate 30 -i %03d.png -vcodec libx264 -crf 22 mov.3D.mp4
+(adapted from https://superuser.com/questions/1462071/ffmpeg-convert-pngs-to-video-files)
 '''

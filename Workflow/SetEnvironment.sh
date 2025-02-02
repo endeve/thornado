@@ -38,6 +38,20 @@ elif [[ $THORNADO_MACHINE == ascent* ]]; then
   module unload xl spectrum-mpi hsi xalt lsf-tools darshan-runtime
   module unload DefApps
 
+elif [[ $THORNADO_MACHINE == frontier* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
+  source ${MODULESHOME}/init/bash
+
+elif [[ $THORNADO_MACHINE == perlmutter* ]]; then
+
+  echo
+  echo "INFO: Setting environment for" $THORNADO_MACHINE
+
+  source ${MODULESHOME}/init/bash
+
 elif [[ $THORNADO_MACHINE == darter* ]]; then
 
   echo
@@ -190,17 +204,17 @@ elif [[ $THORNADO_MACHINE == summit_pgi ]]; then
 
   echo
 
-  module load pgi/19.4
+  module load pgi/20.4
   module load spectrum-mpi
-  module load hdf5/1.10.3
-  module load netlib-lapack/3.8.0
+  module load hdf5
+  module load netlib-lapack
   module load essl
 
 elif [[ $THORNADO_MACHINE == summit_nvhpc ]]; then
 
   echo
 
-  module load nvhpc
+  module load nvhpc/23.9
   module load spectrum-mpi
   module load hdf5
   module load netlib-lapack
@@ -216,6 +230,17 @@ elif [[ $THORNADO_MACHINE == summit_xl ]]; then
   module load netlib-lapack/3.8.0
   module load essl
 
+elif [[ $THORNADO_MACHINE == summit_gcc ]]; then
+
+  echo
+
+  module load gcc/12.1.0
+  module load spectrum-mpi
+  module load hdf5
+  module load netlib-lapack
+  module load essl
+  module load cuda
+
 elif [[ $THORNADO_MACHINE == ascent_pgi ]]; then
 
   echo
@@ -226,6 +251,62 @@ elif [[ $THORNADO_MACHINE == ascent_pgi ]]; then
   module load netlib-lapack
   module load essl
   module load cuda
+
+elif [[ $THORNADO_MACHINE == frontier_cce ]]; then
+
+  echo
+
+  module restore
+
+  module use /ccs/home/jaharris/modulefiles/frontier
+
+  module load cpe/24.11
+  module load PrgEnv-cray cray-hdf5-parallel craype-accel-amd-gfx90a 
+  module load rocm/6.2.4 hipfort/6.2.4 
+  module unload darshan-runtime
+
+  export LD_LIBRARY_PATH=${CRAY_LD_LIBRARY_PATH}:${LD_LIBRARY_PATH}
+
+  module -t list
+  
+elif [[ $THORNADO_MACHINE == frontier_gcc ]]; then
+
+  echo
+  
+  module load cpe/23.09
+  module load PrgEnv-gnu
+  module load cray-hdf5-parallel
+  module unload darshan-runtime
+
+  module -t list
+  
+elif [[ $THORNADO_MACHINE == perlmutter_nvhpc ]]; then
+
+  echo
+
+  module load PrgEnv-nvidia
+  module load cray-hdf5-parallel
+  module unload cpu
+  module load gpu
+  
+elif [[ $THORNADO_MACHINE == perlmutter_cce ]]; then
+
+  echo
+
+  module load PrgEnv-cray
+  module load cray-hdf5-parallel
+  module unload cpu
+  module load gpu
+
+elif [[ $THORNADO_MACHINE == perlmutter_gcc ]]; then
+
+  echo
+
+  module load PrgEnv-gnu
+  module load cudatoolkit
+  module load cray-hdf5-parallel
+  module unload cpu
+  module load gpu
 
 elif [[ $THORNADO_MACHINE == darter_gnu ]]; then
 

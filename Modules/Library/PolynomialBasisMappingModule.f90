@@ -16,6 +16,7 @@ MODULE PolynomialBasisMappingModule
   PRIVATE
 
   PUBLIC :: InitializePolynomialBasisMapping
+  PUBLIC :: FinalizePolynomialBasisMapping
   PUBLIC :: MapNodalToModalX
   PUBLIC :: MapNodalToModalZ
   PUBLIC :: MapNodalToModal_Fluid
@@ -115,6 +116,13 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializePolynomialBasisMapping
+
+  SUBROUTINE FinalizePolynomialBasisMapping  
+
+    DEALLOCATE( Kij_X, Pij_X )
+    DEALLOCATE( Kij_Z, Pij_Z )
+
+  END SUBROUTINE FinalizePolynomialBasisMapping
 
 
   ! --- Nodal to Modal ---

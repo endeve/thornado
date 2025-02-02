@@ -7,6 +7,7 @@ include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 WEAKLIB_DIR ?= ../../../weaklib
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_Dependencies
 
 #DEFINES += -DTHORNADO_DEBUG
 

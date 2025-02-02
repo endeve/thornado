@@ -3,6 +3,8 @@
 import numpy as np
 import yt
 from os.path import isfile
+import matplotlib.pyplot as plt
+plt.style.use( 'publication.sty' )
 
 from Utilities.Files import GetFileNumberArray
 
@@ -19,10 +21,11 @@ PlotTitle = ProblemName
 
 THORNADO_DIR = '/mnt/shared/work/codes/thornado/'
 
+suffix = ''
 PlotDirectory \
   = THORNADO_DIR + \
-      'SandBox/AMReX/Applications/{0:}/{0:}_2D_Cylindrical/nLevels03/' \
-      .format( ProblemName )
+      'SandBox/AMReX/Applications/{0:}/' \
+      .format( ProblemName, suffix )
 
 # Plotfile base name
 PlotBaseName = ProblemName + '.plt'
@@ -37,16 +40,16 @@ yLabel = r'$z$'
 Zoom = 1.0
 
 # Specify field to plot
-Field = 'AF_P'
+Field = 'PF_D'
 # Label for colorbar (z-axis)
-zLabel = r'$p$'
+zLabel = r'$\rho$'
 
 # Colormap for plot
 cmap = 'viridis'
 
 # Use custom limits for colorbar
-UseCustomZmin = True ; zmin = 1.0e-10
-UseCustomZmax = True ; zmax = 1.0e-1
+UseCustomZmin = True ; zmin = +1.0e+0
+UseCustomZmax = True ; zmax = +1.0e+3
 
 # Use log scale for z-axis
 UseLogScaleZ = True
@@ -65,6 +68,8 @@ MeshAlpha = 0.5
 OverplotContours = False
 nLevels = 5
 
+prefix = '{0:}_2d_{1:}{2:}'.format( ProblemName, Field, suffix )
+
 ### End of user input ###
 
 # Just used to get bounds
@@ -74,8 +79,8 @@ ds = yt.load( PlotDirectory + PlotBaseName + '00000000'  )
 xL = ds.domain_left_edge.to_ndarray()
 xH = ds.domain_right_edge.to_ndarray()
 
-xL = np.array( [ 0.0, -0.4, 0.0 ] )
-xH = np.array( [ 0.5, +0.4, 2.0 * np.pi ] )
+#xL = np.array( [ 0.0, -0.4, 0.0 ] )
+#xH = np.array( [ 0.5, +0.4, 2.0 * np.pi ] )
 # Set center and width of plot window
 center = 0.5 * ( xL + xH )
 width  = 1.0 * ( xH - xL )
@@ -90,15 +95,32 @@ FileNumberArray \
 
 blField = ('boxlib',Field)
 
-def createFrame( index, N ):
+from yt.visualization.api import PlotCallback
+class timeLabel( PlotCallback ):
+    _type_name = "timeLabel"
 
-    fileName = '{:}.png'.format( str( index ).zfill( 3 ) )
+    def __init__( self, text, x, y ):
+        self.text = text
+        self.position = ( x, y )
 
-    if ( isfile( fileName ) ) : return
+    def __call__( self, plot ):
+        plot._axes.annotate(
+            self.text,
+            xy = self.position,
+            xycoords = "figure fraction",
+            bbox = { 'facecolor' : 'white', 'pad' : 2, 'alpha' : 0.6 }, \
+            fontsize = 16,
+            color = 'black' )
+
+def createFrame( index, xx, overwrite ):
+
+    fileName = 'fig.{0:}_{1:}.png'.format( prefix, str( index ).zfill( 3 ) )
+
+    if ( ( isfile( fileName ) ) & ( not overwrite ) ) : return
 
     ds = yt.load( PlotDirectory + '{:}{:}' \
                   .format( PlotBaseName, \
-                           str( FileNumberArray[index] ).zfill( 8 ) ) )
+                           str( xx[index] ).zfill( 8 ) ) )
 
     slc \
       = yt.SlicePlot \
@@ -108,11 +130,9 @@ def createFrame( index, N ):
             width = width )
 
     slc.set_axes_unit( LengthUnitX )
-
-    slc.annotate_text( [0.7,0.95], \
-                       't = {:.2f}'.format( ds.current_time.to_ndarray() ), \
-                       coord_system = 'axis', \
-                       text_args={'color':'white'})
+    slc.annotate_timeLabel \
+      ( r'$t = {:.2f}$'.format( np.float64( ds.current_time.to_ndarray() ) ), \
+        0.55, 0.9 )
 
     #slc.annotate_grids()
 
@@ -150,17 +170,24 @@ def createFrame( index, N ):
     slc.save( fileName )
 
     print( '  [{:.2f}%] Saved {:}' \
-           .format( index / np.float64( N ) * 100.0, fileName ) )
+           .format( index / np.float64( xx.shape[0] ) * 100.0, fileName ) )
 
-#createFrame( 0 )
-N = FileNumberArray.shape[0]
-for i in range( N ):
-    createFrame( i, N )
+print( '\n  Data directory: {:}'.format( PlotDirectory ) )
+xx = FileNumberArray#[0:-1:10]
+overwrite = False
+for i in range( xx.shape[0] ):
+    createFrame( i, xx, overwrite )
+
+movName = 'mov.{:}.mp4'.format( prefix )
+import os
+os.system( \
+'ffmpeg -loglevel quiet -f image2 -framerate 30 -i fig.{0:}_%03d.png -vcodec libx264 -crf 22 {1:}'.format( prefix, movName ) )
+print( '\n  Saved {:}'.format( movName ) )
 
 '''
 To make a movie, generate the *.png files
 (be sure to remove the *Render*png files)
 and exectute
-ffmpeg -f image2 -framerate 30 -i %03d.png -vcodec libx264 -crf 22 mov.2D.mp4
+ffmpeg -loglevel quiet -f image2 -framerate 30 -i %03d.png -vcodec libx264 -crf 22 mov.2D.mp4
 (adapted from https://superuser.com/questions/1462071/ffmpeg-convert-pngs-to-video-files)
 '''

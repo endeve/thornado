@@ -59,6 +59,8 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_TABLE
     Timer_Euler_PL_CopyOut, &
     Timer_Euler_PL_Permute, &
     Timer_Euler_PL_Integrate
+  USE OpacityModule_TABLE, ONLY: &
+    QueryOpacity
 
   IMPLICIT NONE
   PRIVATE
@@ -545,7 +547,8 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      IF( U_K_D(iX1,iX2,iX3) < Min_D .OR. U_K_D(iX1,iX2,iX3) > Max_D )THEN
+      IF( ( U_K_D(iX1,iX2,iX3) < Min_D .OR. U_K_D(iX1,iX2,iX3) > Max_D ) &
+         .AND. QueryOpacity( U_K_D(iX1,iX2,iX3) / Unit_D ) )THEN
 
         Y_K = BaryonMass * U_K_Ne(iX1,iX2,iX3) / U_K_D(iX1,iX2,iX3)
 
@@ -620,7 +623,8 @@ CONTAINS
         Min_N_K = MIN( Min_N_K, U_P_Ne(iP,iX1,iX2,iX3) ) ! --- Minimum Ne in Element
       END DO
 
-      IF( ( Min_D_K < Min_D ) .OR. ( Max_D < Max_D_K ) .OR. ( Min_N_K < Min_N ) ) THEN
+      IF( ( ( Min_D_K < Min_D ) .OR. ( Max_D < Max_D_K ) .OR. ( Min_N_K < Min_N ) ) &
+         .AND. QueryOpacity( U_K_D(iX1,iX2,iX3) / Unit_D ) ) THEN
 
         ! --- This calculation for Theta_1 has been changed from the original backtracing
         ! --- algorithm described in 3.4.1 of Pochik et al. (2021)
@@ -688,7 +692,8 @@ CONTAINS
                                            / U_P_D (iP,iX1,iX2,iX3) )
       END DO
 
-      IF( Min_Y_K < Min_Y .OR. Max_Y_K > Max_Y )THEN
+      IF( ( Min_Y_K < Min_Y .OR. Max_Y_K > Max_Y ) &
+         .AND. QueryOpacity( U_K_D(iX1,iX2,iX3) / Unit_D ) )THEN
 
         Y_K = BaryonMass * U_K_Ne(iX1,iX2,iX3) / U_K_D(iX1,iX2,iX3)
 
@@ -752,6 +757,8 @@ CONTAINS
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
+
+      IF ( .NOT. QueryOpacity( U_K_D(iX1,iX2,iX3) / Unit_D ) ) CYCLE
 
       DoStep_3 = .FALSE.
       DO iP = 1, nPT
@@ -924,6 +931,8 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
 
       DO iNodeX = 1, nDOFX
+
+      IF ( .NOT. QueryOpacity( U(iNodeX,iX1,iX2,iX3,iCF_D ) / Unit_D ) ) CYCLE
 
         U(iNodeX,iX1,iX2,iX3,iCF_D ) = U_Q_D (iNodeX,iX1,iX2,iX3)
         U(iNodeX,iX1,iX2,iX3,iCF_S1) = U_Q_S1(iNodeX,iX1,iX2,iX3)

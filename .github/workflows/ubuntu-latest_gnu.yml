@@ -62,12 +62,8 @@ jobs:
     steps:
       - name: Checkout thornado
         uses: actions/checkout@v4
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
@@ -101,12 +97,8 @@ jobs:
           repository: jrober50/Poseidon
           path: poseidon
           ref: Development
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_TABLE/
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
@@ -127,12 +119,8 @@ jobs:
     steps:
       - name: Checkout thornado
         uses: actions/checkout@v4
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
@@ -159,12 +147,8 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/dgExperiments_Euler_Relativistic_TABLE
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables
@@ -227,12 +211,8 @@ jobs:
           repository: jrober50/Poseidon
           path: poseidon
           ref: Development
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/YahilCollapse_XCFC
         run: |
           cd ${THORNADO_DIR}/SandBox/YahilCollapse_XCFC/Executables
@@ -266,12 +246,8 @@ jobs:
           repository: jrober50/Poseidon
           path: poseidon
           ref: Development
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AdiabaticCollapse_XCFC
         run: |
           cd ${THORNADO_DIR}/SandBox/AdiabaticCollapse_XCFC/Executables
@@ -299,12 +275,8 @@ jobs:
           repository: AMReX-Codes/amrex
           path: amrex
           ref: development
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL (1D)
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
@@ -332,12 +304,8 @@ jobs:
           repository: AMReX-Codes/amrex
           path: amrex
           ref: development
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL (2D)
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
@@ -365,12 +333,8 @@ jobs:
           repository: AMReX-Codes/amrex
           path: amrex
           ref: development
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL (3D)
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
@@ -404,12 +368,8 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
@@ -437,12 +397,8 @@ jobs:
           repository: AMReX-Codes/amrex
           path: amrex
           ref: development
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
@@ -470,12 +426,8 @@ jobs:
           repository: AMReX-Codes/amrex
           path: amrex
           ref: development
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
@@ -510,12 +462,8 @@ jobs:
           repository: jrober50/Poseidon
           path: poseidon
           ref: Development
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/Applications/YahilCollapse_XCFC
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/YahilCollapse_XCFC
@@ -556,12 +504,8 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
@@ -595,12 +539,8 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/TwoMoment_Test
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/TwoMoment_Test
@@ -634,12 +574,8 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/TwoMoment_TABLE
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/TwoMoment_TABLE
@@ -680,14 +616,82 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
+          make -j -l6
+          make realclean
+
+  UnitTest_CheckInterpolation:
+    name: Compile SandBox/AMReX/UnitTests/CheckInterpolation
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+      AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
+      POSEIDON_DIR: ${{ needs.build.outputs.POSEIDON_DIR }}
+      WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v4
+      - name: Checkout amrex
+        uses: actions/checkout@v4
+        with:
+          repository: AMReX-Codes/amrex
+          path: amrex
+          ref: development
+      - name: Checkout weaklib
+        uses: actions/checkout@v4
+        with:
+          repository: starkiller-astro/weaklib
+          path: weaklib
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
+      - name: Compile SandBox/AMReX/UnitTests/CheckInterpolation
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/UnitTests/CheckInterpolation
+          make -j -l6
+          make realclean
+
+  UnitTest_CheckPrimitiveRecovery:
+    name: Compile SandBox/AMReX/UnitTests/CheckPrimitiveRecovery
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      THORNADO_MACHINE: gh-runner_ubuntu-latest_gnu
+      HDF5_INC:     ${{ needs.build.outputs.HDF5_INC     }}
+      HDF5_LIB:     ${{ needs.build.outputs.HDF5_LIB     }}
+      LAPACK_LIB:   ${{ needs.build.outputs.LAPACK_LIB   }}
+      BLAS_LIB:     ${{ needs.build.outputs.BLAS_LIB     }}
+      THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
+      AMREX_DIR:    ${{ needs.build.outputs.AMREX_DIR    }}
+      POSEIDON_DIR: ${{ needs.build.outputs.POSEIDON_DIR }}
+      WEAKLIB_DIR:  ${{ needs.build.outputs.WEAKLIB_DIR  }}
+    steps:
+      - name: Checkout thornado
+        uses: actions/checkout@v4
+      - name: Checkout amrex
+        uses: actions/checkout@v4
+        with:
+          repository: AMReX-Codes/amrex
+          path: amrex
+          ref: development
+      - name: Checkout weaklib
+        uses: actions/checkout@v4
+        with:
+          repository: starkiller-astro/weaklib
+          path: weaklib
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
+      - name: Compile SandBox/AMReX/UnitTests/CheckPrimitiveRecovery
+        run: |
+          cd ${THORNADO_DIR}/SandBox/AMReX/UnitTests/CheckPrimitiveRecovery
           make -j -l6
           make realclean

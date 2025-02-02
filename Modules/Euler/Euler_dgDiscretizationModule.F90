@@ -317,8 +317,8 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, SurfaceFlux_X3 )
 
     IF( PRESENT( SurfaceFlux_X1_Option ) )THEN
-#if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+#if defined( THORNADO_USE_AMREX )
+#if defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
       !$OMP TARGET UPDATE FROM( SurfaceFlux_X1 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
       !$ACC UPDATE HOST       ( SurfaceFlux_X1 )
@@ -328,8 +328,8 @@ CONTAINS
     END IF
 
     IF( PRESENT( SurfaceFlux_X2_Option ) )THEN
-#if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+#if defined( THORNADO_USE_AMREX )
+#if defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
       !$OMP TARGET UPDATE FROM( SurfaceFlux_X2 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
       !$ACC UPDATE HOST       ( SurfaceFlux_X2 )
@@ -339,8 +339,8 @@ CONTAINS
     END IF
 
     IF( PRESENT( SurfaceFlux_X3_Option ) )THEN
-#if defined( THORNADO_USE_AMREX ) && defined( THORNADO_USE_MESHREFINEMENT )
-#if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
+#if defined( THORNADO_USE_AMREX )
+#if defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
       !$OMP TARGET UPDATE FROM( SurfaceFlux_X3 )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
       !$ACC UPDATE HOST       ( SurfaceFlux_X3 )

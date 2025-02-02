@@ -95,8 +95,6 @@ CONTAINS
 
     END IF
 
-#if defined( THORNADO_USE_MESHREFINEMENT )
-
     CALL CreateMesh_MF( FineLevel-1, MeshX )
 
     ASSOCIATE( dX1 => MeshX(1) % Width, &
@@ -118,8 +116,6 @@ CONTAINS
     END ASSOCIATE
 
     CALL DestroyMesh_MF( MeshX )
-
-#endif
 
   END SUBROUTINE ApplyFluxCorrection_Euler_MF_SingleLevel
 

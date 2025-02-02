@@ -52,14 +52,14 @@ MODULE EquationOfStateModule_TABLE
   INTEGER :: &
     iD_T, iT_T, iY_T, &
     iP_T, iS_T, iE_T, iMe_T, iMp_T, iMn_T, &
-    iXp_T, iXn_T, iXa_T, iXh_T, iGm_T
+    iXp_T, iXn_T, iXa_T, iXh_T, iAh_T, iGm_T
   REAL(DP) :: &
     UnitD, UnitT, UnitY, &
     UnitP, UnitS, UnitE, UnitMe, UnitMp, UnitMn, &
-    UnitXp, UnitXn, UnitXa, UnitXh, UnitGm
+    UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm
   REAL(DP), PUBLIC :: &
     OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, &
-    OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm
+    OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Ah, OS_Gm
   REAL(DP), PARAMETER :: &
     BaryonMass = AtomicMassUnit
   REAL(DP) :: minvar, OS_loc
@@ -67,11 +67,12 @@ MODULE EquationOfStateModule_TABLE
     D_T, T_T, Y_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: &
     P_T, S_T, E_T, Me_T, Mp_T, Mn_T, &
-    Xp_T, Xn_T, Xa_T, Xh_T, Gm_T
+    Xp_T, Xn_T, Xa_T, Xh_T, Ah_T, Gm_T
 #ifdef MICROPHYSICS_WEAKLIB
   LOGICAL :: UsingExternalEOS
   TYPE(EquationOfStateTableType), POINTER :: EOS
 #endif
+  REAL(DP), PUBLIC :: Eos_MinD
 
   PUBLIC :: InitializeEquationOfState_TABLE
   PUBLIC :: FinalizeEquationOfState_TABLE
@@ -93,14 +94,16 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputeNeutronChemicalPotential_TABLE
   PUBLIC :: ComputeProtonMassFraction_TABLE
   PUBLIC :: ComputeNeutronMassFraction_TABLE
+  PUBLIC :: ComputeHeavyMassFraction_TABLE
+  PUBLIC :: ComputeHeavyMassNumber_TABLE
   PUBLIC :: ComputeElectronNeutrinoChemicalPotential_TABLE
 
   REAL(DP), PUBLIC :: Min_D, Min_T, Min_Y
   REAL(DP), PUBLIC :: Max_D, Max_T, Max_Y
 
   INTERFACE ApplyEquationOfState_TABLE
-    MODULE PROCEDURE ApplyEquationOfState_Table_Scalar
-    MODULE PROCEDURE ApplyEquationOfState_Table_Vector
+    MODULE PROCEDURE ApplyEquationOfState_TABLE_Scalar
+    MODULE PROCEDURE ApplyEquationOfState_TABLE_Vector
   END INTERFACE ApplyEquationOfState_TABLE
 
   INTERFACE ComputePressure_TABLE
@@ -193,6 +196,16 @@ MODULE EquationOfStateModule_TABLE
     MODULE PROCEDURE ComputeNeutronMassFraction_TABLE_Vector
   END INTERFACE
 
+  INTERFACE ComputeHeavyMassFraction_TABLE
+    MODULE PROCEDURE ComputeHeavyMassFraction_TABLE_Scalar
+    MODULE PROCEDURE ComputeHeavyMassFraction_TABLE_Vector
+  END INTERFACE
+
+  INTERFACE ComputeHeavyMassNumber_TABLE
+    MODULE PROCEDURE ComputeHeavyMassNumber_TABLE_Scalar
+    MODULE PROCEDURE ComputeHeavyMassNumber_TABLE_Vector
+  END INTERFACE
+
   INTERFACE ComputeElectronNeutrinoChemicalPotential_TABLE
     MODULE PROCEDURE ComputeElectronNeutrinoChemicalPotential_TABLE_Scalar
     MODULE PROCEDURE ComputeElectronNeutrinoChemicalPotential_TABLE_Vector
@@ -212,22 +225,22 @@ MODULE EquationOfStateModule_TABLE
   !$OMP DECLARE TARGET &
   !$OMP ( D_T, T_T, Y_T, &
   !$OMP   UnitD, UnitT, UnitY, UnitP, UnitS, UnitE, UnitMe, UnitMp, UnitMn, &
-  !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, &
+  !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, &
   !$OMP   OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, &
-  !$OMP   OS_Xa, OS_Xh, OS_Gm, &
+  !$OMP   OS_Xa, OS_Xh, OS_Ah, OS_Gm, &
   !$OMP   P_T, S_T, E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, &
-  !$OMP   Xa_T, Xh_T, Gm_T, &
-  !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
+  !$OMP   Xa_T, Xh_T, Ah_T, Gm_T, &
+  !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( D_T, T_T, Y_T, &
   !$ACC   UnitD, UnitT, UnitY, UnitP, UnitS, UnitE, UnitMe, UnitMp, UnitMn, &
-  !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, &
+  !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, &
   !$ACC   OS_P, OS_S, OS_E, OS_Me, OS_Mp, OS_Mn, OS_Xp, OS_Xn, &
-  !$ACC   OS_Xa, OS_Xh, OS_Gm, &
+  !$ACC   OS_Xa, OS_Xh, OS_Ah, OS_Gm, &
   !$ACC   P_T, S_T, E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, &
-  !$ACC   Xa_T, Xh_T, Gm_T, &
-  !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
+  !$ACC   Xa_T, Xh_T, Ah_T, Gm_T, &
+  !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #endif
 
 CONTAINS
@@ -235,10 +248,11 @@ CONTAINS
 
   SUBROUTINE InitializeEquationOfState_TABLE &
     ( EquationOfStateTableName_Option, UseChemicalPotentialShift_Option, &
-      Verbose_Option, External_EOS )
+      Eos_MinD_Option, Verbose_Option, External_EOS )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: EquationOfStateTableName_Option
     LOGICAL,          INTENT(in), OPTIONAL :: UseChemicalPotentialShift_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: Eos_MinD_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 #ifdef MICROPHYSICS_WEAKLIB
     TYPE(EquationOfStateTableType), POINTER, &
@@ -260,6 +274,12 @@ CONTAINS
        UseChemicalPotentialShift = UseChemicalPotentialShift_Option
     ELSE
        UseChemicalPotentialShift = .FALSE.
+    END IF
+
+    IF( PRESENT( Eos_MinD_Option ) )THEN
+       Eos_MinD = Eos_MinD_Option
+    ELSE
+       Eos_MinD = Zero
     END IF
 
     IF( PRESENT( Verbose_Option ) )THEN
@@ -317,6 +337,7 @@ CONTAINS
     UnitXn = One
     UnitXa = One
     UnitXh = One
+    UnitAh = One
     UnitGm = One
 
     ! --- Thermodynamic States ---
@@ -351,6 +372,7 @@ CONTAINS
     iXn_T = EOS % DV % Indices % iNeutronMassFraction
     iXa_T = EOS % DV % Indices % iAlphaMassFraction
     iXh_T = EOS % DV % Indices % iHeavyMassFraction
+    iAh_T = EOS % DV % Indices % iHeavyMassNumber
     iGm_T = EOS % DV % Indices % iGamma1
 
     ! --- Dependent Variables Offsets ---
@@ -365,6 +387,7 @@ CONTAINS
     OS_Xn = EOS % DV % Offsets(iXn_T)
     OS_Xa = EOS % DV % Offsets(iXa_T)
     OS_Xh = EOS % DV % Offsets(iXh_T)
+    OS_Ah = EOS % DV % Offsets(iAh_T)
     OS_Gm = EOS % DV % Offsets(iGm_T)
 
     ALLOCATE &
@@ -408,6 +431,10 @@ CONTAINS
              1:EOS % DV % nPoints(2), &
              1:EOS % DV % nPoints(3)) )
     ALLOCATE &
+      ( Ah_T(1:EOS % DV % nPoints(1), &
+             1:EOS % DV % nPoints(2), &
+             1:EOS % DV % nPoints(3)) )
+    ALLOCATE &
       ( Gm_T(1:EOS % DV % nPoints(1), &
              1:EOS % DV % nPoints(2), &
              1:EOS % DV % nPoints(3)) )
@@ -422,6 +449,7 @@ CONTAINS
     Xn_T = EOS % DV % Variables(iXn_T) % Values
     Xa_T = EOS % DV % Variables(iXa_T) % Values
     Xh_T = EOS % DV % Variables(iXh_T) % Values
+    Ah_T = EOS % DV % Variables(iAh_T) % Values
     Gm_T = EOS % DV % Variables(iGm_T) % Values
 
     IF ( UseChemicalPotentialShift ) CALL ApplyChemicalPotentialShift_TABLE( Mp_T, Mn_T, OS_Mp, OS_Mn )
@@ -451,18 +479,18 @@ CONTAINS
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( always, to: D_T, T_T, Y_T, &
     !$OMP   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMe, UnitMp, UnitMn, &
-    !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
-    !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, P_T, S_T, &
-    !$OMP   E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Gm_T, &
-    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
+    !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
+    !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Ah, OS_Gm, P_T, S_T, &
+    !$OMP   E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Ah_T, Gm_T, &
+    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( D_T, T_T, Y_T, &
     !$ACC   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMe, UnitMp, UnitMn, &
-    !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
-    !$ACC   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, P_T, S_T, &
-    !$ACC   E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Gm_T, &
-    !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
+    !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
+    !$ACC   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Ah, OS_Gm, P_T, S_T, &
+    !$ACC   E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Ah_T, Gm_T, &
+    !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #endif
 
 #endif
@@ -481,7 +509,7 @@ CONTAINS
     !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitGm, OS_P, OS_S, OS_E, OS_Me, &
     !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Gm, P_T, S_T, &
     !$OMP   E_T, Me_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Gm_T, &
-    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
+    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #endif
 
     DEALLOCATE( D_T, T_T, Y_T )
@@ -496,6 +524,7 @@ CONTAINS
     DEALLOCATE( Xn_T )
     DEALLOCATE( Xa_T )
     DEALLOCATE( Xh_T )
+    DEALLOCATE( Ah_T )
     DEALLOCATE( Gm_T )
 
     IF ( .NOT. UsingExternalEOS ) THEN
@@ -669,10 +698,16 @@ CONTAINS
 
     T_Guess = Guess / Kelvin
 
-    CALL ComputeTemperatureWith_DEY_Single_Guess_Error &
-           ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, T_Guess, &
-             Error )
+    Error = 0
 
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL ComputeTemperatureWith_DEY_Single_Guess_Error &
+             ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, T_Guess, &
+               Error )
+    ELSE
+      T_Lookup = T_Guess
+      Error = 0
+    END IF
     T = T_Lookup * Kelvin
 
 #endif
@@ -703,8 +738,12 @@ CONTAINS
 
     T_Guess = Guess / Kelvin
 
-    CALL ComputeTemperatureWith_DEY_Single_Guess_NoError &
-           ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, T_Guess )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL ComputeTemperatureWith_DEY_Single_Guess_NoError &
+             ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, T_Guess )
+    ELSE
+      T_Lookup = T_Guess
+    END IF
 
     T = T_Lookup * Kelvin
 
@@ -734,9 +773,16 @@ CONTAINS
     E_P = E / ( Erg / Gram )
     Y_P = Y
 
-    CALL ComputeTemperatureWith_DEY_Single_NoGuess_Error &
-           ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, &
-             Error )
+    Error = 0
+
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL ComputeTemperatureWith_DEY_Single_NoGuess_Error &
+             ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, &
+               Error )
+    ELSE
+      T_Lookup = Zero
+      Error = 0
+    END IF
 
     T = T_Lookup * Kelvin
 
@@ -765,8 +811,12 @@ CONTAINS
     E_P = E / ( Erg / Gram )
     Y_P = Y
 
-    CALL ComputeTemperatureWith_DEY_Single_NoGuess_NoError &
-           ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL ComputeTemperatureWith_DEY_Single_NoGuess_NoError &
+             ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup )
+    ELSE
+      T_Lookup = Zero
+    END IF
 
     T = T_Lookup * Kelvin
 
@@ -783,15 +833,16 @@ CONTAINS
     REAL(DP), INTENT(in ), OPTIONAL :: Guess_Option(1:)
     INTEGER,  INTENT(out), OPTIONAL :: Error_Option(1:)
 
+    INTEGER, ALLOCATABLE :: Error(:)
     INTEGER  :: iP, nP
-    INTEGER  :: Error(SIZE(D))
     REAL(DP) :: D_P, E_P, Y_P, T_Lookup, T_Guess
 
+    nP = SIZE( D )
+
+    ALLOCATE( Error(nP) )
     Error = 0
 
 #ifdef MICROPHYSICS_WEAKLIB
-
-    nP = SIZE( D )
 
     IF( PRESENT( Guess_Option ) )THEN
 
@@ -817,9 +868,14 @@ CONTAINS
 
         T_Guess = Guess_Option(iP) / Kelvin
 
-        CALL ComputeTemperatureWith_DEY_Single_Guess_Error &
-               ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, T_Guess, &
-                 Error(iP) )
+        IF ( D_P >= Eos_MinD ) THEN
+          CALL ComputeTemperatureWith_DEY_Single_Guess_Error &
+                 ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, T_Guess, &
+                   Error(iP) )
+        ELSE
+          T_Lookup = T_Guess
+          Error(iP) = 0
+        END IF
 
         T(iP) = T_Lookup * Kelvin
 
@@ -847,9 +903,14 @@ CONTAINS
         E_P = E(iP) / ( Erg / Gram )
         Y_P = Y(iP)
 
-        CALL ComputeTemperatureWith_DEY_Single_NoGuess_Error &
-               ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, &
-                 Error(iP) )
+        IF ( D_P >= Eos_MinD ) THEN
+          CALL ComputeTemperatureWith_DEY_Single_NoGuess_Error &
+                 ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_Lookup, &
+                   Error(iP) )
+        ELSE
+          T_Lookup = Zero
+          Error(iP) = 0
+        END IF
 
         T(iP) = T_Lookup * Kelvin
 
@@ -949,13 +1010,17 @@ CONTAINS
     E_P = Em / UnitE
     Y_P = Y  / UnitY
 
-    CALL ComputeTemperatureWith_DEY_Single_NoGuess_NoError &
-           ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_P )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL ComputeTemperatureWith_DEY_Single_NoGuess_NoError &
+             ( D_P, E_P, Y_P, D_T, T_T, Y_T, E_T, OS_E, T_P )
 
-    T = T_P * UnitT
+      T = T_P * UnitT
 
-    CALL ComputeDependentVariable_TABLE_Scalar &
-           ( D, T, Y, P, P_T, OS_P, Units_V = UnitP )
+      CALL ComputeDependentVariable_TABLE_Scalar &
+             ( D, T, Y, P, P_T, OS_P, Units_V = UnitP )
+    ELSE
+      P = Zero
+    END IF
 
 #endif
 
@@ -1017,7 +1082,11 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D(1:), Ev(1:), Ne(1:)
     REAL(DP), INTENT(out) :: Cs(1:)
 
-    REAL(DP), DIMENSION(SIZE(D)) :: P, T, Y, Em, Gm
+    INTEGER :: nP
+    REAL(DP), DIMENSION(:), ALLOCATABLE :: P, T, Y, Em, Gm
+    
+    nP = SIZE(D)
+    ALLOCATE( P(nP), T(nP), Y(nP), Em(nP), Gm(nP) )
 
     Em = Ev / D
     Y  = Ne * ( BaryonMass / D )
@@ -1055,9 +1124,16 @@ CONTAINS
     P_P = P / UnitP
     Y_P = Y / UnitY
 
-    CALL ComputeTemperatureWith_DPY_Single_NoGuess_Error &
-           ( D_P, P_P, Y_P, D_T, T_T, Y_T, P_T, OS_P, T_P, &
-             Error )
+    Error = 0
+
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL ComputeTemperatureWith_DPY_Single_NoGuess_Error &
+             ( D_P, P_P, Y_P, D_T, T_T, Y_T, P_T, OS_P, T_P, &
+               Error )
+    ELSE
+      T_P = Zero
+      Error = 0
+    END IF
 
     T = T_P * UnitT
 
@@ -1404,9 +1480,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
-    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
       dPdD_Local, dPdT_Local, dPdY_Local
-    REAL(DP), DIMENSION(:)      , POINTER :: &
+    REAL(DP), DIMENSION(:), POINTER :: &
       dPdD      , dPdT      , dPdY
 
     ComputeDerivatives &
@@ -1417,6 +1493,7 @@ CONTAINS
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
+      ALLOCATE( dPdD_Local(nP), dPdT_Local(nP), dPdY_Local(nP) )
 
       IF( PRESENT( dPdD_Option ) )THEN
         dPdD(1:nP) => dPdD_Option(:)
@@ -1517,9 +1594,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
-    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
       dEdD_Local, dEdT_Local, dEdY_Local
-    REAL(DP), DIMENSION(:)      , POINTER :: &
+    REAL(DP), DIMENSION(:), POINTER :: &
       dEdD      , dEdT      , dEdY
 
     ComputeDerivatives &
@@ -1530,6 +1607,7 @@ CONTAINS
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
+      ALLOCATE( dEdD_Local(nP), dEdT_Local(nP), dEdY_Local(nP) )
 
       IF( PRESENT( dEdD_Option ) )THEN
         dEdD(1:nP) => dEdD_Option(:)
@@ -1630,9 +1708,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
-    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
       dMdD_Local, dMdT_Local, dMdY_Local
-    REAL(DP), DIMENSION(:)      , POINTER :: &
+    REAL(DP), DIMENSION(:), POINTER :: &
       dMdD      , dMdT      , dMdY
 
     ComputeDerivatives &
@@ -1643,6 +1721,7 @@ CONTAINS
     IF ( ComputeDerivatives ) THEN
 
       nP = SIZE( D )
+      ALLOCATE( dMdD_Local(nP), dMdT_Local(nP), dMdY_Local(nP) )
 
       IF( PRESENT( dMdD_Option ) )THEN
         dMdD(1:nP) => dMdD_Option(:)
@@ -1743,9 +1822,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
-    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
       dMdD_Local, dMdT_Local, dMdY_Local
-    REAL(DP), DIMENSION(:)      , POINTER :: &
+    REAL(DP), DIMENSION(:), POINTER :: &
       dMdD      , dMdT      , dMdY
 
     ComputeDerivatives &
@@ -1756,6 +1835,7 @@ CONTAINS
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
+      ALLOCATE( dMdD_Local(nP), dMdT_Local(nP), dMdY_Local(nP) )
 
       IF( PRESENT( dMdD_Option ) )THEN
         dMdD(1:nP) => dMdD_Option(:)
@@ -1856,9 +1936,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
-    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
       dMdD_Local, dMdT_Local, dMdY_Local
-    REAL(DP), DIMENSION(:)      , POINTER :: &
+    REAL(DP), DIMENSION(:), POINTER :: &
       dMdD      , dMdT      , dMdY
 
     ComputeDerivatives &
@@ -1869,6 +1949,7 @@ CONTAINS
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
+      ALLOCATE( dMdD_Local(nP), dMdT_Local(nP), dMdY_Local(nP) )
 
       IF( PRESENT( dMdD_Option ) )THEN
         dMdD(1:nP) => dMdD_Option(:)
@@ -1969,9 +2050,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
-    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
       dXdD_Local, dXdT_Local, dXdY_Local
-    REAL(DP), DIMENSION(:)      , POINTER :: &
+    REAL(DP), DIMENSION(:), POINTER :: &
       dXdD      , dXdT      , dXdY
 
     ComputeDerivatives &
@@ -1982,6 +2063,7 @@ CONTAINS
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
+      ALLOCATE( dXdD_Local(nP), dXdT_Local(nP), dXdY_Local(nP) )
 
       IF( PRESENT( dXdD_Option ) )THEN
         dXdD(1:nP) => dXdD_Option(:)
@@ -2082,9 +2164,9 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     INTEGER :: nP
-    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
       dXdD_Local, dXdT_Local, dXdY_Local
-    REAL(DP), DIMENSION(:)      , POINTER :: &
+    REAL(DP), DIMENSION(:), POINTER :: &
       dXdD      , dXdT      , dXdY
 
     ComputeDerivatives &
@@ -2095,6 +2177,7 @@ CONTAINS
     IF( ComputeDerivatives )THEN
 
       nP = SIZE( D )
+      ALLOCATE( dXdD_Local(nP), dXdT_Local(nP), dXdY_Local(nP) )
 
       IF( PRESENT( dXdD_Option ) )THEN
         dXdD(1:nP) => dXdD_Option(:)
@@ -2126,6 +2209,230 @@ CONTAINS
 
   END SUBROUTINE ComputeNeutronMassFraction_TABLE_Vector
 
+  SUBROUTINE ComputeHeavyMassFraction_TABLE_Scalar &
+    ( D, T, Y, X, dXdD_Option, dXdT_Option, dXdY_Option )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)                    :: D, T, Y
+    REAL(DP), INTENT(out)                   :: X
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdY_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dXdD_Local, dXdT_Local, dXdY_Local
+    REAL(DP), POINTER :: dXdD      , dXdT      , dXdY
+
+    ComputeDerivatives &
+      =      PRESENT( dXdD_Option ) &
+        .OR. PRESENT( dXdT_Option ) &
+        .OR. PRESENT( dXdY_Option )
+
+    IF ( ComputeDerivatives ) THEN
+
+      IF( PRESENT( dXdD_Option ) )THEN
+        dXdD => dXdD_Option
+      ELSE
+        dXdD => dXdD_Local
+      END IF
+
+      IF( PRESENT( dXdT_Option ) )THEN
+        dXdT => dXdT_Option
+      ELSE
+        dXdT => dXdT_Local
+      END IF
+
+      IF( PRESENT( dXdY_Option ) )THEN
+        dXdY => dXdY_Option
+      ELSE
+        dXdY => dXdY_Local
+      END IF
+
+      CALL ComputeDependentVariableAndDerivatives_TABLE_Scalar &
+             ( D, T, Y, X, dXdD, dXdT, dXdY, Xh_T, OS_Xh, Units_V = UnitXh )
+
+    ELSE
+
+      CALL ComputeDependentVariable_TABLE_Scalar &
+             ( D, T, Y, X, Xh_T, OS_Xh, Units_V = UnitXh )
+
+    END IF
+
+  END SUBROUTINE ComputeHeavyMassFraction_TABLE_Scalar
+
+  SUBROUTINE ComputeHeavyMassFraction_TABLE_Vector &
+    ( D, T, Y, X, dXdD_Option, dXdT_Option, dXdY_Option )
+
+    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Y(1:)
+    REAL(DP), INTENT(out)                   :: X(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdD_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdT_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdY_Option(1:)
+
+    LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
+      dXdD_Local, dXdT_Local, dXdY_Local
+    REAL(DP), DIMENSION(:), POINTER :: &
+      dXdD      , dXdT      , dXdY
+
+    ComputeDerivatives &
+      =      PRESENT( dXdD_Option ) &
+        .OR. PRESENT( dXdT_Option ) &
+        .OR. PRESENT( dXdY_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+      ALLOCATE( dXdD_Local(nP), dXdT_Local(nP), dXdY_Local(nP) )
+
+      IF( PRESENT( dXdD_Option ) )THEN
+        dXdD(1:nP) => dXdD_Option(:)
+      ELSE
+        dXdD(1:nP) => dXdD_Local(:)
+      END IF
+
+      IF( PRESENT( dXdT_Option ) )THEN
+        dXdT(1:nP) => dXdT_Option(:)
+      ELSE
+        dXdT(1:nP) => dXdT_Local(:)
+      END IF
+
+      IF( PRESENT( dXdY_Option ) )THEN
+        dXdY(1:nP) => dXdY_Option(:)
+      ELSE
+        dXdY(1:nP) => dXdY_Local(:)
+      END IF
+
+      CALL ComputeDependentVariableAndDerivatives_TABLE_Vector &
+             ( D, T, Y, X, dXdD, dXdT, dXdY, Xh_T, OS_Xh, Units_V = UnitXh )
+
+    ELSE
+
+      CALL ComputeDependentVariable_TABLE_Vector &
+             ( D, T, Y, X, Xh_T, OS_Xh, Units_V = UnitXh )
+
+    END IF
+
+  END SUBROUTINE ComputeHeavyMassFraction_TABLE_Vector
+
+  SUBROUTINE ComputeHeavyMassNumber_TABLE_Scalar &
+    ( D, T, Y, X, dXdD_Option, dXdT_Option, dXdY_Option )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)                    :: D, T, Y
+    REAL(DP), INTENT(out)                   :: X
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdY_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dXdD_Local, dXdT_Local, dXdY_Local
+    REAL(DP), POINTER :: dXdD      , dXdT      , dXdY
+
+    ComputeDerivatives &
+      =      PRESENT( dXdD_Option ) &
+        .OR. PRESENT( dXdT_Option ) &
+        .OR. PRESENT( dXdY_Option )
+
+    IF ( ComputeDerivatives ) THEN
+
+      IF( PRESENT( dXdD_Option ) )THEN
+        dXdD => dXdD_Option
+      ELSE
+        dXdD => dXdD_Local
+      END IF
+
+      IF( PRESENT( dXdT_Option ) )THEN
+        dXdT => dXdT_Option
+      ELSE
+        dXdT => dXdT_Local
+      END IF
+
+      IF( PRESENT( dXdY_Option ) )THEN
+        dXdY => dXdY_Option
+      ELSE
+        dXdY => dXdY_Local
+      END IF
+
+      CALL ComputeDependentVariableAndDerivatives_TABLE_Scalar &
+             ( D, T, Y, X, dXdD, dXdT, dXdY, Ah_T, OS_Ah, Units_V = UnitAh )
+
+    ELSE
+
+      CALL ComputeDependentVariable_TABLE_Scalar &
+             ( D, T, Y, X, Ah_T, OS_Ah, Units_V = UnitAh )
+
+    END IF
+
+  END SUBROUTINE ComputeHeavyMassNumber_TABLE_Scalar
+
+  SUBROUTINE ComputeHeavyMassNumber_TABLE_Vector &
+    ( D, T, Y, X, dXdD_Option, dXdT_Option, dXdY_Option )
+
+    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Y(1:)
+    REAL(DP), INTENT(out)                   :: X(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdD_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdT_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dXdY_Option(1:)
+
+    LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
+      dXdD_Local, dXdT_Local, dXdY_Local
+    REAL(DP), DIMENSION(:), POINTER :: &
+      dXdD      , dXdT      , dXdY
+
+    ComputeDerivatives &
+      =      PRESENT( dXdD_Option ) &
+        .OR. PRESENT( dXdT_Option ) &
+        .OR. PRESENT( dXdY_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+      ALLOCATE( dXdD_Local(nP), dXdT_Local(nP), dXdY_Local(nP) )
+
+      IF( PRESENT( dXdD_Option ) )THEN
+        dXdD(1:nP) => dXdD_Option(:)
+      ELSE
+        dXdD(1:nP) => dXdD_Local(:)
+      END IF
+
+      IF( PRESENT( dXdT_Option ) )THEN
+        dXdT(1:nP) => dXdT_Option(:)
+      ELSE
+        dXdT(1:nP) => dXdT_Local(:)
+      END IF
+
+      IF( PRESENT( dXdY_Option ) )THEN
+        dXdY(1:nP) => dXdY_Option(:)
+      ELSE
+        dXdY(1:nP) => dXdY_Local(:)
+      END IF
+
+      CALL ComputeDependentVariableAndDerivatives_TABLE_Vector &
+             ( D, T, Y, X, dXdD, dXdT, dXdY, Ah_T, OS_Ah, Units_V = UnitAh )
+
+    ELSE
+
+      CALL ComputeDependentVariable_TABLE_Vector &
+             ( D, T, Y, X, Ah_T, OS_Ah, Units_V = UnitAh )
+
+    END IF
+
+  END SUBROUTINE ComputeHeavyMassNumber_TABLE_Vector
+
 
   SUBROUTINE ComputeElectronNeutrinoChemicalPotential_TABLE_Scalar &
     ( D, T, Y, Mnu )
@@ -2150,20 +2457,24 @@ CONTAINS
     T_P = T / UnitT
     Y_P = Y / UnitY
 
-    CALL LogInterpolateSingleVariable_3D_Custom_Point &
-           ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Me, Me_T, Me )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL LogInterpolateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Me, Me_T, Me )
 
-    CALL LogInterpolateSingleVariable_3D_Custom_Point &
-           ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mp, Mp_T, Mp )
+      CALL LogInterpolateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mp, Mp_T, Mp )
 
-    CALL LogInterpolateSingleVariable_3D_Custom_Point &
-           ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mn, Mn_T, Mn )
+      CALL LogInterpolateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mn, Mn_T, Mn )
 
-    Me = Me * UnitMe
-    Mp = Mp * UnitMp
-    Mn = Mn * UnitMn
+      Me = Me * UnitMe
+      Mp = Mp * UnitMp
+      Mn = Mn * UnitMn
 
-    Mnu = ( Me + Mp ) - Mn
+      Mnu = ( Me + Mp ) - Mn
+    ELSE
+      Mnu = Zero
+    END IF
 
 #else
 
@@ -2211,20 +2522,24 @@ CONTAINS
       T_P = T(iP) / UnitT
       Y_P = Y(iP) / UnitY
 
-      CALL LogInterpolateSingleVariable_3D_Custom_Point &
-             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Me, Me_T, Me )
+      IF ( D_P >= Eos_MinD ) THEN
+        CALL LogInterpolateSingleVariable_3D_Custom_Point &
+               ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Me, Me_T, Me )
 
-      CALL LogInterpolateSingleVariable_3D_Custom_Point &
-             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mp, Mp_T, Mp )
+        CALL LogInterpolateSingleVariable_3D_Custom_Point &
+               ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mp, Mp_T, Mp )
 
-      CALL LogInterpolateSingleVariable_3D_Custom_Point &
-             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mn, Mn_T, Mn )
+        CALL LogInterpolateSingleVariable_3D_Custom_Point &
+               ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_Mn, Mn_T, Mn )
 
-      Me = Me * UnitMe
-      Mp = Mp * UnitMp
-      Mn = Mn * UnitMn
+        Me = Me * UnitMe
+        Mp = Mp * UnitMp
+        Mn = Mn * UnitMn
 
-      Mnu(iP) = ( Me + Mp ) - Mn
+        Mnu(iP) = ( Me + Mp ) - Mn
+      ELSE
+        Mnu(iP) = Zero
+      END IF
 
     END DO
 
@@ -2270,8 +2585,12 @@ CONTAINS
     T_P = T / UnitT
     Y_P = Y / UnitY
 
-    CALL LogInterpolateSingleVariable_3D_Custom_Point &
-           ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_V, V_T, V_P )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL LogInterpolateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_V, V_T, V_P )
+    ELSE
+      V_P = Zero
+    END IF
 
     V = V_P * Units_V
 
@@ -2319,8 +2638,12 @@ CONTAINS
       T_P = T(iP) / UnitT
       Y_P = Y(iP) / UnitY
 
-      CALL LogInterpolateSingleVariable_3D_Custom_Point &
-             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_V, V_T, V_P )
+      IF ( D_P >= Eos_MinD ) THEN
+        CALL LogInterpolateSingleVariable_3D_Custom_Point &
+               ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_V, V_T, V_P )
+      ELSE
+        V_P = Zero
+      END IF
 
       V(iP) = V_P * Units_V
 
@@ -2368,8 +2691,13 @@ CONTAINS
     T_P = T / UnitT
     Y_P = Y / UnitY
 
-    CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
-           ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_V, V_T, V_P, dV_P )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Y_P, D_T, T_T, Y_T, OS_V, V_T, V_P, dV_P )
+    ELSE
+      V_P = Zero
+      dV_P = Zero
+    END IF
 
     V = V_P * Units_V
 

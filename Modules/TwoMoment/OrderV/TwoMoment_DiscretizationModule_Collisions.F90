@@ -1,7 +1,8 @@
 MODULE TwoMoment_DiscretizationModule_Collisions
 
   USE KindModule, ONLY: &
-    DP, Zero, One, Half, Three
+    DP, Zero, One, Half, Three, &
+    SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
     nDOFE, &
@@ -99,7 +100,7 @@ CONTAINS
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nCR,1:nSpecies)
-    REAL(DP), INTENT(out), OPTIONAL :: &
+    REAL(DP), INTENT(inout), OPTIONAL :: &
       uDR_Option &
           (iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
@@ -985,7 +986,15 @@ CONTAINS
 
       END DO
 
-      BVEC(1) = AB1 / AA11
+      IF ( AA11 < SqrtTiny ) THEN
+
+        BVEC(1) = Zero
+
+      ELSE
+
+        BVEC(1) = AB1 / AA11
+
+      END IF
 
     ELSEIF( mk == 3 )THEN
 
@@ -1007,8 +1016,17 @@ CONTAINS
 
       DET_AA = AA11 * AA22 - AA12 * AA12
 
-      BVEC(1) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
-      BVEC(2) = ( - AA12 * AB1 + AA11 * AB2 ) / DET_AA
+      IF ( DET_AA < SqrtTiny ) THEN
+
+        BVEC(1) = Zero
+        BVEC(2) = Zero 
+  
+      ELSE
+
+        BVEC(1) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
+        BVEC(2) = ( - AA12 * AB1 + AA11 * AB2 ) / DET_AA
+
+      END IF
 
     ELSEIF( mk > 3 )THEN
 
@@ -1103,7 +1121,15 @@ CONTAINS
 
       END DO
 
-      BVEC(1) = AB1 / AA11
+      IF ( AA11 < SqrtTiny ) THEN
+
+        BVEC(1) = Zero
+
+      ELSE
+
+        BVEC(1) = AB1 / AA11
+
+      END IF
 
     ELSEIF( mk == 3 )THEN
 
@@ -1125,8 +1151,17 @@ CONTAINS
 
       DET_AA = AA11 * AA22 - AA12 * AA12
 
-      BVEC(1) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
-      BVEC(2) = ( - AA12 * AB1 + AA11 * AB2 ) / DET_AA
+      IF ( DET_AA < SqrtTiny ) THEN
+
+        BVEC(1) = Zero
+        BVEC(2) = Zero
+    
+      ELSE
+
+        BVEC(1) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
+        BVEC(2) = ( - AA12 * AB1 + AA11 * AB2 ) / DET_AA
+
+      END IF
 
     ELSEIF( mk > 3 )THEN
 

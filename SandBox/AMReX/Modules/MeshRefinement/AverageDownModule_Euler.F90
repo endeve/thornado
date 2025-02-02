@@ -10,12 +10,6 @@ MODULE AverageDownModule_Euler
     amrex_get_finest_level
   USE amrex_amr_module, ONLY: &
     amrex_ref_ratio
-#if defined( THORNADO_USE_MESHREFINEMENT )
-  USE thornado_amrex_multifabutil_module, ONLY: &
-    amrex_average_down_dg_conservative, &
-    amrex_average_down_dg_pointwise, &
-    amrex_average_down_cg
-#endif
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_communicator, &
     amrex_parallel_ioprocessor
@@ -36,6 +30,10 @@ MODULE AverageDownModule_Euler
 
   ! --- Local Modules ---
 
+  USE thornado_amrex_multifabutil_module, ONLY: &
+    amrex_average_down_dg_conservative, &
+    amrex_average_down_dg_pointwise, &
+    amrex_average_down_cg
   USE MF_GeometryModule, ONLY: &
     UpdateSpatialMetric_MF
   USE InputParsingModule, ONLY: &
@@ -120,8 +118,6 @@ CONTAINS
 
     CALL TimersStart_AMReX( Timer_AMReX_AverageDown )
 
-#if defined( THORNADO_USE_MESHREFINEMENT )
-
     UpdateSpatialMetric = .FALSE.
     IF( PRESENT( UpdateSpatialMetric_Option ) ) &
       UpdateSpatialMetric = UpdateSpatialMetric_Option
@@ -150,8 +146,6 @@ CONTAINS
 
     END IF
 
-#endif
-
     CALL TimersStop_AMReX( Timer_AMReX_AverageDown )
 
   END SUBROUTINE AverageDownTo_PointWise
@@ -168,8 +162,6 @@ CONTAINS
     INTEGER :: iErr
 
     CALL TimersStart_AMReX( Timer_AMReX_AverageDown )
-
-#if defined( THORNADO_USE_MESHREFINEMENT )
 
     IF( DEBUG )THEN
 
@@ -207,8 +199,6 @@ CONTAINS
     CALL amrex_multifab_destroy( SqrtGm(CoarseLevel+1) )
 
     CALL amrex_multifab_destroy( SqrtGm(CoarseLevel) )
-
-#endif
 
     CALL TimersStop_AMReX( Timer_AMReX_AverageDown )
 

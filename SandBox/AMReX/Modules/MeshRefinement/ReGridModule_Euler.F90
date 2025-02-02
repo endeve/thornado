@@ -56,8 +56,8 @@ MODULE ReGridModule_Euler
     UpdateLapseShiftCurvature_XCFC_MF, &
     ComputeConformalFactorSourcesAndMg_XCFC_MF, &
     ComputePressureTensorTrace_XCFC_MF
-  USE MF_GravitySolutionModule_Newtonian_Poseidon, ONLY: &
-    ComputeGravitationalPotential_Newtonian_MF_Poseidon
+  USE MF_GravitySolutionModule_Newtonian, ONLY: &
+    ComputeGravitationalPotential_Newtonian_MF
   USE InputParsingModule, ONLY: &
     DEBUG, &
     UseAMR, &
@@ -161,7 +161,7 @@ CONTAINS
 
 #else
 
-      CALL ComputeGravitationalPotential_Newtonian_MF_Poseidon( MF_uCF, MF_uGF )
+      CALL ComputeGravitationalPotential_Newtonian_MF( MF_uCF, MF_uGF )
 
 #endif
 
