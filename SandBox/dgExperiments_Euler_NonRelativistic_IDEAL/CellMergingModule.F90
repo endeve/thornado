@@ -5,7 +5,7 @@ MODULE CellMergingModule
     USE ProgramHeaderModule, ONLY: &
       iX_B0, iX_E0, iX_B1, iX_E1, nDOFX, nNodesX
     USE GeometryFieldsModule, ONLY: &
-      uGF, iGF_h_2, iGF_h_3 ! In spherical coordinates: iGF_h_2 => r, iGF_h_3 => r*sin\theta
+      uGF, iGF_h_2, iGF_h_3, iGF_SqrtGm ! In spherical coordinates: iGF_h_2 => r, iGF_h_3 => r*sin\theta
     USE FluidFieldsModule, ONLY: &
       nCF
     USE QuadratureModule, ONLY: &
@@ -285,7 +285,8 @@ CONTAINS
 
         DO iNodeX = 1,nDOFX
 
-          uCF(iNodeX,iX2,iX1,iX3,iCF) = U(iNodeX,iX1,iX2,iX3,iCF)
+          ! uCF(iNodeX,iX2,iX1,iX3,iCF) = U(iNodeX,iX1,iX2,iX3,iCF)
+          uCF(iNodeX,iX2,iX1,iX3,iCF) = U(iNodeX,iX1,iX2,iX3,iCF) * uGF(iNodeX,iX1,iX2,iX3,iGF_h_2)
           ! print *, uGF(iNodeX,iX1,iX2,iX3,4), NodeCoordinate(MeshX(1),iX1,iNodeX)*SIN(NodeCoordinate(MeshX(2),iX2,iNodeX))
 
         END DO
@@ -326,14 +327,15 @@ CONTAINS
                 iX1,iX3,iCF) / &
             (wQ(iMerge ) * dx * MergedMeshX2(iX1) % NCellsPerMerge * &
              wQ(iNodeX2) * dx)
-            ! There is a scaling issue
+            ! There is a scaling issue? Fixed by dividing by iGF_SqrtGm after Do loop?
 
         END DO
         END DO
         END DO
 
         ! print *, U(iNodeX,iX1,iX2,iX3,iCF) - coeff_sum
-        U(iNodeX,iX1,iX2,iX3,iCF) = coeff_sum
+        ! U(iNodeX,iX1,iX2,iX3,iCF) = coeff_sum
+        U(iNodeX,iX1,iX2,iX3,iCF) = coeff_sum / uGF(iNodeX,iX1,iX2,iX3,iGF_h_2)
 
       END DO
       END DO
