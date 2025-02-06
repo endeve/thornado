@@ -484,10 +484,7 @@ CONTAINS
 
     b0u = ( GF_Gm11 * PM_V1 * PM_B1 &
              + GF_Gm22 * PM_V2 * PM_B2 &
-             + GF_Gm33 * PM_V3 * PM_B3 ) &
-         / ( GF_Alpha - GF_Gm11 * PM_V1 * GF_Beta1 &
-             - GF_Gm22 * PM_V2 * GF_Beta2 &
-             - GF_Gm33 * PM_V3 * GF_Beta3 )
+             + GF_Gm33 * PM_V3 * PM_B3 ) / GF_Alpha
 
     b0d = b0u * ( - GF_Alpha**2 + GF_Gm11 * GF_Beta1**2 &
                                 + GF_Gm22 * GF_Beta2**2 &
@@ -1753,20 +1750,16 @@ CONTAINS
 
    !PRINT*, 'Non-magnetic enthalpy: ', h
 
-    b0u = ( Gm11 * V1 * B1 &
-            + Gm22 * V2 * B2 &
-            + Gm33 * V3 * B3 ) &
-          / ( Lapse &
-              - Gm11 * V1 * Shift1 &
-              - Gm22 * V2 * Shift2 &
-              - Gm33 * V3 * Shift3 )
+   b0u = ( GF_Gm11 * PM_V1 * PM_B1 &
+           + GF_Gm22 * PM_V2 * PM_B2 &
+           + GF_Gm33 * PM_V3 * PM_B3 ) / GF_Alpha
 
-    b0d = b0u * ( - Lapse**2 + Gm11 * Shift1**2 &
-                             + Gm22 * Shift2**2 &
-                             + Gm33 * Shift3**2 ) &
-          + ( Gm11 * Shift1 * B1 &
-              + Gm22 * Shift2 * B2 &
-              + Gm33 * Shift3 * B3 )
+   b0d = b0u * ( - Lapse**2 + Gm11 * Shift1**2 &
+                            + Gm22 * Shift2**2 &
+                            + Gm33 * Shift3**2 ) &
+         + ( Gm11 * Shift1 * B1 &
+             + Gm22 * Shift2 * B2 &
+             + Gm33 * Shift3 * B3 )
 
     bSq = b0d * b0u &
           + b0u * ( Gm11 * Shift1 * B1 &
@@ -1870,15 +1863,11 @@ CONTAINS
 
     b0u = ( Gm11 * V1 * B1 &
             + Gm22 * V2 * B2 &
-            + Gm33 * V3 * B3 ) &
-          / ( Lapse &
-              - Gm11 * V1 * Shift1 &
-              - Gm22 * V2 * Shift2 &
-              - Gm33 * V3 * Shift3 )
+            + Gm33 * V3 * B3 ) / Lapse
 
     b0d = b0u * ( - Lapse**2 + Gm11 * Shift1**2 &
-                                + Gm22 * Shift2**2 &
-                                + Gm33 * Shift3**2 ) &
+                             + Gm22 * Shift2**2 &
+                             + Gm33 * Shift3**2 ) &
           + ( Gm11 * Shift1 * B1 &
               + Gm22 * Shift2 * B2 &
               + Gm33 * Shift3 * B3 )
@@ -1892,7 +1881,7 @@ CONTAINS
               + Gm33 * B3**2 )
 
     hStar = One + ( E + P ) / D + bSq / D
-    pStar = p +  bSq / 2.0_DP
+    pStar = P + bSq / 2.0_DP
 
     Flux_X1_MHD_Relativistic(iCM_D)  &
       = D * W * ( V1 - Shift1 / Lapse )
@@ -2019,20 +2008,11 @@ CONTAINS
 
     b0u = ( Gm11 * V1 * B1 &
             + Gm22 * V2 * B2 &
-            + Gm33 * V3 * B3 ) &
-          / ( Lapse &
-              - Gm11 * V1 * Shift1 &
-              - Gm22 * V2 * Shift2 &
-              - Gm33 * V3 * Shift3 )
-
-    b0d =  - ( Lapse / W ) &
-             * ( Gm11 * V1 * B1 &
-                 + Gm22 * V2 * B2 &
-                 + Gm33 * V3 * B3 )
+            + Gm33 * V3 * B3 ) / Lapse
 
     b0d = b0u * ( - Lapse**2 + Gm11 * Shift1**2 &
-                                + Gm22 * Shift2**2 &
-                                + Gm33 * Shift3**2 ) &
+                             + Gm22 * Shift2**2 &
+                             + Gm33 * Shift3**2 ) &
           + ( Gm11 * Shift1 * B1 &
               + Gm22 * Shift2 * B2 &
               + Gm33 * Shift3 * B3 )
@@ -2176,15 +2156,11 @@ CONTAINS
 
     b0u = ( Gm11 * V1 * B1 &
             + Gm22 * V2 * B2 &
-            + Gm33 * V3 * B3 ) &
-          / ( Lapse &
-              - Gm11 * V1 * Shift1 &
-              - Gm22 * V2 * Shift2 &
-              - Gm33 * V3 * Shift3 )
+            + Gm33 * V3 * B3 ) / Lapse
 
     b0d = b0u * ( - Lapse**2 + Gm11 * Shift1**2 &
-                                + Gm22 * Shift2**2 &
-                                + Gm33 * Shift3**2 ) &
+                             + Gm22 * Shift2**2 &
+                             + Gm33 * Shift3**2 ) &
           + ( Gm11 * Shift1 * B1 &
               + Gm22 * Shift2 * B2 &
               + Gm33 * Shift3 * B3 )
