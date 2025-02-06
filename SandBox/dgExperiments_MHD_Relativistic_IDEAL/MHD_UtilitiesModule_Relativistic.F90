@@ -2069,22 +2069,19 @@ CONTAINS
     IF( UseDivergenceCleaning )THEN
 
       Flux_X2_MHD_Relativistic(iCM_B1) &
-        = Lapse * W * b0u * ( V2 - ( Shift2 / Lapse ) ) * ( Shift1 / Lapse ) &
-          + W * V2 * B1 - W * V1 * B2 &
-          - W * ( Shift2 / Lapse ) * B1
+        = W * ( B1 * V2 - B2 * V1 ) &
+          - ( Shift2 / Lapse ) * ( W * B1 - Lapse * W * b0u * V1 )
 
       Flux_X2_MHD_Relativistic(iCM_B2) &
-        = Lapse * W * b0u * ( V2 - ( Shift2 / Lapse ) ) * ( Shift2 / Lapse ) &
-          - W * ( Shift2 / Lapse ) * B2 &
+        = - ( Shift2 / Lapse ) * ( W * B2 - Lapse * W * b0u * V2 ) &
           + ( Chi / Gm22 )
 
       Flux_X2_MHD_Relativistic(iCM_B3) &
-        = Lapse * W * b0u * ( V2 - ( Shift2 / Lapse ) ) * ( Shift3 / Lapse ) &
-          + W * V2 * B3 - W * V3 * B2 &
-          - W * ( Shift2 / Lapse ) * B3
+        = W * ( B3 * V2 - B2 * V3 ) &
+          - ( Shift2 / Lapse ) * ( W * B3 - Lapse * W * b0u * V3 )
 
       Flux_X2_MHD_Relativistic(iCM_Chi) &
-        = - Lapse * W * b0u * ( V2 - ( Shift2 / Lapse ) )  + W * B2 - Chi * ( Shift2 / Lapse )
+        = ( W * B2 - Lapse * W * b0u * V2 ) - ( Chi * Shift2 ) / Lapse
 
     ELSE
 
@@ -2217,22 +2214,19 @@ CONTAINS
     IF( UseDivergenceCleaning )THEN
 
       Flux_X3_MHD_Relativistic(iCM_B1) &
-        = Lapse * W * b0u * ( V3 - ( Shift3 / Lapse ) ) * ( Shift1 / Lapse ) &
-          + W * V3 * B1 - W * V1 * B3 &
-          - W * ( Shift3 / Lapse ) * B1
+        = W * ( B1 * V3 - B3 * V1 ) &
+          - ( Shift3 / Lapse ) * ( W * B1 - Lapse * W * b0u * V1 )
 
       Flux_X3_MHD_Relativistic(iCM_B2) &
-        = Lapse * W * b0u * ( V3 - ( Shift3 / Lapse ) ) * ( Shift2 / Lapse ) &
-          + W * V3 * B2 - W * V2 * B3 &
-          - W * ( Shift3 / Lapse ) * B2 &
-          + ( Chi / Gm33 )
+        = W * ( B2 * V3 - B3 * V2 ) &
+          - ( Shift3 / Lapse ) * ( W * B2 - Lapse * W * b0u * V2 )
 
       Flux_X3_MHD_Relativistic(iCM_B3) &
-        = Lapse * W * b0u * ( V3 - ( Shift3 / Lapse ) ) * ( Shift3 / Lapse ) &
-          - W * ( Shift3 / Lapse ) * B3
+        = - ( Shift3 / Lapse ) * ( W * B3 - Lapse * W * b0u * V3 ) &
+          + ( Chi / Gm33 )
 
       Flux_X3_MHD_Relativistic(iCM_Chi) &
-        = - Lapse * W * b0u * ( V3 - ( Shift3 / Lapse ) )  + W * B3 - Chi * ( Shift3 / Lapse )
+        = ( W * B3 - Lapse * W * b0u * V3 ) - ( Chi * Shift3 ) / Lapse
 
     ELSE
 
