@@ -1788,8 +1788,8 @@ CONTAINS
 
     IF( UseDivergenceCleaning )THEN
 
-      Eigenvalues_MHD_Relativistic(1) = One
-      Eigenvalues_MHD_Relativistic(2) = -One
+      Eigenvalues_MHD_Relativistic(1) =  Lapse * One - Shifti
+      Eigenvalues_MHD_Relativistic(2) = -Lapse * One - Shifti
 
     ELSE
 
