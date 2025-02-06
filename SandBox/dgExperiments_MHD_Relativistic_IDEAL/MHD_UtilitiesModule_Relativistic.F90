@@ -1750,9 +1750,9 @@ CONTAINS
 
    !PRINT*, 'Non-magnetic enthalpy: ', h
 
-   b0u = ( GF_Gm11 * PM_V1 * PM_B1 &
-           + GF_Gm22 * PM_V2 * PM_B2 &
-           + GF_Gm33 * PM_V3 * PM_B3 ) / GF_Alpha
+   b0u = ( Gm11 * V1 * B1 &
+           + Gm22 * V2 * B2 &
+           + Gm33 * V3 * B3 ) / Lapse
 
    b0d = b0u * ( - Lapse**2 + Gm11 * Shift1**2 &
                             + Gm22 * Shift2**2 &
