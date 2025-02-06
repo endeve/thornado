@@ -1935,22 +1935,19 @@ CONTAINS
     IF( UseDivergenceCleaning )THEN
 
       Flux_X1_MHD_Relativistic(iCM_B1) &
-        = Lapse * W * b0u * ( V1 - ( Shift1 / Lapse ) ) * ( Shift1 / Lapse ) &
-          - W * ( Shift1 / Lapse ) * B1 &
+        = - ( Shift1 / Lapse ) * ( W * B1 - Lapse * W * b0u * V1 ) &
           + ( Chi / Gm11 )
 
       Flux_X1_MHD_Relativistic(iCM_B2) &
-        = Lapse * W * b0u * ( V1 - ( Shift1 / Lapse ) ) * ( Shift2 / Lapse ) &
-          + W * V1 * B2 - W * V2 * B1 &
-          - W * ( Shift1 / Lapse ) * B2
+        = W * ( B2 * V1 - B1 * V2 ) &
+          - ( Shift1 / Lapse ) * ( W * B2 - Lapse * W * b0u * V2 )
 
       Flux_X1_MHD_Relativistic(iCM_B3) &
-        = Lapse * W * b0u * ( V1 - ( Shift1 / Lapse ) ) * ( Shift3 / Lapse ) &
-          + W * V1 * B3 - W * V3 * B1 &
-          - W * ( Shift1 / Lapse ) * B3
+        = W * ( B3 * V1 - B1 * V3 ) &
+          - ( Shift1 / Lapse ) * ( W * B3 - Lapse * W * b0u * V3 )
 
       Flux_X1_MHD_Relativistic(iCM_Chi) &
-        = - Lapse * W * b0u * ( V1 - ( Shift1 / Lapse ) ) + W * B1 - Chi * ( Shift1 / Lapse )
+        = ( W * B1 - Lapse * W * b0u * V1 ) - ( Chi * Shift1 ) / Lapse
 
     ELSE
 
