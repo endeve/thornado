@@ -223,6 +223,7 @@ MHD_UtilitiesModule.o: \
 
 MHD_UtilitiesModule_Relativistic.o: \
   KindModule.o \
+  UtilitieModule.o \
   ProgramHeaderModule.o \
   LinearAlgebraModule.o \
   ReferenceElementModuleX.o \
