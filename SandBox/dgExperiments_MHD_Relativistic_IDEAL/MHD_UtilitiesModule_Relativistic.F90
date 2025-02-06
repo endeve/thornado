@@ -15,6 +15,8 @@ MODULE MHD_UtilitiesModule_Relativistic
     Four, &
     Fourth, &
     Pi
+  USE UtilitiesModule, ONLY: &
+    IsCornerCell
   USE ProgramHeaderModule, ONLY: &
     swX, &
     nDOFX, &
@@ -1458,9 +1460,23 @@ CONTAINS
       P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iNX, iX1, iX2, iX3, iAM
+    INTEGER :: iNX, iX1, iX2, iX3, iAM, iPM
 
     ! --- Update primitive variables, pressure, and sound speed ---
+
+    DO iPM = 1, nPM
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iNX = 1, nDOFX
+
+      P(iNX,iX1,iX2,iX3,iPM) = Zero
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
 
     DO iAM = 1, nAM
     DO iX3 = iX_B1(3), iX_E1(3)
@@ -1476,10 +1492,12 @@ CONTAINS
     END DO
     END DO
 
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
     DO iNX = 1, nDOFX
+
+      IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
 
       CALL ComputePrimitive_MHD_Relativistic &
              ( U   (iNX,iX1,iX2,iX3,iCM_D ),        &
