@@ -79,6 +79,8 @@ MODULE MHD_BoundaryConditionsModule
     Timer_MHD_BC_ApplyBC, &
     Timer_MHD_BC_CopyIn, &
     Timer_MHD_BC_CopyOut
+  USE QuadratureModule, ONLY: &
+    GetQuadrature
 
   USE HDF5
 
@@ -251,12 +253,20 @@ CONTAINS
 
     INTEGER  :: nX
     INTEGER  :: iCM, iX1, iX2, iX3
-    INTEGER  :: iNX, iNX_0
-    INTEGER  :: iNX1, iNX2, iNX3, jNX, jNX1
-    REAL(DP) :: X1, X2, X3
+    INTEGER  :: iNX, iNX_L, iNX_R, iNX_0
+    INTEGER  :: iNX1, iNX1_L, iNX1_R, &
+                iNX2, iNX2_L, iNX2_R, &
+                iNX3, iNX3_L, iNX3_R, &
+                jNX, jNX1
+    REAL(DP) :: X1, X2, X3, &
+                X1_L, X1_R, X1_L_C, X1_R_C, X1_I, X1_O
+    REAL(DP) :: dX1_L, dX1_R
     REAL(DP) :: V1, V2, V3, VSq, W
     REAL(DP) :: CB1, CB2, CB3, VdotB
     REAL(DP) :: D_0, E_0, R_0, R_q
+    REAL(DP), DIMENSION(nNodesX(1)) :: xQ1_L, wQ1_L, xQ1_R, wQ1_R
+    REAL(DP), DIMENSION(nNodesX(2)) :: xQ2_L, wQ2_L, xQ2_R, wQ2_R
+    REAL(DP), DIMENSION(nNodesX(3)) :: xQ3_L, wQ3_L, xQ3_R, wQ3_R
 
     SELECT CASE ( bcX(1) )
 
@@ -720,6 +730,135 @@ CONTAINS
         END DO
 
       END IF
+
+    CASE( 41 ) ! BCs for constant rotation, 'shearing disk'-like problem
+
+      ASSOCIATE( X1_C => MeshX(1) % Center, &
+                 dX1  => MeshX(1) % Width )
+
+      IF( ApplyInnerBC_MHD( iApplyBC ) )THEN
+
+        DO iCM   = 1, nCM
+        DO iX3   = iX_B0(3), iX_E0(3)
+        DO iX2   = iX_B0(2), iX_E0(2)
+        DO iX1   = 1, swX(1)
+        DO iNX_L = 1, nDOFX
+
+          ! Only BCs for B^{3}, others are initial values.
+
+          IF( ( iCM .EQ. 7 ) .OR. ( iCM .EQ. 9 ) )THEN
+
+            ! Get necessary cell and node values for the ghost cell (L)
+            ! and the first compute cell (R).
+
+            iNX1_L = NodeNumberTableX(1,iNX_L)
+            X1_L   = NodeCoordinate( MeshX(1), iX_B0(1)-iX1, iNX1_L )
+
+            X1_R_C = X1_C(iX_B0(1))
+            dX1_R  = dX1 (iX_B0(1))
+
+            ! Get the quadrature weights and points for the first compute
+            ! cell (R).
+
+            CALL GetQuadrature( nNodesX(1), xQ1_R, wQ1_R, 'Gaussian' )
+            CALL GetQuadrature( nNodesX(2), xQ2_R, wQ2_R, 'Gaussian' )
+            CALL GetQuadrature( nNodesX(3), xQ3_R, wQ3_R, 'Gaussian' )
+
+            U(iNX_L,iX_B0(1)-iX1,iX2,iX3,iCM) = Zero
+
+            DO iNX_R = 1, nDOFX
+
+              ! Get node numbers for the first compute cell (R).
+
+              iNX1_R = NodeNumberTableX(1,iNX_R)
+              iNX2_R = NodeNumberTableX(2,iNX_R)
+              iNX3_R = NodeNumberTableX(3,iNX_R)
+
+              ! Set each ghost cell (L) node to the cell average of
+              ! r * B^{3} in the first compute cell (R).
+
+              U(iNX_L,iX_B0(1)-iX1,iX2,iX3,iCM) &
+                = U(iNX_L,iX_B0(1)-iX1,iX2,iX3,iCM) &
+                  + ( One / X1_L ) * ( One / X1_R_C ) &
+                    * wQ1_R(iNX1_R) * wQ2_R(iNX2_R) * wQ3_R(iNX3_R) &
+                    * ( X1_R_C + dX1_R * xQ1_R(iNX1_R) )**2 &
+                    * U(iNX_R,iX_B0(1),iX2,iX3,iCM)
+
+            END DO
+
+          END IF
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+      ! --- Outer Boundary ---
+
+      IF( ApplyOuterBC_MHD( iApplyBC ) )THEN
+
+        DO iCM   = 1, nCM
+        DO iX3   = iX_B0(3), iX_E0(3)
+        DO iX2   = iX_B0(2), iX_E0(2)
+        DO iX1   = 1, swX(1)
+        DO iNX_R = 1, nDOFX
+
+           ! Only BCs for B^{3}, others are initial values.
+
+          IF( ( iCM .EQ. 7 ) .OR. ( iCM .EQ. 9 ) )THEN
+
+            ! Get necessary cell and node values for the ghost cell (R)
+            ! and the first compute cell (L).
+
+            iNX1_R = NodeNumberTableX(1,iNX_R)
+            X1_R   = NodeCoordinate( MeshX(1), iX_E0(1)+iX1, iNX1_R )
+
+            X1_L_C = X1_C(iX_E0(1))
+            dX1_L  = dX1 (iX_E0(1))
+
+            ! Get the quadrature weights and points for the last compute
+            ! cell (L).
+
+            CALL GetQuadrature( nNodesX(1), xQ1_L, wQ1_L, 'Gaussian' )
+            CALL GetQuadrature( nNodesX(2), xQ2_L, wQ2_L, 'Gaussian' )
+            CALL GetQuadrature( nNodesX(3), xQ3_L, wQ3_L, 'Gaussian' )
+
+            U(iNX_R,iX_E0(1)+iX1,iX2,iX3,iCM) = Zero
+
+            DO iNX_L = 1, nDOFX
+
+              ! Get node numbers for the last compute cell (L).
+
+              iNX1_L = NodeNumberTableX(1,iNX_L)
+              iNX2_L = NodeNumberTableX(2,iNX_L)
+              iNX3_L = NodeNumberTableX(3,iNX_L)
+
+              ! Set each ghost cell (R) node to the cell average of
+              ! r * B^{3} in the last compute cell (L).
+
+              U(iNX_R,iX_E0(1)+iX1,iX2,iX3,iCM) &
+                = U(iNX_R,iX_E0(1)+iX1,iX2,iX3,iCM) &
+                  + ( One / X1_R ) * ( One / X1_L_C ) &
+                    * wQ1_L(iNX1_L) * wQ2_L(iNX2_L) * wQ3_L(iNX3_L) &
+                    * ( X1_L_C + dX1_L * xQ1_L(iNX1_L) )**2 &
+                    * U(iNX_L,iX_E0(1),iX2,iX3,iCM)
+
+            END DO
+
+          END IF
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+      END ASSOCIATE
 
     CASE( 44 ) ! Custom BCs for relativistic shearing disk.
 
@@ -1261,6 +1400,18 @@ CONTAINS
                 - CS3_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
                 + CS3_I(iNX,iX_B0(1)-iX1,iX2,iX3)
 
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,7) &
+              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,7)
+
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,8) &
+              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,8)
+
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,9) &
+              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,9)
+
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,10) &
+              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,10)
+
           END DO
           END DO
           END DO
@@ -1296,6 +1447,18 @@ CONTAINS
               = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,4) &
                 - CS3_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
                 + CS3_I(iNX,iX_E0(1)+iX1,iX2,iX3)
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,7) &
+              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,7)
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,8) &
+              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,8)
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,9) &
+              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,9)
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,10) &
+              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,10)
 
           END DO
           END DO
