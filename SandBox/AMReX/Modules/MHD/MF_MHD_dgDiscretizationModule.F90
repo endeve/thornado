@@ -96,8 +96,8 @@ MODULE  MF_MHD_dgDiscretizationModule
     FillPatch
   USE AverageDownModule_MHD, ONLY: &
     AverageDown
-!  USE MF_TimeSteppingModule_SSPRK_MHD, ONLY: &
-!    CFL
+  USE MF_TimeSteppingModule_SSPRK_MHD, ONLY: &
+    CFL
 
   IMPLICIT NONE
   PRIVATE
@@ -299,7 +299,7 @@ CONTAINS
                              EvolveOnlyMagnetic, D )
 
       CALL ComputeIncrement_MHD_DG_Explicit &
-             ( t, 1.0_DP, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
+             ( t, CFL, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
                SuppressBC_Option = .TRUE., &
                EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic, &
                UseDivergenceCleaning_Option = UseDivergenceCleaning, &
