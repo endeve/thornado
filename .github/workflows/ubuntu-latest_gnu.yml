@@ -168,15 +168,9 @@ jobs:
       THORNADO_DIR: ${{ needs.build.outputs.THORNADO_DIR }}
     steps:
       - name: Checkout thornado
-        uses: actions/checkout@v3
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev \
-            python3-matplotlib \
-            python3-h5py
-          sudo apt-get -y update
+        uses: actions/checkout@v4
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/dgExperiments_MHD_Relativistic_IDEAL
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_MHD_Relativistic_IDEAL/Executables
