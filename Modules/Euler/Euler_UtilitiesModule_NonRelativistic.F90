@@ -6,6 +6,8 @@ MODULE Euler_UtilitiesModule_NonRelativistic
     SqrtTiny, &
     Half, &
     One
+  USE UtilitiesModule, ONLY: &
+    IsCornerCell
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
     nDimsX
@@ -258,6 +260,9 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
         A(iNodeX,iX1,iX2,iX3,:) = Zero
+        P(iNodeX,iX1,iX2,iX3,:) = Zero
+
+        IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
 
         CALL ComputePrimitive_Euler_NonRelativistic &
                ( U(iNodeX,iX1,iX2,iX3,iCF_D),         &
