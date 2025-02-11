@@ -760,8 +760,6 @@ CONTAINS
 
     END DO
 
-    PRINT*, 'Fluid fields read.'
-
     CALL H5FCLOSE_F( FILE_ID, HDFERR )
 
     CALL H5CLOSE_F( HDFERR )

@@ -137,9 +137,6 @@ CONTAINS
         iN2 = Tab(2,iNode)
         iN3 = Tab(3,iNode)
 
-        PRINT*, iX1, iX2, iX3
-        PRINT*, iN1, iN2, iN3
-
         FromField3D(iNode,iX1,iX2,iX3) &
           = F( (iX1-iB(1))*nN(1)+iN1, (iX2-iB(2))*nN(2)+iN2, (iX3-iB(3))*nN(3)+iN3 )
 
