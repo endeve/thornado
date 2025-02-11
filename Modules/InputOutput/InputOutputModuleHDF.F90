@@ -166,16 +166,19 @@ CONTAINS
 
 
   SUBROUTINE ReadFieldsHDF &
-    ( ReadFileNumber, Time, ReadGF_Option, ReadFF_Option, ReadRF_Option )
+    ( ReadFileNumber, Time, &
+      ReadGF_Option, ReadFF_Option, ReadRF_Option, &
+      ReadGhost_Option )
 
     INTEGER,  INTENT(in)  :: &
       ReadFileNumber
     REAL(DP), INTENT(out) :: &
       Time
     LOGICAL,  INTENT(in), OPTIONAL :: &
-      ReadGF_Option, ReadFF_Option, ReadRF_Option
+      ReadGF_Option, ReadFF_Option, ReadRF_Option, &
+      ReadGhost_Option
 
-    LOGICAL  :: ReadGF, ReadFF, ReadRF
+    LOGICAL  :: ReadGF, ReadFF, ReadRF, ReadGhost
 
     FileNumber    = ReadFileNumber
     FileNumber_AS = ReadFileNumber
@@ -190,11 +193,14 @@ CONTAINS
     ReadRF = .FALSE.
     IF( PRESENT( ReadRF_Option ) ) ReadRF = ReadRF_Option
 
-    IF( ReadGF ) CALL ReadGeometryFieldsHDF( Time )
+    ReadGhost = .FALSE.
+    IF( PRESENT( ReadGhost_Option ) ) ReadGhost = ReadGhost_Option
 
-    IF( ReadFF ) CALL ReadFluidFieldsHDF( Time )
+    IF( ReadGF ) CALL ReadGeometryFieldsHDF( Time, ReadGhost )
 
-    IF( ReadRF ) CALL ReadRadiationFieldsHDF( Time )
+    IF( ReadFF ) CALL ReadFluidFieldsHDF( Time, ReadGhost )
+
+    IF( ReadRF ) CALL ReadRadiationFieldsHDF( Time, ReadGhost )
 
     FileNumber = FileNumber + 1
 
@@ -348,20 +354,22 @@ CONTAINS
   END SUBROUTINE WriteGeometryFieldsHDF
 
 
-  SUBROUTINE ReadGeometryFieldsHDF( Time )
+  SUBROUTINE ReadGeometryFieldsHDF( Time, ReadGhost )
 
     REAL(DP), INTENT(out) :: Time
+    LOGICAL,  INTENT(in ) :: ReadGhost
 
-    CHARACTER(6)   :: FileNumberString
-    CHARACTER(256) :: FileName
-    CHARACTER(256) :: DatasetName
-    CHARACTER(256) :: GroupName
-    INTEGER(HID_T) :: FILE_ID
-    INTEGER        :: iGF
-    REAL(DP)       :: Dataset1D(1)
-    REAL(DP)       :: Dataset3D(nX(1)*nNodesX(1), &
-                                nX(2)*nNodesX(2), &
-                                nX(3)*nNodesX(3))
+    CHARACTER(6)          :: FileNumberString
+    CHARACTER(256)        :: FileName
+    CHARACTER(256)        :: DatasetName
+    CHARACTER(256)        :: GroupName
+    INTEGER(HID_T)        :: FILE_ID
+    INTEGER               :: iGF
+    REAL(DP)              :: Dataset1D(1)
+    REAL(DP), ALLOCATABLE :: Dataset3D(:,:,:)
+
+    INTEGER        :: nXT(3) ! nX with or without ghost cells
+    INTEGER        :: iXB(3), iXE(3) ! Begin/end indices
 
     WRITE( FileNumberString, FMT='(i6.6)') FileNumber
 
@@ -376,6 +384,24 @@ CONTAINS
     CALL H5FOPEN_F( TRIM( FileName ), H5F_ACC_RDONLY_F, FILE_ID, HDFERR )
 
     ASSOCIATE( U => UnitsDisplay )
+
+    IF( ReadGhost )THEN
+
+      nXT = nX + 2 * swX
+      iXB = iX_B1
+      iXE = iX_E1
+
+    ELSE
+
+      nXT = nX
+      iXB = iX_B0
+      iXE = iX_E0
+
+    END IF
+
+    ALLOCATE( Dataset3D(iXB(1):iXE(1), &
+                        iXB(2):iXE(2), &
+                        iXB(3):iXE(3)) )
 
     ! --- Read Time ---
 
@@ -397,8 +423,8 @@ CONTAINS
 
       CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
 
-      uGF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iGF) &
-        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX, iX_B0, iX_E0 ) &
+      uGF(1:nDOFX,iXB(1):iXE(1),iXB(2):iXE(2),iXB(3):iXE(3),iGF) &
+        = FromField3D( Dataset3D, nXT, nNodesX, nDOFX, NodeNumberTableX, iXB, iXE ) &
             * unitsGF(iGF)
 
     END DO
@@ -406,6 +432,8 @@ CONTAINS
     CALL H5FCLOSE_F( FILE_ID, HDFERR )
 
     CALL H5CLOSE_F( HDFERR )
+
+    DEALLOCATE( Dataset3D )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE TO( uGF )
@@ -624,20 +652,22 @@ CONTAINS
   END SUBROUTINE WriteFluidFieldsHDF
 
 
-  SUBROUTINE ReadFluidFieldsHDF( Time )
+  SUBROUTINE ReadFluidFieldsHDF( Time, ReadGhost )
 
     REAL(DP), INTENT(out) :: Time
+    LOGICAL,  INTENT(in ) :: ReadGhost
 
-    CHARACTER(6)   :: FileNumberString
-    CHARACTER(256) :: FileName
-    CHARACTER(256) :: DatasetName
-    CHARACTER(256) :: GroupName
-    INTEGER(HID_T) :: FILE_ID
-    INTEGER        :: iFF
-    REAL(DP)       :: Dataset1D(1)
-    REAL(DP)       :: Dataset3D(nX(1)*nNodesX(1), &
-                                nX(2)*nNodesX(2), &
-                                nX(3)*nNodesX(3))
+    CHARACTER(6)          :: FileNumberString
+    CHARACTER(256)        :: FileName
+    CHARACTER(256)        :: DatasetName
+    CHARACTER(256)        :: GroupName
+    INTEGER(HID_T)        :: FILE_ID
+    INTEGER               :: iFF
+    REAL(DP)              :: Dataset1D(1)
+    REAL(DP), ALLOCATABLE :: Dataset3D(:,:,:)
+
+    INTEGER        :: nXT(3) ! nX with or without ghost cells
+    INTEGER        :: iXB(3), iXE(3) ! Begin/end indices
 
     WRITE( FileNumberString, FMT='(i6.6)') FileNumber
 
@@ -657,6 +687,24 @@ CONTAINS
 
     DatasetName = '/Time'
 
+    IF( ReadGhost )THEN
+
+      nXT = nX + 2 * swX
+      iXB = iX_B1
+      iXE = iX_E1
+
+    ELSE
+
+      nXT = nX
+      iXB = iX_B0
+      iXE = iX_E0
+
+    END IF
+
+    ALLOCATE( Dataset3D(iXB(1):iXE(1), &
+                        iXB(2):iXE(2), &
+                        iXB(3):iXE(3)) )
+
     CALL ReadDataset1DHDF( Dataset1D, DatasetName, FILE_ID )
 
     Time = Dataset1D(1) * U % TimeUnit
@@ -672,11 +720,10 @@ CONTAINS
     DO iFF = 1, nCF
 
       DatasetName = TRIM( GroupName ) // '/' // TRIM( namesCF(iFF) )
-
       CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
 
-      uCF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF) &
-        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX, iX_B0, iX_E0 ) &
+      uCF(1:nDOFX,iXB(1):iXE(1),iXB(2):iXE(2),iXB(3):iXE(3),iFF) &
+        = FromField3D( Dataset3D, nXT, nNodesX, nDOFX, NodeNumberTableX, iXB, iXE ) &
             * unitsCF(iFF)
 
     END DO
@@ -691,8 +738,8 @@ CONTAINS
 
       CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
 
-      uPF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF) &
-        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX, iX_B0, iX_E0 ) &
+      uPF(1:nDOFX,iXB(1):iXB(1),iXB(2):iXE(2),iXB(3):iXE(3),iFF) &
+        = FromField3D( Dataset3D, nXT, nNodesX, nDOFX, NodeNumberTableX, iXB, iXE ) &
             * unitsPF(iFF)
 
     END DO
@@ -707,15 +754,19 @@ CONTAINS
 
       CALL ReadDataset3DHDF( Dataset3D, DatasetName, FILE_ID )
 
-      uAF(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iFF) &
-        = FromField3D( Dataset3D, nX, nNodesX, nDOFX, NodeNumberTableX, iX_B0, iX_E0 ) &
+      uAF(1:nDOFX,iXB(1):iXB(1),iXB(2):iXE(2),iXB(3):iXE(3),iFF) &
+        = FromField3D( Dataset3D, nXT, nNodesX, nDOFX, NodeNumberTableX, iXB, iXE ) &
             * unitsAF(iFF)
 
     END DO
 
+    PRINT*, 'Fluid fields read.'
+
     CALL H5FCLOSE_F( FILE_ID, HDFERR )
 
     CALL H5CLOSE_F( HDFERR )
+
+    DEALLOCATE( Dataset3D )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE TO( uCF, uPF, uAF )
@@ -977,9 +1028,10 @@ CONTAINS
   END SUBROUTINE WriteRadiationFieldsHDF
 
 
-  SUBROUTINE ReadRadiationFieldsHDF( Time )
+  SUBROUTINE ReadRadiationFieldsHDF( Time, ReadGhost )
 
     REAL(DP), INTENT(out) :: Time
+    LOGICAL,  INTENT(in ) :: ReadGhost
 
     CHARACTER(2)   :: String2
     CHARACTER(6)   :: FileNumberString
