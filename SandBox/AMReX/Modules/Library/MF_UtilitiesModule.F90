@@ -100,12 +100,12 @@ MODULE MF_UtilitiesModule
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeAuxiliary_Fluid_TABLE, &
     ApplyEquationOfState_TABLE
-#ifndef THORNADO_NOTRANSPORT
-  USE Euler_UtilitiesModule_Relativistic, ONLY: &
-    ComputePrimitive_Euler_Relativistic
-  USE TwoMoment_UtilitiesModule, ONLY: &
-    ComputePrimitive_TwoMoment
-#endif
+!#ifndef THORNADO_NOTRANSPORT
+!  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+!   ComputePrimitive_Euler_Relativistic
+!  USE TwoMoment_UtilitiesModule, ONLY: &
+!   ComputePrimitive_TwoMoment
+!#endif
 
   ! --- Local Modules ---
 
@@ -865,8 +865,8 @@ CONTAINS
 
         CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
-        CALL ApplyBoundaryConditions_TwoMoment_MF &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, CR, Edge_Map )
+        !CALL ApplyBoundaryConditions_TwoMoment_MF &
+        !       ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, CR, Edge_Map )
 
       END DO
 
@@ -920,22 +920,22 @@ CONTAINS
       DO iX2 = 1, nX(2)
       DO iX1 = 1, nX(1)
 
-        CALL ComputePrimitive_Euler_Relativistic &
-               ( CF(:,iX1,iX2,iX3,iCF_D ),       &
-                 CF(:,iX1,iX2,iX3,iCF_S1),       &
-                 CF(:,iX1,iX2,iX3,iCF_S2),       &
-                 CF(:,iX1,iX2,iX3,iCF_S3),       &
-                 CF(:,iX1,iX2,iX3,iCF_E ),       &
-                 CF(:,iX1,iX2,iX3,iCF_Ne),       &
-                 PF(:,iX1,iX2,iX3,iPF_D ),       &
-                 PF(:,iX1,iX2,iX3,iPF_V1),       &
-                 PF(:,iX1,iX2,iX3,iPF_V2),       &
-                 PF(:,iX1,iX2,iX3,iPF_V3),       &
-                 PF(:,iX1,iX2,iX3,iPF_E ),       &
-                 PF(:,iX1,iX2,iX3,iPF_Ne),       &
-                 G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+        !CALL ComputePrimitive_Euler_Relativistic &
+        !      ( CF(:,iX1,iX2,iX3,iCF_D ),       &
+        !       CF(:,iX1,iX2,iX3,iCF_S1),       &
+        !        CF(:,iX1,iX2,iX3,iCF_S2),       &
+        !        CF(:,iX1,iX2,iX3,iCF_S3),       &
+        !        CF(:,iX1,iX2,iX3,iCF_E ),       &
+        !        CF(:,iX1,iX2,iX3,iCF_Ne),       &
+        !        PF(:,iX1,iX2,iX3,iPF_D ),       &
+        !        PF(:,iX1,iX2,iX3,iPF_V1),       &
+        !        PF(:,iX1,iX2,iX3,iPF_V2),       &
+        !         PF(:,iX1,iX2,iX3,iPF_V3),       &
+        !         PF(:,iX1,iX2,iX3,iPF_E ),       &
+        !         PF(:,iX1,iX2,iX3,iPF_Ne),       &
+        !         G(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+        !         G(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+        !         G(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
       END DO
       END DO
@@ -955,26 +955,26 @@ CONTAINS
         DO iNodeE = 1, nDOFE
 
           iNodeZ = (iNodeX-1) * nDOFE + iNodeE
-          CALL ComputePrimitive_TwoMoment &
-               ( CR(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS), &
-                 CR(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS), &
-                 CR(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G2, iS), &
-                 CR(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G3, iS), &
-                 PR(iNodeZ,iZ1,iZ2,iZ3,iZ4, iPR_D, iS), &
-                 PR(iNodeZ,iZ1,iZ2,iZ3,iZ4, iPR_I1, iS), &
-                 PR(iNodeZ,iZ1,iZ2,iZ3,iZ4, iPR_I2, iS), &
-                 PR(iNodeZ,iZ1,iZ2,iZ3,iZ4, iPR_I3, iS), &
-                 PF(iNodeX,iZ2,iZ3,iZ4, iPF_V1), &
-                 PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2), &
-                 PF(iNodeX,iZ2,iZ3,iZ4, iPF_V3), &
-                 G (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
-                 G (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
-                 G (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33), &
-                 0.0_DP, 0.0_DP, 0.0_DP,                &
-                 G(iNodeX ,iZ2,iZ3,iZ4,iGF_Alpha  ), &
-                 G(iNodeX  ,iZ2,iZ3,iZ4,iGF_Beta_1  ), &
-                 G(iNodeX  ,iZ2,iZ3,iZ4,iGF_Beta_2  ), &
-                 G(iNodeX  ,iZ2,iZ3,iZ4,iGF_Beta_3  ) )
+          !CALL ComputePrimitive_TwoMoment &
+          !     ( CR(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_N, iS), &
+          !       CR(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G1, iS), &
+          !       CR(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G2, iS), &
+          !       CR(iNodeZ,iZ1,iZ2,iZ3,iZ4, iCR_G3, iS), &
+          !       PR(iNodeZ,iZ1,iZ2,iZ3,iZ4, iPR_D, iS), &
+          !       PR(iNodeZ,iZ1,iZ2,iZ3,iZ4, iPR_I1, iS), &
+          !       PR(iNodeZ,iZ1,iZ2,iZ3,iZ4, iPR_I2, iS), &
+          !       PR(iNodeZ,iZ1,iZ2,iZ3,iZ4, iPR_I3, iS), &
+          !       PF(iNodeX,iZ2,iZ3,iZ4, iPF_V1), &
+          !       PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2), &
+          !       PF(iNodeX,iZ2,iZ3,iZ4, iPF_V3), &
+          !       G (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
+          !       G (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
+          !       G (iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33), &
+          !       0.0_DP, 0.0_DP, 0.0_DP,                &
+          !       G(iNodeX ,iZ2,iZ3,iZ4,iGF_Alpha  ), &
+          !      G(iNodeX  ,iZ2,iZ3,iZ4,iGF_Beta_1  ), &
+          !       G(iNodeX  ,iZ2,iZ3,iZ4,iGF_Beta_2  ), &
+          !       G(iNodeX  ,iZ2,iZ3,iZ4,iGF_Beta_3  ) )
 
         END DO
         END DO
@@ -1228,50 +1228,50 @@ CONTAINS
         DO iX2 = 1, nX(2)
         DO iX1 = 1, nX(1)
 
-          CALL ComputePrimitive_Euler_Relativistic &
-               ( U (:,iX1,iX2,iX3,iCF_D       ), &
-                 U (:,iX1,iX2,iX3,iCF_S1      ), &
-                 U (:,iX1,iX2,iX3,iCF_S2      ), &
-                 U (:,iX1,iX2,iX3,iCF_S3      ), &
-                 U (:,iX1,iX2,iX3,iCF_E       ), &
-                 U (:,iX1,iX2,iX3,iCF_Ne      ), &
-                 PF(:,iX1,iX2,iX3,iPF_D       ), &
-                 PF(:,iX1,iX2,iX3,iPF_V1      ), &
-                 PF(:,iX1,iX2,iX3,iPF_V2      ), &
-                 PF(:,iX1,iX2,iX3,iPF_V3      ), &
-                 PF(:,iX1,iX2,iX3,iPF_E       ), &
-                 PF(:,iX1,iX2,iX3,iPF_Ne      ), &
-                 G (:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 G (:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 G (:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+          !CALL ComputePrimitive_Euler_Relativistic &
+          !     ( U (:,iX1,iX2,iX3,iCF_D       ), &
+          !       U (:,iX1,iX2,iX3,iCF_S1      ), &
+          !       U (:,iX1,iX2,iX3,iCF_S2      ), &
+          !       U (:,iX1,iX2,iX3,iCF_S3      ), &
+          !       U (:,iX1,iX2,iX3,iCF_E       ), &
+          !       U (:,iX1,iX2,iX3,iCF_Ne      ), &
+          !       PF(:,iX1,iX2,iX3,iPF_D       ), &
+          !       PF(:,iX1,iX2,iX3,iPF_V1      ), &
+          !       PF(:,iX1,iX2,iX3,iPF_V2      ), &
+          !       PF(:,iX1,iX2,iX3,iPF_V3      ), &
+          !       PF(:,iX1,iX2,iX3,iPF_E       ), &
+           !      PF(:,iX1,iX2,iX3,iPF_Ne      ), &
+            !     G (:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+            !     G (:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+            !     G (:,iX1,iX2,iX3,iGF_Gm_dd_33) )
 
-           CALL ComputeAuxiliary_Fluid_TABLE &
-               ( PF(:,iX1,iX2,iX3,iPF_D ), &
-                 PF(:,iX1,iX2,iX3,iPF_E ), &
-                 PF(:,iX1,iX2,iX3,iPF_Ne), &
-                 AF(:,iX1,iX2,iX3,iAF_P ), &
-                 AF(:,iX1,iX2,iX3,iAF_T ), &
-                 AF(:,iX1,iX2,iX3,iAF_Ye), &
-                 AF(:,iX1,iX2,iX3,iAF_S ), &
-                 AF(:,iX1,iX2,iX3,iAF_E ), &
-                 AF(:,iX1,iX2,iX3,iAF_Gm), &
-                 AF(:,iX1,iX2,iX3,iAF_Cs) )
+           !CALL ComputeAuxiliary_Fluid_TABLE &
+           !    ( PF(:,iX1,iX2,iX3,iPF_D ), &
+           !      PF(:,iX1,iX2,iX3,iPF_E ), &
+           !      PF(:,iX1,iX2,iX3,iPF_Ne), &
+           !      AF(:,iX1,iX2,iX3,iAF_P ), &
+           !      AF(:,iX1,iX2,iX3,iAF_T ), &
+           !      AF(:,iX1,iX2,iX3,iAF_Ye), &
+           !      AF(:,iX1,iX2,iX3,iAF_S ), &
+           !      AF(:,iX1,iX2,iX3,iAF_E ), &
+           !      AF(:,iX1,iX2,iX3,iAF_Gm), &
+           !      AF(:,iX1,iX2,iX3,iAF_Cs) )
 
-          CALL ApplyEquationOfState_TABLE &
-               ( PF(:,iX1,iX2,iX3,iPF_D ), &
-                 AF(:,iX1,iX2,iX3,iAF_T ), &
-                 AF(:,iX1,iX2,iX3,iAF_Ye), &
-                 AF(:,iX1,iX2,iX3,iAF_P ), &
-                 AF(:,iX1,iX2,iX3,iAF_S ), &
-                 AF(:,iX1,iX2,iX3,iAF_E ), &
-                 AF(:,iX1,iX2,iX3,iAF_Me), &
-                 AF(:,iX1,iX2,iX3,iAF_Mp), &
-                 AF(:,iX1,iX2,iX3,iAF_Mn), &
-                 AF(:,iX1,iX2,iX3,iAF_Xp), &
-                 AF(:,iX1,iX2,iX3,iAF_Xn), &
-                 AF(:,iX1,iX2,iX3,iAF_Xa), &
-                 AF(:,iX1,iX2,iX3,iAF_Xh), &
-                 AF(:,iX1,iX2,iX3,iAF_Gm) )
+          !CALL ApplyEquationOfState_TABLE &
+          !     ( PF(:,iX1,iX2,iX3,iPF_D ), &
+          !       AF(:,iX1,iX2,iX3,iAF_T ), &
+          !       AF(:,iX1,iX2,iX3,iAF_Ye), &
+          !       AF(:,iX1,iX2,iX3,iAF_P ), &
+          !       AF(:,iX1,iX2,iX3,iAF_S ), &
+          !       AF(:,iX1,iX2,iX3,iAF_E ), &
+          !       AF(:,iX1,iX2,iX3,iAF_Me), &
+          !       AF(:,iX1,iX2,iX3,iAF_Mp), &
+          !       AF(:,iX1,iX2,iX3,iAF_Mn), &
+          !       AF(:,iX1,iX2,iX3,iAF_Xp), &
+          !       AF(:,iX1,iX2,iX3,iAF_Xn), &
+          !       AF(:,iX1,iX2,iX3,iAF_Xa), &
+          !       AF(:,iX1,iX2,iX3,iAF_Xh), &
+          !       AF(:,iX1,iX2,iX3,iAF_Gm) )
 
         END DO
         END DO

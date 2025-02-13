@@ -1,0 +1,23 @@
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/TwoMoment
+f90EXE_sources  += MF_TwoMoment_BoundaryConditionsModule.f90
+f90EXE_sources  += MF_TwoMoment_TallyModule.f90
+f90EXE_sources  += MF_TwoMoment_TimersModule.f90
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/TwoMoment/OrderV
+f90EXE_sources  += MF_TwoMoment_UtilitiesModule_OrderV.f90
+f90EXE_sources  += MF_TwoMoment_PositivityLimiterModule_OrderV.f90
+f90EXE_sources  += MF_TwoMoment_SlopeLimiterModule_OrderV.f90
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/TwoMoment
+F90EXE_sources  += TwoMoment_ClosureModule.F90
+F90EXE_sources  += TwoMoment_BoundaryConditionsModule.F90
+
+VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/TwoMoment/OrderV
+F90EXE_sources  += TwoMoment_UtilitiesModule.F90
+F90EXE_sources  += TwoMoment_DiscretizationModule_Streaming.F90
+F90EXE_sources  += TwoMoment_DiscretizationModule_Collisions.F90
+F90EXE_sources  += TwoMoment_OpacityModule.F90
+F90EXE_sources  += TwoMoment_PositivityLimiterModule.F90
+F90EXE_sources  += TwoMoment_TimersModule.F90
+F90EXE_sources  += TwoMoment_TroubledCellIndicatorModule.F90
+F90EXE_sources  += TwoMoment_SlopeLimiterModule.F90
