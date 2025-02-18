@@ -53,8 +53,7 @@ MODULE FinalizationModule
   USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
     FinalizePositivityLimiter_TwoMoment_MF
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
-    ComputeFromConserved_TwoMoment_MF, &
-    ComputeGray_TwoMoment_MF
+    ComputeFromConserved_TwoMoment_MF
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint

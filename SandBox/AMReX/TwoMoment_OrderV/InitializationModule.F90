@@ -151,19 +151,12 @@ MODULE InitializationModule
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
-  USE MF_Euler_TallyModule, ONLY: &
-    InitializeTally_Euler_MF, &
-    ComputeTally_Euler_MF
-  USE MF_TwoMoment_TallyModule, ONLY: &
-    InitializeTally_TwoMoment_MF, &
-    ComputeTally_TwoMoment_MF
   USE MF_TwoMoment_SlopeLimiterModule, ONLY: &
     InitializeSlopeLimiter_TwoMoment_MF
   USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
     InitializePositivityLimiter_TwoMoment_MF
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
-    ComputeFromConserved_TwoMoment_MF, &
-    ComputeGray_TwoMoment_MF
+    ComputeFromConserved_TwoMoment_MF
 
   USE FillPatchModule, ONLY: &
     FillPatch, &
@@ -301,8 +294,6 @@ CONTAINS
 
     CALL InitializeSlopeLimiter_TwoMoment_MF
 
-    CALL InitializeTally_TwoMoment_MF
-
     CALL amrex_init_virtual_functions &
            ( MakeNewLevelFromScratch, &
              MakeNewLevelFromCoarse, &
@@ -326,19 +317,16 @@ CONTAINS
 
       SetInitialValues = .TRUE.
 
-      CALL InitializeTally_Euler_MF
-
       CALL amrex_init_from_scratch( 0.0_DP )
       ! nLevels read from checkpoint file
+
+    ELSE
 
       CALL ReadCheckpointFile &
              ( ReadFields_uCF_Option = .TRUE., &
                ReadFields_uCR_Option = .TRUE. )
 
       SetInitialValues = .FALSE.
-
-      CALL InitializeTally_Euler_MF &
-             ( InitializeFromCheckpoint_Option = .TRUE. )
 
     END IF
 
@@ -367,15 +355,6 @@ CONTAINS
              MF_uPR_Option = MF_uPR, &
              MF_uCR_Option = MF_uCR, &
              MF_uGR_Option = MF_uGR )
-
-    CALL ComputeTally_Euler_MF &
-           ( t_new, MF_uGF, MF_uCF, &
-             SetInitialValues_Option = SetInitialValues, &
-             Verbose_Option = amrex_parallel_ioprocessor() )
-
-    CALL ComputeTally_TwoMoment_MF &
-           ( amrex_geom(0), MF_uGF, MF_uCF, MF_uCR, &
-             t_new(0), SetInitialValues_Option = .TRUE., Verbose_Option = .FALSE. )
 
   END SUBROUTINE InitializeProgram
 
