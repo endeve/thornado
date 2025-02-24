@@ -188,6 +188,11 @@ CONTAINS
         CALL InitializeFields_Cleaning2D &
                ( ConstantDensity, EvolveOnlyMagnetic )
 
+      CASE( 'Cleaning2D_Mosta' )
+
+        CALL InitializeFields_Cleaning2D_Mosta &
+               ( EvolveOnlyMagnetic )
+
       CASE( 'Riemann1D' )
 
         CALL InitializeFields_Riemann1D &
@@ -1013,6 +1018,101 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_Cleaning2D
+
+
+  SUBROUTINE InitializeFields_Cleaning2D_Mosta( EvolveOnlyMagnetic )
+
+    ! V = 0 Variant of 2D divergence cleaning test from Section C.2 of
+    ! Mosta et al. (2002)
+
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1, iNodeX2
+    REAL(DP) :: X1, X2
+
+    REAL(DP) :: D, V1, V2, V3, W
+    REAL(DP) :: CB1, CB2, CB3, VdotB
+    REAL(DP) :: R, R_G
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+        R = SQRT( X1**2 + X2**2 )
+
+        R_G = 0.2_DP
+
+        D = One
+
+        V1 = Zero
+        V2 = Zero
+        V3 = Zero
+
+        W = One / SQRT( One - V1**2 - V2**2 - V3**2 )
+
+        uPM(iNodeX,iX1,iX2,iX3,iPM_D )  = D
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V1 ) = V1
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V2 ) = V2
+        uPM(iNodeX,iX1,iX2,iX3,iPM_V3 ) = V3
+        uPM(iNodeX,iX1,iX2,iX3,iPM_E )  = 0.1_DP
+
+        IF( R < R_G )THEN
+
+          CB1 = EXP( - R**2 / R_G**2 ) - EXP( - One )
+
+        ELSE
+
+          CB1 = Zero
+
+        END IF
+
+        CB2 = Zero
+        CB3 = Zero
+
+        VdotB = V1 * CB1 + V2 * CB2 + V3 * CB3
+
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B1 ) = W * VdotB * V1 + CB1 / W
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B2 ) = W * VdotB * V2 + CB2 / W
+        uPM(iNodeX,iX1,iX2,iX3,iPM_B3 ) = W * VdotB * V3 + CB3 / W
+        uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = 0.0_DP
+
+      END DO
+
+      CALL ComputeConserved_MHD_Relativistic &
+             ( uPM(:,iX1,iX2,iX3,iPM_D ), uPM(:,iX1,iX2,iX3,iPM_V1),  &
+               uPM(:,iX1,iX2,iX3,iPM_V2), uPM(:,iX1,iX2,iX3,iPM_V3),  &
+               uPM(:,iX1,iX2,iX3,iPM_E ), uPM(:,iX1,iX2,iX3,iPM_Ne),  &
+               uPM(:,iX1,iX2,iX3,iPM_B1), uPM(:,iX1,iX2,iX3,iPM_B2),  &
+               uPM(:,iX1,iX2,iX3,iPM_B3), uPM(:,iX1,iX2,iX3,iPM_Chi), &
+               uCM(:,iX1,iX2,iX3,iCM_D ), uCM(:,iX1,iX2,iX3,iCM_S1),  &
+               uCM(:,iX1,iX2,iX3,iCM_S2), uCM(:,iX1,iX2,iX3,iCM_S3),  &
+               uCM(:,iX1,iX2,iX3,iCM_E ), uCM(:,iX1,iX2,iX3,iCM_Ne),  &
+               uCM(:,iX1,iX2,iX3,iCM_B1), uCM(:,iX1,iX2,iX3,iCM_B2),  &
+               uCM(:,iX1,iX2,iX3,iCM_B3), uCM(:,iX1,iX2,iX3,iCM_Chi), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uGF(:,iX1,iX2,iX3,iGF_Alpha   ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_1  ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_2  ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_3  ), &
+               uAM(:,iX1,iX2,iX3,iAM_P), &
+               EvolveOnlyMagnetic )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_Cleaning2D_Mosta
 
 
   SUBROUTINE InitializeFields_Riemann1D &
