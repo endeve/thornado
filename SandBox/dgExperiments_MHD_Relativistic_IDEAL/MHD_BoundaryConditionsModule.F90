@@ -860,6 +860,68 @@ CONTAINS
 
       END ASSOCIATE
 
+    CASE( 42 ) ! Periodic in all fields except cleaning field = 0.
+
+      ! --- Inner Boundary ---
+
+      IF( ApplyInnerBC_MHD( iApplyBC ) )THEN
+
+        DO iCM = 1, nCM
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX(1)
+        DO iNX = 1, nDOFX
+
+          IF( iCM .NE. iCM_Chi )THEN
+
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM) &
+              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM)
+
+          ELSE
+
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM) &
+              = Zero
+
+          END IF
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+      ! --- Outer Boundary ---
+
+      IF( ApplyOuterBC_MHD( iApplyBC ) )THEN
+
+        DO iCM = 1, nCM
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX(1)
+        DO iNX = 1, nDOFX
+
+          IF( iCM .NE. iCM_Chi )THEN
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM) &
+              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM)
+
+          ELSE
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM) &
+              = Zero
+
+          END IF
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
     CASE( 44 ) ! Custom BCs for relativistic shearing disk.
 
       IF( t .NE. Zero )THEN
@@ -1787,6 +1849,68 @@ CONTAINS
 
           U(iNX,iX1,iX_E0(2)+iX2,iX3,iCM) &
             = U(iNX,iX1,iX_E0(2),iX3,iCM)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+    CASE( 42 ) ! Periodic in all fields except cleaning field = 0.
+
+      ! --- Inner Boundary ---
+
+      IF( ApplyInnerBC_MHD( iApplyBC ) )THEN
+
+        DO iCM = 1, nCM
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = 1, swX(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1, nDOFX
+
+          IF( iCM .NE. iCM_Chi )THEN
+
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCM) &
+              = U(iNX,iX1,iX_E0(2)-(iX2-1),iX3,iCM)
+
+          ELSE
+
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCM) &
+              = Zero
+
+          END IF
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+      ! --- Outer Boundary ---
+
+      IF( ApplyOuterBC_MHD( iApplyBC ) )THEN
+
+        DO iCM = 1, nCM
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = 1, swX(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1, nDOFX
+
+          IF( iCM .NE. iCM_Chi )THEN
+
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCM) &
+              = U(iNX,iX1,iX_B0(2)+(iX2-1),iX3,iCM)
+
+          ELSE
+
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCM) &
+              = Zero
+
+          END IF
 
         END DO
         END DO
