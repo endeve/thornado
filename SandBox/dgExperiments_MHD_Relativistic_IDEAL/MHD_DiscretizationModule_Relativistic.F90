@@ -2802,11 +2802,11 @@ CONTAINS
                     - ( U(iNX,iX1,iX2,iX3,iCM_D) + U(iNX,iX1,iX2,iX3,iCM_E) ) &
                         * dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2) )
 
-        dU(iNX,iX1,iX2,iX3,iCM_E) &
-          = dU(iNX,iX1,iX2,iX3,iCM_E) &
-              -tau(iNX,iX1,iX2,iX3) &
-                 * U(iNX,iX1,iX2,iX3,iCM_S2) / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
-                 * dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2)
+          dU(iNX,iX1,iX2,iX3,iCM_E) &
+            = dU(iNX,iX1,iX2,iX3,iCM_E) &
+              - tau(iNX,iX1,iX2,iX3) &
+                * U(iNX,iX1,iX2,iX3,iCM_S2) / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
+                * dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2)
 
         IF( UseDivergenceCleaning )THEN
 
@@ -2847,8 +2847,9 @@ CONTAINS
 
           dU(iNX,iX1,iX2,iX3,iCM_Chi) &
             = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
-                + ( U(iNX,iX1,iX2,iX3,iCM_B2) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
-                  * dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2)
+              - DampingParameter * U(iNX,iX1,iX2,iX3,iCM_Chi) &
+              + ( U(iNX,iX1,iX2,iX3,iCM_B2) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
+                * dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2)
 
         END IF
 
