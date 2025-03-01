@@ -116,6 +116,7 @@ MODULE MHD_DiscretizationModule_Relativistic
   LOGICAL  :: EvolveOnlyMagnetic
   LOGICAL  :: UseDivergenceCleaning
   LOGICAL  :: UsePowellSource
+  REAL(DP) :: CleaningSpeed
   REAL(DP) :: DampingParameter
 
   REAL(DP), POINTER, CONTIGUOUS :: &
@@ -163,6 +164,7 @@ CONTAINS
       SuppressBC_Option, &
       EvolveOnlyMagnetic_Option, &
       UseDivergenceCleaning_Option, &
+      CleaningSpeed_Option, &
       DampingParameter_Option, &
       UsePowellSource_Option, &
       SurfaceFlux_X1_Option, &
@@ -187,6 +189,7 @@ CONTAINS
       UseDivergenceCleaning_Option, &
       UsePowellSource_Option
     REAL(DP), INTENT(in),  OPTIONAL :: &
+      CleaningSpeed_Option, &
       DampingParameter_Option
     REAL(DP), INTENT(out), OPTIONAL :: &
       SurfaceFlux_X1_Option(:,:,:,:,:), &
@@ -237,6 +240,11 @@ CONTAINS
     UseDivergenceCleaning = .FALSE.
     IF( PRESENT( UseDivergenceCleaning_Option ) ) &
       UseDivergenceCleaning = UseDivergenceCleaning_Option
+
+    CleaningSpeed = 1.0_DP
+    IF( UseDivergenceCleaning .AND. PRESENT( CleaningSpeed_Option ) )THEN
+      CleaningSpeed = CleaningSpeed_Option
+    END IF
 
     DampingParameter = 0.0_DP
     IF( UseDivergenceCleaning .AND. PRESENT( DampingParameter_Option ) )THEN
@@ -810,7 +818,8 @@ CONTAINS
               Beta_1_F  (iNX_X), &
               Beta_2_F  (iNX_X), &
               Beta_3_F  (iNX_X), &
-              UseDivergenceCleaning )
+              UseDivergenceCleaning, &
+              CleaningSpeed )
 
       Flux_L &
         = Flux_X1_MHD &
@@ -832,7 +841,8 @@ CONTAINS
               Beta_1_F  (iNX_X), &
               Beta_2_F  (iNX_X), &
               Beta_3_F  (iNX_X), &
-              UseDivergenceCleaning )
+              UseDivergenceCleaning, &
+              CleaningSpeed )
 
       IF( .TRUE. )THEN
 
@@ -884,7 +894,8 @@ CONTAINS
               Beta_1_F  (iNX_X), &
               Beta_2_F  (iNX_X), &
               Beta_3_F  (iNX_X), &
-              UseDivergenceCleaning )
+              UseDivergenceCleaning, &
+              CleaningSpeed )
 
       Flux_R &
         = Flux_X1_MHD &
@@ -906,7 +917,8 @@ CONTAINS
               Beta_1_F  (iNX_X), &
               Beta_2_F  (iNX_X), &
               Beta_3_F  (iNX_X), &
-              UseDivergenceCleaning )
+              UseDivergenceCleaning, &
+              CleaningSpeed )
 
       IF( .TRUE. )THEN
 
@@ -967,7 +979,8 @@ CONTAINS
                 Beta_2_F(iNX_X),   &
                 Beta_3_F(iNX_X)  ], &
               EvolveOnlyMagnetic  , &
-              UseDivergenceCleaning )
+              UseDivergenceCleaning, &
+              CleaningSpeed )
 
      !PRINT*
      !PRINT*, 'uCM_L_nCM: ', uCM_L_nCM
@@ -1114,7 +1127,8 @@ CONTAINS
               Beta_1_K  (iNX_K), &
               Beta_2_K  (iNX_K), &
               Beta_3_K  (iNX_K), &
-              UseDivergenceCleaning )
+              UseDivergenceCleaning, &
+              CleaningSpeed )
 
       iNX = IndexTableX_V(1,iNX_K)
       iX2 = IndexTableX_V(2,iNX_K)
@@ -1547,7 +1561,8 @@ CONTAINS
               Beta_1_F  (iNX_X), &
               Beta_2_F  (iNX_X), &
               Beta_3_F  (iNX_X), &
-              UseDivergenceCleaning )
+              UseDivergenceCleaning, &
+              CleaningSpeed )
 
       Flux_L &
         = Flux_X2_MHD &
@@ -1569,7 +1584,8 @@ CONTAINS
               Beta_1_F  (iNX_X), &
               Beta_2_F  (iNX_X), &
               Beta_3_F  (iNX_X), &
-              UseDivergenceCleaning )
+              UseDivergenceCleaning, &
+              CleaningSpeed )
 
       IF( .FALSE. )THEN
 
@@ -1622,7 +1638,8 @@ CONTAINS
               Beta_1_F  (iNX_X), &
               Beta_2_F  (iNX_X), &
               Beta_3_F  (iNX_X), &
-              UseDivergenceCleaning )
+              UseDivergenceCleaning, &
+              CleaningSpeed )
 
       Flux_R &
         = Flux_X2_MHD &
@@ -1644,7 +1661,8 @@ CONTAINS
               Beta_1_F  (iNX_X), &
               Beta_2_F  (iNX_X), &
               Beta_3_F  (iNX_X), &
-              UseDivergenceCleaning )
+              UseDivergenceCleaning, &
+              CleaningSpeed )
 
       IF( .FALSE. )THEN
 
@@ -1703,7 +1721,8 @@ CONTAINS
                 Beta_2_F(iNX_X),   &
                 Beta_3_F(iNX_X)  ], &
               EvolveOnlyMagnetic  , &
-              UseDivergenceCleaning )
+              UseDivergenceCleaning, &
+              CleaningSpeed )
 
       DO iCM = 1, nCM
 
@@ -1775,7 +1794,8 @@ CONTAINS
               Beta_1_K  (iNX_K), &
               Beta_2_K  (iNX_K), &
               Beta_3_K  (iNX_K), &
-              UseDivergenceCleaning )
+              UseDivergenceCleaning, &
+              CleaningSpeed )
 
       iNX = IndexTableX_V(1,iNX_K)
       iX1 = IndexTableX_V(2,iNX_K)
@@ -2196,7 +2216,8 @@ CONTAINS
               Beta_1_F  (iNX_X), &
               Beta_2_F  (iNX_X), &
               Beta_3_F  (iNX_X), &
-              UseDivergenceCleaning )
+              UseDivergenceCleaning, &
+              CleaningSpeed )
 
       Flux_L &
         = Flux_X3_MHD &
@@ -2218,7 +2239,8 @@ CONTAINS
               Beta_1_F  (iNX_X), &
               Beta_2_F  (iNX_X), &
               Beta_3_F  (iNX_X), &
-              UseDivergenceCleaning )
+              UseDivergenceCleaning, &
+              CleaningSpeed )
 
       IF( .FALSE. )THEN
 
@@ -2271,7 +2293,8 @@ CONTAINS
               Beta_1_F  (iNX_X), &
               Beta_2_F  (iNX_X), &
               Beta_3_F  (iNX_X), &
-              UseDivergenceCleaning )
+              UseDivergenceCleaning, &
+              CleaningSpeed )
 
       Flux_R &
         = Flux_X3_MHD &
@@ -2293,7 +2316,8 @@ CONTAINS
               Beta_1_F  (iNX_X), &
               Beta_2_F  (iNX_X), &
               Beta_3_F  (iNX_X), &
-              UseDivergenceCleaning )
+              UseDivergenceCleaning, &
+              CleaningSpeed )
 
       IF( .FALSE. )THEN
 
@@ -2352,7 +2376,8 @@ CONTAINS
                 Beta_2_F(iNX_X),   &
                 Beta_3_F(iNX_X)  ], &
               EvolveOnlyMagnetic  , &
-              UseDivergenceCleaning )
+              UseDivergenceCleaning, &
+              CleaningSpeed )
 
       DO iCM = 1, nCM
 
@@ -2424,7 +2449,8 @@ CONTAINS
               Beta_1_K  (iNX_K), &
               Beta_2_K  (iNX_K), &
               Beta_3_K  (iNX_K), &
-              UseDivergenceCleaning )
+              UseDivergenceCleaning, &
+              CleaningSpeed )
 
       iNX = IndexTableX_V(1,iNX_K)
       iX1 = IndexTableX_V(2,iNX_K)

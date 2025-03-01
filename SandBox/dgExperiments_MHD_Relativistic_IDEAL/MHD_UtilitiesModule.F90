@@ -201,12 +201,15 @@ CONTAINS
 
   SUBROUTINE ComputeTimeStep_MHD &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CML, TimeStep, &
-      UseDivergenceCleaning, EvolveOnlyMagnetic )
+      UseDivergenceCleaning, CleaningSpeed, DampingParameter, EvolveOnlyMagnetic )
 
     LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
     LOGICAL,  INTENT(in)  :: &
       UseDivergenceCleaning
+    REAL(DP), INTENT(in) :: &
+      CleaningSpeed, &
+      DampingParameter
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
@@ -220,7 +223,7 @@ CONTAINS
 
     CALL ComputeTimeStep_MHD_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CML, TimeStep, &
-             UseDivergenceCleaning, EvolveOnlyMagnetic )
+             UseDivergenceCleaning, CleaningSpeed, DampingParameter, EvolveOnlyMagnetic )
 
   END SUBROUTINE ComputeTimeStep_MHD
 
@@ -230,9 +233,10 @@ CONTAINS
       B1, B2, B3, Chi, &
       Gm11, Gm22, Gm33, &
       Lapse, Shift_X1, Shift_X2, Shift_X3, &
-      UseDivergenceCleaning )
+      UseDivergenceCleaning, CleaningSpeed )
 
     LOGICAL,  INTENT(in) :: UseDivergenceCleaning
+    REAL(DP), INTENT(in) :: CleaningSpeed
     REAL(DP), INTENT(in) :: Vi, Cs, Gmii, Shifti
 
     ! --- Only needed for relativistic code ---
@@ -248,7 +252,7 @@ CONTAINS
                             B1, B2, B3, Chi, &
                             Gm11, Gm22, Gm33, &
                             Lapse, Shift_X1, Shift_X2, Shift_X3, &
-                            UseDivergenceCleaning )
+                            UseDivergenceCleaning, CleaningSpeed )
 
     RETURN
   END FUNCTION Eigenvalues_MHD
@@ -257,14 +261,14 @@ CONTAINS
   FUNCTION Flux_X1_MHD &
     ( D, V1, V2, V3, E, Ne, B1, B2, B3, Chi, P, Gm11, Gm22, Gm33, Lapse, & 
       Shift_X1, Shift_X2, Shift_X3, &
-      UseDivergenceCleaning )
+      UseDivergenceCleaning, CleaningSpeed )
 
     ! --- Shift is the first contravariant component of the shift-vector ---
 
     REAL(DP)             :: Flux_X1_MHD(nCM)
 
     LOGICAL,  INTENT(in) :: UseDivergenceCleaning
-
+    REAL(DP), INTENT(in) :: CleaningSpeed
     REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, &
                             B1, B2, B3, Chi, P
     REAL(DP), INTENT(in) :: Gm11, Gm22, Gm33
@@ -274,7 +278,8 @@ CONTAINS
 
     Flux_X1_MHD = Flux_X1_MHD_Relativistic &
                       ( D, V1, V2, V3, E, Ne, B1, B2, B3, Chi, P, Gm11, Gm22, Gm33, &
-                        Lapse, Shift_X1, Shift_X2, Shift_X3, UseDivergenceCleaning )
+                        Lapse, Shift_X1, Shift_X2, Shift_X3, UseDivergenceCleaning, &
+                        CleaningSpeed )
 
     RETURN
   END FUNCTION Flux_X1_MHD
@@ -283,14 +288,14 @@ CONTAINS
   FUNCTION Flux_X2_MHD &
     ( D, V1, V2, V3, E, Ne, B1, B2, B3, Chi, P, Gm11, Gm22, Gm33, Lapse, & 
       Shift_X1, Shift_X2, Shift_X3, &
-      UseDivergenceCleaning )
+      UseDivergenceCleaning, CleaningSpeed )
 
     ! --- Shift is the first contravariant component of the shift-vector ---
 
     REAL(DP)             :: Flux_X2_MHD(nCM)
 
     LOGICAL,  INTENT(in) :: UseDivergenceCleaning
-
+    REAL(DP), INTENT(in) :: CleaningSpeed
     REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, &
                             B1, B2, B3, Chi, P
     REAL(DP), INTENT(in) :: Gm11, Gm22, Gm33
@@ -300,7 +305,8 @@ CONTAINS
 
     Flux_X2_MHD = Flux_X2_MHD_Relativistic &
                       ( D, V1, V2, V3, E, Ne, B1, B2, B3, Chi, P, Gm11, Gm22, Gm33, &
-                        Lapse, Shift_X1, Shift_X2, Shift_X3, UseDivergenceCleaning )
+                        Lapse, Shift_X1, Shift_X2, Shift_X3, UseDivergenceCleaning, &
+                        CleaningSpeed )
 
     RETURN
   END FUNCTION Flux_X2_MHD
@@ -309,14 +315,14 @@ CONTAINS
   FUNCTION Flux_X3_MHD &
     ( D, V1, V2, V3, E, Ne, B1, B2, B3, Chi, P, Gm11, Gm22, Gm33, Lapse, & 
       Shift_X1, Shift_X2, Shift_X3, &
-      UseDivergenceCleaning )
+      UseDivergenceCleaning, CleaningSpeed )
 
     ! --- Shift is the first contravariant component of the shift-vector ---
 
     REAL(DP)             :: Flux_X3_MHD(nCM)
 
     LOGICAL,  INTENT(in) :: UseDivergenceCleaning
-
+    REAL(DP), INTENT(in) :: CleaningSpeed
     REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, &
                             B1, B2, B3, Chi, P
     REAL(DP), INTENT(in) :: Gm11, Gm22, Gm33
@@ -326,7 +332,8 @@ CONTAINS
 
     Flux_X3_MHD = Flux_X3_MHD_Relativistic &
                       ( D, V1, V2, V3, E, Ne, B1, B2, B3, Chi, P, Gm11, Gm22, Gm33, &
-                        Lapse, Shift_X1, Shift_X2, Shift_X3, UseDivergenceCleaning )
+                        Lapse, Shift_X1, Shift_X2, Shift_X3, UseDivergenceCleaning, &
+                        CleaningSpeed )
 
     RETURN
   END FUNCTION Flux_X3_MHD
@@ -334,11 +341,12 @@ CONTAINS
 
   FUNCTION NumericalFlux_MHD_X1 &
     ( uL, uR, fL, fR, aP, aM, CFL, &
-      g, EvolveOnlyMagnetic, UseDivergenceCleaning )
+      g, EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
     REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), &
                             aP, aM, CFL, g(7)
     LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
+    REAL(DP), INTENT(in) :: CleaningSpeed
 
     REAL(DP) :: NumericalFlux_MHD_X1(nCM)
 
@@ -347,7 +355,7 @@ CONTAINS
     NumericalFlux_MHD_X1 &
       = NumericalFlux_MHD_GFORCE_X1 &
           ( uL, uR, fL, fR, aP, aM, CFL, g, &
-            EvolveOnlyMagnetic, UseDivergenceCleaning )
+            EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
 #else
 
@@ -363,11 +371,12 @@ CONTAINS
 
   FUNCTION NumericalFlux_MHD_X2 &
     ( uL, uR, fL, fR, aP, aM, CFL, &
-      g, EvolveOnlyMagnetic, UseDivergenceCleaning )
+      g, EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
     REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), &
                             aP, aM, CFL, g(7)
     LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
+    REAL(DP), INTENT(in) :: CleaningSpeed
 
     REAL(DP) :: NumericalFlux_MHD_X2(nCM)
 
@@ -376,7 +385,7 @@ CONTAINS
     NumericalFlux_MHD_X2 &
       = NumericalFlux_MHD_GFORCE_X2 &
           ( uL, uR, fL, fR, aP, aM, CFL, g, &
-            EvolveOnlyMagnetic, UseDivergenceCleaning )
+            EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
 #else
 
@@ -392,11 +401,12 @@ CONTAINS
 
   FUNCTION NumericalFlux_MHD_X3 &
     ( uL, uR, fL, fR, aP, aM, CFL, &
-      g, EvolveOnlyMagnetic, UseDivergenceCleaning )
+      g, EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
     REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), &
                             aP, aM, CFL, g(7)
     LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
+    REAL(DP), INTENT(in) :: CleaningSpeed
 
     REAL(DP) :: NumericalFlux_MHD_X3(nCM)
 
@@ -405,7 +415,7 @@ CONTAINS
     NumericalFlux_MHD_X3 &
       = NumericalFlux_MHD_GFORCE_X3 &
           ( uL, uR, fL, fR, aP, aM, CFL, g, &
-            EvolveOnlyMagnetic, UseDivergenceCleaning )
+            EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
 #else
 
@@ -434,16 +444,17 @@ CONTAINS
 
   FUNCTION NumericalFlux_MHD_GFORCE_X1 &
              ( uL, uR, fL, fR, aP, aM, CFL, g, &
-               EvolveOnlyMagnetic, UseDivergenceCleaning )
+               EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
     REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP, aM, CFL, g(7)
     LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
+    REAL(DP), INTENT(in) :: CleaningSpeed
 
     REAL(DP) :: NumericalFlux_MHD_GFORCE_X1(nCM)
 
     NumericalFlux_MHD_GFORCE_X1 = NumericalFlux_X1_GFORCE_MHD_Relativistic &
                                 ( uL, uR, fL, fR, aP, aM, CFL, g, &
-                                  EvolveOnlyMagnetic, UseDivergenceCleaning )
+                                  EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
     RETURN
   END FUNCTION NumericalFlux_MHD_GFORCE_X1
@@ -451,16 +462,17 @@ CONTAINS
 
   FUNCTION NumericalFlux_MHD_GFORCE_X2 &
              ( uL, uR, fL, fR, aP, aM, CFL, g, &
-               EvolveOnlyMagnetic, UseDivergenceCleaning )
+               EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
     REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP, aM, CFL, g(7)
     LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
+    REAL(DP), INTENT(in) :: CleaningSpeed
 
     REAL(DP) :: NumericalFlux_MHD_GFORCE_X2(nCM)
 
     NumericalFlux_MHD_GFORCE_X2 = NumericalFlux_X2_GFORCE_MHD_Relativistic &
                                 ( uL, uR, fL, fR, aP, aM, CFL, g, &
-                                  EvolveOnlyMagnetic, UseDivergenceCleaning )
+                                  EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
     RETURN
   END FUNCTION NumericalFlux_MHD_GFORCE_X2
@@ -468,16 +480,17 @@ CONTAINS
 
   FUNCTION NumericalFlux_MHD_GFORCE_X3 &
              ( uL, uR, fL, fR, aP, aM, CFL, g, &
-               EvolveOnlyMagnetic, UseDivergenceCleaning )
+               EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
     REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP, aM, CFL, g(7)
     LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
+    REAL(DP), INTENT(in) :: CleaningSpeed
 
     REAL(DP) :: NumericalFlux_MHD_GFORCE_X3(nCM)
 
     NumericalFlux_MHD_GFORCE_X3 = NumericalFlux_X3_GFORCE_MHD_Relativistic &
                                 ( uL, uR, fL, fR, aP, aM, CFL, g, &
-                                  EvolveOnlyMagnetic, UseDivergenceCleaning )
+                                  EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
     RETURN
   END FUNCTION NumericalFlux_MHD_GFORCE_X3
