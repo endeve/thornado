@@ -1678,7 +1678,7 @@ CONTAINS
 
         dt = dX(iDimX) / MAX( SqrtTiny, MAXVAL( ABS( EigVals ) ) )
 
-        IF( UseDivergenceCleaning)THEN
+        IF( UseDivergenceCleaning .AND. ( DampingParameter > Zero ) )THEN
 
           TimeStep = MIN( TimeStep, dt, One / DampingParameter )
 
