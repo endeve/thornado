@@ -1795,8 +1795,8 @@ CONTAINS
 
     IF( UseDivergenceCleaning )THEN
 
-      Eigenvalues_MHD_Relativistic(1) =  Lapse * CleaningSpeed - Shifti
-      Eigenvalues_MHD_Relativistic(2) = -Lapse * CleaningSpeed - Shifti
+      Eigenvalues_MHD_Relativistic(1) =  Lapse * SQRT( One / Gmii ) * CleaningSpeed - Shifti
+      Eigenvalues_MHD_Relativistic(2) = -Lapse * SQRT( One / Gmii ) * CleaningSpeed - Shifti
 
     ELSE
 
