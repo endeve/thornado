@@ -245,7 +245,7 @@ CONTAINS
                             Gm11, Gm22, Gm33, Lapse, & 
                             Shift_X1, Shift_X2, Shift_X3
 
-    REAL(DP) :: Eigenvalues_MHD(2)
+    REAL(DP) :: Eigenvalues_MHD(4)
 
     Eigenvalues_MHD = Eigenvalues_MHD_Relativistic &
                           ( Vi, Cs, Gmii, Shifti, D, V1, V2, V3, E, Ne, &
@@ -344,7 +344,7 @@ CONTAINS
       g, EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
     REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), &
-                            aP, aM, CFL, g(7)
+                            aP(nCM), aM(nCM), CFL, g(7)
     LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
     REAL(DP), INTENT(in) :: CleaningSpeed
 
@@ -374,7 +374,7 @@ CONTAINS
       g, EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
     REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), &
-                            aP, aM, CFL, g(7)
+                            aP(nCM), aM(nCM), CFL, g(7)
     LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
     REAL(DP), INTENT(in) :: CleaningSpeed
 
@@ -404,7 +404,7 @@ CONTAINS
       g, EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
     REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), &
-                            aP, aM, CFL, g(7)
+                            aP(nCM), aM(nCM), CFL, g(7)
     LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
     REAL(DP), INTENT(in) :: CleaningSpeed
 
@@ -431,7 +431,7 @@ CONTAINS
 
   FUNCTION NumericalFlux_MHD_HLL( uL, uR, fL, fR, aP, aM )
 
-    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP, aM
+    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP(nCM), aM(nCM)
 
     REAL(DP) :: NumericalFlux_MHD_HLL(nCM)
 
@@ -446,7 +446,8 @@ CONTAINS
              ( uL, uR, fL, fR, aP, aM, CFL, g, &
                EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
-    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP, aM, CFL, g(7)
+    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), &
+                            aP(nCM), aM(nCM), CFL, g(7)
     LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
     REAL(DP), INTENT(in) :: CleaningSpeed
 
@@ -464,7 +465,8 @@ CONTAINS
              ( uL, uR, fL, fR, aP, aM, CFL, g, &
                EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
-    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP, aM, CFL, g(7)
+    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), &
+                            aP(nCM), aM(nCM), CFL, g(7)
     LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
     REAL(DP), INTENT(in) :: CleaningSpeed
 
@@ -482,7 +484,8 @@ CONTAINS
              ( uL, uR, fL, fR, aP, aM, CFL, g, &
                EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
-    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP, aM, CFL, g(7)
+    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), &
+                            aP(nCM), aM(nCM), CFL, g(7)
     LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
     REAL(DP), INTENT(in) :: CleaningSpeed
 

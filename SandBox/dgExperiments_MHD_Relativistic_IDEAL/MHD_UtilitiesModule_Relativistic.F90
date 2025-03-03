@@ -1598,7 +1598,7 @@ CONTAINS
 
     INTEGER  :: iX1, iX2, iX3, iNX, iDimX
     REAL(DP) :: dX(3), dt
-    REAL(DP) :: P(nPM), Cs, EigVals(2)
+    REAL(DP) :: P(nPM), Cs, EigVals(4)
 
     ASSOCIATE &
       ( dX1 => MeshX(1) % Width, &
@@ -1676,7 +1676,17 @@ CONTAINS
 
        !PRINT*, 'The eigenvalues are: ', EigVals
 
-        dt = dX(iDimX) / MAX( SqrtTiny, MAXVAL( ABS( EigVals ) ) )
+        ! Use correct set of eigenvalues when divergence cleaning is on/off.
+
+        IF( UseDivergenceCleaning )THEN
+
+          dt = dX(iDimX) / MAX( SqrtTiny, MAXVAL( ABS( EigVals(1:4) ) ) )
+
+        ELSE
+
+          dt = dX(iDimX) / MAX( SqrtTiny, MAXVAL( ABS( Eigvals(2:3) ) ) )
+
+        END IF
 
         IF( UseDivergenceCleaning .AND. ( DampingParameter > Zero ) )THEN
 
@@ -1718,7 +1728,7 @@ CONTAINS
                                Shift1, Shift2, Shift3
 
     REAL(DP) :: VSq, W, P, h, b0u, b0d, bSq, &
-                Ca, aSq, Eigenvalues_MHD_Relativistic(2)
+                Ca, aSq, Eigenvalues_MHD_Relativistic(4)
 
    !PRINT*
    !PRINT*, 'Input to Eigvenalues_MHD_Relativistic'
@@ -1793,37 +1803,33 @@ CONTAINS
    !PRINT*, '-----------------------------------'
    !PRINT*
 
-    IF( UseDivergenceCleaning )THEN
+      ! Eigenvalues for divergence cleaning.
 
-      Eigenvalues_MHD_Relativistic(1) =  Lapse * SQRT( One / Gmii ) * CleaningSpeed - Shifti
-      Eigenvalues_MHD_Relativistic(2) = -Lapse * SQRT( One / Gmii ) * CleaningSpeed - Shifti
+      Eigenvalues_MHD_Relativistic(1) =   SQRT( One / Gmii ) * CleaningSpeed
 
-    ELSE
+      Eigenvalues_MHD_Relativistic(4) = - SQRT( One / Gmii ) * CleaningSpeed
 
       ! Estimate of max/min fast magnetosonic
       ! eigenvalues from Del Zanna et al. (2007)
 
-      Eigenvalues_MHD_Relativistic(1) &
+      Eigenvalues_MHD_Relativistic(2) &
         = ( ( One - aSq ) * Vi &
             + SQRT( aSq * ( One - VSq ) &
                     * ( ( One - VSq * aSq ) * ( One / Gmii ) &
                     - ( One - aSq ) * Vi**2 ) ) ) &
           / ( One - VSq * aSq )
 
-      Eigenvalues_MHD_Relativistic(1) &
-        = Lapse * Eigenvalues_MHD_Relativistic(1) - Shifti
-
-      Eigenvalues_MHD_Relativistic(2) &
+      Eigenvalues_MHD_Relativistic(3) &
          = ( ( One - aSq ) * Vi &
             - SQRT( aSq * ( One - VSq ) &
                     * ( ( One - VSq * aSq ) * ( One / Gmii ) &
                     - ( One - aSq ) * Vi**2 ) ) ) &
           / ( One - VSq * aSq )
 
-      Eigenvalues_MHD_Relativistic(2) &
-        = Lapse * Eigenvalues_MHD_Relativistic(2) - Shifti
+      ! Generalize to GR.
 
-    END IF
+      Eigenvalues_MHD_Relativistic(:) &
+        = Lapse * Eigenvalues_MHD_Relativistic(:) - Shifti
 
     RETURN
   END FUNCTION Eigenvalues_MHD_Relativistic
@@ -2275,7 +2281,8 @@ CONTAINS
   FUNCTION NumericalFlux_HLL_MHD_Relativistic &
     ( uL, uR, fL, fR, aP, aM )
 
-    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP, aM
+    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), &
+                            aP(nCM), aM(nCM)
 
     REAL(DP) :: NumericalFlux_HLL_MHD_Relativistic(nCM)
 
@@ -2292,11 +2299,12 @@ CONTAINS
     ( uL, uR, fL, fR, aP, aM, CFL, g, &
       EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
-    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP, aM, CFL, g(7)
+    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), &
+                            aP(nCM), aM(nCM), CFL, g(7)
     LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
     REAL(DP), INTENT(in) :: CleaningSpeed
 
-    REAL(DP) :: tau, omega_g
+    REAL(DP) :: tau(nCM), omega_g
     REAL(DP) :: uLW(nCM), pLW(nPM), fLF(nCM), fLW(nCM), aLW(1)
     REAL(DP) :: D, V1, V2, V3, E, Ne, B1, B2, B3, Chi
     REAL(DP) :: NumericalFlux_X1_GFORCE_MHD_Relativistic(nCM)
@@ -2359,11 +2367,12 @@ CONTAINS
     ( uL, uR, fL, fR, aP, aM, CFL, g, &
       EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
-    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP, aM, CFL, g(7)
+    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), &
+                            aP(nCM), aM(nCM), CFL, g(7)
     LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
     REAL(DP), INTENT(in) :: CleaningSpeed
 
-    REAL(DP) :: tau, omega_g
+    REAL(DP) :: tau(nCM), omega_g
     REAL(DP) :: uLW(nCM), pLW(nPM), fLF(nCM), fLW(nCM), aLW(1)
     REAL(DP) :: D, V1, V2, V3, E, Ne, B1, B2, B3, Chi
     REAL(DP) :: NumericalFlux_X2_GFORCE_MHD_Relativistic(nCM)
@@ -2426,11 +2435,12 @@ CONTAINS
     ( uL, uR, fL, fR, aP, aM, CFL, g, &
       EvolveOnlyMagnetic, UseDivergenceCleaning, CleaningSpeed )
 
-    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), aP, aM, CFL, g(7)
+    REAL(DP), INTENT(in) :: uL(nCM), uR(nCM), fL(nCM), fR(nCM), &
+                            aP(nCM), aM(nCM), CFL, g(7)
     LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic, UseDivergenceCleaning
     REAL(DP), INTENT(in) :: CleaningSpeed
 
-    REAL(DP) :: tau, omega_g
+    REAL(DP) :: tau(nCM), omega_g
     REAL(DP) :: uLW(nCM), pLW(nPM), fLF(nCM), fLW(nCM), aLW(1)
     REAL(DP) :: D, V1, V2, V3, E, Ne, B1, B2, B3, Chi
     REAL(DP) :: NumericalFlux_X3_GFORCE_MHD_Relativistic(nCM)

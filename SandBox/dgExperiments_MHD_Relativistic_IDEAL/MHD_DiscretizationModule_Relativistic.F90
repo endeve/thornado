@@ -471,10 +471,10 @@ CONTAINS
     INTEGER  :: iNX, iNX_X, iNX_K, iX1, iX2, iX3, iCM, iGF
     INTEGER  :: iXP_B0(3), iXP_E0(3)
 
-    REAL(DP) :: AlphaMns, AlphaPls
+    REAL(DP) :: AlphaMns(nCM), AlphaPls(nCM)
     REAL(DP) :: P_L, P_R, Cs_L, Cs_R, P_K
 
-    REAL(DP) :: EigVals_L(2), EigVals_R(2)
+    REAL(DP) :: EigVals_L(4), EigVals_R(4)
     REAL(DP) :: Flux_L   (nCM), Flux_R   (nCM)
     REAL(DP) :: Flux_F   (nCM), Flux_K   (nCM)
     REAL(DP) :: uCM_L_nCM(nCM), uCM_R_nCM(nCM)
@@ -941,11 +941,29 @@ CONTAINS
 
       ! --- Numerical flux ---
 
-      AlphaMns &
-        = MAX( Zero, MAXVAL( - EigVals_L ), MAXVAL( - EigVals_R ) )
+      IF( UseDivergenceCleaning )THEN
 
-      AlphaPls &
-        = MAX( Zero, MAXVAL( + EigVals_L ), MAXVAL( + EigVals_R ) )
+        AlphaMns((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_B2, iCM_B3 /)) &
+          = MAX( Zero, MAXVAL( - EigVals_L(2:3) ), MAXVAL( - EigVals_R(2:3) ) )
+
+        AlphaPls((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_B2, iCM_B3 /)) &
+          = MAX( Zero, MAXVAL( + EigVals_L(2:3) ), MAXVAL( + EigVals_R(2:3) ) )
+
+        AlphaMns((/ iCM_B1, iCM_Chi /)) &
+          = MAX( Zero, MAXVAL( - EigVals_L(1:4) ), MAXVAL( - EigVals_R(1:4) ) )
+
+        AlphaPls((/ iCM_B1, iCM_Chi /)) &
+          = MAX( Zero, MAXVAL( + EigVals_L(1:4) ), MAXVAL( + EigVals_R(1:4) ) )
+
+      ELSE
+
+        AlphaMns(:) &
+          = MAX( Zero, MAXVAL( - EigVals_L(2:3) ), MAXVAL( - EigVals_R(2:3) ) )
+
+        AlphaPls(:) &
+          = MAX( Zero, MAXVAL( + EigVals_L(2:3) ), MAXVAL( + EigVals_R(2:3) ) )
+
+      END IF
 
    !PRINT*, 'AlphaMns: ', AlphaMns
    !PRINT*, 'AlphaPls: ', AlphaPls
@@ -1227,10 +1245,10 @@ CONTAINS
     INTEGER  :: iNX, iNX_X, iNX_K, iX1, iX2, iX3, iCM, iGF
     INTEGER  :: iXP_B0(3), iXP_E0(3)
 
-    REAL(DP) :: AlphaMns, AlphaPls
+    REAL(DP) :: AlphaMns(nCM), AlphaPls(nCM)
     REAL(DP) :: P_L, P_R, Cs_L, Cs_R, P_K
 
-    REAL(DP) :: EigVals_L(2), EigVals_R(2)
+    REAL(DP) :: EigVals_L(4), EigVals_R(4)
     REAL(DP) :: Flux_L   (nCM), Flux_R   (nCM)
     REAL(DP) :: Flux_F   (nCM), Flux_K   (nCM)
     REAL(DP) :: uCM_L_nCM(nCM), uCM_R_nCM(nCM)
@@ -1686,11 +1704,29 @@ CONTAINS
 
       ! --- Numerical flux ---
 
-      AlphaMns &
-        = MAX( Zero, MAXVAL( - EigVals_L ), MAXVAL( - EigVals_R ) )
+      IF( UseDivergenceCleaning )THEN
 
-      AlphaPls &
-        = MAX( Zero, MAXVAL( + EigVals_L ), MAXVAL( + EigVals_R ) )
+        AlphaMns((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_B1, iCM_B3 /)) &
+          = MAX( Zero, MAXVAL( - EigVals_L(2:3) ), MAXVAL( - EigVals_R(2:3) ) )
+
+        AlphaPls((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_B1, iCM_B3 /)) &
+          = MAX( Zero, MAXVAL( + EigVals_L(2:3) ), MAXVAL( + EigVals_R(2:3) ) )
+
+        AlphaMns((/ iCM_B2, iCM_Chi /)) &
+          = MAX( Zero, MAXVAL( - EigVals_L(1:4) ), MAXVAL( - EigVals_R(1:4) ) )
+
+        AlphaPls((/ iCM_B2, iCM_Chi /)) &
+          = MAX( Zero, MAXVAL( + EigVals_L(1:4) ), MAXVAL( + EigVals_R(1:4) ) )
+
+      ELSE
+
+        AlphaMns(:) &
+          = MAX( Zero, MAXVAL( - EigVals_L(2:3) ), MAXVAL( - EigVals_R(2:3) ) )
+
+        AlphaPls(:) &
+          = MAX( Zero, MAXVAL( + EigVals_L(2:3) ), MAXVAL( + EigVals_R(2:3) ) )
+
+      END IF
 
       iNX = IndexTableX_F(1,iNX_X)
       iX1 = IndexTableX_F(2,iNX_X)
@@ -1882,10 +1918,10 @@ CONTAINS
     INTEGER  :: iNX, iNX_X, iNX_K, iX1, iX2, iX3, iCM, iGF
     INTEGER  :: iXP_B0(3), iXP_E0(3)
 
-    REAL(DP) :: AlphaMns, AlphaPls
+    REAL(DP) :: AlphaMns(nCM), AlphaPls(nCM)
     REAL(DP) :: P_L, P_R, Cs_L, Cs_R, P_K
 
-    REAL(DP) :: EigVals_L(2), EigVals_R(2)
+    REAL(DP) :: EigVals_L(4), EigVals_R(4)
     REAL(DP) :: Flux_L   (nCM), Flux_R   (nCM)
     REAL(DP) :: Flux_F   (nCM), Flux_K   (nCM)
     REAL(DP) :: uCM_L_nCM(nCM), uCM_R_nCM(nCM)
@@ -2341,11 +2377,29 @@ CONTAINS
 
       ! --- Numerical flux ---
 
-      AlphaMns &
-        = MAX( Zero, MAXVAL( - EigVals_L ), MAXVAL( - EigVals_R ) )
+      IF( UseDivergenceCleaning )THEN
 
-      AlphaPls &
-        = MAX( Zero, MAXVAL( + EigVals_L ), MAXVAL( + EigVals_R ) )
+        AlphaMns((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_B1, iCM_B2 /)) &
+          = MAX( Zero, MAXVAL( - EigVals_L(2:3) ), MAXVAL( - EigVals_R(2:3) ) )
+
+        AlphaPls((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_B1, iCM_B2 /)) &
+          = MAX( Zero, MAXVAL( + EigVals_L(2:3) ), MAXVAL( + EigVals_R(2:3) ) )
+
+        AlphaMns((/ iCM_B3, iCM_Chi /)) &
+          = MAX( Zero, MAXVAL( - EigVals_L(1:4) ), MAXVAL( - EigVals_R(1:4) ) )
+
+        AlphaPls((/ iCM_B3, iCM_Chi /)) &
+          = MAX( Zero, MAXVAL( + EigVals_L(1:4) ), MAXVAL( + EigVals_R(1:4) ) )
+
+      ELSE
+
+        AlphaMns(:) &
+          = MAX( Zero, MAXVAL( - EigVals_L(2:3) ), MAXVAL( - EigVals_R(2:3) ) )
+
+        AlphaPls(:) &
+          = MAX( Zero, MAXVAL( + EigVals_L(2:3) ), MAXVAL( + EigVals_R(2:3) ) )
+
+      END IF
 
       iNX = IndexTableX_F(1,iNX_X)
       iX1 = IndexTableX_F(2,iNX_X)
