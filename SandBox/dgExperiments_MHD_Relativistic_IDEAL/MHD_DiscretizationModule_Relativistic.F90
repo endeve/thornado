@@ -943,10 +943,10 @@ CONTAINS
 
       IF( UseDivergenceCleaning )THEN
 
-        AlphaMns((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_B2, iCM_B3 /)) &
+        AlphaMns((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_Ne, iCM_B2, iCM_B3 /)) &
           = MAX( Zero, MAXVAL( - EigVals_L(2:3) ), MAXVAL( - EigVals_R(2:3) ) )
 
-        AlphaPls((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_B2, iCM_B3 /)) &
+        AlphaPls((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_Ne, iCM_B2, iCM_B3 /)) &
           = MAX( Zero, MAXVAL( + EigVals_L(2:3) ), MAXVAL( + EigVals_R(2:3) ) )
 
         AlphaMns((/ iCM_B1, iCM_Chi /)) &
@@ -1706,10 +1706,10 @@ CONTAINS
 
       IF( UseDivergenceCleaning )THEN
 
-        AlphaMns((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_B1, iCM_B3 /)) &
+        AlphaMns((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_Ne, iCM_B1, iCM_B3 /)) &
           = MAX( Zero, MAXVAL( - EigVals_L(2:3) ), MAXVAL( - EigVals_R(2:3) ) )
 
-        AlphaPls((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_B1, iCM_B3 /)) &
+        AlphaPls((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_Ne, iCM_B1, iCM_B3 /)) &
           = MAX( Zero, MAXVAL( + EigVals_L(2:3) ), MAXVAL( + EigVals_R(2:3) ) )
 
         AlphaMns((/ iCM_B2, iCM_Chi /)) &
@@ -2379,10 +2379,10 @@ CONTAINS
 
       IF( UseDivergenceCleaning )THEN
 
-        AlphaMns((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_B1, iCM_B2 /)) &
+        AlphaMns((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_Ne, iCM_B1, iCM_B2 /)) &
           = MAX( Zero, MAXVAL( - EigVals_L(2:3) ), MAXVAL( - EigVals_R(2:3) ) )
 
-        AlphaPls((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_B1, iCM_B2 /)) &
+        AlphaPls((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_Ne, iCM_B1, iCM_B2 /)) &
           = MAX( Zero, MAXVAL( + EigVals_L(2:3) ), MAXVAL( + EigVals_R(2:3) ) )
 
         AlphaMns((/ iCM_B3, iCM_Chi /)) &
