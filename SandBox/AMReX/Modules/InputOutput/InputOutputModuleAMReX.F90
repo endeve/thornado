@@ -131,7 +131,11 @@ MODULE InputOutputModuleAMReX
     UseTiling, &
     UseFluxCorrection_Euler, &
     UseFluxCorrection_TwoMoment, &
-    iOS_CPP
+    iOS_CPP, &
+    RwChkFields_uGF, &
+    RwChkFields_uCF, &
+    RwChkFields_uDF, &
+    RwChkFields_uCR
   USE MF_Euler_TallyModule, ONLY: &
     BaryonicMass_Initial, &
     BaryonicMass_OffGrid, &
@@ -158,19 +162,21 @@ MODULE InputOutputModuleAMReX
 
   INTERFACE
 
-    SUBROUTINE WriteFieldsAMReX_Checkpoint &
-                 ( StepNo, nLevels, dt, time, &
-                   BaryonicMassArr   , &
-                   EulerMomentumX1Arr, &
-                   EulerMomentumX2Arr, &
-                   EulerMomentumX3Arr, &
-                   EulerEnergyArr    , &
-                   ElectronNumberArr , &
-                   ADMMassArr        , &
-                   pBA, &
-                   iWriteFields_uGF, iWriteFields_uCF, iWriteFields_uCR, &
-                   pMF_uGF_Option, pMF_uCF_Option, pMF_uCR_Option, &
-                   Verbose_Option ) BIND(c)
+    SUBROUTINE WriteCheckpointFile &
+      ( StepNo, nLevels, dt, time, &
+        BaryonicMassArr   , &
+        EulerMomentumX1Arr, &
+        EulerMomentumX2Arr, &
+        EulerMomentumX3Arr, &
+        EulerEnergyArr    , &
+        ElectronNumberArr , &
+        ADMMassArr        , &
+        pBA, &
+        RwChkFields_uGF, RwChkFields_uCF, RwChkFields_uDF, &
+        RwChkFields_uCR, &
+        pMF_uGF_Option, pMF_uCF_Option, pMF_uDF_Option, &
+        pMF_uCR_Option, &
+        Verbose_Option ) BIND(c)
       IMPORT
       IMPLICIT NONE
       INTEGER(c_int),        INTENT(in) :: StepNo(*)
@@ -184,14 +190,16 @@ MODULE InputOutputModuleAMReX
       REAL(DP)      ,        INTENT(in) :: ElectronNumberArr (*)
       REAL(DP)      ,        INTENT(in) :: ADMMassArr        (*)
       TYPE(c_ptr)   ,        INTENT(in) :: pBA(*)
-      INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uGF
-      INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uCF
-      INTEGER(c_int), VALUE, INTENT(in) :: iWriteFields_uCR
+      INTEGER(c_int), VALUE, INTENT(in) :: RwChkFields_uGF
+      INTEGER(c_int), VALUE, INTENT(in) :: RwChkFields_uCF
+      INTEGER(c_int), VALUE, INTENT(in) :: RwChkFields_uDF
+      INTEGER(c_int), VALUE, INTENT(in) :: RwChkFields_uCR
       TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uGF_Option(*)
       TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uCF_Option(*)
+      TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uDF_Option(*)
       TYPE(c_ptr)   ,        INTENT(in), OPTIONAL :: pMF_uCR_Option(*)
       INTEGER(c_int),        INTENT(in), OPTIONAL :: Verbose_Option(*)
-    END SUBROUTINE WriteFieldsAMReX_Checkpoint
+    END SUBROUTINE WriteCheckpointFile
 
     SUBROUTINE ReadHeaderAndBoxArrayData &
                  ( FinestLevelArr, StepNo, dt, Time, &
@@ -617,17 +625,58 @@ CONTAINS
   END SUBROUTINE WriteFieldsAMReX_PlotFile
 
 
-  SUBROUTINE ReadCheckpointFile &
-    ( ReadFields_uCF_Option, ReadFields_uCR_Option )
+  SUBROUTINE WriteFieldsAMReX_Checkpoint
 
-    LOGICAL, INTENT(in), OPTIONAL :: ReadFields_uCF_Option
-    LOGICAL, INTENT(in), OPTIONAL :: ReadFields_uCR_Option
+    INTEGER :: iRwChkFields_uGF, iRwChkFields_uCF, &
+               iRwChkFields_uDF, iRwChkFields_uCR
+
+    iRwChkFields_uGF = 1
+    IF( .NOT. RwChkFields_uGF ) iRwChkFields_uGF = 0
+
+    iRwChkFields_uCF = 1
+    IF( .NOT. RwChkFields_uCF ) iRwChkFields_uCF = 0
+
+    iRwChkFields_uDF = 0
+    IF( RwChkFields_uDF ) iRwChkFields_uDF = 1
+
+    iRwChkFields_uCR = 0
+    IF( RwChkFields_uCR ) iRwChkFields_uCR = 1
+
+    CALL WriteCheckpointFile &
+           ( StepNo, nLevels, dt, t_new, &
+             [ BaryonicMass_Initial   , BaryonicMass_OffGrid    ], &
+             [ EulerMomentumX1_Initial, EulerMomentumX1_OffGrid ], &
+             [ EulerMomentumX2_Initial, EulerMomentumX2_OffGrid ], &
+             [ EulerMomentumX3_Initial, EulerMomentumX3_OffGrid ], &
+             [ EulerEnergy_Initial    , EulerEnergy_OffGrid     ], &
+             [ ElectronNumber_Initial , ElectronNumber_OffGrid  ], &
+             [ ADMMass_Initial        , ADMMass_OffGrid, &
+               ADMMass_Interior ], &
+             MF_uGF % BA % P, &
+             iRwChkFields_uGF, &
+             iRwChkFields_uCF, &
+             iRwChkFields_uDF, &
+             iRwChkFields_uCR, &
+             pMF_uGF_Option = MF_uGF % P, &
+             pMF_uCF_Option = MF_uCF % P, &
+             pMF_uDF_Option = MF_uDF % P &
+#ifdef THORNADO_NOTRANSPORT
+             )
+#else
+             , pMF_uCR_Option = MF_uCR % P )
+#endif
+
+  END SUBROUTINE WriteFieldsAMReX_Checkpoint
+
+
+  SUBROUTINE ReadCheckpointFile
 
     INTEGER     :: iLevel, FinestLevel
     TYPE(c_ptr) :: pBA(0:nMaxLevels-1)
     TYPE(c_ptr) :: pDM(0:nMaxLevels-1)
     TYPE(c_ptr) :: pGF(0:nMaxLevels-1)
     TYPE(c_ptr) :: pCF(0:nMaxLevels-1)
+    TYPE(c_ptr) :: pDF(0:nMaxLevels-1)
     TYPE(c_ptr) :: pCR(0:nMaxLevels-1)
     TYPE(c_ptr) :: amrcore
 
@@ -646,17 +695,6 @@ CONTAINS
     REAL(DP) :: EulerEnergyArr    (0:1)
     REAL(DP) :: ElectronNumberArr (0:1)
     REAL(DP) :: ADMMassArr        (0:2)
-
-    LOGICAL :: ReadFields_uCF
-    LOGICAL :: ReadFields_uCR
-
-    ReadFields_uCF = .FALSE.
-    IF( PRESENT( ReadFields_uCF_Option ) ) &
-      ReadFields_uCF = ReadFields_uCF_Option
-
-    ReadFields_uCR = .FALSE.
-    IF( PRESENT( ReadFields_uCR_Option ) ) &
-      ReadFields_uCR = ReadFields_uCR_Option
 
     amrcore = amrex_get_amrcore()
 
@@ -723,85 +761,97 @@ CONTAINS
       CALL amrex_set_distromap( iLevel, DM  (iLevel) )
       CALL amrex_set_geometry ( iLevel, GEOM(iLevel) )
 
+      ! --- Geometry ---
+
       CALL amrex_multifab_build &
              ( MF_uGF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nGF, swX )
       CALL MF_uGF(iLevel) % SetVal( Zero )
 
-      IF( ReadFields_uCF )THEN
+      ! --- Fluid ---
 
-        CALL amrex_multifab_build &
-               ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
-        CALL MF_uCF(iLevel) % SetVal( Zero )
+      CALL amrex_multifab_build &
+             ( MF_uCF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
+      CALL MF_uCF(iLevel) % SetVal( Zero )
 
-        CALL amrex_multifab_build &
-               ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX )
-        CALL MF_uPF(iLevel) % SetVal( Zero )
+      CALL amrex_multifab_build &
+             ( MF_uPF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nPF, swX )
+      CALL MF_uPF(iLevel) % SetVal( Zero )
 
-        CALL amrex_multifab_build &
-               ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX )
-        CALL MF_uAF(iLevel) % SetVal( Zero )
+      CALL amrex_multifab_build &
+             ( MF_uAF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nAF, swX )
+      CALL MF_uAF(iLevel) % SetVal( Zero )
 
-        CALL amrex_multifab_build &
-               ( MF_uDF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nDF, swX )
-        CALL MF_uDF(iLevel) % SetVal( Zero )
+      CALL amrex_multifab_build &
+             ( MF_uDF(iLevel), BA(iLevel), DM(iLevel), nDOFX * nDF, swX )
+      CALL MF_uDF(iLevel) % SetVal( Zero )
 
-        ! Assume nDOFX_X2 = nDOFX_X3 = nDOFX_X1
-        IF( iLevel .GT. 0 .AND. UseFluxCorrection_Euler )THEN
+      ! Assume nDOFX_X2 = nDOFX_X3 = nDOFX_X1
+      IF( iLevel .GT. 0 .AND. UseFluxCorrection_Euler )THEN
 
-          CALL amrex_fluxregister_build &
-                 ( FluxRegister_Euler(iLevel), BA(iLevel), DM(iLevel), &
-                   amrex_ref_ratio(iLevel-1), iLevel, nDOFX_X1*nCF )
-
-        END IF
+        CALL amrex_fluxregister_build &
+               ( FluxRegister_Euler(iLevel), BA(iLevel), DM(iLevel), &
+                 amrex_ref_ratio(iLevel-1), iLevel, nDOFX_X1*nCF )
 
       END IF
 
-      IF( ReadFields_uCR )THEN
+      ! --- Radiation ---
 
-        CALL amrex_multifab_build &
-               ( MF_uCR(iLevel), BA(iLevel), DM(iLevel), &
-                 nDOFZ * nCR * nE * nSpecies, swX )
-        CALL MF_uCR(iLevel) % SetVal( Zero )
+#ifndef THORNADO_NOTRANSPORT
 
-        CALL amrex_multifab_build &
-               ( MF_uPR(iLevel), BA(iLevel), DM(iLevel), &
-                 nDOFZ * nPR * nE * nSpecies, swX )
-        CALL MF_uPR(iLevel) % SetVal( Zero )
+      CALL amrex_multifab_build &
+             ( MF_uCR(iLevel), BA(iLevel), DM(iLevel), &
+               nDOFZ * nCR * nE * nSpecies, swX )
+      CALL MF_uCR(iLevel) % SetVal( Zero )
 
+      CALL amrex_multifab_build &
+             ( MF_uPR(iLevel), BA(iLevel), DM(iLevel), &
+               nDOFZ * nPR * nE * nSpecies, swX )
+      CALL MF_uPR(iLevel) % SetVal( Zero )
 
-        CALL amrex_multifab_build &
-               ( MF_uGR(iLevel), BA(iLevel), DM(iLevel), &
-                 nDOFX * nGR * nSpecies, swX )
-        CALL MF_uGR(iLevel) % SetVal( Zero )
+      CALL amrex_multifab_build &
+             ( MF_uGR(iLevel), BA(iLevel), DM(iLevel), &
+               nDOFX * nGR * nSpecies, swX )
+      CALL MF_uGR(iLevel) % SetVal( Zero )
 
-        ! Assume nDOFZ_Z3 = nDOFZ_Z4 = nDOFZ_Z2
-        IF( iLevel .GT. 0 .AND. UseFluxCorrection_TwoMoment )THEN
+      ! Assume nDOFZ_Z3 = nDOFZ_Z4 = nDOFZ_Z2
+      IF( iLevel .GT. 0 .AND. UseFluxCorrection_TwoMoment )THEN
 
-          CALL amrex_fluxregister_build &
-                 ( FluxRegister_TwoMoment(iLevel), BA(iLevel), DM(iLevel), &
-                   amrex_ref_ratio(iLevel-1), iLevel, &
-                   nDOFZ_Z2 * nCR * nE * nSpecies )
-
-        END IF
+        CALL amrex_fluxregister_build &
+               ( FluxRegister_TwoMoment(iLevel), BA(iLevel), DM(iLevel), &
+                 amrex_ref_ratio(iLevel-1), iLevel, &
+                 nDOFZ_Z2 * nCR * nE * nSpecies )
 
       END IF
 
-    END DO
+#endif
 
-    pGF(0:nLevels-1) = MF_uGF(0:nLevels-1) % P
-    CALL ReadMultiFabData( FinestLevel, pGF, 0, iRestart )
+    END DO ! iLevel = 0, nLevels-1
 
-    IF( ReadFields_uCF )THEN
+    IF( RwChkFields_uGF )THEN
+
+      pGF(0:nLevels-1) = MF_uGF(0:nLevels-1) % P
+      CALL ReadMultiFabData( FinestLevel, pGF, 0, iRestart )
+
+    END IF
+
+    IF( RwChkFields_uCF )THEN
 
       pCF(0:nLevels-1) = MF_uCF(0:nLevels-1) % P
       CALL ReadMultiFabData( FinestLevel, pCF, 1, iRestart )
 
     END IF
 
-    IF( ReadFields_uCR )THEN
+    IF( RwChkFields_uDF )THEN
+
+      pDF(0:nLevels-1) = MF_uDF(0:nLevels-1) % P
+      CALL ReadMultiFabData( FinestLevel, pDF, 2, iRestart )
+
+    END IF
+
+    IF( RwChkFields_uCR )THEN
 
       pCR(0:nLevels-1) = MF_uCR(0:nLevels-1) % P
-      CALL ReadMultiFabData( FinestLevel, pCR, 2, iRestart )
+      CALL ReadMultiFabData( FinestLevel, pCR, 3, iRestart )
 
     END IF
 

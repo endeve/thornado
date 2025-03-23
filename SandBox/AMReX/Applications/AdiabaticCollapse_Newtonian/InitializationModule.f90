@@ -261,7 +261,7 @@ CONTAINS
 
     ELSE
 
-      CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
+      CALL ReadCheckpointFile
 
       SetInitialValues   = .FALSE.
       FixInteriorADMMass = .TRUE.

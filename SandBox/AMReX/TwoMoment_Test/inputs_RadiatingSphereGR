@@ -26,6 +26,7 @@ thornado.iCycleChk = -1000     # MOD this number to write checkpoint file
 thornado.iRestart  = -1        # Checkpoint-file to restart from. Negative for clean start
 thornado.Mass      = 0.00451
 thornado.UsePhysicalUnits = 0
+thornado.RwChkFields_uCR = 1
 
 
 geometry.coord_sys   = 2             # SPHERICAL
