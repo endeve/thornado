@@ -254,7 +254,7 @@ CONTAINS
       rhoMin_Euler_GR = 1.0e-20_DP
       epsMin_Euler_GR = 1.0e-20_DP
 
-      CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
+      CALL ReadCheckpointFile
 
       SetInitialValues = .FALSE.
 

@@ -24,6 +24,7 @@ thornado.nSpecies  = 1
 thornado.iCycleD   = 0010     # MOD this number to display info
 thornado.iCycleW   = -0100     # MOD this number to write plotfile
 thornado.iCycleChk = -1000     # MOD this number to write checkpoint file
+thornado.RwChkFields_uCR = 1
 thornado.iRestart  = -1        # Checkpoint-file to restart from. Negative for clean start
 thornado.UsePhysicalUnits = 1
 

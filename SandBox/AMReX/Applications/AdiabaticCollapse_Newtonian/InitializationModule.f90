@@ -95,8 +95,8 @@ MODULE InitializationModule
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     InitializePositivityLimiter_Euler_MF, &
     ApplyPositivityLimiter_Euler_MF
-  USE MF_TimeSteppingModule_SSPRK, ONLY: &
-    InitializeFluid_SSPRK_MF
+  USE MF_TimeSteppingModule_SSPRK_Newtonian, ONLY: &
+    InitializeFluid_SSPRK_Newtonian_MF
   USE MF_InitializationModule, ONLY: &
     InitializeFields_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
@@ -140,15 +140,17 @@ MODULE InitializationModule
     AverageDown
   USE Euler_MeshRefinementModule, ONLY: &
     InitializeMeshRefinement_Euler
+  USE MF_GravitySolutionModule, ONLY: &
+    InitializeGravitySolver_MF
+  USE MF_GravitySolutionModule_Newtonian_Poseidon, ONLY: &
+    ComputeGravitationalPotential_Newtonian_MF_Poseidon
+  USE MF_MetricInitializationModule, ONLY: &
+    InitializeMetric_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
     InitializeTimers_AMReX, &
     Timer_AMReX_Initialize
-  USE MF_GravitySolutionModule, ONLY: &
-    InitializeGravitySolver_MF
-  USE MF_MetricInitializationModule, ONLY: &
-    InitializeMetric_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -246,13 +248,16 @@ CONTAINS
 
       CALL DestroyMesh_MF( MeshX )
 
-      CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+      CALL InitializeMetric_MF &
+             ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL ApplySlopeLimiter_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uDF )
 
       CALL ApplyPositivityLimiter_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uDF )
+      
+      Call ComputeGravitationalPotential_Newtonian_MF_Poseidon( MF_uCF, MF_uGF )
 
     ELSE
 
@@ -269,6 +274,8 @@ CONTAINS
       CALL InitializeGravitySolver_MF &
              ( Verbose_Option = amrex_parallel_ioprocessor() )
 
+      Call ComputeGravitationalPotential_Newtonian_MF_Poseidon( MF_uCF, MF_uGF )
+
       CALL DestroyMesh_MF( MeshX )
 
     END IF
@@ -282,7 +289,7 @@ CONTAINS
     t_chk = t_new(0) + dt_chk
     t_wrt = t_new(0) + dt_wrt
 
-    CALL InitializeFluid_SSPRK_MF &
+    CALL InitializeFluid_SSPRK_Newtonian_MF &
            ( Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL DescribeProgramHeader_AMReX
@@ -395,7 +402,7 @@ CONTAINS
                iLevel, nDOFX_X1 * nCF )
 
     CALL FillCoarsePatch( iLevel, MF_uGF, &
-                          ApplyBoundaryConditions_Geometry_Option = .TRUE. )
+                          ApplyBoundaryConditions_Geometry_Option = .TRUE.)
 
     CALL FillCoarsePatch( iLevel, MF_uDF )
 

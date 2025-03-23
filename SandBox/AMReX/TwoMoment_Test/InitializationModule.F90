@@ -375,9 +375,7 @@ CONTAINS
       CALL amrex_init_from_scratch( 0.0_DP )
       ! nLevels read from checkpoint file
 
-      CALL ReadCheckpointFile &
-             ( ReadFields_uCF_Option = .TRUE., &
-               ReadFields_uCR_Option = .TRUE. )
+      CALL ReadCheckpointFile
 
       SetInitialValues = .FALSE.
 
