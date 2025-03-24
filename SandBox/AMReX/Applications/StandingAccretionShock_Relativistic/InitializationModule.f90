@@ -243,7 +243,7 @@ CONTAINS
 
     ELSE
 
-      CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
+      CALL ReadCheckpointFile
 
       CALL amrex_parmparse_build( PP, 'SAS' )
         CALL PP % get  ( 'FileName_Nodal1DIC_SAS', &
