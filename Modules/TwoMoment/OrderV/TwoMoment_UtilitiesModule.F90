@@ -1848,6 +1848,9 @@ CONTAINS
 
       dt(1) = dX1(iX1) * MINVAL( GX(:,iX1,iX2,iX3,iGF_h_1) )
 
+      PRINT *, dX1(iX1)
+      PRINT *, dt(1)
+
       IF( iX_E0(2) .GT. iX_B0(2) )THEN
 
         dt(2) = dX2(iX2) * MINVAL( GX(:,iX1,iX2,iX3,iGF_h_2) )

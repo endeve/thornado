@@ -23,8 +23,6 @@ MODULE FinalizationModule
     FinalizeReferenceElement
   USE GeometryFieldsModuleE, ONLY: &
     DestroyGeometryFieldsE
-  USE TwoMoment_OpacityModule, ONLY: &
-    DestroyOpacities
   USE TwoMoment_TimersModule, ONLY: &
     FinalizeTimers
 
@@ -44,6 +42,7 @@ MODULE FinalizationModule
   USE MF_FieldsModule_TwoMoment, ONLY: &
     MF_uCR, &
     MF_uPR, &
+    MF_uAR, &
     MF_uGR, &
     DestroyFields_TwoMoment_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
@@ -73,14 +72,14 @@ MODULE FinalizationModule
     ElectronNumber_OffGrid, &
     ADMMass_Initial, &
     ADMMass_OffGrid
-  USE MF_TwoMoment_TallyModule, ONLY: &
-    FinalizeTally_TwoMoment_MF
   USE InputParsingModule, ONLY: &
     nLevels, &
     StepNo, &
     dt, &
     t_old, &
     t_new
+  !USE MF_TwoMoment_TimeSteppingModule_OrderV, ONLY: &
+    !Finalize_IMEX_RK_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -93,7 +92,7 @@ CONTAINS
   SUBROUTINE FinalizeProgram
 
     CALL ComputeFromConserved_TwoMoment_MF &
-           ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
+           (  MF_uGF, MF_uPF, MF_uCR, MF_uPR, MF_uAR, MF_uGR )
 
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
@@ -121,27 +120,22 @@ CONTAINS
              MF_uGF % BA % P, &
              iWriteFields_uGF = 1, &
              iWriteFields_uCF = 1, &
-             iWriteFields_uCR = 1, &
+             iWriteFields_uCR = 0, &
              pMF_uGF_Option = MF_uGF % P, &
-             pMF_uCF_Option = MF_uCF % P, &
-             pMF_uCR_Option = MF_uCR % P )
+             pMF_uCF_Option = MF_uCF % P)
+!             pMF_uCR_Option = MF_uCR % P )
 
 
+    !CALL Finalize_IMEX_RK_MF
 
     DEALLOCATE( t_new )
     DEALLOCATE( t_old )
     DEALLOCATE( dt )
     DEALLOCATE( StepNo )
 
-    CALL FinalizeTally_TwoMoment_MF
-
-    CALL FinalizeTally_Euler_MF
-
     CALL FinalizeSlopeLimiter_TwoMoment_MF
 
     CALL FinalizePositivityLimiter_TwoMoment_MF
-
-    CALL DestroyOpacities
 
     CALL FinalizeEquationOfState_MF
 

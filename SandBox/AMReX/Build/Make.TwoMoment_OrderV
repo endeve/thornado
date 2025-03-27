@@ -5,8 +5,11 @@ f90EXE_sources  += MF_TwoMoment_TimersModule.f90
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/SandBox/AMReX/Modules/TwoMoment/OrderV
 f90EXE_sources  += MF_TwoMoment_UtilitiesModule_OrderV.f90
+f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Streaming_OrderV.f90
+f90EXE_sources  += MF_TwoMoment_DiscretizationModule_Collisions_OrderV.f90
 f90EXE_sources  += MF_TwoMoment_PositivityLimiterModule_OrderV.f90
 f90EXE_sources  += MF_TwoMoment_SlopeLimiterModule_OrderV.f90
+
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/TwoMoment
 F90EXE_sources  += TwoMoment_ClosureModule.F90
