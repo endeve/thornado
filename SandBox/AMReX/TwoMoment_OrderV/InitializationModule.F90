@@ -74,11 +74,13 @@ MODULE InitializationModule
   USE ReferenceElementModule_Lagrange, ONLY: &
     InitializeReferenceElement_Lagrange
   USE ReferenceElementModuleX, ONLY: &
-    InitializeReferenceElementX
+    InitializeReferenceElementX, &
+    NodesX1, NodesX2, NodesX3
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange
   USE ReferenceElementModuleE, ONLY: &
-    InitializeReferenceElementE
+    InitializeReferenceElementE, &
+    NodesE
   USE ReferenceElementModuleE_Lagrange, ONLY: &
     InitializeReferenceElementE_Lagrange
   USE UnitsModule, ONLY: &
@@ -106,6 +108,7 @@ MODULE InitializationModule
   USE RadiationFieldsModule, ONLY: &
     nCR, &
     nPR, &
+    nAR, &
     nGR, &
     nSpecies
   USE TwoMoment_OpacityModule, ONLY: &
@@ -144,8 +147,11 @@ MODULE InitializationModule
     MF_uCR, &
     MF_Permute, &
     MF_uPR, &
+    MF_uAR, &
     MF_uGR, &
     FluxRegister_TwoMoment
+  USE MF_EquationOfStateModule, ONLY: &
+    InitializeEquationOfState_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
   USE MF_MeshModule, ONLY: &
@@ -157,6 +163,9 @@ MODULE InitializationModule
     InitializePositivityLimiter_TwoMoment_MF
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
     ComputeFromConserved_TwoMoment_MF
+
+  USE MF_TwoMoment_TimeSteppingModule_OrderV, ONLY: &
+    Initialize_IMEX_RK_MF
 
   USE FillPatchModule, ONLY: &
     FillPatch, &
@@ -231,16 +240,8 @@ CONTAINS
     CALL InitializePolynomialBasis_Lagrange
     CALL InitializePolynomialBasis_Legendre
 
-    CALL CreateMesh_MF( 0, MeshX )
-
     CALL CreateMesh &
            ( MeshE, nE, nNodesE, swE, eL, eR, zoomOption = zoomE )
-
-    CALL InitializePolynomialBasisMapping &
-           ( MeshE % Nodes, &
-             MeshX(1) % Nodes, MeshX(2) % Nodes, MeshX(3) % Nodes )
-
-    CALL DestroyMesh_MF( MeshX )
 
     ! --- Ordering of calls is important here ---
     CALL InitializeReferenceElementX
@@ -252,6 +253,9 @@ CONTAINS
     CALL InitializeReferenceElement
     CALL InitializeReferenceElement_Lagrange
 
+    CALL InitializePolynomialBasisMapping &
+           ( NodesE, NodesX1, NodesX2, NodesX3 )
+
     CALL InitializeMeshRefinement_Euler
 
     CALL CreateGeometryFieldsE &
@@ -260,39 +264,11 @@ CONTAINS
     CALL ComputeGeometryE &
            ( iE_B0, iE_E0, iE_B1, iE_E1, uGE )
 
+    CALL InitializeEquationOfState_MF
 
+    !CALL InitializePositivityLimiter_TwoMoment_MF
 
-    CALL CreateMesh_MF( 0, MeshX )
-
-    R0    = Zero
-    E0    = Zero
-    Mu0   = Zero
-    kT    = Zero
-    D_0   = Zero
-    Chi   = Zero
-    Sigma = Zero
-    CALL amrex_parmparse_build( PP, 'ST' )
-      CALL PP % query( 'R0'   , R0    )
-      CALL PP % query( 'Mu0'  , Mu0   )
-      CALL PP % query( 'E0'   , E0    )
-      CALL PP % query( 'kT'   , kT    )
-      CALL PP % query( 'D_0'  , D_0   )
-      CALL PP % query( 'Chi'  , Chi   )
-      CALL PP % query( 'Sigma', Sigma )
-    CALL amrex_parmparse_destroy( PP )
-    Chi  = Chi  * ( One / Centimeter )
-    E0   = E0   * UnitsDisplay % EnergyUnit
-    mu0  = mu0  * UnitsDisplay % EnergyUnit
-    kT   = kT   * UnitsDisplay % EnergyUnit
-    R0   = R0   * UnitsDisplay % LengthX1Unit
-
-
-    CALL DestroyMesh_MF( MeshX )
-
-
-    CALL InitializePositivityLimiter_TwoMoment_MF
-
-    CALL InitializeSlopeLimiter_TwoMoment_MF
+    !CALL InitializeSlopeLimiter_TwoMoment_MF
 
     CALL amrex_init_virtual_functions &
            ( MakeNewLevelFromScratch, &
@@ -306,6 +282,9 @@ CONTAINS
     ALLOCATE( t_old (0:nMaxLevels-1) )
     ALLOCATE( t_new (0:nMaxLevels-1) )
 
+    CALL Initialize_IMEX_RK_MF &
+           ( Verbose_Option = amrex_parallel_ioprocessor() )
+
     StepNo = 0
     dt     = 0.0_DP
     t_new  = 0.0_DP
@@ -317,9 +296,6 @@ CONTAINS
 
       SetInitialValues = .TRUE.
 
-      CALL amrex_init_from_scratch( 0.0_DP )
-      ! nLevels read from checkpoint file
-
     ELSE
 
       CALL ReadCheckpointFile &
@@ -329,9 +305,6 @@ CONTAINS
       SetInitialValues = .FALSE.
 
     END IF
-
-    CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
-    CALL AverageDown( MF_uGF, MF_uCF )
 
     t_old = t_new
     t_chk = t_new(0) + dt_chk
@@ -343,7 +316,7 @@ CONTAINS
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
     CALL ComputeFromConserved_TwoMoment_MF &
-           ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
+           (  MF_uGF, MF_uCF, MF_uCR, MF_uPR, MF_uAR, MF_uGR )
 
     CALL WriteFieldsAMReX_PlotFile &
            ( t_new(0), StepNo, MF_uGF, &
@@ -408,6 +381,11 @@ CONTAINS
            ( MF_uPR(iLevel), BA, DM, &
              nDOFZ * nPR * ( iE_E0 - iE_B0 + 1 ) * nSpecies, swX )
     CALL MF_uPR(iLevel) % SetVal( Zero )
+
+    CALL amrex_multifab_build &
+           ( MF_uAR(iLevel), BA, DM, &
+             nDOFZ * nAR * ( iE_E0 - iE_B0 + 1 ) * nSpecies, swX )
+    CALL MF_uAR(iLevel) % SetVal ( Zero )
 
     CALL amrex_multifab_build &
            ( MF_Permute(iLevel), BA, DM, &

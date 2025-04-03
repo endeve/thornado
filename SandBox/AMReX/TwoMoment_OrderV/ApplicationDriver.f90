@@ -57,6 +57,10 @@ PROGRAM main
     !Initialize_IMEX_RK_MF, &
     !Finalize_IMEX_RK_MF
 
+  USE MF_UtilitiesModule, ONLY: &
+  ShowVariableFromMultiFab
+
+
   IMPLICIT NONE
 
   LOGICAL  :: wrt, chk
@@ -97,9 +101,9 @@ PROGRAM main
        TRIM( UnitsDisplay % TimeLabel ), ' dt = ', dt(0) / UnitsDisplay % TimeUnit, &
        TRIM( UnitsDisplay % TimeLabel )
     END IF
-    CALL Update_IMEX_RK_MF &
-           ( t_new, dt, uGE, MF_uGF, MF_uCF, MF_uCR, amrex_geom, &
-            Verbose_Option = amrex_parallel_ioprocessor()  )
+
+
+    CALL Update_IMEX_RK_MF
 
   END DO
   

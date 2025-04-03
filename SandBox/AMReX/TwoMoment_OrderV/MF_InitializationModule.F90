@@ -218,7 +218,7 @@ CONTAINS
                          V_0 )
     CALL amrex_parmparse_destroy( PP )
 
-    uCR = Zero
+    uCR_K = Zero
     uPF_K = Zero
     uCF_K = Zero
     uGF_K = Zero

@@ -47,10 +47,10 @@ MODULE FinalizationModule
     DestroyFields_TwoMoment_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
-  USE MF_TwoMoment_SlopeLimiterModule, ONLY: &
-    FinalizeSlopeLimiter_TwoMoment_MF
-  USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
-    FinalizePositivityLimiter_TwoMoment_MF
+  !USE MF_TwoMoment_SlopeLimiterModule, ONLY: &
+    !FinalizeSlopeLimiter_TwoMoment_MF
+  !USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
+    !FinalizePositivityLimiter_TwoMoment_MF
   USE MF_TwoMoment_UtilitiesModule, ONLY: &
     ComputeFromConserved_TwoMoment_MF
   USE InputOutputModuleAMReX, ONLY: &
@@ -133,9 +133,9 @@ CONTAINS
     DEALLOCATE( dt )
     DEALLOCATE( StepNo )
 
-    CALL FinalizeSlopeLimiter_TwoMoment_MF
+    !CALL FinalizeSlopeLimiter_TwoMoment_MF
 
-    CALL FinalizePositivityLimiter_TwoMoment_MF
+    !CALL FinalizePositivityLimiter_TwoMoment_MF
 
     CALL FinalizeEquationOfState_MF
 
