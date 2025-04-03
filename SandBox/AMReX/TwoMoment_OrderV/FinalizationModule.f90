@@ -123,7 +123,7 @@ CONTAINS
              iWriteFields_uCR = 0, &
              pMF_uGF_Option = MF_uGF % P, &
              pMF_uCF_Option = MF_uCF % P)
-!             pMF_uCR_Option = MF_uCR % P )
+             !pMF_uCR_Option = MF_uCR % P )
 
 
     !CALL Finalize_IMEX_RK_MF

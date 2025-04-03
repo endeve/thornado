@@ -81,9 +81,6 @@ MODULE MF_TwoMoment_TimeSteppingModule_OrderV
     Timer_AMReX_UpdateFluid
   USE MF_Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_MF
-  USE MF_UtilitiesModule, ONLY: &
-  ShowVariableFromMultiFab
-
   IMPLICIT NONE
   PRIVATE
 
@@ -322,7 +319,6 @@ CONTAINS
     TYPE(amrex_multifab) :: MF_DR_Ex(0:nMaxLevels-1,1:nStages)
     TYPE(amrex_multifab) :: MF_DF_Im(0:nMaxLevels-1,1:nStages)
     TYPE(amrex_multifab) :: MF_DF_Ex(0:nMaxLevels-1,1:nStages)
-    TYPE(amrex_multifab) :: MF_uGS  (0:nMaxLevels-1          )
     TYPE(amrex_multifab) :: MF_uMF  (0:nMaxLevels-1          )
 
     TYPE(amrex_multifab) :: MF_R0   (0:nMaxLevels-1          )
@@ -342,16 +338,9 @@ CONTAINS
     nCompCF = nDOFX * nCF
     nCompCR = nDOFZ * nCR * nE * nSpecies
 
+    PRINT *, DEBUG
+
     IF( DEBUG ) WRITE(*,'(A)') 'Entering Update_IMEX_RK_MF'
-
-      IF( DEBUG )THEN
-
-        CALL MF_uGS(iLevel) % SetVal( Zero )
-
-        CALL MF_uMF(iLevel) % SetVal( Zero )
-
-      END IF
-
 
     CALL amrex_multifab_build &
            ( MF_F0(iLevel), MF_uCF(iLevel) % BA, &
@@ -431,15 +420,7 @@ CONTAINS
                        dt(iLevel) * a_EX(iS,jS), MF_DF_Ex(iLevel,jS), 1, &
                        1, nCompCF, swX )
 
-        CALL ShowVariableFromMultifab(MF_F, 1, writetofile_option=.TRUE., FileNameBase_Option ='1_F')
-        CALL ShowVariableFromMultifab(MF_R, 1, writetofile_option=.TRUE., FileNameBase_Option ='1_R')
-        CALL ShowVariableFromMultifab(MF_uGF, 1, writetofile_option=.TRUE., FileNameBase_Option ='1_uGF')
-
         END IF ! a_EX(iS,jS) .NE. Zero
-
-        CALL ShowVariableFromMultifab(MF_F, 1, writetofile_option=.TRUE., FileNameBase_Option ='2_F')
-        CALL ShowVariableFromMultifab(MF_R, 1, writetofile_option=.TRUE., FileNameBase_Option ='2_R')
-        CALL ShowVariableFromMultifab(MF_uGF, 1, writetofile_option=.TRUE., FileNameBase_Option ='2_uGF')
 
         IF( jS .EQ. iS - 1 )THEN
 
@@ -450,10 +431,6 @@ CONTAINS
 
             CALL ApplyPositivityLimiter_Euler_MF &
                    ( MF_uGF, MF_F, MF_uDF )
-
-        CALL ShowVariableFromMultifab(MF_F, 1, writetofile_option=.TRUE., FileNameBase_Option ='3_F')
-        CALL ShowVariableFromMultifab(MF_R, 1, writetofile_option=.TRUE., FileNameBase_Option ='3_R')
-        CALL ShowVariableFromMultifab(MF_uGF, 1, writetofile_option=.TRUE., FileNameBase_Option ='3_uGF')
 
           END IF ! EvolveEuler
 
@@ -501,17 +478,9 @@ CONTAINS
           CALL ApplyPositivityLimiter_Euler_MF &
                  ( MF_uGF, MF_F, MF_uDF )
 
-        CALL ShowVariableFromMultifab(MF_F, 1, writetofile_option=.TRUE., FileNameBase_Option ='4_F')
-        CALL ShowVariableFromMultifab(MF_R, 1, writetofile_option=.TRUE., FileNameBase_Option ='4_R')
-        CALL ShowVariableFromMultifab(MF_uGF, 1, writetofile_option=.TRUE., FileNameBase_Option ='4_uGF')
-
         END IF ! EvolveEuler
 
       END IF ! ANY( a_IM(:,iS) .NE. Zero ) .OR. ( w_IM(iS) .NE. Zero )
-
-CALL ShowVariableFromMultifab(MF_F, 1, writetofile_option=.TRUE., FileNameBase_Option ='4.5_F')
-CALL ShowVariableFromMultifab(MF_R, 1, writetofile_option=.TRUE., FileNameBase_Option ='4.5_R')
-CALL ShowVariableFromMultifab(MF_uGF, 1, writetofile_option=.TRUE., FileNameBase_Option ='4.5_uGF')
 
       IF( ANY( a_EX(:,iS) .NE. Zero ) .OR. ( w_EX(iS) .NE. Zero ) )THEN
 
@@ -531,23 +500,11 @@ CALL ShowVariableFromMultifab(MF_uGF, 1, writetofile_option=.TRUE., FileNameBase
 
         END IF ! EvolveEuler
 
-        CALL ShowVariableFromMultifab(MF_F, 1, writetofile_option=.TRUE., FileNameBase_Option ='5_F')
-        CALL ShowVariableFromMultifab(MF_R, 1, writetofile_option=.TRUE., FileNameBase_Option ='5_R')
-        CALL ShowVariableFromMultifab(MF_uGF, 1, writetofile_option=.TRUE., FileNameBase_Option ='5_uGF')
-
         IF( EvolveTwoMoment )THEN
-
-        CALL ShowVariableFromMultifab(MF_F, 1, writetofile_option=.TRUE., FileNameBase_Option ='6_F')
-        CALL ShowVariableFromMultifab(MF_R, 1, writetofile_option=.TRUE., FileNameBase_Option ='6_R')
-        CALL ShowVariableFromMultifab(MF_uGF, 1, writetofile_option=.TRUE., FileNameBase_Option ='6_uGF')
 
           CALL ComputeIncrement_TwoMoment_Explicit_MF &
                  ( t_new, GEOM, MF_uGF, MF_F, MF_R, MF_DR_Ex(:,iS), &
                    Verbose_Option = .FALSE. )
-
-        CALL ShowVariableFromMultifab(MF_F, 1, writetofile_option=.TRUE., FileNameBase_Option ='6_F')
-        CALL ShowVariableFromMultifab(MF_R, 1, writetofile_option=.TRUE., FileNameBase_Option ='6_R')
-        CALL ShowVariableFromMultifab(MF_uGF, 1, writetofile_option=.TRUE., FileNameBase_Option ='6_uGF')
 
           dM_OffGrid_TwoMoment(:,iLevel) &
             = dM_OffGrid_TwoMoment(:,iLevel) &
@@ -558,10 +515,6 @@ CALL ShowVariableFromMultifab(MF_uGF, 1, writetofile_option=.TRUE., FileNameBase
       END IF ! ANY( a_EX(:,iS) .NE. Zero ) .OR. ( w_EX(iS) .NE. Zero )
 
     END DO ! iS = 1, nStages
-
-        CALL ShowVariableFromMultifab(MF_F, 1, writetofile_option=.TRUE., FileNameBase_Option ='7_F')
-        CALL ShowVariableFromMultifab(MF_R, 1, writetofile_option=.TRUE., FileNameBase_Option ='7_R')
-        CALL ShowVariableFromMultifab(MF_uGF, 1, writetofile_option=.TRUE., FileNameBase_Option ='7_uGF')
 
     ! --- Assembly Step ---
 

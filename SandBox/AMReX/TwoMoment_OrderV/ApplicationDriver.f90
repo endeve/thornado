@@ -27,8 +27,9 @@ PROGRAM main
     MF_uGF
   USE MF_FieldsModule_Euler,                  ONLY: &
     MF_uCF, &
+    MF_uPF, &
     MF_uAF, &
-    MF_uCF
+    MF_uDF
   USE MF_FieldsModule_TwoMoment,                  ONLY: &
     MF_uCR, &
     MF_uPR, &
@@ -51,15 +52,29 @@ PROGRAM main
     t_wrt,     &
     dt_wrt,    &
     dt_rel
+  USE MF_Euler_TallyModule, ONLY: &
+    ComputeTally_Euler_MF, &
+    FinalizeTally_Euler_MF, &
+    BaryonicMass_Initial, &
+    BaryonicMass_OffGrid, &
+    EulerMomentumX1_Initial, &
+    EulerMomentumX1_OffGrid, &
+    EulerMomentumX2_Initial, &
+    EulerMomentumX2_OffGrid, &
+    EulerMomentumX3_Initial, &
+    EulerMomentumX3_OffGrid, &
+    EulerEnergy_Initial, &
+    EulerEnergy_OffGrid, &
+    ElectronNumber_Initial, &
+    ElectronNumber_OffGrid, &
+    ADMMass_Initial, &
+    ADMMass_OffGrid
+  USE InputOutputModuleAMReX, ONLY: &
+    WriteFieldsAMReX_PlotFile, &
+    WriteFieldsAMReX_Checkpoint
   USE MF_TwoMoment_TimeSteppingModule_OrderV, ONLY: &
     Update_IMEX_RK_MF, &
     CFL
-    !Initialize_IMEX_RK_MF, &
-    !Finalize_IMEX_RK_MF
-
-  USE MF_UtilitiesModule, ONLY: &
-  ShowVariableFromMultiFab
-
 
   IMPLICIT NONE
 
@@ -79,10 +94,6 @@ PROGRAM main
       dt = dt_rel
 
     ELSE
-
-    PRINT *, CFL
-
-    PRINT *, 'CALLING TIME STEPPER'
 
       CALL ComputeTimeStep_TwoMoment_MF( MF_uGF, CFL, dt )
       dt = MINVAL( dt )
@@ -104,6 +115,46 @@ PROGRAM main
 
 
     CALL Update_IMEX_RK_MF
+
+    IF( ALL( t_new + dt .GT. t_wrt ) )THEN
+      t_wrt = t_wrt + dt_wrt
+      wrt   = .TRUE.
+
+    END IF
+
+    IF( wrt )THEN
+        CALL ComputeFromConserved_TwoMoment_MF(  MF_uGF, MF_uCF, MF_uCR, MF_uPR, MF_uAR, MF_uGR )
+
+        CALL WriteFieldsAMReX_PlotFile &
+           ( t_new(0), StepNo, MF_uGF, &
+             MF_uGF_Option = MF_uGF, &
+             MF_uCF_Option = MF_uCF, &
+             MF_uPF_Option = MF_uPF, &
+             MF_uAF_Option = MF_uAF, &
+             MF_uDF_Option = MF_uDF, &
+             MF_uPR_Option = MF_uPR, &
+             MF_uCR_Option = MF_uCR, &
+             MF_uGR_Option = MF_uGR )
+
+    CALL WriteFieldsAMReX_Checkpoint &
+           ( StepNo, nLevels, dt, t_new, &
+             [ BaryonicMass_Initial   , BaryonicMass_OffGrid    ], &
+             [ EulerMomentumX1_Initial, EulerMomentumX1_OffGrid ], &
+             [ EulerMomentumX2_Initial, EulerMomentumX2_OffGrid ], &
+             [ EulerMomentumX3_Initial, EulerMomentumX3_OffGrid ], &
+             [ EulerEnergy_Initial    , EulerEnergy_OffGrid     ], &
+             [ ElectronNumber_Initial , ElectronNumber_OffGrid  ], &
+             [ ADMMass_Initial        , ADMMass_OffGrid         ], &
+             MF_uGF % BA % P, &
+             iWriteFields_uGF = 1, &
+             iWriteFields_uCF = 1, &
+             iWriteFields_uCR = 0, &
+             pMF_uGF_Option = MF_uGF % P, &
+             pMF_uCF_Option = MF_uCF % P)
+             !pMF_uCR_Option = MF_uCR % P )
+
+      wrt = .FALSE.
+    END IF
 
   END DO
   

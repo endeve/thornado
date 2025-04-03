@@ -14,6 +14,8 @@ f90EXE_sources  += MF_TwoMoment_SlopeLimiterModule_OrderV.f90
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/TwoMoment
 F90EXE_sources  += TwoMoment_ClosureModule.F90
 F90EXE_sources  += TwoMoment_BoundaryConditionsModule.F90
+F90EXE_sources  += TwoMoment_TimeSteppingModule.F90
+F90EXE_sources  += TwoMoment_TallyModule.F90
 
 VPATH_LOCATIONS += $(THORNADO_DIR)/Modules/TwoMoment/OrderV
 F90EXE_sources  += TwoMoment_UtilitiesModule.F90

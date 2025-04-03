@@ -2612,7 +2612,7 @@ CONTAINS
 
       ! --- Numerical Flux (Local Lax-Friedrichs) ---
 
-      EdgeEnergyCubed = ( xZ1(iZ1) - Half * dZ1(iZ1) )**3
+      EdgeEnergyCubed = ( xZ1(iZ1) - Half * dZ1(iZ1) )* ( xZ1(iZ1) - Half * dZ1(iZ1) ) *( xZ1(iZ1) - Half * dZ1(iZ1) )
 
       DO iCR = 1, nCR
 
