@@ -11,7 +11,9 @@ MODULE LinearAlgebraModule
     DP, &
     Zero, &
     One, &
-    Pi
+    Pi, &
+    SqrtTiny
+
   USE DeviceModule, ONLY: &
     mydevice, &
     device_is_present, &
@@ -1401,13 +1403,11 @@ CONTAINS
 
     P1 = A(1,2)**2 + A(1,3)**2 + A(2,3)**2
 
-    IF ( P1 == Zero ) THEN
+    Lambda(1) = A(1,1)
+    Lambda(2) = A(2,2)
+    Lambda(3) = A(3,3)
 
-      Lambda(1) = A(1,1)
-      Lambda(2) = A(2,2)
-      Lambda(3) = A(3,3)
-
-    ELSE
+    IF ( P1 .gt. SqrtTiny ) THEN
 
       Q = ( A(1,1) + A(2,2) + A(3,3) ) / 3.0_DP
       P2 = 2.0_DP * P1 &

@@ -1,7 +1,7 @@
 PROGRAM NeutrinoOpacities
 
   USE KindModule, ONLY: &
-    DP, FourPi
+    DP, FourPi, Third
   USE PhysicalConstantsModule, ONLY: &
     SpeedOfLightCGS
   USE UnitsModule, ONLY: &
@@ -36,7 +36,8 @@ PROGRAM NeutrinoOpacities
   USE ReferenceElementModuleE_Lagrange, ONLY: &
     InitializeReferenceElementE_Lagrange
   USE RadiationFieldsModule, ONLY: &
-    iNuE, iNuE_Bar, iNuM, iNuM_Bar
+    iNuE, iNuE_Bar, iNuM, iNuM_Bar, &
+    nChirals, LeptonNumber
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     ComputeEquilibriumDistributions, &
     ComputeEquilibriumDistributions_DG, &
@@ -105,6 +106,7 @@ PROGRAM NeutrinoOpacities
     Unit_T     = Kelvin, &
     Unit_Y     = 1.0_DP, &
     Unit_E     = MeV, &
+    Unit_Phi   = 1.0_DP / ( Centimeter * MeV**2 ), &
     Unit_Chi   = 1.0_DP / Centimeter, &
     Unit_Sigma = 1.0_DP / Centimeter, &
     UnitNES    = 1.0_DP / ( Centimeter * MeV**3 ), &
@@ -118,7 +120,7 @@ PROGRAM NeutrinoOpacities
     ZoomE      = 1.266038160710160d0
 
   INTEGER :: &
-    mpierr, iE, iX, iS, iNodeE, iN_E, iE1, iE2
+    mpierr, iE, iX, iS, iNodeE, iN_E, iE1, iE2, iC
   REAL(DP) :: &
     kT, DetBal, &
     Timer_ReadEos, &
@@ -126,7 +128,10 @@ PROGRAM NeutrinoOpacities
     Timer_ComputeEquilibrium, &
     Timer_ComputeEquilibrium_DG, &
     Timer_Compute_EC, &
+    Timer_ComputeKrnl_ES, &
+    Timer_ComputeRate_ES, &
     Timer_Compute_ES, &
+    Timer_ComputeCorr_ES, &
     Timer_ComputeKrnl_NES, &
     Timer_ComputeRate_NES, &
     Timer_Compute_NES, &
@@ -154,8 +159,9 @@ PROGRAM NeutrinoOpacities
     Edot_NES_element
   REAL(DP), DIMENSION(nPointsE) :: &
     E, W2
-  REAL(DP), DIMENSION(nPointsE,nPointsX) :: &
-    Sigma_Iso    ! --- Iso-energertic Kernel
+  REAL(DP), DIMENSION(nPointsE,nChirals,nPointsX) :: &
+    Phi_0_Iso, & ! --- Iso-energertic Kernel (0th moment)
+    Phi_1_Iso    ! --- Iso-energertic Kernel (1st moment)
   REAL(DP), DIMENSION(nPointsE,nSpecies,nPointsX) :: &
     f0       , & ! --- Equilibrium Distribution
     f0_DG    , & ! --- Equilibrium Distribution (DG Approximation)
@@ -266,9 +272,9 @@ PROGRAM NeutrinoOpacities
    !Y = 0.33 * Unit_Y
 
    !D = 0.70428d10 * Unit_D
-   D = 0.70428d13 * Unit_D
-   T = 0.66006d0 / 8.61733d-11 * Unit_T
-   Y = 0.43642d0
+   D = 7.25205428E+09 * Unit_D
+   T = 7.64409875E+09 * Unit_T
+   Y = 4.36039929E-01
 
   ! --- Energy Grid ---
 
@@ -288,7 +294,7 @@ PROGRAM NeutrinoOpacities
   CALL TimersStart( Timer_ReadEos )
   CALL InitializeEquationOfState_TABLE &
          ( EquationOfStateTableName_Option &
-             = 'EquationOfStateTable.h5', &
+             = 'wl-EOS-SFHo-15-25-50.h5', &
            Verbose_Option = .TRUE. )
   CALL TimersStop( Timer_ReadEos )
 
@@ -309,16 +315,18 @@ PROGRAM NeutrinoOpacities
   !           = 'wl-Op-LS220-25-50-100-E40-HR98-Brem.h5', &
   !         Verbose_Option = .TRUE. ) 
   CALL InitializeOpacities_TABLE &
-         ( OpacityTableName_EmAb_Option &
-             = 'wl-Op-EmAb.h5', &
+         ( EquationOfStateTableName_Option &
+             = 'wl-EOS-SFHo-15-25-50.h5', &
+           OpacityTableName_EmAb_Option &
+             = 'wl-Op-SFHo-15-25-50-E40-EmAb.h5', &
            OpacityTableName_Iso_Option  &
-             = 'wl-Op-Iso.h5',  &
+             = 'wl-Op-SFHo-15-25-50-E40-Iso.h5',  &
            OpacityTableName_NES_Option &
-             = 'wl-Op-NES.h5',  &
+             = 'wl-Op-SFHo-15-25-50-E40-NES.h5',  &
            OpacityTableName_Pair_Option &
-             = 'wl-Op-Pair.h5', &
+             = 'wl-Op-SFHo-15-25-50-E40-Pair.h5', &
            OpacityTableName_Brem_Option &
-             = 'wl-Op-Brem.h5', &
+             = 'wl-Op-SFHo-15-25-50-E40-Brem.h5', &
            Verbose_Option = .TRUE. ) 
   CALL TimersStop( Timer_ReadOpacities )
 
@@ -349,16 +357,18 @@ PROGRAM NeutrinoOpacities
   !$OMP TARGET ENTER DATA &
   !$OMP MAP( to: E, D, T, Y, W2, f0, f0_DG, J, H_1, H_2, H_3, S_sigma, &
   !$OMP          H_I_0, H_II_0, H_I_1, H_II_1, J_I_0, J_II_0, J_I_1, J_II_1 ) &
-  !$OMP MAP( alloc: Chi_EmAb, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, Chi_Iso, Sigma_Iso, &
+  !$OMP MAP( alloc: Chi_EmAb, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, Chi_Iso, &
   !$OMP             Eta_EmAb, Eta_NES, Eta_Pair, Eta_NuPair, Eta_Brem, Eta_Iso, &
+  !$OMP             Phi_0_Iso, Phi_1_Iso, &
   !$OMP             A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3, &
   !$OMP             A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 )
 #elif defined(THORNADO_OACC)
   !$ACC ENTER DATA &
   !$ACC COPYIN( E, D, T, Y, W2, f0, f0_DG, J, H_1, H_2, H_3, S_sigma, &
   !$ACC         H_I_0, H_II_0, H_I_1, H_II_1, J_I_0, J_II_0, J_I_1, J_II_1 ) &
-  !$ACC CREATE( Chi_EmAb, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, Chi_Iso, Sigma_Iso, &
+  !$ACC CREATE( Chi_EmAb, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, Chi_Iso, &
   !$ACC         Eta_EmAb, Eta_NES, Eta_Pair, Eta_NuPair, Eta_Brem, Eta_Iso, &
+  !$ACC         Phi_0_Iso, Phi_1_Iso, &
   !$ACC         A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3, &
   !$ACC         A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 )
 #endif
@@ -434,26 +444,44 @@ PROGRAM NeutrinoOpacities
 
   Timer_Compute_ES = 0.0d0
   CALL TimersStart( Timer_Compute_ES )
-  CALL ComputeNeutrinoOpacities_ES &
-         ( 1, nPointsE, 1, nPointsX, E, D, T, Y, 1, Sigma_Iso )
-  CALL TimersStop( Timer_Compute_ES )
 
+  Timer_ComputeKrnl_ES = 0.0d0
+  CALL TimersStart( Timer_ComputeKrnl_ES )
+  CALL ComputeNeutrinoOpacities_ES &
+         ( 1, nPointsE, 1, nPointsX, E, D, T, Y, 1, Phi_0_Iso )
+  CALL TimersStop( Timer_ComputeKrnl_ES )
+
+  Timer_ComputeCorr_ES = 0.0d0
+  CALL TimersStart( Timer_ComputeCorr_ES )
+  CALL ComputeNeutrinoOpacities_ES &
+         ( 1, nPointsE, 1, nPointsX, E, D, T, Y, 2, Phi_1_Iso )
+  CALL TimersStop( Timer_ComputeCorr_ES )
+
+  Timer_ComputeRate_ES = 0.0d0
+  CALL TimersStart( Timer_ComputeRate_ES )
 #if defined(THORNADO_OMP_OL)
-  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+  !$OMP PRIVATE( iC )
 #elif defined(THORNADO_OACC)
   !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-  !$ACC PRESENT( Eta_Iso, Chi_Iso, Sigma_Iso, f0_DG, E  )
+  !$ACC PRESENT( Phi_0_Iso, Phi_1_Iso, Eta_Iso, Chi_Iso, f0_DG, E ) &
+  !$ACC PRIVATE( iC )
 #endif
   DO iX = 1, nPointsX
   DO iS = 1, nSpecies
   DO iE = 1, nPointsE
 
-    Chi_Iso(iE,iS,iX) = FourPi * E(iE)**2 * Sigma_Iso(iE,iX)
+    iC = nChirals - (LeptonNumber(iS) + 1) / nChirals
+
+    Chi_Iso(iE,iS,iX) = FourPi * E(iE)**2 * ( Phi_0_Iso(iE,iC,iX) - Third * Phi_1_Iso(iE,iC,iX) )
     Eta_Iso(iE,iS,iX) = Chi_Iso(iE,iS,iX) * f0_DG(iE,iS,iX)
 
   END DO
   END DO
   END DO
+  CALL TimersStop( Timer_ComputeRate_ES )
+
+  CALL TimersStop( Timer_Compute_ES )
 
   ! --- Compute NES Opacities ---
 
@@ -481,7 +509,6 @@ PROGRAM NeutrinoOpacities
          ( 1, nPointsE, 1, nPointsX, D, T, Y, 2, H_I_1, H_II_1 )
   CALL TimersStop( Timer_ComputeCorr_NES )
 
-  Timer_ComputeCorr_NES = 0.0d0
   CALL TimersStart( Timer_ComputeCorr_NES )
   CALL ComputeNeutrinoOpacityRates_LinearCorrections_NES &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, D, W2, H_1, H_2, H_3, f0_DG, &
@@ -516,7 +543,6 @@ PROGRAM NeutrinoOpacities
          ( 1, nPointsE, 1, nPointsX, D, T, Y, 2, J_I_1, J_II_1 )
   CALL TimersStop( Timer_ComputeCorr_Pair )
 
-  Timer_ComputeCorr_Pair = 0.0d0
   CALL TimersStart( Timer_ComputeCorr_Pair )
   CALL ComputeNeutrinoOpacityRates_LinearCorrections_Pair &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, D, W2, H_1, H_2, H_3, f0_DG, &
@@ -539,7 +565,7 @@ PROGRAM NeutrinoOpacities
   Timer_ComputeRate_NuPair = 0.0d0
   CALL TimersStart( Timer_ComputeRate_NuPair )
   CALL ComputeNeutrinoOpacityRates_NuPair &
-         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, W2, &
+         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, D, W2, &
            J, f0_DG, Nu_J_I_0, Nu_J_II_0, Eta_NuPair, Chi_NuPair )
   CALL TimersStop( Timer_ComputeRate_NuPair )
 
@@ -570,19 +596,21 @@ PROGRAM NeutrinoOpacities
   !$OMP MAP( from: f0, f0_DG, J, H_1, H_2, H_3, S_sigma, &
   !$OMP            Chi_EmAb, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, Chi_Iso, &
   !$OMP            Eta_EmAb, Eta_NES, Eta_Pair, Eta_NuPair, Eta_Brem, Eta_Iso, &
+  !$OMP            Phi_0_Iso, Phi_1_Iso, &
   !$OMP            H_I_0, H_II_0, H_I_1, H_II_1, J_I_0, J_II_0, J_I_1, J_II_1, &
   !$OMP            A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3, &
   !$OMP            A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 ) &
-  !$OMP MAP( release: E, D, T, Y, W2, Sigma_Iso )
+  !$OMP MAP( release: E, D, T, Y, W2 )
 #elif defined(THORNADO_OACC)
   !$ACC EXIT DATA &
   !$ACC COPYOUT( f0, f0_DG, J, H_1, H_2, H_3, S_sigma, &
   !$ACC          Chi_EmAb, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, Chi_Iso, &
   !$ACC          Eta_EmAb, Eta_NES, Eta_Pair, Eta_NuPair, Eta_Brem, Eta_Iso, &
+  !$ACC          Phi_0_Iso, Phi_1_Iso, &
   !$ACC          H_I_0, H_II_0, H_I_1, H_II_1, J_I_0, J_II_0, J_I_1, J_II_1, &
   !$ACC          A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3, &
   !$ACC          A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 ) &
-  !$ACC DELETE( E, D, T, Y, W2, Sigma_Iso )
+  !$ACC DELETE( E, D, T, Y, W2 )
 #endif
 
   DO iX = 1, nPointsX
@@ -683,6 +711,15 @@ PROGRAM NeutrinoOpacities
          ( nPointsE, Chi_Iso(:,iNuE_Bar,1) / Unit_Chi, 'Chi_Iso_NuE_Bar.dat' )
   CALL WriteVector & ! --- NuE_Bar
          ( nPointsE, Eta_Iso(:,iNuE_Bar,1) / Unit_Chi, 'Eta_Iso_NuE_Bar.dat' )
+
+  CALL WriteVector & ! --- NuE
+         ( nPointsE, Phi_0_Iso(:,iNuE    ,1) / Unit_Phi, 'Phi_0_Iso_NuE.dat'     )
+  CALL WriteVector & ! --- NuE
+         ( nPointsE, Phi_1_Iso(:,iNuE    ,1) / Unit_Phi, 'Phi_1_Iso_NuE.dat'     )
+  CALL WriteVector & ! --- NuE_Bar
+         ( nPointsE, Phi_0_Iso(:,iNuE_Bar,1) / Unit_Phi, 'Phi_0_Iso_NuE_Bar.dat' )
+  CALL WriteVector & ! --- NuE_Bar
+         ( nPointsE, Phi_1_Iso(:,iNuE_Bar,1) / Unit_Phi, 'Phi_1_Iso_NuE_Bar.dat' )
 
   CALL WriteVector & ! --- NuE
          ( nPointsE, Chi_NES(:,iNuE    ,1) / Unit_Chi, 'Chi_NES_NuE.dat'     )
@@ -810,8 +847,15 @@ PROGRAM NeutrinoOpacities
     Timer_ComputeEquilibrium_DG
   WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_EC = ',    &
     Timer_Compute_EC, Timer_Compute_EC / Timer_Total
+
   WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_ES = ',    &
     Timer_Compute_ES, Timer_Compute_ES / Timer_Total
+  WRITE(*,'(A4,A22,1ES10.2E2)') '', '(Kernel)',   &
+    Timer_ComputeKrnl_ES
+  WRITE(*,'(A4,A22,1ES10.2E2)') '', '(Rate)',   &
+    Timer_ComputeRate_ES
+  WRITE(*,'(A4,A22,1ES10.2E2)') '', '(Corrections)',   &
+    Timer_ComputeCorr_ES
 
   WRITE(*,'(A4,A22,2ES10.2E2)') '', 'Compute_NES = ',   &
     Timer_Compute_NES, Timer_Compute_NES / Timer_Total

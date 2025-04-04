@@ -821,8 +821,17 @@ CONTAINS
 
         END DO
 
-        Alpha(1) = AB1 / ( AA11 + SqrtTiny )
-        Alpha(2) = One - Alpha(1)
+        IF ( AA11 < SqrtTiny ) THEN
+
+          Alpha(1) = Zero
+          Alpha(2) = One
+
+        ELSE
+
+          Alpha(1) = AB1 / AA11
+          Alpha(2) = One - Alpha(1)
+
+        END IF
 
       ELSE IF ( Mk == 3 ) THEN
 
@@ -849,9 +858,19 @@ CONTAINS
 
         DET_AA = AA11*AA22 - AA12*AA12
 
-        Alpha(1) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
-        Alpha(2) = ( - AA12 * AB1 + AA11 * AB2 ) / DET_AA
-        Alpha(3) = One - Alpha(1) - Alpha(2)
+        IF ( DET_AA < SqrtTiny ) THEN
+
+          Alpha(1) = Zero
+          Alpha(2) = Zero
+          Alpha(3) = One
+
+        ELSE
+
+          Alpha(1) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
+          Alpha(2) = ( - AA12 * AB1 + AA11 * AB2 ) / DET_AA
+          Alpha(3) = One - Alpha(1) - Alpha(2)
+
+       END IF
 
       ELSE IF ( Mk > 3 ) THEN
 
@@ -908,8 +927,17 @@ CONTAINS
 
             END DO
 
-            Alpha(1,iZ) = AB1 / ( AA11 + SqrtTiny )
-            Alpha(2,iZ) = One - Alpha(1,iZ)
+            IF ( AA11 < SqrtTiny ) THEN
+
+              Alpha(1,iZ) = Zero
+              Alpha(2,iZ) = One
+  
+            ELSE
+
+              Alpha(1,iZ) = AB1 / AA11
+              Alpha(2,iZ) = One - Alpha(1,iZ)
+
+            END IF
 
           END IF
         END DO
@@ -953,9 +981,19 @@ CONTAINS
 
             DET_AA = AA11*AA22 - AA12*AA12
 
-            Alpha(1,iZ) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
-            Alpha(2,iZ) = ( - AA12 * AB1 + AA11 * AB2 ) / DET_AA
-            Alpha(3,iZ) = One - Alpha(1,iZ) - Alpha(2,iZ)
+            IF ( DET_AA < SqrtTiny ) THEN
+
+              Alpha(1,iZ) = Zero
+              Alpha(2,iZ) = Zero
+              Alpha(3,iZ) = One
+
+            ELSE
+
+              Alpha(1,iZ) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
+              Alpha(2,iZ) = ( - AA12 * AB1 + AA11 * AB2 ) / DET_AA
+              Alpha(3,iZ) = One - Alpha(1,iZ) - Alpha(2,iZ)
+
+            END IF
 
           END IF
         END DO
@@ -1325,7 +1363,15 @@ CONTAINS
 
       END DO
 
-      BVEC(1) = AB1 / AA11
+      IF ( AA11 < SqrtTiny ) THEN
+
+        BVEC(1) = Zero
+
+      ELSE
+
+        BVEC(1) = AB1 / AA11
+
+      END IF
 
     ELSEIF( mk == 3 )THEN
 
@@ -1347,8 +1393,17 @@ CONTAINS
 
       DET_AA = AA11 * AA22 - AA12 * AA12
 
-      BVEC(1) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
-      BVEC(2) = ( - AA12 * AB1 + AA11 * AB2 ) / DET_AA
+      IF ( DET_AA < SqrtTiny ) THEN
+
+        BVEC(1) = Zero
+        BVEC(2) = Zero
+
+      ELSE
+
+        BVEC(1) = ( + AA22 * AB1 - AA12 * AB2 ) / DET_AA
+        BVEC(2) = ( - AA12 * AB1 + AA11 * AB2 ) / DET_AA
+
+      END IF
 
     ELSEIF( mk > 3 )THEN
 

@@ -254,7 +254,7 @@ CONTAINS
       rhoMin_Euler_GR = 1.0e-20_DP
       epsMin_Euler_GR = 1.0e-20_DP
 
-      CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
+      CALL ReadCheckpointFile
 
       SetInitialValues = .FALSE.
 
@@ -382,8 +382,7 @@ CONTAINS
                iLevel, nDOFX_X1 * nCF )
 
     CALL FillCoarsePatch( iLevel, MF_uGF, &
-                          ApplyBoundaryConditions_Geometry_Option = .TRUE., &
-                          UpdateSpatialMetric_Option = .TRUE. )
+                          ApplyBoundaryConditions_Geometry_Option = .TRUE. )
 
     CALL FillCoarsePatch( iLevel, MF_uDF )
 
@@ -441,7 +440,9 @@ CONTAINS
            ( iLevel, MF_uGF, MF_uGF_tmp, &
              ApplyBoundaryConditions_Geometry_Option = .TRUE. )
 
-    CALL FillPatch( iLevel, MF_uDF, MF_uDF_tmp )
+    CALL FillPatch &
+           ( iLevel, MF_uDF, MF_uDF_tmp, &
+             ApplyBoundaryConditions_Diagnostic_Option = .TRUE. )
 
     CALL FillPatch &
            ( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp, &

@@ -62,12 +62,8 @@ jobs:
     steps:
       - name: Checkout thornado
         uses: actions/checkout@v4
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_IDEAL
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_IDEAL/Executables
@@ -101,12 +97,8 @@ jobs:
           repository: jrober50/Poseidon
           path: poseidon
           ref: Development
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/dgExperiments_Euler_NonRelativistic_TABLE/
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_NonRelativistic_TABLE/Executables
@@ -127,12 +119,8 @@ jobs:
     steps:
       - name: Checkout thornado
         uses: actions/checkout@v4
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/dgExperiments_Euler_Relativistic_IDEAL
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_IDEAL/Executables
@@ -159,12 +147,8 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/dgExperiments_Euler_Relativistic_TABLE
         run: |
           cd ${THORNADO_DIR}/SandBox/dgExperiments_Euler_Relativistic_TABLE/Executables
@@ -192,12 +176,8 @@ jobs:
           repository: jrober50/Poseidon
           path: poseidon
           ref: Development
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/YahilCollapse_XCFC
         run: |
           cd ${THORNADO_DIR}/SandBox/YahilCollapse_XCFC/Executables
@@ -231,12 +211,8 @@ jobs:
           repository: jrober50/Poseidon
           path: poseidon
           ref: Development
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AdiabaticCollapse_XCFC
         run: |
           cd ${THORNADO_DIR}/SandBox/AdiabaticCollapse_XCFC/Executables
@@ -264,12 +240,8 @@ jobs:
           repository: AMReX-Codes/amrex
           path: amrex
           ref: development
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL (1D)
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
@@ -297,12 +269,8 @@ jobs:
           repository: AMReX-Codes/amrex
           path: amrex
           ref: development
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL (2D)
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
@@ -330,12 +298,8 @@ jobs:
           repository: AMReX-Codes/amrex
           path: amrex
           ref: development
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL (3D)
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_IDEAL
@@ -369,12 +333,8 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/dgExperiments_Euler_Relativistic_TABLE
@@ -402,12 +362,8 @@ jobs:
           repository: AMReX-Codes/amrex
           path: amrex
           ref: development
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_NonRelativistic
@@ -435,12 +391,8 @@ jobs:
           repository: AMReX-Codes/amrex
           path: amrex
           ref: development
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
@@ -475,12 +427,8 @@ jobs:
           repository: jrober50/Poseidon
           path: poseidon
           ref: Development
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/Applications/YahilCollapse_XCFC
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/YahilCollapse_XCFC
@@ -521,12 +469,8 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/AdiabaticCollapse_XCFC
@@ -560,12 +504,8 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/TwoMoment_Test
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/TwoMoment_Test
@@ -599,12 +539,8 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/TwoMoment_TABLE
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/TwoMoment_TABLE
@@ -645,12 +581,8 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/Applications/CoreCollapseSupernova_XCFC
@@ -685,12 +617,8 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/UnitTests/CheckInterpolation
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/UnitTests/CheckInterpolation
@@ -725,12 +653,8 @@ jobs:
         with:
           repository: starkiller-astro/weaklib
           path: weaklib
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get -y install \
-            libhdf5-dev \
-            libopenmpi-dev
-          sudo apt-get -y update
+      - name: Build Dependencies
+        run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
       - name: Compile SandBox/AMReX/UnitTests/CheckPrimitiveRecovery
         run: |
           cd ${THORNADO_DIR}/SandBox/AMReX/UnitTests/CheckPrimitiveRecovery

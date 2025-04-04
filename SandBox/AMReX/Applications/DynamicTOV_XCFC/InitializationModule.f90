@@ -265,7 +265,7 @@ CONTAINS
 
     ELSE
 
-      CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
+      CALL ReadCheckpointFile
 
       SetInitialValues   = .FALSE.
       FixInteriorADMMass = .TRUE.
@@ -404,8 +404,7 @@ CONTAINS
                iLevel, nDOFX_X1 * nCF )
 
     CALL FillCoarsePatch( iLevel, MF_uGF, &
-                          ApplyBoundaryConditions_Geometry_Option = .TRUE., &
-                          UpdateSpatialMetric_Option = .TRUE. )
+                          ApplyBoundaryConditions_Geometry_Option = .TRUE. )
 
     CALL FillCoarsePatch( iLevel, MF_uDF )
 

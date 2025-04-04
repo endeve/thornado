@@ -7,12 +7,15 @@ MODULE TaggingModule
   USE ProgramHeaderModule, ONLY: &
     nDOFX
   USE FluidFieldsModule, ONLY: &
-    iDF_Sh_X1
+    iDF_Sh_X1, &
+    iCF_E
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
     DP
+  USE InputParsingModule, ONLY: &
+    StepNo
 
   IMPLICIT NONE
   PRIVATE
@@ -23,11 +26,13 @@ CONTAINS
 
 
   SUBROUTINE TagElements &
-    ( iLevel, iX_B0, iX_E0, iLo, iHi, uDF, TagCriteria, &
+    ( iLevel, iX_B0, iX_E0, iLo, iHi, uCF, uDF, TagCriteria, &
       SetTag, ClearTag, TagLo, TagHi, Tag )
 
     INTEGER,  INTENT(in) :: iLevel, iX_B0(3), iX_E0(3), iLo(4), iHi(4), &
                             TagLo(4), TagHi(4)
+    REAL(DP), INTENT(in) :: uCF(iLo(1):iHi(1),iLo(2):iHi(2), &
+                                iLo(3):iHi(3),iLo(4):iHi(4))
     REAL(DP), INTENT(in) :: uDF(iLo(1):iHi(1),iLo(2):iHi(2), &
                                 iLo(3):iHi(3),iLo(4):iHi(4))
     REAL(DP), INTENT(in) :: TagCriteria
@@ -58,6 +63,11 @@ CONTAINS
         Tag(iX1,iX2,iX3,1) = ClearTag
 
       END IF
+
+      ! --- Ensure detonation region of initial conditions is refined ---
+      indLo = 1 + nDOFX * ( iCF_E - 1 )
+      IF( uCF(iX1,iX2,iX3,indLo) .GT. 0.01_DP .AND. StepNo(0) .LT. 1 ) &
+        Tag(iX1,iX2,iX3,1) = SetTag
 
     END DO
     END DO
