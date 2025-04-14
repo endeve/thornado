@@ -2881,7 +2881,7 @@ CONTAINS
           - S_uu_11 * dGm_dd_dX1(iNodeX,1,iZ2,iZ3,iZ4) &
           - S_uu_22 * dGm_dd_dX1(iNodeX,2,iZ2,iZ3,iZ4) &
           - S_uu_33 * dGm_dd_dX1(iNodeX,3,iZ2,iZ3,iZ4) &
-          + E * dAlpha_dX1(iNodeX,iZ2,iZ3,iZ4)
+          + E * dAlpha_dX1(iNodeX,iZ2,iZ3,iZ4) / Alpha_K(iX_K)
 
       dFlux_K(iCR_G2) &
         = + uI1_K(iZ_K) * dV_d_dX1(iNodeX,2,iZ2,iZ3,iZ4) &
@@ -2890,7 +2890,7 @@ CONTAINS
           - S_uu_11 * dGm_dd_dX2(iNodeX,1,iZ2,iZ3,iZ4) &
           - S_uu_22 * dGm_dd_dX2(iNodeX,2,iZ2,iZ3,iZ4) &
           - S_uu_33 * dGm_dd_dX2(iNodeX,3,iZ2,iZ3,iZ4) &
-          + E * dAlpha_dX2(iNodeX,iZ2,iZ3,iZ4)
+          + E * dAlpha_dX2(iNodeX,iZ2,iZ3,iZ4) / Alpha_K(iX_K)
 
       dFlux_K(iCR_G3) &
         = + uI1_K(iZ_K) * dV_d_dX1(iNodeX,3,iZ2,iZ3,iZ4) &
@@ -2899,7 +2899,7 @@ CONTAINS
           - S_uu_11 * dGm_dd_dX3(iNodeX,1,iZ2,iZ3,iZ4) &
           - S_uu_22 * dGm_dd_dX3(iNodeX,2,iZ2,iZ3,iZ4) &
           - S_uu_33 * dGm_dd_dX3(iNodeX,3,iZ2,iZ3,iZ4) &
-          + E * dAlpha_dX3(iNodeX,iZ2,iZ3,iZ4)
+          + E * dAlpha_dX3(iNodeX,iZ2,iZ3,iZ4) / Alpha_K(iX_K)
 
       Beta &
         = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4)  &
