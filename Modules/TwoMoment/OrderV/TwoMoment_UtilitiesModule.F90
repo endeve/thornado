@@ -3146,7 +3146,7 @@ CONTAINS
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, nK_X, nDOFX_X1, + One, LX_X1_Up, nDOFX_X1, &
-             Alpha_F(1,1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX_X1, One,  &
+             Alpha_F(1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX_X1, One,  &
              dAlpha_dX1, nDOFX )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
@@ -3680,7 +3680,7 @@ CONTAINS
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, nK_X, nDOFX_X2, + One, LX_X2_Up, nDOFX_X2, &
-             Alpha_F(1,1,iX_B0(1),iX_B0(3),iX_B0(2)+1), nDOFX_X2, One,  &
+             Alpha_F(1,iX_B0(1),iX_B0(3),iX_B0(2)+1), nDOFX_X2, One,  &
              dAlpha_dX2, nDOFX )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
@@ -3855,10 +3855,10 @@ CONTAINS
             / ( GX_K (iNodeX,iGF_Gm_dd_11:iGF_Gm_dd_33,iX1,iX3,iX2) &
               * U_F_K(iNodeX,iCF_D                    ,iX1,iX3,iX2) )
 
-        V_u_K(iNodeX,i,iX1,iX3,iX2) &
+        V_u_K(iNodeX,1:3,iX1,iX3,iX2) &
           = uV_K(1:3) * WeightsX_q(iNodeX)
 
-        V_d_K(iNodeX,i,iX1,iX3,iX2) &
+        V_d_K(iNodeX,1:3,iX1,iX3,iX2) &
           = uV_K(1:3) * WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Gm_dd,iX1,iX3,iX2)
 
         Alpha_K &
@@ -4050,7 +4050,7 @@ CONTAINS
     ALLOCATE( dh_d_dX3  (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
     ALLOCATE( Alpha_F   (nDOFX       ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
     ALLOCATE( Alpha_K   (nDOFX       ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
-    ALLOCATE( dAlpha_dX1(nDOFX       ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
+    ALLOCATE( dAlpha_dX3(nDOFX       ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
     ALLOCATE( U_F_K     (nDOFX   ,nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)-1:iX_E0(3)+1) )
     ALLOCATE( U_F_L     (nDOFX_X3,nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
     ALLOCATE( U_F_R     (nDOFX_X3,nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
@@ -4215,7 +4215,7 @@ CONTAINS
 
     CALL MatrixMatrixMultiply &
            ( 'T', 'N', nDOFX, nK_X, nDOFX_X3, + One, LX_X3_Up, nDOFX_X3, &
-             Alpha_F(1,1,iX_B0(1),iX_B0(2),iX_B0(3)+1), nDOFX_X3, One,  &
+             Alpha_F(1,iX_B0(1),iX_B0(2),iX_B0(3)+1), nDOFX_X3, One,  &
              dAlpha_dX3, nDOFX )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
@@ -4394,7 +4394,7 @@ CONTAINS
         V_u_K(iNodeX,1:3,iX1,iX2,iX3) &
           = uV_K(1:3) * WeightsX_q(iNodeX)
 
-        V_d_K(iNodeX,i,iX1,iX2,iX3) &
+        V_d_K(iNodeX,1:3,iX1,iX2,iX3) &
           = uV_K(1:3) * GX_K(iNodeX,iGF_Gm_dd_11:iGF_Gm_dd_33,iX1,iX2,iX3) * WeightsX_q(iNodeX)
 
         Alpha_K &
@@ -4457,7 +4457,7 @@ CONTAINS
 
         dAlpha_dX3(iNodeX,iX1,iX2,iX3) &
          = dAlpha_dX3(iNodeX,iX1,iX2,iX3) &
-             / ( WeightsX_q(iNodeX) * dX1(iX3) )
+             / ( WeightsX_q(iNodeX) * dX3(iX3) )
 
       END DO
 
