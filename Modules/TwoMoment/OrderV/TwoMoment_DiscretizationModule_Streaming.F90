@@ -65,7 +65,8 @@ MODULE TwoMoment_DiscretizationModule_Streaming
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
-    iGF_SqrtGm
+    iGF_SqrtGm, &
+    iGF_Alpha
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
@@ -110,7 +111,7 @@ MODULE TwoMoment_DiscretizationModule_Streaming
     uGF_K, uGF_F
 
   REAL(DP), POINTER, CONTIGUOUS, DIMENSION(:) :: &
-    Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, SqrtGm_K, &
+    Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, SqrtGm_K, Alpha_K, &
     Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F
 
   ! --- Conserved Fluid Fields ---
@@ -167,6 +168,9 @@ MODULE TwoMoment_DiscretizationModule_Streaming
     dV_u_dX1, dV_u_dX2, dV_u_dX3, &
     dV_d_dX1, dV_d_dX2, dV_d_dX3, &
     dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3
+
+  REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE :: &
+    dAlpha_dX1, dAlpha_dX2, dAlpha_dX3
 
   ! ---
 
@@ -2272,7 +2276,7 @@ CONTAINS
 
     REAL(DP) :: EdgeEnergyCubed, Beta
     REAL(DP) :: A(3,3), Lambda(3)
-    REAL(DP) :: k_uu(3,3), S_uu_11, S_uu_22, S_uu_33
+    REAL(DP) :: k_uu(3,3), S_uu_11, S_uu_22, S_uu_33, E
     REAL(DP) :: Flux_K(nCR), dFlux_K(nPR)
     REAL(DP) :: Flux_L(nCR), uPR_L(nPR)
     REAL(DP) :: Flux_R(nCR), uPR_R(nPR)
@@ -2311,15 +2315,15 @@ CONTAINS
 
     CALL ComputeWeakDerivatives_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
-             dV_u_dX1, dV_d_dX1, dGm_dd_dX1 )
+             dV_u_dX1, dV_d_dX1, dGm_dd_dX1, dAlpha_dX1 )
 
     CALL ComputeWeakDerivatives_X2 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
-             dV_u_dX2, dV_d_dX2, dGm_dd_dX2 )
+             dV_u_dX2, dV_d_dX2, dGm_dd_dX2, dAlpha_dX2 )
 
     CALL ComputeWeakDerivatives_X3 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
-             dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
+             dV_u_dX3, dV_d_dX3, dGm_dd_dX3, dAlpha_dX3 )
 
     CALL TimersStop( Timer_Streaming_Derivatives )
 
@@ -2810,7 +2814,8 @@ CONTAINS
     !$ACC          Beta, dFlux_K, k_uu, S_uu_11, S_uu_22, S_uu_33 ) &
     !$ACC PRESENT( dV_u_dX1, dV_u_dX2, dV_u_dX3, uV1_K, uV2_K, uV3_K, &
     !$ACC          dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
-    !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
+    !$ACC          dAlpha_dX1, dAlpha_dX2, dAlpha_dX3, &
+    !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, Alpha_K, &
     !$ACC          uD_K, uI1_K, uI2_K, uI3_K, &
     !$ACC          dU_Z, GE, SqrtGm_K, Weights_q, dZ1, dZ2, dZ3, dZ4, &
     !$ACC          PositionIndexZ_K, IndexTableZ_K )
@@ -2865,13 +2870,18 @@ CONTAINS
       S_uu_22 = Half * k_uu(2,2) * uD_K(iZ_K) + uI2_K(iZ_K) * uV2_K(iX_K)
       S_uu_33 = Half * k_uu(3,3) * uD_K(iZ_K) + uI3_K(iZ_K) * uV3_K(iX_K)
 
+      E = uD_K(iZ_K) + Two * (Gm_dd_11_K(iX_K) * uI1_K(iZ_K) * uV1_K(iX_K) + &
+                              Gm_dd_22_K(iX_K) * uI2_K(iZ_K) * uV2_K(iX_K) + &
+                              Gm_dd_33_K(iX_K) * uI3_K(iZ_K) * uV3_K(iX_K))
+
       dFlux_K(iCR_G1) &
         = + uI1_K(iZ_K) * dV_d_dX1(iNodeX,1,iZ2,iZ3,iZ4) &
           + uI2_K(iZ_K) * dV_d_dX2(iNodeX,1,iZ2,iZ3,iZ4) &
           + uI3_K(iZ_K) * dV_d_dX3(iNodeX,1,iZ2,iZ3,iZ4) &
           - S_uu_11 * dGm_dd_dX1(iNodeX,1,iZ2,iZ3,iZ4) &
           - S_uu_22 * dGm_dd_dX1(iNodeX,2,iZ2,iZ3,iZ4) &
-          - S_uu_33 * dGm_dd_dX1(iNodeX,3,iZ2,iZ3,iZ4)
+          - S_uu_33 * dGm_dd_dX1(iNodeX,3,iZ2,iZ3,iZ4) &
+          + E * dAlpha_dX1(iNodeX,iZ2,iZ3,iZ4)
 
       dFlux_K(iCR_G2) &
         = + uI1_K(iZ_K) * dV_d_dX1(iNodeX,2,iZ2,iZ3,iZ4) &
@@ -2879,7 +2889,8 @@ CONTAINS
           + uI3_K(iZ_K) * dV_d_dX3(iNodeX,2,iZ2,iZ3,iZ4) &
           - S_uu_11 * dGm_dd_dX2(iNodeX,1,iZ2,iZ3,iZ4) &
           - S_uu_22 * dGm_dd_dX2(iNodeX,2,iZ2,iZ3,iZ4) &
-          - S_uu_33 * dGm_dd_dX2(iNodeX,3,iZ2,iZ3,iZ4)
+          - S_uu_33 * dGm_dd_dX2(iNodeX,3,iZ2,iZ3,iZ4) &
+          + E * dAlpha_dX2(iNodeX,iZ2,iZ3,iZ4)
 
       dFlux_K(iCR_G3) &
         = + uI1_K(iZ_K) * dV_d_dX1(iNodeX,3,iZ2,iZ3,iZ4) &
@@ -2887,7 +2898,8 @@ CONTAINS
           + uI3_K(iZ_K) * dV_d_dX3(iNodeX,3,iZ2,iZ3,iZ4) &
           - S_uu_11 * dGm_dd_dX3(iNodeX,1,iZ2,iZ3,iZ4) &
           - S_uu_22 * dGm_dd_dX3(iNodeX,2,iZ2,iZ3,iZ4) &
-          - S_uu_33 * dGm_dd_dX3(iNodeX,3,iZ2,iZ3,iZ4)
+          - S_uu_33 * dGm_dd_dX3(iNodeX,3,iZ2,iZ3,iZ4) &
+          + E * dAlpha_dX3(iNodeX,iZ2,iZ3,iZ4)
 
       Beta &
         = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4)  &
@@ -3421,6 +3433,7 @@ CONTAINS
     Gm_dd_22_K(1:nNodesX_K) => uGF_K(:,:,:,iZ_B0(4):iZ_E0(4),iGF_Gm_dd_22)
     Gm_dd_33_K(1:nNodesX_K) => uGF_K(:,:,:,iZ_B0(4):iZ_E0(4),iGF_Gm_dd_33)
     SqrtGm_K  (1:nNodesX_K) => uGF_K(:,:,:,iZ_B0(4):iZ_E0(4),iGF_SqrtGm  )
+    Alpha_K   (1:nNodesX_K) => uGF_K(:,:,:,iZ_B0(4):iZ_E0(4),iGF_Alpha   )
 
     ! --- Conserved Fluid Fields ---
 
@@ -3564,6 +3577,19 @@ CONTAINS
                          iZ_B0(3)  :iZ_E0(3)  , &
                          iZ_B0(4)  :iZ_E0(4)  ) )
 
+    ALLOCATE( dAlpha_dX1(nDOFX, &
+                         iZ_B0(2)  :iZ_E0(2)  , &
+                         iZ_B0(3)  :iZ_E0(3)  , &
+                         iZ_B0(4)  :iZ_E0(4)  ) )
+    ALLOCATE( dAlpha_dX2(nDOFX, &
+                         iZ_B0(2)  :iZ_E0(2)  , &
+                         iZ_B0(3)  :iZ_E0(3)  , &
+                         iZ_B0(4)  :iZ_E0(4)  ) )
+    ALLOCATE( dAlpha_dX3(nDOFX, &
+                         iZ_B0(2)  :iZ_E0(2)  , &
+                         iZ_B0(3)  :iZ_E0(3)  , &
+                         iZ_B0(4)  :iZ_E0(4)  ) )
+
     ! ---
 
     ALLOCATE( nIterations_L(nNodesZ_E) )
@@ -3587,6 +3613,7 @@ CONTAINS
     !$OMP             dV_u_dX1, dV_u_dX2, dV_u_dX3, &
     !$OMP             dV_d_dX1, dV_d_dX2, dV_d_dX3, &
     !$OMP             dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
+    !$OMP             dAlpha_dX1, dAlpha_dX2, dAlpha_dX3, &
     !$OMP             nIterations_L, nIterations_R, nIterations_K )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
@@ -3599,6 +3626,7 @@ CONTAINS
     !$ACC         dV_u_dX1, dV_u_dX2, dV_u_dX3, &
     !$ACC         dV_d_dX1, dV_d_dX2, dV_d_dX3, &
     !$ACC         dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
+    !$ACC         dAlpha_dX1, dAlpha_dX2, dAlpha_dX3, &
     !$ACC         nIterations_L, nIterations_R, nIterations_K )
 #endif
 
@@ -3718,6 +3746,7 @@ CONTAINS
     !$OMP               dV_u_dX1, dV_u_dX2, dV_u_dX3, &
     !$OMP               dV_d_dX1, dV_d_dX2, dV_d_dX3, &
     !$OMP               dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
+    !$OMP               dAlpha_dX1, dAlpha_dX2, dAlpha_dX3, &
     !$OMP               nIterations_L, nIterations_R, nIterations_K )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
@@ -3730,6 +3759,7 @@ CONTAINS
     !$ACC         dV_u_dX1, dV_u_dX2, dV_u_dX3, &
     !$ACC         dV_d_dX1, dV_d_dX2, dV_d_dX3, &
     !$ACC         dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
+    !$ACC         dAlpha_dX1, dAlpha_dX2, dAlpha_dX3, &
     !$ACC         nIterations_L, nIterations_R, nIterations_K )
 #endif
 
@@ -3742,9 +3772,10 @@ CONTAINS
     DEALLOCATE( dV_u_dX1, dV_u_dX2, dV_u_dX3 )
     DEALLOCATE( dV_d_dX1, dV_d_dX2, dV_d_dX3 )
     DEALLOCATE( dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3 )
+    DEALLOCATE( dAlpha_dX1, dAlpha_dX2, dAlpha_dX3 )
     DEALLOCATE( nIterations_L, nIterations_R, nIterations_K )
 
-    NULLIFY( Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, SqrtGm_K )
+    NULLIFY( Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, SqrtGm_K, Alpha_K )
     NULLIFY( uFD_K, uS1_K, uS2_K, uS3_K )
     NULLIFY( uN_K, uG1_K, uG2_K, uG3_K )
     NULLIFY( uN_L, uG1_L, uG2_L, uG3_L )
