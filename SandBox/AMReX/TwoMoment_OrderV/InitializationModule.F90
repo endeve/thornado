@@ -53,10 +53,13 @@ MODULE InitializationModule
     iE_E1, &
     iZ_B1, &
     iZ_E1, &
+    iZ_B0, &
+    iZ_E0, &
     nNodesE, &
     eL, &
     eR, &
     nE, &
+    nX, &
     DescribeProgramHeaderX
   USE PolynomialBasisModule_Lagrange, ONLY: &
     InitializePolynomialBasis_Lagrange
@@ -123,6 +126,8 @@ MODULE InitializationModule
   USE Euler_MeshRefinementModule, ONLY: &
     InitializeMeshRefinement_Euler
   USE TwoMoment_UtilitiesModule
+  USE MF_UtilitiesModule, ONLY: &
+    ShowVariableFromMultiFab
 
   ! --- Local Modules ---
 
@@ -270,6 +275,58 @@ CONTAINS
 
     !CALL InitializeSlopeLimiter_TwoMoment_MF
 
+
+    IF( TRIM( EquationOfState ) .EQ. 'TABLE' )THEN
+
+      CALL InitializeOpacities_TABLE &
+             ( OpacityTableName_EmAb_Option = OpacityTableName_AbEm, &
+               OpacityTableName_Iso_Option  = OpacityTableName_Iso,  &
+               OpacityTableName_NES_Option  = OpacityTableName_NES,  &
+               OpacityTableName_Pair_Option = OpacityTableName_Pair, &
+               EquationOfStateTableName_Option = EosTableName, &
+               Verbose_Option = amrex_parallel_ioprocessor())
+
+    ELSE
+
+      CALL CreateMesh_MF( 0, MeshX )
+
+      CALL CreateOpacities &
+             ( nX, swX, nE, swE, &
+               Verbose_Option = amrex_parallel_ioprocessor() )
+
+      R0    = Zero
+      E0    = Zero
+      Mu0   = Zero
+      kT    = Zero
+      D_0   = Zero
+      Chi   = Zero
+      Sigma = Zero
+      CALL amrex_parmparse_build( PP, 'ST' )
+        CALL PP % query( 'R0'   , R0    )
+        CALL PP % query( 'Mu0'  , Mu0   )
+        CALL PP % query( 'E0'   , E0    )
+        CALL PP % query( 'kT'   , kT    )
+        CALL PP % query( 'D_0'  , D_0   )
+        CALL PP % query( 'Chi'  , Chi   )
+        CALL PP % query( 'Sigma', Sigma )
+      CALL amrex_parmparse_destroy( PP )
+      Chi  = Chi  * ( One / Centimeter )
+      E0   = E0   * UnitsDisplay % EnergyUnit
+      mu0  = mu0  * UnitsDisplay % EnergyUnit
+      kT   = kT   * UnitsDisplay % EnergyUnit
+      R0   = R0   * UnitsDisplay % LengthX1Unit
+
+      CALL SetOpacities &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D_0, Chi, Sigma, Verbose_Option = amrex_parallel_ioprocessor() )
+
+      CALL DestroyMesh_MF( MeshX )
+
+    END IF
+
+
+
+
+
     CALL amrex_init_virtual_functions &
            ( MakeNewLevelFromScratch, &
              MakeNewLevelFromCoarse, &
@@ -328,7 +385,7 @@ CONTAINS
              MF_uPR_Option = MF_uPR, &
              MF_uCR_Option = MF_uCR, &
              MF_uGR_Option = MF_uGR )
-
+    CALL ShowVariableFromMultifab(MF_uGR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Gray_Variables')
   END SUBROUTINE InitializeProgram
 
 

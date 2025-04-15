@@ -78,8 +78,10 @@ MODULE FinalizationModule
     dt, &
     t_old, &
     t_new
-  !USE MF_TwoMoment_TimeSteppingModule_OrderV, ONLY: &
-    !Finalize_IMEX_RK_MF
+  USE MF_TwoMoment_TimeSteppingModule_OrderV, ONLY: &
+    Finalize_IMEX_RK_MF
+  USE MF_UtilitiesModule, ONLY: &
+    ShowVariableFromMultiFab
 
   IMPLICIT NONE
   PRIVATE
@@ -125,8 +127,9 @@ CONTAINS
              pMF_uCF_Option = MF_uCF % P)
              !pMF_uCR_Option = MF_uCR % P )
 
+    CALL ShowVariableFromMultifab(MF_uCR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Conserved_Variables')
 
-    !CALL Finalize_IMEX_RK_MF
+    CALL Finalize_IMEX_RK_MF
 
     DEALLOCATE( t_new )
     DEALLOCATE( t_old )

@@ -75,6 +75,8 @@ PROGRAM main
   USE MF_TwoMoment_TimeSteppingModule_OrderV, ONLY: &
     Update_IMEX_RK_MF, &
     CFL
+  USE MF_UtilitiesModule, ONLY: &
+    ShowVariableFromMultiFab
 
   IMPLICIT NONE
 
@@ -83,6 +85,8 @@ PROGRAM main
 
   n = 1.0_amrex_real
   CALL InitializeProgram
+
+  CALL ShowVariableFromMultifab(MF_uCR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Conserved_Variables')
 
   CALL ComputeFromConserved_TwoMoment_MF(  MF_uGF, MF_uCF, MF_uCR, MF_uPR, MF_uAR, MF_uGR )
 
@@ -116,6 +120,8 @@ PROGRAM main
 
     CALL Update_IMEX_RK_MF
 
+    CALL ShowVariableFromMultifab(MF_uCR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Conserved_Variables')
+
     IF( ALL( t_new + dt .GT. t_wrt ) )THEN
       t_wrt = t_wrt + dt_wrt
       wrt   = .TRUE.
@@ -135,6 +141,8 @@ PROGRAM main
              MF_uPR_Option = MF_uPR, &
              MF_uCR_Option = MF_uCR, &
              MF_uGR_Option = MF_uGR )
+
+        CALL ShowVariableFromMultifab(MF_uCR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Conserved_Variables')        
 
     CALL WriteFieldsAMReX_Checkpoint &
            ( StepNo, nLevels, dt, t_new, &

@@ -58,8 +58,12 @@ MODULE MF_TwoMoment_TimeSteppingModule_OrderV
     MF_uDF
   USE MF_TwoMoment_DiscretizationModule_Streaming_OrderV, ONLY: &
     ComputeIncrement_TwoMoment_Explicit_MF
-  !USE MF_TwoMoment_DiscretizationModule_Collisions_OrderV, ONLY: &
-    !ComputeIncrement_TwoMoment_Implicit_MF
+  USE MF_TwoMoment_DiscretizationModule_Collisions_OrderV, ONLY: &
+    ComputeIncrement_TwoMoment_Implicit_MF
+  USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
+    ApplyPositivityLimiter_TwoMoment_MF
+  USE MF_TwoMoment_SlopeLimiterModule, ONLY: &
+    ApplySlopeLimiter_TwoMoment_MF
   USE MF_FieldsModule_TwoMoment, ONLY: &
     OffGridFlux_TwoMoment_MF, &
     MF_uCR
@@ -436,13 +440,13 @@ CONTAINS
 
           IF( EvolveTwoMoment )THEN
 
-            !CALL ApplySlopeLimiter_TwoMoment_MF &
-                   !( GEOM, MF_uGF, MF_F, MF_R, &
-                    ! Verbose_Option = .FALSE.  )
-
-            !CALL ApplyPositivityLimiter_TwoMoment_MF &
-                   !( GEOM, MF_uGF, MF_F, MF_R, &
-                     !Verbose_Option = .FALSE.  )
+            CALL ApplySlopeLimiter_TwoMoment_MF &
+                   ( GEOM, MF_uGF, MF_F, MF_R, &
+                     Verbose_Option = .FALSE.  )
+            
+            CALL ApplyPositivityLimiter_TwoMoment_MF &
+                   ( GEOM, MF_uGF, MF_F, MF_R, &
+                     Verbose_Option = .FALSE.  )
 
           END IF ! EvolveTwoMoment
 
@@ -455,6 +459,13 @@ CONTAINS
       IF( ANY( a_IM(:,iS) .NE. Zero ) .OR. ( w_IM(iS) .NE. Zero ) )THEN
 
         IF( DEBUG )THEN
+
+          IF (Verbose) THEN
+            PRINT*, "    IMPLICIT: ", iS
+          END IF
+          CALL ComputeIncrement_TwoMoment_Implicit_MF &
+               ( GEOM, MF_uGF, MF_uCF, MF_U, MF_DU_Im(:,iS), dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
+
 
           WRITE(*,'(6x,A)') 'Computing implicit increment'
           WRITE(*,'(6x,A)') 'Adding implicit increment to stage data'
@@ -578,6 +589,17 @@ CONTAINS
 
       END IF ! EvolveEuler
 
+      IF( EvolveTwoMoment )THEN
+
+        CALL ApplySlopeLimiter_TwoMoment_MF &
+               ( GEOM, MF_uGF, MF_F, MF_R, &
+                 Verbose_Option = .FALSE. )
+        
+        CALL ApplyPositivityLimiter_TwoMoment_MF &
+               ( GEOM, MF_uGF, MF_F, MF_R, &
+                 Verbose_Option = .FALSE. )
+
+      END IF ! EvolveTwoMoment
 
     END IF ! ANY( a_IM(nStages,:) .NE. w_IM(:) ) .OR. &
            ! ANY( a_EX(nStages,:) .NE. w_EX(:) )

@@ -236,11 +236,6 @@ CONTAINS
         CALL ApplyBoundaryConditions_TwoMoment_MF &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )
 
-       ! CALL ApplySlopeLimiter_TwoMoment &
-       !        ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, &
-       !          SuppressBC_Option = .TRUE., &
-       !          Verbose_Option = Verbose )
-
         CALL ApplySlopeLimiter_TwoMoment &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, &
                  SuppressBC_Option = .TRUE. )
