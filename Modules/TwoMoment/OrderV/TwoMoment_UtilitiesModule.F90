@@ -2188,7 +2188,8 @@ CONTAINS
       Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       dGm_dd_11_dX1, dGm_dd_22_dX1, dGm_dd_33_dX1, &
       dGm_dd_11_dX2, dGm_dd_22_dX2, dGm_dd_33_dX2, &
-      dGm_dd_11_dX3, dGm_dd_22_dX3, dGm_dd_33_dX3 )
+      dGm_dd_11_dX3, dGm_dd_22_dX3, dGm_dd_33_dX3, &
+      Alpha, dAlpha_dX1, dAlpha_dX2, dAlpha_dX3 )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP DECLARE TARGET
@@ -2206,11 +2207,19 @@ CONTAINS
     REAL(DP), INTENT(in) :: dGm_dd_11_dX1, dGm_dd_22_dX1, dGm_dd_33_dX1
     REAL(DP), INTENT(in) :: dGm_dd_11_dX2, dGm_dd_22_dX2, dGm_dd_33_dX2
     REAL(DP), INTENT(in) :: dGm_dd_11_dX3, dGm_dd_22_dX3, dGm_dd_33_dX3
+    REAL(DP), INTENT(in) :: Alpha
+    REAL(DP), INTENT(in) :: dAlpha_dX1, dAlpha_dX2, dAlpha_dX3
 
     REAL(DP) :: k_uu(3,3), l_uuu(3,3,3)
     REAL(DP) :: VdotGradGm_dd_11
     REAL(DP) :: VdotGradGm_dd_22
     REAL(DP) :: VdotGradGm_dd_33
+    REAL(DP) :: dLnAlpha_dX1, dLnAlpha_dX2, dLnAlpha_dX3
+    REAL(DP) :: VdotGradLnAlpha
+    REAL(DP) :: IdotGradLnAlpha
+    REAL(DP) :: KdotGradLnAlpha_u(3)
+    REAL(DP) :: VdotL_uu(3,3)
+    REAL(DP) :: VdotLdotGradLnAlpha_u(3)
 
     VdotGradGm_dd_11 &
       = V_u_1 * dGm_dd_11_dX1 + V_u_2 * dGm_dd_11_dX2 + V_u_3 * dGm_dd_11_dX3
@@ -2221,6 +2230,15 @@ CONTAINS
     VdotGradGm_dd_33 &
       = V_u_1 * dGm_dd_33_dX1 + V_u_2 * dGm_dd_33_dX2 + V_u_3 * dGm_dd_33_dX3
 
+
+    dLnAlpha_dX1 = dAlpha_dX1 / Alpha
+    dLnAlpha_dX2 = dAlpha_dX2 / Alpha
+    dLnAlpha_dX3 = dAlpha_dX3 / Alpha
+
+    VdotGradLnAlpha = V_u_1 * dLnAlpha_dX1 + V_u_2 * dLnAlpha_dX2 + V_u_3 * dLnAlpha_dX3
+
+    IdotGradLnAlpha = I_u_1 * dLnAlpha_dX1 + I_u_2 * dLnAlpha_dX2 + I_u_3 * dLnAlpha_dX3
+
     ! --- Eddington Tensor Components ---
 
     CALL ComputeEddingtonTensorComponents_uu &
@@ -2230,6 +2248,12 @@ CONTAINS
 
     CALL ComputeHeatFluxTensorComponents_uuu &
            ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, l_uuu )
+
+    KdotGradLnAlpha_u(:) = (k_uu(:,1) * dLnAlpha_dX1 + k_uu(:,2) * dLnAlpha_dX2 + k_uu(:,3) * dLnAlpha_dX3) * D
+
+    VdotL_uu(:,:) = (Gm_dd_11 * V_u_1 * l_uuu(:,:,1) + Gm_dd_22 * V_u_2 * l_uuu(:,:,2) + Gm_dd_33 * V_u_3 * l_uuu(:,:,3)) * D
+
+    VdotLdotGradLnAlpha_u(:) = VdotL_uu(:,1) * dLnAlpha_dX1 + VdotL_uu(:,2) * dLnAlpha_dX2 + VdotL_uu(:,3) * dLnAlpha_dX3
 
     ! --- Number Density ---
 
@@ -2250,6 +2274,10 @@ CONTAINS
                      + k_uu(2,2) * VdotGradGm_dd_22 &
                      + k_uu(3,3) * VdotGradGm_dd_33 ) * D
 
+    Flux_E(1) &
+      = Flux_E(1) &
+          - ( IdotGradLnAlpha - D * VdotGradLnAlpha )
+
     ! --- Number Flux Density (Component 1) ---
 
     Flux_E(2) &
@@ -2268,6 +2296,11 @@ CONTAINS
           - Half * Gm_dd_11 * (   l_uuu(1,1,1) * VdotGradGm_dd_11 &
                                 + l_uuu(2,2,1) * VdotGradGm_dd_22 &
                                 + l_uuu(3,3,1) * VdotGradGm_dd_33 ) * D
+
+    Flux_E(2) &
+      = Flux_E(2) &
+        + Gm_dd_11 * (   V_u_1 * IdotGradLnAlpha + KdotGradLnAlpha_u(1) &
+                       + I_u_1 * VdotGradLnAlpha + VdotLdotGradLnAlpha_u(1) )
 
     ! --- Number Flux Density (Component 2) ---
 
@@ -2288,6 +2321,11 @@ CONTAINS
                                 + l_uuu(2,2,2) * VdotGradGm_dd_22 &
                                 + l_uuu(3,3,2) * VdotGradGm_dd_33 ) * D
 
+    Flux_E(3) &
+      = Flux_E(3) &
+        + Gm_dd_22 * (   V_u_2 * IdotGradLnAlpha + KdotGradLnAlpha_u(2) &
+                       + I_u_2 * VdotGradLnAlpha + VdotLdotGradLnAlpha_u(2) )
+
     ! --- Number Flux Density (Component 3) ---
 
     Flux_E(4) &
@@ -2306,6 +2344,11 @@ CONTAINS
           - Half * Gm_dd_33 * (   l_uuu(1,1,3) * VdotGradGm_dd_11 &
                                 + l_uuu(2,2,3) * VdotGradGm_dd_22 &
                                 + l_uuu(3,3,3) * VdotGradGm_dd_33 ) * D
+
+    Flux_E(4) &
+      = Flux_E(4) &
+        + Gm_dd_33 * (   V_u_3 * IdotGradLnAlpha + KdotGradLnAlpha_u(3) &
+                       + I_u_3 * VdotGradLnAlpha + VdotLdotGradLnAlpha_u(3) )
 
     RETURN
   END FUNCTION Flux_E

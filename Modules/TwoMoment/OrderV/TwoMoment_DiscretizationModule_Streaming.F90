@@ -2583,7 +2583,10 @@ CONTAINS
                   dGm_dd_dX2(iNodeZ_E,3,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeZ_E,1,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeZ_E,2,iZ2,iZ3,iZ4), &
-                  dGm_dd_dX3(iNodeZ_E,3,iZ2,iZ3,iZ4) )
+                  dGm_dd_dX3(iNodeZ_E,3,iZ2,iZ3,iZ4), &
+                  dAlpha_dX1(iNodeZ_E  ,iZ2,iZ3,iZ4), &
+                  dAlpha_dX2(iNodeZ_E  ,iZ2,iZ3,iZ4), &
+                  dAlpha_dX3(iNodeZ_E  ,iZ2,iZ3,iZ4) )
 
       uPR_L = [ uD_L(iZ_F), uI1_L(iZ_F), uI2_L(iZ_F), uI3_L(iZ_F) ]
 
@@ -2610,7 +2613,10 @@ CONTAINS
                   dGm_dd_dX2(iNodeZ_E,3,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeZ_E,1,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeZ_E,2,iZ2,iZ3,iZ4), &
-                  dGm_dd_dX3(iNodeZ_E,3,iZ2,iZ3,iZ4) )
+                  dGm_dd_dX3(iNodeZ_E,3,iZ2,iZ3,iZ4), &
+                  dAlpha_dX1(iNodeZ_E  ,iZ2,iZ3,iZ4), &
+                  dAlpha_dX2(iNodeZ_E  ,iZ2,iZ3,iZ4), &
+                  dAlpha_dX3(iNodeZ_E  ,iZ2,iZ3,iZ4) )
 
       uPR_R = [ uD_R(iZ_F), uI1_R(iZ_F), uI2_R(iZ_F), uI3_R(iZ_F) ]
 
@@ -2807,11 +2813,11 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( iX_K, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iS, Flux_K, &
-    !$OMP          Beta, dFlux_K, k_uu, S_uu_11, S_uu_22, S_uu_33 )
+    !$OMP          Beta, dFlux_K, k_uu, S_uu_11, S_uu_22, S_uu_33, E )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( iX_K, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iS, Flux_K, &
-    !$ACC          Beta, dFlux_K, k_uu, S_uu_11, S_uu_22, S_uu_33 ) &
+    !$ACC          Beta, dFlux_K, k_uu, S_uu_11, S_uu_22, S_uu_33, E ) &
     !$ACC PRESENT( dV_u_dX1, dV_u_dX2, dV_u_dX3, uV1_K, uV2_K, uV3_K, &
     !$ACC          dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
     !$ACC          dAlpha_dX1, dAlpha_dX2, dAlpha_dX3, &
@@ -2822,7 +2828,7 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( iX_K, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iS, Flux_K, &
-    !$OMP          Beta, dFlux_K, k_uu, S_uu_11, S_uu_22, S_uu_33 )
+    !$OMP          Beta, dFlux_K, k_uu, S_uu_11, S_uu_22, S_uu_33, E )
 #endif
     DO iZ_K = 1, nNodesZ_K
 
@@ -2859,7 +2865,13 @@ CONTAINS
                   dGm_dd_dX2(iNodeX,3,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeX,1,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeX,2,iZ2,iZ3,iZ4), &
-                  dGm_dd_dX3(iNodeX,3,iZ2,iZ3,iZ4) )
+                  dGm_dd_dX3(iNodeX,3,iZ2,iZ3,iZ4), &
+                  dAlpha_dX1(iNodeX  ,iZ2,iZ3,iZ4), &
+                  dAlpha_dX2(iNodeX  ,iZ2,iZ3,iZ4), &
+                  dAlpha_dX3(iNodeX  ,iZ2,iZ3,iZ4), &
+                  dAlpha_dX1(iNodeX  ,iZ2,iZ3,iZ4), &
+                  dAlpha_dX2(iNodeX  ,iZ2,iZ3,iZ4), &
+                  dAlpha_dX3(iNodeX  ,iZ2,iZ3,iZ4) )
 
       CALL ComputeEddingtonTensorComponents_uu &
              ( uD_K(iZ_K), uI1_K(iZ_K), uI2_K(iZ_K), uI3_K(iZ_K), &
