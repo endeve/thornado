@@ -2778,7 +2778,10 @@ CONTAINS
                   dGm_dd_dX2(iNodeX,3,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeX,1,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeX,2,iZ2,iZ3,iZ4), &
-                  dGm_dd_dX3(iNodeX,3,iZ2,iZ3,iZ4) )
+                  dGm_dd_dX3(iNodeX,3,iZ2,iZ3,iZ4), &
+                  dAlpha_dX1(iNodeX  ,iZ2,iZ3,iZ4), &
+                  dAlpha_dX2(iNodeX  ,iZ2,iZ3,iZ4), &
+                  dAlpha_dX3(iNodeX  ,iZ2,iZ3,iZ4) )
 
       DO iCR = 1, nCR
 
@@ -2866,9 +2869,6 @@ CONTAINS
                   dGm_dd_dX3(iNodeX,1,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeX,2,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeX,3,iZ2,iZ3,iZ4), &
-                  dAlpha_dX1(iNodeX  ,iZ2,iZ3,iZ4), &
-                  dAlpha_dX2(iNodeX  ,iZ2,iZ3,iZ4), &
-                  dAlpha_dX3(iNodeX  ,iZ2,iZ3,iZ4), &
                   dAlpha_dX1(iNodeX  ,iZ2,iZ3,iZ4), &
                   dAlpha_dX2(iNodeX  ,iZ2,iZ3,iZ4), &
                   dAlpha_dX3(iNodeX  ,iZ2,iZ3,iZ4) )
