@@ -1947,7 +1947,7 @@ CONTAINS
 
       Flux_X1_MHD_Relativistic(iCM_B1) &
         = - ( Shift1 / Lapse ) * ( W * B1 - Lapse * W * b0u * V1 ) &
-          + ( CleaningSpeed * Chi / Gm11 )
+          + ( CleaningSpeed**2 * Chi / Gm11 )
 
       Flux_X1_MHD_Relativistic(iCM_B2) &
         = W * ( B2 * V1 - B1 * V2 ) &
@@ -1958,7 +1958,7 @@ CONTAINS
           - ( Shift1 / Lapse ) * ( W * B3 - Lapse * W * b0u * V3 )
 
       Flux_X1_MHD_Relativistic(iCM_Chi) &
-        = CleaningSpeed * ( W * B1 - Lapse * W * b0u * V1 ) - ( Chi * Shift1 ) / Lapse
+        = ( W * B1 - Lapse * W * b0u * V1 ) - ( Chi * Shift1 ) / Lapse
 
     ELSE
 
@@ -2098,14 +2098,14 @@ CONTAINS
 
       Flux_X2_MHD_Relativistic(iCM_B2) &
         = - ( Shift2 / Lapse ) * ( W * B2 - Lapse * W * b0u * V2 ) &
-          + ( CleaningSpeed * Chi / Gm22 )
+          + ( CleaningSpeed**2 * Chi / Gm22 )
 
       Flux_X2_MHD_Relativistic(iCM_B3) &
         = W * ( B3 * V2 - B2 * V3 ) &
           - ( Shift2 / Lapse ) * ( W * B3 - Lapse * W * b0u * V3 )
 
       Flux_X2_MHD_Relativistic(iCM_Chi) &
-        = CleaningSpeed * ( W * B2 - Lapse * W * b0u * V2 ) - ( Chi * Shift2 ) / Lapse
+        = ( W * B2 - Lapse * W * b0u * V2 ) - ( Chi * Shift2 ) / Lapse
 
     ELSE
 
@@ -2249,10 +2249,10 @@ CONTAINS
 
       Flux_X3_MHD_Relativistic(iCM_B3) &
         = - ( Shift3 / Lapse ) * ( W * B3 - Lapse * W * b0u * V3 ) &
-          + ( CleaningSpeed * Chi / Gm33 )
+          + ( CleaningSpeed**2 * Chi / Gm33 )
 
       Flux_X3_MHD_Relativistic(iCM_Chi) &
-        = CleaningSpeed * ( W * B3 - Lapse * W * b0u * V3 ) - ( Chi * Shift3 ) / Lapse
+        = ( W * B3 - Lapse * W * b0u * V3 ) - ( Chi * Shift3 ) / Lapse
 
     ELSE
 
