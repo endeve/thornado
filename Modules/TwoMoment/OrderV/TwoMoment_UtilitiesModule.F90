@@ -2305,7 +2305,7 @@ CONTAINS
 
     Flux_E(2) &
       = Flux_E(2) &
-        + Gm_dd_11 * (   V_u_1 * IdotGradLnAlpha + KdotGradLnAlpha_u(1) &
+        - Gm_dd_11 * (   V_u_1 * IdotGradLnAlpha + KdotGradLnAlpha_u(1) &
                        + I_u_1 * VdotGradLnAlpha + VdotLdotGradLnAlpha_u(1) )
 
     ! --- Number Flux Density (Component 2) ---
@@ -2329,7 +2329,7 @@ CONTAINS
 
     Flux_E(3) &
       = Flux_E(3) &
-        + Gm_dd_22 * (   V_u_2 * IdotGradLnAlpha + KdotGradLnAlpha_u(2) &
+        - Gm_dd_22 * (   V_u_2 * IdotGradLnAlpha + KdotGradLnAlpha_u(2) &
                        + I_u_2 * VdotGradLnAlpha + VdotLdotGradLnAlpha_u(2) )
 
     ! --- Number Flux Density (Component 3) ---
@@ -2353,7 +2353,7 @@ CONTAINS
 
     Flux_E(4) &
       = Flux_E(4) &
-        + Gm_dd_33 * (   V_u_3 * IdotGradLnAlpha + KdotGradLnAlpha_u(3) &
+        - Gm_dd_33 * (   V_u_3 * IdotGradLnAlpha + KdotGradLnAlpha_u(3) &
                        + I_u_3 * VdotGradLnAlpha + VdotLdotGradLnAlpha_u(3) )
 
     RETURN
