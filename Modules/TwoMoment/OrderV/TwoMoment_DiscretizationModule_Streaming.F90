@@ -2584,6 +2584,7 @@ CONTAINS
                   dGm_dd_dX3(iNodeZ_E,1,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeZ_E,2,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeZ_E,3,iZ2,iZ3,iZ4), &
+                  Alpha_K   (iX_F), &
                   dAlpha_dX1(iNodeZ_E  ,iZ2,iZ3,iZ4), &
                   dAlpha_dX2(iNodeZ_E  ,iZ2,iZ3,iZ4), &
                   dAlpha_dX3(iNodeZ_E  ,iZ2,iZ3,iZ4) )
@@ -2614,6 +2615,7 @@ CONTAINS
                   dGm_dd_dX3(iNodeZ_E,1,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeZ_E,2,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeZ_E,3,iZ2,iZ3,iZ4), &
+                  Alpha_K   (iX_F), &
                   dAlpha_dX1(iNodeZ_E  ,iZ2,iZ3,iZ4), &
                   dAlpha_dX2(iNodeZ_E  ,iZ2,iZ3,iZ4), &
                   dAlpha_dX3(iNodeZ_E  ,iZ2,iZ3,iZ4) )
@@ -2779,6 +2781,7 @@ CONTAINS
                   dGm_dd_dX3(iNodeX,1,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeX,2,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeX,3,iZ2,iZ3,iZ4), &
+                  Alpha_K   (iX_K), &
                   dAlpha_dX1(iNodeX  ,iZ2,iZ3,iZ4), &
                   dAlpha_dX2(iNodeX  ,iZ2,iZ3,iZ4), &
                   dAlpha_dX3(iNodeX  ,iZ2,iZ3,iZ4) )
@@ -2869,6 +2872,7 @@ CONTAINS
                   dGm_dd_dX3(iNodeX,1,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeX,2,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeX,3,iZ2,iZ3,iZ4), &
+                  Alpha_K   (iX_K), &
                   dAlpha_dX1(iNodeX  ,iZ2,iZ3,iZ4), &
                   dAlpha_dX2(iNodeX  ,iZ2,iZ3,iZ4), &
                   dAlpha_dX3(iNodeX  ,iZ2,iZ3,iZ4) )
