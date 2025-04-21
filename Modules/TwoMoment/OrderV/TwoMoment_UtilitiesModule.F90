@@ -3376,7 +3376,7 @@ CONTAINS
         V_d_K(iNodeX,1:3,iX2,iX3,iX1) &
           = uV_K(1:3) * GX_K(iNodeX,iGF_Gm_dd_11:iGF_Gm_dd_33,iX2,iX3,iX1) * WeightsX_q(iNodeX)
 
-        Alpha_K &
+        Alpha_K(iNodeX,iX2,iX3,iX1) &
           = WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Alpha,iX2,iX3,iX1)
 
       END DO
@@ -3910,7 +3910,7 @@ CONTAINS
         V_d_K(iNodeX,1:3,iX1,iX3,iX2) &
           = uV_K(1:3) * WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Gm_dd,iX1,iX3,iX2)
 
-        Alpha_K &
+        Alpha_K(iNodeX,iX1,iX3,iX2) &
           = WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Alpha,iX1,iX3,iX2)
 
       END DO
@@ -4446,7 +4446,7 @@ CONTAINS
         V_d_K(iNodeX,1:3,iX1,iX2,iX3) &
           = uV_K(1:3) * GX_K(iNodeX,iGF_Gm_dd_11:iGF_Gm_dd_33,iX1,iX2,iX3) * WeightsX_q(iNodeX)
 
-        Alpha_K &
+        Alpha_K(iNodeX,iX1,iX2,iX3) &
           = WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Alpha,iX1,iX2,iX3)
 
       END DO
