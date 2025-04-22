@@ -19,6 +19,7 @@ MODULE EquationOfStateModule_IDEAL
   PUBLIC :: ComputeMagneticEnthalpyFromPrimitive_IDEAL
   PUBLIC :: ComputeSoundSpeedFromPrimitive_IDEAL
   PUBLIC :: ComputeAlfvenSpeedFromPrimitive_IDEAL
+  PUBLIC :: ComputeFastSpeedUpperBoundFromPrimitive_IDEAL
   PUBLIC :: ComputeElectricFieldFromPrimitive_IDEAL
   PUBLIC :: ComputeEMStressTensorFromPrimitive_IDEAL
   PUBLIC :: ComputeAuxiliary_Fluid_IDEAL
@@ -63,6 +64,11 @@ MODULE EquationOfStateModule_IDEAL
     MODULE PROCEDURE ComputeAlfvenSpeedFromPrimitive_IDEAL_Scalar
     MODULE PROCEDURE ComputeAlfvenSpeedFromPrimitive_IDEAL_Vector
   END INTERFACE ComputeAlfvenSpeedFromPrimitive_IDEAL
+
+  INTERFACE ComputeFastSpeedUpperBoundFromPrimitive_IDEAL
+    MODULE PROCEDURE ComputeFastSpeedUpperBoundFromPrimitive_IDEAL_Scalar
+    MODULE PROCEDURE ComputeFastSpeedUpperBoundFromPrimitive_IDEAL_Vector
+  END INTERFACE ComputeFastSpeedUpperBoundFromPrimitive_IDEAL
 
   INTERFACE ComputeElectricFieldFromPrimitive_IDEAL
     MODULE PROCEDURE ComputeElectricFieldFromPrimitive_IDEAL_Scalar
@@ -522,6 +528,104 @@ CONTAINS
   END SUBROUTINE ComputeAlfvenSpeedFromPrimitive_IDEAL_Vector
 
 
+  SUBROUTINE ComputeFastSpeedUpperBoundFromPrimitive_IDEAL_Scalar &
+    ( D, V1, V2, V3, E, Ne, &
+      B1, B2, B3,           &
+      Gm11, Gm22, Gm33,     &
+      Lapse, Shift1, Shift2, Shift3, Cf_ub_p, Cf_ub_m )
+
+    REAL(DP), INTENT(in)  :: D, V1, V2, V3, E, Ne, &
+                             B1, B2, B3,           &
+                             Gm11, Gm22, Gm33,     &
+                             Lapse, Shift1, Shift2, Shift3
+    REAL(DP), INTENT(out) :: Cf_ub_p, Cf_ub_m
+
+    REAL(DP) :: Cs, Ca, VSq, aSq
+    REAL(DP) :: Cf_ub_p_1, Cf_ub_p_2, Cf_ub_p_3
+    REAL(DP) :: Cf_ub_m_1, Cf_ub_m_2, Cf_ub_m_3
+
+    CALL ComputeSoundSpeedFromPrimitive_IDEAL &
+          ( D, E, Ne, Cs )
+
+    CALL ComputeAlfvenSpeedFromPrimitive_IDEAL &
+           ( D, V1, V2, V3, E, Ne, B1, B2, B3, &
+             Gm11, Gm22, Gm33,                 &
+             Lapse, Shift1, Shift2, Shift3, Ca )
+
+    VSq = Gm11 * V1**2 + Gm22 * V2**2 + Gm33 * V3**2
+
+    aSq = Cs**2 + Ca**2 - Cs**2 * Ca**2
+
+    Cf_ub_p_1 = ( ( One - aSq ) * V1 &
+                  + SQRT( aSq * ( One - VSq ) &
+                          * ( ( One - VSq * aSq ) * ( One / Gm11 ) &
+                          - ( One - aSq ) * V1**2 ) ) ) &
+                / ( One - VSq * aSq )
+
+    Cf_ub_p_2 = ( ( One - aSq ) * V2 &
+                  + SQRT( aSq * ( One - VSq ) &
+                          * ( ( One - VSq * aSq ) * ( One / Gm22 ) &
+                          - ( One - aSq ) * V2**2 ) ) ) &
+                / ( One - VSq * aSq )
+
+    Cf_ub_p_3 = ( ( One - aSq ) * V3 &
+                  + SQRT( aSq * ( One - VSq ) &
+                          * ( ( One - VSq * aSq ) * ( One / Gm33 ) &
+                          - ( One - aSq ) * V3**2 ) ) ) &
+                / ( One - VSq * aSq )
+
+    Cf_ub_p = SQRT( Gm11 * Cf_ub_p_1**2 + Gm22 * Cf_ub_p_2**2 + Gm33 * Cf_ub_p_3**2 )
+
+    Cf_ub_m_1 = ( ( One - aSq ) * V1 &
+                  - SQRT( aSq * ( One - VSq ) &
+                          * ( ( One - VSq * aSq ) * ( One / Gm11 ) &
+                          - ( One - aSq ) * V1**2 ) ) ) &
+                / ( One - VSq * aSq )
+
+    Cf_ub_m_2 = ( ( One - aSq ) * V2 &
+                  - SQRT( aSq * ( One - VSq ) &
+                          * ( ( One - VSq * aSq ) * ( One / Gm22 ) &
+                          - ( One - aSq ) * V2**2 ) ) ) &
+                / ( One - VSq * aSq )
+
+    Cf_ub_m_3 = ( ( One - aSq ) * V3 &
+                  - SQRT( aSq * ( One - VSq ) &
+                          * ( ( One - VSq * aSq ) * ( One / Gm33 ) &
+                          - ( One - aSq ) * V3**2 ) ) ) &
+                / ( One - VSq * aSq )
+
+    Cf_ub_m = SQRT( Gm11 * Cf_ub_m_1**2 + Gm22 * Cf_ub_m_2**2 + Gm33 * Cf_ub_m_3**2 )
+
+  END SUBROUTINE ComputeFastSpeedUpperBoundFromPrimitive_IDEAL_Scalar
+
+
+  SUBROUTINE ComputeFastSpeedUpperBoundFromPrimitive_IDEAL_Vector &
+    ( D, V1, V2, V3, E, Ne, B1, B2, B3, &
+      Gm11, Gm22, Gm33,                 &
+      Lapse, Shift1, Shift2, Shift3, Cf_ub_p, Cf_ub_m )
+
+    REAL(DP), INTENT(in)  :: D(:), V1(:), V2(:), V3(:), E(:), Ne(:), &
+                             B1(:), B2(:), B3(:),                    &
+                             Gm11(:), Gm22(:), Gm33(:),              &
+                             Lapse(:), Shift1(:), Shift2(:), Shift3(:)
+    REAL(DP), INTENT(out) :: Cf_ub_p(:), CF_ub_m(:)
+
+    INTEGER :: i
+
+    DO i = 1, SIZE( D )
+
+      CALL ComputeFastSpeedUpperBoundFromPrimitive_IDEAL_Scalar &
+             ( D(i), V1(i), V2(i), V3(i), E(i), Ne(i),    &
+               B1(i), B2(i), B3(i),                       &
+               Gm11(i), Gm22(i), Gm33(i),                 &
+               Lapse(i), Shift1(i), Shift2(i), Shift3(i), &
+               Cf_ub_p(i), CF_ub_m(i) )
+
+    END DO
+
+  END SUBROUTINE ComputeFastSpeedUpperBoundFromPrimitive_IDEAL_Vector
+
+
   SUBROUTINE ComputeElectricFieldFromPrimitive_IDEAL_Scalar &
     ( V1, V2, V3,                    &
       B1, B2, B3,                    &
@@ -727,7 +831,8 @@ CONTAINS
       B1, B2, B3,                    &
       Gm11, Gm22, Gm33,              &
       Lapse, Shift1, Shift2, Shift3, &
-      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3, &
+      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, Cf_ub_p, Cf_ub_m, &
+      EF1, EF2, EF3, &
       Tem00, Tem11, Tem22, Tem33, Tem12, Tem13, Tem23 )
 
 #if defined(THORNADO_OMP_OL)
@@ -740,8 +845,8 @@ CONTAINS
                              B1, B2, B3,            &
                              Gm11, Gm22, Gm33,      &
                              Lapse, Shift1, Shift2, Shift3
-    REAL(DP), INTENT(out) :: P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3, &
-                             Tem00, Tem11, Tem22, Tem33, Tem12, Tem13, Tem23
+    REAL(DP), INTENT(out) :: P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, Cf_ub_p, Cf_ub_m, &
+                             EF1, EF2, EF3, Tem00, Tem11, Tem22, Tem33, Tem12, Tem13, Tem23
 
     P  = ( Gamma_IDEAL - 1.0_DP ) * Ev
     Pb = Zero
@@ -753,6 +858,11 @@ CONTAINS
              B1, B2, B3,           &
              Gm11, Gm22, Gm33,     &
              Lapse, Shift1, Shift2, Shift3, Ca)
+    CALL ComputeFastSpeedUpperBoundFromPrimitive_IDEAL &
+           ( D, V1, V2, V3, Ev, Ne, &
+             B1, B2, B3,           &
+             Gm11, Gm22, Gm33,     &
+             Lapse, Shift1, Shift2, Shift3, Cf_ub_p, Cf_ub_m )
     CALL ComputeEnthalpyFromPrimitive_IDEAL( D, Ev, Ne, h )
     CALL ComputeMagneticEnthalpyFromPrimitive_IDEAL &
            ( D, V1, V2, V3, B1, B2, V3, &
@@ -783,16 +893,16 @@ CONTAINS
       B1, B2, B3,                    &
       Gm11, Gm22, Gm33,              &
       Lapse, Shift1, Shift2, Shift3, &
-      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3, &
-      Tem00, Tem11, Tem22, Tem33, Tem12, Tem13, Tem23 )
+      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, Cf_ub_p, Cf_ub_m, &
+      EF1, EF2, EF3, Tem00, Tem11, Tem22, Tem33, Tem12, Tem13, Tem23 )
 
     REAL(DP), INTENT(in)  :: D(:), V1(:), V2(:), V3(:), Ev(:), Ne(:), &
                              B1(:), B2(:), B3(:),                     &
                              Gm11(:), Gm22(:), Gm33(:),               &
                              Lapse(:), Shift1(:), Shift2(:), Shift3(:)
-    REAL(DP), INTENT(out) :: P(:), Pb(:), T (:), Y (:), S(:), Em(:), &
-                             h(:), hb(:), Gm(:), Cs(:), Ca(:),       &
-                             EF1(:), EF2(:), EF3(:), &
+    REAL(DP), INTENT(out) :: P(:), Pb(:), T (:), Y (:), S(:), Em(:),                   &
+                             h(:), hb(:), Gm(:), Cs(:), Ca(:), Cf_ub_p(:), Cf_ub_m(:), &
+                             EF1(:), EF2(:), EF3(:),                                   &
                              Tem00(:), Tem11(:), Tem22(:), Tem33(:), Tem12(:), Tem13(:), Tem23(:)
 
     INTEGER :: i
@@ -805,7 +915,7 @@ CONTAINS
                Gm11(i), Gm22(i), Gm33(i),                 &
                Lapse(i), Shift1(i), Shift2(i), Shift3(i), &
                P(i), Pb(i), T(i), Y(i), S(i), Em(i), h(i), hb(i), &
-               Gm(i), Cs(i), Ca(i), EF1(i), EF2(i), EF3(i), &
+               Gm(i), Cs(i), Ca(i), Cf_ub_p(i), Cf_ub_m(i), EF1(i), EF2(i), EF3(i), &
                Tem00(i), Tem11(i), Tem22(i), Tem33(i), Tem12(i), Tem13(i), Tem23(i) )
 
     END DO

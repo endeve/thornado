@@ -12,6 +12,7 @@ MODULE EquationOfStateModule
     ComputeMagneticEnthalpyFromPrimitive_IDEAL, &
     ComputeSoundSpeedFromPrimitive_IDEAL, &
     ComputeAlfvenSpeedFromPrimitive_IDEAL, &
+    ComputeFastSpeedUpperBoundFromPrimitive_IDEAL, &
     ComputeElectricFieldFromPrimitive_IDEAL, &
     ComputeAuxiliary_Fluid_IDEAL, &
     ComputeAuxiliary_Magnetofluid_IDEAL
@@ -861,7 +862,7 @@ CONTAINS
       B1, B2, B3,                    &
       Gm11, Gm22, Gm33,              &
       Lapse, Shift1, Shift2, Shift3, &
-      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3, &
+      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, Cf_ub_p, Cf_ub_m, EF1, EF2, EF3, &
       Tem00, Tem11, Tem22, Tem33, Tem12, Tem13, Tem23 )
 
     REAL(DP), INTENT(in)  :: D, V1, V2, V3, Ev, Ne, &
@@ -869,7 +870,7 @@ CONTAINS
                              Gm11, Gm22, Gm33,      &
                              Lapse, Shift1, Shift2, Shift3
     REAL(DP), INTENT(out) :: P, Pb, T, Y, S, Em, h, hb, Gm, &
-                             Cs, Ca, EF1, EF2, EF3,         &
+                             Cs, Ca, Cf_ub_p, Cf_ub_m, EF1, EF2, EF3,         &
                              Tem00, Tem11, Tem22, Tem33,    &
                              Tem12, Tem13, Tem23
 
@@ -878,7 +879,7 @@ CONTAINS
                                               Gm11, Gm22, Gm33,              &
                                               Lapse, Shift1, Shift2, Shift3, &
                                               P, Pb, T, Y, S, Em, h, hb, Gm, &
-                                              Cs, Ca, EF1, EF2, EF3,         &
+                                              Cs, Ca, Cf_ub_p, Cf_ub_m, EF1, EF2, EF3,         &
                                               Tem00, Tem11, Tem22, Tem33,    &
                                               Tem12, Tem13, Tem23 )
 
@@ -890,7 +891,7 @@ CONTAINS
       B1, B2, B3,                    &
       Gm11, Gm22, Gm33,              &
       Lapse, Shift1, Shift2, Shift3, &
-      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3, &
+      P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, Cf_ub_p, Cf_ub_m, EF1, EF2, EF3, &
       Tem00, Tem11, Tem22, Tem33, Tem12, Tem13, Tem23 )
 
     REAL(DP), INTENT(in)  :: D(:), V1(:), V2(:), V3(:), Ev(:), Ne(:), &
@@ -899,6 +900,7 @@ CONTAINS
                              Lapse(:), Shift1(:), Shift2(:), Shift3(:)
     REAL(DP), INTENT(out) :: P(:), Pb(:), T (:), Y (:), S(:),         &
                              Em(:), h(:), hb(:), Gm(:), Cs(:), Ca(:), &
+                             Cf_ub_p(:), Cf_ub_m(:),                  &
                              EF1(:), EF2(:), EF3(:),                  &
                              Tem00(:), Tem11(:), Tem22(:), Tem33(:),  &
                              Tem12(:), Tem13(:), Tem23(:)
@@ -908,7 +910,7 @@ CONTAINS
              B1, B2, B3,            &
              Gm11, Gm22, Gm33,      &
              Lapse, Shift1, Shift2, Shift3, &
-             P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, EF1, EF2, EF3, &
+             P, Pb, T, Y, S, Em, h, hb, Gm, Cs, Ca, Cf_ub_p, Cf_ub_m, EF1, EF2, EF3, &
              Tem00, Tem11, Tem22, Tem33, Tem12, Tem13, Tem23 )
 
 
