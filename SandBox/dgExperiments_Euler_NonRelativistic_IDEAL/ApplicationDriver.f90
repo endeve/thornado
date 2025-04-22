@@ -37,6 +37,7 @@ PROGRAM ApplicationDriver
   Use CellMergingModule, ONLY: &
     Initialize_CellMerging, &
     MergeAndRestrict, &
+    MergeAndRestrictGeometry, &
     Finalize_CellMerging
   USE Euler_SlopeLimiterModule_NonRelativistic_IDEAL, ONLY: &
     InitializeSlopeLimiter_Euler_NonRelativistic_IDEAL, &
@@ -78,11 +79,12 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UseTroubledCellIndicator
   LOGICAL       :: UseConservativeCorrection
   LOGICAL       :: UseCellMerging
+  INTEGER       :: Min_NCellsPerMerge
   INTEGER       :: iCycle, iCycleD
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
   INTEGER       :: RestartFileNumber
   REAL(DP)      :: t, dt, t_end, dt_wrt, t_wrt, wTime
-  REAL(DP)      :: xL(3), xR(3), Gamma
+  REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One, Gamma
   REAL(DP)      :: BetaTVD, BetaTVB
   REAL(DP)      :: LimiterThresholdParameter
   REAL(DP)      :: Eblast
@@ -95,8 +97,9 @@ PROGRAM ApplicationDriver
 
   ProgramName = 'RiemannProblemSpherical'
 
-  RestartFileNumber = -1
-  UseCellMerging    = .FALSE.
+  RestartFileNumber  = -1
+  UseCellMerging     = .FALSE.
+  Min_NCellsPerMerge = 0 ! --- Sets minimum number of merged cells as 2**Min_NCellsPerMerge ---
 
   t = 0.0_DP
 
@@ -154,18 +157,22 @@ PROGRAM ApplicationDriver
       t_end   = 2.0d-1
       dt_wrt  = 1.0d-2 * t_end
 
-   CASE( 'RiemannProblemSpherical' )
+    CASE( 'RiemannProblemSpherical' )
 
       CoordinateSystem = 'SPHERICAL'
 
       Gamma = 1.4_DP
 
-      nX = [ 128, 16, 1 ] ! Change nX(2) to 16?
-      xL = [ 1.0d-8, 1.0d-8, 0.0_DP ]
-      xR = [ 2.0_DP, Pi - 1.0d-8,     TwoPi  ]
+      nX = [ 128, 64, 1 ] ! 2D
+      ! nX = [ 2048, 1, 1 ] ! 1D Reference
+      xL = [ 0.0_DP, 0.0_DP+1.0d-8, 0.0_DP ]
+      xR = [ 2.0_DP, Pi-1.0d-8,     TwoPi  ]
 
-      swX = [ 1, 1, 0 ]
-      bcX = [ 3, 3, 0 ]
+      swX = [ 1, 1, 0 ] ! 2D
+      bcX = [ 3, 3, 0 ] ! 2D
+      ! swX = [ 1, 0, 0 ] ! 1D Reference
+      ! bcX = [ 3, 0, 0 ] ! 1D Reference
+      ! zoomX = [ 1.05_DP, One, One ]
 
       nNodes = 2
 
@@ -178,13 +185,45 @@ PROGRAM ApplicationDriver
       UseTroubledCellIndicator  = .TRUE.
       LimiterThresholdParameter = 0.03_DP
 
-      UseCellMerging            = .FALSE.
+      UseCellMerging            = .TRUE.
+      Min_NCellsPerMerge        = 5 ! --- Sets minimum number of merged cells as 2**Min_NCellsPerMerge ---
+
+      iCycleD = 1
+      t_end   = 2.5d+0
+      dt_wrt  = 2.5d-2
+      ! dt_wrt  = 1.0d-6
+
+    CASE( 'RiemannProblemShifted' )
+
+      CoordinateSystem = 'SPHERICAL'
+
+      Gamma = 1.4_DP
+
+      nX = [ 128, 64, 1 ] ! Change nX(2) to 16?
+      xL = [ 1.0d-8, 1.0d-8, 0.0_DP ]
+      xR = [ 2.0_DP, Pi - 1.0d-8,     TwoPi  ]
+
+      swX = [ 1, 1, 0 ]
+      bcX = [ 3, 3, 0 ]
+
+      nNodes = 2
+
+      BetaTVD = 1.75_DP
+      BetaTVB = 0.0d+00
+
+      UseSlopeLimiter           = .FALSE.
+      UseCharacteristicLimiting = .FALSE.
+
+      UseTroubledCellIndicator  = .FALSE.
+      LimiterThresholdParameter = 0.06_DP
+
+      UseCellMerging            = .TRUE.
 
       iCycleD = 1
       t_end   = 5.0d-1
       dt_wrt  = 2.5d-2
 
-   CASE( 'SphericalSedov' )
+    CASE( 'SphericalSedov' )
 
       Eblast = 1.0d0
 
@@ -196,10 +235,10 @@ PROGRAM ApplicationDriver
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR = [ 1.2_DP, Pi,     TwoPi  ]
 
-      swX = [ 1, 0, 0 ]
-      bcX = [ 2, 0, 0 ]
+      swX = [ 1, 1, 0 ]
+      bcX = [ 31, 3, 0 ] ! use 3 for 2nd dimension
 
-      nNodes = 3
+      nNodes = 2
 
       BetaTVD = 1.75d+00
       BetaTVB = 0.00d+00
@@ -209,6 +248,8 @@ PROGRAM ApplicationDriver
 
       UseTroubledCellIndicator  = .TRUE.
       LimiterThresholdParameter = 0.015_DP
+
+      UseCellMerging            = .FALSE.
 
       iCycleD = 1
       t_end   = 1.0d+0
@@ -361,6 +402,8 @@ PROGRAM ApplicationDriver
              = xL, &
            xR_Option &
              = xR, &
+           zoomX_Option &
+             = zoomX, &
            nNodes_Option &
              = nNodes, &
            CoordinateSystem_Option &
@@ -390,7 +433,9 @@ PROGRAM ApplicationDriver
            UseTroubledCellIndicator_Option &
              = UseTroubledCellIndicator, &
            LimiterThresholdParameter_Option &
-             = LimiterThresholdParameter )
+             = LimiterThresholdParameter, &
+           UseConservativeCorrection_Option &
+             = .TRUE.)
 
   CALL InitializePositivityLimiter_Euler_NonRelativistic_IDEAL &
          ( UsePositivityLimiter_Option = .TRUE., &
@@ -419,19 +464,21 @@ PROGRAM ApplicationDriver
   CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
 
-  CALL TimersStart_Euler( Timer_Euler_InputOutput )
-
   ! --- Test CellMergingModule ---
   IF( UseCellMerging )THEN
 
     WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'Using Cell Merging'
 
-    CALL Initialize_CellMerging( nX, nNodes )
+    CALL Initialize_CellMerging( nX, nNodes, Min_NCellsPerMerge )
+
+    ! CALL MergeAndRestrictGeometry( nNodes, uGF )
   
     CALL MergeAndRestrict( nNodes, uCF )
     
   END IF
   ! --- Test CellMergingModule ---
+
+  CALL TimersStart_Euler( Timer_Euler_InputOutput )
 
   CALL ComputeFromConserved_Euler_NonRelativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uPF, uAF )
@@ -467,7 +514,8 @@ PROGRAM ApplicationDriver
     CALL ComputeTimeStep_Euler_NonRelativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, &
              CFL = 0.5_DP / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
-             TimeStep = dt, Merge_Option = UseCellMerging )
+            !  CFL = 0.1_DP / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
+             TimeStep = dt, Merge_Option = UseCellMerging ) ! set to UseCellMerging for larger timestep
 
     IF( t + dt > t_end )THEN
 
@@ -493,10 +541,13 @@ PROGRAM ApplicationDriver
     CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
     CALL UpdateFluid_SSPRK &
-           ( t, dt, uGF, uCF, uDF, ComputeIncrement_Euler_DG_Explicit )
+           ( t, dt, uGF, uCF, uDF, ComputeIncrement_Euler_DG_Explicit, &
+             Merge_Option = UseCellMerging )
 
     IF( UseCellMerging )THEN
+
       CALL MergeAndRestrict( nNodes, uCF )
+      
     END IF
 
     t = t + dt

@@ -4,9 +4,11 @@ MODULE TimeSteppingModule_SSPRK
     DP, Zero, One
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_B1, iX_E0, iX_E1, &
-    nDOFX
+    nDOFX, nNodes
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D
+  USE CellMergingModule, ONLY: &
+    MergeAndRestrict
   USE Euler_SlopeLimiterModule_NonRelativistic_IDEAL, ONLY: &
     ApplySlopeLimiter_Euler_NonRelativistic_IDEAL
   USE Euler_PositivityLimiterModule_NonRelativistic_IDEAL, ONLY: &
@@ -193,7 +195,8 @@ CONTAINS
 
 
   SUBROUTINE UpdateFluid_SSPRK &
-    ( t, dt, G, U, D, ComputeIncrement_Fluid, ComputeGravitationalPotential )
+    ( t, dt, G, U, D, ComputeIncrement_Fluid, ComputeGravitationalPotential, &
+      Merge_Option )
 
     REAL(DP), INTENT(in) :: &
       t, dt
@@ -207,6 +210,8 @@ CONTAINS
       ComputeIncrement_Fluid
     PROCEDURE(GravitySolver), OPTIONAL :: &
       ComputeGravitationalPotential
+    LOGICAL, OPTIONAL :: &
+      Merge_Option
 
     LOGICAL :: SolveGravity
     INTEGER :: iS, jS
@@ -250,6 +255,10 @@ CONTAINS
         CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
 
+        IF( Merge_Option )THEN
+          CALL MergeAndRestrict( nNodes, U_SSPRK)
+        END IF
+
         IF( SolveGravity )THEN
 
           CALL ComputeGravitationalPotential &
@@ -292,6 +301,10 @@ CONTAINS
 
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+
+    IF( Merge_Option )THEN
+      CALL MergeAndRestrict( nNodes, U_SSPRK)
+    END IF
 
     IF( SolveGravity )THEN
 
