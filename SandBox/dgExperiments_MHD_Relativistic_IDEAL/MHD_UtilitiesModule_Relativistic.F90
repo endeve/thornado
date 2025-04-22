@@ -91,6 +91,8 @@ MODULE MHD_UtilitiesModule_Relativistic
     iAM_Gm, &
     iAM_Cs, &
     iAM_Ca, &
+    iAM_Cf_ub_p, &
+    iAM_Cf_ub_m, &
     iAM_EF1, &
     iAM_EF2, &
     iAM_EF3, &
@@ -1554,6 +1556,8 @@ CONTAINS
                A(iNX,iX1,iX2,iX3,iAM_Gm   ),  &
                A(iNX,iX1,iX2,iX3,iAM_Cs   ),  &
                A(iNX,iX1,iX2,iX3,iAM_Ca   ),  &
+               A(iNX,iX1,iX2,iX3,iAM_Cf_ub_p), &
+               A(iNX,iX1,iX2,iX3,iAM_Cf_ub_m), &
                A(iNX,iX1,iX2,iX3,iAM_EF1  ), &
                A(iNX,iX1,iX2,iX3,iAM_EF2  ), &
                A(iNX,iX1,iX2,iX3,iAM_EF3  ), &
