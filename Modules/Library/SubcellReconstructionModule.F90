@@ -12,7 +12,8 @@ MODULE SubcellReconstructionModule
     IndLX_Q, L_X1, L_X2, L_X3
   USE GeometryFieldsModule, ONLY: &
     CoordinateSystem, &
-    uGF, iGF_SqrtGm, iGF_h_1, iGF_h_2, iGF_h_3, &
+    uGF, iGF_SqrtGm, iGF_h_1, iGF_h_2, iGF_h_3
+  USE GeometryComputationModule, ONLY: &
     ComputeGeometryX_SpatialMetric
   USE MeshModule, ONLY: &
     MeshX
