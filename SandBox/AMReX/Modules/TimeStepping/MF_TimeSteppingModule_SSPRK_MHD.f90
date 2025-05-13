@@ -322,7 +322,7 @@ CONTAINS
 
         ! Come in with U, leave with \psi^6 * dU
         CALL ComputeIncrement_MHD_MF &
-               ( t_new, MF_uGF, MF_U(iS,:), MF_uDM, MF_D(iS,:) )
+               ( t_new, CFL, MF_uGF, MF_U(iS,:), MF_uDM, MF_D(iS,:) )
 
         DO iLevel = 0, nLevels-1
 

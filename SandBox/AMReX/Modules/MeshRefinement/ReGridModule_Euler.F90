@@ -56,7 +56,7 @@ MODULE ReGridModule_Euler
     UpdateLapseShiftCurvature_XCFC_MF, &
     ComputeConformalFactorSourcesAndMg_XCFC_MF, &
     ComputePressureTensorTrace_XCFC_MF
-  USE MF_GravitySolutionModule_Newtonian, ONLY: &
+  USE MF_GravitySolutionModule_Newtonian_Euler, ONLY: &
     ComputeGravitationalPotential_Newtonian_MF
   USE InputParsingModule, ONLY: &
     DEBUG, &

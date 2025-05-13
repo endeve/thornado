@@ -91,13 +91,12 @@ MODULE  MF_MHD_dgDiscretizationModule
     EvolveOnlyMagnetic, &
     UseDivergenceCleaning, &
     DampingParameter, &
+    CleaningSpeed, &
     UsePowellSource
   USE FillPatchModule_MHD, ONLY: &
     FillPatch
   USE AverageDownModule_MHD, ONLY: &
     AverageDown
-  USE MF_TimeSteppingModule_SSPRK_MHD, ONLY: &
-    CFL
 
   IMPLICIT NONE
   PRIVATE
@@ -113,9 +112,10 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_MHD_MF_MultipleLevels &
-    ( t, MF_uGF, MF_uCM, MF_uDM, MF_duCM )
+    ( t, CFL, MF_uGF, MF_uCM, MF_uDM, MF_duCM )
 
     REAL(DP),             INTENT(in   ) :: t      (0:)
+    REAL(DP),             INTENT(in   ) :: CFL
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF (0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCM (0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDM (0:)
@@ -138,7 +138,7 @@ CONTAINS
       END IF
 
       CALL ComputeIncrement_MHD_MF_SingleLevel &
-             ( t(iLevel), iLevel, MF_uGF, MF_uCM, MF_uDM, MF_duCM(iLevel) )
+             ( t(iLevel), CFL, iLevel, MF_uGF, MF_uCM, MF_uDM, MF_duCM(iLevel) )
 
     END DO
 
@@ -148,9 +148,10 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_MHD_MF_SingleLevel &
-    ( t, iLevel, MF_uGF, MF_uCM, MF_uDM, MF_duCM )
+    ( t, CFL, iLevel, MF_uGF, MF_uCM, MF_uDM, MF_duCM )
 
     REAL(DP)            , INTENT(in)    :: t
+    REAL(DP)            , INTENT(in)    :: CFL
     INTEGER,              INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCM(0:)
@@ -303,6 +304,7 @@ CONTAINS
                SuppressBC_Option = .TRUE., &
                EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic, &
                UseDivergenceCleaning_Option = UseDivergenceCleaning, &
+               CleaningSpeed_Option = CleaningSpeed, &
                DampingParameter_Option = DampingParameter, &
                UsePowellSource_Option = UsePowellSource, &
                SurfaceFlux_X1_Option = SurfaceFlux_X1, &

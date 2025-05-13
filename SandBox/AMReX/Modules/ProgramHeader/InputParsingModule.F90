@@ -59,6 +59,7 @@ MODULE InputParsingModule
 
   LOGICAL  :: EvolveOnlyMagnetic
   LOGICAL  :: UseDivergenceCleaning
+  REAL(DP) :: CleaningSpeed
   REAL(DP) :: DampingParameter
   LOGICAL  :: UsePowellSource
 
@@ -198,6 +199,7 @@ CONTAINS
     zoomE                 = 1.0_DP
     EvolveOnlyMagnetic    = .FALSE.
     UseDivergenceCleaning = .FALSE.
+    CleaningSpeed         = 0.0_DP
     DampingParameter      = 0.0_DP
     UsePowellSource       = .FALSE.
 
@@ -262,6 +264,8 @@ CONTAINS
                          EvolveOnlyMagnetic )
       CALL PP % query ( 'UseDivergenceCleaning', &
                          UseDivergenceCleaning )
+      CALL PP % query ( 'CleaningSpeed', &
+                         CleaningSpeed )
       CALL PP % query ( 'DampingParameter', &
                          DampingParameter )
       CALL PP % query ( 'UsePowellSource', &

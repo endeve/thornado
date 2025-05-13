@@ -1,4 +1,4 @@
-MODULE MF_GravitySolutionModule_Newtonian
+MODULE MF_GravitySolutionModule_Newtonian_Euler
 
   ! --- AMReX Modules ---
 
@@ -54,4 +54,4 @@ CONTAINS
   END SUBROUTINE FinalizeGravitySolver_Newtonian_MF
 
 
-END MODULE MF_GravitySolutionModule_Newtonian
+END MODULE MF_GravitySolutionModule_Newtonian_Euler

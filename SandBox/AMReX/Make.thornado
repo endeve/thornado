@@ -32,7 +32,7 @@ include $(THORNADO_HOME)/SandBox/AMReX/Src/Base/Make.package
 include $(THORNADO_HOME)/SandBox/AMReX/Src/AmrCore/Make.package
 
 # Include directories and source files needed from thornado, etc.
-include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.thornado
+include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.thornado_MHD
 
 # Include rules for compilation
 include $(AMREX_HOME)/Tools/GNUMake/Make.rules
