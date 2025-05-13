@@ -97,7 +97,8 @@ MODULE MF_InitializationModule
     Two, &
     Four, &
     Pi, &
-    TwoPi
+    TwoPi, &
+    FourPi
   USE MF_UtilitiesModule, ONLY: &
     thornado2amrex_X, &
     amrex2thornado_X, &
@@ -167,6 +168,10 @@ CONTAINS
       CASE( 'KelvinHelmholtz2D' )
 
         CALL InitializeFields_KelvinHelmholtz2D( iLevel, MF_uGF, MF_uCM )
+
+      CASE( 'OrszagTang2D' )
+
+        CALL InitializeFields_OrszagTang2D( iLevel, MF_uGF, MF_uCM )
 
       CASE( 'Advection3D' )
 
@@ -1369,6 +1374,186 @@ CONTAINS
     CALL amrex_mfiter_destroy( MFI )
 
   END SUBROUTINE InitializeFields_KelvinHelmholtz2D
+
+
+  ! --- Relativistic 2D Kelvin-Helmholtz instability a la
+  !     Radice & Rezzolla, (2012), AA, 547, A26 ---
+  SUBROUTINE InitializeFields_OrszagTang2D( iLevel, MF_uGF, MF_uCM )
+
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCM
+
+    TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_box)    :: BX
+
+    INTEGER  :: iNX, iX1, iX2, iX3
+    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP) :: uPM(nDOFX,nPM)
+    REAL(DP) :: Pressure
+
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCM(:,:,:,:)
+
+    TYPE(EdgeMap) :: Edge_Map
+
+    ! --- Problem-specific Parameters ---
+
+    INTEGER  :: iNX1, iNX2
+    REAL(DP) :: X1, X2
+    REAL(DP) :: V1, V2, V3, W
+    REAL(DP) :: CB1, CB2, CB3
+    REAL(DP) :: VdotB, VSq
+
+    REAL(DP) :: OTScaleFactor = 1.0d2
+
+    IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,'(6x,A)')   'Orszag-Tang 2D'
+      WRITE(*,'(6x,A,A)') '-----------------'
+      WRITE(*,*)
+      WRITE(*,'(8x,A,F5.3)') 'OTScaleFactor: ', OTScaleFactor
+      WRITE(*,*)
+
+    END IF
+
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+
+    DO WHILE( MFI % next() )
+
+      uGF => MF_uGF % DataPtr( MFI )
+      uCM => MF_uCM % DataPtr( MFI )
+
+      BX = MFI % tilebox()
+
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+      iX_B1 = iX_B0 - swX
+      iX_E1 = iX_E0 + swX
+
+      PRINT*, '0: ', iX_B0, iX_E0
+      PRINT*, '1: ', iX_B1, iX_E1
+
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+               G )
+
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCM ], &
+               U )
+
+      CALL amrex2thornado_X &
+             ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iNX = 1       , nDOFX
+
+        iNX1 = NodeNumberTableX(1,iNX)
+        iNX2 = NodeNumberTableX(2,iNX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
+
+        V1 = -SIN( TwoPi * X2 ) / OTScaleFactor
+        V2 =  SIN( TwoPi * X1 ) / OTScaleFactor
+        V3 = Zero
+
+        CB1 = -SIN( TwoPi  * X2 ) / ( SQRT( FourPi ) * OTScaleFactor )
+        CB2 =  SIN( FourPi * X1 ) / ( SQRT( FourPi ) * OTScaleFactor )
+        CB3 =  Zero
+
+        uPM(iNX,iPM_D   ) = Gamma_IDEAL**2 / ( FourPi )
+        uPM(iNX,iPM_V1  ) = V1
+        uPM(iNX,iPM_V2  ) = V2
+        uPM(iNX,iPM_V3  ) = V3
+        uPM(iNX,iPM_E   ) = Gamma_IDEAL &
+                                           / ( FourPi * ( Gamma_IDEAL - One ) &
+                                             * OTScaleFactor**2 )
+        uPM(iNX,iPM_Ne ) = Zero
+        uPM(iNX,iPM_Chi) = Zero
+
+        VSq = V1**2 + V2**2 + V3**2
+
+        VdotB = V1 * CB1 &
+                + V2 * CB2 &
+                + V3 * CB3
+
+        W = One / SQRT( One - VSq )
+
+        uPM(iNX,iPM_B1 ) = W * VdotB * V1 + CB1 / W
+        uPM(iNX,iPM_B2 ) = W * VdotB * V2 + CB2 / W
+        uPM(iNX,iPM_B3 ) = W * VdotB * V3 + CB3 / W
+
+        CALL ComputePressureFromPrimitive_IDEAL &
+               ( uPM(iNX,iPM_D ), uPM(iNX,iPM_E), &
+                 uPM(iNX,iPM_Ne), Pressure )
+
+        CALL ComputeConserved_MHD &
+               ( uPM(iNX,iPM_D  ), &
+                 uPM(iNX,iPM_V1 ), &
+                 uPM(iNX,iPM_V2 ), &
+                 uPM(iNX,iPM_V3 ), &
+                 uPM(iNX,iPM_E  ), &
+                 uPM(iNX,iPM_Ne ), &
+                 uPM(iNX,iPM_B1 ), &
+                 uPM(iNX,iPM_B2 ), &
+                 uPM(iNX,iPM_B3 ), &
+                 uPM(iNX,iPM_Chi), &
+                 U  (iNX,iX1,iX2,iX3,iCM_D  ), &
+                 U  (iNX,iX1,iX2,iX3,iCM_S1 ), &
+                 U  (iNX,iX1,iX2,iX3,iCM_S2 ), &
+                 U  (iNX,iX1,iX2,iX3,iCM_S3 ), &
+                 U  (iNX,iX1,iX2,iX3,iCM_E  ), &
+                 U  (iNX,iX1,iX2,iX3,iCM_Ne ), &
+                 U  (iNX,iX1,iX2,iX3,iCM_B1 ), &
+                 U  (iNX,iX1,iX2,iX3,iCM_B2 ), &
+                 U  (iNX,iX1,iX2,iX3,iCM_B3 ), &
+                 U  (iNX,iX1,iX2,iX3,iCM_Chi), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Alpha), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Beta_1), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Beta_2), &
+                 G  (iNX,iX1,iX2,iX3,iGF_Beta_3), &
+                 Pressure, &
+                 EvolveOnlyMagnetic )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
+
+      CALL ApplyBoundaryConditions_MHD_MF &
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+
+      CALL thornado2amrex_X &
+             ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
+
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCM ], &
+               U )
+
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+               G )
+
+    END DO
+
+    CALL amrex_mfiter_destroy( MFI )
+
+  END SUBROUTINE InitializeFields_OrszagTang2D
 
 
   SUBROUTINE InitializeFields_Advection3D( iLevel, MF_uGF, MF_uCM )
