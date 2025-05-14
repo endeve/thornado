@@ -86,7 +86,6 @@ MODULE MF_MHD_UtilitiesModule
     thornado2amrex_X, &
     AllocateArray_X, &
     DeallocateArray_X, &
-    ShowVariableFromMultiFab
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -184,8 +183,6 @@ CONTAINS
 
         iX_B = iX_B0 - swXX
         iX_E = iX_E0 + swXX
-
-        CALL ShowVariableFromMultiFab( MF_uGF, iGF_Gm_dd_11, swXX, WriteToFile_Option = .TRUE., UseFineMask_Option = .FALSE. )
 
         CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uGF, G )
 
