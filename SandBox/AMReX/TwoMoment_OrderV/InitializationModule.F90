@@ -271,9 +271,9 @@ CONTAINS
 
     CALL InitializeEquationOfState_MF
 
-    !CALL InitializePositivityLimiter_TwoMoment_MF
+    CALL InitializePositivityLimiter_TwoMoment_MF
 
-    !CALL InitializeSlopeLimiter_TwoMoment_MF
+    CALL InitializeSlopeLimiter_TwoMoment_MF
 
 
     IF( TRIM( EquationOfState ) .EQ. 'TABLE' )THEN
@@ -301,7 +301,7 @@ CONTAINS
       D_0   = Zero
       Chi   = Zero
       Sigma = Zero
-      CALL amrex_parmparse_build( PP, 'ST' )
+      CALL amrex_parmparse_build( PP, 'thornado' )
         CALL PP % query( 'R0'   , R0    )
         CALL PP % query( 'Mu0'  , Mu0   )
         CALL PP % query( 'E0'   , E0    )
@@ -339,9 +339,6 @@ CONTAINS
     ALLOCATE( t_old (0:nMaxLevels-1) )
     ALLOCATE( t_new (0:nMaxLevels-1) )
 
-    CALL Initialize_IMEX_RK_MF &
-           ( Verbose_Option = amrex_parallel_ioprocessor() )
-
     StepNo = 0
     dt     = 0.0_DP
     t_new  = 0.0_DP
@@ -367,6 +364,9 @@ CONTAINS
     t_chk = t_new(0) + dt_chk
     t_wrt = t_new(0) + dt_wrt
 
+    CALL Initialize_IMEX_RK_MF &
+           ( MF_uGF % BA, MF_uGF % DM,Verbose_Option = amrex_parallel_ioprocessor() )
+
     CALL DescribeProgramHeader_AMReX
 
     CALL ComputeFromConserved_Euler_MF &
@@ -385,7 +385,7 @@ CONTAINS
              MF_uPR_Option = MF_uPR, &
              MF_uCR_Option = MF_uCR, &
              MF_uGR_Option = MF_uGR )
-    CALL ShowVariableFromMultifab(MF_uGR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Gray_Variables')
+
   END SUBROUTINE InitializeProgram
 
 

@@ -127,8 +127,10 @@ MODULE MF_TwoMoment_UtilitiesModule
     AllocateArray_Z, &
     DeallocateArray_Z, &
     AllocateArray_Integrated, &
-    DeallocateArray_Integrated
-
+    DeallocateArray_Integrated, &
+    ShowVariablefromMultifab, &
+    IndLo_Z, &
+    IndHi_Z
   IMPLICIT NONE
   PRIVATE
 
@@ -190,9 +192,14 @@ CONTAINS
 
         CALL ComputeTimeStep_TwoMoment &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, CFL, myTimeStep( iLevel ) )
+        
+        !PRINT *, 'TIME 1 STEP HERE:'
+        !PRINT *, myTimeStep(iLevel)
 
         TimeStep( iLevel ) = MIN( TimeStep( iLevel ), myTimeStep( iLevel ) )
-
+        !PRINT *, 'TIME STEP HERE:'
+        !PRINT *, TimeStep(iLevel)
+        !PRINT *, myTimeStep(iLevel)
         CALL DeallocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                  [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &

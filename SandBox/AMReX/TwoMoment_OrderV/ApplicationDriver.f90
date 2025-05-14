@@ -86,7 +86,7 @@ PROGRAM main
   n = 1.0_amrex_real
   CALL InitializeProgram
 
-  CALL ShowVariableFromMultifab(MF_uCR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Conserved_Variables')
+  CALL ShowVariableFromMultifab(MF_uPR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Primitive_Variables')
 
   CALL ComputeFromConserved_TwoMoment_MF(  MF_uGF, MF_uCF, MF_uCR, MF_uPR, MF_uAR, MF_uGR )
 
@@ -100,6 +100,9 @@ PROGRAM main
     ELSE
 
       CALL ComputeTimeStep_TwoMoment_MF( MF_uGF, CFL, dt )
+  PRINT *, 'MULTIFAB DATA START FROM Application driver'
+                    CALL Showvariablefrommultifab(MF_uGF,1)
+PRINT *, 'MULTIFAB DATA END'
       dt = MINVAL( dt )
     END IF
 
@@ -120,14 +123,12 @@ PROGRAM main
 
     CALL Update_IMEX_RK_MF
 
-    CALL ShowVariableFromMultifab(MF_uCR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Conserved_Variables')
-
     IF( ALL( t_new + dt .GT. t_wrt ) )THEN
       t_wrt = t_wrt + dt_wrt
       wrt   = .TRUE.
 
     END IF
-
+      !wrt  = .TRUE.
     IF( wrt )THEN
         CALL ComputeFromConserved_TwoMoment_MF(  MF_uGF, MF_uCF, MF_uCR, MF_uPR, MF_uAR, MF_uGR )
 
@@ -141,8 +142,9 @@ PROGRAM main
              MF_uPR_Option = MF_uPR, &
              MF_uCR_Option = MF_uCR, &
              MF_uGR_Option = MF_uGR )
-
-        CALL ShowVariableFromMultifab(MF_uCR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Conserved_Variables')        
+        
+        CALL ShowVariableFromMultifab(MF_uPR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Primitive_Variables')
+   
 
     CALL WriteFieldsAMReX_Checkpoint &
            ( StepNo, nLevels, dt, t_new, &
@@ -160,8 +162,6 @@ PROGRAM main
              pMF_uGF_Option = MF_uGF % P, &
              pMF_uCF_Option = MF_uCF % P)
              !pMF_uCR_Option = MF_uCR % P )
-
-      wrt = .FALSE.
     END IF
 
   END DO
