@@ -39,6 +39,10 @@ MODULE MF_FieldsModule_TwoMoment
 
   TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uPR(:)
 
+  ! --- Auxilliary Radiation Fields ---
+
+  TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uAR(:)
+
   ! --- Integrated Variables ---
 
   TYPE(amrex_multifab), ALLOCATABLE, PUBLIC :: MF_uGR(:)
@@ -58,6 +62,7 @@ CONTAINS
     ALLOCATE( MF_uCR(0:nMaxLevels-1) )
     ALLOCATE( MF_Permute(0:nMaxLevels-1) )
     ALLOCATE( MF_uPR(0:nMaxLevels-1) )
+    ALLOCATE( MF_uAR(0:nMaxLevels-1) )
     ALLOCATE( MF_uGR(0:nMaxLevels-1) )
 
     ALLOCATE( FluxRegister_TwoMoment(0:nMaxLevels-1) )
@@ -83,6 +88,7 @@ CONTAINS
       CALL amrex_fluxregister_destroy( FluxRegister_TwoMoment(iLevel) )
 
       CALL amrex_multifab_destroy( MF_uPR(iLevel) )
+      CALL amrex_multifab_destroy( MF_uAR(iLevel) )
       CALL amrex_multifab_destroy( MF_uCR(iLevel) )
       CALL amrex_multifab_destroy( MF_uGR(iLevel) )
       CALL amrex_multifab_destroy( MF_Permute(iLevel) )
@@ -92,6 +98,7 @@ CONTAINS
     DEALLOCATE( FluxRegister_TwoMoment )
 
     DEALLOCATE( MF_uPR )
+    DEALLOCATE( MF_uAR )
     DEALLOCATE( MF_uCR )
     DEALLOCATE( MF_uGR )
     DEALLOCATE( MF_Permute )
