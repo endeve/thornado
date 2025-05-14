@@ -101,7 +101,7 @@ MODULE MF_XCFC_UtilitiesModule
     Zero, &
     One, &
     FourPi
-  USE MF_UtilitiesModule, ONLY: &
+  USE MF_UtilitiesModule_MHD, ONLY: &
     AllocateArray_X, &
     DeallocateArray_X, &
     AllocateArray_Z, &

@@ -65,7 +65,7 @@ MODULE MF_GeometryModule
     Zero, &
     SqrtTiny, &
     One
-  USE MF_UtilitiesModule, ONLY: &
+  USE MF_UtilitiesModule_MHD, ONLY: &
     thornado2amrex_X, &
     AllocateArray_X, &
     DeallocateArray_X

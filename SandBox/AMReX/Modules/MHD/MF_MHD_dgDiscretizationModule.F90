@@ -63,7 +63,7 @@ MODULE  MF_MHD_dgDiscretizationModule
   USE MF_KindModule, ONLY: &
     DP, &
     Zero
-  USE MF_UtilitiesModule, ONLY: &
+  USE MF_UtilitiesModule_MHD, ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X, &
     thornado2amrex_X_F, &

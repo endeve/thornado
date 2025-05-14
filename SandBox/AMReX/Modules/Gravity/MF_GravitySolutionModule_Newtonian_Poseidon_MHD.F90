@@ -1,7 +1,5 @@
 MODULE MF_GravitySolutionModule_Newtonian_Poseidon
 
-  use mf_utilitiesmodule
-
   ! --- AMReX Modules ---
 
   USE amrex_multifab_module, ONLY: &
@@ -52,7 +50,7 @@ MODULE MF_GravitySolutionModule_Newtonian_Poseidon
   USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL
 
-  USE MF_UtilitiesModule, ONLY: &
+  USE MF_UtilitiesModule_MHD, ONLY: &
     AllocateArray_X, &
     DeallocateArray_X, &
     amrex2thornado_X

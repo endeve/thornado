@@ -32,7 +32,7 @@ MODULE MF_MHD_BoundaryConditionsModule
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
-  USE MF_UtilitiesModule, ONLY: &
+  USE MF_UtilitiesModule_MHD, ONLY: &
     AllocateArray_X, &
     DeallocateArray_X, &
     amrex2thornado_X, &

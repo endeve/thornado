@@ -64,7 +64,7 @@ MODULE MF_MHD_TallyModule
     CreateFineMask, &
     DestroyFineMask, &
     IsNotLeafElement
-  USE MF_UtilitiesModule, ONLY: &
+  USE MF_UtilitiesModule_MHD, ONLY: &
     amrex2thornado_X, &
     AllocateArray_X, &
     DeallocateArray_X

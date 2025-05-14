@@ -40,7 +40,7 @@ MODULE MF_MHD_SlopeLimiterModule
 
   USE MF_KindModule, ONLY: &
     DP
-  USE MF_UtilitiesModule, ONLY: &
+  USE MF_UtilitiesModule_MHD, ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X, &
     AllocateArray_X, &

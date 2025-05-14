@@ -1,5 +1,5 @@
 !> Module for operations on MultiFabs
-MODULE MF_UtilitiesModule
+MODULE MF_UtilitiesModule_MHD
 
   USE ISO_C_BINDING
 
@@ -1720,4 +1720,4 @@ CONTAINS
   END FUNCTION indHi_X
 
 
-END MODULE MF_UtilitiesModule
+END MODULE MF_UtilitiesModule_MHD

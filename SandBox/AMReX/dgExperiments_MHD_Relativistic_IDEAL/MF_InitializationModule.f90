@@ -99,7 +99,7 @@ MODULE MF_InitializationModule
     Pi, &
     TwoPi, &
     FourPi
-  USE MF_UtilitiesModule, ONLY: &
+  USE MF_UtilitiesModule_MHD, ONLY: &
     thornado2amrex_X, &
     amrex2thornado_X, &
     AllocateArray_X, &

@@ -49,7 +49,7 @@ MODULE MF_MHD_PositivityLimiterModule
     DP, &
     Zero, &
     One
-  USE MF_UtilitiesModule, ONLY: &
+  USE MF_UtilitiesModule_MHD, ONLY: &
     amrex2thornado_X, &
     thornado2amrex_X, &
     AllocateArray_X, &
