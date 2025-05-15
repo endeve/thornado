@@ -574,7 +574,7 @@ CONTAINS
                           - ( One - aSq ) * V3**2 ) ) ) &
                 / ( One - VSq * aSq )
 
-    Cf_ub_p = SQRT( Gm11 * Cf_ub_p_1**2 + Gm22 * Cf_ub_p_2**2 + Gm33 * Cf_ub_p_3**2 )
+    Cf_ub_p = MAX( SQRT( Gm11 ) * Cf_ub_p_1, SQRT( Gm22 ) * Cf_ub_p_2, SQRT( Gm33 ) * Cf_ub_p_3 )
 
     Cf_ub_m_1 = ( ( One - aSq ) * V1 &
                   - SQRT( aSq * ( One - VSq ) &
@@ -594,7 +594,7 @@ CONTAINS
                           - ( One - aSq ) * V3**2 ) ) ) &
                 / ( One - VSq * aSq )
 
-    Cf_ub_m = SQRT( Gm11 * Cf_ub_m_1**2 + Gm22 * Cf_ub_m_2**2 + Gm33 * Cf_ub_m_3**2 )
+    Cf_ub_m = MIN( SQRT( Gm11 ) * Cf_ub_m_1, SQRT( Gm22 ) * Cf_ub_m_2, SQRT( Gm33 ) * Cf_ub_m_3 )
 
   END SUBROUTINE ComputeFastSpeedUpperBoundFromPrimitive_IDEAL_Scalar
 
