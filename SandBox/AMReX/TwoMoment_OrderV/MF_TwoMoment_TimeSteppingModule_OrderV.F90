@@ -104,9 +104,6 @@ USE MF_UtilitiesModule
   LOGICAL               :: EvolveEuler
   LOGICAL               :: EvolveTwoMoment
   LOGICAL               :: Verbose
-  TYPE(amrex_multifab), DIMENSION(:,:), ALLOCATABLE :: MF_DU_Im
-  !TYPE(amrex_multifab), DIMENSION(:,:), ALLOCATABLE :: MF_DU_Ex
-  TYPE(amrex_multifab), DIMENSION(:,:), ALLOCATABLE :: MF_DF_Im
   REAL(AR),            ALLOCATABLE :: U0(:,:,:,:,:,:,:)
   REAL(AR),            ALLOCATABLE :: Ui(:,:,:,:,:,:,:)
   TYPE(StageDataType), ALLOCATABLE :: StageData(:)
@@ -131,7 +128,6 @@ CONTAINS
     TYPE(amrex_parmparse) :: PP
 
     INTEGER         :: iS, iLevel
-    TYPE(amrex_box) :: BX
 
     EvolveEuler     = .TRUE.
     EvolveTwoMoment = .TRUE.
@@ -151,59 +147,12 @@ CONTAINS
 
     CALL Initialize_IMEX_RK( Scheme )
 
-
-    !ALLOCATE( MF_DU_Ex(0:nLevels-1,1:nStages) )
-    ALLOCATE( MF_DU_Im(0:nLevels-1,1:nStages) )
-    ALLOCATE( MF_DF_Im(0:nLevels-1,1:nStages) )
-
-    BX = amrex_box( [ 0, 0, 0 ], [ nX(1)-1, nX(2)-1, nX(3)-1 ] )
-
-    DO iLevel = 0, nLevels-1
-
-    PRINT *, 'sWX', swX
-
-      DO iS = 1, nStages
-
-        !CALL amrex_multifab_build &
-               !( MF_DU_Ex(iLevel,iS), BA(iLevel), DM(iLevel), &
-                 !nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
-
-        CALL amrex_multifab_build &
-               ( MF_DU_Im(iLevel,iS), BA(iLevel), DM(iLevel), &
-                 nDOFZ * nCR * ( iZ_E0( 1 ) - iZ_B0( 1 ) + 1 ) * nSpecies, swX )
-
-        CALL amrex_multifab_build &
-               ( MF_DF_Im(iLevel,iS), BA(iLevel), DM(iLevel), nDOFX * nCF, swX )
-
-      END DO
-
-    END DO
-
   END SUBROUTINE Initialize_IMEX_RK_MF
 
 
   SUBROUTINE Finalize_IMEX_RK_MF
-    INTEGER         :: iS, iLevel
 
     CALL Finalize_IMEX_RK
-
-
-    DO iLevel = 0, nLevels-1
-
-      DO iS = 1, nStages
-
-        !CALL amrex_multifab_destroy( MF_DU_Ex(iLevel,iS) )
-        CALL amrex_multifab_destroy( MF_DU_Im(iLevel,iS) )
-        CALL amrex_multifab_destroy( MF_DF_Im(iLevel,iS) )
-
-      END DO
-
-    END DO
-
-    !DEALLOCATE( MF_DU_Ex)
-    DEALLOCATE( MF_DU_Im)
-    DEALLOCATE( MF_DF_Im)
-
 
   END SUBROUTINE Finalize_IMEX_RK_MF
 
@@ -525,12 +474,9 @@ CONTAINS
           WRITE(*,'(6x,A)') 'Adding implicit increment to stage data'
 
         END IF
-PRINT *, 'MULTIFAB DATA START TIME STEPPING'
-          !CALL Showvariablefrommultifab(MF_R,1)
-                    CALL Showvariablefrommultifab(MF_uGF,19)
-PRINT *, 'MULTIFAB DATA END'
+
           CALL ComputeIncrement_TwoMoment_Implicit_MF &
-               ( GEOM, MF_uGF, MF_uCF, MF_R, MF_DU_Im(:,iS), MF_DF_Im(:,iS), &
+               ( GEOM, MF_uGF, MF_uCF, MF_R, MF_DR_Im(:,iS), MF_DF_Im(:,iS), &
                  dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
 
         CALL MF_R(iLevel) &
@@ -551,6 +497,14 @@ PRINT *, 'MULTIFAB DATA END'
                  ( MF_uGF, MF_F, MF_uDF )
 
         END IF ! EvolveEuler
+
+        IF( EvolveTwoMoment )THEN
+            
+          CALL ApplyPositivityLimiter_TwoMoment_MF &
+                   ( GEOM, MF_uGF, MF_F, MF_R, &
+                     Verbose_Option = .FALSE.  )
+
+        END IF ! EvolveTwoMoment
 
       END IF ! ANY( a_IM(:,iS) .NE. Zero ) .OR. ( w_IM(iS) .NE. Zero )
 

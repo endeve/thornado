@@ -2440,6 +2440,11 @@ CONTAINS
 
       ! --- Interpolate Right State ---
 
+      !IF (iCR ==1) THEN
+        !PRINT *, 'UCR HERE'
+        !PRINT *, uCR_K(:,:,:,:,:, :, iCR)
+      !END IF
+
       CALL MatrixMatrixMultiply &
              ( 'N', 'N', nDOF_E, nE_Z, nDOFZ, One, L_E_Dn, nDOF_E, &
                uCR_K(1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)  ,iCR), nDOFZ, Zero, &
@@ -2512,7 +2517,8 @@ CONTAINS
              PositionIndexZ_F, nIterations_L )
 
     ! --- Right State Primitive ---
-
+       !PRINT *, 'uN_R', uN_R
+       !PRINT *, 'uN_R', MINVAL(uN_R)
     CALL ComputePrimitive_TwoMoment &
            ( uN_R, uG1_R, uG2_R, uG3_R, &
              uD_R, uI1_R, uI2_R, uI3_R, &

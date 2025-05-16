@@ -1201,7 +1201,11 @@ CONTAINS
     REAL(DP) :: h_d(3), Gm_dd(3,3)
 
     FF = FluxFactor( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
+    !PRINT *, 'FROM TWO MOMENT DICRETIZATION COLLISIONS'
+    !PRINT *, 'D', D
+    !PRINT *, 'I_u_1', I_u_1
+    !PRINT *, Gm_dd_11
+    !PRINT *, FF
     EF = EddingtonFactor( D, FF )
 
     a = Half * ( One - EF )

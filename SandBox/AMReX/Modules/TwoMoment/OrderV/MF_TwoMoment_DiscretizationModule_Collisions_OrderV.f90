@@ -217,6 +217,10 @@ CONTAINS
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B1, iZ_E1, uCR, U_R )
 
+        !PRINT *, 'U_R', U_R(:,:,:,:,:,1,:)
+        !PRINT *, '****************************************************'
+        !PRINT *, 'F', U_F (:,:,:,:,1)
+
         CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
         CALL ApplyBoundaryConditions_Euler_MF &
@@ -225,9 +229,9 @@ CONTAINS
         CALL ApplyBoundaryConditions_TwoMoment_MF &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, Edge_Map )
 
-        PRINT *, 'U_R', U_R(:,:,:,:,:,1,:)
-        PRINT *, '****************************************************'
-        PRINT *, 'F', U_F (:,:,:,:,1)
+        !PRINT *, 'U_R', U_R(:,:,:,:,:,1,:)
+        !PRINT *, '****************************************************'
+        !PRINT *, 'F', U_F (:,:,:,:,1)
         CALL ComputeIncrement_TwoMoment_Implicit &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, GX, U_F, dU_F, U_R, dU_R )
         PRINT *, 'MADE IT PAST IMPLICIT'

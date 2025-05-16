@@ -90,6 +90,8 @@ PROGRAM main
 
   CALL ComputeFromConserved_TwoMoment_MF(  MF_uGF, MF_uCF, MF_uCR, MF_uPR, MF_uAR, MF_uGR )
 
+  CALL ShowVariableFromMultifab(MF_uCR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Conserved_Variables')
+
   DO WHILE( ALL( t_new .LT. t_end ) )
 
     StepNo = StepNo + 1
@@ -144,7 +146,7 @@ PRINT *, 'MULTIFAB DATA END'
              MF_uGR_Option = MF_uGR )
         
         CALL ShowVariableFromMultifab(MF_uPR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Primitive_Variables')
-   
+        CALL ShowVariableFromMultifab(MF_uCR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Conserved_Variables')
 
     CALL WriteFieldsAMReX_Checkpoint &
            ( StepNo, nLevels, dt, t_new, &

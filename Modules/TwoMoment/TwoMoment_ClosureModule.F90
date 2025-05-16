@@ -182,9 +182,9 @@ CONTAINS
     REAL(DP) :: FluxFactor
 
     FluxFactor &
-      = MIN( MAX( SQRT( Gm_dd_11 * I_1**2 &
-                        + Gm_dd_22 * I_2**2 &
-                        + Gm_dd_33 * I_3**2 ) &
+      = MIN( MAX( SQRT( Gm_dd_11 * I_1*I_1 &
+                        + Gm_dd_22 * I_2*I_2 &
+                        + Gm_dd_33 * I_3*I_3 ) &
                     / MAX( D, SqrtTiny ), &
                   SqrtTiny ), &
              One )
@@ -207,9 +207,9 @@ CONTAINS
     REAL(DP) :: FluxFactor(SIZE(D))
 
     FluxFactor &
-      = MIN( MAX( SQRT( Gm_dd_11 * I_1**2 &
-                        + Gm_dd_22 * I_2**2 &
-                        + Gm_dd_33 * I_3**2 ) &
+      = MIN( MAX( SQRT( Gm_dd_11 * I_1*I_1 &
+                        + Gm_dd_22 * I_2*I_2 &
+                        + Gm_dd_33 * I_3*I_3 ) &
                     / MAX( D, SqrtTiny ), &
                   SqrtTiny ), &
              One )
@@ -324,6 +324,8 @@ CONTAINS
 
     EddingtonFactor &
       = Third + Two * Third * ClosurePolynomial_ME_CB( FF )
+      !PRINT *, 'EF'
+      !PRINT *, EddingtonFactor
 
 #elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_CB
 
@@ -458,8 +460,8 @@ CONTAINS
     ! --- Expression from Just et al. (2015), MNRAS, 453, 3386 ---
 
     HeatFluxFactor &
-      = ( 45.0_DP + 10.0_DP * FF - 12.0 * FF**2 - 12.0_DP * FF**3 &
-          + 38.0_DP * FF**4 - 12.0_DP * FF**5 + 18.0_DP * FF**6 ) &
+      = ( 45.0_DP + 10.0_DP * FF - 12.0 * FF*FF - 12.0_DP * FF*FF*FF &
+          + 38.0_DP * FF*FF*FF*FF - 12.0_DP * FF*FF*FF*FF*FF + 18.0_DP * FF*FF*FF*FF*FF*FF ) &
         * FF / 75.0_DP
 
 #elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_CB
@@ -520,8 +522,8 @@ CONTAINS
     ! --- Expression from Just et al. (2015), MNRAS, 453, 3386 ---
     
     HeatFluxFactor &
-      = ( 45.0_DP + 10.0_DP * FF - 12.0 * FF**2 - 12.0_DP * FF**3 &
-          + 38.0_DP * FF**4 - 12.0_DP * FF**5 + 18.0_DP * FF**6 ) &
+      = ( 45.0_DP + 10.0_DP * FF - 12.0 * FF*FF - 12.0_DP * FF*FF*FF &
+          + 38.0_DP * FF*FF*FF*FF - 12.0_DP * FF*FF*FF*FF*FF + 18.0_DP * FF*FF*FF*FF*FF*FF ) &
         * FF / 75.0_DP
 
 #elif  MOMENT_CLOSURE_MAXIMUM_ENTROPY_CB
@@ -658,7 +660,7 @@ CONTAINS
     REAL(DP) :: ClosurePolynomial_ME_CB
 
     ClosurePolynomial_ME_CB &
-      = Three * Fifth * X**2 * ( One - Third * X + X**2 )
+      = Three * Fifth * X*X * ( One - Third * X + X*X )
 
   END FUNCTION ClosurePolynomial_ME_CB_Scalar
 
