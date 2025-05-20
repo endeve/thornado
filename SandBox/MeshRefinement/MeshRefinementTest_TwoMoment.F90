@@ -33,7 +33,7 @@ PROGRAM MeshRefinementTest_TwoMoment
     DestroyMesh, &
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
-     nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+     nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, iGF_SqrtGm
   USE GeometryComputationModule, ONLY: &
      ComputeGeometryX
   USE RadiationFieldsModule, ONLY: &
@@ -112,7 +112,7 @@ PROGRAM MeshRefinementTest_TwoMoment
   REAL(DP) :: U_T, U_A
   REAL(DP) :: AbsErr, RelErr, MaxError(nPR)
 
-  CoordinateSystem = 'SPHERICAL'
+  CoordinateSystem = 'CARTESIAN'
   CoordinateSystem_lc = CoordinateSystem
   CALL string_lc( CoordinateSystem_lc )
 
@@ -263,7 +263,7 @@ PROGRAM MeshRefinementTest_TwoMoment
       X2_0(iP_X2) = X2
       X3_0(iP_X3) = X3
 
-      uPR = f_0( R )
+      uPR = f_0( X1 )
       CALL ComputeConserved_TwoMoment &
              ( uPR(iPR_D ), uPR(iPR_I1), uPR(iPR_I2), uPR(iPR_I3), &
                uCR(iCR_N ), uCR(iCR_G1), uCR(iCR_G2), uCR(iCR_G3), &
@@ -343,16 +343,58 @@ PROGRAM MeshRefinementTest_TwoMoment
   END DO
   END DO
 
+  CALL WriteRF( MeshX_Crse, U_Crse )
+  CALL WriteVector( nDOFX*nVar*PRODUCT(nX_Crse),  &
+                    RESHAPE( U_Crse(:,:,:,:,:), [nDOFX*nVar*PRODUCT(nX_Crse)] ), &
+                    'U_Coarse_0.dat' )
+
+  PRINT*, ""
+  PRINT*, "Before Refinement: "
+  PRINT*, "  MIN/MAX/SUM U_Crse = ", MINVAL( U_Crse ), MAXVAL( U_Crse ), SUM( U_Crse )
+
   ! --- Refine ---
 
   Timer_Refine = 0.0_DP
   CALL TimersStart( Timer_Refine )
+  DO iVar = 1, nVar
+  DO iX3 = 1, nX_Crse(3)
+  DO iX2 = 1, nX_Crse(2)
+  DO iX1 = 1, nX_Crse(1)
+  DO iNodeX = 1, nDOFX
+    U_Crse(iNodeX,iX1,iX2,iX3,iVar) &
+      =   U_Crse(iNodeX,iX1,iX2,iX3,iVar) &
+        * G_Crse(iNodeX,iX1,iX2,iX3,iGF_SqrtGm)
+  END DO
+  END DO
+  END DO
+  END DO
+  END DO
   CALL RefineX_TwoMoment( nX_Crse, nVar, U_Crse, U_Fine )
+  DO iVar = 1, nVar
+  DO iX3 = 1, nX_Crse(3)
+  DO iX2 = 1, nX_Crse(2)
+  DO iX1 = 1, nX_Crse(1)
+  DO iFine = 1, nFine
+  DO iNodeX = 1, nDOFX
+    iFineX1 = MOD( (iFine-1)                            , nFineX(1) ) + 1
+    iFineX2 = MOD( (iFine-1) / ( nFineX(1)             ), nFineX(2) ) + 1
+    iFineX3 = MOD( (iFine-1) / ( nFineX(1) * nFineX(2) ), nFineX(3) ) + 1
+    iX1_Fine = ( iX1 - 1 ) * nFineX(1) + iFineX1
+    iX2_Fine = ( iX2 - 1 ) * nFineX(2) + iFineX2
+    iX3_Fine = ( iX3 - 1 ) * nFineX(3) + iFineX3
+    U_Fine(iNodeX,iFine,iX1,iX2,iX3,iVar) &
+      =   U_Fine(iNodeX,iFine,iX1,iX2,iX3,iVar) &
+        / G_Fine(iNodeX,iX1_Fine,iX2_Fine,iX3_Fine,iGF_SqrtGm)
+  END DO
+  END DO
+  END DO
+  END DO
+  END DO
+  END DO
   CALL TimersStop( Timer_Refine )
 
   PRINT*, ""
   PRINT*, "After Refinement: "
-  PRINT*, "  MIN/MAX/SUM U_Crse = ", MINVAL( U_Crse ), MAXVAL( U_Crse ), SUM( U_Crse )
   PRINT*, "  MIN/MAX/SUM U_Fine = ", MINVAL( U_Fine ), MAXVAL( U_Fine ), SUM( U_Fine )
 
   MaxError = 0.0_DP
@@ -410,11 +452,6 @@ PROGRAM MeshRefinementTest_TwoMoment
   CALL WriteVector( nX_Crse(2)*nNodesX(2), X2_0, 'X2_Coarse.dat' )
   CALL WriteVector( nX_Crse(3)*nNodesX(3), X3_0, 'X3_Coarse.dat' )
 
-  CALL WriteRF( MeshX_Crse, U_Crse )
-  CALL WriteVector( nDOFX*nVar*PRODUCT(nX_Crse),  &
-                    RESHAPE( U_Crse(:,:,:,:,:), [nDOFX*nVar*PRODUCT(nX_Crse)] ), &
-                    'U_Coarse_0.dat' )
-
   CALL WriteVector( nX_Crse(1)*nNodesX(1), (xL(1)+X1_0)/Two, 'X1_Fine_01.dat' )
   CALL WriteVector( nX_Crse(1)*nNodesX(1), (xR(1)+X1_0)/Two, 'X1_Fine_02.dat' )
   CALL WriteVector( nX_Crse(2)*nNodesX(2), (xL(2)+X2_0)/Two, 'X2_Fine_01.dat' )
@@ -459,9 +496,47 @@ PROGRAM MeshRefinementTest_TwoMoment
   END DO
   END DO
 
+  PRINT*, ""
+  PRINT*, "Before Coarsening: "
+  PRINT*, "  MIN/MAX/SUM U_Fine = ", MINVAL( U_Fine2), MAXVAL( U_Fine2), SUM( U_Fine2)
+
   Timer_Coarsen = 0.0_DP
   CALL TimersStart( Timer_Coarsen )
+  DO iVar = 1, nVar
+  DO iX3 = 1, nX_Crse(3)
+  DO iX2 = 1, nX_Crse(2)
+  DO iX1 = 1, nX_Crse(1)
+  DO iFine = 1, nFine
+  DO iNodeX = 1, nDOFX
+    iFineX1 = MOD( (iFine-1)                            , nFineX(1) ) + 1
+    iFineX2 = MOD( (iFine-1) / ( nFineX(1)             ), nFineX(2) ) + 1
+    iFineX3 = MOD( (iFine-1) / ( nFineX(1) * nFineX(2) ), nFineX(3) ) + 1
+    iX1_Fine = ( iX1 - 1 ) * nFineX(1) + iFineX1
+    iX2_Fine = ( iX2 - 1 ) * nFineX(2) + iFineX2
+    iX3_Fine = ( iX3 - 1 ) * nFineX(3) + iFineX3
+    U_Fine2(iNodeX,iFine,iX1,iX2,iX3,iVar) &
+      =   U_Fine2(iNodeX,iFine,iX1,iX2,iX3,iVar) &
+        * G_Fine(iNodeX,iX1_Fine,iX2_Fine,iX3_Fine,iGF_SqrtGm)
+  END DO
+  END DO
+  END DO
+  END DO
+  END DO
+  END DO
   CALL CoarsenX_TwoMoment( nX_Crse, nVar, U_Fine2, U_Crse )
+  DO iVar = 1, nVar
+  DO iX3 = 1, nX_Crse(3)
+  DO iX2 = 1, nX_Crse(2)
+  DO iX1 = 1, nX_Crse(1)
+  DO iNodeX = 1, nDOFX
+    U_Crse(iNodeX,iX1,iX2,iX3,iVar) &
+      =   U_Crse(iNodeX,iX1,iX2,iX3,iVar) &
+        / G_Crse(iNodeX,iX1,iX2,iX3,iGF_SqrtGm)
+  END DO
+  END DO
+  END DO
+  END DO
+  END DO
   CALL TimersStop( Timer_Coarsen )
 
   Timer_Total = Timer_Refine + Timer_Coarsen
@@ -469,7 +544,6 @@ PROGRAM MeshRefinementTest_TwoMoment
   PRINT*, ""
   PRINT*, "After Coarsening: "
   PRINT*, "  MIN/MAX/SUM U_Crse = ", MINVAL( U_Crse ), MAXVAL( U_Crse ), SUM( U_Crse )
-  PRINT*, "  MIN/MAX/SUM U_Fine = ", MINVAL( U_Fine2), MAXVAL( U_Fine2), SUM( U_Fine2)
 
   MaxError = 0.0_DP
   DO iCR = 1, nCR
@@ -563,10 +637,12 @@ CONTAINS
 
     REAL(DP) :: D_0, I_0
 
-    D_0 = ( Sigma / t_0 )**( 1.5_DP ) &
-            * EXP( - 3.0_DP * Sigma * R**2 / ( 4.0_DP *t_0 ) )
+    !D_0 = ( Sigma / t_0 )**( 1.5_DP ) &
+    !        * EXP( - 3.0_DP * Sigma * R**2 / ( 4.0_DP *t_0 ) )
 
-    I_0 = D_0 * R / ( 2.0_DP * t_0 )
+    !I_0 = D_0 * R / ( 2.0_DP * t_0 )
+    D_0 = SIN( TwoPi * R )
+    I_0 = 0.0_DP
 
     uPR(iPR_D ) = D_0
     uPR(iPR_I1) = I_0
