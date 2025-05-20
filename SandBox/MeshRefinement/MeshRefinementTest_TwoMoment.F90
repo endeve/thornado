@@ -109,7 +109,7 @@ PROGRAM MeshRefinementTest_TwoMoment
   TYPE(MeshType), ALLOCATABLE :: SubMeshX_Fine(:,:)
 
   INTEGER :: iVar, nVar
-  REAL(DP) :: MaxError(nPR)
+  REAL(DP) :: AbsErr, RelErr, MaxError(nPR)
 
   CoordinateSystem = 'SPHERICAL'
   CoordinateSystem_lc = CoordinateSystem
@@ -373,9 +373,11 @@ PROGRAM MeshRefinementTest_TwoMoment
              + ( iE  - 1 ) * nDOFE &
              +   iNodeE
 
-      MaxError(iCR) = MAX( MaxError(iCR), &
-                           ABS(   U_Fine(iNodeX,iFine,iX1,iX2,iX3,iVar) &
-                                - U_1   (iNodeX,iFine,iX1,iX2,iX3,iVar) ) )
+      AbsErr = ABS(   U_Fine(iNodeX,iFine,iX1,iX2,iX3,iVar) &
+                    - U_1   (iNodeX,iFine,iX1,iX2,iX3,iVar) )
+      RelErr = AbsErr / ABS( U_1(iNodeX,iFine,iX1,iX2,iX3,iVar) )
+
+      MaxError(iCR) = MAX( MaxError(iCR), RelErr )
 
     END DO
 
@@ -391,7 +393,7 @@ PROGRAM MeshRefinementTest_TwoMoment
   END DO
 
   WRITE(*,*)
-  WRITE(*,'(A2,A)') '', 'INFO: Refine Error'
+  WRITE(*,'(A2,A)') '', 'INFO: Refine Relative Error'
   WRITE(*,*)
   WRITE(*,'(A4,4A12)') '', 'N', 'G1', 'G2', 'G3'
   WRITE(*,'(A4,4ES12.4E2)') '', MaxError
@@ -479,9 +481,11 @@ PROGRAM MeshRefinementTest_TwoMoment
              + ( iE  - 1 ) * nDOFE &
              +   iNodeE
 
-      MaxError(iCR) = MAX( MaxError(iCR), &
-                           ABS(   U_Crse(iNodeX,iX1,iX2,iX3,iVar) &
-                                - U_0   (iNodeX,iX1,iX2,iX3,iVar) ) )
+      AbsErr = ABS(   U_Crse(iNodeX,iX1,iX2,iX3,iVar) &
+                    - U_0   (iNodeX,iX1,iX2,iX3,iVar) )
+      RelErr = AbsErr / ABS( U_0(iNodeX,iX1,iX2,iX3,iVar) )
+
+      MaxError(iCR) = MAX( MaxError(iCR), RelErr )
 
     END DO
 
@@ -496,7 +500,7 @@ PROGRAM MeshRefinementTest_TwoMoment
   END DO
 
   WRITE(*,*)
-  WRITE(*,'(A2,A)') '', 'INFO: Coarsen Error'
+  WRITE(*,'(A2,A)') '', 'INFO: Coarsen Relative Error'
   WRITE(*,*)
   WRITE(*,'(A4,4A12)') '', 'N', 'G1', 'G2', 'G3'
   WRITE(*,'(A4,4ES12.4E2)') '', MaxError
