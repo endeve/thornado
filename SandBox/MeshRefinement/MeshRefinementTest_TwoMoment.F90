@@ -1,7 +1,7 @@
 PROGRAM MeshRefinementTest_TwoMoment
 
   USE KindModule, ONLY: &
-    DP, Zero, One, Two, TwoPi
+    DP, Zero, One, Two, TwoPi, SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     nDOFX, nDOFE, nNodesX, nDimsX
   USE ProgramInitializationModule, ONLY: &
@@ -72,8 +72,6 @@ PROGRAM MeshRefinementTest_TwoMoment
   REAL(DP)      :: eL, eR, ZoomE
   INTEGER       :: nSpecies
 
-  REAL(DP), ALLOCATABLE :: xL_Fine(:,:), xR_Fine(:,:)
-
   CHARACTER(2)  :: MeshString
   CHARACTER(32) :: VectorName
   INTEGER       :: i, k
@@ -106,7 +104,11 @@ PROGRAM MeshRefinementTest_TwoMoment
 
   TYPE(MeshType) :: MeshX_Crse(3)
   TYPE(MeshType) :: MeshX_Fine(3)
-  TYPE(MeshType), ALLOCATABLE :: SubMeshX_Fine(:,:)
+
+  REAL(DP), ALLOCATABLE :: xL_Sub(:,:), xR_Sub(:,:)
+  INTEGER :: iSub, iSubX1, iSubX2, iSubX3, nSub
+  INTEGER :: iSubX(3), nSubX(3), nX_Sub(3)
+  TYPE(MeshType), ALLOCATABLE :: MeshX_Sub(:,:)
 
   INTEGER :: iVar, nVar
   REAL(DP) :: U_T, U_A
@@ -159,15 +161,19 @@ PROGRAM MeshRefinementTest_TwoMoment
   iX_Fine_B1 = 1
   iX_Fine_E1 = nX_Fine
 
-  ALLOCATE( xL_Fine(3,nFine) )
-  ALLOCATE( xR_Fine(3,nFine) )
-  ALLOCATE( SubMeshX_Fine(3,nFine) )
+  nSubX  = nFineX
+  nSub   = PRODUCT( nSubX )
+  nX_Sub = nX_Fine / nSubX
+
+  ALLOCATE( xL_Sub(3,nSub) )
+  ALLOCATE( xR_Sub(3,nSub) )
+  ALLOCATE( MeshX_Sub(3,nSub) )
 
   ALLOCATE( U_0    (nDOFX,      nX_Crse(1),nX_Crse(2),nX_Crse(3),nVar ) )
   ALLOCATE( U_Crse (nDOFX,      nX_Crse(1),nX_Crse(2),nX_Crse(3),nVar ) )
   ALLOCATE( U_1    (nDOFX,nFine,nX_Crse(1),nX_Crse(2),nX_Crse(3),nVar ) )
   ALLOCATE( U_Fine (nDOFX,nFine,nX_Crse(1),nX_Crse(2),nX_Crse(3),nVar ) )
-  ALLOCATE( U_Fine2(nDOFX,nFine,nX_Crse(1),nX_Crse(2),nX_Crse(3),nVar) )
+  ALLOCATE( U_Fine2(nDOFX,nFine,nX_Crse(1),nX_Crse(2),nX_Crse(3),nVar ) )
 
   PRINT*, "  SHAPE( U_Crse ) = ", SHAPE( U_Crse )
   PRINT*, "  SHAPE( U_Fine ) = ", SHAPE( U_Fine )
@@ -185,28 +191,18 @@ PROGRAM MeshRefinementTest_TwoMoment
     CALL CreateMesh( MeshX_Fine(k), nX_Fine(k), nNodes, 0, xL(k), xR(k) )
   END DO
 
-  DO iFineX3 = 1, nFineX(3)
-  DO iFineX2 = 1, nFineX(2)
-  DO iFineX1 = 1, nFineX(1)
-
-    iFine = (iFineX3-1)*nFineX(1)*nFineX(2) &
-          + (iFineX2-1)*nFineX(1) &
-          +  iFineX1
-
-    xL_Fine(1,iFine) = xL(1) + ( iFineX1 - 1 ) * ( xR(1) - xL(1) ) / nFineX(1)
-    xR_Fine(1,iFine) = xL(1) + ( iFineX1     ) * ( xR(1) - xL(1) ) / nFineX(1)
-    xL_Fine(2,iFine) = xL(2) + ( iFineX2 - 1 ) * ( xR(2) - xL(2) ) / nFineX(2)
-    xR_Fine(2,iFine) = xL(2) + ( iFineX2     ) * ( xR(2) - xL(2) ) / nFineX(2)
-    xL_Fine(3,iFine) = xL(3) + ( iFineX3 - 1 ) * ( xR(3) - xL(3) ) / nFineX(3)
-    xR_Fine(3,iFine) = xL(3) + ( iFineX3     ) * ( xR(3) - xL(3) ) / nFineX(3)
+  DO iSub = 1, nSub
+    iSubX1 = MOD( (iSub-1)                          , nSubX(1) ) + 1
+    iSubX2 = MOD( (iSub-1) / ( nSubX(1)            ), nSubX(2) ) + 1
+    iSubX3 = MOD( (iSub-1) / ( nSubX(1) * nSubX(2) ), nSubX(3) ) + 1
+    iSubX = [ iSubX1, iSubX2, iSubX3 ]
     DO k = 1, 3
+      xL_Sub(k,iSub) = xL(k) + ( iSubX(k) - 1 ) * ( xR(k) - xL(k) ) / nSubX(k)
+      xR_Sub(k,iSub) = xL(k) + ( iSubX(k)     ) * ( xR(k) - xL(k) ) / nSubX(k)
       CALL CreateMesh &
-             ( SubMeshX_Fine(k,iFine), nX_Fine(k) / nFineX(k), &
-               nNodes, 0, xL_Fine(k,iFine), xR_Fine(k,iFine) )
+             ( MeshX_Sub(k,iSub), nX_Sub(k), &
+               nNodes, 0, xL_Sub(k,iSub), xR_Sub(k,iSub) )
     END DO
-
-  END DO
-  END DO
   END DO
 
   ALLOCATE( X1_0(nX_Crse(1)*nNodesX(1)) )
@@ -224,129 +220,150 @@ PROGRAM MeshRefinementTest_TwoMoment
 
   ! --- Initialize Data on Coarse Level ---
 
+  DO iS = 1, nSpecies
+  DO iE = 1, nE
+  DO iNodeE = 1, nDOFE
+
   DO iX3 = 1, nX_Crse(3)
   DO iX2 = 1, nX_Crse(2)
   DO iX1 = 1, nX_Crse(1)
   DO iNodeX = 1, nDOFX
 
+    iNodeX1 = MOD( (iNodeX-1)                              , nNodesX(1) ) + 1
+    iNodeX2 = MOD( (iNodeX-1) / ( nNodesX(1)              ), nNodesX(2) ) + 1
+    iNodeX3 = MOD( (iNodeX-1) / ( nNodesX(1) * nNodesX(2) ), nNodesX(3) ) + 1
+
+    X1 = NodeCoordinate( MeshX_Crse(1), iX1, iNodeX1 )
+    X2 = NodeCoordinate( MeshX_Crse(2), iX2, iNodeX2 )
+    X3 = NodeCoordinate( MeshX_Crse(3), iX3, iNodeX3 )
+
+    SELECT CASE( TRIM( CoordinateSystem ) )
+    CASE( 'SPHERICAL' )
+      R = X1
+    CASE( 'CYLINDRICAL' )
+      R = SQRT( X1*X1 + X2*X2 )
+    CASE( 'CARTESIAN' )
+      R = SQRT( X1*X1 + X2*X2 + X3*X3 )
+    CASE DEFAULT
+      WRITE(*,*)
+      WRITE(*,'(A5,A27,A)') &
+        '', 'Invalid Coordinate System: ', TRIM( CoordinateSystem )
+      STOP
+    END SELECT
+
+    iP_X1 = ( iX1 - 1 ) * nNodesX(1) + iNodeX1
+    iP_X2 = ( iX2 - 1 ) * nNodesX(2) + iNodeX2
+    iP_X3 = ( iX3 - 1 ) * nNodesX(3) + iNodeX3
+
+    X1_0(iP_X1) = X1
+    X2_0(iP_X2) = X2
+    X3_0(iP_X3) = X3
+
+    uPR = f_0( X1 )
+    CALL ComputeConserved_TwoMoment &
+           ( uPR(iPR_D ), uPR(iPR_I1), uPR(iPR_I2), uPR(iPR_I3), &
+             uCR(iCR_N ), uCR(iCR_G1), uCR(iCR_G2), uCR(iCR_G3), &
+             V_0(1), V_0(2), V_0(3), &
+             G_Crse(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
+             G_Crse(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
+             G_Crse(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+    DO iCR = 1, nCR
+
+      iVar =   ( iS  - 1 ) * nDOFE * nE * nCR &
+             + ( iCR - 1 ) * nDOFE * nE &
+             + ( iE  - 1 ) * nDOFE &
+             +   iNodeE
+
+      U_0   (iNodeX,iX1,iX2,iX3,iVar) = uCR(iCR)
+      U_Crse(iNodeX,iX1,iX2,iX3,iVar) = uCR(iCR)
+
+    END DO
+
+  END DO
+  END DO
+  END DO
+  END DO
+
+  END DO
+  END DO
+  END DO
+
   DO iS = 1, nSpecies
   DO iE = 1, nE
   DO iNodeE = 1, nDOFE
 
-      iNodeX1 = NodeNumberTableX(1,iNodeX)
-      iNodeX2 = NodeNumberTableX(2,iNodeX)
-      iNodeX3 = NodeNumberTableX(3,iNodeX)
+  DO iX3 = 1, nX_Crse(3)
+  DO iX2 = 1, nX_Crse(2)
+  DO iX1 = 1, nX_Crse(1)
+  DO iFine = 1, nFine
+  DO iNodeX = 1, nDOFX
 
-      X1 = NodeCoordinate( MeshX_Crse(1), iX1, iNodeX1 )
-      X2 = NodeCoordinate( MeshX_Crse(2), iX2, iNodeX2 )
-      X3 = NodeCoordinate( MeshX_Crse(3), iX3, iNodeX3 )
+    iNodeX1 = MOD( (iNodeX-1)                              , nNodesX(1) ) + 1
+    iNodeX2 = MOD( (iNodeX-1) / ( nNodesX(1)              ), nNodesX(2) ) + 1
+    iNodeX3 = MOD( (iNodeX-1) / ( nNodesX(1) * nNodesX(2) ), nNodesX(3) ) + 1
 
-      SELECT CASE( TRIM( CoordinateSystem ) )
-      CASE( 'SPHERICAL' )
-        R = X1
-      CASE( 'CYLINDRICAL' )
-        R = SQRT( X1*X1 + X2*X2 )
-      CASE( 'CARTESIAN' )
-        R = SQRT( X1*X1 + X2*X2 + X3*X3 )
-      CASE DEFAULT
-        WRITE(*,*)
-        WRITE(*,'(A5,A27,A)') &
-          '', 'Invalid Coordinate System: ', TRIM( CoordinateSystem )
-        STOP
-      END SELECT
+    iFineX1 = MOD( (iFine-1)                            , nFineX(1) ) + 1
+    iFineX2 = MOD( (iFine-1) / ( nFineX(1)             ), nFineX(2) ) + 1
+    iFineX3 = MOD( (iFine-1) / ( nFineX(1) * nFineX(2) ), nFineX(3) ) + 1
 
-      iP_X1 = ( iX1 - 1 ) * nNodesX(1) + iNodeX1
-      iP_X2 = ( iX2 - 1 ) * nNodesX(2) + iNodeX2
-      iP_X3 = ( iX3 - 1 ) * nNodesX(3) + iNodeX3
+    iX1_Fine = ( iX1 - 1 ) * nFineX(1) + iFineX1
+    iX2_Fine = ( iX2 - 1 ) * nFineX(2) + iFineX2
+    iX3_Fine = ( iX3 - 1 ) * nFineX(3) + iFineX3
 
-      X1_0(iP_X1) = X1
-      X2_0(iP_X2) = X2
-      X3_0(iP_X3) = X3
+    X1 = NodeCoordinate( MeshX_Fine(1), iX1_Fine, iNodeX1 )
+    X2 = NodeCoordinate( MeshX_Fine(2), iX2_Fine, iNodeX2 )
+    X3 = NodeCoordinate( MeshX_Fine(3), iX3_Fine, iNodeX3 )
 
-      uPR = f_0( X1 )
-      CALL ComputeConserved_TwoMoment &
-             ( uPR(iPR_D ), uPR(iPR_I1), uPR(iPR_I2), uPR(iPR_I3), &
-               uCR(iCR_N ), uCR(iCR_G1), uCR(iCR_G2), uCR(iCR_G3), &
-               V_0(1), V_0(2), V_0(3), &
-               G_Crse(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
-               G_Crse(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
-               G_Crse(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+    SELECT CASE( TRIM( CoordinateSystem ) )
+    CASE( 'SPHERICAL' )
+      R = X1
+    CASE( 'CYLINDRICAL' )
+      R = SQRT( X1*X1 + X2*X2 )
+    CASE( 'CARTESIAN' )
+      R = SQRT( X1*X1 + X2*X2 + X3*X3 )
+    CASE DEFAULT
+      WRITE(*,*)
+      WRITE(*,'(A5,A27,A)') &
+        '', 'Invalid Coordinate System: ', TRIM( CoordinateSystem )
+      STOP
+    END SELECT
 
-      DO iCR = 1, nCR
+    uPR = f_0( X1 )
+    CALL ComputeConserved_TwoMoment &
+           ( uPR(iPR_D ), uPR(iPR_I1), uPR(iPR_I2), uPR(iPR_I3), &
+             uCR(iCR_N ), uCR(iCR_G1), uCR(iCR_G2), uCR(iCR_G3), &
+             V_0(1), V_0(2), V_0(3), &
+             G_Fine(iNodeX,iX1_Fine,iX2_Fine,iX3_Fine,iGF_Gm_dd_11),  &
+             G_Fine(iNodeX,iX1_Fine,iX2_Fine,iX3_Fine,iGF_Gm_dd_22),  &
+             G_Fine(iNodeX,iX1_Fine,iX2_Fine,iX3_Fine,iGF_Gm_dd_33) )
 
-        iVar =   ( iS  - 1 ) * nDOFE * nE * nCR &
-               + ( iCR - 1 ) * nDOFE * nE &
-               + ( iE  - 1 ) * nDOFE &
-               +   iNodeE
+    DO iCR = 1, nCR
 
-        U_0   (iNodeX,iX1,iX2,iX3,iVar) = uCR(iCR)
-        U_Crse(iNodeX,iX1,iX2,iX3,iVar) = uCR(iCR)
+      iVar =   ( iS  - 1 ) * nDOFE * nE * nCR &
+             + ( iCR - 1 ) * nDOFE * nE &
+             + ( iE  - 1 ) * nDOFE &
+             +   iNodeE
 
-      END DO
-
-      DO iFine = 1, nFine
-
-        iFineX1 = MOD( (iFine-1)                            , nFineX(1) ) + 1
-        iFineX2 = MOD( (iFine-1) / ( nFineX(1)             ), nFineX(2) ) + 1
-        iFineX3 = MOD( (iFine-1) / ( nFineX(1) * nFineX(2) ), nFineX(3) ) + 1
-
-        iX1_Fine = ( iX1 - 1 ) * nFineX(1) + iFineX1
-        iX2_Fine = ( iX2 - 1 ) * nFineX(2) + iFineX2
-        iX3_Fine = ( iX3 - 1 ) * nFineX(3) + iFineX3
-
-        X1 = NodeCoordinate( MeshX_Fine(1), iX1_Fine, iNodeX1 )
-        X2 = NodeCoordinate( MeshX_Fine(2), iX2_Fine, iNodeX2 )
-        X3 = NodeCoordinate( MeshX_Fine(3), iX3_Fine, iNodeX3 )
-
-        SELECT CASE( TRIM( CoordinateSystem ) )
-        CASE( 'SPHERICAL' )
-          R = X1
-        CASE( 'CYLINDRICAL' )
-          R = SQRT( X1*X1 + X2*X2 )
-        CASE( 'CARTESIAN' )
-          R = SQRT( X1*X1 + X2*X2 + X3*X3 )
-        CASE DEFAULT
-          WRITE(*,*)
-          WRITE(*,'(A5,A27,A)') &
-            '', 'Invalid Coordinate System: ', TRIM( CoordinateSystem )
-          STOP
-        END SELECT
-
-        uPR = f_0( R )
-        CALL ComputeConserved_TwoMoment &
-               ( uPR(iPR_D ), uPR(iPR_I1), uPR(iPR_I2), uPR(iPR_I3), &
-                 uCR(iCR_N ), uCR(iCR_G1), uCR(iCR_G2), uCR(iCR_G3), &
-                 V_0(1), V_0(2), V_0(3), &
-                 G_Fine(iNodeX,iX1_Fine,iX2_Fine,iX3_Fine,iGF_Gm_dd_11),  &
-                 G_Fine(iNodeX,iX1_Fine,iX2_Fine,iX3_Fine,iGF_Gm_dd_22),  &
-                 G_Fine(iNodeX,iX1_Fine,iX2_Fine,iX3_Fine,iGF_Gm_dd_33) )
-
-        DO iCR = 1, nCR
-
-          iVar =   ( iS  - 1 ) * nDOFE * nE * nCR &
-                 + ( iCR - 1 ) * nDOFE * nE &
-                 + ( iE  - 1 ) * nDOFE &
-                 +   iNodeE
-
-          U_1(iNodeX,iFine,iX1,iX2,iX3,iVar) = uCR(iCR)
-
-        END DO
-
-      END DO
+      U_1(iNodeX,iFine,iX1,iX2,iX3,iVar) = uCR(iCR)
 
     END DO
-    END DO
-    END DO
 
   END DO
   END DO
   END DO
   END DO
+  END DO
 
-  CALL WriteRF( MeshX_Crse, U_Crse )
+  END DO
+  END DO
+  END DO
+
+  CALL WriteRF_Crse( U_0 )
   CALL WriteVector( nDOFX*nVar*PRODUCT(nX_Crse),  &
-                    RESHAPE( U_Crse(:,:,:,:,:), [nDOFX*nVar*PRODUCT(nX_Crse)] ), &
+                    RESHAPE( U_0(:,:,:,:,:), [nDOFX*nVar*PRODUCT(nX_Crse)] ), &
                     'U_Coarse_0.dat' )
+  CALL WriteRF_Fine( U_1 )
 
   PRINT*, ""
   PRINT*, "Before Refinement: "
@@ -422,7 +439,7 @@ PROGRAM MeshRefinementTest_TwoMoment
       IF ( ABS( U_A ) > 0.0_DP ) THEN
         RelErr = AbsErr / ABS( U_A )
       ELSE IF ( ABS( U_T ) > 0.0_DP ) THEN
-        RelErr = AbsErr / ABS( U_T )
+        RelErr = AbsErr / SqrtTiny
       ELSE
         RelErr = 0.0_DP
       END IF
@@ -459,13 +476,14 @@ PROGRAM MeshRefinementTest_TwoMoment
   CALL WriteVector( nX_Crse(3)*nNodesX(3), (xL(3)+X3_0)/Two, 'X3_Fine_01.dat' )
   CALL WriteVector( nX_Crse(3)*nNodesX(3), (XR(3)+X3_0)/Two, 'X3_Fine_02.dat' )
 
+  CALL WriteRF_Fine( U_Fine )
+
   DO iFine = 1, nFine
 
     WRITE( MeshString, FMT='(i2.2)') iFine
 
     VectorName = 'U_Fine_' // MeshString // '.dat'
 
-    CALL WriteRF( SubMeshX_Fine(:,iFine), U_Fine(:,iFine,:,:,:,:) )
     CALL WriteVector( nDOFX*nVar*PRODUCT(nX_Crse),  &
                       RESHAPE( U_Fine(:,iFine,:,:,:,:), [nDOFX*nVar*PRODUCT(nX_Crse)] ), &
                       TRIM( VectorName ) )
@@ -569,7 +587,7 @@ PROGRAM MeshRefinementTest_TwoMoment
       IF ( ABS( U_A ) > 0.0_DP ) THEN
         RelErr = AbsErr / ABS( U_A )
       ELSE IF ( ABS( U_T ) > 0.0_DP ) THEN
-        RelErr = AbsErr / ABS( U_T )
+        RelErr = AbsErr / SqrtTiny
       ELSE
         RelErr = 0.0_DP
       END IF
@@ -594,7 +612,7 @@ PROGRAM MeshRefinementTest_TwoMoment
   WRITE(*,'(A4,4A12)') '', 'N', 'G1', 'G2', 'G3'
   WRITE(*,'(A4,4ES12.4E2)') '', MaxError
 
-  CALL WriteRF( MeshX_Crse, U_Crse )
+  CALL WriteRF_Crse( U_Crse )
   CALL WriteVector( nDOFX*nVar*PRODUCT(nX_Crse),  &
                     RESHAPE( U_Crse(:,:,:,:,:), [nDOFX*nVar*PRODUCT(nX_Crse)] ), &
                     'U_Coarse_1.dat' )
@@ -606,13 +624,14 @@ PROGRAM MeshRefinementTest_TwoMoment
 
   DO iFine = 1, nFine
   DO k = 1, 3
-    CALL DestroyMesh( SubMeshX_Fine(k,iFine) )
+    CALL DestroyMesh( MeshX_Sub(k,iFine) )
   END DO
   END DO
 
   DEALLOCATE( X1_0, X2_0, X3_0 )
   DEALLOCATE( G_Crse, G_Fine, U_0, U_Crse, U_1, U_Fine, U_Fine2 )
-  DEALLOCATE( SubMeshX_Fine )
+  DEALLOCATE( xL_Sub, xR_Sub )
+  DEALLOCATE( MeshX_Sub )
 
   WRITE(*,*)
   WRITE(*,*)
@@ -757,7 +776,7 @@ CONTAINS
   END SUBROUTINE string_lc
 
 
-  SUBROUTINE WriteRF( MeshX_write, U_write )
+  SUBROUTINE WriteRF_Crse( U_Crse )
 
     Use MeshModule, Only : &
       MeshX
@@ -766,32 +785,31 @@ CONTAINS
     USE InputOutputModuleHDF, ONLY: &
       WriteFieldsHDF
 
-    TYPE(MeshType), INTENT(in) :: MeshX_write(3)
-    REAL(DP), INTENT(in) :: U_write(:,:,:,:,:)
+    REAL(DP), INTENT(in) :: U_Crse(:,:,:,:,:)
 
     TYPE(MeshType) :: MeshX_save(3)
     INTEGER :: iS, iCR, iX3, iX2, iX1, iE, iNodeX, iNodeE, iNode, iVar
 
-    MeshX_save = MeshX
-    MeshX = MeshX_write
-
-    IF (      SIZE(U_write,2) /= SIZE(uCR,3) &
-         .OR. SIZE(U_write,3) /= SIZE(uCR,4) &
-         .OR. SIZE(U_write,4) /= SIZE(uCR,5) ) THEN
+    IF (      SIZE(U_Crse,2) /= SIZE(uCR,3) &
+         .OR. SIZE(U_Crse,3) /= SIZE(uCR,4) &
+         .OR. SIZE(U_Crse,4) /= SIZE(uCR,5) ) THEN
       WRITE(*,*)
       WRITE(*,'(A5,A27)') &
         '', 'WriteRF Shape Error'
       STOP
     END IF
 
+    MeshX_save = MeshX
+    MeshX = MeshX_crse
+
     DO iS = 1, nSpecies
     DO iCR = 1, nCR
 
-    DO iX3 = 1, SIZE(uCR,5)
-    DO iX2 = 1, SIZE(uCR,4)
-    DO iX1 = 1, SIZE(uCR,3)
-    DO iE = 1, nE
+    DO iX3 = 1, nX_Crse(3)
+    DO iX2 = 1, nX_Crse(2)
+    DO iX1 = 1, nX_Crse(1)
 
+      DO iE = 1, nE
       DO iNodeX = 1, nDOFX
       DO iNodeE = 1, nDOFE
 
@@ -802,13 +820,13 @@ CONTAINS
                  + ( iE  - 1 ) * nDOFE &
                  +   iNodeE
 
-          uPR(iNode,iE,iX1,iX2,iX3,iCR,iS) = U_write(iNodeX,iX1,iX2,iX3,iVar)
-          uCR(iNode,iE,iX1,iX2,iX3,iCR,iS) = U_write(iNodeX,iX1,iX2,iX3,iVar)
+          uPR(iNode,iE,iX1,iX2,iX3,iCR,iS) = U_Crse(iNodeX,iX1,iX2,iX3,iVar)
+          uCR(iNode,iE,iX1,iX2,iX3,iCR,iS) = U_Crse(iNodeX,iX1,iX2,iX3,iVar)
 
-      END DO
-      END DO
+        END DO
+        END DO
+        END DO
 
-    END DO
     END DO
     END DO
     END DO
@@ -822,6 +840,102 @@ CONTAINS
 
     MeshX = MeshX_save
 
-  END SUBROUTINE WriteRF
+  END SUBROUTINE WriteRF_Crse
+
+
+  SUBROUTINE WriteRF_Fine( U_Fine )
+
+    Use MeshModule, Only : &
+      MeshX
+    USE RadiationFieldsModule, ONLY: &
+      uPR, uCR
+    USE InputOutputModuleHDF, ONLY: &
+      WriteFieldsHDF
+
+    REAL(DP), INTENT(in) :: U_Fine(:,:,:,:,:,:)
+
+    TYPE(MeshType) :: MeshX_save(3)
+    INTEGER :: iSub, iSubX1, iSubX2, iSubX3
+    INTEGER :: iX1_Sub, iX2_Sub, iX3_Sub
+    INTEGER :: iS, iCR, iX3, iX2, iX1, iE, iNodeX, iNodeE, iNode, iVar
+
+    IF (      SIZE(U_Fine,3) /= SIZE(uCR,3) &
+         .OR. SIZE(U_Fine,4) /= SIZE(uCR,4) &
+         .OR. SIZE(U_Fine,5) /= SIZE(uCR,5) ) THEN
+      WRITE(*,*)
+      WRITE(*,'(A5,A27)') &
+        '', 'WriteRF Shape Error'
+      STOP
+    END IF
+
+    MeshX_save = MeshX
+
+    DO iSubX3 = 1, nSubX(3)
+    DO iSubX2 = 1, nSubX(2)
+    DO iSubX1 = 1, nSubX(1)
+
+      iSub = ( iSubX3 -1 ) * nSubX(1) * nSubX(2) &
+           + ( iSubX2 -1 ) * nSubX(1) &
+           +   iSubX1
+
+      MeshX = MeshX_Sub(:,iSub)
+
+      DO iS = 1, nSpecies
+      DO iCR = 1, nCR
+
+      DO iX3_Sub = 1, nX_Sub(3)
+      DO iX2_Sub = 1, nX_Sub(2)
+      DO iX1_Sub = 1, nX_Sub(1)
+
+        iX1_Fine = ( iSubX1 - 1 ) * nX_Sub(1) + iX1_Sub
+        iX2_Fine = ( iSubX2 - 1 ) * nX_Sub(2) + iX2_Sub
+        iX3_Fine = ( iSubX3 - 1 ) * nX_Sub(3) + iX3_Sub
+
+        iFineX1 = MOD( ( iX1_Fine - 1 ), nFineX(1) ) + 1
+        iFineX2 = MOD( ( iX2_Fine - 1 ), nFineX(2) ) + 1
+        iFineX3 = MOD( ( iX3_Fine - 1 ), nFineX(3) ) + 1
+
+        iX1 = MOD( ( iX1_Fine - 1 ) / nFineX(1), nX_Sub(1) ) + 1
+        iX2 = MOD( ( iX2_Fine - 1 ) / nFineX(2), nX_Sub(2) ) + 1
+        iX3 = MOD( ( iX3_Fine - 1 ) / nFineX(3), nX_Sub(3) ) + 1
+
+        iFine = ( iFineX3 -1 ) * nFineX(1) * nFineX(2) &
+              + ( iFineX2 -1 ) * nFineX(1) &
+              +   iFineX1
+
+        DO iE = 1, nE
+        DO iNodeX = 1, nDOFX
+        DO iNodeE = 1, nDOFE
+
+          iVar =   ( iS  - 1 ) * nDOFE * nE * nCR &
+                 + ( iCR - 1 ) * nDOFE * nE &
+                 + ( iE  - 1 ) * nDOFE &
+                 +   iNodeE
+
+          iNode = ( iNodeX - 1 ) * nDOFE + iNodeE
+
+          uPR(iNode,iE,iX1_Sub,iX2_Sub,iX3_Sub,iCR,iS) = U_Fine(iNodeX,iFine,iX1,iX2,iX3,iVar)
+          uCR(iNode,iE,iX1_Sub,iX2_Sub,iX3_Sub,iCR,iS) = U_Fine(iNodeX,iFine,iX1,iX2,iX3,iVar)
+
+        END DO
+        END DO
+        END DO
+
+      END DO
+      END DO
+      END DO
+
+      END DO
+      END DO
+
+      CALL WriteFieldsHDF &
+             ( Time = 0.0_DP, &
+               WriteRF_Option = .TRUE. )
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE WriteRF_Fine
 
 END PROGRAM MeshRefinementTest_TwoMoment
