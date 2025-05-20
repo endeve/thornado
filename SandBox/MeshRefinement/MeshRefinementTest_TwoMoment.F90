@@ -162,11 +162,11 @@ PROGRAM MeshRefinementTest_TwoMoment
   ALLOCATE( xR_Fine(3,nFine) )
   ALLOCATE( SubMeshX_Fine(3,nFine) )
 
-  ALLOCATE( U_0    (nDOFX,nVar,      nX_Crse(1),nX_Crse(2),nX_Crse(3)) )
-  ALLOCATE( U_Crse (nDOFX,nVar,      nX_Crse(1),nX_Crse(2),nX_Crse(3)) )
-  ALLOCATE( U_1    (nDOFX,nVar,nFine,nX_Crse(1),nX_Crse(2),nX_Crse(3)) )
-  ALLOCATE( U_Fine (nDOFX,nVar,nFine,nX_Crse(1),nX_Crse(2),nX_Crse(3)) )
-  ALLOCATE( U_Fine2(nDOFX,nFine,nVar,nX_Crse(1),nX_Crse(2),nX_Crse(3)) )
+  ALLOCATE( U_0    (nDOFX,      nX_Crse(1),nX_Crse(2),nX_Crse(3),nVar ) )
+  ALLOCATE( U_Crse (nDOFX,      nX_Crse(1),nX_Crse(2),nX_Crse(3),nVar ) )
+  ALLOCATE( U_1    (nDOFX,nFine,nX_Crse(1),nX_Crse(2),nX_Crse(3),nVar ) )
+  ALLOCATE( U_Fine (nDOFX,nFine,nX_Crse(1),nX_Crse(2),nX_Crse(3),nVar ) )
+  ALLOCATE( U_Fine2(nDOFX,nFine,nX_Crse(1),nX_Crse(2),nX_Crse(3),nVar) )
 
   PRINT*, "  SHAPE( U_Crse ) = ", SHAPE( U_Crse )
   PRINT*, "  SHAPE( U_Fine ) = ", SHAPE( U_Fine )
@@ -278,8 +278,8 @@ PROGRAM MeshRefinementTest_TwoMoment
                + ( iE  - 1 ) * nDOFE &
                +   iNodeE
 
-        U_0   (iNodeX,iVar,iX1,iX2,iX3) = uCR(iCR)
-        U_Crse(iNodeX,iVar,iX1,iX2,iX3) = uCR(iCR)
+        U_0   (iNodeX,iX1,iX2,iX3,iVar) = uCR(iCR)
+        U_Crse(iNodeX,iX1,iX2,iX3,iVar) = uCR(iCR)
 
       END DO
 
@@ -327,7 +327,7 @@ PROGRAM MeshRefinementTest_TwoMoment
                  + ( iE  - 1 ) * nDOFE &
                  +   iNodeE
 
-          U_1(iNodeX,iVar,iFine,iX1,iX2,iX3) = uCR(iCR)
+          U_1(iNodeX,iFine,iX1,iX2,iX3,iVar) = uCR(iCR)
 
         END DO
 
@@ -346,7 +346,7 @@ PROGRAM MeshRefinementTest_TwoMoment
 
   Timer_Refine = 0.0_DP
   CALL TimersStart( Timer_Refine )
-  CALL RefineX_TwoMoment( nX_Crse, nX_Fine, nVar, G_Crse, U_Crse, G_Fine, U_Fine )
+  CALL RefineX_TwoMoment( nX_Crse, nVar, U_Crse, U_Fine )
   CALL TimersStop( Timer_Refine )
 
   PRINT*, ""
@@ -374,8 +374,8 @@ PROGRAM MeshRefinementTest_TwoMoment
              +   iNodeE
 
       MaxError(iCR) = MAX( MaxError(iCR), &
-                           ABS(   U_Fine(iNodeX,iVar,iFine,iX1,iX2,iX3) &
-                                - U_1   (iNodeX,iVar,iFine,iX1,iX2,iX3) ) )
+                           ABS(   U_Fine(iNodeX,iFine,iX1,iX2,iX3,iVar) &
+                                - U_1   (iNodeX,iFine,iX1,iX2,iX3,iVar) ) )
 
     END DO
 
@@ -418,9 +418,9 @@ PROGRAM MeshRefinementTest_TwoMoment
 
     VectorName = 'U_Fine_' // MeshString // '.dat'
 
-    CALL WriteRF( SubMeshX_Fine(:,iFine), U_Fine(:,:,iFine,:,:,:) )
+    CALL WriteRF( SubMeshX_Fine(:,iFine), U_Fine(:,iFine,:,:,:,:) )
     CALL WriteVector( nDOFX*nVar*PRODUCT(nX_Crse),  &
-                      RESHAPE( U_Fine(:,:,iFine,:,:,:), [nDOFX*nVar*PRODUCT(nX_Crse)] ), &
+                      RESHAPE( U_Fine(:,iFine,:,:,:,:), [nDOFX*nVar*PRODUCT(nX_Crse)] ), &
                       TRIM( VectorName ) )
 
   END DO
@@ -435,13 +435,13 @@ PROGRAM MeshRefinementTest_TwoMoment
     ! --- Coarsen operation needs different ordering
     DO iFine = 1, nFine
     DO iNodeX = 1, nDOFX
-      U_Fine2(iNodeX,iFine,iVar,iX1,iX2,iX3) = U_Fine(iNodeX,iVar,iFine,iX1,iX2,iX3)
+      U_Fine2(iNodeX,iFine,iX1,iX2,iX3,iVar) = U_Fine(iNodeX,iFine,iX1,iX2,iX3,iVar)
     END DO
     END DO
 
     ! --- Reset U_Crse
     DO iNodeX = 1, nDOFX
-      U_Crse(iNodeX,iVar,iX1,iX2,iX3) = Zero
+      U_Crse(iNodeX,iX1,iX2,iX3,iVar) = Zero
     END DO
 
   END DO
@@ -451,7 +451,7 @@ PROGRAM MeshRefinementTest_TwoMoment
 
   Timer_Coarsen = 0.0_DP
   CALL TimersStart( Timer_Coarsen )
-  CALL CoarsenX_TwoMoment( nX_Fine, nX_Crse, nVar, G_Fine, U_Fine2, G_Crse, U_Crse )
+  CALL CoarsenX_TwoMoment( nX_Crse, nVar, U_Fine2, U_Crse )
   CALL TimersStop( Timer_Coarsen )
 
   Timer_Total = Timer_Refine + Timer_Coarsen
@@ -480,8 +480,8 @@ PROGRAM MeshRefinementTest_TwoMoment
              +   iNodeE
 
       MaxError(iCR) = MAX( MaxError(iCR), &
-                           ABS(   U_Crse(iNodeX,iVar,iX1,iX2,iX3) &
-                                - U_0   (iNodeX,iVar,iX1,iX2,iX3) ) )
+                           ABS(   U_Crse(iNodeX,iX1,iX2,iX3,iVar) &
+                                - U_0   (iNodeX,iX1,iX2,iX3,iVar) ) )
 
     END DO
 
@@ -616,8 +616,7 @@ CONTAINS
 
     ! --- Refine / Coarsen ---
 
-    CALL InitializeMeshRefinement_TwoMoment &
-           ( Verbose_Option = .TRUE. )
+    CALL InitializeMeshRefinement_TwoMoment
 
   END SUBROUTINE InitializeDriver
 
@@ -683,9 +682,9 @@ CONTAINS
     MeshX_save = MeshX
     MeshX = MeshX_write
 
-    IF (      SIZE(U_write,3) /= SIZE(uCR,3) &
-         .OR. SIZE(U_write,4) /= SIZE(uCR,4) &
-         .OR. SIZE(U_write,5) /= SIZE(uCR,5) ) THEN
+    IF (      SIZE(U_write,2) /= SIZE(uCR,3) &
+         .OR. SIZE(U_write,3) /= SIZE(uCR,4) &
+         .OR. SIZE(U_write,4) /= SIZE(uCR,5) ) THEN
       WRITE(*,*)
       WRITE(*,'(A5,A27)') &
         '', 'WriteRF Shape Error'
@@ -710,8 +709,8 @@ CONTAINS
                  + ( iE  - 1 ) * nDOFE &
                  +   iNodeE
 
-          uPR(iNode,iE,iX1,iX2,iX3,iCR,iS) = U_write(iNodeX,iVar,iX1,iX2,iX3)
-          uCR(iNode,iE,iX1,iX2,iX3,iCR,iS) = U_write(iNodeX,iVar,iX1,iX2,iX3)
+          uPR(iNode,iE,iX1,iX2,iX3,iCR,iS) = U_write(iNodeX,iX1,iX2,iX3,iVar)
+          uCR(iNode,iE,iX1,iX2,iX3,iCR,iS) = U_write(iNodeX,iX1,iX2,iX3,iVar)
 
       END DO
       END DO
