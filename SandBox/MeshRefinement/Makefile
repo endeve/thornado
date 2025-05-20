@@ -36,8 +36,12 @@ MeshRefinementTest_TwoMoment.o: \
   ReferenceElementModule.o \
   ReferenceElementModule_Lagrange.o \
   MeshModule.o \
+  GeometryFieldsModule.o \
+  GeometryComputationModule.o \
+  RadiationFieldsModule.o \
   UtilitiesModule.o \
-  TwoMoment_MeshRefinementModule.o \
-  DeviceModule.o \
   TimersModule.o \
+  InputOutputModuleHDF.o \
+  TwoMoment_UtilitiesModule.o \
+  TwoMoment_MeshRefinementModule.o \
   MeshRefinementTest_TwoMoment.F90
