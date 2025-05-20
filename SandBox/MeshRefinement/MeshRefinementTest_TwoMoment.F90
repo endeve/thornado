@@ -544,12 +544,10 @@ CONTAINS
 
     REAL(DP) :: D_0, I_0
 
-    !D_0 = ( Sigma / t_0 )**( 1.5_DP ) &
-    !        * EXP( - 3.0_DP * Sigma * R**2 / ( 4.0_DP *t_0 ) )
+    D_0 = ( Sigma / t_0 )**( 1.5_DP ) &
+            * EXP( - 3.0_DP * Sigma * R**2 / ( 4.0_DP *t_0 ) )
 
-    !I_0 = D_0 * R / ( 2.0_DP * t_0 )
-    D_0 = 10.0_DP * R
-    I_0 = 0.0_DP
+    I_0 = D_0 * R / ( 2.0_DP * t_0 )
 
     uPR(iPR_D ) = D_0
     uPR(iPR_I1) = I_0
