@@ -694,9 +694,9 @@ CONTAINS
     DO iS = 1, nSpecies
     DO iCR = 1, nCR
 
-    DO iX3 = 1, SIZE(U_write,5)
-    DO iX2 = 1, SIZE(U_write,4)
-    DO iX1 = 1, SIZE(U_write,3)
+    DO iX3 = 1, SIZE(uCR,5)
+    DO iX2 = 1, SIZE(uCR,4)
+    DO iX1 = 1, SIZE(uCR,3)
     DO iE = 1, nE
 
       DO iNodeX = 1, nDOFX
