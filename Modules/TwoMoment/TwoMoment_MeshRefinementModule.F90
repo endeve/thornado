@@ -3,13 +3,15 @@ MODULE TwoMoment_MeshRefinementModule
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Two
   USE ProgramHeaderModule, ONLY: &
-    nDOFX, nDimsX
+    nDOFX, nDimsX, nNodes
   USE QuadratureModule, ONLY: &
     GetQuadrature
   USE PolynomialBasisModule_Lagrange, ONLY: &
     IndLX_Q, L_X1, L_X2, L_X3
   USE GeometryFieldsModule, ONLY: &
     nGF, iGF_h_1, iGF_h_2, iGF_h_3
+  USE GeometryFieldsModule, ONLY: &
+    CoordinateSystem
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX_SpatialMetric
   USE LinearAlgebraModule, ONLY: &
@@ -29,8 +31,7 @@ MODULE TwoMoment_MeshRefinementModule
   INTEGER  :: nFine, nFineX(3)
   REAL(DP), PUBLIC :: VolumeRatio
 
-  INTEGER, PARAMETER :: nQuad = 3
-  INTEGER :: nQuadX(3), nQ
+  INTEGER :: nQuadX(3), nQ, nQuad
 
   REAL(DP), ALLOCATABLE, PUBLIC :: RestrictionMatrix0 (:,:,:,:,:,:)
   REAL(DP), ALLOCATABLE, PUBLIC :: ProlongationMatrix0(:,:,:,:,:,:)
@@ -39,9 +40,10 @@ MODULE TwoMoment_MeshRefinementModule
 CONTAINS
 
 
-  SUBROUTINE InitializeMeshRefinement_TwoMoment( Verbose_Option )
+  SUBROUTINE InitializeMeshRefinement_TwoMoment &
+    ( Verbose_Option )
 
-    LOGICAL , INTENT(in), OPTIONAL :: Verbose_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 
     LOGICAL :: Verbose
 
@@ -68,6 +70,17 @@ CONTAINS
     ELSE
       Verbose = .FALSE.
     END IF
+
+    SELECT CASE ( TRIM( CoordinateSystem ) )
+    CASE ( 'CARTESIAN' )
+      nQuad = nNodes
+    CASE ( 'CYLINDRICAL' )
+      nQuad = nNodes
+    CASE ( 'SPHERICAL' )
+      nQuad = nNodes + 1
+    CASE DEFAULT
+      nQuad = nNodes
+    END SELECT
 
     nQuadX      = 1
     nFineX      = 1
