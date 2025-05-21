@@ -574,9 +574,9 @@ CONTAINS
         ja = 1
         jb = 1
         jc = 1
-        IF ( stridea /= 0 ) ja = mod( (osa-1)/lda, stridea ) + 1
-        IF ( strideb /= 0 ) jb = mod( (osb-1)/ldb, strideb ) + 1
-        IF ( stridec /= 0 ) jc = mod( (osc-1)/ldc, stridec ) + 1
+        IF ( stridea /= 0 ) ja = (osa-1)/lda + 1
+        IF ( strideb /= 0 ) jb = (osb-1)/ldb + 1
+        IF ( stridec /= 0 ) jc = (osc-1)/ldc + 1
         CALL DGEMM &
                ( transa, transb, m, n, k, alpha, a(ia,ja), lda, b(ib,jb), ldb, beta, c(ic,jc), ldc )
       END DO
