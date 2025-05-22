@@ -1,7 +1,7 @@
 PROGRAM MeshRefinementTest_TwoMoment
 
   USE KindModule, ONLY: &
-    DP, Zero, One, Two, TwoPi, SqrtTiny
+    DP, Zero, One, Two, Pi, TwoPi, SqrtTiny
   USE ProgramHeaderModule, ONLY: &
     nDOFX, nDOFE, nNodesX, nDimsX
   USE ProgramInitializationModule, ONLY: &
@@ -82,7 +82,7 @@ PROGRAM MeshRefinementTest_TwoMoment
   INTEGER       :: iFineX(3), iFine, nFine
   INTEGER       :: iX1_Fine, iX2_Fine, iX3_Fine
   INTEGER       :: iFineX1, iFineX2, iFineX3, nFineX(3)
-  REAL(DP)      :: R, X1, X2, X3
+  REAL(DP)      :: X1, X2, X3
   REAL(DP), ALLOCATABLE :: X1_0(:), X2_0(:), X3_0(:)
   REAL(DP)      :: V_0(3)
   REAL(DP)      :: uPR(nPR), uCR(nCR)
@@ -120,7 +120,7 @@ PROGRAM MeshRefinementTest_TwoMoment
 
   ProgramName = 'MeshRefinementTest_TwoMoment'
 
-  nX = [ 64, 1, 1 ]
+  nX = [ 16, 1, 1 ]
   swX = 0
   bcX = 0
   xL = 0.0_DP
@@ -134,7 +134,7 @@ PROGRAM MeshRefinementTest_TwoMoment
   eR = 1.0e2_DP
   ZoomE = One
 
-  nNodes = 3
+  nNodes = 2
   nSpecies = 1
   nVar = nSpecies * nCR * nE * nNodes
 
@@ -237,20 +237,6 @@ PROGRAM MeshRefinementTest_TwoMoment
     X2 = NodeCoordinate( MeshX_Crse(2), iX2, iNodeX2 )
     X3 = NodeCoordinate( MeshX_Crse(3), iX3, iNodeX3 )
 
-    SELECT CASE( TRIM( CoordinateSystem ) )
-    CASE( 'SPHERICAL' )
-      R = X1
-    CASE( 'CYLINDRICAL' )
-      R = SQRT( X1*X1 + X2*X2 )
-    CASE( 'CARTESIAN' )
-      R = SQRT( X1*X1 + X2*X2 + X3*X3 )
-    CASE DEFAULT
-      WRITE(*,*)
-      WRITE(*,'(A5,A27,A)') &
-        '', 'Invalid Coordinate System: ', TRIM( CoordinateSystem )
-      STOP
-    END SELECT
-
     iP_X1 = ( iX1 - 1 ) * nNodesX(1) + iNodeX1
     iP_X2 = ( iX2 - 1 ) * nNodesX(2) + iNodeX2
     iP_X3 = ( iX3 - 1 ) * nNodesX(3) + iNodeX3
@@ -259,7 +245,7 @@ PROGRAM MeshRefinementTest_TwoMoment
     X2_0(iP_X2) = X2
     X3_0(iP_X3) = X3
 
-    uPR = f_0( R )
+    uPR = f_0( X1, X2, X3 )
     CALL ComputeConserved_TwoMoment &
            ( uPR(iPR_D ), uPR(iPR_I1), uPR(iPR_I2), uPR(iPR_I3), &
              uCR(iCR_N ), uCR(iCR_G1), uCR(iCR_G2), uCR(iCR_G3), &
@@ -315,21 +301,7 @@ PROGRAM MeshRefinementTest_TwoMoment
     X2 = NodeCoordinate( MeshX_Fine(2), iX2_Fine, iNodeX2 )
     X3 = NodeCoordinate( MeshX_Fine(3), iX3_Fine, iNodeX3 )
 
-    SELECT CASE( TRIM( CoordinateSystem ) )
-    CASE( 'SPHERICAL' )
-      R = X1
-    CASE( 'CYLINDRICAL' )
-      R = SQRT( X1*X1 + X2*X2 )
-    CASE( 'CARTESIAN' )
-      R = SQRT( X1*X1 + X2*X2 + X3*X3 )
-    CASE DEFAULT
-      WRITE(*,*)
-      WRITE(*,'(A5,A27,A)') &
-        '', 'Invalid Coordinate System: ', TRIM( CoordinateSystem )
-      STOP
-    END SELECT
-
-    uPR = f_0( R )
+    uPR = f_0( X1, X2, X3 )
     CALL ComputeConserved_TwoMoment &
            ( uPR(iPR_D ), uPR(iPR_I1), uPR(iPR_I2), uPR(iPR_I3), &
              uCR(iCR_N ), uCR(iCR_G1), uCR(iCR_G2), uCR(iCR_G3), &
@@ -578,27 +550,60 @@ PROGRAM MeshRefinementTest_TwoMoment
 
 CONTAINS
 
-  FUNCTION f_0( R ) RESULT( uPR )
+  FUNCTION f_0( X1, X2, X3 ) RESULT( uPR )
 
-    REAL(DP), INTENT(in)  :: R
+    REAL(DP), INTENT(in)  :: X1, X2, X3
     REAL(DP)              :: uPR(nPR)
 
     REAL(DP), PARAMETER :: Sigma = 1.0e2_DP
     REAL(DP), PARAMETER :: t_0   = 1.0e0_DP
 
-    REAL(DP) :: D_0, I_0
+    REAL(DP) :: D_0, I_0, R, Theta, Phi
+    REAL(DP) :: C1, C2, C3
 
-    D_0 = ( Sigma / t_0 )**( 1.5_DP ) &
-            * EXP( - 3.0_DP * Sigma * R**2 / ( 4.0_DP *t_0 ) )
+    SELECT CASE( TRIM( CoordinateSystem ) )
+    CASE( 'SPHERICAL' )
+      R = X1
+      Theta = X2
+      Phi = X3
+      C1 = 1.0_DP
+      C2 = 0.0_DP
+      C3 = 0.0_DP
+    CASE( 'CYLINDRICAL' )
+      R = SQRT( X1*X1 + X2*X2 )
+      IF ( X2 /= 0.0_DP ) THEN
+        Theta = ATAN( X1 / X2 )
+      ELSE
+        Theta = 0.5 * Pi
+      END IF
+      Phi = X3
+      C1 = SIN( Theta )
+      C2 = COS( Theta )
+      C3 = 0.0
+    CASE( 'CARTESIAN' )
+      R = SQRT( X1*X1 + X2*X2 + X3*X3 )
+      Theta = ACOS( X3 / R )
+      Phi = MOD( ATAN2( X2, X1 ), TwoPi )
+      C1 = SIN( Theta ) * COS( Phi )
+      C2 = SIN( Theta ) * SIN( Phi )
+      C3 = COS( Theta )
+    CASE DEFAULT
+      WRITE(*,*)
+      WRITE(*,'(A5,A27,A)') &
+        '', 'Invalid Coordinate System: ', TRIM( CoordinateSystem )
+      STOP
+    END SELECT
 
-    I_0 = D_0 * R / ( 2.0_DP * t_0 )
-    !D_0 = SIN( TwoPi * R )
-    !I_0 = 0.0_DP
+    !D_0 = ( Sigma / t_0 )**( 1.5_DP ) &
+    !        * EXP( - 3.0_DP * Sigma * R**2 / ( 4.0_DP *t_0 ) )
+    !I_0 = D_0 * R / ( 2.0_DP * t_0 )
+    D_0 = SIN( TwoPi * R )
+    I_0 = D_0
 
     uPR(iPR_D ) = D_0
-    uPR(iPR_I1) = I_0
-    uPR(iPR_I2) = 0.0_DP
-    uPR(iPR_I3) = 0.0_DP
+    uPR(iPR_I1) = I_0 * C1
+    uPR(iPR_I2) = I_0 * C2
+    uPR(iPR_I3) = I_0 * C3
 
   END FUNCTION f_0
 
