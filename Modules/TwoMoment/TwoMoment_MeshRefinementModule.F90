@@ -47,16 +47,9 @@ CONTAINS
 
     LOGICAL :: Verbose
 
-    INTEGER :: iFineX, iFineX1, iFineX2, iFineX3
-
     INTEGER :: i, j, k
-    INTEGER :: jCrseNodeX
-
-    INTEGER :: iFineNodeX
-    INTEGER :: jFineNodeX
-    INTEGER :: kFineNodeX
-    INTEGER :: lFineNodeX
-    INTEGER :: mFineNodeX
+    INTEGER :: iFineX, iFineX1, iFineX2, iFineX3
+    INTEGER :: iNodeX, jNodeX, kNodeX, lNodeX, mNodeX
 
     INTEGER :: iQuad, iQuadX1, iQuadX2, iQuadX3
     REAL(DP), ALLOCATABLE :: QuadX1(:), QuadX2(:), QuadX3(:)
@@ -148,54 +141,83 @@ CONTAINS
       QuadX2_Crse = FineXC_Crse(2) + dFineX_Crse(2) * QuadX2
       QuadX3_Crse = FineXC_Crse(3) + dFineX_Crse(3) * QuadX3
 
-      DO jCrseNodeX = 1, nDOFX
-      DO iFineNodeX = 1, nDOFX
+      DO jNodeX = 1, nDOFX
+      DO iNodeX = 1, nDOFX
 
-      DO mFineNodeX = 1, nDOFX
-      DO lFineNodeX = 1, nDOFX
-      DO kFineNodeX = 1, nDOFX
+        DO mNodeX = 1, nDOFX
+        DO lNodeX = 1, nDOFX
+        DO kNodeX = 1, nDOFX
+
+          DO iQuadX3 = 1, nQuadX(3)
+          DO iQuadX2 = 1, nQuadX(2)
+          DO iQuadX1 = 1, nQuadX(1)
+
+            ProlongationMatrix0(kNodeX,lNodeX,mNodeX,iNodeX,jNodeX,iFineX) &
+              = ProlongationMatrix0(kNodeX,lNodeX,mNodeX,iNodeX,jNodeX,iFineX) &
+                  + WeightsX1(iQuadX1) * WeightsX2(iQuadX2) * WeightsX3(iQuadX3) &
+                    * L_X1(IndLX_Q(1,iNodeX)) % P( QuadX1     (iQuadX1) ) &
+                    * L_X2(IndLX_Q(2,iNodeX)) % P( QuadX2     (iQuadX2) ) &
+                    * L_X3(IndLX_Q(3,iNodeX)) % P( QuadX3     (iQuadX3) ) &
+                    * L_X1(IndLX_Q(1,jNodeX)) % P( QuadX1_Crse(iQuadX1) ) &
+                    * L_X2(IndLX_Q(2,jNodeX)) % P( QuadX2_Crse(iQuadX2) ) &
+                    * L_X3(IndLX_Q(3,jNodeX)) % P( QuadX3_Crse(iQuadX3) ) &
+                    * L_X1(IndLX_Q(1,kNodeX)) % P( QuadX1     (iQuadX1) ) &
+                    * L_X2(IndLX_Q(2,kNodeX)) % P( QuadX2     (iQuadX2) ) &
+                    * L_X3(IndLX_Q(3,kNodeX)) % P( QuadX3     (iQuadX3) ) &
+                    * L_X1(IndLX_Q(1,lNodeX)) % P( QuadX1     (iQuadX1) ) &
+                    * L_X2(IndLX_Q(2,lNodeX)) % P( QuadX2     (iQuadX2) ) &
+                    * L_X3(IndLX_Q(3,lNodeX)) % P( QuadX3     (iQuadX3) ) &
+                    * L_X1(IndLX_Q(1,mNodeX)) % P( QuadX1     (iQuadX1) ) &
+                    * L_X2(IndLX_Q(2,mNodeX)) % P( QuadX2     (iQuadX2) ) &
+                    * L_X3(IndLX_Q(3,mNodeX)) % P( QuadX3     (iQuadX3) )
+
+            RestrictionMatrix0(kNodeX,lNodeX,mNodeX,jNodeX,iNodeX,iFineX) &
+              = ProlongationMatrix0(kNodeX,lNodeX,mNodeX,iNodeX,jNodeX,iFineX)
+
+          END DO
+          END DO
+          END DO
+
+        END DO
+        END DO
+        END DO
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+    DO jNodeX = 1, nDOFX
+    DO iNodeX = 1, nDOFX
+
+      DO mNodeX = 1, nDOFX
+      DO lNodeX = 1, nDOFX
+      DO kNodeX = 1, nDOFX
 
         DO iQuadX3 = 1, nQuadX(3)
         DO iQuadX2 = 1, nQuadX(2)
         DO iQuadX1 = 1, nQuadX(1)
 
-          ProlongationMatrix0(kFineNodeX,lFineNodeX,mFineNodeX,iFineNodeX,jCrseNodeX,iFineX) &
-            = ProlongationMatrix0(kFineNodeX,lFineNodeX,mFineNodeX,iFineNodeX,jCrseNodeX,iFineX) &
+          MassMatrix0(kNodeX,lNodeX,mNodeX,iNodeX,jNodeX) &
+            = MassMatrix0(kNodeX,lNodeX,mNodeX,iNodeX,jNodeX) &
                 + WeightsX1(iQuadX1) * WeightsX2(iQuadX2) * WeightsX3(iQuadX3) &
-                  * L_X1(IndLX_Q(1,iFineNodeX)) % P( QuadX1     (iQuadX1) ) &
-                  * L_X2(IndLX_Q(2,iFineNodeX)) % P( QuadX2     (iQuadX2) ) &
-                  * L_X3(IndLX_Q(3,iFineNodeX)) % P( QuadX3     (iQuadX3) ) &
-                  * L_X1(IndLX_Q(1,jCrseNodeX)) % P( QuadX1_Crse(iQuadX1) ) &
-                  * L_X2(IndLX_Q(2,jCrseNodeX)) % P( QuadX2_Crse(iQuadX2) ) &
-                  * L_X3(IndLX_Q(3,jCrseNodeX)) % P( QuadX3_Crse(iQuadX3) ) &
-                  * L_X1(IndLX_Q(1,kFineNodeX)) % P( QuadX1     (iQuadX1) ) &
-                  * L_X2(IndLX_Q(2,kFineNodeX)) % P( QuadX2     (iQuadX2) ) &
-                  * L_X3(IndLX_Q(3,kFineNodeX)) % P( QuadX3     (iQuadX3) ) &
-                  * L_X1(IndLX_Q(1,lFineNodeX)) % P( QuadX1     (iQuadX1) ) &
-                  * L_X2(IndLX_Q(2,lFineNodeX)) % P( QuadX2     (iQuadX2) ) &
-                  * L_X3(IndLX_Q(3,lFineNodeX)) % P( QuadX3     (iQuadX3) ) &
-                  * L_X1(IndLX_Q(1,mFineNodeX)) % P( QuadX1     (iQuadX1) ) &
-                  * L_X2(IndLX_Q(2,mFineNodeX)) % P( QuadX2     (iQuadX2) ) &
-                  * L_X3(IndLX_Q(3,mFineNodeX)) % P( QuadX3     (iQuadX3) )
-
-          RestrictionMatrix0(kFineNodeX,lFineNodeX,mFineNodeX,jCrseNodeX,iFineNodeX,iFineX) &
-            = RestrictionMatrix0(kFineNodeX,lFineNodeX,mFineNodeX,jCrseNodeX,iFineNodeX,iFineX) &
-                + WeightsX1(iQuadX1) * WeightsX2(iQuadX2) * WeightsX3(iQuadX3) &
-                  * L_X1(IndLX_Q(1,iFineNodeX)) % P( QuadX1     (iQuadX1) ) &
-                  * L_X2(IndLX_Q(2,iFineNodeX)) % P( QuadX2     (iQuadX2) ) &
-                  * L_X3(IndLX_Q(3,iFineNodeX)) % P( QuadX3     (iQuadX3) ) &
-                  * L_X1(IndLX_Q(1,jCrseNodeX)) % P( QuadX1_Crse(iQuadX1) ) &
-                  * L_X2(IndLX_Q(2,jCrseNodeX)) % P( QuadX2_Crse(iQuadX2) ) &
-                  * L_X3(IndLX_Q(3,jCrseNodeX)) % P( QuadX3_Crse(iQuadX3) ) &
-                  * L_X1(IndLX_Q(1,kFineNodeX)) % P( QuadX1     (iQuadX1) ) &
-                  * L_X2(IndLX_Q(2,kFineNodeX)) % P( QuadX2     (iQuadX2) ) &
-                  * L_X3(IndLX_Q(3,kFineNodeX)) % P( QuadX3     (iQuadX3) ) &
-                  * L_X1(IndLX_Q(1,lFineNodeX)) % P( QuadX1     (iQuadX1) ) &
-                  * L_X2(IndLX_Q(2,lFineNodeX)) % P( QuadX2     (iQuadX2) ) &
-                  * L_X3(IndLX_Q(3,lFineNodeX)) % P( QuadX3     (iQuadX3) ) &
-                  * L_X1(IndLX_Q(1,mFineNodeX)) % P( QuadX1     (iQuadX1) ) &
-                  * L_X2(IndLX_Q(2,mFineNodeX)) % P( QuadX2     (iQuadX2) ) &
-                  * L_X3(IndLX_Q(3,mFineNodeX)) % P( QuadX3     (iQuadX3) )
+                  * L_X1(IndLX_Q(1,iNodeX)) % P( QuadX1(iQuadX1) ) &
+                  * L_X2(IndLX_Q(2,iNodeX)) % P( QuadX2(iQuadX2) ) &
+                  * L_X3(IndLX_Q(3,iNodeX)) % P( QuadX3(iQuadX3) ) &
+                  * L_X1(IndLX_Q(1,jNodeX)) % P( QuadX1(iQuadX1) ) &
+                  * L_X2(IndLX_Q(2,jNodeX)) % P( QuadX2(iQuadX2) ) &
+                  * L_X3(IndLX_Q(3,jNodeX)) % P( QuadX3(iQuadX3) ) &
+                  * L_X1(IndLX_Q(1,kNodeX)) % P( QuadX1(iQuadX1) ) &
+                  * L_X2(IndLX_Q(2,kNodeX)) % P( QuadX2(iQuadX2) ) &
+                  * L_X3(IndLX_Q(3,kNodeX)) % P( QuadX3(iQuadX3) ) &
+                  * L_X1(IndLX_Q(1,lNodeX)) % P( QuadX1(iQuadX1) ) &
+                  * L_X2(IndLX_Q(2,lNodeX)) % P( QuadX2(iQuadX2) ) &
+                  * L_X3(IndLX_Q(3,lNodeX)) % P( QuadX3(iQuadX3) ) &
+                  * L_X1(IndLX_Q(1,mNodeX)) % P( QuadX1(iQuadX1) ) &
+                  * L_X2(IndLX_Q(2,mNodeX)) % P( QuadX2(iQuadX2) ) &
+                  * L_X3(IndLX_Q(3,mNodeX)) % P( QuadX3(iQuadX3) )
 
         END DO
         END DO
@@ -204,51 +226,6 @@ CONTAINS
       END DO
       END DO
       END DO
-
-      END DO
-      END DO
-
-    END DO
-    END DO
-    END DO
-
-    DO jFineNodeX = 1, nDOFX
-    DO iFineNodeX = 1, nDOFX
-
-    DO mFineNodeX = 1, nDOFX
-    DO lFineNodeX = 1, nDOFX
-    DO kFineNodeX = 1, nDOFX
-
-      DO iQuadX3 = 1, nQuadX(3)
-      DO iQuadX2 = 1, nQuadX(2)
-      DO iQuadX1 = 1, nQuadX(1)
-
-        MassMatrix0(kFineNodeX,lFineNodeX,mFineNodeX,iFineNodeX,jFineNodeX) &
-          = MassMatrix0(kFineNodeX,lFineNodeX,mFineNodeX,iFineNodeX,jFineNodeX) &
-              + WeightsX1(iQuadX1) * WeightsX2(iQuadX2) * WeightsX3(iQuadX3) &
-                * L_X1(IndLX_Q(1,iFineNodeX)) % P( QuadX1(iQuadX1) ) &
-                * L_X2(IndLX_Q(2,iFineNodeX)) % P( QuadX2(iQuadX2) ) &
-                * L_X3(IndLX_Q(3,iFineNodeX)) % P( QuadX3(iQuadX3) ) &
-                * L_X1(IndLX_Q(1,jFineNodeX)) % P( QuadX1(iQuadX1) ) &
-                * L_X2(IndLX_Q(2,jFineNodeX)) % P( QuadX2(iQuadX2) ) &
-                * L_X3(IndLX_Q(3,jFineNodeX)) % P( QuadX3(iQuadX3) ) &
-                * L_X1(IndLX_Q(1,kFineNodeX)) % P( QuadX1(iQuadX1) ) &
-                * L_X2(IndLX_Q(2,kFineNodeX)) % P( QuadX2(iQuadX2) ) &
-                * L_X3(IndLX_Q(3,kFineNodeX)) % P( QuadX3(iQuadX3) ) &
-                * L_X1(IndLX_Q(1,lFineNodeX)) % P( QuadX1(iQuadX1) ) &
-                * L_X2(IndLX_Q(2,lFineNodeX)) % P( QuadX2(iQuadX2) ) &
-                * L_X3(IndLX_Q(3,lFineNodeX)) % P( QuadX3(iQuadX3) ) &
-                * L_X1(IndLX_Q(1,mFineNodeX)) % P( QuadX1(iQuadX1) ) &
-                * L_X2(IndLX_Q(2,mFineNodeX)) % P( QuadX2(iQuadX2) ) &
-                * L_X3(IndLX_Q(3,mFineNodeX)) % P( QuadX3(iQuadX3) )
-
-      END DO
-      END DO
-      END DO
-
-    END DO
-    END DO
-    END DO
 
     END DO
     END DO
@@ -350,15 +327,14 @@ CONTAINS
     REAL(DP) :: Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm
     REAL(DP) :: SUM_M, SUM_P
 
-    INTEGER  :: iX1_Fine, iX2_Fine, iX3_Fine
+    INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iFineX1, iFineX2, iFineX3, iFineX
-    INTEGER  :: jX1_Crse, jX2_Crse, jX3_Crse
+    INTEGER  :: jX1, jX2, jX3
     INTEGER  :: iNodeX, jNodeX, kNodeX, lNodeX, mNodeX
     INTEGER  :: iVar
-    INTEGER  :: nP_X, nCrse
+    INTEGER  :: nCrse
 
     nCrse = PRODUCT( nX_Crse )
-    nP_X = nCrse * nVar
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
@@ -372,20 +348,20 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
-    !$OMP PRIVATE( iFineX1, iFineX2, iFineX3, iX1_Fine, iX2_Fine, iX3_Fine, SUM_M, SUM_P, &
+    !$OMP PRIVATE( iFineX1, iFineX2, iFineX3, iX1, iX2, iX3, SUM_M, SUM_P, &
     !$OMP          Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-    !$ACC PRIVATE( iFineX1, iFineX2, iFineX3, iX1_Fine, iX2_Fine, iX3_Fine, SUM_M, SUM_P, &
+    !$ACC PRIVATE( iFineX1, iFineX2, iFineX3, iX1, iX2, iX3, SUM_M, SUM_P, &
     !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(6) &
-    !$OMP PRIVATE( iFineX1, iFineX2, iFineX3, iX1_Fine, iX2_Fine, iX3_Fine, SUM_M, SUM_P, &
+    !$OMP PRIVATE( iFineX1, iFineX2, iFineX3, iX1, iX2, iX3, SUM_M, SUM_P, &
     !$OMP          Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm )
 #endif
-    DO jX3_Crse = 1, nX_Crse(3)
-    DO jX2_Crse = 1, nX_Crse(2)
-    DO jX1_Crse = 1, nX_Crse(1)
+    DO jX3 = 1, nX_Crse(3)
+    DO jX2 = 1, nX_Crse(2)
+    DO jX1 = 1, nX_Crse(1)
 
       DO iFineX = 1, nFine
 
@@ -396,9 +372,9 @@ CONTAINS
           iFineX2 = MOD( (iFineX-1) / ( nFineX(1)             ), nFineX(2) ) + 1
           iFineX1 = MOD( (iFineX-1)                            , nFineX(1) ) + 1
 
-          iX1_Fine = ( jX1_Crse - 1 ) * nFineX(1) + iFineX1
-          iX2_Fine = ( jX2_Crse - 1 ) * nFineX(2) + iFineX2
-          iX3_Fine = ( jX3_Crse - 1 ) * nFineX(3) + iFineX3
+          iX1 = ( jX1 - 1 ) * nFineX(1) + iFineX1
+          iX2 = ( jX2 - 1 ) * nFineX(2) + iFineX2
+          iX3 = ( jX3 - 1 ) * nFineX(3) + iFineX3
 
           SUM_M = Zero
           SUM_P = Zero
@@ -407,9 +383,9 @@ CONTAINS
           DO kNodeX = 1, nDOFX
 
             CALL ComputeGeometryX_SpatialMetric &
-                   ( G_Fine(kNodeX,iX1_Fine,iX2_Fine,iX3_Fine,iGF_h_1), &
-                     G_Fine(lNodeX,iX1_Fine,iX2_Fine,iX3_Fine,iGF_h_2), &
-                     G_Fine(mNodeX,iX1_Fine,iX2_Fine,iX3_Fine,iGF_h_3), &
+                   ( G_Fine(kNodeX,iX1,iX2,iX3,iGF_h_1), &
+                     G_Fine(lNodeX,iX1,iX2,iX3,iGF_h_2), &
+                     G_Fine(mNodeX,iX1,iX2,iX3,iGF_h_3), &
                      Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm )
 
             SUM_M = SUM_M + MassMatrix0        (kNodeX,lNodeX,mNodeX,iNodeX,jNodeX       ) * SqrtGm
@@ -419,8 +395,8 @@ CONTAINS
           END DO
           END DO
 
-          MassMatrix        (iNodeX,jNodeX,iFineX,jX1_Crse,jX2_Crse,jX3_Crse) = SUM_M
-          ProlongationMatrix(iNodeX,iFineX,jNodeX,jX1_Crse,jX2_Crse,jX3_Crse) = SUM_P
+          MassMatrix        (iNodeX,jNodeX,iFineX,jX1,jX2,jX3) = SUM_M
+          ProlongationMatrix(iNodeX,iFineX,jNodeX,jX1,jX2,jX3) = SUM_P
 
         END DO
         END DO
@@ -438,16 +414,16 @@ CONTAINS
              Zero, RHS, nDOFX*nFine, nDOFX*nFine*nVar, &
              nCrse )
 
-    DO jX3_Crse = 1, nX_Crse(3)
-    DO jX2_Crse = 1, nX_Crse(2)
-    DO jX1_Crse = 1, nX_Crse(1)
+    DO jX3 = 1, nX_Crse(3)
+    DO jX2 = 1, nX_Crse(2)
+    DO jX1 = 1, nX_Crse(1)
 
       DO iFineX = 1, nFine
 
         DO iVar = 1, nVar
         DO iNodeX = 1, nDOFX
 
-          U_Fine(iNodeX,iVar,iFineX,jX1_Crse,jX2_Crse,jX3_Crse) = RHS(iNodeX,iFineX,iVar,jX1_Crse,jX2_Crse,jX3_Crse)
+          U_Fine(iNodeX,iVar,iFineX,jX1,jX2,jX3) = RHS(iNodeX,iFineX,iVar,jX1,jX2,jX3)
 
         END DO
         END DO
@@ -492,14 +468,13 @@ CONTAINS
     REAL(DP) :: Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm
     REAL(DP) :: SUM_M, SUM_R
 
-    INTEGER  :: iX1_Fine, iX2_Fine, iX3_Fine
+    INTEGER  :: iX1, iX2, iX3
     INTEGER  :: iFineX1, iFineX2, iFineX3, iFineX
-    INTEGER  :: jX1_Crse, jX2_Crse, jX3_Crse
+    INTEGER  :: jX1, jX2, jX3
     INTEGER  :: iNodeX, jNodeX, kNodeX, lNodeX, mNodeX
-    INTEGER  :: nP_X, nCrse
+    INTEGER  :: nCrse
 
     nCrse = PRODUCT( nX_Crse )
-    nP_X = nCrse * nVar
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
@@ -513,20 +488,20 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
-    !$OMP PRIVATE( iFineX1, iFineX2, iFineX3, iX1_Fine, iX2_Fine, iX3_Fine, SUM_R, &
+    !$OMP PRIVATE( iFineX1, iFineX2, iFineX3, iX1, iX2, iX3, SUM_R, &
     !$OMP          Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
-    !$ACC PRIVATE( iFineX1, iFineX2, iFineX3, iX1_Fine, iX2_Fine, iX3_Fine, SUM_R, &
+    !$ACC PRIVATE( iFineX1, iFineX2, iFineX3, iX1, iX2, iX3, SUM_R, &
     !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(6) &
-    !$OMP PRIVATE( iFineX1, iFineX2, iFineX3, iX1_Fine, iX2_Fine, iX3_Fine, SUM_R, &
+    !$OMP PRIVATE( iFineX1, iFineX2, iFineX3, iX1, iX2, iX3, SUM_R, &
     !$OMP          Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm )
 #endif
-    DO jX3_Crse = 1, nX_Crse(3)
-    DO jX2_Crse = 1, nX_Crse(2)
-    DO jX1_Crse = 1, nX_Crse(1)
+    DO jX3 = 1, nX_Crse(3)
+    DO jX2 = 1, nX_Crse(2)
+    DO jX1 = 1, nX_Crse(1)
 
       DO iFineX = 1, nFine
 
@@ -537,9 +512,9 @@ CONTAINS
           iFineX2 = MOD( (iFineX-1) / ( nFineX(1)             ), nFineX(2) ) + 1
           iFineX1 = MOD( (iFineX-1)                            , nFineX(1) ) + 1
 
-          iX1_Fine = ( jX1_Crse - 1 ) * nFineX(1) + iFineX1
-          iX2_Fine = ( jX2_Crse - 1 ) * nFineX(2) + iFineX2
-          iX3_Fine = ( jX3_Crse - 1 ) * nFineX(3) + iFineX3
+          iX1 = ( jX1 - 1 ) * nFineX(1) + iFineX1
+          iX2 = ( jX2 - 1 ) * nFineX(2) + iFineX2
+          iX3 = ( jX3 - 1 ) * nFineX(3) + iFineX3
 
           SUM_R = Zero
           DO mNodeX = 1, nDOFX
@@ -547,9 +522,9 @@ CONTAINS
           DO kNodeX = 1, nDOFX
 
             CALL ComputeGeometryX_SpatialMetric &
-                   ( G_Fine(kNodeX,iX1_Fine,iX2_Fine,iX3_Fine,iGF_h_1), &
-                     G_Fine(lNodeX,iX1_Fine,iX2_Fine,iX3_Fine,iGF_h_2), &
-                     G_Fine(mNodeX,iX1_Fine,iX2_Fine,iX3_Fine,iGF_h_3), &
+                   ( G_Fine(kNodeX,iX1,iX2,iX3,iGF_h_1), &
+                     G_Fine(lNodeX,iX1,iX2,iX3,iGF_h_2), &
+                     G_Fine(mNodeX,iX1,iX2,iX3,iGF_h_3), &
                      Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm )
 
             SUM_R = SUM_R + RestrictionMatrix0(kNodeX,lNodeX,mNodeX,iNodeX,jNodeX,iFineX) * SqrtGm
@@ -558,7 +533,7 @@ CONTAINS
           END DO
           END DO
 
-          RestrictionMatrix(iNodeX,jNodeX,iFineX,jX1_Crse,jX2_Crse,jX3_Crse) = SUM_R
+          RestrictionMatrix(iNodeX,jNodeX,iFineX,jX1,jX2,jX3) = SUM_R
 
         END DO
         END DO
@@ -582,9 +557,9 @@ CONTAINS
     !$OMP PRIVATE( SUM_M, &
     !$OMP          Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm )
 #endif
-    DO jX3_Crse = 1, nX_Crse(3)
-    DO jX2_Crse = 1, nX_Crse(2)
-    DO jX1_Crse = 1, nX_Crse(1)
+    DO jX3 = 1, nX_Crse(3)
+    DO jX2 = 1, nX_Crse(2)
+    DO jX1 = 1, nX_Crse(1)
 
       DO jNodeX = 1, nDOFX
       DO iNodeX = 1, nDOFX
@@ -595,9 +570,9 @@ CONTAINS
         DO kNodeX = 1, nDOFX
 
           CALL ComputeGeometryX_SpatialMetric &
-                 ( G_Crse(kNodeX,jX1_Crse,jX2_Crse,jX3_Crse,iGF_h_1), &
-                   G_Crse(lNodeX,jX1_Crse,jX2_Crse,jX3_Crse,iGF_h_2), &
-                   G_Crse(mNodeX,jX1_Crse,jX2_Crse,jX3_Crse,iGF_h_3), &
+                 ( G_Crse(kNodeX,jX1,jX2,jX3,iGF_h_1), &
+                   G_Crse(lNodeX,jX1,jX2,jX3,iGF_h_2), &
+                   G_Crse(mNodeX,jX1,jX2,jX3,iGF_h_3), &
                    Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm )
 
           SUM_M = SUM_M + MassMatrix0(kNodeX,lNodeX,mNodeX,iNodeX,jNodeX) * SqrtGm
@@ -606,7 +581,7 @@ CONTAINS
         END DO
         END DO
 
-        MassMatrix(iNodeX,jNodeX,jX1_Crse,jX2_Crse,jX3_Crse) = SUM_M
+        MassMatrix(iNodeX,jNodeX,jX1,jX2,jX3) = SUM_M
 
       END DO
       END DO
