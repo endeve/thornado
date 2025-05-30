@@ -1,4 +1,4 @@
-MODULE MF_TwoMoment_PositivityLimiterModule
+  MODULE MF_TwoMoment_PositivityLimiterModule
 
   ! --- AMReX Modules ---
 
@@ -12,7 +12,8 @@ MODULE MF_TwoMoment_PositivityLimiterModule
     amrex_mfiter_build, &
     amrex_mfiter_destroy
   USE amrex_parallel_module, ONLY: &
-    amrex_parallel_ioprocessor
+    amrex_parallel_ioprocessor, &
+    amrex_parallel_communicator
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse, &
     amrex_parmparse_build, &
@@ -41,7 +42,8 @@ MODULE MF_TwoMoment_PositivityLimiterModule
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment, &
     ApplyPositivityLimiter_TwoMoment
-
+  USE MeshModule, ONLY: &
+    MeshX
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
@@ -57,7 +59,16 @@ MODULE MF_TwoMoment_PositivityLimiterModule
   USE InputParsingModule, ONLY: &
     nLevels, &
     UseTiling, &
-    nE
+    nE, &
+    DEBUG
+  USE MF_EdgeMapModule, ONLY: &
+    ConstructEdgeMap, &
+    EdgeMap
+  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_Euler_MF
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -66,7 +77,12 @@ MODULE MF_TwoMoment_PositivityLimiterModule
   PUBLIC :: FinalizePositivityLimiter_TwoMoment_MF
   PUBLIC :: ApplyPositivityLimiter_TwoMoment_MF
 
-  LOGICAL :: UsePositivityLimiter
+  INTERFACE ApplyPositivityLimiter_TwoMoment_MF
+    MODULE PROCEDURE ApplyPositivityLimiter_TwoMoment_MF_MultipleLevels
+    MODULE PROCEDURE ApplyPositivityLimiter_TwoMoment_MF_SingleLevel
+  END INTERFACE ApplyPositivityLimiter_TwoMoment_MF
+
+  LOGICAL :: UsePositivityLimiter, UseEnergyLimiter
 
 CONTAINS
 
@@ -78,11 +94,14 @@ CONTAINS
     REAL(DP) :: Min_1, Min_2
 
     UsePositivityLimiter = .TRUE.
+    UseEnergyLimiter     = .FALSE.
     Min_1                = 1.0e-12_DP
     Min_2                = 1.0e-12_DP
     CALL amrex_parmparse_build( PP, 'PL' )
       CALL PP % query( 'UsePositivityLimiter_TwoMoment', &
                         UsePositivityLimiter )
+      CALL PP % query( 'UseEnergyLimiter_TwoMoment', &
+                        UseEnergyLimiter )
       CALL PP % query( 'Min_1_TwoMoment', &
                         Min_1 )
       CALL PP % query( 'Min_2_TwoMoment', &
@@ -94,6 +113,8 @@ CONTAINS
              Min_2_Option = Min_2, &
              UsePositivityLimiter_Option &
                = UsePositivityLimiter, &
+             UseEnergyLimiter_Option &
+               = UseEnergyLimiter, &
              Verbose_Option = amrex_parallel_ioprocessor() )
 
   END SUBROUTINE InitializePositivityLimiter_TwoMoment_MF
@@ -106,14 +127,14 @@ CONTAINS
   END SUBROUTINE FinalizePositivityLimiter_TwoMoment_MF
 
 
-  SUBROUTINE ApplyPositivityLimiter_TwoMoment_MF &
-    ( GEOM, MF_uGF, MF_uCF, MF_uCR, Verbose_Option )
+  SUBROUTINE ApplyPositivityLimiter_TwoMoment_MF_SingleLevel &
+    ( iLevel, MF_uGF, MF_uCF, MF_uCR, swX_Option )
 
-    TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCR (0:nLevels-1)
-    LOGICAL             , INTENT(in), OPTIONAL :: Verbose_Option
+    INTEGER             , INTENT(in)           :: iLevel
+    TYPE(amrex_multifab), INTENT(in)           :: MF_uGF
+    TYPE(amrex_multifab), INTENT(inout)        :: MF_uCF
+    TYPE(amrex_multifab), INTENT(inout)        :: MF_uCR
+    INTEGER             , INTENT(in), OPTIONAL :: swX_Option(3)
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
@@ -126,33 +147,30 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: C (:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U (:,:,:,:,:,:,:)
 
-    INTEGER :: iLevel
-    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
-    INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    INTEGER       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3), &
+                     iLo_MF(4), swXX(3)
+    INTEGER       :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), iZ_B(4), iZ_E(4)
+    TYPE(EdgeMap) :: Edge_Map
 
-    LOGICAL :: Verbose
+    IF( nDOFX .EQ. 1 ) RETURN
 
-    Verbose = .FALSE.
-    IF( PRESENT( Verbose_Option ) ) &
-      Verbose = Verbose_Option
+    IF( .NOT. UsePositivityLimiter ) RETURN
 
-    DO iLevel = 0, nLevels-1
+    swXX = 0
+    IF( PRESENT( swX_Option ) ) &
+      swXX = swX_Option
+
+    CALL CreateMesh_MF( iLevel, MeshX )
+
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
       ! --- Apply boundary conditions to interior domains ---
 
-      CALL MF_uCR(iLevel) % Fill_Boundary( GEOM(iLevel) )
-
-      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
-
-      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
-
-      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
-
       DO WHILE( MFI % next() )
 
-        uGF  => MF_uGF (iLevel) % DataPtr( MFI )
-        uCF  => MF_uCF (iLevel) % DataPtr( MFI )
-        uCR  => MF_uCR (iLevel) % DataPtr( MFI )
+        uGF  => MF_uGF % DataPtr( MFI )
+        uCF  => MF_uCF% DataPtr( MFI )
+        uCR  => MF_uCR% DataPtr( MFI )
 
         iLo_MF = LBOUND( uGF )
 
@@ -162,6 +180,8 @@ CONTAINS
         iX_E0 = BX % hi
         iX_B1 = BX % lo - swX
         iX_E1 = BX % hi + swX
+        iX_B  = BX % lo - swXX
+        iX_E  = BX % hi + swXX
 
         iZ_B0(1) = iE_B0
         iZ_B1(1) = iE_B1
@@ -200,13 +220,21 @@ CONTAINS
                    nSpecies ], &
                  U )
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uGF, G )
 
-        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uCF, C )
+        CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uCF, C )
 
         CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uCR, U )
+
+      ! --- Apply boundary conditions to physical boundaries
+      !     (needed for AMR) ---
+
+        CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
+
+        !CALL ApplyBoundaryConditions_Euler_MF &
+             !( iX_B0, iX_E0, iX_B1, iX_E1, C, Edge_Map )
 
         CALL ApplyPositivityLimiter_TwoMoment &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U )
@@ -246,9 +274,48 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
+    CALL DestroyMesh_MF( MeshX )
+
+  END SUBROUTINE ApplyPositivityLimiter_TwoMoment_MF_SingleLevel
+
+
+  SUBROUTINE ApplyPositivityLimiter_TwoMoment_MF_MultipleLevels &
+    ( MF_uGF, MF_uCF, MF_uCR, swX_Option )
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCR(0:)
+    INTEGER             , INTENT(in), OPTIONAL :: swX_Option(3)
+
+    INTEGER :: iLevel, iErr, swXX(3)
+
+    swXX = 0
+    IF( PRESENT( swX_Option ) ) &
+      swXX = swX_Option
+
+    DO iLevel = 0, nLevels-1
+
+      IF( DEBUG )THEN
+
+        CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+
+        IF( amrex_parallel_ioprocessor() )THEN
+
+          WRITE(*,'(2x,A,I3.3)') &
+            'CALL ApplyPositivityLimiter_TwoMoment_MF_SingleLevel, iLevel: ', &
+            iLevel
+
+        END IF
+
+      END IF ! DEBUG
+
+      CALL ApplyPositivityLimiter_TwoMoment_MF_SingleLevel &
+             ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uCR(iLevel), &
+               swX_Option = swXX )
+
     END DO ! iLevel = 0, nLevels-1
 
-  END SUBROUTINE ApplyPositivityLimiter_TwoMoment_MF
+  END SUBROUTINE ApplyPositivityLimiter_TwoMoment_MF_MultipleLevels
 
 
 END MODULE MF_TwoMoment_PositivityLimiterModule
