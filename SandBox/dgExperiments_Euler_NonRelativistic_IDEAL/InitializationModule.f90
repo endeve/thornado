@@ -68,10 +68,6 @@ CONTAINS
 
         CALL InitializeFields_RiemannProblemSpherical
 
-      CASE ( 'RiemannProblemShifted' )
-
-        CALL InitializeFields_RiemannProblemShifted
-
       CASE ( 'SphericalSedov' )
 
         CALL InitializeFields_SphericalSedov &
@@ -459,76 +455,6 @@ CONTAINS
 
   END SUBROUTINE InitializeFields_RiemannProblemSpherical
 
-  SUBROUTINE InitializeFields_RiemannProblemShifted
-
-    INTEGER       :: iX1, iX2, iX3
-    INTEGER       :: iNodeX, iNodeX1, iNodeX2
-    REAL(DP)      :: X1, X2, X, Y, ShockRadius, X1Shift, X2Shift
-
-    ! Shift the shock in RiemannProblemSpherical to the Cartesian equation
-    ! (x - X1Shift)^2 + (y - X2Shift)^2 = ShockRadius^2
-    ! "Left state" is inside the shock; "Right state" is outside the shock
-
-    ShockRadius = 0.4_DP
-    X1Shift = Zero
-    X2Shift = 1.0d-2
-
-    DO iX3 = 1, nX(3)
-      DO iX2 = 1, nX(2)
-        DO iX1 = 1, nX(1)
-
-          DO iNodeX = 1, nDOFX
-
-            iNodeX1 = NodeNumberTableX(1,iNodeX)
-            iNodeX2 = NodeNumberTableX(2,iNodeX)
-
-            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
-
-            X = X1 * COS(X2)
-            Y = X1 * SIN(X2)
-
-            ! IF( (X-X1Shift)**2 + (Y-X2Shift)**2 <= ShockRadius**2 )THEN
-            IF( X1 <= 0.5_DP .OR. X1 >= 1.5_DP )THEN
-            ! IF( X1 <= 0.4_DP .AND. (X2 <= 3.0_DP * Pi / 4.0_DP .AND. X2 >= Pi / 4.0_DP) )THEN
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0_DP / 0.4_DP
-
-            ELSE
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.125_DP
-              ! uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP ! uniform IC
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 0.1_DP / 0.4_DP
-              ! uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0_DP / 0.4_DP ! uniform IC
-
-            END IF
-
-          END DO
-
-          CALL ComputeConserved_Euler_NonRelativistic &
-                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
-                   uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
-                   uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
-                   uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
-                   uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
-                   uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
-
-        END DO
-      END DO
-    END DO
-
-  END SUBROUTINE InitializeFields_RiemannProblemShifted
-
 
   SUBROUTINE InitializeFields_SphericalSedov &
     ( SedovEnergy_Option, nDetCells_Option )
@@ -544,11 +470,12 @@ CONTAINS
     IF( PRESENT( nDetCells_Option ) ) &
       nDetCells = nDetCells_Option
 
-    E_0 = 1.0_DP
+    E_0 = 1.0_DP ! Try setting to 0 for 3D?
     IF( PRESENT( SedovEnergy_Option ) ) &
       E_0 = SedovEnergy_Option
 
     R_0 = REAL( nDetCells ) * MeshX(1) % Width(1)
+      ! R_0 = - One ! Uniform background / internal energy
 
     WRITE(*,*)
     WRITE(*,'(A7,A,ES10.3E2,A2,I2.2,A2,ES10.3E2)') &

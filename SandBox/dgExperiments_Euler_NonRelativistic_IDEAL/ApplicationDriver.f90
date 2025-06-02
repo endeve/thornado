@@ -95,11 +95,11 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'RiemannProblemSpherical'
+  ProgramName = 'SphericalSedov'
 
   RestartFileNumber  = -1
   UseCellMerging     = .FALSE.
-  Min_NCellsPerMerge = 0 ! --- Sets minimum number of merged cells as 2**Min_NCellsPerMerge ---
+  Min_NCellsPerMerge = 1 ! --- Sets minimum number of merged cells as 2**Min_NCellsPerMerge ---
 
   t = 0.0_DP
 
@@ -186,42 +186,12 @@ PROGRAM ApplicationDriver
       LimiterThresholdParameter = 0.03_DP
 
       UseCellMerging            = .TRUE.
-      Min_NCellsPerMerge        = 5 ! --- Sets minimum number of merged cells as 2**Min_NCellsPerMerge ---
+      Min_NCellsPerMerge        = 1 ! --- Sets minimum number of merged cells as 2**Min_NCellsPerMerge ---
 
       iCycleD = 1
       t_end   = 2.5d+0
       dt_wrt  = 2.5d-2
       ! dt_wrt  = 1.0d-6
-
-    CASE( 'RiemannProblemShifted' )
-
-      CoordinateSystem = 'SPHERICAL'
-
-      Gamma = 1.4_DP
-
-      nX = [ 128, 64, 1 ] ! Change nX(2) to 16?
-      xL = [ 1.0d-8, 1.0d-8, 0.0_DP ]
-      xR = [ 2.0_DP, Pi - 1.0d-8,     TwoPi  ]
-
-      swX = [ 1, 1, 0 ]
-      bcX = [ 3, 3, 0 ]
-
-      nNodes = 2
-
-      BetaTVD = 1.75_DP
-      BetaTVB = 0.0d+00
-
-      UseSlopeLimiter           = .FALSE.
-      UseCharacteristicLimiting = .FALSE.
-
-      UseTroubledCellIndicator  = .FALSE.
-      LimiterThresholdParameter = 0.06_DP
-
-      UseCellMerging            = .TRUE.
-
-      iCycleD = 1
-      t_end   = 5.0d-1
-      dt_wrt  = 2.5d-2
 
     CASE( 'SphericalSedov' )
 
@@ -231,12 +201,15 @@ PROGRAM ApplicationDriver
 
       Gamma = 1.4_DP
 
-      nX = [ 256, 1, 1 ]
+      nX = [ 64, 8, 8 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      xR = [ 1.2_DP, Pi,     TwoPi  ]
+      ! xR = [ 1.2_DP, Pi,     TwoPi  ]
+      xR = [ 1.2_DP, Pi/2.0_DP,     Pi/2.0_DP  ] ! 3D Octant
 
-      swX = [ 1, 1, 0 ]
-      bcX = [ 31, 3, 0 ] ! use 3 for 2nd dimension
+      swX   = [  1, 1, 1 ]
+      ! bcX   = [ 31, 3, 0 ] ! 2D BCs
+      bcX   = [ 31, 3, 1 ] ! 3D Octant BCs
+      ! zoomX = [ 1.009928960258105_DP, One, One ] !ZoomX factor for 128 cells so that first cell width is 1.2/256
 
       nNodes = 2
 
@@ -249,11 +222,13 @@ PROGRAM ApplicationDriver
       UseTroubledCellIndicator  = .TRUE.
       LimiterThresholdParameter = 0.015_DP
 
-      UseCellMerging            = .FALSE.
+      UseCellMerging            = .TRUE.
 
-      iCycleD = 1
+      iCycleD = 100
       t_end   = 1.0d+0
+      ! t_end   = 1.0d-5 ! 3D
       dt_wrt  = 5.0d-2
+      ! dt_wrt  = 1.0d-2 ! 3D
 
     CASE( 'IsentropicVortex' )
 
@@ -467,11 +442,11 @@ PROGRAM ApplicationDriver
   ! --- Test CellMergingModule ---
   IF( UseCellMerging )THEN
 
-    WRITE(*,'(A2,A6,A)') '', 'INFO: ', 'Using Cell Merging'
+    WRITE(*,'(A2,A6,A18)') '', 'INFO: ', 'Using Cell Merging'
+    WRITE(*,'(A2,A6,A24,I8.8)') '', 'INFO: ', 'Min # of Merged Cells = ', &
+      2**Min_NCellsPerMerge
 
     CALL Initialize_CellMerging( nX, nNodes, Min_NCellsPerMerge )
-
-    ! CALL MergeAndRestrictGeometry( nNodes, uGF )
   
     CALL MergeAndRestrict( nNodes, uCF )
     
@@ -485,6 +460,8 @@ PROGRAM ApplicationDriver
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = .TRUE., WriteFF_Option = .TRUE. )
+
+  ! STOP
 
   CALL TimersStop_Euler( Timer_Euler_InputOutput )
 
@@ -514,7 +491,7 @@ PROGRAM ApplicationDriver
     CALL ComputeTimeStep_Euler_NonRelativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, &
              CFL = 0.5_DP / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
-            !  CFL = 0.1_DP / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
+            !  CFL = 0.25_DP / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
              TimeStep = dt, Merge_Option = UseCellMerging ) ! set to UseCellMerging for larger timestep
 
     IF( t + dt > t_end )THEN
@@ -596,7 +573,9 @@ PROGRAM ApplicationDriver
   WRITE(*,*)
 
   IF(UseCellMerging)THEN
+
     CALL Finalize_CellMerging( nX ) ! or a conditional that is passed into initialization
+
   END IF
 
   CALL FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL

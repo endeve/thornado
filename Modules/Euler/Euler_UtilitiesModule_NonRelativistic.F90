@@ -12,7 +12,7 @@ MODULE Euler_UtilitiesModule_NonRelativistic
   USE MeshModule, ONLY: &
     MeshX
   USE CellMergingModule, ONLY: &
-    MergedMeshX2
+    MergedMeshX2, MergedMeshX3
   USE GeometryFieldsModule, ONLY: &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
@@ -393,12 +393,16 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
         dX(1) = dX1(iX1)
-        IF( Merge )THEN
+        IF( Merge .AND. (nDimsX .LT. 3) )THEN
           dX(2) = MergedMeshX2(iX1) % MergeWidth(iX2)
+          dX(3) = dX3(iX3)
+        ELSE IF( Merge .AND. (nDimsX .GE. 3) )THEN
+          dX(2) = MergedMeshX2(iX1    ) % MergeWidth(iX2)
+          dX(3) = MergedMeshX3(iX1,iX2) % MergeWidth(iX3)
         ELSE
           dX(2) = dX2(iX2)
+          dX(3) = dX3(iX3)
         END IF
-        dX(3) = dX3(iX3)
 
         CALL ComputePrimitive_Euler_NonRelativistic &
                ( U(iNodeX,iX1,iX2,iX3,iCF_D ), &
@@ -427,6 +431,10 @@ CONTAINS
 
           TimeStep = MIN( TimeStep, dt )
 
+          ! IF (TimeStep .EQ. dt) THEN
+          !   print*, 'iX1, iX2, iX3, iDimX, dX', iX1, iX2, iX3, iDimX, dX(iDimX)
+          ! END IF
+
         END DO
 
       END DO
@@ -436,6 +444,8 @@ CONTAINS
     END DO
 
     TimeStep = MAX( CFL * TimeStep, SqrtTiny )
+    ! print *, 'TimeStep = ', TimeStep
+    ! STOP
 
     CALL TimersStop_Euler( Timer_Euler_CTS_ComputeTimeStep )
 
@@ -574,7 +584,16 @@ CONTAINS
     REAL(DP), INTENT(in) :: D, V_1, V_2, V_3, E, Ne, P
     REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
-    Flux_X3_Euler_NonRelativistic = 0.0_DP
+    REAL(DP) :: VSq
+
+    VSq = Gm_dd_11 * V_1**2 + Gm_dd_22 * V_2**2 + Gm_dd_33 * V_3**2
+
+    Flux_X3_Euler_NonRelativistic(iCF_D ) = D * V_3
+    Flux_X3_Euler_NonRelativistic(iCF_S1) = D * Gm_dd_11 * V_1 * V_3
+    Flux_X3_Euler_NonRelativistic(iCF_S2) = D * Gm_dd_22 * V_2 * V_3
+    Flux_X3_Euler_NonRelativistic(iCF_S3) = D * Gm_dd_33 * V_3 * V_3 + P
+    Flux_X3_Euler_NonRelativistic(iCF_E ) = ( E + Half * D * VSq + P ) * V_3
+    Flux_X3_Euler_NonRelativistic(iCF_Ne) = Ne * V_3
 
     RETURN
   END FUNCTION Flux_X3_Euler_NonRelativistic

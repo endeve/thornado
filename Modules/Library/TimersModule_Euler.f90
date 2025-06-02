@@ -116,6 +116,11 @@ MODULE TimersModule_Euler
   REAL(DP), PUBLIC :: Timer_GravitySolver
   REAL(DP), PUBLIC :: Timer_GS_ComputeSourceTerms
 
+  ! --- Cell Merging ---
+
+  REAL(DP), PUBLIC :: Timer_CellMerging
+  REAL(DP), PUBLIC :: Timer_CM_UpdateCoefficient
+
   PUBLIC :: InitializeTimers_Euler
   PUBLIC :: FinalizeTimers_Euler
   PUBLIC :: TimersStart_Euler
@@ -213,6 +218,9 @@ CONTAINS
 
     Timer_GravitySolver         = SqrtTiny
     Timer_GS_ComputeSourceTerms = SqrtTiny
+
+    Timer_CellMerging          = SqrtTiny
+    Timer_CM_UpdateCoefficient = SqrtTiny
 
   END SUBROUTINE InitializeTimers_Euler
 
@@ -788,6 +796,21 @@ CONTAINS
         'ComputeSourceTerms : ', &
         Timer_GS_ComputeSourceTerms, ' s = ', &
         Timer_GS_ComputeSourceTerms / Timer_Euler_Program
+
+      WRITE(*,*)
+      WRITE(*,TRIM(Label)) 'Cell Merging'
+      WRITE(*,TRIM(Label)) '------------'
+      WRITE(*,*)
+
+      WRITE(*,TRIM(TimeL2)) &
+        'Merge and Restrict  : ', &
+        Timer_CellMerging, ' s = ', &
+        Timer_CellMerging / Timer_Euler_Program
+
+      WRITE(*,TRIM(TimeL2)) &
+        'Update Coefficients : ', &
+        Timer_CM_UpdateCoefficient, ' s = ', &
+        Timer_CM_UpdateCoefficient / Timer_Euler_Program
 
     END IF
 
