@@ -5,7 +5,7 @@ MODULE GeometryComputationModule
   USE ProgramHeaderModule, ONLY: &
     nDOFX
   USE ReferenceElementModuleX, ONLY: &
-    NodesLX_q
+    NodesLX_q, NodesX_q
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     LX_L2G
   USE MeshModule, ONLY: &
@@ -215,7 +215,7 @@ CONTAINS
 
     INTEGER  :: iX1, iX2, iX3, iNodeX
     INTEGER  :: nP_X, nX(3)
-    REAL(DP) :: x1L_q, x2L_q, x1G_q, x2G_q
+    REAL(DP) :: x1L_q, x2L_q, x1G_q, x2G_q, x1_q, x2_q
     REAL(DP), ALLOCATABLE :: h_1_L  (:,:,:,:)
     REAL(DP), ALLOCATABLE :: h_2_L  (:,:,:,:)
     REAL(DP), ALLOCATABLE :: h_3_L  (:,:,:,:)
@@ -273,6 +273,8 @@ CONTAINS
       x1G_q = CenterX1(iX1) + WidthX1(iX1) * x1L_q
       x2G_q = CenterX2(iX2) + WidthX2(iX2) * x2L_q
 
+      ! print *,'iNodeX, iX1, iX2, iX3, x1G_q, x2G_q',iNodeX,iX1,iX2,iX3,x1G_q,x2G_q
+
       ! --- Compute Lapse Function and Conformal Factor ---
 
       Alpha_L(iNodeX,iX1,iX2,iX3) &
@@ -282,16 +284,42 @@ CONTAINS
 
       ! --- Set Geometry in Lobatto Points ---
 
+      IF( iX1 .EQ. 1 )THEN
+        x1_q = CenterX1(iX1) + WidthX1(iX1) * NodesX_q(1,iNodeX) ! set as global Gauss point
+        x1_q = x1_q / 1.0d+4 ! 2D
+        ! x1_q = x1_q / 1.0d+1 ! 3D
+        ! print *, 'x1 = ', x1_q
+      ELSE
+        x1_q = x1G_q ! set as Lobatto point so MAX statement evaluates to x1G_q
+      END IF
+
+      IF( iX2 .EQ. 1 )THEN
+        x2_q = CenterX2(iX2) + WidthX2(iX2) * NodesX_q(2,iNodeX) ! set as global Gauss point
+        x2_q = x2_q / 1.0d+4 ! 3D
+        ! print *, 'x2 = ', x2_q
+        ! STOP
+      ELSE
+        x2_q = x2G_q ! set as Lobatto point so MAX statement evaluates to x2G_q
+      END IF
+
       h_1_L(iNodeX,iX1,iX2,iX3) &
         = Psi_L(iNodeX,iX1,iX2,iX3)**2
       h_2_L(iNodeX,iX1,iX2,iX3) &
-        = Psi_L(iNodeX,iX1,iX2,iX3)**2 * x1G_q
+        ! = Psi_L(iNodeX,iX1,iX2,iX3)**2 * x1G_q ! original
+        ! = Psi_L(iNodeX,iX1,iX2,iX3)**2 * MAX(x1G_q, 1.0d-8) ! setting for 2D Sedov
+        ! = Psi_L(iNodeX,iX1,iX2,iX3)**2 * MAX(x1G_q, 1.0d-12) ! setting for 3D Sedov
+        ! = Psi_L(iNodeX,iX1,iX2,iX3)**2 * MAX(x1G_q, 1.0d-2) ! setting for Riemann2D
+        = Psi_L(iNodeX,iX1,iX2,iX3)**2 * MAX(x1G_q, x1_q) ! Grid independent?
       h_3_L(iNodeX,iX1,iX2,iX3) &
-        = Psi_L(iNodeX,iX1,iX2,iX3)**2 * x1G_q * SIN( x2G_q )
+        ! = Psi_L(iNodeX,iX1,iX2,iX3)**2 * x1G_q * SIN( x2G_q ) ! original/2D Sedov
+        ! = Psi_L(iNodeX,iX1,iX2,iX3)**2 * MAX(x1G_q * SIN( x2G_q ), 1.0d-12) ! setting for 3D Sedov
+        ! = Psi_L(iNodeX,iX1,iX2,iX3)**2 * MAX(x1G_q, 1.0d-2) * SIN( x2G_q ) ! setting for Riemann2D
+        = Psi_L(iNodeX,iX1,iX2,iX3)**2 * MAX(x1G_q * SIN( x2G_q ), x1_q * SIN( x2_q )) ! Grid independent?
 
     END DO
     END DO
     END DO
+    ! STOP
     END DO
 
     ! --- Interpolate from Lobatto to Gaussian Points ---

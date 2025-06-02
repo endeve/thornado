@@ -252,6 +252,9 @@ CONTAINS
     IF( ApplyOuterBC_Euler( iApplyBC(3) ) .AND. bcX(3) .NE. 1 ) &
       ExcludeOuterGhostCell(3) = .TRUE.
 
+    ExcludeInnerGhostCell(:) = .FALSE. ! This helped with inner boundary issue on Riemann Problem
+    ExcludeOuterGhostCell(:) = .FALSE. ! This helped with inner boundary issue on Riemann Problem
+
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
