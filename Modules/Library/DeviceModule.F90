@@ -77,7 +77,8 @@ MODULE DeviceModule
     omp_set_default_device, &
     omp_get_default_device, &
     omp_is_initial_device, &
-    omp_target_is_present
+    omp_target_is_present, &
+    omp_get_mapped_ptr
   USE omp_lib, ONLY : &
     omp_get_num_devices
 #endif
@@ -289,56 +290,47 @@ CONTAINS
 
 
   TYPE(C_PTR) FUNCTION dev_ptr_int( a )
+    INTEGER, TARGET, INTENT(IN) :: a
 #if defined(THORNADO_OMP_OL)
-    INTEGER, TARGET, INTENT(IN) :: a
-    !$OMP TARGET DATA USE_DEVICE_PTR( a )
-#elif defined(THORNADO_OACC)
-    INTEGER, TARGET, INTENT(IN) :: a
-    !$ACC HOST_DATA USE_DEVICE( a )
+    dev_ptr_int = omp_get_mapped_ptr( C_LOC( a ), omp_get_default_device() )
 #else
-    INTEGER, TARGET, INTENT(IN) :: a
+#if defined(THORNADO_OACC)
+    !$ACC HOST_DATA USE_DEVICE( a )
 #endif
     dev_ptr_int = C_LOC( a )
-#if defined(THORNADO_OMP_OL)
-    !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
+#if defined(THORNADO_OACC)
     !$ACC END HOST_DATA
+#endif
 #endif
   END FUNCTION dev_ptr_int
 
   TYPE(C_PTR) FUNCTION dev_ptr_dp( a )
+    REAL(DP), TARGET, INTENT(IN) :: a
 #if defined(THORNADO_OMP_OL)
-    REAL(DP), TARGET, INTENT(IN) :: a
-    !$OMP TARGET DATA USE_DEVICE_PTR( a )
-#elif defined(THORNADO_OACC)
-    REAL(DP), TARGET, INTENT(IN) :: a
-    !$ACC HOST_DATA USE_DEVICE( a )
+    dev_ptr_dp = omp_get_mapped_ptr( C_LOC( a ), omp_get_default_device() )
 #else
-    REAL(DP), TARGET, INTENT(IN) :: a
+#if defined(THORNADO_OACC)
+    !$ACC HOST_DATA USE_DEVICE( a )
 #endif
     dev_ptr_dp = C_LOC( a )
-#if defined(THORNADO_OMP_OL)
-    !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
+#if defined(THORNADO_OACC)
     !$ACC END HOST_DATA
+#endif
 #endif
   END FUNCTION dev_ptr_dp
 
   TYPE(C_PTR) FUNCTION dev_ptr_cptr( a )
+    TYPE(C_PTR), TARGET, INTENT(IN) :: a
 #if defined(THORNADO_OMP_OL)
-    TYPE(C_PTR), TARGET, INTENT(IN) :: a
-    !$OMP TARGET DATA USE_DEVICE_PTR( a )
-#elif defined(THORNADO_OACC)
-    TYPE(C_PTR), TARGET, INTENT(IN) :: a
-    !$ACC HOST_DATA USE_DEVICE( a )
+    dev_ptr_cptr = omp_get_mapped_ptr( C_LOC( a ), omp_get_default_device() )
 #else
-    TYPE(C_PTR), TARGET, INTENT(IN) :: a
+#if defined(THORNADO_OACC)
+    !$ACC HOST_DATA USE_DEVICE( a )
 #endif
     dev_ptr_cptr = C_LOC( a )
-#if defined(THORNADO_OMP_OL)
-    !$OMP END TARGET DATA
-#elif defined(THORNADO_OACC)
+#if defined(THORNADO_OACC)
     !$ACC END HOST_DATA
+#endif
 #endif
   END FUNCTION dev_ptr_cptr
 
