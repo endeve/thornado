@@ -6,4 +6,6 @@ HYDRO_RIEMANN_SOLVER = HLL
 OPT_LEVEL = DEBUG
 FLAGS     = $(FLAGS_$(OPT_LEVEL))
 
+USE_OMP    ?= TRUE
+
 include ../Makefile
