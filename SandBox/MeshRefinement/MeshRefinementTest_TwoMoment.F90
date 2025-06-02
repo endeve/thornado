@@ -181,8 +181,8 @@ PROGRAM MeshRefinementTest_TwoMoment
   ALLOCATE( G_Crse(nDOFX,nX_Crse(1),nX_Crse(2),nX_Crse(3),nGF) )
   ALLOCATE( G_Fine(nDOFX,nX_Fine(1),nX_Fine(2),nX_Fine(3),nGF) )
 
-  G_Crse = 0.0
-  G_Fine = 0.0
+  G_Crse = 0.0_DP
+  G_Fine = 0.0_DP
 
   DO k = 1, 3
     CALL CreateMesh( MeshX_Crse(k), nX_Crse(k), nNodes, 0, xL(k), xR(k) )
@@ -207,6 +207,22 @@ PROGRAM MeshRefinementTest_TwoMoment
   ALLOCATE( X2_0(nX_Crse(2)*nNodesX(2)) )
   ALLOCATE( X3_0(nX_Crse(3)*nNodesX(3)) )
 
+#if   defined( THORNADO_OMP_OL )
+  !$OMP TARGET ENTER DATA &
+  !$OMP MAP( to:    nX_Crse, iX_Crse_B1, iX_Crse_E1, G_Crse, &
+  !$OMP             nX_Fine, iX_Crse_B1, iX_Crse_E1, G_Fine, &
+  !$OMP             nFineX, V_0 ) &
+  !$OMP MAP( alloc: U_0, U_Crse, &
+  !$OMP             U_1, U_Fine )
+#elif defined( THORNADO_OACC   )
+  !$ACC ENTER DATA &
+  !$ACC COPYIN(     nX_Crse, iX_Crse_B1, iX_Crse_E1, G_Crse, &
+  !$ACC             nX_Fine, iX_Crse_B1, iX_Crse_E1, G_Fine, &
+  !$ACC             nFineX, V_0 ) &
+  !$ACC CREATE(     U_0, U_Crse, &
+  !$ACC             U_1, U_Fine )
+#endif
+
   ! Calculate sqrt(Gamma) for geometry corrections
   call ComputeGeometryX( iX_Crse_B1, iX_Crse_E1, iX_Crse_B1, iX_Crse_E1, G_Crse, &
      MeshX_Option = MeshX_Crse, &
@@ -218,6 +234,21 @@ PROGRAM MeshRefinementTest_TwoMoment
 
   ! --- Initialize Data on Coarse Level ---
 
+#if   defined( THORNADO_OMP_OL )
+  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
+  !$OMP MAP( from: X1_0, X2_0, X3_0 ) &
+  !$OMP PRIVATE(   iNodeX1, iNodeX2, iNodeX3, X1, X2, X3, &
+  !$OMP            iP_X1, iP_X2, iP_X3, iVar, uPR, uCR )
+#elif defined( THORNADO_OACC   )
+  !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+  !$ACC COPYOUT(   X1_0, X2_0, X3_0 ) &
+  !$ACC PRIVATE(   iNodeX1, iNodeX2, iNodeX3, X1, X2, X3, &
+  !$ACC            iP_X1, iP_X2, iP_X3, iVar, uPR, uCR )
+#elif defined( THORNADO_OMP    )
+  !$OMP PARALLEL DO COLLAPSE(7) &
+  !$OMP PRIVATE( iNodeX1, iNodeX2, iNodeX3, X1, X2, X3, &
+  !$OMP          iP_X1, iP_X2, iP_X3, iVar, uPR, uCR )
+#endif
   DO iS = 1, nSpecies
   DO iE = 1, nE
   DO iNodeE = 1, nDOFE
@@ -273,6 +304,20 @@ PROGRAM MeshRefinementTest_TwoMoment
   END DO
   END DO
 
+
+#if   defined( THORNADO_OMP_OL )
+  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(8) &
+  !$OMP PRIVATE( iNodeX1, iNodeX2, iNodeX3, iFineX1, iFineX2, iFineX3, &
+  !$OMP          iX1_Fine, iX2_Fine, iX3_Fine, X1, X2, X3, iVar, uPR, uCR )
+#elif defined( THORNADO_OACC   )
+  !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(8) &
+  !$ACC PRIVATE( iNodeX1, iNodeX2, iNodeX3, iFineX1, iFineX2, iFineX3, &
+  !$ACC          iX1_Fine, iX2_Fine, iX3_Fine, X1, X2, X3, iVar, uPR, uCR )
+#elif defined( THORNADO_OMP    )
+  !$OMP PARALLEL DO COLLAPSE(8) &
+  !$OMP PRIVATE( iNodeX1, iNodeX2, iNodeX3, iFineX1, iFineX2, iFineX3, &
+  !$OMP          iX1_Fine, iX2_Fine, iX3_Fine, X1, X2, X3, iVar, uPR, uCR )
+#endif
   DO iS = 1, nSpecies
   DO iE = 1, nE
   DO iNodeE = 1, nDOFE
@@ -329,6 +374,14 @@ PROGRAM MeshRefinementTest_TwoMoment
   END DO
   END DO
 
+#if   defined( THORNADO_OMP_OL )
+  !$OMP TARGET UPDATE &
+  !$OMP FROM( U_0, U_1, U_Crse )
+#elif defined( THORNADO_OACC   )
+  !$ACC UPDATE &
+  !$ACC HOST( U_0, U_1, U_Crse )
+#endif
+
   CALL WriteRF_Crse( U_0 )
   CALL WriteVector( nDOFX*nVar*PRODUCT(nX_Crse),  &
                     RESHAPE( U_0(:,:,:,:,:), [nDOFX*nVar*PRODUCT(nX_Crse)] ), &
@@ -345,6 +398,14 @@ PROGRAM MeshRefinementTest_TwoMoment
   CALL TimersStart( Timer_Refine )
   CALL RefineX_TwoMoment( nX_Crse, nX_Fine, nVar, G_Crse, U_Crse, G_Fine, U_Fine )
   CALL TimersStop( Timer_Refine )
+
+#if   defined( THORNADO_OMP_OL )
+  !$OMP TARGET UPDATE &
+  !$OMP FROM( U_Fine )
+#elif defined( THORNADO_OACC   )
+  !$ACC UPDATE &
+  !$ACC HOST( U_Fine )
+#endif
 
   PRINT*, ""
   PRINT*, "After Refinement: "
@@ -428,6 +489,13 @@ PROGRAM MeshRefinementTest_TwoMoment
 
   ! --- Coarsen ---
 
+#if   defined( THORNADO_OMP_OL )
+  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   )
+  !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5)
+#elif defined( THORNADO_OMP    )
+  !$OMP PARALLEL DO COLLAPSE(5)
+#endif
   DO iX3 = 1, nX_Crse(3)
   DO iX2 = 1, nX_Crse(2)
   DO iX1 = 1, nX_Crse(1)
@@ -445,7 +513,7 @@ PROGRAM MeshRefinementTest_TwoMoment
 
   PRINT*, ""
   PRINT*, "Before Coarsening: "
-  PRINT*, "  MIN/MAX/SUM U_Fine = ", MINVAL( U_Fine), MAXVAL( U_Fine), SUM( U_Fine)
+  PRINT*, "  MIN/MAX/SUM U_Fine = ", MINVAL( U_Fine ), MAXVAL( U_Fine ), SUM( U_Fine )
 
   Timer_Coarsen = 0.0_DP
   CALL TimersStart( Timer_Coarsen )
@@ -453,6 +521,14 @@ PROGRAM MeshRefinementTest_TwoMoment
   CALL TimersStop( Timer_Coarsen )
 
   Timer_Total = Timer_Refine + Timer_Coarsen
+
+#if   defined( THORNADO_OMP_OL )
+  !$OMP TARGET UPDATE &
+  !$OMP FROM( U_Crse )
+#elif defined( THORNADO_OACC   )
+  !$ACC UPDATE &
+  !$ACC HOST( U_Crse )
+#endif
 
   PRINT*, ""
   PRINT*, "After Coarsening: "
@@ -523,6 +599,22 @@ PROGRAM MeshRefinementTest_TwoMoment
   END DO
   END DO
 
+#if   defined( THORNADO_OMP_OL )
+  !$OMP TARGET EXIT DATA &
+  !$OMP MAP( release: nX_Crse, iX_Crse_B1, iX_Crse_E1, G_Crse, &
+  !$OMP               nX_Fine, iX_Crse_B1, iX_Crse_E1, G_Fine, &
+  !$OMP               nFineX, V_0, &
+  !$OMP               U_0, U_Crse, &
+  !$OMP               U_1, U_Fine )
+#elif defined( THORNADO_OACC   )
+  !$ACC EXIT DATA &
+  !$ACC DELETE(       nX_Crse, iX_Crse_B1, iX_Crse_E1, G_Crse, &
+  !$ACC               nX_Fine, iX_Crse_B1, iX_Crse_E1, G_Fine, &
+  !$ACC               nFineX, V_0, &
+  !$ACC               U_0, U_Crse, &
+  !$ACC               U_1, U_Fine )
+#endif
+
   DEALLOCATE( X1_0, X2_0, X3_0 )
   DEALLOCATE( G_Crse, G_Fine, U_0, U_Crse, U_1, U_Fine )
   DEALLOCATE( xL_Sub, xR_Sub )
@@ -542,6 +634,11 @@ PROGRAM MeshRefinementTest_TwoMoment
 CONTAINS
 
   FUNCTION f_0( X1, X2, X3 ) RESULT( uPR )
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
 
     REAL(DP), INTENT(in)  :: X1, X2, X3
     REAL(DP)              :: uPR(nPR)
@@ -582,7 +679,6 @@ CONTAINS
       WRITE(*,*)
       WRITE(*,'(A5,A27,A)') &
         '', 'Invalid Coordinate System: ', TRIM( CoordinateSystem )
-      STOP
     END SELECT
 
     !D_0 = ( Sigma / t_0 )**( 1.5_DP ) &

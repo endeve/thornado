@@ -764,12 +764,12 @@ CONTAINS
     END DO
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET ENTER DATA &
+    !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    U_Fine ) &
     !$OMP MAP( release: nX_Crse, nX_Fine, G_Crse, U_Crse, G_Fine, &
     !$OMP               ProlongationMatrix, MassMatrix, IPIV, INFO, RHS )
 #elif defined( THORNADO_OACC   )
-    !$ACC ENTER DATA &
+    !$ACC EXIT DATA &
     !$ACC COPYOUT(      U_Fine ) &
     !$ACC DELETE(       nX_Crse, nX_Fine, G_Crse, U_Crse, G_Fine, &
     !$ACC               ProlongationMatrix, MassMatrix, IPIV, INFO, RHS )
@@ -929,11 +929,11 @@ CONTAINS
              U_Crse, nDOFX, INFO, nCrse )
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET ENTER DATA &
+    !$OMP TARGET EXIT DATA &
     !$OMP MAP( from:    U_Crse ) &
     !$OMP MAP( release: nX_Fine, nX_Crse, G_Fine, U_Fine, G_Crse, RestrictionMatrix, MassMatrix, IPIV, INFO )
 #elif defined( THORNADO_OACC   )
-    !$ACC ENTER DATA &
+    !$ACC EXIT DATA &
     !$ACC COPYOUT(      U_Crse ) &
     !$ACC DELETE(       nX_Fine, nX_Crse, G_Fine, U_Fine, G_Crse, RestrictionMatrix, MassMatrix, IPIV, INFO )
 #endif
