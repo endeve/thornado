@@ -91,7 +91,6 @@ PROGRAM MeshRefinementTest_TwoMoment
   REAL(DP), ALLOCATABLE :: U_Crse (:,:,:,:,:)
   REAL(DP), ALLOCATABLE :: U_1    (:,:,:,:,:,:)
   REAL(DP), ALLOCATABLE :: U_Fine (:,:,:,:,:,:)
-  REAL(DP), ALLOCATABLE :: U_Fine2(:,:,:,:,:,:)
 
   REAL(DP), ALLOCATABLE :: G_Crse(:,:,:,:,:)
   REAL(DP), ALLOCATABLE :: G_Fine(:,:,:,:,:)
@@ -169,11 +168,10 @@ PROGRAM MeshRefinementTest_TwoMoment
   ALLOCATE( xR_Sub(3,nSub) )
   ALLOCATE( MeshX_Sub(3,nSub) )
 
-  ALLOCATE( U_0    (nDOFX,nVar,      nX_Crse(1),nX_Crse(2),nX_Crse(3) ) )
-  ALLOCATE( U_Crse (nDOFX,nVar,      nX_Crse(1),nX_Crse(2),nX_Crse(3) ) )
-  ALLOCATE( U_1    (nDOFX,nVar,nFine,nX_Crse(1),nX_Crse(2),nX_Crse(3) ) )
-  ALLOCATE( U_Fine (nDOFX,nVar,nFine,nX_Crse(1),nX_Crse(2),nX_Crse(3) ) )
-  ALLOCATE( U_Fine2(nDOFX,nFine,nVar,nX_Crse(1),nX_Crse(2),nX_Crse(3) ) )
+  ALLOCATE( U_0   (nDOFX,nVar,      nX_Crse(1),nX_Crse(2),nX_Crse(3) ) )
+  ALLOCATE( U_Crse(nDOFX,nVar,      nX_Crse(1),nX_Crse(2),nX_Crse(3) ) )
+  ALLOCATE( U_1   (nDOFX,nFine,nVar,nX_Crse(1),nX_Crse(2),nX_Crse(3) ) )
+  ALLOCATE( U_Fine(nDOFX,nFine,nVar,nX_Crse(1),nX_Crse(2),nX_Crse(3) ) )
 
   PRINT*, "  SHAPE( U_Crse ) = ", SHAPE( U_Crse )
   PRINT*, "  SHAPE( U_Fine ) = ", SHAPE( U_Fine )
@@ -317,7 +315,7 @@ PROGRAM MeshRefinementTest_TwoMoment
              + ( iE  - 1 ) * nDOFE &
              +   iNodeE
 
-      U_1(iNodeX,iVar,iFine,iX1,iX2,iX3) = uCR(iCR)
+      U_1(iNodeX,iFine,iVar,iX1,iX2,iX3) = uCR(iCR)
 
     END DO
 
@@ -371,8 +369,8 @@ PROGRAM MeshRefinementTest_TwoMoment
              + ( iE  - 1 ) * nDOFE &
              +   iNodeE
 
-      U_T = U_Fine(iNodeX,iVar,iFine,iX1,iX2,iX3)
-      U_A = U_1   (iNodeX,iVar,iFine,iX1,iX2,iX3)
+      U_T = U_Fine(iNodeX,iFine,iVar,iX1,iX2,iX3)
+      U_A = U_1   (iNodeX,iFine,iVar,iX1,iX2,iX3)
       AbsErr = ABS( U_T - U_A )
       IF ( ABS( U_A ) > 0.0_DP ) THEN
         RelErr = AbsErr / ABS( U_A )
@@ -423,7 +421,7 @@ PROGRAM MeshRefinementTest_TwoMoment
     VectorName = 'U_Fine_' // MeshString // '.dat'
 
     CALL WriteVector( nDOFX*nVar*PRODUCT(nX_Crse),  &
-                      RESHAPE( U_Fine(:,:,iFine,:,:,:), [nDOFX*nVar*PRODUCT(nX_Crse)] ), &
+                      RESHAPE( U_Fine(:,iFine,:,:,:,:), [nDOFX*nVar*PRODUCT(nX_Crse)] ), &
                       TRIM( VectorName ) )
 
   END DO
@@ -434,13 +432,6 @@ PROGRAM MeshRefinementTest_TwoMoment
   DO iX2 = 1, nX_Crse(2)
   DO iX1 = 1, nX_Crse(1)
   DO iVar = 1, nVar
-
-    ! --- Coarsen operation needs different ordering
-    DO iFine = 1, nFine
-    DO iNodeX = 1, nDOFX
-      U_Fine2(iNodeX,iFine,iVar,iX1,iX2,iX3) = U_Fine(iNodeX,iVar,iFine,iX1,iX2,iX3)
-    END DO
-    END DO
 
     ! --- Reset U_Crse
     DO iNodeX = 1, nDOFX
@@ -454,11 +445,11 @@ PROGRAM MeshRefinementTest_TwoMoment
 
   PRINT*, ""
   PRINT*, "Before Coarsening: "
-  PRINT*, "  MIN/MAX/SUM U_Fine = ", MINVAL( U_Fine2), MAXVAL( U_Fine2), SUM( U_Fine2)
+  PRINT*, "  MIN/MAX/SUM U_Fine = ", MINVAL( U_Fine), MAXVAL( U_Fine), SUM( U_Fine)
 
   Timer_Coarsen = 0.0_DP
   CALL TimersStart( Timer_Coarsen )
-  CALL CoarsenX_TwoMoment( nX_Fine, nX_Crse, nVar, G_Fine, U_Fine2, G_Crse, U_Crse )
+  CALL CoarsenX_TwoMoment( nX_Fine, nX_Crse, nVar, G_Fine, U_Fine, G_Crse, U_Crse )
   CALL TimersStop( Timer_Coarsen )
 
   Timer_Total = Timer_Refine + Timer_Coarsen
@@ -533,7 +524,7 @@ PROGRAM MeshRefinementTest_TwoMoment
   END DO
 
   DEALLOCATE( X1_0, X2_0, X3_0 )
-  DEALLOCATE( G_Crse, G_Fine, U_0, U_Crse, U_1, U_Fine, U_Fine2 )
+  DEALLOCATE( G_Crse, G_Fine, U_0, U_Crse, U_1, U_Fine )
   DEALLOCATE( xL_Sub, xR_Sub )
   DEALLOCATE( MeshX_Sub )
 
@@ -666,7 +657,9 @@ CONTAINS
     ! --- Refine / Coarsen ---
 
     CALL InitializeMeshRefinement_TwoMoment &
-           ( Verbose_Option &
+           ( UseSimpleMeshRefinement_Option &
+               = ( TRIM( CoordinateSystem ) == 'CARTESIAN' ), &
+             Verbose_Option &
                = .TRUE. )
 
   END SUBROUTINE InitializeDriver
@@ -853,8 +846,8 @@ CONTAINS
 
           iNode = ( iNodeX - 1 ) * nDOFE + iNodeE
 
-          uPR(iNode,iE,iX1_Sub,iX2_Sub,iX3_Sub,iCR,iS) = U_Fine(iNodeX,iVar,iFine,iX1,iX2,iX3)
-          uCR(iNode,iE,iX1_Sub,iX2_Sub,iX3_Sub,iCR,iS) = U_Fine(iNodeX,iVar,iFine,iX1,iX2,iX3)
+          uPR(iNode,iE,iX1_Sub,iX2_Sub,iX3_Sub,iCR,iS) = U_Fine(iNodeX,iFine,iVar,iX1,iX2,iX3)
+          uCR(iNode,iE,iX1_Sub,iX2_Sub,iX3_Sub,iCR,iS) = U_Fine(iNodeX,iFine,iVar,iX1,iX2,iX3)
 
         END DO
         END DO

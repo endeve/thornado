@@ -131,7 +131,11 @@ CONTAINS
       WRITE(*,'(A)') '  INFO: MeshRefinement_TwoMoment:'
       WRITE(*,'(A)') '  -------------------------------'
       WRITE(*,*)
-      WRITE(*,'(A5,A36)') '', 'Quadrature Points'
+      WRITE(*,'(A5,A32,L1)') &
+        '', 'UseSimpleMeshRefinement: ', UseSimpleMeshRefinement
+      WRITE(*,*)
+      WRITE(*,'(A5,A36)') &
+        '', 'Quadrature Points'
       WRITE(*,*)
       WRITE(*,'(A7,A9,I2.2)') &
         '', 'nQuad = ', nQuad
@@ -599,16 +603,16 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: nX_Crse(3), nX_Fine(3), nVar
     REAL(DP), INTENT(in)  :: G_Crse(nDOFX,           nX_Crse(1),nX_Crse(2),nX_Crse(3),nGF)
-    REAL(DP), INTENT(in)  :: U_Crse(nDOFX,nVar,      nX_Crse(1),nX_Crse(2),nX_Crse(3))
+    REAL(DP), INTENT(in)  :: U_Crse(nDOFX,      nVar,nX_Crse(1),nX_Crse(2),nX_Crse(3))
     REAL(DP), INTENT(in)  :: G_Fine(nDOFX,           nX_Fine(1),nX_Fine(2),nX_Fine(3),nGF)
-    REAL(DP), INTENT(out) :: U_Fine(nDOFX,nVar,nFine,nX_Crse(1),nX_Crse(2),nX_Crse(3))
+    REAL(DP), INTENT(out) :: U_Fine(nDOFX,nFine,nVar,nX_Crse(1),nX_Crse(2),nX_Crse(3))
 
     REAL(DP) :: ProlongationMatrix(nDOFX,nFine,nDOFX,nX_Crse(1),nX_Crse(2),nX_Crse(3))
     REAL(DP) :: MassMatrix        (nDOFX,nDOFX,nFine,nX_Crse(1),nX_Crse(2),nX_Crse(3))
     INTEGER  :: IPIV              (nDOFX,      nFine,nX_Crse(1),nX_Crse(2),nX_Crse(3))
     INTEGER  :: INFO              (            nFine,nX_Crse(1),nX_Crse(2),nX_Crse(3))
 
-    REAL(DP) :: RHS               (nDOFX,nFine,nVar ,nX_Crse(1),nX_Crse(2),nX_Crse(3))
+    REAL(DP) :: RHS               (nDOFX,nVar, nFine,nX_Crse(1),nX_Crse(2),nX_Crse(3))
 
     REAL(DP) :: Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm
     REAL(DP) :: SUM_M, SUM_P
@@ -697,7 +701,7 @@ CONTAINS
            ( 'N', 'N', nDOFX*nFine, nVar, nDOFX, &
              One, ProlongationMatrix, nDOFX*nFine, nDOFX*nFine*nDOFX, &
              U_Crse, nDOFX, nDOFX*nVar, &
-             Zero, RHS, nDOFX*nFine, nDOFX*nFine*nVar, &
+             Zero, U_Fine, nDOFX*nFine, nDOFX*nFine*nVar, &
              nCrse )
 
 #if   defined( THORNADO_OMP_OL )
@@ -716,7 +720,7 @@ CONTAINS
         DO iVar = 1, nVar
         DO iNodeX = 1, nDOFX
 
-          U_Fine(iNodeX,iVar,iFineX,jX1,jX2,jX3) = RHS(iNodeX,iFineX,iVar,jX1,jX2,jX3)
+          RHS(iNodeX,iVar,iFineX,jX1,jX2,jX3) = U_Fine(iNodeX,iFineX,iVar,jX1,jX2,jX3)
 
         END DO
         END DO
@@ -730,7 +734,34 @@ CONTAINS
     CALL LinearSolveBatched &
            ( 'N', nDOFX, nVar, &
              MassMatrix, nDOFX, IPIV, &
-             U_Fine, nDOFX, INFO, nFine*nCrse )
+             RHS, nDOFX, INFO, nFine*nCrse )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6)
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(6)
+#endif
+    DO jX3 = 1, nX_Crse(3)
+    DO jX2 = 1, nX_Crse(2)
+    DO jX1 = 1, nX_Crse(1)
+
+      DO iFineX = 1, nFine
+
+        DO iVar = 1, nVar
+        DO iNodeX = 1, nDOFX
+
+          U_Fine(iNodeX,iFineX,iVar,jX1,jX2,jX3) = RHS(iNodeX,iVar,iFineX,jX1,jX2,jX3)
+
+        END DO
+        END DO
+
+      END DO
+
+    END DO
+    END DO
+    END DO
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
