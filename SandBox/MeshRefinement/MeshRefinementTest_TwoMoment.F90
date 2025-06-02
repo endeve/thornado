@@ -49,8 +49,10 @@ PROGRAM MeshRefinementTest_TwoMoment
   USE TwoMoment_MeshRefinementModule, ONLY: &
     InitializeMeshRefinement_TwoMoment, &
     FinalizeMeshRefinement_TwoMoment, &
-    RefineX_TwoMoment, &
-    CoarsenX_TwoMoment
+    RefineX_TwoMoment_SIMPLE, &
+    RefineX_TwoMoment_CURVILINEAR, &
+    CoarsenX_TwoMoment_SIMPLE, &
+    CoarsenX_TwoMoment_CURVILINEAR
 
   IMPLICIT NONE
 
@@ -210,14 +212,14 @@ PROGRAM MeshRefinementTest_TwoMoment
 #if   defined( THORNADO_OMP_OL )
   !$OMP TARGET ENTER DATA &
   !$OMP MAP( to:    nX_Crse, iX_Crse_B1, iX_Crse_E1, G_Crse, &
-  !$OMP             nX_Fine, iX_Crse_B1, iX_Crse_E1, G_Fine, &
+  !$OMP             nX_Fine, iX_Fine_B1, iX_Fine_E1, G_Fine, &
   !$OMP             nFineX, V_0 ) &
   !$OMP MAP( alloc: U_0, U_Crse, &
   !$OMP             U_1, U_Fine )
 #elif defined( THORNADO_OACC   )
   !$ACC ENTER DATA &
   !$ACC COPYIN(     nX_Crse, iX_Crse_B1, iX_Crse_E1, G_Crse, &
-  !$ACC             nX_Fine, iX_Crse_B1, iX_Crse_E1, G_Fine, &
+  !$ACC             nX_Fine, iX_Fine_B1, iX_Fine_E1, G_Fine, &
   !$ACC             nFineX, V_0 ) &
   !$ACC CREATE(     U_0, U_Crse, &
   !$ACC             U_1, U_Fine )
@@ -232,23 +234,16 @@ PROGRAM MeshRefinementTest_TwoMoment
      MeshX_Option = MeshX_Fine, &
      CoordinateSystem_Option = TRIM( CoordinateSystem_lc ) )
 
+#if   defined( THORNADO_OMP_OL )
+  !$OMP TARGET UPDATE &
+  !$OMP FROM( G_Crse, G_Fine )
+#elif defined( THORNADO_OACC   )
+  !$ACC UPDATE &
+  !$ACC HOST( G_Crse, G_Fine )
+#endif
+
   ! --- Initialize Data on Coarse Level ---
 
-#if   defined( THORNADO_OMP_OL )
-  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
-  !$OMP MAP( from: X1_0, X2_0, X3_0 ) &
-  !$OMP PRIVATE(   iNodeX1, iNodeX2, iNodeX3, X1, X2, X3, &
-  !$OMP            iP_X1, iP_X2, iP_X3, iVar, uPR, uCR )
-#elif defined( THORNADO_OACC   )
-  !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-  !$ACC COPYOUT(   X1_0, X2_0, X3_0 ) &
-  !$ACC PRIVATE(   iNodeX1, iNodeX2, iNodeX3, X1, X2, X3, &
-  !$ACC            iP_X1, iP_X2, iP_X3, iVar, uPR, uCR )
-#elif defined( THORNADO_OMP    )
-  !$OMP PARALLEL DO COLLAPSE(7) &
-  !$OMP PRIVATE( iNodeX1, iNodeX2, iNodeX3, X1, X2, X3, &
-  !$OMP          iP_X1, iP_X2, iP_X3, iVar, uPR, uCR )
-#endif
   DO iS = 1, nSpecies
   DO iE = 1, nE
   DO iNodeE = 1, nDOFE
@@ -305,19 +300,6 @@ PROGRAM MeshRefinementTest_TwoMoment
   END DO
 
 
-#if   defined( THORNADO_OMP_OL )
-  !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(8) &
-  !$OMP PRIVATE( iNodeX1, iNodeX2, iNodeX3, iFineX1, iFineX2, iFineX3, &
-  !$OMP          iX1_Fine, iX2_Fine, iX3_Fine, X1, X2, X3, iVar, uPR, uCR )
-#elif defined( THORNADO_OACC   )
-  !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(8) &
-  !$ACC PRIVATE( iNodeX1, iNodeX2, iNodeX3, iFineX1, iFineX2, iFineX3, &
-  !$ACC          iX1_Fine, iX2_Fine, iX3_Fine, X1, X2, X3, iVar, uPR, uCR )
-#elif defined( THORNADO_OMP    )
-  !$OMP PARALLEL DO COLLAPSE(8) &
-  !$OMP PRIVATE( iNodeX1, iNodeX2, iNodeX3, iFineX1, iFineX2, iFineX3, &
-  !$OMP          iX1_Fine, iX2_Fine, iX3_Fine, X1, X2, X3, iVar, uPR, uCR )
-#endif
   DO iS = 1, nSpecies
   DO iE = 1, nE
   DO iNodeE = 1, nDOFE
@@ -376,10 +358,10 @@ PROGRAM MeshRefinementTest_TwoMoment
 
 #if   defined( THORNADO_OMP_OL )
   !$OMP TARGET UPDATE &
-  !$OMP FROM( U_0, U_1, U_Crse )
+  !$OMP TO( U_0, U_1, U_Crse )
 #elif defined( THORNADO_OACC   )
   !$ACC UPDATE &
-  !$ACC HOST( U_0, U_1, U_Crse )
+  !$ACC DEVICE( U_0, U_1, U_Crse )
 #endif
 
   CALL WriteRF_Crse( U_0 )
@@ -396,7 +378,11 @@ PROGRAM MeshRefinementTest_TwoMoment
 
   Timer_Refine = 0.0_DP
   CALL TimersStart( Timer_Refine )
-  CALL RefineX_TwoMoment( nX_Crse, nX_Fine, nVar, G_Crse, U_Crse, G_Fine, U_Fine )
+  IF ( TRIM( CoordinateSystem ) == 'CARTESIAN' ) THEN
+    CALL RefineX_TwoMoment_SIMPLE( nX_Crse, nVar, U_Crse, U_Fine )
+  ELSE
+    CALL RefineX_TwoMoment_CURVILINEAR( nX_Crse, nX_Fine, nVar, G_Crse, U_Crse, G_Fine, U_Fine )
+  END IF
   CALL TimersStop( Timer_Refine )
 
 #if   defined( THORNADO_OMP_OL )
@@ -517,7 +503,11 @@ PROGRAM MeshRefinementTest_TwoMoment
 
   Timer_Coarsen = 0.0_DP
   CALL TimersStart( Timer_Coarsen )
-  CALL CoarsenX_TwoMoment( nX_Fine, nX_Crse, nVar, G_Fine, U_Fine, G_Crse, U_Crse )
+  IF ( TRIM( CoordinateSystem ) == 'CARTESIAN' ) THEN
+    CALL CoarsenX_TwoMoment_SIMPLE( nX_Crse, nVar, U_Fine, U_Crse )
+  ELSE
+    CALL CoarsenX_TwoMoment_CURVILINEAR( nX_Fine, nX_Crse, nVar, G_Fine, U_Fine, G_Crse, U_Crse )
+  END IF
   CALL TimersStop( Timer_Coarsen )
 
   Timer_Total = Timer_Refine + Timer_Coarsen
@@ -602,14 +592,14 @@ PROGRAM MeshRefinementTest_TwoMoment
 #if   defined( THORNADO_OMP_OL )
   !$OMP TARGET EXIT DATA &
   !$OMP MAP( release: nX_Crse, iX_Crse_B1, iX_Crse_E1, G_Crse, &
-  !$OMP               nX_Fine, iX_Crse_B1, iX_Crse_E1, G_Fine, &
+  !$OMP               nX_Fine, iX_Fine_B1, iX_Fine_E1, G_Fine, &
   !$OMP               nFineX, V_0, &
   !$OMP               U_0, U_Crse, &
   !$OMP               U_1, U_Fine )
 #elif defined( THORNADO_OACC   )
   !$ACC EXIT DATA &
   !$ACC DELETE(       nX_Crse, iX_Crse_B1, iX_Crse_E1, G_Crse, &
-  !$ACC               nX_Fine, iX_Crse_B1, iX_Crse_E1, G_Fine, &
+  !$ACC               nX_Fine, iX_Fine_B1, iX_Fine_E1, G_Fine, &
   !$ACC               nFineX, V_0, &
   !$ACC               U_0, U_Crse, &
   !$ACC               U_1, U_Fine )
@@ -633,12 +623,8 @@ PROGRAM MeshRefinementTest_TwoMoment
 
 CONTAINS
 
+
   FUNCTION f_0( X1, X2, X3 ) RESULT( uPR )
-#if   defined( THORNADO_OMP_OL )
-    !$OMP DECLARE TARGET
-#elif defined( THORNADO_OACC   )
-    !$ACC ROUTINE SEQ
-#endif
 
     REAL(DP), INTENT(in)  :: X1, X2, X3
     REAL(DP)              :: uPR(nPR)
@@ -693,6 +679,7 @@ CONTAINS
     uPR(iPR_I3) = I_0 * C3
 
   END FUNCTION f_0
+
 
   SUBROUTINE InitializeDriver
 
