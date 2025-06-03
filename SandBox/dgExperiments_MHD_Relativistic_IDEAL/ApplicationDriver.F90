@@ -126,6 +126,7 @@ PROGRAM ApplicationDriver
   LOGICAL  :: UsePowellSource = .FALSE.
   LOGICAL  :: ApplyRandomPerturbations = .FALSE.
 
+  REAL(DP) :: CleaningSpeed    = 1.0_DP
   REAL(DP) :: DampingParameter = 0.0_DP
   REAL(DP) :: Angle = 0.0_DP
 
@@ -325,6 +326,8 @@ PROGRAM ApplicationDriver
 
           EvolveOnlyMagnetic = .FALSE.
           UseDivergenceCleaning = .FALSE.
+
+          DampingParameter = One
 
           Angle = ATAN(TwoPi)
 
@@ -631,6 +634,7 @@ PROGRAM ApplicationDriver
       EvolveOnlyMagnetic = .FALSE.
 
       UseDivergenceCleaning = .FALSE.
+      CleaningSpeed = 1.0_DP
       DampingParameter = 0.0_DP
 
       OTScaleFactor = 100.0_DP
@@ -642,6 +646,24 @@ PROGRAM ApplicationDriver
       CoordinateSystem = 'CARTESIAN'
 
       nX  = [ 256, 256, 1 ]
+      swX = [ 1, 1, 0 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
+    CASE( 'MagneticRotor2D' )
+
+      EvolveOnlyMagnetic = .FALSE.
+
+      UseDivergenceCleaning = .FALSE.
+      DampingParameter = 5.0_DP
+
+      Gamma = 5.0_DP / 3.0_DP
+      t_end = 0.4_DP
+      bcX = [ 2, 2, 0 ]
+
+      CoordinateSystem = 'CARTESIAN'
+
+      nX  = [ 128, 128, 1 ]
       swX = [ 1, 1, 0 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
@@ -808,6 +830,7 @@ PROGRAM ApplicationDriver
   CALL InitializeMagnetofluid_SSPRK &
          ( nStages = nStagesSSPRK, EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic, &
            UseDivergenceCleaning_Option = UseDivergenceCleaning, &
+           CleaningSpeed_Option = CleaningSpeed, &
            DampingParameter_Option = DampingParameter, &
            UsePowellSource_Option = UsePowellSource )
 
@@ -912,7 +935,7 @@ PROGRAM ApplicationDriver
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              uGF, uCM, &
              CFL / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
-             dt, UseDivergenceCleaning, EvolveOnlyMagnetic )
+             dt, UseDivergenceCleaning, CleaningSpeed, DampingParameter, EvolveOnlyMagnetic )
 
     IF( t + dt .LT. t_end )THEN
 
