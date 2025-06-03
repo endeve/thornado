@@ -766,6 +766,88 @@ CONTAINS
 
       END IF
 
+    CASE ( 310 ) ! Müller BC for 3D spherical problems
+
+      ! --- Inner Boundary (reflecting in r- and phi-directions) ---
+
+      IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX1 )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+        !$ACC PRIVATE( iNX, jNX, jNX1 ) &
+        !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX1 )
+#endif
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX(1)
+
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
+
+            jNX1 = ( nNodesX(1) - iNX1 ) + 1
+
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( jNX1, iNX2, iNX3 )
+
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_D) &
+              = + U(jNX,iX_B0(1),iX2,iX3,iCF_D)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S1) &
+              = - U(jNX,iX_B0(1),iX2,iX3,iCF_S1)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S2) &
+              = + U(jNX,iX_B0(1),iX2,iX3,iCF_S2)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S3) &
+              = - U(jNX,iX_B0(1),iX2,iX3,iCF_S3)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
+              = + U(jNX,iX_B0(1),iX2,iX3,iCF_E)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) &
+              = + U(jNX,iX_B0(1),iX2,iX3,iCF_Ne)
+
+          END DO
+          END DO
+          END DO
+
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+     ! --- Outer Boundary (homogeneous) ---
+
+     IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iCF = 1, nCF
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX(1)
+        DO iNX = 1, nDOFX
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) &
+              = U(iNX,iX_E0(1),iX2,iX3,iCF)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
     CASE DEFAULT
 
       CALL DescribeError_Euler( 05 )
@@ -1182,6 +1264,195 @@ CONTAINS
 
         END DO
         END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+    CASE ( 310 ) ! Müller BC for spherical 3D problems on an octant
+
+      ! --- Inner Boundary (reflecting in theta- and phi-directions) ---
+
+      IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+        !$ACC PRIVATE( iNX, jNX, jNX2 ) &
+        !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
+#endif
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = 1, swX(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
+
+            jNX2 = ( nNodesX(2) - iNX2 ) + 1
+
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( iNX1, jNX2, iNX3 )
+
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_D) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_D)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S1) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_S1)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S2) &
+              = - U(jNX,iX1,iX_B0(2),iX3,iCF_S2)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S3) &
+              = - U(jNX,iX1,iX_B0(2),iX3,iCF_S3)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_E) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_E)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_Ne) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_Ne)
+
+          END DO
+          END DO
+          END DO
+
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+      ! --- Outer Boundary (homogeneous) ---
+
+      IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRIVATE( iNX, jNX, jNX2 ) &
+        !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(5) &
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
+#endif
+        DO iCF = 1, nCF
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = 1, swX(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+        DO iNX = 1, nDOFX
+
+          U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF) &
+            = U(iNX,iX1,iX_E0(2),iX3,iCF)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+    CASE ( 330 ) ! Müller BC for spherical 3D problems
+
+      ! --- Inner Boundary (reflecting in theta- and phi-directions) ---
+
+      IF( ApplyInnerBC_Euler( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+        !$ACC PRIVATE( iNX, jNX, jNX2 ) &
+        !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
+#endif
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = 1, swX(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
+
+            jNX2 = ( nNodesX(2) - iNX2 ) + 1
+
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( iNX1, jNX2, iNX3 )
+
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_D) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_D)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S1) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_S1)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S2) &
+              = - U(jNX,iX1,iX_B0(2),iX3,iCF_S2)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S3) &
+              = - U(jNX,iX1,iX_B0(2),iX3,iCF_S3)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_E) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_E)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_Ne) &
+              = + U(jNX,iX1,iX_B0(2),iX3,iCF_Ne)
+
+          END DO
+          END DO
+          END DO
+
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+      ! --- Outer Boundary (reflecting in theta- and phi-directions) ---
+
+      IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+        !$ACC PRIVATE( iNX, jNX, jNX2 ) &
+        !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(6) &
+        !$OMP PRIVATE( iNX, jNX, jNX2 )
+#endif
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = 1, swX(2)
+        DO iX1 = iX_B0(1), iX_E0(1)
+
+          DO iNX3 = 1, nNodesX(3)
+          DO iNX2 = 1, nNodesX(2)
+          DO iNX1 = 1, nNodesX(1)
+
+            jNX2 = ( nNodesX(2) - iNX2 ) + 1
+
+            iNX = NodeNumberX( iNX1, iNX2, iNX3 )
+            jNX = NodeNumberX( iNX1, jNX2, iNX3 )
+
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_D) &
+              = + U(jNX,iX1,iX_E0(2),iX3,iCF_D)
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_S1) &
+              = + U(jNX,iX1,iX_E0(2),iX3,iCF_S1)
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_S2) &
+              = - U(jNX,iX1,iX_E0(2),iX3,iCF_S2)
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_S3) &
+              = - U(jNX,iX1,iX_E0(2),iX3,iCF_S3)
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_E) &
+              = + U(jNX,iX1,iX_E0(2),iX3,iCF_E)
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_Ne) &
+              = + U(jNX,iX1,iX_E0(2),iX3,iCF_Ne)
+
+          END DO
+          END DO
+          END DO
+
         END DO
         END DO
         END DO

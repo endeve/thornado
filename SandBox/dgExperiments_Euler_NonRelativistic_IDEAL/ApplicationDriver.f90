@@ -78,7 +78,7 @@ PROGRAM ApplicationDriver
   LOGICAL       :: UseCharacteristicLimiting
   LOGICAL       :: UseTroubledCellIndicator
   LOGICAL       :: UseConservativeCorrection
-  LOGICAL       :: UseCellMerging
+  LOGICAL       :: UseCellMerging, UseMergingTimeStep
   INTEGER       :: Min_NCellsPerMerge
   INTEGER       :: iCycle, iCycleD
   INTEGER       :: nX(3), bcX(3), swX(3), nNodes
@@ -99,7 +99,8 @@ PROGRAM ApplicationDriver
 
   RestartFileNumber  = -1
   UseCellMerging     = .FALSE.
-  Min_NCellsPerMerge = 1 ! --- Sets minimum number of merged cells as 2**Min_NCellsPerMerge ---
+  UseMergingTimeStep = .FALSE.
+  Min_NCellsPerMerge = 1 ! --- Sets the minimum number of fine cells per merged cell to 2**Min_NCellsPerMerge ---
 
   t = 0.0_DP
 
@@ -201,14 +202,15 @@ PROGRAM ApplicationDriver
 
       Gamma = 1.4_DP
 
-      nX = [ 64, 8, 8 ]
+      nX = [ 64, 4, 4 ]
       xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       ! xR = [ 1.2_DP, Pi,     TwoPi  ]
       xR = [ 1.2_DP, Pi/2.0_DP,     Pi/2.0_DP  ] ! 3D Octant
 
       swX   = [  1, 1, 1 ]
       ! bcX   = [ 31, 3, 0 ] ! 2D BCs
-      bcX   = [ 31, 3, 1 ] ! 3D Octant BCs
+      ! bcX   = [ 31, 3, 1 ] ! 3D Octant BCs
+      bcX   = [ 310, 310, 1 ] ! 3D Octant Müller BCs
       ! zoomX = [ 1.009928960258105_DP, One, One ] !ZoomX factor for 128 cells so that first cell width is 1.2/256
 
       nNodes = 2
@@ -223,6 +225,7 @@ PROGRAM ApplicationDriver
       LimiterThresholdParameter = 0.015_DP
 
       UseCellMerging            = .TRUE.
+      UseMergingTimeStep        = .TRUE.
 
       iCycleD = 100
       t_end   = 1.0d+0
@@ -449,6 +452,10 @@ PROGRAM ApplicationDriver
     CALL Initialize_CellMerging( nX, nNodes, Min_NCellsPerMerge )
   
     CALL MergeAndRestrict( nNodes, uCF )
+
+  ELSE IF( UseMergingTimeStep )THEN
+
+    CALL Initialize_CellMerging( nX, nNodes, Min_NCellsPerMerge )
     
   END IF
   ! --- Test CellMergingModule ---
@@ -491,8 +498,7 @@ PROGRAM ApplicationDriver
     CALL ComputeTimeStep_Euler_NonRelativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, &
              CFL = 0.5_DP / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
-            !  CFL = 0.25_DP / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
-             TimeStep = dt, Merge_Option = UseCellMerging ) ! set to UseCellMerging for larger timestep
+             TimeStep = dt, Merge_Option = UseMergingTimeStep ) ! set to UseMergingTimeStep for larger timestep
 
     IF( t + dt > t_end )THEN
 
@@ -572,9 +578,9 @@ PROGRAM ApplicationDriver
     '', 'Finished ', iCycle, ' Cycles in ', wTime, ' s'
   WRITE(*,*)
 
-  IF(UseCellMerging)THEN
+  IF( UseCellMerging .OR. UseMergingTimeStep )THEN
 
-    CALL Finalize_CellMerging( nX ) ! or a conditional that is passed into initialization
+    CALL Finalize_CellMerging( nX )
 
   END IF
 
