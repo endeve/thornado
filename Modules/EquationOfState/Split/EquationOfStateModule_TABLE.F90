@@ -14,7 +14,7 @@ MODULE EquationOfStateModule_TABLE
   USE wlEOSIOModuleHDF, ONLY: &
     ReadEquationOfStateTableHDF
   USE wlEquationOfStateTableModule, ONLY: &
-    EquationOfStateTableType
+    EquationOfStateCompOSETableType
 #ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
   USE wlEOSComponentsSeparateInversionModule, ONLY: &
     InitializeEOSComponentsInversion, &
@@ -96,7 +96,7 @@ MODULE EquationOfStateModule_TABLE
     Xp_T, Xn_T, Xa_T, Xh_T, Ah_T, Gm_T
 #ifdef MICROPHYSICS_WEAKLIB
   LOGICAL :: UsingExternalEOS
-  TYPE(EquationOfStateTableType), POINTER :: EOS
+  TYPE(EquationOfStateCompOSETableType), POINTER :: EOS
   TYPE(HelmholtzTableType), POINTER :: HelmholtzTable
   TYPE(MuonEOSType), POINTER :: MuonTable
 #endif
@@ -300,7 +300,8 @@ CONTAINS
     LOGICAL,          INTENT(in), OPTIONAL :: UseChemicalPotentialShift_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 #ifdef MICROPHYSICS_WEAKLIB
-    TYPE(EquationOfStateTableType), POINTER, &
+    ! Notice that you use EquationOfState/Split only if EOSMODE == COMPOSE
+    TYPE(EquationOfStateCompOSETableType), POINTER, &
                       INTENT(in), OPTIONAL :: External_EOS
 #else
     INTEGER,          INTENT(in), OPTIONAL :: External_EOS

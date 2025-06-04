@@ -22,7 +22,7 @@ else ifeq ($(TWOMOMENT_ORDER),RELATIVISTIC)
   VPATH += $(THORNADO_DIR)/Modules/TwoMoment/Relativistic
 endif
 
-ifeq ($(EOSMODE),TABLE_SPLIT)
+ifeq ($(EOSMODE),COMPOSE)
   VPATH += $(THORNADO_DIR)/Modules/EquationOfState/Split
 else
   VPATH += $(THORNADO_DIR)/Modules/EquationOfState/Combined

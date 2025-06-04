@@ -17,7 +17,7 @@ EquationOfStateModule_TABLE.o: \
   EquationOfStateModule_TABLE.F90
 else
 
-ifeq ($(EOSMODE),TABLE_SPLIT)
+ifeq ($(EOSMODE),COMPOSE)
   include $(THORNADO_DIR)/Modules/EquationOfState/Split/Makefile_EquationOfState_Split_Dependencies
 else
   include $(THORNADO_DIR)/Modules/EquationOfState/Combined/Makefile_EquationOfState_Combined_Dependencies

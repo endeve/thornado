@@ -92,7 +92,7 @@ PROGRAM ApplicationDriver_CCSN
 
   CoordinateSystem = 'SPHERICAL'
 
-#ifdef EOSMODE_TABLE_COMBINED
+#ifdef EOSMODE_3D
   EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
 #else
   EosTableName          = 'BaryonsPlusHelmPlusMuonsEOS_interpolated.h5'
@@ -112,7 +112,7 @@ PROGRAM ApplicationDriver_CCSN
   ! --- Evolution Parameters ---
 
   t_end   = 20.0d0 * Millisecond
-  !t_end   = 20.00d0  * Millisecond
+  t_end   = 500.0d0  * Millisecond
   dt_wrt  = 3.00d0 * Millisecond
   wrt     = .FALSE.
   iCycleD = 100
@@ -152,7 +152,7 @@ PROGRAM ApplicationDriver_CCSN
   CFL      = 0.5_DP / ( Two * DBLE( nNodes - 1 ) + One )
 
   EvolveEuler                    = .TRUE.
-  UseSlopeLimiter_Euler          = .TRUE.
+  UseSlopeLimiter_Euler          = .FALSE.
   UsePositivityLimiter_Euler     = .TRUE.
 
   EvolveTwoMoment                = .FALSE.
@@ -278,8 +278,8 @@ PROGRAM ApplicationDriver_CCSN
     CALL ComputeTimeStep_Euler_NonRelativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, CFL, dt_Fluid )
 
-    CALL ComputeTimeStep_TwoMoment &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, CFL, dt_Neutrinos )
+    !CALL ComputeTimeStep_TwoMoment &
+    !       ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, CFL, dt_Neutrinos )
 
     IF( EvolveTwoMoment )THEN
 
