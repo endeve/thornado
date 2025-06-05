@@ -66,6 +66,7 @@ PROGRAM MeshRefinementTest_TwoMoment
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: CoordinateSystem
   CHARACTER(32) :: CoordinateSystem_lc
+  LOGICAL       :: UseSimpleMeshRefinement
 
   INTEGER       :: nNodes
   INTEGER       :: nX(3), bcX(3), swX(3)
@@ -118,6 +119,7 @@ PROGRAM MeshRefinementTest_TwoMoment
   CoordinateSystem = 'SPHERICAL'
   CoordinateSystem_lc = CoordinateSystem
   CALL string_lc( CoordinateSystem_lc )
+  UseSimpleMeshRefinement = ( TRIM( CoordinateSystem ) == 'CARTESIAN' )
 
   ProgramName = 'MeshRefinementTest_TwoMoment'
 
@@ -378,7 +380,7 @@ PROGRAM MeshRefinementTest_TwoMoment
 
   Timer_Refine = 0.0_DP
   CALL TimersStart( Timer_Refine )
-  IF ( TRIM( CoordinateSystem ) == 'CARTESIAN' ) THEN
+  IF ( UseSimpleMeshRefinement ) THEN
     CALL RefineX_TwoMoment_SIMPLE( nX_Crse, nVar, U_Crse, U_Fine )
   ELSE
     CALL RefineX_TwoMoment_CURVILINEAR( nX_Crse, nX_Fine, nVar, G_Crse, U_Crse, G_Fine, U_Fine )
@@ -503,7 +505,7 @@ PROGRAM MeshRefinementTest_TwoMoment
 
   Timer_Coarsen = 0.0_DP
   CALL TimersStart( Timer_Coarsen )
-  IF ( TRIM( CoordinateSystem ) == 'CARTESIAN' ) THEN
+  IF ( UseSimpleMeshRefinement ) THEN
     CALL CoarsenX_TwoMoment_SIMPLE( nX_Crse, nVar, U_Fine, U_Crse )
   ELSE
     CALL CoarsenX_TwoMoment_CURVILINEAR( nX_Fine, nX_Crse, nVar, G_Fine, U_Fine, G_Crse, U_Crse )
@@ -741,7 +743,7 @@ CONTAINS
 
     CALL InitializeMeshRefinement_TwoMoment &
            ( UseSimpleMeshRefinement_Option &
-               = ( TRIM( CoordinateSystem ) == 'CARTESIAN' ), &
+               = UseSimpleMeshRefinement, &
              Verbose_Option &
                = .TRUE. )
 
