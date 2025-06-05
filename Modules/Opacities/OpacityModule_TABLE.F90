@@ -364,25 +364,25 @@ CONTAINS
     IF( PRESENT( EmAb_Nucleon_MinD_Option ) )THEN
       EmAb_Nucleon_MinD = EmAb_Nucleon_MinD_Option
     ELSE
-      EmAb_Nucleon_MinD = OPACITIES % EOSTable % TS % minValues( iD_T )
+      EmAb_Nucleon_MinD = OPACITIES % TS % minValues( iD_T )
     END IF
 
     IF( PRESENT( EmAb_Nucleon_MaxD_Option ) )THEN
       EmAb_Nucleon_MaxD = EmAb_Nucleon_MaxD_Option
     ELSE
-      EmAb_Nucleon_MaxD = OPACITIES % EOSTable % TS % maxValues( iD_T )
+      EmAb_Nucleon_MaxD = OPACITIES % TS % maxValues( iD_T )
     END IF
 
     IF( PRESENT( EmAb_Nuclei_MinD_Option ) )THEN
       EmAb_Nuclei_MinD = EmAb_Nuclei_MinD_Option
     ELSE
-      EmAb_Nuclei_MinD = OPACITIES % EOSTable % TS % minValues( iD_T )
+      EmAb_Nuclei_MinD = OPACITIES % TS % minValues( iD_T )
     END IF
 
     IF( PRESENT( EmAb_Nuclei_MaxD_Option ) )THEN
       EmAb_Nuclei_MaxD = EmAb_Nuclei_MaxD_Option
     ELSE
-      EmAb_Nuclei_MaxD = OPACITIES % EOSTable % TS % maxValues( iD_T )
+      EmAb_Nuclei_MaxD = OPACITIES % TS % maxValues( iD_T )
     END IF
 
     IF( PRESENT( EmAb_MinD_Option ) )THEN
@@ -402,13 +402,13 @@ CONTAINS
     IF( PRESENT( Iso_MinD_Option ) )THEN
       Iso_MinD = Iso_MinD_Option
     ELSE
-      Iso_MinD = OPACITIES % EOSTable % TS % minValues( iD_T )
+      Iso_MinD = OPACITIES % TS % minValues( iD_T )
     END IF
 
     IF( PRESENT( Iso_MaxD_Option ) )THEN
       Iso_MaxD = Iso_MaxD_Option
     ELSE
-      Iso_MaxD = OPACITIES % EOSTable % TS % maxValues( iD_T )
+      Iso_MaxD = OPACITIES % TS % maxValues( iD_T )
     END IF
 
     ! --- NES ---
@@ -416,13 +416,13 @@ CONTAINS
     IF( PRESENT( NES_MinD_Option ) )THEN
       NES_MinD = NES_MinD_Option
     ELSE
-      NES_MinD = OPACITIES % EOSTable % TS % minValues( iD_T )
+      NES_MinD = OPACITIES % TS % minValues( iD_T )
     END IF
 
     IF( PRESENT( NES_MaxD_Option ) )THEN
       NES_MaxD = NES_MaxD_Option
     ELSE
-      NES_MaxD = OPACITIES % EOSTable % TS % maxValues( iD_T )
+      NES_MaxD = OPACITIES % TS % maxValues( iD_T )
     END IF
 
     ! --- Pair ---
@@ -430,13 +430,13 @@ CONTAINS
     IF( PRESENT( Pair_MinD_Option ) )THEN
       Pair_MinD = Pair_MinD_Option
     ELSE
-      Pair_MinD = OPACITIES % EOSTable % TS % minValues( iD_T )
+      Pair_MinD = OPACITIES % TS % minValues( iD_T )
     END IF
 
     IF( PRESENT( Pair_MaxD_Option ) )THEN
       Pair_MaxD = Pair_MaxD_Option
     ELSE
-      Pair_MaxD = OPACITIES % EOSTable % TS % maxValues( iD_T )
+      Pair_MaxD = OPACITIES % TS % maxValues( iD_T )
     END IF
 
     ! --- Brem ---
@@ -444,13 +444,13 @@ CONTAINS
     IF( PRESENT( Brem_MinD_Option ) )THEN
       Brem_MinD = Brem_MinD_Option
     ELSE
-      Brem_MinD = OPACITIES % EOSTable % TS % minValues( iD_T )
+      Brem_MinD = OPACITIES % TS % minValues( iD_T )
     END IF
 
     IF( PRESENT( Brem_MaxD_Option ) )THEN
       Brem_MaxD = Brem_MaxD_Option
     ELSE
-      Brem_MaxD = OPACITIES % EOSTable % TS % maxValues( iD_T )
+      Brem_MaxD = OPACITIES % TS % maxValues( iD_T )
     END IF
 
     ! --- NNS ---
@@ -458,13 +458,13 @@ CONTAINS
     IF( PRESENT( NNS_MinD_Option ) )THEN
       NNS_MinD = NNS_MinD_Option
     ELSE
-      NNS_MinD = OPACITIES % EOSTable % TS % minValues( iD_T )
+      NNS_MinD = OPACITIES % TS % minValues( iD_T )
     END IF
 
     IF( PRESENT( NNS_MaxD_Option ) )THEN
       NNS_MaxD = NNS_MaxD_Option
     ELSE
-      NNS_MaxD = OPACITIES % EOSTable % TS % maxValues( iD_T )
+      NNS_MaxD = OPACITIES % TS % maxValues( iD_T )
     END IF
 
     ! --- NuPair ---
@@ -478,7 +478,7 @@ CONTAINS
     IF( PRESENT( NuPair_MaxD_Option ) )THEN
       NuPair_MaxD = NuPair_MaxD_Option
     ELSE
-      NuPair_MaxD = OPACITIES % EOSTable % TS % maxValues( iD_T )
+      NuPair_MaxD = OPACITIES % TS % maxValues( iD_T )
     END IF
 
     ! --- Cutoff For All Opacities ---

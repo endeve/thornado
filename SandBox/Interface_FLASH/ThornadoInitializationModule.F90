@@ -60,7 +60,8 @@ module ThornadoInitializationModule
     FinalizeEquationOfState_TABLE, &
     Min_D, Max_D, Min_T, Max_T, Min_Y, Max_Y
   use wlEquationOfStateTableModule, only: &
-    EquationOfStateTableType
+    EquationOfStateTableType, &
+    EquationOfStateCompOSETableType
 #else
   use EquationOfStateModule_IDEAL, only: &
     InitializeEquationOfState_IDEAL, &
@@ -166,8 +167,13 @@ contains
     character(len=*), intent(in), optional :: EquationOfStateTableName_Option
 
 #ifdef MICROPHYSICS_WEAKLIB
+#ifdef EOSMODE_3D
     type(EquationOfStateTableType), pointer, &
                       intent(in), optional :: External_EOS
+#elif defined EOSMODE_COMPOSE
+    type(EquationOfStateCompOSETableType), pointer, &
+                      intent(in), optional :: External_EOS
+#endif
 #else
     integer,          intent(in), optional :: External_EOS
 #endif
@@ -208,7 +214,7 @@ contains
     logical,          intent(in), optional :: Include_NuPair_Option
     logical,          intent(in), optional :: Include_Brem_Option
     logical,          intent(in), optional :: Include_LinCorr_Option
-    real(dp),         intent(in), optional :: wMatrRHS_Option(5)
+    real(dp),         intent(in), optional :: wMatrRHS_Option(6)
     real(dp),         intent(in), optional :: DnuMax_Option
     logical,          intent(in), optional :: FreezeOpacities_Option
     logical,          intent(in), optional :: ActivateUnits_Option

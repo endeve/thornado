@@ -38,7 +38,7 @@ MODULE EquationOfStateModule_TABLE
     LogInterpolateSingleVariable_3D_Custom_Point, &
     LogInterpolateDifferentiateSingleVariable_3D_Custom_Point
   USE wlLeptonEOSModule, ONLY: &
-    HelmholtzTableType, MuonEOSType
+    HelmholtzTableType, MuonTableType
   USE wlElectronPhotonEOS, ONLY: &
     ElectronPhotonEOS, ElectronPhotonStateType
   USE wlMuonEOS, ONLY: &
@@ -98,7 +98,7 @@ MODULE EquationOfStateModule_TABLE
   LOGICAL :: UsingExternalEOS
   TYPE(EquationOfStateCompOSETableType), POINTER :: EOS
   TYPE(HelmholtzTableType), POINTER :: HelmholtzTable
-  TYPE(MuonEOSType), POINTER :: MuonTable
+  TYPE(MuonTableType), POINTER :: MuonTable
 #endif
 
   PUBLIC :: InitializeEquationOfState_TABLE
