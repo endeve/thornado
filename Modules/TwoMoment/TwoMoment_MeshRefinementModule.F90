@@ -101,6 +101,7 @@ CONTAINS
 
     IF ( PRESENT( UseSimpleMeshRefinement_Option ) ) THEN
       UseSimpleMeshRefinement = UseSimpleMeshRefinement_Option
+      IF ( UseSimpleMeshRefinement ) nQuad = nNodes
     END IF
 
     nQuadX      = 1
