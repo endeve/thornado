@@ -38,7 +38,7 @@ MODULE EquationOfStateModule_TABLE
     LogInterpolateSingleVariable_3D_Custom_Point, &
     LogInterpolateDifferentiateSingleVariable_3D_Custom_Point
   USE wlLeptonEOSModule, ONLY: &
-    HelmholtzTableType, MuonTableType
+    HelmTableType, MuonTableType
   USE wlElectronPhotonEOS, ONLY: &
     ElectronPhotonEOS, ElectronPhotonStateType
   USE wlMuonEOS, ONLY: &
@@ -97,9 +97,11 @@ MODULE EquationOfStateModule_TABLE
 #ifdef MICROPHYSICS_WEAKLIB
   LOGICAL :: UsingExternalEOS
   TYPE(EquationOfStateCompOSETableType), POINTER :: EOS
-  TYPE(HelmholtzTableType), POINTER :: HelmholtzTable
+  TYPE(HelmTableType), POINTER :: HelmTable
   TYPE(MuonTableType), POINTER :: MuonTable
 #endif
+  REAL(DP), PUBLIC :: Eos_MinD ! This is not handled consistently everywhere, 
+                               ! but should not matter
 
   PUBLIC :: InitializeEquationOfState_TABLE
   PUBLIC :: FinalizeEquationOfState_TABLE
@@ -277,7 +279,7 @@ MODULE EquationOfStateModule_TABLE
   !$OMP   OS_Xa, OS_Xh, OS_Ah, OS_Gm, &
   !$OMP   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, &
   !$OMP   Xa_T, Xh_T, Ah_T, Gm_T, &
-  !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
+  !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( D_T, T_T, Yp_T, &
@@ -287,7 +289,7 @@ MODULE EquationOfStateModule_TABLE
   !$ACC   OS_Xa, OS_Xh, OS_Ah, OS_Gm, &
   !$ACC   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, &
   !$ACC   Xa_T, Xh_T, Ah_T, Gm_T, &
-  !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
+  !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #endif
 
 CONTAINS
@@ -304,7 +306,7 @@ CONTAINS
     ! Notice that you use EquationOfState/Split only if EOSMODE == COMPOSE
     TYPE(EquationOfStateCompOSETableType), POINTER, &
                       INTENT(in), OPTIONAL :: External_EOS
-    type(HelmholtzTableType), pointer, &
+    type(HelmTableType), pointer, &
                       intent(in), optional :: External_Helm
     type(MuonTableType), pointer, &
                       intent(in), optional :: External_Muon
@@ -357,14 +359,14 @@ CONTAINS
     IF( .NOT. PRESENT( External_EOS ) ) THEN
 
        ALLOCATE( EOS )
-       ALLOCATE( HelmholtzTable)
+       ALLOCATE( HelmTable)
        ALLOCATE( MuonTable )
        UsingExternalEOS = .FALSE.
 
        CALL InitializeHDF( )
         
        ! read in helmholtz table
-       CALL ReadHelmholtzTableHDF( HelmholtzTable, TRIM( EquationOfStateTableName ) )
+       CALL ReadHelmholtzTableHDF( HelmTable, TRIM( EquationOfStateTableName ) )
 
        ! read in helmholtz table
        CALL ReadMuonTableHDF( MuonTable, TRIM( EquationOfStateTableName ) )
@@ -377,7 +379,7 @@ CONTAINS
     ELSE
 
        EOS => External_EOS
-       HelmholtzTable => External_Helm
+       HelmTable => External_Helm
        MuonTable => External_Muon
        UsingExternalEOS = .TRUE.
 
@@ -544,7 +546,7 @@ CONTAINS
           ElectronPhotonState % ye  = Yp_T(iYp)
 
           ! calculate electron quantities
-          CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+          CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
           Eele = ElectronPhotonState % e
           Pele = ElectronPhotonState % p
@@ -572,7 +574,7 @@ CONTAINS
     !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, OS_P, OS_S, OS_E, &
     !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, P_T, S_T, &
     !$OMP   E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Ah_T, Gm_T, &
-    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
+    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( D_T, T_T, Yp_T, &
@@ -580,7 +582,7 @@ CONTAINS
     !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, OS_P, OS_S, OS_E, &
     !$ACC   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, P_T, S_T, &
     !$ACC   E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Ah_T, Gm_T, &
-    !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
+    !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #endif
 
 #endif
@@ -599,7 +601,7 @@ CONTAINS
     !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, OS_P, OS_S, OS_E, &
     !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, P_T, S_T, &
     !$OMP   E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, &
-    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y )
+    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #endif
 
     DEALLOCATE( D_T, T_T, Yp_T )
@@ -618,7 +620,7 @@ CONTAINS
 
     IF ( .NOT. UsingExternalEOS ) THEN
       IF (ASSOCIATED(MuonTable))      DEALLOCATE( MuonTable )
-      IF (ASSOCIATED(HelmholtzTable)) DEALLOCATE( HelmholtzTable )
+      IF (ASSOCIATED(HelmTable)) DEALLOCATE( HelmTable )
       IF (ASSOCIATED(EOS))            DEALLOCATE( EOS )
     END IF
   
@@ -698,7 +700,7 @@ CONTAINS
     ElectronPhotonState % t   = T  / UnitT
     ElectronPhotonState % rho = D  / UnitD
     ElectronPhotonState % ye  = Ye / UnitY
-    CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+    CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
     Eele = ElectronPhotonState % e
     Pele = ElectronPhotonState % p
@@ -742,7 +744,7 @@ CONTAINS
   ElectronPhotonState % t   = T  / UnitT
   ElectronPhotonState % rho = D  / UnitD
   ElectronPhotonState % ye  = Ye / UnitY
-  CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+  CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
   Mue  = ElectronPhotonState % mue * UnitMl
 
   ! Calculate Muon Quantities
@@ -833,10 +835,14 @@ CONTAINS
 
     T_Guess = Guess / Kelvin
 
-    CALL ComputeTemperatureWith_DEYpYl_Single_Guess_Error &
-           ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, & 
-              T_Lookup, T_Guess, Error )
-
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL ComputeTemperatureWith_DEYpYl_Single_Guess_Error &
+            ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, & 
+                T_Lookup, T_Guess, Error )
+    ELSE
+      T_Lookup = T_Guess
+      Error = 0
+    END IF
     T = T_Lookup * Kelvin
 
 #endif
@@ -868,9 +874,13 @@ CONTAINS
     
     T_Guess = Guess / Kelvin
 
-    CALL ComputeTemperatureWith_DEYpYl_Single_Guess_NoError &
-           ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, &
-           T_Lookup, T_Guess )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL ComputeTemperatureWith_DEYpYl_Single_Guess_NoError &
+            ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, &
+            T_Lookup, T_Guess )
+    ELSE
+      T_Lookup = T_Guess
+    END IF
 
     T = T_Lookup * Kelvin
 
@@ -901,9 +911,14 @@ CONTAINS
     Ye_P = Ye
     Ym_P = Ym
     
-    CALL ComputeTemperatureWith_DEYpYl_Single_NoGuess_Error &
-           ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, &
-           T_Lookup, Error )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL ComputeTemperatureWith_DEYpYl_Single_NoGuess_Error &
+            ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, &
+            T_Lookup, Error )
+    ELSE
+      T_Lookup = Zero
+      Error = 0
+    END IF
 
     T = T_Lookup * Kelvin
 
@@ -933,9 +948,13 @@ CONTAINS
     Ye_P = Ye
     Ym_P = Ym
     
-    CALL ComputeTemperatureWith_DEYpYl_Single_NoGuess_NoError &
-           ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, &
-           T_Lookup )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL ComputeTemperatureWith_DEYpYl_Single_NoGuess_NoError &
+            ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, &
+            T_Lookup )
+    ELSE
+      T_Lookup = Zero
+    END IF
 
     T = T_Lookup * Kelvin
 
@@ -987,9 +1006,14 @@ CONTAINS
         
         T_Guess = Guess_Option(iP) / Kelvin
 
-        CALL ComputeTemperatureWith_DEYpYl_Single_Guess_Error &
-               ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, &
-               T_Lookup, T_Guess, Error(iP) )
+        IF ( D_P >= Eos_MinD ) THEN
+          CALL ComputeTemperatureWith_DEYpYl_Single_Guess_Error &
+                ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, &
+                T_Lookup, T_Guess, Error(iP) )
+        ELSE
+          T_Lookup = T_Guess
+          Error(iP) = 0
+        END IF
 
         T(iP) = T_Lookup * Kelvin
 
@@ -1018,9 +1042,14 @@ CONTAINS
         Ye_P = Ye(iP)
         Ym_P = Ym(iP)
         
-        CALL ComputeTemperatureWith_DEYpYl_Single_NoGuess_Error &
-               ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, T_Lookup, &
-                 Error(iP) )
+        IF ( D_P >= Eos_MinD ) THEN
+          CALL ComputeTemperatureWith_DEYpYl_Single_NoGuess_Error &
+                ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, T_Lookup, &
+                  Error(iP) )
+        ELSE
+          T_Lookup = Zero
+          Error(iP) = 0
+        END IF
 
         T(iP) = T_Lookup * Kelvin
 
@@ -1130,9 +1159,13 @@ CONTAINS
 
     Yp_P = Ye_P + Ym_P
     
-    CALL ComputeTemperatureWith_DEYpYl_Single_NoGuess_NoError &
-           ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, &
-           T_P )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL ComputeTemperatureWith_DEYpYl_Single_NoGuess_NoError &
+            ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, &
+            T_P )
+    ELSE
+      P = Zero
+    END IF
 
     T = T_P * UnitT
 
@@ -1146,7 +1179,7 @@ CONTAINS
     ElectronPhotonState % rho = D_P
     ElectronPhotonState % ye  = Ye_P
     
-    CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+    CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
     Pele = ElectronPhotonState % p
 
     ! Calculate Muon Quantities
@@ -1214,10 +1247,10 @@ CONTAINS
 
 #ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
     CALL CalculateSoundSpeed( D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, D_T, T_T, Yp_T, &
-        P_T, OS_P, E_T, OS_E, S_T, OS_S, HelmholtzTable, MuonTable, Gm, Cs, .TRUE.)
+        P_T, OS_P, E_T, OS_E, S_T, OS_S, HelmTable, MuonTable, Gm, Cs, .TRUE.)
 #else
     CALL CalculateSoundSpeed( D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, D_T, T_T, Yp_T, &
-        P_T, OS_P, E_T, OS_E, S_T, OS_S, HelmholtzTable, MuonTable, Gm, Cs, .FALSE.)
+        P_T, OS_P, E_T, OS_E, S_T, OS_S, HelmTable, MuonTable, Gm, Cs, .FALSE.)
 #endif
 
     Gm = Gm * UnitGm
@@ -1256,12 +1289,12 @@ CONTAINS
       CALL CalculateSoundSpeed( D(iP) / UnitD, T(iP) / UnitT, &
           Ye(iP) / UnitY, Ym(iP) / UnitY, &
           D_T, T_T, Yp_T, P_T, OS_P, E_T, OS_E, S_T, OS_S, &
-          HelmholtzTable, MuonTable, Gm(iP), Cs(iP), .TRUE.)
+          HelmTable, MuonTable, Gm(iP), Cs(iP), .TRUE.)
 #else
       CALL CalculateSoundSpeed( D(iP) / UnitD, T(iP) / UnitT, &
           Ye(iP) / UnitY, Ym(iP) / UnitY, &
           D_T, T_T, Yp_T, P_T, OS_P, E_T, OS_E, S_T, OS_S, &
-          HelmholtzTable, MuonTable, Gm(iP), Cs(iP), .FALSE.)
+          HelmTable, MuonTable, Gm(iP), Cs(iP), .FALSE.)
 #endif
       Gm(iP) = Gm(iP) * UnitGm
       Cs(iP) = Cs(iP) * Centimeter / Second
@@ -1298,9 +1331,14 @@ CONTAINS
     Ye_P = Ye / UnitY
     Ym_P = Ym / UnitY
 
-    CALL ComputeTemperatureWith_DPYpYl_Single_NoGuess_Error &
-           ( D_P, P_P, Ye_P, Ym_P, D_T, T_T, Yp_T, P_T, OS_P, T_P, &
-             Error )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL ComputeTemperatureWith_DPYpYl_Single_NoGuess_Error &
+            ( D_P, P_P, Ye_P, Ym_P, D_T, T_T, Yp_T, P_T, OS_P, T_P, &
+              Error )
+    ELSE
+      T_P = Zero
+      Error = 0
+    END IF
 
     T = T_P * UnitT
 
@@ -1361,7 +1399,7 @@ CONTAINS
     ElectronPhotonState % t   = T  / UnitT
     ElectronPhotonState % rho = D  / UnitD
     ElectronPhotonState % ye  = Ye / UnitY
-    CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+    CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
     Eele = ElectronPhotonState % e
 
@@ -1521,11 +1559,11 @@ CONTAINS
 #ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
     CALL CalculateSoundSpeed( D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, &
         D_T, T_T, Yp_T, P_T, OS_P, E_T, OS_E, S_T, OS_S, &
-        HelmholtzTable, MuonTable, Gm, Cs, .TRUE.)
+        HelmTable, MuonTable, Gm, Cs, .TRUE.)
 #else
     CALL CalculateSoundSpeed( D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, &
         D_T, T_T, Yp_T, P_T, OS_P, E_T, OS_E, S_T, OS_S, &
-        HelmholtzTable, MuonTable, Gm, Cs, .FAlSE.)
+        HelmTable, MuonTable, Gm, Cs, .FAlSE.)
 #endif
 
     Gm = Gm * UnitGm
@@ -1641,7 +1679,7 @@ CONTAINS
       ElectronPhotonState % t   = T  / UnitT
       ElectronPhotonState % rho = D  / UnitD
       ElectronPhotonState % ye  = Ye / UnitY
-      CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+      CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
       Pele = ElectronPhotonState % p
 
@@ -1815,7 +1853,7 @@ CONTAINS
     ElectronPhotonState % rho = D  / UnitD
     ElectronPhotonState % ye  = Ye / UnitY
 
-    CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+    CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
     Eele = ElectronPhotonState % e
 
     ! Calculate Muon Quantities
@@ -1978,7 +2016,7 @@ CONTAINS
       ElectronPhotonState % rho  = D  / UnitD
       ElectronPhotonState % ye   = Ye / UnitY
 
-      CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+      CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
       M = ElectronPhotonState % mue * UnitMl
       
@@ -1990,7 +2028,7 @@ CONTAINS
       ElectronPhotonState % rho  = D  / UnitD
       ElectronPhotonState % ye   = Ye / UnitY
       
-      CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+      CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
       M = ElectronPhotonState % mue * UnitMl
       
@@ -3090,20 +3128,24 @@ CONTAINS
       Ym_P = Ym(iP)
       Yp_P = Ye_P + Ym_P
 
-      CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
-        ( D_P, T_P, Ye_P, Ym_P, Mun )
-        
-      CALL ComputeProtonChemicalPotential_TABLE_Scalar &
-        ( D_P, T_P, Ye_P, Ym_P, Mup )
-        
-      CALL ComputeElectronChemicalPotential_TABLE_Scalar &
-        ( D_P, T_P, Ye_P, Ym_P, Mue )
+      IF ( D_P >= Eos_MinD ) THEN
+        CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
+          ( D_P, T_P, Ye_P, Ym_P, Mun )
+          
+        CALL ComputeProtonChemicalPotential_TABLE_Scalar &
+          ( D_P, T_P, Ye_P, Ym_P, Mup )
+          
+        CALL ComputeElectronChemicalPotential_TABLE_Scalar &
+          ( D_P, T_P, Ye_P, Ym_P, Mue )
 
-      Mue  = Mue  * UnitMl
-      Mup  = Mup  * UnitMp
-      Mun  = Mun  * UnitMn
+        Mue  = Mue  * UnitMl
+        Mup  = Mup  * UnitMp
+        Mun  = Mun  * UnitMn
 
-      Munue(iP)  = ( Mue  + Mup ) - Mun
+        Munue(iP)  = ( Mue  + Mup ) - Mun
+      ELSE
+        Munue(iP) = Zero
+      END IF
 
     END DO
 
@@ -3149,20 +3191,24 @@ CONTAINS
     Ym_P = Ym
     Yp_P = Ye_P + Ym_P
     
-    CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
-      ( D, T, Ye_P, Ym_P, Mun )
-      
-    CALL ComputeProtonChemicalPotential_TABLE_Scalar &
-      ( D, T, Ye_P, Ym_P, Mup )
-      
-    CALL ComputeMuonChemicalPotential_TABLE_Scalar &
-      ( D, T, Ye_P, Ym_P, Munum )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
+        ( D, T, Ye_P, Ym_P, Mun )
+        
+      CALL ComputeProtonChemicalPotential_TABLE_Scalar &
+        ( D, T, Ye_P, Ym_P, Mup )
+        
+      CALL ComputeMuonChemicalPotential_TABLE_Scalar &
+        ( D, T, Ye_P, Ym_P, Munum )
 
-    Mum  = Mum  * UnitMl
-    Mup  = Mup  * UnitMp
-    Mun  = Mun  * UnitMn
+      Mum  = Mum  * UnitMl
+      Mup  = Mup  * UnitMp
+      Mun  = Mun  * UnitMn
 
-    Munum  = ( Mum  + Mup ) - Mun
+      Munum  = ( Mum  + Mup ) - Mun
+      ELSE
+        Munum(iP) = Zero
+      END IF
 
 #else
 
@@ -3210,20 +3256,24 @@ CONTAINS
       Ym_P = Ym(iP)
       Yp_P = Ye_P + Ym_P
 
-      CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
-        ( D_P, T_P, Ye_P, Ym_P, Mun )
-        
-      CALL ComputeProtonChemicalPotential_TABLE_Scalar &
-        ( D_P, T_P, Ye_P, Ym_P, Mup )
-        
-      CALL ComputeMuonChemicalPotential_TABLE_Scalar &
-        ( D_P, T_P, Ye_P, Ym_P, Mum )
+      IF ( D_P >= Eos_MinD ) THEN
+        CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
+          ( D_P, T_P, Ye_P, Ym_P, Mun )
+          
+        CALL ComputeProtonChemicalPotential_TABLE_Scalar &
+          ( D_P, T_P, Ye_P, Ym_P, Mup )
+          
+        CALL ComputeMuonChemicalPotential_TABLE_Scalar &
+          ( D_P, T_P, Ye_P, Ym_P, Mum )
 
-      Mum  = Mum  * UnitMl
-      Mup  = Mup  * UnitMp
-      Mun  = Mun  * UnitMn
+        Mum  = Mum  * UnitMl
+        Mup  = Mup  * UnitMp
+        Mun  = Mun  * UnitMn
 
-      Munum(iP)  = ( Mum  + Mup ) - Mun
+        Munum(iP)  = ( Mum  + Mup ) - Mun
+      ELSE
+        Munum(iP) = Zero
+      END IF
 
     END DO
 
@@ -3270,9 +3320,12 @@ CONTAINS
     Ym_P = Ym / UnitY
     Yp_P = Ye_P + Ym_P
 
-    CALL LogInterpolateSingleVariable_3D_Custom_Point &
-           ( D_P, T_P, Yp_P, D_T, T_T, Yp_T, OS_V, V_T, V_P )
-
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL LogInterpolateSingleVariable_3D_Custom_Point &
+            ( D_P, T_P, Yp_P, D_T, T_T, Yp_T, OS_V, V_T, V_P )
+    ELSE
+      V_P = Zero
+    END IF
     V = V_P * Units_V
 
 #else
@@ -3321,10 +3374,14 @@ CONTAINS
       Ym_P = Ym(iP) / UnitY
       Yp_P = Ye_P + Ym_P
 
-      CALL LogInterpolateSingleVariable_3D_Custom_Point &
-             ( D_P, T_P, Yp_P, D_T, T_T, Yp_T, OS_V, V_T, V_P )
+      IF ( D_P >= Eos_MinD ) THEN
+        CALL LogInterpolateSingleVariable_3D_Custom_Point &
+              ( D_P, T_P, Yp_P, D_T, T_T, Yp_T, OS_V, V_T, V_P )
 
       V(iP) = V_P * Units_V
+      ELSE
+        V(iP) = Zero
+      END IF
 
     END DO
 
@@ -3398,9 +3455,13 @@ CONTAINS
         LocalOffset = 0.0_dp
     ENDIF
 
-    CALL LogInterpolateSingleVariable_3D_Custom_Point &
-           ( D_P, T_P, Yp_P, D_cube, T_cube, Yp_cube, LocalOffset, &
-           LOG10(P_cube + LocalOffset), P )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL LogInterpolateSingleVariable_3D_Custom_Point &
+            ( D_P, T_P, Yp_P, D_cube, T_cube, Yp_cube, LocalOffset, &
+            LOG10(P_cube + LocalOffset), P )
+    ELSE
+      P = 0.0d0
+    ENDIF
 
 #else
 
@@ -3468,7 +3529,7 @@ CONTAINS
           ElectronPhotonState % rho = D_T (iD +iL_D-1)
           ElectronPhotonState % ye  = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
           
-          CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+          CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
           MuonState % t     = T_T(iT+iL_T-1)
           MuonState % rhoym = D_T(iD+iL_D-1) * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
@@ -3578,8 +3639,8 @@ CONTAINS
             ElectronPhotonState % rho = D_T (iD +iL_D-1)
             ElectronPhotonState % ye  = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
             
-            ! CALL FullHelmEOS(1, HelmholtzTable, ElectronPhotonState, .false., .false.)
-            CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+            ! CALL FullHelmEOS(1, HelmTable, ElectronPhotonState, .false., .false.)
+            CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
             MuonState % t     = T_T(iT+iL_T-1)
             MuonState % rhoym = D_T(iD+iL_D-1) * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
@@ -3683,8 +3744,8 @@ CONTAINS
           ElectronPhotonState % rho = D_T (iD +iL_D-1)
           ElectronPhotonState % ye  = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
           
-          ! CALL FullHelmEOS(1, HelmholtzTable, ElectronPhotonState, .false., .false.)
-          CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+          ! CALL FullHelmEOS(1, HelmTable, ElectronPhotonState, .false., .false.)
+          CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
           MuonState % t     = T_T(iT+iL_T-1)
           MuonState % rhoym = D_T(iD+iL_D-1) * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
@@ -3796,7 +3857,7 @@ CONTAINS
             ElectronPhotonState % rho = D_T (iD +iL_D-1)
             ElectronPhotonState % ye  = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
             
-            CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+            CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
             MuonState % t     = T_T(iT+iL_T-1)
             MuonState % rhoym = D_T(iD+iL_D-1) * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
@@ -3914,7 +3975,7 @@ CONTAINS
           ElectronPhotonState % rho = D_T (iD +iL_D-1)
           ElectronPhotonState % ye  = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
           
-          CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+          CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
           MuonState % t = T_T(iT+iL_T-1)
           MuonState % rhoym = D_T(iD+iL_D-1) * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
@@ -3958,7 +4019,7 @@ CONTAINS
       ElectronPhotonState % ye  = Ye / UnitY
 
       ! calculate electron quantities
-      CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+      CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
       ! dVdYe = d(Vbary + Vele + Vphot Vmu)dYe = dVbarydYe + d(Vele + Vphot)dYe = dVbarydYp + dVeledYe
       dVdYe = dVbary_P(3) + D/Ye * ElectronPhotonState % dpdr
@@ -4004,7 +4065,7 @@ CONTAINS
       ElectronPhotonState % ye  = Ye / UnitY
 
       ! calculate electron quantities
-      CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+      CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
       dVdYe = dVbary_P(3) + D/Ye * ElectronPhotonState % dedr ! This is valid because dPdrho for photons is zero
 
@@ -4049,7 +4110,7 @@ CONTAINS
       ElectronPhotonState % ye  = Ye / UnitY
 
       ! calculate electron quantities
-      CALL ElectronPhotonEOS(HelmholtzTable, ElectronPhotonState)
+      CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
       dVdYe = dVbary_P(3) + D/Ye * ElectronPhotonState % dsdr
       WRITE(*,*) 'Need to get this properly from Electron EOS, careful'

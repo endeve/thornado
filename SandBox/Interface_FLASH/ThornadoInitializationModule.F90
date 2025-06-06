@@ -63,7 +63,7 @@ module ThornadoInitializationModule
     EquationOfStateTableType, &
     EquationOfStateCompOSETableType
   use wlLeptonEOSModule, only: &
-    HelmholtzTableType, MuonTableType
+    HelmTableType, MuonTableType
 #else
   use EquationOfStateModule_IDEAL, only: &
     InitializeEquationOfState_IDEAL, &
@@ -177,7 +177,7 @@ contains
 #elif defined EOSMODE_COMPOSE
     type(EquationOfStateCompOSETableType), pointer, &
                       intent(in), optional :: External_EOS
-    type(HelmholtzTableType), pointer, &
+    type(HelmTableType), pointer, &
                       intent(in), optional :: External_Helm
     type(MuonTableType), pointer, &
                       intent(in), optional :: External_Muon
@@ -474,7 +474,8 @@ contains
                = Eos_MinD_Option, &
              Verbose_Option = Verbose, &
              External_EOS = External_EOS )
-#elif defined EOSMODE_COMPOSE    call InitializeEquationOfState_TABLE &
+#elif defined EOSMODE_COMPOSE    
+    call InitializeEquationOfState_TABLE &
            ( EquationOfStateTableName_Option &
                = EquationOfStateTableName_Option, &
              UseChemicalPotentialShift_Option = UseChemicalPotentialShift, &
