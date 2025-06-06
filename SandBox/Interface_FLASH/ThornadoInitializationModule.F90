@@ -62,6 +62,8 @@ module ThornadoInitializationModule
   use wlEquationOfStateTableModule, only: &
     EquationOfStateTableType, &
     EquationOfStateCompOSETableType
+  use wlLeptonEOSModule, only: &
+    HelmholtzTableType, MuonTableType
 #else
   use EquationOfStateModule_IDEAL, only: &
     InitializeEquationOfState_IDEAL, &
@@ -131,7 +133,7 @@ contains
 
   subroutine InitThornado &
     ( nNodes, nDimsX, nE, swE, eL_MeV, eR_MeV, zoomE, bcE, nSpecies, &
-      EquationOfStateTableName_Option, External_EOS, &
+      EquationOfStateTableName_Option, External_EOS, External_Helm, External_Muon, &
       Gamma_IDEAL_Option, &
       PositivityLimiter_Option, UpperBry1_Option, &
       TroubledCellIndicator_Option, C_TCI_Option, &
@@ -170,12 +172,20 @@ contains
 #ifdef EOSMODE_3D
     type(EquationOfStateTableType), pointer, &
                       intent(in), optional :: External_EOS
+    integer,          intent(in), optional :: External_Helm
+    integer,          intent(in), optional :: External_Muon
 #elif defined EOSMODE_COMPOSE
     type(EquationOfStateCompOSETableType), pointer, &
                       intent(in), optional :: External_EOS
+    type(HelmholtzTableType), pointer, &
+                      intent(in), optional :: External_Helm
+    type(MuonTableType), pointer, &
+                      intent(in), optional :: External_Muon
 #endif
 #else
     integer,          intent(in), optional :: External_EOS
+    integer,          intent(in), optional :: External_Helm
+    integer,          intent(in), optional :: External_Muon
 #endif
 
     real(dp),         intent(in), optional :: Gamma_IDEAL_Option
@@ -455,6 +465,7 @@ contains
 
     ! --- Nuclear Equation of State ---
 #ifdef MICROPHYSICS_WEAKLIB
+#ifdef EOSMODE_3D
     call InitializeEquationOfState_TABLE &
            ( EquationOfStateTableName_Option &
                = EquationOfStateTableName_Option, &
@@ -463,6 +474,19 @@ contains
                = Eos_MinD_Option, &
              Verbose_Option = Verbose, &
              External_EOS = External_EOS )
+#elif defined EOSMODE_COMPOSE    call InitializeEquationOfState_TABLE &
+           ( EquationOfStateTableName_Option &
+               = EquationOfStateTableName_Option, &
+             UseChemicalPotentialShift_Option = UseChemicalPotentialShift, &
+             Eos_MinD_Option &
+               = Eos_MinD_Option, &
+             Verbose_Option = Verbose, &
+             External_EOS = External_EOS, & 
+             External_Helm = External_Helm, & 
+             External_Muon = External_Muon )
+
+#endif
+
 #else
     call InitializeEquationOfState_IDEAL &
            ( Gamma_IDEAL_Option = Gamma_IDEAL_Option )

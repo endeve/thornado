@@ -294,17 +294,24 @@ CONTAINS
 
   SUBROUTINE InitializeEquationOfState_TABLE &
     ( EquationOfStateTableName_Option, UseChemicalPotentialShift_Option, &
-      Verbose_Option, External_EOS )
+      Eos_MinD_Option , Verbose_Option, External_EOS, External_Helm, External_Muon )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: EquationOfStateTableName_Option
     LOGICAL,          INTENT(in), OPTIONAL :: UseChemicalPotentialShift_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: Eos_MinD_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 #ifdef MICROPHYSICS_WEAKLIB
     ! Notice that you use EquationOfState/Split only if EOSMODE == COMPOSE
     TYPE(EquationOfStateCompOSETableType), POINTER, &
                       INTENT(in), OPTIONAL :: External_EOS
+    type(HelmholtzTableType), pointer, &
+                      intent(in), optional :: External_Helm
+    type(MuonTableType), pointer, &
+                      intent(in), optional :: External_Muon
 #else
     INTEGER,          INTENT(in), OPTIONAL :: External_EOS
+    INTEGER,          INTENT(in), OPTIONAL :: External_Helm
+    INTEGER,          INTENT(in), OPTIONAL :: External_Muon
 #endif
     
     REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: Ps, Ss, Es
@@ -325,6 +332,12 @@ CONTAINS
        UseChemicalPotentialShift = UseChemicalPotentialShift_Option
     ELSE
        UseChemicalPotentialShift = .FALSE.
+    END IF
+
+    IF( PRESENT( Eos_MinD_Option ) )THEN
+       Eos_MinD = Eos_MinD_Option
+    ELSE
+       Eos_MinD = Zero
     END IF
 
     IF( PRESENT( Verbose_Option ) )THEN
@@ -364,6 +377,8 @@ CONTAINS
     ELSE
 
        EOS => External_EOS
+       HelmholtzTable => External_Helm
+       MuonTable => External_Muon
        UsingExternalEOS = .TRUE.
 
     END IF
