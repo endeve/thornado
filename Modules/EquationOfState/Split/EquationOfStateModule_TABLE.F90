@@ -562,8 +562,7 @@ CONTAINS
     
     CALL InitializeEOSComponentsInversion &
          ( D_T, T_T, Yp_T, Es, Ps, Ss, &
-         EquationOfStateTableName, EquationOfStateTableName, &
-         Verbose_Option = Verbose )
+         HelmTable, MuonTable, Verbose_Option = Verbose )
              
     DEALLOCATE( Ps, Ss, Es )
 
@@ -3067,20 +3066,24 @@ CONTAINS
     Ym_P = Ym
     Yp_P = Ye_P + Ym_P
     
-    CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
-      ( D, T, Ye_P, Ym_P, Mun )
-      
-    CALL ComputeProtonChemicalPotential_TABLE_Scalar &
-      ( D, T, Ye_P, Ym_P, Mup )
-      
-    CALL ComputeElectronChemicalPotential_TABLE_Scalar &
-      ( D, T, Ye_P, Ym_P, Mue )
+    IF ( D_P >= Eos_MinD ) THEN
+      CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
+        ( D, T, Ye_P, Ym_P, Mun )
+        
+      CALL ComputeProtonChemicalPotential_TABLE_Scalar &
+        ( D, T, Ye_P, Ym_P, Mup )
+        
+      CALL ComputeElectronChemicalPotential_TABLE_Scalar &
+        ( D, T, Ye_P, Ym_P, Mue )
 
-    Mue  = Mue
-    Mup  = Mup
-    Mun  = Mun
+      Mue  = Mue
+      Mup  = Mup
+      Mun  = Mun
 
-    Munue  = ( Mue  + Mup ) - Mun
+      Munue  = ( Mue  + Mup ) - Mun
+    ELSE
+      Munue = Zero
+    END IF
 
 #else
 
@@ -3206,9 +3209,9 @@ CONTAINS
       Mun  = Mun  * UnitMn
 
       Munum  = ( Mum  + Mup ) - Mun
-      ELSE
-        Munum(iP) = Zero
-      END IF
+    ELSE
+      Munum = Zero
+    END IF
 
 #else
 
@@ -3499,12 +3502,17 @@ CONTAINS
     TYPE(MuonStateType) :: MuonState
     
 #ifdef MICROPHYSICS_WEAKLIB
- 
+    
     D_P = D / UnitD
     T_P = T / UnitT
     Ye_P = Ye / UnitY
     Ym_P = Ym / UnitY
     Yp_P = Ye_P + Ym_P
+
+    IF ( D_P < Eos_MinD ) THEN
+      V = Zero
+      RETURN
+    ENDIF
 
     Ye_over_Yp = Ye_P/Yp_P
     Ym_over_Yp = Ym_P/Yp_P
@@ -3614,6 +3622,10 @@ CONTAINS
       Ye_P = Ye(iP) / UnitY
       Ym_P = Ym(iP) / UnitY
       Yp_P = Ye_P + Ym_P
+      IF ( D_P < Eos_MinD ) THEN
+        V(iP) = Zero
+        CYCLE
+      ENDIF
 
       Ye_over_Yp = Ye_P/Yp_P
       Ym_over_Yp = Ym_P/Yp_P
@@ -3714,12 +3726,19 @@ CONTAINS
     TYPE(MuonStateType) :: MuonState
     
 #ifdef MICROPHYSICS_WEAKLIB
- 
+
     D_P = D / UnitD
     T_P = T / UnitT
     Ye_P = Ye / UnitY
     Ym_P = Ym / UnitY
     Yp_P = Ye_P + Ym_P
+
+    IF ( D_P < Eos_MinD ) THEN
+      P = Zero
+      E = Zero
+      S = Zero
+      RETURN
+    ENDIF
 
     Ye_over_Yp = Ye_P/Yp_P
     Ym_over_Yp = Ym_P/Yp_P
@@ -3833,6 +3852,13 @@ CONTAINS
       Ym_P = Ym(iP) / UnitY
       Yp_P = Ye_P + Ym_P
 
+      IF ( D_P < Eos_MinD ) THEN
+        P(iP) = Zero
+        E(iP) = Zero
+        S(iP) = Zero
+        CYCLE
+      ENDIF
+      
       Ye_over_Yp = Ye_P/Yp_P
       Ym_over_Yp = Ym_P/Yp_P
       
@@ -3950,7 +3976,16 @@ CONTAINS
     Ye_P = Ye / UnitY
     Ym_P = Ym / UnitY
     Yp_P = Ye_P + Ym_P
-    
+
+    IF ( D_P < Eos_MinD ) THEN
+      V     = Zero
+      dVdD  = Zero
+      dVdT  = Zero
+      dVdYe = Zero
+      dVdYm = Zero
+      RETURN
+    ENDIF
+
     Ye_over_Yp = Ye_P/(Ye_P + Ym_P)
     Ym_over_Yp = Ym_P/(Ye_P + Ym_P)
 
@@ -4149,10 +4184,11 @@ CONTAINS
 
 #else
 
-    V    = Zero
-    dVdD = Zero
-    dVdT = Zero
-    dVdYp = Zero
+    V     = Zero
+    dVdD  = Zero
+    dVdT  = Zero
+    dVdYe = Zero
+    dVdYm = Zero
 
 #endif
 
@@ -4198,10 +4234,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP MAP( from: V, dVdD, dVdT, dVdYp )
+    !$OMP MAP( from: V, dVdD, dVdT, dVdYe, dVdYm )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC COPYOUT( V, dVdD, dVdT, dVdYp )
+    !$ACC COPYOUT( V, dVdD, dVdT, dVdYe, dVdYm )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
@@ -4243,15 +4279,27 @@ CONTAINS
     Ym_P = Ym / UnitY
     Yp_P = Ye_P + Ym_P
 
-    CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
-           ( D_P, T_P, Yp_P, D_T, T_T, Yp_T, OS_V, V_T, V_P, dV_P )
-             
-    V = V_P * Units_V
+    IF ( D_P >= Eos_MinD ) THEN
 
-    dVdD = dV_P(1) * Units_V / UnitD
-    dVdT = dV_P(2) * Units_V / UnitT
-    dVdYe = dV_P(3) * Units_V / UnitY
-    dVdYm = dV_P(3) * Units_V / UnitY
+      CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
+            ( D_P, T_P, Yp_P, D_T, T_T, Yp_T, OS_V, V_T, V_P, dV_P )
+              
+      V = V_P * Units_V
+
+      dVdD = dV_P(1) * Units_V / UnitD
+      dVdT = dV_P(2) * Units_V / UnitT
+      dVdYe = dV_P(3) * Units_V / UnitY
+      dVdYm = dV_P(3) * Units_V / UnitY
+    
+    ELSE
+
+      V    = Zero
+      dVdD = Zero
+      dVdT = Zero
+      dVdYe = Zero
+      dVdYm = Zero
+
+    ENDIF
 
 #else
 
@@ -4283,11 +4331,11 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
       !$OMP MAP( to: D, T, Y, OS_V, V_T ) &
-      !$OMP MAP( from: V, dVdD, dVdT, dVdYp )
+      !$OMP MAP( from: V, dVdD, dVdT, dVdYe, dVdYm )
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR &
       !$ACC COPYIN( D, T, Y, OS_V, V_T ) &
-      !$ACC COPYOUT( V, dVdD, dVdT, dVdYp )
+      !$ACC COPYOUT( V, dVdD, dVdT, dVdYe, dVdYm )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO
 #endif
@@ -4303,10 +4351,10 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP MAP( from: V, dVdD, dVdT, dVdYp )
+    !$OMP MAP( from: V, dVdD, dVdT, dVdYe, dVdYm )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC COPYOUT( V, dVdD, dVdT, dVdYp )
+    !$ACC COPYOUT( V, dVdD, dVdT, dVdYe, dVdYm )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
