@@ -27,6 +27,7 @@ clobber: clean
 
 MeshRefinementTest_TwoMoment.o: \
   KindModule.o \
+  UnitsModule.o \
   ProgramHeaderModule.o \
   ProgramInitializationModule.o \
   ReferenceElementModuleX.o \
