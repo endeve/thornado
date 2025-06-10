@@ -407,7 +407,78 @@ PROGRAM MeshRefinementTest_TwoMoment
   Timer_Refine = 0.0_DP
   CALL TimersStart( Timer_Refine )
   IF ( UseSimpleMeshRefinement ) THEN
+
+    ! --- Use densitized values ---
+
+    IF ( TRIM( CoordinateSystem ) /= 'CARTESIAN' ) THEN
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5)
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+      DO iX3 = 1, nX_Crse(3)
+      DO iX2 = 1, nX_Crse(2)
+      DO iX1 = 1, nX_Crse(1)
+      DO iVar = 1, nVar
+      DO iNodeX = 1, nDOFX
+
+        U_Crse(iNodeX,iVar,iX1,iX2,iX3) &
+          =   U_Crse(iNodeX,iVar,iX1,iX2,iX3) &
+            * G_Crse(iNodeX,iX1,iX2,iX3,iGF_SqrtGm)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
     CALL RefineX_TwoMoment_SIMPLE( nX_Crse, nVar, U_Crse, U_Fine )
+
+    IF ( TRIM( CoordinateSystem ) /= 'CARTESIAN' ) THEN
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PRIVATE( iFineX1, iFineX2, iFineX3, iX1_Fine, iX2_Fine, iX3_Fine )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+      !$ACC PRIVATE( iFineX1, iFineX2, iFineX3, iX1_Fine, iX2_Fine, iX3_Fine )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(6) &
+      !$OMP PRIVATE( iFineX1, iFineX2, iFineX3, iX1_Fine, iX2_Fine, iX3_Fine )
+#endif
+      DO iX3 = 1, nX_Crse(3)
+      DO iX2 = 1, nX_Crse(2)
+      DO iX1 = 1, nX_Crse(1)
+      DO iVar = 1, nVar
+      DO iFine = 1, nFine
+      DO iNodeX = 1, nDOFX
+
+        iFineX1 = MOD( (iFine-1)                            , nFineX(1) ) + 1
+        iFineX2 = MOD( (iFine-1) / ( nFineX(1)             ), nFineX(2) ) + 1
+        iFineX3 = MOD( (iFine-1) / ( nFineX(1) * nFineX(2) ), nFineX(3) ) + 1
+
+        iX1_Fine = ( iX1 - 1 ) * nFineX(1) + iFineX1
+        iX2_Fine = ( iX2 - 1 ) * nFineX(2) + iFineX2
+        iX3_Fine = ( iX3 - 1 ) * nFineX(3) + iFineX3
+
+        U_Fine(iNodeX,iFine,iVar,iX1,iX2,iX3) &
+          =   U_Fine(iNodeX,iFine,iVar,iX1,iX2,iX3) &
+            / G_Fine(iNodeX,iX1_Fine,iX2_Fine,iX3_Fine,iGF_SqrtGm)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
   ELSE
     CALL RefineX_TwoMoment_CURVILINEAR( nX_Crse, nX_Fine, nVar, G_Crse, U_Crse, G_Fine, U_Fine )
   END IF
@@ -532,7 +603,78 @@ PROGRAM MeshRefinementTest_TwoMoment
   Timer_Coarsen = 0.0_DP
   CALL TimersStart( Timer_Coarsen )
   IF ( UseSimpleMeshRefinement ) THEN
+
+    ! --- Use densitized values ---
+
+    IF ( TRIM( CoordinateSystem ) /= 'CARTESIAN' ) THEN
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+      !$OMP PRIVATE( iFineX1, iFineX2, iFineX3, iX1_Fine, iX2_Fine, iX3_Fine )
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+      !$ACC PRIVATE( iFineX1, iFineX2, iFineX3, iX1_Fine, iX2_Fine, iX3_Fine )
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(6) &
+      !$OMP PRIVATE( iFineX1, iFineX2, iFineX3, iX1_Fine, iX2_Fine, iX3_Fine )
+#endif
+      DO iX3 = 1, nX_Crse(3)
+      DO iX2 = 1, nX_Crse(2)
+      DO iX1 = 1, nX_Crse(1)
+      DO iVar = 1, nVar
+      DO iFine = 1, nFine
+      DO iNodeX = 1, nDOFX
+
+        iFineX1 = MOD( (iFine-1)                            , nFineX(1) ) + 1
+        iFineX2 = MOD( (iFine-1) / ( nFineX(1)             ), nFineX(2) ) + 1
+        iFineX3 = MOD( (iFine-1) / ( nFineX(1) * nFineX(2) ), nFineX(3) ) + 1
+
+        iX1_Fine = ( iX1 - 1 ) * nFineX(1) + iFineX1
+        iX2_Fine = ( iX2 - 1 ) * nFineX(2) + iFineX2
+        iX3_Fine = ( iX3 - 1 ) * nFineX(3) + iFineX3
+
+        U_Fine(iNodeX,iFine,iVar,iX1,iX2,iX3) &
+          =   U_Fine(iNodeX,iFine,iVar,iX1,iX2,iX3) &
+            * G_Fine(iNodeX,iX1_Fine,iX2_Fine,iX3_Fine,iGF_SqrtGm)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
     CALL CoarsenX_TwoMoment_SIMPLE( nX_Crse, nVar, U_Fine, U_Crse )
+
+    IF ( TRIM( CoordinateSystem ) /= 'CARTESIAN' ) THEN
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined( THORNADO_OACC   )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5)
+#elif defined( THORNADO_OMP    )
+      !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+      DO iX3 = 1, nX_Crse(3)
+      DO iX2 = 1, nX_Crse(2)
+      DO iX1 = 1, nX_Crse(1)
+      DO iVar = 1, nVar
+      DO iNodeX = 1, nDOFX
+
+        U_Crse(iNodeX,iVar,iX1,iX2,iX3) &
+          =   U_Crse(iNodeX,iVar,iX1,iX2,iX3) &
+            / G_Crse(iNodeX,iX1,iX2,iX3,iGF_SqrtGm)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
   ELSE
     CALL CoarsenX_TwoMoment_CURVILINEAR( nX_Fine, nX_Crse, nVar, G_Fine, U_Fine, G_Crse, U_Crse )
   END IF
