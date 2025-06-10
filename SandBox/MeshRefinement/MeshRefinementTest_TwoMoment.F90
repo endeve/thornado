@@ -2,6 +2,8 @@ PROGRAM MeshRefinementTest_TwoMoment
 
   USE KindModule, ONLY: &
     DP, Zero, One, Two, Pi, TwoPi, SqrtTiny
+  USE UnitsModule, ONLY: &
+    Kilometer
   USE ProgramHeaderModule, ONLY: &
     nDOFX, nDOFE, nNodesX, nDimsX
   USE ProgramInitializationModule, ONLY: &
@@ -85,7 +87,7 @@ PROGRAM MeshRefinementTest_TwoMoment
   INTEGER       :: iFineX(3), iFine, nFine
   INTEGER       :: iX1_Fine, iX2_Fine, iX3_Fine
   INTEGER       :: iFineX1, iFineX2, iFineX3, nFineX(3)
-  REAL(DP)      :: X1, X2, X3
+  REAL(DP)      :: X1, X2, X3, R0
   REAL(DP), ALLOCATABLE :: X1_0(:), X2_0(:), X3_0(:)
   REAL(DP)      :: V_0(3)
   REAL(DP)      :: uPR(nPR), uCR(nCR)
@@ -123,12 +125,36 @@ PROGRAM MeshRefinementTest_TwoMoment
 
   ProgramName = 'MeshRefinementTest_TwoMoment'
 
+  R0 = 4.0_DP * Kilometer
+
   nX = [ 16, 1, 1 ]
   swX = 0
   bcX = 0
-  xL = 0.0_DP
-  xR = 1.0_DP
+  xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
   ZoomX = One
+
+  SELECT CASE( TRIM( CoordinateSystem ) )
+  CASE( 'SPHERICAL' )
+    X1 = R0
+    X2 = Pi
+    X3 = TwoPi
+  CASE( 'CYLINDRICAL' )
+    X1 = R0 / SQRT( 2.0_DP )
+    X2 = X1
+    X3 = TwoPi
+  CASE( 'CARTESIAN' )
+    X1 = R0 / SQRT( 3.0_DP )
+    X2 = X1
+    X3 = X1
+  CASE DEFAULT
+    WRITE(*,*)
+    WRITE(*,'(A5,A27,A)') &
+      '', 'Invalid Coordinate System: ', TRIM( CoordinateSystem )
+    STOP
+  END SELECT
+  xR = MERGE( [ X1,     X2,     X3 ], &
+              [ X1, 1.0_DP, 1.0_DP ], &
+              MASK = ( nX > 1 ) )
 
   nE = 2
   bcE = 0
@@ -672,7 +698,7 @@ CONTAINS
     !D_0 = ( Sigma / t_0 )**( 1.5_DP ) &
     !        * EXP( - 3.0_DP * Sigma * R**2 / ( 4.0_DP *t_0 ) )
     !I_0 = D_0 * R / ( 2.0_DP * t_0 )
-    D_0 = SIN( TwoPi * R )
+    D_0 = SIN( TwoPi * ( R / R0 ) )
     I_0 = D_0
 
     uPR(iPR_D ) = D_0
