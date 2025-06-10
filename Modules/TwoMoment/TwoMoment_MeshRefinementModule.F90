@@ -41,9 +41,10 @@ MODULE TwoMoment_MeshRefinementModule
   REAL(DP), ALLOCATABLE, PUBLIC :: RestrictionMatrixSimple (:,:,:)
   REAL(DP), ALLOCATABLE, PUBLIC :: ProlongationMatrixSimple(:,:,:)
 
-  REAL(DP), ALLOCATABLE, PUBLIC :: RestrictionTensor0 (:,:,:,:,:,:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: ProlongationTensor0(:,:,:,:,:,:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: MassTensor0        (:,:,:,:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: RestrictionTensor0    (:,:,:,:,:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: ProlongationTensor0   (:,:,:,:,:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: MassTensorRestriction (:,:,:,:,:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: MassTensorProlongation(:,:,:,:,:)
 
   INTERFACE RefineX_TwoMoment
     MODULE PROCEDURE RefineX_TwoMoment_SIMPLE
@@ -315,9 +316,10 @@ CONTAINS
 
     REAL(DP) :: FineXC_Crse(3), dFineX_Crse(3)
 
-    ALLOCATE( RestrictionTensor0 (nDOFX,nDOFX,nDOFX,nDOFX,nDOFX,nFine) )
-    ALLOCATE( ProlongationTensor0(nDOFX,nDOFX,nDOFX,nDOFX,nDOFX,nFine) )
-    ALLOCATE( MassTensor0        (nDOFX,nDOFX,nDOFX,nDOFX,nDOFX) )
+    ALLOCATE( RestrictionTensor0    (nDOFX,nDOFX,nDOFX,nDOFX,nDOFX,nFine) )
+    ALLOCATE( ProlongationTensor0   (nDOFX,nDOFX,nDOFX,nDOFX,nDOFX,nFine) )
+    ALLOCATE( MassTensorRestriction (nDOFX,nDOFX,nDOFX,nFine,nDOFX,nDOFX) )
+    ALLOCATE( MassTensorProlongation(nDOFX,nDOFX,nDOFX,nDOFX,nDOFX) )
 
     ALLOCATE( QuadX1(nQuadX(1)) )
     ALLOCATE( QuadX2(nQuadX(2)) )
@@ -335,9 +337,10 @@ CONTAINS
     ALLOCATE( QuadX2_Crse(nQuadX(2)) )
     ALLOCATE( QuadX3_Crse(nQuadX(3)) )
 
-    MassTensor0         = 0.0_DP
-    ProlongationTensor0 = 0.0_DP
-    RestrictionTensor0  = 0.0_DP
+    MassTensorRestriction  = 0.0_DP
+    MassTensorProlongation = 0.0_DP
+    ProlongationTensor0    = 0.0_DP
+    RestrictionTensor0     = 0.0_DP
 
     ! --- Fine element width in coarse element reference coordinates ---
 
@@ -398,6 +401,25 @@ CONTAINS
             RestrictionTensor0(kNodeX,lNodeX,mNodeX,jNodeX,iNodeX,iFineX) &
               = ProlongationTensor0(kNodeX,lNodeX,mNodeX,iNodeX,jNodeX,iFineX)
 
+            MassTensorRestriction(kNodeX,lNodeX,mNodeX,iFineX,iNodeX,jNodeX) &
+              = MassTensorRestriction(kNodeX,lNodeX,mNodeX,iFineX,iNodeX,jNodeX) &
+                  + WeightsX1(iQuadX1) * WeightsX2(iQuadX2) * WeightsX3(iQuadX3) &
+                    * L_X1(IndLX_Q(1,iNodeX)) % P( QuadX1_Crse(iQuadX1) ) &
+                    * L_X2(IndLX_Q(2,iNodeX)) % P( QuadX2_Crse(iQuadX2) ) &
+                    * L_X3(IndLX_Q(3,iNodeX)) % P( QuadX3_Crse(iQuadX3) ) &
+                    * L_X1(IndLX_Q(1,jNodeX)) % P( QuadX1_Crse(iQuadX1) ) &
+                    * L_X2(IndLX_Q(2,jNodeX)) % P( QuadX2_Crse(iQuadX2) ) &
+                    * L_X3(IndLX_Q(3,jNodeX)) % P( QuadX3_Crse(iQuadX3) ) &
+                    * L_X1(IndLX_Q(1,kNodeX)) % P( QuadX1     (iQuadX1) ) &
+                    * L_X2(IndLX_Q(2,kNodeX)) % P( QuadX2     (iQuadX2) ) &
+                    * L_X3(IndLX_Q(3,kNodeX)) % P( QuadX3     (iQuadX3) ) &
+                    * L_X1(IndLX_Q(1,lNodeX)) % P( QuadX1     (iQuadX1) ) &
+                    * L_X2(IndLX_Q(2,lNodeX)) % P( QuadX2     (iQuadX2) ) &
+                    * L_X3(IndLX_Q(3,lNodeX)) % P( QuadX3     (iQuadX3) ) &
+                    * L_X1(IndLX_Q(1,mNodeX)) % P( QuadX1     (iQuadX1) ) &
+                    * L_X2(IndLX_Q(2,mNodeX)) % P( QuadX2     (iQuadX2) ) &
+                    * L_X3(IndLX_Q(3,mNodeX)) % P( QuadX3     (iQuadX3) )
+
           END DO
           END DO
           END DO
@@ -424,8 +446,8 @@ CONTAINS
         DO iQuadX2 = 1, nQuadX(2)
         DO iQuadX1 = 1, nQuadX(1)
 
-          MassTensor0(kNodeX,lNodeX,mNodeX,iNodeX,jNodeX) &
-            = MassTensor0(kNodeX,lNodeX,mNodeX,iNodeX,jNodeX) &
+          MassTensorProlongation(kNodeX,lNodeX,mNodeX,iNodeX,jNodeX) &
+            = MassTensorProlongation(kNodeX,lNodeX,mNodeX,iNodeX,jNodeX) &
                 + WeightsX1(iQuadX1) * WeightsX2(iQuadX2) * WeightsX3(iQuadX3) &
                   * L_X1(IndLX_Q(1,iNodeX)) % P( QuadX1(iQuadX1) ) &
                   * L_X2(IndLX_Q(2,iNodeX)) % P( QuadX2(iQuadX2) ) &
@@ -468,10 +490,10 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: RestrictionTensor0, ProlongationTensor0, MassTensor0 )
+    !$OMP MAP( to: RestrictionTensor0, ProlongationTensor0, MassTensorRestriction, MassTensorProlongation )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
-    !$ACC COPYIN(  RestrictionTensor0, ProlongationTensor0, MassTensor0 )
+    !$ACC COPYIN(  RestrictionTensor0, ProlongationTensor0, MassTensorRestriction, MassTensorProlongation )
 #endif
 
   END SUBROUTINE CreateMeshRefinement_TwoMoment_CURVILINEAR
@@ -509,13 +531,14 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: RestrictionTensor0, ProlongationTensor0, MassTensor0 )
+    !$OMP MAP( release: RestrictionTensor0, ProlongationTensor0, MassTensorRestriction, MassTensorProlongation )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
-    !$ACC DELETE(       RestrictionTensor0, ProlongationTensor0, MassTensor0 )
+    !$ACC DELETE(       RestrictionTensor0, ProlongationTensor0, MassTensorRestriction, MassTensorProlongation )
 #endif
 
-    DEALLOCATE( MassTensor0 )
+    DEALLOCATE( MassTensorRestriction )
+    DEALLOCATE( MassTensorProlongation )
     DEALLOCATE( ProlongationTensor0 )
     DEALLOCATE( RestrictionTensor0 )
 
@@ -679,8 +702,8 @@ CONTAINS
                      G_Fine(mNodeX,iX1,iX2,iX3,iGF_h_3), &
                      Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm )
 
-            SUM_M = SUM_M + MassTensor0        (kNodeX,lNodeX,mNodeX,iNodeX,jNodeX       ) * SqrtGm
-            SUM_P = SUM_P + ProlongationTensor0(kNodeX,lNodeX,mNodeX,iNodeX,jNodeX,iFineX) * SqrtGm
+            SUM_M = SUM_M + MassTensorProlongation(kNodeX,lNodeX,mNodeX,iNodeX,jNodeX       ) * SqrtGm
+            SUM_P = SUM_P + ProlongationTensor0   (kNodeX,lNodeX,mNodeX,iNodeX,jNodeX,iFineX) * SqrtGm
 
           END DO
           END DO
@@ -873,15 +896,15 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
-    !$OMP PRIVATE( SUM_M, &
+    !$OMP PRIVATE( iFineX1, iFineX2, iFineX3, iX1, iX2, iX3, SUM_M, &
     !$OMP          Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRIVATE( SUM_M, &
+    !$ACC PRIVATE( iFineX1, iFineX2, iFineX3, iX1, iX2, iX3, SUM_M, &
     !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(5) &
-    !$OMP PRIVATE( SUM_M, &
+    !$OMP PRIVATE( iFineX1, iFineX2, iFineX3, iX1, iX2, iX3, SUM_M, &
     !$OMP          Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm )
 #endif
     DO jX3 = 1, nX_Crse(3)
@@ -892,18 +915,28 @@ CONTAINS
       DO iNodeX = 1, nDOFX
 
         SUM_M = Zero
+        DO iFineX = 1, nFine
         DO mNodeX = 1, nDOFX
         DO lNodeX = 1, nDOFX
         DO kNodeX = 1, nDOFX
 
+          iFineX3 = MOD( (iFineX-1) / ( nFineX(1) * nFineX(2) ), nFineX(3) ) + 1
+          iFineX2 = MOD( (iFineX-1) / ( nFineX(1)             ), nFineX(2) ) + 1
+          iFineX1 = MOD( (iFineX-1)                            , nFineX(1) ) + 1
+
+          iX1 = ( jX1 - 1 ) * nFineX(1) + iFineX1
+          iX2 = ( jX2 - 1 ) * nFineX(2) + iFineX2
+          iX3 = ( jX3 - 1 ) * nFineX(3) + iFineX3
+
           CALL ComputeGeometryX_SpatialMetric &
-                 ( G_Crse(kNodeX,jX1,jX2,jX3,iGF_h_1), &
-                   G_Crse(lNodeX,jX1,jX2,jX3,iGF_h_2), &
-                   G_Crse(mNodeX,jX1,jX2,jX3,iGF_h_3), &
+                 ( G_Fine(kNodeX,iX1,iX2,iX3,iGF_h_1), &
+                   G_Fine(lNodeX,iX1,iX2,iX3,iGF_h_2), &
+                   G_Fine(mNodeX,iX1,iX2,iX3,iGF_h_3), &
                    Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm )
 
-          SUM_M = SUM_M + MassTensor0(kNodeX,lNodeX,mNodeX,iNodeX,jNodeX) * SqrtGm
+          SUM_M = SUM_M + MassTensorRestriction(kNodeX,lNodeX,mNodeX,iFineX,iNodeX,jNodeX) * SqrtGm
 
+        END DO
         END DO
         END DO
         END DO
@@ -919,7 +952,7 @@ CONTAINS
 
     CALL MatrixMatrixMultiplyBatched &
            ( 'N', 'N', nDOFX, nVar, nDOFX*nFine, &
-             VolumeRatio, RestrictionMatrix, nDOFX, nDOFX*nDOFX*nFine, &
+             One, RestrictionMatrix, nDOFX, nDOFX*nDOFX*nFine, &
              U_Fine, nDOFX*nFine, nDOFX*nFine*nVar, &
              Zero, U_Crse, nDOFX, nDOFX*nVar, &
              nCrse )
