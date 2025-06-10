@@ -777,6 +777,9 @@ CONTAINS
 
       ! --- Permute conserved quantities ---
 
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
       DO iCF = 1, nCF
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -801,37 +804,62 @@ CONTAINS
       ASSOCIATE( dX2 => MeshX(2) % Width, &
                  dX3 => MeshX(3) % Width )
 
+      CALL TimersStart_Euler( Timer_CM_UpdateCoefficient )
+
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(5) &
+    !$OMP PRIVATE( iNodeX1, iNodeX2, iNodeX3 ) &
+    !$OMP REDUCTION( +: coeff_sum )
+#endif
       DO iCF    = 1, nCF
       DO iX1    = iX_B0(1), iX_E0(1)
 
         ! IF ( MergedMeshX2(iX1) % NCellsPerMerge .EQ. 1 ) CYCLE ! keep?
 
+        ! ASSOCIATE( NCellsPerMergeX2  => MergedMeshX2(iX1) % NCellsPerMerge, &
+        !            dX2M              => MergedMeshX2(iX1) % MergeWidth, &
+        !            MergeCellMarkerX2 => MergedMeshX2(iX1) % MergeCellMarker, &
+        !            FineCellMarkerX2  => MergedMeshX2(iX1) % FineCellMarker, &
+        !            BasisCoeffX2      => MergedMeshX2(iX1) % MergedBasisCoeff )
+
+      DO iX2    = iX_B0(2), iX_E0(2)
+
+        ! IF ( (NCellsPerMergeX2 .EQ. 1) .AND. (MergedMeshX3(iX1,iX2) % NCellsPerMerge .EQ. 1) ) CYCLE
+
+        ! ASSOCIATE( NCellsPerMergeX3  => MergedMeshX3(iX1,iX2) % NCellsPerMerge, &
+        !            dX3M              => MergedMeshX3(iX1,iX2) % MergeWidth, &
+        !            MergeCellMarkerX3 => MergedMeshX3(iX1,iX2) % MergeCellMarker, &
+        !            FineCellMarkerX3  => MergedMeshX3(iX1,iX2) % FineCellMarker, &
+        !            BasisCoeffX3      => MergedMeshX3(iX1,iX2) % MergedBasisCoeff )
+
+      DO iX3    = iX_B0(3), iX_E0(3)
+      DO iNodeX = 1,nDOFX
+
         ASSOCIATE( NCellsPerMergeX2  => MergedMeshX2(iX1) % NCellsPerMerge, &
                    dX2M              => MergedMeshX2(iX1) % MergeWidth, &
                    MergeCellMarkerX2 => MergedMeshX2(iX1) % MergeCellMarker, &
                    FineCellMarkerX2  => MergedMeshX2(iX1) % FineCellMarker, &
-                   BasisCoeffX2      => MergedMeshX2(iX1) % MergedBasisCoeff )
-
-      DO iX2    = iX_B0(2), iX_E0(2)
-
-        IF ( (NCellsPerMergeX2 .EQ. 1) .AND. (MergedMeshX3(iX1,iX2) % NCellsPerMerge .EQ. 1) ) CYCLE
-
-        ASSOCIATE( NCellsPerMergeX3  => MergedMeshX3(iX1,iX2) % NCellsPerMerge, &
+                   BasisCoeffX2      => MergedMeshX2(iX1) % MergedBasisCoeff, &
+                   NCellsPerMergeX3  => MergedMeshX3(iX1,iX2) % NCellsPerMerge, &
                    dX3M              => MergedMeshX3(iX1,iX2) % MergeWidth, &
                    MergeCellMarkerX3 => MergedMeshX3(iX1,iX2) % MergeCellMarker, &
                    FineCellMarkerX3  => MergedMeshX3(iX1,iX2) % FineCellMarker, &
                    BasisCoeffX3      => MergedMeshX3(iX1,iX2) % MergedBasisCoeff )
 
-      DO iX3    = iX_B0(3), iX_E0(3)
-      DO iNodeX = 1,nDOFX
+        IF ( (NCellsPerMergeX2 .EQ. 1) .AND. (NCellsPerMergeX3 .EQ. 1) ) CYCLE
 
         coeff_sum = Zero
         iNodeX1   = NodeNumberTableX(1,iNodeX)
         iNodeX2   = NodeNumberTableX(2,iNodeX)
         iNodeX3   = NodeNumberTableX(3,iNodeX)
 
-        CALL TimersStart_Euler( Timer_CM_UpdateCoefficient )
+        ! CALL TimersStart_Euler( Timer_CM_UpdateCoefficient )
 
+! #if defined( THORNADO_OMP )
+!     !$OMP PARALLEL DO COLLAPSE(6) &
+!     !$OMP FIRSTPRIVATE( iNodeX1, iNodeX2, iNodeX3 ) &
+!     !$OMP REDUCTION( +: coeff_sum )
+! #endif
         DO iCellX2  = 1,NCellsPerMergeX2
         DO iCellX3  = 1,NCellsPerMergeX3
         DO iFineX2  = 1,nN
@@ -866,24 +894,27 @@ CONTAINS
         END DO
         END DO
 
-        CALL TimersStop_Euler( Timer_CM_UpdateCoefficient)
+        ! CALL TimersStop_Euler( Timer_CM_UpdateCoefficient)
 
         U(iNodeX,iX1,iX2,iX3,iCF) = coeff_sum
 
-      END DO
-      END DO
-
-        END ASSOCIATE ! NCellsPerMergeX3, etc.
+        END ASSOCIATE
 
       END DO
+      END DO
 
-        END ASSOCIATE ! NCellsPerMergeX2, etc.
+        ! END ASSOCIATE ! NCellsPerMergeX3, etc.
+
+      END DO
+
+        ! END ASSOCIATE ! NCellsPerMergeX2, etc.
 
       END DO
       END DO
 
       END ASSOCIATE ! dX2, dX3
 
+      CALL TimersStop_Euler( Timer_CM_UpdateCoefficient)
       CALL TimersStop_Euler( Timer_CellMerging )
 
     END SUBROUTINE MergeAndRestrict3D
