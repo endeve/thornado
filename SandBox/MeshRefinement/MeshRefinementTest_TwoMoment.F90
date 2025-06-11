@@ -404,6 +404,9 @@ PROGRAM MeshRefinementTest_TwoMoment
 
   ! --- Refine ---
 
+  IF ( .NOT. UseSimpleMeshRefinement ) THEN
+    CALL RefineX_TwoMoment_CURVILINEAR( nX_Crse, nX_Fine, nVar, G_Crse, U_Crse, G_Fine, U_Fine )
+  END IF
   Timer_Refine = 0.0_DP
   CALL TimersStart( Timer_Refine )
   IF ( UseSimpleMeshRefinement ) THEN
