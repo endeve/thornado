@@ -23,6 +23,8 @@ module HipblasModule
     hipblasDgemmStridedBatched, &
     hipblasDgetrfBatched, &
     hipblasDgetrsBatched, &
+    hipblasDgetrfStridedBatched, &
+    hipblasDgetrsStridedBatched, &
     hipblasDgemv, &
     hipblasDtrsv, &
     hipblasDtrsm, &

@@ -91,6 +91,8 @@ MODULE LinearAlgebraModule
     hipblasDgemmStridedBatched, &
     hipblasDgetrfBatched, &
     hipblasDgetrsBatched, &
+    hipblasDgetrfStridedBatched, &
+    hipblasDgetrsStridedBatched, &
     hipblasDgemv, &
     hipblasDtrsv, &
     hipblasDtrsm, &
@@ -597,14 +599,16 @@ CONTAINS
 
     INTEGER                                    :: ierr, i, stridea, strideb, strideipiv
     INTEGER(C_INT)                             :: itrans
-    INTEGER(C_INT64_T)                         :: strideP_64
+    INTEGER(C_INT64_T)                         :: stridea_64, strideb_64, strideP_64
     INTEGER(C_SIZE_T)                          :: sizeof_a, sizeof_b, sizeof_ipiv, sizeof_info
     REAL(DP), DIMENSION(:,:), POINTER          :: pa, pb
     INTEGER,  DIMENSION(:),   POINTER          :: pipiv, pinfo
     TYPE(C_PTR)                                :: ha, hb, hipiv, hinfo
     TYPE(C_PTR), DIMENSION(batchcount), TARGET :: da, db, dipiv
     TYPE(C_PTR)                                :: da_array, db_array, dipiv_array, dinfo
-    INTEGER                                    :: osa, osb
+    INTEGER                                    :: osa, osb, osipiv
+    INTEGER                                    :: ia, ib
+    INTEGER                                    :: ja, jb
     LOGICAL                                    :: data_on_device
 
     data_on_device = .false.
@@ -636,52 +640,60 @@ CONTAINS
 
       itrans = itrans_from_char( trans )
 
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET ENTER DATA &
-      !$OMP MAP( alloc: da, db, dipiv, da_array, db_array, dipiv_array )
-#elif defined(THORNADO_OACC)
-      !$ACC ENTER DATA &
-      !$ACC CREATE( da, db, dipiv, da_array, db_array, dipiv_array )
-#endif
-
       dinfo = dev_ptr( pinfo(1) )
       DO i = 1, batchcount
-        osa = (i-1) * n + 1
-        osb = (i-1) * nrhs + 1
-        da(i) = dev_ptr( pa(1,osa) )
-        db(i) = dev_ptr( pb(1,osb) )
-        dipiv(i) = dev_ptr( pipiv(osa) )
+        osa = (i-1) * stridea + 1
+        osb = (i-1) * strideb + 1
+        osipiv = (i-1) * strideipiv + 1
+        ia = mod( (osa-1), lda ) + 1
+        ib = mod( (osb-1), ldb ) + 1
+        ja = 1
+        jb = 1
+        IF ( stridea /= 0 ) ja = (osa-1)/lda + 1
+        IF ( strideb /= 0 ) jb = (osb-1)/ldb + 1
+        da(i) = dev_ptr( pa(ia,ja) )
+        db(i) = dev_ptr( pb(ib,jb) )
+        dipiv(i) = dev_ptr( pipiv(osipiv) )
       END DO
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET UPDATE TO( da, db, dipiv )
-#elif defined(THORNADO_OACC)
-      !$ACC UPDATE DEVICE( da, db, dipiv )
-#endif
 
+#if defined(THORNADO_LA_CUBLAS)
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET ENTER DATA &
+      !$OMP MAP( to: da, db, dipiv )
+#elif defined(THORNADO_OACC)
+      !$ACC ENTER DATA &
+      !$ACC COPYIN( da, db, dipiv )
+#endif
       da_array = dev_ptr( da(1) )
       db_array = dev_ptr( db(1) )
       dipiv_array = dev_ptr( dipiv(1) )
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET UPDATE TO( da_array, db_array, dipiv )
-#elif defined(THORNADO_OACC)
-      !$ACC UPDATE DEVICE( da_array, db_array, dipiv )
-#endif
 
-#if defined(THORNADO_LA_CUBLAS)
       ierr = cublasDgetrfBatched &
              ( cublas_handle, n, da_array, lda, dipiv(1), dinfo, batchcount )
       ierr = cublasDgetrsBatched &
              ( cublas_handle, itrans, n, nrhs, da_array, lda, dipiv(1), db_array, ldb, hinfo, batchcount )
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( release: da, db, dipiv )
+#elif defined(THORNADO_OACC)
+      !$ACC EXIT DATA &
+      !$ACC DELETE( da, db, dipiv )
+#endif
+
 #elif defined(THORNADO_LA_ROCM)
-      !strideP_64 = n
       !CALL rocsolverCheck( rocsolver_dgetrf_batched &
       !       ( rocsolver_handle, n, n, da_array, lda, dipiv(1), strideP_64, dinfo, batchcount ) )
       !CALL rocsolverCheck( rocsolver_dgetrs_batched &
       !       ( rocsolver_handle, itrans, n, nrhs, da_array, lda, dipiv(1), strideP_64, db_array, ldb, batchcount ) )
-      CALL hipblasCheck( hipblasDgetrfBatched &
-             ( hipblas_handle, n, da_array, lda, dipiv(1), dinfo, batchcount ) )
-      CALL hipblasCheck( hipblasDgetrsBatched &
-             ( hipblas_handle, itrans, n, nrhs, da_array, lda, dipiv(1), db_array, ldb, hinfo, batchcount ) )
+      stridea_64 = stridea
+      strideb_64 = strideb
+      strideP_64 = strideipiv
+      CALL hipblasCheck( hipblasDgetrfStridedBatched &
+             ( hipblas_handle, n, da(1), lda, stridea_64, dipiv(1), strideP_64, dinfo, batchcount ) )
+      CALL hipblasCheck( hipblasDgetrsStridedBatched &
+             ( hipblas_handle, itrans, n, nrhs, da(1), lda, stridea_64, dipiv(1), strideP_64, db(1), ldb, strideb_64, hinfo, batchcount ) )
 #elif defined(THORNADO_LA_ONEMKL)
       !$OMP DISPATCH 
       CALL DGETRF_BATCH_STRIDED &
@@ -697,14 +709,6 @@ CONTAINS
 #endif
 #if defined(THORNADO_OMP_OL)
       CALL stream_sync( stream )
-#endif
-
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET EXIT DATA &
-      !$OMP MAP( release: da, db, dipiv, da_array, db_array, dipiv_array )
-#elif defined(THORNADO_OACC)
-      !$ACC EXIT DATA &
-      !$ACC DELETE( da, db, dipiv, da_array, db_array, dipiv_array )
 #endif
 
     ELSE
