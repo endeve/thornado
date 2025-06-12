@@ -531,7 +531,9 @@ contains
     END IF
 
     call InitializeMeshRefinement_TwoMoment &
-           ( UseSimpleMeshRefinement_Option &
+           ( CoordinateSystem_Option &
+               = CoordinateSystem, &
+             UseSimpleMeshRefinement_Option &
                = UseSimpleMeshRefinement, &
              Verbose_Option &
                = Verbose )

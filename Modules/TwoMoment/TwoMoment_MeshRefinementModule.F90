@@ -11,7 +11,7 @@ MODULE TwoMoment_MeshRefinementModule
   USE GeometryFieldsModule, ONLY: &
     nGF, iGF_h_1, iGF_h_2, iGF_h_3
   USE GeometryFieldsModule, ONLY: &
-    CoordinateSystem
+    CoordinateSystem_mod => CoordinateSystem
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX_SpatialMetric
   USE LinearAlgebraModule, ONLY: &
@@ -60,9 +60,12 @@ CONTAINS
 
 
   SUBROUTINE InitializeMeshRefinement_TwoMoment &
-    ( UseSimpleMeshRefinement_Option, &
+    ( CoordinateSystem_Option, &
+      UseSimpleMeshRefinement_Option, &
       Verbose_Option )
 
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
+      CoordinateSystem_Option
     LOGICAL, INTENT(in), OPTIONAL :: UseSimpleMeshRefinement_Option
     LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
 
@@ -78,12 +81,17 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: WeightsX1(:), WeightsX2(:), WeightsX3(:)
 
     REAL(DP) :: FineXC_Crse(3), dFineX_Crse(3)
+    CHARACTER(24) :: CoordinateSystem
 
     IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
     ELSE
       Verbose = .FALSE.
     END IF
+
+    CoordinateSystem = CoordinateSystem_mod
+    IF( PRESENT( CoordinateSystem_Option ) ) &
+      CoordinateSystem = TRIM( CoordinateSystem_Option )
 
     SELECT CASE ( TRIM( CoordinateSystem ) )
     CASE ( 'CARTESIAN' )
