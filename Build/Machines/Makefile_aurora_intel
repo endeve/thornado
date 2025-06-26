@@ -1,9 +1,9 @@
 ## Makefile definitions for Beacon with Intel compiler
 ## VERY IMPORTANT: heap-arrays is needed for the large table of the ap
 
-DEFINES += -DTHORNADO_EULER_NOGPU
+INTEL_DEFINES = -DTHORNADO_EULER_NOGPU
 C       = mpic++ --c++11
-FORTRAN = mpifort -fc=ifx -fPIC -fpp -xCore-AVX512 ${AADEBUG} ${DEFINES}
+FORTRAN = mpifort -fc=ifx -fPIC -fpp -xCore-AVX512 ${AADEBUG} ${INTEL_DEFINES}
 #-heap-arrays 0 -fpe0 
 #-init=snan -traceback
 FLINKER = mpifort -fc=ifx -fPIC -fpp -xCore-AVX512 ${AADEBUG}
