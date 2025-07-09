@@ -24,7 +24,12 @@ MODULE EquationOfStateModule
     ComputeSpecificInternalEnergy_TABLE, &
     ComputeElectronChemicalPotential_TABLE, &
     ComputeProtonChemicalPotential_TABLE, &
-    ComputeNeutronChemicalPotential_TABLE
+    ComputeNeutronChemicalPotential_TABLE, &
+    ComputeMuonChemicalPotential_TABLE, &
+    ComputeProtonEffectiveMass_TABLE, &
+    ComputeNeutronEffectiveMass_TABLE, &
+    ComputeProtonSelfEnergy_TABLE, &
+    ComputeNeutronSelfEnergy_TABLE
   USE UnitsModule, ONLY: &
     AtomicMassUnit
 
@@ -51,6 +56,11 @@ MODULE EquationOfStateModule
   PUBLIC :: ComputeElectronChemicalPotential
   PUBLIC :: ComputeProtonChemicalPotential
   PUBLIC :: ComputeNeutronChemicalPotential
+  PUBLIC :: ComputeMuonChemicalPotential
+  PUBLIC :: ComputeProtonEffectiveMass
+  PUBLIC :: ComputeNeutronEffectiveMass
+  PUBLIC :: ComputeProtonSelfEnergy
+  PUBLIC :: ComputeNeutronSelfEnergy
 
   INTERFACE ApplyEquationOfState
     MODULE PROCEDURE ApplyEquationOfState_Scalar
@@ -126,6 +136,31 @@ MODULE EquationOfStateModule
     MODULE PROCEDURE ComputeNeutronChemicalPotential_Scalar
     MODULE PROCEDURE ComputeNeutronChemicalPotential_Vector
   END INTERFACE ComputeNeutronChemicalPotential
+
+  INTERFACE ComputeMuonChemicalPotential
+    MODULE PROCEDURE ComputeMuonChemicalPotential_Scalar
+    MODULE PROCEDURE ComputeMuonChemicalPotential_Vector
+  END INTERFACE ComputeMuonChemicalPotential
+
+  INTERFACE ComputeProtonEffectiveMass
+    MODULE PROCEDURE ComputeProtonEffectiveMass_Scalar
+    MODULE PROCEDURE ComputeProtonEffectiveMass_Vector
+  END INTERFACE ComputeProtonEffectiveMass
+
+  INTERFACE ComputeNeutronEffectiveMass
+    MODULE PROCEDURE ComputeNeutronEffectiveMass_Scalar
+    MODULE PROCEDURE ComputeNeutronEffectiveMass_Vector
+  END INTERFACE ComputeNeutronEffectiveMass
+
+  INTERFACE ComputeProtonSelfEnergy
+    MODULE PROCEDURE ComputeProtonSelfEnergy_Scalar
+    MODULE PROCEDURE ComputeProtonSelfEnergy_Vector
+  END INTERFACE ComputeProtonSelfEnergy
+
+  INTERFACE ComputeNeutronSelfEnergy
+    MODULE PROCEDURE ComputeNeutronSelfEnergy_Scalar
+    MODULE PROCEDURE ComputeNeutronSelfEnergy_Vector
+  END INTERFACE ComputeNeutronSelfEnergy
 
   PUBLIC :: InitializeEquationOfState
   PUBLIC :: FinalizeEquationOfState
@@ -1149,9 +1184,7 @@ CONTAINS
 
   END SUBROUTINE ComputeProtonChemicalPotential_Vector
 
-
   ! --- ComputeNeutronChemicalPotential ---
-
 
   SUBROUTINE ComputeNeutronChemicalPotential_Scalar &
     ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option )
@@ -1271,5 +1304,601 @@ CONTAINS
 
   END SUBROUTINE ComputeNeutronChemicalPotential_Vector
 
+  ! --- ComputeMuonChemicalPotential ---
+
+  SUBROUTINE ComputeMuonChemicalPotential_Scalar &
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option )
+
+    REAL(DP), INTENT(in)                    :: D, T, Ye, Ym
+    REAL(DP), INTENT(out)                   :: M
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdYe_Local
+    REAL(DP), POINTER :: dMdD      , dMdT      , dMdYe
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdYe_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD => dMdD_Option
+      ELSE
+        dMdD => dMdD_Local
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT => dMdT_Option
+      ELSE
+        dMdT => dMdT_Local
+      END IF
+
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe => dMdYe_Option
+      ELSE
+        dMdYe => dMdYe_Local
+      END IF
+
+      CALL ComputeMuonChemicalPotential_TABLE &
+             ( D, T, Ye, Ym, M, dMdD, dMdT, dMdYe )
+
+    ELSE
+
+      CALL ComputeMuonChemicalPotential_TABLE &
+             ( D, T, Ye, Ym, M )
+
+    END IF
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeMuonChemicalPotential_Scalar
+
+
+  SUBROUTINE ComputeMuonChemicalPotential_Vector &
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option )
+
+    REAL(DP), INTENT(in)                    :: D(:), T(:), Ye(:), Ym(:)
+    REAL(DP), INTENT(out)                   :: M(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option(:)
+
+    LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+      dMdD_Local, dMdT_Local, dMdYe_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: &
+      dMdD      , dMdT      , dMdYe
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdYe_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD(1:nP) => dMdD_Option(:)
+      ELSE
+        dMdD(1:nP) => dMdD_Local(:)
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT(1:nP) => dMdT_Option(:)
+      ELSE
+        dMdT(1:nP) => dMdT_Local(:)
+      END IF
+
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe(1:nP) => dMdYe_Option(:)
+      ELSE
+        dMdYe(1:nP) => dMdYe_Local(:)
+      END IF
+
+      CALL ComputeMuonChemicalPotential_TABLE &
+             ( D, T, Ye, Ym, M, dMdD, dMdT, dMdYe )
+
+    ELSE
+
+      CALL ComputeMuonChemicalPotential_TABLE &
+             ( D, T, Ye, Ym, M )
+
+    END IF
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeMuonChemicalPotential_Vector
+
+  ! --- ComputeProtonEffectiveMass ---
+
+  SUBROUTINE ComputeProtonEffectiveMass_Scalar &
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option )
+
+    REAL(DP), INTENT(in)                    :: D, T, Ye, Ym
+    REAL(DP), INTENT(out)                   :: M
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdYe_Local
+    REAL(DP), POINTER :: dMdD      , dMdT      , dMdYe
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdYe_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD => dMdD_Option
+      ELSE
+        dMdD => dMdD_Local
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT => dMdT_Option
+      ELSE
+        dMdT => dMdT_Local
+      END IF
+
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe => dMdYe_Option
+      ELSE
+        dMdYe => dMdYe_Local
+      END IF
+
+      CALL ComputeProtonEffectiveMass_TABLE &
+             ( D, T, Ye, Ym, M, dMdD, dMdT, dMdYe )
+
+    ELSE
+
+      CALL ComputeProtonEffectiveMass_TABLE &
+             ( D, T, Ye, Ym, M )
+
+    END IF
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeProtonEffectiveMass_Scalar
+
+
+  SUBROUTINE ComputeProtonEffectiveMass_Vector &
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option )
+
+    REAL(DP), INTENT(in)                    :: D(:), T(:), Ye(:), Ym(:)
+    REAL(DP), INTENT(out)                   :: M(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option(:)
+
+    LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+      dMdD_Local, dMdT_Local, dMdYe_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: &
+      dMdD      , dMdT      , dMdYe
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdYe_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD(1:nP) => dMdD_Option(:)
+      ELSE
+        dMdD(1:nP) => dMdD_Local(:)
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT(1:nP) => dMdT_Option(:)
+      ELSE
+        dMdT(1:nP) => dMdT_Local(:)
+      END IF
+
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe(1:nP) => dMdYe_Option(:)
+      ELSE
+        dMdYe(1:nP) => dMdYe_Local(:)
+      END IF
+
+      CALL ComputeProtonEffectiveMass_TABLE &
+             ( D, T, Ye, Ym, M, dMdD, dMdT, dMdYe )
+
+    ELSE
+
+      CALL ComputeProtonEffectiveMass_TABLE &
+             ( D, T, Ye, Ym, M )
+
+    END IF
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeProtonEffectiveMass_Vector
+
+  ! --- ComputeNeutronEffectiveMass ---
+
+  SUBROUTINE ComputeNeutronEffectiveMass_Scalar &
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option )
+
+    REAL(DP), INTENT(in)                    :: D, T, Ye, Ym
+    REAL(DP), INTENT(out)                   :: M
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdYe_Local
+    REAL(DP), POINTER :: dMdD      , dMdT      , dMdYe
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdYe_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD => dMdD_Option
+      ELSE
+        dMdD => dMdD_Local
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT => dMdT_Option
+      ELSE
+        dMdT => dMdT_Local
+      END IF
+
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe => dMdYe_Option
+      ELSE
+        dMdYe => dMdYe_Local
+      END IF
+
+      CALL ComputeNeutronEffectiveMass_TABLE &
+             ( D, T, Ye, Ym, M, dMdD, dMdT, dMdYe )
+
+    ELSE
+
+      CALL ComputeNeutronEffectiveMass_TABLE &
+             ( D, T, Ye, Ym, M )
+
+    END IF
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeNeutronEffectiveMass_Scalar
+
+  SUBROUTINE ComputeNeutronEffectiveMass_Vector &
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option )
+
+    REAL(DP), INTENT(in)                    :: D(:), T(:), Ye(:), Ym(:)
+    REAL(DP), INTENT(out)                   :: M(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option(:)
+
+    LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+      dMdD_Local, dMdT_Local, dMdYe_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: &
+      dMdD      , dMdT      , dMdYe
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdYe_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD(1:nP) => dMdD_Option(:)
+      ELSE
+        dMdD(1:nP) => dMdD_Local(:)
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT(1:nP) => dMdT_Option(:)
+      ELSE
+        dMdT(1:nP) => dMdT_Local(:)
+      END IF
+
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe(1:nP) => dMdYe_Option(:)
+      ELSE
+        dMdYe(1:nP) => dMdYe_Local(:)
+      END IF
+
+      CALL ComputeNeutronEffectiveMass_TABLE &
+             ( D, T, Ye, Ym, M, dMdD, dMdT, dMdYe )
+
+    ELSE
+
+      CALL ComputeNeutronEffectiveMass_TABLE &
+             ( D, T, Ye, Ym, M )
+
+    END IF
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeNeutronEffectiveMass_Vector
+
+  ! --- ComputeProtonSelfEnergy ---
+
+  SUBROUTINE ComputeProtonSelfEnergy_Scalar &
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option )
+
+    REAL(DP), INTENT(in)                    :: D, T, Ye, Ym
+    REAL(DP), INTENT(out)                   :: M
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdYe_Local
+    REAL(DP), POINTER :: dMdD      , dMdT      , dMdYe
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdYe_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD => dMdD_Option
+      ELSE
+        dMdD => dMdD_Local
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT => dMdT_Option
+      ELSE
+        dMdT => dMdT_Local
+      END IF
+
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe => dMdYe_Option
+      ELSE
+        dMdYe => dMdYe_Local
+      END IF
+
+      CALL ComputeProtonSelfEnergy_TABLE &
+             ( D, T, Ye, Ym, M, dMdD, dMdT, dMdYe )
+
+    ELSE
+
+      CALL ComputeProtonSelfEnergy_TABLE &
+             ( D, T, Ye, Ym, M )
+
+    END IF
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeProtonSelfEnergy_Scalar
+
+  SUBROUTINE ComputeProtonSelfEnergy_Vector &
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option )
+
+    REAL(DP), INTENT(in)                    :: D(:), T(:), Ye(:), Ym(:)
+    REAL(DP), INTENT(out)                   :: M(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option(:)
+
+    LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+      dMdD_Local, dMdT_Local, dMdYe_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: &
+      dMdD      , dMdT      , dMdYe
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdYe_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD(1:nP) => dMdD_Option(:)
+      ELSE
+        dMdD(1:nP) => dMdD_Local(:)
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT(1:nP) => dMdT_Option(:)
+      ELSE
+        dMdT(1:nP) => dMdT_Local(:)
+      END IF
+
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe(1:nP) => dMdYe_Option(:)
+      ELSE
+        dMdYe(1:nP) => dMdYe_Local(:)
+      END IF
+
+      CALL ComputeProtonSelfEnergy_TABLE &
+             ( D, T, Ye, Ym, M, dMdD, dMdT, dMdYe )
+
+    ELSE
+
+      CALL ComputeProtonSelfEnergy_TABLE &
+             ( D, T, Ye, Ym, M )
+
+    END IF
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeProtonSelfEnergy_Vector
+
+  ! --- ComputeNeutronSelfEnergy ---
+
+  SUBROUTINE ComputeNeutronSelfEnergy_Scalar &
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option )
+
+    REAL(DP), INTENT(in)                    :: D, T, Ye, Ym
+    REAL(DP), INTENT(out)                   :: M
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdYe_Local
+    REAL(DP), POINTER :: dMdD      , dMdT      , dMdYe
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdYe_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD => dMdD_Option
+      ELSE
+        dMdD => dMdD_Local
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT => dMdT_Option
+      ELSE
+        dMdT => dMdT_Local
+      END IF
+
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe => dMdYe_Option
+      ELSE
+        dMdYe => dMdYe_Local
+      END IF
+
+      CALL ComputeNeutronSelfEnergy_TABLE &
+             ( D, T, Ye, Ym, M, dMdD, dMdT, dMdYe )
+
+    ELSE
+
+      CALL ComputeNeutronSelfEnergy_TABLE &
+             ( D, T, Ye, Ym, M )
+
+    END IF
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeNeutronSelfEnergy_Scalar
+
+  SUBROUTINE ComputeNeutronSelfEnergy_Vector &
+    ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option )
+
+    REAL(DP), INTENT(in)                    :: D(:), T(:), Ye(:), Ym(:)
+    REAL(DP), INTENT(out)                   :: M(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYe_Option(:)
+
+    LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(SIZE(D)), TARGET  :: &
+      dMdD_Local, dMdT_Local, dMdYe_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: &
+      dMdD      , dMdT      , dMdYe
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdYe_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+
+      IF( PRESENT( dMdD_Option ) )THEN
+        dMdD(1:nP) => dMdD_Option(:)
+      ELSE
+        dMdD(1:nP) => dMdD_Local(:)
+      END IF
+
+      IF( PRESENT( dMdT_Option ) )THEN
+        dMdT(1:nP) => dMdT_Option(:)
+      ELSE
+        dMdT(1:nP) => dMdT_Local(:)
+      END IF
+
+      IF( PRESENT( dMdYe_Option ) )THEN
+        dMdYe(1:nP) => dMdYe_Option(:)
+      ELSE
+        dMdYe(1:nP) => dMdYe_Local(:)
+      END IF
+
+      CALL ComputeNeutronSelfEnergy_TABLE &
+             ( D, T, Ye, Ym, M, dMdD, dMdT, dMdYe )
+
+    ELSE
+
+      CALL ComputeNeutronSelfEnergy_TABLE &
+             ( D, T, Ye, Ym, M )
+
+    END IF
+
+#else
+
+#endif
+
+  END SUBROUTINE ComputeNeutronSelfEnergy_Vector
 
 END MODULE EquationOfStateModule

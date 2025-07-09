@@ -78,14 +78,17 @@ MODULE EquationOfStateModule_TABLE
   INTEGER :: &
     iRho, iTemp, iYp, &
     iP_T, iS_T, iE_T, iMe_T, iMp_T, iMn_T, &
-    iXp_T, iXn_T, iXa_T, iXh_T, iAh_T, iGm_T
+    iXp_T, iXn_T, iXa_T, iXh_T, iAh_T, iGm_T, &
+    iEmp_T, iEmn_T, iSep_T, iSen_T
   REAL(DP) :: &
     UnitD, UnitT, UnitY, &
     UnitP, UnitS, UnitE, UnitMl, UnitMp, UnitMn, &
-    UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm
+    UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, &
+    UnitEmp, UnitEmn, UnitSep, UnitSen
   REAL(DP), PUBLIC :: &
     OS_P, OS_S, OS_E, OS_Mp, OS_Mn, &
-    OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Ah, OS_Gm
+    OS_Xp, OS_Xn, OS_Xa, OS_Xh, OS_Ah, OS_Gm, &
+    OS_Emp, OS_Emn, OS_Sep, OS_Sen
   REAL(DP), PARAMETER :: &
     BaryonMass = AtomicMassUnit
   REAL(DP) :: minvar, OS_loc
@@ -93,7 +96,8 @@ MODULE EquationOfStateModule_TABLE
     D_T, T_T, Yp_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: &
     P_T, S_T, E_T, Mp_T, Mn_T, &
-    Xp_T, Xn_T, Xa_T, Xh_T, Ah_T, Gm_T
+    Xp_T, Xn_T, Xa_T, Xh_T, Ah_T, Gm_T, &
+    Emp_T, Emn_T, Sep_T, Sen_T
 #ifdef MICROPHYSICS_WEAKLIB
   LOGICAL :: UsingExternalEOS
   TYPE(EquationOfStateCompOSETableType), POINTER :: EOS
@@ -127,7 +131,13 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputeHeavyMassNumber_TABLE
   PUBLIC :: ComputeElectronNeutrinoChemicalPotential_TABLE
   PUBLIC :: ComputeMuonNeutrinoChemicalPotential_TABLE
-  
+
+  ! These are not present in the old weaklib table
+  PUBLIC :: ComputeProtonEffectiveMass_TABLE
+  PUBLIC :: ComputeNeutronEffectiveMass_TABLE
+  PUBLIC :: ComputeProtonSelfEnergy_TABLE
+  PUBLIC :: ComputeNeutronSelfEnergy_TABLE
+
   REAL(DP), PUBLIC :: Min_D, Min_T, Min_Y
   REAL(DP), PUBLIC :: Max_D, Max_T, Max_Y
 
@@ -255,40 +265,64 @@ MODULE EquationOfStateModule_TABLE
     MODULE PROCEDURE ComputeDependentVariableAndDerivativesBaryons_TABLE_Scalar
     MODULE PROCEDURE ComputeDependentVariableAndDerivativesBaryons_TABLE_Vector
   END INTERFACE ComputeDependentVariableAndDerivativesBaryons_TABLE
+
   INTERFACE ComputeDependentVariableTotal
     MODULE PROCEDURE ComputeDependentVariableTotal_TABLE_Scalar
     MODULE PROCEDURE ComputeDependentVariableTotal_TABLE_Vector
   END INTERFACE ComputeDependentVariableTotal
+
   INTERFACE ComputeTotalPES_TABLE
     MODULE PROCEDURE ComputeTotalPES_TABLE_Scalar
     MODULE PROCEDURE ComputeTotalPES_TABLE_Vector
   END INTERFACE ComputeTotalPES_TABLE
+
   INTERFACE ComputeDependentVariableAndDerivativesTotal_TABLE
     MODULE PROCEDURE ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar
     MODULE PROCEDURE ComputeDependentVariableAndDerivativesTotal_TABLE_Vector
   END INTERFACE ComputeDependentVariableAndDerivativesTotal_TABLE
 
+  INTERFACE ComputeProtonEffectiveMass_TABLE
+    MODULE PROCEDURE ComputeProtonEffectiveMass_TABLE_Scalar
+    MODULE PROCEDURE ComputeProtonEffectiveMass_TABLE_Vector
+  END INTERFACE
+
+  INTERFACE ComputeNeutronEffectiveMass_TABLE
+    MODULE PROCEDURE ComputeNeutronEffectiveMass_TABLE_Scalar
+    MODULE PROCEDURE ComputeNeutronEffectiveMass_TABLE_Vector
+  END INTERFACE
+
+  INTERFACE ComputeProtonSelfEnergy_TABLE
+    MODULE PROCEDURE ComputeProtonSelfEnergy_TABLE_Scalar
+    MODULE PROCEDURE ComputeProtonSelfEnergy_TABLE_Vector
+  END INTERFACE
+
+  INTERFACE ComputeNeutronSelfEnergy_TABLE
+    MODULE PROCEDURE ComputeNeutronSelfEnergy_TABLE_Scalar
+    MODULE PROCEDURE ComputeNeutronSelfEnergy_TABLE_Vector
+  END INTERFACE
   ! Define local constants
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET &
   !$OMP ( D_T, T_T, Yp_T, &
-  !$OMP   UnitD, UnitT, UnitY, UnitP, UnitS, UnitE, UnitMl, UnitMp, UnitMn, &
-  !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, &
+  !$OMP   UnitD, UnitT, UnitY, UnitP, UnitS, UnitE, &
+  !$OMP   UnitMl, UnitMp, UnitMn, UnitXp, UnitXn, UnitXa, UnitXh, &
+  !$OMP   UnitAh, UnitGm, UnitEmp, UnitEmn, UnitSep, UnitSen, &
   !$OMP   OS_P, OS_S, OS_E, OS_Mp, OS_Mn, OS_Xp, OS_Xn, &
-  !$OMP   OS_Xa, OS_Xh, OS_Ah, OS_Gm, &
+  !$OMP   OS_Xa, OS_Xh, OS_Ah, OS_Gm, OS_Emp, OS_Emn, OS_Sep, OS_Sen, &
   !$OMP   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, &
-  !$OMP   Xa_T, Xh_T, Ah_T, Gm_T, &
+  !$OMP   Xa_T, Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
   !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( D_T, T_T, Yp_T, &
-  !$ACC   UnitD, UnitT, UnitY, UnitP, UnitS, UnitE, UnitMl, UnitMp, UnitMn, &
-  !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, &
+  !$ACC   UnitD, UnitT, UnitY, UnitP, UnitS, UnitE, &
+  !$ACC   UnitMl, UnitMp, UnitMn, UnitXp, UnitXn, UnitXa, UnitXh, &
+  !$ACC   UnitAh, UnitGm, UnitEmp, UnitEmn, UnitSep, UnitSen, &
   !$ACC   OS_P, OS_S, OS_E, OS_Mp, OS_Mn, OS_Xp, OS_Xn, &
-  !$ACC   OS_Xa, OS_Xh, OS_Ah, OS_Gm, &
+  !$ACC   OS_Xa, OS_Xh, OS_Ah, OS_Gm, OS_Emp, OS_Emn, OS_Sep, OS_Sen, &
   !$ACC   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, &
-  !$ACC   Xa_T, Xh_T, Ah_T, Gm_T, &
+  !$ACC   Xa_T, Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
   !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #endif
 
@@ -409,6 +443,10 @@ CONTAINS
     UnitXh = One
     UnitAh = One
     UnitGm = One
+    UnitEmp = One
+    UnitEmn = One
+    UnitSep = One
+    UnitSen = One
 
     ! --- Thermodynamic States ---
 
@@ -444,6 +482,10 @@ CONTAINS
     iXh_T = EOS % DV % Indices % iHeavyMassFraction
     iAh_T = EOS % DV % Indices % iHeavyMassNumber
     iGm_T = EOS % DV % Indices % iGamma1
+    iEmp_T = EOS % DV % Indices % iProtonEffMass
+    iEmn_T = EOS % DV % Indices % iNeutronEffMass
+    iSep_T = EOS % DV % Indices % iProtonSelfEnergy
+    iSen_T = EOS % DV % Indices % iNeutronSelfEnergy
 
     ! --- Dependent Variables Offsets ---
 
@@ -458,6 +500,10 @@ CONTAINS
     OS_Xh = EOS % DV % Offsets(iXh_T)
     OS_Ah = EOS % DV % Offsets(iAh_T)
     OS_Gm = EOS % DV % Offsets(iGm_T)
+    OS_Emp = EOS % DV % Offsets(iEmp_T)
+    OS_Emn = EOS % DV % Offsets(iEmn_T)
+    OS_Sep = EOS % DV % Offsets(iSep_T)
+    OS_Sen = EOS % DV % Offsets(iSen_T)
 
     ALLOCATE &
       ( P_T (1:EOS % DV % nPoints(1), &
@@ -505,6 +551,26 @@ CONTAINS
             1:EOS % DV % nPoints(2), &
             1:EOS % DV % nPoints(3)) )
 
+    ALLOCATE &
+      ( Emp_T(1:EOS % DV % nPoints(1), &
+            1:EOS % DV % nPoints(2), &
+            1:EOS % DV % nPoints(3)) )
+
+    ALLOCATE &
+      ( Emn_T(1:EOS % DV % nPoints(1), &
+            1:EOS % DV % nPoints(2), &
+            1:EOS % DV % nPoints(3)) ) 
+
+    ALLOCATE &
+      ( Sep_T(1:EOS % DV % nPoints(1), &
+            1:EOS % DV % nPoints(2), &
+            1:EOS % DV % nPoints(3)) ) 
+
+    ALLOCATE &
+      ( Sen_T(1:EOS % DV % nPoints(1), &
+            1:EOS % DV % nPoints(2), &
+            1:EOS % DV % nPoints(3)) ) 
+
     P_T  = EOS % DV % Variables(iP_T ) % Values
     S_T  = EOS % DV % Variables(iS_T ) % Values
     E_T  = EOS % DV % Variables(iE_T ) % Values
@@ -516,6 +582,10 @@ CONTAINS
     Xh_T = EOS % DV % Variables(iXh_T) % Values
     Ah_T = EOS % DV % Variables(iAh_T) % Values
     Gm_T = EOS % DV % Variables(iGm_T) % Values
+    Emp_T = EOS % DV % Variables(iEmp_T) % Values
+    Emn_T = EOS % DV % Variables(iEmn_T) % Values
+    Sep_T = EOS % DV % Variables(iSep_T) % Values
+    Sen_T = EOS % DV % Variables(iSen_T) % Values
 
     IF ( UseChemicalPotentialShift ) CALL ApplyChemicalPotentialShift_TABLE( Mp_T, Mn_T, OS_Mp, OS_Mn )
 
@@ -569,18 +639,22 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( always, to: D_T, T_T, Yp_T, &
-    !$OMP   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMl, UnitMp, UnitMn, &
-    !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, OS_P, OS_S, OS_E, &
-    !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, P_T, S_T, &
-    !$OMP   E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Ah_T, Gm_T, &
+    !$OMP   UnitD, UnitT, UnitY, UnitP, UnitE, &
+    !$OMP   UnitMl, UnitMp, UnitMn, UnitXp, UnitXn, UnitXa, UnitXh, &
+    !$OMP   UnitAh, UnitGm, UnitEmp, UnitEmn, UnitSep, UnitSen, &
+    !$OMP   OS_P, OS_S, OS_E, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, &
+    !$OMP   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, &
+    !$OMP   Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
     !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( D_T, T_T, Yp_T, &
-    !$ACC   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMl, UnitMp, UnitMn, &
-    !$ACC   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, OS_P, OS_S, OS_E, &
-    !$ACC   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, P_T, S_T, &
-    !$ACC   E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, Ah_T, Gm_T, &
+    !$ACC   UnitD, UnitT, UnitY, UnitP, UnitE, &
+    !$ACC   UnitMl, UnitMp, UnitMn, UnitXp, UnitXn, UnitXa, UnitXh, &
+    !$ACC   UnitAh, UnitGm, UnitEmp, UnitEmn, UnitSep, UnitSen, &
+    !$ACC   OS_P, OS_S, OS_E, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, &
+    !$ACC   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, &
+    !$ACC   Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
     !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #endif
 
@@ -596,10 +670,12 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: D_T, T_T, Yp_T, &
-    !$OMP   UnitD, UnitT, UnitY, UnitP, UnitE, UnitMl, UnitMp, UnitMn, &
-    !$OMP   UnitXp, UnitXn, UnitXa, UnitXh, UnitAh, UnitGm, OS_P, OS_S, OS_E, &
-    !$OMP   OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, P_T, S_T, &
-    !$OMP   E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, Xh_T, &
+    !$OMP   UnitD, UnitT, UnitY, UnitP, UnitE, &
+    !$OMP   UnitMl, UnitMp, UnitMn, UnitXp, UnitXn, UnitXa, UnitXh, &
+    !$OMP   UnitAh, UnitGm, UnitEmp, UnitEmn, UnitSep, UnitSen, &
+    !$OMP   OS_P, OS_S, OS_E, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, &
+    !$OMP   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, &
+    !$OMP   Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
     !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #endif
 
@@ -616,6 +692,10 @@ CONTAINS
     DEALLOCATE( Xh_T )
     DEALLOCATE( Ah_T )
     DEALLOCATE( Gm_T )
+    DEALLOCATE( Emp_T )
+    DEALLOCATE( Emn_T )
+    DEALLOCATE( Sep_T )
+    DEALLOCATE( Sen_T )
 
     IF ( .NOT. UsingExternalEOS ) THEN
       IF (ASSOCIATED(MuonTable))      DEALLOCATE( MuonTable )
@@ -3298,6 +3378,519 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeMuonNeutrinoChemicalPotential_TABLE_Vector
+
+  SUBROUTINE ComputeProtonEffectiveMass_TABLE_Scalar &
+    ( D, T, Ye, Ym, Emp, dEmpdD_Option, dEmpdT_Option, dEmpdYe_Option, dEmpdYm_Option )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)                    :: D, T, Ye, Ym
+    REAL(DP), INTENT(out)                   :: Emp
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEmpdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEmpdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEmpdYe_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEmpdYm_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dEmpdD_Local, dEmpdT_Local, dEmpdYe_Local, dEmpdYm_Local
+    REAL(DP), POINTER :: dEmpdD      , dEmpdT      , dEmpdYe, dEmpdYm
+
+    ComputeDerivatives &
+      =      PRESENT( dEmpdD_Option ) &
+        .OR. PRESENT( dEmpdT_Option ) &
+        .OR. PRESENT( dEmpdYe_Option ) &
+        .OR. PRESENT( dEmpdYm_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      IF( PRESENT( dEmpdD_Option ) )THEN
+        dEmpdD => dEmpdD_Option
+      ELSE
+        dEmpdD => dEmpdD_Local
+      END IF
+
+      IF( PRESENT( dEmpdT_Option ) )THEN
+        dEmpdT => dEmpdT_Option
+      ELSE
+        dEmpdT => dEmpdT_Local
+      END IF
+
+      IF( PRESENT( dEmpdYe_Option ) )THEN
+        dEmpdYe => dEmpdYe_Option
+      ELSE
+        dEmpdYe => dEmpdYe_Local
+      END IF
+
+      IF( PRESENT( dEmpdYm_Option ) )THEN
+        dEmpdYm => dEmpdYm_Option
+      ELSE
+        dEmpdYm => dEmpdYm_Local
+      END IF
+
+      CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Scalar &
+             ( D, T, Ye, Ym, Emp, dEmpdD, dEmpdT, dEmpdYe, dEmpdYm, Emp_T, OS_Emp, UnitEmp )
+
+    ELSE
+
+      CALL ComputeDependentVariableBaryons_TABLE_Scalar &
+             ( D, T, Ye, Ym, Emp, Emp_T, OS_Emp, UnitEmp )
+
+    END IF
+
+  END SUBROUTINE ComputeProtonEffectiveMass_TABLE_Scalar
+
+  SUBROUTINE ComputeProtonEffectiveMass_TABLE_Vector &
+    ( D, T, Ye, Ym, Emp, dEmpdD_Option, dEmpdT_Option, dEmpdYe_Option, dEmpdYm_Option )
+
+    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Ye(1:), Ym(1:)
+    REAL(DP), INTENT(out)                   :: Emp(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEmpdD_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEmpdT_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEmpdYe_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEmpdYm_Option(1:)
+
+    LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
+      dEmpdD_Local, dEmpdT_Local, dEmpdYe_Local, dEmpdYm_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: &
+      dEmpdD      , dEmpdT      , dEmpdYe      , dEmpdYm
+
+    ComputeDerivatives &
+      =      PRESENT( dEmpdD_Option ) &
+        .OR. PRESENT( dEmpdT_Option ) &
+        .OR. PRESENT( dEmpdYe_Option ) &
+        .OR. PRESENT( dEmpdYm_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+      ALLOCATE( dEmpdD_Local(nP), dEmpdT_Local(nP), dEmpdYe_Local(nP), dEmpdYm_Local(nP) )
+
+      IF( PRESENT( dEmpdD_Option ) )THEN
+        dEmpdD(1:nP) => dEmpdD_Option(:)
+      ELSE
+        dEmpdD(1:nP) => dEmpdD_Local(:)
+      END IF
+
+      IF( PRESENT( dEmpdT_Option ) )THEN
+        dEmpdT(1:nP) => dEmpdT_Option(:)
+      ELSE
+        dEmpdT(1:nP) => dEmpdT_Local(:)
+      END IF
+
+      IF( PRESENT( dEmpdYe_Option ) )THEN
+        dEmpdYe(1:nP) => dEmpdYe_Option(:)
+      ELSE
+        dEmpdYe(1:nP) => dEmpdYe_Local(:)
+      END IF
+
+      IF( PRESENT( dEmpdYm_Option ) )THEN
+        dEmpdYm(1:nP) => dEmpdYm_Option(:)
+      ELSE
+        dEmpdYm(1:nP) => dEmpdYm_Local(:)
+      END IF
+
+      CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Vector &
+             ( D, T, Ye, Ym, Emp, dEmpdD, dEmpdT, dEmpdYe, dEmpdYm, Emp_T, OS_Emp, UnitEmp )
+
+    ELSE
+
+      CALL ComputeDependentVariableBaryons_TABLE_Vector &
+             ( D, T, Ye, Ym, Emp, Emp_T, OS_Emp, UnitEmp )
+
+    END IF
+
+  END SUBROUTINE ComputeProtonEffectiveMass_TABLE_Vector
+
+  
+  SUBROUTINE ComputeNeutronEffectiveMass_TABLE_Scalar &
+    ( D, T, Ye, Ym, Emn, dEmndD_Option, dEmndT_Option, dEmndYe_Option, dEmndYm_Option )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)                    :: D, T, Ye, Ym
+    REAL(DP), INTENT(out)                   :: Emn
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEmndD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEmndT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEmndYe_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEmndYm_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dEmndD_Local, dEmndT_Local, dEmndYe_Local, dEmndYm_Local
+    REAL(DP), POINTER :: dEmndD      , dEmndT      , dEmndYe, dEmndYm
+
+    ComputeDerivatives &
+      =      PRESENT( dEmndD_Option ) &
+        .OR. PRESENT( dEmndT_Option ) &
+        .OR. PRESENT( dEmndYe_Option ) &
+        .OR. PRESENT( dEmndYm_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      IF( PRESENT( dEmndD_Option ) )THEN
+        dEmndD => dEmndD_Option
+      ELSE
+        dEmndD => dEmndD_Local
+      END IF
+
+      IF( PRESENT( dEmndT_Option ) )THEN
+        dEmndT => dEmndT_Option
+      ELSE
+        dEmndT => dEmndT_Local
+      END IF
+
+      IF( PRESENT( dEmndYe_Option ) )THEN
+        dEmndYe => dEmndYe_Option
+      ELSE
+        dEmndYe => dEmndYe_Local
+      END IF
+
+      IF( PRESENT( dEmndYm_Option ) )THEN
+        dEmndYm => dEmndYm_Option
+      ELSE
+        dEmndYm => dEmndYm_Local
+      END IF
+
+      CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Scalar &
+             ( D, T, Ye, Ym, Emn, dEmndD, dEmndT, dEmndYe, dEmndYm, Emn_T, OS_Emn, UnitEmn )
+
+    ELSE
+
+      CALL ComputeDependentVariableBaryons_TABLE_Scalar &
+             ( D, T, Ye, Ym, Emn, Emn_T, OS_Emn, UnitEmn )
+
+    END IF
+
+  END SUBROUTINE ComputeNeutronEffectiveMass_TABLE_Scalar
+
+  SUBROUTINE ComputeNeutronEffectiveMass_TABLE_Vector &
+    ( D, T, Ye, Ym, Emn, dEmndD_Option, dEmndT_Option, dEmndYe_Option, dEmndYm_Option )
+
+    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Ye(1:), Ym(1:)
+    REAL(DP), INTENT(out)                   :: Emn(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEmndD_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEmndT_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEmndYe_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEmndYm_Option(1:)
+
+    LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
+      dEmndD_Local, dEmndT_Local, dEmndYe_Local, dEmndYm_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: &
+      dEmndD      , dEmndT      , dEmndYe      , dEmndYm
+
+    ComputeDerivatives &
+      =      PRESENT( dEmndD_Option ) &
+        .OR. PRESENT( dEmndT_Option ) &
+        .OR. PRESENT( dEmndYe_Option ) &
+        .OR. PRESENT( dEmndYm_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+      ALLOCATE( dEmndD_Local(nP), dEmndT_Local(nP), dEmndYe_Local(nP), dEmndYm_Local(nP) )
+
+      IF( PRESENT( dEmndD_Option ) )THEN
+        dEmndD(1:nP) => dEmndD_Option(:)
+      ELSE
+        dEmndD(1:nP) => dEmndD_Local(:)
+      END IF
+
+      IF( PRESENT( dEmndT_Option ) )THEN
+        dEmndT(1:nP) => dEmndT_Option(:)
+      ELSE
+        dEmndT(1:nP) => dEmndT_Local(:)
+      END IF
+
+      IF( PRESENT( dEmndYe_Option ) )THEN
+        dEmndYe(1:nP) => dEmndYe_Option(:)
+      ELSE
+        dEmndYe(1:nP) => dEmndYe_Local(:)
+      END IF
+
+      IF( PRESENT( dEmndYm_Option ) )THEN
+        dEmndYm(1:nP) => dEmndYm_Option(:)
+      ELSE
+        dEmndYm(1:nP) => dEmndYm_Local(:)
+      END IF
+
+      CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Vector &
+             ( D, T, Ye, Ym, Emn, dEmndD, dEmndT, dEmndYe, dEmndYm, Emn_T, OS_Emn, UnitEmn )
+
+    ELSE
+
+      CALL ComputeDependentVariableBaryons_TABLE_Vector &
+             ( D, T, Ye, Ym, Emn, Emn_T, OS_Emn, UnitEmn )
+
+    END IF
+
+  END SUBROUTINE ComputeNeutronEffectiveMass_TABLE_Vector
+
+  SUBROUTINE ComputeProtonSelfEnergy_TABLE_Scalar &
+    ( D, T, Ye, Ym, Sep, dSepdD_Option, dSepdT_Option, dSepdYe_Option, dSepdYm_Option )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)                    :: D, T, Ye, Ym
+    REAL(DP), INTENT(out)                   :: Sep
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dSepdD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dSepdT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dSepdYe_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dSepdYm_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dSepdD_Local, dSepdT_Local, dSepdYe_Local, dSepdYm_Local
+    REAL(DP), POINTER :: dSepdD      , dSepdT      , dSepdYe, dSepdYm
+
+    ComputeDerivatives &
+      =      PRESENT( dSepdD_Option ) &
+        .OR. PRESENT( dSepdT_Option ) &
+        .OR. PRESENT( dSepdYe_Option ) &
+        .OR. PRESENT( dSepdYm_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      IF( PRESENT( dSepdD_Option ) )THEN
+        dSepdD => dSepdD_Option
+      ELSE
+        dSepdD => dSepdD_Local
+      END IF
+
+      IF( PRESENT( dSepdT_Option ) )THEN
+        dSepdT => dSepdT_Option
+      ELSE
+        dSepdT => dSepdT_Local
+      END IF
+
+      IF( PRESENT( dSepdYe_Option ) )THEN
+        dSepdYe => dSepdYe_Option
+      ELSE
+        dSepdYe => dSepdYe_Local
+      END IF
+
+      IF( PRESENT( dSepdYm_Option ) )THEN
+        dSepdYm => dSepdYm_Option
+      ELSE
+        dSepdYm => dSepdYm_Local
+      END IF
+
+      CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Scalar &
+             ( D, T, Ye, Ym, Sep, dSepdD, dSepdT, dSepdYe, dSepdYm, Sep_T, OS_Sep, UnitSep )
+
+    ELSE
+
+      CALL ComputeDependentVariableBaryons_TABLE_Scalar &
+             ( D, T, Ye, Ym, Sep, Sep_T, OS_Sep, UnitSep )
+
+    END IF
+
+  END SUBROUTINE ComputeProtonSelfEnergy_TABLE_Scalar
+
+  SUBROUTINE ComputeProtonSelfEnergy_TABLE_Vector &
+    ( D, T, Ye, Ym, Sep, dSepdD_Option, dSepdT_Option, dSepdYe_Option, dSepdYm_Option )
+
+    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Ye(1:), Ym(1:)
+    REAL(DP), INTENT(out)                   :: Sep(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dSepdD_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dSepdT_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dSepdYe_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dSepdYm_Option(1:)
+
+    LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
+      dSepdD_Local, dSepdT_Local, dSepdYe_Local, dSepdYm_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: &
+      dSepdD      , dSepdT      , dSepdYe      , dSepdYm
+
+    ComputeDerivatives &
+      =      PRESENT( dSepdD_Option ) &
+        .OR. PRESENT( dSepdT_Option ) &
+        .OR. PRESENT( dSepdYe_Option ) &
+        .OR. PRESENT( dSepdYm_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+      ALLOCATE( dSepdD_Local(nP), dSepdT_Local(nP), dSepdYe_Local(nP), dSepdYm_Local(nP) )
+
+      IF( PRESENT( dSepdD_Option ) )THEN
+        dSepdD(1:nP) => dSepdD_Option(:)
+      ELSE
+        dSepdD(1:nP) => dSepdD_Local(:)
+      END IF
+
+      IF( PRESENT( dSepdT_Option ) )THEN
+        dSepdT(1:nP) => dSepdT_Option(:)
+      ELSE
+        dSepdT(1:nP) => dSepdT_Local(:)
+      END IF
+
+      IF( PRESENT( dSepdYe_Option ) )THEN
+        dSepdYe(1:nP) => dSepdYe_Option(:)
+      ELSE
+        dSepdYe(1:nP) => dSepdYe_Local(:)
+      END IF
+
+      IF( PRESENT( dSepdYm_Option ) )THEN
+        dSepdYm(1:nP) => dSepdYm_Option(:)
+      ELSE
+        dSepdYm(1:nP) => dSepdYm_Local(:)
+      END IF
+
+      CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Vector &
+             ( D, T, Ye, Ym, Sep, dSepdD, dSepdT, dSepdYe, dSepdYm, Sep_T, OS_Sep, UnitSep )
+
+    ELSE
+
+      CALL ComputeDependentVariableBaryons_TABLE_Vector &
+             ( D, T, Ye, Ym, Sep, Sep_T, OS_Sep, UnitSep )
+
+    END IF
+
+  END SUBROUTINE ComputeProtonSelfEnergy_TABLE_Vector
+
+  SUBROUTINE ComputeNeutronSelfEnergy_TABLE_Scalar &
+    ( D, T, Ye, Ym, Sen, dSendD_Option, dSendT_Option, dSendYe_Option, dSendYm_Option )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)                    :: D, T, Ye, Ym
+    REAL(DP), INTENT(out)                   :: Sen
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dSendD_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dSendT_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dSendYe_Option
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dSendYm_Option
+
+    LOGICAL :: ComputeDerivatives
+    REAL(DP), TARGET  :: dSendD_Local, dSendT_Local, dSendYe_Local, dSendYm_Local
+    REAL(DP), POINTER :: dSendD      , dSendT      , dSendYe, dSendYm
+
+    ComputeDerivatives &
+      =      PRESENT( dSendD_Option ) &
+        .OR. PRESENT( dSendT_Option ) &
+        .OR. PRESENT( dSendYe_Option ) &
+        .OR. PRESENT( dSendYm_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      IF( PRESENT( dSendD_Option ) )THEN
+        dSendD => dSendD_Option
+      ELSE
+        dSendD => dSendD_Local
+      END IF
+
+      IF( PRESENT( dSendT_Option ) )THEN
+        dSendT => dSendT_Option
+      ELSE
+        dSendT => dSendT_Local
+      END IF
+
+      IF( PRESENT( dSendYe_Option ) )THEN
+        dSendYe => dSendYe_Option
+      ELSE
+        dSendYe => dSendYe_Local
+      END IF
+
+      IF( PRESENT( dSendYm_Option ) )THEN
+        dSendYm => dSendYm_Option
+      ELSE
+        dSendYm => dSendYm_Local
+      END IF
+
+      CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Scalar &
+             ( D, T, Ye, Ym, Sen, dSendD, dSendT, dSendYe, dSendYm, Sen_T, OS_Sen, UnitSen )
+
+    ELSE
+
+      CALL ComputeDependentVariableBaryons_TABLE_Scalar &
+             ( D, T, Ye, Ym, Sen, Sen_T, OS_Sen, UnitSen )
+
+    END IF
+
+  END SUBROUTINE ComputeNeutronSelfEnergy_TABLE_Scalar
+
+  SUBROUTINE ComputeNeutronSelfEnergy_TABLE_Vector &
+    ( D, T, Ye, Ym, Sen, dSendD_Option, dSendT_Option, dSendYe_Option, dSendYm_Option )
+
+    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Ye(1:), Ym(1:)
+    REAL(DP), INTENT(out)                   :: Sen(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dSendD_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dSendT_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dSendYe_Option(1:)
+    REAL(DP), INTENT(out), TARGET, OPTIONAL :: dSendYm_Option(1:)
+
+    LOGICAL :: ComputeDerivatives
+    INTEGER :: nP
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
+      dSendD_Local, dSendT_Local, dSendYe_Local, dSendYm_Local
+    REAL(DP), DIMENSION(:)      , POINTER :: &
+      dSendD      , dSendT      , dSendYe      , dSendYm
+
+    ComputeDerivatives &
+      =      PRESENT( dSendD_Option ) &
+        .OR. PRESENT( dSendT_Option ) &
+        .OR. PRESENT( dSendYe_Option ) &
+        .OR. PRESENT( dSendYm_Option )
+
+    IF( ComputeDerivatives )THEN
+
+      nP = SIZE( D )
+      ALLOCATE( dSendD_Local(nP), dSendT_Local(nP), dSendYe_Local(nP), dSendYm_Local(nP) )
+
+      IF( PRESENT( dSendD_Option ) )THEN
+        dSendD(1:nP) => dSendD_Option(:)
+      ELSE
+        dSendD(1:nP) => dSendD_Local(:)
+      END IF
+
+      IF( PRESENT( dSendT_Option ) )THEN
+        dSendT(1:nP) => dSendT_Option(:)
+      ELSE
+        dSendT(1:nP) => dSendT_Local(:)
+      END IF
+
+      IF( PRESENT( dSendYe_Option ) )THEN
+        dSendYe(1:nP) => dSendYe_Option(:)
+      ELSE
+        dSendYe(1:nP) => dSendYe_Local(:)
+      END IF
+
+      IF( PRESENT( dSendYm_Option ) )THEN
+        dSendYm(1:nP) => dSendYm_Option(:)
+      ELSE
+        dSendYm(1:nP) => dSendYm_Local(:)
+      END IF
+
+      CALL ComputeDependentVariableAndDerivativesBaryons_TABLE_Vector &
+             ( D, T, Ye, Ym, Sen, dSendD, dSendT, dSendYe, dSendYm, Sen_T, OS_Sen, UnitSen )
+
+    ELSE
+
+      CALL ComputeDependentVariableBaryons_TABLE_Vector &
+             ( D, T, Ye, Ym, Sen, Sen_T, OS_Sen, UnitSen )
+
+    END IF
+
+  END SUBROUTINE ComputeNeutronSelfEnergy_TABLE_Vector
 
   SUBROUTINE ComputeDependentVariableBaryons_TABLE_Scalar &
     ( D, T, Ye, Ym, V, V_T, OS_V, Units_V )
