@@ -235,7 +235,7 @@ CONTAINS
 
         uPF(iX1,iX2,iX3,nDOFX*(iPF_E-1)+iNX) &
           = MAX( eCentral * EXP( -Radius**2 / sigma**2 ), &
-                 1.0e2_DP * TINY( 1.0_DP ) ) ! avoid zero internal energy
+                 1.0e-10_DP * e1e2ratio * eCentral )
 
         IntE_Min_Euler_PL &
           = MIN( IntE_Min_Euler_PL, &

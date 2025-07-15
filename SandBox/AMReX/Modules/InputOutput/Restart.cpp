@@ -76,7 +76,7 @@ extern "C"
     const std::string& checkpointname
                          = amrex::Concatenate( chk_file, StepNo[0], 8 );
 
-    bool Verbose = false;
+    bool Verbose = true;
     if ( Verbose && ParallelDescriptor::IOProcessor() )
     {
         amrex::Print() << "\n    Writing CheckpointFile "
