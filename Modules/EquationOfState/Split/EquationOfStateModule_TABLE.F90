@@ -766,19 +766,26 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, T, Ye, Ym
     REAL(DP), INTENT(out) :: P, S, E, Mue, Mum, Mup, Mun, Xp, Xn, Xa, Xh, Gm
 
-    REAL(DP) :: Pbary, Sbary, Ebary, Pele, Sele, Eele, &
+    REAL(DP) :: D_P, T_P, Ye_P, Ym_P
+                Pbary, Sbary, Ebary, &
+                Pele, Sele, Eele, &
                 P_mu, S_mu, E_mu
 
     TYPE(ElectronPhotonStateType) :: ElectronPhotonState
     TYPE(MuonStateType) :: MuonState
 
+    D_P = D / UnitD
+    T_P = T / UnitT
+    Ye_P = T / UnitY
+    Ym_P = T / UnitY
+    
 #ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
 
     ! Calculate Electron Quantities
     ! Initialize Electron and Photon state
-    ElectronPhotonState % t   = T  / UnitT
-    ElectronPhotonState % rho = D  / UnitD
-    ElectronPhotonState % ye  = Ye / UnitY
+    ElectronPhotonState % t   = T_P
+    ElectronPhotonState % rho = D_P
+    ElectronPhotonState % ye  = Ye_P
     CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
     Eele = ElectronPhotonState % e
@@ -787,8 +794,8 @@ CONTAINS
     Mue  = ElectronPhotonState % mue * UnitMl
 
     ! Calculate Muon Quantities
-    MuonState % t     = T /UnitT
-    MuonState % rhoym = D * Ym / UnitD / UnitY
+    MuonState % t     = T_P
+    MuonState % rhoym = D_P * Ym_P
     CALL FullMuonEOS(MuonTable, MuonState)
 
     E_mu = MuonState % e
@@ -820,15 +827,15 @@ CONTAINS
   CALL ComputeTotalPES_TABLE_Scalar( D, T, Ye, Ym, P, E, S )
 
   ! Now take care of checmical potentials
-  ElectronPhotonState % t   = T  / UnitT
-  ElectronPhotonState % rho = D  / UnitD
-  ElectronPhotonState % ye  = Ye / UnitY
+  ElectronPhotonState % t   = T_P
+  ElectronPhotonState % rho = D_P
+  ElectronPhotonState % ye  = Ye_P
   CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
   Mue  = ElectronPhotonState % mue * UnitMl
 
   ! Calculate Muon Quantities
-  MuonState % t     = T / UnitT
-  MuonState % rhoym = D * Ym / UnitD / UnitY
+  MuonState % t     = T_P
+  MuonState % rhoym = D_P * Ym_P
   CALL FullMuonEOS(MuonTable, MuonState)
   Mum  = MuonState % mu * UnitMl
 
@@ -1221,7 +1228,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, Em, Ye, Ym
     REAL(DP), INTENT(out) :: P
 
-    REAL(DP) :: D_P, E_P, Yp_P, Ye_P, Ym_P, T_P, T
+    REAL(DP) :: D_P, E_P, Ye_P, Ym_P, T_P, T
 
 #ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
   TYPE(ElectronPhotonStateType) :: ElectronPhotonState
@@ -1235,8 +1242,6 @@ CONTAINS
     E_P  = Em / UnitE
     Ye_P = Ye / UnitY
     Ym_P = Ym / UnitY
-
-    Yp_P = Ye_P + Ym_P
     
     IF ( D_P >= Eos_MinD ) THEN
       CALL ComputeTemperatureWith_DEYpYl_Single_NoGuess_NoError &
@@ -1498,8 +1503,8 @@ CONTAINS
 
 #endif
 
-    Ev = Em * D                ! --- Internal Energy per Unit Volume
-    Ne = Ye * D / BaryonMass  ! --- Electrons per Unit Volume
+    Ev = Em * D              ! --- Internal Energy per Unit Volume
+    Ne = Ye * D / BaryonMass ! --- Electrons per Unit Volume
     Nm = Ym * D / BaryonMass ! --- Muons per Unit Volume
 
   END SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE_Scalar
@@ -2057,6 +2062,12 @@ CONTAINS
     
     TYPE(ElectronPhotonStateType) :: ElectronPhotonState
     
+    ComputeDerivatives &
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdYe_Option ) &
+        .OR. PRESENT( dMdYm_Option )
+
     IF( ComputeDerivatives )THEN
 
       IF( PRESENT( dMdD_Option ) )THEN
@@ -2134,6 +2145,12 @@ CONTAINS
 
     INTEGER :: iP, nP
 
+    ComputeDerivatives &
+      =      PRESENT( dPdD_Option ) &
+        .OR. PRESENT( dPdT_Option ) &
+        .OR. PRESENT( dPdYe_Option ) &
+        .OR. PRESENT( dPdYm_Option )
+
     nP = SIZE( D )
 
     IF( ComputeDerivatives )THEN
@@ -2201,7 +2218,7 @@ CONTAINS
     REAL(DP), POINTER :: dMdD      , dMdT      , dMdYe, dMdYm
     
     REAL(DP) :: aD, aT, dD, dT
-    REAL(DP) :: DYm_P, T_P
+    REAL(DP) :: D_P, T_P, Ym_P
     INTEGER  :: iD, iT
 
     TYPE(MuonStateType) :: MuonState
@@ -2212,8 +2229,9 @@ CONTAINS
         .OR. PRESENT( dMdYe_Option ) &
         .OR. PRESENT( dMdYm_Option )
 
-    DYm_P = D * Ym / UnitD
-    T_P   = T / UnitT
+    D_P  = D  / UnitD
+    Ym_P = Ym / UnitY
+    T_P  = T  / UnitT
 
     IF( ComputeDerivatives )THEN
 
@@ -2247,30 +2265,31 @@ CONTAINS
       dMdYe = 0.0_dp
       dMdYm = 0.0_dp
       
-      CALL GetIndexAndDelta_Log( DYm_P, MuonTable % rhoym(:), iD, dD )
+      CALL GetIndexAndDelta_Log( D_P*Ym_P, MuonTable % rhoym(:), iD, dD )
       CALL GetIndexAndDelta_Log( T_P,   MuonTable % t(:), iT, dT )
       
-      aD = 1.0_dp / ( D * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
-      aT = 1.0_dp / ( T * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
+      aD = 1.0_dp / ( D_P * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
+      aT = 1.0_dp / ( T_P * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
 
       CALL LinearInterpDeriv_Array_Point &
              ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % mu), M, &
                dMdD, dMdT )
       
-      dMdYm = dMdD * D ! make sure the derivative is wr2 ym, not rhoym
-      dMdD = dMdD * Ym ! make sure the derivative is wr2 rho, not rhoym
+      dMdYm = dMdD * D_P  * UnitMl / UnitD ! make sure the derivative is wr2 ym, not rhoym
+      dMdD  = dMdD * Ym_P * UnitMl / UnitY ! make sure the derivative is wr2 rho, not rhoym
       dMdYe = 0.0_dp
       
     ELSE
 
       MuonState % t = T_P
-      MuonState % rhoym = DYm_P
+      MuonState % rhoym = D_P * Ym_P
       
       CALL FullMuonEOS(MuonTable, MuonState)
 
       M = MuonState % mu
 
     ENDIF
+
     M = M * UnitMl
     
   END SUBROUTINE ComputeMuonChemicalPotential_TABLE_Scalar
@@ -2299,9 +2318,10 @@ CONTAINS
         .OR. PRESENT( dMdYe_Option ) &
         .OR. PRESENT( dMdYm_Option )
 
+    nP = SIZE( D )
+
     IF( ComputeDerivatives )THEN
 
-      nP = SIZE( D )
       ALLOCATE( dMdD_Local(nP), dMdT_Local(nP), dMdYe_Local(nP), dMdYm_Local(nP) )
 
       IF( PRESENT( dMdD_Option ) )THEN
@@ -3135,26 +3155,22 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, T, Ye, Ym
     REAL(DP), INTENT(out) :: Munue
 
-    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P
+    REAL(DP) :: D_P
     REAL(DP) :: Mue, Mup, Mun
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    D_P  = D
-    T_P  = T
-    Ye_P = Ye
-    Ym_P = Ym
-    Yp_P = Ye_P + Ym_P
+    D_P  = D / UnitD
     
     IF ( D_P >= Eos_MinD ) THEN
       CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
-        ( D, T, Ye_P, Ym_P, Mun )
+        ( D, T, Ye, Ym, Mun )
         
       CALL ComputeProtonChemicalPotential_TABLE_Scalar &
-        ( D, T, Ye_P, Ym_P, Mup )
+        ( D, T, Ye, Ym, Mup )
         
       CALL ComputeElectronChemicalPotential_TABLE_Scalar &
-        ( D, T, Ye_P, Ym_P, Mue )
+        ( D, T, Ye, Ym, Mue )
 
       Mue  = Mue
       Mup  = Mup
@@ -3180,7 +3196,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out) :: Munue(1:)
 
-    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P
+    REAL(DP) :: D_P, T_P, Ye_P, Ym_P
     REAL(DP) :: Mue, Mup, Mun
 
     INTEGER  :: iP, nP
@@ -3191,17 +3207,17 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, Mue, Mup, Mun ) &
+    !$OMP PRIVATE( D_P, T_P, Ye_P, Ym_P, Mue, Mup, Mun ) &
     !$OMP MAP( to: D, T, Y, D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
     !$OMP MAP( from: Munue )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, Mue, Mup, Mun ) &
+    !$ACC PRIVATE( D_P, T_P, Ye_P, Ym_P, Mue, Mup, Mun ) &
     !$ACC COPYIN( D, T, Y, D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
     !$ACC COPYOUT( Munue )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, Mue, Mup, Mun )
+    !$OMP PRIVATE( D_P, T_P, Ye_P, Ym_P, Mue, Mup, Mun )
 #endif
     DO iP = 1, nP
 
@@ -3209,9 +3225,8 @@ CONTAINS
       T_P  = T(iP)
       Ye_P = Ye(iP)
       Ym_P = Ym(iP)
-      Yp_P = Ye_P + Ym_P
 
-      IF ( D_P >= Eos_MinD ) THEN
+      IF ( D_P / UnitD >= Eos_MinD ) THEN
         CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
           ( D_P, T_P, Ye_P, Ym_P, Mun )
           
@@ -3220,10 +3235,6 @@ CONTAINS
           
         CALL ComputeElectronChemicalPotential_TABLE_Scalar &
           ( D_P, T_P, Ye_P, Ym_P, Mue )
-
-        Mue  = Mue  * UnitMl
-        Mup  = Mup  * UnitMp
-        Mun  = Mun  * UnitMn
 
         Munue(iP)  = ( Mue  + Mup ) - Mun
       ELSE
@@ -3263,30 +3274,22 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, T, Ye, Ym
     REAL(DP), INTENT(out) :: Munum
 
-    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P
+    REAL(DP) :: D_P
     REAL(DP) :: Mum, Mup, Mun
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    D_P  = D
-    T_P  = T
-    Ye_P = Ye
-    Ym_P = Ym
-    Yp_P = Ye_P + Ym_P
-    
+    D_P  = D / UnitD
+
     IF ( D_P >= Eos_MinD ) THEN
       CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
-        ( D, T, Ye_P, Ym_P, Mun )
+        ( D, T, Ye, Ym, Mun )
         
       CALL ComputeProtonChemicalPotential_TABLE_Scalar &
-        ( D, T, Ye_P, Ym_P, Mup )
+        ( D, T, Ye, Ym, Mup )
         
       CALL ComputeMuonChemicalPotential_TABLE_Scalar &
-        ( D, T, Ye_P, Ym_P, Munum )
-
-      Mum  = Mum  * UnitMl
-      Mup  = Mup  * UnitMp
-      Mun  = Mun  * UnitMn
+        ( D, T, Ye, Ym, Munum )
 
       Munum  = ( Mum  + Mup ) - Mun
     ELSE
@@ -3308,7 +3311,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out) :: Munum(1:)
 
-    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P
+    REAL(DP) :: D_P, T_P, Ye_P, Ym_P
     REAL(DP) :: Mup, Mun, Mum
 
     INTEGER  :: iP, nP
@@ -3319,17 +3322,17 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, Mum, Mup, Mun ) &
+    !$OMP PRIVATE( D_P, T_P, Ye_P, Ym_P, Mum, Mup, Mun ) &
     !$OMP MAP( to: D, T, Y, D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
     !$OMP MAP( from: Munum )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, Mum, Mup, Mun ) &
+    !$ACC PRIVATE( D_P, T_P, Ye_P, Ym_P, Mum, Mup, Mun ) &
     !$ACC COPYIN( D, T, Y, D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
     !$ACC COPYOUT( Munum )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, Mum, Mup, Mun )
+    !$OMP PRIVATE( D_P, T_P, Ye_P, Ym_P, Mum, Mup, Mun )
 #endif
     DO iP = 1, nP
 
@@ -3337,7 +3340,6 @@ CONTAINS
       T_P  = T(iP)
       Ye_P = Ye(iP)
       Ym_P = Ym(iP)
-      Yp_P = Ye_P + Ym_P
 
       IF ( D_P >= Eos_MinD ) THEN
         CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
@@ -3348,11 +3350,7 @@ CONTAINS
           
         CALL ComputeMuonChemicalPotential_TABLE_Scalar &
           ( D_P, T_P, Ye_P, Ym_P, Mum )
-
-        Mum  = Mum  * UnitMl
-        Mup  = Mup  * UnitMp
-        Mun  = Mun  * UnitMn
-
+          
         Munum(iP)  = ( Mum  + Mup ) - Mun
       ELSE
         Munum(iP) = Zero
@@ -4107,8 +4105,8 @@ CONTAINS
       RETURN
     ENDIF
 
-    Ye_over_Yp = Ye_P/Yp_P
-    Ym_over_Yp = Ym_P/Yp_P
+    Ye_over_Yp = Ye_P / Yp_P
+    Ym_over_Yp = Ym_P / Yp_P
 
     ! Now bracket the points 
     SizeDs  = SIZE( D_T  )
@@ -4220,8 +4218,8 @@ CONTAINS
         CYCLE
       ENDIF
 
-      Ye_over_Yp = Ye_P/Yp_P
-      Ym_over_Yp = Ym_P/Yp_P
+      Ye_over_Yp = Ye_P / Yp_P
+      Ym_over_Yp = Ym_P / Yp_P
       
       ! Now bracket the points 
       SizeDs  = SIZE( D_T )
@@ -4333,8 +4331,8 @@ CONTAINS
       RETURN
     ENDIF
 
-    Ye_over_Yp = Ye_P/Yp_P
-    Ym_over_Yp = Ym_P/Yp_P
+    Ye_over_Yp = Ye_P / Yp_P
+    Ym_over_Yp = Ym_P / Yp_P
 
     ! Now bracket the points 
     SizeDs  = SIZE( D_T  )
@@ -4452,8 +4450,8 @@ CONTAINS
         CYCLE
       ENDIF
       
-      Ye_over_Yp = Ye_P/Yp_P
-      Ym_over_Yp = Ym_P/Yp_P
+      Ye_over_Yp = Ye_P / Yp_P
+      Ym_over_Yp = Ym_P / Yp_P
       
       ! Now bracket the points 
       SizeDs  = SIZE( D_T )
@@ -4642,34 +4640,34 @@ CONTAINS
 
       ! Now calculate electron and muon derivatives
       ! Initialize temperature, density, ye
-      ElectronPhotonState % t   = T  / UnitT
-      ElectronPhotonState % rho = D  / UnitD
-      ElectronPhotonState % ye  = Ye / UnitY
+      ElectronPhotonState % t   = T_P
+      ElectronPhotonState % rho = D_P
+      ElectronPhotonState % ye  = Ye_P
 
       ! calculate electron quantities
       CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
       ! dVdYe = d(Vbary + Vele + Vphot Vmu)dYe = dVbarydYe + d(Vele + Vphot)dYe = dVbarydYp + dVeledYe
-      dVdYe = dVbary_P(3) + D/Ye * ElectronPhotonState % dpdr
+      dVdYe = dVbary_P(3) + D_P/Ye_P * ElectronPhotonState % dpdr
       
       ! NOW MUONS ---------------------------------------------
-      IF (( D * Ym .lt. MuonTable % rhoym(1) ) .or. (T .lt. MuonTable % t(1))) THEN
+      IF (( D_P * Ym_P .lt. MuonTable % rhoym(1) ) .or. (T_P .lt. MuonTable % t(1))) THEN
         
         dVdYm = 0.0_dp
       
       ELSE
       
-        CALL GetIndexAndDelta_Log( D * Ym, MuonTable % rhoym(:), iD, dD )
-        CALL GetIndexAndDelta_Log( T, MuonTable % t(:), iT, dT )
+        CALL GetIndexAndDelta_Log( D_P * Ym_P, MuonTable % rhoym(:), iD, dD )
+        CALL GetIndexAndDelta_Log( T_P, MuonTable % t(:), iT, dT )
         
-        aD = 1.0_dp / ( D * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
-        aT = 1.0_dp / ( T * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
+        aD = 1.0_dp / ( D_P * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
+        aT = 1.0_dp / ( T_P * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
 
         CALL LinearInterpDeriv_Array_Point &
                ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % p), Vdummy, &
                  dVdrhoym, dVdummy )
         
-        dVdYm = dVbary_P(3) + dVdrhoym * D ! make sure the derivative is wr2 ym, not rhoym
+        dVdYm = dVbary_P(3) + dVdrhoym * D_P ! make sure the derivative is wr2 ym, not rhoym
       END IF
 
     ELSE IF (ReturnE .EQ. 1) THEN
@@ -4688,33 +4686,33 @@ CONTAINS
              
       ! Now calculate electron and muon derivatives
       ! Initialize temperature, density, ye
-      ElectronPhotonState % t   = T  / UnitT
-      ElectronPhotonState % rho = D  / UnitD
-      ElectronPhotonState % ye  = Ye / UnitY
+      ElectronPhotonState % t   = T_P
+      ElectronPhotonState % rho = D_P
+      ElectronPhotonState % ye  = Ye_P
 
       ! calculate electron quantities
       CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
-      dVdYe = dVbary_P(3) + D/Ye * ElectronPhotonState % dedr ! This is valid because dPdrho for photons is zero
+      dVdYe = dVbary_P(3) + D_P/Ye_P * ElectronPhotonState % dedr ! This is valid because dPdrho for photons is zero
 
       ! NOW MUONS ---------------------------------------------
-      IF (( D * Ym .lt. MuonTable % rhoym(1) ) .or. (T .lt. MuonTable % t(1))) THEN
+      IF (( D_P * Ym_P .lt. MuonTable % rhoym(1) ) .or. (T_P .lt. MuonTable % t(1))) THEN
         
         dVdYm = 0.0_dp
       
       ELSE
       
-        CALL GetIndexAndDelta_Log( D * Ym, MuonTable % rhoym(:), iD, dD )
-        CALL GetIndexAndDelta_Log( T, MuonTable % t(:), iT, dT )
+        CALL GetIndexAndDelta_Log( D_P * Ym, MuonTable % rhoym(:), iD, dD )
+        CALL GetIndexAndDelta_Log( T_P, MuonTable % t(:), iT, dT )
         
-        aD = 1.0_dp / ( D * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
-        aT = 1.0_dp / ( T * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
+        aD = 1.0_dp / ( D_P * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
+        aT = 1.0_dp / ( T_P * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
 
         CALL LinearInterpDeriv_Array_Point &
                ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % e), Vdummy, &
                  dVdrhoym, dVdummy )
         
-        dVdYm = dVbary_P(3) + dVdrhoym * D ! make sure the derivative is wr2 ym, not rhoym
+        dVdYm = dVbary_P(3) + dVdrhoym * D_P ! make sure the derivative is wr2 ym, not rhoym
       END IF
              
     ELSE
@@ -4733,35 +4731,35 @@ CONTAINS
              
       ! Now calculate electron and muon derivatives
       ! Initialize temperature, density, ye
-      ElectronPhotonState % t   = T  / UnitT
-      ElectronPhotonState % rho = D  / UnitD
-      ElectronPhotonState % ye  = Ye / UnitY
+      ElectronPhotonState % t   = T_P
+      ElectronPhotonState % rho = D_P
+      ElectronPhotonState % ye  = Ye_P
 
       ! calculate electron quantities
       CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
-      dVdYe = dVbary_P(3) + D/Ye * ElectronPhotonState % dsdr
+      dVdYe = dVbary_P(3) + D_P/Ye_P * ElectronPhotonState % dsdr
       WRITE(*,*) 'Need to get this properly from Electron EOS, careful'
       STOP
       
       ! NOW MUONS ---------------------------------------------
-      IF (( D * Ym .lt. MuonTable % rhoym(1) ) .or. (T .lt. MuonTable % t(1))) THEN
+      IF (( D_P * Ym_P .lt. MuonTable % rhoym(1) ) .or. (T_P .lt. MuonTable % t(1))) THEN
         
         dVdYm = 0.0_dp
       
       ELSE
       
-        CALL GetIndexAndDelta_Log( D * Ym, MuonTable % rhoym(:), iD, dD )
-        CALL GetIndexAndDelta_Log( T, MuonTable % t(:), iT, dT )
+        CALL GetIndexAndDelta_Log( D_P * Ym, MuonTable % rhoym(:), iD, dD )
+        CALL GetIndexAndDelta_Log( T_P, MuonTable % t(:), iT, dT )
         
-        aD = 1.0_dp / ( D * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
-        aT = 1.0_dp / ( T * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
+        aD = 1.0_dp / ( D_P * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
+        aT = 1.0_dp / ( T_P * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
 
         CALL LinearInterpDeriv_Array_Point &
                ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % s), Vdummy, &
                  dVdrhoym, dVdummy )
         
-        dVdYm = dVbary_P(3) + dVdrhoym * D ! make sure the derivative is wr2 ym, not rhoym
+        dVdYm = dVbary_P(3) + dVdrhoym * D_P ! make sure the derivative is wr2 ym, not rhoym
       END IF
              
     END IF
