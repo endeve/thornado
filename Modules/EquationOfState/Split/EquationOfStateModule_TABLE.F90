@@ -766,7 +766,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, T, Ye, Ym
     REAL(DP), INTENT(out) :: P, S, E, Mue, Mum, Mup, Mun, Xp, Xn, Xa, Xh, Gm
 
-    REAL(DP) :: D_P, T_P, Ye_P, Ym_P
+    REAL(DP) :: D_P, T_P, Ye_P, Ym_P, &
                 Pbary, Sbary, Ebary, &
                 Pele, Sele, Eele, &
                 P_mu, S_mu, E_mu
@@ -2146,10 +2146,10 @@ CONTAINS
     INTEGER :: iP, nP
 
     ComputeDerivatives &
-      =      PRESENT( dPdD_Option ) &
-        .OR. PRESENT( dPdT_Option ) &
-        .OR. PRESENT( dPdYe_Option ) &
-        .OR. PRESENT( dPdYm_Option )
+      =      PRESENT( dMdD_Option ) &
+        .OR. PRESENT( dMdT_Option ) &
+        .OR. PRESENT( dMdYe_Option ) &
+        .OR. PRESENT( dMdYm_Option )
 
     nP = SIZE( D )
 
