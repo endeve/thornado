@@ -85,7 +85,7 @@ MODULE MF_MHD_UtilitiesModule
     amrex2thornado_X, &
     thornado2amrex_X, &
     AllocateArray_X, &
-    DeallocateArray_X, &
+    DeallocateArray_X
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
