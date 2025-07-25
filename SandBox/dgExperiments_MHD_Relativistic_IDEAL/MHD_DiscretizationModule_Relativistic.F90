@@ -1000,6 +1000,32 @@ CONTAINS
               UseDivergenceCleaning, &
               CleaningSpeed )
 
+      IF( .FALSE. )THEN
+
+        Flux_F(iCM_B1) &
+          = ( Half / Alpha_F(iNX_X) ) &
+            * ( AlphaPls(iCM_Chi) &
+                * ( SQRT( One / Gm_dd_11_F(iNX_X) ) &
+                    * uCM_L_nCM(iCM_Chi) &
+                    + uCM_L_nCM(iCM_B1) ) &
+                + AlphaMns(iCM_Chi) &
+                  * ( SQRT( One / Gm_dd_11_F(iNX_X) ) &
+                      * uCM_R_nCM(iCM_Chi) &
+                      - uCM_R_nCM(iCM_B1) ) )
+
+        Flux_F(iCM_Chi) &
+          = ( Half / Alpha_F(iNX_X) ) &
+            * ( AlphaPls(iCM_Chi) &
+                * ( SQRT( Gm_dd_11_F(iNX_X) ) &
+                    * uCM_L_nCM(iCM_B1) &
+                    + uCM_L_nCM(iCM_Chi) ) &
+                + AlphaMns(iCM_Chi) &
+                  * ( SQRT( Gm_dd_11_F(iNX_X) ) &
+                      * uCM_R_nCM(iCM_B1) &
+                      - uCM_R_nCM(iCM_Chi) ) )
+
+      END IF
+
      !PRINT*
      !PRINT*, 'uCM_L_nCM: ', uCM_L_nCM
      !PRINT*, 'uCM_R_nCM: ', uCM_R_nCM
@@ -1760,6 +1786,32 @@ CONTAINS
               UseDivergenceCleaning, &
               CleaningSpeed )
 
+      IF( .FALSE. )THEN
+
+        Flux_F(iCM_B2) &
+          = ( Half / Alpha_F(iNX_X) ) &
+            * ( AlphaPls(iCM_Chi) &
+                * ( SQRT( One / Gm_dd_22_F(iNX_X) ) &
+                    * uCM_L_nCM(iCM_Chi) &
+                    + uCM_L_nCM(iCM_B2) ) &
+                + AlphaMns(iCM_Chi) &
+                  * ( SQRT( One / Gm_dd_22_F(iNX_X) ) &
+                      * uCM_R_nCM(iCM_Chi) &
+                      - uCM_R_nCM(iCM_B2) ) )
+
+        Flux_F(iCM_Chi) &
+          = ( Half / Alpha_F(iNX_X) ) &
+            * ( AlphaPls(iCM_Chi) &
+                * ( SQRT( Gm_dd_22_F(iNX_X) ) &
+                    * uCM_L_nCM(iCM_B2) &
+                    + uCM_L_nCM(iCM_Chi) ) &
+                + AlphaMns(iCM_Chi) &
+                  * ( SQRT( Gm_dd_22_F(iNX_X) ) &
+                      * uCM_R_nCM(iCM_B2) &
+                      - uCM_R_nCM(iCM_Chi) ) )
+
+      END IF
+
       DO iCM = 1, nCM
 
         SurfaceFlux_X2(iNX,iX1,iX2,iX3,iCM) &
@@ -2432,6 +2484,32 @@ CONTAINS
               EvolveOnlyMagnetic  , &
               UseDivergenceCleaning, &
               CleaningSpeed )
+
+      IF( .FALSE. )THEN
+
+        Flux_F(iCM_B3) &
+          = ( Half / Alpha_F(iNX_X) ) &
+            * ( AlphaPls(iCM_Chi) &
+                * ( SQRT( One / Gm_dd_33_F(iNX_X) ) &
+                    * uCM_L_nCM(iCM_Chi) &
+                    + uCM_L_nCM(iCM_B3) ) &
+                + AlphaMns(iCM_Chi) &
+                  * ( SQRT( One / Gm_dd_33_F(iNX_X) ) &
+                      * uCM_R_nCM(iCM_Chi) &
+                      - uCM_R_nCM(iCM_B3) ) )
+
+        Flux_F(iCM_Chi) &
+          = ( Half / Alpha_F(iNX_X) ) &
+            * ( AlphaPls(iCM_Chi) &
+                * ( SQRT( Gm_dd_33_F(iNX_X) ) &
+                    * uCM_L_nCM(iCM_B3) &
+                    + uCM_L_nCM(iCM_Chi) ) &
+                + AlphaMns(iCM_Chi) &
+                  * ( SQRT( Gm_dd_33_F(iNX_X) ) &
+                      * uCM_R_nCM(iCM_B3) &
+                      - uCM_R_nCM(iCM_Chi) ) )
+
+      END IF
 
       DO iCM = 1, nCM
 
