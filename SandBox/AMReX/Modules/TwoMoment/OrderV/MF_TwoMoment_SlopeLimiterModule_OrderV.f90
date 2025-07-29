@@ -106,7 +106,7 @@ CONTAINS
              Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL InitializeTroubledCellIndicator_TwoMoment &
-           ( UseTroubledCellIndicator_Option = .TRUE., C_TCI_Option = 0.1_DP, &
+           ( UseTroubledCellIndicator_Option = .FALSE., C_TCI_Option = 0.1_DP, &
              Verbose_Option = amrex_parallel_ioprocessor() )
 
   END SUBROUTINE InitializeSlopeLimiter_TwoMoment_MF

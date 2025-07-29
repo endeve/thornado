@@ -69,6 +69,8 @@ MODULE MF_TwoMoment_UtilitiesModule
     iPF_Ne, &
     nAF, &
     nDF
+  USE GeometryFieldsModuleE, ONLY: &
+    uGE
   USE GeometryFieldsModule, ONLY: &
     nGF, &
     iGF_h_1, &
@@ -77,9 +79,12 @@ MODULE MF_TwoMoment_UtilitiesModule
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_Euler
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeFromConserved_TwoMoment, &
-    ComputeTimeStep_TwoMoment
+    ComputeTimeStep_TwoMoment, &
+    ComputeTimeStep_TwoMoment_Realizability
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputePrimitive_Euler_NonRelativistic, &
     ComputeFromConserved_Euler_NonRelativistic
@@ -127,17 +132,14 @@ MODULE MF_TwoMoment_UtilitiesModule
     AllocateArray_Z, &
     DeallocateArray_Z, &
     AllocateArray_Integrated, &
-    DeallocateArray_Integrated, &
-    ShowVariablefromMultifab, &
-    IndLo_Z, &
-    IndHi_Z
+    DeallocateArray_Integrated
   IMPLICIT NONE
   PRIVATE
 
 
   PUBLIC :: ComputeFromConserved_TwoMoment_MF
   PUBLIC :: ComputeTimeStep_TwoMoment_MF
-!  PUBLIC :: ComputeTimeStep_TwoMoment_Realizability_MF
+  PUBLIC :: ComputeTimeStep_TwoMoment_Realizability_MF
 
 
 CONTAINS
@@ -190,6 +192,8 @@ CONTAINS
         CALL amrex2thornado_X &
                ( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
 
+        !PRINT *, G
+
         CALL ComputeTimeStep_TwoMoment &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, CFL, myTimeStep( iLevel ) )
         
@@ -218,101 +222,123 @@ CONTAINS
   END SUBROUTINE ComputeTimeStep_TwoMoment_MF
 
 
-!  SUBROUTINE ComputeTimeStep_TwoMoment_Realizability_MF( MF_uGF, MF_uCF, CFL, myTimeStep, Verbose_Option )
+  SUBROUTINE ComputeTimeStep_TwoMoment_Realizability_MF( MF_uGF, MF_uCF, CFL, TimeStep, Verbose_Option)
 
-!    TYPE(amrex_multifab),  INTENT(in)  :: MF_uGF(0:nLevels-1)
-!    TYPE(amrex_multifab),  INTENT(in)  :: MF_uCF(0:nLevels-1)
-!    REAL(DP)            ,  INTENT(in)  :: CFL
-!    REAL(DP)            ,  INTENT(out) :: TimeStep(0:nLevels-1)
-!
-!    TYPE(amrex_mfiter) :: MFI
-!    TYPE(amrex_box)    :: BX
-
-!    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-!    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-
-!    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
-!    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
-!
-!    REAL(DP) :: myTimeStep(0:nLevels-1)
-!    INTEGER  :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-!    INTEGER  :: iLo_MF(4), iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-!    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
+    TYPE(amrex_multifab),  INTENT(in)  :: MF_uGF(0:nLevels-1)
+    TYPE(amrex_multifab),  INTENT(in)  :: MF_uCF(0:nLevels-1)
+    REAL(DP)            ,  INTENT(in)  :: CFL
+    REAL(DP)            ,  INTENT(out) :: TimeStep(0:nLevels-1)
 
 
-!    DO iLevel = 0, nLevels-1
+    TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_box)    :: BX
 
-!      CALL CreateMesh_MF( iLevel, MeshX )
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
-!      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: CF(:,:,:,:,:)
 
-!      DO WHILE( MFI % next() )
+    REAL(DP) :: myTimeStep(0:nLevels-1)
+    INTEGER  :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER  :: iLo_MF(4), iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
 
-!        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-!        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+    myTimeStep = HUGE( One )
+    TimeStep = HUGE( One )
 
-!        iLo_MF = LBOUND( uGF )
+!PRINT *, 'ENTERING LOOP'
 
-!        BX = MFI % tilebox()
+    DO iLevel = 0, nLevels-1
 
-!        iX_B0(1:3) = BX % lo(1:3)
-!        iX_E0(1:3) = BX % hi(1:3)
-!        iX_B1(1:3) = BX % lo(1:3) - swX(1:3)
-!        iX_E1(1:3) = BX % hi(1:3) + swX(1:3)
+!PRINT *, 'Create MEsh'
+      CALL CreateMesh_MF( iLevel, MeshX )
+
+!PRINT *, 'CALL ITERATOR'
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF => MF_uCF(iLevel) % DataPtr( MFI )
+
+        iLo_MF = LBOUND( uGF )
+
+        BX = MFI % tilebox()
+
+        iX_B0(1:3) = BX % lo(1:3)
+        iX_E0(1:3) = BX % hi(1:3)
+        iX_B1(1:3) = BX % lo(1:3) - swX(1:3)
+        iX_E1(1:3) = BX % hi(1:3) + swX(1:3)
       
-!        iZ_B0(1) = iE_B0
-!        iZ_E0(1) = iE_E0
-!        iZ_B1(1) = iE_B1
-!        iZ_E1(1) = iE_E1
+        iZ_B0(1) = iE_B0
+        iZ_E0(1) = iE_E0
+        iZ_B1(1) = iE_B1
+        iZ_E1(1) = iE_E1
 
-!        iZ_B0(2:4) = iX_B0
-!        iZ_E0(2:4) = iX_E0
-!        iZ_B1(2:4) = iX_B1
-!        iZ_E1(2:4) = iX_E1
+        iZ_B0(2:4) = iX_B0
+        iZ_E0(2:4) = iX_E0
+        iZ_B1(2:4) = iX_B1
+        iZ_E1(2:4) = iX_E1
 
+!PRINT *, 'ALLOCATE ARRAY G'
 
-!        CALL AllocateArray_X &
-!               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-!                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
-!                 G )
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
-!        CALL amrex2thornado_X &
-!               ( nGF, iX_B1, iX_E1, iLo_MF, iX_B0, iX_E0, uGF, G )
+!PRINT *, 'Convert ARRAY G'
+        CALL amrex2thornado_X &
+               ( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
-!        CALL AllocateArray_Z &
-!               ( [ 1    , iZ_B1(2), iZ_B1(3), iZ_B1(4), 1   ], &
-!                 [ nDOFX, iZ_E1(2), iZ_E1(3), iZ_E1(4), nCF ], &
-!                 U )
+!PRINT *, 'ALLOCATE ARRAY CF'
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+                 CF )
+!PRINT *, CF(:,:,:,:,:)
+!PRINT *, 'convert ARRAY CF'
+        CALL amrex2thornado_X &
+               ( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, CF )
+!PRINT *, 'compute thornado realizabitlty'
+!PRINT *, CF(:,:,:,:,1)
+!PRINT *, ('$$$$$$$$$$$$$$')
+!PRINT *, CF(:,:,:,:,2)
+!PRINT *, ('$$$$$$$$$$$$$$')
+!PRINT *, CF(:,:,:,:,3)
+!PRINT *, ('$$$$$$$$$$$$$$')
+!PRINT *, CF(:,:,:,:,4)
+!PRINT *, ('$$$$$$$$$$$$$$')
+!PRINT *, CF(:,:,:,:,5)
+!PRINT *, ('$$$$$$$$$$$$$$')
+!PRINT *, CF(:,:,:,:,6)
+        CALL ComputeTimeStep_TwoMoment_Realizability &
+                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, G, CF, CFL, myTimeStep( iLevel ), Verbose_Option=.TRUE. )
 
-!        CALL amrex2thornado_Z &
-!               ( nCF, iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, MF_uCF, U )
+        TimeStep( iLevel ) = MIN( TimeStep( iLevel ), myTimeStep( iLevel ) )
 
-!        CALL ComputeTimeStep_TwoMoment_Realizability &
-!                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, G, U, CFL, myTimeStep( iLevel ), Verbose_Option )
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+                 G )
 
-!        TimeStep( iLevel ) = MIN( TimeStep( iLevel ), myTimeStep( iLevel ) )
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+                 CF )
 
-!        CALL DeallocateArray_X &
-!               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-!                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
-!                 G )
+      END DO ! --- Loop over grids (boxes) ---
 
-!        CALL DeallocateArray_Z &
-!               ( [ 1    , iZ_B1(2), iZ_B1(3), iZ_B1(4), 1   ], &
-!                 [ nDOFX, iZ_E1(2), iZ_E1(3), iZ_E1(4), nCF ], &
-!                 U )
+      CALL amrex_mfiter_destroy( MFI )
 
-!      END DO ! --- Loop over grids (boxes) ---
+      CALL DestroyMesh_MF( MeshX )
 
-!      CALL amrex_mfiter_destroy( MFI )
+    END DO ! --- Loop over levels ---
 
-!      CALL DestroyMesh_MF( MeshX )
+    CALL amrex_parallel_reduce_min( TimeStep, SIZE(TimeStep) )
 
-!    END DO ! --- Loop over levels ---
-
-!    CALL amrex_parallel_reduce_min( TimeStep, SIZE(TimeStep) )
-
-!  END SUBROUTINE ComputeTimeStep_TwoMoment_Realizability_MF
+  END SUBROUTINE ComputeTimeStep_TwoMoment_Realizability_MF
 
   SUBROUTINE ComputeFromConserved_TwoMoment_MF &
     ( MF_uGF, MF_uCF, MF_uCR, MF_uPR, MF_uAR, MF_uGR )
@@ -484,6 +510,10 @@ CONTAINS
         CALL thornado2amrex_Integrated &
                ( nGR, nSpecies, iX_B1, iX_E1, &
                  iLo_MF, iX_B0, iX_E0, uGR, GR )
+
+        CALL thornado2amrex_Z &
+               ( nCR, nSpecies, nE, iE_B0, iE_E0, &
+                 iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uCR, CR )
 
         CALL thornado2amrex_Z &
                ( nPR, nSpecies, nE, iE_B0, iE_E0, &
