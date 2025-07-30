@@ -8,11 +8,13 @@ MODULE Euler_UtilitiesModule_NonRelativistic
     One
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
-    nDimsX
+    nDimsX, nNodes
   USE MeshModule, ONLY: &
     MeshX
   USE CellMergingModule, ONLY: &
-    MergedMeshX2, MergedMeshX3
+    MergedMeshX2, MergedMeshX3, Gm_Merge, &
+    ComputeMergeFluidValues2D, ComputeMergeFluidValues3D, &
+    ComputeMergeGeometryValues2D, ComputeMergeGeometryValues3D
   USE GeometryFieldsModule, ONLY: &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
@@ -340,7 +342,8 @@ CONTAINS
     LOGICAL  :: Merge
     INTEGER  :: iX1, iX2, iX3, iNodeX, iDimX
     REAL(DP) :: dX(3), dt
-    REAL(DP) :: P(nPF), Cs, EigVals(nCF)
+    REAL(DP) :: P(nPF), Cs, EigVals(nCF), G_Merge(iGF_Gm_dd_11:iGF_Gm_dd_33)
+    REAL(DP) :: uCF(iCF_D:iCF_Ne)
 
     Merge = .FALSE.
     IF(PRESENT(Merge_Option))THEN
@@ -383,7 +386,7 @@ CONTAINS
     !$ACC REDUCTION( MIN: TimeStep )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4) &
-    !$OMP PRIVATE( dX, dt, P, Cs, EigVals ) &
+    !$OMP PRIVATE( dX, dt, P, uCF, G_Merge, Cs, EigVals ) &
     !$OMP REDUCTION( MIN: TimeStep )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -394,45 +397,94 @@ CONTAINS
 
         dX(1) = dX1(iX1)
         IF( Merge .AND. (nDimsX .LT. 3) )THEN
+
           dX(2) = MergedMeshX2(iX1) % MergeWidth(iX2)
           dX(3) = dX3(iX3)
+          CALL ComputeMergeFluidValues2D &
+                 ( nNodes, iNodeX, iX1, iX2, iX3, U, uCF )
+          CALL ComputeMergeGeometryValues2D &
+                 ( nNodes, iNodeX, iX1, iX2, iX3, &
+                   G_Merge )
+
         ELSE IF( Merge .AND. (nDimsX .GE. 3) )THEN
+
           dX(2) = MergedMeshX2(iX1    ) % MergeWidth(iX2)
           dX(3) = MergedMeshX3(iX1,iX2) % MergeWidth(iX3)
+          CALL ComputeMergeFluidValues3D &
+                 ( nNodes, iNodeX, iX1, iX2, iX3, U, uCF )
+          ! CALL ComputeMergeGeometryValues3D &
+          !        ( nNodes, iNodeX, iX1, iX2, iX3, &
+          !          G_Merge )
+          G_Merge(iGF_Gm_dd_11) = Gm_Merge(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11)
+          G_Merge(iGF_Gm_dd_22) = Gm_Merge(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22)
+          G_Merge(iGF_Gm_dd_33) = Gm_Merge(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33)
+
         ELSE
+
           dX(2) = dX2(iX2)
           dX(3) = dX3(iX3)
+          uCF(iCF_D ) = U(iNodeX,iX1,iX2,iX3,iCF_D )
+          uCF(iCF_S1) = U(iNodeX,iX1,iX2,iX3,iCF_S1)
+          uCF(iCF_S2) = U(iNodeX,iX1,iX2,iX3,iCF_S2)
+          uCF(iCF_S3) = U(iNodeX,iX1,iX2,iX3,iCF_S3)
+          uCF(iCF_E ) = U(iNodeX,iX1,iX2,iX3,iCF_E )
+          uCF(iCF_Ne) = U(iNodeX,iX1,iX2,iX3,iCF_Ne)
+          G_Merge(iGF_Gm_dd_11) = G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11)
+          G_Merge(iGF_Gm_dd_22) = G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22)
+          G_Merge(iGF_Gm_dd_33) = G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33)
+
         END IF
 
+        ! CALL ComputePrimitive_Euler_NonRelativistic &
+        !        ( U(iNodeX,iX1,iX2,iX3,iCF_D ), &
+        !          U(iNodeX,iX1,iX2,iX3,iCF_S1), &
+        !          U(iNodeX,iX1,iX2,iX3,iCF_S2), &
+        !          U(iNodeX,iX1,iX2,iX3,iCF_S3), &
+        !          U(iNodeX,iX1,iX2,iX3,iCF_E ), &
+        !          U(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+        !          P(iPF_D ), P(iPF_V1), P(iPF_V2), &
+        !          P(iPF_V3), P(iPF_E ), P(iPF_Ne), &
+        !          G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+        !          G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+        !          G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+        ! CALL ComputeSoundSpeedFromPrimitive &
+        !        ( P(iPF_D), P(iPF_E), P(iPF_Ne), Cs )
+
         CALL ComputePrimitive_Euler_NonRelativistic &
-               ( U(iNodeX,iX1,iX2,iX3,iCF_D ), &
-                 U(iNodeX,iX1,iX2,iX3,iCF_S1), &
-                 U(iNodeX,iX1,iX2,iX3,iCF_S2), &
-                 U(iNodeX,iX1,iX2,iX3,iCF_S3), &
-                 U(iNodeX,iX1,iX2,iX3,iCF_E ), &
-                 U(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+               ( uCF(iCF_D), uCF(iCF_S1), uCF(iCF_S2), &
+                 uCF(iCF_S3), uCF(iCF_E), uCF(iCF_Ne), &
                  P(iPF_D ), P(iPF_V1), P(iPF_V2), &
                  P(iPF_V3), P(iPF_E ), P(iPF_Ne), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
-
+                 G_Merge(iGF_Gm_dd_11), &
+                 G_Merge(iGF_Gm_dd_22), &
+                 G_Merge(iGF_Gm_dd_33) )
         CALL ComputeSoundSpeedFromPrimitive &
                ( P(iPF_D), P(iPF_E), P(iPF_Ne), Cs )
 
         DO iDimX = 1, nDimsX
 
+          ! print*, iDimX, iNodeX, iX1, iX2, iX3, G_Merge(iGF_Gm_dd_11+(iDimX-1))
           EigVals &
-            = Eigenvalues_Euler_NonRelativistic &
-                ( P(iPF_V1+(iDimX-1)), Cs, &
-                  G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11+(iDimX-1)) )
+          = Eigenvalues_Euler_NonRelativistic &
+              ( P(iPF_V1+(iDimX-1)), Cs, &
+                G_Merge(iGF_Gm_dd_11+(iDimX-1)) )
+
+          ! EigVals &
+          !   = Eigenvalues_Euler_NonRelativistic &
+          !       ( P(iPF_V1+(iDimX-1)), Cs, &
+          !         G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11+(iDimX-1)) )
 
           dt = dX(iDimX) / MAX( SqrtTiny, MAXVAL( ABS( EigVals ) ) )
 
           TimeStep = MIN( TimeStep, dt )
 
           ! IF (TimeStep .EQ. dt) THEN
-          !   print*, 'iX1, iX2, iX3, iDimX, dX', iX1, iX2, iX3, iDimX, dX(iDimX)
+          !   print*, 'Gm', G(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11+(iDimX-1))
+          !   print*, 'iNodeX, iX1, iX2, iX3, iDimX, Vel', iNodeX, iX1, iX2, iX3, iDimX, P(iPF_V1+(iDimX-1))
+          !   print*, 'iNodeX, iX1, iX2, iX3, iDimX, Cs ', iNodeX, iX1, iX2, iX3, iDimX, Cs
+          !   print*, 'iNodeX, iX1, iX2, iX3, iDimX, dX ', iNodeX, iX1, iX2, iX3, iDimX, dX(iDimX)
+          !   Write(*,*)
           ! END IF
 
         END DO

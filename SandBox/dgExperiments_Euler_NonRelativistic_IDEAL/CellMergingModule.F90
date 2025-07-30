@@ -5,9 +5,11 @@ MODULE CellMergingModule
     USE ProgramHeaderModule, ONLY: & ! Work on replacing input arguments with public variables from ProgramHeader
       iX_B0, iX_E0, iX_B1, iX_E1, nDOFX, nNodesX, nDims
     USE GeometryFieldsModule, ONLY: &
-      uGF, iGF_h_2, iGF_h_3, iGF_SqrtGm, nGF ! In spherical coordinates: iGF_h_2 => r, iGF_h_3 => r*sin\theta
+      uGF, iGF_h_1, iGF_h_2, iGF_h_3, iGF_SqrtGm, nGF, & ! In spherical coordinates: iGF_h_2 => r, iGF_h_3 => r*sin\theta
+      iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
     USE FluidFieldsModule, ONLY: &
-      nCF
+      nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, &
+      iCF_E, iCF_Ne
     USE QuadratureModule, ONLY: &
       GetQuadrature
     USE ReferenceElementModuleX, ONLY: &
@@ -21,7 +23,7 @@ MODULE CellMergingModule
       TimersStart_Euler, TimersStop_Euler, &
       Timer_CellMerging, Timer_CM_UpdateCoefficient
 
-    REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE :: SqrtGm_Merge
+    REAL(DP), DIMENSION(:,:,:,:,:), ALLOCATABLE :: Gm_Merge
 
     TYPE, PUBLIC :: MergedMeshType
       INTEGER                                 :: NCellsPerMerge
@@ -43,9 +45,14 @@ MODULE CellMergingModule
     PUBLIC :: Determine_BasisCoeffX3
     PUBLIC :: Determine_MergedGeometry2D
     PUBLIC :: Determine_MergedGeometry3D
+    PUBLIC :: ComputeMergeGeometryValues2D
+    PUBLIC :: ComputeMergeGeometryValues3D
+    PUBLIC :: ComputeMergeFluidValues2D
+    PUBLIC :: ComputeMergeFluidValues3D
     PUBLIC :: MergeAndRestrict2D
     PUBLIC :: MergeAndRestrict3D
     PUBLIC :: MergeAndRestrict
+    PUBLIC :: ComputeMergeFluidValues
     PUBLIC :: MergeAndRestrictGeometry ! Delete this subroutine
 
 CONTAINS
@@ -134,7 +141,7 @@ CONTAINS
 
       ! --- Compute SqrtGm on merged grid ---
 
-      ALLOCATE( SqrtGm_Merge(1:nDOFX,1:nX(1),1:nX(2),1:nX(3)) )
+      ALLOCATE( Gm_Merge(1:nDOFX,1:nX(1),1:nX(2),1:nX(3),iGF_h_1:iGF_SqrtGm) )
 
       IF( nDims .LT. 3 )THEN
 
@@ -154,7 +161,7 @@ CONTAINS
 
       INTEGER :: iX1
 
-      DEALLOCATE( SqrtGm_Merge )
+      DEALLOCATE( Gm_Merge )
 
       IF( nDims .GT. 2)THEN
 
@@ -527,20 +534,23 @@ CONTAINS
 
       ASSOCIATE( dX2 => MeshX(2) % Width )
 
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( iNodeX1, iNodeX2 ) &
+    !$OMP REDUCTION( +: geom_sum )
+#endif
       DO iX3    = iX_B0(3), iX_E0(3)
       DO iX2    = iX_B0(2), iX_E0(2)
       DO iX1    = iX_B0(1), iX_E0(1)
+      DO iNodeX = 1,nDOFX
 
         ASSOCIATE( NCellsPerMergeX2  => MergedMeshX2(iX1) % NCellsPerMerge, &
                    dX2M              => MergedMeshX2(iX1) % MergeWidth, &
                    MergeCellMarkerX2 => MergedMeshX2(iX1) % MergeCellMarker, &
                    BasisCoeffX2      => MergedMeshX2(iX1) % MergedBasisCoeff )
 
-      DO iNodeX = 1,nDOFX
-
         iNodeX1   = NodeNumberTableX(1,iNodeX)
         iNodeX2   = NodeNumberTableX(2,iNodeX)
-        ! iNodeX3   = NodeNumberTableX(3,iNodeX)
 
         geom_sum = Zero
         DO iGCellX2 = 1,NCellsPerMergeX2
@@ -558,12 +568,11 @@ CONTAINS
         END DO
         END DO
 
-        SqrtGm_Merge(iNodeX,iX1,iX2,iX3) = geom_sum / (wQ(iNodeX2) * dX2M(iX2))
-
-      END DO
+        Gm_Merge(iNodeX,iX1,iX2,iX3,iGF_SqrtGm) = geom_sum / (wQ(iNodeX2) * dX2M(iX2))
 
         END ASSOCIATE ! NCellsPerMergeX2, dX2M, etc.
 
+      END DO
       END DO
       END DO
       END DO
@@ -579,16 +588,22 @@ CONTAINS
       INTEGER  :: iNodeX, iNodeX1, iNodeX2, iNodeX3, iX1, iX2, iX3
       INTEGER  :: iGCellX2, iGCellX3, iGFineX2, iGFineX3
       REAL(DP) :: xQ(nN), wQ(nN)
-      REAL(DP) :: geom_sum
+      REAL(DP) :: geom_sum, Gm_h_Merge(iGF_h_1:iGF_h_3)
 
       CALL GetQuadrature( nN, xQ, wQ )
 
       ASSOCIATE( dX2 => MeshX(2) % Width, &
                  dX3 => MeshX(3) % Width )
 
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( iNodeX1, iNodeX2, iNodeX3 ) &
+    !$OMP REDUCTION( +: geom_sum )
+#endif
       DO iX3    = iX_B0(3), iX_E0(3)
       DO iX2    = iX_B0(2), iX_E0(2)
       DO iX1    = iX_B0(1), iX_E0(1)
+      DO iNodeX = 1,nDOFX
 
         ASSOCIATE( NCellsPerMergeX2  => MergedMeshX2(iX1    ) % NCellsPerMerge, &
                    NCellsPerMergeX3  => MergedMeshX3(iX1,iX2) % NCellsPerMerge, &
@@ -598,8 +613,6 @@ CONTAINS
                    MergeCellMarkerX3 => MergedMeshX3(iX1,iX2) % MergeCellMarker, &
                    BasisCoeffX2      => MergedMeshX2(iX1    ) % MergedBasisCoeff, &
                    BasisCoeffX3      => MergedMeshX3(iX1,iX2) % MergedBasisCoeff )
-
-      DO iNodeX = 1,nDOFX
 
         iNodeX1   = NodeNumberTableX(1,iNodeX)
         iNodeX2   = NodeNumberTableX(2,iNodeX)
@@ -629,21 +642,534 @@ CONTAINS
         END DO
         END DO
 
-        SqrtGm_Merge(iNodeX,iX1,iX2,iX3) = geom_sum / &
+        Gm_Merge(iNodeX,iX1,iX2,iX3,iGF_SqrtGm) = geom_sum / &
                                           (wQ(iNodeX2) * dX2M(iX2) * &
                                            wQ(iNodeX3) * dX3M(iX3) )
-
-      END DO
 
         END ASSOCIATE ! NCellsPerMergeX2, etc.
 
       END DO
       END DO
       END DO
+      END DO
 
       END ASSOCIATE ! dX2, dX3
 
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( Gm_h_Merge )
+#endif
+      DO iX3    = iX_B0(3), iX_E0(3)
+      DO iX2    = iX_B0(2), iX_E0(2)
+      DO iX1    = iX_B0(1), iX_E0(1)
+      DO iNodeX = 1,nDOFX
+
+        CALL ComputeMergeGeometryValues3D( nN, iNodeX, iX1, iX2, iX3, Gm_h_Merge)
+
+        Gm_Merge(iNodeX,iX1,iX2,iX3,iGF_h_1) = Gm_h_Merge(iGF_h_1)
+        Gm_Merge(iNodeX,iX1,iX2,iX3,iGF_h_2) = Gm_h_Merge(iGF_h_2)
+        Gm_Merge(iNodeX,iX1,iX2,iX3,iGF_h_3) = Gm_h_Merge(iGF_h_3)
+
+        Gm_Merge(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) = Gm_h_Merge(iGF_h_1)**2
+        Gm_Merge(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) = Gm_h_Merge(iGF_h_2)**2
+        Gm_Merge(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) = Gm_h_Merge(iGF_h_3)**2
+
+      END DO
+      END DO
+      END DO
+      END DO
+
     END SUBROUTINE Determine_MergedGeometry3D
+
+    SUBROUTINE ComputeMergeGeometryValues2D &
+      ( nN, iNodeX, iX1, iX2, iX3, Gm_dd_Merge )
+
+      INTEGER,  INTENT(in )  :: nN, iNodeX, iX1, iX2, iX3
+      REAL(DP), INTENT(out)  :: Gm_dd_Merge(iGF_Gm_dd_11:iGF_Gm_dd_33)
+
+      INTEGER  :: iNodeX1, iNodeX2
+      INTEGER  :: iCell, iFine
+      REAL(DP) :: xQ(nN), wQ(nN)
+
+      ! --- Merge conserved quantities ---
+      
+      CALL GetQuadrature( nN, xQ, wQ )      
+
+        ASSOCIATE( dX2               => MeshX(2) % Width, &
+                   NCellsPerMergeX2  => MergedMeshX2(iX1) % NCellsPerMerge, &
+                   dX2M              => MergedMeshX2(iX1) % MergeWidth, &
+                   MergeCellMarkerX2 => MergedMeshX2(iX1) % MergeCellMarker, &
+                   FineCellMarkerX2  => MergedMeshX2(iX1) % FineCellMarker, &
+                   BasisCoeffX2      => MergedMeshX2(iX1) % MergedBasisCoeff )
+
+        iNodeX1   = NodeNumberTableX(1,iNodeX)
+        iNodeX2   = NodeNumberTableX(2,iNodeX)
+
+        Gm_dd_Merge = Zero
+
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP REDUCTION( +: Gm_dd_Merge )
+#endif
+        DO iCell  = 1,NCellsPerMergeX2
+        DO iFine  = 1,nN
+
+          Gm_dd_Merge(iGF_Gm_dd_11) = &
+            Gm_dd_Merge(iGF_Gm_dd_11) + &
+            BasisCoeffX2(iNodeX2,iFine,iCell) * &
+            wQ(iFine) * dX2(MergeCellMarkerX2(iX2) + iCell - 1) * &
+            uGF(MOD(iFine-1,nN)*nN+iNodeX1, &
+                iX1, &
+                MergeCellMarkerX2(iX2) + iCell - 1, &
+                iX3,iGF_Gm_dd_11) * &
+            uGF(MOD(iFine-1,nN)*nN+iNodeX1, &
+                iX1, &
+                MergeCellMarkerX2(iX2) + iCell - 1, &
+                iX3,iGF_SqrtGm) / &
+            (wQ(iNodeX2 ) * dX2M(iX2) * &
+             Gm_Merge(MOD(iNodeX2-1,nN)*nN+iNodeX1,iX1,iX2,iX3,iGF_SqrtGm))
+
+          Gm_dd_Merge(iGF_Gm_dd_22) = &
+            Gm_dd_Merge(iGF_Gm_dd_22) + &
+            BasisCoeffX2(iNodeX2,iFine,iCell) * &
+            wQ(iFine) * dX2(MergeCellMarkerX2(iX2) + iCell - 1) * &
+            uGF(MOD(iFine-1,nN)*nN+iNodeX1, &
+                iX1, &
+                MergeCellMarkerX2(iX2) + iCell - 1, &
+                iX3,iGF_Gm_dd_22) * &
+            uGF(MOD(iFine-1,nN)*nN+iNodeX1, &
+                iX1, &
+                MergeCellMarkerX2(iX2) + iCell - 1, &
+                iX3,iGF_SqrtGm) / &
+            (wQ(iNodeX2 ) * dX2M(iX2) * &
+             Gm_Merge(MOD(iNodeX2-1,nN)*nN+iNodeX1,iX1,iX2,iX3,iGF_SqrtGm))
+
+          Gm_dd_Merge(iGF_Gm_dd_33) = &
+            Gm_dd_Merge(iGF_Gm_dd_33) + &
+            BasisCoeffX2(iNodeX2,iFine,iCell) * &
+            wQ(iFine) * dX2(MergeCellMarkerX2(iX2) + iCell - 1) * &
+            uGF(MOD(iFine-1,nN)*nN+iNodeX1, &
+                iX1, &
+                MergeCellMarkerX2(iX2) + iCell - 1, &
+                iX3,iGF_Gm_dd_33) * &
+            uGF(MOD(iFine-1,nN)*nN+iNodeX1, &
+                iX1, &
+                MergeCellMarkerX2(iX2) + iCell - 1, &
+                iX3,iGF_SqrtGm) / &
+            (wQ(iNodeX2 ) * dX2M(iX2) * &
+             Gm_Merge(MOD(iNodeX2-1,nN)*nN+iNodeX1,iX1,iX2,iX3,iGF_SqrtGm))
+
+        END DO
+        END DO
+
+        END ASSOCIATE ! dX2, NCellsPerMergeX2, dX2M, etc.
+
+    END SUBROUTINE ComputeMergeGeometryValues2D
+
+    SUBROUTINE ComputeMergeGeometryValues3D &
+      ( nN, iNodeX, iX1, iX2, iX3, Gm_h_Merge )
+
+      INTEGER,  INTENT(in )  :: nN, iNodeX, iX1, iX2, iX3
+      REAL(DP), INTENT(out)  :: Gm_h_Merge(iGF_h_1:iGF_h_3)
+
+      INTEGER  :: iNodeX1, iNodeX2, iNodeX3
+      INTEGER  :: iGCellX2, iGCellX3, iGFineX2, iGFineX3
+      REAL(DP) :: xQ(nN), wQ(nN)
+
+      CALL GetQuadrature( nN, xQ, wQ )
+
+      ASSOCIATE(  dX2               => MeshX(2) % Width, &
+                  dX3               => MeshX(3) % Width, &
+                  NCellsPerMergeX2  => MergedMeshX2(iX1    ) % NCellsPerMerge, &
+                  NCellsPerMergeX3  => MergedMeshX3(iX1,iX2) % NCellsPerMerge, &
+                  dX2M              => MergedMeshX2(iX1    ) % MergeWidth, &
+                  dX3M              => MergedMeshX3(iX1,iX2) % MergeWidth, &
+                  MergeCellMarkerX2 => MergedMeshX2(iX1    ) % MergeCellMarker, &
+                  MergeCellMarkerX3 => MergedMeshX3(iX1,iX2) % MergeCellMarker, &
+                  BasisCoeffX2      => MergedMeshX2(iX1    ) % MergedBasisCoeff, &
+                  BasisCoeffX3      => MergedMeshX3(iX1,iX2) % MergedBasisCoeff )
+
+      iNodeX1   = NodeNumberTableX(1,iNodeX)
+      iNodeX2   = NodeNumberTableX(2,iNodeX)
+      iNodeX3   = NodeNumberTableX(3,iNodeX)
+
+      Gm_h_Merge = Zero
+
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP REDUCTION( +: Gm_h_Merge )
+#endif
+      DO iGCellX2 = 1,NCellsPerMergeX2
+      DO iGCellX3 = 1,NCellsPerMergeX3
+      DO iGFineX2 = 1,nN
+      DO iGFineX3 = 1,nN
+
+        Gm_h_Merge(iGF_h_1) = &
+          Gm_h_Merge(iGF_h_1) + &
+          BasisCoeffX2(iNodeX2,iGFineX2,iGCellX2) * &
+          BasisCoeffX3(iNodeX3,iGFineX3,iGCellX3) * &
+          wQ(iGFineX2) * dX2(MergeCellMarkerX2(iX2) + iGCellX2 - 1) * &
+          wQ(iGFineX3) * dX3(MergeCellMarkerX3(iX3) + iGCellX3 - 1) * &
+          uGF(NodeNumberTableX3D(iNodeX1,iGFineX2,iGFineX3), &
+              iX1, &
+              MergeCellMarkerX2(iX2) + iGCellX2 - 1, &
+              MergeCellMarkerX3(iX3) + iGCellX3 - 1, &
+              iGF_h_1) * &
+          uGF(NodeNumberTableX3D(iNodeX1,iGFineX2,iGFineX3), &
+              iX1, &
+              MergeCellMarkerX2(iX2) + iGCellX2 - 1, &
+              MergeCellMarkerX3(iX3) + iGCellX3 - 1, &
+              iGF_SqrtGm) / &
+          (wQ(iNodeX2) * dX2M(iX2) * wQ(iNodeX3) * dX3M(iX3) * &
+           Gm_Merge(NodeNumberTableX3D(iNodeX1,iNodeX2,iNodeX3),iX1,iX2,iX3,iGF_SqrtGm))
+
+        Gm_h_Merge(iGF_h_2) = &
+          Gm_h_Merge(iGF_h_2) + &
+          BasisCoeffX2(iNodeX2,iGFineX2,iGCellX2) * &
+          BasisCoeffX3(iNodeX3,iGFineX3,iGCellX3) * &
+          wQ(iGFineX2) * dX2(MergeCellMarkerX2(iX2) + iGCellX2 - 1) * &
+          wQ(iGFineX3) * dX3(MergeCellMarkerX3(iX3) + iGCellX3 - 1) * &
+          uGF(NodeNumberTableX3D(iNodeX1,iGFineX2,iGFineX3), &
+              iX1, &
+              MergeCellMarkerX2(iX2) + iGCellX2 - 1, &
+              MergeCellMarkerX3(iX3) + iGCellX3 - 1, &
+              iGF_h_2) * &
+          uGF(NodeNumberTableX3D(iNodeX1,iGFineX2,iGFineX3), &
+              iX1, &
+              MergeCellMarkerX2(iX2) + iGCellX2 - 1, &
+              MergeCellMarkerX3(iX3) + iGCellX3 - 1, &
+              iGF_SqrtGm) / &
+          (wQ(iNodeX2) * dX2M(iX2) * wQ(iNodeX3) * dX3M(iX3) * &
+           Gm_Merge(NodeNumberTableX3D(iNodeX1,iNodeX2,iNodeX3),iX1,iX2,iX3,iGF_SqrtGm))
+
+        Gm_h_Merge(iGF_h_3) = &
+          Gm_h_Merge(iGF_h_3) + &
+          BasisCoeffX2(iNodeX2,iGFineX2,iGCellX2) * &
+          BasisCoeffX3(iNodeX3,iGFineX3,iGCellX3) * &
+          wQ(iGFineX2) * dX2(MergeCellMarkerX2(iX2) + iGCellX2 - 1) * &
+          wQ(iGFineX3) * dX3(MergeCellMarkerX3(iX3) + iGCellX3 - 1) * &
+          uGF(NodeNumberTableX3D(iNodeX1,iGFineX2,iGFineX3), &
+              iX1, &
+              MergeCellMarkerX2(iX2) + iGCellX2 - 1, &
+              MergeCellMarkerX3(iX3) + iGCellX3 - 1, &
+              iGF_h_3) * &
+          uGF(NodeNumberTableX3D(iNodeX1,iGFineX2,iGFineX3), &
+              iX1, &
+              MergeCellMarkerX2(iX2) + iGCellX2 - 1, &
+              MergeCellMarkerX3(iX3) + iGCellX3 - 1, &
+              iGF_SqrtGm) / &
+          (wQ(iNodeX2) * dX2M(iX2) * wQ(iNodeX3) * dX3M(iX3) * &
+           Gm_Merge(NodeNumberTableX3D(iNodeX1,iNodeX2,iNodeX3),iX1,iX2,iX3,iGF_SqrtGm))
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      END ASSOCIATE ! dX2, dX3
+
+    END SUBROUTINE ComputeMergeGeometryValues3D
+
+    SUBROUTINE ComputeMergeFluidValues2D &
+      ( nN, iNodeX, iX1, iX2, iX3, U, uCF )
+
+      INTEGER,  INTENT(in )  :: nN, iNodeX, iX1, iX2, iX3
+      REAL(DP), INTENT(in )  :: U(1:nDOFX, &
+                                   iX_B1(1):iX_E1(1), &
+                                   iX_B1(2):iX_E1(2), &
+                                   iX_B1(3):iX_E1(3), &
+                                   1:nCF)
+      REAL(DP), INTENT(out)  :: uCF(iCF_D:iCF_Ne)
+
+      INTEGER  :: iNodeX1, iNodeX2
+      INTEGER  :: iCell, iFine
+      REAL(DP) :: xQ(nN), wQ(nN)
+
+      ! --- Merge conserved quantities ---
+      
+      CALL GetQuadrature( nN, xQ, wQ )      
+
+        ASSOCIATE( dX2               => MeshX(2) % Width, &
+                   NCellsPerMergeX2  => MergedMeshX2(iX1) % NCellsPerMerge, &
+                   dX2M              => MergedMeshX2(iX1) % MergeWidth, &
+                   MergeCellMarkerX2 => MergedMeshX2(iX1) % MergeCellMarker, &
+                   FineCellMarkerX2  => MergedMeshX2(iX1) % FineCellMarker, &
+                   BasisCoeffX2      => MergedMeshX2(iX1) % MergedBasisCoeff )
+
+        iNodeX1   = NodeNumberTableX(1,iNodeX)
+        iNodeX2   = NodeNumberTableX(2,iNodeX)
+
+        uCF = Zero
+
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP REDUCTION( +: uCF )
+#endif
+        DO iCell  = 1,NCellsPerMergeX2
+        DO iFine  = 1,nN
+
+          uCF(iCF_D) = &
+            uCF(iCF_D) + &
+            BasisCoeffX2(iNodeX2,iFine,iCell) * &
+            wQ(iFine) * dX2(MergeCellMarkerX2(iX2) + iCell - 1) * &
+            U(MOD(iFine-1,nN)*nN+iNodeX1, &
+                iX1, &
+                MergeCellMarkerX2(iX2) + iCell - 1, &
+                iX3,iCF_D) * &
+            uGF(MOD(iFine-1,nN)*nN+iNodeX1, &
+                iX1, &
+                MergeCellMarkerX2(iX2) + iCell - 1, &
+                iX3,iGF_SqrtGm) / &
+            (wQ(iNodeX2 ) * dX2M(iX2) * &
+             Gm_Merge(MOD(iNodeX2-1,nN)*nN+iNodeX1,iX1,iX2,iX3,iGF_SqrtGm))
+
+          uCF(iCF_S1) = &
+            uCF(iCF_S1) + &
+            BasisCoeffX2(iNodeX2,iFine,iCell) * &
+            wQ(iFine) * dX2(MergeCellMarkerX2(iX2) + iCell - 1) * &
+            U(MOD(iFine-1,nN)*nN+iNodeX1, &
+                iX1, &
+                MergeCellMarkerX2(iX2) + iCell - 1, &
+                iX3,iCF_S1) * &
+            uGF(MOD(iFine-1,nN)*nN+iNodeX1, &
+                iX1, &
+                MergeCellMarkerX2(iX2) + iCell - 1, &
+                iX3,iGF_SqrtGm) / &
+            (wQ(iNodeX2 ) * dX2M(iX2) * &
+             Gm_Merge(MOD(iNodeX2-1,nN)*nN+iNodeX1,iX1,iX2,iX3,iGF_SqrtGm))
+
+          uCF(iCF_S2) = &
+            uCF(iCF_S2) + &
+            BasisCoeffX2(iNodeX2,iFine,iCell) * &
+            wQ(iFine) * dX2(MergeCellMarkerX2(iX2) + iCell - 1) * &
+            U(MOD(iFine-1,nN)*nN+iNodeX1, &
+                iX1, &
+                MergeCellMarkerX2(iX2) + iCell - 1, &
+                iX3,iCF_S2) * &
+            uGF(MOD(iFine-1,nN)*nN+iNodeX1, &
+                iX1, &
+                MergeCellMarkerX2(iX2) + iCell - 1, &
+                iX3,iGF_SqrtGm) / &
+            (wQ(iNodeX2 ) * dX2M(iX2) * &
+             Gm_Merge(MOD(iNodeX2-1,nN)*nN+iNodeX1,iX1,iX2,iX3,iGF_SqrtGm))
+
+          uCF(iCF_S3) = &
+            uCF(iCF_S3) + &
+            BasisCoeffX2(iNodeX2,iFine,iCell) * &
+            wQ(iFine) * dX2(MergeCellMarkerX2(iX2) + iCell - 1) * &
+            U(MOD(iFine-1,nN)*nN+iNodeX1, &
+                iX1, &
+                MergeCellMarkerX2(iX2) + iCell - 1, &
+                iX3,iCF_S3) * &
+            uGF(MOD(iFine-1,nN)*nN+iNodeX1, &
+                iX1, &
+                MergeCellMarkerX2(iX2) + iCell - 1, &
+                iX3,iGF_SqrtGm) / &
+            (wQ(iNodeX2 ) * dX2M(iX2) * &
+             Gm_Merge(MOD(iNodeX2-1,nN)*nN+iNodeX1,iX1,iX2,iX3,iGF_SqrtGm))
+
+          uCF(iCF_E) = &
+            uCF(iCF_E) + &
+            BasisCoeffX2(iNodeX2,iFine,iCell) * &
+            wQ(iFine) * dX2(MergeCellMarkerX2(iX2) + iCell - 1) * &
+            U(MOD(iFine-1,nN)*nN+iNodeX1, &
+                iX1, &
+                MergeCellMarkerX2(iX2) + iCell - 1, &
+                iX3,iCF_E) * &
+            uGF(MOD(iFine-1,nN)*nN+iNodeX1, &
+                iX1, &
+                MergeCellMarkerX2(iX2) + iCell - 1, &
+                iX3,iGF_SqrtGm) / &
+            (wQ(iNodeX2 ) * dX2M(iX2) * &
+             Gm_Merge(MOD(iNodeX2-1,nN)*nN+iNodeX1,iX1,iX2,iX3,iGF_SqrtGm))
+
+          uCF(iCF_Ne) = &
+            uCF(iCF_Ne) + &
+            BasisCoeffX2(iNodeX2,iFine,iCell) * &
+            wQ(iFine) * dX2(MergeCellMarkerX2(iX2) + iCell - 1) * &
+            U(MOD(iFine-1,nN)*nN+iNodeX1, &
+                iX1, &
+                MergeCellMarkerX2(iX2) + iCell - 1, &
+                iX3,iCF_Ne) * &
+            uGF(MOD(iFine-1,nN)*nN+iNodeX1, &
+                iX1, &
+                MergeCellMarkerX2(iX2) + iCell - 1, &
+                iX3,iGF_SqrtGm) / &
+            (wQ(iNodeX2 ) * dX2M(iX2) * &
+             Gm_Merge(MOD(iNodeX2-1,nN)*nN+iNodeX1,iX1,iX2,iX3,iGF_SqrtGm))
+
+        END DO
+        END DO
+
+        END ASSOCIATE ! dX2, NCellsPerMergeX2, dX2M, etc.
+
+    END SUBROUTINE ComputeMergeFluidValues2D
+
+    SUBROUTINE ComputeMergeFluidValues3D &
+      ( nN, iNodeX, iX1, iX2, iX3, U, uCF )
+
+      INTEGER,  INTENT(in )  :: nN, iNodeX, iX1, iX2, iX3
+      REAL(DP), INTENT(in )  :: U(1:nDOFX, &
+                                   iX_B1(1):iX_E1(1), &
+                                   iX_B1(2):iX_E1(2), &
+                                   iX_B1(3):iX_E1(3), &
+                                   1:nCF)
+      REAL(DP), INTENT(out)  :: uCF(iCF_D:iCF_Ne)
+
+      INTEGER  :: iNodeX1, iNodeX2, iNodeX3
+      INTEGER  :: iGCellX2, iGCellX3, iGFineX2, iGFineX3
+      REAL(DP) :: xQ(nN), wQ(nN)
+
+      CALL GetQuadrature( nN, xQ, wQ )
+
+      ASSOCIATE(  dX2               => MeshX(2) % Width, &
+                  dX3               => MeshX(3) % Width, &
+                  NCellsPerMergeX2  => MergedMeshX2(iX1    ) % NCellsPerMerge, &
+                  NCellsPerMergeX3  => MergedMeshX3(iX1,iX2) % NCellsPerMerge, &
+                  dX2M              => MergedMeshX2(iX1    ) % MergeWidth, &
+                  dX3M              => MergedMeshX3(iX1,iX2) % MergeWidth, &
+                  MergeCellMarkerX2 => MergedMeshX2(iX1    ) % MergeCellMarker, &
+                  MergeCellMarkerX3 => MergedMeshX3(iX1,iX2) % MergeCellMarker, &
+                  BasisCoeffX2      => MergedMeshX2(iX1    ) % MergedBasisCoeff, &
+                  BasisCoeffX3      => MergedMeshX3(iX1,iX2) % MergedBasisCoeff )
+
+      iNodeX1   = NodeNumberTableX(1,iNodeX)
+      iNodeX2   = NodeNumberTableX(2,iNodeX)
+      iNodeX3   = NodeNumberTableX(3,iNodeX)
+
+      uCF = Zero
+
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP REDUCTION( +: uCF )
+#endif
+      DO iGCellX2 = 1,NCellsPerMergeX2
+      DO iGCellX3 = 1,NCellsPerMergeX3
+      DO iGFineX2 = 1,nN
+      DO iGFineX3 = 1,nN
+
+        uCF(iCF_D) = &
+          uCF(iCF_D) + &
+          BasisCoeffX2(iNodeX2,iGFineX2,iGCellX2) * &
+          BasisCoeffX3(iNodeX3,iGFineX3,iGCellX3) * &
+          wQ(iGFineX2) * dX2(MergeCellMarkerX2(iX2) + iGCellX2 - 1) * &
+          wQ(iGFineX3) * dX3(MergeCellMarkerX3(iX3) + iGCellX3 - 1) * &
+          U(NodeNumberTableX3D(iNodeX1,iGFineX2,iGFineX3), &
+              iX1, &
+              MergeCellMarkerX2(iX2) + iGCellX2 - 1, &
+              MergeCellMarkerX3(iX3) + iGCellX3 - 1, &
+              iCF_D) * &
+          uGF(NodeNumberTableX3D(iNodeX1,iGFineX2,iGFineX3), &
+              iX1, &
+              MergeCellMarkerX2(iX2) + iGCellX2 - 1, &
+              MergeCellMarkerX3(iX3) + iGCellX3 - 1, &
+              iGF_SqrtGm) / &
+          (wQ(iNodeX2) * dX2M(iX2) * wQ(iNodeX3) * dX3M(iX3) * &
+           Gm_Merge(NodeNumberTableX3D(iNodeX1,iNodeX2,iNodeX3),iX1,iX2,iX3,iGF_SqrtGm))
+
+        uCF(iCF_S1) = &
+          uCF(iCF_S1) + &
+          BasisCoeffX2(iNodeX2,iGFineX2,iGCellX2) * &
+          BasisCoeffX3(iNodeX3,iGFineX3,iGCellX3) * &
+          wQ(iGFineX2) * dX2(MergeCellMarkerX2(iX2) + iGCellX2 - 1) * &
+          wQ(iGFineX3) * dX3(MergeCellMarkerX3(iX3) + iGCellX3 - 1) * &
+          U(NodeNumberTableX3D(iNodeX1,iGFineX2,iGFineX3), &
+              iX1, &
+              MergeCellMarkerX2(iX2) + iGCellX2 - 1, &
+              MergeCellMarkerX3(iX3) + iGCellX3 - 1, &
+              iCF_S1) * &
+          uGF(NodeNumberTableX3D(iNodeX1,iGFineX2,iGFineX3), &
+              iX1, &
+              MergeCellMarkerX2(iX2) + iGCellX2 - 1, &
+              MergeCellMarkerX3(iX3) + iGCellX3 - 1, &
+              iGF_SqrtGm) / &
+          (wQ(iNodeX2) * dX2M(iX2) * wQ(iNodeX3) * dX3M(iX3) * &
+           Gm_Merge(NodeNumberTableX3D(iNodeX1,iNodeX2,iNodeX3),iX1,iX2,iX3,iGF_SqrtGm))
+
+        uCF(iCF_S2) = &
+          uCF(iCF_S2) + &
+          BasisCoeffX2(iNodeX2,iGFineX2,iGCellX2) * &
+          BasisCoeffX3(iNodeX3,iGFineX3,iGCellX3) * &
+          wQ(iGFineX2) * dX2(MergeCellMarkerX2(iX2) + iGCellX2 - 1) * &
+          wQ(iGFineX3) * dX3(MergeCellMarkerX3(iX3) + iGCellX3 - 1) * &
+          U(NodeNumberTableX3D(iNodeX1,iGFineX2,iGFineX3), &
+              iX1, &
+              MergeCellMarkerX2(iX2) + iGCellX2 - 1, &
+              MergeCellMarkerX3(iX3) + iGCellX3 - 1, &
+              iCF_S2) * &
+          uGF(NodeNumberTableX3D(iNodeX1,iGFineX2,iGFineX3), &
+              iX1, &
+              MergeCellMarkerX2(iX2) + iGCellX2 - 1, &
+              MergeCellMarkerX3(iX3) + iGCellX3 - 1, &
+              iGF_SqrtGm) / &
+          (wQ(iNodeX2) * dX2M(iX2) * wQ(iNodeX3) * dX3M(iX3) * &
+           Gm_Merge(NodeNumberTableX3D(iNodeX1,iNodeX2,iNodeX3),iX1,iX2,iX3,iGF_SqrtGm))
+
+        uCF(iCF_S3) = &
+          uCF(iCF_S3) + &
+          BasisCoeffX2(iNodeX2,iGFineX2,iGCellX2) * &
+          BasisCoeffX3(iNodeX3,iGFineX3,iGCellX3) * &
+          wQ(iGFineX2) * dX2(MergeCellMarkerX2(iX2) + iGCellX2 - 1) * &
+          wQ(iGFineX3) * dX3(MergeCellMarkerX3(iX3) + iGCellX3 - 1) * &
+          U(NodeNumberTableX3D(iNodeX1,iGFineX2,iGFineX3), &
+              iX1, &
+              MergeCellMarkerX2(iX2) + iGCellX2 - 1, &
+              MergeCellMarkerX3(iX3) + iGCellX3 - 1, &
+              iCF_S3) * &
+          uGF(NodeNumberTableX3D(iNodeX1,iGFineX2,iGFineX3), &
+              iX1, &
+              MergeCellMarkerX2(iX2) + iGCellX2 - 1, &
+              MergeCellMarkerX3(iX3) + iGCellX3 - 1, &
+              iGF_SqrtGm) / &
+          (wQ(iNodeX2) * dX2M(iX2) * wQ(iNodeX3) * dX3M(iX3) * &
+           Gm_Merge(NodeNumberTableX3D(iNodeX1,iNodeX2,iNodeX3),iX1,iX2,iX3,iGF_SqrtGm))
+
+        uCF(iCF_E) = &
+          uCF(iCF_E) + &
+          BasisCoeffX2(iNodeX2,iGFineX2,iGCellX2) * &
+          BasisCoeffX3(iNodeX3,iGFineX3,iGCellX3) * &
+          wQ(iGFineX2) * dX2(MergeCellMarkerX2(iX2) + iGCellX2 - 1) * &
+          wQ(iGFineX3) * dX3(MergeCellMarkerX3(iX3) + iGCellX3 - 1) * &
+          U(NodeNumberTableX3D(iNodeX1,iGFineX2,iGFineX3), &
+              iX1, &
+              MergeCellMarkerX2(iX2) + iGCellX2 - 1, &
+              MergeCellMarkerX3(iX3) + iGCellX3 - 1, &
+              iCF_E) * &
+          uGF(NodeNumberTableX3D(iNodeX1,iGFineX2,iGFineX3), &
+              iX1, &
+              MergeCellMarkerX2(iX2) + iGCellX2 - 1, &
+              MergeCellMarkerX3(iX3) + iGCellX3 - 1, &
+              iGF_SqrtGm) / &
+          (wQ(iNodeX2) * dX2M(iX2) * wQ(iNodeX3) * dX3M(iX3) * &
+           Gm_Merge(NodeNumberTableX3D(iNodeX1,iNodeX2,iNodeX3),iX1,iX2,iX3,iGF_SqrtGm))
+
+        uCF(iCF_Ne) = &
+          uCF(iCF_Ne) + &
+          BasisCoeffX2(iNodeX2,iGFineX2,iGCellX2) * &
+          BasisCoeffX3(iNodeX3,iGFineX3,iGCellX3) * &
+          wQ(iGFineX2) * dX2(MergeCellMarkerX2(iX2) + iGCellX2 - 1) * &
+          wQ(iGFineX3) * dX3(MergeCellMarkerX3(iX3) + iGCellX3 - 1) * &
+          U(NodeNumberTableX3D(iNodeX1,iGFineX2,iGFineX3), &
+              iX1, &
+              MergeCellMarkerX2(iX2) + iGCellX2 - 1, &
+              MergeCellMarkerX3(iX3) + iGCellX3 - 1, &
+              iCF_Ne) * &
+          uGF(NodeNumberTableX3D(iNodeX1,iGFineX2,iGFineX3), &
+              iX1, &
+              MergeCellMarkerX2(iX2) + iGCellX2 - 1, &
+              MergeCellMarkerX3(iX3) + iGCellX3 - 1, &
+              iGF_SqrtGm) / &
+          (wQ(iNodeX2) * dX2M(iX2) * wQ(iNodeX3) * dX3M(iX3) * &
+           Gm_Merge(NodeNumberTableX3D(iNodeX1,iNodeX2,iNodeX3),iX1,iX2,iX3,iGF_SqrtGm))
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      END ASSOCIATE ! dX2, dX3
+
+    END SUBROUTINE ComputeMergeFluidValues3D
 
     SUBROUTINE MergeAndRestrict2D ( nN, U )
 
@@ -735,7 +1261,7 @@ CONTAINS
                 MergeCellMarkerX2(iX2) + iCell - 1, &
                 iX1,iX3,iCF) / &
             (wQ(iMerge ) * dX2M(iX2) * &
-             SqrtGm_Merge(MOD(iMerge-1,nN)*nN+iNodeX1,iX1,iX2,iX3))
+             Gm_Merge(MOD(iMerge-1,nN)*nN+iNodeX1,iX1,iX2,iX3,iGF_SqrtGm))
 
         END DO
         END DO
@@ -865,7 +1391,7 @@ CONTAINS
                 iX1, &
                 iCF) / &
             (wQ(iMergeX2) * dX2M(iX2) * wQ(iMergeX3) * dX3M(iX3) * &
-             SqrtGm_Merge(NodeNumberTableX3D(iNodeX1,iMergeX2,iMergeX3),iX1,iX2,iX3))
+             Gm_Merge(NodeNumberTableX3D(iNodeX1,iMergeX2,iMergeX3),iX1,iX2,iX3,iGF_SqrtGm))
 
         END DO
         END DO
@@ -911,6 +1437,10 @@ CONTAINS
       END IF
 
     END SUBROUTINE MergeAndRestrict
+
+    SUBROUTINE ComputeMergeFluidValues
+
+    END SUBROUTINE ComputeMergeFluidValues
 
     SUBROUTINE MergeAndRestrictGeometry ( nN, G )
 
