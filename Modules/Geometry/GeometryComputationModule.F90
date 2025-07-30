@@ -287,17 +287,15 @@ CONTAINS
       IF( iX1 .EQ. 1 )THEN
         x1_q = CenterX1(iX1) + WidthX1(iX1) * NodesX_q(1,iNodeX) ! set as global Gauss point
         x1_q = x1_q / 1.0d+4 ! 2D
-        ! x1_q = x1_q / 1.0d+1 ! 3D
-        ! print *, 'x1 = ', x1_q
+        ! x1_q = x1_q / 1.0d+5 ! 3D
       ELSE
         x1_q = x1G_q ! set as Lobatto point so MAX statement evaluates to x1G_q
       END IF
 
       IF( iX2 .EQ. 1 )THEN
         x2_q = CenterX2(iX2) + WidthX2(iX2) * NodesX_q(2,iNodeX) ! set as global Gauss point
+        ! x2_q = x1G_q ! 2D
         x2_q = x2_q / 1.0d+4 ! 3D
-        ! print *, 'x2 = ', x2_q
-        ! STOP
       ELSE
         x2_q = x2G_q ! set as Lobatto point so MAX statement evaluates to x2G_q
       END IF
@@ -305,16 +303,16 @@ CONTAINS
       h_1_L(iNodeX,iX1,iX2,iX3) &
         = Psi_L(iNodeX,iX1,iX2,iX3)**2
       h_2_L(iNodeX,iX1,iX2,iX3) &
-        ! = Psi_L(iNodeX,iX1,iX2,iX3)**2 * x1G_q ! original
+        = Psi_L(iNodeX,iX1,iX2,iX3)**2 * x1G_q ! original
         ! = Psi_L(iNodeX,iX1,iX2,iX3)**2 * MAX(x1G_q, 1.0d-8) ! setting for 2D Sedov
         ! = Psi_L(iNodeX,iX1,iX2,iX3)**2 * MAX(x1G_q, 1.0d-12) ! setting for 3D Sedov
         ! = Psi_L(iNodeX,iX1,iX2,iX3)**2 * MAX(x1G_q, 1.0d-2) ! setting for Riemann2D
-        = Psi_L(iNodeX,iX1,iX2,iX3)**2 * MAX(x1G_q, x1_q) ! Grid independent?
+        ! = Psi_L(iNodeX,iX1,iX2,iX3)**2 * MAX(x1G_q, x1_q) ! Grid independent?
       h_3_L(iNodeX,iX1,iX2,iX3) &
-        ! = Psi_L(iNodeX,iX1,iX2,iX3)**2 * x1G_q * SIN( x2G_q ) ! original/2D Sedov
+        = Psi_L(iNodeX,iX1,iX2,iX3)**2 * x1G_q * SIN( x2G_q ) ! original/2D Sedov
         ! = Psi_L(iNodeX,iX1,iX2,iX3)**2 * MAX(x1G_q * SIN( x2G_q ), 1.0d-12) ! setting for 3D Sedov
         ! = Psi_L(iNodeX,iX1,iX2,iX3)**2 * MAX(x1G_q, 1.0d-2) * SIN( x2G_q ) ! setting for Riemann2D
-        = Psi_L(iNodeX,iX1,iX2,iX3)**2 * MAX(x1G_q * SIN( x2G_q ), x1_q * SIN( x2_q )) ! Grid independent?
+        ! = Psi_L(iNodeX,iX1,iX2,iX3)**2 * MAX(x1G_q * SIN( x2G_q ), x1_q * SIN( x2_q )) ! Grid independent?
 
     END DO
     END DO

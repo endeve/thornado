@@ -203,14 +203,19 @@ PROGRAM ApplicationDriver
       Gamma = 1.4_DP
 
       nX = [ 64, 4, 4 ]
-      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
-      ! xR = [ 1.2_DP, Pi,     TwoPi  ]
+      ! nX = [ 256, 16, 1 ]
+      ! xL = [ 0.0_DP+1.0d-8, 0.0_DP, 0.0_DP ] ! 2D
+      ! xR = [ 1.2_DP, Pi,     TwoPi  ] !2D
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ] ! 3D Octant
       xR = [ 1.2_DP, Pi/2.0_DP,     Pi/2.0_DP  ] ! 3D Octant
 
+      xL(1) = xL(1) + 1.0d-8 * (xR(1)-xL(1)) / nX(1) ! Cushion left boundary in r
+      xL(2) = xL(2) + 1.0d-8 * (xR(2)-xL(2)) / nX(2) ! Cushion left boundary in theta
+
       swX   = [  1, 1, 1 ]
+      ! bcX   = [ 31, 0, 0 ] ! 1D BCs
       ! bcX   = [ 31, 3, 0 ] ! 2D BCs
-      ! bcX   = [ 31, 3, 1 ] ! 3D Octant BCs
-      bcX   = [ 310, 310, 1 ] ! 3D Octant Müller BCs
+      bcX   = [ 31, 31, 1 ] ! 3D Octant BCs
       ! zoomX = [ 1.009928960258105_DP, One, One ] !ZoomX factor for 128 cells so that first cell width is 1.2/256
 
       nNodes = 2
@@ -219,17 +224,17 @@ PROGRAM ApplicationDriver
       BetaTVB = 0.00d+00
 
       UseSlopeLimiter           = .TRUE.
-      UseCharacteristicLimiting = .TRUE.
+      UseCharacteristicLimiting = .TRUE. ! Do we need characteristic limiting? It is a large chunk of the runtime for 64x8x8
 
       UseTroubledCellIndicator  = .TRUE.
       LimiterThresholdParameter = 0.015_DP
 
-      UseCellMerging            = .TRUE.
-      UseMergingTimeStep        = .TRUE.
+      UseCellMerging            = .FALSE.
+      UseMergingTimeStep        = .FALSE.
 
       iCycleD = 100
       t_end   = 1.0d+0
-      ! t_end   = 1.0d-5 ! 3D
+      ! t_end   = 1.0d-3 ! 3D
       dt_wrt  = 5.0d-2
       ! dt_wrt  = 1.0d-2 ! 3D
 
