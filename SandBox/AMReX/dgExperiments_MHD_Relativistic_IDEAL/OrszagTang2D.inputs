@@ -54,11 +54,11 @@ thornado.TallyFileNameRoot_MHD = "OrszagTang2D.Tally"
 # See ${THORNADO_DIR}/Modules/MHD/MHD_BoundaryConditionsModule.F90
 # to see which integers corresponds to which boundary conditions.
 # These also set the boundary conditions for the geometry
-thornado.bcX = 00 00 01
+thornado.bcX = 01 01 00
 
 # Tell AMReX whether a dimension uses periodic boundary conditions.
 # Only the entries corresponding to active dimensions will have any effect
-geometry.is_periodic = 0 0 1  # Periodic BCs: 0 (no), 1 (yes)
+geometry.is_periodic = 1 1 0  # Periodic BCs: 0 (no), 1 (yes)
 
 # Coordinate system ( 0: CARTESIAN, 1: CYLINDRICAL, 2: SPHERICAL )
 geometry.coord_sys = 0
