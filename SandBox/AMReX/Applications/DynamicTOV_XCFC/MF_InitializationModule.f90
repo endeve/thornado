@@ -147,7 +147,7 @@ CONTAINS
 
     CentralPressure = PolytropicConstant * CentralDensity**( Gamma_IDEAL )
 
-    N = ( 15.0_DP * Kilometer ) / DeltaR
+    N = ( 50.0_DP * Kilometer ) / DeltaR
 
     ALLOCATE( RadiusArr  (N) )
     ALLOCATE( DensityArr (N) )
@@ -463,8 +463,8 @@ CONTAINS
             Radius = RadiusArr(j-1) + DeltaR
 
             RadiusArr  (j) = Radius
-            DensityArr (j) = Density
-            PressureArr(j) = Pressure
+            DensityArr (j) = 1.0e-4_DP * Density
+            PressureArr(j) = 1.0e-2_DP * DensityArr(j)
 
             Psi = Psi_Iso( Radius, GravitationalMass )
             Phi = Phi_Iso( Radius, GravitationalMass )
