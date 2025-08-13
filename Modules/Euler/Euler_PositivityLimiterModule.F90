@@ -3,6 +3,7 @@ MODULE Euler_PositivityLimiterModule
   USE KindModule, ONLY: &
     DP, &
     Zero, &
+    SqrtTiny, &
     One
 
 #if   defined( MICROPHYSICS_WEAKLIB ) && defined( HYDRO_RELATIVISTIC    )
@@ -147,6 +148,10 @@ CONTAINS
     IF( PRESENT( Min_2_Option ) ) &
       Min_2 = Min_2_Option
 
+    D_Min_Euler_PL = SqrtTiny
+    IF( PRESENT( D_Min_Euler_PL_Option ) ) &
+      D_Min_Euler_PL = D_Min_Euler_PL_Option
+
     IntE_Min_Euler_PL = Zero
     IF( PRESENT( IntE_Min_Euler_PL_Option ) ) &
       IntE_Min_Euler_PL = IntE_Min_Euler_PL_Option
@@ -156,6 +161,7 @@ CONTAINS
              Verbose_Option              = Verbose, &
              Min_1_Option                = Min_1, &
              Min_2_Option                = Min_2, &
+             D_Min_Euler_PL_Option       = D_Min_Euler_PL, &
              IntE_Min_Euler_PL_Option    = IntE_Min_Euler_PL )
 
 #else
