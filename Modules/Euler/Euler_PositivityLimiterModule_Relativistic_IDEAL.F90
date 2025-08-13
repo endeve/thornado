@@ -67,7 +67,7 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
   INTEGER, PARAMETER    :: nPS = 7  ! Number of Positive Point Sets
   INTEGER               :: nPP(nPS) ! Number of Positive Points Per Set
   INTEGER               :: nPT      ! Total number of Positive Points
-  REAL(DP)              :: Min_1, Min_2, IntE_Min_Euler_PL
+  REAL(DP)              :: Min_1, Min_2, IntD_Min_Euler_PL, IntE_Min_Euler_PL
   REAL(DP), ALLOCATABLE :: L_X(:,:)
 
   INTERFACE ComputePointValues
@@ -77,10 +77,10 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
 
 #if   defined( THORNADO_OMP_OL )
   !$OMP DECLARE &
-  !$OMP TARGET( Min_1, Min_2, IntE_Min_Euler_PL )
+  !$OMP TARGET( Min_1, Min_2, IntD_Min_Euler_PL, IntE_Min_Euler_PL )
 #elif defined( THORNADO_OACC   )
   !$ACC DECLARE &
-  !$ACC CREATE( Min_1, Min_2, IntE_Min_Euler_PL )
+  !$ACC CREATE( Min_1, Min_2, IntD_Min_Euler_PL, IntE_Min_Euler_PL )
 #endif
 
 CONTAINS
@@ -88,11 +88,12 @@ CONTAINS
 
   SUBROUTINE InitializePositivityLimiter_Euler_Relativistic_IDEAL &
     ( UsePositivityLimiter_Option, Verbose_Option, Min_1_Option, Min_2_Option, &
-      IntE_Min_Euler_PL_Option )
+      IntD_Min_Euler_PL_Option, IntE_Min_Euler_PL_Option )
 
     LOGICAL,  INTENT(in), OPTIONAL :: UsePositivityLimiter_Option, &
                                       Verbose_Option
     REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option, Min_2_Option, &
+                                      IntD_Min_Euler_PL_Option, &
                                       IntE_Min_Euler_PL_Option
 
     INTEGER :: iDim, iNX, iOS
@@ -114,6 +115,10 @@ CONTAINS
     IF( PRESENT( Min_2_Option ) ) &
       Min_2 = Min_2_Option
 
+    IntD_Min_Euler_PL = SqrtTiny
+    IF( PRESENT( IntD_Min_Euler_PL_Option ) ) &
+      IntD_Min_Euler_PL = IntD_Min_Euler_PL_Option
+
     IntE_Min_Euler_PL = Zero
     IF( PRESENT( IntE_Min_Euler_PL_Option ) ) &
       IntE_Min_Euler_PL = IntE_Min_Euler_PL_Option
@@ -132,6 +137,10 @@ CONTAINS
         '', 'Min_1: ', Min_1
       WRITE(*,'(A6,A27,ES11.4E3)') &
         '', 'Min_2: ', Min_2
+      WRITE(*,'(A6,A27,ES11.4E3,1x,A)') &
+        '', 'IntD_Min: ', &
+        IntD_Min_Euler_PL / UnitsDisplay % MassDensityUnit, &
+        UnitsDisplay % MassDensityLabel
       WRITE(*,'(A6,A27,ES11.4E3,1x,A)') &
         '', 'IntE_Min: ', &
         IntE_Min_Euler_PL / UnitsDisplay % EnergyDensityUnit, &
@@ -196,10 +205,10 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET UPDATE &
-    !$OMP TO    ( Min_1, Min_2, IntE_Min_Euler_PL )
+    !$OMP TO    ( Min_1, Min_2, IntD_Min_Euler_PL, IntE_Min_Euler_PL )
 #elif defined( THORNADO_OACC   )
     !$ACC UPDATE &
-    !$ACC DEVICE( Min_1, Min_2, IntE_Min_Euler_PL )
+    !$ACC DEVICE( Min_1, Min_2, IntD_Min_Euler_PL, IntE_Min_Euler_PL )
 #endif
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
@@ -245,7 +254,7 @@ CONTAINS
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER  :: iNX, iX1, iX2, iX3, iCF, iPT, nX_K, nCF_K
-    REAL(DP) :: Min_D, Min_K, Theta_D, Theta_P, q, qMin, alpha
+    REAL(DP) :: Min_D, Min_K, Theta_D, Theta_P, DMin, q, qMin, alpha
 
     INTEGER :: iErr(1:nPT        ,iX_B0(1):iX_E0(1), &
                                   iX_B0(2):iX_E0(2), &
@@ -311,6 +320,7 @@ CONTAINS
     CALL TimersStart_Euler( Timer_Euler_PositivityLimiter )
 
     qMin  = IntE_Min_Euler_PL
+    DMin  = IntD_Min_Euler_PL
     alpha = 1.1_DP
 
     nX_K  = PRODUCT( iX_E0 - iX_B0 + 1 )
@@ -322,13 +332,13 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    iX_B0, iX_E0, G, U, iErr, qMin, alpha ) &
+    !$OMP MAP( to:    iX_B0, iX_E0, G, U, iErr, DMin, qMin, alpha ) &
     !$OMP MAP( alloc: NegativeStates, Theta_q, SqrtGm, &
     !$OMP             U_Q, U_P, U_K, &
     !$OMP             h1Q, h2Q, h3Q, h1P, h2P, h3P, g1P, g2P, g3P )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     iX_B0, iX_E0, G, U, iErr, qMin, alpha ) &
+    !$ACC COPYIN(     iX_B0, iX_E0, G, U, iErr, DMin, qMin, alpha ) &
     !$ACC CREATE(     NegativeStates, Theta_q, SqrtGm, &
     !$ACC             U_Q, U_P, U_K, &
     !$ACC             h1Q, h2Q, h3Q, h1P, h2P, h3P, g1P, g2P, g3P )
@@ -445,6 +455,30 @@ CONTAINS
     END DO
 
     CALL TimersStop_Euler( Timer_Euler_PL_Permute )
+
+    ! --- Ensure cell-average of density is positive ---
+
+#if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( U_K ) &
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      IF( IsCornerCell( iX_B1, iX_E1, iX1, iX2, iX3 ) ) CYCLE
+
+      IF( U_K(iCF_D,iX1,iX2,iX3) .LT. DMin ) &
+          U_K(iCF_D,iX1,iX2,iX3) &
+            = U_K(iCF_D,iX1,iX2,iX3) + alpha * ( DMin - U_K(iCF_D,iX1,iX2,iX3) )
+
+    END DO
+    END DO
+    END DO
 
     ! --- Limit Mass-Density ---
 
