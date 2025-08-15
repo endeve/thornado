@@ -18,7 +18,7 @@ MODULE InitializationModule
     MeshE, &
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
-    uGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, iGF_h_1, iGF_h_2
+    uGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, iGF_h_1, iGF_h_2, iGF_Alpha
   USE FluidFieldsModule, ONLY: &
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
@@ -2149,9 +2149,11 @@ CONTAINS
     INTEGER       :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
     INTEGER       :: iNodeX1
     REAL(DP)      :: X1, Theta, V_Max = 0.20_DP
+    REAL(DP)      :: Mass = 1.8_DP
 
     WRITE(*,*)
     WRITE(*,'(A6,A8,3ES9.2E2)') '', 'V_Max = ', V_Max
+    WRITE(*,'(A6,A8,3ES9.2E2)') '', 'Mass  = ', Mass
     WRITE(*,*)
     
     ! --- Fluid Fields ---
@@ -2203,6 +2205,8 @@ CONTAINS
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 1.0d-1
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0d-0
+
+        uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha) = SQRT( 1.0_DP - 2.0_DP * Mass / X1 )
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
