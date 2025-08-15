@@ -915,6 +915,35 @@ MODULE TwoMoment_PositivityLimiterModule_FMC
     END DO
     END DO
 
+    DO iS = 1, nSpecies
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iZ1 = iZ_B0(1), iZ_E0(1)
+  
+        DO iNodeZ = 1, nDOFZ
+  
+          IF ( U_M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E ,iS) < &
+               SQRT ( U_M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F1 ,iS)**2 + &
+                      U_M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F2 ,iS)**2 + &
+                      U_M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F3 ,iS)**2 ) &
+               .OR. &
+               U_M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E ,iS) < Zero) THEN
+            print *, 'iNodeZ = ', iNodeZ
+            print *, 'E  = ', U_M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E ,iS)
+            print *, 'F1 = ', U_M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F1 ,iS)
+            print *, 'SqrtTiny = ', SqrtTiny
+            STOP
+          END IF
+  
+       END DO
+  
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
     ! IF( PRESENT( uDR_Option ) )THEN
 
     !   DO iZ4 = iZ_B0(4), iZ_E0(4)
@@ -930,6 +959,8 @@ MODULE TwoMoment_PositivityLimiterModule_FMC
     !   END DO
 
     ! END IF
+
+    print *, 'Positivity Limiter Applied'
 
   END SUBROUTINE ApplyPositivityLimiter_TwoMoment
 
@@ -1064,6 +1095,7 @@ MODULE TwoMoment_PositivityLimiterModule_FMC
     REAL(DP), PARAMETER :: dx_min = 1.0d-3
 
     LOGICAL  :: CONVERGED
+    LOGICAL  :: NonRealizable_CellAvg
     INTEGER  :: ITERATION
     REAL(DP) :: x_a, x_b, x_c, dx
     REAL(DP) :: f_a, f_b, f_c
@@ -1077,6 +1109,17 @@ MODULE TwoMoment_PositivityLimiterModule_FMC
             ( E_P, F1_P, F2_P, F3_P, Gm_dd_11, Gm_dd_22, Gm_dd_33 ) - Min_2
 
     dx = One
+
+    NonRealizable_CellAvg = .FALSE.
+    IF (f_a < Zero) THEN
+      NonRealizable_CellAvg = .TRUE.
+      print *, 'Initial f_a = ', f_a
+      print *, 'Initial f_b = ', f_b
+    END IF
+
+    IF (f_a == - SqrtTiny) THEN
+      f_a = Zero
+    END IF    
 
     ITERATION = 0
     CONVERGED = .FALSE.
@@ -1114,6 +1157,10 @@ MODULE TwoMoment_PositivityLimiterModule_FMC
       Theta = Zero
     ELSE
       Theta = x_a
+    END IF
+
+    IF (NonRealizable_CellAvg .OR. f_a < Zero) THEN
+      print *, 'Gamma = ', f_a
     END IF
 
   END SUBROUTINE SolveTheta_Bisection

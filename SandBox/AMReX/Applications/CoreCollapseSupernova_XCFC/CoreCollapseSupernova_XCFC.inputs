@@ -24,6 +24,7 @@ thornado.iCycleW = -1
 thornado.CheckpointFileNameRoot = "XCFC.chk"
 thornado.dt_chk    = 1.0e+0
 thornado.iCycleChk = -1
+thornado.RwChkFields_uCR = 1
 
 thornado.nNodes = 2
 

@@ -61,25 +61,10 @@ MODULE FinalizationModule
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
   USE MF_Euler_TallyModule, ONLY: &
-    FinalizeTally_Euler_MF, &
-    BaryonicMass_Initial, &
-    BaryonicMass_OffGrid, &
-    EulerMomentumX1_Initial, &
-    EulerMomentumX1_OffGrid, &
-    EulerMomentumX2_Initial, &
-    EulerMomentumX2_OffGrid, &
-    EulerMomentumX3_Initial, &
-    EulerMomentumX3_OffGrid, &
-    EulerEnergy_Initial, &
-    EulerEnergy_OffGrid, &
-    ElectronNumber_Initial, &
-    ElectronNumber_OffGrid, &
-    ADMMass_Initial, &
-    ADMMass_OffGrid
+    FinalizeTally_Euler_MF
   USE MF_TwoMoment_TallyModule, ONLY: &
     FinalizeTally_TwoMoment_MF
   USE InputParsingModule, ONLY: &
-    nLevels, &
     StepNo, &
     dt, &
     t_old, &
@@ -116,24 +101,7 @@ CONTAINS
              MF_uCR_Option = MF_uCR, &
              MF_uGR_Option = MF_uGR )
 
-
-
-    CALL WriteFieldsAMReX_Checkpoint &
-           ( StepNo, nLevels, dt, t_new, &
-             [ BaryonicMass_Initial   , BaryonicMass_OffGrid    ], &
-             [ EulerMomentumX1_Initial, EulerMomentumX1_OffGrid ], &
-             [ EulerMomentumX2_Initial, EulerMomentumX2_OffGrid ], &
-             [ EulerMomentumX3_Initial, EulerMomentumX3_OffGrid ], &
-             [ EulerEnergy_Initial    , EulerEnergy_OffGrid     ], &
-             [ ElectronNumber_Initial , ElectronNumber_OffGrid  ], &
-             [ ADMMass_Initial        , ADMMass_OffGrid         ], &
-             MF_uGF % BA % P, &
-             iWriteFields_uGF = 1, &
-             iWriteFields_uCF = 1, &
-             iWriteFields_uCR = 1, &
-             pMF_uGF_Option = MF_uGF % P, &
-             pMF_uCF_Option = MF_uCF % P, &
-             pMF_uCR_Option = MF_uCR % P )
+    CALL WriteFieldsAMReX_Checkpoint
 
     CALL Finalize_IMEX_RK_MF
 

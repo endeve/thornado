@@ -1,0 +1,39 @@
+##### inputs #####
+
+# For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+# For all REAL types, use "e" and not "d", i.e. 1.0e3
+
+thornado.ProgramName = "CheckPrimitiveRecovery"
+
+PF_D  = 1.0
+PF_V1 = 0.8
+PF_V2 = -0.3
+PF_V3 = 0.3
+PF_E  = 1.0
+PF_Ne = 0.0
+GF_Gm_dd_11 = 1.0
+GF_Gm_dd_22 = 1.0
+GF_Gm_dd_33 = 1.0
+
+thornado.nNodes = 01
+
+thornado.t_end  = 1.0e100 # dummy
+thornado.dt_wrt = 1.0e100 # dummy
+thornado.dt_chk = 1.0e100 # dummy
+
+thornado.bcX         = 01 00 00
+geometry.is_periodic = 1 1 1  # Periodic BCs: 0 (no), 1 (yes)
+
+geometry.coord_sys = 0           # CARTESIAN
+geometry.prob_lo   = 0.0 0.0 0.0 # Lower domain size
+geometry.prob_hi   = 1.0 1.0 1.0 # Upper domain size
+
+thornado.swX          = 00 00 00
+amr.n_cell            = 02 01 01 # Number of cells in each dimension
+amr.max_grid_size_x   = 01
+amr.blocking_factor_x = 02
+amr.max_level         = 0
+amr.ref_ratio         = 2
+
+EoS.EquationOfState = "IDEAL"
+EoS.Gamma_IDEAL     = 1.3333333333333333

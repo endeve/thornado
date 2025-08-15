@@ -581,7 +581,7 @@ CONTAINS
     CHARACTER(2), INTENT(in) :: Direction
 
     REAL(DP), PARAMETER :: X_Shock = 1.0d0
-    REAL(DP), PARAMETER :: delta   = 0.00000001_DP ! Set as 0.0_DP if using analytic IC, otherwise use 0.001_DP
+    REAL(DP), PARAMETER :: delta   = 1.0d-8 ! Set as 0.0_DP if using analytic IC, otherwise use 0.001_DP
 
     INTEGER  :: iNodeX, iX1, iX2, iX3, i, iXi
     INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
@@ -741,15 +741,11 @@ CONTAINS
 
         W = One / SQRT( One - vMagSq )
 
-        ! uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS) = 1.0d-8
-        ! uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1,iS) = 0.0_DP
-        ! uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H2,iS) = 0.0_DP
-        ! uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H3,iS) = 0.0_DP
-        ! Replace J by steady state with a delta parameter
-
         uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS) = 1.0d-8
-        ! uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS) = sSq * E / ( EXP( SQRT(sSQ) * E / Three - Three ) + One )
-        uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1,iS) = (One - delta) * W * uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS)
+        ! uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS) &
+        !  = sSq * E / ( EXP( SQRT(sSQ) * E / Three - Three ) + One )
+        uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1,iS) &
+          = (One - delta) * W * uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J,iS)
         uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H2,iS) = 0.0_DP
         uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H3,iS) = 0.0_DP
         
@@ -785,7 +781,7 @@ CONTAINS
 
     CHARACTER(2), INTENT(in) :: Direction
 
-    REAL(DP), PARAMETER :: delta   = 0.00000001_DP ! Set as 0.0_DP if using analytic IC, otherwise use 0.001_DP
+    REAL(DP), PARAMETER :: delta   = 1.0d-8 ! Set as 0.0_DP if using analytic IC, otherwise use 0.001_DP
 
     INTEGER  :: iNodeX, iX1, iX2, iX3, iNodeE
     INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
@@ -856,7 +852,6 @@ CONTAINS
         E = NodeCoordinate( MeshE, iZ1, iNodeE )
 
         uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS) &
-          ! = One / ( EXP( E / Three - Three ) + One )
           = E / ( EXP( E / Three - Three ) + One )
 
         IF(     TRIM( Direction ) .EQ. 'X' )THEN
@@ -919,6 +914,8 @@ CONTAINS
     REAL(DP),     INTENT(in) :: V_0(3)
     CHARACTER(2), INTENT(in) :: Direction
 
+    REAL(DP), PARAMETER :: delta   = 0.00000001_DP
+
     INTEGER  :: iNodeX, iX1, iX2, iX3
     INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
     INTEGER  :: iNodeX1, iNodeX2
@@ -974,7 +971,9 @@ CONTAINS
         iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
         uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS) = 1.0d-8
-        uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1,iS) = 0.0_DP
+        uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1,iS) = ( One - delta ) * &
+                                                uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS) / &
+                                                SQRT( One - uPF(iNodeX,iX1,iX2,iX3,iPF_V1)**2 )
         uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H2,iS) = 0.0_DP
         uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H3,iS) = 0.0_DP
         
@@ -1009,6 +1008,8 @@ CONTAINS
   SUBROUTINE SetInnerBoundary_TransparentVortex( Direction )
 
     CHARACTER(2), INTENT(in) :: Direction
+
+    REAL(DP), PARAMETER :: delta   = 0.00000001_DP
 
     INTEGER  :: iNodeX, iX1, iX2, iX3, iNodeE
     INTEGER  :: iNodeZ, iZ1, iZ2, iZ3, iZ4, iS
@@ -1072,15 +1073,19 @@ CONTAINS
 
         E = NodeCoordinate( MeshE, iZ1, iNodeE )
 
-        Mu_0 = 0.9_DP
+        ! Mu_0 = 0.9_DP
 
+        ! uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS) &
+        !   = E * 0.5_DP * ( One - Mu_0 ) / ( EXP( E / Three - Three ) + One )
         uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS) &
-          = E * 0.5_DP * ( One - Mu_0 ) / ( EXP( E / Three - Three ) + One )
+          = E / ( EXP( E / Three - Three ) + One )
 
         IF(     TRIM( Direction ) .EQ. 'X' )THEN
 
+          ! uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1,iS) &
+          !   = 0.5_DP * ( One + Mu_0 ) * uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS)
           uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1,iS) &
-            = 0.5_DP * ( One + Mu_0 ) * uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS)
+            = ( One - delta ) * uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J ,iS)
           uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H2,iS) &
             = 0.0_DP
           uPM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H3,iS) &

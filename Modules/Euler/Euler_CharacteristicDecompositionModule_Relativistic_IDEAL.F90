@@ -250,8 +250,8 @@ CONTAINS
                           Vm * Vu3 * ( Two * K - One ) * W**2 * xi, &
                           Np, &
                           Zero ]
-        invR(1:5,6) = Zero
-        invR(6,6) = One
+        invR(6,1:5) = Zero
+        invR(6,6)   = One
 
 !!$        invR = inv( R )
 
