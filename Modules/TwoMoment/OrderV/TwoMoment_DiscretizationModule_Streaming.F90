@@ -192,7 +192,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_TwoMoment_Explicit &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, SuppressBC_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -231,9 +231,20 @@ CONTAINS
            1:nCR, &
            1:nSpecies)
 
+    LOGICAL, INTENT(in), OPTIONAL :: &
+      SuppressBC_Option
+
+    LOGICAL :: SuppressBC
     INTEGER :: iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iCR, iS
 
     CALL TimersStart( Timer_Streaming )
+
+    SuppressBC = .FALSE.
+    IF( PRESENT( SuppressBC_Option ) )THEN
+
+      SuppressBC = SuppressBC_Option
+
+    END IF
 
     ASSOCIATE ( dZ1 => MeshE    % Width, dZ2 => MeshX(1) % Width, &
                 dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
@@ -253,11 +264,15 @@ CONTAINS
     !$ACC CREATE( dU_R )
 #endif
 
-    CALL ApplyBoundaryConditions_Euler &
+    IF ( .NOT. SuppressBC )THEN
+
+        CALL ApplyBoundaryConditions_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
 
-    CALL ApplyBoundaryConditions_TwoMoment &
+        CALL ApplyBoundaryConditions_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
+
+    END IF
 
     CALL InitializeIncrement_TwoMoment_Explicit &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
