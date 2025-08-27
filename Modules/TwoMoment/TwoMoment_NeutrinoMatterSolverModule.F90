@@ -524,7 +524,7 @@ CONTAINS
     !$OMP             H_I_0, H_II_0, J_I_0, J_II_0, &
     !$OMP             H_I_1, H_II_1, J_I_1, J_II_1, &
     !$OMP             Nu_J_I_0, Nu_J_II_0, S_Sigma, &
-    !$OMP             D_T, T_T, Y_T, E_T, Error_T,  &
+    !$OMP             D_T, T_T, Ye_T, Ym_T, E_T, Error_T,  &
     !$OMP             T0_T, Ye0_T, Ym0_T, &
     !$OMP             SqrtGm_T, &
     !$OMP             Dnu_T, Inu_u_1_T, Inu_u_2_T, Inu_u_3_T, &
@@ -990,7 +990,7 @@ CONTAINS
     !$OMP               H_I_0, H_II_0, J_I_0, J_II_0, &
     !$OMP               H_I_1, H_II_1, J_I_1, J_II_1, &
     !$OMP               Nu_J_I_0, Nu_J_II_0, S_Sigma, &
-    !$OMP               D_T, T_T, Y_T, E_T, Error_T,  &
+    !$OMP               D_T, T_T, Ye_T, Ym_T, E_T, Error_T,  &
     !$OMP               T0_T, Ye0_T, Ym0_T, &
     !$OMP               SqrtGm_T, &
     !$OMP               Dnu_T, Inu_u_1_T, Inu_u_2_T, Inu_u_3_T, &

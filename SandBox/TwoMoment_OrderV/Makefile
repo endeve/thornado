@@ -97,7 +97,8 @@ ApplicationDriver_CCSN: \
 	ProgenitorModule.o \
 	InitializationModule_CCSN.o \
 	ApplicationDriver_CCSN.o \
-	$(LIBRARIES)
+	$(LIBRARIES) \
+	-L$(CUBA_DIR) -lcuba
 
 clean:
 	rm -f *.o *.mod *.ld *.lst *.i *.s

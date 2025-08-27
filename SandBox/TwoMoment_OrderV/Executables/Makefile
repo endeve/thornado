@@ -10,5 +10,6 @@ USE_CUBLAS ?= FALSE
 USE_ROCM   ?= FALSE
 USE_MAGMA  ?= FALSE
 USE_OMP    ?= TRUE
+USE_CUBA   ?= TRUE
 
 include ../Makefile

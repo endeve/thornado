@@ -1521,11 +1521,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP MAP( to: D, T, Y ) &
+    !$OMP MAP( to: D, T, Ye, Ym ) &
     !$OMP MAP( from: Em, Ev, Ne )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC COPYIN( D, T, Y ) &
+    !$ACC COPYIN( D, T, Ye, Ym ) &
     !$ACC COPYOUT( Em, Ev, Ne )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
@@ -3208,12 +3208,12 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( D_P, T_P, Ye_P, Ym_P, Mue, Mup, Mun ) &
-    !$OMP MAP( to: D, T, Y, D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
+    !$OMP MAP( to: D, T, Ye, Ym, D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
     !$OMP MAP( from: Munue )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( D_P, T_P, Ye_P, Ym_P, Mue, Mup, Mun ) &
-    !$ACC COPYIN( D, T, Y, D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
+    !$ACC COPYIN( D, T, Ye, Ym, D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
     !$ACC COPYOUT( Munue )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
@@ -3289,7 +3289,7 @@ CONTAINS
         ( D, T, Ye, Ym, Mup )
         
       CALL ComputeMuonChemicalPotential_TABLE_Scalar &
-        ( D, T, Ye, Ym, Munum )
+        ( D, T, Ye, Ym, Mum )
 
       Munum  = ( Mum  + Mup ) - Mun
     ELSE
@@ -3323,12 +3323,12 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( D_P, T_P, Ye_P, Ym_P, Mum, Mup, Mun ) &
-    !$OMP MAP( to: D, T, Y, D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
+    !$OMP MAP( to: D, T, Ye, Ym, D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
     !$OMP MAP( from: Munum )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( D_P, T_P, Ye_P, Ym_P, Mum, Mup, Mun ) &
-    !$ACC COPYIN( D, T, Y, D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
+    !$ACC COPYIN( D, T, Ye, Ym, D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
     !$ACC COPYOUT( Munum )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
@@ -3949,12 +3949,12 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
       !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, V_P ) &
-      !$OMP MAP( to: D, T, Y, D_T, T_T, Yp_T, OS_V, V_T ) &
+      !$OMP MAP( to: D, T, Ye, Ym, D_T, T_T, Yp_T, OS_V, V_T ) &
       !$OMP MAP( from: V )
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR &
       !$ACC PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, V_P ) &
-      !$ACC COPYIN( D, T, Y, D_T, T_T, Yp_T, OS_V, V_T ) &
+      !$ACC COPYIN( D, T, Ye, Ym, D_T, T_T, Yp_T, OS_V, V_T ) &
       !$ACC COPYOUT( V )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO &
@@ -4804,11 +4804,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP MAP( to: D, T, Y, OS_V, V_T ) &
+      !$OMP MAP( to: D, T, Ye, Ym, OS_V, V_T ) &
       !$OMP MAP( from: V, dVdD, dVdT, dVdYe, dVdYm )
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC COPYIN( D, T, Y, OS_V, V_T ) &
+      !$ACC COPYIN( D, T, Ye, Ym, OS_V, V_T ) &
       !$ACC COPYOUT( V, dVdD, dVdT, dVdYe, dVdYm )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO
@@ -4921,11 +4921,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP MAP( to: D, T, Y, OS_V, V_T ) &
+      !$OMP MAP( to: D, T, Ye, Ym, OS_V, V_T ) &
       !$OMP MAP( from: V, dVdD, dVdT, dVdYe, dVdYm )
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC COPYIN( D, T, Y, OS_V, V_T ) &
+      !$ACC COPYIN( D, T, Ye, Ym, OS_V, V_T ) &
       !$ACC COPYOUT( V, dVdD, dVdT, dVdYe, dVdYm )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO
