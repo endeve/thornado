@@ -956,31 +956,6 @@ CONTAINS
     !$ACC CREATE  ( opEC )
 #endif
 
-#ifdef EOSMODE_COMPOSE
-    opac_method=1
-    corr_num=1
-    CALL ComputeNeutronChemicalPotential_TABLE(D, T, Ye, Ym, Mun)
-    CALL ComputeNeutronEffectiveMass_TABLE(D, T, Ye, Ym, Mn_eff)
-    CALL ComputeNeutronSelfEnergy_TABLE(D, T, Ye, Ym, Un)
-    CALL ComputeNeutronMassFraction_TABLE(D, T, Ye, Ym, Xn)
-    CALL ComputeProtonChemicalPotential_TABLE(D, T, Ye, Ym, Mup)
-    CALL ComputeProtonEffectiveMass_TABLE(D, T, Ye, Ym, Mp_eff)
-    CALL ComputeProtonSelfEnergy_TABLE(D, T, Ye, Ym, Up)
-    CALL ComputeProtonMassFraction_TABLE(D, T, Ye, Ym, Xp)
-    CALL ComputeElectronChemicalPotential_TABLE(D, T, Ye, Ym, Mue)
-    CALL ComputeMuonChemicalPotential_TABLE(D, T, Ye, Ym, Mumu)
-   ! WRITE(*,*) 'cheme=', Mue(iX_B) /UnitE
-   ! WRITE(*,*) 'chemmu=', Mumu(iX_B) /UnitE
-   ! WRITE(*,*) 'chemn =', Mun(iX_B) / UnitE
-   ! WRITE(*,*) 'chemp =', Mup(iX_B) / UnitE
-   ! WRITE(*,*) 'xn    =', Xn(iX_B) 
-   ! WRITE(*,*) 'xp    =', Xp(iX_B)
-   ! WRITE(*,*) 'un    =', Un(iX_B)
-   ! WRITE(*,*) 'up    =', Up(iX_B)
-   ! WRITE(*,*) 'massn =', Mn_eff(iX_B) 
-   ! WRITE(*,*) 'massp =', Mp_eff(iX_B) 
-#endif
-
 !do EmAb on nucleons first
 #if defined(THORNADO_OMP_OL)
      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -1051,7 +1026,7 @@ CONTAINS
               mmu, Mn_eff_P, Mp_eff_P, Un_P, Up_P, 50)
 
             opEC(iE,iS,iX) = opEC(iE,iS,iX) * UnitEC
-            opEC(iE,iS+1,iX) = opEC(iE,iS+1,iX) * UnitEC+
+            opEC(iE,iS+1,iX) = opEC(iE,iS+1,iX) * UnitEC
           ELSEIF (opac_method .eq. 3) THEN
 
             CALL Opacity_CC_4D(corr_num, 1, 10**LogE_P, opEC(iE,iS,iX), &
@@ -1087,13 +1062,13 @@ CONTAINS
     END DO
     END DO
     END DO
-    DO iX=iX_B, iX_E
-      DO iS = iS_B, iS_E
-        DO iE = iE_B, iE_E
-          WRITE(*,*)  'OPAC', iS, iE, iX, opEC(iE,iS,iX)
-        END DO
-      END DO
-    END DO
+!    DO iX=iX_B, iX_E
+!      DO iS = iS_B, iS_E
+!        DO iE = iE_B, iE_E
+!          WRITE(*,*)  'OPAC', iS, iE, iX, opEC(iE,iS,iX)
+!        END DO
+!      END DO
+!    END DO
 !now add contribution from EC on heavy nuclei
   IF(use_EC_table .gt. 0) THEN
 
@@ -1851,11 +1826,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P, E, D, T, Y ) &
+    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Yp_P, E, D, T, Ye, Ym ) &
     !$OMP MAP( from: opES )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P, E, D, T, Y ) &
+    !$ACC DELETE( LogE_P, LogD_P, LogT_P, Yp_P, E, D, T, Ye, Ym ) &
     !$ACC COPYOUT( opES )
 #endif
 
