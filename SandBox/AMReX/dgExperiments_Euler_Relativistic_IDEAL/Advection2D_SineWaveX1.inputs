@@ -12,8 +12,8 @@ thornado.iCycleD   = 10
 thornado.iCycleW   = 100
 thornado.iCycleChk = 100000
 
-thornado.PlotFileNameRoot        = "Advection2D_SineWaveX1.plt"
-thornado.CheckpointFileNameRoot  = "Advection2D_SineWaveX1.chk"
+thornado.PlotFileNameRoot        = "Advection2D_SineWaveX1.plt."
+thornado.CheckpointFileNameRoot  = "Advection2D_SineWaveX1.chk."
 thornado.TallyFileNameRoot_Euler = "Advection2D_SineWaveX1.Tally"
 
 thornado.bcX         = 01 01 01
