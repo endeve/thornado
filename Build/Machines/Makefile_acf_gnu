@@ -23,15 +23,15 @@ ifeq ($(USE_OACC),TRUE)
 endif
 
 INCLUDE_CUDA     =
-INCLUDE_HDF5     = $(HDF5_INC)
+INCLUDE_HDF5     = -I/$(HDF5_INC)
 INCLUDE_LAPACK   =
 INCLUDE_MAGMA    =
 INCLUDE_PETSC    =
 INCLUDE_ROCM     =
 
 LIBRARIES_CUDA     =
-LIBRARIES_HDF5     = $(HDF5_LIB) -lhdf5_fortran -lhdf5
-LIBRARIES_LAPACK   = $(LAPACK_LIB) -llapack -lblas
+LIBRARIES_HDF5     = -L/$(HDF5_LIB) -lhdf5_fortran -lhdf5
+LIBRARIES_LAPACK   = -L/$(LAPACK_LIB) -llapack -lblas
 LIBRARIES_MAGMA    =
 LIBRARIES_PETSC    =
 LIBRARIES_ROCM     =
