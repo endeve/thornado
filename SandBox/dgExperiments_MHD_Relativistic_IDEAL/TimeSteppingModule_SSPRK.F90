@@ -32,6 +32,7 @@ MODULE TimeSteppingModule_SSPRK
   LOGICAL  :: EvolveOnlyMagnetic
   LOGICAL  :: UseDivergenceCleaning
   LOGICAL  :: UsePowellSource
+  LOGICAL  :: UseFluxDecoupling
   INTEGER  :: nStages_SSPRK
   REAL(DP) :: CleaningSpeed
   REAL(DP) :: DampingParameter
@@ -56,6 +57,7 @@ MODULE TimeSteppingModule_SSPRK
         CleaningSpeed_Option, &
         DampingParameter_Option, &
         UsePowellSource_Option, &
+        UseFluxDecoupling_Option, &
         SurfaceFlux_X1_Option, &
         SurfaceFlux_X2_Option, &
         SurfaceFlux_X3_Option )
@@ -76,7 +78,8 @@ MODULE TimeSteppingModule_SSPRK
         EvolveOnlyMagnetic_Option
       LOGICAL,  INTENT(in), OPTIONAL :: &
         UseDivergenceCleaning_Option, &
-        UsePowellSource_Option
+        UsePowellSource_Option, &
+        UseFluxDecoupling_Option
       REAL(DP), INTENT(in), OPTIONAL :: &
         CleaningSpeed_Option, &
         DampingParameter_Option
@@ -95,13 +98,15 @@ CONTAINS
                  UseDivergenceCleaning_Option, &
                  CleaningSpeed_Option, &
                  DampingParameter_Option, &
-                 UsePowellSource_Option )
+                 UsePowellSource_Option, &
+                 UseFluxDecoupling_Option )
 
     INTEGER, INTENT(in) :: nStages
 
     LOGICAL,  INTENT(in), OPTIONAL :: EvolveOnlyMagnetic_Option
     LOGICAL,  INTENT(in), OPTIONAL :: UseDivergenceCleaning_Option
     LOGICAL,  INTENT(in), OPTIONAL :: UsePowellSource_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: UseFluxDecoupling_Option
     REAL(DP), INTENT(in), OPTIONAL :: CleaningSpeed_Option
     REAL(DP), INTENT(in), OPTIONAL :: DampingParameter_Option
 
@@ -131,6 +136,11 @@ CONTAINS
     UsePowellSource = .FALSE.
     IF( PRESENT( UsePowellSource_Option ) ) THEN
       UsePowellSource = UsePowellSource_Option
+    END IF
+
+    UseFluxDecoupling = .FALSE.
+    IF( PRESENT( UseFluxDecoupling_Option ) ) THEN
+      UseFluxDecoupling = UseFluxDecoupling_Option
     END IF
 
     nStages_SSPRK = nStages
@@ -303,7 +313,8 @@ CONTAINS
                  UseDivergenceCleaning_Option = UseDivergenceCleaning, &
                  CleaningSpeed_Option = CleaningSpeed, &
                  DampingParameter_Option = DampingParameter, &
-                 UsePowellSource_Option = UsePowellSource )
+                 UsePowellSource_Option = UsePowellSource, &
+                 UseFluxDecoupling_Option = UseFluxDecoupling )
 
         dM_OffGrid_MHD &
           = dM_OffGrid_MHD &

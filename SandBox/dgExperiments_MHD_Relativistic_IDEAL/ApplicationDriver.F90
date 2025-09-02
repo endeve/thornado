@@ -124,6 +124,7 @@ PROGRAM ApplicationDriver
   LOGICAL  :: EvolveOnlyMagnetic = .FALSE.
   LOGICAL  :: UseDivergenceCleaning = .FALSE.
   LOGICAL  :: UsePowellSource = .FALSE.
+  LOGICAL  :: UseFluxDecoupling = .FALSE.
   LOGICAL  :: ApplyRandomPerturbations = .FALSE.
 
   REAL(DP) :: CleaningSpeed    = 1.0_DP
@@ -832,7 +833,8 @@ PROGRAM ApplicationDriver
            UseDivergenceCleaning_Option = UseDivergenceCleaning, &
            CleaningSpeed_Option = CleaningSpeed, &
            DampingParameter_Option = DampingParameter, &
-           UsePowellSource_Option = UsePowellSource )
+           UsePowellSource_Option = UsePowellSource, &
+           UseFluxDecoupling_Option = UseFluxDecoupling )
 
   WRITE(*,*)
   WRITE(*,'(A6,A,ES11.3E3)') '', 'CFL: ', CFL

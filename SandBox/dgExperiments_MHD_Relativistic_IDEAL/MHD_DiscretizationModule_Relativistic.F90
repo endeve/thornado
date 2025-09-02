@@ -116,6 +116,7 @@ MODULE MHD_DiscretizationModule_Relativistic
   LOGICAL  :: EvolveOnlyMagnetic
   LOGICAL  :: UseDivergenceCleaning
   LOGICAL  :: UsePowellSource
+  LOGICAL  :: UseFluxDecoupling
   REAL(DP) :: CleaningSpeed
   REAL(DP) :: DampingParameter
 
@@ -167,6 +168,7 @@ CONTAINS
       CleaningSpeed_Option, &
       DampingParameter_Option, &
       UsePowellSource_Option, &
+      UseFluxDecoupling_Option, &
       SurfaceFlux_X1_Option, &
       SurfaceFlux_X2_Option, &
       SurfaceFlux_X3_Option )
@@ -187,7 +189,8 @@ CONTAINS
     LOGICAL,  INTENT(in),  OPTIONAL :: &
       EvolveOnlyMagnetic_Option, &
       UseDivergenceCleaning_Option, &
-      UsePowellSource_Option
+      UsePowellSource_Option, &
+      UseFluxDecoupling_Option
     REAL(DP), INTENT(in),  OPTIONAL :: &
       CleaningSpeed_Option, &
       DampingParameter_Option
@@ -254,6 +257,10 @@ CONTAINS
     UsePowellSource = .FALSE.
     IF( PRESENT( UsePowellSource_Option ) ) &
       UsePowellSource = UsePowellSource_Option
+
+    UseFluxDecoupling = .FALSE.
+    IF( PRESENT( UseFluxDecoupling_Option ) ) &
+      UseFluxDecoupling = UseFluxDecoupling_Option
 
     IF( .NOT. SuppressBC )THEN
 
@@ -1000,7 +1007,7 @@ CONTAINS
               UseDivergenceCleaning, &
               CleaningSpeed )
 
-      IF( .FALSE. )THEN
+      IF( UseFluxDecoupling )THEN
 
         Flux_F(iCM_B1) &
           = ( Half / Alpha_F(iNX_X) ) &
@@ -1786,7 +1793,7 @@ CONTAINS
               UseDivergenceCleaning, &
               CleaningSpeed )
 
-      IF( .FALSE. )THEN
+      IF( UseFluxDecoupling )THEN
 
         Flux_F(iCM_B2) &
           = ( Half / Alpha_F(iNX_X) ) &
@@ -2485,7 +2492,7 @@ CONTAINS
               UseDivergenceCleaning, &
               CleaningSpeed )
 
-      IF( .FALSE. )THEN
+      IF( UseFluxDecoupling )THEN
 
         Flux_F(iCM_B3) &
           = ( Half / Alpha_F(iNX_X) ) &
