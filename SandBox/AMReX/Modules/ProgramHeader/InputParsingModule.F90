@@ -62,6 +62,7 @@ MODULE InputParsingModule
   REAL(DP) :: CleaningSpeed
   REAL(DP) :: DampingParameter
   LOGICAL  :: UsePowellSource
+  LOGICAL  :: UseFluxDecoupling
 
   ! --- Opacity Tables ---
 
@@ -202,6 +203,7 @@ CONTAINS
     CleaningSpeed         = 0.0_DP
     DampingParameter      = 0.0_DP
     UsePowellSource       = .FALSE.
+    UseFluxDecoupling     = .FALSE.
 
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL PP % get   ( 'ProgramName', &
@@ -270,6 +272,8 @@ CONTAINS
                          DampingParameter )
       CALL PP % query ( 'UsePowellSource', &
                          UsePowellSource )
+      CALL PP % query ( 'UseFluxDecoupling', &
+                         UseFluxDecoupling )
     CALL amrex_parmparse_destroy( PP )
 
     CALL SetNumberOfSpecies &

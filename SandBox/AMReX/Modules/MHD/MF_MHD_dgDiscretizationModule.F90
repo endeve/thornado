@@ -92,7 +92,8 @@ MODULE  MF_MHD_dgDiscretizationModule
     UseDivergenceCleaning, &
     DampingParameter, &
     CleaningSpeed, &
-    UsePowellSource
+    UsePowellSource, &
+    UseFluxDecoupling
   USE FillPatchModule_MHD, ONLY: &
     FillPatch
   USE AverageDownModule_MHD, ONLY: &
@@ -307,6 +308,7 @@ CONTAINS
                CleaningSpeed_Option = CleaningSpeed, &
                DampingParameter_Option = DampingParameter, &
                UsePowellSource_Option = UsePowellSource, &
+               UseFluxDecoupling_Option = UseFluxDecoupling, &
                SurfaceFlux_X1_Option = SurfaceFlux_X1, &
                SurfaceFlux_X2_Option = SurfaceFlux_X2, &
                SurfaceFlux_X3_Option = SurfaceFlux_X3 )
