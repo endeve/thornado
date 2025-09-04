@@ -86,7 +86,7 @@ CONTAINS
     REAL(amrex_real)    , INTENT(in)    :: Time(0:)
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout)    :: MF_uCF (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_duCR(0:nLevels-1)
     LOGICAL,  INTENT(in), OPTIONAL      :: Verbose_Option
@@ -114,38 +114,6 @@ CONTAINS
     TYPE(EdgeMap) :: Edge_Map
 
     Verbose = .TRUE.
-    IF( PRESENT( Verbose_Option ) ) &
-      Verbose = Verbose_Option
-
-    DO i = 0, nLevels-1
-
-      IF (i .NE. 0) THEN
-       
-        DO j = i - 1, i
-
-          CALL MF_amrex2amrex_permute_Z_Level(j,nCR,MF_uGF(j),MF_uCR(j),MF_Permute(j))
-
-        END DO
-
-        CALL FillPatch( i, MF_uGF, MF_Permute )
-      ELSE
-
-        CALL FillPatch( i, MF_uGF, MF_uCR )
-
-      END IF
-
-      IF (i .NE. 0) THEN
-
-        DO j = i - 1, i
-
-          CALL MF_amrex_permute2amrex_Z_Level(j,nCR,MF_uGF(j),MF_uCR(j),MF_Permute(j))
-
-        END DO
-
-      END IF
-    END DO
-
-
 
     OffGridFlux_TwoMoment_MF = Zero
 
@@ -153,11 +121,21 @@ CONTAINS
 
       ! --- Apply boundary conditions to interior domains ---
 
-      CALL MF_uCR(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      !CALL MF_uCR(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
-      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      !CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
-      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      !CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+      CALL FillPatch &
+           ( iLevel, MF_uGF,MF_uCR)
+      
+      CALL FillPatch( iLevel, MF_uGF, MF_uCF )
+
+
+      CALL FillPatch &
+           ( iLevel, MF_uGF, &
+             ApplyBoundaryConditions_Geometry_Option = .TRUE. )
 
       CALL MF_duCR(iLevel) % setval( 0.0_amrex_real )
 
@@ -256,12 +234,8 @@ CONTAINS
         CALL ApplyBoundaryConditions_Euler_MF &
                ( iX_B0, iX_E0, iX_B1, iX_E1, C, Edge_Map )
 
-        !PRINT *, 'U:', MINVAL(U(:,:,:,:,:,1,:))
-
        CALL ComputeIncrement_TwoMoment_Explicit &
               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU )
-
-
 
  DO i=1,nCR
         OffGridFlux_TwoMoment_MF(i,iLevel) &

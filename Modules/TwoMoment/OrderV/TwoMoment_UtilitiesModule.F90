@@ -68,6 +68,9 @@ MODULE TwoMoment_UtilitiesModule
     MatrixMatrixMultiply, &
     EigenvaluesSymmetric3
 
+
+USE UtilitiesModule
+
   IMPLICIT NONE
   PRIVATE
 
@@ -185,6 +188,7 @@ CONTAINS
 #endif
     DO iZ = 1, nZ
       CVEC(iCR_N ,iZ) = N    (iZ)
+      !PRINT *, 'iCR_N1:', iCR_N
       CVEC(iCR_G1,iZ) = G_d_1(iZ)
       CVEC(iCR_G2,iZ) = G_d_2(iZ)
       CVEC(iCR_G3,iZ) = G_d_3(iZ)
@@ -445,7 +449,7 @@ CONTAINS
     INTEGER,  DIMENSION(:),     ALLOCATABLE :: nIterations
 
     nZ = SIZE( N, 1 )
-
+    !PRINT *, 'N:', N
     CALL TimersStart( Timer_Streaming_NumericalFlux_InOut )
 
     ALLOCATE( FVEC(4,M,nZ) )
@@ -488,8 +492,11 @@ CONTAINS
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( iX )
 #endif
+    
+    !PRINT *,'nZ', nZ 
     DO iZ = 1, nZ
       CVEC(iCR_N ,iZ) = N    (iZ)
+      !PRINT *, 'iZ:', iZ
       CVEC(iCR_G1,iZ) = G_d_1(iZ)
       CVEC(iCR_G2,iZ) = G_d_2(iZ)
       CVEC(iCR_G3,iZ) = G_d_3(iZ)
@@ -497,6 +504,11 @@ CONTAINS
       iX = PositionIndexZ(iZ)
 
       D    (iZ) = N(iZ)
+      !IF (D(iZ) .LE. 1e-7) THEN
+      !PRINT *, D(iZ)
+      !CALL thornado_abort()
+      !END IF
+      !PRINT *, 'Density going into TimersStop:', D(iZ) 
       I_u_1(iZ) = G_d_1(iZ) / Gm_dd_11(iX)
       I_u_2(iZ) = G_d_2(iZ) / Gm_dd_22(iX)
       I_u_3(iZ) = G_d_3(iZ) / Gm_dd_33(iX)
@@ -534,6 +546,7 @@ CONTAINS
           iX = PositionIndexZ(iZ)
 
           UVEC(iPR_D ,iZ) = D    (iZ)
+          !PRINT *, 'Density right before Eddington Computing:', D
           UVEC(iPR_I1,iZ) = I_u_1(iZ) * Gm_dd_11(iX)
           UVEC(iPR_I2,iZ) = I_u_2(iZ) * Gm_dd_22(iX)
           UVEC(iPR_I3,iZ) = I_u_3(iZ) * Gm_dd_33(iX)
@@ -547,6 +560,8 @@ CONTAINS
             = ( V_u_1(iX) * k_dd_11 &
               + V_u_2(iX) * k_dd_12 &
               + V_u_3(iX) * k_dd_13 ) * D(iZ)
+          !PRINT *, 'DEnsity after Computing Eddington'
+          !PRINT *, D
           vK_2 &
             = ( V_u_1(iX) * k_dd_12 &
               + V_u_2(iX) * k_dd_22 &
@@ -649,8 +664,13 @@ CONTAINS
           I_u_2(iZ) = GVECm(iPR_I2,iZ) / Gm_dd_22(iX)
           I_u_3(iZ) = GVECm(iPR_I3,iZ) / Gm_dd_33(iX)
 
-          CONVERGED = SQRT( SUM( FVECm(:,iZ)**2 ) ) <= &
-                                 Rtol * SQRT( SUM( CVEC(:,iZ)**2 ) )
+          !PRINT *, '***********BEFORE CONVERGE&&&&&&&&&&'
+          !PRINT *, Minval((D))
+          !PRINT *, MAXVAL(D)
+
+
+          CONVERGED = SQRT( SUM( FVECm(:,iZ)*FVECm(:,iZ) ) ) <= &
+                                 Rtol * SQRT( SUM( CVEC(:,iZ)*CVEC(:,iZ) ) )
 
           nIterations(iZ) = k
           IF ( CONVERGED ) THEN
@@ -1004,6 +1024,7 @@ CONTAINS
     ! --- Initial Guess ---
 
     D     = N
+    !PRINT *, 'N:',N
     I_u_1 = Zero
     I_u_2 = Zero
     I_u_3 = Zero
@@ -1848,9 +1869,6 @@ CONTAINS
 
       dt(1) = dX1(iX1) * MINVAL( GX(:,iX1,iX2,iX3,iGF_h_1) )
 
-      PRINT *, dX1(iX1)
-      PRINT *, dt(1)
-
       IF( iX_E0(2) .GT. iX_B0(2) )THEN
 
         dt(2) = dX2(iX2) * MINVAL( GX(:,iX1,iX2,iX3,iGF_h_2) )
@@ -1864,6 +1882,7 @@ CONTAINS
       END IF
 
       TimeStep = MIN( TimeStep, MINVAL( dt ) )
+      !PRINT *, TimeStep
 
     END DO
     END DO
@@ -1872,6 +1891,8 @@ CONTAINS
     END ASSOCIATE ! dX1, etc.
 
     TimeStep = MAX( CFL * TimeStep, SqrtTiny )
+
+    !PRINT *, TimeStep
 
   END SUBROUTINE ComputeTimeStep_TwoMoment
 
@@ -2100,13 +2121,14 @@ CONTAINS
     !$ACC         dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
     !$ACC         dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
 #endif
-
+    !PRINT *, 'CFL: TIMESTEP REALIZABILITY', CFL
     TimeStep = MAX( CFL * MIN( TimeStep_X, TimeStep_E ), SqrtTiny )
 
     IF( Verbose )THEN
       WRITE(*,'(A8,A7,ES12.6E2,A8,ES12.6E2)') &
         '', 'dt_X = ', TimeStep_X, ' dt_E = ', TimeStep_E
     END IF
+
 
     END ASSOCIATE ! dX1, etc.
 
@@ -2938,6 +2960,7 @@ CONTAINS
           dV_d_dX1_Out  (iNodeX,i,iX1,iX2,iX3) = Zero
           dGm_dd_dX1_Out(iNodeX,i,iX1,iX2,iX3) = Zero
 
+
       END DO
       END DO
       END DO
@@ -2951,7 +2974,6 @@ CONTAINS
     nX_X1 = nX + [ 1, 0, 0 ]  ! --- Number of X1 Faces per Spatial Dimension
     nK_X  = PRODUCT( nX )     ! --- Number of Elements in Position Space
     nX1_X = PRODUCT( nX_X1 )  ! --- Number of X1 Faces in Position Space
-
     ASSOCIATE( dX1 => MeshX(1) % Width )
 
 #if   defined( THORNADO_OMP_OL )

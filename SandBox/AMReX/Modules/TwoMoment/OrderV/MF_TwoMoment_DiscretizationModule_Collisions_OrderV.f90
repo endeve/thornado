@@ -192,6 +192,8 @@ CONTAINS
                    nSpecies ], &
                  U_R )
 
+!PRINT *, SHAPE(U_R)
+
         CALL AllocateArray_Z &
                ( [ 1       , &
                    iZ_B1(1), &
@@ -217,7 +219,7 @@ CONTAINS
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B1, iZ_E1, uCR, U_R )
 
-        !PRINT *, 'U_R', U_R(:,:,:,:,:,1,:)
+        !PRINT *, 'U_R', U_R(:,:,:,:,:,:,:)
         !PRINT *, '****************************************************'
         !PRINT *, 'F', U_F (:,:,:,:,1)
 

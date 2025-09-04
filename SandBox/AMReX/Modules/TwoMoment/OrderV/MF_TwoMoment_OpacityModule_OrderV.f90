@@ -76,8 +76,7 @@ MODULE MF_TwoMoment_OpacityModule
   PRIVATE
 
   PUBLIC :: SetOpacities_TwoMoment_MF
-  !PUBLIC :: CreateOpacities_TwoMoment_MF
-  !PUBLIC :: DestroyOpacities_TwoMoment_MF
+
 
 
 CONTAINS
