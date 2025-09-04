@@ -8,6 +8,10 @@ PROGRAM main
     amrex_parallel_communicator
   USE amrex_amrcore_module, ONLY: &
     amrex_geom
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse, &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
 
   ! --- thornado Modules ---
   USE UnitsModule,            ONLY: &
@@ -16,11 +20,14 @@ PROGRAM main
     UnitsDisplay
   USE GeometryFieldsModuleE, ONLY: &
     uGE
+  USE KindModule, ONLY: &
+    DP, Zero, One, Two
 
   ! --- Local Modules ---
   USE MF_TwoMoment_UtilitiesModule,     ONLY: &
     ComputeFromConserved_TwoMoment_MF, &
-    ComputeTimeStep_TwoMoment_MF
+    ComputeTimeStep_TwoMoment_MF, &
+    ComputeTimeStep_TwoMoment_Realizability_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
   USE MF_FieldsModule_Geometry,                  ONLY: &
@@ -75,24 +82,36 @@ PROGRAM main
   USE MF_TwoMoment_TimeSteppingModule_OrderV, ONLY: &
     Update_IMEX_RK_MF, &
     CFL
+  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+  ApplyBoundaryConditions_Euler_MF
   USE MF_UtilitiesModule, ONLY: &
     ShowVariableFromMultiFab
 
   IMPLICIT NONE
 
-  LOGICAL  :: wrt, chk
-  REAL(amrex_real) :: n
+  LOGICAL  :: wrt, chk, UseRealizabilityTimeStep=.FALSE.
+  TYPE(amrex_parmparse) :: PP
+  CHARACTER(:), ALLOCATABLE :: ProgramName
 
-  n = 1.0_amrex_real
   CALL InitializeProgram
 
-  CALL ShowVariableFromMultifab(MF_uPR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Primitive_Variables')
+  !CALL ShowVariableFromMultifab(MF_uPR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Primitive_Variables')
 
   CALL ComputeFromConserved_TwoMoment_MF(  MF_uGF, MF_uCF, MF_uCR, MF_uPR, MF_uAR, MF_uGR )
 
-  CALL ShowVariableFromMultifab(MF_uCR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Conserved_Variables')
+  !CALL ShowVariableFromMultifab(MF_uCR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Conserved_Variables')
 
+  CALL amrex_parmparse_build( PP, 'thornado' )
+    CALL PP % query ( 'UseRealizabilityTimeStep', &
+                       UseRealizabilityTimeStep )
+    CALL PP % query ('dt_wrt', dt_wrt)
+  CALL amrex_parmparse_destroy( PP )
+
+
+  
   DO WHILE( ALL( t_new .LT. t_end ) )
+
+    wrt = .FALSE.
 
     StepNo = StepNo + 1
     IF ( dt_rel .NE. 0.0_amrex_real ) THEN
@@ -101,10 +120,24 @@ PROGRAM main
 
     ELSE
 
-      CALL ComputeTimeStep_TwoMoment_MF( MF_uGF, CFL, dt )
-  PRINT *, 'MULTIFAB DATA START FROM Application driver'
-                    CALL Showvariablefrommultifab(MF_uGF,1)
-PRINT *, 'MULTIFAB DATA END'
+      IF ( UseRealizabilityTimeStep ) THEN
+
+        !PRINT *, 'About to apply BC'
+
+        CALL ApplyBoundaryConditions_Euler_MF (MF_uCF)
+
+        !PRINT *, 'About to use ComputeTimeStep_TwoMoment_Realizability_MF'
+
+        CALL ComputeTimeStep_TwoMoment_Realizability_MF (MF_uGF, MF_uCF, One, dt)
+
+      !PRINT *, 'USING ComputeTimeStep_TwoMoment_Realizability_MF'
+
+      ELSE
+
+        CALL ComputeTimeStep_TwoMoment_MF( MF_uGF, CFL, dt )
+
+      END IF
+
       dt = MINVAL( dt )
     END IF
 
@@ -116,14 +149,18 @@ PRINT *, 'MULTIFAB DATA END'
       t_new  = t_end
     END IF
     IF( amrex_parallel_ioprocessor() )THEN
-      !WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
-       print*,  'StepNo: ', StepNo(0), ' t = ', t_new/ UnitsDisplay % TimeUnit , &
+      WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
+       'StepNo: ', StepNo(0), ' t = ', t_new/ UnitsDisplay % TimeUnit , &
        TRIM( UnitsDisplay % TimeLabel ), ' dt = ', dt(0) / UnitsDisplay % TimeUnit, &
        TRIM( UnitsDisplay % TimeLabel )
     END IF
 
 
     CALL Update_IMEX_RK_MF
+
+    !CALL WritePlotFile
+
+    !CALL WriteCheckpointFile
 
     IF( ALL( t_new + dt .GT. t_wrt ) )THEN
       t_wrt = t_wrt + dt_wrt
@@ -145,8 +182,8 @@ PRINT *, 'MULTIFAB DATA END'
              MF_uCR_Option = MF_uCR, &
              MF_uGR_Option = MF_uGR )
         
-        CALL ShowVariableFromMultifab(MF_uPR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Primitive_Variables')
-        CALL ShowVariableFromMultifab(MF_uCR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Conserved_Variables')
+        !CALL ShowVariableFromMultifab(MF_uPR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Primitive_Variables')
+        !CALL ShowVariableFromMultifab(MF_uCR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Conserved_Variables')
 
     CALL WriteFieldsAMReX_Checkpoint &
            ( StepNo, nLevels, dt, t_new, &

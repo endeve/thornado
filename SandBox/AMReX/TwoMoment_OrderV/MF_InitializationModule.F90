@@ -215,7 +215,7 @@ CONTAINS
     INTEGER        :: iX1, iX2, iX3, iZ1, iZ2, iZ3, iZ4, iS, iNodeZ, iSpecies
     INTEGER        :: iNodeX, iNodeX1, iNodeX2, iNodeX3, &
                       iNodeZ2, iNodeZ3, iNodeZ4, iNodeE
-    REAL(DP)       :: X1, X2, X3
+    REAL(DP)       :: X1, X2, X3, X_2D, L
     REAL(DP)       :: uCR_K(nDOFZ,nE,nCR,nSpecies)
     REAL(DP)       :: uPR_K(nDOFZ,nE,nPR,nSpecies)
     REAL(DP)       :: uGF_K(nDOFX,nGF)
@@ -370,6 +370,26 @@ CONTAINS
 
                 uPR_K( iNodeZ, iZ1, iPR_I3, iS ) &
                   = uPR_K( iNodeZ, iZ1, iPR_D, iS )
+
+
+              CASE( 'XY' )
+
+                X_2D = SQRT( 2.0_DP ) * X1 &
+                         + SQRT( 2.0_DP ) * X2
+
+                L  = SQRT( 2.0_DP )
+
+                uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
+                  =0.50_DP + 0.49_DP * SIN( TwoPi * X_2D / L )
+
+                uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
+                  = SQRT( 2.0_DP ) / 2.0_DP * uPR_K( iNodeZ, iZ1, iPR_D, iS )
+
+                uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
+                  = SQRT( 2.0_DP ) / 2.0_DP * uPR_K( iNodeZ, iZ1, iPR_D, iS )
+
+                uPR_K( iNodeZ, iZ1, iPR_I3, iS ) &
+                  = 0.0_DP
 
               CASE DEFAULT
 

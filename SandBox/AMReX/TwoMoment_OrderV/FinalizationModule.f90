@@ -98,6 +98,8 @@ CONTAINS
 
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+    
+    StepNo = StepNo + 1
 
     CALL WriteFieldsAMReX_PlotFile &
            ( t_new(0), StepNo, MF_uGF, &
@@ -127,7 +129,7 @@ CONTAINS
              pMF_uCF_Option = MF_uCF % P)
              !pMF_uCR_Option = MF_uCR % P )
 
-    CALL ShowVariableFromMultifab(MF_uCR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Conserved_Variables')
+    CALL ShowVariableFromMultifab(MF_uGR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Grey_Variables')
 
     CALL Finalize_IMEX_RK_MF
 

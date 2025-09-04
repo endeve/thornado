@@ -140,7 +140,7 @@ CONTAINS
 
     CFL = CFL / ( DBLE( nDimsX ) * ( Two * DBLE( nNodes ) - One ) )
 
-    PRINT *, 'CFL: ', CFL 
+    !PRINT *, 'CFL: ', CFL 
     Verbose = .FALSE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
@@ -261,10 +261,10 @@ CONTAINS
     DO i = 1, nStages
 
 
-!!!!!!!!!!!!!!! --Look here
+
       c_IM(i) = SUM( a_IM(i,1:i) )
       c_EX(i) = SUM( a_EX(i,1:i-1) )
-!!!!!!!!!!!!!!!!
+
     END DO
 
     IF( Verbose )THEN
@@ -349,7 +349,7 @@ CONTAINS
     nCompCF = nDOFX * nCF
     nCompCR = nDOFZ * nCR * nE * nSpecies
 
-    PRINT *, DEBUG
+    !PRINT *, DEBUG
 
     IF( DEBUG ) WRITE(*,'(A)') 'Entering Update_IMEX_RK_MF'
 

@@ -397,7 +397,6 @@ CONTAINS
     USE MF_InitializationModule, ONLY: &
       InitializeFields_MF
 
-
     INTEGER,     INTENT(in), VALUE :: iLevel
     REAL(DP),    INTENT(in), VALUE :: Time
     TYPE(c_ptr), INTENT(in), VALUE :: pBA, pDM
@@ -457,9 +456,7 @@ CONTAINS
       CALL amrex_fluxregister_build &
              ( FluxRegister_TwoMoment(iLevel), BA, DM, &
                amrex_ref_ratio(iLevel-1), iLevel, nDOF_X1*nCR*nE*nSpecies )
-
     CALL CreateMesh_MF( iLevel, MeshX )
-
     CALL ComputeGeometryX_MF( MF_uGF(iLevel) )
 
     CALL InitializeFields_MF &
@@ -467,6 +464,7 @@ CONTAINS
 
     CALL FillPatch( iLevel, MF_uGF )
     CALL FillPatch( iLevel, MF_uGF, MF_uCF )
+    CALL FillPatch( iLevel, MF_uGF, MF_uCR )
     CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE MakeNewLevelFromScratch
@@ -515,6 +513,7 @@ CONTAINS
 
     CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF, &
                           ApplyBoundaryConditions_Euler_Option = .TRUE. )
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCR )
 
   END SUBROUTINE MakeNewLevelFromCoarse
 

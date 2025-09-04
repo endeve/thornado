@@ -281,40 +281,24 @@ CONTAINS
         iZ_B1(2:4) = iX_B1
         iZ_E1(2:4) = iX_E1
 
-!PRINT *, 'ALLOCATE ARRAY G'
-
         CALL AllocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                  [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
                  G )
 
-!PRINT *, 'Convert ARRAY G'
         CALL amrex2thornado_X &
                ( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
-!PRINT *, 'ALLOCATE ARRAY CF'
         CALL AllocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                  [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
                  CF )
-!PRINT *, CF(:,:,:,:,:)
-!PRINT *, 'convert ARRAY CF'
+
         CALL amrex2thornado_X &
                ( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, CF )
-!PRINT *, 'compute thornado realizabitlty'
-!PRINT *, CF(:,:,:,:,1)
-!PRINT *, ('$$$$$$$$$$$$$$')
-!PRINT *, CF(:,:,:,:,2)
-!PRINT *, ('$$$$$$$$$$$$$$')
-!PRINT *, CF(:,:,:,:,3)
-!PRINT *, ('$$$$$$$$$$$$$$')
-!PRINT *, CF(:,:,:,:,4)
-!PRINT *, ('$$$$$$$$$$$$$$')
-!PRINT *, CF(:,:,:,:,5)
-!PRINT *, ('$$$$$$$$$$$$$$')
-!PRINT *, CF(:,:,:,:,6)
+
         CALL ComputeTimeStep_TwoMoment_Realizability &
-                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, G, CF, CFL, myTimeStep( iLevel ), Verbose_Option=.TRUE. )
+                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, G, CF, CFL, myTimeStep( iLevel ), Verbose_Option=.FALSE. )
 
         TimeStep( iLevel ) = MIN( TimeStep( iLevel ), myTimeStep( iLevel ) )
 
