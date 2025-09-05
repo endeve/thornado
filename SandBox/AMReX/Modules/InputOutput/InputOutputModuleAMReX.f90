@@ -376,7 +376,7 @@ CONTAINS
 
     DO iE = iZ_B0(1), iZ_E0(1)
 
-      WRITE(iE,'(I3.3)') iE
+      WRITE(iEC,'(I3.3)') iE
       CALL amrex_string_build( VarNames( iOS + 2*( (iE-iZ_B0(1))) + 1 ), 'E_C_'// iEC )
 
       CALL amrex_string_build( VarNames( iOS + 2*( (iE-iZ_B0(1))) + 2 ), 'dZ1_'// iEC )

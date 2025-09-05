@@ -122,15 +122,9 @@ PROGRAM main
 
       IF ( UseRealizabilityTimeStep ) THEN
 
-        !PRINT *, 'About to apply BC'
-
         CALL ApplyBoundaryConditions_Euler_MF (MF_uCF)
 
-        !PRINT *, 'About to use ComputeTimeStep_TwoMoment_Realizability_MF'
-
         CALL ComputeTimeStep_TwoMoment_Realizability_MF (MF_uGF, MF_uCF, One, dt)
-
-      !PRINT *, 'USING ComputeTimeStep_TwoMoment_Realizability_MF'
 
       ELSE
 
@@ -182,9 +176,6 @@ PROGRAM main
              MF_uCR_Option = MF_uCR, &
              MF_uGR_Option = MF_uGR )
         
-        !CALL ShowVariableFromMultifab(MF_uPR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Primitive_Variables')
-        !CALL ShowVariableFromMultifab(MF_uCR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Conserved_Variables')
-
     CALL WriteFieldsAMReX_Checkpoint &
            ( StepNo, nLevels, dt, t_new, &
              [ BaryonicMass_Initial   , BaryonicMass_OffGrid    ], &
@@ -197,10 +188,10 @@ PROGRAM main
              MF_uGF % BA % P, &
              iWriteFields_uGF = 1, &
              iWriteFields_uCF = 1, &
-             iWriteFields_uCR = 0, &
+             iWriteFields_uCR = 1, &
              pMF_uGF_Option = MF_uGF % P, &
-             pMF_uCF_Option = MF_uCF % P)
-             !pMF_uCR_Option = MF_uCR % P )
+             pMF_uCF_Option = MF_uCF % P, &
+             pMF_uCR_Option = MF_uCR % P )
     END IF
 
   END DO
