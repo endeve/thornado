@@ -259,7 +259,7 @@ CONTAINS
     CHARACTER(32)                   :: ShortNamesCR_Z
     CHARACTER(32)                   :: ShortNamesPR_Z
     CHARACTER(32)                   :: ShortNamesGR_Z
-    CHARACTER(3)                    :: iSC, iZ1C
+    CHARACTER(3)                    :: iEC, iSC, iZ1C
     LOGICAL                         :: WriteGF
     LOGICAL                         :: WriteFF_C
     LOGICAL                         :: WriteFF_P
@@ -268,7 +268,7 @@ CONTAINS
     LOGICAL                         :: WriteRF_C
     LOGICAL                         :: WriteRF_P
     LOGICAL                         :: WriteRF_GR
-    INTEGER                         :: iFd, iOS, iLevel, nF, iS, iZ1
+    INTEGER                         :: iFd, iOS, iLevel, nF, iS, iZ1, iE
     TYPE(amrex_multifab)            :: MF_plt(0:nLevels-1)
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
     LOGICAL                         :: Verbose
@@ -277,7 +277,7 @@ CONTAINS
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
-    nF = 7 +2 * nE * nSpecies ! MPI proc, X1_C, X2_C, X3_C, dX1, dX2, dX3 , Z1_C and dZ1
+    nF = 7 +2 * nE ! MPI proc, X1_C, X2_C, X3_C, dX1, dX2, dX3 , E_C and dE
 
     WriteGF = .FALSE.
     IF( PRESENT( MF_uGF_Option ) )THEN
@@ -374,19 +374,16 @@ CONTAINS
 
     iOS = 7
 
-    DO iS = 1, nSpecies
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iE = iZ_B0(1), iZ_E0(1)
 
-      WRITE(iZ1C,'(I3.3)') iZ1
-      WRITE(iSC ,'(I3.3)') iS
-      CALL amrex_string_build( VarNames( iOS + 2*((iS-1)*nE + (iZ1-iZ_B0(1))) + 1 ), 'Z1_C_'// iZ1C// '_' // iSC )
-      CALL amrex_string_build( VarNames( iOS + 2*((iS-1)*nE + (iZ1-iZ_B0(1))) + 2 ), 'dZ1_'// iZ1C// '_' // iSC )
-      !CALL amrex_string_build( VarNames( iOS + 2*(iZ1-iZ_B0(1)) + 2 ), 'dZ1_' // iZ1C // '_'// iSC ) 
-    
-    END DO
+      WRITE(iE,'(I3.3)') iE
+      CALL amrex_string_build( VarNames( iOS + 2*( (iE-iZ_B0(1))) + 1 ), 'E_C_'// iEC )
+
+      CALL amrex_string_build( VarNames( iOS + 2*( (iE-iZ_B0(1))) + 2 ), 'dZ1_'// iEC )
+
     END DO
 
-    iOS = iOS + 2 * nE * nSpecies ! 
+    iOS = iOS + 2 * nE ! 
 
     IF( WriteGF )THEN
 
@@ -1260,7 +1257,7 @@ CONTAINS
     TYPE(amrex_multifab) , INTENT(in)    :: MF_uGF
     TYPE(amrex_multifab) , INTENT(inout) :: MF_plt
 
-    INTEGER            :: iX1, iX2, iX3, iZ1, iOS_Z1, iS
+    INTEGER            :: iX1, iX2, iX3, iE, iOS_E
     INTEGER            :: iX_B0(3), iX_E0(3)
     TYPE(amrex_box)    :: BX
     TYPE(amrex_mfiter) :: MFI
@@ -1280,24 +1277,21 @@ CONTAINS
       iX_B0 = BX % lo
       iX_E0 = BX % hi
 
-      iOS_Z1 = 7
+      iOS_E = 7
 
-      DO iS = 1, nSpecies 
-      DO iZ1 = iZ_B0(1), iZ_E0(1)
+      DO iE = iZ_B0(1), iZ_E0(1)
 
         DO iX3 = iX_B0(3), iX_E0(3)
         DO iX2 = iX_B0(2), iX_E0(2)
         DO iX1 = iX_B0(1), iX_E0(1)
 
-          U_plt(iX1,iX2,iX3, iOS_Z1 + 2*((iS-1)*nE + (iZ1-iZ_B0(1))) + 1) = MeshE % Center(iZ1) / U % EnergyUnit
-          U_plt(iX1,iX2,iX3, iOS_Z1 + 2*((iS-1)*nE + (iZ1-iZ_B0(1))) + 2) = MeshE % Width(iZ1) / U % EnergyUnit
-          !U_plt(iX1,iX2,iX3, iOS_Z1 + 2*(iZ1-iZ_B0(1)) + 2) = MeshE % Width(iZ1) / U % EnergyUnit
+          U_plt(iX1,iX2,iX3, iOS_E + 2*(iE-iZ_B0(1)) + 1) = MeshE % Center(iE) / U % EnergyUnit
+          U_plt(iX1,iX2,iX3, iOS_E + 2*(iE-iZ_B0(1)) + 2) = MeshE % Width(iE) / U % EnergyUnit
 
         END DO
         END DO
         END DO
 
-      END DO
       END DO
 
     END DO
