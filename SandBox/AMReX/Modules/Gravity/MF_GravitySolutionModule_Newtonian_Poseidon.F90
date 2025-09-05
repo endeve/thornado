@@ -1,7 +1,5 @@
 MODULE MF_GravitySolutionModule_Newtonian_Poseidon
 
-  use mf_utilitiesmodule
-
   ! --- AMReX Modules ---
 
   USE amrex_multifab_module, ONLY: &
@@ -156,8 +154,8 @@ CONTAINS
              Source_PQ_xlocs              = MeshX(3) % Nodes, &
              Source_Units                 = 'G',              &
              Source_Radial_Boundary_Units = 'km',             &
-	     Newtonian_Mode_Option        = .TRUE. ,          &
-             Verbose_Option               = .TRUE.,           &
+             Newtonian_Mode_Option        = .TRUE. ,          &
+             Verbose_Option               = .FALSE.,          &
              Print_Setup_Option           = .TRUE.,           &
              Print_Results_Option         = .FALSE. )
 
@@ -168,7 +166,7 @@ CONTAINS
 
   SUBROUTINE ComputeGravitationalPotential_Newtonian_MF_Poseidon( MF_uCF, MF_uGF )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:) ! Gravity Sources
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
 
 #ifdef GRAVITY_SOLVER_POSEIDON_NEWTONIAN
@@ -194,21 +192,19 @@ CONTAINS
 
     END DO
 
-call showvariablefrommultifab(mf_ugs,1)    
-
     CALL Poseidon_Input_Sources( MF_uGS )
 
     CALL Poseidon_Set_Uniform_Boundary_Conditions &
-  	       ( BC_Location_Input = 'I', &
-    	       BC_Type_Input     = 'N', &
-    	       BC_Value_Input    = Zero )
+           ( BC_Location_Input = 'I', &
+             BC_Type_Input     = 'N', &
+             BC_Value_Input    = Zero )
 
     CALL ComputeBoundaryValues( MF_uGF, MF_uGS, Phi_r_outer )
 
     CALL Poseidon_Set_Uniform_Boundary_Conditions &
            ( BC_Location_Input = 'O', &
-    	       BC_Type_Input     = 'D', &
-    	       BC_Value_Input    = Phi_r_outer )
+             BC_Type_Input     = 'D', &
+             BC_Value_Input    = Phi_r_outer )
 
    CALL Poseidon_Run()
 
@@ -229,10 +225,6 @@ call showvariablefrommultifab(mf_ugs,1)
 
    CALL ApplyBoundaryConditions_Geometry_MF( MF_uGF )
 
-
-
-
-
 #endif
 
   END SUBROUTINE ComputeGravitationalPotential_Newtonian_MF_Poseidon
@@ -249,45 +241,53 @@ call showvariablefrommultifab(mf_ugs,1)
   END SUBROUTINE FinalizeGravitySolver_Newtonian_MF_Poseidon
 
 
-  SUBROUTINE ComputeBoundaryValues( MF_uGF, MF_uGS, Phi_r_outer )
+  SUBROUTINE ComputeBoundaryValues &
+    ( MF_uGF, MF_uGS, Phi_r_outer, Verbose_Option )
 
-      TYPE(amrex_multifab), INTENT(in)  :: MF_uGF(0:)
-      TYPE(amrex_multifab), INTENT(in)  :: MF_uGS(0:)
-      REAL(DP)            , INTENT(out) :: Phi_r_outer
+    TYPE(amrex_multifab), INTENT(in)  :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(in)  :: MF_uGS(0:)
+    REAL(DP)            , INTENT(out) :: Phi_r_outer
+    LOGICAL             , INTENT(in), OPTIONAL :: Verbose_Option
 
-      REAL(DP)              :: GravitationalMass
-      
+    LOGICAL :: Verbose
+    REAL(DP) :: GravitationalMass
 
-      TYPE(amrex_parmparse) :: PP
-      REAL(DP) :: Phi_r, Phi_r_converted, P_c, rho_c, r_c, SolarRadius, R_star, Domain
-      REAL(DP) :: Part1, Part2, Phi_r_2, K_polytrope, R_neutron_star, Outer_Domain, alpha, alpha2
+    TYPE(amrex_parmparse) :: PP
+    REAL(DP) :: Phi_r, Phi_r_converted, P_c, rho_c, r_c, SolarRadius, R_star, Domain
+    REAL(DP) :: Part1, Part2, Phi_r_2, K_polytrope, R_neutron_star, Outer_Domain, alpha, alpha2
 
-      CALL amrex_parmparse_build( PP, 'thornado' )
-        CALL PP % get( 'ProgramName', ProgramName )
-      CALL amrex_parmparse_destroy(PP)
+    Verbose = .FALSE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
 
-      SELECT CASE ( TRIM( ProgramName ) )
+    CALL amrex_parmparse_build( PP, 'thornado' )
+      CALL PP % get( 'ProgramName', ProgramName )
+    CALL amrex_parmparse_destroy(PP)
 
-        CASE ( 'PoissonSolverTest_Newtonian' )
+    SELECT CASE ( TRIM( ProgramName ) )
 
-          CALL amrex_parmparse_build( PP, 'inputs' )
-            CALL PP % get( 'rho_c', rho_c )
-            CALL PP % get( 'R_star', R_star )
-            CALL PP % get( 'SolarRadius', SolarRadius )
-            CALL PP % get( 'r_c', r_c )
-          CALL amrex_parmparse_destroy( PP )  
+      CASE ( 'PoissonSolverTest_Newtonian' )
 
-          rho_c       = rho_c * ( Gram / Centimeter**3 )
-          SolarRadius = SolarRadius * Kilometer
-          R_star      = R_star * SolarRadius
-          r_c         = r_c * SolarRadius
-          Domain      = 2.0_DP * R_star  
+        CALL amrex_parmparse_build( PP, 'inputs' )
+          CALL PP % get( 'rho_c', rho_c )
+          CALL PP % get( 'R_star', R_star )
+          CALL PP % get( 'SolarRadius', SolarRadius )
+          CALL PP % get( 'r_c', r_c )
+        CALL amrex_parmparse_destroy( PP )
 
-          Part1           = -4.0_DP * Pi * rho_c * ( r_c**3 / Domain )
-          Part2           = ( R_star / r_c ) - atan( R_star / r_c )
-          Phi_r           = Part1 * Part2
-          Phi_r_converted = Phi_r / ( Erg / Gram )
-          Phi_r_outer     = Phi_r  
+        rho_c       = rho_c * ( Gram / Centimeter**3 )
+        SolarRadius = SolarRadius * Kilometer
+        R_star      = R_star * SolarRadius
+        r_c         = r_c * SolarRadius
+        Domain      = 2.0_DP * R_star
+
+        Part1           = -4.0_DP * Pi * rho_c * ( r_c**3 / Domain )
+        Part2           = ( R_star / r_c ) - atan( R_star / r_c )
+        Phi_r           = Part1 * Part2
+        Phi_r_converted = Phi_r / ( Erg / Gram )
+        Phi_r_outer     = Phi_r
+
+        IF( Verbose )THEN
 
           WRITE(*,'(4x,A)') &
             '------------------------------------------'
@@ -298,26 +298,30 @@ call showvariablefrommultifab(mf_ugs,1)
             '------------------------------------------'
           WRITE(*,*)
 
-        CASE ( 'Hydrostatic_Polytrope' )
+        END IF
 
-          CALL amrex_parmparse_build( PP, 'inputs' )
-            CALL PP % get( 'rho_c', rho_c )
-            CALL PP % get( 'R_neutron_star', R_neutron_star )
-            CALL PP % get( 'Outer_Domain', Outer_Domain )
-          CALL amrex_parmparse_destroy( PP )  
+      CASE ( 'Hydrostatic_Polytrope' )
 
-          rho_c           = rho_c * ( Gram / Centimeter**3 )
-          R_neutron_star  = R_neutron_star * Kilometer
-          Outer_Domain    = Outer_Domain * Kilometer
-          K_polytrope     = ( 2.0_DP / Pi ) * Outer_Domain**2
-          P_c             = K_polytrope * rho_c**Gamma_IDEAL
-          alpha           = R_neutron_star / Pi
-          Phi_r_2         = 4.0_DP * Pi * alpha**2 * rho_c * &
-                              ( (- ( alpha * sin( Outer_Domain / alpha ) ) &
-                              + Outer_Domain * cos( Outer_Domain / alpha ) ) &
-                              / Outer_Domain ) 
-          Phi_r_outer     = Phi_r_2
-          Phi_r_converted = Phi_r_2 / ( Erg / Gram )  
+        CALL amrex_parmparse_build( PP, 'inputs' )
+          CALL PP % get( 'rho_c', rho_c )
+          CALL PP % get( 'R_neutron_star', R_neutron_star )
+          CALL PP % get( 'Outer_Domain', Outer_Domain )
+        CALL amrex_parmparse_destroy( PP )
+
+        rho_c           = rho_c * ( Gram / Centimeter**3 )
+        R_neutron_star  = R_neutron_star * Kilometer
+        Outer_Domain    = Outer_Domain * Kilometer
+        K_polytrope     = ( 2.0_DP / Pi ) * Outer_Domain**2
+        P_c             = K_polytrope * rho_c**Gamma_IDEAL
+        alpha           = R_neutron_star / Pi
+        Phi_r_2         = 4.0_DP * Pi * alpha**2 * rho_c * &
+                            ( (- ( alpha * sin( Outer_Domain / alpha ) ) &
+                            + Outer_Domain * cos( Outer_Domain / alpha ) ) &
+                            / Outer_Domain )
+        Phi_r_outer     = Phi_r_2
+        Phi_r_converted = Phi_r_2 / ( Erg / Gram )
+
+        IF( Verbose )THEN
 
           WRITE(*,'(4x,A)') &
             '------------------------------------------'
@@ -328,11 +332,16 @@ call showvariablefrommultifab(mf_ugs,1)
           WRITE(*,'(4x,A)') &
             '------------------------------------------'
 
-        CASE DEFAULT 
+        END IF
 
-          CALL ComputeEnclosedMass_MF( MF_uGF, MF_uGS, GravitationalMass )
+      CASE DEFAULT
 
-          Phi_r_outer  = - GravitationalMass / xR(1)
+        CALL ComputeEnclosedMass_MF( MF_uGF, MF_uGS, GravitationalMass )
+
+        Phi_r_outer  = - GravitationalMass / xR(1)
+
+        IF( Verbose )THEN
+
           PRINT *, Phi_r_outer
 
           WRITE(*,'(4x,A)') &
@@ -342,6 +351,8 @@ call showvariablefrommultifab(mf_ugs,1)
           WRITE(*,'(8x,A,ES15.6E3)')'Phi_r in CGS: ', Phi_r_outer / ( Erg / Gram )
           WRITE(*,'(4x,A)') &
             '------------------------------------------'
+
+        END IF
 
     END SELECT
 
@@ -383,8 +394,6 @@ call showvariablefrommultifab(mf_ugs,1)
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
-
-
       DO WHILE( MFI % next() )
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
@@ -401,7 +410,7 @@ call showvariablefrommultifab(mf_ugs,1)
         CALL AllocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                  [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
-                 GF )        
+                 GF )
 
         CALL AllocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
@@ -428,7 +437,7 @@ call showvariablefrommultifab(mf_ugs,1)
         CALL DeallocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                  [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
-                 GF )        
+                 GF )
 
       END DO ! WHILE( MFI % next() )
 

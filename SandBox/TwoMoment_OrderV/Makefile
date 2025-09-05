@@ -256,6 +256,7 @@ InitializationModule_Neutrinos.o: \
   RadiationFieldsModule.o \
   TwoMoment_UtilitiesModule.o \
   EquationOfStateModule_TABLE.o \
+  NeutrinoOpacitiesComputationModule.o \
   InitializationModule_Neutrinos.F90
 
 InitializationModule_CCSN.o: \

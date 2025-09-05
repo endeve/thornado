@@ -111,6 +111,7 @@ MODULE OpacityModule_TABLE
   REAL(DP) :: NNS_MinD, NNS_MaxD                   ! density cutoffs for all NNS opacities
   REAL(DP) :: NuPair_MinD, NuPair_MaxD             ! density cutoffs for all NuPair opacities
   REAL(DP) :: Op_MinD, Op_MaxD                     ! density cutoffs for all opacities
+  REAL(DP) :: EOSTable_MinD, EOSTable_MaxD         ! min and max EOS table densities
 
   REAL(DP), PARAMETER :: cv       = 0.96d+00 ! weak interaction constant
   REAL(DP), PARAMETER :: ca       = 0.50d+00 ! weak interaction constant
@@ -359,40 +360,59 @@ CONTAINS
 
     ! --- Opacity Density Cutoffs ---
 
+    EOSTable_MinD = OPACITIES % EOSTable % TS % minValues( iD_T )
+    EOSTable_MaxD = OPACITIES % EOSTable % TS % maxValues( iD_T )
+
     ! --- EmAb ---
 
     IF( PRESENT( EmAb_Nucleon_MinD_Option ) )THEN
-      EmAb_Nucleon_MinD = EmAb_Nucleon_MinD_Option
+      EmAb_Nucleon_MinD = MAX( EmAb_Nucleon_MinD_Option, EOSTable_MinD )
     ELSE
+<<<<<<< HEAD
       EmAb_Nucleon_MinD = OPACITIES % TS % minValues( iD_T )
+=======
+      EmAb_Nucleon_MinD = EOSTable_MinD
+>>>>>>> master
     END IF
 
     IF( PRESENT( EmAb_Nucleon_MaxD_Option ) )THEN
-      EmAb_Nucleon_MaxD = EmAb_Nucleon_MaxD_Option
+      EmAb_Nucleon_MaxD = MIN( EmAb_Nucleon_MaxD_Option, EOSTable_MaxD )
     ELSE
+<<<<<<< HEAD
       EmAb_Nucleon_MaxD = OPACITIES % TS % maxValues( iD_T )
+=======
+      EmAb_Nucleon_MaxD = EOSTable_MaxD 
+>>>>>>> master
     END IF
 
     IF( PRESENT( EmAb_Nuclei_MinD_Option ) )THEN
-      EmAb_Nuclei_MinD = EmAb_Nuclei_MinD_Option
+      EmAb_Nuclei_MinD = MAX( EmAb_Nuclei_MinD_Option, EOSTable_MinD )
     ELSE
+<<<<<<< HEAD
       EmAb_Nuclei_MinD = OPACITIES % TS % minValues( iD_T )
+=======
+      EmAb_Nuclei_MinD = EOSTable_MinD 
+>>>>>>> master
     END IF
 
     IF( PRESENT( EmAb_Nuclei_MaxD_Option ) )THEN
-      EmAb_Nuclei_MaxD = EmAb_Nuclei_MaxD_Option
+      EmAb_Nuclei_MaxD = MIN( EmAb_Nuclei_MaxD_Option, EOSTable_MaxD )
     ELSE
+<<<<<<< HEAD
       EmAb_Nuclei_MaxD = OPACITIES % TS % maxValues( iD_T )
+=======
+      EmAb_Nuclei_MaxD = EOSTable_MaxD 
+>>>>>>> master
     END IF
 
     IF( PRESENT( EmAb_MinD_Option ) )THEN
-      EmAb_MinD = EmAb_MinD_Option
+      EmAb_MinD = MAX( EmAb_MinD_Option, EOSTable_MinD )
     ELSE
       EmAb_MinD = MIN( EmAb_Nucleon_MinD, EmAb_Nuclei_MinD )
     END IF
 
     IF( PRESENT( EmAb_MaxD_Option ) )THEN
-      EmAb_MaxD = EmAb_MaxD_Option
+      EmAb_MaxD = MIN( EmAb_MaxD_Option, EOSTable_MaxD )
     ELSE
       EmAb_MaxD = MAX( EmAb_Nucleon_MaxD, EmAb_Nuclei_MaxD )
     END IF
@@ -400,100 +420,142 @@ CONTAINS
     ! --- Iso ---
 
     IF( PRESENT( Iso_MinD_Option ) )THEN
-      Iso_MinD = Iso_MinD_Option
+      Iso_MinD = MAX( Iso_MinD_Option, EOSTable_MinD )
     ELSE
+<<<<<<< HEAD
       Iso_MinD = OPACITIES % TS % minValues( iD_T )
+=======
+      Iso_MinD = EOSTable_MinD 
+>>>>>>> master
     END IF
 
     IF( PRESENT( Iso_MaxD_Option ) )THEN
-      Iso_MaxD = Iso_MaxD_Option
+      Iso_MaxD = MIN( Iso_MaxD_Option, EOSTable_MaxD )
     ELSE
+<<<<<<< HEAD
       Iso_MaxD = OPACITIES % TS % maxValues( iD_T )
+=======
+      Iso_MaxD = EOSTable_MaxD 
+>>>>>>> master
     END IF
 
     ! --- NES ---
 
     IF( PRESENT( NES_MinD_Option ) )THEN
-      NES_MinD = NES_MinD_Option
+      NES_MinD = MAX( NES_MinD_Option, EOSTable_MinD )
     ELSE
+<<<<<<< HEAD
       NES_MinD = OPACITIES % TS % minValues( iD_T )
+=======
+      NES_MinD = EOSTable_MinD 
+>>>>>>> master
     END IF
 
     IF( PRESENT( NES_MaxD_Option ) )THEN
-      NES_MaxD = NES_MaxD_Option
+      NES_MaxD = MIN( NES_MaxD_Option, EOSTable_MaxD )
     ELSE
+<<<<<<< HEAD
       NES_MaxD = OPACITIES % TS % maxValues( iD_T )
+=======
+      NES_MaxD = EOSTable_MaxD 
+>>>>>>> master
     END IF
 
     ! --- Pair ---
 
     IF( PRESENT( Pair_MinD_Option ) )THEN
-      Pair_MinD = Pair_MinD_Option
+      Pair_MinD = MAX( Pair_MinD_Option, EOSTable_MinD )
     ELSE
+<<<<<<< HEAD
       Pair_MinD = OPACITIES % TS % minValues( iD_T )
+=======
+      Pair_MinD = EOSTable_MinD
+>>>>>>> master
     END IF
 
     IF( PRESENT( Pair_MaxD_Option ) )THEN
-      Pair_MaxD = Pair_MaxD_Option
+      Pair_MaxD = MIN( Pair_MaxD_Option, EOSTable_MaxD )
     ELSE
+<<<<<<< HEAD
       Pair_MaxD = OPACITIES % TS % maxValues( iD_T )
+=======
+      Pair_MaxD = EOSTable_MaxD 
+>>>>>>> master
     END IF
 
     ! --- Brem ---
 
     IF( PRESENT( Brem_MinD_Option ) )THEN
-      Brem_MinD = Brem_MinD_Option
+      Brem_MinD = MAX( Brem_MinD_Option, EOSTable_MinD )
     ELSE
+<<<<<<< HEAD
       Brem_MinD = OPACITIES % TS % minValues( iD_T )
+=======
+      Brem_MinD = EOSTable_MinD 
+>>>>>>> master
     END IF
 
     IF( PRESENT( Brem_MaxD_Option ) )THEN
-      Brem_MaxD = Brem_MaxD_Option
+      Brem_MaxD = MIN( Brem_MaxD_Option, EOSTable_MaxD )
     ELSE
+<<<<<<< HEAD
       Brem_MaxD = OPACITIES % TS % maxValues( iD_T )
+=======
+      Brem_MaxD = EOSTable_MaxD 
+>>>>>>> master
     END IF
 
     ! --- NNS ---
 
     IF( PRESENT( NNS_MinD_Option ) )THEN
-      NNS_MinD = NNS_MinD_Option
+      NNS_MinD = MAX( NNS_MinD_Option, EOSTable_MinD )
     ELSE
+<<<<<<< HEAD
       NNS_MinD = OPACITIES % TS % minValues( iD_T )
+=======
+      NNS_MinD = EOSTable_MinD 
+>>>>>>> master
     END IF
 
     IF( PRESENT( NNS_MaxD_Option ) )THEN
-      NNS_MaxD = NNS_MaxD_Option
+      NNS_MaxD = MIN( NNS_MaxD_Option, EOSTable_MaxD )
     ELSE
+<<<<<<< HEAD
       NNS_MaxD = OPACITIES % TS % maxValues( iD_T )
+=======
+      NNS_MaxD = EOSTable_MaxD 
+>>>>>>> master
     END IF
 
     ! --- NuPair ---
 
     IF( PRESENT( NuPair_MinD_Option ) )THEN
-      NuPair_MinD = NuPair_MinD_Option
+      NuPair_MinD = MAX( NuPair_MinD_Option, 1.0d12 )
     ELSE
       NuPair_MinD = 1.0d12
     END IF
 
     IF( PRESENT( NuPair_MaxD_Option ) )THEN
-      NuPair_MaxD = NuPair_MaxD_Option
+      NuPair_MaxD = MIN( NuPair_MaxD_Option, EOSTable_MaxD )
     ELSE
+<<<<<<< HEAD
       NuPair_MaxD = OPACITIES % TS % maxValues( iD_T )
+=======
+      NuPair_MaxD = EOSTable_MaxD 
+>>>>>>> master
     END IF
 
     ! --- Cutoff For All Opacities ---
 
     IF( PRESENT( Op_MinD_Option ) )THEN
-      Op_MinD = Op_MinD_Option
+      Op_MinD = MAX( Op_MinD_Option, EOSTable_MinD )
     ELSE
-      !Op_MinD = MIN( EmAb_MinD, Iso_MinD, NES_MinD, Pair_MinD, Brem_MinD, NNS_MinD, NuPair_MinD )
       Op_MinD = MIN( EmAb_MinD, Iso_MinD, NES_MinD, Pair_MinD, Brem_MinD, NuPair_MinD )
     END IF
 
     IF( PRESENT( Op_MaxD_Option ) )THEN
-      Op_MaxD = Op_MaxD_Option
+      Op_MaxD = MIN( Op_MaxD_Option, EOSTable_MaxD )
     ELSE
-      !Op_MaxD = MAX( EmAb_MaxD, Iso_MaxD, NES_MaxD, Pair_MaxD, Brem_MaxD, NNS_MaxD, NuPair_MaxD )
       Op_MaxD = MAX( EmAb_MaxD, Iso_MaxD, NES_MaxD, Pair_MaxD, Brem_MaxD, NuPair_MaxD )
     END IF
 
@@ -914,9 +976,9 @@ CONTAINS
                 NodesE  => MeshE % Nodes )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
-    !$OMP MAP( to: CenterE, WidthE, NodesE ) &
-    !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
+    !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !!$OMP MAP( to: CenterE, WidthE, NodesE ) &
+    !!$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
     !$ACC COPYIN( CenterE, WidthE, NodesE ) &
@@ -957,9 +1019,9 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
-    !$OMP MAP( to: CenterE, WidthE, NodesE ) &
-    !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
+    !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !!$OMP MAP( to: CenterE, WidthE, NodesE ) &
+    !!$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
     !$ACC COPYIN( CenterE, WidthE, NodesE ) &
@@ -1000,9 +1062,9 @@ CONTAINS
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
-    !$OMP MAP( to: CenterE, WidthE, NodesE ) &
-    !$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
+    !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !!$OMP MAP( to: CenterE, WidthE, NodesE ) &
+    !!$OMP PRIVATE( LogE1, LogE2, iE1, iE2, iNodeE1, iNodeE2 )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
     !$ACC COPYIN( CenterE, WidthE, NodesE ) &
@@ -1045,7 +1107,8 @@ CONTAINS
     END ASSOCIATE
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM &
+    !!$OMP TARGET UPDATE FROM &
+    !$OMP TARGET UPDATE TO &
     !$OMP ( NES_AT, Pair_AT, Brem_AT )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE HOST &
@@ -1063,27 +1126,35 @@ CONTAINS
 
   IF ( Use_OpacityTables ) THEN
 
+    use_EC_table = OPACITIES % EmAb % nuclei_EC_table
+
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET EXIT DATA &
-      !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
-      !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
-      !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
-      !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2, &
-      !$OMP               C1_NuPair, C2_NuPair, &
-      !$OMP               use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
-      !$OMP               EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
-      !$OMP               EC_iE_max, EC_iNodeE_max, EC_kfmin, EC_kfmax,   &
-      !$OMP               EC_a, EC_b, EC_ak, EC_bk, &
-      !$OMP               EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD, &
-      !$OMP               EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD, &
-      !$OMP               EmAb_MinD, EmAb_MaxD, &
-      !$OMP               Iso_MinD, Iso_MaxD, &
-      !$OMP               NES_MinD, NES_MaxD, &
-      !$OMP               Pair_MinD, Pair_MaxD, &
-      !$OMP               Brem_MinD, Brem_MaxD, &
-      !$OMP               NNS_MinD, NNS_MaxD, &
-      !$OMP               NuPair_MinD, NuPair_MaxD, &
-      !$OMP               Op_MinD, Op_MaxD )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    !$OMP               OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
+    !$OMP               EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
+    !$OMP               NES_AT, Pair_AT, Brem_AT, C1, C2, &
+    !$OMP               C1_NuPair, C2_NuPair, &
+    !$OMP               EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD, &
+    !$OMP               EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD, &
+    !$OMP               EmAb_MinD, EmAb_MaxD, &
+    !$OMP               Iso_MinD, Iso_MaxD, &
+    !$OMP               NES_MinD, NES_MaxD, &
+    !$OMP               Pair_MinD, Pair_MaxD, &
+    !$OMP               Brem_MinD, Brem_MaxD, &
+    !$OMP               NNS_MinD, NNS_MaxD, &
+    !$OMP               NuPair_MinD, NuPair_MaxD, &
+    !$OMP               Op_MinD, Op_MaxD )
+
+    IF ( use_EC_table > 0 ) THEN
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T,     &
+    !$OMP               OS_EmAb_EC_rate, OS_EmAb_EC_spec,       &
+    !$OMP               EmAb_EC_rate_T, EmAb_EC_spec_T,         &
+    !$OMP               EC_nE, EC_dE, EC_iE_max, EC_iNodeE_max, &
+    !$OMP               EC_kfmin, EC_kfmax, use_EC_table,       &
+    !$OMP               EC_a, EC_b, EC_ak, EC_bk )
+    ENDIF
 #endif
 
     DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T )
@@ -1093,20 +1164,13 @@ CONTAINS
     DEALLOCATE( EmAb_T, Iso_T, NES_T, Pair_T, Brem_T )
     DEALLOCATE( NES_AT, Pair_AT, Brem_AT )
 
-    IF(ALLOCATED(OS_EmAb_EC_spec)) DEALLOCATE(OS_EmAb_EC_spec)
-    IF(ALLOCATED(OS_EmAb_EC_rate)) DEALLOCATE(OS_EmAb_EC_rate)
-    IF(ALLOCATED(EmAb_EC_rate_T )) DEALLOCATE(EmAb_EC_rate_T)
-    IF(ALLOCATED(EmAb_EC_spec_T )) DEALLOCATE(EmAb_EC_spec_T )
-    IF(ALLOCATED(Ds_EC_T))         DEALLOCATE(Ds_EC_T)
-    IF(ALLOCATED(Ts_EC_T))         DEALLOCATE(Ts_EC_T)
-    IF(ALLOCATED(Ys_EC_T))         DEALLOCATE(Ys_EC_T)
-    IF(ALLOCATED(Es_EC_T))         DEALLOCATE(Es_EC_T)
-    IF(ALLOCATED(EC_kfmin))        DEALLOCATE(EC_kfmin)
-    IF(ALLOCATED(EC_kfmax))        DEALLOCATE(EC_kfmax)
-    IF(ALLOCATED(EC_a))            DEALLOCATE(EC_a)
-    IF(ALLOCATED(EC_b))            DEALLOCATE(EC_b)
-    IF(ALLOCATED(EC_ak))           DEALLOCATE(EC_ak)
-    IF(ALLOCATED(EC_bk))           DEALLOCATE(EC_bk)
+    IF ( use_EC_table > 0 ) THEN
+      DEALLOCATE( OS_EmAb_EC_spec, OS_EmAb_EC_rate )
+      DEALLOCATE( EmAb_EC_rate_T, EmAb_EC_spec_T )
+      DEALLOCATE( Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T )
+      DEALLOCATE( EC_kfmin, EC_kfmax, EC_a, EC_b, EC_ak, EC_bk )
+    ENDIF
+
   END IF
 
 #endif

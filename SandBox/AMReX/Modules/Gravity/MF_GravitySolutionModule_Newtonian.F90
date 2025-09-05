@@ -2,7 +2,8 @@ MODULE MF_GravitySolutionModule_Newtonian
 
   ! --- AMReX Modules ---
 
-  ! --- thornado Modules ---
+  USE amrex_multifab_module, ONLY: &
+    amrex_multifab
 
   ! --- Local Modules ---
 
@@ -10,7 +11,8 @@ MODULE MF_GravitySolutionModule_Newtonian
 
   USE MF_GravitySolutionModule_Newtonian_Poseidon, ONLY: &
     InitializeGravitySolver_Newtonian_MF_Poseidon, &
-    FinalizeGravitySolver_Newtonian_MF_Poseidon
+    FinalizeGravitySolver_Newtonian_MF_Poseidon, &
+    ComputeGravitationalPotential_Newtonian_MF_Poseidon
 
 #endif
 
@@ -19,6 +21,7 @@ MODULE MF_GravitySolutionModule_Newtonian
 
   PUBLIC :: InitializeGravitySolver_Newtonian_MF
   PUBLIC :: FinalizeGravitySolver_Newtonian_MF
+  PUBLIC :: ComputeGravitationalPotential_Newtonian_MF
 
 CONTAINS
 
@@ -52,6 +55,20 @@ CONTAINS
 #endif
 
   END SUBROUTINE FinalizeGravitySolver_Newtonian_MF
+
+
+  SUBROUTINE ComputeGravitationalPotential_Newtonian_MF( MF_uCF, MF_uGF )
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF(0:) ! Gravity Sources
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
+
+#ifdef GRAVITY_SOLVER_POSEIDON_NEWTONIAN
+
+    CALL ComputeGravitationalPotential_Newtonian_MF_Poseidon( MF_uCF, MF_uGF )
+
+#endif
+
+  END SUBROUTINE ComputeGravitationalPotential_Newtonian_MF
 
 
 END MODULE MF_GravitySolutionModule_Newtonian

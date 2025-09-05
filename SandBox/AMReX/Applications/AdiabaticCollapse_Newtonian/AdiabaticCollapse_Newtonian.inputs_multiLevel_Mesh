@@ -1,0 +1,78 @@
+##### AdiabaticCollapse_Newtonian #####
+
+# For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+# For all REAL types, use "e" and not "d", i.e. 1.0e3
+
+debug.DEBUG = 0
+
+thornado.ProgramName = "AdiabaticCollapse_Newtonian"
+
+AC.ProgenitorFileName = "../../../Progenitors/WH07_15M_Sun.h5"
+
+thornado.iRestart = -1
+
+thornado.UsePhysicalUnits = 1
+
+thornado.TallyFileNameRoot_Euler = "AdiabaticCollapse_Newtonian.Tally"
+thornado.PlotFileNameRoot = "AdiabaticCollapse_Newtonian.plt"
+thornado.t_end   = 4.50e+2
+thornado.iCycleD = 1
+
+thornado.dt_wrt  = 1.0e-1
+thornado.iCycleW = -1
+
+thornado.CheckpointFileNameRoot = "AdiabaticCollapse_Newtonian.chk"
+thornado.dt_chk    = 1.0e+0
+thornado.iCycleChk = -1
+
+thornado.nNodes = 2
+
+thornado.bcX         = 30 00 00
+geometry.is_periodic = 0  1  1
+
+geometry.coord_sys = 2
+geometry.prob_lo   = 000.0 0.0               0.0
+geometry.prob_hi   = 8000.0 3.1415926535897931 6.2831853071795862
+
+amr.n_cell                  = 512 01 01
+thornado.swX                = 01  00 00
+#amr.max_grid_size_x         = 128
+#amr.blocking_factor_x       = 128
+amr.UseFluxCorrection_Euler = 1
+amr.RefinementScheme        = "Mesh"
+amr.max_level               = 6
+amr.TagCriteria             = 4.0e3 2.0e3 1.0e3 5.0e2 1.0e2 5.0e1
+amr.UseAMR                  = 0
+amr.n_error_buf             = 0
+amr.ref_ratio               = 2
+
+# Poseidon parameters
+GS.EvolveGravity           = 1
+poseidon.fem_degree        = 1
+poseidon.l_limit           = 0
+poseidon.max_fp_iters      = 20
+poseidon.anderson_m        = 3
+poseidon.converge_criteria = 1.0e-08
+poseidon.FillGhostCells    = 0
+
+# Slope limiter parameters
+SL.UseSlopeLimiter_Euler           = 1
+SL.SlopeLimiterMethod_Euler        = "TVD"
+SL.BetaTVD_Euler                   = 1.75e+0
+SL.BetaTVB_Euler                   = 0.00e+0
+SL.SlopeTolerance_Euler            = 1.00e-6
+SL.UseCharacteristicLimiting_Euler = 0
+SL.UseTroubledCellIndicator_Euler  = 0
+SL.LimiterThresholdParameter_Euler = 5.00e-3
+SL.UseConservativeCorrection_Euler = 1
+
+# Positivity limiter parameters
+PL.UsePositivityLimiter_Euler = 1
+
+# Equation of state parameters
+EoS.EquationOfState = "TABLE"
+EoS.EosTableName = "../../../EosTables/wl-EOS-SFHo-25-50-100.h5"
+
+# Time-Stepper parameters
+TS.nStages       = 2
+TS.CFL           = 0.5

@@ -16,11 +16,13 @@ MODULE MF_InitializationModule
 
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
-    nDOFX
+    nDOFX, &
+    swX
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX
   USE MeshModule, ONLY: &
     MeshX, &
+    MeshType, &
     NodeCoordinate
   USE EquationOfStateModule_IDEAL, ONLY: &
     ComputePressureFromPrimitive_IDEAL, &
@@ -46,16 +48,22 @@ MODULE MF_InitializationModule
     iAF_P
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_Euler_Relativistic
+
   USE MF_KindModule, ONLY: &
     DP, &
     Zero, &
     Two, &
     Three, &
-    FourPi
+    FourPi, &
+    Pi
   USE InputParsingModule, ONLY: &
     UseTiling, &
     nMaxLevels, &
-    t_end
+    t_end, &
+    xR
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -63,10 +71,6 @@ MODULE MF_InitializationModule
   PUBLIC :: InitializeFields_MF
 
   REAL(DP), PUBLIC :: IntE_Min_Euler_PL
-  REAL(DP) :: X_D, Eblast, eIntBlast, rho0
-  REAL(DP), PARAMETER :: RhoEratio = 1.0e2_DP
-  REAL(DP), PARAMETER :: e1e2ratio = 1.0e-10_DP
-  INTEGER  :: nDetCells
 
 CONTAINS
 
@@ -97,54 +101,65 @@ CONTAINS
     ! --- Problem-Dependent Parameters ---
 
     INTEGER  :: iNX1, iNX2, iNX3, nDetCells
-    REAL(DP) :: X1, X2, X3, Radius, dX1, dX2, dX3
+    REAL(DP) :: X1, X2, X3, Radius, dX1, dX2, dX3, &
+                sigma, X_D, Edet, eCentral, rho0
+
+    REAL(DP), PARAMETER :: RhoEratio = 1.0e2_DP
+    REAL(DP), PARAMETER :: e1e2ratio = 1.0e-10_DP
+
+    TYPE(MeshType) :: MeshXX(3)
 
     Verbose = .FALSE.
     IF( amrex_parallel_ioprocessor() .AND. iLevel .EQ. 0 ) Verbose = .TRUE.
 
-    IF( iLevel .EQ. 0 )THEN
+    X_D = -1.0_DP
+    CALL amrex_parmparse_build( PP, 'Sedov' )
+      CALL PP % get  ( 'Edet'     , Edet )
+      CALL PP % get  ( 'nDetCells', nDetCells )
+      CALL PP % query( 'X_D'      , X_D )
+    CALL amrex_parmparse_destroy( PP )
 
-      nDetCells = -HUGE( 1 )
-      X_D       = -HUGE( 1.0_DP )
-      CALL amrex_parmparse_build( PP, 'Sedov' )
-        CALL PP % get  ( 'Eblast'   , Eblast )
-        CALL PP % query( 'nDetCells', nDetCells )
-        CALL PP % query( 'X_D'      , X_D )
-      CALL amrex_parmparse_destroy( PP )
+    CALL CreateMesh_MF( nMaxLevels-1, MeshXX )
 
-      IF( X_D .LT. Zero )THEN
+    IF( X_D .LT. Zero )THEN
 
-        IF( TRIM( CoordinateSystem ) .EQ. 'CARTESIAN' )THEN
+      IF( TRIM( CoordinateSystem ) .EQ. 'SPHERICAL' )THEN
 
-          dX1 = MeshX(1) % Width(0)
+        dX1 = MeshXX(1) % Width(0)
 
-          X_D = dX1 * DBLE( nDetCells )
+        X_D = SQRT( dX1**2 )
 
-        ELSE IF( TRIM( CoordinateSystem ) .EQ. 'CYLINDRICAL' )THEN
+      ELSE IF( TRIM( CoordinateSystem ) .EQ. 'CYLINDRICAL' )THEN
 
-          dX1 = MeshX(1) % Width(0)
-          dX2 = MeshX(2) % Width(0)
+        dX1 = MeshXX(1) % Width(0)
+        dX2 = MeshXX(2) % Width(0)
 
-          X_D = SQRT( dX1**2 + dX2**2 ) * DBLE( nDetCells )
+        X_D = SQRT( dX1**2 + dX2**2 )
 
-        ELSE
+      ELSE
 
-          dX1 = MeshX(1) % Width(0)
-          dX2 = MeshX(2) % Width(0)
-          dX3 = MeshX(3) % Width(0)
+        dX1 = MeshXX(1) % Width(0)
+        dX2 = MeshXX(2) % Width(0)
+        dX3 = MeshXX(3) % Width(0)
 
-          X_D = SQRT( dX1**2 + dX2**2 + dX3**2 ) * DBLE( nDetCells )
-
-        END IF
+        X_D = SQRT( dX1**2 + dX2**2 + dX3**2 )
 
       END IF
 
-      eIntBlast = Eblast / ( FourPi / Three * X_D**3 )
-
-      ! --- Enforce non-relativistic specific enthalpy ---
-      rho0 = RhoEratio * eIntBlast
-
     END IF
+
+    CALL DestroyMesh_MF( MeshXX )
+
+    sigma = nDetCells * X_D
+
+    eCentral &
+      = Edet &
+         / ( Pi * sigma**3 &
+               * ( SQRT( Pi ) * ERF( xR(1) / sigma ) &
+                     - Two * xR(1) / sigma * EXP( -xR(1)**2 / sigma**2 ) ) )
+
+    ! --- Enforce non-relativistic specific enthalpy ---
+    rho0 = RhoEratio * eCentral
 
     IF( Verbose )THEN
 
@@ -156,14 +171,15 @@ CONTAINS
       WRITE(*,*)
       WRITE(*,'(A20,I4.4)') 'nDetCells: ', nDetCells
       WRITE(*,TRIM(FMT)) 'X_D: ', X_D
-      WRITE(*,TRIM(FMT)) 'Eblast: ', Eblast
-      WRITE(*,TRIM(FMT)) 'eblast: ', eIntBlast
-      WRITE(*,TRIM(FMT)) 'rho0: ', rho0
-      WRITE(*,TRIM(FMT)) 'ener0: ', e1e2ratio * eIntBlast
-      WRITE(*,TRIM(FMT)) 'cs0: ', &
+      WRITE(*,TRIM(FMT)) 'Edet: ', Edet
+      WRITE(*,TRIM(FMT)) 'eCentral: ', eCentral
+      WRITE(*,TRIM(FMT)) 't_end = ', t_end
+      WRITE(*,TRIM(FMT)) 'rho0  = ', rho0
+      WRITE(*,TRIM(FMT)) 'ener0 = ', e1e2ratio * eCentral
+      WRITE(*,TRIM(FMT)) 'pres0 = ', e1e2ratio * eCentral * ( Gamma_IDEAL - 1.0_DP )
+      WRITE(*,TRIM(FMT)) 'cs0   = ', &
         SQRT( Gamma_IDEAL * ( Gamma_IDEAL - 1.0e0_DP ) &
                 * e1e2ratio / RhoEratio  )
-      WRITE(*,TRIM(FMT)) 't_end: ', t_end
       WRITE(*,*)
 
     END IF
@@ -186,7 +202,7 @@ CONTAINS
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1)
+      DO iX1 = iX_B0(1), iX_E0(1) + swX(1)
       DO iNX = 1       , nDOFX
 
         iNX1 = NodeNumberTableX(1,iNX)
@@ -217,22 +233,13 @@ CONTAINS
         uPF(iX1,iX2,iX3,nDOFX*(iPF_V3-1)+iNX) = Zero
         uPF(iX1,iX2,iX3,nDOFX*(iPF_Ne-1)+iNX) = Zero
 
-        IF( Radius .LT. X_D )THEN
-
-          uPF(iX1,iX2,iX3,nDOFX*(iPF_E-1)+iNX) &
-            = eIntBlast
-
-        ELSE
-
-          ! --- Ensure pre-shock pressure is negligible ---
-          uPF(iX1,iX2,iX3,nDOFX*(iPF_E-1)+iNX) &
-            = e1e2ratio * eIntBlast
-
-        END IF
+        uPF(iX1,iX2,iX3,nDOFX*(iPF_E-1)+iNX) &
+          = MAX( eCentral * EXP( -Radius**2 / sigma**2 ), &
+                 1.0e-10_DP * e1e2ratio * eCentral )
 
         IntE_Min_Euler_PL &
           = MIN( IntE_Min_Euler_PL, &
-                 1.0e-12_DP * uPF(iX1,iX2,iX3,nDOFX*(iPF_E-1)+iNX) )
+                 1.0e-1_DP * uPF(iX1,iX2,iX3,nDOFX*(iPF_E-1)+iNX) )
 
         CALL ComputePressureFromPrimitive_IDEAL &
                ( uPF(iX1,iX2,iX3,nDOFX*(iPF_D -1)+iNX), &

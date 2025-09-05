@@ -10,6 +10,7 @@ include $(THORNADO_DIR)/Build/Makefile_Build
 WEAKLIB_DIR ?= $(HOME)/weaklib
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_Path
 include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_ObjectFiles
+include $(WEAKLIB_DIR)/Distributions/Build/Makefile_WeakLib_Dependencies
 
 all: Driver
 

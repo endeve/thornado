@@ -1653,96 +1653,82 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iMoment
     REAL(DP), INTENT(out) :: opES(iE_B:iE_E,iNu:iNu_Bar,iX_B:iX_E)
 
-    REAL(DP), ALLOCATABLE :: LogE_P(:)
-    REAL(DP), ALLOCATABLE :: LogD_P(:), LogT_P(:), Yp_P(:)
+    REAL(DP) :: LogE_P, LogD_P, LogT_P, Yp_P
     INTEGER  :: iX, iE, iC
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    ALLOCATE( LogE_P(iE_B:iE_E) )
-    ALLOCATE( LogD_P(iX_B:iX_E), LogT_P(iX_B:iX_E), Yp_P(iX_B:iX_E) )
-
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Yp_P, opES ) &
-    !$OMP MAP( to: E, D, T, Ye, Ym )
+    !$OMP TARGET ENTER DATA        &
+    !$OMP MAP( to:    E, D, T, Ye, Ym ) &
+    !$OMP MAP( alloc: opES )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC CREATE( LogE_P, LogD_P, LogT_P, Yp_P, opES ) &
-    !$ACC COPYIN( E, D, T, Ye, Ym )
+    !$ACC ENTER DATA               &
+    !$ACC COPYIN  ( E, D, T, Ye, Ym )   &
+    !$ACC CREATE  ( opES )
 #endif
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+    !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !!$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Yp_P ) 
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+    !$ACC          OS_Iso, Iso_T ) &
+    !$ACC PRIVATE( LogE_P, LogD_P, LogT_P, Yp_P ) 
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO
-#endif
-    DO iX = iX_B, iX_E
-      LogD_P(iX) = LOG10( D(iX) / UnitD )
-      LogT_P(iX) = LOG10( T(iX) / UnitT )
-      Yp_P(iX)   = (Ye(iX) + Ym(iX)) / UnitY
-    END DO
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO
-#endif
-    DO iE = iE_B, iE_E
-      LogE_P(iE) = LOG10( E(iE) / UnitE )
-    END DO
-
-    CALL LogInterpolateSingleVariable_1D3D_Custom &
-           ( LogE_P, LogD_P, LogT_P, Yp_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-             OS_Iso(iNu,iMoment), Iso_T(:,:,:,:,iMoment,iNu), opES(:,iNu,:) )
-
-    CALL LogInterpolateSingleVariable_1D3D_Custom &
-           ( LogE_P, LogD_P, LogT_P, Yp_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-             OS_Iso(iNu_Bar,iMoment), Iso_T(:,:,:,:,iMoment,iNu_Bar), opES(:,iNu_Bar,:) )
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(2)
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Yp_P )
 #endif
     DO iX = iX_B, iX_E
     DO iC = iNu,  iNu_Bar
     DO iE = iE_B, iE_E
+
       IF ( QueryOpacity_Iso( D(iX) / UnitD ) ) THEN
+
+        LogE_P = LOG10( E(iE) / UnitE )
+
+        LogD_P = LOG10( D (iX) / UnitD )
+        LogT_P = LOG10( T (iX) / UnitT )
+        Yp_P   = (Ye(iX) + Ym(iX)) / UnitY
+
+        CALL LogInterpolateSingleVariable_4D_Custom_Point &
+               ( LogE_P , LogD_P , LogT_P , Yp_P, &
+                 LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+                 OS_Iso(iC,iMoment), Iso_T(:,:,:,:,iMoment,iC), opES(iE,iC,iX) )
+
         opES(iE,iC,iX) = opES(iE,iC,iX) * UnitES
+
       ELSE
+
         opES(iE,iC,iX) = Zero
+
       END IF
+
     END DO
     END DO
     END DO
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Yp_P, E, D, T, Ye, Ym ) &
-    !$OMP MAP( from: opES )
+    !$OMP TARGET EXIT DATA           &
+    !$OMP MAP (release: E, D, T, Ye, Ym ) &
+    !$OMP MAP (from: opES )
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
-    !$ACC DELETE( LogE_P, LogD_P, LogT_P, Yp_P, E, D, T, Ye, Ym ) &
-    !$ACC COPYOUT( opES )
+    !$ACC EXIT DATA                  &
+    !$ACC DELETE (E, D, T, Ye, Ym )       &
+    !$ACC COPYOUT ( opES )
 #endif
 
 #else
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP MAP( from: opES )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC COPYOUT( opES )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(2)
+    !$OMP PARALLEL DO COLLAPSE(3)
 #endif
     DO iX = iX_B, iX_E
     DO iC = iNu,  iNu_Bar

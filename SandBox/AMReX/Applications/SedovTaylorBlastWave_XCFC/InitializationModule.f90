@@ -273,7 +273,7 @@ CONTAINS
 
       CALL InitializePositivityLimiter_Euler_MF
 
-      CALL ReadCheckpointFile( ReadFields_uCF_Option = .TRUE. )
+      CALL ReadCheckpointFile
 
       SetInitialValues   = .FALSE.
       FixInteriorADMMass = .TRUE.
@@ -412,8 +412,7 @@ CONTAINS
                iLevel, nDOFX_X1 * nCF )
 
     CALL FillCoarsePatch( iLevel, MF_uGF, &
-                          ApplyBoundaryConditions_Geometry_Option = .TRUE., &
-                          UpdateSpatialMetric_Option = .TRUE. )
+                          ApplyBoundaryConditions_Geometry_Option = .TRUE. )
 
     CALL FillCoarsePatch( iLevel, MF_uDF )
 
@@ -519,6 +518,7 @@ CONTAINS
     TYPE(amrex_tagboxarray) :: Tag
     TYPE(amrex_mfiter)      :: MFI
     TYPE(amrex_box)         :: BX
+    REAL(DP),               CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     REAL(DP),               CONTIGUOUS, POINTER :: uDF(:,:,:,:)
     CHARACTER(KIND=c_char), CONTIGUOUS, POINTER :: TagArr(:,:,:,:)
 
@@ -543,6 +543,7 @@ CONTAINS
 
       BX = MFI % TileBox()
 
+      uCF    => MF_uCF( iLevel ) % DataPtr( MFI )
       uDF    => MF_uDF( iLevel ) % DataPtr( MFI )
       TagArr => Tag              % DataPtr( MFI )
 
@@ -551,7 +552,7 @@ CONTAINS
 
       CALL TagElements &
              ( iLevel, BX % lo, BX % hi, LBOUND( uDF ), UBOUND( uDF ), &
-               uDF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+               uCF, uDF, TagCriteria(iLevel+1), SetTag, ClearTag, &
                LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
 
     END DO

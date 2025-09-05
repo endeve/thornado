@@ -43,7 +43,8 @@ MODULE DeviceModule
     rocblas_get_stream, &
     rocblas_set_stream, &
     rocblas_set_pointer_mode, &
-    rocblas_pointer_mode_device
+    rocblas_pointer_mode_device, &
+    rocblas_initialize
   USE RocsolverModule, ONLY: &
     rocsolver_handle
   USE RocsparseModule, ONLY: &
@@ -224,6 +225,12 @@ CONTAINS
 #elif defined(THORNADO_HIP)
     CALL magma_queue_create_from_hip &
            ( magma_device, stream, hipblas_handle, hipsparse_handle, magma_queue )
+#endif
+
+    ! Initialize libraries to avoid performance penalties at first invocation
+#if defined(THORNADO_CUDA)
+#elif defined(THORNADO_HIP)
+    CALL rocblasCheck( rocblas_initialize() )
 #endif
 #endif
 
