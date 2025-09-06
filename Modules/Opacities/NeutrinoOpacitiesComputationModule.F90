@@ -109,18 +109,10 @@ MODULE NeutrinoOpacitiesComputationModule
     mn, mp, me, mmu, kmev
   USE wlSemiLeptonicOpacityModule2D, ONLY: &
     Opacity_CC_2D
+#ifdef CC_INTEGRALS_4D
   USE wlSemiLeptonicOpacityModule4D, ONLY: &
     Opacity_CC_4D
-
-  USE wlCalculateAbEmOpacityModule, ONLY: &
-    ElasticAbsorptionOpacityNue, &
-    ElasticAbsorptionOpacityNum
-  USE wlEosConstantsModule, ONLY: &
-    mn, mp, me, mmu, kmev
-  USE wlSemiLeptonicOpacityModule2D, ONLY: &
-    Opacity_CC_2D
-  USE wlSemiLeptonicOpacityModule4D, ONLY: &
-    Opacity_CC_4D
+#endif
   ! ----------------------------------------------
 
 #endif
@@ -1027,6 +1019,7 @@ CONTAINS
 
             opEC(iE,iS,iX) = opEC(iE,iS,iX) * UnitEC
             opEC(iE,iS+1,iX) = opEC(iE,iS+1,iX) * UnitEC
+#ifdef CC_INTEGRALS_4D
           ELSEIF (opac_method .eq. 3) THEN
 
             CALL Opacity_CC_4D(corr_num, 1, 10**LogE_P, opEC(iE,iS,iX), &
@@ -1038,7 +1031,7 @@ CONTAINS
 
             opEC(iE,iS,iX) = opEC(iE,iS,iX) * UnitEC
             opEC(iE,iS+1,iX) = opEC(iE,iS+1,iX) *UnitEC
-
+#endif
           END IF
 #else
           opEC(iE,iS,iX) = Zero

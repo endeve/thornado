@@ -368,41 +368,25 @@ CONTAINS
     IF( PRESENT( EmAb_Nucleon_MinD_Option ) )THEN
       EmAb_Nucleon_MinD = MAX( EmAb_Nucleon_MinD_Option, EOSTable_MinD )
     ELSE
-<<<<<<< HEAD
-      EmAb_Nucleon_MinD = OPACITIES % TS % minValues( iD_T )
-=======
       EmAb_Nucleon_MinD = EOSTable_MinD
->>>>>>> master
     END IF
 
     IF( PRESENT( EmAb_Nucleon_MaxD_Option ) )THEN
       EmAb_Nucleon_MaxD = MIN( EmAb_Nucleon_MaxD_Option, EOSTable_MaxD )
     ELSE
-<<<<<<< HEAD
-      EmAb_Nucleon_MaxD = OPACITIES % TS % maxValues( iD_T )
-=======
       EmAb_Nucleon_MaxD = EOSTable_MaxD 
->>>>>>> master
     END IF
 
     IF( PRESENT( EmAb_Nuclei_MinD_Option ) )THEN
       EmAb_Nuclei_MinD = MAX( EmAb_Nuclei_MinD_Option, EOSTable_MinD )
     ELSE
-<<<<<<< HEAD
-      EmAb_Nuclei_MinD = OPACITIES % TS % minValues( iD_T )
-=======
       EmAb_Nuclei_MinD = EOSTable_MinD 
->>>>>>> master
     END IF
 
     IF( PRESENT( EmAb_Nuclei_MaxD_Option ) )THEN
       EmAb_Nuclei_MaxD = MIN( EmAb_Nuclei_MaxD_Option, EOSTable_MaxD )
     ELSE
-<<<<<<< HEAD
-      EmAb_Nuclei_MaxD = OPACITIES % TS % maxValues( iD_T )
-=======
       EmAb_Nuclei_MaxD = EOSTable_MaxD 
->>>>>>> master
     END IF
 
     IF( PRESENT( EmAb_MinD_Option ) )THEN
@@ -422,21 +406,13 @@ CONTAINS
     IF( PRESENT( Iso_MinD_Option ) )THEN
       Iso_MinD = MAX( Iso_MinD_Option, EOSTable_MinD )
     ELSE
-<<<<<<< HEAD
-      Iso_MinD = OPACITIES % TS % minValues( iD_T )
-=======
       Iso_MinD = EOSTable_MinD 
->>>>>>> master
     END IF
 
     IF( PRESENT( Iso_MaxD_Option ) )THEN
       Iso_MaxD = MIN( Iso_MaxD_Option, EOSTable_MaxD )
     ELSE
-<<<<<<< HEAD
-      Iso_MaxD = OPACITIES % TS % maxValues( iD_T )
-=======
       Iso_MaxD = EOSTable_MaxD 
->>>>>>> master
     END IF
 
     ! --- NES ---
@@ -444,21 +420,13 @@ CONTAINS
     IF( PRESENT( NES_MinD_Option ) )THEN
       NES_MinD = MAX( NES_MinD_Option, EOSTable_MinD )
     ELSE
-<<<<<<< HEAD
-      NES_MinD = OPACITIES % TS % minValues( iD_T )
-=======
       NES_MinD = EOSTable_MinD 
->>>>>>> master
     END IF
 
     IF( PRESENT( NES_MaxD_Option ) )THEN
       NES_MaxD = MIN( NES_MaxD_Option, EOSTable_MaxD )
     ELSE
-<<<<<<< HEAD
-      NES_MaxD = OPACITIES % TS % maxValues( iD_T )
-=======
       NES_MaxD = EOSTable_MaxD 
->>>>>>> master
     END IF
 
     ! --- Pair ---
@@ -466,21 +434,13 @@ CONTAINS
     IF( PRESENT( Pair_MinD_Option ) )THEN
       Pair_MinD = MAX( Pair_MinD_Option, EOSTable_MinD )
     ELSE
-<<<<<<< HEAD
-      Pair_MinD = OPACITIES % TS % minValues( iD_T )
-=======
       Pair_MinD = EOSTable_MinD
->>>>>>> master
     END IF
 
     IF( PRESENT( Pair_MaxD_Option ) )THEN
       Pair_MaxD = MIN( Pair_MaxD_Option, EOSTable_MaxD )
     ELSE
-<<<<<<< HEAD
-      Pair_MaxD = OPACITIES % TS % maxValues( iD_T )
-=======
       Pair_MaxD = EOSTable_MaxD 
->>>>>>> master
     END IF
 
     ! --- Brem ---
@@ -488,21 +448,13 @@ CONTAINS
     IF( PRESENT( Brem_MinD_Option ) )THEN
       Brem_MinD = MAX( Brem_MinD_Option, EOSTable_MinD )
     ELSE
-<<<<<<< HEAD
-      Brem_MinD = OPACITIES % TS % minValues( iD_T )
-=======
       Brem_MinD = EOSTable_MinD 
->>>>>>> master
     END IF
 
     IF( PRESENT( Brem_MaxD_Option ) )THEN
       Brem_MaxD = MIN( Brem_MaxD_Option, EOSTable_MaxD )
     ELSE
-<<<<<<< HEAD
-      Brem_MaxD = OPACITIES % TS % maxValues( iD_T )
-=======
       Brem_MaxD = EOSTable_MaxD 
->>>>>>> master
     END IF
 
     ! --- NNS ---
@@ -510,21 +462,13 @@ CONTAINS
     IF( PRESENT( NNS_MinD_Option ) )THEN
       NNS_MinD = MAX( NNS_MinD_Option, EOSTable_MinD )
     ELSE
-<<<<<<< HEAD
-      NNS_MinD = OPACITIES % TS % minValues( iD_T )
-=======
       NNS_MinD = EOSTable_MinD 
->>>>>>> master
     END IF
 
     IF( PRESENT( NNS_MaxD_Option ) )THEN
       NNS_MaxD = MIN( NNS_MaxD_Option, EOSTable_MaxD )
     ELSE
-<<<<<<< HEAD
-      NNS_MaxD = OPACITIES % TS % maxValues( iD_T )
-=======
       NNS_MaxD = EOSTable_MaxD 
->>>>>>> master
     END IF
 
     ! --- NuPair ---
@@ -538,11 +482,7 @@ CONTAINS
     IF( PRESENT( NuPair_MaxD_Option ) )THEN
       NuPair_MaxD = MIN( NuPair_MaxD_Option, EOSTable_MaxD )
     ELSE
-<<<<<<< HEAD
-      NuPair_MaxD = OPACITIES % TS % maxValues( iD_T )
-=======
       NuPair_MaxD = EOSTable_MaxD 
->>>>>>> master
     END IF
 
     ! --- Cutoff For All Opacities ---
