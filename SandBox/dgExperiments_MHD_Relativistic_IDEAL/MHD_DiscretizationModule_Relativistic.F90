@@ -948,7 +948,7 @@ CONTAINS
 
       ! --- Numerical flux ---
 
-      IF( UseDivergenceCleaning )THEN
+      IF( UseDivergenceCleaning .AND. UseFluxDecoupling )THEN
 
         AlphaMns((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_Ne, iCM_B2, iCM_B3 /)) &
           = MAX( Zero, MAXVAL( - EigVals_L(2:3) ), MAXVAL( - EigVals_R(2:3) ) )
@@ -960,6 +960,14 @@ CONTAINS
           = MAX( Zero, MAXVAL( - EigVals_L(1:4) ), MAXVAL( - EigVals_R(1:4) ) )
 
         AlphaPls((/ iCM_B1, iCM_Chi /)) &
+          = MAX( Zero, MAXVAL( + EigVals_L(1:4) ), MAXVAL( + EigVals_R(1:4) ) )
+
+      ELSE IF( UseDivergenceCleaning )THEN
+
+        AlphaMns(:) &
+          = MAX( Zero, MAXVAL( - EigVals_L(1:4) ), MAXVAL( - EigVals_R(1:4) ) )
+
+        AlphaPls(:) &
           = MAX( Zero, MAXVAL( + EigVals_L(1:4) ), MAXVAL( + EigVals_R(1:4) ) )
 
       ELSE
@@ -1737,7 +1745,7 @@ CONTAINS
 
       ! --- Numerical flux ---
 
-      IF( UseDivergenceCleaning )THEN
+      IF( UseDivergenceCleaning .AND. UseFluxDecoupling )THEN
 
         AlphaMns((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_Ne, iCM_B1, iCM_B3 /)) &
           = MAX( Zero, MAXVAL( - EigVals_L(2:3) ), MAXVAL( - EigVals_R(2:3) ) )
@@ -1749,6 +1757,14 @@ CONTAINS
           = MAX( Zero, MAXVAL( - EigVals_L(1:4) ), MAXVAL( - EigVals_R(1:4) ) )
 
         AlphaPls((/ iCM_B2, iCM_Chi /)) &
+          = MAX( Zero, MAXVAL( + EigVals_L(1:4) ), MAXVAL( + EigVals_R(1:4) ) )
+
+      ELSE IF( UseDivergenceCleaning )THEN
+
+        AlphaMns(:) &
+          = MAX( Zero, MAXVAL( - EigVals_L(1:4) ), MAXVAL( - EigVals_R(1:4) ) )
+
+        AlphaPls(:) &
           = MAX( Zero, MAXVAL( + EigVals_L(1:4) ), MAXVAL( + EigVals_R(1:4) ) )
 
       ELSE
@@ -2436,7 +2452,7 @@ CONTAINS
 
       ! --- Numerical flux ---
 
-      IF( UseDivergenceCleaning )THEN
+      IF( UseDivergenceCleaning .AND. UseFluxDecoupling )THEN
 
         AlphaMns((/ iCM_D, iCM_S1, iCM_S2, iCM_S3, iCM_E, iCM_Ne, iCM_B1, iCM_B2 /)) &
           = MAX( Zero, MAXVAL( - EigVals_L(2:3) ), MAXVAL( - EigVals_R(2:3) ) )
@@ -2448,6 +2464,14 @@ CONTAINS
           = MAX( Zero, MAXVAL( - EigVals_L(1:4) ), MAXVAL( - EigVals_R(1:4) ) )
 
         AlphaPls((/ iCM_B3, iCM_Chi /)) &
+          = MAX( Zero, MAXVAL( + EigVals_L(1:4) ), MAXVAL( + EigVals_R(1:4) ) )
+
+      ELSE IF( UseDivergenceCleaning )THEN
+
+        AlphaMns(:) &
+          = MAX( Zero, MAXVAL( - EigVals_L(1:4) ), MAXVAL( - EigVals_R(1:4) ) )
+
+        AlphaPls(:) &
           = MAX( Zero, MAXVAL( + EigVals_L(1:4) ), MAXVAL( + EigVals_R(1:4) ) )
 
       ELSE
