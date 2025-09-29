@@ -260,9 +260,9 @@ elif [[ $THORNADO_MACHINE == frontier_cce ]]; then
 
   module use /ccs/home/jaharris/modulefiles/frontier
 
-  module load cpe/24.11
+  module load cpe/25.03
   module load PrgEnv-cray cray-hdf5-parallel craype-accel-amd-gfx90a 
-  module load rocm/6.2.4 hipfort/6.2.4 
+  module load rocm/6.3.1 hipfort/6.3.1 
   module unload darshan-runtime
 
   export LD_LIBRARY_PATH=${CRAY_LD_LIBRARY_PATH}:${LD_LIBRARY_PATH}
