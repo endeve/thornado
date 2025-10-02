@@ -76,7 +76,7 @@ MODULE EquationOfStateModule_TABLE
   CHARACTER(256) :: &
     EquationOfStateTableName
   INTEGER :: &
-    iRho, iTemp, iYp, &
+    iD_T, iT_T, iYp_T, &
     iP_T, iS_T, iE_T, iMe_T, iMp_T, iMn_T, &
     iXp_T, iXn_T, iXa_T, iXh_T, iAh_T, iGm_T, &
     iEmp_T, iEmn_T, iSep_T, iSen_T
@@ -421,9 +421,9 @@ CONTAINS
 
     ! --- Thermodynamic State Indices ---
 
-    iRho  = EOS % TS % Indices % iRho
-    iTemp = EOS % TS % Indices % iT
-    iYp   = EOS % TS % Indices % iYe
+    iD_T  = EOS % TS % Indices % iD
+    iT_T  = EOS % TS % Indices % iT
+    iYp_T = EOS % TS % Indices % iYe
 
     ! --- Units ---
 
@@ -450,20 +450,20 @@ CONTAINS
 
     ! --- Thermodynamic States ---
 
-    ALLOCATE( D_T(EOS % TS % nPoints(iRho)) )
-    D_T = EOS % TS % States(iRho) % Values
+    ALLOCATE( D_T(EOS % TS % nPoints(iD_T)) )
+    D_T = EOS % TS % States(iD_T) % Values
 
     Min_D = MINVAL( D_T ) * Gram / Centimeter**3
     Max_D = MAXVAL( D_T ) * Gram / Centimeter**3
 
-    ALLOCATE( T_T(EOS % TS % nPoints(iTemp)) )
-    T_T = EOS % TS % States(iTemp) % Values
+    ALLOCATE( T_T(EOS % TS % nPoints(iT_T)) )
+    T_T = EOS % TS % States(iT_T) % Values
 
     Min_T = MINVAL( T_T ) * Kelvin
     Max_T = MAXVAL( T_T ) * Kelvin
 
-    ALLOCATE( Yp_T(EOS % TS % nPoints(iYp)) )
-    Yp_T = EOS % TS % States(iYp) % Values
+    ALLOCATE( Yp_T(EOS % TS % nPoints(iYp_T)) )
+    Yp_T = EOS % TS % States(iYp_T) % Values
 
     Min_Y = MINVAL( Yp_T )
     Max_Y = MAXVAL( Yp_T )
@@ -605,14 +605,14 @@ CONTAINS
     ! Build full EOS without muons to determine the bounds of the EOS.
     ! Muons should not be so important to cause P, S, and E to go above the 
     ! bounds already calculated assuming Ym = 0.
-    DO iRho=1,EOS % DV % nPoints(1)
-      DO iTemp=1,EOS % DV % nPoints(2)
+    DO iD=1,EOS % DV % nPoints(1)
+      DO iT=1,EOS % DV % nPoints(2)
         DO iYp=1,EOS % DV % nPoints(3)
         
           ! Now add electron component
           ! Initialize temperature, DensitY, Ye
-          ElectronPhotonState % t   = T_T (iTemp)
-          ElectronPhotonState % rho = D_T (iRho)
+          ElectronPhotonState % t   = T_T (iT)
+          ElectronPhotonState % rho = D_T (iD)
           ElectronPhotonState % ye  = Yp_T(iYp)
 
           ! calculate electron quantities
@@ -622,9 +622,9 @@ CONTAINS
           Pele = ElectronPhotonState % p
           Sele = ElectronPhotonState % s
 
-          Es(iRho,iTemp,iYp) = 10.0d0**( E_T(iRho,iTemp,iYp) ) + Eele - OS_E
-          Ps(iRho,iTemp,iYp) = ( P_T(iRho,iTemp,iYp) ) + Pele - OS_P
-          Ss(iRho,iTemp,iYp) = 10.0d0**( S_T(iRho,iTemp,iYp) ) + Sele - OS_S
+          Es(iD,iT,iYp) = 10.0d0**( E_T(iD,iT,iYp) ) + Eele - OS_E
+          Ps(iD,iT,iYp) = ( P_T(iD,iT,iYp) ) + Pele - OS_P
+          Ss(iD,iT,iYp) = 10.0d0**( S_T(iD,iT,iYp) ) + Sele - OS_S
 
         ENDDO
       ENDDO
@@ -676,7 +676,8 @@ CONTAINS
     !$OMP   OS_P, OS_S, OS_E, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, &
     !$OMP   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, &
     !$OMP   Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
-    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
+    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD, &
+    !$OMP   HelmTable, MuonTable)
 #endif
 
     DEALLOCATE( D_T, T_T, Yp_T )
@@ -708,7 +709,7 @@ CONTAINS
   END SUBROUTINE FinalizeEquationOfState_TABLE
 
 
-  SUBROUTINE ApplyChemicalPotentialShift_TABLE( Mp_T, Mn_T, OS_Mp, OS_Mn )
+  SUBROUTINE ApplyChemicalPotentialShift_TABLE( Mp, Mn, OS_Mp_loc, OS_Mn_loc )
 
     !For SFHo tables from
     !https://code.ornl.gov/astro/weaklib-tables/-/tree/master/SFHo/LowRes
@@ -723,8 +724,8 @@ CONTAINS
     !For this renomalisation to the original SFHo tables,
     !we need to recalculate the offsets first
 
-    REAL(dp), INTENT(inout), DIMENSION(:,:,:) :: Mp_T, Mn_T
-    REAL(dp), INTENT(inout) :: OS_Mp, OS_Mn
+    REAL(dp), INTENT(inout), DIMENSION(:,:,:) :: Mp, Mn
+    REAL(dp), INTENT(inout) :: OS_Mp_loc, OS_Mn_loc
 
     REAL(DP), PARAMETER :: neutron_mass = 939.56542052d0
     REAL(DP), PARAMETER :: proton_mass = 938.2720813d0
@@ -732,24 +733,24 @@ CONTAINS
     REAL(DP) :: min_M, OS_M_new
 
     ! Apply the shift for proton chemical potential
-    IF ( OS_Mp > 0.0d0 ) THEN
-      min_M = -0.5d0 * OS_Mp
+    IF ( OS_Mp_loc > 0.0d0 ) THEN
+      min_M = -0.5d0 * OS_Mp_loc
     ELSE
-      min_M = MINVAL( 10.0d0**Mp_T )
+      min_M = MINVAL( 10.0d0**Mp )
     ENDIF
     OS_M_new = -2.0d0 * MIN( 0.0d0, min_M + proton_mass + dmnp )
-    Mp_T     = LOG10( 10.0d0**Mp_T - OS_Mp + proton_mass + dmnp + OS_M_new)
-    OS_Mp    = OS_M_new
+    Mp     = LOG10( 10.0d0**Mp - OS_Mp_loc + proton_mass + dmnp + OS_M_new)
+    OS_Mp_loc    = OS_M_new
 
     ! Apply the shift for neutron chemical potential
-    IF ( OS_Mn > 0.0d0 ) THEN
-      min_M = -0.5d0 * OS_Mn
+    IF ( OS_Mn_loc > 0.0d0 ) THEN
+      min_M = -0.5d0 * OS_Mn_loc
     ELSE
-      min_M = MINVAL( 10.0d0**Mn_T )
+      min_M = MINVAL( 10.0d0**Mn )
     ENDIF
     OS_M_new = -2.0d0 * MIN( 0.0d0, min_M + proton_mass + dmnp )
-    Mn_T     = LOG10( 10.0d0**Mn_T - OS_Mn + proton_mass + dmnp + OS_M_new)
-    OS_Mn    = OS_M_new
+    Mn     = LOG10( 10.0d0**Mn - OS_Mn_loc + proton_mass + dmnp + OS_M_new)
+    OS_Mn_loc    = OS_M_new
 
   END SUBROUTINE ApplyChemicalPotentialShift_TABLE
 
@@ -1277,8 +1278,8 @@ CONTAINS
 #else
   
   CALL ComputeDependentVariableTotal_TABLE_Scalar &
-  ( D, T, Ye, Ym, P, P_T, OS_P, &
-  UnitP, 1, 0, 0 )
+    ( D, T, Ye, Ym, P, P_T, OS_P, &
+    UnitP, 1, 0, 0 )
 
 #endif
 #endif
@@ -2026,7 +2027,7 @@ CONTAINS
       
 #else
 
-  CALL ComputeDependentVariableTotal_TABLE_Vector &
+      CALL ComputeDependentVariableTotal_TABLE_Vector &
           ( D, T, Ye, Ym, E, E_T, OS_E, &
           UnitE, 0, 1, 0 )
 
@@ -4392,7 +4393,9 @@ CONTAINS
 
 #else
 
-    V = Zero
+    P = Zero
+    E = Zero
+    S = Zero
 
 #endif
 
@@ -4523,7 +4526,9 @@ CONTAINS
     !$OMP PARALLEL DO
 #endif
     DO iP = 1, nP
-      V(iP) = Zero
+      P(iP) = Zero
+      E(iP) = Zero
+      S(iP) = Zero
     END DO
 
 #endif
