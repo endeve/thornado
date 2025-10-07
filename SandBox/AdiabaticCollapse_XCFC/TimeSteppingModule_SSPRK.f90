@@ -306,11 +306,11 @@ CONTAINS
           = dM_OffGrid_Euler &
               + dt * w_SSPRK(iS) &
                   * (   OffGridFlux_Euler_X1_Outer &
-                      - OffGridFlux_Euler_X1_Inner &
+                      + OffGridFlux_Euler_X1_Inner &
                       + OffGridFlux_Euler_X2_Outer &
-                      - OffGridFlux_Euler_X2_Inner &
+                      + OffGridFlux_Euler_X2_Inner &
                       + OffGridFlux_Euler_X3_Outer &
-                      - OffGridFlux_Euler_X3_Inner )
+                      + OffGridFlux_Euler_X3_Inner )
 
       END IF
 
