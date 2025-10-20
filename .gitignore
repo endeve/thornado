@@ -26,6 +26,7 @@
 *.acc.s
 *.i
 pgipar*
+*.modmic
 
 # AMReX
 *main*ex

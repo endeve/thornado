@@ -2395,15 +2395,15 @@ CONTAINS
       IF( ABS( dz ) / MAX( ABS( zc ), SqrtTiny ) .LE. dzMin ) &
         CONVERGED = .TRUE.
 
-     IF( ITERATION .GT. MaxIterations_ComputePrimitive_Euler - 2 )THEN
+     !IF( ITERATION .GT. MaxIterations_ComputePrimitive_Euler - 2 )THEN
 
-        WRITE(*,*) 'Iter       = ', ITERATION
-        WRITE(*,*) 'za, zb     = ', za, zb
-        WRITE(*,*) 'fa, fb     = ', fa, fb
-        WRITE(*,*) '|dz|/|zc|  = ', ABS( dz ) / MAX( ABS( zc ), SqrtTiny )
-        WRITE(*,*)
+     !   WRITE(*,*) 'Iter       = ', ITERATION
+     !   WRITE(*,*) 'za, zb     = ', za, zb
+     !   WRITE(*,*) 'fa, fb     = ', fa, fb
+     !   WRITE(*,*) '|dz|/|zc|  = ', ABS( dz ) / MAX( ABS( zc ), SqrtTiny )
+     !   WRITE(*,*)
 
-      END IF
+     ! END IF
 
     END DO
 

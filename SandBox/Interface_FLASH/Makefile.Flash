@@ -24,6 +24,7 @@ include $(THORNADO_DIR)/Build/Makefile_Path
 include $(THORNADO_DIR)/Build/Makefile_Thornado_Dependencies
 
 ## DEFINES   += -DTHORNADO_DEBUG
+#DEFINES += -DTHORNADO_EULER_NOGPU
 
 # BUILDFLAG can be passed to the Makefile to choose specific
 # compilation flags (one of OPT,TEST,DEBUG).
@@ -56,8 +57,6 @@ endif
 ifeq ($(MICROPHYSICS),WEAKLIB)
   FFLAGS += -I../../../../weaklib/include
 endif
-
-FFLAGS += $(VERSION_FLAGS)
 
 # command for generating a library
 MKLIB = ar -rcs
@@ -175,7 +174,7 @@ $(LIBNAME): $(OBJS)
 
 .PHONY: clean
 clean:
-	rm -f $(LIBNAME) $(LIBDIR)/$(LIBNAME) *.mod $(INCDIR)/*.mod *.o *.mod *.i *.s *.lst *.a
+	rm -f $(LIBNAME) $(LIBDIR)/$(LIBNAME) *.mod $(INCDIR)/*.mod *.o *.mod *.i *.s *.lst *.a *.modmic
 
 
 ifeq ($(TWOMOMENT_ORDER),ORDER_1)

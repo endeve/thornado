@@ -1115,7 +1115,7 @@ CONTAINS
     !$OMP             Y_N0, Y_N1, Y_N2, Y_N3, Y_N4, Y_N5, Y_N6, &
     !$OMP             Y_M0, Y_M1, Y_M2, Y_M3, Y_M4, Y_M5, Y_M6, &
     !$OMP             a1, b1, c1, a2, b2, c2, a3, b3, c3, aY, bY, cY, &
-    !$OMP             dU_X1, dU_X2, dU_X3, dY_X1, dY_X1, dY_X3, &
+    !$OMP             dU_X1, dU_X2, dU_X3, dY_X1, dY_X2, dY_X3, &
     !$OMP             SlopeDifference, LimitedCell, &
     !$OMP             G_X, G_K, R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
@@ -1125,7 +1125,7 @@ CONTAINS
     !$ACC             Y_N0, Y_N1, Y_N2, Y_N3, Y_N4, Y_N5, Y_N6, &
     !$ACC             Y_M0, Y_M1, Y_M2, Y_M3, Y_M4, Y_M5, Y_M6, &
     !$ACC             a1, b1, c1, a2, b2, c2, a3, b3, c3, aY, bY, cY, &
-    !$ACC             dU_X1, dU_X2, dU_X3, dY_X1, dY_X1, dY_X3, &
+    !$ACC             dU_X1, dU_X2, dU_X3, dY_X1, dY_X2, dY_X3, &
     !$ACC             SlopeDifference, LimitedCell, &
     !$ACC             G_X, G_K, R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
 #endif
@@ -1818,7 +1818,7 @@ CONTAINS
     !$OMP               Y_N0, Y_N1, Y_N2, Y_N3, Y_N4, Y_N5, Y_N6, &
     !$OMP               Y_M0, Y_M1, Y_M2, Y_M3, Y_M4, Y_M5, Y_M6, &
     !$OMP               a1, b1, c1, a2, b2, c2, a3, b3, c3, aY, bY, cY, &
-    !$OMP               dU_X1, dU_X2, dU_X3, dY_X1, dY_X1, dY_X3, &
+    !$OMP               dU_X1, dU_X2, dU_X3, dY_X1, dY_X2, dY_X3, &
     !$OMP               SlopeDifference, LimitedCell, &
     !$OMP               G_X, G_K, R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
@@ -1829,7 +1829,7 @@ CONTAINS
     !$ACC               Y_N0, Y_N1, Y_N2, Y_N3, Y_N4, Y_N5, Y_N6, &
     !$ACC               Y_M0, Y_M1, Y_M2, Y_M3, Y_M4, Y_M5, Y_M6, &
     !$ACC               a1, b1, c1, a2, b2, c2, a3, b3, c3, aY, bY, cY, &
-    !$ACC               dU_X1, dU_X2, dU_X3, dY_X1, dY_X1, dY_X3, &
+    !$ACC               dU_X1, dU_X2, dU_X3, dY_X1, dY_X2, dY_X3, &
     !$ACC               SlopeDifference, LimitedCell, &
     !$ACC               G_X, G_K, R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
 #endif
