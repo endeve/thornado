@@ -45,7 +45,18 @@ MODULE MHD_BoundaryConditionsModule
     iPM_B3, &
     iPM_Chi, &
     nAM, &
-    iAM_P
+    iAM_P, &
+    nDM, &
+    iDM_IC_D, &
+    iDM_IC_S1, &
+    iDM_IC_S2, &
+    iDM_IC_S3, &
+    iDM_IC_E, &
+    iDM_IC_Ne, &
+    iDM_IC_B1, &
+    iDM_IC_B2, &
+    iDM_IC_B3, &
+    iDM_IC_Chi
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX_FromScaleFactors
   USE GeometryFieldsModule, ONLY: &
@@ -134,11 +145,13 @@ CONTAINS
 
 
   SUBROUTINE ApplyBoundaryConditions_MHD &
-    ( t, iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC_Option )
+    ( t, iX_B0, iX_E0, iX_B1, iX_E1, U, D, iApplyBC_Option )
 
     REAL(DP), INTENT(in)           :: t
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)           :: &
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout)        :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     INTEGER,  INTENT(in), OPTIONAL :: &
@@ -159,11 +172,11 @@ CONTAINS
 
     CALL TimersStart_MHD( Timer_MHD_BC_ApplyBC )
 
-    CALL ApplyBC_MHD_X1( t, iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC(1) )
+    CALL ApplyBC_MHD_X1( t, iX_B0, iX_E0, iX_B1, iX_E1, U, D, iApplyBC(1) )
 
-    CALL ApplyBC_MHD_X2( t, iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC(2) )
+    CALL ApplyBC_MHD_X2( t, iX_B0, iX_E0, iX_B1, iX_E1, U, D, iApplyBC(2) )
 
-    CALL ApplyBC_MHD_X3( t, iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC(3) )
+    CALL ApplyBC_MHD_X3( t, iX_B0, iX_E0, iX_B1, iX_E1, U, D, iApplyBC(3) )
 
     CALL TimersStop_MHD( Timer_MHD_BC_ApplyBC )
 
@@ -176,12 +189,14 @@ CONTAINS
   END SUBROUTINE ApplyBoundaryConditions_MHD
 
 
-  SUBROUTINE ApplyBC_MHD_X1( t, iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
+  SUBROUTINE ApplyBC_MHD_X1( t, iX_B0, iX_E0, iX_B1, iX_E1, U, D, iApplyBC )
 
     REAL(DP), INTENT(in)    :: t
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
       iApplyBC
+    REAL(DP), INTENT(in)    :: &
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
@@ -926,513 +941,6 @@ CONTAINS
 
       IF( t .NE. Zero )THEN
 
-        IF( ApplyOuterBC_MHD( iApplyBC ) .OR. ApplyInnerBC_MHD( iApplyBC ) )THEN
-
-          FileName = "/home/jbuffal/thornado_MHD_3D/Workflow/MHD/ShearingDisk/GR_LR_diffrot.h5"
-
-          ! --- Populate arrays ---
-
-          CALL H5OPEN_F( HDFERR )
-
-          CALL H5FOPEN_F( TRIM( FileName ), H5F_ACC_RDONLY_F, FILE_ID, HDFERR )
-
-          nX = 10000
-
-          ALLOCATE( PressureArr(nX), DensityArr(nX), V3Arr(nX), AlphaArr(nX), &
-                    PsiArr(nX), X1Arr(nX) )
-
-          CALL ReadDataset1DHDF( PsiArr,      '/psi',   FILE_ID )
-          CALL ReadDataset1DHDF( AlphaArr,    '/alpha', FILE_ID )
-          CALL ReadDataset1DHDF( X1Arr,       '/r',     FILE_ID )
-          CALL ReadDataset1DHDF( PressureArr, '/pres',  FILE_ID )
-          CALL ReadDataset1DHDF( DensityArr,  '/rho',   FILE_ID )
-          CALL ReadDataset1DHDF( V3Arr,       '/V3',    FILE_ID )
-
-          X1Arr       = X1Arr       * Centimeter
-          DensityArr  = DensityArr  * ( Gram / Centimeter**3 )
-          PressureArr = PressureArr * ( Erg  / Centimeter**3 )
-          V3Arr       = V3Arr       * ( One  / Second )
-
-          ! --- Map to inner boundary. ---
-
-          IF( ApplyInnerBC_MHD( iApplyBC ) )THEN
-
-            DO iX3 = iX_B0(3), iX_E0(3)
-            DO iX2 = iX_B0(2), iX_E0(2)
-
-            DO iX1 = 1, swX(1)
-
-              DO iNX = 1, nDOFX
-
-                iNX1 = NodeNumberTableX(1,iNX)
-                iNX2 = NodeNumberTableX(2,iNX)
-                iNX3 = NodeNumberTableX(3,iNX)
-
-                X1 = NodeCoordinate( MeshX(1), iX_B0(1)-iX1, iNX1 )
-                X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
-                X3 = NodeCoordinate( MeshX(3), iX3, iNX3 )
-
-                ! --- Geometry Fields ---
-
-                G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_Alpha) &
-                  = Interpolate1D( X1Arr, AlphaArr, SIZE( X1Arr ), X1 )
-
-                G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_Psi) &
-                  = Interpolate1D( X1Arr, PsiArr, SIZE( X1Arr ), X1 )
-
-                G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_Beta_1) = Zero
-                G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_Beta_2) = Zero
-                G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_Beta_3) = Zero
-
-                G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_h_1) &
-                  = G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_Psi)**2
-                G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_h_2) &
-                  = G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_Psi)**2
-                G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_h_3) &
-                  = G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_Psi)**2 * X1
-
-              END DO
-
-              CALL ComputeGeometryX_FromScaleFactors( G(:,iX_B0(1)-iX1,iX2,iX3,:) )
-
-              DO iNX = 1, nDOFX
-
-                iNX1 = NodeNumberTableX(1,iNX)
-                iNX2 = NodeNumberTableX(2,iNX)
-                iNX3 = NodeNumberTableX(3,iNX)
-
-                X1 = NodeCoordinate( MeshX(1), iX_B0(1)-iX1, iNX1 )
-                X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
-                X3 = NodeCoordinate( MeshX(3), iX3, iNX3 )
-
-                ! --- Fluid Fields ---
-
-                P(iNX,iX_B0(1)-iX1,iX2,iX3,iPM_D) &
-                  = Interpolate1D( X1Arr, DensityArr, SIZE( X1Arr ), X1 )
-
-                V1 = Zero
-                V2 = Zero
-                V3 = Interpolate1D( X1Arr, V3Arr, SIZE( X1Arr ), X1 )
-
-                VSq = G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_Gm_dd_11) * V1**2 &
-                      + G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_Gm_dd_22) * V2**2 &
-                      + G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_Gm_dd_33) * V3**2
-
-                W = One / SQRT( One - VSq )
-
-                P(iNX,iX_B0(1)-iX1,iX2,iX3,iPM_V1) = V1
-                P(iNX,iX_B0(1)-iX1,iX2,iX3,iPM_V2) = V2
-                P(iNX,iX_B0(1)-iX1,iX2,iX3,iPM_V3) = V3
-
-                P(iNX,iX_B0(1)-iX1,iX2,iX3,iPM_E) &
-                  = Interpolate1D( X1Arr, PressureArr, SIZE( X1Arr ), X1 ) &
-                    / ( Gamma_IDEAL - One )
-
-                P(iNX,iX_B0(1)-iX1,iX2,iX3,iPM_Ne) = Zero
-
-                CB1 = Zero
-                CB2 = 2.0 * 1.0d13 * Gauss
-                CB3 = Zero
-
-                VdotB = G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_Gm_dd_11) * V1 * CB1 &
-                        + G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_Gm_dd_22) * V2 * CB2 &
-                        + G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_Gm_dd_33) * V3 * CB3
-
-                P(iNX,iX_B0(1)-iX1,iX2,iX3,iPM_B1) = W * VdotB * V1 + CB1 / W
-                P(iNX,iX_B0(1)-iX1,iX2,iX3,iPM_B2) = W * VdotB * V2 + CB2 / W
-                P(iNX,iX_B0(1)-iX1,iX2,iX3,iPM_B3) = W * VdotB * V3 + CB3 / W
-
-                P(iNX,iX_B0(1)-iX1,iX2,iX3,iPM_Chi) = Zero
-
-              END DO
-
-              CALL ComputePressureFromPrimitive_IDEAL &
-                     ( P(:,iX_B0(1)-iX1,iX2,iX3,iPM_D ), P(:,iX_B0(1)-iX1,iX2,iX3,iPM_E ), &
-                       P(:,iX_B0(1)-iX1,iX2,iX3,iPM_Ne), A(:,iX_B0(1)-iX1,iX2,iX3,iAM_P) )
-
-              CALL ComputeConserved_MHD_Relativistic &
-                     ( P(:,iX_B0(1)-iX1,iX2,iX3,iPM_D ), P(:,iX_B0(1)-iX1,iX2,iX3,iPM_V1),  &
-                       P(:,iX_B0(1)-iX1,iX2,iX3,iPM_V2), P(:,iX_B0(1)-iX1,iX2,iX3,iPM_V3),  &
-                       P(:,iX_B0(1)-iX1,iX2,iX3,iPM_E ), P(:,iX_B0(1)-iX1,iX2,iX3,iPM_Ne),  &
-                       P(:,iX_B0(1)-iX1,iX2,iX3,iPM_B1), P(:,iX_B0(1)-iX1,iX2,iX3,iPM_B2),  &
-                       P(:,iX_B0(1)-iX1,iX2,iX3,iPM_B3), P(:,iX_B0(1)-iX1,iX2,iX3,iPM_Chi), &
-                       CD_I (:,iX_B0(1)-iX1,iX2,iX3),    CS1_I(:,iX_B0(1)-iX1,iX2,iX3),     &
-                       CS2_I(:,iX_B0(1)-iX1,iX2,iX3),    CS3_I(:,iX_B0(1)-iX1,iX2,iX3),     &
-                       CE_I (:,iX_B0(1)-iX1,iX2,iX3),    CNe_I(:,iX_B0(1)-iX1,iX2,iX3),     &
-                       CB1_I(:,iX_B0(1)-iX1,iX2,iX3),    CB2_I(:,iX_B0(1)-iX1,iX2,iX3),     &
-                       CB3_I(:,iX_B0(1)-iX1,iX2,iX3),    CChi_I(:,iX_B0(1)-iX1,iX2,iX3),    &
-                       G(:,iX_B0(1)-iX1,iX2,iX3,iGF_Gm_dd_11), &
-                       G(:,iX_B0(1)-iX1,iX2,iX3,iGF_Gm_dd_22), &
-                       G(:,iX_B0(1)-iX1,iX2,iX3,iGF_Gm_dd_33), &
-                       G(:,iX_B0(1)-iX1,iX2,iX3,iGF_Alpha   ), &
-                       G(:,iX_B0(1)-iX1,iX2,iX3,iGF_Beta_1  ), &
-                       G(:,iX_B0(1)-iX1,iX2,iX3,iGF_Beta_2  ), &
-                       G(:,iX_B0(1)-iX1,iX2,iX3,iGF_Beta_3  ), &
-                       A(:,iX_B0(1)-iX1,iX2,iX3,iAM_P), &
-                       .FALSE. )
-
-            END DO
-
-            DO iX1 = 1, swX(1)
-
-              DO iNX = 1, nDOFX
-
-                iNX1 = NodeNumberTableX(1,iNX)
-                iNX2 = NodeNumberTableX(2,iNX)
-                iNX3 = NodeNumberTableX(3,iNX)
-
-                X1 = NodeCoordinate( MeshX(1), iX_E0(1)-(iX1-1), iNX1 )
-                X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
-                X3 = NodeCoordinate( MeshX(3), iX3, iNX3 )
-
-                ! --- Geometry Fields ---
-
-                G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Alpha) &
-                  = Interpolate1D( X1Arr, AlphaArr, SIZE( X1Arr ), X1 )
-
-                G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Psi) &
-                  = Interpolate1D( X1Arr, PsiArr, SIZE( X1Arr ), X1 )
-
-                G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Beta_1) = Zero
-                G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Beta_2) = Zero
-                G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Beta_3) = Zero
-
-                G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_h_1) &
-                  = G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Psi)**2
-                G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_h_2) &
-                  = G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Psi)**2
-                G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_h_3) &
-                  = G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Psi)**2 * X1
-
-              END DO
-
-              CALL ComputeGeometryX_FromScaleFactors( G(:,iX_E0(1)-(iX1-1),iX2,iX3,:) )
-
-              DO iNX = 1, nDOFX
-
-                iNX1 = NodeNumberTableX(1,iNX)
-                iNX2 = NodeNumberTableX(2,iNX)
-                iNX3 = NodeNumberTableX(3,iNX)
-
-                X1 = NodeCoordinate( MeshX(1), iX_E0(1)-(iX1-1), iNX1 )
-                X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
-                X3 = NodeCoordinate( MeshX(3), iX3, iNX3 )
-
-                ! --- Fluid Fields ---
-
-                P(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iPM_D) &
-                  = Interpolate1D( X1Arr, DensityArr, SIZE( X1Arr ), X1 )
-
-                V1 = Zero
-                V2 = Zero
-                V3 = Interpolate1D( X1Arr, V3Arr, SIZE( X1Arr ), X1 )
-
-                VSq = G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Gm_dd_11) * V1**2 &
-                      + G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Gm_dd_22) * V2**2 &
-                      + G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Gm_dd_33) * V3**2
-
-                W = One / SQRT( One - VSq )
-
-                P(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iPM_V1) = V1
-                P(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iPM_V2) = V2
-                P(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iPM_V3) = V3
-
-                P(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iPM_E) &
-                  = Interpolate1D( X1Arr, PressureArr, SIZE( X1Arr ), X1 ) &
-                    / ( Gamma_IDEAL - One )
-
-                P(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iPM_Ne) = Zero
-
-                CB1 = Zero
-                CB2 = 2.0 * 1.0d13 * Gauss
-                CB3 = Zero
-
-                VdotB = G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Gm_dd_11) * V1 * CB1 &
-                        + G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Gm_dd_22) * V2 * CB2 &
-                        + G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Gm_dd_33) * V3 * CB3
-
-                P(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iPM_B1) = W * VdotB * V1 + CB1 / W
-                P(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iPM_B2) = W * VdotB * V2 + CB2 / W
-                P(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iPM_B3) = W * VdotB * V3 + CB3 / W
-
-                P(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iPM_Chi) = Zero
-
-              END DO
-
-              CALL ComputePressureFromPrimitive_IDEAL &
-                     ( P(:,iX_E0(1)-(iX1-1),iX2,iX3,iPM_D ), P(:,iX_E0(1)-(iX1-1),iX2,iX3,iPM_E ), &
-                       P(:,iX_E0(1)-(iX1-1),iX2,iX3,iPM_Ne), A(:,iX_E0(1)-(iX1-1),iX2,iX3,iAM_P) )
-
-              CALL ComputeConserved_MHD_Relativistic &
-                     ( P(:,iX_E0(1)-(iX1-1),iX2,iX3,iPM_D ), P(:,iX_E0(1)-(iX1-1),iX2,iX3,iPM_V1),  &
-                       P(:,iX_E0(1)-(iX1-1),iX2,iX3,iPM_V2), P(:,iX_E0(1)-(iX1-1),iX2,iX3,iPM_V3),  &
-                       P(:,iX_E0(1)-(iX1-1),iX2,iX3,iPM_E ), P(:,iX_E0(1)-(iX1-1),iX2,iX3,iPM_Ne),  &
-                       P(:,iX_E0(1)-(iX1-1),iX2,iX3,iPM_B1), P(:,iX_E0(1)-(iX1-1),iX2,iX3,iPM_B2),  &
-                       P(:,iX_E0(1)-(iX1-1),iX2,iX3,iPM_B3), P(:,iX_E0(1)-(iX1-1),iX2,iX3,iPM_Chi), &
-                       CD_I (:,iX_E0(1)-(iX1-1),iX2,iX3),    CS1_I(:,iX_E0(1)-(iX1-1),iX2,iX3),     &
-                       CS2_I(:,iX_E0(1)-(iX1-1),iX2,iX3),    CS3_I(:,iX_E0(1)-(iX1-1),iX2,iX3),     &
-                       CE_I (:,iX_E0(1)-(iX1-1),iX2,iX3),    CNe_I(:,iX_E0(1)-(iX1-1),iX2,iX3),     &
-                       CB1_I(:,iX_E0(1)-(iX1-1),iX2,iX3),    CB2_I(:,iX_E0(1)-(iX1-1),iX2,iX3),     &
-                       CB3_I(:,iX_E0(1)-(iX1-1),iX2,iX3),    CChi_I(:,iX_E0(1)-(iX1-1),iX2,iX3),    &
-                       G(:,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Gm_dd_11), &
-                       G(:,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Gm_dd_22), &
-                       G(:,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Gm_dd_33), &
-                       G(:,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Alpha   ), &
-                       G(:,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Beta_1  ), &
-                       G(:,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Beta_2  ), &
-                       G(:,iX_E0(1)-(iX1-1),iX2,iX3,iGF_Beta_3  ), &
-                       A(:,iX_E0(1)-(iX1-1),iX2,iX3,iAM_P), &
-                       .FALSE. )
-
-            END DO
-
-            END DO
-            END DO
-
-          END IF
-
-          IF ( ApplyOuterBC_MHD( iApplyBC ) )THEN
-
-          ! --- Map to outer boundary. ---
-
-            DO iX3 = iX_B0(3), iX_E0(3)
-            DO iX2 = iX_B0(2), iX_E0(2)
-
-            DO iX1 = 1, swX(1)
-
-              DO iNX = 1, nDOFX
-
-                iNX1 = NodeNumberTableX(1,iNX)
-                iNX2 = NodeNumberTableX(2,iNX)
-                iNX3 = NodeNumberTableX(3,iNX)
-
-                X1 = NodeCoordinate( MeshX(1), iX_E0(1)+iX1, iNX1 )
-                X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
-                X3 = NodeCoordinate( MeshX(3), iX3, iNX3 )
-
-                ! --- Geometry Fields ---
-
-                G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Alpha) &
-                  = Interpolate1D( X1Arr, AlphaArr, SIZE( X1Arr ), X1 )
-
-                G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Psi) &
-                  = Interpolate1D( X1Arr, PsiArr, SIZE( X1Arr ), X1 )
-
-                G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Beta_1) = Zero
-                G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Beta_2) = Zero
-                G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Beta_3) = Zero
-
-                G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_h_1) &
-                  = G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Psi)**2
-                G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_h_2) &
-                  = G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Psi)**2
-                G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_h_3) &
-                  = G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Psi)**2 * X1
-
-              END DO
-
-              CALL ComputeGeometryX_FromScaleFactors( G(:,iX_E0(1)+iX1,iX2,iX3,:) )
-
-              DO iNX = 1, nDOFX
-
-                iNX1 = NodeNumberTableX(1,iNX)
-                iNX2 = NodeNumberTableX(2,iNX)
-                iNX3 = NodeNumberTableX(3,iNX)
-
-                X1 = NodeCoordinate( MeshX(1), iX_E0(1)+iX1, iNX1 )
-                X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
-                X3 = NodeCoordinate( MeshX(3), iX3, iNX3 )
-
-                ! --- Fluid Fields ---
-
-                P(iNX,iX_E0(1)+iX1,iX2,iX3,iPM_D) &
-                  = Interpolate1D( X1Arr, DensityArr, SIZE( X1Arr ), X1 )
-
-                V1 = Zero
-                V2 = Zero
-                V3 = Interpolate1D( X1Arr, V3Arr, SIZE( X1Arr ), X1 )
-
-                VSq = G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Gm_dd_11) * V1**2 &
-                      + G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Gm_dd_22) * V2**2 &
-                      + G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Gm_dd_33) * V3**2
-
-                W = One / SQRT( One - VSq )
-
-                P(iNX,iX_E0(1)+iX1,iX2,iX3,iPM_V1) = V1
-                P(iNX,iX_E0(1)+iX1,iX2,iX3,iPM_V2) = V2
-                P(iNX,iX_E0(1)+iX1,iX2,iX3,iPM_V3) = V3
-
-                P(iNX,iX_E0(1)+iX1,iX2,iX3,iPM_E) &
-                  = Interpolate1D( X1Arr, PressureArr, SIZE( X1Arr ), X1 ) &
-                    / ( Gamma_IDEAL - One )
-
-                P(iNX,iX_E0(1)+iX1,iX2,iX3,iPM_Ne) = Zero
-
-                CB1 = Zero
-                CB2 = 2.0 * 1.0d13 * Gauss
-                CB3 = Zero
-
-                VdotB = G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Gm_dd_11) * V1 * CB1 &
-                        + G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Gm_dd_22) * V2 * CB2 &
-                        + G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Gm_dd_33) * V3 * CB3
-
-                P(iNX,iX_E0(1)+iX1,iX2,iX3,iPM_B1) = W * VdotB * V1 + CB1 / W
-                P(iNX,iX_E0(1)+iX1,iX2,iX3,iPM_B2) = W * VdotB * V2 + CB2 / W
-                P(iNX,iX_E0(1)+iX1,iX2,iX3,iPM_B3) = W * VdotB * V3 + CB3 / W
-
-                P(iNX,iX_E0(1)+iX1,iX2,iX3,iPM_Chi) = Zero
-
-              END DO
-
-              CALL ComputePressureFromPrimitive_IDEAL &
-                     ( P(:,iX_E0(1)+iX1,iX2,iX3,iPM_D ), P(:,iX_E0(1)+iX1,iX2,iX3,iPM_E ), &
-                       P(:,iX_E0(1)+iX1,iX2,iX3,iPM_Ne), A(:,iX_E0(1)+iX1,iX2,iX3,iAM_P) )
-
-              CALL ComputeConserved_MHD_Relativistic &
-                     ( P(:,iX_E0(1)+iX1,iX2,iX3,iPM_D ), P(:,iX_E0(1)+iX1,iX2,iX3,iPM_V1),  &
-                       P(:,iX_E0(1)+iX1,iX2,iX3,iPM_V2), P(:,iX_E0(1)+iX1,iX2,iX3,iPM_V3),  &
-                       P(:,iX_E0(1)+iX1,iX2,iX3,iPM_E ), P(:,iX_E0(1)+iX1,iX2,iX3,iPM_Ne),  &
-                       P(:,iX_E0(1)+iX1,iX2,iX3,iPM_B1), P(:,iX_E0(1)+iX1,iX2,iX3,iPM_B2),  &
-                       P(:,iX_E0(1)+iX1,iX2,iX3,iPM_B3), P(:,iX_E0(1)+iX1,iX2,iX3,iPM_Chi), &
-                       CD_I (:,iX_E0(1)+iX1,iX2,iX3),    CS1_I(:,iX_E0(1)+iX1,iX2,iX3),     &
-                       CS2_I(:,iX_E0(1)+iX1,iX2,iX3),    CS3_I(:,iX_E0(1)+iX1,iX2,iX3),     &
-                       CE_I (:,iX_E0(1)+iX1,iX2,iX3),    CNe_I(:,iX_E0(1)+iX1,iX2,iX3),     &
-                       CB1_I(:,iX_E0(1)+iX1,iX2,iX3),    CB2_I(:,iX_E0(1)+iX1,iX2,iX3),     &
-                       CB3_I(:,iX_E0(1)+iX1,iX2,iX3),    CChi_I(:,iX_E0(1)+iX1,iX2,iX3),    &
-                       G(:,iX_E0(1)+iX1,iX2,iX3,iGF_Gm_dd_11), &
-                       G(:,iX_E0(1)+iX1,iX2,iX3,iGF_Gm_dd_22), &
-                       G(:,iX_E0(1)+iX1,iX2,iX3,iGF_Gm_dd_33), &
-                       G(:,iX_E0(1)+iX1,iX2,iX3,iGF_Alpha   ), &
-                       G(:,iX_E0(1)+iX1,iX2,iX3,iGF_Beta_1  ), &
-                       G(:,iX_E0(1)+iX1,iX2,iX3,iGF_Beta_2  ), &
-                       G(:,iX_E0(1)+iX1,iX2,iX3,iGF_Beta_3  ), &
-                       A(:,iX_E0(1)+iX1,iX2,iX3,iAM_P), &
-                       .FALSE. )
-
-            END DO
-
-            DO iX1 = 1, swX(1)
-
-              DO iNX = 1, nDOFX
-
-                iNX1 = NodeNumberTableX(1,iNX)
-                iNX2 = NodeNumberTableX(2,iNX)
-                iNX3 = NodeNumberTableX(3,iNX)
-
-                X1 = NodeCoordinate( MeshX(1), iX_B0(1)+(iX1-1), iNX1 )
-                X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
-                X3 = NodeCoordinate( MeshX(3), iX3, iNX3 )
-
-                ! --- Geometry Fields ---
-
-                G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Alpha) &
-                  = Interpolate1D( X1Arr, AlphaArr, SIZE( X1Arr ), X1 )
-
-                G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Psi) &
-                  = Interpolate1D( X1Arr, PsiArr, SIZE( X1Arr ), X1 )
-
-                G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Beta_1) = Zero
-                G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Beta_2) = Zero
-                G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Beta_3) = Zero
-
-                G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_h_1) &
-                  = G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Psi)**2
-                G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_h_2) &
-                  = G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Psi)**2
-                G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_h_3) &
-                  = G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Psi)**2 * X1
-
-              END DO
-
-              CALL ComputeGeometryX_FromScaleFactors( G(:,iX_B0(1)+(iX1-1),iX2,iX3,:) )
-
-              DO iNX = 1, nDOFX
-
-                iNX1 = NodeNumberTableX(1,iNX)
-                iNX2 = NodeNumberTableX(2,iNX)
-                iNX3 = NodeNumberTableX(3,iNX)
-
-                X1 = NodeCoordinate( MeshX(1), iX_B0(1)+(iX1-1), iNX1 )
-                X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
-                X3 = NodeCoordinate( MeshX(3), iX3, iNX3 )
-
-                ! --- Fluid Fields ---
-
-                P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iPM_D) &
-                  = Interpolate1D( X1Arr, DensityArr, SIZE( X1Arr ), X1 )
-
-                V1 = Zero
-                V2 = Zero
-                V3 = Interpolate1D( X1Arr, V3Arr, SIZE( X1Arr ), X1 )
-
-                VSq = G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Gm_dd_11) * V1**2 &
-                      + G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Gm_dd_22) * V2**2 &
-                      + G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Gm_dd_33) * V3**2
-
-                W = One / SQRT( One - VSq )
-
-                P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iPM_V1) = V1
-                P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iPM_V2) = V2
-                P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iPM_V3) = V3
-
-                P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iPM_E) &
-                  = Interpolate1D( X1Arr, PressureArr, SIZE( X1Arr ), X1 ) &
-                    / ( Gamma_IDEAL - One )
-
-                P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iPM_Ne) = Zero
-
-                CB1 = Zero
-                CB2 = 2.0 * 1.0d13 * Gauss
-                CB3 = Zero
-
-                VdotB = G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Gm_dd_11) * V1 * CB1 &
-                        + G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Gm_dd_22) * V2 * CB2 &
-                        + G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Gm_dd_33) * V3 * CB3
-
-                P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iPM_B1) = W * VdotB * V1 + CB1 / W
-                P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iPM_B2) = W * VdotB * V2 + CB2 / W
-                P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iPM_B3) = W * VdotB * V3 + CB3 / W
-
-                P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iPM_Chi) = Zero
-
-              END DO
-
-              CALL ComputePressureFromPrimitive_IDEAL &
-                     ( P(:,iX_B0(1)+(iX1-1),iX2,iX3,iPM_D ), P(:,iX_B0(1)+(iX1-1),iX2,iX3,iPM_E ), &
-                       P(:,iX_B0(1)+(iX1-1),iX2,iX3,iPM_Ne), A(:,iX_B0(1)+(iX1-1),iX2,iX3,iAM_P) )
-
-              CALL ComputeConserved_MHD_Relativistic &
-                     ( P(:,iX_B0(1)+(iX1-1),iX2,iX3,iPM_D ), P(:,iX_B0(1)+(iX1-1),iX2,iX3,iPM_V1),  &
-                       P(:,iX_B0(1)+(iX1-1),iX2,iX3,iPM_V2), P(:,iX_B0(1)+(iX1-1),iX2,iX3,iPM_V3),  &
-                       P(:,iX_B0(1)+(iX1-1),iX2,iX3,iPM_E ), P(:,iX_B0(1)+(iX1-1),iX2,iX3,iPM_Ne),  &
-                       P(:,iX_B0(1)+(iX1-1),iX2,iX3,iPM_B1), P(:,iX_B0(1)+(iX1-1),iX2,iX3,iPM_B2),  &
-                       P(:,iX_B0(1)+(iX1-1),iX2,iX3,iPM_B3), P(:,iX_B0(1)+(iX1-1),iX2,iX3,iPM_Chi), &
-                       CD_I (:,iX_B0(1)+(iX1-1),iX2,iX3),    CS1_I(:,iX_B0(1)+(iX1-1),iX2,iX3),     &
-                       CS2_I(:,iX_B0(1)+(iX1-1),iX2,iX3),    CS3_I(:,iX_B0(1)+(iX1-1),iX2,iX3),     &
-                       CE_I (:,iX_B0(1)+(iX1-1),iX2,iX3),    CNe_I(:,iX_B0(1)+(iX1-1),iX2,iX3),     &
-                       CB1_I(:,iX_B0(1)+(iX1-1),iX2,iX3),    CB2_I(:,iX_B0(1)+(iX1-1),iX2,iX3),     &
-                       CB3_I(:,iX_B0(1)+(iX1-1),iX2,iX3),    CChi_I(:,iX_B0(1)+(iX1-1),iX2,iX3),    &
-                       G(:,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Gm_dd_11), &
-                       G(:,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Gm_dd_22), &
-                       G(:,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Gm_dd_33), &
-                       G(:,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Alpha   ), &
-                       G(:,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Beta_1  ), &
-                       G(:,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Beta_2  ), &
-                       G(:,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Beta_3  ), &
-                       A(:,iX_B0(1)+(iX1-1),iX2,iX3,iAM_P), &
-                       .FALSE. )
-
-            END DO
-
-            END DO
-            END DO
-
-          END IF
-
-          DEALLOCATE( X1Arr, PsiArr, AlphaArr, DensityArr, V3Arr, PressureArr )
-
-        END IF
-
         ! --- Inner Boundary --
 
         IF( ApplyInnerBC_MHD( iApplyBC ) )THEN
@@ -1444,23 +952,23 @@ CONTAINS
 
             U(iNX,iX_B0(1)-iX1,iX2,iX3,1) &
               = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,1) &
-                - CD_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
-                + CD_I(iNX,iX_B0(1)-iX1,iX2,iX3)
+                - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_D) &
+                + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_D)
 
             U(iNX,iX_B0(1)-iX1,iX2,iX3,2) &
               = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,2) &
-                - CS1_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
-                + CS1_I(iNX,iX_B0(1)-iX1,iX2,iX3)
+                - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S1) &
+                + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S1)
 
             U(iNX,iX_B0(1)-iX1,iX2,iX3,3) &
               = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,3) &
-                - CS2_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
-                + CS2_I(iNX,iX_B0(1)-iX1,iX2,iX3)
+                - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S2) &
+                + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S2)
 
             U(iNX,iX_B0(1)-iX1,iX2,iX3,4) &
               = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,4) &
-                - CS3_I(iNX,iX_E0(1)-(iX1-1),iX2,iX3) &
-                + CS3_I(iNX,iX_B0(1)-iX1,iX2,iX3)
+                - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S3) &
+                + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S3)
 
             U(iNX,iX_B0(1)-iX1,iX2,iX3,7) &
               = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,7)
@@ -1492,23 +1000,23 @@ CONTAINS
 
             U(iNX,iX_E0(1)+iX1,iX2,iX3,1) &
               = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,1) &
-                - CD_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
-                + CD_I(iNX,iX_E0(1)+iX1,iX2,iX3)
+                - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_D) &
+                + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_D)
 
             U(iNX,iX_E0(1)+iX1,iX2,iX3,2) &
               = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,2) &
-                - CS1_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
-                + CS1_I(iNX,iX_E0(1)+iX1,iX2,iX3)
+                - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S1) &
+                + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S1)
 
             U(iNX,iX_E0(1)+iX1,iX2,iX3,3) &
               = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,3) &
-                - CS2_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
-                + CS2_I(iNX,iX_E0(1)+iX1,iX2,iX3)
+                - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S2) &
+                + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S2)
 
             U(iNX,iX_E0(1)+iX1,iX2,iX3,4) &
               = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,4) &
-                - CS3_I(iNX,iX_B0(1)+(iX1-1),iX2,iX3) &
-                + CS3_I(iNX,iX_E0(1)+iX1,iX2,iX3)
+                - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S3) &
+                + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S3)
 
             U(iNX,iX_E0(1)+iX1,iX2,iX3,7) &
               = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,7)
@@ -1542,12 +1050,14 @@ CONTAINS
   END SUBROUTINE ApplyBC_MHD_X1
 
 
-  SUBROUTINE ApplyBC_MHD_X2( t, iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
+  SUBROUTINE ApplyBC_MHD_X2( t, iX_B0, iX_E0, iX_B1, iX_E1, U, D, iApplyBC )
 
     REAL(DP), INTENT(in)    :: t
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
       iApplyBC
+    REAL(DP), INTENT(in)    :: &
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) 
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
@@ -1927,12 +1437,14 @@ CONTAINS
   END SUBROUTINE ApplyBC_MHD_X2
 
 
-  SUBROUTINE ApplyBC_MHD_X3( t, iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
+  SUBROUTINE ApplyBC_MHD_X3( t, iX_B0, iX_E0, iX_B1, iX_E1, U, D, iApplyBC )
 
     REAL(DP), INTENT(in)    :: t
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
       iApplyBC
+    REAL(DP), INTENT(in)    :: &
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
@@ -2064,100 +1576,6 @@ CONTAINS
     END SELECT
 
   END SUBROUTINE ApplyBC_MHD_X3
-
-
-  SUBROUTINE ReadDataset3DHDF( Dataset, DatasetName, FILE_ID )
-
-    REAL(DP),         INTENT(out) :: Dataset(:,:,:)
-    CHARACTER(LEN=*), INTENT(in)  :: DatasetName
-    INTEGER(HID_T),   INTENT(in)  :: FILE_ID
-
-    INTEGER(HID_T) :: DATASET_ID
-    INTEGER(HID_T) :: DATASIZE(3)
-
-    DATASIZE = SHAPE( Dataset )
-
-    CALL H5DOPEN_F( FILE_ID, TRIM( DatasetName ), DATASET_ID, HDFERR )
-
-    CALL H5DREAD_F( DATASET_ID, H5T_NATIVE_DOUBLE, Dataset, DATASIZE, HDFERR )
-
-    CALL H5DCLOSE_F( DATASET_ID, HDFERR )
-
-  END SUBROUTINE ReadDataset3DHDF
-
-
-  SUBROUTINE ReadDataset1DHDF( Dataset, DatasetName, FILE_ID )
-
-    REAL(DP),         INTENT(out) :: Dataset(:)
-    CHARACTER(LEN=*), INTENT(in)  :: DatasetName
-    INTEGER(HID_T),   INTENT(in)  :: FILE_ID
-
-    INTEGER(HID_T) :: DATASET_ID
-    INTEGER(HID_T) :: DATASIZE(1)
-
-    DATASIZE = SHAPE( Dataset )
-
-    CALL H5DOPEN_F( FILE_ID, TRIM( DatasetName ), DATASET_ID, HDFERR )
-
-    CALL H5DREAD_F( DATASET_ID, H5T_NATIVE_DOUBLE, Dataset, DATASIZE, HDFERR )
-
-    CALL H5DCLOSE_F( DATASET_ID, HDFERR )
-
-  END SUBROUTINE ReadDataset1DHDF
-
-
-  REAL(DP) FUNCTION Interpolate1D( x, y, n, xq )
-
-    INTEGER,                INTENT(in) :: n
-    REAL(DP), DIMENSION(n), INTENT(in) :: x, y
-    REAL(DP),               INTENT(in) :: xq
-
-    INTEGER :: i
-
-    i = Locate( xq, x, n )
-
-    !PRINT*, 'i: ', i
-
-    IF( i == 0 )THEN
-
-      ! --- Extrapolate Left ---
-
-      Interpolate1D &
-        = Interpolate1D_Linear( xq, x(1), x(2), y(1), y(2) )
-
-      !PRINT*, 'x(1): ', x(1)
-      !PRINT*, 'x(2): ', x(2)
-      !PRINT*, 'y(1): ', y(1)
-      !PRINT*, 'y(2): ', y(2)
-
-    ELSE IF( i == n )THEN
-
-      ! --- Extrapolate Right ---
-
-      Interpolate1D &
-        = Interpolate1D_Linear( xq, x(n-1), x(n), y(n-1), y(n) )
-
-      !PRINT*, 'x(n-1): ', x(n-1)
-      !PRINT*, 'x(n): ',   x(n)
-      !PRINT*, 'y(n-1): ', y(n-1)
-      !PRINT*, 'y(n): ',   y(n)
-
-
-    ELSE
-
-      Interpolate1D &
-        = Interpolate1D_Linear( xq, x(i), x(i+1), y(i), y(i+1) )
-
-      !PRINT*, 'x(i): ', x(i)
-      !PRINT*, 'x(i+1): ', x(i+1)
-      !PRINT*, 'y(i): ', y(i)
-      !PRINT*, 'y(i+1): ', y(i+1)
-
-    END IF
-
-    RETURN
-
-  END FUNCTION Interpolate1D
 
 
 END MODULE MHD_BoundaryConditionsModule
