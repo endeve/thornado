@@ -20,7 +20,7 @@ MODULE TimeSteppingModule_Flash
     Timer_AddFieldsR
   USE FluidFieldsModule, ONLY: &
     nCF, uDF, iCF_D, iCF_S1, iCF_S2, iCF_S3, &
-    iCF_E, iCF_Ne
+    iCF_E, iCF_Ne, iCF_Nm
   USE RadiationFieldsModule, ONLY: &
     nCR, nSpecies, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
     uDR, nDR
@@ -1099,6 +1099,7 @@ CONTAINS
             U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S3) = + U(jNX,iX_B0(1)+iX1-1,iX2,iX3,iCF_S3)
             U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_E ) = + U(jNX,iX_B0(1)+iX1-1,iX2,iX3,iCF_E )
             U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) = + U(jNX,iX_B0(1)+iX1-1,iX2,iX3,iCF_Ne)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_Nm) = + U(jNX,iX_B0(1)+iX1-1,iX2,iX3,iCF_Nm)
 
           END DO
           END DO
@@ -1144,6 +1145,7 @@ CONTAINS
             U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_S3) = + U(jNX,iX_E0(1)-iX1+1,iX2,iX3,iCF_S3)
             U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_E ) = + U(jNX,iX_E0(1)-iX1+1,iX2,iX3,iCF_E )
             U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_Ne) = + U(jNX,iX_E0(1)-iX1+1,iX2,iX3,iCF_Ne)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF_Nm) = + U(jNX,iX_E0(1)-iX1+1,iX2,iX3,iCF_Nm)
 
           END DO
           END DO
@@ -1191,6 +1193,7 @@ CONTAINS
             U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S3) = + U(jNX,iX_B0(1)+iX1-1,iX2,iX3,iCF_S3)
             U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_E ) = + U(jNX,iX_B0(1)+iX1-1,iX2,iX3,iCF_E )
             U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) = + U(jNX,iX_B0(1)+iX1-1,iX2,iX3,iCF_Ne)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_Nm) = + U(jNX,iX_B0(1)+iX1-1,iX2,iX3,iCF_Nm)
 
           END DO
           END DO
@@ -1371,6 +1374,7 @@ CONTAINS
             U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S3) = + U(jNX,iX1,iX_B0(2)+iX2-1,iX3,iCF_S3)
             U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_E ) = + U(jNX,iX1,iX_B0(2)+iX2-1,iX3,iCF_E )
             U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_Ne) = + U(jNX,iX1,iX_B0(2)+iX2-1,iX3,iCF_Ne)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_Nm) = + U(jNX,iX1,iX_B0(2)+iX2-1,iX3,iCF_Nm)
 
           END DO
           END DO
@@ -1416,6 +1420,7 @@ CONTAINS
             U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_S3) = + U(jNX,iX1,iX_E0(2)-iX2+1,iX3,iCF_S3)
             U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_E ) = + U(jNX,iX1,iX_E0(2)-iX2+1,iX3,iCF_E )
             U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_Ne) = + U(jNX,iX1,iX_E0(2)-iX2+1,iX3,iCF_Ne)
+            U(iNX,iX1,iX_E0(2)+iX2,iX3,iCF_Nm) = + U(jNX,iX1,iX_E0(2)-iX2+1,iX3,iCF_Nm)
 
           END DO
           END DO
@@ -1463,6 +1468,7 @@ CONTAINS
             U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_S3) = + U(jNX,iX1,iX_B0(2)+iX2-1,iX3,iCF_S3)
             U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_E ) = + U(jNX,iX1,iX_B0(2)+iX2-1,iX3,iCF_E )
             U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_Ne) = + U(jNX,iX1,iX_B0(2)+iX2-1,iX3,iCF_Ne)
+            U(iNX,iX1,iX_B0(2)-iX2,iX3,iCF_Nm) = + U(jNX,iX1,iX_B0(2)+iX2-1,iX3,iCF_Nm)
 
           END DO
           END DO
@@ -1643,6 +1649,7 @@ CONTAINS
             U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF_S3) = - U(jNX,iX1,iX2,iX_B0(3)+iX3-1,iCF_S3)
             U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF_E ) = + U(jNX,iX1,iX2,iX_B0(3)+iX3-1,iCF_E )
             U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF_Ne) = + U(jNX,iX1,iX2,iX_B0(3)+iX3-1,iCF_Ne)
+            U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF_Nm) = + U(jNX,iX1,iX2,iX_B0(3)+iX3-1,iCF_Nm)
 
           END DO
           END DO
@@ -1688,6 +1695,7 @@ CONTAINS
             U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF_S3) = - U(jNX,iX1,iX2,iX_E0(3)-iX3+1,iCF_S3)
             U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF_E ) = + U(jNX,iX1,iX2,iX_E0(3)-iX3+1,iCF_E )
             U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF_Ne) = + U(jNX,iX1,iX2,iX_E0(3)-iX3+1,iCF_Ne)
+            U(iNX,iX1,iX2,iX_E0(3)+iX3,iCF_Nm) = + U(jNX,iX1,iX2,iX_E0(3)-iX3+1,iCF_Nm)
 
           END DO
           END DO
@@ -1735,6 +1743,7 @@ CONTAINS
             U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF_S3) = - U(jNX,iX1,iX2,iX_B0(3)+iX3-1,iCF_S3)
             U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF_E ) = + U(jNX,iX1,iX2,iX_B0(3)+iX3-1,iCF_E )
             U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF_Ne) = + U(jNX,iX1,iX2,iX_B0(3)+iX3-1,iCF_Ne)
+            U(iNX,iX1,iX2,iX_B0(3)-iX3,iCF_Nm) = + U(jNX,iX1,iX2,iX_B0(3)+iX3-1,iCF_Nm)
 
           END DO
           END DO
