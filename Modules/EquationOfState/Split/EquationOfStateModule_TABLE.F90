@@ -421,7 +421,7 @@ CONTAINS
 
     ! --- Thermodynamic State Indices ---
 
-    iD_T  = EOS % TS % Indices % iD
+    iD_T  = EOS % TS % Indices % iRho
     iT_T  = EOS % TS % Indices % iT
     iYp_T = EOS % TS % Indices % iYe
 
@@ -605,15 +605,15 @@ CONTAINS
     ! Build full EOS without muons to determine the bounds of the EOS.
     ! Muons should not be so important to cause P, S, and E to go above the 
     ! bounds already calculated assuming Ym = 0.
-    DO iD=1,EOS % DV % nPoints(1)
-      DO iT=1,EOS % DV % nPoints(2)
-        DO iYp=1,EOS % DV % nPoints(3)
+    DO iD_T=1,EOS % DV % nPoints(1)
+      DO iT_T=1,EOS % DV % nPoints(2)
+        DO iYp_T=1,EOS % DV % nPoints(3)
         
           ! Now add electron component
           ! Initialize temperature, DensitY, Ye
-          ElectronPhotonState % t   = T_T (iT)
-          ElectronPhotonState % rho = D_T (iD)
-          ElectronPhotonState % ye  = Yp_T(iYp)
+          ElectronPhotonState % t   = T_T (iT_T)
+          ElectronPhotonState % rho = D_T (iD_T)
+          ElectronPhotonState % ye  = Yp_T(iYp_T)
 
           ! calculate electron quantities
           CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
@@ -622,9 +622,9 @@ CONTAINS
           Pele = ElectronPhotonState % p
           Sele = ElectronPhotonState % s
 
-          Es(iD,iT,iYp) = 10.0d0**( E_T(iD,iT,iYp) ) + Eele - OS_E
-          Ps(iD,iT,iYp) = ( P_T(iD,iT,iYp) ) + Pele - OS_P
-          Ss(iD,iT,iYp) = 10.0d0**( S_T(iD,iT,iYp) ) + Sele - OS_S
+          Es(iD_T,iT_T,iYp_T) = 10.0d0**( E_T(iD_T,iT_T,iYp_T) ) + Eele - OS_E
+          Ps(iD_T,iT_T,iYp_T) = ( P_T(iD_T,iT_T,iYp_T) ) + Pele - OS_P
+          Ss(iD_T,iT_T,iYp_T) = 10.0d0**( S_T(iD_T,iT_T,iYp_T) ) + Sele - OS_S
 
         ENDDO
       ENDDO
@@ -925,7 +925,7 @@ CONTAINS
     IF ( D_P >= Eos_MinD ) THEN
       CALL ComputeTemperatureWith_DEYpYl_Single_Guess_Error &
             ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, & 
-                T_Lookup, T_Guess, Error )
+                T_Lookup, T_Guess, Error, HelmTable, MuonTable )
     ELSE
       T_Lookup = T_Guess
       Error = 0
@@ -964,7 +964,7 @@ CONTAINS
     IF ( D_P >= Eos_MinD ) THEN
       CALL ComputeTemperatureWith_DEYpYl_Single_Guess_NoError &
             ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, &
-            T_Lookup, T_Guess )
+            T_Lookup, T_Guess, HelmTable, MuonTable )
     ELSE
       T_Lookup = T_Guess
     END IF
@@ -1001,7 +1001,7 @@ CONTAINS
     IF ( D_P >= Eos_MinD ) THEN
       CALL ComputeTemperatureWith_DEYpYl_Single_NoGuess_Error &
             ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, &
-            T_Lookup, Error )
+            T_Lookup, Error, HelmTable, MuonTable )
     ELSE
       T_Lookup = Zero
       Error = 0
@@ -1038,7 +1038,7 @@ CONTAINS
     IF ( D_P >= Eos_MinD ) THEN
       CALL ComputeTemperatureWith_DEYpYl_Single_NoGuess_NoError &
             ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, &
-            T_Lookup )
+            T_Lookup, HelmTable, MuonTable )
     ELSE
       T_Lookup = Zero
     END IF
@@ -1096,7 +1096,7 @@ CONTAINS
         IF ( D_P >= Eos_MinD ) THEN
           CALL ComputeTemperatureWith_DEYpYl_Single_Guess_Error &
                 ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, &
-                T_Lookup, T_Guess, Error(iP) )
+                T_Lookup, T_Guess, Error(iP), HelmTable, MuonTable )
         ELSE
           T_Lookup = T_Guess
           Error(iP) = 0
@@ -1132,7 +1132,7 @@ CONTAINS
         IF ( D_P >= Eos_MinD ) THEN
           CALL ComputeTemperatureWith_DEYpYl_Single_NoGuess_Error &
                 ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, T_Lookup, &
-                  Error(iP) )
+                  Error(iP), HelmTable, MuonTable )
         ELSE
           T_Lookup = Zero
           Error(iP) = 0
@@ -1247,7 +1247,7 @@ CONTAINS
     IF ( D_P >= Eos_MinD ) THEN
       CALL ComputeTemperatureWith_DEYpYl_Single_NoGuess_NoError &
             ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, &
-            T_P )
+            T_P, HelmTable, MuonTable )
     ELSE
       P = Zero
     END IF
@@ -1419,7 +1419,7 @@ CONTAINS
     IF ( D_P >= Eos_MinD ) THEN
       CALL ComputeTemperatureWith_DPYpYl_Single_NoGuess_Error &
             ( D_P, P_P, Ye_P, Ym_P, D_T, T_T, Yp_T, P_T, OS_P, T_P, &
-              Error )
+              Error, HelmTable, MuonTable )
     ELSE
       T_P = Zero
       Error = 0
