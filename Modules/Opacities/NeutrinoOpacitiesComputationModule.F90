@@ -896,7 +896,7 @@ CONTAINS
     REAL(DP) :: Mp_eff(iX_B:iX_E)
     REAL(DP) :: Up(iX_B:iX_E)
     REAL(DP) :: Xp(iX_B:iX_E)
-    !REAL(DP) :: Mue(iX_B:iX_E)
+    REAL(DP) :: Mue(iX_B:iX_E)
     REAL(DP) :: Mumu(iX_B:iX_E)
     REAL(DP) :: Mun_P, Mn_eff_P, Un_P, Xn_P
     REAL(DP) :: Mup_P, Mp_eff_P, Up_P, Xp_P
@@ -908,7 +908,7 @@ CONTAINS
 #ifdef MICROPHYSICS_WEAKLIB
 
 #ifdef EOSMODE_COMPOSE
-    opac_method=2
+    opac_method=1
     corr_num=0
     CALL ComputeNeutronChemicalPotential_TABLE(D, T, Ye, Ym, Mun)
     CALL ComputeNeutronEffectiveMass_TABLE(D, T, Ye, Ym, Mn_eff)
@@ -920,7 +920,7 @@ CONTAINS
     CALL ComputeProtonMassFraction_TABLE(D, T, Ye, Ym, Xp)
     !CALL ComputeElectronChemicalPotential_TABLE(D, T, Ye, Ym, Mue)
     CALL ComputeMuonChemicalPotential_TABLE(D, T, Ye, Ym, Mumu)
-    !WRITE(*,*) 'cheme=', Mue(iX_B) /UnitE
+    !WRITE(*,*) 'cheme =', Mue(iX_B) /UnitE
     !WRITE(*,*) 'chemmu=', Mumu(iX_B) /UnitE
     !WRITE(*,*) 'chemn =', Mun(iX_B) / UnitE
     !WRITE(*,*) 'chemp =', Mup(iX_B) / UnitE
@@ -999,9 +999,9 @@ CONTAINS
 
             CALL ElasticAbsorptionOpacityNum &
                (10**LogD_P, 10**LogT_P, 10**LogE_P, &
-                 Mun_P, Mn_eff_P, Un_P, Xn_P, &
-                 Mup_P, Mp_eff_P, Up_P, Xp_P, &
-                 Mumu_P, opEC(iE, iS, iX), opEC(iE, iS+1, iX))
+                 Mun(iX)/UnitE, Mn_eff(iX), Un(iX), Xn(iX), &
+                 Mup(iX)/UnitE, Mp_eff(iX), Up(iX), Xp(iX), &
+                 Mumu(iX)/UnitE, opEC(iE, iS, iX), opEC(iE, iS+1, iX))
 
             WeakMagRecNuLep=1.0
             WeakMagRecNuLepBar=1.0
@@ -1055,13 +1055,13 @@ CONTAINS
     END DO
     END DO
     END DO
-!    DO iX=iX_B, iX_E
-!      DO iS = iS_B, iS_E
-!        DO iE = iE_B, iE_E
-!          WRITE(*,*)  'OPAC', iS, iE, iX, opEC(iE,iS,iX)
-!        END DO
-!      END DO
-!    END DO
+    !DO iX=iX_B, iX_E
+    !  DO iS = iS_B, iS_E
+    !    DO iE = iE_B, iE_E
+    !      WRITE(*,*)  'OPAC', iS, iE, iX, opEC(iE,iS,iX)
+    !    END DO
+    !  END DO
+    !END DO
 !now add contribution from EC on heavy nuclei
   IF(use_EC_table .gt. 0) THEN
 
@@ -1662,8 +1662,8 @@ CONTAINS
 #endif
 
 #if defined(THORNADO_OMP_OL)
-    !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !!$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Yp_P ) 
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Yp_P ) 
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRESENT( LogEs_T, LogDs_T, LogTs_T, Ys_T, &
