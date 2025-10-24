@@ -317,6 +317,7 @@ CONTAINS
     REAL(DP) :: G_q(nDOFX,nGF)
     REAL(DP) :: U_q(nDOFX,nCF), U_K(nCF)
     REAL(DP) :: Y_PP(nPT), E_PP(nPT), Ye, Ym, E_K
+    REAL(DP) :: Yp, Min_Yp_K, Max_Yp_K, Min_Np_K, Max_Np_K, U_P_Np, U_K_Np
 
     REAL(DP) :: &
       G_Q_h_d_1 (nDOFX,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3)), &
@@ -621,16 +622,16 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( iP, iNodeX, Min_D_K, Max_D_K, Min_Ne_K, Min_Nm_K, Theta_1 )
+    !$OMP PRIVATE( iP, iNodeX, Min_D_K, Max_D_K, Min_Ne_K, Min_Nm_K, Min_Np_K, U_P_Np, Theta_1 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( iP, iNodeX, Min_D_K, Max_D_K, Min_Ne_K, Min_Nm_K, Theta_1 ) &
+    !$ACC PRIVATE( iP, iNodeX, Min_D_K, Max_D_K, Min_Ne_K, Min_Nm_K, Min_Np_K, U_P_Np, Theta_1 ) &
     !$ACC PRESENT( iX_B0, iX_E0, U_K_D, U_Q_D, U_P_D, &
     !$ACC          U_K_Ne, U_Q_Ne, U_P_Ne, &
     !$ACC          U_K_Nm, U_Q_Nm, U_P_Nm )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( iP, iNodeX, Min_D_K, Max_D_K, Min_Ne_K, Min_Nm_K, Theta_1 )
+    !$OMP PRIVATE( iP, iNodeX, Min_D_K, Max_D_K, Min_Ne_K, Min_Nm_K, Min_Np_K, U_P_Np, Theta_1 )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -640,29 +641,36 @@ CONTAINS
       Max_D_K  = Min_D
       Min_Ne_K = Max_N
       Min_Nm_K = Max_N
+      Min_Np_K = Max_N
       DO iP = 1, nPT
         Min_D_K  = MIN( Min_D_K , U_P_D (iP,iX1,iX2,iX3) ) ! --- Minimum D  in Element
         Max_D_K  = MAX( Max_D_K , U_P_D (iP,iX1,iX2,iX3) ) ! --- Maximum D  in Element
         Min_Ne_K = MIN( Min_Ne_K, U_P_Ne(iP,iX1,iX2,iX3) ) ! --- Minimum Ne in Element
         Min_Nm_K = MIN( Min_Nm_K, U_P_Nm(iP,iX1,iX2,iX3) ) ! --- Minimum Ne in Element
+        U_P_Np = U_P_Ne(iP,iX1,iX2,iX3) + U_P_Nm(iP,iX1,iX2,iX3)
+        Min_Np_K = MIN( Min_Np_K, U_P_Np)
       END DO
 
-      IF( ( ( Min_D_K < Min_D ) .OR. ( Max_D < Max_D_K ) .OR. ( Min_Ne_K < Min_N ) .OR. ( Min_Nm_K < Min_N ) ) &
+      IF( ( ( Min_D_K < Min_D ) .OR. ( Max_D < Max_D_K ) .OR. ( Min_Np_K < Min_N ) ) &
+      !IF( ( ( Min_D_K < Min_D ) .OR. ( Max_D < Max_D_K ) .OR. ( Min_Ne_K < Min_N ) .OR. ( Min_Nm_K < Min_N ) ) &
          .AND. QueryOpacity( U_K_D(iX1,iX2,iX3) / Unit_D ) ) THEN
 
         ! --- This calculation for Theta_1 has been changed from the original backtracing
         ! --- algorithm described in 3.4.1 of Pochik et al. (2021)
-
+        U_K_Np = U_K_Ne(iX1,iX2,iX3) + U_K_Nm(iX1,iX2,iX3)
         Theta_1 &
           = MIN( One, &
                  ABS( ( Min_D    - U_K_D (iX1,iX2,iX3) ) &
                     / ( Min_D_K  - U_K_D (iX1,iX2,iX3) - SqrtTiny ) ), &
                  ABS( ( Max_D    - U_K_D (iX1,iX2,iX3) ) &
                     / ( Max_D_K  - U_K_D (iX1,iX2,iX3) + SqrtTiny ) ), &
-                 ABS( ( Min_N    - U_K_Ne(iX1,iX2,iX3) ) &
-                    / ( Min_Ne_K - U_K_Ne(iX1,iX2,iX3) - SqrtTiny ) ), &
-                 ABS( ( Min_N    - U_K_Nm(iX1,iX2,iX3) ) &
-                    / ( Min_Nm_K - U_K_Nm(iX1,iX2,iX3) - SqrtTiny ) ) )
+                 ABS( ( Min_N    - U_K_Np ) &
+                    / ( Min_Np_K - U_K_Np - SqrtTiny ) ) )
+                 !ABS( ( Min_N    - U_K_Ne(iX1,iX2,iX3) ) &
+                 !   / ( Min_Ne_K - U_K_Ne(iX1,iX2,iX3) - SqrtTiny ) ) )
+                 !ABS( ( Min_N    - U_K_Nm(iX1,iX2,iX3) ) &
+                 !   / ( Min_Nm_K - U_K_Nm(iX1,iX2,iX3) - SqrtTiny ) ) )
+
 
         Theta_1 = SafetyFactor * Theta_1
         IF ( Theta_1 < Theta_1_Min ) Theta_1 = Zero
@@ -701,11 +709,13 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( Min_Ye_K, Max_Ye_K, Ye, &
     !$OMP          Min_Ym_K, Max_Ym_K, Ym, &
+    !$OMP          Min_Yp_K, Max_Yp_K, Yp, U_P_Np, &
     !$OMP          Alpha, Max_D_K, Theta_2 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( Min_Ye_K, Max_Ye_K, Ye, &
     !$ACC          Min_Ym_K, Max_Ym_K, Ym, &
+    !$ACC          Min_Yp_K, Max_Yp_K, Yp, U_P_Np, &
     !$ACC          Alpha, Max_D_K, Theta_2 )
     !$ACC PRESENT( iX_B0, iX_E0, U_K_D, U_Q_D, U_P_D, &
     !$ACC          U_K_Ne, U_Q_Ne, U_P_Ne, &
@@ -714,6 +724,7 @@ CONTAINS
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( Min_Ye_K, Max_Ye_K, Ye, &
     !$OMP          Min_Ym_K, Max_Ym_K, Ym, &
+    !$OMP          Min_Yp_K, Max_Yp_K, Yp, U_P_Np, &
     !$OMP          Alpha, Max_D_K, Theta_2 )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
@@ -724,6 +735,8 @@ CONTAINS
       Max_Ye_K = Min_Y
       Min_Ym_K = Max_Y
       Max_Ym_K = Min_Y
+      Min_Yp_K = Max_Y
+      Max_Yp_K = Min_Y
       DO iP = 1, nPT
         Min_Ye_K = MIN( Min_Ye_K, BaryonMass * U_P_Ne(iP,iX1,iX2,iX3) &
                                              / U_P_D (iP,iX1,iX2,iX3) )
@@ -733,19 +746,28 @@ CONTAINS
                                              / U_P_D (iP,iX1,iX2,iX3) )
         Max_Ym_K = MAX( Max_Ym_K, BaryonMass * U_P_Nm(iP,iX1,iX2,iX3) &
                                              / U_P_D (iP,iX1,iX2,iX3) )
+        U_P_Np = U_P_Ne(iP,iX1,iX2,iX3) + U_P_Nm(iP,iX1,iX2,iX3)
+        Min_Yp_K = MIN( Min_Yp_K, BaryonMass * U_P_Np &
+                                             / U_P_D (iP,iX1,iX2,iX3) )
+        Max_Yp_K = MAX( Max_Yp_K, BaryonMass * U_P_Np &
+                                             / U_P_D (iP,iX1,iX2,iX3) )
       END DO
 
-      IF( ( Min_Ye_K < Min_Y .OR. Max_Ye_K > Max_Y .OR. Min_Ym_K < Min_Y .OR. Max_Ym_K > Max_Y ) &
+      IF( ( Min_Yp_K < Min_Y .OR. Max_Yp_K > Max_Y ) &
+      !IF( ( Min_Ye_K < Min_Y .OR. Max_Ye_K > Max_Y .OR. Min_Ym_K < Min_Y .OR. Max_Ym_K > Max_Y ) &
          .AND. QueryOpacity( U_K_D(iX1,iX2,iX3) / Unit_D ) )THEN
 
         Ye = BaryonMass * U_K_Ne(iX1,iX2,iX3) / U_K_D(iX1,iX2,iX3)
         Ym = BaryonMass * U_K_Nm(iX1,iX2,iX3) / U_K_D(iX1,iX2,iX3)
+        Yp = Ye + Ym
 
         Alpha = MIN( One, &
-                     ABS( ( Min_Y - Ye ) / ( Min_Ye_K - Ye - SqrtTiny ) ), &
-                     ABS( ( Max_Y - Ye ) / ( Max_Ye_K - Ye + SqrtTiny ) ), &
-                     ABS( ( Min_Y - Ym ) / ( Min_Ym_K - Ym - SqrtTiny ) ), &
-                     ABS( ( Max_Y - Ym ) / ( Max_Ym_K - Ym + SqrtTiny ) ) )
+                    ABS( ( Min_Y - Yp ) / ( Min_Yp_K - Yp - SqrtTiny ) ), &
+                    ABS( ( Max_Y - Yp ) / ( Max_Yp_K - Yp + SqrtTiny ) ) )
+                     !ABS( ( Min_Y - Ye ) / ( Min_Ye_K - Ye - SqrtTiny ) ), &
+                     !ABS( ( Max_Y - Ye ) / ( Max_Ye_K - Ye + SqrtTiny ) ) )
+                     !ABS( ( Min_Y - Ym ) / ( Min_Ym_K - Ym - SqrtTiny ) ), &
+                     !ABS( ( Max_Y - Ym ) / ( Max_Ym_K - Ym + SqrtTiny ) ) )
 
         Max_D_K = Min_D
         DO iP = 1, nPT
