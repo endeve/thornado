@@ -154,6 +154,7 @@ contains
       NNS_MinD_Option, NNS_MaxD_Option, &
       NuPair_MinD_Option, NuPair_MaxD_Option, &
       Op_MinD_Option, Op_MaxD_Option, &
+      EmAb_Muon_MinD_Option, EmAb_Muon_MaxD_Option, &
       M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
       MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
       Include_NES_Option, Include_Pair_Option, &
@@ -214,6 +215,7 @@ contains
     real(dp),         intent(in), optional :: NNS_MinD_Option, NNS_MaxD_Option
     real(dp),         intent(in), optional :: NuPair_MinD_Option, NuPair_MaxD_Option
     real(dp),         intent(in), optional :: Op_MinD_Option, Op_MaxD_Option
+    real(dp),         intent(in), optional :: EmAb_Muon_MinD_Option, EmAb_Muon_MaxD_Option
     integer,          intent(in), optional :: M_outer_Option
     integer,          intent(in), optional :: M_inner_Option
     integer,          intent(in), optional :: MaxIter_outer_Option
@@ -523,6 +525,10 @@ contains
                = EmAb_MinD_Option, &
              EmAb_MaxD_Option &
                = EmAb_MaxD_Option, &
+             EmAb_Muon_MinD_Option &
+               = EmAb_Muon_MinD_Option, &
+             EmAb_Muon_MaxD_Option &
+               = EmAb_Muon_MaxD_Option, &
              Iso_MinD_Option &
                = Iso_MinD_Option, &
              Iso_MaxD_Option &
