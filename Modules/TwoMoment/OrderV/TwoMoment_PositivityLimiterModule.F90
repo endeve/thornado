@@ -1504,8 +1504,8 @@ CONTAINS
     INTEGER  :: iNodeZ, iP_Z
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP PARALLEL DO SIMD &
-    !$OMP PRIVATE( SUM1 )
+    !!$OMP PARALLEL DO SIMD &
+    !!$OMP PRIVATE( SUM1 )
 #elif defined( THORNADO_OACC   )
     !$ACC LOOP VECTOR &
     !$ACC PRIVATE( SUM1 )
