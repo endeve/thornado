@@ -252,6 +252,23 @@ elif [[ $THORNADO_MACHINE == ascent_pgi ]]; then
   module load essl
   module load cuda
 
+elif [[ $THORNADO_MACHINE == borg_cce ]]; then
+
+  echo
+
+  module restore
+
+  module use /ccs/home/jaharris/modulefiles/borg
+
+  module load cpe/25.09
+  module load PrgEnv-cray cray-hdf5-parallel craype-accel-amd-gfx90a 
+  module load rocm/6.4.1 hipfort/6.4.1
+  module unload darshan-runtime
+
+  export LD_LIBRARY_PATH=${CRAY_LD_LIBRARY_PATH}:${LD_LIBRARY_PATH}
+
+  module -t list
+
 elif [[ $THORNADO_MACHINE == frontier_cce ]]; then
 
   echo
@@ -260,9 +277,9 @@ elif [[ $THORNADO_MACHINE == frontier_cce ]]; then
 
   module use /ccs/home/jaharris/modulefiles/frontier
 
-  module load cpe/25.03
+  module load cpe/25.09
   module load PrgEnv-cray cray-hdf5-parallel craype-accel-amd-gfx90a 
-  module load rocm/6.3.1 hipfort/6.3.1 
+  module load rocm/6.4.2 hipfort/6.4.2 
   module unload darshan-runtime
 
   export LD_LIBRARY_PATH=${CRAY_LD_LIBRARY_PATH}:${LD_LIBRARY_PATH}
@@ -279,6 +296,25 @@ elif [[ $THORNADO_MACHINE == frontier_gcc ]]; then
   module unload darshan-runtime
 
   module -t list
+
+elif [[ $THORNADO_MACHINE == frontier_amd ]]; then
+
+  echo
+
+  module restore
+
+  #module use /ccs/home/jaharris/modulefiles/frontier
+
+  module load cpe/25.09
+  module load PrgEnv-amd cray-hdf5-parallel craype-accel-amd-gfx90a 
+  module load amd/7.0.1 rocm/7.0.1
+  module unload darshan-runtime
+
+  export LD_LIBRARY_PATH=${CRAY_LD_LIBRARY_PATH}:${LD_LIBRARY_PATH}
+
+  module -t list
+
+  alias ftn2="amdflang -march=znver3"
   
 elif [[ $THORNADO_MACHINE == perlmutter_nvhpc ]]; then
 
