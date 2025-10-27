@@ -1565,6 +1565,14 @@ CONTAINS
              ( ITERATE_outer, ITERATE_inner, n_FP_outer, k_outer, &
                nIterations_Outer, FVECm_outer )
 
+      CALL PrintStatus_FP &
+             ( ITERATE_outer, ITERATE_inner, k_outer, k_inner, Error, &
+               FVECm_outer, FVECm_inner, &
+               D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3, &
+               Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+               Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
+               Gm_dd_11, Gm_dd_22, Gm_dd_33, 1 )
+
       CALL CheckError_FP &
              ( ITERATE_outer, ITERATE_inner, k_outer, k_inner, Error, &
                D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3, &
@@ -5104,6 +5112,81 @@ CONTAINS
     END IF
 
   END SUBROUTINE CheckError_FP
+
+
+  SUBROUTINE PrintStatus_FP &
+    ( MASK_outer, MASK_inner, k_outer, k_inner, Error, &
+      Fm_outer, Fm_inner, &
+      D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3, &
+      Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, iN_X )
+
+    LOGICAL,  DIMENSION(:)    , INTENT(in) :: MASK_outer, MASK_inner
+    INTEGER,                    INTENT(in) :: k_outer, k_inner
+    INTEGER,  DIMENSION(:)    , INTENT(in) :: Error
+    REAL(DP), DIMENSION(:,:)  , INTENT(in) :: Fm_outer, Fm_inner
+    REAL(DP), DIMENSION(:)    , INTENT(in) :: D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:,:,:), INTENT(in) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:,:,:), INTENT(in) :: Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3
+    REAL(DP), DIMENSION(:)    , INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    INTEGER,                    INTENT(in) :: iN_X
+
+    INTEGER  :: iN_E, iS, i
+    REAL(DP) :: D_P, T_P, Ye_P, Ym_P, E_P, V1_P, V2_P, V3_P
+    REAL(DP) :: D0_P, T0_P, Ye0_P, Ym0_P, E0_P, V10_P, V20_P, V30_P
+    REAL(DP) :: Min_E, Min_E_0
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM &
+    !$OMP ( Fm_outer, Fm_inner, &
+    !$OMP   D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3, &
+    !$OMP   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+    !$OMP   Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
+    !$OMP   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    !$OMP   D_old, Ye_old, Ym_old, E_old, T_old, V_u_1_old, V_u_2_old, V_u_3_old, &
+    !$OMP   Dnu_old, Inu_u_1_old, Inu_u_2_old, Inu_u_3_old )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST &
+    !$ACC ( Fm_outer, Fm_inner, &
+    !$ACC   D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3, &
+    !$ACC   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+    !$ACC   Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
+    !$ACC   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    !$ACC   D_old, Ye_old, Ym_old, E_old, T_old, V_u_1_old, V_u_2_old, V_u_3_old, &
+    !$ACC   Dnu_old, Inu_u_1_old, Inu_u_2_old, Inu_u_3_old )
+#endif
+
+    D_P   = D (iN_X) / Unit_D
+    Ye_P  = Ye(iN_X) / Unit_Y
+    Ym_P  = Ym(iN_X) / Unit_Y
+    E_P   = E (iN_X) / Unit_E
+    T_P   = T (iN_X) / Unit_T
+    V1_P  = V_u_1(iN_X) / Unit_V
+    V2_P  = V_u_2(iN_X) / Unit_V
+    V3_P  = V_u_3(iN_X) / Unit_V
+
+    D0_P   = D_old (iN_X) / Unit_D
+    T0_P   = T_old (iN_X) / Unit_T
+    Ye0_P  = Ye_old(iN_X) / Unit_Y
+    Ym0_P  = Ym_old(iN_X) / Unit_Y
+    E0_P   = E_old (iN_X) / Unit_E
+    V10_P  = V_u_1_old(iN_X) / Unit_V
+    V20_P  = V_u_2_old(iN_X) / Unit_V
+    V30_P  = V_u_3_old(iN_X) / Unit_V
+
+    CALL ComputeSpecificInternalEnergy_TABLE(D(iN_X),     Min_T, Ye(iN_X),     Ym(iN_X),     Min_E)
+    CALL ComputeSpecificInternalEnergy_TABLE(D_old(iN_X), Min_T, Ye_old(iN_X), Ym_old(iN_X), Min_E_0)
+
+    WRITE(*,*)                      '[SolveNeutrinoMatterCoupling_FP_Nested_AA] Convergence Status'
+    WRITE(*,'(a,2i5)')              '              iN_X, Error : ', iN_X, Error(iN_X)
+    WRITE(*,'(a,5x,2i23)')          '         k_outer, k_inner : ', k_outer, k_inner
+    WRITE(*,'(a,5x,8es23.15)')      ' F( D, Ye, Ym, E, T, V_u )     : ', (Fm_outer(i,iN_X),i=1,n_FP_outer)
+    WRITE(*,'(a,5x,8es23.15)')      '    D, Ye, Ym, E, T, V_u       : ', D_P, Ye_P, Ym_P, E_P, T_P, V1_P, V2_P, V3_P
+    WRITE(*,'(a,5x,8es23.15)')      '    D, Ye, Ym, E, T, V_u (old) : ', D0_P, Ye0_P, Ym0_P, E0_P, T0_P, V10_P, V20_P, V30_P
+    WRITE(*,'(a,5x,2es23.15)')      '         Min E, Min E old : ', Min_E / Unit_e, Min_E_0 / Unit_E
+
+  END SUBROUTINE PrintStatus_FP
 
 
 END MODULE TwoMoment_NeutrinoMatterSolverModule
