@@ -40,6 +40,8 @@ MODULE OpacityModule_TABLE
     NodeCoordinate
   USE ReferenceElementModuleE, ONLY: &
     WeightsE
+  USE RadiationFieldsModule, ONLY: &
+    iNuM, iNuM_Bar
 
   IMPLICIT NONE
   PRIVATE
@@ -103,7 +105,8 @@ MODULE OpacityModule_TABLE
 
   REAL(DP) :: EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD ! density cutoffs for EmAb (free nucleon) opacities
   REAL(DP) :: EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD   ! density cutoffs for EmAb (nuclei) opacities
-  REAL(DP) :: EmAb_MinD, EmAb_MaxD                 ! density cutoffs for all EmAb opacities
+  REAL(DP) :: EmAb_MinD, EmAb_MaxD                 ! density cutoffs for all EmAb opacities (electrons)
+  REAL(DP) :: EmAb_Muon_MinD, EmAb_Muon_MaxD       ! density cutoffs for EmAb opacities for muons
   REAL(DP) :: Iso_MinD, Iso_MaxD                   ! density cutoffs for all Iso opacities
   REAL(DP) :: NES_MinD, NES_MaxD                   ! density cutoffs for all NES opacities
   REAL(DP) :: Pair_MinD, Pair_MaxD                 ! density cutoffs for all Pair opacities
@@ -137,6 +140,7 @@ MODULE OpacityModule_TABLE
   PUBLIC :: QueryOpacity_EmAb_Nucleon
   PUBLIC :: QueryOpacity_EmAb_Nuclei
   PUBLIC :: QueryOpacity_EmAb
+  PUBLIC :: QueryOpacity_EmAb_Muon
   PUBLIC :: QueryOpacity_Iso
   PUBLIC :: QueryOpacity_NES
   PUBLIC :: QueryOpacity_Pair
@@ -159,6 +163,7 @@ MODULE OpacityModule_TABLE
   !$OMP   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD,           &
   !$OMP   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD,             &
   !$OMP   EmAb_MinD, EmAb_MaxD,                           &
+  !$OMP   EmAb_Muon_MinD, EmAb_Muon_MaxD,                 &
   !$OMP   Iso_MinD, Iso_MaxD,                             &
   !$OMP   NES_MinD, NES_MaxD,                             &
   !$OMP   Pair_MinD, Pair_MaxD,                           &
@@ -180,6 +185,7 @@ MODULE OpacityModule_TABLE
   !$ACC   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD,           &
   !$ACC   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD,             &
   !$ACC   EmAb_MinD, EmAb_MaxD,                           &
+  !$ACC   EmAb_Muon_MinD, EmAb_Muon_MaxD,                 &
   !$ACC   Iso_MinD, Iso_MaxD,                             &
   !$ACC   NES_MinD, NES_MaxD,                             &
   !$ACC   Pair_MinD, Pair_MaxD,                           &
@@ -199,6 +205,7 @@ CONTAINS
       EmAb_Nucleon_MinD_Option, EmAb_Nucleon_MaxD_Option,        &
       EmAb_Nuclei_MinD_Option, EmAb_Nuclei_MaxD_Option,          &
       EmAb_MinD_Option, EmAb_MaxD_Option,                        &
+      EmAb_Muon_MinD_Option, EmAb_Muon_MaxD_Option,              &
       Iso_MinD_Option, Iso_MaxD_Option,                          &
       NES_MinD_Option, NES_MaxD_Option,                          &
       Pair_MinD_Option, Pair_MaxD_Option,                        &
@@ -217,6 +224,7 @@ CONTAINS
     REAL(DP),         INTENT(in), OPTIONAL :: EmAb_Nucleon_MinD_Option, EmAb_Nucleon_MaxD_Option
     REAL(DP),         INTENT(in), OPTIONAL :: EmAb_Nuclei_MinD_Option, EmAb_Nuclei_MaxD_Option
     REAL(DP),         INTENT(in), OPTIONAL :: EmAb_MinD_Option, EmAb_MaxD_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: EmAb_Muon_MinD_Option, EmAb_Muon_MaxD_Option
     REAL(DP),         INTENT(in), OPTIONAL :: Iso_MinD_Option, Iso_MaxD_Option
     REAL(DP),         INTENT(in), OPTIONAL :: NES_MinD_Option, NES_MaxD_Option
     REAL(DP),         INTENT(in), OPTIONAL :: Pair_MinD_Option, Pair_MaxD_Option
@@ -401,6 +409,18 @@ CONTAINS
       EmAb_MaxD = MAX( EmAb_Nucleon_MaxD, EmAb_Nuclei_MaxD )
     END IF
 
+    IF( PRESENT( EmAb_Muon_MinD_Option ) )THEN
+      EmAb_Muon_MinD = MAX( EmAb_Muon_MinD_Option, EmAb_MinD )
+    ELSE
+      EmAb_Muon_MinD = EmAb_MinD
+    END IF
+
+    IF( PRESENT( EmAb_Muon_MaxD_Option ) )THEN
+      EmAb_Muon_MaxD = MIN( EmAb_Muon_MaxD_Option, EmAb_MaxD )
+    ELSE
+      EmAb_Muon_MaxD = EmAb_MaxD
+    END IF
+
     ! --- Iso ---
 
     IF( PRESENT( Iso_MinD_Option ) )THEN
@@ -511,6 +531,7 @@ CONTAINS
 
     EmAb_Nucleon_MinD = MAX( EmAb_Nucleon_MinD, EmAb_MinD )
     EmAb_Nuclei_MinD  = MAX( EmAb_Nuclei_MinD , EmAb_MinD )
+    EmAb_Muon_MinD    = MAX( EmAb_Muon_MinD   , EmAb_MinD )
 
     EmAb_MaxD   = MIN( EmAb_MaxD  , Op_MaxD )
     Iso_MaxD    = MIN( Iso_MaxD   , Op_MaxD )
@@ -522,6 +543,7 @@ CONTAINS
 
     EmAb_Nucleon_MaxD = MIN( EmAb_Nucleon_MaxD, EmAb_MaxD )
     EmAb_Nuclei_MaxD  = MIN( EmAb_Nuclei_MaxD , EmAb_MaxD )
+    EmAb_Muon_MaxD    = MIN( EmAb_Muon_MaxD   , EmAb_MaxD )
 
     nPointsE = nE * nNodesE
 
@@ -747,6 +769,7 @@ CONTAINS
     !$OMP                  EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD, &
     !$OMP                  EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD, &
     !$OMP                  EmAb_MinD, EmAb_MaxD, &
+    !$OMP                  EmAb_Muon_MinD, EmAb_Muon_MaxD, &
     !$OMP                  Iso_MinD, Iso_MaxD, &
     !$OMP                  NES_MinD, NES_MaxD, &
     !$OMP                  Pair_MinD, Pair_MaxD, &
@@ -764,6 +787,7 @@ CONTAINS
     !$ACC   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD, &
     !$ACC   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD, &
     !$ACC   EmAb_MinD, EmAb_MaxD, &
+    !$ACC   EmAb_Muon_MinD, EmAb_Muon_MaxD, &
     !$ACC   Iso_MinD, Iso_MaxD, &
     !$ACC   NES_MinD, NES_MaxD, &
     !$ACC   Pair_MinD, Pair_MaxD, &
@@ -1078,6 +1102,7 @@ CONTAINS
     !$OMP               EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD, &
     !$OMP               EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD, &
     !$OMP               EmAb_MinD, EmAb_MaxD, &
+    !$OMP               EmAb_Muon_MinD, EmAb_Muon_MaxD, &
     !$OMP               Iso_MinD, Iso_MaxD, &
     !$OMP               NES_MinD, NES_MaxD, &
     !$OMP               Pair_MinD, Pair_MaxD, &
@@ -1287,6 +1312,21 @@ CONTAINS
         = ( D >= EmAb_Nucleon_MinD .AND. D <= EmAb_Nucleon_MaxD )
 
   END FUNCTION QueryOpacity_EmAb_Nucleon
+
+
+  LOGICAL FUNCTION QueryOpacity_EmAb_Muon( D )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: D
+
+    QueryOpacity_EmAb_Muon &
+        = ( D >= EmAb_Muon_MinD .AND. D <= EmAb_Muon_MaxD )
+
+  END FUNCTION QueryOpacity_EmAb_Muon
 
 
   LOGICAL FUNCTION QueryOpacity_EmAb( D )

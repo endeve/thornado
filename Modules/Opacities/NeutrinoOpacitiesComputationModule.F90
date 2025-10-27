@@ -72,13 +72,14 @@ MODULE NeutrinoOpacitiesComputationModule
     QueryOpacity_EmAb, &
     QueryOpacity_EmAb_Nucleon, &
     QueryOpacity_EmAb_Nuclei, &
+    QueryOpacity_EmAb_Muon, &
     QueryOpacity_Iso, &
     QueryOpacity_NES, &
     QueryOpacity_Pair, &
     QueryOpacity_Brem, &
     QueryOpacity_NuPair
   USE RadiationFieldsModule, ONLY: &
-    iNuE, iNuE_Bar, iNuM, iNuM_Bar, &
+    iNuE, iNuE_Bar, iNuM, iNuM_Bar, iNuT, iNuT_Bar, &
     LeptonNumber, iNu, iNu_Bar
 
 #ifdef MICROPHYSICS_WEAKLIB
@@ -154,6 +155,7 @@ MODULE NeutrinoOpacitiesComputationModule
   REAL(DP), PARAMETER :: UnitMn   = MeV
   REAL(DP), PARAMETER :: UnitMp   = MeV
   REAL(DP), PARAMETER :: UnitMe   = MeV
+  REAL(DP), PARAMETER :: UnitMmu  = MeV
   REAL(DP), PARAMETER :: UnitEta  = One
   REAL(DP), PARAMETER :: UnitEC   = One / Centimeter
   REAL(DP), PARAMETER :: UnitEC2  = One / Kilometer
@@ -882,7 +884,7 @@ CONTAINS
 
     REAL(DP) :: LogE_P
     REAL(DP) :: LogD_P, LogT_P
-    REAL(DP) :: D_P, T_P, Ye_P, Ym_P
+    REAL(DP) :: E_P, D_P, T_P, Ye_P, Ym_P
     INTEGER  :: iE, iS, iX
 
 #ifdef EOSMODE_COMPOSE
@@ -907,138 +909,47 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-#ifdef EOSMODE_COMPOSE
-    opac_method=1
-    corr_num=0
-    CALL ComputeNeutronChemicalPotential_TABLE(D, T, Ye, Ym, Mun)
-    CALL ComputeNeutronEffectiveMass_TABLE(D, T, Ye, Ym, Mn_eff)
-    CALL ComputeNeutronSelfEnergy_TABLE(D, T, Ye, Ym, Un)
-    CALL ComputeNeutronMassFraction_TABLE(D, T, Ye, Ym, Xn)
-    CALL ComputeProtonChemicalPotential_TABLE(D, T, Ye, Ym, Mup)
-    CALL ComputeProtonEffectiveMass_TABLE(D, T, Ye, Ym, Mp_eff)
-    CALL ComputeProtonSelfEnergy_TABLE(D, T, Ye, Ym, Up)
-    CALL ComputeProtonMassFraction_TABLE(D, T, Ye, Ym, Xp)
-    !CALL ComputeElectronChemicalPotential_TABLE(D, T, Ye, Ym, Mue)
-    CALL ComputeMuonChemicalPotential_TABLE(D, T, Ye, Ym, Mumu)
-    !WRITE(*,*) 'cheme =', Mue(iX_B) /UnitE
-    !WRITE(*,*) 'chemmu=', Mumu(iX_B) /UnitE
-    !WRITE(*,*) 'chemn =', Mun(iX_B) / UnitE
-    !WRITE(*,*) 'chemp =', Mup(iX_B) / UnitE
-    !WRITE(*,*) 'xn    =', Xn(iX_B)
-    !WRITE(*,*) 'xp    =', Xp(iX_B)
-    !WRITE(*,*) 'un    =', Un(iX_B)
-    !WRITE(*,*) 'up    =', Up(iX_B)
-    !WRITE(*,*) 'massn =', Mn_eff(iX_B)
-    !WRITE(*,*) 'massp =', Mp_eff(iX_B)
-#endif
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA             &
     !$OMP MAP( to:    E, D, T, Ye, Ym ) &
-#ifdef EOSMODE_COMPOSE
-    !$OMP MAP( to:    Mun, Mn_eff, Un, Xn, Mup, Mp_eff, Up, Xp, Mumu ) &
-#endif
     !$OMP MAP( alloc: opEC )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA                  &
     !$ACC COPYIN  ( E, D, T, Ye, Ym ) &
-#ifdef EOSMODE_COMPOSE
-    !$ACC COPYIN  ( Mun, Mn_eff, Un, Xn, Mup, Mp_eff, Up, Xp, Mumu ) &
-#endif
     !$ACC CREATE  ( opEC )
 #endif
 
 !do EmAb on nucleons first
+
+    IF ( iS_B <= iNuE .AND. iS_E >= iNuE_Bar ) THEN
 #if defined(THORNADO_OMP_OL)
-     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-#ifdef EOSMODE_COMPOSE
-    !$OMP PRIVATE( Mun_P, Mn_eff_P, Un_P, Xn_P, Mup_P, Mp_eff_P, Up_P, Xp_P, Mumu_P) &
-#endif
-    !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Ye_P )
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+      !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Ye_P )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-#ifdef EOSMODE_COMPOSE
-    !$ACC PRIVATE( Mun_P, Mn_eff_P, Un_P, Xn_P, Mup_P, Mp_eff_P, Up_P, Xp_P, Mumu_P) &
-#endif
-    !$ACC PRIVATE( LogE_P, LogD_P, LogT_P, Ye_P )
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+      !$ACC PRIVATE( LogE_P, LogD_P, LogT_P, Ye_P )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(3) &
-#ifdef EOSMODE_COMPOSE
-    !$OMP PRIVATE( Mun_P, Mn_eff_P, Un_P, Xn_P, Mup_P, Mp_eff_P, Up_P, Xp_P, Mumu_P) &
+      !$OMP PARALLEL DO COLLAPSE(3) &
+      !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Ye_P )
 #endif
-    !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Ye_P )
-#endif
-    DO iX = iX_B, iX_E
-    DO iS = iS_B, iS_E
-    DO iE = iE_B, iE_E
+      DO iX = iX_B, iX_E
+      DO iS = iNuE, iNuE_Bar
+      DO iE = iE_B, iE_E
 
-      IF ( QueryOpacity_EmAb( D(iX) / UnitD ) ) THEN
+        IF ( QueryOpacity_EmAb( D(iX) / UnitD ) ) THEN
 
-        LogE_P = LOG10( E(iE) / UnitE )
+          LogE_P = LOG10( E(iE) / UnitE )
 
-        LogD_P = LOG10( D(iX)  / UnitD )
-        LogT_P = LOG10( T(iX)  / UnitT )
-        Ye_P   =        Ye(iX) / UnitY
+          LogD_P = LOG10( D(iX)  / UnitD )
+          LogT_P = LOG10( T(iX)  / UnitT )
+          Ye_P   =        Ye(iX) / UnitY
 
-        IF ( iS <= iNuE_Bar ) THEN
+          CALL LogInterpolateSingleVariable_4D_Custom_Point &
+                 ( LogE_P , LogD_P , LogT_P , Ye_P, &
+                   LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+                   OS_EmAb(iS), EmAb_T(:,:,:,:,iS), opEC(iE,iS,iX) )
 
-        CALL LogInterpolateSingleVariable_4D_Custom_Point &
-               ( LogE_P , LogD_P , LogT_P , Ye_P, &
-                 LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-                 OS_EmAb(iS), EmAb_T(:,:,:,:,iS), opEC(iE,iS,iX) )
-
-        opEC(iE,iS,iX) = opEC(iE,iS,iX) * UnitEC
-
-        ELSE IF ( iS <= iNuM ) THEN
-
-          Ym_P = Ym(iX) / UnitY
-
-#ifdef EOSMODE_COMPOSE
-  
-          IF (opac_method .eq. 1) THEN
-
-            CALL ElasticAbsorptionOpacityNum &
-               (10**LogD_P, 10**LogT_P, 10**LogE_P, &
-                 Mun(iX)/UnitE, Mn_eff(iX), Un(iX), Xn(iX), &
-                 Mup(iX)/UnitE, Mp_eff(iX), Up(iX), Xp(iX), &
-                 Mumu(iX)/UnitE, opEC(iE, iS, iX), opEC(iE, iS+1, iX))
-
-            WeakMagRecNuLep=1.0
-            WeakMagRecNuLepBar=1.0
-            opEC(iE,iS,iX) = opEC(iE,iS,iX) * WeakMagRecNuLep * UnitEC
-            opEC(iE,iS+1,iX) = opEC(iE,iS+1,iX) * WeakMagRecNuLepBar * UnitEC
-
-          ELSEIF (opac_method .eq. 2) THEN
-
-            CALL Opacity_CC_2D(corr_num, 1, 10**LogE_P, opEC(iE,iS,iX), &
-              (10**LogT_P)*kmev, Mumu_P, Mun_P, Mup_P,  &
-              mmu, Mn_eff_P, Mp_eff_P, Un_P, Up_P, 50)
-            CALL Opacity_CC_2D(corr_num, 2, 10**LogE_P, opEC(iE,iS+1,iX), &
-              (10**LogT_P)*kmev, Mumu_P, Mun_P, Mup_P,  &
-              mmu, Mn_eff_P, Mp_eff_P, Un_P, Up_P, 50)
-
-            opEC(iE,iS,iX) = opEC(iE,iS,iX) * UnitEC
-            opEC(iE,iS+1,iX) = opEC(iE,iS+1,iX) * UnitEC
-#ifdef CC_INTEGRALS_4D
-          ELSEIF (opac_method .eq. 3) THEN
-
-            CALL Opacity_CC_4D(corr_num, 1, 10**LogE_P, opEC(iE,iS,iX), &
-              (10**LogT_P)*kmev, Mumu_P, Mun_P, Mup_P,  &
-              mmu, Mn_eff_P, Mp_eff_P, Un_P, Up_P)
-            CALL Opacity_CC_4D(corr_num, 2, 10**LogE_P, opEC(iE,iS+1,iX), &
-              (10**LogT_P)*kmev, Mumu_P, Mun_P, Mup_P,  &
-              mmu, Mn_eff_P, Mp_eff_P, Un_P, Up_P)
-
-            opEC(iE,iS,iX) = opEC(iE,iS,iX) * UnitEC
-            opEC(iE,iS+1,iX) = opEC(iE,iS+1,iX) *UnitEC
-#endif
-          END IF
-#else
-          opEC(iE,iS,iX) = Zero
-          opEC(iE,iS+1,iX) = Zero
-
-#endif
-        ELSE IF ( iS <= iNuM_Bar ) THEN
+          opEC(iE,iS,iX) = opEC(iE,iS,iX) * UnitEC
 
         ELSE
 
@@ -1046,15 +957,246 @@ CONTAINS
 
         END IF
 
-      ELSE
+      END DO
+      END DO
+      END DO
+    END IF
 
+    IF ( iS_B <= iNuM .AND. iS_E >= iNuM_Bar ) THEN
+
+#ifndef EOSMODE_COMPOSE
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+      DO iX = iX_B, iX_E
+      DO iS = iNuM, iNuM_Bar
+      DO iE = iE_B, iE_E
         opEC(iE,iS,iX) = Zero
+      END DO
+      END DO
+      END DO
+#else
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET ENTER DATA &
+      !$OMP MAP( alloc: Mun, Mn_eff, Un, Xn, Mup, Mp_eff, Up, Xp, Mumu )
+#elif defined(THORNADO_OACC)
+      !$ACC ENTER DATA  &
+      !$ACC CREATE( Mun, Mn_eff, Un, Xn, Mup, Mp_eff, Up, Xp, Mumu )
+#endif
+
+      opac_method = 1
+      corr_num = 0
+      CALL ComputeNeutronChemicalPotential_TABLE ( D, T, Ye, Ym, Mun )
+      CALL ComputeNeutronEffectiveMass_TABLE ( D, T, Ye, Ym, Mn_eff )
+      CALL ComputeNeutronSelfEnergy_TABLE ( D, T, Ye, Ym, Un )
+      CALL ComputeNeutronMassFraction_TABLE ( D, T, Ye, Ym, Xn )
+      CALL ComputeProtonChemicalPotential_TABLE ( D, T, Ye, Ym, Mup )
+      CALL ComputeProtonEffectiveMass_TABLE ( D, T, Ye, Ym, Mp_eff )
+      CALL ComputeProtonSelfEnergy_TABLE ( D, T, Ye, Ym, Up )
+      CALL ComputeProtonMassFraction_TABLE ( D, T, Ye, Ym, Xp )
+      !CALL ComputeElectronChemicalPotential_TABLE ( D, T, Ye, Ym, Mue )
+      CALL ComputeMuonChemicalPotential_TABLE ( D, T, Ye, Ym, Mumu )
+      !WRITE(*,*) 'cheme =', Mue(iX_B) /UnitE
+      !WRITE(*,*) 'chemmu=', Mumu(iX_B) /UnitE
+      !WRITE(*,*) 'chemn =', Mun(iX_B) / UnitE
+      !WRITE(*,*) 'chemp =', Mup(iX_B) / UnitE
+      !WRITE(*,*) 'xn    =', Xn(iX_B)
+      !WRITE(*,*) 'xp    =', Xp(iX_B)
+      !WRITE(*,*) 'un    =', Un(iX_B)
+      !WRITE(*,*) 'up    =', Up(iX_B)
+      !WRITE(*,*) 'massn =', Mn_eff(iX_B)
+      !WRITE(*,*) 'massp =', Mp_eff(iX_B)
+    
+      IF ( opac_method == 1 ) THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+        !$OMP PRIVATE( Mun_P, Mup_P, Mumu_P ) &
+        !$OMP PRIVATE( E_P, D_P, T_P, Ym_P, WeakMagRecNuLep, WeakMagRecNuLepBar )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+        !$ACC PRIVATE( Mun_P, Mup_P, Mumu_P ) &
+        !$ACC PRIVATE( E_P, D_P, T_P, Ym_P, WeakMagRecNuLep, WeakMagRecNuLepBar )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(2) &
+        !$OMP PRIVATE( Mun_P, Mup_P, Mumu_P ) &
+        !$OMP PRIVATE( E_P, D_P, T_P, Ym_P, WeakMagRecNuLep, WeakMagRecNuLepBar )
+#endif
+        DO iX = iX_B, iX_E
+        DO iE = iE_B, iE_E
+
+          IF ( QueryOpacity_EmAb_Muon( D(iX) / UnitD ) ) THEN
+
+            E_P  = E(iE)  / UnitE
+            D_P  = D(iX)  / UnitD
+            T_P  = T(iX)  / UnitT
+            Ym_P = Ym(iX) / UnitY
+
+            Mun_P  = Mup (iX) / UnitMn
+            Mup_P  = Mup (iX) / UnitMp
+            Mumu_P = Mumu(iX) / UnitMmu
+
+            CALL ElasticAbsorptionOpacityNum &
+               ( D_P, T_P, E_P, &
+                 Mun_P, Mn_eff(iX), Un(iX), Xn(iX), &
+                 Mup_P, Mp_eff(iX), Up(iX), Xp(iX), &
+                 Mumu_P, opEC(iE,iNuM,iX), opEC(iE,iNuM_Bar,iX) )
+
+            WeakMagRecNuLep = 1.0
+            WeakMagRecNuLepBar = 1.0
+
+            opEC(iE,iNuM    ,iX) = opEC(iE,iNuM    ,iX) * WeakMagRecNuLep    * UnitEC
+            opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) * WeakMagRecNuLepBar * UnitEC
+
+          ELSE
+
+            opEC(iE,iNuM    ,iX) = Zero
+            opEC(iE,iNuM_Bar,iX) = Zero
+
+          END IF
+
+        END DO
+        END DO
+
+      ELSE IF ( opac_method == 2 ) THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+        !$OMP PRIVATE( Mun_P, Mup_P, Mumu_P ) &
+        !$OMP PRIVATE( E_P, D_P, T_P, Ym_P, WeakMagRecNuLep, WeakMagRecNuLepBar )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+        !$ACC PRIVATE( Mun_P, Mup_P, Mumu_P ) &
+        !$ACC PRIVATE( E_P, D_P, T_P, Ym_P, WeakMagRecNuLep, WeakMagRecNuLepBar )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(2) &
+        !$OMP PRIVATE( Mun_P, Mup_P, Mumu_P ) &
+        !$OMP PRIVATE( E_P, D_P, T_P, Ym_P, WeakMagRecNuLep, WeakMagRecNuLepBar )
+#endif
+        DO iX = iX_B, iX_E
+        DO iE = iE_B, iE_E
+
+          IF ( QueryOpacity_EmAb_Muon( D(iX) / UnitD ) ) THEN
+
+            E_P  = E(iE)  / UnitE
+            D_P  = D(iX)  / UnitD
+            T_P  = T(iX)  / UnitT * kmev
+            Ym_P = Ym(iX) / UnitY
+
+            Mun_P  = Mup (iX) / UnitMn
+            Mup_P  = Mup (iX) / UnitMp
+            Mumu_P = Mumu(iX) / UnitMmu
+
+            CALL Opacity_CC_2D &
+                ( corr_num, 1, E_P, opEC(iE,iNuM,iX), &
+                  T_P, Mumu_P, Mun_P, Mup_P,  &
+                  mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), 50 )
+            CALL Opacity_CC_2D &
+                ( corr_num, 2, E_P, opEC(iE,iNuM_Bar,iX), &
+                  T_P, Mumu_P, Mun_P, Mup_P,  &
+                  mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), 50 )
+
+            opEC(iE,iNuM    ,iX) = opEC(iE,iNuM    ,iX) * UnitEC
+            opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) * UnitEC
+
+          ELSE
+
+            opEC(iE,iNuM    ,iX) = Zero
+            opEC(iE,iNuM_Bar,iX) = Zero
+
+          END IF
+
+        END DO
+        END DO
+
+#ifdef CC_INTEGRALS_4D
+      ELSE IF ( opac_method == 3 ) THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+        !$OMP PRIVATE( Mun_P, Mup_P, Mumu_P ) &
+        !$OMP PRIVATE( E_P, D_P, T_P, Ym_P )
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+        !$ACC PRIVATE( Mun_P, Mup_P, Mumu_P ) &
+        !$ACC PRIVATE( E_P, D_P, T_P, Ym_P )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(2) &
+        !$OMP PRIVATE( Mun_P, Mup_P, Mumu_P ) &
+        !$OMP PRIVATE( E_P, D_P, T_P, Ym_P )
+#endif
+        DO iX = iX_B, iX_E
+        DO iE = iE_B, iE_E
+
+          IF ( QueryOpacity_EmAb_Muon( D(iX) / UnitD ) ) THEN
+
+            E_P  = E(iE)  / UnitE
+            D_P  = D(iX)  / UnitD
+            T_P  = T(iX)  / UnitT * kmev
+            Ym_P = Ym(iX) / UnitY
+
+            Mun_P  = Mup (iX) / UnitMn
+            Mup_P  = Mup (iX) / UnitMp
+            Mumu_P = Mumu(iX) / UnitMmu
+
+            CALL Opacity_CC_4D &
+                ( corr_num, 1, E_P, opEC(iE,iNuM,iX), &
+                  T_P, Mumu_P, Mun_P, Mup_P,  &
+                  mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX) )
+            CALL Opacity_CC_4D &
+                ( corr_num, 2, E_P, opEC(iE,iNuM_Bar,iX), &
+                  T_P, Mumu_P, Mun_P, Mup_P,  &
+                  mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX) )
+
+            opEC(iE,iNuM    ,iX) = opEC(iE,iNuM    ,iX) * UnitEC
+            opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) * UnitEC
+
+          ELSE
+
+            opEC(iE,iNuM    ,iX) = Zero
+            opEC(iE,iNuM_Bar,iX) = Zero
+
+          END IF
+
+        END DO
+        END DO
+#endif
       END IF
 
-    END DO
-    END DO
-    END DO
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET EXIT DATA &
+      !$OMP MAP( release: Mun, Mn_eff, Un, Xn, Mup, Mp_eff, Up, Xp, Mumu )
+#elif defined(THORNADO_OACC)
+      !$ACC EXIT DATA &
+      !$ACC DELETE( Mun, Mn_eff, Un, Xn, Mup, Mp_eff, Up, Xp, Mumu )
+#endif
+
+#endif
+
+    END IF
+
+    IF ( iS_B <= iNuT .AND. iS_E >= iNuT_Bar ) THEN
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+      DO iX = iX_B, iX_E
+      DO iS = iNuT, iNuT_Bar
+      DO iE = iE_B, iE_E
+        opEC(iE,iS,iX) = Zero
+      END DO
+      END DO
+      END DO
+    END IF
+
     !DO iX=iX_B, iX_E
     !  DO iS = iS_B, iS_E
     !    DO iE = iE_B, iE_E
@@ -1062,6 +1204,7 @@ CONTAINS
     !    END DO
     !  END DO
     !END DO
+
 !now add contribution from EC on heavy nuclei
   IF(use_EC_table .gt. 0) THEN
 
@@ -1469,19 +1612,19 @@ CONTAINS
     !$ACC               CenterE, WidthE, NodesE )     
 #endif
 
-  DEALLOCATE( Xh      )
-  DEALLOCATE( Ah      )
-  DEALLOCATE( Ah_old  )
-  DEALLOCATE( EC_rate )
+    DEALLOCATE( Xh      )
+    DEALLOCATE( Ah      )
+    DEALLOCATE( Ah_old  )
+    DEALLOCATE( EC_rate )
 
-  DEALLOCATE( T0 )
-  DEALLOCATE( Ye0 )
-  DEALLOCATE( Ym0 )
+    DEALLOCATE( T0 )
+    DEALLOCATE( Ye0 )
+    DEALLOCATE( Ym0 )
 
-  DEALLOCATE( spec_nodes          )
-  DEALLOCATE( spec_fine           )
-  DEALLOCATE( spec_elements       )
-  DEALLOCATE( spec_elements_nodes )
+    DEALLOCATE( spec_nodes          )
+    DEALLOCATE( spec_fine           )
+    DEALLOCATE( spec_elements       )
+    DEALLOCATE( spec_elements_nodes )
 
   END BLOCK EC_Table
 
@@ -1490,16 +1633,10 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA                &
     !$OMP MAP (release: E, D, T, Ye, Ym ) &
-#ifdef EOSMODE_COMPOSE
-    !$OMP MAP( release: Mun, Mn_eff, Un, Xn, Mup, Mp_eff, Up, Xp, Mumu ) &
-#endif
     !$OMP MAP (from: opEC )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA                 &
     !$ACC DELETE (E, D, T, Ye, Ym ) &
-#ifdef EOSMODE_COMPOSE
-    !$ACC DELETE (Mun, Mn_eff, Un, Xn, Mup, Mp_eff, Up, Xp, Mumu ) &
-#endif
     !$ACC COPYOUT ( opEC )
 #endif
 
