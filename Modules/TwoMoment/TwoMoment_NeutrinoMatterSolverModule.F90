@@ -1644,6 +1644,7 @@ CONTAINS
     ELSE
       nX = nX_G
     END IF
+    IF ( nX <= 0 ) RETURN
 
     IF( PRESENT( nX_P0 ) )THEN
       nX0 = nX_P0
