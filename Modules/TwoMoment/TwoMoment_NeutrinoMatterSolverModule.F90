@@ -5179,9 +5179,9 @@ CONTAINS
 
     WRITE(*,*)                      '[SolveNeutrinoMatterCoupling_FP_Nested_AA] Convergence Status'
     WRITE(*,'(1x,4a5,5a23)')        'iQ', 'iN_X', 'k_outer', 'k_inner', 'Q_old', 'Q', 'U', 'F(iQ)', 'G(iQ)'
-    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iYe', iN_X, k_outer, k_inner, Ye0_P, Ye_P, U_Ye(iN_X), FVECm_outer(iYe,iN_X), G_Ye(iN_X)
-    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iYm', iN_X, k_outer, k_inner, Ym0_P, Ym_P, U_Ym(iN_X), FVECm_outer(iYm,iN_X), G_Ym(iN_X)
-    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iEf', iN_X, k_outer, k_inner, Ef0_P, Ef_P, U_Ef(iN_X), FVECm_outer(iEf,iN_X), G_Ef(iN_X)
+    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iYe', iN_X, k_outer, k_inner, Ye0_P, Ye_P, U_Ye   (iN_X), FVECm_outer(iYe,iN_X), G_Ye   (iN_X)
+    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iYm', iN_X, k_outer, k_inner, Ym0_P, Ym_P, U_Ym   (iN_X), FVECm_outer(iYm,iN_X), G_Ym   (iN_X)
+    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iEf', iN_X, k_outer, k_inner,  E0_P,  E_P, U_Ef   (iN_X), FVECm_outer(iEf,iN_X), G_Ef   (iN_X)
     WRITE(*,'(1x,a5,3i5,5es23.15)') 'iV1', iN_X, k_outer, k_inner, V10_P, V1_P, U_V_d_1(iN_X), FVECm_outer(iV1,iN_X), G_V_d_1(iN_X)
     WRITE(*,'(1x,a5,3i5,5es23.15)') 'iV2', iN_X, k_outer, k_inner, V20_P, V2_P, U_V_d_2(iN_X), FVECm_outer(iV2,iN_X), G_V_d_2(iN_X)
     WRITE(*,'(1x,a5,3i5,5es23.15)') 'iV3', iN_X, k_outer, k_inner, V30_P, V3_P, U_V_d_3(iN_X), FVECm_outer(iV3,iN_X), G_V_d_3(iN_X)
