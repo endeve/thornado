@@ -1567,6 +1567,7 @@ CONTAINS
 
       CALL PrintStatus_FP &
              ( ITERATE_outer, ITERATE_inner, k_outer, k_inner, Error, &
+               FVECm_outer, FVECm_inner, GVECm_outer, GVECm_inner, &
                D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3, &
                Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
                Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
@@ -5115,6 +5116,7 @@ CONTAINS
 
   SUBROUTINE PrintStatus_FP &
     ( MASK_outer, MASK_inner, k_outer, k_inner, Error, &
+      Fm_outer, Fm_inner, Gm_outer, Gm_inner
       D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3, &
       Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
       Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
@@ -5123,6 +5125,7 @@ CONTAINS
     LOGICAL,  DIMENSION(:)    , INTENT(in) :: MASK_outer, MASK_inner
     INTEGER,                    INTENT(in) :: k_outer, k_inner
     INTEGER,  DIMENSION(:)    , INTENT(in) :: Error
+    REAL(DP), DIMENSION(:,:)  , INTENT(in) :: Fm_outer, Fm_inner, Gm_outer, Gm_inner
     REAL(DP), DIMENSION(:)    , INTENT(in) :: D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3
     REAL(DP), DIMENSION(:,:,:), INTENT(in) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
     REAL(DP), DIMENSION(:,:,:), INTENT(in) :: Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3
@@ -5136,8 +5139,8 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE FROM &
-    !$OMP ( FVECm_outer, FVECm_inner, &
-    !$OMP   GVECm_outer, GVECm_inner, &
+    !$OMP ( Fm_outer, Fm_inner, &
+    !$OMP   Gm_outer, Gm_inner, &
     !$OMP   U_Ye, U_Ym, U_Ef, U_V_d_1, U_V_d_2, U_V_d_3, &
     !$OMP   G_Ye, G_Ym, G_Ef, G_V_d_1, G_V_d_2, G_V_d_3, &
     !$OMP   D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3, &
@@ -5148,8 +5151,8 @@ CONTAINS
     !$OMP   Dnu_old, Inu_u_1_old, Inu_u_2_old, Inu_u_3_old )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE HOST &
-    !$ACC ( FVECm_outer, FVECm_inner, &
-    !$ACC   GVECm_outer, GVECm_inner, &
+    !$ACC ( Fm_outer, Fm_inner, &
+    !$ACC   Gm_outer, Gm_inner, &
     !$ACC   U_Ye, U_Ym, U_Ef, U_V_d_1, U_V_d_2, U_V_d_3, &
     !$ACC   D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3, &
     !$ACC   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
@@ -5179,12 +5182,12 @@ CONTAINS
 
     WRITE(*,*)                      '[SolveNeutrinoMatterCoupling_FP_Nested_AA] Convergence Status'
     WRITE(*,'(1x,4a5,5a23)')        'iQ', 'iN_X', 'k_outer', 'k_inner', 'Q_old', 'Q', 'U', 'F(iQ)', 'G(iQ)'
-    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iYe', iN_X, k_outer, k_inner, Ye0_P, Ye_P, U_Ye   (iN_X), FVECm_outer(iYe,iN_X), G_Ye   (iN_X)
-    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iYm', iN_X, k_outer, k_inner, Ym0_P, Ym_P, U_Ym   (iN_X), FVECm_outer(iYm,iN_X), G_Ym   (iN_X)
-    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iEf', iN_X, k_outer, k_inner,  E0_P,  E_P, U_Ef   (iN_X), FVECm_outer(iEf,iN_X), G_Ef   (iN_X)
-    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iV1', iN_X, k_outer, k_inner, V10_P, V1_P, U_V_d_1(iN_X), FVECm_outer(iV1,iN_X), G_V_d_1(iN_X)
-    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iV2', iN_X, k_outer, k_inner, V20_P, V2_P, U_V_d_2(iN_X), FVECm_outer(iV2,iN_X), G_V_d_2(iN_X)
-    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iV3', iN_X, k_outer, k_inner, V30_P, V3_P, U_V_d_3(iN_X), FVECm_outer(iV3,iN_X), G_V_d_3(iN_X)
+    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iYe', iN_X, k_outer, k_inner, Ye0_P, Ye_P, U_Ye   (iN_X), Fm_outer(iYe,iN_X), G_Ye   (iN_X)
+    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iYm', iN_X, k_outer, k_inner, Ym0_P, Ym_P, U_Ym   (iN_X), Fm_outer(iYm,iN_X), G_Ym   (iN_X)
+    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iEf', iN_X, k_outer, k_inner,  E0_P,  E_P, U_Ef   (iN_X), Fm_outer(iEf,iN_X), G_Ef   (iN_X)
+    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iV1', iN_X, k_outer, k_inner, V10_P, V1_P, U_V_d_1(iN_X), Fm_outer(iV1,iN_X), G_V_d_1(iN_X)
+    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iV2', iN_X, k_outer, k_inner, V20_P, V2_P, U_V_d_2(iN_X), Fm_outer(iV2,iN_X), G_V_d_2(iN_X)
+    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iV3', iN_X, k_outer, k_inner, V30_P, V3_P, U_V_d_3(iN_X), Fm_outer(iV3,iN_X), G_V_d_3(iN_X)
 
   END SUBROUTINE PrintStatus_FP
 
