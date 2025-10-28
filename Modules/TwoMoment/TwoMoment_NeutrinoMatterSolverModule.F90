@@ -2645,9 +2645,9 @@ CONTAINS
       END DO
 
 
-      Ym_hat(iN_X) = MAX( Ym_old(iN_X), SUM_Ym * AtomicMassUnit / D(iN_X), 1d-10 )
+      Ym_hat(iN_X)  = MAX( Ym_old(iN_X), SUM_Ym * AtomicMassUnit / D(iN_X), 1d-10 )
 
-      S_Ym = One / ( D(iN_X) * Ym_hat(iN_X) / AtomicMassUnit )
+      S_Ym(iN_X)    = One / ( D(iN_X) * Ym_hat(iN_X) / AtomicMassUnit )
 
       U_Ym   (iN_X) = Ym_old(iN_X) / Ym_hat(iN_X)
 
