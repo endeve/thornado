@@ -4539,6 +4539,8 @@ CONTAINS
     ( D, T, Ye, Ym, V, dVdD, dVdT, dVdYe, dVdYm, V_T, OS_V, Units_V, &
     ReturnP, ReturnE, ReturnS)
 
+  ! CHECK THIS I THINK IT'S WRONG BUT IT'S NOT REALLY USED
+
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -4682,12 +4684,12 @@ CONTAINS
       ! V_P is a dummy variable below
       CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
              ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
-             LocalOffset, LOG10(V_T), V_P, dVbary_P )
+             OS_V, LOG10(V_T), V_P, dVbary_P )
              
       ! V_P is a dummy variable below
       CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
              ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
-             OS_P, LOG10(Vtot), V_P, dV_P )
+             OS_V, LOG10(Vtot), V_P, dV_P )
              
       ! Now calculate electron and muon derivatives
       ! Initialize temperature, density, ye
@@ -4727,12 +4729,12 @@ CONTAINS
       ! V_P is a dummy variable below
       CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
              ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
-             LocalOffset, LOG10(V_T), V_P, dVbary_P )
+             OS_V, LOG10(V_T), V_P, dVbary_P )
              
       ! V_P is a dummy variable below
       CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
              ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
-             OS_P, LOG10(Vtot), V_P, dV_P )
+             OS_V, LOG10(Vtot), V_P, dV_P )
              
       ! Now calculate electron and muon derivatives
       ! Initialize temperature, density, ye

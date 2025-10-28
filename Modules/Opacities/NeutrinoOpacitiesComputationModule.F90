@@ -1001,10 +1001,10 @@ CONTAINS
       CALL ComputeProtonMassFraction_TABLE ( D, T, Ye, Ym, Xp )
       !CALL ComputeElectronChemicalPotential_TABLE ( D, T, Ye, Ym, Mue )
       CALL ComputeMuonChemicalPotential_TABLE ( D, T, Ye, Ym, Mumu )
-      !WRITE(*,*) 'cheme =', Mue(iX_B) /UnitE
-      !WRITE(*,*) 'chemmu=', Mumu(iX_B) /UnitE
-      !WRITE(*,*) 'chemn =', Mun(iX_B) / UnitE
-      !WRITE(*,*) 'chemp =', Mup(iX_B) / UnitE
+      !WRITE(*,*) 'cheme =', Mue(iX_B)  / UnitE
+      !WRITE(*,*) 'chemmu=', Mumu(iX_B) / UnitE
+      !WRITE(*,*) 'chemn =', Mun(iX_B)  / UnitE
+      !WRITE(*,*) 'chemp =', Mup(iX_B)  / UnitE
       !WRITE(*,*) 'xn    =', Xn(iX_B)
       !WRITE(*,*) 'xp    =', Xp(iX_B)
       !WRITE(*,*) 'un    =', Un(iX_B)
@@ -1037,7 +1037,7 @@ CONTAINS
             T_P  = T(iX)  / UnitT
             Ym_P = Ym(iX) / UnitY
 
-            Mun_P  = Mup (iX) / UnitMn
+            Mun_P  = Mun (iX) / UnitMn
             Mup_P  = Mup (iX) / UnitMp
             Mumu_P = Mumu(iX) / UnitMmu
 
@@ -1088,7 +1088,7 @@ CONTAINS
             T_P  = T(iX)  / UnitT * kmev
             Ym_P = Ym(iX) / UnitY
 
-            Mun_P  = Mup (iX) / UnitMn
+            Mun_P  = Mun (iX) / UnitMn
             Mup_P  = Mup (iX) / UnitMp
             Mumu_P = Mumu(iX) / UnitMmu
 
@@ -1140,7 +1140,7 @@ CONTAINS
             T_P  = T(iX)  / UnitT * kmev
             Ym_P = Ym(iX) / UnitY
 
-            Mun_P  = Mup (iX) / UnitMn
+            Mun_P  = Mun (iX) / UnitMn
             Mup_P  = Mup (iX) / UnitMp
             Mumu_P = Mumu(iX) / UnitMmu
 
