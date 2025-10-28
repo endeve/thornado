@@ -1565,13 +1565,13 @@ CONTAINS
              ( ITERATE_outer, ITERATE_inner, n_FP_outer, k_outer, &
                nIterations_Outer, FVECm_outer )
 
-      CALL PrintStatus_FP &
-             ( ITERATE_outer, ITERATE_inner, k_outer, k_inner, Error, &
-               FVECm_outer, FVECm_inner, GVECm_outer, GVECm_inner, &
-               D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3, &
-               Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-               Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
-               Gm_dd_11, Gm_dd_22, Gm_dd_33, 1 )
+      !CALL PrintStatus_FP &
+      !       ( ITERATE_outer, ITERATE_inner, k_outer, k_inner, Error, &
+      !         FVECm_outer, FVECm_inner, GVECm_outer, GVECm_inner, &
+      !         D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3, &
+      !         Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      !         Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
+      !         Gm_dd_11, Gm_dd_22, Gm_dd_33, 1 )
 
       CALL CheckError_FP &
              ( ITERATE_outer, ITERATE_inner, k_outer, k_inner, Error, &
@@ -5181,13 +5181,13 @@ CONTAINS
     V30_P  = V_u_3_old(iN_X) / Unit_V
 
     WRITE(*,*)                      '[SolveNeutrinoMatterCoupling_FP_Nested_AA] Convergence Status'
-    WRITE(*,'(1x,4a5,5a23)')        'iQ', 'iN_X', 'k_outer', 'k_inner', 'Q_old', 'Q', 'U', 'F(iQ)', 'G(iQ)'
-    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iYe', iN_X, k_outer, k_inner, Ye0_P, Ye_P, U_Ye   (iN_X), Fm_outer(iYe,iN_X), G_Ye   (iN_X)
-    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iYm', iN_X, k_outer, k_inner, Ym0_P, Ym_P, U_Ym   (iN_X), Fm_outer(iYm,iN_X), G_Ym   (iN_X)
-    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iEf', iN_X, k_outer, k_inner,  E0_P,  E_P, U_Ef   (iN_X), Fm_outer(iEf,iN_X), G_Ef   (iN_X)
-    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iV1', iN_X, k_outer, k_inner, V10_P, V1_P, U_V_d_1(iN_X), Fm_outer(iV1,iN_X), G_V_d_1(iN_X)
-    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iV2', iN_X, k_outer, k_inner, V20_P, V2_P, U_V_d_2(iN_X), Fm_outer(iV2,iN_X), G_V_d_2(iN_X)
-    WRITE(*,'(1x,a5,3i5,5es23.15)') 'iV3', iN_X, k_outer, k_inner, V30_P, V3_P, U_V_d_3(iN_X), Fm_outer(iV3,iN_X), G_V_d_3(iN_X)
+    WRITE(*,'(1x,4a8,5a23)')        'iQ', 'iN_X', 'k_outer', 'k_inner', 'Q_old', 'Q', 'U', 'F(iQ)', 'G(iQ)'
+    WRITE(*,'(1x,a8,8i5,5es23.15)') 'iYe', iN_X, k_outer, k_inner, Ye0_P, Ye_P, U_Ye   (iN_X), Fm_outer(iYe,iN_X), G_Ye   (iN_X)
+    WRITE(*,'(1x,a8,8i5,5es23.15)') 'iYm', iN_X, k_outer, k_inner, Ym0_P, Ym_P, U_Ym   (iN_X), Fm_outer(iYm,iN_X), G_Ym   (iN_X)
+    WRITE(*,'(1x,a8,8i5,5es23.15)') 'iEf', iN_X, k_outer, k_inner,  E0_P,  E_P, U_Ef   (iN_X), Fm_outer(iEf,iN_X), G_Ef   (iN_X)
+    WRITE(*,'(1x,a8,8i5,5es23.15)') 'iV1', iN_X, k_outer, k_inner, V10_P, V1_P, U_V_d_1(iN_X), Fm_outer(iV1,iN_X), G_V_d_1(iN_X)
+    WRITE(*,'(1x,a8,8i5,5es23.15)') 'iV2', iN_X, k_outer, k_inner, V20_P, V2_P, U_V_d_2(iN_X), Fm_outer(iV2,iN_X), G_V_d_2(iN_X)
+    WRITE(*,'(1x,a8,8i5,5es23.15)') 'iV3', iN_X, k_outer, k_inner, V30_P, V3_P, U_V_d_3(iN_X), Fm_outer(iV3,iN_X), G_V_d_3(iN_X)
 
   END SUBROUTINE PrintStatus_FP
 
