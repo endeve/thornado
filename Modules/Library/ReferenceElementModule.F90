@@ -293,6 +293,7 @@ CONTAINS
 #endif
 
     DEALLOCATE( NodeNumbersX )
+    DEALLOCATE( NodeNumbersE )
     DEALLOCATE( NodeNumberTable )
     DEALLOCATE( NodeNumberTable_E  )
     DEALLOCATE( NodeNumberTable_X1 )
