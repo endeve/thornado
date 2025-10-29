@@ -69,6 +69,21 @@ NeutrinoOpacities.o: \
   TimersModule.o \
   NeutrinoOpacities.F90
 
+NeutrinoOpacities_Muons.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramInitializationModule.o \
+  MeshModule.o \
+  UtilitiesModule.o \
+  ReferenceElementModuleE.o \
+  ReferenceElementModuleE_Lagrange.o \
+  EquationOfStateModule_TABLE.o \
+  OpacityModule_TABLE.o \
+  RadiationFieldsModule.o \
+  NeutrinoOpacitiesComputationModule.o \
+  TimersModule.o \
+  NeutrinoOpacities_Muons.F90
+
 ifeq ($(PE_ENV),CRAY)
 TwoMoment_PositivityLimiterModule.o : TwoMoment_PositivityLimiterModule.F90
 	$(FORTRAN) -c $(DEFINES) $(FLAGS) $(filter-out -qrealsize=8,$(F90FLAGS)) -h ipa1 $< -o $@
