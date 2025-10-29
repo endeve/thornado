@@ -29,6 +29,7 @@ MODULE PolynomialBasisModuleX_Legendre
   TYPE(PolynomialBasisType), DIMENSION(:),   ALLOCATABLE, PUBLIC :: P_X3
 
   PUBLIC :: InitializePolynomialBasisX_Legendre
+  PUBLIC :: FinalizePolynomialBasisX_Legendre
   PUBLIC :: evalPX
 
 CONTAINS
@@ -54,6 +55,16 @@ CONTAINS
     CALL ComputeMassMatrix
 
   END SUBROUTINE InitializePolynomialBasisX_Legendre
+
+  SUBROUTINE FinalizePolynomialBasisX_Legendre
+
+    DEALLOCATE( P_X1 )
+    DEALLOCATE( P_X2 )
+    DEALLOCATE( P_X3 )
+    DEALLOCATE( IndPX_Q )
+    DEALLOCATE( MassPX )
+
+  END SUBROUTINE FinalizePolynomialBasisX_Legendre
 
 
   SUBROUTINE InitializeBasis( P )
