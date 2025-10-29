@@ -145,9 +145,9 @@ MODULE TwoMoment_DiscretizationModule_Streaming_OrderV
   INTEGER,  DIMENSION(:), ALLOCATABLE :: &
     iP_GX, jP_GX, iP_U_F, jP_U_F, iP_U_R, jP_U_R
 
-  INTEGER : GX_B (5), GX_E (5)
-  INTEGER : U_F_B(5), U_F_E(5)
-  INTEGER : U_R_B(7), U_R_E(7)
+  INTEGER :: GX_B (5), GX_E (5)
+  INTEGER :: U_F_B(5), U_F_E(5)
+  INTEGER :: U_R_B(7), U_R_E(7)
 
   REAL(DP), PUBLIC :: OffGridFlux_TwoMoment(2*nCR)
 
@@ -5538,9 +5538,9 @@ CONTAINS
     ALLOCATE( iP_U_F(SIZE(uCF_K)) )
     ALLOCATE( iP_U_R(SIZE(uCR_K)) )
 
-    ALLOCATE( jP_GX (GX_E  - GX_B  + 1) )
-    ALLOCATE( jP_U_F(U_F_E - U_F_B + 1) )
-    ALLOCATE( jP_U_R(U_R_E - U_R_B + 1) )
+    ALLOCATE( jP_GX (PRODUCT(GX_E  - GX_B  + 1)) )
+    ALLOCATE( jP_U_F(PRODUCT(U_F_E - U_F_B + 1)) )
+    ALLOCATE( jP_U_R(PRODUCT(U_R_E - U_R_B + 1)) )
 
 #if defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
