@@ -56,20 +56,20 @@ endif
 THORNADO_GIT_HASH \
   := $(shell \
      git -C $(THORNADO_DIR) --no-pager describe --tags --always --dirty --exclude '*')
-DEFINES += $(MDEFS)$(PP)THORNADO_GIT_HASH="\"$(THORNADO_GIT_HASH)\"""
+DEFINES += $(MDEFS)$(PP)THORNADO_GIT_HASH="\"$(THORNADO_GIT_HASH)\""
 
 THORNADO_GIT_DATE \
   := $(firstword \
      $(shell \
      git -C $(THORNADO_DIR) --no-pager show --date=short --format="%ad" --name-only))
-DEFINES += $(MDEFS)$(PP)THORNADO_GIT_DATE="\"$(THORNADO_GIT_DATE)\"""
+DEFINES += $(MDEFS)$(PP)THORNADO_GIT_DATE="\"$(THORNADO_GIT_DATE)\""
 
 THORNADO_GIT_BRANCH \
   := $(shell \
      git -C $(THORNADO_DIR) rev-parse --abbrev-ref HEAD)
-DEFINES += $(MDEFS)$(PP)THORNADO_GIT_BRANCH="\"$(THORNADO_GIT_BRANCH)\"""
+DEFINES += $(MDEFS)$(PP)THORNADO_GIT_BRANCH="\"$(THORNADO_GIT_BRANCH)\""
 
 THORNADO_GIT_URL \
   := $(shell \
      git -C $(THORNADO_DIR) config --get remote.origin.url)
-DEFINES += $(MDEFS)$(PP)THORNADO_GIT_URL="\"$(THORNADO_GIT_URL)\"""
+DEFINES += $(MDEFS)$(PP)THORNADO_GIT_URL="\"$(THORNADO_GIT_URL)\""
