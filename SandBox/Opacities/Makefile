@@ -27,6 +27,16 @@ NeutrinoOpacities: \
 	NeutrinoOpacities.o \
 	$(LIBRARIES)
 
+NeutrinoOpacities_Muons: \
+	$(weaklib) \
+	$(thornado) \
+	NeutrinoOpacities_Muons.o
+	$(FLINKER) $(FLAGS) -o NeutrinoOpacities_Muons_$(MACHINE) \
+	$(weaklib) \
+	$(thornado) \
+	NeutrinoOpacities_Muons.o \
+	$(LIBRARIES)
+
 #NeutrinoOpacities_Profile: \
 #	$(weaklib) \
 #	$(thornado) \

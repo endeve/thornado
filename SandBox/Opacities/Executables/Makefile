@@ -10,4 +10,6 @@ USE_CUBLAS ?= FALSE
 USE_MAGMA  ?= FALSE
 USE_OMP    ?= FALSE
 
+EOSMODE    ?= COMPOSE
+
 include ../Makefile
