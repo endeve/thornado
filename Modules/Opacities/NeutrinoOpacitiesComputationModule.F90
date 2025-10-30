@@ -795,7 +795,7 @@ CONTAINS
            ( D, T, Ye, Ym, Me, dMedD, dMedT, dMedYe, dMedYm )
     
     CALL ComputeMuonChemicalPotential_TABLE &
-           ( D, T, Ye, Ym, Mn, dMmdD, dMmdT, dMmdYe, dMmdYm )
+           ( D, T, Ye, Ym, Mm, dMmdD, dMmdT, dMmdYe, dMmdYm )
 
     CALL ComputeProtonChemicalPotential_TABLE &
            ( D, T, Ye, Ym, Mp, dMpdD, dMpdT, dMpdYe, dMpdYm )

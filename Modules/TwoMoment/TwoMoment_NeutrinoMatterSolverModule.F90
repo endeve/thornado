@@ -161,7 +161,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), DIMENSION(:), ALLOCATABLE :: Omega
   REAL(DP), DIMENSION(:), ALLOCATABLE :: E_old, Ef_old, C_Ef, S_Ef, G_Ef, U_Ef
   REAL(DP), DIMENSION(:), ALLOCATABLE :: Ye_old, C_Ye, S_Ye, G_Ye, U_Ye
-  REAL(DP), DIMENSION(:), ALLOCATABLE :: Ym_old, C_Ym, S_Ym, G_Ym, U_Ym, Ym_hat
+  REAL(DP), DIMENSION(:), ALLOCATABLE :: Ym_old, C_Ym, S_Ym, G_Ym, U_Ym
   REAL(DP), DIMENSION(:), ALLOCATABLE :: T_old
   REAL(DP), DIMENSION(:), ALLOCATABLE :: V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1
   REAL(DP), DIMENSION(:), ALLOCATABLE :: V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2
@@ -341,7 +341,6 @@ CONTAINS
     ALLOCATE( U_Ye    (nX_G) )
 
     ALLOCATE(   Ym_old(nX_G) )
-    ALLOCATE(   Ym_hat(nX_G) )
     ALLOCATE( C_Ym    (nX_G) )
     ALLOCATE( S_Ym    (nX_G) )
     ALLOCATE( G_Ym    (nX_G) )
@@ -504,7 +503,7 @@ CONTAINS
     !$OMP             E_old, Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, &
     !$OMP             D_old, cD_old, C_D, S_D, G_D, U_D, &
     !$OMP             Ye_old, C_Ye, S_Ye, G_Ye, U_Ye, &
-    !$OMP             Ym_old, C_Ym, S_Ym, G_Ym, U_Ym, Ym_hat, &
+    !$OMP             Ym_old, C_Ym, S_Ym, G_Ym, U_Ym, &
     !$OMP             T_old, &
     !$OMP             V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$OMP             V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
@@ -562,7 +561,7 @@ CONTAINS
     !$ACC         E_old, Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, &
     !$ACC         D_old, cD_old, C_D, S_D, G_D, U_D, &
     !$ACC         Ye_old, C_Ye, S_Ye, G_Ye, U_Ye, &
-    !$ACC         Ym_old, C_Ym, S_Ym, G_Ym, U_Ym, Ym_hat, &
+    !$ACC         Ym_old, C_Ym, S_Ym, G_Ym, U_Ym, &
     !$ACC         T_old, &
     !$ACC         V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$ACC         V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
@@ -970,7 +969,7 @@ CONTAINS
     !$OMP               E_old, Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, &
     !$OMP               D_old, cD_old, C_D, S_D, G_D, U_D, &
     !$OMP               Ye_old, C_Ye, S_Ye, G_Ye, U_Ye, &
-    !$OMP               Ym_old, C_Ym, S_Ym, G_Ym, U_Ym, Ym_hat, &
+    !$OMP               Ym_old, C_Ym, S_Ym, G_Ym, U_Ym, &
     !$OMP               T_old, &
     !$OMP               V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$OMP               V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
@@ -1028,7 +1027,7 @@ CONTAINS
     !$ACC         E_old, Ef_old, C_Ef, S_Ef, G_Ef, U_Ef, &
     !$ACC         D_old, cD_old, C_D, S_D, G_D, U_D, &
     !$ACC         Ye_old, C_Ye, S_Ye, G_Ye, U_Ye, &
-    !$ACC         Ym_old, C_Ym, S_Ym, G_Ym, U_Ym, Ym_hat, &
+    !$ACC         Ym_old, C_Ym, S_Ym, G_Ym, U_Ym, &
     !$ACC         T_old, &
     !$ACC         V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$ACC         V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
@@ -1085,7 +1084,7 @@ CONTAINS
     DEALLOCATE( Omega )
     DEALLOCATE( E_old, Ef_old, C_Ef, S_Ef, G_Ef, U_Ef )
     DEALLOCATE( Ye_old, C_Ye, S_Ye, G_Ye, U_Ye )
-    DEALLOCATE( Ym_old, C_Ym, S_Ym, G_Ym, U_Ym, Ym_hat )
+    DEALLOCATE( Ym_old, C_Ym, S_Ym, G_Ym, U_Ym )
     DEALLOCATE( T_old )
     DEALLOCATE( V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1 )
     DEALLOCATE( V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2 )
@@ -1566,7 +1565,7 @@ CONTAINS
              ( ITERATE_outer, ITERATE_inner, n_FP_outer, k_outer, &
                nIterations_Outer, FVECm_outer )
 
-      !CALL PrintStatus_FP &
+      ! CALL PrintStatus_FP &
       !       ( ITERATE_outer, ITERATE_inner, k_outer, k_inner, Error, &
       !         FVECm_outer, FVECm_inner, GVECm_outer, GVECm_inner, &
       !         D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3, &
@@ -2519,11 +2518,7 @@ CONTAINS
       ! --- Scaling Factors ---
 
       S_Ye   (iN_X) = One / ( D(iN_X) * Ye(iN_X) / AtomicMassUnit )
-      IF (Ym(iN_X) <= 1d-100) THEN 
-        S_Ym (iN_X) = Zero
-      ELSE
-        S_Ym (iN_X) = One / ( D(iN_X) / AtomicMassUnit )
-      END IF
+      S_Ym   (iN_X) = One / ( D(iN_X) * Ym(iN_X) / AtomicMassUnit )
       S_Ef   (iN_X) = One / ( D(iN_X) * Ef )
       S_V_d_1(iN_X) = One / ( D(iN_X) * SpeedOfLight )
       S_V_d_2(iN_X) = One / ( D(iN_X) * SpeedOfLight )
@@ -2532,7 +2527,7 @@ CONTAINS
       ! --- Initial Guess for Matter State ---
 
       U_Ye   (iN_X) = One
-      !U_Ym   (iN_X) = One
+      U_Ym   (iN_X) = One
       U_Ef   (iN_X) = One
       U_V_d_1(iN_X) = V_d_1 / SpeedOfLight
       U_V_d_2(iN_X) = V_d_2 / SpeedOfLight
@@ -2643,13 +2638,6 @@ CONTAINS
 
       END DO
       END DO
-
-
-      Ym_hat(iN_X)  = MAX( Ym_old(iN_X), SUM_Ym * AtomicMassUnit / D(iN_X), 1d-10 )
-
-      S_Ym(iN_X)    = One / ( D(iN_X) * Ym_hat(iN_X) / AtomicMassUnit )
-
-      U_Ym   (iN_X) = Ym_old(iN_X) / Ym_hat(iN_X)
 
       ! --- Include Old Matter State in Constant (C) Terms ---
 
@@ -4101,8 +4089,7 @@ CONTAINS
         U_V_d_3(iN_X) = Gm(iV3,iN_X)
 
         Ye(iN_X) = U_Ye   (iN_X) * Ye_old(iN_X)
-        !Ym(iN_X) = U_Ym   (iN_X) * Ym_old(iN_X)
-        Ym(iN_X) = U_Ym   (iN_X) * Ym_hat(iN_X)
+        Ym(iN_X) = U_Ym   (iN_X) * Ym_old(iN_X)
         Ef       = U_Ef   (iN_X) * Ef_old(iN_X)
         V_d_1    = U_V_d_1(iN_X) * SpeedOfLight
         V_d_2    = U_V_d_2(iN_X) * SpeedOfLight
