@@ -48,7 +48,7 @@ NeutrinoOpacities_Muons: \
 #	$(LIBRARIES)
 
 clean:
-	rm -f *.o *.mod *.ld *.s
+	rm -f *.o *.mod *.ld *.s *.lst *.i
 
 clobber: clean
 	rm -f NeutrinoOpacities_$(MACHINE)
