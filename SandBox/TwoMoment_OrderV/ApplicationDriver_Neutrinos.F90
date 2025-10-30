@@ -6,6 +6,7 @@ PROGRAM ApplicationDriver_Neutrinos
   USE UnitsModule, ONLY: &
     Kilometer, &
     Millisecond, &
+    Second, &
     MeV
   USE ProgramHeaderModule, ONLY: &
     iX_B0, iX_E0, iX_B1, iX_E1, &
@@ -90,7 +91,7 @@ PROGRAM ApplicationDriver_Neutrinos
   LOGICAL       :: Relaxation_restart_from_file
 
   ProgramName = 'Relaxation'
-  Relaxation_restart_from_file = .FALSE. 
+  Relaxation_restart_from_file = .TRUE. 
   !ProgramName = 'DeleptonizationWave1D'
 
   CoordinateSystem = 'CARTESIAN'
@@ -135,7 +136,7 @@ PROGRAM ApplicationDriver_Neutrinos
       nE    = 16
       eL    = 0.0d0 * MeV
       eR    = 3.0d2 * MeV
-      bcE   = 0
+      bcE   = 11
       ZoomE = 1.266038160710160_DP
 
       IF( Relaxation_restart_from_file ) THEN
@@ -156,14 +157,14 @@ PROGRAM ApplicationDriver_Neutrinos
         bcE   = 10
         ZoomE = 1.266038160710160_DP
 
-        !TimeSteppingScheme = 'IMEX_PDARS'
-        TimeSteppingScheme = 'BackwardEuler'
+        TimeSteppingScheme = 'IMEX_PDARS'
+        !TimeSteppingScheme = 'BackwardEuler'
 
-        t_end = 1.0d0 * Millisecond
+        t_end = 1.0d-2 * Millisecond
 
         PrescribedTimeStep = .TRUE. ! If .FALSE., explicit CFL will be used.
-        dt_0               = 8.895d-3 * Millisecond
-        dt_MAX             = 8.895d-3 * Millisecond
+        dt_0               = 8.895d-06 * Second !8.895d-3 * Millisecond
+        dt_MAX             = 8.895d-06 * Second !8.895d-3 * Millisecond
         dt_RATE            = 1.01_DP
 
         iCycleD = 1
@@ -173,30 +174,24 @@ PROGRAM ApplicationDriver_Neutrinos
         EvolveEuler                    = .FALSE.
         UseSlopeLimiter_Euler          = .FALSE.
         UseSlopeLimiter_TwoMoment      = .FALSE.
-        UsePositivityLimiter_Euler     = .FALSE.
-        UsePositivityLimiter_TwoMoment = .FALSE.
-        UseEnergyLimiter_TwoMoment     = .FALSE.
+        UsePositivityLimiter_Euler     = .TRUE.
+        UsePositivityLimiter_TwoMoment = .TRUE.
+        UseEnergyLimiter_TwoMoment     = .TRUE.
 
         Include_NES     = .TRUE.
         Include_Pair    = .TRUE.
-        Include_NuPair  = .FALSE.
+        Include_NuPair  = .TRUE.
         Include_Brem    = .TRUE.
         Include_LinCorr = .FALSE.
         FreezeOpacities = .FALSE. ! --- Keep opacities fixed during iterations?
-        DnuMax          = One
         M_outer         = 2
         MaxIter_outer   = 100
         Rtol_outer      = 1.0d-8
         M_inner         = 2
         MaxIter_inner   = 100
         Rtol_inner      = 1.0d-8
-        Include_NES     = .TRUE.
-        Include_Pair    = .TRUE.
-        Include_NuPair  = .FALSE.
-        Include_Brem    = .TRUE.
-        Include_LinCorr = .FALSE.
         wMatterRHS      = [ One, One, One, One, One, One ]
-        DnuMax          = One
+        DnuMax          = 0.999999
         FreezeOpacities = .FALSE.
 
       ELSE
@@ -594,7 +589,7 @@ CONTAINS
            ( EquationOfStateTableName_Option &
                = EosTableName, &
              UseChemicalPotentialShift_Option &
-               = .TRUE., &
+               = .FALSE., &
              Verbose_Option &
                = .TRUE. )
 
