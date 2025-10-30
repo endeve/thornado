@@ -100,6 +100,11 @@ MODULE OpacityModule_TABLE
 #endif
   LOGICAL :: Use_OpacityTables
 
+  INTEGER, PUBLIC :: EmAb_Muon_Method  ! Method for computing muon EmAb opacities
+                               !  1: elastic approximation (default)
+                               !  2: 2D integral
+                               !  3: 4D integral (probably doesn't work?)
+
   REAL(DP), DIMENSION(6), PUBLIC :: &
     C1, C2, C1_NuPair, C2_NuPair
 
@@ -163,7 +168,7 @@ MODULE OpacityModule_TABLE
   !$OMP   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD,           &
   !$OMP   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD,             &
   !$OMP   EmAb_MinD, EmAb_MaxD,                           &
-  !$OMP   EmAb_Muon_MinD, EmAb_Muon_MaxD,                 &
+  !$OMP   EmAb_Muon_MinD, EmAb_Muon_MaxD, EmAb_Muon_Method, &
   !$OMP   Iso_MinD, Iso_MaxD,                             &
   !$OMP   NES_MinD, NES_MaxD,                             &
   !$OMP   Pair_MinD, Pair_MaxD,                           &
@@ -185,7 +190,7 @@ MODULE OpacityModule_TABLE
   !$ACC   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD,           &
   !$ACC   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD,             &
   !$ACC   EmAb_MinD, EmAb_MaxD,                           &
-  !$ACC   EmAb_Muon_MinD, EmAb_Muon_MaxD,                 &
+  !$ACC   EmAb_Muon_MinD, EmAb_Muon_MaxD, EmAb_Muon_Method, &
   !$ACC   Iso_MinD, Iso_MaxD,                             &
   !$ACC   NES_MinD, NES_MaxD,                             &
   !$ACC   Pair_MinD, Pair_MaxD,                           &
@@ -206,6 +211,7 @@ CONTAINS
       EmAb_Nuclei_MinD_Option, EmAb_Nuclei_MaxD_Option,          &
       EmAb_MinD_Option, EmAb_MaxD_Option,                        &
       EmAb_Muon_MinD_Option, EmAb_Muon_MaxD_Option,              &
+      EmAb_Muon_Method_Option,                                   &
       Iso_MinD_Option, Iso_MaxD_Option,                          &
       NES_MinD_Option, NES_MaxD_Option,                          &
       Pair_MinD_Option, Pair_MaxD_Option,                        &
@@ -233,6 +239,7 @@ CONTAINS
     REAL(DP),         INTENT(in), OPTIONAL :: NuPair_MinD_Option, NuPair_MaxD_Option
     REAL(DP),         INTENT(in), OPTIONAL :: Op_MinD_Option, Op_MaxD_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
+    INTEGER,          INTENT(in), OPTIONAL :: EmAb_Muon_Method_Option
 
     CHARACTER(128)     :: EquationOfStateTableName
     REAL(DP) :: LogE1, LogE2
@@ -419,6 +426,12 @@ CONTAINS
       EmAb_Muon_MaxD = MIN( EmAb_Muon_MaxD_Option, EmAb_MaxD )
     ELSE
       EmAb_Muon_MaxD = EmAb_MaxD
+    END IF
+
+    IF( PRESENT( EmAb_Muon_Method_Option)  )THEN
+      EmAb_Muon_Method = EmAb_Muon_Method_Option
+    ELSE
+      EmAb_Muon_Method = 1 ! Elastic is default
     END IF
 
     ! --- Iso ---
@@ -769,7 +782,7 @@ CONTAINS
     !$OMP                  EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD, &
     !$OMP                  EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD, &
     !$OMP                  EmAb_MinD, EmAb_MaxD, &
-    !$OMP                  EmAb_Muon_MinD, EmAb_Muon_MaxD, &
+    !$OMP                  EmAb_Muon_MinD, EmAb_Muon_MaxD, EmAb_Muon_Method, &
     !$OMP                  Iso_MinD, Iso_MaxD, &
     !$OMP                  NES_MinD, NES_MaxD, &
     !$OMP                  Pair_MinD, Pair_MaxD, &
@@ -787,7 +800,7 @@ CONTAINS
     !$ACC   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD, &
     !$ACC   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD, &
     !$ACC   EmAb_MinD, EmAb_MaxD, &
-    !$ACC   EmAb_Muon_MinD, EmAb_Muon_MaxD, &
+    !$ACC   EmAb_Muon_MinD, EmAb_Muon_MaxD, EmAb_Muon_Method, &
     !$ACC   Iso_MinD, Iso_MaxD, &
     !$ACC   NES_MinD, NES_MaxD, &
     !$ACC   Pair_MinD, Pair_MaxD, &

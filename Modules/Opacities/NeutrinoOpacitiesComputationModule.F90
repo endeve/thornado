@@ -77,7 +77,8 @@ MODULE NeutrinoOpacitiesComputationModule
     QueryOpacity_NES, &
     QueryOpacity_Pair, &
     QueryOpacity_Brem, &
-    QueryOpacity_NuPair
+    QueryOpacity_NuPair, &
+    EmAb_Muon_Method
   USE RadiationFieldsModule, ONLY: &
     iNuE, iNuE_Bar, iNuM, iNuM_Bar, iNuT, iNuT_Bar, &
     LeptonNumber, iNu, iNu_Bar
@@ -1433,7 +1434,7 @@ CONTAINS
     CALL ComputeProtonEffectiveMass_TABLE      ( D, T, Ye, Ym, Mp_eff )
     CALL ComputeProtonSelfEnergy_TABLE         ( D, T, Ye, Ym, Up )
 
-    IF ( opac_method == 1 ) THEN
+    IF ( EmAb_Muon_Method == 1 ) THEN
 
       CALL ComputeNeutrinoOpacities_EC_NuM_Nucleons_Elastic &
              ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, &
@@ -1442,7 +1443,7 @@ CONTAINS
                Mup, Mp_eff, Up, &
                opEC )
 
-    ELSE IF ( opac_method == 2 ) THEN
+    ELSE IF ( EmAb_Muon_Method == 2 ) THEN
 
       CALL ComputeNeutrinoOpacities_EC_NuM_Nucleons_2D &
              ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, &
@@ -1451,7 +1452,7 @@ CONTAINS
                Mup, Mp_eff, Up, &
                opEC )
 
-    ELSE IF ( opac_method == 3 ) THEN
+    ELSE IF ( EmAb_Muon_Method == 3 ) THEN
 
       CALL ComputeNeutrinoOpacities_EC_NuM_Nucleons_4D &
              ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, &
