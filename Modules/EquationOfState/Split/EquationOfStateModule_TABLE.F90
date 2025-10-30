@@ -2224,7 +2224,7 @@ CONTAINS
     
     REAL(DP) :: aD, aT, dD, dT
     REAL(DP) :: D_P, T_P, Ym_P
-    INTEGER  :: iD, iT
+    INTEGER  :: i, iD, iT
 
     TYPE(MuonStateType) :: MuonState
     
@@ -2270,10 +2270,17 @@ CONTAINS
       dMdYe = 0.0_dp
       dMdYm = 0.0_dp
       
-      CALL GetIndexAndDelta_Log( D_P*Ym_P, MuonTable % rhoym(:), iD, dD )
       CALL GetIndexAndDelta_Log( T_P,   MuonTable % t(:), iT, dT )
-      
-      aD = 1.0_dp / ( D_P * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
+
+      DO i = 1, MuonTable % nPointsDen
+        IF (MuonTable % rhoym(iT,i) >= D_P*Ym_P) THEN
+          iD = i
+          dD = LOG10( D_P*Ym_P / MuonTable % rhoym(iT,i) ) / LOG10( MuonTable % rhoym(iT,i+1) / MuonTable % rhoym(iT,i) )
+          EXIT
+        ENDIF 
+      END DO
+
+      aD = 1.0_dp / ( D_P * LOG10( MuonTable % rhoym(iT,iD+1) / MuonTable % rhoym(iT,iD) ) )
       aT = 1.0_dp / ( T_P * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
 
       CALL LinearInterpDeriv_Array_Point &
@@ -2282,6 +2289,11 @@ CONTAINS
       
       dMdYm = dMdD * D_P  * UnitMl / UnitD ! make sure the derivative is wr2 ym, not rhoym
       dMdD  = dMdD * Ym_P * UnitMl / UnitY ! make sure the derivative is wr2 rho, not rhoym
+      
+      ! THE WAY THE ABOVE IS DONE I THINK IS WRONG, the dD and dT are technically LOG
+      ! BUT YOU ARE GIVING THE NON LOGGED VALUES. BOTTOM LINE RECHECK EVERYTHING
+      dMdYm = 0.0_dp
+      dMdD  = 0.0_dp
       dMdYe = 0.0_dp
       
     ELSE
@@ -4091,7 +4103,7 @@ CONTAINS
     REAL(DP) :: Vtot(2,2,2), E_LeptPhot(2,2,2), &
                 P_LeptPhot(2,2,2), S_LeptPhot(2,2,2)
     
-    INTEGER  :: iD, iT, iYp, iL_D, iL_Y, iL_T
+    INTEGER  :: i, iD, iT, iYp, iL_D, iL_Y, iL_T
     INTEGER  :: SizeDs, SizeTs, SizeYps
 
     TYPE(ElectronPhotonStateType) :: ElectronPhotonState
@@ -4187,7 +4199,7 @@ CONTAINS
     REAL(DP) :: Vtot(2,2,2), E_LeptPhot(2,2,2), &
                 P_LeptPhot(2,2,2), S_LeptPhot(2,2,2)
     
-    INTEGER  :: iD, iT, iYp, iL_D, iL_Y, iL_T
+    INTEGER  :: i, iD, iT, iYp, iL_D, iL_Y, iL_T
     INTEGER  :: SizeDs, SizeTs, SizeYps
 
     TYPE(ElectronPhotonStateType) :: ElectronPhotonState
@@ -4315,7 +4327,7 @@ CONTAINS
     REAL(DP) :: Ptot(2,2,2), Etot(2,2,2), Stot(2,2,2), &
                 E_LeptPhot(2,2,2), P_LeptPhot(2,2,2), S_LeptPhot(2,2,2)
     
-    INTEGER  :: iD, iT, iYp, iL_D, iL_Y, iL_T
+    INTEGER  :: i, iD, iT, iYp, iL_D, iL_Y, iL_T
     INTEGER  :: SizeDs, SizeTs, SizeYps
 
     TYPE(ElectronPhotonStateType) :: ElectronPhotonState
@@ -4418,7 +4430,7 @@ CONTAINS
     REAL(DP) :: Ptot(2,2,2), Etot(2,2,2), Stot(2,2,2), &
                 P_LeptPhot(2,2,2), E_LeptPhot(2,2,2), S_LeptPhot(2,2,2)
     
-    INTEGER  :: iD, iT, iYp, iL_D, iL_Y, iL_T
+    INTEGER  :: i, iD, iT, iYp, iL_D, iL_Y, iL_T
     INTEGER  :: SizeDs, SizeTs, SizeYps
 
     TYPE(ElectronPhotonStateType) :: ElectronPhotonState
@@ -4562,7 +4574,7 @@ CONTAINS
     REAL(DP) :: Vtot(2,2,2), E_LeptPhot(2,2,2), &
                 P_LeptPhot(2,2,2), S_LeptPhot(2,2,2)
     
-    INTEGER  :: iD, iT, iYp, iL_D, iL_Y, iL_T
+    INTEGER  :: i, iD, iT, iYp, iL_D, iL_Y, iL_T
     INTEGER  :: SizeDs, SizeTs, SizeYps
     REAL(DP) :: dD, dT
 	  REAL(DP) :: aD, aT
@@ -4662,23 +4674,38 @@ CONTAINS
       dVdYe = dVbary_P(3) + D_P/Ye_P * ElectronPhotonState % dpdr
       
       ! NOW MUONS ---------------------------------------------
-      IF (( D_P * Ym_P .lt. MuonTable % rhoym(1) ) .or. (T_P .lt. MuonTable % t(1))) THEN
+      IF ( T_P .lt. MuonTable % t(1) ) THEN
         
         dVdYm = 0.0_dp
       
       ELSE
-      
-        CALL GetIndexAndDelta_Log( D_P * Ym_P, MuonTable % rhoym(:), iD, dD )
-        CALL GetIndexAndDelta_Log( T_P, MuonTable % t(:), iT, dT )
-        
-        aD = 1.0_dp / ( D_P * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
-        aT = 1.0_dp / ( T_P * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
 
-        CALL LinearInterpDeriv_Array_Point &
-               ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % p), Vdummy, &
-                 dVdrhoym, dVdummy )
-        
-        dVdYm = dVbary_P(3) + dVdrhoym * D_P ! make sure the derivative is wr2 ym, not rhoym
+        CALL GetIndexAndDelta_Log( T_P, MuonTable % t(:), iT, dT )
+        IF ( D_P*Ym_P .lt. MuonTable % rhoym(iT,i) ) THEN
+          
+          dVdYm = 0.0_dp
+
+        ELSE
+
+          DO i = 1, MuonTable % nPointsDen
+            IF (MuonTable % rhoym(iT,i) >= D_P*Ym_P) THEN
+              iD = i
+              dD = LOG10( D_P*Ym_P / MuonTable % rhoym(iT,i) ) / LOG10( MuonTable % rhoym(iT,i+1) / MuonTable % rhoym(iT,i) )
+              EXIT
+            ENDIF 
+          END DO
+
+          aD = 1.0_dp / ( D_P * LOG10( MuonTable % rhoym(iT,iD+1) / MuonTable % rhoym(iT,iD) ) )
+          aT = 1.0_dp / ( T_P * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
+          
+          CALL LinearInterpDeriv_Array_Point &
+                ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % p), Vdummy, &
+                  dVdrhoym, dVdummy )
+          
+          dVdYm = dVbary_P(3) + dVdrhoym * D_P ! make sure the derivative is wr2 ym, not rhoym
+          
+        ENDIF
+
       END IF
 
     ELSE IF (ReturnE .EQ. 1) THEN
@@ -4707,23 +4734,33 @@ CONTAINS
       dVdYe = dVbary_P(3) + D_P/Ye_P * ElectronPhotonState % dedr ! This is valid because dPdrho for photons is zero
 
       ! NOW MUONS ---------------------------------------------
-      IF (( D_P * Ym_P .lt. MuonTable % rhoym(1) ) .or. (T_P .lt. MuonTable % t(1))) THEN
+      IF ( T_P .lt. MuonTable % t(1) ) THEN
         
         dVdYm = 0.0_dp
       
       ELSE
-      
-        CALL GetIndexAndDelta_Log( D_P * Ym, MuonTable % rhoym(:), iD, dD )
-        CALL GetIndexAndDelta_Log( T_P, MuonTable % t(:), iT, dT )
-        
-        aD = 1.0_dp / ( D_P * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
-        aT = 1.0_dp / ( T_P * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
 
-        CALL LinearInterpDeriv_Array_Point &
-               ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % e), Vdummy, &
-                 dVdrhoym, dVdummy )
-        
-        dVdYm = dVbary_P(3) + dVdrhoym * D_P ! make sure the derivative is wr2 ym, not rhoym
+        CALL GetIndexAndDelta_Log( T_P, MuonTable % t(:), iT, dT )
+        IF ( D_P*Ym_P .lt. MuonTable % rhoym(iT,i) ) THEN
+          
+          dVdYm = 0.0_dp
+
+        ELSE
+
+          DO i = 1, MuonTable % nPointsDen
+            IF (MuonTable % rhoym(iT,i) >= D_P*Ym_P) THEN
+              iD = i
+              dD = LOG10( D_P*Ym_P / MuonTable % rhoym(iT,i) ) / LOG10( MuonTable % rhoym(iT,i+1) / MuonTable % rhoym(iT,i) )
+              EXIT
+            ENDIF 
+          END DO
+
+          CALL LinearInterpDeriv_Array_Point &
+                ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % e), Vdummy, &
+                  dVdrhoym, dVdummy )
+          
+          dVdYm = dVbary_P(3) + dVdrhoym * D_P ! make sure the derivative is wr2 ym, not rhoym
+        END IF
       END IF
              
     ELSE
@@ -4754,23 +4791,33 @@ CONTAINS
       STOP
       
       ! NOW MUONS ---------------------------------------------
-      IF (( D_P * Ym_P .lt. MuonTable % rhoym(1) ) .or. (T_P .lt. MuonTable % t(1))) THEN
+      IF ( T_P .lt. MuonTable % t(1) ) THEN
         
         dVdYm = 0.0_dp
       
       ELSE
-      
-        CALL GetIndexAndDelta_Log( D_P * Ym, MuonTable % rhoym(:), iD, dD )
-        CALL GetIndexAndDelta_Log( T_P, MuonTable % t(:), iT, dT )
-        
-        aD = 1.0_dp / ( D_P * LOG10( MuonTable % rhoym(iD+1) / MuonTable % rhoym(iD) ) )
-        aT = 1.0_dp / ( T_P * LOG10( MuonTable % t(iT+1) / MuonTable % t(iT) ) )
 
-        CALL LinearInterpDeriv_Array_Point &
-               ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % s), Vdummy, &
-                 dVdrhoym, dVdummy )
-        
-        dVdYm = dVbary_P(3) + dVdrhoym * D_P ! make sure the derivative is wr2 ym, not rhoym
+        CALL GetIndexAndDelta_Log( T_P, MuonTable % t(:), iT, dT )
+        IF ( D_P*Ym_P .lt. MuonTable % rhoym(iT,i) ) THEN
+          
+          dVdYm = 0.0_dp
+
+        ELSE
+
+          DO i = 1, MuonTable % nPointsDen
+            IF (MuonTable % rhoym(iT,i) >= D_P*Ym_P) THEN
+              iD = i
+              dD = LOG10( D_P*Ym_P / MuonTable % rhoym(iT,i) ) / LOG10( MuonTable % rhoym(iT,i+1) / MuonTable % rhoym(iT,i) )
+              EXIT
+            ENDIF 
+          END DO
+
+          CALL LinearInterpDeriv_Array_Point &
+                ( iD, iT, dD, dT, aD, aT, 0.0_dp, LOG10(MuonTable % s), Vdummy, &
+                  dVdrhoym, dVdummy )
+          
+          dVdYm = dVbary_P(3) + dVdrhoym * D_P ! make sure the derivative is wr2 ym, not rhoym
+        END IF
       END IF
              
     END IF
@@ -4871,7 +4918,7 @@ CONTAINS
 
     REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P, V_P, dV_P(3)
 
-    INTEGER  :: iD, iT, iYp, iL_D, iL_Y, iL_T
+    INTEGER  :: i, iD, iT, iYp, iL_D, iL_Y, iL_T
     
 #ifdef MICROPHYSICS_WEAKLIB
 
