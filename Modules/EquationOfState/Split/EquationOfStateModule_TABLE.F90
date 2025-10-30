@@ -312,6 +312,7 @@ MODULE EquationOfStateModule_TABLE
   !$OMP   OS_Xa, OS_Xh, OS_Ah, OS_Gm, OS_Emp, OS_Emn, OS_Sep, OS_Sen, &
   !$OMP   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, &
   !$OMP   Xa_T, Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
+  !$OMP   HelmTable, MuonTable, &
   !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
@@ -323,6 +324,7 @@ MODULE EquationOfStateModule_TABLE
   !$ACC   OS_Xa, OS_Xh, OS_Ah, OS_Gm, OS_Emp, OS_Emn, OS_Sep, OS_Sen, &
   !$ACC   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, &
   !$ACC   Xa_T, Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
+  !$ACC   HelmTable, MuonTable, &
   !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #endif
 
@@ -645,6 +647,7 @@ CONTAINS
     !$OMP   OS_P, OS_S, OS_E, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, &
     !$OMP   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, &
     !$OMP   Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
+    !$OMP   HelmTable, MuonTable, &
     !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
@@ -655,6 +658,7 @@ CONTAINS
     !$ACC   OS_P, OS_S, OS_E, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, &
     !$ACC   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, &
     !$ACC   Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
+    !$ACC   HelmTable, MuonTable, &
     !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #endif
 
@@ -677,7 +681,7 @@ CONTAINS
     !$OMP   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, &
     !$OMP   Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
     !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD, &
-    !$OMP   HelmTable, MuonTable)
+    !$OMP   HelmTable, MuonTable )
 #endif
 
     DEALLOCATE( D_T, T_T, Yp_T )
