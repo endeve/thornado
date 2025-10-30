@@ -645,6 +645,7 @@ CONTAINS
     !$OMP   UnitMl, UnitMp, UnitMn, UnitXp, UnitXn, UnitXa, UnitXh, &
     !$OMP   UnitAh, UnitGm, UnitEmp, UnitEmn, UnitSep, UnitSen, &
     !$OMP   OS_P, OS_S, OS_E, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, &
+    !$OMP   OS_Ah, OS_Gm, OS_Emp, OS_Emn, OS_Sep, OS_Sen, &
     !$OMP   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, &
     !$OMP   Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
     !$OMP   HelmTable, MuonTable, &
@@ -656,6 +657,7 @@ CONTAINS
     !$ACC   UnitMl, UnitMp, UnitMn, UnitXp, UnitXn, UnitXa, UnitXh, &
     !$ACC   UnitAh, UnitGm, UnitEmp, UnitEmn, UnitSep, UnitSen, &
     !$ACC   OS_P, OS_S, OS_E, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, &
+    !$ACC   OS_Ah, OS_Gm, OS_Emp, OS_Emn, OS_Sep, OS_Sen, &
     !$ACC   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, &
     !$ACC   Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
     !$ACC   HelmTable, MuonTable, &
@@ -678,6 +680,7 @@ CONTAINS
     !$OMP   UnitMl, UnitMp, UnitMn, UnitXp, UnitXn, UnitXa, UnitXh, &
     !$OMP   UnitAh, UnitGm, UnitEmp, UnitEmn, UnitSep, UnitSen, &
     !$OMP   OS_P, OS_S, OS_E, OS_Mp, OS_Mn, OS_Xp, OS_Xn, OS_Xa, OS_Xh, &
+    !$OMP   OS_Ah, OS_Gm, OS_Emp, OS_Emn, OS_Sep, OS_Sen, &
     !$OMP   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, &
     !$OMP   Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
     !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD, &
@@ -2365,6 +2368,17 @@ CONTAINS
         dMdYm(1:nP) => dMdYm_Local(:)
       END IF
 
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP MAP( to: D, T, Ye, Ym ) &
+      !$OMP MAP( from: M, dMdD, dMdT, dMdYe, dMdYm )
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR &
+      !$ACC COPYIN( D, T, Ye, Ym ) &
+      !$ACC COPYOUT( M, dMdD, dMdT, dMdYe, dMdYm )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO
+#endif
       DO iP=1,nP
           CALL ComputeMuonChemicalPotential_TABLE_Scalar &
                 (D(iP), T(iP), Ye(iP), Ym(iP), M(iP), dMdD(iP), dMdT(iP), dMdYe(iP), dMdYm(iP))
@@ -2372,6 +2386,17 @@ CONTAINS
 
     ELSE 
     
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP MAP( to: D, T, Ye, Ym ) &
+      !$OMP MAP( from: M )
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR &
+      !$ACC COPYIN( D, T, Ye, Ym ) &
+      !$ACC COPYOUT( M )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO
+#endif
       DO iP=1,nP
         CALL ComputeMuonChemicalPotential_TABLE_Scalar &
                 (D(iP), T(iP), Ye(iP), Ym(iP), M(iP))
