@@ -1202,6 +1202,7 @@ CONTAINS
                OS_EmAb_EC_rate(iNuE), EmAb_EC_rate_T, &
                EC_rate(iX) )
 
+        loctot = 0.0d0
         DO iE = 1, EC_nE
 
           CALL LinearInterp3D_3DArray_Point &
