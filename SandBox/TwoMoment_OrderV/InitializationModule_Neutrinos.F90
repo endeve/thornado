@@ -100,7 +100,7 @@ CONTAINS
     INTEGER  :: iCR, iN_E
     REAL(DP) :: kT, E, f_E
 
-    REAL(DP) :: D_0, T_0, Y_0, E_0, V_u_1, V_u_2, V_u_3
+    REAL(DP) :: D_0, T_0, Ye_0, Ym_0, E_0, V_u_1, V_u_2, V_u_3
     REAL(DP) :: Mu_0
 
     REAL(DP), DIMENSION(iE_E0*nDOFE) :: tmp_nu
@@ -113,7 +113,7 @@ CONTAINS
       OPEN( UNIT=17,file=FileName,&
             ACCESS='sequential', FORM='formatted', ACTION='read')
 
-      READ(17,*) D_0, T_0, Y_0, E_0, V_u_1, V_u_2, V_u_3
+      READ(17,*) D_0, T_0, Ye_0, Ym_0, E_0, V_u_1, V_u_2, V_u_3
       READ(17,*) nE_G
 
       IF((iE_E0 - iE_B0 + 1) * nDOFE /= nE_G) THEN
@@ -166,8 +166,8 @@ CONTAINS
 
           uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = D_0
           uAF(iNodeX,iX1,iX2,iX3,iAF_T ) = T_0
-          uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = Y_0
-          uAF(iNodeX,iX1,iX2,iX3,iAF_Ym) = Zero
+          uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = Ye_0
+          uAF(iNodeX,iX1,iX2,iX3,iAF_Ym) = Ym_0
 
           CALL ComputeThermodynamicStates_Primitive_TABLE &
                  ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -268,7 +268,8 @@ CONTAINS
 
       D_0   = 1.032d12 * Gram / Centimeter**3
       T_0   = 7.588d0 * MeV
-      Y_0   = 0.1347_DP
+      Ye_0  = 0.1347_DP
+      Ym_0  = Zero
       V_u_1 = 0.1_DP * SpeedOfLight
       V_u_2 = 0.0_DP * SpeedOfLight
       V_u_3 = 0.0_DP * SpeedOfLight
@@ -284,8 +285,8 @@ CONTAINS
 
           uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = D_0
           uAF(iNodeX,iX1,iX2,iX3,iAF_T ) = T_0
-          uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = Y_0
-          uAF(iNodeX,iX1,iX2,iX3,iAF_Ym) = Zero
+          uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = Ye_0
+          uAF(iNodeX,iX1,iX2,iX3,iAF_Ym) = Ym_0
 
           CALL ComputeThermodynamicStates_Primitive_TABLE &
                  ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
