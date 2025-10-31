@@ -487,6 +487,8 @@ contains
              UseChemicalPotentialShift_Option = UseChemicalPotentialShift, &
              Eos_MinD_Option &
                = Eos_MinD_Option, &
+             MuonEoS_MinD_Option &
+               = EmAb_Muon_MinD_Option, &
              Verbose_Option = Verbose, &
              External_EOS = External_EOS, & 
              External_Helm = External_Helm, & 

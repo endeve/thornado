@@ -106,6 +106,8 @@ MODULE EquationOfStateModule_TABLE
 #endif
   REAL(DP), PUBLIC :: Eos_MinD ! This is not handled consistently everywhere, 
                                ! but should not matter
+  REAL(DP), PUBLIC :: MuonEoS_MinD ! This is not handled consistently everywhere, 
+                                   ! but should not matter
 
   PUBLIC :: InitializeEquationOfState_TABLE
   PUBLIC :: FinalizeEquationOfState_TABLE
@@ -332,11 +334,13 @@ CONTAINS
 
   SUBROUTINE InitializeEquationOfState_TABLE &
     ( EquationOfStateTableName_Option, UseChemicalPotentialShift_Option, &
-      Eos_MinD_Option , Verbose_Option, External_EOS, External_Helm, External_Muon )
+      Eos_MinD_Option, MuonEoS_minD_Option, &
+      Verbose_Option, External_EOS, External_Helm, External_Muon )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: EquationOfStateTableName_Option
     LOGICAL,          INTENT(in), OPTIONAL :: UseChemicalPotentialShift_Option
     REAL(DP),         INTENT(in), OPTIONAL :: Eos_MinD_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: MuonEoS_MinD_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 #ifdef MICROPHYSICS_WEAKLIB
     ! Notice that you use EquationOfState/Split only if EOSMODE == COMPOSE
@@ -378,6 +382,12 @@ CONTAINS
        Eos_MinD = Zero
     END IF
 
+    IF( PRESENT( MuonEoS_MinD_Option ) )THEN
+       MuonEoS_MinD = MuonEoS_MinD_Option
+    ELSE
+       MuonEoS_MinD = Zero
+    END IF
+
     IF( PRESENT( Verbose_Option ) )THEN
        Verbose = Verbose_Option
     ELSE
@@ -405,7 +415,8 @@ CONTAINS
        CALL ReadHelmholtzTableHDF( HelmTable, TRIM( EquationOfStateTableName ) )
 
        ! read in helmholtz table
-       CALL ReadMuonTableHDF( MuonTable, TRIM( EquationOfStateTableName ) )
+       CALL ReadMuonTableHDF( MuonTable, TRIM( EquationOfStateTableName ), &
+                              eos_minD = MuonEoS_MinD )
 
        ! read in baryon table -------------------------------
        CALL ReadEquationOfStateTableHDF( EOS, TRIM( EquationOfStateTableName ) )
@@ -803,7 +814,8 @@ CONTAINS
 
     ! Calculate Muon Quantities
     MuonState % t     = T_P
-    MuonState % rhoym = D_P * Ym_P
+    MuonState % rho   = D_P
+    MuonState % rhoym = MuonState % rho * Ym_P
     CALL FullMuonEOS(MuonTable, MuonState)
 
     E_mu = MuonState % e
@@ -843,7 +855,8 @@ CONTAINS
 
   ! Calculate Muon Quantities
   MuonState % t     = T_P
-  MuonState % rhoym = D_P * Ym_P
+  MuonState % rho   = D_P
+  MuonState % rhoym = MuonState % rho * Ym_P
   CALL FullMuonEOS(MuonTable, MuonState)
   Mum  = MuonState % mu * UnitMl
 
@@ -1276,7 +1289,8 @@ CONTAINS
 
     ! Calculate Muon Quantities
     MuonState % t     = T_P
-    MuonState % rhoym = D_P * Ym_P
+    MuonState % rho   = D_P
+    MuonState % rhoym = MuonState % rho * Ym_P
 
     CALL FullMuonEOS(MuonTable, MuonState)
     P_mu = MuonState % p
@@ -1497,7 +1511,8 @@ CONTAINS
 
     ! Calculate Muon Quantities
     MuonState % t = T / UnitT
-    MuonState % rhoym = D * Ym / UnitD / UnitY
+    MuonState % rho   = D / UnitD
+    MuonState % rhoym = MuonState % rho * Ym / UnitY
     CALL FullMuonEOS(MuonTable, MuonState)
 
     E_mu = MuonState % e
@@ -1777,7 +1792,8 @@ CONTAINS
 
       ! Calculate Muon Quantities
       MuonState % t = T / UnitT
-      MuonState % rhoym = D * Ym / UnitD / UnitY
+      MuonState % rho   = D / UnitD
+      MuonState % rhoym = MuonState % rho * Ym / UnitY
       CALL FullMuonEOS(MuonTable, MuonState)
 
       P_mu = MuonState % p
@@ -1950,7 +1966,8 @@ CONTAINS
 
     ! Calculate Muon Quantities
     MuonState % t = T / UnitT
-    MuonState % rhoym = D * Ym / UnitD / UnitY
+    MuonState % rho   = D / UnitD
+    MuonState % rhoym = MuonState % rho * Ym / UnitY
     
     CALL FullMuonEOS(MuonTable, MuonState)
     E_mu = MuonState % e
@@ -2302,7 +2319,8 @@ CONTAINS
     ELSE
 
       MuonState % t = T_P
-      MuonState % rhoym = D_P * Ym_P
+      MuonState % rho   = D_P
+      MuonState % rhoym = MuonState % rho * Ym_P
       
       CALL FullMuonEOS(MuonTable, MuonState)
 
@@ -4173,7 +4191,8 @@ CONTAINS
           CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
           MuonState % t     = T_T(iT+iL_T-1)
-          MuonState % rhoym = D_T(iD+iL_D-1) * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
+          MuonState % rho   = D_T(iD+iL_D-1)
+          MuonState % rhoym = MuonState % rho * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
           
           CALL FullMuonEOS(MuonTable, MuonState)
           
@@ -4288,7 +4307,8 @@ CONTAINS
             CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
             MuonState % t     = T_T(iT+iL_T-1)
-            MuonState % rhoym = D_T(iD+iL_D-1) * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
+            MuonState % rho   = D_T(iD+iL_D-1)
+            MuonState % rhoym = MuonState % rho * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
             
             CALL FullMuonEOS(MuonTable, MuonState)
             
@@ -4400,7 +4420,8 @@ CONTAINS
           CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
           MuonState % t     = T_T(iT+iL_T-1)
-          MuonState % rhoym = D_T(iD+iL_D-1) * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
+          MuonState % rho   = D_T(iD+iL_D-1)
+          MuonState % rhoym = MuonState % rho * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
           
           CALL FullMuonEOS(MuonTable, MuonState)
           
@@ -4521,7 +4542,8 @@ CONTAINS
             CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
             MuonState % t     = T_T(iT+iL_T-1)
-            MuonState % rhoym = D_T(iD+iL_D-1) * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
+            MuonState % rho   = D_T(iD+iL_D-1)
+            MuonState % rhoym = MuonState % rho * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
             
             CALL FullMuonEOS(MuonTable, MuonState)
             
@@ -4651,8 +4673,9 @@ CONTAINS
           
           CALL ElectronPhotonEOS(HelmTable, ElectronPhotonState)
 
-          MuonState % t = T_T(iT+iL_T-1)
-          MuonState % rhoym = D_T(iD+iL_D-1) * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
+          MuonState % t     = T_T(iT+iL_T-1)
+          MuonState % rho   = D_T(iD+iL_D-1)
+          MuonState % rhoym = MuonState % rho * Yp_T(iYp+iL_Y-1) * Ym_over_Yp
           
           CALL FullMuonEOS(MuonTable, MuonState)
           
