@@ -428,6 +428,7 @@ CONTAINS
        EOS => External_EOS
        HelmTable => External_Helm
        MuonTable => External_Muon
+       MuonTable % eos_minD = MuonEoS_MinD
        UsingExternalEOS = .TRUE.
 
     END IF
