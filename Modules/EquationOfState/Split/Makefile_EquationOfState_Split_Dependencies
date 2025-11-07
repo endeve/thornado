@@ -4,13 +4,28 @@ EquationOfStateModule_TABLE.o: \
   wlEquationOfStateTableModule.o \
   wlEOSComponentsCombinedInversionModule.o \
   wlEOSComponentsSeparateInversionModule.o \
-  wlLeptonEOSModule.o \
+  wlLeptonEOSTableModule.o \
+  wlLeptonPhotonGasEOS.o \
+  wlHelmIOModuleHDF.o \
+  wlSoundSpeedModule.o \
+  wlInterpolationUtilitiesModule.o \
+  KindModule.o \
+  UnitsModule.o \
+  EquationOfStateModule_TABLE.F90
+
+# This is if you want to use the Old Tobias tabulation
+#EquationOfStateModule_TABLE.o: \
+  wlIOModuleHDF.o \
+  wlEOSIOModuleHDF.o \
+  wlEquationOfStateTableModule.o \
+  wlEOSComponentsCombinedInversionModule.o \
+  wlEOSComponentsSeparateInversionModule.o \
+  wlLeptonEOSTableModule.o \
   wlElectronPhotonEOS.o \
   wlMuonEOS.o \
   wlHelmMuonIOModuleHDF.o \
   wlSoundSpeedModule.o \
   wlInterpolationUtilitiesModule.o \
-  wlInterpolationModule.o \
   KindModule.o \
   UnitsModule.o \
   EquationOfStateModule_TABLE.F90

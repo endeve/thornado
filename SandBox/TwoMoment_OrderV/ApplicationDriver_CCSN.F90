@@ -96,7 +96,7 @@ PROGRAM ApplicationDriver_CCSN
   EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
 #else
   EosTableName          = 'BaryonsPlusHelmPlusMuonsEOS_interpolated.h5'
-  EosTableName          = 'BaryonsPlusHelmPlusMuonsEOS.h5'
+  EosTableName          = 'BaryonsPlusPhotonsPlusLeptonsEOS.h5'
 #endif
 
   OpacityTableName_EmAb = 'wl-Op-SFHo-15-25-50-E40-EmAb.h5'

@@ -70,7 +70,7 @@ PROGRAM NeutrinoOpacities_Muons
 #elif defined(EOSMODE_4D)
     CHARACTER(LEN=128) :: FileName_EOS = "4DEOSTable.h5"
 #elif defined(EOSMODE_COMPOSE)
-    CHARACTER(LEN=128) :: FileName_EOS = "BaryonsPlusHelmPlusMuonsEOS.h5"
+    CHARACTER(LEN=128) :: FileName_EOS = "BaryonsPlusPhotonsPlusLeptonsEOS.h5"
 #endif
 
     CHARACTER(LEN=128) :: FileName_EmAb = "wl-Op-SFHo-15-25-50-E40-EmAb.h5"

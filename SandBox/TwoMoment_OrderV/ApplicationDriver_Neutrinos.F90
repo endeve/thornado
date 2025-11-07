@@ -98,7 +98,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
   !EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
   !EosTableName          = 'BaryonsPlusHelmPlusMuonsEOS_interpolated.h5'
-  EosTableName          = 'BaryonsPlusHelmPlusMuonsEOS.h5'
+  EosTableName          = 'BaryonsPlusPhotonsPlusLeptonsEOS.h5'
   OpacityTableName_EmAb = 'wl-Op-SFHo-15-25-50-E40-EmAb.h5'
   OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-Iso.h5'
   OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-NES.h5'
@@ -110,19 +110,19 @@ PROGRAM ApplicationDriver_Neutrinos
   RestartFileNumber = - 1
 
   M_outer         = 2
-  MaxIter_outer   = 100
+  MaxIter_outer   = 1000
   Rtol_outer      = 1.0d-8
   M_inner         = 2
-  MaxIter_inner   = 100
+  MaxIter_inner   = 1000
   Rtol_inner      = 1.0d-8
   Include_NES     = .TRUE.
   Include_Pair    = .TRUE.
-  Include_NuPair  = .FALSE.
+  Include_NuPair  = .TRUE.
   Include_Brem    = .TRUE.
   Include_LinCorr = .FALSE.
   wMatterRHS      = [ One, One, One, One, One, One ]
   DnuMax          = HUGE( One )
-  FreezeOpacities = .FALSE.
+  FreezeOpacities = .TRUE.
 
   nEquidistantX = 1
   dEquidistantX = 1.0_DP * Kilometer
@@ -154,7 +154,7 @@ PROGRAM ApplicationDriver_Neutrinos
         nE    = 16
         eL    = 0.0d0 * MeV
         eR    = 3.0d2 * MeV
-        bcE   = 10
+        bcE   = 11
         ZoomE = 1.266038160710160_DP
 
         TimeSteppingScheme = 'IMEX_PDARS'
@@ -166,6 +166,9 @@ PROGRAM ApplicationDriver_Neutrinos
         dt_0               = 8.895d-06 * Second !8.895d-3 * Millisecond
         dt_MAX             = 8.895d-06 * Second !8.895d-3 * Millisecond
         dt_RATE            = 1.01_DP
+
+        dt_0               = 1.111880E-06 * Second !8.895d-3 * Millisecond
+        dt_MAX             = 1.111880E-06 * Second !8.895d-3 * Millisecond
 
         iCycleD = 1
         iCycleW = 100
@@ -183,16 +186,15 @@ PROGRAM ApplicationDriver_Neutrinos
         Include_NuPair  = .TRUE.
         Include_Brem    = .TRUE.
         Include_LinCorr = .FALSE.
-        FreezeOpacities = .FALSE. ! --- Keep opacities fixed during iterations?
+        FreezeOpacities = .TRUE. ! --- Keep opacities fixed during iterations?
         M_outer         = 2
-        MaxIter_outer   = 100
+        MaxIter_outer   = 1000
         Rtol_outer      = 1.0d-8
         M_inner         = 2
-        MaxIter_inner   = 100
+        MaxIter_inner   = 1000
         Rtol_inner      = 1.0d-8
         wMatterRHS      = [ One, One, One, One, One, One ]
         DnuMax          = 0.999999
-        FreezeOpacities = .FALSE.
 
       ELSE
 
@@ -591,7 +593,8 @@ CONTAINS
              UseChemicalPotentialShift_Option &
                = .FALSE., &
              Verbose_Option &
-               = .TRUE. )
+               = .TRUE., &
+             MuonEos_MinD_Option = 1.0d12 )
 
     ! --- Initialize Opacities ---
 
@@ -608,7 +611,8 @@ CONTAINS
                = TRIM( OpacityTableName_Brem ), &
              EquationOfStateTableName_Option &
                = TRIM( EosTableName ), &
-             Verbose_Option = .TRUE. )
+             Verbose_Option = .TRUE., &
+             EmAb_Muon_MinD_Option = 1.0d12 )
 
     ! --- Initialize Moment Closure ---
 

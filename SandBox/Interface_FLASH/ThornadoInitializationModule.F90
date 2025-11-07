@@ -62,7 +62,7 @@ module ThornadoInitializationModule
   use wlEquationOfStateTableModule, only: &
     EquationOfStateTableType, &
     EquationOfStateCompOSETableType
-  use wlLeptonEOSModule, only: &
+  use wlLeptonEOSTableModule, only: &
     HelmTableType, MuonTableType
 #else
   use EquationOfStateModule_IDEAL, only: &
