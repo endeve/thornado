@@ -63,7 +63,7 @@ module ThornadoInitializationModule
     EquationOfStateTableType, &
     EquationOfStateCompOSETableType
   use wlLeptonEOSTableModule, only: &
-    HelmTableType, MuonTableType
+    HelmTableType!, MuonTableType
 #else
   use EquationOfStateModule_IDEAL, only: &
     InitializeEquationOfState_IDEAL, &
@@ -181,8 +181,10 @@ contains
                       intent(in), optional :: External_EOS
     type(HelmTableType), pointer, &
                       intent(in), optional :: External_Helm
-    type(MuonTableType), pointer, &
+    type(HelmTableType), pointer, &
                       intent(in), optional :: External_Muon
+    ! type(MuonTableType), pointer, &
+    !                   intent(in), optional :: External_Muon
 #endif
 #else
     integer,          intent(in), optional :: External_EOS
