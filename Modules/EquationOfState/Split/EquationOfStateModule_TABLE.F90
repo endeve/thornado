@@ -361,9 +361,6 @@ CONTAINS
     
     REAL(DP) :: E_LeptPhot, P_LeptPhot, S_LeptPhot
 
-    ! Added variables to handle Combined EOSs
-    TYPE(LeptonGasType) :: LeptonGasState
-
     IF( PRESENT( EquationOfStateTableName_Option ) )THEN
        EquationOfStateTableName = TRIM( EquationOfStateTableName_Option )
     ELSE
@@ -786,8 +783,8 @@ CONTAINS
                 P_mu, S_mu, E_mu
 
     TYPE(LeptonGasType) :: ElectronGasState
-    TYPE(PhotonGasType) :: LeptonGasState
     TYPE(LeptonGasType) :: MuonGasState
+    TYPE(PhotonGasType) :: PhotonGasState
 
     D_P = D / UnitD
     T_P = T / UnitT
@@ -804,12 +801,12 @@ CONTAINS
     ElectronGasState % t   = T_P
     ElectronGasState % rho = D_P
     ElectronGasState % yL  = Ye_P
-    CALL LeptonGasEOS(HelmTableElectrons, LeptonGasState)
+    CALL LeptonGasEOS(HelmTableElectrons, ElectronGasState)
 
     MuonGasState % t   = T_P
     MuonGasState % rho = D_P
     MuonGasState % yL  = Ym_P
-    CALL LeptonGasEOS(HelmTableMuons, LeptonGasState)
+    CALL LeptonGasEOS(HelmTableMuons, MuonGasState)
 
     E_LeptPhot = ElectronGasState % e + MuonGasState % e + PhotonGasState % e
     P_LeptPhot = ElectronGasState % p + MuonGasState % p + PhotonGasState % p
@@ -1480,7 +1477,7 @@ CONTAINS
            ( D, T, Ye, Ym, Em, E_T, OS_E, One )
            
     CALL GetPhotonLeptonGasEOS( &
-      D_P, T_P, Ye_P, Ym_P, &
+      D / UnitD, T / UnitT, Ye_P / UnitY, Ym_P / UnitY, &
       HelmTableElectrons, HelmTableMuons, &
       P_LeptPhot, E_LeptPhot, S_LeptPhot)
            
@@ -1747,7 +1744,7 @@ CONTAINS
           ( D, T, Ye, Ym, P )
 
       CALL GetPhotonLeptonGasEOS( &
-        D_P, T_P, Ye_P, Ym_P, &
+        D / UnitD, T / UnitT, Ye_P / UnitY, Ym_P / UnitY, &
         HelmTableElectrons, HelmTableMuons, &
         P_LeptPhot, E_LeptPhot, S_LeptPhot)
       
@@ -1907,7 +1904,7 @@ CONTAINS
            ( D, T, Ye, Ym, E, E_T, OS_E, One )
            
     CALL GetPhotonLeptonGasEOS( &
-      D_P, T_P, Ye_P, Ym_P, &
+      D / UnitD, T / UnitT, Ye_P / UnitY, Ym_P / UnitY, &
       HelmTableElectrons, HelmTableMuons, &
       P_LeptPhot, E_LeptPhot, S_LeptPhot)
           
