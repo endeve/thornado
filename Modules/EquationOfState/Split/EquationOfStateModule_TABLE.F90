@@ -1477,7 +1477,7 @@ CONTAINS
            ( D, T, Ye, Ym, Em, E_T, OS_E, One )
            
     CALL GetPhotonLeptonGasEOS( &
-      D / UnitD, T / UnitT, Ye_P / UnitY, Ym_P / UnitY, &
+      D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, &
       HelmTableElectrons, HelmTableMuons, &
       P_LeptPhot, E_LeptPhot, S_LeptPhot)
            
@@ -1744,7 +1744,7 @@ CONTAINS
           ( D, T, Ye, Ym, P )
 
       CALL GetPhotonLeptonGasEOS( &
-        D / UnitD, T / UnitT, Ye_P / UnitY, Ym_P / UnitY, &
+        D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, &
         HelmTableElectrons, HelmTableMuons, &
         P_LeptPhot, E_LeptPhot, S_LeptPhot)
       
@@ -1904,7 +1904,7 @@ CONTAINS
            ( D, T, Ye, Ym, E, E_T, OS_E, One )
            
     CALL GetPhotonLeptonGasEOS( &
-      D / UnitD, T / UnitT, Ye_P / UnitY, Ym_P / UnitY, &
+      D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, &
       HelmTableElectrons, HelmTableMuons, &
       P_LeptPhot, E_LeptPhot, S_LeptPhot)
           
