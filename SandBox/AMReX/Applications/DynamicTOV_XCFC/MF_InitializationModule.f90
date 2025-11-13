@@ -331,7 +331,7 @@ CONTAINS
 
     LOGICAL :: CONVERGED
     INTEGER :: ITER
-    INTEGER, PARAMETER :: MAX_ITER = 100
+    INTEGER, PARAMETER :: MAX_ITER = 1000
     REAL(DP) :: Psi0, Phi0
 
     Psi0 = 1.4_DP
@@ -476,8 +476,8 @@ CONTAINS
 
         ELSE
 
-          Psi0 = Psi0 + dPsi
-          Phi0 = Phi0 + dPhi
+          Psi0 = Psi0 + 0.2_DP * dPsi
+          Phi0 = Phi0 + 0.2_DP * dPhi
 
         END IF
 
