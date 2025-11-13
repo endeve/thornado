@@ -2398,7 +2398,11 @@ CONTAINS
       ! --- Scaling Factors ---
 
       S_Ye(iN_X) = One / ( D(iN_X) * Ye(iN_X) / AtomicMassUnit )
-      S_Ym(iN_X) = One / ( D(iN_X) * Ym(iN_X) / AtomicMassUnit )
+      IF (Ym(iN_X) <= 1d-100) THEN 
+        S_Ym (iN_X) = Zero
+      ELSE
+        S_Ym(iN_X)  = One / ( D(iN_X) * Ym(iN_X) / AtomicMassUnit )
+      END IF
       S_Ef(iN_X) = One / ( D(iN_X) * E(iN_X) )
 
       ! --- Initial Guess for Matter State ---
@@ -2518,7 +2522,11 @@ CONTAINS
       ! --- Scaling Factors ---
 
       S_Ye   (iN_X) = One / ( D(iN_X) * Ye(iN_X) / AtomicMassUnit )
-      S_Ym   (iN_X) = One / ( D(iN_X) * Ym(iN_X) / AtomicMassUnit )
+      IF (Ym(iN_X) <= 1d-100) THEN 
+        S_Ym (iN_X) = Zero
+      ELSE
+        S_Ym(iN_X)  = One / ( D(iN_X) * Ym(iN_X) / AtomicMassUnit )
+      END IF
       S_Ef   (iN_X) = One / ( D(iN_X) * Ef )
       S_V_d_1(iN_X) = One / ( D(iN_X) * SpeedOfLight )
       S_V_d_2(iN_X) = One / ( D(iN_X) * SpeedOfLight )
@@ -2722,7 +2730,11 @@ CONTAINS
 
       S_D    (iN_X) = One / ( D (iN_X) )
       S_Ye   (iN_X) = One / ( Ye(iN_X) )
-      S_Ym   (iN_X) = One / ( Ym(iN_X) )
+      IF (Ym(iN_X) <= 1d-100) THEN 
+        S_Ym (iN_X) = Zero
+      ELSE
+        S_Ym (iN_X) = One / ( Ym(iN_X) )
+      END IF
       S_Ef   (iN_X) = One / ( E(iN_X) )
       S_V_d_1(iN_X) = One / ( SpeedOfLight )
       S_V_d_2(iN_X) = One / ( SpeedOfLight )
