@@ -103,7 +103,11 @@ CONTAINS
     CALL MultiplyWithPsi6_MF &
            ( MF_uGF, MF_uCF, +1, OnlyLeafElements_Option = .FALSE. )
 
-    CALL amrex_regrid( 0, t_new(0) )
+    DO iLevel = 0, nMaxLevels-1
+
+      CALL amrex_regrid( iLevel, t_new(iLevel) )
+
+    END DO
 
     nLevels = amrex_get_numlevels()
 
