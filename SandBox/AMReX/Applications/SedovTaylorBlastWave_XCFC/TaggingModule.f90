@@ -8,6 +8,8 @@ MODULE TaggingModule
     nDOFX
   USE FluidFieldsModule, ONLY: &
     iDF_Sh_X1, &
+    iDF_Sh_X2, &
+    iDF_Sh_X3, &
     iCF_E
 
   ! --- Local Modules ---
@@ -42,7 +44,7 @@ CONTAINS
                                                  TagLo(3):TagHi(3), &
                                                  TagLo(4):TagHi(4))
 
-    INTEGER :: iX1, iX2, iX3, indLo
+    INTEGER :: iX1, iX2, iX3, indLoX1, indLoX2, indLoX3, indLoE
 
     REAL(DP) :: TagCriteria_this
 
@@ -52,9 +54,13 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      indLo = 1 + nDOFX * ( iDF_Sh_X1 - 1 )
+      indLoX1 = 1 + nDOFX * ( iDF_Sh_X1 - 1 )
+      indLoX2 = 1 + nDOFX * ( iDF_Sh_X2 - 1 )
+      indLoX3 = 1 + nDOFX * ( iDF_Sh_X3 - 1 )
 
-      IF( uDF(iX1,iX2,iX3,indLo) .GT. TagCriteria_this )THEN
+      IF( uDF(iX1,iX2,iX3,indLoX1) .GT. TagCriteria_this &
+          .OR. uDF(iX1,iX2,iX3,indLoX2) .GT. TagCriteria_this &
+          .OR. uDF(iX1,iX2,iX3,indLoX3) .GT. TagCriteria_this )THEN
 
         Tag(iX1,iX2,iX3,1) = SetTag
 
@@ -65,8 +71,8 @@ CONTAINS
       END IF
 
       ! --- Ensure detonation region of initial conditions is refined ---
-      indLo = 1 + nDOFX * ( iCF_E - 1 )
-      IF( uCF(iX1,iX2,iX3,indLo) .GT. 0.01_DP .AND. StepNo(0) .LT. 1 ) &
+      indLoE = 1 + nDOFX * ( iCF_E - 1 )
+      IF( uCF(iX1,iX2,iX3,indLoE) .GT. 0.01_DP .AND. StepNo(0) .LT. 1 ) &
         Tag(iX1,iX2,iX3,1) = SetTag
 
     END DO
