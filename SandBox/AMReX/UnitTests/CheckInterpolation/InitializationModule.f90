@@ -92,7 +92,8 @@ MODULE InitializationModule
     AverageDown
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile
-
+  USE MF_Euler_PositivityLimiterModule, ONLY: &
+    InitializePositivityLimiter_Euler_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -127,6 +128,8 @@ CONTAINS
     CALL InitializeReferenceElementX_Lagrange
 
     CALL InitializeMeshRefinement_Euler
+
+    CALL InitializePositivityLimiter_Euler_MF
 
     CALL amrex_init_virtual_functions &
            ( MakeNewLevelFromScratch, &
@@ -167,7 +170,7 @@ CONTAINS
              ( MF_dU, MF_uCF(iLevel) % BA, MF_uCF(iLevel) % DM, &
                nCF * nDOFX, swX )
 
-      CALL MF_dU % SetVal( 10.0_DP )
+      CALL MF_dU % SetVal( 1.0_DP )
 
       CALL MF_uCF(iLevel) % Add( MF_dU, 1, 1, nCF * nDOFX, swX )
 

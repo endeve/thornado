@@ -50,7 +50,8 @@ CONTAINS
       indLo = 1 + nDOFX * ( iCF_D - 1 )
       indHi = nDOFX * iCF_D
 
-      IF( ANY( ABS( uCF(iX1,iX2,iX3,indLo:indHi) - 1.0_DP ) .GT. TagCriteria_this ) )THEN
+      IF( ABS( MINVAL( uCF(iX1,iX2,iX3,indLo:indHi) ) - 1.0_DP ) &
+            .GT. TagCriteria_this )THEN
 
         Tag(iX1,iX2,iX3,1) = SetTag
 

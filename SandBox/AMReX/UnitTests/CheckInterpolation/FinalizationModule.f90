@@ -26,6 +26,8 @@ MODULE FinalizationModule
     StepNo, &
     t_old, &
     t_new
+  USE MF_Euler_PositivityLimiterModule, ONLY: &
+    FinalizePositivityLimiter_Euler_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -40,6 +42,8 @@ CONTAINS
     DEALLOCATE( t_new )
     DEALLOCATE( t_old )
     DEALLOCATE( StepNo )
+
+    CALL FinalizePositivityLimiter_Euler_MF
 
     CALL FinalizeMeshRefinement_Euler
 
