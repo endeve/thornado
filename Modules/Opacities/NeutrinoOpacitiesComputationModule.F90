@@ -78,7 +78,7 @@ MODULE NeutrinoOpacitiesComputationModule
     QueryOpacity_Pair, &
     QueryOpacity_Brem, &
     QueryOpacity_NuPair, &
-    EmAb_Muon_Method
+    EmAb_Muon_Method, nE_Muon_2D
   USE RadiationFieldsModule, ONLY: &
     iNuE, iNuE_Bar, iNuM, iNuM_Bar, iNuT, iNuT_Bar, &
     LeptonNumber, iNu, iNu_Bar
@@ -1563,8 +1563,7 @@ CONTAINS
               Mup_P, Mp_eff(iX), Up(iX), Xp(iX), &
               Mumu_P, opEC(iE,iNuM,iX), opEC(iE,iNuM_Bar,iX) )
 
-        WeakMagRecNuLep = 1.0
-        WeakMagRecNuLepBar = 1.0
+        CALL CalculateHorowitzWeakMagRecoil(E_P, WeakMagRecNuLep, WeakMagRecNuLepBar)
 
         opEC(iE,iNuM    ,iX) = opEC(iE,iNuM    ,iX) * WeakMagRecNuLep    * UnitEC
         opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) * WeakMagRecNuLepBar * UnitEC
@@ -1655,11 +1654,11 @@ CONTAINS
         CALL Opacity_CC_2D &
             ( corr_num, 1, E_P, opEC(iE,iNuM,iX), &
               T_P, Mumu_P, Mun_P, Mup_P,  &
-              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), 50 )
+              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), nE_Muon_2D )
         CALL Opacity_CC_2D &
             ( corr_num, 2, E_P, opEC(iE,iNuM_Bar,iX), &
               T_P, Mumu_P, Mun_P, Mup_P,  &
-              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), 50 )
+              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), nE_Muon_2D )
 
         WeakMagRecNuLep = 1.0
         WeakMagRecNuLepBar = 1.0
