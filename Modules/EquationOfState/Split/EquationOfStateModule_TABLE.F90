@@ -314,7 +314,7 @@ MODULE EquationOfStateModule_TABLE
   !$OMP   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, &
   !$OMP   Xa_T, Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
   !$OMP   HelmTableElectrons, HelmTableMuons, &
-  !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
+  !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD, MuonEoS_MinD )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( D_T, T_T, Yp_T, &
@@ -326,7 +326,7 @@ MODULE EquationOfStateModule_TABLE
   !$ACC   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, &
   !$ACC   Xa_T, Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
   !$ACC   HelmTableElectrons, HelmTableMuons, &
-  !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
+  !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD, MuonEoS_MinD )
 #endif
 
 CONTAINS
@@ -652,7 +652,7 @@ CONTAINS
     !$OMP   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, &
     !$OMP   Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
     !$OMP   HelmTableElectrons, HelmTableMuons, &
-    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
+    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD, MuonEoS_MinD )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( D_T, T_T, Yp_T, &
@@ -664,7 +664,7 @@ CONTAINS
     !$ACC   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, &
     !$ACC   Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
     !$ACC   HelmTableElectrons, HelmTableMuons, &
-    !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
+    !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD, MuonEoS_MinD )
 #endif
 
 #endif
@@ -686,7 +686,7 @@ CONTAINS
     !$OMP   OS_Ah, OS_Gm, OS_Emp, OS_Emn, OS_Sep, OS_Sen, &
     !$OMP   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, &
     !$OMP   Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
-    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD, &
+    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD, MuonEoS_MinD, &
     !$OMP   HelmTableElectrons, HelmTableMuons )
 #endif
 
@@ -3256,7 +3256,7 @@ CONTAINS
 
     D_P  = D / UnitD
 
-    IF ( D_P >= Eos_MinD ) THEN
+    IF ( D_P >= MuonEoS_MinD ) THEN
       CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
         ( D, T, Ye, Ym, Mun )
         
@@ -3316,7 +3316,7 @@ CONTAINS
       Ye_P = Ye(iP)
       Ym_P = Ym(iP)
 
-      IF ( D_P >= Eos_MinD ) THEN
+      IF ( D_P >= MuonEoS_MinD ) THEN
         CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
           ( D_P, T_P, Ye_P, Ym_P, Mun )
           
