@@ -2522,7 +2522,7 @@ CONTAINS
       ! --- Scaling Factors ---
 
       S_Ye   (iN_X) = One / ( D(iN_X) * Ye(iN_X) / AtomicMassUnit )
-      IF (Ym(iN_X) <= 1d-100) THEN 
+      IF ( ABS( Ym(iN_X) ) <= 1d-100) THEN 
         S_Ym (iN_X) = Zero
       ELSE
         S_Ym(iN_X)  = One / ( D(iN_X) * Ym(iN_X) / AtomicMassUnit )
