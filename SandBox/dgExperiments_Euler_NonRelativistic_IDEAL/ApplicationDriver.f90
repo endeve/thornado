@@ -37,7 +37,7 @@ PROGRAM ApplicationDriver
   Use CellMergingModule, ONLY: &
     Initialize_CellMerging, &
     MergeAndRestrict, &
-    MergeAndRestrictGeometry, &
+    MergeAndProlong, &
     Finalize_CellMerging
   USE Euler_SlopeLimiterModule_NonRelativistic_IDEAL, ONLY: &
     InitializeSlopeLimiter_Euler_NonRelativistic_IDEAL, &
@@ -95,7 +95,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'SphericalSedov'
+  ProgramName = 'Bubble'
 
   RestartFileNumber  = -1
   UseCellMerging     = .FALSE.
@@ -164,15 +164,19 @@ PROGRAM ApplicationDriver
 
       Gamma = 1.4_DP
 
-      nX = [ 128, 64, 1 ] ! 2D
-      ! nX = [ 2048, 1, 1 ] ! 1D Reference
-      xL = [ 0.0_DP, 0.0_DP+1.0d-8, 0.0_DP ]
-      xR = [ 2.0_DP, Pi-1.0d-8,     TwoPi  ]
+      ! nX = [ 128, 128, 1 ] ! 2D
+      nX = [ 1028, 1, 1 ] ! 1D Reference
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 2.0_DP, Pi,     TwoPi  ]
 
-      swX = [ 1, 1, 0 ] ! 2D
-      bcX = [ 3, 3, 0 ] ! 2D
-      ! swX = [ 1, 0, 0 ] ! 1D Reference
-      ! bcX = [ 3, 0, 0 ] ! 1D Reference
+      ! xL(1) = xL(1) + 2.0d-1 * (xR(1)-xL(1)) / nX(1) ! Cushion left boundary in r 128xN
+      ! xL(1) = xL(1) + 4.0d-1 * (xR(1)-xL(1)) / nX(1) ! Cushion left boundary in r 256xN
+      xL(1) = xL(1) + 1.0d-8
+
+      ! swX = [ 1, 1, 0 ] ! 2D
+      ! bcX = [ 3, 3, 0 ] ! 2D
+      swX = [ 1, 0, 0 ] ! 1D Reference
+      bcX = [ 31, 0, 0 ] ! 1D Reference
       ! zoomX = [ 1.05_DP, One, One ]
 
       nNodes = 2
@@ -186,13 +190,48 @@ PROGRAM ApplicationDriver
       UseTroubledCellIndicator  = .TRUE.
       LimiterThresholdParameter = 0.03_DP
 
-      UseCellMerging            = .TRUE.
-      Min_NCellsPerMerge        = 1 ! --- Sets minimum number of merged cells as 2**Min_NCellsPerMerge ---
+      UseCellMerging            = .FALSE.
+      UseMergingTimeStep        = .FALSE.
+      Min_NCellsPerMerge        = 1 ! --- Sets minimum number of fine cells per merged cell as 2**Min_NCellsPerMerge ---
+
+      iCycleD = 1
+      t_end   = 3.0d+0
+      dt_wrt  = 2.5d-2
+
+    CASE( 'Bubble' )
+
+      CoordinateSystem = 'SPHERICAL'
+
+      Gamma = 1.4_DP
+
+      nX = [ 64, 64, 1 ] ! 2D
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 2.0_DP, Pi,     TwoPi  ]
+
+      ! xL(1) = xL(1) + 1.0d-4
+      xL(1) = xL(1) + 1.0d-8
+
+      swX = [ 1, 1, 0 ] ! 2D
+      bcX = [ 3, 3, 0 ] ! 2D
+
+      nNodes = 2
+
+      BetaTVD = 1.75_DP
+      BetaTVB = 0.0d+00
+
+      UseSlopeLimiter           = .TRUE.
+      UseCharacteristicLimiting = .TRUE.
+
+      UseTroubledCellIndicator  = .TRUE.
+      LimiterThresholdParameter = 0.03_DP
+
+      UseCellMerging            = .FALSE.
+      UseMergingTimeStep        = .FALSE.
+      Min_NCellsPerMerge        = 1 ! --- Sets minimum number of fine cells per merged cell as 2**Min_NCellsPerMerge ---
 
       iCycleD = 1
       t_end   = 2.5d+0
-      dt_wrt  = 2.5d-2
-      ! dt_wrt  = 1.0d-6
+      dt_wrt  = 5.0d-2
 
     CASE( 'SphericalSedov' )
 
@@ -420,11 +459,21 @@ PROGRAM ApplicationDriver
            UseConservativeCorrection_Option &
              = .TRUE.)
 
+  IF( UseCellMerging )THEN
+    WRITE(*,'(A2,A6,A18)') '', 'INFO: ', 'Using Cell Merging'
+    WRITE(*,'(A2,A6,A24,I8.8)') '', 'INFO: ', 'Min # of Merged Cells = ', &
+      2**Min_NCellsPerMerge
+    CALL Initialize_CellMerging( nX, nNodes, Min_NCellsPerMerge )
+  ELSE IF( UseMergingTimeStep )THEN
+    CALL Initialize_CellMerging( nX, nNodes, Min_NCellsPerMerge )
+  END IF
+
   CALL InitializePositivityLimiter_Euler_NonRelativistic_IDEAL &
          ( UsePositivityLimiter_Option = .TRUE., &
            Verbose_Option = .TRUE., &
            Min_1_Option = 1.0d-12, &
-           Min_2_Option = 1.0d-12 )
+           Min_2_Option = 1.0d-12, &
+           CellMerging_PL_Option = UseCellMerging)
 
   CALL InitializeFields &
          ( AdvectionProfile_Option &
@@ -444,26 +493,38 @@ PROGRAM ApplicationDriver
   CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
 
-  CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
-
   ! --- Test CellMergingModule ---
-  IF( UseCellMerging )THEN
-
-    WRITE(*,'(A2,A6,A18)') '', 'INFO: ', 'Using Cell Merging'
-    WRITE(*,'(A2,A6,A24,I8.8)') '', 'INFO: ', 'Min # of Merged Cells = ', &
-      2**Min_NCellsPerMerge
-
-    CALL Initialize_CellMerging( nX, nNodes, Min_NCellsPerMerge )
-  
-    CALL MergeAndRestrict( nNodes, uCF )
-
-  ELSE IF( UseMergingTimeStep )THEN
-
-    CALL Initialize_CellMerging( nX, nNodes, Min_NCellsPerMerge )
-    
+  IF( UseCellMerging )THEN  
+    ! CALL MergeAndRestrict( nNodes, uCF )
+    CALL MergeAndProlong( nNodes, uCF )    
   END IF
   ! --- Test CellMergingModule ---
+
+  ! CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
+  !        ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, uDF )
+
+  IF( .NOT. UseCellMerging )THEN
+    CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
+          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF )
+  END IF
+
+  ! ! --- Test CellMergingModule ---
+  ! IF( UseCellMerging )THEN
+
+  !   WRITE(*,'(A2,A6,A18)') '', 'INFO: ', 'Using Cell Merging'
+  !   WRITE(*,'(A2,A6,A24,I8.8)') '', 'INFO: ', 'Min # of Merged Cells = ', &
+  !     2**Min_NCellsPerMerge
+
+  !   CALL Initialize_CellMerging( nX, nNodes, Min_NCellsPerMerge )
+  
+  !   CALL MergeAndRestrict( nNodes, uCF )
+
+  ! ELSE IF( UseMergingTimeStep )THEN
+
+  !   CALL Initialize_CellMerging( nX, nNodes, Min_NCellsPerMerge )
+    
+  ! END IF
+  ! ! --- Test CellMergingModule ---
 
   CALL TimersStart_Euler( Timer_Euler_InputOutput )
 
@@ -503,6 +564,7 @@ PROGRAM ApplicationDriver
     CALL ComputeTimeStep_Euler_NonRelativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCF, &
              CFL = 0.5_DP / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
+            !  CFL = 0.01_DP / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
              TimeStep = dt, Merge_Option = UseMergingTimeStep ) ! set to UseMergingTimeStep for larger timestep
 
     IF( t + dt > t_end )THEN
@@ -530,11 +592,12 @@ PROGRAM ApplicationDriver
 
     CALL UpdateFluid_SSPRK &
            ( t, dt, uGF, uCF, uDF, ComputeIncrement_Euler_DG_Explicit, &
-             Merge_Option = UseCellMerging )
+             CellMerging_Option = UseCellMerging )
 
     IF( UseCellMerging )THEN
 
-      CALL MergeAndRestrict( nNodes, uCF )
+      ! CALL MergeAndRestrict( nNodes, uCF )
+      CALL MergeAndProlong( nNodes, uCF )
       
     END IF
 

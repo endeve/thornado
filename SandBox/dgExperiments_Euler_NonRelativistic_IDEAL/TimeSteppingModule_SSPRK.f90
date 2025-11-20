@@ -8,7 +8,7 @@ MODULE TimeSteppingModule_SSPRK
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D
   USE CellMergingModule, ONLY: &
-    MergeAndRestrict
+    MergeAndRestrict, MergeAndProlong
   USE Euler_SlopeLimiterModule_NonRelativistic_IDEAL, ONLY: &
     ApplySlopeLimiter_Euler_NonRelativistic_IDEAL
   USE Euler_PositivityLimiterModule_NonRelativistic_IDEAL, ONLY: &
@@ -38,6 +38,7 @@ MODULE TimeSteppingModule_SSPRK
   REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE :: D_SSPRK
 
   LOGICAL :: Verbose
+  LOGICAL :: MergeSolution
 
   PUBLIC :: InitializeFluid_SSPRK
   PUBLIC :: UpdateFluid_SSPRK
@@ -196,7 +197,7 @@ CONTAINS
 
   SUBROUTINE UpdateFluid_SSPRK &
     ( t, dt, G, U, D, ComputeIncrement_Fluid, ComputeGravitationalPotential, &
-      Merge_Option )
+      CellMerging_Option )
 
     REAL(DP), INTENT(in) :: &
       t, dt
@@ -211,7 +212,7 @@ CONTAINS
     PROCEDURE(GravitySolver), OPTIONAL :: &
       ComputeGravitationalPotential
     LOGICAL, OPTIONAL :: &
-      Merge_Option
+      CellMerging_Option
 
     LOGICAL :: SolveGravity
     INTEGER :: iS, jS
@@ -226,6 +227,11 @@ CONTAINS
       SolveGravity = .TRUE.
     ELSE
       SolveGravity = .FALSE.
+    END IF
+
+    MergeSolution = .TRUE.
+    IF( PRESENT( CellMerging_Option ) )THEN
+      MergeSolution = CellMerging_Option
     END IF
 
     U_SSPRK = Zero ! --- State
@@ -252,12 +258,22 @@ CONTAINS
         CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
 
-        CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
-               ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
-
-        IF( Merge_Option )THEN
-          CALL MergeAndRestrict( nNodes, U_SSPRK)
+        IF( CellMerging_Option )THEN
+          ! CALL MergeAndRestrict( nNodes, U_SSPRK)
+          CALL MergeAndProlong( nNodes, U_SSPRK)
         END IF
+
+        ! CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
+        !        ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK, D )
+
+        IF( .NOT. CellMerging_Option )THEN
+          CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, G, U_SSPRK )
+        END IF
+
+        ! IF( CellMerging_Option )THEN
+        !   CALL MergeAndRestrict( nNodes, U_SSPRK)
+        ! END IF
 
         IF( SolveGravity )THEN
 
@@ -299,12 +315,22 @@ CONTAINS
     CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
-    CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
-
-    IF( Merge_Option )THEN
-      CALL MergeAndRestrict( nNodes, U_SSPRK)
+    IF( CellMerging_Option )THEN
+      ! CALL MergeAndRestrict( nNodes, U_SSPRK)
+      CALL MergeAndProlong( nNodes, U_SSPRK)
     END IF
+
+    ! CALL ApplySlopeLimiter_Euler_NonRelativistic_IDEAL &
+    !        ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+
+    IF( .NOT. CellMerging_Option )THEN
+      CALL ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+    END IF
+
+    ! IF( CellMerging_Option )THEN
+    !   CALL MergeAndRestrict( nNodes, U_SSPRK)
+    ! END IF
 
     IF( SolveGravity )THEN
 

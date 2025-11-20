@@ -8,13 +8,16 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_IDEAL
   USE UtilitiesModule, ONLY: &
     IsCornerCell
   USE ProgramHeaderModule, ONLY: &
+    nX, &
     nNodesX, &
+    nDimsX, &
     nDOFX
   USE ReferenceElementModuleX, ONLY: &
     WeightsX_q, &
     nDOFX_X1, &
     nDOFX_X2, &
-    nDOFX_X3
+    nDOFX_X3, &
+    NodeNumberTableX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     LX_X1_Dn, &
     LX_X1_Up, &
@@ -22,6 +25,10 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_IDEAL
     LX_X2_Up, &
     LX_X3_Dn, &
     LX_X3_Up
+  USE PolynomialBasisModuleX_Lagrange, ONLY: &
+     L_X1,  L_X2,  L_X3
+  USE LinearAlgebraModule, ONLY: &
+    MatrixVectorMultiply
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX_FromScaleFactors
   USE GeometryFieldsModule, ONLY: &
@@ -40,6 +47,8 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_IDEAL
     iCF_S2, &
     iCF_S3, &
     iCF_E
+  ! Use CellMergingModule, ONLY: &
+  !   MergedMeshX2, MergedMeshX3
   USE TimersModule_Euler, ONLY: &
     TimersStart_Euler, &
     TimersStop_Euler, &
@@ -56,10 +65,11 @@ MODULE Euler_PositivityLimiterModule_NonRelativistic_IDEAL
 
 
   LOGICAL               :: UsePositivityLimiter
+  LOGICAL               :: UseCellMerging
   LOGICAL               :: Verbose
   INTEGER, PARAMETER    :: nPS = 7
   INTEGER               :: nPP(nPS)
-  INTEGER               :: nPT
+  INTEGER               :: nPT_0
   REAL(DP)              :: Min_1, Min_2
   REAL(DP)              :: D_Min_Euler_PL, IntE_Min_Euler_PL
   REAL(DP), ALLOCATABLE :: U_PP(:,:), G_PP(:,:)
@@ -69,16 +79,20 @@ CONTAINS
 
   SUBROUTINE InitializePositivityLimiter_Euler_NonRelativistic_IDEAL &
     ( UsePositivityLimiter_Option, Verbose_Option, Min_1_Option, Min_2_Option, &
-      D_Min_Euler_PL_Option, IntE_Min_Euler_PL_Option )
+      D_Min_Euler_PL_Option, IntE_Min_Euler_PL_Option, &
+      CellMerging_PL_Option )
 
     LOGICAL,  INTENT(in), OPTIONAL :: UsePositivityLimiter_Option
     LOGICAL,  INTENT(in), OPTIONAL :: Verbose_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: CellMerging_PL_Option
     REAL(DP), INTENT(in), OPTIONAL :: Min_1_Option
     REAL(DP), INTENT(in), OPTIONAL :: Min_2_Option
     REAL(DP), INTENT(in), OPTIONAL :: D_Min_Euler_PL_Option
     REAL(DP), INTENT(in), OPTIONAL :: IntE_Min_Euler_PL_Option
 
-    INTEGER :: i
+    INTEGER :: i, iX1, iX2, iOS_X, iCell
+    INTEGER :: iNodeX, iNodeX1, iNodeX2, iNodeX3
+    INTEGER :: iN, iN1, iN2, iN3
 
     UsePositivityLimiter = .TRUE.
     IF( PRESENT( UsePositivityLimiter_Option ) ) &
@@ -87,6 +101,10 @@ CONTAINS
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
+
+    UseCellMerging = .FALSE.
+    IF( PRESENT( CellMerging_PL_Option ) ) &
+      UseCellMerging = CellMerging_PL_Option
 
     Min_1 = - HUGE( One )
     IF( PRESENT( Min_1_Option ) ) &
@@ -142,29 +160,30 @@ CONTAINS
 
     ! --- Total Number of Positive Points ---
 
-    nPT = SUM( nPP )
+    nPT_0 = SUM( nPP )
 
     ! --- Conserved Variables in Positive Points ---
 
-    ALLOCATE( U_PP(nPT,nCF) )
+    ! ALLOCATE( U_PP(nPT_0,nCF) ) ! these allocations need to be moved into ApplyPL subroutine
 
     ! --- Geometry in Positive Points ---
 
-    ALLOCATE( G_PP(nPT,nGF) )
+    ! ALLOCATE( G_PP(nPT_0,nGF) ) ! these allocations need to be moved into ApplyPL subroutine
 
   END SUBROUTINE InitializePositivityLimiter_Euler_NonRelativistic_IDEAL
 
 
   SUBROUTINE FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL
 
-    DEALLOCATE( U_PP )
-    DEALLOCATE( G_PP )
+    ! DEALLOCATE( U_PP ) ! these allocations need to be moved into ApplyPL subroutine
+    ! DEALLOCATE( G_PP ) ! these allocations need to be moved into ApplyPL subroutine
 
   END SUBROUTINE FinalizePositivityLimiter_Euler_NonRelativistic_IDEAL
 
 
   SUBROUTINE ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, &
+      nPT_Option, XRef_p_Option, InterpMat_XRef_Option )
 
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -172,21 +191,48 @@ CONTAINS
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    INTEGER, INTENT(in), OPTIONAL :: nPT_Option
+    REAL(DP), INTENT(in), OPTIONAL :: XRef_p_Option(:,:)
+    REAL(DP), INTENT(in), OPTIONAL :: InterpMat_XRef_Option(:,:)
+
 
     LOGICAL  :: NegativeStates(2)
     INTEGER  :: iX1, iX2, iX3, iCF, iGF, iP
+    INTEGER  :: nPT
     REAL(DP) :: Min_K, Theta_1, Theta_2, Theta_P
     REAL(DP) :: Min_D, Min_E
     REAL(DP) :: U_q(nDOFX,nCF), G_q(nDOFX,nGF), U_K(nCF), &
-                IntE(nPT), IntE_K_P(nPT), IntE_K_P_Min
+                IntE_K_P_Min
+    REAL(DP), ALLOCATABLE :: IntE(:), IntE_K_P(:), XRef_p(:,:), InterpMat_XRef(:,:)
 
     REAL(DP), PARAMETER :: Alpha = 1.01_DP
+
+    ! Define Merge version of variables that depend on nPT
 
     IF( nDOFX == 1 ) RETURN
 
     IF( .NOT. UsePositivityLimiter ) RETURN
 
     CALL TimersStart_Euler( Timer_Euler_PositivityLimiter )
+
+    IF(PRESENT(nPT_Option))THEN
+      nPT = nPT_Option
+    ELSE
+      nPT = nPT_0
+    END IF
+
+    IF(PRESENT(XRef_p_Option))THEN
+      ALLOCATE(XRef_p(1:3,nPT))
+      XRef_p = XRef_p_Option
+    END IF
+
+    IF(PRESENT(InterpMat_XRef_Option))THEN
+      ALLOCATE(InterpMat_XRef(nPT,nDOFX))
+      InterpMat_XRef = InterpMat_XRef_Option
+    END IF
+
+    ALLOCATE(IntE(nPT),IntE_K_P(nPT))
+    ALLOCATE(U_PP(nPT,nCF),G_PP(nPT,nGF))
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
@@ -200,11 +246,21 @@ CONTAINS
       NegativeStates = .FALSE.
 
       DO iCF = 1, nCF
-        CALL ComputePointValues( U_q(:,iCF), U_PP(:,iCF) )
+        IF(PRESENT(nPT_Option))THEN
+          CALL ComputePointValues_UD( nPT, XRef_p, InterpMat_XRef, &
+                                      U_q(:,iCF), U_PP(:,iCF) )
+        ELSE
+          CALL ComputePointValues( U_q(:,iCF), U_PP(:,iCF) ) ! Define new subroutine ComputeValues_BasedOnInput
+        END IF
       END DO
 
       DO iGF = iGF_h_1, iGF_h_3
-        CALL ComputePointValues( G_q(:,iGF), G_PP(:,iGF) )
+        IF(PRESENT(nPT_Option))THEN
+          CALL ComputePointValues_UD( nPT, XRef_p, InterpMat_XRef, &
+                                      G_q(:,iGF), G_PP(:,iGF) )
+        ELSE
+          CALL ComputePointValues( G_q(:,iGF), G_PP(:,iGF) )
+        END IF
       END DO
 
       CALL ComputeGeometryX_FromScaleFactors( G_PP )
@@ -218,10 +274,12 @@ CONTAINS
       U_K(iCF_D) &
         = SUM( WeightsX_q(:) * U_q(:,iCF_D) * G_q(:,iGF_SqrtGm) ) &
             / SUM( WeightsX_q(:) * G_q(:,iGF_SqrtGm) )
-
+            
       Min_D = Min_1 * U_K(iCF_D)
 
       IF( Min_K < Min_D )THEN
+
+        ! print *, "Min_K = ", Min_K, " Min_D = ", Min_D
 
         Theta_1 = MIN( One, ( U_K(iCF_D) - Min_D ) / ( U_K(iCF_D) - Min_K ) )
 
@@ -232,7 +290,12 @@ CONTAINS
 
         ! --- Recompute Point Values ---
 
-        CALL ComputePointValues( U_q(1:nDOFX,iCF_D), U_PP(1:nPT,iCF_D) )
+        IF(PRESENT(nPT_Option))THEN
+          CALL ComputePointValues_UD( nPT, XRef_p, InterpMat_XRef, &
+                                      U_q(1:nDOFX,iCF_D), U_PP(1:nPT,iCF_D) )
+        ELSE
+          CALL ComputePointValues( U_q(1:nDOFX,iCF_D), U_PP(1:nPT,iCF_D) )
+        END IF
 
         ! --- Flag for Negative Density ---
 
@@ -333,6 +396,18 @@ CONTAINS
     END DO
     END DO
 
+    DEALLOCATE( U_PP )
+    DEALLOCATE( G_PP )
+    DEALLOCATE(IntE,IntE_K_P)
+
+    IF(PRESENT(XRef_p_Option))THEN
+      DEALLOCATE(XRef_p)
+    END IF
+
+    IF(PRESENT(InterpMat_XRef_Option))THEN
+      DEALLOCATE(InterpMat_XRef)
+    END IF
+
     CALL TimersStop_Euler( Timer_Euler_PositivityLimiter )
 
   END SUBROUTINE ApplyPositivityLimiter_Euler_NonRelativistic_IDEAL
@@ -341,7 +416,7 @@ CONTAINS
   SUBROUTINE ComputePointValues( X_q, X_p )
 
     REAL(DP), INTENT(in)  :: X_q(nDOFX)
-    REAL(DP), INTENT(out) :: X_p(nPT)
+    REAL(DP), INTENT(out) :: X_p(nPT_0)
 
     INTEGER :: iOS
 
@@ -402,6 +477,33 @@ CONTAINS
     END IF
 
   END SUBROUTINE ComputePointValues
+
+
+  SUBROUTINE ComputePointValues_UD( nRefPT, XRef_p, InterpMat_XRef, U_q, U_p )
+
+    INTEGER,  INTENT(in)  :: nRefPT
+    REAL(DP), INTENT(in)  :: XRef_p(1:3,nRefPT)
+    REAL(DP), INTENT(in)  :: InterpMat_XRef(nRefPT,nDOFX)
+    REAL(DP), INTENT(in)  :: U_q(nDOFX)
+    REAL(DP), INTENT(out) :: U_p(nRefPT)
+
+    ! XRef_p contains a list of reference points on the reference element [-1/2,1/2]^3.
+    ! Note these points must be on the reference element as this function assumes you
+    ! use the reference basis to compute U_p. Therefore, you must be careful to
+    ! not pass in points outside the scope of the cell which U_q lies in.
+
+    INTEGER  :: iRefPT, iNodeX
+
+    U_p = Zero
+    DO iRefPT = 1, nRefPT
+      DO iNodeX = 1, nDOFX
+
+        U_p(iRefPT) = U_p(iRefPT) + InterpMat_XRef(iRefPT,iNodeX) * U_q(iNodeX)
+
+      END DO
+    END DO
+
+  END SUBROUTINE ComputePointValues_UD
 
 
   SUBROUTINE ComputeInternalEnergyDensity( N, U, G, IntE )

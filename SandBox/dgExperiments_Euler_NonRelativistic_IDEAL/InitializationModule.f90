@@ -68,6 +68,10 @@ CONTAINS
 
         CALL InitializeFields_RiemannProblemSpherical
 
+      CASE ( 'Bubble' )
+
+        CALL InitializeFields_Bubble
+
       CASE ( 'SphericalSedov' )
 
         CALL InitializeFields_SphericalSedov &
@@ -416,23 +420,49 @@ CONTAINS
             X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
             X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
-            IF( X1 <= XShock )THEN
+            ! IF( X1 <= XShock )THEN
 
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP + 0.5_DP * SIN(X2)**2! change for X2 dependence
+            !   uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP !+ 0.5_DP * SIN(X2)**2! change for X2 dependence
+            !   uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+            !   uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+            !   uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+            !   uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = uPF(iNodeX,iX1,iX2,iX3,iPF_D) / 0.4_DP
+
+            ! ELSE
+
+            !   uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.125_DP
+            !   ! uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP ! uniform IC
+            !   uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+            !   uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+            !   uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+            !   uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 0.1_DP / 0.4_DP
+            !   ! uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0_DP / 0.4_DP ! uniform IC
+
+            ! END IF
+
+            IF ( X1 <= 0.1_DP )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 100.0_DP
               uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
               uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
               uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = uPF(iNodeX,iX1,iX2,iX3,iPF_D) / 0.4_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0_DP / 0.4_DP
+
+            ELSE IF( (X1 > 0.1_DP) .AND. (X1 <= XShock) )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0_DP / 0.4_DP
 
             ELSE
 
               uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.125_DP
-              ! uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP ! uniform IC
               uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
               uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
               uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
               uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 0.1_DP / 0.4_DP
-              ! uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0_DP / 0.4_DP ! uniform IC
 
             END IF
 
@@ -456,6 +486,80 @@ CONTAINS
   END SUBROUTINE InitializeFields_RiemannProblemSpherical
 
 
+  SUBROUTINE InitializeFields_Bubble
+
+    INTEGER       :: iX1, iX2, iX3
+    INTEGER       :: iNodeX, iNodeX1, iNodeX2
+    REAL(DP)      :: X1, X2,XShock
+
+    XShock = 0.4_DP !Used to be One or 1.0_DP
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+            IF ( X1 <= 0.1_DP )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 100.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0_DP / 0.4_DP
+
+            ELSE IF( (X1 > 0.1_DP) .AND. (X1 <= XShock) )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0_DP / 0.4_DP
+
+            ELSEIF( (X1*COS(X2) - 0.0_DP)**2 + (X1*SIN(X2) - 1.0_DP)**2 <= 0.25_DP**2 )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.125_DP / 10.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 0.1_DP / 0.4_DP
+
+            ELSE
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.125_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 0.1_DP / 0.4_DP
+
+            END IF
+
+          END DO
+
+          CALL ComputeConserved_Euler_NonRelativistic &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+                   uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+                   uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+                   uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+                   uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+                   uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_Bubble
+
+
   SUBROUTINE InitializeFields_SphericalSedov &
     ( SedovEnergy_Option, nDetCells_Option )
 
@@ -475,7 +579,7 @@ CONTAINS
       E_0 = SedovEnergy_Option
 
     R_0 = REAL( nDetCells ) * MeshX(1) % Width(1)
-      ! R_0 = - One ! Uniform background / internal energy
+    ! R_0 = - One ! Uniform background / internal energy
 
     WRITE(*,*)
     WRITE(*,'(A7,A,ES10.3E2,A2,I2.2,A2,ES10.3E2)') &

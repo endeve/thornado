@@ -26,3 +26,7 @@ clean:
 clobber: clean
 	rm -f   ApplicationDriver_$(MACHINE)
 	rm -rf  ApplicationDriver_$(MACHINE).dSYM
+
+CellMergingModule.o: \
+	Euler_PositivityLimiterModule_NonRelativistic_IDEAL.o\
+	CellMergingModule.F90
