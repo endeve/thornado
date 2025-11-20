@@ -64,6 +64,9 @@ CONTAINS
     CALL ComputePressureFromPrimitive &
            ( D, E, Ne, P )
 
+    IF (ANY(D .LT. Zero) .OR. ANY(E .LT. Zero))THEN
+      print *, 'Density', D, 'Internal Energy', E
+    END IF
     CALL ComputeSoundSpeedFromPrimitive &
            ( D, E, Ne, Cs )
 
