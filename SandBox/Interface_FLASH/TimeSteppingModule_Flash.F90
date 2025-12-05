@@ -3004,16 +3004,14 @@ CONTAINS
 
     U0_R = Zero; T0_R = Zero; T1_R = Zero
 
-    uDR = Zero
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: U_F, U_R, uGE, uGF, &
-    !$OMP          U0_F, U0_R, T0_R, T1_R, uDR )
+    !$OMP          U0_F, U0_R, T0_R, T1_R )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN( U_F, U_R, uGE, uGF, &
-    !$ACC         U0_F, U0_R, T0_R, T1_R, uDR )
+    !$ACC         U0_F, U0_R, T0_R, T1_R )
 #endif
 
     OffGridFluxR = Zero
@@ -3222,12 +3220,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from: U_F, U_R, uDR ) &
+    !$OMP MAP( from: U_F, U_R ) &
     !$OMP MAP( release: U0_F, U0_R, T0_R, T1_R, uGE, uGF, &
     !$OMP               iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC COPYOUT( U_F, U_R, uDR ) &
+    !$ACC COPYOUT( U_F, U_R ) &
     !$ACC DELETE( U0_F, U0_R, T0_R, T1_R, uGE, uGF, &
     !$ACC         iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
 #endif
