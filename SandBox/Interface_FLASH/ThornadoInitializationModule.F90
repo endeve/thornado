@@ -129,6 +129,16 @@ module ThornadoInitializationModule
   public :: InitPatch
   public :: FreePatch
 
+
+  abstract interface
+    subroutine timers_sub_t(name)
+      character(len=*), intent(in) :: name
+    end subroutine timers_sub_t
+  end interface
+
+  procedure(timers_sub_t), pointer, save, public :: Timers_start => Timer_start_default
+  procedure(timers_sub_t), pointer, save, public :: Timers_stop => Timer_stop_default
+
 contains
 
   subroutine InitThornado &
@@ -162,7 +172,8 @@ contains
       DnuMax_Option, FreezeOpacities_Option , &
       ActivateUnits_Option, CoordinateSystem_Option, &
       UseChemicalPotentialShift_Option, &
-      UseSimpleMeshRefinement_Option, Verbose_Option )
+      UseSimpleMeshRefinement_Option, Verbose_Option &
+      Timers_start_Option, Timers_stop_Option )
 
     integer,  intent(in) :: nNodes, nDimsX, nE, swE, bcE, nSpecies
     real(dp), intent(in) :: eL_MeV, eR_MeV, zoomE
@@ -220,6 +231,9 @@ contains
     logical,          intent(in), optional :: Verbose_Option
     logical,          intent(in), optional :: UseChemicalPotentialShift_Option
     logical,          intent(in), optional :: UseSimpleMeshRefinement_Option
+
+    procedure(timers_sub_t), optional :: Timers_start_Option
+    procedure(timers_sub_t), optional :: Timers_stop_Option
 
     logical  :: TroubledCellIndicator
     logical  :: PositivityLimiter, SlopeLimiter, EnergyLimiter, UseChemicalPotentialShift, Verbose
@@ -321,6 +335,9 @@ contains
              ( CoordinateSystem_Option = CoordinateSystem )
 
     END IF
+
+    if (present(Timers_start_Option)) Timers_start => Timers_start_Option
+    if (present(Timers_stop_Option))  Timers_stop  => Timers_stop_Option
 
     IF(Verbose)THEN
       WRITE(*,*)
@@ -786,6 +803,8 @@ contains
              xL_Option = xL, xR_Option  = xR,  &
              reinitializeZ_Option = .TRUE. )
 
+    call Timers_start("Create Fields")
+
     call CreateGeometryFields &
            ( nX, swX, CoordinateSystem_Option = CoordinateSystem, &
              Verbose_Option = .FALSE. )
@@ -796,6 +815,8 @@ contains
     call CreateRadiationFields &
            ( nX, swX, nE, swE, nSpecies_Option = nSpecies, &
              Verbose_Option = .FALSE. )
+
+    call Timers_stop("Create Fields")
 
   end subroutine AllocatePatch
 
@@ -809,6 +830,8 @@ contains
 
     integer :: iDim, bcX(3)
 
+    call Timers_start("Create Mesh")
+
     DO iDim = 1, 3
 
       call CreateMesh &
@@ -817,10 +840,15 @@ contains
 
     END DO
 
-    CALL ComputeGeometryX &
-         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+    call Timers_stop("Create Mesh")
 
+    call Timers_start("Compute Geometry")
+    CALL ComputeGeometryX(iX_B0, iX_E0, iX_B1, iX_E1, uGF)
+    call Timers_stop("Compute Geometry")
+
+    call Timers_start("Create Subcell Recon.")
     call CreateSubcellReconstruction
+    call Timers_stop("Create Subcell Recon.")
 
     ! --- For Mapping Between Nodal and Modal Representations ---
 
@@ -851,5 +879,17 @@ contains
     call FinalizePolynomialBasisMapping
 
   end subroutine FreePatch
+
+  subroutine Timer_start_default(name)
+    character(len=*), intent(in) :: name
+
+    return
+  end subroutine Timer_start_default
+
+  subroutine Timer_stop_default(name)
+    character(len=*), intent(in) :: name
+
+    return
+  end subroutine Timer_stop_default
 
 end module ThornadoInitializationModule

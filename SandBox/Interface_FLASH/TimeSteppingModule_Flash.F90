@@ -43,6 +43,8 @@ MODULE TimeSteppingModule_Flash
     OffGridFlux_TwoMoment
 #endif
 
+  use ThornadoInitializationModule, only: Timers_start, Timers_stop
+
   USE, INTRINSIC :: ieee_arithmetic, ONLY: &
     IEEE_IS_NAN
 
@@ -2988,7 +2990,8 @@ CONTAINS
     !$ACC COPYIN( iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
 #endif
 
-      ! --- Apply Limiters ---
+    ! --- Apply Limiters ---
+    call Timers_start("Apply Limiters")
 
 #ifdef TWOMOMENT_ORDER_V
 #if defined MICROPHYSICS_WEAKLIB
@@ -3006,19 +3009,26 @@ CONTAINS
              ( iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 #endif
 
+    call Timers_stop("Apply Limiters")
+
+    call Timers_start("Copy Fields")
     call CopyFields_Fluid(iX_B1, iX_E1, U_F, U0_F)
-
     call CopyFields_Radiation(iZ_B1, iZ_E1, U_R, U0_R)
+    call Timers_stop("Copy Fields")
 
+    call Timers_start("Implicit Increment")
     CALL ComputeIncrement_TwoMoment_Implicit(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, dt, &
                                              uGE, uGF, U_F, Q1_F, U_R, Q1_R, uDR)
+    call Timers_stop("Implicit Increment")
 
+    call Timers_start("Add Fields")
     CALL AddFields_Fluid(iX_B0_SW, iX_E0_SW, One, dt, U_F, Q1_F, U_F)
 
     CALL AddFields_Radiation(iZ_B0_SW, iZ_E0_SW, One, dt, U_R, Q1_R, U_R)
+    call Timers_stop("Add Fields")
 
     ! --- Apply Positivity Limiter ---
-
+    call Timers_start("Apply Limiters")
 #ifdef TWOMOMENT_ORDER_1
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
@@ -3036,6 +3046,7 @@ CONTAINS
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 
 #endif
+    call Timers_stop("Apply Limiters")
 
 #ifdef THORNADO_DEBUG
     IF( ANY(IEEE_IS_NAN(U_R)) ) PRINT*, 'NaN @ end of [ImplicitUpdate]'
@@ -3162,8 +3173,8 @@ CONTAINS
     !$ACC COPYIN( iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
 #endif
 
-      ! --- Apply Limiters ---
-
+    ! --- Apply Limiters ---
+    call Timers_start("Apply Limiters")
 #ifdef TWOMOMENT_ORDER_V
 #if defined MICROPHYSICS_WEAKLIB
     call ApplySlopeLimiter_Euler_NonRelativistic_TABLE(iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF, &
@@ -3174,21 +3185,24 @@ CONTAINS
 
     call ApplyPositivityLimiter_TwoMoment(iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R)
 #endif
+    call Timers_stop("Apply Limiters")
 
     ! --- Apply Boundary Condition ---
-
+    call Timers_start("Apply BCs")
     call ApplyBoundaryConditions_Radiation(iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC)
 
 #ifdef TWOMOMENT_ORDER_V
     call ApplyBoundaryConditions_Fluid(iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC)
 #endif
+    call Timers_stop("Apply BCs")
 
-
+    call Timers_start("Copy Fields")
     call CopyFields_Radiation(iZ_B1, iZ_E1, U_R, U0_R)
+    call Timers_stop("Copy Fields")
 
 
-      ! --- Apply Limiter ---
-
+    ! --- Apply Limiter ---
+    call Timers_start("Apply Limiters")
 #ifdef TWOMOMENT_ORDER_1
     call ApplyPositivityLimiter_TwoMoment(iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_R)
 
@@ -3197,17 +3211,19 @@ CONTAINS
 
     call ApplyPositivityLimiter_TwoMoment(iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R)
 #endif
+    call Timers_stop("Apply Limiters")
 
     ! --- Apply Boundary Condition ---
-
+    call Timers_start("Apply BCs")
     call ApplyBoundaryConditions_Radiation(iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC)
 
 #ifdef TWOMOMENT_ORDER_V
     call ApplyBoundaryConditions_Fluid(iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC)
 #endif
+    call Timers_stop("Apply BCs")
 
     ! --- Explicit Solver ---
-
+    call Timers_start("Explicit Increment")
 #ifdef TWOMOMENT_ORDER_1
     call ComputeIncrement_TwoMoment_Explicit(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R, T0_R)
 
@@ -3215,28 +3231,36 @@ CONTAINS
     call ComputeIncrement_TwoMoment_Explicit(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R, T0_R)
     OffGridFluxR_T0 = OffGridFlux_TwoMoment
 #endif
+    call Timers_stop("Explicit Increment")
 
     ! --- Apply Increment ---
-
+    call Timers_start("Add Fields")
     call AddFields_Radiation(iZ_B0_SW, iZ_E0_SW, One, dt, U0_R, T0_R, U_R)
+    call Timers_stop("Add Fields")
 
 #ifdef TWOMOMENT_ORDER_V
     OffGridFluxR = dt * OffGridFluxR_T0
 #endif
 
     ! --- Apply Limiter ---
-
 #ifdef TWOMOMENT_ORDER_1
+    call Timers_start("Apply Limiters")
     call ApplyPositivityLimiter_TwoMoment(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R)
+    call Timers_stop("Apply Limiters")
+
 
 #elif TWOMOMENT_ORDER_V
+    call Timers_start("Apply Limiters")
     call ApplySlopeLimiter_TwoMoment(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R)
 
     call ApplyPositivityLimiter_TwoMoment(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R)
+    call Timers_stop("Apply Limiters")
 
+    call Timers_start("Apply BCs")
     call ApplyBoundaryConditions_Radiation(iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC)
 
     call ApplyBoundaryConditions_Fluid(iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC)
+    call Timers_stop("Apply BCs")
 #endif
 
     ! ---------------
@@ -3267,13 +3291,15 @@ CONTAINS
 #endif
 
     ! --- Explicit Step (Radiation Only) ---
-
+    call Timers_start("Apply BCs")
     call ApplyBoundaryConditions_Radiation(iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC)
 
 #ifdef TWOMOMENT_ORDER_V
     call ApplyBoundaryConditions_Fluid(iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC)
 #endif
+    call Timers_stop("Apply BCs")
 
+    call Timers_start("Explicit Increment")
 #ifdef TWOMOMENT_ORDER_1
     call ComputeIncrement_TwoMoment_Explicit(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R, T1_R)
 
@@ -3281,19 +3307,21 @@ CONTAINS
     call ComputeIncrement_TwoMoment_Explicit(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R, T1_R)
     OffGridFluxR_T1 = OffGridFlux_TwoMoment
 #endif
+    call Timers_stop("Explicit Increment")
 
     ! --- Apply Increment ---
-
+    call Timers_start("Add Fields")
     call AddFields_Radiation(iZ_B0_SW, iZ_E0_SW, One, Half * dt, U0_R, T0_R, U_R)
 
     call AddFields_Radiation(iZ_B0_SW, iZ_E0_SW, One, Half * dt, U_R,  T1_R, U_R)
+    call Timers_stop("Add Fields")
 
 #ifdef TWOMOMENT_ORDER_V
     OffGridFluxR = Half * dt * OffGridFluxR_T0 + Half * dt * OffGridFluxR_T1
 #endif
 
     ! --- Apply Limiter ---
-
+    call Timers_start("Apply Limiters")
 #ifdef TWOMOMENT_ORDER_1
   call ApplyPositivityLimiter_TwoMoment(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R)
 
@@ -3303,6 +3331,7 @@ CONTAINS
     call ApplyPositivityLimiter_TwoMoment(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R)
 
 #endif
+    call Timers_stop("Apply Limiters")
 
 #ifdef THORNADO_DEBUG
     IF( ANY(IEEE_IS_NAN(U_R)) ) PRINT*, 'NaN @ end of [ExplicitUpdate]'
