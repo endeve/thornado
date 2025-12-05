@@ -3212,7 +3212,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE FROM( T0_R, T1_R )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( 0_R, T1_R )
+    !$ACC UPDATE HOST( T0_R, T1_R )
 #endif
     WRITE(*,'(a,7i4,es23.15)')    'MINLOC(T0_R), MINVAL(T0_R)', MINLOC(T0_R), MINVAL(T0_R)
     WRITE(*,'(a,7i4,es23.15)')    'MAXLOC(T0_R), MAXVAL(T0_R)', MAXLOC(T0_R), MAXVAL(T0_R)
