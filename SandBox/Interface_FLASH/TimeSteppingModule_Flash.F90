@@ -51,6 +51,8 @@ MODULE TimeSteppingModule_Flash
   PUBLIC :: Update_IMEX_PDARS
   PUBLIC :: ApplyBoundaryConditions_Radiation
   PUBLIC :: ApplyBoundaryConditions_Fluid
+  PUBLIC :: ImplicitUpdate
+  PUBLIC :: ExplicitUpdate
 
   LOGICAL :: DEBUG = .FALSE.
 
@@ -2809,5 +2811,431 @@ CONTAINS
     END SELECT
 
   END SUBROUTINE ApplyBC_Radiation_X3
+
+  SUBROUTINE ImplicitUpdate(dt, U_F, U_R)
+
+    use GeometryFieldsModuleE, only: uGE
+    use GeometryFieldsModule,  only: uGF
+    use ProgramHeaderModule,   only: nDimsX
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    real(DP), intent(in)    :: dt
+    real(DP), intent(inout) :: U_F(1:nDOFX, iZ_B1(2):iZ_E1(2), iZ_B1(3):iZ_E1(3), iZ_B1(4):iZ_E1(4), 1:nCF)
+    real(DP), intent(inout) :: U_R(1:nDOFZ, iZ_B1(1):iZ_E1(1), iZ_B1(2):iZ_E1(2), iZ_B1(3):iZ_E1(3), iZ_B1(4):iZ_E1(4), 1:nCR, 1:nSpecies)
+
+    integer :: iS, iCR, iZ4, iZ3, iZ2, iZ1, iNode, iCF, iNodeX, bcX(3), iApplyBC(3)
+    integer :: iX_SW(3), iZ_SW(4), iZ_SW_P(4)
+    integer :: iX_B0_SW(3), iX_E0_SW(3), iZ_B0_SW(4), iZ_E0_SW(4), iZ_B0_SW_P(4), iZ_E0_SW_P(4)
+
+    real(DP), dimension(:,:,:,:,:),     allocatable :: U0_F, Q1_F
+    real(DP), dimension(:,:,:,:,:,:,:), allocatable :: U0_R, Q1_R
+
+    allocate( U0_F(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF) )
+    allocate( Q1_F(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF) )
+
+    allocate( U0_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+    allocate( Q1_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+
+#ifdef THORNADO_DEBUG
+    IF( ANY(IEEE_IS_NAN(U_R)) ) PRINT*, 'NaN when entering ImplicitUpdate'
+#endif
+
+    U0_F = Zero; Q1_F = Zero
+
+    U0_R = Zero; Q1_R = Zero
+
+    uDR = Zero
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: U_F, U_R, uGE, uGF, U0_F, Q1_F, U0_R, Q1_R, uDR )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( U_F, U_R, uGE, uGF, U0_F, Q1_F, U0_R, Q1_R, uDR )
+#endif
+
+    iX_SW   = [    0, 0, 0 ]
+    iZ_SW   = [ 0, 0, 0, 0 ]
+    iZ_SW_P = [ 0, 0, 0, 0 ]
+
+    iX_B0_SW = iX_B0 - iX_SW
+    iX_E0_SW = iX_E0 + iX_SW
+    iZ_B0_SW = iZ_B0 - iZ_SW
+    iZ_E0_SW = iZ_E0 + iZ_SW
+    iZ_B0_SW_P = iZ_B0 - iZ_SW_P
+    iZ_E0_SW_P = iZ_E0 + iZ_SW_P
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
+#endif
+
+      ! --- Apply Limiters ---
+
+#ifdef TWOMOMENT_ORDER_V
+#if defined MICROPHYSICS_WEAKLIB
+    CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF, &
+             SuppressBC_Option = .FALSE., &
+             iApplyBC_Option   = [ 0,0,0 ] )
+    CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
+#endif
+      CALL ApplySlopeLimiter_TwoMoment &
+             ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+
+      CALL ApplyPositivityLimiter_TwoMoment &
+             ( iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+#endif
+
+    CALL AddFields_Fluid(iX_B1, iX_E1, One, Zero, U_F, U_F, U0_F)
+
+    CALL AddFields_Radiation(iZ_B1, iZ_E1, One, Zero, U_R, U_R, U0_R)
+
+    CALL ComputeIncrement_TwoMoment_Implicit(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, dt, &
+                                             uGE, uGF, U_F, Q1_F, U_R, Q1_R, uDR)
+
+    CALL AddFields_Fluid(iX_B0_SW, iX_E0_SW, One, dt, U_F, Q1_F, U_F)
+
+    CALL AddFields_Radiation(iZ_B0_SW, iZ_E0_SW, One, dt, U_R, Q1_R, U_R)
+
+    ! --- Apply Positivity Limiter ---
+
+#ifdef TWOMOMENT_ORDER_1
+    CALL ApplyPositivityLimiter_TwoMoment &
+           ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
+
+#elif TWOMOMENT_ORDER_V
+#if defined MICROPHYSICS_WEAKLIB
+    CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
+#endif
+
+    CALL ApplySlopeLimiter_TwoMoment &
+           ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+
+    CALL ApplyPositivityLimiter_TwoMoment &
+           ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+
+#endif
+
+#ifdef THORNADO_DEBUG
+    IF( ANY(IEEE_IS_NAN(U_R)) ) PRINT*, 'NaN @ end of [ImplicitUpdate]'
+#endif
+
+#ifdef THORNADO_DEBUG_IMEX
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM(Q1_F, Q1_R)
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST(Q1_F, Q1_R)
+#endif
+    WRITE(*,'(a,8x,5i4,es23.15)') 'MINLOC(Q1_F), MINVAL(Q1_F)', MINLOC(Q1_F), MINVAL(Q1_F)
+    WRITE(*,'(a,8x,5i4,es23.15)') 'MAXLOC(Q1_F), MAXVAL(Q1_F)', MAXLOC(Q1_F), MAXVAL(Q1_F)
+    WRITE(*,'(a,7i4,es23.15)')    'MINLOC(Q1_R), MINVAL(Q1_R)', MINLOC(Q1_R), MINVAL(Q1_R)
+    WRITE(*,'(a,7i4,es23.15)')    'MAXLOC(Q1_R), MAXVAL(Q1_R)', MAXLOC(Q1_R), MAXVAL(Q1_R)
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: U_F, U_R, uDR ) &
+    !$OMP MAP( release: U0_F, Q1_F, U0_R, Q1_R, uGE, uGF, &
+    !$OMP               iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT( U_F, U_R, uDR ) &
+    !$ACC DELETE( U0_F, Q1_F, U0_R, Q1_R, uGE, uGF, &
+    !$ACC         iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
+#endif
+
+  END SUBROUTINE ImplicitUpdate
+
+  SUBROUTINE ExplicitUpdate(dt, U_F, U_R, bcX_Option, iApplyBC_Option, OffGridFluxR_Option)
+
+    use GeometryFieldsModuleE, only: uGE
+    use GeometryFieldsModule,  only: uGF
+    use ProgramHeaderModule  , only: nDimsX
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+    real(DP), intent(in)    :: dt
+
+    real(DP), intent(inout) :: U_F(1:nDOFX, iZ_B1(2):iZ_E1(2), iZ_B1(3):iZ_E1(3), iZ_B1(4):iZ_E1(4), 1:nCF)
+    real(DP), intent(inout) :: U_R(1:nDOFZ, iZ_B1(1):iZ_E1(1), iZ_B1(2):iZ_E1(2), iZ_B1(3):iZ_E1(3), iZ_B1(4):iZ_E1(4), 1:nCR, 1:nSpecies)
+
+    integer,  intent(in),  optional :: bcX_Option(3), iApplyBC_Option(3)
+    real(DP), intent(out), optional :: OffGridFluxR_Option(2*nCR)
+
+    integer :: iS, iCR, iZ4, iZ3, iZ2, iZ1, iNode, iCF, iNodeX, bcX(3), iApplyBC(3)
+    integer :: iX_SW(3), iZ_SW(4), iZ_SW_P(4)
+    integer :: iX_B0_SW(3), iX_E0_SW(3), iZ_B0_SW(4), iZ_E0_SW(4), iZ_B0_SW_P(4), iZ_E0_SW_P(4)
+
+    real(DP), dimension(2*nCR) :: OffGridFluxR, OffGridFluxR_T0, OffGridFluxR_T1
+
+    real(DP), dimension(:,:,:,:,:),     allocatable :: U0_F
+    real(DP), dimension(:,:,:,:,:,:,:), allocatable :: U0_R, T0_R, T1_R
+
+    allocate(U0_F(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF))
+
+    allocate(U0_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies))
+    allocate(T0_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies))
+    allocate(T1_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies))
+
+    IF( PRESENT( bcX_Option ) )THEN
+      bcX = bcX_Option
+    ELSE
+      bcX = 0 ! No Boundary Condition
+    END IF
+
+    IF( PRESENT( iApplyBC_Option ) )THEN
+      iApplyBC = iApplyBC_Option
+    ELSE
+      iApplyBC = iApplyBC_None
+    END IF
+
+#ifdef THORNADO_DEBUG
+    IF( ANY(IEEE_IS_NAN(U_R)) ) PRINT*, 'NaN when entering ExplicitUpdate'
+#endif
+
+    U0_F = Zero
+
+    U0_R = Zero; T0_R = Zero; T1_R = Zero
+
+    uDR = Zero
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: U_F, U_R, uGE, uGF, &
+    !$OMP          U0_F, U0_R, T0_R, T1_R, uDR )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( U_F, U_R, uGE, uGF, &
+    !$ACC         U0_F, U0_R, T0_R, T1_R, uDR )
+#endif
+
+    OffGridFluxR = Zero
+
+    ! ---------------
+    ! --- Stage 1 ---
+    ! ---------------
+
+    ! --- Include One Layer of Spatial Ghost Cells in Update
+
+    if (nDimsX .eq. 3) then
+       iX_SW   = [    1, 1, 1 ]
+       iZ_SW   = [ 0, 1, 1, 1 ]
+       iZ_SW_P = [ 0, 2, 2, 2 ]
+    else if (nDimsX .eq. 2) then
+       iX_SW   = [    1, 1, 0 ]
+       iZ_SW   = [ 0, 1, 1, 0 ]
+       iZ_SW_P = [ 0, 2, 2, 0 ]
+    else if (nDimsX .eq. 1) then
+       iX_SW   = [    1, 0, 0 ]
+       iZ_SW   = [ 0, 1, 0, 0 ]
+       iZ_SW_P = [ 0, 2, 0, 0 ]
+    end if
+
+    iX_B0_SW = iX_B0 - iX_SW
+    iX_E0_SW = iX_E0 + iX_SW
+    iZ_B0_SW = iZ_B0 - iZ_SW
+    iZ_E0_SW = iZ_E0 + iZ_SW
+    iZ_B0_SW_P = iZ_B0 - iZ_SW_P
+    iZ_E0_SW_P = iZ_E0 + iZ_SW_P
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
+#endif
+
+      ! --- Apply Limiters ---
+
+#ifdef TWOMOMENT_ORDER_V
+#if defined MICROPHYSICS_WEAKLIB
+    call ApplySlopeLimiter_Euler_NonRelativistic_TABLE(iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF, &
+                                                       SuppressBC_Option = .FALSE., iApplyBC_Option   = [ 0,0,0 ])
+    call ApplyPositivityLimiter_Euler_NonRelativistic_TABLE(iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF)
+#endif
+    call ApplySlopeLimiter_TwoMoment(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R)
+
+    call ApplyPositivityLimiter_TwoMoment(iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R)
+#endif
+
+    ! --- Apply Boundary Condition ---
+
+    call ApplyBoundaryConditions_Radiation(iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC)
+
+#ifdef TWOMOMENT_ORDER_V
+    call ApplyBoundaryConditions_Fluid(iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC)
+#endif
+
+    call AddFields_Fluid(iX_B1, iX_E1, One, Zero, U_F, U_F, U0_F)
+
+    call AddFields_Radiation(iZ_B1, iZ_E1, One, Zero, U_R, U_R, U0_R)
+
+
+      ! --- Apply Limiter ---
+
+#ifdef TWOMOMENT_ORDER_1
+    call ApplyPositivityLimiter_TwoMoment(iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_R)
+
+#elif TWOMOMENT_ORDER_V
+    call ApplySlopeLimiter_TwoMoment(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R)
+
+    call ApplyPositivityLimiter_TwoMoment(iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R)
+#endif
+
+    ! --- Apply Boundary Condition ---
+
+    call ApplyBoundaryConditions_Radiation(iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC)
+
+#ifdef TWOMOMENT_ORDER_V
+    call ApplyBoundaryConditions_Fluid(iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC)
+#endif
+
+    ! --- Explicit Solver ---
+
+#ifdef TWOMOMENT_ORDER_1
+    call ComputeIncrement_TwoMoment_Explicit(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R, T0_R)
+
+#elif TWOMOMENT_ORDER_V
+    call ComputeIncrement_TwoMoment_Explicit(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R, T0_R)
+    OffGridFluxR_T0 = OffGridFlux_TwoMoment
+#endif
+
+    ! --- Apply Increment ---
+
+    call AddFields_Radiation(iZ_B0_SW, iZ_E0_SW, One, dt, U0_R, T0_R, U_R)
+
+#ifdef TWOMOMENT_ORDER_V
+    OffGridFluxR = dt * OffGridFluxR_T0
+#endif
+
+    ! --- Apply Limiter ---
+
+#ifdef TWOMOMENT_ORDER_1
+    call ApplyPositivityLimiter_TwoMoment(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R)
+
+#elif TWOMOMENT_ORDER_V
+    call ApplySlopeLimiter_TwoMoment(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R)
+
+    call ApplyPositivityLimiter_TwoMoment(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R)
+
+    call ApplyBoundaryConditions_Radiation(iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC)
+
+    call ApplyBoundaryConditions_Fluid(iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC)
+#endif
+
+    ! ---------------
+    ! --- Stage 2 ---
+    ! ---------------
+
+    iX_SW = [ 0, 0, 0 ]
+    iZ_SW = [ 0, 0, 0, 0 ]
+    if (nDimsX .eq. 3) then
+        iZ_SW_P = [ 0, 1, 1, 1 ]
+    else if (nDimsX .eq. 2) then
+        iZ_SW_P = [ 0, 1, 1, 0 ]
+    else if (nDimsX .eq. 1) then
+        iZ_SW_P = [ 0, 1, 0, 0 ]
+    end if
+
+    iX_B0_SW = iX_B0 - iX_SW
+    iX_E0_SW = iX_E0 + iX_SW
+    iZ_B0_SW = iZ_B0 - iZ_SW
+    iZ_E0_SW = iZ_E0 + iZ_SW
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE &
+    !$OMP TO( iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_SW_P )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE &
+    !$ACC DEVICE( iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_SW_P )
+#endif
+
+    ! --- Explicit Step (Radiation Only) ---
+
+    call ApplyBoundaryConditions_Radiation(iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC)
+
+#ifdef TWOMOMENT_ORDER_V
+    call ApplyBoundaryConditions_Fluid(iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC)
+#endif
+
+#ifdef TWOMOMENT_ORDER_1
+    call ComputeIncrement_TwoMoment_Explicit(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R, T1_R)
+
+#elif TWOMOMENT_ORDER_V
+    call ComputeIncrement_TwoMoment_Explicit(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R, T1_R)
+    OffGridFluxR_T1 = OffGridFlux_TwoMoment
+#endif
+
+    ! --- Apply Increment ---
+
+    call AddFields_Fluid (iX_B0_SW, iX_E0_SW, One, Half * dt, U0_F, Q1_F, U_F)
+
+    call AddFields_Radiation(iZ_B0_SW, iZ_E0_SW, One, Half * dt, U0_R, T0_R, U_R)
+
+    call AddFields_Radiation(iZ_B0_SW, iZ_E0_SW, One, Half * dt, U_R,  T1_R, U_R)
+
+    call AddFields_Radiation(iZ_B0_SW, iZ_E0_SW, One, Half * dt, U_R,  Q1_R, U_R)
+
+#ifdef TWOMOMENT_ORDER_V
+    OffGridFluxR = Half * dt * OffGridFluxR_T0 + Half * dt * OffGridFluxR_T1
+#endif
+
+    ! --- Apply Limiter ---
+
+#ifdef TWOMOMENT_ORDER_1
+  call ApplyPositivityLimiter_TwoMoment(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R)
+
+#elif TWOMOMENT_ORDER_V
+    call ApplySlopeLimiter_TwoMoment(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R)
+
+    call ApplyPositivityLimiter_TwoMoment(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R)
+
+    call ApplyBoundaryConditions_Radiation (iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC)
+
+    call ApplyBoundaryConditions_Fluid(iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC)
+
+#endif
+
+#ifdef THORNADO_DEBUG
+    IF( ANY(IEEE_IS_NAN(U_R)) ) PRINT*, 'NaN @ end of [ExplicitUpdate]'
+#endif
+
+#ifdef THORNADO_DEBUG_IMEX
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM( T0_R, T1_R )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST( 0_R, T1_R )
+#endif
+    WRITE(*,'(a,7i4,es23.15)')    'MINLOC(T0_R), MINVAL(T0_R)', MINLOC(T0_R), MINVAL(T0_R)
+    WRITE(*,'(a,7i4,es23.15)')    'MAXLOC(T0_R), MAXVAL(T0_R)', MAXLOC(T0_R), MAXVAL(T0_R)
+    WRITE(*,'(a,7i4,es23.15)')    'MINLOC(T1_R), MINVAL(T1_R)', MINLOC(T1_R), MINVAL(T1_R)
+    WRITE(*,'(a,7i4,es23.15)')    'MAXLOC(T1_R), MAXVAL(T1_R)', MAXLOC(T1_R), MAXVAL(T1_R)
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: U_F, U_R, uDR ) &
+    !$OMP MAP( release: U0_F, U0_R, T0_R, T1_R, uGE, uGF, &
+    !$OMP               iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT( U_F, U_R, uDR ) &
+    !$ACC DELETE( U0_F, U0_R, T0_R, T1_R, uGE, uGF, &
+    !$ACC         iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
+#endif
+
+    IF( PRESENT( OffGridFluxR_Option ) )THEN
+      OffGridFluxR_Option = OffGridFluxR
+    END IF
+
+  END SUBROUTINE ExplicitUpdate
 
 END MODULE TimeSteppingModule_Flash
