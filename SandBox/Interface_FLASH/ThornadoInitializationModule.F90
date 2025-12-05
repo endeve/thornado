@@ -125,6 +125,9 @@ module ThornadoInitializationModule
   public :: FreeThornado
   public :: InitThornado_Patch
   public :: FreeThornado_Patch
+  public :: AllocatePatch
+  public :: InitPatch
+  public :: FreePatch
 
 contains
 
@@ -743,5 +746,110 @@ contains
     call FinalizePolynomialBasisMapping
 
   end subroutine FreeThornado_Patch
+
+  subroutine AllocatePatch &
+    ( nX, swX, xL, xR, nSpecies, CoordinateSystem_Option )
+
+    use ProgramHeaderModule, only: nE, swE, nNodesX
+
+    integer,  intent(in) :: nX(3), swX(3), nSpecies
+    real(dp), intent(in) :: xL(3), xR(3)
+    character(len=*), intent(in), optional :: CoordinateSystem_Option
+
+    integer :: iDim, bcX(3)
+    character(24) :: CoordinateSystem
+
+    IF( PRESENT(CoordinateSystem_Option) )THEN
+
+      IF( TRIM(CoordinateSystem_Option) == 'spherical' )THEN
+        CoordinateSystem = 'SPHERICAL'
+      ELSE IF( TRIM(CoordinateSystem_Option) == 'cylindrical' )THEN
+        CoordinateSystem = 'CYLINDRICAL'
+      ELSE IF( TRIM(CoordinateSystem_Option) == 'cartesian' )THEN
+        CoordinateSystem = 'CARTESIAN'
+      ELSE
+        print*, '[InitThornado_Patch] Invalid Coordinate System: ', &
+                 CoordinateSystem_Option
+      END IF
+
+    ELSE
+      CoordinateSystem = 'CARTESIAN'
+    END IF
+
+    ! bcX is for general thornado setting
+    ! flash calling thornado is handled differently
+    ! check TimeSteppingModule_Flash.F90 for details
+    bcX = [ 0, 0, 0 ]
+
+    call InitializeProgramHeaderX &
+           ( nX_Option = nX, swX_Option = swX, bcX_Option = bcX, &
+             xL_Option = xL, xR_Option  = xR,  &
+             reinitializeZ_Option = .TRUE. )
+
+    call CreateGeometryFields &
+           ( nX, swX, CoordinateSystem_Option = CoordinateSystem, &
+             Verbose_Option = .FALSE. )
+
+    call CreateFluidFields &
+           ( nX, swX, Verbose_Option = .FALSE. )
+
+    call CreateRadiationFields &
+           ( nX, swX, nE, swE, nSpecies_Option = nSpecies, &
+             Verbose_Option = .FALSE. )
+
+  end subroutine AllocatePatch
+
+  subroutine InitPatch &
+    ( nX, swX, xL, xR, nSpecies )
+
+    use ProgramHeaderModule, only: nE, swE, nNodesX
+
+    integer,  intent(in) :: nX(3), swX(3), nSpecies
+    real(dp), intent(in) :: xL(3), xR(3)
+
+    integer :: iDim, bcX(3)
+
+    DO iDim = 1, 3
+
+      call CreateMesh &
+             ( MeshX(iDim), nX(iDim), nNodesX(iDim), &
+               swX(iDim), xL(iDim), xR(iDim) )
+
+    END DO
+
+    CALL ComputeGeometryX &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
+    call CreateSubcellReconstruction
+
+    ! --- For Mapping Between Nodal and Modal Representations ---
+
+    call InitializePolynomialBasisMapping &
+           ( MeshE    % Nodes, MeshX(1) % Nodes, &
+             MeshX(2) % Nodes, MeshX(3) % Nodes )
+
+  end subroutine InitPatch
+
+  subroutine FreePatch()
+
+    integer :: iDim
+
+    DO iDim = 1, 3
+
+      call DestroyMesh( MeshX(iDim) )
+
+    END DO
+
+    call DestroyGeometryFields
+
+    call DestroySubcellReconstruction
+
+    call DestroyFluidFields
+
+    call DestroyRadiationFields
+ 
+    call FinalizePolynomialBasisMapping
+
+  end subroutine FreePatch
 
 end module ThornadoInitializationModule
