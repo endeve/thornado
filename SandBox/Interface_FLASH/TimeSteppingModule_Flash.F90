@@ -17,7 +17,9 @@ MODULE TimeSteppingModule_Flash
     TimersStart, &
     TimersStop, &
     Timer_AddFieldsF, &
-    Timer_AddFieldsR
+    Timer_AddFieldsR, &
+    Timer_CopyFieldsF, &
+    Timer_CopyFieldsR
   USE FluidFieldsModule, ONLY: &
     nCF, uDF, iCF_D, iCF_S1, iCF_S2, iCF_S3, &
     iCF_E, iCF_Ne
@@ -792,6 +794,60 @@ CONTAINS
 
   END SUBROUTINE AddFields_Fluid
 
+  subroutine CopyFields_Fluid( iX_B, iX_E, src, dst )
+
+    integer,  intent(in)    :: iX_B(3), iX_E(3)
+    real(DP), intent(inout) :: src(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
+    real(DP), intent(inout) :: dst(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
+
+    integer :: iNodeX, iX1, iX2, iX3, iFF
+
+    call TimersStart( Timer_CopyFieldsF )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: src, dst, iX_B, iX_E )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( src, dst, iX_B, iX_E )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( src, dst, iX_B, iX_E )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+    DO iFF = 1, nCF
+    DO iX3 = iX_B(3), iX_E(3)
+    DO iX2 = iX_B(2), iX_E(2)
+    DO iX1 = iX_B(1), iX_E(1)
+    DO iNodeX = 1, nDOFX
+
+      dst(iNodeX,iX1,iX2,iX3,iFF) = src(iNodeX,iX1,iX2,iX3,iFF)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: src, dst ) &
+    !$OMP MAP( release: iX_B, iX_E )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT( src, dst ) &
+    !$ACC DELETE( iX_B, iX_E )
+#endif
+
+    call TimersStop( Timer_CopyFieldsF )
+
+  end subroutine CopyFields_Fluid
+
 
   SUBROUTINE AddFields_Radiation( iZ_B, iZ_E, alpha, beta, A, B, C )
 
@@ -859,6 +915,64 @@ CONTAINS
     CALL TimersStop( Timer_AddFieldsR )
 
   END SUBROUTINE AddFields_Radiation
+
+  subroutine CopyFields_Radiation( iZ_B, iZ_E, src, dst )
+
+    integer,  intent(in)    :: iZ_B(4), iZ_E(4)
+    real(DP), intent(inout) :: src(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+    real(DP), intent(inout) :: dst(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+
+    INTEGER :: iNode, iZ1, iZ2, iZ3, iZ4, iRF, iS
+
+    CALL TimersStart( Timer_CopyFieldsR )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: src, dst, iZ_B, iZ_E )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( src, dst, iZ_B, iZ_E )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRESENT( src, dst, iZ_B, iZ_E )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(7)
+#endif
+    DO iS = 1, nSpecies
+    DO iRF = 1, nCR
+    DO iZ4 = iZ_B(4), iZ_E(4)
+    DO iZ3 = iZ_B(3), iZ_E(3)
+    DO iZ2 = iZ_B(2), iZ_E(2)
+    DO iZ1 = iZ_B(1), iZ_E(1)
+    DO iNode = 1, nDOF
+
+      dst(iNode,iZ1,iZ2,iZ3,iZ4,iRF,iS) = src(iNode,iZ1,iZ2,iZ3,iZ4,iRF,iS)
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: src, dst ) &
+    !$OMP MAP( release: iZ_B, iZ_E )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC COPYOUT( src, dst ) &
+    !$ACC DELETE( iZ_B, iZ_E )
+#endif
+
+    CALL TimersStop( Timer_CopyFieldsR )
+
+  end subroutine CopyFields_Radiation
 
 
   LOGICAL FUNCTION ApplyInnerBC( iApplyBC )
@@ -2892,9 +3006,9 @@ CONTAINS
              ( iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 #endif
 
-    CALL AddFields_Fluid(iX_B1, iX_E1, One, Zero, U_F, U_F, U0_F)
+    call CopyFields_Fluid(iX_B1, iX_E1, U_F, U0_F)
 
-    CALL AddFields_Radiation(iZ_B1, iZ_E1, One, Zero, U_R, U_R, U0_R)
+    call CopyFields_Radiation(iZ_B1, iZ_E1, U_R, U0_R)
 
     CALL ComputeIncrement_TwoMoment_Implicit(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, dt, &
                                              uGE, uGF, U_F, Q1_F, U_R, Q1_R, uDR)
@@ -2975,10 +3089,7 @@ CONTAINS
 
     real(DP), dimension(2*nCR) :: OffGridFluxR, OffGridFluxR_T0, OffGridFluxR_T1
 
-    real(DP), dimension(:,:,:,:,:),     allocatable :: U0_F
     real(DP), dimension(:,:,:,:,:,:,:), allocatable :: U0_R, T0_R, T1_R
-
-    allocate(U0_F(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF))
 
     allocate(U0_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies))
     allocate(T0_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies))
@@ -3007,11 +3118,11 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: U_F, U_R, uGE, uGF, &
-    !$OMP          U0_F, U0_R, T0_R, T1_R )
+    !$OMP          U0_R, T0_R, T1_R )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC COPYIN( U_F, U_R, uGE, uGF, &
-    !$ACC         U0_F, U0_R, T0_R, T1_R )
+    !$ACC         U0_R, T0_R, T1_R )
 #endif
 
     OffGridFluxR = Zero
@@ -3072,9 +3183,8 @@ CONTAINS
     call ApplyBoundaryConditions_Fluid(iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC)
 #endif
 
-    call AddFields_Fluid(iX_B1, iX_E1, One, Zero, U_F, U_F, U0_F)
 
-    call AddFields_Radiation(iZ_B1, iZ_E1, One, Zero, U_R, U_R, U0_R)
+    call CopyFields_Radiation(iZ_B1, iZ_E1, U_R, U0_R)
 
 
       ! --- Apply Limiter ---
@@ -3174,13 +3284,9 @@ CONTAINS
 
     ! --- Apply Increment ---
 
-    call AddFields_Fluid (iX_B0_SW, iX_E0_SW, One, Half * dt, U0_F, Q1_F, U_F)
-
     call AddFields_Radiation(iZ_B0_SW, iZ_E0_SW, One, Half * dt, U0_R, T0_R, U_R)
 
     call AddFields_Radiation(iZ_B0_SW, iZ_E0_SW, One, Half * dt, U_R,  T1_R, U_R)
-
-    call AddFields_Radiation(iZ_B0_SW, iZ_E0_SW, One, Half * dt, U_R,  Q1_R, U_R)
 
 #ifdef TWOMOMENT_ORDER_V
     OffGridFluxR = Half * dt * OffGridFluxR_T0 + Half * dt * OffGridFluxR_T1
@@ -3195,10 +3301,6 @@ CONTAINS
     call ApplySlopeLimiter_TwoMoment(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R)
 
     call ApplyPositivityLimiter_TwoMoment(iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R)
-
-    call ApplyBoundaryConditions_Radiation (iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC)
-
-    call ApplyBoundaryConditions_Fluid(iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC)
 
 #endif
 
