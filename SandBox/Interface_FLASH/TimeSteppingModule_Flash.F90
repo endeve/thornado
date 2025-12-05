@@ -3122,8 +3122,6 @@ CONTAINS
     IF( ANY(IEEE_IS_NAN(U_R)) ) PRINT*, 'NaN when entering ExplicitUpdate'
 #endif
 
-    U0_F = Zero
-
     U0_R = Zero; T0_R = Zero; T1_R = Zero
 
 #if defined(THORNADO_OMP_OL)
