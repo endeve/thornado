@@ -830,6 +830,17 @@ contains
 
     integer :: iDim, bcX(3)
 
+
+    ! bcX is for general thornado setting
+    ! flash calling thornado is handled differently
+    ! check TimeSteppingModule_Flash.F90 for details
+    bcX = [ 0, 0, 0 ]
+    
+    call InitializeProgramHeaderX &
+           ( nX_Option = nX, swX_Option = swX, bcX_Option = bcX, &
+             xL_Option = xL, xR_Option  = xR,  &
+             reinitializeZ_Option = .TRUE. )
+
     call Timers_start("Create Mesh")
 
     DO iDim = 1, 3
