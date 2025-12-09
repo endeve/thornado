@@ -3171,6 +3171,15 @@ CONTAINS
     !$ACC COPYIN( iX_B0_SW, iX_E0_SW, iZ_B0_SW, iZ_E0_SW, iZ_B0_SW_P, iZ_E0_SW_P, iZ_SW_P )
 #endif
 
+    ! --- Apply Boundary Condition ---
+    call Timers_start("Apply BCs")
+    call ApplyBoundaryConditions_Radiation(iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC)
+
+#ifdef TWOMOMENT_ORDER_V
+    call ApplyBoundaryConditions_Fluid(iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC)
+#endif
+    call Timers_stop("Apply BCs")
+
     ! --- Apply Limiters ---
     call Timers_start("Apply Limiters")
 #ifdef TWOMOMENT_ORDER_V
