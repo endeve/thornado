@@ -18,6 +18,9 @@ MODULE TimeSteppingModule_Flash
     TimersStop, &
     Timer_AddFieldsF, &
     Timer_AddFieldsR
+  use ExternalTimersModule, only: &
+    ExternalTimerStart, &
+    ExternalTimerStop
   USE FluidFieldsModule, ONLY: &
     nCF, uDF, iCF_D, iCF_S1, iCF_S2, iCF_S3, &
     iCF_E, iCF_Ne
@@ -140,6 +143,7 @@ CONTAINS
     REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:)     :: U0_F, Q1_F
     REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:,:,:) :: U0_R, T0_R, T1_R, Q1_R
 
+    call ExternalTimerStart("Allocate")
     ALLOCATE( U0_F(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF) )
     ALLOCATE( Q1_F(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF) )
 
@@ -147,6 +151,7 @@ CONTAINS
     ALLOCATE( T0_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
     ALLOCATE( T1_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
     ALLOCATE( Q1_R(1:nDOF,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
+    call ExternalTimerStop("Allocate")
 
     IF( PRESENT( Explicit_Option ) )THEN
       Explicit = Explicit_Option
@@ -254,6 +259,7 @@ CONTAINS
 
       ! --- Apply Limiters ---
 
+    call ExternalTimerStart("ApplyLimiters")
 #ifdef TWOMOMENT_ORDER_V
 #if defined MICROPHYSICS_WEAKLIB
     CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
@@ -269,9 +275,11 @@ CONTAINS
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 #endif
+    call ExternalTimerStop("ApplyLimiters")
 
       ! --- Apply Boundary Condition ---
 
+    call ExternalTimerStart("ApplyBoundaryConditions")
       CALL ApplyBoundaryConditions_Radiation &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC )
 
@@ -279,12 +287,15 @@ CONTAINS
       CALL ApplyBoundaryConditions_Fluid &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC )
 #endif
+    call ExternalTimerStop("ApplyBoundaryConditions")
 
+    call ExternalTimerStart("AddFields")
     CALL AddFields_Fluid &
            ( iX_B1, iX_E1, One, Zero, U_F, U_F, U0_F )
 
     CALL AddFields_Radiation &
            ( iZ_B1, iZ_E1, One, Zero, U_R, U_R, U0_R )
+    call ExternalTimerStop("AddFields")
 
 
     ! --- Explicit Step (Radiation Only) ---
@@ -293,6 +304,7 @@ CONTAINS
 
       ! --- Apply Limiter ---
 
+      call ExternalTimerStart("ApplyLimiters")
 #ifdef TWOMOMENT_ORDER_1
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_R )
@@ -304,9 +316,10 @@ CONTAINS
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW_P, iZ_E0_SW_P, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 #endif
+      call ExternalTimerStop("ApplyLimiters")
 
       ! --- Apply Boundary Condition ---
-
+      call ExternalTimerStart("ApplyBoundaryConditions")
       CALL ApplyBoundaryConditions_Radiation &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC )
 
@@ -314,9 +327,10 @@ CONTAINS
       CALL ApplyBoundaryConditions_Fluid &
              ( iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC )
 #endif
+      call ExternalTimerStop("ApplyBoundaryConditions")
 
       ! --- Explicit Solver ---
-
+      call ExternalTimerStart("ComputeIncrement_TwoMoment_Explicit")
 #ifdef TWOMOMENT_ORDER_1
       CALL ComputeIncrement_TwoMoment_Explicit &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, &
@@ -328,6 +342,7 @@ CONTAINS
                uGE, uGF, U_F, U_R, T0_R )
       OffGridFluxR_T0 = OffGridFlux_TwoMoment
 #endif
+      call ExternalTimerStop("ComputeIncrement_TwoMoment_Explicit")
     ELSE
 
 #if defined(THORNADO_OMP_OL)
@@ -358,44 +373,51 @@ CONTAINS
     END IF
 
     ! --- Apply Increment ---
-
+    call ExternalTimerStart("AddFields")
     CALL AddFields_Radiation &
            ( iZ_B0_SW, iZ_E0_SW, One, dt, U0_R, T0_R, U_R )
+    call ExternalTimerStop("AddFields")
 
 #ifdef TWOMOMENT_ORDER_V
     OffGridFluxR = dt * OffGridFluxR_T0
 #endif
 
     ! --- Apply Limiter ---
-
 #ifdef TWOMOMENT_ORDER_1
+    call ExternalTimerStart("ApplyLimiters")
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
+    call ExternalTimerStop("ApplyLimiters")
 
 #elif TWOMOMENT_ORDER_V
+    call ExternalTimerStart("ApplyLimiters")
     CALL ApplySlopeLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+    call ExternalTimerStop("ApplyLimiters")
 
+    call ExternalTimerStart("ApplyBoundaryConditions")
     CALL ApplyBoundaryConditions_Radiation &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC )
 
     CALL ApplyBoundaryConditions_Fluid &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC )
+    call ExternalTimerStop("ApplyBoundaryConditions")
 #endif
 
     ! --- Implicit Step ---
 
     IF( Implicit )THEN
+      call ExternalTimerStart("ComputeIncrement_TwoMoment_Implicit")
       CALL ComputeIncrement_TwoMoment_Implicit &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, dt, &
                uGE, uGF, &
                U_F, Q1_F, &
                U_R, Q1_R, &
                uDR )
-
+      call ExternalTimerStop("ComputeIncrement_TwoMoment_Implicit")
     ELSE
 
 #if defined(THORNADO_OMP_OL)
@@ -444,19 +466,23 @@ CONTAINS
 
     END IF
 
+    call ExternalTimerStart("AddFields")
     CALL AddFields_Fluid &
            ( iX_B0_SW, iX_E0_SW, One, dt, U_F, Q1_F, U_F )
 
     CALL AddFields_Radiation &
            ( iZ_B0_SW, iZ_E0_SW, One, dt, U_R, Q1_R, U_R )
+    call ExternalTimerStop("AddFields")
 
     ! --- Apply Positivity Limiter ---
-
 #ifdef TWOMOMENT_ORDER_1
+    call ExternalTimerStart("ApplyLimiters")
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
+    call ExternalTimerStop("ApplyLimiters")
 
 #elif TWOMOMENT_ORDER_V
+    call ExternalTimerStart("ApplyLimiters")
 #if defined MICROPHYSICS_WEAKLIB
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
@@ -468,11 +494,15 @@ CONTAINS
     CALL ApplyPositivityLimiter_TwoMoment &
            ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 
+    call ExternalTimerStop("ApplyLimiters")
+
+    call ExternalTimerStart("ApplyBoundaryConditions")
     CALL ApplyBoundaryConditions_Radiation &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC )
 
     CALL ApplyBoundaryConditions_Fluid &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC )
+    call ExternalTimerStop("ApplyBoundaryConditions")
 
 #endif
 
@@ -508,7 +538,7 @@ CONTAINS
       ! --- Explicit Step (Radiation Only) ---
 
       IF( Explicit )THEN
-
+        call ExternalTimerStart("ApplyBoundaryConditions")
         CALL ApplyBoundaryConditions_Radiation &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC )
 
@@ -516,7 +546,9 @@ CONTAINS
         CALL ApplyBoundaryConditions_Fluid &
                ( iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC )
 #endif
+        call ExternalTimerStop("ApplyBoundaryConditions")
 
+        call ExternalTimerStart("ComputeIncrement_TwoMoment_Explicit")
 #ifdef TWOMOMENT_ORDER_1
         CALL ComputeIncrement_TwoMoment_Explicit &
                ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, &
@@ -528,6 +560,7 @@ CONTAINS
                  uGE, uGF, U_F, U_R, T1_R )
         OffGridFluxR_T1 = OffGridFlux_TwoMoment
 #endif
+        call ExternalTimerStop("ComputeIncrement_TwoMoment_Explicit")
 
       ELSE
 
@@ -559,7 +592,7 @@ CONTAINS
       END IF
 
       ! --- Apply Increment ---
-
+      call ExternalTimerStart("AddFields")
       CALL AddFields_Fluid &
              ( iX_B0_SW, iX_E0_SW, One, Half * dt, U0_F, Q1_F, U_F )
 
@@ -571,42 +604,49 @@ CONTAINS
 
       CALL AddFields_Radiation &
              ( iZ_B0_SW, iZ_E0_SW, One, Half * dt, U_R,  Q1_R, U_R )
+      call ExternalTimerStop("AddFields")
 
 #ifdef TWOMOMENT_ORDER_V
       OffGridFluxR = Half * dt * OffGridFluxR_T0 + Half * dt * OffGridFluxR_T1
 #endif
 
       ! --- Apply Limiter ---
-
 #ifdef TWOMOMENT_ORDER_1
+      call ExternalTimerStart("ApplyLimiters")
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
+      call ExternalTimerStop("ApplyLimiters")
 
 #elif TWOMOMENT_ORDER_V
+      call ExternalTimerStart("ApplyLimiters")
       CALL ApplySlopeLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
 
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+      call ExternalTimerStart("ApplyLimiters")
 
+    call ExternalTimerStart("ApplyBoundaryConditions")
     CALL ApplyBoundaryConditions_Radiation &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC )
 
     CALL ApplyBoundaryConditions_Fluid &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC )
+    call ExternalTimerStop("ApplyBoundaryConditions")
 
 #endif
 
       ! --- Implicit Step ---
 
       IF( Implicit )THEN
-
+        call ExternalTimerStart("ComputeIncrement_TwoMoment_Implicit")
         CALL ComputeIncrement_TwoMoment_Implicit &
                (iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, Half * dt, &
                  uGE, uGF, &
                  U_F, Q1_F, &
                  U_R, Q1_R, &
                  uDR )
+        call ExternalTimerStop("ComputeIncrement_TwoMoment_Implicit")
 
       ELSE
 
@@ -656,18 +696,23 @@ CONTAINS
 
       END IF
 
+      call ExternalTimerStart("AddFields")
       CALL AddFields_Fluid &
              ( iX_B0_SW, iX_E0_SW, One, Half * dt, U_F, Q1_F, U_F )
 
       CALL AddFields_Radiation &
              ( iZ_B0_SW, iZ_E0_SW, One, Half * dt, U_R, Q1_R, U_R )
+      call ExternalTimerStop("AddFields")
 
       ! --- Apply Limiter ---
 #ifdef TWOMOMENT_ORDER_1
+      call ExternalTimerStart("ApplyLimiters")
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_R )
+      call ExternalTimerStop("ApplyLimiters")
 
 #elif TWOMOMENT_ORDER_V
+      call ExternalTimerStart("ApplyLimiters")
 #if defined MICROPHYSICS_WEAKLIB
       CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
@@ -678,12 +723,15 @@ CONTAINS
 
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
+      call ExternalTimerStop("ApplyLimiters")
 
+    call ExternalTimerStart("ApplyBoundaryConditions")
     CALL ApplyBoundaryConditions_Radiation &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, iZ_SW_P, bcX, iApplyBC )
 
     CALL ApplyBoundaryConditions_Fluid &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U_F, iZ_SW_P, bcX, iApplyBC )
+    call ExternalTimerStop("ApplyBoundaryConditions")
 #endif
 
     END IF

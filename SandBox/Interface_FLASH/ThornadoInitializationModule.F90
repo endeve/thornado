@@ -18,6 +18,11 @@ module ThornadoInitializationModule
   use TimersModule, only: &
     InitializeTimers, &
     FinalizeTimers
+  use ExternalTimersModule, only: &
+    ExternalTimersType, &
+    SetExternalTimer, &
+    ExternalTimerStart, &
+    ExternalTimerStop
   use QuadratureModule, only: &
     InitializeQuadratures
   use ReferenceElementModuleX, only: &
@@ -159,7 +164,8 @@ contains
       DnuMax_Option, FreezeOpacities_Option , &
       ActivateUnits_Option, CoordinateSystem_Option, &
       UseChemicalPotentialShift_Option, &
-      UseSimpleMeshRefinement_Option, Verbose_Option )
+      UseSimpleMeshRefinement_Option, Verbose_Option &
+      TimerStart_Option, TimerStop_Option )
 
     integer,  intent(in) :: nNodes, nDimsX, nE, swE, bcE, nSpecies
     real(dp), intent(in) :: eL_MeV, eR_MeV, zoomE
@@ -217,6 +223,9 @@ contains
     logical,          intent(in), optional :: Verbose_Option
     logical,          intent(in), optional :: UseChemicalPotentialShift_Option
     logical,          intent(in), optional :: UseSimpleMeshRefinement_Option
+
+    procedure(ExternalTimersType), optional :: TimerStart_Option
+    procedure(ExternalTimersType), optional :: TimerStop_Option
 
     logical  :: TroubledCellIndicator
     logical  :: PositivityLimiter, SlopeLimiter, EnergyLimiter, UseChemicalPotentialShift, Verbose
@@ -318,6 +327,9 @@ contains
              ( CoordinateSystem_Option = CoordinateSystem )
 
     END IF
+
+    if (present(TimerStart_Option) .and. present(TimerStop_Option)) &
+      call SetExternalTimer(TimerStart_Option, TimerStop_Option)
 
     IF(Verbose)THEN
       WRITE(*,*)
@@ -689,6 +701,7 @@ contains
              xL_Option = xL, xR_Option  = xR,  &
              reinitializeZ_Option = .TRUE. )
 
+    call ExternalTimerStart("CreateMesh")
     DO iDim = 1, 3
 
       call CreateMesh &
@@ -696,28 +709,41 @@ contains
                swX(iDim), xL(iDim), xR(iDim) )
 
     END DO
+    call ExternalTimerStop("CreateMesh")
 
+    call ExternalTimerStart("CreateGeometryFields")
     call CreateGeometryFields &
            ( nX, swX, CoordinateSystem_Option = CoordinateSystem, &
              Verbose_Option = .FALSE. )
+    call ExternalTimerStop("CreateGeometryFields")
 
+    call ExternalTimerStart("ComputeGeometryX")
     CALL ComputeGeometryX &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+    call ExternalTimerStop("ComputeGeometryX")
 
+    call ExternalTimerStart("CreateSubcellReconstruction")
     call CreateSubcellReconstruction
+    call ExternalTimerStop("CreateSubcellReconstruction")
 
+    call ExternalTimerStart("CreateFluidFields")
     call CreateFluidFields &
            ( nX, swX, Verbose_Option = .FALSE. )
+    call ExternalTimerStop("CreateFluidFields")
 
+    call ExternalTimerStart("CreateRadiationFields")
     call CreateRadiationFields &
            ( nX, swX, nE, swE, nSpecies_Option = nSpecies, &
              Verbose_Option = .FALSE. )
+    call ExternalTimerStop("CreateRadiationFields")
 
     ! --- For Mapping Between Nodal and Modal Representations ---
 
+    call ExternalTimerStart("InitializePolynomialBasisMapping")
     call InitializePolynomialBasisMapping &
            ( MeshE    % Nodes, MeshX(1) % Nodes, &
              MeshX(2) % Nodes, MeshX(3) % Nodes )
+    call ExternalTimerStop("InitializePolynomialBasisMapping")
 
   end subroutine InitThornado_Patch
 

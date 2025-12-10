@@ -13,6 +13,7 @@ module ExternalTimersModule
    procedure(ExternalTimersType), pointer, save :: ExternalTimerStart => ExternalTimer_Default
    procedure(ExternalTimersType), pointer, save :: ExternalTimerStop => ExternalTimer_Default
 
+   public :: ExternalTimersType
    public :: SetExternalTimer
    public :: ExternalTimerStart
    public :: ExternalTimerStop

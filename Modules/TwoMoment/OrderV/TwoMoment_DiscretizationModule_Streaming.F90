@@ -19,6 +19,9 @@ MODULE TwoMoment_DiscretizationModule_Streaming
     Timer_Streaming_PrimitiveTwoMoment, &
     Timer_Streaming_NumericalFlux, &
     Timer_Streaming_Sources
+  USE ExternalTimersModule, ONLY: &
+    ExternalTimerStart, &
+    ExternalTimerStop
   USE LinearAlgebraModule, ONLY: &
     MatrixMatrixMultiply, &
     EigenvaluesSymmetric3
@@ -253,15 +256,20 @@ CONTAINS
     !$ACC CREATE( dU_R )
 #endif
 
+    call ExternalTimerStart("ApplyBoundaryConditions")
     CALL ApplyBoundaryConditions_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
 
     CALL ApplyBoundaryConditions_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
+    call ExternalTimerStop("ApplyBoundaryConditions")
 
+    call ExternalTimerStart("InitializeIncrement_TwoMoment_Explicit")
     CALL InitializeIncrement_TwoMoment_Explicit &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+    call ExternalTimerStop("InitializeIncrement_TwoMoment_Explicit")
 
+    call ExternalTimerStart("Zero Increment")
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined( THORNADO_OACC   )
@@ -289,31 +297,40 @@ CONTAINS
     END DO
     END DO
     END DO
+    call ExternalTimerStop("Zero Increment")
 
     OffGridFlux_TwoMoment = Zero
 
     CALL TimersStart( Timer_Streaming_Divergence )
 
+    call ExternalTimerStart("ComputeIncrement_Divergence_X1")
     CALL ComputeIncrement_Divergence_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+    call ExternalTimerStop("ComputeIncrement_Divergence_X1")
 
+    call ExternalTimerStart("ComputeIncrement_Divergence_X2")
     CALL ComputeIncrement_Divergence_X2 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+    call ExternalTimerStop("ComputeIncrement_Divergence_X2")
 
+    call ExternalTimerStart("ComputeIncrement_Divergence_X3")
     CALL ComputeIncrement_Divergence_X3 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+    call ExternalTimerStop("ComputeIncrement_Divergence_X3")
 
     CALL TimersStop( Timer_Streaming_Divergence )
 
     CALL TimersStart( Timer_Streaming_ObserverCorrections )
+    call ExternalTimerStart("ComputeIncrement_ObserverCorrections")
 
     CALL ComputeIncrement_ObserverCorrections &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
 
+    call ExternalTimerStop("ComputeIncrement_ObserverCorrections")
     CALL TimersStop( Timer_Streaming_ObserverCorrections )
 
     ! --- Multiply Inverse Mass Matrix ---
-
+    call ExternalTimerStart("Mult. Inv. MM")
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(8) &
     !$OMP PRIVATE( iNodeZ )
@@ -352,6 +369,7 @@ CONTAINS
     END DO
     END DO
     END DO
+    call ExternalTimerStop("Mult. Inv. MM")
 
     CALL FinalizeIncrement_TwoMoment_Explicit
 
@@ -448,11 +466,13 @@ CONTAINS
     !$ACC COPYIN( dZ1, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 )
 #endif
 
+    call ExternalTimerStart("InitializeIncrement_Divergence_X")
     CALL InitializeIncrement_Divergence_X &
            ( iZP_B0, iZP_E0, nDOFX_X1, nDOF_X1 )
+    call ExternalTimerStop("InitializeIncrement_Divergence_X")
 
     ! --- Permute Geometry Fields ---
-
+    call ExternalTimerStart("Permute Fields")
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
@@ -476,12 +496,14 @@ CONTAINS
     END DO
     END DO
     END DO
+    call ExternalTimerStop("Permute Fields")
 
     !---------------------
     ! --- Surface Term ---
     !---------------------
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
+    call ExternalTimerStart("MatrixMatrixMultiply")
 
     ! --- Interpolate Geometry Fields on Shared Face ---
 
@@ -501,6 +523,7 @@ CONTAINS
 
     END DO
 
+    call ExternalTimerStop("MatrixMatrixMultiply")
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Recompute Geometry from Scale Factors ---
@@ -537,7 +560,7 @@ CONTAINS
     END DO
 
     ! --- Permute Fluid Fields ---
-
+    call ExternalTimerStart("Permute Fields")
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
@@ -561,8 +584,10 @@ CONTAINS
     END DO
     END DO
     END DO
+    call ExternalTimerStop("Permute Fields")
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
+    call ExternalTimerStart("MatrixMatrixMultiply")
 
     ! --- Interpolate Fluid Fields ---
 
@@ -584,6 +609,7 @@ CONTAINS
 
     END DO
 
+    call ExternalTimerStop("MatrixMatrixMultiply")
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Compute Face Velocity Components ---
@@ -624,7 +650,7 @@ CONTAINS
     END DO
 
     ! --- Permute Radiation Fields ---
-
+    call ExternalTimerStart("Permute Fields")
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined( THORNADO_OACC   )
@@ -653,8 +679,10 @@ CONTAINS
     END DO
     END DO
     END DO
+    call ExternalTimerStop("Permute Fields")
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
+    call ExternalTimerStart("MatrixMatrixMultiply")
 
     ! --- Interpolate Radiation Fields ---
 
@@ -676,6 +704,7 @@ CONTAINS
 
     END DO
 
+    call ExternalTimerStop("MatrixMatrixMultiply")
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Numerical Flux ---
@@ -683,26 +712,29 @@ CONTAINS
     CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
 
     ! --- Left State Primitive ---
-
+    call ExternalTimerStart("ComputePrimitive_TwoMoment")
     CALL ComputePrimitive_TwoMoment &
            ( uN_L, uG1_L, uG2_L, uG3_L, &
              uD_L, uI1_L, uI2_L, uI3_L, &
              uV1_F, uV2_F, uV3_F, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
              PositionIndexZ_F, nIterations_L )
+    call ExternalTimerStop("ComputePrimitive_TwoMoment")
 
     ! --- Right State Primitive ---
-
+    call ExternalTimerStart("ComputePrimitive_TwoMoment")
     CALL ComputePrimitive_TwoMoment &
            ( uN_R, uG1_R, uG2_R, uG3_R, &
              uD_R, uI1_R, uI2_R, uI3_R, &
              uV1_F, uV2_F, uV3_F, &
              Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
              PositionIndexZ_F, nIterations_R )
+    call ExternalTimerStop("ComputePrimitive_TwoMoment")
 
     CALL TimersStop( Timer_Streaming_PrimitiveTwoMoment )
 
     CALL TimersStart( Timer_Streaming_NumericalFlux )
+    call ExternalTimerStart("Numerical Flux")
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -825,9 +857,11 @@ CONTAINS
 
     END DO
 
+    call ExternalTimerStop("Numerical Flux")
     CALL TimersStop( Timer_Streaming_NumericalFlux )
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
+    call ExternalTimerStart("MatrixMatrixMultiply")
 
     ! --- Surface Contributions ---
 
@@ -845,6 +879,7 @@ CONTAINS
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)+1), &
              nDOF_X1, One,  dU_Z, nDOFZ )
 
+    call ExternalTimerStop("MatrixMatrixMultiply")
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Off-Grid Fluxes for Conservation Tally ---
@@ -876,16 +911,19 @@ CONTAINS
 
     CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
 
+    call ExternalTimerStart("ComputePrimitive_TwoMoment")
     CALL ComputePrimitive_TwoMoment &
            ( uN_K, uG1_K, uG2_K, uG3_K, &
              uD_K, uI1_K, uI2_K, uI3_K, &
              uV1_K, uV2_K, uV3_K, &
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
              PositionIndexZ_K, nIterations_K )
+    call ExternalTimerStop("ComputePrimitive_TwoMoment")
 
     CALL TimersStop( Timer_Streaming_PrimitiveTwoMoment )
 
     CALL TimersStart( Timer_Streaming_NumericalFlux )
+    call ExternalTimerStart("Numerical Flux")
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -934,9 +972,11 @@ CONTAINS
 
     END DO
 
+    call ExternalTimerStop("Numerical Flux")
     CALL TimersStop( Timer_Streaming_NumericalFlux )
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
+    call ExternalTimerStart("MatrixMatrixMultiply")
 
     ! --- Volume Contributions ---
 
@@ -944,6 +984,7 @@ CONTAINS
            ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOFZ, One, dLdX1_q, nDOFZ, &
              Flux_q, nDOFZ, One, dU_Z, nDOFZ )
 
+    call ExternalTimerStop("MatrixMatrixMultiply")
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
 #if   defined( THORNADO_OMP_OL )
@@ -2302,12 +2343,15 @@ CONTAINS
     !$ACC         iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 )
 #endif
 
+    call ExternalTimerStart("InitializeIncrement_ObserverCorrections")
     CALL InitializeIncrement_ObserverCorrections &
            ( iZ_B0, iZ_E0 )
+    call ExternalTimerStop("InitializeIncrement_ObserverCorrections")
 
     ! --- Calculate Weak Derivatives ---
 
     CALL TimersStart( Timer_Streaming_Derivatives )
+    call ExternalTimerStart("ComputeWeakDerivatives")
 
     CALL ComputeWeakDerivatives_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
@@ -2321,10 +2365,11 @@ CONTAINS
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
              dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
 
+    call ExternalTimerStop("ComputeWeakDerivatives")
     CALL TimersStop( Timer_Streaming_Derivatives )
 
     ! --- Permute Geometry Fields ---
-
+    call ExternalTimerStart("Permute Fields")
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
 #elif defined( THORNADO_OACC   )
@@ -2406,6 +2451,8 @@ CONTAINS
     END DO
     END DO
 
+    call ExternalTimerStop("Permute Fields")
+
     ! --- Compute Primitive Fluid ---
 
 #if defined( THORNADO_OMP_OL )
@@ -2426,6 +2473,7 @@ CONTAINS
     END DO
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
+    call ExternalTimerStart("MatrixMatrixMultiply")
 
     ! --- Interpolate Radiation Fields ---
 
@@ -2447,11 +2495,13 @@ CONTAINS
 
     END DO
 
+    call ExternalTimerStop("MatrixMatrixMultiply")
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Eigenvalues ---
 
     CALL TimersStart( Timer_Streaming_Eigenvalues )
+    call ExternalTimerStart("Eigenvalues")
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
@@ -2498,33 +2548,38 @@ CONTAINS
     END DO
     END DO
 
+    call ExternalTimerStop("Eigenvalues")
     CALL TimersStop( Timer_Streaming_Eigenvalues )
 
     CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
 
     ! --- Left State Primitive ---
 
+    call ExternalTimerStart("ComputePrimitive_TwoMoment")
     CALL ComputePrimitive_TwoMoment &
            ( uN_L, uG1_L, uG2_L, uG3_L, &
              uD_L, uI1_L, uI2_L, uI3_L, &
              uV1_K, uV2_K, uV3_K, &
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
              PositionIndexZ_F, nIterations_L )
+    call ExternalTimerStop("ComputePrimitive_TwoMoment")
 
     ! --- Right State Primitive ---
-
+    call ExternalTimerStart("ComputePrimitive_TwoMoment")
     CALL ComputePrimitive_TwoMoment &
            ( uN_R, uG1_R, uG2_R, uG3_R, &
              uD_R, uI1_R, uI2_R, uI3_R, &
              uV1_K, uV2_K, uV3_K, &
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
              PositionIndexZ_F, nIterations_R )
+    call ExternalTimerStop("ComputePrimitive_TwoMoment")
 
     CALL TimersStop( Timer_Streaming_PrimitiveTwoMoment )
 
     ! --- Numerical Flux ---
 
     CALL TimersStart( Timer_Streaming_NumericalFlux )
+    call ExternalTimerStart("Numerical Flux")
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -2671,9 +2726,11 @@ CONTAINS
 
     END DO
 
+    call ExternalTimerStop("Numerical Flux")
     CALL TimersStop( Timer_Streaming_NumericalFlux )
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
+    call ExternalTimerStart("MatrixMatrixMultiply")
 
     ! --- Surface Contributions ---
 
@@ -2691,6 +2748,7 @@ CONTAINS
              NumericalFlux(1,1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)+1), &
              nDOF_E, One,  dU_Z, nDOFZ )
 
+    call ExternalTimerStop("MatrixMatrixMultiply")
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Off-Grid Fluxes for Conservation Tally ---
@@ -2702,6 +2760,7 @@ CONTAINS
     !--------------------
 
     CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
+    call ExternalTimerStart("ComputePrimitive_TwoMoment")
 
     CALL ComputePrimitive_TwoMoment &
            ( uN_K, uG1_K, uG2_K, uG3_K, &
@@ -2710,9 +2769,11 @@ CONTAINS
              Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
              PositionIndexZ_K, nIterations_K )
 
+    call ExternalTimerStop("ComputePrimitive_TwoMoment")
     CALL TimersStop( Timer_Streaming_PrimitiveTwoMoment )
 
     CALL TimersStart( Timer_Streaming_NumericalFlux )
+    call ExternalTimerStart("Numerical Flux")
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -2782,9 +2843,11 @@ CONTAINS
 
     END DO
 
+    call ExternalTimerStop("Numerical Flux")
     CALL TimersStop( Timer_Streaming_NumericalFlux )
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
+    call ExternalTimerStart("MatrixMatrixMultiply")
 
     ! --- Volume Contributions ---
 
@@ -2792,6 +2855,7 @@ CONTAINS
            ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOFZ, One, dLdE_q, nDOFZ, &
              Flux_q, nDOFZ, One, dU_Z, nDOFZ )
 
+    call ExternalTimerStop("MatrixMatrixMultiply")
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     !--------------------------------------------------
@@ -2799,6 +2863,7 @@ CONTAINS
     !--------------------------------------------------
 
     CALL TimersStart( Timer_Streaming_Sources )
+    call ExternalTimerStart("Sources")
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -2904,6 +2969,7 @@ CONTAINS
 
     END DO
 
+    call ExternalTimerStop("Sources")
     CALL TimersStop( Timer_Streaming_Sources )
 
 #if   defined( THORNADO_OMP_OL )

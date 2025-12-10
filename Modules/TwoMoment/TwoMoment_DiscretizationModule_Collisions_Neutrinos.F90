@@ -18,6 +18,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     Timer_Collisions_PrimitiveFluid, &
     Timer_Collisions_PrimitiveTwoMoment, &
     Timer_Collisions_Solve
+  USE ExternalTimersModule, ONLY: &
+    ExternalTimerStart, ExternalTimerStop
   USE GeometryFieldsModuleE, ONLY: &
     nGE
   USE GeometryFieldsModule, ONLY: &
@@ -168,7 +170,9 @@ CONTAINS
 
     CALL TimersStart( Timer_Collisions )
 
+    call ExternalTimerStart("InitializeCollisions")
     CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+    call ExternalTimerStop("InitializeCollisions")
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -180,11 +184,14 @@ CONTAINS
     !$ACC CREATE( dU_F, dU_R )
 #endif
 
+    call ExternalTimerStart("MapDataForCollisions")
     CALL MapDataForCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
+    call ExternalTimerStop("MapDataForCollisions")
 
     ! --- Compute Primitive Fluid ---
 
     CALL TimersStart( Timer_Collisions_PrimitiveFluid )
+    call ExternalTimerStart("ComputePrimitive_Euler")
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
@@ -269,12 +276,13 @@ CONTAINS
 
 #endif
 
-
+    call ExternalTimerStop("ComputePrimitive_Euler")
     CALL TimersStop( Timer_Collisions_PrimitiveFluid )
 
     ! --- Compute Primitive Moments ---
 
     CALL TimersStart( Timer_Collisions_PrimitiveTwoMoment )
+    call ExternalTimerStart("ComputePrimitive_TwoMoment")
 
 #if   defined( TWOMOMENT_ORDER_1 )
 
@@ -318,19 +326,20 @@ CONTAINS
              nIterations_Prim )
 
 #endif
-
+    call ExternalTimerStop("ComputePrimitive_TwoMoment")
     CALL TimersStop( Timer_Collisions_PrimitiveTwoMoment )
 
     ! --- EOS Table Lookup ---
-
+    call ExternalTimerStart("ComputeThermodynamicStates_Auxiliary_TABLE")
     CALL ComputeThermodynamicStates_Auxiliary_TABLE &
            ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
              AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye) )
+    call ExternalTimerStop("ComputeThermodynamicStates_Auxiliary_TABLE")
 
     ! --- Neutrino-Matter Coupling Solve ---
 
     CALL TimersStart( Timer_Collisions_Solve )
-
+    call ExternalTimerStart("SolveNeutrinoMatterCoupling_FP_Nested_AA")
     CALL SolveNeutrinoMatterCoupling_FP_Nested_AA &
            ( dt, &
              PR_N(:,:,:,iCR_N ), &
@@ -357,7 +366,7 @@ CONTAINS
              CR_N(:,:,:,iCR_G3), &
              nIterations_Inner, &
              nIterations_Outer )
-
+    call ExternalTimerStop("SolveNeutrinoMatterCoupling_FP_Nested_AA")
     CALL TimersStop( Timer_Collisions_Solve )
 
     ! --- Store Iteration Counts (If Requested) ---
@@ -429,6 +438,7 @@ CONTAINS
 
     END IF
 
+    call ExternalTimerStart("ComputeConserved_TwoMoment")
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC  )
@@ -502,7 +512,9 @@ CONTAINS
     END DO
     END DO
     END DO
+    call ExternalTimerStop("ComputeConserved_TwoMoment")
 
+    call ExternalTimerStart("ComputeConserved_Euler")
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC  )
@@ -605,9 +617,13 @@ CONTAINS
 
 #endif
 
+    call ExternalTimerStop("ComputeConserved_Euler")
 
+
+    call ExternalTimerStart("ComputeAndMapIncrement")
     CALL ComputeAndMapIncrement &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, U_F, U_R, dU_F, dU_R )
+    call ExternalTimerStop("ComputeAndMapIncrement")
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
