@@ -68,6 +68,7 @@ OBJS = \
        ArrayUtilitiesModule.o \
        SubcellReconstructionModule.o \
        TimersModule.o \
+       ExternalTimersModule.o \
        QuadratureModule.o \
        LagrangePolynomialsModule.o \
        PolynomialBasisModuleX_Lagrange.o \
