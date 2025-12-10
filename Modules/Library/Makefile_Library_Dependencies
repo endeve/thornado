@@ -38,6 +38,9 @@ TimersModule_Euler.o: \
   KindModule.o \
   TimersModule_Euler.f90
 
+ExternalTimersModule.o: \
+  ExternalTimersModule.f90
+
 LinearAlgebraModule.o: \
   KindModule.o \
   DeviceModule.o \
