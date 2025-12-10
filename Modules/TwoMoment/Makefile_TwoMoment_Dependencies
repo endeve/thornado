@@ -62,4 +62,5 @@ TwoMoment_DiscretizationModule_Collisions_Neutrinos.o: \
   EquationOfStateModule_TABLE.o \
   TwoMoment_NeutrinoMatterSolverModule.o \
   TwoMoment_UtilitiesModule.o \
+  ExternalTimersModule.o \
   TwoMoment_DiscretizationModule_Collisions_Neutrinos.F90

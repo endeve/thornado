@@ -191,6 +191,7 @@ TimeSteppingModule_Flash.o: \
   PhysicalConstantsModule.o \
   GeometryFieldsModuleE.o \
   GeometryFieldsModule.o  \
+  ExternalTimersModule.o \
   TimeSteppingModule_Flash.F90
 
 ThornadoInitializationModule.o: \
@@ -221,6 +222,7 @@ ThornadoInitializationModule.o: \
   TwoMoment_ClosureModule.o \
   TwoMoment_PositivityLimiterModule.o \
   TwoMoment_MeshRefinementModule.o \
+  ExternalTimersModule.o \
   ThornadoInitializationModule.F90
 else
 TimeSteppingModule_Flash.o: \
@@ -250,6 +252,7 @@ TimeSteppingModule_Flash.o: \
   PhysicalConstantsModule.o \
   GeometryFieldsModuleE.o \
   GeometryFieldsModule.o  \
+  ExternalTimersModule.o \
   TimeSteppingModule_Flash.F90
 
 ThornadoInitializationModule.o: \
@@ -296,6 +299,7 @@ ThornadoInitializationModule.o: \
   Euler_dgDiscretizationModule.o \
   TwoMoment_MeshRefinementModule.o \
   TwoMoment_NeutrinoMatterSolverModule.o \
+  ExternalTimersModule.o \
   ThornadoInitializationModule.F90
 endif
 

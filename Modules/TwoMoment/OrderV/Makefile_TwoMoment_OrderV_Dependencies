@@ -70,6 +70,7 @@ TwoMoment_DiscretizationModule_Streaming.o: \
   KindModule.o \
   ProgramHeaderModule.o \
   TwoMoment_TimersModule.o \
+  ExternalTimersModule.o \
   LinearAlgebraModule.o \
   ReferenceElementModuleX.o \
   ReferenceElementModuleX_Lagrange.o \
