@@ -164,7 +164,7 @@ contains
       DnuMax_Option, FreezeOpacities_Option , &
       ActivateUnits_Option, CoordinateSystem_Option, &
       UseChemicalPotentialShift_Option, &
-      UseSimpleMeshRefinement_Option, Verbose_Option &
+      UseSimpleMeshRefinement_Option, Verbose_Option, &
       TimerStart_Option, TimerStop_Option )
 
     integer,  intent(in) :: nNodes, nDimsX, nE, swE, bcE, nSpecies
