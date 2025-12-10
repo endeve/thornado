@@ -624,7 +624,7 @@ CONTAINS
 
       CALL ApplyPositivityLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
-      call ExternalTimerStart("ApplyLimiters")
+      call ExternalTimerStop("ApplyLimiters")
 
     call ExternalTimerStart("ApplyBoundaryConditions")
     CALL ApplyBoundaryConditions_Radiation &
