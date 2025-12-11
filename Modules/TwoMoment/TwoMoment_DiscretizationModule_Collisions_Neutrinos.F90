@@ -330,16 +330,16 @@ CONTAINS
     CALL TimersStop( Timer_Collisions_PrimitiveTwoMoment )
 
     ! --- EOS Table Lookup ---
-    call ExternalTimerStart("ComputeThermodynamicStates_Auxiliary_TABLE")
+    call ExternalTimerStart("ComputeThermodynamicStates")
     CALL ComputeThermodynamicStates_Auxiliary_TABLE &
            ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
              AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye) )
-    call ExternalTimerStop("ComputeThermodynamicStates_Auxiliary_TABLE")
+    call ExternalTimerStop("ComputeThermodynamicStates")
 
     ! --- Neutrino-Matter Coupling Solve ---
 
     CALL TimersStart( Timer_Collisions_Solve )
-    call ExternalTimerStart("SolveNeutrinoMatterCoupling_FP_Nested_AA")
+    call ExternalTimerStart("SolveNeutrinoMatterCoupling")
     CALL SolveNeutrinoMatterCoupling_FP_Nested_AA &
            ( dt, &
              PR_N(:,:,:,iCR_N ), &
@@ -366,7 +366,7 @@ CONTAINS
              CR_N(:,:,:,iCR_G3), &
              nIterations_Inner, &
              nIterations_Outer )
-    call ExternalTimerStop("SolveNeutrinoMatterCoupling_FP_Nested_AA")
+    call ExternalTimerStop("SolveNeutrinoMatterCoupling")
     CALL TimersStop( Timer_Collisions_Solve )
 
     ! --- Store Iteration Counts (If Requested) ---

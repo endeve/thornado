@@ -739,11 +739,11 @@ contains
 
     ! --- For Mapping Between Nodal and Modal Representations ---
 
-    call ExternalTimerStart("InitializePolynomialBasisMapping")
+    call ExternalTimerStart("InitializePolyBasisMapping")
     call InitializePolynomialBasisMapping &
            ( MeshE    % Nodes, MeshX(1) % Nodes, &
              MeshX(2) % Nodes, MeshX(3) % Nodes )
-    call ExternalTimerStop("InitializePolynomialBasisMapping")
+    call ExternalTimerStop("InitializePolyBasisMapping")
 
   end subroutine InitThornado_Patch
 

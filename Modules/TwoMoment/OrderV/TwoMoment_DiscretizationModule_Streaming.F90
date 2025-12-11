@@ -264,10 +264,10 @@ CONTAINS
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
     call ExternalTimerStop("ApplyBoundaryConditions")
 
-    call ExternalTimerStart("InitializeIncrement_TwoMoment_Explicit")
+    call ExternalTimerStart("InitializeIncrement_Explicit")
     CALL InitializeIncrement_TwoMoment_Explicit &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
-    call ExternalTimerStop("InitializeIncrement_TwoMoment_Explicit")
+    call ExternalTimerStop("InitializeIncrement_Explicit")
 
     call ExternalTimerStart("Zero Increment")
 #if   defined( THORNADO_OMP_OL )
@@ -302,31 +302,27 @@ CONTAINS
     OffGridFlux_TwoMoment = Zero
 
     CALL TimersStart( Timer_Streaming_Divergence )
+    call ExternalTimerStart("ComputeIncrement_Divergence")
 
-    call ExternalTimerStart("ComputeIncrement_Divergence_X1")
     CALL ComputeIncrement_Divergence_X1 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
-    call ExternalTimerStop("ComputeIncrement_Divergence_X1")
 
-    call ExternalTimerStart("ComputeIncrement_Divergence_X2")
     CALL ComputeIncrement_Divergence_X2 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
-    call ExternalTimerStop("ComputeIncrement_Divergence_X2")
 
-    call ExternalTimerStart("ComputeIncrement_Divergence_X3")
     CALL ComputeIncrement_Divergence_X3 &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
-    call ExternalTimerStop("ComputeIncrement_Divergence_X3")
-
+           
+    call ExternalTimerStop("ComputeIncrement_Divergence")
     CALL TimersStop( Timer_Streaming_Divergence )
 
     CALL TimersStart( Timer_Streaming_ObserverCorrections )
-    call ExternalTimerStart("ComputeIncrement_ObserverCorrections")
+    call ExternalTimerStart("ComputeIncrement_Observer")
 
     CALL ComputeIncrement_ObserverCorrections &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
 
-    call ExternalTimerStop("ComputeIncrement_ObserverCorrections")
+    call ExternalTimerStop("ComputeIncrement_Observer")
     CALL TimersStop( Timer_Streaming_ObserverCorrections )
 
     ! --- Multiply Inverse Mass Matrix ---
@@ -466,10 +462,10 @@ CONTAINS
     !$ACC COPYIN( dZ1, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 )
 #endif
 
-    call ExternalTimerStart("InitializeIncrement_Divergence_X")
+    call ExternalTimerStart("InitializeIncrement")
     CALL InitializeIncrement_Divergence_X &
            ( iZP_B0, iZP_E0, nDOFX_X1, nDOF_X1 )
-    call ExternalTimerStop("InitializeIncrement_Divergence_X")
+    call ExternalTimerStop("InitializeIncrement")
 
     ! --- Permute Geometry Fields ---
     call ExternalTimerStart("Permute Fields")
@@ -2343,10 +2339,10 @@ CONTAINS
     !$ACC         iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 )
 #endif
 
-    call ExternalTimerStart("InitializeIncrement_ObserverCorrections")
+    call ExternalTimerStart("InitializeIncrement")
     CALL InitializeIncrement_ObserverCorrections &
            ( iZ_B0, iZ_E0 )
-    call ExternalTimerStop("InitializeIncrement_ObserverCorrections")
+    call ExternalTimerStop("InitializeIncrement")
 
     ! --- Calculate Weak Derivatives ---
 

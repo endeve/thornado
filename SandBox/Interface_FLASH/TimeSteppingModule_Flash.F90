@@ -330,7 +330,7 @@ CONTAINS
       call ExternalTimerStop("ApplyBoundaryConditions")
 
       ! --- Explicit Solver ---
-      call ExternalTimerStart("ComputeIncrement_TwoMoment_Explicit")
+      call ExternalTimerStart("ComputeIncrement_Explicit")
 #ifdef TWOMOMENT_ORDER_1
       CALL ComputeIncrement_TwoMoment_Explicit &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, &
@@ -342,7 +342,7 @@ CONTAINS
                uGE, uGF, U_F, U_R, T0_R )
       OffGridFluxR_T0 = OffGridFlux_TwoMoment
 #endif
-      call ExternalTimerStop("ComputeIncrement_TwoMoment_Explicit")
+      call ExternalTimerStop("ComputeIncrement_Explicit")
     ELSE
 
 #if defined(THORNADO_OMP_OL)
@@ -410,14 +410,14 @@ CONTAINS
     ! --- Implicit Step ---
 
     IF( Implicit )THEN
-      call ExternalTimerStart("ComputeIncrement_TwoMoment_Implicit")
+      call ExternalTimerStart("ComputeIncrement_Implicit")
       CALL ComputeIncrement_TwoMoment_Implicit &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, dt, &
                uGE, uGF, &
                U_F, Q1_F, &
                U_R, Q1_R, &
                uDR )
-      call ExternalTimerStop("ComputeIncrement_TwoMoment_Implicit")
+      call ExternalTimerStop("ComputeIncrement_Implicit")
     ELSE
 
 #if defined(THORNADO_OMP_OL)
@@ -548,7 +548,7 @@ CONTAINS
 #endif
         call ExternalTimerStop("ApplyBoundaryConditions")
 
-        call ExternalTimerStart("ComputeIncrement_TwoMoment_Explicit")
+        call ExternalTimerStart("ComputeIncrement_Explicit")
 #ifdef TWOMOMENT_ORDER_1
         CALL ComputeIncrement_TwoMoment_Explicit &
                ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, &
@@ -560,7 +560,7 @@ CONTAINS
                  uGE, uGF, U_F, U_R, T1_R )
         OffGridFluxR_T1 = OffGridFlux_TwoMoment
 #endif
-        call ExternalTimerStop("ComputeIncrement_TwoMoment_Explicit")
+        call ExternalTimerStop("ComputeIncrement_Explicit")
 
       ELSE
 
@@ -639,14 +639,14 @@ CONTAINS
       ! --- Implicit Step ---
 
       IF( Implicit )THEN
-        call ExternalTimerStart("ComputeIncrement_TwoMoment_Implicit")
+        call ExternalTimerStart("ComputeIncrement_Implicit")
         CALL ComputeIncrement_TwoMoment_Implicit &
                (iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, Half * dt, &
                  uGE, uGF, &
                  U_F, Q1_F, &
                  U_R, Q1_R, &
                  uDR )
-        call ExternalTimerStop("ComputeIncrement_TwoMoment_Implicit")
+        call ExternalTimerStop("ComputeIncrement_Implicit")
 
       ELSE
 
