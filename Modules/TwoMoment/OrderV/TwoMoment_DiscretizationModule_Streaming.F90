@@ -86,7 +86,7 @@ MODULE TwoMoment_DiscretizationModule_Streaming
   USE TwoMoment_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_TwoMoment
   USE TwoMoment_UtilitiesModule, ONLY: &
-    ComputePrimitive_TwoMoment, &
+    ComputePrimitive_TwoMoment => ComputePrimitive_TwoMoment_Vector_Richardson_alt, &
     ComputeConserved_TwoMoment, &
     Flux_E, &
     Flux_X1, &

@@ -785,6 +785,99 @@ CONTAINS
 
   END SUBROUTINE ComputePrimitive_TwoMoment_Vector_Richardson
 
+  SUBROUTINE ComputePrimitive_TwoMoment_Vector_Richardson_alt &
+    ( N, G_d_1, G_d_2, G_d_3, D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, PositionIndexZ, nIterations_Option )
+
+    REAL(DP), DIMENSION(:), INTENT(in)  :: N, G_d_1, G_d_2, G_d_3
+    REAL(DP), DIMENSION(:), INTENT(out) :: D, I_u_1, I_u_2, I_u_3
+    REAL(DP), DIMENSION(:), INTENT(in)  :: V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    INTEGER,  DIMENSION(:), INTENT(in)  :: PositionIndexZ
+    INTEGER,  DIMENSION(:), INTENT(out), OPTIONAL :: nIterations_Option
+
+    ! --- Parameters ---
+
+    INTEGER,  PARAMETER :: M = 2
+    INTEGER,  PARAMETER :: MaxIterations = 100
+    REAL(DP), PARAMETER :: Rtol = 1.0d-08
+
+    ! --- Local Variables ---
+
+    INTEGER  :: nZ
+    INTEGER  :: iX, iZ
+    INTEGER  :: k, Mk, iM, i, j
+
+    REAL(DP) :: SUM1
+    REAL(DP) :: vMag, Omega, vI, vK_1, vK_2, vK_3
+    REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
+    LOGICAL  :: CONVERGED
+
+    REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: FVEC, GVEC
+    REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: CVEC, UVEC, FVECm, GVECm, Alpha
+    LOGICAL,  DIMENSION(:),     ALLOCATABLE :: ITERATE
+    INTEGER,  DIMENSION(:),     ALLOCATABLE :: nIterations
+
+    nZ = SIZE( N, 1 )
+
+    ALLOCATE( nIterations(nZ) )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: nIterations )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC CREATE( nIterations )
+#endif
+
+#if defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( iX )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( iX ) &
+    !$ACC PRESENT( PositionIndexZ, D, I_u_1, I_u_2, I_u_3, &
+    !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, V_u_1, V_u_2, V_u_3 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( iX )
+#endif
+    DO iZ = 1, nZ
+      iX = PositionIndexZ(iZ)
+
+      CALL ComputePrimitive_TwoMoment_Scalar_Richardson(N(iZ), G_d_1(iZ), G_d_2(iZ), G_d_3(iZ),   &
+                                                        D(iZ), I_u_1(iZ), I_u_2(iZ), I_u_3(iZ),   &
+                                                        V_u_1(iX), V_u_2(iX), V_u_3(iX),          &
+                                                        Gm_dd_11(iX), Gm_dd_22(iX), Gm_dd_33(iX), &
+                                                        nIterations(iZ))
+    END DO
+
+    IF( PRESENT( nIterations_Option ) ) THEN
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR &
+      !$ACC PRESENT( nIterations, nIterations_Option )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO
+#endif
+      DO iZ = 1, nZ
+        nIterations_Option(iZ) = nIterations(iZ)
+      END DO
+    END IF
+
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: nIterations )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA WAIT &
+    !$ACC DELETE( nIterations )
+#endif
+    DEALLOCATE( nIterations )
+
+  END SUBROUTINE ComputePrimitive_TwoMoment_Vector_Richardson_alt
+
 
   SUBROUTINE Alpha_LS_Scalar &
     ( M, Mk, Fm, F, Alpha )
