@@ -1326,13 +1326,13 @@ CONTAINS
     CVEC = [ N, G_d_1, G_d_2, G_d_3 ]
 
     D     = N
-    I_u_1 = Zero
-    I_u_2 = Zero
-    I_u_3 = Zero
+    I_d_1 = G_d_1
+    I_d_2 = G_d_2
+    I_d_3 = G_d_3
 
-    I_d_1 = Gm_dd_11 * I_u_1
-    I_d_2 = Gm_dd_22 * I_u_2
-    I_d_3 = Gm_dd_33 * I_u_3
+    I_u_1 = I_d_1 / Gm_dd_11
+    I_u_2 = I_d_2 / Gm_dd_22
+    I_u_3 = I_d_3 / Gm_dd_33
 
     k = 0
     CONVERGED = .FALSE.
