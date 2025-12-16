@@ -78,6 +78,7 @@ MODULE TwoMoment_UtilitiesModule
   PUBLIC :: FinalizeComputePrimitive_TwoMoment
   PUBLIC :: ComputePrimitive_TwoMoment
   PUBLIC :: ComputePrimitive_TwoMoment_Scalar
+  PUBLIC :: ComputePrimitive_TwoMoment_Vector_Richardson_alt
   PUBLIC :: ComputeConserved_TwoMoment
   PUBLIC :: ComputeFromConserved_TwoMoment
   PUBLIC :: ComputeTimeStep_TwoMoment
