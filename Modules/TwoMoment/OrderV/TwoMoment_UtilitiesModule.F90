@@ -977,9 +977,9 @@ CONTAINS
             Gm_dd_22 = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22)
             Gm_dd_33 = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33)
 
-            V_u_1 = CR(iNodeX,iZ2,iZ3,iZ4,iCF_S1)/(Gm_dd_11*CR(iNodeX,iZ2,iZ3,iZ4,iCF_D))
-            V_u_2 = CR(iNodeX,iZ2,iZ3,iZ4,iCF_S2)/(Gm_dd_22*CR(iNodeX,iZ2,iZ3,iZ4,iCF_D))
-            V_u_3 = CR(iNodeX,iZ2,iZ3,iZ4,iCF_S3)/(Gm_dd_33*CR(iNodeX,iZ2,iZ3,iZ4,iCF_D))
+            V_u_1 = CF(iNodeX,iZ2,iZ3,iZ4,iCF_S1)/(Gm_dd_11*CF(iNodeX,iZ2,iZ3,iZ4,iCF_D))
+            V_u_2 = CF(iNodeX,iZ2,iZ3,iZ4,iCF_S2)/(Gm_dd_22*CF(iNodeX,iZ2,iZ3,iZ4,iCF_D))
+            V_u_3 = CF(iNodeX,iZ2,iZ3,iZ4,iCF_S3)/(Gm_dd_33*CF(iNodeX,iZ2,iZ3,iZ4,iCF_D))
 
             D     = PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D, iS)
             I_u_1 = PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS)
