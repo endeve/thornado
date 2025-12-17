@@ -79,14 +79,16 @@ MODULE TwoMoment_DiscretizationModule_Streaming
   USE RadiationFieldsModule, ONLY: &
     nSpecies, LeptonNumber, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
-    nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3
+    nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, &
+    uPR
   USE TwoMoment_ClosureModule, ONLY: &
     FluxFactor, &
     EddingtonFactor
   USE TwoMoment_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_TwoMoment
   USE TwoMoment_UtilitiesModule, ONLY: &
-    ComputePrimitive_TwoMoment => ComputePrimitive_TwoMoment_Vector_Richardson_alt, &
+    ComputePrimitive_TwoMoment, &
+    ComputePrimitive_TwoMoment_Richardson, &
     ComputeConserved_TwoMoment, &
     Flux_E, &
     Flux_X1, &
@@ -138,7 +140,10 @@ MODULE TwoMoment_DiscretizationModule_Streaming
 
   ! --- Primitive Radiation Fields ---
 
-  REAL(DP), DIMENSION(:), ALLOCATABLE :: &
+  REAL(DP), TARGET, DIMENSION(:,:,:,:,:,:,:), ALLOCATABLE :: &
+    uPR_K, uPR_L, uPR_R
+
+  REAL(DP), POINTER, CONTIGUOUS, DIMENSION(:) :: &
     uD_K, uI1_K, uI2_K, uI3_K, &
     uD_L, uI1_L, uI2_L, uI3_L, &
     uD_R, uI1_R, uI2_R, uI3_R
@@ -268,6 +273,10 @@ CONTAINS
     CALL InitializeIncrement_TwoMoment_Explicit &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
     call ExternalTimerStop("InitializeIncrement_Explicit")
+
+    call ExternalTimerStart("ComputePrimitive_TwoMoment")
+    CALL ComputePrimitive_TwoMoment_Richardson(iZ_B1, iZ_E1, U_R, uPR, U_F, GX)
+    call ExternalTimerStop("ComputePrimitive_TwoMoment")
 
     call ExternalTimerStart("Zero Increment")
 #if   defined( THORNADO_OMP_OL )
@@ -430,7 +439,7 @@ CONTAINS
            1:nSpecies)
 
     INTEGER  :: iNodeZ, iNodeE, iNodeX, iNodeZ_X1, iNodeX_X1
-    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iPR, iS, iGF, iCF
     INTEGER  :: iX_F, iZ_F, iX_K, iZ_K
     INTEGER  :: iZP_B0(4), iZP_E0(4)
 
@@ -675,6 +684,35 @@ CONTAINS
     END DO
     END DO
     END DO
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRESENT( uPR_K, uPR, iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(7)
+#endif
+    DO iPR = 1, nPR
+    DO iZ2 = iZ_B0(2)-1, iZ_E0(2)+1
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iNodeZ = 1, nDOFZ
+
+        uPR_K(iNodeZ,iZ1,iZ3,iZ4,iS,iZ2,iPR) &
+          = uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR,iS)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
     call ExternalTimerStop("Permute Fields")
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
@@ -700,34 +738,52 @@ CONTAINS
 
     END DO
 
+    DO iPR = 1, nPR
+
+      ! --- Interpolate Left State ---
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOF_X1, nX1_Z, nDOFZ, One, L_X1_Up, nDOF_X1, &
+               uPR_K(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)-1,iPR), nDOFZ, Zero, &
+               uPR_L(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)  ,iPR), nDOF_X1 )
+
+      ! --- Interpolate Right State ---
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOF_X1, nX1_Z, nDOFZ, One, L_X1_Dn, nDOF_X1, &
+               uPR_K(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)  ,iPR), nDOFZ, Zero, &
+               uPR_R(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)  ,iPR), nDOF_X1 )
+
+    END DO
+
     call ExternalTimerStop("MatrixMatrixMultiply")
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Numerical Flux ---
 
-    CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
+    ! CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
 
     ! --- Left State Primitive ---
-    call ExternalTimerStart("ComputePrimitive_TwoMoment")
-    CALL ComputePrimitive_TwoMoment &
-           ( uN_L, uG1_L, uG2_L, uG3_L, &
-             uD_L, uI1_L, uI2_L, uI3_L, &
-             uV1_F, uV2_F, uV3_F, &
-             Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
-             PositionIndexZ_F, nIterations_L )
-    call ExternalTimerStop("ComputePrimitive_TwoMoment")
+    ! call ExternalTimerStart("ComputePrimitive_TwoMoment")
+    ! CALL ComputePrimitive_TwoMoment &
+    !        ( uN_L, uG1_L, uG2_L, uG3_L, &
+    !          uD_L, uI1_L, uI2_L, uI3_L, &
+    !          uV1_F, uV2_F, uV3_F, &
+    !          Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
+    !          PositionIndexZ_F, nIterations_L )
+    ! call ExternalTimerStop("ComputePrimitive_TwoMoment")
 
     ! --- Right State Primitive ---
-    call ExternalTimerStart("ComputePrimitive_TwoMoment")
-    CALL ComputePrimitive_TwoMoment &
-           ( uN_R, uG1_R, uG2_R, uG3_R, &
-             uD_R, uI1_R, uI2_R, uI3_R, &
-             uV1_F, uV2_F, uV3_F, &
-             Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
-             PositionIndexZ_F, nIterations_R )
-    call ExternalTimerStop("ComputePrimitive_TwoMoment")
+    ! call ExternalTimerStart("ComputePrimitive_TwoMoment")
+    ! CALL ComputePrimitive_TwoMoment &
+    !        ( uN_R, uG1_R, uG2_R, uG3_R, &
+    !          uD_R, uI1_R, uI2_R, uI3_R, &
+    !          uV1_F, uV2_F, uV3_F, &
+    !          Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
+    !          PositionIndexZ_F, nIterations_R )
+    ! call ExternalTimerStop("ComputePrimitive_TwoMoment")
 
-    CALL TimersStop( Timer_Streaming_PrimitiveTwoMoment )
+    ! CALL TimersStop( Timer_Streaming_PrimitiveTwoMoment )
 
     CALL TimersStart( Timer_Streaming_NumericalFlux )
     call ExternalTimerStart("Numerical Flux")
@@ -905,18 +961,18 @@ CONTAINS
 
     END DO
 
-    CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
+    ! CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
 
-    call ExternalTimerStart("ComputePrimitive_TwoMoment")
-    CALL ComputePrimitive_TwoMoment &
-           ( uN_K, uG1_K, uG2_K, uG3_K, &
-             uD_K, uI1_K, uI2_K, uI3_K, &
-             uV1_K, uV2_K, uV3_K, &
-             Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
-             PositionIndexZ_K, nIterations_K )
-    call ExternalTimerStop("ComputePrimitive_TwoMoment")
+    ! call ExternalTimerStart("ComputePrimitive_TwoMoment")
+    ! CALL ComputePrimitive_TwoMoment &
+    !        ( uN_K, uG1_K, uG2_K, uG3_K, &
+    !          uD_K, uI1_K, uI2_K, uI3_K, &
+    !          uV1_K, uV2_K, uV3_K, &
+    !          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
+    !          PositionIndexZ_K, nIterations_K )
+    ! call ExternalTimerStop("ComputePrimitive_TwoMoment")
 
-    CALL TimersStop( Timer_Streaming_PrimitiveTwoMoment )
+    ! CALL TimersStop( Timer_Streaming_PrimitiveTwoMoment )
 
     CALL TimersStart( Timer_Streaming_NumericalFlux )
     call ExternalTimerStart("Numerical Flux")
@@ -2311,8 +2367,8 @@ CONTAINS
     REAL(DP) :: A(3,3), Lambda(3)
     REAL(DP) :: k_uu(3,3), S_uu_11, S_uu_22, S_uu_33
     REAL(DP) :: Flux_K(nCR), dFlux_K(nPR)
-    REAL(DP) :: Flux_L(nCR), uPR_L(nPR)
-    REAL(DP) :: Flux_R(nCR), uPR_R(nPR)
+    REAL(DP) :: Flux_L(nCR), uPRL(nPR)
+    REAL(DP) :: Flux_R(nCR), uPRR(nPR)
     REAL(DP) :: SUM_N, SUM_G1, SUM_G2, SUM_G3
 
     ! --- Permuted Phase Space Limits ---
@@ -2447,6 +2503,35 @@ CONTAINS
     END DO
     END DO
 
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRESENT( uPR_K, uPR, iZ_B0, iZ_E0 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(7)
+#endif
+    DO iPR = 1, nPR
+    DO iZ1 = iZ_B0(1)-1, iZ_E0(1)+1
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      DO iNodeZ = 1, nDOFZ
+
+        uPR_K(iNodeZ,iZ2,iZ3,iZ4,iS,iZ1,iPR) &
+          = uPR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR,iS)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
     call ExternalTimerStop("Permute Fields")
 
     ! --- Compute Primitive Fluid ---
@@ -2488,6 +2573,24 @@ CONTAINS
              ( 'N', 'N', nDOF_E, nE_Z, nDOFZ, One, L_E_Dn, nDOF_E, &
                uCR_K(1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)  ,iCR), nDOFZ, Zero, &
                uCR_R(1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)  ,iCR), nDOF_E )
+
+    END DO
+
+    DO iPR = 1, nPR
+
+      ! --- Interpolate Left State ---
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOF_E, nE_Z, nDOFZ, One, L_E_Up, nDOF_E, &
+               uPR_K(1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)-1,iPR), nDOFZ, Zero, &
+               uPR_L(1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)  ,iPR), nDOF_E )
+
+      ! --- Interpolate Right State ---
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOF_E, nE_Z, nDOFZ, One, L_E_Dn, nDOF_E, &
+               uPR_K(1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)  ,iPR), nDOFZ, Zero, &
+               uPR_R(1,iZ_B0(2),iZ_B0(3),iZ_B0(4),1,iZ_B0(1)  ,iPR), nDOF_E )
 
     END DO
 
@@ -2547,30 +2650,30 @@ CONTAINS
     call ExternalTimerStop("Eigenvalues")
     CALL TimersStop( Timer_Streaming_Eigenvalues )
 
-    CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
+    ! CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
 
-    ! --- Left State Primitive ---
+    ! ! --- Left State Primitive ---
 
-    call ExternalTimerStart("ComputePrimitive_TwoMoment")
-    CALL ComputePrimitive_TwoMoment &
-           ( uN_L, uG1_L, uG2_L, uG3_L, &
-             uD_L, uI1_L, uI2_L, uI3_L, &
-             uV1_K, uV2_K, uV3_K, &
-             Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
-             PositionIndexZ_F, nIterations_L )
-    call ExternalTimerStop("ComputePrimitive_TwoMoment")
+    ! call ExternalTimerStart("ComputePrimitive_TwoMoment")
+    ! CALL ComputePrimitive_TwoMoment &
+    !        ( uN_L, uG1_L, uG2_L, uG3_L, &
+    !          uD_L, uI1_L, uI2_L, uI3_L, &
+    !          uV1_K, uV2_K, uV3_K, &
+    !          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
+    !          PositionIndexZ_F, nIterations_L )
+    ! call ExternalTimerStop("ComputePrimitive_TwoMoment")
 
-    ! --- Right State Primitive ---
-    call ExternalTimerStart("ComputePrimitive_TwoMoment")
-    CALL ComputePrimitive_TwoMoment &
-           ( uN_R, uG1_R, uG2_R, uG3_R, &
-             uD_R, uI1_R, uI2_R, uI3_R, &
-             uV1_K, uV2_K, uV3_K, &
-             Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
-             PositionIndexZ_F, nIterations_R )
-    call ExternalTimerStop("ComputePrimitive_TwoMoment")
+    ! ! --- Right State Primitive ---
+    ! call ExternalTimerStart("ComputePrimitive_TwoMoment")
+    ! CALL ComputePrimitive_TwoMoment &
+    !        ( uN_R, uG1_R, uG2_R, uG3_R, &
+    !          uD_R, uI1_R, uI2_R, uI3_R, &
+    !          uV1_K, uV2_K, uV3_K, &
+    !          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
+    !          PositionIndexZ_F, nIterations_R )
+    ! call ExternalTimerStop("ComputePrimitive_TwoMoment")
 
-    CALL TimersStop( Timer_Streaming_PrimitiveTwoMoment )
+    ! CALL TimersStop( Timer_Streaming_PrimitiveTwoMoment )
 
     ! --- Numerical Flux ---
 
@@ -2579,11 +2682,11 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( iX_F, iNodeZ_E, iZ1, iZ2, iZ3, iZ4, iS, uPR_L, uPR_R, &
+    !$OMP PRIVATE( iX_F, iNodeZ_E, iZ1, iZ2, iZ3, iZ4, iS, uPRL, uPRR, &
     !$OMP          Flux_L, Flux_R, A, Lambda, EdgeEnergyCubed )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( iX_F, iNodeZ_E, iZ1, iZ2, iZ3, iZ4, iS, uPR_L, uPR_R, &
+    !$ACC PRIVATE( iX_F, iNodeZ_E, iZ1, iZ2, iZ3, iZ4, iS, uPRL, uPRR, &
     !$ACC          Flux_L, Flux_R, EdgeEnergyCubed ) &
     !$ACC PRESENT( dV_u_dX1, dV_u_dX2, dV_u_dX3, uV1_K, uV2_K, uV3_K, &
     !$ACC          dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
@@ -2593,7 +2696,7 @@ CONTAINS
     !$ACC          Alpha, PositionIndexZ_F, IndexTableZ_F )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( iX_F, iNodeZ_E, iZ1, iZ2, iZ3, iZ4, iS, uPR_L, uPR_R, &
+    !$OMP PRIVATE( iX_F, iNodeZ_E, iZ1, iZ2, iZ3, iZ4, iS, uPRL, uPRR, &
     !$OMP          Flux_L, Flux_R, A, Lambda, EdgeEnergyCubed )
 #endif
     DO iZ_F = 1, nNodesZ_E
@@ -2632,7 +2735,7 @@ CONTAINS
                   dGm_dd_dX3(iNodeZ_E,2,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeZ_E,3,iZ2,iZ3,iZ4) )
 
-      uPR_L = [ uD_L(iZ_F), uI1_L(iZ_F), uI2_L(iZ_F), uI3_L(iZ_F) ]
+      uPRL = [ uD_L(iZ_F), uI1_L(iZ_F), uI2_L(iZ_F), uI3_L(iZ_F) ]
 
       ! --- Right State Flux ---
 
@@ -2659,7 +2762,7 @@ CONTAINS
                   dGm_dd_dX3(iNodeZ_E,2,iZ2,iZ3,iZ4), &
                   dGm_dd_dX3(iNodeZ_E,3,iZ2,iZ3,iZ4) )
 
-      uPR_R = [ uD_R(iZ_F), uI1_R(iZ_F), uI2_R(iZ_F), uI3_R(iZ_F) ]
+      uPRR = [ uD_R(iZ_F), uI1_R(iZ_F), uI2_R(iZ_F), uI3_R(iZ_F) ]
 
       ! --- Numerical Flux (Local Lax-Friedrichs) ---
 
@@ -2669,7 +2772,7 @@ CONTAINS
 
         NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
           = NumericalFlux_LLF &
-              ( uPR_L(iCR), uPR_R(iCR), Flux_L(iCR), Flux_R(iCR), &
+              ( uPRL(iCR), uPRR(iCR), Flux_L(iCR), Flux_R(iCR), &
                 Alpha(iNodeZ_E,iZ2,iZ3,iZ4) )
 
         NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
@@ -2755,18 +2858,18 @@ CONTAINS
     ! --- Volume Term ---
     !--------------------
 
-    CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
-    call ExternalTimerStart("ComputePrimitive_TwoMoment")
+    ! CALL TimersStart( Timer_Streaming_PrimitiveTwoMoment )
+    ! call ExternalTimerStart("ComputePrimitive_TwoMoment")
 
-    CALL ComputePrimitive_TwoMoment &
-           ( uN_K, uG1_K, uG2_K, uG3_K, &
-             uD_K, uI1_K, uI2_K, uI3_K, &
-             uV1_K, uV2_K, uV3_K, &
-             Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
-             PositionIndexZ_K, nIterations_K )
+    ! CALL ComputePrimitive_TwoMoment &
+    !        ( uN_K, uG1_K, uG2_K, uG3_K, &
+    !          uD_K, uI1_K, uI2_K, uI3_K, &
+    !          uV1_K, uV2_K, uV3_K, &
+    !          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
+    !          PositionIndexZ_K, nIterations_K )
 
-    call ExternalTimerStop("ComputePrimitive_TwoMoment")
-    CALL TimersStop( Timer_Streaming_PrimitiveTwoMoment )
+    ! call ExternalTimerStop("ComputePrimitive_TwoMoment")
+    ! CALL TimersStop( Timer_Streaming_PrimitiveTwoMoment )
 
     CALL TimersStart( Timer_Streaming_NumericalFlux )
     call ExternalTimerStart("Numerical Flux")
@@ -3054,10 +3157,10 @@ CONTAINS
     ALLOCATE( uV2_K(nNodesX_K) )
     ALLOCATE( uV3_K(nNodesX_K) )
 
-    ALLOCATE( uD_K (nNodesZ_K) )
-    ALLOCATE( uI1_K(nNodesZ_K) )
-    ALLOCATE( uI2_K(nNodesZ_K) )
-    ALLOCATE( uI3_K(nNodesZ_K) )
+    ! ALLOCATE( uD_K (nNodesZ_K) )
+    ! ALLOCATE( uI1_K(nNodesZ_K) )
+    ! ALLOCATE( uI2_K(nNodesZ_K) )
+    ! ALLOCATE( uI3_K(nNodesZ_K) )
 
     ASSOCIATE &
       ( dZ1 => MeshE    % Width, &
@@ -3069,12 +3172,12 @@ CONTAINS
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
     !$OMP          nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3 ) &
-    !$OMP MAP( alloc: uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
+    !$OMP MAP( alloc: uV1_K, uV2_K, uV3_K )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
     !$ACC         nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3 ) &
-    !$ACC CREATE( uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
+    !$ACC CREATE( uV1_K, uV2_K, uV3_K )
 #endif
 
     END ASSOCIATE ! dZ1, etc.
@@ -3094,18 +3197,18 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
     !$OMP               nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3, &
-    !$OMP               uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
+    !$OMP               uV1_K, uV2_K, uV3_K )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE( MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
     !$ACC         nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3,  &
-    !$ACC         uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
+    !$ACC         uV1_K, uV2_K, uV3_K )
 #endif
 
     END ASSOCIATE ! dZ1, etc.
 
     DEALLOCATE( uV1_K, uV2_K, uV3_K )
-    DEALLOCATE( uD_K, uI1_K, uI2_K, uI3_K )
+    ! DEALLOCATE( uD_K, uI1_K, uI2_K, uI3_K )
 
   END SUBROUTINE FinalizeIncrement_TwoMoment_Explicit
 
@@ -3226,15 +3329,52 @@ CONTAINS
 
     ! --- Primitive Radiation Fields ---
 
-    ALLOCATE( uD_L (nNodesZ_X) )
-    ALLOCATE( uI1_L(nNodesZ_X) )
-    ALLOCATE( uI2_L(nNodesZ_X) )
-    ALLOCATE( uI3_L(nNodesZ_X) )
+    ALLOCATE( uPR_K(1:nDOFZ, &
+                    iZP_B0(1)  :iZP_E0(1)  , &
+                    iZP_B0(2)  :iZP_E0(2)  , &
+                    iZP_B0(3)  :iZP_E0(3)  , &
+                    1:nSpecies, &
+                    iZP_B0(4)-1:iZP_E0(4)+1, &
+                    1:nPR) )
+    ALLOCATE( uPR_L(1:nDOFZ_X, &
+                    iZP_B0(1)  :iZP_E0(1)  , &
+                    iZP_B0(2)  :iZP_E0(2)  , &
+                    iZP_B0(3)  :iZP_E0(3)  , &
+                    1:nSpecies, &
+                    iZP_B0(4)  :iZP_E0(4)+1, &
+                    1:nPR) )
+    ALLOCATE( uPR_R(1:nDOFZ_X, &
+                    iZP_B0(1)  :iZP_E0(1)  , &
+                    iZP_B0(2)  :iZP_E0(2)  , &
+                    iZP_B0(3)  :iZP_E0(3)  , &
+                    1:nSpecies, &
+                    iZP_B0(4)  :iZP_E0(4)+1, &
+                    1:nPR) )
 
-    ALLOCATE( uD_R (nNodesZ_X) )
-    ALLOCATE( uI1_R(nNodesZ_X) )
-    ALLOCATE( uI2_R(nNodesZ_X) )
-    ALLOCATE( uI3_R(nNodesZ_X) )
+    ! ALLOCATE( uD_L (nNodesZ_X) )
+    ! ALLOCATE( uI1_L(nNodesZ_X) )
+    ! ALLOCATE( uI2_L(nNodesZ_X) )
+    ! ALLOCATE( uI3_L(nNodesZ_X) )
+
+    ! ALLOCATE( uD_R (nNodesZ_X) )
+    ! ALLOCATE( uI1_R(nNodesZ_X) )
+    ! ALLOCATE( uI2_R(nNodesZ_X) )
+    ! ALLOCATE( uI3_R(nNodesZ_X) )
+
+    uD_K (1:nNodesZ_K) => uPR_K(:,:,:,:,:,iZP_B0(4):iZP_E0(4),iPR_D )
+    uI1_K(1:nNodesZ_K) => uPR_K(:,:,:,:,:,iZP_B0(4):iZP_E0(4),iPR_I1)
+    uI2_K(1:nNodesZ_K) => uPR_K(:,:,:,:,:,iZP_B0(4):iZP_E0(4),iPR_I2)
+    uI3_K(1:nNodesZ_K) => uPR_K(:,:,:,:,:,iZP_B0(4):iZP_E0(4),iPR_I3)
+
+    uD_L (1:nNodesZ_X) => uPR_L(:,:,:,:,:,iZP_B0(4):iZP_E0(4)+1,iPR_D )
+    uI1_L(1:nNodesZ_X) => uPR_L(:,:,:,:,:,iZP_B0(4):iZP_E0(4)+1,iPR_I1)
+    uI2_L(1:nNodesZ_X) => uPR_L(:,:,:,:,:,iZP_B0(4):iZP_E0(4)+1,iPR_I2)
+    uI3_L(1:nNodesZ_X) => uPR_L(:,:,:,:,:,iZP_B0(4):iZP_E0(4)+1,iPR_I3)
+
+    uD_R (1:nNodesZ_X) => uPR_R(:,:,:,:,:,iZP_B0(4):iZP_E0(4)+1,iPR_D )
+    uI1_R(1:nNodesZ_X) => uPR_R(:,:,:,:,:,iZP_B0(4):iZP_E0(4)+1,iPR_I1)
+    uI2_R(1:nNodesZ_X) => uPR_R(:,:,:,:,:,iZP_B0(4):iZP_E0(4)+1,iPR_I2)
+    uI3_R(1:nNodesZ_X) => uPR_R(:,:,:,:,:,iZP_B0(4):iZP_E0(4)+1,iPR_I3)
 
     ! --- Primitive Fluid Velocities ---
 
@@ -3289,9 +3429,8 @@ CONTAINS
     !$OMP MAP( alloc: PositionIndexZ_F, PositionIndexZ_K, &
     !$OMP             IndexTableZ_F, IndexTableZ_K, &
     !$OMP             uGF_K, uGF_F, uCF_K, uCF_L, uCF_R, uCR_K, uCR_L, uCR_R, &
+    !$OMP             uPR_K, uPR_L, uPR_R, &
     !$OMP             uV1_F, uV2_F, uV3_F, &
-    !$OMP             uD_L, uI1_L, uI2_L, uI3_L, &
-    !$OMP             uD_R, uI1_R, uI2_R, uI3_R, &
     !$OMP             NumericalFlux, NumericalFlux2, Flux_q, dU_Z, &
     !$OMP             nIterations_L, nIterations_R, nIterations_K )
 #elif defined( THORNADO_OACC   )
@@ -3299,9 +3438,8 @@ CONTAINS
     !$ACC CREATE( PositionIndexZ_F, PositionIndexZ_K, &
     !$ACC         IndexTableZ_F, IndexTableZ_K, &
     !$ACC         uGF_K, uGF_F, uCF_K, uCF_L, uCF_R, uCR_K, uCR_L, uCR_R, &
+    !$ACC         uPR_K, uPR_L, uPR_R, &
     !$ACC         uV1_F, uV2_F, uV3_F, &
-    !$ACC         uD_L, uI1_L, uI2_L, uI3_L, &
-    !$ACC         uD_R, uI1_R, uI2_R, uI3_R, &
     !$ACC         NumericalFlux, NumericalFlux2, Flux_q, dU_Z, &
     !$ACC         nIterations_L, nIterations_R, nIterations_K )
 #endif
@@ -3424,9 +3562,8 @@ CONTAINS
     !$OMP MAP( release: PositionIndexZ_F, PositionIndexZ_K, &
     !$OMP               IndexTableZ_F, IndexTableZ_K, &
     !$OMP               uGF_K, uGF_F, uCF_K, uCF_L, uCF_R, uCR_K, uCR_L, uCR_R, &
+    !$OMP               uPR_K, uPR_L, uPR_R, &
     !$OMP               uV1_F, uV2_F, uV3_F, &
-    !$OMP               uD_L, uI1_L, uI2_L, uI3_L, &
-    !$OMP               uD_R, uI1_R, uI2_R, uI3_R, &
     !$OMP               NumericalFlux, NumericalFlux2, Flux_q, dU_Z, &
     !$OMP               nIterations_L, nIterations_R, nIterations_K )
 #elif defined( THORNADO_OACC   )
@@ -3434,18 +3571,17 @@ CONTAINS
     !$ACC DELETE( PositionIndexZ_F, PositionIndexZ_K, &
     !$ACC         IndexTableZ_F, IndexTableZ_K, &
     !$ACC         uGF_K, uGF_F, uCF_K, uCF_L, uCF_R, uCR_K, uCR_L, uCR_R, &
+    !$ACC         uPR_K, uPR_L, uPR_R, &
     !$ACC         uV1_F, uV2_F, uV3_F, &
-    !$ACC         uD_L, uI1_L, uI2_L, uI3_L, &
-    !$ACC         uD_R, uI1_R, uI2_R, uI3_R, &
     !$ACC         NumericalFlux, NumericalFlux2, Flux_q, dU_Z, &
     !$ACC         nIterations_L, nIterations_R, nIterations_K )
 #endif
 
     DEALLOCATE( PositionIndexZ_F, PositionIndexZ_K )
     DEALLOCATE( IndexTableZ_F, IndexTableZ_K )
-    DEALLOCATE( uGF_K, uGF_F, uCF_K, uCF_L, uCF_R, uCR_K, uCR_L, uCR_R )
-    DEALLOCATE( uD_L, uI1_L, uI2_L, uI3_L )
-    DEALLOCATE( uD_R, uI1_R, uI2_R, uI3_R )
+    DEALLOCATE( uGF_K, uGF_F, uCF_K, uCF_L, uCF_R, uCR_K, uCR_L, uCR_R, uPR_K, uPR_L, uPR_R )
+    ! DEALLOCATE( uD_L, uI1_L, uI2_L, uI3_L )
+    ! DEALLOCATE( uD_R, uI1_R, uI2_R, uI3_R )
     DEALLOCATE( uV1_F, uV2_F, uV3_F )
     DEALLOCATE( NumericalFlux, NumericalFlux2, Flux_q, dU_Z )
     DEALLOCATE( nIterations_L, nIterations_R, nIterations_K )
@@ -3458,6 +3594,9 @@ CONTAINS
     NULLIFY( uN_K, uG1_K, uG2_K, uG3_K )
     NULLIFY( uN_L, uG1_L, uG2_L, uG3_L )
     NULLIFY( uN_R, uG1_R, uG2_R, uG3_R )
+    NULLIFY( uD_K, uI1_K, uI2_K, uI3_K )
+    NULLIFY( uD_L, uI1_L, uI2_L, uI3_L )
+    NULLIFY( uD_R, uI1_R, uI2_R, uI3_R )
 
   END SUBROUTINE FinalizeIncrement_Divergence_X
 
@@ -3538,15 +3677,52 @@ CONTAINS
 
     ! --- Primitive Radiation Fields ---
 
-    ALLOCATE( uD_L (nNodesZ_E) )
-    ALLOCATE( uI1_L(nNodesZ_E) )
-    ALLOCATE( uI2_L(nNodesZ_E) )
-    ALLOCATE( uI3_L(nNodesZ_E) )
+    ALLOCATE( uPR_K(1:nDOFZ, &
+                    iZ_B0(2)  :iZ_E0(2)  , &
+                    iZ_B0(3)  :iZ_E0(3)  , &
+                    iZ_B0(4)  :iZ_E0(4)  , &
+                    1:nSpecies, &
+                    iZ_B0(1)-1:iZ_E0(1)+1, &
+                    1:nPR) )
+    ALLOCATE( uPR_L(1:nDOF_E, &
+                    iZ_B0(2)  :iZ_E0(2)  , &
+                    iZ_B0(3)  :iZ_E0(3)  , &
+                    iZ_B0(4)  :iZ_E0(4)  , &
+                    1:nSpecies, &
+                    iZ_B0(1)  :iZ_E0(1)+1, &
+                    1:nPR) )
+    ALLOCATE( uPR_R(1:nDOF_E, &
+                    iZ_B0(2)  :iZ_E0(2)  , &
+                    iZ_B0(3)  :iZ_E0(3)  , &
+                    iZ_B0(4)  :iZ_E0(4)  , &
+                    1:nSpecies, &
+                    iZ_B0(1)  :iZ_E0(1)+1, &
+                    1:nPR) )
 
-    ALLOCATE( uD_R (nNodesZ_E) )
-    ALLOCATE( uI1_R(nNodesZ_E) )
-    ALLOCATE( uI2_R(nNodesZ_E) )
-    ALLOCATE( uI3_R(nNodesZ_E) )
+    uD_K (1:nNodesZ_K) => uPR_K(:,:,:,:,:,iZ_B0(1):iZ_E0(1),iPR_D )
+    uI1_K(1:nNodesZ_K) => uPR_K(:,:,:,:,:,iZ_B0(1):iZ_E0(1),iPR_I1)
+    uI2_K(1:nNodesZ_K) => uPR_K(:,:,:,:,:,iZ_B0(1):iZ_E0(1),iPR_I2)
+    uI3_K(1:nNodesZ_K) => uPR_K(:,:,:,:,:,iZ_B0(1):iZ_E0(1),iPR_I3)
+
+    uD_L (1:nNodesZ_E) => uPR_L(:,:,:,:,:,iZ_B0(1):iZ_E0(1)+1,iPR_D )
+    uI1_L(1:nNodesZ_E) => uPR_L(:,:,:,:,:,iZ_B0(1):iZ_E0(1)+1,iPR_I1)
+    uI2_L(1:nNodesZ_E) => uPR_L(:,:,:,:,:,iZ_B0(1):iZ_E0(1)+1,iPR_I2)
+    uI3_L(1:nNodesZ_E) => uPR_L(:,:,:,:,:,iZ_B0(1):iZ_E0(1)+1,iPR_I3)
+
+    uD_R (1:nNodesZ_E) => uPR_R(:,:,:,:,:,iZ_B0(1):iZ_E0(1)+1,iPR_D )
+    uI1_R(1:nNodesZ_E) => uPR_R(:,:,:,:,:,iZ_B0(1):iZ_E0(1)+1,iPR_I1)
+    uI2_R(1:nNodesZ_E) => uPR_R(:,:,:,:,:,iZ_B0(1):iZ_E0(1)+1,iPR_I2)
+    uI3_R(1:nNodesZ_E) => uPR_R(:,:,:,:,:,iZ_B0(1):iZ_E0(1)+1,iPR_I3)
+
+    ! ALLOCATE( uD_L (nNodesZ_E) )
+    ! ALLOCATE( uI1_L(nNodesZ_E) )
+    ! ALLOCATE( uI2_L(nNodesZ_E) )
+    ! ALLOCATE( uI3_L(nNodesZ_E) )
+
+    ! ALLOCATE( uD_R (nNodesZ_E) )
+    ! ALLOCATE( uI1_R(nNodesZ_E) )
+    ! ALLOCATE( uI2_R(nNodesZ_E) )
+    ! ALLOCATE( uI3_R(nNodesZ_E) )
 
     ! --- Fluxes ---
 
@@ -3643,8 +3819,7 @@ CONTAINS
     !$OMP MAP( alloc: PositionIndexZ_F, PositionIndexZ_K, &
     !$OMP             IndexTableZ_F, IndexTableZ_K, &
     !$OMP             uGF_K, uCF_K, uCR_K, uCR_L, uCR_R, &
-    !$OMP             uD_L, uI1_L, uI2_L, uI3_L, &
-    !$OMP             uD_R, uI1_R, uI2_R, uI3_R, &
+    !$OMP             uPR_K, uPR_L, uPR_R, &
     !$OMP             NumericalFlux, NumericalFlux2, Flux_q, dU_Z, Alpha, &
     !$OMP             dV_u_dX1, dV_u_dX2, dV_u_dX3, &
     !$OMP             dV_d_dX1, dV_d_dX2, dV_d_dX3, &
@@ -3655,8 +3830,7 @@ CONTAINS
     !$ACC CREATE( PositionIndexZ_F, PositionIndexZ_K, &
     !$ACC         IndexTableZ_F, IndexTableZ_K, &
     !$ACC         uGF_K, uCF_K, uCR_K, uCR_L, uCR_R, &
-    !$ACC         uD_L, uI1_L, uI2_L, uI3_L, &
-    !$ACC         uD_R, uI1_R, uI2_R, uI3_R, &
+    !$ACC         uPR_K, uPR_L, uPR_R, &
     !$ACC         NumericalFlux, NumericalFlux2, Flux_q, dU_Z, Alpha, &
     !$ACC         dV_u_dX1, dV_u_dX2, dV_u_dX3, &
     !$ACC         dV_d_dX1, dV_d_dX2, dV_d_dX3, &
@@ -3773,9 +3947,7 @@ CONTAINS
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: PositionIndexZ_F, PositionIndexZ_K, &
     !$OMP               IndexTableZ_F, IndexTableZ_K, &
-    !$OMP               uGF_K, uCF_K, uCR_K, uCR_L, uCR_R, &
-    !$OMP               uD_L, uI1_L, uI2_L, uI3_L, &
-    !$OMP               uD_R, uI1_R, uI2_R, uI3_R, &
+    !$OMP               uGF_K, uCF_K, uCR_K, uCR_L, uCR_R, uPR_K, uPR_L, uPR_R, &
     !$OMP               NumericalFlux, NumericalFlux2, Flux_q, dU_Z, Alpha, &
     !$OMP               dV_u_dX1, dV_u_dX2, dV_u_dX3, &
     !$OMP               dV_d_dX1, dV_d_dX2, dV_d_dX3, &
@@ -3785,9 +3957,7 @@ CONTAINS
     !$ACC EXIT DATA &
     !$ACC DELETE( PositionIndexZ_F, PositionIndexZ_K, &
     !$ACC         IndexTableZ_F, IndexTableZ_K, &
-    !$ACC         uGF_K, uCF_K, uCR_K, uCR_L, uCR_R, &
-    !$ACC         uD_L, uI1_L, uI2_L, uI3_L, &
-    !$ACC         uD_R, uI1_R, uI2_R, uI3_R, &
+    !$ACC         uGF_K, uCF_K, uCR_K, uCR_L, uCR_R, uPR_K, uPR_L, uPR_R, &
     !$ACC         NumericalFlux, NumericalFlux2, Flux_q, dU_Z, Alpha, &
     !$ACC         dV_u_dX1, dV_u_dX2, dV_u_dX3, &
     !$ACC         dV_d_dX1, dV_d_dX2, dV_d_dX3, &
@@ -3797,9 +3967,9 @@ CONTAINS
 
     DEALLOCATE( PositionIndexZ_F, PositionIndexZ_K )
     DEALLOCATE( IndexTableZ_F, IndexTableZ_K )
-    DEALLOCATE( uGF_K, uCF_K, uCR_K, uCR_L, uCR_R )
-    DEALLOCATE( uD_L, uI1_L, uI2_L, uI3_L )
-    DEALLOCATE( uD_R, uI1_R, uI2_R, uI3_R )
+    DEALLOCATE( uGF_K, uCF_K, uCR_K, uCR_L, uCR_R, uPR_K, uPR_L, uPR_R )
+    ! DEALLOCATE( uD_L, uI1_L, uI2_L, uI3_L )
+    ! DEALLOCATE( uD_R, uI1_R, uI2_R, uI3_R )
     DEALLOCATE( NumericalFlux, NumericalFlux2, Flux_q, dU_Z, Alpha )
     DEALLOCATE( dV_u_dX1, dV_u_dX2, dV_u_dX3 )
     DEALLOCATE( dV_d_dX1, dV_d_dX2, dV_d_dX3 )
@@ -3811,6 +3981,9 @@ CONTAINS
     NULLIFY( uN_K, uG1_K, uG2_K, uG3_K )
     NULLIFY( uN_L, uG1_L, uG2_L, uG3_L )
     NULLIFY( uN_R, uG1_R, uG2_R, uG3_R )
+    NULLIFY( uD_K, uI1_K, uI2_K, uI3_K )
+    NULLIFY( uD_L, uI1_L, uI2_L, uI3_L )
+    NULLIFY( uD_R, uI1_R, uI2_R, uI3_R )
 
   END SUBROUTINE FinalizeIncrement_ObserverCorrections
 

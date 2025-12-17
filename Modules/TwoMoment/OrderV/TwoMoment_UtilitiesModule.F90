@@ -787,7 +787,7 @@ CONTAINS
   END SUBROUTINE ComputePrimitive_TwoMoment_Vector_Richardson
 
   SUBROUTINE ComputePrimitive_TwoMoment_Richardson &
-    ( iZ_B1, iZ_E1, CR, PR, CF, GX, nIterations_Option )
+    ( iZ_B1, iZ_E1, CR, PR, CF, GX )
 
     INTEGER,  INTENT(in)    :: &
       iZ_B1(4), iZ_E1(4)
@@ -819,12 +819,6 @@ CONTAINS
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nGF)
-    INTEGER,  DIMENSION(:), INTENT(out), OPTIONAL :: nIterations_Option
-
-    ! REAL(DP), DIMENSION(:), INTENT(in)  :: N, G_d_1, G_d_2, G_d_3
-    ! REAL(DP), DIMENSION(:), INTENT(out) :: D, I_u_1, I_u_2, I_u_3
-    ! REAL(DP), DIMENSION(:), INTENT(in)  :: V_u_1, V_u_2, V_u_3
-    ! INTEGER,  DIMENSION(:), INTENT(in)  :: PositionIndexZ
 
     ! --- Parameters ---
 
@@ -1158,27 +1152,6 @@ CONTAINS
 
     CALL TimersStart( Timer_Streaming_NumericalFlux_InOut )
 
-!     CALL CheckError &
-!       ( ITERATE, k, &
-!         N, G_d_1, G_d_2, G_d_3, &
-!         D, I_u_1, I_u_2, I_u_3, &
-!         V_u_1, V_u_2, V_u_3, &
-!         Gm_dd_11, Gm_dd_22, Gm_dd_33, PositionIndexZ )
-
-!     IF( PRESENT( nIterations_Option ) ) THEN
-! #if defined(THORNADO_OMP_OL)
-!       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-! #elif defined(THORNADO_OACC)
-!       !$ACC PARALLEL LOOP GANG VECTOR &
-!       !$ACC PRESENT( nIterations, nIterations_Option )
-! #elif defined(THORNADO_OMP)
-!       !$OMP PARALLEL DO
-! #endif
-!       DO iZ = 1, nZ
-!         nIterations_Option(iZ) = nIterations(iZ)
-!       END DO
-!     END IF
-
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
@@ -1195,69 +1168,6 @@ CONTAINS
     DEALLOCATE( ITERATE, nIterations )
 
     CALL TimersStop( Timer_Streaming_NumericalFlux_InOut )
-
-!   CONTAINS
-
-!   SUBROUTINE CheckError &
-!     ( MASK, k, &
-!       Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
-!       Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-!       V_u_1, V_u_2, V_u_3, &
-!       Gm_dd_11, Gm_dd_22, Gm_dd_33, PositionIndexZ )
-
-!     USE mpi
-
-!     LOGICAL,  DIMENSION(:), INTENT(in) :: MASK
-!     INTEGER,                INTENT(in) :: k
-!     REAL(DP), DIMENSION(:), INTENT(in) :: Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3
-!     REAL(DP), DIMENSION(:), INTENT(in) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-!     REAL(DP), DIMENSION(:), INTENT(in) :: V_u_1, V_u_2, V_u_3
-!     REAL(DP), DIMENSION(:), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
-!     INTEGER,  DIMENSION(:), INTENT(in) :: PositionIndexZ
-
-!     INTEGER  :: ierr
-!     INTEGER  :: iZ, iX, nZ
-!     REAL(DP) :: V1_P, V2_P, V3_P
-
-!     nZ = SIZE( Nnu, 1 )
-
-!     IF ( ANY( MASK ) .and. k >= MaxIterations ) THEN
-! #if defined(THORNADO_OMP_OL)
-!       !$OMP TARGET UPDATE FROM &
-!       !$OMP ( V_u_1, V_u_2, V_u_3, &
-!       !$OMP   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-!       !$OMP   Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
-!       !$OMP   Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-! #elif defined(THORNADO_OACC)
-!       !$ACC UPDATE HOST &
-!       !$ACC ( V_u_1, V_u_2, V_u_3, &
-!       !$ACC   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-!       !$ACC   Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
-!       !$ACC   Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-! #endif
-!       DO iZ = 1, nZ
-!         IF ( MASK(iZ) ) THEN
-
-!           iX = PositionIndexZ(iZ)
-
-!           V1_P  = V_u_1(iX) / SpeedOfLight
-!           V2_P  = V_u_2(iX) / SpeedOfLight
-!           V3_P  = V_u_3(iX) / SpeedOfLight
-
-!           WRITE(*,*)                 '[ComputePrimitive_TwoMoment] Error'
-!           WRITE(*,'(a,2i5)')         '        iZ, iX : ', iZ, iX
-!           WRITE(*,'(a,5x,i23)')      '             k : ', k
-!           WRITE(*,'(a,5x,3es23.15)') '           V_u : ', V1_P, V2_P, V3_P
-
-!           WRITE(*,'(a,5x,4es23.15)') '    Dnu, Inu_u : ', Dnu(iZ), Inu_u_1(iZ), Inu_u_2(iZ), Inu_u_3(iZ)
-!           WRITE(*,'(a,5x,4es23.15)') '    Nnu, Gnu_D : ', Nnu(iZ), Gnu_d_1(iZ), Gnu_d_2(iZ), Gnu_d_3(iZ)
-
-!         END IF
-!       END DO
-!       CALL MPI_ABORT(MPI_COMM_WORLD,-1,ierr)
-!     END IF
-
-!   END SUBROUTINE CheckError
 
   END SUBROUTINE ComputePrimitive_TwoMoment_Richardson
 
@@ -2052,39 +1962,41 @@ CONTAINS
     END DO
     END DO
 
-    DO iS  = 1, nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    ! DO iS  = 1, nSpecies
+    ! DO iZ4 = iZ_B0(4), iZ_E0(4)
+    ! DO iZ3 = iZ_B0(3), iZ_E0(3)
+    ! DO iZ2 = iZ_B0(2), iZ_E0(2)
+    ! DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-      DO iNodeZ = 1, nDOFZ
+    !   DO iNodeZ = 1, nDOFZ
 
-        iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
+    !     iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
-        CALL ComputePrimitive_TwoMoment &
-               ( CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
-                 CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
-                 CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
-                 CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
-                 PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
-                 PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
-                 PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
-                 PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
-                 PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1), &
-                 PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2), &
-                 PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3), &
-                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
-                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
-                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+    !     CALL ComputePrimitive_TwoMoment &
+    !            ( CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
+    !              CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+    !              CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+    !              CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+    !              PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS), &
+    !              PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS), &
+    !              PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS), &
+    !              PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS), &
+    !              PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1), &
+    !              PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2), &
+    !              PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3), &
+    !              GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
+    !              GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
+    !              GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
 
-      END DO
+    !   END DO
 
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
+    ! END DO
+    ! END DO
+    ! END DO
+    ! END DO
+    ! END DO
+
+    CALL ComputePrimitive_TwoMoment_Richardson(iZ_B0, iZ_E0, CR, PR, CF, GX)
 
     CALL ComputeAuxiliary_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, PR, AR )           
