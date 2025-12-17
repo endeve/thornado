@@ -2359,7 +2359,7 @@ CONTAINS
            1:nSpecies)
 
     INTEGER  :: iNodeZ, iNodeE, iNodeX, iNodeZ_E
-    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iPR, iS, iGF, iCF
     INTEGER  :: iX_F, iZ_F, iX_K, iZ_K
     INTEGER  :: iZP_B0(4), iZP_E0(4)
 
