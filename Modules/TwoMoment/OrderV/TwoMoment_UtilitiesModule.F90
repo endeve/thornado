@@ -907,7 +907,8 @@ CONTAINS
 
         iNodeZ = (iNodeX - 1)*nDOFE + iNodeE
 
-        iZ = iNodeZ + ((iZ1 - 1) + ((iZ2 - 1) + ((iZ3 - 1) + ((iZ4 - 1) + (iS - 1)*nZ4)*nZ3)*nZ2)*nZ1)*nDOFZ
+        iZ = iNodeZ &
+            + ((iZ1 - iZ_B1(1)) + ((iZ2 - iZ_B1(2)) + ((iZ3 - iZ_B1(3)) + ((iZ4 - iZ_B1(4)) + (iS - 1)*nZ4)*nZ3)*nZ2)*nZ1)*nDOFZ
 
         CVEC(iCR_N ,iZ) = CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N, iS)
         CVEC(iCR_G1,iZ) = CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS)
@@ -969,7 +970,8 @@ CONTAINS
         DO iNodeE = 1, nDOFE
           iNodeZ = (iNodeX - 1)*nDOFE + iNodeE
 
-          iZ = iNodeZ + ((iZ1 - 1) + ((iZ2 - 1) + ((iZ3 - 1) + ((iZ4 - 1) + (iS - 1)*nZ4)*nZ3)*nZ2)*nZ1)*nDOFZ
+          iZ = iNodeZ &
+            + ((iZ1 - iZ_B1(1)) + ((iZ2 - iZ_B1(2)) + ((iZ3 - iZ_B1(3)) + ((iZ4 - iZ_B1(4)) + (iS - 1)*nZ4)*nZ3)*nZ2)*nZ1)*nDOFZ
           
           IF ( ITERATE(iZ) ) THEN
 
@@ -1108,7 +1110,8 @@ CONTAINS
         DO iNodeE = 1, nDOFE
           iNodeZ = (iNodeX - 1)*nDOFE + iNodeE
 
-          iZ = iNodeZ + ((iZ1 - 1) + ((iZ2 - 1) + ((iZ3 - 1) + ((iZ4 - 1) + (iS - 1)*nZ4)*nZ3)*nZ2)*nZ1)*nDOFZ
+          iZ = iNodeZ &
+            + ((iZ1 - iZ_B1(1)) + ((iZ2 - iZ_B1(2)) + ((iZ3 - iZ_B1(3)) + ((iZ4 - iZ_B1(4)) + (iS - 1)*nZ4)*nZ3)*nZ2)*nZ1)*nDOFZ
           IF ( ITERATE(iZ) ) THEN
 
             PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D, iS) = GVECm(iPR_D ,iZ)
