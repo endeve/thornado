@@ -877,7 +877,7 @@ PROGRAM ApplicationDriver
     CALL ApplyPositivityLimiter_MHD_Relativistic_IDEAL &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM )
 
-    CALL ApplyBoundaryConditions_MHD( t, iX_B0, iX_E0, iX_B1, iX_E1, uCM, uDM )
+    CALL ApplyBoundaryConditions_MHD( t, iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
 
     CALL ComputeFromConserved_MHD_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM, &
@@ -984,7 +984,7 @@ PROGRAM ApplicationDriver
 
       CALL TimersStart_MHD( Timer_MHD_InputOutput )
 
-      CALL ApplyBoundaryConditions_MHD( t, iX_B0, iX_E0, iX_B1, iX_E1, uCM, uDM )
+      CALL ApplyBoundaryConditions_MHD( t, iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
 
       CALL ComputeFromConserved_MHD_Relativistic &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM, EvolveOnlyMagnetic )
@@ -1015,7 +1015,7 @@ PROGRAM ApplicationDriver
 
   CALL TimersStart_MHD( Timer_MHD_Finalize )
 
-  CALL ApplyBoundaryConditions_MHD( t, iX_B0, iX_E0, iX_B1, iX_E1, uCM, uDM )
+  CALL ApplyBoundaryConditions_MHD( t, iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
 
   CALL ComputeFromConserved_MHD_Relativistic &
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM, EvolveOnlyMagnetic )

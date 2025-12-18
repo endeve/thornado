@@ -265,7 +265,7 @@ CONTAINS
     IF( .NOT. SuppressBC )THEN
 
       CALL ApplyBoundaryConditions_MHD &
-             ( t, iX_B0, iX_E0, iX_B1, iX_E1, U, D )
+             ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
       CALL DetectShocks_MHD &
              ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, EvolveOnlyMagnetic, D )

@@ -419,7 +419,7 @@ CONTAINS
 
     IF( .NOT. SuppressBC ) &
       CALL ApplyBoundaryConditions_MHD &
-             ( t, iX_B0, iX_E0, iX_B1, iX_E1, U, D )
+             ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
     CALL DetectTroubledCells_MHD &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U, D )
