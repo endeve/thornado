@@ -1979,7 +1979,7 @@ CONTAINS
     AddSinePerturbation &
       = .FALSE.    
 
-    CALL amrex_parmparse_build( PP, 'thornado' )
+    CALL amrex_parmparse_build( PP, 'SD' )
       CALL PP % query( 'InitialConditionFile'     , InitialConditionFile     )
       CALL PP % query( 'NumX1InterpolationPoints' , NumX1InterpolationPoints )
       CALL PP % query( 'InitialField'             , InitialField             )
@@ -2123,7 +2123,7 @@ CONTAINS
             / ( Gamma_IDEAL - One )
 
         CB1 = Zero
-        CB2 = InitialField
+        CB2 = InitialField * Gauss
         CB3 = Zero
 
         VdotB = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) * V1 * CB1 &
