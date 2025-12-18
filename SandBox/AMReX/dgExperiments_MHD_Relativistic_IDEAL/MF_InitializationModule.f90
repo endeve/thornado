@@ -417,7 +417,7 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, D, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
@@ -665,7 +665,7 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, D, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
@@ -971,7 +971,7 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, D, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
@@ -1222,7 +1222,7 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, D, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
@@ -1438,7 +1438,7 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, D, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
@@ -1635,7 +1635,7 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, D, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
@@ -1895,7 +1895,7 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, D, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
@@ -1929,8 +1929,9 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCM
     TYPE(amrex_multifab), INTENT(inout) :: MF_uDM
 
-    TYPE(amrex_mfiter) :: MFI
-    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter)    :: MFI
+    TYPE(amrex_box)       :: BX
+    TYPE(amrex_parmparse) :: PP
 
     INTEGER  :: iNX, iX1, iX2, iX3
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -1952,7 +1953,10 @@ CONTAINS
     INTEGER  :: iNX1, iNX2, iNX3
     REAL(DP) :: X1, X2, X3
 
-    CHARACTER(256) :: FileName
+    CHARACTER(:), ALLOCATABLE :: InitialConditionFile
+    INTEGER        :: NumX1InterpolationPoints
+    REAL(DP)       :: InitialField
+    LOGICAL        :: AddSinePerturbation
 
     INTEGER        :: nX_Data
     INTEGER(HID_T) :: FILE_ID
@@ -1966,16 +1970,29 @@ CONTAINS
     REAL(DP) :: Random_r, Random_z, Random_theta
 
     uPM = Zero
+ 
+    NumX1InterpolationPoints = 10000
+    InitialConditionFile &
+      = "/nfs/home/jbuffal1/thornado/Workflow/MHD/ShearingDisk/GR_LR_diffrot.h5"
+    InitialField &
+      = Zero
+    AddSinePerturbation &
+      = .FALSE.    
 
-    FileName &
-      = "/home/jbuffal/thornado_MHD_3D/Workflow/MHD/ShearingDisk/GR_LR_diffrot.h5"
-    nX_Data = 10000
+    CALL amrex_parmparse_build( PP, 'thornado' )
+      CALL PP % query( 'InitialConditionFile'     , InitialConditionFile     )
+      CALL PP % query( 'NumX1InterpolationPoints' , NumX1InterpolationPoints )
+      CALL PP % query( 'InitialField'             , InitialField             )
+      CALL PP % query( 'AddSinusoidalPerturbation', AddSinePerturbation      )
+    CALL amrex_parmparse_destroy( PP )
+
+    nX_Data = NumX1InterpolationPoints
 
     ! --- Populate arrays ---
 
     CALL H5OPEN_F( HDFERR )
 
-    CALL H5FOPEN_F( TRIM( FileName ), H5F_ACC_RDONLY_F, FILE_ID, HDFERR )
+    CALL H5FOPEN_F( TRIM( InitialConditionFile ), H5F_ACC_RDONLY_F, FILE_ID, HDFERR )
 
     ALLOCATE( PressureArr(nX_Data), DensityArr(nX_Data), V3Arr(nX_Data), &
               AlphaArr(nX_Data), PsiArr(nX_Data), X1Arr(nX_Data) )
@@ -2106,7 +2123,7 @@ CONTAINS
             / ( Gamma_IDEAL - One )
 
         CB1 = Zero
-        CB2 = 2.0 * 1.0d13 * Gauss
+        CB2 = InitialField
         CB3 = Zero
 
         VdotB = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) * V1 * CB1 &
@@ -2153,11 +2170,19 @@ CONTAINS
                    G(iNX,iX1,iX2,iX3,iGF_Beta_3  ), &
                    Caz )
 
-          kz = SQRT( One - ( Two - 1.25_DP )**2 / Four ) &
-               * ( uPM(iNX,iPM_V3) / Caz )
+          IF( AddSinePerturbation )THEN
+
+            kz = SQRT( One - ( Two - 1.25_DP )**2 / Four ) &
+                 * ( uPM(iNX,iPM_V3) / Caz )
+
+          ELSE
+
+            kz = Zero
+
+          END IF
 
           uPM(iNX,iPM_V1) = ( 0.1_DP * Rand_Amplitude * Random_r &
-                              + 0.2d-5 * SIN( kz * X2 ) ) &
+                              + SIN( kz * X2 ) ) &
                             * X1 * uPM(iNX,iPM_V3)
           uPM(iNX,iPM_V2) = Rand_Amplitude * Random_z &
                             * X1 * uPM(iNX,iPM_V3)
@@ -2211,7 +2236,7 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, D, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
