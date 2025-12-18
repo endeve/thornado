@@ -279,7 +279,7 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( t, iX_B0, iX_E0, iX_B1, iX_E1, U, D, Edge_Map )
+             ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
 
       CALL ApplyPositivityLimiter_MHD &
              ( iX_B , iX_E , iX_B1, iX_E1, G, U, D )

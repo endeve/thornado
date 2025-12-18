@@ -177,7 +177,7 @@ CONTAINS
 
     CALL ApplyBoundaryConditions_Geometry_MF( MF_uGF )
 
-    CALL ApplyBoundaryConditions_MHD_MF( t_new, MF_uCM, MF_uDM )
+    CALL ApplyBoundaryConditions_MHD_MF( t_new, MF_uGF, MF_uCM, MF_uDM )
 
     ! --- nLevels <= nMaxLevels; entire arrays t_old(0:nMaxLevels-1) and
     !     t_new(0:nMaxLevels-1) must have valid data ---
