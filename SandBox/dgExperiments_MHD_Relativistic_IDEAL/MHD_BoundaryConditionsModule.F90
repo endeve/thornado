@@ -71,7 +71,8 @@ MODULE MHD_BoundaryConditionsModule
     iGF_Beta_1, &
     iGF_Beta_2, &
     iGF_Beta_3, &
-    iGF_Psi
+    iGF_Psi, &
+    iGF_SqrtGm
   USE UnitsModule, ONLY: &
     Gram, &
     Centimeter, &
@@ -82,7 +83,8 @@ MODULE MHD_BoundaryConditionsModule
     Gamma_IDEAL, &
     ComputePressureFromPrimitive_IDEAL
   USE MHD_UtilitiesModule_Relativistic, ONLY: &
-    ComputeConserved_MHD_Relativistic
+    ComputeConserved_MHD_Relativistic, &
+    ComputePrimitive_MHD_Relativistic
   USE TimersModule_MHD, ONLY: &
     TimersStart_MHD, &
     TimersStop_MHD, &
@@ -145,11 +147,13 @@ CONTAINS
 
 
   SUBROUTINE ApplyBoundaryConditions_MHD &
-    ( t, iX_B0, iX_E0, iX_B1, iX_E1, U, D, iApplyBC_Option )
+    ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iApplyBC_Option )
 
     REAL(DP), INTENT(in)           :: t
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)           :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)           :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout)        :: &
@@ -172,11 +176,11 @@ CONTAINS
 
     CALL TimersStart_MHD( Timer_MHD_BC_ApplyBC )
 
-    CALL ApplyBC_MHD_X1( t, iX_B0, iX_E0, iX_B1, iX_E1, U, D, iApplyBC(1) )
+    CALL ApplyBC_MHD_X1( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iApplyBC(1) )
 
-    CALL ApplyBC_MHD_X2( t, iX_B0, iX_E0, iX_B1, iX_E1, U, D, iApplyBC(2) )
+    CALL ApplyBC_MHD_X2( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iApplyBC(2) )
 
-    CALL ApplyBC_MHD_X3( t, iX_B0, iX_E0, iX_B1, iX_E1, U, D, iApplyBC(3) )
+    CALL ApplyBC_MHD_X3( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iApplyBC(3) )
 
     CALL TimersStop_MHD( Timer_MHD_BC_ApplyBC )
 
@@ -189,12 +193,14 @@ CONTAINS
   END SUBROUTINE ApplyBoundaryConditions_MHD
 
 
-  SUBROUTINE ApplyBC_MHD_X1( t, iX_B0, iX_E0, iX_B1, iX_E1, U, D, iApplyBC )
+  SUBROUTINE ApplyBC_MHD_X1( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iApplyBC )
 
     REAL(DP), INTENT(in)    :: t
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
       iApplyBC
+    REAL(DP), INTENT(in)    :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)    :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
@@ -217,10 +223,6 @@ CONTAINS
     REAL(DP) :: A(1:nDOFX,iX_B1(1):iX_E1(1), &
                           iX_B1(2):iX_E1(2), &
                           iX_B1(3):iX_E1(3),1:nAM)
-
-    REAL(DP) :: G(1:nDOFX,iX_B1(1):iX_E1(1), &
-                          iX_B1(2):iX_E1(2), &
-                          iX_B1(3):iX_E1(3),1:nGF)
 
     REAL(DP) :: CD_I(1:nDOFX,iX_B1(1):iX_E1(1), &
                              iX_B1(2):iX_E1(2), &
@@ -950,25 +952,57 @@ CONTAINS
           DO iX1 = 1, swX(1)
           DO iNX = 1, nDOFX
 
-            U(iNX,iX_B0(1)-iX1,iX2,iX3,1) &
-              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,1) &
-                - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_D) &
-                + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_D)
+            !PRINT*, 'Inner Boundary Location:     ', iNX, iX_B0(1) - iX1,     iX2, iX3
+            !PRINT*, 'Last Compute Cell Location:  ', iNX, iX_E0(1) - (iX1-1), iX2, iX3
+            !PRINT*
 
-            U(iNX,iX_B0(1)-iX1,iX2,iX3,2) &
-              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,2) &
-                - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S1) &
-                + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S1)
+            IF( .TRUE. )THEN
 
-            U(iNX,iX_B0(1)-iX1,iX2,iX3,3) &
-              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,3) &
-                - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S2) &
-                + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S2)
+              !PRINT*, 'Radial velocities too low. Using initial density for inner boundary.'
 
-            U(iNX,iX_B0(1)-iX1,iX2,iX3,4) &
-              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,4) &
-                - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S3) &
-                + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S3)
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,1) &
+                = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_D)           
+ 
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,2) &
+                = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S1)           
+ 
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,3) &
+                = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S2)           
+ 
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,4) &
+                = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S3)           
+ 
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,5) &
+                = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_E)           
+ 
+            ELSE
+
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,1) &
+                = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,1) &
+                  - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_D) &
+                  + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_D)
+ 
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,2) &
+                = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,2) &
+                  - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S1) &
+                  + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S1)
+  
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,3) &
+                = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,3) &
+                  - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S2) &
+                  + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S2)
+  
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,4) &
+                = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,4) &
+                  - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S3) &
+                  + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S3)
+  
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,5) &
+                = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,5) &
+                  - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_E) &
+                  + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_E)
+  
+            END IF
 
             U(iNX,iX_B0(1)-iX1,iX2,iX3,7) &
               = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,7)
@@ -998,38 +1032,130 @@ CONTAINS
           DO iX1 = 1, swX(1)
           DO iNX = 1, nDOFX
 
-            U(iNX,iX_E0(1)+iX1,iX2,iX3,1) &
-              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,1) &
-                - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_D) &
-                + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_D)
+            CALL ComputePrimitive_MHD_Relativistic &
+                   ( U(iNX,iX_E0(1)+iX1,iX2,iX3,1 ), &
+                     U(iNX,iX_E0(1)+iX1,iX2,iX3,2 ), &
+                     U(iNX,iX_E0(1)+iX1,iX2,iX3,3 ), &
+                     U(iNX,iX_E0(1)+iX1,iX2,iX3,4 ), &
+                     U(iNX,iX_E0(1)+iX1,iX2,iX3,5 ), &
+                     U(iNX,iX_E0(1)+iX1,iX2,iX3,6 ), &
+                     U(iNX,iX_E0(1)+iX1,iX2,iX3,7 ), &
+                     U(iNX,iX_E0(1)+iX1,iX2,iX3,8 ), &
+                     U(iNX,iX_E0(1)+iX1,iX2,iX3,9 ), &
+                     U(iNX,iX_E0(1)+iX1,iX2,iX3,10), &
+                     P(iNX,iX_E0(1)+iX1,iX2,iX3,1 ), &
+                     P(iNX,iX_E0(1)+iX1,iX2,iX3,2 ), &
+                     P(iNX,iX_E0(1)+iX1,iX2,iX3,3 ), &
+                     P(iNX,iX_E0(1)+iX1,iX2,iX3,4 ), &
+                     P(iNX,iX_E0(1)+iX1,iX2,iX3,5 ), &
+                     P(iNX,iX_E0(1)+iX1,iX2,iX3,6 ), &
+                     P(iNX,iX_E0(1)+iX1,iX2,iX3,7 ), &
+                     P(iNX,iX_E0(1)+iX1,iX2,iX3,8 ), &
+                     P(iNX,iX_E0(1)+iX1,iX2,iX3,9 ), &
+                     P(iNX,iX_E0(1)+iX1,iX2,iX3,10), &
+                     G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Gm_dd_11), &
+                     G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Gm_dd_22), &
+                     G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Gm_dd_33), &
+                     G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Alpha   ), &
+                     G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Beta_1  ), &
+                     G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Beta_2  ), &
+                     G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Beta_3  ), &
+                     .FALSE. )
 
-            U(iNX,iX_E0(1)+iX1,iX2,iX3,2) &
-              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,2) &
-                - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S1) &
-                + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S1)
+            CALL ComputePrimitive_MHD_Relativistic &
+                   ( U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,1 ), &
+                     U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,2 ), &
+                     U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,3 ), &
+                     U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,4 ), &
+                     U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,5 ), &
+                     U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,6 ), &
+                     U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,7 ), &
+                     U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,8 ), &
+                     U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,9 ), &
+                     U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,10), &
+                     P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,1 ), &
+                     P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,2 ), &
+                     P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,3 ), &
+                     P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,4 ), &
+                     P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,5 ), &
+                     P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,6 ), &
+                     P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,7 ), &
+                     P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,8 ), &
+                     P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,9 ), &
+                     P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,10), &
+                     G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Gm_dd_11), &
+                     G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Gm_dd_22), &
+                     G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Gm_dd_33), &
+                     G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Alpha   ), &
+                     G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Beta_1  ), &
+                     G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Beta_2  ), &
+                     G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Beta_3  ), &
+                     .FALSE. )
 
-            U(iNX,iX_E0(1)+iX1,iX2,iX3,3) &
-              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,3) &
-                - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S2) &
-                + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S2)
+            !PRINT*, 'Outer Boundary Location:     ', iNX, iX_E0(1) + iX1,     iX2, iX3
+            !PRINT*, 'First Compute Cell Location: ', iNX, iX_B0(1) + (iX1-1), iX2, iX3
+            !PRINT*
 
-            U(iNX,iX_E0(1)+iX1,iX2,iX3,4) &
-              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,4) &
-                - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S3) &
-                + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S3)
+            IF( .TRUE. )THEN
 
-            U(iNX,iX_E0(1)+iX1,iX2,iX3,7) &
-              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,7)
+              !PRINT*, 'Radial velocities too low. Using initial density for outer boundary.'
 
-            U(iNX,iX_E0(1)+iX1,iX2,iX3,8) &
-              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,8)
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,1) &
+                = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_D)
 
-            U(iNX,iX_E0(1)+iX1,iX2,iX3,9) &
-              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,9)
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,2) &
+                = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S1)
 
-            U(iNX,iX_E0(1)+iX1,iX2,iX3,10) &
-              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,10)
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,3) &
+                = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S2)
 
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,4) &
+                = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S3)
+ 
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,5) &
+                = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_E)
+ 
+            ELSE
+
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,1) &
+                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,1) &
+                  - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_D) &
+                  + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_D)
+ 
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,2) &
+                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,2) &
+                  - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S1) &
+                  + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S1)
+  
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,3) &
+                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,3) &
+                  - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S2) &
+                  + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S2)
+  
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,4) &
+                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,4) &
+                  - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S3) &
+                  + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S3)
+  
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,5) &
+                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,5) &
+                  - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_E) &
+                  + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_E)
+ 
+            END IF
+ 
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,7) &
+                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,7)
+  
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,8) &
+                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,8)
+  
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,9) &
+                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,9)
+  
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,10) &
+                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,10)
+  
           END DO
           END DO
           END DO
@@ -1050,12 +1176,14 @@ CONTAINS
   END SUBROUTINE ApplyBC_MHD_X1
 
 
-  SUBROUTINE ApplyBC_MHD_X2( t, iX_B0, iX_E0, iX_B1, iX_E1, U, D, iApplyBC )
+  SUBROUTINE ApplyBC_MHD_X2( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iApplyBC )
 
     REAL(DP), INTENT(in)    :: t
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
       iApplyBC
+    REAL(DP), INTENT(in)    :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)    :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) 
     REAL(DP), INTENT(inout) :: &
@@ -1437,12 +1565,14 @@ CONTAINS
   END SUBROUTINE ApplyBC_MHD_X2
 
 
-  SUBROUTINE ApplyBC_MHD_X3( t, iX_B0, iX_E0, iX_B1, iX_E1, U, D, iApplyBC )
+  SUBROUTINE ApplyBC_MHD_X3( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, iApplyBC )
 
     REAL(DP), INTENT(in)    :: t
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), &
       iApplyBC
+    REAL(DP), INTENT(in)    :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)    :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
