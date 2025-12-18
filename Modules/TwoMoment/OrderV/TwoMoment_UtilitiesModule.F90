@@ -805,7 +805,7 @@ CONTAINS
           iZ_B1(2):iZ_E1(2), &
           iZ_B1(3):iZ_E1(3), &
           iZ_B1(4):iZ_E1(4), &
-          1:nCR, &
+          1:nPR, &
           1:nSpecies)
     REAL(DP), INTENT(in) :: &
       CF (1:nDOFX, &
@@ -1996,7 +1996,7 @@ CONTAINS
     ! END DO
     ! END DO
 
-    CALL ComputePrimitive_TwoMoment_Richardson(iZ_B0, iZ_E0, CR, PR, CF, GX)
+    CALL ComputePrimitive_TwoMoment_Richardson(iZ_B1, iZ_E1, CR, PR, CF, GX)
 
     CALL ComputeAuxiliary_TwoMoment &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, PR, AR )           
