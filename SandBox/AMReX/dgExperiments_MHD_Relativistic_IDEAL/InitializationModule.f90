@@ -379,7 +379,7 @@ CONTAINS
 
     CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCM )
 
-    CALL ApplyBoundaryConditions_MHD_MF( t_new(iLevel), iLevel, MF_uCM(iLevel), MF_uDM(iLevel) )
+    CALL ApplyBoundaryConditions_MHD_MF( t_new(iLevel), iLevel, MF_uGF(iLevel), MF_uCM(iLevel), MF_uDM(iLevel) )
 
     CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCM(iLevel), -1 )
 
@@ -437,7 +437,7 @@ CONTAINS
     CALL FillPatch &
            ( iLevel, MF_uGF, MF_uGF_tmp, MF_uCM, MF_uCM_tmp )
 
-    CALL ApplyBoundaryConditions_MHD_MF( Time, iLevel, MF_uCM_tmp, MF_uDM_tmp )
+    CALL ApplyBoundaryConditions_MHD_MF( Time, iLevel, MF_uGF_tmp, MF_uCM_tmp, MF_uDM_tmp )
 
     CALL MultiplyWithPsi6_MF( MF_uGF_tmp, MF_uCM_tmp, -1, swX_Option = swX )
 
