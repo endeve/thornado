@@ -57,8 +57,6 @@ ifeq ($(MICROPHYSICS),WEAKLIB)
   FFLAGS += -I../../../../weaklib/include
 endif
 
-FFLAGS += $(VERSION_FLAGS)
-
 # command for generating a library
 MKLIB = ar -rcs
 

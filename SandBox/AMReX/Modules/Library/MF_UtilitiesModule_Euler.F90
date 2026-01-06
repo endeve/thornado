@@ -223,12 +223,21 @@ CONTAINS
     WriteToFile = .FALSE.
     IF( PRESENT( WriteToFile_Option ) ) WriteToFile = WriteToFile_Option
 
-    WRITE(FMT,'(A,I2.2,A,I2.2,A,I2.2,A,I3.3,A)') &
-      '(I2.2,3I8.6,SP3ES25.16E3,SP', &
-      nNodesX(1),    'ES25.16E3,SP', &
-      nNodesX(2),    'ES25.16E3,SP', &
-      nNodesX(3),    'ES25.16E3,SP', &
-      nDOFX     ,    'ES25.16E3)'
+    IF( WriteToFile )THEN
+
+      WRITE(FMT,'(A,I2.2,A,I2.2,A,I2.2,A,I3.3,A)') &
+        '(I2.2,3I8.6,SP3ES25.16E3,SP', &
+        nNodesX(1),    'ES25.16E3,SP', &
+        nNodesX(2),    'ES25.16E3,SP', &
+        nNodesX(3),    'ES25.16E3,SP', &
+        nDOFX     ,    'ES25.16E3)'
+
+    ELSE
+
+      WRITE(FMT,'(A,I2.2,A)') &
+        '(I2.2,3I8.6,', nDOFX, 'ES25.16E3)'
+
+    END IF
 
     CALL amrex_mfiter_build( MFI, MF, tiling = UseTiling )
 

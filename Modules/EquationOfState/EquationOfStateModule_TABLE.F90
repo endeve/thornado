@@ -555,8 +555,8 @@ CONTAINS
     REAL(dp), INTENT(inout) :: OS_Mp, OS_Mn
 
     REAL(DP), PARAMETER :: neutron_mass = 939.56542052d0
-    REAL(DP), PARAMETER :: proton_mass = 938.2720813d0
-    REAL(DP), PARAMETER :: dmnp = 1.29333922d0
+    REAL(DP), PARAMETER :: proton_mass  = 938.2720813d0
+    REAL(DP), PARAMETER :: dmnp         = 1.29333922d0
     REAL(DP) :: min_M, OS_M_new
 
     ! Apply the shift for proton chemical potential
@@ -565,7 +565,7 @@ CONTAINS
     ELSE
       min_M = MINVAL( 10.0d0**Mp_T )
     ENDIF
-    OS_M_new = -2.0d0 * MIN( 0.0d0, min_M + proton_mass + dmnp )
+    OS_M_new = -2.0d0 * MIN( 0.0d0,  min_M + proton_mass + dmnp )
     Mp_T     = LOG10( 10.0d0**Mp_T - OS_Mp + proton_mass + dmnp + OS_M_new)
     OS_Mp    = OS_M_new
 
@@ -575,8 +575,8 @@ CONTAINS
     ELSE
       min_M = MINVAL( 10.0d0**Mn_T )
     ENDIF
-    OS_M_new = -2.0d0 * MIN( 0.0d0, min_M + proton_mass + dmnp )
-    Mn_T     = LOG10( 10.0d0**Mn_T - OS_Mn + proton_mass + dmnp + OS_M_new)
+    OS_M_new = -2.0d0 * MIN( 0.0d0,  min_M + neutron_mass + dmnp )
+    Mn_T     = LOG10( 10.0d0**Mn_T - OS_Mn + neutron_mass + dmnp + OS_M_new)
     OS_Mn    = OS_M_new
 
   END SUBROUTINE ApplyChemicalPotentialShift_TABLE

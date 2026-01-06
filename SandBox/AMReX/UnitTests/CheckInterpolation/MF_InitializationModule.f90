@@ -14,13 +14,11 @@ MODULE MF_InitializationModule
     amrex_parmparse_build, &
     amrex_parmparse_destroy
   USE amrex_parallel_module, ONLY: &
-    amrex_parallel_ioprocessor, &
-    amrex_parallel_reduce_min
+    amrex_parallel_ioprocessor
 
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
-    ProgramName, &
     swX, &
     nDOFX
   USE ReferenceElementModuleX, ONLY: &
@@ -28,9 +26,6 @@ MODULE MF_InitializationModule
   USE MeshModule, ONLY: &
     MeshX, &
     NodeCoordinate
-  USE EquationOfStateModule_IDEAL, ONLY: &
-    ComputePressureFromPrimitive_IDEAL, &
-    Gamma_IDEAL
   USE GeometryFieldsModule, ONLY: &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
@@ -89,10 +84,9 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields_MF &
-    ( iLevel, MF_uGF, MF_uCF )
+    ( iLevel, MF_uCF )
 
     INTEGER             , INTENT(in)    :: iLevel
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
@@ -104,7 +98,7 @@ CONTAINS
 
     END IF
 
-    CALL InitializeFields( iLevel, MF_uGF, MF_uCF )
+    CALL InitializeFields( iLevel, MF_uCF )
 
   END SUBROUTINE InitializeFields_MF
 
@@ -112,10 +106,9 @@ CONTAINS
   ! --- PRIVATE SUBROUTINES ---
 
 
-  SUBROUTINE InitializeFields( iLevel, MF_uGF, MF_uCF )
+  SUBROUTINE InitializeFields( iLevel, MF_uCF )
 
     INTEGER             , INTENT(in)    :: iLevel
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     TYPE(amrex_mfiter)    :: MFI
@@ -124,13 +117,9 @@ CONTAINS
 
     INTEGER  :: iNX, iX1, iX2, iX3
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP) :: uPF(nDOFX,nPF)
-    REAL(DP) :: Pressure
 
-    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
 
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
 
     TYPE(EdgeMap) :: Edge_Map
@@ -140,88 +129,36 @@ CONTAINS
     INTEGER  :: iNX1
     REAL(DP) :: X1
 
-    CHARACTER(:), ALLOCATABLE :: Profile
-
-    REAL(DP) :: D_0, V1, V2, V3, P, Ne
+    REAL(DP) :: D_0, S1, S2, S3, tau
     REAL(DP) :: Amp
-    REAL(DP) :: X1_0
-    REAL(DP) :: sigmaX1
 
-    Profile = 'SineWaveX1'
-    CALL amrex_parmparse_build( PP, 'thornado' )
-      CALL PP % query( 'Profile', Profile )
-    CALL amrex_parmparse_destroy( PP )
+    D_0 = One
+    Amp = Half
 
-    SELECT CASE( TRIM( Profile ) )
+    S1  = Zero
+    S2  = Zero
+    S3  = Zero
+    tau = One
 
-      CASE( 'SineWaveX1' )
+    IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
 
-        D_0 = 1.0_DP
-        Amp = 0.5_DP
+      WRITE(*,'(6x,A)') 'Fluid:'
+      WRITE(*,'(6x,A)') '------'
+      WRITE(*,*)
+      WRITE(*,'(8x,A,F5.3)') 'D_0: ', D_0
+      WRITE(*,'(8x,A,F5.3)') 'Amp: ', Amp
+      WRITE(*,'(8x,A,F5.3)') ' S1: ', S1
+      WRITE(*,'(8x,A,F5.3)') ' S2: ', S2
+      WRITE(*,'(8x,A,F5.3)') ' S3: ', S3
+      WRITE(*,'(8x,A,F5.3)') 'tau: ', tau
+      WRITE(*,*)
 
-        V1 = 0.1_DP
-        V2 = 0.0_DP
-        V3 = 0.0_DP
-        P  = 1.0_DP
-        Ne = 0.0_DP
+    END IF
 
-        IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
-
-          WRITE(*,'(6x,A,A)') 'Profile: ', TRIM( Profile )
-          WRITE(*,'(6x,A,A)') '-------- '
-          WRITE(*,*)
-          WRITE(*,'(8x,A,F5.3)') 'D_0: ', D_0
-          WRITE(*,'(8x,A,F5.3)') 'Amp: ', Amp
-          WRITE(*,'(8x,A,F5.3)') ' V1: ', V1
-          WRITE(*,'(8x,A,F5.3)') ' V2: ', V2
-          WRITE(*,'(8x,A,F5.3)') ' V3: ', V3
-          WRITE(*,'(8x,A,F5.3)') '  P: ', P
-          WRITE(*,*)
-
-        END IF
-
-      CASE( 'Gaussian' )
-
-        D_0     = 1.0_DP
-        X1_0    = 0.5_DP
-        sigmaX1 = 0.1_DP
-
-        V1 = 0.1_DP
-        V2 = 0.0_DP
-        V3 = 0.0_DP
-        P  = 1.0_DP
-        Ne = 0.0_DP
-
-        IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
-
-          WRITE(*,'(6x,A,A)') 'Profile: ', TRIM( Profile )
-          WRITE(*,'(6x,A,A)') '-------- '
-          WRITE(*,*)
-          WRITE(*,'(8x,A,F5.3)') '    D_0: ', D_0
-          WRITE(*,'(8x,A,F5.3)') '   X1_0: ', X1_0
-          WRITE(*,'(8x,A,F5.3)') 'sigmaX1: ', sigmaX1
-          WRITE(*,'(8x,A,F5.3)') '     V1: ', V1
-          WRITE(*,'(8x,A,F5.3)') '     V2: ', V2
-          WRITE(*,'(8x,A,F5.3)') '     V3: ', V3
-          WRITE(*,'(8x,A,F5.3)') '      P: ', P
-          WRITE(*,*)
-
-        END IF
-
-      CASE DEFAULT
-
-        CALL DescribeError_MF &
-               ( 202, Message_Option &
-                        = 'Invalid Profile: ' &
-                            // TRIM( Profile ) )
-
-    END SELECT
-
-    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+    CALL amrex_mfiter_build( MFI, MF_uCF, tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
-      uGF => MF_uGF % DataPtr( MFI )
       uCF => MF_uCF % DataPtr( MFI )
 
       BX = MFI % TileBox()
@@ -233,16 +170,8 @@ CONTAINS
 
       CALL AllocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
-               G )
-
-      CALL AllocateArray_X &
-             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
                U )
-
-      CALL amrex2thornado_X &
-             ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -252,48 +181,12 @@ CONTAINS
         iNX1 = NodeNumberTableX(1,iNX)
         X1   = NodeCoordinate( MeshX(1), iX1, iNX1 )
 
-        IF( TRIM( Profile ) .EQ. 'SineWaveX1' )THEN
-
-          uPF(iNX,iPF_D ) = D_0 + Amp * SIN( TwoPi * X1 )
-          uPF(iNX,iPF_V1) = V1
-          uPF(iNX,iPF_V2) = V2
-          uPF(iNX,iPF_V3) = V3
-          uPF(iNX,iPF_E ) = P / ( Gamma_IDEAL - One )
-          uPF(iNX,iPF_Ne) = Ne
-
-        ELSE IF( TRIM( Profile ) .EQ. 'Gaussian' )THEN
-
-          uPF(iNX,iPF_D) &
-            = D_0 + EXP( -( X1 - X1_0 )**2 / ( Two * sigmaX1**2 ) )
-          uPF(iNX,iPF_V1) = V1
-          uPF(iNX,iPF_V2) = V2
-          uPF(iNX,iPF_V3) = V3
-          uPF(iNX,iPF_E ) = P / ( Gamma_IDEAL - One )
-          uPF(iNX,iPF_Ne) = Ne
-
-        END IF
-
-        CALL ComputePressureFromPrimitive_IDEAL &
-               ( uPF(iNX,iPF_D ), uPF(iNX,iPF_E), &
-                 uPF(iNX,iPF_Ne), Pressure )
-
-        CALL ComputeConserved_Euler &
-               ( uPF(iNX,iPF_D ), &
-                 uPF(iNX,iPF_V1), &
-                 uPF(iNX,iPF_V2), &
-                 uPF(iNX,iPF_V3), &
-                 uPF(iNX,iPF_E ), &
-                 uPF(iNX,iPF_Ne), &
-                 U  (iNX,iX1,iX2,iX3,iCF_D ), &
-                 U  (iNX,iX1,iX2,iX3,iCF_S1), &
-                 U  (iNX,iX1,iX2,iX3,iCF_S2), &
-                 U  (iNX,iX1,iX2,iX3,iCF_S3), &
-                 U  (iNX,iX1,iX2,iX3,iCF_E ), &
-                 U  (iNX,iX1,iX2,iX3,iCF_Ne), &
-                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
-                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
-                 G  (iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
-                 Pressure )
+        U(iNX,iX1,iX2,iX3,iCF_D ) = D_0 + Amp * SIN( TwoPi * X1 )
+        U(iNX,iX1,iX2,iX3,iCF_S1) = S1
+        U(iNX,iX1,iX2,iX3,iCF_S2) = S2
+        U(iNX,iX1,iX2,iX3,iCF_S3) = S3
+        U(iNX,iX1,iX2,iX3,iCF_E ) = tau
+        U(iNX,iX1,iX2,iX3,iCF_Ne) = Zero
 
       END DO
       END DO
@@ -312,11 +205,6 @@ CONTAINS
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
                U )
-
-      CALL DeallocateArray_X &
-             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
-               G )
 
     END DO
 

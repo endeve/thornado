@@ -22,16 +22,12 @@ MODULE FinalizationModule
     DestroyFields_Geometry_MF
   USE MF_FieldsModule_Euler, ONLY: &
     DestroyFields_Euler_MF
-  USE MF_EquationOfStateModule, ONLY: &
-    FinalizeEquationOfState_MF
-  USE MF_Euler_SlopeLimiterModule, ONLY: &
-    FinalizeSlopeLimiter_Euler_MF
-  USE MF_Euler_PositivityLimiterModule, ONLY: &
-    FinalizePositivityLimiter_Euler_MF
   USE InputParsingModule, ONLY: &
     StepNo, &
     t_old, &
     t_new
+  USE MF_Euler_PositivityLimiterModule, ONLY: &
+    FinalizePositivityLimiter_Euler_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -47,11 +43,7 @@ CONTAINS
     DEALLOCATE( t_old )
     DEALLOCATE( StepNo )
 
-    CALL FinalizeSlopeLimiter_Euler_MF
-
     CALL FinalizePositivityLimiter_Euler_MF
-
-    CALL FinalizeEquationOfState_MF
 
     CALL FinalizeMeshRefinement_Euler
 

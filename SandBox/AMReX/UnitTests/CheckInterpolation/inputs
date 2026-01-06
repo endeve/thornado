@@ -1,0 +1,34 @@
+##### SineWaveX1.inputs #####
+
+# For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
+# For all REAL types, use "e" and not "d", i.e. 1.0e3
+
+thornado.ProgramName = "CheckInterpolation"
+
+thornado.nNodes = 03
+
+thornado.t_end  = 1.0e100 # dummy
+thornado.dt_wrt = 1.0e100 # dummy
+thornado.dt_chk = 1.0e100 # dummy
+thornado.iReGrid = 1
+
+thornado.bcX         = 01 01 01
+geometry.is_periodic = 1 1 1  # Periodic BCs: 0 (no), 1 (yes)
+
+geometry.coord_sys = 0           # CARTESIAN
+geometry.prob_lo   = 0.0 0.0 0.0 # Lower domain size
+geometry.prob_hi   = 1.0 1.0 1.0 # Upper domain size
+
+thornado.swX                = 01 00 00
+amr.n_cell                  = 32 01 01 # Number of cells in each dimension
+amr.max_grid_size_x         = 32
+amr.blocking_factor_x       = 4
+amr.max_level               = 3
+amr.UseAMR                  = 1
+amr.UseFluxCorrection_Euler = 0
+amr.TagCriteria             = 0.2 0.4 0.8
+amr.n_error_buf             = 0
+amr.ref_ratio               = 2
+amr.UseTiling               = 0
+
+PL.UsePositivityLimiter_Euler = 0

@@ -122,7 +122,7 @@ MODULE Euler_UtilitiesModule_Relativistic
   REAL(DP), PARAMETER :: Offset_T   = 1.0e-12_DP
   REAL(DP), PARAMETER :: Offset_eps = 1.0e-12_DP
   REAL(DP), PARAMETER :: Offset_Ye  = 1.0e-12_DP
-  REAL(DP), PARAMETER :: Offset_z   = 1.0e1_DP * SqrtTiny
+  REAL(DP), PARAMETER :: Offset_z   = 1.0e-16_DP
   REAL(DP), PARAMETER :: vMax       = One - 1.0e-05_DP
   REAL(DP), PARAMETER :: kMax       = Two * vMax / ( One + vMax**2 )
   REAL(DP), PARAMETER :: dzMin      = 1.0e-8_DP
@@ -2319,8 +2319,8 @@ CONTAINS
 
     ! --- Eq. C23 ---
 
-    za = Half * k / SQRT( One - Fourth * k**2 ) - Offset_z
-    zb =        k / SQRT( One -          k**2 ) + Offset_z
+    za = Half * k / SQRT( One - Fourth * k**2 ) - Offset_z * k
+    zb =        k / SQRT( One -          k**2 ) + Offset_z * k
 
     ! --- Compute FunZ for upper and lower bounds ---
 

@@ -7,7 +7,7 @@ debug.DEBUG = 0
 
 thornado.ProgramName = "SedovTaylorBlastWave_XCFC"
 
-Sedov.nDetCells = 10 # number of cells on finest level
+Sedov.nDetCells = 03 # number of cells on finest level
 Sedov.Edet      = 1.0e-3
 Sedov.X_D       = 7.8125e-3 # Value taken from 1D run
 
@@ -18,12 +18,13 @@ thornado.PlotFileNameRoot = "SedovTaylorBlastWave_XCFC.plt"
 thornado.t_end   = 1.0e2
 thornado.iCycleD = 10
 
-thornado.dt_wrt  = -1.0e0
-thornado.iCycleW = 1
+thornado.dt_wrt  = 1.0e0
+thornado.iCycleW = -1
 
 thornado.CheckpointFileNameRoot = "SedovTaylorBlastWave_XCFC.chk"
-thornado.dt_chk    = -1.1e2
-thornado.iCycleChk = 1
+thornado.dt_chk    = 1.0e0
+thornado.iCycleChk = -1
+#thornado.iCheckpointsFields_uGF = 1
 
 thornado.nNodes = 2
 
@@ -34,7 +35,7 @@ geometry.coord_sys = 0
 geometry.prob_lo   = -1.0 -1.0 -1.0
 geometry.prob_hi   = +1.0 +1.0 +1.0
 
-amr.n_cell                  = 32 32 32
+amr.n_cell                  = 64 64 64
 thornado.swX                = 01 01 01
 #amr.max_grid_size_x         = 32
 #amr.blocking_factor_x       = 32
