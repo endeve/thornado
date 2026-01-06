@@ -88,6 +88,8 @@ MODULE InitializationModule
     MF_uAM, &
     MF_uDM, &
     FluxRegister_MHD
+  USE MF_MHD_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_MHD_MF
   USE MF_EquationOfStateModule_MHD, ONLY: &
     InitializeEquationOfState_MF
   USE MF_MHD_SlopeLimiterModule, ONLY: &
@@ -328,7 +330,7 @@ CONTAINS
 
     CALL ComputeGeometryX_MF( MF_uGF(iLevel) )
 
-    CALL InitializeFields_MF( iLevel, MF_uGF(iLevel), MF_uCM(iLevel) )
+    CALL InitializeFields_MF( iLevel, MF_uGF(iLevel), MF_uCM(iLevel), MF_uDM(iLevel) )
 
     CALL DestroyMesh_MF( MeshX )
 
@@ -375,8 +377,9 @@ CONTAINS
 
     CALL FillCoarsePatch( iLevel, MF_uDM )
 
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCM, &
-                          ApplyBoundaryConditions_MHD_Option = .TRUE. )
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCM )
+
+    CALL ApplyBoundaryConditions_MHD_MF( t_new(iLevel), iLevel, MF_uGF(iLevel), MF_uCM(iLevel), MF_uDM(iLevel) )
 
     CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCM(iLevel), -1 )
 
@@ -432,8 +435,9 @@ CONTAINS
     CALL FillPatch( iLevel, MF_uDM, MF_uDM_tmp )
 
     CALL FillPatch &
-           ( iLevel, MF_uGF, MF_uGF_tmp, MF_uCM, MF_uCM_tmp, &
-             ApplyBoundaryConditions_MHD_Option = .TRUE. )
+           ( iLevel, MF_uGF, MF_uGF_tmp, MF_uCM, MF_uCM_tmp )
+
+    CALL ApplyBoundaryConditions_MHD_MF( Time, iLevel, MF_uGF_tmp, MF_uCM_tmp, MF_uDM_tmp )
 
     CALL MultiplyWithPsi6_MF( MF_uGF_tmp, MF_uCM_tmp, -1, swX_Option = swX )
 
