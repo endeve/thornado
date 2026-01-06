@@ -9,6 +9,9 @@
 # Name of application you want to run
 thornado.ProgramName = "ShearingDisk"
 
+# Restart
+thornado.iRestart = -1
+
 # Number of DG nodes per element
 thornado.nNodes = 1
 
@@ -17,33 +20,33 @@ thornado.UsePhysicalUnits = 1
 
 # End-time of simulation.
 # If thornado.UsePhysicalUnits = 1 then the units are milliseconds
-thornado.t_end = 1.0e1
+thornado.t_end = 3.0e1
 
 # Frequency with which to write output to screen
 thornado.iCycleD = 10
 
 # Prefix for plotfile; e.g, a plotfile written on the 100th
 # timestep will be called `Example.plt00000100`
-thornado.PlotFileNameRoot = "ShearingDisk2D.plt"
+thornado.PlotFileNameRoot = "ShearingDisk2D.plt."
 
 # Frequency with which to write plotfiles.
 # dt_wrt writes every dt_wrt [time units],
 # iCycleW writes every iCycleW timesteps.
 # dt_wrt and iCycleW must have different signs.
 # If thornado.UsePhysicalUnits = 1 then the units are milliseconds
-thornado.dt_wrt  = 1.0e-1
+thornado.dt_wrt  = 2.5e-1
 thornado.iCycleW = -1
 
 # Prefix for checkpoint file; e.g, a checkpoint file written on the 100th
 # timestep will be called `Example.chk00000100`
-thornado.CheckpointFileNameRoot = "ShearingDisk2D.chk"
+thornado.CheckpointFileNameRoot = "ShearingDisk2D.chk."
 
 # Frequency with which to write checkpoint files.
 # dt_chk writes every dt_chk [time units],
 # iCycleChk writes every iCycleChk timesteps.
 # dt_chk and iCycleChk must have different signs.
 # If thornado.UsePhysicalUnits = 1 then the units are milliseconds
-thornado.dt_chk    = 1.0e0
+thornado.dt_chk    = 5.0e-1
 thornado.iCycleChk = -1
 
 # Prefix for Tally file; e.g, the tally file for
@@ -54,11 +57,11 @@ thornado.TallyFileNameRoot_MHD = "ShearingDisk2D.Tally"
 # See ${THORNADO_DIR}/Modules/MHD/MHD_BoundaryConditionsModule.F90
 # to see which integers corresponds to which boundary conditions.
 # These also set the boundary conditions for the geometry
-thornado.bcX = 00 00 01
+thornado.bcX = 44 01 01
 
 # Tell AMReX whether a dimension uses periodic boundary conditions.
 # Only the entries corresponding to active dimensions will have any effect
-geometry.is_periodic = 0 0 1  # Periodic BCs: 0 (no), 1 (yes)
+geometry.is_periodic = 0 1 1  # Periodic BCs: 0 (no), 1 (yes)
 
 # Coordinate system ( 0: CARTESIAN, 1: CYLINDRICAL, 2: SPHERICAL )
 geometry.coord_sys = 1
@@ -66,20 +69,15 @@ geometry.coord_sys = 1
 # Lower and upper boundaries in physical space.
 # If thornado.UsePhysicalUnits = 1 then the units will be dictated
 # by the coordinate system
-geometry.prob_lo   = 1.45e+1 -0.5e+0  0.0 # Lower domain size
-geometry.prob_hi   = 1.65e+1  0.5e+0  6.283185307179586 # Upper domain size
+geometry.prob_lo   = 1.5e+1 -0.5e+0  0.0 # Lower domain size
+geometry.prob_hi   = 1.6e+1  0.5e+0  6.283185307179586 # Upper domain size
 
 # Number of ghost cells for the spatially-dependent fields
 # (fluid and geometry)
 thornado.swX = 01 01 00
 
 # Number of spatial elements on the coarsest level
-amr.n_cell = 128 02 01
-
-# Maximum allowed size of an AMReX grid in each dimension
-amr.max_grid_size_x = 128
-amr.max_grid_size_y = 2
-amr.max_grid_size_z = 1
+amr.n_cell = 100 100 01
 
 # (Roughly) minimum allowed size of an AMReX grid in each dimension
 amr.blocking_factor_x = 1
@@ -136,3 +134,17 @@ EoS.Gamma_IDEAL     = 1.3333333333333333
 # ${THORNADO_DIR}/SandBox/AMReX/Modules/TimeStepping/MF_TimeSteppingModule_SSPRK.f90
 TS.nStages = 1
 TS.CFL     = 0.5
+
+thornado.EvolveOnlyMagnetic = 0
+thornado.UseDivergenceCleaning = 0
+thornado.CleaningSpeed = 1.0e0
+thornado.DampingParameter = 0.0e0
+thornado.UsePowellSource = 0
+thornado.UseFluxDecoupling = 0
+
+SD.ApplyPerturbations = 0
+SD.Rand_Amplitude = 1.0e-5
+SD.NumX1InterpolationPoints = 10000
+SD.InitialConditionFile = "/nfs/home/jbuffal1/thornado/Workflow/MHD/ShearingDisk/GR_LR_diffrot.h5"
+SD.InitialField = 0.0e0
+SD.AddSinePerturbation = 0
