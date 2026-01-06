@@ -67,8 +67,6 @@ MODULE FillPatchModule_MHD
   USE MF_GeometryModule, ONLY: &
     ApplyBoundaryConditions_Geometry_MF, &
     UpdateSpatialMetric_MF
-  USE MF_MHD_BoundaryConditionsModule, ONLY: &
-    ApplyBoundaryConditions_MHD_MF
   USE MF_TimersModule_MHD, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
@@ -97,18 +95,15 @@ CONTAINS
 
   SUBROUTINE FillPatch_PointWise_Scalar &
     ( FineLevel, MF, MF_dst, &
-      ApplyBoundaryConditions_MHD_Option, &
       ApplyBoundaryConditions_Geometry_Option )
 
     INTEGER             , INTENT(in)    :: FineLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_dst
     LOGICAL             , INTENT(in), OPTIONAL :: &
-      ApplyBoundaryConditions_MHD_Option, &
       ApplyBoundaryConditions_Geometry_Option
 
-    LOGICAL :: ApplyBoundaryConditions_MHD, &
-               ApplyBoundaryConditions_Geometry
+    LOGICAL :: ApplyBoundaryConditions_Geometry
 
     INTEGER :: iErr
 
@@ -122,10 +117,6 @@ CONTAINS
     REAL(DP), PARAMETER :: t          = Zero
 
     CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
-
-    ApplyBoundaryConditions_MHD = .FALSE.
-    IF( PRESENT( ApplyBoundaryConditions_MHD_Option ) ) &
-      ApplyBoundaryConditions_MHD = ApplyBoundaryConditions_MHD_Option
 
     ApplyBoundaryConditions_Geometry = .FALSE.
     IF( PRESENT( ApplyBoundaryConditions_Geometry_Option ) ) &
@@ -189,9 +180,6 @@ CONTAINS
     IF( ApplyBoundaryConditions_Geometry ) &
       CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF_dst )
 
-    IF( ApplyBoundaryConditions_MHD ) &
-      CALL ApplyBoundaryConditions_MHD_MF( t, FineLevel, MF_dst )
-
     CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
 
   END SUBROUTINE FillPatch_PointWise_Scalar
@@ -199,17 +187,14 @@ CONTAINS
 
   SUBROUTINE FillPatch_PointWise_Vector &
     ( FineLevel, MF, &
-      ApplyBoundaryConditions_MHD_Option, &
       ApplyBoundaryConditions_Geometry_Option )
 
     INTEGER             , INTENT(in)    :: FineLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
     LOGICAL             , INTENT(in), OPTIONAL :: &
-      ApplyBoundaryConditions_MHD_Option, &
       ApplyBoundaryConditions_Geometry_Option
 
-    LOGICAL :: ApplyBoundaryConditions_MHD, &
-               ApplyBoundaryConditions_Geometry
+    LOGICAL :: ApplyBoundaryConditions_Geometry
 
     INTEGER :: iErr
 
@@ -223,10 +208,6 @@ CONTAINS
     REAL(DP), PARAMETER :: t          = Zero
 
     CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
-
-    ApplyBoundaryConditions_MHD = .FALSE.
-    IF( PRESENT( ApplyBoundaryConditions_MHD_Option ) ) &
-      ApplyBoundaryConditions_MHD = ApplyBoundaryConditions_MHD_Option
 
     ApplyBoundaryConditions_Geometry = .FALSE.
     IF( PRESENT( ApplyBoundaryConditions_Geometry_Option ) ) &
@@ -286,10 +267,7 @@ CONTAINS
 
     IF( ApplyBoundaryConditions_Geometry ) &
       CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF(FineLevel) )
-
-    IF( ApplyBoundaryConditions_MHD ) &
-      CALL ApplyBoundaryConditions_MHD_MF( t, FineLevel, MF(FineLevel) )
-
+    
     CALL TimersStop_AMReX( Timer_AMReX_FillPatch )
 
   END SUBROUTINE FillPatch_PointWise_Vector
@@ -297,21 +275,18 @@ CONTAINS
 
   SUBROUTINE FillCoarsePatch_PointWise &
     ( FineLevel, MF, &
-      ApplyBoundaryConditions_MHD_Option, &
       ApplyBoundaryConditions_Geometry_Option, &
       UpdateSpatialMetric_Option )
 
     INTEGER             , INTENT(in)    :: FineLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
     LOGICAL             , INTENT(in), OPTIONAL :: &
-      ApplyBoundaryConditions_MHD_Option, &
       ApplyBoundaryConditions_Geometry_Option, &
       UpdateSpatialMetric_Option
 
 #if defined( THORNADO_USE_MESHREFINEMENT )
 
-    LOGICAL :: ApplyBoundaryConditions_MHD, &
-               ApplyBoundaryConditions_Geometry, &
+    LOGICAL :: ApplyBoundaryConditions_Geometry, &
                UpdateSpatialMetric
 
     INTEGER :: iErr
@@ -324,10 +299,6 @@ CONTAINS
     REAL(DP), PARAMETER :: t          = Zero
 
     CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
-
-    ApplyBoundaryConditions_MHD = .FALSE.
-    IF( PRESENT( ApplyBoundaryConditions_MHD_Option ) ) &
-      ApplyBoundaryConditions_MHD = ApplyBoundaryConditions_MHD_Option
 
     ApplyBoundaryConditions_Geometry = .FALSE.
     IF( PRESENT( ApplyBoundaryConditions_Geometry_Option ) ) &
@@ -388,8 +359,9 @@ CONTAINS
 
 
   SUBROUTINE FillPatch_Conservative_Scalar &
-    ( FineLevel, MF_uGF, MF_uGF_tmp, MF_src, MF_dst, &
-      ApplyBoundaryConditions_MHD_Option, &
+    ( FineLevel, &
+      MF_uGF, MF_uGF_tmp, &
+      MF_src, MF_dst, &
       ApplyBoundaryConditions_Geometry_Option )
 
     INTEGER             , INTENT(in)    :: FineLevel
@@ -397,15 +369,13 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_src(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_dst
     LOGICAL             , INTENT(in), OPTIONAL :: &
-      ApplyBoundaryConditions_MHD_Option, &
       ApplyBoundaryConditions_Geometry_Option
 
     TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel), SqrtGm_tmp
 
     INTEGER :: iErr
 
-    LOGICAL :: ApplyBoundaryConditions_MHD, &
-               ApplyBoundaryConditions_Geometry
+    LOGICAL :: ApplyBoundaryConditions_Geometry
 
     INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
 
@@ -419,10 +389,6 @@ CONTAINS
     ! Assume MF_old_crse = MF_new_crse = MF_old_fine = MF_new_fine = MF
 
     CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
-
-    ApplyBoundaryConditions_MHD = .FALSE.
-    IF( PRESENT( ApplyBoundaryConditions_MHD_Option ) ) &
-      ApplyBoundaryConditions_MHD = ApplyBoundaryConditions_MHD_Option
 
     ApplyBoundaryConditions_Geometry = .FALSE.
     IF( PRESENT( ApplyBoundaryConditions_Geometry_Option ) ) &
@@ -505,9 +471,6 @@ CONTAINS
     IF( ApplyBoundaryConditions_Geometry ) &
       CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF_dst )
 
-    IF( ApplyBoundaryConditions_MHD ) &
-      CALL ApplyBoundaryConditions_MHD_MF( t, FineLevel, MF_dst )
-
     IF( FineLevel .GT. 0 )THEN
 
       CALL amrex_multifab_destroy( SqrtGm_tmp )
@@ -525,22 +488,19 @@ CONTAINS
 
   SUBROUTINE FillPatch_Conservative_Vector &
     ( FineLevel, MF_uGF, MF, &
-      ApplyBoundaryConditions_MHD_Option, &
       ApplyBoundaryConditions_Geometry_Option )
 
     INTEGER             , INTENT(in)    :: FineLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF    (0:)
     LOGICAL             , INTENT(in)   , OPTIONAL :: &
-      ApplyBoundaryConditions_MHD_Option, &
       ApplyBoundaryConditions_Geometry_Option
 
     TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel)
 
     INTEGER :: iErr
 
-    LOGICAL :: ApplyBoundaryConditions_MHD, &
-               ApplyBoundaryConditions_Geometry
+    LOGICAL :: ApplyBoundaryConditions_Geometry
 
     INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
 
@@ -552,10 +512,6 @@ CONTAINS
     REAL(DP), PARAMETER :: t          = Zero
 
     CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
-
-    ApplyBoundaryConditions_MHD = .FALSE.
-    IF( PRESENT( ApplyBoundaryConditions_MHD_Option ) ) &
-      ApplyBoundaryConditions_MHD = ApplyBoundaryConditions_MHD_Option
 
     ApplyBoundaryConditions_Geometry = .FALSE.
     IF( PRESENT( ApplyBoundaryConditions_Geometry_Option ) ) &
@@ -634,9 +590,6 @@ CONTAINS
     IF( ApplyBoundaryConditions_Geometry ) &
       CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF(FineLevel) )
 
-    IF( ApplyBoundaryConditions_MHD ) &
-      CALL ApplyBoundaryConditions_MHD_MF( t, FineLevel, MF(FineLevel) )
-
     IF( FineLevel .GT. 0 )THEN
 
       CALL amrex_multifab_destroy( SqrtGm(FineLevel-1) )
@@ -651,14 +604,12 @@ CONTAINS
 
   SUBROUTINE FillCoarsePatch_Conservative &
     ( FineLevel, MF_uGF, MF, &
-      ApplyBoundaryConditions_MHD_Option, &
       ApplyBoundaryConditions_Geometry_Option )
 
     INTEGER             , INTENT(in)    :: FineLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF    (0:)
     LOGICAL             , INTENT(in)   , OPTIONAL :: &
-      ApplyBoundaryConditions_MHD_Option, &
       ApplyBoundaryConditions_Geometry_Option
 
 #if defined( THORNADO_USE_MESHREFINEMENT )
@@ -667,8 +618,7 @@ CONTAINS
 
     INTEGER :: iErr
 
-    LOGICAL :: ApplyBoundaryConditions_MHD, &
-               ApplyBoundaryConditions_Geometry
+    LOGICAL :: ApplyBoundaryConditions_Geometry
 
     INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
 
@@ -678,10 +628,6 @@ CONTAINS
     REAL(DP), PARAMETER :: t          = Zero
 
     CALL TimersStart_AMReX( Timer_AMReX_FillPatch )
-
-    ApplyBoundaryConditions_MHD = .FALSE.
-    IF( PRESENT( ApplyBoundaryConditions_MHD_Option ) ) &
-      ApplyBoundaryConditions_MHD = ApplyBoundaryConditions_MHD_Option
 
     ApplyBoundaryConditions_Geometry = .FALSE.
     IF( PRESENT( ApplyBoundaryConditions_Geometry_Option ) ) &
@@ -739,9 +685,6 @@ CONTAINS
 
     IF( ApplyBoundaryConditions_Geometry ) &
       CALL ApplyBoundaryConditions_Geometry_MF( FineLevel, MF(FineLevel) )
-
-    IF( ApplyBoundaryConditions_MHD ) &
-      CALL ApplyBoundaryConditions_MHD_MF( t, FineLevel, MF(FineLevel) )
 
     IF( FineLevel .GT. 0 )THEN
 

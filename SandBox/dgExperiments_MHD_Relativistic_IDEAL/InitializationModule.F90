@@ -66,7 +66,18 @@ MODULE InitializationModule
     iCM_B3,  &
     iCM_Chi, &
     uAM,     &
-    iAM_P
+    iAM_P,   &
+    uDM,     &
+    iDM_IC_D,  &
+    iDM_IC_S1, &
+    iDM_IC_S2, &
+    iDM_IC_S3, &
+    iDM_IC_E,  &
+    iDM_IC_Ne, &
+    iDM_IC_B1, &
+    iDM_IC_B2, &
+    iDM_IC_B3, &
+    iDM_IC_Chi
   USE EquationOfStateModule, ONLY : &
       ComputePressureFromPrimitive
   USE EquationOfStateModule_IDEAL, ONLY: &
@@ -2073,11 +2084,13 @@ CONTAINS
                uGF(:,iX1,iX2,iX3,iGF_Beta_2  ), &
                uGF(:,iX1,iX2,iX3,iGF_Beta_3  ), &
                uAM(:,iX1,iX2,iX3,iAM_P), &
-               EvolveOnlyMagnetic )
+               EvolveOnlyMagnetic ) 
 
     END DO
     END DO
     END DO
+
+    uDM(:,:,:,:,iDM_IC_D:iDM_IC_Chi) = uCM(:,:,:,:,iCM_D:iCM_Chi)
 
     DEALLOCATE( X1Arr, PsiArr, AlphaArr, DensityArr, V3Arr, PressureArr )
 

@@ -69,7 +69,10 @@ MODULE MF_InitializationModule
     iPM_B2, &
     iPM_B3, &
     iPM_Chi, &
-    nPM
+    nPM, &
+    iDM_IC_D, &
+    iDM_IC_Chi, &
+    nDM
   USE MHD_UtilitiesModule, ONLY: &
     ComputeConserved_MHD
   USE UnitsModule, ONLY: &
@@ -132,11 +135,12 @@ CONTAINS
 
 
   SUBROUTINE InitializeFields_MF &
-    ( iLevel, MF_uGF, MF_uCM )
+    ( iLevel, MF_uGF, MF_uCM, MF_uDM )
 
     INTEGER             , INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCM
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDM
 
     IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
 
@@ -151,35 +155,35 @@ CONTAINS
 
       CASE( 'Advection1D' )
 
-        CALL InitializeFields_Advection1D( iLevel, MF_uGF, MF_uCM )
+        CALL InitializeFields_Advection1D( iLevel, MF_uGF, MF_uCM, MF_uDM )
 
       CASE( 'RiemannProblem1D' )
 
-        CALL InitializeFields_RiemannProblem1D( iLevel, MF_uGF, MF_uCM )
+        CALL InitializeFields_RiemannProblem1D( iLevel, MF_uGF, MF_uCM, MF_uDM )
 
       CASE( 'RiemannProblem2D' )
 
-        CALL InitializeFields_RiemannProblem2D( iLevel, MF_uGF, MF_uCM )
+        CALL InitializeFields_RiemannProblem2D( iLevel, MF_uGF, MF_uCM, MF_uDM )
 
       CASE( 'Advection2D' )
 
-        CALL InitializeFields_Advection2D( iLevel, MF_uGF, MF_uCM )
+        CALL InitializeFields_Advection2D( iLevel, MF_uGF, MF_uCM, MF_uDM )
 
       CASE( 'KelvinHelmholtz2D' )
 
-        CALL InitializeFields_KelvinHelmholtz2D( iLevel, MF_uGF, MF_uCM )
+        CALL InitializeFields_KelvinHelmholtz2D( iLevel, MF_uGF, MF_uCM, MF_uDM )
 
       CASE( 'OrszagTang2D' )
 
-        CALL InitializeFields_OrszagTang2D( iLevel, MF_uGF, MF_uCM )
+        CALL InitializeFields_OrszagTang2D( iLevel, MF_uGF, MF_uCM, MF_uDM )
 
       CASE( 'Advection3D' )
 
-        CALL InitializeFields_Advection3D( iLevel, MF_uGF, MF_uCM )
+        CALL InitializeFields_Advection3D( iLevel, MF_uGF, MF_uCM, MF_uDM )
 
       CASE( 'ShearingDisk' )
 
-        CALL InitializeFields_ShearingDisk( iLevel, MF_uGF, MF_uCM )
+        CALL InitializeFields_ShearingDisk( iLevel, MF_uGF, MF_uCM, MF_uDM )
 
       CASE DEFAULT
 
@@ -195,10 +199,11 @@ CONTAINS
   ! --- PRIVATE SUBROUTINES ---
 
 
-  SUBROUTINE InitializeFields_Advection1D( iLevel, MF_uGF, MF_uCM )
+  SUBROUTINE InitializeFields_Advection1D( iLevel, MF_uGF, MF_uCM, MF_uDM )
 
     INTEGER             , INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uDM
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCM
 
     TYPE(amrex_mfiter)    :: MFI
@@ -212,9 +217,11 @@ CONTAINS
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: D(:,:,:,:,:)
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCM(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDM(:,:,:,:)
 
     TYPE(EdgeMap) :: Edge_Map
 
@@ -308,6 +315,7 @@ CONTAINS
 
       uGF => MF_uGF % DataPtr( MFI )
       uCM => MF_uCM % DataPtr( MFI )
+      uDM => MF_uDM % DataPtr( MFI )
 
       BX = MFI % TileBox()
 
@@ -326,8 +334,16 @@ CONTAINS
                [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCM ], &
                U )
 
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
+               D )
+
       CALL amrex2thornado_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
+
+      CALL amrex2thornado_X &
+             ( nDM, iX_B1, iX_E1, LBOUND( uDM ), iX_B0, iX_E0, uDM, D )
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -401,10 +417,15 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
+
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
+               D )
 
       CALL DeallocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
@@ -423,10 +444,11 @@ CONTAINS
   END SUBROUTINE InitializeFields_Advection1D
 
 
-  SUBROUTINE InitializeFields_RiemannProblem1D( iLevel, MF_uGF, MF_uCM )
+  SUBROUTINE InitializeFields_RiemannProblem1D( iLevel, MF_uGF, MF_uCM, MF_uDM )
 
     INTEGER             , INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uDM
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCM
 
     TYPE(amrex_mfiter)    :: MFI
@@ -440,9 +462,11 @@ CONTAINS
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: D(:,:,:,:,:)
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCM(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDM(:,:,:,:)
 
     TYPE(EdgeMap) :: Edge_Map
 
@@ -540,6 +564,7 @@ CONTAINS
 
       uGF => MF_uGF % DataPtr( MFI )
       uCM => MF_uCM % DataPtr( MFI )
+      uDM => MF_uDM % DataPtr( MFI )
 
       BX = MFI % TileBox()
 
@@ -558,8 +583,16 @@ CONTAINS
                [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCM ], &
                U )
 
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
+               D )
+
       CALL amrex2thornado_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
+
+      CALL amrex2thornado_X &
+             ( nDM, iX_B1, iX_E1, LBOUND( uDM ), iX_B0, iX_E0, uGF, D )
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -632,10 +665,15 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
+
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
+               D )
 
       CALL DeallocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
@@ -654,10 +692,11 @@ CONTAINS
   END SUBROUTINE InitializeFields_RiemannProblem1D
 
 
-  SUBROUTINE InitializeFields_RiemannProblem2D( iLevel, MF_uGF, MF_uCM )
+  SUBROUTINE InitializeFields_RiemannProblem2D( iLevel, MF_uGF, MF_uCM, MF_uDM )
 
     INTEGER             , INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uDM
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCM
 
     TYPE(amrex_mfiter)    :: MFI
@@ -671,9 +710,11 @@ CONTAINS
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: D(:,:,:,:,:)
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCM(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDM(:,:,:,:)
 
     TYPE(EdgeMap) :: Edge_Map
 
@@ -809,6 +850,7 @@ CONTAINS
 
       uGF => MF_uGF % DataPtr( MFI )
       uCM => MF_uCM % DataPtr( MFI )
+      uDM => MF_uDM % DataPtr( MFI )
 
       BX = MFI % TileBox()
 
@@ -827,8 +869,16 @@ CONTAINS
                [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCM ], &
                U )
 
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
+               D )
+
       CALL amrex2thornado_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
+
+      CALL amrex2thornado_X &
+             ( nDM, iX_B1, iX_E1, LBOUND( uDM ), iX_B0, iX_E0, uDM, D )
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -921,10 +971,15 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
+
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
+               D )
 
       CALL DeallocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
@@ -943,10 +998,11 @@ CONTAINS
   END SUBROUTINE InitializeFields_RiemannProblem2D
 
 
-  SUBROUTINE InitializeFields_Advection2D( iLevel, MF_uGF, MF_uCM )
+  SUBROUTINE InitializeFields_Advection2D( iLevel, MF_uGF, MF_uCM, MF_uDM )
 
     INTEGER             , INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uDM
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCM
 
     TYPE(amrex_mfiter)    :: MFI
@@ -960,9 +1016,11 @@ CONTAINS
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: D(:,:,:,:,:)
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCM(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDM(:,:,:,:)
 
     TYPE(EdgeMap) :: Edge_Map
 
@@ -1058,6 +1116,7 @@ CONTAINS
 
       uGF => MF_uGF % DataPtr( MFI )
       uCM => MF_uCM % DataPtr( MFI )
+      uDM => MF_uDM % DataPtr( MFI )
 
       BX = MFI % TileBox()
 
@@ -1076,8 +1135,16 @@ CONTAINS
                [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCM ], &
                U )
 
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
+               D )
+
       CALL amrex2thornado_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
+
+      CALL amrex2thornado_X &
+             ( nDM, iX_B1, iX_E1, LBOUND( uDM ), iX_B0, iX_E0, uDM, D )
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -1155,10 +1222,15 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
+
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
+               D )
 
       CALL DeallocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
@@ -1179,10 +1251,11 @@ CONTAINS
 
   ! --- Relativistic 2D Kelvin-Helmholtz instability a la
   !     Radice & Rezzolla, (2012), AA, 547, A26 ---
-  SUBROUTINE InitializeFields_KelvinHelmholtz2D( iLevel, MF_uGF, MF_uCM )
+  SUBROUTINE InitializeFields_KelvinHelmholtz2D( iLevel, MF_uGF, MF_uCM, MF_uDM )
 
     INTEGER             , INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uDM
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCM
 
     TYPE(amrex_mfiter) :: MFI
@@ -1195,9 +1268,11 @@ CONTAINS
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: D(:,:,:,:,:)
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCM(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDM(:,:,:,:)
 
     TYPE(EdgeMap) :: Edge_Map
 
@@ -1233,6 +1308,7 @@ CONTAINS
 
       uGF => MF_uGF % DataPtr( MFI )
       uCM => MF_uCM % DataPtr( MFI )
+      uDM => MF_uDM % DataPtr( MFI )
 
       BX = MFI % tilebox()
 
@@ -1251,8 +1327,16 @@ CONTAINS
                [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCM ], &
                U )
 
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
+               D )
+
       CALL amrex2thornado_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
+
+      CALL amrex2thornado_X &
+             ( nDM, iX_B1, iX_E1, LBOUND( uDM ), iX_B0, iX_E0, uDM, D )
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -1354,10 +1438,15 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
+
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
+               D )
 
       CALL DeallocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
@@ -1378,10 +1467,11 @@ CONTAINS
 
   ! --- Relativistic 2D Kelvin-Helmholtz instability a la
   !     Radice & Rezzolla, (2012), AA, 547, A26 ---
-  SUBROUTINE InitializeFields_OrszagTang2D( iLevel, MF_uGF, MF_uCM )
+  SUBROUTINE InitializeFields_OrszagTang2D( iLevel, MF_uGF, MF_uCM, MF_uDM )
 
     INTEGER             , INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uDM
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCM
 
     TYPE(amrex_mfiter) :: MFI
@@ -1394,9 +1484,11 @@ CONTAINS
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: D(:,:,:,:,:)
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCM(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDM(:,:,:,:)
 
     TYPE(EdgeMap) :: Edge_Map
 
@@ -1426,6 +1518,7 @@ CONTAINS
 
       uGF => MF_uGF % DataPtr( MFI )
       uCM => MF_uCM % DataPtr( MFI )
+      uDM => MF_uDM % DataPtr( MFI )
 
       BX = MFI % tilebox()
 
@@ -1447,8 +1540,16 @@ CONTAINS
                [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCM ], &
                U )
 
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
+               D )
+
       CALL amrex2thornado_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
+
+      CALL amrex2thornado_X &
+             ( nDM, iX_B1, iX_E1, LBOUND( uDM ), iX_B0, iX_E0, uDM, D )
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -1534,10 +1635,15 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
+
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
+               D )
 
       CALL DeallocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
@@ -1556,10 +1662,11 @@ CONTAINS
   END SUBROUTINE InitializeFields_OrszagTang2D
 
 
-  SUBROUTINE InitializeFields_Advection3D( iLevel, MF_uGF, MF_uCM )
+  SUBROUTINE InitializeFields_Advection3D( iLevel, MF_uGF, MF_uCM, MF_uDM )
 
     INTEGER             , INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uDM
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCM
 
     TYPE(amrex_mfiter)    :: MFI
@@ -1573,9 +1680,11 @@ CONTAINS
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: D(:,:,:,:,:)
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCM(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDM(:,:,:,:)
 
     TYPE(EdgeMap) :: Edge_Map
 
@@ -1675,6 +1784,7 @@ CONTAINS
 
       uGF => MF_uGF % DataPtr( MFI )
       uCM => MF_uCM % DataPtr( MFI )
+      uDM => MF_uDM % DataPtr( MFI )
 
       BX = MFI % TileBox()
 
@@ -1693,8 +1803,16 @@ CONTAINS
                [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCM ], &
                U )
 
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
+               D )
+
       CALL amrex2thornado_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
+
+      CALL amrex2thornado_X &
+             ( nDM, iX_B1, iX_E1, LBOUND( uDM ), iX_B0, iX_E0, uDM, D )
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -1777,7 +1895,7 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
@@ -1790,7 +1908,12 @@ CONTAINS
       CALL DeallocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
-               G )
+               G ) 
+
+      CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
+               D )
 
     END DO
 
@@ -1799,14 +1922,16 @@ CONTAINS
   END SUBROUTINE InitializeFields_Advection3D
 
 
-  SUBROUTINE InitializeFields_ShearingDisk( iLevel, MF_uGF, MF_uCM )
+  SUBROUTINE InitializeFields_ShearingDisk( iLevel, MF_uGF, MF_uCM, MF_uDM )
 
     INTEGER             , INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCM
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDM
 
-    TYPE(amrex_mfiter) :: MFI
-    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter)    :: MFI
+    TYPE(amrex_box)       :: BX
+    TYPE(amrex_parmparse) :: PP
 
     INTEGER  :: iNX, iX1, iX2, iX3
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -1815,9 +1940,11 @@ CONTAINS
 
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: D(:,:,:,:,:)
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCM(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDM(:,:,:,:)
 
     TYPE(EdgeMap) :: Edge_Map
 
@@ -1826,7 +1953,10 @@ CONTAINS
     INTEGER  :: iNX1, iNX2, iNX3
     REAL(DP) :: X1, X2, X3
 
-    CHARACTER(256) :: FileName
+    CHARACTER(:), ALLOCATABLE :: InitialConditionFile
+    INTEGER        :: NumX1InterpolationPoints
+    REAL(DP)       :: InitialField
+    LOGICAL        :: AddSinePerturbation
 
     INTEGER        :: nX_Data
     INTEGER(HID_T) :: FILE_ID
@@ -1840,16 +1970,29 @@ CONTAINS
     REAL(DP) :: Random_r, Random_z, Random_theta
 
     uPM = Zero
+ 
+    NumX1InterpolationPoints = 10000
+    InitialConditionFile &
+      = "/nfs/home/jbuffal1/thornado/Workflow/MHD/ShearingDisk/GR_LR_diffrot.h5"
+    InitialField &
+      = Zero
+    AddSinePerturbation &
+      = .FALSE.    
 
-    FileName &
-      = "/home/jbuffal/thornado_MHD_3D/Workflow/MHD/ShearingDisk/GR_LR_diffrot.h5"
-    nX_Data = 10000
+    CALL amrex_parmparse_build( PP, 'SD' )
+      CALL PP % query( 'InitialConditionFile'     , InitialConditionFile     )
+      CALL PP % query( 'NumX1InterpolationPoints' , NumX1InterpolationPoints )
+      CALL PP % query( 'InitialField'             , InitialField             )
+      CALL PP % query( 'AddSinusoidalPerturbation', AddSinePerturbation      )
+    CALL amrex_parmparse_destroy( PP )
+
+    nX_Data = NumX1InterpolationPoints
 
     ! --- Populate arrays ---
 
     CALL H5OPEN_F( HDFERR )
 
-    CALL H5FOPEN_F( TRIM( FileName ), H5F_ACC_RDONLY_F, FILE_ID, HDFERR )
+    CALL H5FOPEN_F( TRIM( InitialConditionFile ), H5F_ACC_RDONLY_F, FILE_ID, HDFERR )
 
     ALLOCATE( PressureArr(nX_Data), DensityArr(nX_Data), V3Arr(nX_Data), &
               AlphaArr(nX_Data), PsiArr(nX_Data), X1Arr(nX_Data) )
@@ -1881,6 +2024,7 @@ CONTAINS
 
       uGF => MF_uGF % DataPtr( MFI )
       uCM => MF_uCM % DataPtr( MFI )
+      uDM => MF_uDM % DataPtr( MFI )
 
       BX = MFI % tilebox()
 
@@ -1899,8 +2043,17 @@ CONTAINS
                [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCM ], &
                U )
 
+
+      CALL AllocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
+               D )
+
       CALL amrex2thornado_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B0, iX_E0, uGF, G )
+
+      CALL amrex2thornado_X &
+             ( nDM, iX_B1, iX_E1, LBOUND( uDM ), iX_B0, iX_E0, uDM, D )
 
       DO iX3 = iX_B1(3), iX_E1(3)
       DO iX2 = iX_B1(2), iX_E1(2)
@@ -1970,7 +2123,7 @@ CONTAINS
             / ( Gamma_IDEAL - One )
 
         CB1 = Zero
-        CB2 = 2.0 * 1.0d13 * Gauss
+        CB2 = InitialField * Gauss
         CB3 = Zero
 
         VdotB = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) * V1 * CB1 &
@@ -2017,11 +2170,19 @@ CONTAINS
                    G(iNX,iX1,iX2,iX3,iGF_Beta_3  ), &
                    Caz )
 
-          kz = SQRT( One - ( Two - 1.25_DP )**2 / Four ) &
-               * ( uPM(iNX,iPM_V3) / Caz )
+          IF( AddSinePerturbation )THEN
+
+            kz = SQRT( One - ( Two - 1.25_DP )**2 / Four ) &
+                 * ( uPM(iNX,iPM_V3) / Caz )
+
+          ELSE
+
+            kz = Zero
+
+          END IF
 
           uPM(iNX,iPM_V1) = ( 0.1_DP * Rand_Amplitude * Random_r &
-                              + 0.2d-5 * SIN( kz * X2 ) ) &
+                              + SIN( kz * X2 ) ) &
                             * X1 * uPM(iNX,iPM_V3)
           uPM(iNX,iPM_V2) = Rand_Amplitude * Random_z &
                             * X1 * uPM(iNX,iPM_V3)
@@ -2065,6 +2226,8 @@ CONTAINS
                  Pressure, &
                  EvolveOnlyMagnetic )
 
+        D(iNX,iX1,iX2,iX3,iDM_IC_D:iDM_IC_Chi) = U(iNX,iX1,iX2,iX3,iCM_D:iCM_Chi)
+
       END DO
       END DO
       END DO
@@ -2073,13 +2236,21 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
+
+      CALL thornado2amrex_X &
+             ( nDM, iX_B1, iX_E1, LBOUND( uDM ), iX_B1, iX_E1, uDM, D )
+
+       CALL DeallocateArray_X &
+             ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+               [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
+               D )
 
       CALL DeallocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &

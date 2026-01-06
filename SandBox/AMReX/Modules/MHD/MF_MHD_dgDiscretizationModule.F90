@@ -188,9 +188,9 @@ CONTAINS
 
     ! --- Apply boundary conditions to interior domains ---
 
-    CALL FillPatch( iLevel, MF_uGF )
-    CALL FillPatch( iLevel, MF_uGF, MF_uDM )
-    CALL FillPatch( iLevel, MF_uGF, MF_uCM )
+!    CALL FillPatch( iLevel, MF_uGF )
+!    CALL FillPatch( iLevel, MF_uGF, MF_uDM )
+!    CALL FillPatch( iLevel, MF_uGF, MF_uCM, MF_uDM )
     CALL ApplyPositivityLimiter_MHD_MF &
            ( t, iLevel, MF_uGF(iLevel), MF_uCM(iLevel), MF_uDM(iLevel), &
              swX_Option = swX )
@@ -295,7 +295,7 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( t, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+             ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
 
       CALL DetectShocks_MHD( iX_B0, iX_E0, iX_B1, iX_E1, G, U, &
                              EvolveOnlyMagnetic, D )
