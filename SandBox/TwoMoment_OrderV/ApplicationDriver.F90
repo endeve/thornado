@@ -81,17 +81,17 @@ PROGRAM ApplicationDriver
 
       ! --- Minerbo Closure Only ---
 
-      nX  = [ 64, 1, 1 ]
+      nX  = [ 8, 8, 8 ]
       xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
       xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
       bcX = [ 1, 1, 1 ]
 
-      nE  = 8
+      nE  = 16
       eL  = 0.0_DP
       eR  = 1.0_DP
       bcE = 1
 
-      nSpecies = 1
+      nSpecies = 6
       nNodes = 2
 
       TimeSteppingScheme = 'SSPRK2'
@@ -112,8 +112,8 @@ PROGRAM ApplicationDriver
       C_TCI = 1.0_DP
       UseTroubledCellIndicator = .FALSE.
       UseSlopeLimiter          = .FALSE.
-      UsePositivityLimiter     = .FALSE.
-      UseEnergyLimiter         = .FALSE.
+      UsePositivityLimiter     = .TRUE.
+      UseEnergyLimiter         = .TRUE.
 
     CASE( 'SineWaveDiffusion' )
 

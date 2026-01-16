@@ -114,7 +114,7 @@ PROGRAM ApplicationDriver_Neutrinos
   Rtol_inner      = 1.0d-8
   Include_NES     = .TRUE.
   Include_Pair    = .TRUE.
-  Include_NuPair  = .FALSE.
+  Include_NuPair  = .TRUE.
   Include_Brem    = .TRUE.
   Include_LinCorr = .FALSE.
   wMatterRHS      = [ One, One, One, One, One ]
@@ -133,7 +133,7 @@ PROGRAM ApplicationDriver_Neutrinos
       nE    = 16
       eL    = 0.0d0 * MeV
       eR    = 3.0d2 * MeV
-      bcE   = 0
+      bcE   = 11
       ZoomE = 1.266038160710160_DP
 
       IF( Relaxation_restart_from_file ) THEN
@@ -199,7 +199,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
       ELSE
 
-        nX  = [ 1, 1, 1 ]
+        nX  = [ 8, 8, 8 ]
         xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
         xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
         bcX = [ 0, 0, 0 ]
