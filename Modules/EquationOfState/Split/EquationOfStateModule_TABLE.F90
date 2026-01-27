@@ -3316,7 +3316,7 @@ CONTAINS
       Ye_P = Ye(iP)
       Ym_P = Ym(iP)
 
-      IF ( D_P >= MuonEoS_MinD ) THEN
+      IF ( D_P / UnitD >= MuonEoS_MinD ) THEN
         CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
           ( D_P, T_P, Ye_P, Ym_P, Mun )
           
