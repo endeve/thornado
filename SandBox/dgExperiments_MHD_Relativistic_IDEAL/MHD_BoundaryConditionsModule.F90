@@ -974,6 +974,9 @@ CONTAINS
  
               U(iNX,iX_B0(1)-iX1,iX2,iX3,5) &
                 = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_E)           
+
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,10) &
+                = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_Chi)
  
             ELSE
 
@@ -1012,9 +1015,6 @@ CONTAINS
 
             U(iNX,iX_B0(1)-iX1,iX2,iX3,9) &
               = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,9)
-
-            U(iNX,iX_B0(1)-iX1,iX2,iX3,10) &
-              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,10)
 
           END DO
           END DO
@@ -1114,6 +1114,9 @@ CONTAINS
  
               U(iNX,iX_E0(1)+iX1,iX2,iX3,5) &
                 = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_E)
+
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,10) &
+                = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_Chi)
  
             ELSE
 
@@ -1152,9 +1155,6 @@ CONTAINS
   
               U(iNX,iX_E0(1)+iX1,iX2,iX3,9) &
                 = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,9)
-  
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,10) &
-                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,10)
   
           END DO
           END DO
