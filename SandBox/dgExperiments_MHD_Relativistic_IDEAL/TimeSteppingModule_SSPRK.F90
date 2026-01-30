@@ -35,7 +35,7 @@ MODULE TimeSteppingModule_SSPRK
   LOGICAL  :: UseFluxDecoupling
   INTEGER  :: nStages_SSPRK
   REAL(DP) :: CleaningSpeed
-  REAL(DP) :: DampingParameter
+  REAL(DP) :: DampingTimeScaleFactor
 
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: c_SSPRK
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: w_SSPRK
@@ -55,7 +55,7 @@ MODULE TimeSteppingModule_SSPRK
         EvolveOnlyMagnetic_Option, &
         UseDivergenceCleaning_Option, &
         CleaningSpeed_Option, &
-        DampingParameter_Option, &
+        DampingTimeScaleFactor_Option, &
         UsePowellSource_Option, &
         UseFluxDecoupling_Option, &
         SurfaceFlux_X1_Option, &
@@ -82,7 +82,7 @@ MODULE TimeSteppingModule_SSPRK
         UseFluxDecoupling_Option
       REAL(DP), INTENT(in), OPTIONAL :: &
         CleaningSpeed_Option, &
-        DampingParameter_Option
+        DampingTimeScaleFactor_Option
       REAL(DP), INTENT(out), OPTIONAL :: &
         SurfaceFlux_X1_Option(:,:,:,:,:), &
         SurfaceFlux_X2_Option(:,:,:,:,:), &
@@ -97,7 +97,7 @@ CONTAINS
                ( nStages, EvolveOnlyMagnetic_Option, &
                  UseDivergenceCleaning_Option, &
                  CleaningSpeed_Option, &
-                 DampingParameter_Option, &
+                 DampingTimeScaleFactor_Option, &
                  UsePowellSource_Option, &
                  UseFluxDecoupling_Option )
 
@@ -108,7 +108,7 @@ CONTAINS
     LOGICAL,  INTENT(in), OPTIONAL :: UsePowellSource_Option
     LOGICAL,  INTENT(in), OPTIONAL :: UseFluxDecoupling_Option
     REAL(DP), INTENT(in), OPTIONAL :: CleaningSpeed_Option
-    REAL(DP), INTENT(in), OPTIONAL :: DampingParameter_Option
+    REAL(DP), INTENT(in), OPTIONAL :: DampingTimeScaleFactor_Option
 
     INTEGER :: i
 
@@ -123,9 +123,9 @@ CONTAINS
       CleaningSpeed = CleaningSpeed_Option
     END IF
 
-    DampingParameter = 0.0_DP
-    IF( PRESENT( DampingParameter_Option ) )THEN
-      DampingParameter = DampingParameter_Option
+    DampingTimeScaleFactor = 0.0_DP
+    IF( PRESENT( DampingTimeScaleFactor_Option ) )THEN
+      DampingTimeScaleFactor = DampingTimeScaleFactor_Option
     END IF
 
     UseDivergenceCleaning = .FALSE.
@@ -307,12 +307,12 @@ CONTAINS
         END IF
 
         CALL ComputeIncrement_Magnetofluid &
-               ( t, CFL, iX_B0, iX_E0, iX_B1, iX_E1, &
+               ( t, dt, CFL, iX_B0, iX_E0, iX_B1, iX_E1, &
                  G, U_SSPRK, D, D_SSPRK(:,:,:,:,:,iS), &
                  EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic, &
                  UseDivergenceCleaning_Option = UseDivergenceCleaning, &
                  CleaningSpeed_Option = CleaningSpeed, &
-                 DampingParameter_Option = DampingParameter, &
+                 DampingTimeScaleFactor_Option = DampingTimeScaleFactor, &
                  UsePowellSource_Option = UsePowellSource, &
                  UseFluxDecoupling_Option = UseFluxDecoupling )
 

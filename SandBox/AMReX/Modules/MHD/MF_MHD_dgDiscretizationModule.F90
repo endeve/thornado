@@ -90,7 +90,7 @@ MODULE  MF_MHD_dgDiscretizationModule
     DEBUG, &
     EvolveOnlyMagnetic, &
     UseDivergenceCleaning, &
-    DampingParameter, &
+    DampingTimeScaleFactor, &
     CleaningSpeed, &
     UsePowellSource, &
     UseFluxDecoupling
@@ -113,8 +113,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_MHD_MF_MultipleLevels &
-    ( t, CFL, MF_uGF, MF_uCM, MF_uDM, MF_duCM )
+    ( t, dt, CFL, MF_uGF, MF_uCM, MF_uDM, MF_duCM )
 
+    REAL(DP),             INTENT(in   ) :: dt     (0:)
     REAL(DP),             INTENT(in   ) :: t      (0:)
     REAL(DP),             INTENT(in   ) :: CFL
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF (0:)
@@ -139,7 +140,7 @@ CONTAINS
       END IF
 
       CALL ComputeIncrement_MHD_MF_SingleLevel &
-             ( t(iLevel), CFL, iLevel, MF_uGF, MF_uCM, MF_uDM, MF_duCM(iLevel) )
+             ( t(iLevel), dt(iLevel), CFL, iLevel, MF_uGF, MF_uCM, MF_uDM, MF_duCM(iLevel) )
 
     END DO
 
@@ -149,9 +150,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_MHD_MF_SingleLevel &
-    ( t, CFL, iLevel, MF_uGF, MF_uCM, MF_uDM, MF_duCM )
+    ( t, dt, CFL, iLevel, MF_uGF, MF_uCM, MF_uDM, MF_duCM )
 
-    REAL(DP)            , INTENT(in)    :: t
+    REAL(DP)            , INTENT(in)    :: t, dt
     REAL(DP)            , INTENT(in)    :: CFL
     INTEGER,              INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
@@ -301,12 +302,12 @@ CONTAINS
                              EvolveOnlyMagnetic, D )
 
       CALL ComputeIncrement_MHD_DG_Explicit &
-             ( t, CFL, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
+             ( t, dt, CFL, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
                SuppressBC_Option = .TRUE., &
                EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic, &
                UseDivergenceCleaning_Option = UseDivergenceCleaning, &
                CleaningSpeed_Option = CleaningSpeed, &
-               DampingParameter_Option = DampingParameter, &
+               DampingTimeScaleFactor_Option = DampingTimeScaleFactor, &
                UsePowellSource_Option = UsePowellSource, &
                UseFluxDecoupling_Option = UseFluxDecoupling, &
                SurfaceFlux_X1_Option = SurfaceFlux_X1, &

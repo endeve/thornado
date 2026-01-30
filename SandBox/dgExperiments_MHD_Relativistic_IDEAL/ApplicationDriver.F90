@@ -128,7 +128,7 @@ PROGRAM ApplicationDriver
   LOGICAL  :: ApplyRandomPerturbations = .FALSE.
 
   REAL(DP) :: CleaningSpeed    = 1.0_DP
-  REAL(DP) :: DampingParameter = 0.0_DP
+  REAL(DP) :: DampingTimeScaleFactor = 0.0_DP
   REAL(DP) :: Angle = 0.0_DP
 
   REAL(DP) :: MMBlastWaveB0  = 0.5_DP
@@ -328,7 +328,7 @@ PROGRAM ApplicationDriver
           EvolveOnlyMagnetic = .FALSE.
           UseDivergenceCleaning = .FALSE.
 
-          DampingParameter = One
+          DampingTimeScaleFactor = One
 
           Angle = ATAN(TwoPi)
 
@@ -349,7 +349,7 @@ PROGRAM ApplicationDriver
 
           EvolveOnlyMagnetic = .TRUE.
           UseDivergenceCleaning = .FALSE.
-          DampingParameter = 0.0_DP
+          DampingTimeScaleFactor = 0.0_DP
 
           UsePowellSource = .FALSE.
 
@@ -457,7 +457,7 @@ PROGRAM ApplicationDriver
 
       EvolveOnlyMagnetic = .TRUE.
       UseDivergenceCleaning = .TRUE.
-      DampingParameter = 0.0_DP
+      DampingTimeScaleFactor = 0.0_DP
 
       SmoothProfile = .TRUE.
 
@@ -477,7 +477,7 @@ PROGRAM ApplicationDriver
       EvolveOnlyMagnetic = .TRUE.
 
       UseDivergenceCleaning = .TRUE.
-      DampingParameter = 0.0_DP
+      DampingTimeScaleFactor = 0.0_DP
 
       ConstantDensity = .TRUE.
 
@@ -497,7 +497,7 @@ PROGRAM ApplicationDriver
       EvolveOnlyMagnetic = .FALSE.
 
       UseDivergenceCleaning = .FALSE.
-      DampingParameter = 0.0_DP
+      DampingTimeScaleFactor = 0.0_DP
 
       UsePowellSource = .FALSE.
 
@@ -614,7 +614,7 @@ PROGRAM ApplicationDriver
       EvolveOnlyMagnetic = .FALSE.
 
       UseDivergenceCleaning = .FALSE.
-      DampingParameter = 0.0_DP
+      DampingTimeScaleFactor = 0.0_DP
 
       MMBlastWaveB0  = 0.5_DP
       MMBlastWavePhi = 0.0_DP
@@ -636,7 +636,7 @@ PROGRAM ApplicationDriver
 
       UseDivergenceCleaning = .FALSE.
       CleaningSpeed = 1.0_DP
-      DampingParameter = 0.0_DP
+      DampingTimeScaleFactor = 0.0_DP
 
       OTScaleFactor = 100.0_DP
 
@@ -656,7 +656,7 @@ PROGRAM ApplicationDriver
       EvolveOnlyMagnetic = .FALSE.
 
       UseDivergenceCleaning = .FALSE.
-      DampingParameter = 5.0_DP
+      DampingTimeScaleFactor = 5.0_DP
 
       Gamma = 5.0_DP / 3.0_DP
       t_end = 0.4_DP
@@ -680,7 +680,7 @@ PROGRAM ApplicationDriver
       Rand_Amplitude = 1.0d-4
 
       UseDivergenceCleaning = .FALSE.
-      DampingParameter = 0.0_DP
+      DampingTimeScaleFactor = 0.0_DP
       UsePowellSource = .FALSE.
 
       Gamma = 4.0_DP / 3.0_DP
@@ -701,7 +701,7 @@ PROGRAM ApplicationDriver
       EvolveOnlyMagnetic = .FALSE.
 
       UseDivergenceCleaning = .FALSE.
-      DampingParameter = Zero
+      DampingTimeScaleFactor = Zero
       UsePowellSource = .FALSE.
 
       Gamma = Four / Three
@@ -832,7 +832,7 @@ PROGRAM ApplicationDriver
          ( nStages = nStagesSSPRK, EvolveOnlyMagnetic_Option = EvolveOnlyMagnetic, &
            UseDivergenceCleaning_Option = UseDivergenceCleaning, &
            CleaningSpeed_Option = CleaningSpeed, &
-           DampingParameter_Option = DampingParameter, &
+           DampingTimeScaleFactor_Option = DampingTimeScaleFactor, &
            UsePowellSource_Option = UsePowellSource, &
            UseFluxDecoupling_Option = UseFluxDecoupling )
 
@@ -937,7 +937,7 @@ PROGRAM ApplicationDriver
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              uGF, uCM, &
              CFL / ( nDimsX * ( Two * DBLE( nNodes ) - One ) ), &
-             dt, UseDivergenceCleaning, CleaningSpeed, DampingParameter, EvolveOnlyMagnetic )
+             dt, UseDivergenceCleaning, CleaningSpeed, DampingTimeScaleFactor, EvolveOnlyMagnetic )
 
     IF( t + dt .LT. t_end )THEN
 

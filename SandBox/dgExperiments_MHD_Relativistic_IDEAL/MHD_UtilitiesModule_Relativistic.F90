@@ -1579,14 +1579,14 @@ CONTAINS
   !> required time-step for numerical stability.
   SUBROUTINE ComputeTimeStep_MHD_Relativistic &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep, &
-      UseDivergenceCleaning, CleaningSpeed, DampingParameter, EvolveOnlyMagnetic )
+      UseDivergenceCleaning, CleaningSpeed, DampingTimeScaleFactor, EvolveOnlyMagnetic )
 
     LOGICAL,  INTENT(in)  :: &
       UseDivergenceCleaning, &
       EvolveOnlyMagnetic
     REAL(DP), INTENT(in) :: &
       CleaningSpeed, &
-      DampingParameter
+      DampingTimeScaleFactor
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)  :: &
@@ -1690,15 +1690,7 @@ CONTAINS
 
         END IF
 
-        IF( UseDivergenceCleaning .AND. ( DampingParameter > Zero ) )THEN
-
-          TimeStep = MIN( TimeStep, dt, One / DampingParameter )
-
-        ELSE
-
-          Timestep = MIN( TimeStep, dt )
-
-        END IF
+        Timestep = MIN( TimeStep, dt )
 
       END DO
 

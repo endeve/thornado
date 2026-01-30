@@ -19,7 +19,8 @@ MODULE InputParsingModule
     nDimsX
   USE UnitsModule, ONLY: &
     ActivateUnitsDisplay, &
-    UnitsDisplay
+    UnitsDisplay, &
+    SpeedOfLight
   USE GeometryFieldsModule, ONLY: &
     CoordinateSystem
   USE RadiationFieldsModule, ONLY: &
@@ -60,7 +61,7 @@ MODULE InputParsingModule
   LOGICAL  :: EvolveOnlyMagnetic
   LOGICAL  :: UseDivergenceCleaning
   REAL(DP) :: CleaningSpeed
-  REAL(DP) :: DampingParameter
+  REAL(DP) :: DampingTimeScaleFactor
   LOGICAL  :: UsePowellSource
   LOGICAL  :: UseFluxDecoupling
 
@@ -201,7 +202,7 @@ CONTAINS
     EvolveOnlyMagnetic    = .FALSE.
     UseDivergenceCleaning = .FALSE.
     CleaningSpeed         = 0.0_DP
-    DampingParameter      = 0.0_DP
+    DampingTimeScaleFactor     = 0.0_DP
     UsePowellSource       = .FALSE.
     UseFluxDecoupling     = .FALSE.
 
@@ -268,8 +269,8 @@ CONTAINS
                          UseDivergenceCleaning )
       CALL PP % query ( 'CleaningSpeed', &
                          CleaningSpeed )
-      CALL PP % query ( 'DampingParameter', &
-                         DampingParameter )
+      CALL PP % query ( 'DampingTimeScaleFactor', &
+                         DampingTimeScaleFactor )
       CALL PP % query ( 'UsePowellSource', &
                          UsePowellSource )
       CALL PP % query ( 'UseFluxDecoupling', &
@@ -345,6 +346,8 @@ CONTAINS
 
       eL = eL * UnitsDisplay % EnergyUnit
       eR = eR * UnitsDisplay % EnergyUnit
+
+      CleaningSpeed = CleaningSpeed
 
     END IF
 

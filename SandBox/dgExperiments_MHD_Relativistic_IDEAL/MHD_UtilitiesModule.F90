@@ -201,7 +201,7 @@ CONTAINS
 
   SUBROUTINE ComputeTimeStep_MHD &
     ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CML, TimeStep, &
-      UseDivergenceCleaning, CleaningSpeed, DampingParameter, EvolveOnlyMagnetic )
+      UseDivergenceCleaning, CleaningSpeed, DampingTimeScaleFactor, EvolveOnlyMagnetic )
 
     LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
 
@@ -209,7 +209,7 @@ CONTAINS
       UseDivergenceCleaning
     REAL(DP), INTENT(in) :: &
       CleaningSpeed, &
-      DampingParameter
+      DampingTimeScaleFactor
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
@@ -223,7 +223,7 @@ CONTAINS
 
     CALL ComputeTimeStep_MHD_Relativistic &
            ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CML, TimeStep, &
-             UseDivergenceCleaning, CleaningSpeed, DampingParameter, EvolveOnlyMagnetic )
+             UseDivergenceCleaning, CleaningSpeed, DampingTimeScaleFactor, EvolveOnlyMagnetic )
 
   END SUBROUTINE ComputeTimeStep_MHD
 

@@ -118,7 +118,8 @@ MODULE MHD_DiscretizationModule_Relativistic
   LOGICAL  :: UsePowellSource
   LOGICAL  :: UseFluxDecoupling
   REAL(DP) :: CleaningSpeed
-  REAL(DP) :: DampingParameter
+  REAL(DP) :: DampingTimeScaleFactor
+  REAL(DP) :: DampingCoefficient
 
   REAL(DP), POINTER, CONTIGUOUS :: &
     Gm_dd_11_K(:), Gm_dd_22_K(:), Gm_dd_33_K(:), SqrtGm_K(:), &
@@ -161,19 +162,19 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_MHD_DG_Explicit &
-    ( t, CFL, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
+    ( t, dt, CFL, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &
       SuppressBC_Option, &
       EvolveOnlyMagnetic_Option, &
       UseDivergenceCleaning_Option, &
       CleaningSpeed_Option, &
-      DampingParameter_Option, &
+      DampingTimeScaleFactor_Option, &
       UsePowellSource_Option, &
       UseFluxDecoupling_Option, &
       SurfaceFlux_X1_Option, &
       SurfaceFlux_X2_Option, &
       SurfaceFlux_X3_Option )
 
-    REAL(DP), INTENT(in)            :: t
+    REAL(DP), INTENT(in)            :: t, dt
     REAL(DP), INTENT(in)            :: CFL
     INTEGER,  INTENT(in)            :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -193,7 +194,7 @@ CONTAINS
       UseFluxDecoupling_Option
     REAL(DP), INTENT(in),  OPTIONAL :: &
       CleaningSpeed_Option, &
-      DampingParameter_Option
+      DampingTimeScaleFactor_Option
     REAL(DP), INTENT(out), OPTIONAL :: &
       SurfaceFlux_X1_Option(:,:,:,:,:), &
       SurfaceFlux_X2_Option(:,:,:,:,:), &
@@ -249,10 +250,12 @@ CONTAINS
       CleaningSpeed = CleaningSpeed_Option
     END IF
 
-    DampingParameter = 0.0_DP
-    IF( UseDivergenceCleaning .AND. PRESENT( DampingParameter_Option ) )THEN
-      DampingParameter = DampingParameter_Option
+    DampingTimeScaleFactor = 0.0_DP
+    IF( UseDivergenceCleaning .AND. PRESENT( DampingTimeScaleFactor_Option ) )THEN
+      DampingTimeScaleFactor = DampingTimeScaleFactor_Option
     END IF
+
+    DampingCoefficient = DampingTimeScaleFactor / dt
 
     UsePowellSource = .FALSE.
     IF( PRESENT( UsePowellSource_Option ) ) &
@@ -399,7 +402,7 @@ CONTAINS
     END DO
 
     CALL ComputeIncrement_Geometry &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
+           ( dt, iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
 
     DO iX3 = iX_B1(3), iX_E1(3)
     DO iX2 = iX_B1(2), iX_E1(2)
@@ -2681,8 +2684,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Geometry &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
+    ( dt, iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
 
+    REAL(DP), INTENT(in)    :: dt
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
@@ -2693,14 +2697,15 @@ CONTAINS
       dU (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
     CALL ComputeIncrement_Geometry_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
+           ( dt, iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
 
   END SUBROUTINE ComputeIncrement_Geometry
 
 
   SUBROUTINE ComputeIncrement_Geometry_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
+    ( dt, iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
 
+    REAL(DP), INTENT(in)           :: dt
     INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)           :: &
@@ -2959,7 +2964,7 @@ CONTAINS
 
         dU(iNX,iX1,iX2,iX3,iCM_Chi) &
           = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
-              - DampingParameter * U(iNX,iX1,iX2,iX3,iCM_Chi) &
+              - DampingCoefficient * U(iNX,iX1,iX2,iX3,iCM_Chi) &
               + ( U(iNX,iX1,iX2,iX3,iCM_B1) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
                 * dGdX1(iNX,iGF_Alpha,iX2,iX3,iX1)
 
@@ -3036,7 +3041,7 @@ CONTAINS
 
           dU(iNX,iX1,iX2,iX3,iCM_Chi) &
             = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
-              - DampingParameter * U(iNX,iX1,iX2,iX3,iCM_Chi) &
+              - DampingCoefficient * U(iNX,iX1,iX2,iX3,iCM_Chi) &
               + ( U(iNX,iX1,iX2,iX3,iCM_B2) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
                 * dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2)
 

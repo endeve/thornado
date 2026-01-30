@@ -79,7 +79,7 @@ MODULE MF_MHD_UtilitiesModule
     EvolveOnlyMagnetic, &
     UseDivergenceCleaning, &
     CleaningSpeed, &
-    DampingParameter, &
+    DampingTimeScaleFactor, &
     DEBUG
   USE MF_UtilitiesModule_MHD, ONLY: &
     amrex2thornado_X, &
@@ -306,7 +306,7 @@ CONTAINS
 
         CALL ComputeTimeStep_MHD &
                ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, CFL, TimeStep(iLevel), &
-                 UseDivergenceCleaning, CleaningSpeed, DampingParameter, EvolveOnlyMagnetic )
+                 UseDivergenceCleaning, CleaningSpeed, DampingTimeScaleFactor, EvolveOnlyMagnetic )
 
         TimeStepMin(iLevel) = MIN( TimeStepMin(iLevel), TimeStep(iLevel) )
 
