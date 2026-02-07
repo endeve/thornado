@@ -103,7 +103,8 @@ CONTAINS
 
     ! --- Rezzolla, Eq. (7.244) ---
 
-    K = ( Gamma_IDEAL - One ) / ( Gamma_IDEAL - One - Cs**2 )
+    Cs = MAX( Cs, SQRT( EPSILON( One ) ) )
+    K = One / ( One - Cs**2 / ( Gamma_IDEAL - One ) )
 
 #if !defined(THORNADO_OMP_OL) && !defined(THORNADO_OACC)
     IF( DEBUG )THEN
