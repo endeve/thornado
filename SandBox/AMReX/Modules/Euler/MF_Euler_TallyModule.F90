@@ -77,7 +77,7 @@ MODULE MF_Euler_TallyModule
   PUBLIC :: IncrementOffGridTally_Euler_MF
   PUBLIC :: FinalizeTally_Euler_MF
 
-  LOGICAL :: SuppressTally
+  LOGICAL :: SuppressTally_Euler
 
   INTEGER, PARAMETER :: SL = 256
 
@@ -133,10 +133,9 @@ CONTAINS
 
 
   SUBROUTINE InitializeTally_Euler_MF &
-    ( SuppressTally_Option, InitializeFromCheckpoint_Option )
+    ( InitializeFromCheckpoint_Option )
 
     LOGICAL, INTENT(in), OPTIONAL :: &
-      SuppressTally_Option, &
       InitializeFromCheckpoint_Option
 
     CHARACTER(:), ALLOCATABLE :: TallyFileNameRoot_Euler
@@ -149,21 +148,20 @@ CONTAINS
 
     CHARACTER(SL) :: TimeLabel
 
-    SuppressTally = .FALSE.
-    IF( PRESENT( SuppressTally_Option ) ) &
-      SuppressTally = SuppressTally_Option
-
     InitializeFromCheckpoint = .FALSE.
     IF( PRESENT( InitializeFromCheckpoint_Option ) ) &
       InitializeFromCheckpoint = InitializeFromCheckpoint_Option
 
     TallyFileNameRoot_Euler = TRIM( ProgramName )
+    SuppressTally_Euler     = .FALSE.
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL pp % query( 'TallyFileNameRoot_Euler', &
                         TallyFileNameRoot_Euler )
+      CALL pp % query( 'SuppressTally_Euler', &
+                        SuppressTally_Euler )
     CALL amrex_parmparse_destroy( PP )
 
-    IF( SuppressTally ) RETURN
+    IF( SuppressTally_Euler ) RETURN
 
     IF( amrex_parallel_ioprocessor() )THEN
 
@@ -324,7 +322,7 @@ CONTAINS
     INTEGER        :: iNX, iX1, iX2, iX3
     REAL(DP)       :: d3X
 
-    IF( SuppressTally ) RETURN
+    IF( SuppressTally_Euler ) RETURN
 
     SetInitialValues = .FALSE.
     IF( PRESENT( SetInitialValues_Option ) ) &
@@ -573,7 +571,7 @@ CONTAINS
 
     INTEGER :: iLevel
 
-    IF( SuppressTally ) RETURN
+    IF( SuppressTally_Euler ) RETURN
 
     DO iLevel = 0, nLevels-1
 
@@ -605,7 +603,7 @@ CONTAINS
 
   SUBROUTINE FinalizeTally_Euler_MF
 
-    IF( SuppressTally ) RETURN
+    IF( SuppressTally_Euler ) RETURN
 
   END SUBROUTINE FinalizeTally_Euler_MF
 
