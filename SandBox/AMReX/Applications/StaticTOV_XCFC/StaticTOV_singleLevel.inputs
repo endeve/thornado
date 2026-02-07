@@ -33,9 +33,9 @@ geometry.is_periodic = 0  1  1
 
 geometry.coord_sys = 2
 geometry.prob_lo   = 000.0 0.0               0.0
-geometry.prob_hi   = 1.201e1 3.1415926535897931 6.2831853071795862
+geometry.prob_hi   = 1.3e1 3.1415926535897931 6.2831853071795862
 
-amr.n_cell                  = 128 01 01
+amr.n_cell                  = 256 01 01
 thornado.swX                = 01  00 00
 #amr.max_grid_size_x         = 32
 #amr.blocking_factor_x       = 32
