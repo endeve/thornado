@@ -113,8 +113,6 @@ MODULE InitializationModule
   USE FillPatchModule, ONLY: &
     FillPatch, &
     FillCoarsePatch
-  USE MF_XCFC_UtilitiesModule, ONLY: &
-    MultiplyWithPsi6_MF
   USE TaggingModule, ONLY: &
     TagElements
   USE InputParsingModule, ONLY: &
@@ -401,12 +399,8 @@ CONTAINS
     CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF, &
                           ApplyBoundaryConditions_Euler_Option = .TRUE. )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCF(iLevel), -1 )
-
     CALL ApplyPositivityLimiter_Euler_MF &
            ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
-
-    CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCF(iLevel), +1 )
 
   END SUBROUTINE MakeNewLevelFromCoarse
 
@@ -458,12 +452,8 @@ CONTAINS
            ( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp, &
              ApplyBoundaryConditions_Euler_Option = .TRUE. )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF_tmp, MF_uCF_tmp, -1, swX_Option = swX )
-
     CALL ApplyPositivityLimiter_Euler_MF &
            ( iLevel, MF_uGF_tmp, MF_uCF_tmp, MF_uDF_tmp, swX_Option = swX )
-
-    CALL MultiplyWithPsi6_MF( MF_uGF_tmp, MF_uCF_tmp, +1, swX_Option = swX )
 
     CALL ClearLevel( iLevel )
 

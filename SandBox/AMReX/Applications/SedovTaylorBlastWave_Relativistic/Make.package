@@ -1,4 +1,4 @@
-# THORNADO_DIR/SandBox/AMReX/Applications/SedovTaylorBlastWave_XCFC
+# THORNADO_DIR/SandBox/AMReX/Applications/SedovTaylorBlastWave_Relativistic
 
 f90EXE_sources += MF_InitializationModule.f90
 f90EXE_sources += InitializationModule.f90

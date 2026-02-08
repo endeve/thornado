@@ -1,11 +1,11 @@
-##### SedovTaylorBlastWave_XCFC_2D_Cylindrical.inputs #####
+##### SedovTaylorBlastWave_Relativistic_2D_Cylindrical.inputs #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
 
 debug.DEBUG = 0
 
-thornado.ProgramName = "SedovTaylorBlastWave_XCFC"
+thornado.ProgramName = "SedovTaylorBlastWave_Relativistic"
 
 Sedov.nDetCells = 03 # number of cells on finest level
 Sedov.Edet      = 1.0e-3
@@ -13,15 +13,15 @@ Sedov.X_D       = 7.8125e-3 # Value taken from 1D run
 
 thornado.iRestart = -1
 
-thornado.TallyFileNameRoot_Euler = "SedovTaylorBlastWave_XCFC.Tally"
-thornado.PlotFileNameRoot = "SedovTaylorBlastWave_XCFC.plt"
+thornado.TallyFileNameRoot_Euler = "SedovTaylorBlastWave_Relativistic.Tally"
+thornado.PlotFileNameRoot = "SedovTaylorBlastWave_Relativistic.plt"
 thornado.t_end   = 5.0e2
 thornado.iCycleD = 10
 
 thornado.dt_wrt  = 1.0e2
 thornado.iCycleW = -1
 
-thornado.CheckpointFileNameRoot = "SedovTaylorBlastWave_XCFC.chk"
+thornado.CheckpointFileNameRoot = "SedovTaylorBlastWave_Relativistic.chk"
 thornado.dt_chk    = 5.1e2
 thornado.iCycleChk = -1
 
