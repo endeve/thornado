@@ -281,7 +281,7 @@ CONTAINS
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
     LOGICAL                         :: Verbose
 
-    Verbose = .FALSE.
+    Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
