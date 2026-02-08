@@ -100,6 +100,7 @@ MODULE InitializationModule
     InitializeFluid_SSPRK_MF
   USE MF_InitializationModule, ONLY: &
     InitializeFields_MF, &
+    D_Min_Euler_PL, &
     IntE_Min_Euler_PL
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
@@ -146,10 +147,6 @@ MODULE InitializationModule
     TimersStop_AMReX, &
     InitializeTimers_AMReX, &
     Timer_AMReX_Initialize
-  USE MF_GravitySolutionModule, ONLY: &
-    InitializeGravitySolver_MF
-  USE MF_MetricInitializationModule, ONLY: &
-    InitializeMetric_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -225,23 +222,18 @@ CONTAINS
 
     IF( iRestart .LT. 0 )THEN
 
+      D_Min_Euler_PL    = HUGE( 1.0_DP )
       IntE_Min_Euler_PL = HUGE( 1.0_DP )
 
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
 
+      CALL amrex_parallel_reduce_min( D_Min_Euler_PL )
       CALL amrex_parallel_reduce_min( IntE_Min_Euler_PL )
 
       CALL InitializePositivityLimiter_Euler_MF &
-             ( IntE_Min_Euler_PL_Option = IntE_Min_Euler_PL )
-
-      DO iLevel = 0, nLevels-1
-
-        CALL FillPatch &
-               ( iLevel, MF_uGF, &
-                 ApplyBoundaryConditions_Geometry_Option = .TRUE. )
-
-      END DO
+             ( D_Min_Euler_PL_Option = D_Min_Euler_PL, &
+               IntE_Min_Euler_PL_Option = IntE_Min_Euler_PL )
 
       SetInitialValues   = .TRUE.
       FixInteriorADMMass = .FALSE.
@@ -256,12 +248,7 @@ CONTAINS
 
       CALL CreateMesh_MF( 0, MeshX )
 
-      CALL InitializeGravitySolver_MF &
-             ( Verbose_Option = amrex_parallel_ioprocessor() )
-
       CALL DestroyMesh_MF( MeshX )
-
-      CALL InitializeMetric_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
 
       CALL ApplySlopeLimiter_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uDF )
@@ -282,9 +269,6 @@ CONTAINS
              ( InitializeFromCheckpoint_Option = .TRUE. )
 
       CALL CreateMesh_MF( 0, MeshX )
-
-      CALL InitializeGravitySolver_MF &
-             ( Verbose_Option = amrex_parallel_ioprocessor() )
 
       CALL DestroyMesh_MF( MeshX )
 
@@ -368,9 +352,7 @@ CONTAINS
 
     CALL ComputeGeometryX_MF( MF_uGF(iLevel) )
 
-    CALL InitializeFields_MF &
-           ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), &
-                     MF_uPF(iLevel), MF_uAF(iLevel) )
+    CALL InitializeFields_MF( iLevel, MF_uGF(iLevel), MF_uCF(iLevel) )
 
     CALL DestroyMesh_MF( MeshX )
 
@@ -551,8 +533,10 @@ CONTAINS
       ! TagCriteria starts with 1
 
       CALL TagElements &
-             ( iLevel, BX % lo, BX % hi, LBOUND( uDF ), UBOUND( uDF ), &
-               uCF, uDF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+             ( iLevel, BX % lo, BX % hi, &
+               LBOUND( uCF ), UBOUND( uCF ), uCF, &
+               LBOUND( uDF ), UBOUND( uDF ), uDF, &
+               TagCriteria(iLevel+1), SetTag, ClearTag, &
                LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
 
     END DO
