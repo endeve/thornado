@@ -1,60 +1,61 @@
-##### StandingAccretionShock_Relativistic #####
+##### StandingAccretionShock_XCFC.inputs #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
 
 debug.DEBUG = 0
 
-thornado.ProgramName = "StandingAccretionShock_Relativistic"
-thornado.UseXCFC = 1
+thornado.ProgramName = "StandingAccretionShock_XCFC"
 
-thornado.Mass     = 2.0   # [Msun]
-SAS.Mass          = 2.0   # [Msun]
-SAS.AccretionRate = 0.3   # [Msun/s]
-SAS.ShockRadius   = 150.0 # [km]
-SAS.PreShockK     = 2.0e14 # [km]
+thornado.Mass     = 2.8    # [Msun]
+SAS.Mass          = 2.8    # [Msun]
+SAS.AccretionRate = 0.3    # [Msun/s]
+SAS.ShockRadius   = 60.0   # [km]
+SAS.PreShockK     = 2.0e14
 
 SAS.ApplyPerturbation     = 1
-SAS.PerturbationType      = "StepFunction"
-SAS.PerturbationOrder     = 0
+SAS.PerturbationOrder     = 1
+SAS.PerturbationType      = "Gaussian"
+SAS.etaC                  = 0.75
+SAS.sigma_eta             = 0.05
 SAS.PerturbationAmplitude = 1.0e-3
-SAS.rPerturbationInner    = 200.0
-SAS.rPerturbationOuter    = 210.0
-SAS.ResetEndTime          = 0
+
+SAS.InitializeFromFile     = 1
+SAS.FileName_Nodal1DIC_SAS = "StandingAccretionShock_XCFC_1D_Nodal"
 
 thornado.iRestart = -1
 
 thornado.UsePhysicalUnits = 1
 
-thornado.TallyFileNameRoot_Euler = "StandingAccretionShock_Relativistic.Tally"
-thornado.PlotFileNameRoot = "StandingAccretionShock_Relativistic.plt"
-thornado.t_end   = 1.0e+1
+thornado.TallyFileNameRoot_Euler = "StandingAccretionShock_XCFC.Tally"
+thornado.PlotFileNameRoot = "StandingAccretionShock_XCFC.plt"
+thornado.t_end   = 1.0e+2
 thornado.iCycleD = 10
 
-thornado.dt_wrt  = 1.0e-1
+thornado.dt_wrt  = 1.0e+0
 thornado.iCycleW = -1
 
-thornado.CheckpointFileNameRoot = "StandingAccretionShock_Relativistic.chk"
-thornado.dt_chk    = 1.0e+3
+thornado.CheckpointFileNameRoot = "StandingAccretionShock_XCFC.chk"
+thornado.dt_chk    = 5.0e+0
 thornado.iCycleChk = -1
 
 thornado.nNodes = 3
 
-thornado.bcX         = 100 00 00
-geometry.is_periodic = 0  1  1
+thornado.bcX         = 100 3 0
+geometry.is_periodic = 0   0 1
 
 geometry.coord_sys = 2
-geometry.prob_lo   = 4.0e1 0.0               0.0
-geometry.prob_hi   = 2.25e2 3.1415926535897931 6.2831853071795862
+geometry.prob_lo   = 2.0e1 0.0               0.0
+geometry.prob_hi   = 9.0e1 3.1415926535897931 6.2831853071795862
 
-amr.n_cell                  = 64 01 01
-thornado.swX                = 01  00 00
+amr.n_cell                  = 512 16 01
+thornado.swX                = 01 01 00
 #amr.max_grid_size_x         = 640
 #amr.blocking_factor_x       = 640
-amr.max_level               = 3
+amr.max_level               = 1
 amr.UseFluxCorrection_Euler = 1
-amr.UseAMR                  = 0
-amr.TagCriteria             = 1.55e2 1.25e2 5.0e1
+amr.UseAMR                  = 1
+amr.TagCriteria             = 0.1
 amr.n_error_buf             = 0
 amr.ref_ratio               = 2
 

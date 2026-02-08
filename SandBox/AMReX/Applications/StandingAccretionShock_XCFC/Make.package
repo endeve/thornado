@@ -1,4 +1,4 @@
-# THORNADO_DIR/SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
+# THORNADO_DIR/SandBox/AMReX/Applications/StandingAccretionShock_XCFC
 
 f90EXE_sources += MF_InitializationModule.f90
 f90EXE_sources += InitializationModule.f90

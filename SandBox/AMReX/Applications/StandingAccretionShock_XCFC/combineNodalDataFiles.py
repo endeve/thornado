@@ -19,7 +19,7 @@ nN     = 3
 
 field = [ 'PF_D', 'PF_V1', 'AF_P' ]
 
-ID = 'GR1D_M2.8_Rpns020_Rs6.00e1'
+ID = 'StandingAccretionShock_XCFC_1D_Nodal'
 
 ### END OF USER INPUT
 
