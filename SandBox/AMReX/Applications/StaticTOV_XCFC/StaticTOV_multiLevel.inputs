@@ -6,6 +6,7 @@
 debug.DEBUG = 0
 
 thornado.ProgramName = "TOV_XCFC"
+thornado.UseXCFC = 1
 
 TOV.CentralDensity     = 7.906e14
 TOV.PolytropicConstant = 1.455e5

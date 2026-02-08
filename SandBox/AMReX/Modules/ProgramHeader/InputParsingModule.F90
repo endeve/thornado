@@ -48,6 +48,7 @@ MODULE InputParsingModule
   LOGICAL                   :: UsePhysicalUnits
   LOGICAL                   :: DEBUG
   LOGICAL                   :: SolveGravity_NR
+  LOGICAL                   :: UseXCFC
 
   ! --- Transport ---
 
@@ -175,6 +176,7 @@ CONTAINS
     dt_rel           = 0.0_DP
     iReGrid          = 1
     SolveGravity_NR  = .FALSE.
+    UseXCFC          = .FALSE.
     nE               = 1
     nSpecies         = 1
     swE              = 0
@@ -226,6 +228,8 @@ CONTAINS
                          iReGrid )
       CALL PP % query ( 'SolveGravity_NR', &
                          SolveGravity_NR )
+      CALL PP % query ( 'UseXCFC', &
+                         UseXCFC )
       CALL PP % query ( 'nE', &
                          nE )
       CALL PP % query ( 'nSpecies', &
