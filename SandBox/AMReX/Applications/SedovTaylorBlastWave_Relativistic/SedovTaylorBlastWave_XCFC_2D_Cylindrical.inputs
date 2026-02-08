@@ -36,10 +36,6 @@ geometry.prob_hi   = 1.0 +1.0 6.2831853071795862
 
 amr.n_cell                  = 32 64 01
 thornado.swX                = 01 01 00
-#amr.max_grid_size_x         = 32
-#amr.blocking_factor_x       = 32
-#amr.max_grid_size_y         = 64
-#amr.blocking_factor_y       = 64
 amr.max_level               = 2
 amr.UseFluxCorrection_Euler = 1
 amr.UseAMR                  = 1

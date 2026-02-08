@@ -15,16 +15,15 @@ thornado.iRestart = -1
 
 thornado.TallyFileNameRoot_Euler = "SedovTaylorBlastWave_Relativistic.Tally"
 thornado.PlotFileNameRoot = "SedovTaylorBlastWave_Relativistic.plt"
-thornado.t_end   = 1.0e2
+thornado.t_end   = 5.0e2
 thornado.iCycleD = 10
 
-thornado.dt_wrt  = 1.0e0
+thornado.dt_wrt  = 1.0e2
 thornado.iCycleW = -1
 
 thornado.CheckpointFileNameRoot = "SedovTaylorBlastWave_Relativistic.chk"
-thornado.dt_chk    = 1.0e0
+thornado.dt_chk    = 5.1e2
 thornado.iCycleChk = -1
-#thornado.iCheckpointsFields_uGF = 1
 
 thornado.nNodes = 2
 
@@ -37,10 +36,6 @@ geometry.prob_hi   = +1.0 +1.0 +1.0
 
 amr.n_cell                  = 64 64 64
 thornado.swX                = 01 01 01
-#amr.max_grid_size_x         = 32
-#amr.blocking_factor_x       = 32
-#amr.max_grid_size_y         = 64
-#amr.blocking_factor_y       = 64
 amr.max_level               = 2
 amr.UseFluxCorrection_Euler = 1
 amr.UseAMR                  = 1
