@@ -365,8 +365,10 @@ CONTAINS
 
     IF( Verbose )THEN
 
-      WRITE(*,*)
-      WRITE(*,'(6x,A,A)') 'Writing PlotFile ', PlotFileName
+      IF( amrex_parallel_ioprocessor() )THEN
+        WRITE(*,*)
+        WRITE(*,'(6x,A,A)') 'Writing PlotFile ', PlotFileName
+      END IF
 
     END IF
 
