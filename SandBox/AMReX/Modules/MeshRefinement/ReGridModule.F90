@@ -80,7 +80,7 @@ CONTAINS
     TYPE(amrex_multifab) :: MF_uGS(0:nMaxLevels-1)
     TYPE(amrex_multifab) :: MF_uMF(0:nMaxLevels-1)
 
-    INTEGER :: iLevel, iErr, nLevelsOld
+    INTEGER :: iLevel, iErr
 
     IF( .NOT. UseAMR ) RETURN
 
@@ -103,23 +103,13 @@ CONTAINS
     CALL MultiplyWithPsi6_MF &
            ( MF_uGF, MF_uCF, +1, OnlyLeafElements_Option = .FALSE. )
 
-    nLevelsOld = nLevels
-
     DO iLevel = 0, nMaxLevels-1
 
       CALL amrex_regrid( iLevel, t_new(iLevel) )
 
       nLevels = amrex_get_numlevels()
 
-      IF( nLevelsOld .EQ. nLevels )THEN
-
-        IF( iLevel .EQ. nLevels-1 ) EXIT
-
-      ELSE
-
-        nLevelsOld = nLevels
-
-      END IF
+      IF( iLevel .GE. nLevels-1 ) EXIT
 
     END DO
 
