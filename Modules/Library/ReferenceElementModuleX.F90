@@ -226,6 +226,10 @@ CONTAINS
     DEALLOCATE( WeightsX_X3 )
     DEALLOCATE( WeightsX_q )
     DEALLOCATE( NodesX_q )
+    DEALLOCATE( NodesLX1, WeightsLX1 )
+    DEALLOCATE( NodesLX2, WeightsLX2 )
+    DEALLOCATE( NodesLX3, WeightsLX3 )
+    DEALLOCATE( NodesLX_q )
 
   END SUBROUTINE FinalizeReferenceElementX
 

@@ -29,6 +29,7 @@ MODULE PolynomialBasisModuleX_Lagrange
   TYPE(PolynomialBasisType), ALLOCATABLE, PUBLIC :: L_X3(:), dL_X3(:)
 
   PUBLIC :: InitializePolynomialBasisX_Lagrange
+  PUBLIC :: FinalizePolynomialBasisX_Lagrange
 
 CONTAINS
 
@@ -53,6 +54,16 @@ CONTAINS
     CALL InitializeIndices_TensorProductBasis
 
   END SUBROUTINE InitializePolynomialBasisX_Lagrange
+
+  SUBROUTINE FinalizePolynomialBasisX_Lagrange
+
+    DEALLOCATE( nodes )
+    DEALLOCATE( L_X1, dL_X1 )
+    DEALLOCATE( L_X2, dL_X2 )
+    DEALLOCATE( L_X3, dL_X3 )
+    DEALLOCATE( IndLX_Q )
+
+  END SUBROUTINE FinalizePolynomialBasisX_Lagrange
 
 
   SUBROUTINE InitializeNodes
