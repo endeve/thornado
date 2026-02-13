@@ -20,7 +20,9 @@ TallyData = np.loadtxt(FileDir + "/" + TallyFiles[PlotVar], skiprows = 1)
 
 RelDiff = TallyData[:,4] / TallyData[:,3] 
 
-plt.plot(TallyData[:,0], RelDiff[:])
+plt.plot(TallyData[:,0], RelDiff[:], linewidth = 2.5)
+plt.ylim( -1e0, 1e0 )
+plt.yscale("symlog", linthreshy = 1.0e-8)
 plt.xlabel("Time [ms]")
 plt.ylabel("Relative Difference in " + str(PlotVar))
 plt.savefig(FileDir + "/" + TallyFiles[PlotVar] + ".png")
