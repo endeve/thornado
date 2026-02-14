@@ -1158,7 +1158,7 @@ CONTAINS
 
       OffGridFlux_Euler_X1_Outer(iCF) &
         = OffGridFlux_Euler_X1_Outer(iCF) &
-            - NumericalFlux(iNX_X,iCF,iX2,iX3,iX_E0(1)+1)
+            + NumericalFlux(iNX_X,iCF,iX2,iX3,iX_E0(1)+1)
 
     END DO
     END DO

@@ -527,7 +527,7 @@ CONTAINS
 
     END IF
 
-    ! --- dM = Minterior - Minitial + ( OffGrid_Outer - OffGrid_Inner ) ---
+    ! --- dM = Minterior - Minitial + ( OffGrid_Inner - OffGrid_Outer ) ---
 
     BaryonicMass_Change &
       = BaryonicMass_Interior &

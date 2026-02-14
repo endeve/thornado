@@ -415,9 +415,6 @@ CONTAINS
     INTEGER , INTENT(in) :: iLevel
     INTEGER , INTENT(in) :: iX_B0(3), iX_E0(3)
 
-    ! --- OffGridFlux_Euler_XX_Inner/Outer defined to be positive if flow
-    !     is onto the grid ---
-
     IF( .NOT. IsPeriodic(1) )THEN
 
       IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo(1) ) &
