@@ -1771,12 +1771,12 @@ CONTAINS
     CALL ComputeNeutrinoOpacities_ES &
            ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, 1, Phi_0_Iso_P )
 
-    IF( Include_LinCorr )THEN
+!!$    IF( Include_LinCorr )THEN
 
-      CALL ComputeNeutrinoOpacities_ES &
-             ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, 2, Phi_1_Iso_P )
+    CALL ComputeNeutrinoOpacities_ES &
+           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, 2, Phi_1_Iso_P )
 
-    END IF
+!!$    END IF
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)

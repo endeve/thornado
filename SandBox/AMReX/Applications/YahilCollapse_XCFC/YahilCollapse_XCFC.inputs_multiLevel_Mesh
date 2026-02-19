@@ -6,6 +6,7 @@
 debug.DEBUG = 0
 
 thornado.ProgramName = "YahilCollapse_XCFC"
+thornado.UseXCFC = 1
 
 YC.D0              = 1.75
 YC.CentralDensity  = 7.0e9 # g/cm^3

@@ -15,8 +15,8 @@ thornado.dt_chk  = 3.0e-1
 
 thornado.iRestart = -1
 
-thornado.PlotFileNameRoot        = "KelvinHelmholtz2D.plt"
-thornado.CheckpointFileNameRoot  = "KelvinHelmholtz2D.chk"
+thornado.PlotFileNameRoot        = "KelvinHelmholtz2D.plt."
+thornado.CheckpointFileNameRoot  = "KelvinHelmholtz2D.chk."
 thornado.TallyFileNameRoot_Euler = "KelvinHelmholtz2D.Tally"
 
 thornado.bcX         = 01 01 00

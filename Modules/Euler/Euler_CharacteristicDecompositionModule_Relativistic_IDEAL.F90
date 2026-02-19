@@ -103,7 +103,20 @@ CONTAINS
 
     ! --- Rezzolla, Eq. (7.244) ---
 
-    K = ( Gamma_IDEAL - One ) / ( Gamma_IDEAL - One - Cs**2 )
+    K = One / ( One - Cs**2 / ( Gamma_IDEAL - One ) )
+
+    IF( K .EQ. One )THEN
+
+      R    = Zero
+      invR = Zero
+
+      DO iCF = 1, nCF
+        invR(iCF,iCF) = One
+        R   (iCF,iCF) = One
+      END DO
+
+      RETURN
+    END IF
 
 #if !defined(THORNADO_OMP_OL) && !defined(THORNADO_OACC)
     IF( DEBUG )THEN
@@ -250,8 +263,8 @@ CONTAINS
                           Vm * Vu3 * ( Two * K - One ) * W**2 * xi, &
                           Np, &
                           Zero ]
-        invR(1:5,6) = Zero
-        invR(6,6) = One
+        invR(6,1:5) = Zero
+        invR(6,6)   = One
 
 !!$        invR = inv( R )
 

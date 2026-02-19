@@ -17,8 +17,10 @@ TwoMoment_ClosureModule.o: \
 TwoMoment_MeshRefinementModule.o: \
   KindModule.o \
   ProgramHeaderModule.o \
-  ReferenceElementModuleX.o \
+  QuadratureModule.o \
   PolynomialBasisModule_Lagrange.o \
+  GeometryFieldsModule.o \
+  GeometryComputationModule.o \
   LinearAlgebraModule.o \
   TwoMoment_MeshRefinementModule.F90
 

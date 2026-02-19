@@ -25,7 +25,7 @@ using namespace amrex;
 
 extern "C"
 {
-  void writefieldsamrex_checkpoint
+  void writecheckpointfile
          ( int StepNo[], int nLevels,
            Real dt[], Real time[],
            Real BaryonicMassArr   [],
@@ -36,11 +36,13 @@ extern "C"
            Real ElectronNumberArr [],
            Real ADMMassArr        [],
            BoxArray** pBA,
-           int iWriteFields_uGF = 0,
-           int iWriteFields_uCF = 0,
-           int iWriteFields_uCR = 0,
+           int RwChkFields_uGF = 1,
+           int RwChkFields_uCF = 1,
+           int RwChkFields_uDF = 0,
+           int RwChkFields_uCR = 0,
            MultiFab** pMF_uGF = NULL,
            MultiFab** pMF_uCF = NULL,
+           MultiFab** pMF_uDF = NULL,
            MultiFab** pMF_uCR = NULL )
   {
 
@@ -55,14 +57,17 @@ extern "C"
 
     // Checkpoint file name, e.g., chk00010
 
-    bool WriteFields_uGF = false;
-    if( iWriteFields_uGF == 1 ) WriteFields_uGF = true;
+    bool WriteFields_uGF = true;
+    if( RwChkFields_uGF == 0 ) WriteFields_uGF = false;
 
-    bool WriteFields_uCF = false;
-    if( iWriteFields_uCF == 1 ) WriteFields_uCF = true;
+    bool WriteFields_uCF = true;
+    if( RwChkFields_uCF == 0 ) WriteFields_uCF = false;
+
+    bool WriteFields_uDF = false;
+    if( RwChkFields_uDF == 1 ) WriteFields_uDF = true;
 
     bool WriteFields_uCR = false;
-    if( iWriteFields_uCR == 1 ) WriteFields_uCR = true;
+    if( RwChkFields_uCR == 1 ) WriteFields_uCR = true;
 
     ParmParse pp("thornado");
     chk_file = "chk";
@@ -71,7 +76,7 @@ extern "C"
     const std::string& checkpointname
                          = amrex::Concatenate( chk_file, StepNo[0], 8 );
 
-    bool Verbose = false;
+    bool Verbose = true;
     if ( Verbose && ParallelDescriptor::IOProcessor() )
     {
         amrex::Print() << "\n    Writing CheckpointFile "
@@ -188,6 +193,15 @@ extern "C"
                           "Level_", "Conserved_Euler" ) );
       }
 
+      if( WriteFields_uDF )
+      {
+        MultiFab& MF_uDF = *pMF_uDF[iLevel];
+        VisMF::Write( MF_uDF,
+                      amrex::MultiFabFileFullPrefix
+                        ( iLevel, checkpointname,
+                          "Level_", "Diagnostic_Euler" ) );
+      }
+
       if( WriteFields_uCR )
       {
         MultiFab& MF_uCR = *pMF_uCR[iLevel];
@@ -198,7 +212,7 @@ extern "C"
       }
     }
 
-  } // End of writefieldsamrex_checkpoint
+  } // End of writecheckpointfile
 
   void readheaderandboxarraydata
          ( int FinestLevelArr[], int StepNo[],
@@ -400,6 +414,9 @@ extern "C"
 	MF_Name = "Conserved_Euler";
 	break;
       case 2:
+	MF_Name = "Diagnostic_Euler";
+	break;
+      case 3:
 	MF_Name = "Conserved_TwoMoment";
 	break;
       default:

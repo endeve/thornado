@@ -29,6 +29,7 @@ thornado.iCycleW   = -0100     # MOD this number to write plotfile
 thornado.iCycleChk = -1000     # MOD this number to write checkpoint file
 thornado.iRestart  = -1        # Checkpoint-file to restart from. Negative for clean start
 thornado.Direction  = X
+thornado.RwChkFields_uCR = 1
 
 
 geometry.coord_sys   = 0             # CARTESIAN

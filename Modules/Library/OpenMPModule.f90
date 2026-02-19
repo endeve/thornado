@@ -23,6 +23,13 @@ module OpenMPModule
       integer(c_int), value :: device
     end function omp_target_is_present
 
+    type(c_ptr) function omp_get_mapped_ptr(hostptr,device) &
+        bind(c,name="omp_get_mapped_ptr" )
+      use, intrinsic :: iso_c_binding
+      type(c_ptr),    value :: hostptr
+      integer(c_int), value :: device
+    end function omp_get_mapped_ptr
+
   end interface
 
 end module OpenMPModule

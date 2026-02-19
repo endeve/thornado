@@ -158,7 +158,8 @@ contains
       Include_LinCorr_Option, wMatrRHS_Option, &
       DnuMax_Option, FreezeOpacities_Option , &
       ActivateUnits_Option, CoordinateSystem_Option, &
-      UseChemicalPotentialShift_Option, Verbose_Option )
+      UseChemicalPotentialShift_Option, &
+      UseSimpleMeshRefinement_Option, Verbose_Option )
 
     integer,  intent(in) :: nNodes, nDimsX, nE, swE, bcE, nSpecies
     real(dp), intent(in) :: eL_MeV, eR_MeV, zoomE
@@ -215,11 +216,13 @@ contains
     character(len=*), intent(in), optional :: CoordinateSystem_Option
     logical,          intent(in), optional :: Verbose_Option
     logical,          intent(in), optional :: UseChemicalPotentialShift_Option
+    logical,          intent(in), optional :: UseSimpleMeshRefinement_Option
 
     logical  :: TroubledCellIndicator
     logical  :: PositivityLimiter, SlopeLimiter, EnergyLimiter, UseChemicalPotentialShift, Verbose
     logical  :: EulerSlopeLimiter, EulerTroubledCellIndicator
     logical  :: ActivateUnits
+    logical  :: UseSimpleMeshRefinement
     integer  :: nX(3), bcX(3)
     integer  :: i
     real(dp) :: C_TCI
@@ -521,7 +524,19 @@ contains
 
     ! --- For refinement and coarsening of DG data
 
-    call InitializeMeshRefinement_TwoMoment
+    IF ( PRESENT( UseSimpleMeshRefinement_Option ) ) THEN
+      UseSimpleMeshRefinement = UseSimpleMeshRefinement_Option
+    ELSE
+      UseSimpleMeshRefinement = ( TRIM( CoordinateSystem ) == 'CARTESIAN' )
+    END IF
+
+    call InitializeMeshRefinement_TwoMoment &
+           ( CoordinateSystem_Option &
+               = CoordinateSystem, &
+             UseSimpleMeshRefinement_Option &
+               = UseSimpleMeshRefinement, &
+             Verbose_Option &
+               = Verbose )
 
     ! --- For applying limiter on fluid field
 #if defined TWOMOMENT_ORDER_V

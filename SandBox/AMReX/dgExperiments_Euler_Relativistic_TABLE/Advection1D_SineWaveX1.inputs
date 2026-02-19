@@ -14,8 +14,8 @@ thornado.dt_chk  = 1.1e5
 
 thornado.UsePhysicalUnits = 1
 
-thornado.PlotFileNameRoot        = "Advection1D_SineWaveX1.plt"
-thornado.CheckpointFileNameRoot  = "Advection1D_SineWaveX1.chk"
+thornado.PlotFileNameRoot        = "Advection1D_SineWaveX1.plt."
+thornado.CheckpointFileNameRoot  = "Advection1D_SineWaveX1.chk."
 thornado.TallyFileNameRoot_Euler = "Advection1D_SineWaveX1.Tally"
 
 thornado.bcX         = 01 01 01

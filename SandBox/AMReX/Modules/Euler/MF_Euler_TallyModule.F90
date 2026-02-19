@@ -77,7 +77,7 @@ MODULE MF_Euler_TallyModule
   PUBLIC :: IncrementOffGridTally_Euler_MF
   PUBLIC :: FinalizeTally_Euler_MF
 
-  LOGICAL :: SuppressTally
+  LOGICAL :: SuppressTally_Euler
 
   INTEGER, PARAMETER :: SL = 256
 
@@ -133,10 +133,9 @@ CONTAINS
 
 
   SUBROUTINE InitializeTally_Euler_MF &
-    ( SuppressTally_Option, InitializeFromCheckpoint_Option )
+    ( InitializeFromCheckpoint_Option )
 
     LOGICAL, INTENT(in), OPTIONAL :: &
-      SuppressTally_Option, &
       InitializeFromCheckpoint_Option
 
     CHARACTER(:), ALLOCATABLE :: TallyFileNameRoot_Euler
@@ -149,21 +148,20 @@ CONTAINS
 
     CHARACTER(SL) :: TimeLabel
 
-    SuppressTally = .FALSE.
-    IF( PRESENT( SuppressTally_Option ) ) &
-      SuppressTally = SuppressTally_Option
-
     InitializeFromCheckpoint = .FALSE.
     IF( PRESENT( InitializeFromCheckpoint_Option ) ) &
       InitializeFromCheckpoint = InitializeFromCheckpoint_Option
 
     TallyFileNameRoot_Euler = TRIM( ProgramName )
+    SuppressTally_Euler     = .FALSE.
     CALL amrex_parmparse_build( PP, 'thornado' )
       CALL pp % query( 'TallyFileNameRoot_Euler', &
                         TallyFileNameRoot_Euler )
+      CALL pp % query( 'SuppressTally_Euler', &
+                        SuppressTally_Euler )
     CALL amrex_parmparse_destroy( PP )
 
-    IF( SuppressTally ) RETURN
+    IF( SuppressTally_Euler ) RETURN
 
     IF( amrex_parallel_ioprocessor() )THEN
 
@@ -324,7 +322,7 @@ CONTAINS
     INTEGER        :: iNX, iX1, iX2, iX3
     REAL(DP)       :: d3X
 
-    IF( SuppressTally ) RETURN
+    IF( SuppressTally_Euler ) RETURN
 
     SetInitialValues = .FALSE.
     IF( PRESENT( SetInitialValues_Option ) ) &
@@ -529,35 +527,35 @@ CONTAINS
 
     END IF
 
-    ! --- dM = Minterior - Minitial + ( OffGrid_Outer - OffGrid_Inner ) ---
+    ! --- dM = Minterior - Minitial + ( OffGrid_Inner - OffGrid_Outer ) ---
 
     BaryonicMass_Change &
       = BaryonicMass_Interior &
-          - BaryonicMass_Initial    + BaryonicMass_OffGrid
+          - ( BaryonicMass_Initial    + BaryonicMass_OffGrid )
 
     EulerMomentumX1_Change &
       = EulerMomentumX1_Interior &
-          - EulerMomentumX1_Initial + EulerMomentumX1_OffGrid
+          - ( EulerMomentumX1_Initial + EulerMomentumX1_OffGrid )
 
     EulerMomentumX2_Change &
       = EulerMomentumX2_Interior &
-          - EulerMomentumX2_Initial + EulerMomentumX2_OffGrid
+          - ( EulerMomentumX2_Initial + EulerMomentumX2_OffGrid )
 
     EulerMomentumX3_Change &
       = EulerMomentumX3_Interior &
-          - EulerMomentumX3_Initial + EulerMomentumX3_OffGrid
+          - ( EulerMomentumX3_Initial + EulerMomentumX3_OffGrid )
 
     EulerEnergy_Change &
       = EulerEnergy_Interior &
-          - EulerEnergy_Initial     + EulerEnergy_OffGrid
+          - ( EulerEnergy_Initial     + EulerEnergy_OffGrid )
 
     ElectronNumber_Change &
       = ElectronNumber_Interior &
-          - ElectronNumber_Initial  + ElectronNumber_OffGrid
+          - ( ElectronNumber_Initial  + ElectronNumber_OffGrid )
 
     ADMMass_Change &
       = ADMMass_Interior &
-          - ADMMass_Initial + ADMMass_OffGrid
+          - ( ADMMass_Initial         + ADMMass_OffGrid )
 
     IF( WriteTally ) &
       CALL WriteTally_Euler( Time(0) )
@@ -573,7 +571,7 @@ CONTAINS
 
     INTEGER :: iLevel
 
-    IF( SuppressTally ) RETURN
+    IF( SuppressTally_Euler ) RETURN
 
     DO iLevel = 0, nLevels-1
 
@@ -605,7 +603,7 @@ CONTAINS
 
   SUBROUTINE FinalizeTally_Euler_MF
 
-    IF( SuppressTally ) RETURN
+    IF( SuppressTally_Euler ) RETURN
 
   END SUBROUTINE FinalizeTally_Euler_MF
 

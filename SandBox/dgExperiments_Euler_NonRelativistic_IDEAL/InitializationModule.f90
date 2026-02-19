@@ -18,6 +18,8 @@ MODULE InitializationModule
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     uAF
+  USE EquationOfStateModule_IDEAL, ONLY: &
+    Gamma_IDEAL
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputeConserved_Euler_NonRelativistic
 
@@ -67,6 +69,10 @@ CONTAINS
       CASE ( 'RiemannProblemSpherical' )
 
         CALL InitializeFields_RiemannProblemSpherical
+
+      CASE ( 'RiemannProblemCylindrical' )
+
+        CALL InitializeFields_RiemannProblemCylindrical
 
       CASE ( 'SphericalSedov' )
 
@@ -398,9 +404,9 @@ CONTAINS
 
   SUBROUTINE InitializeFields_RiemannProblemSpherical
 
-    INTEGER       :: iX1, iX2, iX3
-    INTEGER       :: iNodeX, iNodeX1
-    REAL(DP)      :: X1
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1
+    REAL(DP) :: X1
 
     DO iX3 = 1, nX(3)
       DO iX2 = 1, nX(2)
@@ -418,7 +424,7 @@ CONTAINS
               uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
               uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
               uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0_DP / 0.4_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0_DP / ( Gamma_IDEAL - One )
 
             ELSE
 
@@ -426,7 +432,7 @@ CONTAINS
               uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
               uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
               uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 0.1_DP / 0.4_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 0.1_DP / ( Gamma_IDEAL - One )
 
             END IF
 
@@ -448,6 +454,64 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_RiemannProblemSpherical
+
+
+  SUBROUTINE InitializeFields_RiemannProblemCylindrical
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1, iNodeX2
+    REAL(DP) :: X1, X2, R
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+            R = SQRT( X1**2 + X2**2 )
+
+            IF( R < 0.4_DP )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0_DP / ( Gamma_IDEAL - One )
+
+            ELSE
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.125_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
+              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 0.1_DP / ( Gamma_IDEAL - One )
+
+            END IF
+
+          END DO
+
+          CALL ComputeConserved_Euler_NonRelativistic &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+                   uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+                   uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+                   uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+                   uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+                   uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_RiemannProblemCylindrical
 
 
   SUBROUTINE InitializeFields_SphericalSedov &

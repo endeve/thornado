@@ -43,9 +43,12 @@ MODULE InputParsingModule
   INTEGER                   :: nNodes
   REAL(DP)                  :: t_end, t_wrt, t_chk, dt_wrt, dt_chk, dt_rel
   INTEGER                   :: iCycleW, iCycleChk, iCycleD, iRestart, iReGrid
+  LOGICAL                   :: RwChkFields_uGF, RwChkFields_uCF, &
+                               RwChkFields_uDF, RwChkFields_uCR
   LOGICAL                   :: UsePhysicalUnits
   LOGICAL                   :: DEBUG
   LOGICAL                   :: SolveGravity_NR
+  LOGICAL                   :: UseXCFC
 
   ! --- Transport ---
 
@@ -163,12 +166,17 @@ CONTAINS
     iCycleD          = 10
     iCycleW          = -1
     iCycleChk        = -1
+    RwChkFields_uGF  = .TRUE.
+    RwChkFields_uCF  = .TRUE.
+    RwChkFields_uDF  = .FALSE.
+    RwChkFields_uCR  = .FALSE.
     iRestart         = -1
     dt_wrt           = -1.0_DP
     dt_chk           = -1.0_DP
     dt_rel           = 0.0_DP
     iReGrid          = 1
     SolveGravity_NR  = .FALSE.
+    UseXCFC          = .FALSE.
     nE               = 1
     nSpecies         = 1
     swE              = 0
@@ -198,6 +206,14 @@ CONTAINS
                          iCycleW )
       CALL PP % query ( 'iCycleChk', &
                          iCycleChk )
+      CALL PP % query ( 'RwChkFields_uGF', &
+                         RwChkFields_uGF )
+      CALL PP % query ( 'RwChkFields_uCF', &
+                         RwChkFields_uCF )
+      CALL PP % query ( 'RwChkFields_uDF', &
+                         RwChkFields_uDF )
+      CALL PP % query ( 'RwChkFields_uCR', &
+                         RwChkFields_uCR )
       CALL PP % query ( 'iRestart', &
                          iRestart )
       CALL PP % query ( 'dt_wrt', &
@@ -212,6 +228,8 @@ CONTAINS
                          iReGrid )
       CALL PP % query ( 'SolveGravity_NR', &
                          SolveGravity_NR )
+      CALL PP % query ( 'UseXCFC', &
+                         UseXCFC )
       CALL PP % query ( 'nE', &
                          nE )
       CALL PP % query ( 'nSpecies', &

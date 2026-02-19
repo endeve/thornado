@@ -33,4 +33,13 @@ module RocblasModule
 
   type(c_ptr) :: rocblas_handle
 
+  interface
+
+    subroutine rocblas_initialize() &
+        bind(C, name="rocblas_initialize")
+      use iso_c_binding
+    end subroutine rocblas_initialize
+
+  end interface
+
 end module RocblasModule

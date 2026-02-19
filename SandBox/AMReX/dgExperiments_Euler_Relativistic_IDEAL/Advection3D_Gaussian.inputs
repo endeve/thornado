@@ -12,8 +12,8 @@ thornado.iCycleD = 10
 thornado.dt_wrt  = 1.0e-1
 thornado.dt_chk  = 1.1e1
 
-thornado.PlotFileNameRoot        = "Advection3D_Gaussian.plt"
-thornado.CheckpointFileNameRoot  = "Advection3D_Gaussian.chk"
+thornado.PlotFileNameRoot        = "Advection3D_Gaussian.plt."
+thornado.CheckpointFileNameRoot  = "Advection3D_Gaussian.chk."
 thornado.TallyFileNameRoot_Euler = "Advection3D_Gaussian.Tally"
 
 thornado.bcX         = 01 01 01
