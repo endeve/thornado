@@ -41,7 +41,8 @@ MODULE InputParsingModule
   INTEGER     , ALLOCATABLE :: swX(:)
   INTEGER     , ALLOCATABLE :: bcX(:)
   INTEGER                   :: nNodes
-  REAL(DP)                  :: t_end, t_wrt, t_chk, dt_wrt, dt_chk, dt_rel
+  REAL(DP)                  :: t_end, t_wrt = Zero, t_chk = Zero, dt_wrt, &
+                               dt_chk, dt_rel
   INTEGER                   :: iCycleW, iCycleChk, iCycleD, iRestart, iReGrid
   LOGICAL                   :: RwChkFields_uGF, RwChkFields_uCF, &
                                RwChkFields_uDF, RwChkFields_uCR

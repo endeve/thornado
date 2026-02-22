@@ -82,51 +82,51 @@ MODULE MF_Euler_TallyModule
   INTEGER, PARAMETER :: SL = 256
 
   CHARACTER(SL)    :: BaryonicMass_FileName
-  REAL(DP), PUBLIC :: BaryonicMass_Initial
-  REAL(DP), PUBLIC :: BaryonicMass_OffGrid
+  REAL(DP), PUBLIC :: BaryonicMass_Initial = HUGE( 1.0_DP )
+  REAL(DP), PUBLIC :: BaryonicMass_OffGrid = HUGE( 1.0_DP )
   REAL(DP)         :: BaryonicMass_Interior
   REAL(DP)         :: BaryonicMass_Interior_OMP
   REAL(DP)         :: BaryonicMass_Change
 
   CHARACTER(SL)    :: EulerMomentumX1_FileName
-  REAL(DP), PUBLIC :: EulerMomentumX1_Initial
-  REAL(DP), PUBLIC :: EulerMomentumX1_OffGrid
+  REAL(DP), PUBLIC :: EulerMomentumX1_Initial = HUGE( 1.0_DP )
+  REAL(DP), PUBLIC :: EulerMomentumX1_OffGrid = HUGE( 1.0_DP )
   REAL(DP)         :: EulerMomentumX1_Interior
   REAL(DP)         :: EulerMomentumX1_Interior_OMP
   REAL(DP)         :: EulerMomentumX1_Change
 
   CHARACTER(SL)    :: EulerMomentumX2_FileName
-  REAL(DP), PUBLIC :: EulerMomentumX2_Initial
-  REAL(DP), PUBLIC :: EulerMomentumX2_OffGrid
+  REAL(DP), PUBLIC :: EulerMomentumX2_Initial = HUGE( 1.0_DP )
+  REAL(DP), PUBLIC :: EulerMomentumX2_OffGrid = HUGE( 1.0_DP )
   REAL(DP)         :: EulerMomentumX2_Interior
   REAL(DP)         :: EulerMomentumX2_Interior_OMP
   REAL(DP)         :: EulerMomentumX2_Change
 
   CHARACTER(SL)    :: EulerMomentumX3_FileName
-  REAL(DP), PUBLIC :: EulerMomentumX3_Initial
-  REAL(DP), PUBLIC :: EulerMomentumX3_OffGrid
+  REAL(DP), PUBLIC :: EulerMomentumX3_Initial = HUGE( 1.0_DP )
+  REAL(DP), PUBLIC :: EulerMomentumX3_OffGrid = HUGE( 1.0_DP )
   REAL(DP)         :: EulerMomentumX3_Interior
   REAL(DP)         :: EulerMomentumX3_Interior_OMP
   REAL(DP)         :: EulerMomentumX3_Change
 
   CHARACTER(SL)    :: EulerEnergy_FileName
-  REAL(DP), PUBLIC :: EulerEnergy_Initial
-  REAL(DP), PUBLIC :: EulerEnergy_OffGrid
+  REAL(DP), PUBLIC :: EulerEnergy_Initial = HUGE( 1.0_DP )
+  REAL(DP), PUBLIC :: EulerEnergy_OffGrid = HUGE( 1.0_DP )
   REAL(DP)         :: EulerEnergy_Interior
   REAL(DP)         :: EulerEnergy_Interior_OMP
   REAL(DP)         :: EulerEnergy_Change
 
   CHARACTER(SL)    :: ElectronNumber_FileName
-  REAL(DP), PUBLIC :: ElectronNumber_Initial
-  REAL(DP), PUBLIC :: ElectronNumber_OffGrid
+  REAL(DP), PUBLIC :: ElectronNumber_Initial = HUGE( 1.0_DP )
+  REAL(DP), PUBLIC :: ElectronNumber_OffGrid = HUGE( 1.0_DP )
   REAL(DP)         :: ElectronNumber_Interior
   REAL(DP)         :: ElectronNumber_Interior_OMP
   REAL(DP)         :: ElectronNumber_Change
 
   CHARACTER(SL)    :: ADMMass_FileName
-  REAL(DP), PUBLIC :: ADMMass_Initial
-  REAL(DP), PUBLIC :: ADMMass_OffGrid
-  REAL(DP), PUBLIC :: ADMMass_Interior
+  REAL(DP), PUBLIC :: ADMMass_Initial  = HUGE( 1.0_DP )
+  REAL(DP), PUBLIC :: ADMMass_OffGrid  = HUGE( 1.0_DP )
+  REAL(DP), PUBLIC :: ADMMass_Interior = HUGE( 1.0_DP )
   REAL(DP)         :: ADMMass_Change
 
 CONTAINS
