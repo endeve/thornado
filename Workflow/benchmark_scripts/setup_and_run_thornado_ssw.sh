@@ -110,8 +110,8 @@ SRUNCMD=(
   --ntasks-per-gpu="$NTASKS_PER_GPU"
   --gpu-bind=closest
 )
-echo "Running: ${SRUN[*]} ./${EXEC}"
-"${SRUN[@]}" "./${EXEC}" > >(tee "${RUN_OUTPUT_FILE}") 2>&1
+echo "Running: ${SRUNCMD[*]} ./${EXEC}"
+"${SRUNCMD[@]}" "./${EXEC}" > >(tee "${RUN_OUTPUT_FILE}") 2>&1
 
 cd -
 
