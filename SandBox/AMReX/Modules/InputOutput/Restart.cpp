@@ -420,7 +420,7 @@ extern "C"
 	MF_Name = "Conserved_TwoMoment";
 	break;
       default:
-        std::cout << "Invalid." << std::endl;
+        amrex::Abort("Invalid MF");
     }
 
     for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )
