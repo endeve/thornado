@@ -12,13 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       THORNADO_MACHINE: gh-runner_ubuntu-latest_nvhpc
-      NVHPC_MAJOR: 23
-      NVHPC_MINOR: 3
-      CUDA_MAJOR: 12
-      CUDA_MINOR: 0
-      HDF5_MAJOR: 1.14
+      NVHPC_MAJOR: 26
+      NVHPC_MINOR: 1
+      HDF5_MAJOR: 2.00
       HDF5_MINOR: 0
-      OMPI_VERSION: 3.1.5
     steps:
       - name: Checkout thornado
         uses: actions/checkout@v4
@@ -59,6 +56,17 @@ jobs:
         run: |
           source /etc/profile.d/modules.sh
           module load ${NVHPC_MOD}
+
+          CUDA_ROOT=$(find ${NVHPC_ROOT}/cuda \
+            -mindepth 1 -maxdepth 1 -type d \
+            | sort -V | tail -n1)
+          OMPI_ROOT=$(find ${NVHPC_ROOT}/comm_libs/openmpi \
+            -mindepth 1 -maxdepth 1 -type d -name 'openmpi-*' \
+            | sort -V | tail -n1)
+
+          CUDA_VERSION=$(basename ${CUDA_ROOT})
+          echo "CUDA_VERSION: ${CUDA_VERSION}"
+
           echo ""
           echo "find ${NVHPC_ROOT} -name \"*libmpi*\""
                 find ${NVHPC_ROOT} -name  "*libmpi*"
@@ -90,13 +98,13 @@ jobs:
           echo "HDF5_LIB=${GITHUB_WORKSPACE}/hdf5/lib" >> ${GITHUB_ENV}
           echo "CUDA_INC=${NVHPC_ROOT}/cuda/include" >> ${GITHUB_ENV}
           echo "CUDA_LIB=${NVHPC_ROOT}/math_libs/lib64" >> ${GITHUB_ENV}
-          echo "CUDART_LIB=${NVHPC_ROOT}/cuda/${CUDA_MAJOR}.${CUDA_MINOR}/targets/x86_64-linux/lib" >> ${GITHUB_ENV}
-          echo "OMPI_INC=${NVHPC_ROOT}/comm_libs/openmpi/openmpi-${OMPI_VERSION}/include" >> ${GITHUB_ENV}
-          echo "OMPI_LIB=${NVHPC_ROOT}/comm_libs/openmpi/openmpi-${OMPI_VERSION}/lib" >> ${GITHUB_ENV}
+          echo "CUDART_LIB=${NVHPC_ROOT}/cuda/${CUDA_VERSION}/targets/x86_64-linux/lib" >> ${GITHUB_ENV}
+          echo "OMPI_INC=${OMPI_ROOT}/include" >> ${GITHUB_ENV}
+          echo "OMPI_LIB=${OMPI_ROOT}//lib" >> ${GITHUB_ENV}
           echo "LAPACK_LIB=${NVHPC_ROOT}/compilers/lib" >> ${GITHUB_ENV}
           echo "BLAS_LIB=${NVHPC_ROOT}/compilers/lib" >> ${GITHUB_ENV}
-          sudo ln -s ${NVHPC_ROOT}/comm_libs/openmpi/openmpi-${OMPI_VERSION}/lib/mpi.mod \
-                     ${NVHPC_ROOT}/comm_libs/openmpi/openmpi-${OMPI_VERSION}/include/
+          sudo ln -sf ${OMPI_ROOT}/lib/mpi.mod \
+                      ${OMPI_ROOT}/include/
           echo "THORNADO_DIR=${GITHUB_WORKSPACE}" >> ${GITHUB_ENV}
           echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib" >> ${GITHUB_ENV}
           echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon" >> ${GITHUB_ENV}
