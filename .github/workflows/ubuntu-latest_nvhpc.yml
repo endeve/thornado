@@ -3,7 +3,7 @@
 name: Compile thornado on Ubuntu (latest) with nvhpc compilers
 
 on:
-  push:
+#  push:
   schedule:
     - cron: '0 7 * * *'
 
