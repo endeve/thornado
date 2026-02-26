@@ -91,7 +91,7 @@ jobs:
           HDF5_DIR=${GITHUB_WORKSPACE}/hdf5
           mkdir ${HDF5_DIR}
           cd ${HDF5_DIR}
-          wget https://support.hdfgroup.org/download-hdf5/#
+          wget https://hdfgroup.org/download-hdf5/#
           tar zxf hdf5-${HDF5_MAJOR}.${HDF5_MINOR}.tar.gz
           mkdir built_fortran
           cd built_fortran
