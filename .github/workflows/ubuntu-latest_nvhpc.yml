@@ -58,12 +58,8 @@ jobs:
           source /etc/profile.d/modules.sh
           module load ${NVHPC_MOD}
 
-          CUDA_ROOT=$(find ${NVHPC_ROOT}/cuda
-            -mindepth 1 -maxdepth 1 -type d
-            | sort -V | tail -n1)
-          OMPI_ROOT=$(find ${NVHPC_ROOT}/comm_libs/openmpi
-            -mindepth 1 -maxdepth 1 -type d -name 'openmpi-*'
-            | sort -V | tail -n1)
+          CUDA_ROOT=$(find ${NVHPC_ROOT}/cuda -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)
+          OMPI_ROOT=$(find ${NVHPC_ROOT}/comm_libs/openmpi -mindepth 1 -maxdepth 1 -type d -name 'openmpi-*' | sort -V | tail -n1)
 
           CUDA_VERSION=$(basename ${CUDA_ROOT})
           echo "CUDA_VERSION: ${CUDA_VERSION}"
