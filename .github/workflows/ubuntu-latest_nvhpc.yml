@@ -95,6 +95,7 @@ jobs:
           HDF5_VERSION=2.0.0
           wget https://github.com/HDFGroup/hdf5/archive/refs/tags/${HDF5_VERSION}.tar.gz
           tar -zxvf ${HDF5_VERSION}.tar.gz
+          ls -R
           mkdir built_fortran
           cd built_fortran
           ../${HDF5_VERSION}/configure \
