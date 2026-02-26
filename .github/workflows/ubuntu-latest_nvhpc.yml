@@ -53,8 +53,8 @@ jobs:
           echo "NVHPC_ROOT=/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_MAJOR}.${NVHPC_MINOR}" >> ${GITHUB_ENV}
           echo "NVHPC_MOD=/opt/nvidia/hpc_sdk/modulefiles/nvhpc/${NVHPC_MAJOR}.${NVHPC_MINOR}" >> ${GITHUB_ENV}
           NVHPC_ROOT=/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_MAJOR}.${NVHPC_MINOR}
-          echo ls -R ${NVHPC_ROOT}
-               ls -R ${NVHPC_ROOT}
+          #echo ls -R ${NVHPC_ROOT}
+          #     ls -R ${NVHPC_ROOT}
 
       - name: Find Libraries and Set Environment Variables
         run: |
@@ -62,7 +62,7 @@ jobs:
           module load ${NVHPC_MOD}
 
           CUDA_ROOT=${NVHPC_ROOT}/cuda
-          CUDA_VERSION=`ls ${CUDA_ROOT} | tail -n 1`
+          CUDA_VERSION=`ls ${CUDA_ROOT} | head -n 1`
           echo "CUDA_VERSION: ${CUDA_VERSION}"
           OMPI_ROOT=${NVHPC_ROOT}/comm_libs/${CUDA_VERSION}/hpcx/hpcx-2.25.1/ompi
           echo "HDF5_INC=${GITHUB_WORKSPACE}/hdf5/include" >> ${GITHUB_ENV}
