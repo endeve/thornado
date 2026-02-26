@@ -74,11 +74,12 @@ jobs:
           echo "OMPI_LIB=${OMPI_ROOT}/lib" >> ${GITHUB_ENV}
           echo "LAPACK_LIB=${NVHPC_ROOT}/compilers/lib" >> ${GITHUB_ENV}
           echo "BLAS_LIB=${NVHPC_ROOT}/compilers/lib" >> ${GITHUB_ENV}
-#          sudo ln -sf ${OMPI_ROOT}/lib/mpi.mod \
-#                      ${OMPI_ROOT}/include/
           echo "THORNADO_DIR=${GITHUB_WORKSPACE}" >> ${GITHUB_ENV}
           echo "WEAKLIB_DIR=${GITHUB_WORKSPACE}/weaklib" >> ${GITHUB_ENV}
           echo "POSEIDON_DIR=${GITHUB_WORKSPACE}/poseidon" >> ${GITHUB_ENV}
+
+      #   sudo ln -sf ${OMPI_ROOT}/lib/mpi.mod \
+      #               ${OMPI_ROOT}/include/
 
       # Compilation flags for nvhpc from
       # https://forums.developer.nvidia.com/t/
