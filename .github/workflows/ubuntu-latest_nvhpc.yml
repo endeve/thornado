@@ -92,13 +92,12 @@ jobs:
           HDF5_DIR=${GITHUB_WORKSPACE}/hdf5
           mkdir ${HDF5_DIR}
           cd ${HDF5_DIR}
-          echo ${HDF5_MAJOR}
-          echo ${HDF5_MINOR}
-          wget https://github.com/HDFGroup/hdf5/archive/refs/tags/2.0.0.tar.gz
-          tar -zxvf *.tar.gz
+          HDF5_VERSION=2.0.0
+          wget https://github.com/HDFGroup/hdf5/archive/refs/tags/${HDF5_VERSION}.tar.gz
+          tar -zxvf ${HDF5_VERSION}.tar.gz
           mkdir built_fortran
           cd built_fortran
-          ../hdf5-${HDF5_MAJOR}.${HDF5_MINOR}/configure \
+          ../hdf5-${HDF5_VERSION}/configure \
           --prefix=${HDF5_DIR} \
           --enable-shared \
           --enable-static \
