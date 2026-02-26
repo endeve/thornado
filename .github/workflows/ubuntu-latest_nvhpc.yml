@@ -15,7 +15,7 @@ jobs:
       THORNADO_MACHINE: gh-runner_ubuntu-latest_nvhpc
       NVHPC_MAJOR: 26
       NVHPC_MINOR: 1
-      HDF5_MAJOR: 2.00
+      HDF5_MAJOR: 2.0
       HDF5_MINOR: 0
     steps:
       - name: Checkout thornado
