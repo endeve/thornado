@@ -53,7 +53,8 @@ jobs:
           echo "NVHPC_ROOT=/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_MAJOR}.${NVHPC_MINOR}" >> ${GITHUB_ENV}
           echo "NVHPC_MOD=/opt/nvidia/hpc_sdk/modulefiles/nvhpc/${NVHPC_MAJOR}.${NVHPC_MINOR}" >> ${GITHUB_ENV}
           NVHPC_ROOT=/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_MAJOR}.${NVHPC_MINOR}
-          ls ${NVHPC_ROOT}/comm_libs/*/*
+          echo ls -R ${NVHPC_ROOT}
+               ls -R ${NVHPC_ROOT}
 
       - name: Find Libraries and Set Environment Variables
         run: |
@@ -67,29 +68,38 @@ jobs:
           echo "CUDA_VERSION: ${CUDA_VERSION}"
 
           echo ""
+          echo ""
           echo "find ${NVHPC_ROOT} -name \"*libmpi*\""
                 find ${NVHPC_ROOT} -name  "*libmpi*"
+          echo ""
           echo ""
           echo "find ${NVHPC_ROOT} -name \"*mpifh*\""
                 find ${NVHPC_ROOT} -name  "*mpifh*"
           echo ""
+          echo ""
           echo "find ${NVHPC_ROOT} -name \"*mpi.mod\""
                 find ${NVHPC_ROOT} -name  "*mpi.mod"
+          echo ""
           echo ""
           echo "find ${NVHPC_ROOT} -name \"*cublas*\""
                 find ${NVHPC_ROOT} -name  "*cublas*"
           echo ""
+          echo ""
           echo "find ${NVHPC_ROOT} -name \"*cusparse*\""
                 find ${NVHPC_ROOT} -name  "*cusparse*"
+          echo ""
           echo ""
           echo "find ${NVHPC_ROOT} -name \"*cusolver*\""
                 find ${NVHPC_ROOT} -name  "*cusolver*"
           echo ""
+          echo ""
           echo "find ${NVHPC_ROOT} -name \"*cudart*\""
                 find ${NVHPC_ROOT} -name  "*cudart*"
           echo ""
+          echo ""
           echo "find ${NVHPC_ROOT} -name \"*liblapack*\""
                 find ${NVHPC_ROOT} -name  "*liblapack*"
+          echo ""
           echo ""
           echo "find ${NVHPC_ROOT} -name \"*lib*blas*\""
                 find ${NVHPC_ROOT} -name  "*lib*blas*"
