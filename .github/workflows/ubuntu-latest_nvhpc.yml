@@ -95,6 +95,7 @@ jobs:
           wget https://hdfgroup.org/download-hdf5/#
           echo ${HDF5_MAJOR}
           echo ${HDF5_MINOR}
+          ls
           tar zxf *.tar.gz
           mkdir built_fortran
           cd built_fortran
