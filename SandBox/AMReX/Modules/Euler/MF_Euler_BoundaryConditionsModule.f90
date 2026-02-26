@@ -59,6 +59,7 @@ MODULE MF_Euler_BoundaryConditionsModule
     MODULE PROCEDURE ApplyBoundaryConditions_Euler_MF_MultiLevel
     MODULE PROCEDURE ApplyBoundaryConditions_Euler_MF_SingleLevel
     MODULE PROCEDURE ApplyBoundaryConditions_Euler_MF_SingleLevel_Box
+    MODULE PROCEDURE ApplyBoundaryConditions_Euler_MF_SingleLevel_Box_iLevel
   END INTERFACE ApplyBoundaryConditions_Euler_MF
 
 CONTAINS
@@ -139,6 +140,26 @@ CONTAINS
 
 
   SUBROUTINE ApplyBoundaryConditions_Euler_MF_SingleLevel_Box &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+
+    INTEGER,       INTENT(in)    :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP),      INTENT(inout) :: &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    TYPE(EdgeMap), INTENT(in)    :: &
+      Edge_Map
+
+    INTEGER :: iApplyBC(3)
+
+    CALL Edge_Map % GetBC( iApplyBC )
+
+    CALL ApplyBoundaryConditions_Euler &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
+
+  END SUBROUTINE ApplyBoundaryConditions_Euler_MF_SingleLevel_Box
+
+
+  SUBROUTINE ApplyBoundaryConditions_Euler_MF_SingleLevel_Box_iLevel &
     ( ilevel, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
     INTEGER,       INTENT(in)    :: &
@@ -164,7 +185,7 @@ CONTAINS
     CALL ApplyBoundaryConditions_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
 
-  END SUBROUTINE ApplyBoundaryConditions_Euler_MF_SingleLevel_Box
+  END SUBROUTINE ApplyBoundaryConditions_Euler_MF_SingleLevel_Box_iLevel
 
 
 END MODULE MF_Euler_BoundaryConditionsModule
