@@ -52,6 +52,7 @@ jobs:
           sudo apt-get install -y nvhpc-${NVHPC_MAJOR}-${NVHPC_MINOR}
           echo "NVHPC_ROOT=/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_MAJOR}.${NVHPC_MINOR}" >> ${GITHUB_ENV}
           echo "NVHPC_MOD=/opt/nvidia/hpc_sdk/modulefiles/nvhpc/${NVHPC_MAJOR}.${NVHPC_MINOR}" >> ${GITHUB_ENV}
+          NVHPC_MOD=/opt/nvidia/hpc_sdk/modulefiles/nvhpc/${NVHPC_MAJOR}.${NVHPC_MINOR}
           ls ${NVHPC_ROOT}/comm_libs/*
 
       - name: Find Libraries and Set Environment Variables
