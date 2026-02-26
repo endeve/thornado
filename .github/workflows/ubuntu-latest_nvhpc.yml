@@ -97,7 +97,7 @@ jobs:
           echo ${HDF5_MAJOR}
           echo ${HDF5_MINOR}
           ls
-          tar zxf *.tar.gz
+          tar -zxvf *.tar.gz
           mkdir built_fortran
           cd built_fortran
           ../hdf5-${HDF5_MAJOR}.${HDF5_MINOR}/configure \
