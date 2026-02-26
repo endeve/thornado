@@ -60,7 +60,9 @@ jobs:
 
           CUDA_ROOT=$(find ${NVHPC_ROOT}/cuda -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)
           echo whereis openmpi
+               whereis openmpi
           echo which openmpi
+               which openmpi
           OMPI_ROOT=$(find ${NVHPC_ROOT}/comm_libs/openmpi -mindepth 1 -maxdepth 1 -type d -name 'openmpi-*' | sort -V | tail -n1)
 
           CUDA_VERSION=$(basename ${CUDA_ROOT})
