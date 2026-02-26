@@ -30,7 +30,8 @@ MODULE InitializationModule
   USE amrex_box_module, ONLY: &
     amrex_box
   USE amrex_parallel_module, ONLY: &
-    amrex_parallel_ioprocessor
+    amrex_parallel_ioprocessor, &
+    amrex_parallel_reduce_min
   USE thornado_amrex_fluxregister_module, ONLY: &
     amrex_fluxregister_build, &
     amrex_fluxregister_destroy
@@ -41,6 +42,7 @@ MODULE InitializationModule
 
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
+    nNodesX, &
     swX, &
     DescribeProgramHeaderX
   USE PolynomialBasisModule_Lagrange, ONLY: &
@@ -55,23 +57,33 @@ MODULE InitializationModule
     InitializePolynomialBasisMapping
   USE ReferenceElementModuleX, ONLY: &
     InitializeReferenceElementX, &
-    nDOFX_X1
+    nDOFX_X1, &
+    NodeNumberTableX
   USE ReferenceElementModuleX_Lagrange, ONLY: &
     InitializeReferenceElementX_Lagrange
   USE UnitsModule, ONLY: &
-    DescribeUnitsDisplay
+    DescribeUnitsDisplay, &
+    UnitsDisplay
   USE MeshModule, ONLY: &
     MeshX
   USE GeometryFieldsModule, ONLY: &
     nGF
   USE FluidFieldsModule, ONLY: &
+    iCF_D, &
+    iCF_S1, &
+    iCF_S2, &
+    iCF_S3, &
+    iCF_E, &
+    iCF_Ne, &
     nCF, &
     nPF, &
     nAF, &
     nDF
   USE Euler_BoundaryConditionsModule, ONLY: &
     ExpD, &
-    ExpE
+    ExpE, &
+    iBC, &
+    oBC
 
   ! --- Local Modules ---
 
@@ -92,9 +104,17 @@ MODULE InitializationModule
     FluxRegister_Euler
   USE MF_GeometryModule, ONLY: &
     ComputeGeometryX_MF
+  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+    MF_ExpD, &
+    MF_ExpE, &
+    MF_iBC, &
+    MF_oBC
   USE MF_Euler_SlopeLimiterModule, ONLY: &
     InitializeSlopeLimiter_Euler_MF, &
     ApplySlopeLimiter_Euler_MF
+  USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
+    D_Min_Euler_PL, &
+    IntE_Min_Euler_PL
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     InitializePositivityLimiter_Euler_MF, &
     ApplyPositivityLimiter_Euler_MF
@@ -163,7 +183,9 @@ CONTAINS
 
     TYPE(amrex_parmparse) :: PP
 
-    LOGICAL :: SetInitialValues
+    LOGICAL :: SetInitialValues, InitializeFromFile
+
+    INTEGER :: iLevel, iNX, iNX1, iCF, FileNo
 
     CALL amrex_init()
 
@@ -206,8 +228,6 @@ CONTAINS
 
     CALL InitializeEquationOfState_MF
 
-    CALL InitializePositivityLimiter_Euler_MF
-
     CALL InitializeSlopeLimiter_Euler_MF
 
     CALL amrex_init_virtual_functions &
@@ -226,10 +246,58 @@ CONTAINS
     dt     = 0.0_DP
     t_new  = 0.0_DP
 
+    ALLOCATE( MF_ExpD(0:nMaxLevels-1) )
+    ALLOCATE( MF_ExpE(0:nMaxLevels-1) )
+    ALLOCATE( MF_iBC (0:nMaxLevels-1,1:nDOFX,1:nCF) )
+    ALLOCATE( MF_oBC (0:nMaxLevels-1,1:nDOFX,1:nCF) )
+    ALLOCATE( iBC(1:nDOFX,1:nCF) )
+    ALLOCATE( oBC(1:nDOFX,1:nCF) )
+
+    MF_ExpD           = HUGE( 1.0_DP )
+    MF_ExpE           = HUGE( 1.0_DP )
+    MF_iBC            = HUGE( 1.0_DP )
+    MF_oBC            = HUGE( 1.0_DP )
+    D_Min_Euler_PL    = HUGE( 1.0_DP )
+    IntE_Min_Euler_PL = HUGE( 1.0_DP )
+
     IF( iRestart .LT. 0 )THEN
 
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
+
+      DO iLevel = 0, nMaxLevels - 1
+
+        CALL amrex_parallel_reduce_min( MF_ExpD(iLevel) )
+        CALL amrex_parallel_reduce_min( MF_ExpE(iLevel) )
+
+        DO iCF = 1, nCF
+        DO iNX = 1, nDOFX
+          CALL amrex_parallel_reduce_min( MF_iBC(iLevel,iNX,iCF) )
+          CALL amrex_parallel_reduce_min( MF_oBC(iLevel,iNX,iCF) )
+        END DO
+        END DO
+
+      END DO
+
+      CALL amrex_parallel_reduce_min( D_Min_Euler_PL    )
+      CALL amrex_parallel_reduce_min( IntE_Min_Euler_PL )
+
+      InitializeFromFile = .FALSE.
+      CALL amrex_parmparse_build( PP, 'SAS' )
+        CALL PP % get  ( 'InitializeFromFile', &
+                          InitializeFromFile )
+      CALL amrex_parmparse_destroy( PP )
+
+      IF( .NOT. InitializeFromFile )THEN
+
+        D_Min_Euler_PL    = 1.0e-8_DP * D_Min_Euler_PL
+        IntE_Min_Euler_PL = 1.0e-8_DP * IntE_Min_Euler_PL
+
+      END IF
+
+      CALL InitializePositivityLimiter_Euler_MF &
+             ( D_Min_Euler_PL_Option = D_Min_Euler_PL, &
+               IntE_Min_Euler_PL_Option = IntE_Min_Euler_PL )
 
       SetInitialValues = .TRUE.
 
@@ -243,19 +311,46 @@ CONTAINS
 
     ELSE
 
-      CALL ReadCheckpointFile
-
       CALL amrex_parmparse_build( PP, 'SAS' )
         CALL PP % get  ( 'FileName_Nodal1DIC_SAS', &
                           FileName_Nodal1DIC_SAS )
       CALL amrex_parmparse_destroy( PP )
 
-      OPEN( UNIT = 100, FILE = TRIM( FileName_Nodal1DIC_SAS ) // '_BC.dat' )
+      OPEN( UNIT = FileNo, FILE = TRIM( FileName_Nodal1DIC_SAS ) // '_BC.dat' )
 
-      READ(100,*) ExpD
-      READ(100,*) ExpE
+      READ(FileNo,'(*(ES25.16E3))') &
+        (MF_ExpD(iLevel), iLevel = 0, nMaxLevels - 1)
+      READ(FileNo,'(*(ES25.16E3))') &
+        (MF_ExpE(iLevel), iLevel = 0, nMaxLevels - 1)
 
-      CLOSE( 100 )
+      DO iCF = 1, nCF
+        READ(FileNo,'(*(ES25.16E3))') &
+          (MF_iBC(0,iNX1,iCF), iNX1 = 1, nNodesX(1))
+      END DO
+
+      DO iCF = 1, nCF
+        READ(FileNo,'(*(ES25.16E3))') &
+          (MF_oBC(0,iNX1,iCF), iNX1 = 1, nNodesX(1))
+      END DO
+
+      DO iCF = 1, nCF
+      DO iNX = 1, nDOFX
+        iNX1 = NodeNumberTableX(1,iNX)
+        MF_iBC(:,iNX,iCF) = MF_iBC(0,iNX1,iCF)
+        MF_oBC(:,iNX,iCF) = MF_oBC(0,iNX1,iCF)
+      END DO
+      END DO
+
+      READ(FileNo,'(ES25.16E3)') D_Min_Euler_PL
+      READ(FileNo,'(ES25.16E3)') IntE_Min_Euler_PL
+
+      CLOSE( FileNo )
+
+      CALL InitializePositivityLimiter_Euler_MF &
+             ( D_Min_Euler_PL_Option    = D_Min_Euler_PL, &
+               IntE_Min_Euler_PL_Option = IntE_Min_Euler_PL )
+
+      CALL ReadCheckpointFile
 
       SetInitialValues = .FALSE.
 
@@ -266,14 +361,95 @@ CONTAINS
 
     IF( amrex_parallel_ioprocessor() )THEN
 
-      WRITE(*,'(6x,A,ES24.16E3)') &
-        'ExpD: ', ExpD
-      WRITE(*,'(6x,A,ES24.16E3)') &
-        'ExpE: ', ExpE
+      DO iLevel = 0, nMaxLevels - 1
+        WRITE(*,'(6x,A,I2.2,A,SP,ES25.16E3)') &
+          'MF_ExpD(', iLevel, '): ', MF_ExpD(iLevel)
+      END DO
+      DO iLevel = 0, nMaxLevels - 1
+        WRITE(*,'(6x,A,I2.2,A,SP,ES25.16E3)') &
+          'MF_ExpE(', iLevel, '): ', MF_ExpE(iLevel)
+      END DO
+      WRITE(*,*)
+
+      DO iNX = 1, nDOFX
+        WRITE(*,'(6x,A,I2.2,A,I2.2,A,SP,ES25.16E3,1x,A)') &
+          'MF_iBC(:,', iNX, ',', iCF_D , ') = ', &
+           MF_iBC(0,iNX,iCF_D ) / UnitsDisplay % MassDensityUnit, &
+                                  UnitsDisplay % MassDensityLabel
+      END DO
+      DO iNX = 1, nDOFX
+        WRITE(*,'(6x,A,I2.2,A,I2.2,A,SP,ES25.16E3,1x,A)') &
+          'MF_iBC(:,', iNX, ',', iCF_S1, ') = ', &
+           MF_iBC(0,iNX,iCF_S1) / UnitsDisplay % MomentumDensityX1Unit, &
+                                  UnitsDisplay % MomentumDensityX1Label
+      END DO
+      DO iNX = 1, nDOFX
+        WRITE(*,'(6x,A,I2.2,A,I2.2,A,SP,ES25.16E3,1x,A)') &
+          'MF_iBC(:,', iNX, ',', iCF_S2, ') = ', &
+           MF_iBC(0,iNX,iCF_S2) / UnitsDisplay % MomentumDensityX2Unit, &
+                                  UnitsDisplay % MomentumDensityX2Label
+      END DO
+      DO iNX = 1, nDOFX
+        WRITE(*,'(6x,A,I2.2,A,I2.2,A,SP,ES25.16E3,1x,A)') &
+          'MF_iBC(:,', iNX, ',', iCF_S3, ') = ', &
+           MF_iBC(0,iNX,iCF_S3) / UnitsDisplay % MomentumDensityX3Unit, &
+                                  UnitsDisplay % MomentumDensityX3Label
+      END DO
+      DO iNX = 1, nDOFX
+        WRITE(*,'(6x,A,I2.2,A,I2.2,A,SP,ES25.16E3,1x,A)') &
+          'MF_iBC(:,', iNX, ',', iCF_E , ') = ', &
+           MF_iBC(0,iNX,iCF_E ) / UnitsDisplay % EnergyDensityUnit, &
+                                  UnitsDisplay % EnergyDensityLabel
+      END DO
+      DO iNX = 1, nDOFX
+        WRITE(*,'(6x,A,I2.2,A,I2.2,A,SP,ES25.16E3,1x,A)') &
+          'MF_iBC(:,', iNX, ',', iCF_Ne, ') = ', &
+           MF_iBC(0,iNX,iCF_Ne) / UnitsDisplay % ParticleDensityUnit, &
+                                  UnitsDisplay % ParticleDensityLabel
+      END DO
+      WRITE(*,*)
+
+      DO iNX = 1, nDOFX
+        WRITE(*,'(6x,A,I2.2,A,I2.2,A,SP,ES25.16E3,1x,A)') &
+          'MF_oBC(:,', iNX, ',', iCF_D , ') = ', &
+           MF_oBC(0,iNX,iCF_D ) / UnitsDisplay % MassDensityUnit, &
+                                  UnitsDisplay % MassDensityLabel
+      END DO
+      DO iNX = 1, nDOFX
+        WRITE(*,'(6x,A,I2.2,A,I2.2,A,SP,ES25.16E3,1x,A)') &
+          'MF_oBC(:,', iNX, ',', iCF_S1, ') = ', &
+           MF_oBC(0,iNX,iCF_S1) / UnitsDisplay % MomentumDensityX1Unit, &
+                                  UnitsDisplay % MomentumDensityX1Label
+      END DO
+      DO iNX = 1, nDOFX
+        WRITE(*,'(6x,A,I2.2,A,I2.2,A,SP,ES25.16E3,1x,A)') &
+          'MF_oBC(:,', iNX, ',', iCF_S2, ') = ', &
+           MF_oBC(0,iNX,iCF_S2) / UnitsDisplay % MomentumDensityX2Unit, &
+                                  UnitsDisplay % MomentumDensityX2Label
+      END DO
+      DO iNX = 1, nDOFX
+        WRITE(*,'(6x,A,I2.2,A,I2.2,A,SP,ES25.16E3,1x,A)') &
+          'MF_oBC(:,', iNX, ',', iCF_S3, ') = ', &
+           MF_oBC(0,iNX,iCF_S3) / UnitsDisplay % MomentumDensityX3Unit, &
+                                  UnitsDisplay % MomentumDensityX3Label
+      END DO
+      DO iNX = 1, nDOFX
+        WRITE(*,'(6x,A,I2.2,A,I2.2,A,SP,ES25.16E3,1x,A)') &
+          'MF_oBC(:,', iNX, ',', iCF_E , ') = ', &
+           MF_oBC(0,iNX,iCF_E ) / UnitsDisplay % EnergyDensityUnit, &
+                                  UnitsDisplay % EnergyDensityLabel
+      END DO
+      DO iNX = 1, nDOFX
+        WRITE(*,'(6x,A,I2.2,A,I2.2,A,SP,ES25.16E3,1x,A)') &
+          'MF_oBC(:,', iNX, ',', iCF_Ne, ') = ', &
+           MF_oBC(0,iNX,iCF_Ne) / UnitsDisplay % ParticleDensityUnit, &
+                                  UnitsDisplay % ParticleDensityLabel
+      END DO
+      WRITE(*,*)
 
     END IF
 
-    IF( ExpD .LT. Zero .OR. ExpE .LT. Zero ) &
+    IF( ANY( MF_ExpD .LT. Zero ) .OR. ANY( MF_ExpE .LT. Zero ) ) &
       CALL DescribeError_MF( 901 )
 
     CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
@@ -502,6 +678,7 @@ CONTAINS
     TYPE(amrex_mfiter)      :: MFI
     TYPE(amrex_box)         :: BX
     REAL(DP),               CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP),               CONTIGUOUS, POINTER :: uDF(:,:,:,:)
     CHARACTER(KIND=c_char), CONTIGUOUS, POINTER :: TagArr(:,:,:,:)
 
     IF( .NOT. ALLOCATED( TagCriteria ) )THEN
@@ -518,7 +695,7 @@ CONTAINS
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
-    !$OMP PARALLEL PRIVATE( MFI, BX, uCF, TagArr )
+    !$OMP PARALLEL PRIVATE( MFI, BX, uCF, uDF, TagArr )
     CALL amrex_mfiter_build( MFI, MF_uCF( iLevel ), Tiling = UseTiling )
 
     DO WHILE( MFI % next() )
@@ -526,14 +703,17 @@ CONTAINS
       BX = MFI % TileBox()
 
       uCF    => MF_uCF( iLevel ) % DataPtr( MFI )
+      uDF    => MF_uDF( iLevel ) % DataPtr( MFI )
       TagArr => Tag              % DataPtr( MFI )
 
       ! TagCriteria(iLevel+1) because iLevel starts at 0 but
       ! TagCriteria starts with 1
 
       CALL TagElements &
-             ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-               uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+             ( iLevel, BX % lo, BX % hi, &
+               LBOUND( uCF ), UBOUND( uCF ), uCF, &
+               LBOUND( uDF ), UBOUND( uDF ), uDF, &
+               TagCriteria(iLevel+1), SetTag, ClearTag, &
                LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
 
     END DO

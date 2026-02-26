@@ -42,8 +42,11 @@ MODULE Euler_BoundaryConditionsModule
   INTEGER, PARAMETER, PUBLIC :: iApplyBC_Euler_Outer = 2
   INTEGER, PARAMETER, PUBLIC :: iApplyBC_Euler_None  = 3
 
+  ! --- For relativistic accretion shock ---
   REAL(DP), PUBLIC :: ExpD
   REAL(DP), PUBLIC :: ExpE
+  REAL(DP), ALLOCATABLE, PUBLIC :: iBC(:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: oBC(:,:)
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET &
@@ -723,6 +726,11 @@ CONTAINS
             U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_E) &
               = E_0 * ( R_0 / R_q )**( ExpE )
 
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S1) = iBC(iNX,iCF_S1)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S2) = iBC(iNX,iCF_S2)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_S3) = iBC(iNX,iCF_S3)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCF_Ne) = iBC(iNX,iCF_Ne)
+
           END DO
           END DO
           END DO
@@ -734,6 +742,35 @@ CONTAINS
         END ASSOCIATE
 
       END IF
+
+     ! --- Outer Boundary ---
+
+     IF( ApplyOuterBC_Euler( iApplyBC ) )THEN
+
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+        !$ACC PRESENT( U, iX_B0, iX_E0, swX, nNodesX )
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+        DO iCF = 1, nCF
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX(1)
+        DO iNX = 1, nDOFX
+
+          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCF) = oBC(iNX,iCF)
+
+        END DO
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
 
     CASE ( 12 ) ! No Boundary Condition (Inner), Homogeneous (Outer)
 

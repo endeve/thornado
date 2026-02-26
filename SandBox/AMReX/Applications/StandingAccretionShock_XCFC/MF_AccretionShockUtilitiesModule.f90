@@ -50,10 +50,11 @@ MODULE MF_AccretionShockUtilitiesModule
     iPF_D, &
     iPF_V1, &
     iPF_V2, &
-    iAF_P
-  USE Euler_BoundaryConditionsModule, ONLY: &
-    ExpD, &
-    ExpE
+    iAF_P, &
+    nCF
+  USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
+    D_Min_Euler_PL, &
+    IntE_Min_Euler_PL
   USE UnitsModule, ONLY: &
     Kilometer, &
     Millisecond, &
@@ -78,12 +79,18 @@ MODULE MF_AccretionShockUtilitiesModule
     MF_uAF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
+  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+    MF_ExpD, &
+    MF_ExpE, &
+    MF_iBC, &
+    MF_oBC
   USE MF_UtilitiesModule, ONLY: &
     ShowVariableFromMultiFab, &
     IndLo_X, &
     IndHi_X
   USE InputParsingModule, ONLY: &
     nLevels, &
+    nMaxLevels, &
     t_new, &
     StepNo, &
     PlotFileNameRoot
@@ -121,9 +128,9 @@ CONTAINS
 
     TYPE(amrex_parmparse) :: PP
 
-    INTEGER :: iLevel, iErr
+    INTEGER :: iLevel, iErr, iCF
 
-    CHARACTER(256) :: FileName, DirName
+    CHARACTER(256) :: FileName, DirName, FMT
 
     IF( nDimsX .GT. 1 ) RETURN
 
@@ -138,26 +145,27 @@ CONTAINS
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF, &
              swXX_Option = swX )
 
+    FileName_Nodal1DIC_SAS = "StandingAccretionShock_1D_Nodal"
     CALL amrex_parmparse_build( PP, 'SAS' )
-      CALL PP % get( 'FileName_Nodal1DIC_SAS', &
-                      FileName_Nodal1DIC_SAS )
+      CALL PP % query( 'FileName_Nodal1DIC_SAS', &
+                        FileName_Nodal1DIC_SAS )
     CALL amrex_parmparse_destroy( PP )
 
     WRITE(FileName,'(A)') TRIM( FileName_Nodal1DIC_SAS ) // '_PF_D'
     CALL ShowVariableFromMultiFab &
-           ( MF_uPF, iPF_D, swXX_Option = swX, UseFineMask_Option = .FALSE., &
+           ( MF_uPF, iPF_D, swXX_Option = swX, UseFineMask_Option = .TRUE., &
              WriteToFile_Option = .TRUE., &
              FileNameBase_Option = TRIM( FileName ) )
 
     WRITE(FileName,'(A)') TRIM( FileName_Nodal1DIC_SAS ) // '_PF_V1'
     CALL ShowVariableFromMultiFab &
-           ( MF_uPF, iPF_V1, swXX_Option = swX, UseFineMask_Option = .FALSE., &
+           ( MF_uPF, iPF_V1, swXX_Option = swX, UseFineMask_Option = .TRUE., &
              WriteToFile_Option = .TRUE., &
              FileNameBase_Option = TRIM( FileName ) )
 
     WRITE(FileName,'(A)') TRIM( FileName_Nodal1DIC_SAS ) // '_AF_P'
     CALL ShowVariableFromMultiFab &
-           ( MF_uAF, iAF_P, swXX_Option = swX, UseFineMask_Option = .FALSE., &
+           ( MF_uAF, iAF_P, swXX_Option = swX, UseFineMask_Option = .TRUE., &
              WriteToFile_Option = .TRUE., &
              FileNameBase_Option = TRIM( FileName ) )
 
@@ -166,19 +174,29 @@ CONTAINS
       WRITE(DirName,'(A,I8.8,A)') &
         TRIM( PlotFileNameRoot ), StepNo(0), '_nodal/'
 
-      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
-
-      IF( amrex_parallel_ioprocessor() ) &
-        CALL SYSTEM( 'mkdir -p ' // TRIM( DirName ) // ' 2>/dev/null' )
-
-      CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
+      CALL SYSTEM( 'mkdir -p ' // TRIM( DirName ) // ' 2>/dev/null' )
 
       OPEN( UNIT = 101, &
             FILE = TRIM( DirName ) &
                      // TRIM( FileName_Nodal1DIC_SAS ) // '_BC.dat' )
 
-      WRITE(101,'(ES24.16E3)') ExpD
-      WRITE(101,'(ES24.16E3)') ExpE
+      WRITE(FMT,'(A,I3.3,A)') '(SP,', nMaxLevels, 'ES25.16E3)'
+      WRITE(101,TRIM(FMT)) MF_ExpD
+      WRITE(101,TRIM(FMT)) MF_ExpE
+
+      WRITE(FMT,'(A,I3.3,A)') '(SP,', nNodesX(1), 'ES25.16E3)'
+      DO iCF = 1, nCF
+        WRITE(101,TRIM(FMT)) MF_iBC(0,:,iCF)
+      END DO
+      DO iCF = 1, nCF
+        WRITE(101,TRIM(FMT)) MF_oBC(0,:,iCF)
+      END DO
+
+      WRITE(FMT,'(A)') '(SP,ES25.16E3)'
+      WRITE(101,TRIM(FMT)) D_Min_Euler_PL
+      WRITE(101,TRIM(FMT)) IntE_Min_Euler_PL
+
+      CLOSE( 101 )
 
     END IF
 

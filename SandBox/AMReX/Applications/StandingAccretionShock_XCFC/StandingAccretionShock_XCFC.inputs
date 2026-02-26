@@ -6,6 +6,7 @@
 debug.DEBUG = 0
 
 thornado.ProgramName = "StandingAccretionShock_XCFC"
+thornado.UseXCFC = 1
 
 thornado.Mass     = 2.8    # [Msun]
 SAS.Mass          = 2.8    # [Msun]
@@ -15,10 +16,11 @@ SAS.PreShockK     = 2.0e14
 
 SAS.ApplyPerturbation     = 1
 SAS.PerturbationOrder     = 1
-SAS.PerturbationType      = "Gaussian"
-SAS.etaC                  = 0.75
-SAS.sigma_eta             = 0.05
-SAS.PerturbationAmplitude = 1.0e-3
+SAS.PerturbationType      = "StepFunction"
+SAS.PerturbedField        = "PF_D"
+SAS.PerturbationAmplitude = 1.0e-8
+SAS.rPerturbationInner    = 7.0e1
+SAS.rPerturbationOuter    = 8.0e1
 
 SAS.InitializeFromFile     = 1
 SAS.FileName_Nodal1DIC_SAS = "StandingAccretionShock_XCFC_1D_Nodal"
@@ -36,7 +38,7 @@ thornado.dt_wrt  = 1.0e+0
 thornado.iCycleW = -1
 
 thornado.CheckpointFileNameRoot = "StandingAccretionShock_XCFC.chk"
-thornado.dt_chk    = 5.0e+0
+thornado.dt_chk    = 1.0e+1
 thornado.iCycleChk = -1
 
 thornado.nNodes = 3
@@ -48,7 +50,7 @@ geometry.coord_sys = 2
 geometry.prob_lo   = 2.0e1 0.0               0.0
 geometry.prob_hi   = 9.0e1 3.1415926535897931 6.2831853071795862
 
-amr.n_cell                  = 512 16 01
+amr.n_cell                  = 128 16 01
 thornado.swX                = 01 01 00
 #amr.max_grid_size_x         = 640
 #amr.blocking_factor_x       = 640

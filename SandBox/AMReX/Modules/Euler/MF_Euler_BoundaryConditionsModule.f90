@@ -20,7 +20,11 @@ MODULE MF_Euler_BoundaryConditionsModule
   USE FluidFieldsModule, ONLY: &
     nCF
   USE Euler_BoundaryConditionsModule, ONLY: &
-    ApplyBoundaryConditions_Euler
+    ApplyBoundaryConditions_Euler, &
+    ExpD, &
+    ExpE, &
+    iBC, &
+    oBC
 
   ! --- Local Modules ---
 
@@ -45,6 +49,11 @@ MODULE MF_Euler_BoundaryConditionsModule
   PRIVATE
 
   PUBLIC :: ApplyBoundaryConditions_Euler_MF
+
+  REAL(DP), ALLOCATABLE, PUBLIC :: MF_ExpD(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: MF_ExpE(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: MF_iBC(:,:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: MF_oBC(:,:,:)
 
   INTERFACE ApplyBoundaryConditions_Euler_MF
     MODULE PROCEDURE ApplyBoundaryConditions_Euler_MF_MultiLevel
@@ -113,7 +122,7 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_Euler_MF &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+             ( iLevel, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
       CALL thornado2amrex_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, U )
 
@@ -130,16 +139,25 @@ CONTAINS
 
 
   SUBROUTINE ApplyBoundaryConditions_Euler_MF_SingleLevel_Box &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+    ( ilevel, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
     INTEGER,       INTENT(in)    :: &
-      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLevel
     REAL(DP),      INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     TYPE(EdgeMap), INTENT(in)    :: &
       Edge_Map
 
     INTEGER :: iApplyBC(3)
+
+    ! --- These variables are only used within the
+    !     relativistic accretion shock problem ---
+    IF( ALLOCATED( MF_ExpD ) )THEN
+      ExpD = MF_ExpD(iLevel)
+      ExpE = MF_ExpE(iLevel)
+      iBC  = MF_iBC (iLevel,:,:)
+      oBC  = MF_oBC (iLevel,:,:)
+    END IF
 
     CALL Edge_Map % GetBC( iApplyBC )
 

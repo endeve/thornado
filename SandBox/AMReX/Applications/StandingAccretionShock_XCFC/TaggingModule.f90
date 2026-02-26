@@ -4,15 +4,23 @@ MODULE TaggingModule
 
   ! --- thornado Modules ---
 
+  USE ProgramHeaderModule, ONLY: &
+    nDOFX
   USE MeshModule, ONLY: &
     MeshX
   USE UnitsModule, ONLY: &
+    Gram, &
+    Centimeter, &
     Kilometer
+  USE FluidFieldsModule, ONLY: &
+    iDF_Sh_X1
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
     DP
+  USE InputParsingModule, ONLY: &
+    StepNo
 
   IMPLICIT NONE
   PRIVATE
@@ -23,13 +31,16 @@ CONTAINS
 
 
   SUBROUTINE TagElements &
-    ( iLevel, iX_B0, iX_E0, iLo, iHi, uCF, TagCriteria, &
+    ( iLevel, iX_B0, iX_E0, iLoC, iHiC, uCF, iLoD, iHiD, uDF, TagCriteria, &
       SetTag, ClearTag, TagLo, TagHi, Tag )
 
-    INTEGER,  INTENT(in) :: iLevel, iX_B0(3), iX_E0(3), iLo(4), iHi(4), &
+    INTEGER,  INTENT(in) :: iLevel, iX_B0(3), iX_E0(3), &
+                            iLoC(4), iHiC(4), iLoD(4), iHiD(4), &
                             TagLo(4), TagHi(4)
-    REAL(DP), INTENT(in) :: uCF(iLo(1):iHi(1),iLo(2):iHi(2), &
-                                iLo(3):iHi(3),iLo(4):iHi(4))
+    REAL(DP), INTENT(in) :: uCF(iLoC(1):iHiC(1),iLoC(2):iHiC(2), &
+                                iLoC(3):iHiC(3),iLoC(4):iHiC(4))
+    REAL(DP), INTENT(in) :: uDF(iLoD(1):iHiD(1),iLoD(2):iHiD(2), &
+                                iLoD(3):iHiD(3),iLoD(4):iHiD(4))
     REAL(DP), INTENT(in) :: TagCriteria
     CHARACTER(KIND=c_char), INTENT(in)    :: SetTag, ClearTag
     CHARACTER(KIND=c_char), INTENT(inout) :: Tag(TagLo(1):TagHi(1), &
@@ -37,7 +48,7 @@ CONTAINS
                                                  TagLo(3):TagHi(3), &
                                                  TagLo(4):TagHi(4))
 
-    INTEGER :: iX1, iX2, iX3
+    INTEGER :: iX1, iX2, iX3, indLo
 
     REAL(DP) :: TagCriteria_this
 
@@ -47,7 +58,12 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      IF( MeshX(1) % Center(iX1) / Kilometer .LT. TagCriteria_this )THEN
+      indLo = 1 + nDOFX * ( iDF_Sh_X1 - 1 )
+
+      IF( ANY( uDF(iX1,iX2,iX3,indLo:indLo+nDOFX-1) .GT. 0.1_DP ) &
+          .OR. ( ANY( uCF(iX1,iX2,iX3,1:nDOFX) &
+                    .GT. 3.0e8_DP * ( Gram / Centimeter**3 ) ) ) &
+        )THEN
 
         Tag(iX1,iX2,iX3,1) = SetTag
 

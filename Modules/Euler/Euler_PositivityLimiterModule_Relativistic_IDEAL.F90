@@ -63,11 +63,12 @@ MODULE Euler_PositivityLimiterModule_Relativistic_IDEAL
   PUBLIC :: FinalizePositivityLimiter_Euler_Relativistic_IDEAL
   PUBLIC :: ApplyPositivityLimiter_Euler_Relativistic_IDEAL
 
+  REAL(DP), PUBLIC      :: D_Min_Euler_PL, IntE_Min_Euler_PL
   LOGICAL               :: UsePositivityLimiter
   INTEGER, PARAMETER    :: nPS = 7  ! Number of Positive Point Sets
   INTEGER               :: nPP(nPS) ! Number of Positive Points Per Set
   INTEGER               :: nPT      ! Total number of Positive Points
-  REAL(DP)              :: Min_1, Min_2, D_Min_Euler_PL, IntE_Min_Euler_PL
+  REAL(DP)              :: Min_1, Min_2
   REAL(DP), ALLOCATABLE :: L_X(:,:)
 
   INTERFACE ComputePointValues
