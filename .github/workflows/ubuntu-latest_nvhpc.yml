@@ -52,6 +52,7 @@ jobs:
           sudo apt-get install -y nvhpc-${NVHPC_MAJOR}-${NVHPC_MINOR}
           echo "NVHPC_ROOT=/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_MAJOR}.${NVHPC_MINOR}" >> ${GITHUB_ENV}
           echo "NVHPC_MOD=/opt/nvidia/hpc_sdk/modulefiles/nvhpc/${NVHPC_MAJOR}.${NVHPC_MINOR}" >> ${GITHUB_ENV}
+          ls ${NVHPC_ROOT}/comm_libs/*
 
       - name: Find Libraries and Set Environment Variables
         run: |
@@ -59,10 +60,6 @@ jobs:
           module load ${NVHPC_MOD}
 
           CUDA_ROOT=$(find ${NVHPC_ROOT}/cuda -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)
-          echo whereis openmpi
-               whereis openmpi
-          echo which openmpi
-               which openmpi
           OMPI_ROOT=$(find ${NVHPC_ROOT}/comm_libs/openmpi -mindepth 1 -maxdepth 1 -type d -name 'openmpi-*' | sort -V | tail -n1)
 
           CUDA_VERSION=$(basename ${CUDA_ROOT})
