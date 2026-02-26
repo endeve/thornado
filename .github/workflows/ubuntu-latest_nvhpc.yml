@@ -52,7 +52,8 @@ jobs:
           sudo apt-get install -y nvhpc-${NVHPC_MAJOR}-${NVHPC_MINOR}
           echo "NVHPC_ROOT=/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_MAJOR}.${NVHPC_MINOR}" >> ${GITHUB_ENV}
           echo "NVHPC_MOD=/opt/nvidia/hpc_sdk/modulefiles/nvhpc/${NVHPC_MAJOR}.${NVHPC_MINOR}" >> ${GITHUB_ENV}
-          NVHPC_ROOT=/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_MAJOR}.${NVHPC_MINOR}
+
+          #NVHPC_ROOT=/opt/nvidia/hpc_sdk/Linux_x86_64/${NVHPC_MAJOR}.${NVHPC_MINOR}
           #echo ls -R ${NVHPC_ROOT}
           #     ls -R ${NVHPC_ROOT}
 
@@ -92,7 +93,9 @@ jobs:
           mkdir ${HDF5_DIR}
           cd ${HDF5_DIR}
           wget https://hdfgroup.org/download-hdf5/#
-          tar zxf hdf5-${HDF5_MAJOR}.${HDF5_MINOR}.tar.gz
+          echo ${HDF5_MAJOR}
+          echo ${HDF5_MINOR}
+          tar zxf *.tar.gz
           mkdir built_fortran
           cd built_fortran
           ../hdf5-${HDF5_MAJOR}.${HDF5_MINOR}/configure \
