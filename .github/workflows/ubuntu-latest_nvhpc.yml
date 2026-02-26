@@ -94,10 +94,7 @@ jobs:
           cd ${HDF5_DIR}
           echo ${HDF5_MAJOR}
           echo ${HDF5_MINOR}
-          wget https://www.hdfgroup.org/download-hdf5/hdf5-2.0.0.tar.gz
-          wget https://www.hdfgroup.org/download-hdf5/hdf5-2.0.0.zip
-          ls
-          unzip *.zip
+          wget https://github.com/HDFGroup/hdf5/archive/refs/tags/2.0.0.tar.gz
           tar -zxvf *.tar.gz
           mkdir built_fortran
           cd built_fortran
