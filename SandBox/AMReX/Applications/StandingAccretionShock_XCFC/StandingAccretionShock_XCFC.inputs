@@ -14,13 +14,21 @@ SAS.AccretionRate = 0.3    # [Msun/s]
 SAS.ShockRadius   = 60.0   # [km]
 SAS.PreShockK     = 2.0e14
 
+#SAS.ApplyPerturbation     = 1
+#SAS.PerturbationOrder     = 1
+#SAS.PerturbationType      = "StepFunction"
+#SAS.PerturbedField        = "PF_D"
+#SAS.PerturbationAmplitude = 1.0e-8
+#SAS.rPerturbationInner    = 7.0e1
+#SAS.rPerturbationOuter    = 8.0e1
+
 SAS.ApplyPerturbation     = 1
 SAS.PerturbationOrder     = 1
-SAS.PerturbationType      = "StepFunction"
-SAS.PerturbedField        = "PF_D"
-SAS.PerturbationAmplitude = 1.0e-8
-SAS.rPerturbationInner    = 7.0e1
-SAS.rPerturbationOuter    = 8.0e1
+SAS.PerturbationType      = "Gaussian"
+SAS.PerturbedField        = "AF_P"
+SAS.PerturbationAmplitude = 1.0e-6
+SAS.etaC                  = 0.75
+SAS.sigma_eta             = 0.05
 
 SAS.InitializeFromFile     = 1
 SAS.FileName_Nodal1DIC_SAS = "StandingAccretionShock_XCFC_1D_Nodal"

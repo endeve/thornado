@@ -8,11 +8,13 @@
 #SBATCH --time=1-00:00:00
 #SBATCH --mem=128G
 #SBATCH --output=StandingAccretionShock_XCFC.%j.out
+#SBATCH --error=StandingAccretionShock_XCFC.%j.out
 #SBATCH --job-name=SASI_AMR
 
 # Adapted from: https://github.com/AMReX-Astro/workflow/blob/main/
 #               job_scripts/cori-haswell/cori_haswell.MPI.slurm
 
+ROOTDIR=../
 ROOT=StandingAccretionShock_XCFC
 INFILE=${ROOT}.inputs
 OUTFILE=${ROOT}.${SLURM_JOB_ID}.out
@@ -25,13 +27,18 @@ echo "" >> ${OUTFILE}
 cat ${SLURMFILE} >> ${OUTFILE}
 
 echo "" >> ${OUTFILE}
-cat GNUmakefile >> ${OUTFILE}
+cat ${ROOTDIR}GNUmakefile >> ${OUTFILE}
 
 echo "" >> ${OUTFILE}
-cat Make.package >> ${OUTFILE}
+cat ${ROOTDIR}Make.package >> ${OUTFILE}
 
 echo "" >> ${OUTFILE}
 cat ${INFILE} >> ${OUTFILE}
+
+echo "" >> ${OUTFILE}
+cat TaggingModule.f90 >> ${OUTFILE}
+
+echo "" >> ${OUTFILE}
 
 function findChkFile {
 
@@ -66,4 +73,3 @@ fi
 
 module restore thornado
 srun --mpi=pmi2 ${EXEC} ${INFILE} ${restartString}
-
