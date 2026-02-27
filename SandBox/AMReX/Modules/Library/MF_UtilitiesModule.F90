@@ -165,6 +165,9 @@ MODULE MF_UtilitiesModule
   PUBLIC :: PrintBoxArray
   PUBLIC :: IndLo_X
   PUBLIC :: IndHi_X
+  PUBLIC :: IndLo_Z
+  PUBLIC :: IndHi_Z
+
 
   INTERFACE ShowVariableFromMultiFab
     MODULE PROCEDURE ShowVariableFromMultiFab_Single
@@ -223,21 +226,12 @@ CONTAINS
     WriteToFile = .FALSE.
     IF( PRESENT( WriteToFile_Option ) ) WriteToFile = WriteToFile_Option
 
-    IF( WriteToFile )THEN
-
-      WRITE(FMT,'(A,I2.2,A,I2.2,A,I2.2,A,I3.3,A)') &
-        '(I2.2,3I8.6,SP,3ES25.16E3,SP,', &
-        nNodesX(1),    'ES25.16E3,SP,', &
-        nNodesX(2),    'ES25.16E3,SP,', &
-        nNodesX(3),    'ES25.16E3,SP,', &
-        nDOFX     ,    'ES25.16E3)'
-
-    ELSE
-
-      WRITE(FMT,'(A,I2.2,A)') &
-        '(I2.2,3I8.6,', nDOFX, 'ES25.16E3)'
-
-    END IF
+    WRITE(FMT,'(A,I2.2,A,I2.2,A,I2.2,A,I3.3,A)') &
+      '(I2.2,3I8.6,SP3ES25.16E3,SP', &
+      nNodesX(1),    'ES25.16E3,SP', &
+      nNodesX(2),    'ES25.16E3,SP', &
+      nNodesX(3),    'ES25.16E3,SP', &
+      nDOFX     ,    'ES25.16E3)'
 
     CALL amrex_mfiter_build( MFI, MF, tiling = UseTiling )
 
@@ -321,7 +315,7 @@ CONTAINS
 
           WRITE(*,TRIM(FMT)) &
             iLevel, iX1, iX2, iX3, &
-            F(iX1,iX2,iX3,1+nDOFX*(iField-1):nDOFX*iField)
+            F(iX1,iX2,iX3,indLo_Z( 4, 1, iE_E0, iE_B0, nDOFZ, 1, iField ):indHi_Z( 4, 1, iE_E0, iE_B0, nDOFZ, 1, iField ))
 
         END IF
 
@@ -490,8 +484,11 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       Data_thornado(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
 
-    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iD, iNodeZ
-
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iD, iNodeZ, iNodeE, iNodeX
+!PRINT *, 'amrex2thornado_Z'
+!PRINT *, 'nDOFE =', nDOFE
+!PRINT *, 'nDOFX =', nDOFX  
+!PRINT *, 'nDOFZ =', nDOFZ
     DO iS  = 1      , nS
     DO iFd = 1      , nFields
     DO iZ4 = iZ_B(4), iZ_E(4)
@@ -499,15 +496,27 @@ CONTAINS
     DO iZ2 = iZ_B(2), iZ_E(2)
 
       DO iZ1    = iE_B0, iE_E0 ! always want iZ1 to not include ghost cells
-      DO iNodeZ = 1    , nDOFZ
+      DO iNodeE = 1    , nDOFE
+      DO iNodeX = 1    , nDOFX
 
-        iD = ( iS - 1 ) * nFields * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
-                + ( iFd - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
-                + ( iZ1 - 1 ) * nDOFZ + iNodeZ
+        iD = ( iS - 1 ) * nFields * ( iE_E0 - iE_B0 + 1 ) * nDOFE * nDOFX &
+                + ( iFd - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFE * nDOFX &
+                + ( iZ1 - iE_B0 ) * nDOFE * nDOFX &
+                + ( iNodeE - 1 ) * nDOFX + iNodeX
+        iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE !( iNodeX - 1 ) * nDOFE + iNodeE
 
         Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,iFd,iS) &
           = Data_amrex(iZ2,iZ3,iZ4,iD)
 
+        ! Print each iteration
+        !IF (iS == 1 .AND. iFd == 1 .AND. iZ4 == iZ_B(4) .AND. &
+        !    iZ3 == iZ_B(3) .AND. iZ2 == iZ_B(2) .AND. iZ1 == iE_B0) THEN
+        !  WRITE(*,*) 'iNodeE=', iNodeE, 'iNodeX=', iNodeX, 'iNodeZ=', iNodeZ, &
+        !             'thornado_Value=', Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,iFd,iS), &
+        !             'amrex_Value=', Data_amrex(iZ2,iZ3,iZ4,iD)
+        !END IF
+
+      END DO
       END DO
       END DO
 
@@ -532,8 +541,12 @@ CONTAINS
     REAL(DP), INTENT(in)  :: &
       Data_thornado(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
 
-    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iNodeZ, iD
-
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iNodeZ, iD, iNodeE, iNodeX
+!PRINT *, 'thornado2amrex_Z'
+!PRINT *, 'nDOFE =', nDOFE
+!PRINT *, 'nDOFX =', nDOFX  
+!PRINT *, 'nDOFZ =', nDOFZ
+!PRINT *, 'Expected nDOFZ =', nDOFE * nDOFX
     DO iS  = 1      , nS
     DO iFd = 1      , nFields
     DO iZ4 = iZ_B(4), iZ_E(4)
@@ -541,15 +554,27 @@ CONTAINS
     DO iZ2 = iZ_B(2), iZ_E(2)
 
       DO iZ1    = iE_B0, iE_E0
-      DO iNodeZ = 1    , nDOFZ
+      DO iNodeE = 1    , nDOFE
+      DO iNodeX = 1    , nDOFX
 
-        iD = ( iS - 1 ) * nFields * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
-               + ( iFd - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
-               + ( iZ1 - 1 ) * nDOFZ + iNodeZ
+        iD = ( iS - 1 ) * nFields * ( iE_E0 - iE_B0 + 1 ) * nDOFE * nDOFX &
+                + ( iFd - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFE * nDOFX &
+                + ( iZ1 - iE_B0 ) * nDOFE * nDOFX &
+                + ( iNodeE - 1 ) * nDOFX + iNodeX
+
+        iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE !( iNodeX - 1 ) * nDOFE + iNodeE !
 
         Data_amrex(iZ2,iZ3,iZ4,iD) &
           = Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,iFd,iS)
 
+        !IF (iS == 1 .AND. iFd == 1 .AND. iZ4 == iZ_B(4) .AND. &
+        !    iZ3 == iZ_B(3) .AND. iZ2 == iZ_B(2) .AND. iZ1 == iE_B0) THEN
+        !  WRITE(*,*) 'iNodeE=', iNodeE, 'iNodeX=', iNodeX, 'iNodeZ=', iNodeZ, &
+        !             'thornado_Value=', Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,iFd,iS), &
+        !             'amrex_Value=', Data_amrex(iZ2,iZ3,iZ4,iD)
+        !END IF
+
+      END DO
       END DO
       END DO
 
@@ -805,6 +830,10 @@ CONTAINS
       CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
       CALL MF_uCR(iLevel) % Fill_Boundary( GEOM(iLevel) )
+
+      !CALL FillPatch( iLevel, MF_uGF )
+      !CALL FillPatch( iLevel, MF_uGF, MF_uCF )
+      !CALL FillPatch( iLevel, MF_uGF, MF_uCR )
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -1154,7 +1183,7 @@ CONTAINS
                nSpecies ]    , &
              CR )
 
-    print*, "Writing Nodal Values"
+    !print*, "Writing Nodal Values"
 
 #endif
 
@@ -1488,8 +1517,8 @@ CONTAINS
       DO iS     = 1    , nS
       DO iZ1    = iE_B0, iE_E0 ! always want iZ1 to not include ghost cells
       DO iNodeE = 1    , nDOFE
-      DO iNodeX = 1    , nDOFX
       DO iFd    = 1    , nFields
+      DO iNodeX = 1    , nDOFX
 
         iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
 
@@ -1539,8 +1568,9 @@ CONTAINS
       DO iS     = 1    , nS
       DO iZ1    = iE_B0, iE_E0 ! always want iZ1 to not include ghost cells
       DO iNodeE = 1    , nDOFE
-      DO iNodeX = 1    , nDOFX
       DO iFd    = 1    , nFields
+      DO iNodeX = 1    , nDOFX
+
 
         iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
 
@@ -1699,6 +1729,25 @@ CONTAINS
 
   END FUNCTION indLo_X
 
+
+  INTEGER FUNCTION indLo_Z( nFields, iZ1, iE_E0, iE_B0, nDOFZ, iS, iFd )
+    
+    INTEGER, INTENT(in) :: nFields, iZ1, nDOFZ, iS, iE_E0, iE_B0, iFD
+
+    indLo_Z = ( iS - 1 ) * nFields * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                + ( iFd - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFZ &
+                + ( iZ1 - 1 ) * nDOFZ + 1
+
+  END FUNCTION indLo_Z
+
+
+  INTEGER FUNCTION indHi_Z( nFields, iZ1, iE_E0, iE_B0, nDOFZ, iS, iFd )
+    
+    INTEGER, INTENT(in) :: nFields, iZ1, nDOFZ, iS, iE_E0, iE_B0, iFD
+
+    indHi_Z = indLo_Z( nFields, iZ1, iE_E0, iE_B0, nDOFZ, iS, iFd ) + nDOFZ - 1
+
+  END FUNCTION indHi_Z
 
   INTEGER FUNCTION indHi_X( nDOFX, iF_X )
 

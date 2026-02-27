@@ -1,18 +1,19 @@
-MODULE MF_TwoMoment_UtilitiesModule
+MODULE MF_TwoMoment_UtilitiesModule_OrderV
 
   ! --- AMReX Modules ---
 
   USE amrex_box_module, ONLY: &
     amrex_box
-  USE amrex_multifab_module, ONLY: &
-    amrex_multifab, &
-    amrex_mfiter, &
-    amrex_mfiter_build, &
-    amrex_mfiter_destroy
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_reduce_min, &
     amrex_parallel_ioprocessor
-
+  USE amrex_multifab_module, ONLY: &
+    amrex_mfiter, &
+    amrex_mfiter_build, &
+    amrex_mfiter_destroy, &
+    amrex_multifab, &
+    amrex_multifab_build, &
+    amrex_multifab_destroy
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
@@ -169,6 +170,10 @@ CONTAINS
 
       CALL CreateMesh_MF( iLevel, MeshX )
 
+      PRINT *, 'NON-REALIZABILIITY TIME STEP: CELL WIDTH HERE:'
+      PRINT *, 'iLevel:', iLevel, ' dx:', MeshX(1) % Width(1), MeshX(2) % Width(1), MeshX(3) % Width(1)
+      PRINT *, "nDOFX:", nDOFX
+
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
@@ -201,9 +206,9 @@ CONTAINS
         !PRINT *, myTimeStep(iLevel)
 
         TimeStep( iLevel ) = MIN( TimeStep( iLevel ), myTimeStep( iLevel ) )
-        !PRINT *, 'TIME STEP HERE:'
-        !PRINT *, TimeStep(iLevel)
-        !PRINT *, myTimeStep(iLevel)
+        PRINT *, 'TIME STEP HERE:'
+        PRINT *, TimeStep(iLevel)
+        PRINT *, myTimeStep(iLevel)
         CALL DeallocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                  [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
@@ -247,12 +252,13 @@ CONTAINS
     myTimeStep = HUGE( One )
     TimeStep = HUGE( One )
 
-!PRINT *, 'ENTERING LOOP'
-
     DO iLevel = 0, nLevels-1
 
-!PRINT *, 'Create MEsh'
       CALL CreateMesh_MF( iLevel, MeshX )
+
+      PRINT *, 'REALIZABILIITY TIME STEP: CELL WIDTH HERE:'
+      PRINT *, 'iLevel:', iLevel, ' dx:', MeshX(1) % Width(1), MeshX(2) % Width(1), MeshX(3) % Width(1)
+      PRINT *, "nDOFX:", nDOFX
 
 !PRINT *, 'CALL ITERATOR'
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
@@ -298,9 +304,13 @@ CONTAINS
                ( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, CF )
 
         CALL ComputeTimeStep_TwoMoment_Realizability &
-                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, G, CF, CFL, myTimeStep( iLevel ), Verbose_Option=.FALSE. )
+                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, G, CF, CFL, myTimeStep( iLevel ), Verbose_Option=.TRUE. )
 
         TimeStep( iLevel ) = MIN( TimeStep( iLevel ), myTimeStep( iLevel ) )
+
+        PRINT *, 'REALIZABILIITY TIME STEP HERE:'
+        PRINT *, TimeStep(iLevel)
+        PRINT *, myTimeStep(iLevel)
 
         CALL DeallocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
@@ -324,7 +334,7 @@ CONTAINS
 
   END SUBROUTINE ComputeTimeStep_TwoMoment_Realizability_MF
 
-  SUBROUTINE ComputeFromConserved_TwoMoment_MF &
+SUBROUTINE ComputeFromConserved_TwoMoment_MF &
     ( MF_uGF, MF_uCF, MF_uCR, MF_uPR, MF_uAR, MF_uGR )
 
 
@@ -358,7 +368,34 @@ CONTAINS
     INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     INTEGER :: iLevel, iLo_MF(4)
+    INTEGER :: nCompPR, nCompAR, nCompGR
 
+    ! --- Rebuild MF_uPR, MF_uAR, MF_uGR with correct BoxArray ---
+    nCompPR = nDOFX * nDOFE * ( iE_E0 - iE_B0 + 1 ) * nPR * nSpecies
+    nCompAR = nDOFX * nDOFE * ( iE_E0 - iE_B0 + 1 ) * nAR * nSpecies
+    nCompGR = nDOFX * nGR * nSpecies
+
+    DO iLevel = 0, nLevels-1
+
+      CALL amrex_multifab_build &
+             ( MF_uPR(iLevel), MF_uGF(iLevel) % BA, &
+               MF_uGF(iLevel) % DM, nCompPR, swX )
+
+      CALL amrex_multifab_build &
+             ( MF_uAR(iLevel), MF_uGF(iLevel) % BA, &
+               MF_uGF(iLevel) % DM, nCompAR, swX )
+
+      CALL amrex_multifab_build &
+             ( MF_uGR(iLevel), MF_uGF(iLevel) % BA, &
+               MF_uGF(iLevel) % DM, nCompGR, swX )
+
+      CALL MF_uPR(iLevel) % SetVal( Zero )
+      CALL MF_uAR(iLevel) % SetVal( Zero )
+      CALL MF_uGR(iLevel) % SetVal( Zero )
+
+    END DO
+
+    ! --- Now compute from conserved ---
     DO iLevel = 0, nLevels-1
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
@@ -370,8 +407,8 @@ CONTAINS
         uCF => MF_uCF(iLevel) % DataPtr( MFI )
         uCR => MF_uCR(iLevel) % DataPtr( MFI )
         uPR => MF_uPR(iLevel) % DataPtr( MFI )
-        uGR => MF_uGR(iLevel) % DataPtr( MFI )
         uAR => MF_uAR(iLevel) % DataPtr( MFI )
+        uGR => MF_uGR(iLevel) % DataPtr( MFI )
 
         iLo_MF = LBOUND( uGF )
 
@@ -476,28 +513,12 @@ CONTAINS
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uCR, CR )
 
-        CALL amrex2thornado_Z &
-               ( nPR, nSpecies, nE, iE_B0, iE_E0, &
-                 iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uPR, PR )
-
-        CALL amrex2thornado_Z &
-               ( nAR, nSpecies, nE, iE_B0, iE_E0, &
-                 iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uAR, AR )
-
-        CALL amrex2thornado_Integrated &
-               ( nGR, nSpecies, iX_B1, iX_E1, &
-                 iLo_MF, iX_B0, iX_E0, uGR, GR )
-
         CALL ComputeFromConserved_TwoMoment &
               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, G, CF, CR, PR, AR, GR )
 
         CALL thornado2amrex_Integrated &
                ( nGR, nSpecies, iX_B1, iX_E1, &
                  iLo_MF, iX_B0, iX_E0, uGR, GR )
-
-        CALL thornado2amrex_Z &
-               ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uCR, CR )
 
         CALL thornado2amrex_Z &
                ( nPR, nSpecies, nE, iE_B0, iE_E0, &
@@ -536,7 +557,7 @@ CONTAINS
                    iZ_E1(2), &
                    iZ_E1(3), &
                    iZ_E1(4), &
-                   3       , &
+                   nAR     , &
                    nSpecies ], &
                  AR )
 
@@ -595,4 +616,4 @@ CONTAINS
 
   END SUBROUTINE ComputeFromConserved_TwoMoment_MF
  
-END MODULE MF_TwoMoment_UtilitiesModule
+END MODULE MF_TwoMoment_UtilitiesModule_OrderV

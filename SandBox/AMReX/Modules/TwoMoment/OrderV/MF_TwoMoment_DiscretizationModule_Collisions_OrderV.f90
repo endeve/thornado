@@ -12,6 +12,11 @@ MODULE  MF_TwoMoment_DiscretizationModule_Collisions_OrderV
     amrex_mfiter,   &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse, &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
+
 
   ! --- thornado Modules ---
   USE ProgramHeaderModule,      ONLY: &
@@ -26,6 +31,8 @@ MODULE  MF_TwoMoment_DiscretizationModule_Collisions_OrderV
     nCF
   USE TwoMoment_DiscretizationModule_Collisions, ONLY: &
     ComputeIncrement_TwoMoment_Implicit
+
+  USE TwoMoment_OpacityModule
   USE MeshModule, ONLY: &
     MeshX
 
@@ -43,6 +50,8 @@ MODULE  MF_TwoMoment_DiscretizationModule_Collisions_OrderV
     nSpecies, &
     UseTiling, &
     nE
+  USE FillPatchModule, ONLY: &
+    FillPatch
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -70,8 +79,8 @@ CONTAINS
     ( GEOM, MF_uGF, MF_uCF, MF_uCR, MF_duCR, MF_duCF, dt, Verbose_Option )
 
     TYPE(amrex_geometry), INTENT(in)    :: GEOM   (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uCF (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout)    :: MF_uGF (0:nLevels-1)
+    TYPE(amrex_multifab), INTENT(inout)    :: MF_uCF (0:nLevels-1)
     REAL(amrex_real),     INTENT(in)    :: dt
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR (0:nLevels-1)
     TYPE(amrex_multifab), INTENT(inout) :: MF_duCR(0:nLevels-1)
@@ -80,6 +89,7 @@ CONTAINS
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
+    TYPE(amrex_parmparse) :: PP
 
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
@@ -95,7 +105,8 @@ CONTAINS
 
     INTEGER :: iLevel, iZ1, iZ2, iZ3, iZ4, iNodeZ
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
-    INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), i
+    INTEGER :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4), i 
+    REAL(amrex_real)   :: Sigma, D_0, Chi
 
     LOGICAL :: Verbose
 
@@ -105,14 +116,28 @@ CONTAINS
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
+
+
+    CALL amrex_parmparse_build( PP, 'thornado' )
+      CALL PP % query( 'Sigma', Sigma )
+      CALL PP % query( 'Chi', Chi )
+      CALL PP % query( 'D_0', D_0 )
+    CALL amrex_parmparse_destroy( PP )
+
+
+
     DO iLevel = 0, nLevels-1
 
       ! --- Apply boundary conditions to interior domains ---
-      CALL MF_uCR(iLevel) % Fill_Boundary( GEOM(iLevel) )
 
-      CALL MF_uCF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      CALL FillPatch &
+           ( iLevel, MF_uGF,MF_uCR)
 
-      CALL MF_uGF(iLevel) % Fill_Boundary( GEOM(iLevel) )
+      CALL FillPatch( iLevel, MF_uGF, MF_uCF )
+
+      CALL FillPatch &
+           ( iLevel, MF_uGF, &
+             ApplyBoundaryConditions_Geometry_Option = .TRUE. )
 
       CALL MF_duCR(iLevel) % setval( 0.0_amrex_real )
       CALL MF_duCF(iLevel) % setval( 0.0_amrex_real )
@@ -234,6 +259,18 @@ CONTAINS
         !PRINT *, 'U_R', U_R(:,:,:,:,:,1,:)
         !PRINT *, '****************************************************'
         !PRINT *, 'F', U_F (:,:,:,:,1)
+
+        IF( ALLOCATED( uOP ) ) DEALLOCATE( uOP )
+        ALLOCATE( uOP(1:nDOFZ, &
+                      iZ_B1(1):iZ_E1(1), &
+                      iZ_B1(2):iZ_E1(2), &
+                      iZ_B1(3):iZ_E1(3), &
+                      iZ_B1(4):iZ_E1(4), &
+                      1:nOP, 1:nSpecies) )
+        uOP(:,:,:,:,:,iOP_D0,   :) = D_0
+        uOP(:,:,:,:,:,iOP_Chi,  :) = Chi
+        uOP(:,:,:,:,:,iOP_Sigma,:) = Sigma
+
         CALL ComputeIncrement_TwoMoment_Implicit &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, GX, U_F, dU_F, U_R, dU_R )
         PRINT *, 'MADE IT PAST IMPLICIT'

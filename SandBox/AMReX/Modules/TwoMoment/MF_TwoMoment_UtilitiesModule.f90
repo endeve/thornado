@@ -247,7 +247,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeFromConserved_TwoMoment_MF &
-    ( MF_uGF, MF_uCF, MF_uCR, MF_uPR )
+    ( MF_uGF, MF_uCF, MF_uCR, MF_uPR, MF_uAR, MF_uGR )
 
     TYPE(amrex_multifab), INTENT(in)    :: &
       MF_uGF(0:nLevels-1), MF_uCR(0:nLevels-1), MF_uCF(0:nLevels-1)
@@ -388,6 +388,8 @@ CONTAINS
 
           ITERATION_Euler(iNX,iX1,iX2,iX3) = 0
           iErr_Euler     (iNX,iX1,iX2,iX3) = 0
+
+! MAke this Non-relativistic
 
           CALL ComputePrimitive_Euler_Relativistic &
                ( CF(iNX,iX1,iX2,iX3,iCF_D ), &
