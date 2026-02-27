@@ -55,6 +55,8 @@ MODULE MF_AccretionShockUtilitiesModule
   USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
     D_Min_Euler_PL, &
     IntE_Min_Euler_PL
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    epsMin_Euler_GR
   USE UnitsModule, ONLY: &
     Kilometer, &
     Millisecond, &
@@ -195,6 +197,7 @@ CONTAINS
       WRITE(FMT,'(A)') '(SP,ES25.16E3)'
       WRITE(101,TRIM(FMT)) D_Min_Euler_PL
       WRITE(101,TRIM(FMT)) IntE_Min_Euler_PL
+      WRITE(101,TRIM(FMT)) epsMin_Euler_GR
 
       CLOSE( 101 )
 

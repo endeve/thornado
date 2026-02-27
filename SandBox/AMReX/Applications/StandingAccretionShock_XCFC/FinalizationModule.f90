@@ -68,8 +68,6 @@ CONTAINS
 
   SUBROUTINE FinalizeProgram
 
-    CALL WriteNodal1DICToFile_SAS
-
     CALL TimersStart_AMReX( Timer_AMReX_Finalize )
 
     CALL ComputeFromConserved_Euler_MF &
@@ -86,6 +84,10 @@ CONTAINS
     CALL WriteFieldsAMReX_Checkpoint
 
     CALL ComputeTally_Euler_MF( t_new, MF_uGF, MF_uCF )
+
+    StepNo = StepNo + 1
+
+    CALL WriteNodal1DICToFile_SAS
 
     CALL FinalizeFluid_SSPRK_MF
 

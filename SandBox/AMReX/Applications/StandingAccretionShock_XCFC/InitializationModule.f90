@@ -84,6 +84,8 @@ MODULE InitializationModule
     ExpE, &
     iBC, &
     oBC
+  USE Euler_UtilitiesModule_Relativistic, ONLY: &
+    epsMin_Euler_GR
 
   ! --- Local Modules ---
 
@@ -259,6 +261,7 @@ CONTAINS
     MF_oBC            = HUGE( 1.0_DP )
     D_Min_Euler_PL    = HUGE( 1.0_DP )
     IntE_Min_Euler_PL = HUGE( 1.0_DP )
+    epsMin_Euler_GR   = HUGE( 1.0_DP )
 
     IF( iRestart .LT. 0 )THEN
 
@@ -281,6 +284,7 @@ CONTAINS
 
       CALL amrex_parallel_reduce_min( D_Min_Euler_PL    )
       CALL amrex_parallel_reduce_min( IntE_Min_Euler_PL )
+      CALL amrex_parallel_reduce_min( epsMin_Euler_GR   )
 
       InitializeFromFile = .FALSE.
       CALL amrex_parmparse_build( PP, 'SAS' )
@@ -292,6 +296,7 @@ CONTAINS
 
         D_Min_Euler_PL    = 1.0e-8_DP * D_Min_Euler_PL
         IntE_Min_Euler_PL = 1.0e-8_DP * IntE_Min_Euler_PL
+        epsMin_Euler_GR   = 1.0e-8_DP * epsMin_Euler_GR
 
       END IF
 
@@ -343,6 +348,7 @@ CONTAINS
 
       READ(FileNo,'(ES25.16E3)') D_Min_Euler_PL
       READ(FileNo,'(ES25.16E3)') IntE_Min_Euler_PL
+      READ(FileNo,'(ES25.16E3)') epsMin_Euler_GR
 
       CLOSE( FileNo )
 
@@ -360,6 +366,12 @@ CONTAINS
     END IF
 
     IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,'(6x,A,SP,ES25.16E3,A)') &
+        'epsMin_Euler_GR: ', &
+         epsMin_Euler_GR / ( UnitsDisplay % EnergyDensityUnit &
+                             / UnitsDisplay % MassDensityUnit ), ' erg/g'
+      WRITE(*,*)
 
       DO iLevel = 0, nMaxLevels - 1
         WRITE(*,'(6x,A,I2.2,A,SP,ES25.16E3)') &

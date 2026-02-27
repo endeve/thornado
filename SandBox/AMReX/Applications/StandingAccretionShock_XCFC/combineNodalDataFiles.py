@@ -2,6 +2,7 @@
 
 import numpy as np
 from datetime import datetime
+import os
 
 """
 combineNodalDataFiles.py
@@ -20,6 +21,8 @@ nN     = 3
 field = [ 'PF_D', 'PF_V1', 'AF_P' ]
 
 ID = 'StandingAccretionShock_XCFC_1D_Nodal'
+
+filenameRoot = '../../sasi_nX0_128_PA1.0e-06/' + ID
 
 ### END OF USER INPUT
 
@@ -71,8 +74,6 @@ for f in range( len( field ) ):
     unique = np.unique( combinedData_r, return_index = True )
     ind = unique[1]
 
-    filenameRoot = ID
-
     if ( field[f] == 'PF_D' ) :
         filename = filenameRoot + '_X1n.dat'
         header \
@@ -80,6 +81,7 @@ for f in range( len( field ) ):
             .format( filename, __file__, datetime.today() )
         np.savetxt( '{:}'.format( filename ), combinedData_r[ind], \
                     header = header )
+        print('  Saved {:}'.format( filename ) )
 
     filename = filenameRoot + '_{:}.dat'.format( field[f] )
     header \
@@ -87,3 +89,8 @@ for f in range( len( field ) ):
         .format( filename, __file__, datetime.today() )
 
     np.savetxt( '{:}'.format( filename ), combinedData_u[ind], header = header )
+    print('  Saved {:}'.format( filename ) )
+
+cp = '  cp {:} {:}'.format(ID + '_BC.dat', filenameRoot + '_BC.dat')
+print( cp )
+os.system( cp )

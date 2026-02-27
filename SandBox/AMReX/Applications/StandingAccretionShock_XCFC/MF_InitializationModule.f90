@@ -640,9 +640,6 @@ CONTAINS
 
     END IF ! nLevels .EQ. 1
 
-    IF( iLevel .EQ. 0 ) &
-      epsMin_Euler_GR = HUGE( One )
-
     ! --- With perturbation ---
 
     indC = Locate( rC, R, SIZE( R ) )
@@ -777,10 +774,8 @@ CONTAINS
 
           END IF ! Apply perturbation
 
-          IF( iLevel .EQ. 0 ) &
-            epsMin_Euler_GR &
-              = MIN( epsMin_Euler_GR, uPF_K(iNX,iPF_E) / uPF_K(iNX,iPF_D) )
-
+          epsMin_Euler_GR   = MIN( epsMin_Euler_GR, &
+                                   uPF_K(iNX,iPF_E) / uPF_K(iNX,iPF_D) )
           D_Min_Euler_PL    = MIN( D_Min_Euler_PL   , uPF_K(iNX,iPF_D) )
           IntE_Min_Euler_PL = MIN( IntE_Min_Euler_PL, uPF_K(iNX,iPF_E) )
 
@@ -827,14 +822,6 @@ CONTAINS
 
     CALL amrex_mfiter_destroy( MFI )
 
-    IF( iLevel .EQ. 0 )THEN
-
-      CALL amrex_parallel_reduce_min( epsMin_Euler_GR )
-
-      epsMin_Euler_GR = 1.0e-06_DP * epsMin_Euler_GR
-
-    END IF
-
     DEALLOCATE( Field   )
     DEALLOCATE( P )
     DEALLOCATE( V )
@@ -845,12 +832,6 @@ CONTAINS
       t_end = 1.00e2_DP * AdvectionTime
 
     IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
-
-      WRITE(*,*)
-
-      WRITE(*,'(6x,A,ES24.16E3,A)') &
-        'epsMin_Euler_GR: ', &
-         epsMin_Euler_GR / ( Erg / Gram ), ' erg/g'
 
       IF( .NOT. InitializeFromFile )THEN
 
@@ -1093,6 +1074,7 @@ CONTAINS
 
     READ(FileNo,'(ES25.16E3)') D_Min_Euler_PL
     READ(FileNo,'(ES25.16E3)') IntE_Min_Euler_PL
+    READ(FileNo,'(ES25.16E3)') epsMin_Euler_GR
 
     CLOSE( FileNo )
 
