@@ -241,6 +241,50 @@ def GetFieldData( ds,                   \
         Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
         DataUnits = '1/cm^3'
 
+    elif Field == 'PM_D':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        DataUnits = 'g/cm^3'
+
+    elif Field == 'PM_V1':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        DataUnits = 'km/s'
+
+    elif Field == 'PM_V2':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        if   CoordinateSystem == 'cartesian'  : DataUnits = 'km/s'
+        elif CoordinateSystem == 'cylindrical': DataUnits = 'km/s'
+        elif CoordinateSystem == 'spherical'  : DataUnits = '1/s'
+
+    elif Field == 'PM_V3':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        if   CoordinateSystem == 'cartesian'  : DataUnits = 'km/s'
+        elif CoordinateSystem == 'cylindrical': DataUnits = '1/s'
+        elif CoordinateSystem == 'spherical'  : DataUnits = '1/s'
+
+    elif Field == 'PM_E':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        DataUnits = 'erg/cm^3'
+
+    elif Field == 'PM_Ne':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        DataUnits = '1/cm^3'
+
+    elif Field == 'PM_B1':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        DataUnits = 'Gauss'
+
+    elif Field == 'PM_B2':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        if   CoordinateSystem == 'cartesian'  : DataUnits = 'Gauss'
+        elif CoordinateSystem == 'cylindrical': DataUnits = 'Gauss'
+        elif CoordinateSystem == 'spherical'  : DataUnits = 'Gauss/cm'
+
+    elif Field == 'PM_B3':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        if   CoordinateSystem == 'cartesian'  : DataUnits = 'Gauss'
+        elif CoordinateSystem == 'cylindrical': DataUnits = 'Gauss/cm'
+        elif CoordinateSystem == 'spherical'  : DataUnits = 'Gauss/cm'
+
     elif Field == 'CF_D':
         Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
         DataUnits = 'g/cm^3'
@@ -268,6 +312,50 @@ def GetFieldData( ds,                   \
     elif Field == 'CF_Ne':
         Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
         DataUnits = '1/cm^3'
+
+    elif Field == 'CM_D':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        DataUnits = 'g/cm^3'
+
+    elif Field == 'CM_S1':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        DataUnits = 'g/cm^2/s'
+
+    elif Field == 'CM_S2':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        if   CoordinateSystem == 'cartesian'  : DataUnits = 'g/cm^2/s'
+        elif CoordinateSystem == 'cylindrical': DataUnits = 'g/cm^2/s'
+        elif CoordinateSystem == 'spherical'  : DataUnits = 'g/cm/s'
+
+    elif Field == 'CM_S3':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        if   CoordinateSystem == 'cartesian'  : DataUnits = 'g/cm^2/s'
+        elif CoordinateSystem == 'cylindrical': DataUnits = 'g/cm/s'
+        elif CoordinateSystem == 'spherical'  : DataUnits = 'g/cm/s'
+
+    elif Field == 'CM_E':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        DataUnits = 'erg/cm^3'
+
+    elif Field == 'CM_Ne':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        DataUnits = '1/cm^3'
+
+    elif Field == 'CM_B1':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        DataUnits = 'Gauss'
+
+    elif Field == 'CM_B2':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        if   CoordinateSystem == 'cartesian'  : DataUnits = 'Gauss'
+        elif CoordinateSystem == 'cylindrical': DataUnits = 'Gauss'
+        elif CoordinateSystem == 'spherical'  : DataUnits = 'Gauss/cm'
+
+    elif Field == 'CM_B3':
+        Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
+        if   CoordinateSystem == 'cartesian'  : DataUnits = 'Gauss'
+        elif CoordinateSystem == 'cylindrical': DataUnits = 'Gauss/cm'
+        elif CoordinateSystem == 'spherical'  : DataUnits = 'Gauss/cm'
 
     elif Field == 'AF_P':
         Data = np.copy( ds.find_field_values_at_points(("boxlib",Field), Locations ) )
