@@ -23,9 +23,6 @@ MODULE MF_MHD_UtilitiesModule
     swX
   USE MeshModule, ONLY: &
     MeshX
-  USE EquationOfStateModule_TABLE, ONLY: &
-    ComputeSpecificInternalEnergy_TABLE, &
-    Min_T
   USE GeometryFieldsModule, ONLY: &
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
@@ -66,7 +63,8 @@ MODULE MF_MHD_UtilitiesModule
   USE MHD_UtilitiesModule, ONLY: &
     ComputeTimeStep_MHD, &
     ComputeFromConserved_MHD, &
-    ComputeConserved_MHD
+    ComputeConserved_MHD, &
+    ComputeMagneticDivergence_MHD
 
   ! --- Local Modules ---
 
@@ -542,7 +540,7 @@ CONTAINS
                ( iX_B, iX_E, iX_B1, iX_E1, G, U, P, A, EvolveOnlyMagnetic )
 
         CALL ComputeDiagnosticFields_MHD &
-               ( iX_B, iX_E, iX_B1, iX_E1, P, A, D )
+               ( iX_B, iX_E, iX_B1, iX_E1, G, U, D )
 
         CALL thornado2amrex_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uDM, D )
 
@@ -593,27 +591,14 @@ CONTAINS
     ( iX_B0, iX_E0, iX_B1, iX_E1, P, A, D )
 
     INTEGER , INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)    :: P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-                               A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(in)    :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+                               U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER :: iNX, iX1, iX2, iX3
 
-    DO iX3 = iX_B0(3), iX_E0(3)
-    DO iX2 = iX_B0(2), iX_E0(2)
-    DO iX1 = iX_B0(1), iX_E0(1)
-    DO iNX = 1       , nDOFX
-
-      CALL ComputeSpecificInternalEnergy_TABLE &
-             ( P(iNX,iX1,iX2,iX3,iPM_D   ), &
-               Min_T, &
-               A(iNX,iX1,iX2,iX3,iAM_Ye  ), &
-               D(iNX,iX1,iX2,iX3,iDM_MinE) )
-
-    END DO
-    END DO
-    END DO
-    END DO
+    CALL ComputeMagneticDivergence_MHD &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
   END SUBROUTINE ComputeDiagnosticFields_MHD
 
