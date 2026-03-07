@@ -16,6 +16,7 @@ MODULE MHD_UtilitiesModule
   PUBLIC :: ComputeConserved_MHD
   PUBLIC :: ComputeFromConserved_MHD
   PUBLIC :: ComputeTimeStep_MHD
+  PUBLIC :: ComputeMagneticDivergence_MHD
   PUBLIC :: Eigenvalues_MHD
   PUBLIC :: Flux_X1_MHD
   PUBLIC :: Flux_X2_MHD
@@ -226,6 +227,24 @@ CONTAINS
              UseDivergenceCleaning, CleaningSpeed, DampingTimeScaleFactor, EvolveOnlyMagnetic )
 
   END SUBROUTINE ComputeTimeStep_MHD
+
+
+  SUBROUTINE ComputeMagneticDivergence_MHD &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+
+    INTEGER,  INTENT(in) :: &
+      iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(in)  :: &
+      G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(inout) :: &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    REAL(DP), INTENT(out) :: &
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    CALL ComputeMagneticDivergence_MHD_Relativistic &
+           ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+
+  END SUBROUTINE ComputeMagneticDivergence_MHD
 
 
   FUNCTION Eigenvalues_MHD &
