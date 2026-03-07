@@ -640,9 +640,6 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-!    CALL ApplyBoundaryConditions_MHD &
-!             ( t, iX_B0, iX_E0, iX_B1, iX_E1, U )
-
     CALL InitializeIncrement &
       ( iX_B0, iX_E0, iX_B1, iX_E1 )
 
