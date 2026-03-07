@@ -884,7 +884,7 @@ PROGRAM ApplicationDriver
              EvolveOnlyMagnetic )
 
     CALL ComputeMagneticDivergence_MHD_Relativistic &
-           ( t, iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
 
     CALL WriteFieldsHDF &
            ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF, WriteGhost_Option = WriteGhost )
@@ -990,7 +990,7 @@ PROGRAM ApplicationDriver
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM, EvolveOnlyMagnetic )
 
       CALL ComputeMagneticDivergence_MHD_Relativistic &
-           ( t, iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
+           ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
 
       CALL WriteFieldsHDF &
              ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF, WriteGhost_Option = WriteGhost )
@@ -1021,7 +1021,7 @@ PROGRAM ApplicationDriver
          ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uPM, uAM, EvolveOnlyMagnetic )
 
   CALL ComputeMagneticDivergence_MHD_Relativistic &
-         ( t, iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, uCM, uDM )
 
   CALL WriteFieldsHDF &
          ( t, WriteGF_Option = WriteGF, WriteMF_Option = WriteMF, WriteGhost_Option = WriteGhost )
