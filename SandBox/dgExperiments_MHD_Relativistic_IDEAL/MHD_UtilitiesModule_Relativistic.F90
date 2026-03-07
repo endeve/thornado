@@ -628,9 +628,8 @@ CONTAINS
 
 
   SUBROUTINE ComputeMagneticDivergence_MHD_Relativistic &
-    ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
 
-    REAL(DP), INTENT(in)  :: t
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)  :: &
