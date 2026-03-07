@@ -165,7 +165,7 @@ PROGRAM main
 
       END IF
 
-      CALL ComputeDiagnostic_MHD_MF &
+      CALL ComputeDiagnosticFields_MHD_MF &
              ( MF_uGF, MF_uCM, MF_uDM )
 
     END IF
