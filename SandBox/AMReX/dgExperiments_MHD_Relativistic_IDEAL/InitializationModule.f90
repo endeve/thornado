@@ -103,7 +103,8 @@ MODULE InitializationModule
   USE MF_InitializationModule, ONLY: &
     InitializeFields_MF
   USE MF_MHD_UtilitiesModule, ONLY: &
-    ComputeFromConserved_MHD_MF
+    ComputeFromConserved_MHD_MF, &
+    ComputeDiagnosticFields_MHD_MF
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -269,6 +270,9 @@ CONTAINS
 
     CALL ComputeFromConserved_MHD_MF &
            ( MF_uGF, MF_uCM, MF_uPM, MF_uAM )
+
+    CALL ComputeDiagnosticFields_MHD_MF &
+           ( MF_uGF, MF_uCM, MF_uDM )
 
     CALL WriteFieldsAMReX_PlotFile &
            ( t_new(0), StepNo, MF_uGF, &

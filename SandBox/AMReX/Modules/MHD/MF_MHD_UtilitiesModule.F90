@@ -536,9 +536,6 @@ CONTAINS
 
         CALL amrex2thornado_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uDM, D )
 
-        CALL ComputeFromConserved_MHD &
-               ( iX_B, iX_E, iX_B1, iX_E1, G, U, P, A, EvolveOnlyMagnetic )
-
         CALL ComputeDiagnosticFields_MHD &
                ( iX_B, iX_E, iX_B1, iX_E1, G, U, D )
 

@@ -28,7 +28,8 @@ PROGRAM main
     FinalizeProgram
   USE MF_MHD_UtilitiesModule, ONLY: &
     ComputeTimeStep_MHD_MF, &
-    ComputeFromConserved_MHD_MF
+    ComputeFromConserved_MHD_MF, &
+    ComputeDiagnosticFields_MHD_MF
   USE InputOutputModuleAMReX_MHD, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
@@ -156,6 +157,17 @@ PROGRAM main
       CALL ComputeFromConserved_MHD_MF &
              ( MF_uGF, MF_uCM, MF_uPM, MF_uAM )
 
+     IF( amrex_parallel_ioprocessor() )THEN
+
+        WRITE(*,*)
+        WRITE(*,'(A)') 'CALL ComputeDiagnosticFields_MHD_MF'
+        WRITE(*,*)
+
+      END IF
+
+      CALL ComputeDiagnostic_MHD_MF &
+             ( MF_uGF, MF_uCM, MF_uDM )
+
     END IF
 
     IF( amrex_parallel_ioprocessor() )THEN
@@ -229,6 +241,9 @@ CONTAINS
       CALL ComputeFromConserved_MHD_MF &
              ( MF_uGF, MF_uCM, MF_uPM, MF_uAM )
 
+      CALL ComputeDiagnosticFields_MHD_MF &
+             ( MF_uGF, MF_uCM, MF_uDM )
+
       CALL WriteFieldsAMReX_PlotFile &
              ( t_new(0), StepNo, MF_uGF, &
                MF_uGF_Option = MF_uGF, &
@@ -282,6 +297,9 @@ CONTAINS
 
       CALL ComputeFromConserved_MHD_MF &
              ( MF_uGF, MF_uCM, MF_uPM, MF_uAM )
+
+      CALL ComputeDiagnosticFields_MHD_MF &
+             ( MF_uGF, MF_uCM, MF_uDM )
 
       CALL WriteFieldsAMReX_Checkpoint &
              ( StepNo, nLevels, dt, t_new, &
