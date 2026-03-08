@@ -22,6 +22,8 @@ PROGRAM main
     MF_uPM, &
     MF_uAM, &
     MF_uDM
+  USE MF_MHD_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_MHD_MF
   USE InitializationModule, ONLY: &
     InitializeProgram
   USE FinalizationModule, ONLY: &
@@ -144,6 +146,9 @@ PROGRAM main
 
     IF( DEBUG )THEN
 
+      CALL ApplyBoundaryConditions_MHD_MF &
+             ( t_new, MF_uGF, MF_uCM, MF_uDM )
+
       CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
 
       IF( amrex_parallel_ioprocessor() )THEN
@@ -238,6 +243,9 @@ CONTAINS
 
       END IF
 
+      CALL ApplyBoundaryConditions_MHD_MF &
+             ( t_new, MF_uGF, MF_uCM, MF_uDM )
+
       CALL ComputeFromConserved_MHD_MF &
              ( MF_uGF, MF_uCM, MF_uPM, MF_uAM )
 
@@ -294,6 +302,9 @@ CONTAINS
           WRITE(*,'(A)') 'CALL WriteCheckpointFile'
 
       END IF
+
+      CALL ApplyBoundaryConditions_MHD_MF &
+             ( t_new, MF_uGF, MF_uCM, MF_uDM )
 
       CALL ComputeFromConserved_MHD_MF &
              ( MF_uGF, MF_uCM, MF_uPM, MF_uAM )

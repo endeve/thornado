@@ -29,6 +29,8 @@ MODULE FinalizationModule
     MF_uAM, &
     MF_uDM, &
     DestroyFields_MHD_MF
+  USE MF_MHD_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_MHD_MF
   USE MF_EquationOfStateModule_MHD, ONLY: &
     FinalizeEquationOfState_MF
   USE MF_MHD_SlopeLimiterModule, ONLY: &
@@ -91,6 +93,9 @@ CONTAINS
   SUBROUTINE FinalizeProgram
 
     CALL TimersStart_AMReX( Timer_AMReX_Finalize )
+
+    CALL ApplyBoundaryConditions_MHD_MF &
+           ( t_new, MF_uGF, MF_uCM, MF_uDM )
 
     CALL ComputeFromConserved_MHD_MF &
            ( MF_uGF, MF_uCM, MF_uPM, MF_uAM )

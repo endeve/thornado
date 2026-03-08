@@ -268,6 +268,9 @@ CONTAINS
 
     CALL DescribeProgramHeader_AMReX
 
+    CALL ApplyBoundaryConditions_MHD_MF &
+           ( t_new, MF_uGF, MF_uCM, MF_uDM )
+
     CALL ComputeFromConserved_MHD_MF &
            ( MF_uGF, MF_uCM, MF_uPM, MF_uAM )
 

@@ -169,6 +169,8 @@ CONTAINS
 
     CALL amrex_mfiter_destroy( MFI )
 
+    CALL DestroyMesh_MF( MeshX )
+
   END SUBROUTINE ApplyBoundaryConditions_MHD_MF_SingleLevel
 
 
