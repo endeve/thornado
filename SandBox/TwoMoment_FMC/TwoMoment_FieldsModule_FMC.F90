@@ -70,17 +70,23 @@ MODULE TwoMoment_FieldsModule_FMC
 
   ! --- Auxiliary Two-Moment Fields ---
 
-  INTEGER, PUBLIC, PARAMETER :: iAM_F = 1  ! Flux Factor
-  INTEGER, PUBLIC, PARAMETER :: iAM_K = 2  ! Eddington Factor
-  INTEGER, PUBLIC, PARAMETER :: iAM_Q = 3  ! Heat Flux Factor
-  INTEGER, PUBLIC, PARAMETER :: iAM_N = 4  ! Eulerian Number Density
-  INTEGER, PUBLIC, PARAMETER :: nAM   = 4  ! n Auxiliary Two-Moment Fields
+  INTEGER, PUBLIC, PARAMETER :: iAM_F  = 1  ! Flux Factor
+  INTEGER, PUBLIC, PARAMETER :: iAM_K  = 2  ! Eddington Factor
+  INTEGER, PUBLIC, PARAMETER :: iAM_Q  = 3  ! Heat Flux Factor
+  INTEGER, PUBLIC, PARAMETER :: iAM_N  = 4  ! Eulerian Number Density
+  INTEGER, PUBLIC, PARAMETER :: iAM_F1 = 5  ! Eulerian Number Flux 1
+  INTEGER, PUBLIC, PARAMETER :: iAM_F2 = 6  ! Eulerian Number Flux 2
+  INTEGER, PUBLIC, PARAMETER :: iAM_F3 = 7  ! Eulerian Number Flux 3
+  INTEGER, PUBLIC, PARAMETER :: nAM    = 7  ! n Auxiliary Two-Moment Fields
 
   CHARACTER(32), DIMENSION(nAM), PUBLIC, PARAMETER :: &
     namesAM = [ 'Lagrangian Flux Factor          ', &
                 'Lagrangian Eddington Factor     ', &
                 'Lagrangian Heat Flux Factor     ', &
-                'Eulerian Number Density         ' ]
+                'Eulerian Number Density         ', &
+                'Eulerian Number Flux (1)        ', &
+                'Eulerian Number Flux (2)        ', &
+                'Eulerian Number Flux (3)        ' ]
 
   REAL(DP), DIMENSION(nAM), PUBLIC :: unitsAM
 
