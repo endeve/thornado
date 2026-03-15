@@ -28,15 +28,19 @@ CONTAINS
 
 
   SUBROUTINE TagElements &
-    ( iLevel, iX_B0, iX_E0, iLo, iHi, uCF, uDF, TagCriteria, &
+    ( iLevel, iX_B0, iX_E0, &
+      iLo_C, iHi_C, uCF, &
+      iLo_D, iHi_D, uDF, TagCriteria, &
       SetTag, ClearTag, TagLo, TagHi, Tag )
 
-    INTEGER,  INTENT(in) :: iLevel, iX_B0(3), iX_E0(3), iLo(4), iHi(4), &
+    INTEGER,  INTENT(in) :: iLevel, iX_B0(3), iX_E0(3), &
+                            iLo_C(4), iHi_C(4), &
+                            iLo_D(4), iHi_D(4), &
                             TagLo(4), TagHi(4)
-    REAL(DP), INTENT(in) :: uCF(iLo(1):iHi(1),iLo(2):iHi(2), &
-                                iLo(3):iHi(3),iLo(4):iHi(4))
-    REAL(DP), INTENT(in) :: uDF(iLo(1):iHi(1),iLo(2):iHi(2), &
-                                iLo(3):iHi(3),iLo(4):iHi(4))
+    REAL(DP), INTENT(in) :: uCF(iLo_C(1):iHi_C(1),iLo_C(2):iHi_C(2), &
+                                iLo_C(3):iHi_C(3),iLo_C(4):iHi_C(4))
+    REAL(DP), INTENT(in) :: uDF(iLo_D(1):iHi_D(1),iLo_D(2):iHi_D(2), &
+                                iLo_D(3):iHi_D(3),iLo_D(4):iHi_D(4))
     REAL(DP), INTENT(in) :: TagCriteria
     CHARACTER(KIND=c_char), INTENT(in)    :: SetTag, ClearTag
     CHARACTER(KIND=c_char), INTENT(inout) :: Tag(TagLo(1):TagHi(1), &

@@ -20,7 +20,7 @@ MODULE FinalizationModule
 
   ! --- Local Modules ---
 
-  USE MF_EquationOfStateModule_Euler, ONLY: &
+  USE MF_EquationOfStateModule, ONLY: &
     FinalizeEquationOfState_MF
   USE MF_FieldsModule_Geometry, ONLY: &
     MF_uGF, &
@@ -35,11 +35,11 @@ MODULE FinalizationModule
     FinalizeSlopeLimiter_Euler_MF
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     FinalizePositivityLimiter_Euler_MF
-  USE MF_TimeSteppingModule_SSPRK_Euler, ONLY: &
+  USE MF_TimeSteppingModule_SSPRK, ONLY: &
     FinalizeFluid_SSPRK_MF
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
-  USE InputOutputModuleAMReX_Euler, ONLY: &
+  USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
   USE MF_Euler_TallyModule, ONLY: &
@@ -50,7 +50,7 @@ MODULE FinalizationModule
     dt, &
     t_old, &
     t_new
-  USE MF_TimersModule_Euler, ONLY: &
+  USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
     Timer_AMReX_Finalize, &
@@ -68,8 +68,6 @@ CONTAINS
 
   SUBROUTINE FinalizeProgram
 
-    CALL WriteNodal1DICToFile_SAS
-
     CALL TimersStart_AMReX( Timer_AMReX_Finalize )
 
     CALL ComputeFromConserved_Euler_MF &
@@ -86,6 +84,10 @@ CONTAINS
     CALL WriteFieldsAMReX_Checkpoint
 
     CALL ComputeTally_Euler_MF( t_new, MF_uGF, MF_uCF )
+
+    StepNo = StepNo + 1
+
+    CALL WriteNodal1DICToFile_SAS
 
     CALL FinalizeFluid_SSPRK_MF
 

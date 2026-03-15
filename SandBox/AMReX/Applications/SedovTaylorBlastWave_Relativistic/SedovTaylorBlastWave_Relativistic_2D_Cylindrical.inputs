@@ -1,11 +1,11 @@
-##### SedovTaylorBlastWave_XCFC_3D_Cartesian.inputs #####
+##### SedovTaylorBlastWave_Relativistic_2D_Cylindrical.inputs #####
 
 # For all LOGICAL types, use 0 for .FALSE. and 1 for .TRUE.
 # For all REAL types, use "e" and not "d", i.e. 1.0e3
 
 debug.DEBUG = 0
 
-thornado.ProgramName = "SedovTaylorBlastWave_XCFC"
+thornado.ProgramName = "SedovTaylorBlastWave_Relativistic"
 
 Sedov.nDetCells = 03 # number of cells on finest level
 Sedov.Edet      = 1.0e-3
@@ -13,34 +13,29 @@ Sedov.X_D       = 7.8125e-3 # Value taken from 1D run
 
 thornado.iRestart = -1
 
-thornado.TallyFileNameRoot_Euler = "SedovTaylorBlastWave_XCFC.Tally"
-thornado.PlotFileNameRoot = "SedovTaylorBlastWave_XCFC.plt"
-thornado.t_end   = 1.0e2
+thornado.TallyFileNameRoot_Euler = "SedovTaylorBlastWave_Relativistic.Tally"
+thornado.PlotFileNameRoot = "SedovTaylorBlastWave_Relativistic.plt"
+thornado.t_end   = 5.0e2
 thornado.iCycleD = 10
 
-thornado.dt_wrt  = 1.0e0
+thornado.dt_wrt  = 1.0e2
 thornado.iCycleW = -1
 
-thornado.CheckpointFileNameRoot = "SedovTaylorBlastWave_XCFC.chk"
-thornado.dt_chk    = 1.0e0
+thornado.CheckpointFileNameRoot = "SedovTaylorBlastWave_Relativistic.chk"
+thornado.dt_chk    = 5.1e2
 thornado.iCycleChk = -1
-#thornado.iCheckpointsFields_uGF = 1
 
 thornado.nNodes = 2
 
-thornado.bcX         = 2 2 2
-geometry.is_periodic = 0 0 0
+thornado.bcX         = 3 2 0
+geometry.is_periodic = 0 0 1
 
-geometry.coord_sys = 0
-geometry.prob_lo   = -1.0 -1.0 -1.0
-geometry.prob_hi   = +1.0 +1.0 +1.0
+geometry.coord_sys = 1
+geometry.prob_lo   = 0.0 -1.0 0.0
+geometry.prob_hi   = 1.0 +1.0 6.2831853071795862
 
-amr.n_cell                  = 64 64 64
-thornado.swX                = 01 01 01
-#amr.max_grid_size_x         = 32
-#amr.blocking_factor_x       = 32
-#amr.max_grid_size_y         = 64
-#amr.blocking_factor_y       = 64
+amr.n_cell                  = 32 64 01
+thornado.swX                = 01 01 00
 amr.max_level               = 2
 amr.UseFluxCorrection_Euler = 1
 amr.UseAMR                  = 1

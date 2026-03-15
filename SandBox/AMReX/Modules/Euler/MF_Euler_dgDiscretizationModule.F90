@@ -420,9 +420,6 @@ CONTAINS
     INTEGER , INTENT(in) :: iLevel
     INTEGER , INTENT(in) :: iX_B0(3), iX_E0(3)
 
-    ! --- OffGridFlux_Euler_XX_Inner/Outer defined to be positive if flow
-    !     is onto the grid ---
-
     IF( .NOT. IsPeriodic(1) )THEN
 
       IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo(1) ) &
@@ -430,7 +427,7 @@ CONTAINS
           = OffGridFlux_Euler_MF(:,iLevel) + OffGridFlux_Euler_X1_Inner
       IF( iX_E0(1) .EQ. amrex_geom(iLevel) % domain % hi(1) ) &
         OffGridFlux_Euler_MF(:,iLevel) &
-          = OffGridFlux_Euler_MF(:,iLevel) + OffGridFlux_Euler_X1_Outer
+          = OffGridFlux_Euler_MF(:,iLevel) - OffGridFlux_Euler_X1_Outer
 
     END IF
 
@@ -441,7 +438,7 @@ CONTAINS
           = OffGridFlux_Euler_MF(:,iLevel) + OffGridFlux_Euler_X2_Inner
       IF( iX_E0(2) .EQ. amrex_geom(iLevel) % domain % hi(2) ) &
         OffGridFlux_Euler_MF(:,iLevel) &
-          = OffGridFlux_Euler_MF(:,iLevel) + OffGridFlux_Euler_X2_Outer
+          = OffGridFlux_Euler_MF(:,iLevel) - OffGridFlux_Euler_X2_Outer
 
     END IF
 
@@ -452,7 +449,7 @@ CONTAINS
           = OffGridFlux_Euler_MF(:,iLevel) + OffGridFlux_Euler_X3_Inner
       IF( iX_E0(3) .EQ. amrex_geom(iLevel) % domain % hi(3) ) &
         OffGridFlux_Euler_MF(:,iLevel) &
-          = OffGridFlux_Euler_MF(:,iLevel) + OffGridFlux_Euler_X3_Outer
+          = OffGridFlux_Euler_MF(:,iLevel) - OffGridFlux_Euler_X3_Outer
     END IF
 
   END SUBROUTINE IncrementOffGridTally_Euler

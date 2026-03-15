@@ -54,7 +54,7 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      IF( MeshX(1) % Center(iX1) / Kilometer .LT. TagCriteria_this )THEN
+      IF( MeshX(1) % Center(iX1) / Kilometer .GT. TagCriteria_this )THEN
 
         Tag(iX1,iX2,iX3,1) = SetTag
 
@@ -63,6 +63,9 @@ CONTAINS
         Tag(iX1,iX2,iX3,1) = ClearTag
 
       END IF
+
+      IF( MeshX(1) % Center(iX1) / Kilometer .LT. 1.0_DP ) &
+        Tag(iX1,iX2,iX3,1) = SetTag
 
     END DO
     END DO

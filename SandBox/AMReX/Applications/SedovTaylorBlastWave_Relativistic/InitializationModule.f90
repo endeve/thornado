@@ -30,7 +30,8 @@ MODULE InitializationModule
   USE amrex_box_module, ONLY: &
     amrex_box
   USE amrex_parallel_module, ONLY: &
-    amrex_parallel_ioprocessor
+    amrex_parallel_ioprocessor, &
+    amrex_parallel_reduce_min
   USE thornado_amrex_fluxregister_module, ONLY: &
     amrex_fluxregister_build, &
     amrex_fluxregister_destroy
@@ -69,16 +70,13 @@ MODULE InitializationModule
     nPF, &
     nAF, &
     nDF
-  USE Euler_BoundaryConditionsModule, ONLY: &
-    ExpD, &
-    ExpE
 
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
     DP, &
     Zero
-  USE MF_EquationOfStateModule_Euler, ONLY: &
+  USE MF_EquationOfStateModule, ONLY: &
     InitializeEquationOfState_MF
   USE MF_FieldsModule_Geometry, ONLY: &
     CreateFields_Geometry_MF, &
@@ -98,10 +96,12 @@ MODULE InitializationModule
   USE MF_Euler_PositivityLimiterModule, ONLY: &
     InitializePositivityLimiter_Euler_MF, &
     ApplyPositivityLimiter_Euler_MF
-  USE MF_TimeSteppingModule_SSPRK_Euler, ONLY: &
+  USE MF_TimeSteppingModule_SSPRK, ONLY: &
     InitializeFluid_SSPRK_MF
   USE MF_InitializationModule, ONLY: &
-    InitializeFields_MF
+    InitializeFields_MF, &
+    D_Min_Euler_PL, &
+    IntE_Min_Euler_PL
   USE MF_Euler_UtilitiesModule, ONLY: &
     ComputeFromConserved_Euler_MF
   USE MF_MeshModule, ONLY: &
@@ -110,13 +110,9 @@ MODULE InitializationModule
   USE MF_Euler_TallyModule, ONLY: &
     InitializeTally_Euler_MF, &
     ComputeTally_Euler_MF
-  USE MF_ErrorModule, ONLY: &
-    DescribeError_MF
-  USE FillPatchModule_Euler, ONLY: &
+  USE FillPatchModule, ONLY: &
     FillPatch, &
     FillCoarsePatch
-  USE MF_XCFC_UtilitiesModule, ONLY: &
-    MultiplyWithPsi6_MF
   USE TaggingModule, ONLY: &
     TagElements
   USE InputParsingModule, ONLY: &
@@ -135,21 +131,20 @@ MODULE InitializationModule
     UseTiling, &
     UseFluxCorrection_Euler, &
     TagCriteria, &
+    RefinementScheme, &
     DescribeProgramHeader_AMReX
-  USE InputOutputModuleAMReX_Euler, ONLY: &
+  USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     ReadCheckpointFile
-  USE AverageDownModule_Euler, ONLY: &
+  USE AverageDownModule, ONLY: &
     AverageDown
   USE Euler_MeshRefinementModule, ONLY: &
     InitializeMeshRefinement_Euler
-  USE MF_TimersModule_Euler, ONLY: &
+  USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
     InitializeTimers_AMReX, &
     Timer_AMReX_Initialize
-  USE MF_AccretionShockUtilitiesModule, ONLY: &
-    FileName_Nodal1DIC_SAS
 
   IMPLICIT NONE
   PRIVATE
@@ -161,9 +156,8 @@ CONTAINS
 
   SUBROUTINE InitializeProgram
 
-    TYPE(amrex_parmparse) :: PP
-
-    LOGICAL :: SetInitialValues
+    INTEGER  :: iLevel
+    LOGICAL  :: SetInitialValues, FixInteriorADMMass
 
     CALL amrex_init()
 
@@ -206,8 +200,6 @@ CONTAINS
 
     CALL InitializeEquationOfState_MF
 
-    CALL InitializePositivityLimiter_Euler_MF
-
     CALL InitializeSlopeLimiter_Euler_MF
 
     CALL amrex_init_virtual_functions &
@@ -228,10 +220,21 @@ CONTAINS
 
     IF( iRestart .LT. 0 )THEN
 
+      D_Min_Euler_PL    = HUGE( 1.0_DP )
+      IntE_Min_Euler_PL = HUGE( 1.0_DP )
+
       CALL amrex_init_from_scratch( 0.0_DP )
       nLevels = amrex_get_numlevels()
 
-      SetInitialValues = .TRUE.
+      CALL amrex_parallel_reduce_min( D_Min_Euler_PL )
+      CALL amrex_parallel_reduce_min( IntE_Min_Euler_PL )
+
+      CALL InitializePositivityLimiter_Euler_MF &
+             ( D_Min_Euler_PL_Option = D_Min_Euler_PL, &
+               IntE_Min_Euler_PL_Option = IntE_Min_Euler_PL )
+
+      SetInitialValues   = .TRUE.
+      FixInteriorADMMass = .FALSE.
 
       CALL InitializeTally_Euler_MF
 
@@ -241,40 +244,33 @@ CONTAINS
       CALL ApplyPositivityLimiter_Euler_MF &
              ( MF_uGF, MF_uCF, MF_uDF )
 
+      CALL CreateMesh_MF( 0, MeshX )
+
+      CALL DestroyMesh_MF( MeshX )
+
+      CALL ApplySlopeLimiter_Euler_MF &
+             ( MF_uGF, MF_uCF, MF_uDF )
+
+      CALL ApplyPositivityLimiter_Euler_MF &
+             ( MF_uGF, MF_uCF, MF_uDF )
+
     ELSE
+
+      CALL InitializePositivityLimiter_Euler_MF
 
       CALL ReadCheckpointFile
 
-      CALL amrex_parmparse_build( PP, 'SAS' )
-        CALL PP % get  ( 'FileName_Nodal1DIC_SAS', &
-                          FileName_Nodal1DIC_SAS )
-      CALL amrex_parmparse_destroy( PP )
-
-      OPEN( UNIT = 100, FILE = TRIM( FileName_Nodal1DIC_SAS ) // '_BC.dat' )
-
-      READ(100,*) ExpD
-      READ(100,*) ExpE
-
-      CLOSE( 100 )
-
-      SetInitialValues = .FALSE.
+      SetInitialValues   = .FALSE.
+      FixInteriorADMMass = .TRUE.
 
       CALL InitializeTally_Euler_MF &
              ( InitializeFromCheckpoint_Option = .TRUE. )
 
-    END IF
+      CALL CreateMesh_MF( 0, MeshX )
 
-    IF( amrex_parallel_ioprocessor() )THEN
-
-      WRITE(*,'(6x,A,ES24.16E3)') &
-        'ExpD: ', ExpD
-      WRITE(*,'(6x,A,ES24.16E3)') &
-        'ExpE: ', ExpE
+      CALL DestroyMesh_MF( MeshX )
 
     END IF
-
-    IF( ExpD .LT. Zero .OR. ExpE .LT. Zero ) &
-      CALL DescribeError_MF( 901 )
 
     CALL AverageDown( MF_uGF, UpdateSpatialMetric_Option = .TRUE. )
     CALL AverageDown( MF_uGF, MF_uCF )
@@ -304,6 +300,7 @@ CONTAINS
     CALL ComputeTally_Euler_MF &
            ( t_new, MF_uGF, MF_uCF, &
              SetInitialValues_Option = SetInitialValues, &
+             FixInteriorADMMass_Option = FixInteriorADMMass, &
              Verbose_Option = amrex_parallel_ioprocessor() )
 
     CALL TimersStop_AMReX( Timer_AMReX_Initialize )
@@ -402,12 +399,8 @@ CONTAINS
     CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCF, &
                           ApplyBoundaryConditions_Euler_Option = .TRUE. )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCF(iLevel), -1 )
-
     CALL ApplyPositivityLimiter_Euler_MF &
            ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uDF(iLevel) )
-
-    CALL MultiplyWithPsi6_MF( MF_uGF(iLevel), MF_uCF(iLevel), +1 )
 
   END SUBROUTINE MakeNewLevelFromCoarse
 
@@ -459,12 +452,8 @@ CONTAINS
            ( iLevel, MF_uGF, MF_uGF_tmp, MF_uCF, MF_uCF_tmp, &
              ApplyBoundaryConditions_Euler_Option = .TRUE. )
 
-    CALL MultiplyWithPsi6_MF( MF_uGF_tmp, MF_uCF_tmp, -1, swX_Option = swX )
-
     CALL ApplyPositivityLimiter_Euler_MF &
            ( iLevel, MF_uGF_tmp, MF_uCF_tmp, MF_uDF_tmp, swX_Option = swX )
-
-    CALL MultiplyWithPsi6_MF( MF_uGF_tmp, MF_uCF_tmp, +1, swX_Option = swX )
 
     CALL ClearLevel( iLevel )
 
@@ -502,6 +491,7 @@ CONTAINS
     TYPE(amrex_mfiter)      :: MFI
     TYPE(amrex_box)         :: BX
     REAL(DP),               CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+    REAL(DP),               CONTIGUOUS, POINTER :: uDF(:,:,:,:)
     CHARACTER(KIND=c_char), CONTIGUOUS, POINTER :: TagArr(:,:,:,:)
 
     IF( .NOT. ALLOCATED( TagCriteria ) )THEN
@@ -518,22 +508,25 @@ CONTAINS
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
-    !$OMP PARALLEL PRIVATE( MFI, BX, uCF, TagArr )
-    CALL amrex_mfiter_build( MFI, MF_uCF( iLevel ), Tiling = UseTiling )
+    !$OMP PARALLEL PRIVATE( MFI, BX, uDF, TagArr )
+    CALL amrex_mfiter_build( MFI, MF_uDF( iLevel ), Tiling = UseTiling )
 
     DO WHILE( MFI % next() )
 
       BX = MFI % TileBox()
 
       uCF    => MF_uCF( iLevel ) % DataPtr( MFI )
+      uDF    => MF_uDF( iLevel ) % DataPtr( MFI )
       TagArr => Tag              % DataPtr( MFI )
 
       ! TagCriteria(iLevel+1) because iLevel starts at 0 but
       ! TagCriteria starts with 1
 
       CALL TagElements &
-             ( iLevel, BX % lo, BX % hi, LBOUND( uCF ), UBOUND( uCF ), &
-               uCF, TagCriteria(iLevel+1), SetTag, ClearTag, &
+             ( iLevel, BX % lo, BX % hi, &
+               LBOUND( uCF ), UBOUND( uCF ), uCF, &
+               LBOUND( uDF ), UBOUND( uDF ), uDF, &
+               TagCriteria(iLevel+1), SetTag, ClearTag, &
                LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
 
     END DO
