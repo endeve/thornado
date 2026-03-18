@@ -12,9 +12,9 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 
 # ---- User-tweakable knobs (can be overridden via env) ----
 CPE_VERSION="${CPE_VERSION:-25.09}"
-ROCM_VERSION="${ROCM_VERSION:-6.4.2}"
+ROCM_VERSION="${ROCM_VERSION:-7.12.0}"
 PROJ="${PROJ:-stf006}"
-PRGENV="${PRGENV:-cray}"
+PRGENV="${PRGENV:-amd}"
 HOST_SHORT="${LMOD_SYSTEM_NAME:-unknownhost}"
 AFAR_VERSION="${AFAR_VERSION:-23.1.0-7.12.0}"
 
@@ -43,12 +43,12 @@ THORNADO_SHA="dbb167440333903fce1c84b711f6b687825fc3cb" # HEAD of olcf_test_suit
 module reset
 source /opt/cray/pe/cpe/${CPE_VERSION}/restore_lmod_system_defaults.sh
 module use /sw/crusher/ums/compilers/modulefiles/afar-prgenv-modules/modulefiles
-module load PrgEnv-$PRGENV
+module load PrgEnv-${PRGENV}
 module load cray-mpich
 module load craype-x86-trento
 module load craype-accel-amd-gfx90a
 module load afar-prgenv/${AFAR_VERSION}
-export OLCF_HDF5_ROOT=/lustre/orion/world-shared/stf006/jaharris/sw/frontier/amd/${AFAR_DROP_VERSION}
+export OLCF_HDF5_ROOT=/lustre/orion/world-shared/stf006/jaharris/sw/frontier/amd/${AFAR_DROP_VERSION}/hdf5-parallel-1.14.3
 
 ## can load my hipfort if system-built unavailable
 ## NOTE: hipfort module not needed with AFAR
