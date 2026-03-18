@@ -41,13 +41,15 @@ MODULE InputParsingModule
   INTEGER     , ALLOCATABLE :: swX(:)
   INTEGER     , ALLOCATABLE :: bcX(:)
   INTEGER                   :: nNodes
-  REAL(DP)                  :: t_end, t_wrt, t_chk, dt_wrt, dt_chk, dt_rel
+  REAL(DP)                  :: t_end, t_wrt = Zero, t_chk = Zero, dt_wrt, &
+                               dt_chk, dt_rel
   INTEGER                   :: iCycleW, iCycleChk, iCycleD, iRestart, iReGrid
   LOGICAL                   :: RwChkFields_uGF, RwChkFields_uCF, &
                                RwChkFields_uDF, RwChkFields_uCR
   LOGICAL                   :: UsePhysicalUnits
   LOGICAL                   :: DEBUG
   LOGICAL                   :: SolveGravity_NR
+  LOGICAL                   :: UseXCFC
 
   ! --- Transport ---
 
@@ -175,6 +177,7 @@ CONTAINS
     dt_rel           = 0.0_DP
     iReGrid          = 1
     SolveGravity_NR  = .FALSE.
+    UseXCFC          = .FALSE.
     nE               = 1
     nSpecies         = 1
     swE              = 0
@@ -226,6 +229,8 @@ CONTAINS
                          iReGrid )
       CALL PP % query ( 'SolveGravity_NR', &
                          SolveGravity_NR )
+      CALL PP % query ( 'UseXCFC', &
+                         UseXCFC )
       CALL PP % query ( 'nE', &
                          nE )
       CALL PP % query ( 'nSpecies', &

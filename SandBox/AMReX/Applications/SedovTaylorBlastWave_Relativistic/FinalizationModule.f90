@@ -55,8 +55,6 @@ MODULE FinalizationModule
     TimersStop_AMReX, &
     Timer_AMReX_Finalize, &
     FinalizeTimers_AMReX
-  USE MF_AccretionShockUtilitiesModule, ONLY: &
-    WriteNodal1DICToFile_SAS
 
   IMPLICIT NONE
   PRIVATE
@@ -67,8 +65,6 @@ CONTAINS
 
 
   SUBROUTINE FinalizeProgram
-
-    CALL WriteNodal1DICToFile_SAS
 
     CALL TimersStart_AMReX( Timer_AMReX_Finalize )
 

@@ -60,6 +60,9 @@ MODULE MF_InitializationModule
     iAF_P, &
     nAF, &
     nDF
+  USE Euler_PositivityLimiterModule_Relativistic_IDEAL, ONLY: &
+    D_Min_Euler_PL, &
+    IntE_Min_Euler_PL
   USE Euler_UtilitiesModule, ONLY: &
     ComputeConserved_Euler
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
@@ -100,6 +103,7 @@ MODULE MF_InitializationModule
     FourPi
   USE InputParsingModule, ONLY: &
     nLevels, &
+    nMaxLevels, &
     UseTiling, &
     t_end
   USE MF_AccretionShockUtilitiesModule, ONLY: &
@@ -112,6 +116,11 @@ MODULE MF_InitializationModule
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
+  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+    MF_ExpD, &
+    MF_ExpE, &
+    MF_iBC, &
+    MF_oBC
 
   IMPLICIT NONE
   PRIVATE
@@ -164,7 +173,7 @@ CONTAINS
     REAL(DP) :: rPerturbationOuter
 
     INTEGER  :: iX1_1, iX1_2, iNX1_1, iNX1_2, indC, nLeafNodes, indG, indG_1
-    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3)
+    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3), iCF
     REAL(DP) :: X1_1, X1_2, D_1, D_2, V_1, V_2, P_1, P_2, uPert
     REAL(DP) :: BernoulliConstant
     REAL(DP) :: D0, V0, P0
@@ -181,6 +190,7 @@ CONTAINS
                              AllPreShockElements, &
                              AllPostShockElements
     CHARACTER(LEN=:), ALLOCATABLE :: PerturbationType
+    CHARACTER(LEN=:), ALLOCATABLE :: PerturbedField
     INTEGER :: nX_LeastSquares
 
     ApplyPerturbation     = .FALSE.
@@ -193,6 +203,7 @@ CONTAINS
     InitializeFromFile    = .FALSE.
     ResetEndTime          = .FALSE.
     PerturbationType      = 'StepFunction'
+    PerturbedField        = 'PF_D'
     WriteNodal1DIC_SAS    = .FALSE.
     nX_LeastSquares       = 5
     CALL amrex_parmparse_build( PP, 'thornado' )
@@ -226,6 +237,8 @@ CONTAINS
                         ResetEndTime )
       CALL PP % query( 'PerturbationType', &
                         PerturbationType )
+      CALL PP % query( 'PerturbedField', &
+                        PerturbedField )
       CALL PP % query( 'WriteNodal1DIC_SAS', &
                         WriteNodal1DIC_SAS )
       CALL PP % query( 'nX_LeastSquares', &
@@ -284,6 +297,10 @@ CONTAINS
       WRITE(*,'(6x,A,A)') &
         'Perturbation Type:            ', &
         TRIM( PerturbationType )
+
+      WRITE(*,'(6x,A,A)') &
+        'Perturbed Field:              ', &
+        TRIM( PerturbedField )
 
       WRITE(*,'(6x,A,I1)') &
         'Perturbation order:           ', &
@@ -623,9 +640,6 @@ CONTAINS
 
     END IF ! nLevels .EQ. 1
 
-    IF( iLevel .EQ. 0 ) &
-      epsMin_Euler_GR = HUGE( One )
-
     ! --- With perturbation ---
 
     indC = Locate( rC, R, SIZE( R ) )
@@ -658,9 +672,11 @@ CONTAINS
       IF( BX % hi(1) .EQ. amrex_geom(iLevel) % domain % hi(1) ) &
         iX_E(1) = iX_E1(1)
 
-      ! IF( TRIM( PerturbedField ) .EQ. 'Pressure' )THEN
+      IF( TRIM( PerturbedField ) .EQ. 'AF_P' )THEN
         Field = P
-      ! END IF
+      ELSE IF( TRIM( PerturbedField ) .EQ. 'PF_D' )THEN
+        Field = D
+      END IF
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
@@ -746,16 +762,22 @@ CONTAINS
 
             END IF ! StepFunction
 
-            ! IF( TRIM( PerturbedField ) .EQ. 'Pressure' )THEN
+            IF( TRIM( PerturbedField ) .EQ. 'AF_P' )THEN
+
               uPF_K(iNX,iPF_E ) = uPert / ( Gamma_IDEAL - One )
-            ! END IF
-             !uPF_K(iNX,iPF_D) = uPert
+
+            ELSE IF( TRIM( PerturbedField ) .EQ. 'PF_D' )THEN
+
+              uPF_K(iNX,iPF_D) = uPert
+
+            END IF
 
           END IF ! Apply perturbation
 
-          IF( iLevel .EQ. 0 ) &
-            epsMin_Euler_GR &
-              = MIN( epsMin_Euler_GR, uPF_K(iNX,iPF_E) / uPF_K(iNX,iPF_D) )
+          epsMin_Euler_GR   = MIN( epsMin_Euler_GR, &
+                                   uPF_K(iNX,iPF_E) / uPF_K(iNX,iPF_D) )
+          D_Min_Euler_PL    = MIN( D_Min_Euler_PL   , uPF_K(iNX,iPF_D) )
+          IntE_Min_Euler_PL = MIN( IntE_Min_Euler_PL, uPF_K(iNX,iPF_E) )
 
         END DO !iNX
 
@@ -776,6 +798,22 @@ CONTAINS
         uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
           = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
 
+        IF( iX1 .EQ. amrex_geom(iLevel) % domain % lo(1) - 1 )THEN
+          DO iCF = 1, nCF
+          DO iNX = 1, nDOFX
+            MF_iBC(:,iNX,iCF) = uCF_K(iNX,iCF)
+          END DO
+          END DO
+        END IF
+
+        IF( iX1 .EQ. amrex_geom(iLevel) % domain % hi(1) + 1 )THEN
+          DO iCF = 1, nCF
+          DO iNX = 1, nDOFX
+            MF_oBC(:,iNX,iCF) = uCF_K(iNX,iCF)
+          END DO
+          END DO
+        END IF
+
       END DO
       END DO
       END DO
@@ -783,14 +821,6 @@ CONTAINS
     END DO ! WHILE( MFI % next() )
 
     CALL amrex_mfiter_destroy( MFI )
-
-    IF( iLevel .EQ. 0 )THEN
-
-      CALL amrex_parallel_reduce_min( epsMin_Euler_GR )
-
-      epsMin_Euler_GR = 1.0e-06_DP * epsMin_Euler_GR
-
-    END IF
 
     DEALLOCATE( Field   )
     DEALLOCATE( P )
@@ -802,12 +832,6 @@ CONTAINS
       t_end = 1.00e2_DP * AdvectionTime
 
     IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
-
-      WRITE(*,*)
-
-      WRITE(*,'(6x,A,ES24.16E3,A)') &
-        'epsMin_Euler_GR: ', &
-         epsMin_Euler_GR / ( Erg / Gram ), ' erg/g'
 
       IF( .NOT. InitializeFromFile )THEN
 
@@ -1015,16 +1039,8 @@ CONTAINS
     INTEGER,  INTENT(in)  :: nLeafNodes
     REAL(DP), INTENT(out) :: R(:), D(:), V(:), P(:)
 
-    INTEGER               :: i, FileNo
+    INTEGER               :: i, FileNo, iLevel, iCF, iNX1, iNX
     TYPE(amrex_parmparse) :: PP
-
-    IF( nLevels .GT. 1 )THEN
-
-      IF( amrex_parallel_ioprocessor() ) &
-        WRITE(*,*) &
-          'WARNING: ReadFluidFieldsFromFile untested with multi-level mesh'
-
-    END IF
 
     CALL amrex_parmparse_build( PP, 'SAS' )
       CALL PP % get  ( 'FileName_Nodal1DIC_SAS', &
@@ -1033,8 +1049,32 @@ CONTAINS
 
     OPEN( UNIT = FileNo, FILE = TRIM( FileName_Nodal1DIC_SAS ) // '_BC.dat' )
 
-    READ(FileNo,*) ExpD
-    READ(FileNo,*) ExpE
+    READ(FileNo,'(*(ES25.16E3))') &
+      (MF_ExpD(iLevel), iLevel = 0, nMaxLevels - 1)
+    READ(FileNo,'(*(ES25.16E3))') &
+      (MF_ExpE(iLevel), iLevel = 0, nMaxLevels - 1)
+
+    DO iCF = 1, nCF
+      READ(FileNo,'(*(ES25.16E3))') &
+        (MF_iBC(0,iNX1,iCF), iNX1 = 1, nNodesX(1))
+    END DO
+
+    DO iCF = 1, nCF
+      READ(FileNo,'(*(ES25.16E3))') &
+        (MF_oBC(0,iNX1,iCF), iNX1 = 1, nNodesX(1))
+    END DO
+
+    DO iCF = 1, nCF
+    DO iNX = 1, nDOFX
+      iNX1 = NodeNumberTableX(1,iNX)
+      MF_iBC(:,iNX,iCF) = MF_iBC(:,iNX1,iCF)
+      MF_oBC(:,iNX,iCF) = MF_oBC(:,iNX1,iCF)
+    END DO
+    END DO
+
+    READ(FileNo,'(ES25.16E3)') D_Min_Euler_PL
+    READ(FileNo,'(ES25.16E3)') IntE_Min_Euler_PL
+    READ(FileNo,'(ES25.16E3)') epsMin_Euler_GR
 
     CLOSE( FileNo )
 
@@ -1335,7 +1375,7 @@ CONTAINS
 
           END DO ! iNX1 = 1, nNodesX(1)
 
-        END DO ! iX1 = iLo(1), iLo91)+nX_LeastSquares-1
+        END DO ! iX1 = iLo(1), iLo(1)+nX_LeastSquares-1
 
         FirstTime = .FALSE.
 
@@ -1348,7 +1388,6 @@ CONTAINS
     lnR_LS = lnR(:,iLo(1):iLo(1)+nX_LeastSquares-1)
     lnD_LS = lnD(:,iLo(1):iLo(1)+nX_LeastSquares-1)
     lnE_LS = lnE(:,iLo(1):iLo(1)+nX_LeastSquares-1)
-
 
     DO iX1 = 1, nX_LeastSquares
 
@@ -1363,11 +1402,13 @@ CONTAINS
     ! --- Expression for exponents from:
     !     https://mathworld.wolfram.com/LeastSquaresFittingPowerLaw.html ---
 
-    ExpD = -( n * SUM( lnR_LS * lnD_LS ) - SUM( lnR_LS ) * SUM( lnD_LS ) ) &
-             / ( n * SUM( lnR_LS**2 ) - SUM( lnR_LS )**2 )
+    ! --- Always use exponent from finest level of refinement ---
 
-    ExpE = -( n * SUM( lnR_LS * lnE_LS ) - SUM( lnR_LS ) * SUM( lnE_LS ) ) &
-             / ( n * SUM( lnR_LS**2 ) - SUM( lnR_LS )**2 )
+    MF_ExpD(:) = -( n * SUM( lnR_LS * lnD_LS ) - SUM( lnR_LS ) * SUM( lnD_LS ) ) &
+                / ( n * SUM( lnR_LS**2 ) - SUM( lnR_LS )**2 )
+
+    MF_ExpE(:) = -( n * SUM( lnR_LS * lnE_LS ) - SUM( lnR_LS ) * SUM( lnE_LS ) ) &
+                / ( n * SUM( lnR_LS**2 ) - SUM( lnR_LS )**2 )
 
   END SUBROUTINE ComputeExtrapolationExponents
 

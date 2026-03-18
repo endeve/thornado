@@ -342,12 +342,12 @@ CONTAINS
                    Ui, uDF, StageData(iS) % dU_EX )
 
           StageData(iS) % OffGridFlux_U &
-            =   OffGridFlux_Euler_X1_Outer &
-              + OffGridFlux_Euler_X1_Inner &
-              + OffGridFlux_Euler_X2_Outer &
+            =   OffGridFlux_Euler_X1_Inner &
+              - OffGridFlux_Euler_X1_Outer &
               + OffGridFlux_Euler_X2_Inner &
-              + OffGridFlux_Euler_X3_Outer &
-              + OffGridFlux_Euler_X3_Inner
+              - OffGridFlux_Euler_X2_Outer &
+              + OffGridFlux_Euler_X3_Inner &
+              - OffGridFlux_Euler_X3_Outer
 
         END IF
 

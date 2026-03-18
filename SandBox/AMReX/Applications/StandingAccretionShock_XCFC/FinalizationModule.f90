@@ -50,13 +50,13 @@ MODULE FinalizationModule
     dt, &
     t_old, &
     t_new
-  USE MF_GravitySolutionModule, ONLY: &
-    FinalizeGravitySolver_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
     Timer_AMReX_Finalize, &
     FinalizeTimers_AMReX
+  USE MF_AccretionShockUtilitiesModule, ONLY: &
+    WriteNodal1DICToFile_SAS
 
   IMPLICIT NONE
   PRIVATE
@@ -85,9 +85,11 @@ CONTAINS
 
     CALL ComputeTally_Euler_MF( t_new, MF_uGF, MF_uCF )
 
-    CALL FinalizeFluid_SSPRK_MF
+    StepNo = StepNo + 1
 
-    CALL FinalizeGravitySolver_MF
+    CALL WriteNodal1DICToFile_SAS
+
+    CALL FinalizeFluid_SSPRK_MF
 
     CALL FinalizeTally_Euler_MF
 

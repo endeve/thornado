@@ -45,6 +45,7 @@ MODULE MF_GeometryModule
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
     iGF_SqrtGm, &
+    iGF_Alpha, &
     iGF_Psi, &
     iGF_Beta_1, &
     iGF_Beta_2, &
@@ -52,6 +53,7 @@ MODULE MF_GeometryModule
     CoordinateSystem
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX, &
+    LapseFunction, &
     ConformalFactor
   USE GravitySolutionModule_Newtonian_PointMass, ONLY: &
     ComputeGravitationalPotential
@@ -714,7 +716,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: uGF(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER  :: iNX1, iNX2, iNX3, iNX, iX1, iX2, iX3
-    REAL(DP) :: X1, X2, MassPNS, Psi, h1, h2, h3
+    REAL(DP) :: X1, X2, MassPNS, Alpha, Psi, h1, h2, h3
 
     TYPE(amrex_parmparse) :: PP
 
@@ -742,13 +744,15 @@ CONTAINS
       X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
       X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
 
-      Psi = ConformalFactor( X1, MassPNS )
+      Alpha = LapseFunction  ( X1, MassPNS )
+      Psi   = ConformalFactor( X1, MassPNS )
 
       h1 = Psi**2
       h2 = Psi**2 * ABS( X1 )
       h3 = Psi**2 * ABS( X1 * SIN( X2 ) )
 
-      uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX) = Psi
+      uGF(iX1,iX2,iX3,nDOFX*(iGF_Alpha-1)+iNX) = Alpha
+      uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi  -1)+iNX) = Psi
 
       uGF(iX1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) = h1
       uGF(iX1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) = h2
@@ -887,7 +891,7 @@ CONTAINS
     REAL(DP), INTENT(inout) :: uGF(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     INTEGER  :: iNX1, iNX2, iNX3, iNX, iX1, iX2, iX3
-    REAL(DP) :: X1, X2, MassPNS, Psi, h1, h2, h3
+    REAL(DP) :: X1, X2, MassPNS, Alpha, Psi, h1, h2, h3
 
     TYPE(amrex_parmparse) :: PP
 
@@ -913,13 +917,15 @@ CONTAINS
       X1 = NodeCoordinate( MeshX(1), iX1, iNX1 )
       X2 = NodeCoordinate( MeshX(2), iX2, iNX2 )
 
-      Psi = ConformalFactor( X1, MassPNS )
+      Alpha = LapseFunction  ( X1, MassPNS )
+      Psi   = ConformalFactor( X1, MassPNS )
 
       h1 = Psi**2
       h2 = Psi**2 * ABS( X1 )
       h3 = Psi**2 * ABS( X1 * SIN( X2 ) )
 
-      uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi-1)+iNX) = Psi
+      uGF(iX1,iX2,iX3,nDOFX*(iGF_Alpha-1)+iNX) = Alpha
+      uGF(iX1,iX2,iX3,nDOFX*(iGF_Psi  -1)+iNX) = Psi
 
       uGF(iX1,iX2,iX3,nDOFX*(iGF_h_1-1)+iNX) = h1
       uGF(iX1,iX2,iX3,nDOFX*(iGF_h_2-1)+iNX) = h2

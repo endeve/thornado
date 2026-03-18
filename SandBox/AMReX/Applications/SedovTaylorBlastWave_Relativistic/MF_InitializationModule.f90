@@ -1,5 +1,7 @@
 MODULE MF_InitializationModule
 
+  ! --- AMReX Modules ---
+
   USE amrex_box_module, ONLY: &
     amrex_box
   USE amrex_multifab_module, ONLY: &
@@ -13,6 +15,8 @@ MODULE MF_InitializationModule
     amrex_parmparse, &
     amrex_parmparse_build, &
     amrex_parmparse_destroy
+
+  ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
     ProgramName, &
@@ -45,9 +49,13 @@ MODULE MF_InitializationModule
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
-    iAF_P
+    nPF, &
+    iAF_P, &
+    nAF
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_Euler_Relativistic
+
+  ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
     DP, &
@@ -70,17 +78,18 @@ MODULE MF_InitializationModule
 
   PUBLIC :: InitializeFields_MF
 
+  REAL(DP), PUBLIC :: D_Min_Euler_PL
   REAL(DP), PUBLIC :: IntE_Min_Euler_PL
 
 CONTAINS
 
 
   SUBROUTINE InitializeFields_MF &
-    ( iLevel, MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+    ( iLevel, MF_uGF, MF_uCF )
 
     INTEGER             , INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF, MF_uPF, MF_uAF
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
     LOGICAL :: Verbose
 
@@ -91,8 +100,8 @@ CONTAINS
 
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uPF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uAF(:,:,:,:)
+    REAL(DP)                      :: uPF(nDOFX,nPF)
+    REAL(DP)                      :: uAF(nDOFX,nAF)
 
     INTEGER :: iX_B0(3), iX_E0(3), iX1, iX2, iX3, iNX
 
@@ -192,8 +201,6 @@ CONTAINS
 
       uGF => MF_uGF % DataPtr( MFI )
       uCF => MF_uCF % DataPtr( MFI )
-      uPF => MF_uPF % DataPtr( MFI )
-      uAF => MF_uAF % DataPtr( MFI )
 
       BX = MFI % tilebox()
 
@@ -202,7 +209,7 @@ CONTAINS
 
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
-      DO iX1 = iX_B0(1), iX_E0(1) + swX(1)
+      DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX = 1       , nDOFX
 
         iNX1 = NodeNumberTableX(1,iNX)
@@ -227,33 +234,37 @@ CONTAINS
 
         END IF
 
-        uPF(iX1,iX2,iX3,nDOFX*(iPF_D -1)+iNX) = rho0
-        uPF(iX1,iX2,iX3,nDOFX*(iPF_V1-1)+iNX) = Zero
-        uPF(iX1,iX2,iX3,nDOFX*(iPF_V2-1)+iNX) = Zero
-        uPF(iX1,iX2,iX3,nDOFX*(iPF_V3-1)+iNX) = Zero
-        uPF(iX1,iX2,iX3,nDOFX*(iPF_Ne-1)+iNX) = Zero
+        uPF(iNX,iPF_D ) = rho0
+        uPF(iNX,iPF_V1) = Zero
+        uPF(iNX,iPF_V2) = Zero
+        uPF(iNX,iPF_V3) = Zero
+        uPF(iNX,iPF_Ne) = Zero
 
-        uPF(iX1,iX2,iX3,nDOFX*(iPF_E-1)+iNX) &
+        uPF(iNX,iPF_E) &
           = MAX( eCentral * EXP( -Radius**2 / sigma**2 ), &
                  1.0e-10_DP * e1e2ratio * eCentral )
 
+        D_Min_Euler_PL &
+          = MIN( D_Min_Euler_PL, &
+                 1.0e-10_DP * uPF(iNX,iPF_D) )
+
         IntE_Min_Euler_PL &
           = MIN( IntE_Min_Euler_PL, &
-                 1.0e-1_DP * uPF(iX1,iX2,iX3,nDOFX*(iPF_E-1)+iNX) )
+                 1.0e-1_DP * uPF(iNX,iPF_E) )
 
         CALL ComputePressureFromPrimitive_IDEAL &
-               ( uPF(iX1,iX2,iX3,nDOFX*(iPF_D -1)+iNX), &
-                 uPF(iX1,iX2,iX3,nDOFX*(iPF_E -1)+iNX), &
-                 uPF(iX1,iX2,iX3,nDOFX*(iPF_Ne-1)+iNX), &
-                 uAF(iX1,iX2,iX3,nDOFX*(iAF_P -1)+iNX) )
+               ( uPF(iNX,iPF_D ), &
+                 uPF(iNX,iPF_E ), &
+                 uPF(iNX,iPF_Ne), &
+                 uAF(iNX,iAF_P ) )
 
         CALL ComputeConserved_Euler_Relativistic &
-               ( uPF(iX1,iX2,iX3,nDOFX*(iPF_D       -1)+iNX), &
-                 uPF(iX1,iX2,iX3,nDOFX*(iPF_V1      -1)+iNX), &
-                 uPF(iX1,iX2,iX3,nDOFX*(iPF_V2      -1)+iNX), &
-                 uPF(iX1,iX2,iX3,nDOFX*(iPF_V3      -1)+iNX), &
-                 uPF(iX1,iX2,iX3,nDOFX*(iPF_E       -1)+iNX), &
-                 uPF(iX1,iX2,iX3,nDOFX*(iPF_Ne      -1)+iNX), &
+               ( uPF(iNX,iPF_D ), &
+                 uPF(iNX,iPF_V1), &
+                 uPF(iNX,iPF_V2), &
+                 uPF(iNX,iPF_V3), &
+                 uPF(iNX,iPF_E ), &
+                 uPF(iNX,iPF_Ne), &
                  uCF(iX1,iX2,iX3,nDOFX*(iCF_D       -1)+iNX), &
                  uCF(iX1,iX2,iX3,nDOFX*(iCF_S1      -1)+iNX), &
                  uCF(iX1,iX2,iX3,nDOFX*(iCF_S2      -1)+iNX), &
@@ -263,7 +274,7 @@ CONTAINS
                  uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
                  uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
                  uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
-                 uAF(iX1,iX2,iX3,nDOFX*(iAF_P       -1)+iNX) )
+                 uAF(iNX,iAF_P) )
 
       END DO
       END DO

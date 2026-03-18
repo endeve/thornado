@@ -335,7 +335,7 @@ CONTAINS
     REAL(DP) :: Psi0, Phi0
 
     Psi0 = 1.4_DP
-    Phi0 = 1.2_DP
+    Phi0 = 0.8_DP
 
     ITER = 0
     CONVERGED = .FALSE.
