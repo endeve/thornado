@@ -35,7 +35,7 @@ NTASKS_PER_GPU="1"
 
 ## Git coordinates
 THORNADO_REPO="git@github.com:endeve/thornado.git"
-THORNADO_SHA="dbb167440333903fce1c84b711f6b687825fc3cb" # HEAD of olcf_test_suite on 03/18/2026
+THORNADO_SHA="72412de1cf998fd9800de78b416839d5e19153f9" # HEAD of olcf_test_suite on 03/18/2026
 
 # ---- Setup the build/run environment ----
 
