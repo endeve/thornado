@@ -56,6 +56,15 @@ export OLCF_HDF5_ROOT=/lustre/orion/world-shared/stf006/jaharris/sw/frontier/amd
 #  module use /ccs/home/jaharris/modulefiles/${HOST_SHORT}
 #fi
 #module load hipfort/${ROCM_VERSION}
+if [[ -z ${OLCF_HIPFORT_ROOT+x} ]]; then
+  if [[ -d "${ROCM_PATH}/include/hipfort" ]]; then
+    export OLCF_HIPFORT_ROOT="${ROCM_PATH}"
+  elif [[ -d "${ROCM_PATH}/llvm/include/hipfort" ]]; then
+    export OLCF_HIPFORT_ROOT="${ROCM_PATH}/llvm"
+  else
+    die "Cannot find hipfort installation"
+  fi
+fi
 
 ## Need this if not using default ROCm version
 export LD_LIBRARY_PATH=${CRAY_LD_LIBRARY_PATH}:${LD_LIBRARY_PATH}
