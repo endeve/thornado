@@ -30,9 +30,11 @@ module ThornadoInitializationModule
     InitializeReferenceElement, &
     FinalizeReferenceElement
   use PolynomialBasisModuleX_Lagrange, only: &
-    InitializePolynomialBasisX_Lagrange
+    InitializePolynomialBasisX_Lagrange, &
+    FinalizePolynomialBasisX_Lagrange
   use PolynomialBasisModule_Lagrange, only: &
-    InitializePolynomialBasis_Lagrange
+    InitializePolynomialBasis_Lagrange, &
+    FinalizePolynomialBasis_Lagrange
   use ReferenceElementModuleX_Lagrange, only: &
     InitializeReferenceElementX_Lagrange, &
     FinalizeReferenceElementX_Lagrange
@@ -48,9 +50,11 @@ module ThornadoInitializationModule
     CreateSubcellReconstruction, &
     DestroySubcellReconstruction
   use PolynomialBasisModuleX_Legendre, only: &
-    InitializePolynomialBasisX_Legendre
+    InitializePolynomialBasisX_Legendre, &
+    FinalizePolynomialBasisX_Legendre
   use PolynomialBasisModule_Legendre, only: &
-    InitializePolynomialBasis_Legendre
+    InitializePolynomialBasis_Legendre, &
+    FinalizePolynomialBasis_Legendre
   use PolynomialBasisMappingModule, only: &
     InitializePolynomialBasisMapping, &
     FinalizePolynomialBasisMapping
@@ -618,6 +622,14 @@ contains
     call FinalizeReferenceElement
 
     call FinalizeReferenceElement_Lagrange
+
+    call FinalizePolynomialBasisX_Lagrange
+
+    call FinalizePolynomialBasisX_Legendre
+
+    call FinalizePolynomialBasis_Lagrange
+
+    call FinalizePolynomialBasis_Legendre
 
     call FinalizeSubcellReconstruction
 
