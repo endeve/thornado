@@ -16,6 +16,8 @@ ifeq ($(USE_OMP),TRUE)
   OPENMP = -fopenmp
 else ifeq ($(USE_OMP_OL),TRUE)
   OPENMP = -fopenmp # vector0 needed for now to bypass "invalid bitcast" compiler bug
+else
+  OPENMP = -fno-openmp
 endif
 
 ifeq ($(USE_OACC),TRUE)
