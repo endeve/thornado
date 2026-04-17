@@ -170,8 +170,8 @@ PROGRAM main
 
       END IF
 
-      CALL ComputeDiagnosticFields_MHD_MF &
-             ( MF_uGF, MF_uCM, MF_uDM )
+!      CALL ComputeDiagnosticFields_MHD_MF &
+!             ( MF_uGF, MF_uCM, MF_uDM )
 
     END IF
 
@@ -249,8 +249,8 @@ CONTAINS
       CALL ComputeFromConserved_MHD_MF &
              ( MF_uGF, MF_uCM, MF_uPM, MF_uAM )
 
-      CALL ComputeDiagnosticFields_MHD_MF &
-             ( MF_uGF, MF_uCM, MF_uDM )
+!      CALL ComputeDiagnosticFields_MHD_MF &
+!             ( MF_uGF, MF_uCM, MF_uDM )
 
       CALL WriteFieldsAMReX_PlotFile &
              ( t_new(0), StepNo, MF_uGF, &
@@ -309,8 +309,8 @@ CONTAINS
       CALL ComputeFromConserved_MHD_MF &
              ( MF_uGF, MF_uCM, MF_uPM, MF_uAM )
 
-      CALL ComputeDiagnosticFields_MHD_MF &
-             ( MF_uGF, MF_uCM, MF_uDM )
+!      CALL ComputeDiagnosticFields_MHD_MF &
+!             ( MF_uGF, MF_uCM, MF_uDM )
 
       CALL WriteFieldsAMReX_Checkpoint &
              ( StepNo, nLevels, dt, t_new, &
