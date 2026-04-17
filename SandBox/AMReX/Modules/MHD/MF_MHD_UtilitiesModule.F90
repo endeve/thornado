@@ -6,7 +6,6 @@ MODULE MF_MHD_UtilitiesModule
     amrex_box
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
-    amrex_multifab_build, &
     amrex_multifab_destroy, &
     amrex_mfiter, &
     amrex_mfiter_build, &
@@ -443,19 +442,12 @@ CONTAINS
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
 
-    TYPE(amrex_multifab) :: MF_uPM(0:nLevels-1)
-    TYPE(amrex_multifab) :: MF_uAM(0:nLevels-1)
-
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCM(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uPM(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uAM(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uDM(:,:,:,:)
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: P(:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: A(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: D(:,:,:,:,:)
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
@@ -466,14 +458,6 @@ CONTAINS
       swXX = swXX_Option
 
     DO iLevel = 0, nLevels-1
-
-      CALL amrex_multifab_build &
-             ( MF_uPM(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX * nPM, swX )
-
-      CALL amrex_multifab_build &
-             ( MF_uAM(iLevel), MF_uGF(iLevel) % BA, MF_uGF(iLevel) % DM, &
-               nDOFX * nAM, swX )
 
       CALL CreateMesh_MF( iLevel, MeshX )
 
@@ -489,8 +473,6 @@ CONTAINS
 
         uGF => MF_uGF(iLevel) % DataPtr( MFI )
         uCM => MF_uCM(iLevel) % DataPtr( MFI )
-        uPM => MF_uPM(iLevel) % DataPtr( MFI )
-        uAM => MF_uAM(iLevel) % DataPtr( MFI )
         uDM => MF_uDM(iLevel) % DataPtr( MFI )
 
         iLo_MF = LBOUND( uGF )
@@ -514,16 +496,6 @@ CONTAINS
 
         CALL AllocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nPM ], &
-                 P )
-
-        CALL AllocateArray_X &
-               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nAM ], &
-                 A )
-
-        CALL AllocateArray_X &
-               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                  [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
                  D )
 
@@ -534,8 +506,6 @@ CONTAINS
 
         CALL amrex2thornado_X( nCM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uCM, U )
 
-        CALL amrex2thornado_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uDM, D )
-
         CALL ComputeDiagnosticFields_MHD &
                ( iX_B, iX_E, iX_B1, iX_E1, G, U, D )
 
@@ -545,16 +515,6 @@ CONTAINS
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                  [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
                  D )
-
-        CALL DeallocateArray_X &
-               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nAM ], &
-                 A )
-
-        CALL DeallocateArray_X &
-               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
-                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nPM ], &
-                 P )
 
         CALL DeallocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
@@ -575,9 +535,6 @@ CONTAINS
 #endif
 
       CALL DestroyMesh_MF( MeshX )
-
-      CALL amrex_multifab_destroy( MF_uAM(iLevel) )
-      CALL amrex_multifab_destroy( MF_uPM(iLevel) )
 
     END DO
 
