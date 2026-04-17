@@ -101,10 +101,6 @@ CONTAINS
 
     CALL amrex_mfiter_build( MFI, MF_uCM, tiling = UseTiling )
 
-    CALL amrex_mfiter_build( MFI, MF_uDM, tiling = UseTiling )
-
-    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
-
     DO WHILE( MFI % next() )
 
       uCM => MF_uCM % DataPtr( MFI )
