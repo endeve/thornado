@@ -44,8 +44,6 @@ MODULE  MF_MHD_dgDiscretizationModule
     OffGridFlux_MHD_X2_Outer, &
     OffGridFlux_MHD_X3_Inner, &
     OffGridFlux_MHD_X3_Outer
-  USE MHD_DiscontinuityDetectionModule, ONLY: &
-    DetectShocks_MHD
   USE MHD_MeshRefinementModule, ONLY: &
     FaceRatio, &
     WeightsX_X1c, &
@@ -297,9 +295,6 @@ CONTAINS
 
       CALL ApplyBoundaryConditions_MHD_MF &
              ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
-
-      CALL DetectShocks_MHD( iX_B0, iX_E0, iX_B1, iX_E1, G, U, &
-                             EvolveOnlyMagnetic, D )
 
       CALL ComputeIncrement_MHD_DG_Explicit &
              ( t, dt, CFL, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dU, &

@@ -98,8 +98,6 @@ MODULE MHD_DiscretizationModule_Relativistic
     NumericalFlux_MHD_X1, &
     NumericalFlux_MHD_X2, &
     NumericalFlux_MHD_X3
-  USE MHD_DiscontinuityDetectionModule, ONLY: &
-    DetectShocks_MHD
   USE MHD_UtilitiesModule_Relativistic, ONLY: &
    ComputeMagneticDivergence_MHD_Relativistic
   USE EquationOfStateModule, ONLY: &
@@ -269,9 +267,6 @@ CONTAINS
 
       CALL ApplyBoundaryConditions_MHD &
              ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
-
-      CALL DetectShocks_MHD &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, EvolveOnlyMagnetic, D )
 
     END IF
 
