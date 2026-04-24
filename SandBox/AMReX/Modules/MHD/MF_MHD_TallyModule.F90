@@ -44,8 +44,6 @@ MODULE MF_MHD_TallyModule
     iCM_B3, &
     iCM_Chi, &
     nCM, &
-    iAM_Tem11, &
-    iAM_Tem33, &
     nAM
 
   ! --- Local Modules ---
@@ -164,20 +162,6 @@ MODULE MF_MHD_TallyModule
   REAL(DP), PUBLIC :: ADMMass_Interior
   REAL(DP)         :: ADMMass_Change
 
-  CHARACTER(SL)    :: Tem11_FileName
-  REAL(DP), PUBLIC :: Tem11_Initial
-  REAL(DP), PUBLIC :: Tem11_OffGrid
-  REAL(DP)         :: Tem11_Interior
-  REAL(DP)         :: Tem11_Interior_OMP
-  REAL(DP)         :: Tem11_Change
-
-  CHARACTER(SL)    :: Tem33_FileName
-  REAL(DP), PUBLIC :: Tem33_Initial
-  REAL(DP), PUBLIC :: Tem33_OffGrid
-  REAL(DP)         :: Tem33_Interior
-  REAL(DP)         :: Tem33_Interior_OMP
-  REAL(DP)         :: Tem33_Change
-
 CONTAINS
 
 
@@ -290,16 +274,6 @@ CONTAINS
 
 #endif
 
-      ! --- Tem11 ---
-
-      Tem11_FileName &
-        = TRIM( FileNameRoot ) // '_Tem11.dat'
-
-      ! --- Tem33 ---
-
-      Tem33_FileName &
-        = TRIM( FileNameRoot ) // '_Tem33.dat'
-
     END IF
 
     BaryonicMass_Interior = Zero
@@ -321,12 +295,6 @@ CONTAINS
     ElectronNumber_Change   = Zero
 
     ADMMass_Change = Zero
-
-    Tem11_Interior = Zero
-    Tem11_Change   = Zero
-
-    Tem33_Interior = Zero
-    Tem33_Change   = Zero
 
     IF( .NOT. InitializeFromCheckpoint )THEN
 
@@ -351,12 +319,6 @@ CONTAINS
       ADMMass_Initial  = Zero
       ADMMass_OffGrid  = Zero
       ADMMass_Interior = Zero
-
-      Tem11_Initial = Zero
-      Tem11_OffGrid = Zero
-
-      Tem33_Initial = Zero
-      Tem33_OffGrid = Zero
 
     END IF
 
@@ -422,8 +384,6 @@ CONTAINS
     MHDMomentumX3_Interior = Zero
     MHDEnergy_Interior     = Zero
     ElectronNumber_Interior  = Zero
-    Tem11_Interior           = Zero
-    Tem33_Interior           = Zero
     IF( .NOT. FixInteriorADMMass ) &
       ADMMass_Interior = Zero
 
@@ -439,8 +399,6 @@ CONTAINS
       MHDMomentumX3_Interior_OMP = Zero
       MHDEnergy_Interior_OMP     = Zero
       ElectronNumber_Interior_OMP  = Zero
-      Tem11_Interior_OMP           = Zero
-      Tem33_Interior_OMP           = Zero
 
 #if defined( THORNADO_OMP )
       !$OMP PARALLEL &
@@ -542,20 +500,6 @@ CONTAINS
                     * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                     * U(iNX,iX1,iX2,iX3,iCM_Ne)
 
-          Tem11_Interior_OMP &
-            = Tem11_Interior_OMP &
-                + d3X &
-                    * WeightsX_q(iNX) &
-                    * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                    * A(iNX,iX1,iX2,iX3,iAM_Tem11)
-
-          Tem33_Interior_OMP &
-            = Tem33_Interior_OMP &
-                + d3X &
-                    * WeightsX_q(iNX) &
-                    * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                    * A(iNX,iX1,iX2,iX3,iAM_Tem33)
-
         END DO
         END DO
         END DO
@@ -596,10 +540,6 @@ CONTAINS
         = MHDEnergy_Interior     + MHDEnergy_Interior_OMP
       ElectronNumber_Interior &
         = ElectronNumber_Interior  + ElectronNumber_Interior_OMP
-      Tem11_Interior &
-        = Tem11_Interior + Tem11_Interior_OMP
-      Tem33_Interior &
-        = Tem33_Interior + Tem33_Interior_OMP
 
       CALL DestroyMesh_MF( MeshX )
 
@@ -624,8 +564,6 @@ CONTAINS
     CALL amrex_parallel_reduce_sum( MHDMomentumX3_Interior )
     CALL amrex_parallel_reduce_sum( MHDEnergy_Interior     )
     CALL amrex_parallel_reduce_sum( ElectronNumber_Interior  )
-    CALL amrex_parallel_reduce_sum( Tem11_Interior )
-    CALL amrex_parallel_reduce_sum( Tem33_Interior )
 
     IF( SetInitialValues )THEN
 
@@ -636,8 +574,6 @@ CONTAINS
       MHDEnergy_Initial     = MHDEnergy_Interior
       ElectronNumber_Initial  = ElectronNumber_Interior
       ADMMass_Initial         = ADMMass_Interior
-      Tem11_Initial         = Tem11_Interior
-      Tem33_Initial         = Tem33_Interior
 
     END IF
 
@@ -670,14 +606,6 @@ CONTAINS
     ADMMass_Change &
       = ADMMass_Interior &
           - ADMMass_Initial + ADMMass_OffGrid
-
-    Tem11_Change &
-      = Tem11_Interior &
-          - Tem11_Initial + Tem11_OffGrid
-
-    Tem33_Change &
-      = Tem33_Interior &
-          - Tem33_Initial + Tem33_OffGrid
 
     IF( WriteTally ) &
       CALL WriteTally_MHD( Time(0) )
@@ -717,13 +645,6 @@ CONTAINS
 
       ADMMass_OffGrid &
         = Zero
-
-      Tem11_OffGrid &
-        = Zero
-
-      Tem33_OffGrid &
-        = Zero
-
 
     END DO
 
@@ -824,26 +745,6 @@ CONTAINS
 
 #endif
 
-      ! --- Tem11 ---
-
-      CALL WriteTallyToFile &
-             ( Tem11_FileName, Time, UnitsDisplay % TimeUnit, &
-               Tem11_Interior, &
-               Tem11_Initial, &
-               Tem11_OffGrid, &
-               Tem11_Change, &
-               UnitsDisplay % EnergyGlobalUnit )
-
-     ! --- Tem33 ---
-
-      CALL WriteTallyToFile &
-             ( Tem33_FileName, Time, UnitsDisplay % TimeUnit, &
-               Tem33_Interior, &
-               Tem33_Initial, &
-               Tem33_OffGrid, &
-               Tem33_Change, &
-               UnitsDisplay % EnergyGlobalUnit )
-
     END IF
 
   END SUBROUTINE WriteTally_MHD
@@ -924,22 +825,6 @@ CONTAINS
                                UnitsDisplay % EnergyGlobalLabel )
 
 #endif
-
-      CALL WriteTallyToScreen( 'Tem11', &
-                               Tem11_Interior, &
-                               Tem11_Initial, &
-                               Tem11_OffGrid, &
-                               Tem11_Change, &
-                               UnitsDisplay % EnergyGlobalUnit, &
-                               UnitsDisplay % EnergyGlobalLabel )
-
-      CALL WriteTallyToScreen( 'Tem33', &
-                               Tem33_Interior, &
-                               Tem33_Initial, &
-                               Tem33_OffGrid, &
-                               Tem33_Change, &
-                               UnitsDisplay % EnergyGlobalUnit, &
-                               UnitsDisplay % EnergyGlobalLabel )
 
       WRITE(*,*)
 
