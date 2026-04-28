@@ -45,7 +45,8 @@ MODULE InputParsingModule
   REAL(DP)                  :: t_end, t_wrt, t_chk, dt_wrt, dt_chk, dt_rel
   INTEGER                   :: iCycleW, iCycleChk, iCycleD, iRestart, iReGrid
   LOGICAL                   :: RwChkFields_uGF, RwChkFields_uCF, &
-                               RwChkFields_uDF, RwChkFields_uCR
+                               RwChkFields_uDF, RwChkFields_uCM, &
+                               RwChkFields_uDM, RwChkFields_uCR
   LOGICAL                   :: UsePhysicalUnits
   LOGICAL                   :: DEBUG
   LOGICAL                   :: SolveGravity_NR
@@ -182,8 +183,10 @@ CONTAINS
     iCycleW               = -1
     iCycleChk             = -1
     RwChkFields_uGF       = .TRUE.
-    RwChkFields_uCF       = .TRUE.
+    RwChkFields_uCF       = .FALSE.
     RwChkFields_uDF       = .FALSE.
+    RwChkFields_uCM       = .TRUE.
+    RwChkFields_uDM       = .FALSE.
     RwChkFields_uCR       = .FALSE.
     iRestart              = -1
     dt_wrt                = -1.0_DP
@@ -233,6 +236,10 @@ CONTAINS
                          RwChkFields_uCF )
       CALL PP % query ( 'RwChkFields_uDF', &
                          RwChkFields_uDF )
+      CALL PP % query ( 'RwChkFields_uCM', &
+                         RwChkFields_uCM )
+      CALL PP % query ( 'RwChkFields_uDM', &
+                         RwChkFields_uDM )
       CALL PP % query ( 'RwChkFields_uCR', &
                          RwChkFields_uCR )
       CALL PP % query ( 'iRestart', &

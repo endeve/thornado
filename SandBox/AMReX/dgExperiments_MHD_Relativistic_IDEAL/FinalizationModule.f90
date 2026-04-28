@@ -111,25 +111,7 @@ CONTAINS
              MF_uAM_Option = MF_uAM, &
              MF_uDM_Option = MF_uDM )
 
-    CALL WriteFieldsAMReX_Checkpoint &
-           ( StepNo, nLevels, dt, t_new, &
-             [ BaryonicMass_Initial   , BaryonicMass_OffGrid    ], &
-             [ MHDMomentumX1_Initial, MHDMomentumX1_OffGrid ], &
-             [ MHDMomentumX2_Initial, MHDMomentumX2_OffGrid ], &
-             [ MHDMomentumX3_Initial, MHDMomentumX3_OffGrid ], &
-             [ MHDEnergy_Initial    , MHDEnergy_OffGrid     ], &
-             [ ElectronNumber_Initial , ElectronNumber_OffGrid  ], &
-             [ MHDMagFieldX1_Initial, MHDMagFieldX1_OffGrid ], &
-             [ MHDMagFieldX2_Initial, MHDMagFieldX2_OffGrid ], &
-             [ MHDMagFieldX3_Initial, MHDMagFieldX3_OffGrid ], &
-             [ MHDCleaningField_Initial, MHDCleaningField_OffGrid ], &
-             [ ADMMass_Initial        , ADMMass_OffGrid         ], &
-             MF_uGF % BA % P, &
-             iWriteFields_uGF = 1, &
-             iWriteFields_uCM = 1, &
-             iWriteFields_uCR = 0, &
-             pMF_uGF_Option = MF_uGF % P, &
-             pMF_uCM_Option = MF_uCM % P )
+    CALL WriteFieldsAMReX_Checkpoint
 
     CALL ComputeTally_MHD_MF( t_new, MF_uGF, MF_uCM, MF_uAM )
 

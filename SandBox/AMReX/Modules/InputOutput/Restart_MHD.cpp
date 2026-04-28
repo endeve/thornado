@@ -25,7 +25,7 @@ using namespace amrex;
 
 extern "C"
 {
-  void writefieldsamrex_checkpoint
+  void writecheckpointfile
          ( int StepNo[], int nLevels,
            Real dt[], Real time[],
            Real BaryonicMassArr   [],
@@ -35,16 +35,18 @@ extern "C"
            Real MHDEnergyArr    [],
            Real ElectronNumberArr [],
            Real MHDMagFieldX1Arr[],
-           Real MHDMagFieldX2Arr[],
-           Real MHDMagFieldX3Arr[],
-           Real MHDCleaningFieldArr[],
-           Real ADMMassArr        [],
+	   Real MHDMagFieldX2Arr[],
+	   Real MHDMagFieldX3Arr[],
+	   Real MHDCleaningFieldArr[],
+	   Real ADMMassArr        [],
            BoxArray** pBA,
-           int iWriteFields_uGF = 0,
-           int iWriteFields_uCM = 0,
-           int iWriteFields_uCR = 0,
+           int RwChkFields_uGF = 1,
+           int RwChkFields_uCM = 1,
+           int RwChkFields_uDM = 0,
+           int RwChkFields_uCR = 0,
            MultiFab** pMF_uGF = NULL,
            MultiFab** pMF_uCM = NULL,
+           MultiFab** pMF_uDM = NULL,
            MultiFab** pMF_uCR = NULL )
   {
 
@@ -59,14 +61,17 @@ extern "C"
 
     // Checkpoint file name, e.g., chk00010
 
-    bool WriteFields_uGF = false;
-    if( iWriteFields_uGF == 1 ) WriteFields_uGF = true;
+    bool WriteFields_uGF = true;
+    if( RwChkFields_uGF == 0 ) WriteFields_uGF = false;
 
-    bool WriteFields_uCM = false;
-    if( iWriteFields_uCM == 1 ) WriteFields_uCM = true;
+    bool WriteFields_uCM = true;
+    if( RwChkFields_uCM == 0 ) WriteFields_uCM = false;
+
+    bool WriteFields_uDM = false;
+    if( RwChkFields_uDM == 1 ) WriteFields_uDM = true;
 
     bool WriteFields_uCR = false;
-    if( iWriteFields_uCR == 1 ) WriteFields_uCR = true;
+    if( RwChkFields_uCR == 1 ) WriteFields_uCR = true;
 
     ParmParse pp("thornado");
     chk_file = "chk";
@@ -75,7 +80,7 @@ extern "C"
     const std::string& checkpointname
                          = amrex::Concatenate( chk_file, StepNo[0], 8 );
 
-    bool Verbose = false;
+    bool Verbose = true;
     if ( Verbose && ParallelDescriptor::IOProcessor() )
     {
         amrex::Print() << "\n    Writing CheckpointFile "
@@ -142,29 +147,29 @@ extern "C"
       HeaderFile << "\n";
 
       // Write out initial values for tally
-      HeaderFile << BaryonicMassArr   [0] << "\n";
-      HeaderFile << BaryonicMassArr   [1] << "\n";
-      HeaderFile << MHDMomentumX1Arr[0] << "\n";
-      HeaderFile << MHDMomentumX1Arr[1] << "\n";
-      HeaderFile << MHDMomentumX2Arr[0] << "\n";
-      HeaderFile << MHDMomentumX2Arr[1] << "\n";
-      HeaderFile << MHDMomentumX3Arr[0] << "\n";
-      HeaderFile << MHDMomentumX3Arr[1] << "\n";
-      HeaderFile << MHDEnergyArr    [0] << "\n";
-      HeaderFile << MHDEnergyArr    [1] << "\n";
-      HeaderFile << ElectronNumberArr [0] << "\n";
-      HeaderFile << ElectronNumberArr [1] << "\n";
-      HeaderFile << MHDMagFieldX1Arr[0] << "\n";
-      HeaderFile << MHDMagFieldX1Arr[1] << "\n";
-      HeaderFile << MHDMagFieldX2Arr[0] << "\n";
-      HeaderFile << MHDMagFieldX2Arr[1] << "\n";
-      HeaderFile << MHDMagFieldX3Arr[0] << "\n";
-      HeaderFile << MHDMagFieldX3Arr[1] << "\n";
+      HeaderFile << BaryonicMassArr    [0] << "\n";
+      HeaderFile << BaryonicMassArr    [1] << "\n";
+      HeaderFile << MHDMomentumX1Arr   [0] << "\n";
+      HeaderFile << MHDMomentumX1Arr   [1] << "\n";
+      HeaderFile << MHDMomentumX2Arr   [0] << "\n";
+      HeaderFile << MHDMomentumX2Arr   [1] << "\n";
+      HeaderFile << MHDMomentumX3Arr   [0] << "\n";
+      HeaderFile << MHDMomentumX3Arr   [1] << "\n";
+      HeaderFile << MHDEnergyArr       [0] << "\n";
+      HeaderFile << MHDEnergyArr       [1] << "\n";
+      HeaderFile << ElectronNumberArr  [0] << "\n";
+      HeaderFile << ElectronNumberArr  [1] << "\n";
+      HeaderFile << MHDMagFieldX1Arr   [0] << "\n";
+      HeaderFile << MHDMagFieldX1Arr   [1] << "\n";
+      HeaderFile << MHDMagFieldX2Arr   [0] << "\n";
+      HeaderFile << MHDMagFieldX2Arr   [1] << "\n";
+      HeaderFile << MHDMagFieldX3Arr   [0] << "\n";
+      HeaderFile << MHDMagFieldX3Arr   [1] << "\n";
       HeaderFile << MHDCleaningFieldArr[0] << "\n";
       HeaderFile << MHDCleaningFieldArr[1] << "\n";
-      HeaderFile << ADMMassArr        [0] << "\n";
-      HeaderFile << ADMMassArr        [1] << "\n";
-      HeaderFile << ADMMassArr        [2] << "\n"; // ADMMass_Interior
+      HeaderFile << ADMMassArr         [0] << "\n";
+      HeaderFile << ADMMassArr         [1] << "\n";
+      HeaderFile << ADMMassArr         [2] << "\n"; // ADMMass_Interior
 
       // Write the BoxArray at each level
       for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )
@@ -200,6 +205,15 @@ extern "C"
                           "Level_", "Conserved_MHD" ) );
       }
 
+      if( WriteFields_uDM )
+      {
+        MultiFab& MF_uDM = *pMF_uDM[iLevel];
+        VisMF::Write( MF_uDM,
+                      amrex::MultiFabFileFullPrefix
+                        ( iLevel, checkpointname,
+                          "Level_", "Diagnostic_MHD" ) );
+      }
+
       if( WriteFields_uCR )
       {
         MultiFab& MF_uCR = *pMF_uCR[iLevel];
@@ -210,7 +224,7 @@ extern "C"
       }
     }
 
-  } // End of writefieldsamrex_checkpoint
+  } // End of writecheckpointfile
 
   void readheaderandboxarraydata
          ( int FinestLevelArr[], int StepNo[],
@@ -221,10 +235,10 @@ extern "C"
            Real MHDMomentumX3Arr[],
            Real MHDEnergyArr    [],
            Real ElectronNumberArr [],
-           Real MHDMagFieldX1Arr[],
-           Real MHDMagFieldX2Arr[],
-           Real MHDMagFieldX3Arr[],
-           Real MHDCleaningFieldArr[],
+	   Real MHDMagFieldX1Arr[],
+	   Real MHDMagFieldX2Arr[],
+	   Real MHDMagFieldX3Arr[],
+	   Real MHDCleaningFieldArr[],
            Real ADMMassArr        [],
            BoxArray** pba, DistributionMapping** pdm, int iChkFile )
   {
@@ -452,10 +466,13 @@ extern "C"
 	MF_Name = "Conserved_MHD";
 	break;
       case 2:
+	MF_Name = "Diagnostic_MHD";
+	break;
+      case 3:
 	MF_Name = "Conserved_TwoMoment";
 	break;
       default:
-        std::cout << "Invalid." << std::endl;
+        amrex::Abort("Invalid MF");
     }
 
     for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )

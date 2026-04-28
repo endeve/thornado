@@ -245,7 +245,7 @@ CONTAINS
 
     ELSE
 
-      CALL ReadCheckpointFile( ReadFields_uCM_Option = .TRUE. )
+      CALL ReadCheckpointFile
 
       SetInitialValues = .FALSE.
 
