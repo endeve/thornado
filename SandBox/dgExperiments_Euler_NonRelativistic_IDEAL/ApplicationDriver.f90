@@ -88,7 +88,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'RiemannProblem'
+  ProgramName = 'RiemannProblemCylindrical'
 
   RestartFileNumber = -1
 

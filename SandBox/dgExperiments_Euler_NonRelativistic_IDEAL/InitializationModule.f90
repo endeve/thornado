@@ -476,23 +476,18 @@ CONTAINS
 
             R = SQRT( X1**2 + X2**2 )
 
-            IF( R < 0.4_DP )THEN
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 1.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 1.0_DP / ( Gamma_IDEAL - One )
-
-            ELSE
-
-              uPF(iNodeX,iX1,iX2,iX3,iPF_D)  = 0.125_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = 0.0_DP
-              uPF(iNodeX,iX1,iX2,iX3,iPF_E)  = 0.1_DP / ( Gamma_IDEAL - One )
-
-            END IF
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D ) &
+              = TransitionFunction( 1.0_DP, 0.125_DP, R, 0.02_DP )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+              = 0.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+              = 0.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+              = 0.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_E ) &
+              = TransitionFunction( 1.0_DP, 0.125_DP, R, 0.02_DP ) &
+                * TransitionFunction( 1.0_DP, 0.8_DP, R, 0.02_DP ) &
+                / ( Gamma_IDEAL - One )
 
           END DO
 
@@ -512,6 +507,30 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_RiemannProblemCylindrical
+
+
+  REAL(DP) FUNCTION TransitionFunction( StateL, StateR, R, dR )
+
+    REAL(DP), INTENT(in) :: StateL, StateR, R, dR
+    
+    IF     ( R < 0.39_DP )THEN
+
+      TransitionFunction = StateL
+
+    ELSE IF( R > 0.41_DP )THEN
+      
+      TransitionFunction = StateR
+
+    ELSE
+
+      TransitionFunction &
+        = StateL - 6.0_DP * ( StateR - StateL ) &
+                    * ( (R-0.39_DP)**3 / 3.0 - Half * dR * (R-0.39_DP)**2 ) / dR**3
+      
+    ENDIF
+
+    RETURN
+  END
 
 
   SUBROUTINE InitializeFields_SphericalSedov &
