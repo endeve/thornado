@@ -54,18 +54,7 @@ MODULE MHD_PerturbationModule
     iPM_B3, &
     iPM_Chi, &
     nAM, &
-    iAM_P, &
-    iAM_T, &
-    iAM_Ye, &
-    iAM_S, &
-    iAM_E, &
-    iAM_Gm, &
-    iAM_Cs, &
-    nDM, &
-    iDM_Sh_X1, &
-    iDM_Sh_X2, &
-    iDM_Sh_X3, &
-    iDM_Div
+    iAM_P
    USE MHD_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_MHD_Relativistic, &
     ComputeFromConserved_MHD_Relativistic
