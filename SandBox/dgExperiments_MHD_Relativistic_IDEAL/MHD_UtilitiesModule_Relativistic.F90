@@ -216,8 +216,10 @@ CONTAINS
       PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
       PM_B1, PM_B2, PM_B3, PM_Chi
 
-    REAL(DP) :: E, S, B, tau, alpha_1, alpha_2, &
+    REAL(DP) :: E, S, B, SdotB, tau, alpha_1, alpha_2, &
                 eta, beta_1, beta_2, gamma_0
+
+    REAL(DP) :: q_G, Phi_G, Psi_G
 
     REAL(DP) :: Xi_d, Xi_0, Xi_1, W, f_0, f_1, df, a_0, delta, &
                 phi_a, X_1, X_2, theta
@@ -238,11 +240,34 @@ CONTAINS
 
       tau = Zero
 
+      SdotB = Zero
+
     ELSE
 
       B = SQRT( GF_Gm11 * CM_B1**2 + GF_Gm22 * CM_B2**2 + GF_Gm33 * CM_B3**2 )
 
       tau = CM_S1 * CM_B1 + CM_S2 * CM_B2 + CM_S3 * CM_B3
+
+      SdotB = CM_S1 * CM_B1 + CM_S2 * CM_B2 + CM_S3 * CM_B3
+
+    END IF
+
+    q_G = E - SQRT( CM_D**2 + S**2 )
+
+    Phi_G = SQRT( ( B**2 - E )**2 + Three * ( E**2 - CM_D**2 - S**2 ) )
+
+    Psi_G = ( Phi_G - 2 * ( B**2 - E ) ) * SQRT( Phi_G + B**2 - E ) &
+            - SQRT( 13.5_DP * ( CM_D**2 * B**2 + SdotB**2 ) )
+
+    ! Check admissability of conservative variables using Theorem 2.1
+    ! of Wu and Tang (2017).
+
+    IF( ( CM_D < 0 ) .OR. ( q_G < 0 ) .OR. ( Phi_G < 0 ) )THEN
+
+      PRINT*, "Primitive variable recovery failure: Conserved variables un-admissible!"
+      PRINT*, "Terminating run."
+
+      STOP
 
     END IF
 
