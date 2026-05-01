@@ -199,49 +199,81 @@ MODULE MagnetofluidFieldsModule
 
   ! --- Diagnostic Variables ---
 
-  INTEGER, PUBLIC, PARAMETER :: iDM_TCI    = 01 ! Troubled-Cell Indicator
-  INTEGER, PUBLIC, PARAMETER :: iDM_Sh_X1  = 02 ! Shock Detector (X1)
-  INTEGER, PUBLIC, PARAMETER :: iDM_Sh_X2  = 03 ! Shock Detector (X2)
-  INTEGER, PUBLIC, PARAMETER :: iDM_Sh_X3  = 04 ! Shock Detector (X3)
-  INTEGER, PUBLIC, PARAMETER :: iDM_T1     = 05 ! Theta 1
-  INTEGER, PUBLIC, PARAMETER :: iDM_T2     = 06 ! Theta 2
-  INTEGER, PUBLIC, PARAMETER :: iDM_T3     = 07 ! Theta 3
-  INTEGER, PUBLIC, PARAMETER :: iDM_MinE   = 08 ! Minimum Specific Internal Energy
-  INTEGER, PUBLIC, PARAMETER :: iDM_MaxE   = 09 ! Maximum Specific Internal Energy
-  INTEGER, PUBLIC, PARAMETER :: iDM_Div    = 10 ! Divergence of Eulerian Magnetic Field
-  INTEGER, PUBLIC, PARAMETER :: iDM_IC_D   = 11 ! Initial Conserved Baryon Density 
-  INTEGER, PUBLIC, PARAMETER :: iDM_IC_S1  = 12 ! Initial Conserved Momentum Density 1
-  INTEGER, PUBLIC, PARAMETER :: iDM_IC_S2  = 13 ! Initial Conserved Momentum Density 2
-  INTEGER, PUBLIC, PARAMETER :: iDM_IC_S3  = 14 ! Initial Conserved Momentum Density 3
-  INTEGER, PUBLIC, PARAMETER :: iDM_IC_E   = 15 ! Initial Conserved Energy Density
-  INTEGER, PUBLIC, PARAMETER :: iDM_IC_Ne  = 16 ! Initial Conserved Electron Density
-  INTEGER, PUBLIC, PARAMETER :: iDM_IC_B1  = 17 ! Initial Conserved Magnetic Field 1
-  INTEGER, PUBLIC, PARAMETER :: iDM_IC_B2  = 18 ! Initial Conserved Magnetic Field 2
-  INTEGER, PUBLIC, PARAMETER :: iDM_IC_B3  = 19 ! Initial Conserved Magnetic Field 3
-  INTEGER, PUBLIC, PARAMETER :: iDM_IC_Chi = 20 ! Initial Divergence Violation Field
-  INTEGER, PUBLIC, PARAMETER :: nDM        = 20 ! n Diagnostic Magnetofluid Fields
+  INTEGER, PUBLIC, PARAMETER :: iDM_TCI     = 01 ! Troubled-Cell Indicator
+  INTEGER, PUBLIC, PARAMETER :: iDM_Sh_X1   = 02 ! Shock Detector (X1)
+  INTEGER, PUBLIC, PARAMETER :: iDM_Sh_X2   = 03 ! Shock Detector (X2)
+  INTEGER, PUBLIC, PARAMETER :: iDM_Sh_X3   = 04 ! Shock Detector (X3)
+  INTEGER, PUBLIC, PARAMETER :: iDM_T1      = 05 ! Theta 1
+  INTEGER, PUBLIC, PARAMETER :: iDM_T2      = 06 ! Theta 2
+  INTEGER, PUBLIC, PARAMETER :: iDM_T3      = 07 ! Theta 3
+  INTEGER, PUBLIC, PARAMETER :: iDM_MinE    = 08 ! Minimum Specific Internal Energy
+  INTEGER, PUBLIC, PARAMETER :: iDM_MaxE    = 09 ! Maximum Specific Internal Energy
+  INTEGER, PUBLIC, PARAMETER :: iDM_Div     = 10 ! Divergence of Eulerian Magnetic Field
+  INTEGER, PUBLIC, PARAMETER :: iDM_HS1     = 11 ! Hydrodynamic Momentum Density 1
+  INTEGER, PUBLIC, PARAMETER :: iDM_HS2     = 12 ! Hydrodynamic Momentum Density 2
+  INTEGER, PUBLIC, PARAMETER :: iDM_HS3     = 13 ! Hydrodynamic Momentum Density 3
+  INTEGER, PUBLIC, PARAMETER :: iDM_EMS1    = 14 ! Electromagnetic Momentum Density 1
+  INTEGER, PUBLIC, PARAMETER :: iDM_EMS2    = 15 ! Electromagnetic Momentum Density 2
+  INTEGER, PUBLIC, PARAMETER :: iDM_EMS3    = 16 ! Electromagnetic Momentum Density 3
+  INTEGER, PUBLIC, PARAMETER :: iDM_HE      = 17 ! Hydrodynamic Energy Density
+  INTEGER, PUBLIC, PARAMETER :: iDM_EME     = 18 ! Electromagnetic Energy Density
+  INTEGER, PUBLIC, PARAMETER :: iDM_IC_D    = 19 ! Initial Conserved Baryon Density
+  INTEGER, PUBLIC, PARAMETER :: iDM_IC_S1   = 20 ! Initial Conserved Momentum Density 1
+  INTEGER, PUBLIC, PARAMETER :: iDM_IC_S2   = 21 ! Initial Conserved Momentum Density 2
+  INTEGER, PUBLIC, PARAMETER :: iDM_IC_S3   = 22 ! Initial Conserved Momentum Density 3
+  INTEGER, PUBLIC, PARAMETER :: iDM_IC_E    = 23 ! Initial Conserved Energy Density
+  INTEGER, PUBLIC, PARAMETER :: iDM_IC_Ne   = 24 ! Initial Conserved Electron Density
+  INTEGER, PUBLIC, PARAMETER :: iDM_IC_B1   = 25 ! Initial Conserved Magnetic Field 1
+  INTEGER, PUBLIC, PARAMETER :: iDM_IC_B2   = 26 ! Initial Conserved Magnetic Field 2
+  INTEGER, PUBLIC, PARAMETER :: iDM_IC_B3   = 27 ! Initial Conserved Magnetic Field 3
+  INTEGER, PUBLIC, PARAMETER :: iDM_IC_Chi  = 28 ! Initial Divergence Violation Field
+  INTEGER, PUBLIC, PARAMETER :: iDM_IC_HS1  = 29 ! Initial Hydrodynamic Momentum Density 1
+  INTEGER, PUBLIC, PARAMETER :: iDM_IC_HS2  = 30 ! Initial Hydrodynamic Momentum Density 2
+  INTEGER, PUBLIC, PARAMETER :: iDM_IC_HS3  = 31 ! Initial Hydrodynamic Momentum Density 3
+  INTEGER, PUBLIC, PARAMETER :: iDM_IC_EMS1 = 32 ! Initial Electromagnetic Momentum Density 1
+  INTEGER, PUBLIC, PARAMETER :: iDM_IC_EMS2 = 33 ! Initial Electromagnetic Momentum Density 2
+  INTEGER, PUBLIC, PARAMETER :: iDM_IC_EMS3 = 34 ! Initial Electromagnetic Momentum Density 3
+  INTEGER, PUBLIC, PARAMETER :: iDM_IC_HE   = 35 ! Initial Hydrodynamic Energy Density
+  INTEGER, PUBLIC, PARAMETER :: iDM_IC_EME  = 36 ! Initial Electromagnetic Energy Density
+  INTEGER, PUBLIC, PARAMETER :: nDM         = 36 ! n Diagnostic Magnetofluid Fields
 
   CHARACTER(64), DIMENSION(nDM), PUBLIC, PARAMETER :: &
-    namesDM = [ 'TCI                                   ', &
-                'Shock (X1)                            ', &
-                'Shock (X2)                            ', &
-                'Shock (X3)                            ', &
-                'Theta 1                               ', &
-                'Theta 2                               ', &
-                'Theta 3                               ', &
-                'Min E                                 ', &
-                'Max E                                 ', &
-                'Div                                   ', &
-                'Initial Conserved Baryon Density      ', &
-                'Initial Conserved Momentum Density (1)', & 
-                'Initial Conserved Momentum Density (2)', &
-                'Initial Conserved Momentum Density (3)', &
-                'Initial Conserved Energy Density      ', &
-                'Initial Conserved Electron Density    ', &
-                'Initial Conserved Magnetic Field (1)  ', &
-                'Initial Conserved Magnetic Field (2)  ', &
-                'Initial Conserved Magnetic Field (3)  ', &
-                'Initial Divergence Violation Field    ' ]
+    namesDM = [ 'TCI                                         ', &
+                'Shock (X1)                                  ', &
+                'Shock (X2)                                  ', &
+                'Shock (X3)                                  ', &
+                'Theta 1                                     ', &
+                'Theta 2                                     ', &
+                'Theta 3                                     ', &
+                'Min E                                       ', &
+                'Max E                                       ', &
+                'Div                                         ', &
+                'Hydrodynamic Momentum Density (1)           ', &
+                'Hydrodynamic Momentum Density (2)           ', &
+                'Hydrodynamic Momentum Density (3)           ', &
+                'Electromagnetic Momentum Density (1)        ', &
+                'Electromagnetic Momentum Density (2)        ', &
+                'Electromagnetic Momentum Density (3)        ', &
+                'Hydroydnamic Energy Density                 ', &
+                'Electromagnetic Energy Density              ', &
+                'Initial Conserved Baryon Density            ', &
+                'Initial Conserved Momentum Density (1)      ', &
+                'Initial Conserved Momentum Density (2)      ', &
+                'Initial Conserved Momentum Density (3)      ', &
+                'Initial Conserved Energy Density            ', &
+                'Initial Conserved Electron Density          ', &
+                'Initial Conserved Magnetic Field (1)        ', &
+                'Initial Conserved Magnetic Field (2)        ', &
+                'Initial Conserved Magnetic Field (3)        ', &
+                'Initial Divergence Violation Field          ', &
+                'Initial Hydrodynamic Momentum Density (1)   ', &
+                'Initial Hydrodynamic Momentum Density (2)   ', &
+                'Initial Hydrodynamic Momentum Density (3)   ', &
+                'Initial Electromagnetic Momentum Density (1)', &
+                'Initial Electromagnetic Momentum Density (2)', &
+                'Initial Electromagnetic Momentum Density (3)', &
+                'Initial Hydrodynamic Energy Density         ', &
+                'Initial Electromagnetic Energy Density      ']
 
   CHARACTER(10), DIMENSION(nDM), PUBLIC, PARAMETER :: &
     ShortNamesDM = [ 'DM_TCI    ', &
@@ -254,6 +286,14 @@ MODULE MagnetofluidFieldsModule
                      'DM_MinE   ', &
                      'DM_MaxE   ', &
                      'DM_Div    ', &
+                     'DM_HS1    ', &
+                     'DM_HS2    ', &
+                     'DM_HS3    ', &
+                     'DM_EMS1   ', &
+                     'DM_EMS2   ', &
+                     'DM_EMS3   ', &
+                     'DM_HE     ', &
+                     'DM_EME    ', &
                      'DM_IC_D   ', &
                      'DM_IC_S1  ', &
                      'DM_IC_S2  ', &
@@ -263,7 +303,15 @@ MODULE MagnetofluidFieldsModule
                      'DM_IC_B1  ', &
                      'DM_IC_B2  ', &
                      'DM_IC_B3  ', &
-                     'DM_IC_Chi ' ]
+                     'DM_IC_Chi ', &
+                     'DM_IC_HS1 ', &
+                     'DM_IC_HS2 ', &
+                     'DM_IC_HS3 ', &
+                     'DM_IC_EMS1', &
+                     'DM_IC_EMS2', &
+                     'DM_IC_EMS3', &
+                     'DM_IC_HE  ', &
+                     'DM_IC_EME ' ]
 
   REAL(DP), DIMENSION(nDM), PUBLIC :: unitsDM
 
@@ -480,24 +528,40 @@ CONTAINS
                                    1-swX(3):nX(3)+swX(3), &
                                    1:nDM)
 
-    uDM(:,:,:,:,iDM_TCI)    = Zero
-    uDM(:,:,:,:,iDM_Sh_X1)  = Zero
-    uDM(:,:,:,:,iDM_Sh_X2)  = Zero
-    uDM(:,:,:,:,iDM_Sh_X3)  = Zero
-    uDM(:,:,:,:,iDM_T1)     = One
-    uDM(:,:,:,:,iDM_T2)     = One
-    uDM(:,:,:,:,iDM_T3)     = One
-    uDM(:,:,:,:,iDM_Div)    = Zero
-    uDM(:,:,:,:,iDM_IC_D)   = Zero
-    uDM(:,:,:,:,iDM_IC_S1)  = Zero
-    uDM(:,:,:,:,iDM_IC_S2)  = Zero
-    uDM(:,:,:,:,iDM_IC_S3)  = Zero
-    uDM(:,:,:,:,iDM_IC_E)   = Zero
-    uDM(:,:,:,:,iDM_IC_Ne)  = Zero
-    uDM(:,:,:,:,iDM_IC_B1)  = Zero
-    uDM(:,:,:,:,iDM_IC_B2)  = Zero
-    uDM(:,:,:,:,iDM_IC_B3)  = Zero
-    uDM(:,:,:,:,iDM_IC_Chi) = Zero
+    uDM(:,:,:,:,iDM_TCI)     = Zero
+    uDM(:,:,:,:,iDM_Sh_X1)   = Zero
+    uDM(:,:,:,:,iDM_Sh_X2)   = Zero
+    uDM(:,:,:,:,iDM_Sh_X3)   = Zero
+    uDM(:,:,:,:,iDM_T1)      = One
+    uDM(:,:,:,:,iDM_T2)      = One
+    uDM(:,:,:,:,iDM_T3)      = One
+    uDM(:,:,:,:,iDM_Div)     = Zero
+    uDM(:,:,:,:,iDM_HS1)     = Zero
+    uDM(:,:,:,:,iDM_HS2)     = Zero
+    uDM(:,:,:,:,iDM_HS3)     = Zero
+    uDM(:,:,:,:,iDM_EMS1)    = Zero
+    uDM(:,:,:,:,iDM_EMS2)    = Zero
+    uDM(:,:,:,:,iDM_EMS3)    = Zero
+    uDM(:,:,:,:,iDM_HE)      = Zero
+    uDM(:,:,:,:,iDM_EME)     = Zero
+    uDM(:,:,:,:,iDM_IC_D)    = Zero
+    uDM(:,:,:,:,iDM_IC_S1)   = Zero
+    uDM(:,:,:,:,iDM_IC_S2)   = Zero
+    uDM(:,:,:,:,iDM_IC_S3)   = Zero
+    uDM(:,:,:,:,iDM_IC_E)    = Zero
+    uDM(:,:,:,:,iDM_IC_Ne)   = Zero
+    uDM(:,:,:,:,iDM_IC_B1)   = Zero
+    uDM(:,:,:,:,iDM_IC_B2)   = Zero
+    uDM(:,:,:,:,iDM_IC_B3)   = Zero
+    uDM(:,:,:,:,iDM_IC_Chi)  = Zero
+    uDM(:,:,:,:,iDM_IC_HS1)  = Zero
+    uDM(:,:,:,:,iDM_IC_HS2)  = Zero
+    uDM(:,:,:,:,iDM_IC_HS3)  = Zero
+    uDM(:,:,:,:,iDM_IC_EMS1) = Zero
+    uDM(:,:,:,:,iDM_IC_EMS2) = Zero
+    uDM(:,:,:,:,iDM_IC_EMS3) = Zero
+    uDM(:,:,:,:,iDM_IC_HE)   = Zero
+    uDM(:,:,:,:,iDM_IC_EME)  = Zero
 
   END SUBROUTINE ResetFields_Diagnostic
 
@@ -701,33 +765,81 @@ CONTAINS
 
         CASE( 'CARTESIAN' )
 
-          unitsDM(iDM_IC_S1) = Gram / Centimeter**2 / Second
-          unitsDM(iDM_IC_S2) = Gram / Centimeter**2 / Second
-          unitsDM(iDM_IC_S3) = Gram / Centimeter**2 / Second
+          unitsDM(iDM_IC_S1)   = Gram / Centimeter**2 / Second
+          unitsDM(iDM_IC_S2)   = Gram / Centimeter**2 / Second
+          unitsDM(iDM_IC_S3)   = Gram / Centimeter**2 / Second
 
-          unitsDM(iDM_IC_B1)  = Gauss
-          unitsDM(iDM_IC_B2)  = Gauss
-          unitsDM(iDM_IC_B3)  = Gauss
+          unitsDM(iDM_HS1)     = Gram / Centimeter**2 / Second
+          unitsDM(iDM_HS2)     = Gram / Centimeter**2 / Second
+          unitsDM(iDM_HS3)     = Gram / Centimeter**2 / Second
+
+          unitsDM(iDM_EMS1)    = Gram / Centimeter**2 / Second
+          unitsDM(iDM_EMS2)    = Gram / Centimeter**2 / Second
+          unitsDM(iDM_EMS3)    = Gram / Centimeter**2 / Second
+
+          unitsDM(iDM_IC_HS1)  = Gram / Centimeter**2 / Second
+          unitsDM(iDM_IC_HS2)  = Gram / Centimeter**2 / Second
+          unitsDM(iDM_IC_HS3)  = Gram / Centimeter**2 / Second
+
+          unitsDM(iDM_IC_EMS1) = Gram / Centimeter**2 / Second
+          unitsDM(iDM_IC_EMS2) = Gram / Centimeter**2 / Second
+          unitsDM(iDM_IC_EMS3) = Gram / Centimeter**2 / Second
+
+          unitsDM(iDM_IC_B1)   = Gauss
+          unitsDM(iDM_IC_B2)   = Gauss
+          unitsDM(iDM_IC_B3)   = Gauss
 
         CASE( 'CYLINDRICAL' )
 
-          unitsDM(iDM_IC_S1) = Gram / Centimeter**2 / Second
-          unitsDM(iDM_IC_S2) = Gram / Centimeter**2 / Second
-          unitsDM(iDM_IC_S3) = Gram / Centimeter / Second
+          unitsDM(iDM_IC_S1)   = Gram / Centimeter**2 / Second
+          unitsDM(iDM_IC_S2)   = Gram / Centimeter**2 / Second
+          unitsDM(iDM_IC_S3)   = Gram / Centimeter / Second
 
-          unitsDM(iDM_IC_B1)  = Gauss
-          unitsDM(iDM_IC_B2)  = Gauss
-          unitsDM(iDM_IC_B3)  = Gauss / Centimeter
+          unitsDM(iDM_HS1)     = Gram / Centimeter**2 / Second
+          unitsDM(iDM_HS2)     = Gram / Centimeter**2 / Second
+          unitsDM(iDM_HS3)     = Gram / Centimeter / Second
+
+          unitsDM(iDM_EMS1)    = Gram / Centimeter**2 / Second
+          unitsDM(iDM_EMS2)    = Gram / Centimeter**2 / Second
+          unitsDM(iDM_EMS3)    = Gram / Centimeter / Second
+
+          unitsDM(iDM_IC_HS1)  = Gram / Centimeter**2 / Second
+          unitsDM(iDM_IC_HS2)  = Gram / Centimeter**2 / Second
+          unitsDM(iDM_IC_HS3)  = Gram / Centimeter / Second
+
+          unitsDM(iDM_IC_EMS1) = Gram / Centimeter**2 / Second
+          unitsDM(iDM_IC_EMS2) = Gram / Centimeter**2 / Second
+          unitsDM(iDM_IC_EMS3) = Gram / Centimeter / Second
+
+          unitsDM(iDM_IC_B1)   = Gauss
+          unitsDM(iDM_IC_B2)   = Gauss
+          unitsDM(iDM_IC_B3)   = Gauss / Centimeter
 
         CASE( 'SPHERICAL' )
 
-          unitsDM(iDM_IC_S1) = Gram / Centimeter**2 / Second
-          unitsDM(iDM_IC_S2) = Gram / Centimeter / Second
-          unitsDM(iDM_IC_S3) = Gram / Centimeter / Second
+          unitsDM(iDM_IC_S1)   = Gram / Centimeter**2 / Second
+          unitsDM(iDM_IC_S2)   = Gram / Centimeter / Second
+          unitsDM(iDM_IC_S3)   = Gram / Centimeter / Second
 
-          unitsDM(iDM_IC_B1)  = Gauss
-          unitsDM(iDM_IC_B2)  = Gauss / Centimeter
-          unitsDM(iDM_IC_B3)  = Gauss / Centimeter
+          unitsDM(iDM_HS1)     = Gram / Centimeter**2 / Second
+          unitsDM(iDM_HS2)     = Gram / Centimeter / Second
+          unitsDM(iDM_HS3)     = Gram / Centimeter / Second
+
+          unitsDM(iDM_EMS1)    = Gram / Centimeter**2 / Second
+          unitsDM(iDM_EMS2)    = Gram / Centimeter / Second
+          unitsDM(iDM_EMS3)    = Gram / Centimeter / Second
+
+          unitsDM(iDM_IC_HS1)  = Gram / Centimeter**2 / Second
+          unitsDM(iDM_IC_HS2)  = Gram / Centimeter / Second
+          unitsDM(iDM_IC_HS3)  = Gram / Centimeter / Second
+
+          unitsDM(iDM_IC_EMS1) = Gram / Centimeter**2 / Second
+          unitsDM(iDM_IC_EMS2) = Gram / Centimeter / Second
+          unitsDM(iDM_IC_EMS3) = Gram / Centimeter / Second
+
+          unitsDM(iDM_IC_B1)   = Gauss
+          unitsDM(iDM_IC_B2)   = Gauss / Centimeter
+          unitsDM(iDM_IC_B3)   = Gauss / Centimeter
 
         CASE DEFAULT
 
@@ -737,7 +849,11 @@ CONTAINS
 
       END SELECT
 
+      unitsDM(iDM_HE)     = Erg / Centimeter**3
+      unitsDM(iDM_EME)    = Erg / Centimeter**3
       unitsDM(iDM_IC_E)   = Erg / Centimeter**3
+      unitsDM(iDM_IC_HE)  = Erg / Centimeter**3
+      unitsDM(iDM_IC_EME) = Erg / Centimeter**3
       unitsDM(iDM_IC_Ne)  = One / Centimeter**3
       unitsDM(iDM_IC_Chi) = Gauss * Kilometer / Second
 
