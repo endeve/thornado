@@ -961,22 +961,22 @@ CONTAINS
               !PRINT*, 'Radial velocities too low. Using initial density for inner boundary.'
 
               U(iNX,iX_B0(1)-iX1,iX2,iX3,1) &
-                = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_D)           
+                = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_D)
  
               U(iNX,iX_B0(1)-iX1,iX2,iX3,2) &
-                = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S1)           
+                = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_S1)
  
               U(iNX,iX_B0(1)-iX1,iX2,iX3,3) &
-                = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S2)           
+                = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_S2)
  
               U(iNX,iX_B0(1)-iX1,iX2,iX3,4) &
-                = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S3)           
- 
+                = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_S3)
+
               U(iNX,iX_B0(1)-iX1,iX2,iX3,5) &
-                = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_E)           
+                = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_E)
 
               U(iNX,iX_B0(1)-iX1,iX2,iX3,10) &
-                = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_Chi)
+                = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_Chi)
  
             ELSE
 
@@ -1041,22 +1041,22 @@ CONTAINS
               !PRINT*, 'Radial velocities too low. Using initial density for outer boundary.'
 
               U(iNX,iX_E0(1)+iX1,iX2,iX3,1) &
-                = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_D)
+                = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_D)
 
               U(iNX,iX_E0(1)+iX1,iX2,iX3,2) &
-                = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S1)
+                = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_S1)
 
               U(iNX,iX_E0(1)+iX1,iX2,iX3,3) &
-                = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S2)
+                = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_S2)
 
               U(iNX,iX_E0(1)+iX1,iX2,iX3,4) &
-                = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S3)
+                = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_S3)
  
               U(iNX,iX_E0(1)+iX1,iX2,iX3,5) &
-                = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_E)
+                = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_E)
 
               U(iNX,iX_E0(1)+iX1,iX2,iX3,10) &
-                = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_Chi)
+                = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_Chi)
  
             ELSE
 
