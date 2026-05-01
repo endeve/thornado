@@ -14,6 +14,7 @@ MODULE MHD_UtilitiesModule
 
   PUBLIC :: ComputePrimitive_MHD
   PUBLIC :: ComputeConserved_MHD
+  PUBLIC :: ComputeDiagnostic_MHD
   PUBLIC :: ComputeFromConserved_MHD
   PUBLIC :: ComputeTimeStep_MHD
   PUBLIC :: ComputeMagneticDivergence_MHD
@@ -34,6 +35,11 @@ MODULE MHD_UtilitiesModule
     MODULE PROCEDURE ComputeConserved_Scalar
     MODULE PROCEDURE ComputeConserved_Vector
   END INTERFACE ComputeConserved_MHD
+
+  INTERFACE ComputeDiagnostic_MHD
+    MODULE PROCEDURE ComputeDiagnostic_Scalar
+    MODULE PROCEDURE ComputeDiagnostic_Vector
+  END INTERFACE ComputeDiagnostic_MHD
 
 
 CONTAINS
@@ -175,6 +181,98 @@ CONTAINS
              AM_P, EvolveOnlyMagnetic )
 
   END SUBROUTINE ComputeConserved_Vector
+
+
+  SUBROUTINE ComputeDiagnostic_Scalar &
+    ( PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
+      PM_B1, PM_B2, PM_B3, PM_Chi,            &
+      CM_D, CM_S1, CM_S2, CM_S3, CM_E, CM_Ne, &
+      CM_B1, CM_B2, CM_B3, CM_Chi,            &
+      DM_HS1, DM_HS2, DM_HS3,                 &
+      DM_EMS1, DM_EMS2, DM_EMS3,              &
+      DM_HE, DM_EME,                          &
+      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
+      GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3, &
+      AM_P, EvolveOnlyMagnetic )
+
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
+
+    REAL(DP), INTENT(in)  :: &
+      PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
+      PM_B1, PM_B2, PM_B3, PM_Chi
+    REAL(DP), INTENT(in) :: &
+      CM_D, CM_S1, CM_S2, CM_S3, CM_E, CM_Ne, &
+      CM_B1, CM_B2, CM_B3, CM_Chi
+    REAL(DP), INTENT(out) :: &
+      DM_HS1, DM_HS2, DM_HS3, &
+      DM_EMS1, DM_EMS2, DM_EMS3, &
+      DM_HE, DM_EME
+    REAL(DP), INTENT(in)  :: &
+      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
+      GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3
+
+    ! --- Only needed for relativistic code ---
+    REAL(DP), INTENT(in) :: AM_P
+
+    CALL ComputeDiagnostic_MHD_Relativistic &
+           ( PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
+             PM_B1, PM_B2, PM_B3, PM_Chi,            &
+             CM_D, CM_S1, CM_S2, CM_S3, CM_E, CM_Ne, &
+             CM_B1, CM_B2, CM_B3, CM_Chi,            &
+             DM_HS1, DM_HS2, DM_HS3,                 &
+             DM_EMS1, DM_EMS2, DM_EMS3,              &
+             DM_HE, DM_EME,                          &
+             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
+             GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3, &
+             AM_P, EvolveOnlyMagnetic )
+
+  END SUBROUTINE ComputeDiagnostic_Scalar
+
+
+  SUBROUTINE ComputeDiagnostic_Vector &
+    ( PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
+      PM_B1, PM_B2, PM_B3, PM_Chi,            &
+      CM_D, CM_S1, CM_S2, CM_S3, CM_E, CM_Ne, &
+      CM_B1, CM_B2, CM_B3, CM_Chi,            &
+      DM_HS1, DM_HS2, DM_HS3,                 &
+      DM_EMS1, DM_EMS2, DM_EMS3,              &
+      DM_HE, DM_EME,                          &
+      GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
+      GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3, &
+      AM_P, EvolveOnlyMagnetic )
+
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
+
+    REAL(DP), INTENT(in)  :: &
+      PM_D(:), PM_V1(:), PM_V2(:), PM_V3(:), PM_E(:), PM_Ne(:), &
+      PM_B1(:), PM_B2(:), PM_B3(:), PM_Chi(:)
+    REAL(DP), INTENT(in) :: &
+      CM_D(:), CM_S1(:), CM_S2(:), CM_S3(:), CM_E(:), CM_Ne(:), &
+      CM_B1(:), CM_B2(:), CM_B3(:), CM_Chi(:)
+    REAL(DP), INTENT(out) :: &
+      DM_HS1(:), DM_HS2(:), DM_HS3(:), &
+      DM_EMS1(:), DM_EMS2(:), DM_EMS3(:), &
+      DM_HE(:), DM_EME(:)
+    REAL(DP), INTENT(in)  :: &
+      GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:), &
+      GF_Alpha(:), GF_Beta_1(:), GF_Beta_2(:), GF_Beta_3(:)
+
+    ! --- Only needed for relativistic code ---
+    REAL(DP), INTENT(in) :: AM_P(:)
+
+    CALL ComputeDiagnostic_MHD_Relativistic &
+           ( PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
+             PM_B1, PM_B2, PM_B3, PM_Chi,            &
+             CM_D, CM_S1, CM_S2, CM_S3, CM_E, CM_Ne, &
+             CM_B1, CM_B2, CM_B3, CM_Chi,            &
+             DM_HS1, DM_HS2, DM_HS3,                 &
+             DM_EMS1, DM_EMS2, DM_EMS3,              &
+             DM_HE, DM_EME,                          &
+             GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
+             GF_Alpha, GF_Beta_1, GF_Beta_2, GF_Beta_3, &
+             AM_P, EvolveOnlyMagnetic )
+
+  END SUBROUTINE ComputeDiagnostic_Vector
 
 
   SUBROUTINE ComputeFromConserved_MHD &
