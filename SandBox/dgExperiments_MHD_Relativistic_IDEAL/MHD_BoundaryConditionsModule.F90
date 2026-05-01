@@ -47,6 +47,14 @@ MODULE MHD_BoundaryConditionsModule
     nAM, &
     iAM_P, &
     nDM, &
+    iDM_HS1, &
+    iDM_HS2, &
+    iDM_HS3, &
+    iDM_EMS1, &
+    iDM_EMS2, &
+    iDM_EMS3, &
+    iDM_HE, &
+    iDM_EME, &
     iDM_IC_D, &
     iDM_IC_S1, &
     iDM_IC_S2, &
@@ -56,7 +64,15 @@ MODULE MHD_BoundaryConditionsModule
     iDM_IC_B1, &
     iDM_IC_B2, &
     iDM_IC_B3, &
-    iDM_IC_Chi
+    iDM_IC_Chi, &
+    iDM_IC_HS1, &
+    iDM_IC_HS2, &
+    iDM_IC_HS3, &
+    iDM_IC_EMS1, &
+    iDM_IC_EMS2, &
+    iDM_IC_EMS3, &
+    iDM_IC_HE, &
+    iDM_IC_EME
   USE GeometryComputationModule, ONLY: &
     ComputeGeometryX_FromScaleFactors
   USE GeometryFieldsModule, ONLY: &
@@ -960,61 +976,69 @@ CONTAINS
 
               !PRINT*, 'Radial velocities too low. Using initial density for inner boundary.'
 
-              U(iNX,iX_B0(1)-iX1,iX2,iX3,1) &
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_D) &
                 = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_D)
- 
-              U(iNX,iX_B0(1)-iX1,iX2,iX3,2) &
-                = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_S1)
- 
-              U(iNX,iX_B0(1)-iX1,iX2,iX3,3) &
-                = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_S2)
- 
-              U(iNX,iX_B0(1)-iX1,iX2,iX3,4) &
-                = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_S3)
 
-              U(iNX,iX_B0(1)-iX1,iX2,iX3,5) &
-                = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_E)
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S1) &
+                = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_S1) &
+                  - D(iNX,iX_B0(1),iX2,iX3,iDM_IC_EMS1) &
+                  + D(iNX,iX_B0(1),iX2,iX3,iDM_EMS1)
 
-              U(iNX,iX_B0(1)-iX1,iX2,iX3,10) &
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S2) &
+                = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_S2) &
+                  - D(iNX,iX_B0(1),iX2,iX3,iDM_IC_EMS2) &
+                  + D(iNX,iX_B0(1),iX2,iX3,iDM_EMS2)
+
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S3) &
+                = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_S3) &
+                  - D(iNX,iX_B0(1),iX2,iX3,iDM_IC_EMS3) &
+                  + D(iNX,iX_B0(1),iX2,iX3,iDM_EMS3)
+
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_E) &
+                = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_E) &
+                  - D(iNX,iX_B0(1),iX2,iX3,iDM_IC_EME) &
+                  + D(iNX,iX_B0(1),iX2,iX3,iDM_EME)
+
+              U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_Chi) &
                 = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_Chi)
- 
+
             ELSE
 
               U(iNX,iX_B0(1)-iX1,iX2,iX3,1) &
                 = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,1) &
                   - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_D) &
                   + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_D)
- 
+
               U(iNX,iX_B0(1)-iX1,iX2,iX3,2) &
                 = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,2) &
                   - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S1) &
                   + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S1)
-  
+
               U(iNX,iX_B0(1)-iX1,iX2,iX3,3) &
                 = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,3) &
                   - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S2) &
                   + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S2)
-  
+
               U(iNX,iX_B0(1)-iX1,iX2,iX3,4) &
                 = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,4) &
                   - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S3) &
                   + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S3)
-  
+
               U(iNX,iX_B0(1)-iX1,iX2,iX3,5) &
                 = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,5) &
                   - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_E) &
                   + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_E)
-  
+
             END IF
 
-            U(iNX,iX_B0(1)-iX1,iX2,iX3,7) &
-              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,7)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B1) &
+              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B1)
 
-            U(iNX,iX_B0(1)-iX1,iX2,iX3,8) &
-              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,8)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B2) &
+              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B2)
 
-            U(iNX,iX_B0(1)-iX1,iX2,iX3,9) &
-              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,9)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B3) &
+              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B3)
 
           END DO
           END DO
@@ -1040,61 +1064,69 @@ CONTAINS
 
               !PRINT*, 'Radial velocities too low. Using initial density for outer boundary.'
 
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,1) &
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_D) &
                 = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_D)
 
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,2) &
-                = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_S1)
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S1) &
+                = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_S1) &
+                  - D(iNX,iX_E0(1),iX2,iX3,iDM_IC_EMS1) &
+                  + D(iNX,iX_E0(1),iX2,iX3,iDM_EMS1)
 
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,3) &
-                = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_S2)
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S2) &
+                = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_S2) &
+                  - D(iNX,iX_E0(1),iX2,iX3,iDM_IC_EMS2) &
+                  + D(iNX,iX_E0(1),iX2,iX3,iDM_EMS2)
 
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,4) &
-                = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_S3)
- 
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,5) &
-                = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_E)
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S3) &
+                = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_S3) &
+                  - D(iNX,iX_E0(1),iX2,iX3,iDM_IC_EMS3) &
+                  + D(iNX,iX_E0(1),iX2,iX3,iDM_EMS3)
 
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,10) &
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_E) &
+                = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_E) &
+                  - D(iNX,iX_E0(1),iX2,iX3,iDM_IC_EME) &
+                  + D(iNX,iX_E0(1),iX2,iX3,iDM_EME)
+
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_Chi) &
                 = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_Chi)
- 
+
             ELSE
 
               U(iNX,iX_E0(1)+iX1,iX2,iX3,1) &
                 = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,1) &
                   - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_D) &
                   + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_D)
- 
+
               U(iNX,iX_E0(1)+iX1,iX2,iX3,2) &
                 = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,2) &
                   - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S1) &
                   + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S1)
-  
+
               U(iNX,iX_E0(1)+iX1,iX2,iX3,3) &
                 = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,3) &
                   - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S2) &
                   + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S2)
-  
+
               U(iNX,iX_E0(1)+iX1,iX2,iX3,4) &
                 = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,4) &
                   - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S3) &
                   + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S3)
-  
+
               U(iNX,iX_E0(1)+iX1,iX2,iX3,5) &
                 = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,5) &
                   - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_E) &
                   + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_E)
- 
+
             END IF
  
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,7) &
-                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,7)
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B1) &
+                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B1)
   
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,8) &
-                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,8)
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B2) &
+                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B2)
   
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,9) &
-                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,9)
+              U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B3) &
+                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B3)
   
           END DO
           END DO
