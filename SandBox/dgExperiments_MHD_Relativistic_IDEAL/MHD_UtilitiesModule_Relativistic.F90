@@ -136,6 +136,7 @@ MODULE MHD_UtilitiesModule_Relativistic
 
   PUBLIC :: ComputePrimitive_MHD_Relativistic
   PUBLIC :: ComputeConserved_MHD_Relativistic
+  PUBLIC :: ComputeDiagnostic_MHD_Relativistic
   PUBLIC :: ComputeMagneticDivergence_MHD_Relativistic
   PUBLIC :: ComputeFromConserved_MHD_Relativistic
   PUBLIC :: ComputeTimeStep_MHD_Relativistic
@@ -191,6 +192,10 @@ MODULE MHD_UtilitiesModule_Relativistic
     MODULE PROCEDURE ComputeConserved_Vector
   END INTERFACE ComputeConserved_MHD_Relativistic
 
+  INTERFACE ComputeDiagnostic_MHD_Relativistic
+    MODULE PROCEDURE ComputeDiagnostic_Scalar
+    MODULE PROCEDURE ComputeDiagnostic_Vector
+  END INTERFACE ComputeDiagnostic_MHD_Relativistic
 
 CONTAINS
 
@@ -650,6 +655,154 @@ CONTAINS
     END DO
 
   END SUBROUTINE ComputeConserved_Vector
+
+
+  !> Compute a subset of diagnostic variables from primitive and conserved variables.
+  SUBROUTINE ComputeDiagnostic_Scalar &
+    ( PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
+      PM_B1, PM_B2, PM_B3, PM_Chi, &
+      CM_D, CM_S1, CM_S2, CM_S3, CM_E, CM_Ne, &
+      CM_B1, CM_B2, CM_B3, CM_Chi, &
+      DM_HS1, DM_HS2, DM_HS3, &
+      DM_EMS1, DM_EMS2, DM_EMS3, &
+      DM_HE, DM_EME, &
+      GF_Gm11, GF_Gm22, GF_Gm33,  &
+      GF_Alpha, GF_Beta1, GF_Beta2, GF_Beta3, &
+      AM_P, EvolveOnlyMagnetic )
+
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
+
+    REAL(DP), INTENT(in)  :: PM_D, PM_V1, PM_V2, PM_V3, &
+                             PM_E, PM_Ne, PM_B1, PM_B2, &
+                             PM_B3, PM_Chi, AM_P, &
+                             CM_D, CM_S1, CM_S2, CM_S3, &
+                             CM_E, CM_Ne, &
+                             CM_B1, CM_B2, CM_B3, CM_Chi, &
+                             GF_Gm11, GF_Gm22, GF_Gm33, &
+                             GF_Alpha, GF_Beta1, GF_Beta2, GF_Beta3
+    REAL(DP), INTENT(out) :: DM_HS1, DM_HS2, DM_HS3, &
+                             DM_EMS1, DM_EMS2, DM_EMS3, &
+                             DM_HE, DM_EME
+
+    REAL(DP) :: VSq, W, b0u, b0d, bSq, h, hStar, p, pStar
+
+    VSq = GF_Gm11 * PM_V1**2 + GF_Gm22 * PM_V2**2 + GF_Gm33 * PM_V3**2
+    W = One / SQRT( One - VSq )
+
+    b0u = ( GF_Gm11 * PM_V1 * PM_B1 &
+             + GF_Gm22 * PM_V2 * PM_B2 &
+             + GF_Gm33 * PM_V3 * PM_B3 ) / GF_Alpha
+
+    b0d = b0u * ( - GF_Alpha**2 + GF_Gm11 * GF_Beta1**2 &
+                                + GF_Gm22 * GF_Beta2**2 &
+                                + GF_Gm33 * GF_Beta3**2 ) &
+          + ( GF_Gm11 * GF_Beta1 * PM_B1 &
+              + GF_Gm22 * GF_Beta2 * PM_B2 &
+              + GF_Gm33 * GF_Beta3 * PM_B3 )
+
+    bSq = b0d * b0u &
+          + b0u * ( GF_Gm11 * GF_Beta1 * PM_B1 &
+                    + GF_Gm22 * GF_Beta2 * PM_B2 &
+                    + GF_Gm33 * GF_Beta3 * PM_B3 ) &
+          + ( GF_Gm11 * PM_B1**2 &
+              + GF_Gm22 * PM_B2**2 &
+              + GF_Gm33 * PM_B3**2 )
+
+    h = One + ( PM_E + AM_P ) / PM_D
+    p = AM_P
+
+    DM_HS1 = h * W**2 * PM_D * GF_Gm11 * PM_V1
+    DM_HS2 = h * W**2 * PM_D * GF_Gm22 * PM_V2
+    DM_HS3 = h * W**2 * PM_D * GF_Gm33 * PM_V3
+
+    DM_EMS1 = bSq * W**2 * GF_Gm11 * PM_V1 &
+              - GF_Alpha * b0u**2 * ( GF_Gm11 * GF_Beta1 ) &
+              - GF_Alpha * b0u * ( GF_Gm11 * PM_B1 )
+    DM_EMS2 = bSq * W**2 * GF_Gm22 * PM_V2 &
+              - GF_Alpha * b0u**2 * ( GF_Gm22 * GF_Beta2 ) &
+              - GF_Alpha * b0u * ( GF_Gm22 * PM_B2 )
+    DM_EMS3 = bSq * W**2 * GF_Gm33 * PM_V3 &
+              - GF_Alpha * b0u**2 * ( GF_Gm33 * GF_Beta3 ) &
+              - GF_Alpha * b0u * ( GF_Gm33 * PM_B3 )
+
+    DM_HE  = h * W**2 * PM_D - p - W * PM_D
+    DM_EME = bSq * W**2 - ( bSq / 2.0_DP ) - ( GF_Alpha * b0u )**2
+
+  END SUBROUTINE ComputeDiagnostic_Scalar
+
+
+  SUBROUTINE ComputeDiagnostic_Vector &
+    ( PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
+      PM_B1, PM_B2, PM_B3, PM_Chi, &
+      CM_D, CM_S1, CM_S2, CM_S3, CM_E, CM_Ne, &
+      CM_B1, CM_B2, CM_B3, CM_Chi, &
+      DM_HS1, DM_HS2, DM_HS3, &
+      DM_EMS1, DM_EMS2, DM_EMS3, &
+      DM_HE, DM_EME, &
+      GF_Gm11, GF_Gm22, GF_Gm33, &
+      GF_Alpha, GF_Beta1, GF_Beta2, GF_Beta3, &
+      AM_P, EvolveOnlyMagnetic )
+
+    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
+
+    REAL(DP), INTENT(in)  :: PM_D(:), PM_V1(:), PM_V2(:), PM_V3(:), &
+                             PM_E(:), PM_Ne(:), PM_B1(:), PM_B2(:), &
+                             PM_B3(:), PM_Chi(:), AM_P(:), &
+                             CM_D(:), CM_S1(:), CM_S2(:), CM_S3(:), &
+                             CM_E(:), CM_Ne(:), &
+                             CM_B1(:), CM_B2(:), CM_B3(:), CM_Chi(:), &
+                             GF_Gm11(:), GF_Gm22(:), GF_Gm33(:), &
+                             GF_Alpha(:), GF_Beta1(:), GF_Beta2(:), GF_Beta3(:)
+    REAL(DP), INTENT(out) :: DM_HS1(:), DM_HS2(:), DM_HS3(:), &
+                             DM_EMS1(:), DM_EMS2(:), DM_EMS3(:), &
+                             DM_HE(:), DM_EME(:)
+
+    INTEGER :: iNX
+
+    DO iNX = 1, SIZE( PM_D )
+
+      CALL ComputeDiagnostic_Scalar &
+             ( PM_D (iNX),  &
+               PM_V1(iNX),  &
+               PM_V2(iNX),  &
+               PM_V3(iNX),  &
+               PM_E (iNX),  &
+               PM_Ne(iNX),  &
+               PM_B1(iNX),  &
+               PM_B2(iNX),  &
+               PM_B3(iNX),  &
+               PM_Chi(iNX), &
+               CM_D (iNX),  &
+               CM_S1(iNX),  &
+               CM_S2(iNX),  &
+               CM_S3(iNX),  &
+               CM_E (iNX),  &
+               CM_Ne(iNX),  &
+               CM_B1(iNX),  &
+               CM_B2(iNX),  &
+               CM_B3(iNX),  &
+               CM_Chi(iNX), &
+               DM_HS1(iNX), &
+               DM_HS2(iNX), &
+               DM_HS3(iNX), &
+               DM_EMS1(iNX), &
+               DM_EMS2(iNX), &
+               DM_EMS3(iNX), &
+               DM_HE(iNX),   &
+               DM_EME(iNX),  &
+               GF_Gm11 (iNX),  &
+               GF_Gm22 (iNX),  &
+               GF_Gm33 (iNX),  &
+               GF_Alpha(iNX),  &
+               GF_Beta1(iNX),  &
+               GF_Beta2(iNX),  &
+               GF_Beta3(iNX),  &
+               AM_P (iNX), &
+               EvolveOnlyMagnetic )
+
+    END DO
+
+  END SUBROUTINE ComputeDiagnostic_Vector
 
 
   SUBROUTINE ComputeMagneticDivergence_MHD_Relativistic &
