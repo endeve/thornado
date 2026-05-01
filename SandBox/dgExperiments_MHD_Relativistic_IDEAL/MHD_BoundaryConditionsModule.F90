@@ -1032,66 +1032,6 @@ CONTAINS
           DO iX1 = 1, swX(1)
           DO iNX = 1, nDOFX
 
-            CALL ComputePrimitive_MHD_Relativistic &
-                   ( U(iNX,iX_E0(1)+iX1,iX2,iX3,1 ), &
-                     U(iNX,iX_E0(1)+iX1,iX2,iX3,2 ), &
-                     U(iNX,iX_E0(1)+iX1,iX2,iX3,3 ), &
-                     U(iNX,iX_E0(1)+iX1,iX2,iX3,4 ), &
-                     U(iNX,iX_E0(1)+iX1,iX2,iX3,5 ), &
-                     U(iNX,iX_E0(1)+iX1,iX2,iX3,6 ), &
-                     U(iNX,iX_E0(1)+iX1,iX2,iX3,7 ), &
-                     U(iNX,iX_E0(1)+iX1,iX2,iX3,8 ), &
-                     U(iNX,iX_E0(1)+iX1,iX2,iX3,9 ), &
-                     U(iNX,iX_E0(1)+iX1,iX2,iX3,10), &
-                     P(iNX,iX_E0(1)+iX1,iX2,iX3,1 ), &
-                     P(iNX,iX_E0(1)+iX1,iX2,iX3,2 ), &
-                     P(iNX,iX_E0(1)+iX1,iX2,iX3,3 ), &
-                     P(iNX,iX_E0(1)+iX1,iX2,iX3,4 ), &
-                     P(iNX,iX_E0(1)+iX1,iX2,iX3,5 ), &
-                     P(iNX,iX_E0(1)+iX1,iX2,iX3,6 ), &
-                     P(iNX,iX_E0(1)+iX1,iX2,iX3,7 ), &
-                     P(iNX,iX_E0(1)+iX1,iX2,iX3,8 ), &
-                     P(iNX,iX_E0(1)+iX1,iX2,iX3,9 ), &
-                     P(iNX,iX_E0(1)+iX1,iX2,iX3,10), &
-                     G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Gm_dd_11), &
-                     G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Gm_dd_22), &
-                     G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Gm_dd_33), &
-                     G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Alpha   ), &
-                     G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Beta_1  ), &
-                     G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Beta_2  ), &
-                     G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_Beta_3  ), &
-                     .FALSE. )
-
-            CALL ComputePrimitive_MHD_Relativistic &
-                   ( U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,1 ), &
-                     U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,2 ), &
-                     U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,3 ), &
-                     U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,4 ), &
-                     U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,5 ), &
-                     U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,6 ), &
-                     U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,7 ), &
-                     U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,8 ), &
-                     U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,9 ), &
-                     U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,10), &
-                     P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,1 ), &
-                     P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,2 ), &
-                     P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,3 ), &
-                     P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,4 ), &
-                     P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,5 ), &
-                     P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,6 ), &
-                     P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,7 ), &
-                     P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,8 ), &
-                     P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,9 ), &
-                     P(iNX,iX_B0(1)+(iX1-1),iX2,iX3,10), &
-                     G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Gm_dd_11), &
-                     G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Gm_dd_22), &
-                     G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Gm_dd_33), &
-                     G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Alpha   ), &
-                     G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Beta_1  ), &
-                     G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Beta_2  ), &
-                     G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_Beta_3  ), &
-                     .FALSE. )
-
             !PRINT*, 'Outer Boundary Location:     ', iNX, iX_E0(1) + iX1,     iX2, iX3
             !PRINT*, 'First Compute Cell Location: ', iNX, iX_B0(1) + (iX1-1), iX2, iX3
             !PRINT*
