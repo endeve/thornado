@@ -70,6 +70,10 @@ CONTAINS
 
         CALL InitializeFields_RiemannProblemSpherical
 
+      CASE ( 'SphericalExpansion' )
+
+        CALL InitializeFields_SphericalExpansion
+
       CASE ( 'RiemannProblemCylindrical' )
 
         CALL InitializeFields_RiemannProblemCylindrical
@@ -454,6 +458,55 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_RiemannProblemSpherical
+
+
+  SUBROUTINE InitializeFields_SphericalExpansion
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1
+    REAL(DP) :: X1, Sigma
+
+    Sigma = One / (216.0_DP+0.25_DP*(Pi/8.0_DP)**(1.5_DP))
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D)  &
+              = Sigma * (One + 0.25_DP*EXP(-8.0_DP*X1**2))
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+              = 0.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+              = 0.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+              = 0.0_DP
+            uPF(iNodeX,iX1,iX2,iX3,iPF_E)  &
+              = uPF(iNodeX,iX1,iX2,iX3,iPF_D) / ( Gamma_IDEAL - One )
+
+          END DO
+
+          CALL ComputeConserved_Euler_NonRelativistic &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+                   uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+                   uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+                   uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+                   uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+                   uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_SphericalExpansion
 
 
   SUBROUTINE InitializeFields_RiemannProblemCylindrical
