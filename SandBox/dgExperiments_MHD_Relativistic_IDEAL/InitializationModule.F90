@@ -67,24 +67,41 @@ MODULE InitializationModule
     iCM_Chi, &
     uAM,     &
     iAM_P,   &
-    uDM,     &
-    iDM_IC_D,  &
-    iDM_IC_S1, &
-    iDM_IC_S2, &
-    iDM_IC_S3, &
-    iDM_IC_E,  &
-    iDM_IC_Ne, &
-    iDM_IC_B1, &
-    iDM_IC_B2, &
-    iDM_IC_B3, &
-    iDM_IC_Chi
+    uDM,      &
+    iDM_HS1,  &
+    iDM_HS2,  &
+    iDM_HS3,  &
+    iDM_EMS1, &
+    iDM_EMS2, &
+    iDM_EMS3, &
+    iDM_HE,   &
+    iDM_EME,  &
+    iDM_IC_D,    &
+    iDM_IC_S1,   &
+    iDM_IC_S2,   &
+    iDM_IC_S3,   &
+    iDM_IC_E,    &
+    iDM_IC_Ne,   &
+    iDM_IC_B1,   &
+    iDM_IC_B2,   &
+    iDM_IC_B3,   &
+    iDM_IC_Chi,  &
+    iDM_IC_HS1,  &
+    iDM_IC_HS2,  &
+    iDM_IC_HS3,  &
+    iDM_IC_EMS1, &
+    iDM_IC_EMS2, &
+    iDM_IC_EMS3, &
+    iDM_IC_HE,   &
+    iDM_IC_EME
   USE EquationOfStateModule, ONLY : &
       ComputePressureFromPrimitive
   USE EquationOfStateModule_IDEAL, ONLY: &
     Gamma_IDEAL, &
     ComputePressureFromPrimitive_IDEAL
   USE MHD_UtilitiesModule_Relativistic, ONLY: &
-    ComputeConserved_MHD_Relativistic
+    ComputeConserved_MHD_Relativistic, &
+    ComputeDiagnostic_MHD_Relativistic
   USE UnitsModule, ONLY: &
     Centimeter, &
     Gram, &
@@ -1960,7 +1977,7 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: PressureArr(:), DensityArr(:), V3Arr(:), &
                              AlphaArr(:), PsiArr(:), X1Arr(:)
 
-    FileName = "/home/jbuffal/thornado_MHD_3D/Workflow/MHD/ShearingDisk/GR_LR_diffrot.h5"
+    FileName = "../../../Workflow/MHD/ShearingDisk/GR_LR_diffrot.h5"
 
     ! --- Populate arrays ---
 
@@ -2084,13 +2101,39 @@ CONTAINS
                uGF(:,iX1,iX2,iX3,iGF_Beta_2  ), &
                uGF(:,iX1,iX2,iX3,iGF_Beta_3  ), &
                uAM(:,iX1,iX2,iX3,iAM_P), &
-               EvolveOnlyMagnetic ) 
+               EvolveOnlyMagnetic )
+
+      CALL ComputeDiagnostic_MHD_Relativistic &
+             ( uPM(:,iX1,iX2,iX3,iPM_D   ), uPM(:,iX1,iX2,iX3,iPM_V1  ), &
+               uPM(:,iX1,iX2,iX3,iPM_V2  ), uPM(:,iX1,iX2,iX3,iPM_V3  ), &
+               uPM(:,iX1,iX2,iX3,iPM_E   ), uPM(:,iX1,iX2,iX3,iPM_Ne  ), &
+               uPM(:,iX1,iX2,iX3,iPM_B1  ), uPM(:,iX1,iX2,iX3,iPM_B2  ), &
+               uPM(:,iX1,iX2,iX3,iPM_B3  ), uPM(:,iX1,iX2,iX3,iPM_Chi ), &
+               uCM(:,iX1,iX2,iX3,iCM_D   ), uCM(:,iX1,iX2,iX3,iCM_S1  ), &
+               uCM(:,iX1,iX2,iX3,iCM_S2  ), uCM(:,iX1,iX2,iX3,iCM_S3  ), &
+               uCM(:,iX1,iX2,iX3,iCM_E   ), uCM(:,iX1,iX2,iX3,iCM_Ne  ), &
+               uCM(:,iX1,iX2,iX3,iCM_B1  ), uCM(:,iX1,iX2,iX3,iCM_B2  ), &
+               uCM(:,iX1,iX2,iX3,iCM_B3  ), uCM(:,iX1,iX2,iX3,iCM_Chi ), &
+               uDM(:,iX1,iX2,iX3,iDM_HS1 ), uDM(:,iX1,iX2,iX3,iDM_HS2 ), &
+               uDM(:,iX1,iX2,iX3,iDM_HS3 ), uDM(:,iX1,iX2,iX3,iDM_EMS1), &
+               uDM(:,iX1,iX2,iX3,iDM_EMS2), uDM(:,iX1,iX2,iX3,iDM_EMS3), &
+               uDM(:,iX1,iX2,iX3,iDM_HE  ), uDM(:,iX1,iX2,iX3,iDM_EME ), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               uGF(:,iX1,iX2,iX3,iGF_Alpha   ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_1  ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_2  ), &
+               uGF(:,iX1,iX2,iX3,iGF_Beta_3  ), &
+               uAM(:,iX1,iX2,iX3,iAM_P), &
+               EvolveOnlyMagnetic )
 
     END DO
     END DO
     END DO
 
-    uDM(:,:,:,:,iDM_IC_D:iDM_IC_Chi) = uCM(:,:,:,:,iCM_D:iCM_Chi)
+    uDM(:,:,:,:,iDM_IC_D:iDM_IC_Chi  ) = uCM(:,:,:,:,iCM_D:iCM_Chi  )
+    uDM(:,:,:,:,iDM_IC_HS1:iDM_IC_EME) = uDM(:,:,:,:,iDM_HS1:iDM_EME)
 
     DEALLOCATE( X1Arr, PsiArr, AlphaArr, DensityArr, V3Arr, PressureArr )
 
