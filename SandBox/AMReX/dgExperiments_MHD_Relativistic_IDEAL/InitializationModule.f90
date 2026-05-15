@@ -379,12 +379,11 @@ CONTAINS
                iLevel, nDOFX_X1 * nCM )
 
     CALL FillCoarsePatch( iLevel, MF_uGF, &
-                          ApplyBoundaryConditions_Geometry_Option = .TRUE., &
-                          UpdateSpatialMetric_Option = .TRUE. )
+                          ApplyBoundaryConditions_Geometry_Option = .TRUE. )
 
     CALL FillCoarsePatch( iLevel, MF_uDM )
 
-    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCM )
+    CALL FillCoarsePatch( iLevel, MF_uGF, MF_uCM, MF_uDM )
 
     CALL ApplyBoundaryConditions_MHD_MF( t_new(iLevel), iLevel, MF_uGF(iLevel), MF_uCM(iLevel), MF_uDM(iLevel) )
 
@@ -442,7 +441,7 @@ CONTAINS
     CALL FillPatch( iLevel, MF_uDM, MF_uDM_tmp )
 
     CALL FillPatch &
-           ( iLevel, MF_uGF, MF_uGF_tmp, MF_uCM, MF_uCM_tmp )
+           ( iLevel, MF_uGF, MF_uGF_tmp, MF_uCM, MF_uCM_tmp, MF_uDM, MF_uDM_tmp )
 
     CALL ApplyBoundaryConditions_MHD_MF( Time, iLevel, MF_uGF_tmp, MF_uCM_tmp, MF_uDM_tmp )
 
