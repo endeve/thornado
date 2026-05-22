@@ -94,6 +94,10 @@ CONTAINS
 
         CALL InitializeFields_KelvinHelmholtz
 
+      CASE( 'ShearFlow' )
+
+        CALL InitializeFields_ShearFlow
+
       CASE( 'RayleighTaylor' )
 
         CALL InitializeFields_RayleighTaylor
@@ -799,6 +803,68 @@ CONTAINS
     END DO
 
   END SUBROUTINE InitializeFields_KelvinHelmholtz
+
+
+  SUBROUTINE InitializeFields_ShearFlow
+
+    INTEGER  :: iX1, iX2, iX3
+    INTEGER  :: iNodeX, iNodeX1, iNodeX2
+    REAL(DP) :: X1, X2
+    REAL(DP), PARAMETER :: V_0 = 0.1_DP
+    REAL(DP), PARAMETER :: Large_Delta = 1.0_DP / 30.0_DP
+    REAL(DP), PARAMETER :: Small_Delta = 5.0d-3
+
+    DO iX3 = 1, nX(3)
+      DO iX2 = 1, nX(2)
+        DO iX1 = 1, nX(1)
+
+          DO iNodeX = 1, nDOFX
+
+            iNodeX1 = NodeNumberTableX(1,iNodeX)
+            iNodeX2 = NodeNumberTableX(2,iNodeX)
+
+            X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+            X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_D) = One
+
+            IF( X2 .LE. 0.5_DP )THEN
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+                = V_0 * TANH( ( X2 - 0.25_DP ) / Large_Delta )
+
+            ELSE
+
+              uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+                = V_0 * TANH( ( 0.75_DP - X2 ) / Large_Delta )
+              
+            END IF
+
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V2) &
+              = Small_Delta * SIN( TwoPi * X1 )
+            uPF(iNodeX,iX1,iX2,iX3,iPF_V3) &
+              = Zero
+            uPF(iNodeX,iX1,iX2,iX3,iPF_E) &
+              = One / ( Gamma_IDEAL - One )
+
+          END DO
+
+          CALL ComputeConserved_Euler_NonRelativistic &
+                 ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
+                   uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
+                   uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+                   uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
+                   uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
+                   uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                   uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+        END DO
+      END DO
+    END DO
+
+  END SUBROUTINE InitializeFields_ShearFlow
 
 
   SUBROUTINE InitializeFields_RayleighTaylor

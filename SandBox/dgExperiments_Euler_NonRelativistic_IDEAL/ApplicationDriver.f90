@@ -88,7 +88,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'SphericalExpansion'
+  ProgramName = 'ShearFlow'
 
   RestartFileNumber = -1
 
@@ -313,6 +313,32 @@ PROGRAM ApplicationDriver
       iCycleD = 10
       t_end   = 3.00_DP
       dt_wrt  = 0.15_DP
+
+    CASE( 'ShearFlow' )
+
+      Gamma = Two
+
+      nX = [ 32, 32, 1 ]
+      xL = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+
+      swX = [ 1, 1, 0 ]
+      bcX = [ 1, 1, 0 ]
+
+      nNodes = 4
+
+      BetaTVD = 1.50_DP
+      BetaTVB = 0.0d+00
+
+      UseSlopeLimiter           = .FALSE.
+      UseCharacteristicLimiting = .TRUE.
+
+      UseTroubledCellIndicator  = .TRUE.
+      LimiterThresholdParameter = 0.03_DP
+
+      iCycleD = 10
+      t_end   = 12.0_DP
+      dt_wrt  = 1.00_DP
 
     CASE( 'RayleighTaylor' )
 
