@@ -2033,11 +2033,15 @@ CONTAINS
         uGF(iNodeX,iX1,iX2,iX3,iGF_h_3) &
           = uGF(iNodeX,iX1,iX2,iX3,iGF_Psi)**2 * X1
 
-        CALL ComputeGeometryX_FromScaleFactors( uGF(:,iX1,iX2,iX3,:) )
-
         uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_1) = Zero
         uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2) = Zero
         uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3) = Zero
+
+      END DO
+
+      CALL ComputeGeometryX_FromScaleFactors( uGF(:,iX1,iX2,iX3,:) )
+
+      DO iNodeX = 1, nDOFX
 
         ! --- Fluid Fields ---
 
@@ -2076,64 +2080,64 @@ CONTAINS
 
         uPM(iNodeX,iX1,iX2,iX3,iPM_Chi) = Zero
 
+        CALL ComputePressureFromPrimitive_IDEAL &
+               ( uPM(iNodeX,iX1,iX2,iX3,iPM_D ), uPM(iNodeX,iX1,iX2,iX3,iPM_E ), &
+                 uPM(iNodeX,iX1,iX2,iX3,iPM_Ne), uAM(iNodeX,iX1,iX2,iX3,iAM_P) )
+
+        CALL ComputeConserved_MHD_Relativistic &
+               ( uPM(iNodeX,iX1,iX2,iX3,iPM_D ), uPM(iNodeX,iX1,iX2,iX3,iPM_V1),  &
+                 uPM(iNodeX,iX1,iX2,iX3,iPM_V2), uPM(iNodeX,iX1,iX2,iX3,iPM_V3),  &
+                 uPM(iNodeX,iX1,iX2,iX3,iPM_E ), uPM(iNodeX,iX1,iX2,iX3,iPM_Ne),  &
+                 uPM(iNodeX,iX1,iX2,iX3,iPM_B1), uPM(iNodeX,iX1,iX2,iX3,iPM_B2),  &
+                 uPM(iNodeX,iX1,iX2,iX3,iPM_B3), uPM(iNodeX,iX1,iX2,iX3,iPM_Chi), &
+                 uCM(iNodeX,iX1,iX2,iX3,iCM_D ), uCM(iNodeX,iX1,iX2,iX3,iCM_S1),  &
+                 uCM(iNodeX,iX1,iX2,iX3,iCM_S2), uCM(iNodeX,iX1,iX2,iX3,iCM_S3),  &
+                 uCM(iNodeX,iX1,iX2,iX3,iCM_E ), uCM(iNodeX,iX1,iX2,iX3,iCM_Ne),  &
+                 uCM(iNodeX,iX1,iX2,iX3,iCM_B1), uCM(iNodeX,iX1,iX2,iX3,iCM_B2),  &
+                 uCM(iNodeX,iX1,iX2,iX3,iCM_B3), uCM(iNodeX,iX1,iX2,iX3,iCM_Chi), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha   ), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_1  ), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2  ), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3  ), &
+                 uAM(iNodeX,iX1,iX2,iX3,iAM_P), &
+                 EvolveOnlyMagnetic )
+
+        CALL ComputeDiagnostic_MHD_Relativistic &
+               ( uPM(iNodeX,iX1,iX2,iX3,iPM_D   ), uPM(iNodeX,iX1,iX2,iX3,iPM_V1  ), &
+                 uPM(iNodeX,iX1,iX2,iX3,iPM_V2  ), uPM(iNodeX,iX1,iX2,iX3,iPM_V3  ), &
+                 uPM(iNodeX,iX1,iX2,iX3,iPM_E   ), uPM(iNodeX,iX1,iX2,iX3,iPM_Ne  ), &
+                 uPM(iNodeX,iX1,iX2,iX3,iPM_B1  ), uPM(iNodeX,iX1,iX2,iX3,iPM_B2  ), &
+                 uPM(iNodeX,iX1,iX2,iX3,iPM_B3  ), uPM(iNodeX,iX1,iX2,iX3,iPM_Chi ), &
+                 uCM(iNodeX,iX1,iX2,iX3,iCM_D   ), uCM(iNodeX,iX1,iX2,iX3,iCM_S1  ), &
+                 uCM(iNodeX,iX1,iX2,iX3,iCM_S2  ), uCM(iNodeX,iX1,iX2,iX3,iCM_S3  ), &
+                 uCM(iNodeX,iX1,iX2,iX3,iCM_E   ), uCM(iNodeX,iX1,iX2,iX3,iCM_Ne  ), &
+                 uCM(iNodeX,iX1,iX2,iX3,iCM_B1  ), uCM(iNodeX,iX1,iX2,iX3,iCM_B2  ), &
+                 uCM(iNodeX,iX1,iX2,iX3,iCM_B3  ), uCM(iNodeX,iX1,iX2,iX3,iCM_Chi ), &
+                 uDM(iNodeX,iX1,iX2,iX3,iDM_HS1 ), uDM(iNodeX,iX1,iX2,iX3,iDM_HS2 ), &
+                 uDM(iNodeX,iX1,iX2,iX3,iDM_HS3 ), uDM(iNodeX,iX1,iX2,iX3,iDM_EMS1), &
+                 uDM(iNodeX,iX1,iX2,iX3,iDM_EMS2), uDM(iNodeX,iX1,iX2,iX3,iDM_EMS3), &
+                 uDM(iNodeX,iX1,iX2,iX3,iDM_HE  ), uDM(iNodeX,iX1,iX2,iX3,iDM_EME ), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha   ), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_1  ), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_2  ), &
+                 uGF(iNodeX,iX1,iX2,iX3,iGF_Beta_3  ), &
+                 uAM(iNodeX,iX1,iX2,iX3,iAM_P), &
+                 EvolveOnlyMagnetic )
+
+        uDM(iNodeX,iX1,iX2,iX3,iDM_IC_D:iDM_IC_Chi  ) = uCM(iNodeX,iX1,iX2,iX3,iCM_D:iCM_Chi  )
+        uDM(iNodeX,iX1,iX2,iX3,iDM_IC_HS1:iDM_IC_EME) = uDM(iNodeX,iX1,iX2,iX3,iDM_HS1:iDM_EME)
+
       END DO
 
-      CALL ComputePressureFromPrimitive_IDEAL &
-             ( uPM(:,iX1,iX2,iX3,iPM_D ), uPM(:,iX1,iX2,iX3,iPM_E ), &
-               uPM(:,iX1,iX2,iX3,iPM_Ne), uAM(:,iX1,iX2,iX3,iAM_P) )
-
-      CALL ComputeConserved_MHD_Relativistic &
-             ( uPM(:,iX1,iX2,iX3,iPM_D ), uPM(:,iX1,iX2,iX3,iPM_V1),  &
-               uPM(:,iX1,iX2,iX3,iPM_V2), uPM(:,iX1,iX2,iX3,iPM_V3),  &
-               uPM(:,iX1,iX2,iX3,iPM_E ), uPM(:,iX1,iX2,iX3,iPM_Ne),  &
-               uPM(:,iX1,iX2,iX3,iPM_B1), uPM(:,iX1,iX2,iX3,iPM_B2),  &
-               uPM(:,iX1,iX2,iX3,iPM_B3), uPM(:,iX1,iX2,iX3,iPM_Chi), &
-               uCM(:,iX1,iX2,iX3,iCM_D ), uCM(:,iX1,iX2,iX3,iCM_S1),  &
-               uCM(:,iX1,iX2,iX3,iCM_S2), uCM(:,iX1,iX2,iX3,iCM_S3),  &
-               uCM(:,iX1,iX2,iX3,iCM_E ), uCM(:,iX1,iX2,iX3,iCM_Ne),  &
-               uCM(:,iX1,iX2,iX3,iCM_B1), uCM(:,iX1,iX2,iX3,iCM_B2),  &
-               uCM(:,iX1,iX2,iX3,iCM_B3), uCM(:,iX1,iX2,iX3,iCM_Chi), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-               uGF(:,iX1,iX2,iX3,iGF_Alpha   ), &
-               uGF(:,iX1,iX2,iX3,iGF_Beta_1  ), &
-               uGF(:,iX1,iX2,iX3,iGF_Beta_2  ), &
-               uGF(:,iX1,iX2,iX3,iGF_Beta_3  ), &
-               uAM(:,iX1,iX2,iX3,iAM_P), &
-               EvolveOnlyMagnetic )
-
-      CALL ComputeDiagnostic_MHD_Relativistic &
-             ( uPM(:,iX1,iX2,iX3,iPM_D   ), uPM(:,iX1,iX2,iX3,iPM_V1  ), &
-               uPM(:,iX1,iX2,iX3,iPM_V2  ), uPM(:,iX1,iX2,iX3,iPM_V3  ), &
-               uPM(:,iX1,iX2,iX3,iPM_E   ), uPM(:,iX1,iX2,iX3,iPM_Ne  ), &
-               uPM(:,iX1,iX2,iX3,iPM_B1  ), uPM(:,iX1,iX2,iX3,iPM_B2  ), &
-               uPM(:,iX1,iX2,iX3,iPM_B3  ), uPM(:,iX1,iX2,iX3,iPM_Chi ), &
-               uCM(:,iX1,iX2,iX3,iCM_D   ), uCM(:,iX1,iX2,iX3,iCM_S1  ), &
-               uCM(:,iX1,iX2,iX3,iCM_S2  ), uCM(:,iX1,iX2,iX3,iCM_S3  ), &
-               uCM(:,iX1,iX2,iX3,iCM_E   ), uCM(:,iX1,iX2,iX3,iCM_Ne  ), &
-               uCM(:,iX1,iX2,iX3,iCM_B1  ), uCM(:,iX1,iX2,iX3,iCM_B2  ), &
-               uCM(:,iX1,iX2,iX3,iCM_B3  ), uCM(:,iX1,iX2,iX3,iCM_Chi ), &
-               uDM(:,iX1,iX2,iX3,iDM_HS1 ), uDM(:,iX1,iX2,iX3,iDM_HS2 ), &
-               uDM(:,iX1,iX2,iX3,iDM_HS3 ), uDM(:,iX1,iX2,iX3,iDM_EMS1), &
-               uDM(:,iX1,iX2,iX3,iDM_EMS2), uDM(:,iX1,iX2,iX3,iDM_EMS3), &
-               uDM(:,iX1,iX2,iX3,iDM_HE  ), uDM(:,iX1,iX2,iX3,iDM_EME ), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
-               uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
-               uGF(:,iX1,iX2,iX3,iGF_Alpha   ), &
-               uGF(:,iX1,iX2,iX3,iGF_Beta_1  ), &
-               uGF(:,iX1,iX2,iX3,iGF_Beta_2  ), &
-               uGF(:,iX1,iX2,iX3,iGF_Beta_3  ), &
-               uAM(:,iX1,iX2,iX3,iAM_P), &
-               EvolveOnlyMagnetic )
-
     END DO
     END DO
     END DO
-
-    uDM(:,:,:,:,iDM_IC_D:iDM_IC_Chi  ) = uCM(:,:,:,:,iCM_D:iCM_Chi  )
-    uDM(:,:,:,:,iDM_IC_HS1:iDM_IC_EME) = uDM(:,:,:,:,iDM_HS1:iDM_EME)
 
     DEALLOCATE( X1Arr, PsiArr, AlphaArr, DensityArr, V3Arr, PressureArr )
 
