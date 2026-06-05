@@ -1032,7 +1032,9 @@ CONTAINS
             END IF
 
             U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B1) &
-              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B1)
+              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B1) &
+                * ( G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_SqrtGm) &
+                    / G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_SqrtGm) )
 
             U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B2) &
               = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B2)
@@ -1120,8 +1122,10 @@ CONTAINS
             END IF
  
               U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B1) &
-                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B1)
-  
+                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B1) &
+                  * ( G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_SqrtGm) &
+                      / G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_SqrtGm) )
+
               U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B2) &
                 = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B2)
   
