@@ -235,7 +235,9 @@ MODULE MagnetofluidFieldsModule
   INTEGER, PUBLIC, PARAMETER :: iDM_IC_EMS3 = 34 ! Initial Electromagnetic Momentum Density 3
   INTEGER, PUBLIC, PARAMETER :: iDM_IC_HE   = 35 ! Initial Hydrodynamic Energy Density
   INTEGER, PUBLIC, PARAMETER :: iDM_IC_EME  = 36 ! Initial Electromagnetic Energy Density
-  INTEGER, PUBLIC, PARAMETER :: nDM         = 36 ! n Diagnostic Magnetofluid Fields
+  INTEGER, PUBLIC, PARAMETER :: iDM_q_G     = 37 ! Admissibility Check Variable q_G
+  INTEGER, PUBLIC, PARAMETER :: iDM_Psi_G   = 38 ! Admissibility Check Variable Psi_G
+  INTEGER, PUBLIC, PARAMETER :: nDM         = 38 ! n Diagnostic Magnetofluid Fields
 
   CHARACTER(64), DIMENSION(nDM), PUBLIC, PARAMETER :: &
     namesDM = [ 'TCI                                         ', &
@@ -273,7 +275,9 @@ MODULE MagnetofluidFieldsModule
                 'Initial Electromagnetic Momentum Density (2)', &
                 'Initial Electromagnetic Momentum Density (3)', &
                 'Initial Hydrodynamic Energy Density         ', &
-                'Initial Electromagnetic Energy Density      ']
+                'Initial Electromagnetic Energy Density      ', &
+                'Admissibility Check Variable q_G            ', &
+                'Admissibility Check Variable Psi_G          ' ]
 
   CHARACTER(10), DIMENSION(nDM), PUBLIC, PARAMETER :: &
     ShortNamesDM = [ 'DM_TCI    ', &
@@ -311,7 +315,9 @@ MODULE MagnetofluidFieldsModule
                      'DM_IC_EMS2', &
                      'DM_IC_EMS3', &
                      'DM_IC_HE  ', &
-                     'DM_IC_EME ' ]
+                     'DM_IC_EME ', &
+                     'DM_q_G    ', &
+                     'DM_Psi_G  ' ]
 
   REAL(DP), DIMENSION(nDM), PUBLIC :: unitsDM
 
@@ -562,6 +568,8 @@ CONTAINS
     uDM(:,:,:,:,iDM_IC_EMS3) = Zero
     uDM(:,:,:,:,iDM_IC_HE)   = Zero
     uDM(:,:,:,:,iDM_IC_EME)  = Zero
+    uDM(:,:,:,:,iDM_q_G)     = Zero
+    uDM(:,:,:,:,iDM_Psi_G)   = Zero
 
   END SUBROUTINE ResetFields_Diagnostic
 
@@ -856,6 +864,9 @@ CONTAINS
       unitsDM(iDM_IC_EME) = Erg / Centimeter**3
       unitsDM(iDM_IC_Ne)  = One / Centimeter**3
       unitsDM(iDM_IC_Chi) = Gauss * Kilometer / Second
+
+      unitsDM(iDM_q_G)    = Erg / Centimeter**3
+      unitsDM(iDM_Psi_G)  = SQRT( Erg**3 / Centimeter**9 )
 
     ELSE
 
