@@ -999,9 +999,6 @@ CONTAINS
                   - D(iNX,iX_B0(1),iX2,iX3,iDM_IC_EME) &
                   + D(iNX,iX_B0(1),iX2,iX3,iDM_EME)
 
-              U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_Chi) &
-                = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_Chi)
-
             ELSE
 
               U(iNX,iX_B0(1)-iX1,iX2,iX3,1) &
@@ -1041,6 +1038,9 @@ CONTAINS
 
             U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B3) &
               = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B3)
+
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_Chi) &
+              = U(iNX,iX_B0(1),iX2,iX3,iCM_Chi)
 
           END DO
           END DO
@@ -1089,9 +1089,6 @@ CONTAINS
                   - D(iNX,iX_E0(1),iX2,iX3,iDM_IC_EME) &
                   + D(iNX,iX_E0(1),iX2,iX3,iDM_EME)
 
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_Chi) &
-                = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_Chi)
-
             ELSE
 
               U(iNX,iX_E0(1)+iX1,iX2,iX3,1) &
@@ -1120,18 +1117,21 @@ CONTAINS
                   + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_E)
 
             END IF
- 
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B1) &
-                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B1) &
-                  * ( G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_SqrtGm) &
-                      / G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_SqrtGm) )
 
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B2) &
-                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B2)
-  
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B3) &
-                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B3)
-  
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B1) &
+              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B1) &
+                * ( G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_SqrtGm) &
+                    / G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_SqrtGm) )
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B2) &
+              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B2)
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B3) &
+              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B3)
+
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_Chi) &
+              = U(iNX,iX_E0(1),iX2,iX3,iCM_Chi)
+
           END DO
           END DO
           END DO
@@ -1161,7 +1161,7 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(in)    :: &
-      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:) 
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
