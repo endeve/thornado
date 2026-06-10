@@ -1103,9 +1103,9 @@ CONTAINS
     DO iX3 = iX_B0(3)    , iX_E0(3)
     DO iX2 = iX_B0(2)    , iX_E0(2)
     DO iNX = 1           , nDOFX
-  
+
    !PRINT*
-   !PRINT*, 'iNX, iX2, iX3, iX1: ', iX2, iX3, iX1  
+   !PRINT*, 'iNX, iX2, iX3, iX1: ', iX2, iX3, iX1
    !PRINT*, 'dU_X1(iCM_D ) after left:  ', dU_X1(iNX,1,iX2,iX3,iX1)
    !PRINT*, 'dU_X1(iCM_S1) after left:  ', dU_X1(iNX,2,iX2,iX3,iX1)
    !PRINT*, 'dU_X1(iCM_S2) after left:  ', dU_X1(iNX,3,iX2,iX3,iX1)
@@ -2922,26 +2922,24 @@ CONTAINS
 
       IF( UseDivergenceCleaning )THEN
 
-       !PRINT*, 'Using divergence cleaning for source terms.'
+        !PRINT*, 'Using divergence cleaning for source terms.'
 
         ! --- Eulerian Magnetic Field increment ---
 
         dU(iNX,iX1,iX2,iX3,iCM_B1) &
           = dU(iNX,iX1,iX2,iX3,iCM_B1) &
-              - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                    * U(iNX,iX1,iX2,iX3,iCM_B1) &
+              - ( tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B1) &
                     * dGdX1(iNX,iGF_Beta_1,iX2,iX3,iX1) ) &
-              + U(iNX,iX1,iX2,iX3,iCM_Chi) &
-                  * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+              + tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_Chi) &
                   * ( dGdX1(iNX,iGF_Alpha,iX2,iX3,iX1) &
                         / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11 ) ) &
-              + U(iNX,iX1,iX2,iX3,iCM_Chi) &
+              + tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_Chi) &
                   * G(iNX,iX1,iX2,iX3,iGF_Alpha) &
-                  * ( - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                            / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11)**2 ) &
+                  * ( - ( One / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11)**2 ) &
                         * dGdX1(iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
                       + ( dGdX1(iNX,iGF_SqrtGm,iX2,iX3,iX1) &
-                            / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) ) )
+                            / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) ) &
+                        * ( One / G(iNX,iX1,iX2,iX3,iGF_SqrtGm) ) )
 
         dU(iNX,iX1,iX2,iX3,iCM_B2) &
           = dU(iNX,iX1,iX2,iX3,iCM_B2) &
@@ -2959,8 +2957,10 @@ CONTAINS
 
         dU(iNX,iX1,iX2,iX3,iCM_Chi) &
           = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
-              - DampingCoefficient * U(iNX,iX1,iX2,iX3,iCM_Chi) &
-              + ( U(iNX,iX1,iX2,iX3,iCM_B1) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
+              - ( DampingCoefficient * tau(iNX,iX1,iX2,iX3) &
+                  * U(iNX,iX1,iX2,iX3,iCM_Chi) / G(iNX,iX1,iX2,iX3,iGF_SqrtGm) ) &
+              + ( tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B1) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
+                * ( One / G(iNX,iX1,iX2,iX3,iGF_SqrtGm ) ) &
                 * dGdX1(iNX,iGF_Alpha,iX2,iX3,iX1)
 
       END IF
@@ -3005,20 +3005,19 @@ CONTAINS
 
           dU(iNX,iX1,iX2,iX3,iCM_B2) &
             = dU(iNX,iX1,iX2,iX3,iCM_B2) &
-                - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                - ( tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B2) &
                       * U(iNX,iX1,iX2,iX3,iCM_B2) &
                       * dGdX2(iNX,iGF_Beta_2,iX1,iX3,iX2) ) &
-                + U(iNX,iX1,iX2,iX3,iCM_Chi) &
-                    * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                + tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_Chi) &
                     * ( dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2) &
                           / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22 ) ) &
-                + U(iNX,iX1,iX2,iX3,iCM_Chi) &
+                + tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_Chi) &
                     * G(iNX,iX1,iX2,iX3,iGF_Alpha) &
-                    * ( - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                              / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22)**2 ) &
+                    * ( - ( One / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22)**2 ) &
                           * dGdX2(iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
                         + ( dGdX2(iNX,iGF_SqrtGm,iX1,iX3,iX2) &
-                              / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) ) )
+                              / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) ) &
+                          * ( One / G(iNX,iX1,iX2,iX3,iGF_SqrtGm) ) )
 
           dU(iNX,iX1,iX2,iX3,iCM_B1) &
             = dU(iNX,iX1,iX2,iX3,iCM_B1) &
@@ -3036,8 +3035,8 @@ CONTAINS
 
           dU(iNX,iX1,iX2,iX3,iCM_Chi) &
             = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
-              - DampingCoefficient * U(iNX,iX1,iX2,iX3,iCM_Chi) &
-              + ( U(iNX,iX1,iX2,iX3,iCM_B2) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
+              + ( tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B2) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
+                * ( One / G(iNX,iX1,iX2,iX3,iGF_SqrtGm) ) &
                 * dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2)
 
         END IF
@@ -3084,20 +3083,18 @@ CONTAINS
 
           dU(iNX,iX1,iX2,iX3,iCM_B3) &
             = dU(iNX,iX1,iX2,iX3,iCM_B3) &
-                - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                      * U(iNX,iX1,iX2,iX3,iCM_B3) &
+                - ( tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B3) &
                       * dGdX3(iNX,iGF_Beta_3,iX1,iX2,iX3) ) &
-                + U(iNX,iX1,iX2,iX3,iCM_Chi) &
-                    * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
+                + tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_Chi) &
                     * ( dGdX3(iNX,iGF_Alpha,iX1,iX2,iX3) &
                           / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33 ) ) &
-                + U(iNX,iX1,iX2,iX3,iCM_Chi) &
+                + tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_Chi) &
                     * G(iNX,iX1,iX2,iX3,iGF_Alpha) &
-                    * ( - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                              / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33)**2 ) &
+                    * ( - ( One / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33)**2 ) &
                           * dGdX3(iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
                         + ( dGdX3(iNX,iGF_SqrtGm,iX1,iX2,iX3) &
-                              / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ) )
+                              / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ) &
+                          * ( One / G(iNX,iX1,iX2,iX3,iGF_SqrtGm) ) )
 
           dU(iNX,iX1,iX2,iX3,iCM_B1) &
             = dU(iNX,iX1,iX2,iX3,iCM_B1) &
@@ -3109,14 +3106,15 @@ CONTAINS
             = dU(iNX,iX1,iX2,iX3,iCM_B2) &
                 - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                       * U(iNX,iX1,iX2,iX3,iCM_B3) &
-                      * dGdX3(iNX,iGF_Beta_3,iX1,iX2,iX3) )
+                      * dGdX3(iNX,iGF_Beta_2,iX1,iX2,iX3) )
 
           ! --- Divergence violation field increment ---
 
           dU(iNX,iX1,iX2,iX3,iCM_Chi) &
             = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
-                + ( U(iNX,iX1,iX2,iX3,iCM_B3) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
-                  * dGdX3(iNX,iGF_Alpha,iX1,iX2,iX3)
+              + ( tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B3) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
+                * ( One / G(iNX,iX1,iX2,iX3,iGF_SqrtGm) ) &
+                * dGdX3(iNX,iGF_Alpha,iX1,iX2,iX3)
 
         END IF
 
