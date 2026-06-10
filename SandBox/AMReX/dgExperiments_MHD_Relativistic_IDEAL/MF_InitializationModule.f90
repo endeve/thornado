@@ -426,6 +426,45 @@ CONTAINS
                  Pressure, &
                  EvolveOnlyMagnetic )
 
+        CALL ComputeDiagnostic_MHD &
+               ( uPM(iNX,iPM_D  ), &
+                 uPM(iNX,iPM_V1 ), &
+                 uPM(iNX,iPM_V2 ), &
+                 uPM(iNX,iPM_V3 ), &
+                 uPM(iNX,iPM_E  ), &
+                 uPM(iNX,iPM_Ne ), &
+                 uPM(iNX,iPM_B1 ), &
+                 uPM(iNX,iPM_B2 ), &
+                 uPM(iNX,iPM_B3 ), &
+                 uPM(iNX,iPM_Chi), &
+                 U(iNX,iX1,iX2,iX3,iCM_D),   &
+                 U(iNX,iX1,iX2,iX3,iCM_S1),  &
+                 U(iNX,iX1,iX2,iX3,iCM_S2),  &
+                 U(iNX,iX1,iX2,iX3,iCM_S3),  &
+                 U(iNX,iX1,iX2,iX3,iCM_E),   &
+                 U(iNX,iX1,iX2,iX3,iCM_Ne),  &
+                 U(iNX,iX1,iX2,iX3,iCM_B1),  &
+                 U(iNX,iX1,iX2,iX3,iCM_B2),  &
+                 U(iNX,iX1,iX2,iX3,iCM_B3),  &
+                 U(iNX,iX1,iX2,iX3,iCM_Chi), &
+                 D(iNX,iX1,iX2,iX3,iDM_HS1),  &
+                 D(iNX,iX1,iX2,iX3,iDM_HS2),  &
+                 D(iNX,iX1,iX2,iX3,iDM_HS3),  &
+                 D(iNX,iX1,iX2,iX3,iDM_EMS1), &
+                 D(iNX,iX1,iX2,iX3,iDM_EMS2), &
+                 D(iNX,iX1,iX2,iX3,iDM_EMS3), &
+                 D(iNX,iX1,iX2,iX3,iDM_HE),   &
+                 D(iNX,iX1,iX2,iX3,iDM_EME),  &
+                 G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+                 G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+                 G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+                 G(iNX,iX1,iX2,iX3,iGF_Alpha),    &
+                 G(iNX,iX1,iX2,iX3,iGF_Beta_1),   &
+                 G(iNX,iX1,iX2,iX3,iGF_Beta_2),   &
+                 G(iNX,iX1,iX2,iX3,iGF_Beta_3),   &
+                 Pressure, &
+                 EvolveOnlyMagnetic )
+
       END DO
       END DO
       END DO

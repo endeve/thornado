@@ -31,7 +31,7 @@ PROGRAM main
   USE MF_MHD_UtilitiesModule, ONLY: &
     ComputeTimeStep_MHD_MF, &
     ComputeFromConserved_MHD_MF, &
-    ComputeDiagnosticFields_MHD_MF
+    ComputeMagneticDivergence_MHD_MF
   USE InputOutputModuleAMReX_MHD, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
@@ -165,13 +165,13 @@ PROGRAM main
      IF( amrex_parallel_ioprocessor() )THEN
 
         WRITE(*,*)
-        WRITE(*,'(A)') 'CALL ComputeDiagnosticFields_MHD_MF'
+        WRITE(*,'(A)') 'CALL ComputeMagneticDivergence_MHD_MF'
         WRITE(*,*)
 
       END IF
 
-!      CALL ComputeDiagnosticFields_MHD_MF &
-!             ( MF_uGF, MF_uCM, MF_uDM )
+      CALL ComputeMagneticDivergence_MHD_MF &
+             ( MF_uGF, MF_uCM, MF_uDM )
 
     END IF
 
@@ -249,8 +249,8 @@ CONTAINS
       CALL ComputeFromConserved_MHD_MF &
              ( MF_uGF, MF_uCM, MF_uPM, MF_uAM )
 
-!      CALL ComputeDiagnosticFields_MHD_MF &
-!             ( MF_uGF, MF_uCM, MF_uDM )
+      CALL ComputeMagneticDivergence_MHD_MF &
+             ( MF_uGF, MF_uCM, MF_uDM )
 
       CALL WriteFieldsAMReX_PlotFile &
              ( t_new(0), StepNo, MF_uGF, &
@@ -309,8 +309,8 @@ CONTAINS
       CALL ComputeFromConserved_MHD_MF &
              ( MF_uGF, MF_uCM, MF_uPM, MF_uAM )
 
-!      CALL ComputeDiagnosticFields_MHD_MF &
-!             ( MF_uGF, MF_uCM, MF_uDM )
+      CALL ComputeMagneticDivergence_MHD_MF &
+             ( MF_uGF, MF_uCM, MF_uDM )
 
       CALL WriteFieldsAMReX_Checkpoint
 

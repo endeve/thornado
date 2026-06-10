@@ -57,12 +57,21 @@ MODULE MF_MHD_UtilitiesModule
     iAM_P, &
     iAM_Ye, &
     nAM, &
+    iDM_HS1, &
+    iDM_HS2, &
+    iDM_HS3, &
+    iDM_EMS1, &
+    iDM_EMS2, &
+    iDM_EMS3, &
+    iDM_HE, &
+    iDM_EME, &
     iDM_MinE, &
     nDM
   USE MHD_UtilitiesModule, ONLY: &
     ComputeTimeStep_MHD, &
     ComputeFromConserved_MHD, &
     ComputeConserved_MHD, &
+    ComputeDiagnostic_MHD, &
     ComputeMagneticDivergence_MHD
 
   ! --- Local Modules ---
@@ -97,7 +106,8 @@ MODULE MF_MHD_UtilitiesModule
   PUBLIC :: ComputeFromConserved_MHD_MF
   PUBLIC :: ComputeTimeStep_MHD_MF
   PUBLIC :: ComputeConserved_MHD_MF
-  PUBLIC :: ComputeDiagnosticFields_MHD_MF
+  PUBLIC :: ComputeDiagnostic_MHD_MF
+  PUBLIC :: ComputeMagneticDivergence_MHD_MF
 
 CONTAINS
 
@@ -432,7 +442,117 @@ CONTAINS
   END SUBROUTINE ComputeConserved_MHD_MF
 
 
-  SUBROUTINE ComputeDiagnosticFields_MHD_MF &
+  SUBROUTINE ComputeDiagnostic_MHD_MF &
+    ( MF_uPM, MF_uCM, MF_uDM, MF_uGF, MF_uAM )
+
+    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:), MF_uCM(0:), &
+                                           MF_uPM(0:), MF_uAM(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uDM(0:)
+
+    TYPE(amrex_mfiter) :: MFI
+    TYPE(amrex_box)    :: BX
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uCM(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uPM(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uAM(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDM(:,:,:,:)
+
+    INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER :: iNX, iX1, iX2, iX3
+
+    DO iLevel = 0, nLevels-1
+
+      CALL CreateMesh_MF( iLevel, MeshX )
+
+#if defined( THORNADO_OMP )
+      !$OMP PARALLEL &
+      !$OMP PRIVATE( MFI, BX, uGF, uCM, uPM, uAM, uDM, G, U, P, A, D, &
+      !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, iLo_MF, iX_B, iX_E )
+#endif
+
+      CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
+
+      DO WHILE( MFI % next() )
+
+        uGF => MF_uGF(iLevel) % DataPtr( MFI )
+        uCM => MF_uCM(iLevel) % DataPtr( MFI )
+        uPM => MF_uPM(iLevel) % DataPtr( MFI )
+        uAM => MF_uAM(iLevel) % DataPtr( MFI )
+        uDM => MF_uDM(iLevel) % DataPtr( MFI )
+
+        BX = MFI % tilebox()
+
+        iX_B0 = BX % lo
+        iX_E0 = BX % hi
+        iX_B1 = BX % lo - swX
+        iX_E1 = BX % hi + swX
+
+      END DO
+
+      DO iX3 = iX_B1(3), iX_E1(3)
+      DO iX2 = iX_B1(2), iX_E1(2)
+      DO iX1 = iX_B1(1), iX_E1(1)
+      DO iNX = 1       , nDOFX
+
+        CALL ComputeDiagnostic_MHD &
+               ( uPM(iX1,iX2,iX3,nDOFX*(iPM_D       -1)+iNX), &
+                 uPM(iX1,iX2,iX3,nDOFX*(iPM_V1      -1)+iNX), &
+                 uPM(iX1,iX2,iX3,nDOFX*(iPM_V2      -1)+iNX), &
+                 uPM(iX1,iX2,iX3,nDOFX*(iPM_V3      -1)+iNX), &
+                 uPM(iX1,iX2,iX3,nDOFX*(iPM_E       -1)+iNX), &
+                 uPM(iX1,iX2,iX3,nDOFX*(iPM_Ne      -1)+iNX), &
+                 uPM(iX1,iX2,iX3,nDOFX*(iPM_B1      -1)+iNX), &
+                 uPM(iX1,iX2,iX3,nDOFX*(iPM_B2      -1)+iNX), &
+                 uPM(iX1,iX2,iX3,nDOFX*(iPM_B3      -1)+iNX), &
+                 uPM(iX1,iX2,iX3,nDOFX*(iPM_Chi     -1)+iNX), &
+                 uCM(iX1,iX2,iX3,nDOFX*(iCM_D       -1)+iNX), &
+                 uCM(iX1,iX2,iX3,nDOFX*(iCM_S1      -1)+iNX), &
+                 uCM(iX1,iX2,iX3,nDOFX*(iCM_S2      -1)+iNX), &
+                 uCM(iX1,iX2,iX3,nDOFX*(iCM_S3      -1)+iNX), &
+                 uCM(iX1,iX2,iX3,nDOFX*(iCM_E       -1)+iNX), &
+                 uCM(iX1,iX2,iX3,nDOFX*(iCM_Ne      -1)+iNX), &
+                 uCM(iX1,iX2,iX3,nDOFX*(iCM_B1      -1)+iNX), &
+                 uCM(iX1,iX2,iX3,nDOFX*(iCM_B2      -1)+iNX), &
+                 uCM(iX1,iX2,iX3,nDOFX*(iCM_B3      -1)+iNX), &
+                 uCM(iX1,iX2,iX3,nDOFX*(iCM_Chi     -1)+iNX), &
+                 uDM(iX1,iX2,iX3,nDOFX*(iDM_HS1     -1)+iNX), &
+                 uDM(iX1,iX2,iX3,nDOFX*(iDM_HS2     -1)+iNX), &
+                 uDM(iX1,iX2,iX3,nDOFX*(iDM_HS3     -1)+iNX), &
+                 uDM(iX1,iX2,iX3,nDOFX*(iDM_EMS1    -1)+iNX), &
+                 uDM(iX1,iX2,iX3,nDOFX*(iDM_EMS2    -1)+iNX), &
+                 uDM(iX1,iX2,iX3,nDOFX*(iDM_EMS3    -1)+iNX), &
+                 uDM(iX1,iX2,iX3,nDOFX*(iDM_HE      -1)+iNX), &
+                 uDM(iX1,iX2,iX3,nDOFX*(iDM_EME     -1)+iNX), &
+                 uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNX), &
+                 uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNX), &
+                 uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNX), &
+                 uGF(iX1,iX2,iX3,nDOFX*(iGF_Alpha   -1)+iNX), &
+                 uGF(iX1,iX2,iX3,nDOFX*(iGF_Beta_1  -1)+iNX), &
+                 uGF(iX1,iX2,iX3,nDOFX*(iGF_Beta_2  -1)+iNX), &
+                 uGF(iX1,iX2,iX3,nDOFX*(iGF_Beta_3  -1)+iNX), &
+                 uAM(iX1,iX2,iX3,nDOFX*(iAM_P       -1)+iNX), &
+                 EvolveOnlyMagnetic )
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL amrex_mfiter_destroy( MFI )
+
+#if defined( THORNADO_OMP )
+      !$OMP END PARALLEL
+#endif
+
+      CALL DestroyMesh_MF( MeshX )
+
+    END DO
+
+  END SUBROUTINE ComputeDiagnostic_MHD_MF
+
+
+  SUBROUTINE ComputeMagneticDivergence_MHD_MF &
     ( MF_uGF, MF_uCM, MF_uDM, swXX_Option )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:), MF_uCM(0:)
@@ -506,7 +626,7 @@ CONTAINS
 
         CALL amrex2thornado_X( nCM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uCM, U )
 
-        CALL ComputeDiagnosticFields_MHD &
+        CALL ComputeMagneticDivergence_MHD &
                ( iX_B, iX_E, iX_B1, iX_E1, G, U, D )
 
         CALL thornado2amrex_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uDM, D )
@@ -538,23 +658,7 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE ComputeDiagnosticFields_MHD_MF
-
-
-  SUBROUTINE ComputeDiagnosticFields_MHD &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
-
-    INTEGER , INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(DP), INTENT(in)    :: G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
-                               U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP), INTENT(inout) :: D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-
-    INTEGER :: iNX, iX1, iX2, iX3
-
-    CALL ComputeMagneticDivergence_MHD &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, D )
-
-  END SUBROUTINE ComputeDiagnosticFields_MHD
+  END SUBROUTINE ComputeMagneticDivergence_MHD_MF
 
 
 END MODULE MF_MHD_UtilitiesModule
