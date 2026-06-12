@@ -117,6 +117,7 @@ PROGRAM ApplicationDriver
   REAL(DP)      :: ZoomX(3)
   REAL(DP)      :: Timer_Evolution
 
+  LOGICAL  :: UseCustomGeometry = .FALSE.
   LOGICAL  :: WriteGF = .TRUE., WriteMF = .TRUE.
   LOGICAL  :: WriteGhost = .FALSE.
   LOGICAL  :: ActivateUnits = .FALSE.
@@ -674,13 +675,17 @@ PROGRAM ApplicationDriver
       ActivateUnits = .TRUE.
       WriteGhost    = .FALSE. ! Needed for BCs
 
+      UseCustomGeometry = .TRUE.
+
       EvolveOnlyMagnetic = .FALSE.
 
       ApplyRandomPerturbations = .FALSE.
       Rand_Amplitude = 1.0d-4
 
       UseDivergenceCleaning = .FALSE.
+      CleaningSpeed = 1.0_DP
       DampingTimeScaleFactor = 0.0_DP
+      UseFluxDecoupling = .FALSE.
       UsePowellSource = .FALSE.
 
       Gamma = 4.0_DP / 3.0_DP
@@ -798,8 +803,12 @@ PROGRAM ApplicationDriver
 
   CALL InitializeReferenceElementX_Lagrange
 
-  CALL ComputeGeometryX &
-       ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+  IF( .NOT. UseCustomGeometry )THEN ! Relies on geometry being set in problem initialization.
+
+    CALL ComputeGeometryX &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
+  END IF
 
   CALL InitializeEquationOfState &
          ( EquationOfState_Option = 'IDEAL', &
@@ -841,6 +850,8 @@ PROGRAM ApplicationDriver
 
   uCM = Zero ! Without this, crashes when copying data in TimeStepper
   uDM = Zero ! Without this, crashes in IO
+  uAM = Zero
+  uPM = Zero
 
   CALL InitializeFields_Relativistic_MHD &
          ( AdvectionProfile_Option &
