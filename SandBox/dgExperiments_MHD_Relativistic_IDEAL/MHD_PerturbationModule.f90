@@ -107,11 +107,7 @@ CONTAINS
 
       CALL RANDOM_NUMBER( Rand_r )
 
-      CALL RANDOM_SEED()
-
       CALL RANDOM_NUMBER( Rand_z )
-
-      CALL RANDOM_SEED()
 
       CALL RANDOM_NUMBER( Rand_theta )
 
