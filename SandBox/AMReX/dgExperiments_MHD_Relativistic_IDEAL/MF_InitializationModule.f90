@@ -2029,7 +2029,7 @@ CONTAINS
  
     NumX1InterpolationPoints = 10000
     InitialConditionFile &
-      = "/nfs/home/jbuffal1/thornado/Workflow/MHD/ShearingDisk/GR_LR_diffrot.h5"
+      = "./GR_LR_diffrot.h5"
     InitialField &
       = Zero
     AddSinePerturbation &
