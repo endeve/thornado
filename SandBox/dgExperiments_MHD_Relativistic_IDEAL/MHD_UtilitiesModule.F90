@@ -276,7 +276,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeFromConserved_MHD &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, D, &
       EvolveOnlyMagnetic )
 
     LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
@@ -286,13 +286,14 @@ CONTAINS
     REAL(DP), INTENT(in)    :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
-      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(out)   :: &
       P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
     CALL ComputeFromConserved_MHD_Relativistic &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, &
+           ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, D, &
              EvolveOnlyMagnetic )
 
   END SUBROUTINE ComputeFromConserved_MHD

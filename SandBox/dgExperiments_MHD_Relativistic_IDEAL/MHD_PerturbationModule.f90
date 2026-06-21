@@ -54,7 +54,8 @@ MODULE MHD_PerturbationModule
     iPM_B3, &
     iPM_Chi, &
     nAM, &
-    iAM_P
+    iAM_P, &
+    nDM
    USE MHD_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_MHD_Relativistic, &
     ComputeFromConserved_MHD_Relativistic
@@ -142,6 +143,8 @@ CONTAINS
       P(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nPM)
     REAL(DP) :: &
       A(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nAM)
+    REAL(DP) :: &
+      D(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nDM)
 
     REAL(DP) :: X1, X2
     REAL(DP) :: kz
@@ -150,7 +153,7 @@ CONTAINS
     ! --- perturbations from Rembiasz et al. (2016) ---
 
     CALL ComputeFromConserved_MHD_Relativistic &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, EvolveOnlyMagnetic )
+             ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, D, EvolveOnlyMagnetic )
 
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
