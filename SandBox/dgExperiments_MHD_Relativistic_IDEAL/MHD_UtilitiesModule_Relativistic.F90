@@ -107,9 +107,15 @@ MODULE MHD_UtilitiesModule_Relativistic
     iDM_Sh_X1, &
     iDM_Sh_X2, &
     iDM_Sh_X3, &
-    iDM_Div
-!  USE MHD_BoundaryConditionsModule, ONLY: &
-!    ApplyBoundaryConditions_MHD
+    iDM_Div, &
+    iDM_HS1, &
+    iDM_HS2, &
+    iDM_HS3, &
+    iDM_EMS1, &
+    iDM_EMS2, &
+    iDM_EMS3, &
+    iDM_HE, &
+    iDM_EME
   USE EquationOfStateModule, ONLY: &
     ComputeSoundSpeedFromPrimitive, &
     ComputeAuxiliary_Magnetofluid, &
@@ -1617,7 +1623,7 @@ CONTAINS
   !> Compute primitive variables, pressure, and sound-speed from conserved
   !> variables for a data block.
   SUBROUTINE ComputeFromConserved_MHD_Relativistic &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, G, U, P, A, D, &
       EvolveOnlyMagnetic )
 
     LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
@@ -1627,12 +1633,13 @@ CONTAINS
     REAL(DP), INTENT(in) :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(inout) :: &
-      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
+      D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP), INTENT(out) :: &
       P(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:), &
       A(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
 
-    INTEGER :: iNX, iX1, iX2, iX3, iAM, iPM
+    INTEGER :: iNX, iX1, iX2, iX3, iAM, iPM, iDM
 
     ! --- Update primitive variables, pressure, and sound speed ---
 
@@ -1657,6 +1664,20 @@ CONTAINS
     DO iNX = 1, nDOFX
 
       A(iNX,iX1,iX2,iX3,iAM) = Zero
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    DO iDM = iDM_HS1, iDM_EME
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = iX_B1(1), iX_E1(1)
+    DO iNX = 1, nDOFX
+
+      D(iNX,iX1,iX2,iX3,iDM) = Zero
 
     END DO
     END DO
@@ -1742,6 +1763,45 @@ CONTAINS
                A(iNX,iX1,iX2,iX3,iAM_Tem12), &
                A(iNX,iX1,iX2,iX3,iAM_Tem13), &
                A(iNX,iX1,iX2,iX3,iAM_Tem23) )
+
+      CALL ComputeDiagnostic_MHD_Relativistic &
+             ( P(iNX,iX1,iX2,iX3,iPM_D   ), &
+               P(iNX,iX1,iX2,iX3,iPM_V1  ), &
+               P(iNX,iX1,iX2,iX3,iPM_V2  ), &
+               P(iNX,iX1,iX2,iX3,iPM_V3  ), &
+               P(iNX,iX1,iX2,iX3,iPM_E   ), &
+               P(iNX,iX1,iX2,iX3,iPM_Ne  ), &
+               P(iNX,iX1,iX2,iX3,iPM_B1  ), &
+               P(iNX,iX1,iX2,iX3,iPM_B2  ), &
+               P(iNX,iX1,iX2,iX3,iPM_B3  ), &
+               P(iNX,iX1,iX2,iX3,iPM_Chi ), &
+               U(iNX,iX1,iX2,iX3,iCM_D   ), &
+               U(iNX,iX1,iX2,iX3,iCM_S1  ), &
+               U(iNX,iX1,iX2,iX3,iCM_S2  ), &
+               U(iNX,iX1,iX2,iX3,iCM_S3  ), &
+               U(iNX,iX1,iX2,iX3,iCM_E   ), &
+               U(iNX,iX1,iX2,iX3,iCM_Ne  ), &
+               U(iNX,iX1,iX2,iX3,iCM_B1  ), &
+               U(iNX,iX1,iX2,iX3,iCM_B2  ), &
+               U(iNX,iX1,iX2,iX3,iCM_B3  ), &
+               U(iNX,iX1,iX2,iX3,iCM_Chi ), &
+               D(iNX,iX1,iX2,iX3,iDM_HS1 ), &
+               D(iNX,iX1,iX2,iX3,iDM_HS2 ), &
+               D(iNX,iX1,iX2,iX3,iDM_HS3 ), &
+               D(iNX,iX1,iX2,iX3,iDM_EMS1), &
+               D(iNX,iX1,iX2,iX3,iDM_EMS2), &
+               D(iNX,iX1,iX2,iX3,iDM_EMS3), &
+               D(iNX,iX1,iX2,iX3,iDM_HE  ), &
+               D(iNX,iX1,iX2,iX3,iDM_EME ), &
+               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               G(iNX,iX1,iX2,iX3,iGF_Alpha), &
+               G(iNX,iX1,iX2,iX3,iGF_Beta_1), &
+               G(iNX,iX1,iX2,iX3,iGF_Beta_2), &
+               G(iNX,iX1,iX2,iX3,iGF_Beta_3), &
+               A(iNX,iX1,iX2,iX3,iAM_P    ), &
+               EvolveOnlyMagnetic )
 
     END DO
     END DO
