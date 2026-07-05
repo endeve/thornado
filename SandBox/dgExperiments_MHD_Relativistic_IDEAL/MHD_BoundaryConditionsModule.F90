@@ -972,61 +972,20 @@ CONTAINS
             !PRINT*, 'Last Compute Cell Location:  ', iNX, iX_E0(1) - (iX1-1), iX2, iX3
             !PRINT*
 
-            IF( .TRUE. )THEN
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_D) &
+              = U(iNX,iX_B0(1),iX2,iX3,iCM_D)
 
-              !PRINT*, 'Radial velocities too low. Using initial density for inner boundary.'
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S1) &
+              = U(iNX,iX_B0(1),iX2,iX3,iCM_S1)
 
-              U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_D) &
-                = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_D)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S2) &
+              = U(iNX,iX_B0(1),iX2,iX3,iCM_S2)
 
-              U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S1) &
-                = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_S1) &
-                  - D(iNX,iX_B0(1),iX2,iX3,iDM_IC_EMS1) &
-                  + D(iNX,iX_B0(1),iX2,iX3,iDM_EMS1)
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S3) &
+              = U(iNX,iX_B0(1),iX2,iX3,iCM_S3)
 
-              U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S2) &
-                = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_S2) &
-                  - D(iNX,iX_B0(1),iX2,iX3,iDM_IC_EMS2) &
-                  + D(iNX,iX_B0(1),iX2,iX3,iDM_EMS2)
-
-              U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S3) &
-                = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_S3) &
-                  - D(iNX,iX_B0(1),iX2,iX3,iDM_IC_EMS3) &
-                  + D(iNX,iX_B0(1),iX2,iX3,iDM_EMS3)
-
-              U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_E) &
-                = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_E) &
-                  - D(iNX,iX_B0(1),iX2,iX3,iDM_IC_EME) &
-                  + D(iNX,iX_B0(1),iX2,iX3,iDM_EME)
-
-            ELSE
-
-              U(iNX,iX_B0(1)-iX1,iX2,iX3,1) &
-                = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,1) &
-                  - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_D) &
-                  + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_D)
-
-              U(iNX,iX_B0(1)-iX1,iX2,iX3,2) &
-                = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,2) &
-                  - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S1) &
-                  + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S1)
-
-              U(iNX,iX_B0(1)-iX1,iX2,iX3,3) &
-                = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,3) &
-                  - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S2) &
-                  + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S2)
-
-              U(iNX,iX_B0(1)-iX1,iX2,iX3,4) &
-                = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,4) &
-                  - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S3) &
-                  + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S3)
-
-              U(iNX,iX_B0(1)-iX1,iX2,iX3,5) &
-                = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,5) &
-                  - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_E) &
-                  + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_E)
-
-            END IF
+            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_E) &
+              = U(iNX,iX_B0(1),iX2,iX3,iCM_E)
 
             U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B1) &
               = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B1) &
@@ -1062,61 +1021,20 @@ CONTAINS
             !PRINT*, 'First Compute Cell Location: ', iNX, iX_B0(1) + (iX1-1), iX2, iX3
             !PRINT*
 
-            IF( .TRUE. )THEN
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_D) &
+              = U(iNX,iX_E0(1),iX2,iX3,iCM_D)
 
-              !PRINT*, 'Radial velocities too low. Using initial density for outer boundary.'
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S1) &
+              = U(iNX,iX_E0(1),iX2,iX3,iCM_S1)
 
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_D) &
-                = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_D)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S2) &
+              = U(iNX,iX_E0(1),iX2,iX3,iCM_S2)
 
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S1) &
-                = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_S1) &
-                  - D(iNX,iX_E0(1),iX2,iX3,iDM_IC_EMS1) &
-                  + D(iNX,iX_E0(1),iX2,iX3,iDM_EMS1)
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S3) &
+              = U(iNX,iX_E0(1),iX2,iX3,iCM_S3)
 
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S2) &
-                = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_S2) &
-                  - D(iNX,iX_E0(1),iX2,iX3,iDM_IC_EMS2) &
-                  + D(iNX,iX_E0(1),iX2,iX3,iDM_EMS2)
-
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S3) &
-                = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_S3) &
-                  - D(iNX,iX_E0(1),iX2,iX3,iDM_IC_EMS3) &
-                  + D(iNX,iX_E0(1),iX2,iX3,iDM_EMS3)
-
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_E) &
-                = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_E) &
-                  - D(iNX,iX_E0(1),iX2,iX3,iDM_IC_EME) &
-                  + D(iNX,iX_E0(1),iX2,iX3,iDM_EME)
-
-            ELSE
-
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,1) &
-                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,1) &
-                  - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_D) &
-                  + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_D)
-
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,2) &
-                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,2) &
-                  - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S1) &
-                  + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S1)
-
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,3) &
-                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,3) &
-                  - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S2) &
-                  + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S2)
-
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,4) &
-                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,4) &
-                  - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S3) &
-                  + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S3)
-
-              U(iNX,iX_E0(1)+iX1,iX2,iX3,5) &
-                = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,5) &
-                  - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_E) &
-                  + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_E)
-
-            END IF
+            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_E) &
+              = U(iNX,iX_E0(1),iX2,iX3,iCM_E)
 
             U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B1) &
               = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B1) &
