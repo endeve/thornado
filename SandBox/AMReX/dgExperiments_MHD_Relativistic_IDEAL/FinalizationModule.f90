@@ -98,7 +98,7 @@ CONTAINS
            ( t_new, MF_uGF, MF_uCM, MF_uDM )
 
     CALL ComputeFromConserved_MHD_MF &
-           ( MF_uGF, MF_uCM, MF_uPM, MF_uAM )
+           ( MF_uGF, MF_uCM, MF_uPM, MF_uAM, MF_uDM )
 
     CALL ComputeMagneticDivergence_MHD_MF &
            ( MF_uGF, MF_uCM, MF_uDM )

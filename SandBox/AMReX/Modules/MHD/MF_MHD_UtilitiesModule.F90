@@ -113,11 +113,11 @@ CONTAINS
 
 
   SUBROUTINE ComputeFromConserved_MHD_MF &
-    ( MF_uGF, MF_uCM, MF_uPM, MF_uAM, &
+    ( MF_uGF, MF_uCM, MF_uPM, MF_uAM, MF_uDM, &
       swXX_Option )
 
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:), MF_uCM(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uPM(0:), MF_uAM(0:)
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uPM(0:), MF_uAM(0:), MF_uDM(0:)
     INTEGER             , INTENT(in), OPTIONAL :: swXX_Option(3)
 
     TYPE(amrex_mfiter) :: MFI
@@ -127,11 +127,13 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: uCM(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uPM(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uAM(:,:,:,:)
+    REAL(DP), CONTIGUOUS, POINTER :: uDM(:,:,:,:)
 
     REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: P(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: A(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: D(:,:,:,:,:)
 
     INTEGER :: iLevel, iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
     INTEGER :: iX_B(3), iX_E(3), swXX(3)
@@ -146,7 +148,7 @@ CONTAINS
 
 #if defined( THORNADO_OMP )
       !$OMP PARALLEL &
-      !$OMP PRIVATE( MFI, BX, uGF, uCM, uPM, uAM, G, U, P, A, &
+      !$OMP PRIVATE( MFI, BX, uGF, uCM, uPM, uAM, G, U, P, A, D, &
       !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, iLo_MF, iX_B, iX_E )
 #endif
 
@@ -158,6 +160,7 @@ CONTAINS
         uCM => MF_uCM(iLevel) % DataPtr( MFI )
         uPM => MF_uPM(iLevel) % DataPtr( MFI )
         uAM => MF_uAM(iLevel) % DataPtr( MFI )
+        uDM => MF_uDM(iLevel) % DataPtr( MFI )
 
         iLo_MF = LBOUND( uGF )
 
@@ -188,6 +191,11 @@ CONTAINS
                  [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nAM ], &
                  A )
 
+        CALL AllocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
+                 D )
+
         iX_B = iX_B0 - swXX
         iX_E = iX_E0 + swXX
 
@@ -195,12 +203,21 @@ CONTAINS
 
         CALL amrex2thornado_X( nCM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uCM, U )
 
+        CALL amrex2thornado_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uDM, D )
+
         CALL ComputeFromConserved_MHD &
-               ( iX_B, iX_E, iX_B1, iX_E1, G, U, P, A, EvolveOnlyMagnetic )
+               ( iX_B, iX_E, iX_B1, iX_E1, G, U, P, A, D, EvolveOnlyMagnetic )
 
         CALL thornado2amrex_X( nPM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uPM, P )
 
         CALL thornado2amrex_X( nAM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uAM, A )
+
+        CALL thornado2amrex_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uDM, D )
+
+        CALL DeallocateArray_X &
+               ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+                 [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
+                 D )
 
         CALL DeallocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
