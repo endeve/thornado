@@ -200,9 +200,9 @@ CONTAINS
     REAL(DP),      INTENT(in)    :: t
     INTEGER,       INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLevel
-    REAL(DP),      INTENT(inout) :: &
+    REAL(DP),      INTENT(in)    :: &
       G(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
-    REAL(DP),      INTENT(inout) :: &
+    REAL(DP),      INTENT(in)    :: &
       D(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
     REAL(DP),      INTENT(inout) :: &
       U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
