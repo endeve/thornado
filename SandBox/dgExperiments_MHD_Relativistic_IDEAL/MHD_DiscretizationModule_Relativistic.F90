@@ -3006,7 +3006,6 @@ CONTAINS
           dU(iNX,iX1,iX2,iX3,iCM_B2) &
             = dU(iNX,iX1,iX2,iX3,iCM_B2) &
                 - ( tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B2) &
-                      * U(iNX,iX1,iX2,iX3,iCM_B2) &
                       * dGdX2(iNX,iGF_Beta_2,iX1,iX3,iX2) ) &
                 + tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_Chi) &
                     * ( dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2) &
