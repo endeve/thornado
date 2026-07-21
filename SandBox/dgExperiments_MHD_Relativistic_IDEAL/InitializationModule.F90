@@ -134,7 +134,8 @@ CONTAINS
                  ConstantDensity_Option, &
                  Angle_Option, RiemannProblemName_Option, &
                  MMBlastWaveB0_Option, MMBlastWavePhi_Option, &
-                 OTScaleFactor_Option, EvolveOnlyMagnetic_Option )
+                 OTScaleFactor_Option, SDInitialField_Option, &
+                 EvolveOnlyMagnetic_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: AdvectionProfile_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblemName_Option
@@ -145,6 +146,7 @@ CONTAINS
     REAL(DP),         INTENT(in), OPTIONAL :: MMBlastWaveB0_Option
     REAL(DP),         INTENT(in), OPTIONAL :: MMBlastWavePhi_Option
     REAL(DP),         INTENT(in), OPTIONAL :: OTScaleFactor_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: SDInitialField_Option
 
     CHARACTER(LEN=64) :: AdvectionProfile = 'HydroSineWaveX1'
     CHARACTER(LEN=64) :: RiemannProblemName = 'IsolatedContact'
@@ -154,6 +156,7 @@ CONTAINS
     REAL(DP)          :: MMBlastWaveB0 = 0.5_DP
     REAL(DP)          :: MMBlastWavePhi = 0.0_DP
     REAL(DP)          :: OTScaleFactor = 100
+    REAL(DP)          :: SDInitialField = 2.00d+13
 
     LOGICAL           :: EvolveOnlyMagnetic = .FALSE.
 
@@ -182,6 +185,9 @@ CONTAINS
 
     IF( PRESENT( OTScaleFactor_Option ) ) &
       OTScaleFactor = OTScaleFactor_Option
+
+    IF( PRESENT( SDInitialField_Option ) ) &
+      SDInitialField = SDInitialField_Option
 
     IF( PRESENT( EvolveOnlyMagnetic_Option ) ) &
       EvolveOnlyMagnetic = EvolveOnlyMagnetic_Option
@@ -237,7 +243,7 @@ CONTAINS
 
       CASE( 'ShearingDisk' )
 
-        CALL InitializeFields_ShearingDisk( EvolveOnlyMagnetic )
+        CALL InitializeFields_ShearingDisk( SDInitialField, EvolveOnlyMagnetic )
 
       CASE( 'MagneticRotor2D' )
 
@@ -1963,9 +1969,10 @@ CONTAINS
   END SUBROUTINE InitializeFields_OrszagTang2D
 
 
-  SUBROUTINE InitializeFields_ShearingDisk( EvolveOnlyMagnetic )
+  SUBROUTINE InitializeFields_ShearingDisk( SDInitialField, EvolveOnlyMagnetic )
 
-    LOGICAL, INTENT(in) :: EvolveOnlyMagnetic
+    REAL(DP), INTENT(in) :: SDInitialField
+    LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic
 
     CHARACTER(256) :: FileName
 
@@ -2067,7 +2074,7 @@ CONTAINS
             / ( Gamma_IDEAL - One )
 
         CB1 = Zero
-        CB2 = 2.0 * 1.0d13 * Gauss
+        CB2 = SDInitialField
         CB3 = Zero
 
         VdotB = uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) * V1 * CB1 &
