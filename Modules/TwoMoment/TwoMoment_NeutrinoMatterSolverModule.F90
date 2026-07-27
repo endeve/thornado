@@ -4823,10 +4823,10 @@ CONTAINS
 
     LOGICAL,  DIMENSION(:)    , INTENT(in) :: MASK_inner
     INTEGER,                    INTENT(in) :: k_outer, k_inner
-    REAL(DP), DIMENSION(:)    , INTENT(in) :: D, Y, E, T, V_u_1, V_u_2, V_u_3
-    REAL(DP), DIMENSION(:,:,:), INTENT(in) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:,:,:), INTENT(in) :: Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3
-    REAL(DP), DIMENSION(:)    , INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:)    , INTENT(inout) :: D, Y, E, T, V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3
+    REAL(DP), DIMENSION(:)    , INTENT(inout) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     INTEGER  :: ierr
     INTEGER  :: iN_E, iN_X, iS
@@ -4939,10 +4939,10 @@ CONTAINS
     LOGICAL,  DIMENSION(:)    , INTENT(in) :: MASK_outer, MASK_inner
     INTEGER,                    INTENT(in) :: k_outer, k_inner
     INTEGER,  DIMENSION(:)    , INTENT(in) :: Error
-    REAL(DP), DIMENSION(:)    , INTENT(in) :: D, Y, E, T, V_u_1, V_u_2, V_u_3
-    REAL(DP), DIMENSION(:,:,:), INTENT(in) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:,:,:), INTENT(in) :: Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3
-    REAL(DP), DIMENSION(:)    , INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:)    , INTENT(inout) :: D, Y, E, T, V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3
+    REAL(DP), DIMENSION(:)    , INTENT(inout) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
 
     INTEGER  :: ierr
     INTEGER  :: iN_E, iN_X, iS

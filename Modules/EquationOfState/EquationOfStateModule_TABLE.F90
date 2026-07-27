@@ -822,7 +822,7 @@ CONTAINS
   SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector &
     ( D, E, Y, T, Guess_Option, Error_Option )
 
-    REAL(DP), INTENT(in )           :: D(1:), E(1:), Y(1:)
+    REAL(DP), INTENT(inout)         :: D(1:), E(1:), Y(1:)
     REAL(DP), INTENT(out)           :: T(1:)
     REAL(DP), INTENT(in ), OPTIONAL :: Guess_Option(1:)
     INTEGER,  INTENT(out), OPTIONAL :: Error_Option(1:)
@@ -1073,7 +1073,7 @@ CONTAINS
 
   SUBROUTINE ComputeSoundSpeedFromPrimitive_TABLE_Vector( D, Ev, Ne, Cs )
 
-    REAL(DP), INTENT(in)  :: D(1:), Ev(1:), Ne(1:)
+    REAL(DP), INTENT(inout)  :: D(1:), Ev(1:), Ne(1:)
     REAL(DP), INTENT(out) :: Cs(1:)
 
     INTEGER :: nP
@@ -1185,7 +1185,7 @@ CONTAINS
   SUBROUTINE ComputeThermodynamicStates_Primitive_TABLE_Vector &
     ( D, T, Y, Ev, Em, Ne )
 
-    REAL(DP), INTENT(in)  :: D (1:), T (1:), Y (1:)
+    REAL(DP), INTENT(inout)  :: D (1:), T (1:), Y (1:)
     REAL(DP), INTENT(out) :: Ev(1:), Em(1:), Ne(1:)
 
     INTEGER :: iP, nP
@@ -1237,7 +1237,7 @@ CONTAINS
   SUBROUTINE ComputeThermodynamicStates_Auxiliary_TABLE_Vector &
     ( D, Ev, Ne, T, Em, Y )
 
-    REAL(DP), DIMENSION(1:), INTENT(in)  :: D, Ev, Ne
+    REAL(DP), DIMENSION(1:), INTENT(inout)  :: D, Ev, Ne
     REAL(DP), DIMENSION(1:), INTENT(out) :: T, Em, Y
 
     INTEGER :: iP, nP, Error(SIZE(D))

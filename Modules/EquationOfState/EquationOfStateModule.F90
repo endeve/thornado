@@ -835,7 +835,7 @@ CONTAINS
   SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_Vector &
     ( D, E, T, Y, Guess_Option, Error_Option )
 
-    REAL(DP), INTENT(in ) :: D(:), E(:), Y(:)
+    REAL(DP), INTENT(inout) :: D(:), E(:), Y(:)
     REAL(DP), INTENT(out) :: T(:)
     REAL(DP), INTENT(in ), OPTIONAL :: Guess_Option(:)
     INTEGER,  INTENT(out), OPTIONAL :: Error_Option(:)

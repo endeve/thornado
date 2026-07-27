@@ -108,6 +108,7 @@ MODULE LinearAlgebraModule
     HIPSPARSE_INDEX_BASE_ONE
 #elif defined(THORNADO_LA_ONEMKL)
   USE onemkl_blas_omp_offload_lp64
+  USE onemkl_lapack_omp_offload_lp64
 #elif defined(THORNADO_LA_MAGMA)
   USE MagmaModule, ONLY: &
     magma_queue, &
@@ -700,7 +701,7 @@ CONTAINS
              ( n, n, a, lda, stridea, ipiv, strideipiv, batchcount, info )
       !$OMP DISPATCH 
       CALL DGETRS_BATCH_STRIDED &
-             ( trans, n, nrhs, a, lda, stridea, ipiv, strideipiv, b, ldb, strideb, info )
+             ( trans, n, nrhs, a, lda, stridea, ipiv, strideipiv, b, ldb, strideb, batchcount, info )
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgetrf_batched &
              ( n, n, da_array, lda, dipiv_array, dinfo, batchcount, magma_queue )
@@ -975,10 +976,10 @@ CONTAINS
            ( cusolver_handle, m, n, da, lda, lwork )
 #elif defined(THORNADO_LA_ROCM)
 #elif defined(THORNADO_LA_ONEMKL)
-    !$OMP DISPATCH
+    !!$OMP DISPATCH
     CALL DGELS &
            ( trans, m, n, nrhs, a, lda, b, ldb, work, lwork, info )
-    !$OMP TARGET UPDATE FROM( work(1) )
+    !!$OMP TARGET UPDATE FROM( work(1) )
     lwork = INT( work(1) )
 #elif defined(THORNADO_LA_MAGMA)
     CALL magma_dgels_gpu &
@@ -1107,9 +1108,11 @@ CONTAINS
 
       END IF
 #elif defined(THORNADO_LA_ONEMKL)
-      !$OMP DISPATCH
+      !!$OMP DISPATCH
+      !$OMP TARGET UPDATE FROM(a(1:lda,1:n), b(1:ldb,1:nrhs))
       CALL DGELS &
              ( trans, m, n, nrhs, a, lda, b, ldb, work, lwork, info )
+      !$OMP TARGET UPDATE TO(a(1:lda,1:n), b(1:ldb,1:nrhs))
 #elif defined(THORNADO_LA_MAGMA)
       CALL magma_dgels_gpu &
              ( itrans, m, n, nrhs, da, lda, db, ldb, hwork, lwork, info )
@@ -1263,7 +1266,8 @@ CONTAINS
       !CALL rocblasCheck( rocblas_dnrm2( rocblas_handle, n, dx, incx, xnorm ) )
       CALL hipblasCheck( hipblasDnrm2( hipblas_handle, n, dx, incx, hxnorm ) )
 #elif defined(THORNADO_LA_ONEMKL)
-      !$OMP DISPATCH
+      !!$OMP DISPATCH
+      !$OMP TARGET UPDATE FROM(x(1:n))
       xnorm = DNRM2( n, x, incx )
 #elif defined(THORNADO_LA_MAGMA)
       xnorm = magma_dnrm2( n, dx, incx, magma_queue )

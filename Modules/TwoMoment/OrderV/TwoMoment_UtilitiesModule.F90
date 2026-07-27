@@ -419,10 +419,10 @@ CONTAINS
     ( N, G_d_1, G_d_2, G_d_3, D, I_u_1, I_u_2, I_u_3, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, PositionIndexZ, nIterations_Option )
 
-    REAL(DP), DIMENSION(:), INTENT(in)  :: N, G_d_1, G_d_2, G_d_3
+    REAL(DP), DIMENSION(:), INTENT(inout)  :: N, G_d_1, G_d_2, G_d_3
     REAL(DP), DIMENSION(:), INTENT(out) :: D, I_u_1, I_u_2, I_u_3
-    REAL(DP), DIMENSION(:), INTENT(in)  :: V_u_1, V_u_2, V_u_3
-    REAL(DP), DIMENSION(:), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:), INTENT(inout)  :: V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:), INTENT(inout)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     INTEGER,  DIMENSION(:), INTENT(in)  :: PositionIndexZ
     INTEGER,  DIMENSION(:), INTENT(out), OPTIONAL :: nIterations_Option
 
@@ -733,10 +733,10 @@ CONTAINS
 
     LOGICAL,  DIMENSION(:), INTENT(in) :: MASK
     INTEGER,                INTENT(in) :: k
-    REAL(DP), DIMENSION(:), INTENT(in) :: Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3
-    REAL(DP), DIMENSION(:), INTENT(in) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:), INTENT(in) :: V_u_1, V_u_2, V_u_3
-    REAL(DP), DIMENSION(:), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:), INTENT(inout) :: Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3
+    REAL(DP), DIMENSION(:), INTENT(inout) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:), INTENT(inout) :: V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:), INTENT(inout) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     INTEGER,  DIMENSION(:), INTENT(in) :: PositionIndexZ
 
     INTEGER  :: ierr
@@ -1516,13 +1516,13 @@ CONTAINS
 
     INTEGER,  INTENT(in)  :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(inout)  :: &
       GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
          1:nGF)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(inout)  :: &
       CF(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
          1:nCF)
-    REAL(DP), INTENT(in)  :: &
+    REAL(DP), INTENT(inout)  :: &
       CR(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
          iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(out) :: &
