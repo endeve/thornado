@@ -1,11 +1,11 @@
 ## Makefile definitions for Frontier with CCE compiler
 
 C       = CC
-FORTRAN = ftn -hlist=a
+FORTRAN = ftn
 FLINKER = ftn
 
 DEBUG    = -g -G0 -O0 -K trap=fp
-OPTIMIZE = -G2
+OPTIMIZE =
 
 SUFFIX_f90 =
 

@@ -1822,11 +1822,11 @@ CONTAINS
             = GR(iNodeX,iZ2,iZ3,iZ4,iGR_I3,iS) &
                 + W2(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS)
 
-          CALL EulerianEnergyMoments( PR(iNodeX,iZ1,iZ2,iZ3,iZ4,iPR_D,iS),     &
-                                      PR(iNodeX,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS),    &
-                                      PR(iNodeX,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS),    &
-                                      PR(iNodeX,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS),    &
-                                      AR(iNodeX,iZ1,iZ2,iZ3,iZ4,iAR_F,iS),     &
+          CALL EulerianEnergyMoments( PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS),     &
+                                      PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS),    &
+                                      PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS),    &
+                                      PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS),    &
+                                      AR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iAR_F,iS),     &
                                       PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1),       &
                                       PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2),       &
                                       PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3),       &

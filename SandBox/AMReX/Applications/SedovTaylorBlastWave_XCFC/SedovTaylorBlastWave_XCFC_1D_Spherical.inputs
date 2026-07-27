@@ -23,6 +23,7 @@ thornado.iCycleW = -1
 thornado.CheckpointFileNameRoot = "SedovTaylorBlastWave_XCFC.chk"
 thornado.dt_chk    = 1.1e2
 thornado.iCycleChk = -1
+thornado.iCheckpointsFields_uGF = 1
 
 thornado.nNodes = 2
 

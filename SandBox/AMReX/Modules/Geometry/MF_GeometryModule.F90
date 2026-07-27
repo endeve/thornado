@@ -236,6 +236,7 @@ CONTAINS
 
       CALL ApplyBoundaryConditions_Geometry_MF_X1( iLevel, MF_uGF )
       CALL ApplyBoundaryConditions_Geometry_MF_X2( iLevel, MF_uGF )
+      CALL ApplyBoundaryConditions_Geometry_MF_X3( iLevel, MF_uGF )
 
     END IF
 
@@ -531,6 +532,74 @@ CONTAINS
 #endif
 
   END SUBROUTINE ApplyBoundaryConditions_Geometry_MF_X2
+
+
+  SUBROUTINE ApplyBoundaryConditions_Geometry_MF_X3 &
+    ( iLevel, MF_uGF )
+
+    INTEGER             , INTENT(in)    :: iLevel
+    TYPE(amrex_multifab), INTENT(inout) :: MF_uGF
+
+    TYPE(amrex_box)    :: BX
+    TYPE(amrex_mfiter) :: MFI
+
+    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
+
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL &
+    !$OMP PRIVATE( BX, MFI, uGF, iX_B0, iX_E0, iX_B1, iX_E1 )
+#endif
+
+    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
+
+    DO WHILE( MFI % next() )
+
+      uGF => MF_uGF % DataPtr( MFI )
+
+      BX = MFI % tilebox()
+
+      iX_B0 = BX % lo
+      iX_E0 = BX % hi
+      iX_B1 = iX_B0 - swX
+      iX_E1 = iX_E0 + swX
+
+      ! --- Lower boundary ---
+
+      IF( iX_B0(3) .EQ. amrex_geom(iLevel) % domain % lo( 3 ) )THEN
+
+        IF( bcX(3) .EQ. 02 )THEN
+
+          CALL ApplyBoundaryConditions_Geometry_X3_Inner_Homogeneous &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
+        END IF
+
+      END IF !  Lower boundary
+
+      ! --- Higher boundary ---
+
+      IF( iX_E0(3) .EQ. amrex_geom(iLevel) % domain % hi( 3 ) )THEN
+
+        IF( bcX(3) .EQ. 02 )THEN
+
+          CALL ApplyBoundaryConditions_Geometry_X3_Outer_Homogeneous &
+                 ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
+        END IF
+
+      END IF ! Higher boundary
+
+    END DO
+
+    CALL amrex_mfiter_destroy( MFI )
+
+#if defined( THORNADO_OMP )
+    !$OMP END PARALLEL
+#endif
+
+  END SUBROUTINE ApplyBoundaryConditions_Geometry_MF_X3
 
 
   SUBROUTINE ApplyBoundaryConditions_Geometry_X1_Inner_Homogeneous &
@@ -1020,6 +1089,66 @@ CONTAINS
     END DO
 
   END SUBROUTINE ApplyBoundaryConditions_Geometry_X2_Outer_Reflecting
+
+
+  SUBROUTINE ApplyBoundaryConditions_Geometry_X3_Inner_Homogeneous &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
+    INTEGER , INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: uGF(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER :: iNX, iX1, iX2, iGF, iX_B(3), iX_E(3)
+
+    iX_B = iX_B0 - swX_GF
+    iX_E = iX_E0 + swX_GF
+
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iGF  = 1      , nGF
+    DO iX2  = iX_B(2), iX_E(2)
+    DO iX1  = iX_B(1), iX_E(1)
+    DO iNX  = 1      , nDOFX
+
+      uGF(iX1,iX2,iX_B0(3)-1,nDOFX*(iGF-1)+iNX) &
+        = uGF(iX1,iX2,iX_B0(3),nDOFX*(iGF-1)+iNX)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ApplyBoundaryConditions_Geometry_X3_Inner_Homogeneous
+
+
+  SUBROUTINE ApplyBoundaryConditions_Geometry_X3_Outer_Homogeneous &
+    ( iX_B0, iX_E0, iX_B1, iX_E1, uGF )
+
+    INTEGER , INTENT(in)    :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    REAL(DP), INTENT(inout) :: uGF(iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+
+    INTEGER :: iNX, iX1, iX2, iGF, iX_B(3), iX_E(3)
+
+    iX_B = iX_B0 - swX_GF
+    iX_E = iX_E0 + swX_GF
+
+#if defined( THORNADO_OMP )
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iGF  = 1      , nGF
+    DO iX2  = iX_B(2), iX_E(2)
+    DO iX1  = iX_B(1), iX_E(1)
+    DO iNX  = 1      , nDOFX
+
+      uGF(iX1,iX2,iX_E0(3)+1,nDOFX*(iGF-1)+iNX) &
+        = uGF(iX1,iX2,iX_E0(3),nDOFX*(iGF-1)+iNX)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ApplyBoundaryConditions_Geometry_X3_Outer_Homogeneous
 
 
 END MODULE MF_GeometryModule

@@ -124,10 +124,12 @@ CONTAINS
     Timer_Opacity_ES                     = Zero
     Timer_Opacity_NES                    = Zero
     Timer_Opacity_Pair                   = Zero
+    Timer_Opacity_NuPair                 = Zero
     Timer_Opacity_Brem                   = Zero
 
     Timer_OpacityRate_NES                = Zero
     Timer_OpacityRate_Pair               = Zero
+    Timer_OpacityRate_NuPair             = Zero
     Timer_OpacityRate_Brem               = Zero
 
     Timer_TCI                            = Zero

@@ -12,8 +12,8 @@ thornado.iCycleD = 10
 thornado.dt_wrt  = 4.0e-3
 thornado.dt_chk  = 4.2e-1
 
-thornado.PlotFileNameRoot        = "RiemannProblem2D_Sod.plt"
-thornado.CheckpointFileNameRoot  = "RiemannProblem2D_Sod.chk"
+thornado.PlotFileNameRoot        = "RiemannProblem2D_Sod.plt."
+thornado.CheckpointFileNameRoot  = "RiemannProblem2D_Sod.chk."
 thornado.TallyFileNameRoot_Euler = "RiemannProblem2D_Sod.Tally"
 
 thornado.bcX         = 02 02 01

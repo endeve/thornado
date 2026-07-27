@@ -60,7 +60,7 @@ CONTAINS
     CALL Initialize_Poseidon &
            ( FEM_Degree_Option            = MAX( 1, nNodes - 1 ),      &
              L_Limit_Option               = 0,                         &
-             Source_NE                    = nX,                        &
+             Source_NE_Option             = nX,                        &
              Domain_Edge_Option           = [ xL(1), xR(1) ],          &
              Source_NQ                    = nNodesX,                   &
              Source_xL                    = [ -Half, +Half ],          &

@@ -533,31 +533,31 @@ CONTAINS
 
     BaryonicMass_Change &
       = BaryonicMass_Interior &
-          - BaryonicMass_Initial    + BaryonicMass_OffGrid
+          - ( BaryonicMass_Initial    + BaryonicMass_OffGrid )
 
     EulerMomentumX1_Change &
       = EulerMomentumX1_Interior &
-          - EulerMomentumX1_Initial + EulerMomentumX1_OffGrid
+          - ( EulerMomentumX1_Initial + EulerMomentumX1_OffGrid )
 
     EulerMomentumX2_Change &
       = EulerMomentumX2_Interior &
-          - EulerMomentumX2_Initial + EulerMomentumX2_OffGrid
+          - ( EulerMomentumX2_Initial + EulerMomentumX2_OffGrid )
 
     EulerMomentumX3_Change &
       = EulerMomentumX3_Interior &
-          - EulerMomentumX3_Initial + EulerMomentumX3_OffGrid
+          - ( EulerMomentumX3_Initial + EulerMomentumX3_OffGrid )
 
     EulerEnergy_Change &
       = EulerEnergy_Interior &
-          - EulerEnergy_Initial     + EulerEnergy_OffGrid
+          - ( EulerEnergy_Initial     + EulerEnergy_OffGrid )
 
     ElectronNumber_Change &
       = ElectronNumber_Interior &
-          - ElectronNumber_Initial  + ElectronNumber_OffGrid
+          - ( ElectronNumber_Initial  + ElectronNumber_OffGrid )
 
     ADMMass_Change &
       = ADMMass_Interior &
-          - ADMMass_Initial + ADMMass_OffGrid
+          - ( ADMMass_Initial         + ADMMass_OffGrid )
 
     IF( WriteTally ) &
       CALL WriteTally_Euler( Time(0) )
