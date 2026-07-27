@@ -198,7 +198,7 @@ CONTAINS
 
   SUBROUTINE ComputeSoundSpeedFromPrimitive_IDEAL_Vector( D, Ev, Ne, Cs )
 
-    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
+    REAL(DP), INTENT(inout)  :: D(:), Ev(:), Ne(:)
     REAL(DP), INTENT(out) :: Cs(:)
 
     Cs = SQRT( Gamma_IDEAL * ( Gamma_IDEAL - One ) * Ev &

@@ -657,7 +657,7 @@ CONTAINS
   SUBROUTINE ComputeSoundSpeedFromPrimitive_Vector &
     ( D, Ev, Ne, Cs )
 
-    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
+    REAL(DP), INTENT(inout)  :: D(:), Ev(:), Ne(:)
     REAL(DP), INTENT(out) :: Cs(:)
 
 #ifdef MICROPHYSICS_WEAKLIB
@@ -743,7 +743,7 @@ CONTAINS
   SUBROUTINE ComputeThermodynamicStates_Primitive_Vector &
     ( D, T, Y, Ev, Em, Ne )
 
-    REAL(DP), INTENT(in)  :: D (:), T (:), Y (:)
+    REAL(DP), INTENT(inout)  :: D (:), T (:), Y (:)
     REAL(DP), INTENT(out) :: Ev(:), Em(:), Ne(:)
 
 #ifdef MICROPHYSICS_WEAKLIB
@@ -780,7 +780,7 @@ CONTAINS
   SUBROUTINE ComputeThermodynamicStates_Auxiliary_Vector &
     ( D, Ev, Ne, T, Em, Y )
 
-    REAL(DP), INTENT(in)  :: D(:), Ev(:), Ne(:)
+    REAL(DP), INTENT(inout)  :: D(:), Ev(:), Ne(:)
     REAL(DP), INTENT(out) :: T(:), Em(:), Y (:)
 
 #ifdef MICROPHYSICS_WEAKLIB
