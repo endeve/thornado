@@ -2276,7 +2276,7 @@ CONTAINS
 
     REAL(DP) :: EdgeEnergyCubed, Beta
     REAL(DP) :: A(3,3), Lambda(3)
-    REAL(DP) :: k_uu(3,3), S_uu_11, S_uu_22, S_uu_33, E
+    REAL(DP) :: k_uu(3,3), S_uu_11, S_uu_22, S_uu_33, E, IdlnAlpha
     REAL(DP) :: Flux_K(nCR), dFlux_K(nPR)
     REAL(DP) :: Flux_L(nCR), uPR_L(nPR)
     REAL(DP) :: Flux_R(nCR), uPR_R(nPR)
@@ -2819,11 +2819,11 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( iX_K, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iS, Flux_K, &
-    !$OMP          Beta, dFlux_K, k_uu, S_uu_11, S_uu_22, S_uu_33, E )
+    !$OMP          Beta, dFlux_K, k_uu, S_uu_11, S_uu_22, S_uu_33, E, IdlnAlpha )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( iX_K, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iS, Flux_K, &
-    !$ACC          Beta, dFlux_K, k_uu, S_uu_11, S_uu_22, S_uu_33, E ) &
+    !$ACC          Beta, dFlux_K, k_uu, S_uu_11, S_uu_22, S_uu_33, E, IdlnAlpha ) &
     !$ACC PRESENT( dV_u_dX1, dV_u_dX2, dV_u_dX3, uV1_K, uV2_K, uV3_K, &
     !$ACC          dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
     !$ACC          dAlpha_dX1, dAlpha_dX2, dAlpha_dX3, &
@@ -2834,7 +2834,7 @@ CONTAINS
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( iX_K, iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iS, Flux_K, &
-    !$OMP          Beta, dFlux_K, k_uu, S_uu_11, S_uu_22, S_uu_33, E )
+    !$OMP          Beta, dFlux_K, k_uu, S_uu_11, S_uu_22, S_uu_33, E, IdlnAlpha )
 #endif
     DO iZ_K = 1, nNodesZ_K
 
@@ -2890,6 +2890,10 @@ CONTAINS
                               Gm_dd_22_K(iX_K) * uI2_K(iZ_K) * uV2_K(iX_K) + &
                               Gm_dd_33_K(iX_K) * uI3_K(iZ_K) * uV3_K(iX_K))
 
+      IdlnAlpha = (uI1_K(iZ_K) * dAlpha_dX1(iNodeX,iZ2,iZ3,iZ4) &
+                +  uI2_K(iZ_K) * dAlpha_dX2(iNodeX,iZ2,iZ3,iZ4) &
+                +  uI3_K(iZ_K) * dAlpha_dX3(iNodeX,iZ2,iZ3,iZ4)) / Alpha_K(iX_K)
+                
       dFlux_K(iCR_G1) &
         = + uI1_K(iZ_K) * dV_d_dX1(iNodeX,1,iZ2,iZ3,iZ4) &
           + uI2_K(iZ_K) * dV_d_dX2(iNodeX,1,iZ2,iZ3,iZ4) &
@@ -2897,7 +2901,9 @@ CONTAINS
           - S_uu_11 * dGm_dd_dX1(iNodeX,1,iZ2,iZ3,iZ4) &
           - S_uu_22 * dGm_dd_dX1(iNodeX,2,iZ2,iZ3,iZ4) &
           - S_uu_33 * dGm_dd_dX1(iNodeX,3,iZ2,iZ3,iZ4) &
-          + E * dAlpha_dX1(iNodeX,iZ2,iZ3,iZ4) / Alpha_K(iX_K)
+          + E * dAlpha_dX1(iNodeX,iZ2,iZ3,iZ4) / Alpha_K(iX_K)  &
+          - IdlnAlpha * Gm_dd_11_K(iX_K) * uV1_K(iX_K)
+
 
       dFlux_K(iCR_G2) &
         = + uI1_K(iZ_K) * dV_d_dX1(iNodeX,2,iZ2,iZ3,iZ4) &
@@ -2906,7 +2912,8 @@ CONTAINS
           - S_uu_11 * dGm_dd_dX2(iNodeX,1,iZ2,iZ3,iZ4) &
           - S_uu_22 * dGm_dd_dX2(iNodeX,2,iZ2,iZ3,iZ4) &
           - S_uu_33 * dGm_dd_dX2(iNodeX,3,iZ2,iZ3,iZ4) &
-          + E * dAlpha_dX2(iNodeX,iZ2,iZ3,iZ4) / Alpha_K(iX_K)
+          + E * dAlpha_dX2(iNodeX,iZ2,iZ3,iZ4) / Alpha_K(iX_K) &
+          - IdlnAlpha * Gm_dd_22_K(iX_K) * uV2_K(iX_K)
 
       dFlux_K(iCR_G3) &
         = + uI1_K(iZ_K) * dV_d_dX1(iNodeX,3,iZ2,iZ3,iZ4) &
@@ -2915,7 +2922,8 @@ CONTAINS
           - S_uu_11 * dGm_dd_dX3(iNodeX,1,iZ2,iZ3,iZ4) &
           - S_uu_22 * dGm_dd_dX3(iNodeX,2,iZ2,iZ3,iZ4) &
           - S_uu_33 * dGm_dd_dX3(iNodeX,3,iZ2,iZ3,iZ4) &
-          + E * dAlpha_dX3(iNodeX,iZ2,iZ3,iZ4) / Alpha_K(iX_K)
+          + E * dAlpha_dX3(iNodeX,iZ2,iZ3,iZ4) / Alpha_K(iX_K) &
+          - IdlnAlpha * Gm_dd_33_K(iX_K) * uV3_K(iX_K)
 
       Beta &
         = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4)  &
