@@ -134,11 +134,14 @@ CONTAINS
                  ConstantDensity_Option, &
                  Angle_Option, RiemannProblemName_Option, &
                  MMBlastWaveB0_Option, MMBlastWavePhi_Option, &
-                 OTScaleFactor_Option, SDInitialField_Option, &
+                 OTScaleFactor_Option, &
+                 SDICFileName_Option, &
+                 SDInitialField_Option, &
                  EvolveOnlyMagnetic_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: AdvectionProfile_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: RiemannProblemName_Option
+    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: SDICFileName_Option
     LOGICAL,          INTENT(in), OPTIONAL :: EvolveOnlyMagnetic_Option
     LOGICAL,          INTENT(in), OPTIONAL :: SmoothProfile_Option
     LOGICAL,          INTENT(in), OPTIONAL :: ConstantDensity_Option
@@ -157,6 +160,7 @@ CONTAINS
     REAL(DP)          :: MMBlastWavePhi = 0.0_DP
     REAL(DP)          :: OTScaleFactor = 100
     REAL(DP)          :: SDInitialField = 2.00d+13
+    CHARACTER(256)    :: SDICFileName = ''
 
     LOGICAL           :: EvolveOnlyMagnetic = .FALSE.
 
@@ -188,6 +192,9 @@ CONTAINS
 
     IF( PRESENT( SDInitialField_Option ) ) &
       SDInitialField = SDInitialField_Option
+
+    IF( PRESENT( SDICFileName_Option ) ) &
+      SDICFileName = SDICFileName_Option
 
     IF( PRESENT( EvolveOnlyMagnetic_Option ) ) &
       EvolveOnlyMagnetic = EvolveOnlyMagnetic_Option
@@ -243,7 +250,7 @@ CONTAINS
 
       CASE( 'ShearingDisk' )
 
-        CALL InitializeFields_ShearingDisk( SDInitialField, EvolveOnlyMagnetic )
+        CALL InitializeFields_ShearingDisk( SDICFileName, SDInitialField, EvolveOnlyMagnetic )
 
       CASE( 'MagneticRotor2D' )
 
@@ -1969,12 +1976,11 @@ CONTAINS
   END SUBROUTINE InitializeFields_OrszagTang2D
 
 
-  SUBROUTINE InitializeFields_ShearingDisk( SDInitialField, EvolveOnlyMagnetic )
+  SUBROUTINE InitializeFields_ShearingDisk( SDICFileName, SDInitialField, EvolveOnlyMagnetic )
 
+    CHARACTER(256), INTENT(in) :: SDICFileName
     REAL(DP), INTENT(in) :: SDInitialField
     LOGICAL,  INTENT(in) :: EvolveOnlyMagnetic
-
-    CHARACTER(256) :: FileName
 
     INTEGER(HID_T) :: FILE_ID
     INTEGER        :: nX
@@ -1984,13 +1990,11 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: PressureArr(:), DensityArr(:), V3Arr(:), &
                              AlphaArr(:), PsiArr(:), X1Arr(:)
 
-    FileName = "../../../Workflow/MHD/ShearingDisk/GR_LR_diffrot.h5"
-
     ! --- Populate arrays ---
 
     CALL H5OPEN_F( HDFERR )
 
-    CALL H5FOPEN_F( TRIM( FileName ), H5F_ACC_RDONLY_F, FILE_ID, HDFERR )
+    CALL H5FOPEN_F( TRIM( SDICFileName ), H5F_ACC_RDONLY_F, FILE_ID, HDFERR )
 
     nX = 10000
 
