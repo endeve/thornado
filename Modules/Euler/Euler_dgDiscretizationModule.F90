@@ -2388,7 +2388,7 @@ CONTAINS
         = Eigenvalues_Euler &
             ( pV3_R     (iNX_X), &
               Cs_R             , &
-              Gm_dd_22_F(iNX_X), &
+              Gm_dd_33_F(iNX_X), &
               pV1_R     (iNX_X), &
               pV2_R     (iNX_X), &
               pV3_R     (iNX_X), &
