@@ -223,9 +223,10 @@ CONTAINS
   END SUBROUTINE InitializeTally_TwoMoment_MF
 
 
-  !SUBROUTINE FinalizeTally_TwoMoment_MF
+  SUBROUTINE FinalizeTally_TwoMoment_MF
+  !Return nothing for now? Not sure, have to cvheck
 
-  !END SUBROUTINE FinalizeTally_TwoMoment_MF
+  END SUBROUTINE FinalizeTally_TwoMoment_MF
 
 
   SUBROUTINE ComputeTally_TwoMoment_MF &
