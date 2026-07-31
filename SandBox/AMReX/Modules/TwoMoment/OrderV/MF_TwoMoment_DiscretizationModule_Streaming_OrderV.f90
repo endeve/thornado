@@ -9,13 +9,15 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_OrderV
     amrex_geometry
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_reduce_sum
-  USE amrex_multifab_module,  ONLY: &
-    amrex_multifab, &
+  USE amrex_multifab_module, ONLY: &
+    amrex_multifab, amrex_imultifab, &
     amrex_multifab_build, amrex_multifab_destroy, &
-    amrex_mfiter, &
-    amrex_mfiter_build, amrex_mfiter_destroy
+    amrex_mfiter, amrex_mfiter_build, amrex_mfiter_destroy
+  USE MaskModule, ONLY: &
+    CreateFineMask, DestroyFineMask, IsNotLeafElement
   USE amrex_amrcore_module, ONLY: &
-    amrex_get_finest_level
+    amrex_get_finest_level, &
+    amrex_geom
 
 
   ! --- thornado Modules ---
@@ -24,20 +26,23 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_OrderV
   USE GeometryFieldsModule,     ONLY: &
     nGF
   USE GeometryFieldsModuleE,     ONLY: &
-    nGE, uGE
+    nGE, uGE, iGE_Ep2, iGE_Ep3
   USE RadiationFieldsModule,            ONLY: &
-    nCR, nSpecies
+    nCR, nSpecies, LeptonNumber
   USE FluidFieldsModule,            ONLY: &
     nCF
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit, &
     OffGridFlux_TwoMoment  
   USE MeshModule, ONLY: &
-    MeshX
+    MeshX, MeshE
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, &
     nDOFX_X2, &
     nDOFX_X3
+  USE ReferenceElementModule, ONLY: &
+    nDOF_X1, nDOF_X2, &
+    Weights_X1, Weights_X2
 
 
   ! --- Local Modules ---
@@ -55,7 +60,8 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_OrderV
     nLevels, &
     UseTiling, &
     nE, &
-    UseFluxCorrection_TwoMoment
+    UseFluxCorrection_TwoMoment, &
+    IsPeriodic
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -99,6 +105,18 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_OrderV
 
   PUBLIC :: ComputeIncrement_TwoMoment_Explicit_MF
 
+  REAL(amrex_real) :: OffGridFlux_TwoMoment_X1_Inner(2*nCR)
+  REAL(amrex_real) :: OffGridFlux_TwoMoment_X1_Outer(2*nCR)
+  REAL(amrex_real) :: OffGridFlux_TwoMoment_X2_Inner(2*nCR)
+  REAL(amrex_real) :: OffGridFlux_TwoMoment_X2_Outer(2*nCR)
+  REAL(amrex_real) :: OffGridFlux_TwoMoment_X3_Inner(2*nCR)
+  REAL(amrex_real) :: OffGridFlux_TwoMoment_X3_Outer(2*nCR)
+  REAL(amrex_real) :: OffGridFlux_TwoMoment_E       (2*nCR)
+  REAL(amrex_real) :: OffGridFlux_TwoMoment_X1_Inner_All(2*nCR)
+  REAL(amrex_real) :: OffGridFlux_TwoMoment_X1_Outer_All(2*nCR)
+  REAL(amrex_real) :: OffGridFlux_TwoMoment_X2_Inner_All(2*nCR)
+  REAL(amrex_real) :: OffGridFlux_TwoMoment_X2_Outer_All(2*nCR)
+
 
 CONTAINS
 
@@ -116,6 +134,9 @@ CONTAINS
 
     TYPE(amrex_mfiter) :: MFI
     TYPE(amrex_box)    :: BX
+
+    TYPE(amrex_imultifab) :: iMF_FineMask
+    INTEGER, CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
 
     REAL(amrex_real), CONTIGUOUS, POINTER :: uGF (:,:,:,:)
     REAL(amrex_real), CONTIGUOUS, POINTER :: uCF (:,:,:,:)
@@ -141,7 +162,7 @@ CONTAINS
     TYPE(amrex_multifab) :: SurfaceFluxes(1:nDimsX)
     INTEGER              :: iDimX, nGhost(nDimsX), nDOFX_X(3)
     LOGICAL              :: Nodal(3)
-    INTEGER              :: nComp_Flux, iFd, iNodeE, iNodeZ, iS, nFields, nS, nDOFZ_X
+    INTEGER              :: nComp_Flux, iFd, iNodeE, iNodeZ, iS, nFields, nS, nDOFZ_X, nFields_PerFaceDOF
 
     INTEGER :: iLevel
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iLo_MF(4)
@@ -174,6 +195,8 @@ CONTAINS
 
       CALL CreateMesh_MF( iLevel, MeshX )
 
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
+
       
       nDOFX_X(1) = nDOFX_X1
       nDOFX_X(2) = nDOFX_X2
@@ -181,7 +204,9 @@ CONTAINS
 
       nGhost = 0
 
-      nComp_Flux = ( iE_E0 - iE_B0 + 1 ) * nCR * nSpecies * nDOFE * nDOFX_X1
+      !nComp_Flux = ( iE_E0 - iE_B0 + 1 ) * nCR * nSpecies * nDOFE * nDOFX_X1
+      nFields_PerFaceDOF = ( iE_E0 - iE_B0 + 1 ) * nCR * nSpecies * nDOFE
+      nComp_Flux         = nFields_PerFaceDOF * nDOFX_X1
 
       DO iDimX = 1, nDimsX
 
@@ -208,6 +233,7 @@ CONTAINS
         uSurfaceFlux_X1 => SurfaceFluxes(1) % DataPtr( MFI )
         IF( nDimsX .GT. 1 ) uSurfaceFlux_X2 => SurfaceFluxes(2) % DataPtr( MFI )
         IF( nDimsX .GT. 2 ) uSurfaceFlux_X3 => SurfaceFluxes(3) % DataPtr( MFI )
+        FineMask => iMF_FineMask % DataPtr( MFI )
 
         iLo_MF = LBOUND( uGF )
 
@@ -285,13 +311,13 @@ CALL AllocateArray_Z &
 ! SurfaceFlux_X2: faces in X2 direction
 CALL AllocateArray_Z &
        ( [ 1, iZ_B0(1), iZ_B0(2), iZ_B0(3), iZ_B0(4), 1, 1 ], &
-         [ nDOFX_X2, iZ_E0(1), iZ_E0(2), iZ_E0(3)+1, iZ_E0(4), nComp_Flux, nSpecies ], &
+         [ nDOFE *nDOFX_X2, iZ_E0(1), iZ_E0(2), iZ_E0(3)+1, iZ_E0(4), nCR, nSpecies ], &
          SurfaceFlux_X2 )
 
 ! SurfaceFlux_X3: faces in X3 direction
 CALL AllocateArray_Z &
        ( [ 1, iZ_B0(1), iZ_B0(2), iZ_B0(3), iZ_B0(4), 1, 1 ], &
-         [ nDOFX_X3, iZ_E0(1), iZ_E0(2), iZ_E0(3), iZ_E0(4)+1, nComp_Flux, nSpecies ], &
+         [ nDOFE *nDOFX_X3, iZ_E0(1), iZ_E0(2), iZ_E0(3), iZ_E0(4)+1, nCR, nSpecies ], &
          SurfaceFlux_X3 )
 
         CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
@@ -311,16 +337,26 @@ CALL AllocateArray_Z &
                ( iX_B0, iX_E0, iX_B1, iX_E1, C, Edge_Map )
 
        CALL ComputeIncrement_TwoMoment_Explicit &
-              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, SuppressBC_Option = .TRUE., SurfaceFlux_X1_Option = SurfaceFlux_X1 )
+              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, SuppressBC_Option = .TRUE., &
+                SurfaceFlux_X1_Option = SurfaceFlux_X1, SurfaceFlux_X2_Option = SurfaceFlux_X2 )
 
- DO i=1,nCR
-        OffGridFlux_TwoMoment_MF(i,iLevel) &
-          = OffGridFlux_TwoMoment_MF(i,iLevel) &
-          + OffGridFlux_TwoMoment(i)  
-        OffGridFlux_TwoMoment_MF(i+nCR,iLevel) &
-          = OffGridFlux_TwoMoment_MF(i+nCR,iLevel) &
-          + OffGridFlux_TwoMoment(i+nCR)  
-END DO
+        CALL ComputeOffGridFlux_MF &
+               ( iZ_B0, iZ_E0, &
+                 FineMask(iX_B0(1):iX_E0(1), &
+                          iX_B0(2):iX_E0(2), &
+                          iX_B0(3):iX_E0(3), 1:1), &
+                 SurfaceFlux_X1, SurfaceFlux_X2 )
+
+        CALL IncrementOffGridTally_TwoMoment( iLevel, iX_B0, iX_E0 )
+
+ !DO i=1,nCR
+ !       OffGridFlux_TwoMoment_MF(i,iLevel) &
+ !         = OffGridFlux_TwoMoment_MF(i,iLevel) &
+ !         + OffGridFlux_TwoMoment(i)  
+ !       OffGridFlux_TwoMoment_MF(i+nCR,iLevel) &
+ !         = OffGridFlux_TwoMoment_MF(i+nCR,iLevel) &
+ !         + OffGridFlux_TwoMoment(i+nCR)  
+ !END DO
 
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
@@ -415,6 +451,40 @@ END DO
 END DO
 
 
+IF( nDimsX .GT. 1 )THEN
+DO iS = 1, nSpecies
+DO iZ1 = iZ_B0(1), iZ_E0(1)
+DO iNodeE = 1, nDOFE
+DO iCR = 1, nCR
+DO iNodeX = 1, nDOFX_X2
+DO iZ4 = iZ_B0(4), iZ_E0(4)
+DO iZ3 = iZ_B0(3), iZ_E0(3)+1
+DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+  iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+
+  iField = ( iS  - 1 ) * nCR * ( iE_E0 - iE_B0 + 1 ) * nDOFE &
+         + ( iCR - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFE &
+         + ( iZ1 - iE_B0 ) * nDOFE &
+         + iNodeE
+
+  iComp = ( iField - 1 ) * nDOFX_X2 + iNodeX
+
+  uSurfaceFlux_X2( iZ2, iZ3, iZ4, iComp ) &
+    = SurfaceFlux_X2( iNodeZ, iZ1, iZ2, iZ3, iZ4, iCR, iS )
+
+END DO
+END DO
+END DO
+END DO
+END DO
+END DO
+END DO
+END DO
+END IF
+
+
+
 !PRINT *, '=== Surface Flux Debug ==='
 !PRINT *, 'iLevel = ', iLevel
 !PRINT *, 'SurfaceFlux_X1 min/max = ', MINVAL(SurfaceFlux_X1), MAXVAL(SurfaceFlux_X1)
@@ -425,12 +495,12 @@ END DO
 
 CALL DeallocateArray_Z &
        ( [ 1, iZ_B0(1), iZ_B0(2), iZ_B0(3), iZ_B0(4), 1, 1 ], &
-         [ nDOFX_X3, iZ_E0(1), iZ_E0(2), iZ_E0(3), iZ_E0(4), nCR, nSpecies ], &
+         [ nDOFE *nDOFX_X3, iZ_E0(1), iZ_E0(2), iZ_E0(3), iZ_E0(4)+1, nCR, nSpecies ], &
          SurfaceFlux_X3 )
 
 CALL DeallocateArray_Z &
        ( [ 1, iZ_B0(1), iZ_B0(2), iZ_B0(3), iZ_B0(4), 1, 1 ], &
-         [ nDOFX_X2, iZ_E0(1), iZ_E0(2), iZ_E0(3), iZ_E0(4), nCR, nSpecies ], &
+         [ nDOFE *nDOFX_X2, iZ_E0(1), iZ_E0(2), iZ_E0(3)+1, iZ_E0(4), nCR, nSpecies ], &
          SurfaceFlux_X2 )
 
 CALL DeallocateArray_Z &
@@ -499,16 +569,28 @@ IF( UseFluxCorrection_TwoMoment )THEN
   !PRINT *, 'nDOFX_X1 * nComp_Flux = ', nDOFX_X1 * nComp_Flux
   !PRINT *, '==========================='
 
-  IF( iLevel .GT. 0 ) THEN
+  !IF( iLevel .GT. 0 ) THEN
     !PRINT *, 'Calling FineAdd_DG at level ', iLevel
-    CALL FluxRegister_TwoMoment(iLevel) &
+    !CALL FluxRegister_TwoMoment(iLevel) &
+    !       % FineAdd_DG &
+    !          ( SurfaceFluxes, nComp_Flux, FaceRatio, &
+    !            nDOFX_X1, nDOFX_X2, nDOFX_X3, &
+    !            nFineX_X1, nFineX_X2, nFineX_X3, &
+    !            WeightsX_X1c, WeightsX_X2c, WeightsX_X3c, &
+    !            vpLX_X1_Refined, vpLX_X2_Refined, vpLX_X3_Refined )
+  IF( iLevel .GT. 0 ) THEN
+      CALL FluxRegister_TwoMoment(iLevel) &
            % FineAdd_DG &
-              ( SurfaceFluxes, nComp_Flux, FaceRatio, &
+              ( SurfaceFluxes, nFields_PerFaceDOF, FaceRatio, &
                 nDOFX_X1, nDOFX_X2, nDOFX_X3, &
                 nFineX_X1, nFineX_X2, nFineX_X3, &
                 WeightsX_X1c, WeightsX_X2c, WeightsX_X3c, &
                 vpLX_X1_Refined, vpLX_X2_Refined, vpLX_X3_Refined )
+  !END IF
   END IF
+
+
+  !END IF
   IF( iLevel .LT. amrex_get_finest_level() ) THEN
   !PRINT *, '=== Before CrseInit_DG ==='
   !PRINT *, 'Accessing FluxRegister at level = ', iLevel+1
@@ -516,11 +598,22 @@ IF( UseFluxCorrection_TwoMoment )THEN
   !PRINT *, 'SurfaceFluxes ncomp = ', SurfaceFluxes(1) % ncomp()
   !PRINT *, 'nDOFX_X1, nDOFX_X2, nDOFX_X3', nDOFX_X1, nDOFX_X2, nDOFX_X3
   !PRINT *, '==========================='
+
+!PRINT *, '[flux reg] built with ncomp=', nComp_Flux
+!    CALL FluxRegister_TwoMoment(iLevel+1) &
+!           % CrseInit_DG &
+!               ( SurfaceFluxes, nComp_Flux, &
+!                 nDOFX_X1, nDOFX_X2, nDOFX_X3, &
+!                 WeightsX_X1c, WeightsX_X2c, WeightsX_X3c )
+
+
+!PRINT *, '[flux reg] built with ncomp=', nComp_Flux
     CALL FluxRegister_TwoMoment(iLevel+1) &
            % CrseInit_DG &
-               ( SurfaceFluxes, nComp_Flux, &
+               ( SurfaceFluxes, nFields_PerFaceDOF, &
                  nDOFX_X1, nDOFX_X2, nDOFX_X3, &
                  WeightsX_X1c, WeightsX_X2c, WeightsX_X3c )
+
 
 END IF
 
@@ -532,6 +625,7 @@ DO iDimX = 1, nDimsX
 END DO
 
       CALL DestroyMesh_MF( MeshX )
+      CALL DestroyFineMask( iMF_FineMask )
 
     END DO
 
@@ -554,12 +648,225 @@ END DO
 
       CALL amrex_multifab_destroy( MF_Permute(i) )
 
+    !CALL AverageDown( MF_uGF, MF_uCR )
+
 
     END DO
     
 
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Explicit_MF
+
+  SUBROUTINE ComputeOffGridFlux_MF &
+    ( iZ_B0, iZ_E0, FineMask, SurfaceFlux_X1, SurfaceFlux_X2 )
+ 
+    INTEGER, INTENT(in) :: iZ_B0(4), iZ_E0(4)
+    INTEGER, INTENT(in) :: FineMask(iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:)
+    REAL(amrex_real), INTENT(in) :: &
+      SurfaceFlux_X1(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+    REAL(amrex_real), INTENT(in) :: &
+      SurfaceFlux_X2(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+ 
+    OffGridFlux_TwoMoment_X1_Inner = Zero
+    OffGridFlux_TwoMoment_X1_Outer = Zero
+    OffGridFlux_TwoMoment_X2_Inner = Zero
+    OffGridFlux_TwoMoment_X2_Outer = Zero
+    OffGridFlux_TwoMoment_X3_Inner = Zero
+    OffGridFlux_TwoMoment_X3_Outer = Zero
+ 
+    OffGridFlux_TwoMoment_X1_Inner_All = Zero
+    OffGridFlux_TwoMoment_X1_Outer_All = Zero
+    OffGridFlux_TwoMoment_X2_Inner_All = Zero
+    OffGridFlux_TwoMoment_X2_Outer_All = Zero
+ 
+    CALL FaceSum_X1 &
+           ( iZ_B0, iZ_E0, iZ_B0(2)  , iZ_B0(2), FineMask, SurfaceFlux_X1, &
+             OffGridFlux_TwoMoment_X1_Inner_All, &
+             OffGridFlux_TwoMoment_X1_Inner )
+ 
+    CALL FaceSum_X1 &
+           ( iZ_B0, iZ_E0, iZ_E0(2)+1, iZ_E0(2), FineMask, SurfaceFlux_X1, &
+             OffGridFlux_TwoMoment_X1_Outer_All, &
+             OffGridFlux_TwoMoment_X1_Outer )
+ 
+    IF( nDimsX .GT. 1 )THEN
+ 
+      CALL FaceSum_X2 &
+             ( iZ_B0, iZ_E0, iZ_B0(3)  , iZ_B0(3), FineMask, SurfaceFlux_X2, &
+               OffGridFlux_TwoMoment_X2_Inner_All, &
+               OffGridFlux_TwoMoment_X2_Inner )
+ 
+      CALL FaceSum_X2 &
+             ( iZ_B0, iZ_E0, iZ_E0(3)+1, iZ_E0(3), FineMask, SurfaceFlux_X2, &
+               OffGridFlux_TwoMoment_X2_Outer_All, &
+               OffGridFlux_TwoMoment_X2_Outer )
+ 
+    END IF
+ 
+ 
+    OffGridFlux_TwoMoment_E &
+      = OffGridFlux_TwoMoment &
+          - ( OffGridFlux_TwoMoment_X1_Inner_All &
+                - OffGridFlux_TwoMoment_X1_Outer_All ) &
+          - ( OffGridFlux_TwoMoment_X2_Inner_All &
+                - OffGridFlux_TwoMoment_X2_Outer_All )
+ 
+  END SUBROUTINE ComputeOffGridFlux_MF
+ 
+ 
+  SUBROUTINE FaceSum_X1 &
+    ( iZ_B0, iZ_E0, iZ2_Face, iZ2_Cell, FineMask, SurfaceFlux, F_All, F_Leaf )
+ 
+    INTEGER, INTENT(in) :: iZ_B0(4), iZ_E0(4), iZ2_Face, iZ2_Cell
+    INTEGER, INTENT(in) :: FineMask(iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:)
+    REAL(amrex_real), INTENT(in) :: &
+      SurfaceFlux(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+    REAL(amrex_real), INTENT(out) :: F_All(1:2*nCR), F_Leaf(1:2*nCR)
+ 
+    INTEGER          :: iCR, iS, iZ1, iZ3, iZ4, iNodeZ_X, iNodeE
+    LOGICAL          :: Leaf
+    REAL(amrex_real) :: w, Flux, dN, dE
+ 
+    F_All  = Zero
+    F_Leaf = Zero
+ 
+    ASSOCIATE &
+      ( dZ1 => MeshE % Width, dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
+ 
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+ 
+      Leaf = .NOT. IsNotLeafElement( FineMask(iZ2_Cell,iZ3,iZ4,1) )
+ 
+      DO iS  = 1, nSpecies
+      DO iCR = 1, nCR
+      DO iZ1 = iZ_B0(1), iZ_E0(1)
+      DO iNodeZ_X = 1, nDOF_X1
+ 
+        iNodeE = MOD( iNodeZ_X - 1, nDOFE ) + 1
+ 
+        w    = dZ1(iZ1) * dZ3(iZ3) * dZ4(iZ4) * Weights_X1(iNodeZ_X)
+        Flux = SurfaceFlux(iNodeZ_X,iZ1,iZ2_Face,iZ3,iZ4,iCR,iS)
+ 
+        dN = LeptonNumber(iS) * w * uGE(iNodeE,iZ1,iGE_Ep2) * Flux
+        dE =                    w * uGE(iNodeE,iZ1,iGE_Ep3) * Flux
+ 
+        F_All(iCR)     = F_All(iCR)     + dN
+        F_All(iCR+nCR) = F_All(iCR+nCR) + dE
+ 
+        IF( Leaf )THEN
+          F_Leaf(iCR)     = F_Leaf(iCR)     + dN
+          F_Leaf(iCR+nCR) = F_Leaf(iCR+nCR) + dE
+        END IF
+ 
+      END DO
+      END DO
+      END DO
+      END DO
+ 
+    END DO
+    END DO
+ 
+    END ASSOCIATE
+ 
+  END SUBROUTINE FaceSum_X1
+ 
+ 
+  SUBROUTINE FaceSum_X2 &
+    ( iZ_B0, iZ_E0, iZ3_Face, iZ3_Cell, FineMask, SurfaceFlux, F_All, F_Leaf )
+ 
+    INTEGER, INTENT(in) :: iZ_B0(4), iZ_E0(4), iZ3_Face, iZ3_Cell
+    INTEGER, INTENT(in) :: FineMask(iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:)
+    REAL(amrex_real), INTENT(in) :: &
+      SurfaceFlux(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
+    REAL(amrex_real), INTENT(out) :: F_All(1:2*nCR), F_Leaf(1:2*nCR)
+ 
+    INTEGER          :: iCR, iS, iZ1, iZ2, iZ4, iNodeZ_X, iNodeE
+    LOGICAL          :: Leaf
+    REAL(amrex_real) :: w, Flux, dN, dE
+ 
+    F_All  = Zero
+    F_Leaf = Zero
+ 
+    ASSOCIATE &
+      ( dZ1 => MeshE % Width, dZ2 => MeshX(1) % Width, dZ4 => MeshX(3) % Width )
+ 
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+ 
+      Leaf = .NOT. IsNotLeafElement( FineMask(iZ2,iZ3_Cell,iZ4,1) )
+ 
+      DO iS  = 1, nSpecies
+      DO iCR = 1, nCR
+      DO iZ1 = iZ_B0(1), iZ_E0(1)
+      DO iNodeZ_X = 1, nDOF_X2
+ 
+        iNodeE = MOD( iNodeZ_X - 1, nDOFE ) + 1
+ 
+        w    = dZ1(iZ1) * dZ2(iZ2) * dZ4(iZ4) * Weights_X2(iNodeZ_X)
+        Flux = SurfaceFlux(iNodeZ_X,iZ1,iZ2,iZ3_Face,iZ4,iCR,iS)
+ 
+        dN = LeptonNumber(iS) * w * uGE(iNodeE,iZ1,iGE_Ep2) * Flux
+        dE =                    w * uGE(iNodeE,iZ1,iGE_Ep3) * Flux
+ 
+        F_All(iCR)     = F_All(iCR)     + dN
+        F_All(iCR+nCR) = F_All(iCR+nCR) + dE
+ 
+        IF( Leaf )THEN
+          F_Leaf(iCR)     = F_Leaf(iCR)     + dN
+          F_Leaf(iCR+nCR) = F_Leaf(iCR+nCR) + dE
+        END IF
+ 
+      END DO
+      END DO
+      END DO
+      END DO
+ 
+    END DO
+    END DO
+ 
+    END ASSOCIATE
+ 
+  END SUBROUTINE FaceSum_X2
+
+
+  SUBROUTINE IncrementOffGridTally_TwoMoment( iLevel, iX_B0, iX_E0 )
+
+
+    INTEGER, INTENT(in) :: iLevel
+    INTEGER, INTENT(in) :: iX_B0(3), iX_E0(3)
+
+    OffGridFlux_TwoMoment_MF(:,iLevel) &
+      = OffGridFlux_TwoMoment_MF(:,iLevel) + OffGridFlux_TwoMoment_E
+
+    IF( .NOT. IsPeriodic(1) )THEN
+      IF( iX_B0(1) .EQ. amrex_geom(iLevel) % domain % lo(1) ) &
+        OffGridFlux_TwoMoment_MF(:,iLevel) &
+          = OffGridFlux_TwoMoment_MF(:,iLevel) + OffGridFlux_TwoMoment_X1_Inner
+      IF( iX_E0(1) .EQ. amrex_geom(iLevel) % domain % hi(1) ) &
+        OffGridFlux_TwoMoment_MF(:,iLevel) &
+          = OffGridFlux_TwoMoment_MF(:,iLevel) - OffGridFlux_TwoMoment_X1_Outer
+    END IF
+
+    IF( .NOT. IsPeriodic(2) )THEN
+      IF( iX_B0(2) .EQ. amrex_geom(iLevel) % domain % lo(2) ) &
+        OffGridFlux_TwoMoment_MF(:,iLevel) &
+          = OffGridFlux_TwoMoment_MF(:,iLevel) + OffGridFlux_TwoMoment_X2_Inner
+      IF( iX_E0(2) .EQ. amrex_geom(iLevel) % domain % hi(2) ) &
+        OffGridFlux_TwoMoment_MF(:,iLevel) &
+          = OffGridFlux_TwoMoment_MF(:,iLevel) - OffGridFlux_TwoMoment_X2_Outer
+    END IF
+
+    IF( .NOT. IsPeriodic(3) )THEN
+      IF( iX_B0(3) .EQ. amrex_geom(iLevel) % domain % lo(3) ) &
+        OffGridFlux_TwoMoment_MF(:,iLevel) &
+          = OffGridFlux_TwoMoment_MF(:,iLevel) + OffGridFlux_TwoMoment_X3_Inner
+      IF( iX_E0(3) .EQ. amrex_geom(iLevel) % domain % hi(3) ) &
+        OffGridFlux_TwoMoment_MF(:,iLevel) &
+          = OffGridFlux_TwoMoment_MF(:,iLevel) - OffGridFlux_TwoMoment_X3_Outer
+    END IF
+
+  END SUBROUTINE IncrementOffGridTally_TwoMoment
 
 
 END MODULE  MF_TwoMoment_DiscretizationModule_Streaming_OrderV

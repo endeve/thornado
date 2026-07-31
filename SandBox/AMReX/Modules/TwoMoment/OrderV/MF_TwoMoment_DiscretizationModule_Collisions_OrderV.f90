@@ -62,7 +62,7 @@ MODULE  MF_TwoMoment_DiscretizationModule_Collisions_OrderV
   USE MF_EdgeMapModule, ONLY: &
     ConstructEdgeMap, &
     EdgeMap
-
+USE MF_TwoMoment_OpacityModule, ONLY: LoadOpacities_GlobalSlot
 USE MF_KindModule, ONLY: &
     Zero
 USE MF_UtilitiesModule
@@ -255,25 +255,26 @@ CONTAINS
 
         CALL ApplyBoundaryConditions_TwoMoment_MF &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, Edge_Map )
+        CALL LoadOpacities_GlobalSlot( iLevel, MFI, iZ_B1, iZ_E1 )
 
         !PRINT *, 'U_R', U_R(:,:,:,:,:,1,:)
         !PRINT *, '****************************************************'
         !PRINT *, 'F', U_F (:,:,:,:,1)
 
-        IF( ALLOCATED( uOP ) ) DEALLOCATE( uOP )
-        ALLOCATE( uOP(1:nDOFZ, &
-                      iZ_B1(1):iZ_E1(1), &
-                      iZ_B1(2):iZ_E1(2), &
-                      iZ_B1(3):iZ_E1(3), &
-                      iZ_B1(4):iZ_E1(4), &
-                      1:nOP, 1:nSpecies) )
-        uOP(:,:,:,:,:,iOP_D0,   :) = D_0
-        uOP(:,:,:,:,:,iOP_Chi,  :) = Chi
-        uOP(:,:,:,:,:,iOP_Sigma,:) = Sigma
+        !IF( ALLOCATED( uOP ) ) DEALLOCATE( uOP )
+        !ALLOCATE( uOP(1:nDOFZ, &
+        !              iZ_B1(1):iZ_E1(1), &
+        !              iZ_B1(2):iZ_E1(2), &
+        !              iZ_B1(3):iZ_E1(3), &
+        !              iZ_B1(4):iZ_E1(4), &
+        !              1:nOP, 1:nSpecies) )
+        !uOP(:,:,:,:,:,iOP_D0,   :) = D_0
+        !uOP(:,:,:,:,:,iOP_Chi,  :) = Chi
+        !uOP(:,:,:,:,:,iOP_Sigma,:) = Sigma
 
         CALL ComputeIncrement_TwoMoment_Implicit &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, uGE, GX, U_F, dU_F, U_R, dU_R )
-        PRINT *, 'MADE IT PAST IMPLICIT'
+
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
                  iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, duCR, dU_R )

@@ -4,10 +4,13 @@ MODULE MF_TwoMoment_TallyModule
 
   USE amrex_box_module, ONLY: &
     amrex_box
-  USE amrex_geometry_module, ONLY: &
-    amrex_geometry
+  USE amrex_parmparse_module, ONLY: &
+    amrex_parmparse, &
+    amrex_parmparse_build, &
+    amrex_parmparse_destroy
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
+    amrex_imultifab, &
     amrex_mfiter, &
     amrex_mfiter_build, &
     amrex_mfiter_destroy
@@ -17,68 +20,49 @@ MODULE MF_TwoMoment_TallyModule
 
   ! --- thornado Modules ---
 
+  USE ProgramHeaderModule, ONLY: &
+    nDOFX, nDOFE, nDOFZ, &
+    iE_B0, iE_E0
+  USE ReferenceElementModule, ONLY: &
+    Weights_q
   USE UnitsModule, ONLY: &
     UnitsActive, &
     SpeedOfLight, &
     PlanckConstant, &
-    MeV,            &
-    UnitsDisplay
-  USE ProgramHeaderModule, ONLY: &
-    nDOFX, &
-    nNodesX, &
-    nDimsX
-  USE ReferenceElementModuleX, ONLY: &
-    WeightsX_q
-  USE ReferenceElementModule, ONLY: &
-    Weights_q
-  USE UnitsModule, ONLY: &
     UnitsDisplay
   USE MeshModule, ONLY: &
     MeshType, &
-    CreateMesh, &
-    DestroyMesh
+    MeshE
   USE GeometryFieldsModule, ONLY: &
-    nGF, &
-    iGF_SqrtGm, &
-    iGF_Gm_dd_11, &
-    iGF_Gm_dd_22, &
-    iGF_Gm_dd_33, &
-    CoordinateSystem
-  USE FluidFieldsModule, ONLY: &
-    nCF, &
-    iCF_D, &
-    iCF_E
-  USE GeometryFieldsModuleE,     ONLY: &
-    nGE, uGE, iGE_Ep2, iGE_Ep3
-  USE RadiationFieldsModule, ONLY: &
-    nSpecies, LeptonNumber, &
-    nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
-  USE Euler_UtilitiesModule_Relativistic, ONLY: &
-    ComputePrimitive_Euler_Relativistic
+    nGF, iGF_SqrtGm, &
+    iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+  USE GeometryFieldsModuleE, ONLY: &
+    uGE, iGE_Ep2, iGE_Ep3
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
-  USE ProgramHeaderModule,      ONLY: &
-    swX, nDOFX, nDOFZ, swE, nDOFE, iE_B0, iE_E0, iE_B1, iE_E1, nNodesE
+  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
+    ComputePrimitive_Euler_NonRelativistic
+  USE RadiationFieldsModule, ONLY: &
+    nSpecies, LeptonNumber, &
+    nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
+
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
-    DP, &
-    Zero, &
-    FourPi, &
-    One,   &
-    Half
+    DP, Zero, One, FourPi
   USE InputParsingModule, ONLY: &
-    nX, &
     nLevels, &
     ProgramName, &
-    xL, &
-    xR, &
-    eL, &
-    eR, &
     nE, &
-    UseTiling, &
-    zoomE
+    UseTiling
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
+  USE MaskModule, ONLY: &
+    CreateFineMask, &
+    DestroyFineMask, &
+    IsNotLeafElement
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
     amrex2thornado_Z, &
@@ -86,184 +70,94 @@ MODULE MF_TwoMoment_TallyModule
     DeallocateArray_X, &
     AllocateArray_Z, &
     DeallocateArray_Z
-  USE MF_MeshModule, ONLY: &
-    CreateMesh_MF, &
-    DestroyMesh_MF
-
-
-
 
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: InitializeTally_TwoMoment_MF
   PUBLIC :: ComputeTally_TwoMoment_MF
-  PUBLIC :: FinalizeTally_TwoMoment_MF
   PUBLIC :: IncrementOffGridTally_TwoMoment_MF
+  PUBLIC :: IncrementPositivityLimiterTally_TwoMoment_MF
+  PUBLIC :: FinalizeTally_TwoMoment_MF
 
-  LOGICAL :: SuppressTally
+  LOGICAL :: SuppressTally_TwoMoment
 
+  INTEGER, PARAMETER :: SL = 256
 
   REAL(DP) :: hc3
 
+  CHARACTER(SL)    :: NeutrinoLeptonNumber_FileName
+  REAL(DP), PUBLIC :: NeutrinoLeptonNumber_Initial
+  REAL(DP), PUBLIC :: NeutrinoLeptonNumber_OffGrid
+  REAL(DP), PUBLIC :: NeutrinoLeptonNumber_Interior
+  REAL(DP)         :: NeutrinoLeptonNumber_Change
 
-  CHARACTER(256) :: NeutrinoLeptonNumber_FileName
-  REAL(DP), ALLOCATABLE :: NeutrinoLeptonNumber_Interior(:)
-  REAL(DP), ALLOCATABLE :: NeutrinoLeptonNumber_Initial(:)
-  REAL(DP), ALLOCATABLE :: NeutrinoLeptonNumber_OffGrid(:)
-  REAL(DP), ALLOCATABLE :: NeutrinoLeptonNumber_Change(:)
+  CHARACTER(SL)    :: NeutrinoEnergy_FileName
+  REAL(DP), PUBLIC :: NeutrinoEnergy_Initial
+  REAL(DP), PUBLIC :: NeutrinoEnergy_OffGrid
+  REAL(DP)         :: NeutrinoEnergy_Interior
+  REAL(DP)         :: NeutrinoEnergy_Change
 
-  CHARACTER(256) :: NeutrinoEnergy_FileName
-  REAL(DP), ALLOCATABLE :: NeutrinoEnergy_Interior(:)
-  REAL(DP), ALLOCATABLE :: NeutrinoEnergy_Initial(:)
-  REAL(DP), ALLOCATABLE :: NeutrinoEnergy_Offgrid(:)
-  REAL(DP), ALLOCATABLE :: NeutrinoEnergy_Change(:)
+  CHARACTER(SL)    :: NeutrinoMomentumX1_FileName
+  REAL(DP), PUBLIC :: NeutrinoMomentumX1_Initial
+  REAL(DP), PUBLIC :: NeutrinoMomentumX1_OffGrid
+  REAL(DP)         :: NeutrinoMomentumX1_Interior
+  REAL(DP)         :: NeutrinoMomentumX1_Change
 
+  CHARACTER(SL)    :: NeutrinoMomentumX2_FileName
+  REAL(DP), PUBLIC :: NeutrinoMomentumX2_Initial
+  REAL(DP), PUBLIC :: NeutrinoMomentumX2_OffGrid
+  REAL(DP)         :: NeutrinoMomentumX2_Interior
+  REAL(DP)         :: NeutrinoMomentumX2_Change
 
-  CHARACTER(256) :: Momentum_FileName
-  REAL(DP), ALLOCATABLE :: Momentum_X1(:)
-  REAL(DP), ALLOCATABLE :: Momentum_X2(:)
-  REAL(DP), ALLOCATABLE :: Momentum_X3(:)
+  CHARACTER(SL)    :: NeutrinoMomentumX3_FileName
+  REAL(DP), PUBLIC :: NeutrinoMomentumX3_Initial
+  REAL(DP), PUBLIC :: NeutrinoMomentumX3_OffGrid
+  REAL(DP)         :: NeutrinoMomentumX3_Interior
+  REAL(DP)         :: NeutrinoMomentumX3_Change
+
+  REAL(DP), PUBLIC :: NeutrinoEnergy_PL
+  REAL(DP), PUBLIC :: NeutrinoMomentumX1_PL
+  REAL(DP), PUBLIC :: NeutrinoMomentumX2_PL
+  REAL(DP), PUBLIC :: NeutrinoMomentumX3_PL
 
 CONTAINS
 
 
   SUBROUTINE InitializeTally_TwoMoment_MF &
-    ( SuppressTally_Option, BaseFileName_Option )
+    ( InitializeFromCheckpoint_Option )
 
-    LOGICAL,  INTENT(in),         OPTIONAL :: &
-      SuppressTally_Option
-    CHARACTER(LEN=*), INTENT(in), OPTIONAL :: &
-      BaseFileName_Option
+    LOGICAL, INTENT(in), OPTIONAL :: InitializeFromCheckpoint_Option
 
+    CHARACTER(:), ALLOCATABLE :: TallyFileNameRoot_TwoMoment
+    CHARACTER(SL)             :: FileNameRoot
+    CHARACTER(SL)             :: TimeLabel
+    LOGICAL                   :: InitializeFromCheckpoint
+    TYPE(amrex_parmparse)     :: PP
 
-    CHARACTER(256) :: BaseFileName
-    INTEGER        :: FileUnit
+    InitializeFromCheckpoint = .FALSE.
+    IF( PRESENT( InitializeFromCheckpoint_Option ) ) &
+      InitializeFromCheckpoint = InitializeFromCheckpoint_Option
 
-    CHARACTER(256) :: TimeLabel
-    CHARACTER(256) :: LeptonNumber_InteriorLabel
-    CHARACTER(256) :: LeptonNumber_InitialLabel
-    CHARACTER(256) :: LeptonNumber_OffgridLabel
-    CHARACTER(256) :: LeptonNumber_ChangeLabel
+    TallyFileNameRoot_TwoMoment = TRIM( ProgramName )
+    SuppressTally_TwoMoment     = .FALSE.
+    CALL amrex_parmparse_build( PP, 'thornado' )
+      CALL PP % query( 'TallyFileNameRoot_TwoMoment', &
+                        TallyFileNameRoot_TwoMoment )
+      CALL PP % query( 'SuppressTally_TwoMoment', &
+                        SuppressTally_TwoMoment )
+    CALL amrex_parmparse_destroy( PP )
 
-    CHARACTER(256) :: Energy_InteriorLabel
-    CHARACTER(256) :: Energy_InitialLabel
-    CHARACTER(256) :: Energy_OffGridLabel
-    CHARACTER(256) :: Energy_ChangeLabel
+    !IF( amrex_parallel_ioprocessor() ) &
+    !  WRITE(*,'(A,L2,2x,A)') 'InitializeTally_TwoMoment_MF: Suppress =', &
+    !    SuppressTally_TwoMoment, TRIM( TallyFileNameRoot_TwoMoment )
 
-    CHARACTER(256) :: Momentum1Label
-    CHARACTER(256) :: Momentum2Label
-    CHARACTER(256) :: Momentum3Label
-
-    SuppressTally = .FALSE.
-    IF( PRESENT( SuppressTally_Option ) ) &
-      SuppressTally = SuppressTally_Option
-
-    IF( SuppressTally ) RETURN
-
+    IF( SuppressTally_TwoMoment ) RETURN
 
     IF( UnitsActive )THEN
-
       hc3 = ( PlanckConstant * SpeedOfLight )**3
-
     ELSE
-
       hc3 = One
-
-    END IF
-
-
-
-    ALLOCATE(NeutrinoLeptonNumber_Interior(0:nLevels-1) )
-    ALLOCATE(NeutrinoLeptonNumber_Initial (0:nLevels-1) )
-    ALLOCATE(NeutrinoLeptonNumber_OffGrid (0:nLevels-1) )
-    ALLOCATE(NeutrinoLeptonNumber_Change  (0:nLevels-1) )
-
-    ALLOCATE( NeutrinoEnergy_Interior(0:nLevels-1) )
-    ALLOCATE( NeutrinoEnergy_Initial (0:nLevels-1) )
-    ALLOCATE( NeutrinoEnergy_Offgrid (0:nLevels-1) )
-    ALLOCATE( NeutrinoEnergy_Change  (0:nLevels-1) )
-
-    ALLOCATE( Momentum_X1(0:nLevels-1) )
-    ALLOCATE( Momentum_X2(0:nLevels-1) )
-    ALLOCATE( Momentum_X3(0:nLevels-1) )
-
-    IF( amrex_parallel_ioprocessor() )THEN
-
-      BaseFileName = ''
-      IF( PRESENT( BaseFileName_Option ) ) &
-        BaseFileName = TRIM( BaseFileName_Option )
-
-      BaseFileName = TRIM( BaseFileName ) // TRIM( ProgramName )
-
-      ! --- Neutrino Lepton Number ---
-
-      NeutrinoLeptonNumber_FileName &
-        = TRIM( BaseFileName ) // '.Tally_NeutrinoLeptonNumber.dat'
-
-      TimeLabel     &
-        = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
-      LeptonNumber_InteriorLabel &
-        = 'LeptonNumber_Interior'
-      LeptonNumber_OffgridLabel &
-        = 'LeptonNumber_OffGrid'
-      LeptonNumber_InitialLabel &
-        = 'LeptonNumber_Initial'
-      LeptonNumber_ChangeLabel &
-        = 'LeptonNumber_Change'
-
-
-      OPEN( NEWUNIT = FileUnit, FILE = TRIM(NeutrinoLeptonNumber_FileName ) )
-
-      WRITE(FileUnit,'(5(A25,x))') &
-        TRIM( TimeLabel ), TRIM( LeptonNumber_InteriorLabel ), TRIM( LeptonNumber_OffGridLabel ), &
-        TRIM( LeptonNumber_InitialLabel ), TRIM( LeptonNumber_ChangeLabel )
-      CLOSE( FileUnit )
-
-      ! --- Neutrino Energy  ---
-
-      NeutrinoEnergy_FileName &
-        = TRIM( BaseFileName ) // '.Tally_NeutrinoEnergy.dat'
-
-      TimeLabel     &
-        = 'Time ['     // TRIM( UnitsDisplay % TimeLabel ) // ']'
-      Energy_InteriorLabel &
-        = 'Energy_Interior [' // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
-      Energy_OffGridLabel &
-        = 'Energy_OffGrid [' // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
-      Energy_InitialLabel &
-        = 'Energy_Initial [' // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
-      Energy_ChangeLabel &
-        = 'Energy_Change [' // TRIM( UnitsDisplay % EnergyGlobalLabel ) // ']'
-
-
-      OPEN( NEWUNIT = FileUnit, FILE = TRIM(NeutrinoEnergy_FileName ) )
-
-      WRITE(FileUnit,'(5(A25,x))') &
-        TRIM( TimeLabel ), TRIM( Energy_InteriorLabel ), TRIM( Energy_OffGridLabel ), &
-        TRIM( Energy_InitialLabel ), TRIM( Energy_ChangeLabel )
-      CLOSE( FileUnit )
-
-
-      ! --- Momentum ---
-
-      Momentum_FileName &
-        = TRIM( BaseFileName ) // '.Tally_Momentum.dat'
-      Momentum1Label &
-        = 'Momentum_1'
-      Momentum2Label &
-        = 'Momentum_2'
-      Momentum3Label &
-        = 'Momentum_3'
-
-      OPEN( NEWUNIT = FileUnit, FILE = TRIM(Momentum_FileName ) )
-
-      WRITE(FileUnit,'(5(A25,x))') &
-        TRIM( TimeLabel ), &
-        TRIM( Momentum1Label ), TRIM( Momentum2Label ), TRIM( Momentum3Label )
-
-      CLOSE( FileUnit )
-
     END IF
 
     NeutrinoLeptonNumber_Interior = Zero
@@ -271,116 +165,154 @@ CONTAINS
     NeutrinoLeptonNumber_OffGrid  = Zero
     NeutrinoLeptonNumber_Change   = Zero
 
+    NeutrinoEnergy_Interior = Zero
+    NeutrinoEnergy_Initial  = Zero
+    NeutrinoEnergy_OffGrid  = Zero
+    NeutrinoEnergy_Change   = Zero
 
-    NeutrinoEnergy_Interior       = Zero
-    NeutrinoEnergy_Initial        = Zero
-    NeutrinoEnergy_OffGrid        = Zero
-    NeutrinoEnergy_Change         = Zero
+    NeutrinoMomentumX1_Interior = Zero
+    NeutrinoMomentumX1_Initial  = Zero
+    NeutrinoMomentumX1_OffGrid  = Zero
+    NeutrinoMomentumX1_Change   = Zero
 
+    NeutrinoMomentumX2_Interior = Zero
+    NeutrinoMomentumX2_Initial  = Zero
+    NeutrinoMomentumX2_OffGrid  = Zero
+    NeutrinoMomentumX2_Change   = Zero
 
+    NeutrinoMomentumX3_Interior = Zero
+    NeutrinoMomentumX3_Initial  = Zero
+    NeutrinoMomentumX3_OffGrid  = Zero
+    NeutrinoMomentumX3_Change   = Zero
 
-    Momentum_X1                   = Zero
-    Momentum_X2                   = Zero
-    Momentum_X3                   = Zero
+    NeutrinoEnergy_PL     = Zero
+    NeutrinoMomentumX1_PL = Zero
+    NeutrinoMomentumX2_PL = Zero
+    NeutrinoMomentumX3_PL = Zero
+
+    FileNameRoot = TRIM( TallyFileNameRoot_TwoMoment )
+
+    NeutrinoLeptonNumber_FileName &
+      = TRIM( FileNameRoot ) // '_NeutrinoLeptonNumber.dat'
+    NeutrinoEnergy_FileName &
+      = TRIM( FileNameRoot ) // '_NeutrinoEnergy.dat'
+    NeutrinoMomentumX1_FileName &
+      = TRIM( FileNameRoot ) // '_NeutrinoMomentumX1.dat'
+    NeutrinoMomentumX2_FileName &
+      = TRIM( FileNameRoot ) // '_NeutrinoMomentumX2.dat'
+    NeutrinoMomentumX3_FileName &
+      = TRIM( FileNameRoot ) // '_NeutrinoMomentumX3.dat'
+
+    IF( InitializeFromCheckpoint ) RETURN
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      TimeLabel = 'Time [' // TRIM( UnitsDisplay % TimeLabel ) // ']'
+
+      CALL CreateFile( NeutrinoLeptonNumber_FileName, '', TimeLabel )
+
+      CALL CreateFile( NeutrinoEnergy_FileName, &
+                       UnitsDisplay % EnergyGlobalLabel, TimeLabel )
+
+      CALL CreateFile( NeutrinoMomentumX1_FileName, '', TimeLabel )
+      CALL CreateFile( NeutrinoMomentumX2_FileName, '', TimeLabel )
+      CALL CreateFile( NeutrinoMomentumX3_FileName, '', TimeLabel )
+
+    END IF
 
   END SUBROUTINE InitializeTally_TwoMoment_MF
 
 
+  !SUBROUTINE FinalizeTally_TwoMoment_MF
 
-  SUBROUTINE FinalizeTally_TwoMoment_MF
-
-    IF( SuppressTally ) RETURN
-
-    DEALLOCATE( NeutrinoLeptonNumber_Interior )
-    DEALLOCATE( NeutrinoLeptonNumber_Initial )
-    DEALLOCATE( NeutrinoLeptonNumber_OffGrid )
-    DEALLOCATE( NeutrinoLeptonNumber_Change  )
-
-    DEALLOCATE( NeutrinoEnergy_Interior )
-    DEALLOCATE( NeutrinoEnergy_Initial  )
-    DEALLOCATE( NeutrinoEnergy_Offgrid  )
-    DEALLOCATE( NeutrinoEnergy_Change   )
-
-    DEALLOCATE( Momentum_X1 )
-    DEALLOCATE( Momentum_X2 )
-    DEALLOCATE( Momentum_X3 )
-
-  END SUBROUTINE FinalizeTally_TwoMoment_MF
+  !END SUBROUTINE FinalizeTally_TwoMoment_MF
 
 
   SUBROUTINE ComputeTally_TwoMoment_MF &
-    ( GEOM, MF_uGF, MF_uCF, MF_uCR, Time, SetInitialValues_Option, Verbose_Option )
+    ( Time, MF_uGF, MF_uCF, MF_uCR, SetInitialValues_Option, &
+      WriteTally_Option, Verbose_Option )
 
-    TYPE(amrex_geometry), INTENT(in) :: GEOM  (0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:nLevels-1)
-    TYPE(amrex_multifab), INTENT(in) :: MF_uCR(0:nLevels-1)
-
-
-    REAL(DP),             INTENT(in) :: Time
+    REAL(DP),             INTENT(in) :: Time  (0:)
+    TYPE(amrex_multifab), INTENT(in) :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(in) :: MF_uCF(0:)
+    TYPE(amrex_multifab), INTENT(in) :: MF_uCR(0:)
     LOGICAL,              INTENT(in), OPTIONAL :: SetInitialValues_Option
+    LOGICAL,              INTENT(in), OPTIONAL :: WriteTally_Option
     LOGICAL,              INTENT(in), OPTIONAL :: Verbose_Option
 
+    LOGICAL :: SetInitialValues, WriteTally, Verbose
 
-    LOGICAL :: SetInitialValues
-    LOGICAL :: Verbose
+    INTEGER :: iLevel
+    INTEGER :: iX_B0(3), iX_E0(3)
+    INTEGER :: iZ_B0(4), iZ_E0(4)
+    INTEGER :: iLo_GF(4), iLo_CF(4), iLo_CR(4)
 
-    INTEGER                       :: iX_B0(3), iX_E0(3), iZ_B0(4), iZ_E0(4)
-    INTEGER                       :: iLevel, iLo_MF(4)
-    TYPE(amrex_box)               :: BX
-    TYPE(amrex_mfiter)            :: MFI
+    TYPE(amrex_box)       :: BX
+    TYPE(amrex_mfiter)    :: MFI
+    TYPE(amrex_imultifab) :: iMF_FineMask
+    TYPE(MeshType)        :: MeshX(3)
+
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
-    REAL(DP), ALLOCATABLE         :: G(:,:,:,:,:)
-    REAL(DP), ALLOCATABLE         :: UF(:,:,:,:,:)
-    REAL(DP), ALLOCATABLE         :: U (:,:,:,:,:,:,:)
+    INTEGER,  CONTIGUOUS, POINTER :: FineMask(:,:,:,:)
 
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: M(:,:,:,:,:,:,:)
 
-    IF( SuppressTally ) RETURN
+    REAL(DP) :: dN, dE, dG1, dG2, dG3
 
+    !IF( amrex_parallel_ioprocessor() ) &
+    !  WRITE(*,'(A,L2)') 'ComputeTally_TwoMoment_MF: Suppress =', &
+    !    SuppressTally_TwoMoment
+
+    IF( SuppressTally_TwoMoment ) RETURN
 
     SetInitialValues = .FALSE.
     IF( PRESENT( SetInitialValues_Option ) ) &
       SetInitialValues = SetInitialValues_Option
 
-
+    WriteTally = .TRUE.
+    IF( PRESENT( WriteTally_Option ) ) &
+      WriteTally = WriteTally_Option
 
     Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
-
+    NeutrinoLeptonNumber_Interior = Zero
+    NeutrinoEnergy_Interior       = Zero
+    NeutrinoMomentumX1_Interior   = Zero
+    NeutrinoMomentumX2_Interior   = Zero
+    NeutrinoMomentumX3_Interior   = Zero
 
     DO iLevel = 0, nLevels-1
 
+      CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
+
+      CALL CreateMesh_MF( iLevel, MeshX )
+
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
-
-      NeutrinoLeptonNumber_Interior(iLevel) = Zero
-
-      NeutrinoEnergy_Interior(iLevel)       = Zero
-
-      Momentum_X1(iLevel)           = Zero
-      Momentum_X2(iLevel)           = Zero
-      Momentum_X3(iLevel)           = Zero
 
       DO WHILE( MFI % next() )
 
-        uGF => MF_uGF(iLevel) % DataPtr( MFI )
-        uCF => MF_uCF(iLevel) % DataPtr( MFI )
-        uCR => MF_uCR(iLevel) % DataPtr( MFI )
+        FineMask => iMF_FineMask   % DataPtr( MFI )
+        uGF      => MF_uGF(iLevel) % DataPtr( MFI )
+        uCF      => MF_uCF(iLevel) % DataPtr( MFI )
+        uCR      => MF_uCR(iLevel) % DataPtr( MFI )
 
-        iLo_MF = LBOUND( uGF )
+        iLo_GF = LBOUND( uGF )
+        iLo_CF = LBOUND( uCF )
+        iLo_CR = LBOUND( uCR )
 
         BX = MFI % tilebox()
 
         iX_B0 = BX % lo
         iX_E0 = BX % hi
 
-        iZ_B0(1) = iE_B0
-        iZ_E0(1) = iE_E0
-
-
+        iZ_B0(1)   = iE_B0
+        iZ_E0(1)   = iE_E0
         iZ_B0(2:4) = iX_B0
         iZ_E0(2:4) = iX_E0
 
@@ -389,58 +321,48 @@ CONTAINS
                  [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nGF ], &
                  G )
 
-        CALL AllocateArray_Z &
-               ( [ 1       , &
-                   iZ_B0(1), &
-                   iZ_B0(2), &
-                   iZ_B0(3), &
-                   iZ_B0(4), &
-                   1       , &
-                   1        ], &
-                 [ nDOFZ   , &
-                   iZ_E0(1), &
-                   iZ_E0(2), &
-                   iZ_E0(3), &
-                   iZ_E0(4), &
-                   nCR     , &
-                   nSpecies ], &
-                 U )
-
         CALL AllocateArray_X &
                ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
                  [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nCF ], &
-                 UF )
+                 U )
 
-        CALL amrex2thornado_X( nGF, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uGF, G )
+        CALL AllocateArray_Z &
+               ( [ 1       , iZ_B0(1), iZ_B0(2), iZ_B0(3), iZ_B0(4), &
+                   1       , 1        ], &
+                 [ nDOFZ   , iZ_E0(1), iZ_E0(2), iZ_E0(3), iZ_E0(4), &
+                   nCR     , nSpecies ], &
+                 M )
 
-        CALL amrex2thornado_X( nCF, iX_B0, iX_E0, iLo_MF, iX_B0, iX_E0, uCF, UF )
+        CALL amrex2thornado_X( nGF, iX_B0, iX_E0, iLo_GF, iX_B0, iX_E0, uGF, G )
+        CALL amrex2thornado_X( nCF, iX_B0, iX_E0, iLo_CF, iX_B0, iX_E0, uCF, U )
 
         CALL amrex2thornado_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
-                 iZ_B0, iZ_E0, iLo_MF, iZ_B0, iZ_E0, uCR, U )
+                 iZ_B0, iZ_E0, iLo_CR, iZ_B0, iZ_E0, uCR, M )
 
-        CALL ComputeTally_TwoMoment( iZ_B0, iZ_E0, G, UF, U, iLevel )
+        CALL ComputeTally_TwoMoment_Box &
+               ( iZ_B0, iZ_E0, MeshX, G, U, M, &
+                 FineMask(iX_B0(1):iX_E0(1), &
+                          iX_B0(2):iX_E0(2), &
+                          iX_B0(3):iX_E0(3), 1:1), &
+                 dN, dE, dG1, dG2, dG3 )
+
+        NeutrinoLeptonNumber_Interior = NeutrinoLeptonNumber_Interior + dN
+        NeutrinoEnergy_Interior       = NeutrinoEnergy_Interior       + dE
+        NeutrinoMomentumX1_Interior   = NeutrinoMomentumX1_Interior   + dG1
+        NeutrinoMomentumX2_Interior   = NeutrinoMomentumX2_Interior   + dG2
+        NeutrinoMomentumX3_Interior   = NeutrinoMomentumX3_Interior   + dG3
+
+        CALL DeallocateArray_Z &
+               ( [ 1       , iZ_B0(1), iZ_B0(2), iZ_B0(3), iZ_B0(4), &
+                   1       , 1        ], &
+                 [ nDOFZ   , iZ_E0(1), iZ_E0(2), iZ_E0(3), iZ_E0(4), &
+                   nCR     , nSpecies ], &
+                 M )
 
         CALL DeallocateArray_X &
                ( [ 1    , iX_B0(1), iX_B0(2), iX_B0(3), 1   ], &
                  [ nDOFX, iX_E0(1), iX_E0(2), iX_E0(3), nCF ], &
-                 UF )
-
-        CALL DeallocateArray_Z &
-               ( [ 1       , &
-                   iZ_B0(1), &
-                   iZ_B0(2), &
-                   iZ_B0(3), &
-                   iZ_B0(4), &
-                   1       , &
-                   1        ], &
-                 [ nDOFZ   , &
-                   iZ_E0(1), &
-                   iZ_E0(2), &
-                   iZ_E0(3), &
-                   iZ_E0(4), &
-                   nCR     , &
-                   nSpecies ], &
                  U )
 
         CALL DeallocateArray_X &
@@ -452,147 +374,111 @@ CONTAINS
 
       CALL amrex_mfiter_destroy( MFI )
 
-    END DO
+      CALL DestroyMesh_MF( MeshX )
 
+      CALL DestroyFineMask( iMF_FineMask )
 
+    END DO ! iLevel = 0, nLevels-1
 
+    NeutrinoLeptonNumber_Interior = FourPi * NeutrinoLeptonNumber_Interior / hc3
+    NeutrinoEnergy_Interior       = FourPi * NeutrinoEnergy_Interior       / hc3
+    NeutrinoMomentumX1_Interior   = FourPi * NeutrinoMomentumX1_Interior   / hc3
+    NeutrinoMomentumX2_Interior   = FourPi * NeutrinoMomentumX2_Interior   / hc3
+    NeutrinoMomentumX3_Interior   = FourPi * NeutrinoMomentumX3_Interior   / hc3
 
-    CALL amrex_parallel_reduce_sum( NeutrinoLeptonNumber_Interior, nLevels   )
-    CALL amrex_parallel_reduce_sum( NeutrinoEnergy_Interior, nLevels         )
-
-    CALL amrex_parallel_reduce_sum( Momentum_X1, nLevels         )
-    CALL amrex_parallel_reduce_sum( Momentum_X2, nLevels         )
-    CALL amrex_parallel_reduce_sum( Momentum_X3, nLevels         )
-
-
+    CALL amrex_parallel_reduce_sum( NeutrinoLeptonNumber_Interior )
+    CALL amrex_parallel_reduce_sum( NeutrinoEnergy_Interior       )
+    CALL amrex_parallel_reduce_sum( NeutrinoMomentumX1_Interior   )
+    CALL amrex_parallel_reduce_sum( NeutrinoMomentumX2_Interior   )
+    CALL amrex_parallel_reduce_sum( NeutrinoMomentumX3_Interior   )
 
     IF( SetInitialValues )THEN
 
-      DO iLevel = 0, nLevels-1
-
-        NeutrinoLeptonNumber_Initial(iLevel) = NeutrinoLeptonNumber_Interior(iLevel)
-        NeutrinoEnergy_Initial      (iLevel) = NeutrinoEnergy_Interior      (iLevel)
-
-      END DO
-
-    END IF
-
-
-    DO iLevel = 0, nLevels-1
-
-      NeutrinoLeptonNumber_Change(iLevel) &
-        = NeutrinoLeptonNumber_Interior(iLevel) &
-            - ( NeutrinoLeptonNumber_Initial(iLevel) + NeutrinoLeptonNumber_OffGrid(iLevel) )
-
-      NeutrinoEnergy_Change(iLevel) &
-        = NeutrinoEnergy_Interior(iLevel) &
-            - ( NeutrinoEnergy_Initial(iLevel)       + NeutrinoEnergy_OffGrid(iLevel)       )
-
-    END DO
-
-
-
-
-
-
-
-
-
-
-
-    CALL WriteTally_TwoMoment( Time )
-
-    IF( Verbose )THEN
-
-      CALL DisplayTally( Time )
+      NeutrinoLeptonNumber_Initial = NeutrinoLeptonNumber_Interior
+      NeutrinoEnergy_Initial       = NeutrinoEnergy_Interior
+      NeutrinoMomentumX1_Initial   = NeutrinoMomentumX1_Interior
+      NeutrinoMomentumX2_Initial   = NeutrinoMomentumX2_Interior
+      NeutrinoMomentumX3_Initial   = NeutrinoMomentumX3_Interior
 
     END IF
 
+    NeutrinoLeptonNumber_Change &
+      = NeutrinoLeptonNumber_Interior &
+          - ( NeutrinoLeptonNumber_Initial + NeutrinoLeptonNumber_OffGrid )
 
+    NeutrinoEnergy_Change &
+      = NeutrinoEnergy_Interior &
+          - ( NeutrinoEnergy_Initial       + NeutrinoEnergy_OffGrid )
 
+    NeutrinoMomentumX1_Change &
+      = NeutrinoMomentumX1_Interior &
+          - ( NeutrinoMomentumX1_Initial   + NeutrinoMomentumX1_OffGrid )
+
+    NeutrinoMomentumX2_Change &
+      = NeutrinoMomentumX2_Interior &
+          - ( NeutrinoMomentumX2_Initial   + NeutrinoMomentumX2_OffGrid )
+
+    NeutrinoMomentumX3_Change &
+      = NeutrinoMomentumX3_Interior &
+          - ( NeutrinoMomentumX3_Initial   + NeutrinoMomentumX3_OffGrid )
+
+    IF( WriteTally ) CALL WriteTally_TwoMoment( Time(0) )
+
+    IF( Verbose ) CALL DisplayTally( Time(0) )
 
   END SUBROUTINE ComputeTally_TwoMoment_MF
 
-  SUBROUTINE IncrementOffGridTally_TwoMoment_MF( dM )
 
-    REAL(DP), INTENT(in) :: dM(1:,0:)
+  SUBROUTINE ComputeTally_TwoMoment_Box &
+    ( iZ_B0, iZ_E0, MeshX, G, U, M, FineMask, N_Box, E_Box, G1_Box, G2_Box, G3_Box )
 
-    INTEGER :: iLevel
+    INTEGER,        INTENT(in)  :: iZ_B0(4), iZ_E0(4)
+    TYPE(MeshType), INTENT(in)  :: MeshX(3)
+    REAL(DP),       INTENT(in)  :: G(1:,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:)
+    REAL(DP),       INTENT(in)  :: U(1:,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:)
+    REAL(DP),       INTENT(in)  :: M(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):, &
+                                     iZ_B0(4):,1:,1:)
+    INTEGER,        INTENT(in)  :: FineMask(iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:)
+    REAL(DP),       INTENT(out) :: N_Box, E_Box, G1_Box, G2_Box, G3_Box
 
-    IF( SuppressTally ) RETURN
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iNodeE, iNodeX, iNodeZ
+    REAL(DP) :: d4Z, W
 
-    DO iLevel = 0, nLevels-1
+    REAL(DP) :: P(1:nDOFX, &
+                  iZ_B0(2):iZ_E0(2), &
+                  iZ_B0(3):iZ_E0(3), &
+                  iZ_B0(4):iZ_E0(4), &
+                  1:nPF)
 
-      NeutrinoLeptonNumber_OffGrid(iLevel) &
-        = NeutrinoLeptonNumber_OffGrid(iLevel) + FourPi * dM(iCR_N,iLevel) / hc3
-
-      NeutrinoEnergy_OffGrid &
-        = NeutrinoEnergy_OffGrid(iLevel)       + FourPi * dM(nCR+iCR_N,iLevel ) / hc3
-
-
-    END DO
-  END SUBROUTINE IncrementOffGridTally_TwoMoment_MF
-
-
-
-
-
-  SUBROUTINE ComputeTally_TwoMoment( iZ_B0, iZ_E0, G, UF, U, iLevel )
-
-
-    INTEGER,  INTENT(in) :: &
-      iZ_B0(4), iZ_E0(4), iLevel
-    REAL(DP), INTENT(in) :: &
-      G(1:,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:)
-    REAL(DP), INTENT(in) :: &
-      U(1:,iZ_B0(1):,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:,1:)
-    REAL(DP), INTENT(inout) :: &
-      UF(1:,iZ_B0(2):,iZ_B0(3):,iZ_B0(4):,1:)
-
-    TYPE(MeshType) :: MeshE
-    TYPE(MeshType) :: MeshX(3)
-    INTEGER        :: iNodeZ, iNodeX, iNodeE, iZ1, iZ2, iZ3, iZ4, iDim, iS
-    REAL(DP)       :: W, vsq, dX
-    REAL(DP) :: &
-      PF(1:nDOFX, &
-        iZ_B0(2):iZ_E0(2), &
-        iZ_B0(3):iZ_E0(3), &
-        iZ_B0(4):iZ_E0(4), &
-        1:nPF)
-    REAL(DP) :: d4Z(1:nDOFZ,iZ_B0(1):iZ_E0(1), &
-                    iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3), &
-                    iZ_B0(4):iZ_E0(4))
-
-    CALL CreateMesh_MF( iLevel, MeshX )
-
-    CALL CreateMesh &
-           ( MeshE, nE, nNodesE, swE, eL, eR, zoomOption = zoomE )
-
-    ASSOCIATE &
-      ( dZ1 => MeshE    % Width, dZ2 => MeshX(1) % Width, &
-        dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
+    N_Box  = Zero
+    E_Box  = Zero
+    G1_Box = Zero
+    G2_Box = Zero
+    G3_Box = Zero
 
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
 
+      IF( IsNotLeafElement( FineMask(iZ2,iZ3,iZ4,1) ) ) CYCLE
+
       DO iNodeX = 1, nDOFX
 
-        CALL ComputePrimitive_Euler_Relativistic &
-               ( UF (iNodeX,iZ2,iZ3,iZ4,iCF_D ),        &
-                 UF (iNodeX,iZ2,iZ3,iZ4,iCF_S1),        &
-                 UF (iNodeX,iZ2,iZ3,iZ4,iCF_S2),        &
-                 UF (iNodeX,iZ2,iZ3,iZ4,iCF_S3),        &
-                 UF (iNodeX,iZ2,iZ3,iZ4,iCF_E ),        &
-                 UF (iNodeX,iZ2,iZ3,iZ4,iCF_Ne),        &
-                 PF (iNodeX,iZ2,iZ3,iZ4,iPF_D ),        &
-                 PF (iNodeX,iZ2,iZ3,iZ4,iPF_V1),        &
-                 PF (iNodeX,iZ2,iZ3,iZ4,iPF_V2),        &
-                 PF (iNodeX,iZ2,iZ3,iZ4,iPF_V3),        &
-                 PF (iNodeX,iZ2,iZ3,iZ4,iPF_E ),        &
-                 PF (iNodeX,iZ2,iZ3,iZ4,iPF_Ne),        &
-                 G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
-                 G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
+        CALL ComputePrimitive_Euler_NonRelativistic &
+               ( U(iNodeX,iZ2,iZ3,iZ4,iCF_D ),       &
+                 U(iNodeX,iZ2,iZ3,iZ4,iCF_S1),       &
+                 U(iNodeX,iZ2,iZ3,iZ4,iCF_S2),       &
+                 U(iNodeX,iZ2,iZ3,iZ4,iCF_S3),       &
+                 U(iNodeX,iZ2,iZ3,iZ4,iCF_E ),       &
+                 U(iNodeX,iZ2,iZ3,iZ4,iCF_Ne),       &
+                 P(iNodeX,iZ2,iZ3,iZ4,iPF_D ),       &
+                 P(iNodeX,iZ2,iZ3,iZ4,iPF_V1),       &
+                 P(iNodeX,iZ2,iZ3,iZ4,iPF_V2),       &
+                 P(iNodeX,iZ2,iZ3,iZ4,iPF_V3),       &
+                 P(iNodeX,iZ2,iZ3,iZ4,iPF_E ),       &
+                 P(iNodeX,iZ2,iZ3,iZ4,iPF_Ne),       &
+                 G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
+                 G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
                  G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
 
       END DO
@@ -601,220 +487,170 @@ CONTAINS
     END DO
     END DO
 
+    ASSOCIATE &
+      ( dZ1 => MeshE    % Width, dZ2 => MeshX(1) % Width, &
+        dZ3 => MeshX(2) % Width, dZ4 => MeshX(3) % Width )
+
+    DO iS  = 1, nSpecies
     DO iZ4 = iZ_B0(4), iZ_E0(4)
     DO iZ3 = iZ_B0(3), iZ_E0(3)
     DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
 
+      IF( IsNotLeafElement( FineMask(iZ2,iZ3,iZ4,1) ) ) CYCLE
 
-      DO iNodeX = 1, nDOFX
-      DO iNodeE = 1, nDOFE
+      DO iZ1 = iZ_B0(1), iZ_E0(1)
 
+        d4Z = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4)
 
-        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+        DO iNodeX = 1, nDOFX
+        DO iNodeE = 1, nDOFE
 
-        d4Z(iNodeZ,iZ1,iZ2,iZ3,iZ4)                             &
-            =   FourPi * dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
-            * Weights_q(iNodeZ)                                &
-            * ( uGE(iNodeE,iZ1,iGE_Ep2) / hc3 )                &
-            * G(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm)
+          iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
 
-      END DO
-      END DO
+          W = d4Z * Weights_q(iNodeZ) * G(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm)
 
+          N_Box                                            &
+            = N_Box                                        &
+                + W * uGE(iNodeE,iZ1,iGE_Ep2)              &
+                    * LeptonNumber(iS)                     &
+                    * M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS)
 
+          E_Box                                            &
+            = E_Box                                        &
+                + W * uGE(iNodeE,iZ1,iGE_Ep3)              &
+                    * ( M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS)    &
+                        + P(iNodeX,iZ2,iZ3,iZ4,iPF_V1)         &
+                            * M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) &
+                        + P(iNodeX,iZ2,iZ3,iZ4,iPF_V2)         &
+                            * M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS) &
+                        + P(iNodeX,iZ2,iZ3,iZ4,iPF_V3)         &
+                            * M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS) )
 
+          G1_Box                                           &
+            = G1_Box                                       &
+                + W * uGE(iNodeE,iZ1,iGE_Ep3)              &
+                    * ( M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS)   &
+                        + G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11)  &
+                            * P(iNodeX,iZ2,iZ3,iZ4,iPF_V1)    &
+                            * M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS) )
 
-    END DO
-    END DO
-    END DO
-    END DO
+          G2_Box                                           &
+            = G2_Box                                       &
+                + W * uGE(iNodeE,iZ1,iGE_Ep3)              &
+                    * ( M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS)   &
+                        + G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22)  &
+                            * P(iNodeX,iZ2,iZ3,iZ4,iPF_V2)    &
+                            * M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS) )
 
+          G3_Box                                           &
+            = G3_Box                                       &
+                + W * uGE(iNodeE,iZ1,iGE_Ep3)              &
+                    * ( M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS)   &
+                        + G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33)  &
+                            * P(iNodeX,iZ2,iZ3,iZ4,iPF_V3)    &
+                            * M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS) )
 
-    DO iS = 1, nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-
-
-      DO iNodeX = 1, nDOFX
-      DO iNodeE = 1, nDOFE
-
-        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
-
-        NeutrinoLeptonNumber_Interior(iLevel)             &
-          = NeutrinoLeptonNumber_Interior(iLevel)        &
-              + d4Z(iNodeZ,iZ1,iZ2,iZ3,iZ4)               &
-                * LeptonNumber(iS)                        &
-                * U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS)
-
-      END DO
-      END DO
-
-
-
-
-    END DO
-    END DO
-    END DO
-    END DO
-    END DO
-
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-
-
-      DO iNodeX = 1, nDOFX
-      DO iNodeE = 1, nDOFE
-
-
-        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
-
-        d4Z(iNodeZ,iZ1,iZ2,iZ3,iZ4)                             &
-            =   FourPi * dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
-            * Weights_q(iNodeZ)                                &
-            * ( uGE(iNodeE,iZ1,iGE_Ep3) / hc3 )                &
-            * G(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm)
+        END DO
+        END DO
 
       END DO
-      END DO
-
-
-
 
     END DO
     END DO
     END DO
     END DO
 
+    END ASSOCIATE ! dZ1, bla bla.
 
-    DO iS = 1, nSpecies
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
+  END SUBROUTINE ComputeTally_TwoMoment_Box
 
 
-      DO iNodeX = 1, nDOFX
-      DO iNodeE = 1, nDOFE
+  SUBROUTINE IncrementOffGridTally_TwoMoment_MF( dM )
 
-        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+    REAL(DP), INTENT(in) :: dM(1:,0:)
 
+    INTEGER :: iLevel
 
-        vsq = PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1)**2 * G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) &
-            + PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2)**2 * G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22) &
-            + PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3)**2 * G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33)
-        W = 1.0_DP / SQRT( 1.0_DP - vsq )
+    IF( SuppressTally_TwoMoment ) RETURN
 
-        NeutrinoEnergy_Interior                                       &
-          = NeutrinoEnergy_Interior                                   &
-              + d4Z(iNodeZ,iZ1,iZ2,iZ3,iZ4)               &
-                * ( W * U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS)    &
-                    + PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1)           &
-                        * U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) &
-                    + PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2)           &
-                        * U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS) &
-                    + PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3)           &
-                        * U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS) )
+    DO iLevel = 0, nLevels-1
 
+      NeutrinoLeptonNumber_OffGrid &
+        = NeutrinoLeptonNumber_OffGrid + FourPi * dM(iCR_N     ,iLevel) / hc3
 
-        Momentum_X1                                           &
-          = Momentum_X1                                       &
-              + d4Z(iNodeZ,iZ1,iZ2,iZ3,iZ4)               &
-                * ( U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS)       &
-                    + W * G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11)  &
-                        * PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1)       &
-                        * U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS) )
+      NeutrinoEnergy_OffGrid &
+        = NeutrinoEnergy_OffGrid       + FourPi * dM(nCR+iCR_N ,iLevel) / hc3
 
+      NeutrinoMomentumX1_OffGrid &
+        = NeutrinoMomentumX1_OffGrid   + FourPi * dM(nCR+iCR_G1,iLevel) / hc3
 
-        Momentum_X2                                           &
-          = Momentum_X2                                       &
-              + d4Z(iNodeZ,iZ1,iZ2,iZ3,iZ4)               &
-                * ( U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS)       &
-                    + W * G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22)  &
-                        * PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2)       &
-                        * U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS) )
+      NeutrinoMomentumX2_OffGrid &
+        = NeutrinoMomentumX2_OffGrid   + FourPi * dM(nCR+iCR_G2,iLevel) / hc3
 
-
-        Momentum_X3                                           &
-          = Momentum_X3                                       &
-              + d4Z(iNodeZ,iZ1,iZ2,iZ3,iZ4)               &
-                * ( U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS)       &
-                    + W * G(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33)  &
-                        * PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3)       &
-                        * U(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS) )
-      END DO
-      END DO
-
-
-
+      NeutrinoMomentumX3_OffGrid &
+        = NeutrinoMomentumX3_OffGrid   + FourPi * dM(nCR+iCR_G3,iLevel) / hc3
 
     END DO
+
+  END SUBROUTINE IncrementOffGridTally_TwoMoment_MF
+
+
+  SUBROUTINE IncrementPositivityLimiterTally_TwoMoment_MF( dM )
+
+
+    REAL(DP), INTENT(in) :: dM(1:,0:)
+
+    INTEGER :: iLevel
+
+    IF( SuppressTally_TwoMoment ) RETURN
+
+    DO iLevel = 0, nLevels-1
+
+      NeutrinoEnergy_PL     = NeutrinoEnergy_PL     + dM(iCR_N ,iLevel)
+      NeutrinoMomentumX1_PL = NeutrinoMomentumX1_PL + dM(iCR_G1,iLevel)
+      NeutrinoMomentumX2_PL = NeutrinoMomentumX2_PL + dM(iCR_G2,iLevel)
+      NeutrinoMomentumX3_PL = NeutrinoMomentumX3_PL + dM(iCR_G3,iLevel)
+
     END DO
-    END DO
-    END DO
-    END DO
 
-    END ASSOCIATE
-
-    CALL DestroyMesh( MeshE )
-
-    CALL DestroyMesh_MF( MeshX )
-
-  END SUBROUTINE ComputeTally_TwoMoment
+  END SUBROUTINE IncrementPositivityLimiterTally_TwoMoment_MF
 
 
-  SUBROUTINE WriteTally_Twomoment( Time )
+  SUBROUTINE WriteTally_TwoMoment( Time )
 
     REAL(DP), INTENT(in) :: Time
 
-    INTEGER :: FileUnit
+    IF( .NOT. amrex_parallel_ioprocessor() ) RETURN
 
-    IF( amrex_parallel_ioprocessor() )THEN
+    CALL WriteTallyToFile &
+           ( NeutrinoLeptonNumber_FileName, Time, UnitsDisplay % TimeUnit, &
+             NeutrinoLeptonNumber_Interior, NeutrinoLeptonNumber_Initial,  &
+             NeutrinoLeptonNumber_OffGrid , NeutrinoLeptonNumber_Change,   &
+             One )
 
-      ! --- Neutrino Lepton Number ---
+    CALL WriteTallyToFile &
+           ( NeutrinoEnergy_FileName, Time, UnitsDisplay % TimeUnit, &
+             NeutrinoEnergy_Interior, NeutrinoEnergy_Initial,        &
+             NeutrinoEnergy_OffGrid , NeutrinoEnergy_Change,         &
+             UnitsDisplay % EnergyGlobalUnit )
 
-      OPEN( NEWUNIT = FileUnit, FILE = TRIM( NeutrinoLeptonNumber_FileName ), &
-            POSITION = 'APPEND', ACTION = 'WRITE' )
+    CALL WriteTallyToFile &
+           ( NeutrinoMomentumX1_FileName, Time, UnitsDisplay % TimeUnit, &
+             NeutrinoMomentumX1_Interior, NeutrinoMomentumX1_Initial,    &
+             NeutrinoMomentumX1_OffGrid , NeutrinoMomentumX1_Change,     &
+             One )
 
-      WRITE( FileUnit, '(5(ES25.16E3,1x))' )                  &
-        Time / UnitsDisplay % TimeUnit, &
-        NeutrinoLeptonNumber_Interior(0), &
-        NeutrinoLeptonNumber_OffGrid (0), &
-        NeutrinoLeptonNumber_Initial (0), &
-        NeutrinoLeptonNumber_Change  (0)
+    CALL WriteTallyToFile &
+           ( NeutrinoMomentumX2_FileName, Time, UnitsDisplay % TimeUnit, &
+             NeutrinoMomentumX2_Interior, NeutrinoMomentumX2_Initial,    &
+             NeutrinoMomentumX2_OffGrid , NeutrinoMomentumX2_Change,     &
+             One )
 
-
-      CLOSE( FileUnit )
-
-      OPEN( NEWUNIT = FileUnit, FILE = TRIM( NeutrinoEnergy_FileName ), &
-            POSITION = 'APPEND', ACTION = 'WRITE' )
-
-      WRITE( FileUnit, '(5(ES25.16E3,1x))' )                  &
-        Time / UnitsDisplay % TimeUnit, &
-        NeutrinoEnergy_Interior(0) / UnitsDisplay % EnergyGlobalUnit, &
-        NeutrinoEnergy_OffGrid (0) / UnitsDisplay % EnergyGlobalUnit, &
-        NeutrinoEnergy_Initial (0) / UnitsDisplay % EnergyGlobalUnit, &
-        NeutrinoEnergy_Change  (0) / UnitsDisplay % EnergyGlobalUnit
-
-
-      CLOSE( FileUnit )
-
-      OPEN( NEWUNIT = FileUnit, FILE = TRIM( Momentum_FileName ), &
-            POSITION = 'APPEND', ACTION = 'WRITE' )
-
-      WRITE( FileUnit, '(5(ES25.16E3,1x))' )                  &
-        Time / UnitsDisplay % TimeUnit,                       &
-        Momentum_X1(0),                                       &
-        Momentum_X2(0),                                       &
-        Momentum_X3(0)
-
-      CLOSE( FileUnit )
-
-    END IF
+    CALL WriteTallyToFile &
+           ( NeutrinoMomentumX3_FileName, Time, UnitsDisplay % TimeUnit, &
+             NeutrinoMomentumX3_Interior, NeutrinoMomentumX3_Initial,    &
+             NeutrinoMomentumX3_OffGrid , NeutrinoMomentumX3_Change,     &
+             One )
 
   END SUBROUTINE WriteTally_TwoMoment
 
@@ -823,37 +659,108 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: Time
 
-    IF( amrex_parallel_ioprocessor() )THEN
+    IF( .NOT. amrex_parallel_ioprocessor() ) RETURN
 
-      WRITE(*,*)
-      WRITE(*,'(A8,A,ES8.2E2,x,A)') &
-        '', 'TwoMoment Tally. t = ', &
-        Time / UnitsDisplay % TimeUnit, &
-        UnitsDisplay % TimeLabel
-      WRITE(*,*)
-      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-        '', 'Neutrino Lepton Number.: ', &
-        NeutrinoLeptonNumber_Interior(0)
-      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-        '', 'Neutrino Energy.: ', &
-        NeutrinoEnergy_Interior(0) / UnitsDisplay % EnergyGlobalUnit
-      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-        '', 'Neutrino Momentum1.: ', &
-        Momentum_X1(0)
-      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-        '', 'Neutrino Momentum2.: ', &
-        Momentum_X2(0)
-      WRITE(*,'(A6,A40,ES14.7E2,x,A)') &
-        '', 'Neutrino Momentum3.: ', &
-        Momentum_X3(0)
+    IF( NeutrinoEnergy_Interior .NE. Zero ) &
+      WRITE(*,'(6x,A40,2ES15.7E3)') 'Energy  Change | PL  (/Interior).: ', &
+        NeutrinoEnergy_Change / NeutrinoEnergy_Interior, &
+        NeutrinoEnergy_PL     / NeutrinoEnergy_Interior
 
+    WRITE(*,*)
+    WRITE(*,'(6x,A,ES13.6E3,x,A)') &
+      'TwoMoment Tally. t = ', &
+      Time / UnitsDisplay % TimeUnit, TRIM( UnitsDisplay % TimeLabel )
 
-      WRITE(*,*)
+    CALL WriteTallyToScreen &
+           ( 'Neutrino Lepton Number', &
+             NeutrinoLeptonNumber_Interior, NeutrinoLeptonNumber_Initial, &
+             NeutrinoLeptonNumber_OffGrid , NeutrinoLeptonNumber_Change,  &
+             One, '' )
 
-    END IF
+    CALL WriteTallyToScreen &
+           ( 'Neutrino Energy', &
+             NeutrinoEnergy_Interior, NeutrinoEnergy_Initial, &
+             NeutrinoEnergy_OffGrid , NeutrinoEnergy_Change,  &
+             UnitsDisplay % EnergyGlobalUnit, &
+             TRIM( UnitsDisplay % EnergyGlobalLabel ) )
+
+    WRITE(*,*)
 
   END SUBROUTINE DisplayTally
 
+
+  SUBROUTINE CreateFile( FileName, UnitsLabel, TimeLabel )
+
+    CHARACTER(*), INTENT(inout) :: FileName
+    CHARACTER(*), INTENT(in)    :: UnitsLabel, TimeLabel
+
+    INTEGER       :: FileUnit
+    CHARACTER(SL) :: InteriorLabel, InitialLabel, OffGridLabel, ChangeLabel
+
+    InteriorLabel = 'Interior [' // TRIM( UnitsLabel ) // ']'
+    OffGridLabel  = 'Off Grid [' // TRIM( UnitsLabel ) // ']'
+    InitialLabel  = 'Initial ['  // TRIM( UnitsLabel ) // ']'
+    ChangeLabel   = 'Change ['   // TRIM( UnitsLabel ) // ']'
+
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( FileName ) )
+
+    WRITE( FileUnit, '(5(A25,x))' ) &
+      TRIM( TimeLabel ), TRIM( InteriorLabel ), TRIM( OffGridLabel ), &
+      TRIM( InitialLabel ), TRIM( ChangeLabel )
+
+    CLOSE( FileUnit )
+
+  END SUBROUTINE CreateFile
+
+
+  SUBROUTINE WriteTallyToScreen &
+    ( FieldName, Interior, Initial, OffGrid, Change, Units, Label )
+
+    CHARACTER(*), INTENT(in) :: FieldName, Label
+    REAL(DP),     INTENT(in) :: Interior, Initial, OffGrid, Change, Units
+
+    CHARACTER(32) :: FMT
+
+    FMT = '(6x,A40,ES15.7E3,x,A)'
+
+    WRITE(*,*)
+    WRITE(*,TRIM(FMT)) &
+      TRIM( FieldName ) // ' Interior.: ', Interior / Units, TRIM( Label )
+    WRITE(*,TRIM(FMT)) &
+      TRIM( FieldName ) // ' Initial..: ', Initial  / Units, TRIM( Label )
+    WRITE(*,TRIM(FMT)) &
+      TRIM( FieldName ) // ' Off Grid.: ', OffGrid  / Units, TRIM( Label )
+    WRITE(*,TRIM(FMT)) &
+      TRIM( FieldName ) // ' Change...: ', Change   / Units, TRIM( Label )
+
+  END SUBROUTINE WriteTallyToScreen
+
+
+  SUBROUTINE WriteTallyToFile &
+    ( FileName, Time, TimeUnit, Interior, Initial, OffGrid, Change, Units )
+
+    CHARACTER(*), INTENT(in) :: FileName
+    REAL(DP),     INTENT(in) :: Time, TimeUnit, &
+                                Interior, Initial, OffGrid, Change, Units
+
+    INTEGER       :: FileUnit
+    CHARACTER(32) :: FMT
+
+    FMT = '(5(ES25.16E3,1x))'
+
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( FileName ), &
+          POSITION = 'APPEND', ACTION = 'WRITE' )
+
+    WRITE( FileUnit, TRIM(FMT) ) &
+      Time     / TimeUnit, &
+      Interior / Units, &
+      OffGrid  / Units, &
+      Initial  / Units, &
+      Change   / Units
+
+    CLOSE( FileUnit )
+
+  END SUBROUTINE WriteTallyToFile
 
 
 END MODULE MF_TwoMoment_TallyModule

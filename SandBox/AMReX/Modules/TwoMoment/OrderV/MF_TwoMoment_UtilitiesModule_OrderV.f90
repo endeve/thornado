@@ -170,9 +170,9 @@ CONTAINS
 
       CALL CreateMesh_MF( iLevel, MeshX )
 
-      PRINT *, 'NON-REALIZABILIITY TIME STEP: CELL WIDTH HERE:'
-      PRINT *, 'iLevel:', iLevel, ' dx:', MeshX(1) % Width(1), MeshX(2) % Width(1), MeshX(3) % Width(1)
-      PRINT *, "nDOFX:", nDOFX
+      !PRINT *, 'NON-REALIZABILIITY TIME STEP: CELL WIDTH HERE:'
+      !PRINT *, 'iLevel:', iLevel, ' dx:', MeshX(1) % Width(1), MeshX(2) % Width(1), MeshX(3) % Width(1)
+      !PRINT *, "nDOFX:", nDOFX
 
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
@@ -206,9 +206,9 @@ CONTAINS
         !PRINT *, myTimeStep(iLevel)
 
         TimeStep( iLevel ) = MIN( TimeStep( iLevel ), myTimeStep( iLevel ) )
-        PRINT *, 'TIME STEP HERE:'
-        PRINT *, TimeStep(iLevel)
-        PRINT *, myTimeStep(iLevel)
+        !PRINT *, 'TIME STEP HERE:'
+        !PRINT *, TimeStep(iLevel)
+        !PRINT *, myTimeStep(iLevel)
         CALL DeallocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                  [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
@@ -256,11 +256,10 @@ CONTAINS
 
       CALL CreateMesh_MF( iLevel, MeshX )
 
-      PRINT *, 'REALIZABILIITY TIME STEP: CELL WIDTH HERE:'
-      PRINT *, 'iLevel:', iLevel, ' dx:', MeshX(1) % Width(1), MeshX(2) % Width(1), MeshX(3) % Width(1)
-      PRINT *, "nDOFX:", nDOFX
+      !PRINT *, 'REALIZABILIITY TIME STEP: CELL WIDTH HERE:'
+      !PRINT *, 'iLevel:', iLevel, ' dx:', MeshX(1) % Width(1), MeshX(2) % Width(1), MeshX(3) % Width(1)
+      !PRINT *, "nDOFX:", nDOFX
 
-!PRINT *, 'CALL ITERATOR'
       CALL amrex_mfiter_build( MFI, MF_uGF(iLevel), tiling = UseTiling )
 
       DO WHILE( MFI % next() )
@@ -304,13 +303,13 @@ CONTAINS
                ( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, CF )
 
         CALL ComputeTimeStep_TwoMoment_Realizability &
-                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, G, CF, CFL, myTimeStep( iLevel ), Verbose_Option=.TRUE. )
+                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, G, CF, CFL, myTimeStep( iLevel ), Verbose_Option=.FALSE. )
 
         TimeStep( iLevel ) = MIN( TimeStep( iLevel ), myTimeStep( iLevel ) )
 
-        PRINT *, 'REALIZABILIITY TIME STEP HERE:'
-        PRINT *, TimeStep(iLevel)
-        PRINT *, myTimeStep(iLevel)
+        !PRINT *, 'REALIZABILIITY TIME STEP HERE:'
+        !PRINT *, TimeStep(iLevel)
+        !PRINT *, myTimeStep(iLevel)
 
         CALL DeallocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
