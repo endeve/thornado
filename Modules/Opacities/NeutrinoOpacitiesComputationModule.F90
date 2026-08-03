@@ -78,7 +78,7 @@ MODULE NeutrinoOpacitiesComputationModule
     QueryOpacity_Pair, &
     QueryOpacity_Brem, &
     QueryOpacity_NuPair, &
-    EmAb_Muon_Method
+    EmAb_Muon_Method, nE_Muon_2D
   USE RadiationFieldsModule, ONLY: &
     iNuE, iNuE_Bar, iNuM, iNuM_Bar, iNuT, iNuT_Bar, &
     LeptonNumber, iNu, iNu_Bar
@@ -176,9 +176,7 @@ MODULE NeutrinoOpacitiesComputationModule
                                     / TwoPi**3 * UnitBrem
 
   REAL(dp), PARAMETER :: Alpha_Brem(3) = [ 1.0d0, 1.0d0, 28.d0/3.d0 ]
-
-  INTEGER, PARAMETER  :: opac_method = 1
-  INTEGER, PARAMETER  :: corr_num = 0
+  INTEGER, PARAMETER  :: corr_num = 2
 
   REAL(dp), PARAMETER :: coeff = 2.0d0 &
                                * (Pi*SpeedOfLightCGS)**2 &
@@ -1386,12 +1384,6 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: Mun(:), Mn_eff(:), Un(:)
     REAL(DP), ALLOCATABLE :: Mup(:), Mp_eff(:), Up(:)
 
-    REAL(DP) :: Mun_P, Mn_eff_P, Un_P, Xn_P
-    REAL(DP) :: Mup_P, Mp_eff_P, Up_P, Xp_P
-    REAL(DP) :: Mumu_P
-    REAL(DP) :: WeakMagRecNuLep
-    REAL(DP) :: WeakMagRecNuLepBar
-
 #ifndef EOSMODE_COMPOSE
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
@@ -1563,8 +1555,7 @@ CONTAINS
               Mup_P, Mp_eff(iX), Up(iX), Xp(iX), &
               Mumu_P, opEC(iE,iNuM,iX), opEC(iE,iNuM_Bar,iX) )
 
-        WeakMagRecNuLep = 1.0
-        WeakMagRecNuLepBar = 1.0
+        CALL CalculateHorowitzWeakMagRecoil(E_P, WeakMagRecNuLep, WeakMagRecNuLepBar)
 
         opEC(iE,iNuM    ,iX) = opEC(iE,iNuM    ,iX) * WeakMagRecNuLep    * UnitEC
         opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) * WeakMagRecNuLepBar * UnitEC
@@ -1622,21 +1613,19 @@ CONTAINS
     REAL(DP) :: Mumu_P
     REAL(DP) :: Mun_P, Mn_eff_P, Un_P
     REAL(DP) :: Mup_P, Mp_eff_P, Up_P
-    REAL(DP) :: WeakMagRecNuLep
-    REAL(DP) :: WeakMagRecNuLepBar
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
     !$OMP PRIVATE( Mun_P, Mup_P, Mumu_P ) &
-    !$OMP PRIVATE( E_P, D_P, T_P, Ym_P, WeakMagRecNuLep, WeakMagRecNuLepBar )
+    !$OMP PRIVATE( E_P, D_P, T_P, Ym_P )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
     !$ACC PRIVATE( Mun_P, Mup_P, Mumu_P ) &
-    !$ACC PRIVATE( E_P, D_P, T_P, Ym_P, WeakMagRecNuLep, WeakMagRecNuLepBar )
+    !$ACC PRIVATE( E_P, D_P, T_P, Ym_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2) &
     !$OMP PRIVATE( Mun_P, Mup_P, Mumu_P ) &
-    !$OMP PRIVATE( E_P, D_P, T_P, Ym_P, WeakMagRecNuLep, WeakMagRecNuLepBar )
+    !$OMP PRIVATE( E_P, D_P, T_P, Ym_P )
 #endif
     DO iX = iX_B, iX_E
     DO iE = iE_B, iE_E
@@ -1655,17 +1644,14 @@ CONTAINS
         CALL Opacity_CC_2D &
             ( corr_num, 1, E_P, opEC(iE,iNuM,iX), &
               T_P, Mumu_P, Mun_P, Mup_P,  &
-              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), 50 )
+              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), nE_Muon_2D )
         CALL Opacity_CC_2D &
             ( corr_num, 2, E_P, opEC(iE,iNuM_Bar,iX), &
               T_P, Mumu_P, Mun_P, Mup_P,  &
-              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), 50 )
+              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), nE_Muon_2D )
 
-        WeakMagRecNuLep = 1.0
-        WeakMagRecNuLepBar = 1.0
-
-        opEC(iE,iNuM    ,iX) = opEC(iE,iNuM    ,iX) * WeakMagRecNuLep    * UnitEC
-        opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) * WeakMagRecNuLepBar * UnitEC
+        opEC(iE,iNuM    ,iX) = opEC(iE,iNuM    ,iX) * UnitEC
+        opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) * UnitEC
 
       ELSE
 
@@ -1709,8 +1695,6 @@ CONTAINS
     REAL(DP) :: Mumu_P
     REAL(DP) :: Mun_P, Mn_eff_P, Un_P
     REAL(DP) :: Mup_P, Mp_eff_P, Up_P
-    REAL(DP) :: WeakMagRecNuLep
-    REAL(DP) :: WeakMagRecNuLepBar
 
 #ifndef CC_INTEGRALS_4D
 
@@ -1768,8 +1752,8 @@ CONTAINS
               T_P, Mumu_P, Mun_P, Mup_P,  &
               mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX) )
 
-        opEC(iE,iNuM    ,iX) = opEC(iE,iNuM    ,iX) * WeakMagRecNuLep    * UnitEC
-        opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) * WeakMagRecNuLepBar * UnitEC
+        opEC(iE,iNuM    ,iX) = opEC(iE,iNuM    ,iX) * UnitEC
+        opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) * UnitEC
 
       ELSE
 

@@ -101,9 +101,11 @@ MODULE OpacityModule_TABLE
   LOGICAL :: Use_OpacityTables
 
   INTEGER, PUBLIC :: EmAb_Muon_Method  ! Method for computing muon EmAb opacities
-                               !  1: elastic approximation (default)
-                               !  2: 2D integral
-                               !  3: 4D integral (probably doesn't work?)
+                                       !  1: elastic approximation (default)
+                                       !  2: 2D integral
+                                       !  3: 4D integral (probably doesn't work?)
+  INTEGER, PUBLIC :: nE_Muon_2D        ! IF EmAb_Muon_Method == 2, this sets the number
+                                       ! of quadrature points used for the integrals
 
   REAL(DP), DIMENSION(6), PUBLIC :: &
     C1, C2, C1_NuPair, C2_NuPair
@@ -168,7 +170,8 @@ MODULE OpacityModule_TABLE
   !$OMP   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD,           &
   !$OMP   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD,             &
   !$OMP   EmAb_MinD, EmAb_MaxD,                           &
-  !$OMP   EmAb_Muon_MinD, EmAb_Muon_MaxD, EmAb_Muon_Method, &
+  !$OMP   EmAb_Muon_MinD, EmAb_Muon_MaxD,                 &
+  !$OMP   EmAb_Muon_Method, nE_Muon_2D,                   &
   !$OMP   Iso_MinD, Iso_MaxD,                             &
   !$OMP   NES_MinD, NES_MaxD,                             &
   !$OMP   Pair_MinD, Pair_MaxD,                           &
@@ -190,7 +193,8 @@ MODULE OpacityModule_TABLE
   !$ACC   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD,           &
   !$ACC   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD,             &
   !$ACC   EmAb_MinD, EmAb_MaxD,                           &
-  !$ACC   EmAb_Muon_MinD, EmAb_Muon_MaxD, EmAb_Muon_Method, &
+  !$ACC   EmAb_Muon_MinD, EmAb_Muon_MaxD,                 &
+  !$ACC   EmAb_Muon_Method, nE_Muon_2D,                   &
   !$ACC   Iso_MinD, Iso_MaxD,                             &
   !$ACC   NES_MinD, NES_MaxD,                             &
   !$ACC   Pair_MinD, Pair_MaxD,                           &
@@ -211,7 +215,7 @@ CONTAINS
       EmAb_Nuclei_MinD_Option, EmAb_Nuclei_MaxD_Option,          &
       EmAb_MinD_Option, EmAb_MaxD_Option,                        &
       EmAb_Muon_MinD_Option, EmAb_Muon_MaxD_Option,              &
-      EmAb_Muon_Method_Option,                                   &
+      EmAb_Muon_Method_Option, nE_Muon_2D_Option,                &
       Iso_MinD_Option, Iso_MaxD_Option,                          &
       NES_MinD_Option, NES_MaxD_Option,                          &
       Pair_MinD_Option, Pair_MaxD_Option,                        &
@@ -239,7 +243,7 @@ CONTAINS
     REAL(DP),         INTENT(in), OPTIONAL :: NuPair_MinD_Option, NuPair_MaxD_Option
     REAL(DP),         INTENT(in), OPTIONAL :: Op_MinD_Option, Op_MaxD_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
-    INTEGER,          INTENT(in), OPTIONAL :: EmAb_Muon_Method_Option
+    INTEGER,          INTENT(in), OPTIONAL :: EmAb_Muon_Method_Option, nE_Muon_2D_Option
 
     CHARACTER(128)     :: EquationOfStateTableName
     REAL(DP) :: LogE1, LogE2
@@ -432,6 +436,12 @@ CONTAINS
       EmAb_Muon_Method = EmAb_Muon_Method_Option
     ELSE
       EmAb_Muon_Method = 1 ! Elastic is default
+    END IF
+
+    IF( PRESENT( nE_Muon_2D_Option)  )THEN
+      nE_Muon_2D = nE_Muon_2D_Option
+    ELSE
+      nE_Muon_2D = 50 ! Overkill, 30 is probably enough
     END IF
 
     ! --- Iso ---
@@ -775,39 +785,41 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( always, to: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
-    !$OMP                  OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
-    !$OMP                  EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
-    !$OMP                  NES_AT, Pair_AT, Brem_AT, C1, C2, &
-    !$OMP                  C1_NuPair, C2_NuPair, &
-    !$OMP                  EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD, &
-    !$OMP                  EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD, &
-    !$OMP                  EmAb_MinD, EmAb_MaxD, &
-    !$OMP                  EmAb_Muon_MinD, EmAb_Muon_MaxD, EmAb_Muon_Method, &
-    !$OMP                  Iso_MinD, Iso_MaxD, &
-    !$OMP                  NES_MinD, NES_MaxD, &
-    !$OMP                  Pair_MinD, Pair_MaxD, &
-    !$OMP                  Brem_MinD, Brem_MaxD, &
-    !$OMP                  NNS_MinD, NNS_MaxD, &
-    !$OMP                  NuPair_MinD, NuPair_MaxD, &
-    !$OMP                  Op_MinD, Op_MaxD )
+    !$OMP                  OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,  &
+    !$OMP                  EmAb_T, Iso_T, NES_T, Pair_T, Brem_T,       &
+    !$OMP                  NES_AT, Pair_AT, Brem_AT, C1, C2,           &
+    !$OMP                  C1_NuPair, C2_NuPair,                       &
+    !$OMP                  EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD,       &
+    !$OMP                  EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD,         &
+    !$OMP                  EmAb_MinD, EmAb_MaxD,                       &
+    !$OMP                  EmAb_Muon_MinD, EmAb_Muon_MaxD,             &
+    !$OMP                  EmAb_Muon_Method, nE_Muon_2D,               &
+    !$OMP                  Iso_MinD, Iso_MaxD,                         &
+    !$OMP                  NES_MinD, NES_MaxD,                         &
+    !$OMP                  Pair_MinD, Pair_MaxD,                       &
+    !$OMP                  Brem_MinD, Brem_MaxD,                       &
+    !$OMP                  NNS_MinD, NNS_MaxD,                         &
+    !$OMP                  NuPair_MinD, NuPair_MaxD,                   &
+    !$OMP                  Op_MinD, Op_MaxD                            )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
     !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,  &
     !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, Brem_T,       &
     !$ACC   NES_AT, Pair_AT, Brem_AT, C1, C2,           &
-    !$ACC   C1_NuPair, C2_NuPair, &
-    !$ACC   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD, &
-    !$ACC   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD, &
-    !$ACC   EmAb_MinD, EmAb_MaxD, &
-    !$ACC   EmAb_Muon_MinD, EmAb_Muon_MaxD, EmAb_Muon_Method, &
-    !$ACC   Iso_MinD, Iso_MaxD, &
-    !$ACC   NES_MinD, NES_MaxD, &
-    !$ACC   Pair_MinD, Pair_MaxD, &
-    !$ACC   Brem_MinD, Brem_MaxD, &
-    !$ACC   NNS_MinD, NNS_MaxD, &
-    !$ACC   NuPair_MinD, NuPair_MaxD, &
-    !$ACC   Op_MinD, Op_MaxD )
+    !$ACC   C1_NuPair, C2_NuPair,                       &
+    !$ACC   EmAb_Nucleon_MinD, EmAb_Nucleon_MaxD,       &
+    !$ACC   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD,         &
+    !$ACC   EmAb_MinD, EmAb_MaxD,                       &
+    !$ACC   EmAb_Muon_MinD, EmAb_Muon_MaxD,             &
+    !$ACC   EmAb_Muon_Method, nE_Muon_2D,               &
+    !$ACC   Iso_MinD, Iso_MaxD,                         &
+    !$ACC   NES_MinD, NES_MaxD,                         &
+    !$ACC   Pair_MinD, Pair_MaxD,                       &
+    !$ACC   Brem_MinD, Brem_MaxD,                       &
+    !$ACC   NNS_MinD, NNS_MaxD,                         &
+    !$ACC   NuPair_MinD, NuPair_MaxD,                   &
+    !$ACC   Op_MinD, Op_MaxD                            )
 #endif
 
     use_EC_table = OPACITIES % EmAb % nuclei_EC_table
