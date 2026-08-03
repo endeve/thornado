@@ -69,7 +69,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     ComputePressure_TABLE, &
     Min_D, Min_T, Min_Y
   USE OpacityModule_TABLE, ONLY: &
-    QueryOpacity
+    QueryOpacity, QueryOpacity_EmAb_Muon
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     ComputeEquilibriumDistributions, &
     LimitEquilibriumDistributions_DG, &
@@ -161,7 +161,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), DIMENSION(:), ALLOCATABLE :: Omega
   REAL(DP), DIMENSION(:), ALLOCATABLE :: E_old, Ef_old, C_Ef, S_Ef, G_Ef, U_Ef
   REAL(DP), DIMENSION(:), ALLOCATABLE :: Ye_old, C_Ye, S_Ye, G_Ye, U_Ye
-  REAL(DP), DIMENSION(:), ALLOCATABLE :: Ym_old, C_Ym, S_Ym, G_Ym, U_Ym
+  REAL(DP), DIMENSION(:), ALLOCATABLE :: Ym_old, C_Ym, S_Ym, G_Ym, U_Ym, Ym_hat
   REAL(DP), DIMENSION(:), ALLOCATABLE :: T_old
   REAL(DP), DIMENSION(:), ALLOCATABLE :: V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1
   REAL(DP), DIMENSION(:), ALLOCATABLE :: V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2
@@ -341,6 +341,7 @@ CONTAINS
     ALLOCATE( U_Ye    (nX_G) )
 
     ALLOCATE(   Ym_old(nX_G) )
+    ALLOCATE(   Ym_hat(nX_G) )
     ALLOCATE( C_Ym    (nX_G) )
     ALLOCATE( S_Ym    (nX_G) )
     ALLOCATE( G_Ym    (nX_G) )
@@ -1084,7 +1085,7 @@ CONTAINS
     DEALLOCATE( Omega )
     DEALLOCATE( E_old, Ef_old, C_Ef, S_Ef, G_Ef, U_Ef )
     DEALLOCATE( Ye_old, C_Ye, S_Ye, G_Ye, U_Ye )
-    DEALLOCATE( Ym_old, C_Ym, S_Ym, G_Ym, U_Ym )
+    DEALLOCATE( Ym_old, C_Ym, S_Ym, G_Ym, U_Ym, Ym_hat )
     DEALLOCATE( T_old )
     DEALLOCATE( V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1 )
     DEALLOCATE( V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2 )
@@ -2522,11 +2523,11 @@ CONTAINS
       ! --- Scaling Factors ---
 
       S_Ye   (iN_X) = One / ( D(iN_X) * Ye(iN_X) / AtomicMassUnit )
-      IF (Ym(iN_X) <= 1d-100) THEN 
-        S_Ym (iN_X) = Zero
-      ELSE
-        S_Ym(iN_X)  = One / ( D(iN_X) * Ym(iN_X) / AtomicMassUnit )
-      END IF
+      !IF (Ym(iN_X) <= 1d-100) THEN 
+      !  S_Ym (iN_X) = Zero
+      !ELSE
+      !  S_Ym(iN_X)  = One / ( D(iN_X) * Ym(iN_X) / AtomicMassUnit )
+      !END IF
       S_Ef   (iN_X) = One / ( D(iN_X) * Ef )
       S_V_d_1(iN_X) = One / ( D(iN_X) * SpeedOfLight )
       S_V_d_2(iN_X) = One / ( D(iN_X) * SpeedOfLight )
@@ -2646,6 +2647,19 @@ CONTAINS
 
       END DO
       END DO
+
+      IF ( ABS( Ym(iN_X) ) <= 1d-100) THEN
+         Ym_hat(iN_X) = Zero
+         S_Ym (iN_X) = Zero
+      ELSE
+         Ym_hat(iN_X)  = MAX( Ym_old(iN_X), SUM_Ym * AtomicMassUnit / D(iN_X), 1d-10 )
+         IF ( QueryOpacity_EmAb_Muon( D(iN_X) / Unit_D ) ) THEN
+            S_Ym(iN_X)    = One / ( D(iN_X) * Ym_hat(iN_X) / AtomicMassUnit )
+         ELSE
+            S_Ym (iN_X) = Zero
+         END IF
+         U_Ym   (iN_X) = Ym_old(iN_X) / Ym_hat(iN_X)
+      END IF
 
       ! --- Include Old Matter State in Constant (C) Terms ---
 
@@ -4101,7 +4115,8 @@ CONTAINS
         U_V_d_3(iN_X) = Gm(iV3,iN_X)
 
         Ye(iN_X) = U_Ye   (iN_X) * Ye_old(iN_X)
-        Ym(iN_X) = U_Ym   (iN_X) * Ym_old(iN_X)
+        !Ym(iN_X) = U_Ym   (iN_X) * Ym_old(iN_X)
+        Ym(iN_X) = U_Ym   (iN_X) * Ym_hat(iN_X)
         Ef       = U_Ef   (iN_X) * Ef_old(iN_X)
         V_d_1    = U_V_d_1(iN_X) * SpeedOfLight
         V_d_2    = U_V_d_2(iN_X) * SpeedOfLight
