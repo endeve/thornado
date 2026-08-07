@@ -2825,6 +2825,8 @@ CONTAINS
       PressureTensor(1,1,iNX,iX1,iX2,iX3) &
         = ( U(iNX,iX1,iX2,iX3,iCM_S1) * P(iPM_V1) + Pressure ) &
               / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) &
+          + G(iNX,iX1,iX2,iX3,iGF_Alpha) * B0u * P(iPM_V1) &
+            * ( P(iPM_B1) - B0u * G(iNX,iX1,iX2,iX3,iGF_Beta_1) ) &
           - ( P(iPM_B1)**2 &
               + Two * B0u * P(iPM_B1) * G(iNX,iX1,iX2,iX3,iGF_Beta_1) &
               + ( G(iNX,iX1,iX2,iX3,iGF_Alpha) * B0u )**2 &
@@ -2833,6 +2835,8 @@ CONTAINS
       PressureTensor(2,1,iNX,iX1,iX2,iX3) &
         = ( U(iNX,iX1,iX2,iX3,iCM_S2) * P(iPM_V1) ) &
               / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
+          + G(iNX,iX1,iX2,iX3,iGF_Alpha) * B0u * P(iPM_V1) &
+            * ( P(iPM_B2) - B0u * G(iNX,iX1,iX2,iX3,iGF_Beta_2) ) &
           - ( P(iPM_B2) * P(iPM_B1) &
               + B0u * P(iPM_B2) * G(iNX,iX1,iX2,iX3,iGF_Beta_1) &
               + B0u * P(iPM_B1) * G(iNX,iX1,iX2,iX3,iGF_Beta_2) &
@@ -2842,6 +2846,8 @@ CONTAINS
       PressureTensor(3,1,iNX,iX1,iX2,iX3) &
         = ( U(iNX,iX1,iX2,iX3,iCM_S3) * P(iPM_V1) ) &
               / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
+          + G(iNX,iX1,iX2,iX3,iGF_Alpha) * B0u * P(iPM_V1) &
+            * ( P(iPM_B3) - B0u * G(iNX,iX1,iX2,iX3,iGF_Beta_3) ) &
           - ( P(iPM_B3) * P(iPM_B1) &
               + B0u * P(iPM_B3) * G(iNX,iX1,iX2,iX3,iGF_Beta_1) &
               + B0u * P(iPM_B1) * G(iNX,iX1,iX2,iX3,iGF_Beta_3) &
@@ -2854,6 +2860,8 @@ CONTAINS
       PressureTensor(2,2,iNX,iX1,iX2,iX3) &
         = ( U(iNX,iX1,iX2,iX3,iCM_S2) * P(iPM_V2) + Pressure ) &
               / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
+          + G(iNX,iX1,iX2,iX3,iGF_Alpha) * B0u * P(iPM_V2) &
+            * ( P(iPM_B2) - B0u * G(iNX,iX1,iX2,iX3,iGF_Beta_2) ) &
           - ( P(iPM_B2)**2 &
               + Two * B0u * P(iPM_B2) * G(iNX,iX1,iX2,iX3,iGF_Beta_2) &
               + ( G(iNX,iX1,iX2,iX3,iGF_Alpha) * B0u )**2 &
@@ -2862,6 +2870,8 @@ CONTAINS
       PressureTensor(3,2,iNX,iX1,iX2,iX3) &
         = ( U(iNX,iX1,iX2,iX3,iCM_S3) * P(iPM_V2) ) &
               / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
+          + G(iNX,iX1,iX2,iX3,iGF_Alpha) * B0u * P(iPM_V2) &
+            * ( P(iPM_B3) - B0u * G(iNX,iX1,iX2,iX3,iGF_Beta_3) ) &
           - ( P(iPM_B3) * P(iPM_B2) &
               + B0u * P(iPM_B3) * G(iNX,iX1,iX2,iX3,iGF_Beta_2) &
               + B0u * P(iPM_B2) * G(iNX,iX1,iX2,iX3,iGF_Beta_3) &
@@ -2877,6 +2887,8 @@ CONTAINS
       PressureTensor(3,3,iNX,iX1,iX2,iX3) &
         = ( U(iNX,iX1,iX2,iX3,iCM_S3) * P(iPM_V3) + Pressure ) &
               / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
+          + G(iNX,iX1,iX2,iX3,iGF_Alpha) * B0u * P(iPM_V3) &
+            * ( P(iPM_B3) - B0u * G(iNX,iX1,iX2,iX3,iGF_Beta_3) ) &
           - ( P(iPM_B3)**2 &
               + Two * B0u * P(iPM_B3) * G(iNX,iX1,iX2,iX3,iGF_Beta_3) &
               + ( G(iNX,iX1,iX2,iX3,iGF_Alpha) * B0u )**2 &
