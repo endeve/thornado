@@ -223,7 +223,7 @@ CONTAINS
 
     INTEGER  :: iNX, iX1, iX2, iX3, iCM
     LOGICAL  :: SuppressBC
-    REAL(DP) :: tau(nDOFX,iX_B1(1):iX_E1(1), &
+    REAL(DP) :: Psi6(nDOFX,iX_B1(1):iX_E1(1), &
                           iX_B1(2):iX_E1(2), &
                           iX_B1(3):iX_E1(3))
 
@@ -278,7 +278,7 @@ CONTAINS
     DO iX1 = iX_B1(1), iX_E1(1)
     DO iNX = 1, nDOFX
 
-      tau(iNX,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Psi)**6
+      Psi6(iNX,iX1,iX2,iX3) = G(iNX,iX1,iX2,iX3,iGF_Psi)**6
 
     END DO
     END DO
@@ -358,7 +358,7 @@ CONTAINS
     !PRINT*, 'In cell: ', iX1, iX2, iX3
     !PRINT*, 'In node: ', iNX
 
-    !PRINT*, 'tau: ', tau(iNX,iX1,iX2,iX3)
+    !PRINT*, 'Psi6: ', Psi6(iNX,iX1,iX2,iX3)
     !PRINT*, 'SqrtGm: ', G(iNX,iX1,iX2,iX3,iGF_SqrtGm)
 
     !PRINT*, 'dU for field: ', iCM, ': ', dU(iNX,iX1,iX2,iX3,iCM)
@@ -366,7 +366,7 @@ CONTAINS
 
       dU(iNX,iX1,iX2,iX3,iCM) &
         = dU(iNX,iX1,iX2,iX3,iCM) &
-            * tau(iNX,iX1,iX2,iX3) &
+            * Psi6(iNX,iX1,iX2,iX3) &
             / ( WeightsX_q(iNX) * G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
                   * dX1(iX1) * dX2(iX2) * dX3(iX3) )
 
@@ -397,7 +397,7 @@ CONTAINS
     END DO
 
     CALL ComputeIncrement_Geometry &
-           ( dt, iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
+           ( dt, iX_B0, iX_E0, iX_B1, iX_E1, G, U, Psi6, dU )
 
     DO iX3 = iX_B1(3), iX_E1(3)
     DO iX2 = iX_B1(2), iX_E1(2)
@@ -2679,26 +2679,26 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Geometry &
-    ( dt, iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
+    ( dt, iX_B0, iX_E0, iX_B1, iX_E1, G, U, Psi6, dU )
 
     REAL(DP), INTENT(in)    :: dt
     INTEGER,  INTENT(in)    :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     REAL(DP), INTENT(in)    :: &
       G  (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
-      tau(:,iX_B1(1):,iX_B1(2):,iX_B1(3):)
+      Psi6(:,iX_B1(1):,iX_B1(2):,iX_B1(3):)
     REAL(DP), INTENT(inout) :: &
       U  (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:), &
       dU (:,iX_B1(1):,iX_B1(2):,iX_B1(3):,:)
 
     CALL ComputeIncrement_Geometry_Relativistic &
-           ( dt, iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
+           ( dt, iX_B0, iX_E0, iX_B1, iX_E1, G, U, Psi6, dU )
 
   END SUBROUTINE ComputeIncrement_Geometry
 
 
   SUBROUTINE ComputeIncrement_Geometry_Relativistic &
-    ( dt, iX_B0, iX_E0, iX_B1, iX_E1, G, U, tau, dU )
+    ( dt, iX_B0, iX_E0, iX_B1, iX_E1, G, U, Psi6, dU )
 
     REAL(DP), INTENT(in)           :: dt
     INTEGER,  INTENT(in)           :: &
@@ -2708,7 +2708,7 @@ CONTAINS
     REAL(DP), INTENT(inout)        :: &
       U (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCM)
     REAL(DP), INTENT(in)           :: &
-      tau(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
+      Psi6(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3))
     REAL(DP), INTENT(inout)        :: &
       dU(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCM)
 
@@ -2890,7 +2890,7 @@ CONTAINS
 
       dU(iNX,iX1,iX2,iX3,iCM_S1) &
         = dU(iNX,iX1,iX2,iX3,iCM_S1) &
-            + tau(iNX,iX1,iX2,iX3) &
+            + Psi6(iNX,iX1,iX2,iX3) &
                 * ( G(iNX,iX1,iX2,iX3,iGF_Alpha) &
                       * (   PressureTensor(1,1,iNX,iX1,iX2,iX3) &
                               * G    (iNX,iX1,iX2,iX3,iGF_h_1) &
@@ -2916,7 +2916,7 @@ CONTAINS
 
       dU(iNX,iX1,iX2,iX3,iCM_E) &
         = dU(iNX,iX1,iX2,iX3,iCM_E) &
-            - tau(iNX,iX1,iX2,iX3) &
+            - Psi6(iNX,iX1,iX2,iX3) &
                 * U(iNX,iX1,iX2,iX3,iCM_S1) / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) &
                 * dGdX1(iNX,iGF_Alpha,iX2,iX3,iX1)
 
@@ -2928,12 +2928,12 @@ CONTAINS
 
         dU(iNX,iX1,iX2,iX3,iCM_B1) &
           = dU(iNX,iX1,iX2,iX3,iCM_B1) &
-              - ( tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B1) &
+              - ( Psi6(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B1) &
                     * dGdX1(iNX,iGF_Beta_1,iX2,iX3,iX1) ) &
-              + tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_Chi) &
+              + Psi6(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_Chi) &
                   * ( dGdX1(iNX,iGF_Alpha,iX2,iX3,iX1) &
                         / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11 ) ) &
-              + tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_Chi) &
+              + Psi6(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_Chi) &
                   * G(iNX,iX1,iX2,iX3,iGF_Alpha) &
                   * ( - ( One / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11)**2 ) &
                         * dGdX1(iNX,iGF_Gm_dd_11,iX2,iX3,iX1) &
@@ -2957,9 +2957,9 @@ CONTAINS
 
         dU(iNX,iX1,iX2,iX3,iCM_Chi) &
           = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
-              - ( DampingCoefficient * tau(iNX,iX1,iX2,iX3) &
+              - ( DampingCoefficient * Psi6(iNX,iX1,iX2,iX3) &
                   * U(iNX,iX1,iX2,iX3,iCM_Chi) / G(iNX,iX1,iX2,iX3,iGF_SqrtGm) ) &
-              + ( tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B1) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
+              + ( Psi6(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B1) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
                 * ( One / G(iNX,iX1,iX2,iX3,iGF_SqrtGm ) ) &
                 * dGdX1(iNX,iGF_Alpha,iX2,iX3,iX1)
 
@@ -2971,7 +2971,7 @@ CONTAINS
 
         dU(iNX,iX1,iX2,iX3,iCM_S2) &
           = dU(iNX,iX1,iX2,iX3,iCM_S2) &
-              + tau(iNX,iX1,iX2,iX3) &
+              + Psi6(iNX,iX1,iX2,iX3) &
                   * ( G(iNX,iX1,iX2,iX3,iGF_Alpha) &
                         * (   PressureTensor(1,1,iNX,iX1,iX2,iX3) &
                                 * G(iNX,iX1,iX2,iX3,iGF_h_1) &
@@ -2993,7 +2993,7 @@ CONTAINS
 
           dU(iNX,iX1,iX2,iX3,iCM_E) &
             = dU(iNX,iX1,iX2,iX3,iCM_E) &
-              - tau(iNX,iX1,iX2,iX3) &
+              - Psi6(iNX,iX1,iX2,iX3) &
                 * U(iNX,iX1,iX2,iX3,iCM_S2) / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) &
                 * dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2)
 
@@ -3005,12 +3005,12 @@ CONTAINS
 
           dU(iNX,iX1,iX2,iX3,iCM_B2) &
             = dU(iNX,iX1,iX2,iX3,iCM_B2) &
-                - ( tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B2) &
+                - ( Psi6(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B2) &
                       * dGdX2(iNX,iGF_Beta_2,iX1,iX3,iX2) ) &
-                + tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_Chi) &
+                + Psi6(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_Chi) &
                     * ( dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2) &
                           / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22 ) ) &
-                + tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_Chi) &
+                + Psi6(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_Chi) &
                     * G(iNX,iX1,iX2,iX3,iGF_Alpha) &
                     * ( - ( One / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22)**2 ) &
                           * dGdX2(iNX,iGF_Gm_dd_22,iX1,iX3,iX2) &
@@ -3034,7 +3034,7 @@ CONTAINS
 
           dU(iNX,iX1,iX2,iX3,iCM_Chi) &
             = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
-              + ( tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B2) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
+              + ( Psi6(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B2) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
                 * ( One / G(iNX,iX1,iX2,iX3,iGF_SqrtGm) ) &
                 * dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2)
 
@@ -3048,7 +3048,7 @@ CONTAINS
 
         dU(iNX,iX1,iX2,iX3,iCM_S3) &
           = dU(iNX,iX1,iX2,iX3,iCM_S3) &
-              + tau(iNX,iX1,iX2,iX3) &
+              + Psi6(iNX,iX1,iX2,iX3) &
                   * ( G(iNX,iX1,iX2,iX3,iGF_Alpha) &
                         * (   PressureTensor(1,1,iNX,iX1,iX2,iX3) &
                                 * G(iNX,iX1,iX2,iX3,iGF_h_1) &
@@ -3070,7 +3070,7 @@ CONTAINS
 
         dU(iNX,iX1,iX2,iX3,iCM_E) &
           = dU(iNX,iX1,iX2,iX3,iCM_E) &
-              -tau(iNX,iX1,iX2,iX3) &
+              -Psi6(iNX,iX1,iX2,iX3) &
                  * U(iNX,iX1,iX2,iX3,iCM_S3) / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) &
                  * dGdX3(iNX,iGF_Alpha,iX1,iX2,iX3)
 
@@ -3082,12 +3082,12 @@ CONTAINS
 
           dU(iNX,iX1,iX2,iX3,iCM_B3) &
             = dU(iNX,iX1,iX2,iX3,iCM_B3) &
-                - ( tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B3) &
+                - ( Psi6(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B3) &
                       * dGdX3(iNX,iGF_Beta_3,iX1,iX2,iX3) ) &
-                + tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_Chi) &
+                + Psi6(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_Chi) &
                     * ( dGdX3(iNX,iGF_Alpha,iX1,iX2,iX3) &
                           / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33 ) ) &
-                + tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_Chi) &
+                + Psi6(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_Chi) &
                     * G(iNX,iX1,iX2,iX3,iGF_Alpha) &
                     * ( - ( One / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33)**2 ) &
                           * dGdX3(iNX,iGF_Gm_dd_33,iX1,iX2,iX3) &
@@ -3111,7 +3111,7 @@ CONTAINS
 
           dU(iNX,iX1,iX2,iX3,iCM_Chi) &
             = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
-              + ( tau(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B3) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
+              + ( Psi6(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B3) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
                 * ( One / G(iNX,iX1,iX2,iX3,iGF_SqrtGm) ) &
                 * dGdX3(iNX,iGF_Alpha,iX1,iX2,iX3)
 
@@ -3133,7 +3133,7 @@ CONTAINS
 
       dU(iNX,iX1,iX2,iX3,iCM_E) &
         = dU(iNX,iX1,iX2,iX3,iCM_E) &
-            + tau(iNX,iX1,iX2,iX3) * G(iNX,iX1,iX2,iX3,iGF_Alpha) &
+            + Psi6(iNX,iX1,iX2,iX3) * G(iNX,iX1,iX2,iX3,iGF_Alpha) &
                  * (    PressureTensor(1,1,iNX,iX1,iX2,iX3) &
                           * G(iNX,iX1,iX2,iX3,iGF_K_dd_11) &
                      +  PressureTensor(2,2,iNX,iX1,iX2,iX3) &
@@ -3151,7 +3151,7 @@ CONTAINS
 
         dU(iNX,iX1,iX2,iX3,iCM_Chi) &
           = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
-              - tau(iNX,iX1,iX2,iX3) * G(iNX,iX1,iX2,iX3,iGF_Alpha) &
+              - Psi6(iNX,iX1,iX2,iX3) * G(iNX,iX1,iX2,iX3,iGF_Alpha) &
                  * (   G(iNX,iX1,iX2,iX3,iGF_K_dd_11) &
                        / G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) &
                      + G(iNX,iX1,iX2,iX3,iGF_K_dd_22) &
