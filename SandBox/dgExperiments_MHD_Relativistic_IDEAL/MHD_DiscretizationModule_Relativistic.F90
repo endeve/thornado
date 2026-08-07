@@ -2955,24 +2955,23 @@ CONTAINS
 
         dU(iNX,iX1,iX2,iX3,iCM_B2) &
           = dU(iNX,iX1,iX2,iX3,iCM_B2) &
-              - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                    * U(iNX,iX1,iX2,iX3,iCM_B1) &
-                    * dGdX1(iNX,iGF_Beta_2,iX2,iX3,iX1) )
+              - ( Psi6(iNX,iX1,iX2,iX3) &
+                  * U(iNX,iX1,iX2,iX3,iCM_B1) &
+                  * dGdX1(iNX,iGF_Beta_2,iX2,iX3,iX1) )
 
         dU(iNX,iX1,iX2,iX3,iCM_B3) &
           = dU(iNX,iX1,iX2,iX3,iCM_B3) &
-              - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                    * U(iNX,iX1,iX2,iX3,iCM_B1) &
-                    * dGdX1(iNX,iGF_Beta_3,iX2,iX3,iX1) )
+              - ( Psi6(iNX,iX1,iX2,iX3) &
+                  * U(iNX,iX1,iX2,iX3,iCM_B1) &
+                  * dGdX1(iNX,iGF_Beta_3,iX2,iX3,iX1) )
 
         ! --- Divergence violation field increment ---
 
         dU(iNX,iX1,iX2,iX3,iCM_Chi) &
           = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
               - ( DampingCoefficient * Psi6(iNX,iX1,iX2,iX3) &
-                  * U(iNX,iX1,iX2,iX3,iCM_Chi) / G(iNX,iX1,iX2,iX3,iGF_SqrtGm) ) &
-              + ( Psi6(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B1) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
-                * ( One / G(iNX,iX1,iX2,iX3,iGF_SqrtGm ) ) &
+                  * U(iNX,iX1,iX2,iX3,iCM_Chi) ) &
+              + ( Psi6(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B1) ) &
                 * dGdX1(iNX,iGF_Alpha,iX2,iX3,iX1)
 
       END IF
@@ -3032,22 +3031,21 @@ CONTAINS
 
           dU(iNX,iX1,iX2,iX3,iCM_B1) &
             = dU(iNX,iX1,iX2,iX3,iCM_B1) &
-                - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                      * U(iNX,iX1,iX2,iX3,iCM_B2) &
-                      * dGdX2(iNX,iGF_Beta_1,iX1,iX3,iX2) )
+                - ( Psi6(iNX,iX1,iX2,iX3) &
+                    * U(iNX,iX1,iX2,iX3,iCM_B2) &
+                    * dGdX2(iNX,iGF_Beta_1,iX1,iX3,iX2) )
 
           dU(iNX,iX1,iX2,iX3,iCM_B3) &
             = dU(iNX,iX1,iX2,iX3,iCM_B3) &
-                - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                      * U(iNX,iX1,iX2,iX3,iCM_B2) &
-                      * dGdX2(iNX,iGF_Beta_3,iX1,iX3,iX2) )
+                - ( Psi6(iNX,iX1,iX2,iX3) &
+                    * U(iNX,iX1,iX2,iX3,iCM_B2) &
+                    * dGdX2(iNX,iGF_Beta_3,iX1,iX3,iX2) )
 
           ! --- Divergence violation field increment ---
 
           dU(iNX,iX1,iX2,iX3,iCM_Chi) &
             = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
-              + ( Psi6(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B2) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
-                * ( One / G(iNX,iX1,iX2,iX3,iGF_SqrtGm) ) &
+              + ( Psi6(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B2) ) &
                 * dGdX2(iNX,iGF_Alpha,iX1,iX3,iX2)
 
         END IF
@@ -3109,23 +3107,22 @@ CONTAINS
 
           dU(iNX,iX1,iX2,iX3,iCM_B1) &
             = dU(iNX,iX1,iX2,iX3,iCM_B1) &
-                - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                      * U(iNX,iX1,iX2,iX3,iCM_B3) &
-                      * dGdX3(iNX,iGF_Beta_1,iX1,iX2,iX3) )
+                - ( Psi6(iNX,iX1,iX2,iX3) &
+                    * U(iNX,iX1,iX2,iX3,iCM_B3) &
+                    * dGdX3(iNX,iGF_Beta_1,iX1,iX2,iX3) )
 
           dU(iNX,iX1,iX2,iX3,iCM_B2) &
             = dU(iNX,iX1,iX2,iX3,iCM_B2) &
-                - ( G(iNX,iX1,iX2,iX3,iGF_SqrtGm) &
-                      * U(iNX,iX1,iX2,iX3,iCM_B3) &
-                      * dGdX3(iNX,iGF_Beta_2,iX1,iX2,iX3) )
+                - ( Psi6(iNX,iX1,iX2,iX3) &
+                    * U(iNX,iX1,iX2,iX3,iCM_B3) &
+                    * dGdX3(iNX,iGF_Beta_2,iX1,iX2,iX3) )
 
           ! --- Divergence violation field increment ---
 
           dU(iNX,iX1,iX2,iX3,iCM_Chi) &
             = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
-              + ( Psi6(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B3) / G(iNX,iX1,iX2,iX3,iGF_Alpha) ) &
-                * ( One / G(iNX,iX1,iX2,iX3,iGF_SqrtGm) ) &
-                * dGdX3(iNX,iGF_Alpha,iX1,iX2,iX3)
+              + ( Psi6(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B3) &
+                * dGdX3(iNX,iGF_Alpha,iX1,iX2,iX3) )
 
         END IF
 
