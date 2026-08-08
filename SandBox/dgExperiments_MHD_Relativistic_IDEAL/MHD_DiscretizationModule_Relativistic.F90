@@ -2970,7 +2970,7 @@ CONTAINS
         dU(iNX,iX1,iX2,iX3,iCM_Chi) &
           = dU(iNX,iX1,iX2,iX3,iCM_Chi) &
               - ( DampingCoefficient * Psi6(iNX,iX1,iX2,iX3) &
-                  * U(iNX,iX1,iX2,iX3,iCM_Chi) ) &
+                  * G(iNX,iX1,iX2,iX3,iGF_Alpha) * U(iNX,iX1,iX2,iX3,iCM_Chi) ) &
               + ( Psi6(iNX,iX1,iX2,iX3) * U(iNX,iX1,iX2,iX3,iCM_B1) ) &
                 * dGdX1(iNX,iGF_Alpha,iX2,iX3,iX1)
 
