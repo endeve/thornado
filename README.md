@@ -1,7 +1,7 @@
 ## thornado
 The toolkit for high-order neutrino radiation hydrodynamics (**thornado**) aims to provide numerical solution methods with applications to relativistic astrophysical systems such as core-collapse supernovae and binary neutron star mergers.  
 
-## Funding and Acknowledgments
+## Funding and Acknowledgements
 
 Development of **thornado** has been supported in part by the U.S. National Science Foundation through 
 [Award No. 2513245](https://www.nsf.gov/awardsearch/show-award?AWD_ID=2513245),
@@ -13,5 +13,5 @@ Development also received support from the
 a collaborative effort of the U.S. Department of Energy Office of Science
 and the National Nuclear Security Administration.
 
-The findings and conclusions expressed here are those of the authors and do
-not necessarily reflect the views of the U.S. National Science Foundation.
+Any opinions, findings and conclusions or recommendations expressed in this material are those of the author(s) 
+and do not necessarily reflect the views of the National Science Foundation.
