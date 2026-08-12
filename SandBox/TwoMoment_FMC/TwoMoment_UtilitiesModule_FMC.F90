@@ -1,7 +1,12 @@
 MODULE TwoMoment_UtilitiesModule_FMC
 
   USE KindModule, ONLY: &
-    DP, Third, Half, Zero, One, Two, Three, Four, Five, SqrtTiny
+    DP, Third, Half, Zero, One, Two, Three, Four, Five, SqrtTiny, FourPi
+  USE UnitsModule, ONLY: &
+    UnitsActive, &
+    SpeedOfLight, &
+    PlanckConstant, &
+    MeV
   USE QuadratureModule, ONLY: &
     GetQuadrature
   USE UtilitiesModule, ONLY: &
@@ -9,6 +14,8 @@ MODULE TwoMoment_UtilitiesModule_FMC
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nDOFX, nDOFE, &
     nNOdes, nDimsX, nDims
+  USE ReferenceElementModuleE, ONLY: &
+    WeightsE
   USE ReferenceElementModuleX, ONLY: &
     nDOFX_X1, nDOFX_X2, nDOFX_X3, &
     WeightsX_q, &
@@ -36,8 +43,12 @@ MODULE TwoMoment_UtilitiesModule_FMC
     nSpecies, &
     nCM, iCM_E, iCM_F1, iCM_F2, iCM_F3, &
     nPM, iPM_J, iPM_H1, iPM_H2, iPM_H3, &
-    nAM, &
-    nGM
+    nAM, iAM_F, iAM_K, iAM_Q,           &
+         iAM_N, iAM_F1, iAM_F2, iAM_F3, &
+    nGM, iGM_E, iGM_F1, iGM_F2, iGM_F3, &
+         iGM_J, iGM_H1, iGM_H2, iGM_H3, &
+         iGM_RMS, iGM_F, iGM_K, iGM_Q,  &
+         iGM_N
   USE TwoMoment_ClosureModule, ONLY: &
     FluxFactor_Relativistic, EddingtonFactor, HeatFluxFactor
   USE LinearAlgebraModule, ONLY: &
@@ -50,6 +61,8 @@ MODULE TwoMoment_UtilitiesModule_FMC
   PUBLIC :: Initialize_MomentConversion
   PUBLIC :: ComputeConserved_TwoMoment_FMC
   PUBLIC :: ComputeFromConserved_TwoMoment_FMC
+  PUBLIC :: ComputeAuxiliary_TwoMoment_FMC
+  PUBLIC :: ComputeGray_TwoMoment_FMC
   PUBLIC :: ComputePrimitive_TwoMoment_FMC
   PUBLIC :: ComputePrimitive_TwoMoment_Richardson_FMC
   PUBLIC :: ComputePrimitive_TwoMoment_Newton_FMC
@@ -72,6 +85,9 @@ MODULE TwoMoment_UtilitiesModule_FMC
   PUBLIC :: ComputeWeakDerivatives_X3
   PUBLIC :: FaceVelocity_X1
   PUBLIC :: FaceFourVelocity_X1
+  PUBLIC :: FluxFactor_Relativistic_Scalar_FMC
+  PUBLIC :: EulerianNumberDensity
+  PUBLIC :: EulerianNumberFlux
 
   LOGICAL :: Newton_Solver
 
@@ -232,7 +248,303 @@ CONTAINS
     END DO
     END DO
 
+    CALL ComputeAuxiliary_TwoMoment_FMC( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, PF, CM, PM, AM )
+    CALL ComputeGray_TwoMoment_FMC( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, PF, CM, PM, AM, GM )
+
   END SUBROUTINE ComputeFromConserved_TwoMoment_FMC
+
+  SUBROUTINE ComputeAuxiliary_TwoMoment_FMC &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, PF, CM, PM, AM )
+
+    INTEGER,  INTENT(in)  :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)  :: &
+      GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+         1:nGF)
+    REAL(DP), INTENT(in)  :: &
+      PF(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+         1:nPF)
+    REAL(DP), INTENT(in)  :: &
+      CM(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:nCM,1:nSpecies)
+    REAL(DP), INTENT(in)  :: &
+      PM(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:nPM,1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      AM(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:nAM,1:nSpecies)
+
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS, iNodeZ, iNodeE, iNodeX
+    REAL(DP) :: FF, N, F1, F2, F3, ee
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+      DO iNodeX = 1, nDOFX
+      DO iNodeE = 1, nDOFE
+
+        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+        ee = NodeCoordinate( MeshE, iZ1, iNodeE )
+
+        FF = FluxFactor_Relativistic_Scalar_FMC &
+                ( PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J,iS),  & 
+                  PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1,iS), & 
+                  PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H2,iS), & 
+                  PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H3,iS), & 
+                  GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
+                  GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
+                  GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33),  & 
+                  One, Zero, Zero, Zero,                &
+                  PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1),        &
+                  PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2),        &
+                  PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3) )
+
+        AM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iAM_F,iS) &
+          = FF
+
+        AM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iAM_K,iS) &
+          = EddingtonFactor( PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J,iS), FF )
+
+        AM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iAM_Q,iS) &
+          = HeatFluxFactor ( PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J,iS), FF )
+
+        N = EulerianNumberDensity &
+            ( CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E,iS),  &
+              CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F1,iS), &
+              CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F2,iS), &
+              CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F3,iS), &
+              ee,                                    &
+              GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
+              GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
+              GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33),  & 
+              PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1),        &
+              PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2),        &
+              PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3))
+
+        AM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iAM_N,iS) &
+          = N
+
+        CALL EulerianNumberFlux                       &
+              ( CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J,iS),  &
+                CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1,iS), &
+                CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H2,iS), &
+                CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H3,iS), &
+                ee,                                   &
+                GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11),  &
+                GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22),  &
+                GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33),  & 
+                PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1),        &
+                PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2),        &
+                PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3),        &
+                F1, F2, F3)
+
+        AM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iAM_F1,iS) &
+          = F1
+        AM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iAM_F2,iS) &
+          = F2
+        AM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iAM_F3,iS) &
+          = F3
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeAuxiliary_TwoMoment_FMC
+
+  SUBROUTINE ComputeGray_TwoMoment_FMC &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, PF, CM, PM, AM, GM )
+
+    INTEGER,  INTENT(in)  :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in)  :: &
+      GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+         1:nGF)
+    REAL(DP), INTENT(in)  :: &
+      PF(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+         1:nPF)
+    REAL(DP), INTENT(in)  :: &
+      CM(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:nCM,1:nSpecies)
+    REAL(DP), INTENT(in)  :: &
+      PM(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:nPM,1:nSpecies)
+    REAL(DP), INTENT(in)  :: &
+      AM(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:nAM,1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      GM(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
+         1:nGM,1:nSpecies)
+
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iGR, iS, iNodeZ, iNodeE, iNodeX
+    REAL(DP) :: hc3, E_0, E, RMS_Int2, RMS_Int4
+    REAL(DP) :: W2(1:nDOFE,iZ_B0(1):iZ_E0(1))
+    REAL(DP) :: W3(1:nDOFE,iZ_B0(1):iZ_E0(1))
+    REAL(DP) :: W2_RMS(1:nDOFE,iZ_B0(1):iZ_E0(1))
+    REAL(DP) :: W4_RMS(1:nDOFE,iZ_B0(1):iZ_E0(1))
+
+    IF( UnitsActive )THEN
+
+      hc3 = ( PlanckConstant * SpeedOfLight )**3
+
+    ELSE
+
+      hc3 = One
+
+    END IF
+
+    ! --- Integration Weights ---
+
+    ASSOCIATE( dZ1 => MeshE % Width )
+
+    E_0 = NodeCoordinate( MeshE, iZ_B0(1), 1 )
+
+    DO iZ1    = iZ_B0(1), iZ_E0(1)
+    DO iNodeE = 1, nDOFE
+
+      E = NodeCoordinate( MeshE, iZ1, iNodeE )
+
+      W2(iNodeE,iZ1) = FourPi * WeightsE(iNodeE) * ( dZ1(iZ1) * E**2 / hc3 )
+
+      W3(iNodeE,iZ1) = W2(iNodeE,iZ1) * E
+
+      W2_RMS(iNodeE,iZ1) = W2(iNodeE,iZ1)
+
+      W4_RMS(iNodeE,iZ1) = W2(iNodeE,iZ1) * ( E / E_0 )**2
+
+    END DO
+    END DO
+
+    END ASSOCIATE ! dZ1
+
+    ! --- Initialize Gray Radiation Fields ---
+
+    DO iS  = 1, nSpecies
+    DO iGR = 1, nGM
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      DO iNodeX = 1, nDOFX
+
+        GM(iNodeX,iZ2,iZ3,iZ4,iGR,iS) = Zero
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    ! --- Integrate Over Energy ---
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+      DO iNodeX = 1, nDOFX
+
+        RMS_Int2 = Zero
+        RMS_Int4 = Zero
+
+        DO iZ1    = iZ_B0(1), iZ_E0(1)
+        DO iNodeE = 1, nDOFE
+
+          iNodeZ = (iNodeX-1) * nDOFE + iNodeE
+
+          GM(iNodeX,iZ2,iZ3,iZ4,iGM_E,iS) &
+            = GM(iNodeX,iZ2,iZ3,iZ4,iGM_E,iS) &
+                + W2(iNodeE,iZ1) * CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_E,iS)
+
+          GM(iNodeX,iZ2,iZ3,iZ4,iGM_F1,iS) &
+            = GM(iNodeX,iZ2,iZ3,iZ4,iGM_F1,iS) &
+                + W2(iNodeE,iZ1) * CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F1,iS)
+
+          GM(iNodeX,iZ2,iZ3,iZ4,iGM_F2,iS) &
+            = GM(iNodeX,iZ2,iZ3,iZ4,iGM_F2,iS) &
+                + W2(iNodeE,iZ1) * CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F2,iS)
+
+          GM(iNodeX,iZ2,iZ3,iZ4,iGM_F3,iS) &
+            = GM(iNodeX,iZ2,iZ3,iZ4,iGM_F3,iS) &
+                + W2(iNodeE,iZ1) * CM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCM_F3,iS)
+
+          GM(iNodeX,iZ2,iZ3,iZ4,iGM_J,iS) &
+            = GM(iNodeX,iZ2,iZ3,iZ4,iGM_J,iS) &
+                + W2(iNodeE,iZ1) * PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J,iS)
+
+          GM(iNodeX,iZ2,iZ3,iZ4,iGM_H1,iS) &
+            = GM(iNodeX,iZ2,iZ3,iZ4,iGM_H1,iS) &
+                + W2(iNodeE,iZ1) * PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H1,iS)
+
+          GM(iNodeX,iZ2,iZ3,iZ4,iGM_H2,iS) &
+            = GM(iNodeX,iZ2,iZ3,iZ4,iGM_H2,iS) &
+                + W2(iNodeE,iZ1) * PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H2,iS)
+
+          GM(iNodeX,iZ2,iZ3,iZ4,iGM_H3,iS) &
+            = GM(iNodeX,iZ2,iZ3,iZ4,iGM_H3,iS) &
+                + W2(iNodeE,iZ1) * PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_H3,iS)
+          
+          RMS_Int2 &
+            = RMS_Int2 &
+                + W2_RMS(iNodeE,iZ1) * PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J,iS)
+
+          RMS_Int4 &
+            = RMS_Int4 &
+                + W4_RMS(iNodeE,iZ1) * PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J,iS)
+
+          GM(iNodeX,iZ2,iZ3,iZ4,iGM_F,iS) &
+            = GM(iNodeX,iZ2,iZ3,iZ4,iGM_F,iS) &
+                + W2(iNodeE,iZ1) * PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J,iS) &
+                    * AM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iAM_F,iS)
+
+          GM(iNodeX,iZ2,iZ3,iZ4,iGM_K,iS) &
+            = GM(iNodeX,iZ2,iZ3,iZ4,iGM_K,iS) &
+                + W2(iNodeE,iZ1) * PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J,iS) &
+                    * AM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iAM_K,iS)
+
+          GM(iNodeX,iZ2,iZ3,iZ4,iGM_Q,iS) &
+            = GM(iNodeX,iZ2,iZ3,iZ4,iGM_Q,iS) &
+                + W2(iNodeE,iZ1) * PM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPM_J,iS) &
+                    * AM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iAM_Q,iS)
+
+          GM(iNodeX,iZ2,iZ3,iZ4,iGM_N,iS) &
+            = GM(iNodeX,iZ2,iZ3,iZ4,iGM_N,iS) &
+                + W2(iNodeE,iZ1) * AM(iNodeZ,iZ1,iZ2,iZ3,iZ4,iAM_N,iS)
+
+        END DO
+        END DO
+
+        GM(iNodeX,iZ2,iZ3,iZ4,iGM_RMS,iS) &
+          = E_0 * SQRT( RMS_Int4 / RMS_Int2 )
+
+        GM(iNodeX,iZ2,iZ3,iZ4,iGM_F,iS) &
+          = GM(iNodeX,iZ2,iZ3,iZ4,iGM_F,iS) &
+              / GM(iNodeX,iZ2,iZ3,iZ4,iGM_J,iS)
+
+        GM(iNodeX,iZ2,iZ3,iZ4,iGM_K,iS) &
+          = GM(iNodeX,iZ2,iZ3,iZ4,iGM_K,iS) &
+              / GM(iNodeX,iZ2,iZ3,iZ4,iGM_J,iS)
+
+        GM(iNodeX,iZ2,iZ3,iZ4,iGM_Q,iS) &
+          = GM(iNodeX,iZ2,iZ3,iZ4,iGM_Q,iS) &
+              / GM(iNodeX,iZ2,iZ3,iZ4,iGM_J,iS)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    
+  END SUBROUTINE ComputeGray_TwoMoment_FMC
 
   SUBROUTINE ComputePrimitive_TwoMoment_FMC &
     ( E, F_d_1, F_d_2, F_d_3, J, H_d_1, H_d_2, H_d_3, V_u_1, V_u_2, V_u_3, &
@@ -3481,5 +3793,97 @@ CONTAINS
 
   END SUBROUTINE FaceFourVelocity_X1
 
+  FUNCTION FluxFactor_Relativistic_Scalar_FMC &
+    ( J, H_1, H_2, H_3,             &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      alp, B_u_1, B_u_2, B_u_3,     &
+      v_u_1, v_u_2, v_u_3 )         &
+    RESULT( FluxFactor_Relativistic_FMC)
+
+    REAL(DP), INTENT(in) :: J, H_1, H_2, H_3, alp, B_u_1, B_u_2, B_u_3, v_u_1, v_u_2, v_u_3
+    REAL(DP), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP) :: FluxFactor_Relativistic_FMC 
+    REAL(DP) :: v_d_0, v_d_1, v_d_2, v_d_3, H_u_0, B_d_1, B_d_2, B_d_3, Gm_dd_00, Hsq
+
+    B_d_1 = Gm_dd_11 * B_u_1
+    B_d_2 = Gm_dd_22 * B_u_2
+    B_d_3 = Gm_dd_33 * B_u_3
+    
+    v_d_1 = Gm_dd_11 * v_u_1
+    v_d_2 = Gm_dd_22 * v_u_2
+    v_d_3 = Gm_dd_33 * v_u_3
+
+    v_d_0 = B_d_1 * v_u_1 +  B_d_2 * v_u_2 + B_d_3 * v_u_3
+    H_u_0 = ( v_d_1 * H_1 + v_d_2 * H_2 + v_d_3 * H_3 ) / alp
+    H_u_0 = H_u_0 * ( 1.0_DP / (1.0_DP - v_d_0 / alp ) ) 
+
+    Gm_dd_00 = -alp**2 + B_d_1 * B_u_1 +  B_d_2 * B_u_2 + B_d_3 * B_u_3
+
+    Hsq = Gm_dd_00 * H_u_0 * H_u_0
+    Hsq = Hsq + 2 * ( B_d_1 * H_1 * H_u_0 + B_d_2 * H_2 * H_u_0 + B_d_3 * H_3 * H_u_0 )
+    Hsq = Hsq + Gm_dd_11 * H_1**2 +  Gm_dd_22 * H_2**2 + Gm_dd_33 * H_3**2 
+
+    FluxFactor_Relativistic_FMC &
+      = MIN( MAX( SQRT( Hsq ) &
+                    / MAX( J, SqrtTiny ), &
+                  SqrtTiny ), &
+             One )
+
+    RETURN
+  END FUNCTION FluxFactor_Relativistic_Scalar_FMC
+
+  FUNCTION EulerianNumberDensity    &
+    (E, F_d_1, F_d_2, F_d_3,        &
+     ee,                            &
+     Gm_dd_11, Gm_dd_22, Gm_dd_33,  & 
+     V_u_1, V_u_2, V_u_3)           & 
+     RESULT(N)
+    ! --- Input/Output variables ---
+    REAL(DP), INTENT(in)  :: E, F_d_1, F_d_2, F_d_3 ! --- Index down
+    REAL(DP), INTENT(in)  ::    V_u_1, V_u_2, V_u_3 ! --- Index up
+    REAL(DP), INTENT(in)  :: ee
+    REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+
+    ! --- Local variables ---
+    REAL(DP) :: vMagSq, W, N 
+
+    vMagSq = V_u_1 * Gm_dd_11 * V_u_1 &
+           + V_u_2 * Gm_dd_22 * V_u_2 &
+           + V_u_3 * Gm_dd_33 * V_u_3
+    W = One / SQRT ( One - vMagSq )
+
+    N = W * (E - V_u_1 * F_d_1 &
+               - V_u_2 * F_d_2 &
+               - V_u_3 * F_d_3) & 
+               / ee
+    RETURN
+    END FUNCTION EulerianNumberDensity
+
+  SUBROUTINE EulerianNumberFlux     &
+    (J, H_u_1, H_u_2, H_u_3,        &
+     ee,                            &
+     Gm_dd_11, Gm_dd_22, Gm_dd_33,  & 
+     V_u_1, V_u_2, V_u_3,            &
+     FN_u_1, FN_u_2, FN_u_3)    
+    ! --- Input/Output variables ---
+    REAL(DP), INTENT(in)    :: J, H_u_1, H_u_2, H_u_3 ! --- Index up
+    REAL(DP), INTENT(in)    ::    V_u_1, V_u_2, V_u_3 ! --- Index up
+    REAL(DP), INTENT(in)    :: ee
+    REAL(DP), INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), INTENT(inout) :: FN_u_1, FN_u_2, FN_u_3
+
+    ! --- Local variables ---
+    REAL(DP) :: vMagSq, W 
+
+    vMagSq = V_u_1 * Gm_dd_11 * V_u_1 &
+           + V_u_2 * Gm_dd_22 * V_u_2 &
+           + V_u_3 * Gm_dd_33 * V_u_3
+    W = One / SQRT ( One - vMagSq )
+
+    FN_u_1 = ( H_u_1 + W * J * V_u_1 ) / ee
+    FN_u_2 = ( H_u_2 + W * J * V_u_2 ) / ee
+    FN_u_3 = ( H_u_3 + W * J * v_u_3 ) / ee
+
+    END SUBROUTINE EulerianNumberFlux
 
 END MODULE TwoMoment_UtilitiesModule_FMC
