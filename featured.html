@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<!--
+  Arcana by HTML5 UP
+  html5up.net | @ajlkn
+  Free for personal and commercial use under the CCA 3.0 license
+  (html5up.net/license)
+-->
+<html>
+
+  <head>
+    <title>thornado - featured</title>
+    <meta charset="utf-8" />
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="assets/css/main.css" />
+
+    <style>
+        
+      .featured-video {
+        max-width: 960px;
+        margin: 2em auto 0;
+      }
+
+      .video-frame {
+        position: relative;
+        width: 100%;
+        height: 0;
+        padding-bottom: 56.25%; /* 16:9 */
+        overflow: hidden;
+        background: #000;
+      }
+
+      .video-frame iframe {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+
+      .video-actions {
+        margin-top: 1.5em;
+        text-align: center;
+      }
+    
+
+      #navbar {
+        position: sticky;
+        top: 0;
+        overflow: hidden;
+        background-color: #333;
+        /* https://stackoverflow.com/questions/47600572/
+           html-overlapping-picture-over-sticky-navbar */
+        z-index: 1;
+      }
+
+      #navbar a {
+         float: left;
+         display: block;
+         color: #f2f2f2;
+         text-align: center;
+         padding: 14px 16px;
+         text-decoration: none;
+         font-size: 20px;
+      }
+
+      #navbar a:hover {
+        background-color: #ddd;
+        color: black;
+      }
+
+      #navbar a.active {
+        background-color: #04AA6D;
+        color: white;
+      }
+
+    </style>
+
+  </head>
+
+  <body class="is-preload">
+
+    <div id="page-wrapper">
+
+      <!-- Header -->
+      <div id="header">
+
+        <!-- Logo -->
+        <img src="images/thornado_logo.svg" height=50em>
+        <!-- true title -->
+
+        <!-- Nav -->
+        <nav id="nav">
+          <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="overview.html">Overview</a></li>
+            <li><a href="publications.html">Publications</a></li>
+            <li class="current"><a href="featured.html">Featured</a></li>
+            <li><a href="quickstart.html">Quick Start</a></li>
+            <li><a href="Documentation/sphinx/build/html/index.html">
+            Documentation</a></li>
+          </ul>
+        </nav>
+
+      </div><!-- end Header -->
+
+      <!-- Navbar https://www.w3schools.com/howto/howto_js_navbar_sticky.asp -->
+
+      <div id="navbar">
+        <a href="#featured-media">Featured Media</a>
+      </div>
+
+            <!-- Main -->
+      <section class="wrapper style4">
+
+        <div id="featured-media" class="container">
+
+          <header class="major">
+            <h2>Featured Media</h2>
+            <p>AAS Journal Author Series</p>
+          </header>
+
+          <p>
+            Our recent
+            <a href="https://doi.org/10.3847/1538-4365/ae57ad">
+              <em>Astrophysical Journal Supplement Series</em> article
+            </a>
+            on <em>thornado</em>+FLASH-X was selected for the AAS Journal Author Series.
+            In this interview with Frank Timmes, Eirik Endeve discusses
+            the numerical methods, nonlinear solver, and their role in
+            the development of <em>thornado</em>.
+          </p>
+
+          <div class="featured-video">
+            <div class="video-frame">
+              <iframe
+                src="https://www.youtube-nocookie.com/embed/gMOzUe243_Q"
+                title="AAS Journal Author Series interview about thornado"
+                loading="lazy"
+                referrerpolicy="strict-origin-when-cross-origin"
+                allow="accelerometer; autoplay; clipboard-write;
+                       encrypted-media; gyroscope; picture-in-picture;
+                       web-share"
+                allowfullscreen>
+              </iframe>
+            </div>
+
+            <p class="video-actions">
+              <a
+                class="button"
+                href="https://www.youtube.com/watch?v=gMOzUe243_Q"
+                target="_blank"
+                rel="noopener noreferrer">
+                Watch on YouTube
+              </a>
+            </p>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- Footer (this section is empty, but we need it)-->
+      <div id="footer">
+
+        <div class="container">
+          <div class="row">
+          </div>
+        </div>
+
+        <!-- Icons -->
+        <ul class="icons">
+          <li><a href="https://github.com/endeve/thornado"
+                 class="icon brands fa-github">
+              <span class="label">GitHub</span></a></li>
+        </ul>
+
+        <!-- Copyright -->
+        <div class="copyright">
+          <ul class="menu">
+            <li>&copy; <em>thornado</em> development team.
+                       All rights reserved</li>
+            <li>Design: <a href="http://html5up.net">HTML5 UP</a></li>
+          </ul>
+        </div>
+      </div><!-- end Footer -->
+    
+    </div>
+    <!-- end page-wrapper -->
+
+    <!-- Scripts -->
+    <script src="assets/js/jquery.min.js"></script>
+    <script src="assets/js/jquery.dropotron.min.js"></script>
+    <script src="assets/js/browser.min.js"></script>
+    <script src="assets/js/breakpoints.min.js"></script>
+    <script src="assets/js/util.js"></script>
+    <script src="assets/js/main.js"></script>
+
+  </body>
+
+</html>
