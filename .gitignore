@@ -9,6 +9,10 @@
 *.synctex.gz
 *.toc
 
+# output directories
+
+**/Output/
+
 # emacs temporaries
 *~
 
