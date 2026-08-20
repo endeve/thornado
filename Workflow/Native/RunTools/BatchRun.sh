@@ -10,8 +10,8 @@ do
 	mkdir ../Output/${PROBLEM_DIR}
 	sed -i "153c\  ProgramName = 'ShearingDisk'" ../ApplicationDriver.F90
 	sed -i "706c\      bcX = [ ${params["$j,3"]}, 1, 1 ]" ../ApplicationDriver.F90
-	sed -i "760c\  nNodes = ${params["$j,2"]}" ../ApplicationDriver.F90
-	sed -i "766c\  nStagesSSPRK = ${params["$j,2"]}" ../ApplicationDriver.F90
+	sed -i "757c\  nNodes = ${params["$j,2"]}" ../ApplicationDriver.F90
+	sed -i "763c\  nStagesSSPRK = ${params["$j,2"]}" ../ApplicationDriver.F90
 	sed -i "702c\      SDICFileName = './GR_LR_${params["$j,1"]}.h5'" ../ApplicationDriver.F90
 	sed -i "686c\      ApplyRandomPerturbations = ${params["$j,4"]}" ../ApplicationDriver.F90
 	sed -i "689c\      SDInitialField = ${params["$j,5"]} * Gauss" ../ApplicationDriver.F90
