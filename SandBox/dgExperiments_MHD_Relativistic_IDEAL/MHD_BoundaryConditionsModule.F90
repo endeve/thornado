@@ -957,129 +957,205 @@ CONTAINS
 
     CASE( 44 ) ! Custom BCs for relativistic shearing disk.
 
-      IF( t .NE. Zero )THEN
+      ! --- Inner Boundary --
 
-        ! --- Inner Boundary --
+      IF( ApplyInnerBC_MHD( iApplyBC ) )THEN
 
-        IF( ApplyInnerBC_MHD( iApplyBC ) )THEN
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX(1)
+        DO iNX = 1, nDOFX
 
-          DO iX3 = iX_B0(3), iX_E0(3)
-          DO iX2 = iX_B0(2), iX_E0(2)
-          DO iX1 = 1, swX(1)
-          DO iNX = 1, nDOFX
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_D) &
+            = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_D) &
+              + U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_D) &
+              - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_D)
 
-            !PRINT*, 'Inner Boundary Location:     ', iNX, iX_B0(1) - iX1,     iX2, iX3
-            !PRINT*, 'Last Compute Cell Location:  ', iNX, iX_E0(1) - (iX1-1), iX2, iX3
-            !PRINT*
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S1) &
+            = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S1) &
+              + U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_S1) &
+              - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S1)
 
-            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_D) &
-              = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_D) &
-                + U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_D) &
-                - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_D)
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S2) &
+            = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S2) &
+              + U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_S2) &
+              - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S2)
 
-            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S1) &
-              = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S1) &
-                + U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_S1) &
-                - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S1)
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S3) &
+            = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S3) &
+              + U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_S3) &
+              - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S3)
 
-            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S2) &
-              = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S2) &
-                + U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_S2) &
-                - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S2)
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_E) &
+            = D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_E) &
+              + U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_E) &
+              - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_E)
 
-            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S3) &
-              = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S3) &
-                + U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_S3) &
-                - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S3)
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B1) &
+            = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B1) &
+              * ( G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_SqrtGm) &
+                  / G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_SqrtGm) )
 
-            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_E) &
-              = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_E) &
-                + U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_E) &
-                - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_E)
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B2) &
+            = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B2)
 
-            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B1) &
-              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B1) &
-                * ( G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_SqrtGm) &
-                    / G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_SqrtGm) )
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B3) &
+            = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B3)
 
-            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B2) &
-              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B2)
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_Chi) &
+            = U(iNX,iX_B0(1),iX2,iX3,iCM_Chi)
 
-            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B3) &
-              = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B3)
+        END DO
+        END DO
+        END DO
+        END DO
 
-            U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_Chi) &
-              = Zero
-
-          END DO
-          END DO
-          END DO
-          END DO
-
-        END IF
+      END IF
 
         ! --- Outer Boundary --
 
-        IF( ApplyOuterBC_MHD( iApplyBC ) )THEN
+     IF( ApplyOuterBC_MHD( iApplyBC ) )THEN
 
-          DO iX3 = iX_B0(3), iX_E0(3)
-          DO iX2 = iX_B0(2), iX_E0(2)
-          DO iX1 = 1, swX(1)
-          DO iNX = 1, nDOFX
+       DO iX3 = iX_B0(3), iX_E0(3)
+       DO iX2 = iX_B0(2), iX_E0(2)
+       DO iX1 = 1, swX(1)
+       DO iNX = 1, nDOFX
 
-            !PRINT*, 'Outer Boundary Location:     ', iNX, iX_E0(1) + iX1,     iX2, iX3
-            !PRINT*, 'First Compute Cell Location: ', iNX, iX_B0(1) + (iX1-1), iX2, iX3
-            !PRINT*
+         U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_D) &
+           = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_D) &
+             + U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_D) &
+             - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_D)
 
-            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_D) &
-              = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_D) &
-                + U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_D) &
-                - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_D)
+         U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S1) &
+           = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S1) &
+             + U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_S1) &
+             - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S1)
 
-            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S1) &
-              = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S1) &
-                + U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_S1) &
-                - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S1)
+         U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S2) &
+           = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S2) &
+             + U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_S2) &
+             - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S2)
 
-            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S2) &
-              = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S2) &
-                + U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_S2) &
-                - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S2)
+         U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S3) &
+           = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S3) &
+             + U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_S3) &
+             - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S3)
 
-            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S3) &
-              = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S3) &
-                + U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_S3) &
-                - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S3)
+         U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_E) &
+           = D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_E) &
+             + U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_E) &
+             - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_E)
 
-            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_E) &
-              = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_E) &
-                + U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_E) &
-                - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_E)
+         U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B1) &
+           = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B1) &
+             * ( G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_SqrtGm) &
+                 / G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_SqrtGm) )
 
-            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B1) &
-              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B1) &
-                * ( G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_SqrtGm) &
-                    / G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_SqrtGm) )
+         U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B2) &
+           = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B2)
 
-            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B2) &
-              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B2)
+         U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B3) &
+           = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B3)
 
-            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B3) &
-              = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B3)
+         U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_Chi) &
+           = U(iNX,iX_E0(1),iX2,iX3,iCM_Chi)
 
-            U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_Chi) &
-              = Zero
+       END DO
+       END DO
+       END DO
+       END DO
 
-          END DO
-          END DO
-          END DO
-          END DO
+      END IF
 
-        END IF
+    CASE( 45 ) ! Custom BCs for relativistic shearing disk.
 
-      ELSE
+      ! --- Inner Boundary --
 
-        RETURN
+      IF( ApplyInnerBC_MHD( iApplyBC ) )THEN
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX(1)
+        DO iNX = 1, nDOFX
+
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_D) &
+            = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_D)
+
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S1) &
+            = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S1)
+
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S2) &
+            = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S2)
+
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S3) &
+            = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S3)
+
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_E) &
+            = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_E)
+
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B1) &
+            = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B1) &
+              * ( G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_SqrtGm) &
+                  / G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_SqrtGm) )
+
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B2) &
+            = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B2)
+
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B3) &
+            = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B3)
+
+          U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_Chi) &
+            = U(iNX,iX_B0(1),iX2,iX3,iCM_Chi)
+
+        END DO
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+      ! --- Outer Boundary --
+
+      IF( ApplyOuterBC_MHD( iApplyBC ) )THEN
+
+        DO iX3 = iX_B0(3), iX_E0(3)
+        DO iX2 = iX_B0(2), iX_E0(2)
+        DO iX1 = 1, swX(1)
+        DO iNX = 1, nDOFX
+
+          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_D) &
+            = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_D)
+
+          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S1) &
+            = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S1)
+
+          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S2) &
+            = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S2)
+
+          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S3) &
+            = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S3)
+
+          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_E) &
+            = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_E)
+
+          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B1) &
+            = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B1) &
+              * ( G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_SqrtGm) &
+                  / G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_SqrtGm) )
+
+          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B2) &
+            = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B2)
+
+          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B3) &
+            = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B3)
+
+          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_Chi) &
+            = U(iNX,iX_E0(1),iX2,iX3,iCM_Chi)
+
+        END DO
+        END DO
+        END DO
+        END DO
 
       END IF
 
