@@ -987,7 +987,7 @@ CONTAINS
               - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S3)
 
           U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_E) &
-            = D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_E) &
+            = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_E) &
               + U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_E) &
               - D(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_E)
 
@@ -1042,7 +1042,7 @@ CONTAINS
              - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S3)
 
          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_E) &
-           = D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_E) &
+           = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_E) &
              + U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_E) &
              - D(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_E)
 
