@@ -8,7 +8,7 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_OrderV
   USE amrex_geometry_module, ONLY: &
     amrex_geometry
   USE amrex_parallel_module, ONLY: &
-    amrex_parallel_reduce_sum
+    amrex_parallel_reduce_sum, amrex_parallel_ioprocessor
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, amrex_imultifab, &
     amrex_multifab_build, amrex_multifab_destroy, &
@@ -28,7 +28,7 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_OrderV
   USE GeometryFieldsModuleE,     ONLY: &
     nGE, uGE, iGE_Ep2, iGE_Ep3
   USE RadiationFieldsModule,            ONLY: &
-    nCR, nSpecies, LeptonNumber
+    nCR, nSpecies, LeptonNumber, iCR_N
   USE FluidFieldsModule,            ONLY: &
     nCF
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
@@ -86,6 +86,8 @@ MODULE  MF_TwoMoment_DiscretizationModule_Streaming_OrderV
     MF_amrex_permute2amrex_Z_Level
   USE MF_FieldsModule_TwoMoment, ONLY: &
     FluxRegister_TwoMoment
+  USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
+    ApplyPositivityLimiter_TwoMoment_MF
   USE Euler_MeshRefinementModule, ONLY: &
     FaceRatio, &
     WeightsX_X1c, &
@@ -182,14 +184,17 @@ CONTAINS
       ! --- Apply boundary conditions to interior domains ---
 
       CALL FillPatch &
-           ( iLevel, MF_uGF,MF_uCR)
+           ( iLevel, MF_uGF,MF_uCR, ApplyBoundaryConditions_TwoMoment_Option = .TRUE.)
       
-      CALL FillPatch( iLevel, MF_uGF, MF_uCF )
+      CALL FillPatch( iLevel, MF_uGF, MF_uCF, ApplyBoundaryConditions_Euler_Option = .TRUE. )
 
 
       CALL FillPatch &
            ( iLevel, MF_uGF, &
              ApplyBoundaryConditions_Geometry_Option = .TRUE. )
+
+      CALL ApplyPositivityLimiter_TwoMoment_MF &
+             ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uCR(iLevel) )
 
       CALL MF_duCR(iLevel) % setval( 0.0_amrex_real )
 
@@ -337,8 +342,13 @@ CALL AllocateArray_Z &
                ( iX_B0, iX_E0, iX_B1, iX_E1, C, Edge_Map )
 
        CALL ComputeIncrement_TwoMoment_Explicit &
-              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, SuppressBC_Option = .TRUE., &
-                SurfaceFlux_X1_Option = SurfaceFlux_X1, SurfaceFlux_X2_Option = SurfaceFlux_X2 )
+              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, &
+                SuppressBC_Option = .TRUE., &
+                SurfaceFlux_X1_Option = SurfaceFlux_X1, &
+                SurfaceFlux_X2_Option = SurfaceFlux_X2, &
+                FineMask_Option = FineMask(iX_B0(1):iX_E0(1), &
+                                           iX_B0(2):iX_E0(2), &
+                                           iX_B0(3):iX_E0(3), 1) )
 
         CALL ComputeOffGridFlux_MF &
                ( iZ_B0, iZ_E0, &
@@ -629,29 +639,29 @@ END DO
 
     END DO
 
-    DO i = 0, nLevels-1
-        CALL amrex_multifab_build &
-               ( MF_Permute(i), MF_uGF(i) % BA, &
-                 MF_uGF(i) % DM, nDOFX * nDOFE * ( iE_E0 - iE_B0 + 1 ) * nCR * nSpecies, swX )
+    !DO i = 0, nLevels-1
+    !    CALL amrex_multifab_build &
+    !           ( MF_Permute(i), MF_uGF(i) % BA, &
+    !             MF_uGF(i) % DM, nDOFX * nDOFE * ( iE_E0 - iE_B0 + 1 ) * nCR * nSpecies, swX )
 
 
-      CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+    !  CALL MF_amrex2amrex_permute_Z_Level(i,nCR,MF_uGF(i),MF_duCR(i),MF_Permute(i))
 
-    END DO
+    !END DO
 
 
-    CALL AverageDown( MF_uGF, MF_Permute )
+    !CALL AverageDown( MF_uGF, MF_Permute )
 
-    DO i = 0, nLevels-1
+    !DO i = 0, nLevels-1
 
-      CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_uCR(i),MF_Permute(i))
+    !  CALL MF_amrex_permute2amrex_Z_Level(i,nCR,MF_uGF(i),MF_duCR(i),MF_Permute(i))
 
-      CALL amrex_multifab_destroy( MF_Permute(i) )
+    !  CALL amrex_multifab_destroy( MF_Permute(i) )
 
     !CALL AverageDown( MF_uGF, MF_uCR )
 
 
-    END DO
+    !END DO
     
 
 
@@ -710,6 +720,7 @@ END DO
                 - OffGridFlux_TwoMoment_X1_Outer_All ) &
           - ( OffGridFlux_TwoMoment_X2_Inner_All &
                 - OffGridFlux_TwoMoment_X2_Outer_All )
+
  
   END SUBROUTINE ComputeOffGridFlux_MF
  
