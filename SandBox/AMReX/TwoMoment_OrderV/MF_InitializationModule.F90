@@ -264,11 +264,6 @@ CONTAINS
         CALL InitializeFields_ExpandingAtmosphere &
                ( iLevel, MF_uGF, MF_uCR, MF_uCF )
 
-     CASE( '1DCCSNe' )
-
-       CALL InitializeFields_1DCCSNe &
-              ( iLevel, MF_uGF, MF_uCR, MF_uCF )
-
       CASE DEFAULT
 
         CALL DescribeError_MF &
@@ -3439,7 +3434,7 @@ SUBROUTINE InitializeFields_ALT_TransparentVortex &
   END SUBROUTINE InitializeFields_ALT_TransparentVortex
 
 
-
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 END MODULE MF_InitializationModule
