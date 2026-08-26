@@ -192,7 +192,10 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_TwoMoment_Explicit &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, SuppressBC_Option )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, SuppressBC_Option, &
+      SurfaceFlux_X1_Option, &
+      SurfaceFlux_X2_Option, &
+      SurfaceFlux_X3_Option, FineMask_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -233,6 +236,39 @@ CONTAINS
 
     LOGICAL, INTENT(in), OPTIONAL :: &
       SuppressBC_Option
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      SurfaceFlux_X1_Option(:,:,:,:,:,:,:), &
+      SurfaceFlux_X2_Option(:,:,:,:,:,:,:), &
+      SurfaceFlux_X3_Option(:,:,:,:,:,:,:)
+
+    INTEGER, INTENT(in), OPTIONAL :: &                ! <-- add
+      FineMask_Option(iZ_B0(2):iZ_E0(2), &            ! <-- add
+                      iZ_B0(3):iZ_E0(3), &            ! <-- add
+                      iZ_B0(4):iZ_E0(4))
+
+    ! --- Surface flux for coarse/fine corrections ---
+
+    REAL(DP) :: &
+      SurfaceFlux_X1(nDOFX_X1, &
+          iZ_B0(2):iZ_E0(2)+1, &
+          iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4), &
+          nCR)
+
+    REAL(DP) :: &
+      SurfaceFlux_X2(nDOFX_X2, &
+          iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3)+1, &
+          iZ_B0(4):iZ_E0(4), &
+          nCR)
+
+    REAL(DP) :: &
+      SurfaceFlux_X3(nDOFX_X3, &
+          iZ_B0(2):iZ_E0(2), &
+          iZ_B0(3):iZ_E0(3), &
+          iZ_B0(4):iZ_E0(4)+1, &
+          nCR)
+
 
     LOGICAL :: SuppressBC
     INTEGER :: iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iCR, iS
@@ -310,20 +346,29 @@ CONTAINS
     CALL TimersStart( Timer_Streaming_Divergence )
 
     CALL ComputeIncrement_Divergence_X1 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, SurfaceFlux_X1_Option )
 
     CALL ComputeIncrement_Divergence_X2 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, SurfaceFlux_X2_Option )
 
     CALL ComputeIncrement_Divergence_X3 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R)
 
     CALL TimersStop( Timer_Streaming_Divergence )
 
     CALL TimersStart( Timer_Streaming_ObserverCorrections )
 
-    CALL ComputeIncrement_ObserverCorrections &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+    !CALL ComputeIncrement_ObserverCorrections &
+    !       ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+
+    IF( PRESENT( FineMask_Option ) )THEN
+      CALL ComputeIncrement_ObserverCorrections &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
+               FineMask_Option )
+    ELSE
+      CALL ComputeIncrement_ObserverCorrections &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+    END IF
 
     CALL TimersStop( Timer_Streaming_ObserverCorrections )
 
@@ -391,9 +436,12 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Divergence_X1 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, SurfaceFlux_X1_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+
+  !REAL(DP), INTENT(out), OPTIONAL :: &
+  !  SurfaceFlux_X1_Option(:,:,:,:,:,:,:)
 
     INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
@@ -429,6 +477,15 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
+
+ REAL(DP), INTENT(out), OPTIONAL :: &
+    SurfaceFlux_X1_Option(1:nDOF_X1, &
+                          iZ_B0(1):iZ_E0(1), &
+                          iZ_B0(2):iZ_E0(2)+1, &
+                          iZ_B0(3):iZ_E0(3), &
+                          iZ_B0(4):iZ_E0(4), &
+                          1:nCR, &
+                          1:nSpecies)
 
     INTEGER  :: iNodeZ, iNodeE, iNodeX, iNodeZ_X1, iNodeX_X1
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
@@ -631,6 +688,14 @@ CONTAINS
       uV2_R = uS2_R(iX_F) / ( Gm_dd_22_F(iX_F) * uFD_R(iX_F) )
       uV3_R = uS3_R(iX_F) / ( Gm_dd_33_F(iX_F) * uFD_R(iX_F) )
 
+IF( uFD_L(iX_F) .LE. Zero .OR. uFD_R(iX_F) .LE. Zero &
+    .OR. uFD_L(iX_F) .NE. uFD_L(iX_F) &
+    .OR. uFD_R(iX_F) .NE. uFD_R(iX_F) ) THEN
+  PRINT *, '[X1 face] iX_F=', iX_F, &
+           ' uFD_L=', uFD_L(iX_F), ' uFD_R=', uFD_R(iX_F), &
+           ' uS1_L=', uS1_L(iX_F), ' uS1_R=', uS1_R(iX_F)
+END IF
+
       CALL FaceVelocity_X1 &
              ( uV1_L, uV2_L, uV3_L, &
                uV1_R, uV2_R, uV3_R, &
@@ -791,6 +856,14 @@ CONTAINS
         NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
           = NumericalFlux_LLF &
               ( uCR_X1_L(iCR), uCR_X1_R(iCR), Flux_L(iCR), Flux_R(iCR), One )
+
+        IF( PRESENT( SurfaceFlux_X1_Option ) )THEN
+
+        SurfaceFlux_X1_Option(iNodeZ_X1,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+          = NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
+                 * SqrtGm_F(iX_F)
+
+        END IF
 
         NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
           = dZ1(iZ1) * dZ3(iZ3) * dZ4(iZ4) &
@@ -1007,7 +1080,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Divergence_X2 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, SurfaceFlux_X2_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -1045,6 +1118,14 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      SurfaceFlux_X2_Option(1:nDOF_X2, &
+                            iZ_B0(1):iZ_E0(1), &
+                            iZ_B0(2):iZ_E0(2), &
+                            iZ_B0(3):iZ_E0(3)+1, &
+                            iZ_B0(4):iZ_E0(4), &
+                            1:nCR, &
+                            1:nSpecies)
 
     INTEGER  :: iNodeZ, iNodeE, iNodeX, iNodeZ_X2, iNodeX_X2
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
@@ -1248,6 +1329,14 @@ CONTAINS
       uV2_R = uS2_R(iX_F) / ( Gm_dd_22_F(iX_F) * uFD_R(iX_F) )
       uV3_R = uS3_R(iX_F) / ( Gm_dd_33_F(iX_F) * uFD_R(iX_F) )
 
+IF( uFD_L(iX_F) .LE. Zero .OR. uFD_R(iX_F) .LE. Zero &
+    .OR. uFD_L(iX_F) .NE. uFD_L(iX_F) &
+    .OR. uFD_R(iX_F) .NE. uFD_R(iX_F) ) THEN
+  PRINT *, '[X2 face] iX_F=', iX_F, &
+           ' uFD_L=', uFD_L(iX_F), ' uFD_R=', uFD_R(iX_F), &
+           ' uS1_L=', uS1_L(iX_F), ' uS1_R=', uS1_R(iX_F)
+END IF
+
       CALL FaceVelocity_X2 &
              ( uV1_L, uV2_L, uV3_L, &
                uV1_R, uV2_R, uV3_R, &
@@ -1408,6 +1497,15 @@ CONTAINS
         NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ3) &
           = NumericalFlux_LLF &
               ( uCR_X2_L(iCR), uCR_X2_R(iCR), Flux_L(iCR), Flux_R(iCR), One )
+
+        IF( PRESENT( SurfaceFlux_X2_Option ) )THEN
+
+        SurfaceFlux_X2_Option(iNodeZ_X2,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+          = NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ3) &
+                 * SqrtGm_F(iX_F)
+
+        END IF
+
 
         NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ3) &
           = dZ1(iZ1) * dZ2(iZ2) * dZ4(iZ4) &
@@ -2241,7 +2339,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_ObserverCorrections &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, FineMask_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -2279,6 +2377,11 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
+
+    INTEGER, INTENT(in), OPTIONAL :: &
+      FineMask_Option(iZ_B0(2):iZ_E0(2), &
+                      iZ_B0(3):iZ_E0(3), &
+                      iZ_B0(4):iZ_E0(4))
 
     INTEGER  :: iNodeZ, iNodeE, iNodeX, iNodeZ_E
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
@@ -2716,7 +2819,15 @@ CONTAINS
 
     ! --- Off-Grid Fluxes for Conservation Tally ---
 
-    CALL ComputeOffGridFlux( iZP_B0, iZP_E0, nDOF_E, NumericalFlux, NumericalFlux2 )
+    !CALL ComputeOffGridFlux( iZP_B0, iZP_E0, nDOF_E, NumericalFlux, NumericalFlux2 )
+    IF( PRESENT( FineMask_Option ) )THEN
+      CALL ComputeOffGridFlux &
+             ( iZP_B0, iZP_E0, nDOF_E, NumericalFlux, NumericalFlux2, &
+               FineMask_Option )
+    ELSE
+      CALL ComputeOffGridFlux &
+             ( iZP_B0, iZP_E0, nDOF_E, NumericalFlux, NumericalFlux2 )
+    END IF
 
     !--------------------
     ! --- Volume Term ---
@@ -3774,10 +3885,15 @@ CONTAINS
   END SUBROUTINE FinalizeIncrement_ObserverCorrections
 
 
-  SUBROUTINE ComputeOffGridFlux( iZP_B0, iZP_E0, nDOFZ_X, NumericalFlux, NumericalFlux2 )
+  SUBROUTINE ComputeOffGridFlux( iZP_B0, iZP_E0, nDOFZ_X, NumericalFlux, NumericalFlux2, FineMask_Option )
 
     INTEGER, INTENT(in) :: iZP_B0(4), iZP_E0(4) ! Permuted limits
     INTEGER, INTENT(in) :: nDOFZ_X ! nDOFZ_X1, ...
+    ! Adding Fine mask option for amr adaptivity
+    INTEGER, INTENT(in), OPTIONAL :: &                          
+      FineMask_Option(iZP_B0(1):iZP_E0(1), &                    
+                      iZP_B0(2):iZP_E0(2), &                   
+                      iZP_B0(3):iZP_E0(3))
 
     REAL(DP), INTENT(in) :: &
       NumericalFlux (nDOFZ_X,nCR, &
@@ -3798,6 +3914,10 @@ CONTAINS
     INTEGER :: iNodeZ_X
 
     REAL(DP) :: FluxIn1, FluxIn2, FluxOt1, FluxOt2 
+
+    LOGICAL :: UseMask
+
+    UseMask = PRESENT( FineMask_Option )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE &
@@ -3829,6 +3949,10 @@ CONTAINS
       DO iZP2 = iZP_B0(2), iZP_E0(2)
       DO iZP1 = iZP_B0(1), iZP_E0(1)
 
+      IF( UseMask )THEN
+          IF( FineMask_Option(iZP1,iZP2,iZP3) .NE. 0 ) CYCLE 
+                  END IF
+
         DO iNodeZ_X = 1, nDOFZ_X
 
           FluxIn1 = FluxIn1 + LeptonNumber(iS) * NumericalFlux (iNodeZ_X,iCR,iZP1,iZP2,iZP3,iS,iZP_B0(4))
@@ -3855,6 +3979,10 @@ CONTAINS
       DO iZP3 = iZP_B0(3), iZP_E0(3)
       DO iZP2 = iZP_B0(2), iZP_E0(2)
       DO iZP1 = iZP_B0(1), iZP_E0(1)
+
+      IF( UseMask )THEN
+          IF( FineMask_Option(iZP1,iZP2,iZP3) .NE. 0 ) CYCLE
+                  END IF
 
         DO iNodeZ_X = 1, nDOFZ_X
 
