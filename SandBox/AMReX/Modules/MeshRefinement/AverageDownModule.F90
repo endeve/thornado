@@ -17,8 +17,10 @@ MODULE AverageDownModule
   ! --- thornado Modules ---
 
   USE ProgramHeaderModule, ONLY: &
-    nDOFX, &
-    swX
+    nDOFZ, nDOFX, nDOFE, nE, &
+    iE_B0, &
+    iE_E0, &
+    iZ_B0, iZ_B1, iZ_E0, iZ_E1, swX, nX, nDimsX, nNodes
   USE GeometryFieldsModule, ONLY: &
     iGF_SqrtGm
   USE Euler_MeshRefinementModule, ONLY: &
@@ -26,14 +28,21 @@ MODULE AverageDownModule
     pG2L_c, &
     pL2G_c, &
     pF2C_c, &
-    vpFineToCoarseProjectionMatrix
-
+    vpFineToCoarseProjectionMatrix, &
+    nFine_Aniso, &
+    vpF2C_Aniso
+  USE InputParsingModule,                      ONLY: &
+    nLevels,nMaxLevels, UseTiling, nSpecies
+  USE RadiationFieldsModule, ONLY: &
+    nCR
   ! --- Local Modules ---
 
   USE thornado_amrex_multifabutil_module, ONLY: &
     amrex_average_down_dg_conservative, &
     amrex_average_down_dg_pointwise, &
-    amrex_average_down_cg
+    amrex_average_down_cg, &
+    !amrex_average_down_dg_conservative_vect, &
+    !amrex_average_down_dg_pointwise_vect
   USE MF_GeometryModule, ONLY: &
     UpdateSpatialMetric_MF
   USE InputParsingModule, ONLY: &
@@ -42,6 +51,13 @@ MODULE AverageDownModule
     TimersStart_AMReX, &
     TimersStop_AMReX, &
     Timer_AMReX_AverageDown
+  USE MF_UtilitiesModule, ONLY: &
+    MF_amrex2amrex_permute_Z_Level, &
+    MF_amrex_permute2amrex_Z_Level
+  !USE AnisotropicRefinementModule, ONLY: &
+  !  UseAnisotropicRefinement, &
+  !  RefRatioVect
+
 
   IMPLICIT NONE
   PRIVATE
@@ -66,7 +82,7 @@ CONTAINS
 
     TYPE(amrex_multifab), INTENT(inout) :: MF(0:)
     LOGICAL             , INTENT(in), OPTIONAL :: &
-      UpdateSpatialMetric_Option
+    UpdateSpatialMetric_Option
 
     INTEGER :: iLevel, FinestLevel
     LOGICAL :: UpdateSpatialMetric
@@ -87,20 +103,62 @@ CONTAINS
   END SUBROUTINE AverageDown_PointWise
 
 
-  SUBROUTINE AverageDown_Conservative( MF_uGF, MF )
+  SUBROUTINE AverageDown_Conservative( MF_uGF, MF, Radiation_Option )
 
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
-    TYPE(amrex_multifab), INTENT(inout) :: MF    (0:)
+    TYPE(amrex_multifab), INTENT(in)           :: MF_uGF(0:)
+    TYPE(amrex_multifab), INTENT(inout)        :: MF    (0:)
+    TYPE(amrex_multifab)                       :: MF_Permute(0:nMaxLevels-1)
 
-    INTEGER :: iLevel, FinestLevel
+    LOGICAL             , INTENT(in), OPTIONAL :: Radiation_Option
+
+
+    INTEGER :: iLevel, FinestLevel, nCompCR
+    LOGICAL :: Radiation
+
+    Radiation = .FALSE.
+    !IF( PRESENT( Radiation_Option ) ) Radiation = Radiation_Option
+    nCompCR = nDOFX * nDOFE * ( iE_E0 - iE_B0 + 1 ) * nCR * nSpecies
 
     FinestLevel = amrex_get_finest_level()
 
-    DO iLevel = FinestLevel-1, 0, -1
+    IF ( Radiation ) THEN
 
-      CALL AverageDownTo_Conservative( iLevel, MF_uGF, MF )
+        DO iLevel = 0, FinestLevel
 
-    END DO
+	    PRINT *, '=== Building FluxRegister_TwoMoment ==='
+
+            CALL amrex_multifab_build &
+                  ( MF_Permute(iLevel), MF_uGF(iLevel) % BA, &
+                    MF_uGF(iLevel) % DM, nCompCR, swX )
+
+        CALL MF_amrex2amrex_permute_Z_Level &
+               ( iLevel, nCR, MF_uGF(iLevel), MF(iLevel), MF_Permute(iLevel) )
+      END DO
+
+      DO iLevel = FinestLevel-1, 0, -1
+
+          CALL AverageDownTo_Conservative( iLevel, MF_uGF, MF_Permute )
+
+      END DO
+
+      DO iLevel = 0, FinestLevel
+
+          CALL MF_amrex_permute2amrex_Z_Level &
+               ( iLevel, nCR, MF_uGF(iLevel), MF(iLevel), MF_Permute(iLevel) )
+
+          CALL amrex_multifab_destroy( MF_Permute(iLevel) )
+
+      END DO
+
+    ELSE
+
+      DO iLevel = FinestLevel-1, 0, -1
+
+          CALL AverageDownTo_Conservative( iLevel, MF_uGF, MF )
+
+      END DO
+
+    END IF
 
   END SUBROUTINE AverageDown_Conservative
 
@@ -135,10 +193,21 @@ CONTAINS
 
     END IF
 
+    !IF( UseAnisotropicRefinement )THEN
+
+    !  CALL amrex_average_down_dg_pointwise_vect &
+    !         ( MF(CoarseLevel+1), MF(CoarseLevel), &
+    !           MF(CoarseLevel) % nComp(), RefRatioVect(:,CoarseLevel), &
+    !           nDOFX, nFine_Aniso(CoarseLevel), vpF2C_Aniso(CoarseLevel) )
+
+    !ELSE
+
     CALL amrex_average_down_dg_pointwise &
            ( MF(CoarseLevel+1), MF(CoarseLevel), &
              MF(CoarseLevel) % nComp(), amrex_ref_ratio(CoarseLevel), &
              nDOFX, nFine, vpFineToCoarseProjectionMatrix )
+
+    END IF
 
     IF( UpdateSpatialMetric )THEN
 
