@@ -26,8 +26,8 @@ MODULE FinalizationModule
   USE TwoMoment_TimersModule, ONLY: &
     FinalizeTimers
 
-  USE Euler_MeshRefinementModule, ONLY: &
-    FinalizeMeshRefinement_Euler_Aniso
+  !USE Euler_MeshRefinementModule, ONLY: &
+  !  FinalizeMeshRefinement_Euler_Aniso
 
   !USE AnisotropicRefinementModule, ONLY: &
   !  UseAnisotropicRefinement, &
