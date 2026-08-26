@@ -26,6 +26,13 @@ MODULE FinalizationModule
   USE TwoMoment_TimersModule, ONLY: &
     FinalizeTimers
 
+  USE Euler_MeshRefinementModule, ONLY: &
+    FinalizeMeshRefinement_Euler_Aniso
+
+  !USE AnisotropicRefinementModule, ONLY: &
+  !  UseAnisotropicRefinement, &
+  !  FinalizeAnisotropicRefinement
+
   ! --- Local Modules ---
 
   USE MF_EquationOfStateModule, ONLY: &
@@ -51,7 +58,7 @@ MODULE FinalizationModule
     !FinalizeSlopeLimiter_TwoMoment_MF
   !USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
     !FinalizePositivityLimiter_TwoMoment_MF
-  USE MF_TwoMoment_UtilitiesModule, ONLY: &
+  USE MF_TwoMoment_UtilitiesModule_OrderV, ONLY: &
     ComputeFromConserved_TwoMoment_MF
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
@@ -82,6 +89,7 @@ MODULE FinalizationModule
     Finalize_IMEX_RK_MF
   USE MF_UtilitiesModule, ONLY: &
     ShowVariableFromMultiFab
+  USE MF_TwoMoment_TallyModule
 
   IMPLICIT NONE
   PRIVATE
@@ -93,11 +101,12 @@ CONTAINS
 
   SUBROUTINE FinalizeProgram
 
-    CALL ComputeFromConserved_TwoMoment_MF &
-           (  MF_uGF, MF_uPF, MF_uCR, MF_uPR, MF_uAR, MF_uGR )
 
     CALL ComputeFromConserved_Euler_MF &
            ( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
+
+    CALL ComputeFromConserved_TwoMoment_MF &
+           (  MF_uGF, MF_uCF, MF_uCR, MF_uPR, MF_uAR, MF_uGR )
     
     StepNo = StepNo + 1
 
@@ -112,24 +121,16 @@ CONTAINS
              MF_uCR_Option = MF_uCR, &
              MF_uGR_Option = MF_uGR )
 
-    CALL WriteFieldsAMReX_Checkpoint &
-           ( StepNo, nLevels, dt, t_new, &
-             [ BaryonicMass_Initial   , BaryonicMass_OffGrid    ], &
-             [ EulerMomentumX1_Initial, EulerMomentumX1_OffGrid ], &
-             [ EulerMomentumX2_Initial, EulerMomentumX2_OffGrid ], &
-             [ EulerMomentumX3_Initial, EulerMomentumX3_OffGrid ], &
-             [ EulerEnergy_Initial    , EulerEnergy_OffGrid     ], &
-             [ ElectronNumber_Initial , ElectronNumber_OffGrid  ], &
-             [ ADMMass_Initial        , ADMMass_OffGrid         ], &
-             MF_uGF % BA % P, &
-             iWriteFields_uGF = 1, &
-             iWriteFields_uCF = 1, &
-             iWriteFields_uCR = 0, &
-             pMF_uGF_Option = MF_uGF % P, &
-             pMF_uCF_Option = MF_uCF % P)
-             !pMF_uCR_Option = MF_uCR % P )
+    CALL WriteFieldsAMReX_Checkpoint
 
-    CALL ShowVariableFromMultifab(MF_uGR, 1, writetofile_option=.TRUE., FileNameBase_Option ='Grey_Variables')
+    CALL ShowVariableFromMultiFab( MF_uPR, 1, &
+                             WriteToFile_Option = .TRUE., &
+                             FileNameBase_Option = 'MF_uPR' )
+
+    CALL ShowVariableFromMultiFab( MF_uCR, 1, &
+                             WriteToFile_Option = .TRUE., &
+                             FileNameBase_Option = 'MF_uCR' )
+    CALL FinalizeTally_TwoMoment_MF
 
     CALL Finalize_IMEX_RK_MF
 
@@ -154,6 +155,11 @@ CONTAINS
 
     CALL FinalizeReferenceElementX_Lagrange
     CALL FinalizeReferenceElementX
+
+    !IF( UseAnisotropicRefinement ) &
+    !  CALL FinalizeMeshRefinement_Euler_Aniso
+
+    !CALL FinalizeAnisotropicRefinement
 
     CALL DestroyFields_TwoMoment_MF
     CALL DestroyFields_Euler_MF
