@@ -103,7 +103,8 @@ MODULE RadiationFieldsModule
   INTEGER, PUBLIC, PARAMETER :: iGR_F   = 11 ! Flux Factor
   INTEGER, PUBLIC, PARAMETER :: iGR_K   = 12 ! Eddington Factor
   INTEGER, PUBLIC, PARAMETER :: iGR_Q   = 13 ! Heat Flux Factor
-  INTEGER, PUBLIC, PARAMETER :: nGR     = 13 ! n Gray Radiation Fields
+  INTEGER, PUBLIC, PARAMETER :: iGR_E   = 14 ! Eulerian   Energy Density
+  INTEGER, PUBLIC, PARAMETER :: nGR     = 14 ! n Gray Radiation Fields
 
   CHARACTER(34), DIMENSION(nGR), PUBLIC, PARAMETER :: &
     namesGR = [ 'Eulerian Number Density           ', &
@@ -118,7 +119,8 @@ MODULE RadiationFieldsModule
                 'RMS Energy                        ', &
                 'Lagrangian Flux Factor            ', &
                 'Lagrangian Eddington Factor       ', &
-                'Lagrangian Heat Flux Factor       ' ]
+                'Lagrangian Heat Flux Factor       ', &
+                'Eulerian Energy Density           ' ]
 
   CHARACTER(6), DIMENSION(nGR), PUBLIC, PARAMETER :: &
     ShortNamesGR = [ 'GR_N  ', &
@@ -133,7 +135,8 @@ MODULE RadiationFieldsModule
                      'GR_RMS', &
                      'GR_F  ', &
                      'GR_K  ', &
-                     'GR_Q  ' ]
+                     'GR_Q  ', &
+                     'GR_E  ' ]
   REAL(DP), DIMENSION(nGR), PUBLIC :: unitsGR
 
   REAL(DP), ALLOCATABLE, PUBLIC :: uGR(:,:,:,:,:,:)
@@ -485,6 +488,7 @@ CONTAINS
       unitsGR(iGR_H2)  = Erg / Centimeter**2 / Second
       unitsGR(iGR_H3)  = Erg / Centimeter**2 / Second
       unitsGR(iGR_RMS) = MeV
+      unitsGR(iGR_E)   = Erg / Centimeter**3
 
     END IF
 
