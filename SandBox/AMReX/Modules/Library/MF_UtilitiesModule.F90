@@ -123,10 +123,10 @@ MODULE MF_UtilitiesModule
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
-#ifndef THORNADO_NOTRANSPORT
-  USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
-    ApplyBoundaryConditions_TwoMoment_MF
-#endif
+!#ifndef THORNADO_NOTRANSPORT
+!  USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
+!    ApplyBoundaryConditions_TwoMoment_MF
+!#endif
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
