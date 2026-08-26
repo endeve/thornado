@@ -40,7 +40,9 @@ MODULE MF_InitializationModule
     iZ_B0, &
     iZ_E0, &
     iZ_B1, &
-    iZ_E1
+    iZ_E1, &
+    iE_B0, &
+    iE_E0
   USE RadiationFieldsModule, ONLY: &
     iCR_N, &
     uPR, &
@@ -170,11 +172,18 @@ MODULE MF_InitializationModule
   USE amrex_base_module, ONLY: &
   amrex_problo
 
+  USE amrex_amrcore_module, ONLY: amrex_geom
+  USE MF_MeshModule       , ONLY: CreateMesh_MF, DestroyMesh_MF
+  USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
+    uCR_iBC
+  USE MF_Euler_BoundaryConditionsModule, ONLY: &
+    uCF_iBC
+
+
   IMPLICIT NONE
   PRIVATE
 
   PUBLIC :: InitializeFields_MF
-  !PUBLIC :: SeedInnerBoundaryGhosts_TransparentVortex
 
 CONTAINS
 
@@ -237,7 +246,7 @@ CONTAINS
 
       CASE( 'TransparentVortex' )
 
-        CALL InitializeFields_TransparentVortex &
+        CALL InitializeFields_ALT_TransparentVortex &
                ( iLevel, MF_uGF, MF_uCR, MF_uCF )
 
       CASE( 'TransparentVortex_Spherical' )
@@ -1830,15 +1839,16 @@ SUBROUTINE InitializeFields_ALT_RadiatingSphere &
     INTEGER  :: iX1, iX2, iX3, iZ1, iS, iNodeZ
     INTEGER  :: iNodeX, iNodeX1, iNodeE
     REAL(DP) :: X1, Theta, E
-    REAL(DP) :: uCR_K(nDOFZ,nE,nCR,nSpecies)
     REAL(DP) :: uPR_K(nDOFZ,nE,nPR,nSpecies)
     REAL(DP) :: uGF_K(nDOFX,nGF)
     REAL(DP) :: uPF_K(nDOFX,nPF)
     REAL(DP) :: uCF_K(nDOFX,nCF)
+    REAL(DP), ALLOCATABLE :: uCR_K(:,:,:,:,:,:,:)
 
     INTEGER                       :: lo_C(4), hi_C(4), loX(3), hiX(3)
     INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_F(4), hi_F(4)
+    INTEGER                       :: iZ_B(4), iZ_E(4), loZ1
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
@@ -1866,6 +1876,7 @@ SUBROUTINE InitializeFields_ALT_RadiatingSphere &
     uPF_K = Zero
     uCF_K = Zero
     uGF_K = Zero
+    uPR_K = Zero
 
     CALL amrex_mfiter_build( MFI, MF_uCR, tiling = UseTiling )
 
@@ -1884,7 +1895,20 @@ SUBROUTINE InitializeFields_ALT_RadiatingSphere &
       loX = BX % lo
       hiX = BX % hi
 
-      ! --- Interior ---
+      loZ1 = loX(1)
+      IF( loX(1) .EQ. 0 ) loZ1 = loX(1) - swX(1)
+
+      iZ_B = [ iZ_B0(1), loZ1  , loX(2), loX(3) ]
+      iZ_E = [ iZ_E0(1), hiX(1), hiX(2), hiX(3) ]
+
+      ALLOCATE( uCR_K(nDOFZ, &
+                      iZ_B0(1):iZ_E0(1), &
+                      loZ1:hiX(1), &
+                      loX(2):hiX(2), &
+                      loX(3):hiX(3), &
+                      nCR, nSpecies) )
+
+      uCR_K = Zero
 
       DO iX3 = loX(3), hiX(3)
       DO iX2 = loX(2), hiX(2)
@@ -1937,14 +1961,12 @@ SUBROUTINE InitializeFields_ALT_RadiatingSphere &
         uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
           = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
 
-        uCR_K = Zero
-
         DO iNodeZ = 1, nDOFZ
 
           iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
 
           DO iS  = 1, nSpecies
-          DO iZ1 = 1, nE
+          DO iZ1 = iZ_B0(1), iZ_E0(1)
 
             uPR_K(iNodeZ,iZ1,iPR_D ,iS) = 1.0d-40
             uPR_K(iNodeZ,iZ1,iPR_I1,iS) = Zero
@@ -1952,27 +1974,28 @@ SUBROUTINE InitializeFields_ALT_RadiatingSphere &
             uPR_K(iNodeZ,iZ1,iPR_I3,iS) = Zero
 
             CALL ComputeConserved_TwoMoment &
-                   ( uPR_K(iNodeZ,iZ1,iPR_D ,iS), uPR_K(iNodeZ,iZ1,iPR_I1,iS), &
-                     uPR_K(iNodeZ,iZ1,iPR_I2,iS), uPR_K(iNodeZ,iZ1,iPR_I3,iS), &
-                     uCR_K(iNodeZ,iZ1,iCR_N ,iS), uCR_K(iNodeZ,iZ1,iCR_G1,iS), &
-                     uCR_K(iNodeZ,iZ1,iCR_G2,iS), uCR_K(iNodeZ,iZ1,iCR_G3,iS), &
-                     uPF_K(iNodeX,iPF_V1), uPF_K(iNodeX,iPF_V2), uPF_K(iNodeX,iPF_V3), &
-                     uGF_K(iNodeX,iGF_Gm_dd_11), uGF_K(iNodeX,iGF_Gm_dd_22), uGF_K(iNodeX,iGF_Gm_dd_33) )
+                   ( uPR_K(iNodeZ,iZ1,iPR_D ,iS), &
+                     uPR_K(iNodeZ,iZ1,iPR_I1,iS), &
+                     uPR_K(iNodeZ,iZ1,iPR_I2,iS), &
+                     uPR_K(iNodeZ,iZ1,iPR_I3,iS), &
+                     uCR_K(iNodeZ,iZ1,iX1,iX2,iX3,iCR_N ,iS), &
+                     uCR_K(iNodeZ,iZ1,iX1,iX2,iX3,iCR_G1,iS), &
+                     uCR_K(iNodeZ,iZ1,iX1,iX2,iX3,iCR_G2,iS), &
+                     uCR_K(iNodeZ,iZ1,iX1,iX2,iX3,iCR_G3,iS), &
+                     uPF_K(iNodeX,iPF_V1), uPF_K(iNodeX,iPF_V2), &
+                     uPF_K(iNodeX,iPF_V3), &
+                     uGF_K(iNodeX,iGF_Gm_dd_11), &
+                     uGF_K(iNodeX,iGF_Gm_dd_22), &
+                     uGF_K(iNodeX,iGF_Gm_dd_33) )
 
           END DO
           END DO
 
         END DO
 
-        uCR(iX1,iX2,iX3,lo_C(4):hi_C(4)) &
-          = RESHAPE( uCR_K, [ hi_C(4) - lo_C(4) + 1 ] )
-
       END DO
       END DO
       END DO
-
-      ! --- Inner boundary: fluid ghost (at rest and inner ghost lies at r <= 135) ---
-
 
       IF( loX(1) .EQ. 0 )THEN
 
@@ -2015,44 +2038,53 @@ SUBROUTINE InitializeFields_ALT_RadiatingSphere &
 
           uGF_K = RESHAPE( uGF(loX(1),iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
-          uCR_K = Zero
-
           DO iNodeZ = 1, nDOFZ
 
             iNodeX = MOD( (iNodeZ-1) / nDOFE, nDOFX ) + 1
             iNodeE = MOD( (iNodeZ-1)        , nDOFE ) + 1
 
             DO iS  = 1, nSpecies
-            DO iZ1 = 1, nE
+            DO iZ1 = iZ_B0(1), iZ_E0(1)
 
               E = NodeCoordinate( MeshE, iZ1, iNodeE )
 
-              uPR_K(iNodeZ,iZ1,iPR_D ,iS) = One / ( EXP( E / Three - Three ) + One )
-              uPR_K(iNodeZ,iZ1,iPR_I1,iS) = 0.999_DP * uPR_K(iNodeZ,iZ1,iPR_D,iS)
+              uPR_K(iNodeZ,iZ1,iPR_D ,iS) &
+                = One / ( EXP( E / Three - Three ) + One )
+              uPR_K(iNodeZ,iZ1,iPR_I1,iS) &
+                = 0.999_DP * uPR_K(iNodeZ,iZ1,iPR_D,iS)
               uPR_K(iNodeZ,iZ1,iPR_I2,iS) = Zero
               uPR_K(iNodeZ,iZ1,iPR_I3,iS) = Zero
 
               CALL ComputeConserved_TwoMoment &
-                     ( uPR_K(iNodeZ,iZ1,iPR_D ,iS), uPR_K(iNodeZ,iZ1,iPR_I1,iS), &
-                       uPR_K(iNodeZ,iZ1,iPR_I2,iS), uPR_K(iNodeZ,iZ1,iPR_I3,iS), &
-                       uCR_K(iNodeZ,iZ1,iCR_N ,iS), uCR_K(iNodeZ,iZ1,iCR_G1,iS), &
-                       uCR_K(iNodeZ,iZ1,iCR_G2,iS), uCR_K(iNodeZ,iZ1,iCR_G3,iS), &
-                       uPF_K(iNodeX,iPF_V1), uPF_K(iNodeX,iPF_V2), uPF_K(iNodeX,iPF_V3), &
-                       uGF_K(iNodeX,iGF_Gm_dd_11), uGF_K(iNodeX,iGF_Gm_dd_22), uGF_K(iNodeX,iGF_Gm_dd_33) )
+                     ( uPR_K(iNodeZ,iZ1,iPR_D ,iS), &
+                       uPR_K(iNodeZ,iZ1,iPR_I1,iS), &
+                       uPR_K(iNodeZ,iZ1,iPR_I2,iS), &
+                       uPR_K(iNodeZ,iZ1,iPR_I3,iS), &
+                       uCR_K(iNodeZ,iZ1,iX1,iX2,iX3,iCR_N ,iS), &
+                       uCR_K(iNodeZ,iZ1,iX1,iX2,iX3,iCR_G1,iS), &
+                       uCR_K(iNodeZ,iZ1,iX1,iX2,iX3,iCR_G2,iS), &
+                       uCR_K(iNodeZ,iZ1,iX1,iX2,iX3,iCR_G3,iS), &
+                       uPF_K(iNodeX,iPF_V1), uPF_K(iNodeX,iPF_V2), &
+                       uPF_K(iNodeX,iPF_V3), &
+                       uGF_K(iNodeX,iGF_Gm_dd_11), &
+                       uGF_K(iNodeX,iGF_Gm_dd_22), &
+                       uGF_K(iNodeX,iGF_Gm_dd_33) )
 
             END DO
             END DO
 
           END DO
 
-          uCR(iX1,iX2,iX3,lo_C(4):hi_C(4)) &
-            = RESHAPE( uCR_K, [ hi_C(4) - lo_C(4) + 1 ] )
-
         END DO
         END DO
         END DO
 
       END IF
+
+      CALL thornado2amrex_Z( nCR, nSpecies, nE, iZ_B0(1), iZ_E0(1), &
+                             iZ_B, iZ_E, lo_C, iZ_B, iZ_E, uCR, uCR_K )
+
+      DEALLOCATE( uCR_K )
 
     END DO
 
@@ -2314,7 +2346,6 @@ SUBROUTINE InitializeFields_ALT_RadiatingSphere &
 
             uPR_K( iNodeZ, iZ1, iPR_D, iS ) &
               = One / ( EXP( E / Three - Three ) + One )
-            ! Set up for Fermi-Dirac
             uPR_K( iNodeZ, iZ1, iPR_I1, iS ) &
               = 0.999_DP * uPR_K( iNodeZ, iZ1, iPR_D, iS )
             uPR_K( iNodeZ, iZ1, iPR_I2, iS ) &
@@ -2720,7 +2751,7 @@ SUBROUTINE InitializeFields_ExpandingAtmosphere &
 
     REAL(DP), PARAMETER :: Rmin  = 1.0_DP
     REAL(DP), PARAMETER :: Rmax  = 11.0_DP
-    REAL(DP), PARAMETER :: Dnu_0 = 1.0d-10   ! --- native seed value ---
+    REAL(DP), PARAMETER :: Dnu_0 = 1.0d-10
 
     INTEGER  :: iX1, iX2, iX3, iZ1, iS
     INTEGER  :: iNodeX, iNodeX1, iNodeZ
@@ -2872,9 +2903,9 @@ SUBROUTINE InitializeFields_ExpandingAtmosphere &
 
   END SUBROUTINE InitializeFields_ExpandingAtmosphere
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
-SUBROUTINE InitializeFields_ALT_TransparentVortex_Spherical &
+  SUBROUTINE InitializeFields_ALT_TransparentVortex_Spherical &
     ( iLevel, MF_uGF, MF_uCR, MF_uCF )
 
     INTEGER             , INTENT(in)    :: iLevel
@@ -2882,31 +2913,38 @@ SUBROUTINE InitializeFields_ALT_TransparentVortex_Spherical &
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
 
+
     REAL(DP), PARAMETER :: X_0 = 6.0_DP / SQRT( 2.0_DP )
     REAL(DP), PARAMETER :: Y_0 = 6.0_DP / SQRT( 2.0_DP )
-    REAL(DP), PARAMETER :: D_1 = 1.0_DP      
+    REAL(DP), PARAMETER :: D_1 = 1.0_DP
     REAL(DP), PARAMETER :: D_2 = 0.4_DP
 
-    INTEGER  :: iX1, iX2, iX3, iZ1, iS, iCR, iNodeZ
-    INTEGER  :: iNodeX, iNodeE, iNodeX1, iNodeX2
-    INTEGER  :: iComp
-    REAL(DP) :: R, Theta, X, Y, R_0, AbsV, V_X, V_Y, Beta
+    REAL(DP), PARAMETER :: D_Background = 1.0d-8
 
-    REAL(DP) :: uCR_K(nDOFZ,nE,nCR,nSpecies)
-    REAL(DP) :: uPR_K(nDOFZ,nE,nPR,nSpecies)
-    REAL(DP) :: uGF_K(nDOFX,nGF)
+    INTEGER  :: iX1, iX2, iX3, iZ1, iS, iCR, iNodeZ, iNodeE
+    INTEGER  :: iNodeX, iNodeX1, iNodeX2, iDim
+    REAL(DP) :: R, Theta, X, Y, R_0, AbsV, V_X, V_Y, Beta
+    REAL(DP) :: E, D_FD, I1_FD
+    REAL(DP) :: h_1, h_2, h_3
+
+    REAL(DP), ALLOCATABLE :: uCR_K(:,:,:,:,:,:,:)
+    REAL(DP) :: uPR_K(nDOFZ,iZ_B0(1):iZ_E0(1),nPR,nSpecies)
     REAL(DP) :: uPF_K(nDOFX,nPF)
     REAL(DP) :: uCF_K(nDOFX,nCF)
+    REAL(DP) :: uGm_K(nDOFX,3)
 
-    INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_C(4), hi_C(4)
     INTEGER                       :: lo_F(4), hi_F(4)
     INTEGER                       :: loX(3), hiX(3)
+    INTEGER                       :: iX_L(3), iX_H(3)
+    INTEGER                       :: iZ_L(4), iZ_H(4)
+    INTEGER                       :: iX_B0_D(3), iX_E0_D(3)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
+
+    TYPE(MeshType) :: MeshX_L(3)
 
     TYPE(amrex_parmparse) :: PP
     REAL(DP), ALLOCATABLE :: V_0(:)
@@ -2917,13 +2955,71 @@ SUBROUTINE InitializeFields_ALT_TransparentVortex_Spherical &
 
     Beta = SQRT( V_0(1)**2 + V_0(2)**2 + V_0(3)**2 )
 
-    uPF_K = Zero
-    uCF_K = Zero
-    uGF_K = Zero
-    uPR_K = Zero
-    uCR_K = Zero
+    iX_B0_D = amrex_geom(iLevel) % domain % lo
+    iX_E0_D = amrex_geom(iLevel) % domain % hi
 
-    CALL amrex_mfiter_build( MFI, MF_uCR, tiling = UseTiling )
+    CALL CreateMesh_MF( iLevel, MeshX_L )
+
+    uGm_K = One
+
+    IF( .NOT. ALLOCATED( uCR_iBC ) )THEN
+
+      ALLOCATE( uCF_iBC(nDOFX,nCF) )
+      ALLOCATE( uCR_iBC(nDOFZ,iZ_B0(1):iZ_E0(1),nCR,nSpecies) )
+
+      uPF_K = Zero
+      uCF_K = Zero
+
+      uPF_K(:,iPF_D) = One
+      uPF_K(:,iPF_E) = 1.0d-1
+
+      CALL ComputeConserved_Euler_NonRelativistic                 &
+             ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+               uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+               uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+               uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+               uGm_K(:,1), uGm_K(:,1), uGm_K(:,1) )
+
+      uCF_iBC = uCF_K
+
+      DO iNodeZ = 1, nDOFZ
+
+        iNodeE = MOD( iNodeZ - 1, nDOFE ) + 1
+
+        DO iS  = 1, nSpecies
+        DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+          E = NodeCoordinate( MeshE, iZ1, iNodeE )
+
+          D_FD  = One / ( EXP( E / Three - Three ) + One )
+          I1_FD = 0.5_DP * D_FD
+
+          CALL ComputeConserved_TwoMoment          &
+                 ( D_FD, I1_FD, Zero, Zero,        &
+                   uCR_iBC(iNodeZ,iZ1,iCR_N ,iS),  &
+                   uCR_iBC(iNodeZ,iZ1,iCR_G1,iS),  &
+                   uCR_iBC(iNodeZ,iZ1,iCR_G2,iS),  &
+                   uCR_iBC(iNodeZ,iZ1,iCR_G3,iS),  &
+                   Zero, Zero, Zero,               &
+                   One, One, One )
+
+        END DO
+        END DO
+
+      END DO
+
+    END IF
+
+    IF( iLevel .EQ. 0 .AND. amrex_parallel_ioprocessor() )THEN
+      WRITE(*,*)
+      WRITE(*,'(6x,A)')         'TransparentVortex_Spherical'
+      WRITE(*,'(6x,A,ES10.3E2)') 'v_max        = ', Beta
+      WRITE(*,'(6x,A,2ES10.3E2)')'(x_0,y_0)    = ', X_0, Y_0
+      WRITE(*,'(6x,A,ES10.3E2)') 'D_Background = ', D_Background
+      WRITE(*,*)
+    END IF
+
+    CALL amrex_mfiter_build( MFI, MF_uCR, tiling = .FALSE. )
 
     DO WHILE( MFI % next() )
 
@@ -2931,27 +3027,54 @@ SUBROUTINE InitializeFields_ALT_TransparentVortex_Spherical &
       loX = BX % lo
       hiX = BX % hi
 
-      uGF => MF_uGF % DataPtr( MFI )
       uCR => MF_uCR % DataPtr( MFI )
       uCF => MF_uCF % DataPtr( MFI )
 
-      lo_G = LBOUND( uGF ); hi_G = UBOUND( uGF )
       lo_C = LBOUND( uCR ); hi_C = UBOUND( uCR )
       lo_F = LBOUND( uCF ); hi_F = UBOUND( uCF )
 
-      DO iX3 = loX(3), hiX(3)
-      DO iX2 = loX(2), hiX(2)
-      DO iX1 = loX(1), hiX(1)
+      iX_L = loX
+      iX_H = hiX
 
-        uGF_K = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+      DO iDim = 1, 3
+
+        IF( loX(iDim) .EQ. iX_B0_D(iDim) ) &
+          iX_L(iDim) = loX(iDim) - swX(iDim)
+
+        IF( hiX(iDim) .EQ. iX_E0_D(iDim) ) &
+          iX_H(iDim) = hiX(iDim) + swX(iDim)
+
+      END DO
+
+      iZ_L = [ iZ_B0(1), iX_L(1), iX_L(2), iX_L(3) ]
+      iZ_H = [ iZ_E0(1), iX_H(1), iX_H(2), iX_H(3) ]
+
+      ALLOCATE( uCR_K(nDOFZ, &
+                      iZ_L(1):iZ_H(1), iZ_L(2):iZ_H(2), &
+                      iZ_L(3):iZ_H(3), iZ_L(4):iZ_H(4), &
+                      nCR, nSpecies) )
+
+      uCR_K = Zero
+
+      DO iX3 = iX_L(3), iX_H(3)
+      DO iX2 = iX_L(2), iX_H(2)
+      DO iX1 = iX_L(1), iX_H(1)
 
         DO iNodeX = 1, nDOFX
 
           iNodeX1 = NodeNumberTableX(1,iNodeX)
           iNodeX2 = NodeNumberTableX(2,iNodeX)
 
-          R     = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
-          Theta = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+          R     = NodeCoordinate( MeshX_L(1), iX1, iNodeX1 )
+          Theta = NodeCoordinate( MeshX_L(2), iX2, iNodeX2 )
+
+          h_1 = One
+          h_2 = R
+          h_3 = R * SIN( Theta )
+
+          uGm_K(iNodeX,1) = h_1**2
+          uGm_K(iNodeX,2) = h_2**2
+          uGm_K(iNodeX,3) = MAX( h_3**2, SqrtTiny )
 
           X = R * SIN( Theta )
           Y = R * COS( Theta )
@@ -2972,40 +3095,37 @@ SUBROUTINE InitializeFields_ALT_TransparentVortex_Spherical &
 
           END IF
 
-          uPF_K(iNodeX,iPF_D ) = 1.0_DP
+          uPF_K(iNodeX,iPF_D ) = One
           uPF_K(iNodeX,iPF_V1) &
-            = ( SIN( Theta ) * V_X + COS( Theta ) * V_Y ) &
-              / uGF_K(iNodeX,iGF_h_1)
+            = ( SIN( Theta ) * V_X + COS( Theta ) * V_Y ) / h_1
           uPF_K(iNodeX,iPF_V2) &
-            = ( COS( Theta ) * V_X - SIN( Theta ) * V_Y ) &
-              / uGF_K(iNodeX,iGF_h_2)
-          uPF_K(iNodeX,iPF_V3) = 0.0_DP
-          uPF_K(iNodeX,iPF_E ) = 0.1_DP
-          uPF_K(iNodeX,iPF_Ne) = 0.0_DP
+            = ( COS( Theta ) * V_X - SIN( Theta ) * V_Y ) / h_2
+          uPF_K(iNodeX,iPF_V3) = Zero
+          uPF_K(iNodeX,iPF_E ) = 1.0d-1
+          uPF_K(iNodeX,iPF_Ne) = Zero
 
         END DO
 
-        CALL ComputeConserved_Euler_NonRelativistic                     &
-               ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2),     &
-                 uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne),     &
-                 uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2),     &
-                 uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne),     &
-                 uGF_K(:,iGF_Gm_dd_11), uGF_K(:,iGF_Gm_dd_22),          &
-                 uGF_K(:,iGF_Gm_dd_33) )
+        CALL ComputeConserved_Euler_NonRelativistic                 &
+               ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                 uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                 uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                 uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                 uGm_K(:,1), uGm_K(:,2), uGm_K(:,3) )
 
         uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
           = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
 
-        uCR_K = Zero
+        uPR_K = Zero
 
         DO iNodeZ = 1, nDOFZ
 
-          iNodeX = ( iNodeZ - 1 ) / nDOFE + 1
+          iNodeX = MOD( ( iNodeZ - 1 ) / nDOFE, nDOFX ) + 1
 
           DO iS  = 1, nSpecies
-          DO iZ1 = 1, nE
+          DO iZ1 = iZ_B0(1), iZ_E0(1)
 
-            uPR_K(iNodeZ,iZ1,iPR_D ,iS) = 1.0d-8 
+            uPR_K(iNodeZ,iZ1,iPR_D ,iS) = D_Background
             uPR_K(iNodeZ,iZ1,iPR_I1,iS) = Zero
             uPR_K(iNodeZ,iZ1,iPR_I2,iS) = Zero
             uPR_K(iNodeZ,iZ1,iPR_I3,iS) = Zero
@@ -3013,403 +3133,313 @@ SUBROUTINE InitializeFields_ALT_TransparentVortex_Spherical &
             CALL ComputeConserved_TwoMoment                                    &
                    ( uPR_K(iNodeZ,iZ1,iPR_D ,iS), uPR_K(iNodeZ,iZ1,iPR_I1,iS), &
                      uPR_K(iNodeZ,iZ1,iPR_I2,iS), uPR_K(iNodeZ,iZ1,iPR_I3,iS), &
-                     uCR_K(iNodeZ,iZ1,iCR_N ,iS), uCR_K(iNodeZ,iZ1,iCR_G1,iS), &
-                     uCR_K(iNodeZ,iZ1,iCR_G2,iS), uCR_K(iNodeZ,iZ1,iCR_G3,iS), &
+                     uCR_K(iNodeZ,iZ1,iX1,iX2,iX3,iCR_N ,iS),                  &
+                     uCR_K(iNodeZ,iZ1,iX1,iX2,iX3,iCR_G1,iS),                  &
+                     uCR_K(iNodeZ,iZ1,iX1,iX2,iX3,iCR_G2,iS),                  &
+                     uCR_K(iNodeZ,iZ1,iX1,iX2,iX3,iCR_G3,iS),                  &
                      uPF_K(iNodeX,iPF_V1), uPF_K(iNodeX,iPF_V2),               &
                      uPF_K(iNodeX,iPF_V3),                                     &
-                     uGF_K(iNodeX,iGF_Gm_dd_11), uGF_K(iNodeX,iGF_Gm_dd_22),   &
-                     uGF_K(iNodeX,iGF_Gm_dd_33) )
+                     uGm_K(iNodeX,1), uGm_K(iNodeX,2), uGm_K(iNodeX,3) )
 
           END DO
           END DO
 
         END DO
 
-        DO iS     = 1, nSpecies
-        DO iCR    = 1, nCR
-        DO iZ1    = 1, nE
-        DO iNodeE = 1, nDOFE
-        DO iNodeX = 1, nDOFX
-
-          iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
-
-          iComp = ( iS  - 1 ) * nCR * nE * nDOFE * nDOFX &
-                + ( iCR - 1 ) * nE * nDOFE * nDOFX       &
-                + ( iZ1 - 1 ) * nDOFE * nDOFX            &
-                + ( iNodeE - 1 ) * nDOFX                 &
-                + iNodeX
-
-          uCR(iX1,iX2,iX3,lo_C(4)-1+iComp) = uCR_K(iNodeZ,iZ1,iCR,iS)
-
-        END DO
-        END DO
-        END DO
-        END DO
-        END DO
-
       END DO
       END DO
       END DO
 
-    END DO ! WHILE( MFI % next() )
+      IF( loX(1) .EQ. iX_B0_D(1) )THEN
+
+        DO iX3 = iX_L(3), iX_H(3)
+        DO iX2 = iX_L(2), iX_H(2)
+        DO iX1 = loX(1)-swX(1), loX(1)-1
+
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_iBC, [ hi_F(4) - lo_F(4) + 1 ] )
+
+          DO iS  = 1, nSpecies
+          DO iCR = 1, nCR
+
+            uCR_K(:,:,iX1,iX2,iX3,iCR,iS) = uCR_iBC(:,:,iCR,iS)
+
+          END DO
+          END DO
+
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+      CALL thornado2amrex_Z( nCR, nSpecies, nE, iZ_B0(1), iZ_E0(1), &
+                             iZ_L, iZ_H, lo_C, iZ_L, iZ_H, uCR, uCR_K )
+
+      DEALLOCATE( uCR_K )
+
+    END DO
 
     CALL amrex_mfiter_destroy( MFI )
+
+    CALL DestroyMesh_MF( MeshX_L )
 
     DEALLOCATE( V_0 )
 
   END SUBROUTINE InitializeFields_ALT_TransparentVortex_Spherical
 
 
-   SUBROUTINE SetInnerBoundary_ALT_TransparentVortex_Spherical &
-    ( iLevel, MF_uGF, MF_uCR, MF_uCF )
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+SUBROUTINE InitializeFields_ALT_TransparentVortex &
+    ( iLevel, MF_uGF, MF_uCR, MF_uCF )
+ 
     INTEGER             , INTENT(in)    :: iLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
-
-    INTEGER  :: iX1, iX2, iX3, iZ1, iS, iCR, iNodeZ
-    INTEGER  :: iNodeX, iNodeE
-    INTEGER  :: iComp
-    REAL(DP) :: E
-
-    REAL(DP) :: uCR_K(nDOFZ,nE,nCR,nSpecies)
-    REAL(DP) :: uPR_K(nDOFZ,nE,nPR,nSpecies)
+ 
+    REAL(DP), PARAMETER :: Mu_0         = 0.9_DP
+    REAL(DP), PARAMETER :: D_Background = 1.0d-8
+ 
+    INTEGER  :: iX1, iX2, iX3, iZ1, iS, iCR, iNodeZ, iNodeE
+    INTEGER  :: iNodeX, iNodeX1, iNodeX2
+    REAL(DP) :: X1, X2, R, Beta, E, D_Beam
+ 
+    REAL(DP), ALLOCATABLE :: uCR_K(:,:,:,:,:,:,:)
+    REAL(DP) :: uPR_K(nDOFZ,iZ_B0(1):iZ_E0(1),nPR,nSpecies)
     REAL(DP) :: uGF_K(nDOFX,nGF)
     REAL(DP) :: uPF_K(nDOFX,nPF)
     REAL(DP) :: uCF_K(nDOFX,nCF)
-
+    REAL(DP) :: uGm_K(nDOFX)
+ 
     INTEGER                       :: lo_G(4), hi_G(4)
     INTEGER                       :: lo_C(4), hi_C(4)
     INTEGER                       :: lo_F(4), hi_F(4)
     INTEGER                       :: loX(3), hiX(3)
+    INTEGER                       :: gX_B(3), gX_E(3)
+    INTEGER                       :: iZ_B(4), iZ_E(4), iZ_L(4), iZ_H(4)
+    INTEGER                       :: iX_B0_D(3)
     TYPE(amrex_box)               :: BX
     TYPE(amrex_mfiter)            :: MFI
     REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-
+ 
+    TYPE(amrex_parmparse) :: PP
+    REAL(DP), ALLOCATABLE :: V_0(:)
+ 
+    CALL amrex_parmparse_build( PP, 'thornado' )
+      CALL PP % getarr( 'V_0', V_0 )
+    CALL amrex_parmparse_destroy( PP )
+ 
+    Beta = SQRT( V_0(1)**2 + V_0(2)**2 + V_0(3)**2 )
+ 
+    iX_B0_D = amrex_geom(iLevel) % domain % lo
+  
+    IF( .NOT. ALLOCATED( uCR_iBC ) )THEN
+ 
+      ALLOCATE( uCF_iBC(nDOFX,nCF) )
+      ALLOCATE( uCR_iBC(nDOFZ,iZ_B0(1):iZ_E0(1),nCR,nSpecies) )
+ 
+      uPF_K = Zero
+      uCF_K = Zero
+      uGm_K = One
+ 
+      uPF_K(:,iPF_D ) = One
+      uPF_K(:,iPF_E ) = 1.0d-1
+ 
+      CALL ComputeConserved_Euler_NonRelativistic                 &
+             ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+               uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+               uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+               uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+               uGm_K, uGm_K, uGm_K )
+ 
+      uCF_iBC = uCF_K
+ 
+      DO iNodeZ = 1, nDOFZ
+ 
+        iNodeE = MOD( iNodeZ - 1, nDOFE ) + 1
+ 
+        DO iS  = 1, nSpecies
+        DO iZ1 = iZ_B0(1), iZ_E0(1)
+ 
+          E = NodeCoordinate( MeshE, iZ1, iNodeE )
+ 
+          D_Beam = Half * ( One - Mu_0 ) &
+                     / ( EXP( E / Three - Three ) + One )
+ 
+          CALL ComputeConserved_TwoMoment                       &
+                 ( D_Beam,                                      &
+                   Half * ( One + Mu_0 ) * D_Beam,              &
+                   Zero, Zero,                                  &
+                   uCR_iBC(iNodeZ,iZ1,iCR_N ,iS),               &
+                   uCR_iBC(iNodeZ,iZ1,iCR_G1,iS),               &
+                   uCR_iBC(iNodeZ,iZ1,iCR_G2,iS),               &
+                   uCR_iBC(iNodeZ,iZ1,iCR_G3,iS),               &
+                   Zero, Zero, Zero,                            &
+                   One, One, One )
+ 
+        END DO
+        END DO
+ 
+      END DO
+ 
+    END IF
+ 
     uPF_K = Zero
     uCF_K = Zero
     uGF_K = Zero
     uPR_K = Zero
-    uCR_K = Zero
-
-    CALL amrex_mfiter_build( MFI, MF_uCR, tiling = UseTiling )
-
+ 
+    CALL amrex_mfiter_build( MFI, MF_uCR, tiling = .FALSE. )
+ 
     DO WHILE( MFI % next() )
-
+ 
       BX  = MFI % tilebox()
       loX = BX % lo
       hiX = BX % hi
-
-      IF( loX(1) .NE. amrex_geom(iLevel) % domain % lo(1) ) CYCLE
-
+ 
       uGF => MF_uGF % DataPtr( MFI )
       uCR => MF_uCR % DataPtr( MFI )
       uCF => MF_uCF % DataPtr( MFI )
-
+ 
       lo_G = LBOUND( uGF ); hi_G = UBOUND( uGF )
       lo_C = LBOUND( uCR ); hi_C = UBOUND( uCR )
       lo_F = LBOUND( uCF ); hi_F = UBOUND( uCF )
-
+  
+      iZ_L = [ iZ_B0(1), loX(1)-swX(1), loX(2)-swX(2), loX(3)-swX(3) ]
+      iZ_H = [ iZ_E0(1), hiX(1)+swX(1), hiX(2)+swX(2), hiX(3)+swX(3) ]
+ 
+      ALLOCATE( uCR_K(nDOFZ, &
+                      iZ_L(1):iZ_H(1), iZ_L(2):iZ_H(2), &
+                      iZ_L(3):iZ_H(3), iZ_L(4):iZ_H(4), &
+                      nCR, nSpecies) )
+ 
+      uCR_K = Zero
+ 
       DO iX3 = loX(3), hiX(3)
       DO iX2 = loX(2), hiX(2)
-      DO iX1 = loX(1) - swX(1), loX(1) - 1
-
+      DO iX1 = loX(1), hiX(1)
+ 
         uGF_K = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
-
+ 
         DO iNodeX = 1, nDOFX
-
+ 
+          iNodeX1 = NodeNumberTableX(1,iNodeX)
+          iNodeX2 = NodeNumberTableX(2,iNodeX)
+ 
+          X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+          X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+ 
+          R = SQRT( X1**2 + X2**2 )
+ 
           uPF_K(iNodeX,iPF_D ) = One
-          uPF_K(iNodeX,iPF_V1) = Zero
-          uPF_K(iNodeX,iPF_V2) = Zero
+          uPF_K(iNodeX,iPF_V1) = - X2 * Beta * EXP( Half * ( One - R**2 ) )
+          uPF_K(iNodeX,iPF_V2) = + X1 * Beta * EXP( Half * ( One - R**2 ) )
           uPF_K(iNodeX,iPF_V3) = Zero
           uPF_K(iNodeX,iPF_E ) = 1.0d-1
           uPF_K(iNodeX,iPF_Ne) = Zero
-
+ 
         END DO
-
-        CALL ComputeConserved_Euler_NonRelativistic                     &
-               ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2),     &
-                 uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne),     &
-                 uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2),     &
-                 uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne),     &
-                 uGF_K(:,iGF_Gm_dd_11), uGF_K(:,iGF_Gm_dd_22),          &
+ 
+        CALL ComputeConserved_Euler_NonRelativistic                 &
+               ( uPF_K(:,iPF_D ), uPF_K(:,iPF_V1), uPF_K(:,iPF_V2), &
+                 uPF_K(:,iPF_V3), uPF_K(:,iPF_E ), uPF_K(:,iPF_Ne), &
+                 uCF_K(:,iCF_D ), uCF_K(:,iCF_S1), uCF_K(:,iCF_S2), &
+                 uCF_K(:,iCF_S3), uCF_K(:,iCF_E ), uCF_K(:,iCF_Ne), &
+                 uGF_K(:,iGF_Gm_dd_11), uGF_K(:,iGF_Gm_dd_22),      &
                  uGF_K(:,iGF_Gm_dd_33) )
-
+ 
         uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
           = RESHAPE( uCF_K, [ hi_F(4) - lo_F(4) + 1 ] )
-
-        uCR_K = Zero
-
+ 
+        uPR_K = Zero
+ 
         DO iNodeZ = 1, nDOFZ
-
-          iNodeX = ( iNodeZ - 1 ) / nDOFE + 1
-          iNodeE = MOD( iNodeZ - 1, nDOFE ) + 1
-
+ 
+          iNodeX = MOD( ( iNodeZ - 1 ) / nDOFE, nDOFX ) + 1
+ 
           DO iS  = 1, nSpecies
-          DO iZ1 = 1, nE
-
-            E = NodeCoordinate( MeshE, iZ1, iNodeE )
-
-            uPR_K(iNodeZ,iZ1,iPR_D ,iS) &
-              = One / ( EXP( E / Three - Three ) + One )
-            uPR_K(iNodeZ,iZ1,iPR_I1,iS) &
-              = 0.5_DP * uPR_K(iNodeZ,iZ1,iPR_D ,iS)
+          DO iZ1 = iZ_B0(1), iZ_E0(1)
+ 
+            uPR_K(iNodeZ,iZ1,iPR_D ,iS) = D_Background
+            uPR_K(iNodeZ,iZ1,iPR_I1,iS) = Zero
             uPR_K(iNodeZ,iZ1,iPR_I2,iS) = Zero
             uPR_K(iNodeZ,iZ1,iPR_I3,iS) = Zero
-
+ 
             CALL ComputeConserved_TwoMoment                                    &
                    ( uPR_K(iNodeZ,iZ1,iPR_D ,iS), uPR_K(iNodeZ,iZ1,iPR_I1,iS), &
                      uPR_K(iNodeZ,iZ1,iPR_I2,iS), uPR_K(iNodeZ,iZ1,iPR_I3,iS), &
-                     uCR_K(iNodeZ,iZ1,iCR_N ,iS), uCR_K(iNodeZ,iZ1,iCR_G1,iS), &
-                     uCR_K(iNodeZ,iZ1,iCR_G2,iS), uCR_K(iNodeZ,iZ1,iCR_G3,iS), &
+                     uCR_K(iNodeZ,iZ1,iX1,iX2,iX3,iCR_N ,iS),                  &
+                     uCR_K(iNodeZ,iZ1,iX1,iX2,iX3,iCR_G1,iS),                  &
+                     uCR_K(iNodeZ,iZ1,iX1,iX2,iX3,iCR_G2,iS),                  &
+                     uCR_K(iNodeZ,iZ1,iX1,iX2,iX3,iCR_G3,iS),                  &
                      uPF_K(iNodeX,iPF_V1), uPF_K(iNodeX,iPF_V2),               &
                      uPF_K(iNodeX,iPF_V3),                                     &
                      uGF_K(iNodeX,iGF_Gm_dd_11), uGF_K(iNodeX,iGF_Gm_dd_22),   &
                      uGF_K(iNodeX,iGF_Gm_dd_33) )
-
+ 
           END DO
           END DO
-
+ 
         END DO
-
-        DO iS     = 1, nSpecies
-        DO iCR    = 1, nCR
-        DO iZ1    = 1, nE
-        DO iNodeE = 1, nDOFE
-        DO iNodeX = 1, nDOFX
-
-          iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
-
-          iComp = ( iS  - 1 ) * nCR * nE * nDOFE * nDOFX &
-                + ( iCR - 1 ) * nE * nDOFE * nDOFX       &
-                + ( iZ1 - 1 ) * nDOFE * nDOFX            &
-                + ( iNodeE - 1 ) * nDOFX                 &
-                + iNodeX
-
-          uCR(iX1,iX2,iX3,lo_C(4)-1+iComp) = uCR_K(iNodeZ,iZ1,iCR,iS)
-
-        END DO
-        END DO
-        END DO
-        END DO
-        END DO
-
+ 
       END DO
       END DO
       END DO
-
-    END DO
-
-    CALL amrex_mfiter_destroy( MFI )
-
-  END SUBROUTINE SetInnerBoundary_ALT_TransparentVortex_Spherical
-
-
-SUBROUTINE InitializeFields_1DCCSNe( iLevel, MF_uGF, MF_uCR, MF_uCF )
-
-
-    INTEGER             , INTENT(in)    :: iLevel
-    TYPE(amrex_multifab), INTENT(in)    :: MF_uGF
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCR
-    TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
-
-    TYPE(amrex_parmparse) :: PP
-    TYPE(amrex_mfiter)    :: MFI
-    TYPE(amrex_box)       :: BX
-
-    TYPE(ProgenitorType1D) :: P1D
-    CHARACTER(LEN=:), ALLOCATABLE :: ProgenitorFileName
-
-    REAL(DP), CONTIGUOUS, POINTER :: uGF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCF(:,:,:,:)
-    REAL(DP), CONTIGUOUS, POINTER :: uCR(:,:,:,:)
-
-    REAL(DP), ALLOCATABLE :: uCR_K(:,:,:,:,:,:,:)
-
-    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    INTEGER  :: iZ_B1(4), iZ_E1(4)
-    INTEGER  :: iX_Domain_E1
-    INTEGER  :: iX1, iX2, iX3
-    INTEGER  :: iZ1, iS
-    INTEGER  :: iNodeX, iNodeX1, iNodeZ
-    REAL(DP) :: X1, dX1
-    REAL(DP) :: D, V1, V2, V3, T, Ye, Ev, Em, Ne_local
-    REAL(DP) :: Gm11, Gm22, Gm33
-    REAL(DP) :: D_max
-
-    REAL(DP), PARAMETER :: Dnu_0 = 1.0d-26
-
-    ProgenitorFileName = 'WH07_15M_Sun.h5'
-
-    IF( MF_uCF % nComp() .NE. nDOFX * nCF ) &
-      CALL amrex_abort &
-             ( 'InitializeFields_1DCCSNe: MF_uCF/MF_uCR order mismatch' )
-
-    CALL amrex_parmparse_build( PP, 'thornado' )
-      CALL PP % query( 'ProgenitorFileName', ProgenitorFileName )
-    CALL amrex_parmparse_destroy( PP )
-
-    CALL ReadProgenitor1D( TRIM( ProgenitorFileName ), P1D )
-
-    dX1 = ( xR(1) - xL(1) ) / ( DBLE( nX(1) ) * Two**iLevel )
-
-    iX_Domain_E1 = nX(1) * 2**iLevel - 1
-
-    D_max = Zero
-
-    ASSOCIATE &
-      ( R1D => P1D % Radius, &
-        D1D => P1D % MassDensity, &
-        V1D => P1D % RadialVelocity, &
-        T1D => P1D % Temperature, &
-        Y1D => P1D % ElectronFraction )
-
-    CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
-
-    DO WHILE( MFI % next() )
-
-      uGF => MF_uGF % DataPtr( MFI )
-      uCF => MF_uCF % DataPtr( MFI )
-      uCR => MF_uCR % DataPtr( MFI )
-
-      BX = MFI % tilebox()
-
-      iX_B0 = BX % lo
-      iX_E0 = BX % hi
-
-      iX_B1 = iX_B0
-      iX_E1 = iX_E0
-
-      IF( iX_B0(1) == 0 ) &
-        iX_B1(1) = iX_B0(1) - swX(1)
-
-      IF( iX_E0(1) == iX_Domain_E1 ) &
-        iX_E1(1) = iX_E0(1) + swX(1)
-
-      iZ_B1 = [ 1 , iX_B1(1), iX_B1(2), iX_B1(3) ]
-      iZ_E1 = [ nE, iX_E1(1), iX_E1(2), iX_E1(3) ]
-
-      ALLOCATE( uCR_K(1:nDOFZ, &
-                      iZ_B1(1):iZ_E1(1), &
-                      iZ_B1(2):iZ_E1(2), &
-                      iZ_B1(3):iZ_E1(3), &
-                      iZ_B1(4):iZ_E1(4), &
-                      1:nCR, 1:nSpecies) )
-
-      DO iX3 = iX_B1(3), iX_E1(3)
-      DO iX2 = iX_B1(2), iX_E1(2)
-      DO iX1 = iX_B1(1), iX_E1(1)
-
-        DO iNodeX = 1, nDOFX
-
-          iNodeX1 = NodeNumberTableX(1,iNodeX)
-
-          X1 = xL(1) + ( DBLE( iX1 ) + Half ) * dX1 &
-                 + NodesX1(iNodeX1) * dX1
-
-          D  = Interpolate1D_CCSN( R1D, D1D, SIZE( R1D ), ABS( X1 ) )
-          V1 = Interpolate1D_CCSN( R1D, V1D, SIZE( R1D ), ABS( X1 ) )
-          IF( X1 .LT. Zero ) V1 = -V1
-          V2 = Zero
-          V3 = Zero
-          T  = Interpolate1D_CCSN( R1D, T1D, SIZE( R1D ), ABS( X1 ) )
-          Ye = Interpolate1D_CCSN( R1D, Y1D, SIZE( R1D ), ABS( X1 ) )
-
-          CALL ComputeThermodynamicStates_Primitive_TABLE &
-                 ( D, T, Ye, Ev, Em, Ne_local )
-
-          Gm11 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_11-1)+iNodeX)
-          Gm22 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_22-1)+iNodeX)
-          Gm33 = uGF(iX1,iX2,iX3,nDOFX*(iGF_Gm_dd_33-1)+iNodeX)
-
-          CALL ComputeConserved_Euler_NonRelativistic &
-                 ( D, V1, V2, V3, Ev, Ne_local, &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_D -1)+iNodeX), &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S1-1)+iNodeX), &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S2-1)+iNodeX), &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_S3-1)+iNodeX), &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_E -1)+iNodeX), &
-                   uCF(iX1,iX2,iX3,nDOFX*(iCF_Ne-1)+iNodeX), &
-                   Gm11, Gm22, Gm33 )
-
-          D_max = MAX( D_max, D )
-
+ 
+      iZ_B = [ iZ_B0(1), loX(1), loX(2), loX(3) ]
+      iZ_E = [ iZ_E0(1), hiX(1), hiX(2), hiX(3) ]
+ 
+      CALL thornado2amrex_Z( nCR, nSpecies, nE, iZ_B0(1), iZ_E0(1), &
+                             iZ_L, iZ_H, lo_C, iZ_B, iZ_E, uCR, uCR_K )
+  
+      IF( loX(1) .EQ. iX_B0_D(1) )THEN
+ 
+        gX_B = [ loX(1)-swX(1), loX(2)-swX(2), loX(3)-swX(3) ]
+        gX_E = [ loX(1)-1     , hiX(2)+swX(2), hiX(3)+swX(3) ]
+ 
+        DO iX3 = gX_B(3), gX_E(3)
+        DO iX2 = gX_B(2), gX_E(2)
+        DO iX1 = gX_B(1), gX_E(1)
+ 
+          uCF(iX1,iX2,iX3,lo_F(4):hi_F(4)) &
+            = RESHAPE( uCF_iBC, [ hi_F(4) - lo_F(4) + 1 ] )
+ 
           DO iS  = 1, nSpecies
-          DO iZ1 = 1, nE
-          DO iNodeZ = ( iNodeX - 1 ) * nDOFE + 1, iNodeX * nDOFE
-
-            CALL ComputeConserved_TwoMoment &
-                   ( Dnu_0, Zero, Zero, Zero, &
-                     uCR_K(iNodeZ,iZ1,iX1,iX2,iX3,iCR_N ,iS), &
-                     uCR_K(iNodeZ,iZ1,iX1,iX2,iX3,iCR_G1,iS), &
-                     uCR_K(iNodeZ,iZ1,iX1,iX2,iX3,iCR_G2,iS), &
-                     uCR_K(iNodeZ,iZ1,iX1,iX2,iX3,iCR_G3,iS), &
-                     V1, V2, V3, &
-                     Gm11, Gm22, Gm33 )
-
+          DO iCR = 1, nCR
+ 
+            uCR_K(:,:,iX1,iX2,iX3,iCR,iS) = uCR_iBC(:,:,iCR,iS)
+ 
           END DO
           END DO
-          END DO
-
-        END DO ! iNodeX
-
-      END DO ! iX1
-      END DO ! iX2
-      END DO ! iX3
-
-      CALL thornado2amrex_Z &
-             ( nCR, nSpecies, nE, iZ_B1(1), iZ_E1(1), &
-               iZ_B1, iZ_E1, LBOUND( uCR ), iZ_B1, iZ_E1, uCR, uCR_K )
-
+ 
+        END DO
+        END DO
+        END DO
+ 
+        iZ_B = [ iZ_B0(1), gX_B(1), gX_B(2), gX_B(3) ]
+        iZ_E = [ iZ_E0(1), gX_E(1), gX_E(2), gX_E(3) ]
+ 
+        CALL thornado2amrex_Z( nCR, nSpecies, nE, iZ_B0(1), iZ_E0(1), &
+                               iZ_L, iZ_H, lo_C, iZ_B, iZ_E, uCR, uCR_K )
+ 
+      END IF
+ 
       DEALLOCATE( uCR_K )
-
-    END DO ! MFI
-
+ 
+    END DO
+ 
     CALL amrex_mfiter_destroy( MFI )
+ 
+    DEALLOCATE( V_0 )
+ 
+  END SUBROUTINE InitializeFields_ALT_TransparentVortex
 
-    END ASSOCIATE
 
-    IF( amrex_parallel_ioprocessor() )THEN
-      WRITE(*,'(4x,A,I2.2,A,ES12.5E2)') &
-        'INFO: 1DCCSNe init, level ', iLevel, &
-        ', max D [code units] = ', D_max
-    END IF
 
-  END SUBROUTINE InitializeFields_1DCCSNe
-
-    REAL(DP) FUNCTION Interpolate1D_CCSN( x, y, n, xq )
- 
-    INTEGER,  INTENT(in) :: n
-    REAL(DP), INTENT(in) :: x(n), y(n)
-    REAL(DP), INTENT(in) :: xq
- 
-    INTEGER :: i
- 
-    i = Locate( xq, x, n )
- 
-    IF( i == 0 )THEN
- 
-      Interpolate1D_CCSN &
-        = Interpolate1D_Linear( xq, x(1), x(2), y(1), y(2) )
- 
-    ELSE IF( i == n )THEN
- 
-      Interpolate1D_CCSN &
-        = Interpolate1D_Linear( xq, x(n-1), x(n), y(n-1), y(n) )
- 
-    ELSE
- 
-      Interpolate1D_CCSN &
-        = Interpolate1D_Linear( xq, x(i), x(i+1), y(i), y(i+1) )
- 
-    END IF
- 
-    RETURN
- 
-  END FUNCTION Interpolate1D_CCSN
 
 
 END MODULE MF_InitializationModule
