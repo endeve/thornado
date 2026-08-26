@@ -62,6 +62,7 @@ PROGRAM main
     dt_chk,    &
     iCycleChk, &
     iCycleW,   &
+    iCycleD,   &
     dt_rel
   USE MF_Euler_TallyModule, ONLY: &
     ComputeTally_Euler_MF, &
@@ -180,11 +181,15 @@ PROGRAM main
       t_new  = t_end
     END IF
     IF( amrex_parallel_ioprocessor() )THEN
+
+      IF( ( MOD( StepNo(0), iCycleD ) .EQ. 0 ) )THEN
+
         WRITE(*,'(8x,A8,I8.8,A5,ES13.6E3,1x,A,A6,ES13.6E3,1x,A)') &
           'StepNo: ', StepNo(0), ' t = ', t_new(0) / UnitsDisplay % TimeUnit, &
           TRIM( UnitsDisplay % TimeLabel ), &
           ' dt = ', dt(0) /  UnitsDisplay % TimeUnit, &
           TRIM( UnitsDisplay % TimeLabel )
+      END IF
     END IF
 
 
