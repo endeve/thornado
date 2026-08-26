@@ -44,14 +44,20 @@ MODULE FillPatchModule
   USE GeometryFieldsModule, ONLY: &
     iGF_SqrtGm, &
     CoordinateSystem
+
   USE Euler_MeshRefinementModule, ONLY: &
     nFine, &
     vpCoarseToFineProjectionMatrix
+  !  nFine_Aniso, &
+  !  vpC2F_Aniso
+  !USE AnisotropicRefinementModule, ONLY: &
+  !  UseAnisotropicRefinement, &
+  !  RefRatioVect
 
   ! --- Local Modules ---
 
   USE thornado_amrex_interpolater_module, ONLY: &
-    amrex_interp_dg
+    amrex_interp_dg !, amrex_interp_dg_aniso
   USE MF_KindModule, ONLY: &
     DP, &
     Zero, &
@@ -67,6 +73,8 @@ MODULE FillPatchModule
     UpdateSpatialMetric_MF
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler_MF
+  USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_TwoMoment_MF
   USE MF_TimersModule, ONLY: &
     TimersStart_AMReX, &
     TimersStop_AMReX, &
@@ -180,6 +188,25 @@ CONTAINS
       lo_bc = amrex_bc_bogus
       hi_bc = amrex_bc_bogus
 
+      !IF( UseAnisotropicRefinement )THEN
+
+      !  CALL thornado_amrex_fillpatch &
+      !         ( MF_dst, &
+      !           t_old_crse, MF(FineLevel-1), &
+      !           t_new_crse, MF(FineLevel-1), &
+      !           amrex_geom(FineLevel-1), FillPhysicalBC_Dummy, &
+      !           t_old_fine, MF(FineLevel  ), &
+      !           t_new_fine, MF(FineLevel  ), &
+      !           amrex_geom(FineLevel  ), FillPhysicalBC_Dummy, &
+      !           t, 1, 1, MF_dst % nComp(), &
+      !           RefRatioVect(:,FineLevel-1), &
+      !           amrex_interp_dg_aniso, &
+      !           lo_bc, hi_bc, &
+      !           nFine_Aniso(FineLevel-1), nDOFX, &
+      !           vpC2F_Aniso(FineLevel-1) )
+
+      !ELSE
+
       CALL thornado_amrex_fillpatch &
              ( MF_dst, &
                t_old_crse, MF(FineLevel-1), &
@@ -193,6 +220,7 @@ CONTAINS
                amrex_interp_dg, &
                lo_bc, hi_bc, &
                nFine, nDOFX, vpCoarseToFineProjectionMatrix )
+      !END IF
 
       DEALLOCATE( hi_bc )
       DEALLOCATE( lo_bc )
@@ -295,6 +323,25 @@ CONTAINS
       lo_bc = amrex_bc_bogus
       hi_bc = amrex_bc_bogus
 
+    !  IF( UseAnisotropicRefinement )THEN
+
+    !    CALL thornado_amrex_fillpatch &
+    !           ( MF(FineLevel), &
+    !             t_old_crse, MF(FineLevel-1), &
+    !             t_new_crse, MF(FineLevel-1), &
+    !             amrex_geom(FineLevel-1), FillPhysicalBC_Dummy, &
+    !             t_old_fine, MF(FineLevel  ), &
+    !             t_new_fine, MF(FineLevel  ), &
+    !             amrex_geom(FineLevel  ), FillPhysicalBC_Dummy, &
+    !             t, 1, 1, MF(FineLevel) % nComp(), &
+    !             RefRatioVect(:,FineLevel-1), &
+    !             amrex_interp_dg_aniso, &
+    !             lo_bc, hi_bc, &
+    !             nFine_Aniso(FineLevel-1), nDOFX, &
+    !             vpC2F_Aniso(FineLevel-1) )
+
+    !  ELSE
+
       CALL thornado_amrex_fillpatch &
              ( MF(FineLevel), &
                t_old_crse, MF(FineLevel-1), &
@@ -308,6 +355,7 @@ CONTAINS
                amrex_interp_dg, &
                lo_bc, hi_bc, &
                nFine, nDOFX, vpCoarseToFineProjectionMatrix )
+     ! END IF
 
       DEALLOCATE( hi_bc )
       DEALLOCATE( lo_bc )
@@ -388,6 +436,22 @@ CONTAINS
     lo_bc = amrex_bc_bogus
     hi_bc = amrex_bc_bogus
 
+    !IF( UseAnisotropicRefinement )THEN
+
+    !  CALL thornado_amrex_fillcoarsepatch &
+    !         ( MF(FineLevel), &
+    !           t_old_crse, MF(FineLevel-1), &
+    !           t_new_crse, MF(FineLevel-1), &
+    !           amrex_geom(FineLevel-1), FillPhysicalBC_Dummy, &
+    !           amrex_geom(FineLevel  ), FillPhysicalBC_Dummy, &
+    !           t, MF(FineLevel) % nComp(), &
+    !           RefRatioVect(:,FineLevel-1), &
+    !           amrex_interp_dg_aniso, lo_bc, hi_bc, &
+    !           nFine_Aniso(FineLevel-1), nDOFX, &
+    !           vpC2F_Aniso(FineLevel-1) )
+
+    !ELSE
+
     CALL thornado_amrex_fillcoarsepatch &
            ( MF(FineLevel), &
              t_old_crse, MF(FineLevel-1), &
@@ -398,6 +462,7 @@ CONTAINS
              amrex_ref_ratio(FineLevel-1), &
              amrex_interp_dg, lo_bc, hi_bc, &
              nFine, nDOFX, vpCoarseToFineProjectionMatrix )
+    !END IF
 
     DEALLOCATE( hi_bc )
     DEALLOCATE( lo_bc )
@@ -417,7 +482,7 @@ CONTAINS
 
   SUBROUTINE FillPatch_Conservative_Scalar &
     ( FineLevel, MF_uGF, MF_uGF_tmp, MF_src, MF_dst, &
-      ApplyBoundaryConditions_Euler_Option )
+      ApplyBoundaryConditions_Euler_Option, ApplyBoundaryConditions_TwoMoment_Option )
 
     INTEGER             , INTENT(in)    :: FineLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
@@ -425,13 +490,13 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_src(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF_dst
     LOGICAL             , INTENT(in), OPTIONAL :: &
-      ApplyBoundaryConditions_Euler_Option
+      ApplyBoundaryConditions_Euler_Option, ApplyBoundaryConditions_TwoMoment_Option
 
     TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel), SqrtGm_tmp
 
     INTEGER :: iErr
 
-    LOGICAL :: ApplyBoundaryConditions_Euler
+    LOGICAL :: ApplyBoundaryConditions_Euler, ApplyBoundaryConditions_TwoMoment
 
     INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
 
@@ -450,6 +515,10 @@ CONTAINS
     IF( PRESENT( ApplyBoundaryConditions_Euler_Option ) ) &
       ApplyBoundaryConditions_Euler = ApplyBoundaryConditions_Euler_Option
 
+    ApplyBoundaryConditions_TwoMoment = .FALSE.
+    IF( PRESENT( ApplyBoundaryConditions_TwoMoment_Option ) ) &
+      ApplyBoundaryConditions_TwoMoment = ApplyBoundaryConditions_TwoMoment_Option
+
     IF( DEBUG )THEN
 
       CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
@@ -465,6 +534,9 @@ CONTAINS
 
     IF( ApplyBoundaryConditions_Euler ) &
       CALL ApplyBoundaryConditions_Euler_MF( FineLevel, MF_src(FineLevel) )
+
+    IF( ApplyBoundaryConditions_TwoMoment ) &
+      CALL ApplyBoundaryConditions_TwoMoment_MF( FineLevel, MF_src(FineLevel) )
 
     IF( FineLevel .GT. 0 )THEN
 
@@ -502,11 +574,34 @@ CONTAINS
         CALL ApplyBoundaryConditions_Euler_MF &
                ( FineLevel-1, MF_src(FineLevel-1) )
 
+      IF( ApplyBoundaryConditions_TwoMoment ) &
+        CALL ApplyBoundaryConditions_TwoMoment_MF &
+               ( FineLevel-1, MF_src(FineLevel-1) )
+
       ALLOCATE( lo_bc(1:nDimsX,MF_src(FineLevel)%ncomp()) )
       ALLOCATE( hi_bc(1:nDimsX,MF_src(FineLevel)%ncomp()) )
 
       lo_bc = amrex_bc_bogus
       hi_bc = amrex_bc_bogus
+
+      !IF( UseAnisotropicRefinement )THEN
+
+      !  CALL thornado_amrex_fillpatch &
+      !         ( MF_dst, SqrtGm_tmp, &
+      !           t_old_crse, MF_src(FineLevel-1), SqrtGm(FineLevel-1), &
+      !           t_new_crse, MF_src(FineLevel-1), SqrtGm(FineLevel-1), &
+      !           amrex_geom(FineLevel-1), FillPhysicalBC_Dummy, &
+      !           t_old_fine, MF_src(FineLevel  ), SqrtGm(FineLevel  ), &
+      !           t_new_fine, MF_src(FineLevel  ), SqrtGm(FineLevel  ), &
+      !           amrex_geom(FineLevel  ), FillPhysicalBC_Dummy, &
+      !           t, 1, 1, MF_dst % nComp(), &
+      !           RefRatioVect(:,FineLevel-1), &
+      !           amrex_interp_dg_aniso, &
+      !           lo_bc, hi_bc, &
+      !           nFine_Aniso(FineLevel-1), nDOFX, &
+      !           vpC2F_Aniso(FineLevel-1) )
+
+      !ELSE
 
       CALL thornado_amrex_fillpatch &
              ( MF_dst, SqrtGm_tmp, &
@@ -521,6 +616,7 @@ CONTAINS
                amrex_interp_dg, &
                lo_bc, hi_bc, &
                nFine, nDOFX, vpCoarseToFineProjectionMatrix )
+      !END IF
 
       DEALLOCATE( hi_bc )
       DEALLOCATE( lo_bc )
@@ -529,6 +625,9 @@ CONTAINS
 
     IF( ApplyBoundaryConditions_Euler ) &
       CALL ApplyBoundaryConditions_Euler_MF( FineLevel, MF_dst )
+
+    IF( ApplyBoundaryConditions_TwoMoment ) &
+      CALL ApplyBoundaryConditions_TwoMoment_MF( FineLevel, MF_dst )
 
     IF( FineLevel .GT. 0 )THEN
 
@@ -547,19 +646,19 @@ CONTAINS
 
   SUBROUTINE FillPatch_Conservative_Vector &
     ( FineLevel, MF_uGF, MF, &
-      ApplyBoundaryConditions_Euler_Option )
+      ApplyBoundaryConditions_Euler_Option, ApplyBoundaryConditions_TwoMoment_Option )
 
     INTEGER             , INTENT(in)    :: FineLevel
     TYPE(amrex_multifab), INTENT(inout) :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF    (0:)
     LOGICAL             , INTENT(in)   , OPTIONAL :: &
-      ApplyBoundaryConditions_Euler_Option
+      ApplyBoundaryConditions_Euler_Option, ApplyBoundaryConditions_TwoMoment_Option
 
     TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel)
 
     INTEGER :: iErr
 
-    LOGICAL :: ApplyBoundaryConditions_Euler
+    LOGICAL :: ApplyBoundaryConditions_Euler, ApplyBoundaryConditions_TwoMoment
 
     INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
 
@@ -576,6 +675,10 @@ CONTAINS
     IF( PRESENT( ApplyBoundaryConditions_Euler_Option ) ) &
       ApplyBoundaryConditions_Euler = ApplyBoundaryConditions_Euler_Option
 
+    ApplyBoundaryConditions_TwoMoment = .FALSE.
+    IF( PRESENT( ApplyBoundaryConditions_TwoMoment_Option ) ) &
+      ApplyBoundaryConditions_TwoMoment = ApplyBoundaryConditions_TwoMoment_Option
+
     IF( DEBUG )THEN
 
       CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
@@ -590,6 +693,9 @@ CONTAINS
 
     IF( ApplyBoundaryConditions_Euler ) &
       CALL ApplyBoundaryConditions_Euler_MF( FineLevel, MF(FineLevel) )
+
+    IF( ApplyBoundaryConditions_TwoMoment ) &
+      CALL ApplyBoundaryConditions_TwoMoment_MF( FineLevel, MF(FineLevel) )
 
     IF( FineLevel .GT. 0 )THEN
 
@@ -632,11 +738,34 @@ CONTAINS
         CALL ApplyBoundaryConditions_Euler_MF &
                ( FineLevel-1, MF(FineLevel-1) )
 
+      IF( ApplyBoundaryConditions_TwoMoment ) &
+        CALL ApplyBoundaryConditions_TwoMoment_MF &
+               ( FineLevel-1, MF(FineLevel-1) )
+
       ALLOCATE( lo_bc(1:nDimsX,MF(FineLevel)%ncomp()) )
       ALLOCATE( hi_bc(1:nDimsX,MF(FineLevel)%ncomp()) )
 
       lo_bc = amrex_bc_bogus
       hi_bc = amrex_bc_bogus
+
+      !IF( UseAnisotropicRefinement )THEN
+
+      !  CALL thornado_amrex_fillpatch &
+      !         ( MF(FineLevel), SqrtGm(FineLevel), &
+      !           t_old_crse, MF(FineLevel-1), SqrtGm(FineLevel-1), &
+      !           t_new_crse, MF(FineLevel-1), SqrtGm(FineLevel-1), &
+      !           amrex_geom(FineLevel-1), FillPhysicalBC_Dummy, &
+      !           t_old_fine, MF(FineLevel  ), SqrtGm(FineLevel  ), &
+      !           t_new_fine, MF(FineLevel  ), SqrtGm(FineLevel  ), &
+      !           amrex_geom(FineLevel  ), FillPhysicalBC_Dummy, &
+      !           t, 1, 1, MF(FineLevel) % nComp(), &
+      !           RefRatioVect(:,FineLevel-1), &
+      !           amrex_interp_dg_aniso, &
+      !           lo_bc, hi_bc, &
+      !           nFine_Aniso(FineLevel-1), nDOFX, &
+      !           vpC2F_Aniso(FineLevel-1) )
+
+      !ELSE
 
       CALL thornado_amrex_fillpatch &
              ( MF(FineLevel), SqrtGm(FineLevel), &
@@ -651,6 +780,7 @@ CONTAINS
                amrex_interp_dg, &
                lo_bc, hi_bc, &
                nFine, nDOFX, vpCoarseToFineProjectionMatrix )
+      !END IF
 
       DEALLOCATE( hi_bc )
       DEALLOCATE( lo_bc )
@@ -659,6 +789,9 @@ CONTAINS
 
     IF( ApplyBoundaryConditions_Euler ) &
       CALL ApplyBoundaryConditions_Euler_MF( FineLevel, MF(FineLevel) )
+
+    IF( ApplyBoundaryConditions_TwoMoment ) &
+      CALL ApplyBoundaryConditions_TwoMoment_MF( FineLevel, MF(FineLevel) )
 
     IF( FineLevel .GT. 0 )THEN
 
@@ -674,19 +807,19 @@ CONTAINS
 
   SUBROUTINE FillCoarsePatch_Conservative &
     ( FineLevel, MF_uGF, MF, &
-      ApplyBoundaryConditions_Euler_Option )
+      ApplyBoundaryConditions_Euler_Option, ApplyBoundaryConditions_TwoMoment_Option )
 
     INTEGER             , INTENT(in)    :: FineLevel
     TYPE(amrex_multifab), INTENT(in)    :: MF_uGF(0:)
     TYPE(amrex_multifab), INTENT(inout) :: MF    (0:)
     LOGICAL             , INTENT(in), OPTIONAL :: &
-      ApplyBoundaryConditions_Euler_Option
+      ApplyBoundaryConditions_Euler_Option, ApplyBoundaryConditions_TwoMoment_Option
 
     TYPE(amrex_multifab) :: SqrtGm(FineLevel-1:FineLevel)
 
     INTEGER :: iErr
 
-    LOGICAL :: ApplyBoundaryConditions_Euler
+    LOGICAL :: ApplyBoundaryConditions_Euler, ApplyBoundaryConditions_TwoMoment
 
     INTEGER, ALLOCATABLE :: lo_bc(:,:), hi_bc(:,:)
 
@@ -701,6 +834,10 @@ CONTAINS
     IF( PRESENT( ApplyBoundaryConditions_Euler_Option ) ) &
       ApplyBoundaryConditions_Euler = ApplyBoundaryConditions_Euler_Option
 
+    ApplyBoundaryConditions_TwoMoment = .FALSE.
+    IF( PRESENT( ApplyBoundaryConditions_TwoMoment_Option ) ) &
+      ApplyBoundaryConditions_TwoMoment = ApplyBoundaryConditions_TwoMoment_Option
+
     IF( DEBUG )THEN
 
       CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
@@ -712,6 +849,9 @@ CONTAINS
 
     IF( ApplyBoundaryConditions_Euler ) &
       CALL ApplyBoundaryConditions_Euler_MF( FineLevel-1, MF(FineLevel-1) )
+
+    IF( ApplyBoundaryConditions_TwoMoment ) &
+      CALL ApplyBoundaryConditions_TwoMoment_MF( FineLevel-1, MF(FineLevel-1) )
 
     IF( FineLevel .GT. 0 )THEN
 
@@ -739,6 +879,23 @@ CONTAINS
     lo_bc = amrex_bc_bogus
     hi_bc = amrex_bc_bogus
 
+    !IF( UseAnisotropicRefinement )THEN
+
+    !  CALL thornado_amrex_fillcoarsepatch &
+    !         ( MF(FineLevel), SqrtGm(FineLevel), &
+    !           t_old_crse, MF(FineLevel-1), SqrtGm(FineLevel-1), &
+    !           t_new_crse, MF(FineLevel-1), SqrtGm(FineLevel-1), &
+    !           amrex_geom(FineLevel-1), FillPhysicalBC_Dummy, &
+    !           amrex_geom(FineLevel  ), FillPhysicalBC_Dummy, &
+    !           t, MF(FineLevel) % nComp(), &
+    !           RefRatioVect(:,FineLevel-1), &
+    !           amrex_interp_dg_aniso, &
+    !           lo_bc, hi_bc, &
+    !           nFine_Aniso(FineLevel-1), nDOFX, &
+    !           vpC2F_Aniso(FineLevel-1) )
+
+    !ELSE
+
     CALL thornado_amrex_fillcoarsepatch &
            ( MF(FineLevel), SqrtGm(FineLevel), &
              t_old_crse, MF(FineLevel-1), SqrtGm(FineLevel-1), &
@@ -751,11 +908,16 @@ CONTAINS
              lo_bc, hi_bc, &
              nFine, nDOFX, vpCoarseToFineProjectionMatrix )
 
+    !END IF
+
     DEALLOCATE( hi_bc )
     DEALLOCATE( lo_bc )
 
     IF( ApplyBoundaryConditions_Euler ) &
       CALL ApplyBoundaryConditions_Euler_MF( FineLevel, MF(FineLevel) )
+
+    IF( ApplyBoundaryConditions_TwoMoment ) &
+      CALL ApplyBoundaryConditions_TwoMoment_MF( FineLevel, MF(FineLevel) )
 
     IF( FineLevel .GT. 0 )THEN
 
