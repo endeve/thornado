@@ -16,9 +16,6 @@ DEFINES += -DTHORNADO_USE_AMREX
 DEFINES += -DHYDRO_RIEMANN_SOLVER_HLL
 DEFINES += -DTWOMOMENT_ORDERV
 DEFINES += -DMOMENT_CLOSURE_MINERBO
-DEFINES += -Wno-invalid-pp-token
-F90FLAGS += -finit-real=snan -fcheck=all
-FFLAGS   += -finit-real=snan -fcheck=all
 
 include Make.package
 
