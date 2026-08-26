@@ -10,17 +10,20 @@ DEBUG = TRUE
 USE_MPI  = TRUE
 USE_OMP  = FALSE
 
-DIM = 1
+DIM = 1 
 
 DEFINES += -DTHORNADO_USE_AMREX
 DEFINES += -DHYDRO_RIEMANN_SOLVER_HLL
 DEFINES += -DTWOMOMENT_ORDERV
 DEFINES += -DMOMENT_CLOSURE_MINERBO
+DEFINES += -Wno-invalid-pp-token
+F90FLAGS += -finit-real=snan -fcheck=all
+FFLAGS   += -finit-real=snan -fcheck=all
 
 include Make.package
 
 # Include directories and source files needed from thornado, etc.
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.Euler
 include $(THORNADO_HOME)/SandBox/AMReX/Build/Make.TwoMoment_OrderV
-
 include $(THORNADO_HOME)/SandBox/AMReX/Make.thornado
+
