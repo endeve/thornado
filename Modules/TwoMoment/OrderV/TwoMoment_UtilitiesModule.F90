@@ -51,7 +51,7 @@ MODULE TwoMoment_UtilitiesModule
     nGR, iGR_N, &
          iGR_D, iGR_I1, iGR_I2, iGR_I3, &
          iGR_J, iGR_H1, iGR_H2, iGR_H3, &
-         iGR_RMS, iGR_F, iGR_K, iGR_Q
+         iGR_RMS, iGR_F, iGR_K, iGR_Q, iGR_E
   USE TwoMoment_ClosureModule, ONLY: &
     FluxFactor, &
     EddingtonFactor, &
@@ -1732,6 +1732,7 @@ CONTAINS
     REAL(DP) :: W3(1:nDOFE,iZ_B0(1):iZ_E0(1))
     REAL(DP) :: W3_RMS(1:nDOFE,iZ_B0(1):iZ_E0(1))
     REAL(DP) :: W5_RMS(1:nDOFE,iZ_B0(1):iZ_E0(1))
+    REAL(DP) :: E_EulerianEnergy
 
     IF( UnitsActive )THEN
 
@@ -1807,6 +1808,31 @@ CONTAINS
           GR(iNodeX,iZ2,iZ3,iZ4,iGR_N,iS) &
             = GR(iNodeX,iZ2,iZ3,iZ4,iGR_N,iS) &
                 + W2(iNodeE,iZ1) * CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS)
+
+          !E_EulerianEnergy &
+          !  = PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D ,iS) &
+          !    + Two * ( GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) &
+          !                * PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1) &
+          !                * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS) &
+          !            + GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22) &
+          !                * PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2) &
+          !                * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS) &
+          !            + GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) &
+          !                * PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3) &
+          !                * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS) )
+
+          ! Add: N + v*G
+          E_EulerianEnergy &
+            = CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS) &
+              +  (   PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1)  &
+                       * CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) &
+                   + PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2) &
+                       * CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS) &
+                   + PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3) &
+                       * CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS) )
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_E,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_E,iS) + W3(iNodeE,iZ1) * E_EulerianEnergy
 
           GR(iNodeX,iZ2,iZ3,iZ4,iGR_D,iS) &
             = GR(iNodeX,iZ2,iZ3,iZ4,iGR_D,iS) &
