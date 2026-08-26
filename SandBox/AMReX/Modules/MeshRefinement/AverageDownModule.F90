@@ -28,9 +28,9 @@ MODULE AverageDownModule
     pG2L_c, &
     pL2G_c, &
     pF2C_c, &
-    vpFineToCoarseProjectionMatrix, &
-    nFine_Aniso, &
-    vpF2C_Aniso
+    vpFineToCoarseProjectionMatrix !, &
+    !nFine_Aniso, &
+    !vpF2C_Aniso
   USE InputParsingModule,                      ONLY: &
     nLevels,nMaxLevels, UseTiling, nSpecies
   USE RadiationFieldsModule, ONLY: &
