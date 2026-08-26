@@ -40,7 +40,7 @@ MODULE AverageDownModule
   USE thornado_amrex_multifabutil_module, ONLY: &
     amrex_average_down_dg_conservative, &
     amrex_average_down_dg_pointwise, &
-    amrex_average_down_cg, &
+    amrex_average_down_cg !, &
     !amrex_average_down_dg_conservative_vect, &
     !amrex_average_down_dg_pointwise_vect
   USE MF_GeometryModule, ONLY: &
@@ -207,7 +207,7 @@ CONTAINS
              MF(CoarseLevel) % nComp(), amrex_ref_ratio(CoarseLevel), &
              nDOFX, nFine, vpFineToCoarseProjectionMatrix )
 
-    END IF
+    !END IF
 
     IF( UpdateSpatialMetric )THEN
 
