@@ -144,10 +144,10 @@ MODULE InitializationModule
   USE TwoMoment_UtilitiesModule
   USE MF_UtilitiesModule, ONLY: &
     ShowVariableFromMultiFab
-  USE AnisotropicRefinementModule, ONLY: &
-    UseAnisotropicRefinement, &
-    RefRatioVect, &
-    ParseAnisotropicRefinement
+  !USE AnisotropicRefinementModule, ONLY: &
+  !  UseAnisotropicRefinement, &
+  !  RefRatioVect, &
+  !  ParseAnisotropicRefinement
 
   ! --- Local Modules ---
 
@@ -260,8 +260,8 @@ CONTAINS
  
     CALL InitializeParameters
 
-    CALL ParseAnisotropicRefinement &
-           ( UseFluxCorrection_Euler, UseFluxCorrection_TwoMoment )
+    !CALL ParseAnisotropicRefinement &
+    !       ( UseFluxCorrection_Euler, UseFluxCorrection_TwoMoment )
  
     IF( amrex_parallel_ioprocessor() )THEN
  
