@@ -14,7 +14,8 @@ MODULE MF_Euler_BoundaryConditionsModule
 
   USE ProgramHeaderModule, ONLY: &
     swX, &
-    nDOFX
+    nDOFX, &
+    ProgramName
   USE MeshModule, ONLY: &
     MeshX
   USE FluidFieldsModule, ONLY: &
@@ -45,6 +46,8 @@ MODULE MF_Euler_BoundaryConditionsModule
   PRIVATE
 
   PUBLIC :: ApplyBoundaryConditions_Euler_MF
+
+  REAL(DP), ALLOCATABLE, PUBLIC :: uCF_iBC(:,:)
 
   INTERFACE ApplyBoundaryConditions_Euler_MF
     MODULE PROCEDURE ApplyBoundaryConditions_Euler_MF_MultiLevel
@@ -86,7 +89,7 @@ CONTAINS
 
     CALL CreateMesh_MF( iLevel, MeshX )
 
-    CALL amrex_mfiter_build( MFI, MF_uCF, tiling = UseTiling )
+    CALL amrex_mfiter_build( MFI, MF_uCF, tiling = .FALSE. )
 
     DO WHILE( MFI % next() )
 
@@ -141,10 +144,13 @@ CONTAINS
 
     INTEGER :: iApplyBC(3)
 
+    INTEGER :: iX1, iX2, iX3, iCF
+
     CALL Edge_Map % GetBC( iApplyBC )
 
     CALL ApplyBoundaryConditions_Euler &
            ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC )
+
 
   END SUBROUTINE ApplyBoundaryConditions_Euler_MF_SingleLevel_Box
 
