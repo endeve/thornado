@@ -42,6 +42,8 @@ MODULE InputOutputModuleAMReX
     amrex_fluxregister_build
   USE amrex_amr_module, ONLY: &
     amrex_geom
+  USE ReferenceElementModuleE, ONLY: &
+    WeightsE
 
   ! --- thornado Modules ---
 
@@ -91,6 +93,7 @@ MODULE InputOutputModuleAMReX
     ShortNamesPR, &
     unitsPR, &
     nPR, &
+    nAR,&
     ShortNamesGR, &
     unitsGR, &
     nGR, &
@@ -118,6 +121,7 @@ MODULE InputOutputModuleAMReX
     MF_uCR, &
     MF_uPR, &
     MF_uGR, &
+    MF_uAR, &
     FluxRegister_TwoMoment
   USE InputParsingModule, ONLY: &
     nLevels, &
@@ -540,7 +544,7 @@ CONTAINS
 
       CALL WriteRadMesh( iLevel, MF_uGF(iLevel), MF_plt(iLevel) )
 
-      iOS = 7 + 2 * nE * nSpecies
+      iOS = 7 + 2 * nE !* nSpecies
 
       IF( WriteGF )THEN
 
@@ -824,6 +828,11 @@ CONTAINS
       CALL MF_uPR(iLevel) % SetVal( Zero )
 
       CALL amrex_multifab_build &
+             ( MF_uAR(iLevel), BA(iLevel), DM(iLevel), &
+               nDOFZ * nAR * nE * nSpecies, swX )
+      CALL MF_uAR(iLevel) % SetVal( Zero )
+
+      CALL amrex_multifab_build &
              ( MF_uGR(iLevel), BA(iLevel), DM(iLevel), &
                nDOFX * nGR * nSpecies, swX )
       CALL MF_uGR(iLevel) % SetVal( Zero )
@@ -964,7 +973,19 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: U    (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
     REAL(DP)                      :: Eq(1:nDOFE), E(1:nDOFZ), SqrtGM(1:nDOFZ), &
-                                     V_K, SUM2
+                                     V_K, SUM2, MF_weights_q (1:nDOFZ), iNodeE, iNodeX, iNodeZ, diff, iNodeZ_amrex, iNodeZ_thornado
+
+    DO iNodeE = 1, nDOFE
+    DO iNodeX = 1, nDOFX
+
+       iNodeZ_amrex    = ( iNodeE - 1 ) * nDOFX + iNodeX 
+       iNodeZ_thornado = ( iNodeX - 1 ) * nDOFE + iNodeE
+       MF_weights_q(iNodeZ_amrex) = weightsE(iNodeE) * weightsX_q(iNodeX)
+       !diff = ABS(weights_q(iNodeZ_thornado) - MF_weights_q(iNodeZ_amrex))
+       !PRINT *, diff
+
+    END DO
+    END DO
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
@@ -1006,12 +1027,18 @@ CONTAINS
             iNE = MOD( iNZ - 1, nDOFE ) + 1
             iNX = MOD( (iNZ-1) / nDOFE, nDOFX ) + 1
 
+!IF (iX1 == iX_B0(1) .AND. iX2 == iX_B0(2) .AND. iX3 == iX_B0(3) .AND. &
+!    iNZ <= 5) THEN
+!  WRITE(*,*) 'Using in average: iNZ=', iNZ, 'Value=', U_K(iNZ,iZ1,iFd,iS), &
+!             'Weight=', Weights_q(iNZ)
+!END IF
+
             E (iNZ) = NodeCoordinate( MeshE, iZ1, iNE )
             Eq(iNE) = NodeCoordinate( MeshE, iZ1, iNE )
 
             SqrtGM(iNZ) = G_K(iNX,iGF_SqrtGm)
 
-            V_K = V_K + Weights_q(iNZ) * Eq(iNE)**2 * G_K(iNX,iGF_SqrtGm)
+            V_K = V_K + MF_weights_q(iNZ) * Eq(iNE)**2 * G_K(iNX,iGF_SqrtGm)
 
           END DO
 
@@ -1030,7 +1057,7 @@ CONTAINS
               Eq(iNE) = NodeCoordinate( MeshE, iZ1, iNE )
 
               SUM2 = SUM2 &
-                   + Weights_q(iNZ) * Eq(iNE)**2 * G_K(iNX,iGF_SqrtGm) * U_K(iNZ,iZ1,iFd,iS)
+                   + MF_weights_q(iNZ) * Eq(iNE)**2 * G_K(iNX,iGF_SqrtGm) * U_K(iNZ,iZ1,iFd,iS)
 
             END DO
 
@@ -1056,7 +1083,7 @@ CONTAINS
   END SUBROUTINE ComputeCellAverage_Z_MF
 
 
-  SUBROUTINE ComputeCellAverage_Integral_MF &
+  SUBROUTINE ComputeCellAverage_Integral_MF & ! Change name to ComputeCellAverage_Grey_MF
     ( nFd, MF_uGF, MF, iOS, Field, MF_plt )
 
     INTEGER,              INTENT(in)    :: nFd, iOS
@@ -1075,7 +1102,20 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: G    (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: U    (:,:,:,:)
     REAL(DP), CONTIGUOUS, POINTER :: U_plt(:,:,:,:)
+    REAL(DP)                      :: Eq(1:nDOFE), E(1:nDOFZ), SqrtGM(1:nDOFZ), &
+                                     V_K, SUM2, MF_weights_q (1:nDOFZ), iNodeE, iNodeX, iNodeZ, diff, iNodeZ_amrex, iNodeZ_thornado
 
+    DO iNodeE = 1, nDOFE
+    DO iNodeX = 1, nDOFX
+
+       iNodeZ_amrex    = ( iNodeE - 1 ) * nDOFX + iNodeX 
+       iNodeZ_thornado = ( iNodeX - 1 ) * nDOFE + iNodeE
+       MF_weights_q(iNodeZ_amrex) = weightsE(iNodeE) * weightsX_q(iNodeX)
+       !diff = ABS(weights_q(iNodeZ_thornado) - MF_weights_q(iNodeZ_amrex))
+       !PRINT *, diff
+
+    END DO
+    END DO
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
     DO WHILE( MFI % next() )
