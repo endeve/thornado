@@ -13,7 +13,8 @@
     amrex_mfiter_destroy
   USE amrex_parallel_module, ONLY: &
     amrex_parallel_ioprocessor, &
-    amrex_parallel_communicator
+    amrex_parallel_communicator, &
+    amrex_parallel_reduce_sum
   USE amrex_parmparse_module, ONLY: &
     amrex_parmparse, &
     amrex_parmparse_build, &
@@ -41,13 +42,14 @@
   USE TwoMoment_PositivityLimiterModule, ONLY: &
     InitializePositivityLimiter_TwoMoment, &
     FinalizePositivityLimiter_TwoMoment, &
-    ApplyPositivityLimiter_TwoMoment
+    ApplyPositivityLimiter_TwoMoment, &
+    dEnergyMomentum_PL_TwoMoment
   USE MeshModule, ONLY: &
     MeshX
   ! --- Local Modules ---
 
   USE MF_KindModule, ONLY: &
-    DP
+    DP, Zero
   USE MF_UtilitiesModule, ONLY: &
     amrex2thornado_X, &
     amrex2thornado_Z, &
@@ -58,17 +60,22 @@
     DeallocateArray_Z
   USE InputParsingModule, ONLY: &
     nLevels, &
+    nMaxLevels, &
     UseTiling, &
     nE, &
     DEBUG
   USE MF_EdgeMapModule, ONLY: &
     ConstructEdgeMap, &
     EdgeMap
+  USE MF_TwoMoment_TallyModule, ONLY: &
+    IncrementPositivityLimiterTally_TwoMoment_MF
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler_MF
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
+  USE MF_TwoMoment_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_TwoMoment_MF
 
   IMPLICIT NONE
   PRIVATE
@@ -93,7 +100,7 @@ CONTAINS
 
     REAL(DP) :: Min_1, Min_2
 
-    UsePositivityLimiter = .TRUE.
+    UsePositivityLimiter = .FALSE.
     UseEnergyLimiter     = .FALSE.
     Min_1                = 1.0e-12_DP
     Min_2                = 1.0e-12_DP
@@ -146,6 +153,7 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: G (:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: C (:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: U (:,:,:,:,:,:,:)
+    REAL(DP)              :: dEM_PL(1:nCR,0:nMaxLevels-1)
 
     INTEGER       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3), &
                      iLo_MF(4), swXX(3)
@@ -161,6 +169,8 @@ CONTAINS
       swXX = swX_Option
 
     CALL CreateMesh_MF( iLevel, MeshX )
+
+    dEM_PL = Zero
 
     CALL amrex_mfiter_build( MFI, MF_uGF, tiling = UseTiling )
 
@@ -192,6 +202,12 @@ CONTAINS
         iZ_B1(2:4) = iX_B1
         iZ_E0(2:4) = iX_E0
         iZ_E1(2:4) = iX_E1
+
+        iZ_B(1) = iE_B0
+        iZ_E(1) = iE_E0
+
+        iZ_B(2:4) = iX_B
+        iZ_E(2:4) = iX_E
 
         CALL AllocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
@@ -233,11 +249,20 @@ CONTAINS
 
         CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
-        !CALL ApplyBoundaryConditions_Euler_MF &
-             !( iX_B0, iX_E0, iX_B1, iX_E1, C, Edge_Map )
+        !dEM_PL(1:nCR,iLevel) &
+        !  = dEM_PL(1:nCR,iLevel) + dEnergyMomentum_PL_TwoMoment(1:nCR)
+
+        CALL ApplyBoundaryConditions_Euler_MF &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, C, Edge_Map )
+
+        CALL ApplyBoundaryConditions_TwoMoment_MF &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )
 
         CALL ApplyPositivityLimiter_TwoMoment &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U )
+
+        dEM_PL(1:nCR,iLevel) &
+          = dEM_PL(1:nCR,iLevel) + dEnergyMomentum_PL_TwoMoment(1:nCR)
 
         CALL thornado2amrex_Z &
                ( nCR, nSpecies, nE, iE_B0, iE_E0, &
@@ -265,6 +290,8 @@ CONTAINS
                  [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
                  C )
 
+        !CALL amrex_parallel_reduce_sum( dEM_PL(:,iLevel), nCR )
+
         CALL DeallocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                  [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
@@ -272,7 +299,11 @@ CONTAINS
 
       END DO ! DO WHILE( MFI % next() )
 
-      CALL amrex_mfiter_destroy( MFI )
+    CALL amrex_mfiter_destroy( MFI )
+
+    CALL amrex_parallel_reduce_sum( dEM_PL(:,iLevel), nCR )
+
+    CALL IncrementPositivityLimiterTally_TwoMoment_MF( dEM_PL )
 
     CALL DestroyMesh_MF( MeshX )
 
