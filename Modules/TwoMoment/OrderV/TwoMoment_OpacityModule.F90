@@ -317,7 +317,7 @@ CONTAINS
           ! Distance to Center of Radiation Region (x,y) = ( 3, 0 )
            Distance_S = SQRT( (X1 - 3.0d0 )**2 + X2**2 )
            IF( Distance_S <= R_0_S )THEN ! Inside Radiating Region
-             Chi_loc = 10.d0 * EXP( - 2.0d0 * ( Distance_S / R_0_S )**2 )
+             Chi_loc = 10.d0 * EXP( - ( 4.0d0 * ( Distance_S / R_0_S ) )**2 )
              D0_loc  = 1.0d-1
            END IF
         END IF
