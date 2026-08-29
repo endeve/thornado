@@ -55,7 +55,8 @@ MODULE MF_TwoMoment_TallyModule
     nLevels, &
     ProgramName, &
     nE, &
-    UseTiling
+    UseTiling, &
+    iRestart
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -79,12 +80,16 @@ MODULE MF_TwoMoment_TallyModule
   PUBLIC :: IncrementOffGridTally_TwoMoment_MF
   PUBLIC :: IncrementPositivityLimiterTally_TwoMoment_MF
   PUBLIC :: FinalizeTally_TwoMoment_MF
+  PUBLIC :: WriteTallyCheckpoint_TwoMoment
+  PUBLIC :: ReadTallyCheckpoint_TwoMoment
 
   LOGICAL :: SuppressTally_TwoMoment
 
   INTEGER, PARAMETER :: SL = 256
 
   REAL(DP) :: hc3
+
+  CHARACTER(SL) :: TallyChkFileNameRoot
 
   CHARACTER(SL)    :: NeutrinoLeptonNumber_FileName
   REAL(DP), PUBLIC :: NeutrinoLeptonNumber_Initial
@@ -161,36 +166,47 @@ CONTAINS
     END IF
 
     NeutrinoLeptonNumber_Interior = Zero
-    NeutrinoLeptonNumber_Initial  = Zero
-    NeutrinoLeptonNumber_OffGrid  = Zero
     NeutrinoLeptonNumber_Change   = Zero
 
     NeutrinoEnergy_Interior = Zero
-    NeutrinoEnergy_Initial  = Zero
-    NeutrinoEnergy_OffGrid  = Zero
     NeutrinoEnergy_Change   = Zero
 
     NeutrinoMomentumX1_Interior = Zero
-    NeutrinoMomentumX1_Initial  = Zero
-    NeutrinoMomentumX1_OffGrid  = Zero
     NeutrinoMomentumX1_Change   = Zero
 
     NeutrinoMomentumX2_Interior = Zero
-    NeutrinoMomentumX2_Initial  = Zero
-    NeutrinoMomentumX2_OffGrid  = Zero
     NeutrinoMomentumX2_Change   = Zero
 
     NeutrinoMomentumX3_Interior = Zero
-    NeutrinoMomentumX3_Initial  = Zero
-    NeutrinoMomentumX3_OffGrid  = Zero
     NeutrinoMomentumX3_Change   = Zero
 
-    NeutrinoEnergy_PL     = Zero
-    NeutrinoMomentumX1_PL = Zero
-    NeutrinoMomentumX2_PL = Zero
-    NeutrinoMomentumX3_PL = Zero
+    IF( .NOT. InitializeFromCheckpoint )THEN
+
+      NeutrinoLeptonNumber_Initial = Zero
+      NeutrinoLeptonNumber_OffGrid = Zero
+
+      NeutrinoEnergy_Initial = Zero
+      NeutrinoEnergy_OffGrid = Zero
+
+      NeutrinoMomentumX1_Initial = Zero
+      NeutrinoMomentumX1_OffGrid = Zero
+
+      NeutrinoMomentumX2_Initial = Zero
+      NeutrinoMomentumX2_OffGrid = Zero
+
+      NeutrinoMomentumX3_Initial = Zero
+      NeutrinoMomentumX3_OffGrid = Zero
+
+      NeutrinoEnergy_PL     = Zero
+      NeutrinoMomentumX1_PL = Zero
+      NeutrinoMomentumX2_PL = Zero
+      NeutrinoMomentumX3_PL = Zero
+
+    END IF
 
     FileNameRoot = TRIM( TallyFileNameRoot_TwoMoment )
+
+    TallyChkFileNameRoot = TRIM( FileNameRoot )
 
     NeutrinoLeptonNumber_FileName &
       = TRIM( FileNameRoot ) // '_NeutrinoLeptonNumber.dat'
@@ -203,7 +219,7 @@ CONTAINS
     NeutrinoMomentumX3_FileName &
       = TRIM( FileNameRoot ) // '_NeutrinoMomentumX3.dat'
 
-    IF( InitializeFromCheckpoint ) RETURN
+    !IF( InitializeFromCheckpoint ) RETURN
 
     IF( amrex_parallel_ioprocessor() )THEN
 
@@ -219,6 +235,8 @@ CONTAINS
       CALL CreateFile( NeutrinoMomentumX3_FileName, '', TimeLabel )
 
     END IF
+
+    IF( InitializeFromCheckpoint ) CALL ReadTallyCheckpoint_TwoMoment
 
   END SUBROUTINE InitializeTally_TwoMoment_MF
 
@@ -689,6 +707,44 @@ CONTAINS
 
   END SUBROUTINE DisplayTally
 
+  RECURSIVE SUBROUTINE CheckFileExistenceAndAppend( FileName, IntSuffix_Option )
+
+    CHARACTER(LEN=SL), INTENT(inout) :: FileName
+    INTEGER          , INTENT(inout), OPTIONAL :: IntSuffix_Option
+
+    LOGICAL :: IsFile
+    INTEGER :: IntSuffix
+    INTEGER :: SL_T
+
+    IntSuffix = 1
+    IF( PRESENT( IntSuffix_Option ) ) &
+      IntSuffix = IntSuffix_Option
+
+    SL_T = LEN( TRIM( FileName ) )
+
+    INQUIRE( FILE = TRIM( FileName ), EXIST = IsFile )
+
+    IF( IsFile )THEN
+
+      IF( FileName(SL_T-3:SL_T) .EQ. '.dat' )THEN
+
+        WRITE(FileName,'(A,A,I2.2)') TRIM( FileName ), '_', IntSuffix
+
+      ELSE
+
+        WRITE(FileName(SL_T-1:SL_T),'(I2.2)') IntSuffix
+
+      END IF
+
+      IntSuffix = IntSuffix + 1
+
+      CALL CheckFileExistenceAndAppend &
+             ( FileName, IntSuffix_Option = IntSuffix )
+
+    END IF
+
+  END SUBROUTINE CheckFileExistenceAndAppend
+
 
   SUBROUTINE CreateFile( FileName, UnitsLabel, TimeLabel )
 
@@ -703,6 +759,8 @@ CONTAINS
     InitialLabel  = 'Initial ['  // TRIM( UnitsLabel ) // ']'
     ChangeLabel   = 'Change ['   // TRIM( UnitsLabel ) // ']'
 
+    CALL CheckFileExistenceAndAppend( FileName )
+
     OPEN( NEWUNIT = FileUnit, FILE = TRIM( FileName ) )
 
     WRITE( FileUnit, '(5(A25,x))' ) &
@@ -712,7 +770,6 @@ CONTAINS
     CLOSE( FileUnit )
 
   END SUBROUTINE CreateFile
-
 
   SUBROUTINE WriteTallyToScreen &
     ( FieldName, Interior, Initial, OffGrid, Change, Units, Label )
@@ -763,5 +820,84 @@ CONTAINS
 
   END SUBROUTINE WriteTallyToFile
 
+  SUBROUTINE WriteTallyCheckpoint_TwoMoment( StepNumber )
+
+    INTEGER, INTENT(in) :: StepNumber
+
+    INTEGER       :: FileUnit
+    CHARACTER(SL) :: FileName
+
+    IF( SuppressTally_TwoMoment ) RETURN
+    IF( .NOT. amrex_parallel_ioprocessor() ) RETURN
+
+    WRITE( FileName, '(A,A,I8.8,A)' ) &
+      TRIM( TallyChkFileNameRoot ), '_TwoMomentTally_', StepNumber, '.dat'
+
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( FileName ), ACTION = 'WRITE' )
+
+    WRITE( FileUnit, '(ES24.16)' ) NeutrinoLeptonNumber_Initial
+    WRITE( FileUnit, '(ES24.16)' ) NeutrinoLeptonNumber_OffGrid
+    WRITE( FileUnit, '(ES24.16)' ) NeutrinoEnergy_Initial
+    WRITE( FileUnit, '(ES24.16)' ) NeutrinoEnergy_OffGrid
+    WRITE( FileUnit, '(ES24.16)' ) NeutrinoMomentumX1_Initial
+    WRITE( FileUnit, '(ES24.16)' ) NeutrinoMomentumX1_OffGrid
+    WRITE( FileUnit, '(ES24.16)' ) NeutrinoMomentumX2_Initial
+    WRITE( FileUnit, '(ES24.16)' ) NeutrinoMomentumX2_OffGrid
+    WRITE( FileUnit, '(ES24.16)' ) NeutrinoMomentumX3_Initial
+    WRITE( FileUnit, '(ES24.16)' ) NeutrinoMomentumX3_OffGrid
+    WRITE( FileUnit, '(ES24.16)' ) NeutrinoEnergy_PL
+    WRITE( FileUnit, '(ES24.16)' ) NeutrinoMomentumX1_PL
+    WRITE( FileUnit, '(ES24.16)' ) NeutrinoMomentumX2_PL
+    WRITE( FileUnit, '(ES24.16)' ) NeutrinoMomentumX3_PL
+
+    CLOSE( FileUnit )
+
+  END SUBROUTINE WriteTallyCheckpoint_TwoMoment
+
+
+  SUBROUTINE ReadTallyCheckpoint_TwoMoment
+
+    INTEGER       :: FileUnit
+    LOGICAL       :: IsFile
+    CHARACTER(SL) :: FileName
+
+    IF( SuppressTally_TwoMoment ) RETURN
+
+    WRITE( FileName, '(A,A,I8.8,A)' ) &
+      TRIM( TallyChkFileNameRoot ), '_TwoMomentTally_', iRestart, '.dat'
+
+    INQUIRE( FILE = TRIM( FileName ), EXIST = IsFile )
+
+    IF( .NOT. IsFile )THEN
+      IF( amrex_parallel_ioprocessor() ) &
+        WRITE(*,'(A)') &
+          '  WARNING: TwoMoment tally checkpoint not found: ' &
+          // TRIM( FileName ) // ' -- Initial/OffGrid start at zero'
+      RETURN
+    END IF
+
+    OPEN( NEWUNIT = FileUnit, FILE = TRIM( FileName ), ACTION = 'READ' )
+
+    READ( FileUnit, * ) NeutrinoLeptonNumber_Initial
+    READ( FileUnit, * ) NeutrinoLeptonNumber_OffGrid
+    READ( FileUnit, * ) NeutrinoEnergy_Initial
+    READ( FileUnit, * ) NeutrinoEnergy_OffGrid
+    READ( FileUnit, * ) NeutrinoMomentumX1_Initial
+    READ( FileUnit, * ) NeutrinoMomentumX1_OffGrid
+    READ( FileUnit, * ) NeutrinoMomentumX2_Initial
+    READ( FileUnit, * ) NeutrinoMomentumX2_OffGrid
+    READ( FileUnit, * ) NeutrinoMomentumX3_Initial
+    READ( FileUnit, * ) NeutrinoMomentumX3_OffGrid
+    READ( FileUnit, * ) NeutrinoEnergy_PL
+    READ( FileUnit, * ) NeutrinoMomentumX1_PL
+    READ( FileUnit, * ) NeutrinoMomentumX2_PL
+    READ( FileUnit, * ) NeutrinoMomentumX3_PL
+
+    CLOSE( FileUnit )
+
+    IF( amrex_parallel_ioprocessor() ) &
+      WRITE(*,'(A)') '  Restored TwoMoment tally from ' // TRIM( FileName )
+
+  END SUBROUTINE ReadTallyCheckpoint_TwoMoment
 
 END MODULE MF_TwoMoment_TallyModule
