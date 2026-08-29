@@ -376,6 +376,10 @@ SUBROUTINE ComputeFromConserved_TwoMoment_MF &
 
     DO iLevel = 0, nLevels-1
 
+      CALL amrex_multifab_destroy( MF_uPR(iLevel) )
+      CALL amrex_multifab_destroy( MF_uAR(iLevel) )
+      CALL amrex_multifab_destroy( MF_uGR(iLevel) )
+
       CALL amrex_multifab_build &
              ( MF_uPR(iLevel), MF_uGF(iLevel) % BA, &
                MF_uGF(iLevel) % DM, nCompPR, swX )
