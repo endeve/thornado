@@ -269,6 +269,7 @@ PROGRAM main
     CALL ComputeFromConserved_TwoMoment_MF( MF_uGF, MF_uCF, MF_uCR, MF_uPR, MF_uAR, MF_uGR )
     CALL ComputeFromConserved_Euler_MF( MF_uGF, MF_uCF, MF_uPF, MF_uAF )
     CALL WriteFieldsAMReX_Checkpoint
+    CALL WriteTallyCheckpoint_TwoMoment( StepNo(0) )
     chk = .FALSE.
   END IF
 
@@ -335,6 +336,10 @@ SUBROUTINE ReGrid
     
 
     IF( .NOT. UseAMR ) RETURN
+
+    IF( iReGrid .GT. 0 )THEN
+      IF( MOD( StepNo(0), iReGrid ) .NE. 0 ) RETURN
+    END IF
     
     IF( DEBUG ) THEN
       CALL MPI_BARRIER( amrex_parallel_communicator(), iErr )
