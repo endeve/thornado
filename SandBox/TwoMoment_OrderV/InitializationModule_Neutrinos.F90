@@ -27,7 +27,7 @@ MODULE InitializationModule_Neutrinos
     MeshE, MeshX, &
     NodeCoordinate
   USE GeometryFieldsModule, ONLY: &
-    uGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
+    uGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, iGF_Alpha
   USE FluidFieldsModule, ONLY: &
     uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
@@ -106,6 +106,8 @@ CONTAINS
     REAL(DP), DIMENSION(iE_E0*nDOFE) :: tmp_nu
 
     INTEGER  :: tmp_int, nE_G
+
+    REAL(DP) :: Lapse = 0.9
 
 
     IF( PRESENT (FileName) ) THEN
@@ -267,6 +269,10 @@ CONTAINS
       V_u_3 = 0.0_DP * SpeedOfLight
       Mu_0  = 0.0_DP ! \in [-1,1]
 
+      WRITE(*,*)
+      WRITE(*,'(A6,A8,3ES9.2E2)') '', 'Lapse  = ', Lapse
+      WRITE(*,*)
+
       ! --- Fluid Fields Conserved Variables ---
 
       DO iX3 = iX_B0(3), iX_E0(3)
@@ -306,6 +312,8 @@ CONTAINS
           uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_u_1
           uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_u_2
           uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_u_3
+
+          uGF(iNodeX,iX1,iX2,iX3,iGF_Alpha) = Lapse
 
           CALL ComputeConserved_Euler_NonRelativistic &
                  ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &

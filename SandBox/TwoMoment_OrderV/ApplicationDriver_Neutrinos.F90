@@ -87,6 +87,7 @@ PROGRAM ApplicationDriver_Neutrinos
   REAL(DP)      :: Rtol_outer, Rtol_inner
   REAL(DP)      :: wMatterRHS(5)
   REAL(DP)      :: DnuMax
+  REAL(DP)      :: Lapse
   LOGICAL       :: Relaxation_restart_from_file
 
   ProgramName = 'Relaxation'
