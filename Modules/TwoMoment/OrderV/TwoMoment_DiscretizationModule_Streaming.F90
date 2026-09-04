@@ -112,7 +112,7 @@ MODULE TwoMoment_DiscretizationModule_Streaming
 
   REAL(DP), POINTER, CONTIGUOUS, DIMENSION(:) :: &
     Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, SqrtGm_K, Alpha_K, &
-    Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F
+    Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F, Alpha_F
 
   ! --- Conserved Fluid Fields ---
 
@@ -505,6 +505,16 @@ CONTAINS
 
     END DO
 
+    CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOFX_X1, nX1_X, nDOFX, One,  LX_X1_Up, nDOFX_X1, &
+               uGF_K(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)-1,iGF_Alpha), nDOFX, Zero, &
+               uGF_F(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF_Alpha), nDOFX_X1 )
+
+    CALL MatrixMatrixMultiply &
+            ( 'N', 'N', nDOFX_X1, nX1_X, nDOFX, Half, LX_X1_Dn, nDOFX_X1, &
+              uGF_K(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF_Alpha), nDOFX, Half, &
+              uGF_F(1,iZ_B0(3),iZ_B0(4),iZ_B0(2)  ,iGF_Alpha), nDOFX_X1 )
+
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
     ! --- Recompute Geometry from Scale Factors ---
@@ -598,7 +608,7 @@ CONTAINS
 #elif defined( THORNADO_OACC )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( uV1_L, uV2_L, uV3_L, uV1_R, uV2_R, uV3_R ) &
-    !$ACC PRESENT( Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
+    !$ACC PRESENT( Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, & 
     !$ACC          uFD_L, uS1_L, uS2_L, uS3_L, &
     !$ACC          uFD_R, uS1_R, uS2_R, uS3_R, &
     !$ACC          uV1_F, uV2_F, uV3_F)
@@ -717,7 +727,7 @@ CONTAINS
     !$ACC PRIVATE( iX_F, iNodeZ_X1, iNodeX_X1, iNodeE, iZ1, iZ2, iZ3, iZ4, iS, &
     !$ACC          Flux_L, uCR_X1_L, Flux_R, uCR_X1_R ) &
     !$ACC PRESENT( uD_L, uI1_L, uI2_L, uI3_L, uD_R, uI1_R, uI2_R, uI3_R, &
-    !$ACC          uV1_F, uV2_F, uV3_F, Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
+    !$ACC          uV1_F, uV2_F, uV3_F, Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, Alpha_F, &
     !$ACC          NumericalFlux, NumericalFlux2, GE, SqrtGm_F, Weights_X1, dZ1, dZ3, dZ4, &
     !$ACC          nZ_X1, iZ_B0, PositionIndexZ_F, IndexTableZ_F )
 #elif defined( THORNADO_OMP    )
@@ -784,7 +794,7 @@ CONTAINS
         NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
           = dZ1(iZ1) * dZ3(iZ3) * dZ4(iZ4) &
               * Weights_X1(iNodeZ_X1) * GE(iNodeE,iZ1,iGE_Ep2) &
-              * SqrtGm_F(iX_F) &
+              * Alpha_F(iX_F) * SqrtGm_F(iX_F) &
               * NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2)
 
       END DO
@@ -898,7 +908,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( iX_K, iNodeZ, iNodeX, iNodeE, iZ1, iZ2, iZ3, iZ4, iS, Flux_K ) &
     !$ACC PRESENT( uD_K, uI1_K, uI2_K, uI3_K, uV1_K, uV2_K, uV3_K, &
-    !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
+    !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, Alpha_K, &
     !$ACC          Flux_q, GE, SqrtGm_K, Weights_q, dZ1, dZ3, dZ4, &
     !$ACC          nZ, iZ_B0, PositionIndexZ_K, IndexTableZ_K )
 #elif defined( THORNADO_OMP    )
@@ -931,7 +941,7 @@ CONTAINS
         Flux_q(iNodeZ,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
           = dZ1(iZ1) * dZ3(iZ3) * dZ4(iZ4) &
               * Weights_q(iNodeZ) * GE(iNodeE,iZ1,iGE_Ep2) &
-              * SqrtGm_K(iX_K) &
+              * Alpha_K(iX_K) * SqrtGm_K(iX_K) &
               * Flux_K(iCR)
 
       END DO
@@ -1121,6 +1131,16 @@ CONTAINS
                uGF_F(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ,iGF), nDOFX_X2 )
 
     END DO
+
+    CALL MatrixMatrixMultiply &
+            ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, One,  LX_X2_Up, nDOFX_X2, &
+              uGF_K(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)-1,iGF_Alpha), nDOFX, Zero, &
+              uGF_F(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ,iGF_Alpha), nDOFX_X2 )
+
+    CALL MatrixMatrixMultiply &
+            ( 'N', 'N', nDOFX_X2, nX2_X, nDOFX, Half, LX_X2_Dn, nDOFX_X2, &
+              uGF_K(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ,iGF_Alpha), nDOFX, Half, &
+              uGF_F(1,iZ_B0(2),iZ_B0(4),iZ_B0(3)  ,iGF_Alpha), nDOFX_X2 )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
@@ -1334,7 +1354,7 @@ CONTAINS
     !$ACC PRIVATE( iX_F, iNodeZ_X2, iNodeX_X2, iNodeE, iZ1, iZ3, iZ2, iZ4, iS, &
     !$ACC          Flux_L, uCR_X2_L, Flux_R, uCR_X2_R ) &
     !$ACC PRESENT( uD_L, uI1_L, uI2_L, uI3_L, uD_R, uI1_R, uI2_R, uI3_R, &
-    !$ACC          uV1_F, uV2_F, uV3_F, Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
+    !$ACC          uV1_F, uV2_F, uV3_F, Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, ALpha_F, &
     !$ACC          NumericalFlux, NumericalFlux2, GE, SqrtGm_F, Weights_X2, dZ1, dZ2, dZ4, &
     !$ACC          nZ_X2, iZ_B0, PositionIndexZ_F, IndexTableZ_F )
 #elif defined( THORNADO_OMP    )
@@ -1401,7 +1421,7 @@ CONTAINS
         NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ3) &
           = dZ1(iZ1) * dZ2(iZ2) * dZ4(iZ4) &
               * Weights_X2(iNodeZ_X2) * GE(iNodeE,iZ1,iGE_Ep2) &
-              * SqrtGm_F(iX_F) &
+              * Alpha_F(iX_F) * SqrtGm_F(iX_F) &
               * NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ3)
 
       END DO
@@ -1515,7 +1535,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( iX_K, iNodeZ, iNodeX, iNodeE, iZ1, iZ3, iZ2, iZ4, iS, Flux_K ) &
     !$ACC PRESENT( uD_K, uI1_K, uI2_K, uI3_K, uV1_K, uV2_K, uV3_K, &
-    !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
+    !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, Alpha_K, &
     !$ACC          Flux_q, GE, SqrtGm_K, Weights_q, dZ1, dZ2, dZ4, &
     !$ACC          nZ, iZ_B0, PositionIndexZ_K, IndexTableZ_K )
 #elif defined( THORNADO_OMP    )
@@ -1548,7 +1568,7 @@ CONTAINS
         Flux_q(iNodeZ,iCR,iZ1,iZ2,iZ4,iS,iZ3) &
           = dZ1(iZ1) * dZ2(iZ2) * dZ4(iZ4) &
               * Weights_q(iNodeZ) * GE(iNodeE,iZ1,iGE_Ep2) &
-              * SqrtGm_K(iX_K) &
+              * Alpha_K(iX_K) * SqrtGm_K(iX_K) &
               * Flux_K(iCR)
 
       END DO
@@ -1738,6 +1758,16 @@ CONTAINS
                uGF_F(1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ,iGF), nDOFX_X3 )
 
     END DO
+
+    CALL MatrixMatrixMultiply &
+            ( 'N', 'N', nDOFX_X3, nX3_X, nDOFX, One,  LX_X3_Up, nDOFX_X3, &
+              uGF_K(1,iZ_B0(2),iZ_B0(3),iZ_B0(4)-1,iGF_Alpha), nDOFX, Zero, &
+              uGF_F(1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ,iGF_Alpha), nDOFX_X3 )
+
+    CALL MatrixMatrixMultiply &
+            ( 'N', 'N', nDOFX_X3, nX3_X, nDOFX, Half, LX_X3_Dn, nDOFX_X3, &
+              uGF_K(1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ,iGF_Alpha), nDOFX, Half, &
+              uGF_F(1,iZ_B0(2),iZ_B0(3),iZ_B0(4)  ,iGF_Alpha), nDOFX_X3 )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
@@ -1951,7 +1981,7 @@ CONTAINS
     !$ACC PRIVATE( iX_F, iNodeZ_X3, iNodeX_X3, iNodeE, iZ1, iZ4, iZ2, iZ3, iS, &
     !$ACC          Flux_L, uCR_X3_L, Flux_R, uCR_X3_R ) &
     !$ACC PRESENT( uD_L, uI1_L, uI2_L, uI3_L, uD_R, uI1_R, uI2_R, uI3_R, &
-    !$ACC          uV1_F, uV2_F, uV3_F, Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
+    !$ACC          uV1_F, uV2_F, uV3_F, Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, Alpha_F, &
     !$ACC          NumericalFlux, NumericalFlux2, GE, SqrtGm_F, Weights_X3, dZ1, dZ2, dZ3, &
     !$ACC          nZ_X3, iZ_B0, PositionIndexZ_F, IndexTableZ_F )
 #elif defined( THORNADO_OMP    )
@@ -2018,7 +2048,7 @@ CONTAINS
         NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ4) &
           = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) &
               * Weights_X3(iNodeZ_X3) * GE(iNodeE,iZ1,iGE_Ep2) &
-              * SqrtGm_F(iX_F) &
+              * Alpha_F(iX_F) * SqrtGm_F(iX_F) &
               * NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ4)
 
       END DO
@@ -2132,7 +2162,7 @@ CONTAINS
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( iX_K, iNodeZ, iNodeX, iNodeE, iZ1, iZ4, iZ2, iZ3, iS, Flux_K ) &
     !$ACC PRESENT( uD_K, uI1_K, uI2_K, uI3_K, uV1_K, uV2_K, uV3_K, &
-    !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
+    !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, Alpha_K, &
     !$ACC          Flux_q, GE, SqrtGm_K, Weights_q, dZ1, dZ2, dZ3, &
     !$ACC          nZ, iZ_B0, PositionIndexZ_K, IndexTableZ_K )
 #elif defined( THORNADO_OMP    )
@@ -2165,7 +2195,7 @@ CONTAINS
         Flux_q(iNodeZ,iCR,iZ1,iZ2,iZ3,iS,iZ4) &
           = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) &
               * Weights_q(iNodeZ) * GE(iNodeE,iZ1,iGE_Ep2) &
-              * SqrtGm_K(iX_K) &
+              * Alpha_K(iX_K) * SqrtGm_K(iX_K) &
               * Flux_K(iCR)
 
       END DO
@@ -2540,7 +2570,7 @@ CONTAINS
     !$ACC          Flux_L, Flux_R, EdgeEnergyCubed ) &
     !$ACC PRESENT( dV_u_dX1, dV_u_dX2, dV_u_dX3, uV1_K, uV2_K, uV3_K, &
     !$ACC          dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
-    !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
+    !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, Alpha_K, &
     !$ACC          uD_L, uI1_L, uI2_L, uI3_L, uD_R, uI1_R, uI2_R, uI3_R, &
     !$ACC          NumericalFlux, NumericalFlux2, SqrtGm_K, Weights_E, xZ1, dZ2, dZ3, dZ4, &
     !$ACC          Alpha, PositionIndexZ_F, IndexTableZ_F )
@@ -2636,7 +2666,7 @@ CONTAINS
         NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
           = dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4) &
               * Weights_E(iNodeZ_E) * EdgeEnergyCubed &
-              * SqrtGm_K(iX_F) &
+              * Alpha_K(iX_F) * SqrtGm_K(iX_F) &
               * NumericalFlux(iNodeZ_E,iCR,iZ2,iZ3,iZ4,iS,iZ1)
 
       END DO
@@ -2736,7 +2766,7 @@ CONTAINS
     !$ACC          Flux_K ) &
     !$ACC PRESENT( dV_u_dX1, dV_u_dX2, dV_u_dX3, uV1_K, uV2_K, uV3_K, &
     !$ACC          dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
-    !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, &
+    !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, Alpha_K, &
     !$ACC          uD_K, uI1_K, uI2_K, uI3_K, &
     !$ACC          Flux_q, GE, SqrtGm_K, Weights_q, dZ2, dZ3, dZ4, &
     !$ACC          PositionIndexZ_K, IndexTableZ_K )
@@ -2791,7 +2821,7 @@ CONTAINS
         Flux_q(iNodeZ,iCR,iZ2,iZ3,iZ4,iS,iZ1) &
           = dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4)  &
               * Weights_q(iNodeZ) * GE(iNodeE,iZ1,iGE_Ep3) &
-              * SqrtGm_K(iX_K) &
+              * Alpha_K(iX_K) * SqrtGm_K(iX_K) &
               * Flux_K(iCR)
 
       END DO
@@ -2928,7 +2958,7 @@ CONTAINS
       Beta &
         = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4)  &
           * Weights_q(iNodeZ) * GE(iNodeE,iZ1,iGE_Ep2) &
-          * SqrtGm_K(iX_K)
+          * Alpha_K(iX_K) * SqrtGm_K(iX_K)
 
       DO iCR = iCR_G1, iCR_G3
 
@@ -3120,11 +3150,13 @@ CONTAINS
     Gm_dd_22_K(1:nNodesX_K) => uGF_K(:,:,:,iZP_B0(4):iZP_E0(4),iGF_Gm_dd_22)
     Gm_dd_33_K(1:nNodesX_K) => uGF_K(:,:,:,iZP_B0(4):iZP_E0(4),iGF_Gm_dd_33)
     SqrtGm_K  (1:nNodesX_K) => uGF_K(:,:,:,iZP_B0(4):iZP_E0(4),iGF_SqrtGm  )
+    Alpha_K   (1:nNodesX_K) => uGF_K(:,:,:,iZP_B0(4):iZP_E0(4),iGF_Alpha  )
 
     Gm_dd_11_F(1:nNodesX_X) => uGF_F(:,:,:,iZP_B0(4):iZP_E0(4)+1,iGF_Gm_dd_11)
     Gm_dd_22_F(1:nNodesX_X) => uGF_F(:,:,:,iZP_B0(4):iZP_E0(4)+1,iGF_Gm_dd_22)
     Gm_dd_33_F(1:nNodesX_X) => uGF_F(:,:,:,iZP_B0(4):iZP_E0(4)+1,iGF_Gm_dd_33)
     SqrtGm_F  (1:nNodesX_X) => uGF_F(:,:,:,iZP_B0(4):iZP_E0(4)+1,iGF_SqrtGm  )
+    Alpha_F   (1:nNodesX_X) => uGF_F(:,:,:,iZP_B0(4):iZP_E0(4)+1,iGF_Alpha  )
 
     ! --- Conserved Fluid Fields ---
 
@@ -3424,8 +3456,8 @@ CONTAINS
     DEALLOCATE( NumericalFlux, NumericalFlux2, Flux_q, dU_Z )
     DEALLOCATE( nIterations_L, nIterations_R, nIterations_K )
 
-    NULLIFY( Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, SqrtGm_K )
-    NULLIFY( Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F )
+    NULLIFY( Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, SqrtGm_K, Alpha_K )
+    NULLIFY( Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, SqrtGm_F, Alpha_F )
     NULLIFY( uFD_K, uS1_K, uS2_K, uS3_K )
     NULLIFY( uFD_L, uS1_L, uS2_L, uS3_L )
     NULLIFY( uFD_R, uS1_R, uS2_R, uS3_R )
