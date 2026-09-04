@@ -165,6 +165,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), DIMENSION(:), ALLOCATABLE :: D_old, cD_old, C_D, S_D, G_D, U_D
 
   REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: SqrtGm
+  REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: Alpha
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Dnu_0
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Sigma_Iso
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Phi_0_Iso
@@ -232,6 +233,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: D_T, T_T, Y_T, E_T
   REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: T0_T, Y0_T
   REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: SqrtGm_T
+  REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: Alpha_T
 
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Dnu_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Inu_u_1_T
@@ -364,6 +366,7 @@ CONTAINS
     ALLOCATE( U_D    (nX_G) )
 
     ALLOCATE(         SqrtGm(              nX_G) )
+    ALLOCATE(          Alpha(              nX_G) )
     ALLOCATE(          Dnu_0(nE_G,nSpecies,nX_G) )
     ALLOCATE(      Sigma_Iso(nE_G,nChirals,nX_G) )
     ALLOCATE(      Phi_0_Iso(nE_G,nChirals,nX_G) )
@@ -420,6 +423,7 @@ CONTAINS
     ALLOCATE( Y0_T(nX_G) )
 
     ALLOCATE( SqrtGm_T(nX_G) )
+    ALLOCATE(  Alpha_T(nX_G) )
 
     ALLOCATE(     Dnu_T(nE_G,nSpecies,nX_G) )
     ALLOCATE( Inu_u_1_T(nE_G,nSpecies,nX_G) )
@@ -495,7 +499,7 @@ CONTAINS
     !$OMP             V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$OMP             V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
     !$OMP             V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
-    !$OMP             SqrtGm, &
+    !$OMP             SqrtGm, Alpha, &
     !$OMP             Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$OMP             Chi_EmAb, Eta_EmAb, &
     !$OMP             Chi_NES, Eta_NES, &
@@ -513,7 +517,7 @@ CONTAINS
     !$OMP             Nu_J_I_0, Nu_J_II_0, S_Sigma, &
     !$OMP             D_T, T_T, Y_T, E_T, Error_T,  &
     !$OMP             T0_T, Y0_T, &
-    !$OMP             SqrtGm_T, &
+    !$OMP             SqrtGm_T, Alpha_T, &
     !$OMP             Dnu_T, Inu_u_1_T, Inu_u_2_T, Inu_u_3_T, &
     !$OMP             Dnu_0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
     !$OMP             Chi_EmAb_T, Eta_EmAb_T, &
@@ -552,7 +556,7 @@ CONTAINS
     !$ACC         V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$ACC         V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
     !$ACC         V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
-    !$ACC         SqrtGm, &
+    !$ACC         SqrtGm, Alpha, &
     !$ACC         Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$ACC         Chi_EmAb, Eta_EmAb, &
     !$ACC         Chi_NES, Eta_NES, &
@@ -570,7 +574,7 @@ CONTAINS
     !$ACC         Nu_J_I_0, Nu_J_II_0, S_Sigma, &
     !$ACC         D_T, T_T, Y_T, E_T, Error_T, &
     !$ACC         T0_T, Y0_T, &
-    !$ACC         SqrtGm_T, &
+    !$ACC         SqrtGm_T, Alpha_T, &
     !$ACC         Dnu_T, Inu_u_1_T, Inu_u_2_T, Inu_u_3_T, &
     !$ACC         Dnu_0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
     !$ACC         Chi_EmAb_T, Eta_EmAb_T, &
@@ -959,7 +963,7 @@ CONTAINS
     !$OMP               V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$OMP               V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
     !$OMP               V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
-    !$OMP               SqrtGm, &
+    !$OMP               SqrtGm, Alpha, &
     !$OMP               Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$OMP               Chi_EmAb, Eta_EmAb, &
     !$OMP               Chi_NES, Eta_NES, &
@@ -977,7 +981,7 @@ CONTAINS
     !$OMP               Nu_J_I_0, Nu_J_II_0, S_Sigma, &
     !$OMP               D_T, T_T, Y_T, E_T, Error_T,  &
     !$OMP               T0_T, Y0_T, &
-    !$OMP               SqrtGm_T, &
+    !$OMP               SqrtGm_T, Alpha_T, &
     !$OMP               Dnu_T, Inu_u_1_T, Inu_u_2_T, Inu_u_3_T, &
     !$OMP               Dnu_0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
     !$OMP               Chi_EmAb_T, Eta_EmAb_T, &
@@ -1016,7 +1020,7 @@ CONTAINS
     !$ACC         V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$ACC         V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
     !$ACC         V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
-    !$ACC         SqrtGm, &
+    !$ACC         SqrtGm, Alpha, &
     !$ACC         Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$ACC         Chi_EmAb, Eta_EmAb, &
     !$ACC         Chi_NES, Eta_NES, &
@@ -1034,7 +1038,7 @@ CONTAINS
     !$ACC         Nu_J_I_0, Nu_J_II_0, S_Sigma, &
     !$ACC         D_T, T_T, Y_T, E_T, Error_T,  &
     !$ACC         T0_T, Y0_T, &
-    !$ACC         SqrtGm_T, &
+    !$ACC         SqrtGm_T, Alpha_T, &
     !$ACC         Dnu_T, Inu_u_1_T, Inu_u_2_T, Inu_u_3_T, &
     !$ACC         Dnu_0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T, &
     !$ACC         Chi_EmAb_T, Eta_EmAb_T, &
@@ -1073,7 +1077,7 @@ CONTAINS
     DEALLOCATE( V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2 )
     DEALLOCATE( V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3 )
     DEALLOCATE( cD_old, D_old, C_D, S_D, G_D, U_D )
-    DEALLOCATE( SqrtGm )
+    DEALLOCATE( SqrtGm, Alpha )
     DEALLOCATE( Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso )
     DEALLOCATE( Chi_EmAb, Eta_EmAb )
     DEALLOCATE( Chi_NES, Eta_NES )
@@ -1089,7 +1093,7 @@ CONTAINS
     DEALLOCATE( H_I_0, H_II_0, J_I_0, J_II_0 )
     DEALLOCATE( H_I_1, H_II_1, J_I_1, J_II_1, S_Sigma )
     DEALLOCATE( Nu_J_I_0, Nu_J_II_0 )
-    DEALLOCATE( D_T, T_T, Y_T, E_T, SqrtGm_T, Error_T )
+    DEALLOCATE( D_T, T_T, Y_T, E_T, SqrtGm_T, Alpha_T, Error_T )
     DEALLOCATE( T0_T, Y0_T )
     DEALLOCATE( Dnu_T, Inu_u_1_T, Inu_u_2_T, Inu_u_3_T )
     DEALLOCATE( Dnu_0_T, Sigma_Iso_T, Phi_0_Iso_T, Phi_1_Iso_T )
@@ -1376,7 +1380,8 @@ CONTAINS
         CALL ComputeNeutrinoRHS_OrderV &
                ( ITERATE_inner, FVECm_inner, GVECm_inner, dt, &
                  Dnu, Inu_u_1, Inu_u_2, Inu_u_3, V_u_1, V_u_2, V_u_3, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+                 Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                 Alpha )
 
 #elif defined( TWOMOMENT_RELATIVISTIC )
 
@@ -3546,14 +3551,14 @@ CONTAINS
   SUBROUTINE ComputeNeutrinoRHS_OrderV &
     ( MASK, Fm, Gm, dt, &
       Dnu, Inu_u_1, Inu_u_2, Inu_u_3, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, Lapse)
 
     LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
     REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
     REAL(DP),                   INTENT(in)    :: dt
     REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: V_u_1, V_u_2, V_u_3
-    REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33, Lapse
 
     INTEGER  :: iN_E, iN_X, iS, iOS, iC
     REAL(DP) :: vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3
@@ -3690,32 +3695,32 @@ CONTAINS
         Gm(iOS+iCR_N,iN_X) &
           = ( ( One - Omega(iN_X) ) * Dnu(iN_E,iS,iN_X) &
               + Omega(iN_X) &
-                  * ( C_Dnu(iN_E,iS,iN_X) - vDotInu + dt * ( Eta_T + L_N ) ) ) &
-            / ( One + Omega(iN_X) * dt * Chi_T )
+                  * ( C_Dnu(iN_E,iS,iN_X) - vDotInu + ( dt * Lapse(iN_X) ) * ( Eta_T + L_N ) ) ) &
+            / ( One + Omega(iN_X) * ( dt * Lapse(iN_X) ) * Chi_T )
 
         ! --- Number Flux 1 Equation ---
 
         Gm(iOS+iCR_G1,iN_X) &
           = ( ( One - Omega(iN_X) ) * Inu_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X) &
               + Omega(iN_X) &
-                  * ( C_Inu_d_1(iN_E,iS,iN_X) - vDotK_d_1 + dt * L_G1 ) ) &
-            / ( One + Omega(iN_X) * dt * Kappa )
+                  * ( C_Inu_d_1(iN_E,iS,iN_X) - vDotK_d_1 + ( dt * Lapse(iN_X) ) * L_G1 ) ) &
+            / ( One + Omega(iN_X) * ( dt * Lapse(iN_X) ) * Kappa )
 
         ! --- Number Flux 2 Equation ---
 
         Gm(iOS+iCR_G2,iN_X) &
           = ( ( One - Omega(iN_X) ) * Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X) &
               + Omega(iN_X) &
-                  * ( C_Inu_d_2(iN_E,iS,iN_X) - vDotK_d_2 + dt * L_G2 ) ) &
-            / ( One + Omega(iN_X) * dt * Kappa )
+                  * ( C_Inu_d_2(iN_E,iS,iN_X) - vDotK_d_2 + ( dt * Lapse(iN_X) ) * L_G2 ) ) &
+            / ( One + Omega(iN_X) * ( dt * Lapse(iN_X) ) * Kappa )
 
         ! --- Number Flux 3 Equation ---
 
         Gm(iOS+iCR_G3,iN_X) &
           = ( ( One - Omega(iN_X) ) * Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) &
               + Omega(iN_X) &
-                  * ( C_Inu_d_3(iN_E,iS,iN_X) - vDotK_d_3 + dt * L_G3 ) ) &
-            / ( One + Omega(iN_X) * dt * Kappa )
+                  * ( C_Inu_d_3(iN_E,iS,iN_X) - vDotK_d_3 + ( dt * Lapse(iN_X) ) * L_G3 ) ) &
+            / ( One + Omega(iN_X) * ( dt * Lapse(iN_X) ) * Kappa )
 
         Fm(iOS+iCR_N ,iN_X) &
           = Gm(iOS+iCR_N ,iN_X) - Dnu    (iN_E,iS,iN_X)

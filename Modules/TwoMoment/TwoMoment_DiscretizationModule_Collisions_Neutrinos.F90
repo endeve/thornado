@@ -607,7 +607,7 @@ CONTAINS
 
 
     CALL ComputeAndMapIncrement &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, U_F, U_R, dU_F, dU_R )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GX, U_F, U_R, dU_F, dU_R )
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -910,12 +910,18 @@ CONTAINS
 
 
   SUBROUTINE ComputeAndMapIncrement &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, U_F, U_R, dU_F, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GX, U_F, U_R, dU_F, dU_R )
 
     INTEGER,  INTENT(in) :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(in) :: &
       dt
+    REAL(DP), INTENT(in) :: &
+      GX (1:nDOFX, &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nGF)
     REAL(DP), INTENT(in) :: &
       U_F (1:nDOFX, &
            iZ_B1(2):iZ_E1(2), &
@@ -976,7 +982,7 @@ CONTAINS
 
       IF ( QueryOpacity( U_F(iNodeX,iX1,iX2,iX3,iCF_D) / UnitD ) ) THEN
         dU_F(iNodeX,iX1,iX2,iX3,iCF) &
-          = ( CF_N(iN_X,iCF) - U_F(iNodeX,iX1,iX2,iX3,iCF) ) / dt
+          =  ( CF_N(iN_X,iCF) - U_F(iNodeX,iX1,iX2,iX3,iCF) ) / dt
       ELSE
         dU_F(iNodeX,iX1,iX2,iX3,iCF) = Zero
       END IF
@@ -1020,7 +1026,7 @@ CONTAINS
 
       IF ( QueryOpacity( U_F(iNodeX,iX1,iX2,iX3,iCF_D) / UnitD ) ) THEN
         dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) &
-          = ( CR_N(iN_E,iS,iN_X,iCR) - U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) ) / dt
+          =  ( CR_N(iN_E,iS,iN_X,iCR) - U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) ) / dt
       ELSE
         dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) = Zero
       END IF
