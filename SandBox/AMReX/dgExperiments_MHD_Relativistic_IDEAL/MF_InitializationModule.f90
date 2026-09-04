@@ -4,6 +4,8 @@ MODULE MF_InitializationModule
 
   USE amrex_box_module, ONLY: &
     amrex_box
+  USE amrex_amrcore_module, ONLY: &
+    amrex_geom
   USE amrex_multifab_module, ONLY: &
     amrex_multifab, &
     amrex_mfiter, &
@@ -39,6 +41,7 @@ MODULE MF_InitializationModule
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
+    iGF_SqrtGm, &
     iGF_Alpha, &
     iGF_Beta_1, &
     iGF_Beta_2, &
@@ -135,9 +138,11 @@ MODULE MF_InitializationModule
     EdgeMap, &
     ConstructEdgeMap
   USE MF_MHD_BoundaryConditionsModule, ONLY: &
+    MF_iG, &
+    MF_oG, &
     ApplyBoundaryConditions_MHD_MF
   USE MF_GeometryModule, ONLY: &
-    ApplyBoundaryConditions_Geometry_MF  
+    ApplyBoundaryConditions_Geometry_MF
 
   USE HDF5
 
@@ -1583,9 +1588,6 @@ CONTAINS
       iX_B1 = iX_B0 - swX
       iX_E1 = iX_E0 + swX
 
-      PRINT*, '0: ', iX_B0, iX_E0
-      PRINT*, '1: ', iX_B1, iX_E1
-
       CALL AllocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
@@ -1964,7 +1966,7 @@ CONTAINS
       CALL DeallocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
-               G ) 
+               G )
 
       CALL DeallocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
@@ -1990,7 +1992,7 @@ CONTAINS
     TYPE(amrex_parmparse) :: PP
 
     INTEGER  :: iNX, iX1, iX2, iX3
-    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3), iGF
     REAL(DP) :: uPM(nDOFX,nPM)
     REAL(DP) :: Pressure
 
@@ -2003,6 +2005,13 @@ CONTAINS
     REAL(DP), CONTIGUOUS, POINTER :: uDM(:,:,:,:)
 
     TYPE(EdgeMap) :: Edge_Map
+
+    ! --- Custom BCs ---
+
+    REAL(DP) :: uGF_K(nDOFX,nGF)
+
+    INTEGER :: lo_G(4), hi_G(4), nX(3)
+    INTEGER :: lo_F(4), hi_F(4)
 
     ! --- Problem-specific Parameters ---
 
@@ -2025,15 +2034,17 @@ CONTAINS
     REAL(DP) :: Rand_r, Rand_z, Rand_theta
     REAL(DP) :: Random_r, Random_z, Random_theta
 
+    uGF_K = Zero
+
     uPM = Zero
- 
+
     NumX1InterpolationPoints = 10000
     InitialConditionFile &
       = "./GR_LR_diffrot.h5"
     InitialField &
       = Zero
     AddSinePerturbation &
-      = .FALSE.    
+      = .FALSE.
 
     CALL amrex_parmparse_build( PP, 'SD' )
       CALL PP % query( 'InitialConditionFile'     , InitialConditionFile     )
@@ -2043,6 +2054,14 @@ CONTAINS
     CALL amrex_parmparse_destroy( PP )
 
     nX_Data = NumX1InterpolationPoints
+
+    IF( amrex_parallel_ioprocessor() )THEN
+
+      WRITE(*,*)
+      WRITE(*,'(A, A)') &
+        'InitialConditionFile: ', InitialConditionFile
+
+    END IF
 
     ! --- Populate arrays ---
 
@@ -2098,7 +2117,6 @@ CONTAINS
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCM ], &
                U )
-
 
       CALL AllocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
@@ -2331,11 +2349,46 @@ CONTAINS
 
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
-      CALL ApplyBoundaryConditions_MHD_MF &
-             ( Zero, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
-
       CALL thornado2amrex_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
+
+      lo_G = LBOUND( uGF )
+      hi_G = UBOUND( uGF )
+
+      iX_B(1) = iX_B0(1)
+      iX_E(1) = iX_E0(1)
+
+      IF( BX % lo(1) .EQ. amrex_geom(iLevel) % domain % lo(1) ) &
+        iX_B(1) = iX_B1(1)
+
+      IF( BX % hi(1) .EQ. amrex_geom(iLevel) % domain % hi(1) ) &
+        iX_E(1) = iX_E1(1)
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B (1), iX_E (1)
+
+        uGF_K &
+          = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
+
+        IF( iX1 .EQ. amrex_geom(iLevel) % domain % lo(1) )THEN
+          DO iNX = 1, nDOFX
+            MF_iG(iLevel,iNX) = uGF_K(iNX,iGF_SqrtGm)
+          END DO
+        END IF
+
+        IF( iX1 .EQ. amrex_geom(iLevel) % domain % hi(1) )THEN
+          DO iNX = 1, nDOFX
+            MF_oG(iLevel,iNX) = uGF_K(iNX,iGF_SqrtGm)
+          END DO
+        END IF
+
+      END DO
+      END DO
+      END DO
+
+      CALL ApplyBoundaryConditions_MHD_MF &
+             ( Zero, iLevel, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
 
       CALL thornado2amrex_X &
              ( nCM, iX_B1, iX_E1, LBOUND( uCM ), iX_B1, iX_E1, uCM, U )
@@ -2343,7 +2396,7 @@ CONTAINS
       CALL thornado2amrex_X &
              ( nDM, iX_B1, iX_E1, LBOUND( uDM ), iX_B1, iX_E1, uDM, D )
 
-       CALL DeallocateArray_X &
+      CALL DeallocateArray_X &
              ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
                [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nDM ], &
                D )

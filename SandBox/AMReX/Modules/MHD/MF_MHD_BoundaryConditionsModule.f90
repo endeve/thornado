@@ -23,6 +23,8 @@ MODULE MF_MHD_BoundaryConditionsModule
     nCM, &
     nDM
   USE MHD_BoundaryConditionsModule, ONLY: &
+    iG, &
+    oG, &
     ApplyBoundaryConditions_MHD
 
   ! --- Local Modules ---
@@ -48,6 +50,9 @@ MODULE MF_MHD_BoundaryConditionsModule
   PRIVATE
 
   PUBLIC :: ApplyBoundaryConditions_MHD_MF
+
+  REAL(DP), ALLOCATABLE, PUBLIC :: MF_iG(:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: MF_oG(:,:)
 
   INTERFACE ApplyBoundaryConditions_MHD_MF
     MODULE PROCEDURE ApplyBoundaryConditions_MHD_MF_MultiLevel
@@ -143,7 +148,7 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_MHD_MF &
-             ( t, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
+             ( t, iLevel, iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, Edge_Map )
 
       CALL thornado2amrex_X( nCM, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCM, U )
 
@@ -210,6 +215,12 @@ CONTAINS
       Edge_Map
 
     INTEGER :: iApplyBC(3)
+
+    ! --- These variables are only used within the
+    !     relativistic shearing disk problem ---
+
+    iG  = MF_iG (iLevel,:)
+    oG  = MF_oG (iLevel,:)
 
     CALL Edge_Map % GetBC( iApplyBC )
 

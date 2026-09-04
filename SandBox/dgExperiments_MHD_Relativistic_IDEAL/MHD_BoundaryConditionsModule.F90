@@ -125,8 +125,12 @@ MODULE MHD_BoundaryConditionsModule
   INTEGER, PARAMETER, PUBLIC :: iApplyBC_MHD_Outer = 2
   INTEGER, PARAMETER, PUBLIC :: iApplyBC_MHD_None  = 3
 
+  ! --- For relativistic shearing disk ---
+
   REAL(DP), PUBLIC :: ExpD
   REAL(DP), PUBLIC :: ExpE
+  REAL(DP), ALLOCATABLE, PUBLIC :: iG(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: oG(:)
 
   CHARACTER(9),  PARAMETER :: &
     OutputDirectory    = '../Output'
@@ -1095,7 +1099,7 @@ CONTAINS
 
           U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B1) &
             = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B1) &
-              * ( G(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_SqrtGm) &
+              * ( oG(iNX) &
                   / G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_SqrtGm) )
 
           U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B2) &
@@ -1140,7 +1144,7 @@ CONTAINS
 
           U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B1) &
             = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B1) &
-              * ( G(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_SqrtGm) &
+              * ( iG(iNX) &
                   / G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_SqrtGm) )
 
           U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B2) &

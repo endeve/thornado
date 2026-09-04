@@ -30,7 +30,8 @@ MODULE InitializationModule
   USE amrex_box_module, ONLY: &
     amrex_box
   USE amrex_parallel_module, ONLY: &
-    amrex_parallel_ioprocessor
+    amrex_parallel_ioprocessor, &
+    amrex_parallel_reduce_min
   USE thornado_amrex_fluxregister_module, ONLY: &
     amrex_fluxregister_build, &
     amrex_fluxregister_destroy
@@ -89,7 +90,12 @@ MODULE InitializationModule
     MF_uDM, &
     FluxRegister_MHD
   USE MF_MHD_BoundaryConditionsModule, ONLY: &
+    MF_iG, &
+    MF_oG, &
     ApplyBoundaryConditions_MHD_MF
+  USE MHD_BoundaryConditionsModule, ONLY: &
+    iG, &
+    oG
   USE MF_EquationOfStateModule_MHD, ONLY: &
     InitializeEquationOfState_MF
   USE MF_MHD_SlopeLimiterModule, ONLY: &
@@ -167,6 +173,8 @@ CONTAINS
 
     LOGICAL :: SetInitialValues
 
+    INTEGER :: iLevel, iNX, iGF
+
     CALL amrex_init()
 
     CALL amrex_amrcore_init()
@@ -224,14 +232,31 @@ CONTAINS
     ALLOCATE( t_old (0:nMaxLevels-1) )
     ALLOCATE( t_new (0:nMaxLevels-1) )
 
+    ALLOCATE( MF_iG (0:nMaxLevels-1,1:nDOFX) )
+    ALLOCATE( MF_oG (0:nMaxLevels-1,1:nDOFX) )
+    ALLOCATE( iG(1:nDOFX) )
+    ALLOCATE( oG(1:nDOFX) )
+
     StepNo = 0
     dt     = 0.0_DP
     t_new  = 0.0_DP
+
+    MF_iG            = HUGE( 1.0_DP )
+    MF_oG            = HUGE( 1.0_DP )
 
     IF( iRestart .LT. 0 )THEN
 
       CALL amrex_init_from_scratch( Zero )
       nLevels = amrex_get_numlevels()
+
+      DO iLevel = 0, nMaxLevels - 1
+
+        DO iNX = 1, nDOFX
+          CALL amrex_parallel_reduce_min( MF_iG(iLevel,iNX) )
+          CALL amrex_parallel_reduce_min( MF_oG(iLevel,iNX) )
+        END DO
+
+      END DO
 
       SetInitialValues = .TRUE.
 

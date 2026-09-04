@@ -199,20 +199,20 @@ CONTAINS
         iX_B = iX_B0 - swXX
         iX_E = iX_E0 + swXX
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
-        CALL amrex2thornado_X( nCM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uCM, U )
+        CALL amrex2thornado_X( nCM, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCM, U )
 
-        CALL amrex2thornado_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uDM, D )
+        CALL amrex2thornado_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDM, D )
 
         CALL ComputeFromConserved_MHD &
                ( iX_B, iX_E, iX_B1, iX_E1, G, U, P, A, D, EvolveOnlyMagnetic )
 
-        CALL thornado2amrex_X( nPM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uPM, P )
+        CALL thornado2amrex_X( nPM, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uPM, P )
 
-        CALL thornado2amrex_X( nAM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uAM, A )
+        CALL thornado2amrex_X( nAM, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uAM, A )
 
-        CALL thornado2amrex_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uDM, D )
+        CALL thornado2amrex_X( nDM, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uDM, D )
 
         CALL DeallocateArray_X &
                ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
@@ -639,9 +639,9 @@ CONTAINS
         iX_B = iX_B0 - swXX
         iX_E = iX_E0 + swXX
 
-        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uGF, G )
+        CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
 
-        CALL amrex2thornado_X( nCM, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uCM, U )
+        CALL amrex2thornado_X( nCM, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCM, U )
 
         CALL ComputeMagneticDivergence_MHD &
                ( iX_B, iX_E, iX_B1, iX_E1, G, U, D )
