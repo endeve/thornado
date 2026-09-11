@@ -36,6 +36,7 @@ MODULE InitializationModule
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
+    iGF_SqrtGm,   &
     iGF_Alpha,    &
     iGF_Beta_1,   &
     iGF_Beta_2,   &
@@ -115,6 +116,9 @@ MODULE InitializationModule
   USE UtilitiesModule, ONLY: &
     Locate, &
     Interpolate1D_Linear
+  USE MHD_BoundaryConditionsModule, ONLY: &
+    iG, &
+    oG
 
   USE HDF5
 
@@ -1990,6 +1994,9 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: PressureArr(:), DensityArr(:), V3Arr(:), &
                              AlphaArr(:), PsiArr(:), X1Arr(:)
 
+    ALLOCATE( oG(1:nDOFX) )
+    ALLOCATE( iG(1:nDOFX) )
+
     ! --- Populate arrays ---
 
     CALL H5OPEN_F( HDFERR )
@@ -2148,6 +2155,13 @@ CONTAINS
 
     END DO
     END DO
+    END DO
+
+    DO iNodeX = 1, nDOFX
+
+      oG(iNodeX) = uGF(iNodeX,iX_E0(1),1,1,iGF_SqrtGm)
+      iG(iNodeX) = uGF(iNodeX,iX_B0(1),1,1,iGF_SqrtGm)
+
     END DO
 
     DEALLOCATE( X1Arr, PsiArr, AlphaArr, DensityArr, V3Arr, PressureArr )
