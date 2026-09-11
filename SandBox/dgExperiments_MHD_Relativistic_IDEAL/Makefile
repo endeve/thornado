@@ -89,6 +89,7 @@ InitializationModule.o: \
   QuadratureModule.o \
   PolynomialBasisModule_Lagrange.o \
   UtilitiesModule.o \
+  MHD_BoundaryConditionsModule.o \
   InitializationModule.F90
 
 TimeSteppingModule_SSPRK.o: \
