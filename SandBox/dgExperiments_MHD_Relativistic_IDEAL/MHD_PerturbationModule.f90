@@ -147,6 +147,8 @@ CONTAINS
       D(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nDM)
 
     REAL(DP) :: X1, X2
+    REAL(DP) :: V1, V2, V3, VSq, W
+    REAL(DP) :: CB1, CB2, CB3, VdotB
     REAL(DP) :: kz
 
     ! --- Applying the random radial velocity       ---
@@ -166,22 +168,41 @@ CONTAINS
       X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
       X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
-      kz = Two * Pi / ( Half * Kilometer )
+      kz = Two * Pi / ( 0.125_DP * Kilometer )
 
-      P(iNX,iX1,iX2,iX3,iPM_V1) &
-        = ( 0.1_DP * Rand_Amplitude * Random_r(iNX,iX1,iX2,iX3) &
-            + 0.2d-5 * SIN( kz * X2 ) ) &
-          * X1 * P(iNX,iX1,iX2,iX3,iPM_V3)
+      V1 = ( 0.1_DP * Rand_Amplitude * Random_r(iNX,iX1,iX2,iX3) &
+             + 0.2d-5 * SIN( kz * X2 ) ) &
+           * X1 * P(iNX,iX1,iX2,iX3,iPM_V3)
 
-      P(iNX,iX1,iX2,iX3,iPM_V2) &
-        = Rand_Amplitude * Random_z(iNX,iX1,iX2,iX3) &
-          * X1 * P(iNX,iX1,iX2,iX3,iPM_V3)
+      V2 = Rand_Amplitude * Random_z(iNX,iX1,iX2,iX3) &
+           * X1 * P(iNX,iX1,iX2,iX3,iPM_V3)
 
-      P(iNX,iX1,iX2,iX3,iPM_V3) &
-        = ( One + Rand_Amplitude * Random_theta(iNX,iX1,iX2,iX3) ) &
-          * P(iNX,iX1,iX2,iX3,iPM_V3)
+      V3 = ( One + Rand_Amplitude * Random_theta(iNX,iX1,iX2,iX3) ) &
+           * P(iNX,iX1,iX2,iX3,iPM_V3)
 
-    END DO
+      VSq = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) * V1**2 &
+              + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) * V2**2 &
+              + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) * V3**2
+
+      W = One / SQRT( One - VSq )
+
+      CB1 = U(iNX,iX1,iX2,iX3,iCM_B1)
+      CB2 = U(iNX,iX1,iX2,iX3,iCM_B2)
+      CB3 = U(iNX,iX1,iX2,iX3,iCM_B3)
+
+      VdotB = G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11) * V1 * CB1 &
+              + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22) * V2 * CB2 &
+              + G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) * V3 * CB3
+
+      P(iNX,iX1,iX2,iX3,iPM_B1) = W * VdotB * V1 + CB1 / W
+      P(iNX,iX1,iX2,iX3,iPM_B2) = W * VdotB * V2 + CB2 / W
+      P(iNX,iX1,iX2,iX3,iPM_B3) = W * VdotB * V3 + CB3 / W
+
+      P(iNX,iX1,iX2,iX3,iPM_V1) = V1
+      P(iNX,iX1,iX2,iX3,iPM_V2) = V2
+      P(iNX,iX1,iX2,iX3,iPM_V3) = V3
+
+     END DO
 
      CALL ComputeConserved_MHD_Relativistic &
              ( P(:,iX1,iX2,iX3,iPM_D ), P(:,iX1,iX2,iX3,iPM_V1 ), &
