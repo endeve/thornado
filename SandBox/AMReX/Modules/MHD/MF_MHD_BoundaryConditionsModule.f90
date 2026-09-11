@@ -23,8 +23,8 @@ MODULE MF_MHD_BoundaryConditionsModule
     nCM, &
     nDM
   USE MHD_BoundaryConditionsModule, ONLY: &
-    iG, &
-    oG, &
+    iBC, &
+    oBC, &
     ApplyBoundaryConditions_MHD
 
   ! --- Local Modules ---
@@ -51,8 +51,8 @@ MODULE MF_MHD_BoundaryConditionsModule
 
   PUBLIC :: ApplyBoundaryConditions_MHD_MF
 
-  REAL(DP), ALLOCATABLE, PUBLIC :: MF_iG(:,:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: MF_oG(:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: MF_iBC(:,:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: MF_oBC(:,:)
 
   INTERFACE ApplyBoundaryConditions_MHD_MF
     MODULE PROCEDURE ApplyBoundaryConditions_MHD_MF_MultiLevel
@@ -219,8 +219,8 @@ CONTAINS
     ! --- These variables are only used within the
     !     relativistic shearing disk problem ---
 
-    iG  = MF_iG (iLevel,:)
-    oG  = MF_oG (iLevel,:)
+    iBC  = MF_iBC (iLevel,:)
+    oBC  = MF_oBC (iLevel,:)
 
     CALL Edge_Map % GetBC( iApplyBC )
 

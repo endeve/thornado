@@ -90,12 +90,12 @@ MODULE InitializationModule
     MF_uDM, &
     FluxRegister_MHD
   USE MF_MHD_BoundaryConditionsModule, ONLY: &
-    MF_iG, &
-    MF_oG, &
+    MF_iBC, &
+    MF_oBC, &
     ApplyBoundaryConditions_MHD_MF
   USE MHD_BoundaryConditionsModule, ONLY: &
-    iG, &
-    oG
+    iBC, &
+    oBC
   USE MF_EquationOfStateModule_MHD, ONLY: &
     InitializeEquationOfState_MF
   USE MF_MHD_SlopeLimiterModule, ONLY: &
@@ -232,17 +232,17 @@ CONTAINS
     ALLOCATE( t_old (0:nMaxLevels-1) )
     ALLOCATE( t_new (0:nMaxLevels-1) )
 
-    ALLOCATE( MF_iG (0:nMaxLevels-1,1:nDOFX) )
-    ALLOCATE( MF_oG (0:nMaxLevels-1,1:nDOFX) )
-    ALLOCATE( iG(1:nDOFX) )
-    ALLOCATE( oG(1:nDOFX) )
+    ALLOCATE( MF_iBC (0:nMaxLevels-1,1:nDOFX) )
+    ALLOCATE( MF_oBC (0:nMaxLevels-1,1:nDOFX) )
+    ALLOCATE( iBC(1:nDOFX) )
+    ALLOCATE( oBC(1:nDOFX) )
 
     StepNo = 0
     dt     = 0.0_DP
     t_new  = 0.0_DP
 
-    MF_iG            = HUGE( 1.0_DP )
-    MF_oG            = HUGE( 1.0_DP )
+    MF_iBC            = HUGE( 1.0_DP )
+    MF_oBC            = HUGE( 1.0_DP )
 
     IF( iRestart .LT. 0 )THEN
 
@@ -252,8 +252,8 @@ CONTAINS
       DO iLevel = 0, nMaxLevels - 1
 
         DO iNX = 1, nDOFX
-          CALL amrex_parallel_reduce_min( MF_iG(iLevel,iNX) )
-          CALL amrex_parallel_reduce_min( MF_oG(iLevel,iNX) )
+          CALL amrex_parallel_reduce_min( MF_iBC(iLevel,iNX) )
+          CALL amrex_parallel_reduce_min( MF_oBC(iLevel,iNX) )
         END DO
 
       END DO

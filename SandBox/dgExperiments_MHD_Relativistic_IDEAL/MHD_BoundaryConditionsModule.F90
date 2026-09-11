@@ -129,8 +129,8 @@ MODULE MHD_BoundaryConditionsModule
 
   REAL(DP), PUBLIC :: ExpD
   REAL(DP), PUBLIC :: ExpE
-  REAL(DP), ALLOCATABLE, PUBLIC :: iG(:)
-  REAL(DP), ALLOCATABLE, PUBLIC :: oG(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: iBC(:)
+  REAL(DP), ALLOCATABLE, PUBLIC :: oBC(:)
 
   CHARACTER(9),  PARAMETER :: &
     OutputDirectory    = '../Output'
@@ -1098,9 +1098,7 @@ CONTAINS
             = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_E)
 
           U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B1) &
-            = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B1) &
-              * ( oG(iNX) &
-                  / G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_SqrtGm) )
+            = oBC(iNX) / G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_SqrtGm)
 
           U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B2) &
             = U(iNX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B2)
@@ -1143,9 +1141,7 @@ CONTAINS
             = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_E)
 
           U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B1) &
-            = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B1) &
-              * ( iG(iNX) &
-                  / G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_SqrtGm) )
+            = iBC(iNX) / G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_SqrtGm)
 
           U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B2) &
             = U(iNX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B2)

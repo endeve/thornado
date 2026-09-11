@@ -138,8 +138,8 @@ MODULE MF_InitializationModule
     EdgeMap, &
     ConstructEdgeMap
   USE MF_MHD_BoundaryConditionsModule, ONLY: &
-    MF_iG, &
-    MF_oG, &
+    MF_iBC, &
+    MF_oBC, &
     ApplyBoundaryConditions_MHD_MF
   USE MF_GeometryModule, ONLY: &
     ApplyBoundaryConditions_Geometry_MF
@@ -2009,9 +2009,10 @@ CONTAINS
     ! --- Custom BCs ---
 
     REAL(DP) :: uGF_K(nDOFX,nGF)
+    REAL(DP) :: uCM_K(nDOFX,nCM)
 
     INTEGER :: lo_G(4), hi_G(4), nX(3)
-    INTEGER :: lo_F(4), hi_F(4)
+    INTEGER :: lo_C(4), hi_C(4)
 
     ! --- Problem-specific Parameters ---
 
@@ -2035,6 +2036,7 @@ CONTAINS
     REAL(DP) :: Random_r, Random_z, Random_theta
 
     uGF_K = Zero
+    uCM_K = Zero
 
     uPM = Zero
 
@@ -2352,6 +2354,9 @@ CONTAINS
       CALL thornado2amrex_X &
              ( nGF, iX_B1, iX_E1, LBOUND( uGF ), iX_B1, iX_E1, uGF, G )
 
+      lo_C = LBOUND( uCM )
+      hi_C = UBOUND( uCM )
+
       lo_G = LBOUND( uGF )
       hi_G = UBOUND( uGF )
 
@@ -2368,18 +2373,21 @@ CONTAINS
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B (1), iX_E (1)
 
+        uCM_K &
+          = RESHAPE( uCM(iX1,iX2,iX3,lo_C(4):hi_C(4)), [ nDOFX, nCM ] )
+
         uGF_K &
           = RESHAPE( uGF(iX1,iX2,iX3,lo_G(4):hi_G(4)), [ nDOFX, nGF ] )
 
         IF( iX1 .EQ. amrex_geom(iLevel) % domain % lo(1) )THEN
           DO iNX = 1, nDOFX
-            MF_iG(iLevel,iNX) = uGF_K(iNX,iGF_SqrtGm)
+            MF_iBC(iLevel,iNX) = uGF_K(iNX,iGF_SqrtGm) * uCM_K(iNX,iCM_B1)
           END DO
         END IF
 
         IF( iX1 .EQ. amrex_geom(iLevel) % domain % hi(1) )THEN
           DO iNX = 1, nDOFX
-            MF_oG(iLevel,iNX) = uGF_K(iNX,iGF_SqrtGm)
+            MF_oBC(iLevel,iNX) = uGF_K(iNX,iGF_SqrtGm) * uCM_K(iNX,iCM_B1)
           END DO
         END IF
 
