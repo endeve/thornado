@@ -2265,6 +2265,10 @@ CONTAINS
           uPM(iNX,iPM_V3) = ( One + Rand_Amplitude * Random_theta ) &
                             * uPM(iNX,iPM_V3)
 
+          uPM(iNX,iPM_B1) = W * VdotB * V1 + CB1 / W
+          uPM(iNX,iPM_B2) = W * VdotB * V2 + CB2 / W
+          uPM(iNX,iPM_B3) = W * VdotB * V3 + CB3 / W
+
         END IF
 
         CALL ComputePressureFromPrimitive_IDEAL &
