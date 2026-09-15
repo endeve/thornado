@@ -3727,7 +3727,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( GX_F, h_d_F, iX_B0, iX_E0 )
+    !$ACC PRESENT( GX_F, h_d_F, Alpha_F, iX_B0, iX_E0 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
@@ -3955,7 +3955,7 @@ CONTAINS
           = uV_K(1:3) * WeightsX_q(iNodeX)
 
         V_d_K(iNodeX,1:3,iX1,iX3,iX2) &
-          = uV_K(1:3) * WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Gm_dd,iX1,iX3,iX2)
+          = uV_K(1:3) * WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Gm_dd_11:iGF_Gm_dd_33,iX1,iX3,iX2)
 
         Alpha_K(iNodeX,iX1,iX3,iX2) &
           = WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Alpha,iX1,iX3,iX2)
@@ -4262,7 +4262,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( GX_F, h_d_F, iX_B0, iX_E0 )
+    !$ACC PRESENT( GX_F, h_d_F, Alpha_F, iX_B0, iX_E0 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif

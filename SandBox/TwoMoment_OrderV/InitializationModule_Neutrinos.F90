@@ -84,9 +84,9 @@ CONTAINS
     END SELECT
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( uAF, uPF, uCF, uPR, uCR )
+    !$OMP TARGET UPDATE TO( uGF, uAF, uPF, uCF, uPR, uCR )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE( uAF, uPF, uCF, uPR, uCR )
+    !$ACC UPDATE DEVICE( uGF, uAF, uPF, uCF, uPR, uCR )
 #endif
 
   END SUBROUTINE InitializeFields

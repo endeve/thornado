@@ -2570,6 +2570,7 @@ CONTAINS
     !$ACC          Flux_L, Flux_R, EdgeEnergyCubed ) &
     !$ACC PRESENT( dV_u_dX1, dV_u_dX2, dV_u_dX3, uV1_K, uV2_K, uV3_K, &
     !$ACC          dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
+    !$ACC          dAlpha_dX1, dAlpha_dX2, dAlpha_dX3, &
     !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, Alpha_K, &
     !$ACC          uD_L, uI1_L, uI2_L, uI3_L, uD_R, uI1_R, uI2_R, uI3_R, &
     !$ACC          NumericalFlux, NumericalFlux2, SqrtGm_K, Weights_E, xZ1, dZ2, dZ3, dZ4, &
@@ -2766,6 +2767,7 @@ CONTAINS
     !$ACC          Flux_K ) &
     !$ACC PRESENT( dV_u_dX1, dV_u_dX2, dV_u_dX3, uV1_K, uV2_K, uV3_K, &
     !$ACC          dGm_dd_dX1, dGm_dd_dX2, dGm_dd_dX3, &
+    !$ACC          dAlpha_dX1, dAlpha_dX2, dAlpha_dX3, &
     !$ACC          Gm_dd_11_K, Gm_dd_22_K, Gm_dd_33_K, Alpha_K, &
     !$ACC          uD_K, uI1_K, uI2_K, uI3_K, &
     !$ACC          Flux_q, GE, SqrtGm_K, Weights_q, dZ2, dZ3, dZ4, &
