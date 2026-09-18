@@ -346,6 +346,7 @@ CALL AllocateArray_Z &
                 SuppressBC_Option = .TRUE., &
                 SurfaceFlux_X1_Option = SurfaceFlux_X1, &
                 SurfaceFlux_X2_Option = SurfaceFlux_X2, &
+                SurfaceFlux_X3_Option = SurfaceFlux_X3, &
                 FineMask_Option = FineMask(iX_B0(1):iX_E0(1), &
                                            iX_B0(2):iX_E0(2), &
                                            iX_B0(3):iX_E0(3), 1) )
@@ -491,6 +492,40 @@ END DO
 END DO
 END DO
 END DO
+
+IF( nDimsX .GT. 2 )THEN
+DO iS = 1, nSpecies
+DO iZ1 = iZ_B0(1), iZ_E0(1)
+DO iNodeE = 1, nDOFE
+DO iCR = 1, nCR
+DO iNodeX = 1, nDOFX_X3
+DO iZ4 = iZ_B0(4), iZ_E0(4)+1
+DO iZ3 = iZ_B0(3), iZ_E0(3)
+DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+  iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+
+  iField = ( iS  - 1 ) * nCR * ( iE_E0 - iE_B0 + 1 ) * nDOFE &
+         + ( iCR - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFE &
+         + ( iZ1 - iE_B0 ) * nDOFE &
+         + iNodeE
+
+  iComp = ( iField - 1 ) * nDOFX_X3 + iNodeX
+
+  uSurfaceFlux_X3( iZ2, iZ3, iZ4, iComp ) &
+    = SurfaceFlux_X3( iNodeZ, iZ1, iZ2, iZ3, iZ4, iCR, iS )
+
+END DO
+END DO
+END DO
+END DO
+END DO
+END DO
+END DO
+END DO
+END IF
+
+
 END IF
 
 
