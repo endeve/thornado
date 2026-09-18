@@ -32,7 +32,8 @@ CONTAINS
 
 
   SUBROUTINE SetOpacities &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi, Sigma, Verbose_Option )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi, Sigma, Verbose_Option, &
+      R_0_Option, p_Op_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -41,14 +42,22 @@ CONTAINS
     REAL(DP), INTENT(in) :: &
       D0, Chi, Sigma
     LOGICAL,  INTENT(in), OPTIONAL :: Verbose_Option
+    REAL(DP), INTENT(in), OPTIONAL :: R_0_Option, p_Op_Option
 
-    LOGICAL :: Verbose
+    LOGICAL  :: Verbose
+    REAL(DP) :: R_0, p_Op
 
     IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
     ELSE
       Verbose = .FALSE.
     END IF
+
+    R_0 = 1.0_DP
+    IF( PRESENT( R_0_Option ) ) R_0 = R_0_Option
+
+    p_Op = 80.0_DP
+    IF( PRESENT( p_Op_Option ) ) p_Op = p_Op_Option
 
     IF( Verbose )THEN
       WRITE(*,*)
@@ -85,6 +94,11 @@ CONTAINS
 
         CALL SetOpacities_ShadowCasting2D_Cylindrical &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+
+      CASE( 'HomogeneousSphere3D' )
+
+        CALL SetOpacities_HomogeneousSphere3D &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi, R_0, p_Op )
 
       CASE DEFAULT
 
@@ -276,6 +290,65 @@ CONTAINS
     END DO
 
   END SUBROUTINE SetOpacities_HomogeneousSphere2D
+
+  SUBROUTINE SetOpacities_HomogeneousSphere3D &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi, R_0, p_Op )
+
+    ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
+    ! --- Test A: Chi = 1.0d0, R_0 = 1.00, p_Op = 80
+    ! --- Test B: Chi = 1.0d1, R_0 = 1.00, p_Op = 80
+    ! --- Test C: Chi = 1.0d3, R_0 = 0.85, p_Op = 40
+
+    INTEGER,  INTENT(in) :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in) :: &
+      D0, Chi, R_0, p_Op
+
+    INTEGER  :: iNodeZ, iNodeZ2, iNodeZ3, iNodeZ4
+    INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS
+    REAL(DP) :: X1, X2, X3, R, Chi_loc
+
+    DO iS  = 1, nSpecies
+    DO iZ4 = iZ_B1(4), iZ_E1(4)
+    DO iZ3 = iZ_B1(3), iZ_E1(3)
+    DO iZ2 = iZ_B1(2), iZ_E1(2)
+    DO iZ1 = iZ_B1(1), iZ_E1(1)
+
+      DO iNodeZ = 1, nDOFZ
+
+        iNodeZ2 = NodeNumberTableZ(2,iNodeZ)
+        iNodeZ3 = NodeNumberTableZ(3,iNodeZ)
+        iNodeZ4 = NodeNumberTableZ(4,iNodeZ)
+
+        X1 = NodeCoordinate( MeshX(1), iZ2, iNodeZ2 )
+        X2 = NodeCoordinate( MeshX(2), iZ3, iNodeZ3 )
+        X3 = NodeCoordinate( MeshX(3), iZ4, iNodeZ4 )
+
+        R = SQRT( X1**2 + X2**2 + X3**2 )
+
+        IF( R <= SqrtTiny )THEN
+
+          Chi_loc = Chi
+
+        ELSE
+
+          Chi_loc = Chi / ( ( R / R_0 )**p_Op + One )
+
+        END IF
+
+        uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_D0   ,iS) = D0
+        uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Chi  ,iS) = Chi_loc
+        uOP(iNodeZ,iZ1,iZ2,iZ3,iZ4,iOP_Sigma,iS) = Zero
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE SetOpacities_HomogeneousSphere3D
 
 
   SUBROUTINE SetOpacities_ShadowCasting2D_Cartesian &
