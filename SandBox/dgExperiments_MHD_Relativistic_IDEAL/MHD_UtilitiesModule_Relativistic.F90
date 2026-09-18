@@ -203,6 +203,8 @@ MODULE MHD_UtilitiesModule_Relativistic
     MODULE PROCEDURE ComputeDiagnostic_Vector
   END INTERFACE ComputeDiagnostic_MHD_Relativistic
 
+  INTEGER, PUBLIC, PARAMETER :: MaxIterations_ComputePrimitive_MHD = 100
+
 CONTAINS
 
 
@@ -239,7 +241,7 @@ CONTAINS
 
     LOGICAL :: flag
 
-    INTEGER :: N_osc
+    INTEGER :: N_osc, ITERATION
 
     E = CM_E + CM_D
 
@@ -350,7 +352,11 @@ CONTAINS
 
     f_0 = Zero
 
+    ITERATION = 0
+
     DO
+
+      ITERATION = ITERATION + 1
 
       eta = Xi_1 + B**2
 
@@ -385,9 +391,17 @@ CONTAINS
 
       f_0 = f_1
 
-      IF( ( ABS( Xi_0 - Xi_1 ) .LE. 1.0d-16 ) .OR. ( N_osc .GT. 3 ) ) EXIT
+      IF( ( ABS( Xi_0 - Xi_1 ) .LE. 1.0d-16 ) .OR. ( N_osc .GT. 3 ) .OR. &
+          ITERATION .EQ. MaxIterations_ComputePrimitive_MHD ) EXIT
 
     END DO
+
+    IF( ITERATION .EQ. MaxIterations_ComputePrimitive_MHD )THEN
+
+      PRINT*, "Primitive variable recovery failure: Max iterations reached!"
+      STOP
+
+    END IF
 
     Xi = Xi_1
 
