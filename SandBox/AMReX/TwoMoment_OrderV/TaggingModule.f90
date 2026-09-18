@@ -52,7 +52,8 @@ MODULE TaggingModule
 
   PUBLIC :: TagElements, TagElements_Density, TagElements_ShadowCasting, TagElements_TransparentVortex_Spherical, &
             TagElements_TVSD, TagElements_Exterior, TagElements_TransparentVortex_patch, &
-            TagElements_TransparentVortex_MovingWedge, TagElements_TransparentVortex_Wedge
+            TagElements_TransparentVortex_MovingWedge, TagElements_TransparentVortex_Wedge, &
+            TagElements_Homogenous_Sphere_3D
 
 CONTAINS
 
@@ -126,11 +127,10 @@ SUBROUTINE TagElements_Density &
       DO iNodeX = 1    , nDOFX
         
         indLo = ( iS - 1 ) * nCR * ( iE_E0 - iE_B0 + 1 ) * nDOFE * nDOFX &
-              + ( iCR_N - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFE * nDOFX &
-              + ( iZ1 - iE_B0 ) * nDOFE * nDOFX + ( iNodeE - 1 ) * nDOFX + iNodeX
+              + ( iZ1 - iE_B0 ) * nDOFE * nDOFX + 1
         !PRINT *, indLo
         !PRINT *, iNodeX
-        indHi = indLo + nDOFE * nDOFX !nDOFE * nDOFX * iCR_N !
+        indHi = indLo + nDOFE * nDOFX -1 !nDOFE * nDOFX * iCR_N !
         
         IF( ANY( ABS( uCR(iX1,iX2,iX3,indLo:indHi) ) .GT. TagCriteria_this ) ) THEN
           Tag(iX1,iX2,iX3,1) = SetTag
@@ -828,5 +828,56 @@ SUBROUTINE TagElements_Exterior &
 
 END SUBROUTINE TagElements_Exterior
 
+
+  SUBROUTINE TagElements_Homogenous_Sphere_3D &
+    ( iLevel, iX_B0, iX_E0, iLo, iHi, uCR, TagCriteria, &
+      SetTag, ClearTag, TagLo, TagHi, Tag )
+
+    INTEGER,  INTENT(in) :: iLevel, iX_B0(3), iX_E0(3), iLo(4), iHi(4), &
+                            TagLo(4), TagHi(4)
+    REAL(DP), INTENT(in) :: uCR(iLo(1):iHi(1), iLo(2):iHi(2), &
+                                iLo(3):iHi(3), iLo(4):iHi(4))
+    REAL(DP), INTENT(in) :: TagCriteria
+    CHARACTER(KIND=c_char), INTENT(in)    :: SetTag, ClearTag
+    CHARACTER(KIND=c_char), INTENT(inout) :: Tag(TagLo(1):TagHi(1), &
+                                                 TagLo(2):TagHi(2), &
+                                                 TagLo(3):TagHi(3), &
+                                                 TagLo(4):TagHi(4))
+
+
+
+    REAL(DP), PARAMETER :: R_MIN = 0.8_DP
+    REAL(DP), PARAMETER :: R_MAX = 1.2_DP
+
+    REAL(DP) :: X1_C, X2_C, X3_C, R2_C
+    INTEGER  :: iX1, iX2, iX3
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+
+      X3_C = MeshX(3) % Center(iX3)
+
+      DO iX2 = iX_B0(2), iX_E0(2)
+
+        X2_C = MeshX(2) % Center(iX2)
+
+        DO iX1 = iX_B0(1), iX_E0(1)
+
+          X1_C = MeshX(1) % Center(iX1)
+
+          R2_C = X1_C**2 + X2_C**2 + X3_C**2
+
+          IF( R2_C .GE. R_MIN**2 .AND. R2_C .LE. R_MAX**2 )THEN
+            Tag(iX1,iX2,iX3,1) = SetTag
+          ELSE
+            Tag(iX1,iX2,iX3,1) = ClearTag
+          END IF
+
+        END DO
+
+      END DO
+
+    END DO
+
+  END SUBROUTINE TagElements_Homogenous_Sphere_3D
 
 END MODULE TaggingModule

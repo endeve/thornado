@@ -215,6 +215,7 @@ MODULE InitializationModule
     RefinementScheme, &
     UseFluxCorrection_Euler, &
     UseFluxCorrection_TwoMoment, &
+    UsePhysicalUnits, &
     OpacityTableName_AbEm, &
     OpacityTableName_Iso, &
     OpacityTableName_NES, &
@@ -344,7 +345,8 @@ CONTAINS
         CALL PP % query( 'Sigma', Sigma )
       CALL amrex_parmparse_destroy( PP )
  
-      Chi  = Chi  * ( One / Centimeter )
+      IF( UsePhysicalUnits ) &
+        Chi = Chi * ( One / Centimeter )
       E0   = E0   * UnitsDisplay % EnergyUnit
       Mu0  = Mu0  * UnitsDisplay % EnergyUnit
       kT   = kT   * UnitsDisplay % EnergyUnit
@@ -786,7 +788,7 @@ SUBROUTINE MakeNewLevelFromCoarse( iLevel, Time, pBA, pDM ) BIND(c)
     USE TaggingModule, ONLY: &
       TagElements, TagElements_Density, TagElements_ShadowCasting, &
       TagElements_TransparentVortex_Spherical, TagElements_Exterior, TagElements_TVSD, TagElements_TransparentVortex_patch, &
-      TagElements_TransparentVortex_MovingWedge, TagElements_TransparentVortex_Wedge
+      TagElements_TransparentVortex_MovingWedge, TagElements_TransparentVortex_Wedge, TagElements_Homogenous_Sphere_3D
     USE amrex_parallel_module, ONLY: &
       amrex_parallel_ioprocessor
 
@@ -892,6 +894,13 @@ SUBROUTINE MakeNewLevelFromCoarse( iLevel, Time, pBA, pDM ) BIND(c)
       ELSE IF( TRIM( RefinementScheme ) == "Exterior" )THEN
 
         CALL TagElements_Exterior &
+               ( iLevel, BX % lo, BX % hi, LBOUND( uCR ), UBOUND( uCR ), &
+                 uCR, TagCriteria(iTC), SetTag, ClearTag, &
+                 LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
+
+      ELSE IF( TRIM( RefinementScheme ) == "Homogenous_Sphere_3D" )THEN
+
+        CALL TagElements_Homogenous_Sphere_3D &
                ( iLevel, BX % lo, BX % hi, LBOUND( uCR ), UBOUND( uCR ), &
                  uCR, TagCriteria(iTC), SetTag, ClearTag, &
                  LBOUND( TagArr ), UBOUND( TagArr ), TagArr )
