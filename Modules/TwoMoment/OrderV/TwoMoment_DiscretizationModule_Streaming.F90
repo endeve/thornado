@@ -352,7 +352,7 @@ CONTAINS
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, SurfaceFlux_X2_Option )
 
     CALL ComputeIncrement_Divergence_X3 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R)
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, SurfaceFlux_X3_Option )
 
     CALL TimersStop( Timer_Streaming_Divergence )
 
@@ -1722,7 +1722,7 @@ END IF
 
 
   SUBROUTINE ComputeIncrement_Divergence_X3 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, SurfaceFlux_X3_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X3,X4} ---
 
@@ -1760,6 +1760,14 @@ END IF
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      SurfaceFlux_X3_Option(1:nDOF_X3, &
+                            iZ_B0(1):iZ_E0(1), &
+                            iZ_B0(2):iZ_E0(2), &
+                            iZ_B0(3):iZ_E0(3), &
+                            iZ_B0(4):iZ_E0(4)+1, &
+                            1:nCR, &
+                            1:nSpecies)
 
     INTEGER  :: iNodeZ, iNodeE, iNodeX, iNodeZ_X3, iNodeX_X3
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
@@ -2123,6 +2131,14 @@ END IF
         NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ4) &
           = NumericalFlux_LLF &
               ( uCR_X3_L(iCR), uCR_X3_R(iCR), Flux_L(iCR), Flux_R(iCR), One )
+
+        IF( PRESENT( SurfaceFlux_X3_Option ) )THEN
+
+          SurfaceFlux_X3_Option(iNodeZ_X3,iZ1,iZ2,iZ3,iZ4,iCR,iS) &
+            = NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ4) &
+                   * SqrtGm_F(iX_F)
+
+        END IF
 
         NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ4) &
           = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) &
