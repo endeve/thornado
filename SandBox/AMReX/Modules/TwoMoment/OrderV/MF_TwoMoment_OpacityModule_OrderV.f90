@@ -131,6 +131,8 @@ MODULE MF_TwoMoment_OpacityModule
       REAL(DP), SAVE :: D_0_Save    = Zero
       REAL(DP), SAVE :: Chi_Save    = Zero
       REAL(DP), SAVE :: Sigma_Save  = Zero
+      REAL(DP), SAVE :: R_0_Save    = One
+      REAL(DP), SAVE :: p_Op_Save   = 80.0_DP
       LOGICAL,  SAVE :: Initialized = .FALSE.
      
     CONTAINS
@@ -155,6 +157,7 @@ MODULE MF_TwoMoment_OpacityModule
       SUBROUTINE InitializeOpacities_MF( D_0, Chi, Sigma )
      
         REAL(DP), INTENT(in) :: D_0, Chi, Sigma
+        TYPE(amrex_parmparse)   :: PP
      
         IF( Initialized ) RETURN
      
@@ -163,6 +166,12 @@ MODULE MF_TwoMoment_OpacityModule
         D_0_Save    = D_0
         Chi_Save    = Chi
         Sigma_Save  = Sigma
+
+        CALL amrex_parmparse_build( PP, 'thornado' )
+          CALL PP % query( 'Op_R_0', R_0_Save  )
+          CALL PP % query( 'Op_p'  , p_Op_Save )
+        CALL amrex_parmparse_destroy( PP )
+
         Initialized = .TRUE.
      
         IF( amrex_parallel_ioprocessor() )THEN
@@ -173,6 +182,8 @@ MODULE MF_TwoMoment_OpacityModule
           WRITE(*,'(A7,A8,ES10.4E2)') '',    'D0 = ', D_0
           WRITE(*,'(A7,A8,ES10.4E2)') '',   'Chi = ', Chi
           WRITE(*,'(A7,A8,ES10.4E2)') '', 'Sigma = ', Sigma
+          WRITE(*,'(A7,A8,ES10.4E2)') '',  'Op_R_0 = ', R_0_Save
+          WRITE(*,'(A7,A8,ES10.4E2)') '',  'Op_p   = ', p_Op_Save
           WRITE(*,'(A7,A,I0)') '', 'nMaxLevels = ', nMaxLevels
           WRITE(*,'(A7,A,I0)') '', 'nComp_uOP  = ', nComp_uOP()
         END IF
@@ -266,7 +277,8 @@ MODULE MF_TwoMoment_OpacityModule
           CALL SetOpacities &
                  ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
                    D_0_Save, Chi_Save, Sigma_Save, &
-                   Verbose_Option = .TRUE. )
+                   Verbose_Option = .FALSE., &
+                   R_0_Option = R_0_Save, p_Op_Option = p_Op_Save )
      
           DO iS     = 1, nSpecies
           DO iOP_   = 1, nOP
