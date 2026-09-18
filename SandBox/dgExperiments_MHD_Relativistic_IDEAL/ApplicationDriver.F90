@@ -9,7 +9,8 @@ PROGRAM ApplicationDriver
     Three, &
     Four, &
     Pi, &
-    TwoPi
+    TwoPi, &
+    SqrtTiny
   USE ProgramInitializationModule, ONLY: &
     InitializeProgram_Basic, &
     FinalizeProgram_Basic
@@ -72,7 +73,8 @@ PROGRAM ApplicationDriver
   USE UnitsModule, ONLY: &
     Centimeter, &
     Millisecond, &
-    UnitsDisplay
+    UnitsDisplay, &
+    Gauss
   USE MHD_PerturbationModule, ONLY: &
     InitializeRandPerturbations, &
     ApplyRandPerturbations, &
@@ -137,7 +139,9 @@ PROGRAM ApplicationDriver
 
   REAL(DP) :: OTScaleFactor = 100.0_DP
 
-  REAL(DP) :: SDInitialField = 2.00d+13
+  REAL(DP) :: SDInitialField = 0.00d+00 * Gauss
+
+  CHARACTER(256) :: SDICFileName = ''
 
   REAL(DP) :: Rand_Amplitude = Zero
 
@@ -146,7 +150,6 @@ PROGRAM ApplicationDriver
   TimeIt_MHD = .TRUE.
   CALL InitializeTimers_MHD
   CALL TimersStart_MHD( Timer_MHD_Initialize )
-
   ProgramName = 'Advection1D'
   AdvectionProfile = 'HydroSineWaveX1'
   RiemannProblemName = 'HydroIsolatedContact'
@@ -675,24 +678,32 @@ PROGRAM ApplicationDriver
     CASE( 'ShearingDisk' )
 
       ActivateUnits = .TRUE.
-      WriteGhost    = .FALSE. ! Needed for BCs
+      WriteGhost    = .FALSE.
 
       UseCustomGeometry = .TRUE.
 
       EvolveOnlyMagnetic = .FALSE.
-
       ApplyRandomPerturbations = .FALSE.
       Rand_Amplitude = 1.0d-4
 
-      UseDivergenceCleaning = .FALSE.
+      SDInitialField = 2.00d+13 * Gauss
+
+      IF( SDInitialField .GT. SqrtTiny )THEN
+        UseDivergenceCleaning = .TRUE.
+      ELSE
+        UseDivergenceCleaning = .FALSE.
+      END IF
+
       CleaningSpeed = 1.0_DP
       DampingTimeScaleFactor = 0.0_DP
       UseFluxDecoupling = .FALSE.
       UsePowellSource = .FALSE.
 
+      SDICFileName = './GR_LR_zerorot.h5'
+
       Gamma = 4.0_DP / 3.0_DP
-      t_end = 10e0 * Millisecond
-      bcX = [ 44, 1, 1 ]
+      t_end = 1.0d+01 * Millisecond
+      bcX = [ 45, 1, 1 ]
 
       CoordinateSystem = 'CYLINDRICAL'
 
@@ -762,7 +773,7 @@ PROGRAM ApplicationDriver
   SlopeLimiterMethod        = 'TVD'
   BetaTVD                   = 1.75_DP
   BetaTVB                   = 0.0_DP
-  SlopeTolerance            = 1.0e-6_DP
+  SlopeTolerance            = 1.00d-06
   UseCharacteristicLimiting = .FALSE.
   UseTroubledCellIndicator  = .FALSE.
   LimiterThresholdParameter = 0.03_DP
@@ -872,6 +883,10 @@ PROGRAM ApplicationDriver
              = MMBlastWavePhi, &
            OTScaleFactor_Option &
              = OTScaleFactor, &
+           SDICFileName_Option &
+             = SDICFileName, &
+           SDInitialField_Option &
+             = SDInitialField, &
            EvolveOnlyMagnetic_Option &
              = EvolveOnlyMagnetic )
 
