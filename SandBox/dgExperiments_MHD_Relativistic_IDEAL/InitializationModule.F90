@@ -19,7 +19,8 @@ MODULE InitializationModule
     iX_B0,       &
     iX_B1,       &
     iX_E0,       &
-    iX_E1
+    iX_E1,       &
+    swX
   USE ReferenceElementModuleX, ONLY: &
     NodeNumberTableX, &
     WeightsX_q
@@ -55,6 +56,7 @@ MODULE InitializationModule
     iPM_B2,  &
     iPM_B3,  &
     iPM_Chi, &
+    nCM,     &
     uCM,     &
     iCM_D,   &
     iCM_S1,  &
@@ -117,8 +119,7 @@ MODULE InitializationModule
     Locate, &
     Interpolate1D_Linear
   USE MHD_BoundaryConditionsModule, ONLY: &
-    iG, &
-    oG
+    iBC, oBC
 
   USE HDF5
 
@@ -1994,8 +1995,16 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: PressureArr(:), DensityArr(:), V3Arr(:), &
                              AlphaArr(:), PsiArr(:), X1Arr(:)
 
-    ALLOCATE( oG(1:nDOFX) )
-    ALLOCATE( iG(1:nDOFX) )
+    ! --- Allocate and initialize special BC arrays. ---
+
+    ALLOCATE( iBC(1:nDOFX,1:swX(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nCM) )
+    ALLOCATE( oBC(1:nDOFX,1:swX(1),iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),1:nCM) )
+
+    iBC = Zero
+    oBC = Zero
+
+    PRINT*, SHAPE(iBC)
+    PRINT*, SHAPE(oBC)
 
     ! --- Populate arrays ---
 
@@ -2155,13 +2164,6 @@ CONTAINS
 
     END DO
     END DO
-    END DO
-
-    DO iNodeX = 1, nDOFX
-
-      oG(iNodeX) = uGF(iNodeX,iX_E0(1),1,1,iGF_SqrtGm)
-      iG(iNodeX) = uGF(iNodeX,iX_B0(1),1,1,iGF_SqrtGm)
-
     END DO
 
     DEALLOCATE( X1Arr, PsiArr, AlphaArr, DensityArr, V3Arr, PressureArr )
