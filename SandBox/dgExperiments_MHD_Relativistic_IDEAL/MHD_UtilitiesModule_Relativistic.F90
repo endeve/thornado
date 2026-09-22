@@ -226,7 +226,7 @@ CONTAINS
       PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
       PM_B1, PM_B2, PM_B3, PM_Chi
 
-    REAL(DP) :: E, S, B, tau, alpha_1, alpha_2, &
+    REAL(DP) :: E, S, B, SdotB, alpha_1, alpha_2, &
                 eta, beta_1, beta_2, gamma_0
 
     REAL(DP) :: q_G, Phi_G, Psi_G
@@ -248,13 +248,13 @@ CONTAINS
 
       B = Zero
 
-      tau = Zero
+      SdotB = Zero
 
     ELSE
 
       B = SQRT( GF_Gm11 * CM_B1**2 + GF_Gm22 * CM_B2**2 + GF_Gm33 * CM_B3**2 )
 
-      tau = CM_S1 * CM_B1 + CM_S2 * CM_B2 + CM_S3 * CM_B3
+      SdotB = CM_S1 * CM_B1 + CM_S2 * CM_B2 + CM_S3 * CM_B3
 
     END IF
 
@@ -263,7 +263,7 @@ CONTAINS
     Phi_G = SQRT( ( B**2 - E )**2 + Three * ( E**2 - CM_D**2 - S**2 ) )
 
     Psi_G = ( Phi_G - 2 * ( B**2 - E ) ) * SQRT( Phi_G + B**2 - E ) &
-            - SQRT( 13.5_DP * ( CM_D**2 * B**2 + tau**2 ) )
+            - SQRT( 13.5_DP * ( CM_D**2 * B**2 + SdotB**2 ) )
 
     ! Check admissability of conservative variables using Theorem 2.1
     ! of Wu and Tang (2017).
@@ -286,7 +286,7 @@ CONTAINS
 
     IF( B .GT. Zero )THEN
 
-      beta_1 = tau**2 / B**2
+      beta_1 = SdotB**2 / B**2
 
     ELSE
 
@@ -309,14 +309,14 @@ CONTAINS
 
     f_1 = Xi_0 &
           - gamma_0 * ( Xi_0 / W**2 - CM_D / W ) &
-          - Half * ( B**2 / W**2 + tau**2 / Xi_0**2 ) &
+          - Half * ( B**2 / W**2 + SdotB**2 / Xi_0**2 ) &
           + alpha_1
 
     flag = .TRUE.
 
     IF( f_1 .GT. Zero )THEN
 
-      a_0 = -Half * ( B**2 * CM_D**2 + tau**2 )
+      a_0 = -Half * ( B**2 * CM_D**2 + SdotB**2 )
 
       delta = 27.0_DP * a_0 + Four * alpha_1**3
 
@@ -369,11 +369,11 @@ CONTAINS
                       + beta_1 * ( One / eta**2 - One / Xi_1**2 ) )
 
         f_1 = Xi_1 - gamma_0 * ( Xi_1 / W**2 - CM_D / W ) &
-              - Half * ( B**2 / W**2 + tau**2 / Xi_1**2 ) + alpha_1
+              - Half * ( B**2 / W**2 + SdotB**2 / Xi_1**2 ) + alpha_1
 
       END IF
 
-      df = One + B**2 * phi_a + tau**2 / Xi_1**3 &
+      df = One + B**2 * phi_a + SdotB**2 / Xi_1**3 &
            - gamma_0 * ( One / W**2 - Two * Xi_1 * phi_a + CM_D * W * phi_a )
 
       Xi_0 = Xi_1
@@ -402,9 +402,9 @@ CONTAINS
 
     Xi = Xi_1
 
-    PM_V1 = ( CM_S1 / GF_Gm11 + tau * CM_B1 / Xi ) / ( Xi + B**2 )
-    PM_V2 = ( CM_S2 / GF_Gm22 + tau * CM_B2 / Xi ) / ( Xi + B**2 )
-    PM_V3 = ( CM_S3 / GF_Gm33 + tau * CM_B3 / Xi ) / ( Xi + B**2 )
+    PM_V1 = ( CM_S1 / GF_Gm11 + SdotB * CM_B1 / Xi ) / ( Xi + B**2 )
+    PM_V2 = ( CM_S2 / GF_Gm22 + SdotB * CM_B2 / Xi ) / ( Xi + B**2 )
+    PM_V3 = ( CM_S3 / GF_Gm33 + SdotB * CM_B3 / Xi ) / ( Xi + B**2 )
 
     VSq = GF_Gm11 * PM_V1**2 + GF_Gm22 * PM_V2**2 + GF_Gm33 * PM_V3**2
 
