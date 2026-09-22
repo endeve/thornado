@@ -2166,6 +2166,29 @@ CONTAINS
     END DO
     END DO
 
+    DO iX3 = iX_B1(3), iX_E1(3)
+    DO iX2 = iX_B1(2), iX_E1(2)
+    DO iX1 = 1, swX(1)
+
+      DO iNodeX = 1, nDOFX
+
+        oBC(iNodeX,iX1,iX2,iX3,iCM_B1) = uGF(iNodeX,iX_E0(1)-(iX1-1),iX1,iX2,iGF_SqrtGm) &
+                                         * uCM(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B1)
+        iBC(iNodeX,iX1,iX2,iX3,iCM_B1) = uGF(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iGF_SqrtGm) &
+                                         * uCM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B1)
+
+        oBC(iNodeX,iX1,iX2,iX3,iCM_B2) = uCM(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B2)
+        iBC(iNodeX,iX1,iX2,iX3,iCM_B2) = uCM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B2)
+
+        oBC(iNodeX,iX1,iX2,iX3,iCM_B3) = uCM(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B3)
+        iBC(iNodeX,iX1,iX2,iX3,iCM_B3) = uCM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_B3)
+
+      END DO
+
+    END DO
+    END DO
+    END DO
+
     DEALLOCATE( X1Arr, PsiArr, AlphaArr, DensityArr, V3Arr, PressureArr )
 
   END SUBROUTINE InitializeFields_ShearingDisk
