@@ -6,6 +6,7 @@ MODULE MHD_PerturbationModule
     Half, &
     One, &
     Two, &
+    Four, &
     Pi, &
     FourPi
   USE UnitsModule, ONLY: &
@@ -56,9 +57,11 @@ MODULE MHD_PerturbationModule
     nAM, &
     iAM_P, &
     nDM
-   USE MHD_UtilitiesModule_Relativistic, ONLY: &
+  USE MHD_UtilitiesModule_Relativistic, ONLY: &
     ComputeConserved_MHD_Relativistic, &
     ComputeFromConserved_MHD_Relativistic
+  USE EquationOfStateModule_IDEAL, ONLY: &
+    ComputeAlfvenSpeedFromPrimitive_IDEAL
 
   IMPLICIT NONE
   PRIVATE
@@ -77,10 +80,12 @@ CONTAINS
   SUBROUTINE InitializeRandPerturbations &
                ( iX_B0, iX_E0, nDOFX, Rand_Amplitude_Option )
 
+    INTEGER, ALLOCATABLE :: Seed_Array(:)
+
     INTEGER,  INTENT(in) :: iX_B0(3), iX_E0(3), nDOFX
     REAL(DP), INTENT(in), OPTIONAL :: Rand_Amplitude_Option
 
-    INTEGER :: iNX, iX1, iX2, iX3
+    INTEGER :: iNX, iX1, iX2, iX3, Seed_Size
     REAL(DP) :: Rand_r, Rand_z, Rand_theta
 
     IF( PRESENT( Rand_Amplitude_Option ) )THEN
@@ -99,12 +104,20 @@ CONTAINS
                                  iX_E0(2) - iX_B0(2) + 1, &
                                  iX_E0(3) - iX_B0(3) + 1))
 
+    CALL RANDOM_SEED( size = Seed_Size )
+
+    ALLOCATE(Seed_Array(Seed_Size))
+
+    Seed_Array = 123456789
+
+    CALL RANDOM_SEED( put = Seed_Array )
+
+    DEALLOCATE(Seed_Array)
+
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1, nDOFX
-
-      CALL RANDOM_SEED()
 
       CALL RANDOM_NUMBER( Rand_r )
 
@@ -149,7 +162,7 @@ CONTAINS
     REAL(DP) :: X1, X2
     REAL(DP) :: V1, V2, V3, VSq, W
     REAL(DP) :: CB1, CB2, CB3, VdotB
-    REAL(DP) :: kz
+    REAL(DP) :: Caz, kz
 
     ! --- Applying the random radial velocity       ---
     ! --- perturbations from Rembiasz et al. (2016) ---
@@ -168,7 +181,35 @@ CONTAINS
       X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
       X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
 
-      kz = Two * Pi / ( 0.125_DP * Kilometer )
+      CALL ComputeAlfvenSpeedFromPrimitive_IDEAL &
+             ( P(iNX,iX1,iX2,iX3,iPM_D ), &
+               P(iNX,iX1,iX2,iX3,iPM_V1), &
+               P(iNX,iX1,iX2,iX3,iPM_V2), &
+               P(iNX,iX1,iX2,iX3,iPM_V3), &
+               P(iNX,iX1,iX2,iX3,iPM_E ), &
+               P(iNX,iX1,iX2,iX3,iPM_Ne), &
+               P(iNX,iX1,iX2,iX3,iPM_B1), &
+               P(iNX,iX1,iX2,iX3,iPM_B2), &
+               P(iNX,iX1,iX2,iX3,iPM_B3), &
+               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
+               G(iNX,iX1,iX2,iX3,iGF_Alpha   ), &
+               G(iNX,iX1,iX2,iX3,iGF_Beta_1  ), &
+               G(iNX,iX1,iX2,iX3,iGF_Beta_2  ), &
+               G(iNX,iX1,iX2,iX3,iGF_Beta_3  ), &
+               Caz )
+
+      IF( .TRUE. )THEN
+
+        kz = SQRT( One - ( Two - 1.25_DP )**2 / Four ) &
+             * ( P(iNX,iX1,iX2,iX3,iPM_V3) / Caz )
+
+      ELSE
+
+        kz = Zero
+
+      END IF
 
       V1 = ( 0.1_DP * Rand_Amplitude * Random_r(iNX,iX1,iX2,iX3) &
              + 0.2d-5 * SIN( kz * X2 ) ) &
