@@ -226,7 +226,7 @@ CONTAINS
       PM_D, PM_V1, PM_V2, PM_V3, PM_E, PM_Ne, &
       PM_B1, PM_B2, PM_B3, PM_Chi
 
-    REAL(DP) :: E, S, B, SdotB, alpha_1, alpha_2, &
+    REAL(DP) :: D, E, tau, S, B, SdotB, alpha_1, alpha_2, &
                 eta, beta_1, beta_2, gamma_0
 
     REAL(DP) :: q_G, Phi_G, Psi_G
@@ -240,7 +240,11 @@ CONTAINS
 
     INTEGER :: N_osc, ITERATION
 
-    E = CM_E + CM_D
+    tau = CM_E
+
+    D = CM_D
+
+    E = tau + D
 
     S = SQRT( CM_S1**2 / GF_Gm11 + CM_S2**2 / GF_Gm22 + CM_S3**2 / GF_Gm33 )
 
@@ -258,12 +262,12 @@ CONTAINS
 
     END IF
 
-    q_G = E - SQRT( CM_D**2 + S**2 )
+    q_G = E - SQRT( D**2 + S**2 )
 
-    Phi_G = SQRT( ( B**2 - E )**2 + Three * ( E**2 - CM_D**2 - S**2 ) )
+    Phi_G = SQRT( ( B**2 - E )**2 + Three * ( E**2 - D**2 - S**2 ) )
 
     Psi_G = ( Phi_G - 2 * ( B**2 - E ) ) * SQRT( Phi_G + B**2 - E ) &
-            - SQRT( 13.5_DP * ( CM_D**2 * B**2 + SdotB**2 ) )
+            - SQRT( 13.5_DP * ( D**2 * B**2 + SdotB**2 ) )
 
     ! Check admissability of conservative variables using Theorem 2.1
     ! of Wu and Tang (2017).
@@ -271,7 +275,7 @@ CONTAINS
     IF( ( CM_D < 0.0_DP ) .OR. ( q_G < 0.0_DP ) .OR. ( Psi_G < 0.0_DP ) )THEN
 
       PRINT*, "Primitive variable recovery failure: Conserved variables un-admissible!"
-      PRINT*, "CM_D:  ", CM_D
+      PRINT*, "D:  ", D
       PRINT*, "q_G:   ", q_G
       PRINT*, "Psi_G: ", Psi_G
       PRINT*, "Terminating run."
@@ -298,7 +302,7 @@ CONTAINS
 
     gamma_0 = ( Gamma_IDEAL - One ) / Gamma_IDEAL
 
-    Xi_d = Third * ( SQRT( alpha_1**2 + Three * ( E**2 - ( CM_D**2 + S**2 ) ) ) - Two * alpha_1 )
+    Xi_d = Third * ( SQRT( alpha_1**2 + Three * ( E**2 - ( D**2 + S**2 ) ) ) - Two * alpha_1 )
 
     eta = Xi_d + B**2
 
@@ -308,7 +312,7 @@ CONTAINS
                     + beta_1 * ( One / eta**2 - One / Xi_0**2 ) )
 
     f_1 = Xi_0 &
-          - gamma_0 * ( Xi_0 / W**2 - CM_D / W ) &
+          - gamma_0 * ( Xi_0 / W**2 - D / W ) &
           - Half * ( B**2 / W**2 + SdotB**2 / Xi_0**2 ) &
           + alpha_1
 
@@ -316,7 +320,7 @@ CONTAINS
 
     IF( f_1 .GT. Zero )THEN
 
-      a_0 = -Half * ( B**2 * CM_D**2 + SdotB**2 )
+      a_0 = -Half * ( B**2 * D**2 + SdotB**2 )
 
       delta = 27.0_DP * a_0 + Four * alpha_1**3
 
@@ -368,13 +372,13 @@ CONTAINS
         W = One / SQRT( ( Xi_1 + alpha_2 ) * ( eta + S ) / eta**2 &
                       + beta_1 * ( One / eta**2 - One / Xi_1**2 ) )
 
-        f_1 = Xi_1 - gamma_0 * ( Xi_1 / W**2 - CM_D / W ) &
+        f_1 = Xi_1 - gamma_0 * ( Xi_1 / W**2 - D / W ) &
               - Half * ( B**2 / W**2 + SdotB**2 / Xi_1**2 ) + alpha_1
 
       END IF
 
       df = One + B**2 * phi_a + SdotB**2 / Xi_1**3 &
-           - gamma_0 * ( One / W**2 - Two * Xi_1 * phi_a + CM_D * W * phi_a )
+           - gamma_0 * ( One / W**2 - Two * Xi_1 * phi_a + D * W * phi_a )
 
       Xi_0 = Xi_1
 
