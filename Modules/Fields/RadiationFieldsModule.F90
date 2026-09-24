@@ -448,7 +448,7 @@ CONTAINS
     !$OMP               unitsCR, unitsPR, unitsAR, unitsGR, unitsDR )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( uCR, uPR, uPR, uAR, uGR, uDR, &
+    !$ACC DELETE( uCR, uPR, uAR, uGR, uDR, &
     !$ACC         unitsCR, unitsPR, unitsAR, unitsGR, unitsDR )
 #endif
 
