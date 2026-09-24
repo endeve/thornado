@@ -451,6 +451,7 @@ CONTAINS
     REAL(DP)             :: HeatFluxFactor
 
     REAL(DP) :: x
+    REAL(DP) :: a, num, denom
 
 #ifdef MOMENT_CLOSURE_MINERBO
 
@@ -489,7 +490,38 @@ CONTAINS
 
 #elif  MOMENT_CLOSURE_LEVERMORE
 
-    HeatFluxFactor = 0.0_DP
+    ! --- Levermore Closure -------------------
+    ! --- Expression from Wand and Burrows. (2023), APJ, 943:78   ---
+    ! --- This is equivalent to the expression derived in         ---
+    ! --- Vaytet et al. (2011) Journal of Quantitative            ---
+    ! --- Spectroscopy and Radiative Transfer 112.8               ---
+    ! --- As the expression for q(FF) diverges as f->0, we        ---
+    ! --- approximate q(FF) for FF<=0.2 with a sixth order Taylor ---
+    ! --- expansion around f=0, and use the full expression for   ---
+    ! --- q(FF) for 0.2 < FF < 1-1e-12, and q=1 above.            ---
+
+
+    IF( FF <= 0.2d0 ) THEN
+
+      HeatFluxFactor = 3.0d0*FF*(63.0d0*FF**4 + 144.0d0*FF**2 + 448.0d0)/2240.0d0
+
+    ELSE IF ( FF > 0.2d0 .and. FF < 1.0d0-1.0d-12) THEN
+
+      a = SQRT(4.0d0 - 3.0d0 * FF**2)
+      num = 4.0d0 * FF**3 * (286.0d0 - 89.0d0 * a)                              &
+          + 576.0d0 * FF * (-2.0d0 + a) + 3.0d0 * FF**5 * (-80.0d0 + 9.0d0 * a) &
+          - 48.0d0 * ( FF**6 + FF**2 * (42.0d0 - 15.0d0 * a)                    &
+                       + 3.0d0 * FF**4 * (-5.0d0 + a)                           &
+                       + 16.0d0 * (-2.0d0 + a)                                  &
+                     ) * ATANH((-2.0d0 + a) / FF)
+      denom = (-2.0d0 + a)**5
+      HeatFluxFactor = num / denom
+
+    ELSE
+
+      HeatFluxFactor = 1.0_DP
+
+    END If
 
 #else
 
@@ -546,8 +578,9 @@ CONTAINS
     END DO
 #elif  MOMENT_CLOSURE_LEVERMORE
 
-    HeatFluxFactor = 0.0_DP
-
+    DO i = 1, SIZE( D )
+        HeatFluxFactor(i) = HeatFluxFactor_Scalar( D(i), FF(i) )
+    END DO
 #else
 
     HeatFluxFactor = 0.0_DP
