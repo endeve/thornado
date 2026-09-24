@@ -2310,6 +2310,7 @@ CONTAINS
 
     REAL(DP), ALLOCATABLE :: LogT_P(:), LogEta_P(:), SignEta_P(:)
     INTEGER  :: iX, iE1, iE2, iJ_I, iJ_II
+    REAL(DP) :: J_I_tmp, J_II_tmp
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -2364,18 +2365,24 @@ CONTAINS
              OS_Pair(1,iJ_II), Pair_AT(:,:,:,:,iJ_II,1), J_II )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE ( J_I_tmp, J_II_tmp )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE ( J_I_tmp, J_II_tmp )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(3)
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE ( J_I_tmp, J_II_tmp )
 #endif
     DO iX  = iX_B, iX_E
     DO iE2 = iE_B, iE_E
     DO iE1 = iE_B, iE_E
 
-      J_I (iE1,iE2,iX) = SignEta_P(iX)*J_I (iE1,iE2,iX) + (One-SignEta_P(iX))*J_II(iE1,iE2,iX)
-      J_II(iE1,iE2,iX) = SignEta_P(iX)*J_II(iE1,iE2,iX) + (One-SignEta_P(iX))*J_I (iE1,iE2,iX)
+      J_I_tmp  = J_I (iE1,iE2,iX)
+      J_II_tmp = J_II(iE1,iE2,iX)
+
+      J_I (iE1,iE2,iX) = SignEta_P(iX)*J_I_tmp  + (One-SignEta_P(iX))*J_II_tmp
+      J_II(iE1,iE2,iX) = SignEta_P(iX)*J_II_tmp + (One-SignEta_P(iX))*J_I_tmp
     
     END DO
     END DO
