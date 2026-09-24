@@ -56,6 +56,7 @@ MODULE OpacityModule_TABLE
     OpacityTableName_Brem
   INTEGER :: &
     nOpacities_NNS, nMoments_NNS, nPointsT_NNS, nPointsMuB_NNS
+  LOGICAL, PUBLIC :: IsoIncludesNucleonScattering = .FALSE.
   INTEGER :: &
     nOpacities_NES, nMoments_NES, nPointsT_NES, nPointsEta_NES
   INTEGER :: &
@@ -458,6 +459,12 @@ CONTAINS
     END IF
 
     ! --- NNS ---
+
+    IF ( Include_Iso ) THEN
+
+      IsoIncludesNucleonScattering = OPACITIES % Scat_Iso % np_isoenergetic > 0
+
+    END IF
 
     IF( PRESENT( NNS_MinD_Option ) )THEN
       NNS_MinD = MAX( NNS_MinD_Option, EOSTable_MinD )

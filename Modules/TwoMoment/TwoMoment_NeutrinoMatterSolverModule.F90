@@ -71,7 +71,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     ComputePressure_TABLE, &
     Min_D, Min_T, Min_Y
   USE OpacityModule_TABLE, ONLY: &
-    QueryOpacity
+    QueryOpacity, &
+    IsoIncludesNucleonScattering
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     ComputeEquilibriumDistributions, &
     LimitEquilibriumDistributions_DG, &
@@ -811,6 +812,9 @@ CONTAINS
       Include_NuPair_Option, Include_Brem_Option, Include_LinCorr_Option, &
       wMatrRHS_Option, DnuMax_Option, FreezeOpacities_Option, Verbose_Option )
 
+    USE mpi
+    USE ISO_FORTRAN_ENV, ONLY: ERROR_UNIT
+
     INTEGER , INTENT(in), OPTIONAL :: M_outer_Option
     INTEGER , INTENT(in), OPTIONAL :: M_inner_Option
     INTEGER , INTENT(in), OPTIONAL :: MaxIter_outer_Option
@@ -832,6 +836,7 @@ CONTAINS
     LOGICAL , INTENT(in), OPTIONAL :: Verbose_Option
 
     LOGICAL :: Verbose
+    INTEGER :: ierr, myid
 
     IF( SolverParametersInitialized ) RETURN
 
@@ -881,6 +886,27 @@ CONTAINS
       Include_NNS = Include_NNS_Option
     ELSE
       Include_NNS = .TRUE.
+    END IF
+
+    IF ( Include_NNS .AND. IsoIncludesNucleonScattering ) THEN
+
+      CALL MPI_COMM_RANK( MPI_COMM_WORLD, myid, ierr )
+
+      IF ( myid == 0 ) THEN
+
+        WRITE(ERROR_UNIT,'(A)') &
+          'ERROR: Include_NNS is enabled, but the Iso table already'
+        WRITE(ERROR_UNIT,'(A)') &
+          '       contains isoenergetic scattering on free nucleons.'
+        WRITE(ERROR_UNIT,'(A)') &
+          '       Use an Iso table without scattering on n/p.'
+
+        FLUSH(ERROR_UNIT)
+
+      END IF
+
+      CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
+
     END IF
 
     IF( PRESENT( NNS_ApplyManyBodyCorrection_Option ) )THEN
