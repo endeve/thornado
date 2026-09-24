@@ -139,8 +139,8 @@ contains
       EulerSlopeLimiter_Option, EulerTroubledCellIndicator_Option, &
       Eos_MinD_Option, &
       OpacityTableName_EmAb_Option, OpacityTableName_Iso_Option, &
-      OpacityTableName_NES_Option, OpacityTableName_Pair_Option, &
-      OpacityTableName_Brem_Option, &
+      OpacityTableName_NNS_Option, OpacityTableName_NES_Option, &
+      OpacityTableName_Pair_Option, OpacityTableName_Brem_Option, &
       EmAb_Nucleon_MinD_Option, EmAb_Nucleon_MaxD_Option, &
       EmAb_Nuclei_MinD_Option, EmAb_Nuclei_MaxD_Option, &
       EmAb_MinD_Option, EmAb_MaxD_Option, &
@@ -153,10 +153,11 @@ contains
       Op_MinD_Option, Op_MaxD_Option, &
       M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
       MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
-      Include_NES_Option, Include_Pair_Option, &
+      Include_NNS_Option, Include_NES_Option, Include_Pair_Option, &
       Include_NuPair_Option, Include_Brem_Option, &
       Include_LinCorr_Option, wMatrRHS_Option, &
       DnuMax_Option, FreezeOpacities_Option , &
+      NNS_ApplyWeakMagnetism_Option, NNS_ApplyManyBodyCorrection_Option, &
       ActivateUnits_Option, CoordinateSystem_Option, &
       UseChemicalPotentialShift_Option, &
       UseSimpleMeshRefinement_Option, Verbose_Option )
@@ -185,6 +186,7 @@ contains
     real(dp),         intent(in), optional :: Eos_MinD_Option
     character(len=*), intent(in), optional :: OpacityTableName_EmAb_Option
     character(len=*), intent(in), optional :: OpacityTableName_Iso_Option
+    character(len=*), intent(in), optional :: OpacityTableName_NNS_Option
     character(len=*), intent(in), optional :: OpacityTableName_NES_Option
     character(len=*), intent(in), optional :: OpacityTableName_Pair_Option
     character(len=*), intent(in), optional :: OpacityTableName_Brem_Option
@@ -204,6 +206,7 @@ contains
     integer,          intent(in), optional :: MaxIter_inner_Option
     real(dp),         intent(in), optional :: Rtol_inner_Option
     real(dp),         intent(in), optional :: Rtol_outer_Option
+    logical,          intent(in), optional :: Include_NNS_Option
     logical,          intent(in), optional :: Include_NES_Option
     logical,          intent(in), optional :: Include_Pair_Option
     logical,          intent(in), optional :: Include_NuPair_Option
@@ -212,6 +215,8 @@ contains
     real(dp),         intent(in), optional :: wMatrRHS_Option(5)
     real(dp),         intent(in), optional :: DnuMax_Option
     logical,          intent(in), optional :: FreezeOpacities_Option
+    logical,          intent(in), optional :: NNS_ApplyWeakMagnetism_Option
+    logical,          intent(in), optional :: NNS_ApplyManyBodyCorrection_Option
     logical,          intent(in), optional :: ActivateUnits_Option
     character(len=*), intent(in), optional :: CoordinateSystem_Option
     logical,          intent(in), optional :: Verbose_Option
@@ -472,6 +477,8 @@ contains
                = OpacityTableName_EmAb_Option, &
              OpacityTableName_Iso_Option &
                = OpacityTableName_Iso_Option, &
+             OpacityTableName_NNS_Option &
+               = OpacityTableName_NNS_Option, &
              OpacityTableName_NES_Option &
                = OpacityTableName_NES_Option, &
              OpacityTableName_Pair_Option &
@@ -582,6 +589,11 @@ contains
              MaxIter_inner_Option = MaxIter_inner_Option, &
              Rtol_inner_Option = Rtol_inner_Option, &
              Rtol_outer_Option = Rtol_outer_Option, &
+             Include_NNS_Option = Include_NNS_Option, &
+             NNS_ApplyManyBodyCorrection_Option &
+               = NNS_ApplyManyBodyCorrection_Option, &
+             NNS_ApplyWeakMagnetism_Option &
+               = NNS_ApplyWeakMagnetism_Option, &
              Include_NES_Option = Include_NES_Option, &
              Include_Pair_Option = Include_Pair_Option, &
              Include_NuPair_Option = Include_NuPair_Option, &

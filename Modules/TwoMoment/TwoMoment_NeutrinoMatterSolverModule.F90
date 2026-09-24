@@ -807,8 +807,8 @@ CONTAINS
     ( M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
 
       MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
-      Atol_inner_Option, Include_NNS_Option, NNS_ApplyManyBodyCorrection_Option, &
-      NNS_ApplyWeakMagnetism_Option, Include_NES_Option, Include_Pair_Option, &
+      Atol_inner_Option, Include_NNS_Option, NNS_ApplyWeakMagnetism_Option, &
+      NNS_ApplyManyBodyCorrection_Option, Include_NES_Option, Include_Pair_Option, &
       Include_NuPair_Option, Include_Brem_Option, Include_LinCorr_Option, &
       wMatrRHS_Option, DnuMax_Option, FreezeOpacities_Option, Verbose_Option )
 
