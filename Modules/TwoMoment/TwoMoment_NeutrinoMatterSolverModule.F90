@@ -216,6 +216,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   LOGICAL :: SolverParametersInitialized = .FALSE.
 
   LOGICAL  :: Include_NNS
+  LOGICAL  :: NNS_ApplyManyBodyCorrection
+  LOGICAL  :: NNS_ApplyWeakMagnetism
   LOGICAL  :: Include_NES
   LOGICAL  :: Include_Pair
   LOGICAL  :: Include_NuPair
@@ -804,7 +806,8 @@ CONTAINS
     ( M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
 
       MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
-      Atol_inner_Option, Include_NNS_Option, Include_NES_Option, Include_Pair_Option, &
+      Atol_inner_Option, Include_NNS_Option, NNS_ApplyManyBodyCorrection_Option, &
+      NNS_ApplyWeakMagnetism_Option, Include_NES_Option, Include_Pair_Option, &
       Include_NuPair_Option, Include_Brem_Option, Include_LinCorr_Option, &
       wMatrRHS_Option, DnuMax_Option, FreezeOpacities_Option, Verbose_Option )
 
@@ -816,6 +819,8 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL :: Rtol_inner_Option
     REAL(DP), INTENT(in), OPTIONAL :: Atol_inner_option
     LOGICAL , INTENT(in), OPTIONAL :: Include_NNS_Option
+    LOGICAL , INTENT(in), OPTIONAL :: NNS_ApplyManyBodyCorrection_Option
+    LOGICAL , INTENT(in), OPTIONAL :: NNS_ApplyWeakMagnetism_Option
     LOGICAL , INTENT(in), OPTIONAL :: Include_NES_Option
     LOGICAL , INTENT(in), OPTIONAL :: Include_Pair_Option
     LOGICAL , INTENT(in), OPTIONAL :: Include_NuPair_Option
@@ -876,6 +881,18 @@ CONTAINS
       Include_NNS = Include_NNS_Option
     ELSE
       Include_NNS = .TRUE.
+    END IF
+
+    IF( PRESENT( NNS_ApplyManyBodyCorrection_Option ) )THEN
+      NNS_ApplyManyBodyCorrection = NNS_ApplyManyBodyCorrection_Option
+    ELSE
+      NNS_ApplyManyBodyCorrection = .FALSE.
+    END IF
+
+    IF( PRESENT( NNS_ApplyWeakMagnetism_Option ) )THEN
+      NNS_ApplyWeakMagnetism = NNS_ApplyWeakMagnetism_Option
+    ELSE
+      NNS_ApplyWeakMagnetism = .TRUE.
     END IF
 
     IF( PRESENT( Include_NES_Option ) )THEN
@@ -948,6 +965,8 @@ CONTAINS
       WRITE(*,'(A4,A32,ES10.3E3)') '', 'Atol_inner: '     , Atol_inner
       WRITE(*,*)
       WRITE(*,'(A4,A32,L1)')       '', 'Include_NNS: '    , Include_NNS
+      WRITE(*,'(A4,A32,L1)')       '', 'NNS_manybody: '   , NNS_ApplyManyBodyCorrection
+      WRITE(*,'(A4,A32,L1)')       '', 'NNS_weak_mag: '   , NNS_ApplyWeakMagnetism
       WRITE(*,'(A4,A32,L1)')       '', 'Include_NES: '    , Include_NES
       WRITE(*,'(A4,A32,L1)')       '', 'Include_Pair: '   , Include_Pair
       WRITE(*,'(A4,A32,L1)')       '', 'Include_NuPair: ' , Include_NuPair
@@ -1862,7 +1881,9 @@ CONTAINS
       CALL TimersStart( Timer_Opacity_NNS )
 
       CALL ComputeNeutrinoOpacities_NNS &
-             ( 1, nE_G, 1, nX, D_P, T_P, Y_P, 1, Phi_NNS_P, Phi_NbNS_P )
+             ( 1, nE_G, 1, nX, D_P, T_P, Y_P, 1, Phi_NNS_P, Phi_NbNS_P, &
+               ApplyWeakMagnetism = NNS_ApplyWeakMagnetism, &
+               ApplyManyBodyCorrection = NNS_ApplyManyBodyCorrection )
 
       CALL TimersStop( Timer_Opacity_NNS )
 

@@ -20,6 +20,8 @@ MODULE OpacityModule_TABLE
   USE wlInterpolationUtilitiesModule, ONLY: &
     GetIndexAndDelta_Lin, &
     GetIndexAndDelta_Log
+  USE wlNeutralCurrentCorrectionsModule, ONLY: &
+    ComputeNCWeakMagnetismCorrection
 
   ! ----------------------------------------------
 
@@ -96,6 +98,11 @@ MODULE OpacityModule_TABLE
   REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE, PUBLIC :: &
     Iso_T, NNS_T, NNS_AT, NES_T, NES_AT, &
     Pair_T, Pair_AT, Brem_T, Brem_AT
+  REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
+    NNS_Xi_Nu_N,    &
+    NNS_Xi_Nu_P,    &
+    NNS_Xi_NuBar_N, &
+    NNS_Xi_NuBar_P
 #ifdef MICROPHYSICS_WEAKLIB
   TYPE(OpacityTableType), PUBLIC :: &
     OPACITIES
@@ -172,7 +179,9 @@ MODULE OpacityModule_TABLE
   !$OMP   Pair_MinD, Pair_MaxD,                           &
   !$OMP   Brem_MinD, Brem_MaxD,                           &
   !$OMP   NuPair_MinD, NuPair_MaxD,                       &
-  !$OMP   Op_MinD, Op_MaxD )
+  !$OMP   Op_MinD, Op_MaxD,                               &
+  !$OMP   NNS_Xi_Nu_N, NNS_Xi_Nu_P,                       &
+  !$OMP   NNS_Xi_NuBar_N, NNS_Xi_NuBar_P )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T,                &
@@ -196,7 +205,9 @@ MODULE OpacityModule_TABLE
   !$ACC   Pair_MinD, Pair_MaxD,                           &
   !$ACC   Brem_MinD, Brem_MaxD,                           &
   !$ACC   NuPair_MinD, NuPair_MaxD,                       &
-  !$ACC   Op_MinD, Op_MaxD )
+  !$ACC   Op_MinD, Op_MaxD,                               &
+  !$ACC   NNS_Xi_Nu_N, NNS_Xi_Nu_P,                       &
+  !$ACC   NNS_Xi_NuBar_N, NNS_Xi_NuBar_P )
 #endif
 
 CONTAINS
@@ -256,6 +267,9 @@ CONTAINS
     INTEGER                   :: k, kk
     REAL(dp)                  :: EC_E_max
     REAL(dp)                  :: x
+
+    ! Helpers for NNS wealk magnetism
+    REAL(DP), ALLOCATABLE :: ENu(:)
 
     IF( PRESENT( OpacityTableName_EmAb_Option ) &
         .AND. ( LEN_TRIM( OpacityTableName_EmAb_Option ) > 1 ) )THEN
@@ -635,6 +649,8 @@ CONTAINS
     ALLOCATE( LogMuBs_T(SIZE( MuBs_T )) )
     LogMubs_T = LOG10( MuBs_T )
 
+    ! --- Offsets ---
+
     ALLOCATE( OS_EmAb(1:OPACITIES % EmAb % nOpacities) )
     OS_EmAb = OPACITIES % EmAb % Offsets
 
@@ -802,6 +818,31 @@ CONTAINS
 
     CALL DeAllocateOpacityTable( OPACITIES )
 
+    ! --- weak magentism arrays ---
+
+    ALLOCATE( ENu            (1:nPointsE) )
+    ALLOCATE( NNS_Xi_Nu_N    (1:nPointsE) )
+    ALLOCATE( NNS_Xi_Nu_P    (1:nPointsE) )
+    ALLOCATE( NNS_Xi_NuBar_N (1:nPointsE) )
+    ALLOCATE( NNS_Xi_NuBar_P (1:nPointsE) )
+
+    DO iN_E1 = 1, nPointsE
+
+      iE1     = MOD( ( iN_E1 - 1 ) / nNodesE, nE ) + 1
+      iNodeE1 = MOD(   iN_E1 - 1,              nNodesE ) + 1
+
+      ENu(iN_E1) &
+        = NodeCoordinate( MeshE, iE1, iNodeE1 ) / MeV
+
+    END DO
+
+    CALL ComputeNCWeakMagnetismCorrection &
+           ( 1, nPointsE, ENu, &
+             NNS_Xi_Nu_N, NNS_Xi_Nu_P, &
+             NNS_Xi_NuBar_N, NNS_Xi_NuBar_P )
+
+    DEALLOCATE( ENu )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( always, to: LogEs_T, LogDs_T, LogTs_T, Ys_T, &
@@ -819,7 +860,9 @@ CONTAINS
     !$OMP                  Pair_MinD, Pair_MaxD, &
     !$OMP                  Brem_MinD, Brem_MaxD, &
     !$OMP                  NuPair_MinD, NuPair_MaxD, &
-    !$OMP                  Op_MinD, Op_MaxD )
+    !$OMP                  Op_MinD, Op_MaxD, &
+    !$OMP                  NNS_Xi_Nu_N, NNS_Xi_Nu_P, &
+    !$OMP                  NNS_Xi_NuBar_N, NNS_Xi_NuBar_P )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T,            &
@@ -837,7 +880,9 @@ CONTAINS
     !$ACC   Pair_MinD, Pair_MaxD, &
     !$ACC   Brem_MinD, Brem_MaxD, &
     !$ACC   NuPair_MinD, NuPair_MaxD, &
-    !$ACC   Op_MinD, Op_MaxD )
+    !$ACC   Op_MinD, Op_MaxD, &
+    !$ACC   NNS_Xi_Nu_N, NNS_Xi_Nu_P, &
+    !$ACC   NNS_Xi_NuBar_N, NNS_Xi_NuBar_P )
 #endif
 
     use_EC_table = OPACITIES % EmAb % nuclei_EC_table
@@ -1195,7 +1240,9 @@ CONTAINS
     !$OMP               Pair_MinD, Pair_MaxD, &
     !$OMP               Brem_MinD, Brem_MaxD, &
     !$OMP               NuPair_MinD, NuPair_MaxD, &
-    !$OMP               Op_MinD, Op_MaxD )
+    !$OMP               Op_MinD, Op_MaxD, &
+    !$OMP               NNS_Xi_Nu_N, NNS_Xi_Nu_P, &
+    !$OMP               NNS_Xi_NuBar_N, NNS_Xi_NuBar_P )
 
     IF ( use_EC_table > 0 ) THEN
     !$OMP TARGET EXIT DATA &
@@ -1214,6 +1261,9 @@ CONTAINS
     DEALLOCATE( OS_EmAb, OS_Iso, OS_NNS, OS_NES, OS_Pair, OS_Brem )
     DEALLOCATE( EmAb_T, Iso_T, NNS_T, NES_T, Pair_T, Brem_T )
     DEALLOCATE( NNS_AT, NES_AT, Pair_AT, Brem_AT )
+
+    DEALLOCATE( NNS_Xi_Nu_N, NNS_Xi_Nu_P )
+    DEALLOCATE( NNS_Xi_NuBar_N, NNS_Xi_NuBar_P )
 
     IF ( use_EC_table > 0 ) THEN
       DEALLOCATE( OS_EmAb_EC_spec, OS_EmAb_EC_rate )

@@ -717,6 +717,10 @@ CONTAINS
                = Rtol_outer, &
              Include_NNS_Option &
                = Include_NNS, &
+             NNS_ApplyWeakMagnetism_Option &
+               = .TRUE., &
+             NNS_ApplyManyBodyCorrection_Option &
+               = .TRUE., &
              Include_NES_Option &
                = Include_NES, &
              Include_Pair_Option &

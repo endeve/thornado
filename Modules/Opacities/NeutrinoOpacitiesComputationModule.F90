@@ -48,6 +48,8 @@ MODULE NeutrinoOpacitiesComputationModule
     OS_EmAb, OS_Iso, OS_NNS, OS_NES, OS_Pair, OS_Brem, &
     EmAb_T, Iso_T, NNS_T, NES_T, Pair_T, Brem_T, &
     NNS_AT, NES_AT, Pair_AT, Brem_AT, &
+    NNS_Xi_Nu_N, NNS_Xi_Nu_P, &
+    NNS_Xi_NuBar_N, NNS_Xi_NuBar_P, &
     use_EC_table,             &
     OS_EmAb_EC_spec, EmAb_EC_spec_T, &
     OS_EmAb_EC_rate, EmAb_EC_rate_T, & 
@@ -95,6 +97,9 @@ MODULE NeutrinoOpacitiesComputationModule
 
   USE wlOpacityFieldsModule, ONLY: &
     iNeutron_NNS, iProton_NNS
+
+  USE wlNeutralCurrentCorrectionsModule, ONLY: &
+    ComputeNCManyBodyCorrection
 
   ! ----------------------------------------------
 
@@ -1657,7 +1662,9 @@ CONTAINS
   END SUBROUTINE ComputeNeutrinoOpacities_ES_Vector
 
   SUBROUTINE ComputeNeutrinoOpacities_NNS &
-    ( iE_B, iE_E, iX_B, iX_E, D, T, Y, iMoment, Phi_NNS, Phi_NbNS )
+    ( iE_B, iE_E, iX_B, iX_E, D, T, Y, &
+      iMoment, Phi_NNS, Phi_NbNS, &
+      ApplyWeakMagnetism, ApplyManyBodyCorrection )
 
     ! --- Brem Opacities (Multiple D,T) ---
 
@@ -1669,6 +1676,8 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iMoment
     REAL(DP), INTENT(out) :: Phi_NNS (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: Phi_NbNS(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
+    LOGICAL,  INTENT(in)  :: ApplyWeakMagnetism
+    LOGICAL,  INTENT(in)  :: ApplyManyBodyCorrection
 
     INTEGER  :: iX, iE1, iE2
     REAL(DP), ALLOCATABLE :: Mup(:), Mun(:) !Proton and neutron chemical potentials
@@ -1676,7 +1685,7 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: LogMun_P(:), LogMup_P(:) !neutron and proton chemical potential
     REAL(DP), ALLOCATABLE :: Phi_n(:,:,:), Phi_p(:,:,:) !Scattering kernels on n and p
 
-    REAL(DP), ALLOCATABLE :: S_tot(:), xi_n_wm(:), xi_p_wm(:), xib_n_wm(:), xib_p_wm(:)
+    REAL(DP), ALLOCATABLE :: S_tot(:)
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -1687,19 +1696,19 @@ CONTAINS
     ALLOCATE( Phi_n(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     ALLOCATE( Phi_p(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     ALLOCATE( S_tot(iX_B:iX_E) )
-    ALLOCATE( xi_n_wm (iE_B:iE_E), xi_p_wm (iE_B:iE_E) )
-    ALLOCATE( xib_n_wm(iE_B:iE_E), xib_p_wm(iE_B:iE_E) )
+
+    S_tot = One
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( alloc: Mun, Mup, LogT_P, LogMun_P, LogMup_P, &
     !$OMP             Phi_n, Phi_p, Phi_NNS, Phi_NbNS ) &
-    !$OMP MAP( to: D, T, Y )
+    !$OMP MAP( to: D, T, Y, S_tot )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC CREATE( Mun, Mup, LogT_P, LogMun_P, LogMup_P, &
     !$ACC         Phi_n, Phi_p, Phi_NNS, Phi_NbNS ) &
-    !$ACC COPYIN( D, T, Y )
+    !$ACC COPYIN( D, T, Y, S_tot )
 #endif
 
     ! --- Compute neutron and proton chemical potentials ---
@@ -1724,19 +1733,33 @@ CONTAINS
 
       LogT_P(iX)   = LOG10( T(iX) / UnitT )
 
-      S_tot(iX)    = 1.0d0 !placeholder
-
     END DO
 
-    !weak mag placeholder
-    DO iE1 = iE_B, iE_E
+    IF ( ApplyManyBodyCorrection ) THEN
 
-      xi_n_wm(iE1)  = 1.0d0
-      xi_p_wm(iE1)  = 1.0d0
-      xib_n_wm(iE1) = 1.0d0
-      xib_p_wm(iE1) = 1.0d0
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+      DO iX = iX_B, iX_E
 
-    END DO
+        CALL ComputeNCManyBodyCorrection &
+               ( ( D(iX) / UnitD ) * AvogadroConstantMKS * 1.0d-39, &
+                 T(iX) / MeV, Y(iX), S_tot(iX) )
+
+      END DO
+  
+      !WRITE(*,'(A,2ES14.6E3)') &
+      !  'NNS S_tot min/max: ', MINVAL(S_tot), MAXVAL(S_tot)
+
+      !IF ( ANY(S_tot <= Zero) .OR. ANY(S_tot > One) ) THEN
+      !  ERROR STOP "NNS many-body correction outside (0,1]"
+      !END IF
+
+    END IF
 
     ! --- Interpolate Phi_n  ---
 
@@ -1750,46 +1773,60 @@ CONTAINS
            ( LogT_P, LogMup_P, LogTs_T, LogMuBs_T, &
              OS_NNS(iProton_NNS,iMoment), NNS_AT(:,:,:,:,iMoment,iProton_NNS), Phi_p )
 
-!write(*,*) LogT_P(1:10)
-!write(*,*) LogTs_T
-!write(*,*) LogMun_P(1:10)
-!write(*,*) LogMuBs_T
-
-!stop
-
-    ! --- placeholder for weak magnetism and manybody corrections
-
-    !call calc_weak_mag (iE)
-    !call S_tot(iX)
-
+    IF( ApplyWeakMagnetism ) THEN
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3)
 #endif
-    DO iX  = iX_B, iX_E
-    DO iE2 = iE_B, iE_E
-    DO iE1 = iE_B, iE_E
+      DO iX  = iX_B, iX_E
+      DO iE2 = iE_B, iE_E
+      DO iE1 = iE_B, iE_E
 
-      Phi_NNS (iE1,iE2,iX) = Phi_n (iE1,iE2,iX)  *  S_tot(iX)  *  xi_n_wm  (iE2) &
-                           + Phi_p (iE1,iE2,iX)  *  S_tot(iX)  *  xi_p_wm  (iE2)
+        Phi_NNS (iE1,iE2,iX) = ( Phi_n(iE1,iE2,iX) * NNS_Xi_Nu_N   (iE2)  &
+                               + Phi_p(iE1,iE2,iX) * NNS_Xi_Nu_P   (iE2)  ) * S_tot(iX)
 
-      Phi_NbNS(iE1,iE2,iX) = Phi_n (iE1,iE2,iX)  *  S_tot(iX)  *  xib_n_wm (iE2) &
-                           + Phi_p (iE1,iE2,iX)  *  S_tot(iX)  *  xib_p_wm (iE2)
+        Phi_NbNS(iE1,iE2,iX) = ( Phi_n(iE1,iE2,iX) * NNS_Xi_NuBar_N(iE2) &
+                               + Phi_p(iE1,iE2,iX) * NNS_Xi_NuBar_P(iE2) ) * S_tot(iX)
 
-    END DO
-    END DO
-    END DO
+      END DO
+      END DO
+      END DO
+
+    ELSE
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+      DO iX  = iX_B, iX_E
+      DO iE2 = iE_B, iE_E
+      DO iE1 = iE_B, iE_E
+
+        Phi_NNS (iE1,iE2,iX) = ( Phi_n(iE1,iE2,iX) + Phi_p(iE1,iE2,iX) ) * S_tot(iX)
+
+        Phi_NbNS(iE1,iE2,iX) = ( Phi_n(iE1,iE2,iX) + Phi_p(iE1,iE2,iX) ) * S_tot(iX)
+
+      END DO
+      END DO
+      END DO
+
+
+    ENDIF
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: Mup, Mun, LogT_P, LogMun_P, LogMup_P, &
-    !$OMP      D, T, Y, Phi_n, Phi_p ) &
+    !$OMP      D, T, Y, Phi_n, Phi_p, S_tot ) &
     !$OMP MAP( from: Phi_NNS, Phi_NbNS )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC DELETE( Mup, Mun, LogT_P, LogMun_P, LogMup_P, &
-    !$ACC         D, T, Y, Phi_n, Phi_p ) &
+    !$ACC         D, T, Y, Phi_n, Phi_p, S_tot ) &
     !$ACC COPYOUT( Phi_NNS, Phi_NbNS )
 
     !$ACC WAIT(1)
