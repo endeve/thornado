@@ -56,6 +56,7 @@ PROGRAM ApplicationDriver_Neutrinos
   CHARACTER(64) :: EosTableName
   CHARACTER(64) :: OpacityTableName_EmAb
   CHARACTER(64) :: OpacityTableName_Iso
+  CHARACTER(64) :: OpacityTableName_NNS
   CHARACTER(64) :: OpacityTableName_NES
   CHARACTER(64) :: OpacityTableName_Pair
   CHARACTER(64) :: OpacityTableName_Brem
@@ -66,6 +67,7 @@ PROGRAM ApplicationDriver_Neutrinos
   LOGICAL       :: UsePositivityLimiter_TwoMoment
   LOGICAL       :: UseEnergyLimiter_TwoMoment
   LOGICAL       :: PrescribedTimeStep
+  LOGICAL       :: Include_NNS
   LOGICAL       :: Include_NES
   LOGICAL       :: Include_Pair
   LOGICAL       :: Include_NuPair
@@ -89,15 +91,16 @@ PROGRAM ApplicationDriver_Neutrinos
   REAL(DP)      :: DnuMax
   LOGICAL       :: Relaxation_restart_from_file
 
-  ProgramName = 'Relaxation'
-  Relaxation_restart_from_file = .FALSE. 
-  !ProgramName = 'DeleptonizationWave1D'
+  !ProgramName = 'Relaxation'
+  !Relaxation_restart_from_file = .FALSE. 
+  ProgramName = 'DeleptonizationWave1D'
 
   CoordinateSystem = 'CARTESIAN'
 
   EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
   OpacityTableName_EmAb = 'wl-Op-SFHo-15-25-50-E40-EmAb.h5'
   OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-Iso.h5'
+  OpacityTableName_NNS  = 'wl-Op-SFHo-15-25-50-E40-NNS.h5'
   OpacityTableName_NES  = 'wl-Op-SFHo-15-25-50-E40-NES.h5'
   OpacityTableName_Pair = 'wl-Op-SFHo-15-25-50-E40-Pair.h5'
   OpacityTableName_Brem = 'wl-Op-SFHo-15-25-50-E40-Brem.h5'
@@ -112,6 +115,7 @@ PROGRAM ApplicationDriver_Neutrinos
   M_inner         = 2
   MaxIter_inner   = 100
   Rtol_inner      = 1.0d-8
+  Include_NNS     = .TRUE.
   Include_NES     = .TRUE.
   Include_Pair    = .TRUE.
   Include_NuPair  = .FALSE.
@@ -175,6 +179,7 @@ PROGRAM ApplicationDriver_Neutrinos
         UsePositivityLimiter_TwoMoment = .FALSE.
         UseEnergyLimiter_TwoMoment     = .FALSE.
 
+        Include_NNS     = .TRUE.
         Include_NES     = .TRUE.
         Include_Pair    = .TRUE.
         Include_NuPair  = .FALSE.
@@ -188,6 +193,7 @@ PROGRAM ApplicationDriver_Neutrinos
         M_inner         = 2
         MaxIter_inner   = 100
         Rtol_inner      = 1.0d-8
+        Include_NNS     = .TRUE.
         Include_NES     = .TRUE.
         Include_Pair    = .TRUE.
         Include_NuPair  = .FALSE.
@@ -271,12 +277,19 @@ PROGRAM ApplicationDriver_Neutrinos
 
       wMatterRHS = [ One, One, Zero, Zero, Zero ] ! --- Keep Velocity Fixed
 
+      Include_NNS     = .TRUE.
       Include_NES     = .TRUE.
       Include_Pair    = .TRUE.
       Include_NuPair  = .TRUE.
       Include_Brem    = .TRUE.
       Include_LinCorr = .FALSE.
       FreezeOpacities = .FALSE. ! --- Keep opacities fixed during iterations?
+
+      DnuMax          = One - 1.0d-6
+
+      M_inner = 2
+      MaxIter_inner   = 1000
+      !M_outer = 1
 
     CASE( 'EquilibriumAdvection' )
 
@@ -603,6 +616,8 @@ CONTAINS
                = TRIM( OpacityTableName_EmAb ), &
              OpacityTableName_Iso_Option  &
                = TRIM( OpacityTableName_Iso ), &
+             OpacityTableName_NNS_Option &
+               = TRIM( OpacityTableName_NNS ), &
              OpacityTableName_NES_Option &
                = TRIM( OpacityTableName_NES ), &
              OpacityTableName_Pair_Option &
@@ -700,6 +715,8 @@ CONTAINS
                = Rtol_inner, &
              Rtol_outer_Option &
                = Rtol_outer, &
+             Include_NNS_Option &
+               = Include_NNS, &
              Include_NES_Option &
                = Include_NES, &
              Include_Pair_Option &

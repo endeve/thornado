@@ -45,9 +45,9 @@ MODULE NeutrinoOpacitiesComputationModule
     ComputeElectronNeutrinoChemicalPotential_TABLE
   USE OpacityModule_TABLE, ONLY: &
 #ifdef MICROPHYSICS_WEAKLIB
-    OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem, &
-    EmAb_T, Iso_T, NES_T, Pair_T, Brem_T, &
-    NES_AT, Pair_AT, Brem_AT, &
+    OS_EmAb, OS_Iso, OS_NNS, OS_NES, OS_Pair, OS_Brem, &
+    EmAb_T, Iso_T, NNS_T, NES_T, Pair_T, Brem_T, &
+    NNS_AT, NES_AT, Pair_AT, Brem_AT, &
     use_EC_table,             &
     OS_EmAb_EC_spec, EmAb_EC_spec_T, &
     OS_EmAb_EC_rate, EmAb_EC_rate_T, & 
@@ -57,19 +57,21 @@ MODULE NeutrinoOpacitiesComputationModule
     EC_kfmin, EC_kfmax, &
     EC_a, EC_b, EC_ak, EC_bk, &
 #endif
-    LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+    LogEtas_T, LogMuBs_T, &
     C1, C2, C1_NuPair, C2_NuPair, &
     QueryOpacity_EmAb, &
     QueryOpacity_EmAb_Nucleon, &
     QueryOpacity_EmAb_Nuclei, &
     QueryOpacity_Iso, &
     QueryOpacity_NES, &
+    QueryOpacity_NNS, &
     QueryOpacity_Pair, &
     QueryOpacity_Brem, &
     QueryOpacity_NuPair
   USE RadiationFieldsModule, ONLY: &
     iNuE, iNuE_Bar, LeptonNumber, &
-    iNu, iNu_Bar
+    iNu, iNu_Bar, nChirals
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -91,6 +93,9 @@ MODULE NeutrinoOpacitiesComputationModule
     GetIndexAndDelta_Log, &
     LinearInterp1D_1DArray_Point
 
+  USE wlOpacityFieldsModule, ONLY: &
+    iNeutron_NNS, iProton_NNS
+
   ! ----------------------------------------------
 
 #endif
@@ -102,6 +107,8 @@ MODULE NeutrinoOpacitiesComputationModule
   PUBLIC :: ComputeNeutrinoOpacities_EC_Vector
   PUBLIC :: ComputeNeutrinoOpacities_ES
   PUBLIC :: ComputeNeutrinoOpacities_ES_Vector
+  PUBLIC :: ComputeNeutrinoOpacities_NNS
+  PUBLIC :: ComputeNeutrinoOpacityRates_NNS
   PUBLIC :: ComputeNeutrinoOpacities_NES
   PUBLIC :: ComputeNeutrinoOpacityRates_NES
   PUBLIC :: ComputeNeutrinoOpacityRates_LinearCorrections_NES
@@ -133,6 +140,7 @@ MODULE NeutrinoOpacitiesComputationModule
   REAL(DP), PARAMETER :: UnitEta  = One
   REAL(DP), PARAMETER :: UnitEC   = One / Centimeter
   REAL(DP), PARAMETER :: UnitES   = One / ( Centimeter * MeV**2 )
+  REAL(DP), PARAMETER :: UnitNNS  = One / ( Centimeter * MeV**3 ) !Check this! TODO
   REAL(DP), PARAMETER :: UnitNES  = One / ( Centimeter * MeV**3 )
   REAL(DP), PARAMETER :: UnitPair = One / ( Centimeter * MeV**3 )
   REAL(DP), PARAMETER :: UnitBrem = One / ( Centimeter * MeV**3 )
@@ -1647,6 +1655,265 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeNeutrinoOpacities_ES_Vector
+
+  SUBROUTINE ComputeNeutrinoOpacities_NNS &
+    ( iE_B, iE_E, iX_B, iX_E, D, T, Y, iMoment, Phi_NNS, Phi_NbNS )
+
+    ! --- Brem Opacities (Multiple D,T) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
+    REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    INTEGER,  INTENT(in)  :: iMoment
+    REAL(DP), INTENT(out) :: Phi_NNS (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
+    REAL(DP), INTENT(out) :: Phi_NbNS(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
+
+    INTEGER  :: iX, iE1, iE2
+    REAL(DP), ALLOCATABLE :: Mup(:), Mun(:) !Proton and neutron chemical potentials
+    REAL(DP), ALLOCATABLE :: LogT_P(:)
+    REAL(DP), ALLOCATABLE :: LogMun_P(:), LogMup_P(:) !neutron and proton chemical potential
+    REAL(DP), ALLOCATABLE :: Phi_n(:,:,:), Phi_p(:,:,:) !Scattering kernels on n and p
+
+    REAL(DP), ALLOCATABLE :: S_tot(:), xi_n_wm(:), xi_p_wm(:), xib_n_wm(:), xib_p_wm(:)
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ALLOCATE( Mup(iX_B:iX_E), Mun(iX_B:iX_E) )
+    ALLOCATE( LogT_P(iX_B:iX_E) )
+    ALLOCATE( LogMun_P(iX_B:iX_E) )
+    ALLOCATE( LogMup_P(iX_B:iX_E) )
+    ALLOCATE( Phi_n(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
+    ALLOCATE( Phi_p(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
+    ALLOCATE( S_tot(iX_B:iX_E) )
+    ALLOCATE( xi_n_wm (iE_B:iE_E), xi_p_wm (iE_B:iE_E) )
+    ALLOCATE( xib_n_wm(iE_B:iE_E), xib_p_wm(iE_B:iE_E) )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: Mun, Mup, LogT_P, LogMun_P, LogMup_P, &
+    !$OMP             Phi_n, Phi_p, Phi_NNS, Phi_NbNS ) &
+    !$OMP MAP( to: D, T, Y )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC CREATE( Mun, Mup, LogT_P, LogMun_P, LogMup_P, &
+    !$ACC         Phi_n, Phi_p, Phi_NNS, Phi_NbNS ) &
+    !$ACC COPYIN( D, T, Y )
+#endif
+
+    ! --- Compute neutron and proton chemical potentials ---
+
+    CALL ComputeNeutronChemicalPotential_TABLE &
+           ( D, T, Y, Mun )
+
+    CALL ComputeProtonChemicalPotential_TABLE &
+           ( D, T, Y, Mup )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iX = iX_B, iX_E
+
+      LogMup_P(iX) = LOG10( Mup(iX) / UnitMp )
+      LogMun_P(iX) = LOG10( Mun(iX) / UnitMn )
+
+      LogT_P(iX)   = LOG10( T(iX) / UnitT )
+
+      S_tot(iX)    = 1.0d0 !placeholder
+
+    END DO
+
+    !weak mag placeholder
+    DO iE1 = iE_B, iE_E
+
+      xi_n_wm(iE1)  = 1.0d0
+      xi_p_wm(iE1)  = 1.0d0
+      xib_n_wm(iE1) = 1.0d0
+      xib_p_wm(iE1) = 1.0d0
+
+    END DO
+
+    ! --- Interpolate Phi_n  ---
+
+    CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
+           ( LogT_P, LogMun_P, LogTs_T, LogMuBs_T, &
+             OS_NNS(iNeutron_NNS,iMoment), NNS_AT(:,:,:,:,iMoment,iNeutron_NNS), Phi_n )
+
+    ! --- Interpolate Phi_p ---
+
+    CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
+           ( LogT_P, LogMup_P, LogTs_T, LogMuBs_T, &
+             OS_NNS(iProton_NNS,iMoment), NNS_AT(:,:,:,:,iMoment,iProton_NNS), Phi_p )
+
+!write(*,*) LogT_P(1:10)
+!write(*,*) LogTs_T
+!write(*,*) LogMun_P(1:10)
+!write(*,*) LogMuBs_T
+
+!stop
+
+    ! --- placeholder for weak magnetism and manybody corrections
+
+    !call calc_weak_mag (iE)
+    !call S_tot(iX)
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+#endif
+    DO iX  = iX_B, iX_E
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
+
+      Phi_NNS (iE1,iE2,iX) = Phi_n (iE1,iE2,iX)  *  S_tot(iX)  *  xi_n_wm  (iE2) &
+                           + Phi_p (iE1,iE2,iX)  *  S_tot(iX)  *  xi_p_wm  (iE2)
+
+      Phi_NbNS(iE1,iE2,iX) = Phi_n (iE1,iE2,iX)  *  S_tot(iX)  *  xib_n_wm (iE2) &
+                           + Phi_p (iE1,iE2,iX)  *  S_tot(iX)  *  xib_p_wm (iE2)
+
+    END DO
+    END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: Mup, Mun, LogT_P, LogMun_P, LogMup_P, &
+    !$OMP      D, T, Y, Phi_n, Phi_p ) &
+    !$OMP MAP( from: Phi_NNS, Phi_NbNS )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( Mup, Mun, LogT_P, LogMun_P, LogMup_P, &
+    !$ACC         D, T, Y, Phi_n, Phi_p ) &
+    !$ACC COPYOUT( Phi_NNS, Phi_NbNS )
+
+    !$ACC WAIT(1)
+#endif
+
+#else
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP MAP( from: Phi_NNS, Phi_NbNS )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC COPYOUT( Phi_NNS, Phi_NbNS )
+#endif
+    DO iX  = iX_B, iX_E
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
+      Phi_NNS (iE1,iE2,iX) = Zero
+      Phi_NbNS(iE1,iE2,iX) = Zero
+    END DO
+    END DO
+    END DO
+
+#endif
+
+  END SUBROUTINE ComputeNeutrinoOpacities_NNS
+
+  SUBROUTINE ComputeNeutrinoOpacityRates_NNS &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, J, J0, Phi_NNS, Phi_NbNS, Eta, Chi )
+
+    ! --- Neutrino-Electron Scattering Rates (Multiple J) ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    INTEGER,  INTENT(in)  :: iS_B, iS_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
+    REAL(DP), INTENT(in)  :: D       (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: W2      (iE_B:iE_E)
+    REAL(DP), INTENT(in)  :: J       (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: J0      (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Phi_NNS (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Phi_NbNS(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
+    REAL(DP), INTENT(out) :: Eta     (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+    REAL(DP), INTENT(out) :: Chi     (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+
+    REAL(DP) :: DetBal, Phi_Out, Phi_In
+    REAL(DP) :: SUM1, SUM2
+    INTEGER  :: iE1, iE2, iS, iX, iC
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( SUM1, SUM2, DetBal, Phi_In, Phi_Out, iC ) &
+    !$OMP MAP( to: Phi_NNS, Phi_NbNS, W2, J, J0, D ) &
+    !$OMP MAP( from: Eta, Chi )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( SUM1, SUM2, DetBal, Phi_In, Phi_Out, iC ) &
+    !$ACC COPYIN( Phi_NNS, Phi_NbNS, W2, J, J0, D ) &
+    !$ACC COPYOUT( Eta, Chi )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( SUM1, SUM2, DetBal, Phi_In, Phi_Out, iC )
+#endif
+    DO iX  = iX_B, iX_E
+    DO iS  = iS_B, iS_E
+    DO iE2 = iE_B, iE_E
+
+      SUM1 = Zero
+      SUM2 = Zero
+      iC   = nChirals - (LeptonNumber(iS) + 1) / nChirals
+
+      IF ( QueryOpacity_NNS( D(iX) / UnitD ) ) THEN
+
+        IF ( iC == iNu ) THEN !neutrino-nucleon scattering
+
+          DO iE1 = iE_B, iE_E
+
+            DetBal =   ( J0(iE2,iS,iX) * ( One - J0(iE1,iS,iX) ) ) &
+                     / ( J0(iE1,iS,iX) * ( One - J0(iE2,iS,iX) ) )
+
+            IF ( iE1 <= iE2 ) THEN
+              Phi_Out = Phi_NNS(iE1,iE2,iX) * UnitNNS
+              Phi_In  = Phi_Out * DetBal
+            ELSE
+              Phi_In  = Phi_NNS(iE2,iE1,iX) * UnitNNS
+              Phi_Out = Phi_In / DetBal
+            END IF
+
+            SUM1 = SUM1 + Phi_In  * W2(iE1) * J(iE1,iS,iX)
+            SUM2 = SUM2 + Phi_Out * W2(iE1) * ( One - J(iE1,iS,iX) )
+
+          END DO
+
+        ELSE !antineutrino-nucleon scattering
+
+          DO iE1 = iE_B, iE_E
+
+            DetBal =   ( J0(iE2,iS,iX) * ( One - J0(iE1,iS,iX) ) ) &
+                     / ( J0(iE1,iS,iX) * ( One - J0(iE2,iS,iX) ) )
+
+            IF ( iE1 <= iE2 ) THEN
+              Phi_Out = Phi_NbNS(iE1,iE2,iX) * UnitNNS
+              Phi_In  = Phi_Out * DetBal
+            ELSE
+              Phi_In  = Phi_NbNS(iE2,iE1,iX) * UnitNNS
+              Phi_Out = Phi_In / DetBal
+            END IF
+
+            SUM1 = SUM1 + Phi_In  * W2(iE1) * J(iE1,iS,iX)
+            SUM2 = SUM2 + Phi_Out * W2(iE1) * ( One - J(iE1,iS,iX) )
+
+          END DO
+
+        END IF
+
+      END IF
+
+      Eta(iE2,iS,iX) = SUM1
+      Chi(iE2,iS,iX) = SUM1 + SUM2
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeNeutrinoOpacityRates_NNS
 
 
   SUBROUTINE ComputeNeutrinoOpacities_NES &

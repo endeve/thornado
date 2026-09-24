@@ -44,10 +44,12 @@ MODULE TwoMoment_TimersModule
   REAL(DP), PUBLIC :: Timer_Opacity_LimitD0
   REAL(DP), PUBLIC :: Timer_Opacity_EC
   REAL(DP), PUBLIC :: Timer_Opacity_ES
+  REAL(DP), PUBLIC :: Timer_Opacity_NNS
   REAL(DP), PUBLIC :: Timer_Opacity_NES
   REAL(DP), PUBLIC :: Timer_Opacity_Pair
   REAL(DP), PUBLIC :: Timer_Opacity_NuPair
   REAL(DP), PUBLIC :: Timer_Opacity_Brem
+  REAL(DP), PUBLIC :: Timer_OpacityRate_NNS
   REAL(DP), PUBLIC :: Timer_OpacityRate_NES
   REAL(DP), PUBLIC :: Timer_OpacityRate_Pair
   REAL(DP), PUBLIC :: Timer_OpacityRate_NuPair
@@ -122,10 +124,12 @@ CONTAINS
     Timer_Opacity_LimitD0                = Zero
     Timer_Opacity_EC                     = Zero
     Timer_Opacity_ES                     = Zero
+    Timer_Opacity_NNS                    = Zero
     Timer_Opacity_NES                    = Zero
     Timer_Opacity_Pair                   = Zero
     Timer_Opacity_Brem                   = Zero
 
+    Timer_OpacityRate_NNS                = Zero
     Timer_OpacityRate_NES                = Zero
     Timer_OpacityRate_Pair               = Zero
     Timer_OpacityRate_Brem               = Zero
@@ -240,11 +244,15 @@ CONTAINS
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Opacity_ES                     :', Timer_Opacity_ES                    , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Opacity_NNS                    :', Timer_Opacity_NNS                   , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Opacity_NES                    :', Timer_Opacity_NES                   , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Opacity_Pair                   :', Timer_Opacity_Pair                  , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Opacity_Brem                   :', Timer_Opacity_Brem                  , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_OpacityRate_NNS                :', Timer_OpacityRate_NNS               , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_OpacityRate_NES                :', Timer_OpacityRate_NES               , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
