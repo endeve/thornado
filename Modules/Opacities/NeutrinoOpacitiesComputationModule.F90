@@ -60,7 +60,7 @@ MODULE NeutrinoOpacitiesComputationModule
     EC_a, EC_b, EC_ak, EC_bk, &
 #endif
     LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-    LogEtas_T, LogMuBs_T, &
+    LogEtas_T, MuBs_T, &
     C1, C2, C1_NuPair, C2_NuPair, &
     QueryOpacity_EmAb, &
     QueryOpacity_EmAb_Nucleon, &
@@ -1682,7 +1682,7 @@ CONTAINS
     INTEGER  :: iX, iE1, iE2
     REAL(DP), ALLOCATABLE :: Mup(:), Mun(:) !Proton and neutron chemical potentials
     REAL(DP), ALLOCATABLE :: LogT_P(:)
-    REAL(DP), ALLOCATABLE :: LogMun_P(:), LogMup_P(:) !neutron and proton chemical potential
+    REAL(DP), ALLOCATABLE :: Mun_P(:), Mup_P(:) !neutron and proton chemical potential
     REAL(DP), ALLOCATABLE :: Phi_n(:,:,:), Phi_p(:,:,:) !Scattering kernels on n and p
 
     REAL(DP), ALLOCATABLE :: S_tot(:)
@@ -1691,8 +1691,8 @@ CONTAINS
 
     ALLOCATE( Mup(iX_B:iX_E), Mun(iX_B:iX_E) )
     ALLOCATE( LogT_P(iX_B:iX_E) )
-    ALLOCATE( LogMun_P(iX_B:iX_E) )
-    ALLOCATE( LogMup_P(iX_B:iX_E) )
+    ALLOCATE( Mun_P(iX_B:iX_E) )
+    ALLOCATE( Mup_P(iX_B:iX_E) )
     ALLOCATE( Phi_n(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     ALLOCATE( Phi_p(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E) )
     ALLOCATE( S_tot(iX_B:iX_E) )
@@ -1701,12 +1701,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: Mun, Mup, LogT_P, LogMun_P, LogMup_P, &
+    !$OMP MAP( alloc: Mun, Mup, LogT_P, Mun_P, Mup_P, &
     !$OMP             Phi_n, Phi_p, Phi_NNS, Phi_NbNS ) &
     !$OMP MAP( to: D, T, Y, S_tot )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( Mun, Mup, LogT_P, LogMun_P, LogMup_P, &
+    !$ACC CREATE( Mun, Mup, LogT_P, Mun_P, Mup_P, &
     !$ACC         Phi_n, Phi_p, Phi_NNS, Phi_NbNS ) &
     !$ACC COPYIN( D, T, Y, S_tot )
 #endif
@@ -1728,8 +1728,8 @@ CONTAINS
 #endif
     DO iX = iX_B, iX_E
 
-      LogMup_P(iX) = LOG10( Mup(iX) / UnitMp )
-      LogMun_P(iX) = LOG10( Mun(iX) / UnitMn )
+      Mup_P(iX) = Mup(iX) / UnitMp
+      Mun_P(iX) = Mun(iX) / UnitMn
 
       LogT_P(iX)   = LOG10( T(iX) / UnitT )
 
@@ -1751,26 +1751,19 @@ CONTAINS
                  T(iX) / MeV, Y(iX), S_tot(iX) )
 
       END DO
-  
-      !WRITE(*,'(A,2ES14.6E3)') &
-      !  'NNS S_tot min/max: ', MINVAL(S_tot), MAXVAL(S_tot)
-
-      !IF ( ANY(S_tot <= Zero) .OR. ANY(S_tot > One) ) THEN
-      !  ERROR STOP "NNS many-body correction outside (0,1]"
-      !END IF
 
     END IF
 
     ! --- Interpolate Phi_n  ---
 
     CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
-           ( LogT_P, LogMun_P, LogTs_T, LogMuBs_T, &
+           ( LogT_P, Mun_P, LogTs_T, MuBs_T, &
              OS_NNS(iNeutron_NNS,iMoment), NNS_AT(:,:,:,:,iMoment,iNeutron_NNS), Phi_n )
 
     ! --- Interpolate Phi_p ---
 
     CALL LogInterpolateSingleVariable_2D2D_Custom_Aligned &
-           ( LogT_P, LogMup_P, LogTs_T, LogMuBs_T, &
+           ( LogT_P, Mup_P, LogTs_T, MuBs_T, &
              OS_NNS(iProton_NNS,iMoment), NNS_AT(:,:,:,:,iMoment,iProton_NNS), Phi_p )
 
     IF( ApplyWeakMagnetism ) THEN
@@ -1815,17 +1808,16 @@ CONTAINS
       END DO
       END DO
 
-
     ENDIF
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: Mup, Mun, LogT_P, LogMun_P, LogMup_P, &
+    !$OMP MAP( release: Mup, Mun, LogT_P, Mun_P, Mup_P, &
     !$OMP      D, T, Y, Phi_n, Phi_p, S_tot ) &
     !$OMP MAP( from: Phi_NNS, Phi_NbNS )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( Mup, Mun, LogT_P, LogMun_P, LogMup_P, &
+    !$ACC DELETE( Mup, Mun, LogT_P, Mun_P, Mup_P, &
     !$ACC         D, T, Y, Phi_n, Phi_p, S_tot ) &
     !$ACC COPYOUT( Phi_NNS, Phi_NbNS )
 

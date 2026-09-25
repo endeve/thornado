@@ -69,7 +69,7 @@ MODULE OpacityModule_TABLE
     dE1, dE2
   REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
     Es_T, Ds_T, Ts_T, Ys_T, Etas_T, MuBs_T, &
-    LogEs_T, LogDs_T, LogTs_T, LogEtas_T,  LogMuBs_T, &
+    LogEs_T, LogDs_T, LogTs_T, LogEtas_T, &
     Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T
   REAL(DP), PUBLIC :: EC_dE
   INTEGER, PUBLIC :: EC_nE, EC_iE_max, EC_iNodeE_max
@@ -160,7 +160,7 @@ MODULE OpacityModule_TABLE
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET &
   !$OMP ( LogEs_T, LogDs_T, LogTs_T, Ys_T,                &
-  !$OMP   LogEtas_T, LogMuBs_T,                           &
+  !$OMP   LogEtas_T, MuBs_T,                           &
   !$OMP   Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T,             &
   !$OMP   OS_EmAb, OS_Iso, OS_NNS, OS_NES,                &
   !$OMP   OS_Pair, OS_Brem,                               &
@@ -186,7 +186,7 @@ MODULE OpacityModule_TABLE
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T,                &
-  !$ACC   LogEtas_T, LogMuBs_T,                           &
+  !$ACC   LogEtas_T, MuBs_T,                           &
   !$ACC   Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T,             &
   !$ACC   OS_EmAb, OS_Iso, OS_NNS, OS_NES,                &
   !$ACC   OS_Pair, OS_Brem,                               &
@@ -653,9 +653,6 @@ CONTAINS
     ALLOCATE( Mubs_T(OPACITIES % MuBGrid % nPoints) )
     MuBs_T = OPACITIES % MuBGrid  % Values
 
-    ALLOCATE( LogMuBs_T(SIZE( MuBs_T )) )
-    LogMubs_T = LOG10( MuBs_T )
-
     ! --- Offsets ---
 
     ALLOCATE( OS_EmAb(1:OPACITIES % EmAb % nOpacities) )
@@ -853,7 +850,7 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( always, to: LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-    !$OMP                  LogEtas_T, LogMuBs_T, &
+    !$OMP                  LogEtas_T, MuBs_T, &
     !$OMP                  OS_EmAb, OS_Iso, OS_NNS, OS_NES, OS_Pair, OS_Brem, &
     !$OMP                  EmAb_T, Iso_T, NNS_T, NES_T, Pair_T, Brem_T, &
     !$OMP                  NNS_AT, NES_AT, Pair_AT, Brem_AT, C1, C2, &
@@ -873,7 +870,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T,            &
-    !$ACC   LogEtas_T, LogMuBs_T,                       &
+    !$ACC   LogEtas_T, MuBs_T,                       &
     !$ACC   OS_EmAb, OS_Iso, OS_NNS, OS_NES, OS_Pair, OS_Brem,  &
     !$ACC   EmAb_T, Iso_T, NNS_T, NES_T, Pair_T, Brem_T,       &
     !$ACC   NNS_AT, NES_AT, Pair_AT, Brem_AT, C1, C2,           &
@@ -1233,7 +1230,7 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, &
+    !$OMP MAP( release: LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T, MuBs_T, &
     !$OMP               OS_EmAb, OS_Iso, OS_NNS, OS_NES, OS_Pair, OS_Brem, &
     !$OMP               EmAb_T, Iso_T, NNS_T, NES_T, Pair_T, Brem_T, &
     !$OMP               NNS_AT, NES_AT, Pair_AT, Brem_AT, C1, C2, &
@@ -1263,7 +1260,7 @@ CONTAINS
 #endif
 
     DEALLOCATE( Es_T, Ds_T, Ts_T, Ys_T, Etas_T, MuBs_T )
-    DEALLOCATE( LogEs_T, LogDs_T, LogTs_T, LogEtas_T, LogMuBs_T )
+    DEALLOCATE( LogEs_T, LogDs_T, LogTs_T, LogEtas_T )
 
     DEALLOCATE( OS_EmAb, OS_Iso, OS_NNS, OS_NES, OS_Pair, OS_Brem )
     DEALLOCATE( EmAb_T, Iso_T, NNS_T, NES_T, Pair_T, Brem_T )

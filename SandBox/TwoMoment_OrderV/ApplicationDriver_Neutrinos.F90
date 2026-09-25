@@ -91,9 +91,9 @@ PROGRAM ApplicationDriver_Neutrinos
   REAL(DP)      :: DnuMax
   LOGICAL       :: Relaxation_restart_from_file
 
-  !ProgramName = 'Relaxation'
-  !Relaxation_restart_from_file = .FALSE. 
-  ProgramName = 'DeleptonizationWave1D'
+  ProgramName = 'Relaxation'
+  Relaxation_restart_from_file = .TRUE. 
+  !ProgramName = 'DeleptonizationWave1D'
 
   CoordinateSystem = 'CARTESIAN'
 
@@ -155,11 +155,11 @@ PROGRAM ApplicationDriver_Neutrinos
         nE    = 16
         eL    = 0.0d0 * MeV
         eR    = 3.0d2 * MeV
-        bcE   = 10
+        bcE   = 11
         ZoomE = 1.266038160710160_DP
 
-        !TimeSteppingScheme = 'IMEX_PDARS'
-        TimeSteppingScheme = 'BackwardEuler'
+        TimeSteppingScheme = 'IMEX_PDARS'
+        !TimeSteppingScheme = 'BackwardEuler'
 
         t_end = 1.0d0 * Millisecond
 
@@ -176,13 +176,13 @@ PROGRAM ApplicationDriver_Neutrinos
         UseSlopeLimiter_Euler          = .FALSE.
         UseSlopeLimiter_TwoMoment      = .FALSE.
         UsePositivityLimiter_Euler     = .FALSE.
-        UsePositivityLimiter_TwoMoment = .FALSE.
-        UseEnergyLimiter_TwoMoment     = .FALSE.
+        UsePositivityLimiter_TwoMoment = .TRUE.
+        UseEnergyLimiter_TwoMoment     = .TRUE.
 
         Include_NNS     = .TRUE.
         Include_NES     = .TRUE.
         Include_Pair    = .TRUE.
-        Include_NuPair  = .FALSE.
+        Include_NuPair  = .TRUE.
         Include_Brem    = .TRUE.
         Include_LinCorr = .FALSE.
         FreezeOpacities = .FALSE. ! --- Keep opacities fixed during iterations?
@@ -191,16 +191,16 @@ PROGRAM ApplicationDriver_Neutrinos
         MaxIter_outer   = 100
         Rtol_outer      = 1.0d-8
         M_inner         = 2
-        MaxIter_inner   = 100
+        MaxIter_inner   = 1000
         Rtol_inner      = 1.0d-8
         Include_NNS     = .TRUE.
         Include_NES     = .TRUE.
         Include_Pair    = .TRUE.
-        Include_NuPair  = .FALSE.
+        Include_NuPair  = .TRUE.
         Include_Brem    = .TRUE.
         Include_LinCorr = .FALSE.
         wMatterRHS      = [ One, One, One, One, One ]
-        DnuMax          = One
+        DnuMax          = One-1.0d-6
         FreezeOpacities = .FALSE.
 
       ELSE
@@ -334,7 +334,7 @@ PROGRAM ApplicationDriver_Neutrinos
   CALL InitializeDriver
 
   IF (Relaxation_restart_from_file) THEN
-    CALL InitializeFields( ProfileName, 'Relaxation_input.dat' )
+    CALL InitializeFields( ProfileName, 'old_state.dat' )
   ELSE
     CALL InitializeFields( ProfileName )
   ENDIF
@@ -720,7 +720,7 @@ CONTAINS
              NNS_ApplyWeakMagnetism_Option &
                = .TRUE., &
              NNS_ApplyManyBodyCorrection_Option &
-               = .TRUE., &
+               = .FALSE., &
              Include_NES_Option &
                = Include_NES, &
              Include_Pair_Option &
