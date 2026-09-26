@@ -71,7 +71,6 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     ComputePressure_TABLE, &
     Min_D, Min_T, Min_Y
   USE OpacityModule_TABLE, ONLY: &
-    QueryOpacity, &
     IsoIncludesNucleonScattering
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     ComputeEquilibriumDistributions, &
@@ -90,7 +89,10 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     ComputeNeutrinoOpacityRates_Brem, &
     ComputeNeutrinoOpacityRates_LinearCorrections_NES, &
     ComputeNeutrinoOpacityRates_LinearCorrections_Pair, &
-    ComputeNeutrinoOpacityRates_LinearCorrections_Brem
+    ComputeNeutrinoOpacityRates_LinearCorrections_Brem, &
+    SetOpacityMask, &
+    nOp, iOp_EmAb, iOp_ECTable, iOp_Iso, &
+    iOp_NNS, iOp_NES, iOp_Pair, iOp_NuPair, iOp_Brem
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeEddingtonTensorComponents_dd
   USE TwoMoment_ClosureModule, ONLY: &
@@ -207,6 +209,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Nu_J_I_0, Nu_J_II_0
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: S_Sigma
 
+  LOGICAL,  DIMENSION(:,:),   ALLOCATABLE, TARGET :: Opacity_Mask
+
   INTEGER :: LWORK_outer
   INTEGER :: LWORK_inner
 
@@ -284,6 +288,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: J_I_1_T, J_II_1_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Nu_J_I_0_T, Nu_J_II_0_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: S_Sigma_T
+
+  LOGICAL,  DIMENSION(:,:),   ALLOCATABLE, TARGET :: Opacity_Mask_T
 
 CONTAINS
 
@@ -425,6 +431,8 @@ CONTAINS
     ALLOCATE( Nu_J_II_0(nE_G,nE_G,nX_G) )
     ALLOCATE(   S_Sigma(nE_G,nE_G,nX_G) )
 
+    ALLOCATE(    Opacity_Mask(nOp,nX_G) )
+
     ALLOCATE( Error_T(nX_G) )
 
     ALLOCATE( D_T(nX_G) )
@@ -490,6 +498,8 @@ CONTAINS
     ALLOCATE(  Nu_J_I_0_T(nE_G,nE_G,nX_G) )
     ALLOCATE( Nu_J_II_0_T(nE_G,nE_G,nX_G) )
     ALLOCATE(   S_Sigma_T(nE_G,nE_G,nX_G) )
+ 
+    ALLOCATE(    Opacity_Mask_T(nOp,nX_G) )
 
     ALLOCATE( INFO(nX_G) )
 
@@ -553,7 +563,8 @@ CONTAINS
     !$OMP             Phi_NNS_T, Phi_NbNS_T, &
     !$OMP             H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$OMP             H_I_1_T, H_II_1_T, J_I_1_T, J_II_1_T, &
-    !$OMP             Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T )
+    !$OMP             Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T, &
+    !$OMP             Opacity_Mask, Opacity_Mask_T )
 #elif defined(THORNADO_OACC  )
     !$ACC ENTER DATA &
     !$ACC COPYIN( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, wMatrRHS ) &
@@ -614,7 +625,8 @@ CONTAINS
     !$ACC         Phi_NNS_T, Phi_NbNS_T, &
     !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$ACC         H_I_1_T, H_II_1_T, J_I_1_T, J_II_1_T, &
-    !$ACC         Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T )
+    !$ACC         Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T, &
+    !$ACC         Opacity_Mask, Opacity_Mask_T )
 #endif
 
 
@@ -1080,7 +1092,8 @@ CONTAINS
     !$OMP               Phi_NNS_T, Phi_NbNS_T, &
     !$OMP               H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$OMP               H_I_1_T, H_II_1_T, J_I_1_T, J_II_1_T, &
-    !$OMP               Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T )
+    !$OMP               Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T, &
+    !$OMP               Opacity_Mask, Opacity_Mask_T )
 #elif defined(THORNADO_OACC  )
     !$ACC EXIT DATA &
     !$ACC DELETE( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, wMatrRHS, &
@@ -1141,7 +1154,8 @@ CONTAINS
     !$ACC         Phi_NNS_T, Phi_NbNS_T, &
     !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$ACC         H_I_1_T, H_II_1_T, J_I_1_T, J_II_1_T, &
-    !$ACC         Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T )
+    !$ACC         Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T, &
+    !$ACC         Opacity_Mask, Opacity_Mask_T )
 #endif
 
     DEALLOCATE( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2 )
@@ -1202,6 +1216,7 @@ CONTAINS
     DEALLOCATE( H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T )
     DEALLOCATE( H_I_1_T, H_II_1_T, J_I_1_T, J_II_1_T, S_Sigma_T )
     DEALLOCATE( Nu_J_I_0_T, Nu_J_II_0_T )
+    DEALLOCATE( Opacity_Mask, Opacity_Mask_T )
 
   END SUBROUTINE FinalizeNeutrinoMatterSolver
 
@@ -1326,16 +1341,37 @@ CONTAINS
     !$ACC   WORK_inner, TAU_inner, Alpha_inner )
 #endif
 
+
+    CALL SetOpacityMask &
+         ( nX_G, nDOFX, D, T, Y, Opacity_Mask )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM( Opacity_Mask )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST( Opacity_Mask )
+#endif
+
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC  )
+#elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR
-#elif defined(THORNADO_OMP   )
+#elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
     DO iN_X = 1, nX_G
-      ITERATE_outer(iN_X) = QueryOpacity( D(iN_X) / Unit_D )
+
+      ITERATE_outer(iN_X) = &
+          Opacity_Mask(iOp_EmAb,   iN_X) .OR. &
+          Opacity_Mask(iOp_ECTable,iN_X) .OR. &
+          Opacity_Mask(iOp_Iso,    iN_X) .OR. &
+          ( Include_NNS    .AND. Opacity_Mask(iOp_NNS,   iN_X) ) .OR. &
+          ( Include_NES    .AND. Opacity_Mask(iOp_NES,   iN_X) ) .OR. &
+          ( Include_Pair   .AND. Opacity_Mask(iOp_Pair,  iN_X) ) .OR. &
+          ( Include_NuPair .AND. Opacity_Mask(iOp_NuPair,iN_X) ) .OR. &
+          ( Include_Brem   .AND. Opacity_Mask(iOp_Brem,  iN_X) )
+
     END DO
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET UPDATE FROM( ITERATE_outer )
 #elif defined( THORNADO_OACC   )
@@ -1718,6 +1754,8 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), POINTER :: Nu_J_I_0_P, Nu_J_II_0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: S_Sigma_P
 
+    LOGICAL,  DIMENSION(:,:),   POINTER :: Opacity_Mask_P
+
     IF( PRESENT( nX_P ) )THEN
       nX = nX_P
     ELSE
@@ -1733,6 +1771,11 @@ CONTAINS
     IF ( nX < nX_G ) THEN
 
       ! --- Pack Arrays ---
+
+      Opacity_Mask_P => Opacity_Mask_T(:,1:nX)
+  
+      CALL ArrayPack &
+             ( nX, UnpackIndex, Opacity_Mask, Opacity_Mask_P )
 
       D_P => D_T(1:nX)
       T_P => T_T(1:nX)
@@ -1792,6 +1835,8 @@ CONTAINS
       S_Sigma_P   => S_Sigma_T  (:,:,1:nX)
 
     ELSE
+
+      Opacity_Mask_P => Opacity_Mask(:,:)
 
       D_P => D(:)
       T_P => T(:)
@@ -1862,7 +1907,7 @@ CONTAINS
 
     CALL ComputeNeutrinoOpacities_EC &
            ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Y_P, Dnu_0_P, Chi_EmAb_P, &
-             T_old = T0_P, Y_old = Y0_P )
+             Opacity_Mask_P, T_old = T0_P, Y_old = Y0_P )
 
     CALL TimersStop( Timer_Opacity_EC )
 
@@ -1871,12 +1916,12 @@ CONTAINS
     CALL TimersStart( Timer_Opacity_ES )
 
     CALL ComputeNeutrinoOpacities_ES &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, 1, Phi_0_Iso_P )
+           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, 1, Phi_0_Iso_P, Opacity_Mask_P )
 
 !!$    IF( Include_LinCorr )THEN
 
     CALL ComputeNeutrinoOpacities_ES &
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, 2, Phi_1_Iso_P )
+           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Y_P, 2, Phi_1_Iso_P, Opacity_Mask_P )
 
 !!$    END IF
 
@@ -1959,12 +2004,16 @@ CONTAINS
 
       ! --- NuPair Kernels ---
 
-      CALL TimersStart( Timer_Opacity_NuPair )
+      IF( ANY( Opacity_Mask(iOp_NuPair,:) ) ) THEN
 
-      CALL ComputeNeutrinoOpacities_NuPair &
-             ( 1, nE_G, 1, nX, D_P, T_P, Y_P, 1, Nu_J_I_0_P, Nu_J_II_0_P )
+        CALL TimersStart( Timer_Opacity_NuPair )
 
-      CALL TimersStop( Timer_Opacity_NuPair )
+        CALL ComputeNeutrinoOpacities_NuPair &
+               ( 1, nE_G, 1, nX, D_P, T_P, Y_P, 1, Nu_J_I_0_P, Nu_J_II_0_P )
+
+        CALL TimersStop( Timer_Opacity_NuPair )
+
+      END IF
 
     END IF
 
@@ -2067,6 +2116,8 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), POINTER :: Nu_J_I_0_P, Nu_J_II_0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: S_Sigma_P
 
+    LOGICAL,  DIMENSION(:,:),   POINTER :: Opacity_Mask_P
+
     INTEGER :: nX, nX0
 
     IF ( PRESENT( nX_P ) ) THEN
@@ -2084,6 +2135,11 @@ CONTAINS
     IF ( nX < nX_G ) THEN
 
       ! --- Pack Arrays ---
+
+      Opacity_Mask_P => Opacity_Mask_T(:,1:nX)
+
+      CALL ArrayPack &
+             ( nX, UnpackIndex, Opacity_Mask, Opacity_Mask_P )
 
       D_P => D_T(1:nX)
 
@@ -2181,6 +2237,8 @@ CONTAINS
 
     ELSE
 
+      Opacity_Mask_P => Opacity_Mask(:,1:nX)
+
       D_P => D(:)
 
       Dnu_P            => Dnu           (:,:,:)
@@ -2245,7 +2303,7 @@ CONTAINS
 
     CALL ComputeNeutrinoOpacityRates_NNS &
            ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, &
-             Phi_NNS_P, Phi_NbNS_P, Eta_NNS_P, Chi_NNS_P )
+             Phi_NNS_P, Phi_NbNS_P, Eta_NNS_P, Chi_NNS_P, Opacity_Mask_P )
 
     CALL TimersStop( Timer_OpacityRate_NNS )
 
@@ -2255,7 +2313,7 @@ CONTAINS
 
     CALL ComputeNeutrinoOpacityRates_NES &
            ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, H_I_0_P, H_II_0_P, &
-             Eta_NES_P, Chi_NES_P )
+             Eta_NES_P, Chi_NES_P, Opacity_Mask_P )
 
     IF( Include_LinCorr )THEN
 
@@ -2265,7 +2323,8 @@ CONTAINS
              ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, &
                Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, Dnu_0_P, H_I_1_P, H_II_1_P, &
                L_NES__In__u_1_P, L_NES__In__u_2_P, L_NES__In__u_3_P, &
-               L_NES__Out_u_1_P, L_NES__Out_u_2_P, L_NES__Out_u_3_P )
+               L_NES__Out_u_1_P, L_NES__Out_u_2_P, L_NES__Out_u_3_P, &
+               Opacity_Mask_P )
 
     END IF
 
@@ -2277,7 +2336,7 @@ CONTAINS
 
     CALL ComputeNeutrinoOpacityRates_Pair &
            ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, J_I_0_P, J_II_0_P, &
-             Eta_Pair_P, Chi_Pair_P )
+             Eta_Pair_P, Chi_Pair_P, Opacity_Mask_P )
 
     IF( Include_LinCorr )THEN
 
@@ -2287,7 +2346,8 @@ CONTAINS
              ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, &
                Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, Dnu_0_P, J_I_1_P, J_II_1_P, &
                L_Pair_Pro_u_1_P, L_Pair_Pro_u_2_P, L_Pair_Pro_u_3_P, &
-               L_Pair_Ann_u_1_P, L_Pair_Ann_u_2_P, L_Pair_Ann_u_3_P )
+               L_Pair_Ann_u_1_P, L_Pair_Ann_u_2_P, L_Pair_Ann_u_3_P, &
+               Opacity_Mask_P )
 
     END IF
 
@@ -2299,7 +2359,8 @@ CONTAINS
 
     CALL ComputeNeutrinoOpacityRates_NuPair &
            ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, &
-             Nu_J_I_0_P, Nu_J_II_0_P, Eta_NuPair_P, Chi_NuPair_P )
+             Nu_J_I_0_P, Nu_J_II_0_P, Eta_NuPair_P, Chi_NuPair_P, &
+             Opacity_Mask_P )
 
     CALL TimersStop( Timer_OpacityRate_NuPair )
 
@@ -2309,7 +2370,7 @@ CONTAINS
 
     CALL ComputeNeutrinoOpacityRates_Brem &
            ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, S_Sigma_P, &
-             Eta_Brem_P, Chi_Brem_P )
+             Eta_Brem_P, Chi_Brem_P, Opacity_Mask_P )
 
     IF( Include_LinCorr )THEN
 
@@ -2319,7 +2380,8 @@ CONTAINS
              ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, &
                Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, Dnu_0_P, S_Sigma_P, &
                L_Brem_Pro_u_1_P, L_Brem_Pro_u_2_P, L_Brem_Pro_u_3_P, &
-               L_Brem_Ann_u_1_P, L_Brem_Ann_u_2_P, L_Brem_Ann_u_3_P )
+               L_Brem_Ann_u_1_P, L_Brem_Ann_u_2_P, L_Brem_Ann_u_3_P, &
+               Opacity_Mask_P )
 
     END IF
 

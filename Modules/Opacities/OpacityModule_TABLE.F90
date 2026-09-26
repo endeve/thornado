@@ -147,7 +147,7 @@ MODULE OpacityModule_TABLE
   PUBLIC :: ComputeScatteringOpacity_NES_TABLE
 
   PUBLIC :: QueryOpacity_EmAb_Nucleon
-  PUBLIC :: QueryOpacity_EmAb_Nuclei
+  PUBLIC :: QueryOpacity_ECTable
   PUBLIC :: QueryOpacity_EmAb
   PUBLIC :: QueryOpacity_Iso
   PUBLIC :: QueryOpacity_NNS
@@ -1424,19 +1424,30 @@ CONTAINS
   END SUBROUTINE ComputeScatteringOpacity_NES_TABLE
 
 
-  LOGICAL FUNCTION QueryOpacity_EmAb_Nuclei( D )
+  LOGICAL FUNCTION QueryOpacity_ECTable( D, T, Y, Ah )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in) :: D
+    REAL(DP), INTENT(in) :: D, T, Y, Ah
 
-    QueryOpacity_EmAb_Nuclei &
-        = ( D >= EmAb_Nuclei_MinD .AND. D <= EmAb_Nuclei_MaxD )
+    IF( use_EC_table .gt. 0 ) THEN
 
-  END FUNCTION QueryOpacity_EmAb_Nuclei
+      QueryOpacity_ECTable &
+          = D  >  Ds_EC_T(1) .AND. D  <  Ds_EC_T(SIZE(Ds_EC_T)) &
+      .AND. T  >  Ts_EC_T(1) .AND. T  <  Ts_EC_T(SIZE(Ts_EC_T)) &
+      .AND. Y  >  Ys_EC_T(1) .AND. Y  <  Ys_EC_T(SIZE(Ys_EC_T)) &
+      .AND. Ah >= 40.0d0
+
+    ELSE
+
+      QueryOpacity_ECTable = .FALSE.
+
+    ENDIF
+
+  END FUNCTION QueryOpacity_ECTable
 
 
   LOGICAL FUNCTION QueryOpacity_EmAb_Nucleon( D )
@@ -1464,9 +1475,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: D
 
     QueryOpacity_EmAb &
-        = ( D >= EmAb_MinD .AND. D <= EmAb_MaxD ) &
-            .AND. (      QueryOpacity_EmAb_Nucleon( D ) &
-                    .OR. QueryOpacity_EmAb_Nuclei ( D ) )
+        = ( D >= EmAb_MinD .AND. D <= EmAb_MaxD ) !&
 
   END FUNCTION QueryOpacity_EmAb
 

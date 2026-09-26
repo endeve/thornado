@@ -48,7 +48,9 @@ MODULE InitializationModule_Neutrinos
     ApplyEquationOfState_TABLE
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     ComputeEquilibriumDistributions_DG, &
-    ComputeNeutrinoOpacities_EC
+    ComputeNeutrinoOpacities_EC, &
+    SetOpacityMask, &
+    nOp
 
   IMPLICIT NONE
   PRIVATE
@@ -400,6 +402,8 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: E_Nu(:), R_Nu(:,:), Chi(:,:,:), fEQ(:,:,:)
     REAL(DP), ALLOCATABLE :: D_Nu_P(:,:,:), I1_Nu_P(:,:,:)
 
+    LOGICAL, ALLOCATABLE :: Opacity_Mask(:,:)
+
     WRITE(*,*)
     WRITE(*,'(A6,A,A)') '', &
       'Initializing from Profile: ', TRIM( ProfileName )
@@ -492,6 +496,11 @@ CONTAINS
     ALLOCATE( D_Nu_P (nE,nSpecies,nR) )
     ALLOCATE( I1_Nu_P(nE,nSpecies,nR) )
 
+    ALLOCATE( Opacity_Mask(nOp,nR) )
+
+    CALL SetOpacityMask &
+           ( nR, 1, D_P, T_P, Y_P, Opacity_Mask )
+
     Chi = Zero
 
     ! --- Neutrino Energies ---
@@ -510,7 +519,7 @@ CONTAINS
            ( 1, nE, 1, nSpecies, 1, nR, E_Nu, D_P, T_P, Y_P, fEQ )
 
     CALL ComputeNeutrinoOpacities_EC &
-           ( 1, nE, 1, nSpecies, 1, nR, E_Nu, D_P, T_P, Y_P, fEQ, Chi )
+           ( 1, nE, 1, nSpecies, 1, nR, E_Nu, D_P, T_P, Y_P, fEQ, Chi, Opacity_Mask )
 
     DO iR = 1, nR
 
@@ -632,6 +641,7 @@ CONTAINS
     DEALLOCATE( R_P, D_P, T_P, Y_P )
     DEALLOCATE( E_Nu, R_Nu, Chi, fEQ )
     DEALLOCATE( D_Nu_P, I1_Nu_P )
+    DEALLOCATE( Opacity_Mask )
 
   END SUBROUTINE InitializeFields_DeleptonizationWave1D
 

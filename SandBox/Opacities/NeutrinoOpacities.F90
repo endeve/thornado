@@ -52,7 +52,9 @@ PROGRAM NeutrinoOpacities
     ComputeNeutrinoOpacities_NuPair, &
     ComputeNeutrinoOpacityRates_NuPair, &
     ComputeNeutrinoOpacities_Brem, &
-    ComputeNeutrinoOpacityRates_Brem
+    ComputeNeutrinoOpacityRates_Brem, &
+    SetOpacityMask, &
+    nOp
   USE DeviceModule, ONLY: &
     InitializeDevice, &
     FinalizeDevice
@@ -209,6 +211,8 @@ PROGRAM NeutrinoOpacities
     S_sigma       ! --- Brem Scattering Kernel
 
   REAL(dp) :: loctot
+
+  LOGICAL :: Opacity_Mask(nOp,nPointsX)
 
   CALL InitializeProgram &
          ( ProgramName_Option &
@@ -373,6 +377,9 @@ PROGRAM NeutrinoOpacities
   !$ACC         A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 )
 #endif
 
+  CALL SetOpacityMask &
+         ( nPointsX, nNodes, D, T, Y, Opacity_Mask )
+
   ! --- Compute Equilibrium Distributions ---
 
   Timer_ComputeEquilibrium = 0.0d0
@@ -421,7 +428,7 @@ PROGRAM NeutrinoOpacities
   Timer_Compute_EC = 0.0d0
   CALL TimersStart( Timer_Compute_EC )
   CALL ComputeNeutrinoOpacities_EC &
-         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, f0_DG, Chi_EmAb )
+         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, f0_DG, Chi_EmAb, Opacity_Mask )
   CALL TimersStop( Timer_Compute_EC )
 
 #if defined(THORNADO_OMP_OL)
@@ -448,13 +455,15 @@ PROGRAM NeutrinoOpacities
   Timer_ComputeKrnl_ES = 0.0d0
   CALL TimersStart( Timer_ComputeKrnl_ES )
   CALL ComputeNeutrinoOpacities_ES &
-         ( 1, nPointsE, 1, nPointsX, E, D, T, Y, 1, Phi_0_Iso )
+         ( 1, nPointsE, 1, nPointsX, E, D, T, Y, 1, Phi_0_Iso, &
+           Opacity_Mask )
   CALL TimersStop( Timer_ComputeKrnl_ES )
 
   Timer_ComputeCorr_ES = 0.0d0
   CALL TimersStart( Timer_ComputeCorr_ES )
   CALL ComputeNeutrinoOpacities_ES &
-         ( 1, nPointsE, 1, nPointsX, E, D, T, Y, 2, Phi_1_Iso )
+         ( 1, nPointsE, 1, nPointsX, E, D, T, Y, 2, Phi_1_Iso, &
+           Opacity_Mask )
   CALL TimersStop( Timer_ComputeCorr_ES )
 
   Timer_ComputeRate_ES = 0.0d0
@@ -498,7 +507,7 @@ PROGRAM NeutrinoOpacities
   CALL TimersStart( Timer_ComputeRate_NES )
   CALL ComputeNeutrinoOpacityRates_NES &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, D, W2, &
-           J, f0_DG, H_I_0, H_II_0, Eta_NES, Chi_NES )
+           J, f0_DG, H_I_0, H_II_0, Eta_NES, Chi_NES, Opacity_Mask )
   CALL TimersStop( Timer_ComputeRate_NES )
 
   ! --- Compute NES Linear Corrections ---
@@ -512,7 +521,8 @@ PROGRAM NeutrinoOpacities
   CALL TimersStart( Timer_ComputeCorr_NES )
   CALL ComputeNeutrinoOpacityRates_LinearCorrections_NES &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, D, W2, H_1, H_2, H_3, f0_DG, &
-           H_I_1, H_II_1, A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3 )
+           H_I_1, H_II_1, A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3, &
+           Opacity_Mask )
   CALL TimersStop( Timer_ComputeCorr_NES )
 
   CALL TimersStop( Timer_Compute_NES )
@@ -532,7 +542,7 @@ PROGRAM NeutrinoOpacities
   CALL TimersStart( Timer_ComputeRate_Pair )
   CALL ComputeNeutrinoOpacityRates_Pair &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, D, W2, &
-           J, f0_DG, J_I_0, J_II_0, Eta_Pair, Chi_Pair )
+           J, f0_DG, J_I_0, J_II_0, Eta_Pair, Chi_Pair, Opacity_Mask )
   CALL TimersStop( Timer_ComputeRate_Pair )
 
   ! --- Compute Pair Linear Corrections ---
@@ -546,7 +556,8 @@ PROGRAM NeutrinoOpacities
   CALL TimersStart( Timer_ComputeCorr_Pair )
   CALL ComputeNeutrinoOpacityRates_LinearCorrections_Pair &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, D, W2, H_1, H_2, H_3, f0_DG, &
-           J_I_1, J_II_1, A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 )
+           J_I_1, J_II_1, A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3, &
+           Opacity_Mask )
   CALL TimersStop( Timer_ComputeCorr_Pair )
 
   CALL TimersStop( Timer_Compute_Pair )
@@ -566,7 +577,7 @@ PROGRAM NeutrinoOpacities
   CALL TimersStart( Timer_ComputeRate_NuPair )
   CALL ComputeNeutrinoOpacityRates_NuPair &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, D, W2, &
-           J, f0_DG, Nu_J_I_0, Nu_J_II_0, Eta_NuPair, Chi_NuPair )
+           J, f0_DG, Nu_J_I_0, Nu_J_II_0, Eta_NuPair, Chi_NuPair, Opacity_Mask )
   CALL TimersStop( Timer_ComputeRate_NuPair )
 
   CALL TimersStop( Timer_Compute_NuPair )
@@ -586,7 +597,7 @@ PROGRAM NeutrinoOpacities
   CALL TimersStart( Timer_ComputeRate_Brem )
   CALL ComputeNeutrinoOpacityRates_Brem &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, D, W2, &
-           J, f0_DG, S_sigma, Eta_Brem, Chi_Brem )
+           J, f0_DG, S_sigma, Eta_Brem, Chi_Brem, Opacity_Mask )
   CALL TimersStop( Timer_ComputeRate_Brem )
 
   CALL TimersStop( Timer_Compute_Brem )
