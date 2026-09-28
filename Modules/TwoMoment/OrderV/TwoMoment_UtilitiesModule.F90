@@ -37,7 +37,8 @@ MODULE TwoMoment_UtilitiesModule
     iGF_Gm_dd_11, &
     iGF_Gm_dd_22, &
     iGF_Gm_dd_33, &
-    iGF_SqrtGm
+    iGF_SqrtGm, &
+    iGF_Alpha
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
@@ -48,8 +49,11 @@ MODULE TwoMoment_UtilitiesModule
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
     nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, &
     nAR, iAR_F, iAR_K , iAR_Q, &
-    nGR, iGR_N, &
+    nGR, iGR_N, iGR_G1, iGR_G2, iGR_G3, &
          iGR_D, iGR_I1, iGR_I2, iGR_I3, &
+         iGR_E, iGR_P1, iGR_P2, iGR_P3, &
+         iGR_S11, iGR_S12, iGR_S13, &
+         iGR_S22, iGR_S23, iGR_S33, &
          iGR_J, iGR_H1, iGR_H2, iGR_H3, &
          iGR_RMS, iGR_F, iGR_K, iGR_Q
   USE TwoMoment_ClosureModule, ONLY: &
@@ -95,6 +99,7 @@ MODULE TwoMoment_UtilitiesModule
   PUBLIC :: FaceVelocity_X1
   PUBLIC :: FaceVelocity_X2
   PUBLIC :: FaceVelocity_X3
+  PUBLIC :: EulerianEnergyMoments
 
   INTERFACE ComputePrimitive_TwoMoment
     MODULE PROCEDURE ComputePrimitive_TwoMoment_Scalar_Richardson
@@ -1712,6 +1717,9 @@ CONTAINS
     REAL(DP) :: W3_RMS(1:nDOFE,iZ_B0(1):iZ_E0(1))
     REAL(DP) :: W5_RMS(1:nDOFE,iZ_B0(1):iZ_E0(1))
 
+    REAL(DP) :: P_d_1, P_d_2, P_d_3
+    REAL(DP) :: S_uu_11, S_uu_12, S_uu_13, S_uu_22, S_uu_23, S_uu_33
+
     IF( UnitsActive )THEN
 
       hc3 = ( PlanckConstant * SpeedOfLight )**3
@@ -1787,6 +1795,18 @@ CONTAINS
             = GR(iNodeX,iZ2,iZ3,iZ4,iGR_N,iS) &
                 + W2(iNodeE,iZ1) * CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS)
 
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_G1,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_G1,iS) &
+                + W2(iNodeE,iZ1) * CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_G2,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_G2,iS) &
+                + W2(iNodeE,iZ1) * CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS)
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_G3,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_G3,iS) &
+                + W2(iNodeE,iZ1) * CR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS)
+
           GR(iNodeX,iZ2,iZ3,iZ4,iGR_D,iS) &
             = GR(iNodeX,iZ2,iZ3,iZ4,iGR_D,iS) &
                 + W2(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_D,iS)
@@ -1802,6 +1822,51 @@ CONTAINS
           GR(iNodeX,iZ2,iZ3,iZ4,iGR_I3,iS) &
             = GR(iNodeX,iZ2,iZ3,iZ4,iGR_I3,iS) &
                 + W2(iNodeE,iZ1) * PR(iNodeZ,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS)
+
+          CALL EulerianEnergyMoments( PR(iNodeX,iZ1,iZ2,iZ3,iZ4,iPR_D,iS),     &
+                                      PR(iNodeX,iZ1,iZ2,iZ3,iZ4,iPR_I1,iS),    &
+                                      PR(iNodeX,iZ1,iZ2,iZ3,iZ4,iPR_I2,iS),    &
+                                      PR(iNodeX,iZ1,iZ2,iZ3,iZ4,iPR_I3,iS),    &
+                                      AR(iNodeX,iZ1,iZ2,iZ3,iZ4,iAR_F,iS),     &
+                                      PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1),       &
+                                      PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2),       &
+                                      PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3),       &
+                                      GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
+                                      GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
+                                      GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33), &
+                                      E, P_d_1, P_d_2, P_d_3,                  &
+                                      S_uu_11, S_uu_12, S_uu_13,               &
+                                      S_uu_22, S_uu_23, S_uu_33 )
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_E,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_E,iS) + W3(iNodeE,iZ1) * E
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_P1,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_P1,iS) + W3(iNodeE,iZ1) * P_d_1
+          
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_P2,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_P2,iS) + W3(iNodeE,iZ1) * P_d_2
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_P3,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_P3,iS) + W3(iNodeE,iZ1) * P_d_3
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_S11,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_S11,iS) + W3(iNodeE,iZ1) * S_uu_11
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_S12,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_S12,iS) + W3(iNodeE,iZ1) * S_uu_12
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_S13,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_S13,iS) + W3(iNodeE,iZ1) * S_uu_13
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_S22,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_S22,iS) + W3(iNodeE,iZ1) * S_uu_22
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_S23,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_S23,iS) + W3(iNodeE,iZ1) * S_uu_23
+
+          GR(iNodeX,iZ2,iZ3,iZ4,iGR_S33,iS) &
+            = GR(iNodeX,iZ2,iZ3,iZ4,iGR_S33,iS) + W3(iNodeE,iZ1) * S_uu_33
 
           GR(iNodeX,iZ2,iZ3,iZ4,iGR_J,iS) &
             = GR(iNodeX,iZ2,iZ3,iZ4,iGR_J,iS) &
@@ -1971,16 +2036,20 @@ CONTAINS
     REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: dV_u_dX1, dV_d_dX1, dGm_dd_dX1
     REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: dV_u_dX2, dV_d_dX2, dGm_dd_dX2
     REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: dV_u_dX3, dV_d_dX3, dGm_dd_dX3
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:)   :: dAlpha_dX1, dAlpha_dX2, dAlpha_dX3
 
     ALLOCATE(   dV_u_dX1(nDOFX,3,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
     ALLOCATE(   dV_d_dX1(nDOFX,3,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
     ALLOCATE( dGm_dd_dX1(nDOFX,3,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
+    ALLOCATE( dAlpha_dX1(nDOFX  ,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
     ALLOCATE(   dV_u_dX2(nDOFX,3,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
     ALLOCATE(   dV_d_dX2(nDOFX,3,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
     ALLOCATE( dGm_dd_dX2(nDOFX,3,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
+    ALLOCATE( dAlpha_dX2(nDOFX  ,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
     ALLOCATE(   dV_u_dX3(nDOFX,3,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
     ALLOCATE(   dV_d_dX3(nDOFX,3,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
     ALLOCATE( dGm_dd_dX3(nDOFX,3,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
+    ALLOCATE( dAlpha_dX3(nDOFX  ,iZ_B0(2):iZ_E0(2),iZ_B0(3):iZ_E0(3),iZ_B0(4):iZ_E0(4)) )
 
     IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
@@ -2019,31 +2088,31 @@ CONTAINS
     !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
     !$OMP          TimeStep_X, TimeStep_E, dt_X, dt_E,  &
     !$OMP          CFL, CFL_Eff_X, CFL_Eff_E, dE_Min ) &
-    !$OMP MAP( alloc: dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
-    !$OMP             dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
-    !$OMP             dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
+    !$OMP MAP( alloc: dV_u_dX1, dV_d_dX1, dGm_dd_dX1, dAlpha_dX1, &
+    !$OMP             dV_u_dX2, dV_d_dX2, dGm_dd_dX2, dAlpha_dX2, &
+    !$OMP             dV_u_dX3, dV_d_dX3, dGm_dd_dX3, dAlpha_dX3 )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( E_C, dE, dX1, dX2, dX3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
     !$ACC         iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
     !$ACC         TimeStep_X, TimeStep_E, dt_X, dt_E,  &
     !$ACC         CFL, CFL_Eff_X, CFL_Eff_E, dE_Min ) &
-    !$ACC CREATE( dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
-    !$ACC         dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
-    !$ACC         dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
+    !$ACC CREATE( dV_u_dX1, dV_d_dX1, dGm_dd_dX1, dAlpha_dX1, &
+    !$ACC         dV_u_dX2, dV_d_dX2, dGm_dd_dX2, dAlpha_dX2, &
+    !$ACC         dV_u_dX3, dV_d_dX3, dGm_dd_dX3, dAlpha_dX3 )
 #endif
 
     CALL ComputeWeakDerivatives_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
-             dV_u_dX1, dV_d_dX1, dGm_dd_dX1 )
+             dV_u_dX1, dV_d_dX1, dGm_dd_dX1, dAlpha_dX1 )
 
     CALL ComputeWeakDerivatives_X2 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
-             dV_u_dX2, dV_d_dX2, dGm_dd_dX2 )
+             dV_u_dX2, dV_d_dX2, dGm_dd_dX2, dAlpha_dX2 )
 
     CALL ComputeWeakDerivatives_X3 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
-             dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
+             dV_u_dX3, dV_d_dX3, dGm_dd_dX3, dAlpha_dX3 )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
@@ -2138,9 +2207,9 @@ CONTAINS
     !$OMP               iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
     !$OMP               dt_X, dt_E,  &
     !$OMP               CFL, CFL_Eff_X, CFL_Eff_E, dE_Min, &
-    !$OMP               dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
-    !$OMP               dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
-    !$OMP               dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
+    !$OMP               dV_u_dX1, dV_d_dX1, dGm_dd_dX1, dAlpha_dX1, &
+    !$OMP               dV_u_dX2, dV_d_dX2, dGm_dd_dX2, dAlpha_dX2, &
+    !$OMP               dV_u_dX3, dV_d_dX3, dGm_dd_dX3, dAlpha_dX3 )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC COPYOUT( TimeStep_X, TimeStep_E ) &
@@ -2148,9 +2217,9 @@ CONTAINS
     !$ACC         iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, &
     !$ACC         dt_X, dt_E,  &
     !$ACC         CFL, CFL_Eff_X, CFL_Eff_E, dE_Min, &
-    !$ACC         dV_u_dX1, dV_d_dX1, dGm_dd_dX1, &
-    !$ACC         dV_u_dX2, dV_d_dX2, dGm_dd_dX2, &
-    !$ACC         dV_u_dX3, dV_d_dX3, dGm_dd_dX3 )
+    !$ACC         dV_u_dX1, dV_d_dX1, dGm_dd_dX1, dAlpha_dX1, &
+    !$ACC         dV_u_dX2, dV_d_dX2, dGm_dd_dX2, dAlpha_dX2, &
+    !$ACC         dV_u_dX3, dV_d_dX3, dGm_dd_dX3, dAlpha_dX3 )
 #endif
 
     TimeStep = MAX( CFL * MIN( TimeStep_X, TimeStep_E ), SqrtTiny )
@@ -2174,7 +2243,8 @@ CONTAINS
       Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       dGm_dd_11_dX1, dGm_dd_22_dX1, dGm_dd_33_dX1, &
       dGm_dd_11_dX2, dGm_dd_22_dX2, dGm_dd_33_dX2, &
-      dGm_dd_11_dX3, dGm_dd_22_dX3, dGm_dd_33_dX3 )
+      dGm_dd_11_dX3, dGm_dd_22_dX3, dGm_dd_33_dX3, &
+      Alpha, dAlpha_dX1, dAlpha_dX2, dAlpha_dX3 )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP DECLARE TARGET
@@ -2192,11 +2262,18 @@ CONTAINS
     REAL(DP), INTENT(in) :: dGm_dd_11_dX1, dGm_dd_22_dX1, dGm_dd_33_dX1
     REAL(DP), INTENT(in) :: dGm_dd_11_dX2, dGm_dd_22_dX2, dGm_dd_33_dX2
     REAL(DP), INTENT(in) :: dGm_dd_11_dX3, dGm_dd_22_dX3, dGm_dd_33_dX3
+    REAL(DP), INTENT(in) :: Alpha
+    REAL(DP), INTENT(in) :: dAlpha_dX1, dAlpha_dX2, dAlpha_dX3
 
     REAL(DP) :: k_uu(3,3), l_uuu(3,3,3)
     REAL(DP) :: VdotGradGm_dd_11
     REAL(DP) :: VdotGradGm_dd_22
     REAL(DP) :: VdotGradGm_dd_33
+    REAL(DP) :: dLnAlpha_dX1, dLnAlpha_dX2, dLnAlpha_dX3
+    REAL(DP) :: IdotGradLnAlpha, VdotKdotGradLnAlpha
+    REAL(DP) :: KdotGradLnAlpha_u(3)
+    REAL(DP) :: VdotL_uu(3,3)
+    REAL(DP) :: VdotLdotGradLnAlpha_u(3)
 
     VdotGradGm_dd_11 &
       = V_u_1 * dGm_dd_11_dX1 + V_u_2 * dGm_dd_11_dX2 + V_u_3 * dGm_dd_11_dX3
@@ -2207,6 +2284,11 @@ CONTAINS
     VdotGradGm_dd_33 &
       = V_u_1 * dGm_dd_33_dX1 + V_u_2 * dGm_dd_33_dX2 + V_u_3 * dGm_dd_33_dX3
 
+
+    dLnAlpha_dX1 = dAlpha_dX1 / Alpha
+    dLnAlpha_dX2 = dAlpha_dX2 / Alpha
+    dLnAlpha_dX3 = dAlpha_dX3 / Alpha
+
     ! --- Eddington Tensor Components ---
 
     CALL ComputeEddingtonTensorComponents_uu &
@@ -2216,6 +2298,18 @@ CONTAINS
 
     CALL ComputeHeatFluxTensorComponents_uuu &
            ( D, I_u_1, I_u_2, I_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, l_uuu )
+
+    IdotGradLnAlpha = I_u_1 * dLnAlpha_dX1 + I_u_2 * dLnAlpha_dX2 + I_u_3 * dLnAlpha_dX3
+
+    KdotGradLnAlpha_u(:) = (k_uu(:,1) * dLnAlpha_dX1 + k_uu(:,2) * dLnAlpha_dX2 + k_uu(:,3) * dLnAlpha_dX3) * D
+
+    VdotKdotGradLnAlpha = Gm_dd_11 * V_u_1 * KdotGradLnAlpha_u(1) + &
+                          Gm_dd_22 * V_u_2 * KdotGradLnAlpha_u(2) + &
+                          Gm_dd_33 * V_u_3 * KdotGradLnAlpha_u(3)
+
+    VdotL_uu(:,:) = (Gm_dd_11 * V_u_1 * l_uuu(:,:,1) + Gm_dd_22 * V_u_2 * l_uuu(:,:,2) + Gm_dd_33 * V_u_3 * l_uuu(:,:,3)) * D
+
+    VdotLdotGradLnAlpha_u(:) = VdotL_uu(:,1) * dLnAlpha_dX1 + VdotL_uu(:,2) * dLnAlpha_dX2 + VdotL_uu(:,3) * dLnAlpha_dX3
 
     ! --- Number Density ---
 
@@ -2236,6 +2330,10 @@ CONTAINS
                      + k_uu(2,2) * VdotGradGm_dd_22 &
                      + k_uu(3,3) * VdotGradGm_dd_33 ) * D
 
+    Flux_E(1) &
+      = Flux_E(1) &
+          - ( IdotGradLnAlpha + VdotKdotGradLnAlpha )
+
     ! --- Number Flux Density (Component 1) ---
 
     Flux_E(2) &
@@ -2254,6 +2352,10 @@ CONTAINS
           - Half * Gm_dd_11 * (   l_uuu(1,1,1) * VdotGradGm_dd_11 &
                                 + l_uuu(2,2,1) * VdotGradGm_dd_22 &
                                 + l_uuu(3,3,1) * VdotGradGm_dd_33 ) * D
+
+    Flux_E(2) &
+      = Flux_E(2) &
+        - Gm_dd_11 * ( KdotGradLnAlpha_u(1) + VdotLdotGradLnAlpha_u(1) )
 
     ! --- Number Flux Density (Component 2) ---
 
@@ -2274,6 +2376,10 @@ CONTAINS
                                 + l_uuu(2,2,2) * VdotGradGm_dd_22 &
                                 + l_uuu(3,3,2) * VdotGradGm_dd_33 ) * D
 
+    Flux_E(3) &
+      = Flux_E(3) &
+        - Gm_dd_22 * ( KdotGradLnAlpha_u(2) + VdotLdotGradLnAlpha_u(2) )
+
     ! --- Number Flux Density (Component 3) ---
 
     Flux_E(4) &
@@ -2292,6 +2398,10 @@ CONTAINS
           - Half * Gm_dd_33 * (   l_uuu(1,1,3) * VdotGradGm_dd_11 &
                                 + l_uuu(2,2,3) * VdotGradGm_dd_22 &
                                 + l_uuu(3,3,3) * VdotGradGm_dd_33 ) * D
+
+    Flux_E(4) &
+      = Flux_E(4) &
+        - Gm_dd_33 * ( KdotGradLnAlpha_u(3) + VdotLdotGradLnAlpha_u(3) )
 
     RETURN
   END FUNCTION Flux_E
@@ -2901,7 +3011,7 @@ CONTAINS
 
   SUBROUTINE ComputeWeakDerivatives_X1 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, dV_u_dX1_Out, dV_d_dX1_Out, &
-      dGm_dd_dX1_Out )
+      dGm_dd_dX1_Out, dAlpha_dX1_Out )
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -2932,6 +3042,11 @@ CONTAINS
         (1:nDOFX,1:3, &
          iX_B0(1):iX_E0(1), &
          iX_B0(2):iX_E0(2), &
+         iX_B0(3):iX_E0(3)), &
+      dAlpha_dX1_Out &
+        (1:nDOFX, &
+         iX_B0(1):iX_E0(1), &
+         iX_B0(2):iX_E0(2), &
          iX_B0(3):iX_E0(3))
 
     INTEGER  :: iNodeX
@@ -2939,11 +3054,12 @@ CONTAINS
     INTEGER  :: iCF, iCF_S
     INTEGER  :: iGF, iGF_h, iGF_Gm_dd
     INTEGER  :: nX(3), nX_X1(3), nK_X, nX1_X
-    REAL(DP) :: uV_L(3), uV_R(3), uV_F(3), uV_K
+    REAL(DP) :: uV_L(3), uV_R(3), uV_F(3), uV_K(3)
 
     ! --- Geometry Fields ---
 
     REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: GX_K, GX_F, h_d_F, h_d_K, dh_d_dX1
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:)   :: Alpha_K, Alpha_F, dAlpha_dX1
 
     ! --- Conserved Fluid Fields ---
 
@@ -2953,44 +3069,46 @@ CONTAINS
 
     REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: V_u_X1, V_d_X1, V_u_K, V_d_K, dV_u_dX1, dV_d_dX1
 
-    ALLOCATE( GX_K    (nDOFX   ,nGF,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)-1:iX_E0(1)+1) )
-    ALLOCATE( GX_F    (nDOFX_X1,nGF,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)+1) )
-    ALLOCATE( h_d_F   (nDOFX_X1,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)+1) )
-    ALLOCATE( h_d_K   (nDOFX   ,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)  ) )
-    ALLOCATE( dh_d_dX1(nDOFX   ,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)  ) )
-    ALLOCATE( U_F_K   (nDOFX   ,nCF,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)-1:iX_E0(1)+1) )
-    ALLOCATE( U_F_L   (nDOFX_X1,nCF,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)+1) )
-    ALLOCATE( U_F_R   (nDOFX_X1,nCF,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)+1) )
-    ALLOCATE( V_u_X1  (nDOFX_X1,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)+1) )
-    ALLOCATE( V_d_X1  (nDOFX_X1,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)+1) )
-    ALLOCATE( V_u_K   (nDOFX   ,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)  ) )
-    ALLOCATE( V_d_K   (nDOFX   ,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)  ) )
-    ALLOCATE( dV_u_dX1(nDOFX   ,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)  ) )
-    ALLOCATE( dV_d_dX1(nDOFX   ,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)  ) )
+    ALLOCATE( GX_K      (nDOFX   ,nGF,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)-1:iX_E0(1)+1) )
+    ALLOCATE( GX_F      (nDOFX_X1,nGF,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)+1) )
+    ALLOCATE( h_d_F     (nDOFX_X1,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)+1) )
+    ALLOCATE( h_d_K     (nDOFX   ,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)  ) )
+    ALLOCATE( dh_d_dX1  (nDOFX   ,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)  ) )
+    ALLOCATE( Alpha_F   (nDOFX_X1    ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)+1) )
+    ALLOCATE( Alpha_K   (nDOFX       ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)  ) )
+    ALLOCATE( dAlpha_dX1(nDOFX       ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)  ) )
+    ALLOCATE( U_F_K     (nDOFX   ,nCF,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)-1:iX_E0(1)+1) )
+    ALLOCATE( U_F_L     (nDOFX_X1,nCF,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)+1) )
+    ALLOCATE( U_F_R     (nDOFX_X1,nCF,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)+1) )
+    ALLOCATE( V_u_X1    (nDOFX_X1,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)+1) )
+    ALLOCATE( V_d_X1    (nDOFX_X1,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)+1) )
+    ALLOCATE( V_u_K     (nDOFX   ,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)  ) )
+    ALLOCATE( V_d_K     (nDOFX   ,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)  ) )
+    ALLOCATE( dV_u_dX1  (nDOFX   ,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)  ) )
+    ALLOCATE( dV_d_dX1  (nDOFX   ,3  ,iX_B0(2):iX_E0(2),iX_B0(3):iX_E0(3),iX_B0(1)  :iX_E0(1)  ) )
 
     IF( iX_E0(1) .EQ. iX_B0(1) )THEN
 
 #if   defined( THORNADO_OMP_OL )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
       !$OMP MAP( to: iX_B0, iX_E0 )
 #elif defined( THORNADO_OACC   )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
       !$ACC COPYIN( iX_B0, iX_E0 ) &
-      !$ACC PRESENT( dV_u_dX1_Out, dV_d_dX1_Out, dGm_dd_dX1_Out )
+      !$ACC PRESENT( dV_u_dX1_Out, dV_d_dX1_Out, dGm_dd_dX1_Out, dAlpha_dX1_Out )
 #elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(5)
+      !$OMP PARALLEL DO COLLAPSE(4)
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
-      DO i = 1, 3
       DO iNodeX = 1, nDOFX
 
-          dV_u_dX1_Out  (iNodeX,i,iX1,iX2,iX3) = Zero
-          dV_d_dX1_Out  (iNodeX,i,iX1,iX2,iX3) = Zero
-          dGm_dd_dX1_Out(iNodeX,i,iX1,iX2,iX3) = Zero
+          dV_u_dX1_Out  (iNodeX,1:3,iX1,iX2,iX3) = Zero
+          dV_d_dX1_Out  (iNodeX,1:3,iX1,iX2,iX3) = Zero
+          dGm_dd_dX1_Out(iNodeX,1:3,iX1,iX2,iX3) = Zero
+          dAlpha_dX1_Out(iNodeX,    iX1,iX2,iX3) = Zero
 
-      END DO
       END DO
       END DO
       END DO
@@ -3011,13 +3129,13 @@ CONTAINS
     !$OMP MAP( to: dX1, iX_B0, iX_E0 ) &
     !$OMP MAP( alloc: GX_K, GX_F, h_d_F, h_d_K, dh_d_dX1, &
     !$OMP             U_F_K, U_F_L, U_F_R, V_u_X1, V_d_X1, V_u_k, V_d_k, &
-    !$OMP             dV_u_dX1, dV_d_dX1 )
+    !$OMP             dV_u_dX1, dV_d_dX1, Alpha_K, Alpha_F, dAlpha_dX1 )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( dX1, iX_B0, iX_E0 ) &
     !$ACC CREATE( GX_K, GX_F, h_d_F, h_d_K, dh_d_dX1, &
     !$ACC         U_F_K, U_F_L, U_F_R, V_u_X1, V_d_X1, V_u_k, V_d_k, &
-    !$ACC         dV_u_dX1, dV_d_dX1 )
+    !$ACC         dV_u_dX1, dV_d_dX1, Alpha_K, Alpha_F, dAlpha_dX1 )
 #endif
 
     ! --- Permute Geometry Fields ---
@@ -3074,7 +3192,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( GX_F, h_d_F, iX_B0, iX_E0 )
+    !$ACC PRESENT( GX_F, h_d_F, Alpha_F, iX_B0, iX_E0 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
@@ -3084,23 +3202,19 @@ CONTAINS
 
       DO iNodeX = 1, nDOFX_X1
 
-        GX_F(iNodeX,iGF_Gm_dd_11,iX2,iX3,iX1) &
-          = MAX( GX_F(iNodeX,iGF_h_1,iX2,iX3,iX1)**2, SqrtTiny )
-        GX_F(iNodeX,iGF_Gm_dd_22,iX2,iX3,iX1) &
-          = MAX( GX_F(iNodeX,iGF_h_2,iX2,iX3,iX1)**2, SqrtTiny )
-        GX_F(iNodeX,iGF_Gm_dd_33,iX2,iX3,iX1) &
-          = MAX( GX_F(iNodeX,iGF_h_3,iX2,iX3,iX1)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_11:iGF_Gm_dd_33,iX2,iX3,iX1) &
+          = MAX( GX_F(iNodeX,iGF_h_1:iGF_h_3,iX2,iX3,iX1)**2, SqrtTiny )
+
         GX_F(iNodeX,iGF_SqrtGm,iX2,iX3,iX1) &
           = SQRT(   GX_F(iNodeX,iGF_Gm_dd_11,iX2,iX3,iX1) &
                   * GX_F(iNodeX,iGF_Gm_dd_22,iX2,iX3,iX1) &
                   * GX_F(iNodeX,iGF_Gm_dd_33,iX2,iX3,iX1) )
 
-        h_d_F(iNodeX,1,iX2,iX3,iX1) &
-          = GX_F(iNodeX,iGF_h_1,iX2,iX3,iX1) * WeightsX_X1(iNodeX)
-        h_d_F(iNodeX,2,iX2,iX3,iX1) &
-          = GX_F(iNodeX,iGF_h_2,iX2,iX3,iX1) * WeightsX_X1(iNodeX)
-        h_d_F(iNodeX,3,iX2,iX3,iX1) &
-          = GX_F(iNodeX,iGF_h_3,iX2,iX3,iX1) * WeightsX_X1(iNodeX)
+        h_d_F(iNodeX,1:3,iX2,iX3,iX1) &
+          = GX_F(iNodeX,iGF_h_1:iGF_h_3,iX2,iX3,iX1) * WeightsX_X1(iNodeX)
+
+        Alpha_F(iNodeX,iX2,iX3,iX1) &
+          = GX_F(iNodeX,iGF_Alpha,iX2,iX3,iX1) * WeightsX_X1(iNodeX)
 
       END DO
 
@@ -3119,6 +3233,17 @@ CONTAINS
            ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X1, + One, LX_X1_Up, nDOFX_X1, &
              h_d_F(1,1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX_X1, One,  &
              dh_d_dX1, nDOFX )
+
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nK_X, nDOFX_X1, - One, LX_X1_Dn, nDOFX_X1, &
+             Alpha_F(1,iX_B0(2),iX_B0(3),iX_B0(1)  ), nDOFX_X1, Zero, &
+             dAlpha_dX1, nDOFX )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nK_X, nDOFX_X1, + One, LX_X1_Up, nDOFX_X1, &
+             Alpha_F(1,iX_B0(2),iX_B0(3),iX_B0(1)+1), nDOFX_X1, One,  &
+             dAlpha_dX1, nDOFX )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
@@ -3267,43 +3392,40 @@ CONTAINS
     ! -------------------
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
-    !$OMP PRIVATE( uV_K, iCF, iCF_S, iGF_Gm_dd, iGF_h )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( uV_K )
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRIVATE( uV_K, iCF, iCF_S, iGF_Gm_dd, iGF_h ) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( uV_K ) &
     !$ACC PRESENT( iX_B0, iX_E0, U_F_K, GX_K, h_d_K, &
-    !$ACC          V_u_K, V_d_K, WeightsX_q )
+    !$ACC          V_u_K, V_d_K, Alpha_K, WeightsX_q )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(5) &
-    !$OMP PRIVATE( uV_K, iCF, iCF_S, iGF_Gm_dd, iGF_h )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( uV_K )
 #endif
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
 
-      DO i = 1, 3
       DO iNodeX = 1, nDOFX
 
-        iCF       = iCF_S1       + i - 1
-        iGF_Gm_dd = iGF_Gm_dd_11 + i - 1
-        iGF_h     = iGF_h_1      + i - 1
+        h_d_K(iNodeX,1:3,iX2,iX3,iX1) &
+          = WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_h_1:iGF_h_3,iX2,iX3,iX1)
 
-        h_d_K(iNodeX,i,iX2,iX3,iX1) &
-          = WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_h,iX2,iX3,iX1)
+        uV_K(1:3) &
+          = U_F_K(iNodeX,iCF_S1:iCF_S3,iX2,iX3,iX1) &
+            / ( GX_K (iNodeX,iGF_Gm_dd_11:iGF_Gm_dd_33,iX2,iX3,iX1) &
+              * U_F_K(iNodeX,iCF_D                    ,iX2,iX3,iX1) )
 
-        uV_K &
-          = U_F_K(iNodeX,iCF,iX2,iX3,iX1) &
-            / ( GX_K (iNodeX,iGF_Gm_dd,iX2,iX3,iX1) &
-              * U_F_K(iNodeX,iCF_D ,iX2,iX3,iX1) )
+        V_u_K(iNodeX,1:3,iX2,iX3,iX1) &
+          = uV_K(1:3) * WeightsX_q(iNodeX)
 
-        V_u_K(iNodeX,i,iX2,iX3,iX1) &
-          = uV_K * WeightsX_q(iNodeX)
+        V_d_K(iNodeX,1:3,iX2,iX3,iX1) &
+          = uV_K(1:3) * GX_K(iNodeX,iGF_Gm_dd_11:iGF_Gm_dd_33,iX2,iX3,iX1) * WeightsX_q(iNodeX)
 
-        V_d_K(iNodeX,i,iX2,iX3,iX1) &
-          = uV_K * WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Gm_dd,iX2,iX3,iX1)
+        Alpha_K(iNodeX,iX2,iX3,iX1) &
+          = WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Alpha,iX2,iX3,iX1)
 
-      END DO
       END DO
 
     END DO
@@ -3326,37 +3448,43 @@ CONTAINS
            ( 'T', 'N', nDOFX, 3*nK_X, nDOFX, - One, dLXdX1_q, nDOFX, &
              V_d_K, nDOFX, One, dV_d_dX1, nDOFX )
 
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nK_X, nDOFX, - One, dLXdX1_q, nDOFX, &
+             Alpha_K, nDOFX, One, dAlpha_dX1, nDOFX )
+
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, dX1, &
-    !$ACC          dh_d_dX1, dV_u_dX1, dV_d_dX1, WeightsX_q )
+    !$ACC          dh_d_dX1, dV_u_dX1, dV_d_dX1, dAlpha_dX1, WeightsX_q )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
 
-      DO i      = 1, 3
       DO iNodeX = 1, nDOFX
 
-        dh_d_dX1(iNodeX,i,iX2,iX3,iX1) &
-          = dh_d_dX1(iNodeX,i,iX2,iX3,iX1) &
+        dh_d_dX1(iNodeX,1:3,iX2,iX3,iX1) &
+          = dh_d_dX1(iNodeX,1:3,iX2,iX3,iX1) &
               / ( WeightsX_q(iNodeX) * dX1(iX1) )
 
-        dV_u_dX1(iNodeX,i,iX2,iX3,iX1) &
-         = dV_u_dX1(iNodeX,i,iX2,iX3,iX1) &
+        dV_u_dX1(iNodeX,1:3,iX2,iX3,iX1) &
+         = dV_u_dX1(iNodeX,1:3,iX2,iX3,iX1) &
              / ( WeightsX_q(iNodeX) * dX1(iX1) )
 
-        dV_d_dX1(iNodeX,i,iX2,iX3,iX1) &
-         = dV_d_dX1(iNodeX,i,iX2,iX3,iX1) &
+        dV_d_dX1(iNodeX,1:3,iX2,iX3,iX1) &
+         = dV_d_dX1(iNodeX,1:3,iX2,iX3,iX1) &
              / ( WeightsX_q(iNodeX) * dX1(iX1) )
 
-      END DO
+        dAlpha_dX1(iNodeX,iX2,iX3,iX1) &
+         = dAlpha_dX1(iNodeX,iX2,iX3,iX1) &
+             / ( WeightsX_q(iNodeX) * dX1(iX1) )
+
       END DO
 
     END DO
@@ -3364,37 +3492,33 @@ CONTAINS
     END DO
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
-    !$OMP PRIVATE( iGF_h )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRIVATE( iGF_h ) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, GX_K, dGm_dd_dX1_Out, dh_d_dX1, &
-    !$ACC          dV_u_dX1_Out, dV_u_dX1, dV_d_dX1_Out, dV_d_dX1 )
+    !$ACC          dV_u_dX1_Out, dV_u_dX1, dV_d_dX1_Out, dV_d_dX1, &
+    !$ACC          dAlpha_dX1_Out, dAlpha_dX1 )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(5) &
-    !$OMP PRIVATE( iGF_h )
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      DO i = 1, 3
       DO iNodeX = 1, nDOFX
 
-        iGF_h = iGF_h_1 + i - 1
+        dGm_dd_dX1_Out(iNodeX,1:3,iX1,iX2,iX3) &
+          = Two * GX_K(iNodeX,iGF_h_1:iGF_h_3,iX2,iX3,iX1) &
+              * dh_d_dX1(iNodeX,1:3,iX2,iX3,iX1)
 
-        dGm_dd_dX1_Out(iNodeX,i,iX1,iX2,iX3) &
-          = Two * GX_K(iNodeX,iGF_h,iX2,iX3,iX1) &
-              * dh_d_dX1(iNodeX,i,iX2,iX3,iX1)
+        dV_u_dX1_Out(iNodeX,1:3,iX1,iX2,iX3) &
+          = dV_u_dX1(iNodeX,1:3,iX2,iX3,iX1)
 
-        dV_u_dX1_Out(iNodeX,i,iX1,iX2,iX3) &
-          = dV_u_dX1(iNodeX,i,iX2,iX3,iX1)
+        dV_d_dX1_Out(iNodeX,1:3,iX1,iX2,iX3) &
+          = dV_d_dX1(iNodeX,1:3,iX2,iX3,iX1)
 
-        dV_d_dX1_Out(iNodeX,i,iX1,iX2,iX3) &
-          = dV_d_dX1(iNodeX,i,iX2,iX3,iX1)
-
-      END DO
+        dAlpha_dX1_Out(iNodeX,iX1,iX2,iX3) &
+          = dAlpha_dX1(iNodeX,iX2,iX3,iX1)
       END DO
 
     END DO
@@ -3406,13 +3530,13 @@ CONTAINS
     !$OMP MAP( release: dX1, iX_B0, iX_E0, &
     !$OMP               GX_K, GX_F, h_d_F, h_d_K, dh_d_dX1, &
     !$OMP               U_F_K, U_F_L, U_F_R, V_u_X1, V_d_X1, V_u_k, V_d_k, &
-    !$OMP               dV_u_dX1, dV_d_dX1 )
+    !$OMP               dV_u_dX1, dV_d_dX1, Alpha_F, Alpha_K, dAlpha_dX1 )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE( dX1, iX_B0, iX_E0, &
     !$ACC         GX_K, GX_F, h_d_F, h_d_K, dh_d_dX1, &
     !$ACC         U_F_K, U_F_L, U_F_R, V_u_X1, V_d_X1, V_u_k, V_d_k, &
-    !$ACC         dV_u_dX1, dV_d_dX1 )
+    !$ACC         dV_u_dX1, dV_d_dX1, Alpha_F, Alpha_K, dAlpha_dX1 )
 #endif
 
     END ASSOCIATE
@@ -3422,7 +3546,7 @@ CONTAINS
 
   SUBROUTINE ComputeWeakDerivatives_X2 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, dV_u_dX2_Out, dV_d_dX2_Out, &
-      dGm_dd_dX2_Out )
+      dGm_dd_dX2_Out, dAlpha_dX2_Out )
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -3453,6 +3577,11 @@ CONTAINS
         (1:nDOFX,1:3, &
          iX_B0(1):iX_E0(1), &
          iX_B0(2):iX_E0(2), &
+         iX_B0(3):iX_E0(3)), &
+      dAlpha_dX2_Out &
+        (1:nDOFX, &
+         iX_B0(1):iX_E0(1), &
+         iX_B0(2):iX_E0(2), &
          iX_B0(3):iX_E0(3))
 
     INTEGER  :: iNodeX
@@ -3460,11 +3589,12 @@ CONTAINS
     INTEGER  :: iCF, iCF_S
     INTEGER  :: iGF, iGF_h, iGF_Gm_dd
     INTEGER  :: nX(3), nX_X2(3), nK_X, nX2_X
-    REAL(DP) :: uV_L(3), uV_R(3), uV_F(3), uV_K
+    REAL(DP) :: uV_L(3), uV_R(3), uV_F(3), uV_K(3)
 
     ! --- Geometry Fields ---
 
     REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: GX_K, GX_F, h_d_F, h_d_K, dh_d_dX2
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:)   :: Alpha_K, Alpha_F, dAlpha_dX2
 
     ! --- Conserved Fluid Fields ---
 
@@ -3474,44 +3604,46 @@ CONTAINS
 
     REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: V_u_X2, V_d_X2, V_u_K, V_d_K, dV_u_dX2, dV_d_dX2
 
-    ALLOCATE( GX_K    (nDOFX   ,nGF,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)-1:iX_E0(2)+1) )
-    ALLOCATE( GX_F    (nDOFX_X2,nGF,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)+1) )
-    ALLOCATE( h_d_F   (nDOFX_X2,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)+1) )
-    ALLOCATE( h_d_K   (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)  ) )
-    ALLOCATE( dh_d_dX2(nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)  ) )
-    ALLOCATE( U_F_K   (nDOFX   ,nCF,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)-1:iX_E0(2)+1) )
-    ALLOCATE( U_F_L   (nDOFX_X2,nCF,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)+1) )
-    ALLOCATE( U_F_R   (nDOFX_X2,nCF,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)+1) )
-    ALLOCATE( V_u_X2  (nDOFX_X2,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)+1) )
-    ALLOCATE( V_d_X2  (nDOFX_X2,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)+1) )
-    ALLOCATE( V_u_K   (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)  ) )
-    ALLOCATE( V_d_K   (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)  ) )
-    ALLOCATE( dV_u_dX2(nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)  ) )
-    ALLOCATE( dV_d_dX2(nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)  ) )
+    ALLOCATE( GX_K      (nDOFX   ,nGF,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)-1:iX_E0(2)+1) )
+    ALLOCATE( GX_F      (nDOFX_X2,nGF,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)+1) )
+    ALLOCATE( h_d_F     (nDOFX_X2,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)+1) )
+    ALLOCATE( h_d_K     (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)  ) )
+    ALLOCATE( dh_d_dX2  (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)  ) )
+    ALLOCATE( Alpha_F   (nDOFX_X2    ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)+1) )
+    ALLOCATE( Alpha_K   (nDOFX       ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)  ) )
+    ALLOCATE( dAlpha_dX2(nDOFX       ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)  ) )
+    ALLOCATE( U_F_K     (nDOFX   ,nCF,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)-1:iX_E0(2)+1) )
+    ALLOCATE( U_F_L     (nDOFX_X2,nCF,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)+1) )
+    ALLOCATE( U_F_R     (nDOFX_X2,nCF,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)+1) )
+    ALLOCATE( V_u_X2    (nDOFX_X2,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)+1) )
+    ALLOCATE( V_d_X2    (nDOFX_X2,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)+1) )
+    ALLOCATE( V_u_K     (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)  ) )
+    ALLOCATE( V_d_K     (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)  ) )
+    ALLOCATE( dV_u_dX2  (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)  ) )
+    ALLOCATE( dV_d_dX2  (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(3):iX_E0(3),iX_B0(2)  :iX_E0(2)  ) )
 
     IF( iX_E0(2) .EQ. iX_B0(2) )THEN
 
 #if   defined( THORNADO_OMP_OL )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
       !$OMP MAP( to: iX_B0, iX_E0 )
 #elif defined( THORNADO_OACC   )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
       !$ACC COPYIN( iX_B0, iX_E0 ) &
-      !$ACC PRESENT( dV_u_dX2_Out, dV_d_dX2_Out, dGm_dd_dX2_Out )
+      !$ACC PRESENT( dV_u_dX2_Out, dV_d_dX2_Out, dGm_dd_dX2_Out, dAlpha_dX2_Out )
 #elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(5)
+      !$OMP PARALLEL DO COLLAPSE(4)
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
-      DO i = 1, 3
       DO iNodeX = 1, nDOFX
 
-          dV_u_dX2_Out  (iNodeX,i,iX1,iX2,iX3) = Zero
-          dV_d_dX2_Out  (iNodeX,i,iX1,iX2,iX3) = Zero
-          dGm_dd_dX2_Out(iNodeX,i,iX1,iX2,iX3) = Zero
+          dV_u_dX2_Out  (iNodeX,1:3,iX1,iX2,iX3) = Zero
+          dV_d_dX2_Out  (iNodeX,1:3,iX1,iX2,iX3) = Zero
+          dGm_dd_dX2_Out(iNodeX,1:3,iX1,iX2,iX3) = Zero
+          dAlpha_dX2_Out(iNodeX    ,iX1,iX2,iX3) = Zero
 
-      END DO
       END DO
       END DO
       END DO
@@ -3532,13 +3664,13 @@ CONTAINS
     !$OMP MAP( to: dX2, iX_B0, iX_E0 ) &
     !$OMP MAP( alloc: GX_K, GX_F, h_d_F, h_d_K, dh_d_dX2, &
     !$OMP             U_F_K, U_F_L, U_F_R, V_u_X2, V_d_X2, V_u_k, V_d_k, &
-    !$OMP             dV_u_dX2, dV_d_dX2 )
+    !$OMP             dV_u_dX2, dV_d_dX2, Alpha_K, Alpha_F, dAlpha_dX2 )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( dX2, iX_B0, iX_E0 ) &
     !$ACC CREATE( GX_K, GX_F, h_d_F, h_d_K, dh_d_dX2, &
     !$ACC         U_F_K, U_F_L, U_F_R, V_u_X2, V_d_X2, V_u_k, V_d_k, &
-    !$ACC         dV_u_dX2, dV_d_dX2 )
+    !$ACC         dV_u_dX2, dV_d_dX2, Alpha_K, Alpha_F, dAlpha_dX2 )
 #endif
 
     ! --- Permute Geometry Fields ---
@@ -3595,7 +3727,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( GX_F, h_d_F, iX_B0, iX_E0 )
+    !$ACC PRESENT( GX_F, h_d_F, Alpha_F, iX_B0, iX_E0 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
@@ -3605,23 +3737,19 @@ CONTAINS
 
       DO iNodeX = 1, nDOFX_X2
 
-        GX_F(iNodeX,iGF_Gm_dd_11,iX1,iX3,iX2) &
-          = MAX( GX_F(iNodeX,iGF_h_1,iX1,iX3,iX2)**2, SqrtTiny )
-        GX_F(iNodeX,iGF_Gm_dd_22,iX1,iX3,iX2) &
-          = MAX( GX_F(iNodeX,iGF_h_2,iX1,iX3,iX2)**2, SqrtTiny )
-        GX_F(iNodeX,iGF_Gm_dd_33,iX1,iX3,iX2) &
-          = MAX( GX_F(iNodeX,iGF_h_3,iX1,iX3,iX2)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_11:iGF_Gm_dd_33,iX1,iX3,iX2) &
+          = MAX( GX_F(iNodeX,iGF_h_1:iGF_h_3,iX1,iX3,iX2)**2, SqrtTiny )
+
         GX_F(iNodeX,iGF_SqrtGm,iX1,iX3,iX2) &
           = SQRT(   GX_F(iNodeX,iGF_Gm_dd_11,iX1,iX3,iX2) &
                   * GX_F(iNodeX,iGF_Gm_dd_22,iX1,iX3,iX2) &
                   * GX_F(iNodeX,iGF_Gm_dd_33,iX1,iX3,iX2) )
 
-        h_d_F(iNodeX,1,iX1,iX3,iX2) &
-          = GX_F(iNodeX,iGF_h_1,iX1,iX3,iX2) * WeightsX_X2(iNodeX)
-        h_d_F(iNodeX,2,iX1,iX3,iX2) &
-          = GX_F(iNodeX,iGF_h_2,iX1,iX3,iX2) * WeightsX_X2(iNodeX)
-        h_d_F(iNodeX,3,iX1,iX3,iX2) &
-          = GX_F(iNodeX,iGF_h_3,iX1,iX3,iX2) * WeightsX_X2(iNodeX)
+        h_d_F(iNodeX,1:3,iX1,iX3,iX2) &
+          = GX_F(iNodeX,iGF_h_1:iGF_h_3,iX1,iX3,iX2) * WeightsX_X2(iNodeX)
+
+        Alpha_F(iNodeX,iX1,iX3,iX2) &
+          = GX_F(iNodeX,iGF_Alpha,iX1,iX3,iX2) * WeightsX_X2(iNodeX)
 
       END DO
 
@@ -3640,6 +3768,16 @@ CONTAINS
            ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X2, + One, LX_X2_Up, nDOFX_X2, &
              h_d_F(1,1,iX_B0(1),iX_B0(3),iX_B0(2)+1), nDOFX_X2, One,  &
              dh_d_dX2, nDOFX )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nK_X, nDOFX_X2, - One, LX_X2_Dn, nDOFX_X2, &
+             Alpha_F(1,iX_B0(1),iX_B0(3),iX_B0(2)  ), nDOFX_X2, Zero, &
+             dAlpha_dX2, nDOFX )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nK_X, nDOFX_X2, + One, LX_X2_Up, nDOFX_X2, &
+             Alpha_F(1,iX_B0(1),iX_B0(3),iX_B0(2)+1), nDOFX_X2, One,  &
+             dAlpha_dX2, nDOFX )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
@@ -3788,43 +3926,40 @@ CONTAINS
     ! -------------------
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
-    !$OMP PRIVATE( uV_K, iCF, iCF_S, iGF_Gm_dd, iGF_h )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( uV_K )
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRIVATE( uV_K, iCF, iCF_S, iGF_Gm_dd, iGF_h ) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( uV_K ) &
     !$ACC PRESENT( iX_B0, iX_E0, U_F_K, GX_K, h_d_K, &
-    !$ACC          V_u_K, V_d_K, WeightsX_q )
+    !$ACC          V_u_K, V_d_K, Alpha_K, WeightsX_q )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(5) &
-    !$OMP PRIVATE( uV_K, iCF, iCF_S, iGF_Gm_dd, iGF_h )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( uV_K )
 #endif
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      DO i = 1, 3
       DO iNodeX = 1, nDOFX
 
-        iCF       = iCF_S1       + i - 1
-        iGF_Gm_dd = iGF_Gm_dd_11 + i - 1
-        iGF_h     = iGF_h_1      + i - 1
+        h_d_K(iNodeX,1:3,iX1,iX3,iX2) &
+          = WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_h_1:iGF_h_3,iX1,iX3,iX2)
 
-        h_d_K(iNodeX,i,iX1,iX3,iX2) &
-          = WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_h,iX1,iX3,iX2)
+        uV_K(1:3) &
+          = U_F_K(iNodeX,iCF_S1:iCF_S3,iX1,iX3,iX2) &
+            / ( GX_K (iNodeX,iGF_Gm_dd_11:iGF_Gm_dd_33,iX1,iX3,iX2) &
+              * U_F_K(iNodeX,iCF_D                    ,iX1,iX3,iX2) )
 
-        uV_K &
-          = U_F_K(iNodeX,iCF,iX1,iX3,iX2) &
-            / ( GX_K (iNodeX,iGF_Gm_dd,iX1,iX3,iX2) &
-              * U_F_K(iNodeX,iCF_D ,iX1,iX3,iX2) )
+        V_u_K(iNodeX,1:3,iX1,iX3,iX2) &
+          = uV_K(1:3) * WeightsX_q(iNodeX)
 
-        V_u_K(iNodeX,i,iX1,iX3,iX2) &
-          = uV_K * WeightsX_q(iNodeX)
+        V_d_K(iNodeX,1:3,iX1,iX3,iX2) &
+          = uV_K(1:3) * WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Gm_dd_11:iGF_Gm_dd_33,iX1,iX3,iX2)
 
-        V_d_K(iNodeX,i,iX1,iX3,iX2) &
-          = uV_K * WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Gm_dd,iX1,iX3,iX2)
+        Alpha_K(iNodeX,iX1,iX3,iX2) &
+          = WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Alpha,iX1,iX3,iX2)
 
-      END DO
       END DO
 
     END DO
@@ -3847,37 +3982,43 @@ CONTAINS
            ( 'T', 'N', nDOFX, 3*nK_X, nDOFX, - One, dLXdX2_q, nDOFX, &
              V_d_K, nDOFX, One, dV_d_dX2, nDOFX )
 
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nK_X, nDOFX, - One, dLXdX2_q, nDOFX, &
+             Alpha_K, nDOFX, One, dAlpha_dX2, nDOFX )
+
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, dX2, &
-    !$ACC          dh_d_dX2, dV_u_dX2, dV_d_dX2, WeightsX_q )
+    !$ACC          dh_d_dX2, dV_u_dX2, dV_d_dX2, dAlpha_dX2, WeightsX_q )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      DO i      = 1, 3
       DO iNodeX = 1, nDOFX
 
-        dh_d_dX2(iNodeX,i,iX1,iX3,iX2) &
-          = dh_d_dX2(iNodeX,i,iX1,iX3,iX2) &
+        dh_d_dX2(iNodeX,1:3,iX1,iX3,iX2) &
+          = dh_d_dX2(iNodeX,1:3,iX1,iX3,iX2) &
               / ( WeightsX_q(iNodeX) * dX2(iX2) )
 
-        dV_u_dX2(iNodeX,i,iX1,iX3,iX2) &
-         = dV_u_dX2(iNodeX,i,iX1,iX3,iX2) &
+        dV_u_dX2(iNodeX,1:3,iX1,iX3,iX2) &
+         = dV_u_dX2(iNodeX,1:3,iX1,iX3,iX2) &
              / ( WeightsX_q(iNodeX) * dX2(iX2) )
 
-        dV_d_dX2(iNodeX,i,iX1,iX3,iX2) &
-         = dV_d_dX2(iNodeX,i,iX1,iX3,iX2) &
+        dV_d_dX2(iNodeX,1:3,iX1,iX3,iX2) &
+         = dV_d_dX2(iNodeX,1:3,iX1,iX3,iX2) &
              / ( WeightsX_q(iNodeX) * dX2(iX2) )
 
-      END DO
+        dAlpha_dX2(iNodeX,iX1,iX3,iX2) &
+         = dAlpha_dX2(iNodeX,iX1,iX3,iX2) &
+             / ( WeightsX_q(iNodeX) * dX2(iX2) )
+
       END DO
 
     END DO
@@ -3885,38 +4026,34 @@ CONTAINS
     END DO
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
-    !$OMP PRIVATE( iGF_h )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRIVATE( iGF_h ) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, GX_K, dGm_dd_dX2_Out, dh_d_dX2, &
-    !$ACC          dV_u_dX2_Out, dV_u_dX2, dV_d_dX2_Out, dV_d_dX2 )
+    !$ACC          dV_u_dX2_Out, dV_u_dX2, dV_d_dX2_Out, dV_d_dX2, &
+    !$ACC          dAlpha_dX2_Out, dAlpha_dX2 )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(5) &
-    !$OMP PRIVATE( iGF_h )
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      DO i = 1, 3
       DO iNodeX = 1, nDOFX
 
-        iGF_h = iGF_h_1 + i - 1
+        dGm_dd_dX2_Out(iNodeX,1:3,iX1,iX2,iX3) &
+          = Two * GX_K(iNodeX,iGF_h_1:iGF_h_3,iX1,iX3,iX2) &
+              * dh_d_dX2(iNodeX,1:3,iX1,iX3,iX2)
 
-        dGm_dd_dX2_Out(iNodeX,i,iX1,iX2,iX3) &
-          = Two * GX_K(iNodeX,iGF_h,iX1,iX3,iX2) &
-              * dh_d_dX2(iNodeX,i,iX1,iX3,iX2)
+        dV_u_dX2_Out(iNodeX,1:3,iX1,iX2,iX3) &
+          = dV_u_dX2(iNodeX,1:3,iX1,iX3,iX2)
 
-        dV_u_dX2_Out(iNodeX,i,iX1,iX2,iX3) &
-          = dV_u_dX2(iNodeX,i,iX1,iX3,iX2)
+        dV_d_dX2_Out(iNodeX,1:3,iX1,iX2,iX3) &
+          = dV_d_dX2(iNodeX,1:3,iX1,iX3,iX2)
 
-        dV_d_dX2_Out(iNodeX,i,iX1,iX2,iX3) &
-          = dV_d_dX2(iNodeX,i,iX1,iX3,iX2)
+        dAlpha_dX2_Out(iNodeX,iX1,iX2,iX3) &
+          = dAlpha_dX2(iNodeX,iX1,iX3,iX2)
 
-
-      END DO
       END DO
 
     END DO
@@ -3928,13 +4065,13 @@ CONTAINS
     !$OMP MAP( release: dX2, iX_B0, iX_E0, &
     !$OMP               GX_K, GX_F, h_d_F, h_d_K, dh_d_dX2, &
     !$OMP               U_F_K, U_F_L, U_F_R, V_u_X2, V_d_X2, V_u_k, V_d_k, &
-    !$OMP               dV_u_dX2, dV_d_dX2 )
+    !$OMP               dV_u_dX2, dV_d_dX2, Alpha_F, Alpha_K, dAlpha_dX2 )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE( dX2, iX_B0, iX_E0, &
     !$ACC         GX_K, GX_F, h_d_F, h_d_K, dh_d_dX2, &
     !$ACC         U_F_K, U_F_L, U_F_R, V_u_X2, V_d_X2, V_u_k, V_d_k, &
-    !$ACC         dV_u_dX2, dV_d_dX2 )
+    !$ACC         dV_u_dX2, dV_d_dX2, Alpha_F, Alpha_K, dAlpha_dX2 )
 #endif
 
     END ASSOCIATE
@@ -3944,7 +4081,7 @@ CONTAINS
 
   SUBROUTINE ComputeWeakDerivatives_X3 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, GX, U_F, dV_u_dX3_Out, dV_d_dX3_Out, &
-      dGm_dd_dX3_Out )
+      dGm_dd_dX3_Out, dAlpha_dX3_Out )
 
     INTEGER,  INTENT(in)  :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
@@ -3975,6 +4112,11 @@ CONTAINS
         (1:nDOFX,1:3, &
          iX_B0(1):iX_E0(1), &
          iX_B0(2):iX_E0(2), &
+         iX_B0(3):iX_E0(3)), &
+      dAlpha_dX3_Out &
+        (1:nDOFX, &
+         iX_B0(1):iX_E0(1), &
+         iX_B0(2):iX_E0(2), &
          iX_B0(3):iX_E0(3))
 
     INTEGER  :: iNodeX
@@ -3982,11 +4124,12 @@ CONTAINS
     INTEGER  :: iCF, iCF_S
     INTEGER  :: iGF, iGF_h, iGF_Gm_dd
     INTEGER  :: nX(3), nX_X3(3), nK_X, nX3_X
-    REAL(DP) :: uV_L(3), uV_R(3), uV_F(3), uV_K
+    REAL(DP) :: uV_L(3), uV_R(3), uV_F(3), uV_K(3)
 
     ! --- Geometry Fields ---
 
     REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: GX_K, GX_F, h_d_F, h_d_K, dh_d_dX3
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:)   :: Alpha_K, Alpha_F, dAlpha_dX3
 
     ! --- Conserved Fluid Fields ---
 
@@ -3996,44 +4139,46 @@ CONTAINS
 
     REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: V_u_X3, V_d_X3, V_u_K, V_d_K, dV_u_dX3, dV_d_dX3
 
-    ALLOCATE( GX_K    (nDOFX   ,nGF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)-1:iX_E0(3)+1) )
-    ALLOCATE( GX_F    (nDOFX_X3,nGF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
-    ALLOCATE( h_d_F   (nDOFX_X3,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
-    ALLOCATE( h_d_K   (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
-    ALLOCATE( dh_d_dX3(nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
-    ALLOCATE( U_F_K   (nDOFX   ,nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)-1:iX_E0(3)+1) )
-    ALLOCATE( U_F_L   (nDOFX_X3,nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
-    ALLOCATE( U_F_R   (nDOFX_X3,nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
-    ALLOCATE( V_u_X3  (nDOFX_X3,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
-    ALLOCATE( V_d_X3  (nDOFX_X3,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
-    ALLOCATE( V_u_K   (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
-    ALLOCATE( V_d_K   (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
-    ALLOCATE( dV_u_dX3(nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
-    ALLOCATE( dV_d_dX3(nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
+    ALLOCATE( GX_K      (nDOFX   ,nGF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)-1:iX_E0(3)+1) )
+    ALLOCATE( GX_F      (nDOFX_X3,nGF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
+    ALLOCATE( h_d_F     (nDOFX_X3,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
+    ALLOCATE( h_d_K     (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
+    ALLOCATE( dh_d_dX3  (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
+    ALLOCATE( Alpha_F   (nDOFX_X3    ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
+    ALLOCATE( Alpha_K   (nDOFX       ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
+    ALLOCATE( dAlpha_dX3(nDOFX       ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
+    ALLOCATE( U_F_K     (nDOFX   ,nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)-1:iX_E0(3)+1) )
+    ALLOCATE( U_F_L     (nDOFX_X3,nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
+    ALLOCATE( U_F_R     (nDOFX_X3,nCF,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
+    ALLOCATE( V_u_X3    (nDOFX_X3,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
+    ALLOCATE( V_d_X3    (nDOFX_X3,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)+1) )
+    ALLOCATE( V_u_K     (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
+    ALLOCATE( V_d_K     (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
+    ALLOCATE( dV_u_dX3  (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
+    ALLOCATE( dV_d_dX3  (nDOFX   ,3  ,iX_B0(1):iX_E0(1),iX_B0(2):iX_E0(2),iX_B0(3)  :iX_E0(3)  ) )
 
     IF( iX_E0(3) .EQ. iX_B0(3) )THEN
 
 #if   defined( THORNADO_OMP_OL )
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
       !$OMP MAP( to: iX_B0, iX_E0 )
 #elif defined( THORNADO_OACC   )
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
       !$ACC COPYIN( iX_B0, iX_E0 ) &
-      !$ACC PRESENT( dV_u_dX3_Out, dV_d_dX3_Out, dGm_dd_dX3_Out )
+      !$ACC PRESENT( dV_u_dX3_Out, dV_d_dX3_Out, dGm_dd_dX3_Out, dAlpha_dX3_Out )
 #elif defined( THORNADO_OMP    )
-      !$OMP PARALLEL DO COLLAPSE(5)
+      !$OMP PARALLEL DO COLLAPSE(4)
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
-      DO i = 1, 3
       DO iNodeX = 1, nDOFX
 
-          dV_u_dX3_Out  (iNodeX,i,iX1,iX2,iX3) = Zero
-          dV_d_dX3_Out  (iNodeX,i,iX1,iX2,iX3) = Zero
-          dGm_dd_dX3_Out(iNodeX,i,iX1,iX2,iX3) = Zero
+          dV_u_dX3_Out  (iNodeX,1:3,iX1,iX2,iX3) = Zero
+          dV_d_dX3_Out  (iNodeX,1:3,iX1,iX2,iX3) = Zero
+          dGm_dd_dX3_Out(iNodeX,1:3,iX1,iX2,iX3) = Zero
+          dAlpha_dX3_Out(iNodeX,    iX1,iX2,iX3) = Zero
 
-      END DO
       END DO
       END DO
       END DO
@@ -4054,13 +4199,13 @@ CONTAINS
     !$OMP MAP( to: dX3, iX_B0, iX_E0 ) &
     !$OMP MAP( alloc: GX_K, GX_F, h_d_F, h_d_K, dh_d_dX3, &
     !$OMP             U_F_K, U_F_L, U_F_R, V_u_X3, V_d_X3, V_u_k, V_d_k, &
-    !$OMP             dV_u_dX3, dV_d_dX3 )
+    !$OMP             dV_u_dX3, dV_d_dX3, Alpha_K, Alpha_F, dAlpha_dX3 )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( dX3, iX_B0, iX_E0 ) &
     !$ACC CREATE( GX_K, GX_F, h_d_F, h_d_K, dh_d_dX3, &
     !$ACC         U_F_K, U_F_L, U_F_R, V_u_X3, V_d_X3, V_u_k, V_d_k, &
-    !$ACC         dV_u_dX3, dV_d_dX3 )
+    !$ACC         dV_u_dX3, dV_d_dX3, Alpha_K, Alpha_F, dAlpha_dX3 )
 #endif
 
     ! --- Permute Geometry Fields ---
@@ -4117,7 +4262,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( GX_F, h_d_F, iX_B0, iX_E0 )
+    !$ACC PRESENT( GX_F, h_d_F, Alpha_F, iX_B0, iX_E0 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
@@ -4127,23 +4272,19 @@ CONTAINS
 
       DO iNodeX = 1, nDOFX_X3
 
-        GX_F(iNodeX,iGF_Gm_dd_11,iX1,iX2,iX3) &
-          = MAX( GX_F(iNodeX,iGF_h_1,iX1,iX2,iX3)**2, SqrtTiny )
-        GX_F(iNodeX,iGF_Gm_dd_22,iX1,iX2,iX3) &
-          = MAX( GX_F(iNodeX,iGF_h_2,iX1,iX2,iX3)**2, SqrtTiny )
-        GX_F(iNodeX,iGF_Gm_dd_33,iX1,iX2,iX3) &
-          = MAX( GX_F(iNodeX,iGF_h_3,iX1,iX2,iX3)**2, SqrtTiny )
+        GX_F(iNodeX,iGF_Gm_dd_11:iGF_Gm_dd_33,iX1,iX2,iX3) &
+          = MAX( GX_F(iNodeX,iGF_h_1:iGF_h_3,iX1,iX2,iX3)**2, SqrtTiny )
+
         GX_F(iNodeX,iGF_SqrtGm,iX1,iX2,iX3) &
           = SQRT(   GX_F(iNodeX,iGF_Gm_dd_11,iX1,iX2,iX3) &
                   * GX_F(iNodeX,iGF_Gm_dd_22,iX1,iX2,iX3) &
                   * GX_F(iNodeX,iGF_Gm_dd_33,iX1,iX2,iX3) )
 
-        h_d_F(iNodeX,1,iX1,iX2,iX3) &
-          = GX_F(iNodeX,iGF_h_1,iX1,iX2,iX3) * WeightsX_X3(iNodeX)
-        h_d_F(iNodeX,2,iX1,iX2,iX3) &
-          = GX_F(iNodeX,iGF_h_2,iX1,iX2,iX3) * WeightsX_X3(iNodeX)
-        h_d_F(iNodeX,3,iX1,iX2,iX3) &
-          = GX_F(iNodeX,iGF_h_3,iX1,iX2,iX3) * WeightsX_X3(iNodeX)
+        h_d_F(iNodeX,1:3,iX1,iX2,iX3) &
+          = GX_F(iNodeX,iGF_h_1:iGF_h_3,iX1,iX2,iX3) * WeightsX_X3(iNodeX)
+
+        Alpha_F(iNodeX,iX1,iX2,iX3) &
+          = GX_F(iNodeX,iGF_Alpha,iX1,iX2,iX3) * WeightsX_X3(iNodeX)
 
       END DO
 
@@ -4162,6 +4303,16 @@ CONTAINS
            ( 'T', 'N', nDOFX, 3*nK_X, nDOFX_X3, + One, LX_X3_Up, nDOFX_X3, &
              h_d_F(1,1,iX_B0(1),iX_B0(2),iX_B0(3)+1), nDOFX_X3, One,  &
              dh_d_dX3, nDOFX )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nK_X, nDOFX_X3, - One, LX_X3_Dn, nDOFX_X3, &
+             Alpha_F(1,iX_B0(1),iX_B0(2),iX_B0(3)  ), nDOFX_X3, Zero, &
+             dAlpha_dX3, nDOFX )
+
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nK_X, nDOFX_X3, + One, LX_X3_Up, nDOFX_X3, &
+             Alpha_F(1,iX_B0(1),iX_B0(2),iX_B0(3)+1), nDOFX_X3, One,  &
+             dAlpha_dX3, nDOFX )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
@@ -4311,43 +4462,40 @@ CONTAINS
     ! -------------------
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
-    !$OMP PRIVATE( uV_K, iCF, iCF_S, iGF_Gm_dd, iGF_h )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( uV_K )
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRIVATE( uV_K, iCF, iCF_S, iGF_Gm_dd, iGF_h ) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( uV_K ) &
     !$ACC PRESENT( iX_B0, iX_E0, U_F_K, GX_K, h_d_K, &
-    !$ACC          V_u_K, V_d_K, WeightsX_q )
+    !$ACC          V_u_K, V_d_K, Alpha_K, WeightsX_q )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(5) &
-    !$OMP PRIVATE( uV_K, iCF, iCF_S, iGF_Gm_dd, iGF_h )
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( uV_K )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      DO i = 1, 3
       DO iNodeX = 1, nDOFX
 
-        iCF       = iCF_S1       + i - 1
-        iGF_Gm_dd = iGF_Gm_dd_11 + i - 1
-        iGF_h     = iGF_h_1      + i - 1
+        h_d_K(iNodeX,1:3,iX1,iX2,iX3) &
+          = WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_h_1:iGF_h_3,iX1,iX2,iX3)
 
-        h_d_K(iNodeX,i,iX1,iX2,iX3) &
-          = WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_h,iX1,iX2,iX3)
+        uV_K(1:3) &
+          = U_F_K(iNodeX,iCF_S1:iCF_S3,iX1,iX2,iX3) &
+            / ( GX_K (iNodeX,iGF_Gm_dd_11:iGF_Gm_dd_33,iX1,iX2,iX3) &
+                 * U_F_K(iNodeX,iCF_D                 ,iX1,iX2,iX3) )
 
-        uV_K &
-          = U_F_K(iNodeX,iCF,iX1,iX2,iX3) &
-            / ( GX_K (iNodeX,iGF_Gm_dd,iX1,iX2,iX3) &
-                 * U_F_K(iNodeX,iCF_D ,iX1,iX2,iX3) )
+        V_u_K(iNodeX,1:3,iX1,iX2,iX3) &
+          = uV_K(1:3) * WeightsX_q(iNodeX)
 
-        V_u_K(iNodeX,i,iX1,iX2,iX3) &
-          = uV_K * WeightsX_q(iNodeX)
+        V_d_K(iNodeX,1:3,iX1,iX2,iX3) &
+          = uV_K(1:3) * GX_K(iNodeX,iGF_Gm_dd_11:iGF_Gm_dd_33,iX1,iX2,iX3) * WeightsX_q(iNodeX)
 
-        V_d_K(iNodeX,i,iX1,iX2,iX3) &
-          = uV_K * WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Gm_dd,iX1,iX2,iX3)
+        Alpha_K(iNodeX,iX1,iX2,iX3) &
+          = WeightsX_q(iNodeX) * GX_K(iNodeX,iGF_Alpha,iX1,iX2,iX3)
 
-      END DO
       END DO
 
     END DO
@@ -4370,37 +4518,43 @@ CONTAINS
            ( 'T', 'N', nDOFX, 3*nK_X, nDOFX, - One, dLXdX3_q, nDOFX, &
              V_d_K, nDOFX, One, dV_d_dX3, nDOFX )
 
+    CALL MatrixMatrixMultiply &
+           ( 'T', 'N', nDOFX, nK_X, nDOFX, - One, dLXdX3_q, nDOFX, &
+             Alpha_K, nDOFX, One, dAlpha_dX3, nDOFX )
+
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, dX3, &
-    !$ACC          dh_d_dX3, dV_u_dX3, dV_d_dX3, WeightsX_q )
+    !$ACC          dh_d_dX3, dV_u_dX3, dV_d_dX3, dAlpha_dX3, WeightsX_q )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(5)
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      DO i      = 1, 3
       DO iNodeX = 1, nDOFX
 
-        dh_d_dX3(iNodeX,i,iX1,iX2,iX3) &
-          = dh_d_dX3(iNodeX,i,iX1,iX2,iX3) &
+        dh_d_dX3(iNodeX,1:3,iX1,iX2,iX3) &
+          = dh_d_dX3(iNodeX,1:3,iX1,iX2,iX3) &
               / ( WeightsX_q(iNodeX) * dX3(iX3) )
 
-        dV_u_dX3(iNodeX,i,iX1,iX2,iX3) &
-         = dV_u_dX3(iNodeX,i,iX1,iX2,iX3) &
+        dV_u_dX3(iNodeX,1:3,iX1,iX2,iX3) &
+         = dV_u_dX3(iNodeX,1:3,iX1,iX2,iX3) &
              / ( WeightsX_q(iNodeX) * dX3(iX3) )
 
-        dV_d_dX3(iNodeX,i,iX1,iX2,iX3) &
-         = dV_d_dX3(iNodeX,i,iX1,iX2,iX3) &
+        dV_d_dX3(iNodeX,1:3,iX1,iX2,iX3) &
+         = dV_d_dX3(iNodeX,1:3,iX1,iX2,iX3) &
              / ( WeightsX_q(iNodeX) * dX3(iX3) )
 
-      END DO
+        dAlpha_dX3(iNodeX,iX1,iX2,iX3) &
+         = dAlpha_dX3(iNodeX,iX1,iX2,iX3) &
+             / ( WeightsX_q(iNodeX) * dX3(iX3) )
+
       END DO
 
     END DO
@@ -4408,37 +4562,34 @@ CONTAINS
     END DO
 
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
-    !$OMP PRIVATE( iGF_h )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
-    !$ACC PRIVATE( iGF_h ) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRESENT( iX_B0, iX_E0, GX_K, dGm_dd_dX3_Out, dh_d_dX3, &
-    !$ACC          dV_u_dX3_Out, dV_u_dX3, dV_d_dX3_Out, dV_d_dX3 )
+    !$ACC          dV_u_dX3_Out, dV_u_dX3, dV_d_dX3_Out, dV_d_dX3, &
+    !$ACC          dAlpha_dX3_Out, dAlpha_dX3 )
 #elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(5) &
-    !$OMP PRIVATE( iGF_h )
+    !$OMP PARALLEL DO COLLAPSE(4)
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      DO i      = 1, 3
       DO iNodeX = 1, nDOFX
 
-        iGF_h = iGF_h_1 + i - 1
+        dGm_dd_dX3_Out(iNodeX,1:3,iX1,iX2,iX3) &
+          = Two * GX_K(iNodeX,iGF_h_1:iGF_h_3,iX1,iX2,iX3) &
+              * dh_d_dX3(iNodeX,1:3,iX1,iX2,iX3)
 
-        dGm_dd_dX3_Out(iNodeX,i,iX1,iX2,iX3) &
-          = Two * GX_K(iNodeX,iGF_h,iX1,iX2,iX3) &
-              * dh_d_dX3(iNodeX,i,iX1,iX2,iX3)
+        dV_u_dX3_Out(iNodeX,1:3,iX1,iX2,iX3) &
+          = dV_u_dX3(iNodeX,1:3,iX1,iX2,iX3)
 
-        dV_u_dX3_Out(iNodeX,i,iX1,iX2,iX3) &
-          = dV_u_dX3(iNodeX,i,iX1,iX2,iX3)
+        dV_d_dX3_Out(iNodeX,1:3,iX1,iX2,iX3) &
+          = dV_d_dX3(iNodeX,1:3,iX1,iX2,iX3)
 
-        dV_d_dX3_Out(iNodeX,i,iX1,iX2,iX3) &
-          = dV_d_dX3(iNodeX,i,iX1,iX2,iX3)
+        dAlpha_dX3_Out(iNodeX,iX1,iX2,iX3) &
+          = dAlpha_dX3(iNodeX,iX1,iX2,iX3)
 
-      END DO
       END DO
 
     END DO
@@ -4450,13 +4601,13 @@ CONTAINS
     !$OMP MAP( release: dX3, iX_B0, iX_E0, &
     !$OMP               GX_K, GX_F, h_d_F, h_d_K, dh_d_dX3, &
     !$OMP               U_F_K, U_F_L, U_F_R, V_u_X3, V_d_X3, V_u_k, V_d_k, &
-    !$OMP               dV_u_dX3, dV_d_dX3 )
+    !$OMP               dV_u_dX3, dV_d_dX3, Alpha_F, Alpha_K, dAlpha_dX3 )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC DELETE( dX3, iX_B0, iX_E0, &
     !$ACC         GX_K, GX_F, h_d_F, h_d_K, dh_d_dX3, &
     !$ACC         U_F_K, U_F_L, U_F_R, V_u_X3, V_d_X3, V_u_k, V_d_k, &
-    !$ACC         dV_u_dX3, dV_d_dX3 )
+    !$ACC         dV_u_dX3, dV_d_dX3, Alpha_F, Alpha_K, dAlpha_dX3 )
 #endif
 
     END ASSOCIATE
@@ -4531,6 +4682,95 @@ CONTAINS
 
     RETURN
   END SUBROUTINE FaceVelocity_X3
+
+  SUBROUTINE EulerianEnergyMoments &
+    ( D, I_u_1, I_u_2, I_u_3, FF, &
+      V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      E, P_d_1, P_d_2, P_d_3, &
+      S_uu_11, S_uu_12, S_uu_13, &
+      S_uu_22, S_uu_23, S_uu_33 )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC   )
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: D, I_u_1, I_u_2, I_u_3, FF
+    REAL(DP), INTENT(in)  ::    V_u_1, V_u_2, V_u_3
+    REAL(DP), INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), INTENT(out) :: E, P_d_1, P_d_2, P_d_3
+    REAL(DP), INTENT(out) :: S_uu_11, S_uu_12, S_uu_13, S_uu_22, S_uu_23, S_uu_33
+
+    REAL(DP) :: EF, a, b
+    REAL(DP) :: h_u_1, h_u_2, h_u_3
+    REAL(DP) :: h_d_1, h_d_2, h_d_3
+    REAL(DP) :: K_dd_11, K_dd_12, K_dd_13, K_dd_22, K_dd_23, K_dd_33
+    REAL(DP) :: K_uu_11, K_uu_12, K_uu_13, K_uu_22, K_uu_23, K_uu_33
+
+    IF ( FF <= SqrtTiny ) THEN
+      EF = Third
+      a = Third
+      b = Zero
+
+      h_u_1 = Zero
+      h_u_2 = Zero
+      h_u_3 = Zero
+
+      h_d_1 = Zero
+      h_d_2 = Zero
+      h_d_3 = Zero
+    ELSE
+      EF = EddingtonFactor( D, FF )
+      a = Half * ( One - EF )
+      b = Half * ( Three * EF - One )
+
+      h_u_1 = I_u_1 / ( FF * D )
+      h_u_2 = I_u_2 / ( FF * D )
+      h_u_3 = I_u_3 / ( FF * D )
+
+      h_d_1 = Gm_dd_11 * h_u_1
+      h_d_2 = Gm_dd_22 * h_u_2
+      h_d_3 = Gm_dd_33 * h_u_3
+    END IF
+
+    K_dd_11 = ( a * Gm_dd_11 + b * h_d_1 * h_d_1 ) * D
+    K_dd_12 = (                b * h_d_1 * h_d_2 ) * D
+    K_dd_13 = (                b * h_d_1 * h_d_3 ) * D
+    K_dd_22 = ( a * Gm_dd_22 + b * h_d_2 * h_d_2 ) * D
+    K_dd_23 = (                b * h_d_2 * h_d_3 ) * D
+    K_dd_33 = ( a * Gm_dd_33 + b * h_d_3 * h_d_3 ) * D
+
+    K_uu_11 = ( a / Gm_dd_11 + b * h_u_1 * h_u_1 ) * D
+    K_uu_12 = (                b * h_u_1 * h_u_2 ) * D
+    K_uu_13 = (                b * h_u_1 * h_u_3 ) * D
+    K_uu_22 = ( a / Gm_dd_22 + b * h_u_2 * h_u_2 ) * D
+    K_uu_23 = (                b * h_u_2 * h_u_3 ) * D
+    K_uu_33 = ( a / Gm_dd_33 + b * h_u_3 * h_u_3 ) * D
+
+    ! These will need an extra factor of the energy
+    
+    E = D + Two * ( Gm_dd_11 * V_u_1 * I_u_1 + &
+                    Gm_dd_22 * V_u_2 * I_u_2 + &
+                    Gm_dd_33 * V_u_3 * I_u_3 ) ! + O(v^2)
+
+    P_d_1 = Gm_dd_11 * ( I_u_1 + V_u_1 * D) &
+            + (V_u_1 * K_dd_11 + V_u_2 * K_dd_12 + V_u_3 * K_dd_13)
+    P_d_2 = Gm_dd_22 * ( I_u_2 + V_u_2 * D) &
+            + (V_u_1 * K_dd_12 + V_u_2 * K_dd_22 + V_u_3 * K_dd_23)
+    P_d_3 = Gm_dd_33 * ( I_u_3 + V_u_3 * D) &
+            + (V_u_1 * K_dd_13 + V_u_2 * K_dd_23 + V_u_3 * K_dd_33)
+
+    S_uu_11 = K_uu_11 + Two * I_u_1 * V_u_1
+    S_uu_12 = K_uu_12 + I_u_1 * V_u_2 + I_u_2 * V_u_1
+    S_uu_13 = K_uu_13 + I_u_1 * V_u_3 + I_u_3 * V_u_1
+    S_uu_22 = K_uu_22 + Two * I_u_2 * V_u_2
+    S_uu_23 = K_uu_23 + I_u_2 * V_u_3 + I_u_3 * V_u_2
+    S_uu_33 = K_uu_33 + Two * I_u_3 * V_u_3
+
+    RETURN
+  END SUBROUTINE EulerianEnergyMoments
 
 
 END MODULE TwoMoment_UtilitiesModule

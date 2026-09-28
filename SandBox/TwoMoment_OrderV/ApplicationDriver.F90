@@ -63,7 +63,7 @@ PROGRAM ApplicationDriver
 
   CoordinateSystem = 'CARTESIAN'
 
-  ProgramName = 'SineWaveStreaming'
+  ProgramName = 'RadiatingSphere'
 
   nSpecies = 1
 

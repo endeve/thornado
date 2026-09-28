@@ -190,7 +190,8 @@ PROGRAM TwoMomentClosure
                 One, One, One, &
                 Zero, Zero, Zero, &
                 Zero, Zero, Zero, &
-                Zero, Zero, Zero )
+                Zero, Zero, Zero, &
+                One, Zero, Zero, Zero )
 
     ! --- Number Flux Source ---
 
