@@ -1247,7 +1247,8 @@ CONTAINS
   SUBROUTINE SolveNeutrinoMatterCoupling_FP_Nested_AA &
     ( dt, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, V_u_1, V_u_2, V_u_3, D, T, Y, E, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, Alpha, Beta_u_1, Beta_u_2, Beta_u_3, &
-      Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, nIterations_Inner, nIterations_Outer )
+      Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, nIterations_Inner, nIterations_Outer, &
+      MatterCoupling_Mask_Option )
 
     REAL(DP),                   INTENT(in)    :: dt
     REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
@@ -1259,6 +1260,7 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3
     INTEGER,  DIMENSION(:),     INTENT(inout) :: nIterations_Inner
     INTEGER,  DIMENSION(:),     INTENT(inout) :: nIterations_Outer
+    LOGICAL,  DIMENSION(:),     INTENT(out), OPTIONAL :: MatterCoupling_Mask_Option
 
     ! --- Local Variables ---
 
@@ -1377,6 +1379,10 @@ CONTAINS
 #elif defined( THORNADO_OACC   )
     !$ACC UPDATE HOST( ITERATE_outer )
 #endif
+
+    IF( PRESENT( MatterCoupling_Mask_Option ) )THEN
+      MatterCoupling_Mask_Option = ITERATE_outer
+    END IF
 
     SqrtGm = SQRT( Gm_dd_11 * Gm_dd_22 * Gm_dd_33 )
 

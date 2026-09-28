@@ -110,7 +110,7 @@ CONTAINS
 
   SUBROUTINE ComputeIncrement_TwoMoment_Implicit &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R, &
-      uDR_Option )
+      uDR_Option, MatterCoupling_Mask_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -162,13 +162,26 @@ CONTAINS
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nDR)
+    LOGICAL, INTENT(out), OPTIONAL :: &
+      MatterCoupling_Mask_Option &
+          (iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4))
 
     INTEGER :: iN_X, iN_E, iS
     INTEGER :: iNodeX, iX1, iX2, iX3
+    LOGICAL, ALLOCATABLE :: MatterCoupling_Mask_N(:)
 
     CALL TimersStart( Timer_Collisions )
 
     CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+
+    ALLOCATE( MatterCoupling_Mask_N(nX_G) )
+    MatterCoupling_Mask_N = .FALSE.
+
+    IF( PRESENT( MatterCoupling_Mask_Option ) )THEN
+      MatterCoupling_Mask_Option = .FALSE.
+    END IF
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -356,9 +369,36 @@ CONTAINS
              CR_N(:,:,:,iCR_G2), &
              CR_N(:,:,:,iCR_G3), &
              nIterations_Inner, &
-             nIterations_Outer )
+             nIterations_Outer, &
+             MatterCoupling_Mask_N )
 
     CALL TimersStop( Timer_Collisions_Solve )
+
+    IF( PRESENT( MatterCoupling_Mask_Option ) )THEN
+
+      DO iX3 = iX_B0(3), iX_E0(3)
+      DO iX2 = iX_B0(2), iX_E0(2)
+      DO iX1 = iX_B0(1), iX_E0(1)
+
+        MatterCoupling_Mask_Option(iX1,iX2,iX3) = .FALSE.
+
+      DO iNodeX = 1, nDOFX
+
+        iN_X = iNodeX &
+               + ( iX1 - iX_B0(1) ) * nDOFX &
+               + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
+               + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
+
+        MatterCoupling_Mask_Option(iX1,iX2,iX3) &
+          = MatterCoupling_Mask_Option(iX1,iX2,iX3) .OR. &
+            MatterCoupling_Mask_N(iN_X)
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
 
     ! --- Store Iteration Counts (If Requested) ---
 
@@ -620,6 +660,8 @@ CONTAINS
 #endif
 
     CALL FinalizeCollisions
+
+    DEALLOCATE( MatterCoupling_Mask_N )
 
     CALL TimersStop( Timer_Collisions )
 
