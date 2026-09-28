@@ -106,7 +106,8 @@ MODULE MF_XCFC_UtilitiesModule
     DestroyFineMask
   USE InputParsingModule, ONLY: &
     nLevels, &
-    UseTiling
+    UseTiling, &
+    UseXCFC
 
   IMPLICIT NONE
   PRIVATE
@@ -149,6 +150,8 @@ CONTAINS
     INTEGER :: iLevel
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3), swXX(3)
     LOGICAL :: OnlyLeafElements
+
+    IF( .NOT. UseXCFC ) RETURN
 
     OnlyLeafElements = .TRUE.
     IF( PRESENT( OnlyLeafElements_Option ) ) &
@@ -261,6 +264,8 @@ CONTAINS
 
     INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3), swXX(3)
 
+    IF( .NOT. UseXCFC ) RETURN
+
     swXX = 0
     IF( PRESENT( swX_Option ) ) &
       swXX = swX_Option
@@ -350,6 +355,8 @@ CONTAINS
     INTEGER  :: iLevel
     INTEGER  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), nE
     INTEGER  :: iZ_B1(4), iZ_E1(4)
+
+    IF( .NOT. UseXCFC ) RETURN
 
     nE = iE_E - iE_B + 1
 

@@ -1145,6 +1145,7 @@ CONTAINS
     CALL TimersStop_Euler( Timer_Euler_DG_CopyOut )
 
     ! --- Off-Grid Fluxes for Conservation Tally ---
+    ! --- Defined to be positive if flow is onto the grid ---
 
     DO iX3   = iX_B0(3), iX_E0(3)
     DO iX2   = iX_B0(2), iX_E0(2)
@@ -2387,7 +2388,7 @@ CONTAINS
         = Eigenvalues_Euler &
             ( pV3_R     (iNX_X), &
               Cs_R             , &
-              Gm_dd_22_F(iNX_X), &
+              Gm_dd_33_F(iNX_X), &
               pV1_R     (iNX_X), &
               pV2_R     (iNX_X), &
               pV3_R     (iNX_X), &

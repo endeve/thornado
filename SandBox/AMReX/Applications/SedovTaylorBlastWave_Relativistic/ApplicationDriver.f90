@@ -153,7 +153,6 @@ PROGRAM main
 
     CALL WriteCheckpointFile
 
-!if(stepno(0).eq.2)stop
   END DO
 
   ! --- END of evolution ---

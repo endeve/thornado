@@ -370,8 +370,8 @@ jobs:
           make -j -l6
           make realclean
 
-  StandingAccretionShock_Relativistic_amrex:
-    name: Compile SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
+  StandingAccretionShock_XCFC_amrex:
+    name: Compile SandBox/AMReX/Applications/StandingAccretionShock_XCFC
     needs: build
     runs-on: ubuntu-latest
     env:
@@ -393,9 +393,9 @@ jobs:
           ref: development
       - name: Build Dependencies
         run: bash ${THORNADO_DIR}/.github/workflows/dependencies_ubuntu.sh
-      - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
+      - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_XCFC
         run: |
-          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_XCFC
           make -j -l6
           make realclean
 

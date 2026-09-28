@@ -65,7 +65,8 @@ MODULE MF_InitializationModule
     Half, &
     One, &
     Two, &
-    TwoPi
+    TwoPi, &
+    Pi
   USE MF_UtilitiesModule, ONLY: &
     thornado2amrex_X, &
     amrex2thornado_X, &
@@ -637,6 +638,22 @@ CONTAINS
         uPF_NE = uPF_SE
         uPF_NW = uPF_SE
 
+      CASE( 'SphericalSod' )
+
+        uPF_SW(iPF_D ) = 1.0_DP
+        uPF_SW(iPF_V1) = 0.0_DP
+        uPF_SW(iPF_V2) = 0.0_DP
+        uPF_SW(iPF_V3) = 0.0_DP
+        uPF_SW(iPF_E ) = 1.0_DP / ( Gamma_IDEAL - One )
+        uPF_SW(iPF_Ne) = 0.0_DP
+
+        uPF_NE(iPF_D ) = 0.125_DP
+        uPF_NE(iPF_V1) = 0.0_DP
+        uPF_NE(iPF_V2) = 0.0_DP
+        uPF_NE(iPF_V3) = 0.0_DP
+        uPF_NE(iPF_E ) = 0.1_DP / ( Gamma_IDEAL - One )
+        uPF_NE(iPF_Ne) = 0.0_DP
+
       CASE( 'dZB2002' )
 
         X1_D = 0.5_DP
@@ -683,44 +700,70 @@ CONTAINS
 
       WRITE(*,'(6x,A,A)') 'RiemannProblemName: ', TRIM( RiemannProblemName )
       WRITE(*,*)
-      WRITE(*,'(8x,A,F5.3)') 'X1_D: ', X1_D
-      WRITE(*,'(8x,A,F5.3)') 'X2_D: ', X2_D
-      WRITE(*,*)
-      WRITE(*,'(8x,A)')      'NW Quadrant'
-      WRITE(*,'(8x,A)')      '-----------'
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_D ): ', uPF_NW(iPF_D )
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V1): ', uPF_NW(iPF_V1)
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V2): ', uPF_NW(iPF_V2)
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V3): ', uPF_NW(iPF_V3)
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_E ): ', uPF_NW(iPF_E )
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_Ne): ', uPF_NW(iPF_Ne)
-      WRITE(*,*)
-      WRITE(*,'(8x,A)')      'NE Quadrant'
-      WRITE(*,'(8x,A)')      '-----------'
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_D ): ', uPF_NE(iPF_D )
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V1): ', uPF_NE(iPF_V1)
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V2): ', uPF_NE(iPF_V2)
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V3): ', uPF_NE(iPF_V3)
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_E ): ', uPF_NE(iPF_E )
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_Ne): ', uPF_NE(iPF_Ne)
-      WRITE(*,*)
-      WRITE(*,'(8x,A)')      'SW Quadrant'
-      WRITE(*,'(8x,A)')      '-----------'
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_D ): ', uPF_SW(iPF_D )
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V1): ', uPF_SW(iPF_V1)
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V2): ', uPF_SW(iPF_V2)
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V3): ', uPF_SW(iPF_V3)
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_E ): ', uPF_SW(iPF_E )
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_Ne): ', uPF_SW(iPF_Ne)
-      WRITE(*,*)
-      WRITE(*,'(8x,A)')      'SE Quadrant'
-      WRITE(*,'(8x,A)')      '-----------'
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_D ): ', uPF_SE(iPF_D )
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V1): ', uPF_SE(iPF_V1)
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V2): ', uPF_SE(iPF_V2)
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V3): ', uPF_SE(iPF_V3)
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_E ): ', uPF_SE(iPF_E )
-      WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_Ne): ', uPF_SE(iPF_Ne)
+
+      IF( TRIM( RiemannProblemName ) .EQ. 'SphericalSod' )THEN
+
+        WRITE(*,'(8x,A)')      'Below State'
+        WRITE(*,'(8x,A)')      '-----------'
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_D ): ', uPF_SW(iPF_D )
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V1): ', uPF_SW(iPF_V2)
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V2): ', uPF_SW(iPF_V3)
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V3): ', uPF_SW(iPF_V3)
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_E ): ', uPF_SW(iPF_E )
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_Ne): ', uPF_SW(iPF_Ne)
+        WRITE(*,*)
+        WRITE(*,'(8x,A)')      'Above State'
+        WRITE(*,'(8x,A)')      '-----------'
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_D ): ', uPF_NE(iPF_D )
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V1): ', uPF_NE(iPF_V2)
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V2): ', uPF_NE(iPF_V3)
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V3): ', uPF_NE(iPF_V3)
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_E ): ', uPF_NE(iPF_E )
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_Ne): ', uPF_NE(iPF_Ne)
+
+      ELSE
+
+        WRITE(*,'(8x,A,F5.3)') 'X1_D: ', X1_D
+        WRITE(*,'(8x,A,F5.3)') 'X2_D: ', X2_D
+        WRITE(*,*)
+        WRITE(*,'(8x,A)')      'NW Quadrant'
+        WRITE(*,'(8x,A)')      '-----------'
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_D ): ', uPF_NW(iPF_D )
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V1): ', uPF_NW(iPF_V1)
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V2): ', uPF_NW(iPF_V2)
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V3): ', uPF_NW(iPF_V3)
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_E ): ', uPF_NW(iPF_E )
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_Ne): ', uPF_NW(iPF_Ne)
+        WRITE(*,*)
+        WRITE(*,'(8x,A)')      'NE Quadrant'
+        WRITE(*,'(8x,A)')      '-----------'
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_D ): ', uPF_NE(iPF_D )
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V1): ', uPF_NE(iPF_V1)
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V2): ', uPF_NE(iPF_V2)
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V3): ', uPF_NE(iPF_V3)
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_E ): ', uPF_NE(iPF_E )
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_Ne): ', uPF_NE(iPF_Ne)
+        WRITE(*,*)
+        WRITE(*,'(8x,A)')      'SW Quadrant'
+        WRITE(*,'(8x,A)')      '-----------'
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_D ): ', uPF_SW(iPF_D )
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V1): ', uPF_SW(iPF_V1)
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V2): ', uPF_SW(iPF_V2)
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V3): ', uPF_SW(iPF_V3)
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_E ): ', uPF_SW(iPF_E )
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_Ne): ', uPF_SW(iPF_Ne)
+        WRITE(*,*)
+        WRITE(*,'(8x,A)')      'SE Quadrant'
+        WRITE(*,'(8x,A)')      '-----------'
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_D ): ', uPF_SE(iPF_D )
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V1): ', uPF_SE(iPF_V1)
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V2): ', uPF_SE(iPF_V2)
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_V3): ', uPF_SE(iPF_V3)
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_E ): ', uPF_SE(iPF_E )
+        WRITE(*,'(8x,A,F5.3)') 'uPF(iPF_Ne): ', uPF_SE(iPF_Ne)
+
+      END IF
+
       WRITE(*,*)
 
     END IF
@@ -762,41 +805,63 @@ CONTAINS
         X1   = NodeCoordinate( MeshX(1), iX1, iNX1 )
         X2   = NodeCoordinate( MeshX(2), iX2, iNX2 )
 
-        IF( X1 .LT. X1_D .AND. X2 .GT. X2_D )THEN
+        IF( TRIM( RiemannProblemName ) .EQ. 'SphericalSod' )THEN
 
-          uPF(iNX,iPF_D ) = uPF_NW(iPF_D )
-          uPF(iNX,iPF_V1) = uPF_NW(iPF_V1)
-          uPF(iNX,iPF_V2) = uPF_NW(iPF_V2)
-          uPF(iNX,iPF_V3) = uPF_NW(iPF_V3)
-          uPF(iNX,iPF_E ) = uPF_NW(iPF_E )
-          uPF(iNX,iPF_Ne) = uPF_NW(iPF_Ne)
-
-        ELSE IF( X1 .GT. X1_D .AND. X2 .GT. X2_D )THEN
-
-          uPF(iNX,iPF_D ) = uPF_NE(iPF_D )
-          uPF(iNX,iPF_V1) = uPF_NE(iPF_V1)
-          uPF(iNX,iPF_V2) = uPF_NE(iPF_V2)
-          uPF(iNX,iPF_V3) = uPF_NE(iPF_V3)
-          uPF(iNX,iPF_E ) = uPF_NE(iPF_E )
-          uPF(iNX,iPF_Ne) = uPF_NE(iPF_Ne)
-
-        ELSE IF( X1 .LT. X1_D .AND. X2 .LT. X2_D )THEN
-
-          uPF(iNX,iPF_D ) = uPF_SW(iPF_D )
-          uPF(iNX,iPF_V1) = uPF_SW(iPF_V1)
-          uPF(iNX,iPF_V2) = uPF_SW(iPF_V2)
-          uPF(iNX,iPF_V3) = uPF_SW(iPF_V3)
-          uPF(iNX,iPF_E ) = uPF_SW(iPF_E )
-          uPF(iNX,iPF_Ne) = uPF_SW(iPF_Ne)
+          IF( IsBelowShock( X1, X2 ) )THEN
+            uPF(iNX,iPF_D ) = uPF_SW(iPF_D )
+            uPF(iNX,iPF_V1) = uPF_SW(iPF_V1)
+            uPF(iNX,iPF_V2) = uPF_SW(iPF_V2)
+            uPF(iNX,iPF_V3) = uPF_SW(iPF_V3)
+            uPF(iNX,iPF_E ) = uPF_SW(iPF_E )
+            uPF(iNX,iPF_Ne) = uPF_SW(iPF_Ne)
+          ELSE
+            uPF(iNX,iPF_D ) = uPF_NE(iPF_D )
+            uPF(iNX,iPF_V1) = uPF_NE(iPF_V1)
+            uPF(iNX,iPF_V2) = uPF_NE(iPF_V2)
+            uPF(iNX,iPF_V3) = uPF_NE(iPF_V3)
+            uPF(iNX,iPF_E ) = uPF_NE(iPF_E )
+            uPF(iNX,iPF_Ne) = uPF_NE(iPF_Ne)
+          END IF
 
         ELSE
 
-          uPF(iNX,iPF_D ) = uPF_SE(iPF_D )
-          uPF(iNX,iPF_V1) = uPF_SE(iPF_V1)
-          uPF(iNX,iPF_V2) = uPF_SE(iPF_V2)
-          uPF(iNX,iPF_V3) = uPF_SE(iPF_V3)
-          uPF(iNX,iPF_E ) = uPF_SE(iPF_E )
-          uPF(iNX,iPF_Ne) = uPF_SE(iPF_Ne)
+          IF( X1 .LT. X1_D .AND. X2 .GT. X2_D )THEN
+
+            uPF(iNX,iPF_D ) = uPF_NW(iPF_D )
+            uPF(iNX,iPF_V1) = uPF_NW(iPF_V1)
+            uPF(iNX,iPF_V2) = uPF_NW(iPF_V2)
+            uPF(iNX,iPF_V3) = uPF_NW(iPF_V3)
+            uPF(iNX,iPF_E ) = uPF_NW(iPF_E )
+            uPF(iNX,iPF_Ne) = uPF_NW(iPF_Ne)
+
+          ELSE IF( X1 .GT. X1_D .AND. X2 .GT. X2_D )THEN
+
+            uPF(iNX,iPF_D ) = uPF_NE(iPF_D )
+            uPF(iNX,iPF_V1) = uPF_NE(iPF_V1)
+            uPF(iNX,iPF_V2) = uPF_NE(iPF_V2)
+            uPF(iNX,iPF_V3) = uPF_NE(iPF_V3)
+            uPF(iNX,iPF_E ) = uPF_NE(iPF_E )
+            uPF(iNX,iPF_Ne) = uPF_NE(iPF_Ne)
+
+          ELSE IF( X1 .LT. X1_D .AND. X2 .LT. X2_D )THEN
+
+            uPF(iNX,iPF_D ) = uPF_SW(iPF_D )
+            uPF(iNX,iPF_V1) = uPF_SW(iPF_V1)
+            uPF(iNX,iPF_V2) = uPF_SW(iPF_V2)
+            uPF(iNX,iPF_V3) = uPF_SW(iPF_V3)
+            uPF(iNX,iPF_E ) = uPF_SW(iPF_E )
+            uPF(iNX,iPF_Ne) = uPF_SW(iPF_Ne)
+
+          ELSE
+
+            uPF(iNX,iPF_D ) = uPF_SE(iPF_D )
+            uPF(iNX,iPF_V1) = uPF_SE(iPF_V1)
+            uPF(iNX,iPF_V2) = uPF_SE(iPF_V2)
+            uPF(iNX,iPF_V3) = uPF_SE(iPF_V3)
+            uPF(iNX,iPF_E ) = uPF_SE(iPF_E )
+            uPF(iNX,iPF_Ne) = uPF_SE(iPF_Ne)
+
+          END IF
 
         END IF
 
@@ -1495,6 +1560,22 @@ CONTAINS
     CALL amrex_mfiter_destroy( MFI )
 
   END SUBROUTINE InitializeFields_Advection3D
+
+
+  LOGICAL FUNCTION IsBelowShock( X1, X2 )
+
+    REAL(DP), INTENT(in) :: X1, X2
+
+    REAL(DP), PARAMETER :: Rs0 = 1.0_DP
+
+    IsBelowShock = .FALSE.
+    IF ( X1 .LT. Rs0 ) &
+      IsBelowShock = .TRUE.
+    !IF ( X1 .LT. Rs0 * ( 1.0_DP + 0.1_DP * COS( 2.34_DP * Pi * X2 / Pi ) ) ) &
+    !  IsBelowShock = .TRUE.
+
+    RETURN
+  END FUNCTION IsBelowShock
 
 
 END MODULE MF_InitializationModule

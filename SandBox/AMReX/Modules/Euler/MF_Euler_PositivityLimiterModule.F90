@@ -276,7 +276,7 @@ CONTAINS
       CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
 
       CALL ApplyBoundaryConditions_Euler_MF &
-             ( iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
+             ( iLevel, iX_B0, iX_E0, iX_B1, iX_E1, U, Edge_Map )
 
       CALL ApplyPositivityLimiter_Euler &
              ( iX_B , iX_E , iX_B1, iX_E1, G, U, D )

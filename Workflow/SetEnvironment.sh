@@ -399,10 +399,10 @@ elif [[ $THORNADO_MACHINE == accre_gnu ]]; then
 
   echo
 
-  module load GCC/10.2.0
-  module load OpenMPI/4.0.5
-  module load ScaLAPACK/2.1.0
-  module load HDF5/1.10.7
+  module load gcc
+  module load openmpi
+  module load scalapack
+  module load hdf5
 
   export LAPACK_DIR=$EBROOTSCALAPACK
 

@@ -9,6 +9,7 @@ thornado.ProgramName = "TOV_XCFC"
 
 TOV.CentralDensity     = 7.906e14
 TOV.PolytropicConstant = 1.455e5
+thornado.UseXCFC = 1
 
 thornado.iRestart = -1
 

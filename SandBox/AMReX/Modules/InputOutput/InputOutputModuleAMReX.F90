@@ -281,7 +281,7 @@ CONTAINS
     TYPE(amrex_string), ALLOCATABLE :: VarNames(:)
     LOGICAL                         :: Verbose
 
-    Verbose = .FALSE.
+    Verbose = .TRUE.
     IF( PRESENT( Verbose_Option ) ) &
       Verbose = Verbose_Option
 
@@ -365,8 +365,10 @@ CONTAINS
 
     IF( Verbose )THEN
 
-      WRITE(*,*)
-      WRITE(*,'(6x,A,A)') 'Writing PlotFile ', PlotFileName
+      IF( amrex_parallel_ioprocessor() )THEN
+        WRITE(*,*)
+        WRITE(*,'(6x,A,A)') 'Writing PlotFile ', PlotFileName
+      END IF
 
     END IF
 

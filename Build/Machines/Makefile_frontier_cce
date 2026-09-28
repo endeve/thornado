@@ -1,11 +1,11 @@
 ## Makefile definitions for Frontier with CCE compiler
 
 C       = CC
-FORTRAN = ftn -hlist=a
+FORTRAN = ftn
 FLINKER = ftn
 
 DEBUG    = -g -G0 -O0 -K trap=fp
-OPTIMIZE = -G2
+OPTIMIZE = -g -O2
 
 SUFFIX_f90 =
 
@@ -16,6 +16,8 @@ ifeq ($(USE_OMP),TRUE)
   OPENMP = -fopenmp
 else ifeq ($(USE_OMP_OL),TRUE)
   OPENMP = -fopenmp # vector0 needed for now to bypass "invalid bitcast" compiler bug
+else
+  OPENMP = -fno-openmp
 endif
 
 ifeq ($(USE_OACC),TRUE)

@@ -23,8 +23,8 @@ thornado.t_end = 1.0e1
 thornado.iCycleD = 10
 
 # Prefix for plotfile; e.g, a plotfile written on the 100th
-# timestep will be called `Example.plt00000100`
-thornado.PlotFileNameRoot = "Example.plt"
+# timestep will be called `Example.plt.00000100`
+thornado.PlotFileNameRoot = "Example.plt."
 
 # Frequency with which to write plotfiles.
 # dt_wrt writes every dt_wrt [time units],
@@ -35,8 +35,8 @@ thornado.dt_wrt  = 1.0e-1
 thornado.iCycleW = -1
 
 # Prefix for checkpoint file; e.g, a checkpoint file written on the 100th
-# timestep will be called `Example.chk00000100`
-thornado.CheckpointFileNameRoot = "Example.chk"
+# timestep will be called `Example.chk.00000100`
+thornado.CheckpointFileNameRoot = "Example.chk."
 
 # Frequency with which to write checkpoint files.
 # dt_chk writes every dt_chk [time units],

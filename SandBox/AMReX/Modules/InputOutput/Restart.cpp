@@ -76,7 +76,7 @@ extern "C"
     const std::string& checkpointname
                          = amrex::Concatenate( chk_file, StepNo[0], 8 );
 
-    bool Verbose = false;
+    bool Verbose = true;
     if ( Verbose && ParallelDescriptor::IOProcessor() )
     {
         amrex::Print() << "\n    Writing CheckpointFile "
@@ -420,7 +420,7 @@ extern "C"
 	MF_Name = "Conserved_TwoMoment";
 	break;
       default:
-        std::cout << "Invalid." << std::endl;
+        amrex::Abort("Invalid MF");
     }
 
     for( int iLevel = 0; iLevel <= FinestLevel; ++iLevel )

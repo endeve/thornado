@@ -153,9 +153,9 @@ jobs:
           make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
           make realclean
 
-      - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
+      - name: Compile SandBox/AMReX/Applications/StandingAccretionShock_XCFC
         run: |
-          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_Relativistic
+          cd ${THORNADO_DIR}/SandBox/AMReX/Applications/StandingAccretionShock_XCFC
           make FORT_CPP="cpp-${GCC_MAJOR} -E -traditional-cpp -P"
           make realclean
 
