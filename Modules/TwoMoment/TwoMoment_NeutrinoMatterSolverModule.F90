@@ -1353,6 +1353,34 @@ CONTAINS
     !$ACC UPDATE HOST( Opacity_Mask )
 #endif
 
+    IF( PRESENT( MatterCoupling_Mask_Option ) )THEN
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( MatterCoupling_Mask_Option )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+      DO iN_X = 1, nX_G
+
+        ITERATE_outer(iN_X) = &
+            Opacity_Mask(iOp_EmAb,   iN_X) .OR. &
+            Opacity_Mask(iOp_ECTable,iN_X) .OR. &
+            Opacity_Mask(iOp_Iso,    iN_X) .OR. &
+            ( Include_NNS    .AND. Opacity_Mask(iOp_NNS,   iN_X) ) .OR. &
+            ( Include_NES    .AND. Opacity_Mask(iOp_NES,   iN_X) ) .OR. &
+            ( Include_Pair   .AND. Opacity_Mask(iOp_Pair,  iN_X) ) .OR. &
+            ( Include_NuPair .AND. Opacity_Mask(iOp_NuPair,iN_X) ) .OR. &
+            ( Include_Brem   .AND. Opacity_Mask(iOp_Brem,  iN_X) )
+
+        MatterCoupling_Mask_Option(iN_X) = ITERATE_outer(iN_X)
+
+      END DO
+
+    ELSE
+
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
@@ -1360,29 +1388,27 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
-    DO iN_X = 1, nX_G
+      DO iN_X = 1, nX_G
 
-      ITERATE_outer(iN_X) = &
-          Opacity_Mask(iOp_EmAb,   iN_X) .OR. &
-          Opacity_Mask(iOp_ECTable,iN_X) .OR. &
-          Opacity_Mask(iOp_Iso,    iN_X) .OR. &
-          ( Include_NNS    .AND. Opacity_Mask(iOp_NNS,   iN_X) ) .OR. &
-          ( Include_NES    .AND. Opacity_Mask(iOp_NES,   iN_X) ) .OR. &
-          ( Include_Pair   .AND. Opacity_Mask(iOp_Pair,  iN_X) ) .OR. &
-          ( Include_NuPair .AND. Opacity_Mask(iOp_NuPair,iN_X) ) .OR. &
-          ( Include_Brem   .AND. Opacity_Mask(iOp_Brem,  iN_X) )
+        ITERATE_outer(iN_X) = &
+            Opacity_Mask(iOp_EmAb,   iN_X) .OR. &
+            Opacity_Mask(iOp_ECTable,iN_X) .OR. &
+            Opacity_Mask(iOp_Iso,    iN_X) .OR. &
+            ( Include_NNS    .AND. Opacity_Mask(iOp_NNS,   iN_X) ) .OR. &
+            ( Include_NES    .AND. Opacity_Mask(iOp_NES,   iN_X) ) .OR. &
+            ( Include_Pair   .AND. Opacity_Mask(iOp_Pair,  iN_X) ) .OR. &
+            ( Include_NuPair .AND. Opacity_Mask(iOp_NuPair,iN_X) ) .OR. &
+            ( Include_Brem   .AND. Opacity_Mask(iOp_Brem,  iN_X) )
 
-    END DO
+      END DO
+
+    END IF
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET UPDATE FROM( ITERATE_outer )
 #elif defined( THORNADO_OACC   )
     !$ACC UPDATE HOST( ITERATE_outer )
 #endif
-
-    IF( PRESENT( MatterCoupling_Mask_Option ) )THEN
-      MatterCoupling_Mask_Option = ITERATE_outer
-    END IF
 
     SqrtGm = SQRT( Gm_dd_11 * Gm_dd_22 * Gm_dd_33 )
 

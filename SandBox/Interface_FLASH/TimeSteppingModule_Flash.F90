@@ -89,7 +89,8 @@ CONTAINS
   SUBROUTINE Update_IMEX_PDARS &
     ( dt, U_F, U_R, Explicit_Option, Implicit_Option, &
       SingleStage_Option, CallFromThornado_Option, &
-      bcX_Option, iApplyBC_Option, OffGridFluxR_Option )
+      bcX_Option, iApplyBC_Option, OffGridFluxR_Option, &
+      MatterCoupling_Mask_Option )
 
     use GeometryFieldsModuleE, only : uGE
     use GeometryFieldsModule,  only : uGF
@@ -121,6 +122,11 @@ CONTAINS
       bcX_Option(3), iApplyBC_Option(3)
     REAL(DP), INTENT(out), OPTIONAL :: &
       OffGridFluxR_Option(2*nCR)
+    LOGICAL, INTENT(out), OPTIONAL :: &
+      MatterCoupling_Mask_Option &
+          (iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4))
 
     LOGICAL  :: &
       Explicit, &
@@ -203,6 +209,38 @@ CONTAINS
     !$ACC COPYIN( U_F, U_R, uGE, uGF, &
     !$ACC         U0_F, Q1_F, U0_R, T0_R, T1_R, Q1_R, uDR )
 #endif
+
+    IF( PRESENT( MatterCoupling_Mask_Option ) )THEN
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA MAP( alloc: MatterCoupling_Mask_Option )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA CREATE( MatterCoupling_Mask_Option )
+#endif
+
+      IF( .NOT. Implicit )THEN
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( MatterCoupling_Mask_Option )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+        DO iZ4 = iZ_B0(4), iZ_E0(4)
+        DO iZ3 = iZ_B0(3), iZ_E0(3)
+        DO iZ2 = iZ_B0(2), iZ_E0(2)
+
+          MatterCoupling_Mask_Option(iZ2,iZ3,iZ4) = .FALSE.
+
+        END DO
+        END DO
+        END DO
+
+      END IF
+
+    END IF
 
     OffGridFluxR = Zero
 
@@ -394,15 +432,17 @@ CONTAINS
                uGE, uGF, &
                U_F, Q1_F, &
                U_R, Q1_R, &
-               uDR )
+               AccumulateMatterCoupling_Mask = .FALSE., &
+               uDR_Option = uDR, &
+               MatterCoupling_Mask_Option = MatterCoupling_Mask_Option )
 
     ELSE
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-      !$ACC PRESENT( Q1_R, iZ_B1, iZ_E1 )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRESENT( Q1_R, iZ_B1, iZ_E1 )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO COLLAPSE(7)
 #endif
@@ -606,17 +646,19 @@ CONTAINS
                  uGE, uGF, &
                  U_F, Q1_F, &
                  U_R, Q1_R, &
-                 uDR )
+                 AccumulateMatterCoupling_Mask = .TRUE., &
+                 uDR_Option = uDR, &
+                 MatterCoupling_Mask_Option = MatterCoupling_Mask_Option )
 
       ELSE
 
 #if defined(THORNADO_OMP_OL)
-        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
 #elif defined(THORNADO_OACC)
-        !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-        !$ACC PRESENT( Q1_R, iZ_B1, iZ_E1 )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRESENT( Q1_R, iZ_B1, iZ_E1 )
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO COLLAPSE(7)
+    !$OMP PARALLEL DO COLLAPSE(7)
 #endif
         DO iS = 1, nSpecies
           DO iCR = 1, nCR
@@ -722,6 +764,16 @@ CONTAINS
 
     IF( PRESENT( OffGridFluxR_Option ) )THEN
       OffGridFluxR_Option = OffGridFluxR
+    END IF
+
+    IF( PRESENT( MatterCoupling_Mask_Option ) )THEN
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA MAP( from: MatterCoupling_Mask_Option )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA COPYOUT( MatterCoupling_Mask_Option )
+#endif
+
     END IF
 
   END SUBROUTINE Update_IMEX_PDARS

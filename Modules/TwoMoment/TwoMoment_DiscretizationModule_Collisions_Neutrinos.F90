@@ -110,6 +110,7 @@ CONTAINS
 
   SUBROUTINE ComputeIncrement_TwoMoment_Implicit &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R, &
+      AccumulateMatterCoupling_Mask, &
       uDR_Option, MatterCoupling_Mask_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
@@ -156,13 +157,15 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
+    LOGICAL, INTENT(in) :: &
+      AccumulateMatterCoupling_Mask
     REAL(DP), INTENT(inout), OPTIONAL :: &
       uDR_Option &
           (iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nDR)
-    LOGICAL, INTENT(out), OPTIONAL :: &
+    LOGICAL, INTENT(inout), OPTIONAL :: &
       MatterCoupling_Mask_Option &
           (iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
@@ -177,20 +180,15 @@ CONTAINS
     CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 
     ALLOCATE( MatterCoupling_Mask_N(nX_G) )
-    MatterCoupling_Mask_N = .FALSE.
-
-    IF( PRESENT( MatterCoupling_Mask_Option ) )THEN
-      MatterCoupling_Mask_Option = .FALSE.
-    END IF
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: GE, GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
-    !$OMP MAP( alloc: dU_F, dU_R )
+    !$OMP MAP( alloc: dU_F, dU_R, MatterCoupling_Mask_N )
 #elif defined(THORNADO_OACC  )
     !$ACC ENTER DATA &
-    !$ACC COPYIN( GE, GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
-    !$ACC CREATE( dU_F, dU_R )
+    !$ACC COPYIN(  GE, GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
+    !$ACC CREATE(     dU_F, dU_R, MatterCoupling_Mask_N )
 #endif
 
     CALL MapDataForCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
@@ -376,24 +374,38 @@ CONTAINS
 
     IF( PRESENT( MatterCoupling_Mask_Option ) )THEN
 
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( iNodeX, iN_X )
+#elif defined(THORNADO_OACC  )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( iNodeX, iN_X ) &
+    !$ACC PRESENT( MatterCoupling_Mask_Option, &
+    !$ACC          MatterCoupling_Mask_N, iX_B0, iX_E0, nX )
+#elif defined(THORNADO_OMP   )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( iNodeX, iN_X )
+#endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
 
-        MatterCoupling_Mask_Option(iX1,iX2,iX3) = .FALSE.
-
-      DO iNodeX = 1, nDOFX
+        iNodeX = 1
 
         iN_X = iNodeX &
                + ( iX1 - iX_B0(1) ) * nDOFX &
                + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
                + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
 
-        MatterCoupling_Mask_Option(iX1,iX2,iX3) &
-          = MatterCoupling_Mask_Option(iX1,iX2,iX3) .OR. &
-            MatterCoupling_Mask_N(iN_X)
+        IF( AccumulateMatterCoupling_Mask )THEN
+          MatterCoupling_Mask_Option(iX1,iX2,iX3) &
+            = MatterCoupling_Mask_Option(iX1,iX2,iX3) .OR. &
+              MatterCoupling_Mask_N(iN_X)
+        ELSE
+          MatterCoupling_Mask_Option(iX1,iX2,iX3) &
+            = MatterCoupling_Mask_N(iN_X)
+        END IF
 
-      END DO
       END DO
       END DO
       END DO
@@ -652,11 +664,13 @@ CONTAINS
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from: dU_F, dU_R ) &
-    !$OMP MAP( release: GE, GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+    !$OMP MAP( release: GE, GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$OMP               MatterCoupling_Mask_N )
 #elif defined(THORNADO_OACC  )
     !$ACC EXIT DATA &
     !$ACC COPYOUT( dU_F, dU_R ) &
-    !$ACC DELETE( GE, GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+    !$ACC DELETE(       GE, GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
+    !$ACC               MatterCoupling_Mask_N )
 #endif
 
     CALL FinalizeCollisions
