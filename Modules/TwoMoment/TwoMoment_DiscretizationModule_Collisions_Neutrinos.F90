@@ -2,10 +2,9 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
 
   USE KindModule, ONLY: &
     DP, &
-    Zero
+    Zero, &
+    One
   USE UnitsModule, ONLY: &
-    Centimeter, &
-    Gram, &
     AtomicMassUnit
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
@@ -36,11 +35,15 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     InitializeNeutrinoMatterSolver, &
     FinalizeNeutrinoMatterSolver, &
     InitializeNeutrinoMatterSolverParameters
+#if defined( TWOMOMENT_ORDER_V )
+  USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
+    ComputeMatterRHS_Collisions_OrderV, &
+    nQ, nC, &
+    iQ_L, iQ_E, iQ_H, iQ_M1, iQ_M2, iQ_M3
+#endif
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputePrimitive_TwoMoment, &
     ComputeConserved_TwoMoment
-  USE OpacityModule_TABLE, ONLY: &
-    QueryOpacity
 #if   defined( TWOMOMENT_ORDER_1 )
 
   USE EquationOfStateModule_TABLE, ONLY: &
@@ -75,6 +78,9 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   PRIVATE
 
   PUBLIC :: ComputeIncrement_TwoMoment_Implicit
+#if defined( TWOMOMENT_ORDER_V )
+  PUBLIC :: nQ, nC
+#endif
 
   INTEGER               :: nE_G, nX_G
   INTEGER               :: nZ(4), nX(3), nE
@@ -100,8 +106,6 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
 
   LOGICAL, PARAMETER :: ReportConvergenceData = .FALSE.
 
-  REAL(DP), PARAMETER :: UnitD    = Gram / Centimeter**3
-
 CONTAINS
 
 
@@ -111,7 +115,12 @@ CONTAINS
   SUBROUTINE ComputeIncrement_TwoMoment_Implicit &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R, &
       AccumulateMatterCoupling_Mask, &
-      uDR_Option, MatterCoupling_Mask_Option )
+      uDR_Option, MatterCoupling_Mask_Option &
+#if defined( TWOMOMENT_ORDER_V )
+      , MatterSource_Rate_Option, MatterIncrement_Rate_Option, &
+        MatterSource_Weight_Option &
+#endif
+      )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -170,16 +179,47 @@ CONTAINS
           (iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4))
+#if defined( TWOMOMENT_ORDER_V )
+    REAL(DP), INTENT(inout), OPTIONAL :: &
+      MatterSource_Rate_Option &
+          (1:nQ, &
+           1:1+nSpecies+nC, &
+           1:nDOFX, &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4))
+    REAL(DP), INTENT(inout), OPTIONAL :: &
+      MatterIncrement_Rate_Option &
+          (1:nQ, &
+           1:nDOFX, &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4))
+    REAL(DP), INTENT(in), OPTIONAL :: MatterSource_Weight_Option
+#endif
 
     INTEGER :: iN_X, iN_E, iS
     INTEGER :: iNodeX, iX1, iX2, iX3
     LOGICAL, ALLOCATABLE :: MatterCoupling_Mask_N(:)
+#if defined( TWOMOMENT_ORDER_V )
+    INTEGER :: iG, iQ
+    REAL(DP) :: MatterSource_Weight
+    REAL(DP), ALLOCATABLE :: MatterSource_Rate_N(:,:,:)
+#endif
 
     CALL TimersStart( Timer_Collisions )
 
     CALL InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 
     ALLOCATE( MatterCoupling_Mask_N(nX_G) )
+#if defined( TWOMOMENT_ORDER_V )
+    IF( PRESENT( MatterSource_Rate_Option ) ) &
+      ALLOCATE( MatterSource_Rate_N(nQ,1+nSpecies+nC,nX_G) )
+
+    MatterSource_Weight = One
+    IF( PRESENT( MatterSource_Weight_Option ) ) &
+      MatterSource_Weight = MatterSource_Weight_Option
+#endif
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
@@ -189,6 +229,24 @@ CONTAINS
     !$ACC ENTER DATA &
     !$ACC COPYIN(  GE, GX, U_F, U_R, iZ_B0, iZ_E0, iZ_B1, iZ_E1 ) &
     !$ACC CREATE(     dU_F, dU_R, MatterCoupling_Mask_N )
+#endif
+#if defined( TWOMOMENT_ORDER_V )
+    IF( PRESENT( MatterSource_Rate_Option ) )THEN
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: MatterSource_Rate_Option, MatterSource_Rate_N )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA CREATE( MatterSource_Rate_Option, MatterSource_Rate_N )
+#endif
+    END IF
+
+    IF( PRESENT( MatterIncrement_Rate_Option ) )THEN
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA MAP( alloc: MatterIncrement_Rate_Option )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA CREATE( MatterIncrement_Rate_Option )
+#endif
+    END IF
 #endif
 
     CALL MapDataForCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
@@ -371,6 +429,60 @@ CONTAINS
              MatterCoupling_Mask_N )
 
     CALL TimersStop( Timer_Collisions_Solve )
+
+#if defined( TWOMOMENT_ORDER_V )
+    IF( PRESENT( MatterSource_Rate_Option ) )THEN
+
+      CALL ComputeMatterRHS_Collisions_OrderV &
+             ( PR_N(:,:,:,iCR_N ), &
+               PR_N(:,:,:,iCR_G1), PR_N(:,:,:,iCR_G2), PR_N(:,:,:,iCR_G3), &
+               PF_N(:,iPF_V1), PF_N(:,iPF_V2), PF_N(:,iPF_V3), &
+               GX_N(:,iGF_Gm_dd_11), GX_N(:,iGF_Gm_dd_22), &
+               GX_N(:,iGF_Gm_dd_33), MatterCoupling_Mask_N, &
+               MatterSource_Rate_N )
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP PRIVATE( iN_X ) FIRSTPRIVATE( MatterSource_Weight )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC PRIVATE( iN_X ) &
+    !$ACC FIRSTPRIVATE( MatterSource_Weight ) &
+    !$ACC PRESENT( MatterSource_Rate_Option, MatterSource_Rate_N )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( iN_X ) FIRSTPRIVATE( MatterSource_Weight )
+#endif
+      DO iX3    = iX_B0(3), iX_E0(3)
+      DO iX2    = iX_B0(2), iX_E0(2)
+      DO iX1    = iX_B0(1), iX_E0(1)
+      DO iNodeX = 1, nDOFX
+      DO iG      = 1, 1+nSpecies+nC
+      DO iQ      = 1, nQ
+
+        iN_X = iNodeX &
+               + ( iX1 - iX_B0(1) ) * nDOFX &
+               + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
+               + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
+
+        IF( AccumulateMatterCoupling_Mask )THEN
+          MatterSource_Rate_Option(iQ,iG,iNodeX,iX1,iX2,iX3) &
+            = MatterSource_Rate_Option(iQ,iG,iNodeX,iX1,iX2,iX3) &
+              + MatterSource_Weight * MatterSource_Rate_N(iQ,iG,iN_X)
+        ELSE
+          MatterSource_Rate_Option(iQ,iG,iNodeX,iX1,iX2,iX3) &
+            = MatterSource_Weight * MatterSource_Rate_N(iQ,iG,iN_X)
+        END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+#endif
 
     IF( PRESENT( MatterCoupling_Mask_Option ) )THEN
 
@@ -659,7 +771,83 @@ CONTAINS
 
 
     CALL ComputeAndMapIncrement &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, U_F, U_R, dU_F, dU_R )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, U_F, U_R, &
+             MatterCoupling_Mask_N, dU_F, dU_R )
+
+#if defined( TWOMOMENT_ORDER_V )
+    IF( PRESENT( MatterIncrement_Rate_Option ) )THEN
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( iN_X ) FIRSTPRIVATE( MatterSource_Weight )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( iN_X ) &
+    !$ACC FIRSTPRIVATE( MatterSource_Weight ) &
+    !$ACC PRESENT( MatterIncrement_Rate_Option, dU_F, PF_N )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( iN_X ) FIRSTPRIVATE( MatterSource_Weight )
+#endif
+      DO iX3    = iX_B0(3), iX_E0(3)
+      DO iX2    = iX_B0(2), iX_E0(2)
+      DO iX1    = iX_B0(1), iX_E0(1)
+      DO iNodeX = 1, nDOFX
+
+        iN_X = iNodeX &
+               + ( iX1 - iX_B0(1) ) * nDOFX &
+               + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
+               + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
+
+        IF( AccumulateMatterCoupling_Mask )THEN
+          MatterIncrement_Rate_Option(iQ_L,iNodeX,iX1,iX2,iX3) &
+            = MatterIncrement_Rate_Option(iQ_L,iNodeX,iX1,iX2,iX3) &
+              + MatterSource_Weight * dU_F(iNodeX,iX1,iX2,iX3,iCF_Ne)
+          MatterIncrement_Rate_Option(iQ_E,iNodeX,iX1,iX2,iX3) &
+            = MatterIncrement_Rate_Option(iQ_E,iNodeX,iX1,iX2,iX3) &
+              + MatterSource_Weight * dU_F(iNodeX,iX1,iX2,iX3,iCF_E)
+          MatterIncrement_Rate_Option(iQ_M1,iNodeX,iX1,iX2,iX3) &
+            = MatterIncrement_Rate_Option(iQ_M1,iNodeX,iX1,iX2,iX3) &
+              + MatterSource_Weight * dU_F(iNodeX,iX1,iX2,iX3,iCF_S1)
+          MatterIncrement_Rate_Option(iQ_M2,iNodeX,iX1,iX2,iX3) &
+            = MatterIncrement_Rate_Option(iQ_M2,iNodeX,iX1,iX2,iX3) &
+              + MatterSource_Weight * dU_F(iNodeX,iX1,iX2,iX3,iCF_S2)
+          MatterIncrement_Rate_Option(iQ_M3,iNodeX,iX1,iX2,iX3) &
+            = MatterIncrement_Rate_Option(iQ_M3,iNodeX,iX1,iX2,iX3) &
+              + MatterSource_Weight * dU_F(iNodeX,iX1,iX2,iX3,iCF_S3)
+          MatterIncrement_Rate_Option(iQ_H,iNodeX,iX1,iX2,iX3) &
+            = MatterIncrement_Rate_Option(iQ_H,iNodeX,iX1,iX2,iX3) &
+              + MatterSource_Weight &
+                * ( dU_F(iNodeX,iX1,iX2,iX3,iCF_E) &
+                    - PF_N(iN_X,iPF_V1) * dU_F(iNodeX,iX1,iX2,iX3,iCF_S1) &
+                    - PF_N(iN_X,iPF_V2) * dU_F(iNodeX,iX1,iX2,iX3,iCF_S2) &
+                    - PF_N(iN_X,iPF_V3) * dU_F(iNodeX,iX1,iX2,iX3,iCF_S3) )
+        ELSE
+          MatterIncrement_Rate_Option(iQ_L,iNodeX,iX1,iX2,iX3) &
+            = MatterSource_Weight * dU_F(iNodeX,iX1,iX2,iX3,iCF_Ne)
+          MatterIncrement_Rate_Option(iQ_E,iNodeX,iX1,iX2,iX3) &
+            = MatterSource_Weight * dU_F(iNodeX,iX1,iX2,iX3,iCF_E)
+          MatterIncrement_Rate_Option(iQ_M1,iNodeX,iX1,iX2,iX3) &
+            = MatterSource_Weight * dU_F(iNodeX,iX1,iX2,iX3,iCF_S1)
+          MatterIncrement_Rate_Option(iQ_M2,iNodeX,iX1,iX2,iX3) &
+            = MatterSource_Weight * dU_F(iNodeX,iX1,iX2,iX3,iCF_S2)
+          MatterIncrement_Rate_Option(iQ_M3,iNodeX,iX1,iX2,iX3) &
+            = MatterSource_Weight * dU_F(iNodeX,iX1,iX2,iX3,iCF_S3)
+          MatterIncrement_Rate_Option(iQ_H,iNodeX,iX1,iX2,iX3) &
+            = MatterSource_Weight &
+              * ( dU_F(iNodeX,iX1,iX2,iX3,iCF_E) &
+                  - PF_N(iN_X,iPF_V1) * dU_F(iNodeX,iX1,iX2,iX3,iCF_S1) &
+                  - PF_N(iN_X,iPF_V2) * dU_F(iNodeX,iX1,iX2,iX3,iCF_S2) &
+                  - PF_N(iN_X,iPF_V3) * dU_F(iNodeX,iX1,iX2,iX3,iCF_S3) )
+        END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+#endif
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -675,6 +863,25 @@ CONTAINS
 
     CALL FinalizeCollisions
 
+#if defined( TWOMOMENT_ORDER_V )
+    IF( PRESENT( MatterSource_Rate_Option ) )THEN
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: MatterSource_Rate_Option, MatterSource_Rate_N )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA DELETE( MatterSource_Rate_Option, MatterSource_Rate_N )
+#endif
+      DEALLOCATE( MatterSource_Rate_N )
+    END IF
+
+    IF( PRESENT( MatterIncrement_Rate_Option ) )THEN
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA MAP( release: MatterIncrement_Rate_Option )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA DELETE( MatterIncrement_Rate_Option )
+#endif
+    END IF
+#endif
     DEALLOCATE( MatterCoupling_Mask_N )
 
     CALL TimersStop( Timer_Collisions )
@@ -966,7 +1173,8 @@ CONTAINS
 
 
   SUBROUTINE ComputeAndMapIncrement &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, U_F, U_R, dU_F, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, U_F, U_R, &
+      MatterCoupling_Mask_N, dU_F, dU_R )
 
     INTEGER,  INTENT(in) :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
@@ -986,6 +1194,7 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
+    LOGICAL, INTENT(in) :: MatterCoupling_Mask_N(:)
     REAL(DP), INTENT(out) :: &
       dU_F(1:nDOFX, &
            iZ_B1(2):iZ_E1(2), &
@@ -1014,7 +1223,8 @@ CONTAINS
 #elif defined(THORNADO_OACC  )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
     !$ACC PRIVATE( iN_X ) &
-    !$ACC PRESENT( nX, iX_B0, iX_E0, dU_F, CF_N, U_F )
+    !$ACC PRESENT( nX, iX_B0, iX_E0, dU_F, CF_N, U_F, &
+    !$ACC          MatterCoupling_Mask_N )
 #elif defined(THORNADO_OMP   )
     !$OMP PARALLEL DO COLLAPSE(5) &
     !$OMP PRIVATE( iN_X )
@@ -1030,7 +1240,7 @@ CONTAINS
              + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
              + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
 
-      IF ( QueryOpacity( U_F(iNodeX,iX1,iX2,iX3,iCF_D) / UnitD ) ) THEN
+      IF ( MatterCoupling_Mask_N(iN_X) ) THEN
         dU_F(iNodeX,iX1,iX2,iX3,iCF) &
           = ( CF_N(iN_X,iCF) - U_F(iNodeX,iX1,iX2,iX3,iCF) ) / dt
       ELSE
@@ -1051,7 +1261,8 @@ CONTAINS
 #elif defined(THORNADO_OACC  )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
     !$ACC PRIVATE( iNodeX, iNodeE, iN_X, iN_E ) &
-    !$ACC PRESENT( nX, iX_B0, dU_R, CR_N, U_R )
+    !$ACC PRESENT( nX, iX_B0, dU_R, CR_N, U_R, &
+    !$ACC          MatterCoupling_Mask_N )
 #elif defined(THORNADO_OMP   )
     !$OMP PARALLEL DO COLLAPSE(7) &
     !$OMP PRIVATE( iNodeX, iNodeE, iN_X, iN_E )
@@ -1074,7 +1285,7 @@ CONTAINS
       iN_E = iNodeE &
              + ( iE  - iE_B0    ) * nDOFE
 
-      IF ( QueryOpacity( U_F(iNodeX,iX1,iX2,iX3,iCF_D) / UnitD ) ) THEN
+      IF ( MatterCoupling_Mask_N(iN_X) ) THEN
         dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) &
           = ( CR_N(iN_E,iS,iN_X,iCR) - U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) ) / dt
       ELSE

@@ -28,6 +28,10 @@ MODULE TimeSteppingModule_Flash
     ComputeIncrement_TwoMoment_Explicit
   USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
     ComputeIncrement_TwoMoment_Implicit
+#ifdef TWOMOMENT_ORDER_V
+  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
+    nQ, nC
+#endif
   USE TwoMoment_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_TwoMoment
   USE TwoMoment_SlopeLimiterModule, ONLY : &
@@ -90,7 +94,11 @@ CONTAINS
     ( dt, U_F, U_R, Explicit_Option, Implicit_Option, &
       SingleStage_Option, CallFromThornado_Option, &
       bcX_Option, iApplyBC_Option, OffGridFluxR_Option, &
-      MatterCoupling_Mask_Option )
+      MatterCoupling_Mask_Option, MatterCoupling_Increment_Option &
+#ifdef TWOMOMENT_ORDER_V
+      , MatterSource_Rate_Option, MatterIncrement_Rate_Option &
+#endif
+      )
 
     use GeometryFieldsModuleE, only : uGE
     use GeometryFieldsModule,  only : uGF
@@ -127,6 +135,30 @@ CONTAINS
           (iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4))
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      MatterCoupling_Increment_Option &
+          (1:nDOFX, &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nCF)
+#ifdef TWOMOMENT_ORDER_V
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      MatterSource_Rate_Option &
+          (1:nQ, &
+           1:1+nSpecies+nC, &
+           1:nDOFX, &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4))
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      MatterIncrement_Rate_Option &
+          (1:nQ, &
+           1:nDOFX, &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4))
+#endif
 
     LOGICAL  :: &
       Explicit, &
@@ -142,7 +174,8 @@ CONTAINS
     REAL(DP) :: &
       OffGridFluxR   (2*nCR), &
       OffGridFluxR_T0(2*nCR), &
-      OffGridFluxR_T1(2*nCR)
+      OffGridFluxR_T1(2*nCR), &
+      CollisionWeight
     REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:)     :: U0_F, Q1_F
     REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:,:,:) :: U0_R, T0_R, T1_R, Q1_R
 
@@ -241,6 +274,38 @@ CONTAINS
       END IF
 
     END IF
+
+    IF( PRESENT( MatterCoupling_Increment_Option ) )THEN
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA MAP( alloc: MatterCoupling_Increment_Option )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA CREATE( MatterCoupling_Increment_Option )
+#endif
+
+    END IF
+
+#ifdef TWOMOMENT_ORDER_V
+    IF( PRESENT( MatterSource_Rate_Option ) )THEN
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA MAP( alloc: MatterSource_Rate_Option )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA CREATE( MatterSource_Rate_Option )
+#endif
+
+    END IF
+
+    IF( PRESENT( MatterIncrement_Rate_Option ) )THEN
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA MAP( alloc: MatterIncrement_Rate_Option )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA CREATE( MatterIncrement_Rate_Option )
+#endif
+
+    END IF
+#endif
 
     OffGridFluxR = Zero
 
@@ -427,14 +492,31 @@ CONTAINS
     ! --- Implicit Step ---
 
     IF( Implicit )THEN
-      CALL ComputeIncrement_TwoMoment_Implicit &
-             ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, dt, &
-               uGE, uGF, &
-               U_F, Q1_F, &
-               U_R, Q1_R, &
-               AccumulateMatterCoupling_Mask = .FALSE., &
-               uDR_Option = uDR, &
-               MatterCoupling_Mask_Option = MatterCoupling_Mask_Option )
+#ifdef TWOMOMENT_ORDER_V
+      IF(      PRESENT( MatterSource_Rate_Option ) &
+          .OR. PRESENT( MatterIncrement_Rate_Option ) )THEN
+        CollisionWeight = One
+        IF( .NOT. SingleStage ) CollisionWeight = Half
+        CALL ComputeIncrement_TwoMoment_Implicit &
+               ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, dt, &
+                 uGE, uGF, U_F, Q1_F, U_R, Q1_R, &
+                 AccumulateMatterCoupling_Mask = .FALSE., &
+                 uDR_Option = uDR, &
+                 MatterCoupling_Mask_Option = MatterCoupling_Mask_Option, &
+                 MatterSource_Rate_Option = MatterSource_Rate_Option, &
+                 MatterIncrement_Rate_Option = MatterIncrement_Rate_Option, &
+                 MatterSource_Weight_Option = CollisionWeight )
+      ELSE
+#endif
+        CALL ComputeIncrement_TwoMoment_Implicit &
+               ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, dt, &
+                 uGE, uGF, U_F, Q1_F, U_R, Q1_R, &
+                 AccumulateMatterCoupling_Mask = .FALSE., &
+                 uDR_Option = uDR, &
+                 MatterCoupling_Mask_Option = MatterCoupling_Mask_Option )
+#ifdef TWOMOMENT_ORDER_V
+      END IF
+#endif
 
     ELSE
 
@@ -480,6 +562,36 @@ CONTAINS
             END DO
           END DO
         END DO
+      END DO
+
+    END IF
+
+    IF( PRESENT( MatterCoupling_Increment_Option ) )THEN
+
+      CollisionWeight = dt
+      IF( .NOT. SingleStage ) CollisionWeight = Half * dt
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP FIRSTPRIVATE( CollisionWeight )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC FIRSTPRIVATE( CollisionWeight ) &
+    !$ACC PRESENT( MatterCoupling_Increment_Option, Q1_F )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(5) FIRSTPRIVATE( CollisionWeight )
+#endif
+      DO iCF = 1, nCF
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iNodeX = 1, nDOFX
+        MatterCoupling_Increment_Option(iNodeX,iZ2,iZ3,iZ4,iCF) &
+          = CollisionWeight * Q1_F(iNodeX,iZ2,iZ3,iZ4,iCF)
+      END DO
+      END DO
+      END DO
+      END DO
       END DO
 
     END IF
@@ -640,15 +752,30 @@ CONTAINS
       ! --- Implicit Step ---
 
       IF( Implicit )THEN
-
-        CALL ComputeIncrement_TwoMoment_Implicit &
-               (iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, Half * dt, &
-                 uGE, uGF, &
-                 U_F, Q1_F, &
-                 U_R, Q1_R, &
-                 AccumulateMatterCoupling_Mask = .TRUE., &
-                 uDR_Option = uDR, &
-                 MatterCoupling_Mask_Option = MatterCoupling_Mask_Option )
+#ifdef TWOMOMENT_ORDER_V
+        IF(      PRESENT( MatterSource_Rate_Option ) &
+            .OR. PRESENT( MatterIncrement_Rate_Option ) )THEN
+          CollisionWeight = Half
+          CALL ComputeIncrement_TwoMoment_Implicit &
+                 ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, Half * dt, &
+                   uGE, uGF, U_F, Q1_F, U_R, Q1_R, &
+                   AccumulateMatterCoupling_Mask = .TRUE., &
+                   uDR_Option = uDR, &
+                   MatterCoupling_Mask_Option = MatterCoupling_Mask_Option, &
+                   MatterSource_Rate_Option = MatterSource_Rate_Option, &
+                   MatterIncrement_Rate_Option = MatterIncrement_Rate_Option, &
+                   MatterSource_Weight_Option = CollisionWeight )
+        ELSE
+#endif
+          CALL ComputeIncrement_TwoMoment_Implicit &
+                 ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, Half * dt, &
+                   uGE, uGF, U_F, Q1_F, U_R, Q1_R, &
+                   AccumulateMatterCoupling_Mask = .TRUE., &
+                   uDR_Option = uDR, &
+                   MatterCoupling_Mask_Option = MatterCoupling_Mask_Option )
+#ifdef TWOMOMENT_ORDER_V
+        END IF
+#endif
 
       ELSE
 
@@ -694,6 +821,36 @@ CONTAINS
               END DO
             END DO
           END DO
+        END DO
+
+      END IF
+
+      IF( PRESENT( MatterCoupling_Increment_Option ) )THEN
+
+        CollisionWeight = Half * dt
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP FIRSTPRIVATE( CollisionWeight )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC FIRSTPRIVATE( CollisionWeight ) &
+    !$ACC PRESENT( MatterCoupling_Increment_Option, Q1_F )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(5) FIRSTPRIVATE( CollisionWeight )
+#endif
+        DO iCF = 1, nCF
+        DO iZ4 = iZ_B0(4), iZ_E0(4)
+        DO iZ3 = iZ_B0(3), iZ_E0(3)
+        DO iZ2 = iZ_B0(2), iZ_E0(2)
+        DO iNodeX = 1, nDOFX
+          MatterCoupling_Increment_Option(iNodeX,iZ2,iZ3,iZ4,iCF) &
+            = MatterCoupling_Increment_Option(iNodeX,iZ2,iZ3,iZ4,iCF) &
+              + CollisionWeight * Q1_F(iNodeX,iZ2,iZ3,iZ4,iCF)
+        END DO
+        END DO
+        END DO
+        END DO
         END DO
 
       END IF
@@ -775,6 +932,38 @@ CONTAINS
 #endif
 
     END IF
+
+    IF( PRESENT( MatterCoupling_Increment_Option ) )THEN
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA MAP( from: MatterCoupling_Increment_Option )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA COPYOUT( MatterCoupling_Increment_Option )
+#endif
+
+    END IF
+
+#ifdef TWOMOMENT_ORDER_V
+    IF( PRESENT( MatterSource_Rate_Option ) )THEN
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA MAP( release: MatterSource_Rate_Option )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA DELETE( MatterSource_Rate_Option )
+#endif
+
+    END IF
+
+    IF( PRESENT( MatterIncrement_Rate_Option ) )THEN
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA MAP( release: MatterIncrement_Rate_Option )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA DELETE( MatterIncrement_Rate_Option )
+#endif
+
+    END IF
+#endif
 
   END SUBROUTINE Update_IMEX_PDARS
 
