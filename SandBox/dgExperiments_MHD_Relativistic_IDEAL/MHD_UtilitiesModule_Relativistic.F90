@@ -392,8 +392,12 @@ CONTAINS
 
       f_0 = f_1
 
-      IF( ( ABS( Xi_0 - Xi_1 ) .LE. 1.0d-16 ) .OR. ( N_osc .GT. 3 ) .OR. &
-          ITERATION .EQ. MaxIterations_ComputePrimitive_MHD ) EXIT
+      IF( ( ABS( Xi_0 - Xi_1 ) .LE. 1.0d-16 * MAX( ABS( Xi_0 ), SqrtTiny ) ) .OR. ( N_osc .GT. 3 ) .OR. &
+          ITERATION .EQ. MaxIterations_ComputePrimitive_MHD ) THEN
+
+        EXIT
+
+      END IF
 
     END DO
 
