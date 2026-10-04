@@ -128,12 +128,16 @@ MODULE MF_TwoMoment_OpacityModule
       PUBLIC :: FinalizeOpacities_GlobalSlot
       !PUBLIC :: nComp_uOP
      
-      REAL(DP), SAVE :: D_0_Save    = Zero
-      REAL(DP), SAVE :: Chi_Save    = Zero
-      REAL(DP), SAVE :: Sigma_Save  = Zero
-      REAL(DP), SAVE :: R_0_Save    = One
-      REAL(DP), SAVE :: p_Op_Save   = 80.0_DP
-      LOGICAL,  SAVE :: Initialized = .FALSE.
+      REAL(DP), SAVE :: D_0_Save      = Zero
+      REAL(DP), SAVE :: Chi_Save      = Zero
+      REAL(DP), SAVE :: Sigma_Save    = Zero
+      REAL(DP), SAVE :: R_0_Save      = One
+      REAL(DP), SAVE :: p_Op_Save     = 80.0_DP
+      LOGICAL,  SAVE :: Spectral_Save = .FALSE.
+      REAL(DP), SAVE :: Chi_Max_Save  = Zero
+      REAL(DP), SAVE :: p_E_Save      = 2.0_DP
+      LOGICAL,  SAVE :: Initialized   = .FALSE.
+
      
     CONTAINS
      
@@ -163,13 +167,17 @@ MODULE MF_TwoMoment_OpacityModule
      
         ALLOCATE( MF_uOP(0:nMaxLevels-1) )
      
-        D_0_Save    = D_0
-        Chi_Save    = Chi
-        Sigma_Save  = Sigma
+        D_0_Save     = D_0
+        Chi_Save     = Chi
+        Sigma_Save   = Sigma
+        Chi_Max_Save = Chi
 
         CALL amrex_parmparse_build( PP, 'thornado' )
-          CALL PP % query( 'Op_R_0', R_0_Save  )
-          CALL PP % query( 'Op_p'  , p_Op_Save )
+          CALL PP % query( 'Op_R_0'     , R_0_Save      )
+          CALL PP % query( 'Op_p'       , p_Op_Save     )
+          CALL PP % query( 'Op_Spectral', Spectral_Save )
+          CALL PP % query( 'Op_Chi_Max' , Chi_Max_Save  )
+          CALL PP % query( 'Op_p_E'     , p_E_Save      )
         CALL amrex_parmparse_destroy( PP )
 
         Initialized = .TRUE.
@@ -184,6 +192,9 @@ MODULE MF_TwoMoment_OpacityModule
           WRITE(*,'(A7,A8,ES10.4E2)') '', 'Sigma = ', Sigma
           WRITE(*,'(A7,A8,ES10.4E2)') '',  'Op_R_0 = ', R_0_Save
           WRITE(*,'(A7,A8,ES10.4E2)') '',  'Op_p   = ', p_Op_Save
+          WRITE(*,'(A7,A,L1)')        '', 'Op_Spectral = ', Spectral_Save
+          WRITE(*,'(A7,A,ES10.4E2)')  '', 'Op_Chi_Max  = ', Chi_Max_Save
+          WRITE(*,'(A7,A,ES10.4E2)')  '', 'Op_p_E      = ', p_E_Save
           WRITE(*,'(A7,A,I0)') '', 'nMaxLevels = ', nMaxLevels
           WRITE(*,'(A7,A,I0)') '', 'nComp_uOP  = ', nComp_uOP()
         END IF
@@ -278,7 +289,10 @@ MODULE MF_TwoMoment_OpacityModule
                  ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
                    D_0_Save, Chi_Save, Sigma_Save, &
                    Verbose_Option = .FALSE., &
-                   R_0_Option = R_0_Save, p_Op_Option = p_Op_Save )
+                   R_0_Option = R_0_Save, p_Op_Option = p_Op_Save , &
+                   Spectral_Option = Spectral_Save, &
+                   Chi_Max_Option  = Chi_Max_Save, &
+                   p_E_Option      = p_E_Save )
      
           DO iS     = 1, nSpecies
           DO iOP_   = 1, nOP

@@ -33,7 +33,7 @@ CONTAINS
 
   SUBROUTINE SetOpacities &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi, Sigma, Verbose_Option, &
-      R_0_Option, p_Op_Option )
+      R_0_Option, p_Op_Option, Spectral_Option, Chi_Max_Option, p_E_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -43,6 +43,8 @@ CONTAINS
       D0, Chi, Sigma
     LOGICAL,  INTENT(in), OPTIONAL :: Verbose_Option
     REAL(DP), INTENT(in), OPTIONAL :: R_0_Option, p_Op_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: Spectral_Option
+    REAL(DP), INTENT(in), OPTIONAL :: Chi_Max_Option, p_E_Option
 
     LOGICAL  :: Verbose
     REAL(DP) :: R_0, p_Op
@@ -98,8 +100,10 @@ CONTAINS
       CASE( 'HomogeneousSphere3D' )
 
         CALL SetOpacities_HomogeneousSphere3D &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi, R_0, p_Op )
-
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi, R_0, p_Op , &
+                 Spectral_Option = Spectral_Option, &
+                 Chi_Max_Option  = Chi_Max_Option , &
+                 p_E_Option      = p_E_Option )
       CASE DEFAULT
 
         uOP(:,:,:,:,:,iOP_D0   ,:) = D0
@@ -290,23 +294,51 @@ CONTAINS
     END DO
 
   END SUBROUTINE SetOpacities_HomogeneousSphere2D
-
+  
   SUBROUTINE SetOpacities_HomogeneousSphere3D &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi, R_0, p_Op )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, D0, Chi, R_0, p_Op, &
+      Spectral_Option, Chi_Max_Option, p_E_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
     ! --- Test A: Chi = 1.0d0, R_0 = 1.00, p_Op = 80
     ! --- Test B: Chi = 1.0d1, R_0 = 1.00, p_Op = 80
     ! --- Test C: Chi = 1.0d3, R_0 = 0.85, p_Op = 40
+    ! --- Spectral: Chi(E) = Chi + ( Chi_Max - Chi ) * xi**p_E,
+    ! ---           xi = ( E - E_Min ) / ( E_Max - E_Min )
 
     INTEGER,  INTENT(in) :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(in) :: &
       D0, Chi, R_0, p_Op
+    LOGICAL,  INTENT(in), OPTIONAL :: &
+      Spectral_Option
+    REAL(DP), INTENT(in), OPTIONAL :: &
+      Chi_Max_Option, p_E_Option
 
-    INTEGER  :: iNodeZ, iNodeZ2, iNodeZ3, iNodeZ4
+    LOGICAL  :: Spectral
+    INTEGER  :: iNodeZ, iNodeZ1, iNodeZ2, iNodeZ3, iNodeZ4
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS
     REAL(DP) :: X1, X2, X3, R, Chi_loc
+    REAL(DP) :: E, E_Min, E_Max, xi, Chi_E, Chi_Max, p_E
+
+    Spectral = .FALSE.
+    IF( PRESENT( Spectral_Option ) ) &
+      Spectral = Spectral_Option
+
+    Chi_Max = Chi
+    IF( PRESENT( Chi_Max_Option ) ) &
+      Chi_Max = Chi_Max_Option
+
+    p_E = 2.0_DP
+    IF( PRESENT( p_E_Option ) ) &
+      p_E = p_E_Option
+
+    E_Min = Zero
+    E_Max = One
+    IF( Spectral )THEN
+      E_Min = MeshE % Center(iZ_B0(1)) - 0.5_DP * MeshE % Width(iZ_B0(1))
+      E_Max = MeshE % Center(iZ_E0(1)) + 0.5_DP * MeshE % Width(iZ_E0(1))
+    END IF
 
     DO iS  = 1, nSpecies
     DO iZ4 = iZ_B1(4), iZ_E1(4)
@@ -316,6 +348,7 @@ CONTAINS
 
       DO iNodeZ = 1, nDOFZ
 
+        iNodeZ1 = NodeNumberTableZ(1,iNodeZ)
         iNodeZ2 = NodeNumberTableZ(2,iNodeZ)
         iNodeZ3 = NodeNumberTableZ(3,iNodeZ)
         iNodeZ4 = NodeNumberTableZ(4,iNodeZ)
@@ -326,13 +359,28 @@ CONTAINS
 
         R = SQRT( X1**2 + X2**2 + X3**2 )
 
-        IF( R <= SqrtTiny )THEN
+        IF( Spectral )THEN
 
-          Chi_loc = Chi
+          E = NodeCoordinate( MeshE, iZ1, iNodeZ1 )
+
+          xi = ( E - E_Min ) / ( E_Max - E_Min )
+          xi = MIN( MAX( xi, Zero ), One )
+
+          Chi_E = Chi + ( Chi_Max - Chi ) * xi**p_E
 
         ELSE
 
-          Chi_loc = Chi / ( ( R / R_0 )**p_Op + One )
+          Chi_E = Chi
+
+        END IF
+
+        IF( R <= SqrtTiny )THEN
+
+          Chi_loc = Chi_E
+
+        ELSE
+
+          Chi_loc = Chi_E / ( ( R / R_0 )**p_Op + One )
 
         END IF
 
