@@ -971,32 +971,32 @@ CONTAINS
         DO iNX = 1, nDOFX
 
           U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_D) &
-            = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_D) &
+            = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_D) &
               + oBC(iNX,iX1,iX2,iX3,iCM_D)
 
           U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S1) &
-            = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_HS1) &
-              + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_EMS1) &
+            = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_HS1) &
+              + D(iNX,iX_B0(1),iX2,iX3,iDM_EMS1) &
               + oBC(iNX,iX1,iX2,iX3,iCM_S1)
 
           U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S2) &
-            = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_HS2) &
-              + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_EMS2) &
+            = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_HS2) &
+              + D(iNX,iX_B0(1),iX2,iX3,iDM_EMS2) &
               + oBC(iNX,iX1,iX2,iX3,iCM_S2)
 
           U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S3) &
-            = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_HS3) &
-              + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_EMS3) &
+            = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_HS3) &
+              + D(iNX,iX_B0(1),iX2,iX3,iDM_EMS3) &
               + oBC(iNX,iX1,iX2,iX3,iCM_S3)
 
           U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_E) &
-            = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_HE) &
-              + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_EME) &
+            = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_HE) &
+              + D(iNX,iX_B0(1),iX2,iX3,iDM_EME) &
               + oBC(iNX,iX1,iX2,iX3,iCM_E)
 
           U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B1) &
             = oBC(iNX,iX1,iX2,iX3,iCM_B1) &
-              / G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_SqrtGm)
+              / G(iNX,iX_B0(1),iX2,iX3,iGF_SqrtGm)
 
           U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B2) &
             = oBC(iNX,iX1,iX2,iX3,iCM_B2)
@@ -1024,32 +1024,32 @@ CONTAINS
        DO iNX = 1, nDOFX
 
          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_D) &
-           = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_D) &
+           = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_D) &
              + iBC(iNX,iX1,iX2,iX3,iCM_D)
 
          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S1) &
-           = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_HS1) &
-             + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_EMS1) &
+           = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_HS1) &
+             + D(iNX,iX_E0(1),iX2,iX3,iDM_EMS1) &
              + iBC(iNX,iX1,iX2,iX3,iCM_S1)
 
          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S2) &
-           = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_HS2) &
-             + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_EMS2) &
+           = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_HS2) &
+             + D(iNX,iX_E0(1),iX2,iX3,iDM_EMS2) &
              + iBC(iNX,iX1,iX2,iX3,iCM_S2)
 
          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S3) &
-           = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_HS3) &
-             + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_EMS3) &
+           = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_HS3) &
+             + D(iNX,iX_E0(1),iX2,iX3,iDM_EMS3) &
              + iBC(iNX,iX1,iX2,iX3,iCM_S3)
 
          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_E) &
-           = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_HE) &
-             + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_EME) &
+           = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_HE) &
+             + D(iNX,iX_E0(1),iX2,iX3,iDM_EME) &
              + iBC(iNX,iX1,iX2,iX3,iCM_E)
 
          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B1) &
            = iBC(iNX,iX1,iX2,iX3,iCM_B1) &
-             / G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_SqrtGm)
+             / G(iNX,iX_E0(1),iX2,iX3,iGF_SqrtGm)
 
          U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B2) &
            = iBC(iNX,iX1,iX2,iX3,iCM_B2)
@@ -1079,31 +1079,31 @@ CONTAINS
         DO iNX = 1, nDOFX
 
           U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_D) &
-            = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_D)
+            = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_D)
 
           U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S1) &
-            = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S1) &
-              - D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_EMS1) &
-              + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_EMS1)
+            = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_S1) &
+              - D(iNX,iX_B0(1),iX2,iX3,iDM_IC_EMS1) &
+              + D(iNX,iX_B0(1),iX2,iX3,iDM_EMS1)
 
           U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S2) &
-            = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S2) &
-              - D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_EMS2) &
-              + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_EMS2)
+            = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_S2) &
+              - D(iNX,iX_B0(1),iX2,iX3,iDM_IC_EMS2) &
+              + D(iNX,iX_B0(1),iX2,iX3,iDM_EMS2)
 
           U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_S3) &
-            = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_S3) &
-              - D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_EMS3) &
-              + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_EMS3)
+            = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_S3) &
+              - D(iNX,iX_B0(1),iX2,iX3,iDM_IC_EMS3) &
+              + D(iNX,iX_B0(1),iX2,iX3,iDM_EMS3)
 
           U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_E) &
-            = D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_E) &
-              - D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_IC_EME) &
-              + D(iNX,iX_B0(1)-iX1,iX2,iX3,iDM_EME)
+            = D(iNX,iX_B0(1),iX2,iX3,iDM_IC_E) &
+              - D(iNX,iX_B0(1),iX2,iX3,iDM_IC_EME) &
+              + D(iNX,iX_B0(1),iX2,iX3,iDM_EME)
 
           U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B1) &
             = oBC(iNX,iX1,iX2,iX3,iCM_B1) &
-              / G(iNX,iX_B0(1)-iX1,iX2,iX3,iGF_SqrtGm)
+              / G(iNX,iX_B0(1),iX2,iX3,iGF_SqrtGm)
 
           U(iNX,iX_B0(1)-iX1,iX2,iX3,iCM_B2) &
             = oBC(iNX,iX1,iX2,iX3,iCM_B2)
@@ -1131,31 +1131,31 @@ CONTAINS
         DO iNX = 1, nDOFX
 
           U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_D) &
-            = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_D)
+            = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_D)
 
           U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S1) &
-            = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S1) &
-              - D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_EMS1) &
-              + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_EMS1)
+            = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_S1) &
+              - D(iNX,iX_E0(1),iX2,iX3,iDM_IC_EMS1) &
+              + D(iNX,iX_E0(1),iX2,iX3,iDM_EMS1)
 
           U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S2) &
-            = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S2) &
-              - D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_EMS2) &
-              + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_EMS2)
+            = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_S2) &
+              - D(iNX,iX_E0(1),iX2,iX3,iDM_IC_EMS2) &
+              + D(iNX,iX_E0(1),iX2,iX3,iDM_EMS2)
 
           U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_S3) &
-            = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_S3) &
-              - D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_EMS3) &
-              + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_EMS3)
+            = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_S3) &
+              - D(iNX,iX_E0(1),iX2,iX3,iDM_IC_EMS3) &
+              + D(iNX,iX_E0(1),iX2,iX3,iDM_EMS3)
 
           U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_E) &
-            = D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_E) &
-              - D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_IC_EME) &
-              + D(iNX,iX_E0(1)+iX1,iX2,iX3,iDM_EME)
+            = D(iNX,iX_E0(1),iX2,iX3,iDM_IC_E) &
+              - D(iNX,iX_E0(1),iX2,iX3,iDM_IC_EME) &
+              + D(iNX,iX_E0(1),iX2,iX3,iDM_EME)
 
           U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B1) &
             = iBC(iNX,iX1,iX2,iX3,iCM_B1) &
-              / G(iNX,iX_E0(1)+iX1,iX2,iX3,iGF_SqrtGm)
+              / G(iNX,iX_E0(1),iX2,iX3,iGF_SqrtGm)
 
           U(iNX,iX_E0(1)+iX1,iX2,iX3,iCM_B2) &
             = iBC(iNX,iX1,iX2,iX3,iCM_B2)

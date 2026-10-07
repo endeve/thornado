@@ -2179,25 +2179,25 @@ CONTAINS
         iBC(iNodeX,iX1,iX2,iX3,iCM_D ) = uCM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_D) &
                                          - uDM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_D)
 
-        oBC(iNodeX,iX1,iX2,iX3,iCM_S1) = uCM(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_S1) &
-                                         - uDM(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S1)
-        iBC(iNodeX,iX1,iX2,iX3,iCM_S1) = uCM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_S1) &
-                                         - uDM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S1)
+        oBC(iNodeX,iX1,iX2,iX3,iCM_S1) = uDM(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_HS1) &
+                                         - uDM(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_HS1)
+        iBC(iNodeX,iX1,iX2,iX3,iCM_S1) = uDM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_HS1) &
+                                         - uDM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_HS1)
 
-        oBC(iNodeX,iX1,iX2,iX3,iCM_S2) = uCM(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_S2) &
-                                         - uDM(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S2)
-        iBC(iNodeX,iX1,iX2,iX3,iCM_S2) = uCM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_S2) &
-                                         - uDM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S2)
+        oBC(iNodeX,iX1,iX2,iX3,iCM_S2) = uDM(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_HS2) &
+                                         - uDM(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_HS2)
+        iBC(iNodeX,iX1,iX2,iX3,iCM_S2) = uDM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_HS2) &
+                                         - uDM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_HS2)
 
-        oBC(iNodeX,iX1,iX2,iX3,iCM_S3) = uCM(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_S3) &
-                                         - uDM(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_S3)
-        iBC(iNodeX,iX1,iX2,iX3,iCM_S3) = uCM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_S3) &
-                                         - uDM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_S3)
+        oBC(iNodeX,iX1,iX2,iX3,iCM_S3) = uDM(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_HS3) &
+                                         - uDM(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_HS3)
+        iBC(iNodeX,iX1,iX2,iX3,iCM_S3) = uDM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_HS3) &
+                                         - uDM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_HS3)
 
-        oBC(iNodeX,iX1,iX2,iX3,iCM_E ) = uCM(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_E) &
-                                         - uDM(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_E)
-        iBC(iNodeX,iX1,iX2,iX3,iCM_E ) = uCM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iCM_E) &
-                                         - uDM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_E)
+        oBC(iNodeX,iX1,iX2,iX3,iCM_E ) = uDM(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_HE) &
+                                         - uDM(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iDM_IC_HE)
+        iBC(iNodeX,iX1,iX2,iX3,iCM_E ) = uDM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_HE) &
+                                         - uDM(iNodeX,iX_B0(1)+(iX1-1),iX2,iX3,iDM_IC_HE)
 
         oBC(iNodeX,iX1,iX2,iX3,iCM_B1) = uGF(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iGF_SqrtGm) &
                                          * uCM(iNodeX,iX_E0(1)-(iX1-1),iX2,iX3,iCM_B1)
