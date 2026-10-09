@@ -43,7 +43,11 @@ MODULE StandaloneMatterDiagnosticsModule
     ComputeTransportOpacityFromConserved_OrderV, &
     ComputeIncrement_TwoMoment_Explicit_AP, &
     GetNeutrinoMatterSolverConvergenceDiagnostics, &
-    nQ, nC
+    nQ, nC, nConservationHandoff, &
+    iCH_InputConversion_L, iCH_PrimitivePair_L, &
+    iCH_FinalConversion_L, iCH_MappedPair_L, iCH_ReturnedPair_L, &
+    iCH_InputConversion_E, iCH_PrimitivePair_E, &
+    iCH_FinalConversion_E, iCH_MappedPair_E, iCH_ReturnedPair_E
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit, &
     UseSourceAwareLLF, &
@@ -179,7 +183,8 @@ MODULE StandaloneMatterDiagnosticsModule
   INTEGER, PARAMETER :: iLedger_PreLimiterRadiationLocal = 15
   INTEGER, PARAMETER :: iLedger_PostLimiterMatterLocal = 16
   INTEGER, PARAMETER :: iLedger_PostLimiterRadiationLocal = 17
-  INTEGER, PARAMETER :: nLedgerComponents = 17
+  INTEGER, PARAMETER :: iLedger_DirectImplicitPairResidual = 18
+  INTEGER, PARAMETER :: nLedgerComponents = 18
   CHARACTER(32), PARAMETER :: LedgerComponentName(nLedgerComponents) = [ &
     CHARACTER(32) :: &
     'matter_actual', 'radiation_actual', 'boundary', &
@@ -191,8 +196,10 @@ MODULE StandaloneMatterDiagnosticsModule
     'pre_stage_limiter_matter_local', &
     'pre_stage_limiter_rad_local', &
     'post_stage_limiter_matter_local', &
-    'post_stage_limiter_rad_local' ]
+    'post_stage_limiter_rad_local', &
+    'direct_implicit_pair_residual' ]
   CHARACTER(256), SAVE :: IMEXConservationLedgerFile = ''
+  CHARACTER(256), SAVE :: IMEXConservationStageDefectFile = ''
   REAL(DP), SAVE :: &
     IMEXConservationCumulative(nLedgerQuantities,nLedgerComponents) = Zero
 
@@ -234,6 +241,8 @@ CONTAINS
     CumulativeBoundaryLepton = Zero
     CumulativeConservationFile = TRIM( FileName )
     IMEXConservationLedgerFile = TRIM( FileName ) // '.imex'
+    IMEXConservationStageDefectFile &
+      = TRIM( FileName ) // '.imex_implicit_pair_defect'
     IMEXConservationCumulative = Zero
 
     OPEN( NEWUNIT = Unit, FILE = TRIM(CumulativeConservationFile), &
@@ -280,6 +289,18 @@ CONTAINS
     WRITE(Unit,'(A)') &
       '# pre/post-stage limiter entries are local stage responses and are' // &
       ' not additional terms in the exact full-step decomposition.'
+    CLOSE(Unit)
+
+    OPEN( NEWUNIT = Unit, FILE = TRIM(IMEXConservationStageDefectFile), &
+          STATUS = 'REPLACE', ACTION = 'WRITE', FORM = 'FORMATTED' )
+    WRITE(Unit,'(A)') &
+      '# cycle time_s dt_s stage diagonal_coefficient implicit_weight' // &
+      ' energy_pair_defect_erg lepton_pair_defect' // &
+      ' weighted_energy_pair_defect_erg weighted_lepton_pair_defect'
+    WRITE(Unit,'(A)') &
+      '# pair defect is the change in matter plus radiation across the' // &
+      ' accepted diagonal implicit stage; weighted values multiply it' // &
+      ' by w_IM/a_IM(stage,stage).'
     CLOSE(Unit)
 
     CumulativeConservationInitialized = .TRUE.
@@ -464,9 +485,11 @@ CONTAINS
     REAL(DP), INTENT(in) :: StageRadiationExplicitRate(:,:,:,:,:,:,:,:)
 
     INTEGER :: iComponent, iStage, iQuantity, Unit
-    REAL(DP) :: wEX, wIM
+    REAL(DP) :: aII, wEX, wIM
     REAL(DP) :: dMatterEnergy, dRadiationEnergy
     REAL(DP) :: dMatterLepton, dRadiationLepton
+    REAL(DP) :: DirectEnergyPairDefect, DirectLeptonPairDefect
+    REAL(DP) :: WeightedEnergyPairDefect, WeightedLeptonPairDefect
     REAL(DP) :: MatterEnergyA, RadiationEnergyA
     REAL(DP) :: MatterLeptonA, RadiationLeptonA
     REAL(DP) :: MatterEnergyB, RadiationEnergyB
@@ -494,6 +517,59 @@ CONTAINS
     DO iStage = 1, SIZE( StageFluidState, 6 )
 
       wIM = GetImplicitStageWeight_IMEX_RK( iStage )
+      aII = GetImplicitStageCoefficient_IMEX_RK( iStage, iStage )
+
+      DirectEnergyPairDefect = Zero
+      DirectLeptonPairDefect = Zero
+      WeightedEnergyPairDefect = Zero
+      WeightedLeptonPairDefect = Zero
+
+      IF( aII /= Zero )THEN
+
+        CALL ComputeConservedMatterRadiationTotals &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
+                 StageFluidState(:,:,:,:,:,iStage,iIMEX_PreImplicit), &
+                 StageRadiationState &
+                   (:,:,:,:,:,:,:,iStage,iIMEX_PreImplicit), &
+                 MatterEnergyA, RadiationEnergyA, &
+                 MatterLeptonA, RadiationLeptonA )
+        CALL ComputeConservedMatterRadiationTotals &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
+                 StageFluidState(:,:,:,:,:,iStage,iIMEX_PostImplicit), &
+                 StageRadiationState &
+                   (:,:,:,:,:,:,:,iStage,iIMEX_PostImplicit), &
+                 MatterEnergyB, RadiationEnergyB, &
+                 MatterLeptonB, RadiationLeptonB )
+
+        DirectEnergyPairDefect &
+          = MatterEnergyB + RadiationEnergyB &
+              - MatterEnergyA - RadiationEnergyA
+        DirectLeptonPairDefect &
+          = MatterLeptonB + RadiationLeptonB &
+              - MatterLeptonA - RadiationLeptonA
+        WeightedEnergyPairDefect &
+          = ( wIM / aII ) * DirectEnergyPairDefect
+        WeightedLeptonPairDefect &
+          = ( wIM / aII ) * DirectLeptonPairDefect
+
+      END IF
+
+      Step(iLedger_Energy,iLedger_DirectImplicitPairResidual) &
+        = Step(iLedger_Energy,iLedger_DirectImplicitPairResidual) &
+            + WeightedEnergyPairDefect
+      Step(iLedger_Lepton,iLedger_DirectImplicitPairResidual) &
+        = Step(iLedger_Lepton,iLedger_DirectImplicitPairResidual) &
+            + WeightedLeptonPairDefect
+
+      OPEN( NEWUNIT = Unit, FILE = TRIM(IMEXConservationStageDefectFile), &
+            STATUS = 'OLD', POSITION = 'APPEND', ACTION = 'WRITE', &
+            FORM = 'FORMATTED' )
+      WRITE(Unit,'(I8,1X,2(ES24.16E3,1X),I4,1X,6(ES24.16E3,1X))') &
+        Cycle, Time / Second, TimeStep / Second, iStage, aII, wIM, &
+        DirectEnergyPairDefect / Erg, DirectLeptonPairDefect, &
+        WeightedEnergyPairDefect / Erg, WeightedLeptonPairDefect
+      CLOSE(Unit)
+
       CALL ComputeWeightedStageConservationChange &
              ( TimeStep, wIM, iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
                StageFluidState(:,:,:,:,:,iStage,iIMEX_PreImplicit), &
@@ -724,6 +800,7 @@ CONTAINS
     CumulativeBoundaryEnergy = Zero
     CumulativeBoundaryLepton = Zero
     IMEXConservationLedgerFile = ''
+    IMEXConservationStageDefectFile = ''
     IMEXConservationCumulative = Zero
 
   END SUBROUTINE FinalizeCumulativeConservationDiagnostics
@@ -1487,10 +1564,12 @@ CONTAINS
       ConservativeProjectionStatusFinal(:)
     REAL(DP), ALLOCATABLE :: FirstInnerRelativeResidual(:)
     REAL(DP), ALLOCATABLE :: MatterEquationResidual_Rate_Final(:,:)
+    REAL(DP), ALLOCATABLE :: InitialRadiationLimiter_Rate_Final(:,:)
     REAL(DP), ALLOCATABLE :: RadiationResidualRelativeFinal(:)
     REAL(DP), ALLOCATABLE :: &
       ConservativeProjectionRadiationResidualRelativeFinal(:), &
       ConservativeProjectionMatterHeatingRateFinal(:)
+    REAL(DP), ALLOCATABLE :: ConservationHandoffRateFinal(:,:)
 
     IF( iZ_E0(3) /= iZ_B0(3) .OR. iZ_E0(4) /= iZ_B0(4) ) THEN
       ERROR STOP 'WriteStandaloneMatterDiagnostics supports only 1D runs.'
@@ -1507,10 +1586,12 @@ CONTAINS
            ( InnerIterationsFinal, OuterIterationsFinal, &
              FirstInnerRelativeResidual, &
              MatterEquationResidual_Rate_Final, &
+             InitialRadiationLimiter_Rate_Final, &
              RadiationResidualRelativeFinal, &
              ConservativeProjectionRadiationResidualRelativeFinal, &
              ConservativeProjectionMatterHeatingRateFinal, &
-             ConservativeProjectionStatusFinal )
+             ConservativeProjectionStatusFinal, &
+             ConservationHandoffRateFinal )
 
     ALLOCATE( MeanInvMFP(nC,nSpecies,nX_G) )
     ALLOCATE( EmAb_Ledger(nEmAbLedger,nSpecies,nX_G) )
@@ -1956,11 +2037,26 @@ CONTAINS
              iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, InnerIterationsFinal, &
              OuterIterationsFinal, FirstInnerRelativeResidual, &
              MatterEquationResidual_Rate_Final, &
+             InitialRadiationLimiter_Rate_Final, &
              RadiationResidualRelativeFinal, &
              ConservativeProjectionRadiationResidualRelativeFinal, &
              ConservativeProjectionMatterHeatingRateFinal, &
              ConservativeProjectionStatusFinal, &
              MatterSource_Rate_FinalStage, MatterIncrement_Rate )
+
+    CALL WriteSolverConservationAudit &
+           ( TRIM( FileName ) // '.solver_conservation_audit', TimeStep, &
+             iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
+             IMEX_Stage_FluidState, IMEX_Stage_RadiationState, &
+             MatterEquationResidual_Rate_Final, &
+             InitialRadiationLimiter_Rate_Final, &
+             ConservationHandoffRateFinal )
+
+    CALL WriteSolverConservationHandoff &
+           ( TRIM( FileName ) // '.solver_conservation_handoff', &
+             iZ_B0, iZ_E0, ConservationHandoffRateFinal, &
+             InitialRadiationLimiter_Rate_Final, &
+             MatterEquationResidual_Rate_Final )
 
     CALL WriteFrozenTransientOperator &
            ( TRIM( FileName ) // '.frozen_transient', &
@@ -1978,10 +2074,11 @@ CONTAINS
         CF_Streaming, CR_Streaming, &
         InnerIterationsFinal, OuterIterationsFinal, &
         FirstInnerRelativeResidual, MatterEquationResidual_Rate_Final, &
+        InitialRadiationLimiter_Rate_Final, &
         RadiationResidualRelativeFinal, &
         ConservativeProjectionRadiationResidualRelativeFinal, &
         ConservativeProjectionMatterHeatingRateFinal, &
-        ConservativeProjectionStatusFinal )
+        ConservativeProjectionStatusFinal, ConservationHandoffRateFinal )
 
   END SUBROUTINE WriteStandaloneMatterDiagnostics
 
@@ -2298,6 +2395,7 @@ CONTAINS
     ( FileName, iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, InnerIterationsFinal, &
       OuterIterationsFinal, FirstInnerRelativeResidual, &
       MatterEquationResidual_Rate_Final, &
+      InitialRadiationLimiter_Rate_Final, &
       RadiationResidualRelativeFinal, &
       ConservativeProjectionRadiationResidualRelativeFinal, &
       ConservativeProjectionMatterHeatingRateFinal, &
@@ -2313,6 +2411,7 @@ CONTAINS
     INTEGER, INTENT(in) :: OuterIterationsFinal(:)
     REAL(DP), INTENT(in) :: FirstInnerRelativeResidual(:)
     REAL(DP), INTENT(in) :: MatterEquationResidual_Rate_Final(:,:)
+    REAL(DP), INTENT(in) :: InitialRadiationLimiter_Rate_Final(:,:)
     REAL(DP), INTENT(in) :: RadiationResidualRelativeFinal(:)
     REAL(DP), INTENT(in) :: &
       ConservativeProjectionRadiationResidualRelativeFinal(:)
@@ -2341,6 +2440,8 @@ CONTAINS
       ' conservative_projection_radiation_relative_residual' // &
       ' conservative_projection_status' // &
       ' QH_conservative_projection_final_stage_erg_cm3_s' // &
+      ' QL_initial_radiation_limiter_cm3_s' // &
+      ' QE_initial_radiation_limiter_erg_cm3_s' // &
       ' QH_outer_equation_defect_erg_cm3_s' // &
       ' QH_cached_final_stage_erg_cm3_s' // &
       ' QH_solver_increment_erg_cm3_s' // &
@@ -2365,7 +2466,7 @@ CONTAINS
       ClosureError = OuterDefect - MeasuredDefect
 
       WRITE(Unit,'(2(I0,1X),ES24.16E3,1X,2(I0,1X),ES24.16E3,1X,I0,1X,' // &
-                 '2(ES24.16E3,1X),I0,1X,6(ES24.16E3,1X))') &
+                 '2(ES24.16E3,1X),I0,1X,8(ES24.16E3,1X))') &
         iX1 - iZ_B0(2) + 1, iNodeX, Radius / Centimeter, &
         OuterIterationsFinal(iN_X), InnerIterationsFinal(iN_X), &
         FirstInnerRelativeResidual(iN_X), &
@@ -2375,6 +2476,10 @@ CONTAINS
         ConservativeProjectionStatusFinal(iN_X), &
         ConservativeProjectionMatterHeatingRateFinal(iN_X) &
           / ( Erg / Centimeter**3 / Second ), &
+        InitialRadiationLimiter_Rate_Final(iQ_L,iN_X) &
+          / ( One / Centimeter**3 / Second ), &
+        InitialRadiationLimiter_Rate_Final(iQ_E,iN_X) &
+          / ( Erg / Centimeter**3 / Second ), &
         OuterDefect, CachedSource, SolverIncrement, MeasuredDefect, ClosureError
 
     END DO
@@ -2383,6 +2488,234 @@ CONTAINS
     CLOSE(Unit)
 
   END SUBROUTINE WriteSolverConvergenceLedger
+
+
+  SUBROUTINE WriteSolverConservationAudit &
+    ( FileName, TimeStep, iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
+      StageFluidState, StageRadiationState, &
+      MatterEquationResidual_Rate_Final, &
+      InitialRadiationLimiter_Rate_Final, ConservationHandoffRateFinal )
+
+    CHARACTER(*), INTENT(in) :: FileName
+    REAL(DP),     INTENT(in) :: TimeStep
+    INTEGER,      INTENT(in) :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in) :: &
+      GE(1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
+    REAL(DP), INTENT(in) :: &
+      GX(1:nDOFX, &
+         iZ_B1(2):iZ_E1(2), iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:nGF)
+    REAL(DP), INTENT(in) :: StageFluidState(:,:,:,:,:,:,:)
+    REAL(DP), INTENT(in) :: StageRadiationState(:,:,:,:,:,:,:,:,:)
+    REAL(DP), INTENT(in) :: MatterEquationResidual_Rate_Final(:,:)
+    REAL(DP), INTENT(in) :: InitialRadiationLimiter_Rate_Final(:,:)
+    REAL(DP), INTENT(in) :: ConservationHandoffRateFinal(:,:)
+
+    INTEGER  :: iN_X, iNodeX, iStage, iStageCandidate, iX1, Unit
+    REAL(DP) :: aII, DirectEnergy, DirectLepton
+    REAL(DP) :: LimiterEnergy, LimiterLepton
+    REAL(DP) :: MatterEnergyA, MatterEnergyB
+    REAL(DP) :: MatterLeptonA, MatterLeptonB
+    REAL(DP) :: OuterEnergy, OuterLepton
+    REAL(DP) :: RadiationEnergyA, RadiationEnergyB
+    REAL(DP) :: RadiationLeptonA, RadiationLeptonB
+    REAL(DP) :: AngularCoordinateMeasure, StageTimeStep, VolumeWeight
+    REAL(DP) :: Handoff(nConservationHandoff)
+
+    iStage = 0
+    DO iStageCandidate = 1, SIZE( StageFluidState, 6 )
+      IF( GetImplicitStageCoefficient_IMEX_RK &
+            ( iStageCandidate, iStageCandidate ) /= Zero ) &
+        iStage = iStageCandidate
+    END DO
+    IF( iStage == 0 ) RETURN
+
+    aII = GetImplicitStageCoefficient_IMEX_RK( iStage, iStage )
+    StageTimeStep = TimeStep * aII
+    AngularCoordinateMeasure &
+      = MeshX(2) % Width(iZ_B0(3)) * MeshX(3) % Width(iZ_B0(4))
+
+    CALL ComputeConservedMatterRadiationTotals &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
+             StageFluidState(:,:,:,:,:,iStage,iIMEX_PreImplicit), &
+             StageRadiationState(:,:,:,:,:,:,:,iStage,iIMEX_PreImplicit), &
+             MatterEnergyA, RadiationEnergyA, MatterLeptonA, RadiationLeptonA )
+    CALL ComputeConservedMatterRadiationTotals &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
+             StageFluidState(:,:,:,:,:,iStage,iIMEX_PostImplicit), &
+             StageRadiationState(:,:,:,:,:,:,:,iStage,iIMEX_PostImplicit), &
+             MatterEnergyB, RadiationEnergyB, MatterLeptonB, RadiationLeptonB )
+
+    DirectEnergy = MatterEnergyB + RadiationEnergyB &
+                     - MatterEnergyA - RadiationEnergyA
+    DirectLepton = MatterLeptonB + RadiationLeptonB &
+                     - MatterLeptonA - RadiationLeptonA
+
+    LimiterEnergy = Zero
+    LimiterLepton = Zero
+    OuterEnergy = Zero
+    OuterLepton = Zero
+    Handoff = Zero
+    iN_X = 0
+    DO iX1 = iZ_B0(2), iZ_E0(2)
+    DO iNodeX = 1, nDOFX
+      iN_X = iN_X + 1
+      VolumeWeight = AngularCoordinateMeasure &
+        * MeshX(1) % Width(iX1) * WeightsX_q(iNodeX) &
+        * GX(iNodeX,iX1,1,1,iGF_SqrtGm)
+      LimiterEnergy = LimiterEnergy + VolumeWeight &
+        * InitialRadiationLimiter_Rate_Final(iQ_E,iN_X) * StageTimeStep
+      LimiterLepton = LimiterLepton + VolumeWeight &
+        * InitialRadiationLimiter_Rate_Final(iQ_L,iN_X) * StageTimeStep
+      OuterEnergy = OuterEnergy + VolumeWeight &
+        * MatterEquationResidual_Rate_Final(iQ_E,iN_X) * StageTimeStep
+      OuterLepton = OuterLepton + VolumeWeight &
+        * MatterEquationResidual_Rate_Final(iQ_L,iN_X) * StageTimeStep
+      Handoff = Handoff + VolumeWeight &
+        * ConservationHandoffRateFinal(:,iN_X) * StageTimeStep
+    END DO
+    END DO
+
+    OPEN( NEWUNIT = Unit, FILE = TRIM( FileName ), STATUS = 'REPLACE', &
+          ACTION = 'WRITE', FORM = 'FORMATTED' )
+    WRITE(Unit,'(A)') &
+      '# quantity stage_pair_change input_primitive_minus_conserved' // &
+      ' solver_primitive_pair_change final_conserved_minus_primitive' // &
+      ' mapped_pair_change returned_increment_pair_change' // &
+      ' initial_radiation_limiter_change outer_equation_old_minus_new' // &
+      ' solver_closure conversion_closure increment_formation_closure' // &
+      ' retained_stage_minus_returned_closure'
+    WRITE(Unit,'(A,1X,12(ES24.16E3,1X))') 'energy_erg', &
+      DirectEnergy / Erg, &
+      Handoff(iCH_InputConversion_E) / Erg, &
+      Handoff(iCH_PrimitivePair_E) / Erg, &
+      Handoff(iCH_FinalConversion_E) / Erg, &
+      Handoff(iCH_MappedPair_E) / Erg, &
+      Handoff(iCH_ReturnedPair_E) / Erg, &
+      LimiterEnergy / Erg, OuterEnergy / Erg, &
+      ( Handoff(iCH_PrimitivePair_E) - LimiterEnergy + OuterEnergy ) / Erg, &
+      ( Handoff(iCH_MappedPair_E) - Handoff(iCH_PrimitivePair_E) &
+          - Handoff(iCH_InputConversion_E) &
+          - Handoff(iCH_FinalConversion_E) ) / Erg, &
+      ( Handoff(iCH_ReturnedPair_E) - Handoff(iCH_MappedPair_E) ) / Erg, &
+      ( DirectEnergy - Handoff(iCH_ReturnedPair_E) ) / Erg
+    WRITE(Unit,'(A,1X,12(ES24.16E3,1X))') 'lepton', &
+      DirectLepton, &
+      Handoff(iCH_InputConversion_L), &
+      Handoff(iCH_PrimitivePair_L), &
+      Handoff(iCH_FinalConversion_L), &
+      Handoff(iCH_MappedPair_L), &
+      Handoff(iCH_ReturnedPair_L), &
+      LimiterLepton, OuterLepton, &
+      Handoff(iCH_PrimitivePair_L) - LimiterLepton + OuterLepton, &
+      Handoff(iCH_MappedPair_L) - Handoff(iCH_PrimitivePair_L) &
+        - Handoff(iCH_InputConversion_L) - Handoff(iCH_FinalConversion_L), &
+      Handoff(iCH_ReturnedPair_L) - Handoff(iCH_MappedPair_L), &
+      DirectLepton - Handoff(iCH_ReturnedPair_L)
+    CLOSE(Unit)
+
+  END SUBROUTINE WriteSolverConservationAudit
+
+
+  SUBROUTINE WriteSolverConservationHandoff &
+    ( FileName, iZ_B0, iZ_E0, ConservationHandoffRateFinal, &
+      InitialRadiationLimiterRateFinal, MatterEquationResidualRateFinal )
+
+    CHARACTER(*), INTENT(in) :: FileName
+    INTEGER, INTENT(in) :: iZ_B0(4), iZ_E0(4)
+    REAL(DP), INTENT(in) :: ConservationHandoffRateFinal(:,:)
+    REAL(DP), INTENT(in) :: InitialRadiationLimiterRateFinal(:,:)
+    REAL(DP), INTENT(in) :: MatterEquationResidualRateFinal(:,:)
+
+    INTEGER :: iN_X, iNodeX, iX1, Unit
+    REAL(DP) :: Radius
+
+    OPEN( NEWUNIT = Unit, FILE = TRIM( FileName ), STATUS = 'REPLACE', &
+          ACTION = 'WRITE', FORM = 'FORMATTED' )
+    WRITE(Unit,'(A)') &
+      '# element spatial_node r_cm' // &
+      ' QL_input_primitive_minus_conserved_cm3_s' // &
+      ' QL_solver_primitive_pair_cm3_s' // &
+      ' QL_final_conserved_minus_primitive_cm3_s' // &
+      ' QL_mapped_pair_cm3_s QL_returned_pair_cm3_s' // &
+      ' QL_initial_limiter_cm3_s QL_outer_old_minus_new_cm3_s' // &
+      ' QL_solver_closure_cm3_s QL_conversion_closure_cm3_s' // &
+      ' QL_increment_formation_closure_cm3_s' // &
+      ' QE_input_primitive_minus_conserved_erg_cm3_s' // &
+      ' QE_solver_primitive_pair_erg_cm3_s' // &
+      ' QE_final_conserved_minus_primitive_erg_cm3_s' // &
+      ' QE_mapped_pair_erg_cm3_s QE_returned_pair_erg_cm3_s' // &
+      ' QE_initial_limiter_erg_cm3_s QE_outer_old_minus_new_erg_cm3_s' // &
+      ' QE_solver_closure_erg_cm3_s QE_conversion_closure_erg_cm3_s' // &
+      ' QE_increment_formation_closure_erg_cm3_s'
+
+    iN_X = 0
+    DO iX1 = iZ_B0(2), iZ_E0(2)
+    DO iNodeX = 1, nDOFX
+
+      iN_X = iN_X + 1
+      Radius = NodeCoordinate( MeshX(1), iX1, iNodeX )
+      WRITE(Unit,'(2(I0,1X),21(ES24.16E3,1X))') &
+        iX1 - iZ_B0(2) + 1, iNodeX, Radius / Centimeter, &
+        ConservationHandoffRateFinal(iCH_InputConversion_L,iN_X) &
+          / ( One / Centimeter**3 / Second ), &
+        ConservationHandoffRateFinal(iCH_PrimitivePair_L,iN_X) &
+          / ( One / Centimeter**3 / Second ), &
+        ConservationHandoffRateFinal(iCH_FinalConversion_L,iN_X) &
+          / ( One / Centimeter**3 / Second ), &
+        ConservationHandoffRateFinal(iCH_MappedPair_L,iN_X) &
+          / ( One / Centimeter**3 / Second ), &
+        ConservationHandoffRateFinal(iCH_ReturnedPair_L,iN_X) &
+          / ( One / Centimeter**3 / Second ), &
+        InitialRadiationLimiterRateFinal(iQ_L,iN_X) &
+          / ( One / Centimeter**3 / Second ), &
+        MatterEquationResidualRateFinal(iQ_L,iN_X) &
+          / ( One / Centimeter**3 / Second ), &
+        ( ConservationHandoffRateFinal(iCH_PrimitivePair_L,iN_X) &
+            - InitialRadiationLimiterRateFinal(iQ_L,iN_X) &
+            + MatterEquationResidualRateFinal(iQ_L,iN_X) ) &
+          / ( One / Centimeter**3 / Second ), &
+        ( ConservationHandoffRateFinal(iCH_MappedPair_L,iN_X) &
+            - ConservationHandoffRateFinal(iCH_PrimitivePair_L,iN_X) &
+            - ConservationHandoffRateFinal(iCH_InputConversion_L,iN_X) &
+            - ConservationHandoffRateFinal(iCH_FinalConversion_L,iN_X) ) &
+          / ( One / Centimeter**3 / Second ), &
+        ( ConservationHandoffRateFinal(iCH_ReturnedPair_L,iN_X) &
+            - ConservationHandoffRateFinal(iCH_MappedPair_L,iN_X) ) &
+          / ( One / Centimeter**3 / Second ), &
+        ConservationHandoffRateFinal(iCH_InputConversion_E,iN_X) &
+          / ( Erg / Centimeter**3 / Second ), &
+        ConservationHandoffRateFinal(iCH_PrimitivePair_E,iN_X) &
+          / ( Erg / Centimeter**3 / Second ), &
+        ConservationHandoffRateFinal(iCH_FinalConversion_E,iN_X) &
+          / ( Erg / Centimeter**3 / Second ), &
+        ConservationHandoffRateFinal(iCH_MappedPair_E,iN_X) &
+          / ( Erg / Centimeter**3 / Second ), &
+        ConservationHandoffRateFinal(iCH_ReturnedPair_E,iN_X) &
+          / ( Erg / Centimeter**3 / Second ), &
+        InitialRadiationLimiterRateFinal(iQ_E,iN_X) &
+          / ( Erg / Centimeter**3 / Second ), &
+        MatterEquationResidualRateFinal(iQ_E,iN_X) &
+          / ( Erg / Centimeter**3 / Second ), &
+        ( ConservationHandoffRateFinal(iCH_PrimitivePair_E,iN_X) &
+            - InitialRadiationLimiterRateFinal(iQ_E,iN_X) &
+            + MatterEquationResidualRateFinal(iQ_E,iN_X) ) &
+          / ( Erg / Centimeter**3 / Second ), &
+        ( ConservationHandoffRateFinal(iCH_MappedPair_E,iN_X) &
+            - ConservationHandoffRateFinal(iCH_PrimitivePair_E,iN_X) &
+            - ConservationHandoffRateFinal(iCH_InputConversion_E,iN_X) &
+            - ConservationHandoffRateFinal(iCH_FinalConversion_E,iN_X) ) &
+          / ( Erg / Centimeter**3 / Second ), &
+        ( ConservationHandoffRateFinal(iCH_ReturnedPair_E,iN_X) &
+            - ConservationHandoffRateFinal(iCH_MappedPair_E,iN_X) ) &
+          / ( Erg / Centimeter**3 / Second )
+
+    END DO
+    END DO
+
+    CLOSE(Unit)
+
+  END SUBROUTINE WriteSolverConservationHandoff
 
 
   SUBROUTINE WriteIMEXStageLedger &

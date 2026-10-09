@@ -1883,6 +1883,7 @@ CONTAINS
       MatterCoupling_Mask_Option &
 #if defined( TWOMOMENT_ORDER_V )
       , ComputeMatterEquationResidual, MatterEquationResidual_Rate_Final, &
+        InitialRadiationLimiter_Rate_Final, &
         RadiationResidual_Relative_Final, &
         ConservativeProjectionRadiationResidual_Relative_Final, &
         ConservativeProjectionMatterHeating_Rate_Final, &
@@ -1907,6 +1908,7 @@ CONTAINS
 #if defined( TWOMOMENT_ORDER_V )
     LOGICAL,                    INTENT(in)    :: ComputeMatterEquationResidual
     REAL(DP), DIMENSION(:,:),   INTENT(out)   :: MatterEquationResidual_Rate_Final
+    REAL(DP), DIMENSION(:,:),   INTENT(out)   :: InitialRadiationLimiter_Rate_Final
     REAL(DP), DIMENSION(:),     INTENT(out)   :: RadiationResidual_Relative_Final
     REAL(DP), DIMENSION(:),     INTENT(out)   :: &
       ConservativeProjectionRadiationResidual_Relative_Final
@@ -2012,6 +2014,7 @@ CONTAINS
 
 #if defined( TWOMOMENT_ORDER_V )
       MatterEquationResidual_Rate_Final(:,iN_X) = Zero
+      InitialRadiationLimiter_Rate_Final(:,iN_X) = Zero
       RadiationResidual_Relative_Final(iN_X) = Zero
       ConservativeProjectionRadiationResidual_Relative_Final(iN_X) = Zero
       ConservativeProjectionMatterHeating_Rate_Final(iN_X) = Zero
@@ -2156,6 +2159,9 @@ CONTAINS
              Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
 #elif defined( TWOMOMENT_ORDER_V )
+
+    CALL ComputeInitialRadiationLimiterRate_OrderV &
+           ( dt, ITERATE_outer, Dnu, InitialRadiationLimiter_Rate_Final )
 
     CALL LimitNeutrinoDistribution_OrderV ( Dnu ) ! --- Enforce Dnu < user supplied limit
 
@@ -2441,7 +2447,6 @@ CONTAINS
                  ProjectionMask, ITERATE_outer, &
                  nX_P_inner, PackIndex_inner, UnpackIndex_inner, &
                  FVECm_inner, GVECm_inner, &
-                 .FALSE., GVECm_outer, &
                  FVECm_projection, GVECm_projection, &
                  T_Conservative, Y_Conservative, E_Conservative, &
                  V_u_1_Conservative, V_u_2_Conservative, &
@@ -2590,7 +2595,6 @@ CONTAINS
                  ProjectionMask, ITERATE_outer, &
                  nX_P_inner, PackIndex_inner, UnpackIndex_inner, &
                  FVECm_inner, GVECm_inner, &
-                 .TRUE., GVECm_outer, &
                  FVECm_projection, GVECm_projection, &
                  T_Conservative, Y_Conservative, E_Conservative, &
                  V_u_1_Conservative, V_u_2_Conservative, &
@@ -2642,8 +2646,7 @@ CONTAINS
     !$OMP PARALLEL DO
 #endif
       DO iN_X = 1, nX_G
-        ProjectionMask(iN_X) &
-          = ConservativeProjectionStatus_Final(iN_X) == 1
+        ProjectionMask(iN_X) = nIterations_Outer_Final(iN_X) > 0
       END DO
 
       CALL ComputeMatterRHS_OrderV &
@@ -2759,7 +2762,6 @@ CONTAINS
       ProjectionMask, ContinuationMask, &
       nX_P, PackIndex, UnpackIndex, &
       FVECm_inner, GVECm_inner, &
-      UseInitialMatterMap, InitialMatterMap, &
       FVECm_projection, GVECm_projection, &
       T_Conservative, Y_Conservative, E_Conservative, &
       V_u_1_Conservative, V_u_2_Conservative, V_u_3_Conservative, &
@@ -2782,8 +2784,6 @@ CONTAINS
     INTEGER,                    INTENT(inout) :: nX_P
     INTEGER,  DIMENSION(:),     INTENT(inout) :: PackIndex, UnpackIndex
     REAL(DP), DIMENSION(:,:),   INTENT(inout) :: FVECm_inner, GVECm_inner
-    LOGICAL,                    INTENT(in)    :: UseInitialMatterMap
-    REAL(DP), DIMENSION(:,:),   INTENT(in)    :: InitialMatterMap
     REAL(DP), DIMENSION(:,:),   INTENT(inout) :: &
       FVECm_projection, GVECm_projection
     REAL(DP), DIMENSION(:),     INTENT(inout) :: &
@@ -2802,7 +2802,7 @@ CONTAINS
     REAL(DP), PARAMETER :: Rtol_ConservativeProjection &
       = 100.0_DP * EPSILON(One)
 
-    INTEGER  :: iMatterComponent, iN_X, k_projection
+    INTEGER  :: iN_X, k_projection
     REAL(DP) :: Ef, ProjectionResidual, Q_E, Q_M1, Q_M2, Q_M3
     REAL(DP) :: V_d_1, V_d_2, V_d_3, vDotV
 #if   defined(THORNADO_OMP_OL)
@@ -2845,27 +2845,6 @@ CONTAINS
            ( ProjectionMask, FVECm_inner, &
              RadiationResidual_Relative_Final )
 
-    IF( UseInitialMatterMap )THEN
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(2)
-#endif
-      DO iN_X = 1, nX_G
-      DO iMatterComponent = 1, n_FP_outer
-
-        IF( ProjectionMask(iN_X) ) &
-          GVECm_projection(iMatterComponent,iN_X) &
-            = InitialMatterMap(iMatterComponent,iN_X)
-
-      END DO
-      END DO
-
-    END IF
-
     ! The Order-v Eulerian radiation energy and momentum depend on the matter
     ! velocity.  Consequently, one application of the outer fixed-point map
     ! is not yet an exactly conservative matter state when it changes the
@@ -2879,21 +2858,17 @@ CONTAINS
 
       k_projection = k_projection + 1
 
-      IF( .NOT. ( UseInitialMatterMap .AND. k_projection == 1 ) )THEN
+      CALL TimersStart( Timer_Collisions_MatterRHS )
 
-        CALL TimersStart( Timer_Collisions_MatterRHS )
+      CALL ComputeMatterRHS_OrderV &
+             ( ProjectionMask, &
+               FVECm_projection, GVECm_projection, &
+               Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+               V_u_1_Conservative, V_u_2_Conservative, &
+               V_u_3_Conservative, &
+               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-        CALL ComputeMatterRHS_OrderV &
-               ( ProjectionMask, &
-                 FVECm_projection, GVECm_projection, &
-                 Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                 V_u_1_Conservative, V_u_2_Conservative, &
-                 V_u_3_Conservative, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-        CALL TimersStop( Timer_Collisions_MatterRHS )
-
-      END IF
+      CALL TimersStop( Timer_Collisions_MatterRHS )
 
 #if   defined(THORNADO_OMP_OL)
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -4230,6 +4205,69 @@ CONTAINS
     END DO
 
   END SUBROUTINE LimitNeutrinoDistribution_OrderV
+
+
+  SUBROUTINE ComputeInitialRadiationLimiterRate_OrderV &
+    ( dt, MASK, Dnu, LimiterRate )
+
+    REAL(DP),                   INTENT(in)  :: dt
+    LOGICAL,  DIMENSION(:),     INTENT(in)  :: MASK
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: Dnu
+    REAL(DP), DIMENSION(:,:),   INTENT(out) :: LimiterRate
+
+    INTEGER  :: iN_E, iN_X, iS
+    REAL(DP) :: DeltaDnu, DeltaEnergy, DeltaLepton
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE &
+    !$OMP PRIVATE( DeltaDnu, DeltaEnergy, DeltaLepton )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG &
+    !$ACC PRIVATE( DeltaDnu, DeltaEnergy, DeltaLepton )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( DeltaDnu, DeltaEnergy, DeltaLepton )
+#endif
+    DO iN_X = 1, nX_G
+
+      DeltaEnergy = Zero
+      DeltaLepton = Zero
+
+      IF( MASK(iN_X) )THEN
+
+#if   defined( THORNADO_OMP_OL )
+      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+      !$OMP PRIVATE( DeltaDnu ) &
+      !$OMP REDUCTION( + : DeltaEnergy, DeltaLepton )
+#elif defined( THORNADO_OACC   )
+      !$ACC LOOP VECTOR COLLAPSE(2) &
+      !$ACC PRIVATE( DeltaDnu ) &
+      !$ACC REDUCTION( + : DeltaEnergy, DeltaLepton )
+#endif
+      DO iS   = 1, nSpecies
+      DO iN_E = 1, nE_G
+
+        DeltaDnu = MIN( DnuMax, Dnu(iN_E,iS,iN_X) ) &
+                     - Dnu(iN_E,iS,iN_X)
+
+        IF( iS <= iNuE_Bar ) &
+          DeltaLepton = DeltaLepton &
+            + DeltaDnu * W2_S(iN_E) * LeptonNumber(iS)
+
+        DeltaEnergy = DeltaEnergy + DeltaDnu * W3_S(iN_E)
+
+      END DO
+      END DO
+
+      END IF
+
+      LimiterRate(:,iN_X) = Zero
+      LimiterRate(iQ_L,iN_X) = DeltaLepton / dt
+      LimiterRate(iQ_E,iN_X) = DeltaEnergy / dt
+
+    END DO
+
+  END SUBROUTINE ComputeInitialRadiationLimiterRate_OrderV
 
 
   SUBROUTINE InitializeRHS_OrderOne &

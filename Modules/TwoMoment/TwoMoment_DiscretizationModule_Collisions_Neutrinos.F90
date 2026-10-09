@@ -3,9 +3,12 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   USE KindModule, ONLY: &
     DP, &
     Zero, &
-    One
+    One, &
+    FourPi
   USE UnitsModule, ONLY: &
-    AtomicMassUnit
+    AtomicMassUnit, &
+    PlanckConstant, &
+    SpeedOfLight
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
     nDOFE, &
@@ -18,7 +21,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     Timer_Collisions_PrimitiveTwoMoment, &
     Timer_Collisions_Solve
   USE GeometryFieldsModuleE, ONLY: &
-    nGE
+    nGE, iGE_Ep2, iGE_Ep3
   USE GeometryFieldsModule, ONLY: &
     nGF, iGF_SqrtGm, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
     iGF_Alpha, iGF_Beta_1, iGF_Beta_2, iGF_Beta_3
@@ -28,9 +31,14 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     nAF, iAF_T, iAF_E , iAF_Ye, iAF_P
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
+    LeptonNumber, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
     nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, &
     nDR, iDR_iter_outer, iDR_iter_inner
+  USE ReferenceElementModuleE, ONLY: &
+    WeightsE
+  USE MeshModule, ONLY: &
+    MeshE
   USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
     SolveNeutrinoMatterCoupling_FP_Nested_AA, &
     InitializeNeutrinoMatterSolver, &
@@ -108,6 +116,25 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   PUBLIC :: ComputeTransportOpacityFromConserved_OrderV
   PUBLIC :: ComputeIncrement_TwoMoment_Explicit_AP
   PUBLIC :: nQ, nC
+  PUBLIC :: nConservationHandoff
+  PUBLIC :: iCH_InputConversion_L, iCH_PrimitivePair_L
+  PUBLIC :: iCH_FinalConversion_L, iCH_MappedPair_L, iCH_ReturnedPair_L
+  PUBLIC :: iCH_InputConversion_E, iCH_PrimitivePair_E
+  PUBLIC :: iCH_FinalConversion_E, iCH_MappedPair_E, iCH_ReturnedPair_E
+#endif
+
+#if defined( TWOMOMENT_ORDER_V )
+  INTEGER, PARAMETER :: iCH_InputConversion_L = 1
+  INTEGER, PARAMETER :: iCH_PrimitivePair_L   = 2
+  INTEGER, PARAMETER :: iCH_FinalConversion_L = 3
+  INTEGER, PARAMETER :: iCH_MappedPair_L      = 4
+  INTEGER, PARAMETER :: iCH_ReturnedPair_L    = 5
+  INTEGER, PARAMETER :: iCH_InputConversion_E = 6
+  INTEGER, PARAMETER :: iCH_PrimitivePair_E   = 7
+  INTEGER, PARAMETER :: iCH_FinalConversion_E = 8
+  INTEGER, PARAMETER :: iCH_MappedPair_E      = 9
+  INTEGER, PARAMETER :: iCH_ReturnedPair_E    = 10
+  INTEGER, PARAMETER :: nConservationHandoff  = 10
 #endif
 
   INTEGER               :: nE_G, nX_G
@@ -115,6 +142,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   INTEGER               :: iE_B0, iE_E0, iX_B0(3), iX_E0(3)
   INTEGER               :: iE_B1, iE_E1, iX_B1(3), iX_E1(3)
   REAL(DP), ALLOCATABLE :: GE_N(:,:)
+  REAL(DP), ALLOCATABLE :: EnergyQuadratureWeight_N(:)
   REAL(DP), ALLOCATABLE :: GX_N(:,:)
   REAL(DP), ALLOCATABLE :: CF_N(:,:)
   REAL(DP), ALLOCATABLE :: PF_N(:,:)
@@ -136,11 +164,13 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   REAL(DP), ALLOCATABLE :: RelativeResidual_Inner_First(:)
 #if defined( TWOMOMENT_ORDER_V )
   REAL(DP), ALLOCATABLE :: MatterEquationResidual_Rate_Final(:,:)
+  REAL(DP), ALLOCATABLE :: InitialRadiationLimiter_Rate_Final(:,:)
   REAL(DP), ALLOCATABLE :: RadiationResidual_Relative_Final(:)
   REAL(DP), ALLOCATABLE :: &
     ConservativeProjectionRadiationResidual_Relative_Final(:)
   REAL(DP), ALLOCATABLE :: ConservativeProjectionMatterHeating_Rate_Final(:)
   INTEGER,  ALLOCATABLE :: ConservativeProjectionStatus_Final(:)
+  REAL(DP), ALLOCATABLE :: ConservationHandoff_Rate_Final(:,:)
 #endif
 
   LOGICAL :: RetainSolverConvergenceDiagnostics = .FALSE.
@@ -149,12 +179,14 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   REAL(DP), ALLOCATABLE :: RelativeResidual_Inner_First_Last(:)
 #if defined( TWOMOMENT_ORDER_V )
   REAL(DP), ALLOCATABLE :: MatterEquationResidual_Rate_Final_Last(:,:)
+  REAL(DP), ALLOCATABLE :: InitialRadiationLimiter_Rate_Final_Last(:,:)
   REAL(DP), ALLOCATABLE :: RadiationResidual_Relative_Final_Last(:)
   REAL(DP), ALLOCATABLE :: &
     ConservativeProjectionRadiationResidual_Relative_Final_Last(:)
   REAL(DP), ALLOCATABLE :: &
     ConservativeProjectionMatterHeating_Rate_Final_Last(:)
   INTEGER,  ALLOCATABLE :: ConservativeProjectionStatus_Final_Last(:)
+  REAL(DP), ALLOCATABLE :: ConservationHandoff_Rate_Final_Last(:,:)
 #endif
 
   LOGICAL, PARAMETER :: ReportConvergenceData = .FALSE.
@@ -175,10 +207,12 @@ CONTAINS
       DEALLOCATE( RelativeResidual_Inner_First_Last )
 #if defined( TWOMOMENT_ORDER_V )
       DEALLOCATE( MatterEquationResidual_Rate_Final_Last )
+      DEALLOCATE( InitialRadiationLimiter_Rate_Final_Last )
       DEALLOCATE( RadiationResidual_Relative_Final_Last )
       DEALLOCATE( ConservativeProjectionRadiationResidual_Relative_Final_Last )
       DEALLOCATE( ConservativeProjectionMatterHeating_Rate_Final_Last )
       DEALLOCATE( ConservativeProjectionStatus_Final_Last )
+      DEALLOCATE( ConservationHandoff_Rate_Final_Last )
 #endif
     END IF
 
@@ -192,10 +226,12 @@ CONTAINS
       FirstInnerRelativeResidual &
 #if defined( TWOMOMENT_ORDER_V )
       , MatterEquationResidualRateFinal, &
+        InitialRadiationLimiterRateFinal, &
         RadiationResidualRelativeFinal, &
         ConservativeProjectionRadiationResidualRelativeFinal, &
         ConservativeProjectionMatterHeatingRateFinal, &
-        ConservativeProjectionStatusFinal &
+        ConservativeProjectionStatusFinal, &
+        ConservationHandoffRateFinal &
 #endif
       )
 
@@ -204,12 +240,14 @@ CONTAINS
     REAL(DP), ALLOCATABLE, INTENT(out) :: FirstInnerRelativeResidual(:)
 #if defined( TWOMOMENT_ORDER_V )
     REAL(DP), ALLOCATABLE, INTENT(out) :: MatterEquationResidualRateFinal(:,:)
+    REAL(DP), ALLOCATABLE, INTENT(out) :: InitialRadiationLimiterRateFinal(:,:)
     REAL(DP), ALLOCATABLE, INTENT(out) :: RadiationResidualRelativeFinal(:)
     REAL(DP), ALLOCATABLE, INTENT(out) :: &
       ConservativeProjectionRadiationResidualRelativeFinal(:)
     REAL(DP), ALLOCATABLE, INTENT(out) :: &
       ConservativeProjectionMatterHeatingRateFinal(:)
     INTEGER,  ALLOCATABLE, INTENT(out) :: ConservativeProjectionStatusFinal(:)
+    REAL(DP), ALLOCATABLE, INTENT(out) :: ConservationHandoffRateFinal(:,:)
 #endif
 
     IF( .NOT. ALLOCATED( nIterations_Inner_Final_Last ) ) &
@@ -224,6 +262,8 @@ CONTAINS
 #if defined( TWOMOMENT_ORDER_V )
     ALLOCATE( MatterEquationResidualRateFinal, &
               MOLD = MatterEquationResidual_Rate_Final_Last )
+    ALLOCATE( InitialRadiationLimiterRateFinal, &
+              MOLD = InitialRadiationLimiter_Rate_Final_Last )
     ALLOCATE( RadiationResidualRelativeFinal, &
               MOLD = RadiationResidual_Relative_Final_Last )
     ALLOCATE( ConservativeProjectionRadiationResidualRelativeFinal, &
@@ -232,6 +272,8 @@ CONTAINS
               MOLD = ConservativeProjectionMatterHeating_Rate_Final_Last )
     ALLOCATE( ConservativeProjectionStatusFinal, &
               MOLD = ConservativeProjectionStatus_Final_Last )
+    ALLOCATE( ConservationHandoffRateFinal, &
+              MOLD = ConservationHandoff_Rate_Final_Last )
 #endif
 
     InnerIterationsFinal       = nIterations_Inner_Final_Last
@@ -239,12 +281,14 @@ CONTAINS
     FirstInnerRelativeResidual = RelativeResidual_Inner_First_Last
 #if defined( TWOMOMENT_ORDER_V )
     MatterEquationResidualRateFinal = MatterEquationResidual_Rate_Final_Last
+    InitialRadiationLimiterRateFinal = InitialRadiationLimiter_Rate_Final_Last
     RadiationResidualRelativeFinal = RadiationResidual_Relative_Final_Last
     ConservativeProjectionRadiationResidualRelativeFinal &
       = ConservativeProjectionRadiationResidual_Relative_Final_Last
     ConservativeProjectionMatterHeatingRateFinal &
       = ConservativeProjectionMatterHeating_Rate_Final_Last
     ConservativeProjectionStatusFinal = ConservativeProjectionStatus_Final_Last
+    ConservationHandoffRateFinal = ConservationHandoff_Rate_Final_Last
 #endif
 
   END SUBROUTINE GetNeutrinoMatterSolverConvergenceDiagnostics
@@ -916,6 +960,11 @@ CONTAINS
            ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
              AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye) )
 
+#if defined( TWOMOMENT_ORDER_V )
+    IF( RetainSolverConvergenceDiagnostics ) &
+      CALL InitializeConservationHandoffDiagnostic()
+#endif
+
     ! --- Neutrino-Matter Coupling Solve ---
 
     CALL TimersStart( Timer_Collisions_Solve )
@@ -953,6 +1002,7 @@ CONTAINS
 #if defined( TWOMOMENT_ORDER_V )
              , RetainSolverConvergenceDiagnostics, &
                MatterEquationResidual_Rate_Final, &
+               InitialRadiationLimiter_Rate_Final, &
                RadiationResidual_Relative_Final, &
                ConservativeProjectionRadiationResidual_Relative_Final, &
                ConservativeProjectionMatterHeating_Rate_Final, &
@@ -1512,7 +1562,7 @@ CONTAINS
     INTEGER, INTENT(in) :: iZ_B1(4), iZ_E1(4)
     LOGICAL, INTENT(in), OPTIONAL :: ComputeFirstMomentRates_Option
 
-    INTEGER :: iN_X, iN_E, iS, iZ, nZ_G
+    INTEGER :: iE, iN_X, iN_E, iNodeE, iS, iZ, nZ_G
 
     iE_B0 = iZ_B0(1)  ; iE_E0 = iZ_E0(1)
     iE_B1 = iZ_B1(1)  ; iE_E1 = iZ_E1(1)
@@ -1528,6 +1578,7 @@ CONTAINS
     nZ_G = nE_G * nX_G * nSpecies
 
     ALLOCATE( GE_N(nE_G,nGE) )
+    ALLOCATE( EnergyQuadratureWeight_N(nE_G) )
     ALLOCATE( GX_N(nX_G,nGF) )
 
     ALLOCATE( CF_N(nX_G,nCF) )
@@ -1538,6 +1589,14 @@ CONTAINS
     ALLOCATE( PR_N(nE_G,nSpecies,nX_G,nCR) )
 
     ALLOCATE( PositionIndexZ(nZ_G) )
+
+    DO iN_E = 1, nE_G
+      iE     = ( iN_E - 1 ) / nDOFE + iE_B0
+      iNodeE = MOD( iN_E - 1, nDOFE ) + 1
+      EnergyQuadratureWeight_N(iN_E) &
+        = FourPi * WeightsE(iNodeE) * MeshE % Width(iE) &
+            / ( PlanckConstant * SpeedOfLight )**3
+    END DO
 
     iZ = 0
     DO iN_X = 1, nX_G
@@ -1559,10 +1618,12 @@ CONTAINS
     ALLOCATE( RelativeResidual_Inner_First(nX_G) )
 #if defined( TWOMOMENT_ORDER_V )
     ALLOCATE( MatterEquationResidual_Rate_Final(nQ,nX_G) )
+    ALLOCATE( InitialRadiationLimiter_Rate_Final(nQ,nX_G) )
     ALLOCATE( RadiationResidual_Relative_Final(nX_G) )
     ALLOCATE( ConservativeProjectionRadiationResidual_Relative_Final(nX_G) )
     ALLOCATE( ConservativeProjectionMatterHeating_Rate_Final(nX_G) )
     ALLOCATE( ConservativeProjectionStatus_Final(nX_G) )
+    ALLOCATE( ConservationHandoff_Rate_Final(nConservationHandoff,nX_G) )
 #endif
     ALLOCATE( nIterations_Prim (nZ_G) )
 
@@ -1573,10 +1634,12 @@ CONTAINS
     RelativeResidual_Inner_First(:) = Zero
 #if defined( TWOMOMENT_ORDER_V )
     MatterEquationResidual_Rate_Final(:,:) = Zero
+    InitialRadiationLimiter_Rate_Final(:,:) = Zero
     RadiationResidual_Relative_Final(:) = Zero
     ConservativeProjectionRadiationResidual_Relative_Final(:) = Zero
     ConservativeProjectionMatterHeating_Rate_Final(:) = Zero
     ConservativeProjectionStatus_Final(:) = -2
+    ConservationHandoff_Rate_Final(:,:) = Zero
 #endif
     nIterations_Prim (:) = 0
 
@@ -1604,6 +1667,7 @@ CONTAINS
     !$OMP          nIterations_Inner, nIterations_Outer, nIterations_Prim, &
     !$OMP          nIterations_Inner_Final, nIterations_Outer_Final, &
     !$OMP          RelativeResidual_Inner_First ) &
+    !$OMP MAP( to: EnergyQuadratureWeight_N ) &
     !$OMP MAP( alloc: GE_N, GX_N, CF_N, PF_N, AF_N, CR_N, PR_N )
 #elif defined(THORNADO_OACC  )
     !$ACC ENTER DATA &
@@ -1611,6 +1675,7 @@ CONTAINS
     !$ACC         nIterations_Inner, nIterations_Outer, nIterations_Prim, &
     !$ACC         nIterations_Inner_Final, nIterations_Outer_Final, &
     !$ACC         RelativeResidual_Inner_First ) &
+    !$ACC COPYIN( EnergyQuadratureWeight_N ) &
     !$ACC CREATE( GE_N, GX_N, CF_N, PF_N, AF_N, CR_N, PR_N )
 #endif
 
@@ -1618,17 +1683,21 @@ CONTAINS
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( alloc: MatterEquationResidual_Rate_Final, &
+    !$OMP             InitialRadiationLimiter_Rate_Final, &
     !$OMP             RadiationResidual_Relative_Final, &
     !$OMP             ConservativeProjectionRadiationResidual_Relative_Final, &
     !$OMP             ConservativeProjectionMatterHeating_Rate_Final, &
-    !$OMP             ConservativeProjectionStatus_Final )
+    !$OMP             ConservativeProjectionStatus_Final, &
+    !$OMP             ConservationHandoff_Rate_Final )
 #elif defined(THORNADO_OACC  )
     !$ACC ENTER DATA &
     !$ACC CREATE( MatterEquationResidual_Rate_Final, &
+    !$ACC         InitialRadiationLimiter_Rate_Final, &
     !$ACC         RadiationResidual_Relative_Final, &
     !$ACC         ConservativeProjectionRadiationResidual_Relative_Final, &
     !$ACC         ConservativeProjectionMatterHeating_Rate_Final, &
-    !$ACC         ConservativeProjectionStatus_Final )
+    !$ACC         ConservativeProjectionStatus_Final, &
+    !$ACC         ConservationHandoff_Rate_Final )
 #endif
 #endif
 
@@ -1641,16 +1710,20 @@ CONTAINS
     IF( RetainSolverConvergenceDiagnostics )THEN
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE FROM( MatterEquationResidual_Rate_Final, &
+    !$OMP                     InitialRadiationLimiter_Rate_Final, &
     !$OMP                     RadiationResidual_Relative_Final, &
     !$OMP                     ConservativeProjectionRadiationResidual_Relative_Final, &
     !$OMP                     ConservativeProjectionMatterHeating_Rate_Final, &
-    !$OMP                     ConservativeProjectionStatus_Final )
+    !$OMP                     ConservativeProjectionStatus_Final, &
+    !$OMP                     ConservationHandoff_Rate_Final )
 #elif defined(THORNADO_OACC  )
     !$ACC UPDATE HOST( MatterEquationResidual_Rate_Final, &
+    !$ACC              InitialRadiationLimiter_Rate_Final, &
     !$ACC              RadiationResidual_Relative_Final, &
     !$ACC              ConservativeProjectionRadiationResidual_Relative_Final, &
     !$ACC              ConservativeProjectionMatterHeating_Rate_Final, &
-    !$ACC              ConservativeProjectionStatus_Final )
+    !$ACC              ConservativeProjectionStatus_Final, &
+    !$ACC              ConservationHandoff_Rate_Final )
 #endif
     END IF
 #endif
@@ -1661,31 +1734,37 @@ CONTAINS
     !$OMP            nIterations_Inner_Final, nIterations_Outer_Final, &
     !$OMP            RelativeResidual_Inner_First ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, PositionIndexZ, &
-    !$OMP               GE_N, GX_N, CF_N, PF_N, AF_N, CR_N, PR_N )
+    !$OMP               GE_N, EnergyQuadratureWeight_N, GX_N, &
+    !$OMP               CF_N, PF_N, AF_N, CR_N, PR_N )
 #elif defined(THORNADO_OACC  )
     !$ACC EXIT DATA &
     !$ACC COPYOUT( nIterations_Inner, nIterations_Outer, nIterations_Prim, &
     !$ACC          nIterations_Inner_Final, nIterations_Outer_Final, &
     !$ACC          RelativeResidual_Inner_First ) &
     !$ACC DELETE( iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, PositionIndexZ, &
-    !$ACC         GE_N, GX_N, CF_N, PF_N, AF_N, CR_N, PR_N )
+    !$ACC         GE_N, EnergyQuadratureWeight_N, GX_N, &
+    !$ACC         CF_N, PF_N, AF_N, CR_N, PR_N )
 #endif
 
 #if defined( TWOMOMENT_ORDER_V )
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: MatterEquationResidual_Rate_Final, &
+    !$OMP               InitialRadiationLimiter_Rate_Final, &
     !$OMP               RadiationResidual_Relative_Final, &
     !$OMP               ConservativeProjectionRadiationResidual_Relative_Final, &
     !$OMP               ConservativeProjectionMatterHeating_Rate_Final, &
-    !$OMP               ConservativeProjectionStatus_Final )
+    !$OMP               ConservativeProjectionStatus_Final, &
+    !$OMP               ConservationHandoff_Rate_Final )
 #elif defined(THORNADO_OACC  )
     !$ACC EXIT DATA &
     !$ACC DELETE( MatterEquationResidual_Rate_Final, &
+    !$ACC         InitialRadiationLimiter_Rate_Final, &
     !$ACC         RadiationResidual_Relative_Final, &
     !$ACC         ConservativeProjectionRadiationResidual_Relative_Final, &
     !$ACC         ConservativeProjectionMatterHeating_Rate_Final, &
-    !$ACC         ConservativeProjectionStatus_Final )
+    !$ACC         ConservativeProjectionStatus_Final, &
+    !$ACC         ConservationHandoff_Rate_Final )
 #endif
 #endif
 
@@ -1698,10 +1777,12 @@ CONTAINS
           DEALLOCATE( RelativeResidual_Inner_First_Last )
 #if defined( TWOMOMENT_ORDER_V )
           DEALLOCATE( MatterEquationResidual_Rate_Final_Last )
+          DEALLOCATE( InitialRadiationLimiter_Rate_Final_Last )
           DEALLOCATE( RadiationResidual_Relative_Final_Last )
           DEALLOCATE( ConservativeProjectionRadiationResidual_Relative_Final_Last )
           DEALLOCATE( ConservativeProjectionMatterHeating_Rate_Final_Last )
           DEALLOCATE( ConservativeProjectionStatus_Final_Last )
+          DEALLOCATE( ConservationHandoff_Rate_Final_Last )
 #endif
         END IF
       END IF
@@ -1712,10 +1793,13 @@ CONTAINS
         ALLOCATE( RelativeResidual_Inner_First_Last(nX_G) )
 #if defined( TWOMOMENT_ORDER_V )
         ALLOCATE( MatterEquationResidual_Rate_Final_Last(nQ,nX_G) )
+        ALLOCATE( InitialRadiationLimiter_Rate_Final_Last(nQ,nX_G) )
         ALLOCATE( RadiationResidual_Relative_Final_Last(nX_G) )
         ALLOCATE( ConservativeProjectionRadiationResidual_Relative_Final_Last(nX_G) )
         ALLOCATE( ConservativeProjectionMatterHeating_Rate_Final_Last(nX_G) )
         ALLOCATE( ConservativeProjectionStatus_Final_Last(nX_G) )
+        ALLOCATE( ConservationHandoff_Rate_Final_Last &
+                    (nConservationHandoff,nX_G) )
 #endif
       END IF
 
@@ -1725,6 +1809,8 @@ CONTAINS
 #if defined( TWOMOMENT_ORDER_V )
       MatterEquationResidual_Rate_Final_Last &
         = MatterEquationResidual_Rate_Final
+      InitialRadiationLimiter_Rate_Final_Last &
+        = InitialRadiationLimiter_Rate_Final
       RadiationResidual_Relative_Final_Last &
         = RadiationResidual_Relative_Final
       ConservativeProjectionRadiationResidual_Relative_Final_Last &
@@ -1733,6 +1819,7 @@ CONTAINS
         = ConservativeProjectionMatterHeating_Rate_Final
       ConservativeProjectionStatus_Final_Last &
         = ConservativeProjectionStatus_Final
+      ConservationHandoff_Rate_Final_Last = ConservationHandoff_Rate_Final
 #endif
 
     END IF
@@ -1753,7 +1840,7 @@ CONTAINS
 
     END IF
 
-    DEALLOCATE( GE_N, GX_N )
+    DEALLOCATE( GE_N, EnergyQuadratureWeight_N, GX_N )
     DEALLOCATE( CF_N, PF_N, AF_N )
     DEALLOCATE( CR_N, PR_N )
     DEALLOCATE( PositionIndexZ )
@@ -1764,10 +1851,12 @@ CONTAINS
     DEALLOCATE( RelativeResidual_Inner_First )
 #if defined( TWOMOMENT_ORDER_V )
     DEALLOCATE( MatterEquationResidual_Rate_Final )
+    DEALLOCATE( InitialRadiationLimiter_Rate_Final )
     DEALLOCATE( RadiationResidual_Relative_Final )
     DEALLOCATE( ConservativeProjectionRadiationResidual_Relative_Final )
     DEALLOCATE( ConservativeProjectionMatterHeating_Rate_Final )
     DEALLOCATE( ConservativeProjectionStatus_Final )
+    DEALLOCATE( ConservationHandoff_Rate_Final )
 #endif
     DEALLOCATE( nIterations_Prim )
 
@@ -2028,6 +2117,70 @@ CONTAINS
   END SUBROUTINE MapDataForDiagnostics
 
 
+#if defined( TWOMOMENT_ORDER_V )
+  SUBROUTINE InitializeConservationHandoffDiagnostic
+
+    INTEGER :: iE, iN_E, iN_X, iNodeE, iS
+    REAL(DP) :: PhaseWeight2, PhaseWeight3
+    REAL(DP) :: V_d_1, V_d_2, V_d_3, vDotI
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( iE, iNodeE, iS, PhaseWeight2, PhaseWeight3, &
+    !$OMP          V_d_1, V_d_2, V_d_3, vDotI )
+#elif defined(THORNADO_OACC  )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( iE, iNodeE, iS, PhaseWeight2, PhaseWeight3, &
+    !$ACC          V_d_1, V_d_2, V_d_3, vDotI ) &
+    !$ACC PRESENT( GE_N, EnergyQuadratureWeight_N, GX_N, PF_N, PR_N, &
+    !$ACC          ConservationHandoff_Rate_Final )
+#elif defined(THORNADO_OMP   )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( iE, iNodeE, iS, PhaseWeight2, PhaseWeight3, &
+    !$OMP          V_d_1, V_d_2, V_d_3, vDotI )
+#endif
+    DO iN_X = 1, nX_G
+
+      ConservationHandoff_Rate_Final(:,iN_X) = Zero
+
+      V_d_1 = GX_N(iN_X,iGF_Gm_dd_11) * PF_N(iN_X,iPF_V1) &
+                / SpeedOfLight
+      V_d_2 = GX_N(iN_X,iGF_Gm_dd_22) * PF_N(iN_X,iPF_V2) &
+                / SpeedOfLight
+      V_d_3 = GX_N(iN_X,iGF_Gm_dd_33) * PF_N(iN_X,iPF_V3) &
+                / SpeedOfLight
+
+      DO iS = 1, nSpecies
+      DO iN_E = 1, nE_G
+
+        iE     = ( iN_E - 1 ) / nDOFE + iE_B0
+        iNodeE = MOD( iN_E - 1, nDOFE ) + 1
+        PhaseWeight2 = EnergyQuadratureWeight_N(iN_E) &
+                         * GE_N(iN_E,iGE_Ep2)
+        PhaseWeight3 = EnergyQuadratureWeight_N(iN_E) &
+                         * GE_N(iN_E,iGE_Ep3)
+        vDotI = V_d_1 * PR_N(iN_E,iS,iN_X,iPR_I1) &
+              + V_d_2 * PR_N(iN_E,iS,iN_X,iPR_I2) &
+              + V_d_3 * PR_N(iN_E,iS,iN_X,iPR_I3)
+
+        ConservationHandoff_Rate_Final(iCH_InputConversion_L,iN_X) &
+          = ConservationHandoff_Rate_Final(iCH_InputConversion_L,iN_X) &
+              + PhaseWeight2 * LeptonNumber(iS) &
+                  * ( PR_N(iN_E,iS,iN_X,iPR_D) + vDotI )
+        ConservationHandoff_Rate_Final(iCH_InputConversion_E,iN_X) &
+          = ConservationHandoff_Rate_Final(iCH_InputConversion_E,iN_X) &
+              + PhaseWeight3 &
+                  * ( PR_N(iN_E,iS,iN_X,iPR_D) + 2.0_DP * vDotI )
+
+      END DO
+      END DO
+
+    END DO
+
+  END SUBROUTINE InitializeConservationHandoffDiagnostic
+#endif
+
+
   SUBROUTINE ComputeAndMapIncrement &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, U_F, U_R, &
       MatterCoupling_Mask_N, dU_F, dU_R )
@@ -2156,7 +2309,251 @@ CONTAINS
     END DO
     END DO
 
+#if defined( TWOMOMENT_ORDER_V )
+    IF( RetainSolverConvergenceDiagnostics ) &
+      CALL FinalizeConservationHandoffDiagnostic &
+             ( iZ_B1, iZ_E1, dt, U_F, U_R, dU_F, dU_R, &
+               MatterCoupling_Mask_N )
+#endif
+
   END SUBROUTINE ComputeAndMapIncrement
+
+
+#if defined( TWOMOMENT_ORDER_V )
+  SUBROUTINE FinalizeConservationHandoffDiagnostic &
+    ( iZ_B1, iZ_E1, dt, U_F, U_R, dU_F, dU_R, MatterCoupling_Mask_N )
+
+    INTEGER, INTENT(in) :: iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in) :: dt
+    REAL(DP), INTENT(in) :: &
+      U_F(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4),1:nCF)
+    REAL(DP), INTENT(in) :: &
+      U_R(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+    REAL(DP), INTENT(in) :: &
+      dU_F(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4),1:nCF)
+    REAL(DP), INTENT(in) :: &
+      dU_R(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+    LOGICAL, INTENT(in) :: MatterCoupling_Mask_N(:)
+
+    INTEGER :: iE, iN_E, iN_X, iNodeE, iNodeX, iNodeZ, iS
+    INTEGER :: iSpatial, iX1, iX2, iX3
+    REAL(DP) :: PhaseWeight2, PhaseWeight3
+    REAL(DP) :: PrimitiveInitialL, PrimitiveInitialE
+    REAL(DP) :: ConservedInitialL, ConservedInitialE
+    REAL(DP) :: PrimitiveFinalL, PrimitiveFinalE
+    REAL(DP) :: ConservedFinalL, ConservedFinalE
+    REAL(DP) :: ReturnedFinalL, ReturnedFinalE
+    REAL(DP) :: MatterChangeL, MatterChangeE
+    REAL(DP) :: ReturnedMatterChangeL, ReturnedMatterChangeE
+    REAL(DP) :: V_u_1_Old, V_u_2_Old, V_u_3_Old
+    REAL(DP) :: V_d_1_Final, V_d_2_Final, V_d_3_Final
+    REAL(DP) :: V_u_1_Final, V_u_2_Final, V_u_3_Final
+    REAL(DP) :: V_u_1_Returned, V_u_2_Returned, V_u_3_Returned
+    REAL(DP) :: DensityReturned, vDotI
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( iSpatial, iNodeX, iX1, iX2, iX3, iE, iNodeE, &
+    !$OMP          iNodeZ, iS, PhaseWeight2, PhaseWeight3, &
+    !$OMP          PrimitiveInitialL, PrimitiveInitialE, &
+    !$OMP          ConservedInitialL, ConservedInitialE, &
+    !$OMP          PrimitiveFinalL, PrimitiveFinalE, &
+    !$OMP          ConservedFinalL, ConservedFinalE, &
+    !$OMP          ReturnedFinalL, ReturnedFinalE, &
+    !$OMP          MatterChangeL, MatterChangeE, &
+    !$OMP          ReturnedMatterChangeL, ReturnedMatterChangeE, &
+    !$OMP          V_u_1_Old, V_u_2_Old, V_u_3_Old, &
+    !$OMP          V_d_1_Final, V_d_2_Final, V_d_3_Final, &
+    !$OMP          V_u_1_Final, V_u_2_Final, V_u_3_Final, &
+    !$OMP          V_u_1_Returned, V_u_2_Returned, V_u_3_Returned, &
+    !$OMP          DensityReturned, vDotI )
+#elif defined(THORNADO_OACC  )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( iSpatial, iNodeX, iX1, iX2, iX3, iE, iNodeE, &
+    !$ACC          iNodeZ, iS, PhaseWeight2, PhaseWeight3, &
+    !$ACC          PrimitiveInitialL, PrimitiveInitialE, &
+    !$ACC          ConservedInitialL, ConservedInitialE, &
+    !$ACC          PrimitiveFinalL, PrimitiveFinalE, &
+    !$ACC          ConservedFinalL, ConservedFinalE, &
+    !$ACC          ReturnedFinalL, ReturnedFinalE, &
+    !$ACC          MatterChangeL, MatterChangeE, &
+    !$ACC          ReturnedMatterChangeL, ReturnedMatterChangeE, &
+    !$ACC          V_u_1_Old, V_u_2_Old, V_u_3_Old, &
+    !$ACC          V_d_1_Final, V_d_2_Final, V_d_3_Final, &
+    !$ACC          V_u_1_Final, V_u_2_Final, V_u_3_Final, &
+    !$ACC          V_u_1_Returned, V_u_2_Returned, V_u_3_Returned, &
+    !$ACC          DensityReturned, vDotI ) &
+    !$ACC PRESENT( nX, GE_N, EnergyQuadratureWeight_N, GX_N, &
+    !$ACC          CF_N, PF_N, CR_N, PR_N, U_F, U_R, &
+    !$ACC          dU_F, dU_R, MatterCoupling_Mask_N, &
+    !$ACC          ConservationHandoff_Rate_Final )
+#elif defined(THORNADO_OMP   )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( iSpatial, iNodeX, iX1, iX2, iX3, iE, iNodeE, &
+    !$OMP          iNodeZ, iS, PhaseWeight2, PhaseWeight3, &
+    !$OMP          PrimitiveInitialL, PrimitiveInitialE, &
+    !$OMP          ConservedInitialL, ConservedInitialE, &
+    !$OMP          PrimitiveFinalL, PrimitiveFinalE, &
+    !$OMP          ConservedFinalL, ConservedFinalE, &
+    !$OMP          ReturnedFinalL, ReturnedFinalE, &
+    !$OMP          MatterChangeL, MatterChangeE, &
+    !$OMP          ReturnedMatterChangeL, ReturnedMatterChangeE, &
+    !$OMP          V_u_1_Old, V_u_2_Old, V_u_3_Old, &
+    !$OMP          V_d_1_Final, V_d_2_Final, V_d_3_Final, &
+    !$OMP          V_u_1_Final, V_u_2_Final, V_u_3_Final, &
+    !$OMP          V_u_1_Returned, V_u_2_Returned, V_u_3_Returned, &
+    !$OMP          DensityReturned, vDotI )
+#endif
+    DO iN_X = 1, nX_G
+
+      IF( .NOT. MatterCoupling_Mask_N(iN_X) )THEN
+        ConservationHandoff_Rate_Final(:,iN_X) = Zero
+        CYCLE
+      END IF
+
+      iNodeX  = MOD( iN_X - 1, nDOFX ) + 1
+      iSpatial = ( iN_X - 1 ) / nDOFX
+      iX1 = iX_B0(1) + MOD( iSpatial, nX(1) )
+      iSpatial = iSpatial / nX(1)
+      iX2 = iX_B0(2) + MOD( iSpatial, nX(2) )
+      iX3 = iX_B0(3) + iSpatial / nX(2)
+
+      PrimitiveInitialL = &
+        ConservationHandoff_Rate_Final(iCH_InputConversion_L,iN_X)
+      PrimitiveInitialE = &
+        ConservationHandoff_Rate_Final(iCH_InputConversion_E,iN_X)
+      ConservedInitialL = Zero
+      ConservedInitialE = Zero
+      PrimitiveFinalL = Zero
+      PrimitiveFinalE = Zero
+      ConservedFinalL = Zero
+      ConservedFinalE = Zero
+      ReturnedFinalL = Zero
+      ReturnedFinalE = Zero
+
+      V_u_1_Old = U_F(iNodeX,iX1,iX2,iX3,iCF_S1) &
+        / ( GX_N(iN_X,iGF_Gm_dd_11) &
+            * U_F(iNodeX,iX1,iX2,iX3,iCF_D) * SpeedOfLight )
+      V_u_2_Old = U_F(iNodeX,iX1,iX2,iX3,iCF_S2) &
+        / ( GX_N(iN_X,iGF_Gm_dd_22) &
+            * U_F(iNodeX,iX1,iX2,iX3,iCF_D) * SpeedOfLight )
+      V_u_3_Old = U_F(iNodeX,iX1,iX2,iX3,iCF_S3) &
+        / ( GX_N(iN_X,iGF_Gm_dd_33) &
+            * U_F(iNodeX,iX1,iX2,iX3,iCF_D) * SpeedOfLight )
+      V_u_1_Final = PF_N(iN_X,iPF_V1) / SpeedOfLight
+      V_u_2_Final = PF_N(iN_X,iPF_V2) / SpeedOfLight
+      V_u_3_Final = PF_N(iN_X,iPF_V3) / SpeedOfLight
+      V_d_1_Final = GX_N(iN_X,iGF_Gm_dd_11) * PF_N(iN_X,iPF_V1) &
+        / SpeedOfLight
+      V_d_2_Final = GX_N(iN_X,iGF_Gm_dd_22) * PF_N(iN_X,iPF_V2) &
+        / SpeedOfLight
+      V_d_3_Final = GX_N(iN_X,iGF_Gm_dd_33) * PF_N(iN_X,iPF_V3) &
+        / SpeedOfLight
+      DensityReturned = U_F(iNodeX,iX1,iX2,iX3,iCF_D) &
+        + dt * dU_F(iNodeX,iX1,iX2,iX3,iCF_D)
+      V_u_1_Returned = &
+        ( U_F(iNodeX,iX1,iX2,iX3,iCF_S1) &
+            + dt * dU_F(iNodeX,iX1,iX2,iX3,iCF_S1) ) &
+          / ( GX_N(iN_X,iGF_Gm_dd_11) * DensityReturned * SpeedOfLight )
+      V_u_2_Returned = &
+        ( U_F(iNodeX,iX1,iX2,iX3,iCF_S2) &
+            + dt * dU_F(iNodeX,iX1,iX2,iX3,iCF_S2) ) &
+          / ( GX_N(iN_X,iGF_Gm_dd_22) * DensityReturned * SpeedOfLight )
+      V_u_3_Returned = &
+        ( U_F(iNodeX,iX1,iX2,iX3,iCF_S3) &
+            + dt * dU_F(iNodeX,iX1,iX2,iX3,iCF_S3) ) &
+          / ( GX_N(iN_X,iGF_Gm_dd_33) * DensityReturned * SpeedOfLight )
+
+      DO iS = 1, nSpecies
+      DO iN_E = 1, nE_G
+
+        iE     = ( iN_E - 1 ) / nDOFE + iE_B0
+        iNodeE = MOD( iN_E - 1, nDOFE ) + 1
+        iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
+        PhaseWeight2 = EnergyQuadratureWeight_N(iN_E) &
+                         * GE_N(iN_E,iGE_Ep2)
+        PhaseWeight3 = EnergyQuadratureWeight_N(iN_E) &
+                         * GE_N(iN_E,iGE_Ep3)
+
+        ConservedInitialL = ConservedInitialL &
+          + PhaseWeight2 * LeptonNumber(iS) &
+              * U_R(iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS)
+        ConservedInitialE = ConservedInitialE + PhaseWeight3 &
+          * ( U_R(iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS) &
+              + V_u_1_Old * U_R(iNodeZ,iE,iX1,iX2,iX3,iCR_G1,iS) &
+              + V_u_2_Old * U_R(iNodeZ,iE,iX1,iX2,iX3,iCR_G2,iS) &
+              + V_u_3_Old * U_R(iNodeZ,iE,iX1,iX2,iX3,iCR_G3,iS) )
+
+        vDotI = V_d_1_Final * PR_N(iN_E,iS,iN_X,iPR_I1) &
+              + V_d_2_Final * PR_N(iN_E,iS,iN_X,iPR_I2) &
+              + V_d_3_Final * PR_N(iN_E,iS,iN_X,iPR_I3)
+        PrimitiveFinalL = PrimitiveFinalL &
+          + PhaseWeight2 * LeptonNumber(iS) &
+              * ( PR_N(iN_E,iS,iN_X,iPR_D) + vDotI )
+        PrimitiveFinalE = PrimitiveFinalE + PhaseWeight3 &
+          * ( PR_N(iN_E,iS,iN_X,iPR_D) + 2.0_DP * vDotI )
+        ConservedFinalL = ConservedFinalL &
+          + PhaseWeight2 * LeptonNumber(iS) * CR_N(iN_E,iS,iN_X,iCR_N)
+        ConservedFinalE = ConservedFinalE + PhaseWeight3 &
+          * ( CR_N(iN_E,iS,iN_X,iCR_N) &
+              + V_u_1_Final * CR_N(iN_E,iS,iN_X,iCR_G1) &
+              + V_u_2_Final * CR_N(iN_E,iS,iN_X,iCR_G2) &
+              + V_u_3_Final * CR_N(iN_E,iS,iN_X,iCR_G3) )
+        ReturnedFinalL = ReturnedFinalL + PhaseWeight2 * LeptonNumber(iS) &
+          * ( U_R(iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS) &
+              + dt * dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS) )
+        ReturnedFinalE = ReturnedFinalE + PhaseWeight3 &
+          * ( U_R(iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS) &
+              + dt * dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS) &
+              + V_u_1_Returned &
+                  * ( U_R(iNodeZ,iE,iX1,iX2,iX3,iCR_G1,iS) &
+                      + dt * dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR_G1,iS) ) &
+              + V_u_2_Returned &
+                  * ( U_R(iNodeZ,iE,iX1,iX2,iX3,iCR_G2,iS) &
+                      + dt * dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR_G2,iS) ) &
+              + V_u_3_Returned &
+                  * ( U_R(iNodeZ,iE,iX1,iX2,iX3,iCR_G3,iS) &
+                      + dt * dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR_G3,iS) ) )
+
+      END DO
+      END DO
+
+      MatterChangeL = CF_N(iN_X,iCF_Ne) &
+        - U_F(iNodeX,iX1,iX2,iX3,iCF_Ne)
+      MatterChangeE = CF_N(iN_X,iCF_E) &
+        - U_F(iNodeX,iX1,iX2,iX3,iCF_E)
+      ReturnedMatterChangeL = dt * dU_F(iNodeX,iX1,iX2,iX3,iCF_Ne)
+      ReturnedMatterChangeE = dt * dU_F(iNodeX,iX1,iX2,iX3,iCF_E)
+
+      ConservationHandoff_Rate_Final(iCH_InputConversion_L,iN_X) &
+        = ( PrimitiveInitialL - ConservedInitialL ) / dt
+      ConservationHandoff_Rate_Final(iCH_PrimitivePair_L,iN_X) &
+        = ( MatterChangeL + PrimitiveFinalL - PrimitiveInitialL ) / dt
+      ConservationHandoff_Rate_Final(iCH_FinalConversion_L,iN_X) &
+        = ( ConservedFinalL - PrimitiveFinalL ) / dt
+      ConservationHandoff_Rate_Final(iCH_MappedPair_L,iN_X) &
+        = ( MatterChangeL + ConservedFinalL - ConservedInitialL ) / dt
+      ConservationHandoff_Rate_Final(iCH_ReturnedPair_L,iN_X) &
+        = ( ReturnedMatterChangeL + ReturnedFinalL - ConservedInitialL ) / dt
+      ConservationHandoff_Rate_Final(iCH_InputConversion_E,iN_X) &
+        = ( PrimitiveInitialE - ConservedInitialE ) / dt
+      ConservationHandoff_Rate_Final(iCH_PrimitivePair_E,iN_X) &
+        = ( MatterChangeE + PrimitiveFinalE - PrimitiveInitialE ) / dt
+      ConservationHandoff_Rate_Final(iCH_FinalConversion_E,iN_X) &
+        = ( ConservedFinalE - PrimitiveFinalE ) / dt
+      ConservationHandoff_Rate_Final(iCH_MappedPair_E,iN_X) &
+        = ( MatterChangeE + ConservedFinalE - ConservedInitialE ) / dt
+      ConservationHandoff_Rate_Final(iCH_ReturnedPair_E,iN_X) &
+        = ( ReturnedMatterChangeE + ReturnedFinalE - ConservedInitialE ) / dt
+
+    END DO
+
+  END SUBROUTINE FinalizeConservationHandoffDiagnostic
+#endif
 
 
 END MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
