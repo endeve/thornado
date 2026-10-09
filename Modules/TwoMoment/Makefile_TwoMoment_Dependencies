@@ -58,8 +58,11 @@ TwoMoment_DiscretizationModule_Collisions_Neutrinos.o: \
   GeometryFieldsModule.o \
   FluidFieldsModule.o \
   RadiationFieldsModule.o \
+  Euler_BoundaryConditionsModule.o \
   Euler_UtilitiesModule_NonRelativistic.o \
   EquationOfStateModule_TABLE.o \
+  TwoMoment_BoundaryConditionsModule.o \
   TwoMoment_NeutrinoMatterSolverModule.o \
+  TwoMoment_DiscretizationModule_Streaming.o \
   TwoMoment_UtilitiesModule.o \
   TwoMoment_DiscretizationModule_Collisions_Neutrinos.F90

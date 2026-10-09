@@ -81,6 +81,7 @@ TwoMoment_DiscretizationModule_Streaming.o: \
   FluidFieldsModule.o \
   Euler_BoundaryConditionsModule.o \
   Euler_UtilitiesModule_NonRelativistic.o \
+  NeutrinoOpacitiesComputationModule.o \
   RadiationFieldsModule.o \
   TwoMoment_ClosureModule.o \
   TwoMoment_BoundaryConditionsModule.o \
@@ -129,4 +130,5 @@ TwoMoment_TimeSteppingModule.o: \
   TwoMoment_PositivityLimiterModule.o \
   TwoMoment_DiscretizationModule_Streaming.o \
   TwoMoment_TallyModule.o \
+  TwoMoment_NeutrinoMatterSolverModule.o \
   TwoMoment_TimeSteppingModule.F90

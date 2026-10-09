@@ -1,7 +1,7 @@
 MODULE TwoMoment_DiscretizationModule_Streaming
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, Two, &
+    DP, Zero, Half, One, Two, Three, &
     SqrtTiny, Pi
   USE ProgramHeaderModule, ONLY: &
     nDOFX, &
@@ -68,11 +68,16 @@ MODULE TwoMoment_DiscretizationModule_Streaming
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne
+    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
+    nAF, iAF_T, iAF_Ye
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
-    ComputePrimitive_Euler_NonRelativistic
+    ComputePrimitive_Euler_NonRelativistic, &
+    ComputeFromConserved_Euler_NonRelativistic
+  USE NeutrinoOpacitiesComputationModule, ONLY: &
+    ComputeEquilibriumDistributions, &
+    LimitEquilibriumDistributions_DG
   USE RadiationFieldsModule, ONLY: &
     nSpecies, LeptonNumber, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
@@ -103,6 +108,45 @@ MODULE TwoMoment_DiscretizationModule_Streaming
   PRIVATE
 
   PUBLIC :: ComputeIncrement_TwoMoment_Explicit
+  PUBLIC :: InitializeEquilibriumDeviationLLF
+  PUBLIC :: SetEquilibriumDeviationReferenceState
+  PUBLIC :: ClearEquilibriumDeviationReferenceState
+  PUBLIC :: UseEquilibriumDeviationLLF
+  PUBLIC :: EquilibriumDeviationLLF_MaxFluxFactor
+  PUBLIC :: InitializeSourceAwareLLF
+  PUBLIC :: AllocateSourceAwareTransportOpacity
+  PUBLIC :: StoreSourceAwareTransportOpacity
+  PUBLIC :: SetSourceAwareTransportOpacity_Flattened
+  PUBLIC :: CacheSourceAwareTransportOpacity_Flattened
+  PUBLIC :: RestoreSourceAwareTransportOpacity
+  PUBLIC :: SetSourceAwareLLFActive
+  PUBLIC :: ClearSourceAwareTransportOpacity
+  PUBLIC :: MarkStreamingBoundaryConditionsApplied
+  PUBLIC :: UseSourceAwareLLF
+  PUBLIC :: SetStreamingAuditSurfaceTermFactors
+  PUBLIC :: ClearStreamingAuditSurfaceTermFactors
+
+  LOGICAL,  SAVE :: UseEquilibriumDeviationLLF = .FALSE.
+  REAL(DP), SAVE :: EquilibriumDeviationLLF_DnuMax = One - EPSILON( One )
+  REAL(DP), SAVE :: EquilibriumDeviationLLF_MaxFluxFactor = 0.1_DP
+
+  LOGICAL, SAVE :: UseSourceAwareLLF = .FALSE.
+  LOGICAL, SAVE :: SourceAwareLLFActive = .FALSE.
+  LOGICAL, SAVE :: StreamingBoundaryConditionsApplied = .FALSE.
+  INTEGER, SAVE :: SourceAwareOpacity_Begin(4) = 0
+  INTEGER, SAVE :: SourceAwareOpacity_End  (4) = -1
+  REAL(DP), DIMENSION(:,:,:,:,:,:), ALLOCATABLE, SAVE :: &
+    SourceAwareTransportOpacity
+  LOGICAL, SAVE, PUBLIC :: SourceAwareImplicitOpacityAvailable = .FALSE.
+  INTEGER, SAVE :: SourceAwareImplicitOpacity_Begin(4) = 0
+  INTEGER, SAVE :: SourceAwareImplicitOpacity_End  (4) = -1
+  INTEGER, SAVE :: SourceAwareImplicitOpacity_nX   (3) = 0
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, SAVE :: &
+    SourceAwareImplicitTransportOpacity
+
+  LOGICAL,  SAVE :: UseStreamingAuditSurfaceTermFactors = .FALSE.
+  REAL(DP), SAVE :: StreamingAuditSurfaceTermFactor_X1_Dn = One
+  REAL(DP), SAVE :: StreamingAuditSurfaceTermFactor_X1_Up = One
 
   ! --- Geometry Fields ---
 
@@ -126,7 +170,10 @@ MODULE TwoMoment_DiscretizationModule_Streaming
   ! --- Conserved Radiation Fields ---
 
   REAL(DP), TARGET, DIMENSION(:,:,:,:,:,:,:), ALLOCATABLE :: &
-    uCR_K, uCR_L, uCR_R
+    uCR_K, uCR_L, uCR_R, &
+    uCR_Equilibrium, uCR_Equilibrium_K, &
+    uCR_Equilibrium_L, uCR_Equilibrium_R, &
+    uCR_Equilibrium_Provided
 
   REAL(DP), POINTER, CONTIGUOUS, DIMENSION(:) :: &
     uN_K, uG1_K, uG2_K, uG3_K, &
@@ -191,8 +238,450 @@ MODULE TwoMoment_DiscretizationModule_Streaming
 CONTAINS
 
 
+  SUBROUTINE InitializeEquilibriumDeviationLLF &
+    ( Use_Option, DnuMax_Option, MaxFluxFactor_Option, Verbose_Option )
+
+    LOGICAL,  INTENT(in), OPTIONAL :: Use_Option
+    REAL(DP), INTENT(in), OPTIONAL :: DnuMax_Option
+    REAL(DP), INTENT(in), OPTIONAL :: MaxFluxFactor_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: Verbose_Option
+
+    LOGICAL :: Verbose
+
+    UseEquilibriumDeviationLLF = .FALSE.
+    IF( PRESENT( Use_Option ) ) &
+      UseEquilibriumDeviationLLF = Use_Option
+
+    EquilibriumDeviationLLF_DnuMax = One - EPSILON( One )
+    IF( PRESENT( DnuMax_Option ) ) &
+      EquilibriumDeviationLLF_DnuMax = DnuMax_Option
+
+    EquilibriumDeviationLLF_MaxFluxFactor = 0.1_DP
+    IF( PRESENT( MaxFluxFactor_Option ) ) &
+      EquilibriumDeviationLLF_MaxFluxFactor = MaxFluxFactor_Option
+
+    Verbose = .FALSE.
+    IF( PRESENT( Verbose_Option ) ) Verbose = Verbose_Option
+
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A)') '  Equilibrium-deviation LLF experiment:'
+      WRITE(*,'(A,L1)') '    enabled                 : ', &
+        UseEquilibriumDeviationLLF
+      WRITE(*,'(A,ES12.4E3)') '    maximum flux factor      : ', &
+        EquilibriumDeviationLLF_MaxFluxFactor
+      WRITE(*,'(A,ES12.4E3)') '    equilibrium Dnu maximum  : ', &
+        EquilibriumDeviationLLF_DnuMax
+      WRITE(*,*)
+    END IF
+
+  END SUBROUTINE InitializeEquilibriumDeviationLLF
+
+
+  SUBROUTINE SetEquilibriumDeviationReferenceState &
+    ( iZ_B1, iZ_E1, U_R_Equilibrium )
+
+    INTEGER, INTENT(in) :: iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in) :: &
+      U_R_Equilibrium &
+        (1:nDOFZ, &
+         iZ_B1(1):iZ_E1(1), &
+         iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4), &
+         1:nCR,1:nSpecies)
+
+    IF( ALLOCATED( uCR_Equilibrium_Provided ) ) &
+      DEALLOCATE( uCR_Equilibrium_Provided )
+
+    ALLOCATE &
+      ( uCR_Equilibrium_Provided &
+          (1:nDOFZ, &
+           iZ_B1(1):iZ_E1(1), &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nCR,1:nSpecies) )
+    uCR_Equilibrium_Provided = U_R_Equilibrium
+
+  END SUBROUTINE SetEquilibriumDeviationReferenceState
+
+
+  SUBROUTINE ClearEquilibriumDeviationReferenceState
+
+    IF( ALLOCATED( uCR_Equilibrium_Provided ) ) &
+      DEALLOCATE( uCR_Equilibrium_Provided )
+
+  END SUBROUTINE ClearEquilibriumDeviationReferenceState
+
+
+  SUBROUTINE InitializeSourceAwareLLF( Use_Option, Verbose_Option )
+
+    LOGICAL, INTENT(in), OPTIONAL :: Use_Option
+    LOGICAL, INTENT(in), OPTIONAL :: Verbose_Option
+
+    LOGICAL :: Verbose
+
+    UseSourceAwareLLF = .FALSE.
+    IF( PRESENT( Use_Option ) ) UseSourceAwareLLF = Use_Option
+    SourceAwareLLFActive = .FALSE.
+
+    Verbose = .FALSE.
+    IF( PRESENT( Verbose_Option ) ) Verbose = Verbose_Option
+
+    IF( Verbose )THEN
+      WRITE(*,*)
+      WRITE(*,'(A)') '  Source-aware AP LLF flux:'
+      WRITE(*,'(A,L1)') '    enabled : ', UseSourceAwareLLF
+      WRITE(*,*)
+    END IF
+
+  END SUBROUTINE InitializeSourceAwareLLF
+
+
+  SUBROUTINE AllocateSourceAwareTransportOpacity( iZ_B1, iZ_E1 )
+
+    INTEGER, INTENT(in) :: iZ_B1(4), iZ_E1(4)
+
+    IF( .NOT. UseSourceAwareLLF ) RETURN
+
+    IF( ALLOCATED( SourceAwareTransportOpacity ) )THEN
+
+      IF(      ALL( SourceAwareOpacity_Begin == iZ_B1 ) &
+          .AND. ALL( SourceAwareOpacity_End   == iZ_E1 ) ) RETURN
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA MAP( release: SourceAwareTransportOpacity )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA DELETE( SourceAwareTransportOpacity )
+#endif
+
+      DEALLOCATE( SourceAwareTransportOpacity )
+      SourceAwareLLFActive = .FALSE.
+
+    END IF
+
+    ALLOCATE &
+      ( SourceAwareTransportOpacity &
+          (1:nDOFZ, &
+           iZ_B1(1):iZ_E1(1), &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nSpecies) )
+
+    SourceAwareOpacity_Begin = iZ_B1
+    SourceAwareOpacity_End   = iZ_E1
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA MAP( alloc: SourceAwareTransportOpacity )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA CREATE( SourceAwareTransportOpacity )
+#endif
+
+  END SUBROUTINE AllocateSourceAwareTransportOpacity
+
+
+  SUBROUTINE StoreSourceAwareTransportOpacity &
+    ( iZ_B0, iZ_E0, nX, TransportOpacity )
+
+    INTEGER, INTENT(in) :: iZ_B0(4), iZ_E0(4), nX(3)
+    REAL(DP), INTENT(in) :: TransportOpacity(:,:,:)
+
+    INTEGER :: iE, iN_E, iN_X, iNodeE, iNodeX, iNodeZ
+    INTEGER :: iS, iX1, iX2, iX3
+    INTEGER :: iE_B, iX1_B, iX2_B, iX3_B
+    INTEGER :: nE, nE_G_Local, nX_G_Local, nX1, nX2, nX3
+
+    IF( .NOT. UseSourceAwareLLF ) RETURN
+
+    nE = iZ_E0(1) - iZ_B0(1) + 1
+    nX1 = nX(1)
+    nX2 = nX(2)
+    nX3 = nX(3)
+    iE_B  = iZ_B0(1)
+    iX1_B = iZ_B0(2)
+    iX2_B = iZ_B0(3)
+    iX3_B = iZ_B0(4)
+    nE_G_Local = SIZE( TransportOpacity, 1 )
+    nX_G_Local = SIZE( TransportOpacity, 3 )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( iE, iNodeE, iNodeX, iNodeZ, iX1, iX2, iX3 )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( iE, iNodeE, iNodeX, iNodeZ, iX1, iX2, iX3 ) &
+    !$ACC FIRSTPRIVATE( nE, nE_G_Local, nX_G_Local, nX1, nX2, nX3, &
+    !$ACC               iE_B, iX1_B, iX2_B, iX3_B ) &
+    !$ACC PRESENT( SourceAwareTransportOpacity, TransportOpacity )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( iE, iNodeE, iNodeX, iNodeZ, iX1, iX2, iX3 )
+#endif
+    DO iS   = 1, nSpecies
+    DO iN_X = 1, nX_G_Local
+    DO iN_E = 1, nE_G_Local
+
+      iE     = MOD( (iN_E-1) / nDOFE, nE ) + iE_B
+      iNodeE = MOD(  iN_E-1,          nDOFE ) + 1
+      iX3    = MOD( (iN_X-1) / (nDOFX*nX1*nX2), nX3 ) + iX3_B
+      iX2    = MOD( (iN_X-1) / (nDOFX*nX1    ), nX2 ) + iX2_B
+      iX1    = MOD( (iN_X-1) /  nDOFX,          nX1 ) + iX1_B
+      iNodeX = MOD(  iN_X-1,                         nDOFX ) + 1
+      iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
+
+      SourceAwareTransportOpacity(iNodeZ,iE,iX1,iX2,iX3,iS) &
+        = TransportOpacity(iN_E,iS,iN_X)
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE StoreSourceAwareTransportOpacity
+
+
+  SUBROUTINE CacheSourceAwareTransportOpacity_Flattened &
+    ( iZ_B0, iZ_E0, nX, TransportOpacity )
+
+    INTEGER, INTENT(in) :: iZ_B0(4), iZ_E0(4), nX(3)
+    REAL(DP), INTENT(in) :: TransportOpacity(:,:,:)
+
+    INTEGER :: iN_E, iN_X, iS
+    LOGICAL :: ReallocateCache
+
+    IF( .NOT. UseSourceAwareLLF ) RETURN
+
+    ReallocateCache = .NOT. ALLOCATED( SourceAwareImplicitTransportOpacity )
+
+    IF( .NOT. ReallocateCache )THEN
+      ReallocateCache &
+        =     SIZE( SourceAwareImplicitTransportOpacity, 1 ) &
+                /= SIZE( TransportOpacity, 1 ) &
+          .OR. SIZE( SourceAwareImplicitTransportOpacity, 2 ) &
+                /= SIZE( TransportOpacity, 2 ) &
+          .OR. SIZE( SourceAwareImplicitTransportOpacity, 3 ) &
+                /= SIZE( TransportOpacity, 3 )
+    END IF
+
+    IF( ReallocateCache )THEN
+
+      IF( ALLOCATED( SourceAwareImplicitTransportOpacity ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA MAP( release: SourceAwareImplicitTransportOpacity )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA DELETE( SourceAwareImplicitTransportOpacity )
+#endif
+        DEALLOCATE( SourceAwareImplicitTransportOpacity )
+      END IF
+
+      ALLOCATE &
+        ( SourceAwareImplicitTransportOpacity &
+            (SIZE(TransportOpacity,1), &
+             SIZE(TransportOpacity,2), &
+             SIZE(TransportOpacity,3)) )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA MAP( alloc: SourceAwareImplicitTransportOpacity )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA CREATE( SourceAwareImplicitTransportOpacity )
+#endif
+
+    END IF
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( SourceAwareImplicitTransportOpacity, TransportOpacity )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO iN_X = 1, SIZE( TransportOpacity, 3 )
+    DO iS   = 1, SIZE( TransportOpacity, 2 )
+    DO iN_E = 1, SIZE( TransportOpacity, 1 )
+
+      SourceAwareImplicitTransportOpacity(iN_E,iS,iN_X) &
+        = TransportOpacity(iN_E,iS,iN_X)
+
+    END DO
+    END DO
+    END DO
+
+    SourceAwareImplicitOpacity_Begin = iZ_B0
+    SourceAwareImplicitOpacity_End   = iZ_E0
+    SourceAwareImplicitOpacity_nX    = nX
+    SourceAwareImplicitOpacityAvailable = .TRUE.
+
+  END SUBROUTINE CacheSourceAwareTransportOpacity_Flattened
+
+
+  SUBROUTINE RestoreSourceAwareTransportOpacity
+
+    INTEGER :: iE, iN_E, iN_X, iNodeE, iNodeX, iNodeZ
+    INTEGER :: iS, iX1, iX2, iX3
+    INTEGER :: iE_B, iX1_B, iX2_B, iX3_B
+    INTEGER :: nE, nE_G_Local, nX_G_Local, nX1, nX2, nX3
+
+    IF( .NOT. UseSourceAwareLLF ) RETURN
+    IF( .NOT. SourceAwareImplicitOpacityAvailable ) RETURN
+
+    nE  = SourceAwareImplicitOpacity_End(1) &
+          - SourceAwareImplicitOpacity_Begin(1) + 1
+    nX1 = SourceAwareImplicitOpacity_nX(1)
+    nX2 = SourceAwareImplicitOpacity_nX(2)
+    nX3 = SourceAwareImplicitOpacity_nX(3)
+
+    iE_B  = SourceAwareImplicitOpacity_Begin(1)
+    iX1_B = SourceAwareImplicitOpacity_Begin(2)
+    iX2_B = SourceAwareImplicitOpacity_Begin(3)
+    iX3_B = SourceAwareImplicitOpacity_Begin(4)
+
+    nE_G_Local = SIZE( SourceAwareImplicitTransportOpacity, 1 )
+    nX_G_Local = SIZE( SourceAwareImplicitTransportOpacity, 3 )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( iE, iNodeE, iNodeX, iNodeZ, iX1, iX2, iX3 )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( iE, iNodeE, iNodeX, iNodeZ, iX1, iX2, iX3 ) &
+    !$ACC FIRSTPRIVATE( nE, nE_G_Local, nX_G_Local, nX1, nX2, nX3, &
+    !$ACC               iE_B, iX1_B, iX2_B, iX3_B ) &
+    !$ACC PRESENT( SourceAwareTransportOpacity, &
+    !$ACC          SourceAwareImplicitTransportOpacity )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( iE, iNodeE, iNodeX, iNodeZ, iX1, iX2, iX3 )
+#endif
+    DO iS   = 1, nSpecies
+    DO iN_X = 1, nX_G_Local
+    DO iN_E = 1, nE_G_Local
+
+      iE     = MOD( (iN_E-1) / nDOFE, nE ) + iE_B
+      iNodeE = MOD(  iN_E-1,          nDOFE ) + 1
+      iX3    = MOD( (iN_X-1) / (nDOFX*nX1*nX2), nX3 ) + iX3_B
+      iX2    = MOD( (iN_X-1) / (nDOFX*nX1    ), nX2 ) + iX2_B
+      iX1    = MOD( (iN_X-1) /  nDOFX,          nX1 ) + iX1_B
+      iNodeX = MOD(  iN_X-1,                         nDOFX ) + 1
+      iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
+
+      SourceAwareTransportOpacity(iNodeZ,iE,iX1,iX2,iX3,iS) &
+        = SourceAwareImplicitTransportOpacity(iN_E,iS,iN_X)
+
+    END DO
+    END DO
+    END DO
+
+    SourceAwareLLFActive = .TRUE.
+
+  END SUBROUTINE RestoreSourceAwareTransportOpacity
+
+
+  SUBROUTINE SetSourceAwareTransportOpacity_Flattened &
+    ( iZ_B0, iZ_E0, nX, TransportOpacity )
+
+    INTEGER, INTENT(in) :: iZ_B0(4), iZ_E0(4), nX(3)
+    REAL(DP), INTENT(in) :: TransportOpacity(:,:,:)
+
+    IF( .NOT. UseSourceAwareLLF ) RETURN
+
+    CALL AllocateSourceAwareTransportOpacity( iZ_B0, iZ_E0 )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA MAP( to: TransportOpacity )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA COPYIN( TransportOpacity )
+#endif
+
+    CALL StoreSourceAwareTransportOpacity &
+           ( iZ_B0, iZ_E0, nX, TransportOpacity )
+
+    SourceAwareLLFActive = .TRUE.
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA MAP( release: TransportOpacity )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA DELETE( TransportOpacity )
+#endif
+
+  END SUBROUTINE SetSourceAwareTransportOpacity_Flattened
+
+
+  SUBROUTINE SetSourceAwareLLFActive( Active )
+
+    LOGICAL, INTENT(in) :: Active
+
+    SourceAwareLLFActive = Active
+
+  END SUBROUTINE SetSourceAwareLLFActive
+
+
+  SUBROUTINE ClearSourceAwareTransportOpacity
+
+    IF( ALLOCATED( SourceAwareTransportOpacity ) )THEN
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA MAP( release: SourceAwareTransportOpacity )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA DELETE( SourceAwareTransportOpacity )
+#endif
+
+      DEALLOCATE( SourceAwareTransportOpacity )
+
+    END IF
+
+    IF( ALLOCATED( SourceAwareImplicitTransportOpacity ) )THEN
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA MAP( release: SourceAwareImplicitTransportOpacity )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA DELETE( SourceAwareImplicitTransportOpacity )
+#endif
+
+      DEALLOCATE( SourceAwareImplicitTransportOpacity )
+
+    END IF
+
+    SourceAwareLLFActive = .FALSE.
+    SourceAwareImplicitOpacityAvailable = .FALSE.
+
+  END SUBROUTINE ClearSourceAwareTransportOpacity
+
+
+  SUBROUTINE MarkStreamingBoundaryConditionsApplied
+
+    StreamingBoundaryConditionsApplied = .TRUE.
+
+  END SUBROUTINE MarkStreamingBoundaryConditionsApplied
+
+
+  SUBROUTINE SetStreamingAuditSurfaceTermFactors &
+    ( SurfaceTermFactor_X1_Dn, SurfaceTermFactor_X1_Up )
+
+    REAL(DP), INTENT(in) :: SurfaceTermFactor_X1_Dn
+    REAL(DP), INTENT(in) :: SurfaceTermFactor_X1_Up
+
+    StreamingAuditSurfaceTermFactor_X1_Dn = SurfaceTermFactor_X1_Dn
+    StreamingAuditSurfaceTermFactor_X1_Up = SurfaceTermFactor_X1_Up
+    UseStreamingAuditSurfaceTermFactors = .TRUE.
+
+  END SUBROUTINE SetStreamingAuditSurfaceTermFactors
+
+
+  SUBROUTINE ClearStreamingAuditSurfaceTermFactors
+
+    UseStreamingAuditSurfaceTermFactors = .FALSE.
+    StreamingAuditSurfaceTermFactor_X1_Dn = One
+    StreamingAuditSurfaceTermFactor_X1_Up = One
+
+  END SUBROUTINE ClearStreamingAuditSurfaceTermFactors
+
+
   SUBROUTINE ComputeIncrement_TwoMoment_Explicit &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
+      LLFPenaltyFactor_Option, SurfaceTermFactor_Option, &
+      VolumeTermFactor_Option, IncludeObserverCorrections_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -230,8 +719,15 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
+    REAL(DP), INTENT(in), OPTIONAL :: LLFPenaltyFactor_Option
+    REAL(DP), INTENT(in), OPTIONAL :: SurfaceTermFactor_Option
+    REAL(DP), INTENT(in), OPTIONAL :: VolumeTermFactor_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: IncludeObserverCorrections_Option
 
     INTEGER :: iNodeE, iNodeX, iNodeZ, iZ1, iZ2, iZ3, iZ4, iCR, iS
+    REAL(DP) :: LLFPenaltyFactor, SurfaceTermFactor, VolumeTermFactor
+    REAL(DP) :: SurfaceTermFactor_X1_Dn, SurfaceTermFactor_X1_Up
+    LOGICAL  :: IncludeObserverCorrections
 
     CALL TimersStart( Timer_Streaming )
 
@@ -241,23 +737,94 @@ CONTAINS
     iX_B0 = iZ_B0(2:4); iX_E0 = iZ_E0(2:4)
     iX_B1 = iZ_B1(2:4); iX_E1 = iZ_E1(2:4)
 
+    LLFPenaltyFactor = One
+    IF( PRESENT( LLFPenaltyFactor_Option ) ) &
+      LLFPenaltyFactor = LLFPenaltyFactor_Option
+
+    SurfaceTermFactor = One
+    IF( PRESENT( SurfaceTermFactor_Option ) ) &
+      SurfaceTermFactor = SurfaceTermFactor_Option
+
+    SurfaceTermFactor_X1_Dn = SurfaceTermFactor
+    SurfaceTermFactor_X1_Up = SurfaceTermFactor
+    IF( UseStreamingAuditSurfaceTermFactors )THEN
+      SurfaceTermFactor_X1_Dn = StreamingAuditSurfaceTermFactor_X1_Dn
+      SurfaceTermFactor_X1_Up = StreamingAuditSurfaceTermFactor_X1_Up
+    END IF
+
+    VolumeTermFactor = One
+    IF( PRESENT( VolumeTermFactor_Option ) ) &
+      VolumeTermFactor = VolumeTermFactor_Option
+
+    IncludeObserverCorrections = .TRUE.
+    IF( PRESENT( IncludeObserverCorrections_Option ) ) &
+      IncludeObserverCorrections = IncludeObserverCorrections_Option
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
-    !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, GE, GX, U_F, U_R ) &
+    !$OMP          iX_B0, iX_E0, iX_B1, iX_E1, GE, GX, U_F, U_R, &
+    !$OMP          UseSourceAwareLLF, SourceAwareLLFActive ) &
     !$OMP MAP( alloc: dU_R )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
     !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
-    !$ACC         iX_B0, iX_E0, iX_B1, iX_E1, GE, GX, U_F, U_R ) &
+    !$ACC         iX_B0, iX_E0, iX_B1, iX_E1, GE, GX, U_F, U_R, &
+    !$ACC         UseSourceAwareLLF, SourceAwareLLFActive ) &
     !$ACC CREATE( dU_R )
 #endif
 
-    CALL ApplyBoundaryConditions_Euler &
-           ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
+    IF( .NOT. StreamingBoundaryConditionsApplied )THEN
 
-    CALL ApplyBoundaryConditions_TwoMoment &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
+      CALL ApplyBoundaryConditions_Euler &
+             ( iX_B0, iX_E0, iX_B1, iX_E1, U_F )
+
+      CALL ApplyBoundaryConditions_TwoMoment &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R )
+
+    END IF
+
+    StreamingBoundaryConditionsApplied = .FALSE.
+
+    IF( UseEquilibriumDeviationLLF )THEN
+
+#if defined( THORNADO_OMP_OL ) || defined( THORNADO_OACC )
+      ERROR STOP 'Equilibrium-deviation LLF experiment is currently host-only'
+#endif
+
+      IF( iZ_E0(3) > iZ_B0(3) .OR. iZ_E0(4) > iZ_B0(4) ) &
+        ERROR STOP 'Equilibrium-deviation LLF experiment is currently X1-only'
+
+      ALLOCATE( uCR_Equilibrium, MOLD = U_R )
+
+      IF( ALLOCATED( uCR_Equilibrium_Provided ) )THEN
+
+        IF(      ANY( SHAPE( uCR_Equilibrium_Provided ) &
+                      /= SHAPE( uCR_Equilibrium ) ) &
+            .OR. ANY( LBOUND( uCR_Equilibrium_Provided ) &
+                      /= LBOUND( uCR_Equilibrium ) ) ) &
+          ERROR STOP 'Invalid equilibrium-deviation reference-state shape.'
+
+        uCR_Equilibrium = uCR_Equilibrium_Provided
+
+      ELSE
+
+        CALL ComputeEquilibriumRadiationState &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, &
+                 uCR_Equilibrium )
+
+      END IF
+
+      CALL ApplyBoundaryConditions_TwoMoment &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uCR_Equilibrium )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA MAP( to: uCR_Equilibrium )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA COPYIN( uCR_Equilibrium )
+#endif
+
+    END IF
 
     CALL InitializeIncrement_TwoMoment_Explicit &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
@@ -295,20 +862,25 @@ CONTAINS
     CALL TimersStart( Timer_Streaming_Divergence )
 
     CALL ComputeIncrement_Divergence_X1 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
+             LLFPenaltyFactor, SurfaceTermFactor_X1_Dn, &
+             SurfaceTermFactor_X1_Up, VolumeTermFactor )
 
     CALL ComputeIncrement_Divergence_X2 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
+             LLFPenaltyFactor, SurfaceTermFactor, VolumeTermFactor )
 
     CALL ComputeIncrement_Divergence_X3 &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
+             LLFPenaltyFactor, SurfaceTermFactor, VolumeTermFactor )
 
     CALL TimersStop( Timer_Streaming_Divergence )
 
     CALL TimersStart( Timer_Streaming_ObserverCorrections )
 
-    CALL ComputeIncrement_ObserverCorrections &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+    IF( IncludeObserverCorrections ) &
+      CALL ComputeIncrement_ObserverCorrections &
+             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
 
     CALL TimersStop( Timer_Streaming_ObserverCorrections )
 
@@ -355,16 +927,30 @@ CONTAINS
 
     CALL FinalizeIncrement_TwoMoment_Explicit
 
+    IF( UseEquilibriumDeviationLLF )THEN
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA MAP( release: uCR_Equilibrium )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA DELETE( uCR_Equilibrium )
+#endif
+
+      DEALLOCATE( uCR_Equilibrium )
+
+    END IF
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from: dU_R, U_R, U_F ) &
     !$OMP MAP( release: dZ1, dZ2, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
-    !$OMP               iX_B0, iX_E0, iX_B1, iX_E1, GE, GX )
+    !$OMP               iX_B0, iX_E0, iX_B1, iX_E1, GE, GX, &
+    !$OMP               UseSourceAwareLLF, SourceAwareLLFActive )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
     !$ACC COPYOUT( dU_R, U_R, U_F ) &
     !$ACC DELETE( dZ1, dZ2, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
-    !$ACC         iX_B0, iX_E0, iX_B1, iX_E1, GE, GX )
+    !$ACC         iX_B0, iX_E0, iX_B1, iX_E1, GE, GX, &
+    !$ACC         UseSourceAwareLLF, SourceAwareLLFActive )
     !$ACC WAIT
 #endif
 
@@ -375,8 +961,143 @@ CONTAINS
   END SUBROUTINE ComputeIncrement_TwoMoment_Explicit
 
 
+  SUBROUTINE ComputeEquilibriumRadiationState &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R_Equilibrium )
+
+    INTEGER, INTENT(in) :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in) :: &
+      GE(1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
+    REAL(DP), INTENT(in) :: &
+      GX(1:nDOFX, &
+         iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:nGF)
+    REAL(DP), INTENT(in) :: &
+      U_F(1:nDOFX, &
+          iZ_B1(2):iZ_E1(2), &
+          iZ_B1(3):iZ_E1(3), &
+          iZ_B1(4):iZ_E1(4),1:nCF)
+    REAL(DP), INTENT(out) :: &
+      U_R_Equilibrium(1:nDOFZ, &
+                      iZ_B1(1):iZ_E1(1), &
+                      iZ_B1(2):iZ_E1(2), &
+                      iZ_B1(3):iZ_E1(3), &
+                      iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+
+    INTEGER :: iNodeE, iNodeX, iNodeZ
+    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iN_E, iN_X
+    INTEGER :: nE_G, nX_G
+    REAL(DP), ALLOCATABLE :: PF(:,:,:,:,:), AF(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: E_N(:), D_N(:), T_N(:), Y_N(:)
+    REAL(DP), ALLOCATABLE :: Dnu_Equilibrium(:,:,:)
+
+    nE_G = ( iZ_E0(1) - iZ_B0(1) + 1 ) * nDOFE
+    nX_G = PRODUCT( iZ_E0(2:4) - iZ_B0(2:4) + 1 ) * nDOFX
+
+    ALLOCATE &
+      ( PF(1:nDOFX, &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4),1:nPF), &
+        AF(1:nDOFX, &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4),1:nAF) )
+    ALLOCATE( E_N(nE_G), D_N(nX_G), T_N(nX_G), Y_N(nX_G) )
+    ALLOCATE( Dnu_Equilibrium(nE_G,nSpecies,nX_G) )
+
+    PF = Zero
+    AF = Zero
+    U_R_Equilibrium = Zero
+
+    CALL ComputeFromConserved_Euler_NonRelativistic &
+           ( iZ_B0(2:4), iZ_E0(2:4), iZ_B1(2:4), iZ_E1(2:4), &
+             GX, U_F, PF, AF )
+
+    iN_E = 0
+    DO iZ1 = iZ_B0(1), iZ_E0(1)
+    DO iNodeE = 1, nDOFE
+
+      iN_E = iN_E + 1
+      E_N(iN_E) = GE(iNodeE,iZ1,iGE_Ep1)
+
+    END DO
+    END DO
+
+    iN_X = 0
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iNodeX = 1, nDOFX
+
+      iN_X = iN_X + 1
+      D_N(iN_X) = PF(iNodeX,iZ2,iZ3,iZ4,iPF_D)
+      T_N(iN_X) = AF(iNodeX,iZ2,iZ3,iZ4,iAF_T)
+      Y_N(iN_X) = AF(iNodeX,iZ2,iZ3,iZ4,iAF_Ye)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL ComputeEquilibriumDistributions &
+           ( 1, nE_G, 1, nSpecies, 1, nX_G, &
+             E_N, D_N, T_N, Y_N, Dnu_Equilibrium )
+
+    CALL LimitEquilibriumDistributions_DG &
+           ( 1, nE_G, 1, nSpecies, 1, nX_G, &
+             E_N, Dnu_Equilibrium, EquilibriumDeviationLLF_DnuMax )
+
+    iN_X = 0
+    DO iZ4 = iZ_B0(4), iZ_E0(4)
+    DO iZ3 = iZ_B0(3), iZ_E0(3)
+    DO iZ2 = iZ_B0(2), iZ_E0(2)
+    DO iNodeX = 1, nDOFX
+
+      iN_X = iN_X + 1
+      iN_E = 0
+
+      DO iZ1 = iZ_B0(1), iZ_E0(1)
+      DO iNodeE = 1, nDOFE
+
+        iN_E = iN_E + 1
+        iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
+
+        DO iS = 1, nSpecies
+
+          CALL ComputeConserved_TwoMoment &
+                 ( Dnu_Equilibrium(iN_E,iS,iN_X), Zero, Zero, Zero, &
+                   U_R_Equilibrium(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
+                   U_R_Equilibrium(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                   U_R_Equilibrium(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                   U_R_Equilibrium(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                   PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1), &
+                   PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2), &
+                   PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3), &
+                   GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
+                   GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
+                   GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+
+        END DO
+
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    DEALLOCATE( PF, AF )
+    DEALLOCATE( E_N, D_N, T_N, Y_N, Dnu_Equilibrium )
+
+  END SUBROUTINE ComputeEquilibriumRadiationState
+
+
   SUBROUTINE ComputeIncrement_Divergence_X1 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
+      LLFPenaltyFactor, SurfaceTermFactor_Dn, SurfaceTermFactor_Up, &
+      VolumeTermFactor )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -414,6 +1135,9 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
+    REAL(DP), INTENT(in) :: &
+      LLFPenaltyFactor, SurfaceTermFactor_Dn, SurfaceTermFactor_Up, &
+      VolumeTermFactor
 
     INTEGER  :: iNodeZ, iNodeE, iNodeX, iNodeZ_X1, iNodeX_X1
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
@@ -422,9 +1146,20 @@ CONTAINS
 
     REAL(DP) :: Flux_L(nCR), uCR_X1_L(nCR)
     REAL(DP) :: Flux_R(nCR), uCR_X1_R(nCR)
+    REAL(DP) :: uCR_Equilibrium_X1_L(nCR), uCR_Equilibrium_X1_R(nCR)
     REAL(DP) :: Flux_K(nCR)
+    REAL(DP) :: D_Equilibrium_L, I_Equilibrium_L(3)
+    REAL(DP) :: D_Equilibrium_R, I_Equilibrium_R(3)
+    REAL(DP) :: FluxFactor_L, FluxFactor_R
+    REAL(DP) :: TransportOpacity_F, FaceWidth, NormalScaleFactor
+    REAL(DP) :: FaceOpticalDepth, DensityLLFPenaltyFactor
+    REAL(DP) :: EquilibriumJumpFactor
     REAL(DP) :: uV1_L, uV2_L, uV3_L
     REAL(DP) :: uV1_R, uV2_R, uV3_R
+    REAL(DP), ALLOCATABLE :: &
+      TransportOpacity_K(:,:,:,:,:,:), &
+      TransportOpacity_L(:,:,:,:,:,:), &
+      TransportOpacity_R(:,:,:,:,:,:)
 
     IF( iZ_E0(2) .EQ. iZ_B0(2) ) RETURN
 
@@ -437,6 +1172,7 @@ CONTAINS
 
     ASSOCIATE &
       ( dZ1 => MeshE    % Width, &
+        dZ2 => MeshX(1) % Width, &
         dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
 
@@ -450,6 +1186,87 @@ CONTAINS
 
     CALL InitializeIncrement_Divergence_X &
            ( iZP_B0, iZP_E0, nDOFX_X1, nDOF_X1 )
+
+    IF( UseSourceAwareLLF .AND. SourceAwareLLFActive )THEN
+
+      ALLOCATE &
+        ( TransportOpacity_K &
+            (1:nDOFZ, &
+             iZP_B0(1):iZP_E0(1), &
+             iZP_B0(2):iZP_E0(2), &
+             iZP_B0(3):iZP_E0(3), &
+             1:nSpecies, &
+             iZP_B0(4)-1:iZP_E0(4)+1), &
+          TransportOpacity_L &
+            (1:nDOF_X1, &
+             iZP_B0(1):iZP_E0(1), &
+             iZP_B0(2):iZP_E0(2), &
+             iZP_B0(3):iZP_E0(3), &
+             1:nSpecies, &
+             iZP_B0(4):iZP_E0(4)+1), &
+          TransportOpacity_R &
+            (1:nDOF_X1, &
+             iZP_B0(1):iZP_E0(1), &
+             iZP_B0(2):iZP_E0(2), &
+             iZP_B0(3):iZP_E0(3), &
+             1:nSpecies, &
+             iZP_B0(4):iZP_E0(4)+1) )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: TransportOpacity_K, TransportOpacity_L, TransportOpacity_R )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC CREATE( TransportOpacity_K, TransportOpacity_L, TransportOpacity_R )
+#endif
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC PRESENT( TransportOpacity_K, SourceAwareTransportOpacity )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(6)
+#endif
+      DO iZ2 = iZ_B0(2)-1, iZ_E0(2)+1
+      DO iS  = 1, nSpecies
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ1 = iZ_B0(1), iZ_E0(1)
+      DO iNodeZ = 1, nDOFZ
+
+        TransportOpacity_K(iNodeZ,iZ1,iZ3,iZ4,iS,iZ2) &
+          = SourceAwareTransportOpacity &
+              (iNodeZ,iZ1,iZ2,iZ3,iZ4,iS)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOF_X1, nX1_Z, nDOFZ, &
+               One, L_X1_Up, nDOF_X1, &
+               TransportOpacity_K &
+                 (1,iZP_B0(1),iZP_B0(2),iZP_B0(3),1,iZP_B0(4)-1), &
+               nDOFZ, Zero, &
+               TransportOpacity_L &
+                 (1,iZP_B0(1),iZP_B0(2),iZP_B0(3),1,iZP_B0(4)), &
+               nDOF_X1 )
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOF_X1, nX1_Z, nDOFZ, &
+               One, L_X1_Dn, nDOF_X1, &
+               TransportOpacity_K &
+                 (1,iZP_B0(1),iZP_B0(2),iZP_B0(3),1,iZP_B0(4)), &
+               nDOFZ, Zero, &
+               TransportOpacity_R &
+                 (1,iZP_B0(1),iZP_B0(2),iZP_B0(3),1,iZP_B0(4)), &
+               nDOF_X1 )
+
+    END IF
 
     ! --- Permute Geometry Fields ---
 
@@ -561,6 +1378,40 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    IF( UseEquilibriumDeviationLLF )THEN
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
+    !$ACC PRESENT( uCR_Equilibrium_K, uCR_Equilibrium, &
+    !$ACC          iZ_B0, iZ_E0 )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(7)
+#endif
+      DO iCR = 1, nCR
+      DO iZ2 = iZ_B0(2)-1, iZ_E0(2)+1
+      DO iS  = 1, nSpecies
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ1 = iZ_B0(1), iZ_E0(1)
+
+        DO iNodeZ = 1, nDOFZ
+
+          uCR_Equilibrium_K(iNodeZ,iZ1,iZ3,iZ4,iS,iZ2,iCR) &
+            = uCR_Equilibrium(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
+
+        END DO
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
 
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
@@ -674,6 +1525,28 @@ CONTAINS
                uCR_K(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)  ,iCR), nDOFZ, Zero, &
                uCR_R(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)  ,iCR), nDOF_X1 )
 
+      IF( UseEquilibriumDeviationLLF )THEN
+
+        CALL MatrixMatrixMultiply &
+               ( 'N', 'N', nDOF_X1, nX1_Z, nDOFZ, One, L_X1_Up, nDOF_X1, &
+                 uCR_Equilibrium_K &
+                   (1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)-1,iCR), &
+                 nDOFZ, Zero, &
+                 uCR_Equilibrium_L &
+                   (1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2),iCR), &
+                 nDOF_X1 )
+
+        CALL MatrixMatrixMultiply &
+               ( 'N', 'N', nDOF_X1, nX1_Z, nDOFZ, One, L_X1_Dn, nDOF_X1, &
+                 uCR_Equilibrium_K &
+                   (1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2),iCR), &
+                 nDOFZ, Zero, &
+                 uCR_Equilibrium_R &
+                   (1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2),iCR), &
+                 nDOF_X1 )
+
+      END IF
+
     END DO
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
@@ -707,19 +1580,38 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( iX_F, iNodeZ_X1, iNodeX_X1, iNodeE, iZ1, iZ2, iZ3, iZ4, iS, &
-    !$OMP          Flux_L, uCR_X1_L, Flux_R, uCR_X1_R )
+    !$OMP          Flux_L, uCR_X1_L, Flux_R, uCR_X1_R, &
+    !$OMP          uCR_Equilibrium_X1_L, uCR_Equilibrium_X1_R, &
+    !$OMP          D_Equilibrium_L, I_Equilibrium_L, &
+    !$OMP          D_Equilibrium_R, I_Equilibrium_R, &
+    !$OMP          FluxFactor_L, FluxFactor_R, TransportOpacity_F, &
+    !$OMP          FaceWidth, NormalScaleFactor, FaceOpticalDepth, &
+    !$OMP          DensityLLFPenaltyFactor, EquilibriumJumpFactor )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( iX_F, iNodeZ_X1, iNodeX_X1, iNodeE, iZ1, iZ2, iZ3, iZ4, iS, &
-    !$ACC          Flux_L, uCR_X1_L, Flux_R, uCR_X1_R ) &
+    !$ACC          Flux_L, uCR_X1_L, Flux_R, uCR_X1_R, &
+    !$ACC          uCR_Equilibrium_X1_L, uCR_Equilibrium_X1_R, &
+    !$ACC          D_Equilibrium_L, I_Equilibrium_L, &
+    !$ACC          D_Equilibrium_R, I_Equilibrium_R, &
+    !$ACC          FluxFactor_L, FluxFactor_R, TransportOpacity_F, &
+    !$ACC          FaceWidth, NormalScaleFactor, FaceOpticalDepth, &
+    !$ACC          DensityLLFPenaltyFactor, EquilibriumJumpFactor ) &
     !$ACC PRESENT( uD_L, uI1_L, uI2_L, uI3_L, uD_R, uI1_R, uI2_R, uI3_R, &
     !$ACC          uV1_F, uV2_F, uV3_F, Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
     !$ACC          NumericalFlux, NumericalFlux2, GE, SqrtGm_F, Weights_X1, dZ1, dZ3, dZ4, &
-    !$ACC          nZ_X1, iZ_B0, PositionIndexZ_F, IndexTableZ_F )
+    !$ACC          nZ_X1, iZ_B0, PositionIndexZ_F, IndexTableZ_F, &
+    !$ACC          TransportOpacity_L, TransportOpacity_R )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( iX_F, iNodeZ_X1, iNodeX_X1, iNodeE, iZ1, iZ2, iZ3, iZ4, iS, &
-    !$OMP          Flux_L, uCR_X1_L, Flux_R, uCR_X1_R )
+    !$OMP          Flux_L, uCR_X1_L, Flux_R, uCR_X1_R, &
+    !$OMP          uCR_Equilibrium_X1_L, uCR_Equilibrium_X1_R, &
+    !$OMP          D_Equilibrium_L, I_Equilibrium_L, &
+    !$OMP          D_Equilibrium_R, I_Equilibrium_R, &
+    !$OMP          FluxFactor_L, FluxFactor_R, TransportOpacity_F, &
+    !$OMP          FaceWidth, NormalScaleFactor, FaceOpticalDepth, &
+    !$OMP          DensityLLFPenaltyFactor, EquilibriumJumpFactor )
 #endif
     DO iZ_F = 1, nNodesZ_X1
 
@@ -769,13 +1661,119 @@ CONTAINS
                uV1_F(iX_F), Zero, Zero, &
                Gm_dd_11_F(iX_F), Gm_dd_22_F(iX_F), Gm_dd_33_F(iX_F) )
 
+      FluxFactor_L = One
+      FluxFactor_R = One
+      DensityLLFPenaltyFactor = LLFPenaltyFactor
+      EquilibriumJumpFactor = One
+
+      IF( UseSourceAwareLLF .AND. SourceAwareLLFActive )THEN
+
+        ! Match the density-jump dissipation to the optically thick
+        ! mixed-DG limit.  Momentum-jump dissipation is unchanged.
+        FaceWidth = Half * ( dZ2(iZ2-1) + dZ2(iZ2) )
+        TransportOpacity_F &
+          = ( dZ2(iZ2-1) * MAX( Zero, TransportOpacity_L &
+                                  (iNodeZ_X1,iZ1,iZ3,iZ4,iS,iZ2) ) &
+              + dZ2(iZ2) * MAX( Zero, TransportOpacity_R &
+                                  (iNodeZ_X1,iZ1,iZ3,iZ4,iS,iZ2) ) ) &
+              / ( Two * FaceWidth )
+        NormalScaleFactor = SQRT( Gm_dd_11_F(iX_F) )
+        FaceOpticalDepth &
+          = TransportOpacity_F * NormalScaleFactor * FaceWidth
+
+        EquilibriumJumpFactor &
+          = One / ( One + ( Three / Two ) * LLFPenaltyFactor &
+                              * NormalScaleFactor * FaceOpticalDepth )
+        DensityLLFPenaltyFactor &
+          = LLFPenaltyFactor * EquilibriumJumpFactor
+
+      END IF
+
+#if !defined( THORNADO_OMP_OL ) && !defined( THORNADO_OACC )
+      IF( UseEquilibriumDeviationLLF )THEN
+
+        CALL ComputePrimitive_TwoMoment &
+               ( uCR_Equilibrium_L(iNodeZ_X1,iZ1,iZ3,iZ4,iS,iZ2,iCR_N ), &
+                 uCR_Equilibrium_L(iNodeZ_X1,iZ1,iZ3,iZ4,iS,iZ2,iCR_G1), &
+                 uCR_Equilibrium_L(iNodeZ_X1,iZ1,iZ3,iZ4,iS,iZ2,iCR_G2), &
+                 uCR_Equilibrium_L(iNodeZ_X1,iZ1,iZ3,iZ4,iS,iZ2,iCR_G3), &
+                 D_Equilibrium_L, &
+                 I_Equilibrium_L(1), I_Equilibrium_L(2), I_Equilibrium_L(3), &
+                 uV1_F(iX_F), uV2_F(iX_F), uV3_F(iX_F), &
+                 Gm_dd_11_F(iX_F), Gm_dd_22_F(iX_F), Gm_dd_33_F(iX_F) )
+
+        CALL ComputePrimitive_TwoMoment &
+               ( uCR_Equilibrium_R(iNodeZ_X1,iZ1,iZ3,iZ4,iS,iZ2,iCR_N ), &
+                 uCR_Equilibrium_R(iNodeZ_X1,iZ1,iZ3,iZ4,iS,iZ2,iCR_G1), &
+                 uCR_Equilibrium_R(iNodeZ_X1,iZ1,iZ3,iZ4,iS,iZ2,iCR_G2), &
+                 uCR_Equilibrium_R(iNodeZ_X1,iZ1,iZ3,iZ4,iS,iZ2,iCR_G3), &
+                 D_Equilibrium_R, &
+                 I_Equilibrium_R(1), I_Equilibrium_R(2), I_Equilibrium_R(3), &
+                 uV1_F(iX_F), uV2_F(iX_F), uV3_F(iX_F), &
+                 Gm_dd_11_F(iX_F), Gm_dd_22_F(iX_F), Gm_dd_33_F(iX_F) )
+
+        CALL ComputeConserved_TwoMoment &
+               ( D_Equilibrium_L, &
+                 I_Equilibrium_L(1), I_Equilibrium_L(2), I_Equilibrium_L(3), &
+                 uCR_Equilibrium_X1_L(iCR_N ), &
+                 uCR_Equilibrium_X1_L(iCR_G1), &
+                 uCR_Equilibrium_X1_L(iCR_G2), &
+                 uCR_Equilibrium_X1_L(iCR_G3), &
+                 uV1_F(iX_F), Zero, Zero, &
+                 Gm_dd_11_F(iX_F), Gm_dd_22_F(iX_F), Gm_dd_33_F(iX_F) )
+
+        CALL ComputeConserved_TwoMoment &
+               ( D_Equilibrium_R, &
+                 I_Equilibrium_R(1), I_Equilibrium_R(2), I_Equilibrium_R(3), &
+                 uCR_Equilibrium_X1_R(iCR_N ), &
+                 uCR_Equilibrium_X1_R(iCR_G1), &
+                 uCR_Equilibrium_X1_R(iCR_G2), &
+                 uCR_Equilibrium_X1_R(iCR_G3), &
+                 uV1_F(iX_F), Zero, Zero, &
+                 Gm_dd_11_F(iX_F), Gm_dd_22_F(iX_F), Gm_dd_33_F(iX_F) )
+
+        FluxFactor_L = FluxFactor &
+          ( uD_L(iZ_F), uI1_L(iZ_F), uI2_L(iZ_F), uI3_L(iZ_F), &
+            Gm_dd_11_F(iX_F), Gm_dd_22_F(iX_F), Gm_dd_33_F(iX_F) )
+        FluxFactor_R = FluxFactor &
+          ( uD_R(iZ_F), uI1_R(iZ_F), uI2_R(iZ_F), uI3_R(iZ_F), &
+            Gm_dd_11_F(iX_F), Gm_dd_22_F(iX_F), Gm_dd_33_F(iX_F) )
+
+      END IF
+#endif
+
       ! --- Numerical Flux ---
 
       DO iCR = 1, nCR
 
-        NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
-          = NumericalFlux_LLF &
-              ( uCR_X1_L(iCR), uCR_X1_R(iCR), Flux_L(iCR), Flux_R(iCR), One )
+        IF(      UseSourceAwareLLF .AND. SourceAwareLLFActive &
+            .AND. iCR == iCR_N )THEN
+
+          NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
+            = NumericalFlux_LLF &
+                ( uCR_X1_L(iCR), uCR_X1_R(iCR), &
+                  Flux_L(iCR), Flux_R(iCR), DensityLLFPenaltyFactor )
+
+#if !defined( THORNADO_OMP_OL ) && !defined( THORNADO_OACC )
+        ELSE IF( UseEquilibriumDeviationLLF &
+            .AND. MAX( FluxFactor_L, FluxFactor_R ) &
+                     <= EquilibriumDeviationLLF_MaxFluxFactor )THEN
+
+          NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
+            = NumericalFlux_LLF &
+                ( uCR_X1_L(iCR) - uCR_Equilibrium_X1_L(iCR), &
+                  uCR_X1_R(iCR) - uCR_Equilibrium_X1_R(iCR), &
+                  Flux_L(iCR), Flux_R(iCR), LLFPenaltyFactor )
+
+#endif
+        ELSE
+
+          NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
+            = NumericalFlux_LLF &
+                ( uCR_X1_L(iCR), uCR_X1_R(iCR), &
+                  Flux_L(iCR), Flux_R(iCR), LLFPenaltyFactor )
+
+        END IF
 
         NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
           = dZ1(iZ1) * dZ3(iZ3) * dZ4(iZ4) &
@@ -834,14 +1832,16 @@ CONTAINS
     ! --- Contribution from Left Face ---
 
     CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOF_X1, + One, L_X1_Dn, nDOF_X1, &
+           ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOF_X1, + SurfaceTermFactor_Dn, &
+             L_X1_Dn, nDOF_X1, &
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)  ), &
              nDOF_X1, Zero, dU_Z, nDOFZ )
 
     ! --- Contribution from Right Face ---
 
     CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOF_X1, - One, L_X1_Up, nDOF_X1, &
+           ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOF_X1, - SurfaceTermFactor_Up, &
+             L_X1_Up, nDOF_X1, &
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)+1), &
              nDOF_X1, One,  dU_Z, nDOFZ )
 
@@ -941,7 +1941,8 @@ CONTAINS
     ! --- Volume Contributions ---
 
     CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOFZ, One, dLdX1_q, nDOFZ, &
+           ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOFZ, VolumeTermFactor, &
+             dLdX1_q, nDOFZ, &
              Flux_q, nDOFZ, One, dU_Z, nDOFZ )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
@@ -976,6 +1977,21 @@ CONTAINS
     END DO
     END DO
 
+    IF( UseSourceAwareLLF .AND. SourceAwareLLFActive )THEN
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: TransportOpacity_K, TransportOpacity_L, TransportOpacity_R )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( TransportOpacity_K, TransportOpacity_L, TransportOpacity_R )
+#endif
+
+      DEALLOCATE &
+        ( TransportOpacity_K, TransportOpacity_L, TransportOpacity_R )
+
+    END IF
+
     CALL FinalizeIncrement_Divergence_X
 
 #if   defined( THORNADO_OMP_OL )
@@ -992,7 +2008,8 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Divergence_X2 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
+      LLFPenaltyFactor, SurfaceTermFactor, VolumeTermFactor )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
@@ -1030,6 +2047,8 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
+    REAL(DP), INTENT(in) :: &
+      LLFPenaltyFactor, SurfaceTermFactor, VolumeTermFactor
 
     INTEGER  :: iNodeZ, iNodeE, iNodeX, iNodeZ_X2, iNodeX_X2
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
@@ -1042,6 +2061,12 @@ CONTAINS
     REAL(DP) :: uV1_L, uV2_L, uV3_L
     REAL(DP) :: uV1_R, uV2_R, uV3_R
     REAL(DP) :: SUM_N, SUM_G1, SUM_G2, SUM_G3
+    REAL(DP) :: TransportOpacity_F, FaceWidth, NormalScaleFactor
+    REAL(DP) :: FaceOpticalDepth, DensityLLFPenaltyFactor
+    REAL(DP), ALLOCATABLE :: &
+      TransportOpacity_K(:,:,:,:,:,:), &
+      TransportOpacity_L(:,:,:,:,:,:), &
+      TransportOpacity_R(:,:,:,:,:,:)
 
     IF( iZ_E0(3) .EQ. iZ_B0(3) ) RETURN
 
@@ -1055,18 +2080,100 @@ CONTAINS
     ASSOCIATE &
       ( dZ1 => MeshE    % Width, &
         dZ2 => MeshX(1) % Width, &
+        dZ3 => MeshX(2) % Width, &
         dZ4 => MeshX(3) % Width )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 )
+    !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
-    !$ACC COPYIN( dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 )
+    !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 )
 #endif
 
     CALL InitializeIncrement_Divergence_X &
            ( iZP_B0, iZP_E0, nDOFX_X2, nDOF_X2 )
+
+    IF( UseSourceAwareLLF .AND. SourceAwareLLFActive )THEN
+
+      ALLOCATE &
+        ( TransportOpacity_K &
+            (1:nDOFZ, &
+             iZP_B0(1):iZP_E0(1), &
+             iZP_B0(2):iZP_E0(2), &
+             iZP_B0(3):iZP_E0(3), &
+             1:nSpecies, &
+             iZP_B0(4)-1:iZP_E0(4)+1), &
+          TransportOpacity_L &
+            (1:nDOF_X2, &
+             iZP_B0(1):iZP_E0(1), &
+             iZP_B0(2):iZP_E0(2), &
+             iZP_B0(3):iZP_E0(3), &
+             1:nSpecies, &
+             iZP_B0(4):iZP_E0(4)+1), &
+          TransportOpacity_R &
+            (1:nDOF_X2, &
+             iZP_B0(1):iZP_E0(1), &
+             iZP_B0(2):iZP_E0(2), &
+             iZP_B0(3):iZP_E0(3), &
+             1:nSpecies, &
+             iZP_B0(4):iZP_E0(4)+1) )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: TransportOpacity_K, TransportOpacity_L, TransportOpacity_R )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC CREATE( TransportOpacity_K, TransportOpacity_L, TransportOpacity_R )
+#endif
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC PRESENT( TransportOpacity_K, SourceAwareTransportOpacity )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(6)
+#endif
+      DO iZ3 = iZ_B0(3)-1, iZ_E0(3)+1
+      DO iS  = 1, nSpecies
+      DO iZ4 = iZ_B0(4), iZ_E0(4)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iZ1 = iZ_B0(1), iZ_E0(1)
+      DO iNodeZ = 1, nDOFZ
+
+        TransportOpacity_K(iNodeZ,iZ1,iZ2,iZ4,iS,iZ3) &
+          = SourceAwareTransportOpacity &
+              (iNodeZ,iZ1,iZ2,iZ3,iZ4,iS)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOF_X2, nX2_Z, nDOFZ, &
+               One, L_X2_Up, nDOF_X2, &
+               TransportOpacity_K &
+                 (1,iZP_B0(1),iZP_B0(2),iZP_B0(3),1,iZP_B0(4)-1), &
+               nDOFZ, Zero, &
+               TransportOpacity_L &
+                 (1,iZP_B0(1),iZP_B0(2),iZP_B0(3),1,iZP_B0(4)), &
+               nDOF_X2 )
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOF_X2, nX2_Z, nDOFZ, &
+               One, L_X2_Dn, nDOF_X2, &
+               TransportOpacity_K &
+                 (1,iZP_B0(1),iZP_B0(2),iZP_B0(3),1,iZP_B0(4)), &
+               nDOFZ, Zero, &
+               TransportOpacity_R &
+                 (1,iZP_B0(1),iZP_B0(2),iZP_B0(3),1,iZP_B0(4)), &
+               nDOF_X2 )
+
+    END IF
 
     ! --- Permute Geometry Fields ---
 
@@ -1324,19 +2431,27 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( iX_F, iNodeZ_X2, iNodeX_X2, iNodeE, iZ1, iZ3, iZ2, iZ4, iS, &
-    !$OMP          Flux_L, uCR_X2_L, Flux_R, uCR_X2_R )
+    !$OMP          Flux_L, uCR_X2_L, Flux_R, uCR_X2_R, TransportOpacity_F, &
+    !$OMP          FaceWidth, NormalScaleFactor, FaceOpticalDepth, &
+    !$OMP          DensityLLFPenaltyFactor )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( iX_F, iNodeZ_X2, iNodeX_X2, iNodeE, iZ1, iZ3, iZ2, iZ4, iS, &
-    !$ACC          Flux_L, uCR_X2_L, Flux_R, uCR_X2_R ) &
+    !$ACC          Flux_L, uCR_X2_L, Flux_R, uCR_X2_R, TransportOpacity_F, &
+    !$ACC          FaceWidth, NormalScaleFactor, FaceOpticalDepth, &
+    !$ACC          DensityLLFPenaltyFactor ) &
     !$ACC PRESENT( uD_L, uI1_L, uI2_L, uI3_L, uD_R, uI1_R, uI2_R, uI3_R, &
     !$ACC          uV1_F, uV2_F, uV3_F, Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
-    !$ACC          NumericalFlux, NumericalFlux2, GE, SqrtGm_F, Weights_X2, dZ1, dZ2, dZ4, &
-    !$ACC          nZ_X2, iZ_B0, PositionIndexZ_F, IndexTableZ_F )
+    !$ACC          NumericalFlux, NumericalFlux2, GE, SqrtGm_F, Weights_X2, &
+    !$ACC          dZ1, dZ2, dZ3, dZ4, &
+    !$ACC          nZ_X2, iZ_B0, PositionIndexZ_F, IndexTableZ_F, &
+    !$ACC          TransportOpacity_L, TransportOpacity_R )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( iX_F, iNodeZ_X2, iNodeX_X2, iNodeE, iZ1, iZ3, iZ2, iZ4, iS, &
-    !$OMP          Flux_L, uCR_X2_L, Flux_R, uCR_X2_R )
+    !$OMP          Flux_L, uCR_X2_L, Flux_R, uCR_X2_R, TransportOpacity_F, &
+    !$OMP          FaceWidth, NormalScaleFactor, FaceOpticalDepth, &
+    !$OMP          DensityLLFPenaltyFactor )
 #endif
     DO iZ_F = 1, nNodesZ_X2
 
@@ -1386,13 +2501,50 @@ CONTAINS
                Zero, uV2_F(iX_F), Zero, &
                Gm_dd_11_F(iX_F), Gm_dd_22_F(iX_F), Gm_dd_33_F(iX_F) )
 
+      DensityLLFPenaltyFactor = LLFPenaltyFactor
+
+      IF( UseSourceAwareLLF .AND. SourceAwareLLFActive )THEN
+
+        ! Match the density-jump dissipation to the optically thick
+        ! mixed-DG limit.  Momentum-jump dissipation is unchanged.
+        FaceWidth = Half * ( dZ3(iZ3-1) + dZ3(iZ3) )
+        TransportOpacity_F &
+          = ( dZ3(iZ3-1) * MAX( Zero, TransportOpacity_L &
+                                  (iNodeZ_X2,iZ1,iZ2,iZ4,iS,iZ3) ) &
+              + dZ3(iZ3) * MAX( Zero, TransportOpacity_R &
+                                  (iNodeZ_X2,iZ1,iZ2,iZ4,iS,iZ3) ) ) &
+              / ( Two * FaceWidth )
+        NormalScaleFactor = SQRT( Gm_dd_22_F(iX_F) )
+        FaceOpticalDepth &
+          = TransportOpacity_F * NormalScaleFactor * FaceWidth
+
+        DensityLLFPenaltyFactor &
+          = LLFPenaltyFactor &
+              / ( One + ( Three / Two ) * LLFPenaltyFactor &
+                          * NormalScaleFactor * FaceOpticalDepth )
+
+      END IF
+
       ! --- Numerical Flux ---
 
       DO iCR = 1, nCR
 
-        NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ3) &
-          = NumericalFlux_LLF &
-              ( uCR_X2_L(iCR), uCR_X2_R(iCR), Flux_L(iCR), Flux_R(iCR), One )
+        IF(      UseSourceAwareLLF .AND. SourceAwareLLFActive &
+            .AND. iCR == iCR_N )THEN
+
+          NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ3) &
+            = NumericalFlux_LLF &
+                ( uCR_X2_L(iCR), uCR_X2_R(iCR), &
+                  Flux_L(iCR), Flux_R(iCR), DensityLLFPenaltyFactor )
+
+        ELSE
+
+          NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ3) &
+            = NumericalFlux_LLF &
+                ( uCR_X2_L(iCR), uCR_X2_R(iCR), &
+                  Flux_L(iCR), Flux_R(iCR), LLFPenaltyFactor )
+
+        END IF
 
         NumericalFlux(iNodeZ_X2,iCR,iZ1,iZ2,iZ4,iS,iZ3) &
           = dZ1(iZ1) * dZ2(iZ2) * dZ4(iZ4) &
@@ -1451,14 +2603,16 @@ CONTAINS
     ! --- Contribution from Left Face ---
 
     CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOF_X2, + One, L_X2_Dn, nDOF_X2, &
+           ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOF_X2, + SurfaceTermFactor, &
+             L_X2_Dn, nDOF_X2, &
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(2),iZ_B0(4),1,iZ_B0(3)  ), &
              nDOF_X2, Zero, dU_Z, nDOFZ )
 
     ! --- Contribution from Right Face ---
 
     CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOF_X2, - One, L_X2_Up, nDOF_X2, &
+           ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOF_X2, - SurfaceTermFactor, &
+             L_X2_Up, nDOF_X2, &
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(2),iZ_B0(4),1,iZ_B0(3)+1), &
              nDOF_X2, One,  dU_Z, nDOFZ )
 
@@ -1558,7 +2712,8 @@ CONTAINS
     ! --- Volume Contributions ---
 
     CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOFZ, One, dLdX2_q, nDOFZ, &
+           ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOFZ, VolumeTermFactor, &
+             dLdX2_q, nDOFZ, &
              Flux_q, nDOFZ, One, dU_Z, nDOFZ )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
@@ -1593,14 +2748,29 @@ CONTAINS
     END DO
     END DO
 
+    IF( UseSourceAwareLLF .AND. SourceAwareLLFActive )THEN
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: TransportOpacity_K, TransportOpacity_L, TransportOpacity_R )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( TransportOpacity_K, TransportOpacity_L, TransportOpacity_R )
+#endif
+
+      DEALLOCATE &
+        ( TransportOpacity_K, TransportOpacity_L, TransportOpacity_R )
+
+    END IF
+
     CALL FinalizeIncrement_Divergence_X
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 )
+    !$OMP MAP( release: dZ1, dZ2, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
-    !$ACC DELETE( dZ1, dZ2, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 )
+    !$ACC DELETE( dZ1, dZ2, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 )
 #endif
 
     END ASSOCIATE ! dZ1, etc.
@@ -1609,7 +2779,8 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_Divergence_X3 &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, &
+      LLFPenaltyFactor, SurfaceTermFactor, VolumeTermFactor )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X3,X4} ---
 
@@ -1647,6 +2818,8 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
+    REAL(DP), INTENT(in) :: &
+      LLFPenaltyFactor, SurfaceTermFactor, VolumeTermFactor
 
     INTEGER  :: iNodeZ, iNodeE, iNodeX, iNodeZ_X3, iNodeX_X3
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iCR, iS, iGF, iCF
@@ -1659,6 +2832,12 @@ CONTAINS
     REAL(DP) :: uV1_L, uV2_L, uV3_L
     REAL(DP) :: uV1_R, uV2_R, uV3_R
     REAL(DP) :: SUM_N, SUM_G1, SUM_G2, SUM_G3
+    REAL(DP) :: TransportOpacity_F, FaceWidth, NormalScaleFactor
+    REAL(DP) :: FaceOpticalDepth, DensityLLFPenaltyFactor
+    REAL(DP), ALLOCATABLE :: &
+      TransportOpacity_K(:,:,:,:,:,:), &
+      TransportOpacity_L(:,:,:,:,:,:), &
+      TransportOpacity_R(:,:,:,:,:,:)
 
     IF( iZ_E0(4) .EQ. iZ_B0(4) ) RETURN
 
@@ -1672,18 +2851,100 @@ CONTAINS
     ASSOCIATE &
       ( dZ1 => MeshE    % Width, &
         dZ2 => MeshX(1) % Width, &
-        dZ3 => MeshX(2) % Width )
+        dZ3 => MeshX(2) % Width, &
+        dZ4 => MeshX(3) % Width )
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 )
+    !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
-    !$ACC COPYIN( dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 )
+    !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 )
 #endif
 
     CALL InitializeIncrement_Divergence_X &
            ( iZP_B0, iZP_E0, nDOFX_X3, nDOF_X3 )
+
+    IF( UseSourceAwareLLF .AND. SourceAwareLLFActive )THEN
+
+      ALLOCATE &
+        ( TransportOpacity_K &
+            (1:nDOFZ, &
+             iZP_B0(1):iZP_E0(1), &
+             iZP_B0(2):iZP_E0(2), &
+             iZP_B0(3):iZP_E0(3), &
+             1:nSpecies, &
+             iZP_B0(4)-1:iZP_E0(4)+1), &
+          TransportOpacity_L &
+            (1:nDOF_X3, &
+             iZP_B0(1):iZP_E0(1), &
+             iZP_B0(2):iZP_E0(2), &
+             iZP_B0(3):iZP_E0(3), &
+             1:nSpecies, &
+             iZP_B0(4):iZP_E0(4)+1), &
+          TransportOpacity_R &
+            (1:nDOF_X3, &
+             iZP_B0(1):iZP_E0(1), &
+             iZP_B0(2):iZP_E0(2), &
+             iZP_B0(3):iZP_E0(3), &
+             1:nSpecies, &
+             iZP_B0(4):iZP_E0(4)+1) )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: TransportOpacity_K, TransportOpacity_L, TransportOpacity_R )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC CREATE( TransportOpacity_K, TransportOpacity_L, TransportOpacity_R )
+#endif
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6)
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC PRESENT( TransportOpacity_K, SourceAwareTransportOpacity )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(6)
+#endif
+      DO iZ4 = iZ_B0(4)-1, iZ_E0(4)+1
+      DO iS  = 1, nSpecies
+      DO iZ3 = iZ_B0(3), iZ_E0(3)
+      DO iZ2 = iZ_B0(2), iZ_E0(2)
+      DO iZ1 = iZ_B0(1), iZ_E0(1)
+      DO iNodeZ = 1, nDOFZ
+
+        TransportOpacity_K(iNodeZ,iZ1,iZ2,iZ3,iS,iZ4) &
+          = SourceAwareTransportOpacity &
+              (iNodeZ,iZ1,iZ2,iZ3,iZ4,iS)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOF_X3, nX3_Z, nDOFZ, &
+               One, L_X3_Up, nDOF_X3, &
+               TransportOpacity_K &
+                 (1,iZP_B0(1),iZP_B0(2),iZP_B0(3),1,iZP_B0(4)-1), &
+               nDOFZ, Zero, &
+               TransportOpacity_L &
+                 (1,iZP_B0(1),iZP_B0(2),iZP_B0(3),1,iZP_B0(4)), &
+               nDOF_X3 )
+
+      CALL MatrixMatrixMultiply &
+             ( 'N', 'N', nDOF_X3, nX3_Z, nDOFZ, &
+               One, L_X3_Dn, nDOF_X3, &
+               TransportOpacity_K &
+                 (1,iZP_B0(1),iZP_B0(2),iZP_B0(3),1,iZP_B0(4)), &
+               nDOFZ, Zero, &
+               TransportOpacity_R &
+                 (1,iZP_B0(1),iZP_B0(2),iZP_B0(3),1,iZP_B0(4)), &
+               nDOF_X3 )
+
+    END IF
 
     ! --- Permute Geometry Fields ---
 
@@ -1941,19 +3202,27 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( iX_F, iNodeZ_X3, iNodeX_X3, iNodeE, iZ1, iZ4, iZ2, iZ3, iS, &
-    !$OMP          Flux_L, uCR_X3_L, Flux_R, uCR_X3_R )
+    !$OMP          Flux_L, uCR_X3_L, Flux_R, uCR_X3_R, TransportOpacity_F, &
+    !$OMP          FaceWidth, NormalScaleFactor, FaceOpticalDepth, &
+    !$OMP          DensityLLFPenaltyFactor )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( iX_F, iNodeZ_X3, iNodeX_X3, iNodeE, iZ1, iZ4, iZ2, iZ3, iS, &
-    !$ACC          Flux_L, uCR_X3_L, Flux_R, uCR_X3_R ) &
+    !$ACC          Flux_L, uCR_X3_L, Flux_R, uCR_X3_R, TransportOpacity_F, &
+    !$ACC          FaceWidth, NormalScaleFactor, FaceOpticalDepth, &
+    !$ACC          DensityLLFPenaltyFactor ) &
     !$ACC PRESENT( uD_L, uI1_L, uI2_L, uI3_L, uD_R, uI1_R, uI2_R, uI3_R, &
     !$ACC          uV1_F, uV2_F, uV3_F, Gm_dd_11_F, Gm_dd_22_F, Gm_dd_33_F, &
-    !$ACC          NumericalFlux, NumericalFlux2, GE, SqrtGm_F, Weights_X3, dZ1, dZ2, dZ3, &
-    !$ACC          nZ_X3, iZ_B0, PositionIndexZ_F, IndexTableZ_F )
+    !$ACC          NumericalFlux, NumericalFlux2, GE, SqrtGm_F, Weights_X3, &
+    !$ACC          dZ1, dZ2, dZ3, dZ4, &
+    !$ACC          nZ_X3, iZ_B0, PositionIndexZ_F, IndexTableZ_F, &
+    !$ACC          TransportOpacity_L, TransportOpacity_R )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( iX_F, iNodeZ_X3, iNodeX_X3, iNodeE, iZ1, iZ4, iZ2, iZ3, iS, &
-    !$OMP          Flux_L, uCR_X3_L, Flux_R, uCR_X3_R )
+    !$OMP          Flux_L, uCR_X3_L, Flux_R, uCR_X3_R, TransportOpacity_F, &
+    !$OMP          FaceWidth, NormalScaleFactor, FaceOpticalDepth, &
+    !$OMP          DensityLLFPenaltyFactor )
 #endif
     DO iZ_F = 1, nNodesZ_X3
 
@@ -2003,13 +3272,50 @@ CONTAINS
                Zero, Zero, uV3_F(iX_F), &
                Gm_dd_11_F(iX_F), Gm_dd_22_F(iX_F), Gm_dd_33_F(iX_F) )
 
+      DensityLLFPenaltyFactor = LLFPenaltyFactor
+
+      IF( UseSourceAwareLLF .AND. SourceAwareLLFActive )THEN
+
+        ! Match the density-jump dissipation to the optically thick
+        ! mixed-DG limit.  Momentum-jump dissipation is unchanged.
+        FaceWidth = Half * ( dZ4(iZ4-1) + dZ4(iZ4) )
+        TransportOpacity_F &
+          = ( dZ4(iZ4-1) * MAX( Zero, TransportOpacity_L &
+                                  (iNodeZ_X3,iZ1,iZ2,iZ3,iS,iZ4) ) &
+              + dZ4(iZ4) * MAX( Zero, TransportOpacity_R &
+                                  (iNodeZ_X3,iZ1,iZ2,iZ3,iS,iZ4) ) ) &
+              / ( Two * FaceWidth )
+        NormalScaleFactor = SQRT( Gm_dd_33_F(iX_F) )
+        FaceOpticalDepth &
+          = TransportOpacity_F * NormalScaleFactor * FaceWidth
+
+        DensityLLFPenaltyFactor &
+          = LLFPenaltyFactor &
+              / ( One + ( Three / Two ) * LLFPenaltyFactor &
+                          * NormalScaleFactor * FaceOpticalDepth )
+
+      END IF
+
       ! --- Numerical Flux ---
 
       DO iCR = 1, nCR
 
-        NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ4) &
-          = NumericalFlux_LLF &
-              ( uCR_X3_L(iCR), uCR_X3_R(iCR), Flux_L(iCR), Flux_R(iCR), One )
+        IF(      UseSourceAwareLLF .AND. SourceAwareLLFActive &
+            .AND. iCR == iCR_N )THEN
+
+          NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ4) &
+            = NumericalFlux_LLF &
+                ( uCR_X3_L(iCR), uCR_X3_R(iCR), &
+                  Flux_L(iCR), Flux_R(iCR), DensityLLFPenaltyFactor )
+
+        ELSE
+
+          NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ4) &
+            = NumericalFlux_LLF &
+                ( uCR_X3_L(iCR), uCR_X3_R(iCR), &
+                  Flux_L(iCR), Flux_R(iCR), LLFPenaltyFactor )
+
+        END IF
 
         NumericalFlux(iNodeZ_X3,iCR,iZ1,iZ2,iZ3,iS,iZ4) &
           = dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) &
@@ -2068,14 +3374,16 @@ CONTAINS
     ! --- Contribution from Left Face ---
 
     CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOF_X3, + One, L_X3_Dn, nDOF_X3, &
+           ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOF_X3, + SurfaceTermFactor, &
+             L_X3_Dn, nDOF_X3, &
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(2),iZ_B0(3),1,iZ_B0(4)  ), &
              nDOF_X3, Zero, dU_Z, nDOFZ )
 
     ! --- Contribution from Right Face ---
 
     CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOF_X3, - One, L_X3_Up, nDOF_X3, &
+           ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOF_X3, - SurfaceTermFactor, &
+             L_X3_Up, nDOF_X3, &
              NumericalFlux(1,1,iZ_B0(1),iZ_B0(2),iZ_B0(3),1,iZ_B0(4)+1), &
              nDOF_X3, One,  dU_Z, nDOFZ )
 
@@ -2175,7 +3483,8 @@ CONTAINS
     ! --- Volume Contributions ---
 
     CALL MatrixMatrixMultiply &
-           ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOFZ, One, dLdX3_q, nDOFZ, &
+           ( 'T', 'N', nDOFZ, nK_Z*nCR, nDOFZ, VolumeTermFactor, &
+             dLdX3_q, nDOFZ, &
              Flux_q, nDOFZ, One, dU_Z, nDOFZ )
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
@@ -2210,14 +3519,29 @@ CONTAINS
     END DO
     END DO
 
+    IF( UseSourceAwareLLF .AND. SourceAwareLLFActive )THEN
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: TransportOpacity_K, TransportOpacity_L, TransportOpacity_R )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( TransportOpacity_K, TransportOpacity_L, TransportOpacity_R )
+#endif
+
+      DEALLOCATE &
+        ( TransportOpacity_K, TransportOpacity_L, TransportOpacity_R )
+
+    END IF
+
     CALL FinalizeIncrement_Divergence_X
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 )
+    !$OMP MAP( release: dZ1, dZ2, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
-    !$ACC DELETE( dZ1, dZ2, dZ3, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 )
+    !$ACC DELETE( dZ1, dZ2, dZ3, dZ4, iZ_B0, iZ_E0, iZ_B1, iZ_E1, iZP_B0, iZP_E0 )
 #endif
 
     END ASSOCIATE ! dZ1, etc.
@@ -3005,12 +4329,12 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to: MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
+    !$OMP MAP( to: dZ1, dZ2, dZ3, dZ4, &
     !$OMP          nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3 ) &
     !$OMP MAP( alloc: uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA &
-    !$ACC COPYIN( MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
+    !$ACC COPYIN( dZ1, dZ2, dZ3, dZ4, &
     !$ACC         nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3 ) &
     !$ACC CREATE( uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
 #endif
@@ -3030,12 +4354,12 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
+    !$OMP MAP( release: dZ1, dZ2, dZ3, dZ4, &
     !$OMP               nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3, &
     !$OMP               uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA &
-    !$ACC DELETE( MeshE % Width, MeshX(1) % Width, MeshX(2) % Width, MeshX(3) % Width, &
+    !$ACC DELETE( dZ1, dZ2, dZ3, dZ4, &
     !$ACC         nZ, nZ_E, nZ_X1, nZ_X2, nZ_X3,  &
     !$ACC         uV1_K, uV2_K, uV3_K, uD_K, uI1_K, uI2_K, uI3_K )
 #endif
@@ -3147,6 +4471,12 @@ CONTAINS
                     iZP_B0(4)  :iZP_E0(4)+1, &
                     1:nCR) )
 
+    IF( UseEquilibriumDeviationLLF )THEN
+      ALLOCATE( uCR_Equilibrium_K, MOLD = uCR_K )
+      ALLOCATE( uCR_Equilibrium_L, MOLD = uCR_L )
+      ALLOCATE( uCR_Equilibrium_R, MOLD = uCR_R )
+    END IF
+
     uN_K (1:nNodesZ_K) => uCR_K(:,:,:,:,:,iZP_B0(4):iZP_E0(4),iCR_N )
     uG1_K(1:nNodesZ_K) => uCR_K(:,:,:,:,:,iZP_B0(4):iZP_E0(4),iCR_G1)
     uG2_K(1:nNodesZ_K) => uCR_K(:,:,:,:,:,iZP_B0(4):iZP_E0(4),iCR_G2)
@@ -3243,6 +4573,18 @@ CONTAINS
     !$ACC         NumericalFlux, NumericalFlux2, Flux_q, dU_Z, &
     !$ACC         nIterations_L, nIterations_R, nIterations_K )
 #endif
+
+    IF( UseEquilibriumDeviationLLF )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: uCR_Equilibrium_K, &
+    !$OMP             uCR_Equilibrium_L, uCR_Equilibrium_R )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA &
+    !$ACC CREATE( uCR_Equilibrium_K, &
+    !$ACC         uCR_Equilibrium_L, uCR_Equilibrium_R )
+#endif
+    END IF
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
@@ -3357,6 +4699,18 @@ CONTAINS
 
   SUBROUTINE FinalizeIncrement_Divergence_X
 
+    IF( UseEquilibriumDeviationLLF )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: uCR_Equilibrium_K, &
+    !$OMP               uCR_Equilibrium_L, uCR_Equilibrium_R )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( uCR_Equilibrium_K, &
+    !$ACC         uCR_Equilibrium_L, uCR_Equilibrium_R )
+#endif
+    END IF
+
 #if defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: PositionIndexZ_F, PositionIndexZ_K, &
@@ -3382,6 +4736,9 @@ CONTAINS
     DEALLOCATE( PositionIndexZ_F, PositionIndexZ_K )
     DEALLOCATE( IndexTableZ_F, IndexTableZ_K )
     DEALLOCATE( uGF_K, uGF_F, uCF_K, uCF_L, uCF_R, uCR_K, uCR_L, uCR_R )
+    IF( UseEquilibriumDeviationLLF ) &
+      DEALLOCATE( uCR_Equilibrium_K, &
+                  uCR_Equilibrium_L, uCR_Equilibrium_R )
     DEALLOCATE( uD_L, uI1_L, uI2_L, uI3_L )
     DEALLOCATE( uD_R, uI1_R, uI2_R, uI3_R )
     DEALLOCATE( uV1_F, uV2_F, uV3_F )

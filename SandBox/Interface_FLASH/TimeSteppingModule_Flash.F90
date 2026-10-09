@@ -24,12 +24,17 @@ MODULE TimeSteppingModule_Flash
   USE RadiationFieldsModule, ONLY: &
     nCR, nSpecies, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
     uDR, nDR
+#ifndef TWOMOMENT_ORDER_V
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit
+#endif
   USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
     ComputeIncrement_TwoMoment_Implicit
 #ifdef TWOMOMENT_ORDER_V
+  USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
+    SourceAwareImplicitOpacityAvailable
   USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
+    ComputeIncrement_TwoMoment_Explicit => ComputeIncrement_TwoMoment_Explicit_AP, &
     nQ, nC
 #endif
   USE TwoMoment_PositivityLimiterModule, ONLY: &
@@ -232,6 +237,10 @@ CONTAINS
     U0_R = Zero; T0_R = Zero; T1_R = Zero; Q1_R = Zero
 
     uDR = Zero
+
+#ifdef TWOMOMENT_ORDER_V
+    SourceAwareImplicitOpacityAvailable = .FALSE.
+#endif
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &

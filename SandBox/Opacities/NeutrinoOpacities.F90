@@ -180,15 +180,19 @@ PROGRAM NeutrinoOpacities
     Edot_Iso , & ! --- FourPi / PlanckConstant**3 / D * Chi_Iso * E**3
     Eta_NES  , & ! --- NES Emissivity
     Chi_NES  , & ! --- NES Opacity
+    R_NES    , & ! --- NES Net Rate
     Edot_NES , & ! --- FourPi / PlanckConstant**3 / D * Chi_NES * E**3
     Eta_Pair , & ! --- Pair Emissivity
     Chi_Pair , & ! --- Pair Opacity
+    R_Pair   , & ! --- Pair Net Rate
     Qdot_Pair, & ! --- Pair Heating Rate
     Eta_NuPair , & ! --- electron neutrino Pair annihilation Emissivity
     Chi_NuPair , & ! --- electron neutrino Pair annihilation Opacity
+    R_NuPair   , & ! --- electron neutrino Pair annihilation Net Rate
     Qdot_NuPair, & ! --- electron neutrino Pair annihilation Heating Rate
     Eta_Brem , & ! --- Brem Emissivity
     Chi_Brem , & ! --- Brem Opacity
+    R_Brem   , & ! --- Brem Net Rate
     Qdot_Brem, & ! --- Brem Heating Rate
     A_In_1   , & ! --- Linear Corrections to NES rates
     A_In_2   , & ! --- Linear Corrections to NES rates
@@ -361,7 +365,8 @@ PROGRAM NeutrinoOpacities
   !$OMP TARGET ENTER DATA &
   !$OMP MAP( to: E, D, T, Y, W2, f0, f0_DG, J, H_1, H_2, H_3, S_sigma, &
   !$OMP          H_I_0, H_II_0, H_I_1, H_II_1, J_I_0, J_II_0, J_I_1, J_II_1 ) &
-  !$OMP MAP( alloc: Chi_EmAb, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, Chi_Iso, &
+  !$OMP MAP( alloc: Chi_EmAb, Chi_NES, R_NES, Chi_Pair, R_Pair, &
+  !$OMP             Chi_NuPair, R_NuPair, Chi_Brem, R_Brem, Chi_Iso, &
   !$OMP             Eta_EmAb, Eta_NES, Eta_Pair, Eta_NuPair, Eta_Brem, Eta_Iso, &
   !$OMP             Phi_0_Iso, Phi_1_Iso, &
   !$OMP             A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3, &
@@ -370,7 +375,8 @@ PROGRAM NeutrinoOpacities
   !$ACC ENTER DATA &
   !$ACC COPYIN( E, D, T, Y, W2, f0, f0_DG, J, H_1, H_2, H_3, S_sigma, &
   !$ACC         H_I_0, H_II_0, H_I_1, H_II_1, J_I_0, J_II_0, J_I_1, J_II_1 ) &
-  !$ACC CREATE( Chi_EmAb, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, Chi_Iso, &
+  !$ACC CREATE( Chi_EmAb, Chi_NES, R_NES, Chi_Pair, R_Pair, &
+  !$ACC         Chi_NuPair, R_NuPair, Chi_Brem, R_Brem, Chi_Iso, &
   !$ACC         Eta_EmAb, Eta_NES, Eta_Pair, Eta_NuPair, Eta_Brem, Eta_Iso, &
   !$ACC         Phi_0_Iso, Phi_1_Iso, &
   !$ACC         A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3, &
@@ -507,7 +513,7 @@ PROGRAM NeutrinoOpacities
   CALL TimersStart( Timer_ComputeRate_NES )
   CALL ComputeNeutrinoOpacityRates_NES &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, D, W2, &
-           J, f0_DG, H_I_0, H_II_0, Eta_NES, Chi_NES, Opacity_Mask )
+           J, f0_DG, H_I_0, H_II_0, Eta_NES, Chi_NES, R_NES, Opacity_Mask )
   CALL TimersStop( Timer_ComputeRate_NES )
 
   ! --- Compute NES Linear Corrections ---
@@ -542,7 +548,7 @@ PROGRAM NeutrinoOpacities
   CALL TimersStart( Timer_ComputeRate_Pair )
   CALL ComputeNeutrinoOpacityRates_Pair &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, D, W2, &
-           J, f0_DG, J_I_0, J_II_0, Eta_Pair, Chi_Pair, Opacity_Mask )
+           J, f0_DG, J_I_0, J_II_0, Eta_Pair, Chi_Pair, R_Pair, Opacity_Mask )
   CALL TimersStop( Timer_ComputeRate_Pair )
 
   ! --- Compute Pair Linear Corrections ---
@@ -577,7 +583,8 @@ PROGRAM NeutrinoOpacities
   CALL TimersStart( Timer_ComputeRate_NuPair )
   CALL ComputeNeutrinoOpacityRates_NuPair &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, D, W2, &
-           J, f0_DG, Nu_J_I_0, Nu_J_II_0, Eta_NuPair, Chi_NuPair, Opacity_Mask )
+           J, f0_DG, Nu_J_I_0, Nu_J_II_0, Eta_NuPair, Chi_NuPair, R_NuPair, &
+           Opacity_Mask )
   CALL TimersStop( Timer_ComputeRate_NuPair )
 
   CALL TimersStop( Timer_Compute_NuPair )
@@ -597,7 +604,7 @@ PROGRAM NeutrinoOpacities
   CALL TimersStart( Timer_ComputeRate_Brem )
   CALL ComputeNeutrinoOpacityRates_Brem &
          ( 1, nPointsE, 1, nSpecies, 1, nPointsX, D, W2, &
-           J, f0_DG, S_sigma, Eta_Brem, Chi_Brem, Opacity_Mask )
+           J, f0_DG, S_sigma, Eta_Brem, Chi_Brem, R_Brem, Opacity_Mask )
   CALL TimersStop( Timer_ComputeRate_Brem )
 
   CALL TimersStop( Timer_Compute_Brem )
@@ -605,7 +612,8 @@ PROGRAM NeutrinoOpacities
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET EXIT DATA &
   !$OMP MAP( from: f0, f0_DG, J, H_1, H_2, H_3, S_sigma, &
-  !$OMP            Chi_EmAb, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, Chi_Iso, &
+  !$OMP            Chi_EmAb, Chi_NES, R_NES, Chi_Pair, R_Pair, &
+  !$OMP            Chi_NuPair, R_NuPair, Chi_Brem, R_Brem, Chi_Iso, &
   !$OMP            Eta_EmAb, Eta_NES, Eta_Pair, Eta_NuPair, Eta_Brem, Eta_Iso, &
   !$OMP            Phi_0_Iso, Phi_1_Iso, &
   !$OMP            H_I_0, H_II_0, H_I_1, H_II_1, J_I_0, J_II_0, J_I_1, J_II_1, &
@@ -615,7 +623,8 @@ PROGRAM NeutrinoOpacities
 #elif defined(THORNADO_OACC)
   !$ACC EXIT DATA &
   !$ACC COPYOUT( f0, f0_DG, J, H_1, H_2, H_3, S_sigma, &
-  !$ACC          Chi_EmAb, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, Chi_Iso, &
+  !$ACC          Chi_EmAb, Chi_NES, R_NES, Chi_Pair, R_Pair, &
+  !$ACC          Chi_NuPair, R_NuPair, Chi_Brem, R_Brem, Chi_Iso, &
   !$ACC          Eta_EmAb, Eta_NES, Eta_Pair, Eta_NuPair, Eta_Brem, Eta_Iso, &
   !$ACC          Phi_0_Iso, Phi_1_Iso, &
   !$ACC          H_I_0, H_II_0, H_I_1, H_II_1, J_I_0, J_II_0, J_I_1, J_II_1, &

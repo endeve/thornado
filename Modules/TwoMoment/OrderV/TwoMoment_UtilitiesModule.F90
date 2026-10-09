@@ -1512,7 +1512,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeFromConserved_TwoMoment &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, CF, CR, PR, AR, GR )
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, CF, CR, PR, AR, GR, PF_Option )
 
     INTEGER,  INTENT(in)  :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
@@ -1534,13 +1534,24 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       GR(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
          1:nGR,1:nSpecies)
+    REAL(DP), INTENT(out), OPTIONAL, TARGET :: &
+      PF_Option(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+                iZ_B1(4):iZ_E1(4),1:nPF)
 
     INTEGER  :: &
       iZ1, iZ2, iZ3, iZ4, iS, iNodeZ, iNodeX
 
-    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:) :: PF
+    REAL(DP), ALLOCATABLE, TARGET :: PF_Storage(:,:,:,:,:)
+    REAL(DP), POINTER :: PF(:,:,:,:,:)
 
-    ALLOCATE( PF(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nPF) )
+    IF ( PRESENT( PF_Option ) ) THEN
+      PF => PF_Option
+    ELSE
+      ALLOCATE( PF_Storage &
+                  (1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+                   iZ_B1(4):iZ_E1(4),1:nPF) )
+      PF => PF_Storage
+    END IF
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE FROM( GX, CF, CR )
@@ -1622,6 +1633,14 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE( PR, AR, GR )
 #endif
+
+    IF ( PRESENT( PF_Option ) ) THEN
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE TO( PF_Option )
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE DEVICE( PF_Option )
+#endif
+    END IF
 
   END SUBROUTINE ComputeFromConserved_TwoMoment
 

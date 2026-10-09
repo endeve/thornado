@@ -20,7 +20,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   USE GeometryFieldsModuleE, ONLY: &
     nGE
   USE GeometryFieldsModule, ONLY: &
-    nGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
+    nGF, iGF_SqrtGm, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
     iGF_Alpha, iGF_Beta_1, iGF_Beta_2, iGF_Beta_3
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
@@ -29,6 +29,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   USE RadiationFieldsModule, ONLY: &
     nSpecies, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
+    nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, &
     nDR, iDR_iter_outer, iDR_iter_inner
   USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
     SolveNeutrinoMatterCoupling_FP_Nested_AA, &
@@ -37,9 +38,30 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     InitializeNeutrinoMatterSolverParameters
 #if defined( TWOMOMENT_ORDER_V )
   USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
-    ComputeMatterRHS_Collisions_OrderV, &
+    ComputeMatterRHS_Collisions_Flattened_OrderV => ComputeMatterRHS_Collisions_OrderV, &
+    ComputeMeanInverseMeanFreePaths, &
+    ComputeTransportOpacity, &
+    AssembleTransportOpacity, &
+    ComputeOpacities_Packed, &
+    ComputeRates_Packed, &
     nQ, nC, &
     iQ_L, iQ_E, iQ_H, iQ_M1, iQ_M2, iQ_M3
+  USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
+    ComputeIncrement_TwoMoment_Explicit, &
+    AllocateSourceAwareTransportOpacity, &
+    StoreSourceAwareTransportOpacity, &
+    CacheSourceAwareTransportOpacity_Flattened, &
+    RestoreSourceAwareTransportOpacity, &
+    SetSourceAwareLLFActive, &
+    MarkStreamingBoundaryConditionsApplied, &
+    UseSourceAwareLLF
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_Euler
+  USE TwoMoment_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_TwoMoment
+  USE NeutrinoOpacitiesComputationModule, ONLY: &
+    SetOpacityMask, &
+    nOp
 #endif
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputePrimitive_TwoMoment, &
@@ -78,7 +100,13 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   PRIVATE
 
   PUBLIC :: ComputeIncrement_TwoMoment_Implicit
+  PUBLIC :: GetNeutrinoMatterSolverConvergenceDiagnostics
+  PUBLIC :: SetNeutrinoMatterSolverConvergenceDiagnostics
 #if defined( TWOMOMENT_ORDER_V )
+  PUBLIC :: ComputeMatterRHS_Collisions_OrderV
+  PUBLIC :: ComputeMeanInverseMeanFreePaths_OrderV
+  PUBLIC :: ComputeTransportOpacityFromConserved_OrderV
+  PUBLIC :: ComputeIncrement_TwoMoment_Explicit_AP
   PUBLIC :: nQ, nC
 #endif
 
@@ -103,6 +131,31 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   INTEGER, ALLOCATABLE :: nIterations_Inner(:)
   INTEGER, ALLOCATABLE :: nIterations_Outer(:)
   INTEGER, ALLOCATABLE :: nIterations_Prim(:)
+  INTEGER, ALLOCATABLE :: nIterations_Inner_Final(:)
+  INTEGER, ALLOCATABLE :: nIterations_Outer_Final(:)
+  REAL(DP), ALLOCATABLE :: RelativeResidual_Inner_First(:)
+#if defined( TWOMOMENT_ORDER_V )
+  REAL(DP), ALLOCATABLE :: MatterEquationResidual_Rate_Final(:,:)
+  REAL(DP), ALLOCATABLE :: RadiationResidual_Relative_Final(:)
+  REAL(DP), ALLOCATABLE :: &
+    ConservativeProjectionRadiationResidual_Relative_Final(:)
+  REAL(DP), ALLOCATABLE :: ConservativeProjectionMatterHeating_Rate_Final(:)
+  INTEGER,  ALLOCATABLE :: ConservativeProjectionStatus_Final(:)
+#endif
+
+  LOGICAL :: RetainSolverConvergenceDiagnostics = .FALSE.
+  INTEGER, ALLOCATABLE :: nIterations_Inner_Final_Last(:)
+  INTEGER, ALLOCATABLE :: nIterations_Outer_Final_Last(:)
+  REAL(DP), ALLOCATABLE :: RelativeResidual_Inner_First_Last(:)
+#if defined( TWOMOMENT_ORDER_V )
+  REAL(DP), ALLOCATABLE :: MatterEquationResidual_Rate_Final_Last(:,:)
+  REAL(DP), ALLOCATABLE :: RadiationResidual_Relative_Final_Last(:)
+  REAL(DP), ALLOCATABLE :: &
+    ConservativeProjectionRadiationResidual_Relative_Final_Last(:)
+  REAL(DP), ALLOCATABLE :: &
+    ConservativeProjectionMatterHeating_Rate_Final_Last(:)
+  INTEGER,  ALLOCATABLE :: ConservativeProjectionStatus_Final_Last(:)
+#endif
 
   LOGICAL, PARAMETER :: ReportConvergenceData = .FALSE.
 
@@ -112,13 +165,443 @@ CONTAINS
   ! --- Public Subroutines ---
 
 
+  SUBROUTINE SetNeutrinoMatterSolverConvergenceDiagnostics( Retain )
+
+    LOGICAL, INTENT(in) :: Retain
+
+    IF( Retain .AND. ALLOCATED( nIterations_Inner_Final_Last ) )THEN
+      DEALLOCATE( nIterations_Inner_Final_Last )
+      DEALLOCATE( nIterations_Outer_Final_Last )
+      DEALLOCATE( RelativeResidual_Inner_First_Last )
+#if defined( TWOMOMENT_ORDER_V )
+      DEALLOCATE( MatterEquationResidual_Rate_Final_Last )
+      DEALLOCATE( RadiationResidual_Relative_Final_Last )
+      DEALLOCATE( ConservativeProjectionRadiationResidual_Relative_Final_Last )
+      DEALLOCATE( ConservativeProjectionMatterHeating_Rate_Final_Last )
+      DEALLOCATE( ConservativeProjectionStatus_Final_Last )
+#endif
+    END IF
+
+    RetainSolverConvergenceDiagnostics = Retain
+
+  END SUBROUTINE SetNeutrinoMatterSolverConvergenceDiagnostics
+
+
+  SUBROUTINE GetNeutrinoMatterSolverConvergenceDiagnostics &
+    ( InnerIterationsFinal, OuterIterationsFinal, &
+      FirstInnerRelativeResidual &
+#if defined( TWOMOMENT_ORDER_V )
+      , MatterEquationResidualRateFinal, &
+        RadiationResidualRelativeFinal, &
+        ConservativeProjectionRadiationResidualRelativeFinal, &
+        ConservativeProjectionMatterHeatingRateFinal, &
+        ConservativeProjectionStatusFinal &
+#endif
+      )
+
+    INTEGER, ALLOCATABLE, INTENT(out) :: InnerIterationsFinal(:)
+    INTEGER, ALLOCATABLE, INTENT(out) :: OuterIterationsFinal(:)
+    REAL(DP), ALLOCATABLE, INTENT(out) :: FirstInnerRelativeResidual(:)
+#if defined( TWOMOMENT_ORDER_V )
+    REAL(DP), ALLOCATABLE, INTENT(out) :: MatterEquationResidualRateFinal(:,:)
+    REAL(DP), ALLOCATABLE, INTENT(out) :: RadiationResidualRelativeFinal(:)
+    REAL(DP), ALLOCATABLE, INTENT(out) :: &
+      ConservativeProjectionRadiationResidualRelativeFinal(:)
+    REAL(DP), ALLOCATABLE, INTENT(out) :: &
+      ConservativeProjectionMatterHeatingRateFinal(:)
+    INTEGER,  ALLOCATABLE, INTENT(out) :: ConservativeProjectionStatusFinal(:)
+#endif
+
+    IF( .NOT. ALLOCATED( nIterations_Inner_Final_Last ) ) &
+      ERROR STOP 'No retained neutrino-matter solver convergence diagnostics.'
+
+    ALLOCATE( InnerIterationsFinal &
+                (SIZE(nIterations_Inner_Final_Last)) )
+    ALLOCATE( OuterIterationsFinal &
+                (SIZE(nIterations_Outer_Final_Last)) )
+    ALLOCATE( FirstInnerRelativeResidual &
+                (SIZE(RelativeResidual_Inner_First_Last)) )
+#if defined( TWOMOMENT_ORDER_V )
+    ALLOCATE( MatterEquationResidualRateFinal, &
+              MOLD = MatterEquationResidual_Rate_Final_Last )
+    ALLOCATE( RadiationResidualRelativeFinal, &
+              MOLD = RadiationResidual_Relative_Final_Last )
+    ALLOCATE( ConservativeProjectionRadiationResidualRelativeFinal, &
+              MOLD = ConservativeProjectionRadiationResidual_Relative_Final_Last )
+    ALLOCATE( ConservativeProjectionMatterHeatingRateFinal, &
+              MOLD = ConservativeProjectionMatterHeating_Rate_Final_Last )
+    ALLOCATE( ConservativeProjectionStatusFinal, &
+              MOLD = ConservativeProjectionStatus_Final_Last )
+#endif
+
+    InnerIterationsFinal       = nIterations_Inner_Final_Last
+    OuterIterationsFinal       = nIterations_Outer_Final_Last
+    FirstInnerRelativeResidual = RelativeResidual_Inner_First_Last
+#if defined( TWOMOMENT_ORDER_V )
+    MatterEquationResidualRateFinal = MatterEquationResidual_Rate_Final_Last
+    RadiationResidualRelativeFinal = RadiationResidual_Relative_Final_Last
+    ConservativeProjectionRadiationResidualRelativeFinal &
+      = ConservativeProjectionRadiationResidual_Relative_Final_Last
+    ConservativeProjectionMatterHeatingRateFinal &
+      = ConservativeProjectionMatterHeating_Rate_Final_Last
+    ConservativeProjectionStatusFinal = ConservativeProjectionStatus_Final_Last
+#endif
+
+  END SUBROUTINE GetNeutrinoMatterSolverConvergenceDiagnostics
+
+
+#if defined( TWOMOMENT_ORDER_V )
+  SUBROUTINE ComputeIncrement_TwoMoment_Explicit_AP &
+    ( iZ_B0_Input, iZ_E0_Input, iZ_B1_Input, iZ_E1_Input, &
+      GE, GX, U_F, U_R, dU_R, &
+      LLFPenaltyFactor_Option, SurfaceTermFactor_Option, &
+      VolumeTermFactor_Option, IncludeObserverCorrections_Option )
+
+    INTEGER, INTENT(in) :: &
+      iZ_B0_Input(4), iZ_E0_Input(4), iZ_B1_Input(4), iZ_E1_Input(4)
+    REAL(DP), INTENT(in) :: &
+      GE(1:nDOFE,iZ_B1_Input(1):iZ_E1_Input(1),1:nGE)
+    REAL(DP), INTENT(in) :: &
+      GX(1:nDOFX, &
+         iZ_B1_Input(2):iZ_E1_Input(2), &
+         iZ_B1_Input(3):iZ_E1_Input(3), &
+         iZ_B1_Input(4):iZ_E1_Input(4),1:nGF)
+    REAL(DP), INTENT(inout) :: &
+      U_F(1:nDOFX, &
+          iZ_B1_Input(2):iZ_E1_Input(2), &
+          iZ_B1_Input(3):iZ_E1_Input(3), &
+          iZ_B1_Input(4):iZ_E1_Input(4),1:nCF)
+    REAL(DP), INTENT(inout) :: &
+      U_R(1:nDOFZ, &
+          iZ_B1_Input(1):iZ_E1_Input(1), &
+          iZ_B1_Input(2):iZ_E1_Input(2), &
+          iZ_B1_Input(3):iZ_E1_Input(3), &
+          iZ_B1_Input(4):iZ_E1_Input(4),1:nCR,1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      dU_R(1:nDOFZ, &
+           iZ_B1_Input(1):iZ_E1_Input(1), &
+           iZ_B1_Input(2):iZ_E1_Input(2), &
+           iZ_B1_Input(3):iZ_E1_Input(3), &
+           iZ_B1_Input(4):iZ_E1_Input(4),1:nCR,1:nSpecies)
+    REAL(DP), INTENT(in), OPTIONAL :: LLFPenaltyFactor_Option
+    REAL(DP), INTENT(in), OPTIONAL :: SurfaceTermFactor_Option
+    REAL(DP), INTENT(in), OPTIONAL :: VolumeTermFactor_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: IncludeObserverCorrections_Option
+
+    INTEGER :: iZ_B_Opacity(4), iZ_E_Opacity(4)
+    INTEGER :: iX_B0_Local(3), iX_E0_Local(3)
+    INTEGER :: iX_B1_Local(3), iX_E1_Local(3)
+    IF( UseSourceAwareLLF )THEN
+
+      iX_B0_Local = iZ_B0_Input(2:4)
+      iX_E0_Local = iZ_E0_Input(2:4)
+      iX_B1_Local = iZ_B1_Input(2:4)
+      iX_E1_Local = iZ_E1_Input(2:4)
+
+      CALL ApplyBoundaryConditions_Euler &
+             ( iX_B0_Local, iX_E0_Local, &
+               iX_B1_Local, iX_E1_Local, U_F )
+
+      CALL ApplyBoundaryConditions_TwoMoment &
+             ( iZ_B0_Input, iZ_E0_Input, &
+               iZ_B1_Input, iZ_E1_Input, U_R )
+
+      iZ_B_Opacity(1)   = iZ_B0_Input(1)
+      iZ_E_Opacity(1)   = iZ_E0_Input(1)
+      iZ_B_Opacity(2:4) = iZ_B1_Input(2:4)
+      iZ_E_Opacity(2:4) = iZ_E1_Input(2:4)
+
+      CALL ComputeTransportOpacityFromConserved_OrderV &
+             ( iZ_B_Opacity, iZ_E_Opacity, iZ_B1_Input, iZ_E1_Input, &
+               GE, GX, U_F, U_R )
+
+      CALL RestoreSourceAwareTransportOpacity
+
+      CALL MarkStreamingBoundaryConditionsApplied
+
+    END IF
+
+    CALL ComputeIncrement_TwoMoment_Explicit &
+           ( iZ_B0_Input, iZ_E0_Input, iZ_B1_Input, iZ_E1_Input, &
+             GE, GX, U_F, U_R, dU_R, &
+             LLFPenaltyFactor_Option = LLFPenaltyFactor_Option, &
+             SurfaceTermFactor_Option = SurfaceTermFactor_Option, &
+             VolumeTermFactor_Option = VolumeTermFactor_Option, &
+             IncludeObserverCorrections_Option &
+               = IncludeObserverCorrections_Option )
+
+  END SUBROUTINE ComputeIncrement_TwoMoment_Explicit_AP
+
+
+  SUBROUTINE ComputeTransportOpacityFromConserved_OrderV &
+    ( iZ_B0_Input, iZ_E0_Input, iZ_B1_Input, iZ_E1_Input, &
+      GE, GX, U_F, U_R, TransportOpacity_Option )
+
+    INTEGER, INTENT(in) :: &
+      iZ_B0_Input(4), iZ_E0_Input(4), iZ_B1_Input(4), iZ_E1_Input(4)
+    REAL(DP), INTENT(in) :: &
+      GE(1:nDOFE,iZ_B1_Input(1):iZ_E1_Input(1),1:nGE)
+    REAL(DP), INTENT(in) :: &
+      GX(1:nDOFX, &
+         iZ_B1_Input(2):iZ_E1_Input(2), &
+         iZ_B1_Input(3):iZ_E1_Input(3), &
+         iZ_B1_Input(4):iZ_E1_Input(4),1:nGF)
+    REAL(DP), INTENT(in) :: &
+      U_F(1:nDOFX, &
+          iZ_B1_Input(2):iZ_E1_Input(2), &
+          iZ_B1_Input(3):iZ_E1_Input(3), &
+          iZ_B1_Input(4):iZ_E1_Input(4),1:nCF)
+    REAL(DP), INTENT(in) :: &
+      U_R(1:nDOFZ, &
+          iZ_B1_Input(1):iZ_E1_Input(1), &
+          iZ_B1_Input(2):iZ_E1_Input(2), &
+          iZ_B1_Input(3):iZ_E1_Input(3), &
+          iZ_B1_Input(4):iZ_E1_Input(4),1:nCR,1:nSpecies)
+    REAL(DP), INTENT(out), OPTIONAL :: TransportOpacity_Option(:,:,:)
+    INTEGER :: iN_X
+    LOGICAL :: PatchHasCollisions
+    REAL(DP), ALLOCATABLE :: TransportOpacity_N(:,:,:)
+
+    CALL InitializeCollisions &
+           ( iZ_B0_Input, iZ_E0_Input, iZ_B1_Input, iZ_E1_Input )
+
+    ALLOCATE( TransportOpacity_N(nE_G,nSpecies,nX_G) )
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: GE, GX, U_F, U_R ) &
+    !$OMP MAP( alloc: TransportOpacity_N )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( GE, GX, U_F, U_R ) &
+    !$ACC CREATE( TransportOpacity_N )
+#endif
+
+    CALL MapDataForCollisions &
+           ( iZ_B0_Input, iZ_E0_Input, iZ_B1_Input, iZ_E1_Input, &
+             GE, GX, U_F, U_R )
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( CF_N, PF_N, GX_N )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iN_X = 1, nX_G
+
+      CALL ComputePrimitive_Euler_NonRelativistic &
+             ( CF_N(iN_X,iCF_D ), &
+               CF_N(iN_X,iCF_S1), CF_N(iN_X,iCF_S2), CF_N(iN_X,iCF_S3), &
+               CF_N(iN_X,iCF_E ), CF_N(iN_X,iCF_Ne), &
+               PF_N(iN_X,iPF_D ), &
+               PF_N(iN_X,iPF_V1), PF_N(iN_X,iPF_V2), PF_N(iN_X,iPF_V3), &
+               PF_N(iN_X,iPF_E ), PF_N(iN_X,iPF_Ne), &
+               GX_N(iN_X,iGF_Gm_dd_11), GX_N(iN_X,iGF_Gm_dd_22), &
+               GX_N(iN_X,iGF_Gm_dd_33) )
+
+    END DO
+
+    CALL ComputePrimitive_TwoMoment &
+           ( N_P, G1_P, G2_P, G3_P, J_P, H1_P, H2_P, H3_P, &
+             PF_N(:,iPF_V1), PF_N(:,iPF_V2), PF_N(:,iPF_V3), &
+             GX_N(:,iGF_Gm_dd_11), GX_N(:,iGF_Gm_dd_22), &
+             GX_N(:,iGF_Gm_dd_33), PositionIndexZ, nIterations_Prim )
+
+    CALL ComputeThermodynamicStates_Auxiliary_TABLE &
+           ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
+             AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye) )
+
+    CALL ComputeTransportOpacity &
+           ( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye), &
+             GX_N(:,iGF_SqrtGm), &
+             PR_N(:,:,:,iPR_D), &
+             PR_N(:,:,:,iPR_I1), PR_N(:,:,:,iPR_I2), PR_N(:,:,:,iPR_I3), &
+             TransportOpacity_N, &
+             PatchHasCollisions_Option = PatchHasCollisions )
+
+    IF( PRESENT( TransportOpacity_Option ) )THEN
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM( TransportOpacity_N )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST( TransportOpacity_N )
+    !$ACC WAIT
+#endif
+      TransportOpacity_Option = TransportOpacity_N
+    END IF
+
+    CALL SetSourceAwareLLFActive( PatchHasCollisions )
+
+    IF( PatchHasCollisions )THEN
+
+      CALL AllocateSourceAwareTransportOpacity &
+             ( iZ_B0_Input, iZ_E0_Input )
+
+      CALL StoreSourceAwareTransportOpacity &
+             ( iZ_B0_Input, iZ_E0_Input, nX, TransportOpacity_N )
+
+    END IF
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: GE, GX, U_F, U_R, TransportOpacity_N )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( GE, GX, U_F, U_R, TransportOpacity_N )
+    !$ACC WAIT
+#endif
+
+    DEALLOCATE( TransportOpacity_N )
+    CALL FinalizeCollisions
+
+  END SUBROUTINE ComputeTransportOpacityFromConserved_OrderV
+
+
+  SUBROUTINE ComputeMeanInverseMeanFreePaths_OrderV &
+    ( iZ_B0_Input, iZ_E0_Input, iZ_B1_Input, iZ_E1_Input, &
+      GE, GX, PF, PR, MeanInvMFP )
+
+    INTEGER, INTENT(in) :: &
+      iZ_B0_Input(4), iZ_E0_Input(4), iZ_B1_Input(4), iZ_E1_Input(4)
+    REAL(DP), INTENT(in) :: &
+      GE(1:nDOFE,iZ_B1_Input(1):iZ_E1_Input(1),1:nGE)
+    REAL(DP), INTENT(in) :: &
+      GX(1:nDOFX, &
+         iZ_B1_Input(2):iZ_E1_Input(2), &
+         iZ_B1_Input(3):iZ_E1_Input(3), &
+         iZ_B1_Input(4):iZ_E1_Input(4),1:nGF)
+    REAL(DP), INTENT(in) :: &
+      PF(1:nDOFX, &
+         iZ_B1_Input(2):iZ_E1_Input(2), &
+         iZ_B1_Input(3):iZ_E1_Input(3), &
+         iZ_B1_Input(4):iZ_E1_Input(4),1:nPF)
+    REAL(DP), INTENT(in) :: &
+      PR(1:nDOFZ, &
+         iZ_B1_Input(1):iZ_E1_Input(1), &
+         iZ_B1_Input(2):iZ_E1_Input(2), &
+         iZ_B1_Input(3):iZ_E1_Input(3), &
+         iZ_B1_Input(4):iZ_E1_Input(4),1:nPR,1:nSpecies)
+    REAL(DP), INTENT(out) :: MeanInvMFP(:,:,:)
+
+    CALL InitializeCollisions &
+           ( iZ_B0_Input, iZ_E0_Input, iZ_B1_Input, iZ_E1_Input, &
+             ComputeFirstMomentRates_Option = .TRUE. )
+
+    CALL MapDataForDiagnostics( GE, GX, PF, PR )
+
+    CALL ComputeThermodynamicStates_Auxiliary_TABLE &
+           ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
+             AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye) )
+
+    CALL ComputeMeanInverseMeanFreePaths &
+           ( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye), &
+             GX_N(:,iGF_SqrtGm), GX_N(:,iGF_Gm_dd_11), &
+             GX_N(:,iGF_Gm_dd_22), GX_N(:,iGF_Gm_dd_33), &
+             PR_N(:,:,:,iPR_D), &
+             PR_N(:,:,:,iPR_I1), PR_N(:,:,:,iPR_I2), PR_N(:,:,:,iPR_I3), &
+             MeanInvMFP )
+
+    CALL FinalizeCollisions
+
+  END SUBROUTINE ComputeMeanInverseMeanFreePaths_OrderV
+
+
+  SUBROUTINE ComputeMatterRHS_Collisions_OrderV &
+    ( iZ_B0_Input, iZ_E0_Input, iZ_B1_Input, iZ_E1_Input, &
+      GE, GX, PF, PR, Q_Matter, NNS_Ledger_Option, &
+      QH_ByProcessSpecies_Option, EmAb_Ledger_Option, &
+      EmAb_Spectrum_Option, RadiationCollisionRHS_Option )
+
+    INTEGER, INTENT(in) :: &
+      iZ_B0_Input(4), iZ_E0_Input(4), iZ_B1_Input(4), iZ_E1_Input(4)
+    REAL(DP), INTENT(in) :: &
+      GE(1:nDOFE,iZ_B1_Input(1):iZ_E1_Input(1),1:nGE)
+    REAL(DP), INTENT(in) :: &
+      GX(1:nDOFX, &
+         iZ_B1_Input(2):iZ_E1_Input(2), &
+         iZ_B1_Input(3):iZ_E1_Input(3), &
+         iZ_B1_Input(4):iZ_E1_Input(4),1:nGF)
+    REAL(DP), INTENT(in) :: &
+      PF(1:nDOFX, &
+         iZ_B1_Input(2):iZ_E1_Input(2), &
+         iZ_B1_Input(3):iZ_E1_Input(3), &
+         iZ_B1_Input(4):iZ_E1_Input(4),1:nPF)
+    REAL(DP), INTENT(in) :: &
+      PR(1:nDOFZ, &
+         iZ_B1_Input(1):iZ_E1_Input(1), &
+         iZ_B1_Input(2):iZ_E1_Input(2), &
+         iZ_B1_Input(3):iZ_E1_Input(3), &
+         iZ_B1_Input(4):iZ_E1_Input(4),1:nPR,1:nSpecies)
+    REAL(DP), INTENT(out) :: Q_Matter(:,:,:)
+    REAL(DP), INTENT(out), OPTIONAL :: NNS_Ledger_Option(:,:,:)
+    REAL(DP), INTENT(out), OPTIONAL :: QH_ByProcessSpecies_Option(:,:,:)
+    REAL(DP), INTENT(out), OPTIONAL :: EmAb_Ledger_Option(:,:,:)
+    REAL(DP), INTENT(out), OPTIONAL :: EmAb_Spectrum_Option(:,:,:,:)
+    REAL(DP), INTENT(out), OPTIONAL :: RadiationCollisionRHS_Option(:,:,:,:)
+
+    LOGICAL, ALLOCATABLE :: MatterCoupling_Mask_Diagnostic(:)
+    LOGICAL, ALLOCATABLE :: Opacity_Mask_Diagnostic(:,:)
+
+    CALL InitializeCollisions &
+           ( iZ_B0_Input, iZ_E0_Input, iZ_B1_Input, iZ_E1_Input, &
+             ComputeFirstMomentRates_Option = .TRUE. )
+
+    CALL MapDataForDiagnostics( GE, GX, PF, PR )
+
+    CALL ComputeThermodynamicStates_Auxiliary_TABLE &
+           ( PF_N(:,iPF_D), PF_N(:,iPF_E), PF_N(:,iPF_Ne), &
+             AF_N(:,iAF_T), AF_N(:,iAF_E), AF_N(:,iAF_Ye) )
+
+    ALLOCATE( MatterCoupling_Mask_Diagnostic(nX_G) )
+    ALLOCATE( Opacity_Mask_Diagnostic(nOp,nX_G) )
+
+    CALL SetOpacityMask &
+           ( nX_G, nDOFX, PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye), &
+             Opacity_Mask_Diagnostic )
+
+    CALL ComputeOpacities_Packed &
+           ( PF_N(:,iPF_D), AF_N(:,iAF_T), AF_N(:,iAF_Ye), &
+             GX_N(:,iGF_SqrtGm), nX_P0 = nX_G, &
+             T0 = AF_N(:,iAF_T), Y0 = AF_N(:,iAF_Ye), &
+             Opacity_Mask_Input = Opacity_Mask_Diagnostic )
+
+    CALL ComputeRates_Packed &
+           ( PF_N(:,iPF_D), PR_N(:,:,:,iPR_D), &
+             PR_N(:,:,:,iPR_I1), PR_N(:,:,:,iPR_I2), PR_N(:,:,:,iPR_I3), &
+             nX_P0 = nX_G, Opacity_Mask_Input = Opacity_Mask_Diagnostic )
+
+    MatterCoupling_Mask_Diagnostic = ANY( Opacity_Mask_Diagnostic, DIM = 1 )
+
+    CALL ComputeMatterRHS_Collisions_Flattened_OrderV &
+           ( PR_N(:,:,:,iPR_D), &
+             PR_N(:,:,:,iPR_I1), PR_N(:,:,:,iPR_I2), PR_N(:,:,:,iPR_I3), &
+             PF_N(:,iPF_V1), PF_N(:,iPF_V2), PF_N(:,iPF_V3), &
+             GX_N(:,iGF_Gm_dd_11), GX_N(:,iGF_Gm_dd_22), &
+             GX_N(:,iGF_Gm_dd_33), MatterCoupling_Mask_Diagnostic, &
+             Q_Matter, &
+             NNS_Ledger_Option = NNS_Ledger_Option, &
+             QH_ByProcessSpecies_Option = QH_ByProcessSpecies_Option, &
+             EmAb_Ledger_Option = EmAb_Ledger_Option, &
+             EmAb_Spectrum_Option = EmAb_Spectrum_Option, &
+             RadiationCollisionRHS_Option = RadiationCollisionRHS_Option )
+
+    DEALLOCATE( MatterCoupling_Mask_Diagnostic )
+    DEALLOCATE( Opacity_Mask_Diagnostic )
+
+    CALL FinalizeCollisions
+
+  END SUBROUTINE ComputeMatterRHS_Collisions_OrderV
+#endif
+
+
   SUBROUTINE ComputeIncrement_TwoMoment_Implicit &
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R, &
       AccumulateMatterCoupling_Mask, &
       uDR_Option, MatterCoupling_Mask_Option &
 #if defined( TWOMOMENT_ORDER_V )
       , MatterSource_Rate_Option, MatterIncrement_Rate_Option, &
-        MatterSource_Weight_Option &
+        MatterSource_Weight_Option, MatterSource_Rate_Unweighted_Option &
 #endif
       )
 
@@ -196,6 +679,14 @@ CONTAINS
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4))
     REAL(DP), INTENT(in), OPTIONAL :: MatterSource_Weight_Option
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      MatterSource_Rate_Unweighted_Option &
+          (1:nQ, &
+           1:1+nSpecies+nC, &
+           1:nDOFX, &
+           iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4))
 #endif
 
     INTEGER :: iN_X, iN_E, iS
@@ -205,6 +696,7 @@ CONTAINS
     INTEGER :: iG, iQ
     REAL(DP) :: MatterSource_Weight
     REAL(DP), ALLOCATABLE :: MatterSource_Rate_N(:,:,:)
+    REAL(DP), ALLOCATABLE :: TransportOpacity_N(:,:,:)
 #endif
 
     CALL TimersStart( Timer_Collisions )
@@ -213,12 +705,16 @@ CONTAINS
 
     ALLOCATE( MatterCoupling_Mask_N(nX_G) )
 #if defined( TWOMOMENT_ORDER_V )
-    IF( PRESENT( MatterSource_Rate_Option ) ) &
+    IF(      PRESENT( MatterSource_Rate_Option ) &
+        .OR. PRESENT( MatterSource_Rate_Unweighted_Option ) ) &
       ALLOCATE( MatterSource_Rate_N(nQ,1+nSpecies+nC,nX_G) )
 
     MatterSource_Weight = One
     IF( PRESENT( MatterSource_Weight_Option ) ) &
       MatterSource_Weight = MatterSource_Weight_Option
+
+    IF( UseSourceAwareLLF ) &
+      ALLOCATE( TransportOpacity_N(nE_G,nSpecies,nX_G) )
 #endif
 
 #if   defined(THORNADO_OMP_OL)
@@ -231,12 +727,28 @@ CONTAINS
     !$ACC CREATE(     dU_F, dU_R, MatterCoupling_Mask_N )
 #endif
 #if defined( TWOMOMENT_ORDER_V )
+    IF(      PRESENT( MatterSource_Rate_Option ) &
+        .OR. PRESENT( MatterSource_Rate_Unweighted_Option ) )THEN
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA MAP( alloc: MatterSource_Rate_N )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA CREATE( MatterSource_Rate_N )
+#endif
+    END IF
+
     IF( PRESENT( MatterSource_Rate_Option ) )THEN
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: MatterSource_Rate_Option, MatterSource_Rate_N )
+    !$OMP TARGET ENTER DATA MAP( alloc: MatterSource_Rate_Option )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA CREATE( MatterSource_Rate_Option, MatterSource_Rate_N )
+    !$ACC ENTER DATA CREATE( MatterSource_Rate_Option )
+#endif
+    END IF
+
+    IF( PRESENT( MatterSource_Rate_Unweighted_Option ) )THEN
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA MAP( alloc: MatterSource_Rate_Unweighted_Option )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA CREATE( MatterSource_Rate_Unweighted_Option )
 #endif
     END IF
 
@@ -245,6 +757,14 @@ CONTAINS
     !$OMP TARGET ENTER DATA MAP( alloc: MatterIncrement_Rate_Option )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA CREATE( MatterIncrement_Rate_Option )
+#endif
+    END IF
+
+    IF( UseSourceAwareLLF )THEN
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA MAP( alloc: TransportOpacity_N )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA CREATE( TransportOpacity_N )
 #endif
     END IF
 #endif
@@ -426,20 +946,48 @@ CONTAINS
              CR_N(:,:,:,iCR_G3), &
              nIterations_Inner, &
              nIterations_Outer, &
-             MatterCoupling_Mask_N )
+             nIterations_Inner_Final, &
+             nIterations_Outer_Final, &
+             RelativeResidual_Inner_First, &
+             MatterCoupling_Mask_N &
+#if defined( TWOMOMENT_ORDER_V )
+             , RetainSolverConvergenceDiagnostics, &
+               MatterEquationResidual_Rate_Final, &
+               RadiationResidual_Relative_Final, &
+               ConservativeProjectionRadiationResidual_Relative_Final, &
+               ConservativeProjectionMatterHeating_Rate_Final, &
+               ConservativeProjectionStatus_Final &
+#endif
+             )
 
     CALL TimersStop( Timer_Collisions_Solve )
 
 #if defined( TWOMOMENT_ORDER_V )
-    IF( PRESENT( MatterSource_Rate_Option ) )THEN
+    IF( UseSourceAwareLLF )THEN
 
-      CALL ComputeMatterRHS_Collisions_OrderV &
+      CALL AssembleTransportOpacity( TransportOpacity_N )
+
+      CALL CacheSourceAwareTransportOpacity_Flattened &
+             ( iZ_B0, iZ_E0, nX, TransportOpacity_N )
+
+    END IF
+
+    IF(      PRESENT( MatterSource_Rate_Option ) &
+        .OR. PRESENT( MatterSource_Rate_Unweighted_Option ) )THEN
+
+      CALL ComputeMatterRHS_Collisions_Flattened_OrderV &
              ( PR_N(:,:,:,iCR_N ), &
                PR_N(:,:,:,iCR_G1), PR_N(:,:,:,iCR_G2), PR_N(:,:,:,iCR_G3), &
                PF_N(:,iPF_V1), PF_N(:,iPF_V2), PF_N(:,iPF_V3), &
                GX_N(:,iGF_Gm_dd_11), GX_N(:,iGF_Gm_dd_22), &
                GX_N(:,iGF_Gm_dd_33), MatterCoupling_Mask_N, &
                MatterSource_Rate_N )
+
+    END IF
+#endif
+
+#if defined( TWOMOMENT_ORDER_V )
+    IF( PRESENT( MatterSource_Rate_Option ) )THEN
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -473,6 +1021,45 @@ CONTAINS
           MatterSource_Rate_Option(iQ,iG,iNodeX,iX1,iX2,iX3) &
             = MatterSource_Weight * MatterSource_Rate_N(iQ,iG,iN_X)
         END IF
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+#endif
+
+#if defined( TWOMOMENT_ORDER_V )
+    IF( PRESENT( MatterSource_Rate_Unweighted_Option ) )THEN
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP PRIVATE( iN_X )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC PRIVATE( iN_X ) &
+    !$ACC PRESENT( MatterSource_Rate_Unweighted_Option, MatterSource_Rate_N )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(6) &
+    !$OMP PRIVATE( iN_X )
+#endif
+      DO iX3    = iX_B0(3), iX_E0(3)
+      DO iX2    = iX_B0(2), iX_E0(2)
+      DO iX1    = iX_B0(1), iX_E0(1)
+      DO iNodeX = 1, nDOFX
+      DO iG      = 1, 1+nSpecies+nC
+      DO iQ      = 1, nQ
+
+        iN_X = iNodeX &
+               + ( iX1 - iX_B0(1) ) * nDOFX &
+               + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
+               + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
+
+        MatterSource_Rate_Unweighted_Option(iQ,iG,iNodeX,iX1,iX2,iX3) &
+          = MatterSource_Rate_N(iQ,iG,iN_X)
 
       END DO
       END DO
@@ -847,6 +1434,16 @@ CONTAINS
       END DO
 
     END IF
+
+
+    IF( UseSourceAwareLLF )THEN
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA MAP( release: TransportOpacity_N )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA DELETE( TransportOpacity_N )
+#endif
+      DEALLOCATE( TransportOpacity_N )
+    END IF
 #endif
 
 #if   defined(THORNADO_OMP_OL)
@@ -866,10 +1463,26 @@ CONTAINS
 #if defined( TWOMOMENT_ORDER_V )
     IF( PRESENT( MatterSource_Rate_Option ) )THEN
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: MatterSource_Rate_Option, MatterSource_Rate_N )
+    !$OMP TARGET EXIT DATA MAP( release: MatterSource_Rate_Option )
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA DELETE( MatterSource_Rate_Option, MatterSource_Rate_N )
+    !$ACC EXIT DATA DELETE( MatterSource_Rate_Option )
+#endif
+    END IF
+
+    IF( PRESENT( MatterSource_Rate_Unweighted_Option ) )THEN
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA MAP( release: MatterSource_Rate_Unweighted_Option )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA DELETE( MatterSource_Rate_Unweighted_Option )
+#endif
+    END IF
+
+    IF(      PRESENT( MatterSource_Rate_Option ) &
+        .OR. PRESENT( MatterSource_Rate_Unweighted_Option ) )THEN
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA MAP( release: MatterSource_Rate_N )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA DELETE( MatterSource_Rate_N )
 #endif
       DEALLOCATE( MatterSource_Rate_N )
     END IF
@@ -892,10 +1505,12 @@ CONTAINS
   ! --- Private Subroutines ---
 
 
-  SUBROUTINE InitializeCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
+  SUBROUTINE InitializeCollisions &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, ComputeFirstMomentRates_Option )
 
     INTEGER, INTENT(in) :: iZ_B0(4), iZ_E0(4)
     INTEGER, INTENT(in) :: iZ_B1(4), iZ_E1(4)
+    LOGICAL, INTENT(in), OPTIONAL :: ComputeFirstMomentRates_Option
 
     INTEGER :: iN_X, iN_E, iS, iZ, nZ_G
 
@@ -939,10 +1554,30 @@ CONTAINS
 
     ALLOCATE( nIterations_Inner(nX_G) )
     ALLOCATE( nIterations_Outer(nX_G) )
+    ALLOCATE( nIterations_Inner_Final(nX_G) )
+    ALLOCATE( nIterations_Outer_Final(nX_G) )
+    ALLOCATE( RelativeResidual_Inner_First(nX_G) )
+#if defined( TWOMOMENT_ORDER_V )
+    ALLOCATE( MatterEquationResidual_Rate_Final(nQ,nX_G) )
+    ALLOCATE( RadiationResidual_Relative_Final(nX_G) )
+    ALLOCATE( ConservativeProjectionRadiationResidual_Relative_Final(nX_G) )
+    ALLOCATE( ConservativeProjectionMatterHeating_Rate_Final(nX_G) )
+    ALLOCATE( ConservativeProjectionStatus_Final(nX_G) )
+#endif
     ALLOCATE( nIterations_Prim (nZ_G) )
 
     nIterations_Inner(:) = 0
     nIterations_Outer(:) = 0
+    nIterations_Inner_Final(:) = 0
+    nIterations_Outer_Final(:) = 0
+    RelativeResidual_Inner_First(:) = Zero
+#if defined( TWOMOMENT_ORDER_V )
+    MatterEquationResidual_Rate_Final(:,:) = Zero
+    RadiationResidual_Relative_Final(:) = Zero
+    ConservativeProjectionRadiationResidual_Relative_Final(:) = Zero
+    ConservativeProjectionMatterHeating_Rate_Final(:) = Zero
+    ConservativeProjectionStatus_Final(:) = -2
+#endif
     nIterations_Prim (:) = 0
 
     N_P (1:nZ_G) => CR_N(:,:,:,iCR_N )
@@ -960,18 +1595,41 @@ CONTAINS
 
     CALL InitializeNeutrinoMatterSolverParameters()
 
-    CALL InitializeNeutrinoMatterSolver( iZ_B0, iZ_E0 )
+    CALL InitializeNeutrinoMatterSolver &
+           ( iZ_B0, iZ_E0, ComputeFirstMomentRates_Option )
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to: iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, PositionIndexZ, &
-    !$OMP          nIterations_Inner, nIterations_Outer, nIterations_Prim ) &
+    !$OMP          nIterations_Inner, nIterations_Outer, nIterations_Prim, &
+    !$OMP          nIterations_Inner_Final, nIterations_Outer_Final, &
+    !$OMP          RelativeResidual_Inner_First ) &
     !$OMP MAP( alloc: GE_N, GX_N, CF_N, PF_N, AF_N, CR_N, PR_N )
 #elif defined(THORNADO_OACC  )
     !$ACC ENTER DATA &
     !$ACC COPYIN( iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, PositionIndexZ, &
-    !$ACC         nIterations_Inner, nIterations_Outer, nIterations_Prim ) &
+    !$ACC         nIterations_Inner, nIterations_Outer, nIterations_Prim, &
+    !$ACC         nIterations_Inner_Final, nIterations_Outer_Final, &
+    !$ACC         RelativeResidual_Inner_First ) &
     !$ACC CREATE( GE_N, GX_N, CF_N, PF_N, AF_N, CR_N, PR_N )
+#endif
+
+#if defined( TWOMOMENT_ORDER_V )
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: MatterEquationResidual_Rate_Final, &
+    !$OMP             RadiationResidual_Relative_Final, &
+    !$OMP             ConservativeProjectionRadiationResidual_Relative_Final, &
+    !$OMP             ConservativeProjectionMatterHeating_Rate_Final, &
+    !$OMP             ConservativeProjectionStatus_Final )
+#elif defined(THORNADO_OACC  )
+    !$ACC ENTER DATA &
+    !$ACC CREATE( MatterEquationResidual_Rate_Final, &
+    !$ACC         RadiationResidual_Relative_Final, &
+    !$ACC         ConservativeProjectionRadiationResidual_Relative_Final, &
+    !$ACC         ConservativeProjectionMatterHeating_Rate_Final, &
+    !$ACC         ConservativeProjectionStatus_Final )
+#endif
 #endif
 
   END SUBROUTINE InitializeCollisions
@@ -979,17 +1637,105 @@ CONTAINS
 
   SUBROUTINE FinalizeCollisions
 
+#if defined( TWOMOMENT_ORDER_V )
+    IF( RetainSolverConvergenceDiagnostics )THEN
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM( MatterEquationResidual_Rate_Final, &
+    !$OMP                     RadiationResidual_Relative_Final, &
+    !$OMP                     ConservativeProjectionRadiationResidual_Relative_Final, &
+    !$OMP                     ConservativeProjectionMatterHeating_Rate_Final, &
+    !$OMP                     ConservativeProjectionStatus_Final )
+#elif defined(THORNADO_OACC  )
+    !$ACC UPDATE HOST( MatterEquationResidual_Rate_Final, &
+    !$ACC              RadiationResidual_Relative_Final, &
+    !$ACC              ConservativeProjectionRadiationResidual_Relative_Final, &
+    !$ACC              ConservativeProjectionMatterHeating_Rate_Final, &
+    !$ACC              ConservativeProjectionStatus_Final )
+#endif
+    END IF
+#endif
+
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from: nIterations_Inner, nIterations_Outer, nIterations_Prim ) &
+    !$OMP MAP( from: nIterations_Inner, nIterations_Outer, nIterations_Prim, &
+    !$OMP            nIterations_Inner_Final, nIterations_Outer_Final, &
+    !$OMP            RelativeResidual_Inner_First ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, PositionIndexZ, &
     !$OMP               GE_N, GX_N, CF_N, PF_N, AF_N, CR_N, PR_N )
 #elif defined(THORNADO_OACC  )
     !$ACC EXIT DATA &
-    !$ACC COPYOUT( nIterations_Inner, nIterations_Outer, nIterations_Prim ) &
+    !$ACC COPYOUT( nIterations_Inner, nIterations_Outer, nIterations_Prim, &
+    !$ACC          nIterations_Inner_Final, nIterations_Outer_Final, &
+    !$ACC          RelativeResidual_Inner_First ) &
     !$ACC DELETE( iX_B0, iX_E0, iX_B1, iX_E1, nZ, nX, PositionIndexZ, &
     !$ACC         GE_N, GX_N, CF_N, PF_N, AF_N, CR_N, PR_N )
 #endif
+
+#if defined( TWOMOMENT_ORDER_V )
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: MatterEquationResidual_Rate_Final, &
+    !$OMP               RadiationResidual_Relative_Final, &
+    !$OMP               ConservativeProjectionRadiationResidual_Relative_Final, &
+    !$OMP               ConservativeProjectionMatterHeating_Rate_Final, &
+    !$OMP               ConservativeProjectionStatus_Final )
+#elif defined(THORNADO_OACC  )
+    !$ACC EXIT DATA &
+    !$ACC DELETE( MatterEquationResidual_Rate_Final, &
+    !$ACC         RadiationResidual_Relative_Final, &
+    !$ACC         ConservativeProjectionRadiationResidual_Relative_Final, &
+    !$ACC         ConservativeProjectionMatterHeating_Rate_Final, &
+    !$ACC         ConservativeProjectionStatus_Final )
+#endif
+#endif
+
+    IF( RetainSolverConvergenceDiagnostics )THEN
+
+      IF( ALLOCATED( nIterations_Inner_Final_Last ) )THEN
+        IF( SIZE(nIterations_Inner_Final_Last) /= nX_G )THEN
+          DEALLOCATE( nIterations_Inner_Final_Last )
+          DEALLOCATE( nIterations_Outer_Final_Last )
+          DEALLOCATE( RelativeResidual_Inner_First_Last )
+#if defined( TWOMOMENT_ORDER_V )
+          DEALLOCATE( MatterEquationResidual_Rate_Final_Last )
+          DEALLOCATE( RadiationResidual_Relative_Final_Last )
+          DEALLOCATE( ConservativeProjectionRadiationResidual_Relative_Final_Last )
+          DEALLOCATE( ConservativeProjectionMatterHeating_Rate_Final_Last )
+          DEALLOCATE( ConservativeProjectionStatus_Final_Last )
+#endif
+        END IF
+      END IF
+
+      IF( .NOT. ALLOCATED( nIterations_Inner_Final_Last ) )THEN
+        ALLOCATE( nIterations_Inner_Final_Last(nX_G) )
+        ALLOCATE( nIterations_Outer_Final_Last(nX_G) )
+        ALLOCATE( RelativeResidual_Inner_First_Last(nX_G) )
+#if defined( TWOMOMENT_ORDER_V )
+        ALLOCATE( MatterEquationResidual_Rate_Final_Last(nQ,nX_G) )
+        ALLOCATE( RadiationResidual_Relative_Final_Last(nX_G) )
+        ALLOCATE( ConservativeProjectionRadiationResidual_Relative_Final_Last(nX_G) )
+        ALLOCATE( ConservativeProjectionMatterHeating_Rate_Final_Last(nX_G) )
+        ALLOCATE( ConservativeProjectionStatus_Final_Last(nX_G) )
+#endif
+      END IF
+
+      nIterations_Inner_Final_Last = nIterations_Inner_Final
+      nIterations_Outer_Final_Last = nIterations_Outer_Final
+      RelativeResidual_Inner_First_Last = RelativeResidual_Inner_First
+#if defined( TWOMOMENT_ORDER_V )
+      MatterEquationResidual_Rate_Final_Last &
+        = MatterEquationResidual_Rate_Final
+      RadiationResidual_Relative_Final_Last &
+        = RadiationResidual_Relative_Final
+      ConservativeProjectionRadiationResidual_Relative_Final_Last &
+        = ConservativeProjectionRadiationResidual_Relative_Final
+      ConservativeProjectionMatterHeating_Rate_Final_Last &
+        = ConservativeProjectionMatterHeating_Rate_Final
+      ConservativeProjectionStatus_Final_Last &
+        = ConservativeProjectionStatus_Final
+#endif
+
+    END IF
 
     IF( ReportConvergenceData )THEN
 
@@ -1013,6 +1759,16 @@ CONTAINS
     DEALLOCATE( PositionIndexZ )
     DEALLOCATE( nIterations_Inner )
     DEALLOCATE( nIterations_Outer )
+    DEALLOCATE( nIterations_Inner_Final )
+    DEALLOCATE( nIterations_Outer_Final )
+    DEALLOCATE( RelativeResidual_Inner_First )
+#if defined( TWOMOMENT_ORDER_V )
+    DEALLOCATE( MatterEquationResidual_Rate_Final )
+    DEALLOCATE( RadiationResidual_Relative_Final )
+    DEALLOCATE( ConservativeProjectionRadiationResidual_Relative_Final )
+    DEALLOCATE( ConservativeProjectionMatterHeating_Rate_Final )
+    DEALLOCATE( ConservativeProjectionStatus_Final )
+#endif
     DEALLOCATE( nIterations_Prim )
 
     NULLIFY( N_P, G1_P, G2_P, G3_P )
@@ -1170,6 +1926,106 @@ CONTAINS
     END DO
 
   END SUBROUTINE MapDataForCollisions
+
+
+  SUBROUTINE MapDataForDiagnostics( GE, GX, PF, PR )
+
+    REAL(DP), INTENT(in) :: &
+      GE(1:nDOFE,iE_B1:iE_E1,1:nGE)
+    REAL(DP), INTENT(in) :: &
+      GX(1:nDOFX, iX_B1(1):iX_E1(1), iX_B1(2):iX_E1(2), &
+         iX_B1(3):iX_E1(3),1:nGF)
+    REAL(DP), INTENT(in) :: &
+      PF(1:nDOFX, iX_B1(1):iX_E1(1), iX_B1(2):iX_E1(2), &
+         iX_B1(3):iX_E1(3),1:nPF)
+    REAL(DP), INTENT(in) :: &
+      PR(1:nDOFZ, iE_B1:iE_E1, iX_B1(1):iX_E1(1), &
+         iX_B1(2):iX_E1(2), iX_B1(3):iX_E1(3),1:nPR,1:nSpecies)
+
+    INTEGER :: iGF, iN_E, iN_X, iNodeE, iNodeX, iNodeZ
+    INTEGER :: iPF, iPR, iS, iE, iX1, iX2, iX3
+
+    ! GE is deliberately accepted to keep this routine's interface aligned
+    ! with the collision wrappers.  The two diagnostics do not consume it.
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( iNodeX, iX1, iX2, iX3 )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( iNodeX, iX1, iX2, iX3 ) &
+    !$ACC PRESENT( GX, GX_N )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(2) PRIVATE( iNodeX, iX1, iX2, iX3 )
+#endif
+    DO iGF  = 1, nGF
+    DO iN_X = 1, nX_G
+
+      iX3    = MOD( (iN_X-1) / ( nDOFX * nX(1) * nX(2) ), nX(3) ) + iX_B0(3)
+      iX2    = MOD( (iN_X-1) / ( nDOFX * nX(1)         ), nX(2) ) + iX_B0(2)
+      iX1    = MOD( (iN_X-1) / ( nDOFX                 ), nX(1) ) + iX_B0(1)
+      iNodeX = MOD( (iN_X-1)                            , nDOFX ) + 1
+
+      GX_N(iN_X,iGF) = GX(iNodeX,iX1,iX2,iX3,iGF)
+
+    END DO
+    END DO
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( iNodeX, iX1, iX2, iX3 )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( iNodeX, iX1, iX2, iX3 ) &
+    !$ACC PRESENT( PF, PF_N )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(2) PRIVATE( iNodeX, iX1, iX2, iX3 )
+#endif
+    DO iPF  = 1, nPF
+    DO iN_X = 1, nX_G
+
+      iX3    = MOD( (iN_X-1) / ( nDOFX * nX(1) * nX(2) ), nX(3) ) + iX_B0(3)
+      iX2    = MOD( (iN_X-1) / ( nDOFX * nX(1)         ), nX(2) ) + iX_B0(2)
+      iX1    = MOD( (iN_X-1) / ( nDOFX                 ), nX(1) ) + iX_B0(1)
+      iNodeX = MOD( (iN_X-1)                            , nDOFX ) + 1
+
+      PF_N(iN_X,iPF) = PF(iNodeX,iX1,iX2,iX3,iPF)
+
+    END DO
+    END DO
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
+    !$OMP PRIVATE( iE, iNodeE, iNodeX, iNodeZ, iX1, iX2, iX3 )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRIVATE( iE, iNodeE, iNodeX, iNodeZ, iX1, iX2, iX3 ) &
+    !$ACC PRESENT( PR, PR_N )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(4) &
+    !$OMP PRIVATE( iE, iNodeE, iNodeX, iNodeZ, iX1, iX2, iX3 )
+#endif
+    DO iS   = 1, nSpecies
+    DO iPR  = 1, nPR
+    DO iN_X = 1, nX_G
+    DO iN_E = 1, nE_G
+
+      iE     = MOD( (iN_E-1) / nDOFE, nE ) + iE_B0
+      iNodeE = MOD(  iN_E-1,          nDOFE ) + 1
+      iX3    = MOD( (iN_X-1) / ( nDOFX * nX(1) * nX(2) ), nX(3) ) + iX_B0(3)
+      iX2    = MOD( (iN_X-1) / ( nDOFX * nX(1)         ), nX(2) ) + iX_B0(2)
+      iX1    = MOD( (iN_X-1) / ( nDOFX                 ), nX(1) ) + iX_B0(1)
+      iNodeX = MOD( (iN_X-1)                            , nDOFX ) + 1
+      iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
+
+      PR_N(iN_E,iS,iN_X,iPR) = PR(iNodeZ,iE,iX1,iX2,iX3,iPR,iS)
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE MapDataForDiagnostics
 
 
   SUBROUTINE ComputeAndMapIncrement &

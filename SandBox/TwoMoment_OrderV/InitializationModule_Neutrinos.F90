@@ -1,11 +1,12 @@
 MODULE InitializationModule_Neutrinos
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, Two, SqrtTiny
+    DP, Zero, Half, One, Two, Three, TwoPi, SqrtTiny
   USE UnitsModule, ONLY: &
     Gram, &
     Centimeter, &
     Kilometer, &
+    Millisecond, &
     MeV, &
     Kelvin, &
     Erg, &
@@ -20,7 +21,8 @@ MODULE InitializationModule_Neutrinos
     iE_B0, iE_E0, &
     nDOFX, nDOFE
   USE ReferenceElementModuleX, ONLY: &
-    NodeNumberTableX
+    NodeNumberTableX, &
+    WeightsX1
   USE ReferenceElementModule, ONLY: &
     NodeNumberTable
   USE MeshModule, ONLY: &
@@ -57,19 +59,126 @@ MODULE InitializationModule_Neutrinos
 
   PUBLIC :: InitializeFields
   PUBLIC :: ComputeError
+  PUBLIC :: OpaqueDiffusionDomainLength
+  PUBLIC :: OpaqueDiffusionOpacity
+  PUBLIC :: OpaqueDiffusionDecayRate
+  PUBLIC :: OpaqueDiffusionAmplitude
+  PUBLIC :: OpaqueDiffusionBackground
+  PUBLIC :: VariableOpacityDiffusionMeanOpacity
+  PUBLIC :: SetVariableOpacityDiffusionMeanOpticalDepth
+  PUBLIC :: VariableOpacityDiffusionOpacity
+  PUBLIC :: VariableOpacityDiffusionDensitySource
+  PUBLIC :: ScatteringDiffusionDensitySource
+  PUBLIC :: AbsorptionDiffusionAbsorptionOpacity
+  PUBLIC :: AbsorptionDiffusionEquilibriumDensity
+  PUBLIC :: CoupledDiffusionAbsorptionOpacity
+  PUBLIC :: CoupledDiffusionEquilibriumSlope
+  PUBLIC :: CoupledDiffusionDecayRate
+
+  REAL(DP), PARAMETER :: OpaqueDiffusionDomainLength = One * Kilometer
+  REAL(DP), PARAMETER :: OpaqueDiffusionOpticalDepth = 1.0d2
+  REAL(DP), PARAMETER :: OpaqueDiffusionAmplitude    = 1.0d-4
+  REAL(DP), PARAMETER :: OpaqueDiffusionBackground   = 2.5d-1
+  REAL(DP), SAVE :: VariableOpacityDiffusionMeanOpticalDepth = 1.0d3
+  REAL(DP), PARAMETER :: VariableOpacityDiffusionContrast = 9.0d-1
+  REAL(DP), PARAMETER :: AbsorptionDiffusionAbsorptionFraction = 5.0d-1
+  REAL(DP), PARAMETER :: CoupledDiffusionEquilibriumSlope = One
+  REAL(DP), PARAMETER :: CoupledDiffusionTotalBackground = 5.0d-1
+  REAL(DP), PARAMETER :: CoupledDiffusionTotalAmplitude = 5.0d-5
+  REAL(DP), SAVE :: VariableOpacityDiffusionMeanOpacity &
+    = 1.0d3 / OpaqueDiffusionDomainLength
+  REAL(DP), SAVE :: ScatteringDiffusionSourceMean = Zero
+  REAL(DP), PARAMETER :: &
+    OpaqueDiffusionOpacity &
+      = OpaqueDiffusionOpticalDepth / OpaqueDiffusionDomainLength
 
 CONTAINS
 
 
-  SUBROUTINE InitializeFields( ProfileName, FileName )
+  SUBROUTINE SetVariableOpacityDiffusionMeanOpticalDepth( OpticalDepth )
+
+    REAL(DP), INTENT(in) :: OpticalDepth
+
+    IF( OpticalDepth <= Zero ) &
+      ERROR STOP 'Variable-opacity diffusion optical depth must be positive.'
+
+    VariableOpacityDiffusionMeanOpticalDepth = OpticalDepth
+    VariableOpacityDiffusionMeanOpacity &
+      = VariableOpacityDiffusionMeanOpticalDepth &
+          / OpaqueDiffusionDomainLength
+
+  END SUBROUTINE SetVariableOpacityDiffusionMeanOpticalDepth
+
+
+  SUBROUTINE InitializeFields( ProfileName, FileName, DnuMax_Option )
 
     CHARACTER(LEN=*), INTENT(in) :: ProfileName
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: FileName
+    REAL(DP), INTENT(in), OPTIONAL :: DnuMax_Option
 
     WRITE(*,*)
     WRITE(*,'(A2,A6,A)') '', 'INFO: ', TRIM( ProgramName )
 
     SELECT CASE( TRIM( ProgramName ) )
+
+       CASE( 'HomogeneousEquilibrium' )
+
+         IF( .NOT. PRESENT( DnuMax_Option ) ) &
+           ERROR STOP 'HomogeneousEquilibrium requires DnuMax_Option.'
+
+         CALL InitializeFields_LocalEquilibrium( '', DnuMax_Option )
+
+       CASE( 'VaryingLocalEquilibrium' )
+
+         IF( .NOT. PRESENT( DnuMax_Option ) ) &
+           ERROR STOP 'VaryingLocalEquilibrium requires DnuMax_Option.'
+
+         CALL InitializeFields_LocalEquilibrium &
+                ( ProfileName, DnuMax_Option )
+
+       CASE( 'ManufacturedOpaqueDiffusion' )
+
+         IF( .NOT. PRESENT( DnuMax_Option ) ) &
+           ERROR STOP 'ManufacturedOpaqueDiffusion requires DnuMax_Option.'
+
+         CALL InitializeFields_ManufacturedOpaqueDiffusion &
+                ( DnuMax_Option )
+
+       CASE( 'ManufacturedVariableDiffusion' )
+
+         IF( .NOT. PRESENT( DnuMax_Option ) ) &
+           ERROR STOP &
+             'ManufacturedVariableDiffusion requires DnuMax_Option.'
+
+         CALL InitializeFields_ManufacturedVariableOpacityDiffusion &
+                ( DnuMax_Option )
+
+       CASE( 'ScatteringDiffusionLimit' )
+
+         IF( .NOT. PRESENT( DnuMax_Option ) ) &
+           ERROR STOP &
+             'ScatteringDiffusionLimit requires DnuMax_Option.'
+
+         CALL InitializeScatteringDiffusionSourceMean
+
+         CALL InitializeFields_ManufacturedVariableOpacityDiffusion &
+                ( DnuMax_Option )
+
+       CASE( 'AbsorptionDiffusionBalance' )
+
+         IF( .NOT. PRESENT( DnuMax_Option ) ) &
+           ERROR STOP 'AbsorptionDiffusionBalance requires DnuMax_Option.'
+
+         CALL InitializeFields_AbsorptionDiffusionBalance &
+                ( DnuMax_Option )
+
+       CASE( 'CoupledAbsorptionDiffusion' )
+
+         IF( .NOT. PRESENT( DnuMax_Option ) ) &
+           ERROR STOP 'CoupledAbsorptionDiffusion requires DnuMax_Option.'
+
+         CALL InitializeFields_CoupledAbsorptionDiffusion &
+                ( DnuMax_Option )
 
        CASE( 'Relaxation' )
 
@@ -646,6 +755,736 @@ CONTAINS
   END SUBROUTINE InitializeFields_DeleptonizationWave1D
 
 
+  SUBROUTINE InitializeFields_LocalEquilibrium( ProfileName, DnuMax )
+
+    CHARACTER(LEN=*), INTENT(in) :: ProfileName
+    REAL(DP), INTENT(in) :: DnuMax
+
+    REAL(DP), PARAMETER :: D_0 = 3.0d14 * Gram / Centimeter**3
+    REAL(DP), PARAMETER :: T_0 = 1.2d11 * Kelvin
+    REAL(DP), PARAMETER :: Y_0 = 0.3_DP
+
+    INTEGER :: iE, iN_E, iN_X, iNodeE, iNodeX, iNodeX1, iNodeZ
+    INTEGER :: iR, iS, iX1, iX2, iX3
+    INTEGER :: nE_G, nX_G, nX_Local(3)
+    REAL(DP) :: R
+    REAL(DP), ALLOCATABLE :: E_N(:), D_N(:), T_N(:), Y_N(:)
+    REAL(DP), ALLOCATABLE :: Dnu_EQ(:,:,:)
+    REAL(DP), ALLOCATABLE :: R_P(:), D_P(:), T_P(:), Y_P(:)
+    LOGICAL :: UseProfile
+
+    UseProfile = LEN_TRIM( ProfileName ) > 0
+
+    IF( UseProfile )THEN
+      WRITE(*,*)
+      WRITE(*,'(A6,A,A)') '', &
+        'Initializing local equilibrium from Profile: ', TRIM( ProfileName )
+      CALL ReadFluidProfile( ProfileName, R_P, D_P, T_P, Y_P )
+    END IF
+
+    nE_G = nDOFE * ( iE_E0 - iE_B0 + 1 )
+    nX_Local = iX_E0 - iX_B0 + 1
+    nX_G = nDOFX * PRODUCT( nX_Local )
+
+    ALLOCATE( E_N(nE_G), D_N(nX_G), T_N(nX_G), Y_N(nX_G) )
+    ALLOCATE( Dnu_EQ(nE_G,nSpecies,nX_G) )
+
+    DO iE = iE_B0, iE_E0
+    DO iNodeE = 1, nDOFE
+
+      iN_E = ( iE - iE_B0 ) * nDOFE + iNodeE
+      E_N(iN_E) = NodeCoordinate( MeshE, iE, iNodeE )
+
+    END DO
+    END DO
+
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNodeX = 1, nDOFX
+
+      iN_X = iNodeX &
+             + ( iX1 - iX_B0(1) ) * nDOFX &
+             + ( iX2 - iX_B0(2) ) * nDOFX * nX_Local(1) &
+             + ( iX3 - iX_B0(3) ) * nDOFX &
+                 * nX_Local(1) * nX_Local(2)
+
+      IF( UseProfile )THEN
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        R = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        iR = MIN( MAX( Locate( R, R_P, SIZE(R_P) ), 1 ), SIZE(R_P)-1 )
+
+        D_N(iN_X) = Interpolate1D_Linear &
+          ( R, R_P(iR), R_P(iR+1), D_P(iR), D_P(iR+1) )
+        T_N(iN_X) = Interpolate1D_Linear &
+          ( R, R_P(iR), R_P(iR+1), T_P(iR), T_P(iR+1) )
+        Y_N(iN_X) = Interpolate1D_Linear &
+          ( R, R_P(iR), R_P(iR+1), Y_P(iR), Y_P(iR+1) )
+
+      ELSE
+
+        D_N(iN_X) = D_0
+        T_N(iN_X) = T_0
+        Y_N(iN_X) = Y_0
+
+      END IF
+
+      uPF(iNodeX,iX1,iX2,iX3,iPF_D ) = D_N(iN_X)
+      uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = Zero
+      uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
+      uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
+      uAF(iNodeX,iX1,iX2,iX3,iAF_T ) = T_N(iN_X)
+      uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = Y_N(iN_X)
+
+      CALL ComputeThermodynamicStates_Primitive_TABLE &
+             ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+               uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
+               uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+               uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) )
+
+      CALL ApplyEquationOfState_TABLE &
+             ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+               uAF(iNodeX,iX1,iX2,iX3,iAF_T ), &
+               uAF(iNodeX,iX1,iX2,iX3,iAF_Ye), &
+               uAF(iNodeX,iX1,iX2,iX3,iAF_P ), &
+               uAF(iNodeX,iX1,iX2,iX3,iAF_S ), &
+               uAF(iNodeX,iX1,iX2,iX3,iAF_E ), &
+               uAF(iNodeX,iX1,iX2,iX3,iAF_Me), &
+               uAF(iNodeX,iX1,iX2,iX3,iAF_Mp), &
+               uAF(iNodeX,iX1,iX2,iX3,iAF_Mn), &
+               uAF(iNodeX,iX1,iX2,iX3,iAF_Xp), &
+               uAF(iNodeX,iX1,iX2,iX3,iAF_Xn), &
+               uAF(iNodeX,iX1,iX2,iX3,iAF_Xa), &
+               uAF(iNodeX,iX1,iX2,iX3,iAF_Xh), &
+               uAF(iNodeX,iX1,iX2,iX3,iAF_Gm) )
+
+      CALL ComputeConserved_Euler_NonRelativistic &
+             ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+               uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
+               uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
+               uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
+               uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
+               uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
+               uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+               uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+    CALL ComputeEquilibriumDistributions_DG &
+           ( 1, nE_G, 1, nSpecies, 1, nX_G, &
+             E_N, D_N, T_N, Y_N, Dnu_EQ, DnuMax )
+
+    DO iS  = 1, nSpecies
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iE  = iE_B0, iE_E0
+    DO iNodeX = 1, nDOFX
+    DO iNodeE = 1, nDOFE
+
+      iN_E = ( iE - iE_B0 ) * nDOFE + iNodeE
+      iN_X = iNodeX &
+             + ( iX1 - iX_B0(1) ) * nDOFX &
+             + ( iX2 - iX_B0(2) ) * nDOFX * nX_Local(1) &
+             + ( iX3 - iX_B0(3) ) * nDOFX &
+                 * nX_Local(1) * nX_Local(2)
+      iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
+
+      uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS) = Dnu_EQ(iN_E,iS,iN_X)
+      uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS) = Zero
+      uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS) = Zero
+      uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS) = Zero
+
+      CALL ComputeConserved_TwoMoment &
+             ( uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS), &
+               uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS), &
+               uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS), &
+               uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS), &
+               uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_N ,iS), &
+               uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G1,iS), &
+               uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G2,iS), &
+               uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G3,iS), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
+               uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    DEALLOCATE( E_N, D_N, T_N, Y_N, Dnu_EQ )
+    IF( UseProfile ) DEALLOCATE( R_P, D_P, T_P, Y_P )
+
+  END SUBROUTINE InitializeFields_LocalEquilibrium
+
+
+  SUBROUTINE InitializeFields_ManufacturedOpaqueDiffusion( DnuMax )
+
+    REAL(DP), INTENT(in) :: DnuMax
+
+    INTEGER :: iE, iS, iX1, iX2, iX3
+    INTEGER :: iNodeE, iNodeX, iNodeX1, iNodeZ
+    REAL(DP) :: X, WaveNumber, DecayRate, FluxAmplitude
+    REAL(DP) :: Dnu, Inu_1
+
+    CALL InitializeFields_LocalEquilibrium( '', DnuMax )
+
+    WaveNumber = TwoPi / OpaqueDiffusionDomainLength
+    DecayRate = OpaqueDiffusionDecayRate()
+    FluxAmplitude &
+      = - DecayRate * OpaqueDiffusionBackground &
+          * OpaqueDiffusionAmplitude / WaveNumber
+
+    DO iS  = 1, nSpecies
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iE  = iE_B0, iE_E0
+    DO iNodeX = 1, nDOFX
+    DO iNodeE = 1, nDOFE
+
+      iNodeX1 = NodeNumberTableX(1,iNodeX)
+      iNodeZ  = ( iNodeX - 1 ) * nDOFE + iNodeE
+      X = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+      IF( iS == 1 )THEN
+        Dnu = OpaqueDiffusionBackground &
+          * ( One + OpaqueDiffusionAmplitude * COS( WaveNumber * X ) )
+        Inu_1 = FluxAmplitude * SIN( WaveNumber * X )
+      ELSE
+        Dnu = Half * OpaqueDiffusionBackground
+        Inu_1 = Zero
+      END IF
+
+      uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS) = Dnu
+      uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS) = Inu_1
+      uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS) = Zero
+      uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS) = Zero
+
+      CALL ComputeConserved_TwoMoment &
+             ( Dnu, Inu_1, Zero, Zero, &
+               uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_N ,iS), &
+               uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G1,iS), &
+               uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G2,iS), &
+               uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G3,iS), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
+               uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    WRITE(*,* )
+    WRITE(*,'(A)') 'Manufactured opaque-diffusion initial data:'
+    WRITE(*,'(A,ES14.6E3)') '  domain optical depth         = ', &
+      OpaqueDiffusionOpticalDepth
+    WRITE(*,'(A,ES14.6E3)') '  mean free path [km]          = ', &
+      ( One / OpaqueDiffusionOpacity ) / Kilometer
+    WRITE(*,'(A,ES14.6E3)') '  perturbation amplitude       = ', &
+      OpaqueDiffusionAmplitude
+    WRITE(*,'(A,ES14.6E3)') '  slow-mode decay rate [1/ms]  = ', &
+      OpaqueDiffusionDecayRate() * Millisecond
+    WRITE(*,* )
+
+  END SUBROUTINE InitializeFields_ManufacturedOpaqueDiffusion
+
+
+  SUBROUTINE InitializeFields_ManufacturedVariableOpacityDiffusion &
+    ( DnuMax )
+
+    REAL(DP), INTENT(in) :: DnuMax
+
+    INTEGER :: iE, iS, iX1, iX2, iX3
+    INTEGER :: iNodeE, iNodeX, iNodeX1, iNodeZ
+    REAL(DP) :: X, WaveNumber, Opacity
+    REAL(DP) :: Dnu, Inu_1
+
+    CALL InitializeFields_LocalEquilibrium( '', DnuMax )
+
+    WaveNumber = TwoPi / OpaqueDiffusionDomainLength
+
+    DO iS  = 1, nSpecies
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iE  = iE_B0, iE_E0
+    DO iNodeX = 1, nDOFX
+    DO iNodeE = 1, nDOFE
+
+      iNodeX1 = NodeNumberTableX(1,iNodeX)
+      iNodeZ  = ( iNodeX - 1 ) * nDOFE + iNodeE
+      X = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+      IF( iS == 1 )THEN
+        Opacity = VariableOpacityDiffusionOpacity( X )
+        Dnu = OpaqueDiffusionBackground &
+          * ( One + OpaqueDiffusionAmplitude * COS( WaveNumber * X ) )
+        Inu_1 = OpaqueDiffusionBackground * OpaqueDiffusionAmplitude &
+          * WaveNumber * SIN( WaveNumber * X ) / ( Three * Opacity )
+      ELSE
+        Dnu = Half * OpaqueDiffusionBackground
+        Inu_1 = Zero
+      END IF
+
+      uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS) = Dnu
+      uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS) = Inu_1
+      uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS) = Zero
+      uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS) = Zero
+
+      CALL ComputeConserved_TwoMoment &
+             ( Dnu, Inu_1, Zero, Zero, &
+               uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_N ,iS), &
+               uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G1,iS), &
+               uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G2,iS), &
+               uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G3,iS), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
+               uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    WRITE(*,* )
+    IF( TRIM( ProgramName ) == 'ScatteringDiffusionLimit' )THEN
+      WRITE(*,'(A)') &
+        'Variable-opacity scattering diffusion-limit initial data:'
+    ELSE
+      WRITE(*,'(A)') 'Manufactured variable-opacity diffusion initial data:'
+    END IF
+    WRITE(*,'(A,ES14.6E3)') '  mean domain optical depth    = ', &
+      VariableOpacityDiffusionMeanOpticalDepth
+    WRITE(*,'(A,ES14.6E3)') '  opacity contrast             = ', &
+      VariableOpacityDiffusionContrast
+    WRITE(*,'(A,2(1X,ES14.6E3))') '  opacity min/max [1/km]       = ', &
+      VariableOpacityDiffusionMeanOpacity &
+        * ( One - VariableOpacityDiffusionContrast ) * Kilometer, &
+      VariableOpacityDiffusionMeanOpacity &
+        * ( One + VariableOpacityDiffusionContrast ) * Kilometer
+    WRITE(*,* )
+
+  END SUBROUTINE InitializeFields_ManufacturedVariableOpacityDiffusion
+
+
+  SUBROUTINE InitializeFields_AbsorptionDiffusionBalance( DnuMax )
+
+    REAL(DP), INTENT(in) :: DnuMax
+
+    INTEGER :: iE, iS, iX1, iX2, iX3
+    INTEGER :: iNodeE, iNodeX, iNodeX1, iNodeZ
+    REAL(DP) :: X, WaveNumber, Opacity
+    REAL(DP) :: CellWidthMin, CellWidthMax
+    REAL(DP) :: Dnu, Inu_1
+
+    CALL InitializeFields_LocalEquilibrium( '', DnuMax )
+
+    ! The first species is initialized to the exact stationary balance
+    !
+    !   I_* = -(3*kappa_tr)^{-1} d_x D_*,
+    !   d_x I_* = kappa_a ( D_0 - D_* ).
+
+    WaveNumber = TwoPi / OpaqueDiffusionDomainLength
+
+    DO iS  = 1, nSpecies
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iE  = iE_B0, iE_E0
+    DO iNodeX = 1, nDOFX
+    DO iNodeE = 1, nDOFE
+
+      iNodeX1 = NodeNumberTableX(1,iNodeX)
+      iNodeZ  = ( iNodeX - 1 ) * nDOFE + iNodeE
+      X = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+
+      IF( iS == 1 )THEN
+        Opacity = VariableOpacityDiffusionOpacity( X )
+        Dnu = OpaqueDiffusionBackground &
+          * ( One + OpaqueDiffusionAmplitude * COS( WaveNumber * X ) )
+        Inu_1 = OpaqueDiffusionBackground * OpaqueDiffusionAmplitude &
+          * WaveNumber * SIN( WaveNumber * X ) / ( Three * Opacity )
+      ELSE
+        Dnu = Half * OpaqueDiffusionBackground
+        Inu_1 = Zero
+      END IF
+
+      uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS) = Dnu
+      uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS) = Inu_1
+      uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS) = Zero
+      uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS) = Zero
+
+      CALL ComputeConserved_TwoMoment &
+             ( Dnu, Inu_1, Zero, Zero, &
+               uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_N ,iS), &
+               uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G1,iS), &
+               uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G2,iS), &
+               uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G3,iS), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
+               uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    WRITE(*,* )
+    WRITE(*,'(A)') 'Absorption-diffusion balance initial data:'
+    WRITE(*,'(A,ES14.6E3)') '  mean transport optical depth = ', &
+      VariableOpacityDiffusionMeanOpticalDepth
+    CellWidthMin = MINVAL &
+      ( MeshX(1) % Width(iX_B0(1):iX_E0(1)) )
+    CellWidthMax = MAXVAL &
+      ( MeshX(1) % Width(iX_B0(1):iX_E0(1)) )
+    WRITE(*,'(A,2(1X,ES14.6E3))') &
+      '  cell optical-depth min/max = ', &
+      VariableOpacityDiffusionMeanOpacity &
+        * ( One - VariableOpacityDiffusionContrast ) * CellWidthMin, &
+      VariableOpacityDiffusionMeanOpacity &
+        * ( One + VariableOpacityDiffusionContrast ) * CellWidthMax
+    WRITE(*,'(A,ES14.6E3)') '  opacity contrast             = ', &
+      VariableOpacityDiffusionContrast
+    WRITE(*,'(A,ES14.6E3)') '  absorption fraction          = ', &
+      AbsorptionDiffusionAbsorptionFraction
+    WRITE(*,* )
+
+  END SUBROUTINE InitializeFields_AbsorptionDiffusionBalance
+
+
+  SUBROUTINE InitializeFields_CoupledAbsorptionDiffusion( DnuMax )
+
+    REAL(DP), INTENT(in) :: DnuMax
+
+    INTEGER :: iE, iS, iX1, iX2, iX3
+    INTEGER :: iNodeE, iNodeX, iNodeX1, iNodeZ
+    REAL(DP) :: X, Angle, WaveNumber, DecayRate
+    REAL(DP) :: RadiationFraction, EquilibriumRadiationFraction
+    REAL(DP) :: Dnu, Matter, Inu_1
+
+    IF( nSpecies /= 2 ) &
+      ERROR STOP 'CoupledAbsorptionDiffusion requires exactly two species.'
+
+    CALL InitializeFields_LocalEquilibrium( '', DnuMax )
+
+    WaveNumber = TwoPi / OpaqueDiffusionDomainLength
+    DecayRate = CoupledDiffusionDecayRate()
+    RadiationFraction = CoupledDiffusionRadiationFraction( DecayRate )
+    EquilibriumRadiationFraction &
+      = CoupledDiffusionEquilibriumSlope &
+          / ( One + CoupledDiffusionEquilibriumSlope )
+
+    DO iS  = 1, nSpecies
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iE  = iE_B0, iE_E0
+    DO iNodeX = 1, nDOFX
+    DO iNodeE = 1, nDOFE
+
+      iNodeX1 = NodeNumberTableX(1,iNodeX)
+      iNodeZ  = ( iNodeX - 1 ) * nDOFE + iNodeE
+      X = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+      Angle = WaveNumber * X
+
+      IF( iS == 1 )THEN
+        Dnu = EquilibriumRadiationFraction &
+                * CoupledDiffusionTotalBackground &
+              + RadiationFraction * CoupledDiffusionTotalAmplitude &
+                  * COS( Angle )
+        Inu_1 = - DecayRate * CoupledDiffusionTotalAmplitude &
+          * SIN( Angle ) / WaveNumber
+      ELSE
+        Matter = ( One - EquilibriumRadiationFraction ) &
+                   * CoupledDiffusionTotalBackground &
+                 + ( One - RadiationFraction ) &
+                     * CoupledDiffusionTotalAmplitude * COS( Angle )
+        Dnu = Matter
+        Inu_1 = Zero
+      END IF
+
+      uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS) = Dnu
+      uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS) = Inu_1
+      uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS) = Zero
+      uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS) = Zero
+
+      CALL ComputeConserved_TwoMoment &
+             ( Dnu, Inu_1, Zero, Zero, &
+               uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_N ,iS), &
+               uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G1,iS), &
+               uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G2,iS), &
+               uCR(iNodeZ,iE,iX1,iX2,iX3,iCR_G3,iS), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_V1), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
+               uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
+               uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
+               uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
+               uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+    WRITE(*,* )
+    WRITE(*,'(A)') 'Coupled absorption-diffusion initial data:'
+    WRITE(*,'(A,ES14.6E3)') '  transport optical depth      = ', &
+      VariableOpacityDiffusionMeanOpticalDepth
+    WRITE(*,'(A,ES14.6E3)') '  absorption fraction          = ', &
+      AbsorptionDiffusionAbsorptionFraction
+    WRITE(*,'(A,ES14.6E3)') '  equilibrium slope dD0/dM     = ', &
+      CoupledDiffusionEquilibriumSlope
+    WRITE(*,'(A,ES14.6E3)') '  exact slow decay rate [1/ms] = ', &
+      DecayRate * Millisecond
+    WRITE(*,* )
+
+  END SUBROUTINE InitializeFields_CoupledAbsorptionDiffusion
+
+
+  REAL(DP) FUNCTION VariableOpacityDiffusionOpacity( X ) RESULT( Opacity )
+
+    REAL(DP), INTENT(in) :: X
+
+    Opacity = VariableOpacityDiffusionMeanOpacity &
+      * ( One + VariableOpacityDiffusionContrast &
+          * COS( TwoPi * X / OpaqueDiffusionDomainLength ) )
+
+  END FUNCTION VariableOpacityDiffusionOpacity
+
+
+  REAL(DP) FUNCTION VariableOpacityDiffusionDensitySource( X ) &
+    RESULT( Source )
+
+    REAL(DP), INTENT(in) :: X
+
+    REAL(DP) :: Angle, Denominator, WaveNumber
+
+    WaveNumber = TwoPi / OpaqueDiffusionDomainLength
+    Angle = WaveNumber * X
+    Denominator = One &
+      + VariableOpacityDiffusionContrast * COS( Angle )
+
+    Source = OpaqueDiffusionBackground * OpaqueDiffusionAmplitude &
+      * WaveNumber**2 / ( Three * VariableOpacityDiffusionMeanOpacity ) &
+      * (   COS( Angle ) / Denominator &
+          + VariableOpacityDiffusionContrast * SIN( Angle )**2 &
+              / Denominator**2 )
+
+  END FUNCTION VariableOpacityDiffusionDensitySource
+
+
+  REAL(DP) FUNCTION ScatteringDiffusionDensitySource( X ) &
+    RESULT( Source )
+
+    REAL(DP), INTENT(in) :: X
+
+    Source = VariableOpacityDiffusionDensitySource( X ) &
+      - ScatteringDiffusionSourceMean
+
+  END FUNCTION ScatteringDiffusionDensitySource
+
+
+  SUBROUTINE InitializeScatteringDiffusionSourceMean
+
+    INTEGER :: iX1, iNodeX, iNodeX1
+    REAL(DP) :: X, Weight, DomainVolume, SourceScale
+
+    ScatteringDiffusionSourceMean = Zero
+    DomainVolume = Zero
+
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNodeX = 1, nDOFX
+
+      iNodeX1 = NodeNumberTableX(1,iNodeX)
+      X = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+      Weight = WeightsX1(iNodeX1) * MeshX(1) % Width(iX1)
+
+      ScatteringDiffusionSourceMean &
+        = ScatteringDiffusionSourceMean &
+            + Weight * VariableOpacityDiffusionDensitySource( X )
+      DomainVolume = DomainVolume + Weight
+
+    END DO
+    END DO
+
+    ScatteringDiffusionSourceMean &
+      = ScatteringDiffusionSourceMean / DomainVolume
+
+    SourceScale = OpaqueDiffusionBackground * OpaqueDiffusionAmplitude &
+      * ( TwoPi / OpaqueDiffusionDomainLength )**2 &
+      / ( Three * VariableOpacityDiffusionMeanOpacity )
+
+    WRITE(*,'(A,ES14.6E3)') &
+      '  removed discrete source mean / source scale = ', &
+      ScatteringDiffusionSourceMean / SourceScale
+    WRITE(*,* )
+
+  END SUBROUTINE InitializeScatteringDiffusionSourceMean
+
+
+  REAL(DP) FUNCTION AbsorptionDiffusionAbsorptionOpacity( X ) &
+    RESULT( Opacity )
+
+    REAL(DP), INTENT(in) :: X
+
+    Opacity = AbsorptionDiffusionAbsorptionFraction &
+      * VariableOpacityDiffusionOpacity( X )
+
+  END FUNCTION AbsorptionDiffusionAbsorptionOpacity
+
+
+  REAL(DP) FUNCTION AbsorptionDiffusionEquilibriumDensity( X ) &
+    RESULT( Dnu_0 )
+
+    REAL(DP), INTENT(in) :: X
+
+    REAL(DP) :: Dnu, WaveNumber
+
+    WaveNumber = TwoPi / OpaqueDiffusionDomainLength
+    Dnu = OpaqueDiffusionBackground &
+      * ( One + OpaqueDiffusionAmplitude * COS( WaveNumber * X ) )
+
+    ! VariableOpacityDiffusionDensitySource is d_x I_*.
+    Dnu_0 = Dnu + VariableOpacityDiffusionDensitySource( X ) &
+      / AbsorptionDiffusionAbsorptionOpacity( X )
+
+  END FUNCTION AbsorptionDiffusionEquilibriumDensity
+
+
+  REAL(DP) FUNCTION CoupledDiffusionAbsorptionOpacity() RESULT( Opacity )
+
+    Opacity = AbsorptionDiffusionAbsorptionFraction &
+      * VariableOpacityDiffusionMeanOpacity
+
+  END FUNCTION CoupledDiffusionAbsorptionOpacity
+
+
+  REAL(DP) FUNCTION CoupledDiffusionDecayRate() RESULT( DecayRate )
+
+    INTEGER, PARAMETER :: MaxIterations = 50
+    INTEGER :: iIteration
+    REAL(DP) :: WaveNumber, TransportOpacity, AbsorptionOpacity
+    REAL(DP) :: EquilibriumFraction, A, F, dF, Correction
+
+    WaveNumber = TwoPi / OpaqueDiffusionDomainLength
+    TransportOpacity = VariableOpacityDiffusionMeanOpacity
+    AbsorptionOpacity = CoupledDiffusionAbsorptionOpacity()
+    EquilibriumFraction = CoupledDiffusionEquilibriumSlope &
+      / ( One + CoupledDiffusionEquilibriumSlope )
+    A = AbsorptionOpacity &
+      * ( One + CoupledDiffusionEquilibriumSlope )
+
+    DecayRate = - EquilibriumFraction * WaveNumber**2 &
+      / ( Three * TransportOpacity )
+
+    DO iIteration = 1, MaxIterations
+
+      F = Three * DecayRate * ( DecayRate + TransportOpacity ) &
+            * ( DecayRate + A ) &
+          + WaveNumber**2 &
+              * ( DecayRate &
+                  + AbsorptionOpacity * CoupledDiffusionEquilibriumSlope )
+      dF = Three &
+             * (   ( DecayRate + TransportOpacity ) * ( DecayRate + A ) &
+                 + DecayRate * ( DecayRate + A ) &
+                 + DecayRate * ( DecayRate + TransportOpacity ) ) &
+           + WaveNumber**2
+      Correction = F / dF
+      DecayRate = DecayRate - Correction
+
+      IF( ABS( Correction ) &
+            <= 10.0_DP * EPSILON( One ) * MAX( ABS( DecayRate ), One ) ) &
+        EXIT
+
+    END DO
+
+    IF( DecayRate >= Zero .OR. iIteration > MaxIterations ) &
+      ERROR STOP 'Unable to determine coupled diffusion slow decay rate.'
+
+  END FUNCTION CoupledDiffusionDecayRate
+
+
+  REAL(DP) FUNCTION CoupledDiffusionRadiationFraction( DecayRate ) &
+    RESULT( Fraction )
+
+    REAL(DP), INTENT(in) :: DecayRate
+
+    REAL(DP) :: AbsorptionOpacity
+
+    AbsorptionOpacity = CoupledDiffusionAbsorptionOpacity()
+    Fraction &
+      = ( DecayRate &
+          + AbsorptionOpacity * CoupledDiffusionEquilibriumSlope ) &
+          / ( DecayRate &
+              + AbsorptionOpacity &
+                  * ( One + CoupledDiffusionEquilibriumSlope ) )
+
+  END FUNCTION CoupledDiffusionRadiationFraction
+
+
+  REAL(DP) FUNCTION OpaqueDiffusionDecayRate() RESULT( DecayRate )
+
+    REAL(DP) :: WaveNumber, Q, Discriminant
+
+    ! For d_t D + d_x I = 0, d_t I + d_x(D/3) = -kappa I,
+    ! the slow periodic mode satisfies s^2 + kappa*s + k^2/3 = 0.
+    ! This form avoids cancellation in the opaque limit.
+    WaveNumber = TwoPi / OpaqueDiffusionDomainLength
+    Q = WaveNumber**2 / Three
+    Discriminant = OpaqueDiffusionOpacity**2 - 4.0_DP * Q
+
+    IF( Discriminant <= Zero ) &
+      ERROR STOP 'Manufactured opaque-diffusion mode is not overdamped.'
+
+    DecayRate = - Two * Q &
+      / ( OpaqueDiffusionOpacity + SQRT( Discriminant ) )
+
+  END FUNCTION OpaqueDiffusionDecayRate
+
+
   SUBROUTINE InitializeFields_EquilibriumAdvection
 
     REAL(DP), PARAMETER :: D_0   = 3.0d14 * Gram / Centimeter**3
@@ -908,6 +1747,26 @@ CONTAINS
 
          CALL ComputeError_EquilibriumAdvection
 
+       CASE( 'ManufacturedOpaqueDiffusion' )
+
+         CALL ComputeError_ManufacturedOpaqueDiffusion( t )
+
+       CASE( 'ManufacturedVariableDiffusion' )
+
+         CALL ComputeError_ManufacturedVariableOpacityDiffusion( t )
+
+       CASE( 'ScatteringDiffusionLimit' )
+
+         CALL ComputeError_ManufacturedVariableOpacityDiffusion( t )
+
+       CASE( 'AbsorptionDiffusionBalance' )
+
+         CALL ComputeError_AbsorptionDiffusionBalance( t )
+
+       CASE( 'CoupledAbsorptionDiffusion' )
+
+         CALL ComputeError_CoupledAbsorptionDiffusion( t )
+
     END SELECT
 
   END SUBROUTINE ComputeError
@@ -1042,6 +1901,702 @@ CONTAINS
     WRITE(*,*)
 
   END SUBROUTINE ComputeError_EquilibriumAdvection
+
+
+  SUBROUTINE ComputeError_ManufacturedOpaqueDiffusion( t )
+
+    REAL(DP), INTENT(in) :: t
+
+    INTEGER :: iNodeX, iNodeX1, iNodeZ, iX1
+    INTEGER :: OutputUnit
+    REAL(DP) :: X, Weight, CellError
+    REAL(DP) :: WaveNumber, DecayRate, DecayFactor
+    REAL(DP) :: DiffusionDecayFactor
+    REAL(DP) :: DensityAmplitude, FluxAmplitude
+    REAL(DP) :: DiffusionFluxAmplitude
+    REAL(DP) :: DnuNumerical, DnuExact, DnuDiffusion
+    REAL(DP) :: InuNumerical, InuExact, InuDiffusion
+    REAL(DP) :: DensityL1, DensityL2, DensityLInf
+    REAL(DP) :: FluxL1, FluxL2, FluxLInf
+    REAL(DP) :: DensityCosCoefficient, FluxSinCoefficient
+    REAL(DP) :: MeanDensityError, CheckerboardAmplitude
+    REAL(DP) :: DiffusionDecayRate, RateDifference
+    REAL(DP) :: DensityModeErrorP1, DensityModeErrorDiffusion
+    REAL(DP) :: FluxModeErrorP1, FluxModeErrorDiffusion
+
+    WaveNumber = TwoPi / OpaqueDiffusionDomainLength
+    DecayRate = OpaqueDiffusionDecayRate()
+    DecayFactor = EXP( DecayRate * t )
+    DensityAmplitude &
+      = OpaqueDiffusionBackground * OpaqueDiffusionAmplitude
+    FluxAmplitude = - DecayRate * DensityAmplitude / WaveNumber
+    DiffusionDecayRate = - WaveNumber**2 &
+      / ( Three * OpaqueDiffusionOpacity )
+    DiffusionDecayFactor = EXP( DiffusionDecayRate * t )
+    DiffusionFluxAmplitude &
+      = DensityAmplitude * WaveNumber / ( Three * OpaqueDiffusionOpacity )
+
+    DensityL1 = Zero
+    DensityL2 = Zero
+    DensityLInf = Zero
+    FluxL1 = Zero
+    FluxL2 = Zero
+    FluxLInf = Zero
+    DensityCosCoefficient = Zero
+    FluxSinCoefficient = Zero
+    MeanDensityError = Zero
+    CheckerboardAmplitude = Zero
+
+    OPEN( NEWUNIT = OutputUnit, &
+          FILE = 'manufactured_opaque_diffusion.dat', &
+          STATUS = 'REPLACE', ACTION = 'WRITE' )
+    WRITE(OutputUnit,'(A)') &
+      '# x_km D_num D_P1 D_diff I1_num I1_P1 I1_diff D_error I1_error'
+
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      CellError = Zero
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeZ = ( iNodeX - 1 ) * nDOFE + 1
+        X = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        Weight = WeightsX1(iNodeX1) * MeshX(1) % Width(iX1)
+
+        DnuNumerical = uPR(iNodeZ,iE_B0,iX1,iX_B0(2),iX_B0(3),iPR_D,1)
+        InuNumerical = uPR(iNodeZ,iE_B0,iX1,iX_B0(2),iX_B0(3),iPR_I1,1)
+        DnuExact = OpaqueDiffusionBackground &
+          + DensityAmplitude * DecayFactor * COS( WaveNumber * X )
+        InuExact = FluxAmplitude * DecayFactor * SIN( WaveNumber * X )
+        DnuDiffusion = OpaqueDiffusionBackground &
+          + DensityAmplitude * DiffusionDecayFactor * COS( WaveNumber * X )
+        InuDiffusion &
+          = DiffusionFluxAmplitude * DiffusionDecayFactor &
+              * SIN( WaveNumber * X )
+
+        DensityL1 = DensityL1 + Weight * ABS( DnuNumerical - DnuExact )
+        DensityL2 = DensityL2 + Weight * ( DnuNumerical - DnuExact )**2
+        DensityLInf = MAX( DensityLInf, ABS( DnuNumerical - DnuExact ) )
+        FluxL1 = FluxL1 + Weight * ABS( InuNumerical - InuExact )
+        FluxL2 = FluxL2 + Weight * ( InuNumerical - InuExact )**2
+        FluxLInf = MAX( FluxLInf, ABS( InuNumerical - InuExact ) )
+
+        DensityCosCoefficient = DensityCosCoefficient &
+          + Weight * ( DnuNumerical - OpaqueDiffusionBackground ) &
+              * COS( WaveNumber * X )
+        FluxSinCoefficient = FluxSinCoefficient &
+          + Weight * InuNumerical * SIN( WaveNumber * X )
+        MeanDensityError = MeanDensityError &
+          + Weight * ( DnuNumerical - OpaqueDiffusionBackground )
+
+        CellError = CellError + Weight * ( DnuNumerical - DnuExact )
+
+        WRITE(OutputUnit,'(9(ES24.16E3,1X))') &
+          X / Kilometer, DnuNumerical, DnuExact, DnuDiffusion, &
+          InuNumerical, InuExact, InuDiffusion, &
+          DnuNumerical - DnuExact, InuNumerical - InuExact
+
+      END DO
+
+      CheckerboardAmplitude = CheckerboardAmplitude &
+        + (-One)**(iX1-iX_B0(1)) * CellError
+
+    END DO
+
+    CLOSE( OutputUnit )
+
+    DensityL1 = DensityL1 &
+      / ( DensityAmplitude * OpaqueDiffusionDomainLength )
+    DensityL2 = SQRT( DensityL2 / OpaqueDiffusionDomainLength ) &
+      / DensityAmplitude
+    DensityLInf = DensityLInf / DensityAmplitude
+    FluxL1 = FluxL1 &
+      / ( FluxAmplitude * OpaqueDiffusionDomainLength )
+    FluxL2 = SQRT( FluxL2 / OpaqueDiffusionDomainLength ) &
+      / FluxAmplitude
+    FluxLInf = FluxLInf / FluxAmplitude
+
+    DensityCosCoefficient &
+      = Two * DensityCosCoefficient / OpaqueDiffusionDomainLength
+    FluxSinCoefficient &
+      = Two * FluxSinCoefficient / OpaqueDiffusionDomainLength
+    MeanDensityError = MeanDensityError &
+      / ( DensityAmplitude * OpaqueDiffusionDomainLength )
+    CheckerboardAmplitude = ABS( CheckerboardAmplitude ) &
+      / ( DensityAmplitude * OpaqueDiffusionDomainLength )
+
+    RateDifference = ABS( ( DecayRate - DiffusionDecayRate ) / DecayRate )
+    DensityModeErrorP1 = ABS &
+      ( DensityCosCoefficient - DensityAmplitude * DecayFactor ) &
+      / ABS( DensityAmplitude * DecayFactor )
+    DensityModeErrorDiffusion = ABS &
+      ( DensityCosCoefficient - DensityAmplitude * DiffusionDecayFactor ) &
+      / ABS( DensityAmplitude * DiffusionDecayFactor )
+    FluxModeErrorP1 = ABS &
+      ( FluxSinCoefficient - FluxAmplitude * DecayFactor ) &
+      / ABS( FluxAmplitude * DecayFactor )
+    FluxModeErrorDiffusion = ABS &
+      ( FluxSinCoefficient &
+          - DiffusionFluxAmplitude * DiffusionDecayFactor ) &
+      / ABS( DiffusionFluxAmplitude * DiffusionDecayFactor )
+
+    WRITE(*,* )
+    WRITE(*,'(A)') 'Manufactured opaque-diffusion error:'
+    WRITE(*,'(A,ES14.6E3)') '  elapsed slow-mode e-foldings = ', &
+      - DecayRate * t
+    WRITE(*,'(A,ES14.6E3)') '  P1/diffusion rate difference = ', &
+      RateDifference
+    WRITE(*,'(A,3(1X,ES14.6E3))') '  density rel. L1/L2/Linf     = ', &
+      DensityL1, DensityL2, DensityLInf
+    WRITE(*,'(A,3(1X,ES14.6E3))') '  flux rel. L1/L2/Linf        = ', &
+      FluxL1, FluxL2, FluxLInf
+    WRITE(*,'(A,2(1X,ES14.6E3))') '  density cos coeff num/exact = ', &
+      DensityCosCoefficient, DensityAmplitude * DecayFactor
+    WRITE(*,'(A,2(1X,ES14.6E3))') '  density cos rel. err P1/diff= ', &
+      DensityModeErrorP1, DensityModeErrorDiffusion
+    WRITE(*,'(A,2(1X,ES14.6E3))') '  flux sin coeff num/exact    = ', &
+      FluxSinCoefficient, FluxAmplitude * DecayFactor
+    WRITE(*,'(A,2(1X,ES14.6E3))') '  flux sin rel. err P1/diff   = ', &
+      FluxModeErrorP1, FluxModeErrorDiffusion
+    WRITE(*,'(A,ES14.6E3)') '  mean density rel. error      = ', &
+      MeanDensityError
+    WRITE(*,'(A,ES14.6E3)') '  checkerboard error amplitude = ', &
+      CheckerboardAmplitude
+    WRITE(*,'(A)') &
+      '  profile: manufactured_opaque_diffusion.dat'
+    WRITE(*,* )
+
+  END SUBROUTINE ComputeError_ManufacturedOpaqueDiffusion
+
+
+  SUBROUTINE ComputeError_ManufacturedVariableOpacityDiffusion( t )
+
+    REAL(DP), INTENT(in) :: t
+
+    INTEGER :: iNodeX, iNodeX1, iNodeZ, iX1
+    INTEGER :: OutputUnit
+    REAL(DP) :: X, Weight, CellError
+    REAL(DP) :: WaveNumber, Opacity
+    REAL(DP) :: DensityAmplitude, FluxScale
+    REAL(DP) :: DnuNumerical, DnuExact, InuNumerical, InuExact
+    REAL(DP) :: DensityL1, DensityL2, DensityLInf
+    REAL(DP) :: FluxL1, FluxL2, FluxLInf
+    REAL(DP) :: MeanDensityError, CheckerboardAmplitude
+    REAL(DP) :: FaceJumpL2, FaceJumpLInf
+    LOGICAL :: ScatteringDiffusionLimitTest
+    CHARACTER(64) :: ProfileFileName
+
+    ScatteringDiffusionLimitTest &
+      = TRIM( ProgramName ) == 'ScatteringDiffusionLimit'
+
+    IF( ScatteringDiffusionLimitTest )THEN
+      ProfileFileName = 'scattering_diffusion_limit.dat'
+    ELSE
+      ProfileFileName = 'manufactured_variable_opacity_diffusion.dat'
+    END IF
+
+    WaveNumber = TwoPi / OpaqueDiffusionDomainLength
+    DensityAmplitude &
+      = OpaqueDiffusionBackground * OpaqueDiffusionAmplitude
+    FluxScale = DensityAmplitude * WaveNumber &
+      / ( Three * VariableOpacityDiffusionMeanOpacity )
+
+    DensityL1 = Zero
+    DensityL2 = Zero
+    DensityLInf = Zero
+    FluxL1 = Zero
+    FluxL2 = Zero
+    FluxLInf = Zero
+    MeanDensityError = Zero
+    CheckerboardAmplitude = Zero
+
+    OPEN( NEWUNIT = OutputUnit, &
+          FILE = TRIM( ProfileFileName ), &
+          STATUS = 'REPLACE', ACTION = 'WRITE' )
+    WRITE(OutputUnit,'(A)') &
+      '# x_km kappa_per_km D_num D_exact I1_num I1_exact D_error I1_error'
+
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      CellError = Zero
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeZ = ( iNodeX - 1 ) * nDOFE + 1
+        X = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        Weight = WeightsX1(iNodeX1) * MeshX(1) % Width(iX1)
+        Opacity = VariableOpacityDiffusionOpacity( X )
+
+        DnuNumerical = uPR(iNodeZ,iE_B0,iX1,iX_B0(2),iX_B0(3),iPR_D,1)
+        InuNumerical = uPR(iNodeZ,iE_B0,iX1,iX_B0(2),iX_B0(3),iPR_I1,1)
+        DnuExact = OpaqueDiffusionBackground &
+          + DensityAmplitude * COS( WaveNumber * X )
+        InuExact = DensityAmplitude * WaveNumber * SIN( WaveNumber * X ) &
+          / ( Three * Opacity )
+
+        DensityL1 = DensityL1 + Weight * ABS( DnuNumerical - DnuExact )
+        DensityL2 = DensityL2 + Weight * ( DnuNumerical - DnuExact )**2
+        DensityLInf = MAX( DensityLInf, ABS( DnuNumerical - DnuExact ) )
+        FluxL1 = FluxL1 + Weight * ABS( InuNumerical - InuExact )
+        FluxL2 = FluxL2 + Weight * ( InuNumerical - InuExact )**2
+        FluxLInf = MAX( FluxLInf, ABS( InuNumerical - InuExact ) )
+        MeanDensityError = MeanDensityError &
+          + Weight * ( DnuNumerical - DnuExact )
+        CellError = CellError + Weight * ( DnuNumerical - DnuExact )
+
+        WRITE(OutputUnit,'(8(ES24.16E3,1X))') &
+          X / Kilometer, Opacity * Kilometer, &
+          DnuNumerical, DnuExact, InuNumerical, InuExact, &
+          DnuNumerical - DnuExact, InuNumerical - InuExact
+
+      END DO
+
+      CheckerboardAmplitude = CheckerboardAmplitude &
+        + (-One)**(iX1-iX_B0(1)) * CellError
+
+    END DO
+
+    CLOSE( OutputUnit )
+
+    DensityL1 = DensityL1 &
+      / ( DensityAmplitude * OpaqueDiffusionDomainLength )
+    DensityL2 = SQRT( DensityL2 / OpaqueDiffusionDomainLength ) &
+      / DensityAmplitude
+    DensityLInf = DensityLInf / DensityAmplitude
+    FluxL1 = FluxL1 / ( FluxScale * OpaqueDiffusionDomainLength )
+    FluxL2 = SQRT( FluxL2 / OpaqueDiffusionDomainLength ) / FluxScale
+    FluxLInf = FluxLInf / FluxScale
+    MeanDensityError = MeanDensityError &
+      / ( DensityAmplitude * OpaqueDiffusionDomainLength )
+    CheckerboardAmplitude = ABS( CheckerboardAmplitude ) &
+      / ( DensityAmplitude * OpaqueDiffusionDomainLength )
+
+    IF( ScatteringDiffusionLimitTest )THEN
+
+      CALL ComputeScatteringDiffusionFaceJumps &
+             ( DensityAmplitude, FaceJumpL2, FaceJumpLInf )
+
+      WRITE(*,* )
+      WRITE(*,'(A)') 'Variable-opacity scattering diffusion-limit error:'
+      WRITE(*,'(A,ES14.6E3)') '  elapsed light-crossing times = ', &
+        t / OpaqueDiffusionDomainLength
+      WRITE(*,'(A,ES14.6E3)') '  nominal diffusion e-foldings= ', &
+        t * ( TwoPi / OpaqueDiffusionDomainLength )**2 &
+          / ( Three * VariableOpacityDiffusionMeanOpacity )
+
+    ELSE
+
+      FaceJumpL2   = Zero
+      FaceJumpLInf = Zero
+
+      WRITE(*,* )
+      WRITE(*,'(A)') 'Manufactured variable-opacity diffusion error:'
+      WRITE(*,'(A,ES14.6E3)') '  elapsed light-crossing times = ', &
+        t / OpaqueDiffusionDomainLength
+
+    END IF
+
+    WRITE(*,'(A,3(1X,ES14.6E3))') '  density rel. L1/L2/Linf     = ', &
+      DensityL1, DensityL2, DensityLInf
+    WRITE(*,'(A,3(1X,ES14.6E3))') '  flux rel. L1/L2/Linf        = ', &
+      FluxL1, FluxL2, FluxLInf
+    WRITE(*,'(A,ES14.6E3)') '  mean density rel. error      = ', &
+      MeanDensityError
+    WRITE(*,'(A,ES14.6E3)') '  checkerboard error amplitude = ', &
+      CheckerboardAmplitude
+    IF( ScatteringDiffusionLimitTest )THEN
+      WRITE(*,'(A,2(1X,ES14.6E3))') &
+        '  density face-jump rel. L2/Linf = ', FaceJumpL2, FaceJumpLInf
+      WRITE(*,'(A,2(1X,ES14.6E3))') &
+        '  optical-depth-scaled jumps    = ', &
+        VariableOpacityDiffusionMeanOpticalDepth * FaceJumpL2, &
+        VariableOpacityDiffusionMeanOpticalDepth * FaceJumpLInf
+      WRITE(*,'(A)') '  profile: scattering_diffusion_limit.dat'
+      WRITE(*,'(A)') '  faces:   scattering_diffusion_limit_faces.dat'
+    ELSE
+      WRITE(*,'(A)') &
+        '  profile: manufactured_variable_opacity_diffusion.dat'
+    END IF
+    WRITE(*,* )
+
+  END SUBROUTINE ComputeError_ManufacturedVariableOpacityDiffusion
+
+
+  SUBROUTINE ComputeScatteringDiffusionFaceJumps &
+    ( DensityAmplitude, FaceJumpL2, FaceJumpLInf )
+
+    USE ProgramHeaderModule, ONLY: &
+      nDOFZ
+    USE ReferenceElementModule_Lagrange, ONLY: &
+      L_X1_Dn, L_X1_Up
+
+    REAL(DP), INTENT(in)  :: DensityAmplitude
+    REAL(DP), INTENT(out) :: FaceJumpL2, FaceJumpLInf
+
+    INTEGER :: iX1, iX1_P, nFaces, OutputUnit
+    REAL(DP) :: X_Face, Dnu_M, Dnu_P, Jump
+
+    FaceJumpL2   = Zero
+    FaceJumpLInf = Zero
+    nFaces       = iX_E0(1) - iX_B0(1) + 1
+
+    OPEN( NEWUNIT = OutputUnit, &
+          FILE = 'scattering_diffusion_limit_faces.dat', &
+          STATUS = 'REPLACE', ACTION = 'WRITE' )
+    WRITE(OutputUnit,'(A)') '# x_face_km D_minus D_plus jump'
+
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      IF( iX1 < iX_E0(1) )THEN
+        iX1_P = iX1 + 1
+      ELSE
+        iX1_P = iX_B0(1)
+      END IF
+
+      Dnu_M = DOT_PRODUCT &
+        ( L_X1_Up(1,1:nDOFZ), &
+          uCR(1:nDOFZ,iE_B0,iX1,  iX_B0(2),iX_B0(3),iCR_N,1) )
+      Dnu_P = DOT_PRODUCT &
+        ( L_X1_Dn(1,1:nDOFZ), &
+          uCR(1:nDOFZ,iE_B0,iX1_P,iX_B0(2),iX_B0(3),iCR_N,1) )
+
+      Jump = Dnu_P - Dnu_M
+      X_Face = MeshX(1) % Center(iX1) &
+        + Half * MeshX(1) % Width(iX1)
+
+      FaceJumpL2   = FaceJumpL2 + Jump**2
+      FaceJumpLInf = MAX( FaceJumpLInf, ABS( Jump ) )
+
+      WRITE(OutputUnit,'(4(ES24.16E3,1X))') &
+        X_Face / Kilometer, Dnu_M, Dnu_P, Jump
+
+    END DO
+
+    CLOSE( OutputUnit )
+
+    FaceJumpL2 = SQRT( FaceJumpL2 / REAL( nFaces, DP ) ) &
+      / DensityAmplitude
+    FaceJumpLInf = FaceJumpLInf / DensityAmplitude
+
+  END SUBROUTINE ComputeScatteringDiffusionFaceJumps
+
+
+  SUBROUTINE ComputeError_AbsorptionDiffusionBalance( t )
+
+    REAL(DP), INTENT(in) :: t
+
+    INTEGER :: iNodeX, iNodeX1, iNodeZ, iX1
+    INTEGER :: OutputUnit
+    REAL(DP) :: X, Weight, CellSourceError
+    REAL(DP) :: WaveNumber, TransportOpacity, AbsorptionOpacity
+    REAL(DP) :: DensityAmplitude, FluxScale, SourceScale
+    REAL(DP) :: DnuNumerical, DnuExact, Dnu_0
+    REAL(DP) :: InuNumerical, InuExact
+    REAL(DP) :: SourceNumerical, SourceExact
+    REAL(DP) :: DensityL1, DensityL2, DensityLInf
+    REAL(DP) :: FluxL1, FluxL2, FluxLInf
+    REAL(DP) :: SourceL1, SourceL2, SourceLInf
+    REAL(DP) :: MeanSourceError, CheckerboardAmplitude
+
+    WaveNumber = TwoPi / OpaqueDiffusionDomainLength
+    DensityAmplitude &
+      = OpaqueDiffusionBackground * OpaqueDiffusionAmplitude
+    FluxScale = DensityAmplitude * WaveNumber &
+      / ( Three * VariableOpacityDiffusionMeanOpacity )
+    SourceScale = DensityAmplitude * WaveNumber**2 &
+      / ( Three * VariableOpacityDiffusionMeanOpacity )
+
+    DensityL1 = Zero
+    DensityL2 = Zero
+    DensityLInf = Zero
+    FluxL1 = Zero
+    FluxL2 = Zero
+    FluxLInf = Zero
+    SourceL1 = Zero
+    SourceL2 = Zero
+    SourceLInf = Zero
+    MeanSourceError = Zero
+    CheckerboardAmplitude = Zero
+
+    OPEN( NEWUNIT = OutputUnit, &
+          FILE = 'absorption_diffusion_balance.dat', &
+          STATUS = 'REPLACE', ACTION = 'WRITE' )
+    WRITE(OutputUnit,'(A)') &
+      '# x_km kappa_tr_per_km kappa_a_per_km D_num D_exact I1_num ' // &
+      'I1_exact source_num source_exact D_error I1_error source_error'
+
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      CellSourceError = Zero
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeZ = ( iNodeX - 1 ) * nDOFE + 1
+        X = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        Weight = WeightsX1(iNodeX1) * MeshX(1) % Width(iX1)
+        TransportOpacity = VariableOpacityDiffusionOpacity( X )
+        AbsorptionOpacity = AbsorptionDiffusionAbsorptionOpacity( X )
+
+        DnuNumerical = uPR(iNodeZ,iE_B0,iX1,iX_B0(2),iX_B0(3),iPR_D,1)
+        InuNumerical = uPR(iNodeZ,iE_B0,iX1,iX_B0(2),iX_B0(3),iPR_I1,1)
+        DnuExact = OpaqueDiffusionBackground &
+          + DensityAmplitude * COS( WaveNumber * X )
+        InuExact = DensityAmplitude * WaveNumber * SIN( WaveNumber * X ) &
+          / ( Three * TransportOpacity )
+        Dnu_0 = AbsorptionDiffusionEquilibriumDensity( X )
+        SourceNumerical = AbsorptionOpacity * ( Dnu_0 - DnuNumerical )
+        SourceExact = VariableOpacityDiffusionDensitySource( X )
+
+        DensityL1 = DensityL1 + Weight * ABS( DnuNumerical - DnuExact )
+        DensityL2 = DensityL2 + Weight * ( DnuNumerical - DnuExact )**2
+        DensityLInf = MAX( DensityLInf, ABS( DnuNumerical - DnuExact ) )
+        FluxL1 = FluxL1 + Weight * ABS( InuNumerical - InuExact )
+        FluxL2 = FluxL2 + Weight * ( InuNumerical - InuExact )**2
+        FluxLInf = MAX( FluxLInf, ABS( InuNumerical - InuExact ) )
+        SourceL1 = SourceL1 + Weight * ABS( SourceNumerical - SourceExact )
+        SourceL2 = SourceL2 + Weight * ( SourceNumerical - SourceExact )**2
+        SourceLInf = MAX( SourceLInf, ABS( SourceNumerical - SourceExact ) )
+        MeanSourceError = MeanSourceError &
+          + Weight * ( SourceNumerical - SourceExact )
+        CellSourceError = CellSourceError &
+          + Weight * ( SourceNumerical - SourceExact )
+
+        WRITE(OutputUnit,'(12(ES24.16E3,1X))') &
+          X / Kilometer, TransportOpacity * Kilometer, &
+          AbsorptionOpacity * Kilometer, &
+          DnuNumerical, DnuExact, InuNumerical, InuExact, &
+          SourceNumerical, SourceExact, &
+          DnuNumerical - DnuExact, InuNumerical - InuExact, &
+          SourceNumerical - SourceExact
+
+      END DO
+
+      CheckerboardAmplitude = CheckerboardAmplitude &
+        + (-One)**(iX1-iX_B0(1)) * CellSourceError
+
+    END DO
+
+    CLOSE( OutputUnit )
+
+    DensityL1 = DensityL1 &
+      / ( DensityAmplitude * OpaqueDiffusionDomainLength )
+    DensityL2 = SQRT( DensityL2 / OpaqueDiffusionDomainLength ) &
+      / DensityAmplitude
+    DensityLInf = DensityLInf / DensityAmplitude
+    FluxL1 = FluxL1 / ( FluxScale * OpaqueDiffusionDomainLength )
+    FluxL2 = SQRT( FluxL2 / OpaqueDiffusionDomainLength ) / FluxScale
+    FluxLInf = FluxLInf / FluxScale
+    SourceL1 = SourceL1 / ( SourceScale * OpaqueDiffusionDomainLength )
+    SourceL2 = SQRT( SourceL2 / OpaqueDiffusionDomainLength ) / SourceScale
+    SourceLInf = SourceLInf / SourceScale
+    MeanSourceError = MeanSourceError &
+      / ( SourceScale * OpaqueDiffusionDomainLength )
+    CheckerboardAmplitude = ABS( CheckerboardAmplitude ) &
+      / ( SourceScale * OpaqueDiffusionDomainLength )
+
+    WRITE(*,* )
+    WRITE(*,'(A)') 'Absorption-diffusion one-step error:'
+    WRITE(*,'(A,ES14.6E3)') '  elapsed light-crossing times = ', &
+      t / OpaqueDiffusionDomainLength
+    WRITE(*,'(A,3(1X,ES14.6E3))') '  density rel. L1/L2/Linf     = ', &
+      DensityL1, DensityL2, DensityLInf
+    WRITE(*,'(A,3(1X,ES14.6E3))') '  flux rel. L1/L2/Linf        = ', &
+      FluxL1, FluxL2, FluxLInf
+    WRITE(*,'(A,3(1X,ES14.6E3))') '  source rel. L1/L2/Linf      = ', &
+      SourceL1, SourceL2, SourceLInf
+    WRITE(*,'(A,ES14.6E3)') '  mean source rel. error       = ', &
+      MeanSourceError
+    WRITE(*,'(A,ES14.6E3)') '  source checkerboard amplitude= ', &
+      CheckerboardAmplitude
+    WRITE(*,'(A)') '  profile: absorption_diffusion_balance.dat'
+    WRITE(*,* )
+
+  END SUBROUTINE ComputeError_AbsorptionDiffusionBalance
+
+
+  SUBROUTINE ComputeError_CoupledAbsorptionDiffusion( t )
+
+    REAL(DP), INTENT(in) :: t
+
+    INTEGER :: iNodeX, iNodeX1, iNodeZ, iX1
+    INTEGER :: OutputUnit
+    REAL(DP) :: X, Weight, CellExchangeError, CellTotalError
+    REAL(DP) :: WaveNumber, DecayRate, DecayFactor
+    REAL(DP) :: AbsorptionOpacity, RadiationFraction
+    REAL(DP) :: EquilibriumRadiationFraction
+    REAL(DP) :: RadiationNumerical, MatterNumerical, TotalNumerical
+    REAL(DP) :: FluxNumerical, ExchangeNumerical
+    REAL(DP) :: RadiationExact, MatterExact, TotalExact
+    REAL(DP) :: FluxExact, ExchangeExact
+    REAL(DP) :: TotalL1, TotalL2, TotalLInf
+    REAL(DP) :: PartitionL1, PartitionL2, PartitionLInf
+    REAL(DP) :: FluxL1, FluxL2, FluxLInf
+    REAL(DP) :: ExchangeL1, ExchangeL2, ExchangeLInf
+    REAL(DP) :: MeanTotalError, TotalCheckerboard, ExchangeCheckerboard
+    REAL(DP) :: TotalAmplitude, FluxAmplitude, ExchangeAmplitude
+
+    WaveNumber = TwoPi / OpaqueDiffusionDomainLength
+    DecayRate = CoupledDiffusionDecayRate()
+    DecayFactor = EXP( DecayRate * t )
+    AbsorptionOpacity = CoupledDiffusionAbsorptionOpacity()
+    RadiationFraction = CoupledDiffusionRadiationFraction( DecayRate )
+    EquilibriumRadiationFraction &
+      = CoupledDiffusionEquilibriumSlope &
+          / ( One + CoupledDiffusionEquilibriumSlope )
+
+    TotalAmplitude = CoupledDiffusionTotalAmplitude * DecayFactor
+    FluxAmplitude = - DecayRate * TotalAmplitude / WaveNumber
+    ExchangeAmplitude &
+      = - DecayRate * ( One - RadiationFraction ) * TotalAmplitude
+
+    TotalL1 = Zero
+    TotalL2 = Zero
+    TotalLInf = Zero
+    PartitionL1 = Zero
+    PartitionL2 = Zero
+    PartitionLInf = Zero
+    FluxL1 = Zero
+    FluxL2 = Zero
+    FluxLInf = Zero
+    ExchangeL1 = Zero
+    ExchangeL2 = Zero
+    ExchangeLInf = Zero
+    MeanTotalError = Zero
+    TotalCheckerboard = Zero
+    ExchangeCheckerboard = Zero
+
+    OPEN( NEWUNIT = OutputUnit, &
+          FILE = 'coupled_absorption_diffusion.dat', &
+          STATUS = 'REPLACE', ACTION = 'WRITE' )
+    WRITE(OutputUnit,'(A)') &
+      '# x_km D_num D_exact M_num M_exact U_num U_exact I_num I_exact ' // &
+      'Q_num Q_exact U_error D_error I_error Q_error'
+
+    DO iX1 = iX_B0(1), iX_E0(1)
+
+      CellTotalError = Zero
+      CellExchangeError = Zero
+
+      DO iNodeX = 1, nDOFX
+
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeZ = ( iNodeX - 1 ) * nDOFE + 1
+        X = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        Weight = WeightsX1(iNodeX1) * MeshX(1) % Width(iX1)
+
+        RadiationNumerical &
+          = uPR(iNodeZ,iE_B0,iX1,iX_B0(2),iX_B0(3),iPR_D,1)
+        MatterNumerical &
+          = uPR(iNodeZ,iE_B0,iX1,iX_B0(2),iX_B0(3),iPR_D,2)
+        FluxNumerical &
+          = uPR(iNodeZ,iE_B0,iX1,iX_B0(2),iX_B0(3),iPR_I1,1)
+        TotalNumerical = RadiationNumerical + MatterNumerical
+        ExchangeNumerical = AbsorptionOpacity &
+          * ( CoupledDiffusionEquilibriumSlope * MatterNumerical &
+              - RadiationNumerical )
+
+        TotalExact = CoupledDiffusionTotalBackground &
+          + TotalAmplitude * COS( WaveNumber * X )
+        RadiationExact = EquilibriumRadiationFraction &
+                * CoupledDiffusionTotalBackground &
+              + RadiationFraction * TotalAmplitude * COS( WaveNumber * X )
+        MatterExact = TotalExact - RadiationExact
+        FluxExact = FluxAmplitude * SIN( WaveNumber * X )
+        ExchangeExact = ExchangeAmplitude * COS( WaveNumber * X )
+
+        TotalL1 = TotalL1 + Weight * ABS( TotalNumerical - TotalExact )
+        TotalL2 = TotalL2 + Weight * ( TotalNumerical - TotalExact )**2
+        TotalLInf = MAX( TotalLInf, ABS( TotalNumerical - TotalExact ) )
+        PartitionL1 = PartitionL1 &
+          + Weight * ABS( RadiationNumerical - RadiationExact )
+        PartitionL2 = PartitionL2 &
+          + Weight * ( RadiationNumerical - RadiationExact )**2
+        PartitionLInf = MAX &
+          ( PartitionLInf, ABS( RadiationNumerical - RadiationExact ) )
+        FluxL1 = FluxL1 + Weight * ABS( FluxNumerical - FluxExact )
+        FluxL2 = FluxL2 + Weight * ( FluxNumerical - FluxExact )**2
+        FluxLInf = MAX( FluxLInf, ABS( FluxNumerical - FluxExact ) )
+        ExchangeL1 = ExchangeL1 &
+          + Weight * ABS( ExchangeNumerical - ExchangeExact )
+        ExchangeL2 = ExchangeL2 &
+          + Weight * ( ExchangeNumerical - ExchangeExact )**2
+        ExchangeLInf = MAX &
+          ( ExchangeLInf, ABS( ExchangeNumerical - ExchangeExact ) )
+        MeanTotalError = MeanTotalError &
+          + Weight * ( TotalNumerical - TotalExact )
+        CellTotalError = CellTotalError &
+          + Weight * ( TotalNumerical - TotalExact )
+        CellExchangeError = CellExchangeError &
+          + Weight * ( ExchangeNumerical - ExchangeExact )
+
+        WRITE(OutputUnit,'(15(ES24.16E3,1X))') &
+          X / Kilometer, RadiationNumerical, RadiationExact, &
+          MatterNumerical, MatterExact, TotalNumerical, TotalExact, &
+          FluxNumerical, FluxExact, ExchangeNumerical, ExchangeExact, &
+          TotalNumerical - TotalExact, &
+          RadiationNumerical - RadiationExact, &
+          FluxNumerical - FluxExact, ExchangeNumerical - ExchangeExact
+
+      END DO
+
+      TotalCheckerboard = TotalCheckerboard &
+        + (-One)**(iX1-iX_B0(1)) * CellTotalError
+      ExchangeCheckerboard = ExchangeCheckerboard &
+        + (-One)**(iX1-iX_B0(1)) * CellExchangeError
+
+    END DO
+
+    CLOSE( OutputUnit )
+
+    TotalL1 = TotalL1 / ( TotalAmplitude * OpaqueDiffusionDomainLength )
+    TotalL2 = SQRT( TotalL2 / OpaqueDiffusionDomainLength ) / TotalAmplitude
+    TotalLInf = TotalLInf / TotalAmplitude
+    PartitionL1 &
+      = PartitionL1 / ( RadiationFraction * TotalAmplitude &
+                          * OpaqueDiffusionDomainLength )
+    PartitionL2 = SQRT( PartitionL2 / OpaqueDiffusionDomainLength ) &
+      / ( RadiationFraction * TotalAmplitude )
+    PartitionLInf = PartitionLInf / ( RadiationFraction * TotalAmplitude )
+    FluxL1 = FluxL1 / ( FluxAmplitude * OpaqueDiffusionDomainLength )
+    FluxL2 = SQRT( FluxL2 / OpaqueDiffusionDomainLength ) / FluxAmplitude
+    FluxLInf = FluxLInf / FluxAmplitude
+    ExchangeL1 &
+      = ExchangeL1 / ( ExchangeAmplitude * OpaqueDiffusionDomainLength )
+    ExchangeL2 = SQRT( ExchangeL2 / OpaqueDiffusionDomainLength ) &
+      / ExchangeAmplitude
+    ExchangeLInf = ExchangeLInf / ExchangeAmplitude
+    MeanTotalError = MeanTotalError &
+      / ( CoupledDiffusionTotalBackground * OpaqueDiffusionDomainLength )
+    TotalCheckerboard = ABS( TotalCheckerboard ) &
+      / ( TotalAmplitude * OpaqueDiffusionDomainLength )
+    ExchangeCheckerboard = ABS( ExchangeCheckerboard ) &
+      / ( ExchangeAmplitude * OpaqueDiffusionDomainLength )
+
+    WRITE(*,* )
+    WRITE(*,'(A)') 'Coupled absorption-diffusion error:'
+    WRITE(*,'(A,ES14.6E3)') '  elapsed slow-mode e-foldings = ', &
+      - DecayRate * t
+    WRITE(*,'(A,3(1X,ES14.6E3))') '  total rel. L1/L2/Linf       = ', &
+      TotalL1, TotalL2, TotalLInf
+    WRITE(*,'(A,3(1X,ES14.6E3))') '  partition rel. L1/L2/Linf   = ', &
+      PartitionL1, PartitionL2, PartitionLInf
+    WRITE(*,'(A,3(1X,ES14.6E3))') '  flux rel. L1/L2/Linf        = ', &
+      FluxL1, FluxL2, FluxLInf
+    WRITE(*,'(A,3(1X,ES14.6E3))') '  exchange rel. L1/L2/Linf    = ', &
+      ExchangeL1, ExchangeL2, ExchangeLInf
+    WRITE(*,'(A,ES14.6E3)') '  mean total conservation err.= ', &
+      MeanTotalError
+    WRITE(*,'(A,ES14.6E3)') '  total checkerboard amplitude= ', &
+      TotalCheckerboard
+    WRITE(*,'(A,ES14.6E3)') '  exch. checkerboard amplitude= ', &
+      ExchangeCheckerboard
+    WRITE(*,'(A)') '  profile: coupled_absorption_diffusion.dat'
+    WRITE(*,* )
+
+  END SUBROUTINE ComputeError_CoupledAbsorptionDiffusion
 
 
 END MODULE InitializationModule_Neutrinos

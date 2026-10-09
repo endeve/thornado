@@ -1,22 +1,28 @@
 PROGRAM ApplicationDriver
 
   USE KindModule, ONLY: &
-    DP, Zero, One, Two, &
+    DP, Zero, One, Two, Three, Half, &
     Pi, TwoPi, SqrtTiny
   USE ProgramHeaderModule, ONLY: &
+    nDOFE, nDOFX, nDOFZ, &
     iX_B0, iX_E0, iX_B1, iX_E1, &
     iE_B0, iE_E0, iE_B1, iE_E1, &
     iZ_B0, iZ_E0, iZ_B1, iZ_E1
   USE GeometryFieldsModule, ONLY: &
-    uGF
+    uGF, nGF
   USE GeometryFieldsModuleE, ONLY: &
-    uGE
+    uGE, nGE
   USE FluidFieldsModule, ONLY: &
-    uCF
+    uCF, nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE RadiationFieldsModule, ONLY: &
-    uCR, uPR, uAR, uGR
+    uCR, uPR, uAR, uGR, nCR, nDR, &
+    iCR_N, iCR_G1, iCR_G2, iCR_G3
+  USE MeshModule, ONLY: &
+    MeshX, NodeCoordinate
+  USE ReferenceElementModuleX, ONLY: &
+    WeightsX1
   USE InputOutputModuleHDF, ONLY: &
     WriteFieldsHDF
   USE TwoMoment_UtilitiesModule, ONLY: &
@@ -28,7 +34,12 @@ PROGRAM ApplicationDriver
   USE TwoMoment_PositivityLimiterModule, ONLY: &
     ApplyPositivityLimiter_TwoMoment
   USE TwoMoment_DiscretizationModule_Collisions, ONLY: &
-    ComputeIncrement_TwoMoment_Implicit
+    ComputeIncrement_TwoMoment_Implicit_Legacy &
+      => ComputeIncrement_TwoMoment_Implicit
+  USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
+    OffGridFlux_TwoMoment
+  USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
+    nQ, nC
   USE TwoMoment_OpacityModule, ONLY: &
     SetOpacities
   USE TwoMoment_TimeSteppingModule, ONLY: &
@@ -46,24 +57,37 @@ PROGRAM ApplicationDriver
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: CoordinateSystem
   CHARACTER(32) :: TimeSteppingScheme
+  CHARACTER(64) :: ProgramNameEnvironment
   LOGICAL       :: UseSlopeLimiter
   LOGICAL       :: UsePositivityLimiter
   LOGICAL       :: UseEnergyLimiter
   LOGICAL       :: UseTroubledCellIndicator
   LOGICAL       :: UseRealizabilityTimeStep
+  LOGICAL       :: RunRelaxationDiffusion
   INTEGER       :: nNodes
   INTEGER       :: nSpecies
   INTEGER       :: nE, bcE, nX(3), bcX(3)
   INTEGER       :: iCycle, iCycleD, iCycleW, maxCycles
+  INTEGER       :: EnvironmentLength, EnvironmentStatus
   REAL(DP)      :: xL(3), xR(3), ZoomX(3) = One
   REAL(DP)      :: eL, eR, ZoomE = One
   REAL(DP)      :: t, dt, t_end, dt_CFL, dt_0, dt_grw, V_0(3)
   REAL(DP)      :: D_0, Chi, Sigma, C_TCI, C_CFL
   REAL(DP)      :: LengthScale
+  REAL(DP)      :: RelaxationTime, RelaxationAdvectionSpeed
+  REAL(DP)      :: RelaxationWaveSpeedSquared, RelaxationAmplitude
+  REAL(DP)      :: RelaxationBackground
 
   CoordinateSystem = 'CARTESIAN'
 
   ProgramName = 'SineWaveStreaming'
+
+  ProgramNameEnvironment = ''
+  CALL GET_ENVIRONMENT_VARIABLE &
+         ( 'THORNADO_PROGRAM_NAME', ProgramNameEnvironment, &
+           LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+  IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 ) &
+    ProgramName = TRIM( ProgramNameEnvironment )
 
   nSpecies = 1
 
@@ -75,7 +99,53 @@ PROGRAM ApplicationDriver
   dt_0   = HUGE( One )
   dt_grw = One
 
+  RunRelaxationDiffusion = .FALSE.
+  RelaxationTime = 1.0d-3
+  RelaxationAdvectionSpeed = Zero
+  RelaxationWaveSpeedSquared = One / 3.0_DP
+  RelaxationAmplitude = 0.1_DP
+  RelaxationBackground = One
+
   SELECT CASE ( TRIM( ProgramName ) )
+
+    CASE( 'RelaxationDiffusionStatic', 'RelaxationDiffusionDynamic' )
+
+      ! d_t D + d_x I = 0
+      ! d_t I + a^2 d_x D = - ( I - v D ) / epsilon
+
+      RunRelaxationDiffusion = .TRUE.
+
+      nX  = [ 64, 1, 1 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ]
+      xR  = [ 1.0_DP, 1.0_DP, 1.0_DP ]
+      bcX = [ 1, 1, 1 ]
+
+      nE  = 1
+      eL  = 0.0_DP
+      eR  = 1.0_DP
+      bcE = 1
+
+      nSpecies = 1
+      nNodes = 2
+
+      TimeSteppingScheme = 'IMEX_PDARS'
+
+      t_end = 1.0_DP
+      iCycleD = 100
+      iCycleW = 1000000
+      maxCycles = 1000000
+
+      IF( TRIM( ProgramName ) == 'RelaxationDiffusionDynamic' ) &
+        RelaxationAdvectionSpeed = 0.2_DP
+
+      V_0 = Zero
+      D_0 = Zero
+      Chi = Zero
+      Sigma = Zero
+
+      UseSlopeLimiter = .FALSE.
+      UsePositivityLimiter = .FALSE.
+      UseEnergyLimiter = .FALSE.
 
     CASE( 'SineWaveStreaming' )
 
@@ -788,7 +858,11 @@ PROGRAM ApplicationDriver
 
   ! --- Set Initial Condition ---
 
-  CALL InitializeFields( V_0, LengthScale, Direction, Spectrum )
+  IF( RunRelaxationDiffusion )THEN
+    CALL InitializeRelaxationDiffusion
+  ELSE
+    CALL InitializeFields( V_0, LengthScale, Direction, Spectrum )
+  END IF
 
   t = 0.0_DP
 
@@ -877,8 +951,17 @@ PROGRAM ApplicationDriver
 
     END IF
 
-    CALL Update_IMEX_RK &
-           ( dt, uGE, uGF, uCF, uCR, ComputeIncrement_TwoMoment_Implicit )
+    IF( RunRelaxationDiffusion )THEN
+      CALL Update_IMEX_RK &
+             ( dt, uGE, uGF, uCF, uCR, &
+               ComputeIncrement_RelaxationDiffusion_Implicit, &
+               ComputeIncrement_TwoMoment_Explicit_Option &
+                 = ComputeIncrement_RelaxationDiffusion_Explicit )
+    ELSE
+      CALL Update_IMEX_RK &
+             ( dt, uGE, uGF, uCF, uCR, &
+               ComputeIncrement_TwoMoment_Implicit )
+    END IF
 
     t = t + dt
 
@@ -910,13 +993,452 @@ PROGRAM ApplicationDriver
 
   CALL ComputeTally( iZ_B0, iZ_E0, iZ_B1, iZ_E1, t, uGE, uGF, uCF, uCR )
 
-  CALL ComputeError( t )
+  IF( RunRelaxationDiffusion )THEN
+    CALL ComputeError_RelaxationDiffusion( t )
+  ELSE
+    CALL ComputeError( t )
+  END IF
 
   ! --- Auxiliary Finalization ---
 
   CALL FinalizeDriver
 
 CONTAINS
+
+
+  SUBROUTINE InitializeRelaxationDiffusion
+
+    INTEGER :: iE, iNodeE, iNodeX, iNodeZ, iS, iX1
+    REAL(DP) :: D, I, X
+
+    IF( nDOFX /= 2 ) &
+      ERROR STOP 'Relaxation-diffusion test requires two spatial nodes.'
+    IF( iX_E0(2) /= iX_B0(2) .OR. iX_E0(3) /= iX_B0(3) ) &
+      ERROR STOP 'Relaxation-diffusion test is one-dimensional.'
+
+    uCF = Zero
+    uCF(:,:,:,:,iCF_D ) = One
+    uCF(:,:,:,:,iCF_E ) = One
+    uCF(:,:,:,:,iCF_S1) = Zero
+    uCF(:,:,:,:,iCF_S2) = Zero
+    uCF(:,:,:,:,iCF_S3) = Zero
+    uCF(:,:,:,:,iCF_Ne) = Zero
+    uCR = Zero
+
+    DO iS = 1, nSpecies
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNodeX = 1, nDOFX
+
+      X = NodeCoordinate( MeshX(1), iX1, iNodeX )
+      CALL RelaxationDiffusionExact( X, Zero, D, I )
+
+      DO iE = iE_B0, iE_E0
+      DO iNodeE = 1, nDOFE
+        iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
+        uCR(iNodeZ,iE,iX1,iX_B0(2),iX_B0(3),iCR_N ,iS) = D
+        uCR(iNodeZ,iE,iX1,iX_B0(2),iX_B0(3),iCR_G1,iS) = I
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE InitializeRelaxationDiffusion
+
+
+  SUBROUTINE ComputeIncrement_RelaxationDiffusion_Explicit &
+    ( iZ_B0_Input, iZ_E0_Input, iZ_B1_Input, iZ_E1_Input, &
+      GE, GX, U_F, U_R, dU_R, &
+      LLFPenaltyFactor_Option, SurfaceTermFactor_Option, &
+      VolumeTermFactor_Option, IncludeObserverCorrections_Option )
+
+    INTEGER, INTENT(in) :: &
+      iZ_B0_Input(4), iZ_E0_Input(4), iZ_B1_Input(4), iZ_E1_Input(4)
+    REAL(DP), INTENT(in) :: &
+      GE(1:nDOFE,iZ_B1_Input(1):iZ_E1_Input(1),1:nGE)
+    REAL(DP), INTENT(in) :: &
+      GX(1:nDOFX,iZ_B1_Input(2):iZ_E1_Input(2), &
+         iZ_B1_Input(3):iZ_E1_Input(3),iZ_B1_Input(4):iZ_E1_Input(4),1:nGF)
+    REAL(DP), INTENT(inout) :: &
+      U_F(1:nDOFX,iZ_B1_Input(2):iZ_E1_Input(2), &
+          iZ_B1_Input(3):iZ_E1_Input(3),iZ_B1_Input(4):iZ_E1_Input(4),1:nCF)
+    REAL(DP), INTENT(inout) :: &
+      U_R(1:nDOFZ,iZ_B1_Input(1):iZ_E1_Input(1), &
+          iZ_B1_Input(2):iZ_E1_Input(2), &
+          iZ_B1_Input(3):iZ_E1_Input(3), &
+          iZ_B1_Input(4):iZ_E1_Input(4),1:nCR,1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      dU_R(1:nDOFZ,iZ_B1_Input(1):iZ_E1_Input(1), &
+           iZ_B1_Input(2):iZ_E1_Input(2), &
+           iZ_B1_Input(3):iZ_E1_Input(3), &
+           iZ_B1_Input(4):iZ_E1_Input(4),1:nCR,1:nSpecies)
+    REAL(DP), INTENT(in), OPTIONAL :: &
+      LLFPenaltyFactor_Option, SurfaceTermFactor_Option, &
+      VolumeTermFactor_Option
+    LOGICAL, INTENT(in), OPTIONAL :: IncludeObserverCorrections_Option
+
+    INTEGER :: iE, iNodeE, iNodeZ1, iNodeZ2, iPrev, iNext, iS, iX1
+    REAL(DP) :: a, h
+    REAL(DP) :: DL, DR, IL, IR, DMean, IMean
+    REAL(DP) :: FluxNLeft, FluxNRight, FluxILeft, FluxIRight
+    REAL(DP) :: MeanRateN, MeanRateI, SlopeRateN, SlopeRateI
+    REAL(DP) :: D1, D2, I1, I2
+
+    IF( nDOFX /= 2 ) &
+      ERROR STOP 'Relaxation-diffusion test requires two spatial nodes.'
+
+    dU_R = Zero
+    OffGridFlux_TwoMoment = Zero
+    a = SQRT( RelaxationWaveSpeedSquared )
+
+    DO iS = 1, nSpecies
+    DO iE = iZ_B0_Input(1), iZ_E0_Input(1)
+    DO iNodeE = 1, nDOFE
+    DO iX1 = iZ_B0_Input(2), iZ_E0_Input(2)
+
+      iPrev = iX1 - 1
+      IF( iPrev < iZ_B0_Input(2) ) iPrev = iZ_E0_Input(2)
+      iNext = iX1 + 1
+      IF( iNext > iZ_E0_Input(2) ) iNext = iZ_B0_Input(2)
+
+      iNodeZ1 = iNodeE
+      iNodeZ2 = nDOFE + iNodeE
+      h = MeshX(1) % Width(iX1)
+
+      DL = LinearFaceValue &
+             ( U_R(iNodeZ1,iE,iPrev,iZ_B0_Input(3),iZ_B0_Input(4),iCR_N,iS), &
+               U_R(iNodeZ2,iE,iPrev,iZ_B0_Input(3),iZ_B0_Input(4),iCR_N,iS), &
+               +1 )
+      DR = LinearFaceValue &
+             ( U_R(iNodeZ1,iE,iX1,iZ_B0_Input(3),iZ_B0_Input(4),iCR_N,iS), &
+               U_R(iNodeZ2,iE,iX1,iZ_B0_Input(3),iZ_B0_Input(4),iCR_N,iS), &
+               -1 )
+      IL = LinearFaceValue &
+             ( U_R(iNodeZ1,iE,iPrev,iZ_B0_Input(3),iZ_B0_Input(4),iCR_G1,iS), &
+               U_R(iNodeZ2,iE,iPrev,iZ_B0_Input(3),iZ_B0_Input(4),iCR_G1,iS), &
+               +1 )
+      IR = LinearFaceValue &
+             ( U_R(iNodeZ1,iE,iX1,iZ_B0_Input(3),iZ_B0_Input(4),iCR_G1,iS), &
+               U_R(iNodeZ2,iE,iX1,iZ_B0_Input(3),iZ_B0_Input(4),iCR_G1,iS), &
+               -1 )
+      FluxNLeft = Half * ( IL + IR ) - Half * a * ( DR - DL )
+      FluxILeft = Half * RelaxationWaveSpeedSquared * ( DL + DR ) &
+        - Half * a * ( IR - IL )
+
+      DL = LinearFaceValue &
+             ( U_R(iNodeZ1,iE,iX1,iZ_B0_Input(3),iZ_B0_Input(4),iCR_N,iS), &
+               U_R(iNodeZ2,iE,iX1,iZ_B0_Input(3),iZ_B0_Input(4),iCR_N,iS), &
+               +1 )
+      DR = LinearFaceValue &
+             ( U_R(iNodeZ1,iE,iNext,iZ_B0_Input(3),iZ_B0_Input(4),iCR_N,iS), &
+               U_R(iNodeZ2,iE,iNext,iZ_B0_Input(3),iZ_B0_Input(4),iCR_N,iS), &
+               -1 )
+      IL = LinearFaceValue &
+             ( U_R(iNodeZ1,iE,iX1,iZ_B0_Input(3),iZ_B0_Input(4),iCR_G1,iS), &
+               U_R(iNodeZ2,iE,iX1,iZ_B0_Input(3),iZ_B0_Input(4),iCR_G1,iS), &
+               +1 )
+      IR = LinearFaceValue &
+             ( U_R(iNodeZ1,iE,iNext,iZ_B0_Input(3),iZ_B0_Input(4),iCR_G1,iS), &
+               U_R(iNodeZ2,iE,iNext,iZ_B0_Input(3),iZ_B0_Input(4),iCR_G1,iS), &
+               -1 )
+      FluxNRight = Half * ( IL + IR ) - Half * a * ( DR - DL )
+      FluxIRight = Half * RelaxationWaveSpeedSquared * ( DL + DR ) &
+        - Half * a * ( IR - IL )
+
+      D1 = U_R(iNodeZ1,iE,iX1,iZ_B0_Input(3),iZ_B0_Input(4),iCR_N,iS)
+      D2 = U_R(iNodeZ2,iE,iX1,iZ_B0_Input(3),iZ_B0_Input(4),iCR_N,iS)
+      I1 = U_R(iNodeZ1,iE,iX1,iZ_B0_Input(3),iZ_B0_Input(4),iCR_G1,iS)
+      I2 = U_R(iNodeZ2,iE,iX1,iZ_B0_Input(3),iZ_B0_Input(4),iCR_G1,iS)
+      DMean = Half * ( D1 + D2 )
+      IMean = Half * ( I1 + I2 )
+
+      MeanRateN = - ( FluxNRight - FluxNLeft ) / h
+      MeanRateI = - ( FluxIRight - FluxILeft ) / h
+      SlopeRateN = 12.0_DP / h &
+        * ( IMean - Half * ( FluxNLeft + FluxNRight ) )
+      SlopeRateI = 12.0_DP / h &
+        * ( RelaxationWaveSpeedSquared * DMean &
+            - Half * ( FluxILeft + FluxIRight ) )
+
+      dU_R(iNodeZ1,iE,iX1,iZ_B0_Input(3),iZ_B0_Input(4),iCR_N,iS) &
+        = MeanRateN - SlopeRateN / ( Two * SQRT(Three) )
+      dU_R(iNodeZ2,iE,iX1,iZ_B0_Input(3),iZ_B0_Input(4),iCR_N,iS) &
+        = MeanRateN + SlopeRateN / ( Two * SQRT(Three) )
+      dU_R(iNodeZ1,iE,iX1,iZ_B0_Input(3),iZ_B0_Input(4),iCR_G1,iS) &
+        = MeanRateI - SlopeRateI / ( Two * SQRT(Three) )
+      dU_R(iNodeZ2,iE,iX1,iZ_B0_Input(3),iZ_B0_Input(4),iCR_G1,iS) &
+        = MeanRateI + SlopeRateI / ( Two * SQRT(Three) )
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeIncrement_RelaxationDiffusion_Explicit
+
+
+  SUBROUTINE ComputeIncrement_TwoMoment_Implicit &
+    ( iZ_B0_Input, iZ_E0_Input, iZ_B1_Input, iZ_E1_Input, &
+      dt_Implicit, GE, GX, U_F, dU_F, U_R, dU_R, &
+      AccumulateMatterCoupling_Mask, uDR_Option, &
+      MatterCoupling_Mask_Option, MatterSource_Rate_Option, &
+      MatterIncrement_Rate_Option, MatterSource_Weight_Option, &
+      MatterSource_Rate_Unweighted_Option )
+
+    INTEGER, INTENT(in) :: &
+      iZ_B0_Input(4), iZ_E0_Input(4), iZ_B1_Input(4), iZ_E1_Input(4)
+    REAL(DP), INTENT(in) :: dt_Implicit
+    REAL(DP), INTENT(in) :: &
+      GE(1:nDOFE,iZ_B1_Input(1):iZ_E1_Input(1),1:nGE)
+    REAL(DP), INTENT(in) :: &
+      GX(1:nDOFX,iZ_B1_Input(2):iZ_E1_Input(2), &
+         iZ_B1_Input(3):iZ_E1_Input(3),iZ_B1_Input(4):iZ_E1_Input(4),1:nGF)
+    REAL(DP), INTENT(in) :: &
+      U_F(1:nDOFX,iZ_B1_Input(2):iZ_E1_Input(2), &
+          iZ_B1_Input(3):iZ_E1_Input(3),iZ_B1_Input(4):iZ_E1_Input(4),1:nCF)
+    REAL(DP), INTENT(out) :: &
+      dU_F(1:nDOFX,iZ_B1_Input(2):iZ_E1_Input(2), &
+           iZ_B1_Input(3):iZ_E1_Input(3),iZ_B1_Input(4):iZ_E1_Input(4),1:nCF)
+    REAL(DP), INTENT(in) :: &
+      U_R(1:nDOFZ,iZ_B1_Input(1):iZ_E1_Input(1), &
+          iZ_B1_Input(2):iZ_E1_Input(2), &
+          iZ_B1_Input(3):iZ_E1_Input(3), &
+          iZ_B1_Input(4):iZ_E1_Input(4),1:nCR,1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      dU_R(1:nDOFZ,iZ_B1_Input(1):iZ_E1_Input(1), &
+           iZ_B1_Input(2):iZ_E1_Input(2), &
+           iZ_B1_Input(3):iZ_E1_Input(3), &
+           iZ_B1_Input(4):iZ_E1_Input(4),1:nCR,1:nSpecies)
+    LOGICAL, INTENT(in) :: AccumulateMatterCoupling_Mask
+    REAL(DP), INTENT(inout), OPTIONAL :: &
+      uDR_Option(iZ_B1_Input(2):iZ_E1_Input(2), &
+                 iZ_B1_Input(3):iZ_E1_Input(3), &
+                 iZ_B1_Input(4):iZ_E1_Input(4),1:nDR)
+    LOGICAL, INTENT(inout), OPTIONAL :: &
+      MatterCoupling_Mask_Option(iZ_B1_Input(2):iZ_E1_Input(2), &
+        iZ_B1_Input(3):iZ_E1_Input(3),iZ_B1_Input(4):iZ_E1_Input(4))
+    REAL(DP), INTENT(inout), OPTIONAL :: &
+      MatterSource_Rate_Option(1:nQ,1:1+nSpecies+nC,1:nDOFX, &
+        iZ_B1_Input(2):iZ_E1_Input(2),iZ_B1_Input(3):iZ_E1_Input(3), &
+        iZ_B1_Input(4):iZ_E1_Input(4))
+    REAL(DP), INTENT(inout), OPTIONAL :: &
+      MatterIncrement_Rate_Option(1:nQ,1:nDOFX, &
+        iZ_B1_Input(2):iZ_E1_Input(2),iZ_B1_Input(3):iZ_E1_Input(3), &
+        iZ_B1_Input(4):iZ_E1_Input(4))
+    REAL(DP), INTENT(in), OPTIONAL :: MatterSource_Weight_Option
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      MatterSource_Rate_Unweighted_Option &
+        (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
+         iZ_B1_Input(2):iZ_E1_Input(2),iZ_B1_Input(3):iZ_E1_Input(3), &
+         iZ_B1_Input(4):iZ_E1_Input(4))
+
+    CALL ComputeIncrement_TwoMoment_Implicit_Legacy &
+           ( iZ_B0_Input, iZ_E0_Input, iZ_B1_Input, iZ_E1_Input, &
+             dt_Implicit, GE, GX, U_F, dU_F, U_R, dU_R, &
+             uDR_Option = uDR_Option )
+
+    IF( PRESENT(MatterCoupling_Mask_Option) ) &
+      MatterCoupling_Mask_Option = .FALSE.
+    IF( PRESENT(MatterSource_Rate_Option) ) &
+      MatterSource_Rate_Option = Zero
+    IF( PRESENT(MatterIncrement_Rate_Option) ) &
+      MatterIncrement_Rate_Option = Zero
+    IF( PRESENT(MatterSource_Rate_Unweighted_Option) ) &
+      MatterSource_Rate_Unweighted_Option = Zero
+
+  END SUBROUTINE ComputeIncrement_TwoMoment_Implicit
+
+
+  SUBROUTINE ComputeIncrement_RelaxationDiffusion_Implicit &
+    ( iZ_B0_Input, iZ_E0_Input, iZ_B1_Input, iZ_E1_Input, &
+      dt_Implicit, GE, GX, U_F, dU_F, U_R, dU_R, &
+      AccumulateMatterCoupling_Mask, uDR_Option, &
+      MatterCoupling_Mask_Option, MatterSource_Rate_Option, &
+      MatterIncrement_Rate_Option, MatterSource_Weight_Option, &
+      MatterSource_Rate_Unweighted_Option )
+
+    INTEGER, INTENT(in) :: &
+      iZ_B0_Input(4), iZ_E0_Input(4), iZ_B1_Input(4), iZ_E1_Input(4)
+    REAL(DP), INTENT(in) :: dt_Implicit
+    REAL(DP), INTENT(in) :: &
+      GE(1:nDOFE,iZ_B1_Input(1):iZ_E1_Input(1),1:nGE)
+    REAL(DP), INTENT(in) :: &
+      GX(1:nDOFX,iZ_B1_Input(2):iZ_E1_Input(2), &
+         iZ_B1_Input(3):iZ_E1_Input(3),iZ_B1_Input(4):iZ_E1_Input(4),1:nGF)
+    REAL(DP), INTENT(in) :: &
+      U_F(1:nDOFX,iZ_B1_Input(2):iZ_E1_Input(2), &
+          iZ_B1_Input(3):iZ_E1_Input(3),iZ_B1_Input(4):iZ_E1_Input(4),1:nCF)
+    REAL(DP), INTENT(out) :: &
+      dU_F(1:nDOFX,iZ_B1_Input(2):iZ_E1_Input(2), &
+           iZ_B1_Input(3):iZ_E1_Input(3),iZ_B1_Input(4):iZ_E1_Input(4),1:nCF)
+    REAL(DP), INTENT(in) :: &
+      U_R(1:nDOFZ,iZ_B1_Input(1):iZ_E1_Input(1), &
+          iZ_B1_Input(2):iZ_E1_Input(2), &
+          iZ_B1_Input(3):iZ_E1_Input(3), &
+          iZ_B1_Input(4):iZ_E1_Input(4),1:nCR,1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      dU_R(1:nDOFZ,iZ_B1_Input(1):iZ_E1_Input(1), &
+           iZ_B1_Input(2):iZ_E1_Input(2), &
+           iZ_B1_Input(3):iZ_E1_Input(3), &
+           iZ_B1_Input(4):iZ_E1_Input(4),1:nCR,1:nSpecies)
+    LOGICAL, INTENT(in) :: AccumulateMatterCoupling_Mask
+    REAL(DP), INTENT(inout), OPTIONAL :: &
+      uDR_Option(iZ_B1_Input(2):iZ_E1_Input(2), &
+                 iZ_B1_Input(3):iZ_E1_Input(3), &
+                 iZ_B1_Input(4):iZ_E1_Input(4),1:nDR)
+    LOGICAL, INTENT(inout), OPTIONAL :: &
+      MatterCoupling_Mask_Option(iZ_B1_Input(2):iZ_E1_Input(2), &
+        iZ_B1_Input(3):iZ_E1_Input(3),iZ_B1_Input(4):iZ_E1_Input(4))
+    REAL(DP), INTENT(inout), OPTIONAL :: &
+      MatterSource_Rate_Option(1:nQ,1:1+nSpecies+nC,1:nDOFX, &
+        iZ_B1_Input(2):iZ_E1_Input(2),iZ_B1_Input(3):iZ_E1_Input(3), &
+        iZ_B1_Input(4):iZ_E1_Input(4))
+    REAL(DP), INTENT(inout), OPTIONAL :: &
+      MatterIncrement_Rate_Option(1:nQ,1:nDOFX, &
+        iZ_B1_Input(2):iZ_E1_Input(2),iZ_B1_Input(3):iZ_E1_Input(3), &
+        iZ_B1_Input(4):iZ_E1_Input(4))
+    REAL(DP), INTENT(in), OPTIONAL :: MatterSource_Weight_Option
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      MatterSource_Rate_Unweighted_Option &
+        (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
+         iZ_B1_Input(2):iZ_E1_Input(2),iZ_B1_Input(3):iZ_E1_Input(3), &
+         iZ_B1_Input(4):iZ_E1_Input(4))
+
+    INTEGER :: iE, iNodeZ, iS, iX1
+
+    dU_F = Zero
+    dU_R = Zero
+
+    DO iS = 1, nSpecies
+    DO iX1 = iZ_B0_Input(2), iZ_E0_Input(2)
+    DO iE = iZ_B0_Input(1), iZ_E0_Input(1)
+    DO iNodeZ = 1, nDOFZ
+      dU_R(iNodeZ,iE,iX1,iZ_B0_Input(3),iZ_B0_Input(4),iCR_G1,iS) &
+        = - ( U_R(iNodeZ,iE,iX1,iZ_B0_Input(3),iZ_B0_Input(4),iCR_G1,iS) &
+              - RelaxationAdvectionSpeed &
+                * U_R(iNodeZ,iE,iX1,iZ_B0_Input(3),iZ_B0_Input(4),iCR_N,iS) ) &
+            / ( RelaxationTime + dt_Implicit )
+    END DO
+    END DO
+    END DO
+    END DO
+
+    IF( PRESENT(uDR_Option) ) uDR_Option = Zero
+    IF( PRESENT(MatterCoupling_Mask_Option) ) &
+      MatterCoupling_Mask_Option = .FALSE.
+    IF( PRESENT(MatterSource_Rate_Option) ) &
+      MatterSource_Rate_Option = Zero
+    IF( PRESENT(MatterIncrement_Rate_Option) ) &
+      MatterIncrement_Rate_Option = Zero
+    IF( PRESENT(MatterSource_Rate_Unweighted_Option) ) &
+      MatterSource_Rate_Unweighted_Option = Zero
+
+  END SUBROUTINE ComputeIncrement_RelaxationDiffusion_Implicit
+
+
+  SUBROUTINE ComputeError_RelaxationDiffusion( Time )
+
+    REAL(DP), INTENT(in) :: Time
+
+    INTEGER :: iNodeX, iNodeZ, iX1, Unit
+    REAL(DP) :: DExact, IExact, DNumerical, INumerical, Weight, X
+    REAL(DP) :: DErrorL1, DErrorL2, DErrorLInf, DNormL1, DNormL2
+    REAL(DP) :: IErrorL1, IErrorL2, IErrorLInf, INormL1, INormL2
+
+    DErrorL1 = Zero; DErrorL2 = Zero; DErrorLInf = Zero
+    IErrorL1 = Zero; IErrorL2 = Zero; IErrorLInf = Zero
+    DNormL1 = Zero; DNormL2 = Zero
+    INormL1 = Zero; INormL2 = Zero
+
+    OPEN( NEWUNIT = Unit, FILE = 'relaxation_diffusion_profile.dat', &
+          STATUS = 'REPLACE', ACTION = 'WRITE', FORM = 'FORMATTED' )
+    WRITE(Unit,'(A)') '# x D_numerical D_exact I_numerical I_exact'
+
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNodeX = 1, nDOFX
+      iNodeZ = ( iNodeX - 1 ) * nDOFE + 1
+      X = NodeCoordinate( MeshX(1), iX1, iNodeX )
+      CALL RelaxationDiffusionExact( X, Time, DExact, IExact )
+      DNumerical = uCR(iNodeZ,iE_B0,iX1,iX_B0(2),iX_B0(3),iCR_N,1)
+      INumerical = uCR(iNodeZ,iE_B0,iX1,iX_B0(2),iX_B0(3),iCR_G1,1)
+      Weight = MeshX(1) % Width(iX1) * WeightsX1(iNodeX)
+      DErrorL1 = DErrorL1 + Weight * ABS( DNumerical - DExact )
+      DErrorL2 = DErrorL2 + Weight * ( DNumerical - DExact )**2
+      DErrorLInf = MAX( DErrorLInf, ABS( DNumerical - DExact ) )
+      IErrorL1 = IErrorL1 + Weight * ABS( INumerical - IExact )
+      IErrorL2 = IErrorL2 + Weight * ( INumerical - IExact )**2
+      IErrorLInf = MAX( IErrorLInf, ABS( INumerical - IExact ) )
+      DNormL1 = DNormL1 + Weight * ABS( DExact )
+      DNormL2 = DNormL2 + Weight * DExact**2
+      INormL1 = INormL1 + Weight * ABS( IExact )
+      INormL2 = INormL2 + Weight * IExact**2
+      WRITE(Unit,'(5(ES24.16E3,1X))') &
+        X, DNumerical, DExact, INumerical, IExact
+    END DO
+    END DO
+    CLOSE(Unit)
+
+    DErrorL1 = DErrorL1 / MAX( DNormL1, TINY(One) )
+    DErrorL2 = SQRT( DErrorL2 / MAX(DNormL2,TINY(One)) )
+    DErrorLInf = DErrorLInf &
+      / MAX( RelaxationBackground + ABS(RelaxationAmplitude), TINY(One) )
+    IErrorL1 = IErrorL1 / MAX( INormL1, TINY(One) )
+    IErrorL2 = SQRT( IErrorL2 / MAX(INormL2,TINY(One)) )
+    IErrorLInf = IErrorLInf &
+      / MAX( ABS(RelaxationAdvectionSpeed) * RelaxationBackground &
+             + ABS(RelaxationAmplitude), TINY(One) )
+
+    WRITE(*,*)
+    WRITE(*,'(A)') 'Relaxation-diffusion error:'
+    WRITE(*,'(A,3ES14.6E3)') '  D relative L1/L2/Linf = ', &
+      DErrorL1, DErrorL2, DErrorLInf
+    WRITE(*,'(A,3ES14.6E3)') '  I relative L1/L2/Linf = ', &
+      IErrorL1, IErrorL2, IErrorLInf
+    WRITE(*,'(A)') '  profile: relaxation_diffusion_profile.dat'
+
+  END SUBROUTINE ComputeError_RelaxationDiffusion
+
+
+  SUBROUTINE RelaxationDiffusionExact( X, Time, D, I )
+
+    REAL(DP), INTENT(in) :: X, Time
+    REAL(DP), INTENT(out) :: D, I
+
+    REAL(DP) :: Amplitude, Phase, WaveNumber
+    COMPLEX(DP) :: FluxEigenvector, Lambda
+
+    WaveNumber = TwoPi / ( xR(1) - xL(1) )
+    ! Slow Fourier eigenvalue of
+    ! lambda^2 + lambda / epsilon + a^2 k^2 + i k v / epsilon = 0.
+    Lambda = ( - One &
+      + SQRT( CMPLX &
+          ( One - 4.0_DP * RelaxationTime**2 &
+                    * RelaxationWaveSpeedSquared * WaveNumber**2, &
+            - 4.0_DP * RelaxationTime * WaveNumber &
+                    * RelaxationAdvectionSpeed, KIND = DP ) ) ) &
+      / ( Two * RelaxationTime )
+    FluxEigenvector = CMPLX(Zero,One,KIND=DP) * Lambda / WaveNumber
+    Amplitude = RelaxationAmplitude * EXP( REAL(Lambda,DP) * Time )
+    Phase = WaveNumber * ( X - xL(1) ) + AIMAG(Lambda) * Time
+
+    D = RelaxationBackground + Amplitude * COS( Phase )
+    I = RelaxationAdvectionSpeed * RelaxationBackground &
+      + Amplitude * ( REAL(FluxEigenvector,DP) * COS(Phase) &
+                      - AIMAG(FluxEigenvector) * SIN(Phase) )
+
+  END SUBROUTINE RelaxationDiffusionExact
+
+
+  REAL(DP) FUNCTION LinearFaceValue( Q1, Q2, Side )
+
+    REAL(DP), INTENT(in) :: Q1, Q2
+    INTEGER, INTENT(in) :: Side
+
+    LinearFaceValue = Half * ( Q1 + Q2 ) &
+      + Half * DBLE(Side) * SQRT(Three) * ( Q2 - Q1 )
+
+  END FUNCTION LinearFaceValue
 
 
   SUBROUTINE InitializeDriver

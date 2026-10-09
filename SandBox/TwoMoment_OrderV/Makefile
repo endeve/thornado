@@ -72,12 +72,14 @@ ApplicationDriver_Neutrinos: \
 	$(POSEIDON_o) \
 	$(thornado) \
 	InitializationModule_Neutrinos.o \
+	StandaloneMatterDiagnosticsModule.o \
 	ApplicationDriver_Neutrinos.o
 	$(FLINKER) $(FLAGS) -o ApplicationDriver_Neutrinos_$(MACHINE) \
 	$(weaklib) \
 	$(POSEIDON_o) \
 	$(thornado) \
 	InitializationModule_Neutrinos.o \
+	StandaloneMatterDiagnosticsModule.o \
 	ApplicationDriver_Neutrinos.o \
 	$(LIBRARIES)
 
@@ -186,9 +188,11 @@ ApplicationDriver_Neutrinos.o: \
   TwoMoment_UtilitiesModule.o \
   TwoMoment_SlopeLimiterModule.o \
   TwoMoment_PositivityLimiterModule.o \
+  TwoMoment_DiscretizationModule_Streaming.o \
   TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
   TwoMoment_TimeSteppingModule.o \
   InitializationModule_Neutrinos.o \
+  StandaloneMatterDiagnosticsModule.o \
   TwoMoment_TallyModule.o \
   EquationOfStateModule_TABLE.o \
   OpacityModule_TABLE.o \
@@ -240,6 +244,27 @@ InitializationModule.o: \
   TwoMoment_UtilitiesModule.o \
   TwoMoment_OpacityModule.o \
   InitializationModule.F90
+
+StandaloneMatterDiagnosticsModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  ProgramHeaderModule.o \
+  MeshModule.o \
+  ReferenceElementModuleX.o \
+  ReferenceElementModuleE.o \
+  GeometryFieldsModuleE.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  NeutrinoOpacitiesComputationModule.o \
+  RadiationFieldsModule.o \
+  TwoMoment_NeutrinoMatterSolverModule.o \
+  TwoMoment_DiscretizationModule_Collisions_Neutrinos.o \
+  TwoMoment_DiscretizationModule_Streaming.o \
+  TwoMoment_ClosureModule.o \
+  TwoMoment_UtilitiesModule.o \
+  TwoMoment_TimeSteppingModule.o \
+  StandaloneMatterDiagnosticsModule.F90
 
 InitializationModule_Neutrinos.o: \
   KindModule.o \

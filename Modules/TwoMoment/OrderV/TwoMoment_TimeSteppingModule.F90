@@ -28,6 +28,10 @@ MODULE TwoMoment_TimeSteppingModule
   USE RadiationFieldsModule, ONLY: &
     nCR, nSpecies, &
     uDR
+#if defined( TWOMOMENT_ORDER_V )
+  USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
+    nQ, nC
+#endif
   USE TwoMoment_TimersModule, ONLY: &
     TimersStart, &
     TimersStop, &
@@ -42,6 +46,7 @@ MODULE TwoMoment_TimeSteppingModule
     dEnergyMomentum_PL_TwoMoment
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit, &
+    SourceAwareImplicitOpacityAvailable, &
     OffGridFlux_TwoMoment
   USE TwoMoment_TallyModule, ONLY: &
     IncrementOffGridTally_Euler, &
@@ -71,20 +76,46 @@ MODULE TwoMoment_TimeSteppingModule
   REAL(DP),            ALLOCATABLE :: Mi(:,:,:,:,:,:,:)
   TYPE(StageDataType), ALLOCATABLE :: StageData(:)
 
+#if defined( TWOMOMENT_ORDER_V )
+  INTEGER, PARAMETER, PUBLIC :: iIMEX_Assembled             = 1
+  INTEGER, PARAMETER, PUBLIC :: iIMEX_PreImplicit           = 2
+  INTEGER, PARAMETER, PUBLIC :: iIMEX_PostImplicit          = 3
+  INTEGER, PARAMETER, PUBLIC :: iIMEX_PostImplicitLimiter   = 4
+  INTEGER, PARAMETER, PUBLIC :: iIMEX_CompletedStep          = 5
+  INTEGER, PARAMETER, PUBLIC :: nIMEXStageStates            = 5
+#endif
+
   PUBLIC :: Initialize_IMEX_RK
   PUBLIC :: Finalize_IMEX_RK
   PUBLIC :: Update_IMEX_RK
+#if defined( TWOMOMENT_ORDER_V )
+  PUBLIC :: GetNumberOfStages_IMEX_RK
+  PUBLIC :: GetImplicitStageCoefficient_IMEX_RK
+  PUBLIC :: GetExplicitStageCoefficient_IMEX_RK
+  PUBLIC :: GetExplicitStageWeight_IMEX_RK
+  PUBLIC :: GetImplicitStageWeight_IMEX_RK
+  PUBLIC :: ExplicitRHSUsed_IMEX_RK
+  PUBLIC :: HasFinalAssembly_IMEX_RK
+#endif
 
   INTERFACE
     SUBROUTINE ImplicitIncrement &
       ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R, &
-        uDR_Option )
+        AccumulateMatterCoupling_Mask, uDR_Option, MatterCoupling_Mask_Option &
+#if defined( TWOMOMENT_ORDER_V )
+        , MatterSource_Rate_Option, MatterIncrement_Rate_Option, &
+          MatterSource_Weight_Option, MatterSource_Rate_Unweighted_Option &
+#endif
+        )
       USE KindModule           , ONLY: DP
       USE ProgramHeaderModule  , ONLY: nDOFX, nDOFE, nDOFZ
       USE GeometryFieldsModuleE, ONLY: nGE
       USE GeometryFieldsModule , ONLY: nGF
       USE FluidFieldsModule    , ONLY: nCF
       USE RadiationFieldsModule, ONLY: nCR, nSpecies, nDR
+#if defined( TWOMOMENT_ORDER_V )
+      USE TwoMoment_NeutrinoMatterSolverModule, ONLY: nQ, nC
+#endif
       INTEGER,  INTENT(in)    :: &
         iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
       REAL(DP), INTENT(in)    :: &
@@ -127,12 +158,45 @@ MODULE TwoMoment_TimeSteppingModule
              iZ_B1(4):iZ_E1(4), &
              1:nCR, &
              1:nSpecies)
+      LOGICAL, INTENT(in) :: &
+        AccumulateMatterCoupling_Mask
       REAL(DP), INTENT(inout), OPTIONAL :: &
         uDR_Option &
             (iZ_B1(2):iZ_E1(2), &
              iZ_B1(3):iZ_E1(3), &
              iZ_B1(4):iZ_E1(4), &
              1:nDR)
+      LOGICAL, INTENT(inout), OPTIONAL :: &
+        MatterCoupling_Mask_Option &
+            (iZ_B1(2):iZ_E1(2), &
+             iZ_B1(3):iZ_E1(3), &
+             iZ_B1(4):iZ_E1(4))
+#if defined( TWOMOMENT_ORDER_V )
+      REAL(DP), INTENT(inout), OPTIONAL :: &
+        MatterSource_Rate_Option &
+            (1:nQ, &
+             1:1+nSpecies+nC, &
+             1:nDOFX, &
+             iZ_B1(2):iZ_E1(2), &
+             iZ_B1(3):iZ_E1(3), &
+             iZ_B1(4):iZ_E1(4))
+      REAL(DP), INTENT(inout), OPTIONAL :: &
+        MatterIncrement_Rate_Option &
+            (1:nQ, &
+             1:nDOFX, &
+             iZ_B1(2):iZ_E1(2), &
+             iZ_B1(3):iZ_E1(3), &
+             iZ_B1(4):iZ_E1(4))
+      REAL(DP), INTENT(in), OPTIONAL :: MatterSource_Weight_Option
+      REAL(DP), INTENT(out), OPTIONAL :: &
+        MatterSource_Rate_Unweighted_Option &
+            (1:nQ, &
+             1:1+nSpecies+nC, &
+             1:nDOFX, &
+             iZ_B1(2):iZ_E1(2), &
+             iZ_B1(3):iZ_E1(3), &
+             iZ_B1(4):iZ_E1(4))
+#endif
     END SUBROUTINE ImplicitIncrement
   END INTERFACE
 
@@ -181,7 +245,21 @@ CONTAINS
 
 
   SUBROUTINE Update_IMEX_RK &
-    ( dt, GE, GX, U, M, ComputeIncrement_TwoMoment_Implicit, SolveGravity )
+    ( dt, GE, GX, U, M, ComputeIncrement_TwoMoment_Implicit, SolveGravity &
+#if defined( TWOMOMENT_ORDER_V )
+      , MatterSource_Rate_Option, MatterIncrement_Rate_Option, &
+        MatterSource_Rate_FinalStage_Option, &
+        RadiationState_BeforeFinalLimiter_Option, &
+        IMEX_Stage_FluidState_Option, IMEX_Stage_RadiationState_Option, &
+        IMEX_Stage_FluidImplicitRate_Option, &
+        IMEX_Stage_FluidExplicitRate_Option, &
+        IMEX_Stage_RadiationImplicitRate_Option, &
+        IMEX_Stage_RadiationExplicitRate_Option, &
+        UpdateTallies_Option, OffGridFluidIncrement_Option, &
+        OffGridRadiationIncrement_Option, &
+        ComputeIncrement_TwoMoment_Explicit_Option &
+#endif
+      )
 
     REAL(DP), INTENT(in) :: &
       dt
@@ -212,15 +290,87 @@ CONTAINS
       ComputeIncrement_TwoMoment_Implicit
     PROCEDURE(GravitySolver), OPTIONAL :: &
       SolveGravity
+#if defined( TWOMOMENT_ORDER_V )
+    PROCEDURE(ComputeIncrement_TwoMoment_Explicit), OPTIONAL :: &
+      ComputeIncrement_TwoMoment_Explicit_Option
+    REAL(DP), INTENT(inout), OPTIONAL :: &
+      MatterSource_Rate_Option &
+        (1:nQ, &
+         1:1+nSpecies+nC, &
+         1:nDOFX, &
+         iX_B1(1):iX_E1(1), &
+         iX_B1(2):iX_E1(2), &
+         iX_B1(3):iX_E1(3))
+    REAL(DP), INTENT(inout), OPTIONAL :: &
+      MatterIncrement_Rate_Option &
+        (1:nQ, &
+         1:nDOFX, &
+         iX_B1(1):iX_E1(1), &
+         iX_B1(2):iX_E1(2), &
+         iX_B1(3):iX_E1(3))
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      MatterSource_Rate_FinalStage_Option &
+        (1:nQ, &
+         1:1+nSpecies+nC, &
+         1:nDOFX, &
+         iX_B1(1):iX_E1(1), &
+         iX_B1(2):iX_E1(2), &
+         iX_B1(3):iX_E1(3))
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      RadiationState_BeforeFinalLimiter_Option &
+        (1:nDOFZ, &
+         iZ_B1(1):iZ_E1(1), &
+         iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4), &
+         1:nCR,1:nSpecies)
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      IMEX_Stage_FluidState_Option(:,:,:,:,:,:,:)
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      IMEX_Stage_RadiationState_Option(:,:,:,:,:,:,:,:,:)
+    REAL(DP), INTENT(inout), OPTIONAL :: &
+      IMEX_Stage_FluidImplicitRate_Option(:,:,:,:,:,:)
+    REAL(DP), INTENT(inout), OPTIONAL :: &
+      IMEX_Stage_FluidExplicitRate_Option(:,:,:,:,:,:)
+    REAL(DP), INTENT(inout), OPTIONAL :: &
+      IMEX_Stage_RadiationImplicitRate_Option(:,:,:,:,:,:,:,:)
+    REAL(DP), INTENT(inout), OPTIONAL :: &
+      IMEX_Stage_RadiationExplicitRate_Option(:,:,:,:,:,:,:,:)
+    LOGICAL, INTENT(in), OPTIONAL :: UpdateTallies_Option
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      OffGridFluidIncrement_Option(1:nCF)
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      OffGridRadiationIncrement_Option(1:2*nCR)
+#endif
 
     INTEGER  :: iS, jS
     REAL(DP) :: dU_OffGrid(nCF)
     REAL(DP) :: dM_OffGrid(2*nCR)
     REAL(DP) :: dM_PL(nCR)
+    LOGICAL  :: FinalAssembly
+#if defined( TWOMOMENT_ORDER_V )
+    LOGICAL :: AccumulateMatterSources, CaptureIMEXStages, UpdateTallies
+#endif
 
     CALL TimersStart( Timer_IMEX )
 
+    dU_OffGrid = Zero
+    dM_OffGrid = Zero
     dM_PL = Zero
+#if defined( TWOMOMENT_ORDER_V )
+    FinalAssembly = HasFinalAssembly_IMEX_RK()
+    AccumulateMatterSources = .FALSE.
+    CaptureIMEXStages &
+      =      PRESENT( IMEX_Stage_FluidState_Option ) &
+        .OR. PRESENT( IMEX_Stage_RadiationState_Option )
+    UpdateTallies = .TRUE.
+    IF( PRESENT( UpdateTallies_Option ) ) &
+      UpdateTallies = UpdateTallies_Option
+#else
+    FinalAssembly &
+      =      ANY( a_IM(nStages,:) .NE. w_IM(:) ) &
+        .OR. ANY( a_EX(nStages,:) .NE. w_EX(:) )
+#endif
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
@@ -230,10 +380,95 @@ CONTAINS
     !$ACC COPYIN( GE, GX, U, M )
 #endif
 
+#if defined( TWOMOMENT_ORDER_V )
+    IF( PRESENT( MatterSource_Rate_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA MAP( alloc: MatterSource_Rate_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA CREATE( MatterSource_Rate_Option )
+#endif
+    END IF
+
+    IF( PRESENT( MatterIncrement_Rate_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA MAP( alloc: MatterIncrement_Rate_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA CREATE( MatterIncrement_Rate_Option )
+#endif
+    END IF
+
+    IF( PRESENT( MatterSource_Rate_FinalStage_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA MAP( alloc: MatterSource_Rate_FinalStage_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA CREATE( MatterSource_Rate_FinalStage_Option )
+#endif
+    END IF
+
+    IF( PRESENT( RadiationState_BeforeFinalLimiter_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA MAP( alloc: RadiationState_BeforeFinalLimiter_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA CREATE( RadiationState_BeforeFinalLimiter_Option )
+#endif
+      CALL CopyArray( RadiationState_BeforeFinalLimiter_Option, One, M )
+    END IF
+
+    IF( PRESENT( IMEX_Stage_FluidState_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA MAP( alloc: IMEX_Stage_FluidState_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA CREATE( IMEX_Stage_FluidState_Option )
+#endif
+    END IF
+
+    IF( PRESENT( IMEX_Stage_RadiationState_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA MAP( alloc: IMEX_Stage_RadiationState_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA CREATE( IMEX_Stage_RadiationState_Option )
+#endif
+    END IF
+
+    IF( PRESENT( IMEX_Stage_FluidImplicitRate_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA MAP( to: IMEX_Stage_FluidImplicitRate_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA COPYIN( IMEX_Stage_FluidImplicitRate_Option )
+#endif
+    END IF
+
+    IF( PRESENT( IMEX_Stage_FluidExplicitRate_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA MAP( to: IMEX_Stage_FluidExplicitRate_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA COPYIN( IMEX_Stage_FluidExplicitRate_Option )
+#endif
+    END IF
+
+    IF( PRESENT( IMEX_Stage_RadiationImplicitRate_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA MAP( to: IMEX_Stage_RadiationImplicitRate_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA COPYIN( IMEX_Stage_RadiationImplicitRate_Option )
+#endif
+    END IF
+
+    IF( PRESENT( IMEX_Stage_RadiationExplicitRate_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA MAP( to: IMEX_Stage_RadiationExplicitRate_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA COPYIN( IMEX_Stage_RadiationExplicitRate_Option )
+#endif
+    END IF
+#endif
+
     CALL CopyArray( U0, One, U )
     CALL CopyArray( M0, One, M )
 
     DO iS = 1, nStages
+
+      SourceAwareImplicitOpacityAvailable = .FALSE.
 
       CALL CopyArray( Ui, One, U0 )
       CALL CopyArray( Mi, One, M0 )
@@ -255,6 +490,14 @@ CONTAINS
         END IF
 
         IF( jS == iS - 1 )THEN
+
+#if defined( TWOMOMENT_ORDER_V )
+          IF( CaptureIMEXStages ) &
+            CALL CaptureIMEXStageState &
+                   ( Ui, Mi, iS, iIMEX_Assembled, &
+                     IMEX_Stage_FluidState_Option, &
+                     IMEX_Stage_RadiationState_Option )
+#endif
 
           ! --- Apply Limiters ---
 
@@ -304,21 +547,104 @@ CONTAINS
 
           END IF
 
+#if defined( TWOMOMENT_ORDER_V )
+          IF( CaptureIMEXStages ) &
+            CALL CaptureIMEXStageState &
+                   ( Ui, Mi, iS, iIMEX_PreImplicit, &
+                     IMEX_Stage_FluidState_Option, &
+                     IMEX_Stage_RadiationState_Option )
+#endif
+
         END IF
 
       END DO ! jS = 1, iS - 1
+
+#if defined( TWOMOMENT_ORDER_V )
+      IF( iS == 1 .AND. CaptureIMEXStages )THEN
+        CALL CaptureIMEXStageState &
+               ( Ui, Mi, iS, iIMEX_Assembled, &
+                 IMEX_Stage_FluidState_Option, &
+                 IMEX_Stage_RadiationState_Option )
+        CALL CaptureIMEXStageState &
+               ( Ui, Mi, iS, iIMEX_PreImplicit, &
+                 IMEX_Stage_FluidState_Option, &
+                 IMEX_Stage_RadiationState_Option )
+      END IF
+#endif
 
       IF( ANY( a_IM(:,iS) .NE. Zero ) .OR. ( w_IM(iS) .NE. Zero ) )THEN
 
         ! --- Implicit Solve ---
 
-        CALL ComputeIncrement_TwoMoment_Implicit &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, &
-                 Ui, StageData(iS) % dU_IM, Mi, StageData(iS) % dM_IM, &
-                 uDR_Option = uDR )
+#if defined( TWOMOMENT_ORDER_V )
+        IF(      w_IM(iS) .NE. Zero &
+            .AND. (      PRESENT( MatterSource_Rate_Option ) &
+                    .OR. PRESENT( MatterIncrement_Rate_Option ) &
+                    .OR. PRESENT( MatterSource_Rate_FinalStage_Option ) ) )THEN
+
+          IF(      iS == nStages &
+              .AND. PRESENT( MatterSource_Rate_FinalStage_Option ) )THEN
+
+            CALL ComputeIncrement_TwoMoment_Implicit &
+                   ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, &
+                     Ui, StageData(iS) % dU_IM, Mi, StageData(iS) % dM_IM, &
+                     AccumulateMatterCoupling_Mask = AccumulateMatterSources, &
+                     uDR_Option = uDR, &
+                     MatterSource_Rate_Option = MatterSource_Rate_Option, &
+                     MatterIncrement_Rate_Option = MatterIncrement_Rate_Option, &
+                     MatterSource_Weight_Option = w_IM(iS), &
+                     MatterSource_Rate_Unweighted_Option &
+                       = MatterSource_Rate_FinalStage_Option )
+
+          ELSE
+
+            CALL ComputeIncrement_TwoMoment_Implicit &
+                   ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, &
+                     Ui, StageData(iS) % dU_IM, Mi, StageData(iS) % dM_IM, &
+                     AccumulateMatterCoupling_Mask = AccumulateMatterSources, &
+                     uDR_Option = uDR, &
+                     MatterSource_Rate_Option = MatterSource_Rate_Option, &
+                     MatterIncrement_Rate_Option = MatterIncrement_Rate_Option, &
+                     MatterSource_Weight_Option = w_IM(iS) )
+
+          END IF
+
+          AccumulateMatterSources = .TRUE.
+
+        ELSE
+#endif
+
+          CALL ComputeIncrement_TwoMoment_Implicit &
+                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, &
+                   Ui, StageData(iS) % dU_IM, Mi, StageData(iS) % dM_IM, &
+                   AccumulateMatterCoupling_Mask = .FALSE., &
+                   uDR_Option = uDR )
+
+#if defined( TWOMOMENT_ORDER_V )
+        END IF
+#endif
 
         CALL AddToArray( One, Ui, dt * a_IM(iS,iS), StageData(iS) % dU_IM )
         CALL AddToArray( One, Mi, dt * a_IM(iS,iS), StageData(iS) % dM_IM )
+
+#if defined( TWOMOMENT_ORDER_V )
+        IF( PRESENT( IMEX_Stage_FluidImplicitRate_Option ) ) &
+          CALL CopyArray &
+                 ( IMEX_Stage_FluidImplicitRate_Option(:,:,:,:,:,iS), &
+                   One, StageData(iS) % dU_IM )
+        IF( PRESENT( IMEX_Stage_RadiationImplicitRate_Option ) ) &
+          CALL CopyArray &
+                 ( IMEX_Stage_RadiationImplicitRate_Option(:,:,:,:,:,:,:,iS), &
+                   One, StageData(iS) % dM_IM )
+#endif
+
+#if defined( TWOMOMENT_ORDER_V )
+        IF( CaptureIMEXStages ) &
+          CALL CaptureIMEXStageState &
+                 ( Ui, Mi, iS, iIMEX_PostImplicit, &
+                   IMEX_Stage_FluidState_Option, &
+                   IMEX_Stage_RadiationState_Option )
+#endif
 
         IF( EvolveEuler )THEN
 
@@ -329,6 +655,12 @@ CONTAINS
 
         IF( EvolveTwoMoment )THEN
 
+#if defined( TWOMOMENT_ORDER_V )
+          IF(      iS == nStages .AND. .NOT. FinalAssembly &
+              .AND. PRESENT( RadiationState_BeforeFinalLimiter_Option ) ) &
+            CALL CopyArray( RadiationState_BeforeFinalLimiter_Option, One, Mi )
+#endif
+
           CALL ApplyPositivityLimiter_TwoMoment &
                  ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi, &
                    uDR_Option = uDR )
@@ -337,7 +669,30 @@ CONTAINS
 
         END IF
 
+#if defined( TWOMOMENT_ORDER_V )
+        IF( CaptureIMEXStages ) &
+          CALL CaptureIMEXStageState &
+                 ( Ui, Mi, iS, iIMEX_PostImplicitLimiter, &
+                   IMEX_Stage_FluidState_Option, &
+                   IMEX_Stage_RadiationState_Option )
+#endif
+
       END IF
+
+#if defined( TWOMOMENT_ORDER_V )
+      IF( CaptureIMEXStages &
+          .AND. .NOT. ( ANY( a_IM(:,iS) .NE. Zero ) &
+                  .OR. ( w_IM(iS) .NE. Zero ) ) )THEN
+        CALL CaptureIMEXStageState &
+               ( Ui, Mi, iS, iIMEX_PostImplicit, &
+                 IMEX_Stage_FluidState_Option, &
+                 IMEX_Stage_RadiationState_Option )
+        CALL CaptureIMEXStageState &
+               ( Ui, Mi, iS, iIMEX_PostImplicitLimiter, &
+                 IMEX_Stage_FluidState_Option, &
+                 IMEX_Stage_RadiationState_Option )
+      END IF
+#endif
 
       IF( ANY( a_EX(:,iS) .NE. Zero ) .OR. ( w_EX(iS) .NE. Zero ) )THEN
 
@@ -365,13 +720,34 @@ CONTAINS
 
         IF( EvolveTwoMoment )THEN
 
-          CALL ComputeIncrement_TwoMoment_Explicit &
-                 ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
-                   Ui, Mi, StageData(iS) % dM_EX )
+          IF( PRESENT( ComputeIncrement_TwoMoment_Explicit_Option ) )THEN
+
+            CALL ComputeIncrement_TwoMoment_Explicit_Option &
+                   ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
+                     Ui, Mi, StageData(iS) % dM_EX )
+
+          ELSE
+
+            CALL ComputeIncrement_TwoMoment_Explicit &
+                   ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
+                     Ui, Mi, StageData(iS) % dM_EX )
+
+          END IF
 
           StageData(iS) % OffGridFlux_M = OffGridFlux_TwoMoment
 
         END IF
+
+#if defined( TWOMOMENT_ORDER_V )
+        IF( PRESENT( IMEX_Stage_FluidExplicitRate_Option ) ) &
+          CALL CopyArray &
+                 ( IMEX_Stage_FluidExplicitRate_Option(:,:,:,:,:,iS), &
+                   One, StageData(iS) % dU_EX )
+        IF( PRESENT( IMEX_Stage_RadiationExplicitRate_Option ) ) &
+          CALL CopyArray &
+                 ( IMEX_Stage_RadiationExplicitRate_Option(:,:,:,:,:,:,:,iS), &
+                   One, StageData(iS) % dM_EX )
+#endif
 
       END IF
 
@@ -379,8 +755,7 @@ CONTAINS
 
     ! --- Assembly Step ---
 
-    IF( ANY( a_IM(nStages,:) .NE. w_IM(:) ) .OR. &
-        ANY( a_EX(nStages,:) .NE. w_EX(:) ) )THEN
+    IF( FinalAssembly )THEN
 
       CALL CopyArray( Ui, One, U0 )
       CALL CopyArray( Mi, One, M0 )
@@ -418,6 +793,11 @@ CONTAINS
         CALL ApplySlopeLimiter_TwoMoment &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi )
 
+#if defined( TWOMOMENT_ORDER_V )
+        IF( PRESENT( RadiationState_BeforeFinalLimiter_Option ) ) &
+          CALL CopyArray( RadiationState_BeforeFinalLimiter_Option, One, Mi )
+#endif
+
         CALL ApplyPositivityLimiter_TwoMoment &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, Ui, Mi, &
                  uDR_Option = uDR )
@@ -451,12 +831,19 @@ CONTAINS
 
     END IF
 
+#if defined( TWOMOMENT_ORDER_V )
+    IF( CaptureIMEXStages .AND. FinalAssembly ) &
+      CALL CaptureIMEXStageState &
+             ( Ui, Mi, nStages, iIMEX_CompletedStep, &
+               IMEX_Stage_FluidState_Option, &
+               IMEX_Stage_RadiationState_Option )
+#endif
+
     CALL CopyArray( U, One, Ui )
     CALL CopyArray( M, One, Mi )
 
     IF( EvolveEuler )THEN
 
-      dU_OffGrid = Zero
       DO iS = 1, nStages
 
         dU_OffGrid &
@@ -464,13 +851,13 @@ CONTAINS
 
       END DO
 
-      CALL IncrementOffGridTally_Euler( dU_OffGrid )
+      IF( UpdateTallies ) &
+        CALL IncrementOffGridTally_Euler( dU_OffGrid )
 
     END IF
 
     IF( EvolveTwoMoment )THEN
 
-      dM_OffGrid = Zero
       DO iS = 1, nStages
 
         dM_OffGrid &
@@ -478,11 +865,17 @@ CONTAINS
 
       END DO
 
-      CALL IncrementOffGridTally_TwoMoment( dM_OffGrid )
-
-      CALL IncrementPositivityLimiterTally_TwoMoment( dM_PL )
+      IF( UpdateTallies )THEN
+        CALL IncrementOffGridTally_TwoMoment( dM_OffGrid )
+        CALL IncrementPositivityLimiterTally_TwoMoment( dM_PL )
+      END IF
 
     END IF
+
+    IF( PRESENT( OffGridFluidIncrement_Option ) ) &
+      OffGridFluidIncrement_Option = dU_OffGrid
+    IF( PRESENT( OffGridRadiationIncrement_Option ) ) &
+      OffGridRadiationIncrement_Option = dM_OffGrid
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
@@ -494,9 +887,180 @@ CONTAINS
     !$ACC DELETE( GE )
 #endif
 
+#if defined( TWOMOMENT_ORDER_V )
+    IF( PRESENT( MatterSource_Rate_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA MAP( from: MatterSource_Rate_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA COPYOUT( MatterSource_Rate_Option )
+#endif
+    END IF
+
+    IF( PRESENT( MatterIncrement_Rate_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA MAP( from: MatterIncrement_Rate_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA COPYOUT( MatterIncrement_Rate_Option )
+#endif
+    END IF
+
+    IF( PRESENT( MatterSource_Rate_FinalStage_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA MAP( from: MatterSource_Rate_FinalStage_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA COPYOUT( MatterSource_Rate_FinalStage_Option )
+#endif
+    END IF
+
+    IF( PRESENT( RadiationState_BeforeFinalLimiter_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA MAP( from: RadiationState_BeforeFinalLimiter_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA COPYOUT( RadiationState_BeforeFinalLimiter_Option )
+#endif
+    END IF
+
+    IF( PRESENT( IMEX_Stage_FluidState_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA MAP( from: IMEX_Stage_FluidState_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA COPYOUT( IMEX_Stage_FluidState_Option )
+#endif
+    END IF
+
+    IF( PRESENT( IMEX_Stage_RadiationState_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA MAP( from: IMEX_Stage_RadiationState_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA COPYOUT( IMEX_Stage_RadiationState_Option )
+#endif
+    END IF
+
+    IF( PRESENT( IMEX_Stage_FluidImplicitRate_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA MAP( from: IMEX_Stage_FluidImplicitRate_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA COPYOUT( IMEX_Stage_FluidImplicitRate_Option )
+#endif
+    END IF
+
+    IF( PRESENT( IMEX_Stage_FluidExplicitRate_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA MAP( from: IMEX_Stage_FluidExplicitRate_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA COPYOUT( IMEX_Stage_FluidExplicitRate_Option )
+#endif
+    END IF
+
+    IF( PRESENT( IMEX_Stage_RadiationImplicitRate_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA MAP( from: IMEX_Stage_RadiationImplicitRate_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA COPYOUT( IMEX_Stage_RadiationImplicitRate_Option )
+#endif
+    END IF
+
+    IF( PRESENT( IMEX_Stage_RadiationExplicitRate_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA MAP( from: IMEX_Stage_RadiationExplicitRate_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA COPYOUT( IMEX_Stage_RadiationExplicitRate_Option )
+#endif
+    END IF
+#endif
+
     CALL TimersStop( Timer_IMEX )
 
   END SUBROUTINE Update_IMEX_RK
+
+
+#if defined( TWOMOMENT_ORDER_V )
+  SUBROUTINE CaptureIMEXStageState &
+    ( U_State, M_State, iStage, iState, &
+      FluidStates_Option, RadiationStates_Option )
+
+    REAL(DP), INTENT(in) :: U_State(:,:,:,:,:)
+    REAL(DP), INTENT(in) :: M_State(:,:,:,:,:,:,:)
+    INTEGER,  INTENT(in) :: iStage, iState
+    REAL(DP), INTENT(out), OPTIONAL :: FluidStates_Option(:,:,:,:,:,:,:)
+    REAL(DP), INTENT(out), OPTIONAL :: RadiationStates_Option(:,:,:,:,:,:,:,:,:)
+
+    IF( PRESENT( FluidStates_Option ) ) &
+      CALL CopyArray &
+             ( FluidStates_Option(:,:,:,:,:,iStage,iState), One, U_State )
+
+    IF( PRESENT( RadiationStates_Option ) ) &
+      CALL CopyArray &
+             ( RadiationStates_Option(:,:,:,:,:,:,:,iStage,iState), &
+               One, M_State )
+
+  END SUBROUTINE CaptureIMEXStageState
+
+
+  INTEGER FUNCTION GetNumberOfStages_IMEX_RK()
+
+    GetNumberOfStages_IMEX_RK = nStages
+
+  END FUNCTION GetNumberOfStages_IMEX_RK
+
+
+  REAL(DP) FUNCTION GetImplicitStageCoefficient_IMEX_RK( iStage, jStage )
+
+    INTEGER, INTENT(in) :: iStage
+    INTEGER, INTENT(in), OPTIONAL :: jStage
+
+    GetImplicitStageCoefficient_IMEX_RK = a_IM(iStage,iStage)
+    IF( PRESENT( jStage ) ) &
+      GetImplicitStageCoefficient_IMEX_RK = a_IM(iStage,jStage)
+
+  END FUNCTION GetImplicitStageCoefficient_IMEX_RK
+
+
+  REAL(DP) FUNCTION GetExplicitStageCoefficient_IMEX_RK( iStage, jStage )
+
+    INTEGER, INTENT(in) :: iStage, jStage
+
+    GetExplicitStageCoefficient_IMEX_RK = a_EX(iStage,jStage)
+
+  END FUNCTION GetExplicitStageCoefficient_IMEX_RK
+
+
+  REAL(DP) FUNCTION GetExplicitStageWeight_IMEX_RK( iStage )
+
+    INTEGER, INTENT(in) :: iStage
+
+    GetExplicitStageWeight_IMEX_RK = w_EX(iStage)
+
+  END FUNCTION GetExplicitStageWeight_IMEX_RK
+
+
+  REAL(DP) FUNCTION GetImplicitStageWeight_IMEX_RK( iStage )
+
+    INTEGER, INTENT(in) :: iStage
+
+    GetImplicitStageWeight_IMEX_RK = w_IM(iStage)
+
+  END FUNCTION GetImplicitStageWeight_IMEX_RK
+
+
+  LOGICAL FUNCTION ExplicitRHSUsed_IMEX_RK( iStage )
+
+    INTEGER, INTENT(in) :: iStage
+
+    ExplicitRHSUsed_IMEX_RK &
+      = ANY( a_EX(:,iStage) .NE. Zero ) .OR. ( w_EX(iStage) .NE. Zero )
+
+  END FUNCTION ExplicitRHSUsed_IMEX_RK
+
+
+  LOGICAL FUNCTION HasFinalAssembly_IMEX_RK()
+
+    HasFinalAssembly_IMEX_RK &
+      =      ANY( a_IM(nStages,:) .NE. w_IM(:) ) &
+        .OR. ANY( a_EX(nStages,:) .NE. w_EX(:) )
+
+  END FUNCTION HasFinalAssembly_IMEX_RK
+#endif
 
 
   SUBROUTINE Initialize_IMEX_RK &
