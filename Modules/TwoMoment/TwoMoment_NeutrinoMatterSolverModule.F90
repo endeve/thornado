@@ -98,7 +98,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     nOp, iOp_EmAb, iOp_ECTable, iOp_Iso, &
     iOp_NNS, iOp_NES, iOp_Pair, iOp_NuPair, iOp_Brem
   USE TwoMoment_UtilitiesModule, ONLY: &
-    ComputeEddingtonTensorComponents_dd
+    ComputeEddingtonTensorComponents_dd, &
+    ComputeConserved_TwoMoment
   USE TwoMoment_ClosureModule, ONLY: &
     FluxFactor, &
     EddingtonFactor
@@ -1898,7 +1899,7 @@ CONTAINS
     REAL(DP), DIMENSION(:),     INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP), DIMENSION(:),     INTENT(in)    :: Alpha
     REAL(DP), DIMENSION(:),     INTENT(in)    :: Beta_u_1, Beta_u_2, Beta_u_3
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3
     INTEGER,  DIMENSION(:),     INTENT(inout) :: nIterations_Inner
     INTEGER,  DIMENSION(:),     INTENT(inout) :: nIterations_Outer
     INTEGER,  DIMENSION(:),     INTENT(out)   :: nIterations_Inner_Final
@@ -1941,7 +1942,8 @@ CONTAINS
       T_Conservative, Y_Conservative, E_Conservative, &
       V_u_1_Conservative, V_u_2_Conservative, V_u_3_Conservative
     REAL(DP), ALLOCATABLE, DIMENSION(:,:) :: &
-      FVECm_projection, GVECm_projection
+      FVECm_projection, GVECm_projection, &
+      InitialRadiationLimiter_ConservationCorrection
 #endif
 
     ! --- Least-squares scratch arrays ---
@@ -1995,6 +1997,9 @@ CONTAINS
     ALLOCATE( V_u_3_Conservative(nX_G) )
     ALLOCATE( FVECm_projection(n_FP_outer,nX_G) )
     ALLOCATE( GVECm_projection(n_FP_outer,nX_G) )
+    ALLOCATE &
+      ( InitialRadiationLimiter_ConservationCorrection &
+          (nMatterEquations,nX_G) )
 #endif
 
 #if   defined(THORNADO_OMP_OL)
@@ -2056,14 +2061,16 @@ CONTAINS
     !$OMP             T_Conservative, Y_Conservative, E_Conservative, &
     !$OMP             V_u_1_Conservative, V_u_2_Conservative, &
     !$OMP             V_u_3_Conservative, &
-    !$OMP             FVECm_projection, GVECm_projection )
+    !$OMP             FVECm_projection, GVECm_projection, &
+    !$OMP             InitialRadiationLimiter_ConservationCorrection )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC CREATE( ProjectionMask, &
     !$ACC         T_Conservative, Y_Conservative, E_Conservative, &
     !$ACC         V_u_1_Conservative, V_u_2_Conservative, &
     !$ACC         V_u_3_Conservative, &
-    !$ACC         FVECm_projection, GVECm_projection )
+    !$ACC         FVECm_projection, GVECm_projection, &
+    !$ACC         InitialRadiationLimiter_ConservationCorrection )
 #endif
 #endif
 
@@ -2160,14 +2167,17 @@ CONTAINS
 
 #elif defined( TWOMOMENT_ORDER_V )
 
-    CALL ComputeInitialRadiationLimiterRate_OrderV &
-           ( dt, ITERATE_outer, Dnu, InitialRadiationLimiter_Rate_Final )
-
-    CALL LimitNeutrinoDistribution_OrderV ( Dnu ) ! --- Enforce Dnu < user supplied limit
+    CALL ApplyNeutrinoDistributionLimit_OrderV &
+           ( dt, ITERATE_outer, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+             V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+             InitialRadiationLimiter_Rate_Final, &
+             InitialRadiationLimiter_ConservationCorrection )
 
     CALL InitializeRHS_OrderV &
            ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, D, Y, E, T, V_u_1, V_u_2, V_u_3, &
-             Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+             Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+             Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
+             InitialRadiationLimiter_ConservationCorrection )
 
 #elif defined( TWOMOMENT_RELATIVISTIC )
 
@@ -2740,14 +2750,16 @@ CONTAINS
     !$OMP               T_Conservative, Y_Conservative, E_Conservative, &
     !$OMP               V_u_1_Conservative, V_u_2_Conservative, &
     !$OMP               V_u_3_Conservative, &
-    !$OMP               FVECm_projection, GVECm_projection )
+    !$OMP               FVECm_projection, GVECm_projection, &
+    !$OMP               InitialRadiationLimiter_ConservationCorrection )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC DELETE( ProjectionMask, &
     !$ACC         T_Conservative, Y_Conservative, E_Conservative, &
     !$ACC         V_u_1_Conservative, V_u_2_Conservative, &
     !$ACC         V_u_3_Conservative, &
-    !$ACC         FVECm_projection, GVECm_projection )
+    !$ACC         FVECm_projection, GVECm_projection, &
+    !$ACC         InitialRadiationLimiter_ConservationCorrection )
 #endif
 #endif
 
@@ -4181,93 +4193,168 @@ CONTAINS
   END SUBROUTINE UpdateTemperature_Packed
 
 
-  SUBROUTINE LimitNeutrinoDistribution_OrderV ( Dnu )
+  SUBROUTINE ApplyNeutrinoDistributionLimit_OrderV &
+    ( dt, MASK, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      LimiterRate, ConservationCorrection )
 
+    REAL(DP),                   INTENT(in)    :: dt
+    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
     REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: Dnu
-
-    INTEGER :: iN_E, iN_X, iS
-
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
-#elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(3)
-#endif
-    DO iN_X = 1, nX_G
-    DO iS   = 1, nSpecies
-    DO iN_E = 1, nE_G
-
-      Dnu(iN_E,iS,iN_X) = MIN( DnuMax, Dnu(iN_E,iS,iN_X) )
-
-    END DO
-    END DO
-    END DO
-
-  END SUBROUTINE LimitNeutrinoDistribution_OrderV
-
-
-  SUBROUTINE ComputeInitialRadiationLimiterRate_OrderV &
-    ( dt, MASK, Dnu, LimiterRate )
-
-    REAL(DP),                   INTENT(in)  :: dt
-    LOGICAL,  DIMENSION(:),     INTENT(in)  :: MASK
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: Dnu
-    REAL(DP), DIMENSION(:,:),   INTENT(out) :: LimiterRate
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:),     INTENT(in)    :: V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:),     INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:,:),   INTENT(out)   :: LimiterRate
+    REAL(DP), DIMENSION(:,:),   INTENT(out)   :: ConservationCorrection
 
     INTEGER  :: iN_E, iN_X, iS
-    REAL(DP) :: DeltaDnu, DeltaEnergy, DeltaLepton
+    REAL(DP) :: Dnu_Input, Dnu_Limited, DeltaDnu
+    REAL(DP) :: DeltaLepton, DeltaEnergy
+    REAL(DP) :: DeltaMomentum1, DeltaMomentum2, DeltaMomentum3
+    REAL(DP) :: DeltaFnu_d_1, DeltaFnu_d_2, DeltaFnu_d_3
+    REAL(DP) :: V_d_1, V_d_2, V_d_3
+    REAL(DP) :: Nnu_Input, Nnu_Limited
+    REAL(DP) :: Gnu_Input_d_1, Gnu_Input_d_2, Gnu_Input_d_3
+    REAL(DP) :: Gnu_Limited_d_1, Gnu_Limited_d_2, Gnu_Limited_d_3
 
-#if   defined( THORNADO_OMP_OL )
+#if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE &
-    !$OMP PRIVATE( DeltaDnu, DeltaEnergy, DeltaLepton )
-#elif defined( THORNADO_OACC   )
+    !$OMP PRIVATE( V_d_1, V_d_2, V_d_3, &
+    !$OMP          DeltaLepton, DeltaEnergy, &
+    !$OMP          DeltaMomentum1, DeltaMomentum2, DeltaMomentum3 )
+#elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG &
-    !$ACC PRIVATE( DeltaDnu, DeltaEnergy, DeltaLepton )
-#elif defined( THORNADO_OMP    )
+    !$ACC PRIVATE( V_d_1, V_d_2, V_d_3, &
+    !$ACC          DeltaLepton, DeltaEnergy, &
+    !$ACC          DeltaMomentum1, DeltaMomentum2, DeltaMomentum3 )
+#elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( DeltaDnu, DeltaEnergy, DeltaLepton )
+    !$OMP PRIVATE( V_d_1, V_d_2, V_d_3, &
+    !$OMP          DeltaLepton, DeltaEnergy, &
+    !$OMP          DeltaMomentum1, DeltaMomentum2, DeltaMomentum3, &
+    !$OMP          Dnu_Input, Dnu_Limited, DeltaDnu, &
+    !$OMP          DeltaFnu_d_1, DeltaFnu_d_2, DeltaFnu_d_3, &
+    !$OMP          Nnu_Input, Nnu_Limited, &
+    !$OMP          Gnu_Input_d_1, Gnu_Input_d_2, Gnu_Input_d_3, &
+    !$OMP          Gnu_Limited_d_1, Gnu_Limited_d_2, Gnu_Limited_d_3 )
 #endif
     DO iN_X = 1, nX_G
 
-      DeltaEnergy = Zero
       DeltaLepton = Zero
+      DeltaEnergy = Zero
+      DeltaMomentum1 = Zero
+      DeltaMomentum2 = Zero
+      DeltaMomentum3 = Zero
 
       IF( MASK(iN_X) )THEN
 
-#if   defined( THORNADO_OMP_OL )
-      !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( DeltaDnu ) &
-      !$OMP REDUCTION( + : DeltaEnergy, DeltaLepton )
-#elif defined( THORNADO_OACC   )
-      !$ACC LOOP VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( DeltaDnu ) &
-      !$ACC REDUCTION( + : DeltaEnergy, DeltaLepton )
+        V_d_1 = Gm_dd_11(iN_X) * V_u_1(iN_X)
+        V_d_2 = Gm_dd_22(iN_X) * V_u_2(iN_X)
+        V_d_3 = Gm_dd_33(iN_X) * V_u_3(iN_X)
+
+#if   defined(THORNADO_OMP_OL)
+        !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+        !$OMP PRIVATE( Dnu_Input, Dnu_Limited, DeltaDnu, &
+        !$OMP          DeltaFnu_d_1, DeltaFnu_d_2, DeltaFnu_d_3, &
+        !$OMP          Nnu_Input, Nnu_Limited, &
+        !$OMP          Gnu_Input_d_1, Gnu_Input_d_2, Gnu_Input_d_3, &
+        !$OMP          Gnu_Limited_d_1, Gnu_Limited_d_2, &
+        !$OMP          Gnu_Limited_d_3 ) &
+        !$OMP REDUCTION( + : DeltaLepton, DeltaEnergy, &
+        !$OMP                 DeltaMomentum1, DeltaMomentum2, DeltaMomentum3 )
+#elif defined(THORNADO_OACC)
+        !$ACC LOOP VECTOR COLLAPSE(2) &
+        !$ACC PRIVATE( Dnu_Input, Dnu_Limited, DeltaDnu, &
+        !$ACC          DeltaFnu_d_1, DeltaFnu_d_2, DeltaFnu_d_3, &
+        !$ACC          Nnu_Input, Nnu_Limited, &
+        !$ACC          Gnu_Input_d_1, Gnu_Input_d_2, Gnu_Input_d_3, &
+        !$ACC          Gnu_Limited_d_1, Gnu_Limited_d_2, &
+        !$ACC          Gnu_Limited_d_3 ) &
+        !$ACC REDUCTION( + : DeltaLepton, DeltaEnergy, &
+        !$ACC                 DeltaMomentum1, DeltaMomentum2, DeltaMomentum3 )
 #endif
-      DO iS   = 1, nSpecies
-      DO iN_E = 1, nE_G
+        DO iS   = 1, nSpecies
+        DO iN_E = 1, nE_G
 
-        DeltaDnu = MIN( DnuMax, Dnu(iN_E,iS,iN_X) ) &
-                     - Dnu(iN_E,iS,iN_X)
+          Dnu_Input = Dnu(iN_E,iS,iN_X)
+          Dnu_Limited = MIN( DnuMax, Dnu_Input )
+          DeltaDnu = Dnu_Limited - Dnu_Input
 
-        IF( iS <= iNuE_Bar ) &
-          DeltaLepton = DeltaLepton &
-            + DeltaDnu * W2_S(iN_E) * LeptonNumber(iS)
+          IF( DeltaDnu /= Zero )THEN
 
-        DeltaEnergy = DeltaEnergy + DeltaDnu * W3_S(iN_E)
+            CALL ComputeConserved_TwoMoment &
+                   ( Dnu_Input, &
+                     Inu_u_1(iN_E,iS,iN_X), &
+                     Inu_u_2(iN_E,iS,iN_X), &
+                     Inu_u_3(iN_E,iS,iN_X), &
+                     Nnu_Input, Gnu_Input_d_1, Gnu_Input_d_2, Gnu_Input_d_3, &
+                     V_u_1(iN_X), V_u_2(iN_X), V_u_3(iN_X), &
+                     Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
 
-      END DO
-      END DO
+            CALL ComputeConserved_TwoMoment &
+                   ( Dnu_Limited, &
+                     Inu_u_1(iN_E,iS,iN_X), &
+                     Inu_u_2(iN_E,iS,iN_X), &
+                     Inu_u_3(iN_E,iS,iN_X), &
+                     Nnu_Limited, &
+                     Gnu_Limited_d_1, Gnu_Limited_d_2, Gnu_Limited_d_3, &
+                     V_u_1(iN_X), V_u_2(iN_X), V_u_3(iN_X), &
+                     Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X) )
+
+            DeltaFnu_d_1 &
+              = V_d_1 * DeltaDnu &
+                  + Gnu_Limited_d_1 - Gnu_Input_d_1
+            DeltaFnu_d_2 &
+              = V_d_2 * DeltaDnu &
+                  + Gnu_Limited_d_2 - Gnu_Input_d_2
+            DeltaFnu_d_3 &
+              = V_d_3 * DeltaDnu &
+                  + Gnu_Limited_d_3 - Gnu_Input_d_3
+
+            IF( iS <= iNuE_Bar ) &
+              DeltaLepton = DeltaLepton &
+                + ( Nnu_Limited - Nnu_Input ) &
+                    * W2_S(iN_E) * LeptonNumber(iS)
+
+            DeltaEnergy = DeltaEnergy + DeltaDnu * W3_S(iN_E)
+            DeltaMomentum1 &
+              = DeltaMomentum1 + DeltaFnu_d_1 * W3_S(iN_E)
+            DeltaMomentum2 &
+              = DeltaMomentum2 + DeltaFnu_d_2 * W3_S(iN_E)
+            DeltaMomentum3 &
+              = DeltaMomentum3 + DeltaFnu_d_3 * W3_S(iN_E)
+
+            Dnu(iN_E,iS,iN_X) = Dnu_Limited
+
+          END IF
+
+        END DO
+        END DO
 
       END IF
 
       LimiterRate(:,iN_X) = Zero
       LimiterRate(iQ_L,iN_X) = DeltaLepton / dt
       LimiterRate(iQ_E,iN_X) = DeltaEnergy / dt
+      LimiterRate(iQ_M1,iN_X) = DeltaMomentum1 / dt
+      LimiterRate(iQ_M2,iN_X) = DeltaMomentum2 / dt
+      LimiterRate(iQ_M3,iN_X) = DeltaMomentum3 / dt
+      LimiterRate(iQ_H,iN_X) &
+        = LimiterRate(iQ_E,iN_X) &
+            - V_u_1(iN_X) * LimiterRate(iQ_M1,iN_X) &
+            - V_u_2(iN_X) * LimiterRate(iQ_M2,iN_X) &
+            - V_u_3(iN_X) * LimiterRate(iQ_M3,iN_X)
+
+      ConservationCorrection(:,iN_X) = Zero
+      ConservationCorrection(iY ,iN_X) = -DeltaLepton
+      ConservationCorrection(iEf,iN_X) = -DeltaEnergy
+      ConservationCorrection(iV1,iN_X) = -DeltaMomentum1
+      ConservationCorrection(iV2,iN_X) = -DeltaMomentum2
+      ConservationCorrection(iV3,iN_X) = -DeltaMomentum3
 
     END DO
 
-  END SUBROUTINE ComputeInitialRadiationLimiterRate_OrderV
+  END SUBROUTINE ApplyNeutrinoDistributionLimit_OrderV
 
 
   SUBROUTINE InitializeRHS_OrderOne &
@@ -4347,11 +4434,16 @@ CONTAINS
 
   SUBROUTINE InitializeRHS_OrderV &
     ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, D, Y, E, T, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, Nnu_Clipped, &
+      Gnu_d_1_Clipped, Gnu_d_2_Clipped, Gnu_d_3_Clipped, &
+      RadiationLimiterCorrection )
 
     REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)  :: D, Y, E, T, V_u_1, V_u_2, V_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:,:,:), INTENT(out) :: &
+      Nnu_Clipped, Gnu_d_1_Clipped, Gnu_d_2_Clipped, Gnu_d_3_Clipped
+    REAL(DP), DIMENSION(:,:)  , INTENT(in)  :: RadiationLimiterCorrection
 
     INTEGER  :: iN_E, iN_X, iS
     REAL(DP) :: vDotV, vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3
@@ -4515,6 +4607,11 @@ CONTAINS
         C_Inu_d_3(iN_E,iS,iN_X) &
           = Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X) + vDotK_d_3
 
+        Nnu_Clipped(iN_E,iS,iN_X) = C_Dnu(iN_E,iS,iN_X)
+        Gnu_d_1_Clipped(iN_E,iS,iN_X) = C_Inu_d_1(iN_E,iS,iN_X)
+        Gnu_d_2_Clipped(iN_E,iS,iN_X) = C_Inu_d_2(iN_E,iS,iN_X)
+        Gnu_d_3_Clipped(iN_E,iS,iN_X) = C_Inu_d_3(iN_E,iS,iN_X)
+
         IF ( iS <= iNuE_Bar ) THEN
         SUM_Y  = SUM_Y  + Nnu     * W2_S(iN_E) * LeptonNumber(iS)
         END IF
@@ -4528,12 +4625,21 @@ CONTAINS
       END DO
 
       ! --- Store the Old Radiation Contribution to Each Conserved Total ---
+      ! --- Include the radiation removed by the occupation-number bound. ---
 
-      C_Y    (iN_X) = wMatrRHS(iY ) * SUM_Y  * S_Y    (iN_X)
-      C_Ef   (iN_X) = wMatrRHS(iEf) * SUM_Ef * S_Ef   (iN_X)
-      C_V_d_1(iN_X) = wMatrRHS(iV1) * SUM_V1 * S_V_d_1(iN_X)
-      C_V_d_2(iN_X) = wMatrRHS(iV2) * SUM_V2 * S_V_d_2(iN_X)
-      C_V_d_3(iN_X) = wMatrRHS(iV3) * SUM_V3 * S_V_d_3(iN_X)
+      C_Y(iN_X) = wMatrRHS(iY) &
+        * ( SUM_Y + RadiationLimiterCorrection(iY,iN_X) ) * S_Y(iN_X)
+      C_Ef(iN_X) = wMatrRHS(iEf) &
+        * ( SUM_Ef + RadiationLimiterCorrection(iEf,iN_X) ) * S_Ef(iN_X)
+      C_V_d_1(iN_X) = wMatrRHS(iV1) &
+        * ( SUM_V1 + RadiationLimiterCorrection(iV1,iN_X) ) &
+        * S_V_d_1(iN_X)
+      C_V_d_2(iN_X) = wMatrRHS(iV2) &
+        * ( SUM_V2 + RadiationLimiterCorrection(iV2,iN_X) ) &
+        * S_V_d_2(iN_X)
+      C_V_d_3(iN_X) = wMatrRHS(iV3) &
+        * ( SUM_V3 + RadiationLimiterCorrection(iV3,iN_X) ) &
+        * S_V_d_3(iN_X)
 
     END DO
 

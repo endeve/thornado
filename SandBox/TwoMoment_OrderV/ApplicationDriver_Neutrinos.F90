@@ -819,7 +819,7 @@ PROGRAM ApplicationDriver_Neutrinos
       Include_LinCorr = .false.
       FreezeOpacities = .FALSE. ! --- Keep opacities fixed during iterations?
 
-      DnuMax          = huge(One) !One - 1.0d-6
+      DnuMax          = One - 1.0d-6
 
       M_inner = 2
       MaxIter_inner   = 1000

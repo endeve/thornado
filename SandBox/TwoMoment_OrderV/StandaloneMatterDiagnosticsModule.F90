@@ -2593,7 +2593,7 @@ CONTAINS
       Handoff(iCH_MappedPair_E) / Erg, &
       Handoff(iCH_ReturnedPair_E) / Erg, &
       LimiterEnergy / Erg, OuterEnergy / Erg, &
-      ( Handoff(iCH_PrimitivePair_E) - LimiterEnergy + OuterEnergy ) / Erg, &
+      ( Handoff(iCH_PrimitivePair_E) + OuterEnergy ) / Erg, &
       ( Handoff(iCH_MappedPair_E) - Handoff(iCH_PrimitivePair_E) &
           - Handoff(iCH_InputConversion_E) &
           - Handoff(iCH_FinalConversion_E) ) / Erg, &
@@ -2607,7 +2607,7 @@ CONTAINS
       Handoff(iCH_MappedPair_L), &
       Handoff(iCH_ReturnedPair_L), &
       LimiterLepton, OuterLepton, &
-      Handoff(iCH_PrimitivePair_L) - LimiterLepton + OuterLepton, &
+      Handoff(iCH_PrimitivePair_L) + OuterLepton, &
       Handoff(iCH_MappedPair_L) - Handoff(iCH_PrimitivePair_L) &
         - Handoff(iCH_InputConversion_L) - Handoff(iCH_FinalConversion_L), &
       Handoff(iCH_ReturnedPair_L) - Handoff(iCH_MappedPair_L), &
@@ -2672,7 +2672,6 @@ CONTAINS
         MatterEquationResidualRateFinal(iQ_L,iN_X) &
           / ( One / Centimeter**3 / Second ), &
         ( ConservationHandoffRateFinal(iCH_PrimitivePair_L,iN_X) &
-            - InitialRadiationLimiterRateFinal(iQ_L,iN_X) &
             + MatterEquationResidualRateFinal(iQ_L,iN_X) ) &
           / ( One / Centimeter**3 / Second ), &
         ( ConservationHandoffRateFinal(iCH_MappedPair_L,iN_X) &
@@ -2698,7 +2697,6 @@ CONTAINS
         MatterEquationResidualRateFinal(iQ_E,iN_X) &
           / ( Erg / Centimeter**3 / Second ), &
         ( ConservationHandoffRateFinal(iCH_PrimitivePair_E,iN_X) &
-            - InitialRadiationLimiterRateFinal(iQ_E,iN_X) &
             + MatterEquationResidualRateFinal(iQ_E,iN_X) ) &
           / ( Erg / Centimeter**3 / Second ), &
         ( ConservationHandoffRateFinal(iCH_MappedPair_E,iN_X) &
