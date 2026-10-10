@@ -30,7 +30,7 @@ MODULE TwoMoment_TimeSteppingModule
     uDR
 #if defined( TWOMOMENT_ORDER_V )
   USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
-    nQ, nC
+    nQ, nC, nLeptonFamilies, nLeptonFlavorAudit
 #endif
   USE TwoMoment_TimersModule, ONLY: &
     TimersStart, &
@@ -47,7 +47,7 @@ MODULE TwoMoment_TimeSteppingModule
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit, &
     SourceAwareImplicitOpacityAvailable, &
-    OffGridFlux_TwoMoment
+    OffGridFlux_TwoMoment, OffGridLeptonFlux_TwoMoment
   USE TwoMoment_TallyModule, ONLY: &
     IncrementOffGridTally_Euler, &
     IncrementOffGridTally_TwoMoment, &
@@ -59,6 +59,7 @@ MODULE TwoMoment_TimeSteppingModule
   TYPE :: StageDataType
     REAL(DP)              :: OffGridFlux_U(nCF)
     REAL(DP)              :: OffGridFlux_M(2*nCR)
+    REAL(DP)              :: OffGridLeptonFlux_M(3)
     REAL(DP), ALLOCATABLE :: dU_IM(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: dU_EX(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: dM_IM(:,:,:,:,:,:,:)
@@ -104,7 +105,8 @@ MODULE TwoMoment_TimeSteppingModule
         AccumulateMatterCoupling_Mask, uDR_Option, MatterCoupling_Mask_Option &
 #if defined( TWOMOMENT_ORDER_V )
         , MatterSource_Rate_Option, MatterIncrement_Rate_Option, &
-          MatterSource_Weight_Option, MatterSource_Rate_Unweighted_Option &
+          MatterSource_Weight_Option, MatterSource_Rate_Unweighted_Option, &
+          LeptonFlavorAudit_Rate_Option &
 #endif
         )
       USE KindModule           , ONLY: DP
@@ -114,7 +116,8 @@ MODULE TwoMoment_TimeSteppingModule
       USE FluidFieldsModule    , ONLY: nCF
       USE RadiationFieldsModule, ONLY: nCR, nSpecies, nDR
 #if defined( TWOMOMENT_ORDER_V )
-      USE TwoMoment_NeutrinoMatterSolverModule, ONLY: nQ, nC
+      USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
+        nQ, nC, nLeptonFamilies, nLeptonFlavorAudit
 #endif
       INTEGER,  INTENT(in)    :: &
         iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
@@ -196,6 +199,10 @@ MODULE TwoMoment_TimeSteppingModule
              iZ_B1(2):iZ_E1(2), &
              iZ_B1(3):iZ_E1(3), &
              iZ_B1(4):iZ_E1(4))
+      REAL(DP), INTENT(out), OPTIONAL :: &
+        LeptonFlavorAudit_Rate_Option &
+            (1:nLeptonFamilies,1:nLeptonFlavorAudit,1:nDOFX, &
+             iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4))
 #endif
     END SUBROUTINE ImplicitIncrement
   END INTERFACE
@@ -255,8 +262,10 @@ CONTAINS
         IMEX_Stage_FluidExplicitRate_Option, &
         IMEX_Stage_RadiationImplicitRate_Option, &
         IMEX_Stage_RadiationExplicitRate_Option, &
+        IMEX_Stage_LeptonFlavorAudit_Rate_Option, &
         UpdateTallies_Option, OffGridFluidIncrement_Option, &
         OffGridRadiationIncrement_Option, &
+        OffGridRadiationLeptonFlavorIncrement_Option, &
         ComputeIncrement_TwoMoment_Explicit_Option &
 #endif
       )
@@ -336,16 +345,21 @@ CONTAINS
       IMEX_Stage_RadiationImplicitRate_Option(:,:,:,:,:,:,:,:)
     REAL(DP), INTENT(inout), OPTIONAL :: &
       IMEX_Stage_RadiationExplicitRate_Option(:,:,:,:,:,:,:,:)
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      IMEX_Stage_LeptonFlavorAudit_Rate_Option(:,:,:,:,:,:,:)
     LOGICAL, INTENT(in), OPTIONAL :: UpdateTallies_Option
     REAL(DP), INTENT(out), OPTIONAL :: &
       OffGridFluidIncrement_Option(1:nCF)
     REAL(DP), INTENT(out), OPTIONAL :: &
       OffGridRadiationIncrement_Option(1:2*nCR)
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      OffGridRadiationLeptonFlavorIncrement_Option(3)
 #endif
 
     INTEGER  :: iS, jS
     REAL(DP) :: dU_OffGrid(nCF)
     REAL(DP) :: dM_OffGrid(2*nCR)
+    REAL(DP) :: dM_LeptonFlavor_OffGrid(3)
     REAL(DP) :: dM_PL(nCR)
     LOGICAL  :: FinalAssembly
 #if defined( TWOMOMENT_ORDER_V )
@@ -356,6 +370,7 @@ CONTAINS
 
     dU_OffGrid = Zero
     dM_OffGrid = Zero
+    dM_LeptonFlavor_OffGrid = Zero
     dM_PL = Zero
 #if defined( TWOMOMENT_ORDER_V )
     FinalAssembly = HasFinalAssembly_IMEX_RK()
@@ -459,6 +474,15 @@ CONTAINS
     !$OMP TARGET ENTER DATA MAP( to: IMEX_Stage_RadiationExplicitRate_Option )
 #elif defined( THORNADO_OACC   )
     !$ACC ENTER DATA COPYIN( IMEX_Stage_RadiationExplicitRate_Option )
+#endif
+    END IF
+
+    IF( PRESENT( IMEX_Stage_LeptonFlavorAudit_Rate_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: IMEX_Stage_LeptonFlavorAudit_Rate_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC ENTER DATA CREATE( IMEX_Stage_LeptonFlavorAudit_Rate_Option )
 #endif
     END IF
 #endif
@@ -580,32 +604,73 @@ CONTAINS
         IF(      w_IM(iS) .NE. Zero &
             .AND. (      PRESENT( MatterSource_Rate_Option ) &
                     .OR. PRESENT( MatterIncrement_Rate_Option ) &
-                    .OR. PRESENT( MatterSource_Rate_FinalStage_Option ) ) )THEN
+                    .OR. PRESENT( MatterSource_Rate_FinalStage_Option ) &
+                    .OR. PRESENT( &
+                          IMEX_Stage_LeptonFlavorAudit_Rate_Option ) ) )THEN
 
-          IF(      iS == nStages &
-              .AND. PRESENT( MatterSource_Rate_FinalStage_Option ) )THEN
+          IF( PRESENT( IMEX_Stage_LeptonFlavorAudit_Rate_Option ) )THEN
 
-            CALL ComputeIncrement_TwoMoment_Implicit &
-                   ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, &
-                     Ui, StageData(iS) % dU_IM, Mi, StageData(iS) % dM_IM, &
-                     AccumulateMatterCoupling_Mask = AccumulateMatterSources, &
-                     uDR_Option = uDR, &
-                     MatterSource_Rate_Option = MatterSource_Rate_Option, &
-                     MatterIncrement_Rate_Option = MatterIncrement_Rate_Option, &
-                     MatterSource_Weight_Option = w_IM(iS), &
-                     MatterSource_Rate_Unweighted_Option &
-                       = MatterSource_Rate_FinalStage_Option )
+            IF(      iS == nStages &
+                .AND. PRESENT( MatterSource_Rate_FinalStage_Option ) )THEN
+
+              CALL ComputeIncrement_TwoMoment_Implicit &
+                     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, &
+                       Ui, StageData(iS) % dU_IM, Mi, StageData(iS) % dM_IM, &
+                       AccumulateMatterCoupling_Mask = AccumulateMatterSources, &
+                       uDR_Option = uDR, &
+                       MatterSource_Rate_Option = MatterSource_Rate_Option, &
+                       MatterIncrement_Rate_Option = MatterIncrement_Rate_Option, &
+                       MatterSource_Weight_Option = w_IM(iS), &
+                       MatterSource_Rate_Unweighted_Option &
+                         = MatterSource_Rate_FinalStage_Option, &
+                       LeptonFlavorAudit_Rate_Option &
+                         = IMEX_Stage_LeptonFlavorAudit_Rate_Option &
+                             (:,:,:,:,:,:,iS) )
+
+            ELSE
+
+              CALL ComputeIncrement_TwoMoment_Implicit &
+                     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, &
+                       Ui, StageData(iS) % dU_IM, Mi, StageData(iS) % dM_IM, &
+                       AccumulateMatterCoupling_Mask = AccumulateMatterSources, &
+                       uDR_Option = uDR, &
+                       MatterSource_Rate_Option = MatterSource_Rate_Option, &
+                       MatterIncrement_Rate_Option = MatterIncrement_Rate_Option, &
+                       MatterSource_Weight_Option = w_IM(iS), &
+                       LeptonFlavorAudit_Rate_Option &
+                         = IMEX_Stage_LeptonFlavorAudit_Rate_Option &
+                             (:,:,:,:,:,:,iS) )
+
+            END IF
 
           ELSE
 
-            CALL ComputeIncrement_TwoMoment_Implicit &
-                   ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, &
-                     Ui, StageData(iS) % dU_IM, Mi, StageData(iS) % dM_IM, &
-                     AccumulateMatterCoupling_Mask = AccumulateMatterSources, &
-                     uDR_Option = uDR, &
-                     MatterSource_Rate_Option = MatterSource_Rate_Option, &
-                     MatterIncrement_Rate_Option = MatterIncrement_Rate_Option, &
-                     MatterSource_Weight_Option = w_IM(iS) )
+            IF(      iS == nStages &
+                .AND. PRESENT( MatterSource_Rate_FinalStage_Option ) )THEN
+
+              CALL ComputeIncrement_TwoMoment_Implicit &
+                     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, &
+                       Ui, StageData(iS) % dU_IM, Mi, StageData(iS) % dM_IM, &
+                       AccumulateMatterCoupling_Mask = AccumulateMatterSources, &
+                       uDR_Option = uDR, &
+                       MatterSource_Rate_Option = MatterSource_Rate_Option, &
+                       MatterIncrement_Rate_Option = MatterIncrement_Rate_Option, &
+                       MatterSource_Weight_Option = w_IM(iS), &
+                       MatterSource_Rate_Unweighted_Option &
+                         = MatterSource_Rate_FinalStage_Option )
+
+            ELSE
+
+              CALL ComputeIncrement_TwoMoment_Implicit &
+                     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, &
+                       Ui, StageData(iS) % dU_IM, Mi, StageData(iS) % dM_IM, &
+                       AccumulateMatterCoupling_Mask = AccumulateMatterSources, &
+                       uDR_Option = uDR, &
+                       MatterSource_Rate_Option = MatterSource_Rate_Option, &
+                       MatterIncrement_Rate_Option = MatterIncrement_Rate_Option, &
+                       MatterSource_Weight_Option = w_IM(iS) )
+
+            END IF
 
           END IF
 
@@ -735,6 +800,8 @@ CONTAINS
           END IF
 
           StageData(iS) % OffGridFlux_M = OffGridFlux_TwoMoment
+          StageData(iS) % OffGridLeptonFlux_M &
+            = OffGridLeptonFlux_TwoMoment
 
         END IF
 
@@ -862,6 +929,9 @@ CONTAINS
 
         dM_OffGrid &
           = dM_OffGrid + dt * w_EX(iS) * StageData(iS) % OffGridFlux_M
+        dM_LeptonFlavor_OffGrid &
+          = dM_LeptonFlavor_OffGrid &
+              + dt * w_EX(iS) * StageData(iS) % OffGridLeptonFlux_M
 
       END DO
 
@@ -876,6 +946,9 @@ CONTAINS
       OffGridFluidIncrement_Option = dU_OffGrid
     IF( PRESENT( OffGridRadiationIncrement_Option ) ) &
       OffGridRadiationIncrement_Option = dM_OffGrid
+    IF( PRESENT( OffGridRadiationLeptonFlavorIncrement_Option ) ) &
+      OffGridRadiationLeptonFlavorIncrement_Option &
+        = dM_LeptonFlavor_OffGrid
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
@@ -965,6 +1038,15 @@ CONTAINS
     !$OMP TARGET EXIT DATA MAP( from: IMEX_Stage_RadiationExplicitRate_Option )
 #elif defined( THORNADO_OACC   )
     !$ACC EXIT DATA COPYOUT( IMEX_Stage_RadiationExplicitRate_Option )
+#endif
+    END IF
+
+    IF( PRESENT( IMEX_Stage_LeptonFlavorAudit_Rate_Option ) )THEN
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( from: IMEX_Stage_LeptonFlavorAudit_Rate_Option )
+#elif defined( THORNADO_OACC   )
+    !$ACC EXIT DATA COPYOUT( IMEX_Stage_LeptonFlavorAudit_Rate_Option )
 #endif
     END IF
 #endif
@@ -1242,6 +1324,7 @@ CONTAINS
 
       StageData(i) % OffGridFlux_U = Zero
       StageData(i) % OffGridFlux_M = Zero
+      StageData(i) % OffGridLeptonFlux_M = Zero
 
     END DO
 

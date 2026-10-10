@@ -18,6 +18,11 @@ def read_history(path: Path) -> np.ndarray:
     if data.size < 2:
         raise RuntimeError(f"{path}: conservation record contains no completed step")
 
+    lepton_prefix = (
+        "electron_lepton"
+        if "cumulative_electron_lepton_relative" in data.dtype.names
+        else "lepton"
+    )
     required = (
         "cycle",
         "time_s",
@@ -25,12 +30,12 @@ def read_history(path: Path) -> np.ndarray:
         "cumulative_energy_exchange_relative",
         "step_energy_relative",
         "step_energy_exchange_relative",
-        "cumulative_lepton_relative",
-        "cumulative_lepton_exchange_relative",
-        "step_lepton_relative",
-        "step_lepton_exchange_relative",
+        f"cumulative_{lepton_prefix}_relative",
+        f"cumulative_{lepton_prefix}_exchange_relative",
+        f"step_{lepton_prefix}_relative",
+        f"step_{lepton_prefix}_exchange_relative",
         "cumulative_energy_residual_erg",
-        "cumulative_lepton_residual",
+        f"cumulative_{lepton_prefix}_residual",
     )
     missing = [name for name in required if name not in data.dtype.names]
     if missing:
@@ -40,6 +45,12 @@ def read_history(path: Path) -> np.ndarray:
         if not np.all(np.isfinite(data[name])):
             raise RuntimeError(f"{path}: non-finite values in {name}")
     return data[1:]
+
+
+def lepton_prefix(data: np.ndarray) -> str:
+    if "cumulative_electron_lepton_relative" in data.dtype.names:
+        return "electron_lepton"
+    return "lepton"
 
 
 def main() -> None:
@@ -75,17 +86,18 @@ def main() -> None:
             "final residual="
             f"{completed['cumulative_energy_residual_erg'][-1]:.6e} erg"
         )
+        prefix = lepton_prefix(completed)
         print(
             "  lepton: max step/inventory="
-            f"{np.max(completed['step_lepton_relative']):.6e}, "
+            f"{np.max(completed[f'step_{prefix}_relative']):.6e}, "
             "max cumulative/inventory="
-            f"{np.max(completed['cumulative_lepton_relative']):.6e}, "
+            f"{np.max(completed[f'cumulative_{prefix}_relative']):.6e}, "
             "max step/exchange="
-            f"{np.max(completed['step_lepton_exchange_relative']):.6e}, "
+            f"{np.max(completed[f'step_{prefix}_exchange_relative']):.6e}, "
             "final cumulative/exchange="
-            f"{completed['cumulative_lepton_exchange_relative'][-1]:.6e}, "
+            f"{completed[f'cumulative_{prefix}_exchange_relative'][-1]:.6e}, "
             "final residual="
-            f"{completed['cumulative_lepton_residual'][-1]:.6e}"
+            f"{completed[f'cumulative_{prefix}_residual'][-1]:.6e}"
         )
 
     output = args.output
@@ -125,11 +137,14 @@ def main() -> None:
         ),
     )
     method_styles = [line_styles[index % len(line_styles)] for index in range(len(histories))]
-    for axis, quantity in zip(axes, ("energy", "lepton")):
+    for axis_index, (axis, quantity) in enumerate(zip(axes, ("energy", "lepton"))):
         for completed, method_style in zip(histories, method_styles):
             time_ms = completed["time_s"] * 1.0e3
+            field_quantity = (
+                lepton_prefix(completed) if quantity == "lepton" else quantity
+            )
             for template, _, color in metric_specs:
-                field = template.format(quantity=quantity)
+                field = template.format(quantity=field_quantity)
                 axis.semilogy(
                     time_ms,
                     np.maximum(completed[field], np.finfo(float).tiny),

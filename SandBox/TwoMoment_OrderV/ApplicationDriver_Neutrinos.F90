@@ -47,7 +47,9 @@ PROGRAM ApplicationDriver_Neutrinos
   USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
     ComputeIncrement_TwoMoment_Implicit, &
     ComputeIncrement_TwoMoment_Explicit_AP, &
-    SetNeutrinoMatterSolverConvergenceDiagnostics
+    SetNeutrinoMatterSolverConvergenceDiagnostics, &
+    GetNeutrinoMatterSolverConvergenceDiagnostics, &
+    nLeptonFamilies, nLeptonFlavorAudit
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     InitializeEquilibriumDeviationLLF, &
     SetEquilibriumDeviationReferenceState, &
@@ -82,7 +84,8 @@ PROGRAM ApplicationDriver_Neutrinos
     AbsorptionDiffusionEquilibriumDensity, &
     CoupledDiffusionAbsorptionOpacity, &
     CoupledDiffusionEquilibriumSlope, &
-    CoupledDiffusionDecayRate
+    CoupledDiffusionDecayRate, &
+    SetMovingHomogeneousRelaxationParameters
   USE StandaloneMatterDiagnosticsModule, ONLY: &
     WriteStandaloneMatterDiagnostics, &
     InitializeMatterExchangeAttribution, &
@@ -99,7 +102,7 @@ PROGRAM ApplicationDriver_Neutrinos
   CHARACTER(32) :: ProgramName
   CHARACTER(32) :: TimeSteppingScheme
   CHARACTER(32) :: CoordinateSystem
-  CHARACTER(64) :: ProfileName
+  CHARACTER(512) :: ProfileName
   CHARACTER(64) :: EosTableName
   CHARACTER(64) :: OpacityTableName_EmAb
   CHARACTER(64) :: OpacityTableName_Iso
@@ -122,10 +125,16 @@ PROGRAM ApplicationDriver_Neutrinos
   LOGICAL       :: Include_LinCorr
   LOGICAL       :: FreezeOpacities
   LOGICAL       :: UseConservativeProjection
+  LOGICAL       :: UseRadiationOnlySolve
   LOGICAL       :: UseEquilibriumDeviationLLF
   LOGICAL       :: UseSourceAwareLLF
   LOGICAL       :: UseAPWellBalancedFluxSource
   LOGICAL       :: UseAbsorptionDiffusionScaledLLF
+  LOGICAL       :: MovingAllProcesses
+  LOGICAL       :: ProfileAllProcesses
+  LOGICAL       :: ProfileMomentumCoupling
+  LOGICAL       :: ProfileRadiationLimiters
+  LOGICAL       :: WriteSolverHistory
   INTEGER, PARAMETER :: iLimiterPoint_Node = 1
   INTEGER, PARAMETER :: iLimiterPoint_E_Dn = 2
   INTEGER, PARAMETER :: iLimiterPoint_E_Up = 3
@@ -152,6 +161,7 @@ PROGRAM ApplicationDriver_Neutrinos
   REAL(DP)      :: DnuMax
   REAL(DP)      :: OffGridFluidIncrement(nCF)
   REAL(DP)      :: OffGridRadiationIncrement(2*nCR)
+  REAL(DP)      :: OffGridRadiationLeptonFlavorIncrement(3)
   REAL(DP)      :: AbsorptionDiffusionMeanOpticalDepth
   REAL(DP)      :: AbsorptionDiffusionLLFPenaltyFactor
   REAL(DP)      :: AbsorptionDiffusionMeanCellWidth
@@ -164,10 +174,29 @@ PROGRAM ApplicationDriver_Neutrinos
   CHARACTER(128) :: NodesString
   CHARACTER(128) :: SourceAwareLLFString
   CHARACTER(128) :: ConservativeProjectionString
+  CHARACTER(128) :: RadiationOnlySolveString
   CHARACTER(128) :: APWellBalancedFluxSourceString
   CHARACTER(128) :: MatterExchangeShadowsString
   CHARACTER(128) :: MaxCyclesString
   CHARACTER(128) :: EndTimeMillisecondsString
+  CHARACTER(128) :: TimeStepMillisecondsString
+  CHARACTER(128) :: MovingVelocityString
+  CHARACTER(128) :: MovingVelocityDirectionString
+  CHARACTER(128) :: MovingRadiationScaleString
+  CHARACTER(128) :: MovingSpeciesString
+  CHARACTER(128) :: MovingAllProcessesString
+  CHARACTER(128) :: ProfileSpeciesString
+  CHARACTER(128) :: ProfileAllProcessesString
+  CHARACTER(128) :: ProfileMomentumCouplingString
+  CHARACTER(128) :: ProfileRadiationLimitersString
+  CHARACTER(128) :: WriteSolverHistoryString
+  CHARACTER(128) :: WriteMatterDiagnosticsString
+  CHARACTER(128) :: WriteMatterExchangeAttributionString
+  CHARACTER(512) :: ProfileNameString
+  CHARACTER(128) :: AndersonDepthString
+  REAL(DP)      :: MovingVelocityFraction
+  REAL(DP)      :: MovingVelocityDirection(3)
+  REAL(DP)      :: MovingRadiationScale
   REAL(DP), ALLOCATABLE :: CF_BeforeMatterDiagnosticsStep(:,:,:,:,:)
   REAL(DP), ALLOCATABLE :: CR_BeforeMatterDiagnosticsStep(:,:,:,:,:,:,:)
   REAL(DP), ALLOCATABLE :: MatterSource_Rate_LastStep(:,:,:,:,:,:)
@@ -180,6 +209,7 @@ PROGRAM ApplicationDriver_Neutrinos
   REAL(DP), ALLOCATABLE :: IMEX_Stage_FluidExplicitRate(:,:,:,:,:,:)
   REAL(DP), ALLOCATABLE :: IMEX_Stage_RadiationImplicitRate(:,:,:,:,:,:,:,:)
   REAL(DP), ALLOCATABLE :: IMEX_Stage_RadiationExplicitRate(:,:,:,:,:,:,:,:)
+  REAL(DP), ALLOCATABLE :: IMEX_Stage_LeptonFlavorAuditRate(:,:,:,:,:,:,:)
   REAL(DP), ALLOCATABLE :: CF_AttributionStart(:,:,:,:,:)
   REAL(DP), ALLOCATABLE :: CF_AttributionNoStream(:,:,:,:,:)
   REAL(DP), ALLOCATABLE :: CF_AttributionAP(:,:,:,:,:)
@@ -197,6 +227,7 @@ PROGRAM ApplicationDriver_Neutrinos
   LOGICAL       :: WriteCumulativeConservation
   LOGICAL       :: ComputeMatterExchangeShadows
   LOGICAL       :: CaptureMatterDiagnosticsStep
+  LOGICAL       :: CaptureSolverConvergenceStep
   LOGICAL       :: RunEquilibriumTest
   LOGICAL       :: RequireStationaryEquilibrium
   LOGICAL       :: RunManufacturedOpaqueDiffusion
@@ -249,6 +280,7 @@ PROGRAM ApplicationDriver_Neutrinos
   DnuMax          = HUGE( One )
   FreezeOpacities = .FALSE.
   UseConservativeProjection = .FALSE.
+  UseRadiationOnlySolve = .FALSE.
   UseEquilibriumDeviationLLF = .FALSE.
   UseSourceAwareLLF = .FALSE.
   UseAPWellBalancedFluxSource = .FALSE.
@@ -257,6 +289,7 @@ PROGRAM ApplicationDriver_Neutrinos
   WriteMatterDiagnostics = .FALSE.
   WriteMatterExchangeAttribution = .FALSE.
   WriteCumulativeConservation = .FALSE.
+  WriteSolverHistory = .FALSE.
   ComputeMatterExchangeShadows = .TRUE.
   MatterDiagnosticsFileName = 'matter_diagnostics.dat'
   ProfileName = ''
@@ -764,7 +797,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
       CoordinateSystem = 'SPHERICAL'
 
-      nSpecies = 2
+      nSpecies = 6
       nNodes   = 2
 
       nX    = [ 256, 1, 1 ]
@@ -811,11 +844,11 @@ PROGRAM ApplicationDriver_Neutrinos
       wMatterRHS = [ One, One, Zero, Zero, Zero ] ! --- Keep Velocity Fixed
       !wMatterRHS = [ Zero, Zero, Zero, Zero, Zero ] ! --- Keep Fluid Fixed
 
-      Include_NNS     = .false.
-      Include_NES     = .false.
-      Include_Pair    = .false.
-      Include_NuPair  = .false.
-      Include_Brem    = .false.
+      Include_NNS     = .TRUE.
+      Include_NES     = .TRUE.
+      Include_Pair    = .TRUE.
+      Include_NuPair  = .TRUE.
+      Include_Brem    = .TRUE.
       Include_LinCorr = .false.
       FreezeOpacities = .FALSE. ! --- Keep opacities fixed during iterations?
 
@@ -868,6 +901,85 @@ PROGRAM ApplicationDriver_Neutrinos
       UsePositivityLimiter_TwoMoment = .TRUE.
       UseEnergyLimiter_TwoMoment     = .FALSE.
 
+    CASE( 'MovingHomogeneousRelaxation' )
+
+      nSpecies = 2
+      MovingSpeciesString = ''
+      CALL GET_ENVIRONMENT_VARIABLE &
+             ( 'THORNADO_MOVING_NSPECIES', MovingSpeciesString, &
+               LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+      IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+        READ(MovingSpeciesString,*,IOSTAT=ReadStatus) nSpecies
+        IF( ReadStatus /= 0 .OR. .NOT. ANY( nSpecies == [ 2, 6 ] ) ) &
+          ERROR STOP 'THORNADO_MOVING_NSPECIES must be 2 or 6.'
+      END IF
+
+      nNodes   = 2
+
+      nX  = [ 4, 1, 1 ]
+      xL  = [ 0.0_DP, 0.0_DP, 0.0_DP ] * Kilometer
+      xR  = [ 4.0_DP, 1.0_DP, 1.0_DP ] * Kilometer
+      bcX = [ 1, 1, 1 ]
+
+      nE    = 16
+      eL    = 0.0_DP * MeV
+      eR    = 3.0d2 * MeV
+      bcE   = 10
+      ZoomE = 1.266038160710160_DP
+
+      TimeSteppingScheme = 'BackwardEuler'
+
+      PrescribedTimeStep = .TRUE.
+      dt_0               = 1.0d-4 * Millisecond
+      dt_MAX             = dt_0
+      dt_RATE            = One
+      t_end              = 4.0_DP * dt_0
+
+      iCycleD  = 1
+      iCycleW  = 1
+      maxCycles = 4
+
+      EvolveEuler                    = .FALSE.
+      UseSlopeLimiter_Euler          = .FALSE.
+      UseSlopeLimiter_TwoMoment      = .FALSE.
+      UsePositivityLimiter_Euler     = .FALSE.
+      UsePositivityLimiter_TwoMoment = .TRUE.
+      UseEnergyLimiter_TwoMoment     = .FALSE.
+
+      MovingAllProcesses = .FALSE.
+      MovingAllProcessesString = ''
+      CALL GET_ENVIRONMENT_VARIABLE &
+             ( 'THORNADO_MOVING_ALL_PROCESSES', &
+               MovingAllProcessesString, &
+               LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+      IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+        SELECT CASE( TRIM( ADJUSTL( MovingAllProcessesString ) ) )
+          CASE( 'true', 'TRUE', 'on', 'ON', '1' )
+            MovingAllProcesses = .TRUE.
+          CASE( 'false', 'FALSE', 'off', 'OFF', '0' )
+            MovingAllProcesses = .FALSE.
+          CASE DEFAULT
+            ERROR STOP &
+              'THORNADO_MOVING_ALL_PROCESSES must be true or false.'
+        END SELECT
+      END IF
+
+      Include_NNS     = MovingAllProcesses
+      Include_NES     = MovingAllProcesses
+      Include_Pair    = MovingAllProcesses
+      Include_NuPair  = MovingAllProcesses
+      Include_Brem    = MovingAllProcesses
+      Include_LinCorr = .FALSE.
+
+      wMatterRHS = [ One, One, One, One, One ]
+      DnuMax = One - 1.0d-6
+
+      WriteMatterDiagnostics = .FALSE.
+      WriteMatterExchangeAttribution = .FALSE.
+      WriteCumulativeConservation = .TRUE.
+      MatterDiagnosticsFileName = 'moving_homogeneous_relaxation.dat'
+      WriteSolverHistory = .TRUE.
+
     CASE DEFAULT
 
       WRITE(*,*)
@@ -876,6 +988,211 @@ PROGRAM ApplicationDriver_Neutrinos
       STOP
 
   END SELECT
+
+  ProfileNameString = ''
+  CALL GET_ENVIRONMENT_VARIABLE &
+         ( 'THORNADO_PROFILE_NAME', ProfileNameString, &
+           LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+  IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+    IF( EnvironmentLength > LEN( ProfileName ) ) &
+      ERROR STOP 'THORNADO_PROFILE_NAME is too long.'
+    ProfileName = TRIM( ProfileNameString )
+  END IF
+
+  IF( TRIM( ProgramName ) == 'DeleptonizationWave1D' )THEN
+
+    ProfileSpeciesString = ''
+    CALL GET_ENVIRONMENT_VARIABLE &
+           ( 'THORNADO_PROFILE_NSPECIES', ProfileSpeciesString, &
+             LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+    IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+      READ(ProfileSpeciesString,*,IOSTAT=ReadStatus) nSpecies
+      IF( ReadStatus /= 0 .OR. .NOT. ANY( nSpecies == [ 2, 6 ] ) ) &
+        ERROR STOP 'THORNADO_PROFILE_NSPECIES must be 2 or 6.'
+    END IF
+
+    ProfileAllProcesses = .FALSE.
+    ProfileAllProcessesString = ''
+    CALL GET_ENVIRONMENT_VARIABLE &
+           ( 'THORNADO_PROFILE_ALL_PROCESSES', &
+             ProfileAllProcessesString, &
+             LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+    IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+      SELECT CASE( TRIM( ADJUSTL( ProfileAllProcessesString ) ) )
+        CASE( 'true', 'TRUE', 'on', 'ON', '1' )
+          ProfileAllProcesses = .TRUE.
+        CASE( 'false', 'FALSE', 'off', 'OFF', '0' )
+          ProfileAllProcesses = .FALSE.
+        CASE DEFAULT
+          ERROR STOP &
+            'THORNADO_PROFILE_ALL_PROCESSES must be true or false.'
+      END SELECT
+    END IF
+    IF( ProfileAllProcesses )THEN
+      Include_NNS    = .TRUE.
+      Include_NES    = .TRUE.
+      Include_Pair   = .TRUE.
+      Include_NuPair = .TRUE.
+      Include_Brem   = .TRUE.
+    END IF
+
+    ProfileMomentumCoupling = .FALSE.
+    ProfileMomentumCouplingString = ''
+    CALL GET_ENVIRONMENT_VARIABLE &
+           ( 'THORNADO_PROFILE_MOMENTUM_COUPLING', &
+             ProfileMomentumCouplingString, &
+             LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+    IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+      SELECT CASE( TRIM( ADJUSTL( ProfileMomentumCouplingString ) ) )
+        CASE( 'true', 'TRUE', 'on', 'ON', '1' )
+          ProfileMomentumCoupling = .TRUE.
+        CASE( 'false', 'FALSE', 'off', 'OFF', '0' )
+          ProfileMomentumCoupling = .FALSE.
+        CASE DEFAULT
+          ERROR STOP &
+            'THORNADO_PROFILE_MOMENTUM_COUPLING must be true or false.'
+      END SELECT
+    END IF
+    IF( ProfileMomentumCoupling ) wMatterRHS = One
+
+    ProfileRadiationLimiters = .FALSE.
+    ProfileRadiationLimitersString = ''
+    CALL GET_ENVIRONMENT_VARIABLE &
+           ( 'THORNADO_PROFILE_RADIATION_LIMITERS', &
+             ProfileRadiationLimitersString, &
+             LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+    IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+      SELECT CASE( TRIM( ADJUSTL( ProfileRadiationLimitersString ) ) )
+        CASE( 'true', 'TRUE', 'on', 'ON', '1' )
+          ProfileRadiationLimiters = .TRUE.
+        CASE( 'false', 'FALSE', 'off', 'OFF', '0' )
+          ProfileRadiationLimiters = .FALSE.
+        CASE DEFAULT
+          ERROR STOP &
+            'THORNADO_PROFILE_RADIATION_LIMITERS must be true or false.'
+      END SELECT
+    END IF
+    IF( ProfileRadiationLimiters )THEN
+      UsePositivityLimiter_TwoMoment = .TRUE.
+      UseEnergyLimiter_TwoMoment = .TRUE.
+    END IF
+
+  END IF
+
+  WriteSolverHistoryString = ''
+  CALL GET_ENVIRONMENT_VARIABLE &
+         ( 'THORNADO_WRITE_SOLVER_HISTORY', WriteSolverHistoryString, &
+           LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+  IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+    SELECT CASE( TRIM( ADJUSTL( WriteSolverHistoryString ) ) )
+      CASE( 'true', 'TRUE', 'on', 'ON', '1' )
+        WriteSolverHistory = .TRUE.
+      CASE( 'false', 'FALSE', 'off', 'OFF', '0' )
+        WriteSolverHistory = .FALSE.
+      CASE DEFAULT
+        ERROR STOP 'THORNADO_WRITE_SOLVER_HISTORY must be true or false.'
+    END SELECT
+  END IF
+
+  WriteMatterDiagnosticsString = ''
+  CALL GET_ENVIRONMENT_VARIABLE &
+         ( 'THORNADO_WRITE_MATTER_DIAGNOSTICS', &
+           WriteMatterDiagnosticsString, &
+           LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+  IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+    SELECT CASE( TRIM( ADJUSTL( WriteMatterDiagnosticsString ) ) )
+      CASE( 'true', 'TRUE', 'on', 'ON', '1' )
+        WriteMatterDiagnostics = .TRUE.
+      CASE( 'false', 'FALSE', 'off', 'OFF', '0' )
+        WriteMatterDiagnostics = .FALSE.
+      CASE DEFAULT
+        ERROR STOP &
+          'THORNADO_WRITE_MATTER_DIAGNOSTICS must be true or false.'
+    END SELECT
+  END IF
+
+  WriteMatterExchangeAttributionString = ''
+  CALL GET_ENVIRONMENT_VARIABLE &
+         ( 'THORNADO_WRITE_MATTER_EXCHANGE_ATTRIBUTION', &
+           WriteMatterExchangeAttributionString, &
+           LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+  IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+    SELECT CASE( TRIM( ADJUSTL( WriteMatterExchangeAttributionString ) ) )
+      CASE( 'true', 'TRUE', 'on', 'ON', '1' )
+        WriteMatterExchangeAttribution = .TRUE.
+      CASE( 'false', 'FALSE', 'off', 'OFF', '0' )
+        WriteMatterExchangeAttribution = .FALSE.
+      CASE DEFAULT
+        ERROR STOP &
+          'THORNADO_WRITE_MATTER_EXCHANGE_ATTRIBUTION must be true or false.'
+    END SELECT
+  END IF
+
+  IF( TRIM( ProgramName ) == 'MovingHomogeneousRelaxation' )THEN
+
+    MovingVelocityFraction = 0.1_DP
+    MovingVelocityDirection = [ One, Zero, Zero ]
+    MovingRadiationScale = 0.9_DP
+
+    MovingVelocityString = ''
+    CALL GET_ENVIRONMENT_VARIABLE &
+           ( 'THORNADO_MOVING_VELOCITY_FRACTION', MovingVelocityString, &
+             LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+    IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+      READ(MovingVelocityString,*,IOSTAT=ReadStatus) MovingVelocityFraction
+      IF( ReadStatus /= 0 ) &
+        ERROR STOP 'Invalid THORNADO_MOVING_VELOCITY_FRACTION.'
+    END IF
+
+    MovingVelocityDirectionString = ''
+    CALL GET_ENVIRONMENT_VARIABLE &
+           ( 'THORNADO_MOVING_VELOCITY_DIRECTION', &
+             MovingVelocityDirectionString, &
+             LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+    IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+
+      SELECT CASE( TRIM( ADJUSTL( MovingVelocityDirectionString ) ) )
+        CASE( 'x1', 'X1' )
+          MovingVelocityDirection = [ One, Zero, Zero ]
+        CASE( 'x2', 'X2' )
+          MovingVelocityDirection = [ Zero, One, Zero ]
+        CASE( 'x3', 'X3' )
+          MovingVelocityDirection = [ Zero, Zero, One ]
+        CASE( 'diagonal', 'DIAGONAL' )
+          MovingVelocityDirection = [ One, One, One ]
+        CASE DEFAULT
+          ERROR STOP &
+            'THORNADO_MOVING_VELOCITY_DIRECTION must be x1, x2, x3, or diagonal.'
+      END SELECT
+
+    END IF
+
+    MovingRadiationScaleString = ''
+    CALL GET_ENVIRONMENT_VARIABLE &
+           ( 'THORNADO_MOVING_RADIATION_SCALE', &
+             MovingRadiationScaleString, &
+             LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+    IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+      READ(MovingRadiationScaleString,*,IOSTAT=ReadStatus) MovingRadiationScale
+      IF( ReadStatus /= 0 ) &
+        ERROR STOP 'Invalid THORNADO_MOVING_RADIATION_SCALE.'
+    END IF
+
+    CALL SetMovingHomogeneousRelaxationParameters &
+           ( MovingVelocityFraction, MovingRadiationScale, &
+             MovingVelocityDirection )
+
+  END IF
+
+  AndersonDepthString = ''
+  CALL GET_ENVIRONMENT_VARIABLE &
+         ( 'THORNADO_M_INNER', AndersonDepthString, &
+           LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+  IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+    READ(AndersonDepthString,*,IOSTAT=ReadStatus) M_inner
+    IF( ReadStatus /= 0 .OR. M_inner < 1 ) &
+      ERROR STOP 'THORNADO_M_INNER must be a positive integer.'
+  END IF
 
   EndTimeMillisecondsString = ''
   CALL GET_ENVIRONMENT_VARIABLE &
@@ -887,6 +1204,39 @@ PROGRAM ApplicationDriver_Neutrinos
     IF( ReadStatus /= 0 .OR. t_end <= Zero ) &
       ERROR STOP 'THORNADO_T_END_MS must be positive.'
     t_end = t_end * Millisecond
+  END IF
+
+  TimeStepMillisecondsString = ''
+  CALL GET_ENVIRONMENT_VARIABLE &
+         ( 'THORNADO_DT_MS', TimeStepMillisecondsString, &
+           LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+  IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+    READ(TimeStepMillisecondsString,*,IOSTAT=ReadStatus) dt_0
+    IF( ReadStatus /= 0 .OR. dt_0 <= Zero ) &
+      ERROR STOP 'THORNADO_DT_MS must be positive.'
+    PrescribedTimeStep = .TRUE.
+    dt_0 = dt_0 * Millisecond
+    dt_MAX = dt_0
+    dt_RATE = One
+  END IF
+
+  RadiationOnlySolveString = ''
+  CALL GET_ENVIRONMENT_VARIABLE &
+         ( 'THORNADO_RADIATION_ONLY_SOLVE', RadiationOnlySolveString, &
+           LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+
+  IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+
+    SELECT CASE( TRIM( ADJUSTL( RadiationOnlySolveString ) ) )
+      CASE( 'true', 'TRUE', 'on', 'ON', '1' )
+        UseRadiationOnlySolve = .TRUE.
+      CASE( 'false', 'FALSE', 'off', 'OFF', '0' )
+        UseRadiationOnlySolve = .FALSE.
+      CASE DEFAULT
+        ERROR STOP &
+          'THORNADO_RADIATION_ONLY_SOLVE must be true or false.'
+    END SELECT
+
   END IF
 
   MatterExchangeShadowsString = ''
@@ -1394,10 +1744,16 @@ PROGRAM ApplicationDriver_Neutrinos
            1:SIZE(uCR,6),1:SIZE(uCR,7),1:nIMEXStages) )
     ALLOCATE( IMEX_Stage_RadiationExplicitRate, &
               MOLD = IMEX_Stage_RadiationImplicitRate )
+    ALLOCATE &
+      ( IMEX_Stage_LeptonFlavorAuditRate &
+          (1:nLeptonFamilies,1:nLeptonFlavorAudit,1:nDOFX, &
+           iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3), &
+           1:nIMEXStages) )
     IMEX_Stage_FluidImplicitRate     = Zero
     IMEX_Stage_FluidExplicitRate     = Zero
     IMEX_Stage_RadiationImplicitRate = Zero
     IMEX_Stage_RadiationExplicitRate = Zero
+    IMEX_Stage_LeptonFlavorAuditRate = Zero
   END IF
 
   IF( WriteMatterExchangeAttribution )THEN
@@ -1420,6 +1776,10 @@ PROGRAM ApplicationDriver_Neutrinos
     CALL InitializeCumulativeConservationDiagnostics &
            ( TRIM(MatterDiagnosticsFileName) // '.cumulative_conservation', &
              t, iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, uGF, uCF, uCR )
+
+  IF( WriteSolverHistory ) &
+    CALL InitializeSolverDiagnostics &
+           ( TRIM(MatterDiagnosticsFileName) // '.solver_history' )
 
   ! --- Evolve ---
 
@@ -1475,8 +1835,11 @@ PROGRAM ApplicationDriver_Neutrinos
         - 100.0_DP * EPSILON(One) * MAX( ABS(t_end), TINY(One) ) &
         .OR. iCycle == maxCycles )
 
+    CaptureSolverConvergenceStep = CaptureMatterDiagnosticsStep .OR. &
+      WriteSolverHistory
+
     CALL SetNeutrinoMatterSolverConvergenceDiagnostics &
-           ( CaptureMatterDiagnosticsStep )
+           ( CaptureSolverConvergenceStep )
 
     IF( CaptureMatterDiagnosticsStep )THEN
       CF_BeforeMatterDiagnosticsStep = uCF
@@ -1502,6 +1865,7 @@ PROGRAM ApplicationDriver_Neutrinos
       IMEX_Stage_FluidExplicitRate      = Zero
       IMEX_Stage_RadiationImplicitRate  = Zero
       IMEX_Stage_RadiationExplicitRate  = Zero
+      IMEX_Stage_LeptonFlavorAuditRate  = Zero
     END IF
 
     IF( WriteMatterExchangeAttribution )THEN
@@ -1556,6 +1920,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
     OffGridFluidIncrement = Zero
     OffGridRadiationIncrement = Zero
+    OffGridRadiationLeptonFlavorIncrement = Zero
 
     IF( RunCoupledAbsorptionDiffusion )THEN
 
@@ -1565,7 +1930,9 @@ PROGRAM ApplicationDriver_Neutrinos
                ComputeIncrement_TwoMoment_Explicit_Option &
                  = ComputeIncrement_CoupledAbsorptionDiffusion_Explicit, &
                OffGridFluidIncrement_Option = OffGridFluidIncrement, &
-               OffGridRadiationIncrement_Option = OffGridRadiationIncrement )
+               OffGridRadiationIncrement_Option = OffGridRadiationIncrement, &
+               OffGridRadiationLeptonFlavorIncrement_Option &
+                 = OffGridRadiationLeptonFlavorIncrement )
 
     ELSE IF( RunAbsorptionDiffusionBalance )THEN
 
@@ -1575,7 +1942,9 @@ PROGRAM ApplicationDriver_Neutrinos
                ComputeIncrement_TwoMoment_Explicit_Option &
                  = ComputeIncrement_AbsorptionDiffusionBalance_Explicit, &
                OffGridFluidIncrement_Option = OffGridFluidIncrement, &
-               OffGridRadiationIncrement_Option = OffGridRadiationIncrement )
+               OffGridRadiationIncrement_Option = OffGridRadiationIncrement, &
+               OffGridRadiationLeptonFlavorIncrement_Option &
+                 = OffGridRadiationLeptonFlavorIncrement )
 
     ELSE IF(      RunManufacturedVariableOpacityDiffusion &
              .OR. RunScatteringDiffusionLimit )THEN
@@ -1586,7 +1955,9 @@ PROGRAM ApplicationDriver_Neutrinos
                ComputeIncrement_TwoMoment_Explicit_Option &
                  = ComputeIncrement_ManufacturedVariableOpacityDiffusion_Explicit, &
                OffGridFluidIncrement_Option = OffGridFluidIncrement, &
-               OffGridRadiationIncrement_Option = OffGridRadiationIncrement )
+               OffGridRadiationIncrement_Option = OffGridRadiationIncrement, &
+               OffGridRadiationLeptonFlavorIncrement_Option &
+                 = OffGridRadiationLeptonFlavorIncrement )
 
     ELSE IF( RunManufacturedOpaqueDiffusion )THEN
 
@@ -1596,7 +1967,9 @@ PROGRAM ApplicationDriver_Neutrinos
                ComputeIncrement_TwoMoment_Explicit_Option &
                  = ComputeIncrement_ManufacturedOpaqueDiffusion_Explicit, &
                OffGridFluidIncrement_Option = OffGridFluidIncrement, &
-               OffGridRadiationIncrement_Option = OffGridRadiationIncrement )
+               OffGridRadiationIncrement_Option = OffGridRadiationIncrement, &
+               OffGridRadiationLeptonFlavorIncrement_Option &
+                 = OffGridRadiationLeptonFlavorIncrement )
 
     ELSE IF( CaptureMatterDiagnosticsStep )THEN
 
@@ -1622,8 +1995,12 @@ PROGRAM ApplicationDriver_Neutrinos
                  = IMEX_Stage_RadiationImplicitRate, &
                IMEX_Stage_RadiationExplicitRate_Option &
                  = IMEX_Stage_RadiationExplicitRate, &
+               IMEX_Stage_LeptonFlavorAudit_Rate_Option &
+                 = IMEX_Stage_LeptonFlavorAuditRate, &
                OffGridFluidIncrement_Option = OffGridFluidIncrement, &
-               OffGridRadiationIncrement_Option = OffGridRadiationIncrement )
+               OffGridRadiationIncrement_Option = OffGridRadiationIncrement, &
+               OffGridRadiationLeptonFlavorIncrement_Option &
+                 = OffGridRadiationLeptonFlavorIncrement )
 
     ELSE IF(      WriteMatterExchangeAttribution &
              .AND. ComputeMatterExchangeShadows )THEN
@@ -1644,8 +2021,12 @@ PROGRAM ApplicationDriver_Neutrinos
                  = IMEX_Stage_RadiationImplicitRate, &
                IMEX_Stage_RadiationExplicitRate_Option &
                  = IMEX_Stage_RadiationExplicitRate, &
+               IMEX_Stage_LeptonFlavorAudit_Rate_Option &
+                 = IMEX_Stage_LeptonFlavorAuditRate, &
                OffGridFluidIncrement_Option = OffGridFluidIncrement, &
-               OffGridRadiationIncrement_Option = OffGridRadiationIncrement )
+               OffGridRadiationIncrement_Option = OffGridRadiationIncrement, &
+               OffGridRadiationLeptonFlavorIncrement_Option &
+                 = OffGridRadiationLeptonFlavorIncrement )
 
     ELSE IF( WriteCumulativeConservation )THEN
 
@@ -1665,8 +2046,12 @@ PROGRAM ApplicationDriver_Neutrinos
                  = IMEX_Stage_RadiationImplicitRate, &
                IMEX_Stage_RadiationExplicitRate_Option &
                  = IMEX_Stage_RadiationExplicitRate, &
+               IMEX_Stage_LeptonFlavorAudit_Rate_Option &
+                 = IMEX_Stage_LeptonFlavorAuditRate, &
                OffGridFluidIncrement_Option = OffGridFluidIncrement, &
-               OffGridRadiationIncrement_Option = OffGridRadiationIncrement )
+               OffGridRadiationIncrement_Option = OffGridRadiationIncrement, &
+               OffGridRadiationLeptonFlavorIncrement_Option &
+                 = OffGridRadiationLeptonFlavorIncrement )
 
     ELSE
 
@@ -1675,7 +2060,9 @@ PROGRAM ApplicationDriver_Neutrinos
                ComputeIncrement_TwoMoment_Explicit_Option &
                  = ComputeIncrement_TwoMoment_Explicit_AP, &
                OffGridFluidIncrement_Option = OffGridFluidIncrement, &
-               OffGridRadiationIncrement_Option = OffGridRadiationIncrement )
+               OffGridRadiationIncrement_Option = OffGridRadiationIncrement, &
+               OffGridRadiationLeptonFlavorIncrement_Option &
+                 = OffGridRadiationLeptonFlavorIncrement )
 
     END IF
 
@@ -1684,11 +2071,13 @@ PROGRAM ApplicationDriver_Neutrinos
              ( iCycle, t + dt, dt, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
                uGE, uGF, uCF, uCR, &
                OffGridFluidIncrement, OffGridRadiationIncrement, &
+               OffGridRadiationLeptonFlavorIncrement, &
                IMEX_Stage_FluidState, IMEX_Stage_RadiationState, &
                IMEX_Stage_FluidImplicitRate, &
                IMEX_Stage_FluidExplicitRate, &
                IMEX_Stage_RadiationImplicitRate, &
-               IMEX_Stage_RadiationExplicitRate )
+               IMEX_Stage_RadiationExplicitRate, &
+               IMEX_Stage_LeptonFlavorAuditRate )
 
     IF( WriteMatterExchangeAttribution )THEN
 
@@ -1720,6 +2109,11 @@ PROGRAM ApplicationDriver_Neutrinos
       END IF
 
     END IF
+
+    IF( WriteSolverHistory ) &
+      CALL WriteSolverDiagnostics &
+             ( TRIM(MatterDiagnosticsFileName) // '.solver_history', &
+               iCycle, t + dt, dt )
 
     CALL SetNeutrinoMatterSolverConvergenceDiagnostics( .FALSE. )
 
@@ -1817,7 +2211,8 @@ PROGRAM ApplicationDriver_Neutrinos
       ( IMEX_Stage_FluidState, IMEX_Stage_RadiationState, &
         IMEX_Stage_FluidImplicitRate, IMEX_Stage_FluidExplicitRate, &
         IMEX_Stage_RadiationImplicitRate, &
-        IMEX_Stage_RadiationExplicitRate )
+        IMEX_Stage_RadiationExplicitRate, &
+        IMEX_Stage_LeptonFlavorAuditRate )
 
   CALL WriteFieldsHDF &
          ( Time = t, &
@@ -1833,6 +2228,71 @@ PROGRAM ApplicationDriver_Neutrinos
   CALL FinalizeDriver
 
 CONTAINS
+
+
+  SUBROUTINE InitializeSolverDiagnostics( FileName )
+
+    CHARACTER(*), INTENT(in) :: FileName
+
+    INTEGER :: Unit
+
+    OPEN( NEWUNIT = Unit, FILE = TRIM(FileName), STATUS = 'REPLACE', &
+          ACTION = 'WRITE' )
+    WRITE(Unit,'(A)') &
+      '# cycle time_ms dt_ms point inner_iterations outer_iterations ' // &
+      'first_relative_residual accepted_relative_residual ' // &
+      'max_matter_residual_rate max_initial_projection_rate ' // &
+      'max_conservation_handoff_rate'
+    CLOSE(Unit)
+
+  END SUBROUTINE InitializeSolverDiagnostics
+
+
+  SUBROUTINE WriteSolverDiagnostics &
+    ( FileName, Cycle, Time, TimeStep )
+
+    CHARACTER(*), INTENT(in) :: FileName
+    INTEGER,      INTENT(in) :: Cycle
+    REAL(DP),     INTENT(in) :: Time, TimeStep
+
+    INTEGER :: i, Unit
+    INTEGER,  ALLOCATABLE :: InnerIterations(:), OuterIterations(:)
+    INTEGER,  ALLOCATABLE :: ProjectionStatus(:)
+    REAL(DP), ALLOCATABLE :: FirstResidual(:), AcceptedResidual(:)
+    REAL(DP), ALLOCATABLE :: MatterResidualRate(:,:)
+    REAL(DP), ALLOCATABLE :: InitialProjectionRate(:,:)
+    REAL(DP), ALLOCATABLE :: ProjectionResidual(:)
+    REAL(DP), ALLOCATABLE :: ProjectionHeatingRate(:)
+    REAL(DP), ALLOCATABLE :: ConservationHandoffRate(:,:)
+
+    CALL GetNeutrinoMatterSolverConvergenceDiagnostics &
+           ( InnerIterations, OuterIterations, FirstResidual, &
+             MatterResidualRate, InitialProjectionRate, AcceptedResidual, &
+             ProjectionResidual, ProjectionHeatingRate, ProjectionStatus, &
+             ConservationHandoffRate )
+
+    OPEN( NEWUNIT = Unit, FILE = TRIM(FileName), STATUS = 'OLD', &
+          POSITION = 'APPEND', ACTION = 'WRITE' )
+
+    DO i = 1, SIZE( InnerIterations )
+      WRITE(Unit,'(I8,1X,2(ES24.16E3,1X),3(I8,1X),5(ES24.16E3,1X))') &
+        Cycle, Time / Millisecond, TimeStep / Millisecond, &
+        i, InnerIterations(i), OuterIterations(i), &
+        FirstResidual(i), AcceptedResidual(i), &
+        MAXVAL( ABS( MatterResidualRate(:,i) ) ), &
+        MAXVAL( ABS( InitialProjectionRate(:,i) ) ), &
+        MAXVAL( ABS( ConservationHandoffRate(:,i) ) )
+    END DO
+
+    CLOSE(Unit)
+
+    DEALLOCATE &
+      ( InnerIterations, OuterIterations, ProjectionStatus, &
+        FirstResidual, AcceptedResidual, MatterResidualRate, &
+        InitialProjectionRate, ProjectionResidual, &
+        ProjectionHeatingRate, ConservationHandoffRate )
+
+  END SUBROUTINE WriteSolverDiagnostics
 
 
   SUBROUTINE ComputeIncrement_TwoMoment_Explicit_Zero &
@@ -2031,7 +2491,8 @@ CONTAINS
       AccumulateMatterCoupling_Mask, uDR_Option, &
       MatterCoupling_Mask_Option, &
       MatterSource_Rate_Option, MatterIncrement_Rate_Option, &
-      MatterSource_Weight_Option, MatterSource_Rate_Unweighted_Option )
+      MatterSource_Weight_Option, MatterSource_Rate_Unweighted_Option, &
+      LeptonFlavorAudit_Rate_Option )
 
     INTEGER, INTENT(in) :: &
       iZ_B0_Input(4), iZ_E0_Input(4), iZ_B1_Input(4), iZ_E1_Input(4)
@@ -2090,6 +2551,11 @@ CONTAINS
          iZ_B1_Input(4):iZ_E1_Input(4))
     REAL(DP), INTENT(in), OPTIONAL :: MatterSource_Weight_Option
     REAL(DP), INTENT(out), OPTIONAL :: &
+      LeptonFlavorAudit_Rate_Option &
+        (1:nLeptonFamilies,1:nLeptonFlavorAudit,1:nDOFX, &
+         iZ_B1_Input(2):iZ_E1_Input(2),iZ_B1_Input(3):iZ_E1_Input(3), &
+         iZ_B1_Input(4):iZ_E1_Input(4))
+    REAL(DP), INTENT(out), OPTIONAL :: &
       MatterSource_Rate_Unweighted_Option &
         (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2), &
@@ -2144,6 +2610,8 @@ CONTAINS
       MatterIncrement_Rate_Option = Zero
     IF( PRESENT( MatterSource_Rate_Unweighted_Option ) ) &
       MatterSource_Rate_Unweighted_Option = Zero
+    IF( PRESENT( LeptonFlavorAudit_Rate_Option ) ) &
+      LeptonFlavorAudit_Rate_Option = Zero
 
   END SUBROUTINE ComputeIncrement_CoupledAbsorptionDiffusion
 
@@ -2215,7 +2683,8 @@ CONTAINS
       AccumulateMatterCoupling_Mask, uDR_Option, &
       MatterCoupling_Mask_Option, &
       MatterSource_Rate_Option, MatterIncrement_Rate_Option, &
-      MatterSource_Weight_Option, MatterSource_Rate_Unweighted_Option )
+      MatterSource_Weight_Option, MatterSource_Rate_Unweighted_Option, &
+      LeptonFlavorAudit_Rate_Option )
 
     INTEGER, INTENT(in) :: &
       iZ_B0_Input(4), iZ_E0_Input(4), iZ_B1_Input(4), iZ_E1_Input(4)
@@ -2273,6 +2742,11 @@ CONTAINS
          iZ_B1_Input(3):iZ_E1_Input(3), &
          iZ_B1_Input(4):iZ_E1_Input(4))
     REAL(DP), INTENT(in), OPTIONAL :: MatterSource_Weight_Option
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      LeptonFlavorAudit_Rate_Option &
+        (1:nLeptonFamilies,1:nLeptonFlavorAudit,1:nDOFX, &
+         iZ_B1_Input(2):iZ_E1_Input(2),iZ_B1_Input(3):iZ_E1_Input(3), &
+         iZ_B1_Input(4):iZ_E1_Input(4))
     REAL(DP), INTENT(out), OPTIONAL :: &
       MatterSource_Rate_Unweighted_Option &
         (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
@@ -2336,6 +2810,8 @@ CONTAINS
       MatterIncrement_Rate_Option = Zero
     IF( PRESENT( MatterSource_Rate_Unweighted_Option ) ) &
       MatterSource_Rate_Unweighted_Option = Zero
+    IF( PRESENT( LeptonFlavorAudit_Rate_Option ) ) &
+      LeptonFlavorAudit_Rate_Option = Zero
 
   END SUBROUTINE ComputeIncrement_AbsorptionDiffusionBalance
 
@@ -2618,7 +3094,8 @@ CONTAINS
       AccumulateMatterCoupling_Mask, uDR_Option, &
       MatterCoupling_Mask_Option, &
       MatterSource_Rate_Option, MatterIncrement_Rate_Option, &
-      MatterSource_Weight_Option, MatterSource_Rate_Unweighted_Option )
+      MatterSource_Weight_Option, MatterSource_Rate_Unweighted_Option, &
+      LeptonFlavorAudit_Rate_Option )
 
     INTEGER, INTENT(in) :: &
       iZ_B0_Input(4), iZ_E0_Input(4), iZ_B1_Input(4), iZ_E1_Input(4)
@@ -2677,6 +3154,11 @@ CONTAINS
          iZ_B1_Input(4):iZ_E1_Input(4))
     REAL(DP), INTENT(in), OPTIONAL :: MatterSource_Weight_Option
     REAL(DP), INTENT(out), OPTIONAL :: &
+      LeptonFlavorAudit_Rate_Option &
+        (1:nLeptonFamilies,1:nLeptonFlavorAudit,1:nDOFX, &
+         iZ_B1_Input(2):iZ_E1_Input(2),iZ_B1_Input(3):iZ_E1_Input(3), &
+         iZ_B1_Input(4):iZ_E1_Input(4))
+    REAL(DP), INTENT(out), OPTIONAL :: &
       MatterSource_Rate_Unweighted_Option &
         (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2), &
@@ -2722,6 +3204,8 @@ CONTAINS
       MatterIncrement_Rate_Option = Zero
     IF( PRESENT( MatterSource_Rate_Unweighted_Option ) ) &
       MatterSource_Rate_Unweighted_Option = Zero
+    IF( PRESENT( LeptonFlavorAudit_Rate_Option ) ) &
+      LeptonFlavorAudit_Rate_Option = Zero
 
   END SUBROUTINE ComputeIncrement_ManufacturedOpaqueDiffusion
 
@@ -2816,7 +3300,8 @@ CONTAINS
       AccumulateMatterCoupling_Mask, uDR_Option, &
       MatterCoupling_Mask_Option, &
       MatterSource_Rate_Option, MatterIncrement_Rate_Option, &
-      MatterSource_Weight_Option, MatterSource_Rate_Unweighted_Option )
+      MatterSource_Weight_Option, MatterSource_Rate_Unweighted_Option, &
+      LeptonFlavorAudit_Rate_Option )
 
     INTEGER, INTENT(in) :: &
       iZ_B0_Input(4), iZ_E0_Input(4), iZ_B1_Input(4), iZ_E1_Input(4)
@@ -2875,6 +3360,11 @@ CONTAINS
          iZ_B1_Input(4):iZ_E1_Input(4))
     REAL(DP), INTENT(in), OPTIONAL :: MatterSource_Weight_Option
     REAL(DP), INTENT(out), OPTIONAL :: &
+      LeptonFlavorAudit_Rate_Option &
+        (1:nLeptonFamilies,1:nLeptonFlavorAudit,1:nDOFX, &
+         iZ_B1_Input(2):iZ_E1_Input(2),iZ_B1_Input(3):iZ_E1_Input(3), &
+         iZ_B1_Input(4):iZ_E1_Input(4))
+    REAL(DP), INTENT(out), OPTIONAL :: &
       MatterSource_Rate_Unweighted_Option &
         (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2), &
@@ -2922,6 +3412,8 @@ CONTAINS
       MatterIncrement_Rate_Option = Zero
     IF( PRESENT( MatterSource_Rate_Unweighted_Option ) ) &
       MatterSource_Rate_Unweighted_Option = Zero
+    IF( PRESENT( LeptonFlavorAudit_Rate_Option ) ) &
+      LeptonFlavorAudit_Rate_Option = Zero
 
   END SUBROUTINE ComputeIncrement_ManufacturedVariableOpacityDiffusion
 
@@ -3739,6 +4231,8 @@ CONTAINS
                = FreezeOpacities, &
              UseConservativeProjection_Option &
                = UseConservativeProjection, &
+             UseRadiationOnlySolve_Option &
+               = UseRadiationOnlySolve, &
              Verbose_Option &
                = .TRUE. )
 

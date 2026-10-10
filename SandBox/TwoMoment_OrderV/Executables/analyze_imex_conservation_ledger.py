@@ -79,7 +79,8 @@ def has_component(data: np.ndarray, component: str) -> bool:
 
 
 def validate_ledger(path: Path, data: np.ndarray) -> None:
-    for quantity in ("energy", "lepton"):
+    quantities = sorted(set(data["quantity"]))
+    for quantity in quantities:
         closure = series(data, quantity, "algebraic_closure")["step_value"]
         scales = np.zeros_like(closure)
         for component in COMPONENTS:
@@ -105,10 +106,10 @@ def validate_inventory(path: Path, data: np.ndarray, history_path: Path) -> None
             "total_energy_erg",
         ),
         (
-            "lepton",
-            "step_lepton_residual",
-            "cumulative_lepton_residual",
-            "total_lepton",
+            "lepton_e",
+            "step_electron_lepton_residual",
+            "cumulative_electron_lepton_residual",
+            "total_electron_lepton",
         ),
     )
     for quantity, step_field, cumulative_field, total_field in checks:
@@ -170,7 +171,7 @@ def plot_conservation_summary(
     fig, axes = plt.subplots(2, 2, figsize=(10.5, 7.4), sharex=True)
     quantity_metadata = (
         ("energy", "total_energy_erg", "Energy"),
-        ("lepton", "total_lepton", "Electron lepton number"),
+        ("lepton_e", "total_electron_lepton", "Electron lepton number"),
     )
 
     for row, (quantity, total_field, title) in enumerate(quantity_metadata):
@@ -251,7 +252,7 @@ def plot_implicit_pairing(
         sharex=True,
         squeeze=False,
     )
-    quantity_metadata = (("energy", "Energy", "erg"), ("lepton", "Electron lepton number", ""))
+    quantity_metadata = (("energy", "Energy", "erg"), ("lepton_e", "Electron lepton number", ""))
 
     for column, (data, method_label) in enumerate(zip(ledgers, labels)):
         for row, (quantity, quantity_label, unit) in enumerate(quantity_metadata):
@@ -331,7 +332,7 @@ def plot_residual_attribution(
 
     for column, (data, method_label) in enumerate(zip(ledgers, labels)):
         for row, (quantity, quantity_label) in enumerate(
-            (("energy", "Energy"), ("lepton", "Electron lepton number"))
+            (("energy", "Energy"), ("lepton_e", "Electron lepton number"))
         ):
             full = series(data, quantity, "conservation_residual")
             time_ms = full["time_s"] * 1.0e3
@@ -404,7 +405,7 @@ def main() -> None:
             validate_inventory(path, data, args.inventory_history[index])
 
         print(labels[index])
-        for quantity in ("energy", "lepton"):
+        for quantity in ("energy", "lepton_e", "lepton_mu", "lepton_tau"):
             print(f"  {quantity} final cumulative decomposition:")
             for component in COMPONENTS:
                 value = series(data, quantity, component)["cumulative_value"][-1]

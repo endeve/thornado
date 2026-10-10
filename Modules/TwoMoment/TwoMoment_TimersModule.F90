@@ -40,6 +40,8 @@ MODULE TwoMoment_TimersModule
   REAL(DP), PUBLIC :: Timer_Collisions_UpdateFP
   REAL(DP), PUBLIC :: Timer_Collisions_CheckOuter
   REAL(DP), PUBLIC :: Timer_Collisions_CheckInner
+  REAL(DP), PUBLIC :: Timer_Collisions_MatterFromRadiation
+  REAL(DP), PUBLIC :: Timer_Collisions_RadiationBacktrack
   REAL(DP), PUBLIC :: Timer_Opacity_D0
   REAL(DP), PUBLIC :: Timer_Opacity_LimitD0
   REAL(DP), PUBLIC :: Timer_Opacity_EC
@@ -119,6 +121,8 @@ CONTAINS
     Timer_Collisions_UpdateFP            = Zero
     Timer_Collisions_CheckOuter          = Zero
     Timer_Collisions_CheckInner          = Zero
+    Timer_Collisions_MatterFromRadiation = Zero
+    Timer_Collisions_RadiationBacktrack  = Zero
 
     Timer_Opacity_D0                     = Zero
     Timer_Opacity_LimitD0                = Zero
@@ -238,6 +242,10 @@ CONTAINS
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Collisions_CheckInner          :', Timer_Collisions_CheckInner         , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Collisions_MatterFromRadiation :', Timer_Collisions_MatterFromRadiation, ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Collisions_RadiationBacktrack  :', Timer_Collisions_RadiationBacktrack , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Opacity_D0                     :', Timer_Opacity_D0                    , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Opacity_LimitD0                :', Timer_Opacity_LimitD0               , ' s'
@@ -336,3 +344,4 @@ CONTAINS
 
 
 END MODULE TwoMoment_TimersModule
+

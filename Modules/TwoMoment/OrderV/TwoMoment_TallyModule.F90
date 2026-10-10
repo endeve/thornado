@@ -1,7 +1,7 @@
 MODULE TwoMoment_TallyModule
 
   USE KindModule, ONLY: &
-    DP, Zero, Half, One, FourPi
+    DP, Zero, Half, One, Two, FourPi
   USE UnitsModule, ONLY: &
     UnitsActive, &
     SpeedOfLight, &
@@ -31,6 +31,9 @@ MODULE TwoMoment_TallyModule
   USE RadiationFieldsModule, ONLY: &
     nSpecies, LeptonNumber, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3
+  USE TwoMoment_UtilitiesModule, ONLY: &
+    ComputePrimitive_TwoMoment_Scalar, &
+    ComputeEddingtonTensorComponents_dd
 
   IMPLICIT NONE
   PRIVATE
@@ -476,6 +479,10 @@ CONTAINS
 
     INTEGER  :: iZ1, iZ2, iZ3, iZ4, iS
     INTEGER  :: iNodeE, iNodeX, iNodeZ
+    REAL(DP) :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3, vDotInu
+    REAL(DP) :: V_u_1, V_u_2, V_u_3, V_d_1, V_d_2, V_d_3
+    REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
+    REAL(DP) :: Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3
     REAL(DP) :: &
       P(1:nDOFX, &
         iZ_B0(2):iZ_E0(2), &
@@ -566,19 +573,63 @@ CONTAINS
 
         iNodeZ = (iNodeX-1) * nDOFE + iNodeE
 
+        V_u_1 = P(iNodeX,iZ2,iZ3,iZ4,iPF_V1)
+        V_u_2 = P(iNodeX,iZ2,iZ3,iZ4,iPF_V2)
+        V_u_3 = P(iNodeX,iZ2,iZ3,iZ4,iPF_V3)
+        V_d_1 = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) * V_u_1
+        V_d_2 = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22) * V_u_2
+        V_d_3 = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) * V_u_3
+
+        ! --- Recover primitive moments before evaluating the order-v
+        !     Eulerian energy and momentum.  The expressions N+v.G and
+        !     G_i+v_i*N retain terms of order v^2 when N and G_i already
+        !     contain their order-v frame corrections.
+
+        CALL ComputePrimitive_TwoMoment_Scalar &
+               ( M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N, iS), &
+                 M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
+                 M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
+                 M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
+                 Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                 V_u_1, V_u_2, V_u_3, &
+                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
+                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
+                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
+
+        CALL ComputeEddingtonTensorComponents_dd &
+               ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
+                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
+                 GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33), &
+                 k_dd_11, k_dd_12, k_dd_13, &
+                 k_dd_22, k_dd_23, k_dd_33 )
+
+        vDotInu &
+          = V_d_1 * Inu_u_1 + V_d_2 * Inu_u_2 + V_d_3 * Inu_u_3
+        Enu = Dnu + Two * vDotInu
+        Fnu_d_1 &
+          = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11) * Inu_u_1 &
+              + V_d_1 * Dnu &
+              + ( V_u_1 * k_dd_11 + V_u_2 * k_dd_12 &
+                  + V_u_3 * k_dd_13 ) * Dnu
+        Fnu_d_2 &
+          = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22) * Inu_u_2 &
+              + V_d_2 * Dnu &
+              + ( V_u_1 * k_dd_12 + V_u_2 * k_dd_22 &
+                  + V_u_3 * k_dd_23 ) * Dnu
+        Fnu_d_3 &
+          = GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) * Inu_u_3 &
+              + V_d_3 * Dnu &
+              + ( V_u_1 * k_dd_13 + V_u_2 * k_dd_23 &
+                  + V_u_3 * k_dd_33 ) * Dnu
+
         NeutrinoEnergy_Interior                               &
           = NeutrinoEnergy_Interior                           &
               + dZ1(iZ1) * dZ2(iZ2) * dZ3(iZ3) * dZ4(iZ4)     &
                 * Weights_q(iNodeZ)                           &
                 * GE(iNodeE,iZ1,iGE_Ep3)                      &
                 * GX(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm)           &
-                * ( M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS)        &
-                    + P(iNodeX,iZ2,iZ3,iZ4,iPF_V1)            &
-                        * M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS) &
-                    + P(iNodeX,iZ2,iZ3,iZ4,iPF_V2)            &
-                        * M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS) &
-                    + P(iNodeX,iZ2,iZ3,iZ4,iPF_V3)            &
-                        * M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS) )
+                * Enu
 
         NeutrinoMomentum1_Interior                            &
           = NeutrinoMomentum1_Interior                        &
@@ -586,10 +637,7 @@ CONTAINS
                 * Weights_q(iNodeZ)                           &
                 * GE(iNodeE,iZ1,iGE_Ep3)                      &
                 * GX(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm)           &
-                * ( M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS)       &
-                    + GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11)     &
-                        * P(iNodeX,iZ2,iZ3,iZ4,iPF_V1)        &
-                        * M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS) )
+                * Fnu_d_1
 
         NeutrinoMomentum2_Interior                            &
           = NeutrinoMomentum2_Interior                        &
@@ -597,10 +645,7 @@ CONTAINS
                 * Weights_q(iNodeZ)                           &
                 * GE(iNodeE,iZ1,iGE_Ep3)                      &
                 * GX(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm)           &
-                * ( M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS)       &
-                    + GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22)     &
-                        * P(iNodeX,iZ2,iZ3,iZ4,iPF_V2)        &
-                        * M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS) )
+                * Fnu_d_2
 
         NeutrinoMomentum3_Interior                            &
           = NeutrinoMomentum3_Interior                        &
@@ -608,10 +653,7 @@ CONTAINS
                 * Weights_q(iNodeZ)                           &
                 * GE(iNodeE,iZ1,iGE_Ep3)                      &
                 * GX(iNodeX,iZ2,iZ3,iZ4,iGF_SqrtGm)           &
-                * ( M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS)       &
-                    + GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33)     &
-                        * P(iNodeX,iZ2,iZ3,iZ4,iPF_V3)        &
-                        * M(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N,iS) )
+                * Fnu_d_3
 
       END DO
       END DO

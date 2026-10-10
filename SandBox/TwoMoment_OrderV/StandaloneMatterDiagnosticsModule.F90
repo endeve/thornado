@@ -1,7 +1,7 @@
 MODULE StandaloneMatterDiagnosticsModule
 
   USE KindModule, ONLY: &
-    DP, Zero, One, Three, Half, FourPi, SqrtTiny
+    DP, Zero, One, Two, Three, Half, FourPi, SqrtTiny
   USE UnitsModule, ONLY: &
     BoltzmannConstant, Centimeter, Erg, Gram, MeV, PlanckConstant, &
     Second, SpeedOfLight, UnitsActive
@@ -48,6 +48,12 @@ MODULE StandaloneMatterDiagnosticsModule
     iCH_FinalConversion_L, iCH_MappedPair_L, iCH_ReturnedPair_L, &
     iCH_InputConversion_E, iCH_PrimitivePair_E, &
     iCH_FinalConversion_E, iCH_MappedPair_E, iCH_ReturnedPair_E
+  USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
+    nLeptonFamilies, nLeptonFlavorAudit, &
+    iLFA_InputConversion, iLFA_EntryProjection, &
+    iLFA_CollisionSource, iLFA_RawMap, &
+    iLFA_MapProjection, iLFA_FixedPointResidual, &
+    iLFA_EquationResidual
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit, &
     UseSourceAwareLLF, &
@@ -164,8 +170,16 @@ MODULE StandaloneMatterDiagnosticsModule
   REAL(DP), SAVE :: CumulativeBoundaryLepton = Zero
 
   INTEGER, PARAMETER :: iLedger_Energy = 1
-  INTEGER, PARAMETER :: iLedger_Lepton = 2
-  INTEGER, PARAMETER :: nLedgerQuantities = 2
+  INTEGER, PARAMETER :: iLedger_Momentum1 = 2
+  INTEGER, PARAMETER :: iLedger_Momentum2 = 3
+  INTEGER, PARAMETER :: iLedger_Momentum3 = 4
+  INTEGER, PARAMETER :: iLedger_LeptonElectron = 5
+  INTEGER, PARAMETER :: iLedger_LeptonMuon = 6
+  INTEGER, PARAMETER :: iLedger_LeptonTau = 7
+  INTEGER, PARAMETER :: nLedgerQuantities = 7
+  CHARACTER(16), PARAMETER :: LedgerQuantityName(nLedgerQuantities) = [ &
+    CHARACTER(16) :: 'energy', 'momentum1', 'momentum2', 'momentum3', &
+                     'lepton_e', 'lepton_mu', 'lepton_tau' ]
   INTEGER, PARAMETER :: iLedger_MatterActual = 1
   INTEGER, PARAMETER :: iLedger_RadiationActual = 2
   INTEGER, PARAMETER :: iLedger_Boundary = 3
@@ -200,6 +214,7 @@ MODULE StandaloneMatterDiagnosticsModule
     'direct_implicit_pair_residual' ]
   CHARACTER(256), SAVE :: IMEXConservationLedgerFile = ''
   CHARACTER(256), SAVE :: IMEXConservationStageDefectFile = ''
+  CHARACTER(256), SAVE :: IMEXLeptonFlavorAuditFile = ''
   REAL(DP), SAVE :: &
     IMEXConservationCumulative(nLedgerQuantities,nLedgerComponents) = Zero
 
@@ -243,6 +258,8 @@ CONTAINS
     IMEXConservationLedgerFile = TRIM( FileName ) // '.imex'
     IMEXConservationStageDefectFile &
       = TRIM( FileName ) // '.imex_implicit_pair_defect'
+    IMEXLeptonFlavorAuditFile &
+      = TRIM( FileName ) // '.imex_lepton_flavor_audit'
     IMEXConservationCumulative = Zero
 
     OPEN( NEWUNIT = Unit, FILE = TRIM(CumulativeConservationFile), &
@@ -255,11 +272,14 @@ CONTAINS
       ' step_energy_change_erg step_boundary_energy_erg' // &
       ' step_energy_residual_erg step_energy_relative' // &
       ' step_energy_exchange_relative' // &
-      ' matter_lepton radiation_lepton total_lepton' // &
-      ' cumulative_boundary_lepton cumulative_lepton_residual' // &
-      ' cumulative_lepton_relative cumulative_lepton_exchange_relative' // &
-      ' step_lepton_change step_boundary_lepton step_lepton_residual' // &
-      ' step_lepton_relative step_lepton_exchange_relative'
+      ' matter_electron_lepton radiation_electron_lepton' // &
+      ' total_electron_lepton cumulative_boundary_electron_lepton' // &
+      ' cumulative_electron_lepton_residual' // &
+      ' cumulative_electron_lepton_relative' // &
+      ' cumulative_electron_lepton_exchange_relative' // &
+      ' step_electron_lepton_change step_boundary_electron_lepton' // &
+      ' step_electron_lepton_residual step_electron_lepton_relative' // &
+      ' step_electron_lepton_exchange_relative'
     WRITE(Unit,'(A)') &
       '# residual = state change - signed off-grid increment'
     WRITE(Unit,'(A)') &
@@ -277,12 +297,38 @@ CONTAINS
       Zero, Zero, Zero, Zero, Zero, Zero, Zero, Zero, Zero
     CLOSE(Unit)
 
+    OPEN( NEWUNIT = Unit, FILE = TRIM(IMEXLeptonFlavorAuditFile), &
+          STATUS = 'REPLACE', ACTION = 'WRITE', FORM = 'FORMATTED' )
+    WRITE(Unit,'(A)') &
+      '# cycle time_s dt_s stage diagonal_coefficient implicit_weight' // &
+      ' family input_conversion entry_projection collision_source' // &
+      ' raw_map map_projection' // &
+      ' fixed_point_residual equation_residual' // &
+      ' reconstructed_radiation_change' // &
+      ' direct_radiation_change identity_closure direct_pair_residual'
+    WRITE(Unit,'(A)') &
+      '# changes are particle numbers over the diagonal implicit stage;' // &
+      ' multiply by implicit_weight/diagonal_coefficient for the' // &
+      ' full-step IMEX contribution.'
+    WRITE(Unit,'(A)') &
+      '# reconstructed = input_conversion + entry_projection + raw_map' // &
+      ' + map_projection - fixed_point_residual; collision_source is an independent' // &
+      ' final-state source integral.'
+    CLOSE(Unit)
+
     OPEN( NEWUNIT = Unit, FILE = TRIM(IMEXConservationLedgerFile), &
           STATUS = 'REPLACE', ACTION = 'WRITE', FORM = 'FORMATTED' )
     WRITE(Unit,'(A)') &
       '# cycle time_s dt_s quantity component step_value cumulative_value'
     WRITE(Unit,'(A)') &
-      '# energy values are in erg; lepton values are particle number.'
+      '# energy is in erg; momentum is in code/cgs momentum units;' // &
+      ' lepton quantities are particle numbers.'
+    WRITE(Unit,'(A)') &
+      '# radiation energy and momentum use the conserved-moment order-v' // &
+      ' combinations N+v^i G_i and G_i+v_i N used by the boundary tally.'
+    WRITE(Unit,'(A)') &
+      '# curvilinear momentum requires geometric source terms for a global' // &
+      ' balance; collision_pair_residual remains a valid local-exchange test.'
     WRITE(Unit,'(A)') &
       '# remainders contain final assembly, limiter, and frame cross terms' // &
       ' not represented by the weighted stage RHS contributions.'
@@ -295,8 +341,7 @@ CONTAINS
           STATUS = 'REPLACE', ACTION = 'WRITE', FORM = 'FORMATTED' )
     WRITE(Unit,'(A)') &
       '# cycle time_s dt_s stage diagonal_coefficient implicit_weight' // &
-      ' energy_pair_defect_erg lepton_pair_defect' // &
-      ' weighted_energy_pair_defect_erg weighted_lepton_pair_defect'
+      ' quantity direct_pair_residual weighted_pair_residual'
     WRITE(Unit,'(A)') &
       '# pair defect is the change in matter plus radiation across the' // &
       ' accepted diagonal implicit stage; weighted values multiply it' // &
@@ -311,9 +356,11 @@ CONTAINS
   SUBROUTINE AccumulateCumulativeConservationDiagnostics &
     ( Cycle, Time, TimeStep, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
       GE, GX, CF, CR, OffGridFluidIncrement, OffGridRadiationIncrement, &
+      OffGridRadiationLeptonFlavorIncrement, &
       StageFluidState, StageRadiationState, &
       StageFluidImplicitRate, StageFluidExplicitRate, &
-      StageRadiationImplicitRate, StageRadiationExplicitRate )
+      StageRadiationImplicitRate, StageRadiationExplicitRate, &
+      StageLeptonFlavorAuditRate )
 
     INTEGER, INTENT(in) :: Cycle
     REAL(DP), INTENT(in) :: Time, TimeStep
@@ -331,12 +378,14 @@ CONTAINS
          iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(in) :: OffGridFluidIncrement(1:nCF)
     REAL(DP), INTENT(in) :: OffGridRadiationIncrement(1:2*nCR)
+    REAL(DP), INTENT(in) :: OffGridRadiationLeptonFlavorIncrement(3)
     REAL(DP), INTENT(in) :: StageFluidState(:,:,:,:,:,:,:)
     REAL(DP), INTENT(in) :: StageRadiationState(:,:,:,:,:,:,:,:,:)
     REAL(DP), INTENT(in) :: StageFluidImplicitRate(:,:,:,:,:,:)
     REAL(DP), INTENT(in) :: StageFluidExplicitRate(:,:,:,:,:,:)
     REAL(DP), INTENT(in) :: StageRadiationImplicitRate(:,:,:,:,:,:,:,:)
     REAL(DP), INTENT(in) :: StageRadiationExplicitRate(:,:,:,:,:,:,:,:)
+    REAL(DP), INTENT(in) :: StageLeptonFlavorAuditRate(:,:,:,:,:,:,:)
 
     INTEGER :: Unit
     REAL(DP) :: MatterEnergy, RadiationEnergy, TotalEnergy
@@ -352,6 +401,13 @@ CONTAINS
       CumulativeEnergyExchangeRelative, CumulativeLeptonExchangeRelative
     REAL(DP) :: PreviousMatterEnergyLocal, PreviousRadiationEnergyLocal
     REAL(DP) :: PreviousMatterLeptonLocal, PreviousRadiationLeptonLocal
+    REAL(DP) :: MatterComponents(nLedgerQuantities)
+    REAL(DP) :: RadiationComponents(nLedgerQuantities)
+    REAL(DP) :: MatterComponentsInitial(nLedgerQuantities)
+    REAL(DP) :: RadiationComponentsInitial(nLedgerQuantities)
+    REAL(DP) :: MatterChange(nLedgerQuantities)
+    REAL(DP) :: RadiationChange(nLedgerQuantities)
+    REAL(DP) :: BoundaryComponents(nLedgerQuantities)
 
     IF( .NOT. CumulativeConservationInitialized ) &
       ERROR STOP 'Cumulative conservation diagnostics are not initialized.'
@@ -365,13 +421,42 @@ CONTAINS
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, CF, CR, &
              MatterEnergy, RadiationEnergy, MatterLepton, RadiationLepton )
 
+    CALL ComputeConservedMatterRadiationComponents &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, CF, CR, &
+             MatterComponents, RadiationComponents )
+
     hc3 = One
     IF( UnitsActive ) hc3 = ( PlanckConstant * SpeedOfLight )**3
 
     BoundaryEnergy = OffGridFluidIncrement(iCF_E) &
       + FourPi * OffGridRadiationIncrement(nCR+iCR_N) / hc3
     BoundaryLepton = OffGridFluidIncrement(iCF_Ne) &
-      + FourPi * OffGridRadiationIncrement(iCR_N) / hc3
+      + FourPi * OffGridRadiationLeptonFlavorIncrement(1) / hc3
+
+    BoundaryComponents = Zero
+    BoundaryComponents(iLedger_Energy) = BoundaryEnergy
+    BoundaryComponents(iLedger_Momentum1) &
+      = OffGridFluidIncrement(iCF_S1) &
+          + FourPi * OffGridRadiationIncrement(nCR+iCR_G1) / hc3
+    BoundaryComponents(iLedger_Momentum2) &
+      = OffGridFluidIncrement(iCF_S2) &
+          + FourPi * OffGridRadiationIncrement(nCR+iCR_G2) / hc3
+    BoundaryComponents(iLedger_Momentum3) &
+      = OffGridFluidIncrement(iCF_S3) &
+          + FourPi * OffGridRadiationIncrement(nCR+iCR_G3) / hc3
+    BoundaryComponents(iLedger_LeptonElectron) = BoundaryLepton
+    BoundaryComponents(iLedger_LeptonMuon) &
+      = FourPi * OffGridRadiationLeptonFlavorIncrement(2) / hc3
+    BoundaryComponents(iLedger_LeptonTau) &
+      = FourPi * OffGridRadiationLeptonFlavorIncrement(3) / hc3
+
+    CALL ComputeConservedMatterRadiationComponents &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
+             StageFluidState(:,:,:,:,:,1,iIMEX_Assembled), &
+             StageRadiationState(:,:,:,:,:,:,:,1,iIMEX_Assembled), &
+             MatterComponentsInitial, RadiationComponentsInitial )
+    MatterChange = MatterComponents - MatterComponentsInitial
+    RadiationChange = RadiationComponents - RadiationComponentsInitial
 
     TotalEnergy = MatterEnergy + RadiationEnergy
     TotalLepton = MatterLepton + RadiationLepton
@@ -437,14 +522,11 @@ CONTAINS
     CALL AccumulateIMEXConservationLedger &
            ( Cycle, Time, TimeStep, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
              GE, GX, &
-             MatterEnergy - PreviousMatterEnergyLocal, &
-             RadiationEnergy - PreviousRadiationEnergyLocal, &
-             MatterLepton - PreviousMatterLeptonLocal, &
-             RadiationLepton - PreviousRadiationLeptonLocal, &
-             BoundaryEnergy, BoundaryLepton, &
+             MatterChange, RadiationChange, BoundaryComponents, &
              StageFluidState, StageRadiationState, &
              StageFluidImplicitRate, StageFluidExplicitRate, &
-             StageRadiationImplicitRate, StageRadiationExplicitRate )
+             StageRadiationImplicitRate, StageRadiationExplicitRate, &
+             StageLeptonFlavorAuditRate )
 
     PreviousTotalEnergy = TotalEnergy
     PreviousTotalLepton = TotalLepton
@@ -458,12 +540,11 @@ CONTAINS
 
   SUBROUTINE AccumulateIMEXConservationLedger &
     ( Cycle, Time, TimeStep, iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
-      MatterEnergyChange, RadiationEnergyChange, &
-      MatterLeptonChange, RadiationLeptonChange, &
-      BoundaryEnergy, BoundaryLepton, &
+      MatterChange, RadiationChange, BoundaryChange, &
       StageFluidState, StageRadiationState, &
       StageFluidImplicitRate, StageFluidExplicitRate, &
-      StageRadiationImplicitRate, StageRadiationExplicitRate )
+      StageRadiationImplicitRate, StageRadiationExplicitRate, &
+      StageLeptonFlavorAuditRate )
 
     INTEGER, INTENT(in) :: Cycle
     REAL(DP), INTENT(in) :: Time, TimeStep
@@ -474,27 +555,29 @@ CONTAINS
       GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
          iZ_B1(4):iZ_E1(4),1:nGF)
     REAL(DP), INTENT(in) :: &
-      MatterEnergyChange, RadiationEnergyChange, &
-      MatterLeptonChange, RadiationLeptonChange, &
-      BoundaryEnergy, BoundaryLepton
+      MatterChange(nLedgerQuantities), &
+      RadiationChange(nLedgerQuantities), &
+      BoundaryChange(nLedgerQuantities)
     REAL(DP), INTENT(in) :: StageFluidState(:,:,:,:,:,:,:)
     REAL(DP), INTENT(in) :: StageRadiationState(:,:,:,:,:,:,:,:,:)
     REAL(DP), INTENT(in) :: StageFluidImplicitRate(:,:,:,:,:,:)
     REAL(DP), INTENT(in) :: StageFluidExplicitRate(:,:,:,:,:,:)
     REAL(DP), INTENT(in) :: StageRadiationImplicitRate(:,:,:,:,:,:,:,:)
     REAL(DP), INTENT(in) :: StageRadiationExplicitRate(:,:,:,:,:,:,:,:)
+    REAL(DP), INTENT(in) :: StageLeptonFlavorAuditRate(:,:,:,:,:,:,:)
 
     INTEGER :: iComponent, iStage, iQuantity, Unit
     REAL(DP) :: aII, wEX, wIM
-    REAL(DP) :: dMatterEnergy, dRadiationEnergy
-    REAL(DP) :: dMatterLepton, dRadiationLepton
-    REAL(DP) :: DirectEnergyPairDefect, DirectLeptonPairDefect
-    REAL(DP) :: WeightedEnergyPairDefect, WeightedLeptonPairDefect
-    REAL(DP) :: MatterEnergyA, RadiationEnergyA
-    REAL(DP) :: MatterLeptonA, RadiationLeptonA
-    REAL(DP) :: MatterEnergyB, RadiationEnergyB
-    REAL(DP) :: MatterLeptonB, RadiationLeptonB
+    REAL(DP) :: dMatter(nLedgerQuantities)
+    REAL(DP) :: dRadiation(nLedgerQuantities)
+    REAL(DP) :: DirectPairDefect(nLedgerQuantities)
+    REAL(DP) :: WeightedPairDefect(nLedgerQuantities)
+    REAL(DP) :: MatterA(nLedgerQuantities)
+    REAL(DP) :: RadiationA(nLedgerQuantities)
+    REAL(DP) :: MatterB(nLedgerQuantities)
+    REAL(DP) :: RadiationB(nLedgerQuantities)
     REAL(DP) :: Step(nLedgerQuantities,nLedgerComponents)
+    REAL(DP) :: LeptonAudit(nLeptonFamilies,nLeptonFlavorAudit)
     REAL(DP), ALLOCATABLE :: CF_Work(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: CR_Work(:,:,:,:,:,:,:)
 
@@ -507,67 +590,60 @@ CONTAINS
           iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
 
     Step = Zero
-    Step(iLedger_Energy,iLedger_MatterActual) = MatterEnergyChange
-    Step(iLedger_Energy,iLedger_RadiationActual) = RadiationEnergyChange
-    Step(iLedger_Energy,iLedger_Boundary) = BoundaryEnergy
-    Step(iLedger_Lepton,iLedger_MatterActual) = MatterLeptonChange
-    Step(iLedger_Lepton,iLedger_RadiationActual) = RadiationLeptonChange
-    Step(iLedger_Lepton,iLedger_Boundary) = BoundaryLepton
+    Step(:,iLedger_MatterActual) = MatterChange
+    Step(:,iLedger_RadiationActual) = RadiationChange
+    Step(:,iLedger_Boundary) = BoundaryChange
 
     DO iStage = 1, SIZE( StageFluidState, 6 )
 
       wIM = GetImplicitStageWeight_IMEX_RK( iStage )
       aII = GetImplicitStageCoefficient_IMEX_RK( iStage, iStage )
 
-      DirectEnergyPairDefect = Zero
-      DirectLeptonPairDefect = Zero
-      WeightedEnergyPairDefect = Zero
-      WeightedLeptonPairDefect = Zero
+      DirectPairDefect = Zero
+      WeightedPairDefect = Zero
 
       IF( aII /= Zero )THEN
 
-        CALL ComputeConservedMatterRadiationTotals &
+        CALL ComputeConservedMatterRadiationComponents &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
                  StageFluidState(:,:,:,:,:,iStage,iIMEX_PreImplicit), &
                  StageRadiationState &
                    (:,:,:,:,:,:,:,iStage,iIMEX_PreImplicit), &
-                 MatterEnergyA, RadiationEnergyA, &
-                 MatterLeptonA, RadiationLeptonA )
-        CALL ComputeConservedMatterRadiationTotals &
+                 MatterA, RadiationA )
+        CALL ComputeConservedMatterRadiationComponents &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
                  StageFluidState(:,:,:,:,:,iStage,iIMEX_PostImplicit), &
                  StageRadiationState &
                    (:,:,:,:,:,:,:,iStage,iIMEX_PostImplicit), &
-                 MatterEnergyB, RadiationEnergyB, &
-                 MatterLeptonB, RadiationLeptonB )
+                 MatterB, RadiationB )
 
-        DirectEnergyPairDefect &
-          = MatterEnergyB + RadiationEnergyB &
-              - MatterEnergyA - RadiationEnergyA
-        DirectLeptonPairDefect &
-          = MatterLeptonB + RadiationLeptonB &
-              - MatterLeptonA - RadiationLeptonA
-        WeightedEnergyPairDefect &
-          = ( wIM / aII ) * DirectEnergyPairDefect
-        WeightedLeptonPairDefect &
-          = ( wIM / aII ) * DirectLeptonPairDefect
+        DirectPairDefect = MatterB + RadiationB - MatterA - RadiationA
+        WeightedPairDefect = ( wIM / aII ) * DirectPairDefect
+
+        CALL ComputeIntegratedLeptonFlavorAudit &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, &
+                 StageLeptonFlavorAuditRate(:,:,:,:,:,:,iStage), &
+                 LeptonAudit )
+        CALL WriteLeptonFlavorStageAudit &
+               ( Cycle, Time, TimeStep, iStage, aII, wIM, &
+                 LeptonAudit, MatterA, RadiationA, MatterB, RadiationB )
 
       END IF
 
-      Step(iLedger_Energy,iLedger_DirectImplicitPairResidual) &
-        = Step(iLedger_Energy,iLedger_DirectImplicitPairResidual) &
-            + WeightedEnergyPairDefect
-      Step(iLedger_Lepton,iLedger_DirectImplicitPairResidual) &
-        = Step(iLedger_Lepton,iLedger_DirectImplicitPairResidual) &
-            + WeightedLeptonPairDefect
+      Step(:,iLedger_DirectImplicitPairResidual) &
+        = Step(:,iLedger_DirectImplicitPairResidual) + WeightedPairDefect
 
       OPEN( NEWUNIT = Unit, FILE = TRIM(IMEXConservationStageDefectFile), &
             STATUS = 'OLD', POSITION = 'APPEND', ACTION = 'WRITE', &
             FORM = 'FORMATTED' )
-      WRITE(Unit,'(I8,1X,2(ES24.16E3,1X),I4,1X,6(ES24.16E3,1X))') &
-        Cycle, Time / Second, TimeStep / Second, iStage, aII, wIM, &
-        DirectEnergyPairDefect / Erg, DirectLeptonPairDefect, &
-        WeightedEnergyPairDefect / Erg, WeightedLeptonPairDefect
+      DO iQuantity = 1, nLedgerQuantities
+        WRITE(Unit,'(I8,1X,2(ES24.16E3,1X),I4,1X,2(ES24.16E3,1X),' // &
+                   'A,1X,2(ES24.16E3,1X))') &
+          Cycle, Time / Second, TimeStep / Second, iStage, aII, wIM, &
+          TRIM(LedgerQuantityName(iQuantity)), &
+          ConvertLedgerQuantity( iQuantity, DirectPairDefect(iQuantity) ), &
+          ConvertLedgerQuantity( iQuantity, WeightedPairDefect(iQuantity) )
+      END DO
       CLOSE(Unit)
 
       CALL ComputeWeightedStageConservationChange &
@@ -577,16 +653,11 @@ CONTAINS
                StageFluidImplicitRate(:,:,:,:,:,iStage), &
                StageRadiationImplicitRate(:,:,:,:,:,:,:,iStage), &
                CF_Work, CR_Work, &
-               dMatterEnergy, dRadiationEnergy, &
-               dMatterLepton, dRadiationLepton )
-      Step(iLedger_Energy,iLedger_ImplicitMatter) &
-        = Step(iLedger_Energy,iLedger_ImplicitMatter) + dMatterEnergy
-      Step(iLedger_Energy,iLedger_ImplicitRadiation) &
-        = Step(iLedger_Energy,iLedger_ImplicitRadiation) + dRadiationEnergy
-      Step(iLedger_Lepton,iLedger_ImplicitMatter) &
-        = Step(iLedger_Lepton,iLedger_ImplicitMatter) + dMatterLepton
-      Step(iLedger_Lepton,iLedger_ImplicitRadiation) &
-        = Step(iLedger_Lepton,iLedger_ImplicitRadiation) + dRadiationLepton
+               dMatter, dRadiation )
+      Step(:,iLedger_ImplicitMatter) &
+        = Step(:,iLedger_ImplicitMatter) + dMatter
+      Step(:,iLedger_ImplicitRadiation) &
+        = Step(:,iLedger_ImplicitRadiation) + dRadiation
 
       wEX = GetExplicitStageWeight_IMEX_RK( iStage )
       CALL ComputeWeightedStageConservationChange &
@@ -597,68 +668,43 @@ CONTAINS
                StageFluidExplicitRate(:,:,:,:,:,iStage), &
                StageRadiationExplicitRate(:,:,:,:,:,:,:,iStage), &
                CF_Work, CR_Work, &
-               dMatterEnergy, dRadiationEnergy, &
-               dMatterLepton, dRadiationLepton )
-      Step(iLedger_Energy,iLedger_ExplicitMatter) &
-        = Step(iLedger_Energy,iLedger_ExplicitMatter) + dMatterEnergy
-      Step(iLedger_Energy,iLedger_ExplicitRadiation) &
-        = Step(iLedger_Energy,iLedger_ExplicitRadiation) + dRadiationEnergy
-      Step(iLedger_Lepton,iLedger_ExplicitMatter) &
-        = Step(iLedger_Lepton,iLedger_ExplicitMatter) + dMatterLepton
-      Step(iLedger_Lepton,iLedger_ExplicitRadiation) &
-        = Step(iLedger_Lepton,iLedger_ExplicitRadiation) + dRadiationLepton
+               dMatter, dRadiation )
+      Step(:,iLedger_ExplicitMatter) &
+        = Step(:,iLedger_ExplicitMatter) + dMatter
+      Step(:,iLedger_ExplicitRadiation) &
+        = Step(:,iLedger_ExplicitRadiation) + dRadiation
 
-      CALL ComputeConservedMatterRadiationTotals &
+      CALL ComputeConservedMatterRadiationComponents &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
                StageFluidState(:,:,:,:,:,iStage,iIMEX_Assembled), &
                StageRadiationState(:,:,:,:,:,:,:,iStage,iIMEX_Assembled), &
-               MatterEnergyA, RadiationEnergyA, &
-               MatterLeptonA, RadiationLeptonA )
-      CALL ComputeConservedMatterRadiationTotals &
+               MatterA, RadiationA )
+      CALL ComputeConservedMatterRadiationComponents &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
                StageFluidState(:,:,:,:,:,iStage,iIMEX_PreImplicit), &
                StageRadiationState(:,:,:,:,:,:,:,iStage,iIMEX_PreImplicit), &
-               MatterEnergyB, RadiationEnergyB, &
-               MatterLeptonB, RadiationLeptonB )
-      Step(iLedger_Energy,iLedger_PreLimiterMatterLocal) &
-        = Step(iLedger_Energy,iLedger_PreLimiterMatterLocal) &
-          + MatterEnergyB - MatterEnergyA
-      Step(iLedger_Energy,iLedger_PreLimiterRadiationLocal) &
-        = Step(iLedger_Energy,iLedger_PreLimiterRadiationLocal) &
-          + RadiationEnergyB - RadiationEnergyA
-      Step(iLedger_Lepton,iLedger_PreLimiterMatterLocal) &
-        = Step(iLedger_Lepton,iLedger_PreLimiterMatterLocal) &
-          + MatterLeptonB - MatterLeptonA
-      Step(iLedger_Lepton,iLedger_PreLimiterRadiationLocal) &
-        = Step(iLedger_Lepton,iLedger_PreLimiterRadiationLocal) &
-          + RadiationLeptonB - RadiationLeptonA
+               MatterB, RadiationB )
+      Step(:,iLedger_PreLimiterMatterLocal) &
+        = Step(:,iLedger_PreLimiterMatterLocal) + MatterB - MatterA
+      Step(:,iLedger_PreLimiterRadiationLocal) &
+        = Step(:,iLedger_PreLimiterRadiationLocal) + RadiationB - RadiationA
 
-      CALL ComputeConservedMatterRadiationTotals &
+      CALL ComputeConservedMatterRadiationComponents &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
                StageFluidState(:,:,:,:,:,iStage,iIMEX_PostImplicit), &
                StageRadiationState(:,:,:,:,:,:,:,iStage,iIMEX_PostImplicit), &
-               MatterEnergyA, RadiationEnergyA, &
-               MatterLeptonA, RadiationLeptonA )
-      CALL ComputeConservedMatterRadiationTotals &
+               MatterA, RadiationA )
+      CALL ComputeConservedMatterRadiationComponents &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
                StageFluidState &
                  (:,:,:,:,:,iStage,iIMEX_PostImplicitLimiter), &
                StageRadiationState &
                  (:,:,:,:,:,:,:,iStage,iIMEX_PostImplicitLimiter), &
-               MatterEnergyB, RadiationEnergyB, &
-               MatterLeptonB, RadiationLeptonB )
-      Step(iLedger_Energy,iLedger_PostLimiterMatterLocal) &
-        = Step(iLedger_Energy,iLedger_PostLimiterMatterLocal) &
-          + MatterEnergyB - MatterEnergyA
-      Step(iLedger_Energy,iLedger_PostLimiterRadiationLocal) &
-        = Step(iLedger_Energy,iLedger_PostLimiterRadiationLocal) &
-          + RadiationEnergyB - RadiationEnergyA
-      Step(iLedger_Lepton,iLedger_PostLimiterMatterLocal) &
-        = Step(iLedger_Lepton,iLedger_PostLimiterMatterLocal) &
-          + MatterLeptonB - MatterLeptonA
-      Step(iLedger_Lepton,iLedger_PostLimiterRadiationLocal) &
-        = Step(iLedger_Lepton,iLedger_PostLimiterRadiationLocal) &
-          + RadiationLeptonB - RadiationLeptonA
+               MatterB, RadiationB )
+      Step(:,iLedger_PostLimiterMatterLocal) &
+        = Step(:,iLedger_PostLimiterMatterLocal) + MatterB - MatterA
+      Step(:,iLedger_PostLimiterRadiationLocal) &
+        = Step(:,iLedger_PostLimiterRadiationLocal) + RadiationB - RadiationA
 
     END DO
 
@@ -695,19 +741,13 @@ CONTAINS
           FORM = 'FORMATTED' )
     DO iQuantity = 1, nLedgerQuantities
       DO iComponent = 1, nLedgerComponents
-        IF( iQuantity == iLedger_Energy )THEN
-          WRITE(Unit,'(I8,1X,2(ES24.16E3,1X),2(A,1X),2(ES24.16E3,1X))') &
-            Cycle, Time / Second, TimeStep / Second, 'energy', &
-            TRIM(LedgerComponentName(iComponent)), &
-            Step(iQuantity,iComponent) / Erg, &
-            IMEXConservationCumulative(iQuantity,iComponent) / Erg
-        ELSE
-          WRITE(Unit,'(I8,1X,2(ES24.16E3,1X),2(A,1X),2(ES24.16E3,1X))') &
-            Cycle, Time / Second, TimeStep / Second, 'lepton', &
-            TRIM(LedgerComponentName(iComponent)), &
-            Step(iQuantity,iComponent), &
-            IMEXConservationCumulative(iQuantity,iComponent)
-        END IF
+        WRITE(Unit,'(I8,1X,2(ES24.16E3,1X),2(A,1X),2(ES24.16E3,1X))') &
+          Cycle, Time / Second, TimeStep / Second, &
+          TRIM(LedgerQuantityName(iQuantity)), &
+          TRIM(LedgerComponentName(iComponent)), &
+          ConvertLedgerQuantity( iQuantity, Step(iQuantity,iComponent) ), &
+          ConvertLedgerQuantity &
+            ( iQuantity, IMEXConservationCumulative(iQuantity,iComponent) )
       END DO
     END DO
     CLOSE(Unit)
@@ -717,11 +757,122 @@ CONTAINS
   END SUBROUTINE AccumulateIMEXConservationLedger
 
 
+  SUBROUTINE ComputeIntegratedLeptonFlavorAudit &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, AuditRate, IntegratedRate )
+
+    INTEGER, INTENT(in) :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in) :: &
+      GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:nGF)
+    REAL(DP), INTENT(in) :: &
+      AuditRate(1:nLeptonFamilies,1:nLeptonFlavorAudit,1:nDOFX, &
+                iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+                iZ_B1(4):iZ_E1(4))
+    REAL(DP), INTENT(out) :: &
+      IntegratedRate(nLeptonFamilies,nLeptonFlavorAudit)
+
+    INTEGER :: iAudit, iFamily, iNodeX, iX1, iX2, iX3
+    REAL(DP) :: SpaceWeight
+
+    IntegratedRate = Zero
+
+    DO iX3 = iZ_B0(4), iZ_E0(4)
+    DO iX2 = iZ_B0(3), iZ_E0(3)
+    DO iX1 = iZ_B0(2), iZ_E0(2)
+    DO iNodeX = 1, nDOFX
+
+      SpaceWeight = MeshX(1) % Width(iX1) &
+                  * MeshX(2) % Width(iX2) &
+                  * MeshX(3) % Width(iX3) &
+                  * WeightsX_q(iNodeX) &
+                  * GX(iNodeX,iX1,iX2,iX3,iGF_SqrtGm)
+
+      DO iAudit = 1, nLeptonFlavorAudit
+      DO iFamily = 1, nLeptonFamilies
+        IntegratedRate(iFamily,iAudit) &
+          = IntegratedRate(iFamily,iAudit) &
+              + SpaceWeight &
+                  * AuditRate(iFamily,iAudit,iNodeX,iX1,iX2,iX3)
+      END DO
+      END DO
+
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeIntegratedLeptonFlavorAudit
+
+
+  SUBROUTINE WriteLeptonFlavorStageAudit &
+    ( Cycle, Time, TimeStep, iStage, aII, wIM, AuditRate, &
+      MatterA, RadiationA, MatterB, RadiationB )
+
+    INTEGER, INTENT(in) :: Cycle, iStage
+    REAL(DP), INTENT(in) :: Time, TimeStep, aII, wIM
+    REAL(DP), INTENT(in) :: &
+      AuditRate(nLeptonFamilies,nLeptonFlavorAudit)
+    REAL(DP), INTENT(in) :: &
+      MatterA(nLedgerQuantities), RadiationA(nLedgerQuantities), &
+      MatterB(nLedgerQuantities), RadiationB(nLedgerQuantities)
+
+    CHARACTER(8), PARAMETER :: FamilyName(nLeptonFamilies) &
+      = [ CHARACTER(8) :: 'electron', 'muon', 'tau' ]
+    INTEGER :: iFamily, iQuantity, Unit
+    REAL(DP) :: InputConversion, EntryProjection, CollisionSource
+    REAL(DP) :: RawMap, MapProjection
+    REAL(DP) :: FixedPointResidual, EquationResidual
+    REAL(DP) :: Reconstructed, DirectRadiation
+    REAL(DP) :: IdentityClosure, DirectPairResidual
+
+    OPEN( NEWUNIT = Unit, FILE = TRIM(IMEXLeptonFlavorAuditFile), &
+          STATUS = 'OLD', POSITION = 'APPEND', ACTION = 'WRITE', &
+          FORM = 'FORMATTED' )
+
+    DO iFamily = 1, nLeptonFamilies
+
+      iQuantity = iLedger_LeptonElectron + iFamily - 1
+      InputConversion &
+        = TimeStep * aII * AuditRate(iFamily,iLFA_InputConversion)
+      EntryProjection &
+        = TimeStep * aII * AuditRate(iFamily,iLFA_EntryProjection)
+      CollisionSource &
+        = TimeStep * aII * AuditRate(iFamily,iLFA_CollisionSource)
+      RawMap = TimeStep * aII * AuditRate(iFamily,iLFA_RawMap)
+      MapProjection &
+        = TimeStep * aII * AuditRate(iFamily,iLFA_MapProjection)
+      FixedPointResidual &
+        = TimeStep * aII * AuditRate(iFamily,iLFA_FixedPointResidual)
+      EquationResidual &
+        = TimeStep * aII * AuditRate(iFamily,iLFA_EquationResidual)
+      Reconstructed &
+        = InputConversion + EntryProjection + RawMap + MapProjection &
+            - FixedPointResidual
+      DirectRadiation = RadiationB(iQuantity) - RadiationA(iQuantity)
+      IdentityClosure = DirectRadiation - Reconstructed
+      DirectPairResidual = DirectRadiation &
+        + MatterB(iQuantity) - MatterA(iQuantity)
+
+      WRITE(Unit,'(I8,1X,2(ES24.16E3,1X),I4,1X,2(ES24.16E3,1X),' // &
+                 'A,1X,11(ES24.16E3,1X))') &
+        Cycle, Time / Second, TimeStep / Second, iStage, aII, wIM, &
+        TRIM(FamilyName(iFamily)), InputConversion, EntryProjection, &
+        CollisionSource, &
+        RawMap, MapProjection, FixedPointResidual, EquationResidual, &
+        Reconstructed, &
+        DirectRadiation, IdentityClosure, DirectPairResidual
+
+    END DO
+
+    CLOSE(Unit)
+
+  END SUBROUTINE WriteLeptonFlavorStageAudit
+
+
   SUBROUTINE ComputeWeightedStageConservationChange &
     ( TimeStep, Weight, iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
       CF_Base, CR_Base, CF_Rate, CR_Rate, CF_Work, CR_Work, &
-      MatterEnergyChange, RadiationEnergyChange, &
-      MatterLeptonChange, RadiationLeptonChange )
+      MatterChange, RadiationChange )
 
     REAL(DP), INTENT(in) :: TimeStep, Weight
     INTEGER, INTENT(in) :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
@@ -749,36 +900,29 @@ CONTAINS
       CR_Work(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
               iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      MatterEnergyChange, RadiationEnergyChange, &
-      MatterLeptonChange, RadiationLeptonChange
+      MatterChange(nLedgerQuantities), RadiationChange(nLedgerQuantities)
 
-    REAL(DP) :: MatterEnergyBase, RadiationEnergyBase
-    REAL(DP) :: MatterLeptonBase, RadiationLeptonBase
-    REAL(DP) :: MatterEnergyWork, RadiationEnergyWork
-    REAL(DP) :: MatterLeptonWork, RadiationLeptonWork
+    REAL(DP) :: MatterBase(nLedgerQuantities)
+    REAL(DP) :: RadiationBase(nLedgerQuantities)
+    REAL(DP) :: MatterWork(nLedgerQuantities)
+    REAL(DP) :: RadiationWork(nLedgerQuantities)
 
-    MatterEnergyChange = Zero
-    RadiationEnergyChange = Zero
-    MatterLeptonChange = Zero
-    RadiationLeptonChange = Zero
+    MatterChange = Zero
+    RadiationChange = Zero
     IF( Weight == Zero ) RETURN
 
     CF_Work = CF_Base + TimeStep * Weight * CF_Rate
     CR_Work = CR_Base + TimeStep * Weight * CR_Rate
 
-    CALL ComputeConservedMatterRadiationTotals &
+    CALL ComputeConservedMatterRadiationComponents &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, CF_Base, CR_Base, &
-             MatterEnergyBase, RadiationEnergyBase, &
-             MatterLeptonBase, RadiationLeptonBase )
-    CALL ComputeConservedMatterRadiationTotals &
+             MatterBase, RadiationBase )
+    CALL ComputeConservedMatterRadiationComponents &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, CF_Work, CR_Work, &
-             MatterEnergyWork, RadiationEnergyWork, &
-             MatterLeptonWork, RadiationLeptonWork )
+             MatterWork, RadiationWork )
 
-    MatterEnergyChange = MatterEnergyWork - MatterEnergyBase
-    RadiationEnergyChange = RadiationEnergyWork - RadiationEnergyBase
-    MatterLeptonChange = MatterLeptonWork - MatterLeptonBase
-    RadiationLeptonChange = RadiationLeptonWork - RadiationLeptonBase
+    MatterChange = MatterWork - MatterBase
+    RadiationChange = RadiationWork - RadiationBase
 
   END SUBROUTINE ComputeWeightedStageConservationChange
 
@@ -825,15 +969,48 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       MatterEnergy, RadiationEnergy, MatterLepton, RadiationLepton
 
-    INTEGER :: iE, iNodeE, iNodeX, iNodeZ, iS, iX1, iX2, iX3
-    REAL(DP) :: hc3, PhaseWeight, SpaceWeight, V1, V2, V3
+    REAL(DP) :: Matter(nLedgerQuantities)
+    REAL(DP) :: Radiation(nLedgerQuantities)
+
+    CALL ComputeConservedMatterRadiationComponents &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, CF, CR, &
+             Matter, Radiation )
+
+    MatterEnergy = Matter(iLedger_Energy)
+    RadiationEnergy = Radiation(iLedger_Energy)
+    MatterLepton = Matter(iLedger_LeptonElectron)
+    RadiationLepton = Radiation(iLedger_LeptonElectron)
+
+  END SUBROUTINE ComputeConservedMatterRadiationTotals
+
+
+  SUBROUTINE ComputeConservedMatterRadiationComponents &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, CF, CR, Matter, Radiation )
+
+    INTEGER, INTENT(in) :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(DP), INTENT(in) :: &
+      GE(1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
+    REAL(DP), INTENT(in) :: &
+      GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:nGF)
+    REAL(DP), INTENT(in) :: &
+      CF(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
+         iZ_B1(4):iZ_E1(4),1:nCF)
+    REAL(DP), INTENT(in) :: &
+      CR(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
+         iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
+    REAL(DP), INTENT(out) :: &
+      Matter(nLedgerQuantities), Radiation(nLedgerQuantities)
+
+    INTEGER :: iE, iFamily, iNodeE, iNodeX, iNodeZ, iS, iX1, iX2, iX3
+    REAL(DP) :: hc3, PhaseWeight2, PhaseWeight3, SpaceWeight
+    REAL(DP) :: V_u_1, V_u_2, V_u_3, V_d_1, V_d_2, V_d_3
+    REAL(DP) :: Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3
 
     hc3 = One
     IF( UnitsActive ) hc3 = ( PlanckConstant * SpeedOfLight )**3
-    MatterEnergy = Zero
-    RadiationEnergy = Zero
-    MatterLepton = Zero
-    RadiationLepton = Zero
+    Matter = Zero
+    Radiation = Zero
 
     DO iX3 = iZ_B0(4), iZ_E0(4)
     DO iX2 = iZ_B0(3), iZ_E0(3)
@@ -846,52 +1023,98 @@ CONTAINS
                   * WeightsX_q(iNodeX) &
                   * GX(iNodeX,iX1,iX2,iX3,iGF_SqrtGm)
 
-      MatterEnergy = MatterEnergy &
+      Matter(iLedger_Energy) = Matter(iLedger_Energy) &
         + SpaceWeight * CF(iNodeX,iX1,iX2,iX3,iCF_E)
-      MatterLepton = MatterLepton &
+      Matter(iLedger_Momentum1) = Matter(iLedger_Momentum1) &
+        + SpaceWeight * CF(iNodeX,iX1,iX2,iX3,iCF_S1)
+      Matter(iLedger_Momentum2) = Matter(iLedger_Momentum2) &
+        + SpaceWeight * CF(iNodeX,iX1,iX2,iX3,iCF_S2)
+      Matter(iLedger_Momentum3) = Matter(iLedger_Momentum3) &
+        + SpaceWeight * CF(iNodeX,iX1,iX2,iX3,iCF_S3)
+      Matter(iLedger_LeptonElectron) = Matter(iLedger_LeptonElectron) &
         + SpaceWeight * CF(iNodeX,iX1,iX2,iX3,iCF_Ne)
 
-      V1 = CF(iNodeX,iX1,iX2,iX3,iCF_S1) &
+      V_u_1 = CF(iNodeX,iX1,iX2,iX3,iCF_S1) &
         / ( GX(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) &
             * CF(iNodeX,iX1,iX2,iX3,iCF_D) )
-      V2 = CF(iNodeX,iX1,iX2,iX3,iCF_S2) &
+      V_u_2 = CF(iNodeX,iX1,iX2,iX3,iCF_S2) &
         / ( GX(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) &
             * CF(iNodeX,iX1,iX2,iX3,iCF_D) )
-      V3 = CF(iNodeX,iX1,iX2,iX3,iCF_S3) &
+      V_u_3 = CF(iNodeX,iX1,iX2,iX3,iCF_S3) &
         / ( GX(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) &
             * CF(iNodeX,iX1,iX2,iX3,iCF_D) )
+      V_d_1 = GX(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) * V_u_1
+      V_d_2 = GX(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22) * V_u_2
+      V_d_3 = GX(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33) * V_u_3
 
       DO iS = 1, nSpecies
-      DO iE = iZ_B0(1), iZ_E0(1)
-      DO iNodeE = 1, nDOFE
+        iFamily = ( iS + 1 ) / 2
+        DO iE = iZ_B0(1), iZ_E0(1)
+        DO iNodeE = 1, nDOFE
 
-        iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
-        PhaseWeight = FourPi / hc3 &
-          * MeshE % Width(iE) * WeightsE(iNodeE)
+          iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE
+          PhaseWeight2 = FourPi / hc3 * MeshE % Width(iE) &
+            * WeightsE(iNodeE) * GE(iNodeE,iE,iGE_Ep2)
+          PhaseWeight3 = FourPi / hc3 * MeshE % Width(iE) &
+            * WeightsE(iNodeE) * GE(iNodeE,iE,iGE_Ep3)
 
-        RadiationLepton = RadiationLepton &
-          + SpaceWeight * PhaseWeight * GE(iNodeE,iE,iGE_Ep2) &
-            * LeptonNumber(iS) * CR(iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS)
-        RadiationEnergy = RadiationEnergy &
-          + SpaceWeight * PhaseWeight * GE(iNodeE,iE,iGE_Ep3) &
-            * ( CR(iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS) &
-                + V1 &
-                    * CR(iNodeZ,iE,iX1,iX2,iX3,iCR_G1,iS) &
-                + V2 &
-                    * CR(iNodeZ,iE,iX1,iX2,iX3,iCR_G2,iS) &
-                + V3 &
-                    * CR(iNodeZ,iE,iX1,iX2,iX3,iCR_G3,iS) )
+          Radiation(iLedger_LeptonElectron+iFamily-1) &
+            = Radiation(iLedger_LeptonElectron+iFamily-1) &
+                + SpaceWeight * PhaseWeight2 * LeptonNumber(iS) &
+                  * CR(iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS)
 
+          ! --- Evaluate the order-v Eulerian invariants directly from the
+          !     evolved conserved moments.  These are the same linear
+          !     combinations used to construct the energy and momentum
+          !     boundary flux tallies.  In particular, do not apply the
+          !     nonlinear conserved-to-primitive inversion to an assembled
+          !     pre-limiter state or to a synthetic stage-weighted state.
+
+          Enu &
+            = CR(iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS) &
+                + V_u_1 * CR(iNodeZ,iE,iX1,iX2,iX3,iCR_G1,iS) &
+                + V_u_2 * CR(iNodeZ,iE,iX1,iX2,iX3,iCR_G2,iS) &
+                + V_u_3 * CR(iNodeZ,iE,iX1,iX2,iX3,iCR_G3,iS)
+          Fnu_d_1 &
+            = CR(iNodeZ,iE,iX1,iX2,iX3,iCR_G1,iS) &
+                + V_d_1 * CR(iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS)
+          Fnu_d_2 &
+            = CR(iNodeZ,iE,iX1,iX2,iX3,iCR_G2,iS) &
+                + V_d_2 * CR(iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS)
+          Fnu_d_3 &
+            = CR(iNodeZ,iE,iX1,iX2,iX3,iCR_G3,iS) &
+                + V_d_3 * CR(iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS)
+
+          Radiation(iLedger_Energy) = Radiation(iLedger_Energy) &
+            + SpaceWeight * PhaseWeight3 * Enu
+          Radiation(iLedger_Momentum1) = Radiation(iLedger_Momentum1) &
+            + SpaceWeight * PhaseWeight3 * Fnu_d_1
+          Radiation(iLedger_Momentum2) = Radiation(iLedger_Momentum2) &
+            + SpaceWeight * PhaseWeight3 * Fnu_d_2
+          Radiation(iLedger_Momentum3) = Radiation(iLedger_Momentum3) &
+            + SpaceWeight * PhaseWeight3 * Fnu_d_3
+
+        END DO
+        END DO
       END DO
-      END DO
-      END DO
 
     END DO
     END DO
     END DO
     END DO
 
-  END SUBROUTINE ComputeConservedMatterRadiationTotals
+  END SUBROUTINE ComputeConservedMatterRadiationComponents
+
+
+  REAL(DP) FUNCTION ConvertLedgerQuantity( iQuantity, Value ) RESULT( Converted )
+
+    INTEGER, INTENT(in) :: iQuantity
+    REAL(DP), INTENT(in) :: Value
+
+    Converted = Value
+    IF( iQuantity == iLedger_Energy ) Converted = Value / Erg
+
+  END FUNCTION ConvertLedgerQuantity
 
 
   SUBROUTINE InitializeMatterExchangeAttribution &

@@ -53,6 +53,11 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     ComputeOpacities_Packed, &
     ComputeRates_Packed, &
     nQ, nC, &
+    nLeptonFamilies, nLeptonFlavorAudit, &
+    iLFA_InputConversion, iLFA_EntryProjection, &
+    iLFA_CollisionSource, iLFA_RawMap, &
+    iLFA_MapProjection, iLFA_FixedPointResidual, &
+    iLFA_EquationResidual, &
     iQ_L, iQ_E, iQ_H, iQ_M1, iQ_M2, iQ_M3
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit, &
@@ -116,6 +121,11 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   PUBLIC :: ComputeTransportOpacityFromConserved_OrderV
   PUBLIC :: ComputeIncrement_TwoMoment_Explicit_AP
   PUBLIC :: nQ, nC
+  PUBLIC :: nLeptonFamilies, nLeptonFlavorAudit
+  PUBLIC :: iLFA_InputConversion, iLFA_EntryProjection
+  PUBLIC :: iLFA_CollisionSource, iLFA_RawMap
+  PUBLIC :: iLFA_MapProjection, iLFA_FixedPointResidual
+  PUBLIC :: iLFA_EquationResidual
   PUBLIC :: nConservationHandoff
   PUBLIC :: iCH_InputConversion_L, iCH_PrimitivePair_L
   PUBLIC :: iCH_FinalConversion_L, iCH_MappedPair_L, iCH_ReturnedPair_L
@@ -171,6 +181,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   REAL(DP), ALLOCATABLE :: ConservativeProjectionMatterHeating_Rate_Final(:)
   INTEGER,  ALLOCATABLE :: ConservativeProjectionStatus_Final(:)
   REAL(DP), ALLOCATABLE :: ConservationHandoff_Rate_Final(:,:)
+  REAL(DP), ALLOCATABLE :: LeptonFlavorAudit_Rate_Final(:,:,:)
 #endif
 
   LOGICAL :: RetainSolverConvergenceDiagnostics = .FALSE.
@@ -187,6 +198,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     ConservativeProjectionMatterHeating_Rate_Final_Last(:)
   INTEGER,  ALLOCATABLE :: ConservativeProjectionStatus_Final_Last(:)
   REAL(DP), ALLOCATABLE :: ConservationHandoff_Rate_Final_Last(:,:)
+  REAL(DP), ALLOCATABLE :: LeptonFlavorAudit_Rate_Final_Last(:,:,:)
 #endif
 
   LOGICAL, PARAMETER :: ReportConvergenceData = .FALSE.
@@ -213,6 +225,7 @@ CONTAINS
       DEALLOCATE( ConservativeProjectionMatterHeating_Rate_Final_Last )
       DEALLOCATE( ConservativeProjectionStatus_Final_Last )
       DEALLOCATE( ConservationHandoff_Rate_Final_Last )
+      DEALLOCATE( LeptonFlavorAudit_Rate_Final_Last )
 #endif
     END IF
 
@@ -231,7 +244,7 @@ CONTAINS
         ConservativeProjectionRadiationResidualRelativeFinal, &
         ConservativeProjectionMatterHeatingRateFinal, &
         ConservativeProjectionStatusFinal, &
-        ConservationHandoffRateFinal &
+        ConservationHandoffRateFinal, LeptonFlavorAuditRateFinal &
 #endif
       )
 
@@ -248,6 +261,8 @@ CONTAINS
       ConservativeProjectionMatterHeatingRateFinal(:)
     INTEGER,  ALLOCATABLE, INTENT(out) :: ConservativeProjectionStatusFinal(:)
     REAL(DP), ALLOCATABLE, INTENT(out) :: ConservationHandoffRateFinal(:,:)
+    REAL(DP), ALLOCATABLE, INTENT(out), OPTIONAL :: &
+      LeptonFlavorAuditRateFinal(:,:,:)
 #endif
 
     IF( .NOT. ALLOCATED( nIterations_Inner_Final_Last ) ) &
@@ -274,6 +289,9 @@ CONTAINS
               MOLD = ConservativeProjectionStatus_Final_Last )
     ALLOCATE( ConservationHandoffRateFinal, &
               MOLD = ConservationHandoff_Rate_Final_Last )
+    IF( PRESENT( LeptonFlavorAuditRateFinal ) ) &
+      ALLOCATE( LeptonFlavorAuditRateFinal, &
+                MOLD = LeptonFlavorAudit_Rate_Final_Last )
 #endif
 
     InnerIterationsFinal       = nIterations_Inner_Final_Last
@@ -289,6 +307,8 @@ CONTAINS
       = ConservativeProjectionMatterHeating_Rate_Final_Last
     ConservativeProjectionStatusFinal = ConservativeProjectionStatus_Final_Last
     ConservationHandoffRateFinal = ConservationHandoff_Rate_Final_Last
+    IF( PRESENT( LeptonFlavorAuditRateFinal ) ) &
+      LeptonFlavorAuditRateFinal = LeptonFlavorAudit_Rate_Final_Last
 #endif
 
   END SUBROUTINE GetNeutrinoMatterSolverConvergenceDiagnostics
@@ -645,7 +665,8 @@ CONTAINS
       uDR_Option, MatterCoupling_Mask_Option &
 #if defined( TWOMOMENT_ORDER_V )
       , MatterSource_Rate_Option, MatterIncrement_Rate_Option, &
-        MatterSource_Weight_Option, MatterSource_Rate_Unweighted_Option &
+        MatterSource_Weight_Option, MatterSource_Rate_Unweighted_Option, &
+        LeptonFlavorAudit_Rate_Option &
 #endif
       )
 
@@ -731,6 +752,10 @@ CONTAINS
            iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4))
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      LeptonFlavorAudit_Rate_Option &
+          (1:nLeptonFamilies,1:nLeptonFlavorAudit,1:nDOFX, &
+           iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4))
 #endif
 
     INTEGER :: iN_X, iN_E, iS
@@ -811,6 +836,15 @@ CONTAINS
     !$ACC ENTER DATA CREATE( TransportOpacity_N )
 #endif
     END IF
+
+    IF( PRESENT( LeptonFlavorAudit_Rate_Option ) )THEN
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA MAP( alloc: LeptonFlavorAudit_Rate_Option )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA CREATE( LeptonFlavorAudit_Rate_Option )
+#endif
+    END IF
+
 #endif
 
     CALL MapDataForCollisions( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R )
@@ -1006,13 +1040,51 @@ CONTAINS
                RadiationResidual_Relative_Final, &
                ConservativeProjectionRadiationResidual_Relative_Final, &
                ConservativeProjectionMatterHeating_Rate_Final, &
-               ConservativeProjectionStatus_Final &
+               ConservativeProjectionStatus_Final, &
+               LeptonFlavorAudit_Rate_Final &
 #endif
              )
 
     CALL TimersStop( Timer_Collisions_Solve )
 
 #if defined( TWOMOMENT_ORDER_V )
+    IF( PRESENT( LeptonFlavorAudit_Rate_Option ) )THEN
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
+    !$OMP PRIVATE( iN_X )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
+    !$ACC PRIVATE( iN_X ) &
+    !$ACC PRESENT( LeptonFlavorAudit_Rate_Option, &
+    !$ACC          LeptonFlavorAudit_Rate_Final )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(6) PRIVATE( iN_X )
+#endif
+      DO iX3    = iX_B0(3), iX_E0(3)
+      DO iX2    = iX_B0(2), iX_E0(2)
+      DO iX1    = iX_B0(1), iX_E0(1)
+      DO iNodeX = 1, nDOFX
+      DO iG      = 1, nLeptonFlavorAudit
+      DO iQ      = 1, nLeptonFamilies
+
+        iN_X = iNodeX &
+               + ( iX1 - iX_B0(1) ) * nDOFX &
+               + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
+               + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
+
+        LeptonFlavorAudit_Rate_Option(iQ,iG,iNodeX,iX1,iX2,iX3) &
+          = LeptonFlavorAudit_Rate_Final(iQ,iG,iN_X)
+
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
+
+    END IF
+
     IF( UseSourceAwareLLF )THEN
 
       CALL AssembleTransportOpacity( TransportOpacity_N )
@@ -1544,6 +1616,14 @@ CONTAINS
     !$ACC EXIT DATA DELETE( MatterIncrement_Rate_Option )
 #endif
     END IF
+
+    IF( PRESENT( LeptonFlavorAudit_Rate_Option ) )THEN
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA MAP( release: LeptonFlavorAudit_Rate_Option )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA DELETE( LeptonFlavorAudit_Rate_Option )
+#endif
+    END IF
 #endif
     DEALLOCATE( MatterCoupling_Mask_N )
 
@@ -1624,6 +1704,8 @@ CONTAINS
     ALLOCATE( ConservativeProjectionMatterHeating_Rate_Final(nX_G) )
     ALLOCATE( ConservativeProjectionStatus_Final(nX_G) )
     ALLOCATE( ConservationHandoff_Rate_Final(nConservationHandoff,nX_G) )
+    ALLOCATE( LeptonFlavorAudit_Rate_Final &
+                (nLeptonFamilies,nLeptonFlavorAudit,nX_G) )
 #endif
     ALLOCATE( nIterations_Prim (nZ_G) )
 
@@ -1640,6 +1722,7 @@ CONTAINS
     ConservativeProjectionMatterHeating_Rate_Final(:) = Zero
     ConservativeProjectionStatus_Final(:) = -2
     ConservationHandoff_Rate_Final(:,:) = Zero
+    LeptonFlavorAudit_Rate_Final(:,:,:) = Zero
 #endif
     nIterations_Prim (:) = 0
 
@@ -1688,7 +1771,8 @@ CONTAINS
     !$OMP             ConservativeProjectionRadiationResidual_Relative_Final, &
     !$OMP             ConservativeProjectionMatterHeating_Rate_Final, &
     !$OMP             ConservativeProjectionStatus_Final, &
-    !$OMP             ConservationHandoff_Rate_Final )
+    !$OMP             ConservationHandoff_Rate_Final, &
+    !$OMP             LeptonFlavorAudit_Rate_Final )
 #elif defined(THORNADO_OACC  )
     !$ACC ENTER DATA &
     !$ACC CREATE( MatterEquationResidual_Rate_Final, &
@@ -1697,7 +1781,8 @@ CONTAINS
     !$ACC         ConservativeProjectionRadiationResidual_Relative_Final, &
     !$ACC         ConservativeProjectionMatterHeating_Rate_Final, &
     !$ACC         ConservativeProjectionStatus_Final, &
-    !$ACC         ConservationHandoff_Rate_Final )
+    !$ACC         ConservationHandoff_Rate_Final, &
+    !$ACC         LeptonFlavorAudit_Rate_Final )
 #endif
 #endif
 
@@ -1715,7 +1800,8 @@ CONTAINS
     !$OMP                     ConservativeProjectionRadiationResidual_Relative_Final, &
     !$OMP                     ConservativeProjectionMatterHeating_Rate_Final, &
     !$OMP                     ConservativeProjectionStatus_Final, &
-    !$OMP                     ConservationHandoff_Rate_Final )
+    !$OMP                     ConservationHandoff_Rate_Final, &
+    !$OMP                     LeptonFlavorAudit_Rate_Final )
 #elif defined(THORNADO_OACC  )
     !$ACC UPDATE HOST( MatterEquationResidual_Rate_Final, &
     !$ACC              InitialRadiationLimiter_Rate_Final, &
@@ -1723,7 +1809,8 @@ CONTAINS
     !$ACC              ConservativeProjectionRadiationResidual_Relative_Final, &
     !$ACC              ConservativeProjectionMatterHeating_Rate_Final, &
     !$ACC              ConservativeProjectionStatus_Final, &
-    !$ACC              ConservationHandoff_Rate_Final )
+    !$ACC              ConservationHandoff_Rate_Final, &
+    !$ACC              LeptonFlavorAudit_Rate_Final )
 #endif
     END IF
 #endif
@@ -1755,7 +1842,8 @@ CONTAINS
     !$OMP               ConservativeProjectionRadiationResidual_Relative_Final, &
     !$OMP               ConservativeProjectionMatterHeating_Rate_Final, &
     !$OMP               ConservativeProjectionStatus_Final, &
-    !$OMP               ConservationHandoff_Rate_Final )
+    !$OMP               ConservationHandoff_Rate_Final, &
+    !$OMP               LeptonFlavorAudit_Rate_Final )
 #elif defined(THORNADO_OACC  )
     !$ACC EXIT DATA &
     !$ACC DELETE( MatterEquationResidual_Rate_Final, &
@@ -1764,7 +1852,8 @@ CONTAINS
     !$ACC         ConservativeProjectionRadiationResidual_Relative_Final, &
     !$ACC         ConservativeProjectionMatterHeating_Rate_Final, &
     !$ACC         ConservativeProjectionStatus_Final, &
-    !$ACC         ConservationHandoff_Rate_Final )
+    !$ACC         ConservationHandoff_Rate_Final, &
+    !$ACC         LeptonFlavorAudit_Rate_Final )
 #endif
 #endif
 
@@ -1783,6 +1872,7 @@ CONTAINS
           DEALLOCATE( ConservativeProjectionMatterHeating_Rate_Final_Last )
           DEALLOCATE( ConservativeProjectionStatus_Final_Last )
           DEALLOCATE( ConservationHandoff_Rate_Final_Last )
+          DEALLOCATE( LeptonFlavorAudit_Rate_Final_Last )
 #endif
         END IF
       END IF
@@ -1800,6 +1890,8 @@ CONTAINS
         ALLOCATE( ConservativeProjectionStatus_Final_Last(nX_G) )
         ALLOCATE( ConservationHandoff_Rate_Final_Last &
                     (nConservationHandoff,nX_G) )
+        ALLOCATE( LeptonFlavorAudit_Rate_Final_Last &
+                    (nLeptonFamilies,nLeptonFlavorAudit,nX_G) )
 #endif
       END IF
 
@@ -1820,6 +1912,7 @@ CONTAINS
       ConservativeProjectionStatus_Final_Last &
         = ConservativeProjectionStatus_Final
       ConservationHandoff_Rate_Final_Last = ConservationHandoff_Rate_Final
+      LeptonFlavorAudit_Rate_Final_Last = LeptonFlavorAudit_Rate_Final
 #endif
 
     END IF
@@ -1857,6 +1950,7 @@ CONTAINS
     DEALLOCATE( ConservativeProjectionMatterHeating_Rate_Final )
     DEALLOCATE( ConservativeProjectionStatus_Final )
     DEALLOCATE( ConservationHandoff_Rate_Final )
+    DEALLOCATE( LeptonFlavorAudit_Rate_Final )
 #endif
     DEALLOCATE( nIterations_Prim )
 

@@ -234,6 +234,7 @@ MODULE TwoMoment_DiscretizationModule_Streaming
   INTEGER :: nZ_X3(4), nX3_X, nX3_Z, nNodesX_X3, nNodesZ_X3
 
   REAL(DP), PUBLIC :: OffGridFlux_TwoMoment(2*nCR)
+  REAL(DP), PUBLIC :: OffGridLeptonFlux_TwoMoment(3)
 
 CONTAINS
 
@@ -858,6 +859,7 @@ CONTAINS
     END DO
 
     OffGridFlux_TwoMoment = Zero
+    OffGridLeptonFlux_TwoMoment = Zero
 
     CALL TimersStart( Timer_Streaming_Divergence )
 
@@ -5133,32 +5135,45 @@ CONTAINS
     INTEGER :: iZP1, iZP2, iZP3, iZP4, iS, iCR
     INTEGER :: iNodeZ_X
 
-    REAL(DP) :: FluxIn1, FluxIn2, FluxOt1, FluxOt2 
+    REAL(DP) :: FluxIn1, FluxIn2, FluxOt1, FluxOt2
+    REAL(DP) :: FluxInLe, FluxInLmu, FluxInLtau
+    REAL(DP) :: FluxOtLe, FluxOtLmu, FluxOtLtau
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE &
-    !$OMP PRIVATE( FluxIn1, FluxIn2, FluxOt1, FluxOt2  ) &
-    !$OMP MAP( tofrom: OffGridFlux_TwoMoment )
+    !$OMP PRIVATE( FluxIn1, FluxIn2, FluxOt1, FluxOt2, &
+    !$OMP          FluxInLe, FluxInLmu, FluxInLtau, &
+    !$OMP          FluxOtLe, FluxOtLmu, FluxOtLtau ) &
+    !$OMP MAP( tofrom: OffGridFlux_TwoMoment, OffGridLeptonFlux_TwoMoment )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG &
-    !$ACC PRIVATE( FluxIn1, FluxIn2, FluxOt1, FluxOt2 ) &
-    !$ACC COPY( OffGridFlux_TwoMoment ) &
+    !$ACC PRIVATE( FluxIn1, FluxIn2, FluxOt1, FluxOt2, &
+    !$ACC          FluxInLe, FluxInLmu, FluxInLtau, &
+    !$ACC          FluxOtLe, FluxOtLmu, FluxOtLtau ) &
+    !$ACC COPY( OffGridFlux_TwoMoment, OffGridLeptonFlux_TwoMoment ) &
     !$ACC PRESENT( iZP_B0, iZP_E0, LeptonNumber, NumericalFlux, NumericalFlux2 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( FluxIn1, FluxIn2, FluxOt1, FluxOt2  )
+    !$OMP PRIVATE( FluxIn1, FluxIn2, FluxOt1, FluxOt2, &
+    !$OMP          FluxInLe, FluxInLmu, FluxInLtau, &
+    !$OMP          FluxOtLe, FluxOtLmu, FluxOtLtau )
 #endif
     DO iCR = 1, nCR
 
       FluxIn1 = Zero
       FluxIn2 = Zero
+      FluxInLe = Zero
+      FluxInLmu = Zero
+      FluxInLtau = Zero
 
 #if   defined( THORNADO_OMP_OL )
       !$OMP PARALLEL DO SIMD COLLAPSE(5) &
-      !$OMP REDUCTION( + : FluxIn1, FluxIn2 )
+      !$OMP REDUCTION( + : FluxIn1, FluxIn2, &
+      !$OMP                 FluxInLe, FluxInLmu, FluxInLtau )
 #elif defined( THORNADO_OACC   )
       !$ACC LOOP VECTOR COLLAPSE(5) &
-      !$ACC REDUCTION( + : FluxIn1, FluxIn2 )
+      !$ACC REDUCTION( + : FluxIn1, FluxIn2, &
+      !$ACC                 FluxInLe, FluxInLmu, FluxInLtau )
 #endif
       DO iS  = 1       , nSpecies
       DO iZP3 = iZP_B0(3), iZP_E0(3)
@@ -5170,6 +5185,20 @@ CONTAINS
           FluxIn1 = FluxIn1 + LeptonNumber(iS) * NumericalFlux (iNodeZ_X,iCR,iZP1,iZP2,iZP3,iS,iZP_B0(4))
           FluxIn2 = FluxIn2 +                    NumericalFlux2(iNodeZ_X,iCR,iZP1,iZP2,iZP3,iS,iZP_B0(4))
 
+          IF( iCR == iCR_N )THEN
+            SELECT CASE( ( iS + 1 ) / 2 )
+            CASE( 1 )
+              FluxInLe = FluxInLe + LeptonNumber(iS) &
+                * NumericalFlux(iNodeZ_X,iCR,iZP1,iZP2,iZP3,iS,iZP_B0(4))
+            CASE( 2 )
+              FluxInLmu = FluxInLmu + LeptonNumber(iS) &
+                * NumericalFlux(iNodeZ_X,iCR,iZP1,iZP2,iZP3,iS,iZP_B0(4))
+            CASE( 3 )
+              FluxInLtau = FluxInLtau + LeptonNumber(iS) &
+                * NumericalFlux(iNodeZ_X,iCR,iZP1,iZP2,iZP3,iS,iZP_B0(4))
+            END SELECT
+          END IF
+
         END DO
 
       END DO
@@ -5179,13 +5208,18 @@ CONTAINS
 
       FluxOt1 = Zero
       FluxOt2 = Zero
+      FluxOtLe = Zero
+      FluxOtLmu = Zero
+      FluxOtLtau = Zero
 
 #if   defined( THORNADO_OMP_OL )
       !$OMP PARALLEL DO SIMD COLLAPSE(5) &
-      !$OMP REDUCTION( + : FluxOt1, FluxOt2 )
+      !$OMP REDUCTION( + : FluxOt1, FluxOt2, &
+      !$OMP                 FluxOtLe, FluxOtLmu, FluxOtLtau )
 #elif defined( THORNADO_OACC   )
       !$ACC LOOP VECTOR COLLAPSE(5) &
-      !$ACC REDUCTION( + : FluxOt1, FluxOt2 )
+      !$ACC REDUCTION( + : FluxOt1, FluxOt2, &
+      !$ACC                 FluxOtLe, FluxOtLmu, FluxOtLtau )
 #endif
       DO iS  = 1       , nSpecies
       DO iZP3 = iZP_B0(3), iZP_E0(3)
@@ -5197,6 +5231,20 @@ CONTAINS
           FluxOt1 = FluxOt1 + LeptonNumber(iS) * NumericalFlux (iNodeZ_X,iCR,iZP1,iZP2,iZP3,iS,iZP_E0(4)+1)
           FluxOt2 = FluxOt2 +                    NumericalFlux2(iNodeZ_X,iCR,iZP1,iZP2,iZP3,iS,iZP_E0(4)+1)
 
+          IF( iCR == iCR_N )THEN
+            SELECT CASE( ( iS + 1 ) / 2 )
+            CASE( 1 )
+              FluxOtLe = FluxOtLe + LeptonNumber(iS) &
+                * NumericalFlux(iNodeZ_X,iCR,iZP1,iZP2,iZP3,iS,iZP_E0(4)+1)
+            CASE( 2 )
+              FluxOtLmu = FluxOtLmu + LeptonNumber(iS) &
+                * NumericalFlux(iNodeZ_X,iCR,iZP1,iZP2,iZP3,iS,iZP_E0(4)+1)
+            CASE( 3 )
+              FluxOtLtau = FluxOtLtau + LeptonNumber(iS) &
+                * NumericalFlux(iNodeZ_X,iCR,iZP1,iZP2,iZP3,iS,iZP_E0(4)+1)
+            END SELECT
+          END IF
+
         END DO
 
       END DO
@@ -5206,6 +5254,15 @@ CONTAINS
 
       OffGridFlux_TwoMoment(iCR)     = OffGridFlux_TwoMoment(iCR)     + FluxIn1 - FluxOt1
       OffGridFlux_TwoMoment(iCR+nCR) = OffGridFlux_TwoMoment(iCR+nCR) + FluxIn2 - FluxOt2
+
+      IF( iCR == iCR_N )THEN
+        OffGridLeptonFlux_TwoMoment(1) &
+          = OffGridLeptonFlux_TwoMoment(1) + FluxInLe - FluxOtLe
+        OffGridLeptonFlux_TwoMoment(2) &
+          = OffGridLeptonFlux_TwoMoment(2) + FluxInLmu - FluxOtLmu
+        OffGridLeptonFlux_TwoMoment(3) &
+          = OffGridLeptonFlux_TwoMoment(3) + FluxInLtau - FluxOtLtau
+      END IF
 
     END DO
 

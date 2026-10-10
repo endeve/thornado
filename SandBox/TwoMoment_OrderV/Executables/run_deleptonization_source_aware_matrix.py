@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-"""Run the DeleptonizationWave source-aware-LLF/projection matrix.
+"""Run the DeleptonizationWave collision-solver/flux comparison matrix.
 
-The four runs differ only in the source-aware AP LLF and terminal
-conservative-projection switches.  A single executable is reused; all run
-selection is performed through environment variables read by the standalone
-driver.  The ``both_no_projection`` selection records only each configured
-production trajectory by default and therefore skips the counterfactual
-no-stream and opposite-flux shadow integrations.
+The runs differ only in the source-aware AP LLF, terminal conservative
+projection, and radiation-only nonlinear-solver switches.  A single
+executable is reused; all run selection is performed through environment
+variables read by the standalone driver.  Grouped no-projection selections
+record only each configured trajectory by default and therefore skip the
+counterfactual no-stream and opposite-flux shadow integrations.
 """
 
 from __future__ import annotations
@@ -21,10 +21,12 @@ import sys
 
 
 RUNS = (
-    ("standard_no_projection", False, False),
-    ("standard_projection", False, True),
-    ("source_aware_no_projection", True, False),
-    ("source_aware_projection", True, True),
+    ("standard_no_projection", False, False, False),
+    ("standard_projection", False, True, False),
+    ("source_aware_no_projection", True, False, False),
+    ("source_aware_projection", True, True, False),
+    ("standard_radiation_only", False, False, True),
+    ("source_aware_radiation_only", True, False, True),
 )
 
 
@@ -84,11 +86,19 @@ def main() -> None:
     )
     parser.add_argument(
         "--case",
-        choices=("all", "both_no_projection", *(run[0] for run in RUNS)),
+        choices=(
+            "all",
+            "both_no_projection",
+            "both_radiation_only",
+            "solver_comparison",
+            "standard_solver_comparison",
+            "source_aware_solver_comparison",
+            *(run[0] for run in RUNS),
+        ),
         default="all",
         help=(
-            "run one named experiment, both self-consistent no-projection "
-            "trajectories, or the complete matrix"
+            "run one named experiment, a grouped solver/flux comparison, "
+            "or the complete matrix"
         ),
     )
     parser.add_argument(
@@ -98,7 +108,7 @@ def main() -> None:
         help=(
             "full computes the no-stream and opposite-flux shadow steps; "
             "actual-only records only the configured production trajectory; "
-            "auto uses actual-only for both_no_projection and full otherwise"
+            "auto uses actual-only for grouped comparisons and full otherwise"
         ),
     )
     parser.add_argument(
@@ -132,16 +142,41 @@ def main() -> None:
     if args.case == "all":
         selected_runs = RUNS
     elif args.case == "both_no_projection":
+        selected_runs = tuple(
+            run for run in RUNS if not run[2] and not run[3]
+        )
+    elif args.case == "both_radiation_only":
+        selected_runs = tuple(run for run in RUNS if run[3])
+    elif args.case == "solver_comparison":
         selected_runs = tuple(run for run in RUNS if not run[2])
+    elif args.case == "standard_solver_comparison":
+        selected_runs = tuple(
+            run for run in RUNS if not run[1] and not run[2]
+        )
+    elif args.case == "source_aware_solver_comparison":
+        selected_runs = tuple(
+            run for run in RUNS if run[1] and not run[2]
+        )
     else:
         selected_runs = tuple(run for run in RUNS if run[0] == args.case)
 
     if args.attribution_mode == "auto":
-        compute_shadows = args.case != "both_no_projection"
+        compute_shadows = args.case not in (
+            "both_no_projection",
+            "both_radiation_only",
+            "solver_comparison",
+            "standard_solver_comparison",
+            "source_aware_solver_comparison",
+        )
     else:
         compute_shadows = args.attribution_mode == "full"
 
-    for label, source_aware, conservative_projection in selected_runs:
+    for (
+        label,
+        source_aware,
+        conservative_projection,
+        radiation_only,
+    ) in selected_runs:
         log_path = output_dir / f"{label}.log"
         diagnostic_path = output_dir / f"matter_diagnostics_{label}.dat"
         attribution_prefix = Path(str(diagnostic_path) + ".exchange_attribution")
@@ -177,6 +212,9 @@ def main() -> None:
         environment["THORNADO_CONSERVATIVE_PROJECTION"] = boolean_string(
             conservative_projection
         )
+        environment["THORNADO_RADIATION_ONLY_SOLVE"] = boolean_string(
+            radiation_only
+        )
         environment["THORNADO_AP_WELL_BALANCED_FLUX_SOURCE"] = "false"
         environment["THORNADO_MATTER_EXCHANGE_SHADOWS"] = boolean_string(
             compute_shadows
@@ -190,9 +228,17 @@ def main() -> None:
         print(
             f"running {label}: source-aware={source_aware}, "
             f"conservative-projection={conservative_projection}, "
+            f"radiation-only={radiation_only}, "
             f"attribution={'full' if compute_shadows else 'actual-only'}"
         )
         run_and_tee(executable, workdir, environment, log_path)
+
+        if radiation_only and "[Invariant-constrained solve] Failed after" in \
+                log_path.read_text(encoding="utf-8"):
+            raise RuntimeError(
+                f"{label} used the nested-solver fallback; rebuild with the "
+                "no-fallback radiation-only solver"
+            )
 
         if not diagnostic_path.is_file():
             raise FileNotFoundError(
@@ -226,6 +272,7 @@ def main() -> None:
                 "label": label,
                 "source_aware_llf": source_aware,
                 "conservative_projection": conservative_projection,
+                "radiation_only_solve": radiation_only,
                 "matter_exchange_shadows": compute_shadows,
                 "spatial_elements": args.elements,
                 "dg_nodes": args.nodes,

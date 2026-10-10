@@ -77,6 +77,11 @@ def main() -> None:
     parser.add_argument("standard", type=Path)
     parser.add_argument("source_aware", type=Path)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--configuration-label",
+        default="",
+        help="optional second title line describing the compared runs",
+    )
     args = parser.parse_args()
 
     results = {
@@ -168,21 +173,24 @@ def main() -> None:
 
     standard = results["standard LLF"]
     source_aware = results["source-aware AP LLF"]
-    reduction = (
-        abs(np.asarray(standard["cumulative_residual"])[-1])
-        / abs(np.asarray(source_aware["cumulative_residual"])[-1])
+    residual_ratio = (
+        abs(np.asarray(source_aware["cumulative_residual"])[-1])
+        / abs(np.asarray(standard["cumulative_residual"])[-1])
     )
-    fig.suptitle(
+    title = (
         r"Electron-lepton budget: "
         r"$R_L=\Delta L_{\rm matter}+\Delta L_\nu-L_{\rm off\,grid}$"
     )
+    if args.configuration_label:
+        title += "\n" + args.configuration_label
+    fig.suptitle(title)
     fig.text(
         0.5,
         0.012,
         r"The off-grid sign follows Thornado's tally definition: "
         r"$L_{\nu,\rm change}=\Delta L_\nu-L_{\rm off\,grid}$.  "
-        f"At the final time, the source-aware AP LLF reduces "
-        f"the accumulated residual by {reduction:.0f}x.",
+        r"At the final time, "
+        rf"$|R_{{L,\rm AP}}|/|R_{{L,\rm LLF}}|={residual_ratio:.3g}$.",
         ha="center",
         fontsize=9,
     )

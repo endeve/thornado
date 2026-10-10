@@ -39,7 +39,7 @@ PROGRAM ApplicationDriver
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     OffGridFlux_TwoMoment
   USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
-    nQ, nC
+    nQ, nC, nLeptonFamilies, nLeptonFlavorAudit
   USE TwoMoment_OpacityModule, ONLY: &
     SetOpacities
   USE TwoMoment_TimeSteppingModule, ONLY: &
@@ -1184,7 +1184,8 @@ CONTAINS
       AccumulateMatterCoupling_Mask, uDR_Option, &
       MatterCoupling_Mask_Option, MatterSource_Rate_Option, &
       MatterIncrement_Rate_Option, MatterSource_Weight_Option, &
-      MatterSource_Rate_Unweighted_Option )
+      MatterSource_Rate_Unweighted_Option, &
+      LeptonFlavorAudit_Rate_Option )
 
     INTEGER, INTENT(in) :: &
       iZ_B0_Input(4), iZ_E0_Input(4), iZ_B1_Input(4), iZ_E1_Input(4)
@@ -1232,6 +1233,11 @@ CONTAINS
         (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2),iZ_B1_Input(3):iZ_E1_Input(3), &
          iZ_B1_Input(4):iZ_E1_Input(4))
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      LeptonFlavorAudit_Rate_Option &
+        (1:nLeptonFamilies,1:nLeptonFlavorAudit,1:nDOFX, &
+         iZ_B1_Input(2):iZ_E1_Input(2),iZ_B1_Input(3):iZ_E1_Input(3), &
+         iZ_B1_Input(4):iZ_E1_Input(4))
 
     CALL ComputeIncrement_TwoMoment_Implicit_Legacy &
            ( iZ_B0_Input, iZ_E0_Input, iZ_B1_Input, iZ_E1_Input, &
@@ -1246,6 +1252,8 @@ CONTAINS
       MatterIncrement_Rate_Option = Zero
     IF( PRESENT(MatterSource_Rate_Unweighted_Option) ) &
       MatterSource_Rate_Unweighted_Option = Zero
+    IF( PRESENT(LeptonFlavorAudit_Rate_Option) ) &
+      LeptonFlavorAudit_Rate_Option = Zero
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Implicit
 
@@ -1256,7 +1264,8 @@ CONTAINS
       AccumulateMatterCoupling_Mask, uDR_Option, &
       MatterCoupling_Mask_Option, MatterSource_Rate_Option, &
       MatterIncrement_Rate_Option, MatterSource_Weight_Option, &
-      MatterSource_Rate_Unweighted_Option )
+      MatterSource_Rate_Unweighted_Option, &
+      LeptonFlavorAudit_Rate_Option )
 
     INTEGER, INTENT(in) :: &
       iZ_B0_Input(4), iZ_E0_Input(4), iZ_B1_Input(4), iZ_E1_Input(4)
@@ -1302,6 +1311,11 @@ CONTAINS
     REAL(DP), INTENT(out), OPTIONAL :: &
       MatterSource_Rate_Unweighted_Option &
         (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
+         iZ_B1_Input(2):iZ_E1_Input(2),iZ_B1_Input(3):iZ_E1_Input(3), &
+         iZ_B1_Input(4):iZ_E1_Input(4))
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      LeptonFlavorAudit_Rate_Option &
+        (1:nLeptonFamilies,1:nLeptonFlavorAudit,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2),iZ_B1_Input(3):iZ_E1_Input(3), &
          iZ_B1_Input(4):iZ_E1_Input(4))
 
@@ -1333,6 +1347,8 @@ CONTAINS
       MatterIncrement_Rate_Option = Zero
     IF( PRESENT(MatterSource_Rate_Unweighted_Option) ) &
       MatterSource_Rate_Unweighted_Option = Zero
+    IF( PRESENT(LeptonFlavorAudit_Rate_Option) ) &
+      LeptonFlavorAudit_Rate_Option = Zero
 
   END SUBROUTINE ComputeIncrement_RelaxationDiffusion_Implicit
 

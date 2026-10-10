@@ -113,6 +113,7 @@ TwoMoment_TallyModule.o: \
   FluidFieldsModule.o \
   Euler_UtilitiesModule_NonRelativistic.o \
   RadiationFieldsModule.o \
+  TwoMoment_UtilitiesModule.o \
   TwoMoment_TallyModule.F90
 
 TwoMoment_TimeSteppingModule.o: \

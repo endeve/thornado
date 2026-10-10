@@ -6,6 +6,7 @@ MODULE InitializationModule_Neutrinos
     Gram, &
     Centimeter, &
     Kilometer, &
+    Second, &
     Millisecond, &
     MeV, &
     Kelvin, &
@@ -74,6 +75,7 @@ MODULE InitializationModule_Neutrinos
   PUBLIC :: CoupledDiffusionAbsorptionOpacity
   PUBLIC :: CoupledDiffusionEquilibriumSlope
   PUBLIC :: CoupledDiffusionDecayRate
+  PUBLIC :: SetMovingHomogeneousRelaxationParameters
 
   REAL(DP), PARAMETER :: OpaqueDiffusionDomainLength = One * Kilometer
   REAL(DP), PARAMETER :: OpaqueDiffusionOpticalDepth = 1.0d2
@@ -88,11 +90,43 @@ MODULE InitializationModule_Neutrinos
   REAL(DP), SAVE :: VariableOpacityDiffusionMeanOpacity &
     = 1.0d3 / OpaqueDiffusionDomainLength
   REAL(DP), SAVE :: ScatteringDiffusionSourceMean = Zero
+  REAL(DP), SAVE :: MovingHomogeneousVelocity(3) &
+    = [ 0.1_DP, Zero, Zero ] * SpeedOfLight
+  REAL(DP), SAVE :: MovingHomogeneousRadiationScale = 0.9_DP
   REAL(DP), PARAMETER :: &
     OpaqueDiffusionOpacity &
       = OpaqueDiffusionOpticalDepth / OpaqueDiffusionDomainLength
 
 CONTAINS
+
+
+  SUBROUTINE SetMovingHomogeneousRelaxationParameters &
+    ( VelocityFraction, RadiationScale, VelocityDirection_Option )
+
+    REAL(DP), INTENT(in) :: VelocityFraction, RadiationScale
+    REAL(DP), DIMENSION(3), INTENT(in), OPTIONAL :: VelocityDirection_Option
+
+    REAL(DP) :: DirectionNorm
+    REAL(DP) :: VelocityDirection(3)
+
+    IF( ABS( VelocityFraction ) >= One ) &
+      ERROR STOP 'Moving-homogeneous velocity must satisfy |v|/c < 1.'
+    IF( RadiationScale <= Zero ) &
+      ERROR STOP 'Moving-homogeneous radiation scale must be positive.'
+
+    VelocityDirection = [ One, Zero, Zero ]
+    IF( PRESENT( VelocityDirection_Option ) ) &
+      VelocityDirection = VelocityDirection_Option
+
+    DirectionNorm = SQRT( SUM( VelocityDirection**2 ) )
+    IF( DirectionNorm <= Zero ) &
+      ERROR STOP 'Moving-homogeneous velocity direction must be nonzero.'
+
+    MovingHomogeneousVelocity &
+      = VelocityFraction * SpeedOfLight * VelocityDirection / DirectionNorm
+    MovingHomogeneousRadiationScale = RadiationScale
+
+  END SUBROUTINE SetMovingHomogeneousRelaxationParameters
 
 
   SUBROUTINE SetVariableOpacityDiffusionMeanOpticalDepth( OpticalDepth )
@@ -188,7 +222,7 @@ CONTAINS
 
          CALL InitializeFields_DeleptonizationWave1D( ProfileName )
 
-       CASE( 'EquilibriumAdvection' )
+       CASE( 'EquilibriumAdvection', 'MovingHomogeneousRelaxation' )
 
          CALL InitializeFields_EquilibriumAdvection
 
@@ -507,7 +541,7 @@ CONTAINS
     INTEGER  :: iX1, iX2, iX3, iS, iNodeE, iNodeX, iNodeX1, iNodeZ
     INTEGER  :: i, iR, iE, nR, nE
     REAL(DP) :: R, Tau
-    REAL(DP), ALLOCATABLE :: R_P(:), D_P(:), T_P(:), Y_P(:)
+    REAL(DP), ALLOCATABLE :: R_P(:), D_P(:), T_P(:), Y_P(:), V_P(:)
     REAL(DP), ALLOCATABLE :: E_Nu(:), R_Nu(:,:), Chi(:,:,:), fEQ(:,:,:)
     REAL(DP), ALLOCATABLE :: D_Nu_P(:,:,:), I1_Nu_P(:,:,:)
 
@@ -517,7 +551,7 @@ CONTAINS
     WRITE(*,'(A6,A,A)') '', &
       'Initializing from Profile: ', TRIM( ProfileName )
 
-    CALL ReadFluidProfile( ProfileName, R_P, D_P, T_P, Y_P )
+    CALL ReadFluidProfile( ProfileName, R_P, D_P, T_P, Y_P, V_P )
 
     ! --- Fluid Fields ---
 
@@ -566,7 +600,9 @@ CONTAINS
                  uAF(iNodeX,iX1,iX2,iX3,iAF_Xh), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_Gm) )
 
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = Zero
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) &
+          = Interpolate1D_Linear &
+              ( R, R_P(iR), R_P(iR+1), V_P(iR), V_P(iR+1) )
         uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = Zero
         uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = Zero
 
@@ -747,7 +783,7 @@ CONTAINS
     END DO
     END DO
 
-    DEALLOCATE( R_P, D_P, T_P, Y_P )
+    DEALLOCATE( R_P, D_P, T_P, Y_P, V_P )
     DEALLOCATE( E_Nu, R_Nu, Chi, fEQ )
     DEALLOCATE( D_Nu_P, I1_Nu_P )
     DEALLOCATE( Opacity_Mask )
@@ -1490,10 +1526,6 @@ CONTAINS
     REAL(DP), PARAMETER :: D_0   = 3.0d14 * Gram / Centimeter**3
     REAL(DP), PARAMETER :: T_0   = 1.2d11 * Kelvin
     REAL(DP), PARAMETER :: Y_0   = 0.3_DP
-    REAL(DP), PARAMETER :: V_u_1 = 0.1_DP * SpeedOfLight
-    REAL(DP), PARAMETER :: V_u_2 = 0.0_DP * SpeedOfLight
-    REAL(DP), PARAMETER :: V_u_3 = 0.0_DP * SpeedOfLight
-
     INTEGER  :: iE, iX1, iX2, iX3, iS, iNodeE, iNodeX, iNodeZ
     REAL(DP) :: kT, Mnu, E, f_E
 
@@ -1533,9 +1565,9 @@ CONTAINS
                  uAF(iNodeX,iX1,iX2,iX3,iAF_Xh), &
                  uAF(iNodeX,iX1,iX2,iX3,iAF_Gm) )
 
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = V_u_1
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = V_u_2
-        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = V_u_3
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V1) = MovingHomogeneousVelocity(1)
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V2) = MovingHomogeneousVelocity(2)
+        uPF(iNodeX,iX1,iX2,iX3,iPF_V3) = MovingHomogeneousVelocity(3)
 
         CALL ComputeConserved_Euler_NonRelativistic &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -1575,19 +1607,32 @@ CONTAINS
 
         kT = BoltzmannConstant * uAF(iNodeX,iX1,iX2,iX3,iAF_T)
 
-        Mnu = uAF  (iNodeX,iX1,iX2,iX3,iAF_Me) &
-              + uAF(iNodeX,iX1,iX2,iX3,iAF_Mp) &
-              - uAF(iNodeX,iX1,iX2,iX3,iAF_Mn)
+        SELECT CASE( iS )
 
-        IF( iS == iNuE_Bar )THEN
+          CASE( iNuE )
 
-          Mnu = - Mnu
+            Mnu = uAF  (iNodeX,iX1,iX2,iX3,iAF_Me) &
+                  + uAF(iNodeX,iX1,iX2,iX3,iAF_Mp) &
+                  - uAF(iNodeX,iX1,iX2,iX3,iAF_Mn)
 
-        END IF
+          CASE( iNuE_Bar )
+
+            Mnu = - uAF(iNodeX,iX1,iX2,iX3,iAF_Me) &
+                  - uAF(iNodeX,iX1,iX2,iX3,iAF_Mp) &
+                  + uAF(iNodeX,iX1,iX2,iX3,iAF_Mn)
+
+          CASE DEFAULT
+
+            Mnu = Zero
+
+        END SELECT
 
         E = NodeCoordinate( MeshE, iE, iNodeE )
 
         f_E = MAX( One / ( EXP( ( E - Mnu ) / kT ) + One ), 1.0d-99 )
+
+        IF( TRIM( ProgramName ) == 'MovingHomogeneousRelaxation' ) &
+          f_E = MovingHomogeneousRadiationScale * f_E
 
         uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS) = f_E
         uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS) = Zero
@@ -1683,37 +1728,59 @@ CONTAINS
   END FUNCTION TRAPEZ
 
 
-  SUBROUTINE ReadFluidProfile( FileName, R, D, T, Y )
+  SUBROUTINE ReadFluidProfile( FileName, R, D, T, Y, V_Option )
 
     CHARACTER(*),          INTENT(in)    :: FileName
     REAL(DP), ALLOCATABLE, INTENT(inout) :: R(:), D(:), T(:), Y(:)
+    REAL(DP), ALLOCATABLE, INTENT(inout), OPTIONAL :: V_Option(:)
 
-    CHARACTER(LEN=9)      :: Format1 = '(4ES12.3)'
-    INTEGER               :: nPoints, iPoint
+    CHARACTER(LEN=512)    :: Line
+    INTEGER               :: nColumns, nPoints, iPoint
     INTEGER               :: Status
-    REAL(DP)              :: Buffer(4)
+    REAL(DP)              :: Buffer4(4), Buffer5(5)
     REAL(DP), ALLOCATABLE :: Data(:,:)
 
-    ! --- Count Lines ---
+    ! --- Determine the profile layout and count data rows. ---
 
     nPoints = 0
     OPEN( 1, FILE = TRIM( FileName ), FORM = "formatted", ACTION = 'read' )
     READ( 1, * )
+
+    READ( 1, '(A)', IOSTAT = Status ) Line
+    IF( Status /= 0 ) ERROR STOP 'Fluid profile contains no data rows.'
+
+    READ( Line, *, IOSTAT = Status ) Buffer5
+    IF( Status == 0 )THEN
+      nColumns = 5
+    ELSE
+      READ( Line, *, IOSTAT = Status ) Buffer4
+      IF( Status /= 0 ) ERROR STOP 'Fluid profile data row is malformed.'
+      nColumns = 4
+    END IF
+
+    nPoints = 1
     DO
-      READ( 1, Format1, IOSTAT=Status ) Buffer
-      IF( Status .NE. 0 ) EXIT
+      READ( 1, '(A)', IOSTAT = Status ) Line
+      IF( Status /= 0 ) EXIT
+      IF( LEN_TRIM( Line ) == 0 ) CYCLE
       nPoints = nPoints + 1
     END DO
     CLOSE( 1, STATUS = 'keep' )
 
     ! --- Read Data ---
 
-    ALLOCATE( Data(nPoints,4) )
+    ALLOCATE( Data(nPoints,nColumns) )
 
     OPEN( 1, FILE = TRIM( FileName ), FORM = "formatted", ACTION = 'read' )
     READ( 1, * )
-    DO iPoint = 1, nPoints
-      READ( 1, Format1, IOSTAT=Status ) Data(iPoint,:)
+    iPoint = 0
+    DO WHILE( iPoint < nPoints )
+      READ( 1, '(A)', IOSTAT = Status ) Line
+      IF( Status /= 0 ) ERROR STOP 'Unexpected end of fluid profile.'
+      IF( LEN_TRIM( Line ) == 0 ) CYCLE
+      iPoint = iPoint + 1
+      READ( Line, *, IOSTAT = Status ) Data(iPoint,:)
+      IF( Status /= 0 ) ERROR STOP 'Fluid profile data row is malformed.'
     END DO
     CLOSE( 1, STATUS = 'keep' )
 
@@ -1723,6 +1790,18 @@ CONTAINS
     D = Data(:,2) * Gram / Centimeter**3
     T = Data(:,3) * MeV
     Y = Data(:,4)
+
+    IF( PRESENT( V_Option ) )THEN
+      ALLOCATE( V_Option(nPoints) )
+      IF( nColumns == 5 )THEN
+        V_Option = Data(:,5) * Centimeter / Second
+        WRITE(*,'(A)') '      Using radial velocity from fluid profile.'
+      ELSE
+        V_Option = Zero
+        WRITE(*,'(A)') &
+          '      Fluid profile has no velocity column; using zero velocity.'
+      END IF
+    END IF
 
     DEALLOCATE( Data )
 
@@ -1743,7 +1822,7 @@ CONTAINS
 
          CALL ComputeError_DeleptonizationWave1D
 
-       CASE( 'EquilibriumAdvection' )
+       CASE( 'EquilibriumAdvection', 'MovingHomogeneousRelaxation' )
 
          CALL ComputeError_EquilibriumAdvection
 
