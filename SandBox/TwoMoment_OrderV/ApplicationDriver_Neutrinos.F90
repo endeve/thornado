@@ -49,7 +49,7 @@ PROGRAM ApplicationDriver_Neutrinos
     ComputeIncrement_TwoMoment_Explicit_AP, &
     SetNeutrinoMatterSolverConvergenceDiagnostics, &
     GetNeutrinoMatterSolverConvergenceDiagnostics, &
-    nLeptonFamilies, nLeptonFlavorAudit
+    nLeptonFamilies, nLeptonFlavorCheck
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     InitializeEquilibriumDeviationLLF, &
     SetEquilibriumDeviationReferenceState, &
@@ -58,8 +58,8 @@ PROGRAM ApplicationDriver_Neutrinos
     SetSourceAwareTransportOpacity_Flattened, &
     ClearSourceAwareTransportOpacity, &
     ComputeIncrement_TwoMoment_Explicit, &
-    SetStreamingAuditSurfaceTermFactors, &
-    ClearStreamingAuditSurfaceTermFactors
+    SetStreamingCheckSurfaceTermFactors, &
+    ClearStreamingCheckSurfaceTermFactors
   USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
     InitializeNeutrinoMatterSolverParameters, &
     nQ, nC
@@ -199,9 +199,9 @@ PROGRAM ApplicationDriver_Neutrinos
   REAL(DP)      :: MovingRadiationScale
   REAL(DP), ALLOCATABLE :: CF_BeforeMatterDiagnosticsStep(:,:,:,:,:)
   REAL(DP), ALLOCATABLE :: CR_BeforeMatterDiagnosticsStep(:,:,:,:,:,:,:)
-  REAL(DP), ALLOCATABLE :: MatterSource_Rate_LastStep(:,:,:,:,:,:)
-  REAL(DP), ALLOCATABLE :: MatterSource_Rate_FinalStage(:,:,:,:,:,:)
-  REAL(DP), ALLOCATABLE :: MatterIncrement_Rate_LastStep(:,:,:,:,:)
+  REAL(DP), ALLOCATABLE :: MatterCollisionExchange_Rate_LastStep(:,:,:,:,:,:)
+  REAL(DP), ALLOCATABLE :: MatterCollisionRHS_FinalStage(:,:,:,:,:,:)
+  REAL(DP), ALLOCATABLE :: MatterUpdate_Rate_LastStep(:,:,:,:,:)
   REAL(DP), ALLOCATABLE :: RadiationState_BeforeFinalLimiter(:,:,:,:,:,:,:)
   REAL(DP), ALLOCATABLE :: IMEX_Stage_FluidState(:,:,:,:,:,:,:)
   REAL(DP), ALLOCATABLE :: IMEX_Stage_RadiationState(:,:,:,:,:,:,:,:,:)
@@ -209,7 +209,7 @@ PROGRAM ApplicationDriver_Neutrinos
   REAL(DP), ALLOCATABLE :: IMEX_Stage_FluidExplicitRate(:,:,:,:,:,:)
   REAL(DP), ALLOCATABLE :: IMEX_Stage_RadiationImplicitRate(:,:,:,:,:,:,:,:)
   REAL(DP), ALLOCATABLE :: IMEX_Stage_RadiationExplicitRate(:,:,:,:,:,:,:,:)
-  REAL(DP), ALLOCATABLE :: IMEX_Stage_LeptonFlavorAuditRate(:,:,:,:,:,:,:)
+  REAL(DP), ALLOCATABLE :: IMEX_Stage_LeptonFlavorCheckRate(:,:,:,:,:,:,:)
   REAL(DP), ALLOCATABLE :: CF_AttributionStart(:,:,:,:,:)
   REAL(DP), ALLOCATABLE :: CF_AttributionNoStream(:,:,:,:,:)
   REAL(DP), ALLOCATABLE :: CF_AttributionAP(:,:,:,:,:)
@@ -1683,23 +1683,23 @@ PROGRAM ApplicationDriver_Neutrinos
     ALLOCATE( CF_BeforeMatterDiagnosticsStep, MOLD = uCF )
     ALLOCATE( CR_BeforeMatterDiagnosticsStep, MOLD = uCR )
     ALLOCATE &
-      ( MatterSource_Rate_LastStep &
+      ( MatterCollisionExchange_Rate_LastStep &
           (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
            iX_B1(1):iX_E1(1), iX_B1(2):iX_E1(2), iX_B1(3):iX_E1(3)) )
     ALLOCATE &
-      ( MatterIncrement_Rate_LastStep &
+      ( MatterUpdate_Rate_LastStep &
           (1:nQ,1:nDOFX, &
            iX_B1(1):iX_E1(1), iX_B1(2):iX_E1(2), iX_B1(3):iX_E1(3)) )
     ALLOCATE &
-      ( MatterSource_Rate_FinalStage &
+      ( MatterCollisionRHS_FinalStage &
           (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
            iX_B1(1):iX_E1(1), iX_B1(2):iX_E1(2), iX_B1(3):iX_E1(3)) )
     ALLOCATE( RadiationState_BeforeFinalLimiter, MOLD = uCR )
     CF_BeforeMatterDiagnosticsStep = uCF
     CR_BeforeMatterDiagnosticsStep = uCR
-    MatterSource_Rate_LastStep     = Zero
-    MatterSource_Rate_FinalStage   = Zero
-    MatterIncrement_Rate_LastStep  = Zero
+    MatterCollisionExchange_Rate_LastStep     = Zero
+    MatterCollisionRHS_FinalStage   = Zero
+    MatterUpdate_Rate_LastStep  = Zero
     RadiationState_BeforeFinalLimiter = Zero
     MatterDiagnosticsTimeStep = Zero
   END IF
@@ -1745,15 +1745,15 @@ PROGRAM ApplicationDriver_Neutrinos
     ALLOCATE( IMEX_Stage_RadiationExplicitRate, &
               MOLD = IMEX_Stage_RadiationImplicitRate )
     ALLOCATE &
-      ( IMEX_Stage_LeptonFlavorAuditRate &
-          (1:nLeptonFamilies,1:nLeptonFlavorAudit,1:nDOFX, &
+      ( IMEX_Stage_LeptonFlavorCheckRate &
+          (1:nLeptonFamilies,1:nLeptonFlavorCheck,1:nDOFX, &
            iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3), &
            1:nIMEXStages) )
     IMEX_Stage_FluidImplicitRate     = Zero
     IMEX_Stage_FluidExplicitRate     = Zero
     IMEX_Stage_RadiationImplicitRate = Zero
     IMEX_Stage_RadiationExplicitRate = Zero
-    IMEX_Stage_LeptonFlavorAuditRate = Zero
+    IMEX_Stage_LeptonFlavorCheckRate = Zero
   END IF
 
   IF( WriteMatterExchangeAttribution )THEN
@@ -1845,9 +1845,9 @@ PROGRAM ApplicationDriver_Neutrinos
       CF_BeforeMatterDiagnosticsStep = uCF
       CR_BeforeMatterDiagnosticsStep = uCR
       MatterDiagnosticsTimeStep = dt
-      MatterSource_Rate_LastStep       = Zero
-      MatterIncrement_Rate_LastStep    = Zero
-      MatterSource_Rate_FinalStage     = Zero
+      MatterCollisionExchange_Rate_LastStep       = Zero
+      MatterUpdate_Rate_LastStep    = Zero
+      MatterCollisionRHS_FinalStage     = Zero
       RadiationState_BeforeFinalLimiter = Zero
     END IF
 
@@ -1865,7 +1865,7 @@ PROGRAM ApplicationDriver_Neutrinos
       IMEX_Stage_FluidExplicitRate      = Zero
       IMEX_Stage_RadiationImplicitRate  = Zero
       IMEX_Stage_RadiationExplicitRate  = Zero
-      IMEX_Stage_LeptonFlavorAuditRate  = Zero
+      IMEX_Stage_LeptonFlavorCheckRate  = Zero
     END IF
 
     IF( WriteMatterExchangeAttribution )THEN
@@ -1977,10 +1977,10 @@ PROGRAM ApplicationDriver_Neutrinos
              ( dt, uGE, uGF, uCF, uCR, ComputeIncrement_TwoMoment_Implicit, &
                ComputeIncrement_TwoMoment_Explicit_Option &
                  = ComputeIncrement_TwoMoment_Explicit_AP, &
-               MatterSource_Rate_Option = MatterSource_Rate_LastStep, &
-               MatterIncrement_Rate_Option = MatterIncrement_Rate_LastStep, &
-               MatterSource_Rate_FinalStage_Option &
-                 = MatterSource_Rate_FinalStage, &
+               MatterCollisionExchange_Rate_Option = MatterCollisionExchange_Rate_LastStep, &
+               MatterUpdate_Rate_Option = MatterUpdate_Rate_LastStep, &
+               MatterCollisionRHS_FinalStage_Option &
+                 = MatterCollisionRHS_FinalStage, &
                RadiationState_BeforeFinalLimiter_Option &
                  = RadiationState_BeforeFinalLimiter, &
                IMEX_Stage_FluidState_Option &
@@ -1995,8 +1995,8 @@ PROGRAM ApplicationDriver_Neutrinos
                  = IMEX_Stage_RadiationImplicitRate, &
                IMEX_Stage_RadiationExplicitRate_Option &
                  = IMEX_Stage_RadiationExplicitRate, &
-               IMEX_Stage_LeptonFlavorAudit_Rate_Option &
-                 = IMEX_Stage_LeptonFlavorAuditRate, &
+               IMEX_Stage_LeptonFlavorCheck_Rate_Option &
+                 = IMEX_Stage_LeptonFlavorCheckRate, &
                OffGridFluidIncrement_Option = OffGridFluidIncrement, &
                OffGridRadiationIncrement_Option = OffGridRadiationIncrement, &
                OffGridRadiationLeptonFlavorIncrement_Option &
@@ -2021,8 +2021,8 @@ PROGRAM ApplicationDriver_Neutrinos
                  = IMEX_Stage_RadiationImplicitRate, &
                IMEX_Stage_RadiationExplicitRate_Option &
                  = IMEX_Stage_RadiationExplicitRate, &
-               IMEX_Stage_LeptonFlavorAudit_Rate_Option &
-                 = IMEX_Stage_LeptonFlavorAuditRate, &
+               IMEX_Stage_LeptonFlavorCheck_Rate_Option &
+                 = IMEX_Stage_LeptonFlavorCheckRate, &
                OffGridFluidIncrement_Option = OffGridFluidIncrement, &
                OffGridRadiationIncrement_Option = OffGridRadiationIncrement, &
                OffGridRadiationLeptonFlavorIncrement_Option &
@@ -2046,8 +2046,8 @@ PROGRAM ApplicationDriver_Neutrinos
                  = IMEX_Stage_RadiationImplicitRate, &
                IMEX_Stage_RadiationExplicitRate_Option &
                  = IMEX_Stage_RadiationExplicitRate, &
-               IMEX_Stage_LeptonFlavorAudit_Rate_Option &
-                 = IMEX_Stage_LeptonFlavorAuditRate, &
+               IMEX_Stage_LeptonFlavorCheck_Rate_Option &
+                 = IMEX_Stage_LeptonFlavorCheckRate, &
                OffGridFluidIncrement_Option = OffGridFluidIncrement, &
                OffGridRadiationIncrement_Option = OffGridRadiationIncrement, &
                OffGridRadiationLeptonFlavorIncrement_Option &
@@ -2077,7 +2077,7 @@ PROGRAM ApplicationDriver_Neutrinos
                IMEX_Stage_FluidExplicitRate, &
                IMEX_Stage_RadiationImplicitRate, &
                IMEX_Stage_RadiationExplicitRate, &
-               IMEX_Stage_LeptonFlavorAuditRate )
+               IMEX_Stage_LeptonFlavorCheckRate )
 
     IF( WriteMatterExchangeAttribution )THEN
 
@@ -2177,15 +2177,15 @@ PROGRAM ApplicationDriver_Neutrinos
              CF_BeforeMatterDiagnosticsStep, CR_BeforeMatterDiagnosticsStep, &
              uCF, &
              uPF, uAF, uCR, uPR, uGR, uDR, &
-             MatterSource_Rate_LastStep, MatterIncrement_Rate_LastStep, &
-             MatterSource_Rate_FinalStage, &
+             MatterCollisionExchange_Rate_LastStep, MatterUpdate_Rate_LastStep, &
+             MatterCollisionRHS_FinalStage, &
              RadiationState_BeforeFinalLimiter, &
              IMEX_Stage_FluidState, IMEX_Stage_RadiationState )
 
     DEALLOCATE &
       ( CF_BeforeMatterDiagnosticsStep, CR_BeforeMatterDiagnosticsStep, &
-        MatterSource_Rate_LastStep, MatterIncrement_Rate_LastStep, &
-        MatterSource_Rate_FinalStage, &
+        MatterCollisionExchange_Rate_LastStep, MatterUpdate_Rate_LastStep, &
+        MatterCollisionRHS_FinalStage, &
         RadiationState_BeforeFinalLimiter )
   END IF
 
@@ -2212,7 +2212,7 @@ PROGRAM ApplicationDriver_Neutrinos
         IMEX_Stage_FluidImplicitRate, IMEX_Stage_FluidExplicitRate, &
         IMEX_Stage_RadiationImplicitRate, &
         IMEX_Stage_RadiationExplicitRate, &
-        IMEX_Stage_LeptonFlavorAuditRate )
+        IMEX_Stage_LeptonFlavorCheckRate )
 
   CALL WriteFieldsHDF &
          ( Time = t, &
@@ -2263,13 +2263,13 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: InitialProjectionRate(:,:)
     REAL(DP), ALLOCATABLE :: ProjectionResidual(:)
     REAL(DP), ALLOCATABLE :: ProjectionHeatingRate(:)
-    REAL(DP), ALLOCATABLE :: ConservationHandoffRate(:,:)
+    REAL(DP), ALLOCATABLE :: ConservationHandoffCheckRate(:,:)
 
     CALL GetNeutrinoMatterSolverConvergenceDiagnostics &
            ( InnerIterations, OuterIterations, FirstResidual, &
              MatterResidualRate, InitialProjectionRate, AcceptedResidual, &
              ProjectionResidual, ProjectionHeatingRate, ProjectionStatus, &
-             ConservationHandoffRate )
+             ConservationHandoffCheckRate )
 
     OPEN( NEWUNIT = Unit, FILE = TRIM(FileName), STATUS = 'OLD', &
           POSITION = 'APPEND', ACTION = 'WRITE' )
@@ -2281,7 +2281,7 @@ CONTAINS
         FirstResidual(i), AcceptedResidual(i), &
         MAXVAL( ABS( MatterResidualRate(:,i) ) ), &
         MAXVAL( ABS( InitialProjectionRate(:,i) ) ), &
-        MAXVAL( ABS( ConservationHandoffRate(:,i) ) )
+        MAXVAL( ABS( ConservationHandoffCheckRate(:,i) ) )
     END DO
 
     CLOSE(Unit)
@@ -2290,7 +2290,7 @@ CONTAINS
       ( InnerIterations, OuterIterations, ProjectionStatus, &
         FirstResidual, AcceptedResidual, MatterResidualRate, &
         InitialProjectionRate, ProjectionResidual, &
-        ProjectionHeatingRate, ConservationHandoffRate )
+        ProjectionHeatingRate, ConservationHandoffCheckRate )
 
   END SUBROUTINE WriteSolverDiagnostics
 
@@ -2490,9 +2490,9 @@ CONTAINS
       dt_Input, GE, GX, U_F, dU_F, U_R, dU_R, &
       AccumulateMatterCoupling_Mask, uDR_Option, &
       MatterCoupling_Mask_Option, &
-      MatterSource_Rate_Option, MatterIncrement_Rate_Option, &
-      MatterSource_Weight_Option, MatterSource_Rate_Unweighted_Option, &
-      LeptonFlavorAudit_Rate_Option )
+      MatterCollisionExchange_Rate_Option, MatterUpdate_Rate_Option, &
+      IMEX_ImplicitWeight_Option, MatterCollisionRHS_Option, &
+      LeptonFlavorCheck_Rate_Option )
 
     INTEGER, INTENT(in) :: &
       iZ_B0_Input(4), iZ_E0_Input(4), iZ_B1_Input(4), iZ_E1_Input(4)
@@ -2538,25 +2538,25 @@ CONTAINS
          iZ_B1_Input(3):iZ_E1_Input(3), &
          iZ_B1_Input(4):iZ_E1_Input(4))
     REAL(DP), INTENT(inout), OPTIONAL :: &
-      MatterSource_Rate_Option &
+      MatterCollisionExchange_Rate_Option &
         (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2), &
          iZ_B1_Input(3):iZ_E1_Input(3), &
          iZ_B1_Input(4):iZ_E1_Input(4))
     REAL(DP), INTENT(inout), OPTIONAL :: &
-      MatterIncrement_Rate_Option &
+      MatterUpdate_Rate_Option &
         (1:nQ,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2), &
          iZ_B1_Input(3):iZ_E1_Input(3), &
          iZ_B1_Input(4):iZ_E1_Input(4))
-    REAL(DP), INTENT(in), OPTIONAL :: MatterSource_Weight_Option
+    REAL(DP), INTENT(in), OPTIONAL :: IMEX_ImplicitWeight_Option
     REAL(DP), INTENT(out), OPTIONAL :: &
-      LeptonFlavorAudit_Rate_Option &
-        (1:nLeptonFamilies,1:nLeptonFlavorAudit,1:nDOFX, &
+      LeptonFlavorCheck_Rate_Option &
+        (1:nLeptonFamilies,1:nLeptonFlavorCheck,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2),iZ_B1_Input(3):iZ_E1_Input(3), &
          iZ_B1_Input(4):iZ_E1_Input(4))
     REAL(DP), INTENT(out), OPTIONAL :: &
-      MatterSource_Rate_Unweighted_Option &
+      MatterCollisionRHS_Option &
         (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2), &
          iZ_B1_Input(3):iZ_E1_Input(3), &
@@ -2604,14 +2604,14 @@ CONTAINS
     IF( PRESENT( uDR_Option ) ) uDR_Option = Zero
     IF( PRESENT( MatterCoupling_Mask_Option ) ) &
       MatterCoupling_Mask_Option = .FALSE.
-    IF( PRESENT( MatterSource_Rate_Option ) ) &
-      MatterSource_Rate_Option = Zero
-    IF( PRESENT( MatterIncrement_Rate_Option ) ) &
-      MatterIncrement_Rate_Option = Zero
-    IF( PRESENT( MatterSource_Rate_Unweighted_Option ) ) &
-      MatterSource_Rate_Unweighted_Option = Zero
-    IF( PRESENT( LeptonFlavorAudit_Rate_Option ) ) &
-      LeptonFlavorAudit_Rate_Option = Zero
+    IF( PRESENT( MatterCollisionExchange_Rate_Option ) ) &
+      MatterCollisionExchange_Rate_Option = Zero
+    IF( PRESENT( MatterUpdate_Rate_Option ) ) &
+      MatterUpdate_Rate_Option = Zero
+    IF( PRESENT( MatterCollisionRHS_Option ) ) &
+      MatterCollisionRHS_Option = Zero
+    IF( PRESENT( LeptonFlavorCheck_Rate_Option ) ) &
+      LeptonFlavorCheck_Rate_Option = Zero
 
   END SUBROUTINE ComputeIncrement_CoupledAbsorptionDiffusion
 
@@ -2682,9 +2682,9 @@ CONTAINS
       dt_Input, GE, GX, U_F, dU_F, U_R, dU_R, &
       AccumulateMatterCoupling_Mask, uDR_Option, &
       MatterCoupling_Mask_Option, &
-      MatterSource_Rate_Option, MatterIncrement_Rate_Option, &
-      MatterSource_Weight_Option, MatterSource_Rate_Unweighted_Option, &
-      LeptonFlavorAudit_Rate_Option )
+      MatterCollisionExchange_Rate_Option, MatterUpdate_Rate_Option, &
+      IMEX_ImplicitWeight_Option, MatterCollisionRHS_Option, &
+      LeptonFlavorCheck_Rate_Option )
 
     INTEGER, INTENT(in) :: &
       iZ_B0_Input(4), iZ_E0_Input(4), iZ_B1_Input(4), iZ_E1_Input(4)
@@ -2730,25 +2730,25 @@ CONTAINS
          iZ_B1_Input(3):iZ_E1_Input(3), &
          iZ_B1_Input(4):iZ_E1_Input(4))
     REAL(DP), INTENT(inout), OPTIONAL :: &
-      MatterSource_Rate_Option &
+      MatterCollisionExchange_Rate_Option &
         (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2), &
          iZ_B1_Input(3):iZ_E1_Input(3), &
          iZ_B1_Input(4):iZ_E1_Input(4))
     REAL(DP), INTENT(inout), OPTIONAL :: &
-      MatterIncrement_Rate_Option &
+      MatterUpdate_Rate_Option &
         (1:nQ,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2), &
          iZ_B1_Input(3):iZ_E1_Input(3), &
          iZ_B1_Input(4):iZ_E1_Input(4))
-    REAL(DP), INTENT(in), OPTIONAL :: MatterSource_Weight_Option
+    REAL(DP), INTENT(in), OPTIONAL :: IMEX_ImplicitWeight_Option
     REAL(DP), INTENT(out), OPTIONAL :: &
-      LeptonFlavorAudit_Rate_Option &
-        (1:nLeptonFamilies,1:nLeptonFlavorAudit,1:nDOFX, &
+      LeptonFlavorCheck_Rate_Option &
+        (1:nLeptonFamilies,1:nLeptonFlavorCheck,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2),iZ_B1_Input(3):iZ_E1_Input(3), &
          iZ_B1_Input(4):iZ_E1_Input(4))
     REAL(DP), INTENT(out), OPTIONAL :: &
-      MatterSource_Rate_Unweighted_Option &
+      MatterCollisionRHS_Option &
         (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2), &
          iZ_B1_Input(3):iZ_E1_Input(3), &
@@ -2804,14 +2804,14 @@ CONTAINS
     IF( PRESENT( uDR_Option ) ) uDR_Option = Zero
     IF( PRESENT( MatterCoupling_Mask_Option ) ) &
       MatterCoupling_Mask_Option = .FALSE.
-    IF( PRESENT( MatterSource_Rate_Option ) ) &
-      MatterSource_Rate_Option = Zero
-    IF( PRESENT( MatterIncrement_Rate_Option ) ) &
-      MatterIncrement_Rate_Option = Zero
-    IF( PRESENT( MatterSource_Rate_Unweighted_Option ) ) &
-      MatterSource_Rate_Unweighted_Option = Zero
-    IF( PRESENT( LeptonFlavorAudit_Rate_Option ) ) &
-      LeptonFlavorAudit_Rate_Option = Zero
+    IF( PRESENT( MatterCollisionExchange_Rate_Option ) ) &
+      MatterCollisionExchange_Rate_Option = Zero
+    IF( PRESENT( MatterUpdate_Rate_Option ) ) &
+      MatterUpdate_Rate_Option = Zero
+    IF( PRESENT( MatterCollisionRHS_Option ) ) &
+      MatterCollisionRHS_Option = Zero
+    IF( PRESENT( LeptonFlavorCheck_Rate_Option ) ) &
+      LeptonFlavorCheck_Rate_Option = Zero
 
   END SUBROUTINE ComputeIncrement_AbsorptionDiffusionBalance
 
@@ -2867,23 +2867,23 @@ CONTAINS
              VolumeTermFactor_Option = One, &
              IncludeObserverCorrections_Option = .FALSE. )
 
-    CALL SetStreamingAuditSurfaceTermFactors( One, Zero )
+    CALL SetStreamingCheckSurfaceTermFactors( One, Zero )
     CALL ComputeIncrement_AbsorptionDiffusionBalance_Explicit &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
              uGE, uGF, uCF, uCR, dU_R_EX_Face_Dn, &
              SurfaceTermFactor_Option = Zero, &
              VolumeTermFactor_Option = Zero, &
              IncludeObserverCorrections_Option = .FALSE. )
-    CALL ClearStreamingAuditSurfaceTermFactors
+    CALL ClearStreamingCheckSurfaceTermFactors
 
-    CALL SetStreamingAuditSurfaceTermFactors( Zero, One )
+    CALL SetStreamingCheckSurfaceTermFactors( Zero, One )
     CALL ComputeIncrement_AbsorptionDiffusionBalance_Explicit &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
              uGE, uGF, uCF, uCR, dU_R_EX_Face_Up, &
              SurfaceTermFactor_Option = Zero, &
              VolumeTermFactor_Option = Zero, &
              IncludeObserverCorrections_Option = .FALSE. )
-    CALL ClearStreamingAuditSurfaceTermFactors
+    CALL ClearStreamingCheckSurfaceTermFactors
 
     CALL ComputeIncrement_AbsorptionDiffusionBalance &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, Zero, &
@@ -3093,9 +3093,9 @@ CONTAINS
       dt_Input, GE, GX, U_F, dU_F, U_R, dU_R, &
       AccumulateMatterCoupling_Mask, uDR_Option, &
       MatterCoupling_Mask_Option, &
-      MatterSource_Rate_Option, MatterIncrement_Rate_Option, &
-      MatterSource_Weight_Option, MatterSource_Rate_Unweighted_Option, &
-      LeptonFlavorAudit_Rate_Option )
+      MatterCollisionExchange_Rate_Option, MatterUpdate_Rate_Option, &
+      IMEX_ImplicitWeight_Option, MatterCollisionRHS_Option, &
+      LeptonFlavorCheck_Rate_Option )
 
     INTEGER, INTENT(in) :: &
       iZ_B0_Input(4), iZ_E0_Input(4), iZ_B1_Input(4), iZ_E1_Input(4)
@@ -3141,25 +3141,25 @@ CONTAINS
          iZ_B1_Input(3):iZ_E1_Input(3), &
          iZ_B1_Input(4):iZ_E1_Input(4))
     REAL(DP), INTENT(inout), OPTIONAL :: &
-      MatterSource_Rate_Option &
+      MatterCollisionExchange_Rate_Option &
         (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2), &
          iZ_B1_Input(3):iZ_E1_Input(3), &
          iZ_B1_Input(4):iZ_E1_Input(4))
     REAL(DP), INTENT(inout), OPTIONAL :: &
-      MatterIncrement_Rate_Option &
+      MatterUpdate_Rate_Option &
         (1:nQ,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2), &
          iZ_B1_Input(3):iZ_E1_Input(3), &
          iZ_B1_Input(4):iZ_E1_Input(4))
-    REAL(DP), INTENT(in), OPTIONAL :: MatterSource_Weight_Option
+    REAL(DP), INTENT(in), OPTIONAL :: IMEX_ImplicitWeight_Option
     REAL(DP), INTENT(out), OPTIONAL :: &
-      LeptonFlavorAudit_Rate_Option &
-        (1:nLeptonFamilies,1:nLeptonFlavorAudit,1:nDOFX, &
+      LeptonFlavorCheck_Rate_Option &
+        (1:nLeptonFamilies,1:nLeptonFlavorCheck,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2),iZ_B1_Input(3):iZ_E1_Input(3), &
          iZ_B1_Input(4):iZ_E1_Input(4))
     REAL(DP), INTENT(out), OPTIONAL :: &
-      MatterSource_Rate_Unweighted_Option &
+      MatterCollisionRHS_Option &
         (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2), &
          iZ_B1_Input(3):iZ_E1_Input(3), &
@@ -3198,14 +3198,14 @@ CONTAINS
     IF( PRESENT( uDR_Option ) ) uDR_Option = Zero
     IF( PRESENT( MatterCoupling_Mask_Option ) ) &
       MatterCoupling_Mask_Option = .FALSE.
-    IF( PRESENT( MatterSource_Rate_Option ) ) &
-      MatterSource_Rate_Option = Zero
-    IF( PRESENT( MatterIncrement_Rate_Option ) ) &
-      MatterIncrement_Rate_Option = Zero
-    IF( PRESENT( MatterSource_Rate_Unweighted_Option ) ) &
-      MatterSource_Rate_Unweighted_Option = Zero
-    IF( PRESENT( LeptonFlavorAudit_Rate_Option ) ) &
-      LeptonFlavorAudit_Rate_Option = Zero
+    IF( PRESENT( MatterCollisionExchange_Rate_Option ) ) &
+      MatterCollisionExchange_Rate_Option = Zero
+    IF( PRESENT( MatterUpdate_Rate_Option ) ) &
+      MatterUpdate_Rate_Option = Zero
+    IF( PRESENT( MatterCollisionRHS_Option ) ) &
+      MatterCollisionRHS_Option = Zero
+    IF( PRESENT( LeptonFlavorCheck_Rate_Option ) ) &
+      LeptonFlavorCheck_Rate_Option = Zero
 
   END SUBROUTINE ComputeIncrement_ManufacturedOpaqueDiffusion
 
@@ -3299,9 +3299,9 @@ CONTAINS
       dt_Input, GE, GX, U_F, dU_F, U_R, dU_R, &
       AccumulateMatterCoupling_Mask, uDR_Option, &
       MatterCoupling_Mask_Option, &
-      MatterSource_Rate_Option, MatterIncrement_Rate_Option, &
-      MatterSource_Weight_Option, MatterSource_Rate_Unweighted_Option, &
-      LeptonFlavorAudit_Rate_Option )
+      MatterCollisionExchange_Rate_Option, MatterUpdate_Rate_Option, &
+      IMEX_ImplicitWeight_Option, MatterCollisionRHS_Option, &
+      LeptonFlavorCheck_Rate_Option )
 
     INTEGER, INTENT(in) :: &
       iZ_B0_Input(4), iZ_E0_Input(4), iZ_B1_Input(4), iZ_E1_Input(4)
@@ -3347,25 +3347,25 @@ CONTAINS
          iZ_B1_Input(3):iZ_E1_Input(3), &
          iZ_B1_Input(4):iZ_E1_Input(4))
     REAL(DP), INTENT(inout), OPTIONAL :: &
-      MatterSource_Rate_Option &
+      MatterCollisionExchange_Rate_Option &
         (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2), &
          iZ_B1_Input(3):iZ_E1_Input(3), &
          iZ_B1_Input(4):iZ_E1_Input(4))
     REAL(DP), INTENT(inout), OPTIONAL :: &
-      MatterIncrement_Rate_Option &
+      MatterUpdate_Rate_Option &
         (1:nQ,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2), &
          iZ_B1_Input(3):iZ_E1_Input(3), &
          iZ_B1_Input(4):iZ_E1_Input(4))
-    REAL(DP), INTENT(in), OPTIONAL :: MatterSource_Weight_Option
+    REAL(DP), INTENT(in), OPTIONAL :: IMEX_ImplicitWeight_Option
     REAL(DP), INTENT(out), OPTIONAL :: &
-      LeptonFlavorAudit_Rate_Option &
-        (1:nLeptonFamilies,1:nLeptonFlavorAudit,1:nDOFX, &
+      LeptonFlavorCheck_Rate_Option &
+        (1:nLeptonFamilies,1:nLeptonFlavorCheck,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2),iZ_B1_Input(3):iZ_E1_Input(3), &
          iZ_B1_Input(4):iZ_E1_Input(4))
     REAL(DP), INTENT(out), OPTIONAL :: &
-      MatterSource_Rate_Unweighted_Option &
+      MatterCollisionRHS_Option &
         (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
          iZ_B1_Input(2):iZ_E1_Input(2), &
          iZ_B1_Input(3):iZ_E1_Input(3), &
@@ -3406,14 +3406,14 @@ CONTAINS
     IF( PRESENT( uDR_Option ) ) uDR_Option = Zero
     IF( PRESENT( MatterCoupling_Mask_Option ) ) &
       MatterCoupling_Mask_Option = .FALSE.
-    IF( PRESENT( MatterSource_Rate_Option ) ) &
-      MatterSource_Rate_Option = Zero
-    IF( PRESENT( MatterIncrement_Rate_Option ) ) &
-      MatterIncrement_Rate_Option = Zero
-    IF( PRESENT( MatterSource_Rate_Unweighted_Option ) ) &
-      MatterSource_Rate_Unweighted_Option = Zero
-    IF( PRESENT( LeptonFlavorAudit_Rate_Option ) ) &
-      LeptonFlavorAudit_Rate_Option = Zero
+    IF( PRESENT( MatterCollisionExchange_Rate_Option ) ) &
+      MatterCollisionExchange_Rate_Option = Zero
+    IF( PRESENT( MatterUpdate_Rate_Option ) ) &
+      MatterUpdate_Rate_Option = Zero
+    IF( PRESENT( MatterCollisionRHS_Option ) ) &
+      MatterCollisionRHS_Option = Zero
+    IF( PRESENT( LeptonFlavorCheck_Rate_Option ) ) &
+      LeptonFlavorCheck_Rate_Option = Zero
 
   END SUBROUTINE ComputeIncrement_ManufacturedVariableOpacityDiffusion
 

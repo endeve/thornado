@@ -43,17 +43,17 @@ MODULE StandaloneMatterDiagnosticsModule
     ComputeTransportOpacityFromConserved_OrderV, &
     ComputeIncrement_TwoMoment_Explicit_AP, &
     GetNeutrinoMatterSolverConvergenceDiagnostics, &
-    nQ, nC, nConservationHandoff, &
-    iCH_InputConversion_L, iCH_PrimitivePair_L, &
-    iCH_FinalConversion_L, iCH_MappedPair_L, iCH_ReturnedPair_L, &
-    iCH_InputConversion_E, iCH_PrimitivePair_E, &
-    iCH_FinalConversion_E, iCH_MappedPair_E, iCH_ReturnedPair_E
+    nQ, nC, nConservationHandoffCheck, &
+    iCHC_InputConversion_L, iCHC_PrimitivePair_L, &
+    iCHC_FinalConversion_L, iCHC_MappedPair_L, iCHC_ReturnedPair_L, &
+    iCHC_InputConversion_E, iCHC_PrimitivePair_E, &
+    iCHC_FinalConversion_E, iCHC_MappedPair_E, iCHC_ReturnedPair_E
   USE TwoMoment_DiscretizationModule_Collisions_Neutrinos, ONLY: &
-    nLeptonFamilies, nLeptonFlavorAudit, &
-    iLFA_InputConversion, iLFA_EntryProjection, &
-    iLFA_CollisionSource, iLFA_RawMap, &
-    iLFA_MapProjection, iLFA_FixedPointResidual, &
-    iLFA_EquationResidual
+    nLeptonFamilies, nLeptonFlavorCheck, &
+    iLFC_InputConversion, iLFC_EntryProjection, &
+    iLFC_CollisionSource, iLFC_RawMap, &
+    iLFC_MapProjection, iLFC_FixedPointResidual, &
+    iLFC_EquationResidual
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit, &
     UseSourceAwareLLF, &
@@ -64,15 +64,15 @@ MODULE StandaloneMatterDiagnosticsModule
   USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
     iQ_L, iQ_E, iQ_H, iQ_M1, iQ_M2, iQ_M3, &
     iC_EmAb, iC_Iso, &
-    nEmAbLedger, &
-    iEmAbLedger_NIn, iEmAbLedger_NOut, iEmAbLedger_NNet, &
-    iEmAbLedger_EIn, iEmAbLedger_EOut, iEmAbLedger_QH, &
+    nEmAbRateDecomposition, &
+    iEmAbRateDecomposition_NIn, iEmAbRateDecomposition_NOut, iEmAbRateDecomposition_NNet, &
+    iEmAbRateDecomposition_EIn, iEmAbRateDecomposition_EOut, iEmAbRateDecomposition_QH, &
     nEmAbSpectrum, iEmAbSpectrum_Dnu, iEmAbSpectrum_DnuEq, &
     iEmAbSpectrum_Chi, iEmAbSpectrum_EIn, iEmAbSpectrum_EOut, &
     iEmAbSpectrum_QH, &
-    nNNSLedger, &
-    iNNSLedger_NIn, iNNSLedger_NOut, iNNSLedger_NNet, &
-    iNNSLedger_EIn, iNNSLedger_EOut, iNNSLedger_QH
+    nNNSRateDecomposition, &
+    iNNSRateDecomposition_NIn, iNNSRateDecomposition_NOut, iNNSRateDecomposition_NNet, &
+    iNNSRateDecomposition_EIn, iNNSRateDecomposition_EOut, iNNSRateDecomposition_QH
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputePrimitive_TwoMoment, ComputeConserved_TwoMoment, &
     FaceVelocity_X1, Flux_X1
@@ -169,37 +169,37 @@ MODULE StandaloneMatterDiagnosticsModule
   REAL(DP), SAVE :: CumulativeBoundaryEnergy = Zero
   REAL(DP), SAVE :: CumulativeBoundaryLepton = Zero
 
-  INTEGER, PARAMETER :: iLedger_Energy = 1
-  INTEGER, PARAMETER :: iLedger_Momentum1 = 2
-  INTEGER, PARAMETER :: iLedger_Momentum2 = 3
-  INTEGER, PARAMETER :: iLedger_Momentum3 = 4
-  INTEGER, PARAMETER :: iLedger_LeptonElectron = 5
-  INTEGER, PARAMETER :: iLedger_LeptonMuon = 6
-  INTEGER, PARAMETER :: iLedger_LeptonTau = 7
-  INTEGER, PARAMETER :: nLedgerQuantities = 7
-  CHARACTER(16), PARAMETER :: LedgerQuantityName(nLedgerQuantities) = [ &
+  INTEGER, PARAMETER :: iCheck_Energy = 1
+  INTEGER, PARAMETER :: iCheck_Momentum1 = 2
+  INTEGER, PARAMETER :: iCheck_Momentum2 = 3
+  INTEGER, PARAMETER :: iCheck_Momentum3 = 4
+  INTEGER, PARAMETER :: iCheck_LeptonElectron = 5
+  INTEGER, PARAMETER :: iCheck_LeptonMuon = 6
+  INTEGER, PARAMETER :: iCheck_LeptonTau = 7
+  INTEGER, PARAMETER :: nCheckQuantities = 7
+  CHARACTER(16), PARAMETER :: CheckQuantityName(nCheckQuantities) = [ &
     CHARACTER(16) :: 'energy', 'momentum1', 'momentum2', 'momentum3', &
                      'lepton_e', 'lepton_mu', 'lepton_tau' ]
-  INTEGER, PARAMETER :: iLedger_MatterActual = 1
-  INTEGER, PARAMETER :: iLedger_RadiationActual = 2
-  INTEGER, PARAMETER :: iLedger_Boundary = 3
-  INTEGER, PARAMETER :: iLedger_ImplicitMatter = 4
-  INTEGER, PARAMETER :: iLedger_ImplicitRadiation = 5
-  INTEGER, PARAMETER :: iLedger_ExplicitMatter = 6
-  INTEGER, PARAMETER :: iLedger_ExplicitRadiation = 7
-  INTEGER, PARAMETER :: iLedger_MatterRemainder = 8
-  INTEGER, PARAMETER :: iLedger_RadiationRemainder = 9
-  INTEGER, PARAMETER :: iLedger_CollisionResidual = 10
-  INTEGER, PARAMETER :: iLedger_TransportBoundaryResidual = 11
-  INTEGER, PARAMETER :: iLedger_ConservationResidual = 12
-  INTEGER, PARAMETER :: iLedger_AlgebraicClosure = 13
-  INTEGER, PARAMETER :: iLedger_PreLimiterMatterLocal = 14
-  INTEGER, PARAMETER :: iLedger_PreLimiterRadiationLocal = 15
-  INTEGER, PARAMETER :: iLedger_PostLimiterMatterLocal = 16
-  INTEGER, PARAMETER :: iLedger_PostLimiterRadiationLocal = 17
-  INTEGER, PARAMETER :: iLedger_DirectImplicitPairResidual = 18
-  INTEGER, PARAMETER :: nLedgerComponents = 18
-  CHARACTER(32), PARAMETER :: LedgerComponentName(nLedgerComponents) = [ &
+  INTEGER, PARAMETER :: iCheck_MatterActual = 1
+  INTEGER, PARAMETER :: iCheck_RadiationActual = 2
+  INTEGER, PARAMETER :: iCheck_Boundary = 3
+  INTEGER, PARAMETER :: iCheck_ImplicitMatter = 4
+  INTEGER, PARAMETER :: iCheck_ImplicitRadiation = 5
+  INTEGER, PARAMETER :: iCheck_ExplicitMatter = 6
+  INTEGER, PARAMETER :: iCheck_ExplicitRadiation = 7
+  INTEGER, PARAMETER :: iCheck_MatterRemainder = 8
+  INTEGER, PARAMETER :: iCheck_RadiationRemainder = 9
+  INTEGER, PARAMETER :: iCheck_CollisionResidual = 10
+  INTEGER, PARAMETER :: iCheck_TransportBoundaryResidual = 11
+  INTEGER, PARAMETER :: iCheck_ConservationResidual = 12
+  INTEGER, PARAMETER :: iCheck_AlgebraicClosure = 13
+  INTEGER, PARAMETER :: iCheck_PreLimiterMatterLocal = 14
+  INTEGER, PARAMETER :: iCheck_PreLimiterRadiationLocal = 15
+  INTEGER, PARAMETER :: iCheck_PostLimiterMatterLocal = 16
+  INTEGER, PARAMETER :: iCheck_PostLimiterRadiationLocal = 17
+  INTEGER, PARAMETER :: iCheck_DirectImplicitPairResidual = 18
+  INTEGER, PARAMETER :: nCheckComponents = 18
+  CHARACTER(32), PARAMETER :: CheckComponentName(nCheckComponents) = [ &
     CHARACTER(32) :: &
     'matter_actual', 'radiation_actual', 'boundary', &
     'implicit_matter', 'implicit_radiation', &
@@ -212,11 +212,11 @@ MODULE StandaloneMatterDiagnosticsModule
     'post_stage_limiter_matter_local', &
     'post_stage_limiter_rad_local', &
     'direct_implicit_pair_residual' ]
-  CHARACTER(256), SAVE :: IMEXConservationLedgerFile = ''
+  CHARACTER(256), SAVE :: IMEXConservationCheckFile = ''
   CHARACTER(256), SAVE :: IMEXConservationStageDefectFile = ''
-  CHARACTER(256), SAVE :: IMEXLeptonFlavorAuditFile = ''
+  CHARACTER(256), SAVE :: IMEXLeptonFlavorCheckFile = ''
   REAL(DP), SAVE :: &
-    IMEXConservationCumulative(nLedgerQuantities,nLedgerComponents) = Zero
+    IMEXConservationCumulative(nCheckQuantities,nCheckComponents) = Zero
 
 CONTAINS
 
@@ -255,11 +255,11 @@ CONTAINS
     CumulativeBoundaryEnergy = Zero
     CumulativeBoundaryLepton = Zero
     CumulativeConservationFile = TRIM( FileName )
-    IMEXConservationLedgerFile = TRIM( FileName ) // '.imex'
+    IMEXConservationCheckFile = TRIM( FileName ) // '.imex'
     IMEXConservationStageDefectFile &
       = TRIM( FileName ) // '.imex_implicit_pair_defect'
-    IMEXLeptonFlavorAuditFile &
-      = TRIM( FileName ) // '.imex_lepton_flavor_audit'
+    IMEXLeptonFlavorCheckFile &
+      = TRIM( FileName ) // '.imex_lepton_flavor_check'
     IMEXConservationCumulative = Zero
 
     OPEN( NEWUNIT = Unit, FILE = TRIM(CumulativeConservationFile), &
@@ -297,7 +297,7 @@ CONTAINS
       Zero, Zero, Zero, Zero, Zero, Zero, Zero, Zero, Zero
     CLOSE(Unit)
 
-    OPEN( NEWUNIT = Unit, FILE = TRIM(IMEXLeptonFlavorAuditFile), &
+    OPEN( NEWUNIT = Unit, FILE = TRIM(IMEXLeptonFlavorCheckFile), &
           STATUS = 'REPLACE', ACTION = 'WRITE', FORM = 'FORMATTED' )
     WRITE(Unit,'(A)') &
       '# cycle time_s dt_s stage diagonal_coefficient implicit_weight' // &
@@ -316,7 +316,7 @@ CONTAINS
       ' final-state source integral.'
     CLOSE(Unit)
 
-    OPEN( NEWUNIT = Unit, FILE = TRIM(IMEXConservationLedgerFile), &
+    OPEN( NEWUNIT = Unit, FILE = TRIM(IMEXConservationCheckFile), &
           STATUS = 'REPLACE', ACTION = 'WRITE', FORM = 'FORMATTED' )
     WRITE(Unit,'(A)') &
       '# cycle time_s dt_s quantity component step_value cumulative_value'
@@ -360,7 +360,7 @@ CONTAINS
       StageFluidState, StageRadiationState, &
       StageFluidImplicitRate, StageFluidExplicitRate, &
       StageRadiationImplicitRate, StageRadiationExplicitRate, &
-      StageLeptonFlavorAuditRate )
+      StageLeptonFlavorCheckRate )
 
     INTEGER, INTENT(in) :: Cycle
     REAL(DP), INTENT(in) :: Time, TimeStep
@@ -385,7 +385,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: StageFluidExplicitRate(:,:,:,:,:,:)
     REAL(DP), INTENT(in) :: StageRadiationImplicitRate(:,:,:,:,:,:,:,:)
     REAL(DP), INTENT(in) :: StageRadiationExplicitRate(:,:,:,:,:,:,:,:)
-    REAL(DP), INTENT(in) :: StageLeptonFlavorAuditRate(:,:,:,:,:,:,:)
+    REAL(DP), INTENT(in) :: StageLeptonFlavorCheckRate(:,:,:,:,:,:,:)
 
     INTEGER :: Unit
     REAL(DP) :: MatterEnergy, RadiationEnergy, TotalEnergy
@@ -401,13 +401,13 @@ CONTAINS
       CumulativeEnergyExchangeRelative, CumulativeLeptonExchangeRelative
     REAL(DP) :: PreviousMatterEnergyLocal, PreviousRadiationEnergyLocal
     REAL(DP) :: PreviousMatterLeptonLocal, PreviousRadiationLeptonLocal
-    REAL(DP) :: MatterComponents(nLedgerQuantities)
-    REAL(DP) :: RadiationComponents(nLedgerQuantities)
-    REAL(DP) :: MatterComponentsInitial(nLedgerQuantities)
-    REAL(DP) :: RadiationComponentsInitial(nLedgerQuantities)
-    REAL(DP) :: MatterChange(nLedgerQuantities)
-    REAL(DP) :: RadiationChange(nLedgerQuantities)
-    REAL(DP) :: BoundaryComponents(nLedgerQuantities)
+    REAL(DP) :: MatterComponents(nCheckQuantities)
+    REAL(DP) :: RadiationComponents(nCheckQuantities)
+    REAL(DP) :: MatterComponentsInitial(nCheckQuantities)
+    REAL(DP) :: RadiationComponentsInitial(nCheckQuantities)
+    REAL(DP) :: MatterChange(nCheckQuantities)
+    REAL(DP) :: RadiationChange(nCheckQuantities)
+    REAL(DP) :: BoundaryComponents(nCheckQuantities)
 
     IF( .NOT. CumulativeConservationInitialized ) &
       ERROR STOP 'Cumulative conservation diagnostics are not initialized.'
@@ -434,20 +434,20 @@ CONTAINS
       + FourPi * OffGridRadiationLeptonFlavorIncrement(1) / hc3
 
     BoundaryComponents = Zero
-    BoundaryComponents(iLedger_Energy) = BoundaryEnergy
-    BoundaryComponents(iLedger_Momentum1) &
+    BoundaryComponents(iCheck_Energy) = BoundaryEnergy
+    BoundaryComponents(iCheck_Momentum1) &
       = OffGridFluidIncrement(iCF_S1) &
           + FourPi * OffGridRadiationIncrement(nCR+iCR_G1) / hc3
-    BoundaryComponents(iLedger_Momentum2) &
+    BoundaryComponents(iCheck_Momentum2) &
       = OffGridFluidIncrement(iCF_S2) &
           + FourPi * OffGridRadiationIncrement(nCR+iCR_G2) / hc3
-    BoundaryComponents(iLedger_Momentum3) &
+    BoundaryComponents(iCheck_Momentum3) &
       = OffGridFluidIncrement(iCF_S3) &
           + FourPi * OffGridRadiationIncrement(nCR+iCR_G3) / hc3
-    BoundaryComponents(iLedger_LeptonElectron) = BoundaryLepton
-    BoundaryComponents(iLedger_LeptonMuon) &
+    BoundaryComponents(iCheck_LeptonElectron) = BoundaryLepton
+    BoundaryComponents(iCheck_LeptonMuon) &
       = FourPi * OffGridRadiationLeptonFlavorIncrement(2) / hc3
-    BoundaryComponents(iLedger_LeptonTau) &
+    BoundaryComponents(iCheck_LeptonTau) &
       = FourPi * OffGridRadiationLeptonFlavorIncrement(3) / hc3
 
     CALL ComputeConservedMatterRadiationComponents &
@@ -519,14 +519,14 @@ CONTAINS
       StepLeptonRelative, StepLeptonExchangeRelative
     CLOSE(Unit)
 
-    CALL AccumulateIMEXConservationLedger &
+    CALL AccumulateIMEXConservationCheck &
            ( Cycle, Time, TimeStep, iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
              GE, GX, &
              MatterChange, RadiationChange, BoundaryComponents, &
              StageFluidState, StageRadiationState, &
              StageFluidImplicitRate, StageFluidExplicitRate, &
              StageRadiationImplicitRate, StageRadiationExplicitRate, &
-             StageLeptonFlavorAuditRate )
+             StageLeptonFlavorCheckRate )
 
     PreviousTotalEnergy = TotalEnergy
     PreviousTotalLepton = TotalLepton
@@ -538,13 +538,13 @@ CONTAINS
   END SUBROUTINE AccumulateCumulativeConservationDiagnostics
 
 
-  SUBROUTINE AccumulateIMEXConservationLedger &
+  SUBROUTINE AccumulateIMEXConservationCheck &
     ( Cycle, Time, TimeStep, iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
       MatterChange, RadiationChange, BoundaryChange, &
       StageFluidState, StageRadiationState, &
       StageFluidImplicitRate, StageFluidExplicitRate, &
       StageRadiationImplicitRate, StageRadiationExplicitRate, &
-      StageLeptonFlavorAuditRate )
+      StageLeptonFlavorCheckRate )
 
     INTEGER, INTENT(in) :: Cycle
     REAL(DP), INTENT(in) :: Time, TimeStep
@@ -555,29 +555,29 @@ CONTAINS
       GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
          iZ_B1(4):iZ_E1(4),1:nGF)
     REAL(DP), INTENT(in) :: &
-      MatterChange(nLedgerQuantities), &
-      RadiationChange(nLedgerQuantities), &
-      BoundaryChange(nLedgerQuantities)
+      MatterChange(nCheckQuantities), &
+      RadiationChange(nCheckQuantities), &
+      BoundaryChange(nCheckQuantities)
     REAL(DP), INTENT(in) :: StageFluidState(:,:,:,:,:,:,:)
     REAL(DP), INTENT(in) :: StageRadiationState(:,:,:,:,:,:,:,:,:)
     REAL(DP), INTENT(in) :: StageFluidImplicitRate(:,:,:,:,:,:)
     REAL(DP), INTENT(in) :: StageFluidExplicitRate(:,:,:,:,:,:)
     REAL(DP), INTENT(in) :: StageRadiationImplicitRate(:,:,:,:,:,:,:,:)
     REAL(DP), INTENT(in) :: StageRadiationExplicitRate(:,:,:,:,:,:,:,:)
-    REAL(DP), INTENT(in) :: StageLeptonFlavorAuditRate(:,:,:,:,:,:,:)
+    REAL(DP), INTENT(in) :: StageLeptonFlavorCheckRate(:,:,:,:,:,:,:)
 
     INTEGER :: iComponent, iStage, iQuantity, Unit
     REAL(DP) :: aII, wEX, wIM
-    REAL(DP) :: dMatter(nLedgerQuantities)
-    REAL(DP) :: dRadiation(nLedgerQuantities)
-    REAL(DP) :: DirectPairDefect(nLedgerQuantities)
-    REAL(DP) :: WeightedPairDefect(nLedgerQuantities)
-    REAL(DP) :: MatterA(nLedgerQuantities)
-    REAL(DP) :: RadiationA(nLedgerQuantities)
-    REAL(DP) :: MatterB(nLedgerQuantities)
-    REAL(DP) :: RadiationB(nLedgerQuantities)
-    REAL(DP) :: Step(nLedgerQuantities,nLedgerComponents)
-    REAL(DP) :: LeptonAudit(nLeptonFamilies,nLeptonFlavorAudit)
+    REAL(DP) :: dMatter(nCheckQuantities)
+    REAL(DP) :: dRadiation(nCheckQuantities)
+    REAL(DP) :: DirectPairDefect(nCheckQuantities)
+    REAL(DP) :: WeightedPairDefect(nCheckQuantities)
+    REAL(DP) :: MatterA(nCheckQuantities)
+    REAL(DP) :: RadiationA(nCheckQuantities)
+    REAL(DP) :: MatterB(nCheckQuantities)
+    REAL(DP) :: RadiationB(nCheckQuantities)
+    REAL(DP) :: Step(nCheckQuantities,nCheckComponents)
+    REAL(DP) :: LeptonCheck(nLeptonFamilies,nLeptonFlavorCheck)
     REAL(DP), ALLOCATABLE :: CF_Work(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: CR_Work(:,:,:,:,:,:,:)
 
@@ -590,9 +590,9 @@ CONTAINS
           iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies) )
 
     Step = Zero
-    Step(:,iLedger_MatterActual) = MatterChange
-    Step(:,iLedger_RadiationActual) = RadiationChange
-    Step(:,iLedger_Boundary) = BoundaryChange
+    Step(:,iCheck_MatterActual) = MatterChange
+    Step(:,iCheck_RadiationActual) = RadiationChange
+    Step(:,iCheck_Boundary) = BoundaryChange
 
     DO iStage = 1, SIZE( StageFluidState, 6 )
 
@@ -620,29 +620,29 @@ CONTAINS
         DirectPairDefect = MatterB + RadiationB - MatterA - RadiationA
         WeightedPairDefect = ( wIM / aII ) * DirectPairDefect
 
-        CALL ComputeIntegratedLeptonFlavorAudit &
+        CALL ComputeIntegratedLeptonFlavorCheck &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, &
-                 StageLeptonFlavorAuditRate(:,:,:,:,:,:,iStage), &
-                 LeptonAudit )
-        CALL WriteLeptonFlavorStageAudit &
+                 StageLeptonFlavorCheckRate(:,:,:,:,:,:,iStage), &
+                 LeptonCheck )
+        CALL WriteLeptonFlavorStageCheck &
                ( Cycle, Time, TimeStep, iStage, aII, wIM, &
-                 LeptonAudit, MatterA, RadiationA, MatterB, RadiationB )
+                 LeptonCheck, MatterA, RadiationA, MatterB, RadiationB )
 
       END IF
 
-      Step(:,iLedger_DirectImplicitPairResidual) &
-        = Step(:,iLedger_DirectImplicitPairResidual) + WeightedPairDefect
+      Step(:,iCheck_DirectImplicitPairResidual) &
+        = Step(:,iCheck_DirectImplicitPairResidual) + WeightedPairDefect
 
       OPEN( NEWUNIT = Unit, FILE = TRIM(IMEXConservationStageDefectFile), &
             STATUS = 'OLD', POSITION = 'APPEND', ACTION = 'WRITE', &
             FORM = 'FORMATTED' )
-      DO iQuantity = 1, nLedgerQuantities
+      DO iQuantity = 1, nCheckQuantities
         WRITE(Unit,'(I8,1X,2(ES24.16E3,1X),I4,1X,2(ES24.16E3,1X),' // &
                    'A,1X,2(ES24.16E3,1X))') &
           Cycle, Time / Second, TimeStep / Second, iStage, aII, wIM, &
-          TRIM(LedgerQuantityName(iQuantity)), &
-          ConvertLedgerQuantity( iQuantity, DirectPairDefect(iQuantity) ), &
-          ConvertLedgerQuantity( iQuantity, WeightedPairDefect(iQuantity) )
+          TRIM(CheckQuantityName(iQuantity)), &
+          ConvertCheckQuantity( iQuantity, DirectPairDefect(iQuantity) ), &
+          ConvertCheckQuantity( iQuantity, WeightedPairDefect(iQuantity) )
       END DO
       CLOSE(Unit)
 
@@ -654,10 +654,10 @@ CONTAINS
                StageRadiationImplicitRate(:,:,:,:,:,:,:,iStage), &
                CF_Work, CR_Work, &
                dMatter, dRadiation )
-      Step(:,iLedger_ImplicitMatter) &
-        = Step(:,iLedger_ImplicitMatter) + dMatter
-      Step(:,iLedger_ImplicitRadiation) &
-        = Step(:,iLedger_ImplicitRadiation) + dRadiation
+      Step(:,iCheck_ImplicitMatter) &
+        = Step(:,iCheck_ImplicitMatter) + dMatter
+      Step(:,iCheck_ImplicitRadiation) &
+        = Step(:,iCheck_ImplicitRadiation) + dRadiation
 
       wEX = GetExplicitStageWeight_IMEX_RK( iStage )
       CALL ComputeWeightedStageConservationChange &
@@ -669,10 +669,10 @@ CONTAINS
                StageRadiationExplicitRate(:,:,:,:,:,:,:,iStage), &
                CF_Work, CR_Work, &
                dMatter, dRadiation )
-      Step(:,iLedger_ExplicitMatter) &
-        = Step(:,iLedger_ExplicitMatter) + dMatter
-      Step(:,iLedger_ExplicitRadiation) &
-        = Step(:,iLedger_ExplicitRadiation) + dRadiation
+      Step(:,iCheck_ExplicitMatter) &
+        = Step(:,iCheck_ExplicitMatter) + dMatter
+      Step(:,iCheck_ExplicitRadiation) &
+        = Step(:,iCheck_ExplicitRadiation) + dRadiation
 
       CALL ComputeConservedMatterRadiationComponents &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
@@ -684,10 +684,10 @@ CONTAINS
                StageFluidState(:,:,:,:,:,iStage,iIMEX_PreImplicit), &
                StageRadiationState(:,:,:,:,:,:,:,iStage,iIMEX_PreImplicit), &
                MatterB, RadiationB )
-      Step(:,iLedger_PreLimiterMatterLocal) &
-        = Step(:,iLedger_PreLimiterMatterLocal) + MatterB - MatterA
-      Step(:,iLedger_PreLimiterRadiationLocal) &
-        = Step(:,iLedger_PreLimiterRadiationLocal) + RadiationB - RadiationA
+      Step(:,iCheck_PreLimiterMatterLocal) &
+        = Step(:,iCheck_PreLimiterMatterLocal) + MatterB - MatterA
+      Step(:,iCheck_PreLimiterRadiationLocal) &
+        = Step(:,iCheck_PreLimiterRadiationLocal) + RadiationB - RadiationA
 
       CALL ComputeConservedMatterRadiationComponents &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
@@ -701,52 +701,52 @@ CONTAINS
                StageRadiationState &
                  (:,:,:,:,:,:,:,iStage,iIMEX_PostImplicitLimiter), &
                MatterB, RadiationB )
-      Step(:,iLedger_PostLimiterMatterLocal) &
-        = Step(:,iLedger_PostLimiterMatterLocal) + MatterB - MatterA
-      Step(:,iLedger_PostLimiterRadiationLocal) &
-        = Step(:,iLedger_PostLimiterRadiationLocal) + RadiationB - RadiationA
+      Step(:,iCheck_PostLimiterMatterLocal) &
+        = Step(:,iCheck_PostLimiterMatterLocal) + MatterB - MatterA
+      Step(:,iCheck_PostLimiterRadiationLocal) &
+        = Step(:,iCheck_PostLimiterRadiationLocal) + RadiationB - RadiationA
 
     END DO
 
-    Step(:,iLedger_MatterRemainder) &
-      = Step(:,iLedger_MatterActual) &
-          - Step(:,iLedger_ImplicitMatter) &
-          - Step(:,iLedger_ExplicitMatter)
-    Step(:,iLedger_RadiationRemainder) &
-      = Step(:,iLedger_RadiationActual) &
-          - Step(:,iLedger_ImplicitRadiation) &
-          - Step(:,iLedger_ExplicitRadiation)
-    Step(:,iLedger_CollisionResidual) &
-      = Step(:,iLedger_ImplicitMatter) &
-          + Step(:,iLedger_ImplicitRadiation)
-    Step(:,iLedger_TransportBoundaryResidual) &
-      = Step(:,iLedger_ExplicitMatter) &
-          + Step(:,iLedger_ExplicitRadiation) &
-          - Step(:,iLedger_Boundary)
-    Step(:,iLedger_ConservationResidual) &
-      = Step(:,iLedger_MatterActual) &
-          + Step(:,iLedger_RadiationActual) &
-          - Step(:,iLedger_Boundary)
-    Step(:,iLedger_AlgebraicClosure) &
-      = Step(:,iLedger_ConservationResidual) &
-          - Step(:,iLedger_CollisionResidual) &
-          - Step(:,iLedger_TransportBoundaryResidual) &
-          - Step(:,iLedger_MatterRemainder) &
-          - Step(:,iLedger_RadiationRemainder)
+    Step(:,iCheck_MatterRemainder) &
+      = Step(:,iCheck_MatterActual) &
+          - Step(:,iCheck_ImplicitMatter) &
+          - Step(:,iCheck_ExplicitMatter)
+    Step(:,iCheck_RadiationRemainder) &
+      = Step(:,iCheck_RadiationActual) &
+          - Step(:,iCheck_ImplicitRadiation) &
+          - Step(:,iCheck_ExplicitRadiation)
+    Step(:,iCheck_CollisionResidual) &
+      = Step(:,iCheck_ImplicitMatter) &
+          + Step(:,iCheck_ImplicitRadiation)
+    Step(:,iCheck_TransportBoundaryResidual) &
+      = Step(:,iCheck_ExplicitMatter) &
+          + Step(:,iCheck_ExplicitRadiation) &
+          - Step(:,iCheck_Boundary)
+    Step(:,iCheck_ConservationResidual) &
+      = Step(:,iCheck_MatterActual) &
+          + Step(:,iCheck_RadiationActual) &
+          - Step(:,iCheck_Boundary)
+    Step(:,iCheck_AlgebraicClosure) &
+      = Step(:,iCheck_ConservationResidual) &
+          - Step(:,iCheck_CollisionResidual) &
+          - Step(:,iCheck_TransportBoundaryResidual) &
+          - Step(:,iCheck_MatterRemainder) &
+          - Step(:,iCheck_RadiationRemainder)
 
     IMEXConservationCumulative = IMEXConservationCumulative + Step
 
-    OPEN( NEWUNIT = Unit, FILE = TRIM(IMEXConservationLedgerFile), &
+    OPEN( NEWUNIT = Unit, FILE = TRIM(IMEXConservationCheckFile), &
           STATUS = 'OLD', POSITION = 'APPEND', ACTION = 'WRITE', &
           FORM = 'FORMATTED' )
-    DO iQuantity = 1, nLedgerQuantities
-      DO iComponent = 1, nLedgerComponents
+    DO iQuantity = 1, nCheckQuantities
+      DO iComponent = 1, nCheckComponents
         WRITE(Unit,'(I8,1X,2(ES24.16E3,1X),2(A,1X),2(ES24.16E3,1X))') &
           Cycle, Time / Second, TimeStep / Second, &
-          TRIM(LedgerQuantityName(iQuantity)), &
-          TRIM(LedgerComponentName(iComponent)), &
-          ConvertLedgerQuantity( iQuantity, Step(iQuantity,iComponent) ), &
-          ConvertLedgerQuantity &
+          TRIM(CheckQuantityName(iQuantity)), &
+          TRIM(CheckComponentName(iComponent)), &
+          ConvertCheckQuantity( iQuantity, Step(iQuantity,iComponent) ), &
+          ConvertCheckQuantity &
             ( iQuantity, IMEXConservationCumulative(iQuantity,iComponent) )
       END DO
     END DO
@@ -754,24 +754,24 @@ CONTAINS
 
     DEALLOCATE( CF_Work, CR_Work )
 
-  END SUBROUTINE AccumulateIMEXConservationLedger
+  END SUBROUTINE AccumulateIMEXConservationCheck
 
 
-  SUBROUTINE ComputeIntegratedLeptonFlavorAudit &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, AuditRate, IntegratedRate )
+  SUBROUTINE ComputeIntegratedLeptonFlavorCheck &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, CheckRate, IntegratedRate )
 
     INTEGER, INTENT(in) :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
     REAL(DP), INTENT(in) :: &
       GX(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
          iZ_B1(4):iZ_E1(4),1:nGF)
     REAL(DP), INTENT(in) :: &
-      AuditRate(1:nLeptonFamilies,1:nLeptonFlavorAudit,1:nDOFX, &
+      CheckRate(1:nLeptonFamilies,1:nLeptonFlavorCheck,1:nDOFX, &
                 iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3), &
                 iZ_B1(4):iZ_E1(4))
     REAL(DP), INTENT(out) :: &
-      IntegratedRate(nLeptonFamilies,nLeptonFlavorAudit)
+      IntegratedRate(nLeptonFamilies,nLeptonFlavorCheck)
 
-    INTEGER :: iAudit, iFamily, iNodeX, iX1, iX2, iX3
+    INTEGER :: iCheck, iFamily, iNodeX, iX1, iX2, iX3
     REAL(DP) :: SpaceWeight
 
     IntegratedRate = Zero
@@ -787,12 +787,12 @@ CONTAINS
                   * WeightsX_q(iNodeX) &
                   * GX(iNodeX,iX1,iX2,iX3,iGF_SqrtGm)
 
-      DO iAudit = 1, nLeptonFlavorAudit
+      DO iCheck = 1, nLeptonFlavorCheck
       DO iFamily = 1, nLeptonFamilies
-        IntegratedRate(iFamily,iAudit) &
-          = IntegratedRate(iFamily,iAudit) &
+        IntegratedRate(iFamily,iCheck) &
+          = IntegratedRate(iFamily,iCheck) &
               + SpaceWeight &
-                  * AuditRate(iFamily,iAudit,iNodeX,iX1,iX2,iX3)
+                  * CheckRate(iFamily,iCheck,iNodeX,iX1,iX2,iX3)
       END DO
       END DO
 
@@ -801,20 +801,20 @@ CONTAINS
     END DO
     END DO
 
-  END SUBROUTINE ComputeIntegratedLeptonFlavorAudit
+  END SUBROUTINE ComputeIntegratedLeptonFlavorCheck
 
 
-  SUBROUTINE WriteLeptonFlavorStageAudit &
-    ( Cycle, Time, TimeStep, iStage, aII, wIM, AuditRate, &
+  SUBROUTINE WriteLeptonFlavorStageCheck &
+    ( Cycle, Time, TimeStep, iStage, aII, wIM, CheckRate, &
       MatterA, RadiationA, MatterB, RadiationB )
 
     INTEGER, INTENT(in) :: Cycle, iStage
     REAL(DP), INTENT(in) :: Time, TimeStep, aII, wIM
     REAL(DP), INTENT(in) :: &
-      AuditRate(nLeptonFamilies,nLeptonFlavorAudit)
+      CheckRate(nLeptonFamilies,nLeptonFlavorCheck)
     REAL(DP), INTENT(in) :: &
-      MatterA(nLedgerQuantities), RadiationA(nLedgerQuantities), &
-      MatterB(nLedgerQuantities), RadiationB(nLedgerQuantities)
+      MatterA(nCheckQuantities), RadiationA(nCheckQuantities), &
+      MatterB(nCheckQuantities), RadiationB(nCheckQuantities)
 
     CHARACTER(8), PARAMETER :: FamilyName(nLeptonFamilies) &
       = [ CHARACTER(8) :: 'electron', 'muon', 'tau' ]
@@ -825,26 +825,26 @@ CONTAINS
     REAL(DP) :: Reconstructed, DirectRadiation
     REAL(DP) :: IdentityClosure, DirectPairResidual
 
-    OPEN( NEWUNIT = Unit, FILE = TRIM(IMEXLeptonFlavorAuditFile), &
+    OPEN( NEWUNIT = Unit, FILE = TRIM(IMEXLeptonFlavorCheckFile), &
           STATUS = 'OLD', POSITION = 'APPEND', ACTION = 'WRITE', &
           FORM = 'FORMATTED' )
 
     DO iFamily = 1, nLeptonFamilies
 
-      iQuantity = iLedger_LeptonElectron + iFamily - 1
+      iQuantity = iCheck_LeptonElectron + iFamily - 1
       InputConversion &
-        = TimeStep * aII * AuditRate(iFamily,iLFA_InputConversion)
+        = TimeStep * aII * CheckRate(iFamily,iLFC_InputConversion)
       EntryProjection &
-        = TimeStep * aII * AuditRate(iFamily,iLFA_EntryProjection)
+        = TimeStep * aII * CheckRate(iFamily,iLFC_EntryProjection)
       CollisionSource &
-        = TimeStep * aII * AuditRate(iFamily,iLFA_CollisionSource)
-      RawMap = TimeStep * aII * AuditRate(iFamily,iLFA_RawMap)
+        = TimeStep * aII * CheckRate(iFamily,iLFC_CollisionSource)
+      RawMap = TimeStep * aII * CheckRate(iFamily,iLFC_RawMap)
       MapProjection &
-        = TimeStep * aII * AuditRate(iFamily,iLFA_MapProjection)
+        = TimeStep * aII * CheckRate(iFamily,iLFC_MapProjection)
       FixedPointResidual &
-        = TimeStep * aII * AuditRate(iFamily,iLFA_FixedPointResidual)
+        = TimeStep * aII * CheckRate(iFamily,iLFC_FixedPointResidual)
       EquationResidual &
-        = TimeStep * aII * AuditRate(iFamily,iLFA_EquationResidual)
+        = TimeStep * aII * CheckRate(iFamily,iLFC_EquationResidual)
       Reconstructed &
         = InputConversion + EntryProjection + RawMap + MapProjection &
             - FixedPointResidual
@@ -866,7 +866,7 @@ CONTAINS
 
     CLOSE(Unit)
 
-  END SUBROUTINE WriteLeptonFlavorStageAudit
+  END SUBROUTINE WriteLeptonFlavorStageCheck
 
 
   SUBROUTINE ComputeWeightedStageConservationChange &
@@ -900,12 +900,12 @@ CONTAINS
       CR_Work(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
               iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      MatterChange(nLedgerQuantities), RadiationChange(nLedgerQuantities)
+      MatterChange(nCheckQuantities), RadiationChange(nCheckQuantities)
 
-    REAL(DP) :: MatterBase(nLedgerQuantities)
-    REAL(DP) :: RadiationBase(nLedgerQuantities)
-    REAL(DP) :: MatterWork(nLedgerQuantities)
-    REAL(DP) :: RadiationWork(nLedgerQuantities)
+    REAL(DP) :: MatterBase(nCheckQuantities)
+    REAL(DP) :: RadiationBase(nCheckQuantities)
+    REAL(DP) :: MatterWork(nCheckQuantities)
+    REAL(DP) :: RadiationWork(nCheckQuantities)
 
     MatterChange = Zero
     RadiationChange = Zero
@@ -943,7 +943,7 @@ CONTAINS
     PreviousRadiationLepton = Zero
     CumulativeBoundaryEnergy = Zero
     CumulativeBoundaryLepton = Zero
-    IMEXConservationLedgerFile = ''
+    IMEXConservationCheckFile = ''
     IMEXConservationStageDefectFile = ''
     IMEXConservationCumulative = Zero
 
@@ -969,17 +969,17 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       MatterEnergy, RadiationEnergy, MatterLepton, RadiationLepton
 
-    REAL(DP) :: Matter(nLedgerQuantities)
-    REAL(DP) :: Radiation(nLedgerQuantities)
+    REAL(DP) :: Matter(nCheckQuantities)
+    REAL(DP) :: Radiation(nCheckQuantities)
 
     CALL ComputeConservedMatterRadiationComponents &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, CF, CR, &
              Matter, Radiation )
 
-    MatterEnergy = Matter(iLedger_Energy)
-    RadiationEnergy = Radiation(iLedger_Energy)
-    MatterLepton = Matter(iLedger_LeptonElectron)
-    RadiationLepton = Radiation(iLedger_LeptonElectron)
+    MatterEnergy = Matter(iCheck_Energy)
+    RadiationEnergy = Radiation(iCheck_Energy)
+    MatterLepton = Matter(iCheck_LeptonElectron)
+    RadiationLepton = Radiation(iCheck_LeptonElectron)
 
   END SUBROUTINE ComputeConservedMatterRadiationTotals
 
@@ -1000,7 +1000,7 @@ CONTAINS
       CR(1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
          iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
     REAL(DP), INTENT(out) :: &
-      Matter(nLedgerQuantities), Radiation(nLedgerQuantities)
+      Matter(nCheckQuantities), Radiation(nCheckQuantities)
 
     INTEGER :: iE, iFamily, iNodeE, iNodeX, iNodeZ, iS, iX1, iX2, iX3
     REAL(DP) :: hc3, PhaseWeight2, PhaseWeight3, SpaceWeight
@@ -1023,15 +1023,15 @@ CONTAINS
                   * WeightsX_q(iNodeX) &
                   * GX(iNodeX,iX1,iX2,iX3,iGF_SqrtGm)
 
-      Matter(iLedger_Energy) = Matter(iLedger_Energy) &
+      Matter(iCheck_Energy) = Matter(iCheck_Energy) &
         + SpaceWeight * CF(iNodeX,iX1,iX2,iX3,iCF_E)
-      Matter(iLedger_Momentum1) = Matter(iLedger_Momentum1) &
+      Matter(iCheck_Momentum1) = Matter(iCheck_Momentum1) &
         + SpaceWeight * CF(iNodeX,iX1,iX2,iX3,iCF_S1)
-      Matter(iLedger_Momentum2) = Matter(iLedger_Momentum2) &
+      Matter(iCheck_Momentum2) = Matter(iCheck_Momentum2) &
         + SpaceWeight * CF(iNodeX,iX1,iX2,iX3,iCF_S2)
-      Matter(iLedger_Momentum3) = Matter(iLedger_Momentum3) &
+      Matter(iCheck_Momentum3) = Matter(iCheck_Momentum3) &
         + SpaceWeight * CF(iNodeX,iX1,iX2,iX3,iCF_S3)
-      Matter(iLedger_LeptonElectron) = Matter(iLedger_LeptonElectron) &
+      Matter(iCheck_LeptonElectron) = Matter(iCheck_LeptonElectron) &
         + SpaceWeight * CF(iNodeX,iX1,iX2,iX3,iCF_Ne)
 
       V_u_1 = CF(iNodeX,iX1,iX2,iX3,iCF_S1) &
@@ -1058,8 +1058,8 @@ CONTAINS
           PhaseWeight3 = FourPi / hc3 * MeshE % Width(iE) &
             * WeightsE(iNodeE) * GE(iNodeE,iE,iGE_Ep3)
 
-          Radiation(iLedger_LeptonElectron+iFamily-1) &
-            = Radiation(iLedger_LeptonElectron+iFamily-1) &
+          Radiation(iCheck_LeptonElectron+iFamily-1) &
+            = Radiation(iCheck_LeptonElectron+iFamily-1) &
                 + SpaceWeight * PhaseWeight2 * LeptonNumber(iS) &
                   * CR(iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS)
 
@@ -1085,13 +1085,13 @@ CONTAINS
             = CR(iNodeZ,iE,iX1,iX2,iX3,iCR_G3,iS) &
                 + V_d_3 * CR(iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS)
 
-          Radiation(iLedger_Energy) = Radiation(iLedger_Energy) &
+          Radiation(iCheck_Energy) = Radiation(iCheck_Energy) &
             + SpaceWeight * PhaseWeight3 * Enu
-          Radiation(iLedger_Momentum1) = Radiation(iLedger_Momentum1) &
+          Radiation(iCheck_Momentum1) = Radiation(iCheck_Momentum1) &
             + SpaceWeight * PhaseWeight3 * Fnu_d_1
-          Radiation(iLedger_Momentum2) = Radiation(iLedger_Momentum2) &
+          Radiation(iCheck_Momentum2) = Radiation(iCheck_Momentum2) &
             + SpaceWeight * PhaseWeight3 * Fnu_d_2
-          Radiation(iLedger_Momentum3) = Radiation(iLedger_Momentum3) &
+          Radiation(iCheck_Momentum3) = Radiation(iCheck_Momentum3) &
             + SpaceWeight * PhaseWeight3 * Fnu_d_3
 
         END DO
@@ -1106,15 +1106,15 @@ CONTAINS
   END SUBROUTINE ComputeConservedMatterRadiationComponents
 
 
-  REAL(DP) FUNCTION ConvertLedgerQuantity( iQuantity, Value ) RESULT( Converted )
+  REAL(DP) FUNCTION ConvertCheckQuantity( iQuantity, Value ) RESULT( Converted )
 
     INTEGER, INTENT(in) :: iQuantity
     REAL(DP), INTENT(in) :: Value
 
     Converted = Value
-    IF( iQuantity == iLedger_Energy ) Converted = Value / Erg
+    IF( iQuantity == iCheck_Energy ) Converted = Value / Erg
 
-  END FUNCTION ConvertLedgerQuantity
+  END FUNCTION ConvertCheckQuantity
 
 
   SUBROUTINE InitializeMatterExchangeAttribution &
@@ -1685,8 +1685,8 @@ CONTAINS
       iZ_B0, iZ_E0, iZ_B1, iZ_E1, &
       GE, GX, CF_BeforeStep, CR_BeforeStep, CF_AfterStep, &
       PF, AF, CR, PR, GR, DR, &
-      MatterSource_Rate, MatterIncrement_Rate, &
-      MatterSource_Rate_FinalStage, RadiationState_BeforeFinalLimiter, &
+      MatterCollisionExchange_Rate, MatterUpdate_Rate, &
+      MatterCollisionRHS_FinalStage, RadiationState_BeforeFinalLimiter, &
       IMEX_Stage_FluidState, IMEX_Stage_RadiationState )
 
     CHARACTER(*), INTENT(in) :: FileName
@@ -1730,15 +1730,15 @@ CONTAINS
     REAL(DP), INTENT(in) :: &
       DR(iZ_B1(2):iZ_E1(2), iZ_B1(3):iZ_E1(3), iZ_B1(4):iZ_E1(4),1:nDR)
     REAL(DP), INTENT(in) :: &
-      MatterSource_Rate &
+      MatterCollisionExchange_Rate &
         (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
          iZ_B1(2):iZ_E1(2), iZ_B1(3):iZ_E1(3), iZ_B1(4):iZ_E1(4))
     REAL(DP), INTENT(in) :: &
-      MatterIncrement_Rate &
+      MatterUpdate_Rate &
         (1:nQ,1:nDOFX, &
          iZ_B1(2):iZ_E1(2), iZ_B1(3):iZ_E1(3), iZ_B1(4):iZ_E1(4))
     REAL(DP), INTENT(in) :: &
-      MatterSource_Rate_FinalStage &
+      MatterCollisionRHS_FinalStage &
         (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
          iZ_B1(2):iZ_E1(2), iZ_B1(3):iZ_E1(3), iZ_B1(4):iZ_E1(4))
     REAL(DP), INTENT(in) :: &
@@ -1764,19 +1764,19 @@ CONTAINS
     REAL(DP) :: D_Nu_Element(nSpecies), I_Nu_Element(nSpecies)
     REAL(DP) :: J_Nu_Element(nSpecies), H_Nu_Element(nSpecies)
     REAL(DP) :: MeanInvMFP_Element(nC,nSpecies)
-    REAL(DP) :: EmAb_Ledger_Element(nEmAbLedger,nSpecies)
-    REAL(DP) :: NNS_Ledger_Element(nNNSLedger,nSpecies)
+    REAL(DP) :: EmAb_RateDecomposition_Element(nEmAbRateDecomposition,nSpecies)
+    REAL(DP) :: NNS_RateDecomposition_Element(nNNSRateDecomposition,nSpecies)
     REAL(DP) :: Q_Matter_Element(nQ,1+nSpecies+nC)
     REAL(DP) :: Q_Matter_PreLimiter_Element(nQ,1+nSpecies+nC)
-    REAL(DP) :: MatterSource_Rate_Element(nQ,1+nSpecies+nC)
-    REAL(DP) :: MatterSource_Rate_FinalStage_Element(nQ,1+nSpecies+nC)
-    REAL(DP) :: MatterIncrement_Rate_Element(nQ)
+    REAL(DP) :: MatterCollisionExchange_Rate_Element(nQ,1+nSpecies+nC)
+    REAL(DP) :: MatterCollisionRHS_FinalStage_Element(nQ,1+nSpecies+nC)
+    REAL(DP) :: MatterUpdate_Rate_Element(nQ)
     REAL(DP) :: MatterEquationResidual_Rate_Final_Element(nQ)
     REAL(DP) :: ConservativeProjectionMatterHeating_Rate_Final_Element
     REAL(DP) :: QH_ByProcessSpecies_Element(nC,nSpecies)
     REAL(DP) :: Q_Transport_Element(nQ,1+nSpecies)
     REAL(DP), ALLOCATABLE :: &
-      MeanInvMFP(:,:,:), EmAb_Ledger(:,:,:), NNS_Ledger(:,:,:), &
+      MeanInvMFP(:,:,:), EmAb_RateDecomposition(:,:,:), NNS_RateDecomposition(:,:,:), &
       Q_Matter(:,:,:), Q_Matter_PreLimiter(:,:,:), &
       QH_ByProcessSpecies(:,:,:), PR_BeforeFinalLimiter(:,:,:,:,:,:,:), &
       EmAb_Spectrum(:,:,:,:), EmAb_Spectrum_PreLimiter(:,:,:,:), &
@@ -1792,7 +1792,7 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: &
       ConservativeProjectionRadiationResidualRelativeFinal(:), &
       ConservativeProjectionMatterHeatingRateFinal(:)
-    REAL(DP), ALLOCATABLE :: ConservationHandoffRateFinal(:,:)
+    REAL(DP), ALLOCATABLE :: ConservationHandoffCheckRateFinal(:,:)
 
     IF( iZ_E0(3) /= iZ_B0(3) .OR. iZ_E0(4) /= iZ_B0(4) ) THEN
       ERROR STOP 'WriteStandaloneMatterDiagnostics supports only 1D runs.'
@@ -1814,11 +1814,11 @@ CONTAINS
              ConservativeProjectionRadiationResidualRelativeFinal, &
              ConservativeProjectionMatterHeatingRateFinal, &
              ConservativeProjectionStatusFinal, &
-             ConservationHandoffRateFinal )
+             ConservationHandoffCheckRateFinal )
 
     ALLOCATE( MeanInvMFP(nC,nSpecies,nX_G) )
-    ALLOCATE( EmAb_Ledger(nEmAbLedger,nSpecies,nX_G) )
-    ALLOCATE( NNS_Ledger(nNNSLedger,nSpecies,nX_G) )
+    ALLOCATE( EmAb_RateDecomposition(nEmAbRateDecomposition,nSpecies,nX_G) )
+    ALLOCATE( NNS_RateDecomposition(nNNSRateDecomposition,nSpecies,nX_G) )
     ALLOCATE( Q_Matter(nQ,1+nSpecies+nC,nX_G) )
     ALLOCATE( Q_Matter_PreLimiter(nQ,1+nSpecies+nC,nX_G) )
     ALLOCATE( QH_ByProcessSpecies(nC,nSpecies,nX_G) )
@@ -1845,9 +1845,9 @@ CONTAINS
 
     CALL ComputeMatterRHS_Collisions_OrderV &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, PF, PR, Q_Matter, &
-             NNS_Ledger_Option = NNS_Ledger, &
+             NNS_RateDecomposition_Option = NNS_RateDecomposition, &
              QH_ByProcessSpecies_Option = QH_ByProcessSpecies, &
-             EmAb_Ledger_Option = EmAb_Ledger, &
+             EmAb_RateDecomposition_Option = EmAb_RateDecomposition, &
              EmAb_Spectrum_Option = EmAb_Spectrum, &
              RadiationCollisionRHS_Option = RadiationCollisionRHS )
 
@@ -1886,13 +1886,13 @@ CONTAINS
       J_Nu_Element         = Zero
       H_Nu_Element         = Zero
       MeanInvMFP_Element   = Zero
-      EmAb_Ledger_Element  = Zero
-      NNS_Ledger_Element   = Zero
+      EmAb_RateDecomposition_Element  = Zero
+      NNS_RateDecomposition_Element   = Zero
       Q_Matter_Element     = Zero
       Q_Matter_PreLimiter_Element = Zero
-      MatterSource_Rate_Element = Zero
-      MatterSource_Rate_FinalStage_Element = Zero
-      MatterIncrement_Rate_Element = Zero
+      MatterCollisionExchange_Rate_Element = Zero
+      MatterCollisionRHS_FinalStage_Element = Zero
+      MatterUpdate_Rate_Element = Zero
       MatterEquationResidual_Rate_Final_Element = Zero
       ConservativeProjectionMatterHeating_Rate_Final_Element = Zero
       QH_ByProcessSpecies_Element = Zero
@@ -1980,13 +1980,13 @@ CONTAINS
         Q_Matter_Element = Q_Matter_Element + VolumeWeight * Q_Matter(:,:,iN_X)
         Q_Matter_PreLimiter_Element = Q_Matter_PreLimiter_Element &
           + VolumeWeight * Q_Matter_PreLimiter(:,:,iN_X)
-        MatterSource_Rate_Element = MatterSource_Rate_Element &
-          + VolumeWeight * MatterSource_Rate(:,:,iNodeX,iX1,1,1)
-        MatterSource_Rate_FinalStage_Element &
-          = MatterSource_Rate_FinalStage_Element &
-            + VolumeWeight * MatterSource_Rate_FinalStage(:,:,iNodeX,iX1,1,1)
-        MatterIncrement_Rate_Element = MatterIncrement_Rate_Element &
-          + VolumeWeight * MatterIncrement_Rate(:,iNodeX,iX1,1,1)
+        MatterCollisionExchange_Rate_Element = MatterCollisionExchange_Rate_Element &
+          + VolumeWeight * MatterCollisionExchange_Rate(:,:,iNodeX,iX1,1,1)
+        MatterCollisionRHS_FinalStage_Element &
+          = MatterCollisionRHS_FinalStage_Element &
+            + VolumeWeight * MatterCollisionRHS_FinalStage(:,:,iNodeX,iX1,1,1)
+        MatterUpdate_Rate_Element = MatterUpdate_Rate_Element &
+          + VolumeWeight * MatterUpdate_Rate(:,iNodeX,iX1,1,1)
         MatterEquationResidual_Rate_Final_Element &
           = MatterEquationResidual_Rate_Final_Element &
             + VolumeWeight * MatterEquationResidual_Rate_Final(:,iN_X)
@@ -1994,10 +1994,10 @@ CONTAINS
           = ConservativeProjectionMatterHeating_Rate_Final_Element &
             + VolumeWeight &
               * ConservativeProjectionMatterHeatingRateFinal(iN_X)
-        EmAb_Ledger_Element = EmAb_Ledger_Element &
-                              + VolumeWeight * EmAb_Ledger(:,:,iN_X)
-        NNS_Ledger_Element = NNS_Ledger_Element &
-                             + VolumeWeight * NNS_Ledger(:,:,iN_X)
+        EmAb_RateDecomposition_Element = EmAb_RateDecomposition_Element &
+                              + VolumeWeight * EmAb_RateDecomposition(:,:,iN_X)
+        NNS_RateDecomposition_Element = NNS_RateDecomposition_Element &
+                             + VolumeWeight * NNS_RateDecomposition(:,:,iN_X)
         QH_ByProcessSpecies_Element = QH_ByProcessSpecies_Element &
                                       + VolumeWeight * QH_ByProcessSpecies(:,:,iN_X)
         Q_Transport_Element = Q_Transport_Element &
@@ -2023,17 +2023,17 @@ CONTAINS
       Q_Matter_Element          = Q_Matter_Element / ElementVolume
       Q_Matter_PreLimiter_Element &
         = Q_Matter_PreLimiter_Element / ElementVolume
-      MatterSource_Rate_Element = MatterSource_Rate_Element / ElementVolume
-      MatterSource_Rate_FinalStage_Element &
-        = MatterSource_Rate_FinalStage_Element / ElementVolume
-      MatterIncrement_Rate_Element &
-        = MatterIncrement_Rate_Element / ElementVolume
+      MatterCollisionExchange_Rate_Element = MatterCollisionExchange_Rate_Element / ElementVolume
+      MatterCollisionRHS_FinalStage_Element &
+        = MatterCollisionRHS_FinalStage_Element / ElementVolume
+      MatterUpdate_Rate_Element &
+        = MatterUpdate_Rate_Element / ElementVolume
       MatterEquationResidual_Rate_Final_Element &
         = MatterEquationResidual_Rate_Final_Element / ElementVolume
       ConservativeProjectionMatterHeating_Rate_Final_Element &
         = ConservativeProjectionMatterHeating_Rate_Final_Element / ElementVolume
-      EmAb_Ledger_Element       = EmAb_Ledger_Element / ElementVolume
-      NNS_Ledger_Element        = NNS_Ledger_Element / ElementVolume
+      EmAb_RateDecomposition_Element       = EmAb_RateDecomposition_Element / ElementVolume
+      NNS_RateDecomposition_Element        = NNS_RateDecomposition_Element / ElementVolume
       QH_ByProcessSpecies_Element = QH_ByProcessSpecies_Element / ElementVolume
       Q_Transport_Element          = Q_Transport_Element / ElementVolume
       QH_Applied_Element          = QH_Applied_Element / ElementVolume
@@ -2121,14 +2121,14 @@ CONTAINS
         Q_Matter_PreLimiter_Element(iQ_H,1) &
           / ( Erg / Centimeter**3 / Second )
       WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
-        MatterSource_Rate_FinalStage_Element(iQ_H,1) &
+        MatterCollisionRHS_FinalStage_Element(iQ_H,1) &
           / ( Erg / Centimeter**3 / Second )
       WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
         QH_Applied_Element / ( Erg / Centimeter**3 / Second )
       WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
-        MatterSource_Rate_Element(iQ_H,1) / ( Erg / Centimeter**3 / Second )
+        MatterCollisionExchange_Rate_Element(iQ_H,1) / ( Erg / Centimeter**3 / Second )
       WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
-        MatterIncrement_Rate_Element(iQ_H) / ( Erg / Centimeter**3 / Second )
+        MatterUpdate_Rate_Element(iQ_H) / ( Erg / Centimeter**3 / Second )
       WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
         MatterEquationResidual_Rate_Final_Element(iQ_H) &
           / ( Erg / Centimeter**3 / Second )
@@ -2136,24 +2136,24 @@ CONTAINS
         ConservativeProjectionMatterHeating_Rate_Final_Element &
           / ( Erg / Centimeter**3 / Second )
       WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
-        ( MatterSource_Rate_FinalStage_Element(iQ_H,1) &
-            - MatterIncrement_Rate_Element(iQ_H) ) &
+        ( MatterCollisionRHS_FinalStage_Element(iQ_H,1) &
+            - MatterUpdate_Rate_Element(iQ_H) ) &
           / ( Erg / Centimeter**3 / Second )
       WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
         ( MatterEquationResidual_Rate_Final_Element(iQ_H) &
-            - MatterSource_Rate_FinalStage_Element(iQ_H,1) &
-            + MatterIncrement_Rate_Element(iQ_H) ) &
+            - MatterCollisionRHS_FinalStage_Element(iQ_H,1) &
+            + MatterUpdate_Rate_Element(iQ_H) ) &
           / ( Erg / Centimeter**3 / Second )
 
       DO iS = 1, nSpecies
         WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
-          MatterSource_Rate_Element(iQ_H,1+iS) &
+          MatterCollisionExchange_Rate_Element(iQ_H,1+iS) &
             / ( Erg / Centimeter**3 / Second )
       END DO
 
       DO iC = 1, nC
         WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
-          MatterSource_Rate_Element(iQ_H,1+nSpecies+iC) &
+          MatterCollisionExchange_Rate_Element(iQ_H,1+nSpecies+iC) &
             / ( Erg / Centimeter**3 / Second )
       END DO
 
@@ -2185,32 +2185,32 @@ CONTAINS
 
       DO iS = 1, nSpecies
         WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
-          EmAb_Ledger_Element(iEmAbLedger_NIn,iS) / ( One / Centimeter**3 / Second )
+          EmAb_RateDecomposition_Element(iEmAbRateDecomposition_NIn,iS) / ( One / Centimeter**3 / Second )
         WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
-          EmAb_Ledger_Element(iEmAbLedger_NOut,iS) / ( One / Centimeter**3 / Second )
+          EmAb_RateDecomposition_Element(iEmAbRateDecomposition_NOut,iS) / ( One / Centimeter**3 / Second )
         WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
-          EmAb_Ledger_Element(iEmAbLedger_NNet,iS) / ( One / Centimeter**3 / Second )
+          EmAb_RateDecomposition_Element(iEmAbRateDecomposition_NNet,iS) / ( One / Centimeter**3 / Second )
         WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
-          EmAb_Ledger_Element(iEmAbLedger_EIn,iS) / ( Erg / Centimeter**3 / Second )
+          EmAb_RateDecomposition_Element(iEmAbRateDecomposition_EIn,iS) / ( Erg / Centimeter**3 / Second )
         WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
-          EmAb_Ledger_Element(iEmAbLedger_EOut,iS) / ( Erg / Centimeter**3 / Second )
+          EmAb_RateDecomposition_Element(iEmAbRateDecomposition_EOut,iS) / ( Erg / Centimeter**3 / Second )
         WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
-          EmAb_Ledger_Element(iEmAbLedger_QH,iS) / ( Erg / Centimeter**3 / Second )
+          EmAb_RateDecomposition_Element(iEmAbRateDecomposition_QH,iS) / ( Erg / Centimeter**3 / Second )
       END DO
 
       DO iS = 1, nSpecies
         WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
-          NNS_Ledger_Element(iNNSLedger_NIn,iS) / ( One / Centimeter**3 / Second )
+          NNS_RateDecomposition_Element(iNNSRateDecomposition_NIn,iS) / ( One / Centimeter**3 / Second )
         WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
-          NNS_Ledger_Element(iNNSLedger_NOut,iS) / ( One / Centimeter**3 / Second )
+          NNS_RateDecomposition_Element(iNNSRateDecomposition_NOut,iS) / ( One / Centimeter**3 / Second )
         WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
-          NNS_Ledger_Element(iNNSLedger_NNet,iS) / ( One / Centimeter**3 / Second )
+          NNS_RateDecomposition_Element(iNNSRateDecomposition_NNet,iS) / ( One / Centimeter**3 / Second )
         WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
-          NNS_Ledger_Element(iNNSLedger_EIn,iS) / ( Erg / Centimeter**3 / Second )
+          NNS_RateDecomposition_Element(iNNSRateDecomposition_EIn,iS) / ( Erg / Centimeter**3 / Second )
         WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
-          NNS_Ledger_Element(iNNSLedger_EOut,iS) / ( Erg / Centimeter**3 / Second )
+          NNS_RateDecomposition_Element(iNNSRateDecomposition_EOut,iS) / ( Erg / Centimeter**3 / Second )
         WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
-          NNS_Ledger_Element(iNNSLedger_QH,iS) / ( Erg / Centimeter**3 / Second )
+          NNS_RateDecomposition_Element(iNNSRateDecomposition_QH,iS) / ( Erg / Centimeter**3 / Second )
       END DO
 
       DO iS = 1, nSpecies
@@ -2231,18 +2231,18 @@ CONTAINS
              iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, &
              EmAb_Spectrum_PreLimiter, EmAb_Spectrum )
 
-    CALL WriteTransportCollisionLedger &
+    CALL WriteTransportCollisionCheck &
            ( TRIM( FileName ) // '.transport_collision', &
              iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, PF, &
              Q_Matter, Q_Transport, RadiationCollisionRHS, &
              RadiationTransportRHS )
 
-    CALL WriteIMEXStageLedger &
+    CALL WriteIMEXStageCheck &
            ( TRIM( FileName ) // '.imex_stages', &
              TimeStep, iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
              IMEX_Stage_FluidState, IMEX_Stage_RadiationState )
 
-    CALL WriteIMEXStreamingLedger &
+    CALL WriteIMEXStreamingCheck &
            ( TRIM( FileName ) // '.imex_streaming', &
              TRIM( FileName ) // '.imex_faces', &
              iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
@@ -2255,7 +2255,7 @@ CONTAINS
              CF_BeforeStep, CR_BeforeStep, CF_AfterStep, CR, &
              IMEX_Stage_FluidState, IMEX_Stage_RadiationState )
 
-    CALL WriteSolverConvergenceLedger &
+    CALL WriteSolverConvergenceCheck &
            ( TRIM( FileName ) // '.solver_convergence', &
              iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, InnerIterationsFinal, &
              OuterIterationsFinal, FirstInnerRelativeResidual, &
@@ -2265,19 +2265,19 @@ CONTAINS
              ConservativeProjectionRadiationResidualRelativeFinal, &
              ConservativeProjectionMatterHeatingRateFinal, &
              ConservativeProjectionStatusFinal, &
-             MatterSource_Rate_FinalStage, MatterIncrement_Rate )
+             MatterCollisionRHS_FinalStage, MatterUpdate_Rate )
 
-    CALL WriteSolverConservationAudit &
-           ( TRIM( FileName ) // '.solver_conservation_audit', TimeStep, &
+    CALL WriteSolverConservationCheck &
+           ( TRIM( FileName ) // '.solver_conservation_check', TimeStep, &
              iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
              IMEX_Stage_FluidState, IMEX_Stage_RadiationState, &
              MatterEquationResidual_Rate_Final, &
              InitialRadiationLimiter_Rate_Final, &
-             ConservationHandoffRateFinal )
+             ConservationHandoffCheckRateFinal )
 
-    CALL WriteSolverConservationHandoff &
+    CALL WriteSolverConservationHandoffCheck &
            ( TRIM( FileName ) // '.solver_conservation_handoff', &
-             iZ_B0, iZ_E0, ConservationHandoffRateFinal, &
+             iZ_B0, iZ_E0, ConservationHandoffCheckRateFinal, &
              InitialRadiationLimiter_Rate_Final, &
              MatterEquationResidual_Rate_Final )
 
@@ -2290,7 +2290,7 @@ CONTAINS
              IMEX_Stage_FluidState, IMEX_Stage_RadiationState )
 
     DEALLOCATE &
-      ( MeanInvMFP, EmAb_Ledger, NNS_Ledger, Q_Matter, Q_Matter_PreLimiter, &
+      ( MeanInvMFP, EmAb_RateDecomposition, NNS_RateDecomposition, Q_Matter, Q_Matter_PreLimiter, &
         QH_ByProcessSpecies, PR_BeforeFinalLimiter, &
         EmAb_Spectrum, EmAb_Spectrum_PreLimiter, &
         RadiationCollisionRHS, RadiationTransportRHS, Q_Transport, &
@@ -2301,7 +2301,7 @@ CONTAINS
         RadiationResidualRelativeFinal, &
         ConservativeProjectionRadiationResidualRelativeFinal, &
         ConservativeProjectionMatterHeatingRateFinal, &
-        ConservativeProjectionStatusFinal, ConservationHandoffRateFinal )
+        ConservativeProjectionStatusFinal, ConservationHandoffCheckRateFinal )
 
   END SUBROUTINE WriteStandaloneMatterDiagnostics
 
@@ -2614,7 +2614,7 @@ CONTAINS
   END SUBROUTINE WriteFrozenTransientOperator
 
 
-  SUBROUTINE WriteSolverConvergenceLedger &
+  SUBROUTINE WriteSolverConvergenceCheck &
     ( FileName, iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, InnerIterationsFinal, &
       OuterIterationsFinal, FirstInnerRelativeResidual, &
       MatterEquationResidual_Rate_Final, &
@@ -2623,7 +2623,7 @@ CONTAINS
       ConservativeProjectionRadiationResidualRelativeFinal, &
       ConservativeProjectionMatterHeatingRateFinal, &
       ConservativeProjectionStatusFinal, &
-      MatterSource_Rate_FinalStage, MatterIncrement_Rate )
+      MatterCollisionRHS_FinalStage, MatterUpdate_Rate )
 
     CHARACTER(*), INTENT(in) :: FileName
     INTEGER, INTENT(in) :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
@@ -2642,11 +2642,11 @@ CONTAINS
       ConservativeProjectionMatterHeatingRateFinal(:)
     INTEGER,  INTENT(in) :: ConservativeProjectionStatusFinal(:)
     REAL(DP), INTENT(in) :: &
-      MatterSource_Rate_FinalStage &
+      MatterCollisionRHS_FinalStage &
         (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
          iZ_B1(2):iZ_E1(2), iZ_B1(3):iZ_E1(3), iZ_B1(4):iZ_E1(4))
     REAL(DP), INTENT(in) :: &
-      MatterIncrement_Rate &
+      MatterUpdate_Rate &
         (1:nQ,1:nDOFX, &
          iZ_B1(2):iZ_E1(2), iZ_B1(3):iZ_E1(3), iZ_B1(4):iZ_E1(4))
 
@@ -2681,9 +2681,9 @@ CONTAINS
       OuterDefect = MatterEquationResidual_Rate_Final(iQ_H,iN_X) &
                       / ( Erg / Centimeter**3 / Second )
       CachedSource &
-        = MatterSource_Rate_FinalStage(iQ_H,1,iNodeX,iX1,1,1) &
+        = MatterCollisionRHS_FinalStage(iQ_H,1,iNodeX,iX1,1,1) &
             / ( Erg / Centimeter**3 / Second )
-      SolverIncrement = MatterIncrement_Rate(iQ_H,iNodeX,iX1,1,1) &
+      SolverIncrement = MatterUpdate_Rate(iQ_H,iNodeX,iX1,1,1) &
                           / ( Erg / Centimeter**3 / Second )
       MeasuredDefect = CachedSource - SolverIncrement
       ClosureError = OuterDefect - MeasuredDefect
@@ -2710,14 +2710,14 @@ CONTAINS
 
     CLOSE(Unit)
 
-  END SUBROUTINE WriteSolverConvergenceLedger
+  END SUBROUTINE WriteSolverConvergenceCheck
 
 
-  SUBROUTINE WriteSolverConservationAudit &
+  SUBROUTINE WriteSolverConservationCheck &
     ( FileName, TimeStep, iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
       StageFluidState, StageRadiationState, &
       MatterEquationResidual_Rate_Final, &
-      InitialRadiationLimiter_Rate_Final, ConservationHandoffRateFinal )
+      InitialRadiationLimiter_Rate_Final, ConservationHandoffCheckRateFinal )
 
     CHARACTER(*), INTENT(in) :: FileName
     REAL(DP),     INTENT(in) :: TimeStep
@@ -2732,7 +2732,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: StageRadiationState(:,:,:,:,:,:,:,:,:)
     REAL(DP), INTENT(in) :: MatterEquationResidual_Rate_Final(:,:)
     REAL(DP), INTENT(in) :: InitialRadiationLimiter_Rate_Final(:,:)
-    REAL(DP), INTENT(in) :: ConservationHandoffRateFinal(:,:)
+    REAL(DP), INTENT(in) :: ConservationHandoffCheckRateFinal(:,:)
 
     INTEGER  :: iN_X, iNodeX, iStage, iStageCandidate, iX1, Unit
     REAL(DP) :: aII, DirectEnergy, DirectLepton
@@ -2743,7 +2743,7 @@ CONTAINS
     REAL(DP) :: RadiationEnergyA, RadiationEnergyB
     REAL(DP) :: RadiationLeptonA, RadiationLeptonB
     REAL(DP) :: AngularCoordinateMeasure, StageTimeStep, VolumeWeight
-    REAL(DP) :: Handoff(nConservationHandoff)
+    REAL(DP) :: Handoff(nConservationHandoffCheck)
 
     iStage = 0
     DO iStageCandidate = 1, SIZE( StageFluidState, 6 )
@@ -2795,7 +2795,7 @@ CONTAINS
       OuterLepton = OuterLepton + VolumeWeight &
         * MatterEquationResidual_Rate_Final(iQ_L,iN_X) * StageTimeStep
       Handoff = Handoff + VolumeWeight &
-        * ConservationHandoffRateFinal(:,iN_X) * StageTimeStep
+        * ConservationHandoffCheckRateFinal(:,iN_X) * StageTimeStep
     END DO
     END DO
 
@@ -2810,43 +2810,43 @@ CONTAINS
       ' retained_stage_minus_returned_closure'
     WRITE(Unit,'(A,1X,12(ES24.16E3,1X))') 'energy_erg', &
       DirectEnergy / Erg, &
-      Handoff(iCH_InputConversion_E) / Erg, &
-      Handoff(iCH_PrimitivePair_E) / Erg, &
-      Handoff(iCH_FinalConversion_E) / Erg, &
-      Handoff(iCH_MappedPair_E) / Erg, &
-      Handoff(iCH_ReturnedPair_E) / Erg, &
+      Handoff(iCHC_InputConversion_E) / Erg, &
+      Handoff(iCHC_PrimitivePair_E) / Erg, &
+      Handoff(iCHC_FinalConversion_E) / Erg, &
+      Handoff(iCHC_MappedPair_E) / Erg, &
+      Handoff(iCHC_ReturnedPair_E) / Erg, &
       LimiterEnergy / Erg, OuterEnergy / Erg, &
-      ( Handoff(iCH_PrimitivePair_E) + OuterEnergy ) / Erg, &
-      ( Handoff(iCH_MappedPair_E) - Handoff(iCH_PrimitivePair_E) &
-          - Handoff(iCH_InputConversion_E) &
-          - Handoff(iCH_FinalConversion_E) ) / Erg, &
-      ( Handoff(iCH_ReturnedPair_E) - Handoff(iCH_MappedPair_E) ) / Erg, &
-      ( DirectEnergy - Handoff(iCH_ReturnedPair_E) ) / Erg
+      ( Handoff(iCHC_PrimitivePair_E) + OuterEnergy ) / Erg, &
+      ( Handoff(iCHC_MappedPair_E) - Handoff(iCHC_PrimitivePair_E) &
+          - Handoff(iCHC_InputConversion_E) &
+          - Handoff(iCHC_FinalConversion_E) ) / Erg, &
+      ( Handoff(iCHC_ReturnedPair_E) - Handoff(iCHC_MappedPair_E) ) / Erg, &
+      ( DirectEnergy - Handoff(iCHC_ReturnedPair_E) ) / Erg
     WRITE(Unit,'(A,1X,12(ES24.16E3,1X))') 'lepton', &
       DirectLepton, &
-      Handoff(iCH_InputConversion_L), &
-      Handoff(iCH_PrimitivePair_L), &
-      Handoff(iCH_FinalConversion_L), &
-      Handoff(iCH_MappedPair_L), &
-      Handoff(iCH_ReturnedPair_L), &
+      Handoff(iCHC_InputConversion_L), &
+      Handoff(iCHC_PrimitivePair_L), &
+      Handoff(iCHC_FinalConversion_L), &
+      Handoff(iCHC_MappedPair_L), &
+      Handoff(iCHC_ReturnedPair_L), &
       LimiterLepton, OuterLepton, &
-      Handoff(iCH_PrimitivePair_L) + OuterLepton, &
-      Handoff(iCH_MappedPair_L) - Handoff(iCH_PrimitivePair_L) &
-        - Handoff(iCH_InputConversion_L) - Handoff(iCH_FinalConversion_L), &
-      Handoff(iCH_ReturnedPair_L) - Handoff(iCH_MappedPair_L), &
-      DirectLepton - Handoff(iCH_ReturnedPair_L)
+      Handoff(iCHC_PrimitivePair_L) + OuterLepton, &
+      Handoff(iCHC_MappedPair_L) - Handoff(iCHC_PrimitivePair_L) &
+        - Handoff(iCHC_InputConversion_L) - Handoff(iCHC_FinalConversion_L), &
+      Handoff(iCHC_ReturnedPair_L) - Handoff(iCHC_MappedPair_L), &
+      DirectLepton - Handoff(iCHC_ReturnedPair_L)
     CLOSE(Unit)
 
-  END SUBROUTINE WriteSolverConservationAudit
+  END SUBROUTINE WriteSolverConservationCheck
 
 
-  SUBROUTINE WriteSolverConservationHandoff &
-    ( FileName, iZ_B0, iZ_E0, ConservationHandoffRateFinal, &
+  SUBROUTINE WriteSolverConservationHandoffCheck &
+    ( FileName, iZ_B0, iZ_E0, ConservationHandoffCheckRateFinal, &
       InitialRadiationLimiterRateFinal, MatterEquationResidualRateFinal )
 
     CHARACTER(*), INTENT(in) :: FileName
     INTEGER, INTENT(in) :: iZ_B0(4), iZ_E0(4)
-    REAL(DP), INTENT(in) :: ConservationHandoffRateFinal(:,:)
+    REAL(DP), INTENT(in) :: ConservationHandoffCheckRateFinal(:,:)
     REAL(DP), INTENT(in) :: InitialRadiationLimiterRateFinal(:,:)
     REAL(DP), INTENT(in) :: MatterEquationResidualRateFinal(:,:)
 
@@ -2880,55 +2880,55 @@ CONTAINS
       Radius = NodeCoordinate( MeshX(1), iX1, iNodeX )
       WRITE(Unit,'(2(I0,1X),21(ES24.16E3,1X))') &
         iX1 - iZ_B0(2) + 1, iNodeX, Radius / Centimeter, &
-        ConservationHandoffRateFinal(iCH_InputConversion_L,iN_X) &
+        ConservationHandoffCheckRateFinal(iCHC_InputConversion_L,iN_X) &
           / ( One / Centimeter**3 / Second ), &
-        ConservationHandoffRateFinal(iCH_PrimitivePair_L,iN_X) &
+        ConservationHandoffCheckRateFinal(iCHC_PrimitivePair_L,iN_X) &
           / ( One / Centimeter**3 / Second ), &
-        ConservationHandoffRateFinal(iCH_FinalConversion_L,iN_X) &
+        ConservationHandoffCheckRateFinal(iCHC_FinalConversion_L,iN_X) &
           / ( One / Centimeter**3 / Second ), &
-        ConservationHandoffRateFinal(iCH_MappedPair_L,iN_X) &
+        ConservationHandoffCheckRateFinal(iCHC_MappedPair_L,iN_X) &
           / ( One / Centimeter**3 / Second ), &
-        ConservationHandoffRateFinal(iCH_ReturnedPair_L,iN_X) &
+        ConservationHandoffCheckRateFinal(iCHC_ReturnedPair_L,iN_X) &
           / ( One / Centimeter**3 / Second ), &
         InitialRadiationLimiterRateFinal(iQ_L,iN_X) &
           / ( One / Centimeter**3 / Second ), &
         MatterEquationResidualRateFinal(iQ_L,iN_X) &
           / ( One / Centimeter**3 / Second ), &
-        ( ConservationHandoffRateFinal(iCH_PrimitivePair_L,iN_X) &
+        ( ConservationHandoffCheckRateFinal(iCHC_PrimitivePair_L,iN_X) &
             + MatterEquationResidualRateFinal(iQ_L,iN_X) ) &
           / ( One / Centimeter**3 / Second ), &
-        ( ConservationHandoffRateFinal(iCH_MappedPair_L,iN_X) &
-            - ConservationHandoffRateFinal(iCH_PrimitivePair_L,iN_X) &
-            - ConservationHandoffRateFinal(iCH_InputConversion_L,iN_X) &
-            - ConservationHandoffRateFinal(iCH_FinalConversion_L,iN_X) ) &
+        ( ConservationHandoffCheckRateFinal(iCHC_MappedPair_L,iN_X) &
+            - ConservationHandoffCheckRateFinal(iCHC_PrimitivePair_L,iN_X) &
+            - ConservationHandoffCheckRateFinal(iCHC_InputConversion_L,iN_X) &
+            - ConservationHandoffCheckRateFinal(iCHC_FinalConversion_L,iN_X) ) &
           / ( One / Centimeter**3 / Second ), &
-        ( ConservationHandoffRateFinal(iCH_ReturnedPair_L,iN_X) &
-            - ConservationHandoffRateFinal(iCH_MappedPair_L,iN_X) ) &
+        ( ConservationHandoffCheckRateFinal(iCHC_ReturnedPair_L,iN_X) &
+            - ConservationHandoffCheckRateFinal(iCHC_MappedPair_L,iN_X) ) &
           / ( One / Centimeter**3 / Second ), &
-        ConservationHandoffRateFinal(iCH_InputConversion_E,iN_X) &
+        ConservationHandoffCheckRateFinal(iCHC_InputConversion_E,iN_X) &
           / ( Erg / Centimeter**3 / Second ), &
-        ConservationHandoffRateFinal(iCH_PrimitivePair_E,iN_X) &
+        ConservationHandoffCheckRateFinal(iCHC_PrimitivePair_E,iN_X) &
           / ( Erg / Centimeter**3 / Second ), &
-        ConservationHandoffRateFinal(iCH_FinalConversion_E,iN_X) &
+        ConservationHandoffCheckRateFinal(iCHC_FinalConversion_E,iN_X) &
           / ( Erg / Centimeter**3 / Second ), &
-        ConservationHandoffRateFinal(iCH_MappedPair_E,iN_X) &
+        ConservationHandoffCheckRateFinal(iCHC_MappedPair_E,iN_X) &
           / ( Erg / Centimeter**3 / Second ), &
-        ConservationHandoffRateFinal(iCH_ReturnedPair_E,iN_X) &
+        ConservationHandoffCheckRateFinal(iCHC_ReturnedPair_E,iN_X) &
           / ( Erg / Centimeter**3 / Second ), &
         InitialRadiationLimiterRateFinal(iQ_E,iN_X) &
           / ( Erg / Centimeter**3 / Second ), &
         MatterEquationResidualRateFinal(iQ_E,iN_X) &
           / ( Erg / Centimeter**3 / Second ), &
-        ( ConservationHandoffRateFinal(iCH_PrimitivePair_E,iN_X) &
+        ( ConservationHandoffCheckRateFinal(iCHC_PrimitivePair_E,iN_X) &
             + MatterEquationResidualRateFinal(iQ_E,iN_X) ) &
           / ( Erg / Centimeter**3 / Second ), &
-        ( ConservationHandoffRateFinal(iCH_MappedPair_E,iN_X) &
-            - ConservationHandoffRateFinal(iCH_PrimitivePair_E,iN_X) &
-            - ConservationHandoffRateFinal(iCH_InputConversion_E,iN_X) &
-            - ConservationHandoffRateFinal(iCH_FinalConversion_E,iN_X) ) &
+        ( ConservationHandoffCheckRateFinal(iCHC_MappedPair_E,iN_X) &
+            - ConservationHandoffCheckRateFinal(iCHC_PrimitivePair_E,iN_X) &
+            - ConservationHandoffCheckRateFinal(iCHC_InputConversion_E,iN_X) &
+            - ConservationHandoffCheckRateFinal(iCHC_FinalConversion_E,iN_X) ) &
           / ( Erg / Centimeter**3 / Second ), &
-        ( ConservationHandoffRateFinal(iCH_ReturnedPair_E,iN_X) &
-            - ConservationHandoffRateFinal(iCH_MappedPair_E,iN_X) ) &
+        ( ConservationHandoffCheckRateFinal(iCHC_ReturnedPair_E,iN_X) &
+            - ConservationHandoffCheckRateFinal(iCHC_MappedPair_E,iN_X) ) &
           / ( Erg / Centimeter**3 / Second )
 
     END DO
@@ -2936,10 +2936,10 @@ CONTAINS
 
     CLOSE(Unit)
 
-  END SUBROUTINE WriteSolverConservationHandoff
+  END SUBROUTINE WriteSolverConservationHandoffCheck
 
 
-  SUBROUTINE WriteIMEXStageLedger &
+  SUBROUTINE WriteIMEXStageCheck &
     ( FileName, TimeStep, iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
       StageFluidState, StageRadiationState )
 
@@ -3139,10 +3139,10 @@ CONTAINS
     CLOSE(Unit)
     DEALLOCATE( PF_Stage, AF_Stage, PR_Stage, Q_Stage )
 
-  END SUBROUTINE WriteIMEXStageLedger
+  END SUBROUTINE WriteIMEXStageCheck
 
 
-  SUBROUTINE WriteIMEXStreamingLedger &
+  SUBROUTINE WriteIMEXStreamingCheck &
     ( FileName, FaceFileName, iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
       MeanInvMFP, DnuMax, &
       StageFluidState, StageRadiationState )
@@ -3468,7 +3468,7 @@ CONTAINS
         MeanInvMFP_Element, ProperWidth_Element, &
         E_N, D_N, T_N, Y_N, DnuEq )
 
-  END SUBROUTINE WriteIMEXStreamingLedger
+  END SUBROUTINE WriteIMEXStreamingCheck
 
 
   SUBROUTINE ComputeRadialFaceDiagnostics &
@@ -4846,7 +4846,7 @@ CONTAINS
   END SUBROUTINE ComputeTransportEquivalentMatterRHS
 
 
-  SUBROUTINE WriteTransportCollisionLedger &
+  SUBROUTINE WriteTransportCollisionCheck &
     ( FileName, iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, PF, &
       Q_Matter, Q_Transport, RadiationCollisionRHS, RadiationTransportRHS )
 
@@ -4986,7 +4986,7 @@ CONTAINS
 
     CLOSE(UnitSpectrum)
 
-  END SUBROUTINE WriteTransportCollisionLedger
+  END SUBROUTINE WriteTransportCollisionCheck
 
 
   SUBROUTINE WriteHeader( Unit )

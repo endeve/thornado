@@ -30,7 +30,7 @@ MODULE TwoMoment_TimeSteppingModule
     uDR
 #if defined( TWOMOMENT_ORDER_V )
   USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
-    nQ, nC, nLeptonFamilies, nLeptonFlavorAudit
+    nQ, nC, nLeptonFamilies, nLeptonFlavorCheck
 #endif
   USE TwoMoment_TimersModule, ONLY: &
     TimersStart, &
@@ -104,9 +104,9 @@ MODULE TwoMoment_TimeSteppingModule
       ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt, GE, GX, U_F, dU_F, U_R, dU_R, &
         AccumulateMatterCoupling_Mask, uDR_Option, MatterCoupling_Mask_Option &
 #if defined( TWOMOMENT_ORDER_V )
-        , MatterSource_Rate_Option, MatterIncrement_Rate_Option, &
-          MatterSource_Weight_Option, MatterSource_Rate_Unweighted_Option, &
-          LeptonFlavorAudit_Rate_Option &
+        , MatterCollisionExchange_Rate_Option, MatterUpdate_Rate_Option, &
+          IMEX_ImplicitWeight_Option, MatterCollisionRHS_Option, &
+          LeptonFlavorCheck_Rate_Option &
 #endif
         )
       USE KindModule           , ONLY: DP
@@ -117,7 +117,7 @@ MODULE TwoMoment_TimeSteppingModule
       USE RadiationFieldsModule, ONLY: nCR, nSpecies, nDR
 #if defined( TWOMOMENT_ORDER_V )
       USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
-        nQ, nC, nLeptonFamilies, nLeptonFlavorAudit
+        nQ, nC, nLeptonFamilies, nLeptonFlavorCheck
 #endif
       INTEGER,  INTENT(in)    :: &
         iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
@@ -176,7 +176,7 @@ MODULE TwoMoment_TimeSteppingModule
              iZ_B1(4):iZ_E1(4))
 #if defined( TWOMOMENT_ORDER_V )
       REAL(DP), INTENT(inout), OPTIONAL :: &
-        MatterSource_Rate_Option &
+        MatterCollisionExchange_Rate_Option &
             (1:nQ, &
              1:1+nSpecies+nC, &
              1:nDOFX, &
@@ -184,15 +184,15 @@ MODULE TwoMoment_TimeSteppingModule
              iZ_B1(3):iZ_E1(3), &
              iZ_B1(4):iZ_E1(4))
       REAL(DP), INTENT(inout), OPTIONAL :: &
-        MatterIncrement_Rate_Option &
+        MatterUpdate_Rate_Option &
             (1:nQ, &
              1:nDOFX, &
              iZ_B1(2):iZ_E1(2), &
              iZ_B1(3):iZ_E1(3), &
              iZ_B1(4):iZ_E1(4))
-      REAL(DP), INTENT(in), OPTIONAL :: MatterSource_Weight_Option
+      REAL(DP), INTENT(in), OPTIONAL :: IMEX_ImplicitWeight_Option
       REAL(DP), INTENT(out), OPTIONAL :: &
-        MatterSource_Rate_Unweighted_Option &
+        MatterCollisionRHS_Option &
             (1:nQ, &
              1:1+nSpecies+nC, &
              1:nDOFX, &
@@ -200,8 +200,8 @@ MODULE TwoMoment_TimeSteppingModule
              iZ_B1(3):iZ_E1(3), &
              iZ_B1(4):iZ_E1(4))
       REAL(DP), INTENT(out), OPTIONAL :: &
-        LeptonFlavorAudit_Rate_Option &
-            (1:nLeptonFamilies,1:nLeptonFlavorAudit,1:nDOFX, &
+        LeptonFlavorCheck_Rate_Option &
+            (1:nLeptonFamilies,1:nLeptonFlavorCheck,1:nDOFX, &
              iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4))
 #endif
     END SUBROUTINE ImplicitIncrement
@@ -254,15 +254,15 @@ CONTAINS
   SUBROUTINE Update_IMEX_RK &
     ( dt, GE, GX, U, M, ComputeIncrement_TwoMoment_Implicit, SolveGravity &
 #if defined( TWOMOMENT_ORDER_V )
-      , MatterSource_Rate_Option, MatterIncrement_Rate_Option, &
-        MatterSource_Rate_FinalStage_Option, &
+      , MatterCollisionExchange_Rate_Option, MatterUpdate_Rate_Option, &
+        MatterCollisionRHS_FinalStage_Option, &
         RadiationState_BeforeFinalLimiter_Option, &
         IMEX_Stage_FluidState_Option, IMEX_Stage_RadiationState_Option, &
         IMEX_Stage_FluidImplicitRate_Option, &
         IMEX_Stage_FluidExplicitRate_Option, &
         IMEX_Stage_RadiationImplicitRate_Option, &
         IMEX_Stage_RadiationExplicitRate_Option, &
-        IMEX_Stage_LeptonFlavorAudit_Rate_Option, &
+        IMEX_Stage_LeptonFlavorCheck_Rate_Option, &
         UpdateTallies_Option, OffGridFluidIncrement_Option, &
         OffGridRadiationIncrement_Option, &
         OffGridRadiationLeptonFlavorIncrement_Option, &
@@ -302,23 +302,26 @@ CONTAINS
 #if defined( TWOMOMENT_ORDER_V )
     PROCEDURE(ComputeIncrement_TwoMoment_Explicit), OPTIONAL :: &
       ComputeIncrement_TwoMoment_Explicit_Option
+    ! Stage-weighted collision exchange over the completed IMEX timestep.
     REAL(DP), INTENT(inout), OPTIONAL :: &
-      MatterSource_Rate_Option &
+      MatterCollisionExchange_Rate_Option &
         (1:nQ, &
          1:1+nSpecies+nC, &
          1:nDOFX, &
          iX_B1(1):iX_E1(1), &
          iX_B1(2):iX_E1(2), &
          iX_B1(3):iX_E1(3))
+    ! Stage-weighted complete matter update returned by the implicit calls.
     REAL(DP), INTENT(inout), OPTIONAL :: &
-      MatterIncrement_Rate_Option &
+      MatterUpdate_Rate_Option &
         (1:nQ, &
          1:nDOFX, &
          iX_B1(1):iX_E1(1), &
          iX_B1(2):iX_E1(2), &
          iX_B1(3):iX_E1(3))
+    ! Unweighted collision RHS evaluated in the final implicit stage.
     REAL(DP), INTENT(out), OPTIONAL :: &
-      MatterSource_Rate_FinalStage_Option &
+      MatterCollisionRHS_FinalStage_Option &
         (1:nQ, &
          1:1+nSpecies+nC, &
          1:nDOFX, &
@@ -346,7 +349,7 @@ CONTAINS
     REAL(DP), INTENT(inout), OPTIONAL :: &
       IMEX_Stage_RadiationExplicitRate_Option(:,:,:,:,:,:,:,:)
     REAL(DP), INTENT(out), OPTIONAL :: &
-      IMEX_Stage_LeptonFlavorAudit_Rate_Option(:,:,:,:,:,:,:)
+      IMEX_Stage_LeptonFlavorCheck_Rate_Option(:,:,:,:,:,:,:)
     LOGICAL, INTENT(in), OPTIONAL :: UpdateTallies_Option
     REAL(DP), INTENT(out), OPTIONAL :: &
       OffGridFluidIncrement_Option(1:nCF)
@@ -363,7 +366,7 @@ CONTAINS
     REAL(DP) :: dM_PL(nCR)
     LOGICAL  :: FinalAssembly
 #if defined( TWOMOMENT_ORDER_V )
-    LOGICAL :: AccumulateMatterSources, CaptureIMEXStages, UpdateTallies
+    LOGICAL :: AccumulateMatterDiagnostics, CaptureIMEXStages, UpdateTallies
 #endif
 
     CALL TimersStart( Timer_IMEX )
@@ -374,7 +377,7 @@ CONTAINS
     dM_PL = Zero
 #if defined( TWOMOMENT_ORDER_V )
     FinalAssembly = HasFinalAssembly_IMEX_RK()
-    AccumulateMatterSources = .FALSE.
+    AccumulateMatterDiagnostics = .FALSE.
     CaptureIMEXStages &
       =      PRESENT( IMEX_Stage_FluidState_Option ) &
         .OR. PRESENT( IMEX_Stage_RadiationState_Option )
@@ -396,27 +399,27 @@ CONTAINS
 #endif
 
 #if defined( TWOMOMENT_ORDER_V )
-    IF( PRESENT( MatterSource_Rate_Option ) )THEN
+    IF( PRESENT( MatterCollisionExchange_Rate_Option ) )THEN
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET ENTER DATA MAP( alloc: MatterSource_Rate_Option )
+    !$OMP TARGET ENTER DATA MAP( alloc: MatterCollisionExchange_Rate_Option )
 #elif defined( THORNADO_OACC   )
-    !$ACC ENTER DATA CREATE( MatterSource_Rate_Option )
+    !$ACC ENTER DATA CREATE( MatterCollisionExchange_Rate_Option )
 #endif
     END IF
 
-    IF( PRESENT( MatterIncrement_Rate_Option ) )THEN
+    IF( PRESENT( MatterUpdate_Rate_Option ) )THEN
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET ENTER DATA MAP( alloc: MatterIncrement_Rate_Option )
+    !$OMP TARGET ENTER DATA MAP( alloc: MatterUpdate_Rate_Option )
 #elif defined( THORNADO_OACC   )
-    !$ACC ENTER DATA CREATE( MatterIncrement_Rate_Option )
+    !$ACC ENTER DATA CREATE( MatterUpdate_Rate_Option )
 #endif
     END IF
 
-    IF( PRESENT( MatterSource_Rate_FinalStage_Option ) )THEN
+    IF( PRESENT( MatterCollisionRHS_FinalStage_Option ) )THEN
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET ENTER DATA MAP( alloc: MatterSource_Rate_FinalStage_Option )
+    !$OMP TARGET ENTER DATA MAP( alloc: MatterCollisionRHS_FinalStage_Option )
 #elif defined( THORNADO_OACC   )
-    !$ACC ENTER DATA CREATE( MatterSource_Rate_FinalStage_Option )
+    !$ACC ENTER DATA CREATE( MatterCollisionRHS_FinalStage_Option )
 #endif
     END IF
 
@@ -477,12 +480,12 @@ CONTAINS
 #endif
     END IF
 
-    IF( PRESENT( IMEX_Stage_LeptonFlavorAudit_Rate_Option ) )THEN
+    IF( PRESENT( IMEX_Stage_LeptonFlavorCheck_Rate_Option ) )THEN
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: IMEX_Stage_LeptonFlavorAudit_Rate_Option )
+    !$OMP MAP( alloc: IMEX_Stage_LeptonFlavorCheck_Rate_Option )
 #elif defined( THORNADO_OACC   )
-    !$ACC ENTER DATA CREATE( IMEX_Stage_LeptonFlavorAudit_Rate_Option )
+    !$ACC ENTER DATA CREATE( IMEX_Stage_LeptonFlavorCheck_Rate_Option )
 #endif
     END IF
 #endif
@@ -602,29 +605,29 @@ CONTAINS
 
 #if defined( TWOMOMENT_ORDER_V )
         IF(      w_IM(iS) .NE. Zero &
-            .AND. (      PRESENT( MatterSource_Rate_Option ) &
-                    .OR. PRESENT( MatterIncrement_Rate_Option ) &
-                    .OR. PRESENT( MatterSource_Rate_FinalStage_Option ) &
+            .AND. (      PRESENT( MatterCollisionExchange_Rate_Option ) &
+                    .OR. PRESENT( MatterUpdate_Rate_Option ) &
+                    .OR. PRESENT( MatterCollisionRHS_FinalStage_Option ) &
                     .OR. PRESENT( &
-                          IMEX_Stage_LeptonFlavorAudit_Rate_Option ) ) )THEN
+                          IMEX_Stage_LeptonFlavorCheck_Rate_Option ) ) )THEN
 
-          IF( PRESENT( IMEX_Stage_LeptonFlavorAudit_Rate_Option ) )THEN
+          IF( PRESENT( IMEX_Stage_LeptonFlavorCheck_Rate_Option ) )THEN
 
             IF(      iS == nStages &
-                .AND. PRESENT( MatterSource_Rate_FinalStage_Option ) )THEN
+                .AND. PRESENT( MatterCollisionRHS_FinalStage_Option ) )THEN
 
               CALL ComputeIncrement_TwoMoment_Implicit &
                      ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, &
                        Ui, StageData(iS) % dU_IM, Mi, StageData(iS) % dM_IM, &
-                       AccumulateMatterCoupling_Mask = AccumulateMatterSources, &
+                       AccumulateMatterCoupling_Mask = AccumulateMatterDiagnostics, &
                        uDR_Option = uDR, &
-                       MatterSource_Rate_Option = MatterSource_Rate_Option, &
-                       MatterIncrement_Rate_Option = MatterIncrement_Rate_Option, &
-                       MatterSource_Weight_Option = w_IM(iS), &
-                       MatterSource_Rate_Unweighted_Option &
-                         = MatterSource_Rate_FinalStage_Option, &
-                       LeptonFlavorAudit_Rate_Option &
-                         = IMEX_Stage_LeptonFlavorAudit_Rate_Option &
+                       MatterCollisionExchange_Rate_Option = MatterCollisionExchange_Rate_Option, &
+                       MatterUpdate_Rate_Option = MatterUpdate_Rate_Option, &
+                       IMEX_ImplicitWeight_Option = w_IM(iS), &
+                       MatterCollisionRHS_Option &
+                         = MatterCollisionRHS_FinalStage_Option, &
+                       LeptonFlavorCheck_Rate_Option &
+                         = IMEX_Stage_LeptonFlavorCheck_Rate_Option &
                              (:,:,:,:,:,:,iS) )
 
             ELSE
@@ -632,13 +635,13 @@ CONTAINS
               CALL ComputeIncrement_TwoMoment_Implicit &
                      ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, &
                        Ui, StageData(iS) % dU_IM, Mi, StageData(iS) % dM_IM, &
-                       AccumulateMatterCoupling_Mask = AccumulateMatterSources, &
+                       AccumulateMatterCoupling_Mask = AccumulateMatterDiagnostics, &
                        uDR_Option = uDR, &
-                       MatterSource_Rate_Option = MatterSource_Rate_Option, &
-                       MatterIncrement_Rate_Option = MatterIncrement_Rate_Option, &
-                       MatterSource_Weight_Option = w_IM(iS), &
-                       LeptonFlavorAudit_Rate_Option &
-                         = IMEX_Stage_LeptonFlavorAudit_Rate_Option &
+                       MatterCollisionExchange_Rate_Option = MatterCollisionExchange_Rate_Option, &
+                       MatterUpdate_Rate_Option = MatterUpdate_Rate_Option, &
+                       IMEX_ImplicitWeight_Option = w_IM(iS), &
+                       LeptonFlavorCheck_Rate_Option &
+                         = IMEX_Stage_LeptonFlavorCheck_Rate_Option &
                              (:,:,:,:,:,:,iS) )
 
             END IF
@@ -646,35 +649,35 @@ CONTAINS
           ELSE
 
             IF(      iS == nStages &
-                .AND. PRESENT( MatterSource_Rate_FinalStage_Option ) )THEN
+                .AND. PRESENT( MatterCollisionRHS_FinalStage_Option ) )THEN
 
               CALL ComputeIncrement_TwoMoment_Implicit &
                      ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, &
                        Ui, StageData(iS) % dU_IM, Mi, StageData(iS) % dM_IM, &
-                       AccumulateMatterCoupling_Mask = AccumulateMatterSources, &
+                       AccumulateMatterCoupling_Mask = AccumulateMatterDiagnostics, &
                        uDR_Option = uDR, &
-                       MatterSource_Rate_Option = MatterSource_Rate_Option, &
-                       MatterIncrement_Rate_Option = MatterIncrement_Rate_Option, &
-                       MatterSource_Weight_Option = w_IM(iS), &
-                       MatterSource_Rate_Unweighted_Option &
-                         = MatterSource_Rate_FinalStage_Option )
+                       MatterCollisionExchange_Rate_Option = MatterCollisionExchange_Rate_Option, &
+                       MatterUpdate_Rate_Option = MatterUpdate_Rate_Option, &
+                       IMEX_ImplicitWeight_Option = w_IM(iS), &
+                       MatterCollisionRHS_Option &
+                         = MatterCollisionRHS_FinalStage_Option )
 
             ELSE
 
               CALL ComputeIncrement_TwoMoment_Implicit &
                      ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, dt * a_IM(iS,iS), GE, GX, &
                        Ui, StageData(iS) % dU_IM, Mi, StageData(iS) % dM_IM, &
-                       AccumulateMatterCoupling_Mask = AccumulateMatterSources, &
+                       AccumulateMatterCoupling_Mask = AccumulateMatterDiagnostics, &
                        uDR_Option = uDR, &
-                       MatterSource_Rate_Option = MatterSource_Rate_Option, &
-                       MatterIncrement_Rate_Option = MatterIncrement_Rate_Option, &
-                       MatterSource_Weight_Option = w_IM(iS) )
+                       MatterCollisionExchange_Rate_Option = MatterCollisionExchange_Rate_Option, &
+                       MatterUpdate_Rate_Option = MatterUpdate_Rate_Option, &
+                       IMEX_ImplicitWeight_Option = w_IM(iS) )
 
             END IF
 
           END IF
 
-          AccumulateMatterSources = .TRUE.
+          AccumulateMatterDiagnostics = .TRUE.
 
         ELSE
 #endif
@@ -961,27 +964,27 @@ CONTAINS
 #endif
 
 #if defined( TWOMOMENT_ORDER_V )
-    IF( PRESENT( MatterSource_Rate_Option ) )THEN
+    IF( PRESENT( MatterCollisionExchange_Rate_Option ) )THEN
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET EXIT DATA MAP( from: MatterSource_Rate_Option )
+    !$OMP TARGET EXIT DATA MAP( from: MatterCollisionExchange_Rate_Option )
 #elif defined( THORNADO_OACC   )
-    !$ACC EXIT DATA COPYOUT( MatterSource_Rate_Option )
+    !$ACC EXIT DATA COPYOUT( MatterCollisionExchange_Rate_Option )
 #endif
     END IF
 
-    IF( PRESENT( MatterIncrement_Rate_Option ) )THEN
+    IF( PRESENT( MatterUpdate_Rate_Option ) )THEN
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET EXIT DATA MAP( from: MatterIncrement_Rate_Option )
+    !$OMP TARGET EXIT DATA MAP( from: MatterUpdate_Rate_Option )
 #elif defined( THORNADO_OACC   )
-    !$ACC EXIT DATA COPYOUT( MatterIncrement_Rate_Option )
+    !$ACC EXIT DATA COPYOUT( MatterUpdate_Rate_Option )
 #endif
     END IF
 
-    IF( PRESENT( MatterSource_Rate_FinalStage_Option ) )THEN
+    IF( PRESENT( MatterCollisionRHS_FinalStage_Option ) )THEN
 #if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET EXIT DATA MAP( from: MatterSource_Rate_FinalStage_Option )
+    !$OMP TARGET EXIT DATA MAP( from: MatterCollisionRHS_FinalStage_Option )
 #elif defined( THORNADO_OACC   )
-    !$ACC EXIT DATA COPYOUT( MatterSource_Rate_FinalStage_Option )
+    !$ACC EXIT DATA COPYOUT( MatterCollisionRHS_FinalStage_Option )
 #endif
     END IF
 
@@ -1041,12 +1044,12 @@ CONTAINS
 #endif
     END IF
 
-    IF( PRESENT( IMEX_Stage_LeptonFlavorAudit_Rate_Option ) )THEN
+    IF( PRESENT( IMEX_Stage_LeptonFlavorCheck_Rate_Option ) )THEN
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( from: IMEX_Stage_LeptonFlavorAudit_Rate_Option )
+    !$OMP MAP( from: IMEX_Stage_LeptonFlavorCheck_Rate_Option )
 #elif defined( THORNADO_OACC   )
-    !$ACC EXIT DATA COPYOUT( IMEX_Stage_LeptonFlavorAudit_Rate_Option )
+    !$ACC EXIT DATA COPYOUT( IMEX_Stage_LeptonFlavorCheck_Rate_Option )
 #endif
     END IF
 #endif

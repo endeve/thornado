@@ -53,11 +53,11 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     ComputeOpacities_Packed, &
     ComputeRates_Packed, &
     nQ, nC, &
-    nLeptonFamilies, nLeptonFlavorAudit, &
-    iLFA_InputConversion, iLFA_EntryProjection, &
-    iLFA_CollisionSource, iLFA_RawMap, &
-    iLFA_MapProjection, iLFA_FixedPointResidual, &
-    iLFA_EquationResidual, &
+    nLeptonFamilies, nLeptonFlavorCheck, &
+    iLFC_InputConversion, iLFC_EntryProjection, &
+    iLFC_CollisionSource, iLFC_RawMap, &
+    iLFC_MapProjection, iLFC_FixedPointResidual, &
+    iLFC_EquationResidual, &
     iQ_L, iQ_E, iQ_H, iQ_M1, iQ_M2, iQ_M3
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit, &
@@ -121,30 +121,30 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   PUBLIC :: ComputeTransportOpacityFromConserved_OrderV
   PUBLIC :: ComputeIncrement_TwoMoment_Explicit_AP
   PUBLIC :: nQ, nC
-  PUBLIC :: nLeptonFamilies, nLeptonFlavorAudit
-  PUBLIC :: iLFA_InputConversion, iLFA_EntryProjection
-  PUBLIC :: iLFA_CollisionSource, iLFA_RawMap
-  PUBLIC :: iLFA_MapProjection, iLFA_FixedPointResidual
-  PUBLIC :: iLFA_EquationResidual
-  PUBLIC :: nConservationHandoff
-  PUBLIC :: iCH_InputConversion_L, iCH_PrimitivePair_L
-  PUBLIC :: iCH_FinalConversion_L, iCH_MappedPair_L, iCH_ReturnedPair_L
-  PUBLIC :: iCH_InputConversion_E, iCH_PrimitivePair_E
-  PUBLIC :: iCH_FinalConversion_E, iCH_MappedPair_E, iCH_ReturnedPair_E
+  PUBLIC :: nLeptonFamilies, nLeptonFlavorCheck
+  PUBLIC :: iLFC_InputConversion, iLFC_EntryProjection
+  PUBLIC :: iLFC_CollisionSource, iLFC_RawMap
+  PUBLIC :: iLFC_MapProjection, iLFC_FixedPointResidual
+  PUBLIC :: iLFC_EquationResidual
+  PUBLIC :: nConservationHandoffCheck
+  PUBLIC :: iCHC_InputConversion_L, iCHC_PrimitivePair_L
+  PUBLIC :: iCHC_FinalConversion_L, iCHC_MappedPair_L, iCHC_ReturnedPair_L
+  PUBLIC :: iCHC_InputConversion_E, iCHC_PrimitivePair_E
+  PUBLIC :: iCHC_FinalConversion_E, iCHC_MappedPair_E, iCHC_ReturnedPair_E
 #endif
 
 #if defined( TWOMOMENT_ORDER_V )
-  INTEGER, PARAMETER :: iCH_InputConversion_L = 1
-  INTEGER, PARAMETER :: iCH_PrimitivePair_L   = 2
-  INTEGER, PARAMETER :: iCH_FinalConversion_L = 3
-  INTEGER, PARAMETER :: iCH_MappedPair_L      = 4
-  INTEGER, PARAMETER :: iCH_ReturnedPair_L    = 5
-  INTEGER, PARAMETER :: iCH_InputConversion_E = 6
-  INTEGER, PARAMETER :: iCH_PrimitivePair_E   = 7
-  INTEGER, PARAMETER :: iCH_FinalConversion_E = 8
-  INTEGER, PARAMETER :: iCH_MappedPair_E      = 9
-  INTEGER, PARAMETER :: iCH_ReturnedPair_E    = 10
-  INTEGER, PARAMETER :: nConservationHandoff  = 10
+  INTEGER, PARAMETER :: iCHC_InputConversion_L = 1
+  INTEGER, PARAMETER :: iCHC_PrimitivePair_L   = 2
+  INTEGER, PARAMETER :: iCHC_FinalConversion_L = 3
+  INTEGER, PARAMETER :: iCHC_MappedPair_L      = 4
+  INTEGER, PARAMETER :: iCHC_ReturnedPair_L    = 5
+  INTEGER, PARAMETER :: iCHC_InputConversion_E = 6
+  INTEGER, PARAMETER :: iCHC_PrimitivePair_E   = 7
+  INTEGER, PARAMETER :: iCHC_FinalConversion_E = 8
+  INTEGER, PARAMETER :: iCHC_MappedPair_E      = 9
+  INTEGER, PARAMETER :: iCHC_ReturnedPair_E    = 10
+  INTEGER, PARAMETER :: nConservationHandoffCheck  = 10
 #endif
 
   INTEGER               :: nE_G, nX_G
@@ -180,8 +180,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     ConservativeProjectionRadiationResidual_Relative_Final(:)
   REAL(DP), ALLOCATABLE :: ConservativeProjectionMatterHeating_Rate_Final(:)
   INTEGER,  ALLOCATABLE :: ConservativeProjectionStatus_Final(:)
-  REAL(DP), ALLOCATABLE :: ConservationHandoff_Rate_Final(:,:)
-  REAL(DP), ALLOCATABLE :: LeptonFlavorAudit_Rate_Final(:,:,:)
+  REAL(DP), ALLOCATABLE :: ConservationHandoffCheck_Rate_Final(:,:)
+  REAL(DP), ALLOCATABLE :: LeptonFlavorCheck_Rate_Final(:,:,:)
 #endif
 
   LOGICAL :: RetainSolverConvergenceDiagnostics = .FALSE.
@@ -197,8 +197,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   REAL(DP), ALLOCATABLE :: &
     ConservativeProjectionMatterHeating_Rate_Final_Last(:)
   INTEGER,  ALLOCATABLE :: ConservativeProjectionStatus_Final_Last(:)
-  REAL(DP), ALLOCATABLE :: ConservationHandoff_Rate_Final_Last(:,:)
-  REAL(DP), ALLOCATABLE :: LeptonFlavorAudit_Rate_Final_Last(:,:,:)
+  REAL(DP), ALLOCATABLE :: ConservationHandoffCheck_Rate_Final_Last(:,:)
+  REAL(DP), ALLOCATABLE :: LeptonFlavorCheck_Rate_Final_Last(:,:,:)
 #endif
 
   LOGICAL, PARAMETER :: ReportConvergenceData = .FALSE.
@@ -224,8 +224,8 @@ CONTAINS
       DEALLOCATE( ConservativeProjectionRadiationResidual_Relative_Final_Last )
       DEALLOCATE( ConservativeProjectionMatterHeating_Rate_Final_Last )
       DEALLOCATE( ConservativeProjectionStatus_Final_Last )
-      DEALLOCATE( ConservationHandoff_Rate_Final_Last )
-      DEALLOCATE( LeptonFlavorAudit_Rate_Final_Last )
+      DEALLOCATE( ConservationHandoffCheck_Rate_Final_Last )
+      DEALLOCATE( LeptonFlavorCheck_Rate_Final_Last )
 #endif
     END IF
 
@@ -244,7 +244,7 @@ CONTAINS
         ConservativeProjectionRadiationResidualRelativeFinal, &
         ConservativeProjectionMatterHeatingRateFinal, &
         ConservativeProjectionStatusFinal, &
-        ConservationHandoffRateFinal, LeptonFlavorAuditRateFinal &
+        ConservationHandoffCheckRateFinal, LeptonFlavorCheckRateFinal &
 #endif
       )
 
@@ -260,9 +260,9 @@ CONTAINS
     REAL(DP), ALLOCATABLE, INTENT(out) :: &
       ConservativeProjectionMatterHeatingRateFinal(:)
     INTEGER,  ALLOCATABLE, INTENT(out) :: ConservativeProjectionStatusFinal(:)
-    REAL(DP), ALLOCATABLE, INTENT(out) :: ConservationHandoffRateFinal(:,:)
+    REAL(DP), ALLOCATABLE, INTENT(out) :: ConservationHandoffCheckRateFinal(:,:)
     REAL(DP), ALLOCATABLE, INTENT(out), OPTIONAL :: &
-      LeptonFlavorAuditRateFinal(:,:,:)
+      LeptonFlavorCheckRateFinal(:,:,:)
 #endif
 
     IF( .NOT. ALLOCATED( nIterations_Inner_Final_Last ) ) &
@@ -287,11 +287,11 @@ CONTAINS
               MOLD = ConservativeProjectionMatterHeating_Rate_Final_Last )
     ALLOCATE( ConservativeProjectionStatusFinal, &
               MOLD = ConservativeProjectionStatus_Final_Last )
-    ALLOCATE( ConservationHandoffRateFinal, &
-              MOLD = ConservationHandoff_Rate_Final_Last )
-    IF( PRESENT( LeptonFlavorAuditRateFinal ) ) &
-      ALLOCATE( LeptonFlavorAuditRateFinal, &
-                MOLD = LeptonFlavorAudit_Rate_Final_Last )
+    ALLOCATE( ConservationHandoffCheckRateFinal, &
+              MOLD = ConservationHandoffCheck_Rate_Final_Last )
+    IF( PRESENT( LeptonFlavorCheckRateFinal ) ) &
+      ALLOCATE( LeptonFlavorCheckRateFinal, &
+                MOLD = LeptonFlavorCheck_Rate_Final_Last )
 #endif
 
     InnerIterationsFinal       = nIterations_Inner_Final_Last
@@ -306,9 +306,9 @@ CONTAINS
     ConservativeProjectionMatterHeatingRateFinal &
       = ConservativeProjectionMatterHeating_Rate_Final_Last
     ConservativeProjectionStatusFinal = ConservativeProjectionStatus_Final_Last
-    ConservationHandoffRateFinal = ConservationHandoff_Rate_Final_Last
-    IF( PRESENT( LeptonFlavorAuditRateFinal ) ) &
-      LeptonFlavorAuditRateFinal = LeptonFlavorAudit_Rate_Final_Last
+    ConservationHandoffCheckRateFinal = ConservationHandoffCheck_Rate_Final_Last
+    IF( PRESENT( LeptonFlavorCheckRateFinal ) ) &
+      LeptonFlavorCheckRateFinal = LeptonFlavorCheck_Rate_Final_Last
 #endif
 
   END SUBROUTINE GetNeutrinoMatterSolverConvergenceDiagnostics
@@ -573,8 +573,8 @@ CONTAINS
 
   SUBROUTINE ComputeMatterRHS_Collisions_OrderV &
     ( iZ_B0_Input, iZ_E0_Input, iZ_B1_Input, iZ_E1_Input, &
-      GE, GX, PF, PR, Q_Matter, NNS_Ledger_Option, &
-      QH_ByProcessSpecies_Option, EmAb_Ledger_Option, &
+      GE, GX, PF, PR, Q_Matter, NNS_RateDecomposition_Option, &
+      QH_ByProcessSpecies_Option, EmAb_RateDecomposition_Option, &
       EmAb_Spectrum_Option, RadiationCollisionRHS_Option )
 
     INTEGER, INTENT(in) :: &
@@ -598,9 +598,9 @@ CONTAINS
          iZ_B1_Input(3):iZ_E1_Input(3), &
          iZ_B1_Input(4):iZ_E1_Input(4),1:nPR,1:nSpecies)
     REAL(DP), INTENT(out) :: Q_Matter(:,:,:)
-    REAL(DP), INTENT(out), OPTIONAL :: NNS_Ledger_Option(:,:,:)
+    REAL(DP), INTENT(out), OPTIONAL :: NNS_RateDecomposition_Option(:,:,:)
     REAL(DP), INTENT(out), OPTIONAL :: QH_ByProcessSpecies_Option(:,:,:)
-    REAL(DP), INTENT(out), OPTIONAL :: EmAb_Ledger_Option(:,:,:)
+    REAL(DP), INTENT(out), OPTIONAL :: EmAb_RateDecomposition_Option(:,:,:)
     REAL(DP), INTENT(out), OPTIONAL :: EmAb_Spectrum_Option(:,:,:,:)
     REAL(DP), INTENT(out), OPTIONAL :: RadiationCollisionRHS_Option(:,:,:,:)
 
@@ -644,9 +644,9 @@ CONTAINS
              GX_N(:,iGF_Gm_dd_11), GX_N(:,iGF_Gm_dd_22), &
              GX_N(:,iGF_Gm_dd_33), MatterCoupling_Mask_Diagnostic, &
              Q_Matter, &
-             NNS_Ledger_Option = NNS_Ledger_Option, &
+             NNS_RateDecomposition_Option = NNS_RateDecomposition_Option, &
              QH_ByProcessSpecies_Option = QH_ByProcessSpecies_Option, &
-             EmAb_Ledger_Option = EmAb_Ledger_Option, &
+             EmAb_RateDecomposition_Option = EmAb_RateDecomposition_Option, &
              EmAb_Spectrum_Option = EmAb_Spectrum_Option, &
              RadiationCollisionRHS_Option = RadiationCollisionRHS_Option )
 
@@ -664,9 +664,9 @@ CONTAINS
       AccumulateMatterCoupling_Mask, &
       uDR_Option, MatterCoupling_Mask_Option &
 #if defined( TWOMOMENT_ORDER_V )
-      , MatterSource_Rate_Option, MatterIncrement_Rate_Option, &
-        MatterSource_Weight_Option, MatterSource_Rate_Unweighted_Option, &
-        LeptonFlavorAudit_Rate_Option &
+      , MatterCollisionExchange_Rate_Option, MatterUpdate_Rate_Option, &
+        IMEX_ImplicitWeight_Option, MatterCollisionRHS_Option, &
+        LeptonFlavorCheck_Rate_Option &
 #endif
       )
 
@@ -728,24 +728,33 @@ CONTAINS
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4))
 #if defined( TWOMOMENT_ORDER_V )
+    ! MatterCollisionExchange_Rate_Option accumulates the collision RHS with
+    ! the supplied IMEX implicit weight.  Over a completed timestep it is the
+    ! stage-weighted collision exchange expressed as a rate; this is the
+    ! quantity exported through the Qxxx plot variables.
     REAL(DP), INTENT(inout), OPTIONAL :: &
-      MatterSource_Rate_Option &
+      MatterCollisionExchange_Rate_Option &
           (1:nQ, &
            1:1+nSpecies+nC, &
            1:nDOFX, &
            iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4))
+    ! MatterUpdate_Rate_Option accumulates the complete fluid update returned
+    ! by the implicit call, including changes not represented by the collision
+    ! RHS decomposition.
     REAL(DP), INTENT(inout), OPTIONAL :: &
-      MatterIncrement_Rate_Option &
+      MatterUpdate_Rate_Option &
           (1:nQ, &
            1:nDOFX, &
            iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4))
-    REAL(DP), INTENT(in), OPTIONAL :: MatterSource_Weight_Option
+    REAL(DP), INTENT(in), OPTIONAL :: IMEX_ImplicitWeight_Option
+    ! The unweighted collision RHS for this implicit stage.  This is retained
+    ! for correctness checks and is not the completed-timestep Qxxx quantity.
     REAL(DP), INTENT(out), OPTIONAL :: &
-      MatterSource_Rate_Unweighted_Option &
+      MatterCollisionRHS_Option &
           (1:nQ, &
            1:1+nSpecies+nC, &
            1:nDOFX, &
@@ -753,8 +762,8 @@ CONTAINS
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4))
     REAL(DP), INTENT(out), OPTIONAL :: &
-      LeptonFlavorAudit_Rate_Option &
-          (1:nLeptonFamilies,1:nLeptonFlavorAudit,1:nDOFX, &
+      LeptonFlavorCheck_Rate_Option &
+          (1:nLeptonFamilies,1:nLeptonFlavorCheck,1:nDOFX, &
            iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4))
 #endif
 
@@ -763,8 +772,8 @@ CONTAINS
     LOGICAL, ALLOCATABLE :: MatterCoupling_Mask_N(:)
 #if defined( TWOMOMENT_ORDER_V )
     INTEGER :: iG, iQ
-    REAL(DP) :: MatterSource_Weight
-    REAL(DP), ALLOCATABLE :: MatterSource_Rate_N(:,:,:)
+    REAL(DP) :: IMEX_ImplicitWeight
+    REAL(DP), ALLOCATABLE :: MatterCollisionRHS_N(:,:,:)
     REAL(DP), ALLOCATABLE :: TransportOpacity_N(:,:,:)
 #endif
 
@@ -774,13 +783,13 @@ CONTAINS
 
     ALLOCATE( MatterCoupling_Mask_N(nX_G) )
 #if defined( TWOMOMENT_ORDER_V )
-    IF(      PRESENT( MatterSource_Rate_Option ) &
-        .OR. PRESENT( MatterSource_Rate_Unweighted_Option ) ) &
-      ALLOCATE( MatterSource_Rate_N(nQ,1+nSpecies+nC,nX_G) )
+    IF(      PRESENT( MatterCollisionExchange_Rate_Option ) &
+        .OR. PRESENT( MatterCollisionRHS_Option ) ) &
+      ALLOCATE( MatterCollisionRHS_N(nQ,1+nSpecies+nC,nX_G) )
 
-    MatterSource_Weight = One
-    IF( PRESENT( MatterSource_Weight_Option ) ) &
-      MatterSource_Weight = MatterSource_Weight_Option
+    IMEX_ImplicitWeight = One
+    IF( PRESENT( IMEX_ImplicitWeight_Option ) ) &
+      IMEX_ImplicitWeight = IMEX_ImplicitWeight_Option
 
     IF( UseSourceAwareLLF ) &
       ALLOCATE( TransportOpacity_N(nE_G,nSpecies,nX_G) )
@@ -796,36 +805,36 @@ CONTAINS
     !$ACC CREATE(     dU_F, dU_R, MatterCoupling_Mask_N )
 #endif
 #if defined( TWOMOMENT_ORDER_V )
-    IF(      PRESENT( MatterSource_Rate_Option ) &
-        .OR. PRESENT( MatterSource_Rate_Unweighted_Option ) )THEN
+    IF(      PRESENT( MatterCollisionExchange_Rate_Option ) &
+        .OR. PRESENT( MatterCollisionRHS_Option ) )THEN
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA MAP( alloc: MatterSource_Rate_N )
+    !$OMP TARGET ENTER DATA MAP( alloc: MatterCollisionRHS_N )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA CREATE( MatterSource_Rate_N )
+    !$ACC ENTER DATA CREATE( MatterCollisionRHS_N )
 #endif
     END IF
 
-    IF( PRESENT( MatterSource_Rate_Option ) )THEN
+    IF( PRESENT( MatterCollisionExchange_Rate_Option ) )THEN
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA MAP( alloc: MatterSource_Rate_Option )
+    !$OMP TARGET ENTER DATA MAP( alloc: MatterCollisionExchange_Rate_Option )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA CREATE( MatterSource_Rate_Option )
+    !$ACC ENTER DATA CREATE( MatterCollisionExchange_Rate_Option )
 #endif
     END IF
 
-    IF( PRESENT( MatterSource_Rate_Unweighted_Option ) )THEN
+    IF( PRESENT( MatterCollisionRHS_Option ) )THEN
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA MAP( alloc: MatterSource_Rate_Unweighted_Option )
+    !$OMP TARGET ENTER DATA MAP( alloc: MatterCollisionRHS_Option )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA CREATE( MatterSource_Rate_Unweighted_Option )
+    !$ACC ENTER DATA CREATE( MatterCollisionRHS_Option )
 #endif
     END IF
 
-    IF( PRESENT( MatterIncrement_Rate_Option ) )THEN
+    IF( PRESENT( MatterUpdate_Rate_Option ) )THEN
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA MAP( alloc: MatterIncrement_Rate_Option )
+    !$OMP TARGET ENTER DATA MAP( alloc: MatterUpdate_Rate_Option )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA CREATE( MatterIncrement_Rate_Option )
+    !$ACC ENTER DATA CREATE( MatterUpdate_Rate_Option )
 #endif
     END IF
 
@@ -837,11 +846,11 @@ CONTAINS
 #endif
     END IF
 
-    IF( PRESENT( LeptonFlavorAudit_Rate_Option ) )THEN
+    IF( PRESENT( LeptonFlavorCheck_Rate_Option ) )THEN
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA MAP( alloc: LeptonFlavorAudit_Rate_Option )
+    !$OMP TARGET ENTER DATA MAP( alloc: LeptonFlavorCheck_Rate_Option )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA CREATE( LeptonFlavorAudit_Rate_Option )
+    !$ACC ENTER DATA CREATE( LeptonFlavorCheck_Rate_Option )
 #endif
     END IF
 
@@ -996,7 +1005,7 @@ CONTAINS
 
 #if defined( TWOMOMENT_ORDER_V )
     IF( RetainSolverConvergenceDiagnostics ) &
-      CALL InitializeConservationHandoffDiagnostic()
+      CALL InitializeConservationHandoffCheck()
 #endif
 
     ! --- Neutrino-Matter Coupling Solve ---
@@ -1041,14 +1050,14 @@ CONTAINS
                ConservativeProjectionRadiationResidual_Relative_Final, &
                ConservativeProjectionMatterHeating_Rate_Final, &
                ConservativeProjectionStatus_Final, &
-               LeptonFlavorAudit_Rate_Final &
+               LeptonFlavorCheck_Rate_Final &
 #endif
              )
 
     CALL TimersStop( Timer_Collisions_Solve )
 
 #if defined( TWOMOMENT_ORDER_V )
-    IF( PRESENT( LeptonFlavorAudit_Rate_Option ) )THEN
+    IF( PRESENT( LeptonFlavorCheck_Rate_Option ) )THEN
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -1056,8 +1065,8 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
     !$ACC PRIVATE( iN_X ) &
-    !$ACC PRESENT( LeptonFlavorAudit_Rate_Option, &
-    !$ACC          LeptonFlavorAudit_Rate_Final )
+    !$ACC PRESENT( LeptonFlavorCheck_Rate_Option, &
+    !$ACC          LeptonFlavorCheck_Rate_Final )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(6) PRIVATE( iN_X )
 #endif
@@ -1065,7 +1074,7 @@ CONTAINS
       DO iX2    = iX_B0(2), iX_E0(2)
       DO iX1    = iX_B0(1), iX_E0(1)
       DO iNodeX = 1, nDOFX
-      DO iG      = 1, nLeptonFlavorAudit
+      DO iG      = 1, nLeptonFlavorCheck
       DO iQ      = 1, nLeptonFamilies
 
         iN_X = iNodeX &
@@ -1073,8 +1082,8 @@ CONTAINS
                + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
                + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
 
-        LeptonFlavorAudit_Rate_Option(iQ,iG,iNodeX,iX1,iX2,iX3) &
-          = LeptonFlavorAudit_Rate_Final(iQ,iG,iN_X)
+        LeptonFlavorCheck_Rate_Option(iQ,iG,iNodeX,iX1,iX2,iX3) &
+          = LeptonFlavorCheck_Rate_Final(iQ,iG,iN_X)
 
       END DO
       END DO
@@ -1094,8 +1103,8 @@ CONTAINS
 
     END IF
 
-    IF(      PRESENT( MatterSource_Rate_Option ) &
-        .OR. PRESENT( MatterSource_Rate_Unweighted_Option ) )THEN
+    IF(      PRESENT( MatterCollisionExchange_Rate_Option ) &
+        .OR. PRESENT( MatterCollisionRHS_Option ) )THEN
 
       CALL ComputeMatterRHS_Collisions_Flattened_OrderV &
              ( PR_N(:,:,:,iCR_N ), &
@@ -1103,25 +1112,25 @@ CONTAINS
                PF_N(:,iPF_V1), PF_N(:,iPF_V2), PF_N(:,iPF_V3), &
                GX_N(:,iGF_Gm_dd_11), GX_N(:,iGF_Gm_dd_22), &
                GX_N(:,iGF_Gm_dd_33), MatterCoupling_Mask_N, &
-               MatterSource_Rate_N )
+               MatterCollisionRHS_N )
 
     END IF
 #endif
 
 #if defined( TWOMOMENT_ORDER_V )
-    IF( PRESENT( MatterSource_Rate_Option ) )THEN
+    IF( PRESENT( MatterCollisionExchange_Rate_Option ) )THEN
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
-    !$OMP PRIVATE( iN_X ) FIRSTPRIVATE( MatterSource_Weight )
+    !$OMP PRIVATE( iN_X ) FIRSTPRIVATE( IMEX_ImplicitWeight )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
     !$ACC PRIVATE( iN_X ) &
-    !$ACC FIRSTPRIVATE( MatterSource_Weight ) &
-    !$ACC PRESENT( MatterSource_Rate_Option, MatterSource_Rate_N )
+    !$ACC FIRSTPRIVATE( IMEX_ImplicitWeight ) &
+    !$ACC PRESENT( MatterCollisionExchange_Rate_Option, MatterCollisionRHS_N )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(6) &
-    !$OMP PRIVATE( iN_X ) FIRSTPRIVATE( MatterSource_Weight )
+    !$OMP PRIVATE( iN_X ) FIRSTPRIVATE( IMEX_ImplicitWeight )
 #endif
       DO iX3    = iX_B0(3), iX_E0(3)
       DO iX2    = iX_B0(2), iX_E0(2)
@@ -1136,12 +1145,12 @@ CONTAINS
                + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
 
         IF( AccumulateMatterCoupling_Mask )THEN
-          MatterSource_Rate_Option(iQ,iG,iNodeX,iX1,iX2,iX3) &
-            = MatterSource_Rate_Option(iQ,iG,iNodeX,iX1,iX2,iX3) &
-              + MatterSource_Weight * MatterSource_Rate_N(iQ,iG,iN_X)
+          MatterCollisionExchange_Rate_Option(iQ,iG,iNodeX,iX1,iX2,iX3) &
+            = MatterCollisionExchange_Rate_Option(iQ,iG,iNodeX,iX1,iX2,iX3) &
+              + IMEX_ImplicitWeight * MatterCollisionRHS_N(iQ,iG,iN_X)
         ELSE
-          MatterSource_Rate_Option(iQ,iG,iNodeX,iX1,iX2,iX3) &
-            = MatterSource_Weight * MatterSource_Rate_N(iQ,iG,iN_X)
+          MatterCollisionExchange_Rate_Option(iQ,iG,iNodeX,iX1,iX2,iX3) &
+            = IMEX_ImplicitWeight * MatterCollisionRHS_N(iQ,iG,iN_X)
         END IF
 
       END DO
@@ -1155,7 +1164,7 @@ CONTAINS
 #endif
 
 #if defined( TWOMOMENT_ORDER_V )
-    IF( PRESENT( MatterSource_Rate_Unweighted_Option ) )THEN
+    IF( PRESENT( MatterCollisionRHS_Option ) )THEN
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
@@ -1163,7 +1172,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(6) &
     !$ACC PRIVATE( iN_X ) &
-    !$ACC PRESENT( MatterSource_Rate_Unweighted_Option, MatterSource_Rate_N )
+    !$ACC PRESENT( MatterCollisionRHS_Option, MatterCollisionRHS_N )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(6) &
     !$OMP PRIVATE( iN_X )
@@ -1180,8 +1189,8 @@ CONTAINS
                + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
                + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
 
-        MatterSource_Rate_Unweighted_Option(iQ,iG,iNodeX,iX1,iX2,iX3) &
-          = MatterSource_Rate_N(iQ,iG,iN_X)
+        MatterCollisionRHS_Option(iQ,iG,iNodeX,iX1,iX2,iX3) &
+          = MatterCollisionRHS_N(iQ,iG,iN_X)
 
       END DO
       END DO
@@ -1484,19 +1493,19 @@ CONTAINS
              MatterCoupling_Mask_N, dU_F, dU_R )
 
 #if defined( TWOMOMENT_ORDER_V )
-    IF( PRESENT( MatterIncrement_Rate_Option ) )THEN
+    IF( PRESENT( MatterUpdate_Rate_Option ) )THEN
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
-    !$OMP PRIVATE( iN_X ) FIRSTPRIVATE( MatterSource_Weight )
+    !$OMP PRIVATE( iN_X ) FIRSTPRIVATE( IMEX_ImplicitWeight )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
     !$ACC PRIVATE( iN_X ) &
-    !$ACC FIRSTPRIVATE( MatterSource_Weight ) &
-    !$ACC PRESENT( MatterIncrement_Rate_Option, dU_F, PF_N )
+    !$ACC FIRSTPRIVATE( IMEX_ImplicitWeight ) &
+    !$ACC PRESENT( MatterUpdate_Rate_Option, dU_F, PF_N )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(4) &
-    !$OMP PRIVATE( iN_X ) FIRSTPRIVATE( MatterSource_Weight )
+    !$OMP PRIVATE( iN_X ) FIRSTPRIVATE( IMEX_ImplicitWeight )
 #endif
       DO iX3    = iX_B0(3), iX_E0(3)
       DO iX2    = iX_B0(2), iX_E0(2)
@@ -1509,41 +1518,41 @@ CONTAINS
                + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
 
         IF( AccumulateMatterCoupling_Mask )THEN
-          MatterIncrement_Rate_Option(iQ_L,iNodeX,iX1,iX2,iX3) &
-            = MatterIncrement_Rate_Option(iQ_L,iNodeX,iX1,iX2,iX3) &
-              + MatterSource_Weight * dU_F(iNodeX,iX1,iX2,iX3,iCF_Ne)
-          MatterIncrement_Rate_Option(iQ_E,iNodeX,iX1,iX2,iX3) &
-            = MatterIncrement_Rate_Option(iQ_E,iNodeX,iX1,iX2,iX3) &
-              + MatterSource_Weight * dU_F(iNodeX,iX1,iX2,iX3,iCF_E)
-          MatterIncrement_Rate_Option(iQ_M1,iNodeX,iX1,iX2,iX3) &
-            = MatterIncrement_Rate_Option(iQ_M1,iNodeX,iX1,iX2,iX3) &
-              + MatterSource_Weight * dU_F(iNodeX,iX1,iX2,iX3,iCF_S1)
-          MatterIncrement_Rate_Option(iQ_M2,iNodeX,iX1,iX2,iX3) &
-            = MatterIncrement_Rate_Option(iQ_M2,iNodeX,iX1,iX2,iX3) &
-              + MatterSource_Weight * dU_F(iNodeX,iX1,iX2,iX3,iCF_S2)
-          MatterIncrement_Rate_Option(iQ_M3,iNodeX,iX1,iX2,iX3) &
-            = MatterIncrement_Rate_Option(iQ_M3,iNodeX,iX1,iX2,iX3) &
-              + MatterSource_Weight * dU_F(iNodeX,iX1,iX2,iX3,iCF_S3)
-          MatterIncrement_Rate_Option(iQ_H,iNodeX,iX1,iX2,iX3) &
-            = MatterIncrement_Rate_Option(iQ_H,iNodeX,iX1,iX2,iX3) &
-              + MatterSource_Weight &
+          MatterUpdate_Rate_Option(iQ_L,iNodeX,iX1,iX2,iX3) &
+            = MatterUpdate_Rate_Option(iQ_L,iNodeX,iX1,iX2,iX3) &
+              + IMEX_ImplicitWeight * dU_F(iNodeX,iX1,iX2,iX3,iCF_Ne)
+          MatterUpdate_Rate_Option(iQ_E,iNodeX,iX1,iX2,iX3) &
+            = MatterUpdate_Rate_Option(iQ_E,iNodeX,iX1,iX2,iX3) &
+              + IMEX_ImplicitWeight * dU_F(iNodeX,iX1,iX2,iX3,iCF_E)
+          MatterUpdate_Rate_Option(iQ_M1,iNodeX,iX1,iX2,iX3) &
+            = MatterUpdate_Rate_Option(iQ_M1,iNodeX,iX1,iX2,iX3) &
+              + IMEX_ImplicitWeight * dU_F(iNodeX,iX1,iX2,iX3,iCF_S1)
+          MatterUpdate_Rate_Option(iQ_M2,iNodeX,iX1,iX2,iX3) &
+            = MatterUpdate_Rate_Option(iQ_M2,iNodeX,iX1,iX2,iX3) &
+              + IMEX_ImplicitWeight * dU_F(iNodeX,iX1,iX2,iX3,iCF_S2)
+          MatterUpdate_Rate_Option(iQ_M3,iNodeX,iX1,iX2,iX3) &
+            = MatterUpdate_Rate_Option(iQ_M3,iNodeX,iX1,iX2,iX3) &
+              + IMEX_ImplicitWeight * dU_F(iNodeX,iX1,iX2,iX3,iCF_S3)
+          MatterUpdate_Rate_Option(iQ_H,iNodeX,iX1,iX2,iX3) &
+            = MatterUpdate_Rate_Option(iQ_H,iNodeX,iX1,iX2,iX3) &
+              + IMEX_ImplicitWeight &
                 * ( dU_F(iNodeX,iX1,iX2,iX3,iCF_E) &
                     - PF_N(iN_X,iPF_V1) * dU_F(iNodeX,iX1,iX2,iX3,iCF_S1) &
                     - PF_N(iN_X,iPF_V2) * dU_F(iNodeX,iX1,iX2,iX3,iCF_S2) &
                     - PF_N(iN_X,iPF_V3) * dU_F(iNodeX,iX1,iX2,iX3,iCF_S3) )
         ELSE
-          MatterIncrement_Rate_Option(iQ_L,iNodeX,iX1,iX2,iX3) &
-            = MatterSource_Weight * dU_F(iNodeX,iX1,iX2,iX3,iCF_Ne)
-          MatterIncrement_Rate_Option(iQ_E,iNodeX,iX1,iX2,iX3) &
-            = MatterSource_Weight * dU_F(iNodeX,iX1,iX2,iX3,iCF_E)
-          MatterIncrement_Rate_Option(iQ_M1,iNodeX,iX1,iX2,iX3) &
-            = MatterSource_Weight * dU_F(iNodeX,iX1,iX2,iX3,iCF_S1)
-          MatterIncrement_Rate_Option(iQ_M2,iNodeX,iX1,iX2,iX3) &
-            = MatterSource_Weight * dU_F(iNodeX,iX1,iX2,iX3,iCF_S2)
-          MatterIncrement_Rate_Option(iQ_M3,iNodeX,iX1,iX2,iX3) &
-            = MatterSource_Weight * dU_F(iNodeX,iX1,iX2,iX3,iCF_S3)
-          MatterIncrement_Rate_Option(iQ_H,iNodeX,iX1,iX2,iX3) &
-            = MatterSource_Weight &
+          MatterUpdate_Rate_Option(iQ_L,iNodeX,iX1,iX2,iX3) &
+            = IMEX_ImplicitWeight * dU_F(iNodeX,iX1,iX2,iX3,iCF_Ne)
+          MatterUpdate_Rate_Option(iQ_E,iNodeX,iX1,iX2,iX3) &
+            = IMEX_ImplicitWeight * dU_F(iNodeX,iX1,iX2,iX3,iCF_E)
+          MatterUpdate_Rate_Option(iQ_M1,iNodeX,iX1,iX2,iX3) &
+            = IMEX_ImplicitWeight * dU_F(iNodeX,iX1,iX2,iX3,iCF_S1)
+          MatterUpdate_Rate_Option(iQ_M2,iNodeX,iX1,iX2,iX3) &
+            = IMEX_ImplicitWeight * dU_F(iNodeX,iX1,iX2,iX3,iCF_S2)
+          MatterUpdate_Rate_Option(iQ_M3,iNodeX,iX1,iX2,iX3) &
+            = IMEX_ImplicitWeight * dU_F(iNodeX,iX1,iX2,iX3,iCF_S3)
+          MatterUpdate_Rate_Option(iQ_H,iNodeX,iX1,iX2,iX3) &
+            = IMEX_ImplicitWeight &
               * ( dU_F(iNodeX,iX1,iX2,iX3,iCF_E) &
                   - PF_N(iN_X,iPF_V1) * dU_F(iNodeX,iX1,iX2,iX3,iCF_S1) &
                   - PF_N(iN_X,iPF_V2) * dU_F(iNodeX,iX1,iX2,iX3,iCF_S2) &
@@ -1583,45 +1592,45 @@ CONTAINS
     CALL FinalizeCollisions
 
 #if defined( TWOMOMENT_ORDER_V )
-    IF( PRESENT( MatterSource_Rate_Option ) )THEN
+    IF( PRESENT( MatterCollisionExchange_Rate_Option ) )THEN
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA MAP( release: MatterSource_Rate_Option )
+    !$OMP TARGET EXIT DATA MAP( release: MatterCollisionExchange_Rate_Option )
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA DELETE( MatterSource_Rate_Option )
+    !$ACC EXIT DATA DELETE( MatterCollisionExchange_Rate_Option )
 #endif
     END IF
 
-    IF( PRESENT( MatterSource_Rate_Unweighted_Option ) )THEN
+    IF( PRESENT( MatterCollisionRHS_Option ) )THEN
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA MAP( release: MatterSource_Rate_Unweighted_Option )
+    !$OMP TARGET EXIT DATA MAP( release: MatterCollisionRHS_Option )
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA DELETE( MatterSource_Rate_Unweighted_Option )
+    !$ACC EXIT DATA DELETE( MatterCollisionRHS_Option )
 #endif
     END IF
 
-    IF(      PRESENT( MatterSource_Rate_Option ) &
-        .OR. PRESENT( MatterSource_Rate_Unweighted_Option ) )THEN
+    IF(      PRESENT( MatterCollisionExchange_Rate_Option ) &
+        .OR. PRESENT( MatterCollisionRHS_Option ) )THEN
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA MAP( release: MatterSource_Rate_N )
+    !$OMP TARGET EXIT DATA MAP( release: MatterCollisionRHS_N )
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA DELETE( MatterSource_Rate_N )
+    !$ACC EXIT DATA DELETE( MatterCollisionRHS_N )
 #endif
-      DEALLOCATE( MatterSource_Rate_N )
+      DEALLOCATE( MatterCollisionRHS_N )
     END IF
 
-    IF( PRESENT( MatterIncrement_Rate_Option ) )THEN
+    IF( PRESENT( MatterUpdate_Rate_Option ) )THEN
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA MAP( release: MatterIncrement_Rate_Option )
+    !$OMP TARGET EXIT DATA MAP( release: MatterUpdate_Rate_Option )
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA DELETE( MatterIncrement_Rate_Option )
+    !$ACC EXIT DATA DELETE( MatterUpdate_Rate_Option )
 #endif
     END IF
 
-    IF( PRESENT( LeptonFlavorAudit_Rate_Option ) )THEN
+    IF( PRESENT( LeptonFlavorCheck_Rate_Option ) )THEN
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA MAP( release: LeptonFlavorAudit_Rate_Option )
+    !$OMP TARGET EXIT DATA MAP( release: LeptonFlavorCheck_Rate_Option )
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA DELETE( LeptonFlavorAudit_Rate_Option )
+    !$ACC EXIT DATA DELETE( LeptonFlavorCheck_Rate_Option )
 #endif
     END IF
 #endif
@@ -1703,9 +1712,12 @@ CONTAINS
     ALLOCATE( ConservativeProjectionRadiationResidual_Relative_Final(nX_G) )
     ALLOCATE( ConservativeProjectionMatterHeating_Rate_Final(nX_G) )
     ALLOCATE( ConservativeProjectionStatus_Final(nX_G) )
-    ALLOCATE( ConservationHandoff_Rate_Final(nConservationHandoff,nX_G) )
-    ALLOCATE( LeptonFlavorAudit_Rate_Final &
-                (nLeptonFamilies,nLeptonFlavorAudit,nX_G) )
+    ALLOCATE( LeptonFlavorCheck_Rate_Final &
+                (nLeptonFamilies,nLeptonFlavorCheck,nX_G) )
+    IF( RetainSolverConvergenceDiagnostics ) &
+      ALLOCATE &
+        ( ConservationHandoffCheck_Rate_Final &
+            (nConservationHandoffCheck,nX_G) )
 #endif
     ALLOCATE( nIterations_Prim (nZ_G) )
 
@@ -1721,8 +1733,9 @@ CONTAINS
     ConservativeProjectionRadiationResidual_Relative_Final(:) = Zero
     ConservativeProjectionMatterHeating_Rate_Final(:) = Zero
     ConservativeProjectionStatus_Final(:) = -2
-    ConservationHandoff_Rate_Final(:,:) = Zero
-    LeptonFlavorAudit_Rate_Final(:,:,:) = Zero
+    LeptonFlavorCheck_Rate_Final(:,:,:) = Zero
+    IF( RetainSolverConvergenceDiagnostics ) &
+      ConservationHandoffCheck_Rate_Final(:,:) = Zero
 #endif
     nIterations_Prim (:) = 0
 
@@ -1771,8 +1784,7 @@ CONTAINS
     !$OMP             ConservativeProjectionRadiationResidual_Relative_Final, &
     !$OMP             ConservativeProjectionMatterHeating_Rate_Final, &
     !$OMP             ConservativeProjectionStatus_Final, &
-    !$OMP             ConservationHandoff_Rate_Final, &
-    !$OMP             LeptonFlavorAudit_Rate_Final )
+    !$OMP             LeptonFlavorCheck_Rate_Final )
 #elif defined(THORNADO_OACC  )
     !$ACC ENTER DATA &
     !$ACC CREATE( MatterEquationResidual_Rate_Final, &
@@ -1781,9 +1793,17 @@ CONTAINS
     !$ACC         ConservativeProjectionRadiationResidual_Relative_Final, &
     !$ACC         ConservativeProjectionMatterHeating_Rate_Final, &
     !$ACC         ConservativeProjectionStatus_Final, &
-    !$ACC         ConservationHandoff_Rate_Final, &
-    !$ACC         LeptonFlavorAudit_Rate_Final )
+    !$ACC         LeptonFlavorCheck_Rate_Final )
 #endif
+
+    IF( RetainSolverConvergenceDiagnostics )THEN
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: ConservationHandoffCheck_Rate_Final )
+#elif defined(THORNADO_OACC  )
+    !$ACC ENTER DATA CREATE( ConservationHandoffCheck_Rate_Final )
+#endif
+    END IF
 #endif
 
   END SUBROUTINE InitializeCollisions
@@ -1800,8 +1820,8 @@ CONTAINS
     !$OMP                     ConservativeProjectionRadiationResidual_Relative_Final, &
     !$OMP                     ConservativeProjectionMatterHeating_Rate_Final, &
     !$OMP                     ConservativeProjectionStatus_Final, &
-    !$OMP                     ConservationHandoff_Rate_Final, &
-    !$OMP                     LeptonFlavorAudit_Rate_Final )
+    !$OMP                     ConservationHandoffCheck_Rate_Final, &
+    !$OMP                     LeptonFlavorCheck_Rate_Final )
 #elif defined(THORNADO_OACC  )
     !$ACC UPDATE HOST( MatterEquationResidual_Rate_Final, &
     !$ACC              InitialRadiationLimiter_Rate_Final, &
@@ -1809,8 +1829,8 @@ CONTAINS
     !$ACC              ConservativeProjectionRadiationResidual_Relative_Final, &
     !$ACC              ConservativeProjectionMatterHeating_Rate_Final, &
     !$ACC              ConservativeProjectionStatus_Final, &
-    !$ACC              ConservationHandoff_Rate_Final, &
-    !$ACC              LeptonFlavorAudit_Rate_Final )
+    !$ACC              ConservationHandoffCheck_Rate_Final, &
+    !$ACC              LeptonFlavorCheck_Rate_Final )
 #endif
     END IF
 #endif
@@ -1842,8 +1862,7 @@ CONTAINS
     !$OMP               ConservativeProjectionRadiationResidual_Relative_Final, &
     !$OMP               ConservativeProjectionMatterHeating_Rate_Final, &
     !$OMP               ConservativeProjectionStatus_Final, &
-    !$OMP               ConservationHandoff_Rate_Final, &
-    !$OMP               LeptonFlavorAudit_Rate_Final )
+    !$OMP               LeptonFlavorCheck_Rate_Final )
 #elif defined(THORNADO_OACC  )
     !$ACC EXIT DATA &
     !$ACC DELETE( MatterEquationResidual_Rate_Final, &
@@ -1852,9 +1871,17 @@ CONTAINS
     !$ACC         ConservativeProjectionRadiationResidual_Relative_Final, &
     !$ACC         ConservativeProjectionMatterHeating_Rate_Final, &
     !$ACC         ConservativeProjectionStatus_Final, &
-    !$ACC         ConservationHandoff_Rate_Final, &
-    !$ACC         LeptonFlavorAudit_Rate_Final )
+    !$ACC         LeptonFlavorCheck_Rate_Final )
 #endif
+
+    IF( RetainSolverConvergenceDiagnostics )THEN
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: ConservationHandoffCheck_Rate_Final )
+#elif defined(THORNADO_OACC  )
+    !$ACC EXIT DATA DELETE( ConservationHandoffCheck_Rate_Final )
+#endif
+    END IF
 #endif
 
     IF( RetainSolverConvergenceDiagnostics )THEN
@@ -1871,8 +1898,8 @@ CONTAINS
           DEALLOCATE( ConservativeProjectionRadiationResidual_Relative_Final_Last )
           DEALLOCATE( ConservativeProjectionMatterHeating_Rate_Final_Last )
           DEALLOCATE( ConservativeProjectionStatus_Final_Last )
-          DEALLOCATE( ConservationHandoff_Rate_Final_Last )
-          DEALLOCATE( LeptonFlavorAudit_Rate_Final_Last )
+          DEALLOCATE( ConservationHandoffCheck_Rate_Final_Last )
+          DEALLOCATE( LeptonFlavorCheck_Rate_Final_Last )
 #endif
         END IF
       END IF
@@ -1888,10 +1915,10 @@ CONTAINS
         ALLOCATE( ConservativeProjectionRadiationResidual_Relative_Final_Last(nX_G) )
         ALLOCATE( ConservativeProjectionMatterHeating_Rate_Final_Last(nX_G) )
         ALLOCATE( ConservativeProjectionStatus_Final_Last(nX_G) )
-        ALLOCATE( ConservationHandoff_Rate_Final_Last &
-                    (nConservationHandoff,nX_G) )
-        ALLOCATE( LeptonFlavorAudit_Rate_Final_Last &
-                    (nLeptonFamilies,nLeptonFlavorAudit,nX_G) )
+        ALLOCATE( ConservationHandoffCheck_Rate_Final_Last &
+                    (nConservationHandoffCheck,nX_G) )
+        ALLOCATE( LeptonFlavorCheck_Rate_Final_Last &
+                    (nLeptonFamilies,nLeptonFlavorCheck,nX_G) )
 #endif
       END IF
 
@@ -1911,8 +1938,8 @@ CONTAINS
         = ConservativeProjectionMatterHeating_Rate_Final
       ConservativeProjectionStatus_Final_Last &
         = ConservativeProjectionStatus_Final
-      ConservationHandoff_Rate_Final_Last = ConservationHandoff_Rate_Final
-      LeptonFlavorAudit_Rate_Final_Last = LeptonFlavorAudit_Rate_Final
+      ConservationHandoffCheck_Rate_Final_Last = ConservationHandoffCheck_Rate_Final
+      LeptonFlavorCheck_Rate_Final_Last = LeptonFlavorCheck_Rate_Final
 #endif
 
     END IF
@@ -1949,8 +1976,9 @@ CONTAINS
     DEALLOCATE( ConservativeProjectionRadiationResidual_Relative_Final )
     DEALLOCATE( ConservativeProjectionMatterHeating_Rate_Final )
     DEALLOCATE( ConservativeProjectionStatus_Final )
-    DEALLOCATE( ConservationHandoff_Rate_Final )
-    DEALLOCATE( LeptonFlavorAudit_Rate_Final )
+    IF( ALLOCATED( ConservationHandoffCheck_Rate_Final ) ) &
+      DEALLOCATE( ConservationHandoffCheck_Rate_Final )
+    DEALLOCATE( LeptonFlavorCheck_Rate_Final )
 #endif
     DEALLOCATE( nIterations_Prim )
 
@@ -2212,7 +2240,7 @@ CONTAINS
 
 
 #if defined( TWOMOMENT_ORDER_V )
-  SUBROUTINE InitializeConservationHandoffDiagnostic
+  SUBROUTINE InitializeConservationHandoffCheck
 
     INTEGER :: iE, iN_E, iN_X, iNodeE, iS
     REAL(DP) :: PhaseWeight2, PhaseWeight3
@@ -2227,7 +2255,7 @@ CONTAINS
     !$ACC PRIVATE( iE, iNodeE, iS, PhaseWeight2, PhaseWeight3, &
     !$ACC          V_d_1, V_d_2, V_d_3, vDotI ) &
     !$ACC PRESENT( GE_N, EnergyQuadratureWeight_N, GX_N, PF_N, PR_N, &
-    !$ACC          ConservationHandoff_Rate_Final )
+    !$ACC          ConservationHandoffCheck_Rate_Final )
 #elif defined(THORNADO_OMP   )
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( iE, iNodeE, iS, PhaseWeight2, PhaseWeight3, &
@@ -2235,7 +2263,7 @@ CONTAINS
 #endif
     DO iN_X = 1, nX_G
 
-      ConservationHandoff_Rate_Final(:,iN_X) = Zero
+      ConservationHandoffCheck_Rate_Final(:,iN_X) = Zero
 
       V_d_1 = GX_N(iN_X,iGF_Gm_dd_11) * PF_N(iN_X,iPF_V1) &
                 / SpeedOfLight
@@ -2257,12 +2285,12 @@ CONTAINS
               + V_d_2 * PR_N(iN_E,iS,iN_X,iPR_I2) &
               + V_d_3 * PR_N(iN_E,iS,iN_X,iPR_I3)
 
-        ConservationHandoff_Rate_Final(iCH_InputConversion_L,iN_X) &
-          = ConservationHandoff_Rate_Final(iCH_InputConversion_L,iN_X) &
+        ConservationHandoffCheck_Rate_Final(iCHC_InputConversion_L,iN_X) &
+          = ConservationHandoffCheck_Rate_Final(iCHC_InputConversion_L,iN_X) &
               + PhaseWeight2 * LeptonNumber(iS) &
                   * ( PR_N(iN_E,iS,iN_X,iPR_D) + vDotI )
-        ConservationHandoff_Rate_Final(iCH_InputConversion_E,iN_X) &
-          = ConservationHandoff_Rate_Final(iCH_InputConversion_E,iN_X) &
+        ConservationHandoffCheck_Rate_Final(iCHC_InputConversion_E,iN_X) &
+          = ConservationHandoffCheck_Rate_Final(iCHC_InputConversion_E,iN_X) &
               + PhaseWeight3 &
                   * ( PR_N(iN_E,iS,iN_X,iPR_D) + 2.0_DP * vDotI )
 
@@ -2271,7 +2299,7 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE InitializeConservationHandoffDiagnostic
+  END SUBROUTINE InitializeConservationHandoffCheck
 #endif
 
 
@@ -2405,7 +2433,7 @@ CONTAINS
 
 #if defined( TWOMOMENT_ORDER_V )
     IF( RetainSolverConvergenceDiagnostics ) &
-      CALL FinalizeConservationHandoffDiagnostic &
+      CALL FinalizeConservationHandoffCheck &
              ( iZ_B1, iZ_E1, dt, U_F, U_R, dU_F, dU_R, &
                MatterCoupling_Mask_N )
 #endif
@@ -2414,7 +2442,7 @@ CONTAINS
 
 
 #if defined( TWOMOMENT_ORDER_V )
-  SUBROUTINE FinalizeConservationHandoffDiagnostic &
+  SUBROUTINE FinalizeConservationHandoffCheck &
     ( iZ_B1, iZ_E1, dt, U_F, U_R, dU_F, dU_R, MatterCoupling_Mask_N )
 
     INTEGER, INTENT(in) :: iZ_B1(4), iZ_E1(4)
@@ -2484,7 +2512,7 @@ CONTAINS
     !$ACC PRESENT( nX, GE_N, EnergyQuadratureWeight_N, GX_N, &
     !$ACC          CF_N, PF_N, CR_N, PR_N, U_F, U_R, &
     !$ACC          dU_F, dU_R, MatterCoupling_Mask_N, &
-    !$ACC          ConservationHandoff_Rate_Final )
+    !$ACC          ConservationHandoffCheck_Rate_Final )
 #elif defined(THORNADO_OMP   )
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( iSpatial, iNodeX, iX1, iX2, iX3, iE, iNodeE, &
@@ -2505,7 +2533,7 @@ CONTAINS
     DO iN_X = 1, nX_G
 
       IF( .NOT. MatterCoupling_Mask_N(iN_X) )THEN
-        ConservationHandoff_Rate_Final(:,iN_X) = Zero
+        ConservationHandoffCheck_Rate_Final(:,iN_X) = Zero
         CYCLE
       END IF
 
@@ -2517,9 +2545,9 @@ CONTAINS
       iX3 = iX_B0(3) + iSpatial / nX(2)
 
       PrimitiveInitialL = &
-        ConservationHandoff_Rate_Final(iCH_InputConversion_L,iN_X)
+        ConservationHandoffCheck_Rate_Final(iCHC_InputConversion_L,iN_X)
       PrimitiveInitialE = &
-        ConservationHandoff_Rate_Final(iCH_InputConversion_E,iN_X)
+        ConservationHandoffCheck_Rate_Final(iCHC_InputConversion_E,iN_X)
       ConservedInitialL = Zero
       ConservedInitialE = Zero
       PrimitiveFinalL = Zero
@@ -2623,30 +2651,30 @@ CONTAINS
       ReturnedMatterChangeL = dt * dU_F(iNodeX,iX1,iX2,iX3,iCF_Ne)
       ReturnedMatterChangeE = dt * dU_F(iNodeX,iX1,iX2,iX3,iCF_E)
 
-      ConservationHandoff_Rate_Final(iCH_InputConversion_L,iN_X) &
+      ConservationHandoffCheck_Rate_Final(iCHC_InputConversion_L,iN_X) &
         = ( PrimitiveInitialL - ConservedInitialL ) / dt
-      ConservationHandoff_Rate_Final(iCH_PrimitivePair_L,iN_X) &
+      ConservationHandoffCheck_Rate_Final(iCHC_PrimitivePair_L,iN_X) &
         = ( MatterChangeL + PrimitiveFinalL - PrimitiveInitialL ) / dt
-      ConservationHandoff_Rate_Final(iCH_FinalConversion_L,iN_X) &
+      ConservationHandoffCheck_Rate_Final(iCHC_FinalConversion_L,iN_X) &
         = ( ConservedFinalL - PrimitiveFinalL ) / dt
-      ConservationHandoff_Rate_Final(iCH_MappedPair_L,iN_X) &
+      ConservationHandoffCheck_Rate_Final(iCHC_MappedPair_L,iN_X) &
         = ( MatterChangeL + ConservedFinalL - ConservedInitialL ) / dt
-      ConservationHandoff_Rate_Final(iCH_ReturnedPair_L,iN_X) &
+      ConservationHandoffCheck_Rate_Final(iCHC_ReturnedPair_L,iN_X) &
         = ( ReturnedMatterChangeL + ReturnedFinalL - ConservedInitialL ) / dt
-      ConservationHandoff_Rate_Final(iCH_InputConversion_E,iN_X) &
+      ConservationHandoffCheck_Rate_Final(iCHC_InputConversion_E,iN_X) &
         = ( PrimitiveInitialE - ConservedInitialE ) / dt
-      ConservationHandoff_Rate_Final(iCH_PrimitivePair_E,iN_X) &
+      ConservationHandoffCheck_Rate_Final(iCHC_PrimitivePair_E,iN_X) &
         = ( MatterChangeE + PrimitiveFinalE - PrimitiveInitialE ) / dt
-      ConservationHandoff_Rate_Final(iCH_FinalConversion_E,iN_X) &
+      ConservationHandoffCheck_Rate_Final(iCHC_FinalConversion_E,iN_X) &
         = ( ConservedFinalE - PrimitiveFinalE ) / dt
-      ConservationHandoff_Rate_Final(iCH_MappedPair_E,iN_X) &
+      ConservationHandoffCheck_Rate_Final(iCHC_MappedPair_E,iN_X) &
         = ( MatterChangeE + ConservedFinalE - ConservedInitialE ) / dt
-      ConservationHandoff_Rate_Final(iCH_ReturnedPair_E,iN_X) &
+      ConservationHandoffCheck_Rate_Final(iCHC_ReturnedPair_E,iN_X) &
         = ( ReturnedMatterChangeE + ReturnedFinalE - ConservedInitialE ) / dt
 
     END DO
 
-  END SUBROUTINE FinalizeConservationHandoffDiagnostic
+  END SUBROUTINE FinalizeConservationHandoffCheck
 #endif
 
 

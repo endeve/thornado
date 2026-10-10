@@ -123,11 +123,11 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   PUBLIC :: Include_NNS, Include_NES, Include_Pair, Include_NuPair, Include_Brem
   PUBLIC :: nQ
   PUBLIC :: iQ_L, iQ_E, iQ_H, iQ_M1, iQ_M2, iQ_M3
-  PUBLIC :: nNNSLedger, iNNSLedger_NIn, iNNSLedger_NOut, iNNSLedger_NNet, &
-            iNNSLedger_EIn, iNNSLedger_EOut, iNNSLedger_QH
-  PUBLIC :: nEmAbLedger, iEmAbLedger_NIn, iEmAbLedger_NOut, &
-            iEmAbLedger_NNet, iEmAbLedger_EIn, iEmAbLedger_EOut, &
-            iEmAbLedger_QH
+  PUBLIC :: nNNSRateDecomposition, iNNSRateDecomposition_NIn, iNNSRateDecomposition_NOut, iNNSRateDecomposition_NNet, &
+            iNNSRateDecomposition_EIn, iNNSRateDecomposition_EOut, iNNSRateDecomposition_QH
+  PUBLIC :: nEmAbRateDecomposition, iEmAbRateDecomposition_NIn, iEmAbRateDecomposition_NOut, &
+            iEmAbRateDecomposition_NNet, iEmAbRateDecomposition_EIn, iEmAbRateDecomposition_EOut, &
+            iEmAbRateDecomposition_QH
   PUBLIC :: nEmAbSpectrum, iEmAbSpectrum_Dnu, iEmAbSpectrum_DnuEq, &
             iEmAbSpectrum_Chi, iEmAbSpectrum_EIn, &
             iEmAbSpectrum_EOut, iEmAbSpectrum_QH
@@ -144,21 +144,21 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   INTEGER, PARAMETER :: iQ_M3 = 6
   INTEGER, PARAMETER :: nQ    = 6
 
-  INTEGER, PARAMETER :: iNNSLedger_NIn  = 1
-  INTEGER, PARAMETER :: iNNSLedger_NOut = 2
-  INTEGER, PARAMETER :: iNNSLedger_NNet = 3
-  INTEGER, PARAMETER :: iNNSLedger_EIn  = 4
-  INTEGER, PARAMETER :: iNNSLedger_EOut = 5
-  INTEGER, PARAMETER :: iNNSLedger_QH   = 6
-  INTEGER, PARAMETER :: nNNSLedger      = 6
+  INTEGER, PARAMETER :: iNNSRateDecomposition_NIn  = 1
+  INTEGER, PARAMETER :: iNNSRateDecomposition_NOut = 2
+  INTEGER, PARAMETER :: iNNSRateDecomposition_NNet = 3
+  INTEGER, PARAMETER :: iNNSRateDecomposition_EIn  = 4
+  INTEGER, PARAMETER :: iNNSRateDecomposition_EOut = 5
+  INTEGER, PARAMETER :: iNNSRateDecomposition_QH   = 6
+  INTEGER, PARAMETER :: nNNSRateDecomposition      = 6
 
-  INTEGER, PARAMETER :: iEmAbLedger_NIn  = 1
-  INTEGER, PARAMETER :: iEmAbLedger_NOut = 2
-  INTEGER, PARAMETER :: iEmAbLedger_NNet = 3
-  INTEGER, PARAMETER :: iEmAbLedger_EIn  = 4
-  INTEGER, PARAMETER :: iEmAbLedger_EOut = 5
-  INTEGER, PARAMETER :: iEmAbLedger_QH   = 6
-  INTEGER, PARAMETER :: nEmAbLedger      = 6
+  INTEGER, PARAMETER :: iEmAbRateDecomposition_NIn  = 1
+  INTEGER, PARAMETER :: iEmAbRateDecomposition_NOut = 2
+  INTEGER, PARAMETER :: iEmAbRateDecomposition_NNet = 3
+  INTEGER, PARAMETER :: iEmAbRateDecomposition_EIn  = 4
+  INTEGER, PARAMETER :: iEmAbRateDecomposition_EOut = 5
+  INTEGER, PARAMETER :: iEmAbRateDecomposition_QH   = 6
+  INTEGER, PARAMETER :: nEmAbRateDecomposition      = 6
 
   INTEGER, PARAMETER :: iEmAbSpectrum_Dnu   = 1
   INTEGER, PARAMETER :: iEmAbSpectrum_DnuEq = 2
@@ -179,14 +179,14 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   INTEGER, PARAMETER :: nC        = 7
 
   INTEGER, PARAMETER, PUBLIC :: nLeptonFamilies = 3
-  INTEGER, PARAMETER, PUBLIC :: iLFA_InputConversion  = 1
-  INTEGER, PARAMETER, PUBLIC :: iLFA_EntryProjection  = 2
-  INTEGER, PARAMETER, PUBLIC :: iLFA_CollisionSource  = 3
-  INTEGER, PARAMETER, PUBLIC :: iLFA_RawMap           = 4
-  INTEGER, PARAMETER, PUBLIC :: iLFA_MapProjection    = 5
-  INTEGER, PARAMETER, PUBLIC :: iLFA_FixedPointResidual = 6
-  INTEGER, PARAMETER, PUBLIC :: iLFA_EquationResidual = 7
-  INTEGER, PARAMETER, PUBLIC :: nLeptonFlavorAudit    = 7
+  INTEGER, PARAMETER, PUBLIC :: iLFC_InputConversion  = 1
+  INTEGER, PARAMETER, PUBLIC :: iLFC_EntryProjection  = 2
+  INTEGER, PARAMETER, PUBLIC :: iLFC_CollisionSource  = 3
+  INTEGER, PARAMETER, PUBLIC :: iLFC_RawMap           = 4
+  INTEGER, PARAMETER, PUBLIC :: iLFC_MapProjection    = 5
+  INTEGER, PARAMETER, PUBLIC :: iLFC_FixedPointResidual = 6
+  INTEGER, PARAMETER, PUBLIC :: iLFC_EquationResidual = 7
+  INTEGER, PARAMETER, PUBLIC :: nLeptonFlavorCheck    = 7
 #endif
 
   ! --- Units Only for Displaying to Screen ---
@@ -1927,7 +1927,7 @@ CONTAINS
         ConservativeProjectionRadiationResidual_Relative_Final, &
         ConservativeProjectionMatterHeating_Rate_Final, &
         ConservativeProjectionStatus_Final, &
-        LeptonFlavorAudit_Rate_Final &
+        LeptonFlavorCheck_Rate_Final &
 #endif
       )
 
@@ -1958,7 +1958,7 @@ CONTAINS
     REAL(DP), DIMENSION(:),     INTENT(out)   :: &
       ConservativeProjectionMatterHeating_Rate_Final
     INTEGER,  DIMENSION(:),     INTENT(out)   :: ConservativeProjectionStatus_Final
-    REAL(DP), DIMENSION(:,:,:), INTENT(out)   :: LeptonFlavorAudit_Rate_Final
+    REAL(DP), DIMENSION(:,:,:), INTENT(out)   :: LeptonFlavorCheck_Rate_Final
 #endif
 
     ! --- Local Variables ---
@@ -2073,7 +2073,7 @@ CONTAINS
       ConservativeProjectionRadiationResidual_Relative_Final(iN_X) = Zero
       ConservativeProjectionMatterHeating_Rate_Final(iN_X) = Zero
       ConservativeProjectionStatus_Final(iN_X) = -2
-      LeptonFlavorAudit_Rate_Final(:,:,iN_X) = Zero
+      LeptonFlavorCheck_Rate_Final(:,:,iN_X) = Zero
 #endif
 
     END DO
@@ -2226,8 +2226,8 @@ CONTAINS
              V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
              InitialRadiationLimiter_Rate_Final, &
              InitialRadiationLimiter_ConservationCorrection, &
-             LeptonFlavorAudit_Rate_Final(:,iLFA_InputConversion,:), &
-             LeptonFlavorAudit_Rate_Final(:,iLFA_EntryProjection,:) )
+             LeptonFlavorCheck_Rate_Final(:,iLFC_InputConversion,:), &
+             LeptonFlavorCheck_Rate_Final(:,iLFC_EntryProjection,:) )
 
     CALL InitializeRHS_OrderV &
            ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, D, Y, E, T, V_u_1, V_u_2, V_u_3, &
@@ -2997,14 +2997,14 @@ CONTAINS
                V_u_1, V_u_2, V_u_3, &
                Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-      CALL ComputeLeptonFlavorAudit_OrderV &
+      CALL ComputeLeptonFlavorCheck_OrderV &
              ( ProjectionMask, dt, &
                UseRadiationOnlySolve, &
                FVECm_inner, GVECm_inner, &
                Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
                V_u_1, V_u_2, V_u_3, &
                Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-               LeptonFlavorAudit_Rate_Final )
+               LeptonFlavorCheck_Rate_Final )
 
     END IF
 
@@ -3517,10 +3517,10 @@ CONTAINS
   END SUBROUTINE ProjectRadiationOnlyFixedPointMap_OrderV
 
 
-  SUBROUTINE ComputeLeptonFlavorAudit_OrderV &
+  SUBROUTINE ComputeLeptonFlavorCheck_OrderV &
     ( MASK, dt, ApplyMapProjection, Fm, Gm, &
       Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-      V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, AuditRate )
+      V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, CheckRate )
 
     LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
     REAL(DP),                   INTENT(in)    :: dt
@@ -3530,7 +3530,7 @@ CONTAINS
       Dnu, Inu_u_1, Inu_u_2, Inu_u_3
     REAL(DP), DIMENSION(:),     INTENT(in)    :: V_u_1, V_u_2, V_u_3
     REAL(DP), DIMENSION(:),     INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: AuditRate
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: CheckRate
 
     INTEGER  :: iFamily, iN_E, iN_X, iOS, iS
     REAL(DP) :: Chi_T, CollisionRate, SignedWeight
@@ -3559,7 +3559,7 @@ CONTAINS
 #endif
     DO iN_X = 1, nX_G
 
-      AuditRate(:,iLFA_CollisionSource:nLeptonFlavorAudit,iN_X) = Zero
+      CheckRate(:,iLFC_CollisionSource:nLeptonFlavorCheck,iN_X) = Zero
       IF( .NOT. MASK(iN_X) ) CYCLE
 
       DO iS = 1, nSpecies
@@ -3614,20 +3614,20 @@ CONTAINS
             + V_u_3(iN_X) * Gm_dd_33(iN_X) * I_Map_u_3
         END IF
 
-        AuditRate(iFamily,iLFA_CollisionSource,iN_X) &
-          = AuditRate(iFamily,iLFA_CollisionSource,iN_X) &
+        CheckRate(iFamily,iLFC_CollisionSource,iN_X) &
+          = CheckRate(iFamily,iLFC_CollisionSource,iN_X) &
               + SignedWeight * CollisionRate
-        AuditRate(iFamily,iLFA_RawMap,iN_X) &
-          = AuditRate(iFamily,iLFA_RawMap,iN_X) &
+        CheckRate(iFamily,iLFC_RawMap,iN_X) &
+          = CheckRate(iFamily,iLFC_RawMap,iN_X) &
               + SignedWeight * ( N_Map - N_Old ) / dt
-        AuditRate(iFamily,iLFA_MapProjection,iN_X) &
-          = AuditRate(iFamily,iLFA_MapProjection,iN_X) &
+        CheckRate(iFamily,iLFC_MapProjection,iN_X) &
+          = CheckRate(iFamily,iLFC_MapProjection,iN_X) &
               + SignedWeight * ( N_Projected - N_Map ) / dt
-        AuditRate(iFamily,iLFA_FixedPointResidual,iN_X) &
-          = AuditRate(iFamily,iLFA_FixedPointResidual,iN_X) &
+        CheckRate(iFamily,iLFC_FixedPointResidual,iN_X) &
+          = CheckRate(iFamily,iLFC_FixedPointResidual,iN_X) &
               + SignedWeight * ( N_Projected - N_Current ) / dt
-        AuditRate(iFamily,iLFA_EquationResidual,iN_X) &
-          = AuditRate(iFamily,iLFA_EquationResidual,iN_X) &
+        CheckRate(iFamily,iLFC_EquationResidual,iN_X) &
+          = CheckRate(iFamily,iLFC_EquationResidual,iN_X) &
               + SignedWeight &
                   * ( ( N_Current - N_Old ) / dt - CollisionRate )
 
@@ -3636,7 +3636,7 @@ CONTAINS
 
     END DO
 
-  END SUBROUTINE ComputeLeptonFlavorAudit_OrderV
+  END SUBROUTINE ComputeLeptonFlavorCheck_OrderV
 
 
   SUBROUTINE ProjectPrimitiveRadiationMoment_OrderV &
@@ -4622,7 +4622,7 @@ CONTAINS
 
     ! Heating implied by the exactly conservative fixed-radiation matter
     ! state.  This uses the same total-energy-minus-velocity-times-momentum
-    ! definition as MatterIncrement_Rate_Option.
+    ! definition as MatterUpdate_Rate_Option.
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
@@ -6587,7 +6587,7 @@ CONTAINS
   SUBROUTINE ComputeMatterRHS_Collisions_OrderV &
     ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
       V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, MASK, Q_Matter, &
-      NNS_Ledger_Option, QH_ByProcessSpecies_Option, EmAb_Ledger_Option, &
+      NNS_RateDecomposition_Option, QH_ByProcessSpecies_Option, EmAb_RateDecomposition_Option, &
       EmAb_Spectrum_Option, RadiationCollisionRHS_Option )
 
     USE mpi
@@ -6598,23 +6598,21 @@ CONTAINS
     REAL(DP), DIMENSION(:),     INTENT(in)  :: Gm_dd_11, Gm_dd_22, Gm_dd_33
     LOGICAL,  DIMENSION(:),     INTENT(in)  :: MASK
     REAL(DP), DIMENSION(:,:,:), INTENT(out) :: Q_Matter
-    REAL(DP), DIMENSION(:,:,:), INTENT(out), OPTIONAL :: NNS_Ledger_Option
+    REAL(DP), DIMENSION(:,:,:), INTENT(out), OPTIONAL :: NNS_RateDecomposition_Option
     REAL(DP), DIMENSION(:,:,:), INTENT(out), OPTIONAL :: QH_ByProcessSpecies_Option
-    REAL(DP), DIMENSION(:,:,:), INTENT(out), OPTIONAL :: EmAb_Ledger_Option
+    REAL(DP), DIMENSION(:,:,:), INTENT(out), OPTIONAL :: EmAb_RateDecomposition_Option
     REAL(DP), DIMENSION(:,:,:,:), INTENT(out), OPTIONAL :: EmAb_Spectrum_Option
     REAL(DP), DIMENSION(:,:,:,:), INTENT(out), OPTIONAL :: &
       RadiationCollisionRHS_Option
 
     REAL(DP), ALLOCATABLE :: Q_SP(:,:,:,:)
-    REAL(DP), ALLOCATABLE :: NNS_Ledger(:,:,:)
-    REAL(DP), ALLOCATABLE :: EmAb_Ledger(:,:,:)
     REAL(DP), ALLOCATABLE :: EmAb_Spectrum(:,:,:,:)
     REAL(DP), ALLOCATABLE :: RadiationCollisionRHS(:,:,:,:)
     REAL(DP), ALLOCATABLE :: QH_ByProcessSpecies(:,:,:)
 
     INTEGER  :: ierr, myid
-    LOGICAL  :: ComputeEmAbLedger, InvalidShape
-    INTEGER  :: iG, iL, iN_E, iN_X, iP, iQ, iS
+    LOGICAL  :: ComputeRadiationCollisionRHS, InvalidShape
+    INTEGER  :: iG, iN_E, iN_X, iP, iQ, iS
     REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
     REAL(DP) :: I_d_1, I_d_2, I_d_3, V_d_1, V_d_2, V_d_3
     REAL(DP) :: L_u_1, L_u_2, L_u_3, L_d_1, L_d_2, L_d_3
@@ -6626,7 +6624,7 @@ CONTAINS
     REAL(DP) :: RN_Total, RG1_Total, RG2_Total, RG3_Total
     REAL(DP) :: V2
 
-    ComputeEmAbLedger = PRESENT( EmAb_Ledger_Option )
+    ComputeRadiationCollisionRHS = PRESENT( RadiationCollisionRHS_Option )
 
     InvalidShape = SIZE(MASK) /= nX_G .OR. &
                    SIZE(Q_Matter,1) /= nQ .OR. &
@@ -6640,11 +6638,19 @@ CONTAINS
                      SIZE(QH_ByProcessSpecies_Option,3) /= nX_G
     END IF
 
-    IF( PRESENT( EmAb_Ledger_Option ) )THEN
+    IF( PRESENT( NNS_RateDecomposition_Option ) )THEN
       InvalidShape = InvalidShape .OR. &
-                     SIZE(EmAb_Ledger_Option,1) /= nEmAbLedger .OR. &
-                     SIZE(EmAb_Ledger_Option,2) /= nSpecies .OR. &
-                     SIZE(EmAb_Ledger_Option,3) /= nX_G
+                     SIZE(NNS_RateDecomposition_Option,1) &
+                       /= nNNSRateDecomposition .OR. &
+                     SIZE(NNS_RateDecomposition_Option,2) /= nSpecies .OR. &
+                     SIZE(NNS_RateDecomposition_Option,3) /= nX_G
+    END IF
+
+    IF( PRESENT( EmAb_RateDecomposition_Option ) )THEN
+      InvalidShape = InvalidShape .OR. &
+                     SIZE(EmAb_RateDecomposition_Option,1) /= nEmAbRateDecomposition .OR. &
+                     SIZE(EmAb_RateDecomposition_Option,2) /= nSpecies .OR. &
+                     SIZE(EmAb_RateDecomposition_Option,3) /= nX_G
     END IF
 
     IF( PRESENT( EmAb_Spectrum_Option ) )THEN
@@ -6678,10 +6684,11 @@ CONTAINS
     END IF
 
     ALLOCATE( Q_SP(5,nC,nSpecies,nX_G) )
-    ALLOCATE( NNS_Ledger(nNNSLedger,nSpecies,nX_G) )
-    ALLOCATE( EmAb_Ledger(nEmAbLedger,nSpecies,nX_G) )
-    ALLOCATE( RadiationCollisionRHS(nCR,nE_G,nSpecies,nX_G) )
-    RadiationCollisionRHS = Zero
+    IF( ComputeRadiationCollisionRHS )THEN
+      ALLOCATE( RadiationCollisionRHS(nCR,nE_G,nSpecies,nX_G) )
+    ELSE
+      ALLOCATE( RadiationCollisionRHS(1,1,1,1) )
+    END IF
 
     IF( PRESENT( QH_ByProcessSpecies_Option ) )THEN
       ALLOCATE( QH_ByProcessSpecies(nC,nSpecies,nX_G) )
@@ -6703,15 +6710,35 @@ CONTAINS
     END IF
 
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA MAP( to: RadiationCollisionRHS )
+    !$OMP TARGET ENTER DATA MAP( alloc: RadiationCollisionRHS )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA COPYIN( RadiationCollisionRHS )
+    !$ACC ENTER DATA CREATE( RadiationCollisionRHS )
 #endif
 
+    IF( ComputeRadiationCollisionRHS )THEN
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA MAP( alloc: Q_SP, NNS_Ledger, EmAb_Ledger )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA CREATE( Q_SP, NNS_Ledger, EmAb_Ledger )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
+    !$ACC PRESENT( RadiationCollisionRHS )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+      DO iN_X = 1, nX_G
+      DO iS   = 1, nSpecies
+      DO iN_E = 1, nE_G
+      DO iQ   = 1, nCR
+        RadiationCollisionRHS(iQ,iN_E,iS,iN_X) = Zero
+      END DO
+      END DO
+      END DO
+      END DO
+    END IF
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA MAP( alloc: Q_SP )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA CREATE( Q_SP )
 #endif
 
 #if   defined(THORNADO_OMP_OL)
@@ -6728,42 +6755,6 @@ CONTAINS
     DO iQ   = 1, 5
       Q_SP(iQ,iP,iS,iN_X) = Zero
     END DO
-    END DO
-    END DO
-    END DO
-
-    IF( ComputeEmAbLedger )THEN
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( EmAb_Ledger )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(3)
-#endif
-    DO iN_X = 1, nX_G
-    DO iS   = 1, nSpecies
-    DO iL   = 1, nEmAbLedger
-      EmAb_Ledger(iL,iS,iN_X) = Zero
-    END DO
-    END DO
-    END DO
-
-    END IF
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( NNS_Ledger )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(3)
-#endif
-    DO iN_X = 1, nX_G
-    DO iS   = 1, nSpecies
-    DO iL   = 1, nNNSLedger
-      NNS_Ledger(iL,iS,iN_X) = Zero
     END DO
     END DO
     END DO
@@ -6786,7 +6777,7 @@ CONTAINS
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2) &
-    !$OMP FIRSTPRIVATE( ComputeEmAbLedger ) &
+    !$OMP FIRSTPRIVATE( ComputeRadiationCollisionRHS ) &
     !$OMP PRIVATE( k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$OMP          I_d_1, I_d_2, I_d_3, V_d_1, V_d_2, V_d_3, &
     !$OMP          L_u_1, L_u_2, L_u_3, L_d_1, L_d_2, L_d_3, &
@@ -6794,16 +6785,16 @@ CONTAINS
     !$OMP          RG3_Total, QL, QE, QM1, QM2, QM3, iN_E, iP, iG )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC FIRSTPRIVATE( ComputeEmAbLedger ) &
+    !$ACC FIRSTPRIVATE( ComputeRadiationCollisionRHS ) &
     !$ACC PRIVATE( k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$ACC          I_d_1, I_d_2, I_d_3, V_d_1, V_d_2, V_d_3, &
     !$ACC          L_u_1, L_u_2, L_u_3, L_d_1, L_d_2, L_d_3, &
     !$ACC          RN, RG1, RG2, RG3, RN_Total, RG1_Total, RG2_Total, &
     !$ACC          RG3_Total, QL, QE, QM1, QM2, QM3, iN_E, iP, iG ) &
-    !$ACC PRESENT( Q_SP, NNS_Ledger, EmAb_Ledger, RadiationCollisionRHS )
+    !$ACC PRESENT( Q_SP, RadiationCollisionRHS )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2) &
-    !$OMP FIRSTPRIVATE( ComputeEmAbLedger ) &
+    !$OMP FIRSTPRIVATE( ComputeRadiationCollisionRHS ) &
     !$OMP PRIVATE( k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$OMP          I_d_1, I_d_2, I_d_3, V_d_1, V_d_2, V_d_3, &
     !$OMP          L_u_1, L_u_2, L_u_3, L_d_1, L_d_2, L_d_3, &
@@ -6843,24 +6834,6 @@ CONTAINS
           RG2(iC_EmAb) = -Chi_EmAb(iN_E,iS,iN_X) * I_d_2
           RG3(iC_EmAb) = -Chi_EmAb(iN_E,iS,iN_X) * I_d_3
 
-          IF( ComputeEmAbLedger )THEN
-            EmAb_Ledger(iEmAbLedger_NIn,iS,iN_X) = &
-              EmAb_Ledger(iEmAbLedger_NIn,iS,iN_X) &
-                + Chi_EmAb(iN_E,iS,iN_X) * Dnu_0(iN_E,iS,iN_X) * W2_S(iN_E)
-            EmAb_Ledger(iEmAbLedger_NOut,iS,iN_X) = &
-              EmAb_Ledger(iEmAbLedger_NOut,iS,iN_X) &
-                + Chi_EmAb(iN_E,iS,iN_X) * Dnu(iN_E,iS,iN_X) * W2_S(iN_E)
-            EmAb_Ledger(iEmAbLedger_NNet,iS,iN_X) = &
-              EmAb_Ledger(iEmAbLedger_NNet,iS,iN_X) &
-                + RN(iC_EmAb) * W2_S(iN_E)
-            EmAb_Ledger(iEmAbLedger_EIn,iS,iN_X) = &
-              EmAb_Ledger(iEmAbLedger_EIn,iS,iN_X) &
-                + Chi_EmAb(iN_E,iS,iN_X) * Dnu_0(iN_E,iS,iN_X) * W3_S(iN_E)
-            EmAb_Ledger(iEmAbLedger_EOut,iS,iN_X) = &
-              EmAb_Ledger(iEmAbLedger_EOut,iS,iN_X) &
-                + Chi_EmAb(iN_E,iS,iN_X) * Dnu(iN_E,iS,iN_X) * W3_S(iN_E)
-          END IF
-
           iG = nChirals - ( LeptonNumber(iS) + 1 ) / nChirals
           RG1(iC_Iso) = -Sigma_Iso(iN_E,iG,iN_X) * I_d_1
           RG2(iC_Iso) = -Sigma_Iso(iN_E,iG,iN_X) * I_d_2
@@ -6894,24 +6867,6 @@ CONTAINS
                             - ( L_u_1 * k_dd_13 + L_u_2 * k_dd_23 &
                               + L_u_3 * k_dd_33 ) * Dnu(iN_E,iS,iN_X)
             END IF
-          END IF
-
-          IF( Include_NNS )THEN
-            NNS_Ledger(iNNSLedger_NIn ,iS,iN_X) = &
-              NNS_Ledger(iNNSLedger_NIn ,iS,iN_X) &
-                + Eta_NNS(iN_E,iS,iN_X) * W2_S(iN_E)
-            NNS_Ledger(iNNSLedger_NOut,iS,iN_X) = &
-              NNS_Ledger(iNNSLedger_NOut,iS,iN_X) &
-                + Chi_NNS(iN_E,iS,iN_X) * Dnu(iN_E,iS,iN_X) * W2_S(iN_E)
-            NNS_Ledger(iNNSLedger_NNet,iS,iN_X) = &
-              NNS_Ledger(iNNSLedger_NNet,iS,iN_X) &
-                + RN(iC_NNS) * W2_S(iN_E)
-            NNS_Ledger(iNNSLedger_EIn ,iS,iN_X) = &
-              NNS_Ledger(iNNSLedger_EIn ,iS,iN_X) &
-                + Eta_NNS(iN_E,iS,iN_X) * W3_S(iN_E)
-            NNS_Ledger(iNNSLedger_EOut,iS,iN_X) = &
-              NNS_Ledger(iNNSLedger_EOut,iS,iN_X) &
-                + Chi_NNS(iN_E,iS,iN_X) * Dnu(iN_E,iS,iN_X) * W3_S(iN_E)
           END IF
 
           IF( Include_NES )THEN
@@ -7034,21 +6989,23 @@ CONTAINS
             END IF
           END IF
 
-          RN_Total  = SUM( RN  )
-          RG1_Total = SUM( RG1 )
-          RG2_Total = SUM( RG2 )
-          RG3_Total = SUM( RG3 )
+          IF( ComputeRadiationCollisionRHS )THEN
+            RN_Total  = SUM( RN  )
+            RG1_Total = SUM( RG1 )
+            RG2_Total = SUM( RG2 )
+            RG3_Total = SUM( RG3 )
 
-          RadiationCollisionRHS(iCR_N,iN_E,iS,iN_X) &
-            = RN_Total + V_u_1(iN_X) * RG1_Total &
-                       + V_u_2(iN_X) * RG2_Total &
-                       + V_u_3(iN_X) * RG3_Total
-          RadiationCollisionRHS(iCR_G1,iN_E,iS,iN_X) &
-            = RG1_Total + V_d_1 * RN_Total
-          RadiationCollisionRHS(iCR_G2,iN_E,iS,iN_X) &
-            = RG2_Total + V_d_2 * RN_Total
-          RadiationCollisionRHS(iCR_G3,iN_E,iS,iN_X) &
-            = RG3_Total + V_d_3 * RN_Total
+            RadiationCollisionRHS(iCR_N,iN_E,iS,iN_X) &
+              = RN_Total + V_u_1(iN_X) * RG1_Total &
+                         + V_u_2(iN_X) * RG2_Total &
+                         + V_u_3(iN_X) * RG3_Total
+            RadiationCollisionRHS(iCR_G1,iN_E,iS,iN_X) &
+              = RG1_Total + V_d_1 * RN_Total
+            RadiationCollisionRHS(iCR_G2,iN_E,iS,iN_X) &
+              = RG2_Total + V_d_2 * RN_Total
+            RadiationCollisionRHS(iCR_G3,iN_E,iS,iN_X) &
+              = RG3_Total + V_d_3 * RN_Total
+          END IF
 
           DO iP = 1, nC
 
@@ -7062,22 +7019,6 @@ CONTAINS
             QM1 = -( RG1(iP) + V_d_1 * RN(iP) ) * W3_S(iN_E)
             QM2 = -( RG2(iP) + V_d_2 * RN(iP) ) * W3_S(iN_E)
             QM3 = -( RG3(iP) + V_d_3 * RN(iP) ) * W3_S(iN_E)
-
-            IF( iP == iC_NNS ) THEN
-              NNS_Ledger(iNNSLedger_QH,iS,iN_X) = &
-                NNS_Ledger(iNNSLedger_QH,iS,iN_X) &
-                  + QE - V_u_1(iN_X) * QM1 &
-                       - V_u_2(iN_X) * QM2 &
-                       - V_u_3(iN_X) * QM3
-            END IF
-
-            IF( ComputeEmAbLedger .AND. iP == iC_EmAb ) THEN
-              EmAb_Ledger(iEmAbLedger_QH,iS,iN_X) = &
-                EmAb_Ledger(iEmAbLedger_QH,iS,iN_X) &
-                  + QE - V_u_1(iN_X) * QM1 &
-                       - V_u_2(iN_X) * QM2 &
-                       - V_u_3(iN_X) * QM3
-            END IF
 
             Q_SP(1,iP,iS,iN_X) = Q_SP(1,iP,iS,iN_X) + QL
             Q_SP(2,iP,iS,iN_X) = Q_SP(2,iP,iS,iN_X) + QE
@@ -7093,6 +7034,17 @@ CONTAINS
 
     END DO
     END DO
+
+    IF( PRESENT( NNS_RateDecomposition_Option ) ) &
+      CALL ComputeNNSRateDecomposition_OrderV &
+             ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, MASK, Q_SP, &
+               V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+               NNS_RateDecomposition_Option )
+
+    IF( PRESENT( EmAb_RateDecomposition_Option ) ) &
+      CALL ComputeEmAbRateDecomposition_OrderV &
+             ( Dnu, MASK, Q_SP, V_u_1, V_u_2, V_u_3, &
+               EmAb_RateDecomposition_Option )
 
     IF( PRESENT( EmAb_Spectrum_Option ) )THEN
 
@@ -7282,45 +7234,206 @@ CONTAINS
       DEALLOCATE( QH_ByProcessSpecies )
     END IF
 
-    IF( PRESENT( NNS_Ledger_Option ) )THEN
-#if   defined(THORNADO_OMP_OL)
-      !$OMP TARGET EXIT DATA MAP( from: NNS_Ledger )
-#elif defined(THORNADO_OACC)
-      !$ACC EXIT DATA COPYOUT( NNS_Ledger )
-#endif
-      NNS_Ledger_Option = NNS_Ledger
-    ELSE
-#if   defined(THORNADO_OMP_OL)
-      !$OMP TARGET EXIT DATA MAP( release: NNS_Ledger )
-#elif defined(THORNADO_OACC)
-      !$ACC EXIT DATA DELETE( NNS_Ledger )
-#endif
-    END IF
-
-    IF( PRESENT( EmAb_Ledger_Option ) )THEN
-#if   defined(THORNADO_OMP_OL)
-      !$OMP TARGET EXIT DATA MAP( from: EmAb_Ledger )
-#elif defined(THORNADO_OACC)
-      !$ACC EXIT DATA COPYOUT( EmAb_Ledger )
-#endif
-      EmAb_Ledger_Option = EmAb_Ledger
-    ELSE
-#if   defined(THORNADO_OMP_OL)
-      !$OMP TARGET EXIT DATA MAP( release: EmAb_Ledger )
-#elif defined(THORNADO_OACC)
-      !$ACC EXIT DATA DELETE( EmAb_Ledger )
-#endif
-    END IF
-
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA MAP( release: Q_SP )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA DELETE( Q_SP )
 #endif
 
-    DEALLOCATE( Q_SP, NNS_Ledger, EmAb_Ledger )
+    DEALLOCATE( Q_SP )
 
   END SUBROUTINE ComputeMatterRHS_Collisions_OrderV
+
+
+  SUBROUTINE ComputeNNSRateDecomposition_OrderV &
+    ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, MASK, Q_SP, &
+      V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      NNS_RateDecomposition )
+
+    REAL(DP), DIMENSION(:,:,:),   INTENT(in)  :: &
+      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    LOGICAL,  DIMENSION(:),       INTENT(in)  :: MASK
+    REAL(DP), DIMENSION(:,:,:,:), INTENT(in)  :: Q_SP
+    REAL(DP), DIMENSION(:),       INTENT(in)  :: &
+      V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:,:,:),   INTENT(out) :: NNS_RateDecomposition
+
+    INTEGER :: iL, iN_E, iN_X, iS
+    REAL(DP) :: I_d_1, I_d_2, I_d_3, L_u_1, L_u_2, L_u_3, RN_NNS
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA MAP( alloc: NNS_RateDecomposition )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA CREATE( NNS_RateDecomposition )
+#endif
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( NNS_RateDecomposition )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO iN_X = 1, nX_G
+    DO iS   = 1, nSpecies
+    DO iL   = 1, nNNSRateDecomposition
+      NNS_RateDecomposition(iL,iS,iN_X) = Zero
+    END DO
+    END DO
+    END DO
+
+    IF( Include_NNS )THEN
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( iN_E, I_d_1, I_d_2, I_d_3, L_u_1, L_u_2, L_u_3, RN_NNS )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( iN_E, I_d_1, I_d_2, I_d_3, &
+    !$ACC          L_u_1, L_u_2, L_u_3, RN_NNS ) &
+    !$ACC PRESENT( NNS_RateDecomposition, Q_SP )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( iN_E, I_d_1, I_d_2, I_d_3, L_u_1, L_u_2, L_u_3, RN_NNS )
+#endif
+      DO iN_X = 1, nX_G
+      DO iS   = 1, nSpecies
+
+        IF( MASK(iN_X) )THEN
+          DO iN_E = 1, nE_G
+            RN_NNS = R_NNS(iN_E,iS,iN_X)
+            IF( Include_LinCorr )THEN
+              I_d_1 = Gm_dd_11(iN_X) * Inu_u_1(iN_E,iS,iN_X)
+              I_d_2 = Gm_dd_22(iN_X) * Inu_u_2(iN_E,iS,iN_X)
+              I_d_3 = Gm_dd_33(iN_X) * Inu_u_3(iN_E,iS,iN_X)
+              L_u_1 = L_NNS__In__u_1(iN_E,iS,iN_X) &
+                      - L_NNS__Out_u_1(iN_E,iS,iN_X)
+              L_u_2 = L_NNS__In__u_2(iN_E,iS,iN_X) &
+                      - L_NNS__Out_u_2(iN_E,iS,iN_X)
+              L_u_3 = L_NNS__In__u_3(iN_E,iS,iN_X) &
+                      - L_NNS__Out_u_3(iN_E,iS,iN_X)
+              RN_NNS = RN_NNS &
+                         - ( L_u_1 * I_d_1 + L_u_2 * I_d_2 + L_u_3 * I_d_3 )
+            END IF
+            NNS_RateDecomposition(iNNSRateDecomposition_NIn,iS,iN_X) = &
+              NNS_RateDecomposition(iNNSRateDecomposition_NIn,iS,iN_X) &
+                + Eta_NNS(iN_E,iS,iN_X) * W2_S(iN_E)
+            NNS_RateDecomposition(iNNSRateDecomposition_NOut,iS,iN_X) = &
+              NNS_RateDecomposition(iNNSRateDecomposition_NOut,iS,iN_X) &
+                + Chi_NNS(iN_E,iS,iN_X) * Dnu(iN_E,iS,iN_X) * W2_S(iN_E)
+            NNS_RateDecomposition(iNNSRateDecomposition_NNet,iS,iN_X) = &
+              NNS_RateDecomposition(iNNSRateDecomposition_NNet,iS,iN_X) &
+                + RN_NNS * W2_S(iN_E)
+            NNS_RateDecomposition(iNNSRateDecomposition_EIn,iS,iN_X) = &
+              NNS_RateDecomposition(iNNSRateDecomposition_EIn,iS,iN_X) &
+                + Eta_NNS(iN_E,iS,iN_X) * W3_S(iN_E)
+            NNS_RateDecomposition(iNNSRateDecomposition_EOut,iS,iN_X) = &
+              NNS_RateDecomposition(iNNSRateDecomposition_EOut,iS,iN_X) &
+                + Chi_NNS(iN_E,iS,iN_X) * Dnu(iN_E,iS,iN_X) * W3_S(iN_E)
+          END DO
+          NNS_RateDecomposition(iNNSRateDecomposition_QH,iS,iN_X) &
+            = Q_SP(2,iC_NNS,iS,iN_X) &
+                - V_u_1(iN_X) * Q_SP(3,iC_NNS,iS,iN_X) &
+                - V_u_2(iN_X) * Q_SP(4,iC_NNS,iS,iN_X) &
+                - V_u_3(iN_X) * Q_SP(5,iC_NNS,iS,iN_X)
+        END IF
+
+      END DO
+      END DO
+
+    END IF
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA MAP( from: NNS_RateDecomposition )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA COPYOUT( NNS_RateDecomposition )
+#endif
+
+  END SUBROUTINE ComputeNNSRateDecomposition_OrderV
+
+
+  SUBROUTINE ComputeEmAbRateDecomposition_OrderV &
+    ( Dnu, MASK, Q_SP, V_u_1, V_u_2, V_u_3, EmAb_RateDecomposition )
+
+    REAL(DP), DIMENSION(:,:,:),   INTENT(in)  :: Dnu
+    LOGICAL,  DIMENSION(:),       INTENT(in)  :: MASK
+    REAL(DP), DIMENSION(:,:,:,:), INTENT(in)  :: Q_SP
+    REAL(DP), DIMENSION(:),       INTENT(in)  :: V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:,:,:),   INTENT(out) :: EmAb_RateDecomposition
+
+    INTEGER :: iL, iN_E, iN_X, iS
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA MAP( alloc: EmAb_RateDecomposition )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA CREATE( EmAb_RateDecomposition )
+#endif
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRESENT( EmAb_RateDecomposition )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO iN_X = 1, nX_G
+    DO iS   = 1, nSpecies
+    DO iL   = 1, nEmAbRateDecomposition
+      EmAb_RateDecomposition(iL,iS,iN_X) = Zero
+    END DO
+    END DO
+    END DO
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2) PRIVATE( iN_E )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) PRIVATE( iN_E ) &
+    !$ACC PRESENT( EmAb_RateDecomposition, Q_SP )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(2) PRIVATE( iN_E )
+#endif
+    DO iN_X = 1, nX_G
+    DO iS   = 1, nSpecies
+
+      IF( MASK(iN_X) )THEN
+        DO iN_E = 1, nE_G
+          EmAb_RateDecomposition(iEmAbRateDecomposition_NIn,iS,iN_X) = &
+            EmAb_RateDecomposition(iEmAbRateDecomposition_NIn,iS,iN_X) &
+              + Chi_EmAb(iN_E,iS,iN_X) * Dnu_0(iN_E,iS,iN_X) * W2_S(iN_E)
+          EmAb_RateDecomposition(iEmAbRateDecomposition_NOut,iS,iN_X) = &
+            EmAb_RateDecomposition(iEmAbRateDecomposition_NOut,iS,iN_X) &
+              + Chi_EmAb(iN_E,iS,iN_X) * Dnu(iN_E,iS,iN_X) * W2_S(iN_E)
+          EmAb_RateDecomposition(iEmAbRateDecomposition_NNet,iS,iN_X) = &
+            EmAb_RateDecomposition(iEmAbRateDecomposition_NNet,iS,iN_X) &
+              + Chi_EmAb(iN_E,iS,iN_X) &
+                  * ( Dnu_0(iN_E,iS,iN_X) - Dnu(iN_E,iS,iN_X) ) &
+                  * W2_S(iN_E)
+          EmAb_RateDecomposition(iEmAbRateDecomposition_EIn,iS,iN_X) = &
+            EmAb_RateDecomposition(iEmAbRateDecomposition_EIn,iS,iN_X) &
+              + Chi_EmAb(iN_E,iS,iN_X) * Dnu_0(iN_E,iS,iN_X) * W3_S(iN_E)
+          EmAb_RateDecomposition(iEmAbRateDecomposition_EOut,iS,iN_X) = &
+            EmAb_RateDecomposition(iEmAbRateDecomposition_EOut,iS,iN_X) &
+              + Chi_EmAb(iN_E,iS,iN_X) * Dnu(iN_E,iS,iN_X) * W3_S(iN_E)
+        END DO
+        EmAb_RateDecomposition(iEmAbRateDecomposition_QH,iS,iN_X) &
+          = Q_SP(2,iC_EmAb,iS,iN_X) &
+              - V_u_1(iN_X) * Q_SP(3,iC_EmAb,iS,iN_X) &
+              - V_u_2(iN_X) * Q_SP(4,iC_EmAb,iS,iN_X) &
+              - V_u_3(iN_X) * Q_SP(5,iC_EmAb,iS,iN_X)
+      END IF
+
+    END DO
+    END DO
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA MAP( from: EmAb_RateDecomposition )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA COPYOUT( EmAb_RateDecomposition )
+#endif
+
+  END SUBROUTINE ComputeEmAbRateDecomposition_OrderV
 #endif
 
 

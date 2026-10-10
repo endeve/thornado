@@ -101,7 +101,7 @@ CONTAINS
       bcX_Option, iApplyBC_Option, OffGridFluxR_Option, &
       MatterCoupling_Mask_Option, MatterCoupling_Increment_Option &
 #ifdef TWOMOMENT_ORDER_V
-      , MatterSource_Rate_Option, MatterIncrement_Rate_Option &
+      , MatterCollisionExchange_Rate_Option, MatterUpdate_Rate_Option &
 #endif
       )
 
@@ -149,7 +149,7 @@ CONTAINS
            1:nCF)
 #ifdef TWOMOMENT_ORDER_V
     REAL(DP), INTENT(out), OPTIONAL :: &
-      MatterSource_Rate_Option &
+      MatterCollisionExchange_Rate_Option &
           (1:nQ, &
            1:1+nSpecies+nC, &
            1:nDOFX, &
@@ -157,7 +157,7 @@ CONTAINS
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4))
     REAL(DP), INTENT(out), OPTIONAL :: &
-      MatterIncrement_Rate_Option &
+      MatterUpdate_Rate_Option &
           (1:nQ, &
            1:nDOFX, &
            iZ_B1(2):iZ_E1(2), &
@@ -295,22 +295,22 @@ CONTAINS
     END IF
 
 #ifdef TWOMOMENT_ORDER_V
-    IF( PRESENT( MatterSource_Rate_Option ) )THEN
+    IF( PRESENT( MatterCollisionExchange_Rate_Option ) )THEN
 
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA MAP( alloc: MatterSource_Rate_Option )
+    !$OMP TARGET ENTER DATA MAP( alloc: MatterCollisionExchange_Rate_Option )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA CREATE( MatterSource_Rate_Option )
+    !$ACC ENTER DATA CREATE( MatterCollisionExchange_Rate_Option )
 #endif
 
     END IF
 
-    IF( PRESENT( MatterIncrement_Rate_Option ) )THEN
+    IF( PRESENT( MatterUpdate_Rate_Option ) )THEN
 
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA MAP( alloc: MatterIncrement_Rate_Option )
+    !$OMP TARGET ENTER DATA MAP( alloc: MatterUpdate_Rate_Option )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA CREATE( MatterIncrement_Rate_Option )
+    !$ACC ENTER DATA CREATE( MatterUpdate_Rate_Option )
 #endif
 
     END IF
@@ -502,8 +502,8 @@ CONTAINS
 
     IF( Implicit )THEN
 #ifdef TWOMOMENT_ORDER_V
-      IF(      PRESENT( MatterSource_Rate_Option ) &
-          .OR. PRESENT( MatterIncrement_Rate_Option ) )THEN
+      IF(      PRESENT( MatterCollisionExchange_Rate_Option ) &
+          .OR. PRESENT( MatterUpdate_Rate_Option ) )THEN
         CollisionWeight = One
         IF( .NOT. SingleStage ) CollisionWeight = Half
         CALL ComputeIncrement_TwoMoment_Implicit &
@@ -512,9 +512,9 @@ CONTAINS
                  AccumulateMatterCoupling_Mask = .FALSE., &
                  uDR_Option = uDR, &
                  MatterCoupling_Mask_Option = MatterCoupling_Mask_Option, &
-                 MatterSource_Rate_Option = MatterSource_Rate_Option, &
-                 MatterIncrement_Rate_Option = MatterIncrement_Rate_Option, &
-                 MatterSource_Weight_Option = CollisionWeight )
+                 MatterCollisionExchange_Rate_Option = MatterCollisionExchange_Rate_Option, &
+                 MatterUpdate_Rate_Option = MatterUpdate_Rate_Option, &
+                 IMEX_ImplicitWeight_Option = CollisionWeight )
       ELSE
 #endif
         CALL ComputeIncrement_TwoMoment_Implicit &
@@ -762,8 +762,8 @@ CONTAINS
 
       IF( Implicit )THEN
 #ifdef TWOMOMENT_ORDER_V
-        IF(      PRESENT( MatterSource_Rate_Option ) &
-            .OR. PRESENT( MatterIncrement_Rate_Option ) )THEN
+        IF(      PRESENT( MatterCollisionExchange_Rate_Option ) &
+            .OR. PRESENT( MatterUpdate_Rate_Option ) )THEN
           CollisionWeight = Half
           CALL ComputeIncrement_TwoMoment_Implicit &
                  ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, Half * dt, &
@@ -771,9 +771,9 @@ CONTAINS
                    AccumulateMatterCoupling_Mask = .TRUE., &
                    uDR_Option = uDR, &
                    MatterCoupling_Mask_Option = MatterCoupling_Mask_Option, &
-                   MatterSource_Rate_Option = MatterSource_Rate_Option, &
-                   MatterIncrement_Rate_Option = MatterIncrement_Rate_Option, &
-                   MatterSource_Weight_Option = CollisionWeight )
+                   MatterCollisionExchange_Rate_Option = MatterCollisionExchange_Rate_Option, &
+                   MatterUpdate_Rate_Option = MatterUpdate_Rate_Option, &
+                   IMEX_ImplicitWeight_Option = CollisionWeight )
         ELSE
 #endif
           CALL ComputeIncrement_TwoMoment_Implicit &
@@ -953,22 +953,22 @@ CONTAINS
     END IF
 
 #ifdef TWOMOMENT_ORDER_V
-    IF( PRESENT( MatterSource_Rate_Option ) )THEN
+    IF( PRESENT( MatterCollisionExchange_Rate_Option ) )THEN
 
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA MAP( release: MatterSource_Rate_Option )
+    !$OMP TARGET EXIT DATA MAP( release: MatterCollisionExchange_Rate_Option )
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA DELETE( MatterSource_Rate_Option )
+    !$ACC EXIT DATA DELETE( MatterCollisionExchange_Rate_Option )
 #endif
 
     END IF
 
-    IF( PRESENT( MatterIncrement_Rate_Option ) )THEN
+    IF( PRESENT( MatterUpdate_Rate_Option ) )THEN
 
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA MAP( release: MatterIncrement_Rate_Option )
+    !$OMP TARGET EXIT DATA MAP( release: MatterUpdate_Rate_Option )
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA DELETE( MatterIncrement_Rate_Option )
+    !$ACC EXIT DATA DELETE( MatterUpdate_Rate_Option )
 #endif
 
     END IF

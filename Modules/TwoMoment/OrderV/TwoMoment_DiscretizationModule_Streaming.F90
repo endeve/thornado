@@ -123,8 +123,8 @@ MODULE TwoMoment_DiscretizationModule_Streaming
   PUBLIC :: ClearSourceAwareTransportOpacity
   PUBLIC :: MarkStreamingBoundaryConditionsApplied
   PUBLIC :: UseSourceAwareLLF
-  PUBLIC :: SetStreamingAuditSurfaceTermFactors
-  PUBLIC :: ClearStreamingAuditSurfaceTermFactors
+  PUBLIC :: SetStreamingCheckSurfaceTermFactors
+  PUBLIC :: ClearStreamingCheckSurfaceTermFactors
 
   LOGICAL,  SAVE :: UseEquilibriumDeviationLLF = .FALSE.
   REAL(DP), SAVE :: EquilibriumDeviationLLF_DnuMax = One - EPSILON( One )
@@ -144,9 +144,9 @@ MODULE TwoMoment_DiscretizationModule_Streaming
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, SAVE :: &
     SourceAwareImplicitTransportOpacity
 
-  LOGICAL,  SAVE :: UseStreamingAuditSurfaceTermFactors = .FALSE.
-  REAL(DP), SAVE :: StreamingAuditSurfaceTermFactor_X1_Dn = One
-  REAL(DP), SAVE :: StreamingAuditSurfaceTermFactor_X1_Up = One
+  LOGICAL,  SAVE :: UseStreamingCheckSurfaceTermFactors = .FALSE.
+  REAL(DP), SAVE :: StreamingCheckSurfaceTermFactor_X1_Dn = One
+  REAL(DP), SAVE :: StreamingCheckSurfaceTermFactor_X1_Up = One
 
   ! --- Geometry Fields ---
 
@@ -657,26 +657,26 @@ CONTAINS
   END SUBROUTINE MarkStreamingBoundaryConditionsApplied
 
 
-  SUBROUTINE SetStreamingAuditSurfaceTermFactors &
+  SUBROUTINE SetStreamingCheckSurfaceTermFactors &
     ( SurfaceTermFactor_X1_Dn, SurfaceTermFactor_X1_Up )
 
     REAL(DP), INTENT(in) :: SurfaceTermFactor_X1_Dn
     REAL(DP), INTENT(in) :: SurfaceTermFactor_X1_Up
 
-    StreamingAuditSurfaceTermFactor_X1_Dn = SurfaceTermFactor_X1_Dn
-    StreamingAuditSurfaceTermFactor_X1_Up = SurfaceTermFactor_X1_Up
-    UseStreamingAuditSurfaceTermFactors = .TRUE.
+    StreamingCheckSurfaceTermFactor_X1_Dn = SurfaceTermFactor_X1_Dn
+    StreamingCheckSurfaceTermFactor_X1_Up = SurfaceTermFactor_X1_Up
+    UseStreamingCheckSurfaceTermFactors = .TRUE.
 
-  END SUBROUTINE SetStreamingAuditSurfaceTermFactors
+  END SUBROUTINE SetStreamingCheckSurfaceTermFactors
 
 
-  SUBROUTINE ClearStreamingAuditSurfaceTermFactors
+  SUBROUTINE ClearStreamingCheckSurfaceTermFactors
 
-    UseStreamingAuditSurfaceTermFactors = .FALSE.
-    StreamingAuditSurfaceTermFactor_X1_Dn = One
-    StreamingAuditSurfaceTermFactor_X1_Up = One
+    UseStreamingCheckSurfaceTermFactors = .FALSE.
+    StreamingCheckSurfaceTermFactor_X1_Dn = One
+    StreamingCheckSurfaceTermFactor_X1_Up = One
 
-  END SUBROUTINE ClearStreamingAuditSurfaceTermFactors
+  END SUBROUTINE ClearStreamingCheckSurfaceTermFactors
 
 
   SUBROUTINE ComputeIncrement_TwoMoment_Explicit &
@@ -748,9 +748,9 @@ CONTAINS
 
     SurfaceTermFactor_X1_Dn = SurfaceTermFactor
     SurfaceTermFactor_X1_Up = SurfaceTermFactor
-    IF( UseStreamingAuditSurfaceTermFactors )THEN
-      SurfaceTermFactor_X1_Dn = StreamingAuditSurfaceTermFactor_X1_Dn
-      SurfaceTermFactor_X1_Up = StreamingAuditSurfaceTermFactor_X1_Up
+    IF( UseStreamingCheckSurfaceTermFactors )THEN
+      SurfaceTermFactor_X1_Dn = StreamingCheckSurfaceTermFactor_X1_Dn
+      SurfaceTermFactor_X1_Up = StreamingCheckSurfaceTermFactor_X1_Up
     END IF
 
     VolumeTermFactor = One
