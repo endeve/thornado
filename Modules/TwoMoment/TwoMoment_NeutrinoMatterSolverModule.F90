@@ -2302,12 +2302,13 @@ CONTAINS
 
         CALL TimersStart( Timer_Collisions_MatterFromRadiation )
 
-        CALL UpdateMatterFromRadiationConservation_OrderV &
+        CALL RecoverMatterFromRadiationInvariants_OrderV &
                ( ITERATE_inner, ProjectionMask, &
                  FVECm_outer, GVECm_outer, &
                  Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
                  D, T, Y, E, V_u_1, V_u_2, V_u_3, &
                  Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                 InitialRadiationLimiter_ConservationCorrection, &
                  RadiationLeptonInvariant, &
                  nX_P_inner, PackIndex_inner, UnpackIndex_inner, Error )
 
@@ -2351,12 +2352,13 @@ CONTAINS
 
             CALL TimersStart( Timer_Collisions_MatterFromRadiation )
 
-            CALL UpdateMatterFromRadiationConservation_OrderV &
+            CALL RecoverMatterFromRadiationInvariants_OrderV &
                    ( RadiationBacktrackMask, ProjectionMask, &
                      FVECm_outer, GVECm_outer, &
                      Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
                      D, T, Y, E, V_u_1, V_u_2, V_u_3, &
                      Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                     InitialRadiationLimiter_ConservationCorrection, &
                      RadiationLeptonInvariant, &
                      nX_P_inner, PackIndex_inner, UnpackIndex_inner, Error )
 
@@ -3772,11 +3774,367 @@ CONTAINS
   END SUBROUTINE BacktrackRadiationOnlyIterate_OrderV
 
 
-  SUBROUTINE UpdateMatterFromRadiationConservation_OrderV &
+  SUBROUTINE RecoverMatterFromRadiationState_OrderV &
+    ( MASK, Fm, Gm, &
+      Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      D, Y, E, V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      RadiationLimiterCorrection, Error )
+
+    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
+    REAL(DP), DIMENSION(:,:),   INTENT(inout) :: Fm, Gm
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: &
+      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:),     INTENT(in)    :: D
+    REAL(DP), DIMENSION(:),     INTENT(inout) :: &
+      Y, E, V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:),     INTENT(in)    :: &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:,:),   INTENT(in)    :: RadiationLimiterCorrection
+    INTEGER,  DIMENSION(:),     INTENT(inout) :: Error
+
+    INTEGER  :: iN_E, iN_X, iS, SolveInfo
+    REAL(DP) :: A(3,3), B(3), VHat(3)
+    REAL(DP) :: Ef, SqrtG1, SqrtG2, SqrtG3, vDotV
+    REAL(DP) :: k_dd_11, k_dd_12, k_dd_13
+    REAL(DP) :: k_dd_22, k_dd_23, k_dd_33
+    REAL(DP) :: SUM_D, SUM_I1, SUM_I2, SUM_I3
+    REAL(DP) :: SUM_K11, SUM_K12, SUM_K13
+    REAL(DP) :: SUM_K22, SUM_K23, SUM_K33
+    REAL(DP) :: SUM_L, SUM_LI1, SUM_LI2, SUM_LI3
+    REAL(DP) :: SUM_Ef_Old, SUM_L_Old
+    REAL(DP) :: SUM_P1_Old, SUM_P2_Old, SUM_P3_Old
+    REAL(DP) :: SUM_Y, SUM_Ef
+    REAL(DP) :: U_Y_New, U_Ef_New
+    REAL(DP) :: U_V1_New, U_V2_New, U_V3_New
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE &
+    !$OMP PRIVATE( A, B, VHat, SolveInfo, Ef, SqrtG1, SqrtG2, SqrtG3, &
+    !$OMP          vDotV, SUM_D, SUM_I1, SUM_I2, SUM_I3, &
+    !$OMP          SUM_K11, SUM_K12, SUM_K13, &
+    !$OMP          SUM_K22, SUM_K23, SUM_K33, &
+    !$OMP          SUM_L, SUM_LI1, SUM_LI2, SUM_LI3, &
+    !$OMP          SUM_Ef_Old, SUM_L_Old, &
+    !$OMP          SUM_P1_Old, SUM_P2_Old, SUM_P3_Old, SUM_Y, SUM_Ef, &
+    !$OMP          U_Y_New, U_Ef_New, U_V1_New, U_V2_New, U_V3_New )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG &
+    !$ACC PRIVATE( A, B, VHat, SolveInfo, Ef, SqrtG1, SqrtG2, SqrtG3, &
+    !$ACC          vDotV, SUM_D, SUM_I1, SUM_I2, SUM_I3, &
+    !$ACC          SUM_K11, SUM_K12, SUM_K13, &
+    !$ACC          SUM_K22, SUM_K23, SUM_K33, &
+    !$ACC          SUM_L, SUM_LI1, SUM_LI2, SUM_LI3, &
+    !$ACC          SUM_Ef_Old, SUM_L_Old, &
+    !$ACC          SUM_P1_Old, SUM_P2_Old, SUM_P3_Old, SUM_Y, SUM_Ef, &
+    !$ACC          U_Y_New, U_Ef_New, U_V1_New, U_V2_New, U_V3_New )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( A, B, VHat, SolveInfo, Ef, SqrtG1, SqrtG2, SqrtG3, &
+    !$OMP          vDotV, k_dd_11, k_dd_12, k_dd_13, &
+    !$OMP          k_dd_22, k_dd_23, k_dd_33, &
+    !$OMP          SUM_D, SUM_I1, SUM_I2, SUM_I3, &
+    !$OMP          SUM_K11, SUM_K12, SUM_K13, &
+    !$OMP          SUM_K22, SUM_K23, SUM_K33, &
+    !$OMP          SUM_L, SUM_LI1, SUM_LI2, SUM_LI3, &
+    !$OMP          SUM_Ef_Old, SUM_L_Old, &
+    !$OMP          SUM_P1_Old, SUM_P2_Old, SUM_P3_Old, SUM_Y, SUM_Ef, &
+    !$OMP          U_Y_New, U_Ef_New, U_V1_New, U_V2_New, U_V3_New )
+#endif
+    DO iN_X = 1, nX_G
+
+      IF( .NOT. MASK(iN_X) ) CYCLE
+
+      Error(iN_X) = 0
+      INFO(iN_X) = 0
+
+      SqrtG1 = SQRT( Gm_dd_11(iN_X) )
+      SqrtG2 = SQRT( Gm_dd_22(iN_X) )
+      SqrtG3 = SQRT( Gm_dd_33(iN_X) )
+
+      SUM_D   = Zero
+      SUM_I1  = Zero
+      SUM_I2  = Zero
+      SUM_I3  = Zero
+      SUM_K11 = Zero
+      SUM_K12 = Zero
+      SUM_K13 = Zero
+      SUM_K22 = Zero
+      SUM_K23 = Zero
+      SUM_K33 = Zero
+      SUM_L   = Zero
+      SUM_LI1 = Zero
+      SUM_LI2 = Zero
+      SUM_LI3 = Zero
+      SUM_Ef_Old = Zero
+      SUM_L_Old  = Zero
+      SUM_P1_Old = Zero
+      SUM_P2_Old = Zero
+      SUM_P3_Old = Zero
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( k_dd_11, k_dd_12, k_dd_13, &
+    !$OMP          k_dd_22, k_dd_23, k_dd_33 ) &
+    !$OMP REDUCTION( + : SUM_D, SUM_I1, SUM_I2, SUM_I3, &
+    !$OMP                 SUM_K11, SUM_K12, SUM_K13, &
+    !$OMP                 SUM_K22, SUM_K23, SUM_K33, &
+    !$OMP                 SUM_L, SUM_LI1, SUM_LI2, SUM_LI3, &
+    !$OMP                 SUM_Ef_Old, SUM_L_Old, &
+    !$OMP                 SUM_P1_Old, SUM_P2_Old, SUM_P3_Old )
+#elif defined(THORNADO_OACC)
+    !$ACC LOOP VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( k_dd_11, k_dd_12, k_dd_13, &
+    !$ACC          k_dd_22, k_dd_23, k_dd_33 ) &
+    !$ACC REDUCTION( + : SUM_D, SUM_I1, SUM_I2, SUM_I3, &
+    !$ACC                 SUM_K11, SUM_K12, SUM_K13, &
+    !$ACC                 SUM_K22, SUM_K23, SUM_K33, &
+    !$ACC                 SUM_L, SUM_LI1, SUM_LI2, SUM_LI3, &
+    !$ACC                 SUM_Ef_Old, SUM_L_Old, &
+    !$ACC                 SUM_P1_Old, SUM_P2_Old, SUM_P3_Old )
+#endif
+      DO iS   = 1, nSpecies
+      DO iN_E = 1, nE_G
+
+        CALL ComputeEddingtonTensorComponents_dd &
+               ( Dnu(iN_E,iS,iN_X), &
+                 Inu_u_1(iN_E,iS,iN_X), &
+                 Inu_u_2(iN_E,iS,iN_X), &
+                 Inu_u_3(iN_E,iS,iN_X), &
+                 Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
+                 k_dd_11, k_dd_12, k_dd_13, &
+                 k_dd_22, k_dd_23, k_dd_33 )
+
+        SUM_D = SUM_D + W3_S(iN_E) * Dnu(iN_E,iS,iN_X)
+        SUM_I1 = SUM_I1 + W3_S(iN_E) * SqrtG1 &
+          * Inu_u_1(iN_E,iS,iN_X)
+        SUM_I2 = SUM_I2 + W3_S(iN_E) * SqrtG2 &
+          * Inu_u_2(iN_E,iS,iN_X)
+        SUM_I3 = SUM_I3 + W3_S(iN_E) * SqrtG3 &
+          * Inu_u_3(iN_E,iS,iN_X)
+
+        SUM_K11 = SUM_K11 + W3_S(iN_E) * Dnu(iN_E,iS,iN_X) &
+          * k_dd_11 / ( SqrtG1 * SqrtG1 )
+        SUM_K12 = SUM_K12 + W3_S(iN_E) * Dnu(iN_E,iS,iN_X) &
+          * k_dd_12 / ( SqrtG1 * SqrtG2 )
+        SUM_K13 = SUM_K13 + W3_S(iN_E) * Dnu(iN_E,iS,iN_X) &
+          * k_dd_13 / ( SqrtG1 * SqrtG3 )
+        SUM_K22 = SUM_K22 + W3_S(iN_E) * Dnu(iN_E,iS,iN_X) &
+          * k_dd_22 / ( SqrtG2 * SqrtG2 )
+        SUM_K23 = SUM_K23 + W3_S(iN_E) * Dnu(iN_E,iS,iN_X) &
+          * k_dd_23 / ( SqrtG2 * SqrtG3 )
+        SUM_K33 = SUM_K33 + W3_S(iN_E) * Dnu(iN_E,iS,iN_X) &
+          * k_dd_33 / ( SqrtG3 * SqrtG3 )
+
+        SUM_Ef_Old = SUM_Ef_Old + W3_S(iN_E) &
+          * ( Two * C_Dnu(iN_E,iS,iN_X) - Dnu_old(iN_E,iS,iN_X) )
+        SUM_P1_Old = SUM_P1_Old + W3_S(iN_E) &
+          * ( C_Inu_d_1(iN_E,iS,iN_X) / SqrtG1 &
+              + SqrtG1 * V_u_1_old(iN_X) * Dnu_old(iN_E,iS,iN_X) )
+        SUM_P2_Old = SUM_P2_Old + W3_S(iN_E) &
+          * ( C_Inu_d_2(iN_E,iS,iN_X) / SqrtG2 &
+              + SqrtG2 * V_u_2_old(iN_X) * Dnu_old(iN_E,iS,iN_X) )
+        SUM_P3_Old = SUM_P3_Old + W3_S(iN_E) &
+          * ( C_Inu_d_3(iN_E,iS,iN_X) / SqrtG3 &
+              + SqrtG3 * V_u_3_old(iN_X) * Dnu_old(iN_E,iS,iN_X) )
+
+        IF( iS <= iNuE_Bar )THEN
+          SUM_L_Old = SUM_L_Old + W2_S(iN_E) * LeptonNumber(iS) &
+            * C_Dnu(iN_E,iS,iN_X)
+          SUM_L = SUM_L + W2_S(iN_E) * LeptonNumber(iS) &
+            * Dnu(iN_E,iS,iN_X)
+          SUM_LI1 = SUM_LI1 + W2_S(iN_E) * LeptonNumber(iS) &
+            * SqrtG1 * Inu_u_1(iN_E,iS,iN_X)
+          SUM_LI2 = SUM_LI2 + W2_S(iN_E) * LeptonNumber(iS) &
+            * SqrtG2 * Inu_u_2(iN_E,iS,iN_X)
+          SUM_LI3 = SUM_LI3 + W2_S(iN_E) * LeptonNumber(iS) &
+            * SqrtG3 * Inu_u_3(iN_E,iS,iN_X)
+        END IF
+
+      END DO
+      END DO
+
+      A = Zero
+      A(1,1) = One + wMatrRHS(iV1) &
+        * ( SUM_D + SUM_K11 ) / D(iN_X)
+      A(1,2) = wMatrRHS(iV1) * SUM_K12 / D(iN_X)
+      A(1,3) = wMatrRHS(iV1) * SUM_K13 / D(iN_X)
+      A(2,1) = wMatrRHS(iV2) * SUM_K12 / D(iN_X)
+      A(2,2) = One + wMatrRHS(iV2) &
+        * ( SUM_D + SUM_K22 ) / D(iN_X)
+      A(2,3) = wMatrRHS(iV2) * SUM_K23 / D(iN_X)
+      A(3,1) = wMatrRHS(iV3) * SUM_K13 / D(iN_X)
+      A(3,2) = wMatrRHS(iV3) * SUM_K23 / D(iN_X)
+      A(3,3) = One + wMatrRHS(iV3) &
+        * ( SUM_D + SUM_K33 ) / D(iN_X)
+
+      B(1) = SqrtG1 * V_u_1_old(iN_X) &
+        + wMatrRHS(iV1) / D(iN_X) &
+          * ( SUM_P1_Old &
+              + RadiationLimiterCorrection(iV1,iN_X) / SqrtG1 &
+              - SUM_I1 )
+      B(2) = SqrtG2 * V_u_2_old(iN_X) &
+        + wMatrRHS(iV2) / D(iN_X) &
+          * ( SUM_P2_Old &
+              + RadiationLimiterCorrection(iV2,iN_X) / SqrtG2 &
+              - SUM_I2 )
+      B(3) = SqrtG3 * V_u_3_old(iN_X) &
+        + wMatrRHS(iV3) / D(iN_X) &
+          * ( SUM_P3_Old &
+              + RadiationLimiterCorrection(iV3,iN_X) / SqrtG3 &
+              - SUM_I3 )
+
+      CALL SolveLinearSystem3x3_OrderV( A, B, VHat, SolveInfo )
+      INFO(iN_X) = SolveInfo
+
+      IF( SolveInfo /= 0 )THEN
+        Error(iN_X) = 1
+        Fm(:,iN_X) = Zero
+        Gm(iY ,iN_X) = U_Y    (iN_X)
+        Gm(iEf,iN_X) = U_Ef   (iN_X)
+        Gm(iV1,iN_X) = U_V_d_1(iN_X)
+        Gm(iV2,iN_X) = U_V_d_2(iN_X)
+        Gm(iV3,iN_X) = U_V_d_3(iN_X)
+        CYCLE
+      END IF
+
+      V_u_1(iN_X) = VHat(1) / SqrtG1
+      V_u_2(iN_X) = VHat(2) / SqrtG2
+      V_u_3(iN_X) = VHat(3) / SqrtG3
+
+      SUM_Y = SUM_L &
+        + VHat(1) * SUM_LI1 &
+        + VHat(2) * SUM_LI2 &
+        + VHat(3) * SUM_LI3
+      SUM_Ef = SUM_D + Two &
+        * (   VHat(1) * SUM_I1 &
+            + VHat(2) * SUM_I2 &
+            + VHat(3) * SUM_I3 )
+
+      Y(iN_X) = Y_old(iN_X) + AtomicMassUnit / D(iN_X) &
+        * wMatrRHS(iY) &
+        * (   SUM_L_Old + RadiationLimiterCorrection(iY,iN_X) &
+            - SUM_Y )
+      Ef = Ef_old(iN_X) + wMatrRHS(iEf) / D(iN_X) &
+        * (   SUM_Ef_Old + RadiationLimiterCorrection(iEf,iN_X) &
+            - SUM_Ef )
+
+      U_Y_New = Y(iN_X) / Y_old(iN_X)
+      U_Ef_New = Ef / Ef_old(iN_X)
+      U_V1_New = SqrtG1 * VHat(1) / SpeedOfLight
+      U_V2_New = SqrtG2 * VHat(2) / SpeedOfLight
+      U_V3_New = SqrtG3 * VHat(3) / SpeedOfLight
+
+      Fm(iY ,iN_X) = U_Y_New  - U_Y    (iN_X)
+      Fm(iEf,iN_X) = U_Ef_New - U_Ef   (iN_X)
+      Fm(iV1,iN_X) = U_V1_New - U_V_d_1(iN_X)
+      Fm(iV2,iN_X) = U_V2_New - U_V_d_2(iN_X)
+      Fm(iV3,iN_X) = U_V3_New - U_V_d_3(iN_X)
+
+      U_Y    (iN_X) = U_Y_New
+      U_Ef   (iN_X) = U_Ef_New
+      U_V_d_1(iN_X) = U_V1_New
+      U_V_d_2(iN_X) = U_V2_New
+      U_V_d_3(iN_X) = U_V3_New
+
+      G_Y    (iN_X) = U_Y_New
+      G_Ef   (iN_X) = U_Ef_New
+      G_V_d_1(iN_X) = U_V1_New
+      G_V_d_2(iN_X) = U_V2_New
+      G_V_d_3(iN_X) = U_V3_New
+
+      Gm(iY ,iN_X) = U_Y_New
+      Gm(iEf,iN_X) = U_Ef_New
+      Gm(iV1,iN_X) = U_V1_New
+      Gm(iV2,iN_X) = U_V2_New
+      Gm(iV3,iN_X) = U_V3_New
+
+      vDotV = VHat(1)**2 + VHat(2)**2 + VHat(3)**2
+      E(iN_X) = Ef - Half * vDotV
+      Omega(iN_X) = One / ( One + SQRT( vDotV ) )
+
+    END DO
+
+  END SUBROUTINE RecoverMatterFromRadiationState_OrderV
+
+
+  SUBROUTINE SolveLinearSystem3x3_OrderV( A_Input, B_Input, X, Info )
+#if   defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: A_Input(3,3), B_Input(3)
+    REAL(DP), INTENT(out) :: X(3)
+    INTEGER,  INTENT(out) :: Info
+
+    INTEGER  :: i, j, k, Pivot
+    REAL(DP) :: A(3,3), B(3), Factor, PivotMagnitude, Scale, Swap
+
+    Scale = MAX( MAXVAL( ABS( A_Input ) ), One )
+    A = A_Input / Scale
+    B = B_Input / Scale
+    Info = 0
+
+    DO k = 1, 2
+
+      Pivot = k
+      PivotMagnitude = ABS( A(k,k) )
+      DO i = k + 1, 3
+        IF( ABS( A(i,k) ) > PivotMagnitude )THEN
+          Pivot = i
+          PivotMagnitude = ABS( A(i,k) )
+        END IF
+      END DO
+
+      IF( PivotMagnitude <= 128.0_DP * EPSILON(One) )THEN
+        Info = k
+        X = Zero
+        RETURN
+      END IF
+
+      IF( Pivot /= k )THEN
+        DO j = k, 3
+          Swap = A(k,j)
+          A(k,j) = A(Pivot,j)
+          A(Pivot,j) = Swap
+        END DO
+        Swap = B(k)
+        B(k) = B(Pivot)
+        B(Pivot) = Swap
+      END IF
+
+      DO i = k + 1, 3
+        Factor = A(i,k) / A(k,k)
+        A(i,k) = Zero
+        DO j = k + 1, 3
+          A(i,j) = A(i,j) - Factor * A(k,j)
+        END DO
+        B(i) = B(i) - Factor * B(k)
+      END DO
+
+    END DO
+
+    IF( ABS( A(3,3) ) <= 128.0_DP * EPSILON(One) )THEN
+      Info = 3
+      X = Zero
+      RETURN
+    END IF
+
+    X(3) = B(3) / A(3,3)
+    X(2) = ( B(2) - A(2,3) * X(3) ) / A(2,2)
+    X(1) = ( B(1) - A(1,2) * X(2) - A(1,3) * X(3) ) / A(1,1)
+
+  END SUBROUTINE SolveLinearSystem3x3_OrderV
+
+
+  SUBROUTINE RecoverMatterFromRadiationInvariants_OrderV &
     ( MASK, WorkingMask, Fm, Gm, &
       Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
       D, T, Y, E, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      RadiationLimiterCorrection, &
       RadiationLeptonInvariant, &
       nX_P, PackIndex, UnpackIndex, Error )
 
@@ -3790,18 +4148,15 @@ CONTAINS
       T, Y, E, V_u_1, V_u_2, V_u_3
     REAL(DP), DIMENSION(:),     INTENT(in)    :: &
       Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:,:),   INTENT(in)    :: RadiationLimiterCorrection
     REAL(DP), DIMENSION(:,:),   INTENT(in)    :: RadiationLeptonInvariant
     INTEGER,                    INTENT(in)    :: nX_P
     INTEGER,  DIMENSION(:),     INTENT(in)    :: PackIndex, UnpackIndex
     INTEGER,  DIMENSION(:),     INTENT(inout) :: Error
 
-    INTEGER, PARAMETER :: MaxIter_MatterConservation = 32
     INTEGER, PARAMETER :: MaxIter_InvariantCoupling = 8
-    REAL(DP), PARAMETER :: Rtol_MatterConservation &
-      = 100.0_DP * EPSILON(One)
 
-    INTEGER  :: iN_X, k, kInvariant
-    REAL(DP) :: Residual
+    INTEGER :: iN_X, kInvariant
 
     WorkingMask = MASK
 
@@ -3817,59 +4172,17 @@ CONTAINS
         .AND. kInvariant < MaxIter_InvariantCoupling )
 
       kInvariant = kInvariant + 1
-      k = 0
 
-      DO WHILE &
-        ( ANY( WorkingMask(:) ) .AND. k < MaxIter_MatterConservation )
+      CALL TimersStart( Timer_Collisions_MatterRHS )
 
-        k = k + 1
+      CALL RecoverMatterFromRadiationState_OrderV &
+             ( WorkingMask, Fm, Gm, &
+               Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+               D, Y, E, V_u_1, V_u_2, V_u_3, &
+               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+               RadiationLimiterCorrection, Error )
 
-        CALL TimersStart( Timer_Collisions_MatterRHS )
-
-        CALL ComputeMatterRHS_OrderV &
-               ( WorkingMask, Fm, Gm, &
-                 Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                 V_u_1, V_u_2, V_u_3, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-        CALL TimersStop( Timer_Collisions_MatterRHS )
-
-        CALL TimersStart( Timer_Collisions_UpdateFP )
-
-        CALL UpdateMatterRHS_OrderV &
-               ( WorkingMask, Fm, Gm, &
-                 Y, E, V_u_1, V_u_2, V_u_3, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-        CALL TimersStop( Timer_Collisions_UpdateFP )
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( Residual )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR PRIVATE( Residual )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO PRIVATE( Residual )
-#endif
-        DO iN_X = 1, nX_G
-
-        IF( WorkingMask(iN_X) )THEN
-          Residual = MAXVAL( ABS( Fm(:,iN_X) ) )
-          IF( Residual <= Rtol_MatterConservation ) &
-            WorkingMask(iN_X) = .FALSE.
-        END IF
-
-        END DO
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM( WorkingMask )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( WorkingMask )
-#endif
-
-      END DO
-
-      IF( ANY( WorkingMask(:) ) ) EXIT
+      CALL TimersStop( Timer_Collisions_MatterRHS )
 
       CALL FindRadiationLeptonInvariantViolations_OrderV &
              ( MASK, WorkingMask, RadiationLeptonInvariant, &
@@ -3902,8 +4215,7 @@ CONTAINS
 #endif
     DO iN_X = 1, nX_G
 
-      IF( MASK(iN_X) ) Error(iN_X) = 0
-      IF( WorkingMask(iN_X) ) Error(iN_X) = 1
+      IF( WorkingMask(iN_X) ) INFO(iN_X) = 1
 
     END DO
 
@@ -3911,12 +4223,25 @@ CONTAINS
            ( D, E, Y, T, MASK, nX_P, PackIndex, UnpackIndex, Error )
 
 #if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iN_X = 1, nX_G
+
+      IF( MASK(iN_X) .AND. INFO(iN_X) /= 0 ) Error(iN_X) = 1
+
+    END DO
+
+#if   defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE FROM( Error )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE HOST( Error )
 #endif
 
-  END SUBROUTINE UpdateMatterFromRadiationConservation_OrderV
+  END SUBROUTINE RecoverMatterFromRadiationInvariants_OrderV
 
 
   SUBROUTINE CheckConvergence_RadiationOnly &
