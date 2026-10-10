@@ -25,7 +25,7 @@ MODULE StandaloneMatterDiagnosticsModule
   USE FluidFieldsModule, ONLY: &
     nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, &
-    nAF, iAF_T, iAF_Ye
+    nAF, iAF_T, iAF_Ye, iAF_Ym
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputeFromConserved_Euler_NonRelativistic
   USE NeutrinoOpacitiesComputationModule, ONLY: &
@@ -1429,7 +1429,7 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: PF_Stage(:,:,:,:,:), AF_Stage(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: PR_Full(:,:,:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: PR_Mean(:,:,:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: E_N(:), D_N(:), T_N(:), Y_N(:)
+    REAL(DP), ALLOCATABLE :: E_N(:), D_N(:), T_N(:), Ye_N(:), Ym_N(:)
     REAL(DP), ALLOCATABLE :: DnuEq(:,:,:)
     REAL(DP), ALLOCATABLE :: Q_Full(:,:,:), Q_Mean(:,:,:)
 
@@ -1449,7 +1449,7 @@ CONTAINS
           (1:nDOFZ,iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nPR,1:nSpecies) )
     ALLOCATE( PR_Mean, MOLD = PR_Full )
-    ALLOCATE( E_N(nE_G), D_N(nX_G), T_N(nX_G), Y_N(nX_G) )
+    ALLOCATE( E_N(nE_G), D_N(nX_G), T_N(nX_G), Ye_N(nX_G), Ym_N(nX_G) )
     ALLOCATE( DnuEq(nE_G,nSpecies,nX_G) )
     ALLOCATE( Q_Full(nQ,1+nSpecies+nC,nX_G) )
     ALLOCATE( Q_Mean, MOLD = Q_Full )
@@ -1482,13 +1482,14 @@ CONTAINS
         iN_X = iN_X + 1
         D_N(iN_X) = PF_Stage(iNodeX,iX1,1,1,iPF_D)
         T_N(iN_X) = AF_Stage(iNodeX,iX1,1,1,iAF_T)
-        Y_N(iN_X) = AF_Stage(iNodeX,iX1,1,1,iAF_Ye)
+        Ye_N(iN_X) = AF_Stage(iNodeX,iX1,1,1,iAF_Ye)
+        Ym_N(iN_X) = AF_Stage(iNodeX,iX1,1,1,iAF_Ym)
       END DO
       END DO
 
       CALL ComputeEquilibriumDistributions &
              ( 1, nE_G, 1, nSpecies, 1, nX_G, &
-               E_N, D_N, T_N, Y_N, DnuEq )
+               E_N, D_N, T_N, Ye_N, Ym_N, DnuEq )
       CALL LimitEquilibriumDistributions_DG &
              ( 1, nE_G, 1, nSpecies, 1, nX_G, &
                E_N, DnuEq, DnuMax )
@@ -1563,7 +1564,7 @@ CONTAINS
       = ModalIncrement(:,1,:,:) - ModalIncrement(:,2,:,:)
 
     DEALLOCATE &
-      ( PF_Stage, AF_Stage, PR_Full, PR_Mean, E_N, D_N, T_N, Y_N, &
+      ( PF_Stage, AF_Stage, PR_Full, PR_Mean, E_N, D_N, T_N, Ye_N, Ym_N, &
         DnuEq, Q_Full, Q_Mean )
 
   END SUBROUTINE ComputeStageWeightedEmAbModalIncrement
@@ -3194,7 +3195,7 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: FaceDiagnostics_PostLimiter(:,:,:)
     REAL(DP), ALLOCATABLE :: MeanInvMFP_Element(:,:,:)
     REAL(DP), ALLOCATABLE :: ProperWidth_Element(:)
-    REAL(DP), ALLOCATABLE :: E_N(:), D_N(:), T_N(:), Y_N(:)
+    REAL(DP), ALLOCATABLE :: E_N(:), D_N(:), T_N(:), Ye_N(:), Ym_N(:)
     REAL(DP), ALLOCATABLE :: DnuEq(:,:,:)
     REAL(DP), ALLOCATABLE :: AF_Stage(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: CF_Work(:,:,:,:,:)
@@ -3235,7 +3236,8 @@ CONTAINS
           (1:nFaceDiagnostics,1:nSpecies,1:nFaces) )
     ALLOCATE( MeanInvMFP_Element(1:nC,1:nSpecies,1:nElements) )
     ALLOCATE( ProperWidth_Element(1:nElements) )
-    ALLOCATE( E_N(1:nE_G), D_N(1:nX_G), T_N(1:nX_G), Y_N(1:nX_G) )
+    ALLOCATE( E_N(1:nE_G), D_N(1:nX_G), T_N(1:nX_G), &
+              Ye_N(1:nX_G), Ym_N(1:nX_G) )
     ALLOCATE( DnuEq(1:nE_G,1:nSpecies,1:nX_G) )
 
     DO iE = iZ_B0(1), iZ_E0(1)
@@ -3318,14 +3320,15 @@ CONTAINS
         iN_X = iN_X + 1
         D_N(iN_X) = PF_Stage(iNodeX,iX1,1,1,iPF_D)
         T_N(iN_X) = AF_Stage(iNodeX,iX1,1,1,iAF_T)
-        Y_N(iN_X) = AF_Stage(iNodeX,iX1,1,1,iAF_Ye)
+        Ye_N(iN_X) = AF_Stage(iNodeX,iX1,1,1,iAF_Ye)
+        Ym_N(iN_X) = AF_Stage(iNodeX,iX1,1,1,iAF_Ym)
 
       END DO
       END DO
 
       CALL ComputeEquilibriumDistributions &
              ( 1, nE_G, 1, nSpecies, 1, nX_G, &
-               E_N, D_N, T_N, Y_N, DnuEq )
+               E_N, D_N, T_N, Ye_N, Ym_N, DnuEq )
 
       CALL LimitEquilibriumDistributions_DG &
              ( 1, nE_G, 1, nSpecies, 1, nX_G, &
@@ -3466,7 +3469,7 @@ CONTAINS
       ( PF_Stage, AF_Stage, CF_Work, CR_Work, RadiationRHS, Q_Streaming, &
         FaceDiagnostics_PreLimiter, FaceDiagnostics_PostLimiter, &
         MeanInvMFP_Element, ProperWidth_Element, &
-        E_N, D_N, T_N, Y_N, DnuEq )
+        E_N, D_N, T_N, Ye_N, Ym_N, DnuEq )
 
   END SUBROUTINE WriteIMEXStreamingCheck
 

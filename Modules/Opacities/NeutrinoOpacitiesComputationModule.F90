@@ -14,6 +14,7 @@ MODULE NeutrinoOpacitiesComputationModule
     BoltzmannConstant, &
     PlanckConstant, &
     Centimeter, &
+    Kilometer, &
     Gram, &
     Kelvin, &
     MeV
@@ -35,6 +36,7 @@ MODULE NeutrinoOpacitiesComputationModule
     InterpMat
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeElectronChemicalPotential_TABLE, &
+    ComputeMuonChemicalPotential_TABLE, &
     ComputeProtonChemicalPotential_TABLE, &
     ComputeNeutronChemicalPotential_TABLE, &
     ComputeSpecificInternalEnergy_TABLE, &
@@ -42,7 +44,14 @@ MODULE NeutrinoOpacitiesComputationModule
     ComputeNeutronMassFraction_TABLE, &
     ComputeHeavyMassFraction_TABLE, &
     ComputeHeavyMassNumber_TABLE, &
-    ComputeElectronNeutrinoChemicalPotential_TABLE
+    ComputeElectronNeutrinoChemicalPotential_TABLE, &
+    ComputeMuonNeutrinoChemicalPotential_TABLE, &
+    ComputeNeutronEffectiveMass_TABLE, &
+    ComputeProtonEffectiveMass_TABLE, &
+    ComputeNeutronEffectiveMass_TABLE, &
+    ComputeProtonChemicalPotential_TABLE, &
+    ComputeNeutronSelfEnergy_TABLE, &
+    ComputeProtonSelfEnergy_TABLE
   USE OpacityModule_TABLE, ONLY: &
 #ifdef MICROPHYSICS_WEAKLIB
     OS_EmAb, OS_Iso, OS_NNS, OS_NES, OS_Pair, OS_Brem, &
@@ -64,15 +73,17 @@ MODULE NeutrinoOpacitiesComputationModule
     C1, C2, C1_NuPair, C2_NuPair, &
     QueryOpacity, &
     QueryOpacity_EmAb, &
+    QueryOpacity_EmAb_Muon, &
     QueryOpacity_ECTable, &
     QueryOpacity_Iso, &
     QueryOpacity_NES, &
     QueryOpacity_NNS, &
     QueryOpacity_Pair, &
     QueryOpacity_Brem, &
-    QueryOpacity_NuPair
+    QueryOpacity_NuPair, &
+    EmAb_Muon_Method, nE_Muon_2D
   USE RadiationFieldsModule, ONLY: &
-    iNuE, iNuE_Bar, LeptonNumber, &
+    iNuE, iNuE_Bar, iNuM, iNuM_Bar, iNuT, iNuT_Bar, LeptonNumber, &
     iNu, iNu_Bar, nChirals
 
 #ifdef MICROPHYSICS_WEAKLIB
@@ -91,9 +102,12 @@ MODULE NeutrinoOpacitiesComputationModule
     SumLogInterpolateSingleVariable_2D2D_Custom_Aligned
 
   USE wlInterpolationUtilitiesModule, ONLY: &
+    Index1D_Lin, &
+    Index1D_Log, &
     GetIndexAndDelta_Lin, &
     GetIndexAndDelta_Log, &
-    LinearInterp1D_1DArray_Point
+    LinearInterp1D_1DArray_Point, &
+    LinearInterp3D_3DArray_Point
 
   USE wlOpacityFieldsModule, ONLY: &
     iNeutron_NNS, iProton_NNS
@@ -101,6 +115,20 @@ MODULE NeutrinoOpacitiesComputationModule
   USE wlNeutralCurrentCorrectionsModule, ONLY: &
     ComputeNCManyBodyCorrection
 
+  USE wlCalculateAbEmOpacityModule, ONLY: &
+    ElasticAbsorptionOpacityNue, &
+    ElasticAbsorptionOpacityNum, &
+    CalculateHorowitzWeakMagRecoil
+  USE wlEosConstantsModule, ONLY: &
+    mn, mp, me, mmu, kmev
+#ifdef THORNADO_ENABLE_EXPERIMENTAL_MUON_CC_INTEGRALS
+  USE wlSemiLeptonicOpacityModule2D, ONLY: &
+    Opacity_CC_2D
+#ifdef CC_INTEGRALS_4D
+  USE wlSemiLeptonicOpacityModule4D, ONLY: &
+    Opacity_CC_4D
+#endif
+#endif
   ! ----------------------------------------------
 
 #endif
@@ -152,12 +180,16 @@ MODULE NeutrinoOpacitiesComputationModule
   REAL(DP), PARAMETER :: UnitD    = Gram / Centimeter**3
   REAL(DP), PARAMETER :: UnitT    = Kelvin
   REAL(DP), PARAMETER :: UnitY    = One
+  REAL(DP), PARAMETER :: UnitYe   = One
+  REAL(DP), PARAMETER :: UnitYm   = One
   REAL(DP), PARAMETER :: UnitE    = MeV
   REAL(DP), PARAMETER :: UnitMn   = MeV
   REAL(DP), PARAMETER :: UnitMp   = MeV
   REAL(DP), PARAMETER :: UnitMe   = MeV
+  REAL(DP), PARAMETER :: UnitMmu  = MeV
   REAL(DP), PARAMETER :: UnitEta  = One
   REAL(DP), PARAMETER :: UnitEC   = One / Centimeter
+  REAL(DP), PARAMETER :: UnitEC2  = One / Kilometer
   REAL(DP), PARAMETER :: UnitES   = One / ( Centimeter * MeV**2 )
   REAL(DP), PARAMETER :: UnitNNS  = One / ( Centimeter * MeV**3 ) !Check this! TODO
   REAL(DP), PARAMETER :: UnitNES  = One / ( Centimeter * MeV**3 )
@@ -172,6 +204,11 @@ MODULE NeutrinoOpacitiesComputationModule
                                     / TwoPi**3 * UnitBrem
 
   REAL(dp), PARAMETER :: Alpha_Brem(3) = [ 1.0d0, 1.0d0, 28.d0/3.d0 ]
+  INTEGER, PARAMETER  :: corr_num = 2
+
+  REAL(dp), PARAMETER :: coeff = 2.0d0 &
+                               * (Pi*SpeedOfLightCGS)**2 &
+                               * hbarMeVs**3
 
 
   INTEGER,  PARAMETER :: iM0         = 1
@@ -210,7 +247,7 @@ MODULE NeutrinoOpacitiesComputationModule
 CONTAINS
 
 
-  SUBROUTINE ComputeEquilibriumDistributions_Point( E, D, T, Y, f0, iSpecies )
+  SUBROUTINE ComputeEquilibriumDistributions_Point( E, D, T, Ye, Ym, f0, iSpecies )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -220,7 +257,7 @@ CONTAINS
     ! --- Equilibrium Neutrino Distributions (Single E,D,T,Y) ---
 
     REAL(DP), INTENT(in)  :: E
-    REAL(DP), INTENT(in)  :: D, T, Y
+    REAL(DP), INTENT(in)  :: D, T, Ye, Ym
     REAL(DP), INTENT(out) :: f0
     INTEGER,  INTENT(in)  :: iSpecies
 
@@ -228,15 +265,18 @@ CONTAINS
 
     ! --- Compute Chemical Potentials ---
 
-    CALL ComputeElectronNeutrinoChemicalPotential_TABLE &
-           ( D, T, Y, Mnu )
-
     kT = BoltzmannConstant * T
 
-    IF ( iSpecies > iNuE_Bar ) THEN
-      M = Zero
-    ELSE
+    IF (iSpecies == iNuE .OR. iSpecies == iNuE_Bar) THEN
+      CALL ComputeElectronNeutrinoChemicalPotential_TABLE &
+           ( D, T, Ye, Ym, Mnu )
       M = Mnu * LeptonNumber(iSpecies)
+    ELSE IF (iSpecies == iNuM .OR. iSpecies == iNuM_Bar) THEN
+      CALL ComputeMuonNeutrinoChemicalPotential_TABLE &
+           ( D, T, Ye, Ym, Mnu )
+      M = Mnu * LeptonNumber(iSpecies)
+    ELSE
+      M = Zero
     END IF
 
     f0 = FermiDirac( E, M, kT )
@@ -245,7 +285,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeEquilibriumDistributions &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0 )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, f0 )
 
     ! --- Equilibrium Neutrino Distributions (Multiple D,T,Y) ---
 
@@ -255,27 +295,31 @@ CONTAINS
     REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
     REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
     REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ye(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ym(iX_B:iX_E)
     REAL(DP), INTENT(out) :: f0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
 
-    REAL(DP) :: Mnu(iX_B:iX_E)
+    REAL(DP) :: Mnue(iX_B:iX_E)
+    REAL(DP) :: Mnum(iX_B:iX_E)
     REAL(DP) :: M, kT
     INTEGER  :: iE, iS, iX
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: f0, Mnu ) &
-    !$OMP MAP( to: E, D, T, Y )
+    !$OMP MAP( alloc: f0, Mnue, Mnum ) &
+    !$OMP MAP( to: E, D, T, Ye, Ym )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( f0, Mnu ) &
-    !$ACC COPYIN( E, D, T, Y )
+    !$ACC CREATE( f0, Mnue, Mnum ) &
+    !$ACC COPYIN( E, D, T, Ye, Ym )
 #endif
 
     ! --- Compute Chemical Potentials ---
 
     CALL ComputeElectronNeutrinoChemicalPotential_TABLE &
-           ( D, T, Y, Mnu )
+           ( D, T, Ye, Ym, Mnue )
+    CALL ComputeMuonNeutrinoChemicalPotential_TABLE &
+           ( D, T, Ye, Ym, Mnum )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -287,12 +331,19 @@ CONTAINS
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( M, kT )
 #endif
+
     DO iX = iX_B, iX_E
-    DO iS = iS_B, iNuE_Bar
+    DO iS = iS_B, iS_E
     DO iE = iE_B, iE_E
 
       kT = BoltzmannConstant * T(iX)
-      M = Mnu(iX) * LeptonNumber(iS)
+      IF (iS <= iNuE_Bar) THEN
+        M = Mnue(iX) * LeptonNumber(iS)
+      ELSE IF(iS == iNuM .OR. iS == iNuM_Bar) THEN
+        M = Mnum(iX) * LeptonNumber(iS)
+      ELSE
+        M = Zero
+      END IF
 
       f0(iE,iS,iX) &
         = One / ( EXP( MIN( MAX( ( E(iE) - M ) / kT, - Log1d100 ), + Log1d100 ) ) + One )
@@ -300,38 +351,18 @@ CONTAINS
     END DO
     END DO
     END DO
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( M, kT )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( M, kT )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( M, kT )
-#endif
-    DO iX = iX_B, iX_E
-    DO iS = iNuE_Bar+1, iS_E
-    DO iE = iE_B, iE_E
-
-      kT = BoltzmannConstant * T(iX)
-      M = Zero
-
-      f0(iE,iS,iX) &
-        = One / ( EXP( MIN( MAX( ( E(iE) - M ) / kT, - Log1d100 ), + Log1d100 ) ) + One )
-
-    END DO
-    END DO
-    END DO
-
+    !DO iS = iS_B, iS_E
+      !DO iE = iE_B, iE_E
+      !  WRITE(*,*)  'EQUI', iS, iE, E(iE) / UnitE, f0(iE,iS,1)
+      !END DO
+    !END DO
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: Mnu, E, D, T, Y ) &
+    !$OMP MAP( release: Mnue, Mnum, E, D, T, Ye, Ym ) &
     !$OMP MAP( from: f0 )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( Mnu, E, D, T, Y ) &
+    !$ACC DELETE( Mnue, Mnum, E, D, T, Ye, Ym ) &
     !$ACC COPYOUT( f0 )
 #endif
 
@@ -474,7 +505,11 @@ CONTAINS
     END DO
     END DO
     END DO
-
+    !DO iS = iS_B, iS_E
+    !  DO iE = iE_B, iE_E
+    !    WRITE(*,*)  'LIMIT', iS, iE, E(iE) / UnitE, f0(iE,iS,1)
+    !  END DO
+    !END DO
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: f0_K, E ) &
@@ -489,7 +524,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeEquilibriumDistributions_DG_E &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0, f0_Max_Option )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, f0, f0_Max_Option )
 
     ! --- Equilibrium Neutrino Distributions (Multiple D,T,Y) ---
 
@@ -499,7 +534,8 @@ CONTAINS
     REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
     REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
     REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ye(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ym(iX_B:iX_E)
     REAL(DP), INTENT(out) :: f0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in), OPTIONAL :: f0_Max_Option
 
@@ -514,26 +550,26 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( alloc: f0 ) &
-    !$OMP MAP( to: E, D, T, Y )
+    !$OMP MAP( to: E, D, T, Ye, Ym )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC CREATE( f0 ) &
-    !$ACC COPYIN( E, D, T, Y )
+    !$ACC COPYIN( E, D, T, Ye, Ym )
 #endif
 
     CALL ComputeEquilibriumDistributions &
-           ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0 )
+           ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, f0 )
 
     CALL LimitEquilibriumDistributions_DG &
            ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, f0, f0_Max )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: E, D, T, Y ) &
+    !$OMP MAP( release: E, D, T, Ye, Ym ) &
     !$OMP MAP( from: f0 )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( E, D, T, Y ) &
+    !$ACC DELETE( E, D, T, Ye, Ym ) &
     !$ACC COPYOUT( f0 )
 #endif
 
@@ -541,7 +577,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeEquilibriumDistributions_DG_Z &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, SqrtGm, f0, f0_Max_Option )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, SqrtGm, f0, f0_Max_Option )
 
     INTEGER,  INTENT(in)          :: iE_B, iE_E
     INTEGER,  INTENT(in)          :: iS_B, iS_E
@@ -549,7 +585,8 @@ CONTAINS
     REAL(DP), INTENT(in) , TARGET :: E (iE_B:iE_E)
     REAL(DP), INTENT(in) , TARGET :: D                     (iX_B:iX_E)
     REAL(DP), INTENT(in) , TARGET :: T                     (iX_B:iX_E)
-    REAL(DP), INTENT(in) , TARGET :: Y                     (iX_B:iX_E)
+    REAL(DP), INTENT(in) , TARGET :: Ye                    (iX_B:iX_E)
+    REAL(DP), INTENT(in) , TARGET :: Ym                    (iX_B:iX_E)
     REAL(DP), INTENT(in) , TARGET :: SqrtGm                (iX_B:iX_E)
     REAL(DP), INTENT(out), TARGET :: f0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in), OPTIONAL:: f0_Max_Option
@@ -563,9 +600,10 @@ CONTAINS
     INTEGER  :: iNodeE, iNodeX, iNodeZ
     REAL(DP) :: kT, M, Exponent, N_K, V_K, f0_P
     REAL(DP) :: Min_K, Max_K, Theta, f0_Max
-    REAL(DP), POINTER :: E_Q(:,:), D_Q(:,:), T_Q(:,:), Y_Q(:,:)
-    REAL(DP), POINTER :: Mnu_Q(:,:), SqrtGm_Q(:,:)
-    REAL(DP), ALLOCATABLE, TARGET :: Mnu(:)
+    REAL(DP), POINTER :: E_Q(:,:), D_Q(:,:), T_Q(:,:)
+    REAL(DP), POINTER :: Mnue_Q(:,:), Mnum_Q(:,:), SqrtGm_Q(:,:)
+    REAL(DP), ALLOCATABLE, TARGET :: Mnue(:)
+    REAL(DP), ALLOCATABLE, TARGET :: Mnum(:)
     REAL(DP), ALLOCATABLE :: Tau_Q(:,:,:), f0_K(:,:,:), f0_Q(:,:,:,:)
 
     IF ( PRESENT( f0_Max_Option ) ) THEN
@@ -578,7 +616,8 @@ CONTAINS
     nX = (iX_E-iE_B+1)/nDOFX ! --- Number of spatial elements
     nS = (iS_E-iS_B+1)       ! --- Number of species
 
-    ALLOCATE( Mnu(iX_B:iX_E) )
+    ALLOCATE( Mnue(iX_B:iX_E) )
+    ALLOCATE( Mnum(iX_B:iX_E) )
     ALLOCATE( Tau_Q(nDOFE*nDOFX,nE,nX) )
     ALLOCATE( f0_K(nE,nS,nX) )
     ALLOCATE( f0_Q(nDOFE*nDOFX,nE,nS,nX) )
@@ -586,20 +625,22 @@ CONTAINS
     ! --- Compute Chemical Potentials ---
 
     CALL ComputeElectronNeutrinoChemicalPotential_TABLE &
-           ( D, T, Y, Mnu )
+           ( D, T, Ye, Ym, Mnue )
+    CALL ComputeMuonNeutrinoChemicalPotential_TABLE &
+           ( D, T, Ye, Ym, Mnum )
 
-    E_Q  (1:nDOFE,1:nE) => E  (:)
-    D_Q  (1:nDOFX,1:nX) => D  (:)
-    T_Q  (1:nDOFX,1:nX) => T  (:)
-    Y_Q  (1:nDOFX,1:nX) => Y  (:)
-    Mnu_Q(1:nDOFX,1:nX) => Mnu(:)
+    E_Q   (1:nDOFE,1:nE) => E   (:)
+    D_Q   (1:nDOFX,1:nX) => D   (:)
+    T_Q   (1:nDOFX,1:nX) => T   (:)
+    Mnue_Q(1:nDOFX,1:nX) => Mnue(:)
+    Mnum_Q(1:nDOFX,1:nX) => Mnum(:)
 
     SqrtGm_Q(1:nDOFX,1:nX) => SqrtGm(:)
 
     ! --- Compute Fermi-Dirac Distribution in Elements ---
 
     DO iX = 1, nX
-    DO iS = iS_B, iNuE_Bar
+    DO iS = iS_B, iS_E
     DO iE = 1, nE
 
       DO iNodeX = 1, nDOFX
@@ -610,33 +651,13 @@ CONTAINS
         iNodeZ = (iNodeX-1) * nDOFE + iNodeE
 
         kT = BoltzmannConstant * T_Q(iNodeX,iX)
-        M = Mnu_Q(iNodeX,iX) * LeptonNumber(iS)
-
-        Exponent &
-          = MIN( MAX( ( E_Q(iNodeE,iE) - M ) / kT, - Log1d100 ), Log1d100 )
-
-        f0_Q(iNodeZ,iE,iS,iX) = One / ( EXP( Exponent ) + One )
-
-      END DO
-      END DO
-
-    END DO
-    END DO
-    END DO
-
-    DO iX = 1, nX
-    DO iS = iNuE_Bar+1, iS_E
-    DO iE = 1, nE
-
-      DO iNodeX = 1, nDOFX
-      DO iNodeE = 1, nDOFE
-
-        kT = BoltzmannConstant * T_Q(iNodeX,iX)
-
-        iNodeZ = (iNodeX-1) * nDOFE + iNodeE
-
-        kT = BoltzmannConstant * T_Q(iNodeX,iX)
-        M = Zero
+        IF(iS <= iNuE_Bar) THEN
+          M = Mnue_Q(iNodeX,iX) * LeptonNumber(iS)
+        ELSE IF (iS == iNuM .OR. iS == iNuM_Bar) THEN
+          M = Mnum_Q(iNodeX,iX) * LeptonNumber(iS)
+        ELSE
+          M = Zero
+        END IF
 
         Exponent &
           = MIN( MAX( ( E_Q(iNodeE,iE) - M ) / kT, - Log1d100 ), Log1d100 )
@@ -756,9 +777,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeEquilibriumDistributionAndDerivatives &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0, df0dY, df0dU )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, f0, df0dY, df0dU )
 
-    ! --- Equilibrium Neutrino Distributions (Multiple D,T,Y) ---
+    ! --- Equilibrium Neutrino Distributions (Multiple D,T,Ye,Ym) ---
 
     INTEGER,  INTENT(in)  :: iE_B, iE_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
@@ -766,66 +787,78 @@ CONTAINS
     REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
     REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
     REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ye(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ym(iX_B:iX_E)
     REAL(DP), INTENT(out) :: f0   (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: df0dY(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: df0dU(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
 
-    REAL(DP), ALLOCATABLE :: Me(:), dMedT(:), dMedY(:)
-    REAL(DP), ALLOCATABLE :: Mp(:), dMpdT(:), dMpdY(:)
-    REAL(DP), ALLOCATABLE :: Mn(:), dMndT(:), dMndY(:)
-    REAL(DP), ALLOCATABLE :: U (:), dUdT (:), dUdY (:), dUdD(:)
-    REAL(DP) :: Mnu          , dMnudT          , dMnudY
+    REAL(DP), ALLOCATABLE :: Me(:), dMedT(:), dMedYe(:), dMedYm(:), dMedD(:)
+    REAL(DP), ALLOCATABLE :: Mm(:), dMmdT(:), dMmdYe(:), dMmdYm(:), dMmdD(:)
+    REAL(DP), ALLOCATABLE :: Mp(:), dMpdT(:), dMpdYe(:), dMpdYm(:), dMpdD(:)
+    REAL(DP), ALLOCATABLE :: Mn(:), dMndT(:), dMndYe(:), dMndYm(:), dMndD(:)
+    REAL(DP), ALLOCATABLE :: U(:), dUdT(:), dUdYe(:), dUdYm(:), dUdD(:)
+    REAL(DP) :: Mnu, dMnudT, dMnudY
 
-    REAL(DP) :: kT, df0dT_Y, df0dY_T
+    REAL(DP) :: kT, dUdL, df0dT_Y, df0dY_T
     INTEGER  :: iE, iS, iX
 
-    ALLOCATE( Me(iX_B:iX_E), dMedT(iX_B:iX_E), dMedY(iX_B:iX_E) )
-    ALLOCATE( Mp(iX_B:iX_E), dMpdT(iX_B:iX_E), dMpdY(iX_B:iX_E) )
-    ALLOCATE( Mn(iX_B:iX_E), dMndT(iX_B:iX_E), dMndY(iX_B:iX_E) )
-    ALLOCATE( U (iX_B:iX_E), dUdT (iX_B:iX_E), dUdY (iX_B:iX_E), dUdD(iX_B:iX_E) )
+    ALLOCATE( Me(iX_B:iX_E), dMedT(iX_B:iX_E), dMedYe(iX_B:iX_E), dMedYm(iX_B:iX_E), dMedD(iX_B:iX_E) )
+    ALLOCATE( Mm(iX_B:iX_E), dMmdT(iX_B:iX_E), dMmdYe(iX_B:iX_E), dMmdYm(iX_B:iX_E), dMmdD(iX_B:iX_E) )
+    ALLOCATE( Mp(iX_B:iX_E), dMpdT(iX_B:iX_E), dMpdYe(iX_B:iX_E), dMpdYm(iX_B:iX_E), dMpdD(iX_B:iX_E) )
+    ALLOCATE( Mn(iX_B:iX_E), dMndT(iX_B:iX_E), dMndYe(iX_B:iX_E), dMndYm(iX_B:iX_E), dMndD(iX_B:iX_E) )
+    ALLOCATE( U(iX_B:iX_E), dUdT(iX_B:iX_E), &
+              dUdYe(iX_B:iX_E), dUdYm(iX_B:iX_E), dUdD(iX_B:iX_E) )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: Me,  dMedT,  dMedY, &
-    !$OMP             Mp,  dMpdT,  dMpdY, &
-    !$OMP             Mn,  dMndT,  dMndY, &
-    !$OMP             U,   dUdT,   dUdY, dUdD, &
-    !$OMP             f0,  df0dY,  df0dU ) &
-    !$OMP MAP( to: E, D, T, Y )
+    !$OMP MAP( alloc: Me,  dMedT,  dMedYe, dMedYm, dMedD, &
+    !$OMP             Mm,  dMmdT,  dMmdYe, dMmdYm, dMmdD, &
+    !$OMP             Mp,  dMpdT,  dMpdYe, dMpdYm, dMpdD, &
+    !$OMP             Mn,  dMndT,  dMndYe, dMndYm, dMndD, &
+    !$OMP             U, dUdT, dUdYe, dUdYm, dUdD, &
+    !$OMP             f0,  df0dY, df0dU )          &
+    !$OMP MAP( to: E, D, T, Ye, Ym )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( Me,  dMedT,  dMedY, &
-    !$ACC         Mp,  dMpdT,  dMpdY, &
-    !$ACC         Mn,  dMndT,  dMndY, &
-    !$ACC         U,   dUdT,   dUdY, dUdD, &
-    !$ACC         f0,  df0dY,  df0dU ) &
-    !$ACC COPYIN( E, D, T, Y )
+    !$ACC CREATE( Me,  dMedT,  dMedYe, dMedYm, dMedD, &
+    !$ACC         Mm,  dMmdT,  dMmdYe, dMmdYm, dMmdD, &
+    !$ACC         Mp,  dMpdT,  dMpdYe, dMpdYm, dMpdD, &
+    !$ACC         Mn,  dMndT,  dMndYe, dMndYm, dMndD, &
+    !$ACC         U, dUdT, dUdYe, dUdYm, dUdD, &
+    !$ACC         f0,  df0dY, df0dU )          &
+    !$ACC COPYIN( E, D, T, Ye, Ym )
 #endif
 
     ! --- Compute Chemical Potentials ---
 
     CALL ComputeElectronChemicalPotential_TABLE &
-           ( D, T, Y, Me, dUdD, dMedT, dMedY )
+           ( D, T, Ye, Ym, Me, dMedD, dMedT, dMedYe, dMedYm )
+
+    CALL ComputeMuonChemicalPotential_TABLE &
+           ( D, T, Ye, Ym, Mm, dMmdD, dMmdT, dMmdYe, dMmdYm )
 
     CALL ComputeProtonChemicalPotential_TABLE &
-           ( D, T, Y, Mp, dUdD, dMpdT, dMpdY )
+           ( D, T, Ye, Ym, Mp, dMpdD, dMpdT, dMpdYe, dMpdYm )
 
     CALL ComputeNeutronChemicalPotential_TABLE &
-           ( D, T, Y, Mn, dUdD, dMndT, dMndY )
+           ( D, T, Ye, Ym, Mn, dMndD, dMndT, dMndYe, dMndYm )
 
     CALL ComputeSpecificInternalEnergy_TABLE &
-           ( D, T, Y, U,  dUdD, dUdT,  dUdY  )
+           ( D, T, Ye, Ym, U,  dUdD,  dUdT,  dUdYe,  dUdYm  )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( kT, Mnu, dMnudT, dMnudY, df0dT_Y, df0dY_T )
+    !$OMP PRIVATE( kT, dUdL, Mnu, dMnudT, dMnudY, &
+    !$OMP          df0dT_Y, df0dY_T )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( kT, Mnu, dMnudT, dMnudY, df0dT_Y, df0dY_T )
+    !$ACC PRIVATE( kT, dUdL, Mnu, dMnudT, dMnudY, &
+    !$ACC          df0dT_Y, df0dY_T )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( kT, Mnu, dMnudT, dMnudY, df0dT_Y, df0dY_T )
+    !$OMP PRIVATE( kT, dUdL, Mnu, dMnudT, dMnudY, &
+    !$OMP          df0dT_Y, df0dY_T )
 #endif
     DO iX = iX_B, iX_E
     DO iS = iS_B, iS_E
@@ -833,14 +866,21 @@ CONTAINS
 
       kT = BoltzmannConstant * T(iX)
 
-      IF ( iS > iNuE_Bar ) THEN
+      IF ( iS == iNuE .OR. iS == iNuE_Bar ) THEN
+        Mnu    = ( ( Me   (iX)  + Mp   (iX)  ) - Mn   (iX)  ) * LeptonNumber(iS)
+        dMnudT = ( ( dMedT(iX)  + dMpdT(iX)  ) - dMndT(iX)  ) * LeptonNumber(iS)
+        dMnudY = ( ( dMedYe(iX) + dMpdYe(iX) ) - dMndYe(iX) ) * LeptonNumber(iS)
+        dUdL   = dUdYe(iX)
+      ELSE IF ( iS == iNuM .OR. iS == iNuM_Bar ) THEN
+        Mnu    = ( ( Mm   (iX)  + Mp   (iX)  ) - Mn   (iX)  ) * LeptonNumber(iS)
+        dMnudT = ( ( dMmdT(iX)  + dMpdT(iX)  ) - dMndT(iX)  ) * LeptonNumber(iS)
+        dMnudY = ( ( dMmdYm(iX) + dMpdYm(iX) ) - dMndYm(iX) ) * LeptonNumber(iS)
+        dUdL   = dUdYm(iX)
+      ELSE
         Mnu    = Zero
         dMnudT = Zero
         dMnudY = Zero
-      ELSE
-        Mnu    = ( ( Me   (iX) + Mp   (iX) ) - Mn   (iX) ) * LeptonNumber(iS)
-        dMnudT = ( ( dMedT(iX) + dMpdT(iX) ) - dMndT(iX) ) * LeptonNumber(iS)
-        dMnudY = ( ( dMedY(iX) + dMpdY(iX) ) - dMndY(iX) ) * LeptonNumber(iS)
+        dUdL   = Zero
       END IF
 
       f0(iE,iS,iX) = FermiDirac   ( E(iE), Mnu, kT )
@@ -848,7 +888,7 @@ CONTAINS
       df0dY_T      = dFermiDiracdY( E(iE), Mnu, kT, dMnudY, T(iX) ) ! Constant Y
 
       df0dU(iE,iS,iX) = df0dT_Y / dUdT(iX)
-      df0dY(iE,iS,iX) = df0dY_T - df0dU(iE,iS,iX) * dUdY(iX)
+      df0dY(iE,iS,iX) = df0dY_T - df0dU(iE,iS,iX) * dUdL
 
     END DO
     END DO
@@ -856,28 +896,36 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: Me,  dMedT,  dMedY, &
-    !$OMP               Mp,  dMpdT,  dMpdY, &
-    !$OMP               Mn,  dMndT,  dMndY, &
-    !$OMP               U,   dUdT,   dUdY, dUdD, &
-    !$OMP               E, D, T, Y ) &
+    !$OMP MAP( release: Me,  dMedT,  dMedYe, dMedYm, dMedD, &
+    !$OMP               Mm,  dMmdT,  dMmdYe, dMmdYm, dMmdD, &
+    !$OMP               Mp,  dMpdT,  dMpdYe, dMpdYm, dMpdD, &
+    !$OMP               Mn,  dMndT,  dMndYe, dMndYm, dMndD, &
+    !$OMP               U, dUdT, dUdYe, dUdYm, dUdD, &
+    !$OMP               E, D, T, Ye, Ym ) &
     !$OMP MAP( from: f0, df0dU, df0dY )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( Me,  dMedT,  dMedY, &
-    !$ACC         Mp,  dMpdT,  dMpdY, &
-    !$ACC         Mn,  dMndT,  dMndY, &
-    !$ACC         U,   dUdT,   dUdY, dUdD, &
-    !$ACC         E, D, T, Y ) &
+    !$ACC DELETE( Me,  dMedT,  dMedYe, dMedYm, dMedD, &
+    !$ACC         Mm,  dMmdT,  dMmdYe, dMmdYm, dMmdD, &
+    !$ACC         Mp,  dMpdT,  dMpdYe, dMpdYm, dMpdD, &
+    !$ACC         Mn,  dMndT,  dMndYe, dMndYm, dMndD, &
+    !$ACC         U, dUdT, dUdYe, dUdYm, dUdD, &
+    !$ACC         E, D, T, Ye, Ym ) &
     !$ACC COPYOUT( f0, df0dU, df0dY )
 #endif
+
+    DEALLOCATE( Me, dMedT, dMedYe, dMedYm, dMedD )
+    DEALLOCATE( Mm, dMmdT, dMmdYe, dMmdYm, dMmdD )
+    DEALLOCATE( Mp, dMpdT, dMpdYe, dMpdYm, dMpdD )
+    DEALLOCATE( Mn, dMndT, dMndYe, dMndYm, dMndD )
+    DEALLOCATE( U, dUdT, dUdYe, dUdYm, dUdD )
 
   END SUBROUTINE ComputeEquilibriumDistributionAndDerivatives
 
 
   SUBROUTINE ComputeNeutrinoOpacities_EC &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Y, f0, opEC, &
-      Opacity_Mask, T_old, Y_old )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, f0, opEC, &
+      T_old, Ye_old, Ym_old )
 
     ! --- Electron Capture Opacities (Multiple D,T,Y) ---
 
@@ -887,59 +935,155 @@ CONTAINS
     REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
     REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
     REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ye(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ym(iX_B:iX_E)
     REAL(DP), INTENT(in)  :: f0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: opEC(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
-    LOGICAL,  INTENT(in)  :: Opacity_Mask(nOp,iX_B:iX_E)
-    REAL(DP), INTENT(in), OPTIONAL :: T_old(iX_B:iX_E)
-    REAL(DP), INTENT(in), OPTIONAL :: Y_old(iX_B:iX_E)
+    REAL(DP), INTENT(in), OPTIONAL, TARGET :: T_old (iX_B:iX_E)
+    REAL(DP), INTENT(in), OPTIONAL, TARGET :: Ye_old(iX_B:iX_E)
+    REAL(DP), INTENT(in), OPTIONAL, TARGET :: Ym_old(iX_B:iX_E)
 
     REAL(DP) :: LogE_P
     REAL(DP) :: LogD_P, LogT_P
-    REAL(DP) :: D_P, T_P, Y_P
+    REAL(DP) :: E_P, D_P, T_P
     INTEGER  :: iE, iS, iX
 
 #ifdef MICROPHYSICS_WEAKLIB
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA          &
-    !$OMP MAP( to:    E, D, T, Y,    &
-    !$OMP             Opacity_Mask ) &
+    !$OMP TARGET ENTER DATA             &
+    !$OMP MAP( to:    E, D, T, Ye, Ym ) &
     !$OMP MAP( alloc: opEC )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA                 &
-    !$ACC COPYIN(     E, D, T, Y,    & 
-     !$ACC            Opacity_Mask ) &
-    !$ACC CREATE(     opEC )
+    !$ACC ENTER DATA                  &
+    !$ACC COPYIN( E, D, T, Ye, Ym ) &
+    !$ACC CREATE( opEC )
 #endif
 
-!do EmAb on nucleons first
+    IF ( iS_B <= iNuE .AND. iS_E >= iNuE_Bar ) THEN
+
+      ! do EmAb on nucleons first
+      CALL ComputeNeutrinoOpacities_EC_NuE_Nucleons &
+             ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, &
+               E, D, T, Ye, Ym, opEC )
+
+      ! now add contribution from EC on heavy nuclei
+      IF ( use_EC_table > 0 ) THEN
+
+        CALL ComputeNeutrinoOpacities_EC_NuE_Nuclei &
+              ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, &
+                E, D, T, Ye, Ym, f0, opEC, &
+                T_old = T_old, Ye_old = Ye_old, Ym_old = Ym_old )
+
+      END IF
+
+    END IF
+
+    IF ( iS_B <= iNuM .AND. iS_E >= iNuM_Bar ) THEN
+
+      CALL ComputeNeutrinoOpacities_EC_NuM_Nucleons &
+             ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, &
+               E, D, T, Ye, Ym, opEC )
+
+    END IF
+
+    IF ( iS_B <= iNuT .AND. iS_E >= iNuT_Bar ) THEN
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+      DO iX = iX_B, iX_E
+      DO iS = iNuT, iNuT_Bar
+      DO iE = iE_B, iE_E
+        opEC(iE,iS,iX) = Zero
+      END DO
+      END DO
+      END DO
+    END IF
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA                &
+    !$OMP MAP (release: E, D, T, Ye, Ym ) &
+    !$OMP MAP (from: opEC )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA                 &
+    !$ACC DELETE (E, D, T, Ye, Ym ) &
+    !$ACC COPYOUT ( opEC )
+#endif
+
+#else
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Y_P ) 
+    !$OMP MAP( from: opEC )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( LogE_P, LogD_P, LogT_P, Y_P ) 
+    !$ACC COPYOUT( opEC )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Y_P )
+    !$OMP PARALLEL DO COLLAPSE(3)
 #endif
     DO iX = iX_B, iX_E
     DO iS = iS_B, iS_E
     DO iE = iE_B, iE_E
+      opEC(iE,iS,iX) = Zero
+    END DO
+    END DO
+    END DO
 
-      IF ( Opacity_Mask(iOp_EmAb,iX) .AND. iS <= iNuE_Bar ) THEN
+#endif
+
+  END SUBROUTINE ComputeNeutrinoOpacities_EC
+
+
+  SUBROUTINE ComputeNeutrinoOpacities_EC_NuE_Nucleons &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, opEC )
+
+    ! --- Electron Capture Opacities (Multiple D,T,Y) ---
+
+    INTEGER,  INTENT(in)    :: iE_B, iE_E
+    INTEGER,  INTENT(in)    :: iS_B, iS_E
+    INTEGER,  INTENT(in)    :: iX_B, iX_E
+    REAL(DP), INTENT(in)    :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)    :: D(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: T(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Ye(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Ym(iX_B:iX_E)
+    REAL(DP), INTENT(inout) :: opEC(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+
+    REAL(DP) :: LogE_P
+    REAL(DP) :: LogD_P, LogT_P
+    REAL(DP) :: E_P, D_P, T_P, Ye_P
+    INTEGER  :: iE, iS, iX
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Ye_P )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( LogE_P, LogD_P, LogT_P, Ye_P )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Ye_P )
+#endif
+    DO iX = iX_B, iX_E
+    DO iS = iNuE, iNuE_Bar
+    DO iE = iE_B, iE_E
+
+      IF ( QueryOpacity_EmAb( D(iX) / UnitD ) ) THEN
 
         LogE_P = LOG10( E(iE) / UnitE )
 
-        LogD_P = LOG10( D(iX) / UnitD )
-        LogT_P = LOG10( T(iX) / UnitT )
-        Y_P    =        Y(iX) / UnitY
+        LogD_P = LOG10( D(iX)  / UnitD )
+        LogT_P = LOG10( T(iX)  / UnitT )
+        Ye_P   =        Ye(iX) / UnitY
 
         CALL LogInterpolateSingleVariable_4D_Custom_Point &
-               ( LogE_P , LogD_P , LogT_P , Y_P , &
-                 LogEs_T, LogDs_T, LogTs_T, Ys_T, &
-                 OS_EmAb(iS), EmAb_T(:,:,:,:,iS), opEC(iE,iS,iX) )
+                ( LogE_P , LogD_P , LogT_P , Ye_P, &
+                  LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+                  OS_EmAb(iS), EmAb_T(:,:,:,:,iS), opEC(iE,iS,iX) )
 
         opEC(iE,iS,iX) = opEC(iE,iS,iX) * UnitEC
 
@@ -953,249 +1097,173 @@ CONTAINS
     END DO
     END DO
 
-!now add contribution from EC on heavy nuclei
-  IF(use_EC_table .gt. 0) THEN
+  END SUBROUTINE ComputeNeutrinoOpacities_EC_NuE_Nucleons
 
-  EC_Table: BLOCK
 
-  INTEGER  :: iE1, iNodeE1, iE2
+  SUBROUTINE ComputeNeutrinoOpacities_EC_NuE_Nuclei &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, f0, opEC, &
+      T_old, Ye_old, Ym_old )
 
-  REAL(dp) :: loctot
+    ! --- Electron Capture Opacities (Multiple D,T,Y) ---
 
-  REAL(dp) :: Xnuc
-  REAL(dp), PARAMETER :: coeff = 2.0d0 * (Pi*SpeedOfLightCGS)**2 &
-                               * hbarMeVs**3
+    INTEGER,  INTENT(in)    :: iE_B, iE_E
+    INTEGER,  INTENT(in)    :: iS_B, iS_E
+    INTEGER,  INTENT(in)    :: iX_B, iX_E
+    REAL(DP), INTENT(in)    :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)    :: D(iX_B:iX_E)
+    REAL(DP), INTENT(in), TARGET :: T(iX_B:iX_E)
+    REAL(DP), INTENT(in), TARGET :: Ye(iX_B:iX_E)
+    REAL(DP), INTENT(in), TARGET :: Ym(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: f0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+    REAL(DP), INTENT(inout) :: opEC(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+    REAL(DP), INTENT(in), TARGET, OPTIONAL :: T_old (iX_B:iX_E)
+    REAL(DP), INTENT(in), TARGET, OPTIONAL :: Ye_old(iX_B:iX_E)
+    REAL(DP), INTENT(in), TARGET, OPTIONAL :: Ym_old(iX_B:iX_E)
 
-  REAL(dp) :: E_node
-  REAL(dp), ALLOCATABLE :: CenterE(:), WidthE(:), NodesE(:)
+    REAL(DP), POINTER :: T0(:), Ye0(:), Ym0(:)
 
-  REAL(dp) :: a, b, f_a, f_b
+    REAL(DP) :: D_P, T_P, Ye_P, T0_P, Ye0_P, Ym0_P
+    INTEGER  :: iE, iX
 
-  INTEGER  :: iD, iT, iY
-  REAL(dp) :: dD, dT, dY
-  REAL(dp) :: p000, p100, p010, p110, p001, p101, p011, p111
-  INTEGER  :: loD, hiD
-  INTEGER  :: loT, hiT
-  INTEGER  :: loY, hiY
+    REAL(dp) :: E_node
+    REAL(dp) :: dE_node, dspec_fine, dEC_T
+    REAL(dp) :: loctot
+    REAL(dp) :: Xnuc
 
-  REAL(dp), DIMENSION(:),   ALLOCATABLE :: Xh, Ah, EC_rate, T0, Y0
-  REAL(dp), DIMENSION(:,:), ALLOCATABLE :: spec_nodes, spec_fine
-  REAL(dp), DIMENSION(:,:), ALLOCATABLE :: spec_elements, spec_elements_nodes
+    INTEGER  :: iE1, iNodeE1, iE2
+    INTEGER  :: iD, iT, iY
+    REAL(dp) :: dD, dT, dY
+    REAL(dp) :: a, b, f_a, f_b
 
-  ALLOCATE( CenterE(nE), WidthE(nE), NodesE(nNodesE) )
+    REAL(dp), DIMENSION(:),   ALLOCATABLE :: Xh, Ah, Ah_old, EC_rate
+    REAL(dp), DIMENSION(:,:), ALLOCATABLE :: spec_nodes, spec_fine
+    REAL(dp), DIMENSION(:,:), ALLOCATABLE :: spec_elements, spec_elements_nodes
 
-  ALLOCATE( Xh     (iX_B:iX_E) )
-  ALLOCATE( Ah     (iX_B:iX_E) )
-  ALLOCATE( EC_rate(iX_B:iX_E) )
-  ALLOCATE( T0     (iX_B:iX_E) )
-  ALLOCATE( Y0     (iX_B:iX_E) )
+    IF( PRESENT ( T_old ) ) THEN
+      T0 => T_old(iX_B:iX_E)
+    ELSE
+      T0 => T(iX_B:iX_E)
+    END IF
 
-  ALLOCATE( spec_nodes         (iE_B:iE_E,iX_B:iX_E) )
-  ALLOCATE( spec_fine          (EC_nE,    iX_B:iX_E) )
-  ALLOCATE( spec_elements      (nE,       iX_B:iX_E) )
-  ALLOCATE( spec_elements_nodes(nE,       iX_B:iX_E) )
+    IF( PRESENT ( Ye_old ) ) THEN
+      Ye0 => Ye_old(iX_B:iX_E)
+    ELSE
+      Ye0 => Ye(iX_B:iX_E)
+    END IF
 
-  CenterE(:) = MeshE % Center(1:nE)
-  WidthE(:)  = MeshE % Width(1:nE)
-  NodesE(:)  = MeshE % Nodes(:)
+    IF( PRESENT ( Ym_old ) ) THEN
+      Ym0 => Ym_old(iX_B:iX_E)
+    ELSE
+      Ym0 => Ym(iX_B:iX_E)
+    END IF
 
-#if defined(THORNADO_OMP_OL)
-  !$OMP TARGET ENTER DATA    &
-  !$OMP MAP( alloc: T0, Y0 ) 
-#elif defined(THORNADO_OACC)
-  !$ACC ENTER DATA           &
-  !$ACC CREATE( T0, Y0 )
-#endif
+    ALLOCATE( Xh     (iX_B:iX_E) )
+    ALLOCATE( Ah     (iX_B:iX_E) )
+    ALLOCATE( Ah_old (iX_B:iX_E) )
+    ALLOCATE( EC_rate(iX_B:iX_E) )
 
-  IF( PRESENT ( T_old ) ) THEN
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &  
-    !$OMP MAP( to:    T_old ) 
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC COPYIN  ( T_old )         &
-    !$ACC PRESENT ( T0 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO
-#endif
-    DO iX = iX_B, iX_E
-      T0(iX) = T_old(iX)
-    END DO
-  ELSE
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT  ( T0 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO
-#endif
-    DO iX = iX_B, iX_E
-      T0(iX) = T(iX)
-    END DO
-  ENDIF
-
-  IF( PRESENT ( Y_old ) ) THEN
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &  
-    !$OMP MAP( to:    Y_old )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC COPYIN  ( Y_old )   &
-    !$ACC PRESENT ( Y0 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO
-#endif
-    DO iX = iX_B, iX_E
-      Y0(iX) = Y_old(iX)
-    END DO
-  ELSE
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRESENT ( Y0 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO
-#endif
-    DO iX = iX_B, iX_E
-      Y0(iX) = Y(iX)
-    END DO
-  ENDIF
+    ALLOCATE( spec_nodes         (iE_B:iE_E,iX_B:iX_E) )
+    ALLOCATE( spec_fine          (EC_nE,    iX_B:iX_E) )
+    ALLOCATE( spec_elements      (nE,       iX_B:iX_E) )
+    ALLOCATE( spec_elements_nodes(nE,       iX_B:iX_E) )
 
 #if defined(THORNADO_OMP_OL)
-  !$OMP TARGET ENTER DATA                    &
-  !$OMP MAP( to: f0 )                        &
-  !$OMP MAP( alloc: Xh, Ah, EC_rate,         & 
-  !$OMP      spec_nodes, spec_elements,      &
-  !$OMP      spec_elements_nodes, spec_fine )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: f0 ) &
+    !$OMP MAP( alloc: T0, Ye0, Ym0, &
+    !$OMP             Xh, Ah, Ah_old, EC_rate, &
+    !$OMP             spec_nodes, spec_elements,      &
+    !$OMP             spec_elements_nodes, spec_fine )
 #elif defined(THORNADO_OACC)
-  !$ACC ENTER DATA                           &
-  !$ACC COPYIN( f0 )                         &    
-  !$ACC CREATE( Xh, Ah, EC_rate,             &
-  !$ACC         spec_nodes, spec_elements,   &
-  !$ACC         spec_elements_nodes, spec_fine )
+    !$ACC ENTER DATA &
+    !$ACC COPYIN( f0 ) &
+    !$ACC CREATE( T0, Ye0, Ym0, &
+    !$ACC         Xh, Ah, Ah_old, EC_rate, &
+    !$ACC         spec_nodes, spec_elements, &
+    !$ACC         spec_elements_nodes, spec_fine )
 #endif
 
     ! --- Compute heavy mass fraction and number ---
 
-    CALL ComputeHeavyMassFraction_TABLE &
-           ( D, T, Y, Xh )
+    CALL ComputeHeavyMassFraction_TABLE( D, T , Ye , Ym , Xh )
+    CALL ComputeHeavyMassNumber_TABLE  ( D, T , Ye , Ym , Ah )
+    CALL ComputeHeavyMassNumber_TABLE  ( D, T0, Ye0, Ym0, Ah_old )
 
-    CALL ComputeHeavyMassNumber_TABLE &
-           ( D, T, Y, Ah )
-
-
+    ASSOCIATE &
+      ( CenterE => MeshE % Center, &
+        WidthE  => MeshE % Width, &
+        NodesE  => MeshE % Nodes )
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD                   &
-    !$OMP PRIVATE( D_P, T_P, Y_P, Xnuc, loctot,                      & 
-    !$OMP          iE, iE1, iE2, iNodeE1, E_node, a, b, f_a, f_b,    & 
-    !$OMP          iD, iT, iY, dD, dT, dY,                           &
-    !$OMP          loD, hiD, loT, hiT, loY, hiY,                     &      
-    !$OMP          p000, p100, p010, p110, p001, p101, p011, p111 )  &
-    !$OMP MAP    ( to: CenterE, WidthE, NodesE )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP MAP( to: CenterE, WidthE, NodesE ) &
+    !$OMP PRIVATE( D_P, T_P, Ye_P, T0_P, Ye0_P, Xnuc, loctot, &
+    !$OMP          dspec_fine, dEC_T, dE_node, E_node, &
+    !$OMP          iE, iE1, iE2, iNodeE1, a, b, f_a, f_b, &
+    !$OMP          iD, iT, iY, dD, dT, dY )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR                                  &
-    !$ACC PRIVATE( D_P, T_P, Y_P, Xnuc, loctot,                      & 
-    !$ACC          iE, iE1, iE2, iNodeE1, E_node, a, b, f_a, f_b,    & 
-    !$ACC          iD, iT, iY, dD, dT, dY,                           &
-    !$ACC          loD, hiD, loT, hiT, loY, hiY,                     &      
-    !$ACC          p000, p100, p010, p110, p001, p101, p011, p111 )  &
-    !$ACC COPYIN ( CenterE, WidthE, NodesE )                         &
-    !$ACC PRESENT( Xh, Ah, T0, Y0, EC_rate, OS_EmAb_EC_rate,         &
-    !$ACC          OS_EmAb_EC_spec, EmAb_EC_spec_T, WeightsE,        &
-    !$ACC          f0, EC_nE, EC_dE, EC_iE_max, EC_iNodeE_max,       &
-    !$ACC          Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T, Opacity_Mask ) 
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC COPYIN ( CenterE, WidthE, NodesE ) &
+    !$ACC PRIVATE( D_P, T_P, Ye_P, T0_P, Ye0_P, Xnuc, loctot, &
+    !$ACC          dspec_fine, dEC_T, dE_node, E_node, &
+    !$ACC          iE, iE1, iE2, iNodeE1, a, b, f_a, f_b, &
+    !$ACC          iD, iT, iY, dD, dT, dY ) &
+    !$ACC PRESENT( Xh, Ah, Ah_old, T0, Ye0, EC_rate, OS_EmAb_EC_rate, &
+    !$ACC          OS_EmAb_EC_spec, EmAb_EC_spec_T, WeightsE,         &
+    !$ACC          f0, EC_nE, EC_dE, EC_iE_max, EC_iNodeE_max,        &
+    !$ACC          Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO                                                &
-    !$OMP PRIVATE( D_P, T_P, Y_P, Xnuc, loctot,                      & 
-    !$OMP          iE, iE1, iE2, iNodeE1, E_node, a, b, f_a, f_b,    & 
-    !$OMP          iD, iT, iY, dD, dT, dY,                           &
-    !$OMP          loD, hiD, loT, hiT, loY, hiY,                     &      
-    !$OMP          p000, p100, p010, p110, p001, p101, p011, p111 )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( D_P, T_P, Ye_P, T0_P, Ye0_P, Xnuc, loctot, &
+    !$OMP          dspec_fine, dEC_T, dE_node, E_node, &
+    !$OMP          iE, iE1, iE2, iNodeE1, a, b, f_a, f_b, &
+    !$OMP          iD, iT, iY, dD, dT, dY )
 #endif
     DO iX = iX_B, iX_E
 
-      IF ( .NOT. Opacity_Mask(iOp_ECTable,iX) ) CYCLE
+      IF ( QueryOpacity_ECTable &
+             ( D(iX) / UnitD, T(iX) / Kelvin, Ye(iX) / UnitYe, Ah(iX) ) )THEN
 
-        D_P = D(iX) / UnitD
+        D_P  = D (iX) / UnitD
+        T_P  = T (iX) / UnitT
+        Ye_P = Ye(iX) / UnitY
 
-        !If T_old and Y_old were present, use the old state to 
-        !calculate the interpolation indices, otherwise the 
-        !current state is used, ie T0 = T, Y0 = Y
-        T_P = T0(iX) / UnitT
-        Y_P = Y0(iX) / UnitY
+        ! If T_old and Ye_old were present, use the old state to
+        ! calculate the interpolation indices, otherwise the
+        ! current state is used, ie T0 = T, Ye0 = Ye
+        T0_P  = T0 (iX) / UnitT
+        Ye0_P = Ye0(iX) / UnitY
 
-        loD = LBOUND(Ds_EC_T,1)
-        hiD = UBOUND(Ds_EC_T,1)
-        loT = LBOUND(Ts_EC_T,1)
-        hiT = UBOUND(Ts_EC_T,1)
-        loY = LBOUND(Ys_EC_T,1)
-        hiY = UBOUND(Ys_EC_T,1)
+        IF (      D_P   <= Ds_EC_T(1) .OR. D_P   >= Ds_EC_T(SIZE(Ds_EC_T)) &
+             .OR. T0_P  <= Ts_EC_T(1) .OR. T0_P  >= Ts_EC_T(SIZE(Ts_EC_T)) &
+             .OR. Ye0_P <= Ys_EC_T(1) .OR. Ye0_P >= Ys_EC_T(SIZE(Ys_EC_T)) &
+             .OR. Ah_old(iX) <= 40.0d0 ) CYCLE
 
-        iD = MAX( loD, MIN( hiD-1, loD &
-           + FLOOR( (hiD-loD)*LOG10(D_P/Ds_EC_T(loD))/LOG10(Ds_EC_T(hiD)/Ds_EC_T(loD)) ) ) )
+        ! Determine indices for D, T, Ye using old state
+        iD = Index1D_Log( D_P  , Ds_EC_T )
+        iT = Index1D_Log( T0_P , Ts_EC_T )
+        iY = Index1D_Lin( Ye0_P, Ys_EC_T )
+
+        ! Use new state to calculate interpolation weights
         dD = LOG10( D_P / Ds_EC_T(iD) ) / LOG10( Ds_EC_T(iD+1) / Ds_EC_T(iD) )
-
-        iT = MAX( loT, MIN( hiT-1, loT &
-           + FLOOR( (hiT-loT)*LOG10(T_P/Ts_EC_T(loT))/LOG10(Ts_EC_T(hiT)/Ts_EC_T(loT)) ) ) )
-        
-        !Do the actual interpolation/extrapolation with the current state 
-        T_P = T(iX) / UnitT
         dT = LOG10( T_P / Ts_EC_T(iT) ) / LOG10( Ts_EC_T(iT+1) / Ts_EC_T(iT) )
+        dY = ( Ye_P - Ys_EC_T(iY) ) / ( Ys_EC_T(iY+1) - Ys_EC_T(iY) )
 
-        iY = MAX( loY, MIN( hiY-1, loY &
-           + FLOOR( (hiY-loY)*(Y_P-Ys_EC_T(loY))/(Ys_EC_T(hiY)-Ys_EC_T(loY)) ) ) )
+        CALL LinearInterp3D_3DArray_Point &
+             ( iD, iT, iY, dD, dT, dY, &
+               OS_EmAb_EC_rate(iNuE), EmAb_EC_rate_T, &
+               EC_rate(iX) )
 
-        !Do the actual interpolation/extrapolation with the current state 
-        Y_P = Y(iX) / UnitY
-        dY = ( Y_P - Ys_EC_T(iY) ) / ( Ys_EC_T(iY+1) - Ys_EC_T(iY) )
-
-        p000 = EmAb_EC_rate_T(iD  , iT  , iY  )
-        p100 = EmAb_EC_rate_T(iD+1, iT  , iY  )
-        p010 = EmAb_EC_rate_T(iD  , iT+1, iY  )
-        p110 = EmAb_EC_rate_T(iD+1, iT+1, iY  )
-        p001 = EmAb_EC_rate_T(iD  , iT  , iY+1)
-        p101 = EmAb_EC_rate_T(iD+1, iT  , iY+1)
-        p011 = EmAb_EC_rate_T(iD  , iT+1, iY+1)
-        p111 = EmAb_EC_rate_T(iD+1, iT+1, iY+1)
-
-        EC_rate(iX) &
-          = 10.0d0 ** (   ( One - dY ) * (   ( One - dT ) * ( ( One - dD ) * p000 + dD * p100 ) &
-                                           +         dT   * ( ( One - dD ) * p010 + dD * p110 ) ) &
-                        +         dY   * (   ( One - dT ) * ( ( One - dD ) * p001 + dD * p101 ) &
-                                           +         dT   * ( ( One - dD ) * p011 + dD * p111 ) ) ) &
-          - OS_EmAb_EC_rate(iNuE)
-
-        !CALL LogInterpolateSingleVariable_3D_Custom_Point &
-        !     ( D_P,     T_P,     Y_P,  &
-        !       Ds_EC_T, Ts_EC_T, Ys_EC_T, &
-        !       OS_EmAb_EC_rate(iNuE), EmAb_EC_rate_T, EC_rate(iX)) 
         loctot = 0.0d0
         DO iE = 1, EC_nE
-          p000 = EmAb_EC_spec_T(iD  , iT  , iY  , iE)
-          p100 = EmAb_EC_spec_T(iD+1, iT  , iY  , iE)
-          p010 = EmAb_EC_spec_T(iD  , iT+1, iY  , iE)
-          p110 = EmAb_EC_spec_T(iD+1, iT+1, iY  , iE)
-          p001 = EmAb_EC_spec_T(iD  , iT  , iY+1, iE)
-          p101 = EmAb_EC_spec_T(iD+1, iT  , iY+1, iE)
-          p011 = EmAb_EC_spec_T(iD  , iT+1, iY+1, iE)
-          p111 = EmAb_EC_spec_T(iD+1, iT+1, iY+1, iE)
 
-          spec_fine(iE,iX) &
-            = 10.0d0 ** (   ( One - dY ) * (   ( One - dT ) * ( ( One - dD ) * p000 + dD * p100 ) &
-                                             +         dT   * ( ( One - dD ) * p010 + dD * p110 ) ) &
-                          +         dY   * (   ( One - dT ) * ( ( One - dD ) * p001 + dD * p101 ) &
-                                             +         dT   * ( ( One - dD ) * p011 + dD * p111 ) ) ) &
-            - OS_EmAb_EC_spec(iNuE)
-
-          !CALL LogInterpolateSingleVariable_3D_Custom_Point &
-          !     ( D_P,     T_P,     Y_P,  &
-          !       Ds_EC_T, Ts_EC_T, Ys_EC_T, &
-          !       OS_EmAb_EC_spec(iNuE), EmAb_EC_spec_T(:,:,:,iE), spec_fine(iE,iX)) 
+          CALL LinearInterp3D_3DArray_Point &
+              ( iD, iT, iY, dD, dT, dY, &
+                OS_EmAb_EC_spec(iNuE), EmAb_EC_spec_T(:,:,:,iE), &
+                spec_fine(iE,iX) )
 
           loctot = loctot + spec_fine(iE,iX) * EC_dE
+
         END DO
 
         DO iE = iE_B, iE_E
@@ -1210,33 +1278,37 @@ CONTAINS
         !renormalise interpolated fine energy grid spectrum to 1
         DO iE = 1, EC_nE
           spec_fine(iE,iX) = spec_fine(iE,iX) / loctot
-        ENDDO
+        END DO
       
         !calculate spectrum in elements from interpolated fine spectrum 
         DO iE1 = 1, EC_iE_max
           loctot = 0.0d0
           DO iNodeE1 = 1, nNodesE
             iE = (iE1-1) * nNodesE + iNodeE1
-            IF(iE <= EC_iNodeE_max) THEN
-              E_node  = NodeCoordinate( CenterE(iE1), WidthE(iE1), NodesE(iNodeE1) ) / UnitE
+            IF ( iE <= EC_iNodeE_max ) THEN
+              E_node = NodeCoordinate( CenterE(iE1), WidthE(iE1), NodesE(iNodeE1) ) / UnitE
 
               iE2 = FLOOR(E_node/EC_dE) + 1
 
-              spec_nodes(iE,iX) = (spec_fine(iE2,iX) + (E_node - Es_EC_T(iE2)) &
-                                * (spec_fine(iE2+1,iX)-spec_fine(iE2,iX)) / (Es_EC_T(iE2+1)-Es_EC_T(iE2))) &
-                                / E_node**2 
+              dspec_fine = spec_fine(iE2+1,iX) - spec_fine(iE2,iX)
+              dEC_T      = Es_EC_T  (iE2+1   ) - Es_EC_T  (iE2   ) ! AH: is this just EC_dE?
+              dE_node    = E_node              - Es_EC_T  (iE2   )
 
-              loctot  = loctot + spec_nodes(iE,iX) * E_node**2 &
-                      * WidthE(iE1) / UnitE * WeightsE(iNodeE1)
-            ENDIF
-          ENDDO
+              spec_nodes(iE,iX) = spec_fine(iE2,iX) + dspec_fine * dE_node / dEC_T
+
+              loctot = loctot &
+                     + spec_nodes(iE,iX) * ( WidthE(iE1) / UnitE ) * WeightsE(iNodeE1)
+
+              spec_nodes(iE,iX) = spec_nodes(iE,iX) / E_node**2
+            END IF
+          END DO
           spec_elements_nodes(iE1,iX) = loctot
-        ENDDO
+        END DO
 
         !integrate fine spectrum over elements for renormlisation
         DO iE = 1, EC_iE_max
 
-          IF(EC_kfmin(iE) >= EC_kfmax(iE)) THEN
+          IF ( EC_kfmin(iE) >= EC_kfmax(iE) ) THEN
 
             a = EC_a(iE,1)
             b = EC_b(iE,2)
@@ -1270,7 +1342,7 @@ CONTAINS
             DO iE1 = EC_kfmin(iE)+1, EC_kfmax(iE)-1
               spec_elements(iE,iX) = spec_elements(iE,iX) &
                                    + 0.5d0 * EC_dE * (spec_fine(iE1,iX) + spec_fine(iE1+1,iX))
-            ENDDO
+            END DO
 
             !integrate from EC table energy bin face
             !to upper thornado element face  
@@ -1286,108 +1358,471 @@ CONTAINS
             spec_elements(iE,iX) = spec_elements(iE,iX) &
                                  + 0.5d0 * (b - a) * (f_a + f_b)            
 
-          ENDIF
+          END IF
 
-        ENDDO
+        END DO
 
         Xnuc = Xh(iX) / (Ah(iX) / AvogadroConstantMKS) * D_P 
 
         !renormalise spectrum at the nodes so that it integrates to 1
         DO iE = iE_B, EC_iNodeE_max
-          iE1     = MOD( (iE-1) / nNodesE, nE      ) + 1
+          iE1     = MOD( (iE-1) / nNodesE, nE ) + 1
 
           spec_nodes(iE,iX) = spec_nodes(iE,iX) * spec_elements(iE1,iX) &
                             / spec_elements_nodes(iE1,iX)
 
-        ENDDO
+        END DO
 
         DO iE = iE_B, iE_E
 
           !now add Chi from EC table on heavy nuclei to Chi from EmAb on nucleons
-          opEC(iE,iNuE,iX) = opEC(iE,iNuE,iX) + (Xnuc * coeff * EC_rate(iX) &
-                           * spec_nodes(iE,iX) / f0(iE,iNuE,iX) * UnitEC)
+          opEC(iE,iNuE,iX) &
+            = opEC(iE,iNuE,iX) &
+            + ( Xnuc * coeff * EC_rate(iX) * spec_nodes(iE,iX) / f0(iE,iNuE,iX) * UnitEC )
 
         END DO
 
+      END IF
+
     END DO
 
+    END ASSOCIATE
+
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA                                   &
-    !$OMP MAP( release: f0, Xh, Ah, EC_rate, T0, Y0,         &
-    !$OMP               spec_nodes, spec_elements,           &
-    !$OMP               spec_elements_nodes, spec_fine,      &
-    !$OMP               CenterE, WidthE, NodesE )     
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: f0, T0, Ye0, Ym0, &
+    !$OMP               Xh, Ah, Ah_old, EC_rate, &
+    !$OMP               spec_nodes, spec_elements, &
+    !$OMP               spec_elements_nodes, spec_fine )
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA                                          &
-    !$ACC DELETE  (     f0, Xh, Ah, EC_rate, T0, Y0,         &
-    !$ACC               spec_nodes, spec_elements,           &
-    !$ACC               spec_elements_nodes, spec_fine,      &
-    !$ACC               CenterE, WidthE, NodesE )     
+    !$ACC EXIT DATA &
+    !$ACC DELETE( f0, T0, Ye0, Ym0, &
+    !$ACC         Xh, Ah, Ah_old, EC_rate, &
+    !$ACC         spec_nodes, spec_elements, &
+    !$ACC         spec_elements_nodes, spec_fine )
 #endif
 
-  DEALLOCATE( Xh      )
-  DEALLOCATE( Ah      )
-  DEALLOCATE( EC_rate )
+    DEALLOCATE( Xh      )
+    DEALLOCATE( Ah      )
+    DEALLOCATE( Ah_old  )
+    DEALLOCATE( EC_rate )
 
-  DEALLOCATE( T0 )
-  DEALLOCATE( Y0 )
+    DEALLOCATE( spec_nodes          )
+    DEALLOCATE( spec_fine           )
+    DEALLOCATE( spec_elements       )
+    DEALLOCATE( spec_elements_nodes )
 
-  DEALLOCATE( spec_nodes          )
-  DEALLOCATE( spec_fine           )
-  DEALLOCATE( spec_elements       )
-  DEALLOCATE( spec_elements_nodes )
+  END SUBROUTINE ComputeNeutrinoOpacities_EC_NuE_Nuclei
 
-  END BLOCK EC_Table
 
-  ENDIF
+  SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, opEC )
 
+    ! --- Muon Capture Opacities (Multiple D,T,Y) ---
+
+    INTEGER,  INTENT(in)    :: iE_B, iE_E
+    INTEGER,  INTENT(in)    :: iS_B, iS_E
+    INTEGER,  INTENT(in)    :: iX_B, iX_E
+    REAL(DP), INTENT(in)    :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)    :: D(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: T(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Ye(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Ym(iX_B:iX_E)
+    REAL(DP), INTENT(inout) :: opEC(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+
+    REAL(DP) :: E_P, D_P, T_P, Ye_P, Ym_P
+    INTEGER  :: iE, iS, iX
+
+    REAL(DP), ALLOCATABLE :: Mumu(:)
+    REAL(DP), ALLOCATABLE :: Mun(:), Mn_eff(:), Un(:)
+    REAL(DP), ALLOCATABLE :: Mup(:), Mp_eff(:), Up(:)
+
+#ifndef EOSMODE_COMPOSE
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA             &
-    !$OMP MAP (release: E, D, T, Y,    &
-    !$OMP               Opacity_Mask ) &
-    !$OMP MAP (from: opEC )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA                    &
-    !$ACC DELETE (      E, D, T, Y,    &
-    !$ACC               Opacity_Mask ) &
-    !$ACC COPYOUT (  opEC )
-#endif
-
-#else
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP MAP( from: opEC )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC COPYOUT( opEC )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
     DO iX = iX_B, iX_E
-    DO iS = iS_B, iS_E
+    DO iS = iNuM, iNuM_Bar
     DO iE = iE_B, iE_E
       opEC(iE,iS,iX) = Zero
     END DO
     END DO
     END DO
+    RETURN
+#endif
+
+    ALLOCATE( Mumu  (iX_B:iX_E) )
+    ALLOCATE( Mun   (iX_B:iX_E) )
+    ALLOCATE( Mn_eff(iX_B:iX_E) )
+    ALLOCATE( Un    (iX_B:iX_E) )
+    ALLOCATE( Mup   (iX_B:iX_E) )
+    ALLOCATE( Mp_eff(iX_B:iX_E) )
+    ALLOCATE( Up    (iX_B:iX_E) )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mumu )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA  &
+    !$ACC CREATE( Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mumu )
+#endif
+
+    CALL ComputeMuonChemicalPotential_TABLE    ( D, T, Ye, Ym, Mumu )
+    CALL ComputeNeutronChemicalPotential_TABLE ( D, T, Ye, Ym, Mun )
+    CALL ComputeNeutronEffectiveMass_TABLE     ( D, T, Ye, Ym, Mn_eff )
+    CALL ComputeNeutronSelfEnergy_TABLE        ( D, T, Ye, Ym, Un )
+    CALL ComputeProtonChemicalPotential_TABLE  ( D, T, Ye, Ym, Mup )
+    CALL ComputeProtonEffectiveMass_TABLE      ( D, T, Ye, Ym, Mp_eff )
+    CALL ComputeProtonSelfEnergy_TABLE         ( D, T, Ye, Ym, Up )
+
+    CALL ComputeNeutrinoOpacities_EC_NuM_Nucleons_Elastic &
+           ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, &
+             E, D, T, Ye, Ym, Mumu, &
+             Mun, Mn_eff, Un, &
+             Mup, Mp_eff, Up, &
+             opEC )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mumu )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mumu )
+#endif
+
+    DEALLOCATE( Mumu   )
+    DEALLOCATE( Mun    )
+    DEALLOCATE( Mn_eff )
+    DEALLOCATE( Un     )
+    DEALLOCATE( Mup    )
+    DEALLOCATE( Mp_eff )
+    DEALLOCATE( Up     )
+
+  END SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons
+
+
+  SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons_Elastic &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, &
+      Mumu, Mun, Mn_eff, Un, Mup, Mp_eff, Up, opEC )
+
+    ! --- Muon Capture Opacities (Multiple D,T,Y) ---
+
+    INTEGER,  INTENT(in)    :: iE_B, iE_E
+    INTEGER,  INTENT(in)    :: iS_B, iS_E
+    INTEGER,  INTENT(in)    :: iX_B, iX_E
+    REAL(DP), INTENT(in)    :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)    :: D(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: T(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Ye(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Ym(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Mumu(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Mun(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Mn_eff(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Un(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Mup(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Mp_eff(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Up(iX_B:iX_E)
+    REAL(DP), INTENT(inout) :: opEC(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+
+    REAL(DP) :: E_P, D_P, T_P
+    INTEGER  :: iE, iS, iX
+
+    REAL(DP), ALLOCATABLE :: Xn(:), Xp(:)
+
+    REAL(DP) :: Mumu_P
+    REAL(DP) :: Mun_P, Mn_eff_P, Un_P, Xn_P
+    REAL(DP) :: Mup_P, Mp_eff_P, Up_P, Xp_P
+    REAL(DP) :: WeakMagRecNuLep
+    REAL(DP) :: WeakMagRecNuLepBar
+
+    ALLOCATE( Xn(iX_B:iX_E) )
+    ALLOCATE( Xp(iX_B:iX_E) )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: Xn, Xp )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA  &
+    !$ACC CREATE( Xn, Xp )
+#endif
+
+    CALL ComputeNeutronMassFraction_TABLE( D, T, Ye, Ym, Xn )
+    CALL ComputeProtonMassFraction_TABLE ( D, T, Ye, Ym, Xp )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( Mun_P, Mn_eff_P, Un_P, Xn_P, &
+    !$OMP          Mup_P, Mp_eff_P, Up_P, Xp_P, Mumu_P, &
+    !$OMP          E_P, D_P, T_P, WeakMagRecNuLep, WeakMagRecNuLepBar )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( Mun_P, Mn_eff_P, Un_P, Xn_P, &
+    !$ACC          Mup_P, Mp_eff_P, Up_P, Xp_P, Mumu_P, &
+    !$ACC          E_P, D_P, T_P, WeakMagRecNuLep, WeakMagRecNuLepBar )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( Mun_P, Mn_eff_P, Un_P, Xn_P, &
+    !$OMP          Mup_P, Mp_eff_P, Up_P, Xp_P, Mumu_P, &
+    !$OMP          E_P, D_P, T_P, WeakMagRecNuLep, WeakMagRecNuLepBar )
+#endif
+    DO iX = iX_B, iX_E
+    DO iE = iE_B, iE_E
+
+      IF ( QueryOpacity_EmAb_Muon( D(iX) / UnitD ) ) THEN
+
+        E_P  = E(iE)  / UnitE
+        D_P  = D(iX)  / UnitD
+        T_P  = T(iX)  / UnitT
+        Mun_P    = Mun   (iX) / UnitMn
+        Mn_eff_P = Mn_eff(iX) / UnitMn
+        Un_P     = Un    (iX) / UnitMn
+        Xn_P     = Xn    (iX)
+        Mup_P    = Mup   (iX) / UnitMp
+        Mp_eff_P = Mp_eff(iX) / UnitMp
+        Up_P     = Up    (iX) / UnitMp
+        Xp_P     = Xp    (iX)
+        Mumu_P   = Mumu  (iX) / UnitMmu
+
+        CALL ElasticAbsorptionOpacityNum &
+            ( D_P, T_P, E_P, &
+              Mun_P, Mn_eff_P, Un_P, Xn_P, &
+              Mup_P, Mp_eff_P, Up_P, Xp_P, &
+              Mumu_P, opEC(iE,iNuM,iX), opEC(iE,iNuM_Bar,iX) )
+
+        CALL CalculateHorowitzWeakMagRecoil(E_P, WeakMagRecNuLep, WeakMagRecNuLepBar)
+
+        opEC(iE,iNuM    ,iX) = opEC(iE,iNuM    ,iX) * WeakMagRecNuLep    * UnitEC
+        opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) * WeakMagRecNuLepBar * UnitEC
+
+      ELSE
+
+        opEC(iE,iNuM    ,iX) = Zero
+        opEC(iE,iNuM_Bar,iX) = Zero
+
+      END IF
+
+    END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: Xn, Xp )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( Xn, Xp )
+#endif
+
+    DEALLOCATE( Xn )
+    DEALLOCATE( Xp )
+
+  END SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons_Elastic
+
+
+#ifdef THORNADO_ENABLE_EXPERIMENTAL_MUON_CC_INTEGRALS
+  SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons_2D &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, &
+      Mumu, Mun, Mn_eff, Un, Mup, Mp_eff, Up, opEC )
+
+    ! --- Muon Capture Opacities (Multiple D,T,Y) ---
+
+    INTEGER,  INTENT(in)    :: iE_B, iE_E
+    INTEGER,  INTENT(in)    :: iS_B, iS_E
+    INTEGER,  INTENT(in)    :: iX_B, iX_E
+    REAL(DP), INTENT(in)    :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)    :: D(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: T(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Ye(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Ym(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Mumu(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Mun(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Mn_eff(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Un(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Mup(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Mp_eff(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Up(iX_B:iX_E)
+    REAL(DP), INTENT(inout) :: opEC(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+
+    REAL(DP) :: E_P, D_P, T_P, Ye_P, Ym_P
+    INTEGER  :: iE, iS, iX
+
+    REAL(DP) :: Mumu_P
+    REAL(DP) :: Mun_P, Mn_eff_P, Un_P
+    REAL(DP) :: Mup_P, Mp_eff_P, Up_P
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( Mun_P, Mup_P, Mumu_P ) &
+    !$OMP PRIVATE( E_P, D_P, T_P, Ym_P )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( Mun_P, Mup_P, Mumu_P ) &
+    !$ACC PRIVATE( E_P, D_P, T_P, Ym_P )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( Mun_P, Mup_P, Mumu_P ) &
+    !$OMP PRIVATE( E_P, D_P, T_P, Ym_P )
+#endif
+    DO iX = iX_B, iX_E
+    DO iE = iE_B, iE_E
+
+      IF ( QueryOpacity_EmAb_Muon( D(iX) / UnitD ) ) THEN
+
+        E_P  = E(iE)  / UnitE
+        D_P  = D(iX)  / UnitD
+        T_P  = T(iX)  / UnitT * kmev
+        Ym_P = Ym(iX) / UnitY
+
+        Mun_P  = Mun (iX) / UnitMn
+        Mup_P  = Mup (iX) / UnitMp
+        Mumu_P = Mumu(iX) / UnitMmu
+
+        CALL Opacity_CC_2D &
+            ( corr_num, 1, E_P, opEC(iE,iNuM,iX), &
+              T_P, Mumu_P, Mun_P, Mup_P,  &
+              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), nE_Muon_2D )
+        CALL Opacity_CC_2D &
+            ( corr_num, 2, E_P, opEC(iE,iNuM_Bar,iX), &
+              T_P, Mumu_P, Mun_P, Mup_P,  &
+              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), nE_Muon_2D )
+
+        opEC(iE,iNuM    ,iX) = opEC(iE,iNuM    ,iX) * UnitEC
+        opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) * UnitEC
+
+      ELSE
+
+        opEC(iE,iNuM    ,iX) = Zero
+        opEC(iE,iNuM_Bar,iX) = Zero
+
+      END IF
+
+    END DO
+    END DO
+
+  END SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons_2D
+
+
+  SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons_4D &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, &
+      Mumu, Mun, Mn_eff, Un, Mup, Mp_eff, Up, opEC )
+
+    ! --- Muon Capture Opacities (Multiple D,T,Y) ---
+
+    INTEGER,  INTENT(in)    :: iE_B, iE_E
+    INTEGER,  INTENT(in)    :: iS_B, iS_E
+    INTEGER,  INTENT(in)    :: iX_B, iX_E
+    REAL(DP), INTENT(in)    :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)    :: D(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: T(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Ye(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Ym(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Mumu(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Mun(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Mn_eff(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Un(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Mup(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Mp_eff(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Up(iX_B:iX_E)
+    REAL(DP), INTENT(inout) :: opEC(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+
+    REAL(DP) :: E_P, D_P, T_P, Ye_P, Ym_P
+    INTEGER  :: iE, iS, iX
+
+    REAL(DP) :: Mumu_P
+    REAL(DP) :: Mun_P, Mn_eff_P, Un_P
+    REAL(DP) :: Mup_P, Mp_eff_P, Up_P
+
+#ifndef CC_INTEGRALS_4D
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO iX = iX_B, iX_E
+    DO iS = iNuM, iNuM_Bar
+    DO iE = iE_B, iE_E
+      opEC(iE,iS,iX) = Zero
+    END DO
+    END DO
+    END DO
+    RETURN
+
+#else
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( Mun_P, Mup_P, Mumu_P ) &
+    !$OMP PRIVATE( E_P, D_P, T_P, Ym_P )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( Mun_P, Mup_P, Mumu_P ) &
+    !$ACC PRIVATE( E_P, D_P, T_P, Ym_P )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( Mun_P, Mup_P, Mumu_P ) &
+    !$OMP PRIVATE( E_P, D_P, T_P, Ym_P )
+#endif
+    DO iX = iX_B, iX_E
+    DO iE = iE_B, iE_E
+
+      IF ( QueryOpacity_EmAb_Muon( D(iX) / UnitD ) ) THEN
+
+        E_P  = E(iE)  / UnitE
+        D_P  = D(iX)  / UnitD
+        T_P  = T(iX)  / UnitT * kmev
+        Ym_P = Ym(iX) / UnitY
+
+        Mun_P  = Mun (iX) / UnitMn
+        Mup_P  = Mup (iX) / UnitMp
+        Mumu_P = Mumu(iX) / UnitMmu
+
+        CALL Opacity_CC_4D &
+            ( corr_num, 1, E_P, opEC(iE,iNuM,iX), &
+              T_P, Mumu_P, Mun_P, Mup_P,  &
+              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX) )
+        CALL Opacity_CC_4D &
+            ( corr_num, 2, E_P, opEC(iE,iNuM_Bar,iX), &
+              T_P, Mumu_P, Mun_P, Mup_P,  &
+              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX) )
+
+        opEC(iE,iNuM    ,iX) = opEC(iE,iNuM    ,iX) * UnitEC
+        opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) * UnitEC
+
+      ELSE
+
+        opEC(iE,iNuM    ,iX) = Zero
+        opEC(iE,iNuM_Bar,iX) = Zero
+
+      END IF
+
+    END DO
+    END DO
 
 #endif
 
-  END SUBROUTINE ComputeNeutrinoOpacities_EC
-  
+  END SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons_4D
+#endif
+
+
   SUBROUTINE ComputeNeutrinoOpacities_EC_Vector &
-    ( iP_B, iP_E, iS_B, iS_E, E, D, T, Y, opEC )
+    ( iP_B, iP_E, iS_B, iS_E, E, D, T, Ye, Ym, opEC )
 
     ! --- Electron Capture Opacities (Multiple D,T,Y) ---
     ! --- Modified by Sherwood Richers to take in particle data ---
 
     INTEGER,  INTENT(in)  :: iP_B, iP_E
     INTEGER,  INTENT(in)  :: iS_B, iS_E
-    REAL(DP), INTENT(in)  :: E(iP_B:iP_E)
-    REAL(DP), INTENT(in)  :: D(iP_B:iP_E)
-    REAL(DP), INTENT(in)  :: T(iP_B:iP_E)
-    REAL(DP), INTENT(in)  :: Y(iP_B:iP_E)
+    REAL(DP), INTENT(in)  :: E (iP_B:iP_E)
+    REAL(DP), INTENT(in)  :: D (iP_B:iP_E)
+    REAL(DP), INTENT(in)  :: T (iP_B:iP_E)
+    REAL(DP), INTENT(in)  :: Ye(iP_B:iP_E)
+    REAL(DP), INTENT(in)  :: Ym(iP_B:iP_E)
     REAL(DP), INTENT(out) :: opEC(iP_B:iP_E,iS_B:iS_E)
 
     REAL(DP), ALLOCATABLE :: LogE_P(:)
@@ -1402,11 +1837,11 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Y_P, opEC ) &
-    !$OMP MAP( to: E, D, T, Y )
+    !$OMP MAP( to: E, D, T, Ye, Ym )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC CREATE( LogE_P, LogD_P, LogT_P, Y_P, opEC ) &
-    !$ACC COPYIN( E, D, T, Y )
+    !$ACC COPYIN( E, D, T, Ye, Ym )
 #endif
 
 #if defined(THORNADO_OMP_OL)
@@ -1417,10 +1852,10 @@ CONTAINS
     !$OMP PARALLEL DO
 #endif
     DO iP = iP_B, iP_E
-      LogD_P(iP) = LOG10( D(iP) / UnitD )
-      LogT_P(iP) = LOG10( T(iP) / UnitT )
-      Y_P   (iP) =        Y(iP) / UnitY
-      LogE_P(iP) = LOG10( E(iP) / UnitE )
+      LogD_P(iP) = LOG10( D(iP)      / UnitD )
+      LogT_P(iP) = LOG10( T(iP)      / UnitT )
+      Y_P   (iP) = (Ye(iP) + Ym(iP)) / UnitY
+      LogE_P(iP) = LOG10( E(iP)      / UnitE )
     END DO
 
     DO iS = iS_B, iS_E
@@ -1450,11 +1885,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P, E, D, T, Y ) &
+    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P, E, D, T, Ye, Ym ) &
     !$OMP MAP( from: opEC )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P, E, D, T, Y ) &
+    !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P, E, D, T, Ye, Ym ) &
     !$ACC COPYOUT( opEC )
 #endif
 
@@ -1481,7 +1916,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacities_ES &
-    ( iE_B, iE_E, iX_B, iX_E, E, D, T, Y, iMoment, opES, &
+    ( iE_B, iE_E, iX_B, iX_E, E, D, T, Ye, Ym, iMoment, opES, &
       Opacity_Mask )
 
     ! --- Elastic Scattering Opacities (Multiple D,T,Y) ---
@@ -1491,39 +1926,40 @@ CONTAINS
     REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
     REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
     REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ye(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ym(iX_B:iX_E)
     INTEGER,  INTENT(in)  :: iMoment
     REAL(DP), INTENT(out) :: opES(iE_B:iE_E,iNu:iNu_Bar,iX_B:iX_E)
     LOGICAL,  INTENT(in)  :: Opacity_Mask(nOp,iX_B:iX_E)
 
-    REAL(DP) :: LogE_P, LogD_P, LogT_P, Y_P
+    REAL(DP) :: LogE_P, LogD_P, LogT_P, Yp_P
     INTEGER  :: iX, iE, iC
 
 #ifdef MICROPHYSICS_WEAKLIB
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA          &
-    !$OMP MAP( to:    E, D, T, Y,    &
+    !$OMP MAP( to:    E, D, T, Ye, Ym, &
     !$OMP             Opacity_Mask ) &
     !$OMP MAP( alloc: opES )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA                 &
-    !$ACC COPYIN  ( E, D, T, Y,      &
+    !$ACC COPYIN  ( E, D, T, Ye, Ym, &
     !$ACC           Opacity_Mask )   &
     !$ACC CREATE  ( opES )
 #endif
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Y_P ) 
+    !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Yp_P )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRESENT( LogEs_T, LogDs_T, LogTs_T, Ys_T, &
     !$ACC          OS_Iso, Iso_T, Opacity_Mask ) &
-    !$ACC PRIVATE( LogE_P, LogD_P, LogT_P, Y_P ) 
+    !$ACC PRIVATE( LogE_P, LogD_P, LogT_P, Yp_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Y_P )
+    !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Yp_P )
 #endif
     DO iX = iX_B, iX_E
     DO iC = iNu,  iNu_Bar
@@ -1533,12 +1969,12 @@ CONTAINS
 
         LogE_P = LOG10( E(iE) / UnitE )
 
-        LogD_P = LOG10( D(iX) / UnitD )
-        LogT_P = LOG10( T(iX) / UnitT )
-        Y_P    =        Y(iX) / UnitY
+        LogD_P = LOG10( D (iX) / UnitD )
+        LogT_P = LOG10( T (iX) / UnitT )
+        Yp_P   = (Ye(iX) + Ym(iX)) / UnitY
 
         CALL LogInterpolateSingleVariable_4D_Custom_Point &
-               ( LogE_P , LogD_P , LogT_P , Y_P , &
+               ( LogE_P , LogD_P , LogT_P , Yp_P, &
                  LogEs_T, LogDs_T, LogTs_T, Ys_T, &
                  OS_Iso(iC,iMoment), Iso_T(:,:,:,:,iMoment,iC), opES(iE,iC,iX) )
 
@@ -1556,12 +1992,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA             &
-    !$OMP MAP (release: E, D, T, Y,    &
+    !$OMP MAP (release: E, D, T, Ye, Ym, &
     !$OMP               Opacity_Mask ) &
     !$OMP MAP (from: opES )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA                    &
-    !$ACC DELETE (      E, D, T, Y,    &
+    !$ACC DELETE (      E, D, T, Ye, Ym, &
     !$ACC               Opacity_Mask ) &
     !$ACC COPYOUT ( opES )
 #endif
@@ -1591,7 +2027,7 @@ CONTAINS
 
   
   SUBROUTINE ComputeNeutrinoOpacities_ES_Vector &
-    ( iP_B, iP_E, E, D, T, Y, iMoment, opES )
+    ( iP_B, iP_E, E, D, T, Ye, Ym, iMoment, opES )
 
     ! --- Elastic Scattering Opacities (Multiple D,T,Y) ---
     ! --- Modified by Sherwood Richers to take in particle data ---
@@ -1600,27 +2036,28 @@ CONTAINS
     REAL(DP), INTENT(in)  :: E(iP_B:iP_E)
     REAL(DP), INTENT(in)  :: D(iP_B:iP_E)
     REAL(DP), INTENT(in)  :: T(iP_B:iP_E)
-    REAL(DP), INTENT(in)  :: Y(iP_B:iP_E)
+    REAL(DP), INTENT(in)  :: Ye(iP_B:iP_E)
+    REAL(DP), INTENT(in)  :: Ym(iP_B:iP_E)
     INTEGER,  INTENT(in)  :: iMoment
     REAL(DP), INTENT(out) :: opES(iP_B:iP_E)
 
     REAL(DP), ALLOCATABLE :: LogE_P(:)
-    REAL(DP), ALLOCATABLE :: LogD_P(:), LogT_P(:), Y_P(:)
+    REAL(DP), ALLOCATABLE :: LogD_P(:), LogT_P(:), Yp_P(:)
     INTEGER  :: iP
 
 #ifdef MICROPHYSICS_WEAKLIB
 
     ALLOCATE( LogE_P(iP_B:iP_E) )
-    ALLOCATE( LogD_P(iP_B:iP_E), LogT_P(iP_B:iP_E), Y_P(iP_B:iP_E) )
+    ALLOCATE( LogD_P(iP_B:iP_E), LogT_P(iP_B:iP_E), Yp_P(iP_B:iP_E) )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Y_P, opES ) &
-    !$OMP MAP( to: E, D, T, Y )
+    !$OMP MAP( alloc: LogE_P, LogD_P, LogT_P, Yp_P, opES ) &
+    !$OMP MAP( to: E, D, T, Ye, Ym )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
-    !$ACC CREATE( LogE_P, LogD_P, LogT_P, Y_P, opES ) &
-    !$ACC COPYIN( E, D, T, Y )
+    !$ACC CREATE( LogE_P, LogD_P, LogT_P, Yp_P, opES ) &
+    !$ACC COPYIN( E, D, T, Ye, Ym )
 #endif
 
 #if defined(THORNADO_OMP_OL)
@@ -1633,12 +2070,12 @@ CONTAINS
     DO iP = iP_B, iP_E
       LogD_P(iP) = LOG10( D(iP) / UnitD )
       LogT_P(iP) = LOG10( T(iP) / UnitT )
-      Y_P(iP) = Y(iP) / UnitY
+      Yp_P(iP)   = (Ye(iP) + Ym(iP)) / UnitY
       LogE_P(iP) = LOG10( E(iP) / UnitE )
     END DO
 
     CALL LogInterpolateSingleVariable_4D_Custom &
-           ( LogE_P, LogD_P, LogT_P, Y_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
+           ( LogE_P, LogD_P, LogT_P, Yp_P, LogEs_T, LogDs_T, LogTs_T, Ys_T, &
              OS_Iso(1,iMoment), Iso_T(:,:,:,:,iMoment,1), opES )
 
 #if defined(THORNADO_OMP_OL)
@@ -1658,11 +2095,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Y_P, E, D, T, Y ) &
+    !$OMP MAP( release: LogE_P, LogD_P, LogT_P, Yp_P, E, D, T, Ye, Ym ) &
     !$OMP MAP( from: opES )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( LogE_P, LogD_P, LogT_P, Y_P, E, D, T, Y ) &
+    !$ACC DELETE( LogE_P, LogD_P, LogT_P, Yp_P, E, D, T, Ye, Ym ) &
     !$ACC COPYOUT( opES )
 #endif
 
@@ -1686,7 +2123,7 @@ CONTAINS
   END SUBROUTINE ComputeNeutrinoOpacities_ES_Vector
 
   SUBROUTINE ComputeNeutrinoOpacities_NNS &
-    ( iE_B, iE_E, iX_B, iX_E, D, T, Y, &
+    ( iE_B, iE_E, iX_B, iX_E, D, T, Ye, Ym, &
       iMoment, Phi_NNS_0, Phi_NbNS_0, &
       ApplyWeakMagnetism, ApplyManyBodyCorrection )
 
@@ -1696,7 +2133,7 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
     REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ye(iX_B:iX_E), Ym(iX_B:iX_E)
     INTEGER,  INTENT(in)  :: iMoment
     REAL(DP), INTENT(out) :: Phi_NNS_0 (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: Phi_NbNS_0(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
@@ -1727,21 +2164,21 @@ CONTAINS
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( alloc: Mun, Mup, LogT_P, Mun_P, Mup_P, &
     !$OMP             Phi_n, Phi_p, Phi_NNS_0, Phi_NbNS_0 ) &
-    !$OMP MAP( to: D, T, Y, S_tot )
+    !$OMP MAP( to: D, T, Ye, Ym, S_tot )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC CREATE( Mun, Mup, LogT_P, Mun_P, Mup_P, &
     !$ACC         Phi_n, Phi_p, Phi_NNS_0, Phi_NbNS_0 ) &
-    !$ACC COPYIN( D, T, Y, S_tot )
+    !$ACC COPYIN( D, T, Ye, Ym, S_tot )
 #endif
 
     ! --- Compute neutron and proton chemical potentials ---
 
     CALL ComputeNeutronChemicalPotential_TABLE &
-           ( D, T, Y, Mun )
+           ( D, T, Ye, Ym, Mun )
 
     CALL ComputeProtonChemicalPotential_TABLE &
-           ( D, T, Y, Mup )
+           ( D, T, Ye, Ym, Mup )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
@@ -1772,7 +2209,7 @@ CONTAINS
 
         CALL ComputeNCManyBodyCorrection &
                ( ( D(iX) / UnitD ) * AvogadroConstantMKS * 1.0d-39, &
-                 T(iX) / MeV, Y(iX), S_tot(iX) )
+                 T(iX) / MeV, Ye(iX), S_tot(iX) )
 
       END DO
 
@@ -1837,12 +2274,12 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: Mup, Mun, LogT_P, Mun_P, Mup_P, &
-    !$OMP      D, T, Y, Phi_n, Phi_p, S_tot ) &
+    !$OMP      D, T, Ye, Ym, Phi_n, Phi_p, S_tot ) &
     !$OMP MAP( from: Phi_NNS_0, Phi_NbNS_0 )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC DELETE( Mup, Mun, LogT_P, Mun_P, Mup_P, &
-    !$ACC         D, T, Y, Phi_n, Phi_p, S_tot ) &
+    !$ACC         D, T, Ye, Ym, Phi_n, Phi_p, S_tot ) &
     !$ACC COPYOUT( Phi_NNS_0, Phi_NbNS_0 )
 
     !$ACC WAIT(1)
@@ -2149,7 +2586,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacities_NES &
-    ( iE_B, iE_E, iX_B, iX_E, D, T, Y, iMoment, H_I, H_II )
+    ( iE_B, iE_E, iX_B, iX_E, D, T, Ye, Ym, iMoment, H_I, H_II )
 
     ! --- Neutrino-Electron Scattering Opacities (Multiple D,T,Y) ---
 
@@ -2157,7 +2594,8 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
     REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ye(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ym(iX_B:iX_E)
     INTEGER,  INTENT(in)  :: iMoment
     REAL(DP), INTENT(out) :: H_I (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: H_II(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
@@ -2175,17 +2613,17 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( alloc: LogT_P, LogEta_P, H_I, H_II ) &
-    !$OMP MAP( to: D, T, Y )
+    !$OMP MAP( to: D, T, Ye, Ym )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC CREATE( LogT_P, LogEta_P, H_I, H_II ) &
-    !$ACC COPYIN( D, T, Y )
+    !$ACC COPYIN( D, T, Ye, Ym )
 #endif
 
     ! --- Compute Electron Chemical Potential ---
 
     CALL ComputeElectronChemicalPotential_TABLE &
-           ( D, T, Y, LogEta_P )
+           ( D, T, Ye, Ym, LogEta_P )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
@@ -2195,7 +2633,7 @@ CONTAINS
     !$OMP PARALLEL DO
 #endif
     DO iX = iX_B, iX_E
-      LogT_P(iX) = LOG10( T(iX) / UnitT )
+      LogT_P(iX)   = LOG10( T(iX) / UnitT )
       LogEta_P(iX) = LOG10( LogEta_P(iX) / ( BoltzmannConstant * T(iX) ) / UnitEta )
     END DO
 
@@ -2213,11 +2651,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogT_P, LogEta_P, D, T, Y ) &
+    !$OMP MAP( release: LogT_P, LogEta_P, D, T, Ye, Ym ) &
     !$OMP MAP( from: H_I, H_II )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( LogT_P, LogEta_P, D, T, Y ) &
+    !$ACC DELETE( LogT_P, LogEta_P, D, T, Ye, Ym ) &
     !$ACC COPYOUT( H_I, H_II )
 
     !$ACC WAIT(1)
@@ -2468,7 +2906,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacities_Pair &
-    ( iE_B, iE_E, iX_B, iX_E, D, T, Y, iMoment, J_I, J_II )
+    ( iE_B, iE_E, iX_B, iX_E, D, T, Ye, Ym, iMoment, J_I, J_II )
 
     ! --- Pair Opacities (Multiple D,T,Y) ---
 
@@ -2476,7 +2914,8 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
     REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ye(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ym(iX_B:iX_E)
     INTEGER,  INTENT(in)  :: iMoment
     REAL(DP), INTENT(out) :: J_I (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: J_II(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
@@ -2494,17 +2933,17 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( alloc: LogT_P, LogEta_P, J_I, J_II ) &
-    !$OMP MAP( to: D, T, Y )
+    !$OMP MAP( to: D, T, Ye, Ym )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC CREATE( LogT_P, LogEta_P, J_I, J_II ) &
-    !$ACC COPYIN( D, T, Y )
+    !$ACC COPYIN( D, T, Ye, Ym )
 #endif
 
     ! --- Compute Electron Chemical Potential ---
 
     CALL ComputeElectronChemicalPotential_TABLE &
-           ( D, T, Y, LogEta_P )
+           ( D, T, Ye, Ym, LogEta_P )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
@@ -2534,11 +2973,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogT_P, LogEta_P, D, T, Y ) &
+    !$OMP MAP( release: LogT_P, LogEta_P, D, T, Ye, Ym ) &
     !$OMP MAP( from: J_I, J_II )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( LogT_P, LogEta_P, D, T, Y ) &
+    !$ACC DELETE( LogT_P, LogEta_P, D, T, Ye, Ym ) &
     !$ACC COPYOUT( J_I, J_II )
 
     !$ACC WAIT(1)
@@ -2783,7 +3222,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacities_NuPair &
-    ( iE_B, iE_E, iX_B, iX_E, D, T, Y, iMoment, J_I, J_II )
+    ( iE_B, iE_E, iX_B, iX_E, D, T, Ye, Ym, iMoment, J_I, J_II )
 
     ! --- Pair Opacities (Multiple D,T,Y) ---
 
@@ -2791,7 +3230,8 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
     REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ye(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ym(iX_B:iX_E)
     INTEGER,  INTENT(in)  :: iMoment
     REAL(DP), INTENT(out) :: J_I (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: J_II(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
@@ -2810,17 +3250,17 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( alloc: LogT_P, LogEta_P, SignEta_P, J_I, J_II ) &
-    !$OMP MAP( to: D, T, Y )
+    !$OMP MAP( to: D, T, Ye, Ym )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC CREATE( LogT_P, LogEta_P, SignEta_P, J_I, J_II ) &
-    !$ACC COPYIN( D, T, Y )
+    !$ACC COPYIN( D, T, Ye, Ym )
 #endif
 
     ! --- Compute Electron Neutrino Chemical Potential ---
 
     CALL ComputeElectronNeutrinoChemicalPotential_TABLE &
-           ( D, T, Y, LogEta_P )
+           ( D, T, Ye, Ym, LogEta_P )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
@@ -2878,11 +3318,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: LogT_P, LogEta_P, SignEta_P, D, T, Y ) &
+    !$OMP MAP( release: LogT_P, LogEta_P, SignEta_P, D, T, Ye, Ym ) &
     !$OMP MAP( from: J_I, J_II )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( LogT_P, LogEta_P, SignEta_P, D, T, Y ) &
+    !$ACC DELETE( LogT_P, LogEta_P, SignEta_P, D, T, Ye, Ym ) &
     !$ACC COPYOUT( J_I, J_II )
 
     !$ACC WAIT(1)
@@ -3125,7 +3565,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacities_Brem &
-    ( iE_B, iE_E, iX_B, iX_E, D, T, Y, S_sigma )
+    ( iE_B, iE_E, iX_B, iX_E, D, T, Ye, Ym, S_sigma )
 
     ! --- Brem Opacities (Multiple D,T) ---
 
@@ -3133,7 +3573,8 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
     REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: Y(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ye(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ym(iX_B:iX_E)
     REAL(DP), INTENT(out) :: S_Sigma(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
     INTEGER  :: iX, iE1, iE2
@@ -3150,20 +3591,20 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( alloc: Xp, Xn, LogT_P, LogDX_P, S_sigma ) &
-    !$OMP MAP( to: D, T, Y )
+    !$OMP MAP( to: D, T, Ye, Ym )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC CREATE( Xp, Xn, LogT_P, LogDX_P, S_sigma ) &
-    !$ACC COPYIN( D, T, Y )
+    !$ACC COPYIN( D, T, Ye, Ym )
 #endif
 
     ! --- Compute proton and neutron fractions ---
 
     CALL ComputeProtonMassFraction_TABLE &
-           ( D, T, Y, Xp )
+           ( D, T, Ye, Ym, Xp )
 
     CALL ComputeNeutronMassFraction_TABLE &
-           ( D, T, Y, Xn )
+           ( D, T, Ye, Ym, Xn )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
@@ -3188,11 +3629,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: Xp, Xn, LogT_P, LogDX_P, D, T, Y ) &
+    !$OMP MAP( release: Xp, Xn, LogT_P, LogDX_P, D, T, Ye, Ym ) &
     !$OMP MAP( from: S_sigma )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( Xp, Xn, LogT_P, LogDX_P, D, T, Y ) &
+    !$ACC DELETE( Xp, Xn, LogT_P, LogDX_P, D, T, Ye, Ym ) &
     !$ACC COPYOUT( S_sigma )
 
     !$ACC WAIT(1)
@@ -3567,10 +4008,10 @@ CONTAINS
   END FUNCTION dFermiDiracdY_Vector
 
   SUBROUTINE SetOpacityMask &
-    ( nX, nDOF_X, D, T, Y, Opacity_Mask )
+    ( nX, nDOF_X, D, T, Ye, Ym, Opacity_Mask )
 
     INTEGER,  INTENT(in)  :: nX, nDOF_X
-    REAL(DP), INTENT(in)  :: D(nX), T(nX), Y(nX)
+    REAL(DP), INTENT(in)  :: D(nX), T(nX), Ye(nX), Ym(nX)
     LOGICAL,  INTENT(out) :: Opacity_Mask(nOp,nX)
 
     INTEGER :: iN_X, iNodeX, iX, iOp
@@ -3582,18 +4023,18 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET DATA               &
-    !$OMP MAP( to: D, T, Y )        &
+    !$OMP MAP( to: D, T, Ye, Ym )   &
     !$OMP MAP( from: Opacity_Mask ) &
     !$OMP MAP( alloc: Ah )
 #elif defined(THORNADO_OACC)
     !$ACC DATA                      &
-    !$ACC COPYIN( D, T, Y )         &
+    !$ACC COPYIN( D, T, Ye, Ym )    &
     !$ACC COPYOUT( Opacity_Mask )   &
     !$ACC CREATE( Ah )
 #endif
 
     CALL ComputeHeavyMassNumber_TABLE &
-           ( D, T, Y, Ah )
+           ( D, T, Ye, Ym, Ah )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
@@ -3605,13 +4046,14 @@ CONTAINS
     DO iN_X = 1, nX
 
       Opacity_Mask(iOp_EmAb,iN_X) &
-        = QueryOpacity_EmAb( D(iN_X) / UnitD )
+        = QueryOpacity_EmAb( D(iN_X) / UnitD ) .OR. &
+          QueryOpacity_EmAb_Muon( D(iN_X) / UnitD )
 
       Opacity_Mask(iOp_ECTable,iN_X) &
         = QueryOpacity_ECTable &
             ( D(iN_X) / UnitD, &
               T(iN_X) / Kelvin, &
-              Y(iN_X) / UnitY, &
+              Ye(iN_X) / UnitYe, &
               Ah(iN_X) )
 
       Opacity_Mask(iOp_Iso,iN_X) &

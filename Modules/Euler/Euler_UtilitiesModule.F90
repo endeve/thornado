@@ -48,8 +48,8 @@ CONTAINS
 
 
   SUBROUTINE ComputePrimitive_Scalar &
-    ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
-      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+    ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, CF_Nm, &
+      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, PF_Nm, &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
       ITERATION_Option, &
       iErr_Option )
@@ -61,9 +61,9 @@ CONTAINS
 #endif
 
     REAL(DP), INTENT(inout) :: &
-      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
+      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, CF_Nm
     REAL(DP), INTENT(out)   :: &
-      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne
+      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, PF_Nm
     REAL(DP), INTENT(in)    :: &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
     INTEGER,  INTENT(inout), OPTIONAL :: &
@@ -84,8 +84,8 @@ CONTAINS
 #ifdef HYDRO_RELATIVISTIC
 
     CALL ComputePrimitive_Euler_Relativistic &
-           ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
-             PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+           ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, CF_Nm, &
+             PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, PF_Nm, &
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
              ITERATION_Option = ITERATION, &
              iErr_Option = iErr )
@@ -99,8 +99,8 @@ CONTAINS
 #else
 
     CALL ComputePrimitive_Euler_NonRelativistic &
-           ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
-             PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+           ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, CF_Nm, &
+             PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, PF_Nm, &
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
 #endif
@@ -109,15 +109,15 @@ CONTAINS
 
 
   SUBROUTINE ComputePrimitive_Vector &
-    ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
-      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+    ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, CF_Nm, &
+      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, PF_Nm, &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
       iDimX_Option, IndexTable_Option, iX_B0_Option, iX_E0_Option )
 
     REAL(DP)    , INTENT(inout) :: &
-      CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), CF_E(:), CF_Ne(:)
+      CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), CF_E(:), CF_Ne(:), CF_Nm(:)
     REAL(DP)    , INTENT(out)   :: &
-      PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), PF_E(:), PF_Ne(:)
+      PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), PF_E(:), PF_Ne(:), PF_Nm(:)
     REAL(DP)    , INTENT(in)    :: &
       GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
     INTEGER     , INTENT(in), OPTIONAL :: &
@@ -142,8 +142,8 @@ CONTAINS
       iX_E0 = iX_E0_Option
 
     CALL ComputePrimitive_Euler_Relativistic &
-           ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
-             PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+           ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, CF_Nm, &
+             PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, PF_Nm, &
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
              iDimX_Option = iDimX_Option, &
              IndexTable_Option = IndexTable_Option, &
@@ -153,8 +153,8 @@ CONTAINS
 #else
 
     CALL ComputePrimitive_Euler_NonRelativistic &
-           ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
-             PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+           ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, CF_Nm, &
+             PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, PF_Nm, &
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
 #endif
@@ -163,15 +163,15 @@ CONTAINS
 
 
   SUBROUTINE ComputeConserved_Scalar &
-    ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+    ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, PF_Nm, &
+      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, CF_Nm, &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
       AF_P )
 
     REAL(DP), INTENT(in)  :: &
-      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne
+      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, PF_Nm
     REAL(DP), INTENT(out) :: &
-      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
+      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, CF_Nm
     REAL(DP), INTENT(in)  :: &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33
 
@@ -180,16 +180,16 @@ CONTAINS
 #ifdef HYDRO_RELATIVISTIC
 
     CALL ComputeConserved_Euler_Relativistic &
-           ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-             CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+           ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, PF_Nm, &
+             CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, CF_Nm, &
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
              AF_P )
 
 #else
 
     CALL ComputeConserved_Euler_NonRelativistic &
-           ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-             CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+           ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, PF_Nm, &
+             CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, CF_Nm, &
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
 #endif
@@ -198,15 +198,15 @@ CONTAINS
 
 
   SUBROUTINE ComputeConserved_Vector &
-    ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+    ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, PF_Nm, &
+      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, CF_Nm, &
       GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33,  &
       AF_P )
 
     REAL(DP), INTENT(in)  :: &
-      PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), PF_E(:), PF_Ne(:)
+      PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), PF_E(:), PF_Ne(:), PF_Nm(:)
     REAL(DP), INTENT(out) :: &
-      CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), CF_E(:), CF_Ne(:)
+      CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), CF_E(:), CF_Ne(:), CF_Nm(:)
     REAL(DP), INTENT(in)  :: &
       GF_Gm_dd_11(:), GF_Gm_dd_22(:), GF_Gm_dd_33(:)
 
@@ -215,16 +215,16 @@ CONTAINS
 #ifdef HYDRO_RELATIVISTIC
 
     CALL ComputeConserved_Euler_Relativistic &
-           ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-             CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+           ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, PF_Nm, &
+             CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, CF_Nm, &
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33, &
              AF_P )
 
 #else
 
     CALL ComputeConserved_Euler_NonRelativistic &
-           ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-             CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+           ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, PF_Nm, &
+             CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, CF_Nm, &
              GF_Gm_dd_11, GF_Gm_dd_22, GF_Gm_dd_33 )
 
 #endif
@@ -367,7 +367,7 @@ CONTAINS
 
 
   FUNCTION Flux_X1_Euler &
-    ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift_X1 )
+    ( D, V1, V2, V3, E, Ne, Nm, P, Gm11, Gm22, Gm33, Lapse, Shift_X1 )
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
@@ -378,7 +378,7 @@ CONTAINS
     ! --- Shift is the first contravariant component of the shift-vector ---
 
     REAL(DP)             :: Flux_X1_Euler(nCF)
-    REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, P
+    REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, Nm, P
     REAL(DP), INTENT(in) :: Gm11, Gm22, Gm33
 
     ! --- Only needed for relativistic code ---
@@ -387,13 +387,13 @@ CONTAINS
 #ifdef HYDRO_RELATIVISTIC
 
     Flux_X1_Euler = Flux_X1_Euler_Relativistic &
-                      ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, &
+                      ( D, V1, V2, V3, E, Ne, Nm, P, Gm11, Gm22, Gm33, &
                         Lapse, Shift_X1 )
 
 #else
 
     Flux_X1_Euler = Flux_X1_Euler_NonRelativistic &
-                      ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33 )
+                      ( D, V1, V2, V3, E, Ne, Nm, P, Gm11, Gm22, Gm33 )
 
 #endif
 
@@ -402,7 +402,7 @@ CONTAINS
 
 
   FUNCTION Flux_X2_Euler &
-    ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift_X2 )
+    ( D, V1, V2, V3, E, Ne, Nm, P, Gm11, Gm22, Gm33, Lapse, Shift_X2 )
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
@@ -413,7 +413,7 @@ CONTAINS
     ! --- Shift is the second contravariant component of the shift-vector ---
 
     REAL(DP)             :: Flux_X2_Euler(nCF)
-    REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, P
+    REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, Nm, P
     REAL(DP), INTENT(in) :: Gm11, Gm22, Gm33
 
     ! --- Only needed for relativistic code ---
@@ -422,13 +422,13 @@ CONTAINS
 #ifdef HYDRO_RELATIVISTIC
 
     Flux_X2_Euler = Flux_X2_Euler_Relativistic &
-                      ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, &
+                      ( D, V1, V2, V3, E, Ne, Nm, P, Gm11, Gm22, Gm33, &
                         Lapse, Shift_X2 )
 
 #else
 
     Flux_X2_Euler = Flux_X2_Euler_NonRelativistic &
-                      ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33 )
+                      ( D, V1, V2, V3, E, Ne, Nm, P, Gm11, Gm22, Gm33 )
 
 #endif
 
@@ -437,7 +437,7 @@ CONTAINS
 
 
   FUNCTION Flux_X3_Euler &
-    ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift_X3 )
+    ( D, V1, V2, V3, E, Ne, Nm, P, Gm11, Gm22, Gm33, Lapse, Shift_X3 )
 
 #if defined(THORNADO_OMP_OL) && !defined(THORNADO_EULER_NOGPU)
     !$OMP DECLARE TARGET
@@ -448,7 +448,7 @@ CONTAINS
     ! --- Shift is the third contravariant component of the shift-vector ---
 
     REAL(DP)             :: Flux_X3_Euler(nCF)
-    REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, P
+    REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, Nm, P
     REAL(DP), INTENT(in) :: Gm11, Gm22, Gm33
 
     ! --- Only needed for relativistic code ---
@@ -457,13 +457,13 @@ CONTAINS
 #ifdef HYDRO_RELATIVISTIC
 
     Flux_X3_Euler = Flux_X3_Euler_Relativistic &
-                      ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, &
+                      ( D, V1, V2, V3, E, Ne, Nm, P, Gm11, Gm22, Gm33, &
                         Lapse, Shift_X3 )
 
 #else
 
     Flux_X3_Euler = Flux_X3_Euler_NonRelativistic &
-                      ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33 )
+                      ( D, V1, V2, V3, E, Ne, Nm, P, Gm11, Gm22, Gm33 )
 
 #endif
 

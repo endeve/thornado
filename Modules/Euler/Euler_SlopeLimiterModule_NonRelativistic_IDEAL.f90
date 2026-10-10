@@ -218,7 +218,11 @@ CONTAINS
 
     CALL TimersStart_Euler( Timer_Euler_SlopeLimiter )
 
+    dU  = Zero
     U_M = Zero
+    R_X1 = Zero ; invR_X1 = Zero
+    R_X2 = Zero ; invR_X2 = Zero
+    R_X3 = Zero ; invR_X3 = Zero
 
     iApplyBC = iApplyBC_Euler_Both
     IF( PRESENT( iApplyBC_Option ) ) &
@@ -351,9 +355,9 @@ CONTAINS
 
         ! --- Componentwise Limiting ---
 
-        R_X1 = I_6x6; invR_X1 = I_6x6
-        R_X2 = I_6x6; invR_X2 = I_6x6
-        R_X3 = I_6x6; invR_X3 = I_6x6
+        R_X1(1:6,1:6) = I_6x6; invR_X1(1:6,1:6) = I_6x6
+        R_X2(1:6,1:6) = I_6x6; invR_X2(1:6,1:6) = I_6x6
+        R_X3(1:6,1:6) = I_6x6; invR_X3(1:6,1:6) = I_6x6
 
       END IF
 

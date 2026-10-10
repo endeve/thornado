@@ -28,13 +28,15 @@ MODULE Euler_TallyModule_NonRelativistic
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
+    iCF_Nm, &
     nPF, &
     iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
     iPF_E, &
-    iPF_Ne
+    iPF_Ne, &
+    iPF_Nm
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputePrimitive_Euler_NonRelativistic
   USE UnitsModule, ONLY: &
@@ -371,12 +373,14 @@ CONTAINS
                U(iNX,iX1,iX2,iX3,iCF_S3), &
                U(iNX,iX1,iX2,iX3,iCF_E ), &
                U(iNX,iX1,iX2,iX3,iCF_Ne), &
+               U(iNX,iX1,iX2,iX3,iCF_Nm), &
                P(iNX,iPF_D ), &
                P(iNX,iPF_V1), &
                P(iNX,iPF_V2), &
                P(iNX,iPF_V3), &
                P(iNX,iPF_E ), &
                P(iNX,iPF_Ne), &
+               P(iNX,iPF_Nm), &
                G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) )

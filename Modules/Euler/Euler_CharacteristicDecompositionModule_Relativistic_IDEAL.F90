@@ -12,7 +12,8 @@ MODULE Euler_CharacteristicDecompositionModule_Relativistic_IDEAL
     iCF_S2, &
     iCF_S3, &
     iCF_E, &
-    iCF_Ne
+    iCF_Ne, &
+    iCF_Nm
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
     ComputePrimitive_Euler_Relativistic, &
     Eigenvalues_Euler_Relativistic
@@ -50,7 +51,7 @@ CONTAINS
     ! --- Expressions for right and left eigenvector matrices from
     !     Rezzolla & Zanotti, Relativistic Hydrodynamics, Eq. 7.240-7.248 ---
 
-    REAL(DP) :: D, V1, V2, V3, E, Ne
+    REAL(DP) :: D, V1, V2, V3, E, Ne, Nmu
     REAL(DP) :: P, Cs
     REAL(DP) :: Vu1, Vu2, Vu3, Vd1, Vd2, Vd3, VSq
     REAL(DP) :: Gmdd11, Gmdd22, Gmdd33, DetGm, LapseFunction, ShiftVector(3)
@@ -68,6 +69,12 @@ CONTAINS
     REAL(DP) :: dFdU(nCF,nCF), LAMBDA(nCF,nCF)
     INTEGER  :: iCF, iErr
 
+    R              = Zero
+    invR           = Zero
+
+    dFdU           = Zero
+    LAMBDA         = Zero
+
     Gmdd11         = G(1)
     Gmdd22         = G(2)
     Gmdd33         = G(3)
@@ -78,11 +85,11 @@ CONTAINS
     ShiftVector(3) = G(8)
 
     CALL ComputePrimitive_Euler_Relativistic &
-           ( U(iCF_D), U(iCF_S1), U(iCF_S2), U(iCF_S3), U(iCF_E), U(iCF_Ne), &
-             D, V1, V2, V3, E, Ne, &
+           ( U(iCF_D), U(iCF_S1), U(iCF_S2), U(iCF_S3), U(iCF_E), U(iCF_Ne), U(iCF_Nm), &
+             D, V1, V2, V3, E, Ne, Nmu, &
              Gmdd11, Gmdd22, Gmdd33, iErr )
 
-    CALL ComputePressureFromPrimitive( D, E, Ne, P )
+    CALL ComputePressureFromPrimitive( D, E, Ne, Nmu, P )
 
     Vu1 = V1
     Vu2 = V2
@@ -99,7 +106,7 @@ CONTAINS
     W = One / SQRT( One - VSq )
     h = One + ( E + P ) / D
 
-    CALL ComputeSoundSpeedFromPrimitive( D, E, Ne, Cs )
+    CALL ComputeSoundSpeedFromPrimitive( D, E, Ne, Nmu, Cs )
 
     ! --- Rezzolla, Eq. (7.244) ---
 
@@ -175,31 +182,31 @@ CONTAINS
 
         ! --- Rezzolla, Eqs. (7.240-7.241) ---
 
-        R(:,1) = [ One, &
+        R(1:6,1) = [ One, &
                    h * W * ( Vd1 - Vm ), &
                    h * W * Vd2, &
                    h * W * Vd3, &
                    h * W * Am - One, &
                    Zero ]
-        R(:,2) = [ K / ( h * W ), &
+        R(1:6,2) = [ K / ( h * W ), &
                    Vd1, &
                    Vd2, &
                    Vd3, &
                    One - K / ( h * W ), &
                    Zero ]
-        R(:,3) = [ W * Vd2, &
+        R(1:6,3) = [ W * Vd2, &
                    h *            Two * W**2 * Vd1 * Vd2, &
                    h * ( Gmdd22 + Two * W**2 * Vd2 * Vd2 ), &
                    h *            Two * W**2 * Vd3 * Vd2, &
                    W * Vd2 * ( Two * h * W - One ), &
                    Zero ]
-        R(:,4) = [ W * Vd3, &
+        R(1:6,4) = [ W * Vd3, &
                    h *            Two * W**2 * Vd1 * Vd3, &
                    h *            Two * W**2 * Vd2 * Vd3, &
                    h * ( Gmdd33 + Two * W**2 * Vd3 * Vd3 ), &
                    W * Vd3 * ( Two * h * W - One ), &
                    Zero ]
-        R(:,5) = [ One, &
+        R(1:6,5) = [ One, &
                    h * W * ( Vd1 - Vp ), &
                    h * W * Vd2, &
                    h * W * Vd3, &
@@ -229,7 +236,7 @@ CONTAINS
         ! --- Transpose of L, i.e., inverse of R
         !     Rezzolla, Eqs. (7.246-7.248) ---
 
-        invR(1,:) = + h**2 / DELTA &
+        invR(1,1:6) = + h**2 / DELTA &
                       * [ h * W * Vp * xi + Nm, &
                           Vp * Vu1 * ( Two * K - One ) &
                             * ( W**2 * xi - GAMMA_11 ) &
@@ -238,23 +245,23 @@ CONTAINS
                           Vp * Vu3 * ( Two * K - One ) * W**2 * xi, &
                           Nm, &
                           Zero ]
-        invR(2,:) = W / ( K - One ) &
+        invR(2,1:6) = W / ( K - One ) &
                       * [ h - W, W * Vu1, W * Vu2, W * Vu3, -W, Zero ]
-        invR(3,:) = One / ( h * xi ) &
+        invR(3,1:6) = One / ( h * xi ) &
                       * [ -Gmdd33 * Vd2, &
                           Vu1 * Gmdd33 * Vd2, &
                           Gmdd33 * ( One - Vd1 * Vu1 ), &
                           Zero, &
                           -Gmdd33 * Vd2, &
                           Zero ]
-        invR(4,:) = One / ( h * xi ) &
+        invR(4,1:6) = One / ( h * xi ) &
                       * [ -Gmdd22 * Vd3, &
                           Vu1 * Gmdd22 * Vd3, &
                           Zero, &
                           Gmdd22 * ( One - Vd1 * Vu1 ), &
                           -Gmdd22 * Vd3, &
                           Zero ]
-        invR(5,:) = - h**2 / DELTA &
+        invR(5,1:6) = - h**2 / DELTA &
                       * [ h * W * Vm * xi + Np, &
                           Vm * Vu1 * ( Two * K - One ) &
                             * ( W**2 * xi - GAMMA_11 ) &
@@ -289,7 +296,7 @@ CONTAINS
            PRINT '(4x,A)', '--------------------------'
            LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
            DO iCF = 1, nCF
-             PRINT '(6x,6ES11.2E3)', LAMBDA(iCF,:)
+             PRINT '(6x,7ES11.2E3)', LAMBDA(iCF,:)
            END DO
            PRINT*
 
@@ -297,7 +304,7 @@ CONTAINS
            PRINT '(4x,A)', '-----------------'
            LAMBDA = MATMUL( invR, R )
            DO iCF = 1, nCF
-             PRINT '(6x,6ES11.2E3)', LAMBDA(iCF,:)
+             PRINT '(6x,7ES11.2E3)', LAMBDA(iCF,:)
            END DO
            PRINT*
 
@@ -305,7 +312,7 @@ CONTAINS
            PRINT '(4x,A)', '---------------'
            LAMBDA = inv( R )
            DO iCF = 1, nCF
-             PRINT '(6x,6ES11.2E3)', invR(iCF,:) - LAMBDA(iCF,:)
+             PRINT '(6x,7ES11.2E3)', invR(iCF,:) - LAMBDA(iCF,:)
            END DO
            PRINT*
 
@@ -335,31 +342,31 @@ CONTAINS
 
         ! --- Rezzolla, Eqs. (7.240-7.241) ---
 
-        R(:,1) = [ One, &
+        R(1:6,1) = [ One, &
                    h * W * Vd1, &
                    h * W * ( Vd2 - Vm ), &
                    h * W * Vd3, &
                    h * W * Am - One, &
                    Zero ]
-        R(:,2) = [ W * Vd1, &
+        R(1:6,2) = [ W * Vd1, &
                    h * ( Gmdd11 + Two * W**2 * Vd1 * Vd1 ), &
                    h *            Two * W**2 * Vd2 * Vd1, &
                    h *            Two * W**2 * Vd3 * Vd1, &
                    W * Vd1 * ( Two * h * W - One ), &
                    Zero ]
-        R(:,3) = [ K / ( h * W ), &
+        R(1:6,3) = [ K / ( h * W ), &
                    Vd1, &
                    Vd2, &
                    Vd3, &
                    One - K / ( h * W ), &
                    Zero ]
-        R(:,4) = [ W * Vd3, &
+        R(1:6,4) = [ W * Vd3, &
                    h *            Two * W**2 * Vd1 * Vd3, &
                    h *            Two * W**2 * Vd2 * Vd3, &
                    h * ( Gmdd33 + Two * W**2 * Vd3 * Vd3 ), &
                    W * Vd3 * ( Two * h * W - One ), &
                    Zero ]
-        R(:,5) = [ One, &
+        R(1:6,5) = [ One, &
                    h * W * Vd1, &
                    h * W * ( Vd2 - Vp ), &
                    h * W * Vd3, &
@@ -389,7 +396,7 @@ CONTAINS
         ! --- Transpose of L, i.e., inverse of R
         !     Rezzolla, Eqs. (7.246-7.248) ---
 
-        invR(1,:) = + h**2 / DELTA &
+        invR(1,1:6) = + h**2 / DELTA &
                       * [ h * W * Vp * xi + Nm, &
                           Vp * Vu1 * ( Two * K - One ) * W**2 * xi, &
                           Vp * Vu2 * ( Two * K - One ) &
@@ -398,23 +405,23 @@ CONTAINS
                           Vp * Vu3 * ( Two * K - One ) * W**2 * xi, &
                           Nm, &
                           Zero ]
-        invR(2,:) = One / ( h * xi ) &
+        invR(2,1:6) = One / ( h * xi ) &
                       * [ -Gmdd33 * Vd1, &
                           Gmdd33 * ( One - Vd2 * Vu2 ), &
                           Vu2 * Gmdd33 * Vd1, &
                           Zero, &
                           -Gmdd33 * Vd1, &
                           Zero ]
-        invR(3,:) = W / ( K - One ) &
+        invR(3,1:6) = W / ( K - One ) &
                       * [ h - W, W * Vu1, W * Vu2, W * Vu3, -W, Zero ]
-        invR(4,:) = One / ( h * xi ) &
+        invR(4,1:6) = One / ( h * xi ) &
                       * [ -Gmdd11 * Vd3, &
                           Zero, &
                           Vu2 * Gmdd11 * Vd3, &
                           Gmdd11 * ( One - Vd2 * Vu2 ), &
                           -Gmdd11 * Vd3, &
                           Zero ]
-        invR(5,:) = - h**2 / DELTA &
+        invR(5,1:6) = - h**2 / DELTA &
                       * [ h * W * Vm * xi + Np, &
                           Vm * Vu1 * ( Two * K - One ) * W**2 * xi, &
                           Vm * Vu2 * ( Two * K - One ) &
@@ -449,7 +456,7 @@ CONTAINS
            PRINT '(4x,A)', '--------------------------'
            LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
            DO iCF = 1, nCF
-             PRINT '(6x,6ES11.2E3)', LAMBDA(iCF,:)
+             PRINT '(6x,7ES11.2E3)', LAMBDA(iCF,:)
            END DO
            PRINT*
 
@@ -457,7 +464,7 @@ CONTAINS
            PRINT '(4x,A)', '-----------------'
            LAMBDA = MATMUL( invR, R )
            DO iCF = 1, nCF
-             PRINT '(6x,6ES11.2E3)', LAMBDA(iCF,:)
+             PRINT '(6x,7ES11.2E3)', LAMBDA(iCF,:)
            END DO
            PRINT*
 
@@ -465,7 +472,7 @@ CONTAINS
            PRINT '(4x,A)', '---------------'
            LAMBDA = inv( R )
            DO iCF = 1, nCF
-             PRINT '(6x,6ES11.2E3)', invR(iCF,:) - LAMBDA(iCF,:)
+             PRINT '(6x,7ES11.2E3)', invR(iCF,:) - LAMBDA(iCF,:)
            END DO
            PRINT*
 
@@ -496,31 +503,31 @@ CONTAINS
 
         ! --- Rezzolla, Eqs. (7.240-7.241) ---
 
-        R(:,1) = [ One, &
+        R(1:6,1) = [ One, &
                    h * W * Vd1, &
                    h * W * Vd2, &
                    h * W * ( Vd3 - Vm ), &
                    h * W * Am - One, &
                    Zero ]
-        R(:,2) = [ W * Vd1, &
+        R(1:6,2) = [ W * Vd1, &
                    h * ( Gmdd11 + Two * W**2 * Vd1 * Vd1 ), &
                    h *            Two * W**2 * Vd2 * Vd1, &
                    h *            Two * W**2 * Vd3 * Vd1, &
                    W * Vd1 * ( Two * h * W - One ), &
                    Zero ]
-        R(:,3) = [ W * Vd2, &
+        R(1:6,3) = [ W * Vd2, &
                    h *            Two * W**2 * Vd1 * Vd2, &
                    h * ( Gmdd22 + Two * W**2 * Vd2 * Vd2 ), &
                    h *            Two * W**2 * Vd3 * Vd2, &
                    W * Vd2 * ( Two * h * W - One ), &
                    Zero ]
-        R(:,4) = [ K / ( h * W ), &
+        R(1:6,4) = [ K / ( h * W ), &
                    Vd1, &
                    Vd2, &
                    Vd3, &
                    One - K / ( h * W ), &
                    Zero ]
-        R(:,5) = [ One, &
+        R(1:6,5) = [ One, &
                    h * W * Vd1, &
                    h * W * Vd2, &
                    h * W * ( Vd3 - Vp ), &
@@ -550,7 +557,7 @@ CONTAINS
         ! --- Transpose of L, i.e., inverse of R
         !     Rezzolla, Eqs. (7.246-7.248) ---
 
-        invR(1,:) = + h**2 / DELTA &
+        invR(1,1:6) = + h**2 / DELTA &
                       * [ h * W * Vp * xi + Nm, &
                           Vp * Vu1 * ( Two * K - One ) * W**2 * xi, &
                           Vp * Vu2 * ( Two * K - One ) * W**2 * xi, &
@@ -559,23 +566,23 @@ CONTAINS
                             + GAMMA_33 * ( One - K * Ap ), &
                           Nm, &
                           Zero ]
-        invR(2,:) = One / ( h * xi ) &
+        invR(2,1:6) = One / ( h * xi ) &
                       * [ -Gmdd22 * Vd1, &
                           Gmdd22 * ( One - Vd3 * Vu3 ), &
                           Zero, &
                           Vu3 * Gmdd22 * Vd1, &
                           -Gmdd22 * Vd1, &
                           Zero ]
-        invR(3,:) = One / ( h * xi ) &
+        invR(3,1:6) = One / ( h * xi ) &
                       * [ -Gmdd11 * Vd2, &
                           Zero, &
                           Gmdd11 * ( One - Vd3 * Vu3 ), &
                           Vu3 * Gmdd11 * Vd2, &
                           -Gmdd11 * Vd2, &
                           Zero ]
-        invR(4,:) = W / ( K - One ) &
+        invR(4,1:6) = W / ( K - One ) &
                       * [ h - W, W * Vu1, W * Vu2, W * Vu3, -W, Zero ]
-        invR(5,:) = - h**2 / DELTA &
+        invR(5,1:6) = - h**2 / DELTA &
                       * [ h * W * Vm * xi + Np, &
                           Vm * Vu1 * ( Two * K - One ) * W**2 * xi, &
                           Vm * Vu2 * ( Two * K - One ) * W**2 * xi, &
@@ -610,7 +617,7 @@ CONTAINS
            PRINT '(4x,A)', '--------------------------'
            LAMBDA = MATMUL( invR, MATMUL( dFdU, R ) )
            DO iCF = 1, nCF
-             PRINT '(6x,6ES11.2E3)', LAMBDA(iCF,:)
+             PRINT '(6x,7ES11.2E3)', LAMBDA(iCF,:)
            END DO
            PRINT*
 
@@ -618,7 +625,7 @@ CONTAINS
            PRINT '(4x,A)', '-----------------'
            LAMBDA = MATMUL( invR, R )
            DO iCF = 1, nCF
-             PRINT '(6x,6ES11.2E3)', LAMBDA(iCF,:)
+             PRINT '(6x,7ES11.2E3)', LAMBDA(iCF,:)
            END DO
            PRINT*
 
@@ -626,7 +633,7 @@ CONTAINS
            PRINT '(4x,A)', '---------------'
            LAMBDA = inv( R )
            DO iCF = 1, nCF
-             PRINT '(6x,6ES11.2E3)', invR(iCF,:) - LAMBDA(iCF,:)
+             PRINT '(6x,7ES11.2E3)', invR(iCF,:) - LAMBDA(iCF,:)
            END DO
            PRINT*
 
@@ -698,7 +705,7 @@ CONTAINS
     REAL(DP), INTENT(out)   :: dFdU(nCF,nCF)
 
     REAL(DP) :: Gmdd11, Gmdd22, Gmdd33, LapseFunction, ShiftVector(3), eta
-    REAL(DP) :: D, V1, V2, V3, E, Ne, P, Cs
+    REAL(DP) :: D, V1, V2, V3, E, Ne, Nm, P, Cs
     REAL(DP) :: Vu1, Vu2, Vu3, Vd1, Vd2, Vd3, VSq, W
     REAL(DP) :: rho, epsilon, kappa, chi, h
     REAL(DP) :: dUdV(nCF,nCF), dFdV(nCF,nCF)
@@ -706,6 +713,10 @@ CONTAINS
     REAL(DP) :: Vui(3), Vdj(3), Vdk(3)
 
     INTEGER :: iErr
+
+    dFdU           = Zero
+    dUdV           = Zero
+    dFdV           = Zero
 
     Gmdd11         = G(1)
     Gmdd22         = G(2)
@@ -716,13 +727,13 @@ CONTAINS
     ShiftVector(3) = G(8)
 
     CALL ComputePrimitive_Euler_Relativistic &
-           ( U(iCF_D), U(iCF_S1), U(iCF_S2), U(iCF_S3), U(iCF_E), U(iCF_Ne), &
-             D, V1, V2, V3, E, Ne, &
+           ( U(iCF_D), U(iCF_S1), U(iCF_S2), U(iCF_S3), U(iCF_E), U(iCF_Ne), U(iCF_Nm), &
+             D, V1, V2, V3, E, Ne, Nm, &
              Gmdd11, Gmdd22, Gmdd33, iErr )
 
-    CALL ComputePressureFromPrimitive( D, E, Ne, P )
+    CALL ComputePressureFromPrimitive( D, E, Ne, Nm, P )
 
-    CALL ComputeSoundSpeedFromPrimitive( D, E, Ne, Cs )
+    CALL ComputeSoundSpeedFromPrimitive( D, E, Ne, Nm, Cs )
 
     rho     = D
     epsilon = E / D
@@ -748,37 +759,37 @@ CONTAINS
     W = One / SQRT( One - VSq )
 
     ! --- dU/dV ---
-    dUdV(:,1) = [ W, &
+    dUdV(1:6,1) = [ W, &
                   ( One + epsilon + chi ) * W**2 * Vd1, &
                   ( One + epsilon + chi ) * W**2 * Vd2, &
                   ( One + epsilon + chi ) * W**2 * Vd3, &
                   ( One + epsilon + chi ) * W**2 - chi - W, &
                   Zero ]
-    dUdV(:,2) = [ rho * W**3 * Vd1, &
+    dUdV(1:6,2) = [ rho * W**3 * Vd1, &
                   rho * h * W**2 * ( Two * W**2 * Vd1 * Vd1 + Gmdd11 ), &
                   rho * h * W**2 *   Two * W**2 * Vd2 * Vd1, &
                   rho * h * W**2 *   Two * W**2 * Vd3 * Vd1, &
                   rho * W**3 * Vd1 * ( Two * h * W - One ), &
                   Zero ]
-    dUdV(:,3) = [ rho * W**3 * Vd2, &
+    dUdV(1:6,3) = [ rho * W**3 * Vd2, &
                   rho * h * W**2 *   Two * W**2 * Vd1 * Vd2, &
                   rho * h * W**2 * ( Two * W**2 * Vd2 * Vd2 + Gmdd22 ), &
                   rho * h * W**2 *   Two * W**2 * Vd3 * Vd2, &
                   rho * W**3 * Vd2 * ( Two * h * W - One ), &
                   Zero ]
-    dUdV(:,4) = [ rho * W**3 * Vd3, &
+    dUdV(1:6,4) = [ rho * W**3 * Vd3, &
                   rho * h * W**2 *   Two * W**2 * Vd1 * Vd3, &
                   rho * h * W**2 *   Two * W**2 * Vd2 * Vd3, &
                   rho * h * W**2 * ( Two * W**2 * Vd3 * Vd3 + Gmdd33 ), &
                   rho * W**3 * Vd3 * ( Two * h * W - One ), &
                  Zero ]
-    dUdV(:,5) = [ Zero, &
+    dUdV(1:6,5) = [ Zero, &
                   ( rho + kappa ) * W**2 * Vd1, &
                   ( rho + kappa ) * W**2 * Vd2, &
                   ( rho + kappa ) * W**2 * Vd3, &
                   ( rho + kappa ) * W**2 - kappa, &
                   Zero ]
-    dUdV(:,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
+    dUdV(1:6,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
 
     ! --- Flux-Jacobian of primitive variables ---
     SELECT CASE( iDim )
@@ -788,7 +799,7 @@ CONTAINS
         eta = ShiftVector(1) / LapseFunction
 
 
-        dFdV(:,1) = [ Vui(1) * W - eta * W, &
+        dFdV(1:6,1) = [ Vui(1) * W - eta * W, &
                       ( One + epsilon + chi ) * W**2 * Vui(1) * Vdj(1) + chi   &
                         - eta * ( One + epsilon + chi ) * W**2 * Vdj(1),       &
                       ( One + epsilon + chi ) * W**2 * Vui(1) * Vdj(2) + Zero  &
@@ -799,7 +810,7 @@ CONTAINS
                         - eta * ( W * ( W * ( One + epsilon + VSq * chi )      &
                           - One ) ), &
                       Zero ]
-        dFdV(:,2) = [ rho * W * ( W**2 * Vui(1) * Vdk(1) + One  )              &
+        dFdV(1:6,2) = [ rho * W * ( W**2 * Vui(1) * Vdk(1) + One  )              &
                         - eta * rho * W**3 * Vdk(1),                           &
                       rho * h * W**2 * ( Two * W**2 * Vui(1) * Vdj(1) * Vdk(1) &
                         + Vdj(1) + Gmdd11 * Vui(1) )                           &
@@ -817,7 +828,7 @@ CONTAINS
                         - rho * W * ( W**2 * Vui(1) * Vdk(1) + One  )          &
                         - eta * rho * W**3 * Vdk(1) * ( Two * h * W - One ),   &
                       Zero ]
-        dFdV(:,3) = [ rho * W * ( W**2 * Vui(1) * Vdk(2) + Zero )              &
+        dFdV(1:6,3) = [ rho * W * ( W**2 * Vui(1) * Vdk(2) + Zero )              &
                         - eta * rho * W**3 * Vdk(2),                           &
                       rho * h * W**2 * ( Two * W**2 * Vui(1) * Vdj(1) * Vdk(2) &
                         + Zero + Zero              )                           &
@@ -835,7 +846,7 @@ CONTAINS
                         - rho * W * ( W**2 * Vui(1) * Vdk(2) + Zero )          &
                         - eta * rho * W**3 * Vdk(2) * ( Two * h * W - One ),   &
                       Zero ]
-        dFdV(:,4) = [ rho * W * ( W**2 * Vui(1) * Vdk(3) + Zero )              &
+        dFdV(1:6,4) = [ rho * W * ( W**2 * Vui(1) * Vdk(3) + Zero )              &
                         - eta * rho * W**3 * Vdk(3),                           &
                       rho * h * W**2 * ( Two * W**2 * Vui(1) * Vdj(1) * Vdk(3) &
                         + Zero + Zero              )                           &
@@ -853,7 +864,7 @@ CONTAINS
                         - rho * W * ( W**2 * Vui(1) * Vdk(3) + Zero )          &
                         - eta * rho * W**3 * Vdk(3) * ( Two * h * W - One ),   &
                       Zero ]
-        dFdV(:,5) = [ Zero,                                                    &
+        dFdV(1:6,5) = [ Zero,                                                    &
                       ( rho + kappa ) * W**2 * Vui(1) * Vdj(1) + kappa         &
                         - eta * ( rho + kappa ) * W**2 * Vdj(1),               &
                       ( rho + kappa ) * W**2 * Vui(1) * Vdj(2) + Zero          &
@@ -863,13 +874,13 @@ CONTAINS
                       W**2 * ( rho + kappa ) * Vui(1)                          &
                         - eta * ( W**2 * ( rho + VSq * kappa ) ),              &
                       Zero ]
-        dFdV(:,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
+        dFdV(1:6,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
 
       CASE( 2 )
 
         eta = ShiftVector(2) / LapseFunction
 
-        dFdV(:,1) = [ Vui(2) * W - eta * W, &
+        dFdV(1:6,1) = [ Vui(2) * W - eta * W, &
                       ( One + epsilon + chi ) * W**2 * Vui(2) * Vdj(1) + Zero  &
                         - eta * ( One + epsilon + chi ) * W**2 * Vdj(1),       &
                       ( One + epsilon + chi ) * W**2 * Vui(2) * Vdj(2) + chi   &
@@ -880,7 +891,7 @@ CONTAINS
                         - eta * ( W * ( W * ( One + epsilon + VSq * chi )      &
                           - One ) ), &
                       Zero ]
-        dFdV(:,2) = [ rho * W * ( W**2 * Vui(2) * Vdk(1) + Zero )              &
+        dFdV(1:6,2) = [ rho * W * ( W**2 * Vui(2) * Vdk(1) + Zero )              &
                         - eta * rho * W**3 * Vdk(1),                           &
                       rho * h * W**2 * ( Two * W**2 * Vui(2) * Vdj(1) * Vdk(1) &
                         + Zero  + Gmdd11 * Vui(2)  )                           &
@@ -898,7 +909,7 @@ CONTAINS
                         - rho * W * ( W**2 * Vui(2) * Vdk(1) + Zero )          &
                         - eta * rho * W**3 * Vdk(1) * ( Two * h * W - One ),   &
                       Zero ]
-        dFdV(:,3) = [ rho * W * ( W**2 * Vui(2) * Vdk(2) + One  )              &
+        dFdV(1:6,3) = [ rho * W * ( W**2 * Vui(2) * Vdk(2) + One  )              &
                         - eta * rho * W**3 * Vdk(2),                           &
                       rho * h * W**2 * ( Two * W**2 * Vui(2) * Vdj(1) * Vdk(2) &
                         + Vdj(1) + Zero            )                           &
@@ -916,7 +927,7 @@ CONTAINS
                         - rho * W * ( W**2 * Vui(2) * Vdk(2) + One  )          &
                         - eta * rho * W**3 * Vdk(2) * ( Two * h * W - One ),   &
                       Zero ]
-        dFdV(:,4) = [ rho * W * ( W**2 * Vui(2) * Vdk(3) + Zero )              &
+        dFdV(1:6,4) = [ rho * W * ( W**2 * Vui(2) * Vdk(3) + Zero )              &
                         - eta * rho * W**3 * Vdk(3),                           &
                       rho * h * W**2 * ( Two * W**2 * Vui(2) * Vdj(1) * Vdk(3) &
                         + Zero + Zero              )                           &
@@ -934,7 +945,7 @@ CONTAINS
                         - rho * W * ( W**2 * Vui(2) * Vdk(3) + Zero )          &
                         - eta * rho * W**3 * Vdk(3) * ( Two * h * W - One ),   &
                       Zero ]
-        dFdV(:,5) = [ Zero,                                                    &
+        dFdV(1:6,5) = [ Zero,                                                    &
                       ( rho + kappa ) * W**2 * Vui(2) * Vdj(1) + Zero          &
                         - eta * ( rho + kappa ) * W**2 * Vdj(1),               &
                       ( rho + kappa ) * W**2 * Vui(2) * Vdj(2) + kappa         &
@@ -944,13 +955,13 @@ CONTAINS
                       W**2 * ( rho + kappa ) * Vui(2)                          &
                         - eta * ( W**2 * ( rho + VSq * kappa ) ),              &
                       Zero ]
-        dFdV(:,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
+        dFdV(1:6,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
 
       CASE( 3 )
 
         eta = ShiftVector(3) / LapseFunction
 
-        dFdV(:,1) = [ Vui(3) * W - eta * W, &
+        dFdV(1:6,1) = [ Vui(3) * W - eta * W, &
                       ( One + epsilon + chi ) * W**2 * Vui(3) * Vdj(1) + Zero  &
                         - eta * ( One + epsilon + chi ) * W**2 * Vdj(1),       &
                       ( One + epsilon + chi ) * W**2 * Vui(3) * Vdj(2) + Zero  &
@@ -961,7 +972,7 @@ CONTAINS
                         - eta * ( W * ( W * ( One + epsilon + VSq * chi )      &
                           - One ) ), &
                       Zero ]
-        dFdV(:,2) = [ rho * W * ( W**2 * Vui(3) * Vdk(1) + Zero )              &
+        dFdV(1:6,2) = [ rho * W * ( W**2 * Vui(3) * Vdk(1) + Zero )              &
                         - eta * rho * W**3 * Vdk(1),                           &
                       rho * h * W**2 * ( Two * W**2 * Vui(3) * Vdj(1) * Vdk(1) &
                         + Zero  + Gmdd11 * Vui(3)  )                           &
@@ -979,7 +990,7 @@ CONTAINS
                         - rho * W * ( W**2 * Vui(3) * Vdk(1) + Zero )          &
                         - eta * rho * W**3 * Vdk(1) * ( Two * h * W - One ),   &
                       Zero ]
-        dFdV(:,3) = [ rho * W * ( W**2 * Vui(3) * Vdk(2) + Zero )              &
+        dFdV(1:6,3) = [ rho * W * ( W**2 * Vui(3) * Vdk(2) + Zero )              &
                         - eta * rho * W**3 * Vdk(2),                           &
                       rho * h * W**2 * ( Two * W**2 * Vui(3) * Vdj(1) * Vdk(2) &
                         + Zero  + Zero             )                           &
@@ -997,7 +1008,7 @@ CONTAINS
                         - rho * W * ( W**2 * Vui(3) * Vdk(2) + Zero )          &
                         - eta * rho * W**3 * Vdk(2) * ( Two * h * W - One ),   &
                       Zero ]
-        dFdV(:,4) = [ rho * W * ( W**2 * Vui(3) * Vdk(3) + One  )              &
+        dFdV(1:6,4) = [ rho * W * ( W**2 * Vui(3) * Vdk(3) + One  )              &
                         - eta * rho * W**3 * Vdk(3),                           &
                       rho * h * W**2 * ( Two * W**2 * Vui(3) * Vdj(1) * Vdk(3) &
                         + Vdj(1) + Zero            )                           &
@@ -1016,7 +1027,7 @@ CONTAINS
                         - eta * rho * W**3 * Vdk(3) * ( Two * h * W - One ),   &
                       Zero ]
 
-        dFdV(:,5) = [ Zero,                                                    &
+        dFdV(1:6,5) = [ Zero,                                                    &
                       ( rho + kappa ) * W**2 * Vui(3) * Vdj(1) + Zero          &
                         - eta * ( rho + kappa ) * W**2 * Vdj(1),               &
                       ( rho + kappa ) * W**2 * Vui(3) * Vdj(2) + Zero          &
@@ -1027,7 +1038,7 @@ CONTAINS
                         - eta * ( W**2 * ( rho + VSq * kappa ) ),              &
                       Zero ]
 
-        dFdV(:,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
+        dFdV(1:6,6) = [ Zero, Zero, Zero, Zero, Zero, One ]
 
     END SELECT
 

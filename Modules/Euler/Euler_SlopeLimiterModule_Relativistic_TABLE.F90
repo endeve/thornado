@@ -52,6 +52,7 @@ MODULE Euler_SlopeLimiterModule_Relativistic_TABLE
   USE FluidFieldsModule, ONLY: &
     iCF_D, &
     iCF_Ne, &
+    iCF_Nm, &
     nCF, &
     iDF_TCI
   USE Euler_BoundaryConditionsModule, ONLY: &
@@ -358,7 +359,7 @@ CONTAINS
 !!$    REAL(DP) :: dY(nDimsX)
 !!$    REAL(DP) :: SlopeDifference(nCF)
 !!$    REAL(DP) :: a(nCF), b(nCF), c(nCF) ! --- Arguments for MinMod (fluid)
-!!$    REAL(DP) :: aY    , bY    , cY     ! --- Arguments for MinMod (Ye)
+!!$    REAL(DP) :: aYe    , bYe    , cYe     ! --- Arguments for MinMod (Ye)
 !!$!!$    REAL(DP) :: G_K(nGF)
 !!$    REAL(DP) :: dU (nCF,nDimsX)
 !!$    REAL(DP) :: U_M(nCF,0:2*nDimsX,nDOFX,iX_B0(1):iX_E0(1), &
@@ -647,27 +648,27 @@ CONTAINS
 !!$      Y_M(1,1) = DOT_PRODUCT( WeightsX_q, Y_N(1,:) )
 !!$      Y_M(2,1) = DOT_PRODUCT( WeightsX_q, Y_N(2,:) )
 !!$
-!!$      aY = Y_M(0,2)
+!!$      aYe = Y_M(0,2)
 !!$
 !!$      IF( .NOT. ExcludeOuterGhostCell(1) &
 !!$            .AND. .NOT. ExcludeInnerGhostCell(1) )THEN
 !!$
-!!$        bY = BetaTVD * ( Y_M(0,1) - Y_M(1,1) )
-!!$        cY = BetaTVD * ( Y_M(2,1) - Y_M(0,1) )
+!!$        bYe = BetaTVD * ( Y_M(0,1) - Y_M(1,1) )
+!!$        cYe = BetaTVD * ( Y_M(2,1) - Y_M(0,1) )
 !!$
 !!$      ELSE IF( ExcludeInnerGhostCell(1) )THEN
 !!$
-!!$        cY = BetaTVD * ( Y_M(2,1) - Y_M(0,1) )
-!!$        bY = cY
+!!$        cYe = BetaTVD * ( Y_M(2,1) - Y_M(0,1) )
+!!$        bYe = cYe
 !!$
 !!$      ELSE IF( ExcludeOuterGhostCell(1) )THEN
 !!$
-!!$        cY = BetaTVD * ( Y_M(0,1) - Y_M(1,1) )
-!!$        bY = cY
+!!$        cYe = BetaTVD * ( Y_M(0,1) - Y_M(1,1) )
+!!$        bYe = cYe
 !!$
 !!$      END IF
 !!$
-!!$      dY(1) = MinModB( aY, bY, cY, dX1, BetaTVB )
+!!$      dY(1) = MinModB( aYe, bYe, cYe, dX1, BetaTVB )
 !!$
 !!$      IF( nDimsX > 1 )THEN
 !!$
@@ -679,27 +680,27 @@ CONTAINS
 !!$        Y_M(3,1) = DOT_PRODUCT( WeightsX_q, Y_N(3,:) )
 !!$        Y_M(4,1) = DOT_PRODUCT( WeightsX_q, Y_N(4,:) )
 !!$
-!!$        aY = Y_M(0,3)
+!!$        aYe = Y_M(0,3)
 !!$
 !!$        IF( .NOT. ExcludeOuterGhostCell(2) &
 !!$              .AND. .NOT. ExcludeInnerGhostCell(2) )THEN
 !!$
-!!$          bY = BetaTVD * ( Y_M(0,1) - Y_M(3,1) )
-!!$          cY = BetaTVD * ( Y_M(4,1) - Y_M(0,1) )
+!!$          bYe = BetaTVD * ( Y_M(0,1) - Y_M(3,1) )
+!!$          cYe = BetaTVD * ( Y_M(4,1) - Y_M(0,1) )
 !!$
 !!$        ELSE IF( ExcludeInnerGhostCell(2) )THEN
 !!$
-!!$          cY = BetaTVD * ( Y_M(4,1) - Y_M(0,1) )
-!!$          bY = cY
+!!$          cYe = BetaTVD * ( Y_M(4,1) - Y_M(0,1) )
+!!$          bYe = cYe
 !!$
 !!$        ELSE IF( ExcludeOuterGhostCell(1) )THEN
 !!$
-!!$          bY = BetaTVD * ( Y_M(0,1) - Y_M(3,1) )
-!!$          cY = bY
+!!$          bYe = BetaTVD * ( Y_M(0,1) - Y_M(3,1) )
+!!$          cYe = bYe
 !!$
 !!$        END IF
 !!$
-!!$        dY(2) = MinModB( aY, bY, cY, dX2, BetaTVB )
+!!$        dY(2) = MinModB( aYe, bYe, cYe, dX2, BetaTVB )
 !!$
 !!$      END IF
 !!$
@@ -713,27 +714,27 @@ CONTAINS
 !!$        Y_M(5,1) = DOT_PRODUCT( WeightsX_q, Y_N(5,:) )
 !!$        Y_M(6,1) = DOT_PRODUCT( WeightsX_q, Y_N(6,:) )
 !!$
-!!$        aY = Y_M(0,4)
+!!$        aYe = Y_M(0,4)
 !!$
 !!$        IF( .NOT. ExcludeOuterGhostCell(3) &
 !!$              .AND. .NOT. ExcludeInnerGhostCell(3) )THEN
 !!$
-!!$          bY = BetaTVD * ( Y_M(0,1) - Y_M(5,1) )
-!!$          cY = BetaTVD * ( Y_M(6,1) - Y_M(0,1) )
+!!$          bYe = BetaTVD * ( Y_M(0,1) - Y_M(5,1) )
+!!$          cYe = BetaTVD * ( Y_M(6,1) - Y_M(0,1) )
 !!$
 !!$        ELSE IF( ExcludeInnerGhostCell(3) )THEN
 !!$
-!!$          cY = BetaTVD * ( Y_M(6,1) - Y_M(0,1) )
-!!$          bY = cY
+!!$          cYe = BetaTVD * ( Y_M(6,1) - Y_M(0,1) )
+!!$          bYe = cYe
 !!$
 !!$        ELSE IF( ExcludeOuterGhostCell(3) )THEN
 !!$
-!!$          bY = BetaTVD * ( Y_M(0,1) - Y_M(5,1) )
-!!$          cY = bY
+!!$          bYe = BetaTVD * ( Y_M(0,1) - Y_M(5,1) )
+!!$          cYe = bYe
 !!$
 !!$        END IF
 !!$
-!!$        dY(3) = MinModB( aY, bY, cY, dX3, BetaTVB )
+!!$        dY(3) = MinModB( aYe, bYe, cYe, dX3, BetaTVB )
 !!$
 !!$      END IF
 !!$
@@ -921,47 +922,47 @@ CONTAINS
                                   iX_B1(2):iX_E1(2), &
                                   iX_B1(3):iX_E1(3))
 
-    REAL(DP) :: Y_N0(1:nDOFX,iX_B0(1):iX_E0(1), &
+    REAL(DP) :: Ye_N0(1:nDOFX,iX_B0(1):iX_E0(1), &
                              iX_B0(2):iX_E0(2), &
                              iX_B0(3):iX_E0(3))
-    REAL(DP) :: Y_N1(1:nDOFX,iX_B0(1):iX_E0(1), &
+    REAL(DP) :: Ye_N1(1:nDOFX,iX_B0(1):iX_E0(1), &
                              iX_B0(2):iX_E0(2), &
                              iX_B0(3):iX_E0(3))
-    REAL(DP) :: Y_N2(1:nDOFX,iX_B0(1):iX_E0(1), &
+    REAL(DP) :: Ye_N2(1:nDOFX,iX_B0(1):iX_E0(1), &
                              iX_B0(2):iX_E0(2), &
                              iX_B0(3):iX_E0(3))
-    REAL(DP) :: Y_N3(1:nDOFX,iX_B0(1):iX_E0(1), &
+    REAL(DP) :: Ye_N3(1:nDOFX,iX_B0(1):iX_E0(1), &
                              iX_B0(2):iX_E0(2), &
                              iX_B0(3):iX_E0(3))
-    REAL(DP) :: Y_N4(1:nDOFX,iX_B0(1):iX_E0(1), &
+    REAL(DP) :: Ye_N4(1:nDOFX,iX_B0(1):iX_E0(1), &
                              iX_B0(2):iX_E0(2), &
                              iX_B0(3):iX_E0(3))
-    REAL(DP) :: Y_N5(1:nDOFX,iX_B0(1):iX_E0(1), &
+    REAL(DP) :: Ye_N5(1:nDOFX,iX_B0(1):iX_E0(1), &
                              iX_B0(2):iX_E0(2), &
                              iX_B0(3):iX_E0(3))
-    REAL(DP) :: Y_N6(1:nDOFX,iX_B0(1):iX_E0(1), &
+    REAL(DP) :: Ye_N6(1:nDOFX,iX_B0(1):iX_E0(1), &
                              iX_B0(2):iX_E0(2), &
                              iX_B0(3):iX_E0(3))
 
-    REAL(DP) :: Y_M0(1:nDOFX,iX_B0(1):iX_E0(1), &
+    REAL(DP) :: Ye_M0(1:nDOFX,iX_B0(1):iX_E0(1), &
                              iX_B0(2):iX_E0(2), &
                              iX_B0(3):iX_E0(3))
-    REAL(DP) :: Y_M1(        iX_B0(1):iX_E0(1), &
+    REAL(DP) :: Ye_M1(        iX_B0(1):iX_E0(1), &
                              iX_B0(2):iX_E0(2), &
                              iX_B0(3):iX_E0(3))
-    REAL(DP) :: Y_M2(        iX_B0(1):iX_E0(1), &
+    REAL(DP) :: Ye_M2(        iX_B0(1):iX_E0(1), &
                              iX_B0(2):iX_E0(2), &
                              iX_B0(3):iX_E0(3))
-    REAL(DP) :: Y_M3(        iX_B0(1):iX_E0(1), &
+    REAL(DP) :: Ye_M3(        iX_B0(1):iX_E0(1), &
                              iX_B0(2):iX_E0(2), &
                              iX_B0(3):iX_E0(3))
-    REAL(DP) :: Y_M4(        iX_B0(1):iX_E0(1), &
+    REAL(DP) :: Ye_M4(        iX_B0(1):iX_E0(1), &
                              iX_B0(2):iX_E0(2), &
                              iX_B0(3):iX_E0(3))
-    REAL(DP) :: Y_M5(        iX_B0(1):iX_E0(1), &
+    REAL(DP) :: Ye_M5(        iX_B0(1):iX_E0(1), &
                              iX_B0(2):iX_E0(2), &
                              iX_B0(3):iX_E0(3))
-    REAL(DP) :: Y_M6(        iX_B0(1):iX_E0(1), &
+    REAL(DP) :: Ye_M6(        iX_B0(1):iX_E0(1), &
                              iX_B0(2):iX_E0(2), &
                              iX_B0(3):iX_E0(3))
 
@@ -993,13 +994,13 @@ CONTAINS
                          iX_B0(2):iX_E0(2), &
                          iX_B0(3):iX_E0(3))
 
-    REAL(DP) :: aY(iX_B0(1):iX_E0(1), &
+    REAL(DP) :: aYe(iX_B0(1):iX_E0(1), &
                    iX_B0(2):iX_E0(2), &
                    iX_B0(3):iX_E0(3))
-    REAL(DP) :: bY(iX_B0(1):iX_E0(1), &
+    REAL(DP) :: bYe(iX_B0(1):iX_E0(1), &
                    iX_B0(2):iX_E0(2), &
                    iX_B0(3):iX_E0(3))
-    REAL(DP) :: cY(iX_B0(1):iX_E0(1), &
+    REAL(DP) :: cYe(iX_B0(1):iX_E0(1), &
                    iX_B0(2):iX_E0(2), &
                    iX_B0(3):iX_E0(3))
 
@@ -1013,13 +1014,13 @@ CONTAINS
                             iX_B0(2):iX_E0(2), &
                             iX_B0(3):iX_E0(3))
 
-    REAL(DP) :: dY_X1(iX_B0(1):iX_E0(1), &
+    REAL(DP) :: dYe_X1(iX_B0(1):iX_E0(1), &
                       iX_B0(2):iX_E0(2), &
                       iX_B0(3):iX_E0(3))
-    REAL(DP) :: dY_X2(iX_B0(1):iX_E0(1), &
+    REAL(DP) :: dYe_X2(iX_B0(1):iX_E0(1), &
                       iX_B0(2):iX_E0(2), &
                       iX_B0(3):iX_E0(3))
-    REAL(DP) :: dY_X3(iX_B0(1):iX_E0(1), &
+    REAL(DP) :: dYe_X3(iX_B0(1):iX_E0(1), &
                       iX_B0(2):iX_E0(2), &
                       iX_B0(3):iX_E0(3))
 
@@ -1112,20 +1113,20 @@ CONTAINS
     !$OMP TARGET ENTER DATA &
     !$OMP MAP( to:    iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dX1, dX2, dX3 ) &
     !$OMP MAP( alloc: U_N, U_X, SqrtGm, Vol, U_K, U_M, &
-    !$OMP             Y_N0, Y_N1, Y_N2, Y_N3, Y_N4, Y_N5, Y_N6, &
-    !$OMP             Y_M0, Y_M1, Y_M2, Y_M3, Y_M4, Y_M5, Y_M6, &
-    !$OMP             a1, b1, c1, a2, b2, c2, a3, b3, c3, aY, bY, cY, &
-    !$OMP             dU_X1, dU_X2, dU_X3, dY_X1, dY_X1, dY_X3, &
+    !$OMP             Ye_N0, Ye_N1, Ye_N2, Ye_N3, Ye_N4, Ye_N5, Ye_N6, &
+    !$OMP             Ye_M0, Ye_M1, Ye_M2, Ye_M3, Ye_M4, Ye_M5, Ye_M6, &
+    !$OMP             a1, b1, c1, a2, b2, c2, a3, b3, c3, aYe, bYe, cYe, &
+    !$OMP             dU_X1, dU_X2, dU_X3, dYe_X1, dYe_X1, dYe_X3, &
     !$OMP             SlopeDifference, LimitedCell, &
     !$OMP             G_X, G_K, R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC ENTER DATA &
     !$ACC COPYIN(     iX_B0, iX_E0, iX_B1, iX_E1, G, U, D, dX1, dX2, dX3 ) &
     !$ACC CREATE(     U_N, U_X, SqrtGm, Vol, U_K, U_M, &
-    !$ACC             Y_N0, Y_N1, Y_N2, Y_N3, Y_N4, Y_N5, Y_N6, &
-    !$ACC             Y_M0, Y_M1, Y_M2, Y_M3, Y_M4, Y_M5, Y_M6, &
-    !$ACC             a1, b1, c1, a2, b2, c2, a3, b3, c3, aY, bY, cY, &
-    !$ACC             dU_X1, dU_X2, dU_X3, dY_X1, dY_X1, dY_X3, &
+    !$ACC             Ye_N0, Ye_N1, Ye_N2, Ye_N3, Ye_N4, Ye_N5, Ye_N6, &
+    !$ACC             Ye_M0, Ye_M1, Ye_M2, Ye_M3, Ye_M4, Ye_M5, Ye_M6, &
+    !$ACC             a1, b1, c1, a2, b2, c2, a3, b3, c3, aYe, bYe, cYe, &
+    !$ACC             dU_X1, dU_X2, dU_X3, dYe_X1, dYe_X1, dYe_X3, &
     !$ACC             SlopeDifference, LimitedCell, &
     !$ACC             G_X, G_K, R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
 #endif
@@ -1403,7 +1404,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRESENT( iX_B0, iX_E0, Y_N0, Y_N1, Y_N2, U )
+    !$ACC PRESENT( iX_B0, iX_E0, Ye_N0, Ye_N1, Ye_N2, U )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(4)
 #endif
@@ -1412,15 +1413,15 @@ CONTAINS
     DO iX1 = iX_B0(1), iX_E0(1)
     DO iNX = 1       , nDOFX
 
-      Y_N0(iNX,iX1,iX2,iX3) &
+      Ye_N0(iNX,iX1,iX2,iX3) &
         =   U(iNX,iX1  ,iX2,iX3,iCF_Ne) * AtomicMassUnit &
           / U(iNX,iX1  ,iX2,iX3,iCF_D)
 
-      Y_N1(iNX,iX1,iX2,iX3) &
+      Ye_N1(iNX,iX1,iX2,iX3) &
         =   U(iNX,iX1-1,iX2,iX3,iCF_Ne) * AtomicMassUnit &
           / U(iNX,iX1-1,iX2,iX3,iCF_D)
 
-      Y_N2(iNX,iX1,iX2,iX3) &
+      Ye_N2(iNX,iX1,iX2,iX3) &
         =   U(iNX,iX1+1,iX2,iX3,iCF_Ne) * AtomicMassUnit &
           / U(iNX,iX1+1,iX2,iX3,iCF_D)
 
@@ -1435,7 +1436,7 @@ CONTAINS
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-      !$ACC PRESENT( iX_B0, iX_E0, Y_N3, Y_N4, U )
+      !$ACC PRESENT( iX_B0, iX_E0, Ye_N3, Ye_N4, U )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO COLLAPSE(4)
 #endif
@@ -1444,11 +1445,11 @@ CONTAINS
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX = 1       , nDOFX
 
-        Y_N3(iNX,iX1,iX2,iX3) &
+        Ye_N3(iNX,iX1,iX2,iX3) &
           =   U(iNX,iX1,iX2-1,iX3,iCF_Ne) * AtomicMassUnit &
             / U(iNX,iX1,iX2-1,iX3,iCF_D)
 
-        Y_N4(iNX,iX1,iX2,iX3) &
+        Ye_N4(iNX,iX1,iX2,iX3) &
           =   U(iNX,iX1,iX2+1,iX3,iCF_Ne) * AtomicMassUnit &
             / U(iNX,iX1,iX2+1,iX3,iCF_D)
 
@@ -1465,7 +1466,7 @@ CONTAINS
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-      !$ACC PRESENT( iX_B0, iX_E0, Y_N5, Y_N6, U )
+      !$ACC PRESENT( iX_B0, iX_E0, Ye_N5, Ye_N6, U )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO COLLAPSE(4)
 #endif
@@ -1474,11 +1475,11 @@ CONTAINS
       DO iX1 = iX_B0(1), iX_E0(1)
       DO iNX = 1       , nDOFX
 
-        Y_N5(iNX,iX1,iX2,iX3) &
+        Ye_N5(iNX,iX1,iX2,iX3) &
           =   U(iNX,iX1,iX2,iX3-1,iCF_Ne) * AtomicMassUnit &
             / U(iNX,iX1,iX2,iX3-1,iCF_D)
 
-        Y_N6(iNX,iX1,iX2,iX3) &
+        Ye_N6(iNX,iX1,iX2,iX3) &
           =   U(iNX,iX1,iX2,iX3+1,iCF_Ne) * AtomicMassUnit &
             / U(iNX,iX1,iX2,iX3+1,iCF_D)
 
@@ -1495,39 +1496,39 @@ CONTAINS
 
     CALL MatrixMatrixMultiply &
            ( 'N', 'N', nDOFX, nX_BE0, nDOFX, One, Kij_X, nDOFX, &
-             Y_N0, nDOFX, Zero, Y_M0, nDOFX )
+             Ye_N0, nDOFX, Zero, Ye_M0, nDOFX )
 
     ! --- Compute cell-averages of Ye neighbors ---
 
     CALL MatrixVectorMultiply &
-           ( 'T', nDOFX, nX_BE0, One, Y_N1, nDOFX, &
-             WeightsX_q, 1, Zero, Y_M1, 1 )
+           ( 'T', nDOFX, nX_BE0, One, Ye_N1, nDOFX, &
+             WeightsX_q, 1, Zero, Ye_M1, 1 )
 
     CALL MatrixVectorMultiply &
-           ( 'T', nDOFX, nX_BE0, One, Y_N2, nDOFX, &
-             WeightsX_q, 1, Zero, Y_M2, 1 )
+           ( 'T', nDOFX, nX_BE0, One, Ye_N2, nDOFX, &
+             WeightsX_q, 1, Zero, Ye_M2, 1 )
 
     IF( nDimsX .GT. 1 )THEN
 
       CALL MatrixVectorMultiply &
-             ( 'T', nDOFX, nX_BE0, One, Y_N3, nDOFX, &
-               WeightsX_q, 1, Zero, Y_M3, 1 )
+             ( 'T', nDOFX, nX_BE0, One, Ye_N3, nDOFX, &
+               WeightsX_q, 1, Zero, Ye_M3, 1 )
 
       CALL MatrixVectorMultiply &
-             ( 'T', nDOFX, nX_BE0, One, Y_N4, nDOFX, &
-               WeightsX_q, 1, Zero, Y_M4, 1 )
+             ( 'T', nDOFX, nX_BE0, One, Ye_N4, nDOFX, &
+               WeightsX_q, 1, Zero, Ye_M4, 1 )
 
     END IF
 
     IF( nDimsX .GT. 2 )THEN
 
       CALL MatrixVectorMultiply &
-             ( 'T', nDOFX, nX_BE0, One, Y_N5, nDOFX, &
-               WeightsX_q, 1, Zero, Y_M5, 1 )
+             ( 'T', nDOFX, nX_BE0, One, Ye_N5, nDOFX, &
+               WeightsX_q, 1, Zero, Ye_M5, 1 )
 
       CALL MatrixVectorMultiply &
-             ( 'T', nDOFX, nX_BE0, One, Y_N6, nDOFX, &
-               WeightsX_q, 1, Zero, Y_M6, 1 )
+             ( 'T', nDOFX, nX_BE0, One, Ye_N6, nDOFX, &
+               WeightsX_q, 1, Zero, Ye_M6, 1 )
 
     END IF
 
@@ -1538,19 +1539,19 @@ CONTAINS
     CALL ComputeMinModArguments_Y_X1 &
            ( iX_B0, iX_E0, iX_B1, iX_E1, &
              ExcludeInnerGhostCell(1), ExcludeOuterGhostCell(1), &
-             dX1, Y_M0, Y_M1, Y_M2, aY, bY, cY, dY_X1 )
+             dX1, Ye_M0, Ye_M1, Ye_M2, aYe, bYe, cYe, dYe_X1 )
 
     IF( nDimsX .GT. 1 ) &
       CALL ComputeMinModArguments_Y_X2 &
              ( iX_B0, iX_E0, iX_B1, iX_E1, &
                ExcludeInnerGhostCell(2), ExcludeOuterGhostCell(2), &
-               dX2, Y_M0, Y_M3, Y_M4, aY, bY, cY, dY_X2 )
+               dX2, Ye_M0, Ye_M3, Ye_M4, aYe, bYe, cYe, dYe_X2 )
 
     IF( nDimsX .GT. 2 ) &
       CALL ComputeMinModArguments_Y_X3 &
              ( iX_B0, iX_E0, iX_B1, iX_E1, &
                ExcludeInnerGhostCell(3), ExcludeOuterGhostCell(3), &
-               dX3, Y_M0, Y_M5, Y_M6, aY, bY, cY, dY_X3 )
+               dX3, Ye_M0, Ye_M5, Ye_M6, aYe, bYe, cYe, dYe_X3 )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
@@ -1671,8 +1672,8 @@ CONTAINS
 
       END IF
 
-      IF( ABS( Y_M0(2,iX1,iX2,iX3) - dY_X1(iX1,iX2,iX3) ) &
-            .GT. SlopeTolerance * ABS( Y_M0(1,iX1,iX2,iX3) ) )THEN
+      IF( ABS( Ye_M0(2,iX1,iX2,iX3) - dYe_X1(iX1,iX2,iX3) ) &
+            .GT. SlopeTolerance * ABS( Ye_M0(1,iX1,iX2,iX3) ) )THEN
 
           LimitedCell(iCF_D ,iX1,iX2,iX3) = .TRUE.
           LimitedCell(iCF_Ne,iX1,iX2,iX3) = .TRUE.
@@ -1681,8 +1682,8 @@ CONTAINS
 
       IF( nDimsX .GT. 1 )THEN
 
-        IF( ABS( Y_M0(3,iX1,iX2,iX3) - dY_X2(iX1,iX2,iX3) ) &
-              .GT. SlopeTolerance * ABS( Y_M0(1,iX1,iX2,iX3) ) )THEN
+        IF( ABS( Ye_M0(3,iX1,iX2,iX3) - dYe_X2(iX1,iX2,iX3) ) &
+              .GT. SlopeTolerance * ABS( Ye_M0(1,iX1,iX2,iX3) ) )THEN
 
           LimitedCell(iCF_D ,iX1,iX2,iX3) = .TRUE.
           LimitedCell(iCF_Ne,iX1,iX2,iX3) = .TRUE.
@@ -1693,8 +1694,8 @@ CONTAINS
 
       IF( nDimsX .GT. 2 )THEN
 
-        IF( ABS( Y_M0(4,iX1,iX2,iX3) - dY_X3(iX1,iX2,iX3) ) &
-              .GT. SlopeTolerance * ABS( Y_M0(1,iX1,iX2,iX3) ) )THEN
+        IF( ABS( Ye_M0(4,iX1,iX2,iX3) - dYe_X3(iX1,iX2,iX3) ) &
+              .GT. SlopeTolerance * ABS( Ye_M0(1,iX1,iX2,iX3) ) )THEN
 
           LimitedCell(iCF_D ,iX1,iX2,iX3) = .TRUE.
           LimitedCell(iCF_Ne,iX1,iX2,iX3) = .TRUE.
@@ -1742,20 +1743,20 @@ CONTAINS
           ! --- Electron Number Density ---
 
           U_M(2,iCF_Ne,iX1,iX2,iX3) &
-            = ( U_M(1,iCF_D,  iX1,iX2,iX3) * dY_X1(      iX1,iX2,iX3) &
-                + Y_M0(1,     iX1,iX2,iX3) * dU_X1(iCF_D,iX1,iX2,iX3) ) &
+            = ( U_M(1,iCF_D,  iX1,iX2,iX3) * dYe_X1(      iX1,iX2,iX3) &
+                + Ye_M0(1,     iX1,iX2,iX3) * dU_X1(iCF_D,iX1,iX2,iX3) ) &
                 / AtomicMassUnit
 
           IF( nDimsX .GT. 1 ) &
             U_M(3,iCF_Ne,iX1,iX2,iX3) &
-              = ( U_M(1,iCF_D,iX1,iX2,iX3) * dY_X2(iX1,iX2,iX3) &
-                    + Y_M0(1,iX1,iX3,iX3) * dU_X2(iCF_D,iX1,iX2,iX3) ) &
+              = ( U_M(1,iCF_D,iX1,iX2,iX3) * dYe_X2(iX1,iX2,iX3) &
+                    + Ye_M0(1,iX1,iX3,iX3) * dU_X2(iCF_D,iX1,iX2,iX3) ) &
                   / AtomicMassUnit
 
           IF( nDimsX .GT. 2 ) &
             U_M(4,iCF,iX1,iX2,iX3) &
-              = ( U_M(1,iCF_D,iX1,iX2,iX3) * dY_X3(iX1,iX2,iX3) &
-                    + Y_M0(1,iX1,iX2,iX3) * dU_X3(iCF_D,iX1,iX2,iX3) ) &
+              = ( U_M(1,iCF_D,iX1,iX2,iX3) * dYe_X3(iX1,iX2,iX3) &
+                    + Ye_M0(1,iX1,iX2,iX3) * dU_X3(iCF_D,iX1,iX2,iX3) ) &
                   / AtomicMassUnit
 
         END IF ! iCF .NE. iCF_Ne
@@ -1815,10 +1816,10 @@ CONTAINS
     !$OMP MAP( from:    U, D ) &
     !$OMP MAP( release: iX_B0, iX_E0, iX_B1, iX_E1, G, dX1, dX2, dX3, &
     !$OMP               U_N, U_X, SqrtGm, Vol, U_K, U_M, &
-    !$OMP               Y_N0, Y_N1, Y_N2, Y_N3, Y_N4, Y_N5, Y_N6, &
-    !$OMP               Y_M0, Y_M1, Y_M2, Y_M3, Y_M4, Y_M5, Y_M6, &
-    !$OMP               a1, b1, c1, a2, b2, c2, a3, b3, c3, aY, bY, cY, &
-    !$OMP               dU_X1, dU_X2, dU_X3, dY_X1, dY_X1, dY_X3, &
+    !$OMP               Ye_N0, Ye_N1, Ye_N2, Ye_N3, Ye_N4, Ye_N5, Ye_N6, &
+    !$OMP               Ye_M0, Ye_M1, Ye_M2, Ye_M3, Ye_M4, Ye_M5, Ye_M6, &
+    !$OMP               a1, b1, c1, a2, b2, c2, a3, b3, c3, aYe, bYe, cYe, &
+    !$OMP               dU_X1, dU_X2, dU_X3, dYe_X1, dYe_X1, dYe_X3, &
     !$OMP               SlopeDifference, LimitedCell, &
     !$OMP               G_X, G_K, R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
@@ -1826,10 +1827,10 @@ CONTAINS
     !$ACC COPYOUT(      U, D ) &
     !$ACC DELETE(       iX_B0, iX_E0, iX_B1, iX_E1, G, dX1, dX2, dX3, &
     !$ACC               U_N, U_X, SqrtGm, Vol, U_K, U_M, &
-    !$ACC               Y_N0, Y_N1, Y_N2, Y_N3, Y_N4, Y_N5, Y_N6, &
-    !$ACC               Y_M0, Y_M1, Y_M2, Y_M3, Y_M4, Y_M5, Y_M6, &
-    !$ACC               a1, b1, c1, a2, b2, c2, a3, b3, c3, aY, bY, cY, &
-    !$ACC               dU_X1, dU_X2, dU_X3, dY_X1, dY_X1, dY_X3, &
+    !$ACC               Ye_N0, Ye_N1, Ye_N2, Ye_N3, Ye_N4, Ye_N5, Ye_N6, &
+    !$ACC               Ye_M0, Ye_M1, Ye_M2, Ye_M3, Ye_M4, Ye_M5, Ye_M6, &
+    !$ACC               a1, b1, c1, a2, b2, c2, a3, b3, c3, aYe, bYe, cYe, &
+    !$ACC               dU_X1, dU_X2, dU_X3, dYe_X1, dYe_X1, dYe_X3, &
     !$ACC               SlopeDifference, LimitedCell, &
     !$ACC               G_X, G_K, R_X1, invR_X1, R_X2, invR_X2, R_X3, invR_X3 )
 #endif
@@ -2290,30 +2291,30 @@ CONTAINS
   SUBROUTINE ComputeMinModArguments_Y_X1 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, &
       ExcludeInnerGhostCell, ExcludeOuterGhostCell, &
-      dX1, Y_M0, Y_M1, Y_M2, aY, bY, cY, dY_X1 )
+      dX1, Ye_M0, Ye_M1, Ye_M2, aYe, bYe, cYe, dYe_X1 )
 
     INTEGER,  INTENT(in)  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     LOGICAL,  INTENT(in)  :: ExcludeInnerGhostCell, ExcludeOuterGhostCell
     REAL(DP), INTENT(in)  :: dX1(       iX_B1(1):iX_E1(1))
-    REAL(DP), INTENT(in)  :: Y_M0(nDOFX,iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(in)  :: Ye_M0(nDOFX,iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(in)  :: Y_M1(      iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(in)  :: Ye_M1(      iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(in)  :: Y_M2(      iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(in)  :: Ye_M2(      iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(out) :: aY(        iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(out) :: aYe(        iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(out) :: bY(        iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(out) :: bYe(        iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(out) :: cY(        iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(out) :: cYe(        iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(out) :: dY_X1(     iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(out) :: dYe_X1(     iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
 
@@ -2325,7 +2326,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( iX_B0, iX_E0, aY, bY, cY, Y_M0, Y_M1, Y_M2 )
+    !$ACC PRESENT( iX_B0, iX_E0, aYe, bYe, cYe, Ye_M0, Ye_M1, Ye_M2 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
@@ -2333,13 +2334,13 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      aY(iX1,iX2,iX3) = Y_M0(2,iX1,iX2,iX3)
+      aYe(iX1,iX2,iX3) = Ye_M0(2,iX1,iX2,iX3)
 
-      bY(iX1,iX2,iX3) &
-        = BetaTVD * ( Y_M0(1,iX1,iX2,iX3) - Y_M1(  iX1,iX2,iX3) )
+      bYe(iX1,iX2,iX3) &
+        = BetaTVD * ( Ye_M0(1,iX1,iX2,iX3) - Ye_M1(  iX1,iX2,iX3) )
 
-      cY(iX1,iX2,iX3) &
-        = BetaTVD * ( Y_M2(  iX1,iX2,iX3) - Y_M0(1,iX1,iX2,iX3) )
+      cYe(iX1,iX2,iX3) &
+        = BetaTVD * ( Ye_M2(  iX1,iX2,iX3) - Ye_M0(1,iX1,iX2,iX3) )
 
     END DO
     END DO
@@ -2351,14 +2352,14 @@ CONTAINS
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRESENT( iX_B0, iX_E0, bY, cY )
+      !$ACC PRESENT( iX_B0, iX_E0, bYe, cYe )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO COLLAPSE(2)
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
 
-        bY(iX_B0(1),iX2,iX3) = cY(iX_B0(1),iX2,iX3)
+        bYe(iX_B0(1),iX2,iX3) = cYe(iX_B0(1),iX2,iX3)
 
       END DO
       END DO
@@ -2371,14 +2372,14 @@ CONTAINS
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRESENT( iX_B0, iX_E0, bY, cY )
+      !$ACC PRESENT( iX_B0, iX_E0, bYe, cYe )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO COLLAPSE(2)
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
 
-        cY(iX_E0(1),iX2,iX3) = bY(iX_E0(1),iX2,iX3)
+        cYe(iX_E0(1),iX2,iX3) = bYe(iX_E0(1),iX2,iX3)
 
       END DO
       END DO
@@ -2389,9 +2390,9 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      dY_X1(iX1,iX2,iX3) &
+      dYe_X1(iX1,iX2,iX3) &
         = MinModB &
-            ( aY(iX1,iX2,iX3), bY(iX1,iX2,iX3), cY(iX1,iX2,iX3), &
+            ( aYe(iX1,iX2,iX3), bYe(iX1,iX2,iX3), cYe(iX1,iX2,iX3), &
               dX1(iX1), BetaTVB )
     END DO
     END DO
@@ -2405,30 +2406,30 @@ CONTAINS
   SUBROUTINE ComputeMinModArguments_Y_X2 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, &
       ExcludeInnerGhostCell, ExcludeOuterGhostCell, &
-      dX2, Y_M0, Y_M3, Y_M4, aY, bY, cY, dY_X2 )
+      dX2, Ye_M0, Ye_M3, Ye_M4, aYe, bYe, cYe, dYe_X2 )
 
     INTEGER,  INTENT(in)  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     LOGICAL,  INTENT(in)  :: ExcludeInnerGhostCell, ExcludeOuterGhostCell
     REAL(DP), INTENT(in)  :: dX2(       iX_B1(2):iX_E1(2))
-    REAL(DP), INTENT(in)  :: Y_M0(nDOFX,iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(in)  :: Ye_M0(nDOFX,iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(in)  :: Y_M3(      iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(in)  :: Ye_M3(      iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(in)  :: Y_M4(      iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(in)  :: Ye_M4(      iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(out) :: aY(        iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(out) :: aYe(        iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(out) :: bY(        iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(out) :: bYe(        iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(out) :: cY(        iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(out) :: cYe(        iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(out) :: dY_X2(     iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(out) :: dYe_X2(     iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
 
@@ -2440,7 +2441,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( iX_B0, iX_E0, aY, bY, cY, Y_M0, Y_M3, Y_M4 )
+    !$ACC PRESENT( iX_B0, iX_E0, aYe, bYe, cYe, Ye_M0, Ye_M3, Ye_M4 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
@@ -2448,13 +2449,13 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      aY(iX1,iX2,iX3) = Y_M0(3,iX1,iX2,iX3)
+      aYe(iX1,iX2,iX3) = Ye_M0(3,iX1,iX2,iX3)
 
-      bY(iX1,iX2,iX3) &
-        = BetaTVD * ( Y_M0(1,iX1,iX2,iX3) - Y_M3(  iX1,iX2,iX3) )
+      bYe(iX1,iX2,iX3) &
+        = BetaTVD * ( Ye_M0(1,iX1,iX2,iX3) - Ye_M3(  iX1,iX2,iX3) )
 
-      cY(iX1,iX2,iX3) &
-        = BetaTVD * ( Y_M4(  iX1,iX2,iX3) - Y_M0(1,iX1,iX2,iX3) )
+      cYe(iX1,iX2,iX3) &
+        = BetaTVD * ( Ye_M4(  iX1,iX2,iX3) - Ye_M0(1,iX1,iX2,iX3) )
 
     END DO
     END DO
@@ -2466,14 +2467,14 @@ CONTAINS
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRESENT( iX_B0, iX_E0, bY, cY )
+      !$ACC PRESENT( iX_B0, iX_E0, bYe, cYe )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO COLLAPSE(2)
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX1 = iX_B0(1), iX_E0(1)
 
-        bY(iX1,iX_B0(2),iX3) = cY(iX1,iX_B0(2),iX3)
+        bYe(iX1,iX_B0(2),iX3) = cYe(iX1,iX_B0(2),iX3)
 
       END DO
       END DO
@@ -2486,14 +2487,14 @@ CONTAINS
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRESENT( iX_B0, iX_E0, bY, cY )
+      !$ACC PRESENT( iX_B0, iX_E0, bYe, cYe )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO COLLAPSE(2)
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX1 = iX_B0(1), iX_E0(1)
 
-        cY(iX1,iX_E0(2),iX3) = bY(iX1,iX_E0(2),iX3)
+        cYe(iX1,iX_E0(2),iX3) = bYe(iX1,iX_E0(2),iX3)
 
       END DO
       END DO
@@ -2504,9 +2505,9 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      dY_X2(iX1,iX2,iX3) &
+      dYe_X2(iX1,iX2,iX3) &
         = MinModB &
-            ( aY(iX1,iX2,iX3), bY(iX1,iX2,iX3), cY(iX1,iX2,iX3), &
+            ( aYe(iX1,iX2,iX3), bYe(iX1,iX2,iX3), cYe(iX1,iX2,iX3), &
               dX2(iX2), BetaTVB )
     END DO
     END DO
@@ -2520,30 +2521,30 @@ CONTAINS
   SUBROUTINE ComputeMinModArguments_Y_X3 &
     ( iX_B0, iX_E0, iX_B1, iX_E1, &
       ExcludeInnerGhostCell, ExcludeOuterGhostCell, &
-      dX3, Y_M0, Y_M5, Y_M6, aY, bY, cY, dY_X3 )
+      dX3, Ye_M0, Ye_M5, Ye_M6, aYe, bYe, cYe, dYe_X3 )
 
     INTEGER,  INTENT(in)  :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
     LOGICAL,  INTENT(in)  :: ExcludeInnerGhostCell, ExcludeOuterGhostCell
     REAL(DP), INTENT(in)  :: dX3(       iX_B1(3):iX_E1(3))
-    REAL(DP), INTENT(in)  :: Y_M0(nDOFX,iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(in)  :: Ye_M0(nDOFX,iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(in)  :: Y_M5(      iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(in)  :: Ye_M5(      iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(in)  :: Y_M6(      iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(in)  :: Ye_M6(      iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(out) :: aY(        iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(out) :: aYe(        iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(out) :: bY(        iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(out) :: bYe(        iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(out) :: cY(        iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(out) :: cYe(        iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
-    REAL(DP), INTENT(out) :: dY_X3(     iX_B0(1):iX_E0(1), &
+    REAL(DP), INTENT(out) :: dYe_X3(     iX_B0(1):iX_E0(1), &
                                         iX_B0(2):iX_E0(2), &
                                         iX_B0(3):iX_E0(3))
 
@@ -2555,7 +2556,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC) && !defined(THORNADO_EULER_NOGPU)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRESENT( iX_B0, iX_E0, aY, bY, cY, Y_M0, Y_M5, Y_M6 )
+    !$ACC PRESENT( iX_B0, iX_E0, aYe, bYe, cYe, Ye_M0, Ye_M5, Ye_M6 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
@@ -2563,13 +2564,13 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      aY(iX1,iX2,iX3) = Y_M0(4,iX1,iX2,iX3)
+      aYe(iX1,iX2,iX3) = Ye_M0(4,iX1,iX2,iX3)
 
-      bY(iX1,iX2,iX3) &
-        = BetaTVD * ( Y_M0(1,iX1,iX2,iX3) - Y_M5(  iX1,iX2,iX3) )
+      bYe(iX1,iX2,iX3) &
+        = BetaTVD * ( Ye_M0(1,iX1,iX2,iX3) - Ye_M5(  iX1,iX2,iX3) )
 
-      cY(iX1,iX2,iX3) &
-        = BetaTVD * ( Y_M6(  iX1,iX2,iX3) - Y_M0(1,iX1,iX2,iX3) )
+      cYe(iX1,iX2,iX3) &
+        = BetaTVD * ( Ye_M6(  iX1,iX2,iX3) - Ye_M0(1,iX1,iX2,iX3) )
 
     END DO
     END DO
@@ -2581,14 +2582,14 @@ CONTAINS
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRESENT( iX_B0, iX_E0, bY, cY )
+      !$ACC PRESENT( iX_B0, iX_E0, bYe, cYe )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO COLLAPSE(2)
 #endif
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
 
-        bY(iX1,iX2,iX_B0(3)) = cY(iX1,iX2,iX_B0(3))
+        bYe(iX1,iX2,iX_B0(3)) = cYe(iX1,iX2,iX_B0(3))
 
       END DO
       END DO
@@ -2601,14 +2602,14 @@ CONTAINS
       !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
 #elif defined(THORNADO_OACC)
       !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRESENT( iX_B0, iX_E0, bY, cY )
+      !$ACC PRESENT( iX_B0, iX_E0, bYe, cYe )
 #elif defined(THORNADO_OMP)
       !$OMP PARALLEL DO COLLAPSE(2)
 #endif
       DO iX2 = iX_B0(2), iX_E0(2)
       DO iX1 = iX_B0(1), iX_E0(1)
 
-        cY(iX1,iX2,iX_E0(3)) = bY(iX1,iX2,iX_E0(3))
+        cYe(iX1,iX2,iX_E0(3)) = bYe(iX1,iX2,iX_E0(3))
 
       END DO
       END DO
@@ -2619,9 +2620,9 @@ CONTAINS
     DO iX2 = iX_B0(2), iX_E0(2)
     DO iX1 = iX_B0(1), iX_E0(1)
 
-      dY_X3(iX1,iX2,iX3) &
+      dYe_X3(iX1,iX2,iX3) &
         = MinModB &
-            ( aY(iX1,iX2,iX3), bY(iX1,iX2,iX3), cY(iX1,iX2,iX3), &
+            ( aYe(iX1,iX2,iX3), bYe(iX1,iX2,iX3), cYe(iX1,iX2,iX3), &
               dX3(iX3), BetaTVB )
     END DO
     END DO

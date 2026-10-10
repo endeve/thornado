@@ -8,6 +8,8 @@ OpacityModule_TABLE.o: \
   UnitsModule.o \
   ProgramHeaderModule.o \
   MeshModule.o \
+  ReferenceElementModuleE.o \
+  RadiationFieldsModule.o \
   OpacityModule_TABLE.F90
 else ifdef LIBNAME
 OpacityModule_TABLE.o: \
@@ -15,6 +17,8 @@ OpacityModule_TABLE.o: \
   UnitsModule.o \
   ProgramHeaderModule.o \
   MeshModule.o \
+  ReferenceElementModuleE.o \
+  RadiationFieldsModule.o \
   OpacityModule_TABLE.F90
 else
 OpacityModule_TABLE.o: \
@@ -22,10 +26,14 @@ OpacityModule_TABLE.o: \
   wlOpacityTableIOModuleHDF.o \
   wlOpacityTableModule.o \
   wlInterpolationModule.o \
+  wlGridModule.o \
+  wlInterpolationUtilitiesModule.o \
   KindModule.o \
   UnitsModule.o \
   ProgramHeaderModule.o \
   MeshModule.o \
+  ReferenceElementModuleE.o \
+  RadiationFieldsModule.o \
   OpacityModule_TABLE.F90
 endif
 

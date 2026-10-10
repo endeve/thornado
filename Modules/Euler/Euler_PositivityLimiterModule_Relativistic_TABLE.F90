@@ -39,13 +39,15 @@ MODULE Euler_PositivityLimiterModule_Relativistic_TABLE
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
+    iCF_Nm, &
     nPF, &
     iPF_D, &
     iPF_V1, &
     iPF_V2, &
     iPF_V3, &
     iPF_E, &
-    iPF_Ne
+    iPF_Ne, &
+    iPF_Nm
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputePressureFromPrimitive_TABLE, &
     ComputeTemperatureFromPressure_TABLE, &
@@ -78,7 +80,7 @@ MODULE Euler_PositivityLimiterModule_Relativistic_TABLE
   REAL(DP), PARAMETER   :: BaryonMass   = AtomicMassUnit
   INTEGER               :: nPP(nPS) ! Number of Positive Points Per Set
   INTEGER               :: nPT      ! Total number of Positive Points
-  REAL(DP)              :: Min_D, Max_D, Min_T, Max_T, Min_Ye, Max_Ye
+  REAL(DP)              :: Min_D, Max_D, Min_T, Max_T, Min_Y, Max_Y
   REAL(DP), ALLOCATABLE :: G_PP(:,:), U_PP(:,:), P_PP(:,:)
 
 
@@ -126,13 +128,13 @@ CONTAINS
     IF( PRESENT( Max_2_Option ) ) &
       Max_T = Max_2_Option
 
-    Min_Ye = - HUGE( One )
+    Min_Y = - HUGE( One )
     IF( PRESENT( Min_3_Option ) ) &
-      Min_Ye = Min_3_Option
+      Min_Y = Min_3_Option
 
-    Max_Ye = - HUGE( One )
+    Max_Y = - HUGE( One )
     IF( PRESENT( Max_3_Option ) ) &
-      Max_Ye = Max_3_Option
+      Max_Y = Max_3_Option
 
     IF( Verbose )THEN
       WRITE(*,*)
@@ -148,8 +150,8 @@ CONTAINS
       WRITE(*,'(A6,A12,ES12.4E3)') '', 'Max_D = ', Max_D / Unit_D
       WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_T = ', Min_T / Unit_T
       WRITE(*,'(A6,A12,ES12.4E3)') '', 'Max_T = ', Max_T / Unit_T
-      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_Y = ', Min_Ye
-      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Max_Y = ', Max_Ye
+      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Min_Y = ', Min_Y
+      WRITE(*,'(A6,A12,ES12.4E3)') '', 'Max_Y = ', Max_Y
 
     END IF
 

@@ -1,7 +1,9 @@
 MOMENT_CLOSURE  = MINERBO
 MICROPHYSICS   ?=
-GRAVITY_SOLVER ?=
+GRAVITY_SOLVER = POSEIDON_NEWTON
 TWOMOMENT_ORDER = ORDER_V
+EOSMODE = COMPOSE
+INTERPOLATION_SPLIT_TABLE = COMBINED
 
 THORNADO_DIR ?= ../../../
 include $(THORNADO_DIR)/Build/Makefile_Build
@@ -97,7 +99,8 @@ ApplicationDriver_CCSN: \
 	ProgenitorModule.o \
 	InitializationModule_CCSN.o \
 	ApplicationDriver_CCSN.o \
-	$(LIBRARIES)
+	$(LIBRARIES) \
+	-L$(CUBA_DIR) -lcuba
 
 clean:
 	rm -f *.o *.mod *.ld *.lst *.i *.s
@@ -280,6 +283,27 @@ InitializationModule_Neutrinos.o: \
   EquationOfStateModule_TABLE.o \
   NeutrinoOpacitiesComputationModule.o \
   InitializationModule_Neutrinos.F90
+
+InitializationModule_CCSN.o: \
+  KindModule.o \
+  ProgramHeaderModule.o \
+  ReferenceElementModuleX.o \
+  MeshModule.o \
+  GeometryFieldsModule.o \
+  FluidFieldsModule.o \
+  RadiationFieldsModule.o \
+  Euler_UtilitiesModule_NonRelativistic.o \
+  TwoMoment_UtilitiesModule.o \
+  EquationOfStateModule_TABLE.o \
+  UtilitiesModule.o \
+  ProgenitorModule.o \
+  InitializationModule_CCSN.F90
+
+ProgenitorModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  UtilitiesModule.o \
+  ProgenitorModule.F90
 
 ifeq ($(PE_ENV),CRAY)
 TwoMoment_PositivityLimiterModule.o : TwoMoment_PositivityLimiterModule.F90

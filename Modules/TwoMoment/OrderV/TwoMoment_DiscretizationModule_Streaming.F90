@@ -67,9 +67,9 @@ MODULE TwoMoment_DiscretizationModule_Streaming
     iGF_Gm_dd_33, &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    nAF, iAF_T, iAF_Ye
+    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, iCF_Nm, &
+    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, iPF_Nm, &
+    nAF, iAF_T, iAF_Ye, iAF_Ym
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
@@ -990,7 +990,7 @@ CONTAINS
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iN_E, iN_X
     INTEGER :: nE_G, nX_G
     REAL(DP), ALLOCATABLE :: PF(:,:,:,:,:), AF(:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: E_N(:), D_N(:), T_N(:), Y_N(:)
+    REAL(DP), ALLOCATABLE :: E_N(:), D_N(:), T_N(:), Ye_N(:), Ym_N(:)
     REAL(DP), ALLOCATABLE :: Dnu_Equilibrium(:,:,:)
 
     nE_G = ( iZ_E0(1) - iZ_B0(1) + 1 ) * nDOFE
@@ -1005,7 +1005,8 @@ CONTAINS
            iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4),1:nAF) )
-    ALLOCATE( E_N(nE_G), D_N(nX_G), T_N(nX_G), Y_N(nX_G) )
+    ALLOCATE( E_N(nE_G), D_N(nX_G), T_N(nX_G), &
+              Ye_N(nX_G), Ym_N(nX_G) )
     ALLOCATE( Dnu_Equilibrium(nE_G,nSpecies,nX_G) )
 
     PF = Zero
@@ -1035,7 +1036,8 @@ CONTAINS
       iN_X = iN_X + 1
       D_N(iN_X) = PF(iNodeX,iZ2,iZ3,iZ4,iPF_D)
       T_N(iN_X) = AF(iNodeX,iZ2,iZ3,iZ4,iAF_T)
-      Y_N(iN_X) = AF(iNodeX,iZ2,iZ3,iZ4,iAF_Ye)
+      Ye_N(iN_X) = AF(iNodeX,iZ2,iZ3,iZ4,iAF_Ye)
+      Ym_N(iN_X) = AF(iNodeX,iZ2,iZ3,iZ4,iAF_Ym)
 
     END DO
     END DO
@@ -1044,7 +1046,7 @@ CONTAINS
 
     CALL ComputeEquilibriumDistributions &
            ( 1, nE_G, 1, nSpecies, 1, nX_G, &
-             E_N, D_N, T_N, Y_N, Dnu_Equilibrium )
+             E_N, D_N, T_N, Ye_N, Ym_N, Dnu_Equilibrium )
 
     CALL LimitEquilibriumDistributions_DG &
            ( 1, nE_G, 1, nSpecies, 1, nX_G, &
@@ -1091,7 +1093,7 @@ CONTAINS
     END DO
 
     DEALLOCATE( PF, AF )
-    DEALLOCATE( E_N, D_N, T_N, Y_N, Dnu_Equilibrium )
+    DEALLOCATE( E_N, D_N, T_N, Ye_N, Ym_N, Dnu_Equilibrium )
 
   END SUBROUTINE ComputeEquilibriumRadiationState
 
@@ -5167,13 +5169,13 @@ CONTAINS
       FluxInLtau = Zero
 
 #if   defined( THORNADO_OMP_OL )
-      !$OMP PARALLEL DO SIMD COLLAPSE(5) &
-      !$OMP REDUCTION( + : FluxIn1, FluxIn2, &
-      !$OMP                 FluxInLe, FluxInLmu, FluxInLtau )
+    !$OMP PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP REDUCTION( + : FluxIn1, FluxIn2, &
+    !$OMP                 FluxInLe, FluxInLmu, FluxInLtau )
 #elif defined( THORNADO_OACC   )
-      !$ACC LOOP VECTOR COLLAPSE(5) &
-      !$ACC REDUCTION( + : FluxIn1, FluxIn2, &
-      !$ACC                 FluxInLe, FluxInLmu, FluxInLtau )
+    !$ACC LOOP VECTOR COLLAPSE(5) &
+    !$ACC REDUCTION( + : FluxIn1, FluxIn2, &
+    !$ACC                 FluxInLe, FluxInLmu, FluxInLtau )
 #endif
       DO iS  = 1       , nSpecies
       DO iZP3 = iZP_B0(3), iZP_E0(3)
@@ -5213,13 +5215,13 @@ CONTAINS
       FluxOtLtau = Zero
 
 #if   defined( THORNADO_OMP_OL )
-      !$OMP PARALLEL DO SIMD COLLAPSE(5) &
-      !$OMP REDUCTION( + : FluxOt1, FluxOt2, &
-      !$OMP                 FluxOtLe, FluxOtLmu, FluxOtLtau )
+    !$OMP PARALLEL DO SIMD COLLAPSE(5) &
+    !$OMP REDUCTION( + : FluxOt1, FluxOt2, &
+    !$OMP                 FluxOtLe, FluxOtLmu, FluxOtLtau )
 #elif defined( THORNADO_OACC   )
-      !$ACC LOOP VECTOR COLLAPSE(5) &
-      !$ACC REDUCTION( + : FluxOt1, FluxOt2, &
-      !$ACC                 FluxOtLe, FluxOtLmu, FluxOtLtau )
+    !$ACC LOOP VECTOR COLLAPSE(5) &
+    !$ACC REDUCTION( + : FluxOt1, FluxOt2, &
+    !$ACC                 FluxOtLe, FluxOtLmu, FluxOtLtau )
 #endif
       DO iS  = 1       , nSpecies
       DO iZP3 = iZP_B0(3), iZP_E0(3)

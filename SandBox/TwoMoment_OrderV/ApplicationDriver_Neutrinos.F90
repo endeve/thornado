@@ -6,6 +6,7 @@ PROGRAM ApplicationDriver_Neutrinos
   USE UnitsModule, ONLY: &
     Kilometer, &
     Millisecond, &
+    Second, &
     MeV
   USE ProgramHeaderModule, ONLY: &
     nDOFX, nDOFE, nDOFZ, &
@@ -157,7 +158,7 @@ PROGRAM ApplicationDriver_Neutrinos
   REAL(DP)      :: t, dt, dt_CFL, dt_0, dt_MAX, dt_RATE, t_end
   REAL(DP)      :: MatterDiagnosticsTimeStep
   REAL(DP)      :: Rtol_outer, Rtol_inner
-  REAL(DP)      :: wMatterRHS(5)
+  REAL(DP)      :: wMatterRHS(6)
   REAL(DP)      :: DnuMax
   REAL(DP)      :: OffGridFluidIncrement(nCF)
   REAL(DP)      :: OffGridRadiationIncrement(2*nCR)
@@ -252,7 +253,9 @@ PROGRAM ApplicationDriver_Neutrinos
 
   CoordinateSystem = 'CARTESIAN'
 
-  EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
+  !EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
+  !EosTableName          = 'BaryonsPlusHelmPlusMuonsEOS_interpolated.h5'
+  EosTableName          = 'BaryonsPlusPhotonsPlusLeptonsEOS.h5'
   OpacityTableName_EmAb = 'wl-Op-SFHo-15-25-50-E40-EmAb.h5'
   OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-Iso.h5'
   OpacityTableName_NNS  = 'wl-Op-SFHo-15-25-50-E40-NNS.h5'
@@ -265,18 +268,18 @@ PROGRAM ApplicationDriver_Neutrinos
   RestartFileNumber = - 1
 
   M_outer         = 2
-  MaxIter_outer   = 100
+  MaxIter_outer   = 1000
   Rtol_outer      = 1.0d-8
   M_inner         = 2
-  MaxIter_inner   = 100
+  MaxIter_inner   = 1000
   Rtol_inner      = 1.0d-8
   Include_NNS     = .TRUE.
   Include_NES     = .TRUE.
   Include_Pair    = .TRUE.
-  Include_NuPair  = .FALSE.
+  Include_NuPair  = .TRUE.
   Include_Brem    = .TRUE.
   Include_LinCorr = .FALSE.
-  wMatterRHS      = [ One, One, One, One, One ]
+  wMatterRHS      = [ One, One, One, One, One, One ]
   DnuMax          = HUGE( One )
   FreezeOpacities = .FALSE.
   UseConservativeProjection = .FALSE.
@@ -362,7 +365,7 @@ PROGRAM ApplicationDriver_Neutrinos
       Include_LinCorr = .FALSE.
       FreezeOpacities = .FALSE.
 
-      wMatterRHS = [ One, One, One, One, One ]
+      wMatterRHS = [ One, One, One, One, One, One ]
       DnuMax     = One - 1.0d-6
 
       M_outer       = 2
@@ -424,7 +427,7 @@ PROGRAM ApplicationDriver_Neutrinos
       Include_LinCorr = .FALSE.
       FreezeOpacities = .FALSE.
 
-      wMatterRHS = [ One, One, One, One, One ]
+      wMatterRHS = [ One, One, One, One, One, One ]
       DnuMax     = One - 1.0d-6
 
       M_outer       = 2
@@ -484,7 +487,7 @@ PROGRAM ApplicationDriver_Neutrinos
       Include_LinCorr = .FALSE.
       FreezeOpacities = .TRUE.
 
-      wMatterRHS = [ Zero, Zero, Zero, Zero, Zero ]
+      wMatterRHS = [ Zero, Zero, Zero, Zero, Zero, Zero ]
       DnuMax = One
       WriteMatterDiagnostics = .FALSE.
 
@@ -535,7 +538,7 @@ PROGRAM ApplicationDriver_Neutrinos
       Include_LinCorr = .FALSE.
       FreezeOpacities = .TRUE.
 
-      wMatterRHS = [ Zero, Zero, Zero, Zero, Zero ]
+      wMatterRHS = [ Zero, Zero, Zero, Zero, Zero, Zero ]
       DnuMax = One
       WriteMatterDiagnostics = .FALSE.
 
@@ -586,7 +589,7 @@ PROGRAM ApplicationDriver_Neutrinos
       Include_LinCorr = .FALSE.
       FreezeOpacities = .TRUE.
 
-      wMatterRHS = [ Zero, Zero, Zero, Zero, Zero ]
+      wMatterRHS = [ Zero, Zero, Zero, Zero, Zero, Zero ]
       DnuMax = One
       WriteMatterDiagnostics = .FALSE.
 
@@ -637,7 +640,7 @@ PROGRAM ApplicationDriver_Neutrinos
       Include_LinCorr = .FALSE.
       FreezeOpacities = .TRUE.
 
-      wMatterRHS = [ Zero, Zero, Zero, Zero, Zero ]
+      wMatterRHS = [ Zero, Zero, Zero, Zero, Zero, Zero ]
       DnuMax = One
       WriteMatterDiagnostics = .FALSE.
 
@@ -688,7 +691,7 @@ PROGRAM ApplicationDriver_Neutrinos
       Include_LinCorr = .FALSE.
       FreezeOpacities = .TRUE.
 
-      wMatterRHS = [ Zero, Zero, Zero, Zero, Zero ]
+      wMatterRHS = [ Zero, Zero, Zero, Zero, Zero, Zero ]
       DnuMax = One
       WriteMatterDiagnostics = .FALSE.
 
@@ -699,7 +702,7 @@ PROGRAM ApplicationDriver_Neutrinos
       nE    = 16
       eL    = 0.0d0 * MeV
       eR    = 3.0d2 * MeV
-      bcE   = 0
+      bcE   = 11
       ZoomE = 1.266038160710160_DP
 
       IF( Relaxation_restart_from_file ) THEN
@@ -723,12 +726,15 @@ PROGRAM ApplicationDriver_Neutrinos
         TimeSteppingScheme = 'IMEX_PDARS'
         !TimeSteppingScheme = 'BackwardEuler'
 
-        t_end = 1.0d0 * Millisecond
+        t_end = 1.0d-2 * Millisecond
 
         PrescribedTimeStep = .TRUE. ! If .FALSE., explicit CFL will be used.
-        dt_0               = 8.895d-3 * Millisecond
-        dt_MAX             = 8.895d-3 * Millisecond
+        dt_0               = 8.895d-06 * Second !8.895d-3 * Millisecond
+        dt_MAX             = 8.895d-06 * Second !8.895d-3 * Millisecond
         dt_RATE            = 1.01_DP
+
+        dt_0               = 1.111880E-06 * Second !8.895d-3 * Millisecond
+        dt_MAX             = 1.111880E-06 * Second !8.895d-3 * Millisecond
 
         iCycleD = 1
         iCycleW = 100
@@ -747,10 +753,9 @@ PROGRAM ApplicationDriver_Neutrinos
         Include_NuPair  = .TRUE.
         Include_Brem    = .TRUE.
         Include_LinCorr = .FALSE.
-        FreezeOpacities = .FALSE. ! --- Keep opacities fixed during iterations?
-        DnuMax          = One
+        FreezeOpacities = .TRUE. ! --- Keep opacities fixed during iterations?
         M_outer         = 2
-        MaxIter_outer   = 100
+        MaxIter_outer   = 1000
         Rtol_outer      = 1.0d-8
         M_inner         = 2
         MaxIter_inner   = 1000
@@ -761,7 +766,7 @@ PROGRAM ApplicationDriver_Neutrinos
         Include_NuPair  = .TRUE.
         Include_Brem    = .TRUE.
         Include_LinCorr = .FALSE.
-        wMatterRHS      = [ One, One, One, One, One ]
+        wMatterRHS      = [ One, One, One, One, One, One ]
         DnuMax          = One-1.0d-6
         FreezeOpacities = .FALSE.
 
@@ -841,8 +846,8 @@ PROGRAM ApplicationDriver_Neutrinos
 
       ProfileName = 'input_thornado_VX_100ms.dat'
 
-      wMatterRHS = [ One, One, Zero, Zero, Zero ] ! --- Keep Velocity Fixed
-      !wMatterRHS = [ Zero, Zero, Zero, Zero, Zero ] ! --- Keep Fluid Fixed
+      wMatterRHS = [ One, One, One, Zero, Zero, Zero ] ! --- Keep Velocity Fixed
+      !wMatterRHS = [ Zero, Zero, Zero, Zero, Zero, Zero ] ! --- Keep Fluid Fixed
 
       Include_NNS     = .TRUE.
       Include_NES     = .TRUE.
@@ -971,7 +976,7 @@ PROGRAM ApplicationDriver_Neutrinos
       Include_Brem    = MovingAllProcesses
       Include_LinCorr = .FALSE.
 
-      wMatterRHS = [ One, One, One, One, One ]
+      wMatterRHS = [ One, One, One, One, One, One ]
       DnuMax = One - 1.0d-6
 
       WriteMatterDiagnostics = .FALSE.
@@ -4097,9 +4102,10 @@ CONTAINS
            ( EquationOfStateTableName_Option &
                = EosTableName, &
              UseChemicalPotentialShift_Option &
-               = .TRUE., &
+               = .FALSE., &
              Verbose_Option &
-               = .TRUE. )
+               = .TRUE., &
+             MuonEos_MinD_Option = 1.0d12 )
 
     ! --- Initialize Opacities ---
 
@@ -4118,7 +4124,8 @@ CONTAINS
                = TRIM( OpacityTableName_Brem ), &
              EquationOfStateTableName_Option &
                = TRIM( EosTableName ), &
-             Verbose_Option = .TRUE. )
+             Verbose_Option = .TRUE., &
+             EmAb_Muon_MinD_Option = 1.0d12 )
 
     ! --- Initialize Moment Closure ---
 

@@ -16,17 +16,13 @@ EquationOfStateModule_TABLE.o: \
   FluidFieldsModule.o \
   EquationOfStateModule_TABLE.F90
 else
-EquationOfStateModule_TABLE.o: \
-  wlIOModuleHDF.o \
-  wlEOSIOModuleHDF.o \
-  wlEquationOfStateTableModule.o \
-  wlEOSInversionModule.o \
-  wlInterpolationModule.o \
-  KindModule.o \
-  UnitsModule.o \
-  DeviceModule.o \
-  FluidFieldsModule.o \
-  EquationOfStateModule_TABLE.F90
+
+ifeq ($(EOSMODE),COMPOSE)
+  include $(THORNADO_DIR)/Modules/EquationOfState/Split/Makefile_EquationOfState_Split_Dependencies
+else
+  include $(THORNADO_DIR)/Modules/EquationOfState/Combined/Makefile_EquationOfState_Combined_Dependencies
+endif
+
 endif
 
 EquationOfStateModule.o: \

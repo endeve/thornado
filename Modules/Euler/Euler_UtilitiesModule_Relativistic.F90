@@ -30,6 +30,7 @@ MODULE Euler_UtilitiesModule_Relativistic
     iCF_S3, &
     iCF_E, &
     iCF_Ne, &
+    iCF_Nm, &
     nCF, &
     iPF_D, &
     iPF_V1, &
@@ -37,13 +38,16 @@ MODULE Euler_UtilitiesModule_Relativistic
     iPF_V3, &
     iPF_E, &
     iPF_Ne, &
+    iPF_Nm, &
     nPF, &
     iAF_P, &
     iAF_T, &
     iAF_Ye, &
+    iAF_Ym, &
     iAF_S, &
     iAF_E, &
     iAF_Me, &
+    iAF_Mm, &
     iAF_Mp, &
     iAF_Mn, &
     iAF_Xp, &
@@ -121,8 +125,8 @@ MODULE Euler_UtilitiesModule_Relativistic
 
   REAL(DP), PARAMETER :: Offset_T   = 1.0e-12_DP
   REAL(DP), PARAMETER :: Offset_eps = 1.0e-12_DP
-  REAL(DP), PARAMETER :: Offset_Ye  = 1.0e-12_DP
-  REAL(DP), PARAMETER :: Offset_z   = 1.0e-16_DP
+  REAL(DP), PARAMETER :: Offset_Y   = 1.0e-12_DP
+  REAL(DP), PARAMETER :: Offset_z   = 1.0e1_DP * SqrtTiny
   REAL(DP), PARAMETER :: vMax       = One - 1.0e-05_DP
   REAL(DP), PARAMETER :: kMax       = Two * vMax / ( One + vMax**2 )
   REAL(DP), PARAMETER :: dzMin      = 1.0e-8_DP
@@ -145,14 +149,14 @@ CONTAINS
 
 
   SUBROUTINE ComputePrimitive_Vector_old &
-    ( uD, uS1, uS2, uS3, uE, uNe, &
-      pD, pV1, pV2, pV3, pE, pNe, &
+    ( uD, uS1, uS2, uS3, uE, uNe, uNm, &
+      pD, pV1, pV2, pV3, pE, pNe, pNm, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, &
       iDimX_Option, IndexTable_Option, &
       iX_B0_Option, iX_E0_Option )
 
-    REAL(DP)    , INTENT(inout) :: uD(:), uS1(:), uS2(:), uS3(:), uE(:), uNe(:)
-    REAL(DP)    , INTENT(out)   :: pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:)
+    REAL(DP)    , INTENT(inout) :: uD(:), uS1(:), uS2(:), uS3(:), uE(:), uNe(:), uNm(:)
+    REAL(DP)    , INTENT(out)   :: pD(:), pV1(:), pV2(:), pV3(:), pE(:), pNe(:), pNm(:)
     REAL(DP)    , INTENT(in)    :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
     INTEGER     , INTENT(in), OPTIONAL :: &
       iX_B0_Option(3), iX_E0_Option(3)
@@ -187,14 +191,14 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( to:    uD, uS1, uS2, uS3, uE, uNe, &
+    !$OMP MAP( to:    uD, uS1, uS2, uS3, uE, uNe, uNm, &
     !$OMP             Gm_dd_11, Gm_dd_22, Gm_dd_33, ErrorExists ) &
-    !$OMP MAP( alloc: pD, pV1, pV2, pV3, pE, pNe, ITERATION, iErr )
+    !$OMP MAP( alloc: pD, pV1, pV2, pV3, pE, pNe, pNm, ITERATION, iErr )
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC ENTER DATA &
-    !$ACC COPYIN(     uD, uS1, uS2, uS3, uE, uNe, &
+    !$ACC COPYIN(     uD, uS1, uS2, uS3, uE, uNe, uNm, &
     !$ACC             Gm_dd_11, Gm_dd_22, Gm_dd_33, ErrorExists ) &
-    !$ACC CREATE(     pD, pV1, pV2, pV3, pE, pNe, ITERATION, iErr )
+    !$ACC CREATE(     pD, pV1, pV2, pV3, pE, pNe, pNm, ITERATION, iErr )
 #endif
 
     CALL TimersStop_Euler( Timer_Euler_CP_CopyIn )
@@ -207,8 +211,8 @@ CONTAINS
 #elif defined( THORNADO_OACC   ) && !defined( THORNADO_EULER_NOGPU )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC REDUCTION( +:ErrorExists ) &
-    !$ACC PRESENT( uD, uS1, uS2, uS3, uE, uNe, &
-    !$ACC          pD, pV1, pV2, pV3, pE, pNe, &
+    !$ACC PRESENT( uD, uS1, uS2, uS3, uE, uNe, uNm, &
+    !$ACC          pD, pV1, pV2, pV3, pE, pNe, pNm, &
     !$ACC          Gm_dd_11, Gm_dd_22, Gm_dd_33, ITERATION, iErr )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
@@ -221,7 +225,8 @@ CONTAINS
 
       IF(      uD (iNX) /= uD (iNX) .OR. uS1(iNX) /= uS1(iNX) &
           .OR. uS2(iNX) /= uS2(iNX) .OR. uS3(iNX) /= uS3(iNX) &
-          .OR. uE (iNX) /= uE (iNX) .OR. uNe(iNX) /= uNe(iNX) )THEN
+          .OR. uE (iNX) /= uE (iNX) .OR. uNe(iNX) /= uNe(iNX) &
+          .OR. uNm(iNX) /= uNm(iNX) )THEN
 
         iErr(iNX) = 13
 
@@ -232,8 +237,8 @@ CONTAINS
       END IF
 
       CALL ComputePrimitive_Scalar &
-             ( uD(iNX), uS1(iNX), uS2(iNX), uS3(iNX), uE(iNX), uNe(iNX), &
-               pD(iNX), pV1(iNX), pV2(iNX), pV3(iNX), pE(iNX), pNe(iNX), &
+             ( uD(iNX), uS1(iNX), uS2(iNX), uS3(iNX), uE(iNX), uNe(iNX), uNm(iNX), &
+               pD(iNX), pV1(iNX), pV2(iNX), pV3(iNX), pE(iNX), pNe(iNX), pNm(iNX), &
                Gm_dd_11(iNX), Gm_dd_22(iNX), Gm_dd_33(iNX), &
                ITERATION_Option = ITERATION(iNX), &
                iErr_Option      = iErr     (iNX) )
@@ -342,7 +347,7 @@ CONTAINS
   END SUBROUTINE ComputePrimitive_Vector_old
 
 
-  SUBROUTINE FindMinimumSpecificInternalEnergy( PF_D, Ye, epsMin )
+  SUBROUTINE FindMinimumSpecificInternalEnergy( PF_D, Ye, Ym, epsMin )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
@@ -350,13 +355,13 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)  :: PF_D, Ye
+    REAL(DP), INTENT(in)  :: PF_D, Ye, Ym
     REAL(DP), INTENT(out) :: epsMin
 
 #ifdef MICROPHYSICS_WEAKLIB
 
     CALL ComputeSpecificInternalEnergy_TABLE &
-           ( PF_D, Min_T + Offset_T * ABS( Min_T ), Ye, epsMin )
+           ( PF_D, Min_T + Offset_T * ABS( Min_T ), Ye, Ym, epsMin )
 
 #else
 
@@ -368,7 +373,7 @@ CONTAINS
 
 
   SUBROUTINE LimitSpecificInternalEnergy &
-    ( PF_D, Ye, q, eps, ReComputeConserved )
+    ( PF_D, Ye, Ym, q, eps, ReComputeConserved )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
@@ -376,7 +381,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)    :: PF_D, Ye
+    REAL(DP), INTENT(in)    :: PF_D, Ye, Ym
     REAL(DP), INTENT(inout) :: q, eps
     LOGICAL , INTENT(inout) :: ReComputeConserved
 
@@ -385,9 +390,9 @@ CONTAINS
 #ifdef MICROPHYSICS_WEAKLIB
 
     CALL ComputeSpecificInternalEnergy_TABLE &
-           ( PF_D, Min_T + Offset_T * ABS( Min_T ), Ye, epsMin )
+           ( PF_D, Min_T + Offset_T * ABS( Min_T ), Ye, Ym, epsMin )
     CALL ComputeSpecificInternalEnergy_TABLE &
-           ( PF_D, Max_T - Offset_T * ABS( Max_T ), Ye, epsMax )
+           ( PF_D, Max_T - Offset_T * ABS( Max_T ), Ye, Ym, epsMax )
 
     epsMin = epsMin + Offset_eps * ABS( epsMin )
     epsMax = epsMax - Offset_eps * ABS( epsMax )
@@ -652,8 +657,8 @@ CONTAINS
   !> Compute the primitive variables from the conserved variables,
   !> a la Galeazzi et al., (2013), Phys. Rev. D., 88, 064009, Appendix C
   SUBROUTINE ComputePrimitive_Scalar &
-    ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
-      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
+    ( CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, CF_Nm, &
+      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, PF_Nm, &
       GF_Gm11, GF_Gm22, GF_Gm33, &
       ITERATION_Option, iErr_Option )
 
@@ -664,11 +669,11 @@ CONTAINS
 #endif
 
     REAL(DP), INTENT(inout) :: &
-      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne
+      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, CF_Nm
     REAL(DP), INTENT(in)    :: &
       GF_Gm11, GF_Gm22, GF_Gm33
     REAL(DP), INTENT(out)   :: &
-      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne
+      PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, PF_Nm
     INTEGER,  INTENT(inout), OPTIONAL :: &
       ITERATION_Option
     INTEGER,  INTENT(inout), OPTIONAL :: &
@@ -676,7 +681,7 @@ CONTAINS
 
     REAL(DP) :: S, q, r, k, z0
     REAL(DP) :: W, eps, p, h, DhW, VSq, MagV, vScale
-    REAL(DP) :: Ye, epsMin
+    REAL(DP) :: Ye, Ym, epsMin
     INTEGER  :: ITERATION, iErr
     LOGICAL  :: ReComputeConserved
 
@@ -699,6 +704,7 @@ CONTAINS
     k = r    / ( One + q )
 
     Ye = CF_Ne / CF_D * AtomicMassUnit
+    Ym = CF_Nm / CF_D * AtomicMassUnit
 
     ! --- Ensure primitive fields can be recovered ---
 
@@ -709,10 +715,11 @@ CONTAINS
       PF_V2 = Zero
       PF_V3 = Zero
 
-      CALL FindMinimumSpecificInternalEnergy( PF_D, Ye, epsMin )
+      CALL FindMinimumSpecificInternalEnergy( PF_D, Ye, Ym, epsMin )
 
       PF_E  = PF_D * epsMin
       PF_Ne = Ye * PF_D / AtomicMassUnit
+      PF_Nm = Ym * PF_D / AtomicMassUnit
 
       CF_D  = PF_D
       CF_S1 = Zero
@@ -720,6 +727,7 @@ CONTAINS
       CF_S3 = Zero
       CF_E  = PF_E
       CF_Ne = PF_Ne
+      CF_Nm = PF_Nm
 
       RETURN
 
@@ -743,17 +751,20 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    Ye = MAX( MIN( Max_Y - OffSet_Ye * ABS( Max_Y ), Ye ), &
-              Min_Y + Offset_Ye * ABS( Min_Y ) )
+    Ye = MAX( MIN( Max_Y - Offset_Y * ABS( Max_Y ), Ye ), &
+              Min_Y + Offset_Y * ABS( Min_Y ) )
+    Ym = MAX( MIN( Max_Y - Offset_Y * ABS( Max_Y ), Ym ), &
+              Min_Y + Offset_Y * ABS( Min_Y ) )
 
     CF_Ne = CF_D / AtomicMassUnit * Ye
+    CF_Nm = CF_D / AtomicMassUnit * Ym
 
 #endif
 
     ! --- Solve for primitives ---
 
     CALL SolveF_Bisection_Scalar &
-           ( CF_D, CF_Ne, q, r, k, z0, iErr, ITERATION )
+           ( CF_D, CF_Ne, CF_Nm, q, r, k, z0, iErr, ITERATION )
 
     ! --- Eq. C15 ---
 
@@ -761,6 +772,7 @@ CONTAINS
 
     PF_D  = CF_D  / W
     PF_Ne = CF_Ne / W
+    PF_Nm = CF_Nm / W
 
     IF( PF_D .LT. rhoMin_Euler_GR )THEN
 
@@ -769,10 +781,11 @@ CONTAINS
       PF_V2 = Zero
       PF_V3 = Zero
 
-      CALL FindMinimumSpecificInternalEnergy( PF_D, Ye, epsMin )
+      CALL FindMinimumSpecificInternalEnergy( PF_D, Ye, Ym, epsMin )
 
       PF_E  = PF_D * epsMin
       PF_Ne = Ye * PF_D / AtomicMassUnit
+      PF_Nm = Ym * PF_D / AtomicMassUnit
 
       ReComputeConserved = .TRUE.
 
@@ -782,10 +795,10 @@ CONTAINS
 
     eps = W * q - z0 * r + z0**2 / ( One + W )
 
-    CALL LimitSpecificInternalEnergy( PF_D, Ye, q, eps, ReComputeConserved )
+    CALL LimitSpecificInternalEnergy( PF_D, Ye, Ym, q, eps, ReComputeConserved )
 
     CALL ComputePressureFromSpecificInternalEnergy &
-           ( PF_D, eps, Ye, p )
+           ( PF_D, eps, Ye, Ym, p )
 
     h = One + eps + p / PF_D
 
@@ -812,8 +825,9 @@ CONTAINS
 
       PF_D  = CF_D  / W
       PF_Ne = CF_Ne / W
+      PF_Nm = CF_Nm / W
 
-      CALL LimitSpecificInternalEnergy( PF_D, Ye, q, eps, ReComputeConserved )
+      CALL LimitSpecificInternalEnergy( PF_D, Ye, Ym, q, eps, ReComputeConserved )
 
     END IF
 
@@ -822,11 +836,11 @@ CONTAINS
     IF( ReComputeConserved )THEN
 
       CALL ComputePressureFromSpecificInternalEnergy &
-             ( PF_D, eps, Ye, p )
+             ( PF_D, eps, Ye, Ym, p )
 
       CALL ComputeConserved_Scalar &
-             ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-               CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+             ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, PF_Nm, &
+               CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, CF_Nm, &
                GF_Gm11, GF_Gm22, GF_Gm33, &
                p )
 
@@ -843,8 +857,8 @@ CONTAINS
 
   !> Compute conserved variables from primitive variables.
   SUBROUTINE ComputeConserved_Scalar &
-    ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+    ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, PF_Nm, &
+      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, CF_Nm, &
       Gm11, Gm22, Gm33, &
       AF_P )
 
@@ -855,10 +869,10 @@ CONTAINS
 #endif
 
     REAL(DP), INTENT(in)  :: PF_D, PF_V1, PF_V2, PF_V3, &
-                             PF_E, PF_Ne, AF_P, &
+                             PF_E, PF_Ne, PF_Nm, AF_P, &
                              Gm11, Gm22, Gm33
     REAL(DP), INTENT(out) :: CF_D, CF_S1, CF_S2, CF_S3, &
-                             CF_E, CF_Ne
+                             CF_E, CF_Ne, CF_Nm
 
     REAL(DP) :: VSq, W, rhoh
 
@@ -874,21 +888,22 @@ CONTAINS
     ! This way of writing CF_E is more accurate when e+p << rho
     CF_E  = PF_D * W**3 * VSq / ( W + One ) + PF_E * W**2 + AF_P * W**2 * VSq
     CF_Ne = W * PF_Ne
+    CF_Nm = W * PF_Nm
 
   END SUBROUTINE ComputeConserved_Scalar
 
 
   SUBROUTINE ComputeConserved_Vector &
-    ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, &
-      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, &
+    ( PF_D, PF_V1, PF_V2, PF_V3, PF_E, PF_Ne, PF_Nm, &
+      CF_D, CF_S1, CF_S2, CF_S3, CF_E, CF_Ne, CF_Nm, &
       Gm11, Gm22, Gm33, &
       AF_P )
 
     REAL(DP), INTENT(in)  :: PF_D(:), PF_V1(:), PF_V2(:), PF_V3(:), &
-                             PF_E(:), PF_Ne(:), AF_P(:), &
+                             PF_E(:), PF_Ne(:), PF_Nm(:), AF_P(:), &
                              Gm11(:), Gm22(:), Gm33(:)
     REAL(DP), INTENT(out) :: CF_D(:), CF_S1(:), CF_S2(:), CF_S3(:), &
-                             CF_E(:), CF_Ne(:)
+                             CF_E(:), CF_Ne(:), CF_Nm(:)
 
     INTEGER :: iNX
 
@@ -901,12 +916,14 @@ CONTAINS
                PF_V3(iNX), &
                PF_E (iNX), &
                PF_Ne(iNX), &
+               PF_Nm(iNX), &
                CF_D (iNX), &
                CF_S1(iNX), &
                CF_S2(iNX), &
                CF_S3(iNX), &
                CF_E (iNX), &
                CF_Ne(iNX), &
+               CF_Nm(iNX), &
                Gm11 (iNX), &
                Gm22 (iNX), &
                Gm33 (iNX), &
@@ -1010,12 +1027,14 @@ CONTAINS
                U(iNX,iX1,iX2,iX3,iCF_S3),        &
                U(iNX,iX1,iX2,iX3,iCF_E ),        &
                U(iNX,iX1,iX2,iX3,iCF_Ne),        &
+               U(iNX,iX1,iX2,iX3,iCF_Nm),        &
                P(iNX,iX1,iX2,iX3,iPF_D ),        &
                P(iNX,iX1,iX2,iX3,iPF_V1),        &
                P(iNX,iX1,iX2,iX3,iPF_V2),        &
                P(iNX,iX1,iX2,iX3,iPF_V3),        &
                P(iNX,iX1,iX2,iX3,iPF_E ),        &
                P(iNX,iX1,iX2,iX3,iPF_Ne),        &
+               P(iNX,iX1,iX2,iX3,iPF_Nm),        &
                G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11),  &
                G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22),  &
                G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33),  &
@@ -1028,9 +1047,11 @@ CONTAINS
              ( P(iNX,iX1,iX2,iX3,iPF_D ), &
                P(iNX,iX1,iX2,iX3,iPF_E ), &
                P(iNX,iX1,iX2,iX3,iPF_Ne), &
+               P(iNX,iX1,iX2,iX3,iPF_Nm), &
                A(iNX,iX1,iX2,iX3,iAF_P ), &
                A(iNX,iX1,iX2,iX3,iAF_T ), &
                A(iNX,iX1,iX2,iX3,iAF_Ye), &
+               A(iNX,iX1,iX2,iX3,iAF_Ym), &
                A(iNX,iX1,iX2,iX3,iAF_S ), &
                A(iNX,iX1,iX2,iX3,iAF_E ), &
                A(iNX,iX1,iX2,iX3,iAF_Gm), &
@@ -1040,10 +1061,12 @@ CONTAINS
              ( P(iNX,iX1,iX2,iX3,iPF_D ), &
                A(iNX,iX1,iX2,iX3,iAF_T ), &
                A(iNX,iX1,iX2,iX3,iAF_Ye), &
+               A(iNX,iX1,iX2,iX3,iAF_Ym), &
                A(iNX,iX1,iX2,iX3,iAF_P ), &
                A(iNX,iX1,iX2,iX3,iAF_S ), &
                A(iNX,iX1,iX2,iX3,iAF_E ), &
                A(iNX,iX1,iX2,iX3,iAF_Me), &
+               A(iNX,iX1,iX2,iX3,iAF_Mm), &
                A(iNX,iX1,iX2,iX3,iAF_Mp), &
                A(iNX,iX1,iX2,iX3,iAF_Mn), &
                A(iNX,iX1,iX2,iX3,iAF_Xp), &
@@ -1108,6 +1131,7 @@ CONTAINS
                               U(iNX,iX1,iX2,iX3,iCF_S3), &
                               U(iNX,iX1,iX2,iX3,iCF_E ), &
                               U(iNX,iX1,iX2,iX3,iCF_Ne), &
+                              U(iNX,iX1,iX2,iX3,iCF_Nm), &
                               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ], &
@@ -1220,12 +1244,14 @@ CONTAINS
                U(iNX,iX1,iX2,iX3,iCF_S3), &
                U(iNX,iX1,iX2,iX3,iCF_E ), &
                U(iNX,iX1,iX2,iX3,iCF_Ne), &
+               U(iNX,iX1,iX2,iX3,iCF_Nm), &
                P(iPF_D ), &
                P(iPF_V1), &
                P(iPF_V2), &
                P(iPF_V3), &
                P(iPF_E ), &
                P(iPF_Ne), &
+               P(iPF_Nm), &
                G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33), &
@@ -1235,7 +1261,7 @@ CONTAINS
       ErrorExists = ErrorExists + iErr(iNX,iX1,iX2,iX3)
 
       CALL ComputeSoundSpeedFromPrimitive &
-             ( P(iPF_D), P(iPF_E), P(iPF_Ne), Cs )
+             ( P(iPF_D), P(iPF_E), P(iPF_Ne), P(iPF_Nm), Cs )
 
       DO iDimX = 1, nDimsX
 
@@ -1308,6 +1334,7 @@ CONTAINS
                               U(iNX,iX1,iX2,iX3,iCF_S3), &
                               U(iNX,iX1,iX2,iX3,iCF_E ), &
                               U(iNX,iX1,iX2,iX3,iCF_Ne), &
+                              U(iNX,iX1,iX2,iX3,iCF_Nm), &
                               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                               G(iNX,iX1,iX2,iX3,iGF_Gm_dd_33) ], &
@@ -1365,6 +1392,9 @@ CONTAINS
       = Lapse * Vi - Shift
 
     Eigenvalues_Euler_Relativistic(6) &
+      = Lapse * Vi - Shift
+
+    Eigenvalues_Euler_Relativistic(7) &
       = Lapse * Vi - Shift
 
     RETURN
@@ -1458,7 +1488,7 @@ CONTAINS
   !> @param Gmii The ith covariant components of the spatial three-metric.
   !> @param Shift The first contravariant component of the shift-vector.
   FUNCTION Flux_X1_Euler_Relativistic &
-    ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
+    ( D, V1, V2, V3, E, Ne, Nm, P, Gm11, Gm22, Gm33, Lapse, Shift )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
@@ -1466,7 +1496,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, P, &
+    REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, Nm, P, &
                             Gm11, Gm22, Gm33, Lapse, Shift
 
     REAL(DP) :: VSq, W, h, Flux_X1_Euler_Relativistic(nCF)
@@ -1493,6 +1523,9 @@ CONTAINS
     Flux_X1_Euler_Relativistic(iCF_Ne) &
       = Ne * W * ( V1 - Shift / Lapse )
 
+    Flux_X1_Euler_Relativistic(iCF_Nm) &
+      = Nm * W * ( V1 - Shift / Lapse )
+
     RETURN
   END FUNCTION Flux_X1_Euler_Relativistic
 
@@ -1502,7 +1535,7 @@ CONTAINS
   !> @param Gmii The ith covariant components of the spatial three-metric.
   !> @param Shift The first contravariant component of the shift-vector.
   FUNCTION Flux_X2_Euler_Relativistic &
-    ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
+    ( D, V1, V2, V3, E, Ne, Nm, P, Gm11, Gm22, Gm33, Lapse, Shift )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
@@ -1510,7 +1543,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, P, &
+    REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, Nm, P, &
                             Gm11, Gm22, Gm33, Lapse, Shift
 
     REAL(DP) :: VSq, W, h, Flux_X2_Euler_Relativistic(nCF)
@@ -1537,6 +1570,9 @@ CONTAINS
     Flux_X2_Euler_Relativistic(iCF_Ne) &
       = Ne * W * ( V2 - Shift / Lapse )
 
+    Flux_X2_Euler_Relativistic(iCF_Nm) &
+      = Nm * W * ( V2 - Shift / Lapse )
+
     RETURN
   END FUNCTION Flux_X2_Euler_Relativistic
 
@@ -1546,7 +1582,7 @@ CONTAINS
   !> @param Gmii The ith covariant components of the spatial three-metric.
   !> @param Shift The first contravariant component of the shift-vector.
   FUNCTION Flux_X3_Euler_Relativistic &
-    ( D, V1, V2, V3, E, Ne, P, Gm11, Gm22, Gm33, Lapse, Shift )
+    ( D, V1, V2, V3, E, Ne, Nm, P, Gm11, Gm22, Gm33, Lapse, Shift )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
@@ -1554,7 +1590,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, P, &
+    REAL(DP), INTENT(in) :: D, V1, V2, V3, E, Ne, Nm, P, &
                             Gm11, Gm22, Gm33, Lapse, Shift
 
     REAL(DP) :: VSq, W, h, Flux_X3_Euler_Relativistic(nCF)
@@ -1580,6 +1616,9 @@ CONTAINS
 
     Flux_X3_Euler_Relativistic(iCF_Ne) &
       = Ne * W * ( V3 - Shift / Lapse )
+
+    Flux_X3_Euler_Relativistic(iCF_Nm) &
+      = Nm * W * ( V3 - Shift / Lapse )
 
     RETURN
   END FUNCTION Flux_X3_Euler_Relativistic
@@ -1670,7 +1709,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             aP, aM, aC, Gm11, vL, vR, pL, pR, Lapse, Shift
 
-    REAL(DP) :: p, D, S1, S2, S3, E, Ne, UE, FE, FS, VelocityRatio, &
+    REAL(DP) :: p, D, S1, S2, S3, E, Ne, Nm, UE, FE, FS, VelocityRatio, &
                 NumericalFlux_X1_HLLC_Euler_Relativistic(nCF)
 
     IF( aM .EQ. Zero )THEN
@@ -1714,6 +1753,7 @@ CONTAINS
                / ( -aM - Lapse * aC + Shift )
 
         Ne = uL(iCF_Ne) * VelocityRatio
+        Nm = uL(iCF_Nm) * VelocityRatio
 
       ELSE
 
@@ -1742,6 +1782,7 @@ CONTAINS
                / ( aP - Lapse * aC + Shift )
 
         Ne = uR(iCF_Ne) * VelocityRatio
+        Nm = uR(iCF_Nm) * VelocityRatio
 
       END IF
 
@@ -1762,6 +1803,9 @@ CONTAINS
 
       NumericalFlux_X1_HLLC_Euler_Relativistic(iCF_Ne) &
         = Ne * ( aC - Shift / Lapse )
+
+      NumericalFlux_X1_HLLC_Euler_Relativistic(iCF_Nm) &
+        = Nm * ( aC - Shift / Lapse )
 
     END IF
 
@@ -1785,7 +1829,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             aP, aM, aC, Gm22, vL, vR, pL, pR, Lapse, Shift
 
-    REAL(DP) :: p, D, S1, S2, S3, E, Ne, UE, FE, FS, VelocityRatio
+    REAL(DP) :: p, D, S1, S2, S3, E, Ne, Nm, UE, FE, FS, VelocityRatio
     REAL(DP) :: NumericalFlux_X2_HLLC_Euler_Relativistic(nCF)
 
     IF( aM .EQ. Zero )THEN
@@ -1829,6 +1873,7 @@ CONTAINS
                / ( -aM - Lapse * aC + Shift )
 
         Ne = uL(iCF_Ne) * VelocityRatio
+        Nm = uL(iCF_Nm) * VelocityRatio
 
       ELSE
 
@@ -1857,6 +1902,7 @@ CONTAINS
                / ( aP - Lapse * aC + Shift )
 
         Ne = uR(iCF_Ne) * VelocityRatio
+        Nm = uR(iCF_Nm) * VelocityRatio
 
       END IF
 
@@ -1877,6 +1923,9 @@ CONTAINS
 
       NumericalFlux_X2_HLLC_Euler_Relativistic(iCF_Ne) &
         = Ne * ( aC - Shift / Lapse )
+
+      NumericalFlux_X2_HLLC_Euler_Relativistic(iCF_Nm) &
+        = Nm * ( aC - Shift / Lapse )
 
     END IF
 
@@ -1903,7 +1952,7 @@ CONTAINS
     REAL(DP), INTENT(in) :: uL(nCF), uR(nCF), fL(nCF), fR(nCF), &
                             aP, aM, aC, Gm33, vL, vR, pL, pR, Lapse, Shift
 
-    REAL(DP) :: p, D, S1, S2, S3, E, Ne, UE, FE, FS, VelocityRatio
+    REAL(DP) :: p, D, S1, S2, S3, E, Ne, Nm, UE, FE, FS, VelocityRatio
     REAL(DP) :: NumericalFlux_X3_HLLC_Euler_Relativistic(nCF)
 
     IF( aM .EQ. Zero )THEN
@@ -1947,6 +1996,7 @@ CONTAINS
                / ( -aM - Lapse * aC + Shift )
 
         Ne = uL(iCF_Ne) * VelocityRatio
+        Nm = uL(iCF_Nm) * VelocityRatio
 
       ELSE
 
@@ -1975,6 +2025,7 @@ CONTAINS
                / ( aP - Lapse * aC + Shift )
 
         Ne = uR(iCF_Ne) * VelocityRatio
+        Nm = uR(iCF_Nm) * VelocityRatio
 
       END IF
 
@@ -1995,6 +2046,9 @@ CONTAINS
 
       NumericalFlux_X3_HLLC_Euler_Relativistic(iCF_Ne) &
         = Ne * ( aC - Shift / Lapse )
+
+      NumericalFlux_X3_HLLC_Euler_Relativistic(iCF_Nm) &
+        = Nm * ( aC - Shift / Lapse )
 
     END IF
 
@@ -2080,7 +2134,7 @@ CONTAINS
 !!$
 !!$  END SUBROUTINE GetBoundsForBisection
 
-  SUBROUTINE ComputeFunZ_Scalar( D, Ne, q, r, z, FunZ )
+  SUBROUTINE ComputeFunZ_Scalar( D, Ne, Nm, q, r, z, FunZ )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
@@ -2088,10 +2142,10 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)    :: D, Ne, q, r, z
+    REAL(DP), INTENT(in)    :: D, Ne, Nm, q, r, z
     REAL(DP), INTENT(out)   :: FunZ
 
-    REAL(DP) :: Wt, rhot, epst, rhoh, Ye, epsMin, epsMax, epsh, ph, at, ht
+    REAL(DP) :: Wt, rhot, epst, rhoh, Ye, Ym, epsMin, epsMax, epsh, ph, at, ht
 
     ! --- Eq. C15 ---
 
@@ -2104,6 +2158,7 @@ CONTAINS
     epst = Wt * q - z * r + z**2 / ( One + Wt )
 
     Ye = Ne * AtomicMassUnit / D
+    Ym = Nm * AtomicMassUnit / D
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -2112,9 +2167,9 @@ CONTAINS
     rhoh = MAX( MIN( Max_D, rhot ), Min_D )
 
     CALL ComputeSpecificInternalEnergy_TABLE &
-           ( rhoh, Min_T + Offset_T * ABS( Min_T ), Ye, epsMin )
+           ( rhoh, Min_T + Offset_T * ABS( Min_T ), Ye, Ym, epsMin )
     CALL ComputeSpecificInternalEnergy_TABLE &
-           ( rhoh, Max_T - Offset_T * ABS( Max_T ), Ye, epsMax )
+           ( rhoh, Max_T - Offset_T * ABS( Max_T ), Ye, Ym, epsMax )
 
     epsMin = epsMin + Offset_eps * ABS( epsMin )
     epsMax = epsMax - Offset_eps * ABS( epsMax )
@@ -2131,7 +2186,7 @@ CONTAINS
     epsh = MAX( MIN( epsMax, epst ), epsMin )
 
     CALL ComputePressureFromSpecificInternalEnergy &
-           ( rhoh, epsh, Ye, ph )
+           ( rhoh, epsh, Ye, Ym, ph )
 
     ! --- Eqs. C19/C20 ---
 
@@ -2300,7 +2355,7 @@ CONTAINS
 !!$  END SUBROUTINE ComputeFunZ_Vector
 
   SUBROUTINE SolveF_Bisection_Scalar &
-    ( CF_D, CF_Ne, q, r, k, z0, iErr, ITERATION, dzMin_Option )
+    ( CF_D, CF_Ne, CF_Nm, q, r, k, z0, iErr, ITERATION, dzMin_Option )
 
 #if   defined( THORNADO_OMP_OL ) && !defined( THORNADO_EULER_NOGPU )
     !$OMP DECLARE TARGET
@@ -2308,7 +2363,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)    :: CF_D, CF_Ne, q, r, k
+    REAL(DP), INTENT(in)    :: CF_D, CF_Ne, CF_Nm, q, r, k
     REAL(DP), INTENT(out)   :: z0
     INTEGER,  INTENT(inout) :: iErr, ITERATION
     REAL(DP), INTENT(in), OPTIONAL :: dzMin_Option
@@ -2319,13 +2374,13 @@ CONTAINS
 
     ! --- Eq. C23 ---
 
-    za = Half * k / SQRT( One - Fourth * k**2 ) - Offset_z * k
-    zb =        k / SQRT( One -          k**2 ) + Offset_z * k
+    za = Half * k / SQRT( One - Fourth * k**2 ) - Offset_z
+    zb =        k / SQRT( One -          k**2 ) + Offset_z
 
     ! --- Compute FunZ for upper and lower bounds ---
 
-    CALL ComputeFunZ_Scalar( CF_D, CF_Ne, q, r, za, fa )
-    CALL ComputeFunZ_Scalar( CF_D, CF_Ne, q, r, zb, fb )
+    CALL ComputeFunZ_Scalar( CF_D, CF_Ne, CF_Nm, q, r, za, fa )
+    CALL ComputeFunZ_Scalar( CF_D, CF_Ne, CF_Nm, q, r, zb, fb )
 
     ! --- Check that sign of FunZ changes across bounds ---
 
@@ -2372,7 +2427,7 @@ CONTAINS
 
       ! --- Compute f(zc) for midpoint zc ---
 
-      CALL ComputeFunZ_Scalar( CF_D, CF_Ne, q, r, zc, fc )
+      CALL ComputeFunZ_Scalar( CF_D, CF_Ne, CF_Nm, q, r, zc, fc )
 
       ! --- Change zc to za or zb, depending on sign of fc ---
 

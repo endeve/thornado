@@ -17,6 +17,7 @@ MODULE ArrayUtilitiesModule
     MODULE PROCEDURE ArrayPack1D_2
     MODULE PROCEDURE ArrayPack1D_3
     MODULE PROCEDURE ArrayPack1D_4
+    MODULE PROCEDURE ArrayPack1D_5
     MODULE PROCEDURE ArrayPack1D_8
     MODULE PROCEDURE ArrayPack2D_1
     MODULE PROCEDURE ArrayPack2D_2
@@ -37,6 +38,7 @@ MODULE ArrayUtilitiesModule
     MODULE PROCEDURE ArrayUnpack1D_2
     MODULE PROCEDURE ArrayUnpack1D_3
     MODULE PROCEDURE ArrayUnpack1D_4
+    MODULE PROCEDURE ArrayUnpack1D_5
     MODULE PROCEDURE ArrayUnpack1D_8
     MODULE PROCEDURE ArrayUnpack2D_1
     MODULE PROCEDURE ArrayUnpack2D_2
@@ -162,15 +164,15 @@ CONTAINS
     IF ( nP < SIZE(X1,1) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( i )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( i )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( i ) &
-      !$ACC PRESENT( UnpackIndex, X1, X1_P )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( i ) &
+    !$ACC PRESENT( UnpackIndex, X1, X1_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO &
-      !$OMP PRIVATE( i )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
         i = UnpackIndex(iPack)
@@ -199,15 +201,15 @@ CONTAINS
     IF ( nP < SIZE(X1,1) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( i )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( i )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( i ) &
-      !$ACC PRESENT( UnpackIndex, X1, X2, X1_P, X2_P )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( i ) &
+    !$ACC PRESENT( UnpackIndex, X1, X2, X1_P, X2_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO &
-      !$OMP PRIVATE( i )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
         i = UnpackIndex(iPack)
@@ -237,15 +239,15 @@ CONTAINS
     IF ( nP < SIZE(X1,1) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( i )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( i )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( i ) &
-      !$ACC PRESENT( UnpackIndex, X1, X2, X3, X1_P, X2_P, X3_P )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( i ) &
+    !$ACC PRESENT( UnpackIndex, X1, X2, X3, X1_P, X2_P, X3_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO &
-      !$OMP PRIVATE( i )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
         i = UnpackIndex(iPack)
@@ -276,15 +278,15 @@ CONTAINS
     IF ( nP < SIZE(X1,1) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( i )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( i )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( i ) &
-      !$ACC PRESENT( UnpackIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( i ) &
+    !$ACC PRESENT( UnpackIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO &
-      !$OMP PRIVATE( i )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
         i = UnpackIndex(iPack)
@@ -302,6 +304,47 @@ CONTAINS
 
   END SUBROUTINE ArrayPack1D_4
 
+  SUBROUTINE ArrayPack1D_5 &
+    ( nP, UnpackIndex, X1, X2, X3, X4, X5, X1_P, X2_P, X3_P, X4_P, X5_P )
+
+    INTEGER,                 INTENT(in)    :: nP
+    INTEGER,  DIMENSION(1:), INTENT(in)    :: UnpackIndex
+    REAL(DP), DIMENSION(1:), INTENT(in)    :: X1, X2, X3, X4, X5
+    REAL(DP), DIMENSION(1:), INTENT(inout) :: X1_P, X2_P, X3_P, X4_P, X5_P
+
+    INTEGER  :: i, iPack
+
+    IF ( nP < SIZE(X1,1) ) THEN
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( i )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( i ) &
+    !$ACC PRESENT( UnpackIndex, X1, X2, X3, X4, X5, &
+    !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( i )
+#endif
+      DO iPack = 1, nP
+        i = UnpackIndex(iPack)
+        X1_P(iPack) = X1(i)
+        X2_P(iPack) = X2(i)
+        X3_P(iPack) = X3(i)
+        X4_P(iPack) = X4(i)
+        X5_P(iPack) = X5(i)
+      END DO
+
+    ELSE
+
+      CALL ArrayCopy( X1, X2, X3, X4, X5, X1_P, X2_P, X3_P, X4_P, X5_P )
+
+    END IF
+
+  END SUBROUTINE ArrayPack1D_5
+
 
   SUBROUTINE ArrayPack1D_8 &
     ( nP, UnpackIndex, &
@@ -318,17 +361,17 @@ CONTAINS
     IF ( nP < SIZE(X1,1) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( i )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( i )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( i ) &
-      !$ACC PRESENT( UnpackIndex, &
-      !$ACC          X1, X2, X3, X4, X5, X6, X7, X8, &
-      !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( i ) &
+    !$ACC PRESENT( UnpackIndex, &
+    !$ACC          X1, X2, X3, X4, X5, X6, X7, X8, &
+    !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO &
-      !$OMP PRIVATE( i )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
         i = UnpackIndex(iPack)
@@ -366,15 +409,15 @@ CONTAINS
     IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( i )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( i )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( i ) &
-      !$ACC PRESENT( UnpackIndex, X1, X1_P )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( i ) &
+    !$ACC PRESENT( UnpackIndex, X1, X1_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(2) &
-      !$OMP PRIVATE( i )
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
       DO j = 1, SIZE(X1,1)
@@ -405,15 +448,15 @@ CONTAINS
     IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( i )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( i )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( i ) &
-      !$ACC PRESENT( UnpackIndex, X1, X2, X1_P, X2_P )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( i ) &
+    !$ACC PRESENT( UnpackIndex, X1, X2, X1_P, X2_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(2) &
-      !$OMP PRIVATE( i )
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
       DO j = 1, SIZE(X1,1)
@@ -445,15 +488,15 @@ CONTAINS
     IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( i )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( i )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( i ) &
-      !$ACC PRESENT( UnpackIndex, X1, X2, X3, X1_P, X2_P, X3_P )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( i ) &
+    !$ACC PRESENT( UnpackIndex, X1, X2, X3, X1_P, X2_P, X3_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(2) &
-      !$OMP PRIVATE( i )
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
       DO j = 1, SIZE(X1,1)
@@ -486,15 +529,15 @@ CONTAINS
     IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( i )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( i )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( i ) &
-      !$ACC PRESENT( UnpackIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( i ) &
+    !$ACC PRESENT( UnpackIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(2) &
-      !$OMP PRIVATE( i )
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
       DO j = 1, SIZE(X1,1)
@@ -530,17 +573,17 @@ CONTAINS
     IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( i )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( i )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( i ) &
-      !$ACC PRESENT( UnpackIndex, &
-      !$ACC          X1, X2, X3, X4, X5, X6, X7, X8, &
-      !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( i ) &
+    !$ACC PRESENT( UnpackIndex, &
+    !$ACC          X1, X2, X3, X4, X5, X6, X7, X8, &
+    !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(2) &
-      !$OMP PRIVATE( i )
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
       DO j = 1, SIZE(X1,1)
@@ -580,15 +623,15 @@ CONTAINS
     IF ( nP < SIZE(X1,3) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-      !$OMP PRIVATE( i )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( i )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-      !$ACC PRIVATE( i ) &
-      !$ACC PRESENT( UnpackIndex, X1, X1_P )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( i ) &
+    !$ACC PRESENT( UnpackIndex, X1, X1_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(3) &
-      !$OMP PRIVATE( i )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
       DO j = 1, SIZE(X1,2)
@@ -621,15 +664,15 @@ CONTAINS
     IF ( nP < SIZE(X1,3) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-      !$OMP PRIVATE( i )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( i )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-      !$ACC PRIVATE( i ) &
-      !$ACC PRESENT( UnpackIndex, X1, X2, X1_P, X2_P )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( i ) &
+    !$ACC PRESENT( UnpackIndex, X1, X2, X1_P, X2_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(3) &
-      !$OMP PRIVATE( i )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
       DO j = 1, SIZE(X1,2)
@@ -663,15 +706,15 @@ CONTAINS
     IF ( nP < SIZE(X1,3) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-      !$OMP PRIVATE( i )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( i )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-      !$ACC PRIVATE( i ) &
-      !$ACC PRESENT( UnpackIndex, X1, X2, X3, X1_P, X2_P, X3_P )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( i ) &
+    !$ACC PRESENT( UnpackIndex, X1, X2, X3, X1_P, X2_P, X3_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(3) &
-      !$OMP PRIVATE( i )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
       DO j = 1, SIZE(X1,2)
@@ -706,15 +749,15 @@ CONTAINS
     IF ( nP < SIZE(X1,3) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-      !$OMP PRIVATE( i )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( i )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-      !$ACC PRIVATE( i ) &
-      !$ACC PRESENT( UnpackIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( i ) &
+    !$ACC PRESENT( UnpackIndex, X1, X2, X3, X4, X1_P, X2_P, X3_P, X4_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(3) &
-      !$OMP PRIVATE( i )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
       DO j = 1, SIZE(X1,2)
@@ -752,17 +795,17 @@ CONTAINS
     IF ( nP < SIZE(X1,3) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-      !$OMP PRIVATE( i )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( i )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-      !$ACC PRIVATE( i ) &
-      !$ACC PRESENT( UnpackIndex, &
-      !$ACC          X1, X2, X3, X4, X5, X6, X7, X8, &
-      !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( i ) &
+    !$ACC PRESENT( UnpackIndex, &
+    !$ACC          X1, X2, X3, X4, X5, X6, X7, X8, &
+    !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(3) &
-      !$OMP PRIVATE( i )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
       DO j = 1, SIZE(X1,2)
@@ -803,15 +846,15 @@ CONTAINS
     IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( i )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( i )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( i ) &
-      !$ACC PRESENT( UnpackIndex, X1, X1_P )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( i ) &
+    !$ACC PRESENT( UnpackIndex, X1, X1_P )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(2) &
-      !$OMP PRIVATE( i )
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( i )
 #endif
       DO iPack = 1, nP
       DO j = 1, SIZE(X1,1)
@@ -883,15 +926,15 @@ CONTAINS
     IF ( nP < SIZE(X1,1) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iPack )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( iPack )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( iPack ) &
-      !$ACC PRESENT( PackIndex, X1_P, X1 )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( iPack ) &
+    !$ACC PRESENT( PackIndex, X1_P, X1 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO &
-      !$OMP PRIVATE( iPack )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,1)
       IF ( MASK(i) ) THEN
@@ -923,15 +966,15 @@ CONTAINS
     IF ( nP < SIZE(X1,1) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iPack )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( iPack )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( iPack ) &
-      !$ACC PRESENT( PackIndex, X1_P, X2_P, X1, X2 )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( iPack ) &
+    !$ACC PRESENT( PackIndex, X1_P, X2_P, X1, X2 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO &
-      !$OMP PRIVATE( iPack )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,1)
       IF ( MASK(i) ) THEN
@@ -964,15 +1007,15 @@ CONTAINS
     IF ( nP < SIZE(X1,1) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iPack )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( iPack )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( iPack ) &
-      !$ACC PRESENT( PackIndex, X1_P, X2_P, X3_P, X1, X2, X3 )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( iPack ) &
+    !$ACC PRESENT( PackIndex, X1_P, X2_P, X3_P, X1, X2, X3 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO &
-      !$OMP PRIVATE( iPack )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,1)
       IF ( MASK(i) ) THEN
@@ -1006,15 +1049,15 @@ CONTAINS
     IF ( nP < SIZE(X1,1) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iPack )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( iPack )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( iPack ) &
-      !$ACC PRESENT( PackIndex, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( iPack ) &
+    !$ACC PRESENT( PackIndex, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO &
-      !$OMP PRIVATE( iPack )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,1)
       IF ( MASK(i) ) THEN
@@ -1034,6 +1077,50 @@ CONTAINS
 
   END SUBROUTINE ArrayUnpack1D_4
 
+  SUBROUTINE ArrayUnpack1D_5 &
+    ( nP, MASK, PackIndex, X1_P, X2_P, X3_P, X4_P, X5_P, X1, X2, X3, X4, X5 )
+
+    INTEGER,                 INTENT(in)    :: nP
+    LOGICAL,  DIMENSION(1:), INTENT(in)    :: MASK
+    INTEGER,  DIMENSION(1:), INTENT(in)    :: PackIndex
+    REAL(DP), DIMENSION(1:), INTENT(in)    :: X1_P, X2_P, X3_P, X4_P, X5_P
+    REAL(DP), DIMENSION(1:), INTENT(inout) :: X1, X2, X3, X4, X5
+
+    INTEGER  :: i, iPack
+
+    IF ( nP < SIZE(X1,1) ) THEN
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( iPack )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( iPack ) &
+    !$ACC PRESENT( PackIndex, X1_P, X2_P, X3_P, X4_P, X5_P, &
+    !$ACC          X1, X2, X3, X4, X5 )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( iPack )
+#endif
+      DO i = 1, SIZE(X1,1)
+      IF ( MASK(i) ) THEN
+        iPack = PackIndex(i)
+        X1(i) = X1_P(iPack)
+        X2(i) = X2_P(iPack)
+        X3(i) = X3_P(iPack)
+        X4(i) = X4_P(iPack)
+        X5(i) = X5_P(iPack)
+      END IF
+      END DO
+
+    ELSE
+
+      CALL ArrayCopy( X1_P, X2_P, X3_P, X4_P, X5_P, X1, X2, X3, X4, X5 )
+
+    END IF
+
+  END SUBROUTINE ArrayUnpack1D_5
+
 
   SUBROUTINE ArrayUnpack1D_8 &
     ( nP, MASK, PackIndex, &
@@ -1051,17 +1138,17 @@ CONTAINS
     IF ( nP < SIZE(X1,1) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-      !$OMP PRIVATE( iPack )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( iPack )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR &
-      !$ACC PRIVATE( iPack ) &
-      !$ACC PRESENT( PackIndex, &
-      !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
-      !$ACC          X1, X2, X3, X4, X5, X6, X7, X8 )
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( iPack ) &
+    !$ACC PRESENT( PackIndex, &
+    !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
+    !$ACC          X1, X2, X3, X4, X5, X6, X7, X8 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO &
-      !$OMP PRIVATE( iPack )
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,1)
       IF ( MASK(i) ) THEN
@@ -1102,15 +1189,15 @@ CONTAINS
     IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( iPack )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( iPack )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( iPack ) &
-      !$ACC PRESENT( PackIndex, X1_P, X1 )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( iPack ) &
+    !$ACC PRESENT( PackIndex, X1_P, X1 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(2) &
-      !$OMP PRIVATE( iPack )
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,2)
       DO j = 1, SIZE(X1,1)
@@ -1144,15 +1231,15 @@ CONTAINS
     IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( iPack )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( iPack )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( iPack ) &
-      !$ACC PRESENT( PackIndex, X1_P, X2_P, X1, X2 )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( iPack ) &
+    !$ACC PRESENT( PackIndex, X1_P, X2_P, X1, X2 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(2) &
-      !$OMP PRIVATE( iPack )
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,2)
       DO j = 1, SIZE(X1,1)
@@ -1187,15 +1274,15 @@ CONTAINS
     IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( iPack )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( iPack )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( iPack ) &
-      !$ACC PRESENT( PackIndex, X1_P, X2_P, X3_P, X1, X2, X3 )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( iPack ) &
+    !$ACC PRESENT( PackIndex, X1_P, X2_P, X3_P, X1, X2, X3 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(2) &
-      !$OMP PRIVATE( iPack )
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,2)
       DO j = 1, SIZE(X1,1)
@@ -1231,15 +1318,15 @@ CONTAINS
     IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( iPack )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( iPack )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( iPack ) &
-      !$ACC PRESENT( PackIndex, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( iPack ) &
+    !$ACC PRESENT( PackIndex, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(2) &
-      !$OMP PRIVATE( iPack )
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,2)
       DO j = 1, SIZE(X1,1)
@@ -1278,17 +1365,17 @@ CONTAINS
     IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( iPack )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( iPack )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( iPack ) &
-      !$ACC PRESENT( PackIndex, &
-      !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
-      !$ACC          X1, X2, X3, X4, X5, X6, X7, X8 )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( iPack ) &
+    !$ACC PRESENT( PackIndex, &
+    !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
+    !$ACC          X1, X2, X3, X4, X5, X6, X7, X8 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(2) &
-      !$OMP PRIVATE( iPack )
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,2)
       DO j = 1, SIZE(X1,1)
@@ -1331,15 +1418,15 @@ CONTAINS
     IF ( nP < SIZE(X1,3) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-      !$OMP PRIVATE( iPack )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( iPack )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-      !$ACC PRIVATE( iPack ) &
-      !$ACC PRESENT( PackIndex, X1_P, X1 )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( iPack ) &
+    !$ACC PRESENT( PackIndex, X1_P, X1 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(3) &
-      !$OMP PRIVATE( iPack )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,3)
       DO j = 1, SIZE(X1,2)
@@ -1375,15 +1462,15 @@ CONTAINS
     IF ( nP < SIZE(X1,3) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-      !$OMP PRIVATE( iPack )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( iPack )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-      !$ACC PRIVATE( iPack ) &
-      !$ACC PRESENT( PackIndex, X1_P, X2_P, X1, X2 )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( iPack ) &
+    !$ACC PRESENT( PackIndex, X1_P, X2_P, X1, X2 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(3) &
-      !$OMP PRIVATE( iPack )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,3)
       DO j = 1, SIZE(X1,2)
@@ -1420,15 +1507,15 @@ CONTAINS
     IF ( nP < SIZE(X1,3) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-      !$OMP PRIVATE( iPack )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( iPack )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-      !$ACC PRIVATE( iPack ) &
-      !$ACC PRESENT( PackIndex, X1_P, X2_P, X3_P, X1, X2, X3 )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( iPack ) &
+    !$ACC PRESENT( PackIndex, X1_P, X2_P, X3_P, X1, X2, X3 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(3) &
-      !$OMP PRIVATE( iPack )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,3)
       DO j = 1, SIZE(X1,2)
@@ -1466,15 +1553,15 @@ CONTAINS
     IF ( nP < SIZE(X1,3) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-      !$OMP PRIVATE( iPack )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( iPack )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-      !$ACC PRIVATE( iPack ) &
-      !$ACC PRESENT( PackIndex, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( iPack ) &
+    !$ACC PRESENT( PackIndex, X1_P, X2_P, X3_P, X4_P, X1, X2, X3, X4 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(3) &
-      !$OMP PRIVATE( iPack )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,3)
       DO j = 1, SIZE(X1,2)
@@ -1515,17 +1602,17 @@ CONTAINS
     IF ( nP < SIZE(X1,3) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-      !$OMP PRIVATE( iPack )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( iPack )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-      !$ACC PRIVATE( iPack ) &
-      !$ACC PRESENT( PackIndex, &
-      !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
-      !$ACC          X1, X2, X3, X4, X5, X6, X7, X8 )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( iPack ) &
+    !$ACC PRESENT( PackIndex, &
+    !$ACC          X1_P, X2_P, X3_P, X4_P, X5_P, X6_P, X7_P, X8_P, &
+    !$ACC          X1, X2, X3, X4, X5, X6, X7, X8 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(3) &
-      !$OMP PRIVATE( iPack )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,3)
       DO j = 1, SIZE(X1,2)
@@ -1570,15 +1657,15 @@ CONTAINS
     IF ( nP < SIZE(X1,2) ) THEN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-      !$OMP PRIVATE( iPack )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( iPack )
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-      !$ACC PRIVATE( iPack ) &
-      !$ACC PRESENT( PackIndex, X1_P, X1 )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( iPack ) &
+    !$ACC PRESENT( PackIndex, X1_P, X1 )
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(2) &
-      !$OMP PRIVATE( iPack )
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( iPack )
 #endif
       DO i = 1, SIZE(X1,2)
       DO j = 1, SIZE(X1,1)
