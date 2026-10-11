@@ -45,6 +45,26 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--r-max-km", type=float, default=200.0)
     parser.add_argument("--inner-r-max-km", type=float, default=25.0)
     parser.add_argument(
+        "--standard-stem",
+        default="standard_no_projection",
+        help="diagnostic stem for the standard-LLF run",
+    )
+    parser.add_argument(
+        "--source-aware-stem",
+        default="source_aware_no_projection",
+        help="diagnostic stem for the source-aware-LLF run",
+    )
+    parser.add_argument(
+        "--standard-label",
+        default="standard LLF",
+        help="legend label for the standard-LLF run",
+    )
+    parser.add_argument(
+        "--source-aware-label",
+        default="source-aware AP LLF",
+        help="legend label for the source-aware-LLF run",
+    )
+    parser.add_argument(
         "--output-prefix",
         type=Path,
         default=None,
@@ -761,8 +781,8 @@ def write_summary(
 def main() -> None:
     args = parse_args()
     directory = args.directory.expanduser().resolve()
-    standard_prefix = diagnostic_prefix(directory, "standard_no_projection")
-    ap_prefix = diagnostic_prefix(directory, "source_aware_no_projection")
+    standard_prefix = diagnostic_prefix(directory, args.standard_stem)
+    ap_prefix = diagnostic_prefix(directory, args.source_aware_stem)
     standard_elements = Path(
         str(standard_prefix) + ".exchange_attribution.elements"
     )
@@ -779,7 +799,7 @@ def main() -> None:
     runs = (
         load_run(
             standard_prefix,
-            "standard LLF",
+            args.standard_label,
             "#202020",
             cycle,
             r_max_cm,
@@ -787,7 +807,7 @@ def main() -> None:
         ),
         load_run(
             ap_prefix,
-            "source-aware AP LLF",
+            args.source_aware_label,
             "#0072B2",
             cycle,
             r_max_cm,

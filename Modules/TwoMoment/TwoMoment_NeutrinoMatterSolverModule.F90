@@ -96,7 +96,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     ComputeNeutrinoOpacityRates_LinearCorrections_Brem, &
     SetOpacityMask, &
     iM0, iM1, &
-    nOp, iOp_EmAb, iOp_ECTable, iOp_Iso, &
+    nOp, iOp_EmAb_Electron, iOp_EmAb_Muon, &
+    iOp_ECTable, iOp_Iso, &
     iOp_NNS, iOp_NES, iOp_Pair, iOp_NuPair, iOp_Brem
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeEddingtonTensorComponents_dd, &
@@ -112,6 +113,16 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   PUBLIC :: FinalizeNeutrinoMatterSolver
   PUBLIC :: InitializeNeutrinoMatterSolverParameters
   PUBLIC :: SolveNeutrinoMatterCoupling_FP_Nested_AA
+
+  ! Matter collision RHS quantities used by the shared limiter accounting.
+  INTEGER, PARAMETER :: iQ_L  = 1
+  INTEGER, PARAMETER :: iQ_E  = 2
+  INTEGER, PARAMETER :: iQ_H  = 3
+  INTEGER, PARAMETER :: iQ_M1 = 4
+  INTEGER, PARAMETER :: iQ_M2 = 5
+  INTEGER, PARAMETER :: iQ_M3 = 6
+  INTEGER, PARAMETER :: nQ    = 6
+
 #if defined( TWOMOMENT_ORDER_V )
   PUBLIC :: ComputeOpacities_Packed
   PUBLIC :: ComputeRates_Packed
@@ -133,15 +144,6 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   PUBLIC :: nC
   PUBLIC :: iC_EmAb, iC_Iso, iC_NNS, iC_NES
   PUBLIC :: iC_Pair, iC_NuPair, iC_Brem
-
-  ! Matter collision RHS quantities.
-  INTEGER, PARAMETER :: iQ_L  = 1
-  INTEGER, PARAMETER :: iQ_E  = 2
-  INTEGER, PARAMETER :: iQ_H  = 3
-  INTEGER, PARAMETER :: iQ_M1 = 4
-  INTEGER, PARAMETER :: iQ_M2 = 5
-  INTEGER, PARAMETER :: iQ_M3 = 6
-  INTEGER, PARAMETER :: nQ    = 6
 
   INTEGER, PARAMETER :: iNNSRateDecomposition_NIn  = 1
   INTEGER, PARAMETER :: iNNSRateDecomposition_NOut = 2
@@ -309,6 +311,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: S_Sigma
 
   LOGICAL,  DIMENSION(:,:),   ALLOCATABLE, TARGET :: Opacity_Mask
+  LOGICAL,  DIMENSION(:,:),   ALLOCATABLE, TARGET :: MatterSource_Mask
 
   INTEGER :: LWORK_outer
   INTEGER :: LWORK_inner
@@ -584,6 +587,7 @@ CONTAINS
     END IF
 
     ALLOCATE(    Opacity_Mask(nOp,nX_G) )
+    ALLOCATE( MatterSource_Mask(nMatterEquations,nX_G) )
 
     ALLOCATE( Error_T(nX_G) )
 
@@ -728,7 +732,7 @@ CONTAINS
     !$OMP             Phi_NNS_0_T, Phi_NbNS_0_T, &
     !$OMP             H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$OMP             Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T, &
-    !$OMP             Opacity_Mask, Opacity_Mask_T )
+    !$OMP             Opacity_Mask, Opacity_Mask_T, MatterSource_Mask )
 #elif defined(THORNADO_OACC  )
     !$ACC ENTER DATA &
     !$ACC COPYIN( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, wMatrRHS ) &
@@ -777,7 +781,7 @@ CONTAINS
     !$ACC         Phi_NNS_0_T, Phi_NbNS_0_T, &
     !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$ACC         Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T, &
-    !$ACC         Opacity_Mask, Opacity_Mask_T )
+    !$ACC         Opacity_Mask, Opacity_Mask_T, MatterSource_Mask )
 #endif
 
     IF ( UseFirstMomentRates ) THEN
@@ -1379,7 +1383,7 @@ CONTAINS
     !$OMP               Phi_NNS_0_T, Phi_NbNS_0_T, &
     !$OMP               H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$OMP               Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T, &
-    !$OMP               Opacity_Mask, Opacity_Mask_T )
+    !$OMP               Opacity_Mask, Opacity_Mask_T, MatterSource_Mask )
 #elif defined(THORNADO_OACC  )
     !$ACC EXIT DATA &
     !$ACC DELETE( E_N, W2_N, W3_N, W2_S, W3_S, FourPiEp2, wMatrRHS, &
@@ -1428,7 +1432,7 @@ CONTAINS
     !$ACC         Phi_NNS_0_T, Phi_NbNS_0_T, &
     !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$ACC         Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T, &
-    !$ACC         Opacity_Mask, Opacity_Mask_T )
+    !$ACC         Opacity_Mask, Opacity_Mask_T, MatterSource_Mask )
 #endif
 
     IF ( UseFirstMomentRates ) THEN
@@ -1573,7 +1577,7 @@ CONTAINS
       DEALLOCATE( L_Brem_Pro_u_1_T, L_Brem_Pro_u_2_T, L_Brem_Pro_u_3_T )
       DEALLOCATE( L_Brem_Ann_u_1_T, L_Brem_Ann_u_2_T, L_Brem_Ann_u_3_T )
     END IF
-    DEALLOCATE( Opacity_Mask, Opacity_Mask_T )
+    DEALLOCATE( Opacity_Mask, Opacity_Mask_T, MatterSource_Mask )
 
   END SUBROUTINE FinalizeNeutrinoMatterSolver
 
@@ -1635,8 +1639,12 @@ CONTAINS
     CALL SetOpacityMask( nX_G, nDOFX, D, T, Ye, Ym, Opacity_Mask )
 
     PatchHasCollisions &
-      =     ANY( Opacity_Mask(iOp_EmAb,   :) ) &
-        .OR. ANY( Opacity_Mask(iOp_ECTable,:) ) &
+      =     ( nSpecies >= iNuE_Bar .AND. &
+              ANY( Opacity_Mask(iOp_EmAb_Electron,:) ) ) &
+        .OR. ( nSpecies >= iNuM_Bar .AND. &
+              ANY( Opacity_Mask(iOp_EmAb_Muon,:) ) ) &
+        .OR. ( nSpecies >= iNuE_Bar .AND. &
+              ANY( Opacity_Mask(iOp_ECTable,:) ) ) &
         .OR. ANY( Opacity_Mask(iOp_Iso,    :) ) &
         .OR. ( Include_NNS    .AND. ANY( Opacity_Mask(iOp_NNS,   :) ) ) &
         .OR. ( Include_NES    .AND. ANY( Opacity_Mask(iOp_NES,   :) ) ) &
@@ -2154,6 +2162,9 @@ CONTAINS
     CALL SetOpacityMask &
          ( nX_G, nDOFX, D, T, Ye, Ym, Opacity_Mask )
 
+    CALL SetMatterSourceMask &
+         ( Opacity_Mask, MatterSource_Mask )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE FROM( Opacity_Mask )
 #elif defined(THORNADO_OACC)
@@ -2172,15 +2183,7 @@ CONTAINS
 #endif
       DO iN_X = 1, nX_G
 
-        ITERATE_outer(iN_X) = &
-            Opacity_Mask(iOp_EmAb,   iN_X) .OR. &
-            Opacity_Mask(iOp_ECTable,iN_X) .OR. &
-            Opacity_Mask(iOp_Iso,    iN_X) .OR. &
-            ( Include_NNS    .AND. Opacity_Mask(iOp_NNS,   iN_X) ) .OR. &
-            ( Include_NES    .AND. Opacity_Mask(iOp_NES,   iN_X) ) .OR. &
-            ( Include_Pair   .AND. Opacity_Mask(iOp_Pair,  iN_X) ) .OR. &
-            ( Include_NuPair .AND. Opacity_Mask(iOp_NuPair,iN_X) ) .OR. &
-            ( Include_Brem   .AND. Opacity_Mask(iOp_Brem,  iN_X) )
+        ITERATE_outer(iN_X) = MatterSource_Mask(iEf,iN_X)
 
         MatterCoupling_Mask_Option(iN_X) = ITERATE_outer(iN_X)
 
@@ -2197,15 +2200,7 @@ CONTAINS
 #endif
       DO iN_X = 1, nX_G
 
-        ITERATE_outer(iN_X) = &
-            Opacity_Mask(iOp_EmAb,   iN_X) .OR. &
-            Opacity_Mask(iOp_ECTable,iN_X) .OR. &
-            Opacity_Mask(iOp_Iso,    iN_X) .OR. &
-            ( Include_NNS    .AND. Opacity_Mask(iOp_NNS,   iN_X) ) .OR. &
-            ( Include_NES    .AND. Opacity_Mask(iOp_NES,   iN_X) ) .OR. &
-            ( Include_Pair   .AND. Opacity_Mask(iOp_Pair,  iN_X) ) .OR. &
-            ( Include_NuPair .AND. Opacity_Mask(iOp_NuPair,iN_X) ) .OR. &
-            ( Include_Brem   .AND. Opacity_Mask(iOp_Brem,  iN_X) )
+        ITERATE_outer(iN_X) = MatterSource_Mask(iEf,iN_X)
 
       END DO
 
@@ -3143,6 +3138,133 @@ CONTAINS
   END SUBROUTINE SolveNeutrinoMatterCoupling_FP_Nested_AA
 
 
+  SUBROUTINE SetMatterSourceMask &
+    ( OpacityMask, MatterSourceMask )
+
+    LOGICAL,  INTENT(in)  :: OpacityMask(:,:)
+    LOGICAL,  INTENT(out) :: MatterSourceMask(:,:)
+
+    INTEGER :: iN_X, iNodeX, iX
+    LOGICAL :: CollisionActive
+    LOGICAL :: ElectronEmAbActive, ElectronLeptonActive
+    LOGICAL :: MuonEmAbActive
+    LOGICAL :: UseNNS, UseNES, UsePair, UseNuPair, UseBrem
+
+    UseNNS    = Include_NNS
+    UseNES    = Include_NES
+    UsePair   = Include_Pair
+    UseNuPair = Include_NuPair
+    UseBrem   = Include_Brem
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO &
+    !$OMP FIRSTPRIVATE( UseNNS, UseNES, UsePair, UseNuPair, UseBrem ) &
+    !$OMP PRIVATE( iN_X, iNodeX, CollisionActive, ElectronEmAbActive, &
+    !$OMP          ElectronLeptonActive, MuonEmAbActive )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG &
+    !$ACC FIRSTPRIVATE( UseNNS, UseNES, UsePair, UseNuPair, UseBrem ) &
+    !$ACC PRIVATE( iN_X, iNodeX, CollisionActive, ElectronEmAbActive, &
+    !$ACC          ElectronLeptonActive, MuonEmAbActive )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO &
+    !$OMP FIRSTPRIVATE( UseNNS, UseNES, UsePair, UseNuPair, UseBrem ) &
+    !$OMP PRIVATE( iN_X, iNodeX, CollisionActive, ElectronEmAbActive, &
+    !$OMP          ElectronLeptonActive, MuonEmAbActive )
+#endif
+    DO iX = 1, nX_G / nDOFX
+
+      iN_X = 1 + ( iX - 1 ) * nDOFX
+
+      ElectronEmAbActive = nSpecies >= iNuE_Bar .AND. &
+        OpacityMask(iOp_EmAb_Electron,iN_X)
+      MuonEmAbActive = nSpecies >= iNuM_Bar .AND. &
+        OpacityMask(iOp_EmAb_Muon,iN_X)
+
+      ElectronLeptonActive = nSpecies >= iNuE_Bar .AND. &
+        ( ElectronEmAbActive .OR. OpacityMask(iOp_ECTable,iN_X) )
+
+      CollisionActive = &
+          ElectronLeptonActive .OR. &
+          MuonEmAbActive .OR. &
+          OpacityMask(iOp_Iso,    iN_X) .OR. &
+          ( UseNNS    .AND. OpacityMask(iOp_NNS,   iN_X) ) .OR. &
+          ( UseNES    .AND. OpacityMask(iOp_NES,   iN_X) ) .OR. &
+          ( UsePair   .AND. OpacityMask(iOp_Pair,  iN_X) ) .OR. &
+          ( UseNuPair .AND. OpacityMask(iOp_NuPair,iN_X) ) .OR. &
+          ( UseBrem   .AND. OpacityMask(iOp_Brem,  iN_X) )
+
+      DO iNodeX = 1, nDOFX
+        iN_X = iNodeX + ( iX - 1 ) * nDOFX
+
+#if defined( TWOMOMENT_ORDER_1 )
+        MatterSourceMask(iYe,iN_X) = ElectronLeptonActive
+        MatterSourceMask(iYm,iN_X) = MuonEmAbActive
+        MatterSourceMask(iEf,iN_X) = CollisionActive
+#elif defined( TWOMOMENT_ORDER_V )
+        MatterSourceMask(iYe,iN_X) = ElectronLeptonActive
+        MatterSourceMask(iYm,iN_X) = MuonEmAbActive
+        MatterSourceMask(iEf,iN_X) = CollisionActive
+        MatterSourceMask(iV1,iN_X) = CollisionActive
+        MatterSourceMask(iV2,iN_X) = CollisionActive
+        MatterSourceMask(iV3,iN_X) = CollisionActive
+#elif defined( TWOMOMENT_RELATIVISTIC )
+        MatterSourceMask(iD ,iN_X) = CollisionActive
+        MatterSourceMask(iYe,iN_X) = ElectronLeptonActive
+        MatterSourceMask(iYm,iN_X) = MuonEmAbActive
+        MatterSourceMask(iEf,iN_X) = CollisionActive
+        MatterSourceMask(iV1,iN_X) = CollisionActive
+        MatterSourceMask(iV2,iN_X) = CollisionActive
+        MatterSourceMask(iV3,iN_X) = CollisionActive
+#endif
+      END DO
+
+    END DO
+
+  END SUBROUTINE SetMatterSourceMask
+
+
+  REAL(DP) FUNCTION MatterSourceWeight( iEquation, iN_X )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    INTEGER, INTENT(in) :: iEquation, iN_X
+
+    IF( MatterSource_Mask(iEquation,iN_X) )THEN
+      MatterSourceWeight = wMatrRHS(iEquation)
+    ELSE
+      MatterSourceWeight = Zero
+    END IF
+
+  END FUNCTION MatterSourceWeight
+
+
+  LOGICAL FUNCTION LeptonFamilyCouplesToMatter( iFamily, iN_X )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    INTEGER, INTENT(in) :: iFamily, iN_X
+
+    SELECT CASE( iFamily )
+      CASE( 1 )
+        LeptonFamilyCouplesToMatter = &
+          MatterSource_Mask(iYe,iN_X) .AND. wMatrRHS(iYe) /= Zero
+      CASE( 2 )
+        LeptonFamilyCouplesToMatter = &
+          MatterSource_Mask(iYm,iN_X) .AND. wMatrRHS(iYm) /= Zero
+      CASE DEFAULT
+        LeptonFamilyCouplesToMatter = .FALSE.
+    END SELECT
+
+  END FUNCTION LeptonFamilyCouplesToMatter
+
+
 #if defined( TWOMOMENT_ORDER_V )
   SUBROUTINE InitializeRadiationLeptonInvariants_OrderV &
     ( MASK, Nnu, RadiationLeptonInvariant )
@@ -3223,7 +3345,9 @@ CONTAINS
       ViolationMask(iN_X) = .FALSE.
       IF( .NOT. MASK(iN_X) ) CYCLE
 
-      DO iFamily = 3, MIN( nLeptonFamilies, ( nSpecies + 1 ) / 2 )
+      DO iFamily = 1, MIN( nLeptonFamilies, ( nSpecies + 1 ) / 2 )
+
+        IF( LeptonFamilyCouplesToMatter( iFamily, iN_X ) ) CYCLE
 
         Current = Zero
         LeptonScale = Zero
@@ -3303,9 +3427,10 @@ CONTAINS
     !$OMP          vDotI, vDotI_End )
 #endif
     DO iN_X = 1, nX_G
-    DO iFamily = 3, MIN( nLeptonFamilies, ( nSpecies + 1 ) / 2 )
+    DO iFamily = 1, MIN( nLeptonFamilies, ( nSpecies + 1 ) / 2 )
 
       IF( .NOT. MASK(iN_X) ) CYCLE
+      IF( LeptonFamilyCouplesToMatter( iFamily, iN_X ) ) CYCLE
 
       DO k = 1, MaxInvariantCorrections
 
@@ -3842,6 +3967,7 @@ CONTAINS
     REAL(DP) :: SUM_Ye, SUM_Ym, SUM_Ef
     REAL(DP) :: U_Ye_New, U_Ym_New, U_Ef_New
     REAL(DP) :: U_V1_New, U_V2_New, U_V3_New
+    REAL(DP) :: wYe, wYm, wEf, wV1, wV2, wV3
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE &
@@ -3855,7 +3981,8 @@ CONTAINS
     !$OMP          SUM_P1_Old, SUM_P2_Old, SUM_P3_Old, &
     !$OMP          SUM_Ye, SUM_Ym, SUM_Ef, &
     !$OMP          U_Ye_New, U_Ym_New, U_Ef_New, &
-    !$OMP          U_V1_New, U_V2_New, U_V3_New )
+    !$OMP          U_V1_New, U_V2_New, U_V3_New, &
+    !$OMP          wYe, wYm, wEf, wV1, wV2, wV3 )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG &
     !$ACC PRIVATE( A, B, VHat, SolveInfo, Ef, SqrtG1, SqrtG2, SqrtG3, &
@@ -3868,7 +3995,8 @@ CONTAINS
     !$ACC          SUM_P1_Old, SUM_P2_Old, SUM_P3_Old, &
     !$ACC          SUM_Ye, SUM_Ym, SUM_Ef, &
     !$ACC          U_Ye_New, U_Ym_New, U_Ef_New, &
-    !$ACC          U_V1_New, U_V2_New, U_V3_New )
+    !$ACC          U_V1_New, U_V2_New, U_V3_New, &
+    !$ACC          wYe, wYm, wEf, wV1, wV2, wV3 )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( A, B, VHat, SolveInfo, Ef, SqrtG1, SqrtG2, SqrtG3, &
@@ -3883,7 +4011,8 @@ CONTAINS
     !$OMP          SUM_P1_Old, SUM_P2_Old, SUM_P3_Old, &
     !$OMP          SUM_Ye, SUM_Ym, SUM_Ef, &
     !$OMP          U_Ye_New, U_Ym_New, U_Ef_New, &
-    !$OMP          U_V1_New, U_V2_New, U_V3_New )
+    !$OMP          U_V1_New, U_V2_New, U_V3_New, &
+    !$OMP          wYe, wYm, wEf, wV1, wV2, wV3 )
 #endif
     DO iN_X = 1, nX_G
 
@@ -3891,6 +4020,13 @@ CONTAINS
 
       Error(iN_X) = 0
       INFO(iN_X) = 0
+
+      wYe = MatterSourceWeight( iYe, iN_X )
+      wYm = MatterSourceWeight( iYm, iN_X )
+      wEf = MatterSourceWeight( iEf, iN_X )
+      wV1 = MatterSourceWeight( iV1, iN_X )
+      wV2 = MatterSourceWeight( iV2, iN_X )
+      wV3 = MatterSourceWeight( iV3, iN_X )
 
       SqrtG1 = SQRT( Gm_dd_11(iN_X) )
       SqrtG2 = SQRT( Gm_dd_22(iN_X) )
@@ -4019,31 +4155,31 @@ CONTAINS
       END DO
 
       A = Zero
-      A(1,1) = One + wMatrRHS(iV1) &
+      A(1,1) = One + wV1 &
         * ( SUM_D + SUM_K11 ) / D(iN_X)
-      A(1,2) = wMatrRHS(iV1) * SUM_K12 / D(iN_X)
-      A(1,3) = wMatrRHS(iV1) * SUM_K13 / D(iN_X)
-      A(2,1) = wMatrRHS(iV2) * SUM_K12 / D(iN_X)
-      A(2,2) = One + wMatrRHS(iV2) &
+      A(1,2) = wV1 * SUM_K12 / D(iN_X)
+      A(1,3) = wV1 * SUM_K13 / D(iN_X)
+      A(2,1) = wV2 * SUM_K12 / D(iN_X)
+      A(2,2) = One + wV2 &
         * ( SUM_D + SUM_K22 ) / D(iN_X)
-      A(2,3) = wMatrRHS(iV2) * SUM_K23 / D(iN_X)
-      A(3,1) = wMatrRHS(iV3) * SUM_K13 / D(iN_X)
-      A(3,2) = wMatrRHS(iV3) * SUM_K23 / D(iN_X)
-      A(3,3) = One + wMatrRHS(iV3) &
+      A(2,3) = wV2 * SUM_K23 / D(iN_X)
+      A(3,1) = wV3 * SUM_K13 / D(iN_X)
+      A(3,2) = wV3 * SUM_K23 / D(iN_X)
+      A(3,3) = One + wV3 &
         * ( SUM_D + SUM_K33 ) / D(iN_X)
 
       B(1) = SqrtG1 * V_u_1_old(iN_X) &
-        + wMatrRHS(iV1) / D(iN_X) &
+        + wV1 / D(iN_X) &
           * ( SUM_P1_Old &
               + RadiationLimiterCorrection(iV1,iN_X) / SqrtG1 &
               - SUM_I1 )
       B(2) = SqrtG2 * V_u_2_old(iN_X) &
-        + wMatrRHS(iV2) / D(iN_X) &
+        + wV2 / D(iN_X) &
           * ( SUM_P2_Old &
               + RadiationLimiterCorrection(iV2,iN_X) / SqrtG2 &
               - SUM_I2 )
       B(3) = SqrtG3 * V_u_3_old(iN_X) &
-        + wMatrRHS(iV3) / D(iN_X) &
+        + wV3 / D(iN_X) &
           * ( SUM_P3_Old &
               + RadiationLimiterCorrection(iV3,iN_X) / SqrtG3 &
               - SUM_I3 )
@@ -4081,14 +4217,14 @@ CONTAINS
             + VHat(3) * SUM_I3 )
 
       Ye(iN_X) = Ye_old(iN_X) + AtomicMassUnit / D(iN_X) &
-        * wMatrRHS(iYe) &
+        * wYe &
         * (   SUM_Le_Old + RadiationLimiterCorrection(iYe,iN_X) &
             - SUM_Ye )
       Ym(iN_X) = Ym_old(iN_X) + AtomicMassUnit / D(iN_X) &
-        * wMatrRHS(iYm) &
+        * wYm &
         * (   SUM_Lm_Old + RadiationLimiterCorrection(iYm,iN_X) &
             - SUM_Ym )
-      Ef = Ef_old(iN_X) + wMatrRHS(iEf) / D(iN_X) &
+      Ef = Ef_old(iN_X) + wEf / D(iN_X) &
         * (   SUM_Ef_Old + RadiationLimiterCorrection(iEf,iN_X) &
             - SUM_Ef )
 
@@ -5135,7 +5271,8 @@ CONTAINS
 
     CALL ComputeNeutrinoOpacities_EC &
            ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Ye_P, Ym_P, &
-             Dnu_0_P, Chi_EmAb_P, T_old = T0_P, Ye_old = Ye0_P, &
+             Dnu_0_P, Chi_EmAb_P, Opacity_Mask_P, &
+             T_old = T0_P, Ye_old = Ye0_P, &
              Ym_old = Ym0_P )
 
     !Chi_EmAb_P = Zero
@@ -6145,18 +6282,23 @@ CONTAINS
 
     INTEGER  :: iN_E, iN_X, iS
     REAL(DP) :: SUM_Ye, SUM_Ym, SUM_Ef
+    REAL(DP) :: wYe, wYm, wEf
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE &
-    !$OMP PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef )
+    !$OMP PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef, wYe, wYm, wEf )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG &
-    !$ACC PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef )
+    !$ACC PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef, wYe, wYm, wEf )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef )
+    !$OMP PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef, wYe, wYm, wEf )
 #endif
     DO iN_X = 1, nX_G
+
+      wYe = MatterSourceWeight( iYe, iN_X )
+      wYm = MatterSourceWeight( iYm, iN_X )
+      wEf = MatterSourceWeight( iEf, iN_X )
 
       ! --- Store Initial Matter State ---
 
@@ -6214,9 +6356,9 @@ CONTAINS
 
       ! --- Include Old Matter State in Constant (C) Terms ---
 
-      C_Ye(iN_X) = U_Ye(iN_X) + wMatrRHS(iYe) * SUM_Ye * S_Ye(iN_X)
-      C_Ym(iN_X) = U_Ym(iN_X) + wMatrRHS(iYm) * SUM_Ym * S_Ym(iN_X)
-      C_Ef(iN_X) = U_Ef(iN_X) + wMatrRHS(iEf) * SUM_Ef * S_Ef(iN_X)
+      C_Ye(iN_X) = U_Ye(iN_X) + wYe * SUM_Ye * S_Ye(iN_X)
+      C_Ym(iN_X) = U_Ym(iN_X) + wYm * SUM_Ym * S_Ym(iN_X)
+      C_Ef(iN_X) = U_Ef(iN_X) + wEf * SUM_Ef * S_Ef(iN_X)
 
     END DO
 
@@ -6242,24 +6384,35 @@ CONTAINS
     REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
     REAL(DP) :: Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3
     REAL(DP) :: SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3
+    REAL(DP) :: wYe, wYm, wEf, wV1, wV2, wV3
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE &
     !$OMP PRIVATE( vDotV, SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
-    !$OMP          V_d_1, V_d_2, V_d_3, Ef )
+    !$OMP          V_d_1, V_d_2, V_d_3, Ef, &
+    !$OMP          wYe, wYm, wEf, wV1, wV2, wV3 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG &
     !$ACC PRIVATE( vDotV, SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
-    !$ACC          V_d_1, V_d_2, V_d_3, Ef )
+    !$ACC          V_d_1, V_d_2, V_d_3, Ef, &
+    !$ACC          wYe, wYm, wEf, wV1, wV2, wV3 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( vDotV, SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
     !$OMP          V_d_1, V_d_2, V_d_3, Ef, &
+    !$OMP          wYe, wYm, wEf, wV1, wV2, wV3, &
     !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$OMP          Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3, &
     !$OMP          vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
 #endif
     DO iN_X = 1, nX_G
+
+      wYe = MatterSourceWeight( iYe, iN_X )
+      wYm = MatterSourceWeight( iYm, iN_X )
+      wEf = MatterSourceWeight( iEf, iN_X )
+      wV1 = MatterSourceWeight( iV1, iN_X )
+      wV2 = MatterSourceWeight( iV2, iN_X )
+      wV3 = MatterSourceWeight( iV3, iN_X )
 
       SqrtGm(iN_X) = SQRT( Gm_dd_11(iN_X) * Gm_dd_22(iN_X) * Gm_dd_33(iN_X) )
 
@@ -6427,19 +6580,19 @@ CONTAINS
       ! --- Store the Old Radiation Contribution to Each Conserved Total ---
       ! --- Include the radiation removed by the occupation-number bound. ---
 
-      C_Ye(iN_X) = wMatrRHS(iYe) &
+      C_Ye(iN_X) = wYe &
         * ( SUM_Ye + RadiationLimiterCorrection(iYe,iN_X) ) * S_Ye(iN_X)
-      C_Ym(iN_X) = wMatrRHS(iYm) &
+      C_Ym(iN_X) = wYm &
         * ( SUM_Ym + RadiationLimiterCorrection(iYm,iN_X) ) * S_Ym(iN_X)
-      C_Ef(iN_X) = wMatrRHS(iEf) &
+      C_Ef(iN_X) = wEf &
         * ( SUM_Ef + RadiationLimiterCorrection(iEf,iN_X) ) * S_Ef(iN_X)
-      C_V_d_1(iN_X) = wMatrRHS(iV1) &
+      C_V_d_1(iN_X) = wV1 &
         * ( SUM_V1 + RadiationLimiterCorrection(iV1,iN_X) ) &
         * S_V_d_1(iN_X)
-      C_V_d_2(iN_X) = wMatrRHS(iV2) &
+      C_V_d_2(iN_X) = wV2 &
         * ( SUM_V2 + RadiationLimiterCorrection(iV2,iN_X) ) &
         * S_V_d_2(iN_X)
-      C_V_d_3(iN_X) = wMatrRHS(iV3) &
+      C_V_d_3(iN_X) = wV3 &
         * ( SUM_V3 + RadiationLimiterCorrection(iV3,iN_X) ) &
         * S_V_d_3(iN_X)
 
@@ -6465,24 +6618,36 @@ CONTAINS
     REAL(DP) :: Inu_d_1, Inu_d_2, Inu_d_3
     REAL(DP) :: V_d_1, V_d_2, V_d_3
     REAL(DP) :: SUM_Ye, SUM_Ym, SUM_V1, SUM_V2, SUM_V3, SUM_Ef
+    REAL(DP) :: wD, wYe, wYm, wEf, wV1, wV2, wV3
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE &
     !$OMP PRIVATE( B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3, vDotV, W, SJ, Tau_f, &
-    !$OMP          SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
+    !$OMP          SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
+    !$OMP          wD, wYe, wYm, wEf, wV1, wV2, wV3 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG &
     !$ACC PRIVATE( B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3, vDotV, W, SJ, Tau_f, &
-    !$ACC          SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3 )
+    !$ACC          SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
+    !$ACC          wD, wYe, wYm, wEf, wV1, wV2, wV3 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( B_d_1, B_d_2, B_d_3, V_d_1, V_d_2, V_d_3, vDotV, W, SJ, Tau_f, &
     !$OMP          SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
+    !$OMP          wD, wYe, wYm, wEf, wV1, wV2, wV3, &
     !$OMP          DT, Inu_d_1, Inu_d_2, Inu_d_3, VDotInu, &
     !$OMP          k_dd, vDotK_d_1, vDotK_d_2, vDotK_d_3, vvDotK, &
     !$OMP          Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3 )
 #endif
     DO iN_X = 1, nX_G
+
+      wD  = MatterSourceWeight( iD,  iN_X )
+      wYe = MatterSourceWeight( iYe, iN_X )
+      wYm = MatterSourceWeight( iYm, iN_X )
+      wEf = MatterSourceWeight( iEf, iN_X )
+      wV1 = MatterSourceWeight( iV1, iN_X )
+      wV2 = MatterSourceWeight( iV2, iN_X )
+      wV3 = MatterSourceWeight( iV3, iN_X )
 
       B_d_1 = Gm_dd_11(iN_X) * Beta_u_1(iN_X)
       B_d_2 = Gm_dd_22(iN_X) * Beta_u_2(iN_X)
@@ -6673,7 +6838,7 @@ CONTAINS
       ! --- Include Old Matter State in Constant (C) Terms ---
 
 
-      IF ( wMatrRHS(iD) .EQ. 1.0_DP) THEN
+      IF ( wD .EQ. One ) THEN
         C_D    (iN_X) &
           = W * U_D(iN_X)
       ELSE  
@@ -6681,14 +6846,14 @@ CONTAINS
           = U_D(iN_X)
       END IF
 
-      IF ( wMatrRHS(iYe) .EQ. 1.0_DP) THEN
+      IF ( wYe .EQ. One ) THEN
         C_Ye    (iN_X) &
           = U_Ye(iN_X) + SUM_Ye * S_Ye(iN_X)
       ELSE
         C_Ye    (iN_X) &
           = U_Ye(iN_X)
       END IF
-      IF ( wMatrRHS(iYm) .EQ. 1.0_DP) THEN
+      IF ( wYm .EQ. One ) THEN
         C_Ym    (iN_X) &
           = U_Ym(iN_X) + SUM_Ym * S_Ym(iN_X)
       ELSE
@@ -6696,7 +6861,7 @@ CONTAINS
           = U_Ym(iN_X)
       END IF
        
-      IF ( wMatrRHS(iEF) .EQ. 1.0_DP) THEN
+      IF ( wEf .EQ. One ) THEN
         C_Ef   (iN_X) &
           = ( Tau_f + SUM_Ef ) * S_Ef  (iN_X) / cD_old(iN_X)
       ELSE
@@ -6704,7 +6869,7 @@ CONTAINS
           = U_Ef(iN_X)
       END IF
 
-      IF ( wMatrRHS(iV1) .EQ. 1.0_DP) THEN
+      IF ( wV1 .EQ. One ) THEN
         C_V_d_1(iN_X) &
           = ( SJ(1) + SUM_V1 ) * S_V_d_1(iN_X) / cD_old(iN_X)
       ELSE
@@ -6713,7 +6878,7 @@ CONTAINS
       END IF
 
 
-      IF ( wMatrRHS(iV2) .EQ. 1.0_DP) THEN
+      IF ( wV2 .EQ. One ) THEN
         C_V_d_2(iN_X) &
           = ( SJ(2) + SUM_V2 ) * S_V_d_2(iN_X) / cD_old(iN_X)
       ELSE
@@ -6722,7 +6887,7 @@ CONTAINS
       END IF
 
 
-      IF ( wMatrRHS(iV3) .EQ. 1.0_DP) THEN
+      IF ( wV3 .EQ. One ) THEN
         C_V_d_3(iN_X) &
           = ( SJ(3) + SUM_V3 ) * S_V_d_3(iN_X) / cD_old(iN_X)
       ELSE
@@ -7634,19 +7799,24 @@ CONTAINS
 
     INTEGER  :: iN_E, iN_X, iS
     REAL(DP) :: SUM_Ye, SUM_Ym, SUM_Ef
+    REAL(DP) :: wYe, wYm, wEf
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE &
-    !$OMP PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef )
+    !$OMP PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef, wYe, wYm, wEf )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG &
-    !$ACC PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef )
+    !$ACC PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef, wYe, wYm, wEf )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef )
+    !$OMP PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef, wYe, wYm, wEf )
 #endif
     DO iN_X = 1, nX_G
       IF ( MASK(iN_X) ) THEN
+
+        wYe = MatterSourceWeight( iYe, iN_X )
+        wYm = MatterSourceWeight( iYm, iN_X )
+        wEf = MatterSourceWeight( iEf, iN_X )
 
         SUM_Ye = Zero
         SUM_Ym = Zero
@@ -7674,9 +7844,9 @@ CONTAINS
         END DO
         END DO
 
-        G_Ye   (iN_X) = C_Ye(iN_X) - wMatrRHS(iYe) * SUM_Ye * S_Ye(iN_X)
-        G_Ym   (iN_X) = C_Ym(iN_X) - wMatrRHS(iYm) * SUM_Ym * S_Ym(iN_X)
-        G_Ef   (iN_X) = C_Ef(iN_X) - wMatrRHS(iEf) * SUM_Ef * S_Ef(iN_X)
+        G_Ye(iN_X) = C_Ye(iN_X) - wYe * SUM_Ye * S_Ye(iN_X)
+        G_Ym(iN_X) = C_Ym(iN_X) - wYm * SUM_Ym * S_Ym(iN_X)
+        G_Ef(iN_X) = C_Ef(iN_X) - wEf * SUM_Ef * S_Ef(iN_X)
 
         Gm(iYe,iN_X) = G_Ye(iN_X)
         Gm(iYm,iN_X) = G_Ym(iN_X)
@@ -7709,25 +7879,36 @@ CONTAINS
     REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
     REAL(DP) :: Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3
     REAL(DP) :: SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3
+    REAL(DP) :: wYe, wYm, wEf, wV1, wV2, wV3
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE &
     !$OMP PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
-    !$OMP          V_d_1, V_d_2, V_d_3 )
+    !$OMP          V_d_1, V_d_2, V_d_3, &
+    !$OMP          wYe, wYm, wEf, wV1, wV2, wV3 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG &
     !$ACC PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
-    !$ACC          V_d_1, V_d_2, V_d_3 )
+    !$ACC          V_d_1, V_d_2, V_d_3, &
+    !$ACC          wYe, wYm, wEf, wV1, wV2, wV3 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
     !$OMP          V_d_1, V_d_2, V_d_3, &
+    !$OMP          wYe, wYm, wEf, wV1, wV2, wV3, &
     !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$OMP          Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3, &
     !$OMP          vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3 )
 #endif
     DO iN_X = 1, nX_G
       IF ( MASK(iN_X) ) THEN
+
+        wYe = MatterSourceWeight( iYe, iN_X )
+        wYm = MatterSourceWeight( iYm, iN_X )
+        wEf = MatterSourceWeight( iEf, iN_X )
+        wV1 = MatterSourceWeight( iV1, iN_X )
+        wV2 = MatterSourceWeight( iV2, iN_X )
+        wV3 = MatterSourceWeight( iV3, iN_X )
 
         V_d_1 = Gm_dd_11(iN_X) * V_u_1(iN_X)
         V_d_2 = Gm_dd_22(iN_X) * V_u_2(iN_X)
@@ -7825,29 +8006,29 @@ CONTAINS
         ! state of order unity.
 
         Fm(iYe,iN_X) = C_Ye(iN_X) &
-          - wMatrRHS(iYe) * SUM_Ye * S_Ye(iN_X) &
+          - wYe * SUM_Ye * S_Ye(iN_X) &
           - ( U_Ye(iN_X) - One )
 
         Fm(iYm,iN_X) = C_Ym(iN_X) &
-          - wMatrRHS(iYm) * SUM_Ym * S_Ym(iN_X) &
+          - wYm * SUM_Ym * S_Ym(iN_X) &
           - ( U_Ym(iN_X) - Ym_old(iN_X) )
 
         Fm(iEf,iN_X) = C_Ef(iN_X) &
-          - wMatrRHS(iEf) * SUM_Ef * S_Ef(iN_X) &
+          - wEf * SUM_Ef * S_Ef(iN_X) &
           - ( U_Ef(iN_X) - One )
 
         Fm(iV1,iN_X) = C_V_d_1(iN_X) &
-          - wMatrRHS(iV1) * SUM_V1 * S_V_d_1(iN_X) &
+          - wV1 * SUM_V1 * S_V_d_1(iN_X) &
           - ( U_V_d_1(iN_X) &
               - Gm_dd_11(iN_X) * V_u_1_old(iN_X) / SpeedOfLight )
 
         Fm(iV2,iN_X) = C_V_d_2(iN_X) &
-          - wMatrRHS(iV2) * SUM_V2 * S_V_d_2(iN_X) &
+          - wV2 * SUM_V2 * S_V_d_2(iN_X) &
           - ( U_V_d_2(iN_X) &
               - Gm_dd_22(iN_X) * V_u_2_old(iN_X) / SpeedOfLight )
 
         Fm(iV3,iN_X) = C_V_d_3(iN_X) &
-          - wMatrRHS(iV3) * SUM_V3 * S_V_d_3(iN_X) &
+          - wV3 * SUM_V3 * S_V_d_3(iN_X) &
           - ( U_V_d_3(iN_X) &
               - Gm_dd_33(iN_X) * V_u_3_old(iN_X) / SpeedOfLight )
 
@@ -7893,19 +8074,23 @@ CONTAINS
     REAL(DP) :: Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3, Nnu
     REAL(DP) :: Inu_d_1, Inu_d_2, Inu_d_3, vDotInu
     REAL(DP) :: SUM_Ef, SUM_V1, SUM_V2, SUM_V3, SUM_Ye, SUM_Ym
+    REAL(DP) :: wD, wYe, wYm, wEf, wV1, wV2, wV3
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE &
     !$OMP PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
-    !$OMP          V_d_1, V_d_2, V_d_3, vDotV, W, B_d_1, B_d_2, B_d_3, DT, h )
+    !$OMP          V_d_1, V_d_2, V_d_3, vDotV, W, B_d_1, B_d_2, B_d_3, DT, h, &
+    !$OMP          wD, wYe, wYm, wEf, wV1, wV2, wV3 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG &
     !$ACC PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
-    !$ACC          V_d_1, V_d_2, V_d_3, vDotV, W, B_d_1, B_d_2, B_d_3, DT, h )
+    !$ACC          V_d_1, V_d_2, V_d_3, vDotV, W, B_d_1, B_d_2, B_d_3, DT, h, &
+    !$ACC          wD, wYe, wYm, wEf, wV1, wV2, wV3 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
     !$OMP          V_d_1, V_d_2, V_d_3, vDotV, W, B_d_1, B_d_2, B_d_3, DT, h, &
+    !$OMP          wD, wYe, wYm, wEf, wV1, wV2, wV3, &
     !$OMP          Inu_d_1, Inu_d_2, Inu_d_3, k_dd, &
     !$OMP          vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3, vvDotK, &
     !$OMP          Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3 )
@@ -7913,6 +8098,14 @@ CONTAINS
     DO iN_X = 1, nX_G
 
       IF ( MASK(iN_X) ) THEN
+
+        wD  = MatterSourceWeight( iD,  iN_X )
+        wYe = MatterSourceWeight( iYe, iN_X )
+        wYm = MatterSourceWeight( iYm, iN_X )
+        wEf = MatterSourceWeight( iEf, iN_X )
+        wV1 = MatterSourceWeight( iV1, iN_X )
+        wV2 = MatterSourceWeight( iV2, iN_X )
+        wV3 = MatterSourceWeight( iV3, iN_X )
 
         V_d_1 = Gm_dd_11(iN_X) * V_u_1(iN_X)
         V_d_2 = Gm_dd_22(iN_X) * V_u_2(iN_X)
@@ -8039,14 +8232,14 @@ CONTAINS
 
         h = ( 1.0_DP + E(iN_X) + P(iN_X) / D(iN_X) ) 
 
-        IF ( wMatrRHS(iD) .EQ. 1.0_DP) THEN
+        IF ( wD .EQ. One ) THEN
           G_D    (iN_X)  = ( 1.0_DP / W ) * C_D  (iN_X) 
         ELSE  
           G_D    (iN_X) &
             = C_D(iN_X)
         END IF
 
-        IF ( wMatrRHS(iYe) .EQ. 1.0_DP) THEN
+        IF ( wYe .EQ. One ) THEN
           G_Ye   (iN_X) &
             = C_Ye   (iN_X) - ( AtomicMassUnit / cD_old(iN_X) ) * SUM_Ye * S_Ye(iN_X)
         ELSE
@@ -8054,7 +8247,7 @@ CONTAINS
             = C_Ye(iN_X)
         END IF
 
-        IF ( wMatrRHS(iYm) .EQ. 1.0_DP) THEN
+        IF ( wYm .EQ. One ) THEN
           G_Ym    (iN_X) &
             = C_Ym(iN_X) - ( AtomicMassUnit / cD_old(iN_X) ) * SUM_Ym * S_Ym(iN_X)
         ELSE
@@ -8062,7 +8255,7 @@ CONTAINS
             = C_Ym(iN_X)
         END IF
          
-        IF ( wMatrRHS(iEF) .EQ. 1.0_DP) THEN
+        IF ( wEf .EQ. One ) THEN
           G_Ef   (iN_X)  = S_Ef(iN_X) * ( 1.0_DP - W ) / W**2 * ( W + ( W + 1.0_DP) * P(iN_X) / D(iN_X) ) &
                          + 1.0_DP / W * C_Ef(iN_X) - S_Ef(iN_X) / ( W * cD_old(iN_X) ) * SUM_Ef 
         ELSE
@@ -8070,7 +8263,7 @@ CONTAINS
             = C_Ef(iN_X)
         END IF
 
-        IF ( wMatrRHS(iV1) .EQ. 1.0_DP) THEN
+        IF ( wV1 .EQ. One ) THEN
           G_V_d_1(iN_X)  &
             = 1.0_DP / ( h * W ) * (  C_V_d_1(iN_X) - SUM_V1 * S_V_d_1(iN_X) / cD_old(iN_X) ) 
         ELSE
@@ -8079,7 +8272,7 @@ CONTAINS
         END IF
 
 
-        IF ( wMatrRHS(iV2) .EQ. 1.0_DP) THEN
+        IF ( wV2 .EQ. One ) THEN
           G_V_d_2(iN_X) &
             = 1.0_DP / ( h * W ) * (  C_V_d_2(iN_X) - SUM_V2 * S_V_d_2(iN_X) / cD_old(iN_X) ) 
         ELSE
@@ -8088,7 +8281,7 @@ CONTAINS
         END IF
 
 
-        IF ( wMatrRHS(iV3) .EQ. 1.0_DP) THEN
+        IF ( wV3 .EQ. One ) THEN
           G_V_d_3(iN_X) &
             = 1.0_DP / ( h * W ) * (  C_V_d_3(iN_X) - SUM_V3 * S_V_d_3(iN_X) / cD_old(iN_X) ) 
         ELSE
@@ -8100,7 +8293,7 @@ CONTAINS
         
 
         IF( MoveLeft .EQ. 1) THEN
-          IF ( wMatrRHS(iEF) .EQ. 1.0_DP) THEN
+          IF ( wEf .EQ. One ) THEN
             G_Ef(iN_X) = ( 1.0_DP / W ) * C_Ef(iN_X) - S_Ef(iN_X) / ( W * cD_old(iN_X) ) * SUM_Ef &
                        + S_Ef(iN_X) * ( 1.0_DP - W ) / W**2 *  ( W + 1.0_DP) * P(iN_X) / D(iN_X) 
           ELSE

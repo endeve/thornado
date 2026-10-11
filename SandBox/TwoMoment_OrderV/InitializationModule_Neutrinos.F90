@@ -689,7 +689,7 @@ CONTAINS
 
     CALL ComputeNeutrinoOpacities_EC &
            ( 1, nE, 1, nSpecies, 1, nR, E_Nu, D_P, T_P, Ye_P, Ym_P, &
-             fEQ, Chi )
+             fEQ, Chi, Opacity_Mask )
 
     DO iR = 1, nR
 

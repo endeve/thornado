@@ -193,6 +193,7 @@ PROGRAM ApplicationDriver_Neutrinos
   CHARACTER(128) :: WriteSolverHistoryString
   CHARACTER(128) :: WriteMatterDiagnosticsString
   CHARACTER(128) :: WriteMatterExchangeAttributionString
+  CHARACTER(128) :: WriteCumulativeConservationString
   CHARACTER(512) :: ProfileNameString
   CHARACTER(128) :: AndersonDepthString
   REAL(DP)      :: MovingVelocityFraction
@@ -255,7 +256,7 @@ PROGRAM ApplicationDriver_Neutrinos
 
   !EosTableName          = 'wl-EOS-SFHo-15-25-50.h5'
   !EosTableName          = 'BaryonsPlusHelmPlusMuonsEOS_interpolated.h5'
-  EosTableName          = 'BaryonsPlusPhotonsPlusLeptonsEOS.h5'
+  EosTableName          = 'BaryonsPlusPhotonsPlusLeptonsEOS_1.h5'
   OpacityTableName_EmAb = 'wl-Op-SFHo-15-25-50-E40-EmAb.h5'
   OpacityTableName_Iso  = 'wl-Op-SFHo-15-25-50-E40-Iso.h5'
   OpacityTableName_NNS  = 'wl-Op-SFHo-15-25-50-E40-NNS.h5'
@@ -293,7 +294,7 @@ PROGRAM ApplicationDriver_Neutrinos
   WriteMatterExchangeAttribution = .FALSE.
   WriteCumulativeConservation = .FALSE.
   WriteSolverHistory = .FALSE.
-  ComputeMatterExchangeShadows = .TRUE.
+  ComputeMatterExchangeShadows = .FALSE.
   MatterDiagnosticsFileName = 'matter_diagnostics.dat'
   ProfileName = ''
   RunEquilibriumTest = .FALSE.
@@ -844,7 +845,8 @@ PROGRAM ApplicationDriver_Neutrinos
       UsePositivityLimiter_TwoMoment = .TRUE.
       UseEnergyLimiter_TwoMoment     = .TRUE.
 
-      ProfileName = 'input_thornado_VX_100ms.dat'
+      !ProfileName = 'input_thornado_VX_100ms.dat'
+      ProfileName = 'input_thornado_20M_100ms.dat'
 
       wMatterRHS = [ One, One, One, Zero, Zero, Zero ] ! --- Keep Velocity Fixed
       !wMatterRHS = [ Zero, Zero, Zero, Zero, Zero, Zero ] ! --- Keep Fluid Fixed
@@ -869,9 +871,9 @@ PROGRAM ApplicationDriver_Neutrinos
       UseConservativeProjection = .false.
       UseEquilibriumDeviationLLF = .false.
 
-      WriteMatterDiagnostics = .TRUE.
-      WriteMatterExchangeAttribution = .TRUE.
-      WriteCumulativeConservation = .TRUE.
+      WriteMatterDiagnostics = .FALSE.
+      WriteMatterExchangeAttribution = .FALSE.
+      WriteCumulativeConservation = .FALSE.
       !MatterDiagnosticsFileName = 'md_PDARS_All_Iso_lim_tol_1e-8_1e-8_no_cons2_wb_all.dat'
       MatterDiagnosticsFileName = 'md_nX256_nE16_nNodes2_diagnostic.dat'
 
@@ -1130,6 +1132,23 @@ PROGRAM ApplicationDriver_Neutrinos
       CASE DEFAULT
         ERROR STOP &
           'THORNADO_WRITE_MATTER_EXCHANGE_ATTRIBUTION must be true or false.'
+    END SELECT
+  END IF
+
+  WriteCumulativeConservationString = ''
+  CALL GET_ENVIRONMENT_VARIABLE &
+         ( 'THORNADO_WRITE_CUMULATIVE_CONSERVATION', &
+           WriteCumulativeConservationString, &
+           LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+  IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+    SELECT CASE( TRIM( ADJUSTL( WriteCumulativeConservationString ) ) )
+      CASE( 'true', 'TRUE', 'on', 'ON', '1' )
+        WriteCumulativeConservation = .TRUE.
+      CASE( 'false', 'FALSE', 'off', 'OFF', '0' )
+        WriteCumulativeConservation = .FALSE.
+      CASE DEFAULT
+        ERROR STOP &
+          'THORNADO_WRITE_CUMULATIVE_CONSERVATION must be true or false.'
     END SELECT
   END IF
 

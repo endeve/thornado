@@ -23,7 +23,7 @@ MODULE StandaloneMatterDiagnosticsModule
     nGF, iGF_h_1, iGF_h_2, iGF_h_3, &
     iGF_SqrtGm, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
+    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, iCF_Nm, &
     nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, &
     nAF, iAF_T, iAF_Ye, iAF_Ym
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
@@ -446,7 +446,8 @@ CONTAINS
           + FourPi * OffGridRadiationIncrement(nCR+iCR_G3) / hc3
     BoundaryComponents(iCheck_LeptonElectron) = BoundaryLepton
     BoundaryComponents(iCheck_LeptonMuon) &
-      = FourPi * OffGridRadiationLeptonFlavorIncrement(2) / hc3
+      = OffGridFluidIncrement(iCF_Nm) &
+          + FourPi * OffGridRadiationLeptonFlavorIncrement(2) / hc3
     BoundaryComponents(iCheck_LeptonTau) &
       = FourPi * OffGridRadiationLeptonFlavorIncrement(3) / hc3
 
@@ -1033,6 +1034,8 @@ CONTAINS
         + SpaceWeight * CF(iNodeX,iX1,iX2,iX3,iCF_S3)
       Matter(iCheck_LeptonElectron) = Matter(iCheck_LeptonElectron) &
         + SpaceWeight * CF(iNodeX,iX1,iX2,iX3,iCF_Ne)
+      Matter(iCheck_LeptonMuon) = Matter(iCheck_LeptonMuon) &
+        + SpaceWeight * CF(iNodeX,iX1,iX2,iX3,iCF_Nm)
 
       V_u_1 = CF(iNodeX,iX1,iX2,iX3,iCF_S1) &
         / ( GX(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11) &

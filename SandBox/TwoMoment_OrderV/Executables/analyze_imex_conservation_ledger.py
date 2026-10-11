@@ -78,7 +78,9 @@ def has_component(data: np.ndarray, component: str) -> bool:
     return bool(np.any(data["component"] == component))
 
 
-def validate_ledger(path: Path, data: np.ndarray) -> None:
+def validate_ledger(
+    path: Path, data: np.ndarray, closure_tolerance: float = 5.0e-12
+) -> None:
     quantities = sorted(set(data["quantity"]))
     for quantity in quantities:
         closure = series(data, quantity, "algebraic_closure")["step_value"]
@@ -86,7 +88,7 @@ def validate_ledger(path: Path, data: np.ndarray) -> None:
         for component in COMPONENTS:
             scales += np.abs(series(data, quantity, component)["step_value"])
         relative = np.max(np.abs(closure) / np.maximum(scales, np.finfo(float).tiny))
-        if relative > 5.0e-12:
+        if relative > closure_tolerance:
             raise RuntimeError(
                 f"{path}: {quantity} algebraic closure failed: {relative:.3e}"
             )
@@ -383,6 +385,12 @@ def main() -> None:
     parser.add_argument("--labels", nargs="+")
     parser.add_argument("--inventory-history", type=Path, nargs="+")
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--closure-tolerance",
+        type=float,
+        default=5.0e-12,
+        help="maximum relative algebraic ledger closure",
+    )
     args = parser.parse_args()
 
     if args.labels is not None and len(args.labels) != len(args.ledger):
@@ -400,7 +408,7 @@ def main() -> None:
     if args.inventory_history is not None:
         histories = [read_inventory_history(path) for path in args.inventory_history]
     for index, (path, data) in enumerate(zip(args.ledger, ledgers)):
-        validate_ledger(path, data)
+        validate_ledger(path, data, args.closure_tolerance)
         if args.inventory_history is not None:
             validate_inventory(path, data, args.inventory_history[index])
 

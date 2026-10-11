@@ -173,7 +173,7 @@ def main() -> None:
     )
     fig.legend(
         handles=method_handles,
-        title="Numerical flux",
+        title="Configuration",
         frameon=False,
         fontsize=8,
         loc="upper right",

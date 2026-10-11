@@ -357,6 +357,7 @@ CONTAINS
 #endif
 
     REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: Ps, Ss, Es
+    LOGICAL,  DIMENSION(:,:,:), ALLOCATABLE :: ValidStateMask
     LOGICAL :: UseChemicalPotentialShift, Verbose
 
     REAL(DP) :: E_LeptPhot, P_LeptPhot, S_LeptPhot
@@ -614,6 +615,15 @@ CONTAINS
       ( Es  (1:EOS % DV % nPoints(1), &
              1:EOS % DV % nPoints(2), &
              1:EOS % DV % nPoints(3)) )
+    ALLOCATE &
+      ( ValidStateMask &
+              (1:EOS % DV % nPoints(1), &
+               1:EOS % DV % nPoints(2), &
+               1:EOS % DV % nPoints(3)) )
+
+    Ps = Zero
+    Ss = Zero
+    Es = Zero
 
     ! Build full EOS without muons to determine the bounds of the EOS.
     ! Muons should not be so important to cause P, S, and E to go above the
@@ -622,14 +632,25 @@ CONTAINS
       DO iT_T=1,EOS % DV % nPoints(2)
         DO iYp_T=1,EOS % DV % nPoints(3)
 
-          CALL GetPhotonLeptonGasEOS( &
-            D_T (iD_T), T_T (iT_T), Yp_T(iYp_T), 0.0_dp, &
-            HelmTableElectrons, HelmTableMuons, &
-            P_LeptPhot, E_LeptPhot, S_LeptPhot)
+          ValidStateMask(iD_T,iT_T,iYp_T) = &
+               Yp_T(iYp_T) * D_T(iD_T) <= HelmTableElectrons % maxdens &
+            .AND. T_T(iT_T) <= HelmTableElectrons % maxtemp
 
-          Es(iD_T,iT_T,iYp_T) = 10.0d0**( E_T(iD_T,iT_T,iYp_T) ) + E_LeptPhot - OS_E
-          Ps(iD_T,iT_T,iYp_T) = ( P_T(iD_T,iT_T,iYp_T) ) + P_LeptPhot - OS_P
-          Ss(iD_T,iT_T,iYp_T) = 10.0d0**( S_T(iD_T,iT_T,iYp_T) ) + S_LeptPhot - OS_S
+          IF( ValidStateMask(iD_T,iT_T,iYp_T) )THEN
+
+            CALL GetPhotonLeptonGasEOS( &
+              D_T (iD_T), T_T (iT_T), Yp_T(iYp_T), 0.0_dp, &
+              HelmTableElectrons, HelmTableMuons, &
+              P_LeptPhot, E_LeptPhot, S_LeptPhot)
+
+            Es(iD_T,iT_T,iYp_T) = &
+              10.0d0**( E_T(iD_T,iT_T,iYp_T) ) + E_LeptPhot - OS_E
+            Ps(iD_T,iT_T,iYp_T) = &
+              P_T(iD_T,iT_T,iYp_T) + P_LeptPhot - OS_P
+            Ss(iD_T,iT_T,iYp_T) = &
+              10.0d0**( S_T(iD_T,iT_T,iYp_T) ) + S_LeptPhot - OS_S
+
+          END IF
 
         ENDDO
       ENDDO
@@ -637,9 +658,11 @@ CONTAINS
 
     CALL InitializeEOSComponentsInversion &
          ( D_T, T_T, Yp_T, Es, Ps, Ss, &
-         HelmTableElectrons, HelmTableMuons, Verbose_Option = Verbose )
+           HelmTableElectrons, HelmTableMuons, &
+           ValidStateMask_Option = ValidStateMask, &
+           Verbose_Option = Verbose )
 
-    DEALLOCATE( Ps, Ss, Es )
+    DEALLOCATE( Ps, Ss, Es, ValidStateMask )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
