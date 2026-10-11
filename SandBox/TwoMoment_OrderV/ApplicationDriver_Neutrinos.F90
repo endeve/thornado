@@ -52,9 +52,6 @@ PROGRAM ApplicationDriver_Neutrinos
     GetNeutrinoMatterSolverConvergenceDiagnostics, &
     nLeptonFamilies, nLeptonFlavorCheck
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
-    InitializeEquilibriumDeviationLLF, &
-    SetEquilibriumDeviationReferenceState, &
-    ClearEquilibriumDeviationReferenceState, &
     InitializeSourceAwareLLF, &
     SetSourceAwareTransportOpacity_Flattened, &
     ClearSourceAwareTransportOpacity, &
@@ -127,9 +124,7 @@ PROGRAM ApplicationDriver_Neutrinos
   LOGICAL       :: FreezeOpacities
   LOGICAL       :: UseConservativeProjection
   LOGICAL       :: UseRadiationOnlySolve
-  LOGICAL       :: UseEquilibriumDeviationLLF
   LOGICAL       :: UseSourceAwareLLF
-  LOGICAL       :: UseAPWellBalancedFluxSource
   LOGICAL       :: UseAbsorptionDiffusionScaledLLF
   LOGICAL       :: MovingAllProcesses
   LOGICAL       :: ProfileAllProcesses
@@ -176,7 +171,6 @@ PROGRAM ApplicationDriver_Neutrinos
   CHARACTER(128) :: SourceAwareLLFString
   CHARACTER(128) :: ConservativeProjectionString
   CHARACTER(128) :: RadiationOnlySolveString
-  CHARACTER(128) :: APWellBalancedFluxSourceString
   CHARACTER(128) :: MatterExchangeShadowsString
   CHARACTER(128) :: MaxCyclesString
   CHARACTER(128) :: EndTimeMillisecondsString
@@ -285,9 +279,7 @@ PROGRAM ApplicationDriver_Neutrinos
   FreezeOpacities = .FALSE.
   UseConservativeProjection = .FALSE.
   UseRadiationOnlySolve = .FALSE.
-  UseEquilibriumDeviationLLF = .FALSE.
   UseSourceAwareLLF = .FALSE.
-  UseAPWellBalancedFluxSource = .FALSE.
   UseAbsorptionDiffusionScaledLLF = .FALSE.
   AbsorptionDiffusionLLFPenaltyFactor = One
   WriteMatterDiagnostics = .FALSE.
@@ -869,7 +861,6 @@ PROGRAM ApplicationDriver_Neutrinos
   
   
       UseConservativeProjection = .false.
-      UseEquilibriumDeviationLLF = .false.
 
       WriteMatterDiagnostics = .FALSE.
       WriteMatterExchangeAttribution = .FALSE.
@@ -1377,38 +1368,6 @@ PROGRAM ApplicationDriver_Neutrinos
     READ(MaxCyclesString,*,IOSTAT=ReadStatus) maxCycles
     IF( ReadStatus /= 0 .OR. maxCycles < 1 ) &
       ERROR STOP 'THORNADO_MAX_CYCLES must be a positive integer.'
-  END IF
-
-  APWellBalancedFluxSourceString = ''
-  CALL GET_ENVIRONMENT_VARIABLE &
-         ( 'THORNADO_AP_WELL_BALANCED_FLUX_SOURCE', &
-           APWellBalancedFluxSourceString, &
-           LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
-
-  IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
-
-    SELECT CASE( TRIM( ADJUSTL( APWellBalancedFluxSourceString ) ) )
-      CASE( 'true', 'TRUE', 'on', 'ON', '1' )
-        UseAPWellBalancedFluxSource = .TRUE.
-      CASE( 'false', 'FALSE', 'off', 'OFF', '0' )
-        UseAPWellBalancedFluxSource = .FALSE.
-      CASE DEFAULT
-        ERROR STOP &
-          'THORNADO_AP_WELL_BALANCED_FLUX_SOURCE must be true or false.'
-    END SELECT
-
-  END IF
-
-  IF( UseAPWellBalancedFluxSource )THEN
-
-    IF( .NOT. RunCoupledAbsorptionDiffusion ) &
-      ERROR STOP &
-        'The AP/well-balanced flux-source test requires ' // &
-        'CoupledAbsorptionDiffusion.'
-
-    UseSourceAwareLLF = .TRUE.
-    UseEquilibriumDeviationLLF = .TRUE.
-
   END IF
 
   IF( RunAbsorptionDiffusionBalance )THEN
@@ -2463,24 +2422,6 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL :: VolumeTermFactor_Option
     LOGICAL, INTENT(in), OPTIONAL :: IncludeObserverCorrections_Option
 
-    REAL(DP), ALLOCATABLE :: EquilibriumReference(:,:,:,:,:,:,:)
-
-    IF( UseAPWellBalancedFluxSource )THEN
-
-      ALLOCATE( EquilibriumReference, MOLD = U_R )
-      EquilibriumReference = U_R
-
-      ! This is the same stage-local equilibrium used by the implicit
-      ! radiation--reservoir exchange below.
-      EquilibriumReference(:,:,:,:,:,iCR_N,1) &
-        = CoupledDiffusionEquilibriumSlope * U_R(:,:,:,:,:,iCR_N,2)
-      EquilibriumReference(:,:,:,:,:,iCR_G1:iCR_G3,1) = Zero
-
-      CALL SetEquilibriumDeviationReferenceState &
-             ( iZ_B1_Input, iZ_E1_Input, EquilibriumReference )
-
-    END IF
-
     CALL SetAnalyticSourceAwareTransportOpacity &
            ( iZ_B0_Input, iZ_E0_Input, iZ_B1_Input, iZ_E1_Input, .FALSE., &
              ConstantOpacity_Option = VariableOpacityDiffusionMeanOpacity )
@@ -2495,13 +2436,6 @@ CONTAINS
                = IncludeObserverCorrections_Option )
 
     IF( UseSourceAwareLLF ) CALL ClearSourceAwareTransportOpacity
-
-    IF( UseAPWellBalancedFluxSource )THEN
-
-      CALL ClearEquilibriumDeviationReferenceState
-      DEALLOCATE( EquilibriumReference )
-
-    END IF
 
     ! Species two is the non-streaming finite-capacity matter reservoir.
     dU_R(:,:,:,:,:,:,2) = Zero
@@ -4123,8 +4057,7 @@ CONTAINS
              UseChemicalPotentialShift_Option &
                = .FALSE., &
              Verbose_Option &
-               = .TRUE., &
-             MuonEos_MinD_Option = 1.0d12 )
+               = .TRUE. )
 
     ! --- Initialize Opacities ---
 
@@ -4143,8 +4076,8 @@ CONTAINS
                = TRIM( OpacityTableName_Brem ), &
              EquationOfStateTableName_Option &
                = TRIM( EosTableName ), &
-             Verbose_Option = .TRUE., &
-             EmAb_Muon_MinD_Option = 1.0d12 )
+             Verbose_Option = .TRUE. )
+             !EmAb_Muon_MinD_Option = 1.0d12 )
 
     ! --- Initialize Moment Closure ---
 
@@ -4261,12 +4194,6 @@ CONTAINS
                = UseRadiationOnlySolve, &
              Verbose_Option &
                = .TRUE. )
-
-    CALL InitializeEquilibriumDeviationLLF &
-           ( Use_Option = UseEquilibriumDeviationLLF, &
-             DnuMax_Option = DnuMax, &
-             MaxFluxFactor_Option = 0.1_DP, &
-             Verbose_Option = .TRUE. )
 
     CALL InitializeSourceAwareLLF &
            ( Use_Option = UseSourceAwareLLF, &

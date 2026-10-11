@@ -4,6 +4,8 @@
 
 MODULE EquationOfStateModule_TABLE
 
+  USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: ERROR_UNIT
+  USE mpi, ONLY: MPI_COMM_WORLD, MPI_ABORT
 #ifdef MICROPHYSICS_WEAKLIB
 
   ! --- weaklib modules --------------------------
@@ -103,10 +105,10 @@ MODULE EquationOfStateModule_TABLE
   TYPE(HelmTableType), POINTER :: HelmTableElectrons
   TYPE(HelmTableType), POINTER :: HelmTableMuons
 #endif
-  REAL(DP), PUBLIC :: Eos_MinD ! This is not handled consistently everywhere,
-                               ! but should not matter
-  REAL(DP), PUBLIC :: MuonEoS_MinD ! This is not handled consistently everywhere,
-                                   ! but should not matter
+  REAL(DP), PUBLIC :: Eos_MinD
+  ! Retained for input compatibility.  The full-LTE muon EOS is no longer
+  ! switched by this density; charged-current activation is controlled by the
+  ! opacity mask.
 
   PUBLIC :: InitializeEquationOfState_TABLE
   PUBLIC :: FinalizeEquationOfState_TABLE
@@ -314,7 +316,7 @@ MODULE EquationOfStateModule_TABLE
     !$OMP   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, &
     !$OMP   Xa_T, Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
     !$OMP   HelmTableElectrons, HelmTableMuons, &
-    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD, MuonEoS_MinD )
+    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #elif defined(THORNADO_OACC)
     !$ACC DECLARE CREATE &
     !$ACC ( D_T, T_T, Yp_T, &
@@ -326,7 +328,7 @@ MODULE EquationOfStateModule_TABLE
     !$ACC   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, &
     !$ACC   Xa_T, Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
     !$ACC   HelmTableElectrons, HelmTableMuons, &
-    !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD, MuonEoS_MinD )
+    !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
 #endif
 
 CONTAINS
@@ -334,13 +336,12 @@ CONTAINS
   SUBROUTINE InitializeEquationOfState_TABLE &
     ( EquationOfStateTableName_Option, &
       UseChemicalPotentialShift_Option, &
-      Eos_MinD_Option, MuonEoS_minD_Option, &
+      Eos_MinD_Option, &
       Verbose_Option, External_EOS, External_Helm, External_Muon )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: EquationOfStateTableName_Option
     LOGICAL,          INTENT(in), OPTIONAL :: UseChemicalPotentialShift_Option
     REAL(DP),         INTENT(in), OPTIONAL :: Eos_MinD_Option
-    REAL(DP),         INTENT(in), OPTIONAL :: MuonEoS_MinD_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
 #ifdef MICROPHYSICS_WEAKLIB
     ! Notice that you use EquationOfState/Split only if EOSMODE == COMPOSE
@@ -380,12 +381,6 @@ CONTAINS
        Eos_MinD = Zero
     END IF
 
-    IF( PRESENT( MuonEoS_MinD_Option ) )THEN
-       MuonEoS_MinD = MuonEoS_MinD_Option
-    ELSE
-       MuonEoS_MinD = Zero
-    END IF
-
     IF( PRESENT( Verbose_Option ) )THEN
        Verbose = Verbose_Option
     ELSE
@@ -415,8 +410,7 @@ CONTAINS
 
        ! read in helmholtz table for muons
        CALL ReadHelmholtzTableHDF( HelmTableMuons, &
-          TRIM( EquationOfStateTableName ), "HelmTableMuons", &
-          eos_minD = MuonEoS_MinD )
+          TRIM( EquationOfStateTableName ), "HelmTableMuons" )
 
        ! read in baryon table -------------------------------
        CALL ReadEquationOfStateTableHDF( EOS, TRIM( EquationOfStateTableName ) )
@@ -428,7 +422,6 @@ CONTAINS
        EOS => External_EOS
        HelmTableElectrons => External_Helm
        HelmTableMuons => External_Muon
-       HelmTableMuons % eos_minD = MuonEoS_MinD
        UsingExternalEOS = .TRUE.
 
     END IF
@@ -674,7 +667,7 @@ CONTAINS
     !$OMP   OS_Ah, OS_Gm, OS_Emp, OS_Emn, OS_Sep, OS_Sen, &
     !$OMP   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, &
     !$OMP   Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
-    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD, MuonEoS_MinD )
+    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
     !$OMP TARGET ENTER DATA MAP( always, to: &
     !$OMP   HelmTableElectrons % t, HelmTableElectrons % d, &
     !$OMP   HelmTableElectrons % f, HelmTableElectrons % fd, &
@@ -688,6 +681,11 @@ CONTAINS
     !$OMP   HelmTableElectrons % dt2i, HelmTableElectrons % dd, &
     !$OMP   HelmTableElectrons % dd2, HelmTableElectrons % ddi, &
     !$OMP   HelmTableElectrons % dd2i, &
+    !$OMP   HelmTableElectrons % PairTemperature, &
+    !$OMP   HelmTableElectrons % PairLogP0, &
+    !$OMP   HelmTableElectrons % PairDLogP0dT, &
+    !$OMP   HelmTableElectrons % PairLogA0, &
+    !$OMP   HelmTableElectrons % PairDLogA0dT, &
     !$OMP   HelmTableMuons % t, HelmTableMuons % d, &
     !$OMP   HelmTableMuons % f, HelmTableMuons % fd, &
     !$OMP   HelmTableMuons % ft, HelmTableMuons % fdd, &
@@ -699,17 +697,22 @@ CONTAINS
     !$OMP   HelmTableMuons % dt2, HelmTableMuons % dti, &
     !$OMP   HelmTableMuons % dt2i, HelmTableMuons % dd, &
     !$OMP   HelmTableMuons % dd2, HelmTableMuons % ddi, &
-    !$OMP   HelmTableMuons % dd2i )
+    !$OMP   HelmTableMuons % dd2i, &
+    !$OMP   HelmTableMuons % PairTemperature, &
+    !$OMP   HelmTableMuons % PairLogP0, &
+    !$OMP   HelmTableMuons % PairDLogP0dT, &
+    !$OMP   HelmTableMuons % PairLogA0, &
+    !$OMP   HelmTableMuons % PairDLogA0dT )
     !$OMP TARGET UPDATE TO( &
     !$OMP   HelmTableElectrons % nPointsDen, &
     !$OMP   HelmTableElectrons % nPointsTemp, &
     !$OMP   HelmTableElectrons % mintemp, HelmTableElectrons % maxtemp, &
     !$OMP   HelmTableElectrons % mindens, HelmTableElectrons % maxdens, &
-    !$OMP   HelmTableElectrons % eos_MinD, HelmTableElectrons % lepton_mass, &
+    !$OMP   HelmTableElectrons % lepton_mass, &
     !$OMP   HelmTableMuons % nPointsDen, HelmTableMuons % nPointsTemp, &
     !$OMP   HelmTableMuons % mintemp, HelmTableMuons % maxtemp, &
     !$OMP   HelmTableMuons % mindens, HelmTableMuons % maxdens, &
-    !$OMP   HelmTableMuons % eos_MinD, HelmTableMuons % lepton_mass )
+    !$OMP   HelmTableMuons % lepton_mass )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( D_T, T_T, Yp_T, &
@@ -720,7 +723,7 @@ CONTAINS
     !$ACC   OS_Ah, OS_Gm, OS_Emp, OS_Emn, OS_Sep, OS_Sen, &
     !$ACC   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, &
     !$ACC   Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
-    !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD, MuonEoS_MinD )
+    !$ACC   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
     !$ACC UPDATE DEVICE( HelmTableElectrons, HelmTableMuons )
     !$ACC ENTER DATA COPYIN( &
     !$ACC   HelmTableElectrons % t, HelmTableElectrons % d, &
@@ -735,6 +738,11 @@ CONTAINS
     !$ACC   HelmTableElectrons % dt2i, HelmTableElectrons % dd, &
     !$ACC   HelmTableElectrons % dd2, HelmTableElectrons % ddi, &
     !$ACC   HelmTableElectrons % dd2i, &
+    !$ACC   HelmTableElectrons % PairTemperature, &
+    !$ACC   HelmTableElectrons % PairLogP0, &
+    !$ACC   HelmTableElectrons % PairDLogP0dT, &
+    !$ACC   HelmTableElectrons % PairLogA0, &
+    !$ACC   HelmTableElectrons % PairDLogA0dT, &
     !$ACC   HelmTableMuons % t, HelmTableMuons % d, &
     !$ACC   HelmTableMuons % f, HelmTableMuons % fd, &
     !$ACC   HelmTableMuons % ft, HelmTableMuons % fdd, &
@@ -746,7 +754,12 @@ CONTAINS
     !$ACC   HelmTableMuons % dt2, HelmTableMuons % dti, &
     !$ACC   HelmTableMuons % dt2i, HelmTableMuons % dd, &
     !$ACC   HelmTableMuons % dd2, HelmTableMuons % ddi, &
-    !$ACC   HelmTableMuons % dd2i )
+    !$ACC   HelmTableMuons % dd2i, &
+    !$ACC   HelmTableMuons % PairTemperature, &
+    !$ACC   HelmTableMuons % PairLogP0, &
+    !$ACC   HelmTableMuons % PairDLogP0dT, &
+    !$ACC   HelmTableMuons % PairLogA0, &
+    !$ACC   HelmTableMuons % PairDLogA0dT )
 #endif
 
 #endif
@@ -768,7 +781,7 @@ CONTAINS
     !$OMP   OS_Ah, OS_Gm, OS_Emp, OS_Emn, OS_Sep, OS_Sen, &
     !$OMP   P_T, S_T, E_T, Mp_T, Mn_T, Xp_T, Xn_T, Xa_T, &
     !$OMP   Xh_T, Ah_T, Gm_T, Emp_T, Emn_T, Sep_T, Sen_T, &
-    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD, MuonEoS_MinD )
+    !$OMP   Min_D, Min_T, Min_Y, Max_D, Max_T, Max_Y, Eos_MinD )
     !$OMP TARGET EXIT DATA MAP( release: &
     !$OMP   HelmTableElectrons % t, HelmTableElectrons % d, &
     !$OMP   HelmTableElectrons % f, HelmTableElectrons % fd, &
@@ -782,6 +795,11 @@ CONTAINS
     !$OMP   HelmTableElectrons % dt2i, HelmTableElectrons % dd, &
     !$OMP   HelmTableElectrons % dd2, HelmTableElectrons % ddi, &
     !$OMP   HelmTableElectrons % dd2i, &
+    !$OMP   HelmTableElectrons % PairTemperature, &
+    !$OMP   HelmTableElectrons % PairLogP0, &
+    !$OMP   HelmTableElectrons % PairDLogP0dT, &
+    !$OMP   HelmTableElectrons % PairLogA0, &
+    !$OMP   HelmTableElectrons % PairDLogA0dT, &
     !$OMP   HelmTableMuons % t, HelmTableMuons % d, &
     !$OMP   HelmTableMuons % f, HelmTableMuons % fd, &
     !$OMP   HelmTableMuons % ft, HelmTableMuons % fdd, &
@@ -793,7 +811,12 @@ CONTAINS
     !$OMP   HelmTableMuons % dt2, HelmTableMuons % dti, &
     !$OMP   HelmTableMuons % dt2i, HelmTableMuons % dd, &
     !$OMP   HelmTableMuons % dd2, HelmTableMuons % ddi, &
-    !$OMP   HelmTableMuons % dd2i )
+    !$OMP   HelmTableMuons % dd2i, &
+    !$OMP   HelmTableMuons % PairTemperature, &
+    !$OMP   HelmTableMuons % PairLogP0, &
+    !$OMP   HelmTableMuons % PairDLogP0dT, &
+    !$OMP   HelmTableMuons % PairLogA0, &
+    !$OMP   HelmTableMuons % PairDLogA0dT )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA DELETE( &
     !$ACC   HelmTableElectrons % t, HelmTableElectrons % d, &
@@ -808,6 +831,11 @@ CONTAINS
     !$ACC   HelmTableElectrons % dt2i, HelmTableElectrons % dd, &
     !$ACC   HelmTableElectrons % dd2, HelmTableElectrons % ddi, &
     !$ACC   HelmTableElectrons % dd2i, &
+    !$ACC   HelmTableElectrons % PairTemperature, &
+    !$ACC   HelmTableElectrons % PairLogP0, &
+    !$ACC   HelmTableElectrons % PairDLogP0dT, &
+    !$ACC   HelmTableElectrons % PairLogA0, &
+    !$ACC   HelmTableElectrons % PairDLogA0dT, &
     !$ACC   HelmTableMuons % t, HelmTableMuons % d, &
     !$ACC   HelmTableMuons % f, HelmTableMuons % fd, &
     !$ACC   HelmTableMuons % ft, HelmTableMuons % fdd, &
@@ -819,7 +847,12 @@ CONTAINS
     !$ACC   HelmTableMuons % dt2, HelmTableMuons % dti, &
     !$ACC   HelmTableMuons % dt2i, HelmTableMuons % dd, &
     !$ACC   HelmTableMuons % dd2, HelmTableMuons % ddi, &
-    !$ACC   HelmTableMuons % dd2i )
+    !$ACC   HelmTableMuons % dd2i, &
+    !$ACC   HelmTableMuons % PairTemperature, &
+    !$ACC   HelmTableMuons % PairLogP0, &
+    !$ACC   HelmTableMuons % PairDLogP0dT, &
+    !$ACC   HelmTableMuons % PairLogA0, &
+    !$ACC   HelmTableMuons % PairDLogA0dT )
 #endif
 
     DEALLOCATE( D_T, T_T, Yp_T )
@@ -1307,7 +1340,9 @@ CONTAINS
           WRITE(*,'(a,i5,4es23.15)') '  iP, D, E, Ye, Ym : ', iP, D_P, E_P, Ye_P, Ym_P
         END IF
       END DO
-      IF( .NOT. PRESENT( Error_Option ) ) STOP
+      IF( .NOT. PRESENT( Error_Option ) ) &
+        CALL AbortEquationOfState &
+               ( 'specific-internal-energy temperature inversion failed' )
     END IF
 
 #endif
@@ -1733,7 +1768,8 @@ CONTAINS
           WRITE(*,'(a,i5,5es23.15)') '  iP, D, E, Ye, Ym : ', iP, D_P, E_P, Ye_P, Ym_P
         END IF
       END DO
-      STOP
+      CALL AbortEquationOfState &
+             ( 'auxiliary thermodynamic-state inversion failed' )
     END IF
 
 #endif
@@ -2114,8 +2150,9 @@ CONTAINS
 
 #ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
 
-      WRITE(*,*) 'Not yet implemented in ComputeSpecificInternalEnergy_TABLE_Vector'
-      STOP
+      CALL AbortEquationOfState &
+             ( 'ComputeSpecificInternalEnergy_TABLE_Vector is not ' // &
+               'implemented for INTERPOLATION_SPLIT_TABLE_SEPARATE' )
 
 #else
 
@@ -2296,7 +2333,7 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
 
-    REAL(DP), INTENT(in)  :: D, T, Ye, Ym ! Ye is a dummy variable
+    REAL(DP), INTENT(in)  :: D, T, Ye, Ym
     REAL(DP), INTENT(out) :: M
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option
@@ -2305,11 +2342,7 @@ CONTAINS
 
     LOGICAL :: ComputeDerivatives
     REAL(DP), TARGET  :: dMdD_Local, dMdT_Local, dMdYe_Local, dMdYm_Local
-    REAL(DP), POINTER :: dMdD      , dMdT      , dMdYe, dMdYm
-
-    REAL(DP) :: aD, aT, dD, dT
-    REAL(DP) :: D_P, T_P, Ym_P
-    INTEGER  :: i, iD, iT
+    REAL(DP), POINTER :: dMdD, dMdT, dMdYe, dMdYm
 
     TYPE(LeptonGasType) :: MuonGasState
 
@@ -2318,10 +2351,6 @@ CONTAINS
         .OR. PRESENT( dMdT_Option ) &
         .OR. PRESENT( dMdYe_Option ) &
         .OR. PRESENT( dMdYm_Option )
-
-    D_P  = D  / UnitD
-    Ym_P = Ym / UnitY
-    T_P  = T  / UnitT
 
     IF( ComputeDerivatives )THEN
 
@@ -2349,31 +2378,20 @@ CONTAINS
         dMdYm => dMdYm_Local
       END IF
 
-      ! This routine is never really used anyway
-      dMdD = 0.0_dp
-      dMdT = 0.0_dp
-      dMdYe = 0.0_dp
-      dMdYm = 0.0_dp
+      dMdD  = Zero
+      dMdT  = Zero
+      dMdYe = Zero
+      dMdYm = Zero
 
-      MuonGasState % t   = T  / UnitT
-      MuonGasState % rho = D  / UnitD
-      MuonGasState % yL  = Ym / UnitY
+    END IF
 
-      CALL LeptonGasEOS(HelmTableMuons, MuonGasState)
+    MuonGasState % t   = T  / UnitT
+    MuonGasState % rho = D  / UnitD
+    MuonGasState % yL  = Ym / UnitY
 
-      M = MuonGasState % mu
+    CALL LeptonGasEOS( HelmTableMuons, MuonGasState )
 
-    ELSE
-
-      MuonGasState % t   = T  / UnitT
-      MuonGasState % rho = D  / UnitD
-      MuonGasState % yL  = Ym / UnitY
-
-      CALL LeptonGasEOS(HelmTableMuons, MuonGasState)
-
-      M = MuonGasState % mu
-
-    ENDIF
+    M = MuonGasState % mu
 
     M = M * UnitMl
 
@@ -2383,7 +2401,7 @@ CONTAINS
   SUBROUTINE ComputeMuonChemicalPotential_TABLE_Vector &
     ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option, dMdYm_Option )
 
-    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Ye(1:), Ym(1:) ! Ym is a dummy variable
+    REAL(DP), INTENT(in)                    :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out)                   :: M(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdD_Option(1:)
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdT_Option(1:)
@@ -2391,11 +2409,12 @@ CONTAINS
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dMdYm_Option(1:)
 
     LOGICAL :: ComputeDerivatives
-    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
+    REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE :: &
       dMdD_Local, dMdT_Local, dMdYe_Local, dMdYm_Local
-    REAL(DP), DIMENSION(:)      , POINTER :: &
-      dMdD      , dMdT      , dMdYe      , dMdYm
+    REAL(DP), DIMENSION(:), POINTER :: dMdD, dMdT, dMdYe, dMdYm
     INTEGER :: iP, nP
+
+    nP = SIZE( D )
 
     ComputeDerivatives &
       =      PRESENT( dMdD_Option ) &
@@ -2403,11 +2422,10 @@ CONTAINS
         .OR. PRESENT( dMdYe_Option ) &
         .OR. PRESENT( dMdYm_Option )
 
-    nP = SIZE( D )
-
     IF( ComputeDerivatives )THEN
 
-      ALLOCATE( dMdD_Local(nP), dMdT_Local(nP), dMdYe_Local(nP), dMdYm_Local(nP) )
+      ALLOCATE( dMdD_Local(nP), dMdT_Local(nP), &
+                dMdYe_Local(nP), dMdYm_Local(nP) )
 
       IF( PRESENT( dMdD_Option ) )THEN
         dMdD(1:nP) => dMdD_Option(:)
@@ -2444,10 +2462,13 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
-      DO iP=1,nP
-          CALL ComputeMuonChemicalPotential_TABLE_Scalar &
-                (D(iP), T(iP), Ye(iP), Ym(iP), M(iP), dMdD(iP), dMdT(iP), dMdYe(iP), dMdYm(iP))
+      DO iP = 1, nP
+        CALL ComputeMuonChemicalPotential_TABLE_Scalar &
+               ( D(iP), T(iP), Ye(iP), Ym(iP), M(iP), &
+                 dMdD(iP), dMdT(iP), dMdYe(iP), dMdYm(iP) )
       END DO
+
+      DEALLOCATE( dMdD_Local, dMdT_Local, dMdYe_Local, dMdYm_Local )
 
     ELSE
 
@@ -2462,9 +2483,9 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
-      DO iP=1,nP
+      DO iP = 1, nP
         CALL ComputeMuonChemicalPotential_TABLE_Scalar &
-                (D(iP), T(iP), Ye(iP), Ym(iP), M(iP))
+               ( D(iP), T(iP), Ye(iP), Ym(iP), M(iP) )
       END DO
 
     END IF
@@ -3251,7 +3272,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeElectronNeutrinoChemicalPotential_TABLE_Scalar &
-    ( D, T, Ye, Ym, Munue )
+    ( D, T, Ye, Ym, Munue, ChargedCurrentActive_Option )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -3261,11 +3282,19 @@ CONTAINS
 
     REAL(DP), INTENT(in)  :: D, T, Ye, Ym
     REAL(DP), INTENT(out) :: Munue
+    LOGICAL,  INTENT(in), OPTIONAL :: ChargedCurrentActive_Option
 
     REAL(DP) :: D_P
     REAL(DP) :: Mue, Mup, Mun
 
 #ifdef MICROPHYSICS_WEAKLIB
+
+    IF( PRESENT( ChargedCurrentActive_Option ) )THEN
+      IF( .NOT. ChargedCurrentActive_Option )THEN
+        Munue = Zero
+        RETURN
+      END IF
+    END IF
 
     D_P  = D / UnitD
 
@@ -3298,29 +3327,39 @@ CONTAINS
 
 
   SUBROUTINE ComputeElectronNeutrinoChemicalPotential_TABLE_Vector &
-    ( D, T, Ye, Ym, Munue )
+    ( D, T, Ye, Ym, Munue, ChargedCurrentMask_Option )
 
     REAL(DP), INTENT(in)  :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out) :: Munue(1:)
+    LOGICAL,  INTENT(in), OPTIONAL :: ChargedCurrentMask_Option(1:)
 
     REAL(DP) :: D_P, T_P, Ye_P, Ym_P
     REAL(DP) :: Mue, Mup, Mun
+    LOGICAL  :: ChargedCurrentMask(1:SIZE(D))
 
     INTEGER  :: iP, nP
 
     nP = SIZE( D )
+
+    IF( PRESENT( ChargedCurrentMask_Option ) )THEN
+      ChargedCurrentMask = ChargedCurrentMask_Option
+    ELSE
+      ChargedCurrentMask = .TRUE.
+    END IF
 
 #ifdef MICROPHYSICS_WEAKLIB
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( D_P, T_P, Ye_P, Ym_P, Mue, Mup, Mun ) &
-    !$OMP MAP( to: D, T, Ye, Ym, D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
+    !$OMP MAP( to: D, T, Ye, Ym, ChargedCurrentMask, &
+    !$OMP          D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
     !$OMP MAP( from: Munue )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( D_P, T_P, Ye_P, Ym_P, Mue, Mup, Mun ) &
-    !$ACC COPYIN( D, T, Ye, Ym, D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
+    !$ACC COPYIN( D, T, Ye, Ym, ChargedCurrentMask, &
+    !$ACC         D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
     !$ACC COPYOUT( Munue )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
@@ -3333,7 +3372,7 @@ CONTAINS
       Ye_P = Ye(iP)
       Ym_P = Ym(iP)
 
-      IF ( D_P / UnitD >= Eos_MinD ) THEN
+      IF( ChargedCurrentMask(iP) .AND. D_P / UnitD >= Eos_MinD )THEN
         CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
           ( D_P, T_P, Ye_P, Ym_P, Mun )
 
@@ -3370,7 +3409,7 @@ CONTAINS
   END SUBROUTINE ComputeElectronNeutrinoChemicalPotential_TABLE_Vector
 
   SUBROUTINE ComputeMuonNeutrinoChemicalPotential_TABLE_Scalar &
-      ( D, T, Ye, Ym, Munum )
+      ( D, T, Ye, Ym, Munum, ChargedCurrentActive_Option )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -3380,33 +3419,29 @@ CONTAINS
 
     REAL(DP), INTENT(in)  :: D, T, Ye, Ym
     REAL(DP), INTENT(out) :: Munum
+    LOGICAL,  INTENT(in), OPTIONAL :: ChargedCurrentActive_Option
 
-    REAL(DP) :: D_P
     REAL(DP) :: Mum, Mup, Mun
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    D_P  = D / UnitD
-
-    IF ( D_P >= MuonEoS_MinD ) THEN
-      CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
-        ( D, T, Ye, Ym, Mun )
-
-      CALL ComputeProtonChemicalPotential_TABLE_Scalar &
-        ( D, T, Ye, Ym, Mup )
-
-      CALL ComputeMuonChemicalPotential_TABLE_Scalar &
-        ( D, T, Ye, Ym, Mum )
-
-      IF ( ABS(Mum) < 1.0d-100 ) THEN
-         Munum = Zero
-      ELSE
-         Munum  = ( Mum  + Mup ) - Mun
+    IF( PRESENT( ChargedCurrentActive_Option ) )THEN
+      IF( .NOT. ChargedCurrentActive_Option )THEN
+        Munum = Zero
+        RETURN
       END IF
-
-    ELSE
-      Munum = Zero
     END IF
+
+    CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
+      ( D, T, Ye, Ym, Mun )
+
+    CALL ComputeProtonChemicalPotential_TABLE_Scalar &
+      ( D, T, Ye, Ym, Mup )
+
+    CALL ComputeMuonChemicalPotential_TABLE_Scalar &
+      ( D, T, Ye, Ym, Mum )
+
+    Munum = ( Mum + Mup ) - Mun
 
 #else
 
@@ -3418,29 +3453,39 @@ CONTAINS
 
 
   SUBROUTINE ComputeMuonNeutrinoChemicalPotential_TABLE_Vector &
-    ( D, T, Ye, Ym, Munum )
+    ( D, T, Ye, Ym, Munum, ChargedCurrentMask_Option )
 
     REAL(DP), INTENT(in)  :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out) :: Munum(1:)
+    LOGICAL,  INTENT(in), OPTIONAL :: ChargedCurrentMask_Option(1:)
 
     REAL(DP) :: D_P, T_P, Ye_P, Ym_P
     REAL(DP) :: Mup, Mun, Mum
+    LOGICAL  :: ChargedCurrentMask(1:SIZE(D))
 
     INTEGER  :: iP, nP
 
     nP = SIZE( D )
+
+    IF( PRESENT( ChargedCurrentMask_Option ) )THEN
+      ChargedCurrentMask = ChargedCurrentMask_Option
+    ELSE
+      ChargedCurrentMask = .TRUE.
+    END IF
 
 #ifdef MICROPHYSICS_WEAKLIB
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( D_P, T_P, Ye_P, Ym_P, Mum, Mup, Mun ) &
-    !$OMP MAP( to: D, T, Ye, Ym, D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
+    !$OMP MAP( to: D, T, Ye, Ym, ChargedCurrentMask, &
+    !$OMP          D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
     !$OMP MAP( from: Munum )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( D_P, T_P, Ye_P, Ym_P, Mum, Mup, Mun ) &
-    !$ACC COPYIN( D, T, Ye, Ym, D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
+    !$ACC COPYIN( D, T, Ye, Ym, ChargedCurrentMask, &
+    !$ACC         D_T, T_T, Yp_T, OS_Mp, OS_Mn, Mp_T, Mn_T ) &
     !$ACC COPYOUT( Munum )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
@@ -3453,7 +3498,7 @@ CONTAINS
       Ye_P = Ye(iP)
       Ym_P = Ym(iP)
 
-      IF ( D_P / UnitD >= MuonEoS_MinD ) THEN
+      IF( ChargedCurrentMask(iP) )THEN
         CALL ComputeNeutronChemicalPotential_TABLE_Scalar &
           ( D_P, T_P, Ye_P, Ym_P, Mun )
 
@@ -3463,12 +3508,7 @@ CONTAINS
         CALL ComputeMuonChemicalPotential_TABLE_Scalar &
           ( D_P, T_P, Ye_P, Ym_P, Mum )
 
-        IF ( ABS(Mum) < 1.0d-100 ) THEN
-           Munum(iP) = Zero
-        ELSE
-           Munum(iP)  = ( Mum  + Mup ) - Mun
-        END IF
-
+        Munum(iP) = ( Mum + Mup ) - Mun
       ELSE
         Munum(iP) = Zero
       END IF
@@ -5038,5 +5078,18 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeDependentVariableAndDerivativesBaryons_TABLE_Vector
+
+
+  SUBROUTINE AbortEquationOfState( Message )
+
+    CHARACTER(LEN=*), INTENT(in) :: Message
+
+    INTEGER :: ErrorCode
+
+    WRITE(ERROR_UNIT,'(A)') '[EquationOfStateModule_TABLE] ERROR: ' // TRIM( Message )
+    FLUSH(ERROR_UNIT)
+    CALL MPI_ABORT( MPI_COMM_WORLD, -1, ErrorCode )
+
+  END SUBROUTINE AbortEquationOfState
 
 END MODULE EquationOfStateModule_TABLE

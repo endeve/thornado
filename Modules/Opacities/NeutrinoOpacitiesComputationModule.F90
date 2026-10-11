@@ -165,6 +165,7 @@ MODULE NeutrinoOpacitiesComputationModule
   PUBLIC :: dFermiDiracdT
   PUBLIC :: dFermiDiracdY
   PUBLIC :: SetOpacityMask
+  PUBLIC :: SetChargedCurrentMasks
 
   PUBLIC :: iM0, iM1
   PUBLIC :: nOp
@@ -252,7 +253,9 @@ MODULE NeutrinoOpacitiesComputationModule
 CONTAINS
 
 
-  SUBROUTINE ComputeEquilibriumDistributions_Point( E, D, T, Ye, Ym, f0, iSpecies )
+  SUBROUTINE ComputeEquilibriumDistributions_Point &
+    ( E, D, T, Ye, Ym, f0, iSpecies, &
+      ElectronChargedCurrentMask_Option, MuonChargedCurrentMask_Option )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -265,20 +268,32 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, T, Ye, Ym
     REAL(DP), INTENT(out) :: f0
     INTEGER,  INTENT(in)  :: iSpecies
+    LOGICAL,  INTENT(in), OPTIONAL :: ElectronChargedCurrentMask_Option
+    LOGICAL,  INTENT(in), OPTIONAL :: MuonChargedCurrentMask_Option
 
     REAL(DP) :: M, Mnu, kT
+    LOGICAL  :: ElectronChargedCurrentActive, MuonChargedCurrentActive
 
     ! --- Compute Chemical Potentials ---
 
     kT = BoltzmannConstant * T
 
+    ElectronChargedCurrentActive = .TRUE.
+    MuonChargedCurrentActive     = .TRUE.
+    IF( PRESENT( ElectronChargedCurrentMask_Option ) ) &
+      ElectronChargedCurrentActive = ElectronChargedCurrentMask_Option
+    IF( PRESENT( MuonChargedCurrentMask_Option ) ) &
+      MuonChargedCurrentActive = MuonChargedCurrentMask_Option
+
     IF (iSpecies == iNuE .OR. iSpecies == iNuE_Bar) THEN
       CALL ComputeElectronNeutrinoChemicalPotential_TABLE &
-           ( D, T, Ye, Ym, Mnu )
+           ( D, T, Ye, Ym, Mnu, &
+             ChargedCurrentActive_Option = ElectronChargedCurrentActive )
       M = Mnu * LeptonNumber(iSpecies)
     ELSE IF (iSpecies == iNuM .OR. iSpecies == iNuM_Bar) THEN
       CALL ComputeMuonNeutrinoChemicalPotential_TABLE &
-           ( D, T, Ye, Ym, Mnu )
+             ( D, T, Ye, Ym, Mnu, &
+               ChargedCurrentActive_Option = MuonChargedCurrentActive )
       M = Mnu * LeptonNumber(iSpecies)
     ELSE
       M = Zero
@@ -290,7 +305,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeEquilibriumDistributions &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, f0 )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, f0, &
+      OpacityMask_Option, ElectronChargedCurrentMask_Option, &
+      MuonChargedCurrentMask_Option )
 
     ! --- Equilibrium Neutrino Distributions (Multiple D,T,Y) ---
 
@@ -303,10 +320,17 @@ CONTAINS
     REAL(DP), INTENT(in)  :: Ye(iX_B:iX_E)
     REAL(DP), INTENT(in)  :: Ym(iX_B:iX_E)
     REAL(DP), INTENT(out) :: f0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL, INTENT(in), OPTIONAL :: &
+      ElectronChargedCurrentMask_Option(iX_B:iX_E)
+    LOGICAL, INTENT(in), OPTIONAL :: &
+      MuonChargedCurrentMask_Option(iX_B:iX_E)
 
     REAL(DP) :: Mnue(iX_B:iX_E)
     REAL(DP) :: Mnum(iX_B:iX_E)
     REAL(DP) :: M, kT
+    LOGICAL  :: ElectronChargedCurrentMask(iX_B:iX_E)
+    LOGICAL  :: MuonChargedCurrentMask(iX_B:iX_E)
     INTEGER  :: iE, iS, iX
 
 #if defined(THORNADO_OMP_OL)
@@ -321,10 +345,28 @@ CONTAINS
 
     ! --- Compute Chemical Potentials ---
 
+    ElectronChargedCurrentMask = .TRUE.
+    MuonChargedCurrentMask     = .TRUE.
+
+    IF( PRESENT( OpacityMask_Option ) )THEN
+      ElectronChargedCurrentMask &
+        = OpacityMask_Option(iOp_EmAb_Electron,iX_B:iX_E) .OR. &
+          OpacityMask_Option(iOp_ECTable,       iX_B:iX_E)
+      MuonChargedCurrentMask &
+        = OpacityMask_Option(iOp_EmAb_Muon,iX_B:iX_E)
+    ELSE
+      IF( PRESENT( ElectronChargedCurrentMask_Option ) ) &
+        ElectronChargedCurrentMask = ElectronChargedCurrentMask_Option
+      IF( PRESENT( MuonChargedCurrentMask_Option ) ) &
+        MuonChargedCurrentMask = MuonChargedCurrentMask_Option
+    END IF
+
     CALL ComputeElectronNeutrinoChemicalPotential_TABLE &
-           ( D, T, Ye, Ym, Mnue )
+           ( D, T, Ye, Ym, Mnue, &
+             ChargedCurrentMask_Option = ElectronChargedCurrentMask )
     CALL ComputeMuonNeutrinoChemicalPotential_TABLE &
-           ( D, T, Ye, Ym, Mnum )
+           ( D, T, Ye, Ym, Mnum, &
+             ChargedCurrentMask_Option = MuonChargedCurrentMask )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -545,6 +587,15 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL :: f0_Max_Option
 
     REAL(DP) :: f0_Max
+    LOGICAL, ALLOCATABLE :: ElectronChargedCurrentMask(:)
+    LOGICAL, ALLOCATABLE :: MuonChargedCurrentMask(:)
+
+    ALLOCATE( ElectronChargedCurrentMask(iX_B:iX_E) )
+    ALLOCATE( MuonChargedCurrentMask(iX_B:iX_E) )
+
+    CALL SetChargedCurrentMasks &
+           ( iX_E-iX_B+1, nDOFX, D, T, Ye, Ym, &
+             ElectronChargedCurrentMask, MuonChargedCurrentMask )
 
     IF ( PRESENT( f0_Max_Option ) ) THEN
       f0_Max = MIN( f0_Max_Option, One - EPSILON( One ) )
@@ -563,7 +614,9 @@ CONTAINS
 #endif
 
     CALL ComputeEquilibriumDistributions &
-           ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, f0 )
+             ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, f0, &
+             ElectronChargedCurrentMask_Option = ElectronChargedCurrentMask, &
+             MuonChargedCurrentMask_Option = MuonChargedCurrentMask )
 
     CALL LimitEquilibriumDistributions_DG &
            ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, f0, f0_Max )
@@ -577,6 +630,8 @@ CONTAINS
     !$ACC DELETE( E, D, T, Ye, Ym ) &
     !$ACC COPYOUT( f0 )
 #endif
+
+    DEALLOCATE( ElectronChargedCurrentMask, MuonChargedCurrentMask )
 
   END SUBROUTINE ComputeEquilibriumDistributions_DG_E
 
@@ -610,6 +665,8 @@ CONTAINS
     REAL(DP), ALLOCATABLE, TARGET :: Mnue(:)
     REAL(DP), ALLOCATABLE, TARGET :: Mnum(:)
     REAL(DP), ALLOCATABLE :: Tau_Q(:,:,:), f0_K(:,:,:), f0_Q(:,:,:,:)
+    LOGICAL, ALLOCATABLE :: ElectronChargedCurrentMask(:)
+    LOGICAL, ALLOCATABLE :: MuonChargedCurrentMask(:)
 
     IF ( PRESENT( f0_Max_Option ) ) THEN
       f0_Max = MIN( f0_Max_Option, One - EPSILON( One ) )
@@ -618,7 +675,7 @@ CONTAINS
     ENDIF
 
     nE = (iE_E-iE_B+1)/nDOFE ! --- Number of energy  elements
-    nX = (iX_E-iE_B+1)/nDOFX ! --- Number of spatial elements
+    nX = (iX_E-iX_B+1)/nDOFX ! --- Number of spatial elements
     nS = (iS_E-iS_B+1)       ! --- Number of species
 
     ALLOCATE( Mnue(iX_B:iX_E) )
@@ -626,13 +683,20 @@ CONTAINS
     ALLOCATE( Tau_Q(nDOFE*nDOFX,nE,nX) )
     ALLOCATE( f0_K(nE,nS,nX) )
     ALLOCATE( f0_Q(nDOFE*nDOFX,nE,nS,nX) )
+    ALLOCATE( ElectronChargedCurrentMask(iX_B:iX_E) )
+    ALLOCATE( MuonChargedCurrentMask(iX_B:iX_E) )
 
     ! --- Compute Chemical Potentials ---
 
+    CALL SetChargedCurrentMasks &
+           ( iX_E-iX_B+1, nDOFX, D, T, Ye, Ym, &
+             ElectronChargedCurrentMask, MuonChargedCurrentMask )
     CALL ComputeElectronNeutrinoChemicalPotential_TABLE &
-           ( D, T, Ye, Ym, Mnue )
+           ( D, T, Ye, Ym, Mnue, &
+             ChargedCurrentMask_Option = ElectronChargedCurrentMask )
     CALL ComputeMuonNeutrinoChemicalPotential_TABLE &
-           ( D, T, Ye, Ym, Mnum )
+           ( D, T, Ye, Ym, Mnum, &
+             ChargedCurrentMask_Option = MuonChargedCurrentMask )
 
     E_Q   (1:nDOFE,1:nE) => E   (:)
     D_Q   (1:nDOFX,1:nX) => D   (:)
@@ -777,6 +841,10 @@ CONTAINS
     END DO
     END DO
     END DO
+
+    DEALLOCATE &
+      ( Mnue, Mnum, Tau_Q, f0_K, f0_Q, &
+        ElectronChargedCurrentMask, MuonChargedCurrentMask )
 
   END SUBROUTINE ComputeEquilibriumDistributions_DG_Z
 
@@ -4012,6 +4080,94 @@ CONTAINS
 
     RETURN
   END FUNCTION dFermiDiracdY_Vector
+
+  SUBROUTINE SetChargedCurrentMasks &
+    ( nX, nDOF_X, D, T, Ye, Ym, &
+      ElectronChargedCurrentMask, MuonChargedCurrentMask )
+
+    INTEGER,  INTENT(in)  :: nX, nDOF_X
+    REAL(DP), INTENT(in)  :: D(nX), T(nX), Ye(nX), Ym(nX)
+    LOGICAL,  INTENT(out) :: ElectronChargedCurrentMask(nX)
+    LOGICAL,  INTENT(out) :: MuonChargedCurrentMask(nX)
+
+    INTEGER :: iN_X, iNodeX, iX
+    LOGICAL :: ElectronElementActive, MuonElementActive
+    REAL(DP), ALLOCATABLE :: Ah(:)
+
+    ALLOCATE( Ah(nX) )
+    Ah = Zero
+
+#ifdef MICROPHYSICS_WEAKLIB
+    IF( use_EC_table > 0 ) &
+      CALL ComputeHeavyMassNumber_TABLE( D, T, Ye, Ym, Ah )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET DATA &
+    !$OMP MAP( to: D, T, Ye, Ym, Ah ) &
+    !$OMP MAP( from: ElectronChargedCurrentMask, MuonChargedCurrentMask )
+#elif defined(THORNADO_OACC)
+    !$ACC DATA COPYIN( D, T, Ye, Ym, Ah ) &
+    !$ACC COPYOUT( ElectronChargedCurrentMask, MuonChargedCurrentMask )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iN_X = 1, nX
+      ElectronChargedCurrentMask(iN_X) &
+        = QueryOpacity_EmAb_Nucleon( D(iN_X) / UnitD ) .OR. &
+          QueryOpacity_ECTable &
+            ( D(iN_X) / UnitD, T(iN_X) / UnitT, &
+              Ye(iN_X) / UnitYe, Ah(iN_X) )
+      MuonChargedCurrentMask(iN_X) &
+        = QueryOpacity_EmAb_Muon( D(iN_X) / UnitD )
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE( iNodeX, iN_X, ElectronElementActive, MuonElementActive )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE( iNodeX, iN_X, ElectronElementActive, MuonElementActive )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( iNodeX, iN_X, ElectronElementActive, MuonElementActive )
+#endif
+    DO iX = 1, nX / nDOF_X
+
+      ElectronElementActive = .TRUE.
+      MuonElementActive     = .TRUE.
+      DO iNodeX = 1, nDOF_X
+        iN_X = iNodeX + ( iX - 1 ) * nDOF_X
+        ElectronElementActive &
+          = ElectronElementActive .AND. ElectronChargedCurrentMask(iN_X)
+        MuonElementActive &
+          = MuonElementActive .AND. MuonChargedCurrentMask(iN_X)
+      END DO
+
+      DO iNodeX = 1, nDOF_X
+        iN_X = iNodeX + ( iX - 1 ) * nDOF_X
+        ElectronChargedCurrentMask(iN_X) = ElectronElementActive
+        MuonChargedCurrentMask(iN_X)     = MuonElementActive
+      END DO
+
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+    !$ACC END DATA
+#endif
+
+    DEALLOCATE( Ah )
+
+  END SUBROUTINE SetChargedCurrentMasks
+
 
   SUBROUTINE SetOpacityMask &
     ( nX, nDOF_X, D, T, Ye, Ym, Opacity_Mask )

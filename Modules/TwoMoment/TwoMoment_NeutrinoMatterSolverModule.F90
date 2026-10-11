@@ -115,13 +115,14 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   PUBLIC :: SolveNeutrinoMatterCoupling_FP_Nested_AA
 
   ! Matter collision RHS quantities used by the shared limiter accounting.
-  INTEGER, PARAMETER :: iQ_L  = 1
+  INTEGER, PARAMETER :: iQ_Le = 1
   INTEGER, PARAMETER :: iQ_E  = 2
   INTEGER, PARAMETER :: iQ_H  = 3
   INTEGER, PARAMETER :: iQ_M1 = 4
   INTEGER, PARAMETER :: iQ_M2 = 5
   INTEGER, PARAMETER :: iQ_M3 = 6
-  INTEGER, PARAMETER :: nQ    = 6
+  INTEGER, PARAMETER :: iQ_Lm = 7
+  INTEGER, PARAMETER :: nQ    = 7
 
 #if defined( TWOMOMENT_ORDER_V )
   PUBLIC :: ComputeOpacities_Packed
@@ -132,7 +133,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   PUBLIC :: ComputeMeanInverseMeanFreePaths
   PUBLIC :: Include_NNS, Include_NES, Include_Pair, Include_NuPair, Include_Brem
   PUBLIC :: nQ
-  PUBLIC :: iQ_L, iQ_E, iQ_H, iQ_M1, iQ_M2, iQ_M3
+  PUBLIC :: iQ_Le, iQ_Lm, iQ_E, iQ_H, iQ_M1, iQ_M2, iQ_M3
   PUBLIC :: nNNSRateDecomposition, iNNSRateDecomposition_NIn, iNNSRateDecomposition_NOut, iNNSRateDecomposition_NNet, &
             iNNSRateDecomposition_EIn, iNNSRateDecomposition_EOut, iNNSRateDecomposition_QH
   PUBLIC :: nEmAbRateDecomposition, iEmAbRateDecomposition_NIn, iEmAbRateDecomposition_NOut, &
@@ -3053,9 +3054,13 @@ CONTAINS
 
       IF( nIterations_Outer_Final(iN_X) > 0 )THEN
 
-        MatterEquationResidual_Rate_Final(iQ_L,iN_X) &
+        MatterEquationResidual_Rate_Final(iQ_Le,iN_X) &
           = D_old(iN_X) * Ye_old(iN_X) / AtomicMassUnit &
               * FVECm_outer(iYe,iN_X) / dt
+
+        MatterEquationResidual_Rate_Final(iQ_Lm,iN_X) &
+          = D_old(iN_X) * Ym_old(iN_X) / AtomicMassUnit &
+              * FVECm_outer(iYm,iN_X) / dt
 
         MatterEquationResidual_Rate_Final(iQ_E,iN_X) &
           = D_old(iN_X) * Ef_old(iN_X) &
@@ -5254,7 +5259,8 @@ CONTAINS
     CALL TimersStart( Timer_Opacity_D0 )
 
     CALL ComputeEquilibriumDistributions &
-           ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Ye_P, Ym_p, Dnu_0_P )
+           ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Ye_P, Ym_P, &
+             Dnu_0_P, OpacityMask_Option = Opacity_Mask_P )
 
     CALL TimersStop( Timer_Opacity_D0 )
 
@@ -6242,7 +6248,8 @@ CONTAINS
 
       LimiterRate(:,iN_X) = Zero
       DeltaLepton = DeltaLeptonElectron
-      LimiterRate(iQ_L,iN_X) = DeltaLepton / dt
+      LimiterRate(iQ_Le,iN_X) = DeltaLepton / dt
+      LimiterRate(iQ_Lm,iN_X) = DeltaLeptonMuon / dt
       LimiterRate(iQ_E,iN_X) = DeltaEnergy / dt
       LimiterRate(iQ_M1,iN_X) = DeltaMomentum1 / dt
       LimiterRate(iQ_M2,iN_X) = DeltaMomentum2 / dt
@@ -6926,7 +6933,7 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:,:), INTENT(out), OPTIONAL :: &
       RadiationCollisionRHS_Option
 
-    REAL(DP), ALLOCATABLE :: Q_SP(:,:,:,:)
+    REAL(DP), ALLOCATABLE :: Q_SP(:,:,:,:), QLm_SP(:,:,:)
     REAL(DP), ALLOCATABLE :: EmAb_Spectrum(:,:,:,:)
     REAL(DP), ALLOCATABLE :: RadiationCollisionRHS(:,:,:,:)
     REAL(DP), ALLOCATABLE :: QH_ByProcessSpecies(:,:,:)
@@ -6941,7 +6948,7 @@ CONTAINS
     REAL(DP) :: RG1(nC)
     REAL(DP) :: RG2(nC)
     REAL(DP) :: RG3(nC)
-    REAL(DP) :: QL, QE, QM1, QM2, QM3
+    REAL(DP) :: QL, QLm, QE, QM1, QM2, QM3
     REAL(DP) :: RN_Total, RG1_Total, RG2_Total, RG3_Total
     REAL(DP) :: V2
 
@@ -7005,6 +7012,7 @@ CONTAINS
     END IF
 
     ALLOCATE( Q_SP(5,nC,nSpecies,nX_G) )
+    ALLOCATE( QLm_SP(nC,nSpecies,nX_G) )
     IF( ComputeRadiationCollisionRHS )THEN
       ALLOCATE( RadiationCollisionRHS(nCR,nE_G,nSpecies,nX_G) )
     ELSE
@@ -7057,10 +7065,25 @@ CONTAINS
     END IF
 
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA MAP( alloc: Q_SP )
+    !$OMP TARGET ENTER DATA MAP( alloc: Q_SP, QLm_SP )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA CREATE( Q_SP )
+    !$ACC ENTER DATA CREATE( Q_SP, QLm_SP )
 #endif
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) PRESENT( QLm_SP )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO iN_X = 1, nX_G
+    DO iS   = 1, nSpecies
+    DO iP   = 1, nC
+      QLm_SP(iP,iS,iN_X) = Zero
+    END DO
+    END DO
+    END DO
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
@@ -7103,7 +7126,7 @@ CONTAINS
     !$OMP          I_d_1, I_d_2, I_d_3, V_d_1, V_d_2, V_d_3, &
     !$OMP          L_u_1, L_u_2, L_u_3, L_d_1, L_d_2, L_d_3, &
     !$OMP          RN, RG1, RG2, RG3, RN_Total, RG1_Total, RG2_Total, &
-    !$OMP          RG3_Total, QL, QE, QM1, QM2, QM3, iN_E, iP, iG )
+    !$OMP          RG3_Total, QL, QLm, QE, QM1, QM2, QM3, iN_E, iP, iG )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
     !$ACC FIRSTPRIVATE( ComputeRadiationCollisionRHS ) &
@@ -7111,8 +7134,8 @@ CONTAINS
     !$ACC          I_d_1, I_d_2, I_d_3, V_d_1, V_d_2, V_d_3, &
     !$ACC          L_u_1, L_u_2, L_u_3, L_d_1, L_d_2, L_d_3, &
     !$ACC          RN, RG1, RG2, RG3, RN_Total, RG1_Total, RG2_Total, &
-    !$ACC          RG3_Total, QL, QE, QM1, QM2, QM3, iN_E, iP, iG ) &
-    !$ACC PRESENT( Q_SP, RadiationCollisionRHS )
+    !$ACC          RG3_Total, QL, QLm, QE, QM1, QM2, QM3, iN_E, iP, iG ) &
+    !$ACC PRESENT( Q_SP, QLm_SP, RadiationCollisionRHS )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2) &
     !$OMP FIRSTPRIVATE( ComputeRadiationCollisionRHS ) &
@@ -7120,7 +7143,7 @@ CONTAINS
     !$OMP          I_d_1, I_d_2, I_d_3, V_d_1, V_d_2, V_d_3, &
     !$OMP          L_u_1, L_u_2, L_u_3, L_d_1, L_d_2, L_d_3, &
     !$OMP          RN, RG1, RG2, RG3, RN_Total, RG1_Total, RG2_Total, &
-    !$OMP          RG3_Total, QL, QE, QM1, QM2, QM3, iN_E, iP, iG )
+    !$OMP          RG3_Total, QL, QLm, QE, QM1, QM2, QM3, iN_E, iP, iG )
 #endif
     DO iN_X = 1, nX_G
     DO iS   = 1, nSpecies
@@ -7334,6 +7357,10 @@ CONTAINS
             IF ( iS <= iNuE_Bar ) &
               QL = -LeptonNumber(iS) * RN(iP) * W2_S(iN_E)
 
+            QLm = Zero
+            IF ( iS == iNuM .OR. iS == iNuM_Bar ) &
+              QLm = -LeptonNumber(iS) * RN(iP) * W2_S(iN_E)
+
             QE  = -( RN(iP) + V_u_1(iN_X) * RG1(iP) &
                               + V_u_2(iN_X) * RG2(iP) &
                               + V_u_3(iN_X) * RG3(iP) ) * W3_S(iN_E)
@@ -7342,6 +7369,7 @@ CONTAINS
             QM3 = -( RG3(iP) + V_d_3 * RN(iP) ) * W3_S(iN_E)
 
             Q_SP(1,iP,iS,iN_X) = Q_SP(1,iP,iS,iN_X) + QL
+            QLm_SP(iP,iS,iN_X) = QLm_SP(iP,iS,iN_X) + QLm
             Q_SP(2,iP,iS,iN_X) = Q_SP(2,iP,iS,iN_X) + QE
             Q_SP(3,iP,iS,iN_X) = Q_SP(3,iP,iS,iN_X) + QM1
             Q_SP(4,iP,iS,iN_X) = Q_SP(4,iP,iS,iN_X) + QM2
@@ -7443,15 +7471,17 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) PRIVATE( iP )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) PRIVATE( iP ) &
-    !$ACC PRESENT( Q_SP, Q_Matter )
+    !$ACC PRESENT( Q_SP, QLm_SP, Q_Matter )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2) PRIVATE( iP )
 #endif
     DO iN_X = 1, nX_G
     DO iS   = 1, nSpecies
       DO iP = 1, nC
-        Q_Matter(iQ_L ,1+iS,iN_X) = Q_Matter(iQ_L ,1+iS,iN_X) &
+        Q_Matter(iQ_Le,1+iS,iN_X) = Q_Matter(iQ_Le,1+iS,iN_X) &
                                              + Q_SP(1,iP,iS,iN_X)
+        Q_Matter(iQ_Lm,1+iS,iN_X) = Q_Matter(iQ_Lm,1+iS,iN_X) &
+                                             + QLm_SP(iP,iS,iN_X)
         Q_Matter(iQ_E ,1+iS,iN_X) = Q_Matter(iQ_E ,1+iS,iN_X) &
                                              + Q_SP(2,iP,iS,iN_X)
         Q_Matter(iQ_M1,1+iS,iN_X) = Q_Matter(iQ_M1,1+iS,iN_X) &
@@ -7469,15 +7499,17 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) PRIVATE( iS )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) PRIVATE( iS ) &
-    !$ACC PRESENT( Q_SP, Q_Matter )
+    !$ACC PRESENT( Q_SP, QLm_SP, Q_Matter )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2) PRIVATE( iS )
 #endif
     DO iN_X = 1, nX_G
     DO iP   = 1, nC
       DO iS = 1, nSpecies
-        Q_Matter(iQ_L ,1+nSpecies+iP,iN_X) &
-          = Q_Matter(iQ_L ,1+nSpecies+iP,iN_X) + Q_SP(1,iP,iS,iN_X)
+        Q_Matter(iQ_Le,1+nSpecies+iP,iN_X) &
+          = Q_Matter(iQ_Le,1+nSpecies+iP,iN_X) + Q_SP(1,iP,iS,iN_X)
+        Q_Matter(iQ_Lm,1+nSpecies+iP,iN_X) &
+          = Q_Matter(iQ_Lm,1+nSpecies+iP,iN_X) + QLm_SP(iP,iS,iN_X)
         Q_Matter(iQ_E ,1+nSpecies+iP,iN_X) &
           = Q_Matter(iQ_E ,1+nSpecies+iP,iN_X) + Q_SP(2,iP,iS,iN_X)
         Q_Matter(iQ_M1,1+nSpecies+iP,iN_X) &
@@ -7504,8 +7536,10 @@ CONTAINS
 
       IF ( iG == 1 ) THEN
         DO iS = 1, nSpecies
-          Q_Matter(iQ_L ,iG,iN_X) = Q_Matter(iQ_L ,iG,iN_X) &
-                                            + Q_Matter(iQ_L ,1+iS,iN_X)
+          Q_Matter(iQ_Le,iG,iN_X) = Q_Matter(iQ_Le,iG,iN_X) &
+                                            + Q_Matter(iQ_Le,1+iS,iN_X)
+          Q_Matter(iQ_Lm,iG,iN_X) = Q_Matter(iQ_Lm,iG,iN_X) &
+                                            + Q_Matter(iQ_Lm,1+iS,iN_X)
           Q_Matter(iQ_E ,iG,iN_X) = Q_Matter(iQ_E ,iG,iN_X) &
                                             + Q_Matter(iQ_E ,1+iS,iN_X)
           Q_Matter(iQ_M1,iG,iN_X) = Q_Matter(iQ_M1,iG,iN_X) &
@@ -7556,12 +7590,12 @@ CONTAINS
     END IF
 
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA MAP( release: Q_SP )
+    !$OMP TARGET EXIT DATA MAP( release: Q_SP, QLm_SP )
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA DELETE( Q_SP )
+    !$ACC EXIT DATA DELETE( Q_SP, QLm_SP )
 #endif
 
-    DEALLOCATE( Q_SP )
+    DEALLOCATE( Q_SP, QLm_SP )
 
   END SUBROUTINE ComputeMatterRHS_Collisions_OrderV
 

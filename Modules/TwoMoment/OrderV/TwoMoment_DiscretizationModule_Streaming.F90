@@ -67,23 +67,14 @@ MODULE TwoMoment_DiscretizationModule_Streaming
     iGF_Gm_dd_33, &
     iGF_SqrtGm
   USE FluidFieldsModule, ONLY: &
-    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, iCF_Nm, &
-    nPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, iPF_Nm, &
-    nAF, iAF_T, iAF_Ye, iAF_Ym
+    nCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, iCF_Nm
   USE Euler_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_Euler
-  USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
-    ComputePrimitive_Euler_NonRelativistic, &
-    ComputeFromConserved_Euler_NonRelativistic
-  USE NeutrinoOpacitiesComputationModule, ONLY: &
-    ComputeEquilibriumDistributions, &
-    LimitEquilibriumDistributions_DG
   USE RadiationFieldsModule, ONLY: &
     nSpecies, LeptonNumber, &
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
     nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3
   USE TwoMoment_ClosureModule, ONLY: &
-    FluxFactor, &
     EddingtonFactor
   USE TwoMoment_BoundaryConditionsModule, ONLY: &
     ApplyBoundaryConditions_TwoMoment
@@ -108,11 +99,6 @@ MODULE TwoMoment_DiscretizationModule_Streaming
   PRIVATE
 
   PUBLIC :: ComputeIncrement_TwoMoment_Explicit
-  PUBLIC :: InitializeEquilibriumDeviationLLF
-  PUBLIC :: SetEquilibriumDeviationReferenceState
-  PUBLIC :: ClearEquilibriumDeviationReferenceState
-  PUBLIC :: UseEquilibriumDeviationLLF
-  PUBLIC :: EquilibriumDeviationLLF_MaxFluxFactor
   PUBLIC :: InitializeSourceAwareLLF
   PUBLIC :: AllocateSourceAwareTransportOpacity
   PUBLIC :: StoreSourceAwareTransportOpacity
@@ -125,10 +111,6 @@ MODULE TwoMoment_DiscretizationModule_Streaming
   PUBLIC :: UseSourceAwareLLF
   PUBLIC :: SetStreamingCheckSurfaceTermFactors
   PUBLIC :: ClearStreamingCheckSurfaceTermFactors
-
-  LOGICAL,  SAVE :: UseEquilibriumDeviationLLF = .FALSE.
-  REAL(DP), SAVE :: EquilibriumDeviationLLF_DnuMax = One - EPSILON( One )
-  REAL(DP), SAVE :: EquilibriumDeviationLLF_MaxFluxFactor = 0.1_DP
 
   LOGICAL, SAVE :: UseSourceAwareLLF = .FALSE.
   LOGICAL, SAVE :: SourceAwareLLFActive = .FALSE.
@@ -170,10 +152,7 @@ MODULE TwoMoment_DiscretizationModule_Streaming
   ! --- Conserved Radiation Fields ---
 
   REAL(DP), TARGET, DIMENSION(:,:,:,:,:,:,:), ALLOCATABLE :: &
-    uCR_K, uCR_L, uCR_R, &
-    uCR_Equilibrium, uCR_Equilibrium_K, &
-    uCR_Equilibrium_L, uCR_Equilibrium_R, &
-    uCR_Equilibrium_Provided
+    uCR_K, uCR_L, uCR_R
 
   REAL(DP), POINTER, CONTIGUOUS, DIMENSION(:) :: &
     uN_K, uG1_K, uG2_K, uG3_K, &
@@ -237,83 +216,6 @@ MODULE TwoMoment_DiscretizationModule_Streaming
   REAL(DP), PUBLIC :: OffGridLeptonFlux_TwoMoment(3)
 
 CONTAINS
-
-
-  SUBROUTINE InitializeEquilibriumDeviationLLF &
-    ( Use_Option, DnuMax_Option, MaxFluxFactor_Option, Verbose_Option )
-
-    LOGICAL,  INTENT(in), OPTIONAL :: Use_Option
-    REAL(DP), INTENT(in), OPTIONAL :: DnuMax_Option
-    REAL(DP), INTENT(in), OPTIONAL :: MaxFluxFactor_Option
-    LOGICAL,  INTENT(in), OPTIONAL :: Verbose_Option
-
-    LOGICAL :: Verbose
-
-    UseEquilibriumDeviationLLF = .FALSE.
-    IF( PRESENT( Use_Option ) ) &
-      UseEquilibriumDeviationLLF = Use_Option
-
-    EquilibriumDeviationLLF_DnuMax = One - EPSILON( One )
-    IF( PRESENT( DnuMax_Option ) ) &
-      EquilibriumDeviationLLF_DnuMax = DnuMax_Option
-
-    EquilibriumDeviationLLF_MaxFluxFactor = 0.1_DP
-    IF( PRESENT( MaxFluxFactor_Option ) ) &
-      EquilibriumDeviationLLF_MaxFluxFactor = MaxFluxFactor_Option
-
-    Verbose = .FALSE.
-    IF( PRESENT( Verbose_Option ) ) Verbose = Verbose_Option
-
-    IF( Verbose )THEN
-      WRITE(*,*)
-      WRITE(*,'(A)') '  Equilibrium-deviation LLF experiment:'
-      WRITE(*,'(A,L1)') '    enabled                 : ', &
-        UseEquilibriumDeviationLLF
-      WRITE(*,'(A,ES12.4E3)') '    maximum flux factor      : ', &
-        EquilibriumDeviationLLF_MaxFluxFactor
-      WRITE(*,'(A,ES12.4E3)') '    equilibrium Dnu maximum  : ', &
-        EquilibriumDeviationLLF_DnuMax
-      WRITE(*,*)
-    END IF
-
-  END SUBROUTINE InitializeEquilibriumDeviationLLF
-
-
-  SUBROUTINE SetEquilibriumDeviationReferenceState &
-    ( iZ_B1, iZ_E1, U_R_Equilibrium )
-
-    INTEGER, INTENT(in) :: iZ_B1(4), iZ_E1(4)
-    REAL(DP), INTENT(in) :: &
-      U_R_Equilibrium &
-        (1:nDOFZ, &
-         iZ_B1(1):iZ_E1(1), &
-         iZ_B1(2):iZ_E1(2), &
-         iZ_B1(3):iZ_E1(3), &
-         iZ_B1(4):iZ_E1(4), &
-         1:nCR,1:nSpecies)
-
-    IF( ALLOCATED( uCR_Equilibrium_Provided ) ) &
-      DEALLOCATE( uCR_Equilibrium_Provided )
-
-    ALLOCATE &
-      ( uCR_Equilibrium_Provided &
-          (1:nDOFZ, &
-           iZ_B1(1):iZ_E1(1), &
-           iZ_B1(2):iZ_E1(2), &
-           iZ_B1(3):iZ_E1(3), &
-           iZ_B1(4):iZ_E1(4), &
-           1:nCR,1:nSpecies) )
-    uCR_Equilibrium_Provided = U_R_Equilibrium
-
-  END SUBROUTINE SetEquilibriumDeviationReferenceState
-
-
-  SUBROUTINE ClearEquilibriumDeviationReferenceState
-
-    IF( ALLOCATED( uCR_Equilibrium_Provided ) ) &
-      DEALLOCATE( uCR_Equilibrium_Provided )
-
-  END SUBROUTINE ClearEquilibriumDeviationReferenceState
 
 
   SUBROUTINE InitializeSourceAwareLLF( Use_Option, Verbose_Option )
@@ -787,46 +689,6 @@ CONTAINS
 
     StreamingBoundaryConditionsApplied = .FALSE.
 
-    IF( UseEquilibriumDeviationLLF )THEN
-
-#if defined( THORNADO_OMP_OL ) || defined( THORNADO_OACC )
-      ERROR STOP 'Equilibrium-deviation LLF experiment is currently host-only'
-#endif
-
-      IF( iZ_E0(3) > iZ_B0(3) .OR. iZ_E0(4) > iZ_B0(4) ) &
-        ERROR STOP 'Equilibrium-deviation LLF experiment is currently X1-only'
-
-      ALLOCATE( uCR_Equilibrium, MOLD = U_R )
-
-      IF( ALLOCATED( uCR_Equilibrium_Provided ) )THEN
-
-        IF(      ANY( SHAPE( uCR_Equilibrium_Provided ) &
-                      /= SHAPE( uCR_Equilibrium ) ) &
-            .OR. ANY( LBOUND( uCR_Equilibrium_Provided ) &
-                      /= LBOUND( uCR_Equilibrium ) ) ) &
-          ERROR STOP 'Invalid equilibrium-deviation reference-state shape.'
-
-        uCR_Equilibrium = uCR_Equilibrium_Provided
-
-      ELSE
-
-        CALL ComputeEquilibriumRadiationState &
-               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, &
-                 uCR_Equilibrium )
-
-      END IF
-
-      CALL ApplyBoundaryConditions_TwoMoment &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uCR_Equilibrium )
-
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET ENTER DATA MAP( to: uCR_Equilibrium )
-#elif defined( THORNADO_OACC   )
-    !$ACC ENTER DATA COPYIN( uCR_Equilibrium )
-#endif
-
-    END IF
-
     CALL InitializeIncrement_TwoMoment_Explicit &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1 )
 
@@ -929,18 +791,6 @@ CONTAINS
 
     CALL FinalizeIncrement_TwoMoment_Explicit
 
-    IF( UseEquilibriumDeviationLLF )THEN
-
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET EXIT DATA MAP( release: uCR_Equilibrium )
-#elif defined( THORNADO_OACC   )
-    !$ACC EXIT DATA DELETE( uCR_Equilibrium )
-#endif
-
-      DEALLOCATE( uCR_Equilibrium )
-
-    END IF
-
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( from: dU_R, U_R, U_F ) &
@@ -961,141 +811,6 @@ CONTAINS
     CALL TimersStop( Timer_Streaming )
 
   END SUBROUTINE ComputeIncrement_TwoMoment_Explicit
-
-
-  SUBROUTINE ComputeEquilibriumRadiationState &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R_Equilibrium )
-
-    INTEGER, INTENT(in) :: iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-    REAL(DP), INTENT(in) :: &
-      GE(1:nDOFE,iZ_B1(1):iZ_E1(1),1:nGE)
-    REAL(DP), INTENT(in) :: &
-      GX(1:nDOFX, &
-         iZ_B1(2):iZ_E1(2), &
-         iZ_B1(3):iZ_E1(3), &
-         iZ_B1(4):iZ_E1(4),1:nGF)
-    REAL(DP), INTENT(in) :: &
-      U_F(1:nDOFX, &
-          iZ_B1(2):iZ_E1(2), &
-          iZ_B1(3):iZ_E1(3), &
-          iZ_B1(4):iZ_E1(4),1:nCF)
-    REAL(DP), INTENT(out) :: &
-      U_R_Equilibrium(1:nDOFZ, &
-                      iZ_B1(1):iZ_E1(1), &
-                      iZ_B1(2):iZ_E1(2), &
-                      iZ_B1(3):iZ_E1(3), &
-                      iZ_B1(4):iZ_E1(4),1:nCR,1:nSpecies)
-
-    INTEGER :: iNodeE, iNodeX, iNodeZ
-    INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iN_E, iN_X
-    INTEGER :: nE_G, nX_G
-    REAL(DP), ALLOCATABLE :: PF(:,:,:,:,:), AF(:,:,:,:,:)
-    REAL(DP), ALLOCATABLE :: E_N(:), D_N(:), T_N(:), Ye_N(:), Ym_N(:)
-    REAL(DP), ALLOCATABLE :: Dnu_Equilibrium(:,:,:)
-
-    nE_G = ( iZ_E0(1) - iZ_B0(1) + 1 ) * nDOFE
-    nX_G = PRODUCT( iZ_E0(2:4) - iZ_B0(2:4) + 1 ) * nDOFX
-
-    ALLOCATE &
-      ( PF(1:nDOFX, &
-           iZ_B1(2):iZ_E1(2), &
-           iZ_B1(3):iZ_E1(3), &
-           iZ_B1(4):iZ_E1(4),1:nPF), &
-        AF(1:nDOFX, &
-           iZ_B1(2):iZ_E1(2), &
-           iZ_B1(3):iZ_E1(3), &
-           iZ_B1(4):iZ_E1(4),1:nAF) )
-    ALLOCATE( E_N(nE_G), D_N(nX_G), T_N(nX_G), &
-              Ye_N(nX_G), Ym_N(nX_G) )
-    ALLOCATE( Dnu_Equilibrium(nE_G,nSpecies,nX_G) )
-
-    PF = Zero
-    AF = Zero
-    U_R_Equilibrium = Zero
-
-    CALL ComputeFromConserved_Euler_NonRelativistic &
-           ( iZ_B0(2:4), iZ_E0(2:4), iZ_B1(2:4), iZ_E1(2:4), &
-             GX, U_F, PF, AF )
-
-    iN_E = 0
-    DO iZ1 = iZ_B0(1), iZ_E0(1)
-    DO iNodeE = 1, nDOFE
-
-      iN_E = iN_E + 1
-      E_N(iN_E) = GE(iNodeE,iZ1,iGE_Ep1)
-
-    END DO
-    END DO
-
-    iN_X = 0
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iNodeX = 1, nDOFX
-
-      iN_X = iN_X + 1
-      D_N(iN_X) = PF(iNodeX,iZ2,iZ3,iZ4,iPF_D)
-      T_N(iN_X) = AF(iNodeX,iZ2,iZ3,iZ4,iAF_T)
-      Ye_N(iN_X) = AF(iNodeX,iZ2,iZ3,iZ4,iAF_Ye)
-      Ym_N(iN_X) = AF(iNodeX,iZ2,iZ3,iZ4,iAF_Ym)
-
-    END DO
-    END DO
-    END DO
-    END DO
-
-    CALL ComputeEquilibriumDistributions &
-           ( 1, nE_G, 1, nSpecies, 1, nX_G, &
-             E_N, D_N, T_N, Ye_N, Ym_N, Dnu_Equilibrium )
-
-    CALL LimitEquilibriumDistributions_DG &
-           ( 1, nE_G, 1, nSpecies, 1, nX_G, &
-             E_N, Dnu_Equilibrium, EquilibriumDeviationLLF_DnuMax )
-
-    iN_X = 0
-    DO iZ4 = iZ_B0(4), iZ_E0(4)
-    DO iZ3 = iZ_B0(3), iZ_E0(3)
-    DO iZ2 = iZ_B0(2), iZ_E0(2)
-    DO iNodeX = 1, nDOFX
-
-      iN_X = iN_X + 1
-      iN_E = 0
-
-      DO iZ1 = iZ_B0(1), iZ_E0(1)
-      DO iNodeE = 1, nDOFE
-
-        iN_E = iN_E + 1
-        iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
-
-        DO iS = 1, nSpecies
-
-          CALL ComputeConserved_TwoMoment &
-                 ( Dnu_Equilibrium(iN_E,iS,iN_X), Zero, Zero, Zero, &
-                   U_R_Equilibrium(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_N ,iS), &
-                   U_R_Equilibrium(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G1,iS), &
-                   U_R_Equilibrium(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G2,iS), &
-                   U_R_Equilibrium(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR_G3,iS), &
-                   PF(iNodeX,iZ2,iZ3,iZ4,iPF_V1), &
-                   PF(iNodeX,iZ2,iZ3,iZ4,iPF_V2), &
-                   PF(iNodeX,iZ2,iZ3,iZ4,iPF_V3), &
-                   GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_11), &
-                   GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_22), &
-                   GX(iNodeX,iZ2,iZ3,iZ4,iGF_Gm_dd_33) )
-
-        END DO
-
-      END DO
-      END DO
-
-    END DO
-    END DO
-    END DO
-    END DO
-
-    DEALLOCATE( PF, AF )
-    DEALLOCATE( E_N, D_N, T_N, Ye_N, Ym_N, Dnu_Equilibrium )
-
-  END SUBROUTINE ComputeEquilibriumRadiationState
 
 
   SUBROUTINE ComputeIncrement_Divergence_X1 &
@@ -1150,11 +865,7 @@ CONTAINS
 
     REAL(DP) :: Flux_L(nCR), uCR_X1_L(nCR)
     REAL(DP) :: Flux_R(nCR), uCR_X1_R(nCR)
-    REAL(DP) :: uCR_Equilibrium_X1_L(nCR), uCR_Equilibrium_X1_R(nCR)
     REAL(DP) :: Flux_K(nCR)
-    REAL(DP) :: D_Equilibrium_L, I_Equilibrium_L(3)
-    REAL(DP) :: D_Equilibrium_R, I_Equilibrium_R(3)
-    REAL(DP) :: FluxFactor_L, FluxFactor_R
     REAL(DP) :: TransportOpacity_F, FaceWidth, NormalScaleFactor
     REAL(DP) :: FaceOpticalDepth, DensityLLFPenaltyFactor
     REAL(DP) :: EquilibriumJumpFactor
@@ -1383,40 +1094,6 @@ CONTAINS
     END DO
     END DO
 
-    IF( UseEquilibriumDeviationLLF )THEN
-
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7)
-#elif defined( THORNADO_OACC   )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(7) &
-    !$ACC PRESENT( uCR_Equilibrium_K, uCR_Equilibrium, &
-    !$ACC          iZ_B0, iZ_E0 )
-#elif defined( THORNADO_OMP    )
-    !$OMP PARALLEL DO COLLAPSE(7)
-#endif
-      DO iCR = 1, nCR
-      DO iZ2 = iZ_B0(2)-1, iZ_E0(2)+1
-      DO iS  = 1, nSpecies
-      DO iZ4 = iZ_B0(4), iZ_E0(4)
-      DO iZ3 = iZ_B0(3), iZ_E0(3)
-      DO iZ1 = iZ_B0(1), iZ_E0(1)
-
-        DO iNodeZ = 1, nDOFZ
-
-          uCR_Equilibrium_K(iNodeZ,iZ1,iZ3,iZ4,iS,iZ2,iCR) &
-            = uCR_Equilibrium(iNodeZ,iZ1,iZ2,iZ3,iZ4,iCR,iS)
-
-        END DO
-
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-      END DO
-
-    END IF
-
     CALL TimersStart( Timer_Streaming_LinearAlgebra )
 
     ! --- Interpolate Fluid Fields ---
@@ -1529,28 +1206,6 @@ CONTAINS
                uCR_K(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)  ,iCR), nDOFZ, Zero, &
                uCR_R(1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)  ,iCR), nDOF_X1 )
 
-      IF( UseEquilibriumDeviationLLF )THEN
-
-        CALL MatrixMatrixMultiply &
-               ( 'N', 'N', nDOF_X1, nX1_Z, nDOFZ, One, L_X1_Up, nDOF_X1, &
-                 uCR_Equilibrium_K &
-                   (1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2)-1,iCR), &
-                 nDOFZ, Zero, &
-                 uCR_Equilibrium_L &
-                   (1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2),iCR), &
-                 nDOF_X1 )
-
-        CALL MatrixMatrixMultiply &
-               ( 'N', 'N', nDOF_X1, nX1_Z, nDOFZ, One, L_X1_Dn, nDOF_X1, &
-                 uCR_Equilibrium_K &
-                   (1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2),iCR), &
-                 nDOFZ, Zero, &
-                 uCR_Equilibrium_R &
-                   (1,iZ_B0(1),iZ_B0(3),iZ_B0(4),1,iZ_B0(2),iCR), &
-                 nDOF_X1 )
-
-      END IF
-
     END DO
 
     CALL TimersStop( Timer_Streaming_LinearAlgebra )
@@ -1585,20 +1240,14 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( iX_F, iNodeZ_X1, iNodeX_X1, iNodeE, iZ1, iZ2, iZ3, iZ4, iS, &
     !$OMP          Flux_L, uCR_X1_L, Flux_R, uCR_X1_R, &
-    !$OMP          uCR_Equilibrium_X1_L, uCR_Equilibrium_X1_R, &
-    !$OMP          D_Equilibrium_L, I_Equilibrium_L, &
-    !$OMP          D_Equilibrium_R, I_Equilibrium_R, &
-    !$OMP          FluxFactor_L, FluxFactor_R, TransportOpacity_F, &
+    !$OMP          TransportOpacity_F, &
     !$OMP          FaceWidth, NormalScaleFactor, FaceOpticalDepth, &
     !$OMP          DensityLLFPenaltyFactor, EquilibriumJumpFactor )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( iX_F, iNodeZ_X1, iNodeX_X1, iNodeE, iZ1, iZ2, iZ3, iZ4, iS, &
     !$ACC          Flux_L, uCR_X1_L, Flux_R, uCR_X1_R, &
-    !$ACC          uCR_Equilibrium_X1_L, uCR_Equilibrium_X1_R, &
-    !$ACC          D_Equilibrium_L, I_Equilibrium_L, &
-    !$ACC          D_Equilibrium_R, I_Equilibrium_R, &
-    !$ACC          FluxFactor_L, FluxFactor_R, TransportOpacity_F, &
+    !$ACC          TransportOpacity_F, &
     !$ACC          FaceWidth, NormalScaleFactor, FaceOpticalDepth, &
     !$ACC          DensityLLFPenaltyFactor, EquilibriumJumpFactor ) &
     !$ACC PRESENT( uD_L, uI1_L, uI2_L, uI3_L, uD_R, uI1_R, uI2_R, uI3_R, &
@@ -1610,10 +1259,7 @@ CONTAINS
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( iX_F, iNodeZ_X1, iNodeX_X1, iNodeE, iZ1, iZ2, iZ3, iZ4, iS, &
     !$OMP          Flux_L, uCR_X1_L, Flux_R, uCR_X1_R, &
-    !$OMP          uCR_Equilibrium_X1_L, uCR_Equilibrium_X1_R, &
-    !$OMP          D_Equilibrium_L, I_Equilibrium_L, &
-    !$OMP          D_Equilibrium_R, I_Equilibrium_R, &
-    !$OMP          FluxFactor_L, FluxFactor_R, TransportOpacity_F, &
+    !$OMP          TransportOpacity_F, &
     !$OMP          FaceWidth, NormalScaleFactor, FaceOpticalDepth, &
     !$OMP          DensityLLFPenaltyFactor, EquilibriumJumpFactor )
 #endif
@@ -1665,8 +1311,6 @@ CONTAINS
                uV1_F(iX_F), Zero, Zero, &
                Gm_dd_11_F(iX_F), Gm_dd_22_F(iX_F), Gm_dd_33_F(iX_F) )
 
-      FluxFactor_L = One
-      FluxFactor_R = One
       DensityLLFPenaltyFactor = LLFPenaltyFactor
       EquilibriumJumpFactor = One
 
@@ -1693,59 +1337,6 @@ CONTAINS
 
       END IF
 
-#if !defined( THORNADO_OMP_OL ) && !defined( THORNADO_OACC )
-      IF( UseEquilibriumDeviationLLF )THEN
-
-        CALL ComputePrimitive_TwoMoment &
-               ( uCR_Equilibrium_L(iNodeZ_X1,iZ1,iZ3,iZ4,iS,iZ2,iCR_N ), &
-                 uCR_Equilibrium_L(iNodeZ_X1,iZ1,iZ3,iZ4,iS,iZ2,iCR_G1), &
-                 uCR_Equilibrium_L(iNodeZ_X1,iZ1,iZ3,iZ4,iS,iZ2,iCR_G2), &
-                 uCR_Equilibrium_L(iNodeZ_X1,iZ1,iZ3,iZ4,iS,iZ2,iCR_G3), &
-                 D_Equilibrium_L, &
-                 I_Equilibrium_L(1), I_Equilibrium_L(2), I_Equilibrium_L(3), &
-                 uV1_F(iX_F), uV2_F(iX_F), uV3_F(iX_F), &
-                 Gm_dd_11_F(iX_F), Gm_dd_22_F(iX_F), Gm_dd_33_F(iX_F) )
-
-        CALL ComputePrimitive_TwoMoment &
-               ( uCR_Equilibrium_R(iNodeZ_X1,iZ1,iZ3,iZ4,iS,iZ2,iCR_N ), &
-                 uCR_Equilibrium_R(iNodeZ_X1,iZ1,iZ3,iZ4,iS,iZ2,iCR_G1), &
-                 uCR_Equilibrium_R(iNodeZ_X1,iZ1,iZ3,iZ4,iS,iZ2,iCR_G2), &
-                 uCR_Equilibrium_R(iNodeZ_X1,iZ1,iZ3,iZ4,iS,iZ2,iCR_G3), &
-                 D_Equilibrium_R, &
-                 I_Equilibrium_R(1), I_Equilibrium_R(2), I_Equilibrium_R(3), &
-                 uV1_F(iX_F), uV2_F(iX_F), uV3_F(iX_F), &
-                 Gm_dd_11_F(iX_F), Gm_dd_22_F(iX_F), Gm_dd_33_F(iX_F) )
-
-        CALL ComputeConserved_TwoMoment &
-               ( D_Equilibrium_L, &
-                 I_Equilibrium_L(1), I_Equilibrium_L(2), I_Equilibrium_L(3), &
-                 uCR_Equilibrium_X1_L(iCR_N ), &
-                 uCR_Equilibrium_X1_L(iCR_G1), &
-                 uCR_Equilibrium_X1_L(iCR_G2), &
-                 uCR_Equilibrium_X1_L(iCR_G3), &
-                 uV1_F(iX_F), Zero, Zero, &
-                 Gm_dd_11_F(iX_F), Gm_dd_22_F(iX_F), Gm_dd_33_F(iX_F) )
-
-        CALL ComputeConserved_TwoMoment &
-               ( D_Equilibrium_R, &
-                 I_Equilibrium_R(1), I_Equilibrium_R(2), I_Equilibrium_R(3), &
-                 uCR_Equilibrium_X1_R(iCR_N ), &
-                 uCR_Equilibrium_X1_R(iCR_G1), &
-                 uCR_Equilibrium_X1_R(iCR_G2), &
-                 uCR_Equilibrium_X1_R(iCR_G3), &
-                 uV1_F(iX_F), Zero, Zero, &
-                 Gm_dd_11_F(iX_F), Gm_dd_22_F(iX_F), Gm_dd_33_F(iX_F) )
-
-        FluxFactor_L = FluxFactor &
-          ( uD_L(iZ_F), uI1_L(iZ_F), uI2_L(iZ_F), uI3_L(iZ_F), &
-            Gm_dd_11_F(iX_F), Gm_dd_22_F(iX_F), Gm_dd_33_F(iX_F) )
-        FluxFactor_R = FluxFactor &
-          ( uD_R(iZ_F), uI1_R(iZ_F), uI2_R(iZ_F), uI3_R(iZ_F), &
-            Gm_dd_11_F(iX_F), Gm_dd_22_F(iX_F), Gm_dd_33_F(iX_F) )
-
-      END IF
-#endif
-
       ! --- Numerical Flux ---
 
       DO iCR = 1, nCR
@@ -1758,18 +1349,6 @@ CONTAINS
                 ( uCR_X1_L(iCR), uCR_X1_R(iCR), &
                   Flux_L(iCR), Flux_R(iCR), DensityLLFPenaltyFactor )
 
-#if !defined( THORNADO_OMP_OL ) && !defined( THORNADO_OACC )
-        ELSE IF( UseEquilibriumDeviationLLF &
-            .AND. MAX( FluxFactor_L, FluxFactor_R ) &
-                     <= EquilibriumDeviationLLF_MaxFluxFactor )THEN
-
-          NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
-            = NumericalFlux_LLF &
-                ( uCR_X1_L(iCR) - uCR_Equilibrium_X1_L(iCR), &
-                  uCR_X1_R(iCR) - uCR_Equilibrium_X1_R(iCR), &
-                  Flux_L(iCR), Flux_R(iCR), LLFPenaltyFactor )
-
-#endif
         ELSE
 
           NumericalFlux(iNodeZ_X1,iCR,iZ1,iZ3,iZ4,iS,iZ2) &
@@ -4475,12 +4054,6 @@ CONTAINS
                     iZP_B0(4)  :iZP_E0(4)+1, &
                     1:nCR) )
 
-    IF( UseEquilibriumDeviationLLF )THEN
-      ALLOCATE( uCR_Equilibrium_K, MOLD = uCR_K )
-      ALLOCATE( uCR_Equilibrium_L, MOLD = uCR_L )
-      ALLOCATE( uCR_Equilibrium_R, MOLD = uCR_R )
-    END IF
-
     uN_K (1:nNodesZ_K) => uCR_K(:,:,:,:,:,iZP_B0(4):iZP_E0(4),iCR_N )
     uG1_K(1:nNodesZ_K) => uCR_K(:,:,:,:,:,iZP_B0(4):iZP_E0(4),iCR_G1)
     uG2_K(1:nNodesZ_K) => uCR_K(:,:,:,:,:,iZP_B0(4):iZP_E0(4),iCR_G2)
@@ -4577,18 +4150,6 @@ CONTAINS
     !$ACC         NumericalFlux, NumericalFlux2, Flux_q, dU_Z, &
     !$ACC         nIterations_L, nIterations_R, nIterations_K )
 #endif
-
-    IF( UseEquilibriumDeviationLLF )THEN
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: uCR_Equilibrium_K, &
-    !$OMP             uCR_Equilibrium_L, uCR_Equilibrium_R )
-#elif defined( THORNADO_OACC   )
-    !$ACC ENTER DATA &
-    !$ACC CREATE( uCR_Equilibrium_K, &
-    !$ACC         uCR_Equilibrium_L, uCR_Equilibrium_R )
-#endif
-    END IF
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(7) &
@@ -4703,18 +4264,6 @@ CONTAINS
 
   SUBROUTINE FinalizeIncrement_Divergence_X
 
-    IF( UseEquilibriumDeviationLLF )THEN
-#if   defined( THORNADO_OMP_OL )
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: uCR_Equilibrium_K, &
-    !$OMP               uCR_Equilibrium_L, uCR_Equilibrium_R )
-#elif defined( THORNADO_OACC   )
-    !$ACC EXIT DATA &
-    !$ACC DELETE( uCR_Equilibrium_K, &
-    !$ACC         uCR_Equilibrium_L, uCR_Equilibrium_R )
-#endif
-    END IF
-
 #if defined( THORNADO_OMP_OL )
     !$OMP TARGET EXIT DATA &
     !$OMP MAP( release: PositionIndexZ_F, PositionIndexZ_K, &
@@ -4740,9 +4289,6 @@ CONTAINS
     DEALLOCATE( PositionIndexZ_F, PositionIndexZ_K )
     DEALLOCATE( IndexTableZ_F, IndexTableZ_K )
     DEALLOCATE( uGF_K, uGF_F, uCF_K, uCF_L, uCF_R, uCR_K, uCR_L, uCR_R )
-    IF( UseEquilibriumDeviationLLF ) &
-      DEALLOCATE( uCR_Equilibrium_K, &
-                  uCR_Equilibrium_L, uCR_Equilibrium_R )
     DEALLOCATE( uD_L, uI1_L, uI2_L, uI3_L )
     DEALLOCATE( uD_R, uI1_R, uI2_R, uI3_R )
     DEALLOCATE( uV1_F, uV2_F, uV3_F )
@@ -5269,6 +4815,5 @@ CONTAINS
     END DO
 
   END SUBROUTINE ComputeOffGridFlux
-
 
 END MODULE TwoMoment_DiscretizationModule_Streaming

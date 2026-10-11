@@ -29,10 +29,11 @@ MODULE StandaloneMatterDiagnosticsModule
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputeFromConserved_Euler_NonRelativistic
   USE NeutrinoOpacitiesComputationModule, ONLY: &
-    ComputeEquilibriumDistributions, LimitEquilibriumDistributions_DG
+    ComputeEquilibriumDistributions, LimitEquilibriumDistributions_DG, &
+    SetChargedCurrentMasks
   USE RadiationFieldsModule, ONLY: &
     nSpecies, nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
-    LeptonNumber, &
+    iNuE_Bar, iNuM, iNuM_Bar, LeptonNumber, &
     nPR, iPR_D, iPR_I1, iPR_I2, iPR_I3, &
     nGR, nDR, &
     iGR_D, iGR_I1, iGR_J, iGR_H1, &
@@ -56,13 +57,11 @@ MODULE StandaloneMatterDiagnosticsModule
     iLFC_EquationResidual
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit, &
-    UseSourceAwareLLF, &
-    UseEquilibriumDeviationLLF, &
-    EquilibriumDeviationLLF_MaxFluxFactor
+    UseSourceAwareLLF
   USE TwoMoment_ClosureModule, ONLY: &
     FluxFactor
   USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
-    iQ_L, iQ_E, iQ_H, iQ_M1, iQ_M2, iQ_M3, &
+    iQ_Le, iQ_Lm, iQ_E, iQ_H, iQ_M1, iQ_M2, iQ_M3, &
     iC_EmAb, iC_Iso, &
     nEmAbRateDecomposition, &
     iEmAbRateDecomposition_NIn, iEmAbRateDecomposition_NOut, iEmAbRateDecomposition_NNet, &
@@ -1435,6 +1434,8 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: E_N(:), D_N(:), T_N(:), Ye_N(:), Ym_N(:)
     REAL(DP), ALLOCATABLE :: DnuEq(:,:,:)
     REAL(DP), ALLOCATABLE :: Q_Full(:,:,:), Q_Mean(:,:,:)
+    LOGICAL, ALLOCATABLE :: ElectronChargedCurrentMask(:)
+    LOGICAL, ALLOCATABLE :: MuonChargedCurrentMask(:)
 
     nE_G = nDOFE * ( iZ_E0(1) - iZ_B0(1) + 1 )
     nX_G = nDOFX * ( iZ_E0(2) - iZ_B0(2) + 1 )
@@ -1454,6 +1455,8 @@ CONTAINS
     ALLOCATE( PR_Mean, MOLD = PR_Full )
     ALLOCATE( E_N(nE_G), D_N(nX_G), T_N(nX_G), Ye_N(nX_G), Ym_N(nX_G) )
     ALLOCATE( DnuEq(nE_G,nSpecies,nX_G) )
+    ALLOCATE( ElectronChargedCurrentMask(nX_G) )
+    ALLOCATE( MuonChargedCurrentMask(nX_G) )
     ALLOCATE( Q_Full(nQ,1+nSpecies+nC,nX_G) )
     ALLOCATE( Q_Mean, MOLD = Q_Full )
 
@@ -1490,9 +1493,15 @@ CONTAINS
       END DO
       END DO
 
+      CALL SetChargedCurrentMasks &
+             ( nX_G, nDOFX, D_N, T_N, Ye_N, Ym_N, &
+               ElectronChargedCurrentMask, MuonChargedCurrentMask )
       CALL ComputeEquilibriumDistributions &
              ( 1, nE_G, 1, nSpecies, 1, nX_G, &
-               E_N, D_N, T_N, Ye_N, Ym_N, DnuEq )
+               E_N, D_N, T_N, Ye_N, Ym_N, DnuEq, &
+               ElectronChargedCurrentMask_Option &
+                 = ElectronChargedCurrentMask, &
+               MuonChargedCurrentMask_Option = MuonChargedCurrentMask )
       CALL LimitEquilibriumDistributions_DG &
              ( 1, nE_G, 1, nSpecies, 1, nX_G, &
                E_N, DnuEq, DnuMax )
@@ -1545,11 +1554,11 @@ CONTAINS
         ModalIncrement(iAttr_QL,1,iNodeX,iX1) &
           = ModalIncrement(iAttr_QL,1,iNodeX,iX1) &
             + TimeStep * StageWeight &
-              * Q_Full(iQ_L,1+nSpecies+iC_EmAb,iN_X)
+              * Q_Full(iQ_Le,1+nSpecies+iC_EmAb,iN_X)
         ModalIncrement(iAttr_QL,2,iNodeX,iX1) &
           = ModalIncrement(iAttr_QL,2,iNodeX,iX1) &
             + TimeStep * StageWeight &
-              * Q_Mean(iQ_L,1+nSpecies+iC_EmAb,iN_X)
+              * Q_Mean(iQ_Le,1+nSpecies+iC_EmAb,iN_X)
         ModalIncrement(iAttr_QH,1,iNodeX,iX1) &
           = ModalIncrement(iAttr_QH,1,iNodeX,iX1) &
             + TimeStep * StageWeight &
@@ -1568,7 +1577,8 @@ CONTAINS
 
     DEALLOCATE &
       ( PF_Stage, AF_Stage, PR_Full, PR_Mean, E_N, D_N, T_N, Ye_N, Ym_N, &
-        DnuEq, Q_Full, Q_Mean )
+        DnuEq, Q_Full, Q_Mean, &
+        ElectronChargedCurrentMask, MuonChargedCurrentMask )
 
   END SUBROUTINE ComputeStageWeightedEmAbModalIncrement
 
@@ -1760,10 +1770,11 @@ CONTAINS
     REAL(DP) :: E_BeforeStep, E_AfterStep
     REAL(DP) :: E_Before_Element, E_After_Element
     REAL(DP) :: Ne_Before_Element, Ne_After_Element
+    REAL(DP) :: Nm_Before_Element, Nm_After_Element
     REAL(DP) :: FractionalEChange_Element
     REAL(DP) :: QH_Applied_Element
     REAL(DP) :: FluxFactor, T_Flux, T_Spectral
-    REAL(DP) :: D_Element, T_Fluid_Element, Ye_Element
+    REAL(DP) :: D_Element, T_Fluid_Element, Ye_Element, Ym_Element
     REAL(DP) :: FirstInnerRelativeResidualMax_Element
     REAL(DP) :: D_Nu_Element(nSpecies), I_Nu_Element(nSpecies)
     REAL(DP) :: J_Nu_Element(nSpecies), H_Nu_Element(nSpecies)
@@ -1885,6 +1896,7 @@ CONTAINS
       D_Element            = Zero
       T_Fluid_Element      = Zero
       Ye_Element           = Zero
+      Ym_Element           = Zero
       D_Nu_Element         = Zero
       I_Nu_Element         = Zero
       J_Nu_Element         = Zero
@@ -1906,6 +1918,8 @@ CONTAINS
       E_After_Element      = Zero
       Ne_Before_Element    = Zero
       Ne_After_Element     = Zero
+      Nm_Before_Element    = Zero
+      Nm_After_Element     = Zero
       InnerIterationsMin_Element = HUGE(0)
       InnerIterationsMax_Element = 0
       OuterIterationsMax_Element = 0
@@ -1926,6 +1940,7 @@ CONTAINS
         D_Element       = D_Element       + VolumeWeight * PF(iNodeX,iX1,1,1,iPF_D)
         T_Fluid_Element = T_Fluid_Element + VolumeWeight * AF(iNodeX,iX1,1,1,iAF_T)
         Ye_Element      = Ye_Element      + VolumeWeight * AF(iNodeX,iX1,1,1,iAF_Ye)
+        Ym_Element      = Ym_Element      + VolumeWeight * AF(iNodeX,iX1,1,1,iAF_Ym)
 
         E_BeforeStep = CF_BeforeStep(iNodeX,iX1,1,1,iCF_E) &
           - Half * ( &
@@ -1955,6 +1970,10 @@ CONTAINS
           + VolumeWeight * CF_BeforeStep(iNodeX,iX1,1,1,iCF_Ne)
         Ne_After_Element = Ne_After_Element &
           + VolumeWeight * CF_AfterStep(iNodeX,iX1,1,1,iCF_Ne)
+        Nm_Before_Element = Nm_Before_Element &
+          + VolumeWeight * CF_BeforeStep(iNodeX,iX1,1,1,iCF_Nm)
+        Nm_After_Element = Nm_After_Element &
+          + VolumeWeight * CF_AfterStep(iNodeX,iX1,1,1,iCF_Nm)
 
         IF( InnerIterationsFinal(iN_X) > 0 )THEN
           InnerIterationsMin_Element &
@@ -2020,6 +2039,7 @@ CONTAINS
       D_Element                 = D_Element       / ElementVolume
       T_Fluid_Element           = T_Fluid_Element / ElementVolume
       Ye_Element                = Ye_Element      / ElementVolume
+      Ym_Element                = Ym_Element      / ElementVolume
       D_Nu_Element              = D_Nu_Element    / ElementVolume
       I_Nu_Element              = I_Nu_Element    / ElementVolume
       J_Nu_Element              = J_Nu_Element    / ElementVolume
@@ -2045,6 +2065,8 @@ CONTAINS
       E_After_Element             = E_After_Element / ElementVolume
       Ne_Before_Element           = Ne_Before_Element / ElementVolume
       Ne_After_Element            = Ne_After_Element / ElementVolume
+      Nm_Before_Element           = Nm_Before_Element / ElementVolume
+      Nm_After_Element            = Nm_After_Element / ElementVolume
       FractionalEChange_Element   = Zero
       IF( InnerIterationsMin_Element == HUGE(0) ) &
         InnerIterationsMin_Element = 0
@@ -2068,10 +2090,15 @@ CONTAINS
       WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') D_Element / ( Gram / Centimeter**3 )
       WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') T_Fluid_Element
       WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') Ye_Element
+      WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') Ym_Element
       WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
         Ne_Before_Element / ( One / Centimeter**3 )
       WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
         Ne_After_Element / ( One / Centimeter**3 )
+      WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
+        Nm_Before_Element / ( One / Centimeter**3 )
+      WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
+        Nm_After_Element / ( One / Centimeter**3 )
       WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
         E_Before_Element / ( Erg / Centimeter**3 )
       WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
@@ -2112,6 +2139,49 @@ CONTAINS
         WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') T_Flux
         WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') FluxFactor
 
+      END DO
+
+      WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
+        ( Ne_After_Element - Ne_Before_Element ) / TimeStep &
+          / ( One / Centimeter**3 / Second )
+      WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
+        ( Nm_After_Element - Nm_Before_Element ) / TimeStep &
+          / ( One / Centimeter**3 / Second )
+      WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
+        MatterCollisionExchange_Rate_Element(iQ_Le,1) &
+          / ( One / Centimeter**3 / Second )
+      WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
+        MatterCollisionExchange_Rate_Element(iQ_Lm,1) &
+          / ( One / Centimeter**3 / Second )
+      WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
+        MatterUpdate_Rate_Element(iQ_Le) &
+          / ( One / Centimeter**3 / Second )
+      WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
+        MatterUpdate_Rate_Element(iQ_Lm) &
+          / ( One / Centimeter**3 / Second )
+
+      DO iS = 1, nSpecies
+        WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
+          MatterCollisionExchange_Rate_Element(iQ_Le,1+iS) &
+            / ( One / Centimeter**3 / Second )
+      END DO
+
+      DO iS = 1, nSpecies
+        WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
+          MatterCollisionExchange_Rate_Element(iQ_Lm,1+iS) &
+            / ( One / Centimeter**3 / Second )
+      END DO
+
+      DO iC = 1, nC
+        WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
+          MatterCollisionExchange_Rate_Element(iQ_Le,1+nSpecies+iC) &
+            / ( One / Centimeter**3 / Second )
+      END DO
+
+      DO iC = 1, nC
+        WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
+          MatterCollisionExchange_Rate_Element(iQ_Lm,1+nSpecies+iC) &
+            / ( One / Centimeter**3 / Second )
       END DO
 
       WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
@@ -2703,7 +2773,7 @@ CONTAINS
         ConservativeProjectionStatusFinal(iN_X), &
         ConservativeProjectionMatterHeatingRateFinal(iN_X) &
           / ( Erg / Centimeter**3 / Second ), &
-        InitialRadiationLimiter_Rate_Final(iQ_L,iN_X) &
+        InitialRadiationLimiter_Rate_Final(iQ_Le,iN_X) &
           / ( One / Centimeter**3 / Second ), &
         InitialRadiationLimiter_Rate_Final(iQ_E,iN_X) &
           / ( Erg / Centimeter**3 / Second ), &
@@ -2793,11 +2863,11 @@ CONTAINS
       LimiterEnergy = LimiterEnergy + VolumeWeight &
         * InitialRadiationLimiter_Rate_Final(iQ_E,iN_X) * StageTimeStep
       LimiterLepton = LimiterLepton + VolumeWeight &
-        * InitialRadiationLimiter_Rate_Final(iQ_L,iN_X) * StageTimeStep
+        * InitialRadiationLimiter_Rate_Final(iQ_Le,iN_X) * StageTimeStep
       OuterEnergy = OuterEnergy + VolumeWeight &
         * MatterEquationResidual_Rate_Final(iQ_E,iN_X) * StageTimeStep
       OuterLepton = OuterLepton + VolumeWeight &
-        * MatterEquationResidual_Rate_Final(iQ_L,iN_X) * StageTimeStep
+        * MatterEquationResidual_Rate_Final(iQ_Le,iN_X) * StageTimeStep
       Handoff = Handoff + VolumeWeight &
         * ConservationHandoffCheckRateFinal(:,iN_X) * StageTimeStep
     END DO
@@ -2894,12 +2964,12 @@ CONTAINS
           / ( One / Centimeter**3 / Second ), &
         ConservationHandoffCheckRateFinal(iCHC_ReturnedPair_L,iN_X) &
           / ( One / Centimeter**3 / Second ), &
-        InitialRadiationLimiterRateFinal(iQ_L,iN_X) &
+        InitialRadiationLimiterRateFinal(iQ_Le,iN_X) &
           / ( One / Centimeter**3 / Second ), &
-        MatterEquationResidualRateFinal(iQ_L,iN_X) &
+        MatterEquationResidualRateFinal(iQ_Le,iN_X) &
           / ( One / Centimeter**3 / Second ), &
         ( ConservationHandoffCheckRateFinal(iCHC_PrimitivePair_L,iN_X) &
-            + MatterEquationResidualRateFinal(iQ_L,iN_X) ) &
+            + MatterEquationResidualRateFinal(iQ_Le,iN_X) ) &
           / ( One / Centimeter**3 / Second ), &
         ( ConservationHandoffCheckRateFinal(iCHC_MappedPair_L,iN_X) &
             - ConservationHandoffCheckRateFinal(iCHC_PrimitivePair_L,iN_X) &
@@ -2963,7 +3033,7 @@ CONTAINS
     INTEGER :: iS, iStage, iState, iX1, nX_G, Unit
     REAL(DP) :: E, ElementVolume, Eint, ImplicitTimeStep
     REAL(DP) :: Radius, VolumeWeight, W3
-    REAL(DP) :: D_Element, Eint_Element, T_Element, Ye_Element
+    REAL(DP) :: D_Element, Eint_Element, T_Element, Ye_Element, Ym_Element
     REAL(DP) :: RadiationEnergy_Element(nSpecies)
     REAL(DP) :: Q_Element(nQ,1+nSpecies+nC)
     REAL(DP), ALLOCATABLE :: AF_Stage(:,:,:,:,:)
@@ -2996,8 +3066,9 @@ CONTAINS
     WRITE(Unit,'(A)') '# state 4: state after the post-implicit limiter'
     WRITE(Unit,'(A)') '# state 5: completed step after any final assembly and limiter'
     WRITE(Unit,'(A)',ADVANCE='NO') &
-      '# stage state element r_cm volume_cm3 D_g_cm3 T_MeV Ye' // &
-      ' implicit_dt_s eint_erg_cm3 QE_total_erg_cm3_s QH_total_erg_cm3_s'
+      '# stage state element r_cm volume_cm3 D_g_cm3 T_MeV Ye Ym' // &
+      ' implicit_dt_s eint_erg_cm3 QLe_total_cm3_s QLmu_total_cm3_s' // &
+      ' QE_total_erg_cm3_s QH_total_erg_cm3_s'
     DO iS = 1, nSpecies
       WRITE(Unit,'(A,I0,A)',ADVANCE='NO') ' Erad_s', iS, '_erg_cm3'
     END DO
@@ -3049,6 +3120,7 @@ CONTAINS
         D_Element               = Zero
         T_Element               = Zero
         Ye_Element              = Zero
+        Ym_Element              = Zero
         Eint_Element            = Zero
         RadiationEnergy_Element = Zero
         Q_Element               = Zero
@@ -3067,6 +3139,8 @@ CONTAINS
             + VolumeWeight * AF_Stage(iNodeX,iX1,1,1,iAF_T)
           Ye_Element = Ye_Element &
             + VolumeWeight * AF_Stage(iNodeX,iX1,1,1,iAF_Ye)
+          Ym_Element = Ym_Element &
+            + VolumeWeight * AF_Stage(iNodeX,iX1,1,1,iAF_Ym)
 
           Eint = StageFluidState &
             (iNodeX,iStateX1,iStateX2,iStateX3,iCF_E,iStage,iState) &
@@ -3107,17 +3181,20 @@ CONTAINS
         D_Element               = D_Element / ElementVolume
         T_Element               = T_Element / ElementVolume
         Ye_Element              = Ye_Element / ElementVolume
+        Ym_Element              = Ym_Element / ElementVolume
         Eint_Element            = Eint_Element / ElementVolume
         RadiationEnergy_Element = RadiationEnergy_Element / ElementVolume
         Q_Element               = Q_Element / ElementVolume
 
-        WRITE(Unit,'(3(I0,1X),9(ES24.16E3,1X))',ADVANCE='NO') &
+        WRITE(Unit,'(3(I0,1X),12(ES24.16E3,1X))',ADVANCE='NO') &
           iStage, iState, iX1 - iZ_B0(2) + 1, &
           Radius / Centimeter, ElementVolume / Centimeter**3, &
           D_Element / ( Gram / Centimeter**3 ), &
-          BoltzmannConstant * T_Element / MeV, Ye_Element, &
+          BoltzmannConstant * T_Element / MeV, Ye_Element, Ym_Element, &
           ImplicitTimeStep / Second, &
           Eint_Element / ( Erg / Centimeter**3 ), &
+          Q_Element(iQ_Le,1) / ( One / Centimeter**3 / Second ), &
+          Q_Element(iQ_Lm,1) / ( One / Centimeter**3 / Second ), &
           Q_Element(iQ_E,1) / ( Erg / Centimeter**3 / Second ), &
           Q_Element(iQ_H,1) / ( Erg / Centimeter**3 / Second )
         DO iS = 1, nSpecies
@@ -3206,6 +3283,8 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: CR_Work(:,:,:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: RadiationRHS(:,:,:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: Q_Streaming(:,:,:,:)
+    LOGICAL, ALLOCATABLE :: ElectronChargedCurrentMask(:)
+    LOGICAL, ALLOCATABLE :: MuonChargedCurrentMask(:)
 
     nElements = iZ_E0(2) - iZ_B0(2) + 1
     nE_G      = nDOFE * ( iZ_E0(1) - iZ_B0(1) + 1 )
@@ -3242,6 +3321,8 @@ CONTAINS
     ALLOCATE( E_N(1:nE_G), D_N(1:nX_G), T_N(1:nX_G), &
               Ye_N(1:nX_G), Ym_N(1:nX_G) )
     ALLOCATE( DnuEq(1:nE_G,1:nSpecies,1:nX_G) )
+    ALLOCATE( ElectronChargedCurrentMask(1:nX_G) )
+    ALLOCATE( MuonChargedCurrentMask(1:nX_G) )
 
     DO iE = iZ_B0(1), iZ_E0(1)
     DO iNodeE = 1, nDOFE
@@ -3329,9 +3410,15 @@ CONTAINS
       END DO
       END DO
 
+      CALL SetChargedCurrentMasks &
+             ( nX_G, nDOFX, D_N, T_N, Ye_N, Ym_N, &
+               ElectronChargedCurrentMask, MuonChargedCurrentMask )
       CALL ComputeEquilibriumDistributions &
              ( 1, nE_G, 1, nSpecies, 1, nX_G, &
-               E_N, D_N, T_N, Ye_N, Ym_N, DnuEq )
+               E_N, D_N, T_N, Ye_N, Ym_N, DnuEq, &
+               ElectronChargedCurrentMask_Option &
+                 = ElectronChargedCurrentMask, &
+               MuonChargedCurrentMask_Option = MuonChargedCurrentMask )
 
       CALL LimitEquilibriumDistributions_DG &
              ( 1, nE_G, 1, nSpecies, 1, nX_G, &
@@ -3472,7 +3559,8 @@ CONTAINS
       ( PF_Stage, AF_Stage, CF_Work, CR_Work, RadiationRHS, Q_Streaming, &
         FaceDiagnostics_PreLimiter, FaceDiagnostics_PostLimiter, &
         MeanInvMFP_Element, ProperWidth_Element, &
-        E_N, D_N, T_N, Ye_N, Ym_N, DnuEq )
+        E_N, D_N, T_N, Ye_N, Ym_N, DnuEq, &
+        ElectronChargedCurrentMask, MuonChargedCurrentMask )
 
   END SUBROUTINE WriteIMEXStreamingCheck
 
@@ -3851,23 +3939,6 @@ CONTAINS
             FaceDiagnostics(iFace_FluxLLFNonEq,iS,iFace) &
               = FaceDiagnostics(iFace_FluxLLFNonEq,iS,iFace) &
                   - Half * W3 * NonEqJump
-
-            IF(      UseEquilibriumDeviationLLF &
-                .AND. MAX &
-                       ( FluxFactor &
-                           ( D_Left, I_Left(1), I_Left(2), I_Left(3), &
-                             Gm_dd(1), Gm_dd(2), Gm_dd(3) ), &
-                         FluxFactor &
-                           ( D_Right, I_Right(1), I_Right(2), I_Right(3), &
-                             Gm_dd(1), Gm_dd(2), Gm_dd(3) ) ) &
-                         <= EquilibriumDeviationLLF_MaxFluxFactor )THEN
-              FaceDiagnostics(iFace_FluxLLFPenalty,iS,iFace) &
-                = FaceDiagnostics(iFace_FluxLLFPenalty,iS,iFace) &
-                    + Half * W3 * EqJump
-              FaceDiagnostics(iFace_FluxLLFEq,iS,iFace) &
-                = FaceDiagnostics(iFace_FluxLLFEq,iS,iFace) &
-                    + Half * W3 * EqJump
-            END IF
 
           END IF
 
@@ -4320,7 +4391,7 @@ CONTAINS
     END DO
     WRITE(Unit,'(A)') &
       '# stage component element r_cm volume_cm3 species wEX wIM' // &
-      ' QL_cm-3_s-1 QE_erg_cm-3_s-1 QH_erg_cm-3_s-1' // &
+      ' QLe_cm-3_s-1 QLmu_cm-3_s-1 QE_erg_cm-3_s-1 QH_erg_cm-3_s-1' // &
       ' QM1_erg_cm-3_s-1 QH_exact_eint_erg_cm-3_s-1'
 
     DO iStage = 1, nStages
@@ -4657,9 +4728,12 @@ CONTAINS
     DO iX1 = iZ_B0(2), iZ_E0(2)
     DO iNodeX = 1, nDOFX
       iN_X = iN_X + 1
-      Q_Rate(iQ_L,1,iN_X) &
+      Q_Rate(iQ_Le,1,iN_X) &
         = ( CF_After(iNodeX,iX1,iX2,iX3,iCF_Ne) &
             - CF_Before(iNodeX,iX1,iX2,iX3,iCF_Ne) ) / TimeInterval
+      Q_Rate(iQ_Lm,1,iN_X) &
+        = ( CF_After(iNodeX,iX1,iX2,iX3,iCF_Nm) &
+            - CF_Before(iNodeX,iX1,iX2,iX3,iCF_Nm) ) / TimeInterval
       Q_Rate(iQ_E,1,iN_X) &
         = ( CF_After(iNodeX,iX1,iX2,iX3,iCF_E) &
             - CF_Before(iNodeX,iX1,iX2,iX3,iCF_E) ) / TimeInterval
@@ -4753,10 +4827,11 @@ CONTAINS
           QH_Exact_Element = Q_Element(iQ_H)
         END IF
         WRITE(Unit,'(I0,1X,A,1X,I0,1X,2(ES24.16E3,1X),I0,1X,' // &
-                   '2(ES24.16E3,1X),5(ES24.16E3,1X))') &
+                   '2(ES24.16E3,1X),6(ES24.16E3,1X))') &
           iStage, TRIM(Component), iElement, Radius / Centimeter, &
           ElementVolume / Centimeter**3, iG - 1, wEX, wIM, &
-          Q_Element(iQ_L) / ( One / Centimeter**3 / Second ), &
+          Q_Element(iQ_Le) / ( One / Centimeter**3 / Second ), &
+          Q_Element(iQ_Lm) / ( One / Centimeter**3 / Second ), &
           Q_Element(iQ_E) / ( Erg / Centimeter**3 / Second ), &
           Q_Element(iQ_H) / ( Erg / Centimeter**3 / Second ), &
           Q_Element(iQ_M1) / ( Erg / Centimeter**3 / Second ), &
@@ -4809,8 +4884,16 @@ CONTAINS
              / ( PlanckConstant * SpeedOfLight )**3
         W3 = W2 * E
 
-        Q_Transport(iQ_L,1+iS,iN_X) = Q_Transport(iQ_L,1+iS,iN_X) &
-          + LeptonNumber(iS) * W2 * RadiationTransportRHS &
+        IF( iS <= iNuE_Bar ) &
+          Q_Transport(iQ_Le,1+iS,iN_X) &
+            = Q_Transport(iQ_Le,1+iS,iN_X) &
+              + LeptonNumber(iS) * W2 * RadiationTransportRHS &
+                   (iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS)
+
+        IF( iS == iNuM .OR. iS == iNuM_Bar ) &
+          Q_Transport(iQ_Lm,1+iS,iN_X) &
+            = Q_Transport(iQ_Lm,1+iS,iN_X) &
+              + LeptonNumber(iS) * W2 * RadiationTransportRHS &
                    (iNodeZ,iE,iX1,iX2,iX3,iCR_N,iS)
 
         Q_Transport(iQ_E,1+iS,iN_X) = Q_Transport(iQ_E,1+iS,iN_X) &
@@ -5002,8 +5085,8 @@ CONTAINS
     INTEGER :: iC, iS
 
     WRITE(Unit,'(A)',ADVANCE='NO') &
-      '# r_cm dr_cm dV_cm3 D_g_cm3 T_fluid_MeV Ye' // &
-      ' ne_before_cm3 ne_after_cm3' // &
+      '# r_cm dr_cm dV_cm3 D_g_cm3 T_fluid_MeV Ye Ym' // &
+      ' ne_before_cm3 ne_after_cm3 nm_before_cm3 nm_after_cm3' // &
       ' eint_before_erg_cm3 eint_after_erg_cm3' // &
       ' fractional_eint_change_last_step' // &
       ' PL_theta1 PL_theta2 PL_dEnergy_erg' // &
@@ -5017,6 +5100,33 @@ CONTAINS
       WRITE(Unit,'(A,I0)',ADVANCE='NO') ' T_spec_s', iS
       WRITE(Unit,'(A,I0)',ADVANCE='NO') ' T_flux_s', iS
       WRITE(Unit,'(A,I0)',ADVANCE='NO') ' flux_factor_s', iS
+    END DO
+
+    WRITE(Unit,'(A)',ADVANCE='NO') ' QLe_applied_last_step_cm3_s'
+    WRITE(Unit,'(A)',ADVANCE='NO') ' QLmu_applied_last_step_cm3_s'
+    WRITE(Unit,'(A)',ADVANCE='NO') ' QLe_IMEX_source_total_cm3_s'
+    WRITE(Unit,'(A)',ADVANCE='NO') ' QLmu_IMEX_source_total_cm3_s'
+    WRITE(Unit,'(A)',ADVANCE='NO') ' QLe_IMEX_increment_cm3_s'
+    WRITE(Unit,'(A)',ADVANCE='NO') ' QLmu_IMEX_increment_cm3_s'
+
+    DO iS = 1, nSpecies
+      WRITE(Unit,'(A,I0,A)',ADVANCE='NO') &
+        ' QLe_IMEX_source_species_s', iS, '_cm3_s'
+    END DO
+
+    DO iS = 1, nSpecies
+      WRITE(Unit,'(A,I0,A)',ADVANCE='NO') &
+        ' QLmu_IMEX_source_species_s', iS, '_cm3_s'
+    END DO
+
+    DO iC = 1, nC
+      WRITE(Unit,'(A)',ADVANCE='NO') &
+        ' QLe_IMEX_source_process_' // TRIM( ProcessName(iC) ) // '_cm3_s'
+    END DO
+
+    DO iC = 1, nC
+      WRITE(Unit,'(A)',ADVANCE='NO') &
+        ' QLmu_IMEX_source_process_' // TRIM( ProcessName(iC) ) // '_cm3_s'
     END DO
 
     WRITE(Unit,'(A)',ADVANCE='NO') ' QH_total_erg_cm3_s'

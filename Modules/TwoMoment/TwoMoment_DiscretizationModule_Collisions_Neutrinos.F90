@@ -1,5 +1,7 @@
 MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
 
+  USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: ERROR_UNIT
+  USE mpi, ONLY: MPI_COMM_WORLD, MPI_ABORT
   USE KindModule, ONLY: &
     DP, &
     Zero, &
@@ -58,7 +60,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     iLFC_CollisionSource, iLFC_RawMap, &
     iLFC_MapProjection, iLFC_FixedPointResidual, &
     iLFC_EquationResidual, &
-    iQ_L, iQ_E, iQ_H, iQ_M1, iQ_M2, iQ_M3
+    iQ_Le, iQ_Lm, iQ_E, iQ_H, iQ_M1, iQ_M2, iQ_M3
   USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
     ComputeIncrement_TwoMoment_Explicit, &
     AllocateSourceAwareTransportOpacity, &
@@ -266,7 +268,8 @@ CONTAINS
 #endif
 
     IF( .NOT. ALLOCATED( nIterations_Inner_Final_Last ) ) &
-      ERROR STOP 'No retained neutrino-matter solver convergence diagnostics.'
+      CALL AbortCollisionDiscretization &
+             ( 'No retained neutrino-matter solver convergence diagnostics' )
 
     ALLOCATE( InnerIterationsFinal &
                 (SIZE(nIterations_Inner_Final_Last)) )
@@ -1534,9 +1537,12 @@ CONTAINS
                + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
 
         IF( AccumulateMatterCoupling_Mask )THEN
-          MatterUpdate_Rate_Option(iQ_L,iNodeX,iX1,iX2,iX3) &
-            = MatterUpdate_Rate_Option(iQ_L,iNodeX,iX1,iX2,iX3) &
+          MatterUpdate_Rate_Option(iQ_Le,iNodeX,iX1,iX2,iX3) &
+            = MatterUpdate_Rate_Option(iQ_Le,iNodeX,iX1,iX2,iX3) &
               + IMEX_ImplicitWeight * dU_F(iNodeX,iX1,iX2,iX3,iCF_Ne)
+          MatterUpdate_Rate_Option(iQ_Lm,iNodeX,iX1,iX2,iX3) &
+            = MatterUpdate_Rate_Option(iQ_Lm,iNodeX,iX1,iX2,iX3) &
+              + IMEX_ImplicitWeight * dU_F(iNodeX,iX1,iX2,iX3,iCF_Nm)
           MatterUpdate_Rate_Option(iQ_E,iNodeX,iX1,iX2,iX3) &
             = MatterUpdate_Rate_Option(iQ_E,iNodeX,iX1,iX2,iX3) &
               + IMEX_ImplicitWeight * dU_F(iNodeX,iX1,iX2,iX3,iCF_E)
@@ -1557,8 +1563,10 @@ CONTAINS
                     - PF_N(iN_X,iPF_V2) * dU_F(iNodeX,iX1,iX2,iX3,iCF_S2) &
                     - PF_N(iN_X,iPF_V3) * dU_F(iNodeX,iX1,iX2,iX3,iCF_S3) )
         ELSE
-          MatterUpdate_Rate_Option(iQ_L,iNodeX,iX1,iX2,iX3) &
+          MatterUpdate_Rate_Option(iQ_Le,iNodeX,iX1,iX2,iX3) &
             = IMEX_ImplicitWeight * dU_F(iNodeX,iX1,iX2,iX3,iCF_Ne)
+          MatterUpdate_Rate_Option(iQ_Lm,iNodeX,iX1,iX2,iX3) &
+            = IMEX_ImplicitWeight * dU_F(iNodeX,iX1,iX2,iX3,iCF_Nm)
           MatterUpdate_Rate_Option(iQ_E,iNodeX,iX1,iX2,iX3) &
             = IMEX_ImplicitWeight * dU_F(iNodeX,iX1,iX2,iX3,iCF_E)
           MatterUpdate_Rate_Option(iQ_M1,iNodeX,iX1,iX2,iX3) &
@@ -2692,6 +2700,20 @@ CONTAINS
 
   END SUBROUTINE FinalizeConservationHandoffCheck
 #endif
+
+
+  SUBROUTINE AbortCollisionDiscretization( Message )
+
+    CHARACTER(LEN=*), INTENT(in) :: Message
+
+    INTEGER :: ErrorCode
+
+    WRITE(ERROR_UNIT,'(A)') &
+      '[TwoMoment collision discretization] ERROR: ' // TRIM( Message )
+    FLUSH(ERROR_UNIT)
+    CALL MPI_ABORT( MPI_COMM_WORLD, -1, ErrorCode )
+
+  END SUBROUTINE AbortCollisionDiscretization
 
 
 END MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos

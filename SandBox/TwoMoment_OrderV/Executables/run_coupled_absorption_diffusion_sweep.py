@@ -15,10 +15,8 @@ varying spatial resolution and optical depth.  Plain ``BackwardEuler`` is
 deliberately excluded: in Thornado that tableau has no explicit weights and
 therefore disables spatial streaming.
 
-The ``ap-well-balanced`` mode uses the same stage-local equilibrium state in
-the implicit exchange and in the numerical trace.  The trace applies the
-full LLF dissipation to the nonequilibrium departure and the source-aware
-factor to the equilibrium contribution.
+The source-aware mode applies the opacity-dependent density-jump scaling in
+the numerical trace.
 """
 
 from __future__ import annotations
@@ -126,7 +124,7 @@ def main() -> None:
     parser.add_argument(
         "--llf-modes",
         nargs="+",
-        choices=("standard", "source-aware", "ap-well-balanced"),
+        choices=("standard", "source-aware"),
         default=("standard",),
         help="flux-source treatments to run (default: standard)",
     )
@@ -167,10 +165,7 @@ def main() -> None:
                     environment["THORNADO_COUPLED_DIFFUSION_NX"] = str(resolution)
                     environment["THORNADO_COUPLED_DIFFUSION_OPTICAL_DEPTH"] = repr(depth)
                     environment["THORNADO_SOURCE_AWARE_LLF"] = str(
-                        llf_mode in ("source-aware", "ap-well-balanced")
-                    ).lower()
-                    environment["THORNADO_AP_WELL_BALANCED_FLUX_SOURCE"] = str(
-                        llf_mode == "ap-well-balanced"
+                        llf_mode == "source-aware"
                     ).lower()
                     log_path = output_dir / f"{label}.log"
 

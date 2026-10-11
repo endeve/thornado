@@ -215,7 +215,6 @@ def main() -> None:
         environment["THORNADO_RADIATION_ONLY_SOLVE"] = boolean_string(
             radiation_only
         )
-        environment["THORNADO_AP_WELL_BALANCED_FLUX_SOURCE"] = "false"
         environment["THORNADO_MATTER_EXCHANGE_SHADOWS"] = boolean_string(
             compute_shadows
         )
