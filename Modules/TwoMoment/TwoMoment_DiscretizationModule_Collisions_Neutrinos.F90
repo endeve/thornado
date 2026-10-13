@@ -636,7 +636,7 @@ CONTAINS
              Opacity_Mask_Input = Opacity_Mask_Diagnostic )
 
     CALL ComputeRates_Packed &
-           ( PF_N(:,iPF_D), PR_N(:,:,:,iPR_D), &
+           ( PF_N(:,iPF_D), AF_N(:,iAF_T), PR_N(:,:,:,iPR_D), &
              PR_N(:,:,:,iPR_I1), PR_N(:,:,:,iPR_I2), PR_N(:,:,:,iPR_I3), &
              nX_P0 = nX_G, Opacity_Mask_Input = Opacity_Mask_Diagnostic )
 

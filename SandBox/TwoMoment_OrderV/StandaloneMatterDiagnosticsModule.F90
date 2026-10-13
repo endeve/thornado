@@ -1,5 +1,7 @@
 MODULE StandaloneMatterDiagnosticsModule
 
+  USE, INTRINSIC :: IEEE_ARITHMETIC, ONLY: &
+    IEEE_VALUE, IEEE_QUIET_NAN
   USE KindModule, ONLY: &
     DP, Zero, One, Two, Three, Half, FourPi, SqrtTiny
   USE UnitsModule, ONLY: &
@@ -29,7 +31,7 @@ MODULE StandaloneMatterDiagnosticsModule
   USE Euler_UtilitiesModule_NonRelativistic, ONLY: &
     ComputeFromConserved_Euler_NonRelativistic
   USE NeutrinoOpacitiesComputationModule, ONLY: &
-    ComputeEquilibriumDistributions, LimitEquilibriumDistributions_DG, &
+    ComputeEquilibriumDistributions, &
     SetChargedCurrentMasks
   USE RadiationFieldsModule, ONLY: &
     nSpecies, nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
@@ -1477,9 +1479,10 @@ CONTAINS
 
       CALL BuildPrimitiveState &
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, &
-               StageFluidState(:,:,:,:,:,iStage,iIMEX_PostImplicit), &
+               StageFluidState &
+                 (:,:,:,:,:,iStage,iIMEX_PostImplicitLimiter), &
                StageRadiationState &
-                 (:,:,:,:,:,:,:,iStage,iIMEX_PostImplicit), &
+                 (:,:,:,:,:,:,:,iStage,iIMEX_PostImplicitLimiter), &
                PF_Stage, AF_Stage, PR_Full )
 
       iN_X = 0
@@ -1502,10 +1505,6 @@ CONTAINS
                ElectronChargedCurrentMask_Option &
                  = ElectronChargedCurrentMask, &
                MuonChargedCurrentMask_Option = MuonChargedCurrentMask )
-      CALL LimitEquilibriumDistributions_DG &
-             ( 1, nE_G, 1, nSpecies, 1, nX_G, &
-               E_N, DnuEq, DnuMax )
-
       PR_Mean = PR_Full
       DO iS = 1, nSpecies
       DO iE = iZ_B0(1), iZ_E0(1)
@@ -1793,7 +1792,7 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: &
       MeanInvMFP(:,:,:), EmAb_RateDecomposition(:,:,:), NNS_RateDecomposition(:,:,:), &
       Q_Matter(:,:,:), Q_Matter_PreLimiter(:,:,:), &
-      QH_ByProcessSpecies(:,:,:), PR_BeforeFinalLimiter(:,:,:,:,:,:,:), &
+      QH_ByProcessSpecies(:,:,:), &
       EmAb_Spectrum(:,:,:,:), EmAb_Spectrum_PreLimiter(:,:,:,:), &
       RadiationCollisionRHS(:,:,:,:), RadiationTransportRHS(:,:,:,:,:,:,:), &
       Q_Transport(:,:,:), CF_Streaming(:,:,:,:,:), CR_Streaming(:,:,:,:,:,:,:)
@@ -1845,18 +1844,12 @@ CONTAINS
     ALLOCATE( Q_Transport(nQ,1+nSpecies,nX_G) )
     ALLOCATE( CF_Streaming, MOLD = CF_AfterStep )
     ALLOCATE( CR_Streaming, MOLD = CR )
-    ALLOCATE( PR_BeforeFinalLimiter, MOLD = PR )
-
-    PR_BeforeFinalLimiter = Zero
-
-    CALL ComputePrimitiveRadiation &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, PF, &
-             RadiationState_BeforeFinalLimiter, PR_BeforeFinalLimiter )
-
-    CALL ComputeMatterRHS_Collisions_OrderV &
-           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, PF, &
-             PR_BeforeFinalLimiter, Q_Matter_PreLimiter, &
-             EmAb_Spectrum_Option = EmAb_Spectrum_PreLimiter )
+    ! The state immediately before the final radiation limiter need not be
+    ! realizable.  Its primitive moments, closure, and collision source are
+    ! then undefined.  Do not apply C2P to that state: the limiter contribution
+    ! is measured directly from conserved variables by the IMEX tallies.
+    Q_Matter_PreLimiter       = IEEE_VALUE( Zero, IEEE_QUIET_NAN )
+    EmAb_Spectrum_PreLimiter  = IEEE_VALUE( Zero, IEEE_QUIET_NAN )
 
     CALL ComputeMatterRHS_Collisions_OrderV &
            ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, PF, PR, Q_Matter, &
@@ -1886,6 +1879,8 @@ CONTAINS
     WRITE(Unit,'(A,1X,ES24.16E3)') '# applied_dt_s', TimeStep / Second
     WRITE(Unit,'(A,1X,I0,1X,A,1X,I0)') '# nE', iZ_E0(1) - iZ_B0(1) + 1, &
       'nDOFE', nDOFE
+    WRITE(Unit,'(A)') &
+      '# pre-limiter collision-source columns are NaN: the unprojected state may be inadmissible'
     CALL WriteHeader( Unit )
 
     iN_X = 0
@@ -2365,7 +2360,7 @@ CONTAINS
 
     DEALLOCATE &
       ( MeanInvMFP, EmAb_RateDecomposition, NNS_RateDecomposition, Q_Matter, Q_Matter_PreLimiter, &
-        QH_ByProcessSpecies, PR_BeforeFinalLimiter, &
+        QH_ByProcessSpecies, &
         EmAb_Spectrum, EmAb_Spectrum_PreLimiter, &
         RadiationCollisionRHS, RadiationTransportRHS, Q_Transport, &
         CF_Streaming, CR_Streaming, &
@@ -3031,6 +3026,7 @@ CONTAINS
     INTEGER :: iC, iE, iN_X, iNodeE, iNodeX, iNodeZ
     INTEGER :: iStateX1, iStateX2, iStateX3
     INTEGER :: iS, iStage, iState, iX1, nX_G, Unit
+    LOGICAL :: PrimitiveStateDefined
     REAL(DP) :: E, ElementVolume, Eint, ImplicitTimeStep
     REAL(DP) :: Radius, VolumeWeight, W3
     REAL(DP) :: D_Element, Eint_Element, T_Element, Ye_Element, Ym_Element
@@ -3065,6 +3061,8 @@ CONTAINS
     WRITE(Unit,'(A)') '# state 3: state after implicit solve, before limiter'
     WRITE(Unit,'(A)') '# state 4: state after the post-implicit limiter'
     WRITE(Unit,'(A)') '# state 5: completed step after any final assembly and limiter'
+    WRITE(Unit,'(A)') &
+      '# primitive and collision-source columns are NaN for states 1 and 3: those pre-limiter states may be inadmissible'
     WRITE(Unit,'(A)',ADVANCE='NO') &
       '# stage state element r_cm volume_cm3 D_g_cm3 T_MeV Ye Ym' // &
       ' implicit_dt_s eint_erg_cm3 QLe_total_cm3_s QLmu_total_cm3_s' // &
@@ -3091,23 +3089,39 @@ CONTAINS
       IF(      iState == iIMEX_CompletedStep &
           .AND. .NOT. HasFinalAssembly_IMEX_RK() ) CYCLE
 
-      PF_Stage = Zero
-      AF_Stage = Zero
-      PR_Stage = Zero
-      Q_Stage  = Zero
+      PrimitiveStateDefined &
+        = (      iState == iIMEX_PreImplicit &
+            .OR. iState == iIMEX_PostImplicitLimiter &
+            .OR. iState == iIMEX_CompletedStep )
 
-      CALL ComputeFromConserved_Euler_NonRelativistic &
-             ( iZ_B0(2:4), iZ_E0(2:4), iZ_B1(2:4), iZ_E1(2:4), GX, &
-               StageFluidState(:,:,:,:,:,iStage,iState), &
-               PF_Stage, AF_Stage )
+      IF( PrimitiveStateDefined )THEN
 
-      CALL ComputePrimitiveRadiation &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, PF_Stage, &
-               StageRadiationState(:,:,:,:,:,:,:,iStage,iState), PR_Stage )
+        PF_Stage = Zero
+        AF_Stage = Zero
+        PR_Stage = Zero
+        Q_Stage  = Zero
 
-      CALL ComputeMatterRHS_Collisions_OrderV &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, PF_Stage, PR_Stage, &
-               Q_Stage )
+        CALL ComputeFromConserved_Euler_NonRelativistic &
+               ( iZ_B0(2:4), iZ_E0(2:4), iZ_B1(2:4), iZ_E1(2:4), GX, &
+                 StageFluidState(:,:,:,:,:,iStage,iState), &
+                 PF_Stage, AF_Stage )
+
+        CALL ComputePrimitiveRadiation &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, PF_Stage, &
+                 StageRadiationState(:,:,:,:,:,:,:,iStage,iState), PR_Stage )
+
+        CALL ComputeMatterRHS_Collisions_OrderV &
+               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, PF_Stage, PR_Stage, &
+                 Q_Stage )
+
+      ELSE
+
+        PF_Stage = IEEE_VALUE( Zero, IEEE_QUIET_NAN )
+        AF_Stage = IEEE_VALUE( Zero, IEEE_QUIET_NAN )
+        PR_Stage = IEEE_VALUE( Zero, IEEE_QUIET_NAN )
+        Q_Stage  = IEEE_VALUE( Zero, IEEE_QUIET_NAN )
+
+      END IF
 
       iN_X = 0
       DO iX1 = iZ_B0(2), iZ_E0(2)
@@ -3385,6 +3399,8 @@ CONTAINS
 
     OPEN( NEWUNIT = FaceUnit, FILE = TRIM( FaceFileName ), &
           STATUS = 'REPLACE', ACTION = 'WRITE', FORM = 'FORMATTED' )
+    WRITE(FaceUnit,'(A)') &
+      '# pre-limiter face columns are NaN: the unprojected state may be inadmissible'
     CALL WriteIMEXFaceHeader( FaceUnit )
 
     DO iStage = 1, SIZE( StageFluidState, 6 )
@@ -3420,10 +3436,6 @@ CONTAINS
                  = ElectronChargedCurrentMask, &
                MuonChargedCurrentMask_Option = MuonChargedCurrentMask )
 
-      CALL LimitEquilibriumDistributions_DG &
-             ( 1, nE_G, 1, nSpecies, 1, nX_G, &
-               E_N, DnuEq, DnuMax )
-
       DO iRaw = 1, nStreamingRaw
 
         CF_Work &
@@ -3453,19 +3465,10 @@ CONTAINS
 
       END DO
 
-      CF_Work &
-        = StageFluidState(:,:,:,:,:,iStage,iIMEX_PostImplicit)
-      CR_Work &
-        = StageRadiationState(:,:,:,:,:,:,:,iStage,iIMEX_PostImplicit)
-
-      CALL ComputeIncrement_TwoMoment_Explicit &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
-               CF_Work, CR_Work, RadiationRHS )
-
-      CALL ComputeRadialFaceDiagnostics &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, &
-               PF_Stage, CF_Work, CR_Work, DnuEq, &
-               FaceDiagnostics_PreLimiter )
+      ! The post-implicit state has not passed through the limiter and need
+      ! not admit primitives or a numerical flux.  Its limiter change is
+      ! already available exactly from the conserved stage-state difference.
+      FaceDiagnostics_PreLimiter = IEEE_VALUE( Zero, IEEE_QUIET_NAN )
 
       CALL WriteIMEXFaceRows &
              ( FaceUnit, iStage, .FALSE., iZ_B0, &
@@ -4188,6 +4191,8 @@ CONTAINS
           ACTION = 'WRITE', FORM = 'FORMATTED' )
 
     WRITE(Unit,'(A)') &
+      '# pre-limiter columns are NaN: the unprojected state may be inadmissible'
+    WRITE(Unit,'(A)') &
       '# iX iNodeX r_cm volume_weight_cm3 iE iNodeE E_MeV species' // &
       ' Dnu_pre Dnu_post Dnu_eq_pre Dnu_eq_post' // &
       ' Chi_pre_s_inv Chi_post_s_inv' // &
@@ -4376,6 +4381,8 @@ CONTAINS
       '# Radiation rows use the sign of the radiation equation; collision-source rows use matter-gain sign.'
     WRITE(Unit,'(A)') &
       '# Hence COLLISION_CONSERVATION = COLLISION_MATTER_ACTUAL + COLLISION_RADIATION_ACTUAL.'
+    WRITE(Unit,'(A)') &
+      '# COLLISION_SOURCE_POST is NaN: the post-implicit, pre-limiter state may be inadmissible.'
     WRITE(Unit,'(A,1X,ES24.16E3)') '# timestep_s', TimeStep / Second
     DO iStage = 1, nStages
       WRITE(Unit,'(A,I0,A,3(ES24.16E3,1X))') '# stage ', iStage, &
@@ -4409,15 +4416,11 @@ CONTAINS
              ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, PF_Pre, PR_Pre, &
                Q_Collision_Pre )
 
-      CALL BuildPrimitiveState &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, &
-               StageFluidState(:,:,:,:,:,iStage,iIMEX_PostImplicit), &
-               StageRadiationState(:,:,:,:,:,:,:,iStage,iIMEX_PostImplicit), &
-               PF_Post, AF_Post, PR_Post )
-
-      CALL ComputeMatterRHS_Collisions_OrderV &
-             ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, PF_Post, PR_Post, &
-               Q_Collision_Post )
+      ! A post-implicit state has not yet passed through the radiation and
+      ! fluid limiters.  Its primitive collision source is not defined when
+      ! the conserved tuple is inadmissible.  The actual implicit exchange is
+      ! measured below from conserved before/after differences.
+      Q_Collision_Post = IEEE_VALUE( Zero, IEEE_QUIET_NAN )
 
       CALL WriteBudgetComponent &
              ( Unit, iStage, 'COLLISION_SOURCE_PRE', wEX, wIM, &
@@ -4427,6 +4430,40 @@ CONTAINS
                iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, Q_Collision_Post(:,1:1+nSpecies,:) )
 
       IF( aii /= Zero )THEN
+        ! Only the post-implicit fluid velocity is needed to form QH from the
+        ! conserved matter and radiation changes.  Recover it algebraically;
+        ! do not invoke the EOS or radiation C2P on this pre-limiter state.
+        PF_Post = PF_Pre
+        WHERE( StageFluidState &
+                 (:,:,:,:,iCF_D,iStage,iIMEX_PostImplicit) > SqrtTiny &
+               .AND. GX(:,:,:,:,iGF_Gm_dd_11) > SqrtTiny )
+          PF_Post(:,:,:,:,iPF_V1) &
+            = StageFluidState(:,:,:,:,iCF_S1,iStage,iIMEX_PostImplicit) &
+                / ( MAX( GX(:,:,:,:,iGF_Gm_dd_11), SqrtTiny ) &
+                    * MAX( StageFluidState &
+                             (:,:,:,:,iCF_D,iStage,iIMEX_PostImplicit), &
+                           SqrtTiny ) )
+        END WHERE
+        WHERE( StageFluidState &
+                 (:,:,:,:,iCF_D,iStage,iIMEX_PostImplicit) > SqrtTiny &
+               .AND. GX(:,:,:,:,iGF_Gm_dd_22) > SqrtTiny )
+          PF_Post(:,:,:,:,iPF_V2) &
+            = StageFluidState(:,:,:,:,iCF_S2,iStage,iIMEX_PostImplicit) &
+                / ( MAX( GX(:,:,:,:,iGF_Gm_dd_22), SqrtTiny ) &
+                    * MAX( StageFluidState &
+                             (:,:,:,:,iCF_D,iStage,iIMEX_PostImplicit), &
+                           SqrtTiny ) )
+        END WHERE
+        WHERE( StageFluidState &
+                 (:,:,:,:,iCF_D,iStage,iIMEX_PostImplicit) > SqrtTiny &
+               .AND. GX(:,:,:,:,iGF_Gm_dd_33) > SqrtTiny )
+          PF_Post(:,:,:,:,iPF_V3) &
+            = StageFluidState(:,:,:,:,iCF_S3,iStage,iIMEX_PostImplicit) &
+                / ( MAX( GX(:,:,:,:,iGF_Gm_dd_33), SqrtTiny ) &
+                    * MAX( StageFluidState &
+                             (:,:,:,:,iCF_D,iStage,iIMEX_PostImplicit), &
+                           SqrtTiny ) )
+        END WHERE
         CALL ComputeFluidStateRate &
                ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GX, &
                  StageFluidState(:,:,:,:,:,iStage,iIMEX_PreImplicit), &

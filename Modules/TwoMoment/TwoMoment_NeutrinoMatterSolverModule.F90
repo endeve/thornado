@@ -35,7 +35,6 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     Timer_Collisions_MatterFromRadiation, &
     Timer_Collisions_RadiationBacktrack, &
     Timer_Opacity_D0, &
-    Timer_Opacity_LimitD0, &
     Timer_Opacity_EC, &
     Timer_Opacity_ES, &
     Timer_Opacity_NNS, &
@@ -70,14 +69,15 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeTemperatureFromSpecificInternalEnergy_TABLE, &
     ComputeSpecificInternalEnergy_TABLE, &
+    ComputeMuonChemicalPotential_TABLE, &
     ComputePressure_TABLE, &
     Min_D, Min_T, Min_Y
   USE OpacityModule_TABLE, ONLY: &
     IsoIncludesNucleonScattering
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     ComputeEquilibriumDistributions, &
-    LimitEquilibriumDistributions_DG, &
     ComputeNeutrinoOpacities_EC, &
+    WriteMuonChargedCurrentOpacityDiagnostic, &
     ComputeNeutrinoOpacities_ES, &
     ComputeNeutrinoOpacities_NNS, &
     ComputeNeutrinoOpacities_NES, &
@@ -94,6 +94,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     ComputeNeutrinoOpacityRates_LinearCorrections_Pair, &
     ComputeNeutrinoOpacityRates_LinearCorrections_NuPair, &
     ComputeNeutrinoOpacityRates_LinearCorrections_Brem, &
+    ComputeDetailedBalanceFactors, &
     SetOpacityMask, &
     iM0, iM1, &
     nOp, iOp_EmAb_Electron, iOp_EmAb_Muon, &
@@ -113,6 +114,9 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   PUBLIC :: FinalizeNeutrinoMatterSolver
   PUBLIC :: InitializeNeutrinoMatterSolverParameters
   PUBLIC :: SolveNeutrinoMatterCoupling_FP_Nested_AA
+
+  INTEGER, PARAMETER :: iReducedSolver_Anderson    = 1
+  INTEGER, PARAMETER :: iReducedSolver_SchurNewton = 2
 
   ! Matter collision RHS quantities used by the shared limiter accounting.
   INTEGER, PARAMETER :: iQ_Le = 1
@@ -259,7 +263,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), DIMENSION(:), ALLOCATABLE :: V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3
   REAL(DP), DIMENSION(:), ALLOCATABLE :: D_old, cD_old, C_D, S_D, G_D, U_D
 
-  REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: SqrtGm
+  REAL(DP), DIMENSION(:)    , ALLOCATABLE, TARGET :: SqrtGm, T_Opacity
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Dnu_0
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Sigma_Iso
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Phi_0_Iso
@@ -310,6 +314,10 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Nu_J_I_0, Nu_J_II_0
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Nu_J_I_1, Nu_J_II_1
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: S_Sigma
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: &
+    DetailedBalanceScattering_T
+  REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: &
+    DetailedBalancePair_T
 
   LOGICAL,  DIMENSION(:,:),   ALLOCATABLE, TARGET :: Opacity_Mask
   LOGICAL,  DIMENSION(:,:),   ALLOCATABLE, TARGET :: MatterSource_Mask
@@ -334,6 +342,14 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   LOGICAL  :: UseFirstMomentRates
   LOGICAL  :: UseConservativeProjection
   LOGICAL  :: UseRadiationOnlySolve
+  INTEGER  :: ReducedSolverMethod
+  LOGICAL  :: DebugMuonCoupling
+  LOGICAL  :: TraceRadiationOnlySolve
+  LOGICAL  :: AnalyzeRadiationOnlyJacobian
+  CHARACTER(512) :: RadiationOnlyTraceFile
+  INTEGER :: RadiationOnlySolveCallCount = 0
+  INTEGER :: RadiationOnlyTraceUnit = 0
+  INTEGER :: RadiationOnlyTraceSpectrumUnit = 0
   INTEGER  :: M_outer
   INTEGER  :: M_inner
   INTEGER  :: MaxIter_outer
@@ -515,6 +531,7 @@ CONTAINS
     ALLOCATE( U_D    (nX_G) )
 
     ALLOCATE(         SqrtGm(              nX_G) )
+    ALLOCATE(       T_Opacity(              nX_G) )
     ALLOCATE(          Dnu_0(nE_G,nSpecies,nX_G) )
     ALLOCATE(      Sigma_Iso(nE_G,nChirals,nX_G) )
     ALLOCATE(      Phi_0_Iso(nE_G,nChirals,nX_G) )
@@ -639,6 +656,8 @@ CONTAINS
     ALLOCATE(           Nu_J_I_0_T(nE_G,nE_G,nX_G) )
     ALLOCATE(          Nu_J_II_0_T(nE_G,nE_G,nX_G) )
     ALLOCATE(   S_Sigma_T(nE_G,nE_G,nX_G) )
+    ALLOCATE( DetailedBalanceScattering_T(nE_G,nE_G,nX_G) )
+    ALLOCATE( DetailedBalancePair_T(nE_G,nE_G,nX_G) )
 
     IF ( UseFirstMomentRates ) THEN
       ALLOCATE( L_NNS__In__u_1_T(nE_G,nSpecies,nX_G) )
@@ -708,7 +727,7 @@ CONTAINS
     !$OMP             V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$OMP             V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
     !$OMP             V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
-    !$OMP             SqrtGm, &
+    !$OMP             SqrtGm, T_Opacity, &
     !$OMP             Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$OMP             Chi_EmAb, Eta_EmAb, &
     !$OMP             Chi_NNS, Eta_NNS, R_NNS, &
@@ -733,6 +752,8 @@ CONTAINS
     !$OMP             Phi_NNS_0_T, Phi_NbNS_0_T, &
     !$OMP             H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$OMP             Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T, &
+    !$OMP             DetailedBalanceScattering_T, &
+    !$OMP             DetailedBalancePair_T, &
     !$OMP             Opacity_Mask, Opacity_Mask_T, MatterSource_Mask )
 #elif defined(THORNADO_OACC  )
     !$ACC ENTER DATA &
@@ -757,7 +778,7 @@ CONTAINS
     !$ACC         V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$ACC         V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
     !$ACC         V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
-    !$ACC         SqrtGm, &
+    !$ACC         SqrtGm, T_Opacity, &
     !$ACC         Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$ACC         Chi_EmAb, Eta_EmAb, &
     !$ACC         Chi_NNS, Eta_NNS, R_NNS, &
@@ -782,6 +803,8 @@ CONTAINS
     !$ACC         Phi_NNS_0_T, Phi_NbNS_0_T, &
     !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$ACC         Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T, &
+    !$ACC         DetailedBalanceScattering_T, &
+    !$ACC         DetailedBalancePair_T, &
     !$ACC         Opacity_Mask, Opacity_Mask_T, MatterSource_Mask )
 #endif
 
@@ -1091,7 +1114,9 @@ CONTAINS
       Include_NuPair_Option, Include_Brem_Option, Include_LinCorr_Option, &
       wMatrRHS_Option, DnuMax_Option, FreezeOpacities_Option, &
       UseConservativeProjection_Option, Verbose_Option, &
-      UseRadiationOnlySolve_Option )
+      UseRadiationOnlySolve_Option, DebugMuonCoupling_Option, &
+      TraceRadiationOnlySolve_Option, RadiationOnlyTraceFile_Option, &
+      AnalyzeRadiationOnlyJacobian_Option, ReducedSolverMethod_Option )
 
     USE ISO_FORTRAN_ENV, ONLY: ERROR_UNIT
     USE mpi
@@ -1117,11 +1142,18 @@ CONTAINS
     LOGICAL , INTENT(in), OPTIONAL :: UseConservativeProjection_Option
     LOGICAL , INTENT(in), OPTIONAL :: Verbose_Option
     LOGICAL , INTENT(in), OPTIONAL :: UseRadiationOnlySolve_Option
+    LOGICAL , INTENT(in), OPTIONAL :: DebugMuonCoupling_Option
+    LOGICAL , INTENT(in), OPTIONAL :: TraceRadiationOnlySolve_Option
+    CHARACTER(*), INTENT(in), OPTIONAL :: RadiationOnlyTraceFile_Option
+    LOGICAL , INTENT(in), OPTIONAL :: AnalyzeRadiationOnlyJacobian_Option
+    CHARACTER(*), INTENT(in), OPTIONAL :: ReducedSolverMethod_Option
 
     LOGICAL :: Verbose
     INTEGER :: ierr, myid
 
     IF( SolverParametersInitialized ) RETURN
+
+    RadiationOnlySolveCallCount = 0
 
     IF( PRESENT( M_outer_Option ) )THEN
       M_outer = M_outer_Option
@@ -1264,6 +1296,66 @@ CONTAINS
       UseRadiationOnlySolve = .FALSE.
     END IF
 
+    ReducedSolverMethod = iReducedSolver_Anderson
+    IF( PRESENT(ReducedSolverMethod_Option) )THEN
+      SELECT CASE( TRIM(ADJUSTL(ReducedSolverMethod_Option)) )
+        CASE( 'anderson', 'ANDERSON' )
+          ReducedSolverMethod = iReducedSolver_Anderson
+        CASE( 'schur-newton', 'SCHUR-NEWTON', &
+              'schur_newton', 'SCHUR_NEWTON' )
+          ReducedSolverMethod = iReducedSolver_SchurNewton
+        CASE DEFAULT
+          CALL MPI_COMM_RANK( MPI_COMM_WORLD, myid, ierr )
+          IF( myid == 0 )THEN
+            WRITE(ERROR_UNIT,'(A,A)') &
+              'ERROR: Unknown reduced nonlinear method: ', &
+              TRIM(ReducedSolverMethod_Option)
+            WRITE(ERROR_UNIT,'(A)') &
+              '       Expected anderson or schur-newton.'
+            FLUSH(ERROR_UNIT)
+          END IF
+          CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
+      END SELECT
+    END IF
+
+    IF( PRESENT( DebugMuonCoupling_Option ) )THEN
+      DebugMuonCoupling = DebugMuonCoupling_Option
+    ELSE
+      DebugMuonCoupling = .FALSE.
+    END IF
+
+    IF( PRESENT( TraceRadiationOnlySolve_Option ) )THEN
+      TraceRadiationOnlySolve = TraceRadiationOnlySolve_Option
+    ELSE
+      TraceRadiationOnlySolve = .FALSE.
+    END IF
+
+    RadiationOnlyTraceFile = 'reduced_solver_trace'
+    IF( PRESENT( RadiationOnlyTraceFile_Option ) ) &
+      RadiationOnlyTraceFile = TRIM( RadiationOnlyTraceFile_Option )
+
+    IF( PRESENT( AnalyzeRadiationOnlyJacobian_Option ) )THEN
+      AnalyzeRadiationOnlyJacobian = AnalyzeRadiationOnlyJacobian_Option
+    ELSE
+      AnalyzeRadiationOnlyJacobian = .FALSE.
+    END IF
+
+    IF( AnalyzeRadiationOnlyJacobian .AND. .NOT. UseRadiationOnlySolve )THEN
+
+      CALL MPI_COMM_RANK( MPI_COMM_WORLD, myid, ierr )
+
+      IF( myid == 0 )THEN
+        WRITE(ERROR_UNIT,'(A)') &
+          'ERROR: Reduced-solver Jacobian analysis requires the'
+        WRITE(ERROR_UNIT,'(A)') &
+          '       invariant-constrained radiation solve.'
+        FLUSH(ERROR_UNIT)
+      END IF
+
+      CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
+
+    END IF
+
     IF( UseRadiationOnlySolve .AND. UseConservativeProjection )THEN
 
       CALL MPI_COMM_RANK( MPI_COMM_WORLD, myid, ierr )
@@ -1304,6 +1396,21 @@ CONTAINS
         UseConservativeProjection
       WRITE(*,'(A4,A32,L1)')       '', 'Invariant-constrained solve: ', &
         UseRadiationOnlySolve
+      IF( ReducedSolverMethod == iReducedSolver_Anderson )THEN
+        WRITE(*,'(A4,A32,A)') '', 'Reduced nonlinear method: ', 'anderson'
+      ELSE
+        WRITE(*,'(A4,A32,A)') '', 'Reduced nonlinear method: ', &
+          'schur-newton'
+      END IF
+      WRITE(*,'(A4,A32,L1)')       '', 'Debug muon coupling: ', &
+        DebugMuonCoupling
+      WRITE(*,'(A4,A32,L1)')       '', 'Trace invariant solve: ', &
+        TraceRadiationOnlySolve
+      WRITE(*,'(A4,A32,L1)')       '', 'Analyze reduced Jacobian: ', &
+        AnalyzeRadiationOnlyJacobian
+      IF( TraceRadiationOnlySolve ) &
+        WRITE(*,'(A4,A32,A)') '', 'Trace file base: ', &
+          TRIM(RadiationOnlyTraceFile)
       WRITE(*,*)
       WRITE(*,'(A4,A32,L1)')       '', 'Include_NNS: '    , Include_NNS
       WRITE(*,'(A4,A32,L1)')       '', 'NNS_manybody: '   , NNS_ApplyManyBodyCorrection
@@ -1359,7 +1466,7 @@ CONTAINS
     !$OMP               V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$OMP               V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
     !$OMP               V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
-    !$OMP               SqrtGm, &
+    !$OMP               SqrtGm, T_Opacity, &
     !$OMP               Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$OMP               Chi_EmAb, Eta_EmAb, &
     !$OMP               Chi_NNS, Eta_NNS, R_NNS, &
@@ -1384,6 +1491,8 @@ CONTAINS
     !$OMP               Phi_NNS_0_T, Phi_NbNS_0_T, &
     !$OMP               H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$OMP               Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T, &
+    !$OMP               DetailedBalanceScattering_T, &
+    !$OMP               DetailedBalancePair_T, &
     !$OMP               Opacity_Mask, Opacity_Mask_T, MatterSource_Mask )
 #elif defined(THORNADO_OACC  )
     !$ACC EXIT DATA &
@@ -1408,7 +1517,7 @@ CONTAINS
     !$ACC         V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$ACC         V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
     !$ACC         V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
-    !$ACC         SqrtGm, &
+    !$ACC         SqrtGm, T_Opacity, &
     !$ACC         Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$ACC         Chi_EmAb, Eta_EmAb, &
     !$ACC         Chi_NNS, Eta_NNS, R_NNS, &
@@ -1433,6 +1542,8 @@ CONTAINS
     !$ACC         Phi_NNS_0_T, Phi_NbNS_0_T, &
     !$ACC         H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T, &
     !$ACC         Nu_J_I_0_T, Nu_J_II_0_T, S_Sigma_T, &
+    !$ACC         DetailedBalanceScattering_T, &
+    !$ACC         DetailedBalancePair_T, &
     !$ACC         Opacity_Mask, Opacity_Mask_T, MatterSource_Mask )
 #endif
 
@@ -1521,7 +1632,7 @@ CONTAINS
     DEALLOCATE( V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2 )
     DEALLOCATE( V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3 )
     DEALLOCATE( cD_old, D_old, C_D, S_D, G_D, U_D )
-    DEALLOCATE( SqrtGm )
+    DEALLOCATE( SqrtGm, T_Opacity )
     DEALLOCATE( Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso )
     DEALLOCATE( Chi_EmAb, Eta_EmAb )
     DEALLOCATE( Chi_NNS, Eta_NNS, R_NNS )
@@ -1546,6 +1657,8 @@ CONTAINS
     DEALLOCATE( Phi_NNS_0_T, Phi_NbNS_0_T )
     DEALLOCATE( H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T )
     DEALLOCATE( S_Sigma_T )
+    DEALLOCATE( DetailedBalanceScattering_T )
+    DEALLOCATE( DetailedBalancePair_T )
     DEALLOCATE( Nu_J_I_0_T, Nu_J_II_0_T )
 
     IF ( UseFirstMomentRates ) THEN
@@ -1579,6 +1692,15 @@ CONTAINS
       DEALLOCATE( L_Brem_Ann_u_1_T, L_Brem_Ann_u_2_T, L_Brem_Ann_u_3_T )
     END IF
     DEALLOCATE( Opacity_Mask, Opacity_Mask_T, MatterSource_Mask )
+
+    IF( RadiationOnlyTraceUnit /= 0 )THEN
+      CLOSE( RadiationOnlyTraceUnit )
+      RadiationOnlyTraceUnit = 0
+    END IF
+    IF( RadiationOnlyTraceSpectrumUnit /= 0 )THEN
+      CLOSE( RadiationOnlyTraceSpectrumUnit )
+      RadiationOnlyTraceSpectrumUnit = 0
+    END IF
 
   END SUBROUTINE FinalizeNeutrinoMatterSolver
 
@@ -1668,7 +1790,7 @@ CONTAINS
              Opacity_Mask_Input = Opacity_Mask )
 
     CALL ComputeRates_Packed &
-           ( D, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, nX_P0 = nX_G, &
+           ( D, T, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, nX_P0 = nX_G, &
              Opacity_Mask_Input = Opacity_Mask )
 
     CALL AssembleTransportOpacity( TransportOpacity )
@@ -1791,7 +1913,7 @@ CONTAINS
              Opacity_Mask_Input = Opacity_Mask )
 
     CALL ComputeRates_Packed &
-           ( D, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, nX_P0 = nX_G, &
+           ( D, T, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, nX_P0 = nX_G, &
              Opacity_Mask_Input = Opacity_Mask )
 
     ! This diagnostic is a ratio of energy integrals.  Normalize the
@@ -2010,14 +2132,24 @@ CONTAINS
     LOGICAL :: TerminalProjectionMode
     LOGICAL :: TerminalOpacityCacheCurrent, TerminalRatesCacheCurrent
     LOGICAL,  ALLOCATABLE, DIMENSION(:) :: &
-      ProjectionMask, RadiationBacktrackMask
+      ProjectionMask, RadiationBacktrackMask, &
+      TraceEvaluationMask, TraceHasPrevious, TraceHasPrevious2, &
+      SchurHasPrevious
+    INTEGER, ALLOCATABLE, DIMENSION(:) :: TraceBacktrackCount
     REAL(DP), ALLOCATABLE, DIMENSION(:) :: &
       T_Conservative, Ye_Conservative, Ym_Conservative, E_Conservative, &
       V_u_1_Conservative, V_u_2_Conservative, V_u_3_Conservative
     REAL(DP), ALLOCATABLE, DIMENSION(:,:) :: &
       FVECm_projection, GVECm_projection, &
       InitialRadiationLimiter_ConservationCorrection, &
-      RadiationLeptonInvariant
+      RadiationLeptonInvariant, &
+      TracePreviousState, TracePrevious2State, TracePreviousResidual, &
+      TraceAlpha
+    REAL(DP), ALLOCATABLE, DIMENSION(:) :: &
+      SchurPreviousInput, SchurPreviousMap, SchurPreviousResidual, &
+      SchurGain, SchurDamping
+    REAL(DP), ALLOCATABLE, DIMENSION(:) :: &
+      TraceCandidateStep, TraceProjectedStep, TraceProjectionCorrection
 #endif
 
     ! --- Least-squares scratch arrays ---
@@ -2078,6 +2210,38 @@ CONTAINS
       ( InitialRadiationLimiter_ConservationCorrection &
           (nMatterEquations,nX_G) )
     ALLOCATE( RadiationLeptonInvariant(nLeptonFamilies,nX_G) )
+    ALLOCATE( SchurHasPrevious(nX_G) )
+    ALLOCATE( SchurPreviousInput(nX_G), SchurPreviousMap(nX_G) )
+    ALLOCATE( SchurPreviousResidual(nX_G) )
+    ALLOCATE( SchurGain(nX_G), SchurDamping(nX_G) )
+    SchurHasPrevious = .FALSE.
+    SchurPreviousInput = Zero
+    SchurPreviousMap = Zero
+    SchurPreviousResidual = Zero
+    SchurGain = Zero
+    SchurDamping = One
+    IF( TraceRadiationOnlySolve .AND. UseRadiationOnlySolve )THEN
+      ALLOCATE( TraceEvaluationMask(nX_G) )
+      ALLOCATE( TraceHasPrevious(nX_G), TraceHasPrevious2(nX_G) )
+      ALLOCATE( TraceBacktrackCount(nX_G) )
+      ALLOCATE( TracePreviousState(n_FP_inner,nX_G) )
+      ALLOCATE( TracePrevious2State(n_FP_inner,nX_G) )
+      ALLOCATE( TracePreviousResidual(n_FP_inner,nX_G) )
+      ALLOCATE( TraceAlpha(M_inner,nX_G) )
+      ALLOCATE( TraceCandidateStep(nX_G), TraceProjectedStep(nX_G) )
+      ALLOCATE( TraceProjectionCorrection(nX_G) )
+      TraceEvaluationMask = .FALSE.
+      TraceHasPrevious = .FALSE.
+      TraceHasPrevious2 = .FALSE.
+      TraceBacktrackCount = 0
+      TracePreviousState = Zero
+      TracePrevious2State = Zero
+      TracePreviousResidual = Zero
+      TraceAlpha = Zero
+      TraceCandidateStep = Zero
+      TraceProjectedStep = Zero
+      TraceProjectionCorrection = Zero
+    END IF
 #endif
 
 #if   defined(THORNADO_OMP_OL)
@@ -2145,7 +2309,10 @@ CONTAINS
     !$OMP             V_u_3_Conservative, &
     !$OMP             FVECm_projection, GVECm_projection, &
     !$OMP             InitialRadiationLimiter_ConservationCorrection, &
-    !$OMP             RadiationLeptonInvariant )
+    !$OMP             RadiationLeptonInvariant, &
+    !$OMP             SchurHasPrevious, SchurPreviousInput, &
+    !$OMP             SchurPreviousMap, SchurPreviousResidual, &
+    !$OMP             SchurGain, SchurDamping )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC CREATE( ProjectionMask, RadiationBacktrackMask, &
@@ -2155,7 +2322,22 @@ CONTAINS
     !$ACC         V_u_3_Conservative, &
     !$ACC         FVECm_projection, GVECm_projection, &
     !$ACC         InitialRadiationLimiter_ConservationCorrection, &
-    !$ACC         RadiationLeptonInvariant )
+    !$ACC         RadiationLeptonInvariant, &
+    !$ACC         SchurHasPrevious, SchurPreviousInput, &
+    !$ACC         SchurPreviousMap, SchurPreviousResidual, &
+    !$ACC         SchurGain, SchurDamping )
+#endif
+#endif
+
+#if defined( TWOMOMENT_ORDER_V )
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO &
+    !$OMP ( SchurHasPrevious, SchurPreviousInput, SchurPreviousMap, &
+    !$OMP   SchurPreviousResidual, SchurGain, SchurDamping )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE &
+    !$ACC ( SchurHasPrevious, SchurPreviousInput, SchurPreviousMap, &
+    !$ACC   SchurPreviousResidual, SchurGain, SchurDamping )
 #endif
 #endif
 
@@ -2290,11 +2472,28 @@ CONTAINS
     CALL TimersStop( Timer_Collisions_ComputeOpacity )
 
 #if defined( TWOMOMENT_ORDER_V )
+    IF( DebugMuonCoupling ) &
+      CALL CheckMuonCouplingIteration_OrderV &
+             ( 'initial opacity construction', dt, 0, 0, ITERATE_outer, &
+               D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+               Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+               CheckOpacity_Option = .TRUE. )
+#endif
+
+#if defined( TWOMOMENT_ORDER_V )
     END IF
 #endif
 
 #if defined( TWOMOMENT_ORDER_V )
     IF( UseRadiationOnlySolve )THEN
+
+      IF( TraceRadiationOnlySolve .OR. AnalyzeRadiationOnlyJacobian ) &
+        RadiationOnlySolveCallCount = RadiationOnlySolveCallCount + 1
+
+      IF( TraceRadiationOnlySolve )THEN
+        CALL InitializeRadiationOnlyTrace_OrderV
+      END IF
 
       CALL TimersStart( Timer_Collisions_OuterLoop )
       CALL TimersStart( Timer_Collisions_InnerLoop )
@@ -2351,6 +2550,13 @@ CONTAINS
 
             k_backtrack = k_backtrack + 1
 
+            IF( TraceRadiationOnlySolve )THEN
+              DO iN_X = 1, nX_G
+                IF( RadiationBacktrackMask(iN_X) ) &
+                  TraceBacktrackCount(iN_X) = TraceBacktrackCount(iN_X) + 1
+              END DO
+            END IF
+
             CALL BacktrackRadiationOnlyIterate_OrderV &
                    ( RadiationBacktrackMask, MAX( 1, Mk_inner - 1 ), &
                      FVEC_inner, GVEC_inner, &
@@ -2401,6 +2607,20 @@ CONTAINS
 
         END IF
 
+        ! An inadmissible Anderson iterate is recoverable here: the
+        ! backtracking loop above first retries progressively shorter
+        ! updates.  Report it as a fatal matter-recovery failure only if
+        ! that recovery mechanism has been exhausted.
+        IF( ( DebugMuonCoupling .OR. TraceRadiationOnlySolve ) &
+            .AND. ANY( ITERATE_inner .AND. Error /= 0 ) ) &
+          CALL CheckMuonCouplingIteration_OrderV &
+                 ( 'matter recovery after backtracking', &
+                   dt, 0, k_inner, ITERATE_inner, &
+                   D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+                   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                   Error_Option = Error )
+
         CALL CheckError_FP &
                ( ITERATE_outer, ITERATE_inner, 0, k_inner, Error, &
                  D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3, &
@@ -2422,6 +2642,14 @@ CONTAINS
 
           CALL TimersStop( Timer_Collisions_ComputeOpacity )
 
+          IF( DebugMuonCoupling ) &
+            CALL CheckMuonCouplingIteration_OrderV &
+                   ( 'opacity construction', dt, 0, k_inner, ITERATE_inner, &
+                     D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+                     Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                     Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                     CheckOpacity_Option = .TRUE. )
+
         END IF
 
         CALL ComputeDnuNorm( ITERATE_inner, Dnu )
@@ -2431,7 +2659,7 @@ CONTAINS
         IF( FreezeOpacities )THEN
 
           CALL ComputeRates_Packed &
-                 ( D, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                 ( D, T_Opacity, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
                    ITERATE_inner, nX_P_inner, &
                    PackIndex_inner, UnpackIndex_inner, &
                    nX_P_outer, Opacity_Mask )
@@ -2439,7 +2667,7 @@ CONTAINS
         ELSE
 
           CALL ComputeRates_Packed &
-                 ( D, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                 ( D, T, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
                    ITERATE_inner, nX_P_inner, &
                    PackIndex_inner, UnpackIndex_inner, &
                    nX_P_inner, Opacity_Mask )
@@ -2447,6 +2675,15 @@ CONTAINS
         END IF
 
         CALL TimersStop( Timer_Collisions_ComputeRates )
+
+        IF( DebugMuonCoupling ) &
+          CALL CheckMuonCouplingIteration_OrderV &
+                 ( 'rate construction', dt, 0, k_inner, ITERATE_inner, &
+                   D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+                   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                   CheckOpacity_Option = .TRUE., &
+                   CheckRates_Option = .TRUE. )
 
         CALL TimersStart( Timer_Collisions_NeutrinoRHS )
 
@@ -2461,9 +2698,32 @@ CONTAINS
                  Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
                  Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
+        IF( DebugMuonCoupling ) &
+          CALL CheckMuonCouplingIteration_OrderV &
+                 ( 'fixed-point map', dt, 0, k_inner, ITERATE_inner, &
+                   D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+                   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                   CheckOpacity_Option = .TRUE., &
+                   CheckRates_Option = .TRUE., &
+                   Fm_Option = FVECm_inner, Gm_Option = GVECm_inner )
+
+        IF( ReducedSolverMethod == iReducedSolver_SchurNewton ) &
+          CALL PrepareRadiationOnlySchurNewton_OrderV &
+                 ( ITERATE_inner, GVECm_inner, &
+                   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                   V_u_1, V_u_2, V_u_3, &
+                   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                   SchurHasPrevious, SchurPreviousInput, &
+                   SchurPreviousMap, SchurPreviousResidual, &
+                   SchurGain, SchurDamping )
+
         CALL TimersStop( Timer_Collisions_NeutrinoRHS )
 
         CALL TimersStart( Timer_Collisions_CheckInner )
+
+        IF( TraceRadiationOnlySolve ) &
+          TraceEvaluationMask = ITERATE_inner
 
         CALL CheckConvergence_RadiationOnly &
                ( ITERATE_inner, k_inner, &
@@ -2474,7 +2734,46 @@ CONTAINS
 
         CALL TimersStop( Timer_Collisions_CheckInner )
 
+        IF( TraceRadiationOnlySolve ) &
+          CALL WriteRadiationOnlyIterationTrace_OrderV &
+                 ( dt, k_inner, TraceEvaluationMask, ITERATE_inner, Error, &
+                   D, T, Ye, Ym, E, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                   V_u_1, V_u_2, V_u_3, &
+                   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                   FVECm_inner, GVECm_inner, RadiationLeptonInvariant, &
+                   InitialRadiationLimiter_ConservationCorrection, &
+                   TraceHasPrevious, TraceHasPrevious2, &
+                   TracePreviousState, TracePrevious2State, &
+                   TracePreviousResidual, TraceBacktrackCount, &
+                   TraceCandidateStep, TraceProjectedStep, &
+                   TraceProjectionCorrection, TraceAlpha, &
+                   SchurGain, SchurDamping )
+
+        ! Capture the iteration-limit state before the Anderson update.  At
+        ! this point the matter state, opacities, rates, fixed-point map, and
+        ! residual all belong to the same evaluated radiation iterate.
+        IF( ( DebugMuonCoupling .OR. TraceRadiationOnlySolve ) &
+            .AND. ANY( ITERATE_inner(:) ) &
+            .AND. k_inner >= MaxIter_inner ) &
+          CALL CheckMuonCouplingIteration_OrderV &
+                 ( 'radiation-solve iteration limit', dt, 0, k_inner, &
+                   ITERATE_inner, D, T, Ye, Ym, E, &
+                   V_u_1, V_u_2, V_u_3, &
+                   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                   CheckOpacity_Option = .TRUE., &
+                   CheckRates_Option = .TRUE., &
+                   Fm_Option = FVECm_inner, Gm_Option = GVECm_inner, &
+                   ForceFailure_Option = .TRUE. )
+
         IF( ANY( ITERATE_inner(:) ) )THEN
+
+          IF( ReducedSolverMethod == iReducedSolver_SchurNewton ) &
+            CALL ApplyRadiationOnlySchurNewtonPreconditioner_OrderV &
+                   ( ITERATE_inner, FVECm_inner, GVECm_inner, &
+                     Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                     Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                     SchurDamping )
 
           CALL TimersStart( Timer_Collisions_SolveLS )
 
@@ -2498,6 +2797,25 @@ CONTAINS
                    V_u_1, V_u_2, V_u_3, &
                    Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                    RadiationLeptonInvariant )
+
+          IF( TraceRadiationOnlySolve ) &
+            CALL CaptureRadiationOnlyUpdateTrace_OrderV &
+                   ( ITERATE_inner, Mk_inner, &
+                     Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                     Gm_dd_11, Gm_dd_22, Gm_dd_33, GVECm_inner, &
+                     Alpha_inner, TracePreviousState, &
+                     TraceCandidateStep, TraceProjectedStep, &
+                     TraceProjectionCorrection, TraceAlpha )
+
+          IF( DebugMuonCoupling ) &
+            CALL CheckMuonCouplingIteration_OrderV &
+                   ( 'Anderson-updated iterate', dt, 0, k_inner, ITERATE_inner, &
+                     D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+                     Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                     Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                     CheckOpacity_Option = .TRUE., &
+                     CheckRates_Option = .TRUE., &
+                     Fm_Option = FVECm_inner, Gm_Option = GVECm_inner )
 
           CALL ShiftRHS_FP &
                  ( ITERATE_inner, n_FP_inner, M_inner, Mk_inner, &
@@ -2528,6 +2846,20 @@ CONTAINS
 
       CALL TimersStop( Timer_Collisions_InnerLoop )
       CALL TimersStop( Timer_Collisions_OuterLoop )
+
+      IF( AnalyzeRadiationOnlyJacobian &
+            .AND. RadiationOnlySolveCallCount == 1 ) &
+        CALL AnalyzeRadiationOnlyJacobian_OrderV &
+               ( dt, nIterations_Outer_Final, &
+                 Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                 D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+                 Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
+                 FVECm_outer, GVECm_outer, &
+                 FVECm_inner, GVECm_inner, &
+                 ITERATE_inner, RadiationBacktrackMask, Error, &
+                 PackIndex_inner, UnpackIndex_inner, &
+                 InitialRadiationLimiter_ConservationCorrection, &
+                 RadiationLeptonInvariant )
 
     END IF
 
@@ -2587,6 +2919,15 @@ CONTAINS
                    Opacity_Mask_Input = Opacity_Mask )
 
           CALL TimersStop( Timer_Collisions_ComputeOpacity )
+
+          IF( DebugMuonCoupling ) &
+            CALL CheckMuonCouplingIteration_OrderV &
+                   ( 'nested opacity construction', dt, k_outer, 0, &
+                     ITERATE_outer, D, T, Ye, Ym, E, &
+                     V_u_1, V_u_2, V_u_3, &
+                     Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                     Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                     CheckOpacity_Option = .TRUE. )
 
 #if defined( TWOMOMENT_ORDER_V )
           END IF
@@ -2655,11 +2996,31 @@ CONTAINS
 #endif
         CALL TimersStart( Timer_Collisions_ComputeRates )
 
-        CALL ComputeRates_Packed &
-               ( D, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, ITERATE_inner, nX_P_inner, &
-                 PackIndex_inner, UnpackIndex_inner, nX_P_outer, Opacity_Mask )
+        IF( FreezeOpacities )THEN
+          CALL ComputeRates_Packed &
+                 ( D, T_Opacity, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                   ITERATE_inner, nX_P_inner, PackIndex_inner, &
+                   UnpackIndex_inner, nX_P_outer, Opacity_Mask )
+        ELSE
+          CALL ComputeRates_Packed &
+                 ( D, T, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                   ITERATE_inner, nX_P_inner, PackIndex_inner, &
+                   UnpackIndex_inner, nX_P_outer, Opacity_Mask )
+        END IF
 
         CALL TimersStop( Timer_Collisions_ComputeRates )
+
+#if defined( TWOMOMENT_ORDER_V )
+        IF( DebugMuonCoupling ) &
+          CALL CheckMuonCouplingIteration_OrderV &
+                 ( 'nested rate construction', dt, k_outer, k_inner, &
+                   ITERATE_inner, D, T, Ye, Ym, E, &
+                   V_u_1, V_u_2, V_u_3, &
+                   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                   CheckOpacity_Option = .TRUE., &
+                   CheckRates_Option = .TRUE. )
+#endif
 #if defined( TWOMOMENT_ORDER_V )
         END IF
 
@@ -2695,6 +3056,19 @@ CONTAINS
 #endif
 
         CALL TimersStop( Timer_Collisions_NeutrinoRHS )
+
+#if defined( TWOMOMENT_ORDER_V )
+        IF( DebugMuonCoupling ) &
+          CALL CheckMuonCouplingIteration_OrderV &
+                 ( 'nested fixed-point map', dt, k_outer, k_inner, &
+                   ITERATE_inner, D, T, Ye, Ym, E, &
+                   V_u_1, V_u_2, V_u_3, &
+                   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                   CheckOpacity_Option = .TRUE., &
+                   CheckRates_Option = .TRUE., &
+                   Fm_Option = FVECm_inner, Gm_Option = GVECm_inner )
+#endif
 
         ! --- Anderson Acceleration (inner) ---
 
@@ -2746,6 +3120,21 @@ CONTAINS
                  nIterations_Inner, nIterations_Inner_Final, &
                  RelativeResidual_Inner_First, FVECm_inner )
 
+#if defined( TWOMOMENT_ORDER_V )
+        IF( DebugMuonCoupling .AND. k_inner >= MaxIter_inner &
+              .AND. ANY(ITERATE_inner) ) &
+          CALL CheckMuonCouplingIteration_OrderV &
+                 ( 'nested inner iteration limit', dt, k_outer, k_inner, &
+                   ITERATE_inner, D, T, Ye, Ym, E, &
+                   V_u_1, V_u_2, V_u_3, &
+                   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                   CheckOpacity_Option = .TRUE., &
+                   CheckRates_Option = .TRUE., &
+                   Fm_Option = FVECm_inner, Gm_Option = GVECm_inner, &
+                   ForceFailure_Option = .TRUE. )
+#endif
+
         CALL CheckError_Inner &
                ( ITERATE_inner, k_outer, k_inner, &
                  D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3, &
@@ -2762,6 +3151,19 @@ CONTAINS
                  FVEC_inner, GVEC_inner )
 
         CALL TimersStop( Timer_Collisions_UpdateFP )
+
+#if defined( TWOMOMENT_ORDER_V )
+        IF( DebugMuonCoupling ) &
+          CALL CheckMuonCouplingIteration_OrderV &
+                 ( 'nested Anderson-updated iterate', dt, k_outer, k_inner, &
+                   ITERATE_inner, D, T, Ye, Ym, E, &
+                   V_u_1, V_u_2, V_u_3, &
+                   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                   CheckOpacity_Option = .TRUE., &
+                   CheckRates_Option = .TRUE., &
+                   Fm_Option = FVECm_inner, Gm_Option = GVECm_inner )
+#endif
 
       END DO ! --- Inner Loop ---
 
@@ -2896,6 +3298,19 @@ CONTAINS
              ( D, E, Ye, Ym, T, &
                ITERATE_outer, nX_P_outer, PackIndex_outer, UnpackIndex_outer, Error )
 
+#if defined( TWOMOMENT_ORDER_V )
+      IF( DebugMuonCoupling ) &
+        CALL CheckMuonCouplingIteration_OrderV &
+               ( 'nested matter update', dt, k_outer, k_inner, &
+                 ITERATE_outer, D, T, Ye, Ym, E, &
+                 V_u_1, V_u_2, V_u_3, &
+                 Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                 Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                 Error_Option = Error, &
+                 CheckOpacity_Option = .TRUE., &
+                 CheckRates_Option = .TRUE. )
+#endif
+
 #if   defined( TWOMOMENT_RELATIVISTIC )
 
       CALL ComputePressure_TABLE( D, T, Ye, Ym, P )
@@ -2917,6 +3332,21 @@ CONTAINS
       !         Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
       !         Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
       !         Gm_dd_11, Gm_dd_22, Gm_dd_33, 1 )
+
+#if defined( TWOMOMENT_ORDER_V )
+      IF( DebugMuonCoupling .AND. k_outer >= MaxIter_outer &
+            .AND. ANY(ITERATE_outer) ) &
+        CALL CheckMuonCouplingIteration_OrderV &
+               ( 'nested outer iteration limit', dt, k_outer, k_inner, &
+                 ITERATE_outer, D, T, Ye, Ym, E, &
+                 V_u_1, V_u_2, V_u_3, &
+                 Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+                 Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                 Error_Option = Error, &
+                 CheckOpacity_Option = .TRUE., &
+                 CheckRates_Option = .TRUE., &
+                 ForceFailure_Option = .TRUE. )
+#endif
 
       CALL CheckError_FP &
              ( ITERATE_outer, ITERATE_inner, k_outer, k_inner, Error, &
@@ -3015,7 +3445,7 @@ CONTAINS
                T0 = T_old, Ye0 = Ye_old, Ym0 = Ym_old, Opacity_Mask_Input = Opacity_Mask )
 
       CALL ComputeRates_Packed &
-             ( D, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+             ( D, T, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
                ProjectionMask, nX_P_inner, PackIndex_inner, UnpackIndex_inner, &
                nX_P_inner, Opacity_Mask )
 
@@ -3126,7 +3556,10 @@ CONTAINS
     !$OMP               V_u_3_Conservative, &
     !$OMP               FVECm_projection, GVECm_projection, &
     !$OMP               InitialRadiationLimiter_ConservationCorrection, &
-    !$OMP               RadiationLeptonInvariant )
+    !$OMP               RadiationLeptonInvariant, &
+    !$OMP               SchurHasPrevious, SchurPreviousInput, &
+    !$OMP               SchurPreviousMap, SchurPreviousResidual, &
+    !$OMP               SchurGain, SchurDamping )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC DELETE( ProjectionMask, RadiationBacktrackMask, &
@@ -3136,9 +3569,25 @@ CONTAINS
     !$ACC         V_u_3_Conservative, &
     !$ACC         FVECm_projection, GVECm_projection, &
     !$ACC         InitialRadiationLimiter_ConservationCorrection, &
-    !$ACC         RadiationLeptonInvariant )
+    !$ACC         RadiationLeptonInvariant, &
+    !$ACC         SchurHasPrevious, SchurPreviousInput, &
+    !$ACC         SchurPreviousMap, SchurPreviousResidual, &
+    !$ACC         SchurGain, SchurDamping )
 #endif
 #endif
+
+    IF( ALLOCATED(TraceEvaluationMask) )THEN
+      DEALLOCATE( TraceEvaluationMask, TraceHasPrevious, TraceHasPrevious2 )
+      DEALLOCATE( TraceBacktrackCount )
+      DEALLOCATE( TracePreviousState, TracePrevious2State )
+      DEALLOCATE( TracePreviousResidual, TraceAlpha )
+      DEALLOCATE( TraceCandidateStep, TraceProjectedStep )
+      DEALLOCATE( TraceProjectionCorrection )
+    END IF
+
+    DEALLOCATE( SchurHasPrevious )
+    DEALLOCATE( SchurPreviousInput, SchurPreviousMap )
+    DEALLOCATE( SchurPreviousResidual, SchurGain, SchurDamping )
 
   END SUBROUTINE SolveNeutrinoMatterCoupling_FP_Nested_AA
 
@@ -3560,6 +4009,181 @@ CONTAINS
     END DO
 
   END SUBROUTINE EnforceRadiationLeptonInvariants_OrderV
+
+
+  SUBROUTINE PrepareRadiationOnlySchurNewton_OrderV &
+    ( MASK, Gm, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      HasPrevious, PreviousInput, PreviousMap, PreviousResidual, &
+      Gain, Damping )
+
+    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
+    REAL(DP), DIMENSION(:,:),   INTENT(in)    :: Gm
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: &
+      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:),     INTENT(in)    :: &
+      V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
+    LOGICAL,  DIMENSION(:),     INTENT(inout) :: HasPrevious
+    REAL(DP), DIMENSION(:),     INTENT(inout) :: &
+      PreviousInput, PreviousMap, PreviousResidual, Gain, Damping
+
+    REAL(DP), PARAMETER :: InitialDamping = 0.20_DP
+    REAL(DP), PARAMETER :: MinimumDamping = 0.02_DP
+    REAL(DP), PARAMETER :: MaximumDamping = One
+    REAL(DP), PARAMETER :: ResidualGrowthLimit = 1.25_DP
+    REAL(DP), PARAMETER :: SecantFloor = 128.0_DP * EPSILON(One)
+
+    INTEGER  :: iN_E, iN_X, iOS, iS
+    REAL(DP) :: CurrentInput, CurrentMap, CurrentResidual
+    REAL(DP) :: DeltaInput, DeltaMap, Denominator, LocalDamping
+    REAL(DP) :: LocalGain, Scale, vDotI
+    LOGICAL  :: ReliableSecant
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO &
+    !$OMP PRIVATE( iN_E, iOS, iS, CurrentInput, CurrentMap, &
+    !$OMP          CurrentResidual, DeltaInput, DeltaMap, Denominator, &
+    !$OMP          LocalDamping, LocalGain, Scale, vDotI, &
+    !$OMP          ReliableSecant )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG &
+    !$ACC PRIVATE( iN_E, iOS, iS, CurrentInput, CurrentMap, &
+    !$ACC          CurrentResidual, DeltaInput, DeltaMap, Denominator, &
+    !$ACC          LocalDamping, LocalGain, Scale, vDotI, &
+    !$ACC          ReliableSecant )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO &
+    !$OMP PRIVATE( iN_E, iOS, iS, CurrentInput, CurrentMap, &
+    !$OMP          CurrentResidual, DeltaInput, DeltaMap, Denominator, &
+    !$OMP          LocalDamping, LocalGain, Scale, vDotI, &
+    !$OMP          ReliableSecant )
+#endif
+    DO iN_X = 1, nX_G
+
+      IF( .NOT. MASK(iN_X) ) CYCLE
+
+      Gain(iN_X) = Zero
+      Damping(iN_X) = One
+
+      IF( nSpecies < iNuM_Bar ) CYCLE
+      IF( .NOT. MatterSource_Mask(iYm,iN_X) ) CYCLE
+
+      CurrentInput = Zero
+      CurrentMap = Zero
+      DO iS = iNuM, iNuM_Bar
+      DO iN_E = 1, nE_G
+        iOS = ( (iN_E-1) + (iS-1)*nE_G ) * nCR
+        vDotI = V_u_1(iN_X) * Gm_dd_11(iN_X) &
+                  * Inu_u_1(iN_E,iS,iN_X) &
+              + V_u_2(iN_X) * Gm_dd_22(iN_X) &
+                  * Inu_u_2(iN_E,iS,iN_X) &
+              + V_u_3(iN_X) * Gm_dd_33(iN_X) &
+                  * Inu_u_3(iN_E,iS,iN_X)
+        CurrentInput = CurrentInput + W2_S(iN_E) * LeptonNumber(iS) &
+          * ( Dnu(iN_E,iS,iN_X) + vDotI )
+        CurrentMap = CurrentMap + W2_S(iN_E) * LeptonNumber(iS) &
+          * ( Gm(iOS+iCR_N,iN_X) &
+              + V_u_1(iN_X) * Gm(iOS+iCR_G1,iN_X) &
+              + V_u_2(iN_X) * Gm(iOS+iCR_G2,iN_X) &
+              + V_u_3(iN_X) * Gm(iOS+iCR_G3,iN_X) )
+      END DO
+      END DO
+
+      CurrentResidual = CurrentMap - CurrentInput
+      LocalDamping = InitialDamping
+      LocalGain = Zero
+
+      IF( HasPrevious(iN_X) )THEN
+        DeltaInput = CurrentInput - PreviousInput(iN_X)
+        DeltaMap = CurrentMap - PreviousMap(iN_X)
+        Scale = MAX( ABS(CurrentInput), ABS(CurrentMap), &
+                     ABS(PreviousInput(iN_X)), &
+                     ABS(PreviousMap(iN_X)), SqrtTiny )
+        ReliableSecant = ABS(DeltaInput) > SecantFloor * Scale
+        IF( ReliableSecant )THEN
+          LocalGain = DeltaMap / DeltaInput
+          Denominator = One - LocalGain
+          ReliableSecant = LocalGain == LocalGain &
+            .AND. ABS(LocalGain) < HUGE(One) &
+            .AND. Denominator > SecantFloor
+        END IF
+        IF( ReliableSecant ) &
+          LocalDamping = MIN( MaximumDamping, &
+            MAX( MinimumDamping, One / Denominator ) )
+        IF( ABS(CurrentResidual) > ResidualGrowthLimit &
+              * MAX(ABS(PreviousResidual(iN_X)),SqrtTiny) ) &
+          LocalDamping = MIN( LocalDamping, &
+            MAX(MinimumDamping,Half*Damping(iN_X)) )
+      END IF
+
+      Gain(iN_X) = LocalGain
+      Damping(iN_X) = LocalDamping
+      PreviousInput(iN_X) = CurrentInput
+      PreviousMap(iN_X) = CurrentMap
+      PreviousResidual(iN_X) = CurrentResidual
+      HasPrevious(iN_X) = .TRUE.
+
+    END DO
+
+  END SUBROUTINE PrepareRadiationOnlySchurNewton_OrderV
+
+
+  SUBROUTINE ApplyRadiationOnlySchurNewtonPreconditioner_OrderV &
+    ( MASK, Fm, Gm, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, Damping )
+
+    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
+    REAL(DP), DIMENSION(:,:),   INTENT(inout) :: Fm, Gm
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: &
+      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:),     INTENT(in)    :: &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, Damping
+
+    INTEGER  :: iN_E, iN_X, iOS, iS
+    REAL(DP) :: StateMoment
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( iOS, StateMoment )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( iOS, StateMoment )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3) PRIVATE( iOS, StateMoment )
+#endif
+    DO iN_X = 1, nX_G
+    DO iS = iNuM, MIN(iNuM_Bar,nSpecies)
+    DO iN_E = 1, nE_G
+
+      IF( MASK(iN_X) .AND. MatterSource_Mask(iYm,iN_X) )THEN
+        iOS = ( (iN_E-1) + (iS-1)*nE_G ) * nCR
+
+        StateMoment = Dnu(iN_E,iS,iN_X)
+        Gm(iOS+iCR_N,iN_X) = StateMoment &
+          + Damping(iN_X) * Fm(iOS+iCR_N,iN_X)
+        Fm(iOS+iCR_N,iN_X) = Damping(iN_X) * Fm(iOS+iCR_N,iN_X)
+
+        StateMoment = Gm_dd_11(iN_X) * Inu_u_1(iN_E,iS,iN_X)
+        Gm(iOS+iCR_G1,iN_X) = StateMoment &
+          + Damping(iN_X) * Fm(iOS+iCR_G1,iN_X)
+        Fm(iOS+iCR_G1,iN_X) = Damping(iN_X) * Fm(iOS+iCR_G1,iN_X)
+
+        StateMoment = Gm_dd_22(iN_X) * Inu_u_2(iN_E,iS,iN_X)
+        Gm(iOS+iCR_G2,iN_X) = StateMoment &
+          + Damping(iN_X) * Fm(iOS+iCR_G2,iN_X)
+        Fm(iOS+iCR_G2,iN_X) = Damping(iN_X) * Fm(iOS+iCR_G2,iN_X)
+
+        StateMoment = Gm_dd_33(iN_X) * Inu_u_3(iN_E,iS,iN_X)
+        Gm(iOS+iCR_G3,iN_X) = StateMoment &
+          + Damping(iN_X) * Fm(iOS+iCR_G3,iN_X)
+        Fm(iOS+iCR_G3,iN_X) = Damping(iN_X) * Fm(iOS+iCR_G3,iN_X)
+      END IF
+
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE ApplyRadiationOnlySchurNewtonPreconditioner_OrderV
 
 
   SUBROUTINE ProjectRadiationOnlyAndersonUpdate_OrderV &
@@ -4439,7 +5063,8 @@ CONTAINS
     END DO
 
     CALL UpdateTemperature_Packed &
-           ( D, E, Ye, Ym, T, MASK, nX_P, PackIndex, UnpackIndex, Error )
+           ( D, E, Ye, Ym, T, MASK, nX_P, PackIndex, UnpackIndex, Error, &
+             DisplayErrors_Option = .FALSE. )
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
@@ -4461,6 +5086,1213 @@ CONTAINS
 #endif
 
   END SUBROUTINE RecoverMatterFromRadiationInvariants_OrderV
+
+
+  SUBROUTINE EvaluateRadiationOnlyMapForJacobian_OrderV &
+    ( dt, iPoint, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
+      FVECm_outer, GVECm_outer, FVECm, GVECm, &
+      MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
+      RadiationLimiterCorrection, RadiationLeptonInvariant, &
+      MapDensity, EtaMu, EvaluationFailed, RecoverMatter_Option )
+
+    REAL(DP),                   INTENT(in)    :: dt
+    INTEGER,                    INTENT(in)    :: iPoint
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: &
+      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:),     INTENT(in)    :: D
+    REAL(DP), DIMENSION(:),     INTENT(inout) :: &
+      T, Ye, Ym, E, V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:),     INTENT(in)    :: &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm
+    REAL(DP), DIMENSION(:,:),   INTENT(inout) :: &
+      FVECm_outer, GVECm_outer, FVECm, GVECm
+    LOGICAL,  DIMENSION(:),     INTENT(inout) :: MASK, WorkingMask
+    INTEGER,  DIMENSION(:),     INTENT(inout) :: &
+      Error, PackIndex, UnpackIndex
+    REAL(DP), DIMENSION(:,:),   INTENT(in)    :: &
+      RadiationLimiterCorrection, RadiationLeptonInvariant
+    REAL(DP), DIMENSION(:),     INTENT(out)   :: MapDensity
+    REAL(DP),                   INTENT(out)   :: EtaMu
+    LOGICAL,                    INTENT(out)   :: EvaluationFailed
+    LOGICAL,                    INTENT(in), OPTIONAL :: RecoverMatter_Option
+
+    INTEGER  :: iN_E, iOS, iS, nX_P
+    LOGICAL  :: RecoverMatter
+    REAL(DP) :: Mumu
+
+    MASK = .FALSE.
+    MASK(iPoint) = .TRUE.
+    WorkingMask = .FALSE.
+    Error = 0
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO &
+    !$OMP ( MASK, WorkingMask, Error, &
+    !$OMP   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+    !$OMP   T, Ye, Ym, E, V_u_1, V_u_2, V_u_3 )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE &
+    !$ACC ( MASK, WorkingMask, Error, &
+    !$ACC   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+    !$ACC   T, Ye, Ym, E, V_u_1, V_u_2, V_u_3 )
+#endif
+
+    CALL CreatePackIndex &
+           ( MASK, nX_P, PackIndex, UnpackIndex )
+
+    RecoverMatter = .TRUE.
+    IF( PRESENT(RecoverMatter_Option) ) RecoverMatter = RecoverMatter_Option
+
+    IF( RecoverMatter ) &
+      CALL RecoverMatterFromRadiationInvariants_OrderV &
+             ( MASK, WorkingMask, FVECm_outer, GVECm_outer, &
+               Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+               D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+               RadiationLimiterCorrection, RadiationLeptonInvariant, &
+               nX_P, PackIndex, UnpackIndex, Error )
+
+    EvaluationFailed = Error(iPoint) /= 0
+    IF( EvaluationFailed )THEN
+      MapDensity = Zero
+      EtaMu = Zero
+      RETURN
+    END IF
+
+    IF( .NOT. FreezeOpacities ) &
+      CALL ComputeOpacities_Packed &
+             ( D, T, Ye, Ym, SqrtGm, MASK, nX_P, &
+               PackIndex, UnpackIndex, &
+               T0 = T_old, Ye0 = Ye_old, Ym0 = Ym_old, &
+               Opacity_Mask_Input = Opacity_Mask )
+
+    CALL ComputeDnuNorm( MASK, Dnu )
+
+    IF( FreezeOpacities )THEN
+      CALL ComputeRates_Packed &
+             ( D, T_Opacity, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+               MASK, nX_P, PackIndex, UnpackIndex, &
+               nX_P, Opacity_Mask )
+    ELSE
+      CALL ComputeRates_Packed &
+             ( D, T, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+               MASK, nX_P, PackIndex, UnpackIndex, &
+               nX_P, Opacity_Mask )
+    END IF
+
+    CALL ComputeNeutrinoRHS_OrderV &
+           ( MASK, FVECm, GVECm, dt, &
+             Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+             V_u_1, V_u_2, V_u_3, &
+             Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+    CALL ProjectRadiationOnlyFixedPointMap_OrderV &
+           ( MASK, FVECm, GVECm, &
+             Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+             Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM &
+    !$OMP ( GVECm, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, Error )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST &
+    !$ACC ( GVECm, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, Error )
+#endif
+
+    EvaluationFailed = Error(iPoint) /= 0
+    MapDensity = Zero
+    DO iS = iNuM, iNuM_Bar
+    DO iN_E = 1, nE_G
+      iOS = ( (iN_E-1) + (iS-1)*nE_G ) * nCR
+      MapDensity(iN_E+(iS-iNuM)*nE_G) = GVECm(iOS+iCR_N,iPoint)
+    END DO
+    END DO
+
+    CALL ComputeMuonChemicalPotential_TABLE &
+           ( D(iPoint), T(iPoint), Ye(iPoint), Ym(iPoint), Mumu )
+    EtaMu = Mumu / MAX( T(iPoint), SqrtTiny )
+
+  END SUBROUTINE EvaluateRadiationOnlyMapForJacobian_OrderV
+
+
+  SUBROUTINE ApplyRadiationOnlyDensityJacobian_OrderV &
+    ( dt, Step, iPoint, Direction, Scale, &
+      Dnu_Base, Inu_u_1_Base, Inu_u_2_Base, Inu_u_3_Base, &
+      Matter_Base, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
+      FVECm_outer, GVECm_outer, FVECm, GVECm, &
+      MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
+      RadiationLimiterCorrection, RadiationLeptonInvariant, &
+      JacobianDirection, dLInput, dLMap, dEtaMu, dYm, &
+      dTemperature, dEInput, &
+      EvaluationFailed, JacobianDirectionFixedMatter_Option, &
+      dLMapFixedMatter_Option )
+
+    REAL(DP),                   INTENT(in)    :: dt, Step
+    INTEGER,                    INTENT(in)    :: iPoint
+    REAL(DP), DIMENSION(:),     INTENT(in)    :: Direction, Scale
+    REAL(DP), DIMENSION(:,:),   INTENT(in)    :: &
+      Dnu_Base, Inu_u_1_Base, Inu_u_2_Base, Inu_u_3_Base
+    REAL(DP), DIMENSION(7),     INTENT(in)    :: Matter_Base
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: &
+      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:),     INTENT(in)    :: D
+    REAL(DP), DIMENSION(:),     INTENT(inout) :: &
+      T, Ye, Ym, E, V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:),     INTENT(in)    :: &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm
+    REAL(DP), DIMENSION(:,:),   INTENT(inout) :: &
+      FVECm_outer, GVECm_outer, FVECm, GVECm
+    LOGICAL,  DIMENSION(:),     INTENT(inout) :: MASK, WorkingMask
+    INTEGER,  DIMENSION(:),     INTENT(inout) :: &
+      Error, PackIndex, UnpackIndex
+    REAL(DP), DIMENSION(:,:),   INTENT(in)    :: &
+      RadiationLimiterCorrection, RadiationLeptonInvariant
+    REAL(DP), DIMENSION(:),     INTENT(out)   :: JacobianDirection
+    REAL(DP),                   INTENT(out)   :: &
+      dLInput, dLMap, dEtaMu, dYm, dTemperature, dEInput
+    LOGICAL,                    INTENT(out)   :: EvaluationFailed
+    REAL(DP), DIMENSION(:),     INTENT(out), OPTIONAL :: &
+      JacobianDirectionFixedMatter_Option
+    REAL(DP),                   INTENT(out), OPTIONAL :: &
+      dLMapFixedMatter_Option
+
+    INTEGER  :: iN_E, iS, iV
+    LOGICAL  :: ComputeFixedMatter
+    REAL(DP) :: EtaFixed, EtaMinus, EtaPlus
+    REAL(DP) :: TMinus, TPlus, YmMinus, YmPlus
+    REAL(DP), ALLOCATABLE :: MapMinus(:), MapPlus(:)
+
+    ALLOCATE( MapMinus(SIZE(Direction)), MapPlus(SIZE(Direction)) )
+
+    DO iS = 1, nSpecies
+    DO iN_E = 1, nE_G
+      Dnu    (iN_E,iS,iPoint) = Dnu_Base    (iN_E,iS)
+      Inu_u_1(iN_E,iS,iPoint) = Inu_u_1_Base(iN_E,iS)
+      Inu_u_2(iN_E,iS,iPoint) = Inu_u_2_Base(iN_E,iS)
+      Inu_u_3(iN_E,iS,iPoint) = Inu_u_3_Base(iN_E,iS)
+    END DO
+    END DO
+    T(iPoint) = Matter_Base(1)
+    Ye(iPoint) = Matter_Base(2)
+    Ym(iPoint) = Matter_Base(3)
+    E(iPoint) = Matter_Base(4)
+    V_u_1(iPoint) = Matter_Base(5)
+    V_u_2(iPoint) = Matter_Base(6)
+    V_u_3(iPoint) = Matter_Base(7)
+    DO iS = iNuM, iNuM_Bar
+    DO iN_E = 1, nE_G
+      iV = iN_E + (iS-iNuM)*nE_G
+      Dnu(iN_E,iS,iPoint) = Dnu(iN_E,iS,iPoint) &
+        + Step * Scale(iV) * Direction(iV)
+    END DO
+    END DO
+
+    CALL EvaluateRadiationOnlyMapForJacobian_OrderV &
+           ( dt, iPoint, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+             D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+             Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
+             FVECm_outer, GVECm_outer, FVECm, GVECm, &
+             MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
+             RadiationLimiterCorrection, RadiationLeptonInvariant, &
+             MapPlus, EtaPlus, EvaluationFailed )
+    IF( EvaluationFailed )THEN
+      DEALLOCATE( MapMinus, MapPlus )
+      RETURN
+    END IF
+    TPlus = T(iPoint)
+    YmPlus = Ym(iPoint)
+
+    DO iS = 1, nSpecies
+    DO iN_E = 1, nE_G
+      Dnu    (iN_E,iS,iPoint) = Dnu_Base    (iN_E,iS)
+      Inu_u_1(iN_E,iS,iPoint) = Inu_u_1_Base(iN_E,iS)
+      Inu_u_2(iN_E,iS,iPoint) = Inu_u_2_Base(iN_E,iS)
+      Inu_u_3(iN_E,iS,iPoint) = Inu_u_3_Base(iN_E,iS)
+    END DO
+    END DO
+    T(iPoint) = Matter_Base(1)
+    Ye(iPoint) = Matter_Base(2)
+    Ym(iPoint) = Matter_Base(3)
+    E(iPoint) = Matter_Base(4)
+    V_u_1(iPoint) = Matter_Base(5)
+    V_u_2(iPoint) = Matter_Base(6)
+    V_u_3(iPoint) = Matter_Base(7)
+    DO iS = iNuM, iNuM_Bar
+    DO iN_E = 1, nE_G
+      iV = iN_E + (iS-iNuM)*nE_G
+      Dnu(iN_E,iS,iPoint) = Dnu(iN_E,iS,iPoint) &
+        - Step * Scale(iV) * Direction(iV)
+    END DO
+    END DO
+
+    CALL EvaluateRadiationOnlyMapForJacobian_OrderV &
+           ( dt, iPoint, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+             D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+             Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
+             FVECm_outer, GVECm_outer, FVECm, GVECm, &
+             MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
+             RadiationLimiterCorrection, RadiationLeptonInvariant, &
+             MapMinus, EtaMinus, EvaluationFailed )
+    IF( EvaluationFailed )THEN
+      DEALLOCATE( MapMinus, MapPlus )
+      RETURN
+    END IF
+    TMinus = T(iPoint)
+    YmMinus = Ym(iPoint)
+
+    JacobianDirection = Zero
+    dLInput = Zero
+    dLMap = Zero
+    dEInput = Zero
+    DO iS = iNuM, iNuM_Bar
+    DO iN_E = 1, nE_G
+      iV = iN_E + (iS-iNuM)*nE_G
+      IF( Scale(iV) > Zero ) &
+        JacobianDirection(iV) &
+          = ( MapPlus(iV) - MapMinus(iV) ) &
+              / ( Two * Step * Scale(iV) )
+      dLInput = dLInput + W2_S(iN_E) * LeptonNumber(iS) &
+        * Scale(iV) * Direction(iV)
+      dLMap = dLMap + W2_S(iN_E) * LeptonNumber(iS) &
+        * ( MapPlus(iV) - MapMinus(iV) ) / ( Two * Step )
+      dEInput = dEInput + W3_S(iN_E) &
+        * Scale(iV) * Direction(iV)
+    END DO
+    END DO
+    dEtaMu = ( EtaPlus - EtaMinus ) / ( Two * Step )
+    dYm = ( YmPlus - YmMinus ) / ( Two * Step )
+    dTemperature = ( TPlus - TMinus ) / ( Two * Step )
+
+    ComputeFixedMatter &
+      = PRESENT(JacobianDirectionFixedMatter_Option) &
+          .AND. PRESENT(dLMapFixedMatter_Option)
+    IF( PRESENT(JacobianDirectionFixedMatter_Option) .NEQV. &
+        PRESENT(dLMapFixedMatter_Option) ) &
+      ERROR STOP 'Incomplete fixed-matter Jacobian output request.'
+
+    IF( ComputeFixedMatter )THEN
+
+      DO iS = 1, nSpecies
+      DO iN_E = 1, nE_G
+        Dnu    (iN_E,iS,iPoint) = Dnu_Base    (iN_E,iS)
+        Inu_u_1(iN_E,iS,iPoint) = Inu_u_1_Base(iN_E,iS)
+        Inu_u_2(iN_E,iS,iPoint) = Inu_u_2_Base(iN_E,iS)
+        Inu_u_3(iN_E,iS,iPoint) = Inu_u_3_Base(iN_E,iS)
+      END DO
+      END DO
+      T(iPoint) = Matter_Base(1)
+      Ye(iPoint) = Matter_Base(2)
+      Ym(iPoint) = Matter_Base(3)
+      E(iPoint) = Matter_Base(4)
+      V_u_1(iPoint) = Matter_Base(5)
+      V_u_2(iPoint) = Matter_Base(6)
+      V_u_3(iPoint) = Matter_Base(7)
+      DO iS = iNuM, iNuM_Bar
+      DO iN_E = 1, nE_G
+        iV = iN_E + (iS-iNuM)*nE_G
+        Dnu(iN_E,iS,iPoint) = Dnu(iN_E,iS,iPoint) &
+          + Step * Scale(iV) * Direction(iV)
+      END DO
+      END DO
+
+      CALL EvaluateRadiationOnlyMapForJacobian_OrderV &
+             ( dt, iPoint, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+               D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+               Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
+               FVECm_outer, GVECm_outer, FVECm, GVECm, &
+               MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
+               RadiationLimiterCorrection, RadiationLeptonInvariant, &
+               MapPlus, EtaFixed, EvaluationFailed, &
+               RecoverMatter_Option = .FALSE. )
+      IF( EvaluationFailed )THEN
+        DEALLOCATE( MapMinus, MapPlus )
+        RETURN
+      END IF
+
+      DO iS = 1, nSpecies
+      DO iN_E = 1, nE_G
+        Dnu    (iN_E,iS,iPoint) = Dnu_Base    (iN_E,iS)
+        Inu_u_1(iN_E,iS,iPoint) = Inu_u_1_Base(iN_E,iS)
+        Inu_u_2(iN_E,iS,iPoint) = Inu_u_2_Base(iN_E,iS)
+        Inu_u_3(iN_E,iS,iPoint) = Inu_u_3_Base(iN_E,iS)
+      END DO
+      END DO
+      T(iPoint) = Matter_Base(1)
+      Ye(iPoint) = Matter_Base(2)
+      Ym(iPoint) = Matter_Base(3)
+      E(iPoint) = Matter_Base(4)
+      V_u_1(iPoint) = Matter_Base(5)
+      V_u_2(iPoint) = Matter_Base(6)
+      V_u_3(iPoint) = Matter_Base(7)
+      DO iS = iNuM, iNuM_Bar
+      DO iN_E = 1, nE_G
+        iV = iN_E + (iS-iNuM)*nE_G
+        Dnu(iN_E,iS,iPoint) = Dnu(iN_E,iS,iPoint) &
+          - Step * Scale(iV) * Direction(iV)
+      END DO
+      END DO
+
+      CALL EvaluateRadiationOnlyMapForJacobian_OrderV &
+             ( dt, iPoint, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+               D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+               Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
+               FVECm_outer, GVECm_outer, FVECm, GVECm, &
+               MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
+               RadiationLimiterCorrection, RadiationLeptonInvariant, &
+               MapMinus, EtaFixed, EvaluationFailed, &
+               RecoverMatter_Option = .FALSE. )
+      IF( EvaluationFailed )THEN
+        DEALLOCATE( MapMinus, MapPlus )
+        RETURN
+      END IF
+
+      JacobianDirectionFixedMatter_Option = Zero
+      dLMapFixedMatter_Option = Zero
+      DO iS = iNuM, iNuM_Bar
+      DO iN_E = 1, nE_G
+        iV = iN_E + (iS-iNuM)*nE_G
+        IF( Scale(iV) > Zero ) &
+          JacobianDirectionFixedMatter_Option(iV) &
+            = ( MapPlus(iV) - MapMinus(iV) ) &
+                / ( Two * Step * Scale(iV) )
+        dLMapFixedMatter_Option &
+          = dLMapFixedMatter_Option &
+              + W2_S(iN_E) * LeptonNumber(iS) &
+                  * ( MapPlus(iV) - MapMinus(iV) ) / ( Two * Step )
+      END DO
+      END DO
+
+    END IF
+
+    DEALLOCATE( MapMinus, MapPlus )
+
+  END SUBROUTINE ApplyRadiationOnlyDensityJacobian_OrderV
+
+
+  SUBROUTINE AnalyzeRadiationOnlyJacobian_OrderV &
+    ( dt, Iterations, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
+      FVECm_outer, GVECm_outer, FVECm, GVECm, &
+      MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
+      RadiationLimiterCorrection, RadiationLeptonInvariant )
+
+    USE ISO_FORTRAN_ENV, ONLY: ERROR_UNIT
+    USE mpi
+
+    INTEGER, PARAMETER :: MaxAnalysisPoints = 8
+    INTEGER, PARAMETER :: RequestedArnoldiDimension = 12
+    REAL(DP), PARAMETER :: DifferenceStep = 1.0e-5_DP
+    REAL(DP), PARAMETER :: OccupationFloor = 1.0e-12_DP
+
+    REAL(DP),                   INTENT(in)    :: dt
+    INTEGER,  DIMENSION(:),     INTENT(in)    :: Iterations
+    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: &
+      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:),     INTENT(in)    :: D
+    REAL(DP), DIMENSION(:),     INTENT(inout) :: &
+      T, Ye, Ym, E, V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:),     INTENT(in)    :: &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm
+    REAL(DP), DIMENSION(:,:),   INTENT(inout) :: &
+      FVECm_outer, GVECm_outer, FVECm, GVECm
+    LOGICAL,  DIMENSION(:),     INTENT(inout) :: MASK, WorkingMask
+    INTEGER,  DIMENSION(:),     INTENT(inout) :: &
+      Error, PackIndex, UnpackIndex
+    REAL(DP), DIMENSION(:,:),   INTENT(in)    :: &
+      RadiationLimiterCorrection, RadiationLeptonInvariant
+
+    CHARACTER(640) :: FileName
+    INTEGER :: AnalysisPoints(MaxAnalysisPoints)
+    INTEGER :: BestIterations, BestPoint, i, iA, iB, iN_E, iPoint
+    INTEGER :: iS, iV, ierr, iUnit, j, mEffective, myid, nActive, nMu
+    LOGICAL :: EvaluationFailed
+    REAL(DP) :: Beta, Correction, dEInput, dEInputHalf
+    REAL(DP) :: dEtaMu, dEtaMuHalf, dEtaMudL, dEtaMudYm
+    REAL(DP) :: dLMapdEta, dTemperature, dTemperatureHalf
+    REAL(DP) :: dTemperaturedL, dYm, dYmHalf, dYmdL
+    REAL(DP) :: dLInput, dLInputHalf, dLMap, dLMapHalf
+    REAL(DP) :: dLMapFixedMatter, DirectGain, FeedbackGain
+    REAL(DP) :: FDConsistency, MuChemicalPotential, NormDirection
+    REAL(DP) :: DirectNorm, DirectRayleigh, FeedbackNorm, FeedbackRayleigh
+    REAL(DP) :: MuLeptonGain, Rayleigh, SchurDerivative, UpperOccupation
+    REAL(DP) :: Matter_Base(7)
+    REAL(DP), ALLOCATABLE :: Dnu_Base(:,:), Inu_u_1_Base(:,:)
+    REAL(DP), ALLOCATABLE :: Inu_u_2_Base(:,:), Inu_u_3_Base(:,:)
+    REAL(DP), ALLOCATABLE :: Direction(:), DirectionFixedMatter(:)
+    REAL(DP), ALLOCATABLE :: DirectionHalf(:), EnergyDirection(:)
+    REAL(DP), ALLOCATABLE :: H(:,:), Q(:,:), Scale(:), Work(:)
+
+    IF( nSpecies < iNuM_Bar ) RETURN
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM &
+    !$OMP ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+    !$OMP   T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+    !$OMP   Opacity_Mask, Dnu_0, Chi_EmAb, Iterations )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST &
+    !$ACC ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+    !$ACC   T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+    !$ACC   Opacity_Mask, Dnu_0, Chi_EmAb, Iterations )
+#endif
+
+    AnalysisPoints = 0
+    DO iA = 1, MaxAnalysisPoints
+      BestPoint = 0
+      BestIterations = -1
+      DO iPoint = 1, nX_G
+        IF( .NOT. Opacity_Mask(iOp_EmAb_Muon,iPoint) ) CYCLE
+        IF( ANY(AnalysisPoints == iPoint) ) CYCLE
+        IF( Iterations(iPoint) > BestIterations )THEN
+          BestIterations = Iterations(iPoint)
+          BestPoint = iPoint
+        END IF
+      END DO
+      IF( BestPoint == 0 ) EXIT
+      AnalysisPoints(iA) = BestPoint
+    END DO
+
+    CALL MPI_COMM_RANK( MPI_COMM_WORLD, myid, ierr )
+    WRITE(FileName,'(A,".jacobian.rank",I6.6,".dat")') &
+      TRIM(RadiationOnlyTraceFile), myid
+    OPEN( NEWUNIT = iUnit, FILE = TRIM(FileName), &
+          STATUS = 'REPLACE', ACTION = 'WRITE' )
+    WRITE(iUnit,'(A)') '# Local Jacobian analysis of the reduced collision map'
+    WRITE(iUnit,'(A)') &
+      '# P: point metadata; S: scalar muon-lepton response; ' // &
+      'H: Arnoldi matrix; Q: Arnoldi basis; E: equilibrium spectrum'
+    WRITE(iUnit,'(A,ES26.16E3)') '# centered_difference_step: ', &
+      DifferenceStep
+
+    nMu = 2 * nE_G
+    ALLOCATE( Dnu_Base(nE_G,nSpecies) )
+    ALLOCATE( Inu_u_1_Base(nE_G,nSpecies) )
+    ALLOCATE( Inu_u_2_Base(nE_G,nSpecies) )
+    ALLOCATE( Inu_u_3_Base(nE_G,nSpecies) )
+    ALLOCATE( Direction(nMu), DirectionFixedMatter(nMu) )
+    ALLOCATE( DirectionHalf(nMu), EnergyDirection(nMu) )
+    ALLOCATE( Scale(nMu), Work(nMu) )
+    ALLOCATE( Q(nMu,RequestedArnoldiDimension+1) )
+    ALLOCATE( H(RequestedArnoldiDimension+1,RequestedArnoldiDimension) )
+
+    DO iA = 1, MaxAnalysisPoints
+
+      iPoint = AnalysisPoints(iA)
+      IF( iPoint == 0 ) EXIT
+
+      Dnu_Base = Dnu(:,:,iPoint)
+      Inu_u_1_Base = Inu_u_1(:,:,iPoint)
+      Inu_u_2_Base = Inu_u_2(:,:,iPoint)
+      Inu_u_3_Base = Inu_u_3(:,:,iPoint)
+      Matter_Base = [ T(iPoint), Ye(iPoint), Ym(iPoint), E(iPoint), &
+                      V_u_1(iPoint), V_u_2(iPoint), V_u_3(iPoint) ]
+
+      UpperOccupation = MIN( DnuMax, One )
+      Scale = Zero
+      Direction = Zero
+      EnergyDirection = Zero
+      DO iS = iNuM, iNuM_Bar
+      DO iN_E = 1, nE_G
+        iV = iN_E + (iS-iNuM)*nE_G
+        IF( Dnu_Base(iN_E,iS) > OccupationFloor * UpperOccupation &
+              .AND. Dnu_Base(iN_E,iS) &
+                < (One-OccupationFloor)*UpperOccupation )THEN
+          Scale(iV) = Dnu_Base(iN_E,iS) &
+            * ( One - Dnu_Base(iN_E,iS) / UpperOccupation )
+          Direction(iV) = W2_S(iN_E) * LeptonNumber(iS) * Scale(iV)
+          EnergyDirection(iV) = W3_S(iN_E) * Scale(iV)
+        END IF
+      END DO
+      END DO
+
+      nActive = COUNT( Scale > Zero )
+      IF( nActive == 0 ) CYCLE
+
+      Correction = DOT_PRODUCT(Direction,EnergyDirection) &
+        / MAX( DOT_PRODUCT(EnergyDirection,EnergyDirection), SqrtTiny )
+      Direction = Direction - Correction * EnergyDirection
+      NormDirection = SQRT( DOT_PRODUCT(Direction,Direction) )
+      IF( NormDirection <= SqrtTiny )THEN
+        WRITE(ERROR_UNIT,'(A,I0)') &
+          'Reduced-solver Jacobian analysis has no muon mode at point ', &
+          iPoint
+        CYCLE
+      END IF
+      Q = Zero
+      H = Zero
+      Q(:,1) = Direction / NormDirection
+
+      CALL ApplyRadiationOnlyDensityJacobian_OrderV &
+             ( dt, DifferenceStep, iPoint, Q(:,1), Scale, &
+               Dnu_Base, Inu_u_1_Base, Inu_u_2_Base, Inu_u_3_Base, &
+               Matter_Base, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+               D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+               Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
+               FVECm_outer, GVECm_outer, FVECm, GVECm, &
+               MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
+               RadiationLimiterCorrection, RadiationLeptonInvariant, &
+               Direction, dLInput, dLMap, dEtaMu, dYm, &
+               dTemperature, dEInput, &
+               EvaluationFailed )
+      IF( EvaluationFailed ) CYCLE
+
+      CALL ApplyRadiationOnlyDensityJacobian_OrderV &
+             ( dt, Half*DifferenceStep, iPoint, Q(:,1), Scale, &
+               Dnu_Base, Inu_u_1_Base, Inu_u_2_Base, Inu_u_3_Base, &
+               Matter_Base, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+               D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+               Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
+               FVECm_outer, GVECm_outer, FVECm, GVECm, &
+               MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
+               RadiationLimiterCorrection, RadiationLeptonInvariant, &
+               DirectionHalf, dLInputHalf, dLMapHalf, dEtaMuHalf, &
+               dYmHalf, dTemperatureHalf, dEInputHalf, EvaluationFailed, &
+               JacobianDirectionFixedMatter_Option = DirectionFixedMatter, &
+               dLMapFixedMatter_Option = dLMapFixedMatter )
+      IF( EvaluationFailed ) CYCLE
+
+      FDConsistency = SQRT &
+        ( DOT_PRODUCT(Direction-DirectionHalf,Direction-DirectionHalf) ) &
+          / MAX( SQRT(DOT_PRODUCT(DirectionHalf,DirectionHalf)), SqrtTiny )
+      Rayleigh = DOT_PRODUCT( Q(:,1), DirectionHalf )
+      MuLeptonGain = Zero
+      DirectGain = Zero
+      FeedbackGain = Zero
+      dEtaMudL = Zero
+      dYmdL = Zero
+      dEtaMudYm = Zero
+      dTemperaturedL = Zero
+      dLMapdEta = Zero
+      SchurDerivative = Zero
+      IF( ABS(dLInputHalf) > SqrtTiny )THEN
+        MuLeptonGain = dLMapHalf / dLInputHalf
+        DirectGain = dLMapFixedMatter / dLInputHalf
+        FeedbackGain = MuLeptonGain - DirectGain
+        dEtaMudL = dEtaMuHalf / dLInputHalf
+        dYmdL = dYmHalf / dLInputHalf
+        dTemperaturedL = dTemperatureHalf / dLInputHalf
+        SchurDerivative = One - MuLeptonGain
+      END IF
+      IF( ABS(dYmHalf) > SqrtTiny ) &
+        dEtaMudYm = dEtaMuHalf / dYmHalf
+      IF( ABS(dEtaMuHalf) > SqrtTiny ) &
+        dLMapdEta = dLMapHalf / dEtaMuHalf
+      DirectRayleigh = DOT_PRODUCT( Q(:,1), DirectionFixedMatter )
+      FeedbackRayleigh = Rayleigh - DirectRayleigh
+      DirectNorm = SQRT &
+        ( DOT_PRODUCT(DirectionFixedMatter,DirectionFixedMatter) )
+      DirectionFixedMatter = DirectionHalf - DirectionFixedMatter
+      FeedbackNorm = SQRT &
+        ( DOT_PRODUCT(DirectionFixedMatter,DirectionFixedMatter) )
+
+      Work = DirectionHalf
+      mEffective = RequestedArnoldiDimension
+      DO j = 1, RequestedArnoldiDimension
+
+        IF( j > 1 )THEN
+          CALL ApplyRadiationOnlyDensityJacobian_OrderV &
+                 ( dt, Half*DifferenceStep, iPoint, Q(:,j), Scale, &
+                   Dnu_Base, Inu_u_1_Base, Inu_u_2_Base, &
+                   Inu_u_3_Base, Matter_Base, &
+                   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                   D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+                   Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
+                   FVECm_outer, GVECm_outer, FVECm, GVECm, &
+                   MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
+                   RadiationLimiterCorrection, RadiationLeptonInvariant, &
+                   Work, dLInput, dLMap, dEtaMu, dYm, &
+                   dTemperature, dEInput, &
+                   EvaluationFailed )
+          IF( EvaluationFailed )THEN
+            mEffective = j - 1
+            EXIT
+          END IF
+        END IF
+
+        DO i = 1, j
+          H(i,j) = DOT_PRODUCT( Q(:,i), Work )
+          Work = Work - H(i,j) * Q(:,i)
+        END DO
+        DO i = 1, j
+          Correction = DOT_PRODUCT( Q(:,i), Work )
+          H(i,j) = H(i,j) + Correction
+          Work = Work - Correction * Q(:,i)
+        END DO
+
+        Beta = SQRT( DOT_PRODUCT(Work,Work) )
+        H(j+1,j) = Beta
+        IF( j == RequestedArnoldiDimension ) EXIT
+        IF( Beta <= 1.0e3_DP*EPSILON(One) )THEN
+          mEffective = j
+          EXIT
+        END IF
+        Q(:,j+1) = Work / Beta
+
+      END DO
+
+      Dnu(:,:,iPoint) = Dnu_Base
+      Inu_u_1(:,:,iPoint) = Inu_u_1_Base
+      Inu_u_2(:,:,iPoint) = Inu_u_2_Base
+      Inu_u_3(:,:,iPoint) = Inu_u_3_Base
+      T(iPoint) = Matter_Base(1)
+      Ye(iPoint) = Matter_Base(2)
+      Ym(iPoint) = Matter_Base(3)
+      E(iPoint) = Matter_Base(4)
+      V_u_1(iPoint) = Matter_Base(5)
+      V_u_2(iPoint) = Matter_Base(6)
+      V_u_3(iPoint) = Matter_Base(7)
+      CALL EvaluateRadiationOnlyMapForJacobian_OrderV &
+             ( dt, iPoint, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+               D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+               Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
+               FVECm_outer, GVECm_outer, FVECm, GVECm, &
+               MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
+               RadiationLimiterCorrection, RadiationLeptonInvariant, &
+               Direction, dEtaMu, EvaluationFailed )
+      IF( EvaluationFailed ) CYCLE
+
+#if   defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE FROM( Dnu_0, Chi_EmAb )
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE HOST( Dnu_0, Chi_EmAb )
+#endif
+
+      CALL ComputeMuonChemicalPotential_TABLE &
+             ( D(iPoint), Matter_Base(1), Matter_Base(2), Matter_Base(3), &
+               MuChemicalPotential )
+      WRITE(iUnit,'(A,4(1X,I0),6(1X,ES26.16E3))') &
+        'P', iPoint, Iterations(iPoint), nActive, mEffective, &
+        D(iPoint)/Unit_D, Matter_Base(1)/MeV, Matter_Base(2), &
+        Matter_Base(3), MuChemicalPotential/MeV, &
+        MuChemicalPotential/MAX(Matter_Base(1),SqrtTiny)
+      WRITE(iUnit,'(A,1X,I0,19(1X,ES26.16E3))') &
+        'S', iPoint, dLInputHalf, dLMapHalf, &
+        MuLeptonGain, DirectGain, FeedbackGain, &
+        dEtaMudL, dYmdL, dEtaMudYm, dTemperaturedL, &
+        dLMapdEta, SchurDerivative, &
+        Rayleigh, DirectRayleigh, FeedbackRayleigh, &
+        SQRT(DOT_PRODUCT(DirectionHalf,DirectionHalf)), &
+        DirectNorm, FeedbackNorm, &
+        FDConsistency, dEInputHalf
+
+      DO j = 1, mEffective
+      DO i = 1, mEffective + 1
+        WRITE(iUnit,'(A,3(1X,I0),1X,ES26.16E3)') &
+          'H', iPoint, i, j, H(i,j)
+      END DO
+      END DO
+      DO j = 1, mEffective
+      DO iS = iNuM, iNuM_Bar
+      DO iN_E = 1, nE_G
+        iV = iN_E + (iS-iNuM)*nE_G
+        WRITE(iUnit,'(A,4(1X,I0),3(1X,ES26.16E3))') &
+          'Q', iPoint, j, iS, iN_E, E_N(iN_E)/MeV, &
+          Q(iV,j), Scale(iV)
+      END DO
+      END DO
+      END DO
+
+      DO iS = iNuM, iNuM_Bar
+      DO iN_E = 1, nE_G
+        WRITE(iUnit,'(A,3(1X,I0),5(1X,ES26.16E3))') &
+          'E', iPoint, iS, iN_E, E_N(iN_E)/MeV, &
+          Dnu_Base(iN_E,iS), Dnu_0(iN_E,iS,iPoint), &
+          Chi_EmAb(iN_E,iS,iPoint), Scale(iN_E+(iS-iNuM)*nE_G)
+      END DO
+      END DO
+
+      FLUSH(iUnit)
+
+      Dnu(:,:,iPoint) = Dnu_Base
+      Inu_u_1(:,:,iPoint) = Inu_u_1_Base
+      Inu_u_2(:,:,iPoint) = Inu_u_2_Base
+      Inu_u_3(:,:,iPoint) = Inu_u_3_Base
+      T(iPoint) = Matter_Base(1)
+      Ye(iPoint) = Matter_Base(2)
+      Ym(iPoint) = Matter_Base(3)
+      E(iPoint) = Matter_Base(4)
+      V_u_1(iPoint) = Matter_Base(5)
+      V_u_2(iPoint) = Matter_Base(6)
+      V_u_3(iPoint) = Matter_Base(7)
+
+    END DO
+
+    CLOSE(iUnit)
+
+    ! The work masks and error array belong to the completed nonlinear solve.
+    ! Restore their successful post-solve state after the diagnostic map calls.
+    MASK = .FALSE.
+    WorkingMask = .FALSE.
+    Error = 0
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO &
+    !$OMP ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+    !$OMP   T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+    !$OMP   MASK, WorkingMask, Error )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE &
+    !$ACC ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+    !$ACC   T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+    !$ACC   MASK, WorkingMask, Error )
+#endif
+
+    DEALLOCATE( Dnu_Base, Inu_u_1_Base, Inu_u_2_Base, Inu_u_3_Base )
+    DEALLOCATE( Direction, DirectionFixedMatter )
+    DEALLOCATE( DirectionHalf, EnergyDirection )
+    DEALLOCATE( Scale, Work, Q, H )
+
+  END SUBROUTINE AnalyzeRadiationOnlyJacobian_OrderV
+
+
+  SUBROUTINE InitializeRadiationOnlyTrace_OrderV
+
+    USE mpi
+
+    INTEGER :: ierr, iM, myid
+    CHARACTER(640) :: FileName, SpectrumFileName
+
+    IF( RadiationOnlyTraceUnit /= 0 ) RETURN
+
+    CALL MPI_COMM_RANK( MPI_COMM_WORLD, myid, ierr )
+    WRITE(FileName,'(A,".rank",I6.6,".dat")') &
+      TRIM(RadiationOnlyTraceFile), myid
+    WRITE(SpectrumFileName,'(A,".spectra.rank",I6.6,".dat")') &
+      TRIM(RadiationOnlyTraceFile), myid
+    ! InitializeCollisions/FinalizeCollisions bracket each implicit stage, so
+    ! the trace units are closed between stage solves.  Replace the files for
+    ! the first solve in the process and append all subsequent solves; using
+    ! STATUS='REPLACE' unconditionally silently discarded the earlier stages.
+    IF( RadiationOnlySolveCallCount == 1 )THEN
+      OPEN( NEWUNIT = RadiationOnlyTraceUnit, FILE = TRIM(FileName), &
+            STATUS = 'REPLACE', ACTION = 'WRITE' )
+      OPEN( NEWUNIT = RadiationOnlyTraceSpectrumUnit, &
+            FILE = TRIM(SpectrumFileName), &
+            STATUS = 'REPLACE', ACTION = 'WRITE' )
+    ELSE
+      OPEN( NEWUNIT = RadiationOnlyTraceUnit, FILE = TRIM(FileName), &
+            STATUS = 'OLD', POSITION = 'APPEND', ACTION = 'WRITE' )
+      OPEN( NEWUNIT = RadiationOnlyTraceSpectrumUnit, &
+            FILE = TRIM(SpectrumFileName), &
+            STATUS = 'OLD', POSITION = 'APPEND', ACTION = 'WRITE' )
+      RETURN
+    END IF
+
+    WRITE(RadiationOnlyTraceUnit,'(A)') &
+      '# Invariant-constrained radiation solver iteration trace'
+    WRITE(RadiationOnlyTraceUnit,'(A,I0)') '# n_species: ', nSpecies
+    WRITE(RadiationOnlyTraceUnit,'(A,I0)') '# n_energy_nodes: ', nE_G
+    WRITE(RadiationOnlyTraceUnit,'(A,I0)') '# anderson_depth: ', M_inner
+    WRITE(RadiationOnlyTraceUnit,'(A)',ADVANCE='NO') &
+      '# columns: call iteration point active_after converged error backtracks ' // &
+      'dt omega_dt schur_gain schur_damping ' // &
+      'rho T_MeV Ye Ym delta_T_rel delta_Ye delta_Ym E mu_mu_MeV eta_mu ' // &
+      'mu_cc_active mu_total_lepton_invariant_error ' // &
+      'mu_total_lepton_invariant_relative residual_relative ' // &
+      'residual_density_relative residual_momentum_relative ' // &
+      'convergence_measure residual_absolute residual_ratio ' // &
+      'residual_change residual_cosine step_relative step2_relative ' // &
+      'candidate_step projected_step projection_correction ' // &
+      'state_max map_max Dnu_min Dnu_max mu_equilibrium_deviation ' // &
+      'mu_chi_max mu_stiffness_max collision_stiffness_max ' // &
+      'worst_species worst_energy worst_moment'
+    DO iM = 1, nSpecies
+      WRITE(RadiationOnlyTraceUnit,'(A,I0)',ADVANCE='NO') &
+        ' residual_species_', iM
+    END DO
+    DO iM = 1, M_inner
+      WRITE(RadiationOnlyTraceUnit,'(A,I0)',ADVANCE='NO') ' alpha_', iM
+    END DO
+    WRITE(RadiationOnlyTraceUnit,*)
+    WRITE(RadiationOnlyTraceSpectrumUnit,'(A)') &
+      '# Terminal spectra for the invariant-constrained radiation solve'
+    WRITE(RadiationOnlyTraceSpectrumUnit,'(A)') &
+      '# columns: call iteration point converged species energy_index ' // &
+      'energy_MeV D D0 I1 I2 I3 F_N F_G1 F_G2 F_G3 ' // &
+      'G_N G_G1 G_G2 G_G3 Chi_EmAb Sigma_Iso Chi_NNS Chi_NES ' // &
+      'Chi_Pair Chi_NuPair Chi_Brem'
+    FLUSH(RadiationOnlyTraceUnit)
+    FLUSH(RadiationOnlyTraceSpectrumUnit)
+
+  END SUBROUTINE InitializeRadiationOnlyTrace_OrderV
+
+
+  SUBROUTINE PackRadiationStateForTrace_OrderV &
+    ( iN_X, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, State )
+
+    INTEGER, INTENT(in) :: iN_X
+    REAL(DP), DIMENSION(:,:,:), INTENT(in) :: &
+      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:), INTENT(out) :: State
+
+    INTEGER :: iN_E, iOS, iS
+
+    DO iS = 1, nSpecies
+    DO iN_E = 1, nE_G
+      iOS = ( (iN_E-1) + (iS-1) * nE_G ) * nCR
+      State(iOS+iCR_N ) = Dnu(iN_E,iS,iN_X)
+      State(iOS+iCR_G1) = Gm_dd_11(iN_X) * Inu_u_1(iN_E,iS,iN_X)
+      State(iOS+iCR_G2) = Gm_dd_22(iN_X) * Inu_u_2(iN_E,iS,iN_X)
+      State(iOS+iCR_G3) = Gm_dd_33(iN_X) * Inu_u_3(iN_E,iS,iN_X)
+    END DO
+    END DO
+
+  END SUBROUTINE PackRadiationStateForTrace_OrderV
+
+
+  SUBROUTINE WriteRadiationOnlyIterationTrace_OrderV &
+    ( dt, k, EvaluationMask, ActiveMask, Error, D, T, Ye, Ym, E, &
+      Dnu, Inu_u_1, Inu_u_2, Inu_u_3, V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, Fm, Gm, &
+      RadiationLeptonInvariant, RadiationLimiterCorrection, &
+      HasPrevious, HasPrevious2, &
+      PreviousState, Previous2State, PreviousResidual, BacktrackCount, &
+      CandidateStep, ProjectedStep, ProjectionCorrection, AlphaTrace, &
+      SchurGain, SchurDamping )
+
+    REAL(DP), INTENT(in) :: dt
+    INTEGER, INTENT(in) :: k
+    LOGICAL, DIMENSION(:), INTENT(in) :: EvaluationMask, ActiveMask
+    INTEGER, DIMENSION(:), INTENT(in) :: Error
+    REAL(DP), DIMENSION(:), INTENT(in) :: D, T, Ye, Ym, E
+    REAL(DP), DIMENSION(:), INTENT(in) :: V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:,:,:), INTENT(in) :: &
+      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:,:), INTENT(in) :: Fm, Gm
+    REAL(DP), DIMENSION(:,:), INTENT(in) :: RadiationLeptonInvariant
+    REAL(DP), DIMENSION(:,:), INTENT(in) :: RadiationLimiterCorrection
+    LOGICAL, DIMENSION(:), INTENT(inout) :: HasPrevious, HasPrevious2
+    REAL(DP), DIMENSION(:,:), INTENT(inout) :: &
+      PreviousState, Previous2State, PreviousResidual
+    INTEGER, DIMENSION(:), INTENT(inout) :: BacktrackCount
+    REAL(DP), DIMENSION(:), INTENT(inout) :: &
+      CandidateStep, ProjectedStep, ProjectionCorrection
+    REAL(DP), DIMENSION(:,:), INTENT(inout) :: AlphaTrace
+    REAL(DP), DIMENSION(:), INTENT(in) :: SchurGain, SchurDamping
+
+    INTEGER :: iChiral, iN_E, iN_X, iOS, iS, iV
+    INTEGER :: WorstEnergy, WorstMoment, WorstSpecies, WorstVectorIndex
+    INTEGER :: MuCCActive
+    REAL(DP) :: ConvergenceMeasure, CurrentNorm, Denominator
+    REAL(DP) :: DnuMinimum, DnuMaximum, DnuNormLocal
+    REAL(DP) :: EtaMu, Fnorm, Fnorm_G1, Fnorm_G2, Fnorm_G3, Fnorm_N
+    REAL(DP) :: InitialCriterion, MapMaximum, MuChiMaximum
+    REAL(DP) :: MuEquilibriumDeviation, MuEquilibriumNorm
+    REAL(DP) :: CollisionOpacity, CollisionStiffnessMaximum
+    REAL(DP) :: MuStiffnessMaximum
+    REAL(DP) :: MuLeptonCurrent, MuLeptonInvariantError
+    REAL(DP) :: MuLeptonInvariantRelative, MuLeptonScale, Mumu
+    REAL(DP) :: ResidualAbsolute, ResidualChange, ResidualCosine
+    REAL(DP) :: ResidualDensityRelative, ResidualMomentumRelative
+    REAL(DP) :: ResidualDot, ResidualNorm2, ResidualPreviousNorm2
+    REAL(DP) :: ResidualRatio, ResidualRelative
+    REAL(DP) :: StepRelative, Step2Relative, vDotI
+    REAL(DP), ALLOCATABLE :: CurrentState(:), SpeciesResidual(:)
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM &
+    !$OMP ( D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+    !$OMP   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    !$OMP   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, Dnu_0, Chi_EmAb, Sigma_Iso, &
+    !$OMP   Chi_NNS, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, &
+    !$OMP   Fm, Gm, Error, ActiveMask, Fnorm0, Omega, &
+    !$OMP   SchurGain, SchurDamping, &
+    !$OMP   RadiationLimiterCorrection, &
+    !$OMP   T_old, Ye_old, Ym_old )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST &
+    !$ACC ( D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+    !$ACC   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    !$ACC   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, Dnu_0, Chi_EmAb, Sigma_Iso, &
+    !$ACC   Chi_NNS, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, &
+    !$ACC   Fm, Gm, Error, ActiveMask, Fnorm0, Omega, &
+    !$ACC   SchurGain, SchurDamping, &
+    !$ACC   RadiationLimiterCorrection, &
+    !$ACC   T_old, Ye_old, Ym_old )
+#endif
+
+    ALLOCATE( CurrentState(n_FP_inner), SpeciesResidual(nSpecies) )
+
+    DO iN_X = 1, nX_G
+
+      IF( .NOT. EvaluationMask(iN_X) ) CYCLE
+
+      CALL PackRadiationStateForTrace_OrderV &
+             ( iN_X, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+               Gm_dd_11, Gm_dd_22, Gm_dd_33, CurrentState )
+
+      CurrentNorm = MAX( MAXVAL(ABS(CurrentState)), SqrtTiny )
+      StepRelative = Zero
+      Step2Relative = Zero
+      IF( HasPrevious(iN_X) ) &
+        StepRelative = MAXVAL(ABS(CurrentState-PreviousState(:,iN_X))) &
+                         / CurrentNorm
+      IF( HasPrevious2(iN_X) ) &
+        Step2Relative = MAXVAL(ABS(CurrentState-Previous2State(:,iN_X))) &
+                          / CurrentNorm
+
+      ResidualAbsolute = MAXVAL(ABS(Fm(:,iN_X)))
+      WorstVectorIndex = MAXLOC(ABS(Fm(:,iN_X)),DIM=1)
+      WorstMoment = MOD(WorstVectorIndex-1,nCR) + 1
+      iV = (WorstVectorIndex-1) / nCR
+      WorstEnergy = MOD(iV,nE_G) + 1
+      WorstSpecies = iV / nE_G + 1
+      MapMaximum = MAXVAL(ABS(Gm(:,iN_X)))
+
+      ResidualNorm2 = DOT_PRODUCT(Fm(:,iN_X),Fm(:,iN_X))
+      ResidualPreviousNorm2 = DOT_PRODUCT &
+        ( PreviousResidual(:,iN_X), PreviousResidual(:,iN_X) )
+      ResidualDot = DOT_PRODUCT(Fm(:,iN_X),PreviousResidual(:,iN_X))
+      ResidualChange = Zero
+      ResidualCosine = Zero
+      IF( HasPrevious(iN_X) )THEN
+        ResidualChange = MAXVAL &
+          ( ABS(Fm(:,iN_X)-PreviousResidual(:,iN_X)) ) &
+            / MAX(ResidualAbsolute,SqrtTiny)
+        IF( ResidualNorm2 > Zero .AND. ResidualPreviousNorm2 > Zero ) &
+          ResidualCosine = ResidualDot &
+            / SQRT(ResidualNorm2*ResidualPreviousNorm2)
+      END IF
+
+      ResidualRelative = Zero
+      ResidualDensityRelative = Zero
+      ResidualMomentumRelative = Zero
+      ConvergenceMeasure = Zero
+      DO iS = 1, nSpecies
+        Fnorm_N  = Zero
+        Fnorm_G1 = Zero
+        Fnorm_G2 = Zero
+        Fnorm_G3 = Zero
+        DnuNormLocal = Zero
+        DO iN_E = 1, nE_G
+          iOS = ( (iN_E-1) + (iS-1)*nE_G ) * nCR
+          Fnorm_N = Fnorm_N + W2_S(iN_E)*Fm(iOS+iCR_N,iN_X)**2
+          Fnorm_G1 = Fnorm_G1 + W2_S(iN_E)*Fm(iOS+iCR_G1,iN_X)**2
+          Fnorm_G2 = Fnorm_G2 + W2_S(iN_E)*Fm(iOS+iCR_G2,iN_X)**2
+          Fnorm_G3 = Fnorm_G3 + W2_S(iN_E)*Fm(iOS+iCR_G3,iN_X)**2
+          DnuNormLocal = DnuNormLocal &
+            + W2_S(iN_E)*Dnu(iN_E,iS,iN_X)**2
+        END DO
+        Fnorm = SQRT(MAX(Fnorm_N,Fnorm_G1,Fnorm_G2,Fnorm_G3))
+        DnuNormLocal = SQRT(DnuNormLocal)
+        IF( DnuNormLocal > Zero )THEN
+          SpeciesResidual(iS) = Fnorm / DnuNormLocal
+        ELSE IF( Fnorm == Zero )THEN
+          SpeciesResidual(iS) = Zero
+        ELSE
+          SpeciesResidual(iS) = HUGE(One)
+        END IF
+        ResidualRelative = MAX(ResidualRelative,SpeciesResidual(iS))
+        IF( DnuNormLocal > Zero )THEN
+          ResidualDensityRelative = MAX &
+            ( ResidualDensityRelative, SQRT(Fnorm_N)/DnuNormLocal )
+          ResidualMomentumRelative = MAX &
+            ( ResidualMomentumRelative, &
+              SQRT(MAX(Fnorm_G1,Fnorm_G2,Fnorm_G3))/DnuNormLocal )
+        END IF
+        InitialCriterion = Atol_inner*Fnorm0(iS,iN_X)
+        Denominator = MAX(Rtol_inner*DnuNormLocal,InitialCriterion)
+        IF( Denominator > Zero )THEN
+          ConvergenceMeasure = MAX(ConvergenceMeasure,Fnorm/Denominator)
+        ELSE IF( Fnorm > Zero )THEN
+          ConvergenceMeasure = HUGE(One)
+        END IF
+      END DO
+
+      ResidualRatio = Zero
+      IF( HasPrevious(iN_X) ) &
+        ResidualRatio = ResidualAbsolute &
+          / MAX(MAXVAL(ABS(PreviousResidual(:,iN_X))),SqrtTiny)
+
+      DnuMinimum = MINVAL(Dnu(:,:,iN_X))
+      DnuMaximum = MAXVAL(Dnu(:,:,iN_X))
+      MuEquilibriumDeviation = Zero
+      MuEquilibriumNorm = Zero
+      MuChiMaximum = Zero
+      MuStiffnessMaximum = Zero
+      CollisionStiffnessMaximum = Zero
+      MuLeptonCurrent = Zero
+      MuLeptonInvariantError = Zero
+      MuLeptonInvariantRelative = Zero
+      MuLeptonScale = Zero
+      Mumu = Zero
+      EtaMu = Zero
+      MuCCActive = 0
+      IF( nSpecies >= iNuM_Bar )THEN
+        MuCCActive = MERGE(1,0,Opacity_Mask(iOp_EmAb_Muon,iN_X))
+        CALL ComputeMuonChemicalPotential_TABLE &
+               ( D(iN_X), T(iN_X), Ye(iN_X), Ym(iN_X), Mumu )
+        IF( T(iN_X) > Zero ) EtaMu = Mumu / T(iN_X)
+        MuChiMaximum = MAXVAL(Chi_EmAb(:,iNuM:iNuM_Bar,iN_X))
+        MuStiffnessMaximum = Omega(iN_X)*dt*MuChiMaximum
+        DO iS = iNuM, iNuM_Bar
+        DO iN_E = 1, nE_G
+          MuEquilibriumDeviation = MuEquilibriumDeviation &
+            + W2_S(iN_E) &
+                * (Dnu(iN_E,iS,iN_X)-Dnu_0(iN_E,iS,iN_X))**2
+          MuEquilibriumNorm = MuEquilibriumNorm &
+            + W2_S(iN_E)*Dnu_0(iN_E,iS,iN_X)**2
+          vDotI = V_u_1(iN_X)*Gm_dd_11(iN_X)*Inu_u_1(iN_E,iS,iN_X) &
+            + V_u_2(iN_X)*Gm_dd_22(iN_X)*Inu_u_2(iN_E,iS,iN_X) &
+            + V_u_3(iN_X)*Gm_dd_33(iN_X)*Inu_u_3(iN_E,iS,iN_X)
+          MuLeptonCurrent = MuLeptonCurrent + W2_S(iN_E)*LeptonNumber(iS) &
+            * (Dnu(iN_E,iS,iN_X)+vDotI)
+          MuLeptonScale = MuLeptonScale &
+            + ABS( W2_S(iN_E) * LeptonNumber(iS) &
+                * (Dnu(iN_E,iS,iN_X)+vDotI) )
+        END DO
+        END DO
+        MuEquilibriumDeviation = SQRT(MuEquilibriumDeviation) &
+          / MAX(SQRT(MuEquilibriumNorm),SqrtTiny)
+        MuLeptonInvariantError = MuLeptonCurrent &
+          - RadiationLeptonInvariant(2,iN_X)
+        IF( MuCCActive == 1 ) &
+          MuLeptonInvariantError = MuLeptonInvariantError &
+            + D(iN_X) / AtomicMassUnit &
+                * ( Ym(iN_X) - Ym_old(iN_X) ) &
+            - RadiationLimiterCorrection(iYm,iN_X)
+        IF( MuCCActive == 1 ) &
+          MuLeptonScale = MuLeptonScale &
+            + ABS( D(iN_X) / AtomicMassUnit &
+                * ( Ym(iN_X) - Ym_old(iN_X) ) ) &
+            + ABS( RadiationLimiterCorrection(iYm,iN_X) )
+        MuLeptonScale = MAX &
+          ( MuLeptonScale, ABS( RadiationLeptonInvariant(2,iN_X) ) )
+        IF( MuLeptonScale > Zero ) &
+          MuLeptonInvariantRelative = ABS( MuLeptonInvariantError ) &
+            / MuLeptonScale
+      END IF
+      DO iS = 1, nSpecies
+        iChiral = nChirals - ( LeptonNumber(iS) + 1 ) / nChirals
+        DO iN_E = 1, nE_G
+          CollisionOpacity = Chi_EmAb(iN_E,iS,iN_X) &
+            + Sigma_Iso(iN_E,iChiral,iN_X) &
+            + Chi_NNS(iN_E,iS,iN_X) + Chi_NES(iN_E,iS,iN_X) &
+            + Chi_Pair(iN_E,iS,iN_X) + Chi_NuPair(iN_E,iS,iN_X) &
+            + Chi_Brem(iN_E,iS,iN_X)
+          CollisionStiffnessMaximum = MAX &
+            ( CollisionStiffnessMaximum, Omega(iN_X)*dt*CollisionOpacity )
+        END DO
+      END DO
+
+      WRITE(RadiationOnlyTraceUnit,*) &
+        RadiationOnlySolveCallCount, k, iN_X, MERGE(1,0,ActiveMask(iN_X)), &
+        MERGE(0,1,ActiveMask(iN_X)), Error(iN_X), BacktrackCount(iN_X), &
+        dt, Omega(iN_X)*dt, SchurGain(iN_X), SchurDamping(iN_X), &
+        D(iN_X)/Unit_D, T(iN_X)/MeV, Ye(iN_X), Ym(iN_X), &
+        (T(iN_X)-T_old(iN_X))/MAX(ABS(T_old(iN_X)),SqrtTiny), &
+        Ye(iN_X)-Ye_old(iN_X), Ym(iN_X)-Ym_old(iN_X), E(iN_X)/Unit_E, &
+        Mumu/MeV, EtaMu, MuCCActive, MuLeptonInvariantError, &
+        MuLeptonInvariantRelative, &
+        ResidualRelative, ResidualDensityRelative, &
+        ResidualMomentumRelative, ConvergenceMeasure, ResidualAbsolute, &
+        ResidualRatio, ResidualChange, ResidualCosine, &
+        StepRelative, Step2Relative, CandidateStep(iN_X), &
+        ProjectedStep(iN_X), ProjectionCorrection(iN_X), &
+        CurrentNorm, MapMaximum, DnuMinimum, DnuMaximum, &
+        MuEquilibriumDeviation, MuChiMaximum, MuStiffnessMaximum, &
+        CollisionStiffnessMaximum, &
+        WorstSpecies, WorstEnergy, WorstMoment, &
+        SpeciesResidual, AlphaTrace(:,iN_X)
+
+      IF( .NOT. ActiveMask(iN_X) .OR. k >= MaxIter_inner )THEN
+        DO iS = 1, nSpecies
+        iChiral = nChirals - ( LeptonNumber(iS) + 1 ) / nChirals
+        DO iN_E = 1, nE_G
+          iOS = ( (iN_E-1) + (iS-1)*nE_G ) * nCR
+          WRITE(RadiationOnlyTraceSpectrumUnit,*) &
+            RadiationOnlySolveCallCount, k, iN_X, &
+            MERGE(0,1,ActiveMask(iN_X)), iS, iN_E, E_N(iN_E)/MeV, &
+            Dnu(iN_E,iS,iN_X), Dnu_0(iN_E,iS,iN_X), &
+            Inu_u_1(iN_E,iS,iN_X), Inu_u_2(iN_E,iS,iN_X), &
+            Inu_u_3(iN_E,iS,iN_X), &
+            Fm(iOS+iCR_N,iN_X), Fm(iOS+iCR_G1,iN_X), &
+            Fm(iOS+iCR_G2,iN_X), Fm(iOS+iCR_G3,iN_X), &
+            Gm(iOS+iCR_N,iN_X), Gm(iOS+iCR_G1,iN_X), &
+            Gm(iOS+iCR_G2,iN_X), Gm(iOS+iCR_G3,iN_X), &
+            Chi_EmAb(iN_E,iS,iN_X), &
+            Sigma_Iso(iN_E,iChiral,iN_X), &
+            Chi_NNS(iN_E,iS,iN_X), Chi_NES(iN_E,iS,iN_X), &
+            Chi_Pair(iN_E,iS,iN_X), Chi_NuPair(iN_E,iS,iN_X), &
+            Chi_Brem(iN_E,iS,iN_X)
+        END DO
+        END DO
+      END IF
+
+      Previous2State(:,iN_X) = PreviousState(:,iN_X)
+      PreviousState(:,iN_X) = CurrentState
+      PreviousResidual(:,iN_X) = Fm(:,iN_X)
+      HasPrevious2(iN_X) = HasPrevious(iN_X)
+      HasPrevious(iN_X) = .TRUE.
+      BacktrackCount(iN_X) = 0
+
+    END DO
+
+    FLUSH(RadiationOnlyTraceUnit)
+    FLUSH(RadiationOnlyTraceSpectrumUnit)
+    DEALLOCATE( CurrentState, SpeciesResidual )
+
+  END SUBROUTINE WriteRadiationOnlyIterationTrace_OrderV
+
+
+  SUBROUTINE CaptureRadiationOnlyUpdateTrace_OrderV &
+    ( MASK, Mk, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, Gm, Alpha, PreviousState, &
+      CandidateStep, ProjectedStep, ProjectionCorrection, AlphaTrace )
+
+    LOGICAL, DIMENSION(:), INTENT(in) :: MASK
+    INTEGER, INTENT(in) :: Mk
+    REAL(DP), DIMENSION(:,:,:), INTENT(in) :: &
+      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    REAL(DP), DIMENSION(:), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:,:), INTENT(in) :: Gm, Alpha, PreviousState
+    REAL(DP), DIMENSION(:), INTENT(out) :: &
+      CandidateStep, ProjectedStep, ProjectionCorrection
+    REAL(DP), DIMENSION(:,:), INTENT(out) :: AlphaTrace
+
+    INTEGER :: iN_X
+    REAL(DP) :: Scale
+    REAL(DP), ALLOCATABLE :: ProjectedState(:)
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM &
+    !$OMP ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+    !$OMP   Gm_dd_11, Gm_dd_22, Gm_dd_33, Gm, Alpha )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST &
+    !$ACC ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+    !$ACC   Gm_dd_11, Gm_dd_22, Gm_dd_33, Gm, Alpha )
+#endif
+
+    ALLOCATE( ProjectedState(n_FP_inner) )
+    DO iN_X = 1, nX_G
+      IF( .NOT. MASK(iN_X) ) CYCLE
+      CALL PackRadiationStateForTrace_OrderV &
+             ( iN_X, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+               Gm_dd_11, Gm_dd_22, Gm_dd_33, ProjectedState )
+      Scale = MAX(MAXVAL(ABS(PreviousState(:,iN_X))),SqrtTiny)
+      CandidateStep(iN_X) = MAXVAL(ABS(Gm(:,iN_X)-PreviousState(:,iN_X))) &
+                              / Scale
+      ProjectedStep(iN_X) = MAXVAL &
+        (ABS(ProjectedState-PreviousState(:,iN_X))) / Scale
+      ProjectionCorrection(iN_X) = MAXVAL(ABS(ProjectedState-Gm(:,iN_X))) &
+                                      / Scale
+      AlphaTrace(:,iN_X) = Zero
+      AlphaTrace(1:Mk,iN_X) = Alpha(1:Mk,iN_X)
+    END DO
+    DEALLOCATE( ProjectedState )
+
+  END SUBROUTINE CaptureRadiationOnlyUpdateTrace_OrderV
+
+
 
 
   SUBROUTINE CheckConvergence_RadiationOnly &
@@ -4529,7 +6361,10 @@ CONTAINS
 
           IF( k == 1 ) Fnorm0(iS,iN_X) = Fnorm
 
-          IF( DnuNorm(iS,iN_X) > Zero )THEN
+          IF( Fnorm /= Fnorm .OR. Fnorm > HUGE(One) )THEN
+            RelativeResidual = HUGE(One)
+            Converged = .FALSE.
+          ELSE IF( DnuNorm(iS,iN_X) > Zero )THEN
             RelativeResidual = Fnorm / DnuNorm(iS,iN_X)
           ELSE IF( Fnorm == Zero )THEN
             RelativeResidual = Zero
@@ -4929,9 +6764,17 @@ CONTAINS
 
       CALL TimersStart( Timer_Collisions_ComputeRates )
 
-      CALL ComputeRates_Packed &
-             ( D, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-               ProjectionMask, nX_P, PackIndex, UnpackIndex, nX_P, Opacity_Mask )
+      IF( FreezeOpacities )THEN
+        CALL ComputeRates_Packed &
+               ( D, T_Opacity, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                 ProjectionMask, nX_P, PackIndex, UnpackIndex, &
+                 nX_P, Opacity_Mask )
+      ELSE
+        CALL ComputeRates_Packed &
+               ( D, T_Conservative, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                 ProjectionMask, nX_P, PackIndex, UnpackIndex, &
+                 nX_P, Opacity_Mask )
+      END IF
 
       CALL TimersStop( Timer_Collisions_ComputeRates )
 
@@ -5264,12 +7107,10 @@ CONTAINS
 
     CALL TimersStop( Timer_Opacity_D0 )
 
-    CALL TimersStart( Timer_Opacity_LimitD0 )
-
-    CALL LimitEquilibriumDistributions_DG &
-           ( 1, nE_G, 1, nSpecies, 1, nX, E_N, Dnu_0_P, DnuMax )
-
-    CALL TimersStop( Timer_Opacity_LimitD0 )
+    ! Dnu_0 is a thermodynamic quantity entering charged-current detailed
+    ! balance.  Limiting it to the bound imposed on the evolved radiation
+    ! polynomial changes the microscopic inverse rate and is therefore not
+    ! permissible here.  Bounds on the evolved state are enforced separately.
 
     ! --- EmAb ---
 
@@ -5421,6 +7262,8 @@ CONTAINS
       ! --- Unpack Results ---
 
       CALL ArrayUnpack &
+             ( nX, MASK, PackIndex, T_P, T_Opacity )
+      CALL ArrayUnpack &
              ( nX, MASK, PackIndex, Dnu_0_P, Dnu_0 )
       CALL ArrayUnpack &
              ( nX, MASK, PackIndex, Chi_EmAb_P, Chi_EmAb )
@@ -5467,16 +7310,30 @@ CONTAINS
 
       END IF
 
+    ELSE
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO
+#endif
+      DO iX = 1, nX_G
+        T_Opacity(iX) = T(iX)
+      END DO
+
     END IF
 
   END SUBROUTINE ComputeOpacities_Packed
 
 
   SUBROUTINE ComputeRates_Packed &
-    ( D, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, MASK, nX_P, PackIndex, UnpackIndex, &
+    ( D, T_Rates, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      MASK, nX_P, PackIndex, UnpackIndex, &
       nX_P0, Opacity_Mask_Input )
 
-    REAL(DP), DIMENSION(:),     INTENT(in), TARGET   :: D
+    REAL(DP), DIMENSION(:),     INTENT(in), TARGET   :: D, T_Rates
     REAL(DP), DIMENSION(:,:,:), INTENT(in), TARGET   :: Dnu
     REAL(DP), DIMENSION(:,:,:), INTENT(in), TARGET   :: Inu_u_1
     REAL(DP), DIMENSION(:,:,:), INTENT(in), TARGET   :: Inu_u_2
@@ -5487,7 +7344,11 @@ CONTAINS
     INTEGER,                    INTENT(in), OPTIONAL :: nX_P0
     LOGICAL,  DIMENSION(:,:),   INTENT(in), TARGET   :: Opacity_Mask_Input
 
-    REAL(DP), DIMENSION(:)    , POINTER :: D_P
+    ! T_Rates must be the temperature used to construct the opacity kernels
+    ! consumed by this call.  Passing it explicitly avoids coupling detailed
+    ! balance to the lifetime or packing order of hidden module state.
+
+    REAL(DP), DIMENSION(:)    , POINTER :: D_P, T_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Dnu_P, Dnu_0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Inu_u_1_P, Inu_u_2_P, Inu_u_3_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_NNS_P , Eta_NNS_P, R_NNS_P
@@ -5545,8 +7406,10 @@ CONTAINS
              ( nX, UnpackIndex, Opacity_Mask_Input, Opacity_Mask_P )
 
       D_P => D_T(1:nX)
+      T_P => T_T(1:nX)
 
       CALL ArrayPack( nX, UnpackIndex, D, D_P )
+      CALL ArrayPack( nX, UnpackIndex, T_Rates, T_P )
 
       Dnu_P     => Dnu_T    (:,:,1:nX)
       Dnu_0_P   => Dnu_0_T  (:,:,1:nX)
@@ -5674,6 +7537,7 @@ CONTAINS
       Opacity_Mask_P => Opacity_Mask_Input(:,1:nX)
 
       D_P => D(:)
+      T_P => T_Rates(:)
 
       Dnu_P            => Dnu           (:,:,:)
       Dnu_0_P          => Dnu_0         (:,:,:)
@@ -5757,23 +7621,31 @@ CONTAINS
 
     END IF
 
+    CALL ComputeDetailedBalanceFactors &
+           ( 1, nE_G, 1, nX, E_N, T_P, &
+             Include_NNS .OR. Include_NES, &
+             Include_Pair .OR. Include_NuPair .OR. Include_Brem, &
+             DetailedBalanceScattering_T(:,:,1:nX), &
+             DetailedBalancePair_T(:,:,1:nX) )
+
     ! --- NNS Emissivities and Opacities ---
 
     CALL TimersStart( Timer_OpacityRate_NNS )
 
     CALL ComputeNeutrinoOpacityRates_NNS &
-           ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, &
+           ( 1, nE_G, 1, nSpecies, 1, nX, D_P, T_P, E_N, W2_N, &
+             Dnu_P, &
              Phi_NNS_0_P, Phi_NbNS_0_P, Eta_NNS_P, Chi_NNS_P, R_NNS_P, &
-             Opacity_Mask_P )
+             Opacity_Mask_P, DetailedBalanceScattering_T(:,:,1:nX) )
 
     IF ( Include_NNS .AND. UseFirstMomentRates ) &
       CALL ComputeNeutrinoOpacityRates_LinearCorrections_NNS &
-             ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, &
-               Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, Dnu_0_P, &
+             ( 1, nE_G, 1, nSpecies, 1, nX, D_P, T_P, E_N, W2_N, &
+               Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, &
                Phi_NNS_1_P, Phi_NbNS_1_P, &
                L_NNS__In__u_1_P, L_NNS__In__u_2_P, L_NNS__In__u_3_P, &
                L_NNS__Out_u_1_P, L_NNS__Out_u_2_P, L_NNS__Out_u_3_P, &
-               Opacity_Mask_P )
+               Opacity_Mask_P, DetailedBalanceScattering_T(:,:,1:nX) )
 
     CALL TimersStop( Timer_OpacityRate_NNS )
 
@@ -5782,20 +7654,21 @@ CONTAINS
     CALL TimersStart( Timer_OpacityRate_NES )
 
     CALL ComputeNeutrinoOpacityRates_NES &
-           ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, &
+           ( 1, nE_G, 1, nSpecies, 1, nX, D_P, T_P, E_N, W2_N, &
+             Dnu_P, &
              H_I_0_P, H_II_0_P, Eta_NES_P, Chi_NES_P, R_NES_P, &
-             Opacity_Mask_P )
+             Opacity_Mask_P, DetailedBalanceScattering_T(:,:,1:nX) )
 
     IF( Include_NES .AND. UseFirstMomentRates )THEN
 
       ! --- Compute Linear Rate Corrections (NES) ---
 
       CALL ComputeNeutrinoOpacityRates_LinearCorrections_NES &
-             ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, &
-               Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, Dnu_0_P, H_I_1_P, H_II_1_P, &
+             ( 1, nE_G, 1, nSpecies, 1, nX, D_P, T_P, E_N, W2_N, &
+               Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, H_I_1_P, H_II_1_P, &
                L_NES__In__u_1_P, L_NES__In__u_2_P, L_NES__In__u_3_P, &
                L_NES__Out_u_1_P, L_NES__Out_u_2_P, L_NES__Out_u_3_P, &
-               Opacity_Mask_P )
+               Opacity_Mask_P, DetailedBalanceScattering_T(:,:,1:nX) )
 
     END IF
 
@@ -5806,20 +7679,21 @@ CONTAINS
     CALL TimersStart( Timer_OpacityRate_Pair )
 
     CALL ComputeNeutrinoOpacityRates_Pair &
-           ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, &
+           ( 1, nE_G, 1, nSpecies, 1, nX, D_P, T_P, E_N, W2_N, &
+             Dnu_P, &
              J_I_0_P, J_II_0_P, Eta_Pair_P, Chi_Pair_P, R_Pair_P, &
-             Opacity_Mask_P )
+             Opacity_Mask_P, DetailedBalancePair_T(:,:,1:nX) )
 
     IF( Include_Pair .AND. UseFirstMomentRates )THEN
 
       ! --- Compute Linear Rate Corrections (Pair) ---
 
       CALL ComputeNeutrinoOpacityRates_LinearCorrections_Pair &
-             ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, &
-               Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, Dnu_0_P, J_I_1_P, J_II_1_P, &
+             ( 1, nE_G, 1, nSpecies, 1, nX, D_P, T_P, E_N, W2_N, &
+               Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, J_I_1_P, J_II_1_P, &
                L_Pair_Pro_u_1_P, L_Pair_Pro_u_2_P, L_Pair_Pro_u_3_P, &
                L_Pair_Ann_u_1_P, L_Pair_Ann_u_2_P, L_Pair_Ann_u_3_P, &
-               Opacity_Mask_P )
+               Opacity_Mask_P, DetailedBalancePair_T(:,:,1:nX) )
 
     END IF
 
@@ -5830,18 +7704,19 @@ CONTAINS
     CALL TimersStart( Timer_OpacityRate_NuPair )
 
     CALL ComputeNeutrinoOpacityRates_NuPair &
-           ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, &
+           ( 1, nE_G, 1, nSpecies, 1, nX, D_P, T_P, E_N, W2_N, &
+             Dnu_P, &
              Nu_J_I_0_P, Nu_J_II_0_P, Eta_NuPair_P, Chi_NuPair_P, &
-             R_NuPair_P, Opacity_Mask_P )
+             R_NuPair_P, Opacity_Mask_P, DetailedBalancePair_T(:,:,1:nX) )
 
     IF ( Include_NuPair .AND. UseFirstMomentRates ) &
       CALL ComputeNeutrinoOpacityRates_LinearCorrections_NuPair &
-             ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, &
-               Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, Dnu_0_P, &
+             ( 1, nE_G, 1, nSpecies, 1, nX, D_P, T_P, E_N, W2_N, &
+               Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, &
                Nu_J_I_1_P, Nu_J_II_1_P, &
                L_NuPair_Pro_u_1_P, L_NuPair_Pro_u_2_P, L_NuPair_Pro_u_3_P, &
                L_NuPair_Ann_u_1_P, L_NuPair_Ann_u_2_P, L_NuPair_Ann_u_3_P, &
-               Opacity_Mask_P )
+               Opacity_Mask_P, DetailedBalancePair_T(:,:,1:nX) )
 
     CALL TimersStop( Timer_OpacityRate_NuPair )
 
@@ -5850,20 +7725,21 @@ CONTAINS
     CALL TimersStart( Timer_OpacityRate_Brem )
 
     CALL ComputeNeutrinoOpacityRates_Brem &
-           ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, &
+           ( 1, nE_G, 1, nSpecies, 1, nX, D_P, T_P, E_N, W2_N, &
+             Dnu_P, &
              S_Sigma_P, Eta_Brem_P, Chi_Brem_P, R_Brem_P, &
-             Opacity_Mask_P )
+             Opacity_Mask_P, DetailedBalancePair_T(:,:,1:nX) )
 
     IF( Include_Brem .AND. UseFirstMomentRates )THEN
 
       ! --- Compute Linear Rate Corrections (Brem) ---
 
       CALL ComputeNeutrinoOpacityRates_LinearCorrections_Brem &
-             ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, &
-               Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, Dnu_0_P, S_Sigma_P, &
+             ( 1, nE_G, 1, nSpecies, 1, nX, D_P, T_P, E_N, W2_N, &
+               Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, S_Sigma_P, &
                L_Brem_Pro_u_1_P, L_Brem_Pro_u_2_P, L_Brem_Pro_u_3_P, &
                L_Brem_Ann_u_1_P, L_Brem_Ann_u_2_P, L_Brem_Ann_u_3_P, &
-               Opacity_Mask_P )
+               Opacity_Mask_P, DetailedBalancePair_T(:,:,1:nX) )
 
     END IF
 
@@ -5968,7 +7844,8 @@ CONTAINS
 
 
   SUBROUTINE UpdateTemperature_Packed &
-    ( D, E, Ye, Ym, T, MASK, nX_P, PackIndex, UnpackIndex, Error )
+    ( D, E, Ye, Ym, T, MASK, nX_P, PackIndex, UnpackIndex, Error, &
+      DisplayErrors_Option )
 
     REAL(DP), DIMENSION(:), INTENT(in)   , TARGET   :: D, E, Ye, Ym
     REAL(DP), DIMENSION(:), INTENT(inout), TARGET   :: T
@@ -5976,6 +7853,7 @@ CONTAINS
     INTEGER,                INTENT(in)   , OPTIONAL :: nX_P
     INTEGER,  DIMENSION(:), INTENT(in)   , OPTIONAL :: PackIndex, UnpackIndex
     INTEGER,  DIMENSION(:), INTENT(inout), TARGET   :: Error
+    LOGICAL,                INTENT(in)   , OPTIONAL :: DisplayErrors_Option
 
     REAL(DP), DIMENSION(:), POINTER :: D_P, E_P, Ye_P, Ym_P, T_P
     INTEGER,  DIMENSION(:), POINTER :: Error_P
@@ -6017,8 +7895,14 @@ CONTAINS
 
     END IF
 
-    CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-           ( D_P, E_P, Ye_P, Ym_P, T_P, Error_Option = Error_P )
+    IF( PRESENT(DisplayErrors_Option) )THEN
+      CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+             ( D_P, E_P, Ye_P, Ym_P, T_P, Error_Option = Error_P, &
+               DisplayErrors_Option = DisplayErrors_Option )
+    ELSE
+      CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+             ( D_P, E_P, Ye_P, Ym_P, T_P, Error_Option = Error_P )
+    END IF
 
     IF ( nX < nX_G ) THEN
 
@@ -8745,8 +10629,10 @@ CONTAINS
         iOS = ( (iN_E-1) + (iS-1) * nE_G ) * nCR
 
         ! Form the collision source as a sum of process-wise net rates.
-        ! The well-balanced rates vanish exactly at their
-        ! represented discrete equilibria.
+        ! EmAb vanishes identically when Dnu == Dnu_0.  The inelastic and
+        ! pair rates satisfy physical detailed balance and vanish at the
+        ! thermodynamic Fermi--Dirac state in exact arithmetic; direct
+        ! floating-point gain--loss evaluation can leave roundoff residuals.
 
         R_N = Chi_EmAb(iN_E,iS,iN_X) &
                 * ( Dnu_0(iN_E,iS,iN_X) - Dnu(iN_E,iS,iN_X) ) &
@@ -9859,6 +11745,442 @@ CONTAINS
 
     RETURN
   END FUNCTION WNORM
+
+
+#if defined( TWOMOMENT_ORDER_V )
+  SUBROUTINE CheckMuonCouplingIteration_OrderV &
+    ( Stage, dt, k_outer, k_inner, MASK, &
+      D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+      Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      Error_Option, CheckOpacity_Option, CheckRates_Option, &
+      Fm_Option, Gm_Option, ForceFailure_Option )
+
+    USE ISO_FORTRAN_ENV, ONLY: ERROR_UNIT
+    USE mpi
+
+    CHARACTER(*),                  INTENT(in) :: Stage
+    REAL(DP),                      INTENT(in) :: dt
+    INTEGER,                       INTENT(in) :: k_outer, k_inner
+    LOGICAL,  DIMENSION(:),        INTENT(in) :: MASK
+    REAL(DP), DIMENSION(:),        INTENT(in) :: &
+      D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3
+    REAL(DP), DIMENSION(:),        INTENT(in) :: &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:,:,:),    INTENT(in) :: &
+      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
+    INTEGER,  DIMENSION(:),        INTENT(in), OPTIONAL :: Error_Option
+    LOGICAL,                       INTENT(in), OPTIONAL :: &
+      CheckOpacity_Option, CheckRates_Option
+    REAL(DP), DIMENSION(:,:),      INTENT(in), OPTIONAL :: &
+      Fm_Option, Gm_Option
+    LOGICAL,                       INTENT(in), OPTIONAL :: &
+      ForceFailure_Option
+
+    INTEGER  :: ierr, myid, FailureRank, CandidateRank
+    INTEGER  :: iN_E, iN_X, iS, iV, iFile
+    INTEGER  :: FailureEnergy, FailurePoint, FailureSpecies
+    INTEGER  :: iOS
+    LOGICAL  :: CheckOpacity, CheckRates, Failed
+    REAL(DP) :: Mumu, MuonLeptonCurrent, MuonLeptonOld, vDotI
+    REAL(DP) :: Dnu0Value, ChiValue, Fm_N, Gm_N
+    REAL(DP) :: RNNSValue, RNESValue, RPairValue, RNuPairValue, RBremValue
+    REAL(DP) :: ResidualMax, MapMax, RelativeResidualMax
+    REAL(DP) :: Fnorm, Fnorm_N, Fnorm_G1, Fnorm_G2, Fnorm_G3
+    REAL(DP) :: Dnorm, SpeciesRelativeResidual
+    CHARACTER(64)  :: FailureQuantity
+    CHARACTER(640) :: FileName
+
+    CheckOpacity = .FALSE.
+    CheckRates   = .FALSE.
+    IF( PRESENT( CheckOpacity_Option ) ) &
+      CheckOpacity = CheckOpacity_Option
+    IF( PRESENT( CheckRates_Option ) ) &
+      CheckRates = CheckRates_Option
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM &
+    !$OMP ( D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+    !$OMP   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    !$OMP   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, Dnu_old, &
+    !$OMP   Inu_u_1_old, Inu_u_2_old, Inu_u_3_old, &
+    !$OMP   V_u_1_old, V_u_2_old, V_u_3_old, Ym_old, Opacity_Mask )
+    IF( CheckOpacity )THEN
+      !$OMP TARGET UPDATE FROM( Dnu_0, Chi_EmAb )
+    END IF
+    IF( CheckRates )THEN
+      !$OMP TARGET UPDATE FROM &
+      !$OMP ( R_NNS, R_NES, R_Pair, R_NuPair, R_Brem )
+    END IF
+    IF( PRESENT( Fm_Option ) )THEN
+      !$OMP TARGET UPDATE FROM( Fm_Option )
+    END IF
+    IF( PRESENT( Gm_Option ) )THEN
+      !$OMP TARGET UPDATE FROM( Gm_Option )
+    END IF
+    IF( PRESENT( Error_Option ) )THEN
+      !$OMP TARGET UPDATE FROM( Error_Option )
+    END IF
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST &
+    !$ACC ( D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+    !$ACC   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+    !$ACC   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, Dnu_old, &
+    !$ACC   Inu_u_1_old, Inu_u_2_old, Inu_u_3_old, &
+    !$ACC   V_u_1_old, V_u_2_old, V_u_3_old, Ym_old, Opacity_Mask )
+    IF( CheckOpacity )THEN
+      !$ACC UPDATE HOST( Dnu_0, Chi_EmAb )
+    END IF
+    IF( CheckRates )THEN
+      !$ACC UPDATE HOST &
+      !$ACC ( R_NNS, R_NES, R_Pair, R_NuPair, R_Brem )
+    END IF
+    IF( PRESENT( Fm_Option ) )THEN
+      !$ACC UPDATE HOST( Fm_Option )
+    END IF
+    IF( PRESENT( Gm_Option ) )THEN
+      !$ACC UPDATE HOST( Gm_Option )
+    END IF
+    IF( PRESENT( Error_Option ) )THEN
+      !$ACC UPDATE HOST( Error_Option )
+    END IF
+#endif
+
+    Failed          = .FALSE.
+    FailurePoint    = 0
+    FailureEnergy   = 0
+    FailureSpecies  = 0
+    FailureQuantity = ''
+
+    PointLoop: DO iN_X = 1, nX_G
+
+      IF( .NOT. MASK(iN_X) ) CYCLE
+
+      IF( PRESENT( ForceFailure_Option ) )THEN
+        IF( ForceFailure_Option )THEN
+          Failed = .TRUE.
+          FailureQuantity = 'iteration limit reached'
+        END IF
+      END IF
+
+      IF( PRESENT( Error_Option ) )THEN
+        IF( Error_Option(iN_X) /= 0 )THEN
+          Failed = .TRUE.
+          FailureQuantity = 'matter-recovery error flag'
+        END IF
+      END IF
+
+      IF( .NOT. Failed )THEN
+        IF( .NOT. IsFiniteDebugValue(D(iN_X)) )THEN
+          Failed = .TRUE.; FailureQuantity = 'D'
+        ELSE IF( .NOT. IsFiniteDebugValue(T(iN_X)) )THEN
+          Failed = .TRUE.; FailureQuantity = 'T'
+        ELSE IF( .NOT. IsFiniteDebugValue(Ye(iN_X)) )THEN
+          Failed = .TRUE.; FailureQuantity = 'Ye'
+        ELSE IF( .NOT. IsFiniteDebugValue(Ym(iN_X)) )THEN
+          Failed = .TRUE.; FailureQuantity = 'Ym'
+        ELSE IF( .NOT. IsFiniteDebugValue(E(iN_X)) )THEN
+          Failed = .TRUE.; FailureQuantity = 'E'
+        ELSE IF( .NOT. IsFiniteDebugValue(V_u_1(iN_X)) )THEN
+          Failed = .TRUE.; FailureQuantity = 'V_u_1'
+        ELSE IF( .NOT. IsFiniteDebugValue(V_u_2(iN_X)) )THEN
+          Failed = .TRUE.; FailureQuantity = 'V_u_2'
+        ELSE IF( .NOT. IsFiniteDebugValue(V_u_3(iN_X)) )THEN
+          Failed = .TRUE.; FailureQuantity = 'V_u_3'
+        END IF
+      END IF
+
+      IF( .NOT. Failed )THEN
+        SpeciesLoop: DO iS = 1, nSpecies
+          DO iN_E = 1, nE_G
+            IF( .NOT. IsFiniteDebugValue(Dnu(iN_E,iS,iN_X)) )THEN
+              Failed = .TRUE.; FailureQuantity = 'Dnu'
+            ELSE IF( .NOT. IsFiniteDebugValue(Inu_u_1(iN_E,iS,iN_X)) )THEN
+              Failed = .TRUE.; FailureQuantity = 'Inu_u_1'
+            ELSE IF( .NOT. IsFiniteDebugValue(Inu_u_2(iN_E,iS,iN_X)) )THEN
+              Failed = .TRUE.; FailureQuantity = 'Inu_u_2'
+            ELSE IF( .NOT. IsFiniteDebugValue(Inu_u_3(iN_E,iS,iN_X)) )THEN
+              Failed = .TRUE.; FailureQuantity = 'Inu_u_3'
+            ELSE IF( CheckOpacity )THEN
+              IF( .NOT. IsFiniteDebugValue(Dnu_0(iN_E,iS,iN_X)) )THEN
+                Failed = .TRUE.; FailureQuantity = 'Dnu_0'
+              ELSE IF( .NOT. IsFiniteDebugValue(Chi_EmAb(iN_E,iS,iN_X)) )THEN
+                Failed = .TRUE.; FailureQuantity = 'Chi_EmAb'
+              ELSE IF( Chi_EmAb(iN_E,iS,iN_X) < Zero )THEN
+                Failed = .TRUE.; FailureQuantity = 'negative Chi_EmAb'
+              END IF
+            END IF
+            IF( .NOT. Failed .AND. CheckRates )THEN
+              IF( .NOT. IsFiniteDebugValue(R_NNS(iN_E,iS,iN_X)) )THEN
+                Failed = .TRUE.; FailureQuantity = 'R_NNS'
+              ELSE IF( .NOT. IsFiniteDebugValue(R_NES(iN_E,iS,iN_X)) )THEN
+                Failed = .TRUE.; FailureQuantity = 'R_NES'
+              ELSE IF( .NOT. IsFiniteDebugValue(R_Pair(iN_E,iS,iN_X)) )THEN
+                Failed = .TRUE.; FailureQuantity = 'R_Pair'
+              ELSE IF( .NOT. IsFiniteDebugValue(R_NuPair(iN_E,iS,iN_X)) )THEN
+                Failed = .TRUE.; FailureQuantity = 'R_NuPair'
+              ELSE IF( .NOT. IsFiniteDebugValue(R_Brem(iN_E,iS,iN_X)) )THEN
+                Failed = .TRUE.; FailureQuantity = 'R_Brem'
+              END IF
+            END IF
+            IF( Failed )THEN
+              FailureEnergy  = iN_E
+              FailureSpecies = iS
+              EXIT SpeciesLoop
+            END IF
+          END DO
+        END DO SpeciesLoop
+      END IF
+
+      IF( .NOT. Failed .AND. PRESENT(Fm_Option) )THEN
+        DO iV = 1, SIZE(Fm_Option,1)
+          IF( .NOT. IsFiniteDebugValue(Fm_Option(iV,iN_X)) )THEN
+            Failed = .TRUE.
+            FailureQuantity = 'fixed-point residual'
+            EXIT
+          END IF
+        END DO
+      END IF
+
+      IF( .NOT. Failed .AND. PRESENT(Gm_Option) )THEN
+        DO iV = 1, SIZE(Gm_Option,1)
+          IF( .NOT. IsFiniteDebugValue(Gm_Option(iV,iN_X)) )THEN
+            Failed = .TRUE.
+            FailureQuantity = 'fixed-point map'
+            EXIT
+          END IF
+        END DO
+      END IF
+
+      IF( Failed )THEN
+        FailurePoint = iN_X
+        EXIT PointLoop
+      END IF
+
+    END DO PointLoop
+
+    CALL MPI_COMM_RANK( MPI_COMM_WORLD, myid, ierr )
+    CandidateRank = HUGE(CandidateRank)
+    IF( Failed ) CandidateRank = myid
+    CALL MPI_ALLREDUCE &
+           ( CandidateRank, FailureRank, 1, MPI_INTEGER, MPI_MIN, &
+             MPI_COMM_WORLD, ierr )
+
+    IF( FailureRank == HUGE(FailureRank) ) RETURN
+
+    IF( myid == FailureRank )THEN
+
+      Mumu = Zero
+      IF(      IsFiniteDebugValue(D(FailurePoint)) &
+          .AND. IsFiniteDebugValue(T(FailurePoint)) &
+          .AND. IsFiniteDebugValue(Ye(FailurePoint)) &
+          .AND. IsFiniteDebugValue(Ym(FailurePoint)) &
+          .AND. D(FailurePoint) > Zero &
+          .AND. T(FailurePoint) > Zero ) &
+        CALL ComputeMuonChemicalPotential_TABLE &
+               ( D(FailurePoint), T(FailurePoint), &
+                 Ye(FailurePoint), Ym(FailurePoint), Mumu )
+
+      MuonLeptonCurrent = Zero
+      MuonLeptonOld     = Zero
+      ResidualMax       = Zero
+      MapMax            = Zero
+      RelativeResidualMax = Zero
+      IF( PRESENT(Fm_Option) ) &
+        ResidualMax = MAXVAL(ABS(Fm_Option(:,FailurePoint)))
+      IF( PRESENT(Gm_Option) ) &
+        MapMax = MAXVAL(ABS(Gm_Option(:,FailurePoint)))
+      IF( PRESENT(Fm_Option) )THEN
+        DO iS = 1, nSpecies
+          Fnorm_N  = Zero
+          Fnorm_G1 = Zero
+          Fnorm_G2 = Zero
+          Fnorm_G3 = Zero
+          DO iN_E = 1, nE_G
+            iOS = ( (iN_E-1) + (iS-1) * nE_G ) * nCR
+            Fnorm_N = Fnorm_N &
+              + W2_S(iN_E) * Fm_Option(iOS+iCR_N,FailurePoint)**2
+            Fnorm_G1 = Fnorm_G1 &
+              + W2_S(iN_E) * Fm_Option(iOS+iCR_G1,FailurePoint)**2
+            Fnorm_G2 = Fnorm_G2 &
+              + W2_S(iN_E) * Fm_Option(iOS+iCR_G2,FailurePoint)**2
+            Fnorm_G3 = Fnorm_G3 &
+              + W2_S(iN_E) * Fm_Option(iOS+iCR_G3,FailurePoint)**2
+          END DO
+          Fnorm = SQRT( MAX( Fnorm_N, Fnorm_G1, Fnorm_G2, Fnorm_G3 ) )
+          Dnorm = WNORM( Dnu(:,iS,FailurePoint), W2_S )
+          IF( Dnorm > Zero )THEN
+            SpeciesRelativeResidual = Fnorm / Dnorm
+          ELSE IF( Fnorm == Zero )THEN
+            SpeciesRelativeResidual = Zero
+          ELSE
+            SpeciesRelativeResidual = HUGE(One)
+          END IF
+          RelativeResidualMax &
+            = MAX( RelativeResidualMax, SpeciesRelativeResidual )
+        END DO
+      END IF
+      IF( nSpecies >= iNuM_Bar )THEN
+        DO iS = iNuM, iNuM_Bar
+          DO iN_E = 1, nE_G
+            vDotI = V_u_1(FailurePoint) * Gm_dd_11(FailurePoint) &
+                      * Inu_u_1(iN_E,iS,FailurePoint) &
+                    + V_u_2(FailurePoint) * Gm_dd_22(FailurePoint) &
+                      * Inu_u_2(iN_E,iS,FailurePoint) &
+                    + V_u_3(FailurePoint) * Gm_dd_33(FailurePoint) &
+                      * Inu_u_3(iN_E,iS,FailurePoint)
+            MuonLeptonCurrent = MuonLeptonCurrent &
+              + W2_S(iN_E) * LeptonNumber(iS) &
+                  * ( Dnu(iN_E,iS,FailurePoint) + vDotI )
+            vDotI = V_u_1_old(FailurePoint) * Gm_dd_11(FailurePoint) &
+                      * Inu_u_1_old(iN_E,iS,FailurePoint) &
+                    + V_u_2_old(FailurePoint) * Gm_dd_22(FailurePoint) &
+                      * Inu_u_2_old(iN_E,iS,FailurePoint) &
+                    + V_u_3_old(FailurePoint) * Gm_dd_33(FailurePoint) &
+                      * Inu_u_3_old(iN_E,iS,FailurePoint)
+            MuonLeptonOld = MuonLeptonOld &
+              + W2_S(iN_E) * LeptonNumber(iS) &
+                  * ( Dnu_old(iN_E,iS,FailurePoint) + vDotI )
+          END DO
+        END DO
+      END IF
+
+      WRITE(ERROR_UNIT,'(/,A)') 'Muon-coupling iteration diagnostic'
+      WRITE(ERROR_UNIT,'(A,A)')       '  failure stage             = ', TRIM(Stage)
+      WRITE(ERROR_UNIT,'(A,A)')       '  failure condition         = ', TRIM(FailureQuantity)
+      WRITE(ERROR_UNIT,'(A,I0)')      '  MPI rank                  = ', myid
+      WRITE(ERROR_UNIT,'(A,I0)')      '  spatial point             = ', FailurePoint
+      WRITE(ERROR_UNIT,'(A,2(I0,1X))')'  outer/inner iteration     = ', k_outer, k_inner
+      IF( FailureEnergy > 0 .AND. FailureSpecies > 0 ) &
+        WRITE(ERROR_UNIT,'(A,2(I0,1X))')'  energy/species index      = ', &
+          FailureEnergy, FailureSpecies
+      WRITE(ERROR_UNIT,'(A,ES26.16E3)') '  rho [g cm^-3]             = ', &
+        D(FailurePoint) / Unit_D
+      WRITE(ERROR_UNIT,'(A,ES26.16E3)') '  T [MeV]                   = ', &
+        T(FailurePoint) / Unit_T
+      WRITE(ERROR_UNIT,'(A,3ES26.16E3)')'  Ye, Ym, Ym_old            = ', &
+        Ye(FailurePoint), Ym(FailurePoint), Ym_old(FailurePoint)
+      WRITE(ERROR_UNIT,'(A,ES26.16E3)') '  Ym - Ym_old               = ', &
+        Ym(FailurePoint) - Ym_old(FailurePoint)
+      WRITE(ERROR_UNIT,'(A,ES26.16E3)') '  mu_mu [MeV]               = ', Mumu / MeV
+      WRITE(ERROR_UNIT,'(A,ES26.16E3)') '  mu_mu/T                   = ', &
+        Mumu / MAX(T(FailurePoint), TINY(One))
+      WRITE(ERROR_UNIT,'(A,2ES26.16E3)')'  mu-family L current/old   = ', &
+        MuonLeptonCurrent, MuonLeptonOld
+      WRITE(ERROR_UNIT,'(A,2ES26.16E3)')'  max |residual|, |map|    = ', &
+        ResidualMax, MapMax
+      WRITE(ERROR_UNIT,'(A,ES26.16E3)') '  maximum relative residual = ', &
+        RelativeResidualMax
+      WRITE(ERROR_UNIT,'(A,L1)')      '  muon charged current mask = ', &
+        Opacity_Mask(iOp_EmAb_Muon,FailurePoint)
+      FLUSH(ERROR_UNIT)
+
+      IF( TraceRadiationOnlySolve )THEN
+        WRITE(FileName,'(A,".failure.rank",I6.6,".dat")') &
+          TRIM(RadiationOnlyTraceFile), myid
+      ELSE
+        WRITE(FileName,'(A,I0,A)') &
+          'muon_coupling_failure_rank', myid, '.dat'
+      END IF
+      OPEN( NEWUNIT = iFile, FILE = TRIM(FileName), STATUS = 'REPLACE', &
+            ACTION = 'WRITE' )
+      WRITE(iFile,'(A,A)') '# stage: ', TRIM(Stage)
+      WRITE(iFile,'(A,A)') '# quantity: ', TRIM(FailureQuantity)
+      WRITE(iFile,'(A,3(I0,1X))') '# rank point outer_iter: ', &
+        myid, FailurePoint, k_outer
+      WRITE(iFile,'(A,I0)') '# inner_iter: ', k_inner
+      WRITE(iFile,'(A,6ES26.16E3)') '# rho T Ye Ym Ym_old mu_mu: ', &
+        D(FailurePoint) / Unit_D, T(FailurePoint) / Unit_T, &
+        Ye(FailurePoint), Ym(FailurePoint), Ym_old(FailurePoint), Mumu / MeV
+      WRITE(iFile,'(A,4ES26.16E3)') '# Lmu_current Lmu_old residual_max map_max: ', &
+        MuonLeptonCurrent, MuonLeptonOld, ResidualMax, MapMax
+      WRITE(iFile,'(A,ES26.16E3)') '# relative_residual_max: ', &
+        RelativeResidualMax
+      WRITE(iFile,'(A)') &
+        '# iE iS E_MeV Dnu I1 I2 I3 Dnu0 ChiEmAb dtChi EmAbNet ' // &
+        'RNNS RNES RPair RNuPair RBrem Fmap Gmap'
+      IF( nSpecies >= iNuM_Bar )THEN
+        DO iS = iNuM, iNuM_Bar
+          DO iN_E = 1, nE_G
+            Fm_N = Zero
+            Gm_N = Zero
+            Dnu0Value = Zero
+            ChiValue  = Zero
+            RNNSValue   = Zero
+            RNESValue   = Zero
+            RPairValue  = Zero
+            RNuPairValue = Zero
+            RBremValue  = Zero
+            iOS = ( (iN_E-1) + (iS-1) * nE_G ) * nCR + iCR_N
+            IF( PRESENT(Fm_Option) ) Fm_N = Fm_Option(iOS,FailurePoint)
+            IF( PRESENT(Gm_Option) ) Gm_N = Gm_Option(iOS,FailurePoint)
+            IF( CheckOpacity )THEN
+              Dnu0Value = Dnu_0(iN_E,iS,FailurePoint)
+              ChiValue  = Chi_EmAb(iN_E,iS,FailurePoint)
+            END IF
+            IF( CheckRates )THEN
+              RNNSValue    = R_NNS(iN_E,iS,FailurePoint)
+              RNESValue    = R_NES(iN_E,iS,FailurePoint)
+              RPairValue   = R_Pair(iN_E,iS,FailurePoint)
+              RNuPairValue = R_NuPair(iN_E,iS,FailurePoint)
+              RBremValue   = R_Brem(iN_E,iS,FailurePoint)
+            END IF
+            WRITE(iFile,'(2I6,16ES26.16E3)') &
+              iN_E, iS, E_N(iN_E) / MeV, &
+              Dnu(iN_E,iS,FailurePoint), &
+              Inu_u_1(iN_E,iS,FailurePoint), &
+              Inu_u_2(iN_E,iS,FailurePoint), &
+              Inu_u_3(iN_E,iS,FailurePoint), &
+              Dnu0Value, ChiValue, dt * ChiValue, &
+              ChiValue * ( Dnu0Value - Dnu(iN_E,iS,FailurePoint) ), &
+              RNNSValue, RNESValue, RPairValue, RNuPairValue, RBremValue, &
+              Fm_N, Gm_N
+          END DO
+        END DO
+      END IF
+
+      ! Re-enter the opacity stack only when this diagnostic was called
+      ! after a successful opacity construction.  In particular, an
+      ! inadmissible matter-recovery trial may contain T=0 or an
+      ! EOS-inadmissible composition and must not be queried again here.
+      IF( nSpecies >= iNuM_Bar .AND. CheckOpacity )THEN
+        IF( IsFiniteDebugValue(D(FailurePoint)) &
+            .AND. IsFiniteDebugValue(T(FailurePoint)) &
+            .AND. IsFiniteDebugValue(Ye(FailurePoint)) &
+            .AND. IsFiniteDebugValue(Ym(FailurePoint)) &
+            .AND. D(FailurePoint) > Zero &
+            .AND. T(FailurePoint) > Zero )THEN
+          IF( PRESENT( Error_Option ) )THEN
+            IF( Error_Option(FailurePoint) == 0 ) &
+              CALL WriteMuonChargedCurrentOpacityDiagnostic &
+                     ( iFile, E_N, D(FailurePoint), T(FailurePoint), &
+                       Ye(FailurePoint), Ym(FailurePoint), &
+                       Dnu_0(:,:,FailurePoint) )
+          ELSE
+            CALL WriteMuonChargedCurrentOpacityDiagnostic &
+                   ( iFile, E_N, D(FailurePoint), T(FailurePoint), &
+                     Ye(FailurePoint), Ym(FailurePoint), &
+                     Dnu_0(:,:,FailurePoint) )
+          END IF
+        END IF
+      END IF
+      CLOSE(iFile)
+
+    END IF
+
+    CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
+
+  END SUBROUTINE CheckMuonCouplingIteration_OrderV
+
+
+  LOGICAL FUNCTION IsFiniteDebugValue( X )
+
+    REAL(DP), INTENT(in) :: X
+
+    IsFiniteDebugValue = X == X .AND. ABS(X) <= HUGE(X)
+
+  END FUNCTION IsFiniteDebugValue
+#endif
 
 
   SUBROUTINE CheckError_Inner &
