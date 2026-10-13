@@ -42,7 +42,12 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     Timer_OpacityRate_NES, &
     Timer_OpacityRate_Pair, &
     Timer_OpacityRate_NuPair, &
-    Timer_OpacityRate_Brem
+    Timer_OpacityRate_Brem, &
+    Timer_Opacity_Muon, &
+    Timer_OpacityRate_NLS, &
+    Timer_OpacityRate_LFEC, &
+    Timer_OpacityRate_IMD, &
+    Timer_Opacity_IND
   USE ArrayUtilitiesModule, ONLY: &
     CreatePackIndex, &
     ArrayPack, &
@@ -69,7 +74,9 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     ComputePressure_TABLE, &
     Min_D, Min_T, Min_Y
   USE OpacityModule_TABLE, ONLY: &
-    QueryOpacity, QueryOpacity_EmAb_Muon
+    QueryOpacity, QueryOpacity_EmAb_Muon, & 
+    nProcess_MuonOpac, iProcessList_MuonOpac, &
+    Compute_IND
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     ComputeEquilibriumDistributions, &
     LimitEquilibriumDistributions_DG, &
@@ -85,7 +92,12 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     ComputeNeutrinoOpacityRates_Brem, &
     ComputeNeutrinoOpacityRates_LinearCorrections_NES, &
     ComputeNeutrinoOpacityRates_LinearCorrections_Pair, &
-    ComputeNeutrinoOpacityRates_LinearCorrections_Brem
+    ComputeNeutrinoOpacityRates_LinearCorrections_Brem, &
+    ComputeNeutrinoOpacities_Muon, &
+    ComputeNeutrinoOpacityRates_MuonNLS, &
+    ComputeNeutrinoOpacityRates_MuonLFEC, &
+    ComputeNeutrinoOpacityRates_MuonIMD, &
+    ComputeNeutrinoOpacities_IND
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeEddingtonTensorComponents_dd
   USE TwoMoment_ClosureModule, ONLY: &
@@ -277,6 +289,18 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: Nu_J_I_0_T, Nu_J_II_0_T
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: S_Sigma_T
 
+  ! ------ MUONS ------- !
+  REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE, TARGET :: Phi_0_MuonOpac 
+  REAL(DP), DIMENSION(:,:,:,:), ALLOCATABLE, TARGET :: Phi_0_MuonOpac_T 
+  REAL(DP), DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: Chi_IND, Eta_IND
+  REAL(DP), DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: Chi_IND_T, Eta_IND_T
+  REAL(DP), DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: Chi_NLS, Eta_NLS
+  REAL(DP), DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: Chi_NLS_T, Eta_NLS_T
+  REAL(DP), DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: Chi_LFEC, Eta_LFEC
+  REAL(DP), DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: Chi_LFEC_T, Eta_LFEC_T
+  REAL(DP), DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: Chi_IMD, Eta_IMD
+  REAL(DP), DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: Chi_IMD_T, Eta_IMD_T
+
 CONTAINS
 
 
@@ -284,7 +308,7 @@ CONTAINS
 
     INTEGER, INTENT(in) :: iZ_B(4), iZ_E(4)
 
-    INTEGER :: iE1, iE2, iN_E, iS, iN_X, iC
+    INTEGER :: iE1, iE2, iN_E, iS, iN_X, iC, iProcess
 
     REAL(DP) :: TMP(1)
     REAL(DP), ALLOCATABLE :: AMAT(:,:), BVEC(:)
@@ -484,6 +508,26 @@ CONTAINS
     ALLOCATE( Nu_J_II_0_T(nE_G,nE_G,nX_G) )
     ALLOCATE(   S_Sigma_T(nE_G,nE_G,nX_G) )
 
+    ! ------ MUONS ------- !
+    ALLOCATE(        Phi_0_MuonOpac(nE_G,nE_G,nX_G,nProcess_MuonOpac) )
+    ALLOCATE(        Phi_0_MuonOpac_T(nE_G,nE_G,nX_G,nProcess_MuonOpac) )
+    ALLOCATE(        Chi_IND(nE_G,nSpecies,nX_G) )
+    ALLOCATE(        Eta_IND(nE_G,nSpecies,nX_G) )
+    ALLOCATE(        Chi_IND_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(        Eta_IND_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(        Chi_NLS(nE_G,nSpecies,nX_G) )
+    ALLOCATE(        Eta_NLS(nE_G,nSpecies,nX_G) )
+    ALLOCATE(        Chi_NLS_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(        Eta_NLS_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(        Chi_LFEC(nE_G,nSpecies,nX_G) )
+    ALLOCATE(        Eta_LFEC(nE_G,nSpecies,nX_G) )
+    ALLOCATE(        Chi_LFEC_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(        Eta_LFEC_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(        Chi_IMD(nE_G,nSpecies,nX_G) )
+    ALLOCATE(        Eta_IMD(nE_G,nSpecies,nX_G) )
+    ALLOCATE(        Chi_IMD_T(nE_G,nSpecies,nX_G) )
+    ALLOCATE(        Eta_IMD_T(nE_G,nSpecies,nX_G) )
+
     ALLOCATE( INFO(nX_G) )
 
 #if   defined(THORNADO_OMP_OL)
@@ -643,6 +687,41 @@ CONTAINS
         S_Sigma  (iE1,iE2,iN_X) = Zero
         S_Sigma_T(iE1,iE2,iN_X) = Zero
 
+      END DO
+      END DO
+      END DO
+
+      ! ------ MUONS ------- !
+      DO iN_X = 1, nX_G
+      DO iE2  = 1, nE_G
+      DO iE1  = 1, nE_G
+      DO iProcess = 1, nProcess_MuonOpac     
+        Phi_0_MuonOpac   (iE1,iE2,iN_X,iProcess) = Zero
+        Phi_0_MuonOpac_T (iE1,iE2,iN_X,iProcess) = Zero       
+      END DO
+      END DO
+      END DO
+      END DO
+
+      DO iN_X = 1, nX_G
+      DO iS   = 1, nSpecies
+      DO iN_E = 1, nE_G
+        Chi_IND   (iN_E,iS,iN_X) = Zero
+        Eta_IND   (iN_E,iS,iN_X) = Zero
+        Chi_IND_T (iN_E,iS,iN_X) = Zero
+        Eta_IND_T (iN_E,iS,iN_X) = Zero
+        Chi_NLS   (iN_E,iS,iN_X) = Zero
+        Eta_NLS   (iN_E,iS,iN_X) = Zero
+        Chi_NLS_T (iN_E,iS,iN_X) = Zero
+        Eta_NLS_T (iN_E,iS,iN_X) = Zero
+        Chi_LFEC  (iN_E,iS,iN_X) = Zero
+        Eta_LFEC  (iN_E,iS,iN_X) = Zero
+        Chi_LFEC_T(iN_E,iS,iN_X) = Zero
+        Eta_LFEC_T(iN_E,iS,iN_X) = Zero
+        Chi_IMD   (iN_E,iS,iN_X) = Zero
+        Eta_IMD   (iN_E,iS,iN_X) = Zero
+        Chi_IMD_T (iN_E,iS,iN_X) = Zero
+        Eta_IMD_T (iN_E,iS,iN_X) = Zero
       END DO
       END DO
       END DO
@@ -1125,6 +1204,18 @@ CONTAINS
     DEALLOCATE( H_I_0_T, H_II_0_T, J_I_0_T, J_II_0_T )
     DEALLOCATE( H_I_1_T, H_II_1_T, J_I_1_T, J_II_1_T, S_Sigma_T )
     DEALLOCATE( Nu_J_I_0_T, Nu_J_II_0_T )
+
+    ! ------ MUONS ------- !
+    DEALLOCATE( Phi_0_MuonOpac )
+    DEALLOCATE( Phi_0_MuonOpac_T )
+    DEALLOCATE( Chi_IND, Eta_IND )
+    DEALLOCATE( Chi_IND_T, Eta_IND_T )
+    DEALLOCATE( Chi_NLS, Eta_NLS )
+    DEALLOCATE( Chi_NLS_T, Eta_NLS_T )
+    DEALLOCATE( Chi_LFEC, Eta_LFEC )
+    DEALLOCATE( Chi_LFEC_T, Eta_LFEC_T )
+    DEALLOCATE( Chi_IMD, Eta_IMD )
+    DEALLOCATE( Chi_IMD_T, Eta_IMD_T )
 
   END SUBROUTINE FinalizeNeutrinoMatterSolver
 
@@ -1648,6 +1739,10 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), POINTER :: Nu_J_I_0_P, Nu_J_II_0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: S_Sigma_P
 
+    ! ------ MUONS ------- !
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_IND_P
+    REAL(DP), DIMENSION(:,:,:,:), POINTER :: Phi_0_MuonOpac_P
+
     IF( PRESENT( nX_P ) )THEN
       nX = nX_P
     ELSE
@@ -1732,6 +1827,10 @@ CONTAINS
 
       S_Sigma_P   => S_Sigma_T  (:,:,1:nX)
 
+      ! ------ MUONS ------- !
+      Chi_IND_P        => Chi_IND_T (:,:,1:nX)
+      Phi_0_MuonOpac_P => Phi_0_MuonOpac_T(:,:,1:nX,:)
+
     ELSE
 
       D_P  => D (:)
@@ -1779,6 +1878,10 @@ CONTAINS
       Nu_J_II_0_P => Nu_J_II_0(:,:,:)
 
       S_Sigma_P   => S_Sigma  (:,:,:)
+
+      ! ------ MUONS ------- !
+      Chi_IND_P        => Chi_IND (:,:,:)
+      Phi_0_MuonOpac_P => Phi_0_MuonOpac(:,:,:,:)
 
     END IF
 
@@ -1862,6 +1965,29 @@ CONTAINS
 
     END IF
 
+    ! ------ MUONS ------- !
+    IF (nProcess_MuonOpac .gt. 0) THEN
+
+      CALL TimersStart( Timer_Opacity_Muon )
+
+      CALL ComputeNeutrinoOpacities_Muon &
+             ( 1, nE_G, 1, nX, E_N, D_P, T_P, Ye_P, Ym_P, Phi_0_MuonOpac_P )
+
+      CALL TimersStop( Timer_Opacity_Muon )
+
+    END IF
+
+    IF (Compute_IND) THEN
+
+      CALL TimersStart( Timer_Opacity_IND )
+
+      CALL ComputeNeutrinoOpacities_IND &
+        ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Ye_P, Ym_P, Chi_IND )
+
+      CALL TimersStop( Timer_Opacity_IND )
+
+    END IF
+
     IF( Include_Pair )THEN
 
       ! --- Pair Kernels ---
@@ -1917,6 +2043,8 @@ CONTAINS
       CALL ArrayUnpack &
              ( nX, MASK, PackIndex, Chi_EmAb_P, Chi_EmAb )
       CALL ArrayUnpack &
+             ( nX, MASK, PackIndex, Chi_IND_P, Chi_IND )
+      CALL ArrayUnpack &
              ( nX, MASK, PackIndex, Sigma_Iso_P, Sigma_Iso )
 
       IF ( nX < nX0 ) THEN
@@ -1941,6 +2069,12 @@ CONTAINS
           CALL ArrayUnpack &
                  ( nX, MASK, PackIndex, J_I_1_P, J_II_1_P, J_I_1, J_II_1 )
 
+        END IF
+
+        ! ------ MUONS ------- ! 
+        IF (nProcess_MuonOpac .gt. 0) THEN
+           CALL ArrayUnpack &
+                ( nX, MASK, PackIndex, Phi_0_MuonOpac_P, Phi_0_MuonOpac )
         END IF
 
       END IF
@@ -1985,6 +2119,12 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), POINTER :: J_I_1_P, J_II_1_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: Nu_J_I_0_P, Nu_J_II_0_P
     REAL(DP), DIMENSION(:,:,:), POINTER :: S_Sigma_P
+
+    ! ------ MUONS------- !
+    REAL(DP), DIMENSION(:,:,:,:), POINTER :: Phi_0_MuonOpac_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_NLS_P, Eta_NLS_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_LFEC_P, Eta_LFEC_P
+    REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_IMD_P, Eta_IMD_P
 
     INTEGER :: nX, nX0
 
@@ -2061,6 +2201,15 @@ CONTAINS
 
       S_Sigma_P        => S_Sigma_T       (:,:,1:nX)
 
+      ! ------ MUONS ------- !
+      Phi_0_MuonOpac_P => Phi_0_MuonOpac_T(:,:,1:nX,:)
+      Chi_NLS_P        => Chi_NLS_T       (:,:,1:nX)
+      Eta_NLS_P        => Eta_NLS_T       (:,:,1:nX)
+      Chi_LFEC_P       => Chi_LFEC_T      (:,:,1:nX)
+      Eta_LFEC_P       => Eta_LFEC_T      (:,:,1:nX)
+      Chi_IMD_P        => Chi_IMD_T       (:,:,1:nX)
+      Eta_IMD_P        => Eta_IMD_T       (:,:,1:nX)
+
       IF ( nX < nX0 .OR. FreezeOpacities ) THEN
 
         CALL ArrayPack &
@@ -2083,6 +2232,12 @@ CONTAINS
           CALL ArrayPack &
                  ( nX, UnpackIndex, J_I_1, J_II_1, J_I_1_P, J_II_1_P )
 
+        END IF
+
+        ! ------ MUONS ------- !
+        IF (nProcess_MuonOpac .gt. 0) THEN 
+         CALL ArrayPack &
+                ( nX, UnpackIndex, Phi_0_MuonOpac, Phi_0_MuonOpac_P ) 
         END IF
 
       END IF
@@ -2140,6 +2295,15 @@ CONTAINS
 
       S_Sigma_P        => S_Sigma       (:,:,:)
 
+      ! ------ MUONS ------- !
+      Chi_NLS_P        => Chi_NLS       (:,:,:)
+      Eta_NLS_P        => Eta_NLS       (:,:,:)
+      Chi_LFEC_P       => Chi_LFEC      (:,:,:)
+      Eta_LFEC_P       => Eta_LFEC      (:,:,:)
+      Chi_IMD_P        => Chi_IMD       (:,:,:)
+      Eta_IMD_P        => Eta_IMD       (:,:,:)
+      Phi_0_MuonOpac_P => Phi_0_MuonOpac(:,:,:,:)
+
     END IF
 
     ! --- NES Emissivities and Opacities ---
@@ -2163,6 +2327,35 @@ CONTAINS
     END IF
 
     CALL TimersStop( Timer_OpacityRate_NES )
+
+    ! ------ MUONS ------- !
+    IF (nProcess_MuonOpac .gt. 0) THEN
+
+      CALL TimersStart( Timer_OpacityRate_NLS )
+
+      CALL ComputeNeutrinoOpacityRates_MuonNLS &
+            ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, &
+              Phi_0_MuonOpac_P, Eta_NLS_P, Chi_NLS_P )
+      
+      CALL TimersStop( Timer_OpacityRate_NLS )
+
+      CALL TimersStart( Timer_OpacityRate_LFEC )
+
+      CALL ComputeNeutrinoOpacityRates_MuonLFEC &
+            ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, &
+              Phi_0_MuonOpac_P, Eta_LFEC_P, Chi_LFEC_P )
+
+      CALL TimersStop( Timer_OpacityRate_LFEC )
+
+      CALL TimersStart( Timer_OpacityRate_IMD )
+      
+      CALL ComputeNeutrinoOpacityRates_MuonIMD &
+            ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, &
+              Phi_0_MuonOpac_P, Eta_IMD_P, Chi_IMD_P )
+
+      CALL TimersStop( Timer_OpacityRate_IMD )
+
+    END IF
 
     ! --- Pair Emissivities and Opacities ---
 
@@ -2191,7 +2384,7 @@ CONTAINS
     CALL TimersStart( Timer_OpacityRate_NuPair )
 
     CALL ComputeNeutrinoOpacityRates_NuPair &
-           ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, &
+           ( 1, nE_G, 1, nSpecies, 1, nX, D, W2_N, Dnu_P, Dnu_0_P, &
              Nu_J_I_0_P, Nu_J_II_0_P, Eta_NuPair_P, Chi_NuPair_P )
 
     CALL TimersStop( Timer_OpacityRate_NuPair )
@@ -2237,6 +2430,19 @@ CONTAINS
       CALL ArrayUnpack &
              ( nX, MASK, PackIndex, &
                Chi_Brem_P, Eta_Brem_P, Chi_Brem, Eta_Brem )
+      
+      ! ------ MUONS ------- !
+      IF (nProcess_MuonOpac .gt. 0) THEN
+        CALL ArrayUnpack &
+             ( nX, MASK, PackIndex, &
+               Chi_NLS_P, Eta_NLS_P, Chi_NLS, Eta_NLS )
+        CALL ArrayUnpack &
+             ( nX, MASK, PackIndex, &
+               Chi_LFEC_P, Eta_LFEC_P, Chi_LFEC, Eta_LFEC )
+        CALL ArrayUnpack &
+             ( nX, MASK, PackIndex, &
+               Chi_IMD_P, Eta_IMD_P, Chi_IMD, Eta_IMD )
+      END IF
 
       IF( Include_LinCorr )THEN
 
@@ -2648,17 +2854,17 @@ CONTAINS
       END DO
       END DO
 
-      IF ( ABS( Ym(iN_X) ) <= 1d-100) THEN
-         Ym_hat(iN_X) = Zero
-         S_Ym (iN_X) = Zero
-      ELSE
-         Ym_hat(iN_X)  = MAX( Ym_old(iN_X), SUM_Ym * AtomicMassUnit / D(iN_X), 1d-10 )
-         IF ( QueryOpacity_EmAb_Muon( D(iN_X) / Unit_D ) ) THEN
-            S_Ym(iN_X)    = One / ( D(iN_X) * Ym_hat(iN_X) / AtomicMassUnit )
-         ELSE
-            S_Ym (iN_X) = Zero
-         END IF
-         U_Ym   (iN_X) = Ym_old(iN_X) / Ym_hat(iN_X)
+      IF ( ABS( Ym(iN_X) ) <= 1d-100) THEN 
+        Ym_hat(iN_X) = Zero
+        S_Ym (iN_X) = Zero
+      ELSE 
+        Ym_hat(iN_X)  = MAX( Ym_old(iN_X), SUM_Ym * AtomicMassUnit / D(iN_X), 1d-10 )
+        IF ( QueryOpacity_EmAb_Muon( D(iN_X) / Unit_D ) ) THEN
+          S_Ym(iN_X)    = One / ( D(iN_X) * Ym_hat(iN_X) / AtomicMassUnit )
+        ELSE
+          S_Ym (iN_X) = Zero
+        END IF
+        U_Ym   (iN_X) = Ym_old(iN_X) / Ym_hat(iN_X)
       END IF
 
       ! --- Include Old Matter State in Constant (C) Terms ---
@@ -3746,18 +3952,26 @@ CONTAINS
         ! --- Emissivity ---
 
         Eta_T =   Chi_EmAb  (iN_E,iS,iN_X) * Dnu_0(iN_E,iS,iN_X) &
+                + Chi_IND   (iN_E,iS,iN_X) * Dnu_0(iN_E,iS,iN_X) &
                 + Eta_NES   (iN_E,iS,iN_X) &
                 + Eta_Pair  (iN_E,iS,iN_X) &
                 + Eta_NuPair(iN_E,iS,iN_X) &
-                + Eta_Brem  (iN_E,iS,iN_X)
+                + Eta_Brem  (iN_E,iS,iN_X) &
+                + Eta_NLS   (iN_E,iS,iN_X) & 
+                + Eta_LFEC  (iN_E,iS,iN_X) &
+                + Eta_IMD   (iN_E,iS,iN_X)
 
         ! --- Number Opacity ---
 
         Chi_T =   Chi_EmAb  (iN_E,iS,iN_X) &
+                + Chi_IND   (iN_E,iS,iN_X) &
                 + Chi_NES   (iN_E,iS,iN_X) &
                 + Chi_Pair  (iN_E,iS,iN_X) &
                 + Chi_NuPair(iN_E,iS,iN_X) &
-                + Chi_Brem  (iN_E,iS,iN_X)
+                + Chi_Brem  (iN_E,iS,iN_X) &
+                + Chi_NLS   (iN_E,iS,iN_X) & 
+                + Chi_LFEC  (iN_E,iS,iN_X) &
+                + Chi_IMD   (iN_E,iS,iN_X)
 
         ! --- Number Flux Opacity ---
 
@@ -5203,6 +5417,7 @@ CONTAINS
     V20_P  = V_u_2_old(iN_X) / Unit_V
     V30_P  = V_u_3_old(iN_X) / Unit_V
 
+    !if (ABS(1.0-D0_P/2.271395171729284E+12) .lt. 1.d-5) THEN
     WRITE(*,*)                      '[SolveNeutrinoMatterCoupling_FP_Nested_AA] Convergence Status'
     WRITE(*,'(1x,4a8,5a23)')        'iQ', 'iN_X', 'k_outer', 'k_inner', 'Q_old', 'Q', 'U', 'F(iQ)', 'G(iQ)'
     WRITE(*,'(1x,a8,3i8,5es23.15)') 'iYe', iN_X, k_outer, k_inner, Ye0_P, Ye_P, U_Ye   (iN_X), Fm_outer(iYe,iN_X), G_Ye   (iN_X)
@@ -5211,6 +5426,7 @@ CONTAINS
     WRITE(*,'(1x,a8,3i8,5es23.15)') 'iV1', iN_X, k_outer, k_inner, V10_P, V1_P, U_V_d_1(iN_X), Fm_outer(iV1,iN_X), G_V_d_1(iN_X)
     WRITE(*,'(1x,a8,3i8,5es23.15)') 'iV2', iN_X, k_outer, k_inner, V20_P, V2_P, U_V_d_2(iN_X), Fm_outer(iV2,iN_X), G_V_d_2(iN_X)
     WRITE(*,'(1x,a8,3i8,5es23.15)') 'iV3', iN_X, k_outer, k_inner, V30_P, V3_P, U_V_d_3(iN_X), Fm_outer(iV3,iN_X), G_V_d_3(iN_X)
+    !end if
 
   END SUBROUTINE PrintStatus_FP
 

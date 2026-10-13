@@ -156,6 +156,9 @@ contains
       Op_MinD_Option, Op_MaxD_Option, &
       EmAb_Muon_MinD_Option, EmAb_Muon_MaxD_Option, &
       EmAb_Muon_Method_Option, nE_Muon_2D_Option, &
+      Compute_NES_Option, Compute_NMS_Option, &
+      Compute_LFE_Option, Compute_LFC_Option, &
+      Compute_IMD_Option, Compute_IND_Option, &
       M_outer_Option, M_inner_Option, MaxIter_outer_Option, &
       MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
       Include_NES_Option, Include_Pair_Option, &
@@ -220,6 +223,9 @@ contains
     real(dp),         intent(in), optional :: Op_MinD_Option, Op_MaxD_Option
     real(dp),         intent(in), optional :: EmAb_Muon_MinD_Option, EmAb_Muon_MaxD_Option
     integer,          intent(in), optional :: EmAb_Muon_Method_Option, nE_Muon_2D_Option
+    logical,          intent(in), optional :: Compute_NES_Option, Compute_NMS_Option
+    logical,          intent(in), optional :: Compute_LFE_Option, Compute_LFC_Option
+    logical,          intent(in), optional :: Compute_IMD_Option, Compute_IND_Option 
     integer,          intent(in), optional :: M_outer_Option
     integer,          intent(in), optional :: M_inner_Option
     integer,          intent(in), optional :: MaxIter_outer_Option
@@ -547,6 +553,18 @@ contains
                = NES_MinD_Option, &
              NES_MaxD_Option &
                = NES_MaxD_Option, &
+             Compute_NES_Option &
+               = Compute_NES_Option, &
+             Compute_NMS_Option &
+               = Compute_NMS_Option, & 
+             Compute_LFE_Option &
+               = Compute_LFE_Option, &
+             Compute_LFC_Option &
+               = Compute_LFC_Option, &
+             Compute_IMD_Option &
+               = Compute_IMD_Option, &
+             Compute_IND_Option &
+               = Compute_IND_Option, &
              Pair_MinD_Option &
                = Pair_MinD_Option, &
              Pair_MaxD_Option &

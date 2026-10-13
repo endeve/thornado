@@ -52,6 +52,11 @@ MODULE TwoMoment_TimersModule
   REAL(DP), PUBLIC :: Timer_OpacityRate_Pair
   REAL(DP), PUBLIC :: Timer_OpacityRate_NuPair
   REAL(DP), PUBLIC :: Timer_OpacityRate_Brem
+  REAL(DP), PUBLIC :: Timer_Opacity_Muon
+  REAL(DP), PUBLIC :: Timer_Opacity_IND
+  REAL(DP), PUBLIC :: Timer_OpacityRate_NLS
+  REAL(DP), PUBLIC :: Timer_OpacityRate_LFEC
+  REAL(DP), PUBLIC :: Timer_OpacityRate_IMD
   REAL(DP), PUBLIC :: Timer_TCI
   REAL(DP), PUBLIC :: Timer_TCI_Permute
   REAL(DP), PUBLIC :: Timer_TCI_LinearAlgebra
@@ -129,6 +134,12 @@ CONTAINS
     Timer_OpacityRate_NES                = Zero
     Timer_OpacityRate_Pair               = Zero
     Timer_OpacityRate_Brem               = Zero
+
+    Timer_Opacity_Muon                   = Zero
+    Timer_Opacity_IND                    = Zero
+    Timer_OpacityRate_NLS                = Zero
+    Timer_OpacityRate_LFEC               = Zero
+    Timer_OpacityRate_IMD                = Zero
 
     Timer_TCI                            = Zero
     Timer_TCI_Permute                    = Zero
@@ -251,6 +262,16 @@ CONTAINS
       '    Timer_OpacityRate_Pair               :', Timer_OpacityRate_Pair              , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_OpacityRate_Brem               :', Timer_OpacityRate_Brem              , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Opacity_Muon                   :', Timer_Opacity_Muon                  , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Opacity_IND                    :', Timer_Opacity_IND                   , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_OpacityRate_NLS                :', Timer_OpacityRate_NLS               , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_OpacityRate_LFEC               :', Timer_OpacityRate_LFEC              , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_OpacityRate_IMD                :', Timer_OpacityRate_IMD              , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_TCI                              :', Timer_TCI                           , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &

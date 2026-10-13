@@ -78,7 +78,8 @@ MODULE NeutrinoOpacitiesComputationModule
     QueryOpacity_Pair, &
     QueryOpacity_Brem, &
     QueryOpacity_NuPair, &
-    EmAb_Muon_Method, nE_Muon_2D
+    EmAb_Muon_Method, nE_Muon_2D, &
+    nProcess_MuonOpac, iProcessList_MuonOpac
   USE RadiationFieldsModule, ONLY: &
     iNuE, iNuE_Bar, iNuM, iNuM_Bar, iNuT, iNuT_Bar, &
     LeptonNumber, iNu, iNu_Bar
@@ -118,6 +119,8 @@ MODULE NeutrinoOpacitiesComputationModule
   USE wlSemiLeptonicOpacityModule4D, ONLY: &
     Opacity_CC_4D
 #endif
+  USE wlGeneralLeptonScatteringModuleThornadoInterface, ONLY: &
+    CalculateAllPhout
   ! ----------------------------------------------
 
 #endif
@@ -148,6 +151,12 @@ MODULE NeutrinoOpacitiesComputationModule
   PUBLIC :: FermiDirac
   PUBLIC :: dFermiDiracdT
   PUBLIC :: dFermiDiracdY
+
+  PUBLIC :: ComputeNeutrinoOpacities_Muon
+  PUBLIC :: ComputeNeutrinoOpacities_IND
+  PUBLIC :: ComputeNeutrinoOpacityRates_MuonNLS
+  PUBLIC :: ComputeNeutrinoOpacityRates_MuonLFEC
+  PUBLIC :: ComputeNeutrinoOpacityRates_MuonIMD
 
   REAL(DP), PARAMETER :: Log1d100 = LOG( 1.0d100 )
   REAL(DP), PARAMETER :: UnitD    = Gram / Centimeter**3
@@ -1665,6 +1674,131 @@ CONTAINS
 
   END SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons_2D
 
+  SUBROUTINE ComputeNeutrinoOpacities_IND &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, opIND )
+
+    ! — Inverse Neutron Decay (Multiple D,T,Y) ---
+
+    INTEGER,  INTENT(in)    :: iE_B, iE_E
+    INTEGER,  INTENT(in)    :: iS_B, iS_E
+    INTEGER,  INTENT(in)    :: iX_B, iX_E
+    REAL(DP), INTENT(in)    :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)    :: D(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: T(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Ye(iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Ym(iX_B:iX_E)
+    REAL(DP), INTENT(inout) :: opIND(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+
+    REAL(DP) :: E_P, D_P, T_P, Ye_P, Ym_P, Mue_P, Mun_P, Mup_p
+    INTEGER  :: iE, iS, iX
+
+    REAL(DP), ALLOCATABLE :: Mue(:)
+    REAL(DP), ALLOCATABLE :: Mun(:), Mn_eff(:), Un(:)
+    REAL(DP), ALLOCATABLE :: Mup(:), Mp_eff(:), Up(:)
+
+#ifndef EOSMODE_COMPOSE
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO iX = iX_B, iX_E
+    DO iS = iS_B, iS_E
+    DO iE = iE_B, iE_E
+      opIND(iE,iS,iX) = Zero
+    END DO
+    END DO
+    END DO
+    RETURN
+#endif
+
+    ALLOCATE( Mue   (iX_B:iX_E) )
+    ALLOCATE( Mun   (iX_B:iX_E) )
+    ALLOCATE( Mn_eff(iX_B:iX_E) )
+    ALLOCATE( Un    (iX_B:iX_E) )
+    ALLOCATE( Mup   (iX_B:iX_E) )
+    ALLOCATE( Mp_eff(iX_B:iX_E) )
+    ALLOCATE( Up    (iX_B:iX_E) )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mue )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA  &
+    !$ACC CREATE( Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mue )
+#endif
+
+    CALL ComputeElectronChemicalPotential_TABLE( D, T, Ye, Ym, Mue )
+    CALL ComputeNeutronChemicalPotential_TABLE ( D, T, Ye, Ym, Mun )
+    CALL ComputeNeutronEffectiveMass_TABLE     ( D, T, Ye, Ym, Mn_eff )
+    CALL ComputeNeutronSelfEnergy_TABLE        ( D, T, Ye, Ym, Un )
+    CALL ComputeProtonChemicalPotential_TABLE  ( D, T, Ye, Ym, Mup )
+    CALL ComputeProtonEffectiveMass_TABLE      ( D, T, Ye, Ym, Mp_eff )
+    CALL ComputeProtonSelfEnergy_TABLE         ( D, T, Ye, Ym, Up )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( Mun_P, Mup_P, Mue_P ) &
+    !$OMP PRIVATE( E_P, D_P, T_P, Ym_P )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( Mun_P, Mup_P, Meu_P ) &
+    !$ACC PRIVATE( E_P, D_P, T_P, Ym_P )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( Mun_P, Mup_P, Mue_P ) &
+    !$OMP PRIVATE( E_P, D_P, T_P, Ym_P )
+#endif
+    DO iX = iX_B, iX_E
+    DO iE = iE_B, iE_E
+
+      IF ( QueryOpacity_EmAb_Muon( D(iX) / UnitD ) ) THEN
+
+        E_P  = E(iE)  / UnitE
+        D_P  = D(iX)  / UnitD
+        T_P  = T(iX)  / UnitT * kmev
+        Ym_P = Ym(iX) / UnitY
+
+        Mun_P  = Mun (iX) / UnitMn
+        Mup_P  = Mup (iX) / UnitMp
+        Mue_P  = Mue(iX) / UnitMe
+
+        CALL Opacity_CC_2D &
+            ( corr_num, 3, E_P, opIND(iE,iNuE_Bar,iX), &
+              T_P, Mue_P, Mun_P, Mup_P,  &
+              me, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), nE_Muon_2D )
+
+        opIND(iE,iNuE_Bar,iX) = opIND(iE,iNuE_Bar,iX) * UnitEC
+
+      ELSE
+
+        opIND(iE,iNuE_Bar,iX) = Zero
+
+      END IF
+
+    END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mue )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mue )
+#endif
+
+    DEALLOCATE( Mue    )
+    DEALLOCATE( Mun    )
+    DEALLOCATE( Mn_eff )
+    DEALLOCATE( Un     )
+    DEALLOCATE( Mup    )
+    DEALLOCATE( Mp_eff )
+    DEALLOCATE( Up     )
+
+  END SUBROUTINE ComputeNeutrinoOpacities_IND  
+
 
   SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons_4D &
     ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, &
@@ -2353,6 +2487,356 @@ CONTAINS
 
   END SUBROUTINE ComputeNeutrinoOpacityRates_LinearCorrections_NES
 
+  SUBROUTINE ComputeNeutrinoOpacities_Muon &
+    ( iE_B, iE_E, iX_B, iX_E, E, D, T, Ye, Ym, Phi_0_MuonOpac )
+
+    ! — Calculate PhOut for NES and NMS  ---
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E
+    INTEGER,  INTENT(in)  :: iX_B, iX_E
+    REAL(DP), INTENT(in)  :: E(iE_B:iE_E)
+    REAL(DP), INTENT(in)  :: D(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: T(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ye(iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: Ym(iX_B:iX_E)
+    REAL(DP), INTENT(out) :: Phi_0_MuonOpac(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E,1:nProcess_MuonOpac)
+
+    REAL(DP), ALLOCATABLE :: Phout(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: Mue(:), Mumu(:)
+    REAL(DP) :: Mue_P, Mumu_P
+    
+    REAL(DP) :: E1_P, E3_P, D_P, T_P, Ye_P, Ym_P
+
+    INTEGER  :: iE1, iE3, iX, iP
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    ALLOCATE( Mue(iX_B:iX_E), Mumu(iX_B:iX_E) )
+    ALLOCATE( Phout(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E,nProcess_MuonOpac, 1))
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( alloc: Mue, Mumu, Phout, Phi_0_MuonOpac ) &
+    !$OMP MAP( to: E, D, T, Ye, Ym )
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA  &
+    !$ACC CREATE( Mue, Mumu, Phout, Phi_0_MuonOpac ) &
+    !$ACC COPYIN( E, D, T, Ye, Ym )
+#endif
+
+    CALL ComputeElectronChemicalPotential_TABLE ( D, T, Ye, Ym, Mue )
+    CALL ComputeMuonChemicalPotential_TABLE ( D, T, Ye, Ym, Mumu )
+
+#if defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( E1_P, E3_P, T_P, Mue_P, Mumu_P )
+#elif defined( THORNADO_OACC   )
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( E1_P, E3_P, T_P, Mue_P, Mumu_P )
+#elif defined( THORNADO_OMP    )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( E1_P, E3_P, T_P, Mue_P, Mumu_P )
+#endif
+    DO iX = iX_B, iX_E
+	  DO iE3 = iE_B, iE_E    
+    DO iE1 = iE_B, iE_E !iE1
+    
+      IF ( MAXVAL(iProcessList_MuonOpac) .gt. 24 .or. iE3 <= iE1) THEN
+ 
+        E1_P  = E(iE1)  / MeV
+        E3_P  = E(iE3) / MeV
+        T_P   = T(iX)  / UnitT * kmev
+        Mue_P = Mue(iX) / MeV
+	      Mumu_P = Mumu(iX) / MeV
+
+        CALL CalculateAllPhout( iE1, iE3, E1_P, E3_P, T_P, Mue_P, Mumu_P,Phout(iE1, iE3, iX, :, :), 1 )
+        Phi_0_MuonOpac(iE1, iE3, iX, :) = Phout(iE1, iE3, iX, :, 1)
+
+      ELSE
+
+        Phi_0_MuonOpac(iE1, iE3, iX, :) = Zero
+
+      END IF
+    
+    END DO
+    END DO
+    END DO
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: Mue, Mumu, Phout, E, D, T, Ye, Ym ) &
+    !$OMP MAP( from: Phi_0_MuonOpac )
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA &
+    !$ACC DELETE( Mue, Mumu, Phout, E, D, T, Ye, Ym ) &
+    !$ACC COPYOUT( Phi_0_MuonOpac )
+#endif
+
+    DEALLOCATE( Mue   )
+    DEALLOCATE( Mumu  )
+    DEALLOCATE( Phout )
+
+#else
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4)
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(4)
+#endif
+    DO iP  = 1, nProcess_MuonOpac
+    DO iX  = iX_B, iX_E
+	  DO iE3 = iE_B, iE_E    
+    DO iE1 = iE_B, iE_E 
+      Phi_0_MuonOpac(iE1, iE3, iX, iP) = Zero
+    END DO
+    END DO
+    END DO
+    END DO
+
+#endif
+
+  END SUBROUTINE ComputeNeutrinoOpacities_Muon 
+
+  SUBROUTINE ComputeNeutrinoOpacityRates_MuonNLS &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, J, J0, Phi_0_MuonOpac, Eta, Chi )
+
+    ! --- NLS Scattering (Multiple D,T,Y) ---
+
+    INTEGER,  INTENT(in)    :: iE_B, iE_E
+    INTEGER,  INTENT(in)    :: iS_B, iS_E
+    INTEGER,  INTENT(in)    :: iX_B, iX_E
+    REAL(DP), INTENT(in)    :: D(iE_B:iE_E)
+    REAL(DP), INTENT(in)    :: W2(iE_B:iE_E)
+    REAL(DP), INTENT(in)    :: J(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: J0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Phi_0_MuonOpac(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E,1:nProcess_MuonOpac)
+    REAL(DP), INTENT(out)   :: Eta(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+    REAL(DP), INTENT(out)   :: Chi(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+
+    REAL(DP) :: DetBal, Phi_Out, Phi_In
+    REAL(DP) :: SUM1, SUM2
+    INTEGER  :: iE1, iE3, iS, iX, iProcess, ProcessIndex
+    LOGICAL  :: NES_On, Mu_On
+
+    DO iX = iX_B, iX_E
+	  DO iS = iS_B, iS_E    
+    DO iE1 = iE_B, iE_E
+      Eta(iE1,iS,iX) = Zero
+      Chi(iE1,iS,iX) = Zero
+    END DO 
+    END DO
+    END DO
+
+    DO iX = iX_B, iX_E  
+    DO iS = iS_B, iS_E
+    DO iE1 = iE_B, iE_E
+
+      NES_On = QueryOpacity_NES      ( D(iX) / UnitD )
+      Mu_On  = QueryOpacity_EmAb_Muon( D(iX) / UnitD )
+
+      SUM1 = Zero
+      SUM2 = Zero
+
+      DO iProcess = 1, nProcess_MuonOpac
+
+        ProcessIndex = iProcessList_MuonOpac(iProcess)
+
+        ! Only processes belonging to this species
+        IF ( ProcessIndex >= 25 ) CYCLE
+        IF ( MOD( ProcessIndex - 1, 12 ) / 2 + 1 /= iS ) CYCLE
+
+        ! Same gating as before
+        IF ( .NOT. ( ( ProcessIndex < 13 .AND. NES_On ) .OR. Mu_On ) ) CYCLE
+
+        DO iE3 = iE_B, iE_E
+
+          DetBal =   ( J0(iE1,iS,iX) * ( One - J0(iE3,iS,iX) ) ) &
+                    / ( J0(iE3,iS,iX) * ( One - J0(iE1,iS,iX) ) )
+
+          ! Scattering on electrons or muons
+          IF ( iE3 <= iE1 ) THEN
+            Phi_Out = Phi_0_MuonOpac(iE1, iE3, iX, iProcess) * UnitNES
+            Phi_In  = Phi_Out * DetBal 
+          ELSE
+            Phi_In = Phi_0_MuonOpac(iE3, iE1, iX, iProcess) * UnitNES
+            Phi_Out = Phi_In / DetBal
+          END IF
+
+          SUM1 = SUM1 + Phi_In * W2(iE3) * J(iE3,iS,iX)
+          SUM2 = SUM2 + Phi_Out * W2(iE3) * ( One - J(iE3,iS,iX) )   
+
+        END DO ! iE3
+
+      END DO !iProcess
+
+      Eta(iE1,iS,iX) = Eta(iE1,iS,iX) + SUM1
+      Chi(iE1,iS,iX) = Chi(iE1,iS,iX) + SUM1 + SUM2
+
+    END DO ! iE1
+    END DO ! iS
+    END DO ! iX
+
+  END SUBROUTINE ComputeNeutrinoOpacityRates_MuonNLS
+
+  SUBROUTINE ComputeNeutrinoOpacityRates_MuonLFEC &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, J, J0, Phi_0_MuonOpac, Eta, Chi )
+
+    ! --- LFE and LFC (Multiple D,T,Y) ---
+
+    INTEGER,  INTENT(in)    :: iE_B, iE_E
+    INTEGER,  INTENT(in)    :: iS_B, iS_E
+    INTEGER,  INTENT(in)    :: iX_B, iX_E
+    REAL(DP), INTENT(in)    :: D(iE_B:iE_E)
+    REAL(DP), INTENT(in)    :: W2(iE_B:iE_E)
+    REAL(DP), INTENT(in)    :: J(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: J0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Phi_0_MuonOpac(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E,1:nProcess_MuonOpac)
+    REAL(DP), INTENT(out)   :: Eta(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+    REAL(DP), INTENT(out)   :: Chi(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+
+    REAL(DP) :: DetBal, Phi_Out, Phi_In
+    REAL(DP) :: SUM1, SUM2
+    INTEGER  :: iE1, iE3, iS1, iS3, iX, iProcess, ProcessIndex
+    LOGICAL  :: Mu_On
+
+    DO iX = iX_B, iX_E
+	  DO iS1 = iS_B, iS_E    
+    DO iE1 = iE_B, iE_E
+      Eta(iE1,iS1,iX) = Zero
+      Chi(iE1,iS1,iX) = Zero
+    END DO 
+    END DO
+    END DO
+
+    DO iX = iX_B, iX_E  
+    DO iS1  = iS_B, iS_E
+    DO iE1 = iE_B, iE_E
+
+      Mu_On = QueryOpacity_EmAb_Muon( D(iX) / UnitD )
+      IF ( .NOT. Mu_On ) CYCLE
+
+      SUM1 = Zero
+      SUM2 = Zero
+
+      DO iProcess = 1, nProcess_MuonOpac
+
+        ProcessIndex = iProcessList_MuonOpac(iProcess)
+
+        IF ( ProcessIndex < 25 .OR. ProcessIndex > 32 ) CYCLE
+
+        ! Skip processes that don't update this species; set the partner species
+        SELECT CASE( ProcessIndex )
+          CASE( 25, 29 ); IF ( iS1 /= 3 ) CYCLE; iS3 = 1
+          CASE( 26, 30 ); IF ( iS1 /= 1 ) CYCLE; iS3 = 3
+          CASE( 27, 31 ); IF ( iS1 /= 4 ) CYCLE; iS3 = 2
+          CASE( 28, 32 ); IF ( iS1 /= 2 ) CYCLE; iS3 = 4
+        END SELECT
+
+        DO iE3 = iE_B, iE_E
+
+          DetBal =   ( J0(iE1,iS1,iX) * ( One - J0(iE3,iS3,iX) ) ) &
+                    / ( J0(iE3,iS3,iX) * ( One - J0(iE1,iS1,iX) ) )
+
+          Phi_Out = Phi_0_MuonOpac(iE1, iE3, iX, iProcess) * UnitNES
+          Phi_In  = Phi_Out * DetBal 
+
+          SUM1 = SUM1 + Phi_In * W2(iE3) * J(iE3,iS3,iX)
+          SUM2 = SUM2 + Phi_Out * W2(iE3) * ( One - J(iE3,iS3,iX) )   
+
+        END DO ! iE3
+
+      END DO !iProcess
+
+      Eta(iE1,iS1,iX) = Eta(iE1,iS1,iX) + SUM1
+      Chi(iE1,iS1,iX) = Chi(iE1,iS1,iX) + SUM1 + SUM2
+
+    END DO ! iE1
+    END DO ! iS
+    END DO ! iX
+
+  END SUBROUTINE ComputeNeutrinoOpacityRates_MuonLFEC 
+
+  SUBROUTINE ComputeNeutrinoOpacityRates_MuonIMD &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, J, J0, Phi_0_MuonOpac, Eta, Chi )
+
+    ! --- IMD (Multiple D,T,Y) ---
+
+    INTEGER,  INTENT(in)    :: iE_B, iE_E
+    INTEGER,  INTENT(in)    :: iS_B, iS_E
+    INTEGER,  INTENT(in)    :: iX_B, iX_E
+    REAL(DP), INTENT(in)    :: D(iE_B:iE_E)
+    REAL(DP), INTENT(in)    :: W2(iE_B:iE_E)
+    REAL(DP), INTENT(in)    :: J(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: J0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+    REAL(DP), INTENT(in)    :: Phi_0_MuonOpac(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E,1:nProcess_MuonOpac)
+    REAL(DP), INTENT(out)   :: Eta(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+    REAL(DP), INTENT(out)   :: Chi(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+
+    REAL(DP) :: DetBal, Phi_Out, Phi_In
+    REAL(DP) :: SUM1, SUM2
+    INTEGER  :: iE1, iE3, iS1, iS3, iX, iProcess, ProcessIndex
+    LOGICAL  :: Mu_On
+
+    DO iX = iX_B, iX_E
+	  DO iS1 = iS_B, iS_E    
+    DO iE1 = iE_B, iE_E
+      Eta(iE1,iS1,iX) = Zero
+      Chi(iE1,iS1,iX) = Zero
+    END DO 
+    END DO
+    END DO
+
+    DO iX = iX_B, iX_E  
+    DO iS1 = iS_B, iS_E
+    DO iE1 = iE_B, iE_E
+
+      Mu_On = QueryOpacity_EmAb_Muon( D(iX) / UnitD )
+      IF ( .NOT. Mu_On ) CYCLE
+
+      SUM1 = Zero
+      SUM2 = Zero
+
+      DO iProcess = 1, nProcess_MuonOpac
+
+        ProcessIndex = iProcessList_MuonOpac(iProcess)
+
+        IF ( ProcessIndex < 33 .OR. ProcessIndex > 34 ) CYCLE
+
+        ! Skip processes that don't update this species; set the partner species
+        SELECT CASE( ProcessIndex )
+          CASE( 33 ); IF ( iS1 /= 2 ) CYCLE; iS3 = 3
+          CASE( 34 ); IF ( iS1 /= 3 ) CYCLE; iS3 = 2
+        END SELECT
+
+        DO iE3 = iE_B, iE_E
+
+          DetBal =   ( J0(iE1,iS1,iX) * J0(iE3,iS3,iX) ) &
+                    / ( ( One - J0(iE1,iS1,iX) ) * ( One - J0(iE3,iS3,iX) ) )
+
+          IF ( iE3 <= iE1 ) THEN
+            Phi_In = Phi_0_MuonOpac(iE1, iE3, iX, iProcess) * UnitNES
+          ELSE 
+            Phi_In = Phi_0_MuonOpac(iE3, iE1, iX, iProcess) * UnitNES
+          END IF
+          Phi_Out  = Phi_In * DetBal 
+
+          SUM1 = SUM1 + Phi_Out * W2(iE3) * ( One - J(iE3,iS3,iX) )
+          SUM2 = SUM2 + Phi_In  * W2(iE3) * J(iE3,iS3,iX)    
+
+        END DO ! iE3
+
+      END DO !iProcess
+
+      Eta(iE1,iS1,iX) = Eta(iE1,iS1,iX) + SUM1
+      Chi(iE1,iS1,iX) = Chi(iE1,iS1,iX) + SUM1 + SUM2
+
+    END DO ! iE1
+    END DO ! iS
+    END DO ! iX  
+
+  END SUBROUTINE ComputeNeutrinoOpacityRates_MuonIMD
 
   SUBROUTINE ComputeNeutrinoOpacities_Pair &
     ( iE_B, iE_E, iX_B, iX_E, D, T, Ye, Ym, iMoment, J_I, J_II )

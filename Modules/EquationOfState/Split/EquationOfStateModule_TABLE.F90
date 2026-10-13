@@ -3267,11 +3267,11 @@ CONTAINS
         ( D, T, Ye, Ym, Mum )
 
       IF ( ABS(Mum) < 1.0d-100 ) THEN
-         Munum = Zero
+        Munum = Zero
       ELSE
-         Munum  = ( Mum  + Mup ) - Mun
-      END IF
-         
+        Munum = ( Mum  + Mup ) - Mun
+      ENDIF
+
     ELSE
       Munum = Zero
     END IF
@@ -3330,13 +3330,13 @@ CONTAINS
           
         CALL ComputeMuonChemicalPotential_TABLE_Scalar &
           ( D_P, T_P, Ye_P, Ym_P, Mum )
-
+          
         IF ( ABS(Mum) < 1.0d-100 ) THEN
-           Munum(iP) = Zero
+          Munum(iP) = Zero
         ELSE
-           Munum(iP)  = ( Mum  + Mup ) - Mun
-        END IF
-           
+          Munum(iP) = ( Mum  + Mup ) - Mun
+        ENDIF
+
       ELSE
         Munum(iP) = Zero
       END IF

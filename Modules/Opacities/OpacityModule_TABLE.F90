@@ -20,6 +20,8 @@ MODULE OpacityModule_TABLE
   USE wlInterpolationUtilitiesModule, ONLY: &
     GetIndexAndDelta_Lin, &
     GetIndexAndDelta_Log
+  USE wlGeneralLeptonScatteringModuleThornadoInterface, ONLY: &
+    InitGeneralScatteringKernels, FinalizeGeneralScatteringKernels
 
   ! ----------------------------------------------
 
@@ -98,6 +100,11 @@ MODULE OpacityModule_TABLE
   TYPE(OpacityTableType), PUBLIC :: &
     OPACITIES
 #endif
+  REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: ENodes
+  INTEGER, PUBLIC:: nProcess_MuonOpac
+  INTEGER, DIMENSION(:), ALLOCATABLE, PUBLIC:: iGroupList_MuonOpac, iProcessList_MuonOpac
+  LOGICAL, PUBLIC :: Compute_IND
+  
   LOGICAL :: Use_OpacityTables
 
   INTEGER, PUBLIC :: EmAb_Muon_Method  ! Method for computing muon EmAb opacities
@@ -218,6 +225,9 @@ CONTAINS
       EmAb_Muon_Method_Option, nE_Muon_2D_Option,                &
       Iso_MinD_Option, Iso_MaxD_Option,                          &
       NES_MinD_Option, NES_MaxD_Option,                          &
+      Compute_NES_Option, Compute_NMS_Option,                    &
+      Compute_LFE_Option, Compute_LFC_Option,                    &
+      Compute_IMD_Option, Compute_IND_Option,                    &                                             
       Pair_MinD_Option, Pair_MaxD_Option,                        &
       Brem_MinD_Option, Brem_MaxD_Option,                        &
       NNS_MinD_Option, NNS_MaxD_Option,                          &
@@ -237,6 +247,9 @@ CONTAINS
     REAL(DP),         INTENT(in), OPTIONAL :: EmAb_Muon_MinD_Option, EmAb_Muon_MaxD_Option
     REAL(DP),         INTENT(in), OPTIONAL :: Iso_MinD_Option, Iso_MaxD_Option
     REAL(DP),         INTENT(in), OPTIONAL :: NES_MinD_Option, NES_MaxD_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: Compute_NES_Option, Compute_NMS_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: Compute_LFE_Option, Compute_LFC_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: Compute_IMD_Option, Compute_IND_Option
     REAL(DP),         INTENT(in), OPTIONAL :: Pair_MinD_Option, Pair_MaxD_Option
     REAL(DP),         INTENT(in), OPTIONAL :: Brem_MinD_Option, Brem_MaxD_Option
     REAL(DP),         INTENT(in), OPTIONAL :: NNS_MinD_Option, NNS_MaxD_Option
@@ -964,6 +977,53 @@ CONTAINS
                 WidthE  => MeshE % Width,  &
                 NodesE  => MeshE % Nodes )
 
+    ! MUONS
+    nProcess_MuonOpac = 0
+    if (Compute_IND_Option) THEN 
+        Compute_IND = .TRUE.
+    else
+        Compute_IND = .FALSE.
+    end if
+    if (Compute_NES_Option .or. Compute_NMS_Option .or. &
+        Compute_LFE_Option .or. Compute_LFC_Option .or. &
+        Compute_IMD_Option ) THEN
+      ALLOCATE( iGroupList_MuonOpac(0) )
+      ALLOCATE( iProcessList_MuonOpac(0) )
+      if (Compute_NES_Option) THEN
+        iGroupList_MuonOpac   = [iGroupList_MuonOpac, 1]
+        iProcessList_MuonOpac = [iProcessList_MuonOpac, (k, k = 1, 12)]
+      end if
+#ifdef EOSMODE_COMPOSE
+      if (Compute_NMS_Option) THEN
+         iGroupList_MuonOpac   = [iGroupList_MuonOpac, 2]
+         iProcessList_MuonOpac = [iProcessList_MuonOpac, (k, k = 13, 24)]
+      end if
+      if (Compute_LFE_Option) THEN
+         iGroupList_MuonOpac   = [iGroupList_MuonOpac, 3]
+         iProcessList_MuonOpac = [iProcessList_MuonOpac, (k, k = 25, 28)]
+      end if
+      if (Compute_LFC_Option) THEN
+         iGroupList_MuonOpac   = [iGroupList_MuonOpac, 4]
+         iProcessList_MuonOpac = [iProcessList_MuonOpac, (k, k = 29, 32)]
+      end if
+      if (Compute_IMD_Option) THEN
+        iGroupList_MuonOpac   = [iGroupList_MuonOpac, 5]
+        iProcessList_MuonOpac = [iProcessList_MuonOpac, (k, k = 33, 34)]
+      end if
+#endif
+      ! Initialize scattering kernels
+      ALLOCATE( ENodes(1:nPointsE) )
+      DO iN_E1 = 1, nPointsE
+        iE1     = MOD( (iN_E1-1) / nNodesE, nE      ) + 1
+        iNodeE1 = MOD( (iN_E1-1)          , nNodesE ) + 1
+        ENodes(iN_E1)   = NodeCoordinate( CenterE(iE1), WidthE(iE1), NodesE(iNodeE1) ) / MeV 
+      END DO
+      nProcess_MuonOpac = SIZE(iProcessList_MuonOpac)
+      IF ( nProcess_MuonOpac > 0 ) THEN 
+         CALL InitGeneralScatteringKernels( ENodes, ENodes, nPointsE, nPointsE, 24, iGroupList_Option = iGroupList_MuonOpac)
+      END IF
+    end if
+
 #if defined(THORNADO_OMP_OL)
     !!$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(6) &
     !!$OMP MAP( to: CenterE, WidthE, NodesE ) &
@@ -1160,6 +1220,13 @@ CONTAINS
       DEALLOCATE( Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T )
       DEALLOCATE( EC_kfmin, EC_kfmax, EC_a, EC_b, EC_ak, EC_bk )
     ENDIF
+
+  IF ( ALLOCATED(iGroupList_MuonOpac) ) THEN
+    IF ( nProcess_MuonOpac > 0 ) CALL FinalizeGeneralScatteringKernels()
+    DEALLOCATE( iGroupList_MuonOpac )
+    DEALLOCATE( iProcessList_MuonOpac )
+    DEALLOCATE( ENodes )
+  END IF
 
   END IF
 
