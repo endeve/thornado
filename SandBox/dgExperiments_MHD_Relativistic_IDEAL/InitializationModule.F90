@@ -2072,6 +2072,14 @@ CONTAINS
 
       DO iNodeX = 1, nDOFX
 
+        iNodeX1 = NodeNumberTableX(1,iNodeX)
+        iNodeX2 = NodeNumberTableX(2,iNodeX)
+        iNodeX3 = NodeNumberTableX(3,iNodeX)
+
+        X1 = NodeCoordinate( MeshX(1), iX1, iNodeX1 )
+        X2 = NodeCoordinate( MeshX(2), iX2, iNodeX2 )
+        X3 = NodeCoordinate( MeshX(3), iX3, iNodeX3 )
+
         ! --- Fluid Fields ---
 
         uPM(iNodeX,iX1,iX2,iX3,iPM_D) &
