@@ -450,10 +450,10 @@ CONTAINS
     UnitXh = One
     UnitAh = One
     UnitGm = One
-    UnitEmp = One
-    UnitEmn = One
-    UnitSep = One
-    UnitSen = One
+    UnitEmp = MeV
+    UnitEmn = MeV
+    UnitSep = MeV
+    UnitSen = MeV
 
     ! --- Thermodynamic States ---
 
@@ -1227,18 +1227,23 @@ CONTAINS
 
 
   SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector &
-    ( D, E, Ye, Ym, T, Guess_Option, Error_Option )
+    ( D, E, Ye, Ym, T, Guess_Option, Error_Option, DisplayErrors_Option )
 
     REAL(DP), INTENT(in )           :: D(1:), E(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out)           :: T(1:)
     REAL(DP), INTENT(in ), OPTIONAL :: Guess_Option(1:)
     INTEGER,  INTENT(out), OPTIONAL :: Error_Option(1:)
+    LOGICAL,  INTENT(in ), OPTIONAL :: DisplayErrors_Option
 
     INTEGER  :: iP, nP
     INTEGER  :: Error(SIZE(D))
     REAL(DP) :: D_P, E_P, Ye_P, Ym_P, T_Lookup, T_Guess
+    LOGICAL  :: DisplayErrors
 
     Error = 0
+    DisplayErrors = .TRUE.
+    IF( PRESENT(DisplayErrors_Option) ) &
+      DisplayErrors = DisplayErrors_Option
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -1321,9 +1326,10 @@ CONTAINS
     END IF
 
     IF ( ANY( Error > 0 ) ) THEN
-      DO iP = 1, nP
-        IF ( Error(iP) > 0 ) THEN
-          CALL DescribeEOSComponentsInversionError( Error(iP) )
+      IF( DisplayErrors )THEN
+        DO iP = 1, nP
+          IF ( Error(iP) > 0 ) THEN
+            CALL DescribeEOSComponentsInversionError( Error(iP) )
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE FROM &
     !$OMP ( D(iP), E(iP), Ye(iP), Ym(iP) )
@@ -1331,15 +1337,18 @@ CONTAINS
     !$ACC UPDATE HOST &
     !$ACC ( D(iP), E(iP), Ye(iP), Ym(iP) )
 #endif
-          D_P = D(iP) / UnitD
-          E_P = E(iP) / UnitE
-          Ye_P = Ye(iP)
-          Ym_P = Ym(iP)
+            D_P = D(iP) / UnitD
+            E_P = E(iP) / UnitE
+            Ye_P = Ye(iP)
+            Ym_P = Ym(iP)
 
-          WRITE(*,*) '[ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector] Error'
-          WRITE(*,'(a,i5,4es23.15)') '  iP, D, E, Ye, Ym : ', iP, D_P, E_P, Ye_P, Ym_P
-        END IF
-      END DO
+            WRITE(*,*) &
+              '[ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector] Error'
+            WRITE(*,'(a,i5,4es23.15)') &
+              '  iP, D, E, Ye, Ym : ', iP, D_P, E_P, Ye_P, Ym_P
+          END IF
+        END DO
+      END IF
       IF( .NOT. PRESENT( Error_Option ) ) &
         CALL AbortEquationOfState &
                ( 'specific-internal-energy temperature inversion failed' )

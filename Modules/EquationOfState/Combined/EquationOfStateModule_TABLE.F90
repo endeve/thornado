@@ -874,21 +874,26 @@ CONTAINS
 
 
   SUBROUTINE ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector &
-    ( D, E, Ye, Ym, T, Guess_Option, Error_Option )
+    ( D, E, Ye, Ym, T, Guess_Option, Error_Option, DisplayErrors_Option )
 
     REAL(DP), INTENT(in )           :: D(1:), E(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out)           :: T(1:)
     REAL(DP), INTENT(in ), OPTIONAL :: Guess_Option(1:)
     INTEGER,  INTENT(out), OPTIONAL :: Error_Option(1:)
+    LOGICAL,  INTENT(in ), OPTIONAL :: DisplayErrors_Option
 
     INTEGER, ALLOCATABLE :: Error(:)
     INTEGER  :: iP, nP
     REAL(DP) :: D_P, E_P, Yp_P, Ye_P, Ym_P, T_Lookup, T_Guess
+    LOGICAL  :: DisplayErrors
 
     nP = SIZE( D )
 
     ALLOCATE( Error(nP) )
     Error = 0
+    DisplayErrors = .TRUE.
+    IF( PRESENT(DisplayErrors_Option) ) &
+      DisplayErrors = DisplayErrors_Option
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -971,9 +976,10 @@ CONTAINS
     END IF
 
     IF ( ANY( Error > 0 ) ) THEN
-      DO iP = 1, nP
-        IF ( Error(iP) > 0 ) THEN
-          CALL DescribeEOSInversionError( Error(iP) )
+      IF( DisplayErrors )THEN
+        DO iP = 1, nP
+          IF ( Error(iP) > 0 ) THEN
+            CALL DescribeEOSInversionError( Error(iP) )
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE FROM &
     !$OMP ( D(iP), E(iP), Ye(iP), Ym(iP) )
@@ -981,14 +987,17 @@ CONTAINS
     !$ACC UPDATE HOST &
     !$ACC ( D(iP), E(iP), Ye(iP), Ym(iP) )
 #endif
-          D_P = D(iP) / ( Gram / Centimeter**3 )
-          E_P = E(iP) / ( Erg / Gram )
-          Ye_P = Ye(iP)
-          Ym_P = Ym(iP)
-          WRITE(*,*)                 '[ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector] Error'
-          WRITE(*,'(a,i5,4es23.15)') '  iP, D, E, Ye, Ym : ', iP, D_P, E_P, Ye_P, Ym_P
-        END IF
-      END DO
+            D_P = D(iP) / ( Gram / Centimeter**3 )
+            E_P = E(iP) / ( Erg / Gram )
+            Ye_P = Ye(iP)
+            Ym_P = Ym(iP)
+            WRITE(*,*) &
+              '[ComputeTemperatureFromSpecificInternalEnergy_TABLE_Vector] Error'
+            WRITE(*,'(a,i5,4es23.15)') &
+              '  iP, D, E, Ye, Ym : ', iP, D_P, E_P, Ye_P, Ym_P
+          END IF
+        END DO
+      END IF
       IF( .NOT. PRESENT( Error_Option ) ) STOP
     END IF
 
@@ -2785,6 +2794,7 @@ CONTAINS
     REAL(DP) :: dD, dT, dY
     REAL(DP) :: Me, Mp, Mn
     LOGICAL  :: ChargedCurrentMask(1:SIZE(D))
+    
     INTEGER :: iP, nP
 
     nP = SIZE( D )
@@ -2873,6 +2883,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, T, Ye, Ym
     REAL(DP), INTENT(out) :: Mnu
     LOGICAL,  INTENT(in), OPTIONAL :: ChargedCurrentActive_Option
+  
     Mnu = Zero
 
   END SUBROUTINE ComputeMuonNeutrinoChemicalPotential_TABLE_Scalar
@@ -2955,7 +2966,7 @@ CONTAINS
         dEmpdYm => dEmpdYm_Local
       END IF
 
-      Emp     = proton_mass
+      Emp     = proton_mass * MeV
       dEmpdD  = Zero
       dEmpdT  = Zero
       dEmpdYe = Zero
@@ -2963,7 +2974,7 @@ CONTAINS
 
     ELSE
 
-      Emp     = proton_mass
+      Emp     = proton_mass * MeV
 
     END IF
 
@@ -3021,7 +3032,7 @@ CONTAINS
         dEmpdYm(1:nP) => dEmpdYm_Local(:)
       END IF
 
-      Emp(:)     = proton_mass
+      Emp(:)     = proton_mass * MeV
       dEmpdD(:)  = Zero
       dEmpdT(:)  = Zero
       dEmpdYe(:) = Zero
@@ -3029,7 +3040,7 @@ CONTAINS
 
     ELSE
 
-      Emp(:)     = proton_mass
+      Emp(:)     = proton_mass * MeV
 
     END IF
 
@@ -3088,7 +3099,7 @@ CONTAINS
         dEmndYm => dEmndYm_Local
       END IF
 
-      Emn     = neutron_mass
+      Emn     = neutron_mass * MeV
       dEmndD  = Zero
       dEmndT  = Zero
       dEmndYe = Zero
@@ -3096,7 +3107,7 @@ CONTAINS
 
     ELSE
 
-      Emn     = neutron_mass
+      Emn     = neutron_mass * MeV
 
     END IF
 
@@ -3154,7 +3165,7 @@ CONTAINS
         dEmndYm(1:nP) => dEmndYm_Local(:)
       END IF
 
-      Emn(:)     = neutron_mass
+      Emn(:)     = neutron_mass * MeV
       dEmndD(:)  = Zero
       dEmndT(:)  = Zero
       dEmndYe(:) = Zero
@@ -3162,7 +3173,7 @@ CONTAINS
 
     ELSE
 
-      Emn(:)     = neutron_mass
+      Emn(:)     = neutron_mass * MeV
 
     END IF
 
