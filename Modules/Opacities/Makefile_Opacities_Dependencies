@@ -28,6 +28,7 @@ OpacityModule_TABLE.o: \
   wlInterpolationModule.o \
   wlGridModule.o \
   wlInterpolationUtilitiesModule.o \
+  wlSemiLeptonicOpacityModule2D.o \
   KindModule.o \
   UnitsModule.o \
   ProgramHeaderModule.o \
@@ -60,3 +61,10 @@ NeutrinoOpacitiesComputationModule.o: \
   OpacityModule_TABLE.o \
   RadiationFieldsModule.o \
   NeutrinoOpacitiesComputationModule.F90
+
+ifeq ($(MICROPHYSICS),WEAKLIB)
+ifndef LIBNAME
+NeutrinoOpacitiesComputationModule.o: \
+  wlSemiLeptonicOpacityIntegrationModule2D.o
+endif
+endif

@@ -48,8 +48,6 @@ MODULE NeutrinoOpacitiesComputationModule
     ComputeMuonNeutrinoChemicalPotential_TABLE, &
     ComputeNeutronEffectiveMass_TABLE, &
     ComputeProtonEffectiveMass_TABLE, &
-    ComputeNeutronEffectiveMass_TABLE, &
-    ComputeProtonChemicalPotential_TABLE, &
     ComputeNeutronSelfEnergy_TABLE, &
     ComputeProtonSelfEnergy_TABLE
   USE OpacityModule_TABLE, ONLY: &
@@ -82,7 +80,8 @@ MODULE NeutrinoOpacitiesComputationModule
     QueryOpacity_Pair, &
     QueryOpacity_Brem, &
     QueryOpacity_NuPair, &
-    EmAb_Muon_Method, nE_Muon_2D
+    EmAb_Muon_Method, nE_Muon_2D, &
+    MuonCC_QuadratureNodes, MuonCC_QuadratureWeights
   USE RadiationFieldsModule, ONLY: &
     iNuE, iNuE_Bar, iNuM, iNuM_Bar, iNuT, iNuT_Bar, LeptonNumber, &
     iNu, iNu_Bar, nChirals
@@ -122,14 +121,10 @@ MODULE NeutrinoOpacitiesComputationModule
     CalculateHorowitzWeakMagRecoil
   USE wlEosConstantsModule, ONLY: &
     mn, mp, me, mmu, kmev
-#ifdef THORNADO_ENABLE_EXPERIMENTAL_MUON_CC_INTEGRALS
-  USE wlSemiLeptonicOpacityModule2D, ONLY: &
-    Opacity_CC_2D
-#ifdef CC_INTEGRALS_4D
-  USE wlSemiLeptonicOpacityModule4D, ONLY: &
-    Opacity_CC_4D
-#endif
-#endif
+  USE wlSemiLeptonicOpacityIntegrationModule2D, ONLY: &
+    CC2D_CallData, CC2D_RowData, &
+    CC2D_PrepareCall, CC2D_RowSetup, CC2D_NodeKernel, &
+    CC2D_ApplyPrefactor
   ! ----------------------------------------------
 
 #endif
@@ -138,6 +133,7 @@ MODULE NeutrinoOpacitiesComputationModule
   PRIVATE
 
   PUBLIC :: ComputeNeutrinoOpacities_EC
+  PUBLIC :: WriteMuonChargedCurrentOpacityDiagnostic
   PUBLIC :: ComputeNeutrinoOpacities_EC_Vector
   PUBLIC :: ComputeNeutrinoOpacities_ES
   PUBLIC :: ComputeNeutrinoOpacities_ES_Vector
@@ -166,6 +162,7 @@ MODULE NeutrinoOpacitiesComputationModule
   PUBLIC :: dFermiDiracdY
   PUBLIC :: SetOpacityMask
   PUBLIC :: SetChargedCurrentMasks
+  PUBLIC :: ComputeDetailedBalanceFactors
 
   PUBLIC :: iM0, iM1
   PUBLIC :: nOp
@@ -208,8 +205,8 @@ MODULE NeutrinoOpacitiesComputationModule
                                     / TwoPi**3 * UnitBrem
 
   REAL(dp), PARAMETER :: Alpha_Brem(3) = [ 1.0d0, 1.0d0, 28.d0/3.d0 ]
-  INTEGER, PARAMETER  :: corr_num = 2
-
+  ! Weak magnetism and pseudoscalar terms; no form-factor correction.
+  INTEGER,  PARAMETER :: MuonCCCorrections(3) = [ 1, 1, 0 ]
   REAL(dp), PARAMETER :: coeff = 2.0d0 &
                                * (Pi*SpeedOfLightCGS)**2 &
                                * hbarMeVs**3
@@ -251,6 +248,189 @@ MODULE NeutrinoOpacitiesComputationModule
   END INTERFACE
 
 CONTAINS
+
+
+  SUBROUTINE ComputeDetailedBalanceFactors &
+    ( iE_B, iE_E, iX_B, iX_E, E, T, ComputeScattering, ComputePairs, &
+      ScatteringFactor, PairFactor )
+
+    INTEGER,  INTENT(in)  :: iE_B, iE_E, iX_B, iX_E
+    REAL(DP), INTENT(in)  :: E(iE_B:iE_E), T(iX_B:iX_E)
+    LOGICAL,  INTENT(in)  :: ComputeScattering, ComputePairs
+    REAL(DP), INTENT(out) :: &
+      ScatteringFactor(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
+    REAL(DP), INTENT(out) :: &
+      PairFactor(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
+
+    INTEGER  :: iE1, iE2, iX
+    ! These factors depend only on the current opacity temperature and the
+    ! fixed energy grid.  Build them once per opacity state and reuse them in
+    ! every species, angular moment, and collision process.
+
+    IF( ComputePairs )THEN
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO iX  = iX_B, iX_E
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
+
+      PairFactor(iE1,iE2,iX) &
+        = DetailedBalance_Pair( E(iE1), E(iE2), T(iX) )
+
+    END DO
+    END DO
+    END DO
+
+    END IF
+
+    IF( ComputeScattering )THEN
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+    DO iX  = iX_B, iX_E
+    DO iE2 = iE_B, iE_E
+    DO iE1 = iE_B, iE_E
+
+      ScatteringFactor(iE1,iE2,iX) &
+        = DetailedBalance_InelasticScattering &
+            ( MIN( E(iE1), E(iE2) ), MAX( E(iE1), E(iE2) ), T(iX) )
+
+    END DO
+    END DO
+    END DO
+
+    END IF
+
+  END SUBROUTINE ComputeDetailedBalanceFactors
+
+
+  FUNCTION DetailedBalance_InelasticScattering( E_Low, E_High, T ) &
+    RESULT( DetailedBalance )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    ! The kernel tables store the de-excitation direction.  Microscopic
+    ! reversibility fixes the inverse direction through the matter bath and
+    ! therefore depends on the energy transfer and temperature, not on a
+    ! numerically limited representation of the equilibrium distribution.
+
+    REAL(DP), INTENT(in) :: E_Low, E_High, T
+    REAL(DP) :: DetailedBalance
+    REAL(DP) :: Exponent
+
+    Exponent = - ( E_High - E_Low ) / ( BoltzmannConstant * T )
+
+    IF ( Exponent <= LOG( TINY( One ) ) ) THEN
+      DetailedBalance = Zero
+    ELSE
+      DetailedBalance = EXP( MIN( Exponent, Zero ) )
+    END IF
+
+  END FUNCTION DetailedBalance_InelasticScattering
+
+
+  FUNCTION DetailedBalance_Pair( E_1, E_2, T ) RESULT( DetailedBalance )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    ! For a neutrino-antineutrino pair the equilibrium chemical potentials
+    ! cancel.  Production/annihilation detailed balance is consequently the
+    ! Boltzmann factor for the total pair energy.
+
+    REAL(DP), INTENT(in) :: E_1, E_2, T
+    REAL(DP) :: DetailedBalance
+    REAL(DP) :: Exponent
+
+    Exponent = - ( E_1 + E_2 ) / ( BoltzmannConstant * T )
+
+    IF ( Exponent <= LOG( TINY( One ) ) ) THEN
+      DetailedBalance = Zero
+    ELSE
+      DetailedBalance = EXP( MIN( Exponent, Zero ) )
+    END IF
+
+  END FUNCTION DetailedBalance_Pair
+
+
+  FUNCTION CachedDetailedBalanceScattering &
+    ( iE1, iE2, iX, E, T, Cache_Option ) RESULT( DetailedBalance )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    INTEGER,  INTENT(in) :: iE1, iE2, iX
+    REAL(DP), INTENT(in) :: E(:), T(:)
+    REAL(DP), INTENT(in), OPTIONAL :: Cache_Option(:,:,:)
+    REAL(DP) :: DetailedBalance
+
+    IF( PRESENT( Cache_Option ) )THEN
+      DetailedBalance = Cache_Option(iE1,iE2,iX)
+    ELSE
+      DetailedBalance = DetailedBalance_InelasticScattering &
+        ( MIN( E(iE1), E(iE2) ), MAX( E(iE1), E(iE2) ), T(iX) )
+    END IF
+
+  END FUNCTION CachedDetailedBalanceScattering
+
+
+  FUNCTION CachedDetailedBalancePair &
+    ( iE1, iE2, iX, E, T, Cache_Option ) RESULT( DetailedBalance )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    INTEGER,  INTENT(in) :: iE1, iE2, iX
+    REAL(DP), INTENT(in) :: E(:), T(:)
+    REAL(DP), INTENT(in), OPTIONAL :: Cache_Option(:,:,:)
+    REAL(DP) :: DetailedBalance
+
+    IF( PRESENT( Cache_Option ) )THEN
+      DetailedBalance = Cache_Option(iE1,iE2,iX)
+    ELSE
+      DetailedBalance = DetailedBalance_Pair( E(iE1), E(iE2), T(iX) )
+    END IF
+
+  END FUNCTION CachedDetailedBalancePair
+
+
+  FUNCTION FermiDiracComplement_Scalar( E, Mu, kT ) RESULT( Complement )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    ! Evaluate 1-f without subtracting a value that may round to one.
+
+    REAL(DP), INTENT(in) :: E, Mu, kT
+    REAL(DP) :: Complement
+    REAL(DP) :: Exponent
+
+    Exponent = MIN( MAX( ( Mu - E ) / kT, - Log1d100 ), + Log1d100 )
+    Complement = One / ( EXP( Exponent ) + One )
+
+  END FUNCTION FermiDiracComplement_Scalar
 
 
   SUBROUTINE ComputeEquilibriumDistributions_Point &
@@ -1488,7 +1668,7 @@ CONTAINS
     ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, &
       Opacity_Mask, opEC )
 
-    ! --- Muon Capture Opacities (Multiple D,T,Y) ---
+    ! --- Full-kinematics muon charged-current opacities ---
 
     INTEGER,  INTENT(in)    :: iE_B, iE_E
     INTEGER,  INTENT(in)    :: iS_B, iS_E
@@ -1501,7 +1681,6 @@ CONTAINS
     LOGICAL,  INTENT(in)    :: Opacity_Mask(nOp,iX_B:iX_E)
     REAL(DP), INTENT(inout) :: opEC(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
 
-    REAL(DP) :: E_P, D_P, T_P, Ye_P, Ym_P
     INTEGER  :: iE, iS, iX
 
     REAL(DP), ALLOCATABLE :: Mumu(:)
@@ -1526,6 +1705,24 @@ CONTAINS
     RETURN
 #endif
 
+    IF( .NOT. ANY( Opacity_Mask(iOp_EmAb_Muon,iX_B:iX_E) ) )THEN
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(3)
+#endif
+      DO iX = iX_B, iX_E
+      DO iS = iNuM, iNuM_Bar
+      DO iE = iE_B, iE_E
+        opEC(iE,iS,iX) = Zero
+      END DO
+      END DO
+      END DO
+      RETURN
+    END IF
+
     ALLOCATE( Mumu  (iX_B:iX_E) )
     ALLOCATE( Mun   (iX_B:iX_E) )
     ALLOCATE( Mn_eff(iX_B:iX_E) )
@@ -1542,20 +1739,56 @@ CONTAINS
     !$ACC CREATE( Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mumu )
 #endif
 
-    CALL ComputeMuonChemicalPotential_TABLE    ( D, T, Ye, Ym, Mumu )
-    CALL ComputeNeutronChemicalPotential_TABLE ( D, T, Ye, Ym, Mun )
-    CALL ComputeNeutronEffectiveMass_TABLE     ( D, T, Ye, Ym, Mn_eff )
-    CALL ComputeNeutronSelfEnergy_TABLE        ( D, T, Ye, Ym, Un )
-    CALL ComputeProtonChemicalPotential_TABLE  ( D, T, Ye, Ym, Mup )
-    CALL ComputeProtonEffectiveMass_TABLE      ( D, T, Ye, Ym, Mp_eff )
-    CALL ComputeProtonSelfEnergy_TABLE         ( D, T, Ye, Ym, Up )
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRESENT( D, T, Ye, Ym, Opacity_Mask, &
+    !$ACC          Mumu, Mun, Mn_eff, Un, Mup, Mp_eff, Up )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iX = iX_B, iX_E
+      IF( Opacity_Mask(iOp_EmAb_Muon,iX) )THEN
+        CALL ComputeMuonChemicalPotential_TABLE &
+               ( D(iX), T(iX), Ye(iX), Ym(iX), Mumu(iX) )
+        CALL ComputeNeutronChemicalPotential_TABLE &
+               ( D(iX), T(iX), Ye(iX), Ym(iX), Mun(iX) )
+        CALL ComputeNeutronEffectiveMass_TABLE &
+               ( D(iX), T(iX), Ye(iX), Ym(iX), Mn_eff(iX) )
+        CALL ComputeNeutronSelfEnergy_TABLE &
+               ( D(iX), T(iX), Ye(iX), Ym(iX), Un(iX) )
+        CALL ComputeProtonChemicalPotential_TABLE &
+               ( D(iX), T(iX), Ye(iX), Ym(iX), Mup(iX) )
+        CALL ComputeProtonEffectiveMass_TABLE &
+               ( D(iX), T(iX), Ye(iX), Ym(iX), Mp_eff(iX) )
+        CALL ComputeProtonSelfEnergy_TABLE &
+               ( D(iX), T(iX), Ye(iX), Ym(iX), Up(iX) )
+      ELSE
+        Mumu  (iX) = Zero
+        Mun   (iX) = Zero
+        Mn_eff(iX) = Zero
+        Un    (iX) = Zero
+        Mup   (iX) = Zero
+        Mp_eff(iX) = Zero
+        Up    (iX) = Zero
+      END IF
+    END DO
 
-    CALL ComputeNeutrinoOpacities_EC_NuM_Nucleons_Elastic &
-           ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, &
-             E, D, T, Ye, Ym, Mumu, &
-             Mun, Mn_eff, Un, &
-             Mup, Mp_eff, Up, &
-             Opacity_Mask, opEC )
+    SELECT CASE( EmAb_Muon_Method )
+    CASE( 1 )
+      CALL ComputeNeutrinoOpacities_EC_NuM_Nucleons_Elastic &
+             ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, &
+               E, D, T, Ye, Ym, Mumu, &
+               Mun, Mn_eff, Un, Mup, Mp_eff, Up, &
+               Opacity_Mask, opEC )
+    CASE( 2 )
+      CALL ComputeNeutrinoOpacities_EC_NuM_Nucleons_2D &
+             ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, &
+               E, T, Mumu, &
+               Mun, Mn_eff, Un, Mup, Mp_eff, Up, &
+               Opacity_Mask, opEC )
+    END SELECT
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -1610,6 +1843,7 @@ CONTAINS
     REAL(DP) :: Mup_P, Mp_eff_P, Up_P, Xp_P
     REAL(DP) :: WeakMagRecNuLep
     REAL(DP) :: WeakMagRecNuLepBar
+    REAL(DP) :: Mnum, kT, VacancyNu, VacancyNuBar
 
     ALLOCATE( Xn(iX_B:iX_E) )
     ALLOCATE( Xp(iX_B:iX_E) )
@@ -1629,17 +1863,20 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
     !$OMP PRIVATE( Mun_P, Mn_eff_P, Un_P, Xn_P, &
     !$OMP          Mup_P, Mp_eff_P, Up_P, Xp_P, Mumu_P, &
-    !$OMP          E_P, D_P, T_P, WeakMagRecNuLep, WeakMagRecNuLepBar )
+    !$OMP          E_P, D_P, T_P, WeakMagRecNuLep, WeakMagRecNuLepBar, &
+    !$OMP          Mnum, kT, VacancyNu, VacancyNuBar )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
     !$ACC PRIVATE( Mun_P, Mn_eff_P, Un_P, Xn_P, &
     !$ACC          Mup_P, Mp_eff_P, Up_P, Xp_P, Mumu_P, &
-    !$ACC          E_P, D_P, T_P, WeakMagRecNuLep, WeakMagRecNuLepBar )
+    !$ACC          E_P, D_P, T_P, WeakMagRecNuLep, WeakMagRecNuLepBar, &
+    !$ACC          Mnum, kT, VacancyNu, VacancyNuBar )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2) &
     !$OMP PRIVATE( Mun_P, Mn_eff_P, Un_P, Xn_P, &
     !$OMP          Mup_P, Mp_eff_P, Up_P, Xp_P, Mumu_P, &
-    !$OMP          E_P, D_P, T_P, WeakMagRecNuLep, WeakMagRecNuLepBar )
+    !$OMP          E_P, D_P, T_P, WeakMagRecNuLep, WeakMagRecNuLepBar, &
+    !$OMP          Mnum, kT, VacancyNu, VacancyNuBar )
 #endif
     DO iX = iX_B, iX_E
     DO iE = iE_B, iE_E
@@ -1667,8 +1904,17 @@ CONTAINS
 
         CALL CalculateHorowitzWeakMagRecoil(E_P, WeakMagRecNuLep, WeakMagRecNuLepBar)
 
-        opEC(iE,iNuM    ,iX) = opEC(iE,iNuM    ,iX) * WeakMagRecNuLep    * UnitEC
-        opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) * WeakMagRecNuLepBar * UnitEC
+        Mnum = ( Mumu(iX) + Mup(iX) ) - Mun(iX)
+        kT   = BoltzmannConstant * T(iX)
+        VacancyNu &
+          = FermiDiracComplement_Scalar( E(iE), + Mnum, kT )
+        VacancyNuBar &
+          = FermiDiracComplement_Scalar( E(iE), - Mnum, kT )
+
+        opEC(iE,iNuM,iX) = opEC(iE,iNuM,iX) * WeakMagRecNuLep &
+                           / MAX( VacancyNu, SqrtTiny ) * UnitEC
+        opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) * WeakMagRecNuLepBar &
+                               / MAX( VacancyNuBar, SqrtTiny ) * UnitEC
 
       ELSE
 
@@ -1694,9 +1940,8 @@ CONTAINS
   END SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons_Elastic
 
 
-#ifdef THORNADO_ENABLE_EXPERIMENTAL_MUON_CC_INTEGRALS
   SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons_2D &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, T, &
       Mumu, Mun, Mn_eff, Un, Mup, Mp_eff, Up, Opacity_Mask, opEC )
 
     ! --- Muon Capture Opacities (Multiple D,T,Y) ---
@@ -1705,10 +1950,7 @@ CONTAINS
     INTEGER,  INTENT(in)    :: iS_B, iS_E
     INTEGER,  INTENT(in)    :: iX_B, iX_E
     REAL(DP), INTENT(in)    :: E(iE_B:iE_E)
-    REAL(DP), INTENT(in)    :: D(iX_B:iX_E)
     REAL(DP), INTENT(in)    :: T(iX_B:iX_E)
-    REAL(DP), INTENT(in)    :: Ye(iX_B:iX_E)
-    REAL(DP), INTENT(in)    :: Ym(iX_B:iX_E)
     REAL(DP), INTENT(in)    :: Mumu(iX_B:iX_E)
     REAL(DP), INTENT(in)    :: Mun(iX_B:iX_E)
     REAL(DP), INTENT(in)    :: Mn_eff(iX_B:iX_E)
@@ -1719,25 +1961,37 @@ CONTAINS
     LOGICAL,  INTENT(in)    :: Opacity_Mask(nOp,iX_B:iX_E)
     REAL(DP), INTENT(inout) :: opEC(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
 
-    REAL(DP) :: E_P, D_P, T_P, Ye_P, Ym_P
-    INTEGER  :: iE, iS, iX
+    REAL(DP) :: E_P, T_P
+    INTEGER  :: iE, iX
 
     REAL(DP) :: Mumu_P
     REAL(DP) :: Mun_P, Mn_eff_P, Un_P
     REAL(DP) :: Mup_P, Mp_eff_P, Up_P
+    REAL(DP) :: ReactionOpacity, NodeContribution
+    REAL(DP) :: Mnum, kT, VacancyNu, VacancyNuBar
+    INTEGER  :: iReaction, iQ1, iQ2
+    TYPE(CC2D_CallData) :: CallData
+    TYPE(CC2D_RowData)  :: RowData
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP PRIVATE( Mun_P, Mup_P, Mumu_P ) &
-    !$OMP PRIVATE( E_P, D_P, T_P, Ym_P )
+    !$OMP TARGET TEAMS DISTRIBUTE COLLAPSE(2) &
+    !$OMP PRIVATE( Mun_P, Mn_eff_P, Un_P, Mup_P, Mp_eff_P, Up_P, Mumu_P, &
+    !$OMP          E_P, T_P, ReactionOpacity, NodeContribution, &
+    !$OMP          iReaction, iQ1, iQ2, CallData, RowData, &
+    !$OMP          Mnum, kT, VacancyNu, VacancyNuBar )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC PRIVATE( Mun_P, Mup_P, Mumu_P ) &
-    !$ACC PRIVATE( E_P, D_P, T_P, Ym_P )
+    !$ACC PARALLEL LOOP GANG COLLAPSE(2) &
+    !$ACC PRIVATE( Mun_P, Mn_eff_P, Un_P, Mup_P, Mp_eff_P, Up_P, Mumu_P, &
+    !$ACC          E_P, T_P, ReactionOpacity, NodeContribution, &
+    !$ACC          iReaction, iQ1, iQ2, CallData, RowData, &
+    !$ACC          Mnum, kT, VacancyNu, VacancyNuBar ) &
+    !$ACC PRESENT( MuonCC_QuadratureNodes, MuonCC_QuadratureWeights )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2) &
-    !$OMP PRIVATE( Mun_P, Mup_P, Mumu_P ) &
-    !$OMP PRIVATE( E_P, D_P, T_P, Ym_P )
+    !$OMP PRIVATE( Mun_P, Mn_eff_P, Un_P, Mup_P, Mp_eff_P, Up_P, Mumu_P, &
+    !$OMP          E_P, T_P, ReactionOpacity, NodeContribution, &
+    !$OMP          iReaction, iQ1, iQ2, CallData, RowData, &
+    !$OMP          Mnum, kT, VacancyNu, VacancyNuBar )
 #endif
     DO iX = iX_B, iX_E
     DO iE = iE_B, iE_E
@@ -1745,25 +1999,77 @@ CONTAINS
       IF ( Opacity_Mask(iOp_EmAb_Muon,iX) ) THEN
 
         E_P  = E(iE)  / UnitE
-        D_P  = D(iX)  / UnitD
         T_P  = T(iX)  / UnitT * kmev
-        Ym_P = Ym(iX) / UnitY
 
         Mun_P  = Mun (iX) / UnitMn
         Mup_P  = Mup (iX) / UnitMp
         Mumu_P = Mumu(iX) / UnitMmu
+        Mn_eff_P = Mn_eff(iX) / UnitMn
+        Mp_eff_P = Mp_eff(iX) / UnitMp
+        Un_P     = Un(iX) / UnitMn
+        Up_P     = Up(iX) / UnitMp
 
-        CALL Opacity_CC_2D &
-            ( corr_num, 1, E_P, opEC(iE,iNuM,iX), &
-              T_P, Mumu_P, Mun_P, Mup_P,  &
-              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), nE_Muon_2D )
-        CALL Opacity_CC_2D &
-            ( corr_num, 2, E_P, opEC(iE,iNuM_Bar,iX), &
-              T_P, Mumu_P, Mun_P, Mup_P,  &
-              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), nE_Muon_2D )
+        opEC(iE,iNuM    ,iX) = Zero
+        opEC(iE,iNuM_Bar,iX) = Zero
 
-        opEC(iE,iNuM    ,iX) = opEC(iE,iNuM    ,iX) * UnitEC
-        opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) * UnitEC
+        DO iReaction = 1, 3
+
+          CALL CC2D_PrepareCall &
+                 ( iReaction, E_P, T_P, Mumu_P, Mun_P, Mup_P, &
+                   mmu, Mn_eff_P, Mp_eff_P, Un_P, Up_P, &
+                   MuonCCCorrections, CallData )
+
+          IF( .NOT. CallData % HasPhaseSpace ) CYCLE
+
+          ReactionOpacity = Zero
+#if defined(THORNADO_OMP_OL)
+          !$OMP PARALLEL DO SIMD REDUCTION(+:ReactionOpacity) &
+          !$OMP PRIVATE( RowData, iQ2, NodeContribution )
+#elif defined(THORNADO_OACC)
+          !$ACC LOOP VECTOR REDUCTION(+:ReactionOpacity) &
+          !$ACC PRIVATE( RowData, iQ2, NodeContribution )
+#endif
+          DO iQ1 = 1, nE_Muon_2D
+            CALL CC2D_RowSetup &
+                   ( CallData, MuonCC_QuadratureNodes(iQ1), &
+                     MuonCC_QuadratureWeights(iQ1), RowData )
+            IF( RowData % HasWindow )THEN
+              DO iQ2 = 1, nE_Muon_2D
+                CALL CC2D_NodeKernel &
+                       ( CallData, RowData, MuonCC_QuadratureNodes(iQ2), &
+                         MuonCC_QuadratureWeights(iQ2), NodeContribution )
+                ReactionOpacity = ReactionOpacity + NodeContribution
+              END DO
+            END IF
+          END DO
+          CALL CC2D_ApplyPrefactor( CallData, ReactionOpacity )
+
+          ! Reactions 1--3 are nu_mu absorption, anti-nu_mu absorption,
+          ! and inverse neutron decay.  The corresponding inverse
+          ! emissivities follow from detailed balance in the relaxation
+          ! source Chi_EmAb * ( f_eq - f ).  Consequently opEC stores the
+          ! corrected absorption opacity chi_abs / ( 1 - f_eq ), consistent
+          ! with the electron charged-current opacity tables.
+          IF( iReaction == 1 )THEN
+            opEC(iE,iNuM,iX) = ReactionOpacity
+          ELSE
+            opEC(iE,iNuM_Bar,iX) &
+              = opEC(iE,iNuM_Bar,iX) + ReactionOpacity
+          END IF
+
+        END DO
+
+        Mnum = ( Mumu(iX) + Mup(iX) ) - Mun(iX)
+        kT   = BoltzmannConstant * T(iX)
+        VacancyNu &
+          = FermiDiracComplement_Scalar( E(iE), + Mnum, kT )
+        VacancyNuBar &
+          = FermiDiracComplement_Scalar( E(iE), - Mnum, kT )
+
+        opEC(iE,iNuM,iX) = opEC(iE,iNuM,iX) &
+                           / MAX( VacancyNu, SqrtTiny ) * UnitEC
+        opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) &
+                               / MAX( VacancyNuBar, SqrtTiny ) * UnitEC
 
       ELSE
 
@@ -1778,111 +2084,131 @@ CONTAINS
   END SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons_2D
 
 
-  SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons_4D &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, &
-      Mumu, Mun, Mn_eff, Un, Mup, Mp_eff, Up, Opacity_Mask, opEC )
+  SUBROUTINE WriteMuonChargedCurrentOpacityDiagnostic &
+    ( iFile, E, D, T, Ye, Ym, f0 )
 
-    ! --- Muon Capture Opacities (Multiple D,T,Y) ---
+    INTEGER,  INTENT(in) :: iFile
+    REAL(DP), INTENT(in) :: E(:)
+    REAL(DP), INTENT(in) :: D, T, Ye, Ym
+    REAL(DP), INTENT(in) :: f0(:,:)
 
-    INTEGER,  INTENT(in)    :: iE_B, iE_E
-    INTEGER,  INTENT(in)    :: iS_B, iS_E
-    INTEGER,  INTENT(in)    :: iX_B, iX_E
-    REAL(DP), INTENT(in)    :: E(iE_B:iE_E)
-    REAL(DP), INTENT(in)    :: D(iX_B:iX_E)
-    REAL(DP), INTENT(in)    :: T(iX_B:iX_E)
-    REAL(DP), INTENT(in)    :: Ye(iX_B:iX_E)
-    REAL(DP), INTENT(in)    :: Ym(iX_B:iX_E)
-    REAL(DP), INTENT(in)    :: Mumu(iX_B:iX_E)
-    REAL(DP), INTENT(in)    :: Mun(iX_B:iX_E)
-    REAL(DP), INTENT(in)    :: Mn_eff(iX_B:iX_E)
-    REAL(DP), INTENT(in)    :: Un(iX_B:iX_E)
-    REAL(DP), INTENT(in)    :: Mup(iX_B:iX_E)
-    REAL(DP), INTENT(in)    :: Mp_eff(iX_B:iX_E)
-    REAL(DP), INTENT(in)    :: Up(iX_B:iX_E)
-    LOGICAL,  INTENT(in)    :: Opacity_Mask(nOp,iX_B:iX_E)
-    REAL(DP), INTENT(inout) :: opEC(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
-
-    REAL(DP) :: E_P, D_P, T_P, Ye_P, Ym_P
-    INTEGER  :: iE, iS, iX
-
-    REAL(DP) :: Mumu_P
-    REAL(DP) :: Mun_P, Mn_eff_P, Un_P
+#ifdef MICROPHYSICS_WEAKLIB
+    REAL(DP) :: Mumu, Mun, Mn_eff, Un
+    REAL(DP) :: Mup, Mp_eff, Up
+    REAL(DP) :: D_P, T_P, E_P
+    REAL(DP) :: Mumu_P, Mun_P, Mn_eff_P, Un_P
     REAL(DP) :: Mup_P, Mp_eff_P, Up_P
+    REAL(DP) :: RawIntegral, FinalOpacity, CorrectedOpacity
+    REAL(DP) :: Mnum, kT, Vacancy
+    REAL(DP) :: NodeContribution
+    INTEGER  :: iE, iReaction, iQ1, iQ2, iS, nRows
+    TYPE(CC2D_CallData) :: CallData
+    TYPE(CC2D_RowData)  :: RowData
 
-#ifndef CC_INTEGRALS_4D
+    IF( EmAb_Muon_Method /= 2 )THEN
+      WRITE(iFile,'(/,A,I0,A)') &
+        '# detailed muon charged-current opacity diagnostic omitted: method ', &
+        EmAb_Muon_Method, ' does not use the 2D quadrature'
+      RETURN
+    END IF
 
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(3)
-#endif
-    DO iX = iX_B, iX_E
-    DO iS = iNuM, iNuM_Bar
-    DO iE = iE_B, iE_E
-      opEC(iE,iS,iX) = Zero
-    END DO
-    END DO
-    END DO
-    RETURN
+    IF( .NOT. ALLOCATED(MuonCC_QuadratureNodes) &
+        .OR. .NOT. ALLOCATED(MuonCC_QuadratureWeights) )THEN
+      WRITE(iFile,'(/,A)') &
+        '# detailed muon charged-current opacity diagnostic omitted: ' // &
+        '2D quadrature is not allocated'
+      RETURN
+    END IF
 
+    CALL ComputeMuonChemicalPotential_TABLE &
+           ( D, T, Ye, Ym, Mumu )
+    CALL ComputeNeutronChemicalPotential_TABLE &
+           ( D, T, Ye, Ym, Mun )
+    CALL ComputeNeutronEffectiveMass_TABLE &
+           ( D, T, Ye, Ym, Mn_eff )
+    CALL ComputeNeutronSelfEnergy_TABLE &
+           ( D, T, Ye, Ym, Un )
+    CALL ComputeProtonChemicalPotential_TABLE &
+           ( D, T, Ye, Ym, Mup )
+    CALL ComputeProtonEffectiveMass_TABLE &
+           ( D, T, Ye, Ym, Mp_eff )
+    CALL ComputeProtonSelfEnergy_TABLE &
+           ( D, T, Ye, Ym, Up )
+
+    D_P      = D      / UnitD
+    T_P      = T      / UnitT * kmev
+    Mumu_P   = Mumu   / UnitMmu
+    Mun_P    = Mun    / UnitMn
+    Mn_eff_P = Mn_eff / UnitMn
+    Un_P     = Un     / UnitMn
+    Mup_P    = Mup    / UnitMp
+    Mp_eff_P = Mp_eff / UnitMp
+    Up_P     = Up     / UnitMp
+    Mnum     = ( Mumu + Mup ) - Mun
+    kT       = BoltzmannConstant * T
+
+    WRITE(iFile,'(/,A)') '# muon charged-current opacity diagnostic'
+    WRITE(iFile,'(A,5ES26.16E3)') &
+      '# rho_gcm3 T_MeV Ye Ym mu_mu_MeV: ', D_P, T_P, Ye, Ym, Mumu_P
+    WRITE(iFile,'(A,6ES26.16E3)') &
+      '# mu_n mstar_n U_n mu_p mstar_p U_p [MeV]: ', &
+      Mun_P, Mn_eff_P, Un_P, Mup_P, Mp_eff_P, Up_P
+    WRITE(iFile,'(A)') &
+      '# iE reaction E_MeV phase_space E2_min E2_max active_rows ' // &
+      'raw_integral final_cm^-1 corrected_cm^-1'
+
+    DO iE = 1, SIZE(E)
+      E_P = E(iE) / UnitE
+      DO iReaction = 1, 3
+
+        CALL CC2D_PrepareCall &
+               ( iReaction, E_P, T_P, Mumu_P, Mun_P, Mup_P, &
+                 mmu, Mn_eff_P, Mp_eff_P, Un_P, Up_P, &
+                 MuonCCCorrections, CallData )
+
+        RawIntegral = Zero
+        nRows        = 0
+        IF( CallData % HasPhaseSpace )THEN
+          DO iQ1 = 1, nE_Muon_2D
+            CALL CC2D_RowSetup &
+                   ( CallData, MuonCC_QuadratureNodes(iQ1), &
+                     MuonCC_QuadratureWeights(iQ1), RowData )
+            IF( .NOT. RowData % HasWindow ) CYCLE
+            nRows = nRows + 1
+            DO iQ2 = 1, nE_Muon_2D
+              CALL CC2D_NodeKernel &
+                     ( CallData, RowData, MuonCC_QuadratureNodes(iQ2), &
+                       MuonCC_QuadratureWeights(iQ2), NodeContribution )
+              RawIntegral = RawIntegral + NodeContribution
+            END DO
+          END DO
+        END IF
+
+        FinalOpacity = RawIntegral
+        CALL CC2D_ApplyPrefactor( CallData, FinalOpacity )
+        IF( iReaction == 1 )THEN
+          iS = iNuM
+          Vacancy = FermiDiracComplement_Scalar( E(iE), + Mnum, kT )
+        ELSE
+          iS = iNuM_Bar
+          Vacancy = FermiDiracComplement_Scalar( E(iE), - Mnum, kT )
+        END IF
+        CorrectedOpacity = FinalOpacity &
+          / MAX( Vacancy, SqrtTiny )
+
+        WRITE(iFile,'(2I6,ES26.16E3,1X,L1,2ES26.16E3,I8,3ES26.16E3)') &
+          iE, iReaction, E_P, CallData % HasPhaseSpace, &
+          CallData % E2_min, CallData % E2_max, nRows, &
+          RawIntegral, FinalOpacity, CorrectedOpacity
+
+      END DO
+    END DO
 #else
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP PRIVATE( Mun_P, Mup_P, Mumu_P ) &
-    !$OMP PRIVATE( E_P, D_P, T_P, Ym_P )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC PRIVATE( Mun_P, Mup_P, Mumu_P ) &
-    !$ACC PRIVATE( E_P, D_P, T_P, Ym_P )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(2) &
-    !$OMP PRIVATE( Mun_P, Mup_P, Mumu_P ) &
-    !$OMP PRIVATE( E_P, D_P, T_P, Ym_P )
-#endif
-    DO iX = iX_B, iX_E
-    DO iE = iE_B, iE_E
-
-      IF ( Opacity_Mask(iOp_EmAb_Muon,iX) ) THEN
-
-        E_P  = E(iE)  / UnitE
-        D_P  = D(iX)  / UnitD
-        T_P  = T(iX)  / UnitT * kmev
-        Ym_P = Ym(iX) / UnitY
-
-        Mun_P  = Mun (iX) / UnitMn
-        Mup_P  = Mup (iX) / UnitMp
-        Mumu_P = Mumu(iX) / UnitMmu
-
-        CALL Opacity_CC_4D &
-            ( corr_num, 1, E_P, opEC(iE,iNuM,iX), &
-              T_P, Mumu_P, Mun_P, Mup_P,  &
-              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX) )
-        CALL Opacity_CC_4D &
-            ( corr_num, 2, E_P, opEC(iE,iNuM_Bar,iX), &
-              T_P, Mumu_P, Mun_P, Mup_P,  &
-              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX) )
-
-        opEC(iE,iNuM    ,iX) = opEC(iE,iNuM    ,iX) * UnitEC
-        opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) * UnitEC
-
-      ELSE
-
-        opEC(iE,iNuM    ,iX) = Zero
-        opEC(iE,iNuM_Bar,iX) = Zero
-
-      END IF
-
-    END DO
-    END DO
-
+    WRITE(iFile,'(/,A)') &
+      '# muon charged-current opacity diagnostic unavailable without WeakLib'
 #endif
 
-  END SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons_4D
-#endif
-
+  END SUBROUTINE WriteMuonChargedCurrentOpacityDiagnostic
 
   SUBROUTINE ComputeNeutrinoOpacities_EC_Vector &
     ( iP_B, iP_E, iS_B, iS_E, E, D, T, Ye, Ym, opEC )
@@ -2382,9 +2708,9 @@ CONTAINS
   END SUBROUTINE ComputeNeutrinoOpacities_NNS
 
   SUBROUTINE ComputeNeutrinoOpacityRates_NNS &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, &
-      J, J0, Phi_NNS_0, Phi_NbNS_0, Eta, Chi, R, &
-      Opacity_Mask )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, T, E, W2, &
+      J, Phi_NNS_0, Phi_NbNS_0, Eta, Chi, R, &
+      Opacity_Mask, DetailedBalanceScattering_Option )
 
     ! --- Neutrino-Nucleon Scattering Rates (Multiple J) ---
 
@@ -2392,40 +2718,39 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iS_B, iS_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: D       (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: T       (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: E       (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: W2      (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: J       (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: J0      (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: Phi_NNS_0 (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: Phi_NbNS_0(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: Eta     (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: Chi     (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: R       (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     LOGICAL,  INTENT(in)  :: Opacity_Mask(nOp,iX_B:iX_E)
+    REAL(DP), INTENT(in), OPTIONAL :: &
+      DetailedBalanceScattering_Option &
+        (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
-    REAL(DP) :: DetBal, Phi_Out, Phi_In, Phi_High_Out, Phi_High_In
-    REAL(DP) :: Delta_Low, Delta_High, J0_Low, J0_High, R_EnergyPair
+    REAL(DP) :: DetBal, Phi_Out, Phi_In
     REAL(DP) :: SUM1, SUM2, SUMR
     INTEGER  :: iE1, iE2, iS, iX, iC
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( SUM1, SUM2, SUMR, DetBal, Phi_In, Phi_Out, &
-    !$OMP          Phi_High_In, Phi_High_Out, Delta_Low, Delta_High, &
-    !$OMP          J0_Low, J0_High, R_EnergyPair, iC ) &
-    !$OMP MAP( to: Phi_NNS_0, Phi_NbNS_0, W2, J, J0, D, Opacity_Mask ) &
+    !$OMP PRIVATE( SUM1, SUM2, SUMR, DetBal, Phi_In, Phi_Out, iC ) &
+    !$OMP MAP( to: Phi_NNS_0, Phi_NbNS_0, T, E, W2, J, D, &
+    !$OMP          Opacity_Mask ) &
     !$OMP MAP( from: Eta, Chi, R )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( SUM1, SUM2, SUMR, DetBal, Phi_In, Phi_Out, &
-    !$ACC          Phi_High_In, Phi_High_Out, Delta_Low, Delta_High, &
-    !$ACC          J0_Low, J0_High, R_EnergyPair, iC ) &
-    !$ACC COPYIN( Phi_NNS_0, Phi_NbNS_0, W2, J, J0, D, Opacity_Mask ) &
+    !$ACC PRIVATE( SUM1, SUM2, SUMR, DetBal, Phi_In, Phi_Out, iC ) &
+    !$ACC COPYIN( Phi_NNS_0, Phi_NbNS_0, T, E, W2, J, D, &
+    !$ACC         Opacity_Mask ) &
     !$ACC COPYOUT( Eta, Chi, R )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( SUM1, SUM2, SUMR, DetBal, Phi_In, Phi_Out, &
-    !$OMP          Phi_High_In, Phi_High_Out, Delta_Low, Delta_High, &
-    !$OMP          J0_Low, J0_High, R_EnergyPair, iC )
+    !$OMP PRIVATE( SUM1, SUM2, SUMR, DetBal, Phi_In, Phi_Out, iC )
 #endif
     DO iX  = iX_B, iX_E
     DO iS  = iS_B, iS_E
@@ -2443,45 +2768,24 @@ CONTAINS
           DO iE1 = iE_B, iE_E
 
             IF ( iE1 <= iE2 ) THEN
-              J0_Low  = J0(iE1,iS,iX)
-              J0_High = J0(iE2,iS,iX)
-              DetBal =   ( J0_High * ( One - J0_Low ) ) &
-                       / ( J0_Low  * ( One - J0_High ) )
+              DetBal = CachedDetailedBalanceScattering &
+                ( iE1, iE2, iX, E, T, DetailedBalanceScattering_Option )
               Phi_Out = Phi_NNS_0(iE1,iE2,iX) * UnitNNS
               Phi_In  = Phi_Out * DetBal
-              Phi_High_Out = Phi_Out
-              Phi_High_In  = Phi_In
-              Delta_Low  = J(iE1,iS,iX) - J0_Low
-              Delta_High = J(iE2,iS,iX) - J0_High
             ELSE
-              J0_Low  = J0(iE2,iS,iX)
-              J0_High = J0(iE1,iS,iX)
-              DetBal =   ( J0_High * ( One - J0_Low ) ) &
-                       / ( J0_Low  * ( One - J0_High ) )
+              DetBal = CachedDetailedBalanceScattering &
+                ( iE1, iE2, iX, E, T, DetailedBalanceScattering_Option )
               Phi_In  = Phi_NNS_0(iE2,iE1,iX) * UnitNNS
               Phi_Out = Phi_In * DetBal
-              Phi_High_Out = Phi_In
-              Phi_High_In  = Phi_Out
-              Delta_Low  = J(iE2,iS,iX) - J0_Low
-              Delta_High = J(iE1,iS,iX) - J0_High
             END IF
 
             SUM1 = SUM1 + Phi_In  * W2(iE1) * J(iE1,iS,iX)
             SUM2 = SUM2 + Phi_Out * W2(iE1) * ( One - J(iE1,iS,iX) )
-
-            R_EnergyPair &
-              = (   Phi_High_In  * ( One - J0_High ) &
-                  + Phi_High_Out * J0_High ) * Delta_Low &
-                - (   Phi_High_In  * J0_Low &
-                    + Phi_High_Out * ( One - J0_Low ) ) * Delta_High &
-                + ( Phi_High_Out - Phi_High_In ) &
-                    * Delta_Low * Delta_High
-
-            IF ( iE1 <= iE2 ) THEN
-              SUMR = SUMR + W2(iE1) * R_EnergyPair
-            ELSE
-              SUMR = SUMR - W2(iE1) * R_EnergyPair
-            END IF
+            SUMR = SUMR + W2(iE1) &
+                     * (   Phi_In * J(iE1,iS,iX) &
+                             * ( One - J(iE2,iS,iX) ) &
+                         - Phi_Out * ( One - J(iE1,iS,iX) ) &
+                             * J(iE2,iS,iX) )
 
           END DO
 
@@ -2490,45 +2794,25 @@ CONTAINS
           DO iE1 = iE_B, iE_E
 
             IF ( iE1 <= iE2 ) THEN
-              J0_Low  = J0(iE1,iS,iX)
-              J0_High = J0(iE2,iS,iX)
-              DetBal =   ( J0_High * ( One - J0_Low ) ) &
-                       / ( J0_Low  * ( One - J0_High ) )
+              DetBal = CachedDetailedBalanceScattering &
+                ( iE1, iE2, iX, E, T, DetailedBalanceScattering_Option )
               Phi_Out = Phi_NbNS_0(iE1,iE2,iX) * UnitNNS
               Phi_In  = Phi_Out * DetBal
-              Phi_High_Out = Phi_Out
-              Phi_High_In  = Phi_In
-              Delta_Low  = J(iE1,iS,iX) - J0_Low
-              Delta_High = J(iE2,iS,iX) - J0_High
             ELSE
-              J0_Low  = J0(iE2,iS,iX)
-              J0_High = J0(iE1,iS,iX)
-              DetBal =   ( J0_High * ( One - J0_Low ) ) &
-                       / ( J0_Low  * ( One - J0_High ) )
+              DetBal = CachedDetailedBalanceScattering &
+                ( iE1, iE2, iX, E, T, DetailedBalanceScattering_Option )
               Phi_In  = Phi_NbNS_0(iE2,iE1,iX) * UnitNNS
               Phi_Out = Phi_In * DetBal
-              Phi_High_Out = Phi_In
-              Phi_High_In  = Phi_Out
-              Delta_Low  = J(iE2,iS,iX) - J0_Low
-              Delta_High = J(iE1,iS,iX) - J0_High
             END IF
 
             SUM1 = SUM1 + Phi_In  * W2(iE1) * J(iE1,iS,iX)
             SUM2 = SUM2 + Phi_Out * W2(iE1) * ( One - J(iE1,iS,iX) )
 
-            R_EnergyPair &
-              = (   Phi_High_In  * ( One - J0_High ) &
-                  + Phi_High_Out * J0_High ) * Delta_Low &
-                - (   Phi_High_In  * J0_Low &
-                    + Phi_High_Out * ( One - J0_Low ) ) * Delta_High &
-                + ( Phi_High_Out - Phi_High_In ) &
-                    * Delta_Low * Delta_High
-
-            IF ( iE1 <= iE2 ) THEN
-              SUMR = SUMR + W2(iE1) * R_EnergyPair
-            ELSE
-              SUMR = SUMR - W2(iE1) * R_EnergyPair
-            END IF
+            SUMR = SUMR + W2(iE1) &
+                     * (   Phi_In * J(iE1,iS,iX) &
+                             * ( One - J(iE2,iS,iX) ) &
+                         - Phi_Out * ( One - J(iE1,iS,iX) ) &
+                             * J(iE2,iS,iX) )
 
           END DO
 
@@ -2548,9 +2832,11 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacityRates_LinearCorrections_NNS &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, H_1, H_2, H_3, J0, &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, T, E, W2, &
+      H_1, H_2, H_3, &
       Phi_NNS_1, Phi_NbNS_1, &
-      L_In_1, L_In_2, L_In_3, L_Out_1, L_Out_2, L_Out_3, Opacity_Mask )
+      L_In_1, L_In_2, L_In_3, L_Out_1, L_Out_2, L_Out_3, Opacity_Mask, &
+      DetailedBalanceScattering_Option )
 
     ! --- Neutrino-Nucleon Scattering Rates (Linear Corrections) ---
 
@@ -2558,11 +2844,12 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iS_B, iS_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: D         (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: T         (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: E         (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: W2        (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: H_1       (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: H_2       (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: H_3       (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: J0        (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: Phi_NNS_1 (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: Phi_NbNS_1(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: L_In_1    (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
@@ -2572,6 +2859,9 @@ CONTAINS
     REAL(DP), INTENT(out) :: L_Out_2   (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: L_Out_3   (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     LOGICAL,  INTENT(in)  :: Opacity_Mask(nOp,iX_B:iX_E)
+    REAL(DP), INTENT(in), OPTIONAL :: &
+      DetailedBalanceScattering_Option &
+        (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
     REAL(DP) :: DetBal, Phi_1_In, Phi_1_Out
     REAL(DP) :: SUM1, SUM2, SUM3, SUM4, SUM5, SUM6
@@ -2581,14 +2871,14 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( iC, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
     !$OMP          Phi_1_In, Phi_1_Out ) &
-    !$OMP MAP( to: Phi_NNS_1, Phi_NbNS_1, W2, H_1, H_2, H_3, J0, &
+    !$OMP MAP( to: Phi_NNS_1, Phi_NbNS_1, T, E, W2, H_1, H_2, H_3, &
     !$OMP          D, Opacity_Mask ) &
     !$OMP MAP( from: L_In_1, L_In_2, L_In_3, L_Out_1, L_Out_2, L_Out_3 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( iC, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
     !$ACC          Phi_1_In, Phi_1_Out ) &
-    !$ACC COPYIN( Phi_NNS_1, Phi_NbNS_1, W2, H_1, H_2, H_3, J0, &
+    !$ACC COPYIN( Phi_NNS_1, Phi_NbNS_1, T, E, W2, H_1, H_2, H_3, &
     !$ACC         D, Opacity_Mask ) &
     !$ACC COPYOUT( L_In_1, L_In_2, L_In_3, L_Out_1, L_Out_2, L_Out_3 )
 #elif defined( THORNADO_OMP    )
@@ -2613,24 +2903,29 @@ CONTAINS
 
         DO iE1 = iE_B, iE_E
 
-          DetBal =   ( J0(iE2,iS,iX) * ( One - J0(iE1,iS,iX) ) ) &
-                   / ( J0(iE1,iS,iX) * ( One - J0(iE2,iS,iX) ) )
-
           IF ( iC == iNu ) THEN
             IF ( iE1 <= iE2 ) THEN
+              DetBal = CachedDetailedBalanceScattering &
+                ( iE1, iE2, iX, E, T, DetailedBalanceScattering_Option )
               Phi_1_Out = Phi_NNS_1(iE1,iE2,iX) * UnitNNS
               Phi_1_In  = Phi_1_Out * DetBal
             ELSE
+              DetBal = CachedDetailedBalanceScattering &
+                ( iE1, iE2, iX, E, T, DetailedBalanceScattering_Option )
               Phi_1_In  = Phi_NNS_1(iE2,iE1,iX) * UnitNNS
-              Phi_1_Out = Phi_1_In / DetBal
+              Phi_1_Out = Phi_1_In * DetBal
             END IF
           ELSE
             IF ( iE1 <= iE2 ) THEN
+              DetBal = DetailedBalance_InelasticScattering &
+                         ( E(iE1), E(iE2), T(iX) )
               Phi_1_Out = Phi_NbNS_1(iE1,iE2,iX) * UnitNNS
               Phi_1_In  = Phi_1_Out * DetBal
             ELSE
+              DetBal = CachedDetailedBalanceScattering &
+                ( iE1, iE2, iX, E, T, DetailedBalanceScattering_Option )
               Phi_1_In  = Phi_NbNS_1(iE2,iE1,iX) * UnitNNS
-              Phi_1_Out = Phi_1_In / DetBal
+              Phi_1_Out = Phi_1_In * DetBal
             END IF
           END IF
 
@@ -2761,8 +3056,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacityRates_NES &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, &
-      J, J0, H_I, H_II, Eta, Chi, R, Opacity_Mask )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, T, E, W2, &
+      J, H_I, H_II, Eta, Chi, R, Opacity_Mask, &
+      DetailedBalanceScattering_Option )
 
     ! --- Neutrino-Electron Scattering Rates (Multiple J) ---
 
@@ -2770,41 +3066,38 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iS_B, iS_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: D   (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: T   (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: E   (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: W2  (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: J   (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: J0  (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: H_I (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: H_II(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: Eta (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: Chi (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: R   (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     LOGICAL,  INTENT(in)  :: Opacity_Mask(nOp,iX_B:iX_E)
+    REAL(DP), INTENT(in), OPTIONAL :: &
+      DetailedBalanceScattering_Option &
+        (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
-    REAL(DP) :: DetBal, Phi_Out, Phi_In, Phi_High_Out, Phi_High_In
-    REAL(DP) :: Delta_Low, Delta_High, J0_Low, J0_High, R_EnergyPair
+    REAL(DP) :: DetBal, Phi_Out, Phi_In
     REAL(DP) :: SUM1, SUM2, SUMR
     INTEGER  :: iE1, iE2, iS, iX
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( SUM1, SUM2, SUMR, DetBal, Phi_In, Phi_Out, &
-    !$OMP          Phi_High_In, Phi_High_Out, Delta_Low, Delta_High, &
-    !$OMP          J0_Low, J0_High, R_EnergyPair ) &
-    !$OMP MAP( to: H_I, H_II, W2, J, J0, D, Opacity_Mask ) &
+    !$OMP PRIVATE( SUM1, SUM2, SUMR, DetBal, Phi_In, Phi_Out ) &
+    !$OMP MAP( to: H_I, H_II, T, E, W2, J, D, Opacity_Mask ) &
     !$OMP MAP( from: Eta, Chi, R )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( SUM1, SUM2, SUMR, DetBal, Phi_In, Phi_Out, &
-    !$ACC          Phi_High_In, Phi_High_Out, Delta_Low, Delta_High, &
-    !$ACC          J0_Low, J0_High, R_EnergyPair ) &
-    !$ACC COPYIN( H_I, H_II, W2, J, J0, D, Opacity_Mask ) &
+    !$ACC PRIVATE( SUM1, SUM2, SUMR, DetBal, Phi_In, Phi_Out ) &
+    !$ACC COPYIN( H_I, H_II, T, E, W2, J, D, Opacity_Mask ) &
     !$ACC COPYOUT( Eta, Chi, R ) &
     !$ACC PRESENT( C1, C2 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( SUM1, SUM2, SUMR, DetBal, Phi_In, Phi_Out, &
-    !$OMP          Phi_High_In, Phi_High_Out, Delta_Low, Delta_High, &
-    !$OMP          J0_Low, J0_High, R_EnergyPair )
+    !$OMP PRIVATE( SUM1, SUM2, SUMR, DetBal, Phi_In, Phi_Out )
 #endif
     DO iX  = iX_B, iX_E
     DO iS  = iS_B, iS_E
@@ -2819,47 +3112,27 @@ CONTAINS
         DO iE1 = iE_B, iE_E
 
           IF ( iE1 <= iE2 ) THEN
-            J0_Low  = J0(iE1,iS,iX)
-            J0_High = J0(iE2,iS,iX)
-            DetBal =   ( J0_High * ( One - J0_Low ) ) &
-                     / ( J0_Low  * ( One - J0_High ) )
+            DetBal = CachedDetailedBalanceScattering &
+              ( iE1, iE2, iX, E, T, DetailedBalanceScattering_Option )
             Phi_Out = (   C1(iS) * H_I (iE1,iE2,iX) &
                         + C2(iS) * H_II(iE1,iE2,iX) ) * UnitNES
             Phi_In  = Phi_Out * DetBal
-            Phi_High_Out = Phi_Out
-            Phi_High_In  = Phi_In
-            Delta_Low  = J(iE1,iS,iX) - J0_Low
-            Delta_High = J(iE2,iS,iX) - J0_High
           ELSE
-            J0_Low  = J0(iE2,iS,iX)
-            J0_High = J0(iE1,iS,iX)
-            DetBal =   ( J0_High * ( One - J0_Low ) ) &
-                     / ( J0_Low  * ( One - J0_High ) )
+            DetBal = CachedDetailedBalanceScattering &
+              ( iE1, iE2, iX, E, T, DetailedBalanceScattering_Option )
             Phi_In  = (   C1(iS) * H_I (iE2,iE1,iX) &
                         + C2(iS) * H_II(iE2,iE1,iX) ) * UnitNES
             Phi_Out = Phi_In * DetBal
-            Phi_High_Out = Phi_In
-            Phi_High_In  = Phi_Out
-            Delta_Low  = J(iE2,iS,iX) - J0_Low
-            Delta_High = J(iE1,iS,iX) - J0_High
           END IF
 
           SUM1 = SUM1 + Phi_In  * W2(iE1) * J(iE1,iS,iX)
           SUM2 = SUM2 + Phi_Out * W2(iE1) * ( One - J(iE1,iS,iX) )
 
-          R_EnergyPair &
-            = (   Phi_High_In  * ( One - J0_High ) &
-                + Phi_High_Out * J0_High ) * Delta_Low &
-              - (   Phi_High_In  * J0_Low &
-                  + Phi_High_Out * ( One - J0_Low ) ) * Delta_High &
-              + ( Phi_High_Out - Phi_High_In ) &
-                  * Delta_Low * Delta_High
-
-          IF ( iE1 <= iE2 ) THEN
-            SUMR = SUMR + W2(iE1) * R_EnergyPair
-          ELSE
-            SUMR = SUMR - W2(iE1) * R_EnergyPair
-          END IF
+          SUMR = SUMR + W2(iE1) &
+                   * (   Phi_In * J(iE1,iS,iX) &
+                           * ( One - J(iE2,iS,iX) ) &
+                       - Phi_Out * ( One - J(iE1,iS,iX) ) &
+                           * J(iE2,iS,iX) )
 
         END DO
 
@@ -2877,9 +3150,10 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacityRates_LinearCorrections_NES &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, H_1, H_2, H_3, J0, &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, T, E, W2, &
+      H_1, H_2, H_3, &
       H_I_1, H_II_1, L_In_1, L_In_2, L_In_3, L_Out_1, L_Out_2, L_Out_3, &
-      Opacity_Mask )
+      Opacity_Mask, DetailedBalanceScattering_Option )
 
     ! --- Neutrino-Electron Scattering Rates (Linear Corrections) ---
 
@@ -2887,11 +3161,12 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iS_B, iS_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: D      (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: T      (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: E      (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: W2     (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: H_1    (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: H_2    (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: H_3    (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: J0     (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: H_I_1  (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: H_II_1 (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: L_In_1 (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
@@ -2901,6 +3176,9 @@ CONTAINS
     REAL(DP), INTENT(out) :: L_Out_2(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: L_Out_3(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     LOGICAL,  INTENT(in)  :: Opacity_Mask(nOp,iX_B:iX_E)
+    REAL(DP), INTENT(in), OPTIONAL :: &
+      DetailedBalanceScattering_Option &
+        (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
     REAL(DP) :: DetBal, Phi_1_Out, Phi_1_In
     REAL(DP) :: SUM1, SUM2, SUM3, SUM4, SUM5, SUM6
@@ -2910,14 +3188,14 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
     !$OMP          Phi_1_In, Phi_1_Out ) &
-    !$OMP MAP( to: H_I_1, H_II_1, W2, H_1, H_2, H_3, J0, D, &
+    !$OMP MAP( to: H_I_1, H_II_1, T, E, W2, H_1, H_2, H_3, D, &
     !$OMP          Opacity_Mask ) &
     !$OMP MAP( from: L_In_1, L_In_2, L_In_3, L_Out_1, L_Out_2, L_Out_3 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
     !$ACC          Phi_1_In, Phi_1_Out ) &
-    !$ACC COPYIN( H_I_1, H_II_1, W2, H_1, H_2, H_3, J0, D, &
+    !$ACC COPYIN( H_I_1, H_II_1, T, E, W2, H_1, H_2, H_3, D, &
     !$ACC         Opacity_Mask ) &
     !$ACC COPYOUT( L_In_1, L_In_2, L_In_3, L_Out_1, L_Out_2, L_Out_3 ) &
     !$ACC PRESENT( C1, C2 )
@@ -2941,17 +3219,18 @@ CONTAINS
 
         DO iE1 = iE_B, iE_E
 
-          DetBal =   ( J0(iE2,iS,iX) * ( One - J0(iE1,iS,iX) ) ) &
-                   / ( J0(iE1,iS,iX) * ( One - J0(iE2,iS,iX) ) )
-
           IF ( iE1 <= iE2 ) THEN
+            DetBal = CachedDetailedBalanceScattering &
+              ( iE1, iE2, iX, E, T, DetailedBalanceScattering_Option )
             Phi_1_Out = (   C1(iS) * H_I_1 (iE1,iE2,iX) &
                           + C2(iS) * H_II_1(iE1,iE2,iX) ) * UnitNES
             Phi_1_In  = Phi_1_Out * DetBal
           ELSE
+            DetBal = CachedDetailedBalanceScattering &
+              ( iE1, iE2, iX, E, T, DetailedBalanceScattering_Option )
             Phi_1_In  = (   C1(iS) * H_I_1 (iE2,iE1,iX) &
                           + C2(iS) * H_II_1(iE2,iE1,iX) ) * UnitNES
-            Phi_1_Out = Phi_1_In / DetBal
+            Phi_1_Out = Phi_1_In * DetBal
           END IF
 
           SUM1 = SUM1 + Phi_1_In  * W2(iE1) * H_1(iE1,iS,iX)
@@ -3085,8 +3364,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacityRates_Pair &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, &
-      J, J0, J_I, J_II, Eta, Chi, R, Opacity_Mask )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, T, E, W2, &
+      J, J_I, J_II, Eta, Chi, R, Opacity_Mask, &
+      DetailedBalancePair_Option )
 
     ! --- Pair Rates (Multiple J) ---
 
@@ -3094,41 +3374,40 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iS_B, iS_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: D   (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: T   (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: E   (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: W2  (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: J   (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: J0  (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: J_I (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: J_II(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: Eta (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: Chi (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: R   (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     LOGICAL,  INTENT(in)  :: Opacity_Mask(nOp,iX_B:iX_E)
+    REAL(DP), INTENT(in), OPTIONAL :: &
+      DetailedBalancePair_Option(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
     REAL(DP) :: DetBal, Phi_0_Ann, Phi_0_Pro
-    REAL(DP) :: Delta, Delta_A, J0_Target, J0_A, R_EnergyPair
     REAL(DP) :: SUM1, SUM2, SUMR
     INTEGER  :: iX, iE1, iE2, iS, iS_A
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, SUMR, DetBal, Phi_0_Pro, &
-    !$OMP          Phi_0_Ann, Delta, Delta_A, J0_Target, J0_A, &
-    !$OMP          R_EnergyPair ) &
-    !$OMP MAP( to: J_I, J_II, W2, J, J0, D, Opacity_Mask ) &
+    !$OMP          Phi_0_Ann ) &
+    !$OMP MAP( to: J_I, J_II, T, E, W2, J, D, Opacity_Mask ) &
     !$OMP MAP( from: Eta, Chi, R )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( iS_A, SUM1, SUM2, SUMR, DetBal, Phi_0_Pro, &
-    !$ACC          Phi_0_Ann, Delta, Delta_A, J0_Target, J0_A, &
-    !$ACC          R_EnergyPair ) &
-    !$ACC COPYIN( J_I, J_II, W2, J, J0, D, Opacity_Mask ) &
+    !$ACC          Phi_0_Ann ) &
+    !$ACC COPYIN( J_I, J_II, T, E, W2, J, D, Opacity_Mask ) &
     !$ACC COPYOUT( Eta, Chi, R ) &
     !$ACC PRESENT( C1, C2 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, SUMR, DetBal, Phi_0_Pro, &
-    !$OMP          Phi_0_Ann, Delta, Delta_A, J0_Target, J0_A, &
-    !$OMP          R_EnergyPair )
+    !$OMP          Phi_0_Ann )
 #endif
     DO iX  = iX_B, iX_E
     DO iS  = iS_B, iS_E
@@ -3141,18 +3420,12 @@ CONTAINS
       SUM2 = Zero
       SUMR = Zero
 
-      J0_Target = J0(iE2,iS,iX)
-      Delta     = J(iE2,iS,iX) - J0_Target
-
       IF ( Opacity_Mask(iOp_Pair,iX) ) THEN
 
         DO iE1 = iE_B, iE_E
 
-          J0_A    = J0(iE1,iS_A,iX)
-          Delta_A = J(iE1,iS_A,iX) - J0_A
-
-          DetBal =   ( J0_Target * J0_A ) &
-                   / ( ( One - J0_Target ) * ( One - J0_A ) )
+          DetBal = CachedDetailedBalancePair &
+            ( iE1, iE2, iX, E, T, DetailedBalancePair_Option )
 
           IF ( iE1 <= iE2 ) THEN
             Phi_0_Ann = (   C1(iS) * J_I (iE1,iE2,iX) &
@@ -3166,14 +3439,11 @@ CONTAINS
           SUM1 = SUM1 + Phi_0_Pro * W2(iE1) * ( One - J(iE1,iS_A,iX) )
           SUM2 = SUM2 + Phi_0_Ann * W2(iE1) * J(iE1,iS_A,iX)
 
-          R_EnergyPair &
-            = - ( Phi_0_Pro * ( One - J0_A ) + Phi_0_Ann * J0_A ) &
-                  * Delta &
-              - (   Phi_0_Pro * ( One - J0_Target ) &
-                  + Phi_0_Ann * J0_Target ) * Delta_A &
-              + ( Phi_0_Pro - Phi_0_Ann ) * Delta * Delta_A
-
-          SUMR = SUMR + W2(iE1) * R_EnergyPair
+          SUMR = SUMR + W2(iE1) &
+                   * (   Phi_0_Pro * ( One - J(iE1,iS_A,iX) ) &
+                           * ( One - J(iE2,iS,iX) ) &
+                       - Phi_0_Ann * J(iE1,iS_A,iX) &
+                           * J(iE2,iS,iX) )
 
         END DO
 
@@ -3191,9 +3461,10 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacityRates_LinearCorrections_Pair &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, H_1, H_2, H_3, J0, &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, T, E, W2, &
+      H_1, H_2, H_3, &
       J_I_1, J_II_1, L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3, &
-      Opacity_Mask )
+      Opacity_Mask, DetailedBalancePair_Option )
 
     ! --- e^+ e^- Pair Rates (Linear Corrections) ---
 
@@ -3201,11 +3472,12 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iS_B, iS_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: D      (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: T      (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: E      (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: W2     (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: H_1    (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: H_2    (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: H_3    (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: J0     (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: J_I_1  (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: J_II_1 (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: L_Pro_1(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
@@ -3215,6 +3487,8 @@ CONTAINS
     REAL(DP), INTENT(out) :: L_Ann_2(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: L_Ann_3(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     LOGICAL,  INTENT(in)  :: Opacity_Mask(nOp,iX_B:iX_E)
+    REAL(DP), INTENT(in), OPTIONAL :: &
+      DetailedBalancePair_Option(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
     REAL(DP) :: DetBal, Phi_1_Ann, Phi_1_Pro
     REAL(DP) :: SUM1, SUM2, SUM3, SUM4, SUM5, SUM6
@@ -3224,14 +3498,14 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
     !$OMP          Phi_1_Pro, Phi_1_Ann ) &
-    !$OMP MAP( to: J_I_1, J_II_1, W2, H_1, H_2, H_3, J0, D, &
+    !$OMP MAP( to: J_I_1, J_II_1, T, E, W2, H_1, H_2, H_3, D, &
     !$OMP          Opacity_Mask ) &
     !$OMP MAP( from: L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
     !$ACC          Phi_1_Pro, Phi_1_Ann ) &
-    !$ACC COPYIN( J_I_1, J_II_1, W2, H_1, H_2, H_3, J0, D, &
+    !$ACC COPYIN( J_I_1, J_II_1, T, E, W2, H_1, H_2, H_3, D, &
     !$ACC         Opacity_Mask ) &
     !$ACC COPYOUT( L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3 ) &
     !$ACC PRESENT( C1, C2 )
@@ -3258,8 +3532,8 @@ CONTAINS
 
         DO iE1 = iE_B, iE_E
 
-          DetBal =   ( J0(iE2,iS,iX) * J0(iE1,iS_A,iX) ) &
-                   / ( ( One - J0(iE2,iS,iX) ) * ( One - J0(iE1,iS_A,iX) ) )
+          DetBal = CachedDetailedBalancePair &
+            ( iE1, iE2, iX, E, T, DetailedBalancePair_Option )
 
           IF ( iE1 <= iE2 ) THEN
             Phi_1_Ann = (   C1(iS) * J_I_1 (iE1,iE2,iX) &
@@ -3428,8 +3702,9 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacityRates_NuPair &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, &
-      J, J0, J_I, J_II, Eta, Chi, R, Opacity_Mask )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, T, E, W2, &
+      J, J_I, J_II, Eta, Chi, R, Opacity_Mask, &
+      DetailedBalancePair_Option )
 
     ! --- Pair Rates (Multiple J) ---
 
@@ -3437,41 +3712,40 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iS_B, iS_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: D   (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: T   (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: E   (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: W2  (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: J   (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: J0  (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: J_I (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: J_II(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: Eta (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: Chi (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: R   (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     LOGICAL,  INTENT(in)  :: Opacity_Mask(nOp,iX_B:iX_E)
+    REAL(DP), INTENT(in), OPTIONAL :: &
+      DetailedBalancePair_Option(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
     REAL(DP) :: DetBal, Phi_0_Ann, Phi_0_Pro
-    REAL(DP) :: Delta, Delta_A, J0_Target, J0_A, R_EnergyPair
     REAL(DP) :: SUM1, SUM2, SUMR
     INTEGER  :: iX, iE1, iE2, iS, iS_A
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, SUMR, DetBal, Phi_0_Pro, &
-    !$OMP          Phi_0_Ann, Delta, Delta_A, J0_Target, J0_A, &
-    !$OMP          R_EnergyPair ) &
-    !$OMP MAP( to: J_I, J_II, W2, J, J0, D, Opacity_Mask ) &
+    !$OMP          Phi_0_Ann ) &
+    !$OMP MAP( to: J_I, J_II, T, E, W2, J, D, Opacity_Mask ) &
     !$OMP MAP( from: Eta, Chi, R )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( iS_A, SUM1, SUM2, SUMR, DetBal, Phi_0_Pro, &
-    !$ACC          Phi_0_Ann, Delta, Delta_A, J0_Target, J0_A, &
-    !$ACC          R_EnergyPair ) &
-    !$ACC COPYIN( J_I, J_II, W2, J, J0, D, Opacity_Mask ) &
+    !$ACC          Phi_0_Ann ) &
+    !$ACC COPYIN( J_I, J_II, T, E, W2, J, D, Opacity_Mask ) &
     !$ACC COPYOUT( Eta, Chi, R ) &
     !$ACC PRESENT( C1_NuPair, C2_NuPair )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, SUMR, DetBal, Phi_0_Pro, &
-    !$OMP          Phi_0_Ann, Delta, Delta_A, J0_Target, J0_A, &
-    !$OMP          R_EnergyPair )
+    !$OMP          Phi_0_Ann )
 #endif
       DO iX  = iX_B, iX_E
       DO iS  = iS_B, iS_E
@@ -3484,18 +3758,12 @@ CONTAINS
         SUM2 = Zero
         SUMR = Zero
 
-        J0_Target = J0(iE2,iS,iX)
-        Delta     = J(iE2,iS,iX) - J0_Target
-
         IF ( Opacity_Mask(iOp_NuPair,iX) ) THEN
 
           DO iE1 = iE_B, iE_E
 
-            J0_A    = J0(iE1,iS_A,iX)
-            Delta_A = J(iE1,iS_A,iX) - J0_A
-
-            DetBal =   ( J0_Target * J0_A ) &
-                     / ( ( One - J0_Target ) * ( One - J0_A ) )
+            DetBal = CachedDetailedBalancePair &
+              ( iE1, iE2, iX, E, T, DetailedBalancePair_Option )
 
             IF ( iE1 <= iE2 ) THEN
               Phi_0_Ann = (   C1_NuPair(iS) * J_I (iE1,iE2,iX) &
@@ -3509,14 +3777,11 @@ CONTAINS
             SUM1 = SUM1 + Phi_0_Pro * W2(iE1) * ( One - J(iE1,iS_A,iX) )
             SUM2 = SUM2 + Phi_0_Ann * W2(iE1) * J(iE1,iS_A,iX)
 
-            R_EnergyPair &
-              = - ( Phi_0_Pro * ( One - J0_A ) + Phi_0_Ann * J0_A ) &
-                    * Delta &
-                - (   Phi_0_Pro * ( One - J0_Target ) &
-                    + Phi_0_Ann * J0_Target ) * Delta_A &
-                + ( Phi_0_Pro - Phi_0_Ann ) * Delta * Delta_A
-
-            SUMR = SUMR + W2(iE1) * R_EnergyPair
+            SUMR = SUMR + W2(iE1) &
+                     * (   Phi_0_Pro * ( One - J(iE1,iS_A,iX) ) &
+                             * ( One - J(iE2,iS,iX) ) &
+                         - Phi_0_Ann * J(iE1,iS_A,iX) &
+                             * J(iE2,iS,iX) )
 
           END DO
 
@@ -3534,9 +3799,10 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacityRates_LinearCorrections_NuPair &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, H_1, H_2, H_3, J0, &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, T, E, W2, &
+      H_1, H_2, H_3, &
       J_I_1, J_II_1, L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3, &
-      Opacity_Mask )
+      Opacity_Mask, DetailedBalancePair_Option )
 
     ! --- nue+nuebar Pair Rates (Linear Corrections) ---
 
@@ -3544,11 +3810,12 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iS_B, iS_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: D      (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: T      (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: E      (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: W2     (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: H_1    (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: H_2    (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: H_3    (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: J0     (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: J_I_1  (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: J_II_1 (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: L_Pro_1(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
@@ -3558,6 +3825,8 @@ CONTAINS
     REAL(DP), INTENT(out) :: L_Ann_2(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: L_Ann_3(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     LOGICAL,  INTENT(in)  :: Opacity_Mask(nOp,iX_B:iX_E)
+    REAL(DP), INTENT(in), OPTIONAL :: &
+      DetailedBalancePair_Option(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
     REAL(DP) :: DetBal, Phi_1_Ann, Phi_1_Pro
     REAL(DP) :: SUM1, SUM2, SUM3, SUM4, SUM5, SUM6
@@ -3567,14 +3836,14 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
     !$OMP          Phi_1_Pro, Phi_1_Ann ) &
-    !$OMP MAP( to: J_I_1, J_II_1, W2, H_1, H_2, H_3, J0, D, &
+    !$OMP MAP( to: J_I_1, J_II_1, T, E, W2, H_1, H_2, H_3, D, &
     !$OMP          Opacity_Mask ) &
     !$OMP MAP( from: L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
     !$ACC          Phi_1_Pro, Phi_1_Ann ) &
-    !$ACC COPYIN( J_I_1, J_II_1, W2, H_1, H_2, H_3, J0, D, &
+    !$ACC COPYIN( J_I_1, J_II_1, T, E, W2, H_1, H_2, H_3, D, &
     !$ACC         Opacity_Mask ) &
     !$ACC COPYOUT( L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3 ) &
     !$ACC PRESENT( C1_NuPair, C2_NuPair )
@@ -3601,8 +3870,8 @@ CONTAINS
 
         DO iE1 = iE_B, iE_E
 
-          DetBal =   ( J0(iE2,iS,iX) * J0(iE1,iS_A,iX) ) &
-                   / ( ( One - J0(iE2,iS,iX) ) * ( One - J0(iE1,iS_A,iX) ) )
+          DetBal = CachedDetailedBalancePair &
+            ( iE1, iE2, iX, E, T, DetailedBalancePair_Option )
 
           IF ( iE1 <= iE2 ) THEN
             Phi_1_Ann = (   C1_NuPair(iS) * J_I_1 (iE1,iE2,iX) &
@@ -3736,8 +4005,9 @@ CONTAINS
 
   
   SUBROUTINE ComputeNeutrinoOpacityRates_Brem &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, &
-      J, J0, S_Sigma, Eta, Chi, R, Opacity_Mask )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, T, E, W2, &
+      J, S_Sigma, Eta, Chi, R, Opacity_Mask, &
+      DetailedBalancePair_Option )
 
     ! --- Brem Rates (Multiple J) ---
 
@@ -3745,17 +4015,19 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iS_B, iS_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: D      (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: T      (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: E      (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: W2     (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: J      (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: J0     (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: S_Sigma(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: Eta    (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: Chi    (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: R      (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     LOGICAL,  INTENT(in)  :: Opacity_Mask(nOp,iX_B:iX_E)
+    REAL(DP), INTENT(in), OPTIONAL :: &
+      DetailedBalancePair_Option(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
     REAL(DP) :: DetBal, Phi_0_Ann, Phi_0_Pro
-    REAL(DP) :: Delta, Delta_A, J0_Target, J0_A, R_EnergyPair
     REAL(DP) :: SUM1, SUM2, SUMR
     INTEGER  :: iX, iE1, iE2, iS, iS_A
 
@@ -3767,22 +4039,19 @@ CONTAINS
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, SUMR, DetBal, Phi_0_Ann, &
-    !$OMP          Phi_0_Pro, Delta, Delta_A, J0_Target, J0_A, &
-    !$OMP          R_EnergyPair, medium_fac ) &
-    !$OMP MAP( to: S_Sigma, W2, J, J0, D, Opacity_Mask ) &
+    !$OMP          Phi_0_Pro, medium_fac ) &
+    !$OMP MAP( to: S_Sigma, T, E, W2, J, D, Opacity_Mask ) &
     !$OMP MAP( from: Eta, Chi, R )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( iS_A, SUM1, SUM2, SUMR, DetBal, Phi_0_Ann, &
-    !$ACC          Phi_0_Pro, Delta, Delta_A, J0_Target, J0_A, &
-    !$ACC          R_EnergyPair, medium_fac ) &
-    !$ACC COPYIN( S_Sigma, W2, J, J0, D, Opacity_Mask ) &
+    !$ACC          Phi_0_Pro, medium_fac ) &
+    !$ACC COPYIN( S_Sigma, T, E, W2, J, D, Opacity_Mask ) &
     !$ACC COPYOUT( Eta, Chi, R )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, SUMR, DetBal, Phi_0_Ann, &
-    !$OMP          Phi_0_Pro, Delta, Delta_A, J0_Target, J0_A, &
-    !$OMP          R_EnergyPair, medium_fac )
+    !$OMP          Phi_0_Pro, medium_fac )
 #endif
     DO iX  = iX_B, iX_E
     DO iS  = iS_B, iS_E
@@ -3795,9 +4064,6 @@ CONTAINS
       SUM2 = Zero
       SUMR = Zero
 
-      J0_Target = J0(iE2,iS,iX)
-      Delta     = J(iE2,iS,iX) - J0_Target
-
       !Equation 11 from Fischer Fischer A&A 593, A103 (2016)
       !medium_fac = (1.0d0 / ( 1.0d0 + 1.0d0/3.0d0 * (D(iX) / UnitD / D_0)**(1.0d0/3.0d0) ) )**6
       !Set it to one to switch off
@@ -3807,11 +4073,8 @@ CONTAINS
 
         DO iE1 = iE_B, iE_E
 
-          J0_A    = J0(iE1,iS_A,iX)
-          Delta_A = J(iE1,iS_A,iX) - J0_A
-
-          DetBal =   ( J0_Target * J0_A ) &
-                   / ( ( One - J0_Target ) * ( One - J0_A ) )
+          DetBal = CachedDetailedBalancePair &
+            ( iE1, iE2, iX, E, T, DetailedBalancePair_Option )
 
           IF ( iE1 <= iE2 ) THEN
             Phi_0_Ann = S_Sigma(iE1,iE2,iX) * 3.0d0 * Brem_const * medium_fac
@@ -3823,14 +4086,11 @@ CONTAINS
           SUM1 = SUM1 + Phi_0_Pro * W2(iE1) * ( One - J(iE1,iS_A,iX) )
           SUM2 = SUM2 + Phi_0_Ann * W2(iE1) * J(iE1,iS_A,iX)
 
-          R_EnergyPair &
-            = - ( Phi_0_Pro * ( One - J0_A ) + Phi_0_Ann * J0_A ) &
-                  * Delta &
-              - (   Phi_0_Pro * ( One - J0_Target ) &
-                  + Phi_0_Ann * J0_Target ) * Delta_A &
-              + ( Phi_0_Pro - Phi_0_Ann ) * Delta * Delta_A
-
-          SUMR = SUMR + W2(iE1) * R_EnergyPair
+          SUMR = SUMR + W2(iE1) &
+                   * (   Phi_0_Pro * ( One - J(iE1,iS_A,iX) ) &
+                           * ( One - J(iE2,iS,iX) ) &
+                       - Phi_0_Ann * J(iE1,iS_A,iX) &
+                           * J(iE2,iS,iX) )
 
         END DO
 
@@ -3848,9 +4108,10 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacityRates_LinearCorrections_Brem &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, H_1, H_2, H_3, J0, &
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, T, E, W2, &
+      H_1, H_2, H_3, &
       S_Sigma, L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3, &
-      Opacity_Mask )
+      Opacity_Mask, DetailedBalancePair_Option )
 
     ! --- N N Brem Rates (Linear Corrections) ---
 
@@ -3858,11 +4119,12 @@ CONTAINS
     INTEGER,  INTENT(in)  :: iS_B, iS_E
     INTEGER,  INTENT(in)  :: iX_B, iX_E
     REAL(DP), INTENT(in)  :: D      (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: T      (iX_B:iX_E)
+    REAL(DP), INTENT(in)  :: E      (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: W2     (iE_B:iE_E)
     REAL(DP), INTENT(in)  :: H_1    (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: H_2    (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: H_3    (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
-    REAL(DP), INTENT(in)  :: J0     (iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)  :: S_Sigma(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: L_Pro_1(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: L_Pro_2(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
@@ -3871,6 +4133,8 @@ CONTAINS
     REAL(DP), INTENT(out) :: L_Ann_2(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(out) :: L_Ann_3(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     LOGICAL,  INTENT(in)  :: Opacity_Mask(nOp,iX_B:iX_E)
+    REAL(DP), INTENT(in), OPTIONAL :: &
+      DetailedBalancePair_Option(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
     REAL(DP) :: DetBal, Phi_1_Ann, Phi_1_Pro
     REAL(DP) :: SUM1, SUM2, SUM3, SUM4, SUM5, SUM6
@@ -3880,14 +4144,14 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
     !$OMP          Phi_1_Pro, Phi_1_Ann ) &
-    !$OMP MAP( to: S_Sigma, W2, H_1, H_2, H_3, J0, D, &
+    !$OMP MAP( to: S_Sigma, T, E, W2, H_1, H_2, H_3, D, &
     !$OMP          Opacity_Mask ) &
     !$OMP MAP( from: L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
     !$ACC          Phi_1_Pro, Phi_1_Ann ) &
-    !$ACC COPYIN( S_Sigma, W2, H_1, H_2, H_3, J0, D, &
+    !$ACC COPYIN( S_Sigma, T, E, W2, H_1, H_2, H_3, D, &
     !$ACC         Opacity_Mask ) &
     !$ACC COPYOUT( L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3 )
 #elif defined( THORNADO_OMP    )
@@ -3913,8 +4177,8 @@ CONTAINS
 
         DO iE1 = iE_B, iE_E
 
-          DetBal = ( J0(iE2,iS,iX) * J0(iE1,iS_A,iX) ) &
-                   / ( ( One - J0(iE2,iS,iX) ) * ( One - J0(iE1,iS_A,iX) ) )
+          DetBal = CachedDetailedBalancePair &
+            ( iE1, iE2, iX, E, T, DetailedBalancePair_Option )
 
           IF ( iE1 <= iE2 ) THEN
             Phi_1_Ann = - S_Sigma(iE1,iE2,iX) * Brem_const
