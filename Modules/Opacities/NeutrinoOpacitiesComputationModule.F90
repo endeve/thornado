@@ -2815,11 +2815,7 @@ CONTAINS
           DetBal =   ( J0(iE1,iS1,iX) * J0(iE3,iS3,iX) ) &
                     / ( ( One - J0(iE1,iS1,iX) ) * ( One - J0(iE3,iS3,iX) ) )
 
-          IF ( iE3 <= iE1 ) THEN
-            Phi_In = Phi_0_MuonOpac(iE1, iE3, iX, iProcess) * UnitNES
-          ELSE 
-            Phi_In = Phi_0_MuonOpac(iE3, iE1, iX, iProcess) * UnitNES
-          END IF
+          Phi_In = Phi_0_MuonOpac(iE3, iE1, iX, iProcess) * UnitNES
           Phi_Out  = Phi_In * DetBal 
 
           SUM1 = SUM1 + Phi_Out * W2(iE3) * ( One - J(iE3,iS3,iX) )
