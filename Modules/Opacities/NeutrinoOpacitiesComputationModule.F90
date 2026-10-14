@@ -1012,7 +1012,7 @@ CONTAINS
 
     REAL(DP) :: LogE_P
     REAL(DP) :: LogD_P, LogT_P
-    REAL(DP) :: E_P, D_P, T_P, Ye_P, Ym_P
+    REAL(DP) :: E_P, D_P, T_P, Yp_P
     INTEGER  :: iE, iS, iX
 
 #if defined(THORNADO_OMP_OL)
@@ -1035,10 +1035,10 @@ CONTAINS
 
         LogD_P = LOG10( D(iX)  / UnitD )
         LogT_P = LOG10( T(iX)  / UnitT )
-        Ye_P   =        Ye(iX) / UnitY
+        Yp_P   = Ye(iX) / UnitY + Ym(iX) / UnitY
 
         CALL LogInterpolateSingleVariable_4D_Custom_Point &
-                ( LogE_P , LogD_P , LogT_P , Ye_P, &
+                ( LogE_P , LogD_P , LogT_P , Yp_P, &
                   LogEs_T, LogDs_T, LogTs_T, Ys_T, &
                   OS_EmAb(iS), EmAb_T(:,:,:,:,iS), opEC(iE,iS,iX) )
 
