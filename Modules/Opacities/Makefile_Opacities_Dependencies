@@ -68,3 +68,11 @@ NeutrinoOpacitiesComputationModule.o: \
   wlSemiLeptonicOpacityIntegrationModule2D.o
 endif
 endif
+
+NeutrinoLeptonInteractionsModule.o: \
+  KindModule.o \
+  UnitsModule.o \
+  EquationOfStateModule_TABLE.o \
+  RadiationFieldsModule.o \
+  wlGeneralLeptonScatteringModuleThornadoInterface.o \
+  NeutrinoLeptonInteractionsModule.F90

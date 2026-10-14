@@ -783,6 +783,12 @@ CONTAINS
         uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS) = Zero
         uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS) = Zero
 
+if ( iS > 2 ) then
+uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS) = 1d-40
+uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS) = Zero
+
+endif
+
         CALL ComputeConserved_TwoMoment &
                ( uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS), &
                  uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS), &

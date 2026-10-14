@@ -77,6 +77,8 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     SetOpacityMask, &
     nOp
+  USE NeutrinoLeptonInteractionsModule, ONLY: &
+    ComputeNeutrinoLeptonPairingResiduals
 #endif
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputePrimitive_TwoMoment, &
@@ -578,7 +580,9 @@ CONTAINS
     ( iZ_B0_Input, iZ_E0_Input, iZ_B1_Input, iZ_E1_Input, &
       GE, GX, PF, PR, Q_Matter, NNS_RateDecomposition_Option, &
       QH_ByProcessSpecies_Option, EmAb_RateDecomposition_Option, &
-      EmAb_Spectrum_Option, RadiationCollisionRHS_Option )
+      EmAb_Spectrum_Option, RadiationCollisionRHS_Option, &
+      GeneralLeptonPairingResidual_Option, &
+      GeneralLeptonPairingScale_Option )
 
     INTEGER, INTENT(in) :: &
       iZ_B0_Input(4), iZ_E0_Input(4), iZ_B1_Input(4), iZ_E1_Input(4)
@@ -606,9 +610,13 @@ CONTAINS
     REAL(DP), INTENT(out), OPTIONAL :: EmAb_RateDecomposition_Option(:,:,:)
     REAL(DP), INTENT(out), OPTIONAL :: EmAb_Spectrum_Option(:,:,:,:)
     REAL(DP), INTENT(out), OPTIONAL :: RadiationCollisionRHS_Option(:,:,:,:)
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      GeneralLeptonPairingResidual_Option(:,:), &
+      GeneralLeptonPairingScale_Option(:,:)
 
     LOGICAL, ALLOCATABLE :: MatterCoupling_Mask_Diagnostic(:)
     LOGICAL, ALLOCATABLE :: Opacity_Mask_Diagnostic(:,:)
+    REAL(DP), ALLOCATABLE :: GeneralLeptonWeight2_Diagnostic(:)
 
     CALL InitializeCollisions &
            ( iZ_B0_Input, iZ_E0_Input, iZ_B1_Input, iZ_E1_Input, &
@@ -639,6 +647,21 @@ CONTAINS
            ( PF_N(:,iPF_D), AF_N(:,iAF_T), PR_N(:,:,:,iPR_D), &
              PR_N(:,:,:,iPR_I1), PR_N(:,:,:,iPR_I2), PR_N(:,:,:,iPR_I3), &
              nX_P0 = nX_G, Opacity_Mask_Input = Opacity_Mask_Diagnostic )
+
+    IF( PRESENT(GeneralLeptonPairingResidual_Option) .OR. &
+        PRESENT(GeneralLeptonPairingScale_Option) )THEN
+      IF( .NOT. PRESENT(GeneralLeptonPairingResidual_Option) .OR. &
+          .NOT. PRESENT(GeneralLeptonPairingScale_Option) ) &
+        ERROR STOP 'Both general-lepton pairing outputs are required.'
+      ALLOCATE( GeneralLeptonWeight2_Diagnostic(nE_G) )
+      GeneralLeptonWeight2_Diagnostic &
+        = EnergyQuadratureWeight_N * GE_N(:,iGE_Ep2)
+      CALL ComputeNeutrinoLeptonPairingResiduals &
+             ( GeneralLeptonWeight2_Diagnostic, &
+               GeneralLeptonPairingResidual_Option, &
+               GeneralLeptonPairingScale_Option )
+      DEALLOCATE( GeneralLeptonWeight2_Diagnostic )
+    END IF
 
     MatterCoupling_Mask_Diagnostic = ANY( Opacity_Mask_Diagnostic, DIM = 1 )
 

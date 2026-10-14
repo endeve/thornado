@@ -44,7 +44,8 @@ MODULE EquationOfStateModule_TABLE
   USE wlLeptonPhotonGasEOS, ONLY: &
     LeptonGasType, PhotonGasType, &
     LeptonGasEOS,  PhotonGasEOS , &
-    GetPhotonLeptonGasEOS
+    GetPhotonLeptonGasEOS, ComputePairLeptonFraction, &
+    PairSymmetricEtaMax
   USE wlHelmIOModuleHDF, ONLY: &
     ReadHelmholtzTableHDF
   USE wlSoundSpeedModule, ONLY: &
@@ -60,7 +61,7 @@ MODULE EquationOfStateModule_TABLE
 
   USE, INTRINSIC :: ISO_C_BINDING
   USE KindModule, ONLY: &
-    DP, Zero, One
+    DP, Zero, Half, One
   USE UnitsModule, ONLY: &
     AtomicMassUnit, &
     BoltzmannConstant, &
@@ -126,6 +127,7 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputeSpecificInternalEnergy_TABLE
   PUBLIC :: ComputeElectronChemicalPotential_TABLE
   PUBLIC :: ComputeMuonChemicalPotential_TABLE
+  PUBLIC :: ComputeMuonFractionFromDegeneracy_TABLE
   PUBLIC :: ComputeProtonChemicalPotential_TABLE
   PUBLIC :: ComputeNeutronChemicalPotential_TABLE
   PUBLIC :: ComputeProtonMassFraction_TABLE
@@ -217,6 +219,11 @@ MODULE EquationOfStateModule_TABLE
   INTERFACE ComputeMuonChemicalPotential_TABLE
     MODULE PROCEDURE ComputeMuonChemicalPotential_TABLE_Scalar
     MODULE PROCEDURE ComputeMuonChemicalPotential_TABLE_Vector
+  END INTERFACE
+
+  INTERFACE ComputeMuonFractionFromDegeneracy_TABLE
+    MODULE PROCEDURE ComputeMuonFractionFromDegeneracy_TABLE_Scalar
+    MODULE PROCEDURE ComputeMuonFractionFromDegeneracy_TABLE_Vector
   END INTERFACE
 
   INTERFACE ComputeProtonChemicalPotential_TABLE
@@ -2500,6 +2507,162 @@ CONTAINS
     END IF
 
   END SUBROUTINE ComputeMuonChemicalPotential_TABLE_Vector
+
+
+  SUBROUTINE ComputeMuonFractionFromDegeneracy_TABLE_Scalar &
+    ( D, T, Ye, Eta, Ym, dYmdEta, Error )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)    :: D, T, Ye, Eta
+    REAL(DP), INTENT(inout) :: Ym
+    REAL(DP), INTENT(out)   :: dYmdEta
+    INTEGER,  INTENT(out) :: Error
+
+    INTEGER, PARAMETER :: MaxIter = 32
+    INTEGER  :: k
+    REAL(DP) :: EtaAbs, EtaGuess, EtaHi, EtaLo, EtaMid, Mu, MuScale
+    REAL(DP) :: YmInput, YGuess, YHi, YLo, YMid, YPair, dYPairdEta
+
+    Error = 0
+    YmInput = Ym
+    YGuess = ABS( Ym )
+    EtaGuess = Zero
+    dYmdEta = Zero
+
+    IF( D <= Zero .OR. T <= Zero )THEN
+      Error = 1
+      RETURN
+    END IF
+
+    EtaAbs = ABS( Eta )
+
+    ! The pair-symmetric EOS is explicitly parameterized by eta in this
+    ! interval.  Evaluating its forward relation avoids resolving a tiny net
+    ! fraction by bisection in Y_mu.
+    IF( EtaAbs <= PairSymmetricEtaMax )THEN
+      CALL ComputePairLeptonFraction &
+             ( HelmTableMuons, T / UnitT, D / UnitD, Eta, &
+               YPair, dYPairdEta )
+      Ym        = YPair * UnitY
+      dYmdEta   = dYPairdEta * UnitY
+      IF( Ye + Ym < Min_Y .OR. Ye + Ym > Max_Y )THEN
+        Error = 1
+        Ym = YmInput
+        dYmdEta = Zero
+      END IF
+      RETURN
+    END IF
+
+    MuScale = BoltzmannConstant * T
+    YLo = Zero
+    EtaLo = Zero
+    YHi = MIN( One, &
+               ( One - 128.0_DP * EPSILON(One) ) &
+                 * HelmTableMuons % maxdens / ( D / UnitD ) )
+
+    ! The baryonic table is parameterized by Y_p = Y_e + Y_mu.  Restrict
+    ! the forward eta_mu map to that composition domain before attempting a
+    ! temperature inversion.  Reaching this bound is reported as a failed
+    ! trial so that the nonlinear solver backtracks; it is not accepted as a
+    ! clipped thermodynamic state.
+    IF( Eta >= Zero )THEN
+      YHi = MIN( YHi, MAX(Zero,Max_Y-Ye) )
+    ELSE
+      YHi = MIN( YHi, MAX(Zero,Ye-Min_Y) )
+    END IF
+
+    IF( YHi <= Zero )THEN
+      Error = 1
+      RETURN
+    END IF
+
+    YGuess = MIN( YGuess, YHi )
+    IF( YGuess > Zero )THEN
+      CALL ComputeMuonChemicalPotential_TABLE_Scalar &
+             ( D, T, Zero, SIGN(YGuess,Eta), Mu )
+      EtaGuess = ABS( Mu / MuScale )
+      IF( EtaGuess < EtaAbs )THEN
+        YLo = YGuess
+        EtaLo = EtaGuess
+      ELSE
+        YHi = YGuess
+        EtaHi = EtaGuess
+      END IF
+    END IF
+
+    IF( YGuess <= Zero .OR. EtaGuess < EtaAbs )THEN
+      CALL ComputeMuonChemicalPotential_TABLE_Scalar &
+             ( D, T, Zero, SIGN(YHi,Eta), Mu )
+      EtaHi = ABS( Mu / MuScale )
+      IF( EtaHi < EtaAbs )THEN
+        Error = 1
+        Ym = YmInput
+        dYmdEta = Zero
+        RETURN
+      END IF
+    END IF
+
+    DO k = 1, MaxIter
+      YMid = YLo + (EtaAbs-EtaLo) / MAX(EtaHi-EtaLo,TINY(One)) &
+                     * (YHi-YLo)
+      YMid = MAX( YLo + 0.1_DP*(YHi-YLo), &
+                  MIN(YMid,YHi-0.1_DP*(YHi-YLo)) )
+      CALL ComputeMuonChemicalPotential_TABLE_Scalar &
+             ( D, T, Zero, SIGN(YMid,Eta), Mu )
+      EtaMid = ABS( Mu / MuScale )
+      IF( ABS(EtaMid-EtaAbs) &
+            <= 64.0_DP*EPSILON(One)*MAX(One,EtaAbs) ) EXIT
+      IF( EtaMid < EtaAbs )THEN
+        YLo = YMid
+        EtaLo = EtaMid
+      ELSE
+        YHi = YMid
+        EtaHi = EtaMid
+      END IF
+    END DO
+
+    Ym = SIGN( YMid, Eta )
+
+    IF( EtaHi > EtaLo )THEN
+      dYmdEta = ( YHi - YLo ) / ( EtaHi - EtaLo )
+    ELSE
+      dYmdEta = Zero
+    END IF
+
+  END SUBROUTINE ComputeMuonFractionFromDegeneracy_TABLE_Scalar
+
+
+  SUBROUTINE ComputeMuonFractionFromDegeneracy_TABLE_Vector &
+    ( D, T, Ye, Eta, Ym, dYmdEta, Error )
+
+    REAL(DP), INTENT(in)    :: D(:), T(:), Ye(:), Eta(:)
+    REAL(DP), INTENT(inout) :: Ym(:)
+    REAL(DP), INTENT(out)   :: dYmdEta(:)
+    INTEGER,  INTENT(out) :: Error(:)
+
+    INTEGER :: iP
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP MAP( to: D, T, Eta ) MAP( tofrom: Ym ) &
+    !$OMP MAP( from: dYmdEta, Error )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC COPYIN( D, T, Eta ) COPY( Ym ) COPYOUT( dYmdEta, Error )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iP = 1, SIZE(D)
+      CALL ComputeMuonFractionFromDegeneracy_TABLE_Scalar &
+             ( D(iP), T(iP), Ye(iP), Eta(iP), &
+               Ym(iP), dYmdEta(iP), Error(iP) )
+    END DO
+
+  END SUBROUTINE ComputeMuonFractionFromDegeneracy_TABLE_Vector
 
 
   SUBROUTINE ComputeProtonChemicalPotential_TABLE_Scalar &

@@ -33,6 +33,8 @@ MODULE StandaloneMatterDiagnosticsModule
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     ComputeEquilibriumDistributions, &
     SetChargedCurrentMasks
+  USE NeutrinoLeptonInteractionsModule, ONLY: &
+    nGL
   USE RadiationFieldsModule, ONLY: &
     nSpecies, nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
     iNuE_Bar, iNuM, iNuM_Bar, LeptonNumber, &
@@ -64,7 +66,8 @@ MODULE StandaloneMatterDiagnosticsModule
     FluxFactor
   USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
     iQ_Le, iQ_Lm, iQ_E, iQ_H, iQ_M1, iQ_M2, iQ_M3, &
-    iC_EmAb, iC_Iso, &
+    iC_EmAb, iC_Iso, iC_NNS, iC_NES, iC_Pair, iC_NuPair, iC_Brem, &
+    iC_NMS, iC_LFE, iC_LFC, iC_IMD, &
     nEmAbRateDecomposition, &
     iEmAbRateDecomposition_NIn, iEmAbRateDecomposition_NOut, iEmAbRateDecomposition_NNet, &
     iEmAbRateDecomposition_EIn, iEmAbRateDecomposition_EOut, iEmAbRateDecomposition_QH, &
@@ -100,7 +103,8 @@ MODULE StandaloneMatterDiagnosticsModule
   PUBLIC :: FinalizeCumulativeConservationDiagnostics
 
   CHARACTER(6), PARAMETER :: ProcessName(nC) = [ CHARACTER(6) :: &
-    'EmAb  ', 'Iso   ', 'NNS   ', 'NES   ', 'Pair  ', 'NuPair', 'Brem  ' ]
+    'EmAb  ', 'Iso   ', 'NNS   ', 'NES   ', 'Pair  ', 'NuPair', 'Brem  ', &
+    'NMS   ', 'LFE   ', 'LFC   ', 'IMD   ' ]
 
   INTEGER, PARAMETER :: iFace_EnergyLeft       = 1
   INTEGER, PARAMETER :: iFace_EnergyRight      = 2
@@ -1762,7 +1766,8 @@ CONTAINS
     REAL(DP), INTENT(in) :: IMEX_Stage_FluidState(:,:,:,:,:,:,:)
     REAL(DP), INTENT(in) :: IMEX_Stage_RadiationState(:,:,:,:,:,:,:,:,:)
 
-    INTEGER :: iC, iNodeX, iN_X, iS, iX1, nE_G, nX_G, Unit
+    INTEGER :: iC, iE, iN_E, iNodeE, iNodeX, iN_X, iS, iX1
+    INTEGER :: nE_G, nX_G, Unit
     INTEGER :: InnerIterationsMin_Element, InnerIterationsMax_Element
     INTEGER :: OuterIterationsMax_Element, InnerUpdateCount_Element
     REAL(DP) :: ElementVolume, RadialWeight, Radius, VolumeWeight
@@ -1789,6 +1794,7 @@ CONTAINS
     REAL(DP) :: ConservativeProjectionMatterHeating_Rate_Final_Element
     REAL(DP) :: QH_ByProcessSpecies_Element(nC,nSpecies)
     REAL(DP) :: Q_Transport_Element(nQ,1+nSpecies)
+    REAL(DP) :: PairingAbsMax_Element(nGL), PairingRelMax_Element(nGL)
     REAL(DP), ALLOCATABLE :: &
       MeanInvMFP(:,:,:), EmAb_RateDecomposition(:,:,:), NNS_RateDecomposition(:,:,:), &
       Q_Matter(:,:,:), Q_Matter_PreLimiter(:,:,:), &
@@ -1796,6 +1802,8 @@ CONTAINS
       EmAb_Spectrum(:,:,:,:), EmAb_Spectrum_PreLimiter(:,:,:,:), &
       RadiationCollisionRHS(:,:,:,:), RadiationTransportRHS(:,:,:,:,:,:,:), &
       Q_Transport(:,:,:), CF_Streaming(:,:,:,:,:), CR_Streaming(:,:,:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: &
+      PairingResidual(:,:), PairingScale(:,:)
     INTEGER, ALLOCATABLE :: &
       InnerIterationsFinal(:), OuterIterationsFinal(:), &
       ConservativeProjectionStatusFinal(:)
@@ -1844,6 +1852,7 @@ CONTAINS
     ALLOCATE( Q_Transport(nQ,1+nSpecies,nX_G) )
     ALLOCATE( CF_Streaming, MOLD = CF_AfterStep )
     ALLOCATE( CR_Streaming, MOLD = CR )
+    ALLOCATE( PairingResidual(nGL,nX_G), PairingScale(nGL,nX_G) )
     ! The state immediately before the final radiation limiter need not be
     ! realizable.  Its primitive moments, closure, and collision source are
     ! then undefined.  Do not apply C2P to that state: the limiter contribution
@@ -1857,7 +1866,9 @@ CONTAINS
              QH_ByProcessSpecies_Option = QH_ByProcessSpecies, &
              EmAb_RateDecomposition_Option = EmAb_RateDecomposition, &
              EmAb_Spectrum_Option = EmAb_Spectrum, &
-             RadiationCollisionRHS_Option = RadiationCollisionRHS )
+             RadiationCollisionRHS_Option = RadiationCollisionRHS, &
+             GeneralLeptonPairingResidual_Option = PairingResidual, &
+             GeneralLeptonPairingScale_Option = PairingScale )
 
     CF_Streaming = CF_AfterStep
     CR_Streaming = CR
@@ -1908,6 +1919,8 @@ CONTAINS
       ConservativeProjectionMatterHeating_Rate_Final_Element = Zero
       QH_ByProcessSpecies_Element = Zero
       Q_Transport_Element = Zero
+      PairingAbsMax_Element = Zero
+      PairingRelMax_Element = Zero
       QH_Applied_Element   = Zero
       E_Before_Element     = Zero
       E_After_Element      = Zero
@@ -2020,6 +2033,14 @@ CONTAINS
                                       + VolumeWeight * QH_ByProcessSpecies(:,:,iN_X)
         Q_Transport_Element = Q_Transport_Element &
                               + VolumeWeight * Q_Transport(:,:,iN_X)
+        DO iC = 1, nGL
+          PairingAbsMax_Element(iC) = MAX &
+            ( PairingAbsMax_Element(iC), ABS(PairingResidual(iC,iN_X)) )
+          IF( PairingScale(iC,iN_X) > Zero ) &
+            PairingRelMax_Element(iC) = MAX &
+              ( PairingRelMax_Element(iC), &
+                ABS(PairingResidual(iC,iN_X))/PairingScale(iC,iN_X) )
+        END DO
 
         DO iS = 1, nSpecies
         DO iC = 1, nC
@@ -2179,6 +2200,13 @@ CONTAINS
             / ( One / Centimeter**3 / Second )
       END DO
 
+      DO iC = 1, nGL
+        WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
+          PairingAbsMax_Element(iC) / ( One / Centimeter**3 / Second )
+        WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
+          PairingRelMax_Element(iC)
+      END DO
+
       WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
         Q_Matter_Element(iQ_H,1) / ( Erg / Centimeter**3 / Second )
       WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
@@ -2294,6 +2322,8 @@ CONTAINS
     END DO
 
     CLOSE(Unit)
+
+    DEALLOCATE( PairingResidual, PairingScale )
 
     CALL WriteEmAbSpectrum &
            ( TRIM( FileName ) // '.emab_spectrum', &
@@ -5164,6 +5194,13 @@ CONTAINS
     DO iC = 1, nC
       WRITE(Unit,'(A)',ADVANCE='NO') &
         ' QLmu_IMEX_source_process_' // TRIM( ProcessName(iC) ) // '_cm3_s'
+    END DO
+
+    DO iC = iC_NMS, iC_IMD
+      WRITE(Unit,'(A)',ADVANCE='NO') &
+        ' pairing_abs_max_' // TRIM( ProcessName(iC) ) // '_cm3_s'
+      WRITE(Unit,'(A)',ADVANCE='NO') &
+        ' pairing_rel_max_' // TRIM( ProcessName(iC) )
     END DO
 
     WRITE(Unit,'(A)',ADVANCE='NO') ' QH_total_erg_cm3_s'

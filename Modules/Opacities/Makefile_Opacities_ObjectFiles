@@ -3,4 +3,5 @@ OPACITIES = \
   OpacityModule_TABLE.o \
   OpacityModule.o \
   NeutrinoOpacitiesModule.o \
-  NeutrinoOpacitiesComputationModule.o
+  NeutrinoOpacitiesComputationModule.o \
+  NeutrinoLeptonInteractionsModule.o

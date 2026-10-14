@@ -46,6 +46,7 @@ TwoMoment_NeutrinoMatterSolverModule.o: \
   RadiationFieldsModule.o \
   EquationOfStateModule_TABLE.o \
   NeutrinoOpacitiesComputationModule.o \
+  NeutrinoLeptonInteractionsModule.o \
   TwoMoment_UtilitiesModule.o \
   TwoMoment_ClosureModule.o \
   TwoMoment_NeutrinoMatterSolverModule.F90

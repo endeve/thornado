@@ -51,11 +51,13 @@ MODULE TwoMoment_TimersModule
   REAL(DP), PUBLIC :: Timer_Opacity_Pair
   REAL(DP), PUBLIC :: Timer_Opacity_NuPair
   REAL(DP), PUBLIC :: Timer_Opacity_Brem
+  REAL(DP), PUBLIC :: Timer_Opacity_GeneralLepton
   REAL(DP), PUBLIC :: Timer_OpacityRate_NNS
   REAL(DP), PUBLIC :: Timer_OpacityRate_NES
   REAL(DP), PUBLIC :: Timer_OpacityRate_Pair
   REAL(DP), PUBLIC :: Timer_OpacityRate_NuPair
   REAL(DP), PUBLIC :: Timer_OpacityRate_Brem
+  REAL(DP), PUBLIC :: Timer_OpacityRate_GeneralLepton
   REAL(DP), PUBLIC :: Timer_TCI
   REAL(DP), PUBLIC :: Timer_TCI_Permute
   REAL(DP), PUBLIC :: Timer_TCI_LinearAlgebra
@@ -133,12 +135,14 @@ CONTAINS
     Timer_Opacity_Pair                   = Zero
     Timer_Opacity_NuPair                 = Zero
     Timer_Opacity_Brem                   = Zero
+    Timer_Opacity_GeneralLepton          = Zero
 
     Timer_OpacityRate_NNS                = Zero
     Timer_OpacityRate_NES                = Zero
     Timer_OpacityRate_Pair               = Zero
     Timer_OpacityRate_NuPair             = Zero
     Timer_OpacityRate_Brem               = Zero
+    Timer_OpacityRate_GeneralLepton      = Zero
 
     Timer_TCI                            = Zero
     Timer_TCI_Permute                    = Zero
@@ -262,6 +266,8 @@ CONTAINS
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Opacity_Brem                   :', Timer_Opacity_Brem                  , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Opacity_GeneralLepton          :', Timer_Opacity_GeneralLepton         , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_OpacityRate_NNS                :', Timer_OpacityRate_NNS               , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_OpacityRate_NES                :', Timer_OpacityRate_NES               , ' s'
@@ -269,6 +275,8 @@ CONTAINS
       '    Timer_OpacityRate_Pair               :', Timer_OpacityRate_Pair              , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_OpacityRate_Brem               :', Timer_OpacityRate_Brem              , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_OpacityRate_GeneralLepton      :', Timer_OpacityRate_GeneralLepton     , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '  Timer_TCI                              :', Timer_TCI                           , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
@@ -344,4 +352,3 @@ CONTAINS
 
 
 END MODULE TwoMoment_TimersModule
-

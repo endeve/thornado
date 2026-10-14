@@ -137,6 +137,10 @@ MODULE OpacityModule_TABLE
   REAL(DP) :: Pair_MinD, Pair_MaxD                 ! density cutoffs for all Pair opacities
   REAL(DP) :: Brem_MinD, Brem_MaxD                 ! density cutoffs for all Brem opacities
   REAL(DP) :: NuPair_MinD, NuPair_MaxD             ! density cutoffs for all NuPair opacities
+  REAL(DP) :: NMS_MinD, NMS_MaxD                   ! neutrino-muon scattering
+  REAL(DP) :: LFE_MinD, LFE_MaxD                   ! lepton-flavor exchange
+  REAL(DP) :: LFC_MinD, LFC_MaxD                   ! lepton-flavor conversion
+  REAL(DP) :: IMD_MinD, IMD_MaxD                   ! inverse muon decay
   REAL(DP) :: Op_MinD, Op_MaxD                     ! density cutoffs for all opacities
   REAL(DP) :: EOSTable_MinD, EOSTable_MaxD         ! min and max EOS table densities
 
@@ -171,6 +175,10 @@ MODULE OpacityModule_TABLE
   PUBLIC :: QueryOpacity_Pair
   PUBLIC :: QueryOpacity_Brem
   PUBLIC :: QueryOpacity_NuPair
+  PUBLIC :: QueryOpacity_NMS
+  PUBLIC :: QueryOpacity_LFE
+  PUBLIC :: QueryOpacity_LFC
+  PUBLIC :: QueryOpacity_IMD
   PUBLIC :: QueryOpacity
 
 #if defined(THORNADO_OMP_OL)
@@ -199,6 +207,8 @@ MODULE OpacityModule_TABLE
     !$OMP   Pair_MinD, Pair_MaxD,                           &
     !$OMP   Brem_MinD, Brem_MaxD,                           &
     !$OMP   NuPair_MinD, NuPair_MaxD,                       &
+    !$OMP   NMS_MinD, NMS_MaxD, LFE_MinD, LFE_MaxD,         &
+    !$OMP   LFC_MinD, LFC_MaxD, IMD_MinD, IMD_MaxD,         &
     !$OMP   Op_MinD, Op_MaxD,                               &
     !$OMP   NNS_Xi_Nu_N, NNS_Xi_Nu_P,                       &
     !$OMP   NNS_Xi_NuBar_N, NNS_Xi_NuBar_P )
@@ -228,6 +238,8 @@ MODULE OpacityModule_TABLE
     !$ACC   Pair_MinD, Pair_MaxD,                           &
     !$ACC   Brem_MinD, Brem_MaxD,                           &
     !$ACC   NuPair_MinD, NuPair_MaxD,                       &
+    !$ACC   NMS_MinD, NMS_MaxD, LFE_MinD, LFE_MaxD,         &
+    !$ACC   LFC_MinD, LFC_MaxD, IMD_MinD, IMD_MaxD,         &
     !$ACC   Op_MinD, Op_MaxD,                               &
     !$ACC   NNS_Xi_Nu_N, NNS_Xi_Nu_P,                       &
     !$ACC   NNS_Xi_NuBar_N, NNS_Xi_NuBar_P )
@@ -251,6 +263,10 @@ CONTAINS
       Pair_MinD_Option, Pair_MaxD_Option,                         &
       Brem_MinD_Option, Brem_MaxD_Option,                         &
       NuPair_MinD_Option, NuPair_MaxD_Option,                     &
+      NMS_MinD_Option, NMS_MaxD_Option,                           &
+      LFE_MinD_Option, LFE_MaxD_Option,                           &
+      LFC_MinD_Option, LFC_MaxD_Option,                           &
+      IMD_MinD_Option, IMD_MaxD_Option,                           &
       Op_MinD_Option, Op_MaxD_Option,                             &
       EquationOfStateTableName_Option, Verbose_Option )
 
@@ -271,6 +287,10 @@ CONTAINS
     REAL(DP),         INTENT(in), OPTIONAL :: Pair_MinD_Option, Pair_MaxD_Option
     REAL(DP),         INTENT(in), OPTIONAL :: Brem_MinD_Option, Brem_MaxD_Option
     REAL(DP),         INTENT(in), OPTIONAL :: NuPair_MinD_Option, NuPair_MaxD_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: NMS_MinD_Option, NMS_MaxD_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: LFE_MinD_Option, LFE_MaxD_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: LFC_MinD_Option, LFC_MaxD_Option
+    REAL(DP),         INTENT(in), OPTIONAL :: IMD_MinD_Option, IMD_MaxD_Option
     REAL(DP),         INTENT(in), OPTIONAL :: Op_MinD_Option, Op_MaxD_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
     INTEGER,          INTENT(in), OPTIONAL :: EmAb_Muon_Method_Option, nE_Muon_2D_Option
@@ -619,6 +639,52 @@ CONTAINS
       NuPair_MaxD = EOSTable_MaxD 
     END IF
 
+    ! --- On-the-fly charged-lepton interactions ---
+
+    IF( PRESENT( NMS_MinD_Option ) )THEN
+      NMS_MinD = MAX( NMS_MinD_Option, EOSTable_MinD )
+    ELSE
+      NMS_MinD = EOSTable_MinD
+    END IF
+    IF( PRESENT( NMS_MaxD_Option ) )THEN
+      NMS_MaxD = MIN( NMS_MaxD_Option, EOSTable_MaxD )
+    ELSE
+      NMS_MaxD = EOSTable_MaxD
+    END IF
+
+    IF( PRESENT( LFE_MinD_Option ) )THEN
+      LFE_MinD = MAX( LFE_MinD_Option, EOSTable_MinD )
+    ELSE
+      LFE_MinD = EOSTable_MinD
+    END IF
+    IF( PRESENT( LFE_MaxD_Option ) )THEN
+      LFE_MaxD = MIN( LFE_MaxD_Option, EOSTable_MaxD )
+    ELSE
+      LFE_MaxD = EOSTable_MaxD
+    END IF
+
+    IF( PRESENT( LFC_MinD_Option ) )THEN
+      LFC_MinD = MAX( LFC_MinD_Option, EOSTable_MinD )
+    ELSE
+      LFC_MinD = EOSTable_MinD
+    END IF
+    IF( PRESENT( LFC_MaxD_Option ) )THEN
+      LFC_MaxD = MIN( LFC_MaxD_Option, EOSTable_MaxD )
+    ELSE
+      LFC_MaxD = EOSTable_MaxD
+    END IF
+
+    IF( PRESENT( IMD_MinD_Option ) )THEN
+      IMD_MinD = MAX( IMD_MinD_Option, EOSTable_MinD )
+    ELSE
+      IMD_MinD = EOSTable_MinD
+    END IF
+    IF( PRESENT( IMD_MaxD_Option ) )THEN
+      IMD_MaxD = MIN( IMD_MaxD_Option, EOSTable_MaxD )
+    ELSE
+      IMD_MaxD = EOSTable_MaxD
+    END IF
+
     ! --- Cutoff For All Opacities ---
 
     IF( PRESENT( Op_MinD_Option ) )THEN
@@ -626,7 +692,8 @@ CONTAINS
     ELSE
       Op_MinD = MIN &
         ( EmAb_MinD, EmAb_Muon_MinD, Iso_MinD, NNS_MinD, NES_MinD, &
-          Pair_MinD, Brem_MinD, NuPair_MinD )
+          Pair_MinD, Brem_MinD, NuPair_MinD, NMS_MinD, LFE_MinD, &
+          LFC_MinD, IMD_MinD )
     END IF
 
     IF( PRESENT( Op_MaxD_Option ) )THEN
@@ -634,7 +701,8 @@ CONTAINS
     ELSE
       Op_MaxD = MAX &
         ( EmAb_MaxD, EmAb_Muon_MaxD, Iso_MaxD, NNS_MaxD, NES_MaxD, &
-          Pair_MaxD, Brem_MaxD, NuPair_MaxD )
+          Pair_MaxD, Brem_MaxD, NuPair_MaxD, NMS_MaxD, LFE_MaxD, &
+          LFC_MaxD, IMD_MaxD )
     END IF
 
     ! --- Make Cutoffs Consistent ---
@@ -646,6 +714,10 @@ CONTAINS
     Pair_MinD   = MAX( Pair_MinD  , Op_MinD )
     Brem_MinD   = MAX( Brem_MinD  , Op_MinD )
     NuPair_MinD = MAX( NuPair_MinD, Op_MinD )
+    NMS_MinD    = MAX( NMS_MinD,    Op_MinD )
+    LFE_MinD    = MAX( LFE_MinD,    Op_MinD )
+    LFC_MinD    = MAX( LFC_MinD,    Op_MinD )
+    IMD_MinD    = MAX( IMD_MinD,    Op_MinD )
 
     EmAb_Nucleon_MinD = MAX( EmAb_Nucleon_MinD, EmAb_MinD )
     EmAb_Nuclei_MinD  = MAX( EmAb_Nuclei_MinD , EmAb_MinD )
@@ -658,6 +730,10 @@ CONTAINS
     Pair_MaxD   = MIN( Pair_MaxD  , Op_MaxD )
     Brem_MaxD   = MIN( Brem_MaxD  , Op_MaxD )
     NuPair_MaxD = MIN( NuPair_MaxD, Op_MaxD )
+    NMS_MaxD    = MIN( NMS_MaxD,    Op_MaxD )
+    LFE_MaxD    = MIN( LFE_MaxD,    Op_MaxD )
+    LFC_MaxD    = MIN( LFC_MaxD,    Op_MaxD )
+    IMD_MaxD    = MIN( IMD_MaxD,    Op_MaxD )
 
     EmAb_Nucleon_MaxD = MIN( EmAb_Nucleon_MaxD, EmAb_MaxD )
     EmAb_Nuclei_MaxD  = MIN( EmAb_Nuclei_MaxD , EmAb_MaxD )
@@ -957,6 +1033,8 @@ CONTAINS
     !$OMP                  Pair_MinD, Pair_MaxD, &
     !$OMP                  Brem_MinD, Brem_MaxD, &
     !$OMP                  NuPair_MinD, NuPair_MaxD, &
+    !$OMP                  NMS_MinD, NMS_MaxD, LFE_MinD, LFE_MaxD, &
+    !$OMP                  LFC_MinD, LFC_MaxD, IMD_MinD, IMD_MaxD, &
     !$OMP                  Op_MinD, Op_MaxD, &
     !$OMP                  NNS_Xi_Nu_N, NNS_Xi_Nu_P, &
     !$OMP                  NNS_Xi_NuBar_N, NNS_Xi_NuBar_P )
@@ -979,6 +1057,8 @@ CONTAINS
     !$ACC   Pair_MinD, Pair_MaxD, &
     !$ACC   Brem_MinD, Brem_MaxD, &
     !$ACC   NuPair_MinD, NuPair_MaxD, &
+    !$ACC   NMS_MinD, NMS_MaxD, LFE_MinD, LFE_MaxD, &
+    !$ACC   LFC_MinD, LFC_MaxD, IMD_MinD, IMD_MaxD, &
     !$ACC   Op_MinD, Op_MaxD, &
     !$ACC   NNS_Xi_Nu_N, NNS_Xi_Nu_P, &
     !$ACC   NNS_Xi_NuBar_N, NNS_Xi_NuBar_P )
@@ -1350,6 +1430,8 @@ CONTAINS
     !$OMP               Pair_MinD, Pair_MaxD, &
     !$OMP               Brem_MinD, Brem_MaxD, &
     !$OMP               NuPair_MinD, NuPair_MaxD, &
+    !$OMP               NMS_MinD, NMS_MaxD, LFE_MinD, LFE_MaxD, &
+    !$OMP               LFC_MinD, LFC_MaxD, IMD_MinD, IMD_MaxD, &
     !$OMP               Op_MinD, Op_MaxD, &
     !$OMP               NNS_Xi_Nu_N, NNS_Xi_Nu_P, &
     !$OMP               NNS_Xi_NuBar_N, NNS_Xi_NuBar_P )
@@ -1699,6 +1781,62 @@ CONTAINS
   END FUNCTION QueryOpacity_NuPair
 
 
+  LOGICAL FUNCTION QueryOpacity_NMS( D )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: D
+
+    QueryOpacity_NMS = ( D >= NMS_MinD .AND. D <= NMS_MaxD )
+
+  END FUNCTION QueryOpacity_NMS
+
+
+  LOGICAL FUNCTION QueryOpacity_LFE( D )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: D
+
+    QueryOpacity_LFE = ( D >= LFE_MinD .AND. D <= LFE_MaxD )
+
+  END FUNCTION QueryOpacity_LFE
+
+
+  LOGICAL FUNCTION QueryOpacity_LFC( D )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: D
+
+    QueryOpacity_LFC = ( D >= LFC_MinD .AND. D <= LFC_MaxD )
+
+  END FUNCTION QueryOpacity_LFC
+
+
+  LOGICAL FUNCTION QueryOpacity_IMD( D )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: D
+
+    QueryOpacity_IMD = ( D >= IMD_MinD .AND. D <= IMD_MaxD )
+
+  END FUNCTION QueryOpacity_IMD
+
+
   LOGICAL FUNCTION QueryOpacity( D )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -1715,7 +1853,11 @@ CONTAINS
                     .OR. QueryOpacity_NNS ( D ) &
                     .OR. QueryOpacity_NES ( D ) &
                     .OR. QueryOpacity_Pair( D ) &
-                    .OR. QueryOpacity_Brem( D ) )
+                    .OR. QueryOpacity_Brem( D ) &
+                    .OR. QueryOpacity_NMS ( D ) &
+                    .OR. QueryOpacity_LFE ( D ) &
+                    .OR. QueryOpacity_LFC ( D ) &
+                    .OR. QueryOpacity_IMD ( D ) )
 
   END FUNCTION QueryOpacity
 

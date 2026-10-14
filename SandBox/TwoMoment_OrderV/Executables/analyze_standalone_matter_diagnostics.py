@@ -18,9 +18,16 @@ from typing import Iterable
 import numpy as np
 
 
-PROCESS_NAMES = ("EmAb", "Iso", "NNS", "NES", "Pair", "NuPair", "Brem")
-HEATING_PROCESS_NAMES = ("EmAb", "NNS", "NES", "Pair", "NuPair", "Brem")
-NONISO_PROCESS_NAMES = ("EmAb", "NNS", "NES", "Pair", "NuPair", "Brem")
+PROCESS_NAMES = (
+    "EmAb", "Iso", "NNS", "NES", "Pair", "NuPair", "Brem",
+    "NMS", "LFE", "LFC", "IMD",
+)
+HEATING_PROCESS_NAMES = (
+    "EmAb", "NNS", "NES", "Pair", "NuPair", "Brem",
+    "NMS", "LFE", "LFC", "IMD",
+)
+NONISO_PROCESS_NAMES = HEATING_PROCESS_NAMES
+GENERAL_LEPTON_PROCESS_NAMES = ("NMS", "LFE", "LFC", "IMD")
 TAU_SURFACE = 2.0 / 3.0
 SPECIES_PLOT_INFO = (
     (1, r"$\nu_e$", "C0"),
@@ -781,6 +788,20 @@ def report_file(data: DiagnosticFile) -> None:
             scale = np.maximum(np.abs(qh_process), np.finfo(float).tiny)
             closure = np.max(np.abs(qh_species_sum - qh_process) / scale)
             print(f"    species sum vs QH_process_NNS: max relative={closure:.3e}")
+
+    pairing_names = [
+        process for process in GENERAL_LEPTON_PROCESS_NAMES
+        if f"pairing_abs_max_{process}_cm3_s" in c
+    ]
+    if pairing_names:
+        print("  paired general-lepton collision identities:")
+        for process in pairing_names:
+            absolute = c[f"pairing_abs_max_{process}_cm3_s"]
+            relative = c[f"pairing_rel_max_{process}"]
+            print(
+                f"    {process:4s}: max absolute={np.max(absolute):.8e} cm^-3 s^-1; "
+                f"max relative={np.max(relative):.8e}"
+            )
 
     print("  inverse-MFP minima [cm^-1]:")
     for species in range(1, data.n_species + 1):

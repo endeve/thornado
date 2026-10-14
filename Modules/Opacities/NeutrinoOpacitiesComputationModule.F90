@@ -80,6 +80,10 @@ MODULE NeutrinoOpacitiesComputationModule
     QueryOpacity_Pair, &
     QueryOpacity_Brem, &
     QueryOpacity_NuPair, &
+    QueryOpacity_NMS, &
+    QueryOpacity_LFE, &
+    QueryOpacity_LFC, &
+    QueryOpacity_IMD, &
     EmAb_Muon_Method, nE_Muon_2D, &
     MuonCC_QuadratureNodes, MuonCC_QuadratureWeights
   USE RadiationFieldsModule, ONLY: &
@@ -176,8 +180,11 @@ MODULE NeutrinoOpacitiesComputationModule
   PUBLIC :: iOp_Pair
   PUBLIC :: iOp_NuPair
   PUBLIC :: iOp_Brem
+  PUBLIC :: iOp_NMS
+  PUBLIC :: iOp_LFE
+  PUBLIC :: iOp_LFC
+  PUBLIC :: iOp_IMD
 
-  REAL(DP), PARAMETER :: Log1d100 = LOG( 1.0d100 )
   REAL(DP), PARAMETER :: UnitD    = Gram / Centimeter**3
   REAL(DP), PARAMETER :: UnitT    = Kelvin
   REAL(DP), PARAMETER :: UnitY    = One
@@ -215,7 +222,7 @@ MODULE NeutrinoOpacitiesComputationModule
   INTEGER,  PARAMETER :: iM0         = 1
   INTEGER,  PARAMETER :: iM1         = 2
 
-  INTEGER,  PARAMETER :: nOp         = 10
+  INTEGER,  PARAMETER :: nOp         = 14
   INTEGER,  PARAMETER :: iOp_EmAb    = 1
   INTEGER,  PARAMETER :: iOp_ECTable = 2
   INTEGER,  PARAMETER :: iOp_Iso     = 3
@@ -226,6 +233,10 @@ MODULE NeutrinoOpacitiesComputationModule
   INTEGER,  PARAMETER :: iOp_Brem    = 8
   INTEGER,  PARAMETER :: iOp_EmAb_Electron = 9
   INTEGER,  PARAMETER :: iOp_EmAb_Muon     = 10
+  INTEGER,  PARAMETER :: iOp_NMS           = 11
+  INTEGER,  PARAMETER :: iOp_LFE           = 12
+  INTEGER,  PARAMETER :: iOp_LFC           = 13
+  INTEGER,  PARAMETER :: iOp_IMD           = 14
 
   INTERFACE ComputeEquilibriumDistributions_DG
     MODULE PROCEDURE ComputeEquilibriumDistributions_DG_E
@@ -425,10 +436,8 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: E, Mu, kT
     REAL(DP) :: Complement
-    REAL(DP) :: Exponent
 
-    Exponent = MIN( MAX( ( Mu - E ) / kT, - Log1d100 ), + Log1d100 )
-    Complement = One / ( EXP( Exponent ) + One )
+    Complement = FermiDirac_Scalar( - E, - Mu, kT )
 
   END FUNCTION FermiDiracComplement_Scalar
 
@@ -573,7 +582,7 @@ CONTAINS
       END IF
 
       f0(iE,iS,iX) &
-        = One / ( EXP( MIN( MAX( ( E(iE) - M ) / kT, - Log1d100 ), + Log1d100 ) ) + One )
+        = FermiDirac_Scalar( E(iE), M, kT )
 
     END DO
     END DO
@@ -698,9 +707,15 @@ CONTAINS
 
       IF( iE < nE ) THEN
         f0_Min = f0_K(iE+1,iS,iX)
-      ELSE
+      ELSE IF( nE > 1 )THEN
         ! --- Estimate Cell Average in Outer Ghost Element ---
-        f0_Min = f0_K(nE,iS,iX)**2 / f0_K(nE-1,iS,iX)
+        ! Ratio first avoids underflow of the square; a vanished tail is zero.
+        f0_Min = Zero
+        IF( f0_K(nE-1,iS,iX) > Zero ) &
+          f0_Min = f0_K(nE,iS,iX) &
+                     * ( f0_K(nE,iS,iX) / f0_K(nE-1,iS,iX) )
+      ELSE
+        f0_Min = Zero
       END IF
 
       Max_K = f0_Max
@@ -838,7 +853,7 @@ CONTAINS
     INTEGER  :: nE, nX, nS
     INTEGER  :: iE, iX, iS, iS0, iP
     INTEGER  :: iNodeE, iNodeX, iNodeZ
-    REAL(DP) :: kT, M, Exponent, N_K, V_K, f0_P
+    REAL(DP) :: kT, M, N_K, V_K, f0_P
     REAL(DP) :: Min_K, Max_K, Theta, f0_Max
     REAL(DP), POINTER :: E_Q(:,:), D_Q(:,:), T_Q(:,:)
     REAL(DP), POINTER :: Mnue_Q(:,:), Mnum_Q(:,:), SqrtGm_Q(:,:)
@@ -908,10 +923,8 @@ CONTAINS
           M = Zero
         END IF
 
-        Exponent &
-          = MIN( MAX( ( E_Q(iNodeE,iE) - M ) / kT, - Log1d100 ), Log1d100 )
-
-        f0_Q(iNodeZ,iE,iS,iX) = One / ( EXP( Exponent ) + One )
+        f0_Q(iNodeZ,iE,iS,iX) &
+          = FermiDirac_Scalar( E_Q(iNodeE,iE), M, kT )
 
       END DO
       END DO
@@ -1053,7 +1066,7 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: U(:), dUdT(:), dUdYe(:), dUdYm(:), dUdD(:)
     REAL(DP) :: Mnu, dMnudT, dMnudY
 
-    REAL(DP) :: kT, dUdL, df0dT_Y, df0dY_T
+    REAL(DP) :: kT, dUdL, df0dT_Y, df0dY_T, Vacancy, Susceptibility
     INTEGER  :: iE, iS, iX
 
     ALLOCATE( Me(iX_B:iX_E), dMedT(iX_B:iX_E), dMedYe(iX_B:iX_E), dMedYm(iX_B:iX_E), dMedD(iX_B:iX_E) )
@@ -1103,15 +1116,15 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
     !$OMP PRIVATE( kT, dUdL, Mnu, dMnudT, dMnudY, &
-    !$OMP          df0dT_Y, df0dY_T )
+    !$OMP          df0dT_Y, df0dY_T, Vacancy, Susceptibility )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( kT, dUdL, Mnu, dMnudT, dMnudY, &
-    !$ACC          df0dT_Y, df0dY_T )
+    !$ACC          df0dT_Y, df0dY_T, Vacancy, Susceptibility )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( kT, dUdL, Mnu, dMnudT, dMnudY, &
-    !$OMP          df0dT_Y, df0dY_T )
+    !$OMP          df0dT_Y, df0dY_T, Vacancy, Susceptibility )
 #endif
     DO iX = iX_B, iX_E
     DO iS = iS_B, iS_E
@@ -1136,9 +1149,11 @@ CONTAINS
         dUdL   = Zero
       END IF
 
-      f0(iE,iS,iX) = FermiDirac   ( E(iE), Mnu, kT )
-      df0dT_Y      = dFermiDiracdT( E(iE), Mnu, kT, dMnudT, T(iX) ) ! Constant T
-      df0dY_T      = dFermiDiracdY( E(iE), Mnu, kT, dMnudY, T(iX) ) ! Constant Y
+      ! One exponential supplies the occupation and both derivatives.
+      CALL FermiDiracPair &
+             ( E(iE), Mnu, kT, f0(iE,iS,iX), Vacancy, Susceptibility )
+      df0dT_Y = Susceptibility * ( dMnudT + ( E(iE)-Mnu ) / T(iX) ) / kT
+      df0dY_T = Susceptibility * dMnudY / kT
 
       df0dU(iE,iS,iX) = df0dT_Y / dUdT(iX)
       df0dY(iE,iS,iX) = df0dY_T - df0dU(iE,iS,iX) * dUdL
@@ -1386,7 +1401,7 @@ CONTAINS
     REAL(dp) :: E_node
     REAL(dp) :: dE_node, dspec_fine, dEC_T
     REAL(dp) :: loctot
-    REAL(dp) :: Xnuc
+    REAL(dp) :: Xnuc, Mnu, Emissivity
 
     INTEGER  :: iE1, iNodeE1, iE2
     INTEGER  :: iD, iT, iY
@@ -1454,14 +1469,14 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP MAP( to: CenterE, WidthE, NodesE ) &
     !$OMP PRIVATE( D_P, T_P, Ye_P, T0_P, Ye0_P, Xnuc, loctot, & 
-    !$OMP          dspec_fine, dEC_T, dE_node, E_node, &
+    !$OMP          dspec_fine, dEC_T, dE_node, E_node, Mnu, Emissivity, &
     !$OMP          iE, iE1, iE2, iNodeE1, a, b, f_a, f_b, & 
     !$OMP          iD, iT, iY, dD, dT, dY )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC COPYIN ( CenterE, WidthE, NodesE ) &
     !$ACC PRIVATE( D_P, T_P, Ye_P, T0_P, Ye0_P, Xnuc, loctot, & 
-    !$ACC          dspec_fine, dEC_T, dE_node, E_node, &
+    !$ACC          dspec_fine, dEC_T, dE_node, E_node, Mnu, Emissivity, &
     !$ACC          iE, iE1, iE2, iNodeE1, a, b, f_a, f_b, & 
     !$ACC          iD, iT, iY, dD, dT, dY ) & 
     !$ACC PRESENT( Xh, Ah, T0, Ye0, EC_rate, OS_EmAb_EC_rate, &
@@ -1471,7 +1486,7 @@ CONTAINS
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
     !$OMP PRIVATE( D_P, T_P, Ye_P, T0_P, Ye0_P, Xnuc, loctot, & 
-    !$OMP          dspec_fine, dEC_T, dE_node, E_node, &
+    !$OMP          dspec_fine, dEC_T, dE_node, E_node, Mnu, Emissivity, &
     !$OMP          iE, iE1, iE2, iNodeE1, a, b, f_a, f_b, & 
     !$OMP          iD, iT, iY, dD, dT, dY )
 #endif
@@ -1626,9 +1641,20 @@ CONTAINS
         DO iE = iE_B, iE_E
 
           !now add Chi from EC table on heavy nuclei to Chi from EmAb on nucleons
-          opEC(iE,iNuE,iX) &
-            = opEC(iE,iNuE,iX) &
-            + ( Xnuc * coeff * EC_rate(iX) * spec_nodes(iE,iX) / f0(iE,iNuE,iX) * UnitEC )
+          Emissivity = Xnuc * coeff * EC_rate(iX) * spec_nodes(iE,iX)
+          IF( Emissivity == Zero )THEN
+            CYCLE
+          ELSE IF( f0(iE,iNuE,iX) >= TINY(One) )THEN
+            opEC(iE,iNuE,iX) = opEC(iE,iNuE,iX) &
+                                + Emissivity / f0(iE,iNuE,iX) * UnitEC
+          ELSE
+            ! Recover j/f from its exponent, not a fabricated occupation floor.
+            CALL ComputeElectronNeutrinoChemicalPotential_TABLE &
+                   ( D(iX), T(iX), Ye(iX), Ym(iX), Mnu )
+            opEC(iE,iNuE,iX) = opEC(iE,iNuE,iX) &
+              + DivideByFermiDirac &
+                  ( Emissivity, ( E(iE)-Mnu ) / ( BoltzmannConstant*T(iX) ) ) * UnitEC
+          END IF
 
         END DO
 
@@ -1843,7 +1869,7 @@ CONTAINS
     REAL(DP) :: Mup_P, Mp_eff_P, Up_P, Xp_P
     REAL(DP) :: WeakMagRecNuLep
     REAL(DP) :: WeakMagRecNuLepBar
-    REAL(DP) :: Mnum, kT, VacancyNu, VacancyNuBar
+    REAL(DP) :: Mnum, kT
 
     ALLOCATE( Xn(iX_B:iX_E) )
     ALLOCATE( Xp(iX_B:iX_E) )
@@ -1864,19 +1890,19 @@ CONTAINS
     !$OMP PRIVATE( Mun_P, Mn_eff_P, Un_P, Xn_P, &
     !$OMP          Mup_P, Mp_eff_P, Up_P, Xp_P, Mumu_P, &
     !$OMP          E_P, D_P, T_P, WeakMagRecNuLep, WeakMagRecNuLepBar, &
-    !$OMP          Mnum, kT, VacancyNu, VacancyNuBar )
+    !$OMP          Mnum, kT )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
     !$ACC PRIVATE( Mun_P, Mn_eff_P, Un_P, Xn_P, &
     !$ACC          Mup_P, Mp_eff_P, Up_P, Xp_P, Mumu_P, &
     !$ACC          E_P, D_P, T_P, WeakMagRecNuLep, WeakMagRecNuLepBar, &
-    !$ACC          Mnum, kT, VacancyNu, VacancyNuBar )
+    !$ACC          Mnum, kT )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2) &
     !$OMP PRIVATE( Mun_P, Mn_eff_P, Un_P, Xn_P, &
     !$OMP          Mup_P, Mp_eff_P, Up_P, Xp_P, Mumu_P, &
     !$OMP          E_P, D_P, T_P, WeakMagRecNuLep, WeakMagRecNuLepBar, &
-    !$OMP          Mnum, kT, VacancyNu, VacancyNuBar )
+    !$OMP          Mnum, kT )
 #endif
     DO iX = iX_B, iX_E
     DO iE = iE_B, iE_E
@@ -1906,15 +1932,14 @@ CONTAINS
 
         Mnum = ( Mumu(iX) + Mup(iX) ) - Mun(iX)
         kT   = BoltzmannConstant * T(iX)
-        VacancyNu &
-          = FermiDiracComplement_Scalar( E(iE), + Mnum, kT )
-        VacancyNuBar &
-          = FermiDiracComplement_Scalar( E(iE), - Mnum, kT )
-
-        opEC(iE,iNuM,iX) = opEC(iE,iNuM,iX) * WeakMagRecNuLep &
-                           / MAX( VacancyNu, SqrtTiny ) * UnitEC
-        opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) * WeakMagRecNuLepBar &
-                               / MAX( VacancyNuBar, SqrtTiny ) * UnitEC
+        opEC(iE,iNuM,iX) &
+          = DivideByFermiDirac &
+              ( opEC(iE,iNuM,iX) * WeakMagRecNuLep, &
+                ( Mnum-E(iE) ) / kT ) * UnitEC
+        opEC(iE,iNuM_Bar,iX) &
+          = DivideByFermiDirac &
+              ( opEC(iE,iNuM_Bar,iX) * WeakMagRecNuLepBar, &
+                ( -Mnum-E(iE) ) / kT ) * UnitEC
 
       ELSE
 
@@ -1968,7 +1993,7 @@ CONTAINS
     REAL(DP) :: Mun_P, Mn_eff_P, Un_P
     REAL(DP) :: Mup_P, Mp_eff_P, Up_P
     REAL(DP) :: ReactionOpacity, NodeContribution
-    REAL(DP) :: Mnum, kT, VacancyNu, VacancyNuBar
+    REAL(DP) :: Mnum, kT
     INTEGER  :: iReaction, iQ1, iQ2
     TYPE(CC2D_CallData) :: CallData
     TYPE(CC2D_RowData)  :: RowData
@@ -1978,20 +2003,20 @@ CONTAINS
     !$OMP PRIVATE( Mun_P, Mn_eff_P, Un_P, Mup_P, Mp_eff_P, Up_P, Mumu_P, &
     !$OMP          E_P, T_P, ReactionOpacity, NodeContribution, &
     !$OMP          iReaction, iQ1, iQ2, CallData, RowData, &
-    !$OMP          Mnum, kT, VacancyNu, VacancyNuBar )
+    !$OMP          Mnum, kT )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG COLLAPSE(2) &
     !$ACC PRIVATE( Mun_P, Mn_eff_P, Un_P, Mup_P, Mp_eff_P, Up_P, Mumu_P, &
     !$ACC          E_P, T_P, ReactionOpacity, NodeContribution, &
     !$ACC          iReaction, iQ1, iQ2, CallData, RowData, &
-    !$ACC          Mnum, kT, VacancyNu, VacancyNuBar ) &
+    !$ACC          Mnum, kT ) &
     !$ACC PRESENT( MuonCC_QuadratureNodes, MuonCC_QuadratureWeights )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2) &
     !$OMP PRIVATE( Mun_P, Mn_eff_P, Un_P, Mup_P, Mp_eff_P, Up_P, Mumu_P, &
     !$OMP          E_P, T_P, ReactionOpacity, NodeContribution, &
     !$OMP          iReaction, iQ1, iQ2, CallData, RowData, &
-    !$OMP          Mnum, kT, VacancyNu, VacancyNuBar )
+    !$OMP          Mnum, kT )
 #endif
     DO iX = iX_B, iX_E
     DO iE = iE_B, iE_E
@@ -2061,15 +2086,12 @@ CONTAINS
 
         Mnum = ( Mumu(iX) + Mup(iX) ) - Mun(iX)
         kT   = BoltzmannConstant * T(iX)
-        VacancyNu &
-          = FermiDiracComplement_Scalar( E(iE), + Mnum, kT )
-        VacancyNuBar &
-          = FermiDiracComplement_Scalar( E(iE), - Mnum, kT )
-
-        opEC(iE,iNuM,iX) = opEC(iE,iNuM,iX) &
-                           / MAX( VacancyNu, SqrtTiny ) * UnitEC
-        opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) &
-                               / MAX( VacancyNuBar, SqrtTiny ) * UnitEC
+        opEC(iE,iNuM,iX) &
+          = DivideByFermiDirac &
+              ( opEC(iE,iNuM,iX), ( Mnum-E(iE) ) / kT ) * UnitEC
+        opEC(iE,iNuM_Bar,iX) &
+          = DivideByFermiDirac &
+              ( opEC(iE,iNuM_Bar,iX), ( -Mnum-E(iE) ) / kT ) * UnitEC
 
       ELSE
 
@@ -2099,7 +2121,7 @@ CONTAINS
     REAL(DP) :: Mumu_P, Mun_P, Mn_eff_P, Un_P
     REAL(DP) :: Mup_P, Mp_eff_P, Up_P
     REAL(DP) :: RawIntegral, FinalOpacity, CorrectedOpacity
-    REAL(DP) :: Mnum, kT, Vacancy
+    REAL(DP) :: Mnum, kT, Exponent
     REAL(DP) :: NodeContribution
     INTEGER  :: iE, iReaction, iQ1, iQ2, iS, nRows
     TYPE(CC2D_CallData) :: CallData
@@ -2188,13 +2210,12 @@ CONTAINS
         CALL CC2D_ApplyPrefactor( CallData, FinalOpacity )
         IF( iReaction == 1 )THEN
           iS = iNuM
-          Vacancy = FermiDiracComplement_Scalar( E(iE), + Mnum, kT )
+          Exponent = ( Mnum-E(iE) ) / kT
         ELSE
           iS = iNuM_Bar
-          Vacancy = FermiDiracComplement_Scalar( E(iE), - Mnum, kT )
+          Exponent = ( -Mnum-E(iE) ) / kT
         END IF
-        CorrectedOpacity = FinalOpacity &
-          / MAX( Vacancy, SqrtTiny )
+        CorrectedOpacity = DivideByFermiDirac( FinalOpacity, Exponent )
 
         WRITE(iFile,'(2I6,ES26.16E3,1X,L1,2ES26.16E3,I8,3ES26.16E3)') &
           iE, iReaction, E_P, CallData % HasPhaseSpace, &
@@ -4222,12 +4243,11 @@ CONTAINS
     REAL(DP), INTENT(in) :: E, Mu, kT
     REAL(DP) :: FermiDirac
 
-    REAL(DP) :: Exponent
+    REAL(DP) :: X, Z
 
-    Exponent = MIN( MAX( ( E - Mu ) / kT, - Log1d100 ), + Log1d100 )
-
-    FermiDirac &
-      = One / ( EXP( Exponent ) + One )
+    X = ( E - Mu ) / kT
+    Z = EXP( - ABS(X) )
+    FermiDirac = MERGE( Z, One, X >= Zero ) / ( One + Z )
 
     RETURN
   END FUNCTION FermiDirac_Scalar
@@ -4243,12 +4263,11 @@ CONTAINS
     REAL(DP), INTENT(in) :: E(:), Mu, kT
     REAL(DP) :: FermiDirac(SIZE(E))
 
-    REAL(DP) :: Exponent(SIZE(E))
+    REAL(DP) :: X(SIZE(E)), Z(SIZE(E))
 
-    Exponent = MIN( MAX( ( E - Mu ) / kT, - Log1d100 ), + Log1d100 )
-
-    FermiDirac &
-      = One / ( EXP( Exponent ) + One )
+    X = ( E - Mu ) / kT
+    Z = EXP( - ABS(X) )
+    FermiDirac = MERGE( Z, One, X >= Zero ) / ( One + Z )
 
     RETURN
   END FUNCTION FermiDirac_Vector
@@ -4264,14 +4283,13 @@ CONTAINS
     REAL(DP), INTENT(in) :: E, Mu, kT, dMudT, T
     REAL(DP) :: dFermiDiracdT
 
-    REAL(DP) :: Exponent, FD
+    REAL(DP) :: Z, Susceptibility
 
-    Exponent = MIN( MAX( ( E - Mu ) / kT, - Log1d100 ), + Log1d100 )
-
-    FD = FermiDirac( E, Mu, kT )
+    Z = EXP( - ABS( ( E - Mu ) / kT ) )
+    Susceptibility = ( Z / ( One + Z ) ) / ( One + Z )
 
     dFermiDiracdT &
-      = ( FD * EXP( Exponent ) ) * FD * ( dMudT + ( E - Mu ) / T ) / kT
+      = Susceptibility * ( dMudT + ( E - Mu ) / T ) / kT
 
     RETURN
   END FUNCTION dFermiDiracdT_Scalar
@@ -4287,14 +4305,13 @@ CONTAINS
     REAL(DP), INTENT(in) :: E(:), Mu, kT, dMudT, T
     REAL(DP) :: dFermiDiracdT(SIZE(E))
 
-    REAL(DP) :: Exponent(SIZE(E)), FD(SIZE(E))
+    REAL(DP) :: Z(SIZE(E)), Susceptibility(SIZE(E))
 
-    Exponent = MIN( MAX( ( E - Mu ) / kT, - Log1d100 ), + Log1d100 )
-
-    FD = FermiDirac( E, Mu, kT )
+    Z = EXP( - ABS( ( E - Mu ) / kT ) )
+    Susceptibility = ( Z / ( One + Z ) ) / ( One + Z )
 
     dFermiDiracdT &
-      = ( FD * EXP( Exponent ) ) * FD * ( dMudT + ( E - Mu ) / T ) / kT
+      = Susceptibility * ( dMudT + ( E - Mu ) / T ) / kT
 
     RETURN
   END FUNCTION dFermiDiracdT_Vector
@@ -4310,14 +4327,13 @@ CONTAINS
     REAL(DP), INTENT(in) :: E, Mu, kT, dMudY, T
     REAL(DP) :: dFermiDiracdY
 
-    REAL(DP) :: Exponent, FD
+    REAL(DP) :: Z, Susceptibility
 
-    Exponent = MIN( MAX( ( E - Mu ) / kT, - Log1d100 ), + Log1d100 )
-
-    FD = FermiDirac( E, Mu, kT )
+    Z = EXP( - ABS( ( E - Mu ) / kT ) )
+    Susceptibility = ( Z / ( One + Z ) ) / ( One + Z )
 
     dFermiDiracdY &
-      = ( FD * EXP( Exponent ) ) * FD * dMudY / kT
+      = Susceptibility * dMudY / kT
 
     RETURN
   END FUNCTION dFermiDiracdY_Scalar
@@ -4333,17 +4349,66 @@ CONTAINS
     REAL(DP), INTENT(in) :: E(:), Mu, kT, dMudY, T
     REAL(DP) :: dFermiDiracdY(SIZE(E))
 
-    REAL(DP) :: Exponent(SIZE(E)), FD(SIZE(E))
+    REAL(DP) :: Z(SIZE(E)), Susceptibility(SIZE(E))
 
-    Exponent = MIN( MAX( ( E - Mu ) / kT, - Log1d100 ), + Log1d100 )
-
-    FD = FermiDirac( E, Mu, kT )
+    Z = EXP( - ABS( ( E - Mu ) / kT ) )
+    Susceptibility = ( Z / ( One + Z ) ) / ( One + Z )
 
     dFermiDiracdY &
-      = ( FD * EXP( Exponent ) ) * FD * dMudY / kT
+      = Susceptibility * dMudY / kT
 
     RETURN
   END FUNCTION dFermiDiracdY_Vector
+
+
+  SUBROUTINE FermiDiracPair( E, Mu, kT, Occupation, Vacancy, Susceptibility )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: E, Mu, kT
+    REAL(DP), INTENT(out) :: Occupation, Vacancy, Susceptibility
+    REAL(DP) :: X, Z, Inverse
+
+    ! No positive exponential and no artificial occupation floor. MERGE has
+    ! safe arguments on both sides, also under vectorized/device evaluation.
+    X = ( E - Mu ) / kT
+    Z = EXP( - ABS(X) )
+    Inverse = One / ( One + Z )
+    Occupation     = MERGE( Z, One, X >= Zero ) * Inverse
+    Vacancy        = MERGE( One, Z, X >= Zero ) * Inverse
+    Susceptibility = ( Z * Inverse ) * Inverse
+
+  END SUBROUTINE FermiDiracPair
+
+
+  FUNCTION DivideByFermiDirac( Value, X ) RESULT( Quotient )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: Value, X
+    REAL(DP) :: Quotient, Z
+
+    ! Value / f(X). Preserve a representable quotient even if f underflows.
+    ! Value is a nonnegative emissivity/absorption coefficient. If that input
+    ! has already underflowed, its missing information cannot be recovered.
+    IF( Value == Zero )THEN
+      Quotient = Zero
+    ELSE IF( X <= Zero )THEN
+      Quotient = Value * ( One + EXP(X) )
+    ELSE IF( X < - LOG(TINY(One)) )THEN
+      Z = EXP( - X )
+      Quotient = ( Value / Z ) * ( One + Z )
+    ELSE
+      Quotient = Value + EXP( LOG(Value) + X )
+    END IF
+
+  END FUNCTION DivideByFermiDirac
 
   SUBROUTINE SetChargedCurrentMasks &
     ( nX, nDOF_X, D, T, Ye, Ym, &
@@ -4505,6 +4570,15 @@ CONTAINS
 
       Opacity_Mask(iOp_Brem,iN_X) &
         = QueryOpacity_Brem( D(iN_X) / UnitD )
+
+      Opacity_Mask(iOp_NMS,iN_X) &
+        = QueryOpacity_NMS( D(iN_X) / UnitD )
+      Opacity_Mask(iOp_LFE,iN_X) &
+        = QueryOpacity_LFE( D(iN_X) / UnitD )
+      Opacity_Mask(iOp_LFC,iN_X) &
+        = QueryOpacity_LFC( D(iN_X) / UnitD )
+      Opacity_Mask(iOp_IMD,iN_X) &
+        = QueryOpacity_IMD( D(iN_X) / UnitD )
 
     END DO
 

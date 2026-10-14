@@ -91,6 +91,7 @@ MODULE EquationOfStateModule_TABLE
   PUBLIC :: ComputeSpecificInternalEnergy_TABLE
   PUBLIC :: ComputeElectronChemicalPotential_TABLE
   PUBLIC :: ComputeMuonChemicalPotential_TABLE
+  PUBLIC :: ComputeMuonFractionFromDegeneracy_TABLE
   PUBLIC :: ComputeProtonChemicalPotential_TABLE
   PUBLIC :: ComputeNeutronChemicalPotential_TABLE
   PUBLIC :: ComputeProtonMassFraction_TABLE
@@ -189,6 +190,11 @@ MODULE EquationOfStateModule_TABLE
     MODULE PROCEDURE ComputeMuonChemicalPotential_TABLE_Scalar
     MODULE PROCEDURE ComputeMuonChemicalPotential_TABLE_Vector
   END INTERFACE ComputeMuonChemicalPotential_TABLE
+
+  INTERFACE ComputeMuonFractionFromDegeneracy_TABLE
+    MODULE PROCEDURE ComputeMuonFractionFromDegeneracy_TABLE_Scalar
+    MODULE PROCEDURE ComputeMuonFractionFromDegeneracy_TABLE_Vector
+  END INTERFACE ComputeMuonFractionFromDegeneracy_TABLE
 
   INTERFACE ComputeProtonChemicalPotential_TABLE
     MODULE PROCEDURE ComputeProtonChemicalPotential_TABLE_Scalar
@@ -1955,6 +1961,44 @@ CONTAINS
     END IF
 
   END SUBROUTINE ComputeMuonChemicalPotential_TABLE_Vector
+
+  SUBROUTINE ComputeMuonFractionFromDegeneracy_TABLE_Scalar &
+    ( D, T, Ye, Eta, Ym, dYmdEta, Error )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)    :: D, T, Ye, Eta
+    REAL(DP), INTENT(inout) :: Ym
+    REAL(DP), INTENT(out)   :: dYmdEta
+    INTEGER,  INTENT(out) :: Error
+
+    Ym = Zero
+    dYmdEta = Zero
+    Error = MERGE( 0, 1, Eta == Zero )
+
+  END SUBROUTINE ComputeMuonFractionFromDegeneracy_TABLE_Scalar
+
+  SUBROUTINE ComputeMuonFractionFromDegeneracy_TABLE_Vector &
+    ( D, T, Ye, Eta, Ym, dYmdEta, Error )
+
+    REAL(DP), INTENT(in)    :: D(:), T(:), Ye(:), Eta(:)
+    REAL(DP), INTENT(inout) :: Ym(:)
+    REAL(DP), INTENT(out)   :: dYmdEta(:)
+    INTEGER,  INTENT(out) :: Error(:)
+
+    INTEGER :: iP
+
+    DO iP = 1, SIZE(D)
+      CALL ComputeMuonFractionFromDegeneracy_TABLE_Scalar &
+             ( D(iP), T(iP), Ye(iP), Eta(iP), &
+               Ym(iP), dYmdEta(iP), Error(iP) )
+    END DO
+
+  END SUBROUTINE ComputeMuonFractionFromDegeneracy_TABLE_Vector
 
   SUBROUTINE ComputeProtonChemicalPotential_TABLE_Scalar &
     ( D, T, Ye, Ym, M, dMdD_Option, dMdT_Option, dMdYe_Option, dMdYm_Option )

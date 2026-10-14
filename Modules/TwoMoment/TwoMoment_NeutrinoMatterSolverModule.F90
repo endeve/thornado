@@ -8,6 +8,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     DP, Zero, Third, Half, One, Two, Three, FourPi, SqrtTiny
   USE UnitsModule, ONLY: &
     PlanckConstant, &
+    BoltzmannConstant, &
     AtomicMassUnit, &
     Centimeter, &
     Erg, &
@@ -42,11 +43,13 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     Timer_Opacity_Pair, &
     Timer_Opacity_NuPair, &
     Timer_Opacity_Brem, &
+    Timer_Opacity_GeneralLepton, &
     Timer_OpacityRate_NNS, &
     Timer_OpacityRate_NES, &
     Timer_OpacityRate_Pair, &
     Timer_OpacityRate_NuPair, &
-    Timer_OpacityRate_Brem
+    Timer_OpacityRate_Brem, &
+    Timer_OpacityRate_GeneralLepton
   USE ArrayUtilitiesModule, ONLY: &
     CreatePackIndex, &
     ArrayPack, &
@@ -70,8 +73,9 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     ComputeTemperatureFromSpecificInternalEnergy_TABLE, &
     ComputeSpecificInternalEnergy_TABLE, &
     ComputeMuonChemicalPotential_TABLE, &
+    ComputeMuonFractionFromDegeneracy_TABLE, &
     ComputePressure_TABLE, &
-    Min_D, Min_T, Min_Y
+    Min_D, Min_T, Min_Y, Max_T
   USE OpacityModule_TABLE, ONLY: &
     IsoIncludesNucleonScattering
   USE NeutrinoOpacitiesComputationModule, ONLY: &
@@ -99,7 +103,14 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     iM0, iM1, &
     nOp, iOp_EmAb_Electron, iOp_EmAb_Muon, &
     iOp_ECTable, iOp_Iso, &
-    iOp_NNS, iOp_NES, iOp_Pair, iOp_NuPair, iOp_Brem
+    iOp_NNS, iOp_NES, iOp_Pair, iOp_NuPair, iOp_Brem, &
+    iOp_NMS, iOp_LFE, iOp_LFC, iOp_IMD
+  USE NeutrinoLeptonInteractionsModule, ONLY: &
+    InitializeNeutrinoLeptonInteractions, &
+    FinalizeNeutrinoLeptonInteractions, &
+    FinalizeNeutrinoLeptonInteractionKernels, &
+    ComputeNeutrinoLeptonKernels, ComputeNeutrinoLeptonRates, &
+    Chi_GL, R_GL, nGL, iGL_NMS, iGL_LFE, iGL_LFC, iGL_IMD
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeEddingtonTensorComponents_dd, &
     ComputeConserved_TwoMoment
@@ -113,10 +124,12 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   PUBLIC :: InitializeNeutrinoMatterSolver
   PUBLIC :: FinalizeNeutrinoMatterSolver
   PUBLIC :: InitializeNeutrinoMatterSolverParameters
+  PUBLIC :: FinalizeNeutrinoMatterSolverParameters
   PUBLIC :: SolveNeutrinoMatterCoupling_FP_Nested_AA
 
   INTEGER, PARAMETER :: iReducedSolver_Anderson    = 1
   INTEGER, PARAMETER :: iReducedSolver_SchurNewton = 2
+  INTEGER, PARAMETER :: iReducedSolver_CoupledEtaSchur = 3
 
   ! Matter collision RHS quantities used by the shared limiter accounting.
   INTEGER, PARAMETER :: iQ_Le = 1
@@ -136,6 +149,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   PUBLIC :: ComputeMatterRHS_Collisions_OrderV
   PUBLIC :: ComputeMeanInverseMeanFreePaths
   PUBLIC :: Include_NNS, Include_NES, Include_Pair, Include_NuPair, Include_Brem
+  PUBLIC :: Include_NMS, Include_LFE, Include_LFC, Include_IMD
   PUBLIC :: nQ
   PUBLIC :: iQ_Le, iQ_Lm, iQ_E, iQ_H, iQ_M1, iQ_M2, iQ_M3
   PUBLIC :: nNNSRateDecomposition, iNNSRateDecomposition_NIn, iNNSRateDecomposition_NOut, iNNSRateDecomposition_NNet, &
@@ -149,6 +163,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   PUBLIC :: nC
   PUBLIC :: iC_EmAb, iC_Iso, iC_NNS, iC_NES
   PUBLIC :: iC_Pair, iC_NuPair, iC_Brem
+  PUBLIC :: iC_NMS, iC_LFE, iC_LFC, iC_IMD
 
   INTEGER, PARAMETER :: iNNSRateDecomposition_NIn  = 1
   INTEGER, PARAMETER :: iNNSRateDecomposition_NOut = 2
@@ -182,7 +197,11 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   INTEGER, PARAMETER :: iC_Pair   = 5
   INTEGER, PARAMETER :: iC_NuPair = 6
   INTEGER, PARAMETER :: iC_Brem   = 7
-  INTEGER, PARAMETER :: nC        = 7
+  INTEGER, PARAMETER :: iC_NMS    = 8
+  INTEGER, PARAMETER :: iC_LFE    = 9
+  INTEGER, PARAMETER :: iC_LFC    = 10
+  INTEGER, PARAMETER :: iC_IMD    = 11
+  INTEGER, PARAMETER :: nC        = 11
 
   INTEGER, PARAMETER, PUBLIC :: nLeptonFamilies = 3
   INTEGER, PARAMETER, PUBLIC :: iLFC_InputConversion  = 1
@@ -338,10 +357,16 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   LOGICAL  :: Include_Pair
   LOGICAL  :: Include_NuPair
   LOGICAL  :: Include_Brem
+  LOGICAL  :: Include_NMS
+  LOGICAL  :: Include_LFE
+  LOGICAL  :: Include_LFC
+  LOGICAL  :: Include_IMD
+  INTEGER  :: GeneralLeptonQuadratureOrder
   LOGICAL  :: Include_LinCorr
   LOGICAL  :: UseFirstMomentRates
   LOGICAL  :: UseConservativeProjection
   LOGICAL  :: UseRadiationOnlySolve
+  LOGICAL  :: UseMuonLeptonSource
   INTEGER  :: ReducedSolverMethod
   LOGICAL  :: DebugMuonCoupling
   LOGICAL  :: TraceRadiationOnlySolve
@@ -464,6 +489,11 @@ CONTAINS
     ALLOCATE( FourPiEp2(nE_G) )
 
     CALL ComputePointsAndWeightsE( E_N, W2_N, W3_N )
+    CALL InitializeNeutrinoLeptonInteractions &
+           ( E_N, nX_G, nTheta_Option = GeneralLeptonQuadratureOrder, &
+             EnableGeneralInteractions_Option &
+               = Include_NMS .OR. Include_LFE .OR. &
+                 Include_LFC .OR. Include_IMD )
 
     W2_S      = W2_N / ( PlanckConstant * SpeedOfLight )**3
     W3_S      = W3_N / ( PlanckConstant * SpeedOfLight )**3
@@ -1111,12 +1141,16 @@ CONTAINS
       MaxIter_inner_Option, Rtol_inner_Option, Rtol_outer_Option, &
       Atol_inner_Option, Include_NNS_Option, NNS_ApplyWeakMagnetism_Option, &
       NNS_ApplyManyBodyCorrection_Option, Include_NES_Option, Include_Pair_Option, &
-      Include_NuPair_Option, Include_Brem_Option, Include_LinCorr_Option, &
+      Include_NuPair_Option, Include_Brem_Option, &
+      Include_NMS_Option, Include_LFE_Option, Include_LFC_Option, &
+      Include_IMD_Option, GeneralLeptonQuadratureOrder_Option, &
+      Include_LinCorr_Option, &
       wMatrRHS_Option, DnuMax_Option, FreezeOpacities_Option, &
       UseConservativeProjection_Option, Verbose_Option, &
       UseRadiationOnlySolve_Option, DebugMuonCoupling_Option, &
       TraceRadiationOnlySolve_Option, RadiationOnlyTraceFile_Option, &
-      AnalyzeRadiationOnlyJacobian_Option, ReducedSolverMethod_Option )
+      AnalyzeRadiationOnlyJacobian_Option, ReducedSolverMethod_Option, &
+      UseMuonLeptonSource_Option )
 
     USE ISO_FORTRAN_ENV, ONLY: ERROR_UNIT
     USE mpi
@@ -1135,6 +1169,11 @@ CONTAINS
     LOGICAL , INTENT(in), OPTIONAL :: Include_Pair_Option
     LOGICAL , INTENT(in), OPTIONAL :: Include_NuPair_Option
     LOGICAL , INTENT(in), OPTIONAL :: Include_Brem_Option
+    LOGICAL , INTENT(in), OPTIONAL :: Include_NMS_Option
+    LOGICAL , INTENT(in), OPTIONAL :: Include_LFE_Option
+    LOGICAL , INTENT(in), OPTIONAL :: Include_LFC_Option
+    LOGICAL , INTENT(in), OPTIONAL :: Include_IMD_Option
+    INTEGER , INTENT(in), OPTIONAL :: GeneralLeptonQuadratureOrder_Option
     LOGICAL , INTENT(in), OPTIONAL :: Include_LinCorr_Option
     REAL(DP), INTENT(in), OPTIONAL :: wMatrRHS_Option(nMatterEquations)
     REAL(DP), INTENT(in), OPTIONAL :: DnuMax_Option
@@ -1147,8 +1186,9 @@ CONTAINS
     CHARACTER(*), INTENT(in), OPTIONAL :: RadiationOnlyTraceFile_Option
     LOGICAL , INTENT(in), OPTIONAL :: AnalyzeRadiationOnlyJacobian_Option
     CHARACTER(*), INTENT(in), OPTIONAL :: ReducedSolverMethod_Option
+    LOGICAL, INTENT(in), OPTIONAL :: UseMuonLeptonSource_Option
 
-    LOGICAL :: Verbose
+    LOGICAL :: Verbose, MuonSourceSupported
     INTEGER :: ierr, myid
 
     IF( SolverParametersInitialized ) RETURN
@@ -1260,10 +1300,45 @@ CONTAINS
       Include_Brem = .TRUE.
     END IF
 
+    Include_NMS = .FALSE.
+    Include_LFE = .FALSE.
+    Include_LFC = .FALSE.
+    Include_IMD = .FALSE.
+    IF( PRESENT(Include_NMS_Option) ) Include_NMS = Include_NMS_Option
+    IF( PRESENT(Include_LFE_Option) ) Include_LFE = Include_LFE_Option
+    IF( PRESENT(Include_LFC_Option) ) Include_LFC = Include_LFC_Option
+    IF( PRESENT(Include_IMD_Option) ) Include_IMD = Include_IMD_Option
+
+    GeneralLeptonQuadratureOrder = 16
+    IF( PRESENT(GeneralLeptonQuadratureOrder_Option) ) &
+      GeneralLeptonQuadratureOrder = GeneralLeptonQuadratureOrder_Option
+    IF( GeneralLeptonQuadratureOrder < 1 )THEN
+      CALL MPI_COMM_RANK( MPI_COMM_WORLD, myid, ierr )
+      IF( myid == 0 )THEN
+        WRITE(ERROR_UNIT,'(A)') &
+          'ERROR: General-lepton quadrature order must be positive.'
+        FLUSH(ERROR_UNIT)
+      END IF
+      CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
+    END IF
+
     IF( PRESENT( Include_LinCorr_Option ) )THEN
       Include_LinCorr = Include_LinCorr_Option
     ELSE
       Include_LinCorr = .FALSE.
+    END IF
+
+    IF( Include_LinCorr .AND. &
+        ( Include_NMS .OR. Include_LFE .OR. Include_LFC .OR. Include_IMD ) )THEN
+      CALL MPI_COMM_RANK( MPI_COMM_WORLD, myid, ierr )
+      IF( myid == 0 )THEN
+        WRITE(ERROR_UNIT,'(A)') &
+          'ERROR: General lepton reactions currently provide only zeroth-moment kernels.'
+        WRITE(ERROR_UNIT,'(A)') &
+          '       Disable Include_LinCorr or implement their first angular moments.'
+        FLUSH(ERROR_UNIT)
+      END IF
+      CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
     END IF
 
     IF( PRESENT( wMatrRHS_Option ) )THEN
@@ -1304,6 +1379,14 @@ CONTAINS
         CASE( 'schur-newton', 'SCHUR-NEWTON', &
               'schur_newton', 'SCHUR_NEWTON' )
           ReducedSolverMethod = iReducedSolver_SchurNewton
+        CASE( 'coupled-eta-schur', 'COUPLED-ETA-SCHUR' )
+          ReducedSolverMethod = iReducedSolver_CoupledEtaSchur
+#if !defined(EOSMODE_COMPOSE) || !defined(INTERPOLATION_SPLIT_TABLE_COMBINED)
+          CALL MPI_COMM_RANK(MPI_COMM_WORLD,myid,ierr)
+          IF( myid == 0 ) WRITE(ERROR_UNIT,'(A)') &
+            'coupled-eta-schur requires EOSMODE=COMPOSE, INTERPOLATION_SPLIT_TABLE=COMBINED.'
+          CALL MPI_ABORT(MPI_COMM_WORLD,-1,ierr)
+#endif
         CASE DEFAULT
           CALL MPI_COMM_RANK( MPI_COMM_WORLD, myid, ierr )
           IF( myid == 0 )THEN
@@ -1311,11 +1394,39 @@ CONTAINS
               'ERROR: Unknown reduced nonlinear method: ', &
               TRIM(ReducedSolverMethod_Option)
             WRITE(ERROR_UNIT,'(A)') &
-              '       Expected anderson or schur-newton.'
+              '       Expected anderson, schur-newton, or coupled-eta-schur.'
             FLUSH(ERROR_UNIT)
           END IF
           CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
       END SELECT
+    END IF
+
+    UseMuonLeptonSource = .FALSE.
+    IF( PRESENT( UseMuonLeptonSource_Option ) ) &
+      UseMuonLeptonSource = UseMuonLeptonSource_Option
+
+    MuonSourceSupported = .FALSE.
+#if defined( TWOMOMENT_ORDER_V )
+    MuonSourceSupported = .NOT. UseConservativeProjection .AND. &
+      ( .NOT. UseRadiationOnlySolve .OR. &
+        ReducedSolverMethod == iReducedSolver_CoupledEtaSchur )
+#endif
+    IF( UseMuonLeptonSource )THEN
+      IF( .NOT. MuonSourceSupported )THEN
+        CALL MPI_COMM_RANK( MPI_COMM_WORLD, myid, ierr )
+        IF( myid == 0 ) WRITE(ERROR_UNIT,'(A)') &
+          'Muon source update requires Order-v nested or coupled-eta-schur, without terminal projection.'
+        CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
+      END IF
+    END IF
+
+    IF( ReducedSolverMethod == iReducedSolver_CoupledEtaSchur )THEN
+      IF( .NOT. UseRadiationOnlySolve )THEN
+        CALL MPI_COMM_RANK(MPI_COMM_WORLD,myid,ierr)
+        IF( myid == 0 ) WRITE(ERROR_UNIT,'(A)') &
+          'coupled-eta-schur requires UseRadiationOnlySolve=.TRUE.'
+        CALL MPI_ABORT(MPI_COMM_WORLD,-1,ierr)
+      END IF
     END IF
 
     IF( PRESENT( DebugMuonCoupling_Option ) )THEN
@@ -1354,6 +1465,14 @@ CONTAINS
 
       CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
 
+    END IF
+
+    IF( AnalyzeRadiationOnlyJacobian .AND. &
+        ReducedSolverMethod == iReducedSolver_CoupledEtaSchur )THEN
+      CALL MPI_COMM_RANK(MPI_COMM_WORLD,myid,ierr)
+      IF( myid == 0 ) WRITE(ERROR_UNIT,'(A)') &
+        'The eliminated-Ymu Jacobian diagnostic does not apply to coupled-eta-schur.'
+      CALL MPI_ABORT(MPI_COMM_WORLD,-1,ierr)
     END IF
 
     IF( UseRadiationOnlySolve .AND. UseConservativeProjection )THEN
@@ -1396,11 +1515,16 @@ CONTAINS
         UseConservativeProjection
       WRITE(*,'(A4,A32,L1)')       '', 'Invariant-constrained solve: ', &
         UseRadiationOnlySolve
+      WRITE(*,'(A4,A32,L1)')       '', 'Direct muon-lepton source: ', &
+        UseMuonLeptonSource
       IF( ReducedSolverMethod == iReducedSolver_Anderson )THEN
         WRITE(*,'(A4,A32,A)') '', 'Reduced nonlinear method: ', 'anderson'
-      ELSE
+      ELSE IF( ReducedSolverMethod == iReducedSolver_SchurNewton )THEN
         WRITE(*,'(A4,A32,A)') '', 'Reduced nonlinear method: ', &
           'schur-newton'
+      ELSE
+        WRITE(*,'(A4,A32,A)') '', 'Reduced nonlinear method: ', &
+          'coupled-eta-schur'
       END IF
       WRITE(*,'(A4,A32,L1)')       '', 'Debug muon coupling: ', &
         DebugMuonCoupling
@@ -1419,6 +1543,12 @@ CONTAINS
       WRITE(*,'(A4,A32,L1)')       '', 'Include_Pair: '   , Include_Pair
       WRITE(*,'(A4,A32,L1)')       '', 'Include_NuPair: ' , Include_NuPair
       WRITE(*,'(A4,A32,L1)')       '', 'Include_Brem: '   , Include_Brem
+      WRITE(*,'(A4,A32,L1)')       '', 'Include_NMS: '    , Include_NMS
+      WRITE(*,'(A4,A32,L1)')       '', 'Include_LFE: '    , Include_LFE
+      WRITE(*,'(A4,A32,L1)')       '', 'Include_LFC: '    , Include_LFC
+      WRITE(*,'(A4,A32,L1)')       '', 'Include_IMD: '    , Include_IMD
+      WRITE(*,'(A4,A32,I0)')       '', 'General-lepton quadrature: ', &
+        GeneralLeptonQuadratureOrder
       WRITE(*,'(A4,A32,L1)')       '', 'Include_LinCorr: ', Include_LinCorr
       WRITE(*,*)
       WRITE(*,'(A4,A32,I1.1)')     '', 'wMatrRHS(iYe): '  , INT(wMatrRHS(iYe))
@@ -1441,7 +1571,17 @@ CONTAINS
   END SUBROUTINE InitializeNeutrinoMatterSolverParameters
 
 
+  SUBROUTINE FinalizeNeutrinoMatterSolverParameters
+
+    CALL FinalizeNeutrinoLeptonInteractionKernels
+    SolverParametersInitialized = .FALSE.
+
+  END SUBROUTINE FinalizeNeutrinoMatterSolverParameters
+
+
   SUBROUTINE FinalizeNeutrinoMatterSolver
+
+    CALL FinalizeNeutrinoLeptonInteractions
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -1773,7 +1913,11 @@ CONTAINS
         .OR. ( Include_NES    .AND. ANY( Opacity_Mask(iOp_NES,   :) ) ) &
         .OR. ( Include_Pair   .AND. ANY( Opacity_Mask(iOp_Pair,  :) ) ) &
         .OR. ( Include_NuPair .AND. ANY( Opacity_Mask(iOp_NuPair,:) ) ) &
-        .OR. ( Include_Brem   .AND. ANY( Opacity_Mask(iOp_Brem,  :) ) )
+        .OR. ( Include_Brem   .AND. ANY( Opacity_Mask(iOp_Brem,  :) ) ) &
+        .OR. ( Include_NMS    .AND. ANY( Opacity_Mask(iOp_NMS,   :) ) ) &
+        .OR. ( Include_LFE    .AND. ANY( Opacity_Mask(iOp_LFE,   :) ) ) &
+        .OR. ( Include_LFC    .AND. ANY( Opacity_Mask(iOp_LFC,   :) ) ) &
+        .OR. ( Include_IMD    .AND. ANY( Opacity_Mask(iOp_IMD,   :) ) )
 
     IF( .NOT. PatchHasCollisions )THEN
 
@@ -1834,12 +1978,17 @@ CONTAINS
 
     INTEGER :: iChiral, iN_E, iN_X, iS
     LOGICAL :: UseNNS, UseNES, UsePair, UseNuPair, UseBrem
+    LOGICAL :: UseNMS, UseLFE, UseLFC, UseIMD
 
     UseNNS    = Include_NNS
     UseNES    = Include_NES
     UsePair   = Include_Pair
     UseNuPair = Include_NuPair
     UseBrem   = Include_Brem
+    UseNMS    = Include_NMS
+    UseLFE    = Include_LFE
+    UseLFC    = Include_LFC
+    UseIMD    = Include_IMD
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -1847,9 +1996,10 @@ CONTAINS
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
     !$ACC PRIVATE( iChiral ) &
-    !$ACC FIRSTPRIVATE( UseNNS, UseNES, UsePair, UseNuPair, UseBrem ) &
+    !$ACC FIRSTPRIVATE( UseNNS, UseNES, UsePair, UseNuPair, UseBrem, &
+    !$ACC               UseNMS, UseLFE, UseLFC, UseIMD ) &
     !$ACC PRESENT( TransportOpacity, Sigma_Iso, Chi_EmAb, Chi_NNS, &
-    !$ACC          Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem )
+    !$ACC          Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, Chi_GL )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) PRIVATE( iChiral )
 #endif
@@ -1882,6 +2032,26 @@ CONTAINS
       IF( UseBrem ) &
         TransportOpacity(iN_E,iS,iN_X) &
           = TransportOpacity(iN_E,iS,iN_X) + Chi_Brem(iN_E,iS,iN_X)
+
+      IF( UseNMS ) &
+        TransportOpacity(iN_E,iS,iN_X) &
+          = TransportOpacity(iN_E,iS,iN_X) &
+              + Chi_GL(iN_E,iS,iN_X,iGL_NMS)
+
+      IF( UseLFE ) &
+        TransportOpacity(iN_E,iS,iN_X) &
+          = TransportOpacity(iN_E,iS,iN_X) &
+              + Chi_GL(iN_E,iS,iN_X,iGL_LFE)
+
+      IF( UseLFC ) &
+        TransportOpacity(iN_E,iS,iN_X) &
+          = TransportOpacity(iN_E,iS,iN_X) &
+              + Chi_GL(iN_E,iS,iN_X,iGL_LFC)
+
+      IF( UseIMD ) &
+        TransportOpacity(iN_E,iS,iN_X) &
+          = TransportOpacity(iN_E,iS,iN_X) &
+              + Chi_GL(iN_E,iS,iN_X,iGL_IMD)
 
     END DO
     END DO
@@ -2043,6 +2213,22 @@ CONTAINS
                 + IdotL )
         END IF
 
+        IF( Include_NMS ) &
+          Numerator(iC_NMS) = Numerator(iC_NMS) + WeightE &
+            * Dnu(iN_E,iS,iN_X) * Chi_GL(iN_E,iS,iN_X,iGL_NMS)
+
+        IF( Include_LFE ) &
+          Numerator(iC_LFE) = Numerator(iC_LFE) + WeightE &
+            * Dnu(iN_E,iS,iN_X) * Chi_GL(iN_E,iS,iN_X,iGL_LFE)
+
+        IF( Include_LFC ) &
+          Numerator(iC_LFC) = Numerator(iC_LFC) + WeightE &
+            * Dnu(iN_E,iS,iN_X) * Chi_GL(iN_E,iS,iN_X,iGL_LFC)
+
+        IF( Include_IMD ) &
+          Numerator(iC_IMD) = Numerator(iC_IMD) + WeightE &
+            * Dnu(iN_E,iS,iN_X) * Chi_GL(iN_E,iS,iN_X,iGL_IMD)
+
       END DO
 
       IF ( Denominator > Zero ) THEN
@@ -2147,7 +2333,11 @@ CONTAINS
       TraceAlpha
     REAL(DP), ALLOCATABLE, DIMENSION(:) :: &
       SchurPreviousInput, SchurPreviousMap, SchurPreviousResidual, &
-      SchurGain, SchurDamping
+      SchurGain, SchurDamping, &
+      T_RadiationRecoveryBase, Ye_RadiationRecoveryBase, &
+      Ym_RadiationRecoveryBase, E_RadiationRecoveryBase, &
+      V1_RadiationRecoveryBase, V2_RadiationRecoveryBase, &
+      V3_RadiationRecoveryBase
     REAL(DP), ALLOCATABLE, DIMENSION(:) :: &
       TraceCandidateStep, TraceProjectedStep, TraceProjectionCorrection
 #endif
@@ -2214,12 +2404,27 @@ CONTAINS
     ALLOCATE( SchurPreviousInput(nX_G), SchurPreviousMap(nX_G) )
     ALLOCATE( SchurPreviousResidual(nX_G) )
     ALLOCATE( SchurGain(nX_G), SchurDamping(nX_G) )
+    ALLOCATE &
+      ( T_RadiationRecoveryBase(nX_G), &
+        Ye_RadiationRecoveryBase(nX_G), &
+        Ym_RadiationRecoveryBase(nX_G), &
+        E_RadiationRecoveryBase(nX_G), &
+        V1_RadiationRecoveryBase(nX_G), &
+        V2_RadiationRecoveryBase(nX_G), &
+        V3_RadiationRecoveryBase(nX_G) )
     SchurHasPrevious = .FALSE.
     SchurPreviousInput = Zero
     SchurPreviousMap = Zero
     SchurPreviousResidual = Zero
     SchurGain = Zero
     SchurDamping = One
+    T_RadiationRecoveryBase = Zero
+    Ye_RadiationRecoveryBase = Zero
+    Ym_RadiationRecoveryBase = Zero
+    E_RadiationRecoveryBase = Zero
+    V1_RadiationRecoveryBase = Zero
+    V2_RadiationRecoveryBase = Zero
+    V3_RadiationRecoveryBase = Zero
     IF( TraceRadiationOnlySolve .AND. UseRadiationOnlySolve )THEN
       ALLOCATE( TraceEvaluationMask(nX_G) )
       ALLOCATE( TraceHasPrevious(nX_G), TraceHasPrevious2(nX_G) )
@@ -2312,7 +2517,14 @@ CONTAINS
     !$OMP             RadiationLeptonInvariant, &
     !$OMP             SchurHasPrevious, SchurPreviousInput, &
     !$OMP             SchurPreviousMap, SchurPreviousResidual, &
-    !$OMP             SchurGain, SchurDamping )
+    !$OMP             SchurGain, SchurDamping, &
+    !$OMP             T_RadiationRecoveryBase, &
+    !$OMP             Ye_RadiationRecoveryBase, &
+    !$OMP             Ym_RadiationRecoveryBase, &
+    !$OMP             E_RadiationRecoveryBase, &
+    !$OMP             V1_RadiationRecoveryBase, &
+    !$OMP             V2_RadiationRecoveryBase, &
+    !$OMP             V3_RadiationRecoveryBase )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA &
     !$ACC CREATE( ProjectionMask, RadiationBacktrackMask, &
@@ -2325,7 +2537,14 @@ CONTAINS
     !$ACC         RadiationLeptonInvariant, &
     !$ACC         SchurHasPrevious, SchurPreviousInput, &
     !$ACC         SchurPreviousMap, SchurPreviousResidual, &
-    !$ACC         SchurGain, SchurDamping )
+    !$ACC         SchurGain, SchurDamping, &
+    !$ACC         T_RadiationRecoveryBase, &
+    !$ACC         Ye_RadiationRecoveryBase, &
+    !$ACC         Ym_RadiationRecoveryBase, &
+    !$ACC         E_RadiationRecoveryBase, &
+    !$ACC         V1_RadiationRecoveryBase, &
+    !$ACC         V2_RadiationRecoveryBase, &
+    !$ACC         V3_RadiationRecoveryBase )
 #endif
 #endif
 
@@ -2333,11 +2552,19 @@ CONTAINS
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET UPDATE TO &
     !$OMP ( SchurHasPrevious, SchurPreviousInput, SchurPreviousMap, &
-    !$OMP   SchurPreviousResidual, SchurGain, SchurDamping )
+    !$OMP   SchurPreviousResidual, SchurGain, SchurDamping, &
+    !$OMP   T_RadiationRecoveryBase, Ye_RadiationRecoveryBase, &
+    !$OMP   Ym_RadiationRecoveryBase, E_RadiationRecoveryBase, &
+    !$OMP   V1_RadiationRecoveryBase, V2_RadiationRecoveryBase, &
+    !$OMP   V3_RadiationRecoveryBase )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
     !$ACC ( SchurHasPrevious, SchurPreviousInput, SchurPreviousMap, &
-    !$ACC   SchurPreviousResidual, SchurGain, SchurDamping )
+    !$ACC   SchurPreviousResidual, SchurGain, SchurDamping, &
+    !$ACC   T_RadiationRecoveryBase, Ye_RadiationRecoveryBase, &
+    !$ACC   Ym_RadiationRecoveryBase, E_RadiationRecoveryBase, &
+    !$ACC   V1_RadiationRecoveryBase, V2_RadiationRecoveryBase, &
+    !$ACC   V3_RadiationRecoveryBase )
 #endif
 #endif
 
@@ -2508,6 +2735,19 @@ CONTAINS
       k_outer = 0
       k_inner = 0
 
+      IF( ReducedSolverMethod == iReducedSolver_CoupledEtaSchur )THEN
+        CALL SolveRadiationMuonEtaSchur_OrderV &
+               ( dt, ITERATE_inner, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                 D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
+                 Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
+                 FVECm_outer, GVECm_outer, FVECm_inner, GVECm_inner, &
+                 InitialRadiationLimiter_ConservationCorrection, &
+                 RadiationLeptonInvariant, nIterations_Inner, &
+                 nIterations_Outer, nIterations_Inner_Final, &
+                 nIterations_Outer_Final, RelativeResidual_Inner_First, &
+                 RadiationResidual_Relative_Final )
+      END IF
+
       DO WHILE( ANY( ITERATE_inner(:) ) .AND. k_inner < MaxIter_inner )
 
         k_inner = k_inner + 1
@@ -2518,6 +2758,14 @@ CONTAINS
                  PackIndex_inner, UnpackIndex_inner )
 
         CALL TimersStart( Timer_Collisions_MatterFromRadiation )
+
+        CALL SaveRadiationRecoveryMatterState_OrderV &
+               ( ITERATE_inner, T, Ye, Ym, E, &
+                 V_u_1, V_u_2, V_u_3, &
+                 T_RadiationRecoveryBase, Ye_RadiationRecoveryBase, &
+                 Ym_RadiationRecoveryBase, E_RadiationRecoveryBase, &
+                 V1_RadiationRecoveryBase, V2_RadiationRecoveryBase, &
+                 V3_RadiationRecoveryBase )
 
         CALL RecoverMatterFromRadiationInvariants_OrderV &
                ( ITERATE_inner, ProjectionMask, &
@@ -2556,6 +2804,14 @@ CONTAINS
                   TraceBacktrackCount(iN_X) = TraceBacktrackCount(iN_X) + 1
               END DO
             END IF
+
+            CALL RestoreRadiationRecoveryMatterState_OrderV &
+                   ( RadiationBacktrackMask, &
+                     T_RadiationRecoveryBase, Ye_RadiationRecoveryBase, &
+                     Ym_RadiationRecoveryBase, E_RadiationRecoveryBase, &
+                     V1_RadiationRecoveryBase, V2_RadiationRecoveryBase, &
+                     V3_RadiationRecoveryBase, &
+                     T, Ye, Ym, E, V_u_1, V_u_2, V_u_3 )
 
             CALL BacktrackRadiationOnlyIterate_OrderV &
                    ( RadiationBacktrackMask, MAX( 1, Mk_inner - 1 ), &
@@ -2848,6 +3104,7 @@ CONTAINS
       CALL TimersStop( Timer_Collisions_OuterLoop )
 
       IF( AnalyzeRadiationOnlyJacobian &
+            .AND. ReducedSolverMethod /= iReducedSolver_CoupledEtaSchur &
             .AND. RadiationOnlySolveCallCount == 1 ) &
         CALL AnalyzeRadiationOnlyJacobian_OrderV &
                ( dt, nIterations_Outer_Final, &
@@ -3236,10 +3493,30 @@ CONTAINS
 
 #elif defined( TWOMOMENT_ORDER_V )
 
+      ! The inner map's cached transfer rates can precede its last radiation
+      ! update. Refresh only the general-lepton rates for the accepted state;
+      ! no opacity/kernel evaluation and no NNS/NES/pair rate pass is needed.
+      IF( UseMuonLeptonSource .AND. (Include_LFE .OR. Include_LFC .OR. Include_IMD) )THEN
+        CALL TimersStart(Timer_OpacityRate_GeneralLepton)
+        IF( FreezeOpacities )THEN
+          CALL ComputeNeutrinoLeptonRates &
+            (T_Opacity,W2_N,Dnu,Opacity_Mask(iOp_NMS,:),Opacity_Mask(iOp_LFE,:), &
+             Opacity_Mask(iOp_LFC,:),Opacity_Mask(iOp_IMD,:), &
+             Include_NMS,Include_LFE,Include_LFC,Include_IMD,nX_P_outer,UnpackIndex_outer)
+        ELSE
+          CALL ComputeNeutrinoLeptonRates &
+            (T,W2_N,Dnu,Opacity_Mask(iOp_NMS,:),Opacity_Mask(iOp_LFE,:), &
+             Opacity_Mask(iOp_LFC,:),Opacity_Mask(iOp_IMD,:), &
+             Include_NMS,Include_LFE,Include_LFC,Include_IMD,nX_P_outer,UnpackIndex_outer)
+        END IF
+        CALL TimersStop(Timer_OpacityRate_GeneralLepton)
+      END IF
+
       CALL ComputeMatterRHS_OrderV &
              ( ITERATE_outer, FVECm_outer, GVECm_outer, &
                Dnu, Inu_u_1, Inu_u_2, Inu_u_3, V_u_1, V_u_2, V_u_3, &
-               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+               dt, InitialRadiationLimiter_ConservationCorrection(iYm,:) )
 
 #elif defined( TWOMOMENT_RELATIVISTIC )
 
@@ -3430,12 +3707,6 @@ CONTAINS
         ProjectionMask(iN_X) = nIterations_Outer_Final(iN_X) > 0
       END DO
 
-      CALL ComputeMatterRHS_OrderV &
-             ( ProjectionMask, FVECm_outer, GVECm_outer, &
-               Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-               V_u_1, V_u_2, V_u_3, &
-               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
       CALL CreatePackIndex &
              ( ProjectionMask, nX_P_inner, PackIndex_inner, UnpackIndex_inner )
 
@@ -3448,6 +3719,13 @@ CONTAINS
              ( D, T, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
                ProjectionMask, nX_P_inner, PackIndex_inner, UnpackIndex_inner, &
                nX_P_inner, Opacity_Mask )
+
+      CALL ComputeMatterRHS_OrderV &
+             ( ProjectionMask, FVECm_outer, GVECm_outer, &
+               Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+               V_u_1, V_u_2, V_u_3, &
+               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
+               dt, InitialRadiationLimiter_ConservationCorrection(iYm,:) )
 
       CALL ComputeNeutrinoRHS_OrderV &
              ( ProjectionMask, FVECm_inner, GVECm_inner, dt, &
@@ -3559,7 +3837,14 @@ CONTAINS
     !$OMP               RadiationLeptonInvariant, &
     !$OMP               SchurHasPrevious, SchurPreviousInput, &
     !$OMP               SchurPreviousMap, SchurPreviousResidual, &
-    !$OMP               SchurGain, SchurDamping )
+    !$OMP               SchurGain, SchurDamping, &
+    !$OMP               T_RadiationRecoveryBase, &
+    !$OMP               Ye_RadiationRecoveryBase, &
+    !$OMP               Ym_RadiationRecoveryBase, &
+    !$OMP               E_RadiationRecoveryBase, &
+    !$OMP               V1_RadiationRecoveryBase, &
+    !$OMP               V2_RadiationRecoveryBase, &
+    !$OMP               V3_RadiationRecoveryBase )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
     !$ACC DELETE( ProjectionMask, RadiationBacktrackMask, &
@@ -3572,7 +3857,14 @@ CONTAINS
     !$ACC         RadiationLeptonInvariant, &
     !$ACC         SchurHasPrevious, SchurPreviousInput, &
     !$ACC         SchurPreviousMap, SchurPreviousResidual, &
-    !$ACC         SchurGain, SchurDamping )
+    !$ACC         SchurGain, SchurDamping, &
+    !$ACC         T_RadiationRecoveryBase, &
+    !$ACC         Ye_RadiationRecoveryBase, &
+    !$ACC         Ym_RadiationRecoveryBase, &
+    !$ACC         E_RadiationRecoveryBase, &
+    !$ACC         V1_RadiationRecoveryBase, &
+    !$ACC         V2_RadiationRecoveryBase, &
+    !$ACC         V3_RadiationRecoveryBase )
 #endif
 #endif
 
@@ -3588,6 +3880,11 @@ CONTAINS
     DEALLOCATE( SchurHasPrevious )
     DEALLOCATE( SchurPreviousInput, SchurPreviousMap )
     DEALLOCATE( SchurPreviousResidual, SchurGain, SchurDamping )
+    DEALLOCATE &
+      ( T_RadiationRecoveryBase, Ye_RadiationRecoveryBase, &
+        Ym_RadiationRecoveryBase, E_RadiationRecoveryBase, &
+        V1_RadiationRecoveryBase, V2_RadiationRecoveryBase, &
+        V3_RadiationRecoveryBase )
 
   END SUBROUTINE SolveNeutrinoMatterCoupling_FP_Nested_AA
 
@@ -3601,30 +3898,38 @@ CONTAINS
     INTEGER :: iN_X, iNodeX, iX
     LOGICAL :: CollisionActive
     LOGICAL :: ElectronEmAbActive, ElectronLeptonActive
-    LOGICAL :: MuonEmAbActive
+    LOGICAL :: MuonEmAbActive, FlavorExchangeActive
     LOGICAL :: UseNNS, UseNES, UsePair, UseNuPair, UseBrem
+    LOGICAL :: UseNMS, UseLFE, UseLFC, UseIMD
 
     UseNNS    = Include_NNS
     UseNES    = Include_NES
     UsePair   = Include_Pair
     UseNuPair = Include_NuPair
     UseBrem   = Include_Brem
+    UseNMS    = Include_NMS
+    UseLFE    = Include_LFE
+    UseLFC    = Include_LFC
+    UseIMD    = Include_IMD
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO &
-    !$OMP FIRSTPRIVATE( UseNNS, UseNES, UsePair, UseNuPair, UseBrem ) &
+    !$OMP FIRSTPRIVATE( UseNNS, UseNES, UsePair, UseNuPair, UseBrem, &
+    !$OMP               UseNMS, UseLFE, UseLFC, UseIMD ) &
     !$OMP PRIVATE( iN_X, iNodeX, CollisionActive, ElectronEmAbActive, &
-    !$OMP          ElectronLeptonActive, MuonEmAbActive )
+    !$OMP          ElectronLeptonActive, MuonEmAbActive, FlavorExchangeActive )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG &
-    !$ACC FIRSTPRIVATE( UseNNS, UseNES, UsePair, UseNuPair, UseBrem ) &
+    !$ACC FIRSTPRIVATE( UseNNS, UseNES, UsePair, UseNuPair, UseBrem, &
+    !$ACC               UseNMS, UseLFE, UseLFC, UseIMD ) &
     !$ACC PRIVATE( iN_X, iNodeX, CollisionActive, ElectronEmAbActive, &
-    !$ACC          ElectronLeptonActive, MuonEmAbActive )
+    !$ACC          ElectronLeptonActive, MuonEmAbActive, FlavorExchangeActive )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
-    !$OMP FIRSTPRIVATE( UseNNS, UseNES, UsePair, UseNuPair, UseBrem ) &
+    !$OMP FIRSTPRIVATE( UseNNS, UseNES, UsePair, UseNuPair, UseBrem, &
+    !$OMP               UseNMS, UseLFE, UseLFC, UseIMD ) &
     !$OMP PRIVATE( iN_X, iNodeX, CollisionActive, ElectronEmAbActive, &
-    !$OMP          ElectronLeptonActive, MuonEmAbActive )
+    !$OMP          ElectronLeptonActive, MuonEmAbActive, FlavorExchangeActive )
 #endif
     DO iX = 1, nX_G / nDOFX
 
@@ -3638,6 +3943,14 @@ CONTAINS
       ElectronLeptonActive = nSpecies >= iNuE_Bar .AND. &
         ( ElectronEmAbActive .OR. OpacityMask(iOp_ECTable,iN_X) )
 
+      FlavorExchangeActive = nSpecies >= iNuM_Bar .AND. &
+        ( ( UseLFE .AND. OpacityMask(iOp_LFE,iN_X) ) .OR. &
+          ( UseLFC .AND. OpacityMask(iOp_LFC,iN_X) ) .OR. &
+          ( UseIMD .AND. OpacityMask(iOp_IMD,iN_X) ) )
+
+      ElectronLeptonActive = ElectronLeptonActive .OR. FlavorExchangeActive
+      MuonEmAbActive = MuonEmAbActive .OR. FlavorExchangeActive
+
       CollisionActive = &
           ElectronLeptonActive .OR. &
           MuonEmAbActive .OR. &
@@ -3646,7 +3959,9 @@ CONTAINS
           ( UseNES    .AND. OpacityMask(iOp_NES,   iN_X) ) .OR. &
           ( UsePair   .AND. OpacityMask(iOp_Pair,  iN_X) ) .OR. &
           ( UseNuPair .AND. OpacityMask(iOp_NuPair,iN_X) ) .OR. &
-          ( UseBrem   .AND. OpacityMask(iOp_Brem,  iN_X) )
+          ( UseBrem   .AND. OpacityMask(iOp_Brem,  iN_X) ) .OR. &
+          ( UseNMS    .AND. OpacityMask(iOp_NMS,   iN_X) ) .OR. &
+          FlavorExchangeActive
 
       DO iNodeX = 1, nDOFX
         iN_X = iNodeX + ( iX - 1 ) * nDOFX
@@ -3707,14 +4022,18 @@ CONTAINS
 
     SELECT CASE( iFamily )
       CASE( 1 )
-        LeptonFamilyCouplesToMatter = &
-          MatterSource_Mask(iYe,iN_X) .AND. wMatrRHS(iYe) /= Zero
+        LeptonFamilyCouplesToMatter = MatterSource_Mask(iYe,iN_X)
       CASE( 2 )
-        LeptonFamilyCouplesToMatter = &
-          MatterSource_Mask(iYm,iN_X) .AND. wMatrRHS(iYm) /= Zero
+        LeptonFamilyCouplesToMatter = MatterSource_Mask(iYm,iN_X)
       CASE DEFAULT
         LeptonFamilyCouplesToMatter = .FALSE.
     END SELECT
+
+    ! A zero material weight is a prescribed-reservoir experiment: an
+    ! active charged/flavor reaction can still change radiation number.
+    ! Only absence of the physical reaction permits a radiation-only
+    ! signed-number constraint. The eta unknown is separately disabled
+    ! when its material weight is zero.
 
   END FUNCTION LeptonFamilyCouplesToMatter
 
@@ -4011,6 +4330,872 @@ CONTAINS
   END SUBROUTINE EnforceRadiationLeptonInvariants_OrderV
 
 
+  SUBROUTINE SolveRadiationMuonEtaSchur_OrderV &
+    ( dt, Active, Dnu, I1, I2, I3, D, T, Ye, Ym, E, V1, V2, V3, &
+      g1, g2, g3, SqrtGm, Fmatter, Gmatter, Frad, Grad, &
+      LimiterCorrection, LeptonInvariant, nInner, nOuter, &
+      nInnerFinal, nOuterFinal, FirstResidual, FinalResidual )
+
+    USE, INTRINSIC :: IEEE_ARITHMETIC, ONLY: IEEE_IS_FINITE
+    USE ISO_FORTRAN_ENV, ONLY: ERROR_UNIT
+    USE mpi
+
+    REAL(DP), INTENT(in) :: dt
+    LOGICAL, INTENT(inout) :: Active(:)
+    REAL(DP), INTENT(inout) :: Dnu(:,:,:), I1(:,:,:), I2(:,:,:), I3(:,:,:)
+    REAL(DP), INTENT(in) :: D(:), g1(:), g2(:), g3(:), SqrtGm(:)
+    REAL(DP), INTENT(inout) :: T(:), Ye(:), Ym(:), E(:), V1(:), V2(:), V3(:)
+    REAL(DP), INTENT(inout) :: Fmatter(:,:), Gmatter(:,:), Frad(:,:), Grad(:,:)
+    REAL(DP), INTENT(in) :: LimiterCorrection(:,:), LeptonInvariant(:,:)
+    INTEGER, INTENT(inout) :: nInner(:), nOuter(:), nInnerFinal(:), nOuterFinal(:)
+    REAL(DP), INTENT(inout) :: FirstResidual(:), FinalResidual(:)
+
+    ! The radiation residual is x-P G(x,eta), with the existing independent
+    ! spectral bound projection. In inventory mode the muon residual is
+    ! Y_EOS-Y_conserved and the Schur step uses the equivalent row H=q-L F.
+    ! In direct-source mode both the accepted row and the Newton row are
+    ! Y_EOS-Y_old-dt*S_mu, plus the existing initial-limiter compensation.
+    ! Number-conserving reaction residuals never enter that material row.
+    ! No inverse muon susceptibility appears in this residual evaluation.
+    INTEGER, PARAMETER :: KrylovDimension = 24
+    REAL(DP), PARAMETER :: FDStep = 1.0e-6_DP
+    REAL(DP), PARAMETER :: Armijo = 1.0e-4_DP
+    INTEGER :: k, p, s, eN, os, bt, ierr, rank, unit, io, nInitialPacked
+    REAL(DP) :: mu, densityScale, leptonScale, denom, dqz, dqy
+    REAL(DP), ALLOCATABLE :: X(:,:), Eta(:), F(:,:), Q(:), Scale(:,:), QScale(:)
+    REAL(DP), ALLOCATABLE :: B(:,:), EtaJac(:), Z(:,:), Y(:,:), StepX(:,:), StepEta(:)
+    REAL(DP), ALLOCATABLE :: TrialX(:,:), TrialEta(:), TrialF(:,:), TrialQ(:)
+    REAL(DP), ALLOCATABLE :: EtaPerturb(:), QZ(:), QY(:), MuonConserved(:)
+    REAL(DP), ALLOCATABLE :: Merit(:), TrialMerit(:), Lambda(:), QAcceptance(:)
+    REAL(DP), ALLOCATABLE :: WarmT(:), Fbase(:,:), Qbase(:)
+    REAL(DP), ALLOCATABLE :: Hvalue(:), Hbase(:), Hsource(:), RawFm(:,:)
+    REAL(DP), ALLOCATABLE :: NumberSource(:,:,:), NumberFactor(:,:,:), NumberFraction(:,:,:)
+    REAL(DP), ALLOCATABLE :: MaterialSource(:), MaterialAbsoluteSource(:)
+    LOGICAL, ALLOCATABLE :: EtaActive(:), EvalMask(:), Pending(:), Bad(:), WorkMask(:)
+    INTEGER, ALLOCATABLE :: Err(:), Pack(:), Unpack(:), InvariantPivot(:,:), EvalReason(:)
+    CHARACTER(512) :: TraceName
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM(Dnu,I1,I2,I3,D,T,Ye,Ym,E,V1,V2,V3, &
+    !$OMP                    C_Dnu,Ym_old,W2_S,MatterSource_Mask,T_Opacity, &
+    !$OMP                    LimiterCorrection,LeptonInvariant,g1,g2,g3)
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST(Dnu,I1,I2,I3,D,T,Ye,Ym,E,V1,V2,V3, &
+    !$ACC             C_Dnu,Ym_old,W2_S,MatterSource_Mask,T_Opacity, &
+    !$ACC             LimiterCorrection,LeptonInvariant,g1,g2,g3)
+#endif
+    ALLOCATE(X(n_FP_inner,nX_G),Eta(nX_G),F(n_FP_inner,nX_G),Q(nX_G))
+    ALLOCATE(Scale(n_FP_inner,nX_G),QScale(nX_G),QAcceptance(nX_G))
+    ALLOCATE(B(n_FP_inner,nX_G),EtaJac(nX_G),Z(n_FP_inner,nX_G),Y(n_FP_inner,nX_G))
+    ALLOCATE(StepX(n_FP_inner,nX_G),StepEta(nX_G),TrialX(n_FP_inner,nX_G))
+    ALLOCATE(TrialEta(nX_G),TrialF(n_FP_inner,nX_G),TrialQ(nX_G))
+    ALLOCATE(EtaPerturb(nX_G),QZ(nX_G),QY(nX_G),MuonConserved(nX_G))
+    ALLOCATE(Merit(nX_G),TrialMerit(nX_G),Lambda(nX_G),WarmT(nX_G))
+    ALLOCATE(Fbase(n_FP_inner,nX_G),Qbase(nX_G))
+    ALLOCATE(Hvalue(nX_G),Hbase(nX_G),Hsource(nX_G),RawFm(n_FP_inner,nX_G))
+    ALLOCATE(NumberSource(nE_G,nSpecies,nX_G),NumberFactor(nE_G,nSpecies,nX_G))
+    ALLOCATE(NumberFraction(nE_G,nSpecies,nX_G))
+    IF( UseMuonLeptonSource ) ALLOCATE(MaterialSource(nX_G),MaterialAbsoluteSource(nX_G))
+    ALLOCATE(EtaActive(nX_G),EvalMask(nX_G),Pending(nX_G),Bad(nX_G),WorkMask(nX_G))
+    ALLOCATE(Err(nX_G),Pack(nX_G),Unpack(nX_G))
+    ALLOCATE(EvalReason(nX_G))
+    EvalReason = 0
+    ALLOCATE(InvariantPivot(nLeptonFamilies,nX_G))
+    EtaActive = MatterSource_Mask(iYm,:) .AND. Active .AND. wMatrRHS(iYm) /= Zero
+    IF( nSpecies < iNuM_Bar ) EtaActive = .FALSE.
+    Eta = Zero
+    nInitialPacked = COUNT(Active)
+    WarmT = T
+    Scale = One
+    QScale = One
+    Lambda = One
+    StepEta = Zero
+    StepX = Zero
+    Merit = Zero
+    TrialMerit = Zero
+    Err = 0
+    F = Zero
+    Q = Zero
+    DO p = 1, nX_G
+      IF( EtaActive(p) )THEN
+        CALL ComputeMuonChemicalPotential_TABLE(D(p),T(p),Ye(p),Ym(p),mu)
+        Eta(p) = mu / (BoltzmannConstant*T(p))
+      END IF
+      DO s = 1, nSpecies
+      DO eN = 1, nE_G
+        os = ((eN-1)+(s-1)*nE_G)*nCR
+        X(os+iCR_N,p) = Dnu(eN,s,p)
+        X(os+iCR_G1,p) = g1(p)*I1(eN,s,p)
+        X(os+iCR_G2,p) = g2(p)*I2(eN,s,p)
+        X(os+iCR_G3,p) = g3(p)*I3(eN,s,p)
+      END DO
+      END DO
+    END DO
+    ! Replace one redundant density equation in each uncoupled family
+    ! with its signed-number invariant. Choose a populated pivot once per
+    ! solve; do not project states during Jacobian or residual evaluation.
+    InvariantPivot = 0
+    DO p = 1, nX_G
+      DO s = 1, MIN(nLeptonFamilies,nSpecies/2)
+        IF( LeptonFamilyCouplesToMatter(s,p) ) CYCLE
+        eN = MAXLOC(W2_S*MAX(Dnu(:,2*s-1,p),Dnu(:,2*s,p)),DIM=1)
+        InvariantPivot(s,p) = ((eN-1)+(2*s-2)*nE_G)*nCR+iCR_N
+      END DO
+    END DO
+
+    ! Work masks and indices are needed by the existing packed GPU physics
+    ! routines. Newton/Krylov control and small Hessenberg solves are on host.
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA MAP(alloc: EvalMask,WorkMask,Err,Pack,Unpack,MuonConserved,EtaActive)
+    !$OMP TARGET ENTER DATA MAP(alloc: NumberSource,NumberFactor,NumberFraction)
+    IF( UseMuonLeptonSource )THEN
+      !$OMP TARGET ENTER DATA MAP(alloc: MaterialSource,MaterialAbsoluteSource)
+    END IF
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA CREATE(EvalMask,WorkMask,Err,Pack,Unpack,MuonConserved,EtaActive)
+    !$ACC ENTER DATA CREATE(NumberSource,NumberFactor,NumberFraction)
+    IF( UseMuonLeptonSource )THEN
+      !$ACC ENTER DATA CREATE(MaterialSource,MaterialAbsoluteSource)
+    END IF
+#endif
+    unit = 0
+    IF( TraceRadiationOnlySolve )THEN
+      CALL MPI_COMM_RANK(MPI_COMM_WORLD,rank,ierr)
+      WRITE(TraceName,'(A,A,I6.6,A)') TRIM(RadiationOnlyTraceFile), &
+        '.coupled_eta.rank',rank,'.dat'
+      IF( RadiationOnlySolveCallCount == 1 )THEN
+        OPEN(NEWUNIT=unit,FILE=TRIM(TraceName),STATUS='REPLACE',IOSTAT=io)
+      ELSE
+        OPEN(NEWUNIT=unit,FILE=TRIM(TraceName),POSITION='APPEND',IOSTAT=io)
+      END IF
+      IF( io /= 0 ) CALL Fail('cannot open coupled-eta trace',0)
+      WRITE(unit,'(A)') &
+        '# call iteration point eta Ym Ycons Qmu radiation_relative merit lambda Hmu rho_g_cm3 T_MeV'
+    END IF
+
+    DO k = 1, MaxIter_inner
+      IF( .NOT. ANY(Active) ) EXIT
+      CALL Evaluate(Active,X,Eta,F,Q,Bad,.TRUE.)
+      IF( ANY(Bad .AND. Active) ) CALL Fail('invalid accepted thermodynamic state', &
+        FINDLOC(Bad .AND. Active,.TRUE.,DIM=1))
+      WarmT = T
+
+      ! Freeze all row/coordinate scales during this Newton step and its
+      ! line search. Recompute them only at the next accepted iterate.
+      DO p = 1, nX_G
+        IF( .NOT. Active(p) ) CYCLE
+        leptonScale = ABS(Ym(p))+ABS(Ym_old(p))
+        DO s = 1, nSpecies
+        DO eN = 1, nE_G
+          os = ((eN-1)+(s-1)*nE_G)*nCR
+          densityScale = MAX(ABS(X(os+iCR_N,p)),ABS(Grad(os+iCR_N,p)),SqrtTiny)
+          Scale(os+iCR_N,p) = densityScale
+          Scale(os+iCR_G1,p) = densityScale*SQRT(g1(p))
+          Scale(os+iCR_G2,p) = densityScale*SQRT(g2(p))
+          Scale(os+iCR_G3,p) = densityScale*SQRT(g3(p))
+          IF( .NOT. UseMuonLeptonSource .AND. &
+              (s == iNuM .OR. s == iNuM_Bar) ) leptonScale = leptonScale &
+            + AtomicMassUnit/D(p)*W2_S(eN) &
+              * (ABS(C_Dnu(eN,s,p))+ABS(X(os+iCR_N,p)) &
+                 + ABS(V1(p)*X(os+iCR_G1,p)) &
+                 + ABS(V2(p)*X(os+iCR_G2,p))+ABS(V3(p)*X(os+iCR_G3,p)))
+        END DO
+        END DO
+        leptonScale = leptonScale &
+          + ABS(AtomicMassUnit/D(p)*LimiterCorrection(iYm,p))
+        IF( UseMuonLeptonSource ) leptonScale = leptonScale &
+          + ABS(dt*AtomicMassUnit/D(p)*MatterSourceWeight(iYm,p))*MaterialAbsoluteSource(p)
+        QScale(p) = MAX(leptonScale,SqrtTiny)
+        ! Inventory mode uses an inventory-roundoff bound. Source mode
+        ! instead scales this row to the material abundance and reaction
+        ! magnitudes, without a radiation-inventory tolerance floor.
+        QAcceptance(p) = 64.0_DP*EPSILON(One)*QScale(p)
+        ! A direct source is a nonlinear equation, not an algebraically
+        ! eliminated inventory. Use the configured nonlinear tolerance on
+        ! its OWN scale, without accepting an absolute 1e-8 fraction error.
+        IF( UseMuonLeptonSource ) &
+          QAcceptance(p) = MAX(Rtol_inner,64.0_DP*EPSILON(One))*QScale(p)
+      END DO
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE TO(Active)
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE DEVICE(Active)
+#endif
+      CALL ComputeDnuNorm(Active,Dnu)
+      Pending = Active
+      CALL CheckConvergence_RadiationOnly &
+        (Active,k,nInner,nOuter,nInnerFinal,nOuterFinal,FirstResidual,FinalResidual,Frad)
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE FROM(Frad,Grad,nInnerFinal,nOuterFinal,FirstResidual,FinalResidual)
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE HOST(Frad,Grad,nInnerFinal,nOuterFinal,FirstResidual,FinalResidual)
+#endif
+      DO p = 1, nX_G
+        IF( Pending(p) .AND. EtaActive(p) .AND. ABS(Q(p)) > QAcceptance(p) ) &
+          Active(p) = .TRUE.
+      END DO
+      CALL FindRadiationLeptonInvariantViolations_OrderV &
+        (EvalMask,WorkMask,LeptonInvariant,Dnu,I1,I2,I3,V1,V2,V3,g1,g2,g3)
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE FROM(WorkMask)
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE HOST(WorkMask)
+#endif
+      Active = Active .OR. WorkMask
+      CALL Norm(Active,F,Hvalue,Merit)
+      IF( unit /= 0 )THEN
+        DO p = 1, nX_G
+          IF( Pending(p) ) WRITE(unit,'(3I9,10ES24.15E3)') &
+            RadiationOnlySolveCallCount,k,p,Eta(p),Ym(p),MuonConserved(p), &
+            Q(p),FinalResidual(p),Merit(p),Lambda(p),Hvalue(p), &
+            D(p)/(Gram/Centimeter**3),BoltzmannConstant*T(p)/MeV
+        END DO
+        FLUSH(unit)
+      END IF
+      IF( .NOT. ANY(Active) ) EXIT
+      Fbase = F
+      Qbase = Q
+      Hbase = Hvalue
+
+      IF( k == 1 )THEN
+        ! M1 has no unique flux derivative at radiation vacuum. Try the
+        ! existing frozen-matter map as a first guess, keeping the implicit
+        ! input invariants fixed. This initializes Newton rather than
+        ! globalizing a Newton correction: only joint admissibility is
+        ! required here, not descent from the potentially vacuum input.
+        Pending = Active
+        StepX = Zero
+        DO p = 1, nX_G
+          IF( Active(p) ) StepX(:,p) = Grad(:,p)-X(:,p)
+        END DO
+        Lambda = One
+        DO bt = 1, 12
+          DO p = 1, nX_G
+            TrialX(:,p) = X(:,p)+Lambda(p)*StepX(:,p)
+          END DO
+          CALL ProjectTrial(Pending,TrialX)
+          CALL Evaluate(Pending,TrialX,Eta,TrialF,TrialQ,Bad,.TRUE.)
+          CALL Norm(Pending,TrialF,Hvalue,TrialMerit)
+          DO p = 1, nX_G
+            IF( .NOT. Pending(p) ) CYCLE
+            IF( .NOT. Bad(p) )THEN
+              X(:,p) = TrialX(:,p)
+              Pending(p) = .FALSE.
+              CYCLE
+            END IF
+            Lambda(p) = Half*Lambda(p)
+          END DO
+          IF( .NOT. ANY(Pending) ) EXIT
+        END DO
+        ! Re-evaluate every point at its own accepted state before Newton;
+        ! rejected predictor trials must not supply coefficients to a step.
+        CYCLE
+      END IF
+
+      ! b=F_eta and d=Q_eta. The radiation block A includes the
+      ! temperature, EOS, rates, velocity, and energy-group response.
+      EtaPerturb = One
+      CALL Differentiate(Active .AND. EtaActive,Zero*X,EtaPerturb,B,EtaJac,.TRUE.)
+
+      B = B/Scale
+      EtaJac = EtaJac/QScale
+      CALL RadiationLinearSolve(-Fbase/Scale,Z)
+      CALL RadiationLinearSolve(B,Y)
+      CALL Differentiate(Active,Scale*Z,Zero*Eta,TrialF,QZ,.TRUE.)
+      CALL Differentiate(Active,Scale*Y,Zero*Eta,TrialF,QY,.TRUE.)
+      QZ = QZ/QScale
+      QY = QY/QScale
+      StepEta = Zero
+      DO p = 1, nX_G
+        IF( .NOT. Active(p) .OR. .NOT. EtaActive(p) ) CYCLE
+        denom = EtaJac(p)-QY(p)
+        IF( ABS(Hbase(p)+QZ(p)*QScale(p)) <= QAcceptance(p) ) CYCLE
+        IF( ABS(denom) <= 128.0_DP*EPSILON(One)*MAX(ABS(EtaJac(p)),ABS(QY(p)),TINY(One)) )THEN
+          CALL Fail('singular muon Schur complement',p)
+        ELSE
+          StepEta(p) = -(Hbase(p)/QScale(p)+QZ(p))/denom
+        END IF
+      END DO
+      DO p = 1, nX_G
+        ! Scalar trust modification: a susceptibility-limited correction
+        ! can be enormous at pair symmetry. Compress only that scalar
+        ! displacement, then reconstruct the radiation block response.
+        ! This retains the Schur-Newton step to cubic order near a root.
+        StepEta(p) = ASINH(StepEta(p))
+        StepX(:,p) = Scale(:,p)*(Z(:,p)-Y(:,p)*StepEta(p))
+        Lambda(p) = One
+      END DO
+
+      Pending = Active
+      DO bt = 1, 24
+        DO p = 1, nX_G
+          TrialEta(p) = Eta(p)+Lambda(p)*StepEta(p)
+          TrialX(:,p) = X(:,p)+Lambda(p)*StepX(:,p)
+        END DO
+        CALL ProjectTrial(Pending,TrialX)
+        CALL Evaluate(Pending,TrialX,TrialEta,TrialF,TrialQ,Bad,.TRUE.)
+        CALL Norm(Pending,TrialF,Hvalue,TrialMerit)
+        DO p = 1, nX_G
+          IF( .NOT. Pending(p) ) CYCLE
+          IF( .NOT. Bad(p) )THEN
+            IF( TrialMerit(p) <= (One-Armijo*Lambda(p))*Merit(p) )THEN
+              X(:,p) = TrialX(:,p)
+              Eta(p) = TrialEta(p)
+              Pending(p) = .FALSE.
+              CYCLE
+            END IF
+          END IF
+          Lambda(p) = Half*Lambda(p)
+        END DO
+        IF( .NOT. ANY(Pending) ) EXIT
+      END DO
+      IF( ANY(Pending) ) CALL Fail('joint radiation/eta line search exhausted', &
+        FINDLOC(Pending,.TRUE.,DIM=1))
+    END DO
+    IF( ANY(Active) ) CALL Fail('coupled radiation/eta Newton iteration limit', &
+      FINDLOC(Active,.TRUE.,DIM=1))
+    IF( unit /= 0 ) CLOSE(unit)
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO(Active)
+    !$OMP TARGET EXIT DATA MAP(delete: EvalMask,WorkMask,Err,Pack,Unpack,MuonConserved,EtaActive)
+    !$OMP TARGET EXIT DATA MAP(delete: NumberSource,NumberFactor,NumberFraction)
+    IF( UseMuonLeptonSource )THEN
+      !$OMP TARGET EXIT DATA MAP(delete: MaterialSource,MaterialAbsoluteSource)
+    END IF
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE(Active)
+    !$ACC EXIT DATA DELETE(EvalMask,WorkMask,Err,Pack,Unpack,MuonConserved,EtaActive)
+    !$ACC EXIT DATA DELETE(NumberSource,NumberFactor,NumberFraction)
+    IF( UseMuonLeptonSource )THEN
+      !$ACC EXIT DATA DELETE(MaterialSource,MaterialAbsoluteSource)
+    END IF
+#endif
+
+  CONTAINS
+
+    SUBROUTINE Fail(reason,point)
+      CHARACTER(*), INTENT(in) :: reason
+      INTEGER, INTENT(in) :: point
+      CALL MPI_COMM_RANK(MPI_COMM_WORLD,rank,ierr)
+      WRITE(ERROR_UNIT,'(A,I0,3A,I0,A,I0)') 'Coupled radiation/eta failure, rank ', &
+        rank,': ',reason,'; point ',point,'; Newton iteration ',k
+      IF( point > 0 )THEN
+        WRITE(ERROR_UNIT,'(A,4ES24.15E3)') &
+          ' rho [g/cm3], accepted T [MeV], eta, Qmu: ', &
+          D(point)/(Gram/Centimeter**3),BoltzmannConstant*WarmT(point)/MeV,Eta(point),Q(point)
+        WRITE(ERROR_UNIT,'(A,I0)') ' evaluation failure code: ',EvalReason(point)
+        IF( EvalReason(point) == 1 )THEN
+          DO s=1,nSpecies
+          DO eN=1,nE_G
+            densityScale=SQRT(g1(point)*I1(eN,s,point)**2+g2(point)*I2(eN,s,point)**2 &
+                             +g3(point)*I3(eN,s,point)**2)
+            IF( Dnu(eN,s,point) < Zero .OR. Dnu(eN,s,point) > DnuMax .OR. &
+                densityScale > Dnu(eN,s,point)*(One+64*EPSILON(One)) )THEN
+              WRITE(ERROR_UNIT,'(A,2I6,3ES24.15E3)') ' inadmissible species/energy, N, |I|, Nmax: ', &
+                s,eN,Dnu(eN,s,point),densityScale,DnuMax
+            END IF
+          END DO
+          END DO
+        END IF
+        IF( INDEX(reason,'line search') > 0 )THEN
+          WRITE(ERROR_UNIT,'(A,4ES24.15E3)') ' base/trial merit, delta_eta, lambda: ', &
+            Merit(point),TrialMerit(point),StepEta(point),Lambda(point)
+          WRITE(ERROR_UNIT,'(A,4ES24.15E3)') ' Schur d, cy, S, rhs: ', &
+            EtaJac(point),QY(point),EtaJac(point)-QY(point), &
+            -Hbase(point)/QScale(point)-QZ(point)
+        END IF
+      END IF
+      FLUSH(ERROR_UNIT)
+      CALL MPI_ABORT(MPI_COMM_WORLD,-1,ierr)
+    END SUBROUTINE Fail
+
+    SUBROUTINE Evaluate(mask,state,etaState,residual,qResidual,failed,withRadiation)
+      LOGICAL, INTENT(in) :: mask(:),withRadiation
+      REAL(DP), INTENT(in) :: state(:,:),etaState(:)
+      REAL(DP), INTENT(out) :: residual(:,:),qResidual(:)
+      LOGICAL, INTENT(out) :: failed(:)
+      INTEGER :: j,a,tup,off,nPacked,localError,family,pivot,energyPivot
+      REAL(DP) :: fluxnorm,susceptibility,invariantChange,numberChange,sourceSum
+      EvalMask = mask
+      Err = 0
+      WHERE(mask) EvalReason = 0
+      failed = .FALSE.
+      residual = Zero
+      qResidual = Zero
+      WHERE(mask) Hvalue = Zero
+      WHERE(mask) Hsource = Zero
+      WHERE(mask) T = WarmT
+      DO j = 1, nX_G
+        IF( .NOT. mask(j) ) CYCLE
+        DO a = 1, nSpecies
+        DO tup = 1, nE_G
+          off = ((tup-1)+(a-1)*nE_G)*nCR
+          IF( .NOT. ALL(IEEE_IS_FINITE(state(off+1:off+nCR,j))) )THEN
+            Err(j) = 1
+            CYCLE
+          END IF
+          Dnu(tup,a,j) = state(off+iCR_N,j)
+          I1(tup,a,j) = state(off+iCR_G1,j)/g1(j)
+          I2(tup,a,j) = state(off+iCR_G2,j)/g2(j)
+          I3(tup,a,j) = state(off+iCR_G3,j)/g3(j)
+          fluxnorm = HYPOT(HYPOT(state(off+iCR_G1,j)/SQRT(g1(j)), &
+            state(off+iCR_G2,j)/SQRT(g2(j))),state(off+iCR_G3,j)/SQRT(g3(j)))
+          IF( Dnu(tup,a,j) < Zero .OR. Dnu(tup,a,j) > DnuMax &
+                .OR. fluxnorm > Dnu(tup,a,j)*(One+64*EPSILON(One)) ) Err(j) = 1
+        END DO
+        END DO
+      END DO
+      WHERE(mask .AND. Err /= 0) EvalReason = 1
+      EvalMask = EvalMask .AND. Err == 0
+      CALL TimersStart(Timer_Collisions_MatterFromRadiation)
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO(EvalMask,Err,Dnu,I1,I2,I3,T,MuonConserved,EtaActive)
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE(EvalMask,Err,Dnu,I1,I2,I3,T,MuonConserved,EtaActive)
+#endif
+      CALL RecoverMatterFromRadiationState_OrderV &
+        (EvalMask,Fmatter,Gmatter,Dnu,I1,I2,I3,D,Ye,Ym,E,V1,V2,V3,g1,g2,g3, &
+         LimiterCorrection,Err,RetainMuonFraction_Option=EtaActive, &
+         MuonFractionConserved_Option=MuonConserved)
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM(Ye,Ym,E,V1,V2,V3,Err,MuonConserved,U_Ym,G_Ym,Omega)
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE HOST(Ye,Ym,E,V1,V2,V3,Err,MuonConserved,U_Ym,G_Ym,Omega)
+#endif
+      WHERE(EvalMask .AND. Err /= 0) EvalReason = 2
+      WorkMask = EvalMask .AND. .NOT. EtaActive .AND. Err == 0
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE TO(WorkMask)
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE DEVICE(WorkMask)
+#endif
+      CALL CreatePackIndex(WorkMask,nPacked,Pack,Unpack)
+      IF( nPacked > 0 ) CALL UpdateTemperature_Packed &
+        (D,E,Ye,Ym,T,WorkMask,nPacked,Pack,Unpack,Err,DisplayErrors_Option=.FALSE.)
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE FROM(T,Err)
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE HOST(T,Err)
+#endif
+      WHERE(WorkMask .AND. Err /= 0) EvalReason = 4
+      DO j = 1, nX_G
+        IF( .NOT. EvalMask(j) .OR. Err(j) /= 0 ) CYCLE
+        IF( EtaActive(j) )THEN
+          CALL RecoverMuonEtaTemperature_OrderV &
+            (D(j),E(j),Ye(j),etaState(j),T(j),Ym(j),susceptibility,localError)
+          Err(j) = localError
+          IF( localError /= 0 ) EvalReason(j) = 3
+          qResidual(j) = Ym(j)-MuonConserved(j)
+          IF( localError == 0 )THEN
+            U_Ym(j) = Ym(j)
+            G_Ym(j) = Ym(j)
+          END IF
+        END IF
+      END DO
+      failed = mask .AND. Err /= 0
+      EvalMask = mask .AND. .NOT. failed
+      CALL TimersStop(Timer_Collisions_MatterFromRadiation)
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO(EvalMask,Err,T,Ye,Ym,E,V1,V2,V3,U_Ym,G_Ym)
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE(EvalMask,Err,T,Ye,Ym,E,V1,V2,V3,U_Ym,G_Ym)
+#endif
+      CALL CreatePackIndex(EvalMask,nPacked,Pack,Unpack)
+      IF( withRadiation .AND. nPacked > 0 )THEN
+        CALL TimersStart(Timer_Collisions_ComputeOpacity)
+        IF( .NOT. FreezeOpacities ) CALL ComputeOpacities_Packed &
+          (D,T,Ye,Ym,SqrtGm,EvalMask,nPacked,Pack,Unpack, &
+           T0=T_old,Ye0=Ye_old,Ym0=Ym_old,Opacity_Mask_Input=Opacity_Mask)
+        CALL TimersStop(Timer_Collisions_ComputeOpacity)
+        CALL TimersStart(Timer_Collisions_ComputeRates)
+        IF( FreezeOpacities )THEN
+          CALL ComputeRates_Packed &
+            (D,T_Opacity,Dnu,I1,I2,I3,EvalMask,nPacked,Pack,Unpack,nInitialPacked,Opacity_Mask)
+        ELSE
+          CALL ComputeRates_Packed &
+            (D,T,Dnu,I1,I2,I3,EvalMask,nPacked,Pack,Unpack,nPacked,Opacity_Mask)
+        END IF
+        CALL TimersStop(Timer_Collisions_ComputeRates)
+        CALL TimersStart(Timer_Collisions_NeutrinoRHS)
+        CALL ComputeNeutrinoRHS_OrderV &
+          (EvalMask,Frad,Grad,dt,Dnu,I1,I2,I3,V1,V2,V3,g1,g2,g3, &
+           NumberSource_Option=NumberSource,NumberFactor_Option=NumberFactor, &
+           NumberFraction_Option=NumberFraction)
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET UPDATE FROM(Frad,NumberSource,NumberFactor,NumberFraction)
+#elif defined(THORNADO_OACC)
+        !$ACC UPDATE HOST(Frad,NumberSource,NumberFactor,NumberFraction)
+#endif
+        RawFm = Frad
+        CALL ProjectRadiationOnlyFixedPointMap_OrderV &
+          (EvalMask,Frad,Grad,Dnu,I1,I2,I3,g1,g2,g3)
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET UPDATE FROM(Frad,Grad)
+#elif defined(THORNADO_OACC)
+        !$ACC UPDATE HOST(Frad,Grad)
+#endif
+        IF( UseMuonLeptonSource )THEN
+          CALL ComputeMuonMaterialSource_OrderV(EvalMask,Dnu,MaterialSource,MaterialAbsoluteSource)
+#if defined(THORNADO_OMP_OL)
+          !$OMP TARGET UPDATE FROM(MaterialSource,MaterialAbsoluteSource)
+#elif defined(THORNADO_OACC)
+          !$ACC UPDATE HOST(MaterialSource,MaterialAbsoluteSource)
+#endif
+        END IF
+        DO j = 1, nX_G
+          IF( EvalMask(j) )THEN
+            residual(:,j) = -Frad(:,j)
+            IF( EtaActive(j) )THEN
+              sourceSum = Zero
+              IF( .NOT. UseMuonLeptonSource )THEN
+              DO a = iNuM,iNuM_Bar
+              DO tup = 1,nE_G
+                off = ((tup-1)+(a-1)*nE_G)*nCR
+                numberChange = state(off+iCR_N,j)-C_Dnu(tup,a,j) &
+                  +V1(j)*state(off+iCR_G1,j)+V2(j)*state(off+iCR_G2,j) &
+                  +V3(j)*state(off+iCR_G3,j)
+                sourceSum = sourceSum+W2_S(tup)*LeptonNumber(a) &
+                  * (NumberFraction(tup,a,j)*numberChange &
+                    +dt*NumberSource(tup,a,j)/(Omega(j)*NumberFactor(tup,a,j)) &
+                    +(Frad(off+iCR_N,j)-RawFm(off+iCR_N,j))/Omega(j))
+              END DO
+              END DO
+              END IF
+              IF( UseMuonLeptonSource )THEN
+                Hsource(j) = -AtomicMassUnit/D(j)*MatterSourceWeight(iYm,j) &
+                  * (dt*MaterialSource(j)+LimiterCorrection(iYm,j))
+              ELSE
+                Hsource(j) = AtomicMassUnit/D(j)*MatterSourceWeight(iYm,j) &
+                  * (sourceSum-LimiterCorrection(iYm,j))
+              END IF
+              Hvalue(j) = (Ym(j)-Ym_old(j))+Hsource(j)
+              IF( UseMuonLeptonSource ) qResidual(j) = Hvalue(j)
+            END IF
+            DO family = 1, MIN(nLeptonFamilies,nSpecies/2)
+              pivot = InvariantPivot(family,j)
+              IF( pivot == 0 ) CYCLE
+              invariantChange = Zero
+              DO a = 2*family-1, 2*family
+              DO tup = 1, nE_G
+                off = ((tup-1)+(a-1)*nE_G)*nCR
+                numberChange = state(off+iCR_N,j)-C_Dnu(tup,a,j) &
+                  + V1(j)*state(off+iCR_G1,j)+V2(j)*state(off+iCR_G2,j) &
+                  + V3(j)*state(off+iCR_G3,j)
+                invariantChange = invariantChange+W2_S(tup)*LeptonNumber(a)*numberChange
+              END DO
+              END DO
+              energyPivot = MOD((pivot-iCR_N)/nCR,nE_G)+1
+              residual(pivot,j) = invariantChange/W2_S(energyPivot)
+            END DO
+            Frad(:,j) = -residual(:,j)
+            IF( .NOT. ALL(IEEE_IS_FINITE(residual(:,j))) )THEN
+              failed(j) = .TRUE.
+              EvalReason(j) = 5
+            END IF
+          END IF
+        END DO
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET UPDATE TO(Frad)
+#elif defined(THORNADO_OACC)
+        !$ACC UPDATE DEVICE(Frad)
+#endif
+        CALL TimersStop(Timer_Collisions_NeutrinoRHS)
+      END IF
+    END SUBROUTINE Evaluate
+
+    SUBROUTINE ProjectTrial(mask,state)
+      LOGICAL, INTENT(in) :: mask(:)
+      REAL(DP), INTENT(inout) :: state(:,:)
+      INTEGER :: j,a,tup,off
+      REAL(DP) :: occupation,f1,f2,f3
+      DO j = 1,nX_G
+        IF( .NOT. mask(j) ) CYCLE
+        DO a = 1,nSpecies
+        DO tup = 1,nE_G
+          off = ((tup-1)+(a-1)*nE_G)*nCR
+          occupation = state(off+iCR_N,j)
+          f1 = state(off+iCR_G1,j)/g1(j)
+          f2 = state(off+iCR_G2,j)/g2(j)
+          f3 = state(off+iCR_G3,j)/g3(j)
+          CALL ProjectPrimitiveRadiationMoment_OrderV(occupation,f1,f2,f3, &
+            g1(j),g2(j),g3(j),DnuMax)
+          state(off+iCR_N,j) = occupation
+          state(off+iCR_G1,j) = g1(j)*f1
+          state(off+iCR_G2,j) = g2(j)*f2
+          state(off+iCR_G3,j) = g3(j)*f3
+        END DO
+        END DO
+      END DO
+    END SUBROUTINE ProjectTrial
+
+    SUBROUTINE Norm(mask,residual,qResidual,value)
+      LOGICAL, INTENT(in) :: mask(:)
+      REAL(DP), INTENT(in) :: residual(:,:),qResidual(:)
+      REAL(DP), INTENT(out) :: value(:)
+      INTEGER :: j
+      value = Zero
+      DO j = 1, nX_G
+        IF( mask(j) ) value(j) = SQRT(SUM((residual(:,j)/Scale(:,j) &
+          /MAX(Rtol_inner,EPSILON(One)))**2)/n_FP_inner &
+          +(qResidual(j)/QAcceptance(j))**2)
+      END DO
+    END SUBROUTINE Norm
+
+    SUBROUTINE Differentiate(mask,dx,de,df,dq,withRadiation)
+      LOGICAL, INTENT(in) :: mask(:),withRadiation
+      REAL(DP), INTENT(in) :: dx(:,:),de(:)
+      REAL(DP), INTENT(out) :: df(:,:),dq(:)
+      REAL(DP), ALLOCATABLE :: h(:),xp(:,:),ep(:),fp(:,:),qp(:),fmProbe(:,:),qmProbe(:)
+      REAL(DP), ALLOCATABLE :: inward(:,:),forwardFirst(:),sourceFirst(:)
+      LOGICAL, ALLOCATABLE :: todo(:),badProbe(:),badFirst(:)
+      INTEGER :: j,attempt,a,tup,off
+      REAL(DP) :: fluxnorm,directionnorm,inwardDensity
+      ALLOCATE(h(nX_G),xp(n_FP_inner,nX_G),ep(nX_G),fp(n_FP_inner,nX_G),qp(nX_G))
+      ALLOCATE(fmProbe(n_FP_inner,nX_G),qmProbe(nX_G),inward(n_FP_inner,nX_G))
+      ALLOCATE(forwardFirst(nX_G),sourceFirst(nX_G))
+      ALLOCATE(todo(nX_G),badProbe(nX_G),badFirst(nX_G))
+      todo = mask
+      h = FDStep
+      df = Zero
+      dq = Zero
+      inward = Zero
+      DO j = 1, nX_G
+        IF( MAXVAL(ABS(dx(:,j)/Scale(:,j)))+ABS(de(j)) == Zero ) todo(j) = .FALSE.
+        IF( .NOT. todo(j) ) CYCLE
+        h(j) = FDStep/MAX(One,MAXVAL(ABS(dx(:,j)/Scale(:,j))),ABS(de(j)))
+        DO a = 1, nSpecies
+        DO tup = 1, nE_G
+          off = ((tup-1)+(a-1)*nE_G)*nCR
+          inwardDensity = Zero
+          directionnorm = HYPOT(HYPOT(dx(off+iCR_G1,j)/SQRT(g1(j)), &
+            dx(off+iCR_G2,j)/SQRT(g2(j))),dx(off+iCR_G3,j)/SQRT(g3(j)))
+          IF( X(off+iCR_N,j) >= DnuMax-FDStep*Scale(off+iCR_N,j) ) &
+            inwardDensity = -ABS(dx(off+iCR_N,j))
+          IF( X(off+iCR_N,j) <= FDStep*Scale(off+iCR_N,j) ) &
+            inwardDensity = Two*(ABS(dx(off+iCR_N,j))+directionnorm)
+          inward(off+iCR_N,j) = inwardDensity
+          fluxnorm = HYPOT(HYPOT(X(off+iCR_G1,j)/SQRT(g1(j)), &
+            X(off+iCR_G2,j)/SQRT(g2(j))),X(off+iCR_G3,j)/SQRT(g3(j)))
+          IF( X(off+iCR_N,j) > FDStep*Scale(off+iCR_N,j) .AND. fluxnorm > Zero .AND. &
+              fluxnorm >= X(off+iCR_N,j)*(One-10*FDStep) )THEN
+            inward(off+iCR_G1:off+iCR_G3,j) = -X(off+iCR_G1:off+iCR_G3,j)/fluxnorm &
+              * (Two*ABS(dx(off+iCR_N,j))+Two*directionnorm)
+          END IF
+        END DO
+        END DO
+      END DO
+      DO attempt = 1, 24
+        DO j = 1, nX_G
+          xp(:,j) = X(:,j)+Half*h(j)*(inward(:,j)+dx(:,j))
+          ep(j) = Eta(j)+Half*h(j)*de(j)
+        END DO
+        CALL Evaluate(todo,xp,ep,fp,qp,badFirst,withRadiation)
+        forwardFirst = Ym
+        sourceFirst = Hsource
+        DO j = 1, nX_G
+          xp(:,j) = X(:,j)+Half*h(j)*(inward(:,j)-dx(:,j))
+          ep(j) = Eta(j)-Half*h(j)*de(j)
+        END DO
+        CALL Evaluate(todo,xp,ep,fmProbe,qmProbe,badProbe,withRadiation)
+        DO j = 1, nX_G
+          IF( .NOT. todo(j) ) CYCLE
+          IF( badProbe(j) .OR. badFirst(j) )THEN
+            h(j) = Half*h(j)
+          ELSE
+            IF( withRadiation ) df(:,j) = (fp(:,j)-fmProbe(:,j))/h(j)
+            IF( EtaActive(j) ) dq(j) = &
+              ((forwardFirst(j)-Ym(j))+(sourceFirst(j)-Hsource(j)))/h(j)
+            todo(j) = .FALSE.
+          END IF
+        END DO
+        IF( .NOT. ANY(todo) ) EXIT
+      END DO
+      IF( ANY(todo) )THEN
+        j=FINDLOC(todo,.TRUE.,DIM=1)
+        DO a=1,nSpecies
+        DO tup=1,nE_G
+          off=((tup-1)+(a-1)*nE_G)*nCR
+          IF( Dnu(tup,a,j) < Zero .OR. SQRT(g1(j)*I1(tup,a,j)**2 &
+              +g2(j)*I2(tup,a,j)**2+g3(j)*I3(tup,a,j)**2) &
+              > Dnu(tup,a,j)*(One+64*EPSILON(One)) )THEN
+            WRITE(ERROR_UNIT,'(A,3I6,5ES24.15E3)') ' probe point/species/energy, h, baseN, scaleN, dxN, inwardN: ', &
+              j,a,tup,h(j),X(off+iCR_N,j),Scale(off+iCR_N,j),dx(off+iCR_N,j),inward(off+iCR_N,j)
+            WRITE(ERROR_UNIT,'(A,3ES24.15E3)') ' base I1, dxI1, inwardI1: ', &
+              X(off+iCR_G1,j),dx(off+iCR_G1,j),inward(off+iCR_G1,j)
+          END IF
+        END DO
+        END DO
+        CALL Fail('no admissible Jacobian probe',j)
+      END IF
+    END SUBROUTINE Differentiate
+
+    SUBROUTINE RadiationLinearSolve(rhs,solution)
+      REAL(DP), INTENT(in) :: rhs(:,:)
+      REAL(DP), INTENT(out) :: solution(:,:)
+      REAL(DP), ALLOCATABLE :: basis(:,:,:),hess(:,:,:),cs(:,:),sn(:,:),r(:,:)
+      REAL(DP), ALLOCATABLE :: w(:,:),jq(:),beta(:),coeff(:,:),av(:,:)
+      LOGICAL, ALLOCATABLE :: todo(:)
+      INTEGER, ALLOCATABLE :: used(:)
+      INTEGER :: j,m,a,pass
+      REAL(DP) :: dot,normw,t1,t2,rotation
+      ALLOCATE(basis(n_FP_inner,KrylovDimension+1,nX_G))
+      ALLOCATE(hess(KrylovDimension+1,KrylovDimension,nX_G))
+      ALLOCATE(cs(KrylovDimension,nX_G),sn(KrylovDimension,nX_G))
+      ALLOCATE(r(KrylovDimension+1,nX_G),coeff(KrylovDimension,nX_G),used(nX_G))
+      ALLOCATE(w(n_FP_inner,nX_G),av(n_FP_inner,nX_G),jq(nX_G),beta(nX_G),todo(nX_G))
+      basis = Zero
+      hess = Zero
+      r = Zero
+      coeff = Zero
+      used = 0
+      solution = Zero
+      todo = Active
+      DO j = 1, nX_G
+        beta(j) = SQRT(SUM(rhs(:,j)**2))
+        IF( beta(j) <= TINY(One) ) todo(j) = .FALSE.
+        IF( todo(j) ) basis(:,1,j) = rhs(:,j)/beta(j)
+        r(1,j) = beta(j)
+      END DO
+      DO m = 1, KrylovDimension
+        IF( .NOT. ANY(todo) ) EXIT
+        CALL Differentiate(todo,Scale*basis(:,m,:),Zero*Eta,av,jq,.TRUE.)
+        w = av/Scale
+        DO j = 1, nX_G
+          IF( .NOT. todo(j) ) CYCLE
+          ! Twice-reorthogonalized Arnoldi protects a tiny Schur response
+          ! from loss of orthogonality in strongly relaxing spectra.
+          DO pass = 1, 2
+            DO a = 1, m
+              dot = SUM(w(:,j)*basis(:,a,j))
+              hess(a,m,j) = hess(a,m,j)+dot
+              w(:,j) = w(:,j)-dot*basis(:,a,j)
+            END DO
+          END DO
+          normw = SQRT(SUM(w(:,j)**2))
+          hess(m+1,m,j) = normw
+          IF( normw > TINY(One) ) basis(:,m+1,j) = w(:,j)/normw
+          DO a = 1, m-1
+            t1 = cs(a,j)*hess(a,m,j)+sn(a,j)*hess(a+1,m,j)
+            t2 = -sn(a,j)*hess(a,m,j)+cs(a,j)*hess(a+1,m,j)
+            hess(a,m,j) = t1
+            hess(a+1,m,j) = t2
+          END DO
+          rotation = SQRT(hess(m,m,j)**2+hess(m+1,m,j)**2)
+          IF( rotation <= TINY(One) ) CALL Fail('singular radiation Newton block',j)
+          cs(m,j) = hess(m,m,j)/rotation
+          sn(m,j) = hess(m+1,m,j)/rotation
+          hess(m,m,j) = rotation
+          hess(m+1,m,j) = Zero
+          r(m+1,j) = -sn(m,j)*r(m,j)
+          r(m,j) = cs(m,j)*r(m,j)
+          used(j) = m
+          IF( ABS(r(m+1,j)) <= 1.0e-7_DP*beta(j) .OR. normw <= TINY(One) ) todo(j) = .FALSE.
+        END DO
+      END DO
+      DO j = 1, nX_G
+        IF( .NOT. Active(j) .OR. used(j) == 0 ) CYCLE
+        IF( ABS(r(used(j)+1,j)) > 1.0e-5_DP*beta(j) ) &
+          CALL Fail('radiation Krylov block did not converge',j)
+        DO a = used(j), 1, -1
+          coeff(a,j) = (r(a,j)-SUM(hess(a,a+1:used(j),j)*coeff(a+1:used(j),j)))/hess(a,a,j)
+        END DO
+        DO a = 1, used(j)
+          solution(:,j) = solution(:,j)+coeff(a,j)*basis(:,a,j)
+        END DO
+      END DO
+    END SUBROUTINE RadiationLinearSolve
+
+  END SUBROUTINE SolveRadiationMuonEtaSchur_OrderV
+
+
+  SUBROUTINE RecoverMuonEtaTemperature_OrderV(D,Etarget,Ye,Eta,T,Ym,Chi,Error)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(in) :: D,Etarget,Ye,Eta
+    REAL(DP), INTENT(inout) :: T,Ym
+    REAL(DP), INTENT(out) :: Chi
+    INTEGER, INTENT(out) :: Error
+    REAL(DP) :: tlo,thi,tc,tp,ec,ep,yc,yp,chp,loResidual,hiResidual,residual
+    REAL(DP) :: slope,delta,tNext,initialT
+    INTEGER :: iteration,probeError,attempt
+    LOGICAL :: haveLo,haveHi
+
+    ! Recover temperature at fixed eta using the forward EOS, including
+    ! the T dependence of the net muon fraction. This is an EOS scalar
+    ! recovery, not a second muon-conservation iteration.
+    Error = 1
+    Chi = Zero
+    initialT = MAX(Min_T,MIN(T,Max_T))
+    tc = initialT
+    tlo = Min_T
+    thi = Max_T
+    haveLo = .FALSE.
+    haveHi = .FALSE.
+    loResidual = Zero
+    hiResidual = Zero
+    DO iteration = 1, 64
+      yc = Zero
+      CALL ComputeMuonFractionFromDegeneracy_TABLE(D,tc,Ye,Eta,yc,Chi,probeError)
+      IF( probeError /= 0 ) RETURN
+      CALL ComputeSpecificInternalEnergy_TABLE(D,tc,Ye,yc,ec)
+      residual = ec-Etarget
+      IF( ABS(residual) <= 100*EPSILON(One)*MAX(ABS(ec),ABS(Etarget),SqrtTiny) )THEN
+        T = tc
+        Ym = yc
+        Error = 0
+        RETURN
+      END IF
+      IF( residual < Zero )THEN
+        tlo = tc
+        loResidual = residual
+        haveLo = .TRUE.
+      ELSE
+        thi = tc
+        hiResidual = residual
+        haveHi = .TRUE.
+      END IF
+      ! Numerical heat capacity along eta=constant; avoid the legacy EOS
+      ! derivative path, whose muon-composition derivatives are incomplete.
+      tp = MIN(Max_T,tc*(One+1.0e-4_DP))
+      IF( tp == tc ) tp = MAX(Min_T,tc*(One-1.0e-4_DP))
+      yp = yc
+      CALL ComputeMuonFractionFromDegeneracy_TABLE(D,tp,Ye,Eta,yp,chp,probeError)
+      slope = Zero
+      IF( probeError == 0 .AND. tp /= tc )THEN
+        CALL ComputeSpecificInternalEnergy_TABLE(D,tp,Ye,yp,ep)
+        slope = (ep-ec)/(tp-tc)
+      END IF
+      IF( slope > Zero )THEN
+        delta = MAX(-Half*tc,MIN(Half*tc,-residual/slope))
+        tNext = tc+delta
+      ELSE IF( residual < Zero )THEN
+        tNext = MIN(Max_T,1.5_DP*tc)
+      ELSE
+        tNext = MAX(Min_T,Half*tc)
+      END IF
+      IF( haveLo .AND. haveHi )THEN
+        IF( tNext <= tlo .OR. tNext >= thi ) &
+          tNext = tlo-loResidual*(thi-tlo)/(hiResidual-loResidual)
+        tNext = MAX(tlo+0.01_DP*(thi-tlo),MIN(tNext,thi-0.01_DP*(thi-tlo)))
+      END IF
+      tNext = MAX(Min_T,MIN(tNext,Max_T))
+      ! Composition can restrict the valid temperature interval at fixed
+      ! eta. Shorten this EOS proposal rather than accepting a clipped Ymu.
+      DO attempt = 1, 24
+        yp = yc
+        CALL ComputeMuonFractionFromDegeneracy_TABLE(D,tNext,Ye,Eta,yp,chp,probeError)
+        IF( probeError == 0 ) EXIT
+        tNext = Half*(tc+tNext)
+      END DO
+      IF( probeError /= 0 .OR. tNext == tc ) RETURN
+      tc = tNext
+    END DO
+  END SUBROUTINE RecoverMuonEtaTemperature_OrderV
+
+
   SUBROUTINE PrepareRadiationOnlySchurNewton_OrderV &
     ( MASK, Gm, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
       V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
@@ -4245,7 +5430,6 @@ CONTAINS
       Dnu, Inu_u_1, Inu_u_2, Inu_u_3
     REAL(DP), DIMENSION(:),     INTENT(in)    :: &
       Gm_dd_11, Gm_dd_22, Gm_dd_33
-
     INTEGER  :: iN_E, iN_X, iOS, iS
     REAL(DP) :: Dnu_Map, Inu_Map_u_1, Inu_Map_u_2, Inu_Map_u_3
 
@@ -4383,7 +5567,11 @@ CONTAINS
         Chi_T = Chi_EmAb(iN_E,iS,iN_X) &
               + Chi_NNS(iN_E,iS,iN_X) + Chi_NES(iN_E,iS,iN_X) &
               + Chi_Pair(iN_E,iS,iN_X) + Chi_NuPair(iN_E,iS,iN_X) &
-              + Chi_Brem(iN_E,iS,iN_X)
+              + Chi_Brem(iN_E,iS,iN_X) &
+              + Chi_GL(iN_E,iS,iN_X,iGL_NMS) &
+              + Chi_GL(iN_E,iS,iN_X,iGL_LFE) &
+              + Chi_GL(iN_E,iS,iN_X,iGL_LFC) &
+              + Chi_GL(iN_E,iS,iN_X,iGL_IMD)
         CollisionRate &
           = ( Fm(iOS+iCR_N,iN_X) &
                 * ( One + Omega(iN_X) * dt * Chi_T ) / Omega(iN_X) &
@@ -4503,7 +5691,6 @@ CONTAINS
       Dnu, Inu_u_1, Inu_u_2, Inu_u_3
     REAL(DP), DIMENSION(:),     INTENT(in)    :: &
       Gm_dd_11, Gm_dd_22, Gm_dd_33
-
     INTEGER  :: iN_E, iN_X, iOS, iS
     REAL(DP) :: Previous
 
@@ -4567,7 +5754,8 @@ CONTAINS
       Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
       D, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      RadiationLimiterCorrection, Error )
+      RadiationLimiterCorrection, Error, &
+      RetainMuonFraction_Option, MuonFractionConserved_Option )
 
     LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
     REAL(DP), DIMENSION(:,:),   INTENT(inout) :: Fm, Gm
@@ -4580,20 +5768,21 @@ CONTAINS
       Gm_dd_11, Gm_dd_22, Gm_dd_33
     REAL(DP), DIMENSION(:,:),   INTENT(in)    :: RadiationLimiterCorrection
     INTEGER,  DIMENSION(:),     INTENT(inout) :: Error
+    LOGICAL, DIMENSION(:), INTENT(in), OPTIONAL :: RetainMuonFraction_Option
+    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: MuonFractionConserved_Option
 
     INTEGER  :: iN_E, iN_X, iS, SolveInfo
     REAL(DP) :: A(3,3), B(3), VHat(3)
     REAL(DP) :: Ef, SqrtG1, SqrtG2, SqrtG3, vDotV
     REAL(DP) :: k_dd_11, k_dd_12, k_dd_13
     REAL(DP) :: k_dd_22, k_dd_23, k_dd_33
-    REAL(DP) :: SUM_D, SUM_I1, SUM_I2, SUM_I3
+    REAL(DP) :: SUM_D
     REAL(DP) :: SUM_K11, SUM_K12, SUM_K13
     REAL(DP) :: SUM_K22, SUM_K23, SUM_K33
-    REAL(DP) :: SUM_Le, SUM_LeI1, SUM_LeI2, SUM_LeI3
-    REAL(DP) :: SUM_Lm, SUM_LmI1, SUM_LmI2, SUM_LmI3
-    REAL(DP) :: SUM_Ef_Old, SUM_Le_Old, SUM_Lm_Old
-    REAL(DP) :: SUM_P1_Old, SUM_P2_Old, SUM_P3_Old
-    REAL(DP) :: SUM_Ye, SUM_Ym, SUM_Ef
+    REAL(DP) :: SUM_DeltaLe, SUM_DeltaLm
+    REAL(DP) :: SUM_DeltaEf
+    REAL(DP) :: SUM_DeltaP1, SUM_DeltaP2, SUM_DeltaP3
+    REAL(DP) :: DeltaEf, DeltaLe, DeltaLm, DeltaN
     REAL(DP) :: U_Ye_New, U_Ym_New, U_Ef_New
     REAL(DP) :: U_V1_New, U_V2_New, U_V3_New
     REAL(DP) :: wYe, wYm, wEf, wV1, wV2, wV3
@@ -4601,28 +5790,26 @@ CONTAINS
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE &
     !$OMP PRIVATE( A, B, VHat, SolveInfo, Ef, SqrtG1, SqrtG2, SqrtG3, &
-    !$OMP          vDotV, SUM_D, SUM_I1, SUM_I2, SUM_I3, &
+    !$OMP          vDotV, SUM_D, &
     !$OMP          SUM_K11, SUM_K12, SUM_K13, &
     !$OMP          SUM_K22, SUM_K23, SUM_K33, &
-    !$OMP          SUM_Le, SUM_LeI1, SUM_LeI2, SUM_LeI3, &
-    !$OMP          SUM_Lm, SUM_LmI1, SUM_LmI2, SUM_LmI3, &
-    !$OMP          SUM_Ef_Old, SUM_Le_Old, SUM_Lm_Old, &
-    !$OMP          SUM_P1_Old, SUM_P2_Old, SUM_P3_Old, &
-    !$OMP          SUM_Ye, SUM_Ym, SUM_Ef, &
+    !$OMP          SUM_DeltaLe, SUM_DeltaLm, &
+    !$OMP          SUM_DeltaEf, &
+    !$OMP          SUM_DeltaP1, SUM_DeltaP2, SUM_DeltaP3, &
+    !$OMP          DeltaEf, DeltaLe, DeltaLm, DeltaN, &
     !$OMP          U_Ye_New, U_Ym_New, U_Ef_New, &
     !$OMP          U_V1_New, U_V2_New, U_V3_New, &
     !$OMP          wYe, wYm, wEf, wV1, wV2, wV3 )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG &
     !$ACC PRIVATE( A, B, VHat, SolveInfo, Ef, SqrtG1, SqrtG2, SqrtG3, &
-    !$ACC          vDotV, SUM_D, SUM_I1, SUM_I2, SUM_I3, &
+    !$ACC          vDotV, SUM_D, &
     !$ACC          SUM_K11, SUM_K12, SUM_K13, &
     !$ACC          SUM_K22, SUM_K23, SUM_K33, &
-    !$ACC          SUM_Le, SUM_LeI1, SUM_LeI2, SUM_LeI3, &
-    !$ACC          SUM_Lm, SUM_LmI1, SUM_LmI2, SUM_LmI3, &
-    !$ACC          SUM_Ef_Old, SUM_Le_Old, SUM_Lm_Old, &
-    !$ACC          SUM_P1_Old, SUM_P2_Old, SUM_P3_Old, &
-    !$ACC          SUM_Ye, SUM_Ym, SUM_Ef, &
+    !$ACC          SUM_DeltaLe, SUM_DeltaLm, &
+    !$ACC          SUM_DeltaEf, &
+    !$ACC          SUM_DeltaP1, SUM_DeltaP2, SUM_DeltaP3, &
+    !$ACC          DeltaEf, DeltaLe, DeltaLm, DeltaN, &
     !$ACC          U_Ye_New, U_Ym_New, U_Ef_New, &
     !$ACC          U_V1_New, U_V2_New, U_V3_New, &
     !$ACC          wYe, wYm, wEf, wV1, wV2, wV3 )
@@ -4631,14 +5818,13 @@ CONTAINS
     !$OMP PRIVATE( A, B, VHat, SolveInfo, Ef, SqrtG1, SqrtG2, SqrtG3, &
     !$OMP          vDotV, k_dd_11, k_dd_12, k_dd_13, &
     !$OMP          k_dd_22, k_dd_23, k_dd_33, &
-    !$OMP          SUM_D, SUM_I1, SUM_I2, SUM_I3, &
+    !$OMP          SUM_D, &
     !$OMP          SUM_K11, SUM_K12, SUM_K13, &
     !$OMP          SUM_K22, SUM_K23, SUM_K33, &
-    !$OMP          SUM_Le, SUM_LeI1, SUM_LeI2, SUM_LeI3, &
-    !$OMP          SUM_Lm, SUM_LmI1, SUM_LmI2, SUM_LmI3, &
-    !$OMP          SUM_Ef_Old, SUM_Le_Old, SUM_Lm_Old, &
-    !$OMP          SUM_P1_Old, SUM_P2_Old, SUM_P3_Old, &
-    !$OMP          SUM_Ye, SUM_Ym, SUM_Ef, &
+    !$OMP          SUM_DeltaLe, SUM_DeltaLm, &
+    !$OMP          SUM_DeltaEf, &
+    !$OMP          SUM_DeltaP1, SUM_DeltaP2, SUM_DeltaP3, &
+    !$OMP          DeltaEf, DeltaLe, DeltaLm, DeltaN, &
     !$OMP          U_Ye_New, U_Ym_New, U_Ef_New, &
     !$OMP          U_V1_New, U_V2_New, U_V3_New, &
     !$OMP          wYe, wYm, wEf, wV1, wV2, wV3 )
@@ -4662,52 +5848,32 @@ CONTAINS
       SqrtG3 = SQRT( Gm_dd_33(iN_X) )
 
       SUM_D   = Zero
-      SUM_I1  = Zero
-      SUM_I2  = Zero
-      SUM_I3  = Zero
       SUM_K11 = Zero
       SUM_K12 = Zero
       SUM_K13 = Zero
       SUM_K22 = Zero
       SUM_K23 = Zero
       SUM_K33 = Zero
-      SUM_Le   = Zero
-      SUM_LeI1 = Zero
-      SUM_LeI2 = Zero
-      SUM_LeI3 = Zero
-      SUM_Lm   = Zero
-      SUM_LmI1 = Zero
-      SUM_LmI2 = Zero
-      SUM_LmI3 = Zero
-      SUM_Ef_Old = Zero
-      SUM_Le_Old  = Zero
-      SUM_Lm_Old  = Zero
-      SUM_P1_Old = Zero
-      SUM_P2_Old = Zero
-      SUM_P3_Old = Zero
+      SUM_DeltaP1 = Zero
+      SUM_DeltaP2 = Zero
+      SUM_DeltaP3 = Zero
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP PARALLEL DO SIMD COLLAPSE(2) &
     !$OMP PRIVATE( k_dd_11, k_dd_12, k_dd_13, &
     !$OMP          k_dd_22, k_dd_23, k_dd_33 ) &
-    !$OMP REDUCTION( + : SUM_D, SUM_I1, SUM_I2, SUM_I3, &
+    !$OMP REDUCTION( + : SUM_D, &
     !$OMP                 SUM_K11, SUM_K12, SUM_K13, &
     !$OMP                 SUM_K22, SUM_K23, SUM_K33, &
-    !$OMP                 SUM_Le, SUM_LeI1, SUM_LeI2, SUM_LeI3, &
-    !$OMP                 SUM_Lm, SUM_LmI1, SUM_LmI2, SUM_LmI3, &
-    !$OMP                 SUM_Ef_Old, SUM_Le_Old, SUM_Lm_Old, &
-    !$OMP                 SUM_P1_Old, SUM_P2_Old, SUM_P3_Old )
+    !$OMP                 SUM_DeltaP1, SUM_DeltaP2, SUM_DeltaP3 )
 #elif defined(THORNADO_OACC)
     !$ACC LOOP VECTOR COLLAPSE(2) &
     !$ACC PRIVATE( k_dd_11, k_dd_12, k_dd_13, &
     !$ACC          k_dd_22, k_dd_23, k_dd_33 ) &
-    !$ACC REDUCTION( + : SUM_D, SUM_I1, SUM_I2, SUM_I3, &
+    !$ACC REDUCTION( + : SUM_D, &
     !$ACC                 SUM_K11, SUM_K12, SUM_K13, &
     !$ACC                 SUM_K22, SUM_K23, SUM_K33, &
-    !$ACC                 SUM_Le, SUM_LeI1, SUM_LeI2, SUM_LeI3, &
-    !$ACC                 SUM_Lm, SUM_LmI1, SUM_LmI2, SUM_LmI3, &
-    !$ACC                 SUM_Ef_Old, SUM_Le_Old, SUM_Lm_Old, &
-    !$ACC                 SUM_P1_Old, SUM_P2_Old, SUM_P3_Old )
+    !$ACC                 SUM_DeltaP1, SUM_DeltaP2, SUM_DeltaP3 )
 #endif
       DO iS   = 1, nSpecies
       DO iN_E = 1, nE_G
@@ -4722,12 +5888,6 @@ CONTAINS
                  k_dd_22, k_dd_23, k_dd_33 )
 
         SUM_D = SUM_D + W3_S(iN_E) * Dnu(iN_E,iS,iN_X)
-        SUM_I1 = SUM_I1 + W3_S(iN_E) * SqrtG1 &
-          * Inu_u_1(iN_E,iS,iN_X)
-        SUM_I2 = SUM_I2 + W3_S(iN_E) * SqrtG2 &
-          * Inu_u_2(iN_E,iS,iN_X)
-        SUM_I3 = SUM_I3 + W3_S(iN_E) * SqrtG3 &
-          * Inu_u_3(iN_E,iS,iN_X)
 
         SUM_K11 = SUM_K11 + W3_S(iN_E) * Dnu(iN_E,iS,iN_X) &
           * k_dd_11 / ( SqrtG1 * SqrtG1 )
@@ -4742,43 +5902,18 @@ CONTAINS
         SUM_K33 = SUM_K33 + W3_S(iN_E) * Dnu(iN_E,iS,iN_X) &
           * k_dd_33 / ( SqrtG3 * SqrtG3 )
 
-        SUM_Ef_Old = SUM_Ef_Old + W3_S(iN_E) &
-          * ( Two * C_Dnu(iN_E,iS,iN_X) - Dnu_old(iN_E,iS,iN_X) )
-        SUM_P1_Old = SUM_P1_Old + W3_S(iN_E) &
+        SUM_DeltaP1 = SUM_DeltaP1 + W3_S(iN_E) &
           * ( C_Inu_d_1(iN_E,iS,iN_X) / SqrtG1 &
-              + SqrtG1 * V_u_1_old(iN_X) * Dnu_old(iN_E,iS,iN_X) )
-        SUM_P2_Old = SUM_P2_Old + W3_S(iN_E) &
+              + SqrtG1 * V_u_1_old(iN_X) * Dnu_old(iN_E,iS,iN_X) &
+              - SqrtG1 * Inu_u_1(iN_E,iS,iN_X) )
+        SUM_DeltaP2 = SUM_DeltaP2 + W3_S(iN_E) &
           * ( C_Inu_d_2(iN_E,iS,iN_X) / SqrtG2 &
-              + SqrtG2 * V_u_2_old(iN_X) * Dnu_old(iN_E,iS,iN_X) )
-        SUM_P3_Old = SUM_P3_Old + W3_S(iN_E) &
+              + SqrtG2 * V_u_2_old(iN_X) * Dnu_old(iN_E,iS,iN_X) &
+              - SqrtG2 * Inu_u_2(iN_E,iS,iN_X) )
+        SUM_DeltaP3 = SUM_DeltaP3 + W3_S(iN_E) &
           * ( C_Inu_d_3(iN_E,iS,iN_X) / SqrtG3 &
-              + SqrtG3 * V_u_3_old(iN_X) * Dnu_old(iN_E,iS,iN_X) )
-
-        IF( iS <= iNuE_Bar )THEN
-          SUM_Le_Old = SUM_Le_Old + W2_S(iN_E) * LeptonNumber(iS) &
-            * C_Dnu(iN_E,iS,iN_X)
-          SUM_Le = SUM_Le + W2_S(iN_E) * LeptonNumber(iS) &
-            * Dnu(iN_E,iS,iN_X)
-          SUM_LeI1 = SUM_LeI1 + W2_S(iN_E) * LeptonNumber(iS) &
-            * SqrtG1 * Inu_u_1(iN_E,iS,iN_X)
-          SUM_LeI2 = SUM_LeI2 + W2_S(iN_E) * LeptonNumber(iS) &
-            * SqrtG2 * Inu_u_2(iN_E,iS,iN_X)
-          SUM_LeI3 = SUM_LeI3 + W2_S(iN_E) * LeptonNumber(iS) &
-            * SqrtG3 * Inu_u_3(iN_E,iS,iN_X)
-        END IF
-
-        IF( iS == iNuM .OR. iS == iNuM_Bar )THEN
-          SUM_Lm_Old = SUM_Lm_Old + W2_S(iN_E) * LeptonNumber(iS) &
-            * C_Dnu(iN_E,iS,iN_X)
-          SUM_Lm = SUM_Lm + W2_S(iN_E) * LeptonNumber(iS) &
-            * Dnu(iN_E,iS,iN_X)
-          SUM_LmI1 = SUM_LmI1 + W2_S(iN_E) * LeptonNumber(iS) &
-            * SqrtG1 * Inu_u_1(iN_E,iS,iN_X)
-          SUM_LmI2 = SUM_LmI2 + W2_S(iN_E) * LeptonNumber(iS) &
-            * SqrtG2 * Inu_u_2(iN_E,iS,iN_X)
-          SUM_LmI3 = SUM_LmI3 + W2_S(iN_E) * LeptonNumber(iS) &
-            * SqrtG3 * Inu_u_3(iN_E,iS,iN_X)
-        END IF
+              + SqrtG3 * V_u_3_old(iN_X) * Dnu_old(iN_E,iS,iN_X) &
+              - SqrtG3 * Inu_u_3(iN_E,iS,iN_X) )
 
       END DO
       END DO
@@ -4799,19 +5934,16 @@ CONTAINS
 
       B(1) = SqrtG1 * V_u_1_old(iN_X) &
         + wV1 / D(iN_X) &
-          * ( SUM_P1_Old &
-              + RadiationLimiterCorrection(iV1,iN_X) / SqrtG1 &
-              - SUM_I1 )
+          * ( SUM_DeltaP1 &
+              + RadiationLimiterCorrection(iV1,iN_X) / SqrtG1 )
       B(2) = SqrtG2 * V_u_2_old(iN_X) &
         + wV2 / D(iN_X) &
-          * ( SUM_P2_Old &
-              + RadiationLimiterCorrection(iV2,iN_X) / SqrtG2 &
-              - SUM_I2 )
+          * ( SUM_DeltaP2 &
+              + RadiationLimiterCorrection(iV2,iN_X) / SqrtG2 )
       B(3) = SqrtG3 * V_u_3_old(iN_X) &
         + wV3 / D(iN_X) &
-          * ( SUM_P3_Old &
-              + RadiationLimiterCorrection(iV3,iN_X) / SqrtG3 &
-              - SUM_I3 )
+          * ( SUM_DeltaP3 &
+              + RadiationLimiterCorrection(iV3,iN_X) / SqrtG3 )
 
       CALL SolveLinearSystem3x3_OrderV( A, B, VHat, SolveInfo )
       INFO(iN_X) = SolveInfo
@@ -4832,30 +5964,65 @@ CONTAINS
       V_u_2(iN_X) = VHat(2) / SqrtG2
       V_u_3(iN_X) = VHat(3) / SqrtG3
 
-      SUM_Ye = SUM_Le &
-        + VHat(1) * SUM_LeI1 &
-        + VHat(2) * SUM_LeI2 &
-        + VHat(3) * SUM_LeI3
-      SUM_Ym = SUM_Lm &
-        + VHat(1) * SUM_LmI1 &
-        + VHat(2) * SUM_LmI2 &
-        + VHat(3) * SUM_LmI3
-      SUM_Ef = SUM_D + Two &
-        * (   VHat(1) * SUM_I1 &
-            + VHat(2) * SUM_I2 &
-            + VHat(3) * SUM_I3 )
+      ! Form the accepted old-to-new Eulerian number and energy changes
+      ! before the spectral reduction.  This avoids subtracting separately
+      ! accumulated inventories, including their order-v flux contributions.
+
+      SUM_DeltaLe = Zero
+      SUM_DeltaLm = Zero
+      SUM_DeltaEf = Zero
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP PARALLEL DO SIMD COLLAPSE(2) PRIVATE( DeltaEf, DeltaN ) &
+    !$OMP REDUCTION( + : SUM_DeltaLe, SUM_DeltaLm, SUM_DeltaEf )
+#elif defined(THORNADO_OACC)
+    !$ACC LOOP VECTOR COLLAPSE(2) PRIVATE( DeltaEf, DeltaN ) &
+    !$ACC REDUCTION( + : SUM_DeltaLe, SUM_DeltaLm, SUM_DeltaEf )
+#endif
+      DO iS   = 1, nSpecies
+      DO iN_E = 1, nE_G
+
+        DeltaN = C_Dnu(iN_E,iS,iN_X) - Dnu(iN_E,iS,iN_X) &
+          - VHat(1) * SqrtG1 * Inu_u_1(iN_E,iS,iN_X) &
+          - VHat(2) * SqrtG2 * Inu_u_2(iN_E,iS,iN_X) &
+          - VHat(3) * SqrtG3 * Inu_u_3(iN_E,iS,iN_X)
+
+        DeltaEf = Two * C_Dnu(iN_E,iS,iN_X) &
+          - Dnu_old(iN_E,iS,iN_X) - Dnu(iN_E,iS,iN_X) &
+          - Two * VHat(1) * SqrtG1 * Inu_u_1(iN_E,iS,iN_X) &
+          - Two * VHat(2) * SqrtG2 * Inu_u_2(iN_E,iS,iN_X) &
+          - Two * VHat(3) * SqrtG3 * Inu_u_3(iN_E,iS,iN_X)
+
+        SUM_DeltaEf = SUM_DeltaEf + W3_S(iN_E) * DeltaEf
+
+        IF( iS <= iNuE_Bar )THEN
+          SUM_DeltaLe = SUM_DeltaLe &
+            + W2_S(iN_E) * LeptonNumber(iS) * DeltaN
+        END IF
+
+        IF( iS == iNuM .OR. iS == iNuM_Bar )THEN
+          SUM_DeltaLm = SUM_DeltaLm &
+            + W2_S(iN_E) * LeptonNumber(iS) * DeltaN
+        END IF
+
+      END DO
+      END DO
+
+      DeltaLe = SUM_DeltaLe + RadiationLimiterCorrection(iYe,iN_X)
+      DeltaLm = SUM_DeltaLm + RadiationLimiterCorrection(iYm,iN_X)
 
       Ye(iN_X) = Ye_old(iN_X) + AtomicMassUnit / D(iN_X) &
-        * wYe &
-        * (   SUM_Le_Old + RadiationLimiterCorrection(iYe,iN_X) &
-            - SUM_Ye )
-      Ym(iN_X) = Ym_old(iN_X) + AtomicMassUnit / D(iN_X) &
-        * wYm &
-        * (   SUM_Lm_Old + RadiationLimiterCorrection(iYm,iN_X) &
-            - SUM_Ym )
+        * wYe * DeltaLe
+      U_Ym_New = Ym_old(iN_X) + AtomicMassUnit / D(iN_X) * wYm * DeltaLm
+      IF( PRESENT(MuonFractionConserved_Option) ) &
+        MuonFractionConserved_Option(iN_X) = U_Ym_New
+      IF( PRESENT(RetainMuonFraction_Option) )THEN
+        IF( .NOT. RetainMuonFraction_Option(iN_X) ) Ym(iN_X) = U_Ym_New
+      ELSE
+        Ym(iN_X) = U_Ym_New
+      END IF
       Ef = Ef_old(iN_X) + wEf / D(iN_X) &
-        * (   SUM_Ef_Old + RadiationLimiterCorrection(iEf,iN_X) &
-            - SUM_Ef )
+        * ( SUM_DeltaEf + RadiationLimiterCorrection(iEf,iN_X) )
 
       U_Ye_New = Ye(iN_X) / Ye_old(iN_X)
       U_Ym_New = Ym(iN_X)
@@ -4996,7 +6163,6 @@ CONTAINS
     INTEGER,                    INTENT(in)    :: nX_P
     INTEGER,  DIMENSION(:),     INTENT(in)    :: PackIndex, UnpackIndex
     INTEGER,  DIMENSION(:),     INTENT(inout) :: Error
-
     INTEGER, PARAMETER :: MaxIter_InvariantCoupling = 8
 
     INTEGER :: iN_X, kInvariant
@@ -5934,6 +7100,8 @@ CONTAINS
 
     INTEGER :: iN_E, iOS, iS
 
+    State = Zero
+
     DO iS = 1, nSpecies
     DO iN_E = 1, nE_G
       iOS = ( (iN_E-1) + (iS-1) * nE_G ) * nCR
@@ -5983,7 +7151,8 @@ CONTAINS
     INTEGER :: MuCCActive
     REAL(DP) :: ConvergenceMeasure, CurrentNorm, Denominator
     REAL(DP) :: DnuMinimum, DnuMaximum, DnuNormLocal
-    REAL(DP) :: EtaMu, Fnorm, Fnorm_G1, Fnorm_G2, Fnorm_G3, Fnorm_N
+    REAL(DP) :: EtaMu
+    REAL(DP) :: Fnorm, Fnorm_G1, Fnorm_G2, Fnorm_G3, Fnorm_N
     REAL(DP) :: InitialCriterion, MapMaximum, MuChiMaximum
     REAL(DP) :: MuEquilibriumDeviation, MuEquilibriumNorm
     REAL(DP) :: CollisionOpacity, CollisionStiffnessMaximum
@@ -6005,8 +7174,7 @@ CONTAINS
     !$OMP   Chi_NNS, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, &
     !$OMP   Fm, Gm, Error, ActiveMask, Fnorm0, Omega, &
     !$OMP   SchurGain, SchurDamping, &
-    !$OMP   RadiationLimiterCorrection, &
-    !$OMP   T_old, Ye_old, Ym_old )
+    !$OMP   RadiationLimiterCorrection, T_old, Ye_old, Ym_old )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE HOST &
     !$ACC ( D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
@@ -6015,8 +7183,7 @@ CONTAINS
     !$ACC   Chi_NNS, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, &
     !$ACC   Fm, Gm, Error, ActiveMask, Fnorm0, Omega, &
     !$ACC   SchurGain, SchurDamping, &
-    !$ACC   RadiationLimiterCorrection, &
-    !$ACC   T_old, Ye_old, Ym_old )
+    !$ACC   RadiationLimiterCorrection, T_old, Ye_old, Ym_old )
 #endif
 
     ALLOCATE( CurrentState(n_FP_inner), SpeciesResidual(nSpecies) )
@@ -6130,7 +7297,8 @@ CONTAINS
         MuCCActive = MERGE(1,0,Opacity_Mask(iOp_EmAb_Muon,iN_X))
         CALL ComputeMuonChemicalPotential_TABLE &
                ( D(iN_X), T(iN_X), Ye(iN_X), Ym(iN_X), Mumu )
-        IF( T(iN_X) > Zero ) EtaMu = Mumu / T(iN_X)
+        IF( T(iN_X) > Zero ) &
+          EtaMu = Mumu / ( BoltzmannConstant * T(iN_X) )
         MuChiMaximum = MAXVAL(Chi_EmAb(:,iNuM:iNuM_Bar,iN_X))
         MuStiffnessMaximum = Omega(iN_X)*dt*MuChiMaximum
         DO iS = iNuM, iNuM_Bar
@@ -6190,7 +7358,8 @@ CONTAINS
         D(iN_X)/Unit_D, T(iN_X)/MeV, Ye(iN_X), Ym(iN_X), &
         (T(iN_X)-T_old(iN_X))/MAX(ABS(T_old(iN_X)),SqrtTiny), &
         Ye(iN_X)-Ye_old(iN_X), Ym(iN_X)-Ym_old(iN_X), E(iN_X)/Unit_E, &
-        Mumu/MeV, EtaMu, MuCCActive, MuLeptonInvariantError, &
+        Mumu/MeV, EtaMu, &
+        MuCCActive, MuLeptonInvariantError, &
         MuLeptonInvariantRelative, &
         ResidualRelative, ResidualDensityRelative, &
         ResidualMomentumRelative, ConvergenceMeasure, ResidualAbsolute, &
@@ -7257,6 +8426,21 @@ CONTAINS
 
     END IF
 
+    IF( Include_NMS .OR. Include_LFE .OR. Include_LFC .OR. Include_IMD )THEN
+
+      CALL TimersStart( Timer_Opacity_GeneralLepton )
+      CALL ComputeNeutrinoLeptonKernels &
+             ( D, T, Ye, Ym, &
+               Opacity_Mask_Input(iOp_NMS,:), &
+               Opacity_Mask_Input(iOp_LFE,:), &
+               Opacity_Mask_Input(iOp_LFC,:), &
+               Opacity_Mask_Input(iOp_IMD,:), &
+               Include_NMS, Include_LFE, Include_LFC, Include_IMD, &
+               nX, UnpackIndex )
+      CALL TimersStop( Timer_Opacity_GeneralLepton )
+
+    END IF
+
     IF ( nX < nX_G ) THEN
 
       ! --- Unpack Results ---
@@ -7744,6 +8928,21 @@ CONTAINS
     END IF
 
     CALL TimersStop( Timer_OpacityRate_Brem )
+
+    IF( Include_NMS .OR. Include_LFE .OR. Include_LFC .OR. Include_IMD )THEN
+
+      CALL TimersStart( Timer_OpacityRate_GeneralLepton )
+      CALL ComputeNeutrinoLeptonRates &
+             ( T_Rates, W2_N, Dnu, &
+               Opacity_Mask_Input(iOp_NMS,:), &
+               Opacity_Mask_Input(iOp_LFE,:), &
+               Opacity_Mask_Input(iOp_LFC,:), &
+               Opacity_Mask_Input(iOp_IMD,:), &
+               Include_NMS, Include_LFE, Include_LFC, Include_IMD, &
+               nX, UnpackIndex )
+      CALL TimersStop( Timer_OpacityRate_GeneralLepton )
+
+    END IF
 
     IF ( nX < nX_G ) THEN
 
@@ -9217,6 +10416,34 @@ CONTAINS
             END IF
           END IF
 
+          IF( Include_NMS )THEN
+            RN(iC_NMS) = R_GL(iN_E,iS,iN_X,iGL_NMS)
+            RG1(iC_NMS) = -Chi_GL(iN_E,iS,iN_X,iGL_NMS) * I_d_1
+            RG2(iC_NMS) = -Chi_GL(iN_E,iS,iN_X,iGL_NMS) * I_d_2
+            RG3(iC_NMS) = -Chi_GL(iN_E,iS,iN_X,iGL_NMS) * I_d_3
+          END IF
+
+          IF( Include_LFE )THEN
+            RN(iC_LFE) = R_GL(iN_E,iS,iN_X,iGL_LFE)
+            RG1(iC_LFE) = -Chi_GL(iN_E,iS,iN_X,iGL_LFE) * I_d_1
+            RG2(iC_LFE) = -Chi_GL(iN_E,iS,iN_X,iGL_LFE) * I_d_2
+            RG3(iC_LFE) = -Chi_GL(iN_E,iS,iN_X,iGL_LFE) * I_d_3
+          END IF
+
+          IF( Include_LFC )THEN
+            RN(iC_LFC) = R_GL(iN_E,iS,iN_X,iGL_LFC)
+            RG1(iC_LFC) = -Chi_GL(iN_E,iS,iN_X,iGL_LFC) * I_d_1
+            RG2(iC_LFC) = -Chi_GL(iN_E,iS,iN_X,iGL_LFC) * I_d_2
+            RG3(iC_LFC) = -Chi_GL(iN_E,iS,iN_X,iGL_LFC) * I_d_3
+          END IF
+
+          IF( Include_IMD )THEN
+            RN(iC_IMD) = R_GL(iN_E,iS,iN_X,iGL_IMD)
+            RG1(iC_IMD) = -Chi_GL(iN_E,iS,iN_X,iGL_IMD) * I_d_1
+            RG2(iC_IMD) = -Chi_GL(iN_E,iS,iN_X,iGL_IMD) * I_d_2
+            RG3(iC_IMD) = -Chi_GL(iN_E,iS,iN_X,iGL_IMD) * I_d_3
+          END IF
+
           IF( ComputeRadiationCollisionRHS )THEN
             RN_Total  = SUM( RN  )
             RG1_Total = SUM( RG1 )
@@ -9780,16 +11007,170 @@ CONTAINS
   END SUBROUTINE ComputeMatterRHS_OrderOne
 
 
+  PURE SUBROUTINE MuonMaterialNumberSource_Point &
+    ( Weights, Chi, Equilibrium, Distribution, Transfer, &
+      ActiveCC, ActiveTransfer, Source, AbsoluteSource )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC )
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), DIMENSION(:),     INTENT(in)  :: Weights
+    REAL(DP), DIMENSION(:,:),   INTENT(in)  :: Chi, Equilibrium, Distribution
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: Transfer
+    LOGICAL,                   INTENT(in)  :: ActiveCC
+    LOGICAL,  DIMENSION(3),     INTENT(in)  :: ActiveTransfer
+    REAL(DP),                  INTENT(out) :: Source, AbsoluteSource
+
+    INTEGER  :: iN_E, iS, iP
+    REAL(DP) :: Total, Correction, Rate, SignedWeight
+
+    ! --- Material Muon-Number Source ---
+    ! Species 1 is nu_mu, species 2 anti-nu_mu. Number-conserving
+    ! reactions are excluded from this material source by construction.
+    ! Compensated summation requires no unsafe floating-point reassociation.
+
+    Total          = Zero
+    Correction     = Zero
+    AbsoluteSource = Zero
+
+    DO iN_E = 1, SIZE( Weights )
+      DO iS = 1, 2
+
+        SignedWeight = REAL( 2 * iS - 3, DP ) * Weights(iN_E)
+
+        IF( ActiveCC )THEN
+          Rate = ( Chi(iN_E,iS) &
+                     * ( Equilibrium(iN_E,iS) - Distribution(iN_E,iS) ) ) &
+                   * SignedWeight
+          CALL AddMuonSourceCompensated( Rate, Total, Correction )
+          AbsoluteSource = AbsoluteSource + ABS( Rate )
+        END IF
+
+        DO iP = 1, 3
+          IF( .NOT. ActiveTransfer(iP) ) CYCLE
+          Rate = SignedWeight * Transfer(iN_E,iS,iP)
+          CALL AddMuonSourceCompensated( Rate, Total, Correction )
+          AbsoluteSource = AbsoluteSource + ABS( Rate )
+        END DO
+
+      END DO
+    END DO
+
+    Source = Total + Correction
+
+  END SUBROUTINE MuonMaterialNumberSource_Point
+
+
+  PURE SUBROUTINE AddMuonSourceCompensated( Value, Total, Correction )
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC )
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)    :: Value
+    REAL(DP), INTENT(inout) :: Total, Correction
+
+    REAL(DP) :: Next
+
+    Next = Total + Value
+    IF( ABS( Total ) >= ABS( Value ) )THEN
+      Correction = Correction + ( ( Total - Next ) + Value )
+    ELSE
+      Correction = Correction + ( ( Value - Next ) + Total )
+    END IF
+    Total = Next
+
+  END SUBROUTINE AddMuonSourceCompensated
+
+
+  SUBROUTINE MuonMaterialSourceAtPoint_OrderV &
+    ( iN_X, Dnu, TransferRequested, Source, AbsoluteSource )
+
+    ! The implemented Order-v number equation is
+    ! C_Dnu - Dnu - v_dot_I + dt*R_N = 0. Its MATERIAL number source
+    ! is therefore -sum(W2*lepton_sign*R_N), as in the Q_Lm diagnostic;
+    ! no additional v_dot_R_G transformation belongs in this update.
+#if   defined( THORNADO_OMP_OL )
+    !$OMP DECLARE TARGET
+#elif defined( THORNADO_OACC )
+    !$ACC ROUTINE SEQ
+#endif
+
+    INTEGER,                   INTENT(in)  :: iN_X
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: Dnu
+    LOGICAL,  DIMENSION(3),     INTENT(in)  :: TransferRequested
+    REAL(DP),                  INTENT(out) :: Source, AbsoluteSource
+
+    LOGICAL, DIMENSION(3) :: TransferActive
+
+    Source         = Zero
+    AbsoluteSource = Zero
+    IF( nSpecies < iNuM_Bar ) RETURN
+    IF( .NOT. MatterSource_Mask(iYm,iN_X) ) RETURN
+
+    TransferActive(1) = TransferRequested(1) .AND. Opacity_Mask(iOp_LFE,iN_X)
+    TransferActive(2) = TransferRequested(2) .AND. Opacity_Mask(iOp_LFC,iN_X)
+    TransferActive(3) = TransferRequested(3) .AND. Opacity_Mask(iOp_IMD,iN_X)
+
+    CALL MuonMaterialNumberSource_Point &
+           ( W2_S, Chi_EmAb(:,iNuM:iNuM_Bar,iN_X), &
+             Dnu_0(:,iNuM:iNuM_Bar,iN_X), Dnu(:,iNuM:iNuM_Bar,iN_X), &
+             R_GL(:,iNuM:iNuM_Bar,iN_X,iGL_LFE:iGL_IMD), &
+             Opacity_Mask(iOp_EmAb_Muon,iN_X), TransferActive, Source, AbsoluteSource )
+
+  END SUBROUTINE MuonMaterialSourceAtPoint_OrderV
+
+
+  SUBROUTINE ComputeMuonMaterialSource_OrderV &
+    ( MASK, Dnu, Source, AbsoluteSource )
+
+    LOGICAL,  DIMENSION(:),     INTENT(in)  :: MASK
+    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: Dnu
+    REAL(DP), DIMENSION(:),     INTENT(out) :: Source, AbsoluteSource
+
+    INTEGER :: iN_X
+    LOGICAL, DIMENSION(3) :: TransferRequested
+
+    TransferRequested = [ Include_LFE, Include_LFC, Include_IMD ]
+
+#if   defined( THORNADO_OMP_OL )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO FIRSTPRIVATE( TransferRequested )
+#elif defined( THORNADO_OACC )
+    !$ACC PARALLEL LOOP GANG VECTOR FIRSTPRIVATE( TransferRequested ) &
+    !$ACC PRESENT( MASK, Dnu, Source, AbsoluteSource )
+#elif defined( THORNADO_OMP )
+    !$OMP PARALLEL DO
+#endif
+    DO iN_X = 1, nX_G
+      Source(iN_X)         = Zero
+      AbsoluteSource(iN_X) = Zero
+      IF( MASK(iN_X) ) &
+        CALL MuonMaterialSourceAtPoint_OrderV &
+               ( iN_X, Dnu, TransferRequested, Source(iN_X), AbsoluteSource(iN_X) )
+    END DO
+
+  END SUBROUTINE ComputeMuonMaterialSource_OrderV
+
   SUBROUTINE ComputeMatterRHS_OrderV &
     ( MASK, Fm, Gm, &
       Dnu, Inu_u_1, Inu_u_2, Inu_u_3, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, dt_Option, MuonLimiterCorrection_Option )
+
+    USE mpi
+    USE ISO_FORTRAN_ENV, ONLY: ERROR_UNIT
 
     LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
     REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
     REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: V_u_1, V_u_2, V_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP),                   INTENT(in), OPTIONAL :: dt_Option
+    REAL(DP), DIMENSION(:),      INTENT(in), OPTIONAL :: MuonLimiterCorrection_Option
 
     INTEGER  :: iN_E, iN_X, iS
     REAL(DP) :: vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3
@@ -9798,20 +11179,39 @@ CONTAINS
     REAL(DP) :: Nnu, Enu, Fnu_d_1, Fnu_d_2, Fnu_d_3
     REAL(DP) :: SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3
     REAL(DP) :: wYe, wYm, wEf, wV1, wV2, wV3
+    REAL(DP) :: SourceDt, MuonSource, MuonAbsoluteSource, MuonIncrement
+    LOGICAL, DIMENSION(3) :: TransferRequested
+    INTEGER :: ierr
+
+    SourceDt = Zero
+    TransferRequested = [ Include_LFE, Include_LFC, Include_IMD ]
+    IF( UseMuonLeptonSource )THEN
+      IF( .NOT. PRESENT( dt_Option ) .OR. .NOT. PRESENT( MuonLimiterCorrection_Option ) )THEN
+        WRITE(ERROR_UNIT,'(A)') 'Missing stage duration/limiter correction for direct muon source.'
+        CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
+        RETURN
+      END IF
+      SourceDt = dt_Option
+    END IF
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE &
-    !$OMP PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
+    !$OMP FIRSTPRIVATE( UseMuonLeptonSource, SourceDt, TransferRequested ) &
+    !$OMP PRIVATE( MuonSource, MuonAbsoluteSource, MuonIncrement, &
+    !$OMP          SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
     !$OMP          V_d_1, V_d_2, V_d_3, &
     !$OMP          wYe, wYm, wEf, wV1, wV2, wV3 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG &
-    !$ACC PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
+    !$ACC FIRSTPRIVATE( UseMuonLeptonSource, SourceDt, TransferRequested ) &
+    !$ACC PRIVATE( MuonSource, MuonAbsoluteSource, MuonIncrement, &
+    !$ACC          SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
     !$ACC          V_d_1, V_d_2, V_d_3, &
     !$ACC          wYe, wYm, wEf, wV1, wV2, wV3 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
+    !$OMP PRIVATE( MuonSource, MuonAbsoluteSource, MuonIncrement, &
+    !$OMP          SUM_Ye, SUM_Ym, SUM_Ef, SUM_V1, SUM_V2, SUM_V3, &
     !$OMP          V_d_1, V_d_2, V_d_3, &
     !$OMP          wYe, wYm, wEf, wV1, wV2, wV3, &
     !$OMP          k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
@@ -9930,6 +11330,17 @@ CONTAINS
         Fm(iYm,iN_X) = C_Ym(iN_X) &
           - wYm * SUM_Ym * S_Ym(iN_X) &
           - ( U_Ym(iN_X) - Ym_old(iN_X) )
+
+        IF( UseMuonLeptonSource )THEN
+          MuonIncrement = Zero
+          IF( wYm /= Zero )THEN
+            CALL MuonMaterialSourceAtPoint_OrderV &
+                   ( iN_X, Dnu, TransferRequested, MuonSource, MuonAbsoluteSource )
+            MuonIncrement = wYm * S_Ym(iN_X) &
+              * ( SourceDt * MuonSource + MuonLimiterCorrection_Option(iN_X) )
+          END IF
+          Fm(iYm,iN_X) = MuonIncrement - ( U_Ym(iN_X) - Ym_old(iN_X) )
+        END IF
 
         Fm(iEf,iN_X) = C_Ef(iN_X) &
           - wEf * SUM_Ef * S_Ef(iN_X) &
@@ -10465,7 +11876,8 @@ CONTAINS
   SUBROUTINE ComputeNeutrinoRHS_OrderV &
     ( MASK, Fm, Gm, dt, &
       Dnu, Inu_u_1, Inu_u_2, Inu_u_3, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, NumberSource_Option, NumberFactor_Option, &
+      NumberFraction_Option )
 
     LOGICAL,  DIMENSION(:)    , INTENT(in)    :: MASK
     REAL(DP), DIMENSION(:,:)  , INTENT(inout) :: Fm, Gm
@@ -10473,6 +11885,8 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: Dnu, Inu_u_1, Inu_u_2, Inu_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: V_u_1, V_u_2, V_u_3
     REAL(DP), DIMENSION(:)    , INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
+    REAL(DP), DIMENSION(:,:,:), INTENT(out), OPTIONAL :: NumberSource_Option, NumberFactor_Option
+    REAL(DP), DIMENSION(:,:,:), INTENT(out), OPTIONAL :: NumberFraction_Option
 
     INTEGER  :: iN_E, iN_X, iS, iOS, iC
     REAL(DP) :: vDotInu, vDotK_d_1, vDotK_d_2, vDotK_d_3
@@ -10545,7 +11959,11 @@ CONTAINS
                        + Chi_NES   (iN_E,iS,iN_X) &
                        + Chi_Pair  (iN_E,iS,iN_X) &
                        + Chi_NuPair(iN_E,iS,iN_X) &
-                       + Chi_Brem  (iN_E,iS,iN_X)
+                       + Chi_Brem  (iN_E,iS,iN_X) &
+                       + Chi_GL(iN_E,iS,iN_X,iGL_NMS) &
+                       + Chi_GL(iN_E,iS,iN_X,iGL_LFE) &
+                       + Chi_GL(iN_E,iS,iN_X,iGL_LFC) &
+                       + Chi_GL(iN_E,iS,iN_X,iGL_IMD)
 
         Chi_T = Chi_EmAb(iN_E,iS,iN_X) + Chi_NonEmAb
 
@@ -10641,7 +12059,17 @@ CONTAINS
               + R_Pair(iN_E,iS,iN_X) &
               + R_NuPair(iN_E,iS,iN_X) &
               + R_Brem(iN_E,iS,iN_X) &
+              + R_GL(iN_E,iS,iN_X,iGL_NMS) &
+              + R_GL(iN_E,iS,iN_X,iGL_LFE) &
+              + R_GL(iN_E,iS,iN_X,iGL_LFC) &
+              + R_GL(iN_E,iS,iN_X,iGL_IMD) &
               + L_N
+
+        IF( PRESENT(NumberSource_Option) ) NumberSource_Option(iN_E,iS,iN_X) = R_N
+        IF( PRESENT(NumberFactor_Option) ) NumberFactor_Option(iN_E,iS,iN_X) &
+          = One/Omega(iN_X)+dt*Chi_T
+        IF( PRESENT(NumberFraction_Option) ) NumberFraction_Option(iN_E,iS,iN_X) &
+          = Omega(iN_X)*dt*Chi_T/(One+Omega(iN_X)*dt*Chi_T)
 
         I_d_1 = Gm_dd_11(iN_X) * Inu_u_1(iN_E,iS,iN_X)
         I_d_2 = Gm_dd_22(iN_X) * Inu_u_2(iN_E,iS,iN_X)
@@ -11165,6 +12593,72 @@ CONTAINS
   END SUBROUTINE UpdateNeutrinoRHS_OrderV
 
 
+  SUBROUTINE SaveRadiationRecoveryMatterState_OrderV &
+    ( MASK, T, Ye, Ym, E, V1, V2, V3, &
+      T_Base, Ye_Base, Ym_Base, E_Base, V1_Base, V2_Base, V3_Base )
+
+    LOGICAL,  DIMENSION(:), INTENT(in)  :: MASK
+    REAL(DP), DIMENSION(:), INTENT(in)  :: T, Ye, Ym, E, V1, V2, V3
+    REAL(DP), DIMENSION(:), INTENT(out) :: &
+      T_Base, Ye_Base, Ym_Base, E_Base, V1_Base, V2_Base, V3_Base
+
+    INTEGER :: iN_X
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iN_X = 1, nX_G
+      IF( MASK(iN_X) )THEN
+        T_Base (iN_X) = T (iN_X)
+        Ye_Base(iN_X) = Ye(iN_X)
+        Ym_Base(iN_X) = Ym(iN_X)
+        E_Base (iN_X) = E (iN_X)
+        V1_Base(iN_X) = V1(iN_X)
+        V2_Base(iN_X) = V2(iN_X)
+        V3_Base(iN_X) = V3(iN_X)
+      END IF
+    END DO
+
+  END SUBROUTINE SaveRadiationRecoveryMatterState_OrderV
+
+
+  SUBROUTINE RestoreRadiationRecoveryMatterState_OrderV &
+    ( MASK, T_Base, Ye_Base, Ym_Base, E_Base, V1_Base, V2_Base, V3_Base, &
+      T, Ye, Ym, E, V1, V2, V3 )
+
+    LOGICAL,  DIMENSION(:), INTENT(in)    :: MASK
+    REAL(DP), DIMENSION(:), INTENT(in)    :: &
+      T_Base, Ye_Base, Ym_Base, E_Base, V1_Base, V2_Base, V3_Base
+    REAL(DP), DIMENSION(:), INTENT(inout) :: T, Ye, Ym, E, V1, V2, V3
+
+    INTEGER :: iN_X
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iN_X = 1, nX_G
+      IF( MASK(iN_X) )THEN
+        T (iN_X) = T_Base (iN_X)
+        Ye(iN_X) = Ye_Base(iN_X)
+        Ym(iN_X) = Ym_Base(iN_X)
+        E (iN_X) = E_Base (iN_X)
+        V1(iN_X) = V1_Base(iN_X)
+        V2(iN_X) = V2_Base(iN_X)
+        V3(iN_X) = V3_Base(iN_X)
+      END IF
+    END DO
+
+  END SUBROUTINE RestoreRadiationRecoveryMatterState_OrderV
+
+
   SUBROUTINE UpdateNeutrinoRHS_Relativistic &
     ( MASK, Fm, Gm, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
       V_u_1, V_u_2, V_u_3, &
@@ -11681,9 +13175,11 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP FIRSTPRIVATE(UseMuonLeptonSource) &
     !$OMP PRIVATE( CONVERGED, Fnorm )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC FIRSTPRIVATE(UseMuonLeptonSource) &
     !$ACC PRIVATE( CONVERGED, Fnorm )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO &
@@ -11693,6 +13189,14 @@ CONTAINS
       IF( MASK_OUTER(iN_X) )THEN
 
         Fnorm = MAXVAL( ABS( Fm(:,iN_X) ) )
+
+#if defined(TWOMOMENT_ORDER_V)
+        ! An absolute 1e-8 test on an additive Ym would accept a tiny but
+        ! order-unity relative composition step. Only the opt-in source
+        ! formulation changes this row's scaling; other fields are unchanged.
+        IF( UseMuonLeptonSource ) Fnorm = MAX(Fnorm,ABS(Fm(iYm,iN_X)) &
+          /MAX(ABS(U_Ym(iN_X))+ABS(G_Ym(iN_X))+ABS(Ym_old(iN_X)),SqrtTiny))
+#endif
 
         CONVERGED = Fnorm <= Rtol_outer
 
