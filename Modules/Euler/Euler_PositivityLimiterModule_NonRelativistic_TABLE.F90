@@ -622,16 +622,16 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( iP, iNodeX, Min_D_K, Max_D_K, Min_Ne_K, Min_Nm_K, Min_Np_K, U_P_Np, Theta_1 )
+    !$OMP PRIVATE( iP, iNodeX, Min_D_K, Max_D_K, Min_Ne_K, Min_Nm_K, Min_Np_K, U_K_Np, U_P_Np, Theta_1 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( iP, iNodeX, Min_D_K, Max_D_K, Min_Ne_K, Min_Nm_K, Min_Np_K, U_P_Np, Theta_1 ) &
+    !$ACC PRIVATE( iP, iNodeX, Min_D_K, Max_D_K, Min_Ne_K, Min_Nm_K, Min_Np_K, U_K_Np, U_P_Np, Theta_1 ) &
     !$ACC PRESENT( iX_B0, iX_E0, U_K_D, U_Q_D, U_P_D, &
     !$ACC          U_K_Ne, U_Q_Ne, U_P_Ne, &
     !$ACC          U_K_Nm, U_Q_Nm, U_P_Nm )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( iP, iNodeX, Min_D_K, Max_D_K, Min_Ne_K, Min_Nm_K, Min_Np_K, U_P_Np, Theta_1 )
+    !$OMP PRIVATE( iP, iNodeX, Min_D_K, Max_D_K, Min_Ne_K, Min_Nm_K, Min_Np_K, U_K_Np, U_P_Np, Theta_1 )
 #endif
     DO iX3 = iX_B0(3), iX_E0(3)
     DO iX2 = iX_B0(2), iX_E0(2)

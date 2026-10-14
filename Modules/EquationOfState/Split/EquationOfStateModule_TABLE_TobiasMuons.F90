@@ -795,8 +795,8 @@ CONTAINS
 
     D_P = D / UnitD
     T_P = T / UnitT
-    Ye_P = T / UnitY
-    Ym_P = T / UnitY
+    Ye_P = Ye / UnitY
+    Ym_P = Ym / UnitY
     
 #ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
 
@@ -1656,12 +1656,18 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, Ev, Ne, Nm
     REAL(DP), INTENT(out) :: P, T, Ye, Ym, S, Em, Gm, Cs
 
-    Em  = Ev / D
-    Ye  = Ne * ( BaryonMass / D )
+    Em = Ev / D
+    Ye = Ne * ( BaryonMass / D )
     Ym = Nm * ( BaryonMass / D )
 
     CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
            ( D, Em, Ye, Ym, T )
+
+    CALL ComputeDependentVariableTotal_TABLE_Scalar &
+      ( D, T, Ye, Ym, P, P_T, OS_P, UnitP, 1, 0, 0 )
+
+    CALL ComputeDependentVariableTotal_TABLE_Scalar &
+            ( D, T, Ye, Ym, Em, E_T, OS_E, UnitS, 0, 0, 1 )
 
 #ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
     CALL CalculateSoundSpeed( D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, &

@@ -1982,7 +1982,7 @@ CONTAINS
       CALL TimersStart( Timer_Opacity_IND )
 
       CALL ComputeNeutrinoOpacities_IND &
-        ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Ye_P, Ym_P, Chi_IND )
+        ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Ye_P, Ym_P, Chi_IND_P )
 
       CALL TimersStop( Timer_Opacity_IND )
 
@@ -2384,7 +2384,7 @@ CONTAINS
     CALL TimersStart( Timer_OpacityRate_NuPair )
 
     CALL ComputeNeutrinoOpacityRates_NuPair &
-           ( 1, nE_G, 1, nSpecies, 1, nX, D, W2_N, Dnu_P, Dnu_0_P, &
+           ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, &
              Nu_J_I_0_P, Nu_J_II_0_P, Eta_NuPair_P, Chi_NuPair_P )
 
     CALL TimersStop( Timer_OpacityRate_NuPair )

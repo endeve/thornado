@@ -788,8 +788,8 @@ CONTAINS
 
     D_P = D / UnitD
     T_P = T / UnitT
-    Ye_P = T / UnitY
-    Ym_P = T / UnitY
+    Ye_P = Ye / UnitY
+    Ym_P = Ym / UnitY
     
 #ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
 
