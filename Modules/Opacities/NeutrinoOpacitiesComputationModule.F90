@@ -2607,7 +2607,7 @@ CONTAINS
     INTEGER,  INTENT(in)    :: iE_B, iE_E
     INTEGER,  INTENT(in)    :: iS_B, iS_E
     INTEGER,  INTENT(in)    :: iX_B, iX_E
-    REAL(DP), INTENT(in)    :: D(iE_B:iE_E)
+    REAL(DP), INTENT(in)    :: D(iX_B:iE_E)
     REAL(DP), INTENT(in)    :: W2(iE_B:iE_E)
     REAL(DP), INTENT(in)    :: J(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)    :: J0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
@@ -2688,7 +2688,7 @@ CONTAINS
     INTEGER,  INTENT(in)    :: iE_B, iE_E
     INTEGER,  INTENT(in)    :: iS_B, iS_E
     INTEGER,  INTENT(in)    :: iX_B, iX_E
-    REAL(DP), INTENT(in)    :: D(iE_B:iE_E)
+    REAL(DP), INTENT(in)    :: D(iX_B:iE_E)
     REAL(DP), INTENT(in)    :: W2(iE_B:iE_E)
     REAL(DP), INTENT(in)    :: J(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)    :: J0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
@@ -2766,7 +2766,7 @@ CONTAINS
     INTEGER,  INTENT(in)    :: iE_B, iE_E
     INTEGER,  INTENT(in)    :: iS_B, iS_E
     INTEGER,  INTENT(in)    :: iX_B, iX_E
-    REAL(DP), INTENT(in)    :: D(iE_B:iE_E)
+    REAL(DP), INTENT(in)    :: D(iX_B:iE_E)
     REAL(DP), INTENT(in)    :: W2(iE_B:iE_E)
     REAL(DP), INTENT(in)    :: J(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
     REAL(DP), INTENT(in)    :: J0(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
@@ -2815,11 +2815,7 @@ CONTAINS
           DetBal =   ( J0(iE1,iS1,iX) * J0(iE3,iS3,iX) ) &
                     / ( ( One - J0(iE1,iS1,iX) ) * ( One - J0(iE3,iS3,iX) ) )
 
-          IF ( iE3 <= iE1 ) THEN
-            Phi_In = Phi_0_MuonOpac(iE1, iE3, iX, iProcess) * UnitNES
-          ELSE 
-            Phi_In = Phi_0_MuonOpac(iE3, iE1, iX, iProcess) * UnitNES
-          END IF
+          Phi_In = Phi_0_MuonOpac(iE3, iE1, iX, iProcess) * UnitNES
           Phi_Out  = Phi_In * DetBal 
 
           SUM1 = SUM1 + Phi_Out * W2(iE3) * ( One - J(iE3,iS3,iX) )

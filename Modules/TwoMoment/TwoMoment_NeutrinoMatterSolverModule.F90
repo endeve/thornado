@@ -1982,7 +1982,7 @@ CONTAINS
       CALL TimersStart( Timer_Opacity_IND )
 
       CALL ComputeNeutrinoOpacities_IND &
-        ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Ye_P, Ym_P, Chi_IND )
+        ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Ye_P, Ym_P, Chi_IND_P )
 
       CALL TimersStop( Timer_Opacity_IND )
 
