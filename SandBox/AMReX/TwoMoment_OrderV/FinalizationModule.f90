@@ -86,8 +86,8 @@ MODULE FinalizationModule
     t_old, &
     t_new
   ! FIXME
-  ! USE MF_TwoMoment_TimeSteppingModule_OrderV, ONLY: &
-  !   Finalize_IMEX_RK_MF
+  USE MF_TwoMoment_TimeSteppingModule_OrderV_AMReX, ONLY: &
+    Finalize_IMEX_RK_MF
   USE MF_UtilitiesModule, ONLY: &
     ShowVariableFromMultiFab
   USE MF_TwoMoment_TallyModule
@@ -134,7 +134,7 @@ CONTAINS
     CALL FinalizeTally_TwoMoment_MF
 
     !FIXME
-    ! CALL Finalize_IMEX_RK_MF
+    CALL Finalize_IMEX_RK_MF
 
     DEALLOCATE( t_new )
     DEALLOCATE( t_old )

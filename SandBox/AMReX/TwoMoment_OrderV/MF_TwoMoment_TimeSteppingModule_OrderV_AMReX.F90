@@ -120,50 +120,50 @@ MODULE MF_TwoMoment_TimeSteppingModule_OrderV_AMReX
   CHARACTER(:), ALLOCATABLE, PUBLIC :: Scheme
 
   ! FIXME
-  ! PUBLIC :: Initialize_IMEX_RK_MF
-  ! PUBLIC :: Finalize_IMEX_RK_MF
+  PUBLIC :: Initialize_IMEX_RK_MF
+  PUBLIC :: Finalize_IMEX_RK_MF
   PUBLIC :: Update_AMReX_TimeIntegrator
 
 CONTAINS
 
 
 
-  ! SUBROUTINE Initialize_IMEX_RK_MF &
-  !   (BA, DM , Verbose_Option )
+  SUBROUTINE Initialize_IMEX_RK_MF &
+    (BA, DM , Verbose_Option )
 
-  !   LOGICAL         , INTENT(in), OPTIONAL :: Verbose_Option
-  !   TYPE(amrex_boxarray),  INTENT(in)           :: BA(0:nLevels-1)
-  !   TYPE(amrex_distromap), INTENT(in)           :: DM(0:nLevels-1)
-  !   TYPE(amrex_parmparse) :: PP
+    LOGICAL         , INTENT(in), OPTIONAL :: Verbose_Option
+    TYPE(amrex_boxarray),  INTENT(in)           :: BA(0:nLevels-1)
+    TYPE(amrex_distromap), INTENT(in)           :: DM(0:nLevels-1)
+    TYPE(amrex_parmparse) :: PP
 
-  !   INTEGER         :: iS, iLevel
+    INTEGER         :: iS, iLevel
 
-  !   EvolveEuler     = .TRUE.
-  !   EvolveTwoMoment = .TRUE.
-  !   CALL amrex_parmparse_build( PP, 'TS' )
-  !     CALL PP % get  ( 'Scheme'         , Scheme )
-  !     CALL PP % get  ( 'CFL'            , CFL )
-  !     CALL PP % query( 'EvolveEuler'    , EvolveEuler )
-  !     CALL PP % query( 'EvolveTwoMoment', EvolveTwoMoment )
-  !   CALL amrex_parmparse_destroy( PP )
+    EvolveEuler     = .TRUE.
+    EvolveTwoMoment = .TRUE.
+    CALL amrex_parmparse_build( PP, 'TS' )
+      CALL PP % get  ( 'Scheme'         , Scheme )
+      CALL PP % get  ( 'CFL'            , CFL )
+      CALL PP % query( 'EvolveEuler'    , EvolveEuler )
+      CALL PP % query( 'EvolveTwoMoment', EvolveTwoMoment )
+    CALL amrex_parmparse_destroy( PP )
 
-  !   CFL = CFL / ( DBLE( nDimsX ) * ( Two * DBLE( nNodes ) - One ) )
+    CFL = CFL / ( DBLE( nDimsX ) * ( Two * DBLE( nNodes ) - One ) )
 
-  !   !PRINT *, 'CFL: ', CFL 
-  !   Verbose = .FALSE.
-  !   IF( PRESENT( Verbose_Option ) ) &
-  !     Verbose = Verbose_Option
+    !PRINT *, 'CFL: ', CFL
+    Verbose = .FALSE.
+    IF( PRESENT( Verbose_Option ) ) &
+      Verbose = Verbose_Option
 
-  !   CALL Initialize_IMEX_RK( Scheme )
+    CALL Initialize_IMEX_RK( Scheme )
 
-  ! END SUBROUTINE Initialize_IMEX_RK_MF
+  END SUBROUTINE Initialize_IMEX_RK_MF
 
 
-  ! SUBROUTINE Finalize_IMEX_RK_MF
+  SUBROUTINE Finalize_IMEX_RK_MF
 
-  !   CALL Finalize_IMEX_RK
+    CALL Finalize_IMEX_RK
 
-  ! END SUBROUTINE Finalize_IMEX_RK_MF
+  END SUBROUTINE Finalize_IMEX_RK_MF
 
 
   SUBROUTINE Initialize_IMEX_RK( Scheme )

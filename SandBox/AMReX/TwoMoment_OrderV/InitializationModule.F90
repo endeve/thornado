@@ -192,8 +192,8 @@ MODULE InitializationModule
     ComputeFromConserved_TwoMoment_MF
 
   ! FIXME
-  ! USE MF_TwoMoment_TimeSteppingModule_OrderV, ONLY: &
-  !   Initialize_IMEX_RK_MF
+  USE MF_TwoMoment_TimeSteppingModule_OrderV_AMReX, ONLY: &
+    Initialize_IMEX_RK_MF
 
   USE FillPatchModule, ONLY: &
     FillPatch, &
@@ -409,9 +409,9 @@ CONTAINS
     t_wrt = t_new(0) + dt_wrt
  
     !FIXME
-    ! CALL Initialize_IMEX_RK_MF &
-    !        ( MF_uGF % BA, MF_uGF % DM, &
-    !          Verbose_Option = amrex_parallel_ioprocessor() )
+    CALL Initialize_IMEX_RK_MF &
+           ( MF_uGF % BA, MF_uGF % DM, &
+             Verbose_Option = amrex_parallel_ioprocessor() )
  
     CALL DescribeProgramHeader_AMReX
 
