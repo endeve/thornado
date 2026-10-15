@@ -333,19 +333,30 @@ CONTAINS
 
   SUBROUTINE Update_AMReX_TimeIntegrator
 
+    ! Radiation and fluid state vectors
     TYPE(amrex_multifab) :: MF_R    (0:nMaxLevels-1          )
     TYPE(amrex_multifab) :: MF_F    (0:nMaxLevels-1          )
-    TYPE(amrex_multifab) :: MF_DR_Im(0:nMaxLevels-1,1:nStages)
-    TYPE(amrex_multifab) :: MF_DR_Ex(0:nMaxLevels-1,1:nStages)
-    TYPE(amrex_multifab) :: MF_DF_Im(0:nMaxLevels-1,1:nStages)
-    TYPE(amrex_multifab) :: MF_DF_Ex(0:nMaxLevels-1,1:nStages)
+
+    ! Radiation and fluid RHS (implicit and explicit split)
+    TYPE(amrex_multifab) :: MF_DR_IM(0:nMaxLevels-1,1:nStages)
+    TYPE(amrex_multifab) :: MF_DR_EX(0:nMaxLevels-1,1:nStages)
+    TYPE(amrex_multifab) :: MF_DF_IM(0:nMaxLevels-1,1:nStages)
+    TYPE(amrex_multifab) :: MF_DF_EX(0:nMaxLevels-1,1:nStages)
+
+    ! ???
     TYPE(amrex_multifab) :: MF_uMF  (0:nMaxLevels-1          )
 
+    ! Radiation and fluid state vectors, (temporarily stores current state before update)
     TYPE(amrex_multifab) :: MF_R0   (0:nMaxLevels-1          )
     TYPE(amrex_multifab) :: MF_F0   (0:nMaxLevels-1          )
 
+    ! iS: Integrator stage
+    ! jS: index for stages to add during stage iS
+    ! nCompCF, nCompCR: number of components (fluid and radiation),
+    ! iLevel: index for refinement level
     INTEGER :: iS, jS, nCompCF, nCompCR, iLevel
 
+    ! ???
     REAL(DP) :: dM_OffGrid_Euler    (1:nCF  ,0:nMaxLevels-1)
     REAL(DP) :: dM_OffGrid_TwoMoment(1:2*nCR,0:nMaxLevels-1)
 
@@ -360,104 +371,131 @@ CONTAINS
 
     IF( DEBUG ) WRITE(*,'(A)') 'Entering Update_AMReX_TimeIntegrator'
 
-    DO iLevel = 0, nLevels-1 
+    DO iLevel = 0, nLevels-1
 
+      ! Copy fluid variables MF_uCF to MF_F0
+      ! amrex_multifab_build arguments are:
+      !   MultiFab,
+      !   BoxArray,
+      !   DistributionMapping,
+      !   int number of components,
+      !   int stencil width (# ghost cells)
       CALL amrex_multifab_build &
              ( MF_F0(iLevel), MF_uCF(iLevel) % BA, &
                MF_uCF(iLevel) % DM, nCompCF, swX )
-      
+
       CALL MF_F0(iLevel) % COPY( MF_uCF(iLevel), 1, 1, nCompCF, swX )
 
+      ! Copy radiation variables MF_uCR to MF_R0
       CALL amrex_multifab_build &
              ( MF_R0(iLevel), MF_uCR(iLevel) % BA, &
                MF_uCR(iLevel) % DM, nCompCR, swX )
-      
+
       CALL MF_R0(iLevel) % COPY( MF_uCR(iLevel), 1, 1, nCompCR, swX )
 
+      ! Allocate MF_F
       CALL amrex_multifab_build &
              ( MF_F(iLevel), MF_uCF(iLevel) % BA, &
                MF_uCF(iLevel) % DM, nCompCF, swX )
 
-    CALL amrex_multifab_build &
-           ( MF_R(iLevel), MF_uCR(iLevel) % BA, &
-             MF_uCR(iLevel) % DM, nCompCR, swX )
-    
-    END DO !DO iLevel = 0, nLevels-1 
-    
+      ! Allocate MF_R
+      CALL amrex_multifab_build &
+             ( MF_R(iLevel), MF_uCR(iLevel) % BA, &
+               MF_uCR(iLevel) % DM, nCompCR, swX )
+
+    END DO !DO iLevel = 0, nLevels-1
+
+    ! --- Time integrator stages ---
     DO iS = 1, nStages
 
       IF( DEBUG ) WRITE(*,'(2x,A,I2.2)') 'iS: ', iS
 
-    DO iLevel = 0, nLevels-1 
+      DO iLevel = 0, nLevels-1
 
-      CALL MF_F(iLevel) % COPY( MF_F0(iLevel), 1, 1, nCompCF, swX )
-      CALL MF_R(iLevel) % COPY( MF_R0(iLevel), 1, 1, nCompCR, swX )
+        ! --- Initialize variables MF_F (MF_R) to MF_F0 (MF_R0) ---
+        CALL MF_F(iLevel) % COPY( MF_F0(iLevel), 1, 1, nCompCF, swX )
+        CALL MF_R(iLevel) % COPY( MF_R0(iLevel), 1, 1, nCompCR, swX )
 
-      CALL amrex_multifab_build &
-             ( MF_DF_Ex(iLevel,iS), MF_uCF(iLevel) % BA, &
-               MF_uCF(iLevel) % DM, nCompCF, swX )
+        ! Initialize fluid and radiation RHS to 0
+        CALL amrex_multifab_build &
+               ( MF_DF_EX(iLevel,iS), MF_uCF(iLevel) % BA, &
+                 MF_uCF(iLevel) % DM, nCompCF, swX )
 
-      CALL amrex_multifab_build &
-             ( MF_DF_Im(iLevel,iS), MF_uCF(iLevel) % BA, &
-               MF_uCF(iLevel) % DM, nCompCF, swX )
+        CALL amrex_multifab_build &
+               ( MF_DF_IM(iLevel,iS), MF_uCF(iLevel) % BA, &
+                 MF_uCF(iLevel) % DM, nCompCF, swX )
 
-      CALL amrex_multifab_build &
-             ( MF_DR_Ex(iLevel,iS), MF_uCR(iLevel) % BA, &
-               MF_uCR(iLevel) % DM, nCompCR, swX )
+        CALL amrex_multifab_build &
+               ( MF_DR_EX(iLevel,iS), MF_uCR(iLevel) % BA, &
+                 MF_uCR(iLevel) % DM, nCompCR, swX )
 
-      CALL amrex_multifab_build &
-             ( MF_DR_Im(iLevel,iS), MF_uCR(iLevel) % BA, &
-               MF_uCR(iLevel) % DM, nCompCR, swX )
+        CALL amrex_multifab_build &
+               ( MF_DR_IM(iLevel,iS), MF_uCR(iLevel) % BA, &
+                 MF_uCR(iLevel) % DM, nCompCR, swX )
 
 
+        CALL MF_DF_EX(iLevel,iS) % SetVal( Zero )
+        CALL MF_DF_IM(iLevel,iS) % SetVal( Zero )
+        CALL MF_DR_EX(iLevel,iS) % SetVal( Zero )
+        CALL MF_DR_IM(iLevel,iS) % SetVal( Zero )
 
-      CALL MF_DF_Ex(iLevel,iS) % SetVal( Zero )
-      CALL MF_DF_Im(iLevel,iS) % SetVal( Zero )
-      CALL MF_DR_Ex(iLevel,iS) % SetVal( Zero )
-      CALL MF_DR_Im(iLevel,iS) % SetVal( Zero )
+      END DO !DO iLevel = 0, nLevels-1
 
-    END DO !DO iLevel = 0, nLevels-1 
+      ! --- Compute contributions of previous stages (1 to iS-1) ---
       DO jS = 1, iS - 1
 
+        ! --- Compute implicit RHS ---
         IF( a_IM(iS,jS) .NE. Zero )THEN
 
-        DO iLevel = 0, nLevels-1 
-         
-          CALL MF_R(iLevel) &
-                 % LinComb &
-                     ( One                     , MF_R    (iLevel   ), 1, &
-                       dt(iLevel) * a_IM(iS,jS), MF_DR_IM(iLevel,jS), 1, &
-                       1, nCompCR, swX )
+          DO iLevel = 0, nLevels-1
 
-          CALL MF_F(iLevel) &
-                 % LinComb &
-                     ( One                     , MF_F    (iLevel   ), 1, &
-                       dt(iLevel) * a_IM(iS,jS), MF_DF_IM(iLevel,jS), 1, &
-                       1, nCompCF, swX )
+            ! LinComb arguments: MultiFab* dstmf,
+            !                    real a, const MultiFab srcmf1, srccomp1,
+            !                    real b, const MultiFab srcmf2, srccomp2,
+            !                    real dstcomp, int nc, const int* ng
+            ! dst = a*x + b*y
 
-      END DO ! DO iLevel = 0, nLevels-1 
+            ! MF_R += dt * a_IM * MF_DR_IM
+            CALL MF_R(iLevel) &
+                   % LinComb &
+                       ( One                     , MF_R    (iLevel   ), 1, &
+                         dt(iLevel) * a_IM(iS,jS), MF_DR_IM(iLevel,jS), 1, &
+                         1, nCompCR, swX )
+
+            ! MF_F += dt * a_IM * MF_DF_IM
+            CALL MF_F(iLevel) &
+                   % LinComb &
+                       ( One                     , MF_F    (iLevel   ), 1, &
+                         dt(iLevel) * a_IM(iS,jS), MF_DF_IM(iLevel,jS), 1, &
+                         1, nCompCF, swX )
+
+          END DO ! DO iLevel = 0, nLevels-1
         END IF ! a_IM(iS,jS) .NE. Zero
 
+        ! --- Update explicit RHS ---
         IF( a_EX(iS,jS) .NE. Zero )THEN
 
-        DO iLevel = 0, nLevels-1 
-          CALL MF_R(iLevel) &
-                 % LinComb &
-                     ( One                     , MF_R    (iLevel   ), 1, &
-                       dt(iLevel) * a_EX(iS,jS), MF_DR_Ex(iLevel,jS), 1, &
-                       1, nCompCR, swX )
+          DO iLevel = 0, nLevels-1
+            ! MF_R += dt * a_EX * MF_DR_EX
+            CALL MF_R(iLevel) &
+                   % LinComb &
+                       ( One                     , MF_R    (iLevel   ), 1, &
+                         dt(iLevel) * a_EX(iS,jS), MF_DR_EX(iLevel,jS), 1, &
+                         1, nCompCR, swX )
 
-          CALL MF_F(iLevel) &
-                 % LinComb &
-                     ( One                     , MF_F    (iLevel   ), 1, &
-                       dt(iLevel) * a_EX(iS,jS), MF_DF_Ex(iLevel,jS), 1, &
-                       1, nCompCF, swX )
+            ! MF_F += dt * a_EX * MF_DF_EX
+            CALL MF_F(iLevel) &
+                   % LinComb &
+                       ( One                     , MF_F    (iLevel   ), 1, &
+                         dt(iLevel) * a_EX(iS,jS), MF_DF_EX(iLevel,jS), 1, &
+                         1, nCompCF, swX )
 
-        END DO ! DO iLevel = 0, nLevels-1 
+          END DO ! DO iLevel = 0, nLevels-1
 
         END IF ! a_EX(iS,jS) .NE. Zero
 
 
+        ! --- Apply slope and positivity limiters before implicit sovle ---
         IF( jS .EQ. iS - 1 )THEN
 
           IF( EvolveEuler )THEN
@@ -475,7 +513,7 @@ CONTAINS
             CALL ApplySlopeLimiter_TwoMoment_MF &
                    ( GEOM, MF_uGF, MF_F, MF_R, &
                      Verbose_Option = .FALSE.  )
-            
+
             CALL ApplyPositivityLimiter_TwoMoment_MF &
                    ( MF_uGF, MF_F, MF_R )
 
@@ -484,17 +522,19 @@ CONTAINS
         END IF ! jS .EQ. iS - 1
 
       END DO ! jS = 1, iS - 1
+      ! --- ---
 
       !IF( iS .GT. 1 )THEN
 
-        !CALL AverageDown( MF_uGF, MF_F(iS,:) )
-        !CALL AverageDown( MF_uGF, MF_R(iS,:), Radiation_Option = .TRUE. )
-        !CALL ApplyPositivityLimiter_Euler_MF &
-        !       ( MF_uGF, MF_U(iS,:), MF_uDF )
+      !CALL AverageDown( MF_uGF, MF_F(iS,:) )
+      !CALL AverageDown( MF_uGF, MF_R(iS,:), Radiation_Option = .TRUE. )
+      !CALL ApplyPositivityLimiter_Euler_MF &
+      !       ( MF_uGF, MF_U(iS,:), MF_uDF )
 
       !END IF
       IF( DEBUG ) WRITE(*,'(4x,A,I2.2)') 'jS: ', jS
 
+      ! --- Implicit solve for stage iS ---
       IF( ANY( a_IM(:,iS) .NE. Zero ) .OR. ( w_IM(iS) .NE. Zero ) )THEN
 
         IF( DEBUG )THEN
@@ -511,20 +551,22 @@ CONTAINS
         DO iLevel = 0, nLevels-1
 
           CALL ComputeIncrement_TwoMoment_Implicit_MF &
-               ( GEOM, MF_uGF, MF_uCF, MF_R, MF_DR_Im(:,iS), MF_DF_Im(:,iS), &
+               ( GEOM, MF_uGF, MF_uCF, MF_R, MF_DR_IM(:,iS), MF_DF_IM(:,iS), &
                  dt(iLevel) * a_IM(iS,iS), Verbose_Option = Verbose )
 
-        CALL MF_R(iLevel) &
-               % LinComb &
-                   ( One                     , MF_R    (iLevel   ), 1, &
-                     dt(iLevel) * a_IM(iS,iS), MF_DR_Im(iLevel,iS), 1, &
-                     1, nCompCR, swX )
+          ! MF_R += dt * a_IM * MF_DR_IM
+          CALL MF_R(iLevel) &
+                 % LinComb &
+                     ( One                     , MF_R    (iLevel   ), 1, &
+                       dt(iLevel) * a_IM(iS,iS), MF_DR_IM(iLevel,iS), 1, &
+                       1, nCompCR, swX )
 
-        CALL MF_F(iLevel) &
-               % LinComb &
-                   ( One                     , MF_F    (iLevel   ), 1, &
-                     dt(iLevel) * a_IM(iS,iS), MF_DF_Im(iLevel,iS), 1, &
-                     1, nCompCF, swX )
+          ! MF_F += dt * a_IM * MF_DF_IM
+          CALL MF_F(iLevel) &
+                 % LinComb &
+                     ( One                     , MF_F    (iLevel   ), 1, &
+                       dt(iLevel) * a_IM(iS,iS), MF_DF_IM(iLevel,iS), 1, &
+                       1, nCompCF, swX )
 
         END DO ! DO iLevel = 0, nLevels-1
 
@@ -537,7 +579,7 @@ CONTAINS
         END IF ! EvolveEuler
 
         IF( EvolveTwoMoment )THEN
-            
+
           CALL ApplyPositivityLimiter_TwoMoment_MF &
                    ( MF_uGF, MF_F, MF_R )
 
@@ -545,6 +587,7 @@ CONTAINS
 
       END IF ! ANY( a_IM(:,iS) .NE. Zero ) .OR. ( w_IM(iS) .NE. Zero )
 
+      ! --- Explicit step ---
       IF( ANY( a_EX(:,iS) .NE. Zero ) .OR. ( w_EX(iS) .NE. Zero ) )THEN
 
         IF( DEBUG ) &
@@ -559,7 +602,7 @@ CONTAINS
           !       ( MF_uGF, MF_F, MF_uDF )
 
           CALL ComputeIncrement_Euler_MF &
-                 ( MF_uGF, MF_F, MF_uDF, MF_DF_Ex(:,iS) )
+                 ( MF_uGF, MF_F, MF_uDF, MF_DF_EX(:,iS) )
 
         !DO iLevel = 0, nLevels-1
 
@@ -571,7 +614,7 @@ CONTAINS
 
         !IF( nLevels .GT. 1 .AND. UseFluxCorrection_Euler )THEN
 
-        !  CALL ApplyFluxCorrection_Euler_MF( MF_uGF, MF_DF_Ex(:,iS) )
+        !  CALL ApplyFluxCorrection_Euler_MF( MF_uGF, MF_DF_EX(:,iS) )
 
         !END IF
 
@@ -580,18 +623,18 @@ CONTAINS
         IF( EvolveTwoMoment )THEN
 
           CALL ComputeIncrement_TwoMoment_Explicit_MF &
-                 ( t_new, GEOM, MF_uGF, MF_F, MF_R, MF_DR_Ex(:,iS), &
+                 ( t_new, GEOM, MF_uGF, MF_F, MF_R, MF_DR_EX(:,iS), &
                    Verbose_Option = .FALSE. )
 
-          DO iLevel = 0, nLevels-1 
+          DO iLevel = 0, nLevels-1
              dM_OffGrid_TwoMoment(:,iLevel) &
                 = dM_OffGrid_TwoMoment(:,iLevel) &
                 + dt(iLevel) * w_EX(iS) * OffGridFlux_TwoMoment_MF(:,iLevel)
-          END DO !DO iLevel = 0, nLevels-1 
+          END DO !DO iLevel = 0, nLevels-1
 
         IF( nLevels .GT. 1 .AND. UseFluxCorrection_TwoMoment )THEN
 
-          CALL ApplyFluxCorrection_TwoMoment_MF( MF_uGF, MF_DR_Ex(:,iS) )
+          CALL ApplyFluxCorrection_TwoMoment_MF( MF_uGF, MF_DR_EX(:,iS) )
 
         END IF
 
@@ -608,11 +651,11 @@ CONTAINS
 
       IF( DEBUG ) WRITE(*,*) 'Assembly Step'
 
-      DO iLevel = 0, nLevels-1 
-      CALL MF_F(iLevel) % COPY( MF_F0(iLevel), 1, 1, nCompCF, swX )
-      CALL MF_R(iLevel) % COPY( MF_R0(iLevel), 1, 1, nCompCR, swX )
-      END DO !DO iLevel = 0, nLevels-1 
-      
+      DO iLevel = 0, nLevels-1
+        CALL MF_F(iLevel) % COPY( MF_F0(iLevel), 1, 1, nCompCF, swX )
+        CALL MF_R(iLevel) % COPY( MF_R0(iLevel), 1, 1, nCompCR, swX )
+      END DO !DO iLevel = 0, nLevels-1
+
       DO iS = 1, nStages
 
         IF( w_IM(iS) .NE. Zero )THEN
@@ -620,19 +663,21 @@ CONTAINS
           IF( DEBUG ) &
             WRITE(*,'(6x,A)') 'Adding implicit increment to original data'
 
-        DO iLevel = 0, nLevels-1
+          DO iLevel = 0, nLevels-1
 
-          CALL MF_R(iLevel) &
-                 % LinComb &
-                     ( One                  , MF_R    (iLevel   ), 1, &
-                       dt(iLevel) * w_IM(iS), MF_DR_Im(iLevel,iS), 1, &
-                       1, nCompCR, swX )
+            ! MF_R += dt * w_IM * MF_DR_IM
+            CALL MF_R(iLevel) &
+                   % LinComb &
+                       ( One                  , MF_R    (iLevel   ), 1, &
+                         dt(iLevel) * w_IM(iS), MF_DR_IM(iLevel,iS), 1, &
+                         1, nCompCR, swX )
 
-          CALL MF_F(iLevel) &
-                 % LinComb &
-                     ( One                  , MF_F    (iLevel   ), 1, &
-                       dt(iLevel) * w_IM(iS), MF_DF_Im(iLevel,iS), 1, &
-                       1, nCompCF, swX )
+            ! MF_F += dt * w_IM * MF_DF_IM
+            CALL MF_F(iLevel) &
+                   % LinComb &
+                       ( One                  , MF_F    (iLevel   ), 1, &
+                         dt(iLevel) * w_IM(iS), MF_DF_IM(iLevel,iS), 1, &
+                         1, nCompCF, swX )
 
           END DO
 
@@ -643,20 +688,22 @@ CONTAINS
           IF( DEBUG ) &
             WRITE(*,'(6x,A)') 'Adding explicit increment to original data'
 
-          DO iLevel = 0, nLevels-1 
-          CALL MF_R(iLevel) &
-                 % LinComb &
-                     ( One                  , MF_R    (iLevel   ), 1, &
-                       dt(iLevel) * w_EX(iS), MF_DR_Ex(iLevel,iS), 1, &
-                       1, nCompCR, swX )
+          DO iLevel = 0, nLevels-1
+            ! MF_R + dt * w_EX * MF_DR_EX
+            CALL MF_R(iLevel) &
+                   % LinComb &
+                       ( One                  , MF_R    (iLevel   ), 1, &
+                         dt(iLevel) * w_EX(iS), MF_DR_EX(iLevel,iS), 1, &
+                         1, nCompCR, swX )
 
-          CALL MF_F(iLevel) &
-                 % LinComb &
-                     ( One                  , MF_F    (iLevel   ), 1, &
-                       dt(iLevel) * w_EX(iS), MF_DF_Ex(iLevel,iS), 1, &
-                       1, nCompCF, swX )
-          END DO !DO iLevel = 0, nLevels-1 
-        
+            ! MF_F + dt * w_EX * MF_DF_EX
+            CALL MF_F(iLevel) &
+                   % LinComb &
+                       ( One                  , MF_F    (iLevel   ), 1, &
+                         dt(iLevel) * w_EX(iS), MF_DF_EX(iLevel,iS), 1, &
+                         1, nCompCF, swX )
+          END DO !DO iLevel = 0, nLevels-1
+
         END IF ! w_EX(iS) .NE. Zero
 
       END DO ! iS = 1, nStages
@@ -685,16 +732,17 @@ CONTAINS
     END IF ! ANY( a_IM(nStages,:) .NE. w_IM(:) ) .OR. &
            ! ANY( a_EX(nStages,:) .NE. w_EX(:) )
 
-    DO iLevel = 0, nLevels-1 
+    DO iLevel = 0, nLevels-1
+      ! Copy AMReX data to MF_uCF and MF_uCR
       CALL MF_uCF(iLevel) % COPY( MF_F(iLevel), 1, 1, nCompCF, swX )
       CALL MF_uCR(iLevel) % COPY( MF_R(iLevel), 1, 1, nCompCR, swX )
 
       DO iS = 1, nStages
 
-        CALL amrex_multifab_destroy( MF_DR_Im(iLevel,iS) )
-        CALL amrex_multifab_destroy( MF_DR_Ex(iLevel,iS) )
-        CALL amrex_multifab_destroy( MF_DF_Im(iLevel,iS) )
-        CALL amrex_multifab_destroy( MF_DF_Ex(iLevel,iS) )
+        CALL amrex_multifab_destroy( MF_DR_IM(iLevel,iS) )
+        CALL amrex_multifab_destroy( MF_DR_EX(iLevel,iS) )
+        CALL amrex_multifab_destroy( MF_DF_IM(iLevel,iS) )
+        CALL amrex_multifab_destroy( MF_DF_EX(iLevel,iS) )
 
       END DO ! iS = 0, nStages
 
@@ -710,8 +758,8 @@ CONTAINS
     CALL IncrementOffGridTally_TwoMoment_MF( dM_OffGrid_TwoMoment )
 
     IF( nLevels .GT. 1 ) &
-      CALL AverageDown( MF_uGF, MF_uCR, Radiation_Option = .TRUE. ) 
-    
+      CALL AverageDown( MF_uGF, MF_uCR, Radiation_Option = .TRUE. )
+
     IF( DEBUG ) WRITE(*,'(A)') 'Leaving Update_AMReX_TimeIntegrator'
 
     CALL TimersStop_AMReX( Timer_AMReX_UpdateFluid )
