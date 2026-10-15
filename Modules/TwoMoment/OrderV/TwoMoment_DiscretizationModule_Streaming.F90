@@ -195,7 +195,8 @@ CONTAINS
     ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, GE, GX, U_F, U_R, dU_R, SuppressBC_Option, &
       SurfaceFlux_X1_Option, &
       SurfaceFlux_X2_Option, &
-      SurfaceFlux_X3_Option, FineMask_Option )
+      SurfaceFlux_X3_Option, FineMask_Option ) bind(C, name="ComputeIncrement_TwoMoment_Explicit")
+
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
