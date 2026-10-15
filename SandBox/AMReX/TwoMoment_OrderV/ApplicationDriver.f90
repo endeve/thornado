@@ -84,9 +84,8 @@ PROGRAM main
   USE InputOutputModuleAMReX, ONLY: &
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
-  USE MF_TwoMoment_TimeSteppingModule_OrderV, ONLY: &
-    Update_IMEX_RK_MF, &
-    CFL
+  USE MF_TwoMoment_TimeSteppingModule_OrderV_AMReX, ONLY: &
+    Update_AMReX_TimeIntegrator
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
   ApplyBoundaryConditions_Euler_MF
   USE MF_UtilitiesModule, ONLY: &
@@ -166,7 +165,8 @@ PROGRAM main
 
       ELSE
 
-        CALL ComputeTimeStep_TwoMoment_MF( MF_uGF, CFL, dt )
+        ! FIXME: CFL
+        ! CALL ComputeTimeStep_TwoMoment_MF( MF_uGF, CFL, dt )
 
       END IF
 
@@ -193,7 +193,8 @@ PROGRAM main
     END IF
 
 
-    CALL Update_IMEX_RK_MF
+    ! FIXME
+    CALL Update_AMReX_TimeIntegrator
 
     !CALL WritePlotFile
 
