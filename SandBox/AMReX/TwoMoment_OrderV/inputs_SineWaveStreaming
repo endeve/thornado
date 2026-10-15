@@ -2,7 +2,7 @@
 
 
 
-debug.DEBUG = 1
+debug.DEBUG = 0
 
 thornado.ProgramName = "SineWaveStreaming"
 thornado.AdvectionProfile = "SineWaveX1"
@@ -36,6 +36,7 @@ thornado.iCycleW   = -0100     # MOD this number to write plotfile
 thornado.iCycleChk = -1000     # MOD this number to write checkpoint file
 thornado.iRestart  = -1        # Checkpoint-file to restart from. Negative for clean start
 thornado.Direction  = X
+thornado.UseRealizabilityTimeStep = 1
 SL.UseSlopeLimiter_TwoMoment = 1
 PL.USePositivityLimiter_TwoMoment = 1 
 
