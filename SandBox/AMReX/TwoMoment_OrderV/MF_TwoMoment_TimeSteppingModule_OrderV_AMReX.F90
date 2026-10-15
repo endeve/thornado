@@ -29,17 +29,23 @@ MODULE MF_TwoMoment_TimeSteppingModule_OrderV_AMReX
 
   USE ProgramHeaderModule, ONLY: &
     nDOFZ, nDOFX, nDOFE, nE, &
-    iE_B0, &
-    iE_E0, &
+    iE_B0, iE_E0, &
+    iE_B1, iE_E1, &
     iZ_B0, iZ_B1, iZ_E0, iZ_E1, swX, nX, nDimsX, nNodes
   USE GeometryFieldsModuleE, ONLY: &
-    nGE
+    nGE, uGE
   USE GeometryFieldsModule, ONLY: &
     nGF
   USE FluidFieldsModule, ONLY: &
     nCF
   USE RadiationFieldsModule, ONLY: &
     nCR
+  USE TwoMoment_DiscretizationModule_Collisions, ONLY: &
+    ComputeIncrement_TwoMoment_Implicit
+  USE TwoMoment_DiscretizationModule_Streaming, ONLY: &
+    ComputeIncrement_TwoMoment_Explicit
+  USE thornado_amrex_timeintegrator_module, ONLY: &
+    amrex_integrate_twomoment
 
 
   ! --- Local Modules ---
@@ -95,6 +101,8 @@ MODULE MF_TwoMoment_TimeSteppingModule_OrderV_AMReX
   USE FluxCorrectionModule_TwoMoment, ONLY: &
     ApplyFluxCorrection_TwoMoment_MF
   USE MF_TwoMoment_TallyModule
+
+  USE ISO_C_BINDING
 
   IMPLICIT NONE
   PRIVATE
@@ -333,15 +341,9 @@ CONTAINS
 
   SUBROUTINE Update_AMReX_TimeIntegrator
 
-    ! Radiation and fluid state vectors
-    TYPE(amrex_multifab) :: MF_R    (0:nMaxLevels-1)
-    TYPE(amrex_multifab) :: MF_F    (0:nMaxLevels-1)
-
-    !! ! iS: Integrator stage
-    !! ! jS: index for stages to add during stage iS
     !! ! nCompCF, nCompCR: number of components (fluid and radiation),
     !! ! iLevel: index for refinement level
-    !! INTEGER :: iS, jS, nCompCF, nCompCR, iLevel
+    INTEGER :: nCompCF, nCompCR, iLevel
 
     ! What is the purpose of these?
     REAL(DP) :: dM_OffGrid_Euler    (1:nCF  ,0:nMaxLevels-1)
@@ -351,133 +353,74 @@ CONTAINS
     dM_OffGrid_Euler     = Zero
     dM_OffGrid_TwoMoment = Zero
 
-    nCompCF = nDOFX * nCF
-    nCompCR = nDOFX * nDOFE * ( iE_E0 - iE_B0 + 1 ) * nCR * nSpecies!nDOFZ * nCR * nE * nSpecies
+    ! nCompGF = nDOFX * nGF
+    ! nCompCF = nDOFX * nCF
+    ! nCompCR = nDOFX * nDOFE * ( iE_E0 - iE_B0 + 1 ) * nCR * nSpecies!nDOFZ * nCR * nE * nSpecies
 
     !PRINT *, DEBUG
 
     IF( DEBUG ) WRITE(*,'(A)') 'Entering Update_AMReX_TimeIntegrator'
 
-    DO iLevel = 0, nLevels-1
+    !TODO: Call AMReX time integrator
+    !TODO: Add options for time integrator, e.g. multirate or adaptive stepsize
 
-      ! Copy fluid variables MF_uCF to MF_F
-      ! amrex_multifab_build arguments are:
-      !   MultiFab,
-      !   BoxArray,
-      !   DistributionMapping,
-      !   int number of components,
-      !   int stencil width (# ghost cells)
-      CALL amrex_multifab_build &
-             ( MF_F(iLevel), MF_uCF(iLevel) % BA, &
-               MF_uCF(iLevel) % DM, nCompCF, swX )
-
-      CALL MF_F(iLevel) % COPY( MF_uCF(iLevel), 1, 1, nCompCF, swX )
-
-      ! Copy radiation variables MF_uCR to MF_R
-      CALL amrex_multifab_build &
-             ( MF_R(iLevel), MF_uCR(iLevel) % BA, &
-               MF_uCR(iLevel) % DM, nCompCR, swX )
-
-      CALL MF_R(iLevel) % COPY( MF_uCR(iLevel), 1, 1, nCompCR, swX )
-
-    END DO !DO iLevel = 0, nLevels-1
-
-    !TODO: Call AMReX time integrator through Fortran interface
-    !
-    !   MultiFab S(ba, dm, Ncomp, Nghost);
-    !   TimeIntegrator<MultiFab> integrator(S, time);
-    !   integrator.set_rhs(rhs_function);
-    !
-    ! The RHS function is a lambda function, e.g. from the AMReX+SUNDIALS tutorial:
-    !   auto rhs_function = [&](MultiFab& S_rhs, MultiFab& S_data, const Real /* time */) {
-    !
-    !       // fill periodic ghost cells
-    !       S_data.FillBoundary(geom.periodicity());
-    !
-    !       // loop over boxes
-    !       auto& phi_data = S_data;
-    !       auto& phi_rhs  = S_rhs;
-    !       for ( MFIter mfi(phi_data); mfi.isValid(); ++mfi )
-    !       {
-    !           const Box& bx = mfi.validbox();
-    !           const Array4<const Real>& phi_array = phi_data.array(mfi);
-    !           const Array4<Real>& phi_rhs_array = phi_rhs.array(mfi);
-    !
-    !           // fill the right-hand-side for phi
-    !           amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE (int i, int j, int k)
-    !           {
-    !               phi_rhs_array(i,j,k) = diffusion_coef*( (phi_array(i+1,j,k) - 2.*phi_array(i,j,k) +
-    !                                                      +(phi_array(i,j+1,k) - 2.*phi_array(i,j,k) +
-    !                   ) - 1.*reaction_coef*phi_array(i,j,k);
-    !           });
-    !       }
-    !   };
-
-    ! --- Main loop for time integrator stages ---
-
-
-
-    ! --- Implicit solve for stage iS ---
-    CALL ComputeIncrement_TwoMoment_Implicit_MF &
-         ( GEOM, MF_uGF, MF_uCF, MF_R, MF_DR_IM(:,iS), MF_DF_IM(:,iS), &
-           dt(iLevel), Verbose_Option = Verbose )
-
-    ! MF_R += dt * a_IM * MF_DR_IM
-
-    ! MF_F += dt * a_IM * MF_DF_IM
 
     IF( EvolveEuler )THEN
-      CALL ApplyPositivityLimiter_Euler_MF(MF_uGF, MF_F, MF_uDF)
+      ! TODO: Implement
+      ! CALL amrex_integrate_euler &
+      !      ( GEOM, MF_uGF, MF_uCF, MF_uCR, t_new, dt, &
+      !        Verbose_Option = Verbose )
     END IF ! EvolveEuler
 
     IF( EvolveTwoMoment )THEN
-      CALL ApplyPositivityLimiter_TwoMoment_MF(MF_uGF, MF_F, MF_R)
+      CALL amrex_integrate_twomoment &
+           ( GEOM, uGE, MF_uGF, MF_uCF, MF_uCR, t_new, dt, &
+             C_FUNLOC(ComputeIncrement_TwoMoment_Implicit), &
+             C_FUNLOC(ComputeIncrement_TwoMoment_Explicit), &
+             nLevels, swX, nGF, nCF, nCR, nDOFX, nDOFE, nSpecies, &
+             iE_E0, iE_B0, iE_E1, iE_B1)
     END IF ! EvolveTwoMoment
 
-    ! --- Explicit step ---
+    !! IF( EvolveEuler )THEN
+    !!   CALL ApplyPositivityLimiter_Euler_MF(MF_uGF, MF_uCF, MF_uDF)
+    !! END IF ! EvolveEuler
 
-    IF( EvolveEuler )THEN
-      CALL ComputeIncrement_Euler_MF(MF_uGF, MF_F, MF_uDF, MF_DF_EX(:,iS))
-    END IF ! EvolveEuler
+    !! IF( EvolveTwoMoment )THEN
+    !!   CALL ApplyPositivityLimiter_TwoMoment_MF(MF_uGF, MF_uCF, MF_uCR)
+    !! END IF ! EvolveTwoMoment
 
-    IF( EvolveTwoMoment )THEN
-      CALL ComputeIncrement_TwoMoment_Explicit_MF &
-             ( t_new, GEOM, MF_uGF, MF_F, MF_R, MF_DR_EX(:,iS), &
-               Verbose_Option = .FALSE. )
+    !! ! --- Explicit step ---
 
-      DO iLevel = 0, nLevels-1
-         ! What does this do??
-         dM_OffGrid_TwoMoment(:,iLevel) &
-            = dM_OffGrid_TwoMoment(:,iLevel) &
-            + dt(iLevel) * w_EX(iS) * OffGridFlux_TwoMoment_MF(:,iLevel)
-      END DO !DO iLevel = 0, nLevels-1
+    !! IF( EvolveEuler )THEN
+    !!   CALL ComputeIncrement_Euler_MF(MF_uGF, MF_uCF, MF_uDF, MF_DF_EX(:,iS))
+    !! END IF ! EvolveEuler
 
-      IF( nLevels .GT. 1 .AND. UseFluxCorrection_TwoMoment )THEN
-        CALL ApplyFluxCorrection_TwoMoment_MF( MF_uGF, MF_DR_EX(:,iS) )
-      END IF
+    !! IF( EvolveTwoMoment )THEN
+    !!   CALL ComputeIncrement_TwoMoment_Explicit_MF &
+    !!          ( t_new, GEOM, MF_uGF, MF_uCF, MF_uCR, MF_DR_EX(:,iS), &
+    !!            Verbose_Option = .FALSE. )
 
-    END IF ! EvolveTwoMoment
+    !!   DO iLevel = 0, nLevels-1
+    !!      ! What does this do??
+    !!      dM_OffGrid_TwoMoment(:,iLevel) &
+    !!         = dM_OffGrid_TwoMoment(:,iLevel) &
+    !!         + dt(iLevel) * w_EX(iS) * OffGridFlux_TwoMoment_MF(:,iLevel)
+    !!   END DO !DO iLevel = 0, nLevels-1
 
-    DO iLevel = 0, nLevels-1
-      ! Copy AMReX data to MF_uCF and MF_uCR
-      CALL MF_uCF(iLevel) % COPY( MF_F(iLevel), 1, 1, nCompCF, swX )
-      CALL MF_uCR(iLevel) % COPY( MF_R(iLevel), 1, 1, nCompCR, swX )
+    !!   IF( nLevels .GT. 1 .AND. UseFluxCorrection_TwoMoment )THEN
+    !!     CALL ApplyFluxCorrection_TwoMoment_MF( MF_uGF, MF_DR_EX(:,iS) )
+    !!   END IF
 
-    !CALL IncrementOffGridTally_TwoMoment_MF( dM_OffGrid_TwoMoment )
+    !! END IF ! EvolveTwoMoment
 
-      CALL amrex_multifab_destroy( MF_R  (iLevel) )
-      CALL amrex_multifab_destroy( MF_F  (iLevel) )
+    !! CALL IncrementOffGridTally_TwoMoment_MF( dM_OffGrid_TwoMoment )
 
-    END DO !DO iLevel = 0, nLevels-1
+    !! IF( nLevels .GT. 1 ) &
+    !!   CALL AverageDown( MF_uGF, MF_uCR, Radiation_Option = .TRUE. )
 
-    CALL IncrementOffGridTally_TwoMoment_MF( dM_OffGrid_TwoMoment )
+    !! IF( DEBUG ) WRITE(*,'(A)') 'Leaving Update_AMReX_TimeIntegrator'
 
-    IF( nLevels .GT. 1 ) &
-      CALL AverageDown( MF_uGF, MF_uCR, Radiation_Option = .TRUE. )
-
-    IF( DEBUG ) WRITE(*,'(A)') 'Leaving Update_AMReX_TimeIntegrator'
-
-    CALL TimersStop_AMReX( Timer_AMReX_UpdateFluid )
+    !! CALL TimersStop_AMReX( Timer_AMReX_UpdateFluid )
 
   END SUBROUTINE Update_AMReX_TimeIntegrator
 
