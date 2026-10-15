@@ -2,15 +2,16 @@
 # If you set XXX_HOME as an environment variable, this line will be ignored
 HDF5_HOME     ?= $(HDF5_DIR)
 LAPACK_HOME   ?= $(LAPACK_DIR)
-AMREX_HOME    ?= $(AMREX_DIR)
+AMREX_HOME    ?= /home/biggi/Downloads/libs/amrex-26.08
+THORNADO_DIR  ?= /home/biggi/Code/thornado-twomoment_orderv_amrex
 THORNADO_HOME ?= $(THORNADO_DIR)
 
 DEBUG = TRUE
 
 USE_MPI  = TRUE
-USE_OMP  = FALSE
+USE_OMP  = TRUE
 
-DIM = 1 
+DIM = 1
 
 DEFINES += -DTHORNADO_USE_AMREX
 DEFINES += -DHYDRO_RIEMANN_SOLVER_HLL
