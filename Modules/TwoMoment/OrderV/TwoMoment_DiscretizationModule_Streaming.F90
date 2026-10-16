@@ -196,29 +196,29 @@ CONTAINS
       SurfaceFlux_X1_Option, &
       SurfaceFlux_X2_Option, &
       SurfaceFlux_X3_Option, FineMask_Option ) bind(C, name="ComputeIncrement_TwoMoment_Explicit")
-
+    USE, INTRINSIC::ISO_C_BINDING
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
-    INTEGER,  INTENT(in)    :: &
+    INTEGER(C_INT), INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-    REAL(DP), INTENT(in)    :: &
+    REAL(C_DOUBLE), INTENT(in)    :: &
       GE  (1:nDOFE, &
            iZ_B1(1):iZ_E1(1), &
            1:nGE)
-    REAL(DP), INTENT(in)    :: &
+    REAL(C_DOUBLE), INTENT(in)    :: &
       GX  (1:nDOFX, &
            iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nGF)
-    REAL(DP), INTENT(inout) :: &
+    REAL(C_DOUBLE), INTENT(inout) :: &
       U_F (1:nDOFX, &
            iZ_B1(2):iZ_E1(2), &
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nCF)
-    REAL(DP), INTENT(inout) :: &
+    REAL(C_DOUBLE), INTENT(inout) :: &
       U_R (1:nDOFZ, &
            iZ_B1(1):iZ_E1(1), &
            iZ_B1(2):iZ_E1(2), &
@@ -226,7 +226,7 @@ CONTAINS
            iZ_B1(4):iZ_E1(4), &
            1:nCR, &
            1:nSpecies)
-    REAL(DP), INTENT(out) :: &
+    REAL(C_DOUBLE), INTENT(out) :: &
       dU_R(1:nDOFZ, &
            iZ_B1(1):iZ_E1(1), &
            iZ_B1(2):iZ_E1(2), &
@@ -235,35 +235,64 @@ CONTAINS
            1:nCR, &
            1:nSpecies)
 
-    LOGICAL, INTENT(in), OPTIONAL :: &
+    ! Changed from LOGICAL, INTENT(in), OPTIONAL :: &
+    ! Technically, a non-C_BOOL LOGICAL is not interoperable under the Fortran 2003+
+    ! standard — gfortran will even warn about this in a BIND(C) context if you turn on
+    ! -Wc-binding-type
+    LOGICAL(C_BOOL), INTENT(in), OPTIONAL :: &
       SuppressBC_Option
-    REAL(DP), INTENT(out), OPTIONAL :: &
-      SurfaceFlux_X1_Option(:,:,:,:,:,:,:), &
-      SurfaceFlux_X2_Option(:,:,:,:,:,:,:), &
-      SurfaceFlux_X3_Option(:,:,:,:,:,:,:)
 
-    INTEGER, INTENT(in), OPTIONAL :: &                ! <-- add
-      FineMask_Option(iZ_B0(2):iZ_E0(2), &            ! <-- add
-                      iZ_B0(3):iZ_E0(3), &            ! <-- add
+    ! Plain assumed-shape dummies like this are not directly C-interoperable at all
+    ! REAL(DP), INTENT(out), OPTIONAL :: &
+    !   SurfaceFlux_X1_Option(:,:,:,:,:,:,:), &
+    !   SurfaceFlux_X2_Option(:,:,:,:,:,:,:), &
+    !   SurfaceFlux_X3_Option(:,:,:,:,:,:,:)
+    ! Instead, we have to give the explicit shape to be C-interoperable
+    REAL(C_DOUBLE), INTENT(out), OPTIONAL :: &
+      SurfaceFlux_X1_Option(1:nDOF_X1, &
+                            iZ_B0(1):iZ_E0(1), &
+                            iZ_B0(2):iZ_E0(2)+1, &
+                            iZ_B0(3):iZ_E0(3), &
+                            iZ_B0(4):iZ_E0(4), &
+                            1:nCR, &
+                            1:nSpecies), &
+      SurfaceFlux_X2_Option(1:nDOF_X1, &
+                            iZ_B0(1):iZ_E0(1), &
+                            iZ_B0(2):iZ_E0(2), &
+                            iZ_B0(3):iZ_E0(3)+1, &
+                            iZ_B0(4):iZ_E0(4), &
+                            1:nCR, &
+                            1:nSpecies), &
+      SurfaceFlux_X3_Option(1:nDOF_X1, &
+                            iZ_B0(1):iZ_E0(1), &
+                            iZ_B0(2):iZ_E0(2), &
+                            iZ_B0(3):iZ_E0(3), &
+                            iZ_B0(4):iZ_E0(4)+1, &
+                            1:nCR, &
+                            1:nSpecies)
+
+    INTEGER(C_INT), INTENT(in), OPTIONAL :: &
+      FineMask_Option(iZ_B0(2):iZ_E0(2), &
+                      iZ_B0(3):iZ_E0(3), &
                       iZ_B0(4):iZ_E0(4))
 
     ! --- Surface flux for coarse/fine corrections ---
 
-    REAL(DP) :: &
+    REAL(C_DOUBLE) :: &
       SurfaceFlux_X1(nDOFX_X1, &
           iZ_B0(2):iZ_E0(2)+1, &
           iZ_B0(3):iZ_E0(3), &
           iZ_B0(4):iZ_E0(4), &
           nCR)
 
-    REAL(DP) :: &
+    REAL(C_DOUBLE) :: &
       SurfaceFlux_X2(nDOFX_X2, &
           iZ_B0(2):iZ_E0(2), &
           iZ_B0(3):iZ_E0(3)+1, &
           iZ_B0(4):iZ_E0(4), &
           nCR)
 
-    REAL(DP) :: &
+    REAL(C_DOUBLE) :: &
       SurfaceFlux_X3(nDOFX_X3, &
           iZ_B0(2):iZ_E0(2), &
           iZ_B0(3):iZ_E0(3), &
@@ -677,6 +706,14 @@ CONTAINS
 #endif
     DO iX_F = 1, nNodesX_X1
 
+      IF( uFD_L(iX_F) .LE. Zero .OR. uFD_R(iX_F) .LE. Zero &
+          .OR. uFD_L(iX_F) .NE. uFD_L(iX_F) &
+          .OR. uFD_R(iX_F) .NE. uFD_R(iX_F) ) THEN
+        PRINT *, '[X1 face] iX_F=', iX_F, &
+                 ' uFD_L=', uFD_L(iX_F), ' uFD_R=', uFD_R(iX_F), &
+                 ' uS1_L=', uS1_L(iX_F), ' uS1_R=', uS1_R(iX_F)
+      END IF
+
       ! --- Left State ---
 
       uV1_L = uS1_L(iX_F) / ( Gm_dd_11_F(iX_F) * uFD_L(iX_F) )
@@ -688,14 +725,6 @@ CONTAINS
       uV1_R = uS1_R(iX_F) / ( Gm_dd_11_F(iX_F) * uFD_R(iX_F) )
       uV2_R = uS2_R(iX_F) / ( Gm_dd_22_F(iX_F) * uFD_R(iX_F) )
       uV3_R = uS3_R(iX_F) / ( Gm_dd_33_F(iX_F) * uFD_R(iX_F) )
-
-IF( uFD_L(iX_F) .LE. Zero .OR. uFD_R(iX_F) .LE. Zero &
-    .OR. uFD_L(iX_F) .NE. uFD_L(iX_F) &
-    .OR. uFD_R(iX_F) .NE. uFD_R(iX_F) ) THEN
-  PRINT *, '[X1 face] iX_F=', iX_F, &
-           ' uFD_L=', uFD_L(iX_F), ' uFD_R=', uFD_R(iX_F), &
-           ' uS1_L=', uS1_L(iX_F), ' uS1_R=', uS1_R(iX_F)
-END IF
 
       CALL FaceVelocity_X1 &
              ( uV1_L, uV2_L, uV3_L, &

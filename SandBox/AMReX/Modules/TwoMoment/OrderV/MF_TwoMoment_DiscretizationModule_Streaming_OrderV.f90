@@ -124,6 +124,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeIncrement_TwoMoment_Explicit_MF( Time, GEOM, MF_uGF, MF_uCF, MF_uCR, MF_duCR, Verbose_Option )
+    USE, INTRINSIC::ISO_C_BINDING, ONLY: C_BOOL
 
 
     REAL(amrex_real)    , INTENT(in)    :: Time(0:)
@@ -343,7 +344,7 @@ CALL AllocateArray_Z &
 
        CALL ComputeIncrement_TwoMoment_Explicit &
               ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, dU, &
-                SuppressBC_Option = .TRUE., &
+                SuppressBC_Option = .TRUE._C_BOOL, &
                 SurfaceFlux_X1_Option = SurfaceFlux_X1, &
                 SurfaceFlux_X2_Option = SurfaceFlux_X2, &
                 SurfaceFlux_X3_Option = SurfaceFlux_X3, &

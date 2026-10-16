@@ -8,12 +8,13 @@ thornado.ProgramName = "SineWaveStreaming"
 thornado.AdvectionProfile = "SineWaveX1"
 
 thornado.t_end     = 1.0     # Final time
-thornado.dt_wrt    = 1.0e-2      # Write time interval
-thornado.dt_chk    = 1.0e-1      # Time increment to write checkpoint-file
+thornado.dt_wrt    = 1.0e1      # Write time interval
+thornado.dt_chk    = 1.0e1      # Time increment to write checkpoint-file
 thornado.nNodes    = 2        # Number of DG nodes in each active dimension
 thornado.PlotFileNameRoot        = "Advection1D_SineWaveX1.plt"
 thornado.CheckpointFileNameRoot  = "Advection1D_SineWaveX1.chk"
 thornado.TallyFileNameRoot_Euler = "Advection1D_SineWaveX1.Tally"
+thornado.SuppressTally_Euler = 1
 
 
 
@@ -38,7 +39,7 @@ thornado.iRestart  = -1        # Checkpoint-file to restart from. Negative for c
 thornado.Direction  = X
 thornado.UseRealizabilityTimeStep = 1
 SL.UseSlopeLimiter_TwoMoment = 1
-PL.USePositivityLimiter_TwoMoment = 1 
+PL.USePositivityLimiter_TwoMoment = 1
 
 geometry.coord_sys   = 0             # CARTESIAN
 geometry.prob_lo     = 0.0 0.0 0.0         # Lower energy domain size
@@ -68,3 +69,46 @@ TS.CFL    = 0.5      # CFL number
 
 EoS.EquationOfState = "IDEAL"
 EoS.Gamma_IDEAL     = 1.3333333333333333
+
+# INTEGRATION
+## integration.type can take on the following values:
+## 0 or "ForwardEuler" => Native AMReX Forward Euler integrator
+## 1 or "RungeKutta"   => Native AMReX Explicit Runge Kutta controlled by integration.rk.type
+## 2 or "SUNDIALS"     => SUNDIALS backend controlled by integration.sundials.type
+#integration.type = ForwardEuler
+
+## *** Parameters Needed For Native Explicit Runge-Kutta ***
+#
+## integration.rk.type can take the following values:
+### 0 = User-specified Butcher Tableau
+### 1 = Forward Euler
+### 2 = Trapezoid Method
+### 3 = SSPRK3 Method
+integration.type = RungeKutta
+integration.rk.type = 3
+#integration.type = SUNDIALS
+
+# Set the SUNDIALS method type:
+# ERK      = Explicit Runge-Kutta method
+# DIRK     = Diagonally Implicit Runge-Kutta method
+# IMEX-RK  = Implicit-Explicit Additive Runge-Kutta method
+# EX-MRI   = Explicit Multirate Infatesimal method
+# IM-MRI   = Implicit Multirate Infatesimal method
+# IMEX-MRI = Implicit-Explicit Multirate Infatesimal method
+#
+# Optionally select a specific SUNDIALS method by name, see the SUNDIALS
+# documentation for the supported method names
+# integration.sundials.type = ARKODE_FORWARD_EULER_1_1
+# integration.sundials.type = EX-MRI
+# integration.sundials.fast_type = ERK
+#
+# ## *** Select a specific SUNDIALS ERK method ***
+# #integration.sundials.method = ARKODE_BOGACKI_SHAMPINE_4_2_3
+# #
+# ## *** Select a specific SUNDIALS ImEx method ***
+# #integration.sundials.method_i = ARKODE_ARK2_DIRK_3_1_2
+# #integration.sundials.method_e = ARKODE_ARK2_ERK_3_1_2
+#
+# # *** Select a specific SUNDIALS MRI method ***
+# integration.sundials.method = ARKODE_MIS_KW3
+# integration.sundials.fast_method = ARKODE_KNOTH_WOLKE_3_3

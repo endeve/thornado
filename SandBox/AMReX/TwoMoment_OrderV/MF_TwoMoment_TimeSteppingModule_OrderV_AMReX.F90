@@ -373,12 +373,16 @@ CONTAINS
     END IF ! EvolveEuler
 
     IF( EvolveTwoMoment )THEN
-      CALL amrex_integrate_twomoment &
-           ( GEOM, uGE, MF_uGF, MF_uCF, MF_uCR, t_new, dt, &
-             C_FUNLOC(ComputeIncrement_TwoMoment_Implicit), &
-             C_FUNLOC(ComputeIncrement_TwoMoment_Explicit), &
-             nLevels, swX, nGF, nCF, nCR, nDOFX, nDOFE, nSpecies, &
-             iE_E0, iE_B0, iE_E1, iE_B1)
+      DO iLevel = 0, nLevels-1
+        PRINT *, 'MF_uGF(iLevel) % nc: ', MF_uGF(iLevel) % nc
+        CALL amrex_integrate_twomoment &
+             ( GEOM(iLevel), uGE, MF_uGF(iLevel), MF_uCF(iLevel), MF_uCR(iLevel), &
+               t_new(iLevel), dt(iLevel), &
+               C_FUNLOC(ComputeIncrement_TwoMoment_Implicit), &
+               C_FUNLOC(ComputeIncrement_TwoMoment_Explicit), &
+               swX, nGF, nCF, nCR, nDOFX, nDOFE, nSpecies, &
+               iE_E0, iE_B0, iE_E1, iE_B1)
+      END DO
     END IF ! EvolveTwoMoment
 
     !! IF( EvolveEuler )THEN
