@@ -17,8 +17,8 @@ MODULE InitializationModule
     uGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33, &
     iGF_Alpha, iGF_Beta_1, iGF_Beta_2, iGF_Beta_3
   USE FluidFieldsModule, ONLY: &
-    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne
+    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, iPF_Nm, &
+    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, iCF_Nm
   USE EquationOfStateModule_IDEAL, ONLY: &
     ComputePressureFromPrimitive_IDEAL
   USE Euler_UtilitiesModule_Relativistic, ONLY: &
@@ -113,6 +113,8 @@ CONTAINS
           = 1.0d-1
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) &
           = 0.0d-0
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) &
+          = 0.0d-0
 
         CALL ComputePressureFromPrimitive_IDEAL &
                ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -126,13 +128,13 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
-                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne), uPF(iNodeX,iX1,iX2,iX3,iPF_Nm), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
-                 uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &
@@ -260,6 +262,7 @@ CONTAINS
 
         uPF(iNodeX,iX1,iX2,iX3,iPF_E ) = 0.1_DP
         uPF(iNodeX,iX1,iX2,iX3,iPF_Ne) = 0.0_DP
+        uPF(iNodeX,iX1,iX2,iX3,iPF_Nm) = 0.0_DP
 
         CALL ComputePressureFromPrimitive_IDEAL &
                  ( uPF(iNodeX,iX1,iX2,iX3,iPF_D ), &
@@ -273,13 +276,13 @@ CONTAINS
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V2 ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_V3 ), &
                  uPF(iNodeX,iX1,iX2,iX3,iPF_E ), &
-                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne ), &
+                 uPF(iNodeX,iX1,iX2,iX3,iPF_Ne ), uPF(iNodeX,iX1,iX2,iX3,iPF_Nm ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_D ), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S1), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S2), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_S3), &
                  uCF(iNodeX,iX1,iX2,iX3,iCF_E ), &
-                 uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(iNodeX,iX1,iX2,iX3,iCF_Ne), uCF(iNodeX,iX1,iX2,iX3,iCF_Nm), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(iNodeX,iX1,iX2,iX3,iGF_Gm_dd_33), &

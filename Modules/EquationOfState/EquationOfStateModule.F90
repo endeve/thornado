@@ -551,7 +551,7 @@ CONTAINS
 
 #else
 
-    CALL ComputePressureFromPrimitive_IDEAL( D, Ev, Ne, Nm, P )
+    CALL ComputePressureFromPrimitive_IDEAL( D, Ev, Ne, P )
 
 #endif
 
@@ -570,7 +570,7 @@ CONTAINS
 
 #else
 
-    CALL ComputePressureFromPrimitive_IDEAL( D, Ev, Ne, Nm, P )
+    CALL ComputePressureFromPrimitive_IDEAL( D, Ev, Ne, P )
 
 #endif
 
@@ -598,7 +598,7 @@ CONTAINS
 
 #else
 
-    CALL ComputePressureFromSpecificInternalEnergy_IDEAL( D, Em, Ye, Ym, P )
+    CALL ComputePressureFromSpecificInternalEnergy_IDEAL( D, Em, Ye, P )
 
 #endif
 
@@ -617,7 +617,7 @@ CONTAINS
 
 #else
 
-    CALL ComputePressureFromSpecificInternalEnergy_IDEAL( D, Em, Ye, Ym, P )
+    CALL ComputePressureFromSpecificInternalEnergy_IDEAL( D, Em, Ye, P )
 
 #endif
 
@@ -637,7 +637,7 @@ CONTAINS
 
 #else
 
-    CALL ComputeInternalEnergyDensityFromPressure_IDEAL( D, P, Ye, Ym, Ev )
+    CALL ComputeInternalEnergyDensityFromPressure_IDEAL( D, P, Ye, Ev )
 
 #endif
 
@@ -654,7 +654,7 @@ CONTAINS
 
 #else
 
-    CALL ComputeInternalEnergyDensityFromPressure_IDEAL( D, P, Ye+Ym, Ev )
+    CALL ComputeInternalEnergyDensityFromPressure_IDEAL( D, P, Ye, Ev )
 
 #endif
 
@@ -682,7 +682,7 @@ CONTAINS
 
 #else
 
-    CALL ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne+Nm, Cs )
+    CALL ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne, Cs )
 
 #endif
 
@@ -701,7 +701,7 @@ CONTAINS
 
 #else
 
-    CALL ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne+Nm, Cs )
+    CALL ComputeSoundSpeedFromPrimitive_IDEAL( D, Ev, Ne, Cs )
 
 #endif
 
@@ -729,7 +729,9 @@ CONTAINS
 
 #else
 
-    CALL ComputeAuxiliary_Fluid_IDEAL( D, Ev, Ne+Nm, P, T, Ye+Ym, S, Em, Gm, Cs )
+    CALL ComputeAuxiliary_Fluid_IDEAL( D, Ev, Ne, P, T, Ye, S, Em, Gm, Cs )
+
+    Ym = 0.0_DP
 
 #endif
 
@@ -748,7 +750,9 @@ CONTAINS
 
 #else
 
-    CALL ComputeAuxiliary_Fluid_IDEAL( D, Ev, Ne+Nm, P, T, Ye+Ym, S, Em, Gm, Cs )
+    CALL ComputeAuxiliary_Fluid_IDEAL( D, Ev, Ne, P, T, Ye, S, Em, Gm, Cs )
+
+    Ym = 0.0_DP
 
 #endif
 

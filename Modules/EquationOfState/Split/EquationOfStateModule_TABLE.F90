@@ -42,7 +42,7 @@ MODULE EquationOfStateModule_TABLE
   USE wlLeptonPhotonGasEOS, ONLY: &
     LeptonGasType, PhotonGasType, &
     LeptonGasEOS,  PhotonGasEOS , &
-    GetPhotonLeptonGasEOS
+    GetPhotonLeptonGasEOS, GetPhotonLeptonGasEOS_dT
   USE wlHelmIOModuleHDF, ONLY: &
     ReadHelmholtzTableHDF
   USE wlSoundSpeedModule, ONLY: &
@@ -1258,7 +1258,9 @@ CONTAINS
             ( D_P, E_P, Ye_P, Ym_P, D_T, T_T, Yp_T, E_T, OS_E, &
             T_P, HelmTableElectrons, HelmTableMuons )
     ELSE
+      ! --- Below the table: T_P is undefined, do not evaluate P with it ---
       P = Zero
+      RETURN
     END IF
 
     T = T_P * UnitT
@@ -1509,11 +1511,11 @@ CONTAINS
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP MAP( to: D, T, Ye, Ym ) &
-    !$OMP MAP( from: Em, Ev, Ne )
+    !$OMP MAP( from: Em, Ev, Ne, Nm )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC COPYIN( D, T, Ye, Ym ) &
-    !$ACC COPYOUT( Em, Ev, Ne )
+    !$ACC COPYOUT( Em, Ev, Ne, Nm )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
@@ -1620,12 +1622,39 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, Ev, Ne, Nm
     REAL(DP), INTENT(out) :: P, T, Ye, Ym, S, Em, Gm, Cs
 
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
+    REAL(DP) :: P_LeptPhot, E_LeptPhot, S_LeptPhot
+#endif
+
     Em  = Ev / D
     Ye  = Ne * ( BaryonMass / D )
     Ym = Nm * ( BaryonMass / D )
 
     CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE_Scalar &
            ( D, Em, Ye, Ym, T )
+
+    CALL ComputePressure_TABLE_Scalar &
+           ( D, T, Ye, Ym, P )
+
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
+
+    CALL ComputeDependentVariableBaryons_TABLE_Scalar &
+           ( D, T, Ye, Ym, S, S_T, OS_S, One )
+
+    CALL GetPhotonLeptonGasEOS( &
+      D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, &
+      HelmTableElectrons, HelmTableMuons, &
+      P_LeptPhot, E_LeptPhot, S_LeptPhot)
+
+    S = ( S + S_LeptPhot ) * UnitS
+
+#else
+
+    CALL ComputeDependentVariableTotal_TABLE_Scalar &
+           ( D, T, Ye, Ym, S, S_T, OS_S, &
+             UnitS, 0, 0, 1 )
+
+#endif
 
 #ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
     CALL CalculateSoundSpeed( D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, &
@@ -1725,8 +1754,9 @@ CONTAINS
       
 #ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
 
-      WRITE(*,*) 'Still needs to be implemented, can be a bit tedious, maybe I can avoid doing this'
-      STOP
+      CALL ComputeDependentVariableAndDerivativesSeparate_TABLE_Scalar &
+             ( D, T, Ye, Ym, P, dPdD, dPdT, dPdYe, dPdYm, P_T, OS_P, &
+               UnitP, 1, 0, 0 )
 
 #else
   
@@ -1772,7 +1802,7 @@ CONTAINS
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dPdYm_Option(1:)
 
     LOGICAL :: ComputeDerivatives
-    INTEGER :: nP
+    INTEGER :: iP, nP
     REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
       dPdD_Local, dPdT_Local, dPdYe_Local, dPdYm_Local
     REAL(DP), DIMENSION(:)      , POINTER :: &
@@ -1813,15 +1843,51 @@ CONTAINS
         dPdYm(1:nP) => dPdYm_Local(:)
       END IF
 
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
+
+      CALL ComputeDependentVariableAndDerivativesSeparate_TABLE_Vector &
+             ( D, T, Ye, Ym, P, dPdD, dPdT, dPdYe, dPdYm, P_T, OS_P, &
+             UnitP, 1, 0, 0 )
+
+#else
+
       CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Vector &
              ( D, T, Ye, Ym, P, dPdD, dPdT, dPdYe, dPdYm, P_T, OS_P, &
              UnitP, 1, 0, 0 )
 
+#endif
+
     ELSE
+
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
+
+      nP = SIZE( D )
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP MAP( to: D, T, Ye, Ym ) &
+      !$OMP MAP( from: P )
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR &
+      !$ACC COPYIN( D, T, Ye, Ym ) &
+      !$ACC COPYOUT( P )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO
+#endif
+      DO iP = 1, nP
+
+        CALL ComputePressure_TABLE_Scalar &
+               ( D(iP), T(iP), Ye(iP), Ym(iP), P(iP) )
+
+      END DO
+
+#else
 
       CALL ComputeDependentVariableTotal_TABLE_Vector &
              ( D, T, Ye, Ym, P, P_T, OS_P, &
              UnitP, 1, 0, 0 )
+
+#endif
 
     END IF
 
@@ -1886,8 +1952,10 @@ CONTAINS
 
 #ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
 
-      WRITE(*,*) 'Still needs to be implemented, can be a bit tedious, maybe I can avoid doing this'
-      STOP
+      CALL ComputeDependentVariableAndDerivativesSeparate_TABLE_Scalar &
+             ( D, T, Ye, Ym, E, dEdD, dEdT, dEdYe, dEdYm, E_T, OS_E, &
+               UnitE, 0, 1, 0 )
+
 #else
   
   CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Scalar &
@@ -1933,7 +2001,7 @@ CONTAINS
     REAL(DP), INTENT(out), TARGET, OPTIONAL :: dEdYm_Option(1:)
 
     LOGICAL :: ComputeDerivatives
-    INTEGER :: nP
+    INTEGER :: iP, nP
     REAL(DP), DIMENSION(:), TARGET, ALLOCATABLE  :: &
       dEdD_Local, dEdT_Local, dEdYe_Local, dEdYm_Local
     REAL(DP), DIMENSION(:)      , POINTER :: &
@@ -1974,17 +2042,44 @@ CONTAINS
         dEdYm(1:nP) => dEdYm_Local(:)
       END IF
 
+#ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
+
+      CALL ComputeDependentVariableAndDerivativesSeparate_TABLE_Vector &
+             ( D, T, Ye, Ym, E, dEdD, dEdT, dEdYe, dEdYm, E_T, OS_E, &
+             UnitE, 0, 1, 0 )
+
+#else
+
       CALL ComputeDependentVariableAndDerivativesTotal_TABLE_Vector &
              ( D, T, Ye, Ym, E, dEdD, dEdT, dEdYe, dEdYm, E_T, OS_E, &
              UnitE, 0, 1, 0 )
+
+#endif
 
     ELSE
 
 #ifdef INTERPOLATION_SPLIT_TABLE_SEPARATE
 
-      WRITE(*,*) 'Not yet implemented in ComputeSpecificInternalEnergy_TABLE_Vector'
-      STOP
-      
+      nP = SIZE( D )
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+      !$OMP MAP( to: D, T, Ye, Ym ) &
+      !$OMP MAP( from: E )
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR &
+      !$ACC COPYIN( D, T, Ye, Ym ) &
+      !$ACC COPYOUT( E )
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO
+#endif
+      DO iP = 1, nP
+
+        CALL ComputeSpecificInternalEnergy_TABLE_Scalar &
+               ( D(iP), T(iP), Ye(iP), Ym(iP), E(iP) )
+
+      END DO
+
 #else
 
       CALL ComputeDependentVariableTotal_TABLE_Vector &
@@ -3995,11 +4090,7 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, T, Ye, Ym
     REAL(DP), INTENT(out) :: P
 
-    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P
-    REAL(DP) :: LocalOffset
-    REAL(DP) :: D_cube(2), T_cube(2), Yp_cube(2), P_cube(2,2,2)
-    INTEGER  :: iD, iT, iYp
-    INTEGER  :: SizeDs, SizeTs, SizeYps
+    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P, dP_P(3)
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -4009,35 +4100,9 @@ CONTAINS
     Ym_P = Ym / UnitY
     Yp_P = Ye_P + Ym_P
 
-    ! Bracekt points and find the cube in the table
-    SizeDs = SIZE( D_T )
-    SizeTs = SIZE( T_T )
-    SizeYps = SIZE( Yp_T )
-
-    iD  = Index1D_Log( D_P , D_T  )
-    iT  = Index1D_Log( T_P , T_T  )
-    iYp = Index1D_Lin( Yp_P, Yp_T )
-
-    iD  = MIN( MAX( 1, iD ) , SizeDs - 1  )
-    iT  = MIN( MAX( 1, iT ) , SizeTs - 1  )
-    iYp = MIN( MAX( 1, iYp ), SizeYps - 1 )
-
-    P_cube  = P_T (iD:iD+1,iT:iT+1,iYp:iYp+1)
-    D_cube  = D_T (iD:iD+1)
-    T_cube  = T_T (iT:iT+1)
-    Yp_cube = Yp_T(iYp:iYp+1)
-    
-    LocalOffset = MINVAL(P_cube)
-    IF (LocalOffset .lt. 0.0_dp) THEN
-        LocalOffset = -1.1d0*LocalOffset
-    ELSE
-        LocalOffset = 0.0_dp
-    ENDIF
-
     IF ( D_P >= Eos_MinD ) THEN
-      CALL LogInterpolateSingleVariable_3D_Custom_Point &
-            ( D_P, T_P, Yp_P, D_cube, T_cube, Yp_cube, LocalOffset, &
-            LOG10(P_cube + LocalOffset), P )
+      CALL ComputePressureAndDerivativesBaryons_Point &
+             ( D_P, T_P, Yp_P, P, dP_P )
     ELSE
       P = 0.0d0
     ENDIF
@@ -4049,6 +4114,270 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputePressureBaryons_TABLE_Scalar
+
+
+  ! Baryon pressure and its derivatives w.r.t. (D, T, Yp), in table units.
+  ! The pressure is stored linearly and can be negative: it is interpolated
+  ! linearly in (log D, log T, Yp) if it is <= 0 at some corner of the cell,
+  ! log-trilinearly otherwise. This is the same choice made by the weaklib
+  ! separate temperature inversion (RefineTemperatureInCell) and by
+  ! wlSoundSpeedModule, so forward and inverse calls are consistent.
+  SUBROUTINE ComputePressureAndDerivativesBaryons_Point &
+    ( D_P, T_P, Yp_P, P, dPdX )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: D_P, T_P, Yp_P
+    REAL(DP), INTENT(out) :: P, dPdX(3)
+
+    REAL(DP) :: q(2,2,2), dD, dT, dY, L, dLdD, dLdT, dLdY
+    REAL(DP) :: q_D(2,2), q_T(2,2), q_Y(2)
+    INTEGER  :: iD, iT, iYp
+    LOGICAL  :: LinearCell
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    iD  = Index1D_Log( D_P , D_T  )
+    iT  = Index1D_Log( T_P , T_T  )
+    iYp = Index1D_Lin( Yp_P, Yp_T )
+
+    iD  = MIN( MAX( 1, iD  ), SIZE( D_T  ) - 1 )
+    iT  = MIN( MAX( 1, iT  ), SIZE( T_T  ) - 1 )
+    iYp = MIN( MAX( 1, iYp ), SIZE( Yp_T ) - 1 )
+
+    LinearCell = MINVAL( P_T(iD:iD+1,iT:iT+1,iYp:iYp+1) ) <= Zero
+    IF ( LinearCell ) THEN
+      q = P_T(iD:iD+1,iT:iT+1,iYp:iYp+1)
+    ELSE
+      q = LOG10( P_T(iD:iD+1,iT:iT+1,iYp:iYp+1) )
+    END IF
+
+    dD = LOG10( D_P / D_T(iD) ) / LOG10( D_T(iD+1) / D_T(iD) )
+    dT = LOG10( T_P / T_T(iT) ) / LOG10( T_T(iT+1) / T_T(iT) )
+    dY = ( Yp_P - Yp_T(iYp) ) / ( Yp_T(iYp+1) - Yp_T(iYp) )
+
+    ! --- Trilinear interpolant: first in D, then T, then Yp ---
+    q_D = ( One - dD ) * q(1,:,:) + dD * q(2,:,:)  ! (T,Yp)
+    q_Y = ( One - dT ) * q_D(1,:) + dT * q_D(2,:)  ! (Yp)
+    L   = ( One - dY ) * q_Y(1) + dY * q_Y(2)
+
+    ! --- Derivatives of the interpolant w.r.t. D, T, and Yp ---
+    q_T  = q(2,:,:) - q(1,:,:)                     ! (T,Yp)
+    dLdD = (   ( One - dY ) * ( ( One - dT ) * q_T(1,1) + dT * q_T(2,1) )   &
+             +         dY   * ( ( One - dT ) * q_T(1,2) + dT * q_T(2,2) ) ) &
+           / ( D_P * LOG( D_T(iD+1) / D_T(iD) ) )
+
+    dLdT = (   ( One - dY ) * ( q_D(2,1) - q_D(1,1) )   &
+             +         dY   * ( q_D(2,2) - q_D(1,2) ) ) &
+           / ( T_P * LOG( T_T(iT+1) / T_T(iT) ) )
+
+    dLdY = ( q_Y(2) - q_Y(1) ) / ( Yp_T(iYp+1) - Yp_T(iYp) )
+
+    IF ( LinearCell ) THEN
+      P       = L
+      dPdX(1) = dLdD
+      dPdX(2) = dLdT
+      dPdX(3) = dLdY
+    ELSE
+      P       = 10.0_DP**L
+      dPdX(1) = LOG( 10.0_DP ) * P * dLdD
+      dPdX(2) = LOG( 10.0_DP ) * P * dLdT
+      dPdX(3) = LOG( 10.0_DP ) * P * dLdY
+    END IF
+
+#else
+
+    P    = Zero
+    dPdX = Zero
+
+#endif
+
+  END SUBROUTINE ComputePressureAndDerivativesBaryons_Point
+
+
+  ! Value and derivatives of P, E, or S with the SEPARATE model, i.e. exactly
+  ! the function inverted by wlEosTemperatureSeparateInversionModule:
+  ! baryons interpolated from the table + leptons/photons at the exact point.
+  ! The lepton/photon T derivative is analytic (GetPhotonLeptonGasEOS_dT);
+  ! the D, Ye, and Ym derivatives are centered finite differences.
+  SUBROUTINE ComputeDependentVariableAndDerivativesSeparate_TABLE_Scalar &
+    ( D, T, Ye, Ym, V, dVdD, dVdT, dVdYe, dVdYm, V_T, OS_V, Units_V, &
+      ReturnP, ReturnE, ReturnS )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)  :: D, T, Ye, Ym
+    REAL(DP), INTENT(out) :: V, dVdD, dVdT, dVdYe, dVdYm
+    REAL(DP), INTENT(in)  :: V_T(1:,1:,1:)
+    REAL(DP), INTENT(in)  :: OS_V, Units_V
+    INTEGER,  INTENT(in)  :: ReturnP, ReturnE, ReturnS
+
+    REAL(DP), PARAMETER :: RelStep = 1.0d-4
+
+    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P
+    REAL(DP) :: Vb, dVb(3), VL, dVLdD, dVLdT, dVLdYe, dVLdYm
+    REAL(DP) :: P_LP(3), E_LP(3), S_LP(3), dPdT_LP, dEdT_LP, dSdT_LP
+    REAL(DP) :: h, X_p, X_m, V_p, V_m
+
+#ifdef MICROPHYSICS_WEAKLIB
+
+    D_P  = D  / UnitD
+    T_P  = T  / UnitT
+    Ye_P = Ye / UnitY
+    Ym_P = Ym / UnitY
+    Yp_P = Ye_P + Ym_P
+
+    IF ( D_P < Eos_MinD ) THEN
+      V     = Zero
+      dVdD  = Zero
+      dVdT  = Zero
+      dVdYe = Zero
+      dVdYm = Zero
+      RETURN
+    END IF
+
+    ! --- Baryons ---
+    IF ( ReturnP == 1 ) THEN
+      CALL ComputePressureAndDerivativesBaryons_Point &
+             ( D_P, T_P, Yp_P, Vb, dVb )
+    ELSE
+      CALL LogInterpolateDifferentiateSingleVariable_3D_Custom_Point &
+             ( D_P, T_P, Yp_P, D_T, T_T, Yp_T, OS_V, V_T, Vb, dVb )
+    END IF
+
+    ! --- Leptons and photons: value and analytic T derivative ---
+    CALL GetPhotonLeptonGasEOS_dT &
+           ( D_P, T_P, Ye_P, Ym_P, HelmTableElectrons, HelmTableMuons, &
+             P_LP(1), E_LP(1), S_LP(1), dPdT_LP, dEdT_LP, dSdT_LP )
+
+    VL    = SelectPES( ReturnP, ReturnE, P_LP(1), E_LP(1), S_LP(1) )
+    dVLdT = SelectPES( ReturnP, ReturnE, dPdT_LP, dEdT_LP, dSdT_LP )
+
+    ! --- D derivative ---
+    h = RelStep * D_P
+    CALL GetPhotonLeptonGasEOS &
+           ( D_P + h, T_P, Ye_P, Ym_P, HelmTableElectrons, HelmTableMuons, &
+             P_LP(2), E_LP(2), S_LP(2) )
+    CALL GetPhotonLeptonGasEOS &
+           ( D_P - h, T_P, Ye_P, Ym_P, HelmTableElectrons, HelmTableMuons, &
+             P_LP(3), E_LP(3), S_LP(3) )
+    V_p = SelectPES( ReturnP, ReturnE, P_LP(2), E_LP(2), S_LP(2) )
+    V_m = SelectPES( ReturnP, ReturnE, P_LP(3), E_LP(3), S_LP(3) )
+    dVLdD = ( V_p - V_m ) / ( 2.0_DP * h )
+
+    ! --- Ye derivative (one-sided if the centered stencil crosses zero) ---
+    h = RelStep * MAX( ABS( Ye_P ), RelStep )
+    X_p = Ye_P + h
+    X_m = MERGE( Ye_P - h, Ye_P, Ye_P > h )
+    CALL GetPhotonLeptonGasEOS &
+           ( D_P, T_P, X_p, Ym_P, HelmTableElectrons, HelmTableMuons, &
+             P_LP(2), E_LP(2), S_LP(2) )
+    CALL GetPhotonLeptonGasEOS &
+           ( D_P, T_P, X_m, Ym_P, HelmTableElectrons, HelmTableMuons, &
+             P_LP(3), E_LP(3), S_LP(3) )
+    V_p = SelectPES( ReturnP, ReturnE, P_LP(2), E_LP(2), S_LP(2) )
+    V_m = SelectPES( ReturnP, ReturnE, P_LP(3), E_LP(3), S_LP(3) )
+    dVLdYe = ( V_p - V_m ) / ( X_p - X_m )
+
+    ! --- Ym derivative (one-sided if the centered stencil crosses zero) ---
+    h = RelStep * MAX( ABS( Ym_P ), RelStep )
+    X_p = Ym_P + h
+    X_m = MERGE( Ym_P - h, Ym_P, Ym_P > h )
+    CALL GetPhotonLeptonGasEOS &
+           ( D_P, T_P, Ye_P, X_p, HelmTableElectrons, HelmTableMuons, &
+             P_LP(2), E_LP(2), S_LP(2) )
+    CALL GetPhotonLeptonGasEOS &
+           ( D_P, T_P, Ye_P, X_m, HelmTableElectrons, HelmTableMuons, &
+             P_LP(3), E_LP(3), S_LP(3) )
+    V_p = SelectPES( ReturnP, ReturnE, P_LP(2), E_LP(2), S_LP(2) )
+    V_m = SelectPES( ReturnP, ReturnE, P_LP(3), E_LP(3), S_LP(3) )
+    dVLdYm = ( V_p - V_m ) / ( X_p - X_m )
+
+    ! --- Total. Baryons depend on Yp = Ye + Ym ---
+    V     = ( Vb     + VL     ) * Units_V
+    dVdD  = ( dVb(1) + dVLdD  ) * Units_V / UnitD
+    dVdT  = ( dVb(2) + dVLdT  ) * Units_V / UnitT
+    dVdYe = ( dVb(3) + dVLdYe ) * Units_V / UnitY
+    dVdYm = ( dVb(3) + dVLdYm ) * Units_V / UnitY
+
+#else
+
+    V     = Zero
+    dVdD  = Zero
+    dVdT  = Zero
+    dVdYe = Zero
+    dVdYm = Zero
+
+#endif
+
+  END SUBROUTINE ComputeDependentVariableAndDerivativesSeparate_TABLE_Scalar
+
+
+  REAL(DP) FUNCTION SelectPES( ReturnP, ReturnE, P, E, S )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    INTEGER,  INTENT(in) :: ReturnP, ReturnE
+    REAL(DP), INTENT(in) :: P, E, S
+
+    IF ( ReturnP == 1 ) THEN
+      SelectPES = P
+    ELSE IF ( ReturnE == 1 ) THEN
+      SelectPES = E
+    ELSE
+      SelectPES = S
+    END IF
+
+  END FUNCTION SelectPES
+
+
+  SUBROUTINE ComputeDependentVariableAndDerivativesSeparate_TABLE_Vector &
+    ( D, T, Ye, Ym, V, dVdD, dVdT, dVdYe, dVdYm, V_T, OS_V, Units_V, &
+      ReturnP, ReturnE, ReturnS )
+
+    REAL(DP), INTENT(in)  :: D(1:), T(1:), Ye(1:), Ym(1:)
+    REAL(DP), INTENT(out) :: V(1:), dVdD(1:), dVdT(1:), dVdYe(1:), dVdYm(1:)
+    REAL(DP), INTENT(in)  :: V_T(1:,1:,1:)
+    REAL(DP), INTENT(in)  :: OS_V, Units_V
+    INTEGER,  INTENT(in)  :: ReturnP, ReturnE, ReturnS
+
+    INTEGER :: iP, nP
+
+    nP = SIZE( D )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP MAP( to: D, T, Ye, Ym, OS_V, V_T ) &
+    !$OMP MAP( from: V, dVdD, dVdT, dVdYe, dVdYm )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC COPYIN( D, T, Ye, Ym, OS_V, V_T ) &
+    !$ACC COPYOUT( V, dVdD, dVdT, dVdYe, dVdYm )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iP = 1, nP
+
+      CALL ComputeDependentVariableAndDerivativesSeparate_TABLE_Scalar &
+             ( D(iP), T(iP), Ye(iP), Ym(iP), V(iP), dVdD(iP), dVdT(iP), &
+               dVdYe(iP), dVdYm(iP), V_T, OS_V, Units_V, &
+               ReturnP, ReturnE, ReturnS )
+
+    END DO
+
+  END SUBROUTINE ComputeDependentVariableAndDerivativesSeparate_TABLE_Vector
 
   SUBROUTINE ComputeDependentVariableTotal_TABLE_Scalar &
     ( D, T, Ye, Ym, V, V_T, OS_V, Units_V, &

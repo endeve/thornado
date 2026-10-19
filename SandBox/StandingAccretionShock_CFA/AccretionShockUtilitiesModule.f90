@@ -27,7 +27,7 @@ MODULE AccretionShockUtilitiesModule
     iCF_S2, &
     iCF_S3, &
     iCF_E, &
-    iCF_Ne, &
+    iCF_Ne, iCF_Nm, &
     iPF_D, &
     iAF_P
   USE EquationOfStateModule_IDEAL, ONLY: &
@@ -71,7 +71,7 @@ CONTAINS
 
     INTEGER  :: iNX, iX1
     REAL(DP) :: D(nNodesX(1)), V1(nNodesX(1)), V2(nNodesX(1)), V3(nNodesX(1)), &
-                E(nNodesX(1)), Ne(nNodesX(1)), P (nNodesX(1))
+                E(nNodesX(1)), Ne(nNodesX(1)), Nm(nNodesX(1)), P (nNodesX(1))
     CHARACTER(LEN=16) :: FMT
 
     IF( nDimsX .GT. 1 )THEN
@@ -102,13 +102,14 @@ CONTAINS
                uCF(:,iX1,1,1,iCF_S3), &
                uCF(:,iX1,1,1,iCF_E ), &
                uCF(:,iX1,1,1,iCF_Ne), &
-               D, V1, V2, V3, E, Ne, &
+               uCF(:,iX1,1,1,iCF_Nm), &
+               D, V1, V2, V3, E, Ne, Nm, &
                uGF(:,iX1,1,1,iGF_Gm_dd_11), &
                uGF(:,iX1,1,1,iGF_Gm_dd_22), &
                uGF(:,iX1,1,1,iGF_Gm_dd_33) )
 
       CALL ComputePressureFromPrimitive &
-             ( D, E, Ne, P )
+             ( D, E, Ne, Nm, P )
 
       WRITE(101,FMT) D
       WRITE(102,FMT) V1

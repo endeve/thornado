@@ -16,8 +16,8 @@ MODULE InitializationModule
     NodeCoordinate
   USE FluidFieldsModule, ONLY: &
     uPF, iPF_D, &
-    uAF, iAF_P, iAF_T, iAF_Ye, iAF_S, iAF_E, &
-    iAF_Me, iAF_Mp, iAF_Mn, iAF_Xp, iAF_Xn, &
+    uAF, iAF_P, iAF_T, iAF_Ye, iAF_Ym, iAF_S, iAF_E, &
+    iAF_Me, iAF_Mm, iAF_Mp, iAF_Mn, iAF_Xp, iAF_Xn, &
     iAF_Xa, iAF_Xh, iAF_Gm
   USE EquationOfStateModule_TABLE, ONLY: &
     ApplyEquationOfState_TABLE
@@ -54,13 +54,17 @@ CONTAINS
 
         uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = 3.0d-1
 
+        uAF(iNodeX,iX1,iX2,iX3,iAF_Ym) = 0.0_DP
+
       END DO
 
       CALL ApplyEquationOfState_TABLE &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_T ), &
-               uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_P ), &
+               uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_Ym), &
+               uAF(:,iX1,iX2,iX3,iAF_P ), &
                uAF(:,iX1,iX2,iX3,iAF_S ), uAF(:,iX1,iX2,iX3,iAF_E ), &
-               uAF(:,iX1,iX2,iX3,iAF_Me), uAF(:,iX1,iX2,iX3,iAF_Mp), &
+               uAF(:,iX1,iX2,iX3,iAF_Me), uAF(:,iX1,iX2,iX3,iAF_Mm), &
+               uAF(:,iX1,iX2,iX3,iAF_Mp), &
                uAF(:,iX1,iX2,iX3,iAF_Mn), uAF(:,iX1,iX2,iX3,iAF_Xp), &
                uAF(:,iX1,iX2,iX3,iAF_Xn), uAF(:,iX1,iX2,iX3,iAF_Xa), &
                uAF(:,iX1,iX2,iX3,iAF_Xh), uAF(:,iX1,iX2,iX3,iAF_Gm) )

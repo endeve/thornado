@@ -47,14 +47,14 @@ MODULE InitializationModule_Relativistic
     iPF_V2, &
     iPF_V3, &
     iPF_E, &
-    iPF_Ne, &
+    iPF_Ne, iPF_Nm, &
     uCF, &
     iCF_D, &
     iCF_S1, &
     iCF_S2, &
     iCF_S3, &
     iCF_E, &
-    iCF_Ne, &
+    iCF_Ne, iCF_Nm, &
     uAF, &
     iAF_P
   USE EquationOfStateModule_IDEAL, ONLY: &
@@ -101,6 +101,7 @@ CONTAINS
   SUBROUTINE InitializeFields_Relativistic
 
     uPF(:,:,:,:,iPF_Ne) = Zero
+    uPF(:,:,:,:,iPF_Nm) = Zero
 
     WRITE(*,*)
     WRITE(*,'(A,A)') '    INFO: ', TRIM( ProgramName )
@@ -321,10 +322,10 @@ CONTAINS
       CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
-               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), uPF(:,iX1,iX2,iX3,iPF_Nm), &
                uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
                uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
-               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), uCF(:,iX1,iX2,iX3,iCF_Nm), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
@@ -563,10 +564,10 @@ CONTAINS
       CALL ComputeConserved_Euler_Relativistic &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
-               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), uPF(:,iX1,iX2,iX3,iPF_Nm), &
                uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
                uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
-               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+               uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), uCF(:,iX1,iX2,iX3,iCF_Nm), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &
@@ -642,10 +643,10 @@ CONTAINS
         CALL ComputeConserved_Euler_Relativistic &
                ( uPF(:,iX1,iX2,iX3,iPF_D ), uPF(:,iX1,iX2,iX3,iPF_V1), &
                  uPF(:,iX1,iX2,iX3,iPF_V2), uPF(:,iX1,iX2,iX3,iPF_V3), &
-                 uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+                 uPF(:,iX1,iX2,iX3,iPF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), uPF(:,iX1,iX2,iX3,iPF_Nm), &
                  uCF(:,iX1,iX2,iX3,iCF_D ), uCF(:,iX1,iX2,iX3,iCF_S1), &
                  uCF(:,iX1,iX2,iX3,iCF_S2), uCF(:,iX1,iX2,iX3,iCF_S3), &
-                 uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), &
+                 uCF(:,iX1,iX2,iX3,iCF_E ), uCF(:,iX1,iX2,iX3,iCF_Ne), uCF(:,iX1,iX2,iX3,iCF_Nm), &
                  uGF(:,iX1,iX2,iX3,iGF_Gm_dd_11), &
                  uGF(:,iX1,iX2,iX3,iGF_Gm_dd_22), &
                  uGF(:,iX1,iX2,iX3,iGF_Gm_dd_33), &

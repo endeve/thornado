@@ -22,10 +22,10 @@ MODULE InitializationModule
   USE GeometryFieldsModule, ONLY: &
     uGF, iGF_Gm_dd_11, iGF_Gm_dd_22, iGF_Gm_dd_33
   USE FluidFieldsModule, ONLY: &
-    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, &
-    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, &
-    uAF, iAF_P, iAF_T, iAF_Ye, iAF_S, iAF_E, &
-    iAF_Me, iAF_Mp, iAF_Mn, iAF_Xp, iAF_Xn, &
+    uCF, iCF_D, iCF_S1, iCF_S2, iCF_S3, iCF_E, iCF_Ne, iCF_Nm, &
+    uPF, iPF_D, iPF_V1, iPF_V2, iPF_V3, iPF_E, iPF_Ne, iPF_Nm, &
+    uAF, iAF_P, iAF_T, iAF_Ye, iAF_Ym, iAF_S, iAF_E, &
+    iAF_Me, iAF_Mm, iAF_Mp, iAF_Mn, iAF_Xp, iAF_Xn, &
     iAF_Xa, iAF_Xh, iAF_Gm
   USE RadiationFieldsModule, ONLY: &
     nSpecies, iNuE, iNuE_Bar, &
@@ -84,12 +84,16 @@ CONTAINS
 
         uAF(iNodeX,iX1,iX2,iX3,iAF_Ye) = Y_0
 
+        uAF(iNodeX,iX1,iX2,iX3,iAF_Ym) = Zero
+
       END DO
 
       CALL ComputeThermodynamicStates_Primitive_TABLE &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_T ), &
-               uAF(:,iX1,iX2,iX3,iAF_Ye), uPF(:,iX1,iX2,iX3,iPF_E ), &
-               uAF(:,iX1,iX2,iX3,iAF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne) )
+               uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_Ym), &
+               uPF(:,iX1,iX2,iX3,iPF_E ), &
+               uAF(:,iX1,iX2,iX3,iAF_E ), uPF(:,iX1,iX2,iX3,iPF_Ne), &
+               uPF(:,iX1,iX2,iX3,iPF_Nm) )
 
       uPF(:,iX1,iX2,iX3,iPF_V1) = Zero
       uPF(:,iX1,iX2,iX3,iPF_V2) = Zero
@@ -97,9 +101,11 @@ CONTAINS
 
       CALL ApplyEquationOfState_TABLE &
              ( uPF(:,iX1,iX2,iX3,iPF_D ), uAF(:,iX1,iX2,iX3,iAF_T ), &
-               uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_P ), &
+               uAF(:,iX1,iX2,iX3,iAF_Ye), uAF(:,iX1,iX2,iX3,iAF_Ym), &
+               uAF(:,iX1,iX2,iX3,iAF_P ), &
                uAF(:,iX1,iX2,iX3,iAF_S ), uAF(:,iX1,iX2,iX3,iAF_E ), &
-               uAF(:,iX1,iX2,iX3,iAF_Me), uAF(:,iX1,iX2,iX3,iAF_Mp), &
+               uAF(:,iX1,iX2,iX3,iAF_Me), uAF(:,iX1,iX2,iX3,iAF_Mm), &
+               uAF(:,iX1,iX2,iX3,iAF_Mp), &
                uAF(:,iX1,iX2,iX3,iAF_Mn), uAF(:,iX1,iX2,iX3,iAF_Xp), &
                uAF(:,iX1,iX2,iX3,iAF_Xn), uAF(:,iX1,iX2,iX3,iAF_Xa), &
                uAF(:,iX1,iX2,iX3,iAF_Xh), uAF(:,iX1,iX2,iX3,iAF_Gm) )
@@ -112,6 +118,7 @@ CONTAINS
       uCF(:,iX1,iX2,iX3,iCF_S3) = Zero
       uCF(:,iX1,iX2,iX3,iCF_E ) = uPF(:,iX1,iX2,iX3,iPF_E)
       uCF(:,iX1,iX2,iX3,iCF_Ne) = uPF(:,iX1,iX2,iX3,iPF_Ne)
+      uCF(:,iX1,iX2,iX3,iCF_Nm) = uPF(:,iX1,iX2,iX3,iPF_Nm)
 
     END DO
     END DO

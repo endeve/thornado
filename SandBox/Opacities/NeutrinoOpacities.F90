@@ -148,7 +148,7 @@ PROGRAM NeutrinoOpacities
     Timer_Compute_Brem, &
     Timer_Total
   REAL(DP), DIMENSION(nPointsX) :: &
-    D, T, Y
+    D, T, Y, Ym
   REAL(DP), DIMENSION(nE) :: &
     dE
   REAL(DP), DIMENSION(nE,nSpecies,nPointsX) :: Edot_EmAb_element, &
@@ -275,6 +275,7 @@ PROGRAM NeutrinoOpacities
    D = 7.25205428E+09 * Unit_D
    T = 7.64409875E+09 * Unit_T
    Y = 4.36039929E-01
+   Ym = 0.0d0
 
   ! --- Energy Grid ---
 
@@ -355,7 +356,7 @@ PROGRAM NeutrinoOpacities
 
 #if defined(THORNADO_OMP_OL)
   !$OMP TARGET ENTER DATA &
-  !$OMP MAP( to: E, D, T, Y, W2, f0, f0_DG, J, H_1, H_2, H_3, S_sigma, &
+  !$OMP MAP( to: E, D, T, Y, Ym, W2, f0, f0_DG, J, H_1, H_2, H_3, S_sigma, &
   !$OMP          H_I_0, H_II_0, H_I_1, H_II_1, J_I_0, J_II_0, J_I_1, J_II_1 ) &
   !$OMP MAP( alloc: Chi_EmAb, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, Chi_Iso, &
   !$OMP             Eta_EmAb, Eta_NES, Eta_Pair, Eta_NuPair, Eta_Brem, Eta_Iso, &
@@ -364,7 +365,7 @@ PROGRAM NeutrinoOpacities
   !$OMP             A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 )
 #elif defined(THORNADO_OACC)
   !$ACC ENTER DATA &
-  !$ACC COPYIN( E, D, T, Y, W2, f0, f0_DG, J, H_1, H_2, H_3, S_sigma, &
+  !$ACC COPYIN( E, D, T, Y, Ym, W2, f0, f0_DG, J, H_1, H_2, H_3, S_sigma, &
   !$ACC         H_I_0, H_II_0, H_I_1, H_II_1, J_I_0, J_II_0, J_I_1, J_II_1 ) &
   !$ACC CREATE( Chi_EmAb, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, Chi_Iso, &
   !$ACC         Eta_EmAb, Eta_NES, Eta_Pair, Eta_NuPair, Eta_Brem, Eta_Iso, &
@@ -378,7 +379,7 @@ PROGRAM NeutrinoOpacities
   Timer_ComputeEquilibrium = 0.0d0
   CALL TimersStart( Timer_ComputeEquilibrium )
   CALL ComputeEquilibriumDistributions &
-         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, f0 )
+         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, Ym, f0 )
   CALL TimersStop( Timer_ComputeEquilibrium )
 
   ! --- Compute Equilibrium Distributions (DG) ---
@@ -386,7 +387,7 @@ PROGRAM NeutrinoOpacities
   Timer_ComputeEquilibrium_DG = 0.0d0
   CALL TimersStart( Timer_ComputeEquilibrium_DG )
   CALL ComputeEquilibriumDistributions_DG &
-         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, f0_DG )
+         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, Ym, f0_DG )
   CALL TimersStop( Timer_ComputeEquilibrium_DG )
 
   ! --- Compute Neutrino Number Density ---
@@ -421,7 +422,7 @@ PROGRAM NeutrinoOpacities
   Timer_Compute_EC = 0.0d0
   CALL TimersStart( Timer_Compute_EC )
   CALL ComputeNeutrinoOpacities_EC &
-         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, f0_DG, Chi_EmAb )
+         ( 1, nPointsE, 1, nSpecies, 1, nPointsX, E, D, T, Y, Ym, f0_DG, Chi_EmAb )
   CALL TimersStop( Timer_Compute_EC )
 
 #if defined(THORNADO_OMP_OL)
@@ -448,13 +449,13 @@ PROGRAM NeutrinoOpacities
   Timer_ComputeKrnl_ES = 0.0d0
   CALL TimersStart( Timer_ComputeKrnl_ES )
   CALL ComputeNeutrinoOpacities_ES &
-         ( 1, nPointsE, 1, nPointsX, E, D, T, Y, 1, Phi_0_Iso )
+         ( 1, nPointsE, 1, nPointsX, E, D, T, Y, Ym, 1, Phi_0_Iso )
   CALL TimersStop( Timer_ComputeKrnl_ES )
 
   Timer_ComputeCorr_ES = 0.0d0
   CALL TimersStart( Timer_ComputeCorr_ES )
   CALL ComputeNeutrinoOpacities_ES &
-         ( 1, nPointsE, 1, nPointsX, E, D, T, Y, 2, Phi_1_Iso )
+         ( 1, nPointsE, 1, nPointsX, E, D, T, Y, Ym, 2, Phi_1_Iso )
   CALL TimersStop( Timer_ComputeCorr_ES )
 
   Timer_ComputeRate_ES = 0.0d0
@@ -491,7 +492,7 @@ PROGRAM NeutrinoOpacities
   Timer_ComputeKrnl_NES = 0.0d0
   CALL TimersStart( Timer_ComputeKrnl_NES )
   CALL ComputeNeutrinoOpacities_NES &
-         ( 1, nPointsE, 1, nPointsX, D, T, Y, 1, H_I_0, H_II_0 )
+         ( 1, nPointsE, 1, nPointsX, D, T, Y, Ym, 1, H_I_0, H_II_0 )
   CALL TimersStop( Timer_ComputeKrnl_NES )
 
   Timer_ComputeRate_NES = 0.0d0
@@ -506,7 +507,7 @@ PROGRAM NeutrinoOpacities
   Timer_ComputeCorr_NES = 0.0d0
   CALL TimersStart( Timer_ComputeCorr_NES )
   CALL ComputeNeutrinoOpacities_NES &
-         ( 1, nPointsE, 1, nPointsX, D, T, Y, 2, H_I_1, H_II_1 )
+         ( 1, nPointsE, 1, nPointsX, D, T, Y, Ym, 2, H_I_1, H_II_1 )
   CALL TimersStop( Timer_ComputeCorr_NES )
 
   CALL TimersStart( Timer_ComputeCorr_NES )
@@ -525,7 +526,7 @@ PROGRAM NeutrinoOpacities
   Timer_ComputeKrnl_Pair = 0.0d0
   CALL TimersStart( Timer_ComputeKrnl_Pair )
   CALL ComputeNeutrinoOpacities_Pair &
-         ( 1, nPointsE, 1, nPointsX, D, T, Y, 1, J_I_0, J_II_0 )
+         ( 1, nPointsE, 1, nPointsX, D, T, Y, Ym, 1, J_I_0, J_II_0 )
   CALL TimersStop( Timer_ComputeKrnl_Pair )
 
   Timer_ComputeRate_Pair = 0.0d0
@@ -540,7 +541,7 @@ PROGRAM NeutrinoOpacities
   Timer_ComputeCorr_Pair = 0.0d0
   CALL TimersStart( Timer_ComputeCorr_Pair )
   CALL ComputeNeutrinoOpacities_Pair &
-         ( 1, nPointsE, 1, nPointsX, D, T, Y, 2, J_I_1, J_II_1 )
+         ( 1, nPointsE, 1, nPointsX, D, T, Y, Ym, 2, J_I_1, J_II_1 )
   CALL TimersStop( Timer_ComputeCorr_Pair )
 
   CALL TimersStart( Timer_ComputeCorr_Pair )
@@ -559,7 +560,7 @@ PROGRAM NeutrinoOpacities
   Timer_ComputeKrnl_NuPair = 0.0d0
   CALL TimersStart( Timer_ComputeKrnl_NuPair )
   CALL ComputeNeutrinoOpacities_NuPair &
-         ( 1, nPointsE, 1, nPointsX, D, T, Y, 1, Nu_J_I_0, Nu_J_II_0 )
+         ( 1, nPointsE, 1, nPointsX, D, T, Y, Ym, 1, Nu_J_I_0, Nu_J_II_0 )
   CALL TimersStop( Timer_ComputeKrnl_NuPair )
 
   Timer_ComputeRate_NuPair = 0.0d0
@@ -579,7 +580,7 @@ PROGRAM NeutrinoOpacities
   Timer_ComputeKrnl_Brem = 0.0d0
   CALL TimersStart( Timer_ComputeKrnl_Brem )
   CALL ComputeNeutrinoOpacities_Brem &
-         ( 1, nPointsE, 1, nPointsX, D, T, Y, S_sigma )
+         ( 1, nPointsE, 1, nPointsX, D, T, Y, Ym, S_sigma )
   CALL TimersStop( Timer_ComputeKrnl_Brem )
 
   Timer_ComputeRate_Brem = 0.0d0
@@ -600,7 +601,7 @@ PROGRAM NeutrinoOpacities
   !$OMP            H_I_0, H_II_0, H_I_1, H_II_1, J_I_0, J_II_0, J_I_1, J_II_1, &
   !$OMP            A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3, &
   !$OMP            A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 ) &
-  !$OMP MAP( release: E, D, T, Y, W2 )
+  !$OMP MAP( release: E, D, T, Y, Ym, W2 )
 #elif defined(THORNADO_OACC)
   !$ACC EXIT DATA &
   !$ACC COPYOUT( f0, f0_DG, J, H_1, H_2, H_3, S_sigma, &
@@ -610,7 +611,7 @@ PROGRAM NeutrinoOpacities
   !$ACC          H_I_0, H_II_0, H_I_1, H_II_1, J_I_0, J_II_0, J_I_1, J_II_1, &
   !$ACC          A_In_1, A_In_2, A_In_3, A_Out_1, A_Out_2, A_Out_3, &
   !$ACC          A_Pro_1, A_Pro_2, A_Pro_3, A_Ann_1, A_Ann_2, A_Ann_3 ) &
-  !$ACC DELETE( E, D, T, Y, W2 )
+  !$ACC DELETE( E, D, T, Y, Ym, W2 )
 #endif
 
   DO iX = 1, nPointsX
