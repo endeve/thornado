@@ -61,8 +61,8 @@ void amrex2thornado_Z
     const Dim3 lo = lbound(bx);
     const Dim3 hi = ubound(bx);
 
-    // Size of Data_amrex:    (                 nZ2, nZ3, nZ4, nComp            )
-    // Size of Data_thornado: (nDOFE, nE+sWE*2, nZ2, nZ3, nZ4, nFields, nSpecies)
+    // Size of Data_amrex:    (                       nZ2, nZ3, nZ4, nComp            )
+    // Size of Data_thornado: (nDOFE*nDOFE, nE+swE*2, nZ2, nZ3, nZ4, nFields, nSpecies)
     // Note: Data_thornado includes ghosts in the energy dimension, unlike Data_amrex
 
     AMREX_ASSERT(Data_amrex.nComp() == nDOFX * nDOFE * nE * nFields * nSpecies);
@@ -117,14 +117,13 @@ void amrex2thornado_Z
             const int iD = iD_siFd + iC;
 
             const int offset_t = iNodeZ
-                               + (iZ1 -    0) * strideZ1
+                               + (iZ1 + swE ) * strideZ1
                                + (iZ2 - lo.x) * strideZ2
                                + (iZ3 - lo.y) * strideZ3
                                + (iZ4 - lo.z) * strideZ4;
 
-            // Data_amrex(iX,iY,iZ,iD); component relative to iLo_MF[3].
             Data_thornado[base_siFd + offset_t] = Data_amrex(iZ2, iZ3, iZ4, iD);
-            // FIXME: Skip over ghosts in the iZ1 bin
+            AMREX_ASSERT(base_siFd + offset_t < nDOFX*nDOFE * (nE+swE*2) * nZ2 * nZ3 * nZ4 * nFields * nSpecies );
         });
 
 //      DO iZ1    = iE_B0, iE_E0 ! always want iZ1 to not include ghost cells
@@ -207,6 +206,9 @@ extern "C" {
           auto& F = u_data[1];
           auto& R = u_data[2];
           auto& dR = u_rhs[2];
+          u_rhs[0].setVal(0);
+          u_rhs[1].setVal(0);
+          u_rhs[2].setVal(0);
 
           amrex::Print() << "Iterating over multifabs\n";
           for ( MFIter mfi(R); mfi.isValid(); ++mfi )
@@ -242,10 +244,10 @@ extern "C" {
             // multi-dimensional arrays of Reals
             // We allocate the arrays (GX, U_F, U_R, dU_R) for this purpose
             // They should be indexed as the Fortran kernels expect
-            Real * GX   = new Real[nDOFX * nX * nGF                        ];
-            Real * U_F  = new Real[nDOFX * nX * nCF                        ];
-            Real * U_R  = new Real[nDOFX * nX * nCR * nSpecies * nDOFE * nE];
-            Real * dU_R = new Real[nDOFX * nX * nCR * nSpecies * nDOFE * nE];
+            Real GX  [nDOFX * nX * nGF                        ];
+            Real U_F [nDOFX * nX * nCF                        ];
+            Real U_R [nDOFX * nX * nCR * nSpecies * nDOFE * nE];
+            Real dU_R[nDOFX * nX * nCR * nSpecies * nDOFE * nE];
             amrex::Print() << "Allocated Real arrays in RHS\n";
 
 #if 0
@@ -273,8 +275,6 @@ extern "C" {
             int iZ_E1[4] = {iE_E1, iX_E1[0], iX_E1[1], iX_E1[2]};
 
 
-            // FIXME
-#if 1
             amrex::Print() << "Converting MultiFab data to Fortran array\n";
             amrex::Print() << "G[mfi] begins " << G[mfi].array().begin << "\n";
             amrex::Print() << "G[mfi] ends " << G[mfi].array().end<< "\n";
@@ -293,7 +293,6 @@ extern "C" {
             amrex::Print() << "R[mfi] has " << R[mfi].nComp() << " components \n";
             amrex2thornado_Z(nDOFX, nDOFE, nE, nCR, nSpecies, swE, bx, R[mfi].array(), U_R);
             amrex::Print() << "Converted R[mfi] to Fortran array\n";
-#endif
 
             /* TODO Apply boundary conditions
             CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
@@ -349,11 +348,6 @@ extern "C" {
 
             // TODO: Add SurfaceFlux corrections
             // Check with Nil
-
-            delete [] GX;
-            delete [] U_F;
-            delete [] U_R;
-            delete [] dU_R;
         } // End for MFIter mfi(R)
       };
       /* === End RHS function ======================================================= */
