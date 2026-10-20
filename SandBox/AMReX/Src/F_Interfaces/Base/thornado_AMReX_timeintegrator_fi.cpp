@@ -6,8 +6,11 @@ using namespace amrex;
 using Thornado_MultiFabs_t = Vector<MultiFab>;
 
 using Thornado_rhs_funptr_t = void(*)(
-    int*, int*, int*, int*,
-    Real*, Real*, Real*, Real*, Real*);
+    int*, int*, int*, int*,             // iZ_B0, iZ_E0, iZ_B1, iZ_E1
+    Real*, Real*, Real*, Real*, Real*,  // GE, GX, U_F, U_R, dU_R
+    bool*,                              // SuppressBC_Option  (match C_BOOL type!)
+    Real*, Real*, Real*,                // SurfaceFlux_X1/X2/X3_Option
+    int*);                              // FineMask_Option
 
 void amrex2thornado_X
        ( int nFields,
@@ -305,14 +308,13 @@ extern "C" {
             amrex::Print() << "Computing increment\n";
             compute_rhs_streaming(
                 iZ_B0, iZ_E0, iZ_B1, iZ_E1,
-                GE, GX, U_F, U_R, dU_R);
-            //     GE, GX, U_F, U_R, dU_R,
-            //     SuppressBC,
-            //     SurfaceFlux_X1,
-            //     SurfaceFlux_X2,
-            //     SurfaceFlux_X3,
-            //     FineMask()
-            //     );
+                GE, GX, U_F, U_R, dU_R,
+                nullptr, nullptr, nullptr, nullptr, nullptr
+                );
+            // Pass nullptr to optional arguments:
+            // SuppressBC_Option,
+            // SurfaceFlux_X1/X2/X3_Option,
+            // FineMask_Option
             amrex::Print() << "Done computing increment\n";
 
             /* TODO: Work out remaining procedures in ComputeIncrement_MF
@@ -399,6 +401,6 @@ extern "C" {
       ParallelDescriptor::ReduceRealMax(evolution_stop_time);
       amrex::Print() << "Total evolution time = " << evolution_stop_time << " seconds\n";
 
-  } // void amrex_fi_integrate
+  }; // void amrex_fi_integrate
 
 }
