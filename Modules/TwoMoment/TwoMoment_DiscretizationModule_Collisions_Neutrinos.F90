@@ -42,7 +42,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   USE MeshModule, ONLY: &
     MeshE
   USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
-    SolveNeutrinoMatterCoupling_FP_Nested_AA, &
+    SolveNeutrinoMatterCoupling, &
     InitializeNeutrinoMatterSolver, &
     FinalizeNeutrinoMatterSolver, &
     InitializeNeutrinoMatterSolverParameters
@@ -54,6 +54,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     AssembleTransportOpacity, &
     ComputeOpacities_Packed, &
     ComputeRates_Packed, &
+    UseNewtonSolve, NewtonRadiationIncrement, NewtonFluidIncrement, &
     nQ, nC, &
     nLeptonFamilies, nLeptonFlavorCheck, &
     iLFC_InputConversion, iLFC_EntryProjection, &
@@ -181,9 +182,9 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   REAL(DP), ALLOCATABLE :: InitialRadiationLimiter_Rate_Final(:,:)
   REAL(DP), ALLOCATABLE :: RadiationResidual_Relative_Final(:)
   REAL(DP), ALLOCATABLE :: &
-    ConservativeProjectionRadiationResidual_Relative_Final(:)
-  REAL(DP), ALLOCATABLE :: ConservativeProjectionMatterHeating_Rate_Final(:)
-  INTEGER,  ALLOCATABLE :: ConservativeProjectionStatus_Final(:)
+    CollisionRecoveryRadiationResidual_Relative_Final(:)
+  REAL(DP), ALLOCATABLE :: CollisionRecoveryMatterHeating_Rate_Final(:)
+  INTEGER,  ALLOCATABLE :: CollisionRecoveryStatus_Final(:)
   REAL(DP), ALLOCATABLE :: ConservationHandoffCheck_Rate_Final(:,:)
   REAL(DP), ALLOCATABLE :: LeptonFlavorCheck_Rate_Final(:,:,:)
 #endif
@@ -197,10 +198,10 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   REAL(DP), ALLOCATABLE :: InitialRadiationLimiter_Rate_Final_Last(:,:)
   REAL(DP), ALLOCATABLE :: RadiationResidual_Relative_Final_Last(:)
   REAL(DP), ALLOCATABLE :: &
-    ConservativeProjectionRadiationResidual_Relative_Final_Last(:)
+    CollisionRecoveryRadiationResidual_Relative_Final_Last(:)
   REAL(DP), ALLOCATABLE :: &
-    ConservativeProjectionMatterHeating_Rate_Final_Last(:)
-  INTEGER,  ALLOCATABLE :: ConservativeProjectionStatus_Final_Last(:)
+    CollisionRecoveryMatterHeating_Rate_Final_Last(:)
+  INTEGER,  ALLOCATABLE :: CollisionRecoveryStatus_Final_Last(:)
   REAL(DP), ALLOCATABLE :: ConservationHandoffCheck_Rate_Final_Last(:,:)
   REAL(DP), ALLOCATABLE :: LeptonFlavorCheck_Rate_Final_Last(:,:,:)
 #endif
@@ -225,9 +226,9 @@ CONTAINS
       DEALLOCATE( MatterEquationResidual_Rate_Final_Last )
       DEALLOCATE( InitialRadiationLimiter_Rate_Final_Last )
       DEALLOCATE( RadiationResidual_Relative_Final_Last )
-      DEALLOCATE( ConservativeProjectionRadiationResidual_Relative_Final_Last )
-      DEALLOCATE( ConservativeProjectionMatterHeating_Rate_Final_Last )
-      DEALLOCATE( ConservativeProjectionStatus_Final_Last )
+      DEALLOCATE( CollisionRecoveryRadiationResidual_Relative_Final_Last )
+      DEALLOCATE( CollisionRecoveryMatterHeating_Rate_Final_Last )
+      DEALLOCATE( CollisionRecoveryStatus_Final_Last )
       DEALLOCATE( ConservationHandoffCheck_Rate_Final_Last )
       DEALLOCATE( LeptonFlavorCheck_Rate_Final_Last )
 #endif
@@ -245,9 +246,9 @@ CONTAINS
       , MatterEquationResidualRateFinal, &
         InitialRadiationLimiterRateFinal, &
         RadiationResidualRelativeFinal, &
-        ConservativeProjectionRadiationResidualRelativeFinal, &
-        ConservativeProjectionMatterHeatingRateFinal, &
-        ConservativeProjectionStatusFinal, &
+        CollisionRecoveryRadiationResidualRelativeFinal, &
+        CollisionRecoveryMatterHeatingRateFinal, &
+        CollisionRecoveryStatusFinal, &
         ConservationHandoffCheckRateFinal, LeptonFlavorCheckRateFinal &
 #endif
       )
@@ -260,10 +261,10 @@ CONTAINS
     REAL(DP), ALLOCATABLE, INTENT(out) :: InitialRadiationLimiterRateFinal(:,:)
     REAL(DP), ALLOCATABLE, INTENT(out) :: RadiationResidualRelativeFinal(:)
     REAL(DP), ALLOCATABLE, INTENT(out) :: &
-      ConservativeProjectionRadiationResidualRelativeFinal(:)
+      CollisionRecoveryRadiationResidualRelativeFinal(:)
     REAL(DP), ALLOCATABLE, INTENT(out) :: &
-      ConservativeProjectionMatterHeatingRateFinal(:)
-    INTEGER,  ALLOCATABLE, INTENT(out) :: ConservativeProjectionStatusFinal(:)
+      CollisionRecoveryMatterHeatingRateFinal(:)
+    INTEGER,  ALLOCATABLE, INTENT(out) :: CollisionRecoveryStatusFinal(:)
     REAL(DP), ALLOCATABLE, INTENT(out) :: ConservationHandoffCheckRateFinal(:,:)
     REAL(DP), ALLOCATABLE, INTENT(out), OPTIONAL :: &
       LeptonFlavorCheckRateFinal(:,:,:)
@@ -286,12 +287,12 @@ CONTAINS
               MOLD = InitialRadiationLimiter_Rate_Final_Last )
     ALLOCATE( RadiationResidualRelativeFinal, &
               MOLD = RadiationResidual_Relative_Final_Last )
-    ALLOCATE( ConservativeProjectionRadiationResidualRelativeFinal, &
-              MOLD = ConservativeProjectionRadiationResidual_Relative_Final_Last )
-    ALLOCATE( ConservativeProjectionMatterHeatingRateFinal, &
-              MOLD = ConservativeProjectionMatterHeating_Rate_Final_Last )
-    ALLOCATE( ConservativeProjectionStatusFinal, &
-              MOLD = ConservativeProjectionStatus_Final_Last )
+    ALLOCATE( CollisionRecoveryRadiationResidualRelativeFinal, &
+              MOLD = CollisionRecoveryRadiationResidual_Relative_Final_Last )
+    ALLOCATE( CollisionRecoveryMatterHeatingRateFinal, &
+              MOLD = CollisionRecoveryMatterHeating_Rate_Final_Last )
+    ALLOCATE( CollisionRecoveryStatusFinal, &
+              MOLD = CollisionRecoveryStatus_Final_Last )
     ALLOCATE( ConservationHandoffCheckRateFinal, &
               MOLD = ConservationHandoffCheck_Rate_Final_Last )
     IF( PRESENT( LeptonFlavorCheckRateFinal ) ) &
@@ -306,11 +307,11 @@ CONTAINS
     MatterEquationResidualRateFinal = MatterEquationResidual_Rate_Final_Last
     InitialRadiationLimiterRateFinal = InitialRadiationLimiter_Rate_Final_Last
     RadiationResidualRelativeFinal = RadiationResidual_Relative_Final_Last
-    ConservativeProjectionRadiationResidualRelativeFinal &
-      = ConservativeProjectionRadiationResidual_Relative_Final_Last
-    ConservativeProjectionMatterHeatingRateFinal &
-      = ConservativeProjectionMatterHeating_Rate_Final_Last
-    ConservativeProjectionStatusFinal = ConservativeProjectionStatus_Final_Last
+    CollisionRecoveryRadiationResidualRelativeFinal &
+      = CollisionRecoveryRadiationResidual_Relative_Final_Last
+    CollisionRecoveryMatterHeatingRateFinal &
+      = CollisionRecoveryMatterHeating_Rate_Final_Last
+    CollisionRecoveryStatusFinal = CollisionRecoveryStatus_Final_Last
     ConservationHandoffCheckRateFinal = ConservationHandoffCheck_Rate_Final_Last
     IF( PRESENT( LeptonFlavorCheckRateFinal ) ) &
       LeptonFlavorCheckRateFinal = LeptonFlavorCheck_Rate_Final_Last
@@ -1046,7 +1047,7 @@ CONTAINS
 
     CALL TimersStart( Timer_Collisions_Solve )
 
-    CALL SolveNeutrinoMatterCoupling_FP_Nested_AA &
+    CALL SolveNeutrinoMatterCoupling &
            ( dt, &
              PR_N(:,:,:,iCR_N ), &
              PR_N(:,:,:,iCR_G1), &
@@ -1082,9 +1083,9 @@ CONTAINS
                MatterEquationResidual_Rate_Final, &
                InitialRadiationLimiter_Rate_Final, &
                RadiationResidual_Relative_Final, &
-               ConservativeProjectionRadiationResidual_Relative_Final, &
-               ConservativeProjectionMatterHeating_Rate_Final, &
-               ConservativeProjectionStatus_Final, &
+               CollisionRecoveryRadiationResidual_Relative_Final, &
+               CollisionRecoveryMatterHeating_Rate_Final, &
+               CollisionRecoveryStatus_Final, &
                LeptonFlavorCheck_Rate_Final &
 #endif
              )
@@ -1147,7 +1148,8 @@ CONTAINS
                PF_N(:,iPF_V1), PF_N(:,iPF_V2), PF_N(:,iPF_V3), &
                GX_N(:,iGF_Gm_dd_11), GX_N(:,iGF_Gm_dd_22), &
                GX_N(:,iGF_Gm_dd_33), MatterCoupling_Mask_N, &
-               MatterCollisionRHS_N )
+               MatterCollisionRHS_N, &
+               UseAcceptedEmAbRate_Option = UseNewtonSolve )
 
     END IF
 #endif
@@ -1756,9 +1758,9 @@ CONTAINS
     ALLOCATE( MatterEquationResidual_Rate_Final(nQ,nX_G) )
     ALLOCATE( InitialRadiationLimiter_Rate_Final(nQ,nX_G) )
     ALLOCATE( RadiationResidual_Relative_Final(nX_G) )
-    ALLOCATE( ConservativeProjectionRadiationResidual_Relative_Final(nX_G) )
-    ALLOCATE( ConservativeProjectionMatterHeating_Rate_Final(nX_G) )
-    ALLOCATE( ConservativeProjectionStatus_Final(nX_G) )
+    ALLOCATE( CollisionRecoveryRadiationResidual_Relative_Final(nX_G) )
+    ALLOCATE( CollisionRecoveryMatterHeating_Rate_Final(nX_G) )
+    ALLOCATE( CollisionRecoveryStatus_Final(nX_G) )
     ALLOCATE( LeptonFlavorCheck_Rate_Final &
                 (nLeptonFamilies,nLeptonFlavorCheck,nX_G) )
     IF( RetainSolverConvergenceDiagnostics ) &
@@ -1777,9 +1779,9 @@ CONTAINS
     MatterEquationResidual_Rate_Final(:,:) = Zero
     InitialRadiationLimiter_Rate_Final(:,:) = Zero
     RadiationResidual_Relative_Final(:) = Zero
-    ConservativeProjectionRadiationResidual_Relative_Final(:) = Zero
-    ConservativeProjectionMatterHeating_Rate_Final(:) = Zero
-    ConservativeProjectionStatus_Final(:) = -2
+    CollisionRecoveryRadiationResidual_Relative_Final(:) = Zero
+    CollisionRecoveryMatterHeating_Rate_Final(:) = Zero
+    CollisionRecoveryStatus_Final(:) = -2
     LeptonFlavorCheck_Rate_Final(:,:,:) = Zero
     IF( RetainSolverConvergenceDiagnostics ) &
       ConservationHandoffCheck_Rate_Final(:,:) = Zero
@@ -1828,18 +1830,18 @@ CONTAINS
     !$OMP MAP( alloc: MatterEquationResidual_Rate_Final, &
     !$OMP             InitialRadiationLimiter_Rate_Final, &
     !$OMP             RadiationResidual_Relative_Final, &
-    !$OMP             ConservativeProjectionRadiationResidual_Relative_Final, &
-    !$OMP             ConservativeProjectionMatterHeating_Rate_Final, &
-    !$OMP             ConservativeProjectionStatus_Final, &
+    !$OMP             CollisionRecoveryRadiationResidual_Relative_Final, &
+    !$OMP             CollisionRecoveryMatterHeating_Rate_Final, &
+    !$OMP             CollisionRecoveryStatus_Final, &
     !$OMP             LeptonFlavorCheck_Rate_Final )
 #elif defined(THORNADO_OACC  )
     !$ACC ENTER DATA &
     !$ACC CREATE( MatterEquationResidual_Rate_Final, &
     !$ACC         InitialRadiationLimiter_Rate_Final, &
     !$ACC         RadiationResidual_Relative_Final, &
-    !$ACC         ConservativeProjectionRadiationResidual_Relative_Final, &
-    !$ACC         ConservativeProjectionMatterHeating_Rate_Final, &
-    !$ACC         ConservativeProjectionStatus_Final, &
+    !$ACC         CollisionRecoveryRadiationResidual_Relative_Final, &
+    !$ACC         CollisionRecoveryMatterHeating_Rate_Final, &
+    !$ACC         CollisionRecoveryStatus_Final, &
     !$ACC         LeptonFlavorCheck_Rate_Final )
 #endif
 
@@ -1864,18 +1866,18 @@ CONTAINS
     !$OMP TARGET UPDATE FROM( MatterEquationResidual_Rate_Final, &
     !$OMP                     InitialRadiationLimiter_Rate_Final, &
     !$OMP                     RadiationResidual_Relative_Final, &
-    !$OMP                     ConservativeProjectionRadiationResidual_Relative_Final, &
-    !$OMP                     ConservativeProjectionMatterHeating_Rate_Final, &
-    !$OMP                     ConservativeProjectionStatus_Final, &
+    !$OMP                     CollisionRecoveryRadiationResidual_Relative_Final, &
+    !$OMP                     CollisionRecoveryMatterHeating_Rate_Final, &
+    !$OMP                     CollisionRecoveryStatus_Final, &
     !$OMP                     ConservationHandoffCheck_Rate_Final, &
     !$OMP                     LeptonFlavorCheck_Rate_Final )
 #elif defined(THORNADO_OACC  )
     !$ACC UPDATE HOST( MatterEquationResidual_Rate_Final, &
     !$ACC              InitialRadiationLimiter_Rate_Final, &
     !$ACC              RadiationResidual_Relative_Final, &
-    !$ACC              ConservativeProjectionRadiationResidual_Relative_Final, &
-    !$ACC              ConservativeProjectionMatterHeating_Rate_Final, &
-    !$ACC              ConservativeProjectionStatus_Final, &
+    !$ACC              CollisionRecoveryRadiationResidual_Relative_Final, &
+    !$ACC              CollisionRecoveryMatterHeating_Rate_Final, &
+    !$ACC              CollisionRecoveryStatus_Final, &
     !$ACC              ConservationHandoffCheck_Rate_Final, &
     !$ACC              LeptonFlavorCheck_Rate_Final )
 #endif
@@ -1906,18 +1908,18 @@ CONTAINS
     !$OMP MAP( release: MatterEquationResidual_Rate_Final, &
     !$OMP               InitialRadiationLimiter_Rate_Final, &
     !$OMP               RadiationResidual_Relative_Final, &
-    !$OMP               ConservativeProjectionRadiationResidual_Relative_Final, &
-    !$OMP               ConservativeProjectionMatterHeating_Rate_Final, &
-    !$OMP               ConservativeProjectionStatus_Final, &
+    !$OMP               CollisionRecoveryRadiationResidual_Relative_Final, &
+    !$OMP               CollisionRecoveryMatterHeating_Rate_Final, &
+    !$OMP               CollisionRecoveryStatus_Final, &
     !$OMP               LeptonFlavorCheck_Rate_Final )
 #elif defined(THORNADO_OACC  )
     !$ACC EXIT DATA &
     !$ACC DELETE( MatterEquationResidual_Rate_Final, &
     !$ACC         InitialRadiationLimiter_Rate_Final, &
     !$ACC         RadiationResidual_Relative_Final, &
-    !$ACC         ConservativeProjectionRadiationResidual_Relative_Final, &
-    !$ACC         ConservativeProjectionMatterHeating_Rate_Final, &
-    !$ACC         ConservativeProjectionStatus_Final, &
+    !$ACC         CollisionRecoveryRadiationResidual_Relative_Final, &
+    !$ACC         CollisionRecoveryMatterHeating_Rate_Final, &
+    !$ACC         CollisionRecoveryStatus_Final, &
     !$ACC         LeptonFlavorCheck_Rate_Final )
 #endif
 
@@ -1942,9 +1944,9 @@ CONTAINS
           DEALLOCATE( MatterEquationResidual_Rate_Final_Last )
           DEALLOCATE( InitialRadiationLimiter_Rate_Final_Last )
           DEALLOCATE( RadiationResidual_Relative_Final_Last )
-          DEALLOCATE( ConservativeProjectionRadiationResidual_Relative_Final_Last )
-          DEALLOCATE( ConservativeProjectionMatterHeating_Rate_Final_Last )
-          DEALLOCATE( ConservativeProjectionStatus_Final_Last )
+          DEALLOCATE( CollisionRecoveryRadiationResidual_Relative_Final_Last )
+          DEALLOCATE( CollisionRecoveryMatterHeating_Rate_Final_Last )
+          DEALLOCATE( CollisionRecoveryStatus_Final_Last )
           DEALLOCATE( ConservationHandoffCheck_Rate_Final_Last )
           DEALLOCATE( LeptonFlavorCheck_Rate_Final_Last )
 #endif
@@ -1959,9 +1961,9 @@ CONTAINS
         ALLOCATE( MatterEquationResidual_Rate_Final_Last(nQ,nX_G) )
         ALLOCATE( InitialRadiationLimiter_Rate_Final_Last(nQ,nX_G) )
         ALLOCATE( RadiationResidual_Relative_Final_Last(nX_G) )
-        ALLOCATE( ConservativeProjectionRadiationResidual_Relative_Final_Last(nX_G) )
-        ALLOCATE( ConservativeProjectionMatterHeating_Rate_Final_Last(nX_G) )
-        ALLOCATE( ConservativeProjectionStatus_Final_Last(nX_G) )
+        ALLOCATE( CollisionRecoveryRadiationResidual_Relative_Final_Last(nX_G) )
+        ALLOCATE( CollisionRecoveryMatterHeating_Rate_Final_Last(nX_G) )
+        ALLOCATE( CollisionRecoveryStatus_Final_Last(nX_G) )
         ALLOCATE( ConservationHandoffCheck_Rate_Final_Last &
                     (nConservationHandoffCheck,nX_G) )
         ALLOCATE( LeptonFlavorCheck_Rate_Final_Last &
@@ -1979,12 +1981,12 @@ CONTAINS
         = InitialRadiationLimiter_Rate_Final
       RadiationResidual_Relative_Final_Last &
         = RadiationResidual_Relative_Final
-      ConservativeProjectionRadiationResidual_Relative_Final_Last &
-        = ConservativeProjectionRadiationResidual_Relative_Final
-      ConservativeProjectionMatterHeating_Rate_Final_Last &
-        = ConservativeProjectionMatterHeating_Rate_Final
-      ConservativeProjectionStatus_Final_Last &
-        = ConservativeProjectionStatus_Final
+      CollisionRecoveryRadiationResidual_Relative_Final_Last &
+        = CollisionRecoveryRadiationResidual_Relative_Final
+      CollisionRecoveryMatterHeating_Rate_Final_Last &
+        = CollisionRecoveryMatterHeating_Rate_Final
+      CollisionRecoveryStatus_Final_Last &
+        = CollisionRecoveryStatus_Final
       ConservationHandoffCheck_Rate_Final_Last = ConservationHandoffCheck_Rate_Final
       LeptonFlavorCheck_Rate_Final_Last = LeptonFlavorCheck_Rate_Final
 #endif
@@ -2020,9 +2022,9 @@ CONTAINS
     DEALLOCATE( MatterEquationResidual_Rate_Final )
     DEALLOCATE( InitialRadiationLimiter_Rate_Final )
     DEALLOCATE( RadiationResidual_Relative_Final )
-    DEALLOCATE( ConservativeProjectionRadiationResidual_Relative_Final )
-    DEALLOCATE( ConservativeProjectionMatterHeating_Rate_Final )
-    DEALLOCATE( ConservativeProjectionStatus_Final )
+    DEALLOCATE( CollisionRecoveryRadiationResidual_Relative_Final )
+    DEALLOCATE( CollisionRecoveryMatterHeating_Rate_Final )
+    DEALLOCATE( CollisionRecoveryStatus_Final )
     IF( ALLOCATED( ConservationHandoffCheck_Rate_Final ) ) &
       DEALLOCATE( ConservationHandoffCheck_Rate_Final )
     DEALLOCATE( LeptonFlavorCheck_Rate_Final )
@@ -2419,8 +2421,16 @@ CONTAINS
              + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
 
       IF ( MatterCoupling_Mask_N(iN_X) ) THEN
-        dU_F(iNodeX,iX1,iX2,iX3,iCF) &
-          = ( CF_N(iN_X,iCF) - U_F(iNodeX,iX1,iX2,iX3,iCF) ) / dt
+#if defined(TWOMOMENT_ORDER_V)
+        IF( UseNewtonSolve )THEN
+          dU_F(iNodeX,iX1,iX2,iX3,iCF) = NewtonFluidIncrement(iN_X,iCF)/dt
+        ELSE
+#endif
+          dU_F(iNodeX,iX1,iX2,iX3,iCF) &
+            = ( CF_N(iN_X,iCF) - U_F(iNodeX,iX1,iX2,iX3,iCF) ) / dt
+#if defined(TWOMOMENT_ORDER_V)
+        END IF
+#endif
       ELSE
         dU_F(iNodeX,iX1,iX2,iX3,iCF) = Zero
       END IF
@@ -2464,8 +2474,16 @@ CONTAINS
              + ( iE  - iE_B0    ) * nDOFE
 
       IF ( MatterCoupling_Mask_N(iN_X) ) THEN
-        dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) &
-          = ( CR_N(iN_E,iS,iN_X,iCR) - U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) ) / dt
+#if defined(TWOMOMENT_ORDER_V)
+        IF( UseNewtonSolve )THEN
+          dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) = NewtonRadiationIncrement(iN_E,iS,iN_X,iCR)/dt
+        ELSE
+#endif
+          dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) &
+            = ( CR_N(iN_E,iS,iN_X,iCR) - U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) ) / dt
+#if defined(TWOMOMENT_ORDER_V)
+        END IF
+#endif
       ELSE
         dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) = Zero
       END IF

@@ -1,7 +1,7 @@
 MODULE NeutrinoLeptonInteractionsModule
 
   USE KindModule, ONLY: DP, Zero, One, FourPi
-  USE UnitsModule, ONLY: BoltzmannConstant, Centimeter, MeV
+  USE UnitsModule, ONLY: BoltzmannConstant, Centimeter, MeV, PlanckConstant, SpeedOfLight
   USE EquationOfStateModule_TABLE, ONLY: &
     ComputeElectronChemicalPotential_TABLE, &
     ComputeMuonChemicalPotential_TABLE
@@ -30,6 +30,7 @@ MODULE NeutrinoLeptonInteractionsModule
 
   REAL(DP), PARAMETER :: UnitKernel = One / ( Centimeter * MeV**3 )
   REAL(DP), PARAMETER :: MaxExponent = LOG( HUGE( One ) ) - One
+  REAL(DP), PARAMETER :: PhaseNormalization = One/(PlanckConstant*SpeedOfLight)**3
 
   LOGICAL :: Initialized = .FALSE.
   LOGICAL :: GeneralKernelWorkspaceInitialized = .FALSE.
@@ -53,19 +54,22 @@ MODULE NeutrinoLeptonInteractionsModule
 
   REAL(DP), ALLOCATABLE, PUBLIC :: Chi_GL(:,:,:,:)
   REAL(DP), ALLOCATABLE, PUBLIC :: R_GL(:,:,:,:)
+  ! Fluid-gain electron/muon number and comoving energy in code units.
+  ! Accumulated from shared events, not from separately reduced species.
+  REAL(DP), ALLOCATABLE, PUBLIC :: Source_GL(:,:,:)
 
 #if defined(THORNADO_OMP_OL)
   !$OMP DECLARE TARGET( nE_Global, nX_Global, nSpecies_Global, &
   !$OMP   IdentityIndex, EnergyGrid, KernelTemperature, &
   !$OMP   KernelMuElectron, KernelMuMuon, &
   !$OMP   Phi_NMS, Phi_LFE_F, Phi_LFE_R, Phi_LFC_F, Phi_LFC_R, &
-  !$OMP   Phi_IMD_F, Phi_IMD_R, Chi_GL, R_GL )
+  !$OMP   Phi_IMD_F, Phi_IMD_R, Chi_GL, R_GL, Source_GL )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE( nE_Global, nX_Global, nSpecies_Global, &
   !$ACC   IdentityIndex, EnergyGrid, KernelTemperature, &
   !$ACC   KernelMuElectron, KernelMuMuon, &
   !$ACC   Phi_NMS, Phi_LFE_F, Phi_LFE_R, Phi_LFC_F, Phi_LFC_R, &
-  !$ACC   Phi_IMD_F, Phi_IMD_R, Chi_GL, R_GL )
+  !$ACC   Phi_IMD_F, Phi_IMD_R, Chi_GL, R_GL, Source_GL )
 #endif
 
   PUBLIC :: InitializeNeutrinoLeptonInteractions
@@ -74,8 +78,35 @@ MODULE NeutrinoLeptonInteractionsModule
   PUBLIC :: ComputeNeutrinoLeptonKernels
   PUBLIC :: ComputeNeutrinoLeptonRates
   PUBLIC :: ComputeNeutrinoLeptonPairingResiduals
+  PUBLIC :: GetGeneralLeptonCoefficient
 
 CONTAINS
+
+  PURE SUBROUTINE GetGeneralLeptonCoefficient( Process, Species, R, Q, X, Gain, Loss )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    INTEGER, INTENT(in) :: Process, Species, R, Q, X
+    REAL(DP), INTENT(out) :: Gain, Loss
+    Gain = Zero
+    Loss = Zero
+    SELECT CASE(Process)
+      CASE(iGL_NMS)
+        Loss = Phi_NMS(MIN(R,Q),MAX(R,Q),Species,X)
+        Gain = Loss
+      CASE(iGL_LFE)
+        Gain = Phi_LFE_F(Q,R,Species,X)
+        Loss = Phi_LFE_R(Q,R,Species,X)
+      CASE(iGL_LFC)
+        Gain = Phi_LFC_F(Q,R,Species,X)
+        Loss = Phi_LFC_R(Q,R,Species,X)
+      CASE(iGL_IMD)
+        Gain = Phi_IMD_R(R,Q,3-Species,X)
+        Loss = Phi_IMD_F(R,Q,3-Species,X)
+    END SELECT
+  END SUBROUTINE GetGeneralLeptonCoefficient
 
   SUBROUTINE InitializeNeutrinoLeptonInteractions &
     ( E, nX, nTheta_Option, EnableGeneralInteractions_Option )
@@ -106,8 +137,10 @@ CONTAINS
     END DO
     ALLOCATE( Chi_GL(nE_Global,nSpecies_Global,nX_Global,nGL) )
     ALLOCATE( R_GL  (nE_Global,nSpecies_Global,nX_Global,nGL) )
+    ALLOCATE( Source_GL(3,nGL,nX_Global) )
 
     Chi_GL    = Zero; R_GL      = Zero
+    Source_GL = Zero
 
     IF( EnableGeneralInteractions )THEN
       ALLOCATE( KernelTemperature(nX_Global) )
@@ -133,7 +166,7 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA MAP( to: IdentityIndex, EnergyGrid, &
-    !$OMP   nE_Global, nX_Global, nSpecies_Global, Chi_GL, R_GL )
+    !$OMP   nE_Global, nX_Global, nSpecies_Global, Chi_GL, R_GL, Source_GL )
     IF( EnableGeneralInteractions )THEN
       !$OMP TARGET ENTER DATA &
       !$OMP MAP( alloc: KernelTemperature, KernelMuElectron, KernelMuMuon ) &
@@ -142,7 +175,7 @@ CONTAINS
     END IF
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE( IdentityIndex, EnergyGrid, &
-    !$ACC   nE_Global, nX_Global, nSpecies_Global, Chi_GL, R_GL )
+    !$ACC   nE_Global, nX_Global, nSpecies_Global, Chi_GL, R_GL, Source_GL )
 #endif
 
     Initialized = .TRUE.
@@ -156,7 +189,7 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA MAP( delete: IdentityIndex, EnergyGrid, &
-    !$OMP   Chi_GL, R_GL )
+    !$OMP   Chi_GL, R_GL, Source_GL )
     IF( ALLOCATED(KernelTemperature) )THEN
       !$OMP TARGET EXIT DATA MAP( delete: KernelTemperature, &
       !$OMP   KernelMuElectron, KernelMuMuon, Phi_NMS, &
@@ -166,7 +199,7 @@ CONTAINS
 #elif defined(THORNADO_OACC)
 #endif
 
-    DEALLOCATE( IdentityIndex, EnergyGrid, Chi_GL, R_GL )
+    DEALLOCATE( IdentityIndex, EnergyGrid, Chi_GL, R_GL, Source_GL )
     IF( ALLOCATED(KernelTemperature) )THEN
       DEALLOCATE( KernelTemperature, KernelMuElectron, KernelMuMuon )
       DEALLOCATE( Phi_NMS, Phi_LFE_F, Phi_LFE_R )
@@ -482,7 +515,7 @@ CONTAINS
     !$ACC FIRSTPRIVATE( nActive, IncludeNMS, IncludeLFE, IncludeLFC, IncludeIMD ) &
     !$ACC PRESENT( T, W2, Dnu, ActiveNMS, ActiveLFE, ActiveLFC, ActiveIMD, &
     !$ACC          UnpackIndex, &
-    !$ACC          Chi_GL, R_GL, Phi_NMS, Phi_LFE_F, Phi_LFE_R, &
+    !$ACC          Chi_GL, R_GL, Source_GL, Phi_NMS, Phi_LFE_F, Phi_LFE_R, &
     !$ACC          Phi_LFC_F, Phi_LFC_R, Phi_IMD_F, Phi_IMD_R )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO PRIVATE( iX ) &
@@ -492,6 +525,7 @@ CONTAINS
       iX = UnpackIndex(iActive)
       Chi_GL(:,:,iX,:) = Zero
       R_GL  (:,:,iX,:) = Zero
+      Source_GL(:,:,iX) = Zero
 
       IF( IncludeNMS .AND. ActiveNMS(iX) ) &
         CALL ComputeNMSPoint( iX, T(iX), W2, Dnu )
@@ -518,8 +552,11 @@ CONTAINS
     INTEGER,  INTENT(in) :: iX
     REAL(DP), INTENT(in) :: T, W2(:), Dnu(:,:,:)
     INTEGER :: iE1, iE2, iS
-    REAL(DP) :: DetBal, PhiIn, PhiOut, SumChi, SumR
+    REAL(DP) :: DetBal, PhiIn, PhiOut, SumChi, SumR, Event
+    REAL(DP) :: EnergySource, EnergyCorrection
 
+    EnergySource = Zero
+    EnergyCorrection = Zero
     DO iS = 1, nSpecies_Global
     DO iE2 = 1, nE_Global
       SumChi = Zero; SumR = Zero
@@ -537,14 +574,19 @@ CONTAINS
         SumChi = SumChi + W2(iE1) &
           * ( PhiIn*Dnu(iE1,iS,iX) &
               + PhiOut*(One-Dnu(iE1,iS,iX)) )
-        SumR = SumR + W2(iE1) &
-          * ( PhiIn*Dnu(iE1,iS,iX)*(One-Dnu(iE2,iS,iX)) &
-              - PhiOut*(One-Dnu(iE1,iS,iX))*Dnu(iE2,iS,iX) )
+        Event = PhiIn*Dnu(iE1,iS,iX)*(One-Dnu(iE2,iS,iX)) &
+                  - PhiOut*(One-Dnu(iE1,iS,iX))*Dnu(iE2,iS,iX)
+        SumR = SumR + W2(iE1)*Event
+        CALL AddInteractionSource &
+               ( -0.5_DP*(EnergyGrid(iE2)-EnergyGrid(iE1)) &
+                   * ((W2(iE2)*PhaseNormalization)*W2(iE1))*Event, &
+                 EnergySource, EnergyCorrection )
       END DO
       Chi_GL(iE2,iS,iX,iGL_NMS) = SumChi
       R_GL  (iE2,iS,iX,iGL_NMS) = SumR
     END DO
     END DO
+    Source_GL(3,iGL_NMS,iX) = EnergySource + EnergyCorrection
 
   END SUBROUTINE ComputeNMSPoint
 
@@ -561,9 +603,13 @@ CONTAINS
     REAL(DP), INTENT(in) :: W2(:), Dnu(:,:,:)
     REAL(DP), INTENT(in) :: PhiF(:,:,:,:), PhiR(:,:,:,:)
     INTEGER :: iChannel, iEa, iEb, iSa, iSb
-    REAL(DP) :: Event, Kf, Kr, Fa, Fb
+    REAL(DP) :: Event, Kf, Kr, Fa, Fb, NumberEvent, Sign
+    REAL(DP) :: NumberSource, NumberCorrection, EnergySource, EnergyCorrection
 
+    NumberSource = Zero; NumberCorrection = Zero
+    EnergySource = Zero; EnergyCorrection = Zero
     DO iChannel = 1, 2
+      Sign = REAL(3-2*iChannel,DP)
       IF( iChannel == iChannelNu )THEN
         iSa = iNuM;     iSb = iNuE
       ELSE
@@ -578,6 +624,12 @@ CONTAINS
           Kf = PhiF(iEa,iEb,iChannel,iX)
           Kr = PhiR(iEa,iEb,iChannel,iX)
           Event = Kf*Fa*(One-Fb) - Kr*Fb*(One-Fa)
+          NumberEvent = ((W2(iEa)*PhaseNormalization)*W2(iEb))*Event
+          CALL AddInteractionSource &
+                 ( Sign*NumberEvent, NumberSource, NumberCorrection )
+          CALL AddInteractionSource &
+                 ( (EnergyGrid(iEa)-EnergyGrid(iEb))*NumberEvent, &
+                   EnergySource, EnergyCorrection )
           R_GL(iEa,iSa,iX,iProcess) = R_GL(iEa,iSa,iX,iProcess) &
             - W2(iEb)*Event
           R_GL(iEb,iSb,iX,iProcess) = R_GL(iEb,iSb,iX,iProcess) &
@@ -589,6 +641,9 @@ CONTAINS
         END DO
       END DO
     END DO
+    Source_GL(2,iProcess,iX) = NumberSource + NumberCorrection
+    Source_GL(1,iProcess,iX) = -Source_GL(2,iProcess,iX)
+    Source_GL(3,iProcess,iX) = EnergySource + EnergyCorrection
 
   END SUBROUTINE ComputeFlavorPoint
 
@@ -603,9 +658,13 @@ CONTAINS
     INTEGER,  INTENT(in) :: iX
     REAL(DP), INTENT(in) :: W2(:), Dnu(:,:,:)
     INTEGER :: iChannel, iE1, iE3, iS1, iS3
-    REAL(DP) :: Event, Kf, Kr, F1, F3
+    REAL(DP) :: Event, Kf, Kr, F1, F3, NumberEvent, Sign
+    REAL(DP) :: NumberSource, NumberCorrection, EnergySource, EnergyCorrection
 
+    NumberSource = Zero; NumberCorrection = Zero
+    EnergySource = Zero; EnergyCorrection = Zero
     DO iChannel = 1, 2
+      Sign = REAL(3-2*iChannel,DP)
       IF( iChannel == iChannelNu )THEN
         iS1 = iNuE_Bar; iS3 = iNuM
       ELSE
@@ -619,6 +678,12 @@ CONTAINS
           Kf = Phi_IMD_F(iE1,iE3,iChannel,iX)
           Kr = Phi_IMD_R(iE1,iE3,iChannel,iX)
           Event = Kf*F1*F3 - Kr*(One-F1)*(One-F3)
+          NumberEvent = ((W2(iE1)*PhaseNormalization)*W2(iE3))*Event
+          CALL AddInteractionSource &
+                 ( Sign*NumberEvent, NumberSource, NumberCorrection )
+          CALL AddInteractionSource &
+                 ( (EnergyGrid(iE1)+EnergyGrid(iE3))*NumberEvent, &
+                   EnergySource, EnergyCorrection )
           R_GL(iE1,iS1,iX,iGL_IMD) = R_GL(iE1,iS1,iX,iGL_IMD) &
             - W2(iE3)*Event
           R_GL(iE3,iS3,iX,iGL_IMD) = R_GL(iE3,iS3,iX,iGL_IMD) &
@@ -630,8 +695,33 @@ CONTAINS
         END DO
       END DO
     END DO
+    Source_GL(2,iGL_IMD,iX) = NumberSource + NumberCorrection
+    Source_GL(1,iGL_IMD,iX) = -Source_GL(2,iGL_IMD,iX)
+    Source_GL(3,iGL_IMD,iX) = EnergySource + EnergyCorrection
 
   END SUBROUTINE ComputeIMDPoint
+
+
+  PURE SUBROUTINE AddInteractionSource( Value, Total, Correction )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in)    :: Value
+    REAL(DP), INTENT(inout) :: Total, Correction
+    REAL(DP) :: Next
+
+    Next = Total + Value
+    IF( ABS(Total) >= ABS(Value) )THEN
+      Correction = Correction + ((Total-Next)+Value)
+    ELSE
+      Correction = Correction + ((Value-Next)+Total)
+    END IF
+    Total = Next
+
+  END SUBROUTINE AddInteractionSource
 
 
   SUBROUTINE ComputeNeutrinoLeptonPairingResiduals( W2, Residual, Scale )

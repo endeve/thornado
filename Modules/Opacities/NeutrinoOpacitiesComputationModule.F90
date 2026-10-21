@@ -13,6 +13,7 @@ MODULE NeutrinoOpacitiesComputationModule
   USE UnitsModule, ONLY: &
     BoltzmannConstant, &
     PlanckConstant, &
+    SpeedOfLight, &
     Centimeter, &
     Kilometer, &
     Gram, &
@@ -167,6 +168,7 @@ MODULE NeutrinoOpacitiesComputationModule
   PUBLIC :: SetOpacityMask
   PUBLIC :: SetChargedCurrentMasks
   PUBLIC :: ComputeDetailedBalanceFactors
+  PUBLIC :: GetCollisionKernelScale
 
   PUBLIC :: iM0, iM1
   PUBLIC :: nOp
@@ -259,6 +261,23 @@ MODULE NeutrinoOpacitiesComputationModule
   END INTERFACE
 
 CONTAINS
+
+
+  PURE FUNCTION GetCollisionKernelScale( Process ) RESULT(Scale)
+    INTEGER, INTENT(in) :: Process
+    REAL(DP) :: Scale
+    Scale = One
+    SELECT CASE(Process)
+      CASE(1)
+        Scale = UnitNNS
+      CASE(2)
+        Scale = UnitNES
+      CASE(3,4)
+        Scale = UnitPair
+      CASE(5)
+        Scale = 3.0_DP*Brem_const
+    END SELECT
+  END FUNCTION GetCollisionKernelScale
 
 
   SUBROUTINE ComputeDetailedBalanceFactors &
@@ -1193,7 +1212,7 @@ CONTAINS
 
   SUBROUTINE ComputeNeutrinoOpacities_EC &
     ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, f0, opEC, &
-      Opacity_Mask, T_old, Ye_old, Ym_old )
+      Opacity_Mask, T_old, Ye_old, Ym_old, MuonMethod_Option )
 
     ! --- Electron Capture Opacities (Multiple D,T,Y) ---
 
@@ -1211,6 +1230,7 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL, TARGET :: T_old (iX_B:iX_E)
     REAL(DP), INTENT(in), OPTIONAL, TARGET :: Ye_old(iX_B:iX_E)
     REAL(DP), INTENT(in), OPTIONAL, TARGET :: Ym_old(iX_B:iX_E)
+    INTEGER, INTENT(in), OPTIONAL :: MuonMethod_Option
 
     REAL(DP) :: LogE_P
     REAL(DP) :: LogD_P, LogT_P
@@ -1253,7 +1273,7 @@ CONTAINS
 
       CALL ComputeNeutrinoOpacities_EC_NuM_Nucleons &
              ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, &
-               E, D, T, Ye, Ym, Opacity_Mask, opEC )
+               E, D, T, Ye, Ym, Opacity_Mask, opEC, MuonMethod_Option )
 
     END IF
 
@@ -1692,7 +1712,7 @@ CONTAINS
 
   SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons &
     ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, &
-      Opacity_Mask, opEC )
+      Opacity_Mask, opEC, MuonMethod_Option )
 
     ! --- Full-kinematics muon charged-current opacities ---
 
@@ -1707,6 +1727,8 @@ CONTAINS
     LOGICAL,  INTENT(in)    :: Opacity_Mask(nOp,iX_B:iX_E)
     REAL(DP), INTENT(inout) :: opEC(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
 
+    INTEGER, INTENT(in), OPTIONAL :: MuonMethod_Option
+    INTEGER :: LocalMethod
     INTEGER  :: iE, iS, iX
 
     REAL(DP), ALLOCATABLE :: Mumu(:)
@@ -1801,7 +1823,9 @@ CONTAINS
       END IF
     END DO
 
-    SELECT CASE( EmAb_Muon_Method )
+    LocalMethod = EmAb_Muon_Method
+    IF( PRESENT(MuonMethod_Option) ) LocalMethod = MuonMethod_Option
+    SELECT CASE( LocalMethod )
     CASE( 1 )
       CALL ComputeNeutrinoOpacities_EC_NuM_Nucleons_Elastic &
              ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, &
@@ -2731,7 +2755,7 @@ CONTAINS
   SUBROUTINE ComputeNeutrinoOpacityRates_NNS &
     ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, T, E, W2, &
       J, Phi_NNS_0, Phi_NbNS_0, Eta, Chi, R, &
-      Opacity_Mask, DetailedBalanceScattering_Option )
+      Opacity_Mask, DetailedBalanceScattering_Option, EnergyTransfer_Option )
 
     ! --- Neutrino-Nucleon Scattering Rates (Multiple J) ---
 
@@ -2753,25 +2777,30 @@ CONTAINS
       DetailedBalanceScattering_Option &
         (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
+    ! Fully weighted fluid-energy source for this spectral row. Half of
+    ! each ordered event is counted; sum rows/species for the total.
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      EnergyTransfer_Option(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+
     REAL(DP) :: DetBal, Phi_Out, Phi_In
-    REAL(DP) :: SUM1, SUM2, SUMR
+    REAL(DP) :: SUM1, SUM2, SUMR, SUMQ, Event
     INTEGER  :: iE1, iE2, iS, iX, iC
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( SUM1, SUM2, SUMR, DetBal, Phi_In, Phi_Out, iC ) &
+    !$OMP PRIVATE( SUM1, SUM2, SUMR, SUMQ, Event, DetBal, Phi_In, Phi_Out, iC ) &
     !$OMP MAP( to: Phi_NNS_0, Phi_NbNS_0, T, E, W2, J, D, &
     !$OMP          Opacity_Mask ) &
-    !$OMP MAP( from: Eta, Chi, R )
+    !$OMP MAP( from: Eta, Chi, R, EnergyTransfer_Option )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( SUM1, SUM2, SUMR, DetBal, Phi_In, Phi_Out, iC ) &
+    !$ACC PRIVATE( SUM1, SUM2, SUMR, SUMQ, Event, DetBal, Phi_In, Phi_Out, iC ) &
     !$ACC COPYIN( Phi_NNS_0, Phi_NbNS_0, T, E, W2, J, D, &
     !$ACC         Opacity_Mask ) &
-    !$ACC COPYOUT( Eta, Chi, R )
+    !$ACC COPYOUT( Eta, Chi, R, EnergyTransfer_Option )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( SUM1, SUM2, SUMR, DetBal, Phi_In, Phi_Out, iC )
+    !$OMP PRIVATE( SUM1, SUM2, SUMR, SUMQ, Event, DetBal, Phi_In, Phi_Out, iC )
 #endif
     DO iX  = iX_B, iX_E
     DO iS  = iS_B, iS_E
@@ -2780,6 +2809,7 @@ CONTAINS
       SUM1 = Zero
       SUM2 = Zero
       SUMR = Zero
+      SUMQ = Zero
       iC   = nChirals - (LeptonNumber(iS) + 1) / nChirals
 
       IF ( Opacity_Mask(iOp_NNS,iX) ) THEN
@@ -2802,11 +2832,14 @@ CONTAINS
 
             SUM1 = SUM1 + Phi_In  * W2(iE1) * J(iE1,iS,iX)
             SUM2 = SUM2 + Phi_Out * W2(iE1) * ( One - J(iE1,iS,iX) )
-            SUMR = SUMR + W2(iE1) &
-                     * (   Phi_In * J(iE1,iS,iX) &
+            Event =   Phi_In * J(iE1,iS,iX) &
                              * ( One - J(iE2,iS,iX) ) &
                          - Phi_Out * ( One - J(iE1,iS,iX) ) &
-                             * J(iE2,iS,iX) )
+                             * J(iE2,iS,iX)
+          SUMR = SUMR + W2(iE1) * Event
+          IF( PRESENT(EnergyTransfer_Option) ) &
+            SUMQ = SUMQ - 0.5_DP * ( E(iE2) - E(iE1) ) &
+              * (W2(iE2)/(PlanckConstant*SpeedOfLight)**3) * W2(iE1) * Event
 
           END DO
 
@@ -2829,11 +2862,14 @@ CONTAINS
             SUM1 = SUM1 + Phi_In  * W2(iE1) * J(iE1,iS,iX)
             SUM2 = SUM2 + Phi_Out * W2(iE1) * ( One - J(iE1,iS,iX) )
 
-            SUMR = SUMR + W2(iE1) &
-                     * (   Phi_In * J(iE1,iS,iX) &
+            Event =   Phi_In * J(iE1,iS,iX) &
                              * ( One - J(iE2,iS,iX) ) &
                          - Phi_Out * ( One - J(iE1,iS,iX) ) &
-                             * J(iE2,iS,iX) )
+                             * J(iE2,iS,iX)
+          SUMR = SUMR + W2(iE1) * Event
+          IF( PRESENT(EnergyTransfer_Option) ) &
+            SUMQ = SUMQ - 0.5_DP * ( E(iE2) - E(iE1) ) &
+              * (W2(iE2)/(PlanckConstant*SpeedOfLight)**3) * W2(iE1) * Event
 
           END DO
 
@@ -2844,6 +2880,8 @@ CONTAINS
       Eta(iE2,iS,iX) = SUM1
       Chi(iE2,iS,iX) = SUM1 + SUM2
       R  (iE2,iS,iX) = SUMR
+      IF( PRESENT(EnergyTransfer_Option) ) &
+        EnergyTransfer_Option(iE2,iS,iX) = SUMQ
 
     END DO
     END DO
@@ -3079,7 +3117,7 @@ CONTAINS
   SUBROUTINE ComputeNeutrinoOpacityRates_NES &
     ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, T, E, W2, &
       J, H_I, H_II, Eta, Chi, R, Opacity_Mask, &
-      DetailedBalanceScattering_Option )
+      DetailedBalanceScattering_Option, EnergyTransfer_Option )
 
     ! --- Neutrino-Electron Scattering Rates (Multiple J) ---
 
@@ -3101,24 +3139,29 @@ CONTAINS
       DetailedBalanceScattering_Option &
         (iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
+    ! Fully weighted fluid-energy source for this spectral row. Half of
+    ! each ordered event is counted; sum rows/species for the total.
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      EnergyTransfer_Option(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+
     REAL(DP) :: DetBal, Phi_Out, Phi_In
-    REAL(DP) :: SUM1, SUM2, SUMR
+    REAL(DP) :: SUM1, SUM2, SUMR, SUMQ, Event
     INTEGER  :: iE1, iE2, iS, iX
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( SUM1, SUM2, SUMR, DetBal, Phi_In, Phi_Out ) &
+    !$OMP PRIVATE( SUM1, SUM2, SUMR, SUMQ, Event, DetBal, Phi_In, Phi_Out ) &
     !$OMP MAP( to: H_I, H_II, T, E, W2, J, D, Opacity_Mask ) &
-    !$OMP MAP( from: Eta, Chi, R )
+    !$OMP MAP( from: Eta, Chi, R, EnergyTransfer_Option )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( SUM1, SUM2, SUMR, DetBal, Phi_In, Phi_Out ) &
+    !$ACC PRIVATE( SUM1, SUM2, SUMR, SUMQ, Event, DetBal, Phi_In, Phi_Out ) &
     !$ACC COPYIN( H_I, H_II, T, E, W2, J, D, Opacity_Mask ) &
-    !$ACC COPYOUT( Eta, Chi, R ) &
+    !$ACC COPYOUT( Eta, Chi, R, EnergyTransfer_Option ) &
     !$ACC PRESENT( C1, C2 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( SUM1, SUM2, SUMR, DetBal, Phi_In, Phi_Out )
+    !$OMP PRIVATE( SUM1, SUM2, SUMR, SUMQ, Event, DetBal, Phi_In, Phi_Out )
 #endif
     DO iX  = iX_B, iX_E
     DO iS  = iS_B, iS_E
@@ -3127,6 +3170,7 @@ CONTAINS
       SUM1 = Zero
       SUM2 = Zero
       SUMR = Zero
+      SUMQ = Zero
 
       IF ( Opacity_Mask(iOp_NES,iX) ) THEN
 
@@ -3149,11 +3193,14 @@ CONTAINS
           SUM1 = SUM1 + Phi_In  * W2(iE1) * J(iE1,iS,iX)
           SUM2 = SUM2 + Phi_Out * W2(iE1) * ( One - J(iE1,iS,iX) )
 
-          SUMR = SUMR + W2(iE1) &
-                   * (   Phi_In * J(iE1,iS,iX) &
+          Event =   Phi_In * J(iE1,iS,iX) &
                            * ( One - J(iE2,iS,iX) ) &
                        - Phi_Out * ( One - J(iE1,iS,iX) ) &
-                           * J(iE2,iS,iX) )
+                           * J(iE2,iS,iX)
+          SUMR = SUMR + W2(iE1) * Event
+          IF( PRESENT(EnergyTransfer_Option) ) &
+            SUMQ = SUMQ - 0.5_DP * ( E(iE2) - E(iE1) ) &
+              * (W2(iE2)/(PlanckConstant*SpeedOfLight)**3) * W2(iE1) * Event
 
         END DO
 
@@ -3162,6 +3209,8 @@ CONTAINS
       Eta(iE2,iS,iX) = SUM1
       Chi(iE2,iS,iX) = SUM1 + SUM2
       R  (iE2,iS,iX) = SUMR
+      IF( PRESENT(EnergyTransfer_Option) ) &
+        EnergyTransfer_Option(iE2,iS,iX) = SUMQ
 
     END DO
     END DO
@@ -3387,7 +3436,7 @@ CONTAINS
   SUBROUTINE ComputeNeutrinoOpacityRates_Pair &
     ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, T, E, W2, &
       J, J_I, J_II, Eta, Chi, R, Opacity_Mask, &
-      DetailedBalancePair_Option )
+      DetailedBalancePair_Option, EnergyTransfer_Option )
 
     ! --- Pair Rates (Multiple J) ---
 
@@ -3408,26 +3457,31 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL :: &
       DetailedBalancePair_Option(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
+    ! Fully weighted fluid-energy source for this spectral row. Half of
+    ! each ordered event is counted; sum rows/species for the total.
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      EnergyTransfer_Option(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+
     REAL(DP) :: DetBal, Phi_0_Ann, Phi_0_Pro
-    REAL(DP) :: SUM1, SUM2, SUMR
+    REAL(DP) :: SUM1, SUM2, SUMR, SUMQ, Event
     INTEGER  :: iX, iE1, iE2, iS, iS_A
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( iS_A, SUM1, SUM2, SUMR, DetBal, Phi_0_Pro, &
+    !$OMP PRIVATE( iS_A, SUM1, SUM2, SUMR, SUMQ, Event, DetBal, Phi_0_Pro, &
     !$OMP          Phi_0_Ann ) &
     !$OMP MAP( to: J_I, J_II, T, E, W2, J, D, Opacity_Mask ) &
-    !$OMP MAP( from: Eta, Chi, R )
+    !$OMP MAP( from: Eta, Chi, R, EnergyTransfer_Option )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( iS_A, SUM1, SUM2, SUMR, DetBal, Phi_0_Pro, &
+    !$ACC PRIVATE( iS_A, SUM1, SUM2, SUMR, SUMQ, Event, DetBal, Phi_0_Pro, &
     !$ACC          Phi_0_Ann ) &
     !$ACC COPYIN( J_I, J_II, T, E, W2, J, D, Opacity_Mask ) &
-    !$ACC COPYOUT( Eta, Chi, R ) &
+    !$ACC COPYOUT( Eta, Chi, R, EnergyTransfer_Option ) &
     !$ACC PRESENT( C1, C2 )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( iS_A, SUM1, SUM2, SUMR, DetBal, Phi_0_Pro, &
+    !$OMP PRIVATE( iS_A, SUM1, SUM2, SUMR, SUMQ, Event, DetBal, Phi_0_Pro, &
     !$OMP          Phi_0_Ann )
 #endif
     DO iX  = iX_B, iX_E
@@ -3440,6 +3494,7 @@ CONTAINS
       SUM1 = Zero
       SUM2 = Zero
       SUMR = Zero
+      SUMQ = Zero
 
       IF ( Opacity_Mask(iOp_Pair,iX) ) THEN
 
@@ -3460,11 +3515,14 @@ CONTAINS
           SUM1 = SUM1 + Phi_0_Pro * W2(iE1) * ( One - J(iE1,iS_A,iX) )
           SUM2 = SUM2 + Phi_0_Ann * W2(iE1) * J(iE1,iS_A,iX)
 
-          SUMR = SUMR + W2(iE1) &
-                   * (   Phi_0_Pro * ( One - J(iE1,iS_A,iX) ) &
+          Event =   Phi_0_Pro * ( One - J(iE1,iS_A,iX) ) &
                            * ( One - J(iE2,iS,iX) ) &
                        - Phi_0_Ann * J(iE1,iS_A,iX) &
-                           * J(iE2,iS,iX) )
+                           * J(iE2,iS,iX)
+          SUMR = SUMR + W2(iE1) * Event
+          IF( PRESENT(EnergyTransfer_Option) ) &
+            SUMQ = SUMQ - 0.5_DP * ( E(iE2) + E(iE1) ) &
+              * (W2(iE2)/(PlanckConstant*SpeedOfLight)**3) * W2(iE1) * Event
 
         END DO
 
@@ -3473,6 +3531,8 @@ CONTAINS
       Eta(iE2,iS,iX) = SUM1
       Chi(iE2,iS,iX) = SUM1 + SUM2
       R  (iE2,iS,iX) = SUMR
+      IF( PRESENT(EnergyTransfer_Option) ) &
+        EnergyTransfer_Option(iE2,iS,iX) = SUMQ
 
     END DO
     END DO
@@ -3725,7 +3785,7 @@ CONTAINS
   SUBROUTINE ComputeNeutrinoOpacityRates_NuPair &
     ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, T, E, W2, &
       J, J_I, J_II, Eta, Chi, R, Opacity_Mask, &
-      DetailedBalancePair_Option )
+      DetailedBalancePair_Option, EnergyTransfer_Option )
 
     ! --- Pair Rates (Multiple J) ---
 
@@ -3746,26 +3806,31 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL :: &
       DetailedBalancePair_Option(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
+    ! Fully weighted fluid-energy source for this spectral row. Half of
+    ! each ordered event is counted; sum rows/species for the total.
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      EnergyTransfer_Option(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+
     REAL(DP) :: DetBal, Phi_0_Ann, Phi_0_Pro
-    REAL(DP) :: SUM1, SUM2, SUMR
+    REAL(DP) :: SUM1, SUM2, SUMR, SUMQ, Event
     INTEGER  :: iX, iE1, iE2, iS, iS_A
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( iS_A, SUM1, SUM2, SUMR, DetBal, Phi_0_Pro, &
+    !$OMP PRIVATE( iS_A, SUM1, SUM2, SUMR, SUMQ, Event, DetBal, Phi_0_Pro, &
     !$OMP          Phi_0_Ann ) &
     !$OMP MAP( to: J_I, J_II, T, E, W2, J, D, Opacity_Mask ) &
-    !$OMP MAP( from: Eta, Chi, R )
+    !$OMP MAP( from: Eta, Chi, R, EnergyTransfer_Option )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( iS_A, SUM1, SUM2, SUMR, DetBal, Phi_0_Pro, &
+    !$ACC PRIVATE( iS_A, SUM1, SUM2, SUMR, SUMQ, Event, DetBal, Phi_0_Pro, &
     !$ACC          Phi_0_Ann ) &
     !$ACC COPYIN( J_I, J_II, T, E, W2, J, D, Opacity_Mask ) &
-    !$ACC COPYOUT( Eta, Chi, R ) &
+    !$ACC COPYOUT( Eta, Chi, R, EnergyTransfer_Option ) &
     !$ACC PRESENT( C1_NuPair, C2_NuPair )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( iS_A, SUM1, SUM2, SUMR, DetBal, Phi_0_Pro, &
+    !$OMP PRIVATE( iS_A, SUM1, SUM2, SUMR, SUMQ, Event, DetBal, Phi_0_Pro, &
     !$OMP          Phi_0_Ann )
 #endif
       DO iX  = iX_B, iX_E
@@ -3778,6 +3843,7 @@ CONTAINS
         SUM1 = Zero
         SUM2 = Zero
         SUMR = Zero
+        SUMQ = Zero
 
         IF ( Opacity_Mask(iOp_NuPair,iX) ) THEN
 
@@ -3798,11 +3864,14 @@ CONTAINS
             SUM1 = SUM1 + Phi_0_Pro * W2(iE1) * ( One - J(iE1,iS_A,iX) )
             SUM2 = SUM2 + Phi_0_Ann * W2(iE1) * J(iE1,iS_A,iX)
 
-            SUMR = SUMR + W2(iE1) &
-                     * (   Phi_0_Pro * ( One - J(iE1,iS_A,iX) ) &
+            Event =   Phi_0_Pro * ( One - J(iE1,iS_A,iX) ) &
                              * ( One - J(iE2,iS,iX) ) &
                          - Phi_0_Ann * J(iE1,iS_A,iX) &
-                             * J(iE2,iS,iX) )
+                             * J(iE2,iS,iX)
+          SUMR = SUMR + W2(iE1) * Event
+          IF( PRESENT(EnergyTransfer_Option) ) &
+            SUMQ = SUMQ - 0.5_DP * ( E(iE2) + E(iE1) ) &
+              * (W2(iE2)/(PlanckConstant*SpeedOfLight)**3) * W2(iE1) * Event
 
           END DO
 
@@ -3811,6 +3880,8 @@ CONTAINS
         Eta(iE2,iS,iX) = SUM1
         Chi(iE2,iS,iX) = SUM1 + SUM2
         R  (iE2,iS,iX) = SUMR
+      IF( PRESENT(EnergyTransfer_Option) ) &
+        EnergyTransfer_Option(iE2,iS,iX) = SUMQ
 
       END DO
       END DO
@@ -4028,7 +4099,7 @@ CONTAINS
   SUBROUTINE ComputeNeutrinoOpacityRates_Brem &
     ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, T, E, W2, &
       J, S_Sigma, Eta, Chi, R, Opacity_Mask, &
-      DetailedBalancePair_Option )
+      DetailedBalancePair_Option, EnergyTransfer_Option )
 
     ! --- Brem Rates (Multiple J) ---
 
@@ -4048,8 +4119,13 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL :: &
       DetailedBalancePair_Option(iE_B:iE_E,iE_B:iE_E,iX_B:iX_E)
 
+    ! Fully weighted fluid-energy source for this spectral row. Half of
+    ! each ordered event is counted; sum rows/species for the total.
+    REAL(DP), INTENT(out), OPTIONAL :: &
+      EnergyTransfer_Option(iE_B:iE_E,iS_B:iS_E,iX_B:iX_E)
+
     REAL(DP) :: DetBal, Phi_0_Ann, Phi_0_Pro
-    REAL(DP) :: SUM1, SUM2, SUMR
+    REAL(DP) :: SUM1, SUM2, SUMR, SUMQ, Event
     INTEGER  :: iX, iE1, iE2, iS, iS_A
 
     !For medium modification from Fischer A&A 593, A103 (2016)
@@ -4059,19 +4135,19 @@ CONTAINS
 
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( iS_A, SUM1, SUM2, SUMR, DetBal, Phi_0_Ann, &
+    !$OMP PRIVATE( iS_A, SUM1, SUM2, SUMR, SUMQ, Event, DetBal, Phi_0_Ann, &
     !$OMP          Phi_0_Pro, medium_fac ) &
     !$OMP MAP( to: S_Sigma, T, E, W2, J, D, Opacity_Mask ) &
-    !$OMP MAP( from: Eta, Chi, R )
+    !$OMP MAP( from: Eta, Chi, R, EnergyTransfer_Option )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( iS_A, SUM1, SUM2, SUMR, DetBal, Phi_0_Ann, &
+    !$ACC PRIVATE( iS_A, SUM1, SUM2, SUMR, SUMQ, Event, DetBal, Phi_0_Ann, &
     !$ACC          Phi_0_Pro, medium_fac ) &
     !$ACC COPYIN( S_Sigma, T, E, W2, J, D, Opacity_Mask ) &
-    !$ACC COPYOUT( Eta, Chi, R )
+    !$ACC COPYOUT( Eta, Chi, R, EnergyTransfer_Option )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( iS_A, SUM1, SUM2, SUMR, DetBal, Phi_0_Ann, &
+    !$OMP PRIVATE( iS_A, SUM1, SUM2, SUMR, SUMQ, Event, DetBal, Phi_0_Ann, &
     !$OMP          Phi_0_Pro, medium_fac )
 #endif
     DO iX  = iX_B, iX_E
@@ -4084,6 +4160,7 @@ CONTAINS
       SUM1 = Zero
       SUM2 = Zero
       SUMR = Zero
+      SUMQ = Zero
 
       !Equation 11 from Fischer Fischer A&A 593, A103 (2016)
       !medium_fac = (1.0d0 / ( 1.0d0 + 1.0d0/3.0d0 * (D(iX) / UnitD / D_0)**(1.0d0/3.0d0) ) )**6
@@ -4107,11 +4184,14 @@ CONTAINS
           SUM1 = SUM1 + Phi_0_Pro * W2(iE1) * ( One - J(iE1,iS_A,iX) )
           SUM2 = SUM2 + Phi_0_Ann * W2(iE1) * J(iE1,iS_A,iX)
 
-          SUMR = SUMR + W2(iE1) &
-                   * (   Phi_0_Pro * ( One - J(iE1,iS_A,iX) ) &
+          Event =   Phi_0_Pro * ( One - J(iE1,iS_A,iX) ) &
                            * ( One - J(iE2,iS,iX) ) &
                        - Phi_0_Ann * J(iE1,iS_A,iX) &
-                           * J(iE2,iS,iX) )
+                           * J(iE2,iS,iX)
+          SUMR = SUMR + W2(iE1) * Event
+          IF( PRESENT(EnergyTransfer_Option) ) &
+            SUMQ = SUMQ - 0.5_DP * ( E(iE2) + E(iE1) ) &
+              * (W2(iE2)/(PlanckConstant*SpeedOfLight)**3) * W2(iE1) * Event
 
         END DO
 
@@ -4120,6 +4200,8 @@ CONTAINS
       Eta(iE2,iS,iX) = SUM1
       Chi(iE2,iS,iX) = SUM1 + SUM2
       R  (iE2,iS,iX) = SUMR
+      IF( PRESENT(EnergyTransfer_Option) ) &
+        EnergyTransfer_Option(iE2,iS,iX) = SUMQ
 
     END DO
     END DO

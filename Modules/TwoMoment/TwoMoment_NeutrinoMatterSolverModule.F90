@@ -34,7 +34,6 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     Timer_Collisions_CheckOuter, &
     Timer_Collisions_CheckInner, &
     Timer_Collisions_MatterFromRadiation, &
-    Timer_Collisions_RadiationBacktrack, &
     Timer_Opacity_D0, &
     Timer_Opacity_EC, &
     Timer_Opacity_ES, &
@@ -61,6 +60,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     LinearLeastSquares_LWORK
   USE ReferenceElementModuleE, ONLY: &
     WeightsE
+  USE ReferenceElementModuleE_Lagrange, ONLY: InterpMat_E
   USE MeshModule, ONLY: &
     MeshE, &
     NodeCoordinate
@@ -74,8 +74,10 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     ComputeSpecificInternalEnergy_TABLE, &
     ComputeMuonChemicalPotential_TABLE, &
     ComputeMuonFractionFromDegeneracy_TABLE, &
+    ComputeElectronNeutrinoChemicalPotential_TABLE, &
+    ComputeMuonNeutrinoChemicalPotential_TABLE, &
     ComputePressure_TABLE, &
-    Min_D, Min_T, Min_Y, Max_T
+    Min_D, Min_T, Min_Y, Max_T, Max_Y
   USE OpacityModule_TABLE, ONLY: &
     IsoIncludesNucleonScattering
   USE NeutrinoOpacitiesComputationModule, ONLY: &
@@ -99,6 +101,7 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     ComputeNeutrinoOpacityRates_LinearCorrections_NuPair, &
     ComputeNeutrinoOpacityRates_LinearCorrections_Brem, &
     ComputeDetailedBalanceFactors, &
+    GetCollisionKernelScale, &
     SetOpacityMask, &
     iM0, iM1, &
     nOp, iOp_EmAb_Electron, iOp_EmAb_Muon, &
@@ -109,15 +112,19 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     InitializeNeutrinoLeptonInteractions, &
     FinalizeNeutrinoLeptonInteractions, &
     FinalizeNeutrinoLeptonInteractionKernels, &
-    ComputeNeutrinoLeptonKernels, ComputeNeutrinoLeptonRates, &
-    Chi_GL, R_GL, nGL, iGL_NMS, iGL_LFE, iGL_LFC, iGL_IMD
+    ComputeNeutrinoLeptonKernels, ComputeNeutrinoLeptonRates, GetGeneralLeptonCoefficient, &
+    Chi_GL, R_GL, Source_GL, nGL, iGL_NMS, iGL_LFE, iGL_LFC, iGL_IMD
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputeEddingtonTensorComponents_dd, &
     ComputeConserved_TwoMoment
   USE TwoMoment_ClosureModule, ONLY: &
     FluxFactor, &
     EddingtonFactor
-
+#if defined(TWOMOMENT_ORDER_V)
+  USE TwoMoment_RetainedArithmeticModule
+  USE TwoMoment_NewtonSolverModule_OrderV, ONLY: SolveNeutrinoMatterCoupling_Newton_OrderV_Batch
+#endif
+  USE, INTRINSIC :: IEEE_ARITHMETIC, ONLY: IEEE_IS_FINITE
   IMPLICIT NONE
   PRIVATE
 
@@ -125,11 +132,9 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   PUBLIC :: FinalizeNeutrinoMatterSolver
   PUBLIC :: InitializeNeutrinoMatterSolverParameters
   PUBLIC :: FinalizeNeutrinoMatterSolverParameters
-  PUBLIC :: SolveNeutrinoMatterCoupling_FP_Nested_AA
+  PUBLIC :: SolveNeutrinoMatterCoupling
+  LOGICAL, PUBLIC :: UseNewtonSolve = .FALSE.
 
-  INTEGER, PARAMETER :: iReducedSolver_Anderson    = 1
-  INTEGER, PARAMETER :: iReducedSolver_SchurNewton = 2
-  INTEGER, PARAMETER :: iReducedSolver_CoupledEtaSchur = 3
 
   ! Matter collision RHS quantities used by the shared limiter accounting.
   INTEGER, PARAMETER :: iQ_Le = 1
@@ -142,6 +147,14 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   INTEGER, PARAMETER :: nQ    = 7
 
 #if defined( TWOMOMENT_ORDER_V )
+  REAL(DP), ALLOCATABLE, TARGET, PUBLIC :: NewtonRadiationIncrement(:,:,:,:)
+  REAL(DP), ALLOCATABLE, TARGET, PUBLIC :: NewtonFluidIncrement(:,:)
+  REAL(DP), ALLOCATABLE, TARGET :: AcceptedNewtonEmAbRate(:,:,:)
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET(UseNewtonSolve,NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
+#elif defined(THORNADO_OACC)
+  !$ACC DECLARE CREATE(UseNewtonSolve,NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
+#endif
   PUBLIC :: ComputeOpacities_Packed
   PUBLIC :: ComputeRates_Packed
   PUBLIC :: ComputeTransportOpacity
@@ -364,17 +377,11 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   INTEGER  :: GeneralLeptonQuadratureOrder
   LOGICAL  :: Include_LinCorr
   LOGICAL  :: UseFirstMomentRates
-  LOGICAL  :: UseConservativeProjection
-  LOGICAL  :: UseRadiationOnlySolve
-  LOGICAL  :: UseMuonLeptonSource
-  INTEGER  :: ReducedSolverMethod
-  LOGICAL  :: DebugMuonCoupling
-  LOGICAL  :: TraceRadiationOnlySolve
-  LOGICAL  :: AnalyzeRadiationOnlyJacobian
-  CHARACTER(512) :: RadiationOnlyTraceFile
-  INTEGER :: RadiationOnlySolveCallCount = 0
-  INTEGER :: RadiationOnlyTraceUnit = 0
-  INTEGER :: RadiationOnlyTraceSpectrumUnit = 0
+  LOGICAL :: UseMuonLeptonSource
+  LOGICAL :: DebugMuonCoupling
+  LOGICAL :: TraceNewtonSolve
+  CHARACTER(512) :: NewtonTraceFile
+  REAL(DP) :: NewtonFluidSourceTolerance
   INTEGER  :: M_outer
   INTEGER  :: M_inner
   INTEGER  :: MaxIter_outer
@@ -1146,11 +1153,10 @@ CONTAINS
       Include_IMD_Option, GeneralLeptonQuadratureOrder_Option, &
       Include_LinCorr_Option, &
       wMatrRHS_Option, DnuMax_Option, FreezeOpacities_Option, &
-      UseConservativeProjection_Option, Verbose_Option, &
-      UseRadiationOnlySolve_Option, DebugMuonCoupling_Option, &
-      TraceRadiationOnlySolve_Option, RadiationOnlyTraceFile_Option, &
-      AnalyzeRadiationOnlyJacobian_Option, ReducedSolverMethod_Option, &
-      UseMuonLeptonSource_Option )
+      Verbose_Option, SolverMethod_Option, DebugMuonCoupling_Option, &
+      TraceNewtonSolve_Option, NewtonTraceFile_Option, &
+      UseMuonLeptonSource_Option, NewtonFluidSourceTolerance_Option )
+
 
     USE ISO_FORTRAN_ENV, ONLY: ERROR_UNIT
     USE mpi
@@ -1178,22 +1184,19 @@ CONTAINS
     REAL(DP), INTENT(in), OPTIONAL :: wMatrRHS_Option(nMatterEquations)
     REAL(DP), INTENT(in), OPTIONAL :: DnuMax_Option
     LOGICAL , INTENT(in), OPTIONAL :: FreezeOpacities_Option
-    LOGICAL , INTENT(in), OPTIONAL :: UseConservativeProjection_Option
     LOGICAL , INTENT(in), OPTIONAL :: Verbose_Option
-    LOGICAL , INTENT(in), OPTIONAL :: UseRadiationOnlySolve_Option
     LOGICAL , INTENT(in), OPTIONAL :: DebugMuonCoupling_Option
-    LOGICAL , INTENT(in), OPTIONAL :: TraceRadiationOnlySolve_Option
-    CHARACTER(*), INTENT(in), OPTIONAL :: RadiationOnlyTraceFile_Option
-    LOGICAL , INTENT(in), OPTIONAL :: AnalyzeRadiationOnlyJacobian_Option
-    CHARACTER(*), INTENT(in), OPTIONAL :: ReducedSolverMethod_Option
     LOGICAL, INTENT(in), OPTIONAL :: UseMuonLeptonSource_Option
+    REAL(DP), INTENT(in), OPTIONAL :: NewtonFluidSourceTolerance_Option
 
-    LOGICAL :: Verbose, MuonSourceSupported
+    LOGICAL :: Verbose
+    CHARACTER(*), INTENT(in), OPTIONAL :: SolverMethod_Option
+    LOGICAL, INTENT(in), OPTIONAL :: TraceNewtonSolve_Option
+    CHARACTER(*), INTENT(in), OPTIONAL :: NewtonTraceFile_Option
     INTEGER :: ierr, myid
 
     IF( SolverParametersInitialized ) RETURN
 
-    RadiationOnlySolveCallCount = 0
 
     IF( PRESENT( M_outer_Option ) )THEN
       M_outer = M_outer_Option
@@ -1350,7 +1353,7 @@ CONTAINS
     IF( PRESENT( DnuMax_Option ) )THEN
       DnuMax = DnuMax_Option
     ELSE
-      DnuMax = One - EPSILON( One )
+      DnuMax = One
     END IF
 
     IF( PRESENT( FreezeOpacities_Option ) )THEN
@@ -1359,137 +1362,48 @@ CONTAINS
       FreezeOpacities = .FALSE.
     END IF
 
-    IF( PRESENT( UseConservativeProjection_Option ) )THEN
-      UseConservativeProjection = UseConservativeProjection_Option
-    ELSE
-      UseConservativeProjection = .FALSE.
-    END IF
-
-    IF( PRESENT( UseRadiationOnlySolve_Option ) )THEN
-      UseRadiationOnlySolve = UseRadiationOnlySolve_Option
-    ELSE
-      UseRadiationOnlySolve = .FALSE.
-    END IF
-
-    ReducedSolverMethod = iReducedSolver_Anderson
-    IF( PRESENT(ReducedSolverMethod_Option) )THEN
-      SELECT CASE( TRIM(ADJUSTL(ReducedSolverMethod_Option)) )
-        CASE( 'anderson', 'ANDERSON' )
-          ReducedSolverMethod = iReducedSolver_Anderson
-        CASE( 'schur-newton', 'SCHUR-NEWTON', &
-              'schur_newton', 'SCHUR_NEWTON' )
-          ReducedSolverMethod = iReducedSolver_SchurNewton
-        CASE( 'coupled-eta-schur', 'COUPLED-ETA-SCHUR' )
-          ReducedSolverMethod = iReducedSolver_CoupledEtaSchur
-#if !defined(EOSMODE_COMPOSE) || !defined(INTERPOLATION_SPLIT_TABLE_COMBINED)
-          CALL MPI_COMM_RANK(MPI_COMM_WORLD,myid,ierr)
-          IF( myid == 0 ) WRITE(ERROR_UNIT,'(A)') &
-            'coupled-eta-schur requires EOSMODE=COMPOSE, INTERPOLATION_SPLIT_TABLE=COMBINED.'
-          CALL MPI_ABORT(MPI_COMM_WORLD,-1,ierr)
-#endif
+    UseNewtonSolve = .FALSE.
+    IF( PRESENT(SolverMethod_Option) )THEN
+      SELECT CASE( TRIM(ADJUSTL(SolverMethod_Option)) )
+        CASE( 'nested-aa' )
+          UseNewtonSolve = .FALSE.
+        CASE( 'balanced-newton' )
+          UseNewtonSolve = .TRUE.
         CASE DEFAULT
-          CALL MPI_COMM_RANK( MPI_COMM_WORLD, myid, ierr )
-          IF( myid == 0 )THEN
-            WRITE(ERROR_UNIT,'(A,A)') &
-              'ERROR: Unknown reduced nonlinear method: ', &
-              TRIM(ReducedSolverMethod_Option)
-            WRITE(ERROR_UNIT,'(A)') &
-              '       Expected anderson, schur-newton, or coupled-eta-schur.'
-            FLUSH(ERROR_UNIT)
-          END IF
-          CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
+          WRITE(ERROR_UNIT,'(A)') 'Expected SolverMethod=nested-aa or balanced-newton.'
+          CALL MPI_ABORT(MPI_COMM_WORLD,-1,ierr)
       END SELECT
     END IF
-
-    UseMuonLeptonSource = .FALSE.
-    IF( PRESENT( UseMuonLeptonSource_Option ) ) &
-      UseMuonLeptonSource = UseMuonLeptonSource_Option
-
-    MuonSourceSupported = .FALSE.
-#if defined( TWOMOMENT_ORDER_V )
-    MuonSourceSupported = .NOT. UseConservativeProjection .AND. &
-      ( .NOT. UseRadiationOnlySolve .OR. &
-        ReducedSolverMethod == iReducedSolver_CoupledEtaSchur )
-#endif
-    IF( UseMuonLeptonSource )THEN
-      IF( .NOT. MuonSourceSupported )THEN
-        CALL MPI_COMM_RANK( MPI_COMM_WORLD, myid, ierr )
-        IF( myid == 0 ) WRITE(ERROR_UNIT,'(A)') &
-          'Muon source update requires Order-v nested or coupled-eta-schur, without terminal projection.'
-        CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
-      END IF
+#if !defined(TWOMOMENT_ORDER_V) || !defined(MOMENT_CLOSURE_MINERBO)
+    IF( UseNewtonSolve )THEN
+      WRITE(ERROR_UNIT,'(A)') 'Balanced Newton currently requires Order-v and Minerbo closure.'
+      CALL MPI_ABORT(MPI_COMM_WORLD,-1,ierr)
     END IF
-
-    IF( ReducedSolverMethod == iReducedSolver_CoupledEtaSchur )THEN
-      IF( .NOT. UseRadiationOnlySolve )THEN
-        CALL MPI_COMM_RANK(MPI_COMM_WORLD,myid,ierr)
-        IF( myid == 0 ) WRITE(ERROR_UNIT,'(A)') &
-          'coupled-eta-schur requires UseRadiationOnlySolve=.TRUE.'
+#endif
+    UseMuonLeptonSource = .FALSE.
+    IF( PRESENT(UseMuonLeptonSource_Option) ) UseMuonLeptonSource = UseMuonLeptonSource_Option
+    IF( UseNewtonSolve )THEN
+      IF( DnuMax /= One .OR. Include_LinCorr .OR. FreezeOpacities .OR. &
+          ANY(wMatrRHS /= One) .OR. UseMuonLeptonSource )THEN
+        WRITE(ERROR_UNIT,'(A)') 'Balanced Newton requires DnuMax=1, full fluid coupling, current opacities, '// &
+          'no angular corrections, and no nested-source override.'
         CALL MPI_ABORT(MPI_COMM_WORLD,-1,ierr)
       END IF
     END IF
-
-    IF( PRESENT( DebugMuonCoupling_Option ) )THEN
-      DebugMuonCoupling = DebugMuonCoupling_Option
-    ELSE
-      DebugMuonCoupling = .FALSE.
-    END IF
-
-    IF( PRESENT( TraceRadiationOnlySolve_Option ) )THEN
-      TraceRadiationOnlySolve = TraceRadiationOnlySolve_Option
-    ELSE
-      TraceRadiationOnlySolve = .FALSE.
-    END IF
-
-    RadiationOnlyTraceFile = 'reduced_solver_trace'
-    IF( PRESENT( RadiationOnlyTraceFile_Option ) ) &
-      RadiationOnlyTraceFile = TRIM( RadiationOnlyTraceFile_Option )
-
-    IF( PRESENT( AnalyzeRadiationOnlyJacobian_Option ) )THEN
-      AnalyzeRadiationOnlyJacobian = AnalyzeRadiationOnlyJacobian_Option
-    ELSE
-      AnalyzeRadiationOnlyJacobian = .FALSE.
-    END IF
-
-    IF( AnalyzeRadiationOnlyJacobian .AND. .NOT. UseRadiationOnlySolve )THEN
-
-      CALL MPI_COMM_RANK( MPI_COMM_WORLD, myid, ierr )
-
-      IF( myid == 0 )THEN
-        WRITE(ERROR_UNIT,'(A)') &
-          'ERROR: Reduced-solver Jacobian analysis requires the'
-        WRITE(ERROR_UNIT,'(A)') &
-          '       invariant-constrained radiation solve.'
-        FLUSH(ERROR_UNIT)
+    NewtonFluidSourceTolerance = Rtol_inner
+    IF( PRESENT(NewtonFluidSourceTolerance_Option) )THEN
+      IF( .NOT. IEEE_IS_FINITE(NewtonFluidSourceTolerance_Option) .OR. NewtonFluidSourceTolerance_Option<Zero )THEN
+        WRITE(ERROR_UNIT,'(A)') 'Newton source tolerance must be finite and nonnegative (zero inherits Rtol_inner).'
+        CALL MPI_ABORT(MPI_COMM_WORLD,-1,ierr)
       END IF
-
-      CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
-
+      IF( NewtonFluidSourceTolerance_Option>Zero ) NewtonFluidSourceTolerance=NewtonFluidSourceTolerance_Option
     END IF
-
-    IF( AnalyzeRadiationOnlyJacobian .AND. &
-        ReducedSolverMethod == iReducedSolver_CoupledEtaSchur )THEN
-      CALL MPI_COMM_RANK(MPI_COMM_WORLD,myid,ierr)
-      IF( myid == 0 ) WRITE(ERROR_UNIT,'(A)') &
-        'The eliminated-Ymu Jacobian diagnostic does not apply to coupled-eta-schur.'
-      CALL MPI_ABORT(MPI_COMM_WORLD,-1,ierr)
-    END IF
-
-    IF( UseRadiationOnlySolve .AND. UseConservativeProjection )THEN
-
-      CALL MPI_COMM_RANK( MPI_COMM_WORLD, myid, ierr )
-
-      IF( myid == 0 )THEN
-        WRITE(ERROR_UNIT,'(A)') &
-          'ERROR: The invariant-constrained solve already enforces the'
-        WRITE(ERROR_UNIT,'(A)') &
-          '       conserved matter state. Disable UseConservativeProjection.'
-        FLUSH(ERROR_UNIT)
-      END IF
-
-      CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
-
-    END IF
+    DebugMuonCoupling = .FALSE.
+    IF( PRESENT(DebugMuonCoupling_Option) ) DebugMuonCoupling = DebugMuonCoupling_Option
+    TraceNewtonSolve = .FALSE.
+    IF( PRESENT(TraceNewtonSolve_Option) ) TraceNewtonSolve = TraceNewtonSolve_Option
+    NewtonTraceFile = 'newton_trace'
+    IF( PRESENT(NewtonTraceFile_Option) ) NewtonTraceFile = TRIM(NewtonTraceFile_Option)
 
     IF( PRESENT( Verbose_Option ) )THEN
       Verbose = Verbose_Option
@@ -1511,31 +1425,12 @@ CONTAINS
       WRITE(*,'(A4,A32,I6.6)')     '', 'MaxIter_inner: '  , MaxIter_inner
       WRITE(*,'(A4,A32,ES10.3E3)') '', 'Rtol_inner: '     , Rtol_inner
       WRITE(*,'(A4,A32,ES10.3E3)') '', 'Atol_inner: '     , Atol_inner
-      WRITE(*,'(A4,A32,L1)')       '', 'Conservative projection: ', &
-        UseConservativeProjection
-      WRITE(*,'(A4,A32,L1)')       '', 'Invariant-constrained solve: ', &
-        UseRadiationOnlySolve
-      WRITE(*,'(A4,A32,L1)')       '', 'Direct muon-lepton source: ', &
-        UseMuonLeptonSource
-      IF( ReducedSolverMethod == iReducedSolver_Anderson )THEN
-        WRITE(*,'(A4,A32,A)') '', 'Reduced nonlinear method: ', 'anderson'
-      ELSE IF( ReducedSolverMethod == iReducedSolver_SchurNewton )THEN
-        WRITE(*,'(A4,A32,A)') '', 'Reduced nonlinear method: ', &
-          'schur-newton'
-      ELSE
-        WRITE(*,'(A4,A32,A)') '', 'Reduced nonlinear method: ', &
-          'coupled-eta-schur'
-      END IF
-      WRITE(*,'(A4,A32,L1)')       '', 'Debug muon coupling: ', &
-        DebugMuonCoupling
-      WRITE(*,'(A4,A32,L1)')       '', 'Trace invariant solve: ', &
-        TraceRadiationOnlySolve
-      WRITE(*,'(A4,A32,L1)')       '', 'Analyze reduced Jacobian: ', &
-        AnalyzeRadiationOnlyJacobian
-      IF( TraceRadiationOnlySolve ) &
-        WRITE(*,'(A4,A32,A)') '', 'Trace file base: ', &
-          TRIM(RadiationOnlyTraceFile)
-      WRITE(*,*)
+      WRITE(*,'(A4,A32,L1)') '', 'Balanced Newton: ', UseNewtonSolve
+      WRITE(*,'(A4,A32,L1)') '', 'Direct muon-lepton source: ', UseMuonLeptonSource
+      WRITE(*,'(A4,A32,L1)') '', 'Debug muon coupling: ', DebugMuonCoupling
+      WRITE(*,'(A4,A32,L1)') '', 'Trace Newton: ', TraceNewtonSolve
+      IF( UseNewtonSolve ) &
+        WRITE(*,'(A4,A32,ES10.3E3)') '', 'Fluid source tolerance: ', NewtonFluidSourceTolerance
       WRITE(*,'(A4,A32,L1)')       '', 'Include_NNS: '    , Include_NNS
       WRITE(*,'(A4,A32,L1)')       '', 'NNS_manybody: '   , NNS_ApplyManyBodyCorrection
       WRITE(*,'(A4,A32,L1)')       '', 'NNS_weak_mag: '   , NNS_ApplyWeakMagnetism
@@ -1582,6 +1477,17 @@ CONTAINS
   SUBROUTINE FinalizeNeutrinoMatterSolver
 
     CALL FinalizeNeutrinoLeptonInteractions
+
+#if defined(TWOMOMENT_ORDER_V)
+    IF( ALLOCATED(NewtonRadiationIncrement) )THEN
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET EXIT DATA MAP(release:NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
+#elif defined(THORNADO_OACC)
+      !$ACC EXIT DATA DELETE(NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
+#endif
+      DEALLOCATE(NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
+    END IF
+#endif
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -1833,14 +1739,6 @@ CONTAINS
     END IF
     DEALLOCATE( Opacity_Mask, Opacity_Mask_T, MatterSource_Mask )
 
-    IF( RadiationOnlyTraceUnit /= 0 )THEN
-      CLOSE( RadiationOnlyTraceUnit )
-      RadiationOnlyTraceUnit = 0
-    END IF
-    IF( RadiationOnlyTraceSpectrumUnit /= 0 )THEN
-      CLOSE( RadiationOnlyTraceSpectrumUnit )
-      RadiationOnlyTraceSpectrumUnit = 0
-    END IF
 
   END SUBROUTINE FinalizeNeutrinoMatterSolver
 
@@ -2249,7 +2147,7 @@ CONTAINS
 #endif
 
 
-  SUBROUTINE SolveNeutrinoMatterCoupling_FP_Nested_AA &
+  SUBROUTINE SolveNeutrinoMatterCoupling &
     ( dt, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, V_u_1, V_u_2, V_u_3, D, T, Ye, Ym, E, &
       Gm_dd_11, Gm_dd_22, Gm_dd_33, Alpha, Beta_u_1, Beta_u_2, Beta_u_3, &
       Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, nIterations_Inner, nIterations_Outer, &
@@ -2260,9 +2158,9 @@ CONTAINS
       , ComputeMatterEquationResidual, MatterEquationResidual_Rate_Final, &
         InitialRadiationLimiter_Rate_Final, &
         RadiationResidual_Relative_Final, &
-        ConservativeProjectionRadiationResidual_Relative_Final, &
-        ConservativeProjectionMatterHeating_Rate_Final, &
-        ConservativeProjectionStatus_Final, &
+        CollisionRecoveryRadiationResidual_Relative_Final, &
+        CollisionRecoveryMatterHeating_Rate_Final, &
+        CollisionRecoveryStatus_Final, &
         LeptonFlavorCheck_Rate_Final &
 #endif
       )
@@ -2290,10 +2188,10 @@ CONTAINS
     REAL(DP), DIMENSION(:,:),   INTENT(out)   :: InitialRadiationLimiter_Rate_Final
     REAL(DP), DIMENSION(:),     INTENT(out)   :: RadiationResidual_Relative_Final
     REAL(DP), DIMENSION(:),     INTENT(out)   :: &
-      ConservativeProjectionRadiationResidual_Relative_Final
+      CollisionRecoveryRadiationResidual_Relative_Final
     REAL(DP), DIMENSION(:),     INTENT(out)   :: &
-      ConservativeProjectionMatterHeating_Rate_Final
-    INTEGER,  DIMENSION(:),     INTENT(out)   :: ConservativeProjectionStatus_Final
+      CollisionRecoveryMatterHeating_Rate_Final
+    INTEGER,  DIMENSION(:),     INTENT(out)   :: CollisionRecoveryStatus_Final
     REAL(DP), DIMENSION(:,:,:), INTENT(out)   :: LeptonFlavorCheck_Rate_Final
 #endif
 
@@ -2303,10 +2201,6 @@ CONTAINS
     INTEGER  :: k_outer, Mk_outer, nX_P_outer
     INTEGER  :: k_inner, Mk_inner, nX_P_inner
     INTEGER  :: iN_X
-#if defined( TWOMOMENT_ORDER_V )
-    INTEGER  :: k_backtrack, k_terminal
-#endif
-
     REAL(DP), ALLOCATABLE, DIMENSION(:) :: P
     INTEGER,  ALLOCATABLE, DIMENSION(:) :: Error
 
@@ -2315,31 +2209,8 @@ CONTAINS
     INTEGER,  ALLOCATABLE, DIMENSION(:) :: PackIndex_inner, UnpackIndex_inner
 
 #if defined( TWOMOMENT_ORDER_V )
-    LOGICAL :: TerminalProjectionMode
-    LOGICAL :: TerminalOpacityCacheCurrent, TerminalRatesCacheCurrent
-    LOGICAL,  ALLOCATABLE, DIMENSION(:) :: &
-      ProjectionMask, RadiationBacktrackMask, &
-      TraceEvaluationMask, TraceHasPrevious, TraceHasPrevious2, &
-      SchurHasPrevious
-    INTEGER, ALLOCATABLE, DIMENSION(:) :: TraceBacktrackCount
-    REAL(DP), ALLOCATABLE, DIMENSION(:) :: &
-      T_Conservative, Ye_Conservative, Ym_Conservative, E_Conservative, &
-      V_u_1_Conservative, V_u_2_Conservative, V_u_3_Conservative
-    REAL(DP), ALLOCATABLE, DIMENSION(:,:) :: &
-      FVECm_projection, GVECm_projection, &
-      InitialRadiationLimiter_ConservationCorrection, &
-      RadiationLeptonInvariant, &
-      TracePreviousState, TracePrevious2State, TracePreviousResidual, &
-      TraceAlpha
-    REAL(DP), ALLOCATABLE, DIMENSION(:) :: &
-      SchurPreviousInput, SchurPreviousMap, SchurPreviousResidual, &
-      SchurGain, SchurDamping, &
-      T_RadiationRecoveryBase, Ye_RadiationRecoveryBase, &
-      Ym_RadiationRecoveryBase, E_RadiationRecoveryBase, &
-      V1_RadiationRecoveryBase, V2_RadiationRecoveryBase, &
-      V3_RadiationRecoveryBase
-    REAL(DP), ALLOCATABLE, DIMENSION(:) :: &
-      TraceCandidateStep, TraceProjectedStep, TraceProjectionCorrection
+    LOGICAL, ALLOCATABLE :: CollisionCheckMask(:)
+    REAL(DP), ALLOCATABLE :: InitialRadiationLimiter_ConservationCorrection(:,:)
 #endif
 
     ! --- Least-squares scratch arrays ---
@@ -2351,6 +2222,25 @@ CONTAINS
     REAL(DP), ALLOCATABLE, DIMENSION(:,:,:) :: AMAT_inner, GVEC_inner, FVEC_inner
     REAL(DP), ALLOCATABLE, DIMENSION(:,:)   :: BVEC_inner, GVECm_inner, FVECm_inner
     REAL(DP), ALLOCATABLE, DIMENSION(:,:)   :: WORK_inner, TAU_inner, Alpha_inner
+
+#if defined(TWOMOMENT_ORDER_V)
+    IF( UseNewtonSolve )THEN
+      CALL SolveNeutrinoMatterCoupling_Newton_OrderV &
+        ( dt,Dnu,Inu_u_1,Inu_u_2,Inu_u_3,V_u_1,V_u_2,V_u_3,D,T,Ye,Ym,E, &
+          Gm_dd_11,Gm_dd_22,Gm_dd_33,Nnu,Gnu_d_1,Gnu_d_2,Gnu_d_3, &
+          nIterations_Inner,nIterations_Outer,nIterations_Inner_Final,nIterations_Outer_Final, &
+          RelativeResidual_Inner_First,MatterCoupling_Mask_Option, &
+          MatterEquationResidual_Rate_Final,InitialRadiationLimiter_Rate_Final,RadiationResidual_Relative_Final, &
+          CollisionRecoveryRadiationResidual_Relative_Final,CollisionRecoveryMatterHeating_Rate_Final, &
+          CollisionRecoveryStatus_Final,LeptonFlavorCheck_Rate_Final,ComputeMatterEquationResidual )
+      RETURN
+    END IF
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO(UseNewtonSolve)
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE(UseNewtonSolve)
+#endif
+#endif
 
 #if defined( TWOMOMENT_RELATIVISTIC )
     ALLOCATE( P(nX_G) )
@@ -2386,67 +2276,8 @@ CONTAINS
     ALLOCATE(       Alpha_inner(           M_inner,nX_G) )
 
 #if defined( TWOMOMENT_ORDER_V )
-    ALLOCATE( ProjectionMask(nX_G) )
-    ALLOCATE( RadiationBacktrackMask(nX_G) )
-    ALLOCATE( T_Conservative(nX_G), Ye_Conservative(nX_G) )
-    ALLOCATE( Ym_Conservative(nX_G) )
-    ALLOCATE( E_Conservative(nX_G) )
-    ALLOCATE( V_u_1_Conservative(nX_G) )
-    ALLOCATE( V_u_2_Conservative(nX_G) )
-    ALLOCATE( V_u_3_Conservative(nX_G) )
-    ALLOCATE( FVECm_projection(n_FP_outer,nX_G) )
-    ALLOCATE( GVECm_projection(n_FP_outer,nX_G) )
-    ALLOCATE &
-      ( InitialRadiationLimiter_ConservationCorrection &
-          (nMatterEquations,nX_G) )
-    ALLOCATE( RadiationLeptonInvariant(nLeptonFamilies,nX_G) )
-    ALLOCATE( SchurHasPrevious(nX_G) )
-    ALLOCATE( SchurPreviousInput(nX_G), SchurPreviousMap(nX_G) )
-    ALLOCATE( SchurPreviousResidual(nX_G) )
-    ALLOCATE( SchurGain(nX_G), SchurDamping(nX_G) )
-    ALLOCATE &
-      ( T_RadiationRecoveryBase(nX_G), &
-        Ye_RadiationRecoveryBase(nX_G), &
-        Ym_RadiationRecoveryBase(nX_G), &
-        E_RadiationRecoveryBase(nX_G), &
-        V1_RadiationRecoveryBase(nX_G), &
-        V2_RadiationRecoveryBase(nX_G), &
-        V3_RadiationRecoveryBase(nX_G) )
-    SchurHasPrevious = .FALSE.
-    SchurPreviousInput = Zero
-    SchurPreviousMap = Zero
-    SchurPreviousResidual = Zero
-    SchurGain = Zero
-    SchurDamping = One
-    T_RadiationRecoveryBase = Zero
-    Ye_RadiationRecoveryBase = Zero
-    Ym_RadiationRecoveryBase = Zero
-    E_RadiationRecoveryBase = Zero
-    V1_RadiationRecoveryBase = Zero
-    V2_RadiationRecoveryBase = Zero
-    V3_RadiationRecoveryBase = Zero
-    IF( TraceRadiationOnlySolve .AND. UseRadiationOnlySolve )THEN
-      ALLOCATE( TraceEvaluationMask(nX_G) )
-      ALLOCATE( TraceHasPrevious(nX_G), TraceHasPrevious2(nX_G) )
-      ALLOCATE( TraceBacktrackCount(nX_G) )
-      ALLOCATE( TracePreviousState(n_FP_inner,nX_G) )
-      ALLOCATE( TracePrevious2State(n_FP_inner,nX_G) )
-      ALLOCATE( TracePreviousResidual(n_FP_inner,nX_G) )
-      ALLOCATE( TraceAlpha(M_inner,nX_G) )
-      ALLOCATE( TraceCandidateStep(nX_G), TraceProjectedStep(nX_G) )
-      ALLOCATE( TraceProjectionCorrection(nX_G) )
-      TraceEvaluationMask = .FALSE.
-      TraceHasPrevious = .FALSE.
-      TraceHasPrevious2 = .FALSE.
-      TraceBacktrackCount = 0
-      TracePreviousState = Zero
-      TracePrevious2State = Zero
-      TracePreviousResidual = Zero
-      TraceAlpha = Zero
-      TraceCandidateStep = Zero
-      TraceProjectedStep = Zero
-      TraceProjectionCorrection = Zero
-    END IF
+    ALLOCATE( CollisionCheckMask(nX_G) )
+    ALLOCATE( InitialRadiationLimiter_ConservationCorrection(nMatterEquations,nX_G) )
 #endif
 
 #if   defined(THORNADO_OMP_OL)
@@ -2468,9 +2299,9 @@ CONTAINS
       MatterEquationResidual_Rate_Final(:,iN_X) = Zero
       InitialRadiationLimiter_Rate_Final(:,iN_X) = Zero
       RadiationResidual_Relative_Final(iN_X) = Zero
-      ConservativeProjectionRadiationResidual_Relative_Final(iN_X) = Zero
-      ConservativeProjectionMatterHeating_Rate_Final(iN_X) = Zero
-      ConservativeProjectionStatus_Final(iN_X) = -2
+      CollisionRecoveryRadiationResidual_Relative_Final(iN_X) = Zero
+      CollisionRecoveryMatterHeating_Rate_Final(iN_X) = Zero
+      CollisionRecoveryStatus_Final(iN_X) = -2
       LeptonFlavorCheck_Rate_Final(:,:,iN_X) = Zero
 #endif
 
@@ -2505,69 +2336,12 @@ CONTAINS
 #endif
 
 #if defined( TWOMOMENT_ORDER_V )
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: ProjectionMask, RadiationBacktrackMask, &
-    !$OMP             T_Conservative, Ye_Conservative, Ym_Conservative, &
-    !$OMP             E_Conservative, &
-    !$OMP             V_u_1_Conservative, V_u_2_Conservative, &
-    !$OMP             V_u_3_Conservative, &
-    !$OMP             FVECm_projection, GVECm_projection, &
-    !$OMP             InitialRadiationLimiter_ConservationCorrection, &
-    !$OMP             RadiationLeptonInvariant, &
-    !$OMP             SchurHasPrevious, SchurPreviousInput, &
-    !$OMP             SchurPreviousMap, SchurPreviousResidual, &
-    !$OMP             SchurGain, SchurDamping, &
-    !$OMP             T_RadiationRecoveryBase, &
-    !$OMP             Ye_RadiationRecoveryBase, &
-    !$OMP             Ym_RadiationRecoveryBase, &
-    !$OMP             E_RadiationRecoveryBase, &
-    !$OMP             V1_RadiationRecoveryBase, &
-    !$OMP             V2_RadiationRecoveryBase, &
-    !$OMP             V3_RadiationRecoveryBase )
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA MAP(alloc:CollisionCheckMask,InitialRadiationLimiter_ConservationCorrection)
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA &
-    !$ACC CREATE( ProjectionMask, RadiationBacktrackMask, &
-    !$ACC         T_Conservative, Ye_Conservative, Ym_Conservative, &
-    !$ACC         E_Conservative, &
-    !$ACC         V_u_1_Conservative, V_u_2_Conservative, &
-    !$ACC         V_u_3_Conservative, &
-    !$ACC         FVECm_projection, GVECm_projection, &
-    !$ACC         InitialRadiationLimiter_ConservationCorrection, &
-    !$ACC         RadiationLeptonInvariant, &
-    !$ACC         SchurHasPrevious, SchurPreviousInput, &
-    !$ACC         SchurPreviousMap, SchurPreviousResidual, &
-    !$ACC         SchurGain, SchurDamping, &
-    !$ACC         T_RadiationRecoveryBase, &
-    !$ACC         Ye_RadiationRecoveryBase, &
-    !$ACC         Ym_RadiationRecoveryBase, &
-    !$ACC         E_RadiationRecoveryBase, &
-    !$ACC         V1_RadiationRecoveryBase, &
-    !$ACC         V2_RadiationRecoveryBase, &
-    !$ACC         V3_RadiationRecoveryBase )
+    !$ACC ENTER DATA CREATE(CollisionCheckMask,InitialRadiationLimiter_ConservationCorrection)
 #endif
 #endif
-
-#if defined( TWOMOMENT_ORDER_V )
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO &
-    !$OMP ( SchurHasPrevious, SchurPreviousInput, SchurPreviousMap, &
-    !$OMP   SchurPreviousResidual, SchurGain, SchurDamping, &
-    !$OMP   T_RadiationRecoveryBase, Ye_RadiationRecoveryBase, &
-    !$OMP   Ym_RadiationRecoveryBase, E_RadiationRecoveryBase, &
-    !$OMP   V1_RadiationRecoveryBase, V2_RadiationRecoveryBase, &
-    !$OMP   V3_RadiationRecoveryBase )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE &
-    !$ACC ( SchurHasPrevious, SchurPreviousInput, SchurPreviousMap, &
-    !$ACC   SchurPreviousResidual, SchurGain, SchurDamping, &
-    !$ACC   T_RadiationRecoveryBase, Ye_RadiationRecoveryBase, &
-    !$ACC   Ym_RadiationRecoveryBase, E_RadiationRecoveryBase, &
-    !$ACC   V1_RadiationRecoveryBase, V2_RadiationRecoveryBase, &
-    !$ACC   V3_RadiationRecoveryBase )
-#endif
-#endif
-
 
     CALL SetOpacityMask &
          ( nX_G, nDOFX, D, T, Ye, Ym, Opacity_Mask )
@@ -2623,14 +2397,11 @@ CONTAINS
 #endif
 
 #if defined( TWOMOMENT_ORDER_V )
-    ProjectionMask = ITERATE_outer
-    TerminalProjectionMode = .FALSE.
-    TerminalOpacityCacheCurrent = .FALSE.
-    TerminalRatesCacheCurrent = .FALSE.
+    CollisionCheckMask = ITERATE_outer
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( ProjectionMask )
+    !$OMP TARGET UPDATE TO( CollisionCheckMask )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE( ProjectionMask )
+    !$ACC UPDATE DEVICE( CollisionCheckMask )
 #endif
 #endif
 
@@ -2662,9 +2433,6 @@ CONTAINS
              Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
              InitialRadiationLimiter_ConservationCorrection )
 
-    IF( UseRadiationOnlySolve ) &
-      CALL InitializeRadiationLeptonInvariants_OrderV &
-             ( ITERATE_outer, C_Dnu, RadiationLeptonInvariant )
 
 #elif defined( TWOMOMENT_RELATIVISTIC )
 
@@ -2682,11 +2450,9 @@ CONTAINS
     CALL CreatePackIndex &
            ( ITERATE_outer, nX_P_outer, PackIndex_outer, UnpackIndex_outer )
 
+
     ! --- Compute Opacity Kernels ---
 
-#if defined( TWOMOMENT_ORDER_V )
-    IF( .NOT. UseRadiationOnlySolve .OR. FreezeOpacities )THEN
-#endif
 
     CALL TimersStart( Timer_Collisions_ComputeOpacity )
 
@@ -2708,447 +2474,17 @@ CONTAINS
                CheckOpacity_Option = .TRUE. )
 #endif
 
-#if defined( TWOMOMENT_ORDER_V )
-    END IF
-#endif
 
-#if defined( TWOMOMENT_ORDER_V )
-    IF( UseRadiationOnlySolve )THEN
 
-      IF( TraceRadiationOnlySolve .OR. AnalyzeRadiationOnlyJacobian ) &
-        RadiationOnlySolveCallCount = RadiationOnlySolveCallCount + 1
-
-      IF( TraceRadiationOnlySolve )THEN
-        CALL InitializeRadiationOnlyTrace_OrderV
-      END IF
-
-      CALL TimersStart( Timer_Collisions_OuterLoop )
-      CALL TimersStart( Timer_Collisions_InnerLoop )
-
-      ITERATE_inner = ITERATE_outer
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( ITERATE_inner )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE( ITERATE_inner )
-#endif
-
-      k_outer = 0
-      k_inner = 0
-
-      IF( ReducedSolverMethod == iReducedSolver_CoupledEtaSchur )THEN
-        CALL SolveRadiationMuonEtaSchur_OrderV &
-               ( dt, ITERATE_inner, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                 D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
-                 FVECm_outer, GVECm_outer, FVECm_inner, GVECm_inner, &
-                 InitialRadiationLimiter_ConservationCorrection, &
-                 RadiationLeptonInvariant, nIterations_Inner, &
-                 nIterations_Outer, nIterations_Inner_Final, &
-                 nIterations_Outer_Final, RelativeResidual_Inner_First, &
-                 RadiationResidual_Relative_Final )
-      END IF
-
-      DO WHILE( ANY( ITERATE_inner(:) ) .AND. k_inner < MaxIter_inner )
-
-        k_inner = k_inner + 1
-        Mk_inner = MIN( M_inner, k_inner )
-
-        CALL CreatePackIndex &
-               ( ITERATE_inner, nX_P_inner, &
-                 PackIndex_inner, UnpackIndex_inner )
-
-        CALL TimersStart( Timer_Collisions_MatterFromRadiation )
-
-        CALL SaveRadiationRecoveryMatterState_OrderV &
-               ( ITERATE_inner, T, Ye, Ym, E, &
-                 V_u_1, V_u_2, V_u_3, &
-                 T_RadiationRecoveryBase, Ye_RadiationRecoveryBase, &
-                 Ym_RadiationRecoveryBase, E_RadiationRecoveryBase, &
-                 V1_RadiationRecoveryBase, V2_RadiationRecoveryBase, &
-                 V3_RadiationRecoveryBase )
-
-        CALL RecoverMatterFromRadiationInvariants_OrderV &
-               ( ITERATE_inner, ProjectionMask, &
-                 FVECm_outer, GVECm_outer, &
-                 Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                 D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                 InitialRadiationLimiter_ConservationCorrection, &
-                 RadiationLeptonInvariant, &
-                 nX_P_inner, PackIndex_inner, UnpackIndex_inner, Error )
-
-        CALL TimersStop( Timer_Collisions_MatterFromRadiation )
-
-        RadiationBacktrackMask = ITERATE_inner .AND. Error /= 0
-
-        IF( ANY( RadiationBacktrackMask ) .AND. k_inner > 1 )THEN
-
-          CALL TimersStart( Timer_Collisions_RadiationBacktrack )
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( RadiationBacktrackMask )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE( RadiationBacktrackMask )
-#endif
-
-          k_backtrack = 0
-
-          DO WHILE &
-            ( ANY( RadiationBacktrackMask ) .AND. k_backtrack < 20 )
-
-            k_backtrack = k_backtrack + 1
-
-            IF( TraceRadiationOnlySolve )THEN
-              DO iN_X = 1, nX_G
-                IF( RadiationBacktrackMask(iN_X) ) &
-                  TraceBacktrackCount(iN_X) = TraceBacktrackCount(iN_X) + 1
-              END DO
-            END IF
-
-            CALL RestoreRadiationRecoveryMatterState_OrderV &
-                   ( RadiationBacktrackMask, &
-                     T_RadiationRecoveryBase, Ye_RadiationRecoveryBase, &
-                     Ym_RadiationRecoveryBase, E_RadiationRecoveryBase, &
-                     V1_RadiationRecoveryBase, V2_RadiationRecoveryBase, &
-                     V3_RadiationRecoveryBase, &
-                     T, Ye, Ym, E, V_u_1, V_u_2, V_u_3 )
-
-            CALL BacktrackRadiationOnlyIterate_OrderV &
-                   ( RadiationBacktrackMask, MAX( 1, Mk_inner - 1 ), &
-                     FVEC_inner, GVEC_inner, &
-                     Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                     Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-            CALL ProjectRadiationOnlyAndersonUpdate_OrderV &
-                   ( RadiationBacktrackMask, &
-                     Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                     V_u_1, V_u_2, V_u_3, &
-                     Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                     RadiationLeptonInvariant )
-
-            CALL CreatePackIndex &
-                   ( RadiationBacktrackMask, nX_P_inner, &
-                     PackIndex_inner, UnpackIndex_inner )
-
-            CALL TimersStart( Timer_Collisions_MatterFromRadiation )
-
-            CALL RecoverMatterFromRadiationInvariants_OrderV &
-                   ( RadiationBacktrackMask, ProjectionMask, &
-                     FVECm_outer, GVECm_outer, &
-                     Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                     D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-                     Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                     InitialRadiationLimiter_ConservationCorrection, &
-                     RadiationLeptonInvariant, &
-                     nX_P_inner, PackIndex_inner, UnpackIndex_inner, Error )
-
-            CALL TimersStop( Timer_Collisions_MatterFromRadiation )
-
-            RadiationBacktrackMask &
-              = RadiationBacktrackMask .AND. Error /= 0
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( RadiationBacktrackMask )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE( RadiationBacktrackMask )
-#endif
-
-          END DO
-
-          CALL CreatePackIndex &
-                 ( ITERATE_inner, nX_P_inner, &
-                   PackIndex_inner, UnpackIndex_inner )
-
-          CALL TimersStop( Timer_Collisions_RadiationBacktrack )
-
-        END IF
-
-        ! An inadmissible Anderson iterate is recoverable here: the
-        ! backtracking loop above first retries progressively shorter
-        ! updates.  Report it as a fatal matter-recovery failure only if
-        ! that recovery mechanism has been exhausted.
-        IF( ( DebugMuonCoupling .OR. TraceRadiationOnlySolve ) &
-            .AND. ANY( ITERATE_inner .AND. Error /= 0 ) ) &
-          CALL CheckMuonCouplingIteration_OrderV &
-                 ( 'matter recovery after backtracking', &
-                   dt, 0, k_inner, ITERATE_inner, &
-                   D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-                   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                   Error_Option = Error )
-
-        CALL CheckError_FP &
-               ( ITERATE_outer, ITERATE_inner, 0, k_inner, Error, &
-                 D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3, &
-                 Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                 Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                 IgnoreIterationLimit_Option = .TRUE. )
-
-        IF( .NOT. FreezeOpacities )THEN
-
-          CALL TimersStart( Timer_Collisions_ComputeOpacity )
-
-          CALL ComputeOpacities_Packed &
-                 ( D, T, Ye, Ym, SqrtGm, &
-                   ITERATE_inner, nX_P_inner, &
-                   PackIndex_inner, UnpackIndex_inner, &
-                   T0 = T_old, Ye0 = Ye_old, Ym0 = Ym_old, &
-                   Opacity_Mask_Input = Opacity_Mask )
-
-          CALL TimersStop( Timer_Collisions_ComputeOpacity )
-
-          IF( DebugMuonCoupling ) &
-            CALL CheckMuonCouplingIteration_OrderV &
-                   ( 'opacity construction', dt, 0, k_inner, ITERATE_inner, &
-                     D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-                     Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                     Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                     CheckOpacity_Option = .TRUE. )
-
-        END IF
-
-        CALL ComputeDnuNorm( ITERATE_inner, Dnu )
-
-        CALL TimersStart( Timer_Collisions_ComputeRates )
-
-        IF( FreezeOpacities )THEN
-
-          CALL ComputeRates_Packed &
-                 ( D, T_Opacity, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                   ITERATE_inner, nX_P_inner, &
-                   PackIndex_inner, UnpackIndex_inner, &
-                   nX_P_outer, Opacity_Mask )
-
-        ELSE
-
-          CALL ComputeRates_Packed &
-                 ( D, T, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                   ITERATE_inner, nX_P_inner, &
-                   PackIndex_inner, UnpackIndex_inner, &
-                   nX_P_inner, Opacity_Mask )
-
-        END IF
-
-        CALL TimersStop( Timer_Collisions_ComputeRates )
-
-        IF( DebugMuonCoupling ) &
-          CALL CheckMuonCouplingIteration_OrderV &
-                 ( 'rate construction', dt, 0, k_inner, ITERATE_inner, &
-                   D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-                   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                   CheckOpacity_Option = .TRUE., &
-                   CheckRates_Option = .TRUE. )
-
-        CALL TimersStart( Timer_Collisions_NeutrinoRHS )
-
-        CALL ComputeNeutrinoRHS_OrderV &
-               ( ITERATE_inner, FVECm_inner, GVECm_inner, dt, &
-                 Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                 V_u_1, V_u_2, V_u_3, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-        CALL ProjectRadiationOnlyFixedPointMap_OrderV &
-               ( ITERATE_inner, FVECm_inner, GVECm_inner, &
-                 Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-        IF( DebugMuonCoupling ) &
-          CALL CheckMuonCouplingIteration_OrderV &
-                 ( 'fixed-point map', dt, 0, k_inner, ITERATE_inner, &
-                   D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-                   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                   CheckOpacity_Option = .TRUE., &
-                   CheckRates_Option = .TRUE., &
-                   Fm_Option = FVECm_inner, Gm_Option = GVECm_inner )
-
-        IF( ReducedSolverMethod == iReducedSolver_SchurNewton ) &
-          CALL PrepareRadiationOnlySchurNewton_OrderV &
-                 ( ITERATE_inner, GVECm_inner, &
-                   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                   V_u_1, V_u_2, V_u_3, &
-                   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                   SchurHasPrevious, SchurPreviousInput, &
-                   SchurPreviousMap, SchurPreviousResidual, &
-                   SchurGain, SchurDamping )
-
-        CALL TimersStop( Timer_Collisions_NeutrinoRHS )
-
-        CALL TimersStart( Timer_Collisions_CheckInner )
-
-        IF( TraceRadiationOnlySolve ) &
-          TraceEvaluationMask = ITERATE_inner
-
-        CALL CheckConvergence_RadiationOnly &
-               ( ITERATE_inner, k_inner, &
-                 nIterations_Inner, nIterations_Outer, &
-                 nIterations_Inner_Final, nIterations_Outer_Final, &
-                 RelativeResidual_Inner_First, &
-                 RadiationResidual_Relative_Final, FVECm_inner )
-
-        CALL TimersStop( Timer_Collisions_CheckInner )
-
-        IF( TraceRadiationOnlySolve ) &
-          CALL WriteRadiationOnlyIterationTrace_OrderV &
-                 ( dt, k_inner, TraceEvaluationMask, ITERATE_inner, Error, &
-                   D, T, Ye, Ym, E, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                   V_u_1, V_u_2, V_u_3, &
-                   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                   FVECm_inner, GVECm_inner, RadiationLeptonInvariant, &
-                   InitialRadiationLimiter_ConservationCorrection, &
-                   TraceHasPrevious, TraceHasPrevious2, &
-                   TracePreviousState, TracePrevious2State, &
-                   TracePreviousResidual, TraceBacktrackCount, &
-                   TraceCandidateStep, TraceProjectedStep, &
-                   TraceProjectionCorrection, TraceAlpha, &
-                   SchurGain, SchurDamping )
-
-        ! Capture the iteration-limit state before the Anderson update.  At
-        ! this point the matter state, opacities, rates, fixed-point map, and
-        ! residual all belong to the same evaluated radiation iterate.
-        IF( ( DebugMuonCoupling .OR. TraceRadiationOnlySolve ) &
-            .AND. ANY( ITERATE_inner(:) ) &
-            .AND. k_inner >= MaxIter_inner ) &
-          CALL CheckMuonCouplingIteration_OrderV &
-                 ( 'radiation-solve iteration limit', dt, 0, k_inner, &
-                   ITERATE_inner, D, T, Ye, Ym, E, &
-                   V_u_1, V_u_2, V_u_3, &
-                   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                   CheckOpacity_Option = .TRUE., &
-                   CheckRates_Option = .TRUE., &
-                   Fm_Option = FVECm_inner, Gm_Option = GVECm_inner, &
-                   ForceFailure_Option = .TRUE. )
-
-        IF( ANY( ITERATE_inner(:) ) )THEN
-
-          IF( ReducedSolverMethod == iReducedSolver_SchurNewton ) &
-            CALL ApplyRadiationOnlySchurNewtonPreconditioner_OrderV &
-                   ( ITERATE_inner, FVECm_inner, GVECm_inner, &
-                     Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                     Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                     SchurDamping )
-
-          CALL TimersStart( Timer_Collisions_SolveLS )
-
-          CALL SolveLS_FP &
-                 ( ITERATE_inner, n_FP_inner, M_inner, Mk_inner, &
-                   FVECm_inner, GVECm_inner, FVEC_inner, GVEC_inner, &
-                   AMAT_inner, BVEC_inner, Alpha_inner, TAU_inner, &
-                   LWORK_inner, WORK_inner )
-
-          CALL TimersStop( Timer_Collisions_SolveLS )
-
-          CALL TimersStart( Timer_Collisions_UpdateFP )
-
-          CALL UpdateNeutrinoRHS_OrderV &
-                 ( ITERATE_inner, FVECm_inner, GVECm_inner, &
-                   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                   Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-          CALL ProjectRadiationOnlyAndersonUpdate_OrderV &
-                 ( ITERATE_inner, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                   V_u_1, V_u_2, V_u_3, &
-                   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                   RadiationLeptonInvariant )
-
-          IF( TraceRadiationOnlySolve ) &
-            CALL CaptureRadiationOnlyUpdateTrace_OrderV &
-                   ( ITERATE_inner, Mk_inner, &
-                     Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                     Gm_dd_11, Gm_dd_22, Gm_dd_33, GVECm_inner, &
-                     Alpha_inner, TracePreviousState, &
-                     TraceCandidateStep, TraceProjectedStep, &
-                     TraceProjectionCorrection, TraceAlpha )
-
-          IF( DebugMuonCoupling ) &
-            CALL CheckMuonCouplingIteration_OrderV &
-                   ( 'Anderson-updated iterate', dt, 0, k_inner, ITERATE_inner, &
-                     D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-                     Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-                     Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                     CheckOpacity_Option = .TRUE., &
-                     CheckRates_Option = .TRUE., &
-                     Fm_Option = FVECm_inner, Gm_Option = GVECm_inner )
-
-          CALL ShiftRHS_FP &
-                 ( ITERATE_inner, n_FP_inner, M_inner, Mk_inner, &
-                   FVEC_inner, GVEC_inner )
-
-          CALL TimersStop( Timer_Collisions_UpdateFP )
-
-        END IF
-
-      END DO
-
-      IF( ANY( ITERATE_inner(:) ) )THEN
-
-        CALL MPI_COMM_RANK( MPI_COMM_WORLD, myid, ierr )
-
-        IF( myid == 0 )THEN
-          WRITE(ERROR_UNIT,'(A,I0,A)') &
-            'ERROR: Invariant-constrained radiation solve failed after ', &
-            k_inner, ' iterations.'
-          WRITE(ERROR_UNIT,'(A)') &
-            '       The nested solver fallback is intentionally disabled.'
-          FLUSH(ERROR_UNIT)
-        END IF
-
-        CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
-
-      END IF
-
-      CALL TimersStop( Timer_Collisions_InnerLoop )
-      CALL TimersStop( Timer_Collisions_OuterLoop )
-
-      IF( AnalyzeRadiationOnlyJacobian &
-            .AND. ReducedSolverMethod /= iReducedSolver_CoupledEtaSchur &
-            .AND. RadiationOnlySolveCallCount == 1 ) &
-        CALL AnalyzeRadiationOnlyJacobian_OrderV &
-               ( dt, nIterations_Outer_Final, &
-                 Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                 D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
-                 FVECm_outer, GVECm_outer, &
-                 FVECm_inner, GVECm_inner, &
-                 ITERATE_inner, RadiationBacktrackMask, Error, &
-                 PackIndex_inner, UnpackIndex_inner, &
-                 InitialRadiationLimiter_ConservationCorrection, &
-                 RadiationLeptonInvariant )
-
-    END IF
-
-    IF( .NOT. UseRadiationOnlySolve )THEN
-#endif
 
     ! --- Start Outer Loop ---
 
     CALL TimersStart( Timer_Collisions_OuterLoop )
 
     k_outer = 0
-#if defined( TWOMOMENT_ORDER_V )
-    k_terminal = 0
-    DO WHILE &
-      ( ANY( ITERATE_outer(:) ) &
-        .AND. (       ( .NOT. TerminalProjectionMode &
-                        .AND. k_outer < MaxIter_outer ) &
-                .OR. ( TerminalProjectionMode &
-                        .AND. k_terminal < MaxIter_outer ) ) )
-
-      IF( TerminalProjectionMode )THEN
-        k_terminal = k_terminal + 1
-      ELSE
-        k_outer = k_outer + 1
-        Mk_outer = MIN( M_outer, k_outer )
-      END IF
-#else
     DO WHILE( ANY( ITERATE_outer(:) ) .AND. k_outer < MaxIter_outer )
-
-      k_outer  = k_outer + 1
+      k_outer = k_outer + 1
       Mk_outer = MIN( M_outer, k_outer )
-#endif
 
       Error = 0
 
@@ -3161,9 +2497,6 @@ CONTAINS
 
         IF ( .NOT. FreezeOpacities ) THEN
 
-#if defined( TWOMOMENT_ORDER_V )
-          IF( .NOT. TerminalOpacityCacheCurrent )THEN
-#endif
 
           ! --- Recompute Opacity Kernels ---
 
@@ -3186,15 +2519,10 @@ CONTAINS
                      Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
                      CheckOpacity_Option = .TRUE. )
 
-#if defined( TWOMOMENT_ORDER_V )
-          END IF
-#endif
 
         END IF
 
-#if defined( TWOMOMENT_ORDER_V )
-        TerminalOpacityCacheCurrent = .FALSE.
-#endif
+
 
       END IF
 
@@ -3214,12 +2542,7 @@ CONTAINS
         IF( ITERATE_outer(iN_X) )THEN
           nIterations_Inner_Final(iN_X) = 0
 #if defined( TWOMOMENT_ORDER_V )
-          IF( TerminalProjectionMode )THEN
-            nIterations_Outer(iN_X) = nIterations_Outer(iN_X) + 1
-            nIterations_Outer_Final(iN_X) = k_outer + k_terminal
-          ELSE
             nIterations_Outer_Final(iN_X) = k_outer
-          END IF
 #else
           nIterations_Outer_Final(iN_X) = k_outer
 #endif
@@ -3246,11 +2569,6 @@ CONTAINS
 
         ! --- Compute Neutrino Rates ---
 
-#if defined( TWOMOMENT_ORDER_V )
-        IF( .NOT. (       TerminalProjectionMode &
-                   .AND. TerminalRatesCacheCurrent &
-                   .AND. k_inner == 1 ) )THEN
-#endif
         CALL TimersStart( Timer_Collisions_ComputeRates )
 
         IF( FreezeOpacities )THEN
@@ -3278,11 +2596,7 @@ CONTAINS
                    CheckOpacity_Option = .TRUE., &
                    CheckRates_Option = .TRUE. )
 #endif
-#if defined( TWOMOMENT_ORDER_V )
-        END IF
 
-        IF( k_inner == 1 ) TerminalRatesCacheCurrent = .FALSE.
-#endif
 
         ! --- Right-Hand Side Vectors and Residuals (inner) ---
 
@@ -3426,60 +2740,6 @@ CONTAINS
 
       CALL TimersStop( Timer_Collisions_InnerLoop )
 
-#if defined( TWOMOMENT_ORDER_V )
-      IF( UseConservativeProjection .AND. TerminalProjectionMode )THEN
-
-        ProjectionMask = ITERATE_outer
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( ProjectionMask )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE( ProjectionMask )
-#endif
-
-        CALL ApplyConservativeProjection_OrderV &
-               ( dt, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                 D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
-                 ProjectionMask, ITERATE_outer, &
-                 nX_P_inner, PackIndex_inner, UnpackIndex_inner, &
-                 FVECm_inner, GVECm_inner, &
-                 FVECm_projection, GVECm_projection, &
-                 T_Conservative, Ye_Conservative, Ym_Conservative, &
-                 E_Conservative, &
-                 V_u_1_Conservative, V_u_2_Conservative, &
-                 V_u_3_Conservative, Error, &
-                 RadiationResidual_Relative_Final, &
-                 ConservativeProjectionRadiationResidual_Relative_Final, &
-                 ConservativeProjectionMatterHeating_Rate_Final, &
-                 ConservativeProjectionStatus_Final )
-
-        TerminalOpacityCacheCurrent = ANY( ITERATE_outer )
-        TerminalRatesCacheCurrent = ANY( ITERATE_outer )
-
-        CALL CheckError_FP &
-               ( ITERATE_inner, ITERATE_inner, k_outer, k_inner, Error, &
-                 D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3, &
-                 Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                 Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-        IF(      ANY( ITERATE_outer ) &
-            .AND. k_terminal >= MaxIter_outer )THEN
-
-          CALL CheckError_FP &
-                 ( ITERATE_outer, ITERATE_inner, &
-                   MaxIter_outer, k_inner, Error, &
-                   D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3, &
-                   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                   Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
-                   Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-        END IF
-
-        CYCLE
-
-      END IF
-#endif
 
       ! --- Right-Hand Side Vectors and Residuals (outer) ---
 
@@ -3496,7 +2756,8 @@ CONTAINS
       ! The inner map's cached transfer rates can precede its last radiation
       ! update. Refresh only the general-lepton rates for the accepted state;
       ! no opacity/kernel evaluation and no NNS/NES/pair rate pass is needed.
-      IF( UseMuonLeptonSource .AND. (Include_LFE .OR. Include_LFC .OR. Include_IMD) )THEN
+      IF( UseMuonLeptonSource .AND. .NOT. .FALSE. &
+            .AND. (Include_LFE .OR. Include_LFC .OR. Include_IMD) )THEN
         CALL TimersStart(Timer_OpacityRate_GeneralLepton)
         IF( FreezeOpacities )THEN
           CALL ComputeNeutrinoLeptonRates &
@@ -3636,40 +2897,6 @@ CONTAINS
 
       IF ( .NOT. ANY( ITERATE_outer ) )THEN
 
-#if defined( TWOMOMENT_ORDER_V )
-        IF( UseConservativeProjection )THEN
-
-          TerminalProjectionMode = .TRUE.
-
-          CALL ApplyConservativeProjection_OrderV &
-               ( dt, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                 D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
-                 ProjectionMask, ITERATE_outer, &
-                 nX_P_inner, PackIndex_inner, UnpackIndex_inner, &
-                 FVECm_inner, GVECm_inner, &
-                 FVECm_projection, GVECm_projection, &
-                 T_Conservative, Ye_Conservative, Ym_Conservative, &
-                 E_Conservative, &
-                 V_u_1_Conservative, V_u_2_Conservative, &
-                 V_u_3_Conservative, Error, &
-                 RadiationResidual_Relative_Final, &
-                 ConservativeProjectionRadiationResidual_Relative_Final, &
-                 ConservativeProjectionMatterHeating_Rate_Final, &
-                 ConservativeProjectionStatus_Final )
-
-          TerminalOpacityCacheCurrent = ANY( ITERATE_outer )
-          TerminalRatesCacheCurrent = ANY( ITERATE_outer )
-
-          CALL CheckError_FP &
-               ( ITERATE_inner, ITERATE_inner, k_outer, k_inner, Error, &
-                 D, Ye, Ym, E, T, V_u_1, V_u_2, V_u_3, &
-                 Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                 Nnu, Gnu_d_1, Gnu_d_2, Gnu_d_3, &
-                 Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-        END IF
-#endif
 
         CALL TimersStop( Timer_Collisions_UpdateFP )
 
@@ -3689,9 +2916,6 @@ CONTAINS
 
     CALL TimersStop( Timer_Collisions_OuterLoop )
 
-#if defined( TWOMOMENT_ORDER_V )
-    END IF
-#endif
 
 #if defined( TWOMOMENT_ORDER_V )
     IF( ComputeMatterEquationResidual )THEN
@@ -3704,38 +2928,38 @@ CONTAINS
     !$OMP PARALLEL DO
 #endif
       DO iN_X = 1, nX_G
-        ProjectionMask(iN_X) = nIterations_Outer_Final(iN_X) > 0
+        CollisionCheckMask(iN_X) = nIterations_Outer_Final(iN_X) > 0
       END DO
 
       CALL CreatePackIndex &
-             ( ProjectionMask, nX_P_inner, PackIndex_inner, UnpackIndex_inner )
+             ( CollisionCheckMask, nX_P_inner, PackIndex_inner, UnpackIndex_inner )
 
       CALL ComputeOpacities_Packed &
-             ( D, T, Ye, Ym, SqrtGm, ProjectionMask, nX_P_inner, &
+             ( D, T, Ye, Ym, SqrtGm, CollisionCheckMask, nX_P_inner, &
                PackIndex_inner, UnpackIndex_inner, &
                T0 = T_old, Ye0 = Ye_old, Ym0 = Ym_old, Opacity_Mask_Input = Opacity_Mask )
 
       CALL ComputeRates_Packed &
              ( D, T, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-               ProjectionMask, nX_P_inner, PackIndex_inner, UnpackIndex_inner, &
+               CollisionCheckMask, nX_P_inner, PackIndex_inner, UnpackIndex_inner, &
                nX_P_inner, Opacity_Mask )
 
       CALL ComputeMatterRHS_OrderV &
-             ( ProjectionMask, FVECm_outer, GVECm_outer, &
+             ( CollisionCheckMask, FVECm_outer, GVECm_outer, &
                Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
                V_u_1, V_u_2, V_u_3, &
                Gm_dd_11, Gm_dd_22, Gm_dd_33, &
                dt, InitialRadiationLimiter_ConservationCorrection(iYm,:) )
 
       CALL ComputeNeutrinoRHS_OrderV &
-             ( ProjectionMask, FVECm_inner, GVECm_inner, dt, &
+             ( CollisionCheckMask, FVECm_inner, GVECm_inner, dt, &
                Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
                V_u_1, V_u_2, V_u_3, &
                Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
       CALL ComputeLeptonFlavorCheck_OrderV &
-             ( ProjectionMask, dt, &
-               UseRadiationOnlySolve, &
+             ( CollisionCheckMask, dt, &
+               .FALSE., &
                FVECm_inner, GVECm_inner, &
                Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
                V_u_1, V_u_2, V_u_3, &
@@ -3825,68 +3049,668 @@ CONTAINS
 #endif
 
 #if defined( TWOMOMENT_ORDER_V )
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: ProjectionMask, RadiationBacktrackMask, &
-    !$OMP               T_Conservative, Ye_Conservative, Ym_Conservative, &
-    !$OMP               E_Conservative, &
-    !$OMP               V_u_1_Conservative, V_u_2_Conservative, &
-    !$OMP               V_u_3_Conservative, &
-    !$OMP               FVECm_projection, GVECm_projection, &
-    !$OMP               InitialRadiationLimiter_ConservationCorrection, &
-    !$OMP               RadiationLeptonInvariant, &
-    !$OMP               SchurHasPrevious, SchurPreviousInput, &
-    !$OMP               SchurPreviousMap, SchurPreviousResidual, &
-    !$OMP               SchurGain, SchurDamping, &
-    !$OMP               T_RadiationRecoveryBase, &
-    !$OMP               Ye_RadiationRecoveryBase, &
-    !$OMP               Ym_RadiationRecoveryBase, &
-    !$OMP               E_RadiationRecoveryBase, &
-    !$OMP               V1_RadiationRecoveryBase, &
-    !$OMP               V2_RadiationRecoveryBase, &
-    !$OMP               V3_RadiationRecoveryBase )
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA MAP(release:CollisionCheckMask,InitialRadiationLimiter_ConservationCorrection)
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA &
-    !$ACC DELETE( ProjectionMask, RadiationBacktrackMask, &
-    !$ACC         T_Conservative, Ye_Conservative, Ym_Conservative, &
-    !$ACC         E_Conservative, &
-    !$ACC         V_u_1_Conservative, V_u_2_Conservative, &
-    !$ACC         V_u_3_Conservative, &
-    !$ACC         FVECm_projection, GVECm_projection, &
-    !$ACC         InitialRadiationLimiter_ConservationCorrection, &
-    !$ACC         RadiationLeptonInvariant, &
-    !$ACC         SchurHasPrevious, SchurPreviousInput, &
-    !$ACC         SchurPreviousMap, SchurPreviousResidual, &
-    !$ACC         SchurGain, SchurDamping, &
-    !$ACC         T_RadiationRecoveryBase, &
-    !$ACC         Ye_RadiationRecoveryBase, &
-    !$ACC         Ym_RadiationRecoveryBase, &
-    !$ACC         E_RadiationRecoveryBase, &
-    !$ACC         V1_RadiationRecoveryBase, &
-    !$ACC         V2_RadiationRecoveryBase, &
-    !$ACC         V3_RadiationRecoveryBase )
+    !$ACC EXIT DATA DELETE(CollisionCheckMask,InitialRadiationLimiter_ConservationCorrection)
 #endif
 #endif
 
-    IF( ALLOCATED(TraceEvaluationMask) )THEN
-      DEALLOCATE( TraceEvaluationMask, TraceHasPrevious, TraceHasPrevious2 )
-      DEALLOCATE( TraceBacktrackCount )
-      DEALLOCATE( TracePreviousState, TracePrevious2State )
-      DEALLOCATE( TracePreviousResidual, TraceAlpha )
-      DEALLOCATE( TraceCandidateStep, TraceProjectedStep )
-      DEALLOCATE( TraceProjectionCorrection )
+  END SUBROUTINE SolveNeutrinoMatterCoupling
+
+
+#if defined(TWOMOMENT_ORDER_V)
+  SUBROUTINE SolveNeutrinoMatterCoupling_Newton_OrderV &
+    ( dt,Dnu,I1,I2,I3,V1,V2,V3,D,T,Ye,Ym,E,G1,G2,G3,Nnu,F1,F2,F3, &
+      IterInner,IterOuter,FinalInner,FinalOuter,FirstResidual,CouplingMask, &
+      MatterResidual,ClipRate,FinalResidual,ProjectionResidual,ProjectionHeating,ProjectionStatus,FlavorCheck, &
+      ComputeCollisionChecks )
+
+    USE mpi
+    USE ISO_FORTRAN_ENV, ONLY: ERROR_UNIT
+    USE FluidFieldsModule, ONLY: nCF,iCF_D,iCF_S1,iCF_S2,iCF_S3,iCF_E,iCF_Ne,iCF_Nm
+    USE OpacityModule_TABLE, ONLY: C1,C2,C1_NuPair,C2_NuPair
+
+    REAL(DP), INTENT(in) :: dt,G1(:),G2(:),G3(:)
+    REAL(DP), INTENT(inout) :: Dnu(:,:,:),I1(:,:,:),I2(:,:,:),I3(:,:,:),V1(:),V2(:),V3(:)
+    REAL(DP), INTENT(inout) :: D(:),T(:),Ye(:),Ym(:),E(:),Nnu(:,:,:),F1(:,:,:),F2(:,:,:),F3(:,:,:)
+    INTEGER, INTENT(out) :: IterInner(:),IterOuter(:),FinalInner(:),FinalOuter(:),ProjectionStatus(:)
+    REAL(DP), INTENT(out) :: FirstResidual(:),MatterResidual(:,:),ClipRate(:,:),FinalResidual(:)
+    REAL(DP), INTENT(out) :: ProjectionResidual(:),ProjectionHeating(:),FlavorCheck(:,:,:)
+    LOGICAL, INTENT(out), OPTIONAL :: CouplingMask(:)
+
+    INTEGER :: NF,K,M,NA,NX,NB,Limit,Ierr,Rank,P,Q,R,S,J,B,IX,Start,Count,Point,TraceUnit,IOS
+    INTEGER :: MaskCode
+    INTEGER, ALLOCATABLE, TARGET :: Indices(:),Active(:),BatchIterations(:),BatchQueries(:),BatchFailure(:)
+    INTEGER, ALLOCATABLE, TARGET :: QueryPack(:),QueryUnpack(:),LocalError(:)
+    INTEGER, ALLOCATABLE :: Codes(:),AllIndices(:)
+    LOGICAL, INTENT(in) :: ComputeCollisionChecks
+    LOGICAL :: Enabled(9),ElectronActive,MuonActive,RecordChecks
+    LOGICAL, ALLOCATABLE, TARGET :: StageMask(:),QueryMask(:),LocalElectron(:),LocalMuon(:),LocalOpacityMask(:,:)
+    REAL(DP), ALLOCATABLE, TARGET :: D0(:,:),I0(:,:,:),V0(:,:),Fluid0(:,:),W(:,:),U(:,:),Roots(:,:)
+    REAL(DP), ALLOCATABLE, TARGET :: BatchRadiationError(:),BatchConservationError(:)
+    REAL(DP), ALLOCATABLE, TARGET :: BatchEmAb(:,:),BatchCheck(:,:,:)
+    REAL(DP), ALLOCATABLE, TARGET :: WorkT(:),WorkYe(:),WorkYm(:),WorkE(:),WorkSqrtG(:)
+    REAL(DP), ALLOCATABLE, TARGET :: OldE(:),OldYe(:),OldYm(:),OldV(:,:)
+    REAL(DP), ALLOCATABLE, TARGET :: LocalD(:),LocalT(:),LocalYe(:),LocalYm(:),LocalE(:),MuE(:),MuM(:)
+    REAL(DP), ALLOCATABLE, TARGET :: DBScatter(:,:,:),DBPair(:,:,:)
+    REAL(DP), TARGET :: KernelScale(5)
+    TYPE(RetainedReal), ALLOCATABLE, TARGET :: BatchX(:,:),BatchIncrement(:,:,:)
+    TYPE(RetainedReal) :: TF(7),DV(3),DI(3),NewD,NewI,DeltaEnergy,DeltaLepton
+    REAL(DP) :: NClip,GClip(3),NBefore,GBefore(3),DBefore,DeltaDClip,DeltaNClip
+    REAL(DP) :: V(3),Fwd,Back,Diag,Scale,ChiValue,PairSusceptibility,ProbeY
+
+    RecordChecks = ComputeCollisionChecks .OR. TraceNewtonSolve
+    NF = nSpecies/2
+    K = NF+4
+    M = nE_G*nSpecies
+    CALL MPI_COMM_RANK(MPI_COMM_WORLD,Rank,Ierr)
+    IF( nSpecies < 2 .OR. MOD(nSpecies,2) /= 0 .OR. nSpecies > 6 .OR. dt <= Zero ) &
+      CALL Fail('invalid species count or stage interval',0,0)
+    TraceUnit = 0
+    IF( TraceNewtonSolve )THEN
+      OPEN(NEWUNIT=TraceUnit,FILE=TRIM(NewtonTraceFile)//'.newton_rank'//TRIM(IntegerString(Rank))//'.dat', &
+        STATUS='UNKNOWN',POSITION='APPEND',IOSTAT=IOS)
+      IF( IOS /= 0 ) CALL Fail('cannot open Newton solver trace',0,IOS)
     END IF
 
-    DEALLOCATE( SchurHasPrevious )
-    DEALLOCATE( SchurPreviousInput, SchurPreviousMap )
-    DEALLOCATE( SchurPreviousResidual, SchurGain, SchurDamping )
-    DEALLOCATE &
-      ( T_RadiationRecoveryBase, Ye_RadiationRecoveryBase, &
-        Ym_RadiationRecoveryBase, E_RadiationRecoveryBase, &
-        V1_RadiationRecoveryBase, V2_RadiationRecoveryBase, &
-        V3_RadiationRecoveryBase )
+    IF( ALLOCATED(NewtonRadiationIncrement) )THEN
+      IF( SIZE(NewtonRadiationIncrement,1) /= nE_G .OR. SIZE(NewtonRadiationIncrement,2) /= nSpecies &
+          .OR. SIZE(NewtonRadiationIncrement,3) /= nX_G )THEN
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET EXIT DATA MAP(release:NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
+#elif defined(THORNADO_OACC)
+        !$ACC EXIT DATA DELETE(NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
+#endif
+        DEALLOCATE(NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
+      END IF
+    END IF
+    IF( .NOT. ALLOCATED(NewtonRadiationIncrement) )THEN
+      ALLOCATE(NewtonRadiationIncrement(nE_G,nSpecies,nX_G,4),NewtonFluidIncrement(nX_G,nCF))
+      ALLOCATE(AcceptedNewtonEmAbRate(nE_G,nSpecies,nX_G))
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET ENTER DATA MAP(alloc:NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
+#elif defined(THORNADO_OACC)
+      !$ACC ENTER DATA CREATE(NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
+#endif
+    END IF
+    ALLOCATE(StageMask(nX_G),QueryMask(nX_G),QueryPack(nX_G),QueryUnpack(nX_G))
+    ALLOCATE(WorkT(nX_G),WorkYe(nX_G),WorkYm(nX_G),WorkE(nX_G),WorkSqrtG(nX_G))
+    ALLOCATE(OldE(nX_G),OldYe(nX_G),OldYm(nX_G),OldV(3,nX_G),Codes(nX_G),AllIndices(nX_G))
+    CALL SetOpacityMask(nX_G,nDOFX,D,T,Ye,Ym,Opacity_Mask)
+    CALL SetMatterSourceMask(Opacity_Mask,MatterSource_Mask)
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO(UseNewtonSolve)
+    !$OMP TARGET UPDATE FROM(Opacity_Mask,MatterSource_Mask)
+    !$OMP TARGET ENTER DATA MAP(alloc:StageMask,QueryMask,QueryPack,QueryUnpack,&
+    !$OMP   WorkT,WorkYe,WorkYm,WorkE,WorkSqrtG,OldE,OldYe,OldYm,OldV)
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE(UseNewtonSolve)
+    !$ACC UPDATE SELF(Opacity_Mask,MatterSource_Mask)
+    !$ACC ENTER DATA CREATE(StageMask,QueryMask,QueryPack,QueryUnpack,&
+    !$ACC   WorkT,WorkYe,WorkYm,WorkE,WorkSqrtG,OldE,OldYe,OldYm,OldV)
+#endif
+    DO P = 1, 5
+      KernelScale(P) = GetCollisionKernelScale(P)
+    END DO
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA MAP(to:KernelScale)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO &
+    !$OMP PRIVATE(Q,S,NClip,GClip,NBefore,GBefore,DBefore,DeltaDClip,DeltaNClip,J,V)
+#elif defined(THORNADO_OACC)
+    !$ACC ENTER DATA COPYIN(KernelScale)
+    !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC PRIVATE(Q,S,NClip,GClip,NBefore,GBefore,DBefore,DeltaDClip,DeltaNClip,J,V)
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO PRIVATE(Q,S,NClip,GClip,NBefore,GBefore,DBefore,DeltaDClip,DeltaNClip,J,V)
+#endif
+    DO IX = 1, nX_G
+      StageMask(IX) = MatterSource_Mask(iEf,IX)
+      IF( PRESENT(CouplingMask) ) CouplingMask(IX) = StageMask(IX)
+      WorkT(IX) = T(IX)
+      WorkYe(IX) = Ye(IX)
+      WorkYm(IX) = Ym(IX)
+      WorkE(IX) = E(IX)
+      WorkSqrtG(IX) = SQRT(G1(IX)*G2(IX)*G3(IX))
+      OldE(IX) = E(IX)
+      OldYe(IX) = Ye(IX)
+      OldYm(IX) = Ym(IX)
+      OldV(:,IX) = [SQRT(G1(IX))*V1(IX),SQRT(G2(IX))*V2(IX),SQRT(G3(IX))*V3(IX)]
+      IterInner(IX) = 0
+      IterOuter(IX) = 0
+      FinalInner(IX) = 0
+      FinalOuter(IX) = 0
+      FirstResidual(IX) = Zero
+      FinalResidual(IX) = Zero
+      MatterResidual(:,IX) = Zero
+      ProjectionResidual(IX) = Zero
+      ProjectionHeating(IX) = Zero
+      ProjectionStatus(IX) = -2
+      ClipRate(:,IX) = Zero
+      FlavorCheck(:,:,IX) = Zero
+      NewtonRadiationIncrement(:,:,IX,:) = Zero
+      NewtonFluidIncrement(IX,:) = Zero
+      AcceptedNewtonEmAbRate(:,:,IX) = Zero
+      IF( .NOT. StageMask(IX) ) CYCLE
+      DO S = 1, nSpecies
+      DO Q = 1, nE_G
+        DBefore = Dnu(Q,S,IX)
+        CALL ComputeConserved_TwoMoment(Dnu(Q,S,IX),I1(Q,S,IX),I2(Q,S,IX),I3(Q,S,IX), &
+          NBefore,GBefore(1),GBefore(2),GBefore(3),V1(IX),V2(IX),V3(IX),G1(IX),G2(IX),G3(IX))
+        CALL ProjectPrimitiveRadiationMoment_OrderV(Dnu(Q,S,IX),I1(Q,S,IX),I2(Q,S,IX),I3(Q,S,IX), &
+          G1(IX),G2(IX),G3(IX),DnuMax)
+        CALL ComputeConserved_TwoMoment(Dnu(Q,S,IX),I1(Q,S,IX),I2(Q,S,IX),I3(Q,S,IX), &
+          NClip,GClip(1),GClip(2),GClip(3),V1(IX),V2(IX),V3(IX),G1(IX),G2(IX),G3(IX))
+        NewtonRadiationIncrement(Q,S,IX,1) = NClip-Nnu(Q,S,IX)
+        NewtonRadiationIncrement(Q,S,IX,2) = GClip(1)-F1(Q,S,IX)
+        NewtonRadiationIncrement(Q,S,IX,3) = GClip(2)-F2(Q,S,IX)
+        NewtonRadiationIncrement(Q,S,IX,4) = GClip(3)-F3(Q,S,IX)
+        DeltaDClip = Dnu(Q,S,IX)-DBefore
+        DeltaNClip = NClip-NBefore
+        ClipRate(iQ_E,IX) = ClipRate(iQ_E,IX)+W3_S(Q)*(Two*DeltaNClip-DeltaDClip)/dt
+        ClipRate(iQ_M1,IX) = ClipRate(iQ_M1,IX)+W3_S(Q)*(GClip(1)-GBefore(1)+G1(IX)*V1(IX)*DeltaDClip)/dt
+        ClipRate(iQ_M2,IX) = ClipRate(iQ_M2,IX)+W3_S(Q)*(GClip(2)-GBefore(2)+G2(IX)*V2(IX)*DeltaDClip)/dt
+        ClipRate(iQ_M3,IX) = ClipRate(iQ_M3,IX)+W3_S(Q)*(GClip(3)-GBefore(3)+G3(IX)*V3(IX)*DeltaDClip)/dt
+        IF( S <= 2 ) ClipRate(iQ_Le,IX) = ClipRate(iQ_Le,IX) &
+          +LeptonNumber(S)*W2_S(Q)*DeltaNClip/dt
+        IF( S == 3 .OR. S == 4 ) ClipRate(iQ_Lm,IX) = ClipRate(iQ_Lm,IX) &
+          +LeptonNumber(S)*W2_S(Q)*DeltaNClip/dt
+        FlavorCheck((S+1)/2,iLFC_EntryProjection,IX) = FlavorCheck((S+1)/2,iLFC_EntryProjection,IX) &
+          +LeptonNumber(S)*W2_S(Q)*DeltaNClip/dt
+        FlavorCheck((S+1)/2,iLFC_InputConversion,IX) = FlavorCheck((S+1)/2,iLFC_InputConversion,IX) &
+          +LeptonNumber(S)*W2_S(Q)*(NBefore-Nnu(Q,S,IX))/dt
+        Nnu(Q,S,IX) = NClip
+        F1(Q,S,IX) = GClip(1)
+        F2(Q,S,IX) = GClip(2)
+        F3(Q,S,IX) = GClip(3)
+      END DO
+      END DO
+      ClipRate(iQ_H,IX) = ClipRate(iQ_E,IX)-V1(IX)*ClipRate(iQ_M1,IX) &
+        -V2(IX)*ClipRate(iQ_M2,IX)-V3(IX)*ClipRate(iQ_M3,IX)
+    END DO
 
-  END SUBROUTINE SolveNeutrinoMatterCoupling_FP_Nested_AA
+    ! Cohorts have identical frozen ELEMENT masks; batch boundaries are
+    ! multiples of nDOFX. No density/physics boundary is moved per Newton step.
+    Limit = nX_G
+    Codes = 0
+    DO IX = 1, nX_G
+      DO P = 1, nOp
+        IF( Opacity_Mask(P,IX) ) Codes(IX) = IBSET(Codes(IX),P-1)
+      END DO
+    END DO
+    DO WHILE( ANY(Codes /= 0) )
+      Point = FINDLOC(Codes /= 0,.TRUE.,DIM=1)
+      MaskCode = Codes(Point)
+      ElectronActive = MatterSource_Mask(iYe,Point)
+      MuonActive = MatterSource_Mask(iYm,Point)
+      IF( .NOT. MatterSource_Mask(iEf,Point) )THEN
+        WHERE(Codes == MaskCode) Codes = 0
+        CYCLE
+      END IF
+      Count = 0
+      DO IX = 1, nX_G
+        IF( Codes(IX) /= MaskCode ) CYCLE
+        Count = Count+1
+        AllIndices(Count) = IX
+      END DO
+      NA = 4
+      IF( ElectronActive ) NA = NA+1
+      IF( MuonActive ) NA = NA+1
+      NX = 4*M+NA+K
+      ALLOCATE(Active(NA))
+      J = 0
+      IF( ElectronActive )THEN
+        J = J+1
+        Active(J) = 1
+      END IF
+      IF( MuonActive )THEN
+        J = J+1
+        Active(J) = 2
+      END IF
+      Active(J+1:NA) = [(P,P=NF+1,K)]
+      Enabled = [Include_NNS .AND. Opacity_Mask(iOp_NNS,Point), &
+                 Include_NES .AND. Opacity_Mask(iOp_NES,Point), &
+                 Include_Pair .AND. Opacity_Mask(iOp_Pair,Point), &
+                 Include_NuPair .AND. Opacity_Mask(iOp_NuPair,Point), &
+                 Include_Brem .AND. Opacity_Mask(iOp_Brem,Point), &
+                 Include_NMS .AND. Opacity_Mask(iOp_NMS,Point), &
+                 Include_LFE .AND. Opacity_Mask(iOp_LFE,Point), &
+                 Include_LFC .AND. Opacity_Mask(iOp_LFC,Point), &
+                 Include_IMD .AND. Opacity_Mask(iOp_IMD,Point)]
+      IF( TraceUnit /= 0 )THEN
+        WRITE(TraceUnit,'(A,3I10,9L3)') 'newton_cohort ',MaskCode,Count,NA,Enabled
+        WRITE(TraceUnit,'(A,*(I6))') 'newton_active ',Active
+      END IF
+      DO Start = 1, Count, Limit
+        NB = MIN(Limit,Count-Start+1)
+        ALLOCATE(Indices(NB),D0(M,NB),I0(M,3,NB),V0(3,NB),Fluid0(3,NB),W(M,NB),U(M,NB),Roots(3,NB))
+        ALLOCATE(BatchX(NX,NB),BatchIncrement(M,4,NB),BatchIterations(NB),BatchQueries(NB),BatchFailure(NB))
+        ALLOCATE(BatchRadiationError(NB),BatchConservationError(NB))
+        ALLOCATE(BatchEmAb(M,NB))
+        IF( RecordChecks )THEN
+          ALLOCATE(BatchCheck(K,3,NB))
+#if defined(THORNADO_OMP_OL)
+          !$OMP TARGET ENTER DATA MAP(alloc:BatchCheck)
+#elif defined(THORNADO_OACC)
+          !$ACC ENTER DATA CREATE(BatchCheck)
+#endif
+        END IF
+        ALLOCATE(LocalD(NB),LocalT(NB),LocalYe(NB),LocalYm(NB),LocalE(NB),MuE(NB),MuM(NB),LocalError(NB))
+        ALLOCATE(LocalElectron(NB),LocalMuon(NB),LocalOpacityMask(nOp,NB))
+        ALLOCATE(DBScatter(nE_G,nE_G,NB),DBPair(nE_G,nE_G,NB))
+        Indices = AllIndices(Start:Start+NB-1)
+        IF( TraceUnit /= 0 )THEN
+          WRITE(TraceUnit,'(A,3I10,ES24.15E3)') 'newton_batch ',Indices(1),Indices(NB),NB,dt
+          FLUSH(TraceUnit)
+        END IF
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET ENTER DATA MAP(to:Indices,Active) &
+        !$OMP MAP(alloc:D0,I0,V0,Fluid0,W,U,Roots,BatchX,BatchIncrement,BatchIterations,BatchQueries, &
+        !$OMP   BatchRadiationError,BatchConservationError,BatchEmAb,&
+        !$OMP   LocalD,LocalT,LocalYe,LocalYm,LocalE,MuE,MuM,LocalError, &
+        !$OMP   LocalElectron,LocalMuon,LocalOpacityMask,DBScatter,DBPair)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(IX,S,Q,J)
+#elif defined(THORNADO_OACC)
+        !$ACC ENTER DATA COPYIN(Indices,Active)
+        !$ACC ENTER DATA CREATE(D0,I0,V0,Fluid0,W,U,Roots,BatchX,BatchIncrement,BatchIterations,BatchQueries, &
+        !$ACC   BatchRadiationError,BatchConservationError,BatchEmAb,&
+        !$ACC   LocalD,LocalT,LocalYe,LocalYm,LocalE,MuE,MuM,LocalError, &
+        !$ACC   LocalElectron,LocalMuon,LocalOpacityMask,DBScatter,DBPair)
+        !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(IX,S,Q,J)
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO PRIVATE(IX,S,Q,J)
+#endif
+        DO B = 1, NB
+          IX = Indices(B)
+          Roots(:,B) = SQRT([G1(IX),G2(IX),G3(IX)])
+          V0(:,B) = OldV(:,IX)
+          Fluid0(:,B) = [OldE(IX),OldYe(IX),OldYm(IX)]
+          DO S = 1, nSpecies
+          DO Q = 1, nE_G
+            J = (S-1)*nE_G+Q
+            D0(J,B) = Dnu(Q,S,IX)
+            I0(J,:,B) = Roots(:,B)*[I1(Q,S,IX),I2(Q,S,IX),I3(Q,S,IX)]
+            W(J,B) = AtomicMassUnit*W2_S(Q)/D(IX)
+            U(J,B) = W3_S(Q)/D(IX)
+          END DO
+          END DO
+        END DO
+        CALL SolveNeutrinoMatterCoupling_Newton_OrderV_Batch(nE_G,nSpecies,nDOFE,Indices,Active,Enabled,E_N,WeightsE,InterpMat_E, &
+          W,U,D0,I0,V0,Fluid0,dt,DnuMax,Rtol_inner,MaxIter_inner,QueryCoefficients,BatchX,BatchIncrement, &
+          BatchIterations,BatchRadiationError,BatchConservationError,BatchQueries,BatchFailure,TraceUnit,BatchEmAb,BatchCheck, &
+          FluidSourceTolerance_Option=NewtonFluidSourceTolerance)
+        IF( ANY(BatchFailure /= 0) )THEN
+          B = FINDLOC(BatchFailure /= 0,.TRUE.,DIM=1)
+          CALL Fail('nonlinear batch failure',Indices(B),BatchFailure(B))
+        END IF
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(IX,J,Q,S,TF,DV,NewD,NewI)
+#elif defined(THORNADO_OACC)
+        !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(IX,J,Q,S,TF,DV,NewD,NewI)
+#elif defined(THORNADO_OMP)
+        !$OMP PARALLEL DO PRIVATE(IX,J,Q,S,TF,DV,NewD,NewI)
+#endif
+        DO B = 1, NB
+          IX = Indices(B)
+          TF = 0.0_DP
+          DO J = 1, NA
+            TF(Active(J)) = BatchX(4*M+J,B)
+          END DO
+          DV = -TF(NF+2:K)
+          Ye(IX) = RetainedValue(OldYe(IX)-TF(1))
+          Ym(IX) = OldYm(IX)
+          IF( NF >= 2 ) Ym(IX) = RetainedValue(OldYm(IX)-TF(2))
+          E(IX) = RetainedValue(OldE(IX)-TF(NF+1) &
+            -OldV(1,IX)*DV(1)-OldV(2,IX)*DV(2)-OldV(3,IX)*DV(3) &
+            -0.5_DP*(DV(1)*DV(1)+DV(2)*DV(2)+DV(3)*DV(3)))
+          T(IX) = WorkT(IX)
+          V1(IX) = RetainedValue(OldV(1,IX)+DV(1))/Roots(1,B)
+          V2(IX) = RetainedValue(OldV(2,IX)+DV(2))/Roots(2,B)
+          V3(IX) = RetainedValue(OldV(3,IX)+DV(3))/Roots(3,B)
+          NewtonFluidIncrement(IX,iCF_Ne) = -D(IX)/AtomicMassUnit*RetainedValue(TF(1))
+          IF( NF >= 2 ) NewtonFluidIncrement(IX,iCF_Nm) = -D(IX)/AtomicMassUnit*RetainedValue(TF(2))
+          NewtonFluidIncrement(IX,iCF_E) = -D(IX)*RetainedValue(TF(NF+1))
+          NewtonFluidIncrement(IX,iCF_S1) = -D(IX)*Roots(1,B)*RetainedValue(TF(NF+2))
+          NewtonFluidIncrement(IX,iCF_S2) = -D(IX)*Roots(2,B)*RetainedValue(TF(NF+3))
+          NewtonFluidIncrement(IX,iCF_S3) = -D(IX)*Roots(3,B)*RetainedValue(TF(NF+4))
+          IterInner(IX) = BatchIterations(B)
+          IterOuter(IX) = 1
+          FinalInner(IX) = BatchIterations(B)
+          FinalOuter(IX) = 1
+          FinalResidual(IX) = BatchRadiationError(B)
+          IF( RecordChecks )THEN
+            MatterResidual(iQ_Le,IX) = -D(IX)/AtomicMassUnit*BatchCheck(1,2,B)/dt
+            IF( NF >= 2 ) MatterResidual(iQ_Lm,IX) = -D(IX)/AtomicMassUnit*BatchCheck(2,2,B)/dt
+            MatterResidual(iQ_E,IX) = -D(IX)*BatchCheck(NF+1,2,B)/dt
+            MatterResidual(iQ_M1,IX) = -D(IX)*Roots(1,B)*BatchCheck(NF+2,2,B)/dt
+            MatterResidual(iQ_M2,IX) = -D(IX)*Roots(2,B)*BatchCheck(NF+3,2,B)/dt
+            MatterResidual(iQ_M3,IX) = -D(IX)*Roots(3,B)*BatchCheck(NF+4,2,B)/dt
+            MatterResidual(iQ_H,IX) = MatterResidual(iQ_E,IX)-V1(IX)*MatterResidual(iQ_M1,IX) &
+              -V2(IX)*MatterResidual(iQ_M2,IX)-V3(IX)*MatterResidual(iQ_M3,IX)
+            DO J = 1,NF
+              FlavorCheck(J,iLFC_CollisionSource,IX) = D(IX)/AtomicMassUnit*BatchCheck(J,3,B)
+              ! The process-source map is transfer-g, not the accepted
+              ! radiation change transfer+H; their difference is H+g.
+              FlavorCheck(J,iLFC_RawMap,IX) = D(IX)/AtomicMassUnit &
+                *RetainedValue(TF(J)-BatchCheck(J,2,B))/dt
+              FlavorCheck(J,iLFC_EquationResidual,IX) = D(IX)/AtomicMassUnit &
+                *(BatchCheck(J,1,B)+BatchCheck(J,2,B))/dt
+              FlavorCheck(J,iLFC_FixedPointResidual,IX) = -FlavorCheck(J,iLFC_EquationResidual,IX)
+            END DO
+          END IF
+          DO S = 1, nSpecies
+          DO Q = 1, nE_G
+            J = (S-1)*nE_G+Q
+            AcceptedNewtonEmAbRate(Q,S,IX) = BatchEmAb(J,B)
+            Dnu(Q,S,IX) = RetainedValue(D0(J,B)+BatchX(J,B))
+            I1(Q,S,IX) = RetainedValue(I0(J,1,B)+BatchX(M+J,B))/Roots(1,B)
+            I2(Q,S,IX) = RetainedValue(I0(J,2,B)+BatchX(2*M+J,B))/Roots(2,B)
+            I3(Q,S,IX) = RetainedValue(I0(J,3,B)+BatchX(3*M+J,B))/Roots(3,B)
+            NewtonRadiationIncrement(Q,S,IX,1) = RetainedValue( &
+              Retain(NewtonRadiationIncrement(Q,S,IX,1))+BatchIncrement(J,1,B))
+            NewtonRadiationIncrement(Q,S,IX,2) = RetainedValue( &
+              Retain(NewtonRadiationIncrement(Q,S,IX,2))+Roots(1,B)*BatchIncrement(J,2,B))
+            NewtonRadiationIncrement(Q,S,IX,3) = RetainedValue( &
+              Retain(NewtonRadiationIncrement(Q,S,IX,3))+Roots(2,B)*BatchIncrement(J,3,B))
+            NewtonRadiationIncrement(Q,S,IX,4) = RetainedValue( &
+              Retain(NewtonRadiationIncrement(Q,S,IX,4))+Roots(3,B)*BatchIncrement(J,4,B))
+          END DO
+          END DO
+        END DO
+#if defined(THORNADO_OMP_OL)
+        !$OMP TARGET EXIT DATA MAP(release:Indices,Active,D0,I0,V0,Fluid0,W,U,Roots,BatchX,BatchIncrement, &
+        !$OMP   BatchIterations,BatchQueries,BatchRadiationError,BatchConservationError,BatchEmAb,&
+        !$OMP   LocalD,LocalT,LocalYe,LocalYm, &
+        !$OMP   LocalE,MuE,MuM,LocalError,LocalElectron,LocalMuon,LocalOpacityMask,&
+        !$OMP   DBScatter,DBPair)
+#elif defined(THORNADO_OACC)
+        !$ACC EXIT DATA DELETE(Indices,Active,D0,I0,V0,Fluid0,W,U,Roots,BatchX,BatchIncrement, &
+        !$ACC   BatchIterations,BatchQueries,BatchRadiationError,BatchConservationError,BatchEmAb,&
+        !$ACC   LocalD,LocalT,LocalYe,LocalYm, &
+        !$ACC   LocalE,MuE,MuM,LocalError,LocalElectron,LocalMuon,LocalOpacityMask,&
+        !$ACC   DBScatter,DBPair)
+#endif
+        DEALLOCATE(Indices,D0,I0,V0,Fluid0,W,U,Roots,BatchX,BatchIncrement,BatchIterations,BatchQueries,BatchFailure)
+        DEALLOCATE(BatchRadiationError,BatchConservationError,BatchEmAb)
+        IF( ALLOCATED(BatchCheck) )THEN
+#if defined(THORNADO_OMP_OL)
+          !$OMP TARGET EXIT DATA MAP(release:BatchCheck)
+#elif defined(THORNADO_OACC)
+          !$ACC EXIT DATA DELETE(BatchCheck)
+#endif
+          DEALLOCATE(BatchCheck)
+        END IF
+        DEALLOCATE(LocalD,LocalT,LocalYe,LocalYm,LocalE,MuE,MuM,LocalError)
+        DEALLOCATE(LocalElectron,LocalMuon,LocalOpacityMask,DBScatter,DBPair)
+      END DO
+      WHERE(Codes == MaskCode) Codes = 0
+      DEALLOCATE(Active)
+    END DO
+
+    ! Every converged point's final kernel query was its accepted state:
+    ! subsequent probes/trials exclude it. Reuse those kernels for the
+    ! existing AP-transport and process-Q interfaces, without a new opacity
+    ! query or a primitive-to-conserved subtraction for the actual increment.
+    CALL ComputeRates_Packed(D,T,Dnu,I1,I2,I3,nX_P0=nX_G,Opacity_Mask_Input=Opacity_Mask)
+    IF( TraceUnit /= 0 ) CLOSE(TraceUnit)
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA MAP(release:StageMask,QueryMask,QueryPack,QueryUnpack,WorkT,WorkYe,WorkYm,WorkE, &
+    !$OMP   WorkSqrtG,OldE,OldYe,OldYm,OldV,KernelScale)
+#elif defined(THORNADO_OACC)
+    !$ACC EXIT DATA DELETE(StageMask,QueryMask,QueryPack,QueryUnpack,WorkT,WorkYe,WorkYm,WorkE, &
+    !$ACC   WorkSqrtG,OldE,OldYe,OldYm,OldV,KernelScale)
+#endif
+
+  CONTAINS
+
+    SUBROUTINE Fail(Message,Point,Code)
+      CHARACTER(*), INTENT(in) :: Message
+      INTEGER, INTENT(in) :: Point,Code
+      WRITE(ERROR_UNIT,'(A,A,3I10)') 'Balanced Newton: ',TRIM(Message),Rank,Point,Code
+      FLUSH(ERROR_UNIT)
+      CALL MPI_ABORT(MPI_COMM_WORLD,-1,Ierr)
+    END SUBROUTINE Fail
+
+    SUBROUTINE QueryCoefficients &
+      ( Mode,Points,Requested,Transfer,Process,Species,QA,QB,KT,Mu,Susceptibility,Chi,Sigma,Gain,Loss,Error )
+      INTEGER, INTENT(in) :: Mode,Points(:),Process(:),Species(:),QA(:),QB(:)
+      LOGICAL, INTENT(in) :: Requested(:)
+      TYPE(RetainedReal), INTENT(in) :: Transfer(:,:)
+      REAL(DP), INTENT(out) :: KT(:),Mu(:,:),Susceptibility(:),Chi(:,:),Sigma(:,:),Gain(:,:),Loss(:,:)
+      INTEGER, INTENT(out) :: Error(:)
+      INTEGER :: B,IX,Q,S,J,P,L,R,LO,HI,C,Count,Ierr
+      REAL(DP) :: G,B0,V2,Fwd,Back,Diag,ProbeY,PairSusceptibility
+      TYPE(RetainedReal) :: DV(3),Energy
+
+      CALL TimersStart(Timer_Collisions_MatterFromRadiation)
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(IX,DV,Energy)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(IX,DV,Energy)
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO PRIVATE(IX,DV,Energy)
+#endif
+      DO B = 1, SIZE(Points)
+        IX = Points(B)
+        LocalD(B) = D(IX)
+        LocalT(B) = WorkT(IX)
+        LocalYe(B) = OldYe(IX)
+        LocalYm(B) = OldYm(IX)
+        LocalE(B) = OldE(IX)
+        LocalError(B) = 0
+        Error(B) = 0
+        LocalElectron(B) = Opacity_Mask(iOp_EmAb_Electron,IX) .OR. Opacity_Mask(iOp_ECTable,IX)
+        LocalMuon(B) = Opacity_Mask(iOp_EmAb_Muon,IX)
+        LocalOpacityMask(:,B) = Opacity_Mask(:,IX)
+        IF( .NOT. Requested(B) ) CYCLE
+        DV = -Transfer(NF+2:K,B)
+        Energy = OldE(IX)-Transfer(NF+1,B)-OldV(1,IX)*DV(1)-OldV(2,IX)*DV(2)-OldV(3,IX)*DV(3) &
+          -0.5_DP*(DV(1)*DV(1)+DV(2)*DV(2)+DV(3)*DV(3))
+        LocalE(B) = RetainedValue(Energy)
+        LocalYe(B) = RetainedValue(OldYe(IX)-Transfer(1,B))
+        IF( NF >= 2 ) LocalYm(B) = RetainedValue(OldYm(IX)-Transfer(2,B))
+        IF( .NOT. IEEE_IS_FINITE(LocalE(B)) .OR. LocalYe(B) <= Zero .OR. LocalYe(B) >= One &
+            .OR. ABS(LocalYm(B)) >= One )THEN
+          LocalError(B) = 1
+          LocalYe(B) = OldYe(IX)
+          LocalYm(B) = OldYm(IX)
+          LocalE(B) = OldE(IX)
+        END IF
+      END DO
+      CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
+        (LocalD,LocalE,LocalYe,LocalYm,LocalT,Error_Option=Error,DisplayErrors_Option=.FALSE.)
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO
+#endif
+      DO B = 1, SIZE(Points)
+        Error(B) = MAX(Error(B),LocalError(B))
+      END DO
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE FROM(Error)
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE SELF(Error)
+#endif
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(IX)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(IX)
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO PRIVATE(IX)
+#endif
+      DO B = 1, SIZE(Points)
+        IF( Error(B) == 0 ) CYCLE
+        IX = Points(B)
+        LocalT(B) = T(IX)
+        LocalYe(B) = OldYe(IX)
+        LocalYm(B) = OldYm(IX)
+      END DO
+      CALL ComputeElectronNeutrinoChemicalPotential_TABLE &
+        (LocalD,LocalT,LocalYe,LocalYm,MuE,ChargedCurrentMask_Option=LocalElectron)
+      CALL ComputeMuonNeutrinoChemicalPotential_TABLE &
+        (LocalD,LocalT,LocalYe,LocalYm,MuM,ChargedCurrentMask_Option=LocalMuon)
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(ProbeY,PairSusceptibility,Ierr,S)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(ProbeY,PairSusceptibility,Ierr,S)
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO PRIVATE(ProbeY,PairSusceptibility,Ierr,S)
+#endif
+      DO B = 1, SIZE(Points)
+        IF( .NOT. Requested(B) .OR. Error(B) /= 0 ) CYCLE
+        KT(B) = BoltzmannConstant*LocalT(B)
+        Susceptibility(B) = Zero
+        IF( LocalMuon(B) )THEN
+          CALL ComputeMuonFractionFromDegeneracy_TABLE(LocalD(B),LocalT(B),LocalYe(B),Zero, &
+            ProbeY,PairSusceptibility,Ierr)
+          IF( Ierr == 0 ) Susceptibility(B) = PairSusceptibility
+        END IF
+        DO S = 1, nSpecies
+          Mu(S,B) = Zero
+          IF( S <= 2 ) Mu(S,B) = LeptonNumber(S)*MuE(B)
+          IF( S == 3 .OR. S == 4 ) Mu(S,B) = LeptonNumber(S)*MuM(B)
+        END DO
+      END DO
+      CALL TimersStop(Timer_Collisions_MatterFromRadiation)
+      IF( Mode == 2 ) RETURN
+
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO
+#endif
+      DO IX = 1, nX_G
+        QueryMask(IX) = .FALSE.
+      END DO
+      Count = 0
+      DO B = 1, SIZE(Points)
+        IF( .NOT. Requested(B) .OR. Error(B) /= 0 ) CYCLE
+        Count = Count+1
+        QueryUnpack(Count) = Points(B)
+        QueryPack(Points(B)) = Count
+      END DO
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE TO(QueryUnpack,QueryPack)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(IX)
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE DEVICE(QueryUnpack,QueryPack)
+      !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(IX)
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO PRIVATE(IX)
+#endif
+      DO B = 1, SIZE(Points)
+        IF( .NOT. Requested(B) .OR. Error(B) /= 0 ) CYCLE
+        IX = Points(B)
+        QueryMask(IX) = .TRUE.
+        WorkT(IX) = LocalT(B)
+        WorkYe(IX) = LocalYe(B)
+        WorkYm(IX) = LocalYm(B)
+        WorkE(IX) = LocalE(B)
+      END DO
+      IF( Count == 0 ) RETURN
+      CALL TimersStart(Timer_Collisions_ComputeOpacity)
+      CALL ComputeOpacities_Packed(D,WorkT,WorkYe,WorkYm,WorkSqrtG,QueryMask,Count,QueryPack,QueryUnpack,nX_G, &
+        Opacity_Mask_Input=Opacity_Mask)
+      CALL TimersStop(Timer_Collisions_ComputeOpacity)
+      CALL ComputeDetailedBalanceFactors(1,nE_G,1,SIZE(Points),E_N,LocalT,.TRUE.,.TRUE.,DBScatter,DBPair)
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(IX,S,Q,R,J,P,L,C,Fwd,Back,Diag)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(IX,S,Q,R,J,P,L,C,Fwd,Back,Diag)
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO PRIVATE(IX,S,Q,R,J,P,L,C,Fwd,Back,Diag)
+#endif
+      DO B = 1, SIZE(Points)
+        IF( .NOT. Requested(B) .OR. Error(B) /= 0 ) CYCLE
+        IX = Points(B)
+        DO S = 1, nSpecies
+        DO R = 1, nE_G
+          J = (S-1)*nE_G+R
+          C = nChirals-(LeptonNumber(S)+1)/nChirals
+          Chi(J,B) = Chi_EmAb(R,S,IX)
+          Sigma(J,B) = Sigma_Iso(R,C,IX)
+          ! Diagonal self-scattering cancels identically in C0, but damps I.
+          DO P = 1, 6
+            IF( .NOT. Enabled(P) .OR. (P >= 3 .AND. P <= 5) ) CYCLE
+            CALL ComputeCollisionKernel_OrderV_Point(P,S,R,R,IX,KernelScale,Fwd,Back)
+            Sigma(J,B) = Sigma(J,B)+Back*W2_N(R)
+          END DO
+        END DO
+        END DO
+        DO L = 1, SIZE(Process)
+          P = Process(L)
+          S = Species(L)
+          R = QA(L)
+          Q = QB(L)
+          CALL ComputeCollisionKernel_OrderV_Point(P,S,R,Q,IX,KernelScale,Fwd,Back)
+          IF( P <= 2 .OR. P == 6 )THEN
+            Fwd = Back*DBScatter(Q,R,B)
+          ELSE IF( P <= 5 )THEN
+            Fwd = Back*DBPair(Q,R,B)
+          END IF
+          Gain(L,B) = Fwd*W2_N(Q)
+          Loss(L,B) = Back*W2_N(Q)
+        END DO
+      END DO
+    END SUBROUTINE QueryCoefficients
+
+    FUNCTION IntegerString(I) RESULT(S)
+      INTEGER, INTENT(in) :: I
+      CHARACTER(24) :: S
+      WRITE(S,'(I0)') I
+    END FUNCTION IntegerString
+
+  END SUBROUTINE SolveNeutrinoMatterCoupling_Newton_OrderV
+
+  SUBROUTINE ComputeCollisionKernel_OrderV_Point(P,S,R,Q,IX,KernelScale,Fwd,Back)
+    USE OpacityModule_TABLE, ONLY: C1,C2,C1_NuPair,C2_NuPair
+#if defined(THORNADO_OMP_OL)
+      !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+      !$ACC ROUTINE SEQ
+#endif
+      INTEGER, INTENT(in) :: P,S,R,Q,IX
+      REAL(DP), INTENT(in) :: KernelScale(5)
+      REAL(DP), INTENT(out) :: Fwd,Back
+      INTEGER :: LO,HI
+      LO = MIN(R,Q)
+      HI = MAX(R,Q)
+      Back = Zero
+      Fwd = Zero
+      SELECT CASE(P)
+        CASE(1)
+          Back = Phi_NNS_0(LO,HI,IX)
+          IF( MOD(S,2) == 0 ) Back = Phi_NbNS_0(LO,HI,IX)
+        CASE(2)
+          Back = C1(S)*H_I_0(LO,HI,IX)+C2(S)*H_II_0(LO,HI,IX)
+        CASE(3)
+          IF( Q <= R )THEN
+            Back = C1(S)*J_I_0(LO,HI,IX)+C2(S)*J_II_0(LO,HI,IX)
+          ELSE
+            Back = C1(S)*J_II_0(LO,HI,IX)+C2(S)*J_I_0(LO,HI,IX)
+          END IF
+        CASE(4)
+          IF( Q <= R )THEN
+            Back = C1_NuPair(S)*Nu_J_I_0(LO,HI,IX)+C2_NuPair(S)*Nu_J_II_0(LO,HI,IX)
+          ELSE
+            Back = C1_NuPair(S)*Nu_J_II_0(LO,HI,IX)+C2_NuPair(S)*Nu_J_I_0(LO,HI,IX)
+          END IF
+        CASE(5)
+          Back = S_Sigma(LO,HI,IX)
+        CASE(6:9)
+          CALL GetGeneralLeptonCoefficient(P-5,S,R,Q,IX,Fwd,Back)
+      END SELECT
+      IF( P <= 5 )THEN
+        Back = Back*KernelScale(P)
+        Fwd = Back
+      END IF
+  END SUBROUTINE ComputeCollisionKernel_OrderV_Point
+#endif
 
 
   SUBROUTINE SetMatterSourceMask &
@@ -4039,1455 +3863,6 @@ CONTAINS
 
 
 #if defined( TWOMOMENT_ORDER_V )
-  SUBROUTINE InitializeRadiationLeptonInvariants_OrderV &
-    ( MASK, Nnu, RadiationLeptonInvariant )
-
-    LOGICAL,  DIMENSION(:),     INTENT(in)  :: MASK
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: Nnu
-    REAL(DP), DIMENSION(:,:),   INTENT(out) :: RadiationLeptonInvariant
-
-    INTEGER  :: iFamily, iN_E, iN_X, iS
-    REAL(DP) :: LeptonIntegral
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2) &
-    !$OMP PRIVATE( iN_E, iS, LeptonIntegral )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG COLLAPSE(2) &
-    !$ACC PRIVATE( iN_E, iS, LeptonIntegral )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(2) &
-    !$OMP PRIVATE( iN_E, iS, LeptonIntegral )
-#endif
-    DO iN_X = 1, nX_G
-    DO iFamily = 1, nLeptonFamilies
-
-      LeptonIntegral = Zero
-
-      IF( MASK(iN_X) )THEN
-        DO iS = 1, nSpecies
-          IF( ( iS + 1 ) / 2 /= iFamily ) CYCLE
-          DO iN_E = 1, nE_G
-            LeptonIntegral = LeptonIntegral &
-              + W2_S(iN_E) * LeptonNumber(iS) * Nnu(iN_E,iS,iN_X)
-          END DO
-        END DO
-      END IF
-
-      RadiationLeptonInvariant(iFamily,iN_X) = LeptonIntegral
-
-    END DO
-    END DO
-
-  END SUBROUTINE InitializeRadiationLeptonInvariants_OrderV
-
-
-  SUBROUTINE FindRadiationLeptonInvariantViolations_OrderV &
-    ( MASK, ViolationMask, RadiationLeptonInvariant, &
-      Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-      V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-    LOGICAL,  DIMENSION(:),     INTENT(in)  :: MASK
-    LOGICAL,  DIMENSION(:),     INTENT(out) :: ViolationMask
-    REAL(DP), DIMENSION(:,:),   INTENT(in)  :: RadiationLeptonInvariant
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)  :: &
-      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:),     INTENT(in)  :: &
-      V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
-
-    REAL(DP), PARAMETER :: InvariantTolerance = 64.0_DP * EPSILON(One)
-
-    INTEGER  :: iFamily, iN_E, iN_X, iS
-    REAL(DP) :: Current, DeltaLepton, LeptonScale, Residual, vDotI
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO &
-    !$OMP PRIVATE( iFamily, iN_E, iS, Current, DeltaLepton, &
-    !$OMP          LeptonScale, Residual, vDotI )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG &
-    !$ACC PRIVATE( iFamily, iN_E, iS, Current, DeltaLepton, &
-    !$ACC          LeptonScale, Residual, vDotI )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO &
-    !$OMP PRIVATE( iFamily, iN_E, iS, Current, DeltaLepton, &
-    !$OMP          LeptonScale, Residual, vDotI )
-#endif
-    DO iN_X = 1, nX_G
-
-      ViolationMask(iN_X) = .FALSE.
-      IF( .NOT. MASK(iN_X) ) CYCLE
-
-      DO iFamily = 1, MIN( nLeptonFamilies, ( nSpecies + 1 ) / 2 )
-
-        IF( LeptonFamilyCouplesToMatter( iFamily, iN_X ) ) CYCLE
-
-        Current = Zero
-        LeptonScale = Zero
-
-        DO iS = 1, nSpecies
-          IF( ( iS + 1 ) / 2 /= iFamily ) CYCLE
-          DO iN_E = 1, nE_G
-            vDotI = V_u_1(iN_X) * Gm_dd_11(iN_X) &
-                      * Inu_u_1(iN_E,iS,iN_X) &
-                  + V_u_2(iN_X) * Gm_dd_22(iN_X) &
-                      * Inu_u_2(iN_E,iS,iN_X) &
-                  + V_u_3(iN_X) * Gm_dd_33(iN_X) &
-                      * Inu_u_3(iN_E,iS,iN_X)
-            DeltaLepton = W2_S(iN_E) * LeptonNumber(iS) &
-              * ( Dnu(iN_E,iS,iN_X) + vDotI )
-            Current = Current + DeltaLepton
-            LeptonScale = LeptonScale + ABS( DeltaLepton )
-          END DO
-        END DO
-
-        Residual = RadiationLeptonInvariant(iFamily,iN_X) - Current
-        IF( ABS( Residual ) > InvariantTolerance &
-              * MAX( LeptonScale, &
-                     ABS( RadiationLeptonInvariant(iFamily,iN_X) ) ) )THEN
-          ViolationMask(iN_X) = .TRUE.
-          EXIT
-        END IF
-
-      END DO
-
-    END DO
-
-  END SUBROUTINE FindRadiationLeptonInvariantViolations_OrderV
-
-
-  SUBROUTINE EnforceRadiationLeptonInvariants_OrderV &
-    ( MASK, RadiationLeptonInvariant, &
-      Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-      V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
-    REAL(DP), DIMENSION(:,:),   INTENT(in)    :: RadiationLeptonInvariant
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: &
-      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: &
-      V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
-
-    INTEGER, PARAMETER :: MaxInvariantCorrections = 4
-    REAL(DP), PARAMETER :: InvariantTolerance = 64.0_DP * EPSILON(One)
-
-    INTEGER  :: iFamily, iN_E, iN_X, iS, k
-    REAL(DP) :: Capacity, Current, DeltaLepton, D_End, FluxMagnitude
-    REAL(DP) :: FluxScale, Fraction, I1_End, I2_End, I3_End
-    REAL(DP) :: LeptonScale, N_Current, N_End, Residual, SignedChange
-    REAL(DP) :: vDotI, vDotI_End
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2) &
-    !$OMP PRIVATE( iN_E, iS, k, Capacity, Current, DeltaLepton, D_End, &
-    !$OMP          FluxMagnitude, FluxScale, Fraction, &
-    !$OMP          I1_End, I2_End, I3_End, LeptonScale, &
-    !$OMP          N_Current, N_End, Residual, SignedChange, &
-    !$OMP          vDotI, vDotI_End )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG COLLAPSE(2) &
-    !$ACC PRIVATE( iN_E, iS, k, Capacity, Current, DeltaLepton, D_End, &
-    !$ACC          FluxMagnitude, FluxScale, Fraction, &
-    !$ACC          I1_End, I2_End, I3_End, LeptonScale, &
-    !$ACC          N_Current, N_End, Residual, SignedChange, &
-    !$ACC          vDotI, vDotI_End )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(2) &
-    !$OMP PRIVATE( iN_E, iS, k, Capacity, Current, DeltaLepton, D_End, &
-    !$OMP          FluxMagnitude, FluxScale, Fraction, &
-    !$OMP          I1_End, I2_End, I3_End, LeptonScale, &
-    !$OMP          N_Current, N_End, Residual, SignedChange, &
-    !$OMP          vDotI, vDotI_End )
-#endif
-    DO iN_X = 1, nX_G
-    DO iFamily = 1, MIN( nLeptonFamilies, ( nSpecies + 1 ) / 2 )
-
-      IF( .NOT. MASK(iN_X) ) CYCLE
-      IF( LeptonFamilyCouplesToMatter( iFamily, iN_X ) ) CYCLE
-
-      DO k = 1, MaxInvariantCorrections
-
-        Current = Zero
-        LeptonScale = Zero
-
-        DO iS = 1, nSpecies
-          IF( ( iS + 1 ) / 2 /= iFamily ) CYCLE
-          DO iN_E = 1, nE_G
-            vDotI = V_u_1(iN_X) * Gm_dd_11(iN_X) &
-                      * Inu_u_1(iN_E,iS,iN_X) &
-                  + V_u_2(iN_X) * Gm_dd_22(iN_X) &
-                      * Inu_u_2(iN_E,iS,iN_X) &
-                  + V_u_3(iN_X) * Gm_dd_33(iN_X) &
-                      * Inu_u_3(iN_E,iS,iN_X)
-            N_Current = Dnu(iN_E,iS,iN_X) + vDotI
-            DeltaLepton = W2_S(iN_E) * LeptonNumber(iS) * N_Current
-            Current = Current + DeltaLepton
-            LeptonScale = LeptonScale + ABS( DeltaLepton )
-          END DO
-        END DO
-
-        Residual = RadiationLeptonInvariant(iFamily,iN_X) - Current
-        IF( ABS( Residual ) <= InvariantTolerance &
-              * MAX( LeptonScale, &
-                     ABS( RadiationLeptonInvariant(iFamily,iN_X) ) ) ) EXIT
-
-        Capacity = Zero
-
-        DO iS = 1, nSpecies
-          IF( ( iS + 1 ) / 2 /= iFamily ) CYCLE
-          DO iN_E = 1, nE_G
-            vDotI = V_u_1(iN_X) * Gm_dd_11(iN_X) &
-                      * Inu_u_1(iN_E,iS,iN_X) &
-                  + V_u_2(iN_X) * Gm_dd_22(iN_X) &
-                      * Inu_u_2(iN_E,iS,iN_X) &
-                  + V_u_3(iN_X) * Gm_dd_33(iN_X) &
-                      * Inu_u_3(iN_E,iS,iN_X)
-            N_Current = Dnu(iN_E,iS,iN_X) + vDotI
-
-            ! Reduce only the species whose removal moves the signed family
-            ! residual toward zero; do not populate empty energy groups.
-            IF( Residual * LeptonNumber(iS) >= Zero ) CYCLE
-
-            FluxMagnitude = SQRT( MAX( Zero, &
-                Gm_dd_11(iN_X) * Inu_u_1(iN_E,iS,iN_X)**2 &
-              + Gm_dd_22(iN_X) * Inu_u_2(iN_E,iS,iN_X)**2 &
-              + Gm_dd_33(iN_X) * Inu_u_3(iN_E,iS,iN_X)**2 ) )
-            IF( FluxMagnitude > Zero )THEN
-              FluxScale = MIN( One, SqrtTiny / FluxMagnitude )
-            ELSE
-              FluxScale = Zero
-            END IF
-            D_End = SqrtTiny
-            I1_End = FluxScale * Inu_u_1(iN_E,iS,iN_X)
-            I2_End = FluxScale * Inu_u_2(iN_E,iS,iN_X)
-            I3_End = FluxScale * Inu_u_3(iN_E,iS,iN_X)
-            vDotI_End = V_u_1(iN_X) * Gm_dd_11(iN_X) * I1_End &
-                      + V_u_2(iN_X) * Gm_dd_22(iN_X) * I2_End &
-                      + V_u_3(iN_X) * Gm_dd_33(iN_X) * I3_End
-            N_End = D_End + vDotI_End
-            SignedChange = W2_S(iN_E) * LeptonNumber(iS) &
-              * ( N_End - N_Current )
-
-            IF( Residual * SignedChange > Zero ) &
-              Capacity = Capacity + SignedChange
-          END DO
-        END DO
-
-        IF( Residual * Capacity <= Zero ) EXIT
-        Fraction = MIN( One, ABS( Residual / Capacity ) )
-
-        DO iS = 1, nSpecies
-          IF( ( iS + 1 ) / 2 /= iFamily ) CYCLE
-          DO iN_E = 1, nE_G
-            vDotI = V_u_1(iN_X) * Gm_dd_11(iN_X) &
-                      * Inu_u_1(iN_E,iS,iN_X) &
-                  + V_u_2(iN_X) * Gm_dd_22(iN_X) &
-                      * Inu_u_2(iN_E,iS,iN_X) &
-                  + V_u_3(iN_X) * Gm_dd_33(iN_X) &
-                      * Inu_u_3(iN_E,iS,iN_X)
-            N_Current = Dnu(iN_E,iS,iN_X) + vDotI
-
-            IF( Residual * LeptonNumber(iS) >= Zero ) CYCLE
-
-            FluxMagnitude = SQRT( MAX( Zero, &
-                Gm_dd_11(iN_X) * Inu_u_1(iN_E,iS,iN_X)**2 &
-              + Gm_dd_22(iN_X) * Inu_u_2(iN_E,iS,iN_X)**2 &
-              + Gm_dd_33(iN_X) * Inu_u_3(iN_E,iS,iN_X)**2 ) )
-            IF( FluxMagnitude > Zero )THEN
-              FluxScale = MIN( One, SqrtTiny / FluxMagnitude )
-            ELSE
-              FluxScale = Zero
-            END IF
-            D_End = SqrtTiny
-            I1_End = FluxScale * Inu_u_1(iN_E,iS,iN_X)
-            I2_End = FluxScale * Inu_u_2(iN_E,iS,iN_X)
-            I3_End = FluxScale * Inu_u_3(iN_E,iS,iN_X)
-            vDotI_End = V_u_1(iN_X) * Gm_dd_11(iN_X) * I1_End &
-                      + V_u_2(iN_X) * Gm_dd_22(iN_X) * I2_End &
-                      + V_u_3(iN_X) * Gm_dd_33(iN_X) * I3_End
-            N_End = D_End + vDotI_End
-            SignedChange = W2_S(iN_E) * LeptonNumber(iS) &
-              * ( N_End - N_Current )
-
-            IF( Residual * SignedChange > Zero )THEN
-              Dnu(iN_E,iS,iN_X) = Dnu(iN_E,iS,iN_X) &
-                + Fraction * ( D_End - Dnu(iN_E,iS,iN_X) )
-              Inu_u_1(iN_E,iS,iN_X) = Inu_u_1(iN_E,iS,iN_X) &
-                + Fraction * ( I1_End - Inu_u_1(iN_E,iS,iN_X) )
-              Inu_u_2(iN_E,iS,iN_X) = Inu_u_2(iN_E,iS,iN_X) &
-                + Fraction * ( I2_End - Inu_u_2(iN_E,iS,iN_X) )
-              Inu_u_3(iN_E,iS,iN_X) = Inu_u_3(iN_E,iS,iN_X) &
-                + Fraction * ( I3_End - Inu_u_3(iN_E,iS,iN_X) )
-            END IF
-          END DO
-        END DO
-
-      END DO
-
-    END DO
-    END DO
-
-  END SUBROUTINE EnforceRadiationLeptonInvariants_OrderV
-
-
-  SUBROUTINE SolveRadiationMuonEtaSchur_OrderV &
-    ( dt, Active, Dnu, I1, I2, I3, D, T, Ye, Ym, E, V1, V2, V3, &
-      g1, g2, g3, SqrtGm, Fmatter, Gmatter, Frad, Grad, &
-      LimiterCorrection, LeptonInvariant, nInner, nOuter, &
-      nInnerFinal, nOuterFinal, FirstResidual, FinalResidual )
-
-    USE, INTRINSIC :: IEEE_ARITHMETIC, ONLY: IEEE_IS_FINITE
-    USE ISO_FORTRAN_ENV, ONLY: ERROR_UNIT
-    USE mpi
-
-    REAL(DP), INTENT(in) :: dt
-    LOGICAL, INTENT(inout) :: Active(:)
-    REAL(DP), INTENT(inout) :: Dnu(:,:,:), I1(:,:,:), I2(:,:,:), I3(:,:,:)
-    REAL(DP), INTENT(in) :: D(:), g1(:), g2(:), g3(:), SqrtGm(:)
-    REAL(DP), INTENT(inout) :: T(:), Ye(:), Ym(:), E(:), V1(:), V2(:), V3(:)
-    REAL(DP), INTENT(inout) :: Fmatter(:,:), Gmatter(:,:), Frad(:,:), Grad(:,:)
-    REAL(DP), INTENT(in) :: LimiterCorrection(:,:), LeptonInvariant(:,:)
-    INTEGER, INTENT(inout) :: nInner(:), nOuter(:), nInnerFinal(:), nOuterFinal(:)
-    REAL(DP), INTENT(inout) :: FirstResidual(:), FinalResidual(:)
-
-    ! The radiation residual is x-P G(x,eta), with the existing independent
-    ! spectral bound projection. In inventory mode the muon residual is
-    ! Y_EOS-Y_conserved and the Schur step uses the equivalent row H=q-L F.
-    ! In direct-source mode both the accepted row and the Newton row are
-    ! Y_EOS-Y_old-dt*S_mu, plus the existing initial-limiter compensation.
-    ! Number-conserving reaction residuals never enter that material row.
-    ! No inverse muon susceptibility appears in this residual evaluation.
-    INTEGER, PARAMETER :: KrylovDimension = 24
-    REAL(DP), PARAMETER :: FDStep = 1.0e-6_DP
-    REAL(DP), PARAMETER :: Armijo = 1.0e-4_DP
-    INTEGER :: k, p, s, eN, os, bt, ierr, rank, unit, io, nInitialPacked
-    REAL(DP) :: mu, densityScale, leptonScale, denom, dqz, dqy
-    REAL(DP), ALLOCATABLE :: X(:,:), Eta(:), F(:,:), Q(:), Scale(:,:), QScale(:)
-    REAL(DP), ALLOCATABLE :: B(:,:), EtaJac(:), Z(:,:), Y(:,:), StepX(:,:), StepEta(:)
-    REAL(DP), ALLOCATABLE :: TrialX(:,:), TrialEta(:), TrialF(:,:), TrialQ(:)
-    REAL(DP), ALLOCATABLE :: EtaPerturb(:), QZ(:), QY(:), MuonConserved(:)
-    REAL(DP), ALLOCATABLE :: Merit(:), TrialMerit(:), Lambda(:), QAcceptance(:)
-    REAL(DP), ALLOCATABLE :: WarmT(:), Fbase(:,:), Qbase(:)
-    REAL(DP), ALLOCATABLE :: Hvalue(:), Hbase(:), Hsource(:), RawFm(:,:)
-    REAL(DP), ALLOCATABLE :: NumberSource(:,:,:), NumberFactor(:,:,:), NumberFraction(:,:,:)
-    REAL(DP), ALLOCATABLE :: MaterialSource(:), MaterialAbsoluteSource(:)
-    LOGICAL, ALLOCATABLE :: EtaActive(:), EvalMask(:), Pending(:), Bad(:), WorkMask(:)
-    INTEGER, ALLOCATABLE :: Err(:), Pack(:), Unpack(:), InvariantPivot(:,:), EvalReason(:)
-    CHARACTER(512) :: TraceName
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM(Dnu,I1,I2,I3,D,T,Ye,Ym,E,V1,V2,V3, &
-    !$OMP                    C_Dnu,Ym_old,W2_S,MatterSource_Mask,T_Opacity, &
-    !$OMP                    LimiterCorrection,LeptonInvariant,g1,g2,g3)
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST(Dnu,I1,I2,I3,D,T,Ye,Ym,E,V1,V2,V3, &
-    !$ACC             C_Dnu,Ym_old,W2_S,MatterSource_Mask,T_Opacity, &
-    !$ACC             LimiterCorrection,LeptonInvariant,g1,g2,g3)
-#endif
-    ALLOCATE(X(n_FP_inner,nX_G),Eta(nX_G),F(n_FP_inner,nX_G),Q(nX_G))
-    ALLOCATE(Scale(n_FP_inner,nX_G),QScale(nX_G),QAcceptance(nX_G))
-    ALLOCATE(B(n_FP_inner,nX_G),EtaJac(nX_G),Z(n_FP_inner,nX_G),Y(n_FP_inner,nX_G))
-    ALLOCATE(StepX(n_FP_inner,nX_G),StepEta(nX_G),TrialX(n_FP_inner,nX_G))
-    ALLOCATE(TrialEta(nX_G),TrialF(n_FP_inner,nX_G),TrialQ(nX_G))
-    ALLOCATE(EtaPerturb(nX_G),QZ(nX_G),QY(nX_G),MuonConserved(nX_G))
-    ALLOCATE(Merit(nX_G),TrialMerit(nX_G),Lambda(nX_G),WarmT(nX_G))
-    ALLOCATE(Fbase(n_FP_inner,nX_G),Qbase(nX_G))
-    ALLOCATE(Hvalue(nX_G),Hbase(nX_G),Hsource(nX_G),RawFm(n_FP_inner,nX_G))
-    ALLOCATE(NumberSource(nE_G,nSpecies,nX_G),NumberFactor(nE_G,nSpecies,nX_G))
-    ALLOCATE(NumberFraction(nE_G,nSpecies,nX_G))
-    IF( UseMuonLeptonSource ) ALLOCATE(MaterialSource(nX_G),MaterialAbsoluteSource(nX_G))
-    ALLOCATE(EtaActive(nX_G),EvalMask(nX_G),Pending(nX_G),Bad(nX_G),WorkMask(nX_G))
-    ALLOCATE(Err(nX_G),Pack(nX_G),Unpack(nX_G))
-    ALLOCATE(EvalReason(nX_G))
-    EvalReason = 0
-    ALLOCATE(InvariantPivot(nLeptonFamilies,nX_G))
-    EtaActive = MatterSource_Mask(iYm,:) .AND. Active .AND. wMatrRHS(iYm) /= Zero
-    IF( nSpecies < iNuM_Bar ) EtaActive = .FALSE.
-    Eta = Zero
-    nInitialPacked = COUNT(Active)
-    WarmT = T
-    Scale = One
-    QScale = One
-    Lambda = One
-    StepEta = Zero
-    StepX = Zero
-    Merit = Zero
-    TrialMerit = Zero
-    Err = 0
-    F = Zero
-    Q = Zero
-    DO p = 1, nX_G
-      IF( EtaActive(p) )THEN
-        CALL ComputeMuonChemicalPotential_TABLE(D(p),T(p),Ye(p),Ym(p),mu)
-        Eta(p) = mu / (BoltzmannConstant*T(p))
-      END IF
-      DO s = 1, nSpecies
-      DO eN = 1, nE_G
-        os = ((eN-1)+(s-1)*nE_G)*nCR
-        X(os+iCR_N,p) = Dnu(eN,s,p)
-        X(os+iCR_G1,p) = g1(p)*I1(eN,s,p)
-        X(os+iCR_G2,p) = g2(p)*I2(eN,s,p)
-        X(os+iCR_G3,p) = g3(p)*I3(eN,s,p)
-      END DO
-      END DO
-    END DO
-    ! Replace one redundant density equation in each uncoupled family
-    ! with its signed-number invariant. Choose a populated pivot once per
-    ! solve; do not project states during Jacobian or residual evaluation.
-    InvariantPivot = 0
-    DO p = 1, nX_G
-      DO s = 1, MIN(nLeptonFamilies,nSpecies/2)
-        IF( LeptonFamilyCouplesToMatter(s,p) ) CYCLE
-        eN = MAXLOC(W2_S*MAX(Dnu(:,2*s-1,p),Dnu(:,2*s,p)),DIM=1)
-        InvariantPivot(s,p) = ((eN-1)+(2*s-2)*nE_G)*nCR+iCR_N
-      END DO
-    END DO
-
-    ! Work masks and indices are needed by the existing packed GPU physics
-    ! routines. Newton/Krylov control and small Hessenberg solves are on host.
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET ENTER DATA MAP(alloc: EvalMask,WorkMask,Err,Pack,Unpack,MuonConserved,EtaActive)
-    !$OMP TARGET ENTER DATA MAP(alloc: NumberSource,NumberFactor,NumberFraction)
-    IF( UseMuonLeptonSource )THEN
-      !$OMP TARGET ENTER DATA MAP(alloc: MaterialSource,MaterialAbsoluteSource)
-    END IF
-#elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA CREATE(EvalMask,WorkMask,Err,Pack,Unpack,MuonConserved,EtaActive)
-    !$ACC ENTER DATA CREATE(NumberSource,NumberFactor,NumberFraction)
-    IF( UseMuonLeptonSource )THEN
-      !$ACC ENTER DATA CREATE(MaterialSource,MaterialAbsoluteSource)
-    END IF
-#endif
-    unit = 0
-    IF( TraceRadiationOnlySolve )THEN
-      CALL MPI_COMM_RANK(MPI_COMM_WORLD,rank,ierr)
-      WRITE(TraceName,'(A,A,I6.6,A)') TRIM(RadiationOnlyTraceFile), &
-        '.coupled_eta.rank',rank,'.dat'
-      IF( RadiationOnlySolveCallCount == 1 )THEN
-        OPEN(NEWUNIT=unit,FILE=TRIM(TraceName),STATUS='REPLACE',IOSTAT=io)
-      ELSE
-        OPEN(NEWUNIT=unit,FILE=TRIM(TraceName),POSITION='APPEND',IOSTAT=io)
-      END IF
-      IF( io /= 0 ) CALL Fail('cannot open coupled-eta trace',0)
-      WRITE(unit,'(A)') &
-        '# call iteration point eta Ym Ycons Qmu radiation_relative merit lambda Hmu rho_g_cm3 T_MeV'
-    END IF
-
-    DO k = 1, MaxIter_inner
-      IF( .NOT. ANY(Active) ) EXIT
-      CALL Evaluate(Active,X,Eta,F,Q,Bad,.TRUE.)
-      IF( ANY(Bad .AND. Active) ) CALL Fail('invalid accepted thermodynamic state', &
-        FINDLOC(Bad .AND. Active,.TRUE.,DIM=1))
-      WarmT = T
-
-      ! Freeze all row/coordinate scales during this Newton step and its
-      ! line search. Recompute them only at the next accepted iterate.
-      DO p = 1, nX_G
-        IF( .NOT. Active(p) ) CYCLE
-        leptonScale = ABS(Ym(p))+ABS(Ym_old(p))
-        DO s = 1, nSpecies
-        DO eN = 1, nE_G
-          os = ((eN-1)+(s-1)*nE_G)*nCR
-          densityScale = MAX(ABS(X(os+iCR_N,p)),ABS(Grad(os+iCR_N,p)),SqrtTiny)
-          Scale(os+iCR_N,p) = densityScale
-          Scale(os+iCR_G1,p) = densityScale*SQRT(g1(p))
-          Scale(os+iCR_G2,p) = densityScale*SQRT(g2(p))
-          Scale(os+iCR_G3,p) = densityScale*SQRT(g3(p))
-          IF( .NOT. UseMuonLeptonSource .AND. &
-              (s == iNuM .OR. s == iNuM_Bar) ) leptonScale = leptonScale &
-            + AtomicMassUnit/D(p)*W2_S(eN) &
-              * (ABS(C_Dnu(eN,s,p))+ABS(X(os+iCR_N,p)) &
-                 + ABS(V1(p)*X(os+iCR_G1,p)) &
-                 + ABS(V2(p)*X(os+iCR_G2,p))+ABS(V3(p)*X(os+iCR_G3,p)))
-        END DO
-        END DO
-        leptonScale = leptonScale &
-          + ABS(AtomicMassUnit/D(p)*LimiterCorrection(iYm,p))
-        IF( UseMuonLeptonSource ) leptonScale = leptonScale &
-          + ABS(dt*AtomicMassUnit/D(p)*MatterSourceWeight(iYm,p))*MaterialAbsoluteSource(p)
-        QScale(p) = MAX(leptonScale,SqrtTiny)
-        ! Inventory mode uses an inventory-roundoff bound. Source mode
-        ! instead scales this row to the material abundance and reaction
-        ! magnitudes, without a radiation-inventory tolerance floor.
-        QAcceptance(p) = 64.0_DP*EPSILON(One)*QScale(p)
-        ! A direct source is a nonlinear equation, not an algebraically
-        ! eliminated inventory. Use the configured nonlinear tolerance on
-        ! its OWN scale, without accepting an absolute 1e-8 fraction error.
-        IF( UseMuonLeptonSource ) &
-          QAcceptance(p) = MAX(Rtol_inner,64.0_DP*EPSILON(One))*QScale(p)
-      END DO
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET UPDATE TO(Active)
-#elif defined(THORNADO_OACC)
-      !$ACC UPDATE DEVICE(Active)
-#endif
-      CALL ComputeDnuNorm(Active,Dnu)
-      Pending = Active
-      CALL CheckConvergence_RadiationOnly &
-        (Active,k,nInner,nOuter,nInnerFinal,nOuterFinal,FirstResidual,FinalResidual,Frad)
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET UPDATE FROM(Frad,Grad,nInnerFinal,nOuterFinal,FirstResidual,FinalResidual)
-#elif defined(THORNADO_OACC)
-      !$ACC UPDATE HOST(Frad,Grad,nInnerFinal,nOuterFinal,FirstResidual,FinalResidual)
-#endif
-      DO p = 1, nX_G
-        IF( Pending(p) .AND. EtaActive(p) .AND. ABS(Q(p)) > QAcceptance(p) ) &
-          Active(p) = .TRUE.
-      END DO
-      CALL FindRadiationLeptonInvariantViolations_OrderV &
-        (EvalMask,WorkMask,LeptonInvariant,Dnu,I1,I2,I3,V1,V2,V3,g1,g2,g3)
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET UPDATE FROM(WorkMask)
-#elif defined(THORNADO_OACC)
-      !$ACC UPDATE HOST(WorkMask)
-#endif
-      Active = Active .OR. WorkMask
-      CALL Norm(Active,F,Hvalue,Merit)
-      IF( unit /= 0 )THEN
-        DO p = 1, nX_G
-          IF( Pending(p) ) WRITE(unit,'(3I9,10ES24.15E3)') &
-            RadiationOnlySolveCallCount,k,p,Eta(p),Ym(p),MuonConserved(p), &
-            Q(p),FinalResidual(p),Merit(p),Lambda(p),Hvalue(p), &
-            D(p)/(Gram/Centimeter**3),BoltzmannConstant*T(p)/MeV
-        END DO
-        FLUSH(unit)
-      END IF
-      IF( .NOT. ANY(Active) ) EXIT
-      Fbase = F
-      Qbase = Q
-      Hbase = Hvalue
-
-      IF( k == 1 )THEN
-        ! M1 has no unique flux derivative at radiation vacuum. Try the
-        ! existing frozen-matter map as a first guess, keeping the implicit
-        ! input invariants fixed. This initializes Newton rather than
-        ! globalizing a Newton correction: only joint admissibility is
-        ! required here, not descent from the potentially vacuum input.
-        Pending = Active
-        StepX = Zero
-        DO p = 1, nX_G
-          IF( Active(p) ) StepX(:,p) = Grad(:,p)-X(:,p)
-        END DO
-        Lambda = One
-        DO bt = 1, 12
-          DO p = 1, nX_G
-            TrialX(:,p) = X(:,p)+Lambda(p)*StepX(:,p)
-          END DO
-          CALL ProjectTrial(Pending,TrialX)
-          CALL Evaluate(Pending,TrialX,Eta,TrialF,TrialQ,Bad,.TRUE.)
-          CALL Norm(Pending,TrialF,Hvalue,TrialMerit)
-          DO p = 1, nX_G
-            IF( .NOT. Pending(p) ) CYCLE
-            IF( .NOT. Bad(p) )THEN
-              X(:,p) = TrialX(:,p)
-              Pending(p) = .FALSE.
-              CYCLE
-            END IF
-            Lambda(p) = Half*Lambda(p)
-          END DO
-          IF( .NOT. ANY(Pending) ) EXIT
-        END DO
-        ! Re-evaluate every point at its own accepted state before Newton;
-        ! rejected predictor trials must not supply coefficients to a step.
-        CYCLE
-      END IF
-
-      ! b=F_eta and d=Q_eta. The radiation block A includes the
-      ! temperature, EOS, rates, velocity, and energy-group response.
-      EtaPerturb = One
-      CALL Differentiate(Active .AND. EtaActive,Zero*X,EtaPerturb,B,EtaJac,.TRUE.)
-
-      B = B/Scale
-      EtaJac = EtaJac/QScale
-      CALL RadiationLinearSolve(-Fbase/Scale,Z)
-      CALL RadiationLinearSolve(B,Y)
-      CALL Differentiate(Active,Scale*Z,Zero*Eta,TrialF,QZ,.TRUE.)
-      CALL Differentiate(Active,Scale*Y,Zero*Eta,TrialF,QY,.TRUE.)
-      QZ = QZ/QScale
-      QY = QY/QScale
-      StepEta = Zero
-      DO p = 1, nX_G
-        IF( .NOT. Active(p) .OR. .NOT. EtaActive(p) ) CYCLE
-        denom = EtaJac(p)-QY(p)
-        IF( ABS(Hbase(p)+QZ(p)*QScale(p)) <= QAcceptance(p) ) CYCLE
-        IF( ABS(denom) <= 128.0_DP*EPSILON(One)*MAX(ABS(EtaJac(p)),ABS(QY(p)),TINY(One)) )THEN
-          CALL Fail('singular muon Schur complement',p)
-        ELSE
-          StepEta(p) = -(Hbase(p)/QScale(p)+QZ(p))/denom
-        END IF
-      END DO
-      DO p = 1, nX_G
-        ! Scalar trust modification: a susceptibility-limited correction
-        ! can be enormous at pair symmetry. Compress only that scalar
-        ! displacement, then reconstruct the radiation block response.
-        ! This retains the Schur-Newton step to cubic order near a root.
-        StepEta(p) = ASINH(StepEta(p))
-        StepX(:,p) = Scale(:,p)*(Z(:,p)-Y(:,p)*StepEta(p))
-        Lambda(p) = One
-      END DO
-
-      Pending = Active
-      DO bt = 1, 24
-        DO p = 1, nX_G
-          TrialEta(p) = Eta(p)+Lambda(p)*StepEta(p)
-          TrialX(:,p) = X(:,p)+Lambda(p)*StepX(:,p)
-        END DO
-        CALL ProjectTrial(Pending,TrialX)
-        CALL Evaluate(Pending,TrialX,TrialEta,TrialF,TrialQ,Bad,.TRUE.)
-        CALL Norm(Pending,TrialF,Hvalue,TrialMerit)
-        DO p = 1, nX_G
-          IF( .NOT. Pending(p) ) CYCLE
-          IF( .NOT. Bad(p) )THEN
-            IF( TrialMerit(p) <= (One-Armijo*Lambda(p))*Merit(p) )THEN
-              X(:,p) = TrialX(:,p)
-              Eta(p) = TrialEta(p)
-              Pending(p) = .FALSE.
-              CYCLE
-            END IF
-          END IF
-          Lambda(p) = Half*Lambda(p)
-        END DO
-        IF( .NOT. ANY(Pending) ) EXIT
-      END DO
-      IF( ANY(Pending) ) CALL Fail('joint radiation/eta line search exhausted', &
-        FINDLOC(Pending,.TRUE.,DIM=1))
-    END DO
-    IF( ANY(Active) ) CALL Fail('coupled radiation/eta Newton iteration limit', &
-      FINDLOC(Active,.TRUE.,DIM=1))
-    IF( unit /= 0 ) CLOSE(unit)
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO(Active)
-    !$OMP TARGET EXIT DATA MAP(delete: EvalMask,WorkMask,Err,Pack,Unpack,MuonConserved,EtaActive)
-    !$OMP TARGET EXIT DATA MAP(delete: NumberSource,NumberFactor,NumberFraction)
-    IF( UseMuonLeptonSource )THEN
-      !$OMP TARGET EXIT DATA MAP(delete: MaterialSource,MaterialAbsoluteSource)
-    END IF
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE(Active)
-    !$ACC EXIT DATA DELETE(EvalMask,WorkMask,Err,Pack,Unpack,MuonConserved,EtaActive)
-    !$ACC EXIT DATA DELETE(NumberSource,NumberFactor,NumberFraction)
-    IF( UseMuonLeptonSource )THEN
-      !$ACC EXIT DATA DELETE(MaterialSource,MaterialAbsoluteSource)
-    END IF
-#endif
-
-  CONTAINS
-
-    SUBROUTINE Fail(reason,point)
-      CHARACTER(*), INTENT(in) :: reason
-      INTEGER, INTENT(in) :: point
-      CALL MPI_COMM_RANK(MPI_COMM_WORLD,rank,ierr)
-      WRITE(ERROR_UNIT,'(A,I0,3A,I0,A,I0)') 'Coupled radiation/eta failure, rank ', &
-        rank,': ',reason,'; point ',point,'; Newton iteration ',k
-      IF( point > 0 )THEN
-        WRITE(ERROR_UNIT,'(A,4ES24.15E3)') &
-          ' rho [g/cm3], accepted T [MeV], eta, Qmu: ', &
-          D(point)/(Gram/Centimeter**3),BoltzmannConstant*WarmT(point)/MeV,Eta(point),Q(point)
-        WRITE(ERROR_UNIT,'(A,I0)') ' evaluation failure code: ',EvalReason(point)
-        IF( EvalReason(point) == 1 )THEN
-          DO s=1,nSpecies
-          DO eN=1,nE_G
-            densityScale=SQRT(g1(point)*I1(eN,s,point)**2+g2(point)*I2(eN,s,point)**2 &
-                             +g3(point)*I3(eN,s,point)**2)
-            IF( Dnu(eN,s,point) < Zero .OR. Dnu(eN,s,point) > DnuMax .OR. &
-                densityScale > Dnu(eN,s,point)*(One+64*EPSILON(One)) )THEN
-              WRITE(ERROR_UNIT,'(A,2I6,3ES24.15E3)') ' inadmissible species/energy, N, |I|, Nmax: ', &
-                s,eN,Dnu(eN,s,point),densityScale,DnuMax
-            END IF
-          END DO
-          END DO
-        END IF
-        IF( INDEX(reason,'line search') > 0 )THEN
-          WRITE(ERROR_UNIT,'(A,4ES24.15E3)') ' base/trial merit, delta_eta, lambda: ', &
-            Merit(point),TrialMerit(point),StepEta(point),Lambda(point)
-          WRITE(ERROR_UNIT,'(A,4ES24.15E3)') ' Schur d, cy, S, rhs: ', &
-            EtaJac(point),QY(point),EtaJac(point)-QY(point), &
-            -Hbase(point)/QScale(point)-QZ(point)
-        END IF
-      END IF
-      FLUSH(ERROR_UNIT)
-      CALL MPI_ABORT(MPI_COMM_WORLD,-1,ierr)
-    END SUBROUTINE Fail
-
-    SUBROUTINE Evaluate(mask,state,etaState,residual,qResidual,failed,withRadiation)
-      LOGICAL, INTENT(in) :: mask(:),withRadiation
-      REAL(DP), INTENT(in) :: state(:,:),etaState(:)
-      REAL(DP), INTENT(out) :: residual(:,:),qResidual(:)
-      LOGICAL, INTENT(out) :: failed(:)
-      INTEGER :: j,a,tup,off,nPacked,localError,family,pivot,energyPivot
-      REAL(DP) :: fluxnorm,susceptibility,invariantChange,numberChange,sourceSum
-      EvalMask = mask
-      Err = 0
-      WHERE(mask) EvalReason = 0
-      failed = .FALSE.
-      residual = Zero
-      qResidual = Zero
-      WHERE(mask) Hvalue = Zero
-      WHERE(mask) Hsource = Zero
-      WHERE(mask) T = WarmT
-      DO j = 1, nX_G
-        IF( .NOT. mask(j) ) CYCLE
-        DO a = 1, nSpecies
-        DO tup = 1, nE_G
-          off = ((tup-1)+(a-1)*nE_G)*nCR
-          IF( .NOT. ALL(IEEE_IS_FINITE(state(off+1:off+nCR,j))) )THEN
-            Err(j) = 1
-            CYCLE
-          END IF
-          Dnu(tup,a,j) = state(off+iCR_N,j)
-          I1(tup,a,j) = state(off+iCR_G1,j)/g1(j)
-          I2(tup,a,j) = state(off+iCR_G2,j)/g2(j)
-          I3(tup,a,j) = state(off+iCR_G3,j)/g3(j)
-          fluxnorm = HYPOT(HYPOT(state(off+iCR_G1,j)/SQRT(g1(j)), &
-            state(off+iCR_G2,j)/SQRT(g2(j))),state(off+iCR_G3,j)/SQRT(g3(j)))
-          IF( Dnu(tup,a,j) < Zero .OR. Dnu(tup,a,j) > DnuMax &
-                .OR. fluxnorm > Dnu(tup,a,j)*(One+64*EPSILON(One)) ) Err(j) = 1
-        END DO
-        END DO
-      END DO
-      WHERE(mask .AND. Err /= 0) EvalReason = 1
-      EvalMask = EvalMask .AND. Err == 0
-      CALL TimersStart(Timer_Collisions_MatterFromRadiation)
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO(EvalMask,Err,Dnu,I1,I2,I3,T,MuonConserved,EtaActive)
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE(EvalMask,Err,Dnu,I1,I2,I3,T,MuonConserved,EtaActive)
-#endif
-      CALL RecoverMatterFromRadiationState_OrderV &
-        (EvalMask,Fmatter,Gmatter,Dnu,I1,I2,I3,D,Ye,Ym,E,V1,V2,V3,g1,g2,g3, &
-         LimiterCorrection,Err,RetainMuonFraction_Option=EtaActive, &
-         MuonFractionConserved_Option=MuonConserved)
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM(Ye,Ym,E,V1,V2,V3,Err,MuonConserved,U_Ym,G_Ym,Omega)
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST(Ye,Ym,E,V1,V2,V3,Err,MuonConserved,U_Ym,G_Ym,Omega)
-#endif
-      WHERE(EvalMask .AND. Err /= 0) EvalReason = 2
-      WorkMask = EvalMask .AND. .NOT. EtaActive .AND. Err == 0
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET UPDATE TO(WorkMask)
-#elif defined(THORNADO_OACC)
-      !$ACC UPDATE DEVICE(WorkMask)
-#endif
-      CALL CreatePackIndex(WorkMask,nPacked,Pack,Unpack)
-      IF( nPacked > 0 ) CALL UpdateTemperature_Packed &
-        (D,E,Ye,Ym,T,WorkMask,nPacked,Pack,Unpack,Err,DisplayErrors_Option=.FALSE.)
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET UPDATE FROM(T,Err)
-#elif defined(THORNADO_OACC)
-      !$ACC UPDATE HOST(T,Err)
-#endif
-      WHERE(WorkMask .AND. Err /= 0) EvalReason = 4
-      DO j = 1, nX_G
-        IF( .NOT. EvalMask(j) .OR. Err(j) /= 0 ) CYCLE
-        IF( EtaActive(j) )THEN
-          CALL RecoverMuonEtaTemperature_OrderV &
-            (D(j),E(j),Ye(j),etaState(j),T(j),Ym(j),susceptibility,localError)
-          Err(j) = localError
-          IF( localError /= 0 ) EvalReason(j) = 3
-          qResidual(j) = Ym(j)-MuonConserved(j)
-          IF( localError == 0 )THEN
-            U_Ym(j) = Ym(j)
-            G_Ym(j) = Ym(j)
-          END IF
-        END IF
-      END DO
-      failed = mask .AND. Err /= 0
-      EvalMask = mask .AND. .NOT. failed
-      CALL TimersStop(Timer_Collisions_MatterFromRadiation)
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO(EvalMask,Err,T,Ye,Ym,E,V1,V2,V3,U_Ym,G_Ym)
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE(EvalMask,Err,T,Ye,Ym,E,V1,V2,V3,U_Ym,G_Ym)
-#endif
-      CALL CreatePackIndex(EvalMask,nPacked,Pack,Unpack)
-      IF( withRadiation .AND. nPacked > 0 )THEN
-        CALL TimersStart(Timer_Collisions_ComputeOpacity)
-        IF( .NOT. FreezeOpacities ) CALL ComputeOpacities_Packed &
-          (D,T,Ye,Ym,SqrtGm,EvalMask,nPacked,Pack,Unpack, &
-           T0=T_old,Ye0=Ye_old,Ym0=Ym_old,Opacity_Mask_Input=Opacity_Mask)
-        CALL TimersStop(Timer_Collisions_ComputeOpacity)
-        CALL TimersStart(Timer_Collisions_ComputeRates)
-        IF( FreezeOpacities )THEN
-          CALL ComputeRates_Packed &
-            (D,T_Opacity,Dnu,I1,I2,I3,EvalMask,nPacked,Pack,Unpack,nInitialPacked,Opacity_Mask)
-        ELSE
-          CALL ComputeRates_Packed &
-            (D,T,Dnu,I1,I2,I3,EvalMask,nPacked,Pack,Unpack,nPacked,Opacity_Mask)
-        END IF
-        CALL TimersStop(Timer_Collisions_ComputeRates)
-        CALL TimersStart(Timer_Collisions_NeutrinoRHS)
-        CALL ComputeNeutrinoRHS_OrderV &
-          (EvalMask,Frad,Grad,dt,Dnu,I1,I2,I3,V1,V2,V3,g1,g2,g3, &
-           NumberSource_Option=NumberSource,NumberFactor_Option=NumberFactor, &
-           NumberFraction_Option=NumberFraction)
-#if defined(THORNADO_OMP_OL)
-        !$OMP TARGET UPDATE FROM(Frad,NumberSource,NumberFactor,NumberFraction)
-#elif defined(THORNADO_OACC)
-        !$ACC UPDATE HOST(Frad,NumberSource,NumberFactor,NumberFraction)
-#endif
-        RawFm = Frad
-        CALL ProjectRadiationOnlyFixedPointMap_OrderV &
-          (EvalMask,Frad,Grad,Dnu,I1,I2,I3,g1,g2,g3)
-#if defined(THORNADO_OMP_OL)
-        !$OMP TARGET UPDATE FROM(Frad,Grad)
-#elif defined(THORNADO_OACC)
-        !$ACC UPDATE HOST(Frad,Grad)
-#endif
-        IF( UseMuonLeptonSource )THEN
-          CALL ComputeMuonMaterialSource_OrderV(EvalMask,Dnu,MaterialSource,MaterialAbsoluteSource)
-#if defined(THORNADO_OMP_OL)
-          !$OMP TARGET UPDATE FROM(MaterialSource,MaterialAbsoluteSource)
-#elif defined(THORNADO_OACC)
-          !$ACC UPDATE HOST(MaterialSource,MaterialAbsoluteSource)
-#endif
-        END IF
-        DO j = 1, nX_G
-          IF( EvalMask(j) )THEN
-            residual(:,j) = -Frad(:,j)
-            IF( EtaActive(j) )THEN
-              sourceSum = Zero
-              IF( .NOT. UseMuonLeptonSource )THEN
-              DO a = iNuM,iNuM_Bar
-              DO tup = 1,nE_G
-                off = ((tup-1)+(a-1)*nE_G)*nCR
-                numberChange = state(off+iCR_N,j)-C_Dnu(tup,a,j) &
-                  +V1(j)*state(off+iCR_G1,j)+V2(j)*state(off+iCR_G2,j) &
-                  +V3(j)*state(off+iCR_G3,j)
-                sourceSum = sourceSum+W2_S(tup)*LeptonNumber(a) &
-                  * (NumberFraction(tup,a,j)*numberChange &
-                    +dt*NumberSource(tup,a,j)/(Omega(j)*NumberFactor(tup,a,j)) &
-                    +(Frad(off+iCR_N,j)-RawFm(off+iCR_N,j))/Omega(j))
-              END DO
-              END DO
-              END IF
-              IF( UseMuonLeptonSource )THEN
-                Hsource(j) = -AtomicMassUnit/D(j)*MatterSourceWeight(iYm,j) &
-                  * (dt*MaterialSource(j)+LimiterCorrection(iYm,j))
-              ELSE
-                Hsource(j) = AtomicMassUnit/D(j)*MatterSourceWeight(iYm,j) &
-                  * (sourceSum-LimiterCorrection(iYm,j))
-              END IF
-              Hvalue(j) = (Ym(j)-Ym_old(j))+Hsource(j)
-              IF( UseMuonLeptonSource ) qResidual(j) = Hvalue(j)
-            END IF
-            DO family = 1, MIN(nLeptonFamilies,nSpecies/2)
-              pivot = InvariantPivot(family,j)
-              IF( pivot == 0 ) CYCLE
-              invariantChange = Zero
-              DO a = 2*family-1, 2*family
-              DO tup = 1, nE_G
-                off = ((tup-1)+(a-1)*nE_G)*nCR
-                numberChange = state(off+iCR_N,j)-C_Dnu(tup,a,j) &
-                  + V1(j)*state(off+iCR_G1,j)+V2(j)*state(off+iCR_G2,j) &
-                  + V3(j)*state(off+iCR_G3,j)
-                invariantChange = invariantChange+W2_S(tup)*LeptonNumber(a)*numberChange
-              END DO
-              END DO
-              energyPivot = MOD((pivot-iCR_N)/nCR,nE_G)+1
-              residual(pivot,j) = invariantChange/W2_S(energyPivot)
-            END DO
-            Frad(:,j) = -residual(:,j)
-            IF( .NOT. ALL(IEEE_IS_FINITE(residual(:,j))) )THEN
-              failed(j) = .TRUE.
-              EvalReason(j) = 5
-            END IF
-          END IF
-        END DO
-#if defined(THORNADO_OMP_OL)
-        !$OMP TARGET UPDATE TO(Frad)
-#elif defined(THORNADO_OACC)
-        !$ACC UPDATE DEVICE(Frad)
-#endif
-        CALL TimersStop(Timer_Collisions_NeutrinoRHS)
-      END IF
-    END SUBROUTINE Evaluate
-
-    SUBROUTINE ProjectTrial(mask,state)
-      LOGICAL, INTENT(in) :: mask(:)
-      REAL(DP), INTENT(inout) :: state(:,:)
-      INTEGER :: j,a,tup,off
-      REAL(DP) :: occupation,f1,f2,f3
-      DO j = 1,nX_G
-        IF( .NOT. mask(j) ) CYCLE
-        DO a = 1,nSpecies
-        DO tup = 1,nE_G
-          off = ((tup-1)+(a-1)*nE_G)*nCR
-          occupation = state(off+iCR_N,j)
-          f1 = state(off+iCR_G1,j)/g1(j)
-          f2 = state(off+iCR_G2,j)/g2(j)
-          f3 = state(off+iCR_G3,j)/g3(j)
-          CALL ProjectPrimitiveRadiationMoment_OrderV(occupation,f1,f2,f3, &
-            g1(j),g2(j),g3(j),DnuMax)
-          state(off+iCR_N,j) = occupation
-          state(off+iCR_G1,j) = g1(j)*f1
-          state(off+iCR_G2,j) = g2(j)*f2
-          state(off+iCR_G3,j) = g3(j)*f3
-        END DO
-        END DO
-      END DO
-    END SUBROUTINE ProjectTrial
-
-    SUBROUTINE Norm(mask,residual,qResidual,value)
-      LOGICAL, INTENT(in) :: mask(:)
-      REAL(DP), INTENT(in) :: residual(:,:),qResidual(:)
-      REAL(DP), INTENT(out) :: value(:)
-      INTEGER :: j
-      value = Zero
-      DO j = 1, nX_G
-        IF( mask(j) ) value(j) = SQRT(SUM((residual(:,j)/Scale(:,j) &
-          /MAX(Rtol_inner,EPSILON(One)))**2)/n_FP_inner &
-          +(qResidual(j)/QAcceptance(j))**2)
-      END DO
-    END SUBROUTINE Norm
-
-    SUBROUTINE Differentiate(mask,dx,de,df,dq,withRadiation)
-      LOGICAL, INTENT(in) :: mask(:),withRadiation
-      REAL(DP), INTENT(in) :: dx(:,:),de(:)
-      REAL(DP), INTENT(out) :: df(:,:),dq(:)
-      REAL(DP), ALLOCATABLE :: h(:),xp(:,:),ep(:),fp(:,:),qp(:),fmProbe(:,:),qmProbe(:)
-      REAL(DP), ALLOCATABLE :: inward(:,:),forwardFirst(:),sourceFirst(:)
-      LOGICAL, ALLOCATABLE :: todo(:),badProbe(:),badFirst(:)
-      INTEGER :: j,attempt,a,tup,off
-      REAL(DP) :: fluxnorm,directionnorm,inwardDensity
-      ALLOCATE(h(nX_G),xp(n_FP_inner,nX_G),ep(nX_G),fp(n_FP_inner,nX_G),qp(nX_G))
-      ALLOCATE(fmProbe(n_FP_inner,nX_G),qmProbe(nX_G),inward(n_FP_inner,nX_G))
-      ALLOCATE(forwardFirst(nX_G),sourceFirst(nX_G))
-      ALLOCATE(todo(nX_G),badProbe(nX_G),badFirst(nX_G))
-      todo = mask
-      h = FDStep
-      df = Zero
-      dq = Zero
-      inward = Zero
-      DO j = 1, nX_G
-        IF( MAXVAL(ABS(dx(:,j)/Scale(:,j)))+ABS(de(j)) == Zero ) todo(j) = .FALSE.
-        IF( .NOT. todo(j) ) CYCLE
-        h(j) = FDStep/MAX(One,MAXVAL(ABS(dx(:,j)/Scale(:,j))),ABS(de(j)))
-        DO a = 1, nSpecies
-        DO tup = 1, nE_G
-          off = ((tup-1)+(a-1)*nE_G)*nCR
-          inwardDensity = Zero
-          directionnorm = HYPOT(HYPOT(dx(off+iCR_G1,j)/SQRT(g1(j)), &
-            dx(off+iCR_G2,j)/SQRT(g2(j))),dx(off+iCR_G3,j)/SQRT(g3(j)))
-          IF( X(off+iCR_N,j) >= DnuMax-FDStep*Scale(off+iCR_N,j) ) &
-            inwardDensity = -ABS(dx(off+iCR_N,j))
-          IF( X(off+iCR_N,j) <= FDStep*Scale(off+iCR_N,j) ) &
-            inwardDensity = Two*(ABS(dx(off+iCR_N,j))+directionnorm)
-          inward(off+iCR_N,j) = inwardDensity
-          fluxnorm = HYPOT(HYPOT(X(off+iCR_G1,j)/SQRT(g1(j)), &
-            X(off+iCR_G2,j)/SQRT(g2(j))),X(off+iCR_G3,j)/SQRT(g3(j)))
-          IF( X(off+iCR_N,j) > FDStep*Scale(off+iCR_N,j) .AND. fluxnorm > Zero .AND. &
-              fluxnorm >= X(off+iCR_N,j)*(One-10*FDStep) )THEN
-            inward(off+iCR_G1:off+iCR_G3,j) = -X(off+iCR_G1:off+iCR_G3,j)/fluxnorm &
-              * (Two*ABS(dx(off+iCR_N,j))+Two*directionnorm)
-          END IF
-        END DO
-        END DO
-      END DO
-      DO attempt = 1, 24
-        DO j = 1, nX_G
-          xp(:,j) = X(:,j)+Half*h(j)*(inward(:,j)+dx(:,j))
-          ep(j) = Eta(j)+Half*h(j)*de(j)
-        END DO
-        CALL Evaluate(todo,xp,ep,fp,qp,badFirst,withRadiation)
-        forwardFirst = Ym
-        sourceFirst = Hsource
-        DO j = 1, nX_G
-          xp(:,j) = X(:,j)+Half*h(j)*(inward(:,j)-dx(:,j))
-          ep(j) = Eta(j)-Half*h(j)*de(j)
-        END DO
-        CALL Evaluate(todo,xp,ep,fmProbe,qmProbe,badProbe,withRadiation)
-        DO j = 1, nX_G
-          IF( .NOT. todo(j) ) CYCLE
-          IF( badProbe(j) .OR. badFirst(j) )THEN
-            h(j) = Half*h(j)
-          ELSE
-            IF( withRadiation ) df(:,j) = (fp(:,j)-fmProbe(:,j))/h(j)
-            IF( EtaActive(j) ) dq(j) = &
-              ((forwardFirst(j)-Ym(j))+(sourceFirst(j)-Hsource(j)))/h(j)
-            todo(j) = .FALSE.
-          END IF
-        END DO
-        IF( .NOT. ANY(todo) ) EXIT
-      END DO
-      IF( ANY(todo) )THEN
-        j=FINDLOC(todo,.TRUE.,DIM=1)
-        DO a=1,nSpecies
-        DO tup=1,nE_G
-          off=((tup-1)+(a-1)*nE_G)*nCR
-          IF( Dnu(tup,a,j) < Zero .OR. SQRT(g1(j)*I1(tup,a,j)**2 &
-              +g2(j)*I2(tup,a,j)**2+g3(j)*I3(tup,a,j)**2) &
-              > Dnu(tup,a,j)*(One+64*EPSILON(One)) )THEN
-            WRITE(ERROR_UNIT,'(A,3I6,5ES24.15E3)') ' probe point/species/energy, h, baseN, scaleN, dxN, inwardN: ', &
-              j,a,tup,h(j),X(off+iCR_N,j),Scale(off+iCR_N,j),dx(off+iCR_N,j),inward(off+iCR_N,j)
-            WRITE(ERROR_UNIT,'(A,3ES24.15E3)') ' base I1, dxI1, inwardI1: ', &
-              X(off+iCR_G1,j),dx(off+iCR_G1,j),inward(off+iCR_G1,j)
-          END IF
-        END DO
-        END DO
-        CALL Fail('no admissible Jacobian probe',j)
-      END IF
-    END SUBROUTINE Differentiate
-
-    SUBROUTINE RadiationLinearSolve(rhs,solution)
-      REAL(DP), INTENT(in) :: rhs(:,:)
-      REAL(DP), INTENT(out) :: solution(:,:)
-      REAL(DP), ALLOCATABLE :: basis(:,:,:),hess(:,:,:),cs(:,:),sn(:,:),r(:,:)
-      REAL(DP), ALLOCATABLE :: w(:,:),jq(:),beta(:),coeff(:,:),av(:,:)
-      LOGICAL, ALLOCATABLE :: todo(:)
-      INTEGER, ALLOCATABLE :: used(:)
-      INTEGER :: j,m,a,pass
-      REAL(DP) :: dot,normw,t1,t2,rotation
-      ALLOCATE(basis(n_FP_inner,KrylovDimension+1,nX_G))
-      ALLOCATE(hess(KrylovDimension+1,KrylovDimension,nX_G))
-      ALLOCATE(cs(KrylovDimension,nX_G),sn(KrylovDimension,nX_G))
-      ALLOCATE(r(KrylovDimension+1,nX_G),coeff(KrylovDimension,nX_G),used(nX_G))
-      ALLOCATE(w(n_FP_inner,nX_G),av(n_FP_inner,nX_G),jq(nX_G),beta(nX_G),todo(nX_G))
-      basis = Zero
-      hess = Zero
-      r = Zero
-      coeff = Zero
-      used = 0
-      solution = Zero
-      todo = Active
-      DO j = 1, nX_G
-        beta(j) = SQRT(SUM(rhs(:,j)**2))
-        IF( beta(j) <= TINY(One) ) todo(j) = .FALSE.
-        IF( todo(j) ) basis(:,1,j) = rhs(:,j)/beta(j)
-        r(1,j) = beta(j)
-      END DO
-      DO m = 1, KrylovDimension
-        IF( .NOT. ANY(todo) ) EXIT
-        CALL Differentiate(todo,Scale*basis(:,m,:),Zero*Eta,av,jq,.TRUE.)
-        w = av/Scale
-        DO j = 1, nX_G
-          IF( .NOT. todo(j) ) CYCLE
-          ! Twice-reorthogonalized Arnoldi protects a tiny Schur response
-          ! from loss of orthogonality in strongly relaxing spectra.
-          DO pass = 1, 2
-            DO a = 1, m
-              dot = SUM(w(:,j)*basis(:,a,j))
-              hess(a,m,j) = hess(a,m,j)+dot
-              w(:,j) = w(:,j)-dot*basis(:,a,j)
-            END DO
-          END DO
-          normw = SQRT(SUM(w(:,j)**2))
-          hess(m+1,m,j) = normw
-          IF( normw > TINY(One) ) basis(:,m+1,j) = w(:,j)/normw
-          DO a = 1, m-1
-            t1 = cs(a,j)*hess(a,m,j)+sn(a,j)*hess(a+1,m,j)
-            t2 = -sn(a,j)*hess(a,m,j)+cs(a,j)*hess(a+1,m,j)
-            hess(a,m,j) = t1
-            hess(a+1,m,j) = t2
-          END DO
-          rotation = SQRT(hess(m,m,j)**2+hess(m+1,m,j)**2)
-          IF( rotation <= TINY(One) ) CALL Fail('singular radiation Newton block',j)
-          cs(m,j) = hess(m,m,j)/rotation
-          sn(m,j) = hess(m+1,m,j)/rotation
-          hess(m,m,j) = rotation
-          hess(m+1,m,j) = Zero
-          r(m+1,j) = -sn(m,j)*r(m,j)
-          r(m,j) = cs(m,j)*r(m,j)
-          used(j) = m
-          IF( ABS(r(m+1,j)) <= 1.0e-7_DP*beta(j) .OR. normw <= TINY(One) ) todo(j) = .FALSE.
-        END DO
-      END DO
-      DO j = 1, nX_G
-        IF( .NOT. Active(j) .OR. used(j) == 0 ) CYCLE
-        IF( ABS(r(used(j)+1,j)) > 1.0e-5_DP*beta(j) ) &
-          CALL Fail('radiation Krylov block did not converge',j)
-        DO a = used(j), 1, -1
-          coeff(a,j) = (r(a,j)-SUM(hess(a,a+1:used(j),j)*coeff(a+1:used(j),j)))/hess(a,a,j)
-        END DO
-        DO a = 1, used(j)
-          solution(:,j) = solution(:,j)+coeff(a,j)*basis(:,a,j)
-        END DO
-      END DO
-    END SUBROUTINE RadiationLinearSolve
-
-  END SUBROUTINE SolveRadiationMuonEtaSchur_OrderV
-
-
-  SUBROUTINE RecoverMuonEtaTemperature_OrderV(D,Etarget,Ye,Eta,T,Ym,Chi,Error)
-#if defined(THORNADO_OMP_OL)
-    !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ
-#endif
-    REAL(DP), INTENT(in) :: D,Etarget,Ye,Eta
-    REAL(DP), INTENT(inout) :: T,Ym
-    REAL(DP), INTENT(out) :: Chi
-    INTEGER, INTENT(out) :: Error
-    REAL(DP) :: tlo,thi,tc,tp,ec,ep,yc,yp,chp,loResidual,hiResidual,residual
-    REAL(DP) :: slope,delta,tNext,initialT
-    INTEGER :: iteration,probeError,attempt
-    LOGICAL :: haveLo,haveHi
-
-    ! Recover temperature at fixed eta using the forward EOS, including
-    ! the T dependence of the net muon fraction. This is an EOS scalar
-    ! recovery, not a second muon-conservation iteration.
-    Error = 1
-    Chi = Zero
-    initialT = MAX(Min_T,MIN(T,Max_T))
-    tc = initialT
-    tlo = Min_T
-    thi = Max_T
-    haveLo = .FALSE.
-    haveHi = .FALSE.
-    loResidual = Zero
-    hiResidual = Zero
-    DO iteration = 1, 64
-      yc = Zero
-      CALL ComputeMuonFractionFromDegeneracy_TABLE(D,tc,Ye,Eta,yc,Chi,probeError)
-      IF( probeError /= 0 ) RETURN
-      CALL ComputeSpecificInternalEnergy_TABLE(D,tc,Ye,yc,ec)
-      residual = ec-Etarget
-      IF( ABS(residual) <= 100*EPSILON(One)*MAX(ABS(ec),ABS(Etarget),SqrtTiny) )THEN
-        T = tc
-        Ym = yc
-        Error = 0
-        RETURN
-      END IF
-      IF( residual < Zero )THEN
-        tlo = tc
-        loResidual = residual
-        haveLo = .TRUE.
-      ELSE
-        thi = tc
-        hiResidual = residual
-        haveHi = .TRUE.
-      END IF
-      ! Numerical heat capacity along eta=constant; avoid the legacy EOS
-      ! derivative path, whose muon-composition derivatives are incomplete.
-      tp = MIN(Max_T,tc*(One+1.0e-4_DP))
-      IF( tp == tc ) tp = MAX(Min_T,tc*(One-1.0e-4_DP))
-      yp = yc
-      CALL ComputeMuonFractionFromDegeneracy_TABLE(D,tp,Ye,Eta,yp,chp,probeError)
-      slope = Zero
-      IF( probeError == 0 .AND. tp /= tc )THEN
-        CALL ComputeSpecificInternalEnergy_TABLE(D,tp,Ye,yp,ep)
-        slope = (ep-ec)/(tp-tc)
-      END IF
-      IF( slope > Zero )THEN
-        delta = MAX(-Half*tc,MIN(Half*tc,-residual/slope))
-        tNext = tc+delta
-      ELSE IF( residual < Zero )THEN
-        tNext = MIN(Max_T,1.5_DP*tc)
-      ELSE
-        tNext = MAX(Min_T,Half*tc)
-      END IF
-      IF( haveLo .AND. haveHi )THEN
-        IF( tNext <= tlo .OR. tNext >= thi ) &
-          tNext = tlo-loResidual*(thi-tlo)/(hiResidual-loResidual)
-        tNext = MAX(tlo+0.01_DP*(thi-tlo),MIN(tNext,thi-0.01_DP*(thi-tlo)))
-      END IF
-      tNext = MAX(Min_T,MIN(tNext,Max_T))
-      ! Composition can restrict the valid temperature interval at fixed
-      ! eta. Shorten this EOS proposal rather than accepting a clipped Ymu.
-      DO attempt = 1, 24
-        yp = yc
-        CALL ComputeMuonFractionFromDegeneracy_TABLE(D,tNext,Ye,Eta,yp,chp,probeError)
-        IF( probeError == 0 ) EXIT
-        tNext = Half*(tc+tNext)
-      END DO
-      IF( probeError /= 0 .OR. tNext == tc ) RETURN
-      tc = tNext
-    END DO
-  END SUBROUTINE RecoverMuonEtaTemperature_OrderV
-
-
-  SUBROUTINE PrepareRadiationOnlySchurNewton_OrderV &
-    ( MASK, Gm, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-      V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      HasPrevious, PreviousInput, PreviousMap, PreviousResidual, &
-      Gain, Damping )
-
-    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
-    REAL(DP), DIMENSION(:,:),   INTENT(in)    :: Gm
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: &
-      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: &
-      V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
-    LOGICAL,  DIMENSION(:),     INTENT(inout) :: HasPrevious
-    REAL(DP), DIMENSION(:),     INTENT(inout) :: &
-      PreviousInput, PreviousMap, PreviousResidual, Gain, Damping
-
-    REAL(DP), PARAMETER :: InitialDamping = 0.20_DP
-    REAL(DP), PARAMETER :: MinimumDamping = 0.02_DP
-    REAL(DP), PARAMETER :: MaximumDamping = One
-    REAL(DP), PARAMETER :: ResidualGrowthLimit = 1.25_DP
-    REAL(DP), PARAMETER :: SecantFloor = 128.0_DP * EPSILON(One)
-
-    INTEGER  :: iN_E, iN_X, iOS, iS
-    REAL(DP) :: CurrentInput, CurrentMap, CurrentResidual
-    REAL(DP) :: DeltaInput, DeltaMap, Denominator, LocalDamping
-    REAL(DP) :: LocalGain, Scale, vDotI
-    LOGICAL  :: ReliableSecant
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO &
-    !$OMP PRIVATE( iN_E, iOS, iS, CurrentInput, CurrentMap, &
-    !$OMP          CurrentResidual, DeltaInput, DeltaMap, Denominator, &
-    !$OMP          LocalDamping, LocalGain, Scale, vDotI, &
-    !$OMP          ReliableSecant )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG &
-    !$ACC PRIVATE( iN_E, iOS, iS, CurrentInput, CurrentMap, &
-    !$ACC          CurrentResidual, DeltaInput, DeltaMap, Denominator, &
-    !$ACC          LocalDamping, LocalGain, Scale, vDotI, &
-    !$ACC          ReliableSecant )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO &
-    !$OMP PRIVATE( iN_E, iOS, iS, CurrentInput, CurrentMap, &
-    !$OMP          CurrentResidual, DeltaInput, DeltaMap, Denominator, &
-    !$OMP          LocalDamping, LocalGain, Scale, vDotI, &
-    !$OMP          ReliableSecant )
-#endif
-    DO iN_X = 1, nX_G
-
-      IF( .NOT. MASK(iN_X) ) CYCLE
-
-      Gain(iN_X) = Zero
-      Damping(iN_X) = One
-
-      IF( nSpecies < iNuM_Bar ) CYCLE
-      IF( .NOT. MatterSource_Mask(iYm,iN_X) ) CYCLE
-
-      CurrentInput = Zero
-      CurrentMap = Zero
-      DO iS = iNuM, iNuM_Bar
-      DO iN_E = 1, nE_G
-        iOS = ( (iN_E-1) + (iS-1)*nE_G ) * nCR
-        vDotI = V_u_1(iN_X) * Gm_dd_11(iN_X) &
-                  * Inu_u_1(iN_E,iS,iN_X) &
-              + V_u_2(iN_X) * Gm_dd_22(iN_X) &
-                  * Inu_u_2(iN_E,iS,iN_X) &
-              + V_u_3(iN_X) * Gm_dd_33(iN_X) &
-                  * Inu_u_3(iN_E,iS,iN_X)
-        CurrentInput = CurrentInput + W2_S(iN_E) * LeptonNumber(iS) &
-          * ( Dnu(iN_E,iS,iN_X) + vDotI )
-        CurrentMap = CurrentMap + W2_S(iN_E) * LeptonNumber(iS) &
-          * ( Gm(iOS+iCR_N,iN_X) &
-              + V_u_1(iN_X) * Gm(iOS+iCR_G1,iN_X) &
-              + V_u_2(iN_X) * Gm(iOS+iCR_G2,iN_X) &
-              + V_u_3(iN_X) * Gm(iOS+iCR_G3,iN_X) )
-      END DO
-      END DO
-
-      CurrentResidual = CurrentMap - CurrentInput
-      LocalDamping = InitialDamping
-      LocalGain = Zero
-
-      IF( HasPrevious(iN_X) )THEN
-        DeltaInput = CurrentInput - PreviousInput(iN_X)
-        DeltaMap = CurrentMap - PreviousMap(iN_X)
-        Scale = MAX( ABS(CurrentInput), ABS(CurrentMap), &
-                     ABS(PreviousInput(iN_X)), &
-                     ABS(PreviousMap(iN_X)), SqrtTiny )
-        ReliableSecant = ABS(DeltaInput) > SecantFloor * Scale
-        IF( ReliableSecant )THEN
-          LocalGain = DeltaMap / DeltaInput
-          Denominator = One - LocalGain
-          ReliableSecant = LocalGain == LocalGain &
-            .AND. ABS(LocalGain) < HUGE(One) &
-            .AND. Denominator > SecantFloor
-        END IF
-        IF( ReliableSecant ) &
-          LocalDamping = MIN( MaximumDamping, &
-            MAX( MinimumDamping, One / Denominator ) )
-        IF( ABS(CurrentResidual) > ResidualGrowthLimit &
-              * MAX(ABS(PreviousResidual(iN_X)),SqrtTiny) ) &
-          LocalDamping = MIN( LocalDamping, &
-            MAX(MinimumDamping,Half*Damping(iN_X)) )
-      END IF
-
-      Gain(iN_X) = LocalGain
-      Damping(iN_X) = LocalDamping
-      PreviousInput(iN_X) = CurrentInput
-      PreviousMap(iN_X) = CurrentMap
-      PreviousResidual(iN_X) = CurrentResidual
-      HasPrevious(iN_X) = .TRUE.
-
-    END DO
-
-  END SUBROUTINE PrepareRadiationOnlySchurNewton_OrderV
-
-
-  SUBROUTINE ApplyRadiationOnlySchurNewtonPreconditioner_OrderV &
-    ( MASK, Fm, Gm, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, Damping )
-
-    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
-    REAL(DP), DIMENSION(:,:),   INTENT(inout) :: Fm, Gm
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: &
-      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, Damping
-
-    INTEGER  :: iN_E, iN_X, iOS, iS
-    REAL(DP) :: StateMoment
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( iOS, StateMoment )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( iOS, StateMoment )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(3) PRIVATE( iOS, StateMoment )
-#endif
-    DO iN_X = 1, nX_G
-    DO iS = iNuM, MIN(iNuM_Bar,nSpecies)
-    DO iN_E = 1, nE_G
-
-      IF( MASK(iN_X) .AND. MatterSource_Mask(iYm,iN_X) )THEN
-        iOS = ( (iN_E-1) + (iS-1)*nE_G ) * nCR
-
-        StateMoment = Dnu(iN_E,iS,iN_X)
-        Gm(iOS+iCR_N,iN_X) = StateMoment &
-          + Damping(iN_X) * Fm(iOS+iCR_N,iN_X)
-        Fm(iOS+iCR_N,iN_X) = Damping(iN_X) * Fm(iOS+iCR_N,iN_X)
-
-        StateMoment = Gm_dd_11(iN_X) * Inu_u_1(iN_E,iS,iN_X)
-        Gm(iOS+iCR_G1,iN_X) = StateMoment &
-          + Damping(iN_X) * Fm(iOS+iCR_G1,iN_X)
-        Fm(iOS+iCR_G1,iN_X) = Damping(iN_X) * Fm(iOS+iCR_G1,iN_X)
-
-        StateMoment = Gm_dd_22(iN_X) * Inu_u_2(iN_E,iS,iN_X)
-        Gm(iOS+iCR_G2,iN_X) = StateMoment &
-          + Damping(iN_X) * Fm(iOS+iCR_G2,iN_X)
-        Fm(iOS+iCR_G2,iN_X) = Damping(iN_X) * Fm(iOS+iCR_G2,iN_X)
-
-        StateMoment = Gm_dd_33(iN_X) * Inu_u_3(iN_E,iS,iN_X)
-        Gm(iOS+iCR_G3,iN_X) = StateMoment &
-          + Damping(iN_X) * Fm(iOS+iCR_G3,iN_X)
-        Fm(iOS+iCR_G3,iN_X) = Damping(iN_X) * Fm(iOS+iCR_G3,iN_X)
-      END IF
-
-    END DO
-    END DO
-    END DO
-
-  END SUBROUTINE ApplyRadiationOnlySchurNewtonPreconditioner_OrderV
-
-
-  SUBROUTINE ProjectRadiationOnlyAndersonUpdate_OrderV &
-    ( MASK, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-      V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      RadiationLeptonInvariant )
-
-    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: &
-      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: &
-      V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33
-    REAL(DP), DIMENSION(:,:),   INTENT(in)    :: RadiationLeptonInvariant
-
-    INTEGER :: iN_E, iN_X, iS
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP FIRSTPRIVATE( DnuMax )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC FIRSTPRIVATE( DnuMax )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(3) FIRSTPRIVATE( DnuMax )
-#endif
-    DO iN_X = 1, nX_G
-    DO iS   = 1, nSpecies
-    DO iN_E = 1, nE_G
-
-      IF( MASK(iN_X) ) &
-        CALL ProjectPrimitiveRadiationMoment_OrderV &
-               ( Dnu    (iN_E,iS,iN_X), &
-                 Inu_u_1(iN_E,iS,iN_X), &
-                 Inu_u_2(iN_E,iS,iN_X), &
-                 Inu_u_3(iN_E,iS,iN_X), &
-                 Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
-                 DnuMax )
-
-    END DO
-    END DO
-    END DO
-
-    CALL EnforceRadiationLeptonInvariants_OrderV &
-           ( MASK, RadiationLeptonInvariant, &
-             Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-             V_u_1, V_u_2, V_u_3, &
-             Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-  END SUBROUTINE ProjectRadiationOnlyAndersonUpdate_OrderV
-
-
-  SUBROUTINE ProjectRadiationOnlyFixedPointMap_OrderV &
-    ( MASK, Fm, Gm, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
-    REAL(DP), DIMENSION(:,:),   INTENT(inout) :: Fm, Gm
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: &
-      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33
-    INTEGER  :: iN_E, iN_X, iOS, iS
-    REAL(DP) :: Dnu_Map, Inu_Map_u_1, Inu_Map_u_2, Inu_Map_u_3
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP FIRSTPRIVATE( DnuMax ) &
-    !$OMP PRIVATE( iOS, Dnu_Map, Inu_Map_u_1, Inu_Map_u_2, Inu_Map_u_3 )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC FIRSTPRIVATE( DnuMax ) &
-    !$ACC PRIVATE( iOS, Dnu_Map, Inu_Map_u_1, Inu_Map_u_2, Inu_Map_u_3 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(3) FIRSTPRIVATE( DnuMax ) &
-    !$OMP PRIVATE( iOS, Dnu_Map, Inu_Map_u_1, Inu_Map_u_2, Inu_Map_u_3 )
-#endif
-    DO iN_X = 1, nX_G
-    DO iS   = 1, nSpecies
-    DO iN_E = 1, nE_G
-
-      IF( MASK(iN_X) )THEN
-
-        iOS = ( (iN_E-1) + (iS-1) * nE_G ) * nCR
-
-        Dnu_Map = Gm(iOS+iCR_N,iN_X)
-        Inu_Map_u_1 = Gm(iOS+iCR_G1,iN_X) / Gm_dd_11(iN_X)
-        Inu_Map_u_2 = Gm(iOS+iCR_G2,iN_X) / Gm_dd_22(iN_X)
-        Inu_Map_u_3 = Gm(iOS+iCR_G3,iN_X) / Gm_dd_33(iN_X)
-
-        CALL ProjectPrimitiveRadiationMoment_OrderV &
-               ( Dnu_Map, Inu_Map_u_1, Inu_Map_u_2, Inu_Map_u_3, &
-                 Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
-                 DnuMax )
-
-        Gm(iOS+iCR_N ,iN_X) = Dnu_Map
-        Gm(iOS+iCR_G1,iN_X) = Inu_Map_u_1 * Gm_dd_11(iN_X)
-        Gm(iOS+iCR_G2,iN_X) = Inu_Map_u_2 * Gm_dd_22(iN_X)
-        Gm(iOS+iCR_G3,iN_X) = Inu_Map_u_3 * Gm_dd_33(iN_X)
-
-        Fm(iOS+iCR_N ,iN_X) &
-          = Gm(iOS+iCR_N ,iN_X) - Dnu(iN_E,iS,iN_X)
-        Fm(iOS+iCR_G1,iN_X) &
-          = Gm(iOS+iCR_G1,iN_X) &
-              - Inu_u_1(iN_E,iS,iN_X) * Gm_dd_11(iN_X)
-        Fm(iOS+iCR_G2,iN_X) &
-          = Gm(iOS+iCR_G2,iN_X) &
-              - Inu_u_2(iN_E,iS,iN_X) * Gm_dd_22(iN_X)
-        Fm(iOS+iCR_G3,iN_X) &
-          = Gm(iOS+iCR_G3,iN_X) &
-              - Inu_u_3(iN_E,iS,iN_X) * Gm_dd_33(iN_X)
-
-      END IF
-
-    END DO
-    END DO
-    END DO
-
-  END SUBROUTINE ProjectRadiationOnlyFixedPointMap_OrderV
-
 
   SUBROUTINE ComputeLeptonFlavorCheck_OrderV &
     ( MASK, dt, ApplyMapProjection, Fm, Gm, &
@@ -5680,2313 +4055,34 @@ CONTAINS
   END SUBROUTINE ProjectPrimitiveRadiationMoment_OrderV
 
 
-  SUBROUTINE BacktrackRadiationOnlyIterate_OrderV &
-    ( MASK, iHistory, F, G, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33 )
 
-    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
-    INTEGER,                    INTENT(in)    :: iHistory
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: F, G
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: &
-      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33
-    INTEGER  :: iN_E, iN_X, iOS, iS
-    REAL(DP) :: Previous
 
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( iOS, Previous )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( iOS, Previous )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(3) PRIVATE( iOS, Previous )
-#endif
-    DO iN_X = 1, nX_G
-    DO iS   = 1, nSpecies
-    DO iN_E = 1, nE_G
 
-      IF( MASK(iN_X) )THEN
 
-        iOS = ( (iN_E-1) + (iS-1) * nE_G ) * nCR
 
-        Previous &
-          = G(iOS+iCR_N,iHistory,iN_X) &
-              - F(iOS+iCR_N,iHistory,iN_X)
-        Dnu(iN_E,iS,iN_X) = Half * ( Dnu(iN_E,iS,iN_X) + Previous )
 
-        Previous &
-          = G(iOS+iCR_G1,iHistory,iN_X) &
-              - F(iOS+iCR_G1,iHistory,iN_X)
-        Inu_u_1(iN_E,iS,iN_X) &
-          = Half &
-              * ( Inu_u_1(iN_E,iS,iN_X) &
-                    + Previous / Gm_dd_11(iN_X) )
 
-        Previous &
-          = G(iOS+iCR_G2,iHistory,iN_X) &
-              - F(iOS+iCR_G2,iHistory,iN_X)
-        Inu_u_2(iN_E,iS,iN_X) &
-          = Half &
-              * ( Inu_u_2(iN_E,iS,iN_X) &
-                    + Previous / Gm_dd_22(iN_X) )
 
-        Previous &
-          = G(iOS+iCR_G3,iHistory,iN_X) &
-              - F(iOS+iCR_G3,iHistory,iN_X)
-        Inu_u_3(iN_E,iS,iN_X) &
-          = Half &
-              * ( Inu_u_3(iN_E,iS,iN_X) &
-                    + Previous / Gm_dd_33(iN_X) )
 
-      END IF
 
-    END DO
-    END DO
-    END DO
 
-  END SUBROUTINE BacktrackRadiationOnlyIterate_OrderV
 
 
-  SUBROUTINE RecoverMatterFromRadiationState_OrderV &
-    ( MASK, Fm, Gm, &
-      Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-      D, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      RadiationLimiterCorrection, Error, &
-      RetainMuonFraction_Option, MuonFractionConserved_Option )
 
-    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
-    REAL(DP), DIMENSION(:,:),   INTENT(inout) :: Fm, Gm
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: &
-      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: D
-    REAL(DP), DIMENSION(:),     INTENT(inout) :: &
-      Ye, Ym, E, V_u_1, V_u_2, V_u_3
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33
-    REAL(DP), DIMENSION(:,:),   INTENT(in)    :: RadiationLimiterCorrection
-    INTEGER,  DIMENSION(:),     INTENT(inout) :: Error
-    LOGICAL, DIMENSION(:), INTENT(in), OPTIONAL :: RetainMuonFraction_Option
-    REAL(DP), DIMENSION(:), INTENT(out), OPTIONAL :: MuonFractionConserved_Option
 
-    INTEGER  :: iN_E, iN_X, iS, SolveInfo
-    REAL(DP) :: A(3,3), B(3), VHat(3)
-    REAL(DP) :: Ef, SqrtG1, SqrtG2, SqrtG3, vDotV
-    REAL(DP) :: k_dd_11, k_dd_12, k_dd_13
-    REAL(DP) :: k_dd_22, k_dd_23, k_dd_33
-    REAL(DP) :: SUM_D
-    REAL(DP) :: SUM_K11, SUM_K12, SUM_K13
-    REAL(DP) :: SUM_K22, SUM_K23, SUM_K33
-    REAL(DP) :: SUM_DeltaLe, SUM_DeltaLm
-    REAL(DP) :: SUM_DeltaEf
-    REAL(DP) :: SUM_DeltaP1, SUM_DeltaP2, SUM_DeltaP3
-    REAL(DP) :: DeltaEf, DeltaLe, DeltaLm, DeltaN
-    REAL(DP) :: U_Ye_New, U_Ym_New, U_Ef_New
-    REAL(DP) :: U_V1_New, U_V2_New, U_V3_New
-    REAL(DP) :: wYe, wYm, wEf, wV1, wV2, wV3
 
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE &
-    !$OMP PRIVATE( A, B, VHat, SolveInfo, Ef, SqrtG1, SqrtG2, SqrtG3, &
-    !$OMP          vDotV, SUM_D, &
-    !$OMP          SUM_K11, SUM_K12, SUM_K13, &
-    !$OMP          SUM_K22, SUM_K23, SUM_K33, &
-    !$OMP          SUM_DeltaLe, SUM_DeltaLm, &
-    !$OMP          SUM_DeltaEf, &
-    !$OMP          SUM_DeltaP1, SUM_DeltaP2, SUM_DeltaP3, &
-    !$OMP          DeltaEf, DeltaLe, DeltaLm, DeltaN, &
-    !$OMP          U_Ye_New, U_Ym_New, U_Ef_New, &
-    !$OMP          U_V1_New, U_V2_New, U_V3_New, &
-    !$OMP          wYe, wYm, wEf, wV1, wV2, wV3 )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG &
-    !$ACC PRIVATE( A, B, VHat, SolveInfo, Ef, SqrtG1, SqrtG2, SqrtG3, &
-    !$ACC          vDotV, SUM_D, &
-    !$ACC          SUM_K11, SUM_K12, SUM_K13, &
-    !$ACC          SUM_K22, SUM_K23, SUM_K33, &
-    !$ACC          SUM_DeltaLe, SUM_DeltaLm, &
-    !$ACC          SUM_DeltaEf, &
-    !$ACC          SUM_DeltaP1, SUM_DeltaP2, SUM_DeltaP3, &
-    !$ACC          DeltaEf, DeltaLe, DeltaLm, DeltaN, &
-    !$ACC          U_Ye_New, U_Ym_New, U_Ef_New, &
-    !$ACC          U_V1_New, U_V2_New, U_V3_New, &
-    !$ACC          wYe, wYm, wEf, wV1, wV2, wV3 )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO &
-    !$OMP PRIVATE( A, B, VHat, SolveInfo, Ef, SqrtG1, SqrtG2, SqrtG3, &
-    !$OMP          vDotV, k_dd_11, k_dd_12, k_dd_13, &
-    !$OMP          k_dd_22, k_dd_23, k_dd_33, &
-    !$OMP          SUM_D, &
-    !$OMP          SUM_K11, SUM_K12, SUM_K13, &
-    !$OMP          SUM_K22, SUM_K23, SUM_K33, &
-    !$OMP          SUM_DeltaLe, SUM_DeltaLm, &
-    !$OMP          SUM_DeltaEf, &
-    !$OMP          SUM_DeltaP1, SUM_DeltaP2, SUM_DeltaP3, &
-    !$OMP          DeltaEf, DeltaLe, DeltaLm, DeltaN, &
-    !$OMP          U_Ye_New, U_Ym_New, U_Ef_New, &
-    !$OMP          U_V1_New, U_V2_New, U_V3_New, &
-    !$OMP          wYe, wYm, wEf, wV1, wV2, wV3 )
-#endif
-    DO iN_X = 1, nX_G
 
-      IF( .NOT. MASK(iN_X) ) CYCLE
 
-      Error(iN_X) = 0
-      INFO(iN_X) = 0
 
-      wYe = MatterSourceWeight( iYe, iN_X )
-      wYm = MatterSourceWeight( iYm, iN_X )
-      wEf = MatterSourceWeight( iEf, iN_X )
-      wV1 = MatterSourceWeight( iV1, iN_X )
-      wV2 = MatterSourceWeight( iV2, iN_X )
-      wV3 = MatterSourceWeight( iV3, iN_X )
 
-      SqrtG1 = SQRT( Gm_dd_11(iN_X) )
-      SqrtG2 = SQRT( Gm_dd_22(iN_X) )
-      SqrtG3 = SQRT( Gm_dd_33(iN_X) )
 
-      SUM_D   = Zero
-      SUM_K11 = Zero
-      SUM_K12 = Zero
-      SUM_K13 = Zero
-      SUM_K22 = Zero
-      SUM_K23 = Zero
-      SUM_K33 = Zero
-      SUM_DeltaP1 = Zero
-      SUM_DeltaP2 = Zero
-      SUM_DeltaP3 = Zero
 
-#if   defined(THORNADO_OMP_OL)
-    !$OMP PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP PRIVATE( k_dd_11, k_dd_12, k_dd_13, &
-    !$OMP          k_dd_22, k_dd_23, k_dd_33 ) &
-    !$OMP REDUCTION( + : SUM_D, &
-    !$OMP                 SUM_K11, SUM_K12, SUM_K13, &
-    !$OMP                 SUM_K22, SUM_K23, SUM_K33, &
-    !$OMP                 SUM_DeltaP1, SUM_DeltaP2, SUM_DeltaP3 )
-#elif defined(THORNADO_OACC)
-    !$ACC LOOP VECTOR COLLAPSE(2) &
-    !$ACC PRIVATE( k_dd_11, k_dd_12, k_dd_13, &
-    !$ACC          k_dd_22, k_dd_23, k_dd_33 ) &
-    !$ACC REDUCTION( + : SUM_D, &
-    !$ACC                 SUM_K11, SUM_K12, SUM_K13, &
-    !$ACC                 SUM_K22, SUM_K23, SUM_K33, &
-    !$ACC                 SUM_DeltaP1, SUM_DeltaP2, SUM_DeltaP3 )
-#endif
-      DO iS   = 1, nSpecies
-      DO iN_E = 1, nE_G
 
-        CALL ComputeEddingtonTensorComponents_dd &
-               ( Dnu(iN_E,iS,iN_X), &
-                 Inu_u_1(iN_E,iS,iN_X), &
-                 Inu_u_2(iN_E,iS,iN_X), &
-                 Inu_u_3(iN_E,iS,iN_X), &
-                 Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
-                 k_dd_11, k_dd_12, k_dd_13, &
-                 k_dd_22, k_dd_23, k_dd_33 )
 
-        SUM_D = SUM_D + W3_S(iN_E) * Dnu(iN_E,iS,iN_X)
 
-        SUM_K11 = SUM_K11 + W3_S(iN_E) * Dnu(iN_E,iS,iN_X) &
-          * k_dd_11 / ( SqrtG1 * SqrtG1 )
-        SUM_K12 = SUM_K12 + W3_S(iN_E) * Dnu(iN_E,iS,iN_X) &
-          * k_dd_12 / ( SqrtG1 * SqrtG2 )
-        SUM_K13 = SUM_K13 + W3_S(iN_E) * Dnu(iN_E,iS,iN_X) &
-          * k_dd_13 / ( SqrtG1 * SqrtG3 )
-        SUM_K22 = SUM_K22 + W3_S(iN_E) * Dnu(iN_E,iS,iN_X) &
-          * k_dd_22 / ( SqrtG2 * SqrtG2 )
-        SUM_K23 = SUM_K23 + W3_S(iN_E) * Dnu(iN_E,iS,iN_X) &
-          * k_dd_23 / ( SqrtG2 * SqrtG3 )
-        SUM_K33 = SUM_K33 + W3_S(iN_E) * Dnu(iN_E,iS,iN_X) &
-          * k_dd_33 / ( SqrtG3 * SqrtG3 )
 
-        SUM_DeltaP1 = SUM_DeltaP1 + W3_S(iN_E) &
-          * ( C_Inu_d_1(iN_E,iS,iN_X) / SqrtG1 &
-              + SqrtG1 * V_u_1_old(iN_X) * Dnu_old(iN_E,iS,iN_X) &
-              - SqrtG1 * Inu_u_1(iN_E,iS,iN_X) )
-        SUM_DeltaP2 = SUM_DeltaP2 + W3_S(iN_E) &
-          * ( C_Inu_d_2(iN_E,iS,iN_X) / SqrtG2 &
-              + SqrtG2 * V_u_2_old(iN_X) * Dnu_old(iN_E,iS,iN_X) &
-              - SqrtG2 * Inu_u_2(iN_E,iS,iN_X) )
-        SUM_DeltaP3 = SUM_DeltaP3 + W3_S(iN_E) &
-          * ( C_Inu_d_3(iN_E,iS,iN_X) / SqrtG3 &
-              + SqrtG3 * V_u_3_old(iN_X) * Dnu_old(iN_E,iS,iN_X) &
-              - SqrtG3 * Inu_u_3(iN_E,iS,iN_X) )
 
-      END DO
-      END DO
 
-      A = Zero
-      A(1,1) = One + wV1 &
-        * ( SUM_D + SUM_K11 ) / D(iN_X)
-      A(1,2) = wV1 * SUM_K12 / D(iN_X)
-      A(1,3) = wV1 * SUM_K13 / D(iN_X)
-      A(2,1) = wV2 * SUM_K12 / D(iN_X)
-      A(2,2) = One + wV2 &
-        * ( SUM_D + SUM_K22 ) / D(iN_X)
-      A(2,3) = wV2 * SUM_K23 / D(iN_X)
-      A(3,1) = wV3 * SUM_K13 / D(iN_X)
-      A(3,2) = wV3 * SUM_K23 / D(iN_X)
-      A(3,3) = One + wV3 &
-        * ( SUM_D + SUM_K33 ) / D(iN_X)
-
-      B(1) = SqrtG1 * V_u_1_old(iN_X) &
-        + wV1 / D(iN_X) &
-          * ( SUM_DeltaP1 &
-              + RadiationLimiterCorrection(iV1,iN_X) / SqrtG1 )
-      B(2) = SqrtG2 * V_u_2_old(iN_X) &
-        + wV2 / D(iN_X) &
-          * ( SUM_DeltaP2 &
-              + RadiationLimiterCorrection(iV2,iN_X) / SqrtG2 )
-      B(3) = SqrtG3 * V_u_3_old(iN_X) &
-        + wV3 / D(iN_X) &
-          * ( SUM_DeltaP3 &
-              + RadiationLimiterCorrection(iV3,iN_X) / SqrtG3 )
-
-      CALL SolveLinearSystem3x3_OrderV( A, B, VHat, SolveInfo )
-      INFO(iN_X) = SolveInfo
-
-      IF( SolveInfo /= 0 )THEN
-        Error(iN_X) = 1
-        Fm(:,iN_X) = Zero
-        Gm(iYe,iN_X) = U_Ye(iN_X)
-        Gm(iYm,iN_X) = U_Ym(iN_X)
-        Gm(iEf,iN_X) = U_Ef   (iN_X)
-        Gm(iV1,iN_X) = U_V_d_1(iN_X)
-        Gm(iV2,iN_X) = U_V_d_2(iN_X)
-        Gm(iV3,iN_X) = U_V_d_3(iN_X)
-        CYCLE
-      END IF
-
-      V_u_1(iN_X) = VHat(1) / SqrtG1
-      V_u_2(iN_X) = VHat(2) / SqrtG2
-      V_u_3(iN_X) = VHat(3) / SqrtG3
-
-      ! Form the accepted old-to-new Eulerian number and energy changes
-      ! before the spectral reduction.  This avoids subtracting separately
-      ! accumulated inventories, including their order-v flux contributions.
-
-      SUM_DeltaLe = Zero
-      SUM_DeltaLm = Zero
-      SUM_DeltaEf = Zero
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP PARALLEL DO SIMD COLLAPSE(2) PRIVATE( DeltaEf, DeltaN ) &
-    !$OMP REDUCTION( + : SUM_DeltaLe, SUM_DeltaLm, SUM_DeltaEf )
-#elif defined(THORNADO_OACC)
-    !$ACC LOOP VECTOR COLLAPSE(2) PRIVATE( DeltaEf, DeltaN ) &
-    !$ACC REDUCTION( + : SUM_DeltaLe, SUM_DeltaLm, SUM_DeltaEf )
-#endif
-      DO iS   = 1, nSpecies
-      DO iN_E = 1, nE_G
-
-        DeltaN = C_Dnu(iN_E,iS,iN_X) - Dnu(iN_E,iS,iN_X) &
-          - VHat(1) * SqrtG1 * Inu_u_1(iN_E,iS,iN_X) &
-          - VHat(2) * SqrtG2 * Inu_u_2(iN_E,iS,iN_X) &
-          - VHat(3) * SqrtG3 * Inu_u_3(iN_E,iS,iN_X)
-
-        DeltaEf = Two * C_Dnu(iN_E,iS,iN_X) &
-          - Dnu_old(iN_E,iS,iN_X) - Dnu(iN_E,iS,iN_X) &
-          - Two * VHat(1) * SqrtG1 * Inu_u_1(iN_E,iS,iN_X) &
-          - Two * VHat(2) * SqrtG2 * Inu_u_2(iN_E,iS,iN_X) &
-          - Two * VHat(3) * SqrtG3 * Inu_u_3(iN_E,iS,iN_X)
-
-        SUM_DeltaEf = SUM_DeltaEf + W3_S(iN_E) * DeltaEf
-
-        IF( iS <= iNuE_Bar )THEN
-          SUM_DeltaLe = SUM_DeltaLe &
-            + W2_S(iN_E) * LeptonNumber(iS) * DeltaN
-        END IF
-
-        IF( iS == iNuM .OR. iS == iNuM_Bar )THEN
-          SUM_DeltaLm = SUM_DeltaLm &
-            + W2_S(iN_E) * LeptonNumber(iS) * DeltaN
-        END IF
-
-      END DO
-      END DO
-
-      DeltaLe = SUM_DeltaLe + RadiationLimiterCorrection(iYe,iN_X)
-      DeltaLm = SUM_DeltaLm + RadiationLimiterCorrection(iYm,iN_X)
-
-      Ye(iN_X) = Ye_old(iN_X) + AtomicMassUnit / D(iN_X) &
-        * wYe * DeltaLe
-      U_Ym_New = Ym_old(iN_X) + AtomicMassUnit / D(iN_X) * wYm * DeltaLm
-      IF( PRESENT(MuonFractionConserved_Option) ) &
-        MuonFractionConserved_Option(iN_X) = U_Ym_New
-      IF( PRESENT(RetainMuonFraction_Option) )THEN
-        IF( .NOT. RetainMuonFraction_Option(iN_X) ) Ym(iN_X) = U_Ym_New
-      ELSE
-        Ym(iN_X) = U_Ym_New
-      END IF
-      Ef = Ef_old(iN_X) + wEf / D(iN_X) &
-        * ( SUM_DeltaEf + RadiationLimiterCorrection(iEf,iN_X) )
-
-      U_Ye_New = Ye(iN_X) / Ye_old(iN_X)
-      U_Ym_New = Ym(iN_X)
-      U_Ef_New = Ef / Ef_old(iN_X)
-      U_V1_New = SqrtG1 * VHat(1) / SpeedOfLight
-      U_V2_New = SqrtG2 * VHat(2) / SpeedOfLight
-      U_V3_New = SqrtG3 * VHat(3) / SpeedOfLight
-
-      Fm(iYe,iN_X) = U_Ye_New - U_Ye(iN_X)
-      Fm(iYm,iN_X) = U_Ym_New - U_Ym(iN_X)
-      Fm(iEf,iN_X) = U_Ef_New - U_Ef   (iN_X)
-      Fm(iV1,iN_X) = U_V1_New - U_V_d_1(iN_X)
-      Fm(iV2,iN_X) = U_V2_New - U_V_d_2(iN_X)
-      Fm(iV3,iN_X) = U_V3_New - U_V_d_3(iN_X)
-
-      U_Ye(iN_X) = U_Ye_New
-      U_Ym(iN_X) = U_Ym_New
-      U_Ef   (iN_X) = U_Ef_New
-      U_V_d_1(iN_X) = U_V1_New
-      U_V_d_2(iN_X) = U_V2_New
-      U_V_d_3(iN_X) = U_V3_New
-
-      G_Ye(iN_X) = U_Ye_New
-      G_Ym(iN_X) = U_Ym_New
-      G_Ef   (iN_X) = U_Ef_New
-      G_V_d_1(iN_X) = U_V1_New
-      G_V_d_2(iN_X) = U_V2_New
-      G_V_d_3(iN_X) = U_V3_New
-
-      Gm(iYe,iN_X) = U_Ye_New
-      Gm(iYm,iN_X) = U_Ym_New
-      Gm(iEf,iN_X) = U_Ef_New
-      Gm(iV1,iN_X) = U_V1_New
-      Gm(iV2,iN_X) = U_V2_New
-      Gm(iV3,iN_X) = U_V3_New
-
-      vDotV = VHat(1)**2 + VHat(2)**2 + VHat(3)**2
-      E(iN_X) = Ef - Half * vDotV
-      Omega(iN_X) = One / ( One + SQRT( vDotV ) )
-
-    END DO
-
-  END SUBROUTINE RecoverMatterFromRadiationState_OrderV
-
-
-  SUBROUTINE SolveLinearSystem3x3_OrderV( A_Input, B_Input, X, Info )
-#if   defined(THORNADO_OMP_OL)
-    !$OMP DECLARE TARGET
-#elif defined(THORNADO_OACC)
-    !$ACC ROUTINE SEQ
-#endif
-
-    REAL(DP), INTENT(in)  :: A_Input(3,3), B_Input(3)
-    REAL(DP), INTENT(out) :: X(3)
-    INTEGER,  INTENT(out) :: Info
-
-    INTEGER  :: i, j, k, Pivot
-    REAL(DP) :: A(3,3), B(3), Factor, PivotMagnitude, Scale, Swap
-
-    Scale = MAX( MAXVAL( ABS( A_Input ) ), One )
-    A = A_Input / Scale
-    B = B_Input / Scale
-    Info = 0
-
-    DO k = 1, 2
-
-      Pivot = k
-      PivotMagnitude = ABS( A(k,k) )
-      DO i = k + 1, 3
-        IF( ABS( A(i,k) ) > PivotMagnitude )THEN
-          Pivot = i
-          PivotMagnitude = ABS( A(i,k) )
-        END IF
-      END DO
-
-      IF( PivotMagnitude <= 128.0_DP * EPSILON(One) )THEN
-        Info = k
-        X = Zero
-        RETURN
-      END IF
-
-      IF( Pivot /= k )THEN
-        DO j = k, 3
-          Swap = A(k,j)
-          A(k,j) = A(Pivot,j)
-          A(Pivot,j) = Swap
-        END DO
-        Swap = B(k)
-        B(k) = B(Pivot)
-        B(Pivot) = Swap
-      END IF
-
-      DO i = k + 1, 3
-        Factor = A(i,k) / A(k,k)
-        A(i,k) = Zero
-        DO j = k + 1, 3
-          A(i,j) = A(i,j) - Factor * A(k,j)
-        END DO
-        B(i) = B(i) - Factor * B(k)
-      END DO
-
-    END DO
-
-    IF( ABS( A(3,3) ) <= 128.0_DP * EPSILON(One) )THEN
-      Info = 3
-      X = Zero
-      RETURN
-    END IF
-
-    X(3) = B(3) / A(3,3)
-    X(2) = ( B(2) - A(2,3) * X(3) ) / A(2,2)
-    X(1) = ( B(1) - A(1,2) * X(2) - A(1,3) * X(3) ) / A(1,1)
-
-  END SUBROUTINE SolveLinearSystem3x3_OrderV
-
-
-  SUBROUTINE RecoverMatterFromRadiationInvariants_OrderV &
-    ( MASK, WorkingMask, Fm, Gm, &
-      Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-      D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-      RadiationLimiterCorrection, &
-      RadiationLeptonInvariant, &
-      nX_P, PackIndex, UnpackIndex, Error )
-
-    LOGICAL,  DIMENSION(:),     INTENT(in)    :: MASK
-    LOGICAL,  DIMENSION(:),     INTENT(inout) :: WorkingMask
-    REAL(DP), DIMENSION(:,:),   INTENT(inout) :: Fm, Gm
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: &
-      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: D
-    REAL(DP), DIMENSION(:),     INTENT(inout) :: &
-      T, Ye, Ym, E, V_u_1, V_u_2, V_u_3
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33
-    REAL(DP), DIMENSION(:,:),   INTENT(in)    :: RadiationLimiterCorrection
-    REAL(DP), DIMENSION(:,:),   INTENT(in)    :: RadiationLeptonInvariant
-    INTEGER,                    INTENT(in)    :: nX_P
-    INTEGER,  DIMENSION(:),     INTENT(in)    :: PackIndex, UnpackIndex
-    INTEGER,  DIMENSION(:),     INTENT(inout) :: Error
-    INTEGER, PARAMETER :: MaxIter_InvariantCoupling = 8
-
-    INTEGER :: iN_X, kInvariant
-
-    WorkingMask = MASK
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( WorkingMask )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE( WorkingMask )
-#endif
-
-    kInvariant = 0
-    DO WHILE &
-      ( ANY( WorkingMask(:) ) &
-        .AND. kInvariant < MaxIter_InvariantCoupling )
-
-      kInvariant = kInvariant + 1
-
-      CALL TimersStart( Timer_Collisions_MatterRHS )
-
-      CALL RecoverMatterFromRadiationState_OrderV &
-             ( WorkingMask, Fm, Gm, &
-               Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-               D, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-               RadiationLimiterCorrection, Error )
-
-      CALL TimersStop( Timer_Collisions_MatterRHS )
-
-      CALL FindRadiationLeptonInvariantViolations_OrderV &
-             ( MASK, WorkingMask, RadiationLeptonInvariant, &
-               Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-               V_u_1, V_u_2, V_u_3, &
-               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM( WorkingMask )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( WorkingMask )
-#endif
-
-      IF( .NOT. ANY( WorkingMask(:) ) ) EXIT
-
-      CALL EnforceRadiationLeptonInvariants_OrderV &
-             ( WorkingMask, RadiationLeptonInvariant, &
-               Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-               V_u_1, V_u_2, V_u_3, &
-               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-    END DO
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO
-#endif
-    DO iN_X = 1, nX_G
-
-      IF( WorkingMask(iN_X) ) INFO(iN_X) = 1
-
-    END DO
-
-    CALL UpdateTemperature_Packed &
-           ( D, E, Ye, Ym, T, MASK, nX_P, PackIndex, UnpackIndex, Error, &
-             DisplayErrors_Option = .FALSE. )
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO
-#endif
-    DO iN_X = 1, nX_G
-
-      IF( MASK(iN_X) .AND. INFO(iN_X) /= 0 ) Error(iN_X) = 1
-
-    END DO
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM( Error )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( Error )
-#endif
-
-  END SUBROUTINE RecoverMatterFromRadiationInvariants_OrderV
-
-
-  SUBROUTINE EvaluateRadiationOnlyMapForJacobian_OrderV &
-    ( dt, iPoint, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-      D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
-      FVECm_outer, GVECm_outer, FVECm, GVECm, &
-      MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
-      RadiationLimiterCorrection, RadiationLeptonInvariant, &
-      MapDensity, EtaMu, EvaluationFailed, RecoverMatter_Option )
-
-    REAL(DP),                   INTENT(in)    :: dt
-    INTEGER,                    INTENT(in)    :: iPoint
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: &
-      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: D
-    REAL(DP), DIMENSION(:),     INTENT(inout) :: &
-      T, Ye, Ym, E, V_u_1, V_u_2, V_u_3
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm
-    REAL(DP), DIMENSION(:,:),   INTENT(inout) :: &
-      FVECm_outer, GVECm_outer, FVECm, GVECm
-    LOGICAL,  DIMENSION(:),     INTENT(inout) :: MASK, WorkingMask
-    INTEGER,  DIMENSION(:),     INTENT(inout) :: &
-      Error, PackIndex, UnpackIndex
-    REAL(DP), DIMENSION(:,:),   INTENT(in)    :: &
-      RadiationLimiterCorrection, RadiationLeptonInvariant
-    REAL(DP), DIMENSION(:),     INTENT(out)   :: MapDensity
-    REAL(DP),                   INTENT(out)   :: EtaMu
-    LOGICAL,                    INTENT(out)   :: EvaluationFailed
-    LOGICAL,                    INTENT(in), OPTIONAL :: RecoverMatter_Option
-
-    INTEGER  :: iN_E, iOS, iS, nX_P
-    LOGICAL  :: RecoverMatter
-    REAL(DP) :: Mumu
-
-    MASK = .FALSE.
-    MASK(iPoint) = .TRUE.
-    WorkingMask = .FALSE.
-    Error = 0
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO &
-    !$OMP ( MASK, WorkingMask, Error, &
-    !$OMP   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-    !$OMP   T, Ye, Ym, E, V_u_1, V_u_2, V_u_3 )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE &
-    !$ACC ( MASK, WorkingMask, Error, &
-    !$ACC   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-    !$ACC   T, Ye, Ym, E, V_u_1, V_u_2, V_u_3 )
-#endif
-
-    CALL CreatePackIndex &
-           ( MASK, nX_P, PackIndex, UnpackIndex )
-
-    RecoverMatter = .TRUE.
-    IF( PRESENT(RecoverMatter_Option) ) RecoverMatter = RecoverMatter_Option
-
-    IF( RecoverMatter ) &
-      CALL RecoverMatterFromRadiationInvariants_OrderV &
-             ( MASK, WorkingMask, FVECm_outer, GVECm_outer, &
-               Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-               D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-               Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-               RadiationLimiterCorrection, RadiationLeptonInvariant, &
-               nX_P, PackIndex, UnpackIndex, Error )
-
-    EvaluationFailed = Error(iPoint) /= 0
-    IF( EvaluationFailed )THEN
-      MapDensity = Zero
-      EtaMu = Zero
-      RETURN
-    END IF
-
-    IF( .NOT. FreezeOpacities ) &
-      CALL ComputeOpacities_Packed &
-             ( D, T, Ye, Ym, SqrtGm, MASK, nX_P, &
-               PackIndex, UnpackIndex, &
-               T0 = T_old, Ye0 = Ye_old, Ym0 = Ym_old, &
-               Opacity_Mask_Input = Opacity_Mask )
-
-    CALL ComputeDnuNorm( MASK, Dnu )
-
-    IF( FreezeOpacities )THEN
-      CALL ComputeRates_Packed &
-             ( D, T_Opacity, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-               MASK, nX_P, PackIndex, UnpackIndex, &
-               nX_P, Opacity_Mask )
-    ELSE
-      CALL ComputeRates_Packed &
-             ( D, T, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-               MASK, nX_P, PackIndex, UnpackIndex, &
-               nX_P, Opacity_Mask )
-    END IF
-
-    CALL ComputeNeutrinoRHS_OrderV &
-           ( MASK, FVECm, GVECm, dt, &
-             Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-             V_u_1, V_u_2, V_u_3, &
-             Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-    CALL ProjectRadiationOnlyFixedPointMap_OrderV &
-           ( MASK, FVECm, GVECm, &
-             Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-             Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM &
-    !$OMP ( GVECm, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, Error )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST &
-    !$ACC ( GVECm, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, Error )
-#endif
-
-    EvaluationFailed = Error(iPoint) /= 0
-    MapDensity = Zero
-    DO iS = iNuM, iNuM_Bar
-    DO iN_E = 1, nE_G
-      iOS = ( (iN_E-1) + (iS-1)*nE_G ) * nCR
-      MapDensity(iN_E+(iS-iNuM)*nE_G) = GVECm(iOS+iCR_N,iPoint)
-    END DO
-    END DO
-
-    CALL ComputeMuonChemicalPotential_TABLE &
-           ( D(iPoint), T(iPoint), Ye(iPoint), Ym(iPoint), Mumu )
-    EtaMu = Mumu / MAX( T(iPoint), SqrtTiny )
-
-  END SUBROUTINE EvaluateRadiationOnlyMapForJacobian_OrderV
-
-
-  SUBROUTINE ApplyRadiationOnlyDensityJacobian_OrderV &
-    ( dt, Step, iPoint, Direction, Scale, &
-      Dnu_Base, Inu_u_1_Base, Inu_u_2_Base, Inu_u_3_Base, &
-      Matter_Base, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-      D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
-      FVECm_outer, GVECm_outer, FVECm, GVECm, &
-      MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
-      RadiationLimiterCorrection, RadiationLeptonInvariant, &
-      JacobianDirection, dLInput, dLMap, dEtaMu, dYm, &
-      dTemperature, dEInput, &
-      EvaluationFailed, JacobianDirectionFixedMatter_Option, &
-      dLMapFixedMatter_Option )
-
-    REAL(DP),                   INTENT(in)    :: dt, Step
-    INTEGER,                    INTENT(in)    :: iPoint
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: Direction, Scale
-    REAL(DP), DIMENSION(:,:),   INTENT(in)    :: &
-      Dnu_Base, Inu_u_1_Base, Inu_u_2_Base, Inu_u_3_Base
-    REAL(DP), DIMENSION(7),     INTENT(in)    :: Matter_Base
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: &
-      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: D
-    REAL(DP), DIMENSION(:),     INTENT(inout) :: &
-      T, Ye, Ym, E, V_u_1, V_u_2, V_u_3
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm
-    REAL(DP), DIMENSION(:,:),   INTENT(inout) :: &
-      FVECm_outer, GVECm_outer, FVECm, GVECm
-    LOGICAL,  DIMENSION(:),     INTENT(inout) :: MASK, WorkingMask
-    INTEGER,  DIMENSION(:),     INTENT(inout) :: &
-      Error, PackIndex, UnpackIndex
-    REAL(DP), DIMENSION(:,:),   INTENT(in)    :: &
-      RadiationLimiterCorrection, RadiationLeptonInvariant
-    REAL(DP), DIMENSION(:),     INTENT(out)   :: JacobianDirection
-    REAL(DP),                   INTENT(out)   :: &
-      dLInput, dLMap, dEtaMu, dYm, dTemperature, dEInput
-    LOGICAL,                    INTENT(out)   :: EvaluationFailed
-    REAL(DP), DIMENSION(:),     INTENT(out), OPTIONAL :: &
-      JacobianDirectionFixedMatter_Option
-    REAL(DP),                   INTENT(out), OPTIONAL :: &
-      dLMapFixedMatter_Option
-
-    INTEGER  :: iN_E, iS, iV
-    LOGICAL  :: ComputeFixedMatter
-    REAL(DP) :: EtaFixed, EtaMinus, EtaPlus
-    REAL(DP) :: TMinus, TPlus, YmMinus, YmPlus
-    REAL(DP), ALLOCATABLE :: MapMinus(:), MapPlus(:)
-
-    ALLOCATE( MapMinus(SIZE(Direction)), MapPlus(SIZE(Direction)) )
-
-    DO iS = 1, nSpecies
-    DO iN_E = 1, nE_G
-      Dnu    (iN_E,iS,iPoint) = Dnu_Base    (iN_E,iS)
-      Inu_u_1(iN_E,iS,iPoint) = Inu_u_1_Base(iN_E,iS)
-      Inu_u_2(iN_E,iS,iPoint) = Inu_u_2_Base(iN_E,iS)
-      Inu_u_3(iN_E,iS,iPoint) = Inu_u_3_Base(iN_E,iS)
-    END DO
-    END DO
-    T(iPoint) = Matter_Base(1)
-    Ye(iPoint) = Matter_Base(2)
-    Ym(iPoint) = Matter_Base(3)
-    E(iPoint) = Matter_Base(4)
-    V_u_1(iPoint) = Matter_Base(5)
-    V_u_2(iPoint) = Matter_Base(6)
-    V_u_3(iPoint) = Matter_Base(7)
-    DO iS = iNuM, iNuM_Bar
-    DO iN_E = 1, nE_G
-      iV = iN_E + (iS-iNuM)*nE_G
-      Dnu(iN_E,iS,iPoint) = Dnu(iN_E,iS,iPoint) &
-        + Step * Scale(iV) * Direction(iV)
-    END DO
-    END DO
-
-    CALL EvaluateRadiationOnlyMapForJacobian_OrderV &
-           ( dt, iPoint, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-             D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-             Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
-             FVECm_outer, GVECm_outer, FVECm, GVECm, &
-             MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
-             RadiationLimiterCorrection, RadiationLeptonInvariant, &
-             MapPlus, EtaPlus, EvaluationFailed )
-    IF( EvaluationFailed )THEN
-      DEALLOCATE( MapMinus, MapPlus )
-      RETURN
-    END IF
-    TPlus = T(iPoint)
-    YmPlus = Ym(iPoint)
-
-    DO iS = 1, nSpecies
-    DO iN_E = 1, nE_G
-      Dnu    (iN_E,iS,iPoint) = Dnu_Base    (iN_E,iS)
-      Inu_u_1(iN_E,iS,iPoint) = Inu_u_1_Base(iN_E,iS)
-      Inu_u_2(iN_E,iS,iPoint) = Inu_u_2_Base(iN_E,iS)
-      Inu_u_3(iN_E,iS,iPoint) = Inu_u_3_Base(iN_E,iS)
-    END DO
-    END DO
-    T(iPoint) = Matter_Base(1)
-    Ye(iPoint) = Matter_Base(2)
-    Ym(iPoint) = Matter_Base(3)
-    E(iPoint) = Matter_Base(4)
-    V_u_1(iPoint) = Matter_Base(5)
-    V_u_2(iPoint) = Matter_Base(6)
-    V_u_3(iPoint) = Matter_Base(7)
-    DO iS = iNuM, iNuM_Bar
-    DO iN_E = 1, nE_G
-      iV = iN_E + (iS-iNuM)*nE_G
-      Dnu(iN_E,iS,iPoint) = Dnu(iN_E,iS,iPoint) &
-        - Step * Scale(iV) * Direction(iV)
-    END DO
-    END DO
-
-    CALL EvaluateRadiationOnlyMapForJacobian_OrderV &
-           ( dt, iPoint, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-             D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-             Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
-             FVECm_outer, GVECm_outer, FVECm, GVECm, &
-             MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
-             RadiationLimiterCorrection, RadiationLeptonInvariant, &
-             MapMinus, EtaMinus, EvaluationFailed )
-    IF( EvaluationFailed )THEN
-      DEALLOCATE( MapMinus, MapPlus )
-      RETURN
-    END IF
-    TMinus = T(iPoint)
-    YmMinus = Ym(iPoint)
-
-    JacobianDirection = Zero
-    dLInput = Zero
-    dLMap = Zero
-    dEInput = Zero
-    DO iS = iNuM, iNuM_Bar
-    DO iN_E = 1, nE_G
-      iV = iN_E + (iS-iNuM)*nE_G
-      IF( Scale(iV) > Zero ) &
-        JacobianDirection(iV) &
-          = ( MapPlus(iV) - MapMinus(iV) ) &
-              / ( Two * Step * Scale(iV) )
-      dLInput = dLInput + W2_S(iN_E) * LeptonNumber(iS) &
-        * Scale(iV) * Direction(iV)
-      dLMap = dLMap + W2_S(iN_E) * LeptonNumber(iS) &
-        * ( MapPlus(iV) - MapMinus(iV) ) / ( Two * Step )
-      dEInput = dEInput + W3_S(iN_E) &
-        * Scale(iV) * Direction(iV)
-    END DO
-    END DO
-    dEtaMu = ( EtaPlus - EtaMinus ) / ( Two * Step )
-    dYm = ( YmPlus - YmMinus ) / ( Two * Step )
-    dTemperature = ( TPlus - TMinus ) / ( Two * Step )
-
-    ComputeFixedMatter &
-      = PRESENT(JacobianDirectionFixedMatter_Option) &
-          .AND. PRESENT(dLMapFixedMatter_Option)
-    IF( PRESENT(JacobianDirectionFixedMatter_Option) .NEQV. &
-        PRESENT(dLMapFixedMatter_Option) ) &
-      ERROR STOP 'Incomplete fixed-matter Jacobian output request.'
-
-    IF( ComputeFixedMatter )THEN
-
-      DO iS = 1, nSpecies
-      DO iN_E = 1, nE_G
-        Dnu    (iN_E,iS,iPoint) = Dnu_Base    (iN_E,iS)
-        Inu_u_1(iN_E,iS,iPoint) = Inu_u_1_Base(iN_E,iS)
-        Inu_u_2(iN_E,iS,iPoint) = Inu_u_2_Base(iN_E,iS)
-        Inu_u_3(iN_E,iS,iPoint) = Inu_u_3_Base(iN_E,iS)
-      END DO
-      END DO
-      T(iPoint) = Matter_Base(1)
-      Ye(iPoint) = Matter_Base(2)
-      Ym(iPoint) = Matter_Base(3)
-      E(iPoint) = Matter_Base(4)
-      V_u_1(iPoint) = Matter_Base(5)
-      V_u_2(iPoint) = Matter_Base(6)
-      V_u_3(iPoint) = Matter_Base(7)
-      DO iS = iNuM, iNuM_Bar
-      DO iN_E = 1, nE_G
-        iV = iN_E + (iS-iNuM)*nE_G
-        Dnu(iN_E,iS,iPoint) = Dnu(iN_E,iS,iPoint) &
-          + Step * Scale(iV) * Direction(iV)
-      END DO
-      END DO
-
-      CALL EvaluateRadiationOnlyMapForJacobian_OrderV &
-             ( dt, iPoint, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-               D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-               Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
-               FVECm_outer, GVECm_outer, FVECm, GVECm, &
-               MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
-               RadiationLimiterCorrection, RadiationLeptonInvariant, &
-               MapPlus, EtaFixed, EvaluationFailed, &
-               RecoverMatter_Option = .FALSE. )
-      IF( EvaluationFailed )THEN
-        DEALLOCATE( MapMinus, MapPlus )
-        RETURN
-      END IF
-
-      DO iS = 1, nSpecies
-      DO iN_E = 1, nE_G
-        Dnu    (iN_E,iS,iPoint) = Dnu_Base    (iN_E,iS)
-        Inu_u_1(iN_E,iS,iPoint) = Inu_u_1_Base(iN_E,iS)
-        Inu_u_2(iN_E,iS,iPoint) = Inu_u_2_Base(iN_E,iS)
-        Inu_u_3(iN_E,iS,iPoint) = Inu_u_3_Base(iN_E,iS)
-      END DO
-      END DO
-      T(iPoint) = Matter_Base(1)
-      Ye(iPoint) = Matter_Base(2)
-      Ym(iPoint) = Matter_Base(3)
-      E(iPoint) = Matter_Base(4)
-      V_u_1(iPoint) = Matter_Base(5)
-      V_u_2(iPoint) = Matter_Base(6)
-      V_u_3(iPoint) = Matter_Base(7)
-      DO iS = iNuM, iNuM_Bar
-      DO iN_E = 1, nE_G
-        iV = iN_E + (iS-iNuM)*nE_G
-        Dnu(iN_E,iS,iPoint) = Dnu(iN_E,iS,iPoint) &
-          - Step * Scale(iV) * Direction(iV)
-      END DO
-      END DO
-
-      CALL EvaluateRadiationOnlyMapForJacobian_OrderV &
-             ( dt, iPoint, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-               D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-               Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
-               FVECm_outer, GVECm_outer, FVECm, GVECm, &
-               MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
-               RadiationLimiterCorrection, RadiationLeptonInvariant, &
-               MapMinus, EtaFixed, EvaluationFailed, &
-               RecoverMatter_Option = .FALSE. )
-      IF( EvaluationFailed )THEN
-        DEALLOCATE( MapMinus, MapPlus )
-        RETURN
-      END IF
-
-      JacobianDirectionFixedMatter_Option = Zero
-      dLMapFixedMatter_Option = Zero
-      DO iS = iNuM, iNuM_Bar
-      DO iN_E = 1, nE_G
-        iV = iN_E + (iS-iNuM)*nE_G
-        IF( Scale(iV) > Zero ) &
-          JacobianDirectionFixedMatter_Option(iV) &
-            = ( MapPlus(iV) - MapMinus(iV) ) &
-                / ( Two * Step * Scale(iV) )
-        dLMapFixedMatter_Option &
-          = dLMapFixedMatter_Option &
-              + W2_S(iN_E) * LeptonNumber(iS) &
-                  * ( MapPlus(iV) - MapMinus(iV) ) / ( Two * Step )
-      END DO
-      END DO
-
-    END IF
-
-    DEALLOCATE( MapMinus, MapPlus )
-
-  END SUBROUTINE ApplyRadiationOnlyDensityJacobian_OrderV
-
-
-  SUBROUTINE AnalyzeRadiationOnlyJacobian_OrderV &
-    ( dt, Iterations, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-      D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
-      FVECm_outer, GVECm_outer, FVECm, GVECm, &
-      MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
-      RadiationLimiterCorrection, RadiationLeptonInvariant )
-
-    USE ISO_FORTRAN_ENV, ONLY: ERROR_UNIT
-    USE mpi
-
-    INTEGER, PARAMETER :: MaxAnalysisPoints = 8
-    INTEGER, PARAMETER :: RequestedArnoldiDimension = 12
-    REAL(DP), PARAMETER :: DifferenceStep = 1.0e-5_DP
-    REAL(DP), PARAMETER :: OccupationFloor = 1.0e-12_DP
-
-    REAL(DP),                   INTENT(in)    :: dt
-    INTEGER,  DIMENSION(:),     INTENT(in)    :: Iterations
-    REAL(DP), DIMENSION(:,:,:), INTENT(inout) :: &
-      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: D
-    REAL(DP), DIMENSION(:),     INTENT(inout) :: &
-      T, Ye, Ym, E, V_u_1, V_u_2, V_u_3
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm
-    REAL(DP), DIMENSION(:,:),   INTENT(inout) :: &
-      FVECm_outer, GVECm_outer, FVECm, GVECm
-    LOGICAL,  DIMENSION(:),     INTENT(inout) :: MASK, WorkingMask
-    INTEGER,  DIMENSION(:),     INTENT(inout) :: &
-      Error, PackIndex, UnpackIndex
-    REAL(DP), DIMENSION(:,:),   INTENT(in)    :: &
-      RadiationLimiterCorrection, RadiationLeptonInvariant
-
-    CHARACTER(640) :: FileName
-    INTEGER :: AnalysisPoints(MaxAnalysisPoints)
-    INTEGER :: BestIterations, BestPoint, i, iA, iB, iN_E, iPoint
-    INTEGER :: iS, iV, ierr, iUnit, j, mEffective, myid, nActive, nMu
-    LOGICAL :: EvaluationFailed
-    REAL(DP) :: Beta, Correction, dEInput, dEInputHalf
-    REAL(DP) :: dEtaMu, dEtaMuHalf, dEtaMudL, dEtaMudYm
-    REAL(DP) :: dLMapdEta, dTemperature, dTemperatureHalf
-    REAL(DP) :: dTemperaturedL, dYm, dYmHalf, dYmdL
-    REAL(DP) :: dLInput, dLInputHalf, dLMap, dLMapHalf
-    REAL(DP) :: dLMapFixedMatter, DirectGain, FeedbackGain
-    REAL(DP) :: FDConsistency, MuChemicalPotential, NormDirection
-    REAL(DP) :: DirectNorm, DirectRayleigh, FeedbackNorm, FeedbackRayleigh
-    REAL(DP) :: MuLeptonGain, Rayleigh, SchurDerivative, UpperOccupation
-    REAL(DP) :: Matter_Base(7)
-    REAL(DP), ALLOCATABLE :: Dnu_Base(:,:), Inu_u_1_Base(:,:)
-    REAL(DP), ALLOCATABLE :: Inu_u_2_Base(:,:), Inu_u_3_Base(:,:)
-    REAL(DP), ALLOCATABLE :: Direction(:), DirectionFixedMatter(:)
-    REAL(DP), ALLOCATABLE :: DirectionHalf(:), EnergyDirection(:)
-    REAL(DP), ALLOCATABLE :: H(:,:), Q(:,:), Scale(:), Work(:)
-
-    IF( nSpecies < iNuM_Bar ) RETURN
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM &
-    !$OMP ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-    !$OMP   T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-    !$OMP   Opacity_Mask, Dnu_0, Chi_EmAb, Iterations )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST &
-    !$ACC ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-    !$ACC   T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-    !$ACC   Opacity_Mask, Dnu_0, Chi_EmAb, Iterations )
-#endif
-
-    AnalysisPoints = 0
-    DO iA = 1, MaxAnalysisPoints
-      BestPoint = 0
-      BestIterations = -1
-      DO iPoint = 1, nX_G
-        IF( .NOT. Opacity_Mask(iOp_EmAb_Muon,iPoint) ) CYCLE
-        IF( ANY(AnalysisPoints == iPoint) ) CYCLE
-        IF( Iterations(iPoint) > BestIterations )THEN
-          BestIterations = Iterations(iPoint)
-          BestPoint = iPoint
-        END IF
-      END DO
-      IF( BestPoint == 0 ) EXIT
-      AnalysisPoints(iA) = BestPoint
-    END DO
-
-    CALL MPI_COMM_RANK( MPI_COMM_WORLD, myid, ierr )
-    WRITE(FileName,'(A,".jacobian.rank",I6.6,".dat")') &
-      TRIM(RadiationOnlyTraceFile), myid
-    OPEN( NEWUNIT = iUnit, FILE = TRIM(FileName), &
-          STATUS = 'REPLACE', ACTION = 'WRITE' )
-    WRITE(iUnit,'(A)') '# Local Jacobian analysis of the reduced collision map'
-    WRITE(iUnit,'(A)') &
-      '# P: point metadata; S: scalar muon-lepton response; ' // &
-      'H: Arnoldi matrix; Q: Arnoldi basis; E: equilibrium spectrum'
-    WRITE(iUnit,'(A,ES26.16E3)') '# centered_difference_step: ', &
-      DifferenceStep
-
-    nMu = 2 * nE_G
-    ALLOCATE( Dnu_Base(nE_G,nSpecies) )
-    ALLOCATE( Inu_u_1_Base(nE_G,nSpecies) )
-    ALLOCATE( Inu_u_2_Base(nE_G,nSpecies) )
-    ALLOCATE( Inu_u_3_Base(nE_G,nSpecies) )
-    ALLOCATE( Direction(nMu), DirectionFixedMatter(nMu) )
-    ALLOCATE( DirectionHalf(nMu), EnergyDirection(nMu) )
-    ALLOCATE( Scale(nMu), Work(nMu) )
-    ALLOCATE( Q(nMu,RequestedArnoldiDimension+1) )
-    ALLOCATE( H(RequestedArnoldiDimension+1,RequestedArnoldiDimension) )
-
-    DO iA = 1, MaxAnalysisPoints
-
-      iPoint = AnalysisPoints(iA)
-      IF( iPoint == 0 ) EXIT
-
-      Dnu_Base = Dnu(:,:,iPoint)
-      Inu_u_1_Base = Inu_u_1(:,:,iPoint)
-      Inu_u_2_Base = Inu_u_2(:,:,iPoint)
-      Inu_u_3_Base = Inu_u_3(:,:,iPoint)
-      Matter_Base = [ T(iPoint), Ye(iPoint), Ym(iPoint), E(iPoint), &
-                      V_u_1(iPoint), V_u_2(iPoint), V_u_3(iPoint) ]
-
-      UpperOccupation = MIN( DnuMax, One )
-      Scale = Zero
-      Direction = Zero
-      EnergyDirection = Zero
-      DO iS = iNuM, iNuM_Bar
-      DO iN_E = 1, nE_G
-        iV = iN_E + (iS-iNuM)*nE_G
-        IF( Dnu_Base(iN_E,iS) > OccupationFloor * UpperOccupation &
-              .AND. Dnu_Base(iN_E,iS) &
-                < (One-OccupationFloor)*UpperOccupation )THEN
-          Scale(iV) = Dnu_Base(iN_E,iS) &
-            * ( One - Dnu_Base(iN_E,iS) / UpperOccupation )
-          Direction(iV) = W2_S(iN_E) * LeptonNumber(iS) * Scale(iV)
-          EnergyDirection(iV) = W3_S(iN_E) * Scale(iV)
-        END IF
-      END DO
-      END DO
-
-      nActive = COUNT( Scale > Zero )
-      IF( nActive == 0 ) CYCLE
-
-      Correction = DOT_PRODUCT(Direction,EnergyDirection) &
-        / MAX( DOT_PRODUCT(EnergyDirection,EnergyDirection), SqrtTiny )
-      Direction = Direction - Correction * EnergyDirection
-      NormDirection = SQRT( DOT_PRODUCT(Direction,Direction) )
-      IF( NormDirection <= SqrtTiny )THEN
-        WRITE(ERROR_UNIT,'(A,I0)') &
-          'Reduced-solver Jacobian analysis has no muon mode at point ', &
-          iPoint
-        CYCLE
-      END IF
-      Q = Zero
-      H = Zero
-      Q(:,1) = Direction / NormDirection
-
-      CALL ApplyRadiationOnlyDensityJacobian_OrderV &
-             ( dt, DifferenceStep, iPoint, Q(:,1), Scale, &
-               Dnu_Base, Inu_u_1_Base, Inu_u_2_Base, Inu_u_3_Base, &
-               Matter_Base, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-               D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-               Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
-               FVECm_outer, GVECm_outer, FVECm, GVECm, &
-               MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
-               RadiationLimiterCorrection, RadiationLeptonInvariant, &
-               Direction, dLInput, dLMap, dEtaMu, dYm, &
-               dTemperature, dEInput, &
-               EvaluationFailed )
-      IF( EvaluationFailed ) CYCLE
-
-      CALL ApplyRadiationOnlyDensityJacobian_OrderV &
-             ( dt, Half*DifferenceStep, iPoint, Q(:,1), Scale, &
-               Dnu_Base, Inu_u_1_Base, Inu_u_2_Base, Inu_u_3_Base, &
-               Matter_Base, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-               D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-               Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
-               FVECm_outer, GVECm_outer, FVECm, GVECm, &
-               MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
-               RadiationLimiterCorrection, RadiationLeptonInvariant, &
-               DirectionHalf, dLInputHalf, dLMapHalf, dEtaMuHalf, &
-               dYmHalf, dTemperatureHalf, dEInputHalf, EvaluationFailed, &
-               JacobianDirectionFixedMatter_Option = DirectionFixedMatter, &
-               dLMapFixedMatter_Option = dLMapFixedMatter )
-      IF( EvaluationFailed ) CYCLE
-
-      FDConsistency = SQRT &
-        ( DOT_PRODUCT(Direction-DirectionHalf,Direction-DirectionHalf) ) &
-          / MAX( SQRT(DOT_PRODUCT(DirectionHalf,DirectionHalf)), SqrtTiny )
-      Rayleigh = DOT_PRODUCT( Q(:,1), DirectionHalf )
-      MuLeptonGain = Zero
-      DirectGain = Zero
-      FeedbackGain = Zero
-      dEtaMudL = Zero
-      dYmdL = Zero
-      dEtaMudYm = Zero
-      dTemperaturedL = Zero
-      dLMapdEta = Zero
-      SchurDerivative = Zero
-      IF( ABS(dLInputHalf) > SqrtTiny )THEN
-        MuLeptonGain = dLMapHalf / dLInputHalf
-        DirectGain = dLMapFixedMatter / dLInputHalf
-        FeedbackGain = MuLeptonGain - DirectGain
-        dEtaMudL = dEtaMuHalf / dLInputHalf
-        dYmdL = dYmHalf / dLInputHalf
-        dTemperaturedL = dTemperatureHalf / dLInputHalf
-        SchurDerivative = One - MuLeptonGain
-      END IF
-      IF( ABS(dYmHalf) > SqrtTiny ) &
-        dEtaMudYm = dEtaMuHalf / dYmHalf
-      IF( ABS(dEtaMuHalf) > SqrtTiny ) &
-        dLMapdEta = dLMapHalf / dEtaMuHalf
-      DirectRayleigh = DOT_PRODUCT( Q(:,1), DirectionFixedMatter )
-      FeedbackRayleigh = Rayleigh - DirectRayleigh
-      DirectNorm = SQRT &
-        ( DOT_PRODUCT(DirectionFixedMatter,DirectionFixedMatter) )
-      DirectionFixedMatter = DirectionHalf - DirectionFixedMatter
-      FeedbackNorm = SQRT &
-        ( DOT_PRODUCT(DirectionFixedMatter,DirectionFixedMatter) )
-
-      Work = DirectionHalf
-      mEffective = RequestedArnoldiDimension
-      DO j = 1, RequestedArnoldiDimension
-
-        IF( j > 1 )THEN
-          CALL ApplyRadiationOnlyDensityJacobian_OrderV &
-                 ( dt, Half*DifferenceStep, iPoint, Q(:,j), Scale, &
-                   Dnu_Base, Inu_u_1_Base, Inu_u_2_Base, &
-                   Inu_u_3_Base, Matter_Base, &
-                   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                   D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-                   Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
-                   FVECm_outer, GVECm_outer, FVECm, GVECm, &
-                   MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
-                   RadiationLimiterCorrection, RadiationLeptonInvariant, &
-                   Work, dLInput, dLMap, dEtaMu, dYm, &
-                   dTemperature, dEInput, &
-                   EvaluationFailed )
-          IF( EvaluationFailed )THEN
-            mEffective = j - 1
-            EXIT
-          END IF
-        END IF
-
-        DO i = 1, j
-          H(i,j) = DOT_PRODUCT( Q(:,i), Work )
-          Work = Work - H(i,j) * Q(:,i)
-        END DO
-        DO i = 1, j
-          Correction = DOT_PRODUCT( Q(:,i), Work )
-          H(i,j) = H(i,j) + Correction
-          Work = Work - Correction * Q(:,i)
-        END DO
-
-        Beta = SQRT( DOT_PRODUCT(Work,Work) )
-        H(j+1,j) = Beta
-        IF( j == RequestedArnoldiDimension ) EXIT
-        IF( Beta <= 1.0e3_DP*EPSILON(One) )THEN
-          mEffective = j
-          EXIT
-        END IF
-        Q(:,j+1) = Work / Beta
-
-      END DO
-
-      Dnu(:,:,iPoint) = Dnu_Base
-      Inu_u_1(:,:,iPoint) = Inu_u_1_Base
-      Inu_u_2(:,:,iPoint) = Inu_u_2_Base
-      Inu_u_3(:,:,iPoint) = Inu_u_3_Base
-      T(iPoint) = Matter_Base(1)
-      Ye(iPoint) = Matter_Base(2)
-      Ym(iPoint) = Matter_Base(3)
-      E(iPoint) = Matter_Base(4)
-      V_u_1(iPoint) = Matter_Base(5)
-      V_u_2(iPoint) = Matter_Base(6)
-      V_u_3(iPoint) = Matter_Base(7)
-      CALL EvaluateRadiationOnlyMapForJacobian_OrderV &
-             ( dt, iPoint, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-               D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-               Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
-               FVECm_outer, GVECm_outer, FVECm, GVECm, &
-               MASK, WorkingMask, Error, PackIndex, UnpackIndex, &
-               RadiationLimiterCorrection, RadiationLeptonInvariant, &
-               Direction, dEtaMu, EvaluationFailed )
-      IF( EvaluationFailed ) CYCLE
-
-#if   defined(THORNADO_OMP_OL)
-      !$OMP TARGET UPDATE FROM( Dnu_0, Chi_EmAb )
-#elif defined(THORNADO_OACC)
-      !$ACC UPDATE HOST( Dnu_0, Chi_EmAb )
-#endif
-
-      CALL ComputeMuonChemicalPotential_TABLE &
-             ( D(iPoint), Matter_Base(1), Matter_Base(2), Matter_Base(3), &
-               MuChemicalPotential )
-      WRITE(iUnit,'(A,4(1X,I0),6(1X,ES26.16E3))') &
-        'P', iPoint, Iterations(iPoint), nActive, mEffective, &
-        D(iPoint)/Unit_D, Matter_Base(1)/MeV, Matter_Base(2), &
-        Matter_Base(3), MuChemicalPotential/MeV, &
-        MuChemicalPotential/MAX(Matter_Base(1),SqrtTiny)
-      WRITE(iUnit,'(A,1X,I0,19(1X,ES26.16E3))') &
-        'S', iPoint, dLInputHalf, dLMapHalf, &
-        MuLeptonGain, DirectGain, FeedbackGain, &
-        dEtaMudL, dYmdL, dEtaMudYm, dTemperaturedL, &
-        dLMapdEta, SchurDerivative, &
-        Rayleigh, DirectRayleigh, FeedbackRayleigh, &
-        SQRT(DOT_PRODUCT(DirectionHalf,DirectionHalf)), &
-        DirectNorm, FeedbackNorm, &
-        FDConsistency, dEInputHalf
-
-      DO j = 1, mEffective
-      DO i = 1, mEffective + 1
-        WRITE(iUnit,'(A,3(1X,I0),1X,ES26.16E3)') &
-          'H', iPoint, i, j, H(i,j)
-      END DO
-      END DO
-      DO j = 1, mEffective
-      DO iS = iNuM, iNuM_Bar
-      DO iN_E = 1, nE_G
-        iV = iN_E + (iS-iNuM)*nE_G
-        WRITE(iUnit,'(A,4(1X,I0),3(1X,ES26.16E3))') &
-          'Q', iPoint, j, iS, iN_E, E_N(iN_E)/MeV, &
-          Q(iV,j), Scale(iV)
-      END DO
-      END DO
-      END DO
-
-      DO iS = iNuM, iNuM_Bar
-      DO iN_E = 1, nE_G
-        WRITE(iUnit,'(A,3(1X,I0),5(1X,ES26.16E3))') &
-          'E', iPoint, iS, iN_E, E_N(iN_E)/MeV, &
-          Dnu_Base(iN_E,iS), Dnu_0(iN_E,iS,iPoint), &
-          Chi_EmAb(iN_E,iS,iPoint), Scale(iN_E+(iS-iNuM)*nE_G)
-      END DO
-      END DO
-
-      FLUSH(iUnit)
-
-      Dnu(:,:,iPoint) = Dnu_Base
-      Inu_u_1(:,:,iPoint) = Inu_u_1_Base
-      Inu_u_2(:,:,iPoint) = Inu_u_2_Base
-      Inu_u_3(:,:,iPoint) = Inu_u_3_Base
-      T(iPoint) = Matter_Base(1)
-      Ye(iPoint) = Matter_Base(2)
-      Ym(iPoint) = Matter_Base(3)
-      E(iPoint) = Matter_Base(4)
-      V_u_1(iPoint) = Matter_Base(5)
-      V_u_2(iPoint) = Matter_Base(6)
-      V_u_3(iPoint) = Matter_Base(7)
-
-    END DO
-
-    CLOSE(iUnit)
-
-    ! The work masks and error array belong to the completed nonlinear solve.
-    ! Restore their successful post-solve state after the diagnostic map calls.
-    MASK = .FALSE.
-    WorkingMask = .FALSE.
-    Error = 0
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO &
-    !$OMP ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-    !$OMP   T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-    !$OMP   MASK, WorkingMask, Error )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE &
-    !$ACC ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-    !$ACC   T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-    !$ACC   MASK, WorkingMask, Error )
-#endif
-
-    DEALLOCATE( Dnu_Base, Inu_u_1_Base, Inu_u_2_Base, Inu_u_3_Base )
-    DEALLOCATE( Direction, DirectionFixedMatter )
-    DEALLOCATE( DirectionHalf, EnergyDirection )
-    DEALLOCATE( Scale, Work, Q, H )
-
-  END SUBROUTINE AnalyzeRadiationOnlyJacobian_OrderV
-
-
-  SUBROUTINE InitializeRadiationOnlyTrace_OrderV
-
-    USE mpi
-
-    INTEGER :: ierr, iM, myid
-    CHARACTER(640) :: FileName, SpectrumFileName
-
-    IF( RadiationOnlyTraceUnit /= 0 ) RETURN
-
-    CALL MPI_COMM_RANK( MPI_COMM_WORLD, myid, ierr )
-    WRITE(FileName,'(A,".rank",I6.6,".dat")') &
-      TRIM(RadiationOnlyTraceFile), myid
-    WRITE(SpectrumFileName,'(A,".spectra.rank",I6.6,".dat")') &
-      TRIM(RadiationOnlyTraceFile), myid
-    ! InitializeCollisions/FinalizeCollisions bracket each implicit stage, so
-    ! the trace units are closed between stage solves.  Replace the files for
-    ! the first solve in the process and append all subsequent solves; using
-    ! STATUS='REPLACE' unconditionally silently discarded the earlier stages.
-    IF( RadiationOnlySolveCallCount == 1 )THEN
-      OPEN( NEWUNIT = RadiationOnlyTraceUnit, FILE = TRIM(FileName), &
-            STATUS = 'REPLACE', ACTION = 'WRITE' )
-      OPEN( NEWUNIT = RadiationOnlyTraceSpectrumUnit, &
-            FILE = TRIM(SpectrumFileName), &
-            STATUS = 'REPLACE', ACTION = 'WRITE' )
-    ELSE
-      OPEN( NEWUNIT = RadiationOnlyTraceUnit, FILE = TRIM(FileName), &
-            STATUS = 'OLD', POSITION = 'APPEND', ACTION = 'WRITE' )
-      OPEN( NEWUNIT = RadiationOnlyTraceSpectrumUnit, &
-            FILE = TRIM(SpectrumFileName), &
-            STATUS = 'OLD', POSITION = 'APPEND', ACTION = 'WRITE' )
-      RETURN
-    END IF
-
-    WRITE(RadiationOnlyTraceUnit,'(A)') &
-      '# Invariant-constrained radiation solver iteration trace'
-    WRITE(RadiationOnlyTraceUnit,'(A,I0)') '# n_species: ', nSpecies
-    WRITE(RadiationOnlyTraceUnit,'(A,I0)') '# n_energy_nodes: ', nE_G
-    WRITE(RadiationOnlyTraceUnit,'(A,I0)') '# anderson_depth: ', M_inner
-    WRITE(RadiationOnlyTraceUnit,'(A)',ADVANCE='NO') &
-      '# columns: call iteration point active_after converged error backtracks ' // &
-      'dt omega_dt schur_gain schur_damping ' // &
-      'rho T_MeV Ye Ym delta_T_rel delta_Ye delta_Ym E mu_mu_MeV eta_mu ' // &
-      'mu_cc_active mu_total_lepton_invariant_error ' // &
-      'mu_total_lepton_invariant_relative residual_relative ' // &
-      'residual_density_relative residual_momentum_relative ' // &
-      'convergence_measure residual_absolute residual_ratio ' // &
-      'residual_change residual_cosine step_relative step2_relative ' // &
-      'candidate_step projected_step projection_correction ' // &
-      'state_max map_max Dnu_min Dnu_max mu_equilibrium_deviation ' // &
-      'mu_chi_max mu_stiffness_max collision_stiffness_max ' // &
-      'worst_species worst_energy worst_moment'
-    DO iM = 1, nSpecies
-      WRITE(RadiationOnlyTraceUnit,'(A,I0)',ADVANCE='NO') &
-        ' residual_species_', iM
-    END DO
-    DO iM = 1, M_inner
-      WRITE(RadiationOnlyTraceUnit,'(A,I0)',ADVANCE='NO') ' alpha_', iM
-    END DO
-    WRITE(RadiationOnlyTraceUnit,*)
-    WRITE(RadiationOnlyTraceSpectrumUnit,'(A)') &
-      '# Terminal spectra for the invariant-constrained radiation solve'
-    WRITE(RadiationOnlyTraceSpectrumUnit,'(A)') &
-      '# columns: call iteration point converged species energy_index ' // &
-      'energy_MeV D D0 I1 I2 I3 F_N F_G1 F_G2 F_G3 ' // &
-      'G_N G_G1 G_G2 G_G3 Chi_EmAb Sigma_Iso Chi_NNS Chi_NES ' // &
-      'Chi_Pair Chi_NuPair Chi_Brem'
-    FLUSH(RadiationOnlyTraceUnit)
-    FLUSH(RadiationOnlyTraceSpectrumUnit)
-
-  END SUBROUTINE InitializeRadiationOnlyTrace_OrderV
-
-
-  SUBROUTINE PackRadiationStateForTrace_OrderV &
-    ( iN_X, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, State )
-
-    INTEGER, INTENT(in) :: iN_X
-    REAL(DP), DIMENSION(:,:,:), INTENT(in) :: &
-      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
-    REAL(DP), DIMENSION(:), INTENT(out) :: State
-
-    INTEGER :: iN_E, iOS, iS
-
-    State = Zero
-
-    DO iS = 1, nSpecies
-    DO iN_E = 1, nE_G
-      iOS = ( (iN_E-1) + (iS-1) * nE_G ) * nCR
-      State(iOS+iCR_N ) = Dnu(iN_E,iS,iN_X)
-      State(iOS+iCR_G1) = Gm_dd_11(iN_X) * Inu_u_1(iN_E,iS,iN_X)
-      State(iOS+iCR_G2) = Gm_dd_22(iN_X) * Inu_u_2(iN_E,iS,iN_X)
-      State(iOS+iCR_G3) = Gm_dd_33(iN_X) * Inu_u_3(iN_E,iS,iN_X)
-    END DO
-    END DO
-
-  END SUBROUTINE PackRadiationStateForTrace_OrderV
-
-
-  SUBROUTINE WriteRadiationOnlyIterationTrace_OrderV &
-    ( dt, k, EvaluationMask, ActiveMask, Error, D, T, Ye, Ym, E, &
-      Dnu, Inu_u_1, Inu_u_2, Inu_u_3, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, Fm, Gm, &
-      RadiationLeptonInvariant, RadiationLimiterCorrection, &
-      HasPrevious, HasPrevious2, &
-      PreviousState, Previous2State, PreviousResidual, BacktrackCount, &
-      CandidateStep, ProjectedStep, ProjectionCorrection, AlphaTrace, &
-      SchurGain, SchurDamping )
-
-    REAL(DP), INTENT(in) :: dt
-    INTEGER, INTENT(in) :: k
-    LOGICAL, DIMENSION(:), INTENT(in) :: EvaluationMask, ActiveMask
-    INTEGER, DIMENSION(:), INTENT(in) :: Error
-    REAL(DP), DIMENSION(:), INTENT(in) :: D, T, Ye, Ym, E
-    REAL(DP), DIMENSION(:), INTENT(in) :: V_u_1, V_u_2, V_u_3
-    REAL(DP), DIMENSION(:,:,:), INTENT(in) :: &
-      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
-    REAL(DP), DIMENSION(:,:), INTENT(in) :: Fm, Gm
-    REAL(DP), DIMENSION(:,:), INTENT(in) :: RadiationLeptonInvariant
-    REAL(DP), DIMENSION(:,:), INTENT(in) :: RadiationLimiterCorrection
-    LOGICAL, DIMENSION(:), INTENT(inout) :: HasPrevious, HasPrevious2
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: &
-      PreviousState, Previous2State, PreviousResidual
-    INTEGER, DIMENSION(:), INTENT(inout) :: BacktrackCount
-    REAL(DP), DIMENSION(:), INTENT(inout) :: &
-      CandidateStep, ProjectedStep, ProjectionCorrection
-    REAL(DP), DIMENSION(:,:), INTENT(inout) :: AlphaTrace
-    REAL(DP), DIMENSION(:), INTENT(in) :: SchurGain, SchurDamping
-
-    INTEGER :: iChiral, iN_E, iN_X, iOS, iS, iV
-    INTEGER :: WorstEnergy, WorstMoment, WorstSpecies, WorstVectorIndex
-    INTEGER :: MuCCActive
-    REAL(DP) :: ConvergenceMeasure, CurrentNorm, Denominator
-    REAL(DP) :: DnuMinimum, DnuMaximum, DnuNormLocal
-    REAL(DP) :: EtaMu
-    REAL(DP) :: Fnorm, Fnorm_G1, Fnorm_G2, Fnorm_G3, Fnorm_N
-    REAL(DP) :: InitialCriterion, MapMaximum, MuChiMaximum
-    REAL(DP) :: MuEquilibriumDeviation, MuEquilibriumNorm
-    REAL(DP) :: CollisionOpacity, CollisionStiffnessMaximum
-    REAL(DP) :: MuStiffnessMaximum
-    REAL(DP) :: MuLeptonCurrent, MuLeptonInvariantError
-    REAL(DP) :: MuLeptonInvariantRelative, MuLeptonScale, Mumu
-    REAL(DP) :: ResidualAbsolute, ResidualChange, ResidualCosine
-    REAL(DP) :: ResidualDensityRelative, ResidualMomentumRelative
-    REAL(DP) :: ResidualDot, ResidualNorm2, ResidualPreviousNorm2
-    REAL(DP) :: ResidualRatio, ResidualRelative
-    REAL(DP) :: StepRelative, Step2Relative, vDotI
-    REAL(DP), ALLOCATABLE :: CurrentState(:), SpeciesResidual(:)
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM &
-    !$OMP ( D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-    !$OMP   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-    !$OMP   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, Dnu_0, Chi_EmAb, Sigma_Iso, &
-    !$OMP   Chi_NNS, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, &
-    !$OMP   Fm, Gm, Error, ActiveMask, Fnorm0, Omega, &
-    !$OMP   SchurGain, SchurDamping, &
-    !$OMP   RadiationLimiterCorrection, T_old, Ye_old, Ym_old )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST &
-    !$ACC ( D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-    !$ACC   Gm_dd_11, Gm_dd_22, Gm_dd_33, &
-    !$ACC   Dnu, Inu_u_1, Inu_u_2, Inu_u_3, Dnu_0, Chi_EmAb, Sigma_Iso, &
-    !$ACC   Chi_NNS, Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, &
-    !$ACC   Fm, Gm, Error, ActiveMask, Fnorm0, Omega, &
-    !$ACC   SchurGain, SchurDamping, &
-    !$ACC   RadiationLimiterCorrection, T_old, Ye_old, Ym_old )
-#endif
-
-    ALLOCATE( CurrentState(n_FP_inner), SpeciesResidual(nSpecies) )
-
-    DO iN_X = 1, nX_G
-
-      IF( .NOT. EvaluationMask(iN_X) ) CYCLE
-
-      CALL PackRadiationStateForTrace_OrderV &
-             ( iN_X, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-               Gm_dd_11, Gm_dd_22, Gm_dd_33, CurrentState )
-
-      CurrentNorm = MAX( MAXVAL(ABS(CurrentState)), SqrtTiny )
-      StepRelative = Zero
-      Step2Relative = Zero
-      IF( HasPrevious(iN_X) ) &
-        StepRelative = MAXVAL(ABS(CurrentState-PreviousState(:,iN_X))) &
-                         / CurrentNorm
-      IF( HasPrevious2(iN_X) ) &
-        Step2Relative = MAXVAL(ABS(CurrentState-Previous2State(:,iN_X))) &
-                          / CurrentNorm
-
-      ResidualAbsolute = MAXVAL(ABS(Fm(:,iN_X)))
-      WorstVectorIndex = MAXLOC(ABS(Fm(:,iN_X)),DIM=1)
-      WorstMoment = MOD(WorstVectorIndex-1,nCR) + 1
-      iV = (WorstVectorIndex-1) / nCR
-      WorstEnergy = MOD(iV,nE_G) + 1
-      WorstSpecies = iV / nE_G + 1
-      MapMaximum = MAXVAL(ABS(Gm(:,iN_X)))
-
-      ResidualNorm2 = DOT_PRODUCT(Fm(:,iN_X),Fm(:,iN_X))
-      ResidualPreviousNorm2 = DOT_PRODUCT &
-        ( PreviousResidual(:,iN_X), PreviousResidual(:,iN_X) )
-      ResidualDot = DOT_PRODUCT(Fm(:,iN_X),PreviousResidual(:,iN_X))
-      ResidualChange = Zero
-      ResidualCosine = Zero
-      IF( HasPrevious(iN_X) )THEN
-        ResidualChange = MAXVAL &
-          ( ABS(Fm(:,iN_X)-PreviousResidual(:,iN_X)) ) &
-            / MAX(ResidualAbsolute,SqrtTiny)
-        IF( ResidualNorm2 > Zero .AND. ResidualPreviousNorm2 > Zero ) &
-          ResidualCosine = ResidualDot &
-            / SQRT(ResidualNorm2*ResidualPreviousNorm2)
-      END IF
-
-      ResidualRelative = Zero
-      ResidualDensityRelative = Zero
-      ResidualMomentumRelative = Zero
-      ConvergenceMeasure = Zero
-      DO iS = 1, nSpecies
-        Fnorm_N  = Zero
-        Fnorm_G1 = Zero
-        Fnorm_G2 = Zero
-        Fnorm_G3 = Zero
-        DnuNormLocal = Zero
-        DO iN_E = 1, nE_G
-          iOS = ( (iN_E-1) + (iS-1)*nE_G ) * nCR
-          Fnorm_N = Fnorm_N + W2_S(iN_E)*Fm(iOS+iCR_N,iN_X)**2
-          Fnorm_G1 = Fnorm_G1 + W2_S(iN_E)*Fm(iOS+iCR_G1,iN_X)**2
-          Fnorm_G2 = Fnorm_G2 + W2_S(iN_E)*Fm(iOS+iCR_G2,iN_X)**2
-          Fnorm_G3 = Fnorm_G3 + W2_S(iN_E)*Fm(iOS+iCR_G3,iN_X)**2
-          DnuNormLocal = DnuNormLocal &
-            + W2_S(iN_E)*Dnu(iN_E,iS,iN_X)**2
-        END DO
-        Fnorm = SQRT(MAX(Fnorm_N,Fnorm_G1,Fnorm_G2,Fnorm_G3))
-        DnuNormLocal = SQRT(DnuNormLocal)
-        IF( DnuNormLocal > Zero )THEN
-          SpeciesResidual(iS) = Fnorm / DnuNormLocal
-        ELSE IF( Fnorm == Zero )THEN
-          SpeciesResidual(iS) = Zero
-        ELSE
-          SpeciesResidual(iS) = HUGE(One)
-        END IF
-        ResidualRelative = MAX(ResidualRelative,SpeciesResidual(iS))
-        IF( DnuNormLocal > Zero )THEN
-          ResidualDensityRelative = MAX &
-            ( ResidualDensityRelative, SQRT(Fnorm_N)/DnuNormLocal )
-          ResidualMomentumRelative = MAX &
-            ( ResidualMomentumRelative, &
-              SQRT(MAX(Fnorm_G1,Fnorm_G2,Fnorm_G3))/DnuNormLocal )
-        END IF
-        InitialCriterion = Atol_inner*Fnorm0(iS,iN_X)
-        Denominator = MAX(Rtol_inner*DnuNormLocal,InitialCriterion)
-        IF( Denominator > Zero )THEN
-          ConvergenceMeasure = MAX(ConvergenceMeasure,Fnorm/Denominator)
-        ELSE IF( Fnorm > Zero )THEN
-          ConvergenceMeasure = HUGE(One)
-        END IF
-      END DO
-
-      ResidualRatio = Zero
-      IF( HasPrevious(iN_X) ) &
-        ResidualRatio = ResidualAbsolute &
-          / MAX(MAXVAL(ABS(PreviousResidual(:,iN_X))),SqrtTiny)
-
-      DnuMinimum = MINVAL(Dnu(:,:,iN_X))
-      DnuMaximum = MAXVAL(Dnu(:,:,iN_X))
-      MuEquilibriumDeviation = Zero
-      MuEquilibriumNorm = Zero
-      MuChiMaximum = Zero
-      MuStiffnessMaximum = Zero
-      CollisionStiffnessMaximum = Zero
-      MuLeptonCurrent = Zero
-      MuLeptonInvariantError = Zero
-      MuLeptonInvariantRelative = Zero
-      MuLeptonScale = Zero
-      Mumu = Zero
-      EtaMu = Zero
-      MuCCActive = 0
-      IF( nSpecies >= iNuM_Bar )THEN
-        MuCCActive = MERGE(1,0,Opacity_Mask(iOp_EmAb_Muon,iN_X))
-        CALL ComputeMuonChemicalPotential_TABLE &
-               ( D(iN_X), T(iN_X), Ye(iN_X), Ym(iN_X), Mumu )
-        IF( T(iN_X) > Zero ) &
-          EtaMu = Mumu / ( BoltzmannConstant * T(iN_X) )
-        MuChiMaximum = MAXVAL(Chi_EmAb(:,iNuM:iNuM_Bar,iN_X))
-        MuStiffnessMaximum = Omega(iN_X)*dt*MuChiMaximum
-        DO iS = iNuM, iNuM_Bar
-        DO iN_E = 1, nE_G
-          MuEquilibriumDeviation = MuEquilibriumDeviation &
-            + W2_S(iN_E) &
-                * (Dnu(iN_E,iS,iN_X)-Dnu_0(iN_E,iS,iN_X))**2
-          MuEquilibriumNorm = MuEquilibriumNorm &
-            + W2_S(iN_E)*Dnu_0(iN_E,iS,iN_X)**2
-          vDotI = V_u_1(iN_X)*Gm_dd_11(iN_X)*Inu_u_1(iN_E,iS,iN_X) &
-            + V_u_2(iN_X)*Gm_dd_22(iN_X)*Inu_u_2(iN_E,iS,iN_X) &
-            + V_u_3(iN_X)*Gm_dd_33(iN_X)*Inu_u_3(iN_E,iS,iN_X)
-          MuLeptonCurrent = MuLeptonCurrent + W2_S(iN_E)*LeptonNumber(iS) &
-            * (Dnu(iN_E,iS,iN_X)+vDotI)
-          MuLeptonScale = MuLeptonScale &
-            + ABS( W2_S(iN_E) * LeptonNumber(iS) &
-                * (Dnu(iN_E,iS,iN_X)+vDotI) )
-        END DO
-        END DO
-        MuEquilibriumDeviation = SQRT(MuEquilibriumDeviation) &
-          / MAX(SQRT(MuEquilibriumNorm),SqrtTiny)
-        MuLeptonInvariantError = MuLeptonCurrent &
-          - RadiationLeptonInvariant(2,iN_X)
-        IF( MuCCActive == 1 ) &
-          MuLeptonInvariantError = MuLeptonInvariantError &
-            + D(iN_X) / AtomicMassUnit &
-                * ( Ym(iN_X) - Ym_old(iN_X) ) &
-            - RadiationLimiterCorrection(iYm,iN_X)
-        IF( MuCCActive == 1 ) &
-          MuLeptonScale = MuLeptonScale &
-            + ABS( D(iN_X) / AtomicMassUnit &
-                * ( Ym(iN_X) - Ym_old(iN_X) ) ) &
-            + ABS( RadiationLimiterCorrection(iYm,iN_X) )
-        MuLeptonScale = MAX &
-          ( MuLeptonScale, ABS( RadiationLeptonInvariant(2,iN_X) ) )
-        IF( MuLeptonScale > Zero ) &
-          MuLeptonInvariantRelative = ABS( MuLeptonInvariantError ) &
-            / MuLeptonScale
-      END IF
-      DO iS = 1, nSpecies
-        iChiral = nChirals - ( LeptonNumber(iS) + 1 ) / nChirals
-        DO iN_E = 1, nE_G
-          CollisionOpacity = Chi_EmAb(iN_E,iS,iN_X) &
-            + Sigma_Iso(iN_E,iChiral,iN_X) &
-            + Chi_NNS(iN_E,iS,iN_X) + Chi_NES(iN_E,iS,iN_X) &
-            + Chi_Pair(iN_E,iS,iN_X) + Chi_NuPair(iN_E,iS,iN_X) &
-            + Chi_Brem(iN_E,iS,iN_X)
-          CollisionStiffnessMaximum = MAX &
-            ( CollisionStiffnessMaximum, Omega(iN_X)*dt*CollisionOpacity )
-        END DO
-      END DO
-
-      WRITE(RadiationOnlyTraceUnit,*) &
-        RadiationOnlySolveCallCount, k, iN_X, MERGE(1,0,ActiveMask(iN_X)), &
-        MERGE(0,1,ActiveMask(iN_X)), Error(iN_X), BacktrackCount(iN_X), &
-        dt, Omega(iN_X)*dt, SchurGain(iN_X), SchurDamping(iN_X), &
-        D(iN_X)/Unit_D, T(iN_X)/MeV, Ye(iN_X), Ym(iN_X), &
-        (T(iN_X)-T_old(iN_X))/MAX(ABS(T_old(iN_X)),SqrtTiny), &
-        Ye(iN_X)-Ye_old(iN_X), Ym(iN_X)-Ym_old(iN_X), E(iN_X)/Unit_E, &
-        Mumu/MeV, EtaMu, &
-        MuCCActive, MuLeptonInvariantError, &
-        MuLeptonInvariantRelative, &
-        ResidualRelative, ResidualDensityRelative, &
-        ResidualMomentumRelative, ConvergenceMeasure, ResidualAbsolute, &
-        ResidualRatio, ResidualChange, ResidualCosine, &
-        StepRelative, Step2Relative, CandidateStep(iN_X), &
-        ProjectedStep(iN_X), ProjectionCorrection(iN_X), &
-        CurrentNorm, MapMaximum, DnuMinimum, DnuMaximum, &
-        MuEquilibriumDeviation, MuChiMaximum, MuStiffnessMaximum, &
-        CollisionStiffnessMaximum, &
-        WorstSpecies, WorstEnergy, WorstMoment, &
-        SpeciesResidual, AlphaTrace(:,iN_X)
-
-      IF( .NOT. ActiveMask(iN_X) .OR. k >= MaxIter_inner )THEN
-        DO iS = 1, nSpecies
-        iChiral = nChirals - ( LeptonNumber(iS) + 1 ) / nChirals
-        DO iN_E = 1, nE_G
-          iOS = ( (iN_E-1) + (iS-1)*nE_G ) * nCR
-          WRITE(RadiationOnlyTraceSpectrumUnit,*) &
-            RadiationOnlySolveCallCount, k, iN_X, &
-            MERGE(0,1,ActiveMask(iN_X)), iS, iN_E, E_N(iN_E)/MeV, &
-            Dnu(iN_E,iS,iN_X), Dnu_0(iN_E,iS,iN_X), &
-            Inu_u_1(iN_E,iS,iN_X), Inu_u_2(iN_E,iS,iN_X), &
-            Inu_u_3(iN_E,iS,iN_X), &
-            Fm(iOS+iCR_N,iN_X), Fm(iOS+iCR_G1,iN_X), &
-            Fm(iOS+iCR_G2,iN_X), Fm(iOS+iCR_G3,iN_X), &
-            Gm(iOS+iCR_N,iN_X), Gm(iOS+iCR_G1,iN_X), &
-            Gm(iOS+iCR_G2,iN_X), Gm(iOS+iCR_G3,iN_X), &
-            Chi_EmAb(iN_E,iS,iN_X), &
-            Sigma_Iso(iN_E,iChiral,iN_X), &
-            Chi_NNS(iN_E,iS,iN_X), Chi_NES(iN_E,iS,iN_X), &
-            Chi_Pair(iN_E,iS,iN_X), Chi_NuPair(iN_E,iS,iN_X), &
-            Chi_Brem(iN_E,iS,iN_X)
-        END DO
-        END DO
-      END IF
-
-      Previous2State(:,iN_X) = PreviousState(:,iN_X)
-      PreviousState(:,iN_X) = CurrentState
-      PreviousResidual(:,iN_X) = Fm(:,iN_X)
-      HasPrevious2(iN_X) = HasPrevious(iN_X)
-      HasPrevious(iN_X) = .TRUE.
-      BacktrackCount(iN_X) = 0
-
-    END DO
-
-    FLUSH(RadiationOnlyTraceUnit)
-    FLUSH(RadiationOnlyTraceSpectrumUnit)
-    DEALLOCATE( CurrentState, SpeciesResidual )
-
-  END SUBROUTINE WriteRadiationOnlyIterationTrace_OrderV
-
-
-  SUBROUTINE CaptureRadiationOnlyUpdateTrace_OrderV &
-    ( MASK, Mk, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, Gm, Alpha, PreviousState, &
-      CandidateStep, ProjectedStep, ProjectionCorrection, AlphaTrace )
-
-    LOGICAL, DIMENSION(:), INTENT(in) :: MASK
-    INTEGER, INTENT(in) :: Mk
-    REAL(DP), DIMENSION(:,:,:), INTENT(in) :: &
-      Dnu, Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:), INTENT(in) :: Gm_dd_11, Gm_dd_22, Gm_dd_33
-    REAL(DP), DIMENSION(:,:), INTENT(in) :: Gm, Alpha, PreviousState
-    REAL(DP), DIMENSION(:), INTENT(out) :: &
-      CandidateStep, ProjectedStep, ProjectionCorrection
-    REAL(DP), DIMENSION(:,:), INTENT(out) :: AlphaTrace
-
-    INTEGER :: iN_X
-    REAL(DP) :: Scale
-    REAL(DP), ALLOCATABLE :: ProjectedState(:)
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM &
-    !$OMP ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-    !$OMP   Gm_dd_11, Gm_dd_22, Gm_dd_33, Gm, Alpha )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST &
-    !$ACC ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-    !$ACC   Gm_dd_11, Gm_dd_22, Gm_dd_33, Gm, Alpha )
-#endif
-
-    ALLOCATE( ProjectedState(n_FP_inner) )
-    DO iN_X = 1, nX_G
-      IF( .NOT. MASK(iN_X) ) CYCLE
-      CALL PackRadiationStateForTrace_OrderV &
-             ( iN_X, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-               Gm_dd_11, Gm_dd_22, Gm_dd_33, ProjectedState )
-      Scale = MAX(MAXVAL(ABS(PreviousState(:,iN_X))),SqrtTiny)
-      CandidateStep(iN_X) = MAXVAL(ABS(Gm(:,iN_X)-PreviousState(:,iN_X))) &
-                              / Scale
-      ProjectedStep(iN_X) = MAXVAL &
-        (ABS(ProjectedState-PreviousState(:,iN_X))) / Scale
-      ProjectionCorrection(iN_X) = MAXVAL(ABS(ProjectedState-Gm(:,iN_X))) &
-                                      / Scale
-      AlphaTrace(:,iN_X) = Zero
-      AlphaTrace(1:Mk,iN_X) = Alpha(1:Mk,iN_X)
-    END DO
-    DEALLOCATE( ProjectedState )
-
-  END SUBROUTINE CaptureRadiationOnlyUpdateTrace_OrderV
-
-
-
-
-  SUBROUTINE CheckConvergence_RadiationOnly &
-    ( MASK, k, nIterations_Inner, nIterations_Outer, &
-      nIterations_Inner_Final, nIterations_Outer_Final, &
-      RelativeResidual_First, RelativeResidual_Final, Fm )
-
-    LOGICAL,  DIMENSION(:),   INTENT(inout) :: MASK
-    INTEGER,                  INTENT(in)    :: k
-    INTEGER,  DIMENSION(:),   INTENT(inout) :: &
-      nIterations_Inner, nIterations_Outer
-    INTEGER,  DIMENSION(:),   INTENT(inout) :: &
-      nIterations_Inner_Final, nIterations_Outer_Final
-    REAL(DP), DIMENSION(:),   INTENT(inout) :: &
-      RelativeResidual_First, RelativeResidual_Final
-    REAL(DP), DIMENSION(:,:), INTENT(in)    :: Fm
-
-    LOGICAL  :: Converged
-    INTEGER  :: iN_E, iN_X, iOS, iS
-    REAL(DP) :: Fnorm, Fnorm_G1, Fnorm_G2, Fnorm_G3, Fnorm_N
-    REAL(DP) :: RelativeResidual
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( Converged, iN_E, iOS, iS, Fnorm, Fnorm_G1, Fnorm_G2, &
-    !$OMP          Fnorm_G3, Fnorm_N, RelativeResidual )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( Converged, iN_E, iOS, iS, Fnorm, Fnorm_G1, Fnorm_G2, &
-    !$ACC          Fnorm_G3, Fnorm_N, RelativeResidual )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO &
-    !$OMP PRIVATE( Converged, iN_E, iOS, iS, Fnorm, Fnorm_G1, Fnorm_G2, &
-    !$OMP          Fnorm_G3, Fnorm_N, RelativeResidual )
-#endif
-    DO iN_X = 1, nX_G
-
-      IF( MASK(iN_X) )THEN
-
-        Converged = .TRUE.
-        RelativeResidual_Final(iN_X) = Zero
-
-        DO iS = 1, nSpecies
-
-          Fnorm_N  = Zero
-          Fnorm_G1 = Zero
-          Fnorm_G2 = Zero
-          Fnorm_G3 = Zero
-
-          DO iN_E = 1, nE_G
-
-            iOS = ( (iN_E-1) + (iS-1) * nE_G ) * nCR
-
-            Fnorm_N &
-              = Fnorm_N + W2_S(iN_E) * Fm(iOS+iCR_N,iN_X)**2
-            Fnorm_G1 &
-              = Fnorm_G1 + W2_S(iN_E) * Fm(iOS+iCR_G1,iN_X)**2
-            Fnorm_G2 &
-              = Fnorm_G2 + W2_S(iN_E) * Fm(iOS+iCR_G2,iN_X)**2
-            Fnorm_G3 &
-              = Fnorm_G3 + W2_S(iN_E) * Fm(iOS+iCR_G3,iN_X)**2
-
-          END DO
-
-          Fnorm = SQRT( MAX( Fnorm_N, Fnorm_G1, Fnorm_G2, Fnorm_G3 ) )
-
-          IF( k == 1 ) Fnorm0(iS,iN_X) = Fnorm
-
-          IF( Fnorm /= Fnorm .OR. Fnorm > HUGE(One) )THEN
-            RelativeResidual = HUGE(One)
-            Converged = .FALSE.
-          ELSE IF( DnuNorm(iS,iN_X) > Zero )THEN
-            RelativeResidual = Fnorm / DnuNorm(iS,iN_X)
-          ELSE IF( Fnorm == Zero )THEN
-            RelativeResidual = Zero
-          ELSE
-            RelativeResidual = HUGE(One)
-          END IF
-
-          RelativeResidual_Final(iN_X) &
-            = MAX( RelativeResidual_Final(iN_X), RelativeResidual )
-
-          Converged = Converged .AND. &
-            ( ( Fnorm <= Rtol_inner * DnuNorm(iS,iN_X) ) .OR. &
-              ( Fnorm <= Atol_inner * Fnorm0(iS,iN_X) ) )
-
-        END DO
-
-        IF( k == 1 ) &
-          RelativeResidual_First(iN_X) = RelativeResidual_Final(iN_X)
-
-        nIterations_Inner(iN_X) = nIterations_Inner(iN_X) + 1
-        nIterations_Outer(iN_X) = k
-        nIterations_Inner_Final(iN_X) = 1
-        nIterations_Outer_Final(iN_X) = k
-
-        IF( Converged ) MASK(iN_X) = .FALSE.
-
-      END IF
-
-    END DO
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM &
-    !$OMP ( MASK, nIterations_Inner, nIterations_Outer )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST &
-    !$ACC ( MASK, nIterations_Inner, nIterations_Outer )
-#endif
-
-  END SUBROUTINE CheckConvergence_RadiationOnly
-
-
-  SUBROUTINE ApplyConservativeProjection_OrderV &
-    ( dt, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-      D, T, Ye, Ym, E, V_u_1, V_u_2, V_u_3, &
-      Gm_dd_11, Gm_dd_22, Gm_dd_33, SqrtGm, &
-      ProjectionMask, ContinuationMask, &
-      nX_P, PackIndex, UnpackIndex, &
-      FVECm_inner, GVECm_inner, &
-      FVECm_projection, GVECm_projection, &
-      T_Conservative, Ye_Conservative, Ym_Conservative, E_Conservative, &
-      V_u_1_Conservative, V_u_2_Conservative, V_u_3_Conservative, &
-      ProjectionError, &
-      RadiationResidual_Relative_Final, &
-      ConservativeProjectionRadiationResidual_Relative_Final, &
-      ConservativeProjectionMatterHeating_Rate_Final, &
-      ConservativeProjectionStatus_Final )
-
-    REAL(DP),                   INTENT(in)    :: dt
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: Dnu
-    REAL(DP), DIMENSION(:,:,:), INTENT(in)    :: Inu_u_1, Inu_u_2, Inu_u_3
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: D
-    REAL(DP), DIMENSION(:),     INTENT(inout) :: T, Ye, Ym, E
-    REAL(DP), DIMENSION(:),     INTENT(inout) :: V_u_1, V_u_2, V_u_3
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: Gm_dd_11, Gm_dd_22, Gm_dd_33
-    REAL(DP), DIMENSION(:),     INTENT(in)    :: SqrtGm
-    LOGICAL,  DIMENSION(:),     INTENT(inout) :: ProjectionMask
-    LOGICAL,  DIMENSION(:),     INTENT(inout) :: ContinuationMask
-    INTEGER,                    INTENT(inout) :: nX_P
-    INTEGER,  DIMENSION(:),     INTENT(inout) :: PackIndex, UnpackIndex
-    REAL(DP), DIMENSION(:,:),   INTENT(inout) :: FVECm_inner, GVECm_inner
-    REAL(DP), DIMENSION(:,:),   INTENT(inout) :: &
-      FVECm_projection, GVECm_projection
-    REAL(DP), DIMENSION(:),     INTENT(inout) :: &
-      T_Conservative, Ye_Conservative, Ym_Conservative, E_Conservative
-    REAL(DP), DIMENSION(:),     INTENT(inout) :: &
-      V_u_1_Conservative, V_u_2_Conservative, V_u_3_Conservative
-    INTEGER,  DIMENSION(:),     INTENT(inout) :: ProjectionError
-    REAL(DP), DIMENSION(:),     INTENT(inout) :: RadiationResidual_Relative_Final
-    REAL(DP), DIMENSION(:),     INTENT(inout) :: &
-      ConservativeProjectionRadiationResidual_Relative_Final
-    REAL(DP), DIMENSION(:),     INTENT(inout) :: &
-      ConservativeProjectionMatterHeating_Rate_Final
-    INTEGER,  DIMENSION(:),     INTENT(inout) :: ConservativeProjectionStatus_Final
-
-    INTEGER, PARAMETER :: MaxIter_ConservativeProjection = 32
-    REAL(DP), PARAMETER :: Rtol_ConservativeProjection &
-      = 100.0_DP * EPSILON(One)
-
-    INTEGER  :: iN_X, k_projection
-    REAL(DP) :: Ef, ProjectionResidual, Q_E, Q_M1, Q_M2, Q_M3
-    REAL(DP) :: V_d_1, V_d_2, V_d_3, vDotV
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO
-#endif
-    DO iN_X = 1, nX_G
-
-      ContinuationMask(iN_X) = .FALSE.
-
-      T_Conservative(iN_X) = T(iN_X)
-      Ye_Conservative(iN_X) = Ye(iN_X)
-      Ym_Conservative(iN_X) = Ym(iN_X)
-      E_Conservative(iN_X) = E(iN_X)
-      V_u_1_Conservative(iN_X) = V_u_1(iN_X)
-      V_u_2_Conservative(iN_X) = V_u_2(iN_X)
-      V_u_3_Conservative(iN_X) = V_u_3(iN_X)
-
-      IF( ProjectionMask(iN_X) )THEN
-        ProjectionError(iN_X) = 0
-        RadiationResidual_Relative_Final(iN_X) = Zero
-        ConservativeProjectionRadiationResidual_Relative_Final(iN_X) = Zero
-        ConservativeProjectionMatterHeating_Rate_Final(iN_X) = Zero
-        ConservativeProjectionStatus_Final(iN_X) = 0
-      END IF
-
-    END DO
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM( ProjectionMask )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( ProjectionMask )
-#endif
-
-    CALL ComputeDnuNorm( ProjectionMask, Dnu )
-
-    CALL ComputeRadiationResidualRelative &
-           ( ProjectionMask, FVECm_inner, &
-             RadiationResidual_Relative_Final )
-
-    ! The Order-v Eulerian radiation energy and momentum depend on the matter
-    ! velocity.  Consequently, one application of the outer fixed-point map
-    ! is not yet an exactly conservative matter state when it changes the
-    ! velocity.  With the radiation moments fixed, iterate only this cheap
-    ! matter-conservation map before evaluating the projected opacities.
-
-    k_projection = 0
-    DO WHILE &
-      ( ANY( ProjectionMask(:) ) &
-        .AND. k_projection < MaxIter_ConservativeProjection )
-
-      k_projection = k_projection + 1
-
-      CALL TimersStart( Timer_Collisions_MatterRHS )
-
-      CALL ComputeMatterRHS_OrderV &
-             ( ProjectionMask, &
-               FVECm_projection, GVECm_projection, &
-               Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-               V_u_1_Conservative, V_u_2_Conservative, &
-               V_u_3_Conservative, &
-               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-      CALL TimersStop( Timer_Collisions_MatterRHS )
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( Ef, ProjectionResidual, V_d_1, V_d_2, V_d_3, vDotV )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( Ef, ProjectionResidual, V_d_1, V_d_2, V_d_3, vDotV )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO &
-    !$OMP PRIVATE( Ef, ProjectionResidual, V_d_1, V_d_2, V_d_3, vDotV )
-#endif
-      DO iN_X = 1, nX_G
-
-        IF( ProjectionMask(iN_X) )THEN
-
-          V_d_1 = Gm_dd_11(iN_X) * V_u_1_Conservative(iN_X)
-          V_d_2 = Gm_dd_22(iN_X) * V_u_2_Conservative(iN_X)
-          V_d_3 = Gm_dd_33(iN_X) * V_u_3_Conservative(iN_X)
-          vDotV =   V_u_1_Conservative(iN_X) * V_d_1 &
-                  + V_u_2_Conservative(iN_X) * V_d_2 &
-                  + V_u_3_Conservative(iN_X) * V_d_3
-          Ef = E_Conservative(iN_X) + Half * vDotV
-
-          ProjectionResidual &
-            = MAX &
-                ( ABS &
-                    ( GVECm_projection(iYe,iN_X) &
-                      - Ye_Conservative(iN_X) / Ye_old(iN_X) ), &
-                  ABS &
-                    ( GVECm_projection(iEf,iN_X) &
-                      - Ef / Ef_old(iN_X) ), &
-                  ABS &
-                    ( GVECm_projection(iV1,iN_X) &
-                      - V_d_1 / SpeedOfLight ), &
-                  ABS &
-                    ( GVECm_projection(iV2,iN_X) &
-                      - V_d_2 / SpeedOfLight ), &
-                  ABS &
-                    ( GVECm_projection(iV3,iN_X) &
-                      - V_d_3 / SpeedOfLight ) )
-
-          ProjectionResidual &
-            = MAX( ProjectionResidual, &
-                ABS( GVECm_projection(iYm,iN_X) &
-                       - Ym_Conservative(iN_X) ) )
-
-          Ye_Conservative(iN_X) &
-            = GVECm_projection(iYe,iN_X) * Ye_old(iN_X)
-          Ym_Conservative(iN_X) = GVECm_projection(iYm,iN_X)
-          Ef = GVECm_projection(iEf,iN_X) * Ef_old(iN_X)
-
-          V_d_1 = GVECm_projection(iV1,iN_X) * SpeedOfLight
-          V_d_2 = GVECm_projection(iV2,iN_X) * SpeedOfLight
-          V_d_3 = GVECm_projection(iV3,iN_X) * SpeedOfLight
-
-          V_u_1_Conservative(iN_X) = V_d_1 / Gm_dd_11(iN_X)
-          V_u_2_Conservative(iN_X) = V_d_2 / Gm_dd_22(iN_X)
-          V_u_3_Conservative(iN_X) = V_d_3 / Gm_dd_33(iN_X)
-
-          vDotV =   V_u_1_Conservative(iN_X) * V_d_1 &
-                  + V_u_2_Conservative(iN_X) * V_d_2 &
-                  + V_u_3_Conservative(iN_X) * V_d_3
-
-          E_Conservative(iN_X) = Ef - Half * vDotV
-
-          IF( ProjectionResidual <= Rtol_ConservativeProjection ) &
-            ProjectionMask(iN_X) = .FALSE.
-
-        END IF
-
-      END DO
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM( ProjectionMask )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( ProjectionMask )
-#endif
-
-    END DO
-
-    IF( ANY( ProjectionMask(:) ) )THEN
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO
-#endif
-      DO iN_X = 1, nX_G
-
-        IF( ProjectionMask(iN_X) )THEN
-          ConservativeProjectionRadiationResidual_Relative_Final(iN_X) &
-            = HUGE(One)
-          ConservativeProjectionStatus_Final(iN_X) = -3
-          ProjectionError(iN_X) = 1
-        END IF
-
-      END DO
-
-    END IF
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO
-#endif
-    DO iN_X = 1, nX_G
-
-      ProjectionMask(iN_X) &
-        = ConservativeProjectionStatus_Final(iN_X) == 0
-
-    END DO
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM( ProjectionMask )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( ProjectionMask )
-#endif
-
-    CALL CreatePackIndex &
-           ( ProjectionMask, nX_P, PackIndex, UnpackIndex )
-
-    IF( nX_P > 0 )THEN
-
-      CALL UpdateTemperature_Packed &
-             ( D, E_Conservative, Ye_Conservative, Ym_Conservative, &
-               T_Conservative, &
-               ProjectionMask, nX_P, PackIndex, UnpackIndex, ProjectionError )
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO
-#endif
-      DO iN_X = 1, nX_G
-
-        IF( ProjectionMask(iN_X) .AND. ProjectionError(iN_X) /= 0 )THEN
-          ProjectionMask(iN_X) = .FALSE.
-          ConservativeProjectionRadiationResidual_Relative_Final(iN_X) &
-            = HUGE(One)
-          ConservativeProjectionStatus_Final(iN_X) = -1
-        END IF
-
-      END DO
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM( ProjectionMask )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( ProjectionMask )
-#endif
-
-      CALL CreatePackIndex &
-             ( ProjectionMask, nX_P, PackIndex, UnpackIndex )
-
-    END IF
-
-    ! Heating implied by the exactly conservative fixed-radiation matter
-    ! state.  This uses the same total-energy-minus-velocity-times-momentum
-    ! definition as MatterUpdate_Rate_Option.
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( Ef, Q_E, Q_M1, Q_M2, Q_M3, &
-    !$OMP          V_d_1, V_d_2, V_d_3, vDotV )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( Ef, Q_E, Q_M1, Q_M2, Q_M3, &
-    !$ACC          V_d_1, V_d_2, V_d_3, vDotV )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO &
-    !$OMP PRIVATE( Ef, Q_E, Q_M1, Q_M2, Q_M3, &
-    !$OMP          V_d_1, V_d_2, V_d_3, vDotV )
-#endif
-    DO iN_X = 1, nX_G
-
-      IF( ProjectionMask(iN_X) )THEN
-
-        V_d_1 = Gm_dd_11(iN_X) * V_u_1_Conservative(iN_X)
-        V_d_2 = Gm_dd_22(iN_X) * V_u_2_Conservative(iN_X)
-        V_d_3 = Gm_dd_33(iN_X) * V_u_3_Conservative(iN_X)
-
-        vDotV =   V_u_1_Conservative(iN_X) * V_d_1 &
-                + V_u_2_Conservative(iN_X) * V_d_2 &
-                + V_u_3_Conservative(iN_X) * V_d_3
-        Ef = E_Conservative(iN_X) + Half * vDotV
-
-        Q_E = D_old(iN_X) * ( Ef - Ef_old(iN_X) ) / dt
-        Q_M1 = D_old(iN_X) &
-          * ( V_d_1 - Gm_dd_11(iN_X) * V_u_1_old(iN_X) ) / dt
-        Q_M2 = D_old(iN_X) &
-          * ( V_d_2 - Gm_dd_22(iN_X) * V_u_2_old(iN_X) ) / dt
-        Q_M3 = D_old(iN_X) &
-          * ( V_d_3 - Gm_dd_33(iN_X) * V_u_3_old(iN_X) ) / dt
-
-        ConservativeProjectionMatterHeating_Rate_Final(iN_X) &
-          = Q_E &
-              - V_u_1_Conservative(iN_X) * Q_M1 &
-              - V_u_2_Conservative(iN_X) * Q_M2 &
-              - V_u_3_Conservative(iN_X) * Q_M3
-
-        T(iN_X) = T_Conservative(iN_X)
-        Ye(iN_X) = Ye_Conservative(iN_X)
-        Ym(iN_X) = Ym_Conservative(iN_X)
-        E(iN_X) = E_Conservative(iN_X)
-        V_u_1(iN_X) = V_u_1_Conservative(iN_X)
-        V_u_2(iN_X) = V_u_2_Conservative(iN_X)
-        V_u_3(iN_X) = V_u_3_Conservative(iN_X)
-
-        U_Ye(iN_X) = Ye_Conservative(iN_X) / Ye_old(iN_X)
-        U_Ym(iN_X) = Ym_Conservative(iN_X)
-        U_Ef(iN_X) = Ef / Ef_old(iN_X)
-        U_V_d_1(iN_X) = V_d_1 / SpeedOfLight
-        U_V_d_2(iN_X) = V_d_2 / SpeedOfLight
-        U_V_d_3(iN_X) = V_d_3 / SpeedOfLight
-        Omega(iN_X) = One / ( One + SQRT( vDotV ) )
-
-      END IF
-
-    END DO
-
-    IF( nX_P > 0 )THEN
-
-      IF( .NOT. FreezeOpacities )THEN
-
-        CALL TimersStart( Timer_Collisions_ComputeOpacity )
-
-        CALL ComputeOpacities_Packed &
-               ( D, T_Conservative, Ye_Conservative, Ym_Conservative, SqrtGm, &
-                 ProjectionMask, nX_P, PackIndex, UnpackIndex, &
-                 T0 = T_old, Ye0 = Ye_old, Ym0 = Ym_old, &
-                 Opacity_Mask_Input = Opacity_Mask )
-
-        CALL TimersStop( Timer_Collisions_ComputeOpacity )
-
-      END IF
-
-      CALL TimersStart( Timer_Collisions_ComputeRates )
-
-      IF( FreezeOpacities )THEN
-        CALL ComputeRates_Packed &
-               ( D, T_Opacity, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                 ProjectionMask, nX_P, PackIndex, UnpackIndex, &
-                 nX_P, Opacity_Mask )
-      ELSE
-        CALL ComputeRates_Packed &
-               ( D, T_Conservative, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-                 ProjectionMask, nX_P, PackIndex, UnpackIndex, &
-                 nX_P, Opacity_Mask )
-      END IF
-
-      CALL TimersStop( Timer_Collisions_ComputeRates )
-
-      CALL TimersStart( Timer_Collisions_NeutrinoRHS )
-
-      CALL ComputeNeutrinoRHS_OrderV &
-             ( ProjectionMask, FVECm_inner, GVECm_inner, dt, &
-               Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
-               V_u_1_Conservative, V_u_2_Conservative, V_u_3_Conservative, &
-               Gm_dd_11, Gm_dd_22, Gm_dd_33 )
-
-      CALL TimersStop( Timer_Collisions_NeutrinoRHS )
-
-      CALL ComputeRadiationResidualRelative &
-             ( ProjectionMask, FVECm_inner, &
-               ConservativeProjectionRadiationResidual_Relative_Final, &
-               ContinueIteration_Option = ContinuationMask )
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO
-#endif
-      DO iN_X = 1, nX_G
-
-        IF( ProjectionMask(iN_X) )THEN
-          ConservativeProjectionStatus_Final(iN_X) &
-            = MERGE( 0, 1, ContinuationMask(iN_X) )
-        END IF
-
-      END DO
-
-    END IF
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE FROM( ContinuationMask, ProjectionError )
-#elif defined(THORNADO_OACC)
-    !$ACC UPDATE HOST( ContinuationMask, ProjectionError )
-#endif
-
-  END SUBROUTINE ApplyConservativeProjection_OrderV
 
 
   SUBROUTINE ComputeRadiationResidualRelative &
@@ -8275,11 +4371,6 @@ CONTAINS
              Dnu_0_P, OpacityMask_Option = Opacity_Mask_P )
 
     CALL TimersStop( Timer_Opacity_D0 )
-
-    ! Dnu_0 is a thermodynamic quantity entering charged-current detailed
-    ! balance.  Limiting it to the bound imposed on the evolved radiation
-    ! polynomial changes the microscopic inverse rate and is therefore not
-    ! permissible here.  Bounds on the evolved state are enforced separately.
 
     ! --- EmAb ---
 
@@ -9995,11 +6086,249 @@ CONTAINS
 
 
 #if defined( TWOMOMENT_ORDER_V )
+
+
+
+
+
+
+  SUBROUTINE ComputeCollisionMoments_OrderV_Point &
+    ( iN_E, iS, iN_X, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+      Gm_dd_11, Gm_dd_22, Gm_dd_33, RN, RG1, RG2, RG3, LinearRN_Option )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    INTEGER, INTENT(in) :: iN_E, iS, iN_X
+    REAL(DP), INTENT(in) :: Dnu(:,:,:), Inu_u_1(:,:,:), Inu_u_2(:,:,:), Inu_u_3(:,:,:)
+    REAL(DP), INTENT(in) :: Gm_dd_11(:), Gm_dd_22(:), Gm_dd_33(:)
+    REAL(DP), INTENT(out) :: RN(nC), RG1(nC), RG2(nC), RG3(nC)
+    REAL(DP), INTENT(out), OPTIONAL :: LinearRN_Option(nC)
+    REAL(DP) :: LinearRN(nC)
+    REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
+    REAL(DP) :: I_d_1, I_d_2, I_d_3
+    REAL(DP) :: L_u_1, L_u_2, L_u_3, L_d_1, L_d_2, L_d_3
+    INTEGER :: iG
+
+    LinearRN = Zero
+      I_d_1 = Gm_dd_11(iN_X) * Inu_u_1(iN_E,iS,iN_X)
+      I_d_2 = Gm_dd_22(iN_X) * Inu_u_2(iN_E,iS,iN_X)
+      I_d_3 = Gm_dd_33(iN_X) * Inu_u_3(iN_E,iS,iN_X)
+
+      IF( Include_LinCorr ) CALL ComputeEddingtonTensorComponents_dd &
+             ( Dnu(iN_E,iS,iN_X), &
+               Inu_u_1(iN_E,iS,iN_X), Inu_u_2(iN_E,iS,iN_X), &
+               Inu_u_3(iN_E,iS,iN_X), &
+               Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
+               k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
+
+      RN  = Zero
+      RG1 = Zero
+      RG2 = Zero
+      RG3 = Zero
+
+      RN(iC_EmAb) = Chi_EmAb(iN_E,iS,iN_X) &
+                     * ( Dnu_0(iN_E,iS,iN_X) - Dnu(iN_E,iS,iN_X) )
+      RG1(iC_EmAb) = -Chi_EmAb(iN_E,iS,iN_X) * I_d_1
+      RG2(iC_EmAb) = -Chi_EmAb(iN_E,iS,iN_X) * I_d_2
+      RG3(iC_EmAb) = -Chi_EmAb(iN_E,iS,iN_X) * I_d_3
+
+      iG = nChirals - ( LeptonNumber(iS) + 1 ) / nChirals
+      RG1(iC_Iso) = -Sigma_Iso(iN_E,iG,iN_X) * I_d_1
+      RG2(iC_Iso) = -Sigma_Iso(iN_E,iG,iN_X) * I_d_2
+      RG3(iC_Iso) = -Sigma_Iso(iN_E,iG,iN_X) * I_d_3
+
+      IF( Include_NNS )THEN
+        RN(iC_NNS) = R_NNS(iN_E,iS,iN_X)
+        RG1(iC_NNS) = -Chi_NNS(iN_E,iS,iN_X) * I_d_1
+        RG2(iC_NNS) = -Chi_NNS(iN_E,iS,iN_X) * I_d_2
+        RG3(iC_NNS) = -Chi_NNS(iN_E,iS,iN_X) * I_d_3
+
+        IF( Include_LinCorr )THEN
+          L_u_1 = L_NNS__In__u_1(iN_E,iS,iN_X) &
+                  - L_NNS__Out_u_1(iN_E,iS,iN_X)
+          L_u_2 = L_NNS__In__u_2(iN_E,iS,iN_X) &
+                  - L_NNS__Out_u_2(iN_E,iS,iN_X)
+          L_u_3 = L_NNS__In__u_3(iN_E,iS,iN_X) &
+                  - L_NNS__Out_u_3(iN_E,iS,iN_X)
+          L_d_1 = Gm_dd_11(iN_X) * L_NNS__In__u_1(iN_E,iS,iN_X)
+          L_d_2 = Gm_dd_22(iN_X) * L_NNS__In__u_2(iN_E,iS,iN_X)
+          L_d_3 = Gm_dd_33(iN_X) * L_NNS__In__u_3(iN_E,iS,iN_X)
+          LinearRN(iC_NNS) = -( L_u_1 * I_d_1 + L_u_2 * I_d_2 + L_u_3 * I_d_3 )
+          RN(iC_NNS) = RN(iC_NNS) + LinearRN(iC_NNS)
+          RG1(iC_NNS) = RG1(iC_NNS) + Third * L_d_1 &
+                        - ( L_u_1 * k_dd_11 + L_u_2 * k_dd_12 &
+                          + L_u_3 * k_dd_13 ) * Dnu(iN_E,iS,iN_X)
+          RG2(iC_NNS) = RG2(iC_NNS) + Third * L_d_2 &
+                        - ( L_u_1 * k_dd_12 + L_u_2 * k_dd_22 &
+                          + L_u_3 * k_dd_23 ) * Dnu(iN_E,iS,iN_X)
+          RG3(iC_NNS) = RG3(iC_NNS) + Third * L_d_3 &
+                        - ( L_u_1 * k_dd_13 + L_u_2 * k_dd_23 &
+                          + L_u_3 * k_dd_33 ) * Dnu(iN_E,iS,iN_X)
+        END IF
+      END IF
+
+      IF( Include_NES )THEN
+        RN(iC_NES) = R_NES(iN_E,iS,iN_X)
+        RG1(iC_NES) = -Chi_NES(iN_E,iS,iN_X) * I_d_1
+        RG2(iC_NES) = -Chi_NES(iN_E,iS,iN_X) * I_d_2
+        RG3(iC_NES) = -Chi_NES(iN_E,iS,iN_X) * I_d_3
+
+        IF( Include_LinCorr )THEN
+          L_u_1 = L_NES__In__u_1(iN_E,iS,iN_X) &
+                  - L_NES__Out_u_1(iN_E,iS,iN_X)
+          L_u_2 = L_NES__In__u_2(iN_E,iS,iN_X) &
+                  - L_NES__Out_u_2(iN_E,iS,iN_X)
+          L_u_3 = L_NES__In__u_3(iN_E,iS,iN_X) &
+                  - L_NES__Out_u_3(iN_E,iS,iN_X)
+          L_d_1 = Gm_dd_11(iN_X) * L_NES__In__u_1(iN_E,iS,iN_X)
+          L_d_2 = Gm_dd_22(iN_X) * L_NES__In__u_2(iN_E,iS,iN_X)
+          L_d_3 = Gm_dd_33(iN_X) * L_NES__In__u_3(iN_E,iS,iN_X)
+          LinearRN(iC_NES) = -( L_u_1 * I_d_1 + L_u_2 * I_d_2 + L_u_3 * I_d_3 )
+          RN(iC_NES) = RN(iC_NES) + LinearRN(iC_NES)
+          RG1(iC_NES) = RG1(iC_NES) + Third * L_d_1 &
+                        - ( L_u_1 * k_dd_11 + L_u_2 * k_dd_12 &
+                          + L_u_3 * k_dd_13 ) * Dnu(iN_E,iS,iN_X)
+          RG2(iC_NES) = RG2(iC_NES) + Third * L_d_2 &
+                        - ( L_u_1 * k_dd_12 + L_u_2 * k_dd_22 &
+                          + L_u_3 * k_dd_23 ) * Dnu(iN_E,iS,iN_X)
+          RG3(iC_NES) = RG3(iC_NES) + Third * L_d_3 &
+                        - ( L_u_1 * k_dd_13 + L_u_2 * k_dd_23 &
+                          + L_u_3 * k_dd_33 ) * Dnu(iN_E,iS,iN_X)
+        END IF
+      END IF
+
+      IF( Include_Pair )THEN
+        RN(iC_Pair) = R_Pair(iN_E,iS,iN_X)
+        RG1(iC_Pair) = -Chi_Pair(iN_E,iS,iN_X) * I_d_1
+        RG2(iC_Pair) = -Chi_Pair(iN_E,iS,iN_X) * I_d_2
+        RG3(iC_Pair) = -Chi_Pair(iN_E,iS,iN_X) * I_d_3
+
+        IF( Include_LinCorr )THEN
+          L_u_1 = L_Pair_Ann_u_1(iN_E,iS,iN_X) &
+                  - L_Pair_Pro_u_1(iN_E,iS,iN_X)
+          L_u_2 = L_Pair_Ann_u_2(iN_E,iS,iN_X) &
+                  - L_Pair_Pro_u_2(iN_E,iS,iN_X)
+          L_u_3 = L_Pair_Ann_u_3(iN_E,iS,iN_X) &
+                  - L_Pair_Pro_u_3(iN_E,iS,iN_X)
+          L_d_1 = -Gm_dd_11(iN_X) * L_Pair_Pro_u_1(iN_E,iS,iN_X)
+          L_d_2 = -Gm_dd_22(iN_X) * L_Pair_Pro_u_2(iN_E,iS,iN_X)
+          L_d_3 = -Gm_dd_33(iN_X) * L_Pair_Pro_u_3(iN_E,iS,iN_X)
+          LinearRN(iC_Pair) = -( L_u_1 * I_d_1 + L_u_2 * I_d_2 + L_u_3 * I_d_3 )
+          RN(iC_Pair) = RN(iC_Pair) + LinearRN(iC_Pair)
+          RG1(iC_Pair) = RG1(iC_Pair) + Third * L_d_1 &
+                         - ( L_u_1 * k_dd_11 + L_u_2 * k_dd_12 &
+                           + L_u_3 * k_dd_13 ) * Dnu(iN_E,iS,iN_X)
+          RG2(iC_Pair) = RG2(iC_Pair) + Third * L_d_2 &
+                         - ( L_u_1 * k_dd_12 + L_u_2 * k_dd_22 &
+                           + L_u_3 * k_dd_23 ) * Dnu(iN_E,iS,iN_X)
+          RG3(iC_Pair) = RG3(iC_Pair) + Third * L_d_3 &
+                         - ( L_u_1 * k_dd_13 + L_u_2 * k_dd_23 &
+                           + L_u_3 * k_dd_33 ) * Dnu(iN_E,iS,iN_X)
+        END IF
+      END IF
+
+      IF( Include_NuPair )THEN
+        RN(iC_NuPair) = R_NuPair(iN_E,iS,iN_X)
+        RG1(iC_NuPair) = -Chi_NuPair(iN_E,iS,iN_X) * I_d_1
+        RG2(iC_NuPair) = -Chi_NuPair(iN_E,iS,iN_X) * I_d_2
+        RG3(iC_NuPair) = -Chi_NuPair(iN_E,iS,iN_X) * I_d_3
+
+        IF( Include_LinCorr )THEN
+          L_u_1 = L_NuPair_Ann_u_1(iN_E,iS,iN_X) &
+                  - L_NuPair_Pro_u_1(iN_E,iS,iN_X)
+          L_u_2 = L_NuPair_Ann_u_2(iN_E,iS,iN_X) &
+                  - L_NuPair_Pro_u_2(iN_E,iS,iN_X)
+          L_u_3 = L_NuPair_Ann_u_3(iN_E,iS,iN_X) &
+                  - L_NuPair_Pro_u_3(iN_E,iS,iN_X)
+          L_d_1 = -Gm_dd_11(iN_X) * L_NuPair_Pro_u_1(iN_E,iS,iN_X)
+          L_d_2 = -Gm_dd_22(iN_X) * L_NuPair_Pro_u_2(iN_E,iS,iN_X)
+          L_d_3 = -Gm_dd_33(iN_X) * L_NuPair_Pro_u_3(iN_E,iS,iN_X)
+          LinearRN(iC_NuPair) = -( L_u_1 * I_d_1 + L_u_2 * I_d_2 + L_u_3 * I_d_3 )
+          RN(iC_NuPair) = RN(iC_NuPair) + LinearRN(iC_NuPair)
+          RG1(iC_NuPair) = RG1(iC_NuPair) + Third * L_d_1 &
+                           - ( L_u_1 * k_dd_11 + L_u_2 * k_dd_12 &
+                             + L_u_3 * k_dd_13 ) * Dnu(iN_E,iS,iN_X)
+          RG2(iC_NuPair) = RG2(iC_NuPair) + Third * L_d_2 &
+                           - ( L_u_1 * k_dd_12 + L_u_2 * k_dd_22 &
+                             + L_u_3 * k_dd_23 ) * Dnu(iN_E,iS,iN_X)
+          RG3(iC_NuPair) = RG3(iC_NuPair) + Third * L_d_3 &
+                           - ( L_u_1 * k_dd_13 + L_u_2 * k_dd_23 &
+                             + L_u_3 * k_dd_33 ) * Dnu(iN_E,iS,iN_X)
+        END IF
+      END IF
+
+      IF( Include_Brem )THEN
+        RN(iC_Brem) = R_Brem(iN_E,iS,iN_X)
+        RG1(iC_Brem) = -Chi_Brem(iN_E,iS,iN_X) * I_d_1
+        RG2(iC_Brem) = -Chi_Brem(iN_E,iS,iN_X) * I_d_2
+        RG3(iC_Brem) = -Chi_Brem(iN_E,iS,iN_X) * I_d_3
+
+        IF( Include_LinCorr )THEN
+          L_u_1 = L_Brem_Ann_u_1(iN_E,iS,iN_X) &
+                  - L_Brem_Pro_u_1(iN_E,iS,iN_X)
+          L_u_2 = L_Brem_Ann_u_2(iN_E,iS,iN_X) &
+                  - L_Brem_Pro_u_2(iN_E,iS,iN_X)
+          L_u_3 = L_Brem_Ann_u_3(iN_E,iS,iN_X) &
+                  - L_Brem_Pro_u_3(iN_E,iS,iN_X)
+          L_d_1 = -Gm_dd_11(iN_X) * L_Brem_Pro_u_1(iN_E,iS,iN_X)
+          L_d_2 = -Gm_dd_22(iN_X) * L_Brem_Pro_u_2(iN_E,iS,iN_X)
+          L_d_3 = -Gm_dd_33(iN_X) * L_Brem_Pro_u_3(iN_E,iS,iN_X)
+          LinearRN(iC_Brem) = -( L_u_1 * I_d_1 + L_u_2 * I_d_2 + L_u_3 * I_d_3 )
+          RN(iC_Brem) = RN(iC_Brem) + LinearRN(iC_Brem)
+          RG1(iC_Brem) = RG1(iC_Brem) + Third * L_d_1 &
+                         - ( L_u_1 * k_dd_11 + L_u_2 * k_dd_12 &
+                           + L_u_3 * k_dd_13 ) * Dnu(iN_E,iS,iN_X)
+          RG2(iC_Brem) = RG2(iC_Brem) + Third * L_d_2 &
+                         - ( L_u_1 * k_dd_12 + L_u_2 * k_dd_22 &
+                           + L_u_3 * k_dd_23 ) * Dnu(iN_E,iS,iN_X)
+          RG3(iC_Brem) = RG3(iC_Brem) + Third * L_d_3 &
+                         - ( L_u_1 * k_dd_13 + L_u_2 * k_dd_23 &
+                           + L_u_3 * k_dd_33 ) * Dnu(iN_E,iS,iN_X)
+        END IF
+      END IF
+
+      IF( Include_NMS )THEN
+        RN(iC_NMS) = R_GL(iN_E,iS,iN_X,iGL_NMS)
+        RG1(iC_NMS) = -Chi_GL(iN_E,iS,iN_X,iGL_NMS) * I_d_1
+        RG2(iC_NMS) = -Chi_GL(iN_E,iS,iN_X,iGL_NMS) * I_d_2
+        RG3(iC_NMS) = -Chi_GL(iN_E,iS,iN_X,iGL_NMS) * I_d_3
+      END IF
+
+      IF( Include_LFE )THEN
+        RN(iC_LFE) = R_GL(iN_E,iS,iN_X,iGL_LFE)
+        RG1(iC_LFE) = -Chi_GL(iN_E,iS,iN_X,iGL_LFE) * I_d_1
+        RG2(iC_LFE) = -Chi_GL(iN_E,iS,iN_X,iGL_LFE) * I_d_2
+        RG3(iC_LFE) = -Chi_GL(iN_E,iS,iN_X,iGL_LFE) * I_d_3
+      END IF
+
+      IF( Include_LFC )THEN
+        RN(iC_LFC) = R_GL(iN_E,iS,iN_X,iGL_LFC)
+        RG1(iC_LFC) = -Chi_GL(iN_E,iS,iN_X,iGL_LFC) * I_d_1
+        RG2(iC_LFC) = -Chi_GL(iN_E,iS,iN_X,iGL_LFC) * I_d_2
+        RG3(iC_LFC) = -Chi_GL(iN_E,iS,iN_X,iGL_LFC) * I_d_3
+      END IF
+
+      IF( Include_IMD )THEN
+        RN(iC_IMD) = R_GL(iN_E,iS,iN_X,iGL_IMD)
+        RG1(iC_IMD) = -Chi_GL(iN_E,iS,iN_X,iGL_IMD) * I_d_1
+        RG2(iC_IMD) = -Chi_GL(iN_E,iS,iN_X,iGL_IMD) * I_d_2
+        RG3(iC_IMD) = -Chi_GL(iN_E,iS,iN_X,iGL_IMD) * I_d_3
+      END IF
+
+
+    IF( PRESENT(LinearRN_Option) ) LinearRN_Option = LinearRN
+
+  END SUBROUTINE ComputeCollisionMoments_OrderV_Point
+
+
   SUBROUTINE ComputeMatterRHS_Collisions_OrderV &
     ( Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
       V_u_1, V_u_2, V_u_3, Gm_dd_11, Gm_dd_22, Gm_dd_33, MASK, Q_Matter, &
       NNS_RateDecomposition_Option, QH_ByProcessSpecies_Option, EmAb_RateDecomposition_Option, &
-      EmAb_Spectrum_Option, RadiationCollisionRHS_Option )
+      EmAb_Spectrum_Option, RadiationCollisionRHS_Option, UseAcceptedEmAbRate_Option )
 
     USE mpi
     USE ISO_FORTRAN_ENV, ONLY: ERROR_UNIT
@@ -10015,6 +6344,7 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:,:), INTENT(out), OPTIONAL :: EmAb_Spectrum_Option
     REAL(DP), DIMENSION(:,:,:,:), INTENT(out), OPTIONAL :: &
       RadiationCollisionRHS_Option
+    LOGICAL, INTENT(in), OPTIONAL :: UseAcceptedEmAbRate_Option
 
     REAL(DP), ALLOCATABLE :: Q_SP(:,:,:,:), QLm_SP(:,:,:)
     REAL(DP), ALLOCATABLE :: EmAb_Spectrum(:,:,:,:)
@@ -10022,7 +6352,7 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: QH_ByProcessSpecies(:,:,:)
 
     INTEGER  :: ierr, myid
-    LOGICAL  :: ComputeRadiationCollisionRHS, InvalidShape
+    LOGICAL  :: ComputeRadiationCollisionRHS, InvalidShape, UseAcceptedEmAbRate
     INTEGER  :: iG, iN_E, iN_X, iP, iQ, iS
     REAL(DP) :: k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33
     REAL(DP) :: I_d_1, I_d_2, I_d_3, V_d_1, V_d_2, V_d_3
@@ -10032,10 +6362,33 @@ CONTAINS
     REAL(DP) :: RG2(nC)
     REAL(DP) :: RG3(nC)
     REAL(DP) :: QL, QLm, QE, QM1, QM2, QM3
+    REAL(DP) :: Q0(nC), Q0Correction(nC), Q0Term, LinearRN(nC)
     REAL(DP) :: RN_Total, RG1_Total, RG2_Total, RG3_Total
     REAL(DP) :: V2
 
     ComputeRadiationCollisionRHS = PRESENT( RadiationCollisionRHS_Option )
+    ! Only the immediate post-solve caller may use the retained accepted
+    ! source. Arbitrary-state diagnostics initialize their own collision
+    ! storage and must evaluate the source of the state they supply.
+    UseAcceptedEmAbRate = .FALSE.
+    IF( PRESENT(UseAcceptedEmAbRate_Option) ) &
+      UseAcceptedEmAbRate = UseAcceptedEmAbRate_Option
+
+    IF( UseAcceptedEmAbRate )THEN
+      IF( .NOT. ALLOCATED(AcceptedNewtonEmAbRate) )THEN
+        WRITE(ERROR_UNIT,'(A)') 'ERROR: Accepted EmAb source requested without an accepted solve.'
+        CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
+      END IF
+      IF( ANY(SHAPE(AcceptedNewtonEmAbRate) /= [nE_G,nSpecies,nX_G]) )THEN
+        WRITE(ERROR_UNIT,'(A)') 'ERROR: Accepted EmAb source has inconsistent dimensions.'
+        CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
+      END IF
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE TO(AcceptedNewtonEmAbRate)
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE DEVICE(AcceptedNewtonEmAbRate)
+#endif
+    END IF
 
     InvalidShape = SIZE(MASK) /= nX_G .OR. &
                    SIZE(Q_Matter,1) /= nQ .OR. &
@@ -10179,7 +6532,7 @@ CONTAINS
     DO iN_X = 1, nX_G
     DO iS   = 1, nSpecies
     DO iP   = 1, nC
-    DO iQ   = 1, 5
+    DO iQ   = 1, SIZE(Q_SP,1)
       Q_SP(iQ,iP,iS,iN_X) = Zero
     END DO
     END DO
@@ -10204,29 +6557,29 @@ CONTAINS
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(2) &
-    !$OMP FIRSTPRIVATE( ComputeRadiationCollisionRHS ) &
+    !$OMP FIRSTPRIVATE( ComputeRadiationCollisionRHS, UseAcceptedEmAbRate ) &
     !$OMP PRIVATE( k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$OMP          I_d_1, I_d_2, I_d_3, V_d_1, V_d_2, V_d_3, &
     !$OMP          L_u_1, L_u_2, L_u_3, L_d_1, L_d_2, L_d_3, &
     !$OMP          RN, RG1, RG2, RG3, RN_Total, RG1_Total, RG2_Total, &
-    !$OMP          RG3_Total, QL, QLm, QE, QM1, QM2, QM3, iN_E, iP, iG )
+    !$OMP          RG3_Total, QL, QLm, QE, QM1, QM2, QM3, Q0, Q0Correction, Q0Term, LinearRN, iN_E, iP, iG )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC FIRSTPRIVATE( ComputeRadiationCollisionRHS ) &
+    !$ACC FIRSTPRIVATE( ComputeRadiationCollisionRHS, UseAcceptedEmAbRate ) &
     !$ACC PRIVATE( k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$ACC          I_d_1, I_d_2, I_d_3, V_d_1, V_d_2, V_d_3, &
     !$ACC          L_u_1, L_u_2, L_u_3, L_d_1, L_d_2, L_d_3, &
     !$ACC          RN, RG1, RG2, RG3, RN_Total, RG1_Total, RG2_Total, &
-    !$ACC          RG3_Total, QL, QLm, QE, QM1, QM2, QM3, iN_E, iP, iG ) &
+    !$ACC          RG3_Total, QL, QLm, QE, QM1, QM2, QM3, Q0, Q0Correction, Q0Term, LinearRN, iN_E, iP, iG ) &
     !$ACC PRESENT( Q_SP, QLm_SP, RadiationCollisionRHS )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2) &
-    !$OMP FIRSTPRIVATE( ComputeRadiationCollisionRHS ) &
+    !$OMP FIRSTPRIVATE( ComputeRadiationCollisionRHS, UseAcceptedEmAbRate ) &
     !$OMP PRIVATE( k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33, &
     !$OMP          I_d_1, I_d_2, I_d_3, V_d_1, V_d_2, V_d_3, &
     !$OMP          L_u_1, L_u_2, L_u_3, L_d_1, L_d_2, L_d_3, &
     !$OMP          RN, RG1, RG2, RG3, RN_Total, RG1_Total, RG2_Total, &
-    !$OMP          RG3_Total, QL, QLm, QE, QM1, QM2, QM3, iN_E, iP, iG )
+    !$OMP          RG3_Total, QL, QLm, QE, QM1, QM2, QM3, Q0, Q0Correction, Q0Term, LinearRN, iN_E, iP, iG )
 #endif
     DO iN_X = 1, nX_G
     DO iS   = 1, nSpecies
@@ -10236,213 +6589,16 @@ CONTAINS
         V_d_1 = Gm_dd_11(iN_X) * V_u_1(iN_X)
         V_d_2 = Gm_dd_22(iN_X) * V_u_2(iN_X)
         V_d_3 = Gm_dd_33(iN_X) * V_u_3(iN_X)
+        Q0=Zero
+        Q0Correction=Zero
 
         DO iN_E = 1, nE_G
 
-          I_d_1 = Gm_dd_11(iN_X) * Inu_u_1(iN_E,iS,iN_X)
-          I_d_2 = Gm_dd_22(iN_X) * Inu_u_2(iN_E,iS,iN_X)
-          I_d_3 = Gm_dd_33(iN_X) * Inu_u_3(iN_E,iS,iN_X)
+          CALL ComputeCollisionMoments_OrderV_Point &
+                 ( iN_E, iS, iN_X, Dnu, Inu_u_1, Inu_u_2, Inu_u_3, &
+                   Gm_dd_11, Gm_dd_22, Gm_dd_33, RN, RG1, RG2, RG3, LinearRN )
 
-          CALL ComputeEddingtonTensorComponents_dd &
-                 ( Dnu(iN_E,iS,iN_X), &
-                   Inu_u_1(iN_E,iS,iN_X), Inu_u_2(iN_E,iS,iN_X), &
-                   Inu_u_3(iN_E,iS,iN_X), &
-                   Gm_dd_11(iN_X), Gm_dd_22(iN_X), Gm_dd_33(iN_X), &
-                   k_dd_11, k_dd_12, k_dd_13, k_dd_22, k_dd_23, k_dd_33 )
-
-          RN  = Zero
-          RG1 = Zero
-          RG2 = Zero
-          RG3 = Zero
-
-          RN(iC_EmAb) = Chi_EmAb(iN_E,iS,iN_X) &
-                         * ( Dnu_0(iN_E,iS,iN_X) - Dnu(iN_E,iS,iN_X) )
-          RG1(iC_EmAb) = -Chi_EmAb(iN_E,iS,iN_X) * I_d_1
-          RG2(iC_EmAb) = -Chi_EmAb(iN_E,iS,iN_X) * I_d_2
-          RG3(iC_EmAb) = -Chi_EmAb(iN_E,iS,iN_X) * I_d_3
-
-          iG = nChirals - ( LeptonNumber(iS) + 1 ) / nChirals
-          RG1(iC_Iso) = -Sigma_Iso(iN_E,iG,iN_X) * I_d_1
-          RG2(iC_Iso) = -Sigma_Iso(iN_E,iG,iN_X) * I_d_2
-          RG3(iC_Iso) = -Sigma_Iso(iN_E,iG,iN_X) * I_d_3
-
-          IF( Include_NNS )THEN
-            RN(iC_NNS) = R_NNS(iN_E,iS,iN_X)
-            RG1(iC_NNS) = -Chi_NNS(iN_E,iS,iN_X) * I_d_1
-            RG2(iC_NNS) = -Chi_NNS(iN_E,iS,iN_X) * I_d_2
-            RG3(iC_NNS) = -Chi_NNS(iN_E,iS,iN_X) * I_d_3
-
-            IF( Include_LinCorr )THEN
-              L_u_1 = L_NNS__In__u_1(iN_E,iS,iN_X) &
-                      - L_NNS__Out_u_1(iN_E,iS,iN_X)
-              L_u_2 = L_NNS__In__u_2(iN_E,iS,iN_X) &
-                      - L_NNS__Out_u_2(iN_E,iS,iN_X)
-              L_u_3 = L_NNS__In__u_3(iN_E,iS,iN_X) &
-                      - L_NNS__Out_u_3(iN_E,iS,iN_X)
-              L_d_1 = Gm_dd_11(iN_X) * L_NNS__In__u_1(iN_E,iS,iN_X)
-              L_d_2 = Gm_dd_22(iN_X) * L_NNS__In__u_2(iN_E,iS,iN_X)
-              L_d_3 = Gm_dd_33(iN_X) * L_NNS__In__u_3(iN_E,iS,iN_X)
-              RN(iC_NNS) = RN(iC_NNS) &
-                           - ( L_u_1 * I_d_1 + L_u_2 * I_d_2 + L_u_3 * I_d_3 )
-              RG1(iC_NNS) = RG1(iC_NNS) + Third * L_d_1 &
-                            - ( L_u_1 * k_dd_11 + L_u_2 * k_dd_12 &
-                              + L_u_3 * k_dd_13 ) * Dnu(iN_E,iS,iN_X)
-              RG2(iC_NNS) = RG2(iC_NNS) + Third * L_d_2 &
-                            - ( L_u_1 * k_dd_12 + L_u_2 * k_dd_22 &
-                              + L_u_3 * k_dd_23 ) * Dnu(iN_E,iS,iN_X)
-              RG3(iC_NNS) = RG3(iC_NNS) + Third * L_d_3 &
-                            - ( L_u_1 * k_dd_13 + L_u_2 * k_dd_23 &
-                              + L_u_3 * k_dd_33 ) * Dnu(iN_E,iS,iN_X)
-            END IF
-          END IF
-
-          IF( Include_NES )THEN
-            RN(iC_NES) = R_NES(iN_E,iS,iN_X)
-            RG1(iC_NES) = -Chi_NES(iN_E,iS,iN_X) * I_d_1
-            RG2(iC_NES) = -Chi_NES(iN_E,iS,iN_X) * I_d_2
-            RG3(iC_NES) = -Chi_NES(iN_E,iS,iN_X) * I_d_3
-
-            IF( Include_LinCorr )THEN
-              L_u_1 = L_NES__In__u_1(iN_E,iS,iN_X) &
-                      - L_NES__Out_u_1(iN_E,iS,iN_X)
-              L_u_2 = L_NES__In__u_2(iN_E,iS,iN_X) &
-                      - L_NES__Out_u_2(iN_E,iS,iN_X)
-              L_u_3 = L_NES__In__u_3(iN_E,iS,iN_X) &
-                      - L_NES__Out_u_3(iN_E,iS,iN_X)
-              L_d_1 = Gm_dd_11(iN_X) * L_NES__In__u_1(iN_E,iS,iN_X)
-              L_d_2 = Gm_dd_22(iN_X) * L_NES__In__u_2(iN_E,iS,iN_X)
-              L_d_3 = Gm_dd_33(iN_X) * L_NES__In__u_3(iN_E,iS,iN_X)
-              RN(iC_NES) = RN(iC_NES) &
-                           - ( L_u_1 * I_d_1 + L_u_2 * I_d_2 + L_u_3 * I_d_3 )
-              RG1(iC_NES) = RG1(iC_NES) + Third * L_d_1 &
-                            - ( L_u_1 * k_dd_11 + L_u_2 * k_dd_12 &
-                              + L_u_3 * k_dd_13 ) * Dnu(iN_E,iS,iN_X)
-              RG2(iC_NES) = RG2(iC_NES) + Third * L_d_2 &
-                            - ( L_u_1 * k_dd_12 + L_u_2 * k_dd_22 &
-                              + L_u_3 * k_dd_23 ) * Dnu(iN_E,iS,iN_X)
-              RG3(iC_NES) = RG3(iC_NES) + Third * L_d_3 &
-                            - ( L_u_1 * k_dd_13 + L_u_2 * k_dd_23 &
-                              + L_u_3 * k_dd_33 ) * Dnu(iN_E,iS,iN_X)
-            END IF
-          END IF
-
-          IF( Include_Pair )THEN
-            RN(iC_Pair) = R_Pair(iN_E,iS,iN_X)
-            RG1(iC_Pair) = -Chi_Pair(iN_E,iS,iN_X) * I_d_1
-            RG2(iC_Pair) = -Chi_Pair(iN_E,iS,iN_X) * I_d_2
-            RG3(iC_Pair) = -Chi_Pair(iN_E,iS,iN_X) * I_d_3
-
-            IF( Include_LinCorr )THEN
-              L_u_1 = L_Pair_Ann_u_1(iN_E,iS,iN_X) &
-                      - L_Pair_Pro_u_1(iN_E,iS,iN_X)
-              L_u_2 = L_Pair_Ann_u_2(iN_E,iS,iN_X) &
-                      - L_Pair_Pro_u_2(iN_E,iS,iN_X)
-              L_u_3 = L_Pair_Ann_u_3(iN_E,iS,iN_X) &
-                      - L_Pair_Pro_u_3(iN_E,iS,iN_X)
-              L_d_1 = -Gm_dd_11(iN_X) * L_Pair_Pro_u_1(iN_E,iS,iN_X)
-              L_d_2 = -Gm_dd_22(iN_X) * L_Pair_Pro_u_2(iN_E,iS,iN_X)
-              L_d_3 = -Gm_dd_33(iN_X) * L_Pair_Pro_u_3(iN_E,iS,iN_X)
-              RN(iC_Pair) = RN(iC_Pair) &
-                            - ( L_u_1 * I_d_1 + L_u_2 * I_d_2 + L_u_3 * I_d_3 )
-              RG1(iC_Pair) = RG1(iC_Pair) + Third * L_d_1 &
-                             - ( L_u_1 * k_dd_11 + L_u_2 * k_dd_12 &
-                               + L_u_3 * k_dd_13 ) * Dnu(iN_E,iS,iN_X)
-              RG2(iC_Pair) = RG2(iC_Pair) + Third * L_d_2 &
-                             - ( L_u_1 * k_dd_12 + L_u_2 * k_dd_22 &
-                               + L_u_3 * k_dd_23 ) * Dnu(iN_E,iS,iN_X)
-              RG3(iC_Pair) = RG3(iC_Pair) + Third * L_d_3 &
-                             - ( L_u_1 * k_dd_13 + L_u_2 * k_dd_23 &
-                               + L_u_3 * k_dd_33 ) * Dnu(iN_E,iS,iN_X)
-            END IF
-          END IF
-
-          IF( Include_NuPair )THEN
-            RN(iC_NuPair) = R_NuPair(iN_E,iS,iN_X)
-            RG1(iC_NuPair) = -Chi_NuPair(iN_E,iS,iN_X) * I_d_1
-            RG2(iC_NuPair) = -Chi_NuPair(iN_E,iS,iN_X) * I_d_2
-            RG3(iC_NuPair) = -Chi_NuPair(iN_E,iS,iN_X) * I_d_3
-
-            IF( Include_LinCorr )THEN
-              L_u_1 = L_NuPair_Ann_u_1(iN_E,iS,iN_X) &
-                      - L_NuPair_Pro_u_1(iN_E,iS,iN_X)
-              L_u_2 = L_NuPair_Ann_u_2(iN_E,iS,iN_X) &
-                      - L_NuPair_Pro_u_2(iN_E,iS,iN_X)
-              L_u_3 = L_NuPair_Ann_u_3(iN_E,iS,iN_X) &
-                      - L_NuPair_Pro_u_3(iN_E,iS,iN_X)
-              L_d_1 = -Gm_dd_11(iN_X) * L_NuPair_Pro_u_1(iN_E,iS,iN_X)
-              L_d_2 = -Gm_dd_22(iN_X) * L_NuPair_Pro_u_2(iN_E,iS,iN_X)
-              L_d_3 = -Gm_dd_33(iN_X) * L_NuPair_Pro_u_3(iN_E,iS,iN_X)
-              RN(iC_NuPair) = RN(iC_NuPair) &
-                              - ( L_u_1 * I_d_1 + L_u_2 * I_d_2 + L_u_3 * I_d_3 )
-              RG1(iC_NuPair) = RG1(iC_NuPair) + Third * L_d_1 &
-                               - ( L_u_1 * k_dd_11 + L_u_2 * k_dd_12 &
-                                 + L_u_3 * k_dd_13 ) * Dnu(iN_E,iS,iN_X)
-              RG2(iC_NuPair) = RG2(iC_NuPair) + Third * L_d_2 &
-                               - ( L_u_1 * k_dd_12 + L_u_2 * k_dd_22 &
-                                 + L_u_3 * k_dd_23 ) * Dnu(iN_E,iS,iN_X)
-              RG3(iC_NuPair) = RG3(iC_NuPair) + Third * L_d_3 &
-                               - ( L_u_1 * k_dd_13 + L_u_2 * k_dd_23 &
-                                 + L_u_3 * k_dd_33 ) * Dnu(iN_E,iS,iN_X)
-            END IF
-          END IF
-
-          IF( Include_Brem )THEN
-            RN(iC_Brem) = R_Brem(iN_E,iS,iN_X)
-            RG1(iC_Brem) = -Chi_Brem(iN_E,iS,iN_X) * I_d_1
-            RG2(iC_Brem) = -Chi_Brem(iN_E,iS,iN_X) * I_d_2
-            RG3(iC_Brem) = -Chi_Brem(iN_E,iS,iN_X) * I_d_3
-
-            IF( Include_LinCorr )THEN
-              L_u_1 = L_Brem_Ann_u_1(iN_E,iS,iN_X) &
-                      - L_Brem_Pro_u_1(iN_E,iS,iN_X)
-              L_u_2 = L_Brem_Ann_u_2(iN_E,iS,iN_X) &
-                      - L_Brem_Pro_u_2(iN_E,iS,iN_X)
-              L_u_3 = L_Brem_Ann_u_3(iN_E,iS,iN_X) &
-                      - L_Brem_Pro_u_3(iN_E,iS,iN_X)
-              L_d_1 = -Gm_dd_11(iN_X) * L_Brem_Pro_u_1(iN_E,iS,iN_X)
-              L_d_2 = -Gm_dd_22(iN_X) * L_Brem_Pro_u_2(iN_E,iS,iN_X)
-              L_d_3 = -Gm_dd_33(iN_X) * L_Brem_Pro_u_3(iN_E,iS,iN_X)
-              RN(iC_Brem) = RN(iC_Brem) &
-                            - ( L_u_1 * I_d_1 + L_u_2 * I_d_2 + L_u_3 * I_d_3 )
-              RG1(iC_Brem) = RG1(iC_Brem) + Third * L_d_1 &
-                             - ( L_u_1 * k_dd_11 + L_u_2 * k_dd_12 &
-                               + L_u_3 * k_dd_13 ) * Dnu(iN_E,iS,iN_X)
-              RG2(iC_Brem) = RG2(iC_Brem) + Third * L_d_2 &
-                             - ( L_u_1 * k_dd_12 + L_u_2 * k_dd_22 &
-                               + L_u_3 * k_dd_23 ) * Dnu(iN_E,iS,iN_X)
-              RG3(iC_Brem) = RG3(iC_Brem) + Third * L_d_3 &
-                             - ( L_u_1 * k_dd_13 + L_u_2 * k_dd_23 &
-                               + L_u_3 * k_dd_33 ) * Dnu(iN_E,iS,iN_X)
-            END IF
-          END IF
-
-          IF( Include_NMS )THEN
-            RN(iC_NMS) = R_GL(iN_E,iS,iN_X,iGL_NMS)
-            RG1(iC_NMS) = -Chi_GL(iN_E,iS,iN_X,iGL_NMS) * I_d_1
-            RG2(iC_NMS) = -Chi_GL(iN_E,iS,iN_X,iGL_NMS) * I_d_2
-            RG3(iC_NMS) = -Chi_GL(iN_E,iS,iN_X,iGL_NMS) * I_d_3
-          END IF
-
-          IF( Include_LFE )THEN
-            RN(iC_LFE) = R_GL(iN_E,iS,iN_X,iGL_LFE)
-            RG1(iC_LFE) = -Chi_GL(iN_E,iS,iN_X,iGL_LFE) * I_d_1
-            RG2(iC_LFE) = -Chi_GL(iN_E,iS,iN_X,iGL_LFE) * I_d_2
-            RG3(iC_LFE) = -Chi_GL(iN_E,iS,iN_X,iGL_LFE) * I_d_3
-          END IF
-
-          IF( Include_LFC )THEN
-            RN(iC_LFC) = R_GL(iN_E,iS,iN_X,iGL_LFC)
-            RG1(iC_LFC) = -Chi_GL(iN_E,iS,iN_X,iGL_LFC) * I_d_1
-            RG2(iC_LFC) = -Chi_GL(iN_E,iS,iN_X,iGL_LFC) * I_d_2
-            RG3(iC_LFC) = -Chi_GL(iN_E,iS,iN_X,iGL_LFC) * I_d_3
-          END IF
-
-          IF( Include_IMD )THEN
-            RN(iC_IMD) = R_GL(iN_E,iS,iN_X,iGL_IMD)
-            RG1(iC_IMD) = -Chi_GL(iN_E,iS,iN_X,iGL_IMD) * I_d_1
-            RG2(iC_IMD) = -Chi_GL(iN_E,iS,iN_X,iGL_IMD) * I_d_2
-            RG3(iC_IMD) = -Chi_GL(iN_E,iS,iN_X,iGL_IMD) * I_d_3
-          END IF
+          IF( UseAcceptedEmAbRate ) RN(iC_EmAb) = AcceptedNewtonEmAbRate(iN_E,iS,iN_X)
 
           IF( ComputeRadiationCollisionRHS )THEN
             RN_Total  = SUM( RN  )
@@ -10638,7 +6794,7 @@ CONTAINS
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) PRIVATE( iS )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) PRIVATE( iS ) &
-    !$ACC PRESENT( Q_Matter )
+    !$ACC PRESENT( Q_Matter, Q_SP )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2) PRIVATE( iS )
 #endif
@@ -10669,6 +6825,7 @@ CONTAINS
 
     END DO
     END DO
+
 
     IF( PRESENT( QH_ByProcessSpecies_Option ) )THEN
 #if   defined(THORNADO_OMP_OL)
@@ -11007,7 +7164,38 @@ CONTAINS
   END SUBROUTINE ComputeMatterRHS_OrderOne
 
 
-  PURE SUBROUTINE MuonMaterialNumberSource_Point &
+  PURE SUBROUTINE ComputeChargedCurrentLeptonSource_Point &
+    (Weights,Chi,Equilibrium,Distribution,Active,Source,AbsoluteSource)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    REAL(DP), INTENT(in) :: Weights(:),Chi(:,:),Equilibrium(:,:),Distribution(:,:)
+    LOGICAL, INTENT(in) :: Active
+    REAL(DP), INTENT(out) :: Source,AbsoluteSource
+    REAL(DP) :: Correction,Rate,SignedWeight
+    INTEGER :: iE,iS
+
+    Source=Zero
+    Correction=Zero
+    AbsoluteSource=Zero
+    IF( .NOT. Active ) RETURN
+    DO iE=1,SIZE(Weights)
+    DO iS=1,2
+      SignedWeight=REAL(2*iS-3,DP)*Weights(iE)
+      Rate=(SignedWeight*Chi(iE,iS))*(Equilibrium(iE,iS)-Distribution(iE,iS))
+      CALL AddMuonSourceCompensated(Rate,Source,Correction)
+      AbsoluteSource=AbsoluteSource+ABS(Rate)
+    END DO
+    END DO
+    Source=Source+Correction
+
+  END SUBROUTINE ComputeChargedCurrentLeptonSource_Point
+
+
+  PURE SUBROUTINE ComputeMuonLeptonSource_Point &
     ( Weights, Chi, Equilibrium, Distribution, Transfer, &
       ActiveCC, ActiveTransfer, Source, AbsoluteSource )
 
@@ -11061,7 +7249,7 @@ CONTAINS
 
     Source = Total + Correction
 
-  END SUBROUTINE MuonMaterialNumberSource_Point
+  END SUBROUTINE ComputeMuonLeptonSource_Point
 
 
   PURE SUBROUTINE AddMuonSourceCompensated( Value, Total, Correction )
@@ -11088,7 +7276,7 @@ CONTAINS
   END SUBROUTINE AddMuonSourceCompensated
 
 
-  SUBROUTINE MuonMaterialSourceAtPoint_OrderV &
+  SUBROUTINE ComputeMuonLeptonSource_OrderV_Point &
     ( iN_X, Dnu, TransferRequested, Source, AbsoluteSource )
 
     ! The implemented Order-v number equation is
@@ -11107,6 +7295,8 @@ CONTAINS
     REAL(DP),                  INTENT(out) :: Source, AbsoluteSource
 
     LOGICAL, DIMENSION(3) :: TransferActive
+    REAL(DP) :: Correction, Value
+    INTEGER :: iProcess
 
     Source         = Zero
     AbsoluteSource = Zero
@@ -11117,16 +7307,17 @@ CONTAINS
     TransferActive(2) = TransferRequested(2) .AND. Opacity_Mask(iOp_LFC,iN_X)
     TransferActive(3) = TransferRequested(3) .AND. Opacity_Mask(iOp_IMD,iN_X)
 
-    CALL MuonMaterialNumberSource_Point &
+    CALL ComputeMuonLeptonSource_Point &
            ( W2_S, Chi_EmAb(:,iNuM:iNuM_Bar,iN_X), &
              Dnu_0(:,iNuM:iNuM_Bar,iN_X), Dnu(:,iNuM:iNuM_Bar,iN_X), &
              R_GL(:,iNuM:iNuM_Bar,iN_X,iGL_LFE:iGL_IMD), &
              Opacity_Mask(iOp_EmAb_Muon,iN_X), TransferActive, Source, AbsoluteSource )
 
-  END SUBROUTINE MuonMaterialSourceAtPoint_OrderV
+
+  END SUBROUTINE ComputeMuonLeptonSource_OrderV_Point
 
 
-  SUBROUTINE ComputeMuonMaterialSource_OrderV &
+  SUBROUTINE ComputeMuonLeptonSource_OrderV &
     ( MASK, Dnu, Source, AbsoluteSource )
 
     LOGICAL,  DIMENSION(:),     INTENT(in)  :: MASK
@@ -11150,11 +7341,11 @@ CONTAINS
       Source(iN_X)         = Zero
       AbsoluteSource(iN_X) = Zero
       IF( MASK(iN_X) ) &
-        CALL MuonMaterialSourceAtPoint_OrderV &
+        CALL ComputeMuonLeptonSource_OrderV_Point &
                ( iN_X, Dnu, TransferRequested, Source(iN_X), AbsoluteSource(iN_X) )
     END DO
 
-  END SUBROUTINE ComputeMuonMaterialSource_OrderV
+  END SUBROUTINE ComputeMuonLeptonSource_OrderV
 
   SUBROUTINE ComputeMatterRHS_OrderV &
     ( MASK, Fm, Gm, &
@@ -11334,7 +7525,7 @@ CONTAINS
         IF( UseMuonLeptonSource )THEN
           MuonIncrement = Zero
           IF( wYm /= Zero )THEN
-            CALL MuonMaterialSourceAtPoint_OrderV &
+            CALL ComputeMuonLeptonSource_OrderV_Point &
                    ( iN_X, Dnu, TransferRequested, MuonSource, MuonAbsoluteSource )
             MuonIncrement = wYm * S_Ym(iN_X) &
               * ( SourceDt * MuonSource + MuonLimiterCorrection_Option(iN_X) )
@@ -12593,70 +8784,8 @@ CONTAINS
   END SUBROUTINE UpdateNeutrinoRHS_OrderV
 
 
-  SUBROUTINE SaveRadiationRecoveryMatterState_OrderV &
-    ( MASK, T, Ye, Ym, E, V1, V2, V3, &
-      T_Base, Ye_Base, Ym_Base, E_Base, V1_Base, V2_Base, V3_Base )
-
-    LOGICAL,  DIMENSION(:), INTENT(in)  :: MASK
-    REAL(DP), DIMENSION(:), INTENT(in)  :: T, Ye, Ym, E, V1, V2, V3
-    REAL(DP), DIMENSION(:), INTENT(out) :: &
-      T_Base, Ye_Base, Ym_Base, E_Base, V1_Base, V2_Base, V3_Base
-
-    INTEGER :: iN_X
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO
-#endif
-    DO iN_X = 1, nX_G
-      IF( MASK(iN_X) )THEN
-        T_Base (iN_X) = T (iN_X)
-        Ye_Base(iN_X) = Ye(iN_X)
-        Ym_Base(iN_X) = Ym(iN_X)
-        E_Base (iN_X) = E (iN_X)
-        V1_Base(iN_X) = V1(iN_X)
-        V2_Base(iN_X) = V2(iN_X)
-        V3_Base(iN_X) = V3(iN_X)
-      END IF
-    END DO
-
-  END SUBROUTINE SaveRadiationRecoveryMatterState_OrderV
 
 
-  SUBROUTINE RestoreRadiationRecoveryMatterState_OrderV &
-    ( MASK, T_Base, Ye_Base, Ym_Base, E_Base, V1_Base, V2_Base, V3_Base, &
-      T, Ye, Ym, E, V1, V2, V3 )
-
-    LOGICAL,  DIMENSION(:), INTENT(in)    :: MASK
-    REAL(DP), DIMENSION(:), INTENT(in)    :: &
-      T_Base, Ye_Base, Ym_Base, E_Base, V1_Base, V2_Base, V3_Base
-    REAL(DP), DIMENSION(:), INTENT(inout) :: T, Ye, Ym, E, V1, V2, V3
-
-    INTEGER :: iN_X
-
-#if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO
-#endif
-    DO iN_X = 1, nX_G
-      IF( MASK(iN_X) )THEN
-        T (iN_X) = T_Base (iN_X)
-        Ye(iN_X) = Ye_Base(iN_X)
-        Ym(iN_X) = Ym_Base(iN_X)
-        E (iN_X) = E_Base (iN_X)
-        V1(iN_X) = V1_Base(iN_X)
-        V2(iN_X) = V2_Base(iN_X)
-        V3(iN_X) = V3_Base(iN_X)
-      END IF
-    END DO
-
-  END SUBROUTINE RestoreRadiationRecoveryMatterState_OrderV
 
 
   SUBROUTINE UpdateNeutrinoRHS_Relativistic &
@@ -13579,9 +9708,9 @@ CONTAINS
         Opacity_Mask(iOp_EmAb_Muon,FailurePoint)
       FLUSH(ERROR_UNIT)
 
-      IF( TraceRadiationOnlySolve )THEN
+      IF( TraceNewtonSolve )THEN
         WRITE(FileName,'(A,".failure.rank",I6.6,".dat")') &
-          TRIM(RadiationOnlyTraceFile), myid
+          TRIM(NewtonTraceFile), myid
       ELSE
         WRITE(FileName,'(A,I0,A)') &
           'muon_coupling_failure_rank', myid, '.dat'
@@ -13761,7 +9890,7 @@ CONTAINS
           WRITE(17,'(8es23.15)') D0_P, T0_P, Ye0_P, Ym0_P, E0_P, V10_P, V20_P, V30_P
           WRITE(17,'(i5)')       nE_G
 
-          WRITE(*,*)                      '[SolveNeutrinoMatterCoupling_FP_Nested_AA] Non-coverged inner loop'
+          WRITE(*,*)                      '[SolveNeutrinoMatterCoupling] Non-coverged inner loop'
           WRITE(*,'(a,2i5)')              '              iN_X        : ', iN_X
           WRITE(*,'(a,5x,2i23)')          '         k_outer, k_inner : ', k_outer, k_inner
           WRITE(*,'(a,5x,8es23.15)')      '    D, Ye, Ym, E, T, V_u       : ', D_P, Ye_P, Ym_P, E_P, T_P, V1_P, V2_P, V3_P
@@ -13894,7 +10023,7 @@ CONTAINS
           WRITE(17,'(8es23.15)') D0_P, T0_P, Ye0_P, Ym0_P, E0_P, V10_P, V20_P, V30_P
           WRITE(17,'(i5)')       nE_G
 
-          WRITE(*,*)                      '[SolveNeutrinoMatterCoupling_FP_Nested_AA] Error'
+          WRITE(*,*)                      '[SolveNeutrinoMatterCoupling] Error'
           WRITE(*,'(a,2i5)')              '              iN_X, Error : ', iN_X, Error(iN_X)
           WRITE(*,'(a,5x,2i23)')          '         k_outer, k_inner : ', k_outer, k_inner
           WRITE(*,'(a,5x,8es23.15)')      '    D, Ye, Ym, E, T, V_u       : ', D_P, Ye_P, Ym_P, E_P, T_P, V1_P, V2_P, V3_P
@@ -14003,7 +10132,7 @@ CONTAINS
     V20_P  = V_u_2_old(iN_X) / Unit_V
     V30_P  = V_u_3_old(iN_X) / Unit_V
 
-    WRITE(*,*)                      '[SolveNeutrinoMatterCoupling_FP_Nested_AA] Convergence Status'
+    WRITE(*,*)                      '[SolveNeutrinoMatterCoupling] Convergence Status'
     WRITE(*,'(1x,4a8,5a23)')        'iQ', 'iN_X', 'k_outer', 'k_inner', 'Q_old', 'Q', 'U', 'F(iQ)', 'G(iQ)'
     WRITE(*,'(1x,a8,3i8,5es23.15)') 'iYe', iN_X, k_outer, k_inner, Ye0_P, Ye_P, U_Ye   (iN_X), Fm_outer(iYe,iN_X), G_Ye   (iN_X)
     WRITE(*,'(1x,a8,3i8,5es23.15)') 'iYm', iN_X, k_outer, k_inner, Ym0_P, Ym_P, U_Ym   (iN_X), Fm_outer(iYm,iN_X), G_Ym   (iN_X)

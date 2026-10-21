@@ -42,6 +42,10 @@ MODULE TwoMoment_TimersModule
   REAL(DP), PUBLIC :: Timer_Collisions_CheckInner
   REAL(DP), PUBLIC :: Timer_Collisions_MatterFromRadiation
   REAL(DP), PUBLIC :: Timer_Collisions_RadiationBacktrack
+  REAL(DP), PUBLIC :: Timer_Newton_Residual
+  REAL(DP), PUBLIC :: Timer_Newton_Jacobian
+  REAL(DP), PUBLIC :: Timer_Newton_LinearSolve
+  REAL(DP), PUBLIC :: Timer_Newton_Search
   REAL(DP), PUBLIC :: Timer_Opacity_D0
   REAL(DP), PUBLIC :: Timer_Opacity_LimitD0
   REAL(DP), PUBLIC :: Timer_Opacity_EC
@@ -125,6 +129,10 @@ CONTAINS
     Timer_Collisions_CheckInner          = Zero
     Timer_Collisions_MatterFromRadiation = Zero
     Timer_Collisions_RadiationBacktrack  = Zero
+    Timer_Newton_Residual                = Zero
+    Timer_Newton_Jacobian                = Zero
+    Timer_Newton_LinearSolve             = Zero
+    Timer_Newton_Search                  = Zero
 
     Timer_Opacity_D0                     = Zero
     Timer_Opacity_LimitD0                = Zero
@@ -248,7 +256,13 @@ CONTAINS
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Collisions_MatterFromRadiation :', Timer_Collisions_MatterFromRadiation, ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
-      '    Timer_Collisions_RadiationBacktrack  :', Timer_Collisions_RadiationBacktrack , ' s'
+      '    Timer_Newton_Residual               :', Timer_Newton_Residual              , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Newton_Jacobian               :', Timer_Newton_Jacobian              , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Newton_LinearSolve            :', Timer_Newton_LinearSolve           , ' s'
+    WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
+      '    Timer_Newton_Search                 :', Timer_Newton_Search                , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &
       '    Timer_Opacity_D0                     :', Timer_Opacity_D0                    , ' s'
     WRITE(*,'(7X,A,5X,ES12.6E2,A)') &

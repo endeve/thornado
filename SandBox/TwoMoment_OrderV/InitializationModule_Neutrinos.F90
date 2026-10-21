@@ -551,11 +551,19 @@ CONTAINS
 
   SUBROUTINE InitializeFields_DeleptonizationWave1D( ProfileName )
 
+    USE mpi
+    USE ISO_FORTRAN_ENV, ONLY: ERROR_UNIT
+    USE, INTRINSIC :: IEEE_ARITHMETIC, ONLY: IEEE_IS_FINITE
+
     CHARACTER(LEN=*), INTENT(in) :: ProfileName
 
     INTEGER  :: iX1, iX2, iX3, iS, iNodeE, iNodeX, iNodeX1, iNodeZ
     INTEGER  :: i, iR, iE, nR, nE
+    INTEGER  :: SeedStatus, SeedLength, SeedError, ierr
     REAL(DP) :: R, Tau
+    REAL(DP) :: MuonInitialOccupation
+    LOGICAL  :: UseMuonInitialOccupation
+    CHARACTER(128) :: MuonInitialOccupationString
     REAL(DP), ALLOCATABLE :: R_P(:), D_P(:), T_P(:), Ye_P(:), Ym_P(:), V_P(:)
     REAL(DP), ALLOCATABLE :: E_Nu(:), R_Nu(:,:), Chi(:,:,:), fEQ(:,:,:)
     REAL(DP), ALLOCATABLE :: D_Nu_P(:,:,:), I1_Nu_P(:,:,:)
@@ -565,6 +573,40 @@ CONTAINS
     WRITE(*,*)
     WRITE(*,'(A6,A,A)') '', &
       'Initializing from Profile: ', TRIM( ProfileName )
+
+    UseMuonInitialOccupation = .FALSE.
+    MuonInitialOccupation = Zero
+    CALL GET_ENVIRONMENT_VARIABLE &
+           ( 'THORNADO_PROFILE_MUON_INITIAL_OCCUPATION', &
+             MuonInitialOccupationString, LENGTH = SeedLength, &
+             STATUS = SeedStatus )
+    IF( SeedStatus /= 1 )THEN
+      SeedError = SeedStatus
+      IF( SeedStatus == 0 .AND. SeedLength > 0 )THEN
+        READ( MuonInitialOccupationString, *, IOSTAT = SeedError ) &
+          MuonInitialOccupation
+      ELSE
+        SeedError = 1
+      END IF
+      IF( SeedError == 0 )THEN
+        IF( .NOT. IEEE_IS_FINITE( MuonInitialOccupation ) ) SeedError = 1
+      END IF
+      IF( SeedError == 0 )THEN
+        IF( MuonInitialOccupation <= Zero .OR. MuonInitialOccupation > One &
+              .OR. nSpecies < iNuM_Bar ) SeedError = 1
+      END IF
+      IF( SeedError /= 0 )THEN
+        WRITE(ERROR_UNIT,'(A)') &
+          'Invalid THORNADO_PROFILE_MUON_INITIAL_OCCUPATION: '// &
+          'requires a finite value in (0,1] and muon-neutrino species.'
+        CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
+        RETURN
+      END IF
+      UseMuonInitialOccupation = .TRUE.
+      WRITE(*,'(A6,A,ES24.15E3)') '', &
+        'Initial nu_mu and antinu_mu occupation: ', MuonInitialOccupation
+      WRITE(*,'(A6,A)') '', 'Initial muon-neutrino comoving fluxes: zero'
+    END IF
 
     CALL ReadFluidProfile( ProfileName, R_P, D_P, T_P, Ye_P, Ym_P, V_P )
 
@@ -783,11 +825,11 @@ CONTAINS
         uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I2,iS) = Zero
         uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I3,iS) = Zero
 
-if ( iS > 2 ) then
-uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS) = 1d-40
-uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS) = Zero
-
-endif
+        IF( UseMuonInitialOccupation .AND. &
+              ( iS == iNuM .OR. iS == iNuM_Bar ) )THEN
+          uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS) = MuonInitialOccupation
+          uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_I1,iS) = Zero
+        END IF
 
         CALL ComputeConserved_TwoMoment &
                ( uPR(iNodeZ,iE,iX1,iX2,iX3,iPR_D ,iS), &

@@ -32,6 +32,7 @@ MODULE StandaloneMatterDiagnosticsModule
     ComputeFromConserved_Euler_NonRelativistic
   USE NeutrinoOpacitiesComputationModule, ONLY: &
     ComputeEquilibriumDistributions, &
+    LimitEquilibriumDistributions_DG, &
     SetChargedCurrentMasks
   USE NeutrinoLeptonInteractionsModule, ONLY: &
     nGL
@@ -1509,6 +1510,8 @@ CONTAINS
                ElectronChargedCurrentMask_Option &
                  = ElectronChargedCurrentMask, &
                MuonChargedCurrentMask_Option = MuonChargedCurrentMask )
+      CALL LimitEquilibriumDistributions_DG &
+             ( 1, nE_G, 1, nSpecies, 1, nX_G, E_N, DnuEq, One )
       PR_Mean = PR_Full
       DO iS = 1, nSpecies
       DO iE = iZ_B0(1), iZ_E0(1)
@@ -1791,7 +1794,7 @@ CONTAINS
     REAL(DP) :: MatterCollisionRHS_FinalStage_Element(nQ,1+nSpecies+nC)
     REAL(DP) :: MatterUpdate_Rate_Element(nQ)
     REAL(DP) :: MatterEquationResidual_Rate_Final_Element(nQ)
-    REAL(DP) :: ConservativeProjectionMatterHeating_Rate_Final_Element
+    REAL(DP) :: CollisionRecoveryMatterHeating_Rate_Final_Element
     REAL(DP) :: QH_ByProcessSpecies_Element(nC,nSpecies)
     REAL(DP) :: Q_Transport_Element(nQ,1+nSpecies)
     REAL(DP) :: PairingAbsMax_Element(nGL), PairingRelMax_Element(nGL)
@@ -1806,14 +1809,14 @@ CONTAINS
       PairingResidual(:,:), PairingScale(:,:)
     INTEGER, ALLOCATABLE :: &
       InnerIterationsFinal(:), OuterIterationsFinal(:), &
-      ConservativeProjectionStatusFinal(:)
+      CollisionRecoveryStatusFinal(:)
     REAL(DP), ALLOCATABLE :: FirstInnerRelativeResidual(:)
     REAL(DP), ALLOCATABLE :: MatterEquationResidual_Rate_Final(:,:)
     REAL(DP), ALLOCATABLE :: InitialRadiationLimiter_Rate_Final(:,:)
     REAL(DP), ALLOCATABLE :: RadiationResidualRelativeFinal(:)
     REAL(DP), ALLOCATABLE :: &
-      ConservativeProjectionRadiationResidualRelativeFinal(:), &
-      ConservativeProjectionMatterHeatingRateFinal(:)
+      CollisionRecoveryRadiationResidualRelativeFinal(:), &
+      CollisionRecoveryMatterHeatingRateFinal(:)
     REAL(DP), ALLOCATABLE :: ConservationHandoffCheckRateFinal(:,:)
 
     IF( iZ_E0(3) /= iZ_B0(3) .OR. iZ_E0(4) /= iZ_B0(4) ) THEN
@@ -1833,9 +1836,9 @@ CONTAINS
              MatterEquationResidual_Rate_Final, &
              InitialRadiationLimiter_Rate_Final, &
              RadiationResidualRelativeFinal, &
-             ConservativeProjectionRadiationResidualRelativeFinal, &
-             ConservativeProjectionMatterHeatingRateFinal, &
-             ConservativeProjectionStatusFinal, &
+             CollisionRecoveryRadiationResidualRelativeFinal, &
+             CollisionRecoveryMatterHeatingRateFinal, &
+             CollisionRecoveryStatusFinal, &
              ConservationHandoffCheckRateFinal )
 
     ALLOCATE( MeanInvMFP(nC,nSpecies,nX_G) )
@@ -1916,7 +1919,7 @@ CONTAINS
       MatterCollisionRHS_FinalStage_Element = Zero
       MatterUpdate_Rate_Element = Zero
       MatterEquationResidual_Rate_Final_Element = Zero
-      ConservativeProjectionMatterHeating_Rate_Final_Element = Zero
+      CollisionRecoveryMatterHeating_Rate_Final_Element = Zero
       QH_ByProcessSpecies_Element = Zero
       Q_Transport_Element = Zero
       PairingAbsMax_Element = Zero
@@ -2021,10 +2024,10 @@ CONTAINS
         MatterEquationResidual_Rate_Final_Element &
           = MatterEquationResidual_Rate_Final_Element &
             + VolumeWeight * MatterEquationResidual_Rate_Final(:,iN_X)
-        ConservativeProjectionMatterHeating_Rate_Final_Element &
-          = ConservativeProjectionMatterHeating_Rate_Final_Element &
+        CollisionRecoveryMatterHeating_Rate_Final_Element &
+          = CollisionRecoveryMatterHeating_Rate_Final_Element &
             + VolumeWeight &
-              * ConservativeProjectionMatterHeatingRateFinal(iN_X)
+              * CollisionRecoveryMatterHeatingRateFinal(iN_X)
         EmAb_RateDecomposition_Element = EmAb_RateDecomposition_Element &
                               + VolumeWeight * EmAb_RateDecomposition(:,:,iN_X)
         NNS_RateDecomposition_Element = NNS_RateDecomposition_Element &
@@ -2070,8 +2073,8 @@ CONTAINS
         = MatterUpdate_Rate_Element / ElementVolume
       MatterEquationResidual_Rate_Final_Element &
         = MatterEquationResidual_Rate_Final_Element / ElementVolume
-      ConservativeProjectionMatterHeating_Rate_Final_Element &
-        = ConservativeProjectionMatterHeating_Rate_Final_Element / ElementVolume
+      CollisionRecoveryMatterHeating_Rate_Final_Element &
+        = CollisionRecoveryMatterHeating_Rate_Final_Element / ElementVolume
       EmAb_RateDecomposition_Element       = EmAb_RateDecomposition_Element / ElementVolume
       NNS_RateDecomposition_Element        = NNS_RateDecomposition_Element / ElementVolume
       QH_ByProcessSpecies_Element = QH_ByProcessSpecies_Element / ElementVolume
@@ -2230,7 +2233,7 @@ CONTAINS
         MatterEquationResidual_Rate_Final_Element(iQ_H) &
           / ( Erg / Centimeter**3 / Second )
       WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
-        ConservativeProjectionMatterHeating_Rate_Final_Element &
+        CollisionRecoveryMatterHeating_Rate_Final_Element &
           / ( Erg / Centimeter**3 / Second )
       WRITE(Unit,'(ES24.16E3,1X)',ADVANCE='NO') &
         ( MatterCollisionRHS_FinalStage_Element(iQ_H,1) &
@@ -2361,9 +2364,9 @@ CONTAINS
              MatterEquationResidual_Rate_Final, &
              InitialRadiationLimiter_Rate_Final, &
              RadiationResidualRelativeFinal, &
-             ConservativeProjectionRadiationResidualRelativeFinal, &
-             ConservativeProjectionMatterHeatingRateFinal, &
-             ConservativeProjectionStatusFinal, &
+             CollisionRecoveryRadiationResidualRelativeFinal, &
+             CollisionRecoveryMatterHeatingRateFinal, &
+             CollisionRecoveryStatusFinal, &
              MatterCollisionRHS_FinalStage, MatterUpdate_Rate )
 
     CALL WriteSolverConservationCheck &
@@ -2398,9 +2401,9 @@ CONTAINS
         FirstInnerRelativeResidual, MatterEquationResidual_Rate_Final, &
         InitialRadiationLimiter_Rate_Final, &
         RadiationResidualRelativeFinal, &
-        ConservativeProjectionRadiationResidualRelativeFinal, &
-        ConservativeProjectionMatterHeatingRateFinal, &
-        ConservativeProjectionStatusFinal, ConservationHandoffCheckRateFinal )
+        CollisionRecoveryRadiationResidualRelativeFinal, &
+        CollisionRecoveryMatterHeatingRateFinal, &
+        CollisionRecoveryStatusFinal, ConservationHandoffCheckRateFinal )
 
   END SUBROUTINE WriteStandaloneMatterDiagnostics
 
@@ -2449,7 +2452,7 @@ CONTAINS
       = [ .TRUE., .TRUE., .FALSE., .FALSE., .FALSE. ]
 
     INTEGER :: iCR, iE, iN_E, iN_X, iNodeE, iNodeX, iNodeZ
-    INTEGER :: iRaw, iS, iStage, iState, iStateX1, iStateX2, iStateX3
+    INTEGER :: iRaw, iS, iStage, iState, iStateE, iStateX1, iStateX2, iStateX3
     INTEGER :: iX1, nE_G, nX_G, StageUnit, Unit
     REAL(DP) :: ActualRate, Energy, EulerPrediction, Radius
     REAL(DP) :: SemidiscreteRate
@@ -2664,9 +2667,11 @@ CONTAINS
     END DO
     WRITE(StageUnit,'(A)') &
       '# stage state element spatial_node energy_element energy_node species' // &
-      ' N G1 G2 G3 fluid_D fluid_S1 fluid_S2 fluid_S3 fluid_E fluid_Ne'
+      ' N G1 G2 G3 fluid_D fluid_S1 fluid_S2 fluid_S3 fluid_E fluid_Ne fluid_Nm'
     DO iStage = 1, SIZE( StageFluidState, 6 )
     DO iState = 1, SIZE( StageFluidState, 7 )
+      IF( iState == iIMEX_CompletedStep .AND. &
+          (iStage /= SIZE(StageFluidState,6) .OR. .NOT. HasFinalAssembly_IMEX_RK()) ) CYCLE
     DO iX1 = iZ_B0(2), iZ_E0(2)
       iStateX1 = iX1 - iZ_B1(2) + 1
       iStateX2 = 1 - iZ_B1(3) + 1
@@ -2674,6 +2679,7 @@ CONTAINS
       DO iNodeX = 1, nDOFX
       DO iS = 1, nSpecies
       DO iE = iZ_B0(1), iZ_E0(1)
+        iStateE = iE - iZ_B1(1) + 1
       DO iNodeE = 1, nDOFE
         iNodeZ = iNodeE + ( iNodeX - 1 ) * nDOFE
         WRITE(StageUnit,'(7(I0,1X))',ADVANCE='NO') &
@@ -2682,7 +2688,7 @@ CONTAINS
         DO iCR = 1, nCR
           WRITE(StageUnit,'(ES24.16E3,1X)',ADVANCE='NO') &
             StageRadiationState &
-              (iNodeZ,iE,iStateX1,iStateX2,iStateX3,iCR,iS,iStage,iState)
+              (iNodeZ,iStateE,iStateX1,iStateX2,iStateX3,iCR,iS,iStage,iState)
         END DO
         WRITE(StageUnit,'(*(ES24.16E3,1X))') &
           StageFluidState(iNodeX,iStateX1,iStateX2,iStateX3,iCF_D, &
@@ -2696,6 +2702,8 @@ CONTAINS
           StageFluidState(iNodeX,iStateX1,iStateX2,iStateX3,iCF_E, &
                           iStage,iState), &
           StageFluidState(iNodeX,iStateX1,iStateX2,iStateX3,iCF_Ne, &
+                          iStage,iState), &
+          StageFluidState(iNodeX,iStateX1,iStateX2,iStateX3,iCF_Nm, &
                           iStage,iState)
       END DO
       END DO
@@ -2719,9 +2727,9 @@ CONTAINS
       MatterEquationResidual_Rate_Final, &
       InitialRadiationLimiter_Rate_Final, &
       RadiationResidualRelativeFinal, &
-      ConservativeProjectionRadiationResidualRelativeFinal, &
-      ConservativeProjectionMatterHeatingRateFinal, &
-      ConservativeProjectionStatusFinal, &
+      CollisionRecoveryRadiationResidualRelativeFinal, &
+      CollisionRecoveryMatterHeatingRateFinal, &
+      CollisionRecoveryStatusFinal, &
       MatterCollisionRHS_FinalStage, MatterUpdate_Rate )
 
     CHARACTER(*), INTENT(in) :: FileName
@@ -2736,10 +2744,10 @@ CONTAINS
     REAL(DP), INTENT(in) :: InitialRadiationLimiter_Rate_Final(:,:)
     REAL(DP), INTENT(in) :: RadiationResidualRelativeFinal(:)
     REAL(DP), INTENT(in) :: &
-      ConservativeProjectionRadiationResidualRelativeFinal(:)
+      CollisionRecoveryRadiationResidualRelativeFinal(:)
     REAL(DP), INTENT(in) :: &
-      ConservativeProjectionMatterHeatingRateFinal(:)
-    INTEGER,  INTENT(in) :: ConservativeProjectionStatusFinal(:)
+      CollisionRecoveryMatterHeatingRateFinal(:)
+    INTEGER,  INTENT(in) :: CollisionRecoveryStatusFinal(:)
     REAL(DP), INTENT(in) :: &
       MatterCollisionRHS_FinalStage &
         (1:nQ,1:1+nSpecies+nC,1:nDOFX, &
@@ -2794,9 +2802,9 @@ CONTAINS
         FirstInnerRelativeResidual(iN_X), &
         MERGE( 1, 0, InnerIterationsFinal(iN_X) > 1 ), &
         RadiationResidualRelativeFinal(iN_X), &
-        ConservativeProjectionRadiationResidualRelativeFinal(iN_X), &
-        ConservativeProjectionStatusFinal(iN_X), &
-        ConservativeProjectionMatterHeatingRateFinal(iN_X) &
+        CollisionRecoveryRadiationResidualRelativeFinal(iN_X), &
+        CollisionRecoveryStatusFinal(iN_X), &
+        CollisionRecoveryMatterHeatingRateFinal(iN_X) &
           / ( Erg / Centimeter**3 / Second ), &
         InitialRadiationLimiter_Rate_Final(iQ_Le,iN_X) &
           / ( One / Centimeter**3 / Second ), &
@@ -3465,6 +3473,9 @@ CONTAINS
                ElectronChargedCurrentMask_Option &
                  = ElectronChargedCurrentMask, &
                MuonChargedCurrentMask_Option = MuonChargedCurrentMask )
+
+      CALL LimitEquilibriumDistributions_DG &
+             ( 1, nE_G, 1, nSpecies, 1, nX_G, E_N, DnuEq, One )
 
       DO iRaw = 1, nStreamingRaw
 

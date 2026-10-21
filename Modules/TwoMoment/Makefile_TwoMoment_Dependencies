@@ -51,6 +51,22 @@ TwoMoment_NeutrinoMatterSolverModule.o: \
   TwoMoment_ClosureModule.o \
   TwoMoment_NeutrinoMatterSolverModule.F90
 
+ifeq ($(TWOMOMENT_ORDER),ORDER_V)
+TwoMoment_NeutrinoMatterSolverModule.o: ReferenceElementModuleE_Lagrange.o
+TwoMoment_NeutrinoMatterSolverModule.o: TwoMoment_NewtonSolverModule_OrderV.o
+
+TwoMoment_RadiationStateRecoveryModule_OrderV.o: KindModule.o TwoMoment_RetainedArithmeticModule.o \
+  TwoMoment_CollisionOperatorModule_OrderV.o TwoMoment_RadiationStateRecoveryModule_OrderV.F90
+
+TwoMoment_NewtonSolverModule_OrderV.o: KindModule.o LinearAlgebraModule.o TwoMoment_TimersModule.o \
+  TwoMoment_RetainedArithmeticModule.o TwoMoment_CollisionOperatorModule_OrderV.o TwoMoment_RadiationStateRecoveryModule_OrderV.o \
+  TwoMoment_NewtonSolverModule_OrderV.F90
+endif
+
+TwoMoment_RetainedArithmeticModule.o: KindModule.o TwoMoment_RetainedArithmeticModule.F90
+
+TwoMoment_CollisionOperatorModule_OrderV.o: KindModule.o TwoMoment_RetainedArithmeticModule.o TwoMoment_CollisionOperatorModule_OrderV.F90
+
 TwoMoment_DiscretizationModule_Collisions_Neutrinos.o: \
   KindModule.o \
   UnitsModule.o \

@@ -6,6 +6,28 @@ else ifeq ($(TWOMOMENT_ORDER),RELATIVISTIC)
   include $(THORNADO_DIR)/Modules/TwoMoment/Relativistic/Makefile_TwoMoment_Relativistic_ObjectFiles
 endif
 
+ifeq ($(TWOMOMENT_ORDER),ORDER_V)
+TWO_MOMENT += TwoMoment_RetainedArithmeticModule.o TwoMoment_CollisionOperatorModule_OrderV.o
+TWO_MOMENT += TwoMoment_RadiationStateRecoveryModule_OrderV.o TwoMoment_NewtonSolverModule_OrderV.o
+
+# Error-free high/low transforms require explicit evaluation order. These
+# flags apply only to the new kernels, not to their existing prerequisites.
+# Override RETAINED_FP_FLAGS in a machine file for a different compiler.
+ifneq ($(filter %nvhpc %pgi,$(MACHINE)),)
+RETAINED_FP_FLAGS ?= -Kieee -Mnofma
+else ifneq ($(findstring intel,$(MACHINE)),)
+RETAINED_FP_FLAGS ?= -fp-model strict -no-fma
+else ifneq ($(findstring cce,$(MACHINE)),)
+RETAINED_FP_FLAGS ?= $(error Set RETAINED_FP_FLAGS to strict IEEE flags for this CCE version)
+else
+RETAINED_FP_FLAGS ?= -fno-fast-math -fprotect-parens -ffp-contract=off
+endif
+
+TwoMoment_RetainedArithmeticModule.o TwoMoment_CollisionOperatorModule_OrderV.o \
+TwoMoment_RadiationStateRecoveryModule_OrderV.o TwoMoment_NewtonSolverModule_OrderV.o: %.o: %.F90
+	$(FORTRAN) -c $(DEFINES) $(FLAGS) $(RETAINED_FP_FLAGS) $(INCLUDE) $(SUFFIX_f90) $<
+endif
+
 TWO_MOMENT += \
   TwoMoment_TimersModule.o \
   TwoMoment_ClosureModule.o \

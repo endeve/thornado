@@ -1781,6 +1781,9 @@ CONTAINS
   END FUNCTION QueryOpacity_NuPair
 
 
+  ! The muon EmAb density window is the common muon-interaction switch.
+  ! Each additional process may restrict this window further.  SetOpacityMask
+  ! subsequently reduces every process over complete spatial elements.
   LOGICAL FUNCTION QueryOpacity_NMS( D )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -1790,7 +1793,8 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: D
 
-    QueryOpacity_NMS = ( D >= NMS_MinD .AND. D <= NMS_MaxD )
+    QueryOpacity_NMS = QueryOpacity_EmAb_Muon( D ) &
+                        .AND. ( D >= NMS_MinD .AND. D <= NMS_MaxD )
 
   END FUNCTION QueryOpacity_NMS
 
@@ -1804,7 +1808,8 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: D
 
-    QueryOpacity_LFE = ( D >= LFE_MinD .AND. D <= LFE_MaxD )
+    QueryOpacity_LFE = QueryOpacity_EmAb_Muon( D ) &
+                        .AND. ( D >= LFE_MinD .AND. D <= LFE_MaxD )
 
   END FUNCTION QueryOpacity_LFE
 
@@ -1818,7 +1823,8 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: D
 
-    QueryOpacity_LFC = ( D >= LFC_MinD .AND. D <= LFC_MaxD )
+    QueryOpacity_LFC = QueryOpacity_EmAb_Muon( D ) &
+                        .AND. ( D >= LFC_MinD .AND. D <= LFC_MaxD )
 
   END FUNCTION QueryOpacity_LFC
 
@@ -1832,7 +1838,8 @@ CONTAINS
 
     REAL(DP), INTENT(in) :: D
 
-    QueryOpacity_IMD = ( D >= IMD_MinD .AND. D <= IMD_MaxD )
+    QueryOpacity_IMD = QueryOpacity_EmAb_Muon( D ) &
+                        .AND. ( D >= IMD_MinD .AND. D <= IMD_MaxD )
 
   END FUNCTION QueryOpacity_IMD
 

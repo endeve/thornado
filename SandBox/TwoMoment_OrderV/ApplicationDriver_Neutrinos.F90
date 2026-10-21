@@ -1,5 +1,6 @@
 PROGRAM ApplicationDriver_Neutrinos
 
+  USE, INTRINSIC :: IEEE_ARITHMETIC, ONLY: IEEE_IS_FINITE
   USE KindModule, ONLY: &
     DP, Zero, Half, One, Two, Three, &
     Pi, TwoPi, SqrtTiny
@@ -127,12 +128,10 @@ PROGRAM ApplicationDriver_Neutrinos
   LOGICAL       :: Include_IMD
   LOGICAL       :: Include_LinCorr
   LOGICAL       :: FreezeOpacities
-  LOGICAL       :: UseConservativeProjection
-  LOGICAL       :: UseRadiationOnlySolve
   LOGICAL       :: UseMuonLeptonSource
+  REAL(DP)      :: NewtonFluidSourceTolerance
   LOGICAL       :: DebugMuonCoupling
-  LOGICAL       :: TraceRadiationOnlySolve
-  LOGICAL       :: AnalyzeRadiationOnlyJacobian
+  LOGICAL       :: TraceNewtonSolve
   LOGICAL       :: UseSourceAwareLLF
   LOGICAL       :: UseAbsorptionDiffusionScaledLLF
   LOGICAL       :: MovingAllProcesses
@@ -155,6 +154,7 @@ PROGRAM ApplicationDriver_Neutrinos
   INTEGER       :: M_outer, MaxIter_outer
   INTEGER       :: M_inner, MaxIter_inner
   INTEGER       :: MuonChargedCurrentMethod
+  REAL(DP)      :: MuonCCMinDensityCGS
   INTEGER       :: MuonCCQuadratureOrder
   INTEGER       :: GeneralLeptonQuadratureOrder
   INTEGER       :: ScatteringDiffusionNX
@@ -181,14 +181,11 @@ PROGRAM ApplicationDriver_Neutrinos
   CHARACTER(128) :: CoupledDiffusionSchemeString
   CHARACTER(128) :: NodesString
   CHARACTER(128) :: SourceAwareLLFString
-  CHARACTER(128) :: ConservativeProjectionString
-  CHARACTER(128) :: RadiationOnlySolveString
-  CHARACTER(128) :: RemovedOptionString
+  CHARACTER(128) :: SolverMethodString = 'nested-aa'
+  CHARACTER(128) :: EnvironmentValue
   CHARACTER(128) :: DebugMuonCouplingString
-  CHARACTER(128) :: TraceRadiationOnlySolveString
-  CHARACTER(128) :: AnalyzeRadiationOnlyJacobianString
-  CHARACTER(128) :: ReducedSolverMethodString
-  CHARACTER(512) :: RadiationOnlyTraceFile
+  CHARACTER(128) :: TraceNewtonSolveString
+  CHARACTER(512) :: NewtonTraceFile
   CHARACTER(128) :: MatterExchangeShadowsString
   CHARACTER(128) :: MaxCyclesString
   CHARACTER(128) :: EndTimeMillisecondsString
@@ -200,6 +197,9 @@ PROGRAM ApplicationDriver_Neutrinos
   CHARACTER(128) :: MovingAllProcessesString
   CHARACTER(128) :: ProfileSpeciesString
   CHARACTER(128) :: ProfileAllProcessesString
+  CHARACTER(128) :: ProfileNNSString
+  CHARACTER(128) :: ProfileGeneralLeptonProcessesString
+  CHARACTER(128) :: ProfileMaximumIterationsString
   CHARACTER(128) :: ProfileMomentumCouplingString
   CHARACTER(128) :: ProfileRadiationLimitersString
   CHARACTER(128) :: WriteSolverHistoryString
@@ -300,16 +300,18 @@ PROGRAM ApplicationDriver_Neutrinos
   Include_IMD     = .FALSE.
   Include_LinCorr = .FALSE.
   wMatterRHS      = [ One, One, One, One, One, One ]
-  DnuMax          = HUGE( One )
+  DnuMax          = One
   FreezeOpacities = .FALSE.
-  UseConservativeProjection = .FALSE.
-  UseRadiationOnlySolve = .FALSE.
+
   UseMuonLeptonSource = .FALSE.
+
+  NewtonFluidSourceTolerance = Zero
+
   DebugMuonCoupling = .FALSE.
-  TraceRadiationOnlySolve = .FALSE.
-  AnalyzeRadiationOnlyJacobian = .FALSE.
-  RadiationOnlyTraceFile = 'reduced_solver_trace'
-  ReducedSolverMethodString = 'anderson'
+  TraceNewtonSolve = .FALSE.
+
+  NewtonTraceFile = 'newton_trace'
+
   UseSourceAwareLLF = .FALSE.
   UseAbsorptionDiffusionScaledLLF = .FALSE.
   AbsorptionDiffusionLLFPenaltyFactor = One
@@ -319,6 +321,7 @@ PROGRAM ApplicationDriver_Neutrinos
   WriteSolverHistory = .FALSE.
   ComputeMatterExchangeShadows = .FALSE.
   MuonChargedCurrentMethod = 1
+  MuonCCMinDensityCGS = Zero
   MuonCCQuadratureOrder = 32
   GeneralLeptonQuadratureOrder = 16
   MatterDiagnosticsFileName = 'matter_diagnostics.dat'
@@ -394,7 +397,7 @@ PROGRAM ApplicationDriver_Neutrinos
       FreezeOpacities = .FALSE.
 
       wMatterRHS = [ One, One, One, One, One, One ]
-      DnuMax     = One - 1.0d-6
+      DnuMax     = One
 
       M_outer       = 2
       MaxIter_outer = 100
@@ -456,7 +459,7 @@ PROGRAM ApplicationDriver_Neutrinos
       FreezeOpacities = .FALSE.
 
       wMatterRHS = [ One, One, One, One, One, One ]
-      DnuMax     = One - 1.0d-6
+      DnuMax     = One
 
       M_outer       = 2
       MaxIter_outer = 100
@@ -795,7 +798,7 @@ PROGRAM ApplicationDriver_Neutrinos
         Include_Brem    = .TRUE.
         Include_LinCorr = .FALSE.
         wMatterRHS      = [ One, One, One, One, One, One ]
-        DnuMax          = One-1.0d-6
+        DnuMax          = One
         FreezeOpacities = .FALSE.
 
       ELSE
@@ -886,16 +889,14 @@ PROGRAM ApplicationDriver_Neutrinos
       Include_LinCorr = .false.
       FreezeOpacities = .FALSE. ! --- Keep opacities fixed during iterations?
 
-      DnuMax          = One !One - 1.0d-6
+      DnuMax          = One
 
       M_inner = 2
       MaxIter_inner   = 1000
 
       Rtol_outer = 1.0d-8
       Rtol_inner = 1.0d-8
-  
-  
-      UseConservativeProjection = .false.
+
 
       WriteMatterDiagnostics = .true.
       WriteMatterExchangeAttribution = .true.
@@ -903,6 +904,51 @@ PROGRAM ApplicationDriver_Neutrinos
       !MatterDiagnosticsFileName = 'md_PDARS_All_Iso_lim_tol_1e-8_1e-8_no_cons2_wb_all.dat'
       MatterDiagnosticsFileName = 'lol.dat'
 
+  M_outer         = 2
+  MaxIter_outer   = 1000
+  Rtol_outer      = 1.0d-8
+  M_inner         = 2
+  MaxIter_inner   = 1000
+  Rtol_inner      = 1.0d-8
+  Include_NNS     = .TRUE.
+  Include_NES     = .TRUE.
+  Include_Pair    = .TRUE.
+  Include_NuPair  = .TRUE.
+  Include_Brem    = .TRUE.
+  Include_NMS     = .true.
+  Include_LFE     = .true.
+  Include_LFC     = .true.
+  Include_IMD     = .true.
+  Include_LinCorr = .FALSE.
+  wMatterRHS      = [ One, One, One, One, One, One ]
+  DnuMax          = One
+  FreezeOpacities = .FALSE.
+
+  DebugMuonCoupling = .FALSE.
+  TraceNewtonSolve = .FALSE.
+
+  NewtonTraceFile = 'newton_trace'
+
+  UseSourceAwareLLF = .true.
+  UseAbsorptionDiffusionScaledLLF = .FALSE.
+  AbsorptionDiffusionLLFPenaltyFactor = One
+  WriteMatterDiagnostics = .FALSE.
+  WriteMatterExchangeAttribution = .FALSE.
+  WriteCumulativeConservation = .FALSE.
+  WriteSolverHistory = .FALSE.
+  ComputeMatterExchangeShadows = .FALSE.
+  MuonChargedCurrentMethod = 2
+  MuonCCQuadratureOrder = 8
+  GeneralLeptonQuadratureOrder = 8
+  MatterDiagnosticsFileName = 'matter_diagnostics.dat'
+  !ProfileName = ''
+  RunEquilibriumTest = .FALSE.
+  RequireStationaryEquilibrium = .FALSE.
+  RunManufacturedOpaqueDiffusion = .FALSE.
+  RunManufacturedVariableOpacityDiffusion = .FALSE.
+  RunScatteringDiffusionLimit = .FALSE.
+  RunAbsorptionDiffusionBalance = .FALSE.
+  RunCoupledAbsorptionDiffusion = .FALSE.
 
     CASE( 'EquilibriumAdvection' )
 
@@ -1006,7 +1052,7 @@ PROGRAM ApplicationDriver_Neutrinos
       Include_LinCorr = .FALSE.
 
       wMatterRHS = [ One, One, One, One, One, One ]
-      DnuMax = One - 1.0d-6
+      DnuMax = One
 
       WriteMatterDiagnostics = .FALSE.
       WriteMatterExchangeAttribution = .FALSE.
@@ -1034,25 +1080,27 @@ PROGRAM ApplicationDriver_Neutrinos
       ERROR STOP 'THORNADO_MUON_CC_METHOD must be 1 or 2.'
   END IF
 
-  RemovedOptionString = ''
+  EnvironmentValue = ''
   CALL GET_ENVIRONMENT_VARIABLE &
-         ( 'THORNADO_REDUCED_SOLVER_RETAIN_ETA_MU', RemovedOptionString, &
-           LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
-  IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 ) &
-    ERROR STOP &
-      'THORNADO_REDUCED_SOLVER_RETAIN_ETA_MU was removed; unset it.'
-
-  CALL GET_ENVIRONMENT_VARIABLE &
-         ( 'THORNADO_REDUCED_SOLVER_METHOD', RemovedOptionString, &
-           LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
-  IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 ) &
-    ReducedSolverMethodString = TRIM(RemovedOptionString)
-
-  CALL GET_ENVIRONMENT_VARIABLE &
-         ( 'THORNADO_MUON_LEPTON_SOURCE', RemovedOptionString, &
+         ( 'THORNADO_MUON_CC_MIN_DENSITY_CGS', EnvironmentValue, &
            LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
   IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
-    SELECT CASE(TRIM(ADJUSTL(RemovedOptionString)))
+    READ( EnvironmentValue, *, IOSTAT = ReadStatus ) MuonCCMinDensityCGS
+    IF( ReadStatus /= 0 ) ERROR STOP 'Invalid muon charged-current density cutoff.'
+    IF( .NOT. IEEE_IS_FINITE(MuonCCMinDensityCGS) .OR. MuonCCMinDensityCGS < Zero ) &
+      ERROR STOP 'Muon charged-current density cutoff must be finite and nonnegative.'
+  END IF
+
+  CALL GET_ENVIRONMENT_VARIABLE &
+         ( 'THORNADO_COLLISION_SOLVER', SolverMethodString, &
+           LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+  IF( EnvironmentStatus /= 0 .OR. EnvironmentLength == 0 ) SolverMethodString = 'nested-aa'
+
+  CALL GET_ENVIRONMENT_VARIABLE &
+         ( 'THORNADO_MUON_LEPTON_SOURCE', EnvironmentValue, &
+           LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+  IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+    SELECT CASE(TRIM(ADJUSTL(EnvironmentValue)))
       CASE('true','TRUE','on','ON','1')
         UseMuonLeptonSource = .TRUE.
       CASE('false','FALSE','off','OFF','0')
@@ -1062,51 +1110,41 @@ PROGRAM ApplicationDriver_Neutrinos
     END SELECT
   END IF
 
-  TraceRadiationOnlySolveString = ''
   CALL GET_ENVIRONMENT_VARIABLE &
-         ( 'THORNADO_TRACE_REDUCED_SOLVER', &
-           TraceRadiationOnlySolveString, &
+         ( 'THORNADO_NEWTON_FLUID_SOURCE_TOLERANCE', EnvironmentValue, &
+           LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+  IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+    READ(EnvironmentValue,*,IOSTAT=ReadStatus) NewtonFluidSourceTolerance
+    IF( ReadStatus/=0 ) ERROR STOP 'Invalid THORNADO_NEWTON_FLUID_SOURCE_TOLERANCE.'
+    IF( .NOT. IEEE_IS_FINITE(NewtonFluidSourceTolerance) .OR. NewtonFluidSourceTolerance<=Zero ) &
+      ERROR STOP 'THORNADO_NEWTON_FLUID_SOURCE_TOLERANCE must be finite and positive.'
+  END IF
+
+  TraceNewtonSolveString = ''
+  CALL GET_ENVIRONMENT_VARIABLE &
+         ( 'THORNADO_TRACE_NEWTON', &
+           TraceNewtonSolveString, &
            LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
 
   IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
 
-    SELECT CASE( TRIM( ADJUSTL( TraceRadiationOnlySolveString ) ) )
+    SELECT CASE( TRIM( ADJUSTL( TraceNewtonSolveString ) ) )
       CASE( 'true', 'TRUE', 'on', 'ON', '1' )
-        TraceRadiationOnlySolve = .TRUE.
+        TraceNewtonSolve = .TRUE.
       CASE( 'false', 'FALSE', 'off', 'OFF', '0' )
-        TraceRadiationOnlySolve = .FALSE.
+        TraceNewtonSolve = .FALSE.
       CASE DEFAULT
         ERROR STOP &
-          'THORNADO_TRACE_REDUCED_SOLVER must be true or false.'
+          'THORNADO_TRACE_NEWTON must be true or false.'
     END SELECT
 
   END IF
 
   CALL GET_ENVIRONMENT_VARIABLE &
-         ( 'THORNADO_REDUCED_SOLVER_TRACE_FILE', RadiationOnlyTraceFile, &
+         ( 'THORNADO_NEWTON_TRACE_FILE', NewtonTraceFile, &
            LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
   IF( EnvironmentStatus /= 0 .OR. EnvironmentLength == 0 ) &
-    RadiationOnlyTraceFile = 'reduced_solver_trace'
-
-  AnalyzeRadiationOnlyJacobianString = ''
-  CALL GET_ENVIRONMENT_VARIABLE &
-         ( 'THORNADO_ANALYZE_REDUCED_SOLVER_JACOBIAN', &
-           AnalyzeRadiationOnlyJacobianString, &
-           LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
-
-  IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
-
-    SELECT CASE( TRIM( ADJUSTL( AnalyzeRadiationOnlyJacobianString ) ) )
-      CASE( 'true', 'TRUE', 'on', 'ON', '1' )
-        AnalyzeRadiationOnlyJacobian = .TRUE.
-      CASE( 'false', 'FALSE', 'off', 'OFF', '0' )
-        AnalyzeRadiationOnlyJacobian = .FALSE.
-      CASE DEFAULT
-        ERROR STOP &
-          'THORNADO_ANALYZE_REDUCED_SOLVER_JACOBIAN must be true or false.'
-    END SELECT
-
-  END IF
+    NewtonTraceFile = 'newton_trace'
 
   DebugMuonCouplingString = ''
   CALL GET_ENVIRONMENT_VARIABLE &
@@ -1164,6 +1202,25 @@ PROGRAM ApplicationDriver_Neutrinos
 
   IF( TRIM( ProgramName ) == 'DeleptonizationWave1D' )THEN
 
+    ProfileMaximumIterationsString = ''
+    CALL GET_ENVIRONMENT_VARIABLE &
+      ('THORNADO_PROFILE_MAX_INNER_ITERATIONS',ProfileMaximumIterationsString, &
+       LENGTH=EnvironmentLength,STATUS=EnvironmentStatus)
+    IF( EnvironmentStatus==0 .AND. EnvironmentLength>0 )THEN
+      READ(ProfileMaximumIterationsString,*,IOSTAT=ReadStatus) MaxIter_inner
+      IF( ReadStatus/=0 .OR. MaxIter_inner<1 ) &
+        ERROR STOP 'THORNADO_PROFILE_MAX_INNER_ITERATIONS must be a positive integer.'
+    END IF
+    ProfileMaximumIterationsString = ''
+    CALL GET_ENVIRONMENT_VARIABLE &
+      ('THORNADO_PROFILE_MAX_OUTER_ITERATIONS',ProfileMaximumIterationsString, &
+       LENGTH=EnvironmentLength,STATUS=EnvironmentStatus)
+    IF( EnvironmentStatus==0 .AND. EnvironmentLength>0 )THEN
+      READ(ProfileMaximumIterationsString,*,IOSTAT=ReadStatus) MaxIter_outer
+      IF( ReadStatus/=0 .OR. MaxIter_outer<1 ) &
+        ERROR STOP 'THORNADO_PROFILE_MAX_OUTER_ITERATIONS must be a positive integer.'
+    END IF
+
     ProfileSpeciesString = ''
     CALL GET_ENVIRONMENT_VARIABLE &
            ( 'THORNADO_PROFILE_NSPECIES', ProfileSpeciesString, &
@@ -1190,17 +1247,57 @@ PROGRAM ApplicationDriver_Neutrinos
           ERROR STOP &
             'THORNADO_PROFILE_ALL_PROCESSES must be true or false.'
       END SELECT
+      Include_NNS    = ProfileAllProcesses
+      Include_NES    = ProfileAllProcesses
+      Include_Pair   = ProfileAllProcesses
+      Include_NuPair = ProfileAllProcesses
+      Include_Brem   = ProfileAllProcesses
+      Include_NMS    = ProfileAllProcesses
+      Include_LFE    = ProfileAllProcesses
+      Include_LFC    = ProfileAllProcesses
+      Include_IMD    = ProfileAllProcesses
     END IF
-    IF( ProfileAllProcesses )THEN
-      Include_NNS    = .TRUE.
-      Include_NES    = .TRUE.
-      Include_Pair   = .TRUE.
-      Include_NuPair = .TRUE.
-      Include_Brem   = .TRUE.
-      Include_NMS    = .false. !.TRUE.
-      Include_LFE    = .false. !.TRUE.
-      Include_LFC    = .false. !.TRUE.
-      Include_IMD    = .false. !.TRUE.
+
+    ! An explicit NNS override preserves the other selected processes.
+    ProfileNNSString = ''
+    CALL GET_ENVIRONMENT_VARIABLE &
+           ( 'THORNADO_PROFILE_NNS', ProfileNNSString, &
+             LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+    IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+      SELECT CASE( TRIM( ADJUSTL( ProfileNNSString ) ) )
+        CASE( 'true', 'TRUE', 'on', 'ON', '1' )
+          Include_NNS = .TRUE.
+        CASE( 'false', 'FALSE', 'off', 'OFF', '0' )
+          Include_NNS = .FALSE.
+        CASE DEFAULT
+          ERROR STOP 'THORNADO_PROFILE_NNS must be true or false.'
+      END SELECT
+      WRITE(*,'(A,L1)') '  Profile NNS enabled: ', Include_NNS
+    END IF
+
+    ! Allow the newer lepton interactions to be controlled separately
+    ! from NNS, NES, pair processes, and bremsstrahlung in profile tests.
+    ProfileGeneralLeptonProcessesString = ''
+    CALL GET_ENVIRONMENT_VARIABLE &
+           ( 'THORNADO_PROFILE_GENERAL_LEPTON_PROCESSES', &
+             ProfileGeneralLeptonProcessesString, &
+             LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
+    IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
+      SELECT CASE( TRIM( ADJUSTL( ProfileGeneralLeptonProcessesString ) ) )
+        CASE( 'true', 'TRUE', 'on', 'ON', '1' )
+          Include_NMS = .TRUE.
+          Include_LFE = .TRUE.
+          Include_LFC = .TRUE.
+          Include_IMD = .TRUE.
+        CASE( 'false', 'FALSE', 'off', 'OFF', '0' )
+          Include_NMS = .FALSE.
+          Include_LFE = .FALSE.
+          Include_LFC = .FALSE.
+          Include_IMD = .FALSE.
+        CASE DEFAULT
+          ERROR STOP &
+            'THORNADO_PROFILE_GENERAL_LEPTON_PROCESSES must be true or false.'
+      END SELECT
     END IF
 
     ProfileMomentumCoupling = .FALSE.
@@ -1404,25 +1501,6 @@ PROGRAM ApplicationDriver_Neutrinos
     dt_RATE = One
   END IF
 
-  RadiationOnlySolveString = ''
-  CALL GET_ENVIRONMENT_VARIABLE &
-         ( 'THORNADO_RADIATION_ONLY_SOLVE', RadiationOnlySolveString, &
-           LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
-
-  IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
-
-    SELECT CASE( TRIM( ADJUSTL( RadiationOnlySolveString ) ) )
-      CASE( 'true', 'TRUE', 'on', 'ON', '1' )
-        UseRadiationOnlySolve = .TRUE.
-      CASE( 'false', 'FALSE', 'off', 'OFF', '0' )
-        UseRadiationOnlySolve = .FALSE.
-      CASE DEFAULT
-        ERROR STOP &
-          'THORNADO_RADIATION_ONLY_SOLVE must be true or false.'
-    END SELECT
-
-  END IF
-
   MatterExchangeShadowsString = ''
   CALL GET_ENVIRONMENT_VARIABLE &
          ( 'THORNADO_MATTER_EXCHANGE_SHADOWS', &
@@ -1430,43 +1508,34 @@ PROGRAM ApplicationDriver_Neutrinos
            LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
 
   IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
-
     SELECT CASE( TRIM( ADJUSTL( MatterExchangeShadowsString ) ) )
       CASE( 'true', 'TRUE', 'on', 'ON', '1' )
         ComputeMatterExchangeShadows = .TRUE.
       CASE( 'false', 'FALSE', 'off', 'OFF', '0' )
         ComputeMatterExchangeShadows = .FALSE.
       CASE DEFAULT
-        ERROR STOP &
-          'THORNADO_MATTER_EXCHANGE_SHADOWS must be true or false.'
+        ERROR STOP 'THORNADO_MATTER_EXCHANGE_SHADOWS must be true or false.'
     END SELECT
-
   END IF
 
   NodesString = ''
   CALL GET_ENVIRONMENT_VARIABLE &
          ( 'THORNADO_NNODES', NodesString, &
            LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
-
   IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
-
     READ(NodesString,*,IOSTAT=ReadStatus) nNodes
     IF( ReadStatus /= 0 .OR. nNodes < 1 ) &
       ERROR STOP 'THORNADO_NNODES must be a positive integer.'
-
   END IF
 
   SpatialElementsString = ''
   CALL GET_ENVIRONMENT_VARIABLE &
          ( 'THORNADO_NX1', SpatialElementsString, &
            LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
-
   IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
-
     READ(SpatialElementsString,*,IOSTAT=ReadStatus) nX(1)
     IF( ReadStatus /= 0 .OR. nX(1) < 1 ) &
       ERROR STOP 'THORNADO_NX1 must be a positive integer.'
-
   END IF
 
   SourceAwareLLFString = ''
@@ -1489,26 +1558,6 @@ PROGRAM ApplicationDriver_Neutrinos
       CASE DEFAULT
         ERROR STOP &
           'THORNADO_SOURCE_AWARE_LLF must be true or false.'
-    END SELECT
-
-  END IF
-
-  ConservativeProjectionString = ''
-  CALL GET_ENVIRONMENT_VARIABLE &
-         ( 'THORNADO_CONSERVATIVE_PROJECTION', &
-           ConservativeProjectionString, &
-           LENGTH = EnvironmentLength, STATUS = EnvironmentStatus )
-
-  IF( EnvironmentStatus == 0 .AND. EnvironmentLength > 0 )THEN
-
-    SELECT CASE( TRIM( ADJUSTL( ConservativeProjectionString ) ) )
-      CASE( 'true', 'TRUE', 'on', 'ON', '1' )
-        UseConservativeProjection = .TRUE.
-      CASE( 'false', 'FALSE', 'off', 'OFF', '0' )
-        UseConservativeProjection = .FALSE.
-      CASE DEFAULT
-        ERROR STOP &
-          'THORNADO_CONSERVATIVE_PROJECTION must be true or false.'
     END SELECT
 
   END IF
@@ -4247,9 +4296,8 @@ CONTAINS
                = TRIM( EosTableName ), &
              Verbose_Option = .TRUE., &
              EmAb_Muon_Method_Option = MuonChargedCurrentMethod, &
-             nE_Muon_2D_Option = MuonCCQuadratureOrder) !, &
-             !EmAb_Muon_MinD_Option = 1.0d20 )
-             !EmAb_Muon_MinD_Option = 1.0d12 )
+             nE_Muon_2D_Option = MuonCCQuadratureOrder, &
+             EmAb_Muon_MinD_Option = MuonCCMinDensityCGS )
 
     ! --- Initialize Moment Closure ---
 
@@ -4370,22 +4418,17 @@ CONTAINS
                = DnuMax, &
              FreezeOpacities_Option &
                = FreezeOpacities, &
-             UseConservativeProjection_Option &
-               = UseConservativeProjection, &
-             UseRadiationOnlySolve_Option &
-               = UseRadiationOnlySolve, &
+             SolverMethod_Option = TRIM(SolverMethodString), &
              DebugMuonCoupling_Option &
                = DebugMuonCoupling, &
-             TraceRadiationOnlySolve_Option &
-               = TraceRadiationOnlySolve, &
-             RadiationOnlyTraceFile_Option &
-               = TRIM( RadiationOnlyTraceFile ), &
-             AnalyzeRadiationOnlyJacobian_Option &
-               = AnalyzeRadiationOnlyJacobian, &
-             ReducedSolverMethod_Option &
-               = TRIM( ReducedSolverMethodString ), &
+             TraceNewtonSolve_Option &
+               = TraceNewtonSolve, &
+             NewtonTraceFile_Option &
+               = TRIM( NewtonTraceFile ), &
              UseMuonLeptonSource_Option &
                = UseMuonLeptonSource, &
+             NewtonFluidSourceTolerance_Option &
+               = NewtonFluidSourceTolerance, &
              Verbose_Option &
                = .TRUE. )
 

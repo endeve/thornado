@@ -143,6 +143,8 @@ MODULE LinearAlgebraModule
   PUBLIC :: LinearLeastSquares_LWORK
   PUBLIC :: LinearLeastSquares
   PUBLIC :: LinearSolveBatched
+  PUBLIC :: LinearFactorBatched
+  PUBLIC :: LinearApplyBatched
   PUBLIC :: EigenvaluesSymmetric3
 
 CONTAINS
@@ -739,6 +741,170 @@ CONTAINS
     END IF
 
   END SUBROUTINE LinearSolveBatched
+
+
+  SUBROUTINE LinearFactorBatched( n, a, lda, ipiv, info, batchcount, status )
+
+    INTEGER, INTENT(in) :: n, lda, batchcount
+    REAL(DP), TARGET, INTENT(inout) :: a(lda,*)
+    INTEGER, TARGET, INTENT(out) :: ipiv(*), info(*)
+    INTEGER, INTENT(out) :: status
+    TYPE(C_PTR), TARGET :: da(batchcount), dpiv(batchcount)
+    TYPE(C_PTR) :: pa, pp, pi
+    INTEGER :: i
+    INTEGER(C_INT64_T) :: sa, sp
+    LOGICAL :: on_device
+
+    ! Separate factor and apply interfaces let several RHS blocks and
+    ! iterative refinement reuse ONE vendor factorization. Factor INFO is
+    ! never overwritten by a subsequent successful GETRS call.
+    status = 0
+    on_device = device_is_present(C_LOC(a(1,1)),mydevice, &
+                   INT(lda*n*batchcount,C_SIZE_T)*C_SIZEOF(0.0_DP)) &
+      .AND. device_is_present(C_LOC(ipiv(1)),mydevice, &
+                   INT(n*batchcount,C_SIZE_T)*C_SIZEOF(0)) &
+      .AND. device_is_present(C_LOC(info(1)),mydevice, &
+                   INT(batchcount,C_SIZE_T)*C_SIZEOF(0))
+    IF( on_device )THEN
+      DO i = 1, batchcount
+        da(i) = dev_ptr(a(1,(i-1)*n+1))
+        dpiv(i) = dev_ptr(ipiv((i-1)*n+1))
+      END DO
+      pi = dev_ptr(info(1))
+#if defined(THORNADO_LA_CUBLAS) || defined(THORNADO_LA_MAGMA)
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET ENTER DATA MAP(to: da,dpiv)
+#elif defined(THORNADO_OACC)
+      !$ACC ENTER DATA COPYIN(da,dpiv)
+#endif
+      pa = dev_ptr(da(1))
+      pp = dev_ptr(dpiv(1))
+#endif
+#if defined(THORNADO_LA_CUBLAS)
+      status = cublasDgetrfBatched(cublas_handle,n,pa,lda,dpiv(1),pi,batchcount)
+#elif defined(THORNADO_LA_ROCM)
+      sa = INT(lda,C_INT64_T)*n
+      sp = n
+      status = hipblasDgetrfStridedBatched &
+        (hipblas_handle,n,da(1),lda,sa,dpiv(1),sp,pi,batchcount)
+#elif defined(THORNADO_LA_MAGMA)
+      CALL magma_dgetrf_batched(n,n,pa,lda,pp,pi,batchcount,magma_queue)
+#elif defined(THORNADO_LA_ONEMKL)
+      !$OMP DISPATCH
+      CALL DGETRF_BATCH_STRIDED(n,n,a,lda,lda*n,ipiv,n,batchcount,info)
+#else
+      status = -1001
+#endif
+#if defined(THORNADO_OMP_OL) || defined(THORNADO_OACC)
+      CALL stream_sync(stream)
+#endif
+#if defined(THORNADO_LA_CUBLAS) || defined(THORNADO_LA_MAGMA)
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET EXIT DATA MAP(release: da,dpiv)
+#elif defined(THORNADO_OACC)
+      !$ACC EXIT DATA DELETE(da,dpiv)
+#endif
+#endif
+    ELSE
+#if defined(THORNADO_OMP)
+      !$OMP PARALLEL DO
+#endif
+      DO i = 1, batchcount
+        CALL DGETRF(n,n,a(1,(i-1)*n+1),lda,ipiv((i-1)*n+1),info(i))
+      END DO
+    END IF
+
+  END SUBROUTINE LinearFactorBatched
+
+
+  SUBROUTINE LinearApplyBatched( trans, n, nrhs, a, lda, ipiv, b, ldb, batchcount, status )
+
+    CHARACTER, INTENT(in) :: trans
+    INTEGER, INTENT(in) :: n, nrhs, lda, ldb, batchcount
+    REAL(DP), TARGET, INTENT(in) :: a(lda,*)
+    INTEGER, TARGET, INTENT(in) :: ipiv(*)
+    REAL(DP), TARGET, INTENT(inout) :: b(ldb,*)
+    INTEGER, INTENT(out) :: status
+    TYPE(C_PTR), TARGET :: da(batchcount), db(batchcount), dpiv(batchcount)
+    TYPE(C_PTR) :: pa, pb, pp
+    INTEGER(C_INT), TARGET :: solve_status
+    INTEGER, TARGET :: batch_info(batchcount)
+    INTEGER(C_INT) :: itrans
+    INTEGER(C_INT64_T) :: sa, sb, sp
+    INTEGER :: i, local_status
+    LOGICAL :: on_device
+
+    status = 0
+    solve_status = 0
+    on_device = device_is_present(C_LOC(a(1,1)),mydevice, &
+                  INT(lda*n*batchcount,C_SIZE_T)*C_SIZEOF(0.0_DP)) &
+      .AND. device_is_present(C_LOC(b(1,1)),mydevice, &
+                  INT(ldb*nrhs*batchcount,C_SIZE_T)*C_SIZEOF(0.0_DP)) &
+      .AND. device_is_present(C_LOC(ipiv(1)),mydevice, &
+                  INT(n*batchcount,C_SIZE_T)*C_SIZEOF(0))
+    IF( on_device )THEN
+      DO i = 1, batchcount
+        da(i) = dev_ptr(a(1,(i-1)*n+1))
+        db(i) = dev_ptr(b(1,(i-1)*nrhs+1))
+        dpiv(i) = dev_ptr(ipiv((i-1)*n+1))
+      END DO
+      itrans = itrans_from_char(trans)
+#if defined(THORNADO_LA_CUBLAS) || defined(THORNADO_LA_MAGMA)
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET ENTER DATA MAP(to: da,db,dpiv)
+#elif defined(THORNADO_OACC)
+      !$ACC ENTER DATA COPYIN(da,db,dpiv)
+#endif
+      pa = dev_ptr(da(1))
+      pb = dev_ptr(db(1))
+      pp = dev_ptr(dpiv(1))
+#endif
+#if defined(THORNADO_LA_CUBLAS)
+      status = cublasDgetrsBatched &
+        (cublas_handle,itrans,n,nrhs,pa,lda,dpiv(1),pb,ldb,C_LOC(solve_status),batchcount)
+#elif defined(THORNADO_LA_ROCM)
+      sa = INT(lda,C_INT64_T)*n
+      sb = INT(ldb,C_INT64_T)*nrhs
+      sp = n
+      status = hipblasDgetrsStridedBatched &
+        (hipblas_handle,itrans,n,nrhs,da(1),lda,sa,dpiv(1),sp,db(1),ldb,sb, &
+         C_LOC(solve_status),batchcount)
+#elif defined(THORNADO_LA_MAGMA)
+      CALL magma_dgetrs_batched(itrans,n,nrhs,pa,lda,pp,pb,ldb,batchcount,magma_queue)
+#elif defined(THORNADO_LA_ONEMKL)
+      ! GETRS has per-system INFO and a batch-size argument, unlike CUDA.
+      ! See Intel oneMKL Fortran ?getrs_batch_strided reference.
+      !$OMP TARGET ENTER DATA MAP(alloc:batch_info)
+      !$OMP DISPATCH
+      CALL DGETRS_BATCH_STRIDED(trans,n,nrhs,a,lda,lda*n,ipiv,n,b,ldb,ldb*nrhs,batchcount,batch_info)
+      !$OMP TARGET EXIT DATA MAP(from:batch_info)
+      solve_status = MAXVAL(ABS(batch_info))
+#else
+      status = -1001
+#endif
+#if defined(THORNADO_OMP_OL) || defined(THORNADO_OACC)
+      CALL stream_sync(stream)
+#endif
+      IF( status == 0 ) status = solve_status
+#if defined(THORNADO_LA_CUBLAS) || defined(THORNADO_LA_MAGMA)
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET EXIT DATA MAP(release: da,db,dpiv)
+#elif defined(THORNADO_OACC)
+      !$ACC EXIT DATA DELETE(da,db,dpiv)
+#endif
+#endif
+    ELSE
+#if defined(THORNADO_OMP)
+      !$OMP PARALLEL DO PRIVATE(local_status) REDUCTION(max: status)
+#endif
+      DO i = 1, batchcount
+        CALL DGETRS(trans,n,nrhs,a(1,(i-1)*n+1),lda,ipiv((i-1)*n+1), &
+                    b(1,(i-1)*nrhs+1),ldb,local_status)
+        status = MAX(status,ABS(local_status))
+      END DO
+    END IF
+
+  END SUBROUTINE LinearApplyBatched
 
 
   SUBROUTINE MatrixVectorMultiply( trans, m, n, alpha, a, lda, x, incx, beta, y, incy )
