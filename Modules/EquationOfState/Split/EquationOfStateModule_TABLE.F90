@@ -40,12 +40,13 @@ MODULE EquationOfStateModule_TABLE
     LogInterpolateSingleVariable_3D_Custom_Point, &
     LogInterpolateDifferentiateSingleVariable_3D_Custom_Point
   USE wlLeptonEOSTableModule, ONLY: &
-    HelmTableType
+    HelmTableType, MuonHelmGeneratorConstants
   USE wlLeptonPhotonGasEOS, ONLY: &
     LeptonGasType, PhotonGasType, &
     LeptonGasEOS,  PhotonGasEOS , &
     GetPhotonLeptonGasEOS, ComputePairLeptonFraction, &
-    PairSymmetricEtaMax
+    PairSymmetricEtaMin
+  USE wlEosConstantsModule, ONLY: kmev
   USE wlHelmIOModuleHDF, ONLY: &
     ReadHelmholtzTableHDF
   USE wlSoundSpeedModule, ONLY: &
@@ -417,7 +418,8 @@ CONTAINS
 
        ! read in helmholtz table for muons
        CALL ReadHelmholtzTableHDF( HelmTableMuons, &
-          TRIM( EquationOfStateTableName ), "HelmTableMuons" )
+          TRIM( EquationOfStateTableName ), "HelmTableMuons", &
+          Constants_Option = MuonHelmGeneratorConstants )
 
        ! read in baryon table -------------------------------
        CALL ReadEquationOfStateTableHDF( EOS, TRIM( EquationOfStateTableName ) )
@@ -690,8 +692,11 @@ CONTAINS
     !$OMP   HelmTableElectrons % dd2i, &
     !$OMP   HelmTableElectrons % PairTemperature, &
     !$OMP   HelmTableElectrons % PairLogP0, &
+    !$OMP   HelmTableElectrons % PairD2LogP0dT2, &
     !$OMP   HelmTableElectrons % PairDLogP0dT, &
     !$OMP   HelmTableElectrons % PairLogA0, &
+    !$OMP   HelmTableElectrons % PairDensitySeries, &
+    !$OMP   HelmTableElectrons % PairD2LogA0dT2, &
     !$OMP   HelmTableElectrons % PairDLogA0dT, &
     !$OMP   HelmTableMuons % t, HelmTableMuons % d, &
     !$OMP   HelmTableMuons % f, HelmTableMuons % fd, &
@@ -707,8 +712,11 @@ CONTAINS
     !$OMP   HelmTableMuons % dd2i, &
     !$OMP   HelmTableMuons % PairTemperature, &
     !$OMP   HelmTableMuons % PairLogP0, &
+    !$OMP   HelmTableMuons % PairD2LogP0dT2, &
     !$OMP   HelmTableMuons % PairDLogP0dT, &
     !$OMP   HelmTableMuons % PairLogA0, &
+    !$OMP   HelmTableMuons % PairDensitySeries, &
+    !$OMP   HelmTableMuons % PairD2LogA0dT2, &
     !$OMP   HelmTableMuons % PairDLogA0dT )
     !$OMP TARGET UPDATE TO( &
     !$OMP   HelmTableElectrons % nPointsDen, &
@@ -716,9 +724,13 @@ CONTAINS
     !$OMP   HelmTableElectrons % mintemp, HelmTableElectrons % maxtemp, &
     !$OMP   HelmTableElectrons % mindens, HelmTableElectrons % maxdens, &
     !$OMP   HelmTableElectrons % lepton_mass, &
+    !$OMP   HelmTableElectrons % ThermalConstant, HelmTableElectrons % HbarC, &
+    !$OMP   HelmTableElectrons % NumberPerMass, HelmTableElectrons % DensityScale, &
     !$OMP   HelmTableMuons % nPointsDen, HelmTableMuons % nPointsTemp, &
     !$OMP   HelmTableMuons % mintemp, HelmTableMuons % maxtemp, &
     !$OMP   HelmTableMuons % mindens, HelmTableMuons % maxdens, &
+    !$OMP   HelmTableMuons % ThermalConstant, HelmTableMuons % HbarC, &
+    !$OMP   HelmTableMuons % NumberPerMass, HelmTableMuons % DensityScale, &
     !$OMP   HelmTableMuons % lepton_mass )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
@@ -747,8 +759,11 @@ CONTAINS
     !$ACC   HelmTableElectrons % dd2i, &
     !$ACC   HelmTableElectrons % PairTemperature, &
     !$ACC   HelmTableElectrons % PairLogP0, &
+    !$ACC   HelmTableElectrons % PairD2LogP0dT2, &
     !$ACC   HelmTableElectrons % PairDLogP0dT, &
     !$ACC   HelmTableElectrons % PairLogA0, &
+    !$ACC   HelmTableElectrons % PairDensitySeries, &
+    !$ACC   HelmTableElectrons % PairD2LogA0dT2, &
     !$ACC   HelmTableElectrons % PairDLogA0dT, &
     !$ACC   HelmTableMuons % t, HelmTableMuons % d, &
     !$ACC   HelmTableMuons % f, HelmTableMuons % fd, &
@@ -764,8 +779,11 @@ CONTAINS
     !$ACC   HelmTableMuons % dd2i, &
     !$ACC   HelmTableMuons % PairTemperature, &
     !$ACC   HelmTableMuons % PairLogP0, &
+    !$ACC   HelmTableMuons % PairD2LogP0dT2, &
     !$ACC   HelmTableMuons % PairDLogP0dT, &
     !$ACC   HelmTableMuons % PairLogA0, &
+    !$ACC   HelmTableMuons % PairDensitySeries, &
+    !$ACC   HelmTableMuons % PairD2LogA0dT2, &
     !$ACC   HelmTableMuons % PairDLogA0dT )
 #endif
 
@@ -804,8 +822,11 @@ CONTAINS
     !$OMP   HelmTableElectrons % dd2i, &
     !$OMP   HelmTableElectrons % PairTemperature, &
     !$OMP   HelmTableElectrons % PairLogP0, &
+    !$OMP   HelmTableElectrons % PairD2LogP0dT2, &
     !$OMP   HelmTableElectrons % PairDLogP0dT, &
     !$OMP   HelmTableElectrons % PairLogA0, &
+    !$OMP   HelmTableElectrons % PairDensitySeries, &
+    !$OMP   HelmTableElectrons % PairD2LogA0dT2, &
     !$OMP   HelmTableElectrons % PairDLogA0dT, &
     !$OMP   HelmTableMuons % t, HelmTableMuons % d, &
     !$OMP   HelmTableMuons % f, HelmTableMuons % fd, &
@@ -821,8 +842,11 @@ CONTAINS
     !$OMP   HelmTableMuons % dd2i, &
     !$OMP   HelmTableMuons % PairTemperature, &
     !$OMP   HelmTableMuons % PairLogP0, &
+    !$OMP   HelmTableMuons % PairD2LogP0dT2, &
     !$OMP   HelmTableMuons % PairDLogP0dT, &
     !$OMP   HelmTableMuons % PairLogA0, &
+    !$OMP   HelmTableMuons % PairDensitySeries, &
+    !$OMP   HelmTableMuons % PairD2LogA0dT2, &
     !$OMP   HelmTableMuons % PairDLogA0dT )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA DELETE( &
@@ -840,8 +864,11 @@ CONTAINS
     !$ACC   HelmTableElectrons % dd2i, &
     !$ACC   HelmTableElectrons % PairTemperature, &
     !$ACC   HelmTableElectrons % PairLogP0, &
+    !$ACC   HelmTableElectrons % PairD2LogP0dT2, &
     !$ACC   HelmTableElectrons % PairDLogP0dT, &
     !$ACC   HelmTableElectrons % PairLogA0, &
+    !$ACC   HelmTableElectrons % PairDensitySeries, &
+    !$ACC   HelmTableElectrons % PairD2LogA0dT2, &
     !$ACC   HelmTableElectrons % PairDLogA0dT, &
     !$ACC   HelmTableMuons % t, HelmTableMuons % d, &
     !$ACC   HelmTableMuons % f, HelmTableMuons % fd, &
@@ -857,8 +884,11 @@ CONTAINS
     !$ACC   HelmTableMuons % dd2i, &
     !$ACC   HelmTableMuons % PairTemperature, &
     !$ACC   HelmTableMuons % PairLogP0, &
+    !$ACC   HelmTableMuons % PairD2LogP0dT2, &
     !$ACC   HelmTableMuons % PairDLogP0dT, &
     !$ACC   HelmTableMuons % PairLogA0, &
+    !$ACC   HelmTableMuons % PairDensitySeries, &
+    !$ACC   HelmTableMuons % PairD2LogA0dT2, &
     !$ACC   HelmTableMuons % PairDLogA0dT )
 #endif
 
@@ -2522,116 +2552,151 @@ CONTAINS
     REAL(DP), INTENT(out)   :: dYmdEta
     INTEGER,  INTENT(out) :: Error
 
-    INTEGER, PARAMETER :: MaxIter = 32
-    INTEGER  :: k
-    REAL(DP) :: EtaAbs, EtaGuess, EtaHi, EtaLo, EtaMid, Mu, MuScale
-    REAL(DP) :: YmInput, YGuess, YHi, YLo, YMid, YPair, dYPairdEta
+    INTEGER :: k
+    REAL(DP) :: EtaAbs, MuScale, Mu, YPair, ChiPair, YGuess, YBound
+    REAL(DP) :: YLo, YHi, EtaLo, EtaHi, EtaMid, LogLo, LogHi, LogMid, YMid
+    REAL(DP) :: PreviousY, PreviousEta, DerivativeScale, EtaWeaklib, EtaConversion, CompositionBound
 
-    Error = 0
-    YmInput = Ym
-    YGuess = ABS( Ym )
-    EtaGuess = Zero
+    Error = 1
     dYmdEta = Zero
-
-    IF( D <= Zero .OR. T <= Zero )THEN
-      Error = 1
-      RETURN
-    END IF
-
-    EtaAbs = ABS( Eta )
-
-    ! The pair-symmetric EOS is explicitly parameterized by eta in this
-    ! interval.  Evaluating its forward relation avoids resolving a tiny net
-    ! fraction by bisection in Y_mu.
-    IF( EtaAbs <= PairSymmetricEtaMax )THEN
-      CALL ComputePairLeptonFraction &
-             ( HelmTableMuons, T / UnitT, D / UnitD, Eta, &
-               YPair, dYPairdEta )
-      Ym        = YPair * UnitY
-      dYmdEta   = dYPairdEta * UnitY
-      IF( Ye + Ym < Min_Y .OR. Ye + Ym > Max_Y )THEN
-        Error = 1
-        Ym = YmInput
-        dYmdEta = Zero
-      END IF
-      RETURN
-    END IF
-
-    MuScale = BoltzmannConstant * T
-    YLo = Zero
-    EtaLo = Zero
-    YHi = MIN( One, &
-               ( One - 128.0_DP * EPSILON(One) ) &
-                 * HelmTableMuons % maxdens / ( D / UnitD ) )
-
-    ! The baryonic table is parameterized by Y_p = Y_e + Y_mu.  Restrict
-    ! the forward eta_mu map to that composition domain before attempting a
-    ! temperature inversion.  Reaching this bound is reported as a failed
-    ! trial so that the nonlinear solver backtracks; it is not accepted as a
-    ! clipped thermodynamic state.
+    IF( D <= Zero .OR. T < Min_T .OR. T > Max_T ) RETURN
+    EtaAbs = ABS(Eta)
+    MuScale = BoltzmannConstant*T
+    ! weaklib's historic kmev differs slightly from Thornado's physical
+    ! constant. Convert the dimensionless coordinate as well as its
+    ! susceptibility so the shortcut inverts the actual EOS mu exactly.
+    EtaConversion = BoltzmannConstant*UnitT/(MeV*HelmTableMuons%ThermalConstant)
+    EtaWeaklib = Eta*EtaConversion
+    YBound = MIN(One,(One-128*EPSILON(One))*HelmTableMuons%maxdens &
+                   /((D/UnitD)*HelmTableMuons%DensityScale))
     IF( Eta >= Zero )THEN
-      YHi = MIN( YHi, MAX(Zero,Max_Y-Ye) )
+      CompositionBound = MAX(Zero,Max_Y-Ye)
     ELSE
-      YHi = MIN( YHi, MAX(Zero,Ye-Min_Y) )
+      CompositionBound = MAX(Zero,Ye-Min_Y)
     END IF
+    IF( YBound <= Zero ) RETURN
 
-    IF( YHi <= Zero )THEN
-      Error = 1
-      RETURN
-    END IF
-
-    YGuess = MIN( YGuess, YHi )
-    IF( YGuess > Zero )THEN
-      CALL ComputeMuonChemicalPotential_TABLE_Scalar &
-             ( D, T, Zero, SIGN(YGuess,Eta), Mu )
-      EtaGuess = ABS( Mu / MuScale )
-      IF( EtaGuess < EtaAbs )THEN
-        YLo = YGuess
-        EtaLo = EtaGuess
-      ELSE
-        YHi = YGuess
-        EtaHi = EtaGuess
-      END IF
-    END IF
-
-    IF( YGuess <= Zero .OR. EtaGuess < EtaAbs )THEN
-      CALL ComputeMuonChemicalPotential_TABLE_Scalar &
-             ( D, T, Zero, SIGN(YHi,Eta), Mu )
-      EtaHi = ABS( Mu / MuScale )
-      IF( EtaHi < EtaAbs )THEN
-        Error = 1
-        Ym = YmInput
-        dYmdEta = Zero
+    ! Use the actual forward pair extension both in its eta interval and
+    ! below the original net-density coordinate. This avoids a search over
+    ! an order-one interval for, e.g., a requested fraction of 1e-80.
+    YPair = Zero
+    ChiPair = Zero
+    IF( ABS(EtaWeaklib) < 600.0_DP )THEN
+      CALL ComputePairLeptonFraction &
+        (HelmTableMuons,T/UnitT,D/UnitD,EtaWeaklib,YPair,ChiPair)
+      YPair = YPair*UnitY
+      ChiPair = ChiPair*UnitY*EtaConversion
+      IF( ABS(EtaWeaklib) <= PairSymmetricEtaMin .OR. &
+          ABS(YPair)*(D/UnitD)*HelmTableMuons%DensityScale <= HelmTableMuons%mindens )THEN
+        IF( ABS(YPair) > MIN(YBound,CompositionBound) ) RETURN
+        IF( Ye+YPair < Min_Y .OR. Ye+YPair > Max_Y ) RETURN
+        Ym = YPair
+        dYmdEta = ChiPair
+        Error = 0
         RETURN
       END IF
     END IF
 
-    DO k = 1, MaxIter
-      YMid = YLo + (EtaAbs-EtaLo) / MAX(EtaHi-EtaLo,TINY(One)) &
-                     * (YHi-YLo)
-      YMid = MAX( YLo + 0.1_DP*(YHi-YLo), &
-                  MIN(YMid,YHi-0.1_DP*(YHi-YLo)) )
+    Error = 2
+    YGuess = ABS(Ym)
+    IF( YGuess <= Zero ) YGuess = ABS(YPair)
+    YGuess = MAX(TINY(One),MIN(YGuess,YBound))
+    CALL ComputeMuonChemicalPotential_TABLE_Scalar &
+      (D,T,Zero,SIGN(YGuess,Eta),Mu)
+    EtaMid = ABS(Mu/MuScale)
+    IF( ABS(EtaMid-EtaAbs) <= 64*EPSILON(One)*MAX(One,EtaAbs) )THEN
+      IF( YGuess > CompositionBound .OR. Ye+SIGN(YGuess,Eta) < Min_Y &
+          .OR. Ye+SIGN(YGuess,Eta) > Max_Y )THEN
+        Error = 1
+        RETURN
+      END IF
+      Ym = SIGN(YGuess,Eta)
+      ! Compute a local logarithmic derivative; do not use the width of a
+      ! broad initial bracket as an EOS susceptibility.
+      DerivativeScale = 1.0e-5_DP
+      PreviousY = YGuess*EXP(-DerivativeScale)
       CALL ComputeMuonChemicalPotential_TABLE_Scalar &
-             ( D, T, Zero, SIGN(YMid,Eta), Mu )
-      EtaMid = ABS( Mu / MuScale )
-      IF( ABS(EtaMid-EtaAbs) &
-            <= 64.0_DP*EPSILON(One)*MAX(One,EtaAbs) ) EXIT
+        (D,T,Zero,SIGN(PreviousY,Eta),Mu)
+      PreviousEta = ABS(Mu/MuScale)
+      IF( EtaMid > PreviousEta ) dYmdEta = &
+        (YGuess-PreviousY)/(EtaMid-PreviousEta)
+      Error = 0
+      RETURN
+    END IF
+
+    IF( EtaMid < EtaAbs )THEN
+      YLo = YGuess
+      EtaLo = EtaMid
+      YHi = YGuess
+      EtaHi = EtaMid
+      DO k = 1, 320
+        IF( YHi >= YBound )THEN
+          Error = 1
+          RETURN
+        END IF
+        YHi = MIN(YBound,10.0_DP*YHi)
+        CALL ComputeMuonChemicalPotential_TABLE_Scalar &
+          (D,T,Zero,SIGN(YHi,Eta),Mu)
+        EtaHi = ABS(Mu/MuScale)
+        IF( EtaHi >= EtaAbs ) EXIT
+        YLo = YHi
+        EtaLo = EtaHi
+      END DO
+      IF( EtaHi < EtaAbs ) RETURN
+    ELSE
+      YHi = YGuess
+      EtaHi = EtaMid
+      YLo = YGuess
+      EtaLo = EtaMid
+      DO k = 1, 320
+        YLo = MAX(TINY(One),0.1_DP*YLo)
+        CALL ComputeMuonChemicalPotential_TABLE_Scalar &
+          (D,T,Zero,SIGN(YLo,Eta),Mu)
+        EtaLo = ABS(Mu/MuScale)
+        IF( EtaLo <= EtaAbs ) EXIT
+        IF( YLo <= TINY(One) ) RETURN
+        YHi = YLo
+        EtaHi = EtaLo
+      END DO
+      IF( EtaLo > EtaAbs ) RETURN
+    END IF
+
+    LogLo = LOG(YLo)
+    LogHi = LOG(YHi)
+    DO k = 1, 80
+      IF( EtaHi <= EtaLo ) RETURN
+      LogMid = LogLo+(EtaAbs-EtaLo)/(EtaHi-EtaLo)*(LogHi-LogLo)
+      LogMid = MAX(LogLo+0.05_DP*(LogHi-LogLo), &
+                   MIN(LogMid,LogHi-0.05_DP*(LogHi-LogLo)))
+      YMid = EXP(LogMid)
+      CALL ComputeMuonChemicalPotential_TABLE_Scalar &
+        (D,T,Zero,SIGN(YMid,Eta),Mu)
+      EtaMid = ABS(Mu/MuScale)
+      IF( ABS(EtaMid-EtaAbs) <= 64*EPSILON(One)*MAX(One,EtaAbs) ) EXIT
       IF( EtaMid < EtaAbs )THEN
+        LogLo = LogMid
         YLo = YMid
         EtaLo = EtaMid
       ELSE
+        LogHi = LogMid
         YHi = YMid
         EtaHi = EtaMid
       END IF
     END DO
-
-    Ym = SIGN( YMid, Eta )
-
-    IF( EtaHi > EtaLo )THEN
-      dYmdEta = ( YHi - YLo ) / ( EtaHi - EtaLo )
-    ELSE
-      dYmdEta = Zero
+    IF( k > 80 ) RETURN
+    IF( YMid > CompositionBound .OR. Ye+SIGN(YMid,Eta) < Min_Y &
+        .OR. Ye+SIGN(YMid,Eta) > Max_Y )THEN
+      Error = 1
+      RETURN
     END IF
+    Ym = SIGN(YMid,Eta)
+    PreviousY = YMid*EXP(-1.0e-5_DP)
+    CALL ComputeMuonChemicalPotential_TABLE_Scalar &
+      (D,T,Zero,SIGN(PreviousY,Eta),Mu)
+    PreviousEta = ABS(Mu/MuScale)
+    IF( EtaMid > PreviousEta ) dYmdEta = &
+      (YMid-PreviousY)/(EtaMid-PreviousEta)
+    Error = 0
 
   END SUBROUTINE ComputeMuonFractionFromDegeneracy_TABLE_Scalar
 
@@ -2648,11 +2713,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP MAP( to: D, T, Eta ) MAP( tofrom: Ym ) &
+    !$OMP MAP( to: D, T, Ye, Eta ) MAP( tofrom: Ym ) &
     !$OMP MAP( from: dYmdEta, Error )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC COPYIN( D, T, Eta ) COPY( Ym ) COPYOUT( dYmdEta, Error )
+    !$ACC COPYIN( D, T, Ye, Eta ) COPY( Ym ) COPYOUT( dYmdEta, Error )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
