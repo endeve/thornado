@@ -15,6 +15,7 @@ include ../../../Makefile.h
 MOMENT_CLOSURE = MINERBO
 MICROPHYSICS = WEAKLIB
 TWOMOMENT_ORDER = ORDER_V
+GRAVITY_SOLVER = NONE
 
 # Import thornado Makefiles
 THORNADO_DIR = ../../
@@ -51,7 +52,11 @@ ifeq ($(USE_OMP_OL),TRUE)
   FFLAGS += $(FFLAGS_OMP_OL)
 endif
 ifeq ($(USE_OMP),TRUE)
+ifdef OPENMP_FORTRAN
+  FFLAGS += $(OPENMP_FORTRAN)
+else
   FFLAGS += $(OPENMP)
+endif
 endif
 ifeq ($(MICROPHYSICS),WEAKLIB)
   FFLAGS += -I../../../../weaklib/include
@@ -121,6 +126,7 @@ OBJS = \
        NeutrinoOpacitiesModule.o \
        OpacityModule_TABLE.o \
        NeutrinoOpacitiesComputationModule.o \
+       NeutrinoLeptonInteractionsModule.o \
        ThornadoInitializationModule.o \
        TimeSteppingModule_Flash.o
 
@@ -128,7 +134,11 @@ ifeq ($(TWOMOMENT_ORDER),ORDER_V)
 OBJS += \
        TwoMoment_TroubledCellIndicatorModule.o \
        TwoMoment_OpacityModule.o \
-       TwoMoment_DiscretizationModule_Collisions.o
+       TwoMoment_DiscretizationModule_Collisions.o \
+       TwoMoment_RetainedArithmeticModule.o \
+       TwoMoment_CollisionOperatorModule_OrderV.o \
+       TwoMoment_RadiationStateRecoveryModule_OrderV.o \
+       TwoMoment_NewtonSolverModule_OrderV.o
 endif
 
 ifeq ($(USE_CUDA),TRUE)
@@ -170,6 +180,43 @@ $(LIBNAME): $(OBJS)
 	$(FCOMP) $(FFLAGS) $(filter-out -qrealsize=8,$(f90FLAGS)) $(DEFINES) $< -o $@
 %.o %.mod : %.F90
 	$(FCOMP) $(FFLAGS) $(filter-out -qrealsize=8,$(F90FLAGS)) $(DEFINES) $< -o $@
+
+ifeq ($(TWOMOMENT_ORDER),ORDER_V)
+# The FLASH bridge does not include Makefile_TwoMoment_ObjectFiles, which
+# carries these rules in standalone builds. Preserve the same IEEE
+# arithmetic here, even when the host OPT flags enable reassociation/FMA.
+# A site Makefile.h can supply RETAINED_FP_FLAGS for another compiler.
+ifndef RETAINED_FP_FLAGS
+RETAINED_COMPILER_VERSION := $(shell $(FCOMP) --version 2>/dev/null)
+ifneq ($(findstring GNU,$(RETAINED_COMPILER_VERSION)),)
+RETAINED_FP_FLAGS = -fno-fast-math -fprotect-parens -ffp-contract=off
+else ifneq ($(filter %nvfortran %pgfortran,$(firstword $(FCOMP))),)
+RETAINED_FP_FLAGS = -Kieee -Mnofma
+else ifneq ($(findstring nvfortran,$(RETAINED_COMPILER_VERSION)),)
+RETAINED_FP_FLAGS = -Kieee -Mnofma
+else ifneq ($(findstring pgfortran,$(RETAINED_COMPILER_VERSION)),)
+RETAINED_FP_FLAGS = -Kieee -Mnofma
+else ifneq ($(findstring Intel,$(RETAINED_COMPILER_VERSION)),)
+RETAINED_FP_FLAGS = -fp-model strict -no-fma
+else ifneq ($(findstring Cray,$(RETAINED_COMPILER_VERSION)),)
+# HPE crayftn documents fp0 as disabling expression factoring/tree
+# balancing and FMA; nofma makes the contraction requirement explicit.
+RETAINED_FP_FLAGS = -hfp0 -hnofma
+else ifneq ($(findstring Flang,$(RETAINED_COMPILER_VERSION)),)
+RETAINED_FP_FLAGS = -fno-fast-math -ffp-contract=off
+else ifneq ($(findstring flang,$(RETAINED_COMPILER_VERSION)),)
+RETAINED_FP_FLAGS = -fno-fast-math -ffp-contract=off
+else
+$(error Set RETAINED_FP_FLAGS in Makefile.h to strict IEEE/no-reassociation/no-FMA flags for $(FCOMP))
+endif
+endif
+
+TwoMoment_RetainedArithmeticModule.o TwoMoment_CollisionOperatorModule_OrderV.o \
+TwoMoment_RadiationStateRecoveryModule_OrderV.o TwoMoment_NewtonSolverModule_OrderV.o \
+TwoMoment_NeutrinoMatterSolverModule.o NeutrinoLeptonInteractionsModule.o \
+TimeSteppingModule_Flash.o: %.o: %.F90
+	$(FCOMP) $(FFLAGS) $(filter-out -qrealsize=8,$(F90FLAGS)) $(DEFINES) $(RETAINED_FP_FLAGS) $< -o $@
+endif
 
 .PHONY: clean
 clean:

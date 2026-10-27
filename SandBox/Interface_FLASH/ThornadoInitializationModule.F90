@@ -1,5 +1,7 @@
 module ThornadoInitializationModule
 
+  use, intrinsic :: IEEE_ARITHMETIC, only: IEEE_IS_FINITE
+  use, intrinsic :: ISO_FORTRAN_ENV, only: ERROR_UNIT
   use KindModule, only: &
     DP, SqrtTiny, One, Zero
   use UnitsModule, only : &
@@ -59,8 +61,15 @@ module ThornadoInitializationModule
     InitializeEquationOfState_TABLE, &
     FinalizeEquationOfState_TABLE, &
     Min_D, Max_D, Min_T, Max_T, Min_Y, Max_Y
+#ifdef EOSMODE_COMPOSE
+  use wlEquationOfStateTableModule, only: &
+    EquationOfStateCompOSETableType
+  use wlLeptonEOSTableModule, only: &
+    HelmTableType
+#else
   use wlEquationOfStateTableModule, only: &
     EquationOfStateTableType
+#endif
 #else
   use EquationOfStateModule_IDEAL, only: &
     InitializeEquationOfState_IDEAL, &
@@ -114,6 +123,10 @@ module ThornadoInitializationModule
     FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
   use TwoMoment_NeutrinoMatterSolverModule, only: &
     InitializeNeutrinoMatterSolverParameters
+#ifdef TWOMOMENT_ORDER_V
+  use TwoMoment_DiscretizationModule_Streaming, only: &
+    InitializeSourceAwareLLF
+#endif
   use TwoMoment_TimersModule, only: &
     TwoMoment_InitializeTimers => InitializeTimers, &
     TwoMoment_FinalizeTimers => FinalizeTimers
@@ -160,7 +173,15 @@ contains
       NNS_ApplyWeakMagnetism_Option, NNS_ApplyManyBodyCorrection_Option, &
       ActivateUnits_Option, CoordinateSystem_Option, &
       UseChemicalPotentialShift_Option, &
-      UseSimpleMeshRefinement_Option, Verbose_Option )
+      UseSimpleMeshRefinement_Option, Verbose_Option, &
+      External_Helm, External_Muon, &
+      EmAb_Muon_MinD_Option, EmAb_Muon_MaxD_Option, &
+      EmAb_Muon_Method_Option, nE_Muon_2D_Option, &
+      NMS_MinD_Option, NMS_MaxD_Option, LFE_MinD_Option, LFE_MaxD_Option, &
+      LFC_MinD_Option, LFC_MaxD_Option, IMD_MinD_Option, IMD_MaxD_Option, &
+      Include_NMS_Option, Include_LFE_Option, Include_LFC_Option, Include_IMD_Option, &
+      GeneralLeptonQuadratureOrder_Option, Atol_inner_Option, SolverMethod_Option, &
+      UseMuonLeptonSource_Option, NewtonFluidSourceTolerance_Option, UseSourceAwareLLF_Option )
 
     integer,  intent(in) :: nNodes, nDimsX, nE, swE, bcE, nSpecies
     real(dp), intent(in) :: eL_MeV, eR_MeV, zoomE
@@ -168,10 +189,19 @@ contains
     character(len=*), intent(in), optional :: EquationOfStateTableName_Option
 
 #ifdef MICROPHYSICS_WEAKLIB
+#ifdef EOSMODE_COMPOSE
+    type(EquationOfStateCompOSETableType), pointer, &
+                      intent(in), optional :: External_EOS
+    type(HelmTableType), pointer, &
+                      intent(in), optional :: External_Helm, External_Muon
+#else
     type(EquationOfStateTableType), pointer, &
                       intent(in), optional :: External_EOS
+    integer,          intent(in), optional :: External_Helm, External_Muon
+#endif
 #else
     integer,          intent(in), optional :: External_EOS
+    integer,          intent(in), optional :: External_Helm, External_Muon
 #endif
 
     real(dp),         intent(in), optional :: Gamma_IDEAL_Option
@@ -212,7 +242,13 @@ contains
     logical,          intent(in), optional :: Include_NuPair_Option
     logical,          intent(in), optional :: Include_Brem_Option
     logical,          intent(in), optional :: Include_LinCorr_Option
-    real(dp),         intent(in), optional :: wMatrRHS_Option(5)
+#ifdef TWOMOMENT_ORDER_1
+    real(dp),         intent(in), optional :: wMatrRHS_Option(3)
+#elif defined(TWOMOMENT_ORDER_V)
+    real(dp),         intent(in), optional :: wMatrRHS_Option(6)
+#elif defined(TWOMOMENT_RELATIVISTIC)
+    real(dp),         intent(in), optional :: wMatrRHS_Option(7)
+#endif
     real(dp),         intent(in), optional :: DnuMax_Option
     logical,          intent(in), optional :: FreezeOpacities_Option
     logical,          intent(in), optional :: NNS_ApplyWeakMagnetism_Option
@@ -222,6 +258,18 @@ contains
     logical,          intent(in), optional :: Verbose_Option
     logical,          intent(in), optional :: UseChemicalPotentialShift_Option
     logical,          intent(in), optional :: UseSimpleMeshRefinement_Option
+    real(dp),         intent(in), optional :: EmAb_Muon_MinD_Option, EmAb_Muon_MaxD_Option
+    integer,          intent(in), optional :: EmAb_Muon_Method_Option, nE_Muon_2D_Option
+    real(dp),         intent(in), optional :: NMS_MinD_Option, NMS_MaxD_Option
+    real(dp),         intent(in), optional :: LFE_MinD_Option, LFE_MaxD_Option
+    real(dp),         intent(in), optional :: LFC_MinD_Option, LFC_MaxD_Option
+    real(dp),         intent(in), optional :: IMD_MinD_Option, IMD_MaxD_Option
+    logical,          intent(in), optional :: Include_NMS_Option, Include_LFE_Option
+    logical,          intent(in), optional :: Include_LFC_Option, Include_IMD_Option
+    integer,          intent(in), optional :: GeneralLeptonQuadratureOrder_Option
+    real(dp),         intent(in), optional :: Atol_inner_Option, NewtonFluidSourceTolerance_Option
+    character(len=*), intent(in), optional :: SolverMethod_Option
+    logical,          intent(in), optional :: UseMuonLeptonSource_Option, UseSourceAwareLLF_Option
 
     logical  :: TroubledCellIndicator
     logical  :: PositivityLimiter, SlopeLimiter, EnergyLimiter, UseChemicalPotentialShift, Verbose
@@ -232,7 +280,17 @@ contains
     integer  :: i
     real(dp) :: C_TCI
     real(dp) :: eL, eR, UpperBry1
+    real(dp), allocatable :: Atol_inner
     character(24) :: CoordinateSystem
+
+    ! A negative FLASH sentinel leaves the native absolute tolerance at its
+    ! existing default. An unallocated actual is absent at the optional
+    ! nonallocatable dummy of InitializeNeutrinoMatterSolverParameters.
+    IF( PRESENT(Atol_inner_Option) )THEN
+      IF( .NOT.IEEE_IS_FINITE(Atol_inner_Option) ) &
+        call AbortInitialization('InitThornado: absolute inner tolerance must be finite.')
+      IF( Atol_inner_Option >= Zero ) Atol_inner = Atol_inner_Option
+    END IF
 
     IF( PRESENT(PositivityLimiter_Option) )THEN
       PositivityLimiter = PositivityLimiter_Option
@@ -457,6 +515,24 @@ contains
 
     ! --- Nuclear Equation of State ---
 #ifdef MICROPHYSICS_WEAKLIB
+#ifdef EOSMODE_COMPOSE
+    ! The native split EOS shares all three tables with the FLASH EOS.
+    ! The host initializes the muon Helm table with its generator constants.
+    IF( PRESENT(External_EOS) )THEN
+      IF( .NOT.PRESENT(External_Helm).OR..NOT.PRESENT(External_Muon) ) &
+        call AbortInitialization('InitThornado: external COMPOSE EOS requires electron and muon Helm tables.')
+      IF( .NOT.ASSOCIATED(External_EOS).OR..NOT.ASSOCIATED(External_Helm).OR. &
+          .NOT.ASSOCIATED(External_Muon) ) &
+        call AbortInitialization('InitThornado: external COMPOSE EOS table pointers must be associated.')
+    END IF
+    call InitializeEquationOfState_TABLE &
+           ( EquationOfStateTableName_Option &
+               = EquationOfStateTableName_Option, &
+             UseChemicalPotentialShift_Option = UseChemicalPotentialShift, &
+             Eos_MinD_Option = Eos_MinD_Option, &
+             Verbose_Option = Verbose, External_EOS = External_EOS, &
+             External_Helm = External_Helm, External_Muon = External_Muon )
+#else
     call InitializeEquationOfState_TABLE &
            ( EquationOfStateTableName_Option &
                = EquationOfStateTableName_Option, &
@@ -465,6 +541,7 @@ contains
                = Eos_MinD_Option, &
              Verbose_Option = Verbose, &
              External_EOS = External_EOS )
+#endif
 #else
     call InitializeEquationOfState_IDEAL &
            ( Gamma_IDEAL_Option = Gamma_IDEAL_Option )
@@ -527,7 +604,20 @@ contains
                = Op_MinD_Option, &
              Op_MaxD_Option &
                = Op_MaxD_Option, &
+             EmAb_Muon_MinD_Option = EmAb_Muon_MinD_Option, &
+             EmAb_Muon_MaxD_Option = EmAb_Muon_MaxD_Option, &
+             EmAb_Muon_Method_Option = EmAb_Muon_Method_Option, &
+             nE_Muon_2D_Option = nE_Muon_2D_Option, &
+             NMS_MinD_Option = NMS_MinD_Option, NMS_MaxD_Option = NMS_MaxD_Option, &
+             LFE_MinD_Option = LFE_MinD_Option, LFE_MaxD_Option = LFE_MaxD_Option, &
+             LFC_MinD_Option = LFC_MinD_Option, LFC_MaxD_Option = LFC_MaxD_Option, &
+             IMD_MinD_Option = IMD_MinD_Option, IMD_MaxD_Option = IMD_MaxD_Option, &
              Verbose_Option = Verbose )
+
+#ifdef TWOMOMENT_ORDER_V
+    call InitializeSourceAwareLLF &
+           ( Use_Option = UseSourceAwareLLF_Option, Verbose_Option = Verbose )
+#endif
 
     ! --- For refinement and coarsening of DG data
 
@@ -589,6 +679,7 @@ contains
              MaxIter_inner_Option = MaxIter_inner_Option, &
              Rtol_inner_Option = Rtol_inner_Option, &
              Rtol_outer_Option = Rtol_outer_Option, &
+             Atol_inner_Option = Atol_inner, &
              Include_NNS_Option = Include_NNS_Option, &
              NNS_ApplyManyBodyCorrection_Option &
                = NNS_ApplyManyBodyCorrection_Option, &
@@ -598,13 +689,31 @@ contains
              Include_Pair_Option = Include_Pair_Option, &
              Include_NuPair_Option = Include_NuPair_Option, &
              Include_Brem_Option = Include_Brem_Option, &
+             Include_NMS_Option = Include_NMS_Option, &
+             Include_LFE_Option = Include_LFE_Option, &
+             Include_LFC_Option = Include_LFC_Option, &
+             Include_IMD_Option = Include_IMD_Option, &
+             GeneralLeptonQuadratureOrder_Option = GeneralLeptonQuadratureOrder_Option, &
              Include_LinCorr_Option = Include_LinCorr_Option, &
              wMatrRHS_Option = wMatrRHS_Option, &
              DnuMax_Option = DnuMax_Option, &
              FreezeOpacities_Option = FreezeOpacities_Option, &
+             SolverMethod_Option = SolverMethod_Option, &
+             UseMuonLeptonSource_Option = UseMuonLeptonSource_Option, &
+             NewtonFluidSourceTolerance_Option = NewtonFluidSourceTolerance_Option, &
              Verbose_Option = Verbose )
 
   end subroutine InitThornado
+
+
+  subroutine AbortInitialization(Message)
+    use mpi, only: MPI_ABORT, MPI_COMM_WORLD
+    character(len=*), intent(in) :: Message
+    integer :: Error
+    write(ERROR_UNIT,'(A)') trim(Message)
+    flush(ERROR_UNIT)
+    call MPI_ABORT(MPI_COMM_WORLD,-1,Error)
+  end subroutine AbortInitialization
 
 
   subroutine FreeThornado(write_timers)

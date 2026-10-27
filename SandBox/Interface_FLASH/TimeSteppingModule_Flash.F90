@@ -181,7 +181,7 @@ CONTAINS
       OffGridFluxR_T0(2*nCR), &
       OffGridFluxR_T1(2*nCR), &
       CollisionWeight
-    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:)     :: U0_F, Q1_F
+    REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:)     :: U0_F, Q1_F, ULimiter_F
     REAL(DP), ALLOCATABLE, DIMENSION(:,:,:,:,:,:,:) :: U0_R, T0_R, T1_R, Q1_R
 
     ALLOCATE( U0_F(1:nDOFX,iZ_B1(2):iZ_E1(2),iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF) )
@@ -286,11 +286,36 @@ CONTAINS
 
     IF( PRESENT( MatterCoupling_Increment_Option ) )THEN
 
+      ALLOCATE( ULimiter_F(1:nDOFX,iZ_B1(2):iZ_E1(2), &
+                          iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4),1:nCF) )
+      ULimiter_F = Zero
+
 #if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA MAP( alloc: ULimiter_F )
     !$OMP TARGET ENTER DATA MAP( alloc: MatterCoupling_Increment_Option )
 #elif defined(THORNADO_OACC)
-    !$ACC ENTER DATA CREATE( MatterCoupling_Increment_Option )
+    !$ACC ENTER DATA CREATE( ULimiter_F, MatterCoupling_Increment_Option )
 #endif
+
+#if   defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( MatterCoupling_Increment_Option )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+      DO iCF = 1, nCF
+      DO iZ4 = iZ_B1(4), iZ_E1(4)
+      DO iZ3 = iZ_B1(3), iZ_E1(3)
+      DO iZ2 = iZ_B1(2), iZ_E1(2)
+      DO iNodeX = 1, nDOFX
+        MatterCoupling_Increment_Option(iNodeX,iZ2,iZ3,iZ4,iCF) = Zero
+      END DO
+      END DO
+      END DO
+      END DO
+      END DO
 
     END IF
 
@@ -368,12 +393,21 @@ CONTAINS
 
 #ifdef TWOMOMENT_ORDER_V
 #if defined MICROPHYSICS_WEAKLIB
+    ! Preserve the actual fluid-limiter correction separately from the
+    ! collision increment.  Reconstructing the whole final fluid state on
+    ! the FLASH grid would introduce a second FV-to-DG round trip.
+    IF( PRESENT( MatterCoupling_Increment_Option ) ) &
+      CALL AddFields_Fluid &
+        ( iX_B0, iX_E0, One, Zero, U_F, U_F, ULimiter_F )
     CALL ApplySlopeLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF, &
              SuppressBC_Option = .FALSE., &
              iApplyBC_Option   = [ 0,0,0 ] )
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
+    IF( PRESENT( MatterCoupling_Increment_Option ) ) &
+      CALL AccumulateFluidLimiterIncrement &
+        ( ULimiter_F, U_F, MatterCoupling_Increment_Option )
 #endif
       CALL ApplySlopeLimiter_TwoMoment &
              ( iZ_B0_SW, iZ_E0_SW, iZ_B1, iZ_E1, uGE, uGF, U_F, U_R )
@@ -596,7 +630,8 @@ CONTAINS
       DO iZ2 = iZ_B0(2), iZ_E0(2)
       DO iNodeX = 1, nDOFX
         MatterCoupling_Increment_Option(iNodeX,iZ2,iZ3,iZ4,iCF) &
-          = CollisionWeight * Q1_F(iNodeX,iZ2,iZ3,iZ4,iCF)
+          = MatterCoupling_Increment_Option(iNodeX,iZ2,iZ3,iZ4,iCF) &
+            + CollisionWeight * Q1_F(iNodeX,iZ2,iZ3,iZ4,iCF)
       END DO
       END DO
       END DO
@@ -619,8 +654,16 @@ CONTAINS
 
 #elif TWOMOMENT_ORDER_V
 #if defined MICROPHYSICS_WEAKLIB
+    IF( PRESENT( MatterCoupling_Increment_Option ) .AND. SingleStage ) &
+      CALL AddFields_Fluid &
+        ( iX_B0, iX_E0, One, Zero, U_F, U_F, ULimiter_F )
     CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
            ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
+    ! Stage 2 resets the fluid to U0_F + dt/2 Q1_F; its stage-1
+    ! limiter correction must therefore not be counted a second time.
+    IF( PRESENT( MatterCoupling_Increment_Option ) .AND. SingleStage ) &
+      CALL AccumulateFluidLimiterIncrement &
+        ( ULimiter_F, U_F, MatterCoupling_Increment_Option )
 #endif
 
     CALL ApplySlopeLimiter_TwoMoment &
@@ -877,8 +920,14 @@ CONTAINS
 
 #elif TWOMOMENT_ORDER_V
 #if defined MICROPHYSICS_WEAKLIB
+      IF( PRESENT( MatterCoupling_Increment_Option ) ) &
+        CALL AddFields_Fluid &
+          ( iX_B0, iX_E0, One, Zero, U_F, U_F, ULimiter_F )
       CALL ApplyPositivityLimiter_Euler_NonRelativistic_TABLE &
              ( iX_B0, iX_E0, iX_B1, iX_E1, uGF, U_F, uDF )
+      IF( PRESENT( MatterCoupling_Increment_Option ) ) &
+        CALL AccumulateFluidLimiterIncrement &
+          ( ULimiter_F, U_F, MatterCoupling_Increment_Option )
 #endif
 
       CALL ApplySlopeLimiter_TwoMoment &
@@ -945,10 +994,14 @@ CONTAINS
     IF( PRESENT( MatterCoupling_Increment_Option ) )THEN
 
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET EXIT DATA MAP( from: MatterCoupling_Increment_Option )
+    !$OMP TARGET EXIT DATA MAP( from: MatterCoupling_Increment_Option ) &
+    !$OMP MAP( release: ULimiter_F )
 #elif defined(THORNADO_OACC)
-    !$ACC EXIT DATA COPYOUT( MatterCoupling_Increment_Option )
+    !$ACC EXIT DATA COPYOUT( MatterCoupling_Increment_Option ) &
+    !$ACC DELETE( ULimiter_F )
 #endif
+
+      DEALLOCATE( ULimiter_F )
 
     END IF
 
@@ -975,6 +1028,43 @@ CONTAINS
 #endif
 
   END SUBROUTINE Update_IMEX_PDARS
+
+
+  SUBROUTINE AccumulateFluidLimiterIncrement( Before, After, Increment )
+
+    ! Only this explicit state correction uses endpoint subtraction;
+    ! the collision contribution remains the accepted stage-weighted RHS.
+    REAL(DP), INTENT(in) :: &
+      Before(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF), &
+      After (1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
+    REAL(DP), INTENT(inout) :: &
+      Increment(1:nDOFX,iX_B1(1):iX_E1(1),iX_B1(2):iX_E1(2),iX_B1(3):iX_E1(3),1:nCF)
+    INTEGER :: iNodeX, iX1, iX2, iX3, iFF
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(5)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(5) &
+    !$ACC PRESENT( Before, After, Increment )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(5)
+#endif
+    DO iFF = 1, nCF
+    DO iX3 = iX_B0(3), iX_E0(3)
+    DO iX2 = iX_B0(2), iX_E0(2)
+    DO iX1 = iX_B0(1), iX_E0(1)
+    DO iNodeX = 1, nDOFX
+      Increment(iNodeX,iX1,iX2,iX3,iFF) &
+        = Increment(iNodeX,iX1,iX2,iX3,iFF) &
+          + ( After(iNodeX,iX1,iX2,iX3,iFF) &
+              - Before(iNodeX,iX1,iX2,iX3,iFF) )
+    END DO
+    END DO
+    END DO
+    END DO
+    END DO
+
+  END SUBROUTINE AccumulateFluidLimiterIncrement
 
 
   SUBROUTINE AddFields_Fluid( iX_B, iX_E, alpha, beta, A, B, C )

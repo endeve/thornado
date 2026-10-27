@@ -74,5 +74,11 @@ NeutrinoLeptonInteractionsModule.o: \
   UnitsModule.o \
   EquationOfStateModule_TABLE.o \
   RadiationFieldsModule.o \
-  wlGeneralLeptonScatteringModuleThornadoInterface.o \
   NeutrinoLeptonInteractionsModule.F90
+
+ifeq ($(MICROPHYSICS),WEAKLIB)
+ifndef LIBNAME
+NeutrinoLeptonInteractionsModule.o: \
+  wlGeneralLeptonScatteringModuleThornadoInterface.o
+endif
+endif
