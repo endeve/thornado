@@ -78,7 +78,7 @@ MODULE NeutrinoOpacitiesComputationModule
     QueryOpacity_Pair, &
     QueryOpacity_Brem, &
     QueryOpacity_NuPair, &
-    EmAb_Muon_Method, nE_Muon_2D, &
+    EmAb_Muon_Method, &
     nProcess_MuonOpac, iProcessList_MuonOpac
   USE RadiationFieldsModule, ONLY: &
     iNuE, iNuE_Bar, iNuM, iNuM_Bar, iNuT, iNuT_Bar, &
@@ -1653,11 +1653,11 @@ CONTAINS
         CALL Opacity_CC_2D &
             ( corr_num, 1, E_P, opEC(iE,iNuM,iX), &
               T_P, Mumu_P, Mun_P, Mup_P,  &
-              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), nE_Muon_2D )
+              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX) )
         CALL Opacity_CC_2D &
             ( corr_num, 2, E_P, opEC(iE,iNuM_Bar,iX), &
               T_P, Mumu_P, Mun_P, Mup_P,  &
-              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), nE_Muon_2D )
+              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX) )
 
         opEC(iE,iNuM    ,iX) = opEC(iE,iNuM    ,iX) * UnitEC
         opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) * UnitEC
@@ -1768,7 +1768,7 @@ CONTAINS
         CALL Opacity_CC_2D &
             ( corr_num, 3, E_P, opIND(iE,iNuE_Bar,iX), &
               T_P, Mue_P, Mun_P, Mup_P,  &
-              me, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), nE_Muon_2D )
+              me, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX) )
 
         opIND(iE,iNuE_Bar,iX) = opIND(iE,iNuE_Bar,iX) * UnitEC
 

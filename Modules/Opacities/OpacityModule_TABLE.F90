@@ -22,6 +22,8 @@ MODULE OpacityModule_TABLE
     GetIndexAndDelta_Log
   USE wlGeneralLeptonScatteringModuleThornadoInterface, ONLY: &
     InitGeneralScatteringKernels, FinalizeGeneralScatteringKernels
+  USE wlSemiLeptonicOpacityModule2D, ONLY: &
+    InitOpacity_CC_2D, FinalizeOpacity_CC_2D
 
   ! ----------------------------------------------
 
@@ -456,6 +458,9 @@ CONTAINS
     ELSE
       nE_Muon_2D = 50 ! Overkill, 30 is probably enough
     END IF
+    ! 2D CC quadrature nodes (weaklib GeneralEmAb), computed once and
+    ! copied to the device; Opacity_CC_2D no longer takes nE
+    CALL InitOpacity_CC_2D( nE_Muon_2D )
 
     ! --- Iso ---
 
@@ -1220,6 +1225,8 @@ CONTAINS
       DEALLOCATE( Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T )
       DEALLOCATE( EC_kfmin, EC_kfmax, EC_a, EC_b, EC_ak, EC_bk )
     ENDIF
+
+  CALL FinalizeOpacity_CC_2D()
 
   IF ( ALLOCATED(iGroupList_MuonOpac) ) THEN
     IF ( nProcess_MuonOpac > 0 ) CALL FinalizeGeneralScatteringKernels()
