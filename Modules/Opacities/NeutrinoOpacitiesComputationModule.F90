@@ -107,7 +107,7 @@ MODULE NeutrinoOpacitiesComputationModule
     LinearInterp1D_1DArray_Point, &
     LinearInterp3D_3DArray_Point
 
-  USE wlCalculateAbEmOpacityModule, ONLY: &
+  USE wlCalculateEmAbOpacityModule, ONLY: &
     ElasticAbsorptionOpacityNue, &
     ElasticAbsorptionOpacityNum, &
     CalculateHorowitzWeakMagRecoil
