@@ -411,7 +411,6 @@ CONTAINS
 
         CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
 
-        PRINT *, 'MF_uGF(iLevel) % nc: ', MF_uGF(iLevel) % nc
         CALL amrex_integrate_twomoment &
              ( GEOM(iLevel), uGE, MF_uGF(iLevel), MF_uCF(iLevel), MF_uCR(iLevel), &
                t_new(iLevel), dt(iLevel), &
