@@ -13,7 +13,7 @@ MODULE MF_TwoMoment_TimeSteppingModule_OrderV_AMReX
   USE amrex_geometry_module,  ONLY: &
     amrex_geometry
   USE amrex_multifab_module,  ONLY: &
-    amrex_multifab, &
+    amrex_multifab, amrex_imultifab, &
     amrex_multifab_build, amrex_multifab_destroy, &
     amrex_mfiter, &
     amrex_mfiter_build, amrex_mfiter_destroy
@@ -46,6 +46,14 @@ MODULE MF_TwoMoment_TimeSteppingModule_OrderV_AMReX
     ComputeIncrement_TwoMoment_Explicit
   USE thornado_amrex_timeintegrator_module, ONLY: &
     amrex_integrate_twomoment
+  USE TwoMoment_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_TwoMoment
+  USE Euler_BoundaryConditionsModule, ONLY: &
+    ApplyBoundaryConditions_Euler
+  USE FillPatchModule, ONLY: &
+    FillPatch
+  USE MeshModule, ONLY: &
+    MeshX, MeshE
 
 
   ! --- Local Modules ---
@@ -95,6 +103,11 @@ MODULE MF_TwoMoment_TimeSteppingModule_OrderV_AMReX
   USE MF_Euler_dgDiscretizationModule, ONLY: &
     ComputeIncrement_Euler_MF
   USE MF_UtilitiesModule
+  USE MF_MeshModule, ONLY: &
+    CreateMesh_MF, &
+    DestroyMesh_MF
+  USE MaskModule, ONLY: &
+    CreateFineMask, DestroyFineMask, IsNotLeafElement
 
   USE FluxCorrectionModule_Euler, ONLY: &
     ApplyFluxCorrection_Euler_MF
@@ -349,6 +362,8 @@ CONTAINS
     REAL(DP) :: dM_OffGrid_Euler    (1:nCF  ,0:nMaxLevels-1)
     REAL(DP) :: dM_OffGrid_TwoMoment(1:2*nCR,0:nMaxLevels-1)
 
+    TYPE(amrex_imultifab) :: iMF_FineMask
+
     CALL TimersStart_AMReX( Timer_AMReX_UpdateFluid )
     dM_OffGrid_Euler     = Zero
     dM_OffGrid_TwoMoment = Zero
@@ -374,16 +389,43 @@ CONTAINS
 
     IF( EvolveTwoMoment )THEN
       DO iLevel = 0, nLevels-1
+
+        ! --- Apply boundary conditions to interior domains ---
+
+        CALL FillPatch &
+             ( iLevel, MF_uGF,MF_uCR, ApplyBoundaryConditions_TwoMoment_Option = .TRUE.)
+
+        CALL FillPatch( iLevel, MF_uGF, MF_uCF, ApplyBoundaryConditions_Euler_Option = .TRUE.)
+
+
+        CALL FillPatch &
+             ( iLevel, MF_uGF, &
+               ApplyBoundaryConditions_Geometry_Option = .TRUE. )
+
+        CALL ApplyPositivityLimiter_TwoMoment_MF &
+               ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uCR(iLevel) )
+
+        ! CALL MF_duCR(iLevel) % setval( 0.0_amrex_real )
+
+        CALL CreateMesh_MF( iLevel, MeshX )
+
+        CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
+
         PRINT *, 'MF_uGF(iLevel) % nc: ', MF_uGF(iLevel) % nc
         CALL amrex_integrate_twomoment &
              ( GEOM(iLevel), uGE, MF_uGF(iLevel), MF_uCF(iLevel), MF_uCR(iLevel), &
                t_new(iLevel), dt(iLevel), &
                C_FUNLOC(ComputeIncrement_TwoMoment_Implicit), &
                C_FUNLOC(ComputeIncrement_TwoMoment_Explicit), &
+               C_FUNLOC(ApplyBoundaryConditions_TwoMoment), &
+               C_FUNLOC(ApplyBoundaryConditions_Euler), &
                swX, nGF, nCF, nCR, nDOFX, nDOFE, nSpecies, &
                iE_E0, iE_B0, iE_E1, iE_B1)
       END DO
     END IF ! EvolveTwoMoment
+
+    CALL DestroyMesh_MF( MeshX )
+    CALL DestroyFineMask( iMF_FineMask )
 
     !! IF( EvolveEuler )THEN
     !!   CALL ApplyPositivityLimiter_Euler_MF(MF_uGF, MF_uCF, MF_uDF)

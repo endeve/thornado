@@ -485,10 +485,6 @@ CONTAINS
       Data_thornado(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iD, iNodeZ, iNodeE, iNodeX
-!PRINT *, 'amrex2thornado_Z'
-!PRINT *, 'nDOFE =', nDOFE
-!PRINT *, 'nDOFX =', nDOFX  
-!PRINT *, 'nDOFZ =', nDOFZ
     DO iS  = 1      , nS
     DO iFd = 1      , nFields
     DO iZ4 = iZ_B(4), iZ_E(4)
@@ -542,11 +538,6 @@ CONTAINS
       Data_thornado(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iNodeZ, iD, iNodeE, iNodeX
-!PRINT *, 'thornado2amrex_Z'
-!PRINT *, 'nDOFE =', nDOFE
-!PRINT *, 'nDOFX =', nDOFX  
-!PRINT *, 'nDOFZ =', nDOFZ
-!PRINT *, 'Expected nDOFZ =', nDOFE * nDOFX
     DO iS  = 1      , nS
     DO iFd = 1      , nFields
     DO iZ4 = iZ_B(4), iZ_E(4)

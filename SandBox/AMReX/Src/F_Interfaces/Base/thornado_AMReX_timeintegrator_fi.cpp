@@ -6,11 +6,16 @@ using namespace amrex;
 using Thornado_MultiFabs_t = Vector<MultiFab>;
 
 using Thornado_rhs_funptr_t = void(*)(
-    int*, int*, int*, int*,             // iZ_B0, iZ_E0, iZ_B1, iZ_E1
-    Real*, Real*, Real*, Real*, Real*,  // GE, GX, U_F, U_R, dU_R
-    bool*,                              // SuppressBC_Option  (match C_BOOL type!)
-    Real*, Real*, Real*,                // SurfaceFlux_X1/X2/X3_Option
-    int*);                              // FineMask_Option
+    const int*, const int*, const int*, const int*, // iZ_B0, iZ_E0, iZ_B1, iZ_E1
+    Real*, Real*, Real*, Real*, Real*,              // GE, GX, U_F, U_R, dU_R
+    bool*,                                          // SuppressBC_Option  (match C_BOOL type!)
+    Real*, Real*, Real*,                            // SurfaceFlux_X1/X2/X3_Option
+    int*);                                          // FineMask_Option
+
+using Thornado_applybc_funptr_t = void(*)(
+    const int*, const int*, const int*, const int*, // iZ_B0, iZ_E0, iZ_B1, iZ_E1
+    Real*,                                          // U
+    int*);                                          // iApplyBC_Option
 
 void amrex2thornado_X
        ( int nFields,
@@ -23,9 +28,9 @@ void amrex2thornado_X
     const Dim3 lo = lbound(bx);
     const Dim3 hi = ubound(bx);
     const int nDOFX = Data_amrex.nComp() / nFields; // nC = nDOFX * nFields
-    const int nX[3] = {hi.x - lo.x +1,
-                       hi.y - lo.y +1,
-                       hi.z - lo.z +1};
+    const int nX[3] = {hi.x - lo.x + 1,
+                       hi.y - lo.y + 1,
+                       hi.z - lo.z + 1};
 
     // Strides for Data_thornado(iDOF, iX1, iX2, iX3, iFd), 1-based dims,
     // column-major: iDOF fastest, iFd slowest.
@@ -34,26 +39,26 @@ void amrex2thornado_X
     const int strideX3 = strideX2 * nX[1];
     const int strideFd = strideX3 * nX[2];
 
-    amrex::ParallelFor( bx, nFields,
-      [=] AMREX_GPU_DEVICE (int iX1, int iX2, int iX3, int iFd) noexcept
+    amrex::ParallelFor( bx, Data_amrex.nComp(),
+      [=] AMREX_GPU_DEVICE (int iX1, int iX2, int iX3, int iC) noexcept
     {
         // Base flat offset (0-based) for Data_thornado(1, iX1, iX2, iX3, iFd).
+        const int iFd   = iC / nDOFX;
+        const int iDOFX = iC % nDOFX;
         const int base_t =
               (iX1 - lo.x) * strideX1
             + (iX2 - lo.y) * strideX2
             + (iX3 - lo.z) * strideX3
             + (iFd - 0)    * strideFd;
 
-        for (int iDOF = 0; iDOF < nDOFX; ++iDOF)
-        {
-            const int icomp = nDOFX * iFd + iDOF; // 0-based
-            Data_thornado[base_t+iDOF] = Data_amrex(iX1, iX2, iX3, icomp);
-        }
+        const int offset_t = iDOFX;
+        AMREX_ASSERT(base_t + offset_t < strideFd * nFields );
+        Data_thornado[base_t + offset_t] = Data_amrex(iX1, iX2, iX3, iC);
     });
 }
 
 void amrex2thornado_Z
-       ( int nDOFX, int nDOFE, int nE, int nFields, int nSpecies, int swE,
+       ( int nDOFX, int nDOFE, int nE0, int nFields, int nSpecies, int swE,
          const amrex::Box& bx,
          amrex::Array4<Real const> const& Data_amrex,
          Real* const Data_thornado /* flat, Fortran-ordered */ )
@@ -65,36 +70,30 @@ void amrex2thornado_Z
     // Size of Data_thornado: (nDOFE*nDOFE, nE+swE*2, nZ2, nZ3, nZ4, nFields, nSpecies)
     // Note: Data_thornado includes ghosts in the energy dimension, unlike Data_amrex
 
-    AMREX_ASSERT(Data_amrex.nComp() == nDOFX * nDOFE * nE * nFields * nSpecies);
+    AMREX_ASSERT(Data_amrex.nComp() == nDOFX * nDOFE * nE0 * nFields * nSpecies);
 
     const int nZ2 = hi.x - lo.x + 1;
     const int nZ3 = hi.y - lo.y + 1;
     const int nZ4 = hi.z - lo.z + 1;
-    amrex::Print() << "nDOFE    = " << nDOFE    << "\n";
-    amrex::Print() << "nDOFX    = " << nDOFX    << "\n";
-    amrex::Print() << "nZ2      = " << nZ2      << "\n";
-    amrex::Print() << "nZ3      = " << nZ3      << "\n";
-    amrex::Print() << "nZ4      = " << nZ4      << "\n";
-    amrex::Print() << "nFields  = " << nFields  << "\n";
-    amrex::Print() << "nSpecies = " << nSpecies << "\n";
 
     // Strides for Data_thornado(iNodeZ, iZ1, iZ2, iZ3, iZ4, iFd, iS),
     // column-major: iNodeZ fastest, iS slowest.
+    const int nE1 = nE0 + 2*swE;
     const int strideZ1 = nDOFE * nDOFX;
-    const int strideZ2 = strideZ1 * nE;
+    const int strideZ2 = strideZ1 * nE1;
     const int strideZ3 = strideZ2 * nZ2;
     const int strideZ4 = strideZ3 * nZ3;
     // const int strideFd = strideZ4 * nZ4;
     // const int strideS  = strideFd * nFields;
 
-    const int ncomp = nE * nDOFE * nDOFX; // flattened (iZ1,iNodeE,iNodeX)
+    const int ncomp = nE0 * nDOFE * nDOFX; // flattened (iZ1,iNodeE,iNodeX)
 
     for (int iS = 0; iS < nSpecies; ++iS) {
     for (int iFd = 0; iFd < nFields; ++iFd) {
         // Base flat offset (0-based) for Data_thornado(1,iZ_B1(1),iZ_B1(2),
         // iZ_B1(3),iZ_B1(4),iFd,iS); position within (iZ2,iZ3,iZ4,iZ1,iNodeZ)
         // is added inside the kernel.
-        const int base_siFd = (iFd + iS * nFields) * strideZ1 * (nE + 2*swE) * nZ2 * nZ3 * nZ4;
+        const int base_siFd = (iFd + iS * nFields) * strideZ1 * nE1 * nZ2 * nZ3 * nZ4;
 
         // Component offset (0-based iD) contributed by (iS,iFd), matching
         // the Fortran formula's leading two terms.
@@ -123,7 +122,7 @@ void amrex2thornado_Z
                                + (iZ4 - lo.z) * strideZ4;
 
             Data_thornado[base_siFd + offset_t] = Data_amrex(iZ2, iZ3, iZ4, iD);
-            AMREX_ASSERT(base_siFd + offset_t < nDOFX*nDOFE * (nE+swE*2) * nZ2 * nZ3 * nZ4 * nFields * nSpecies );
+            AMREX_ASSERT(base_siFd + offset_t < nDOFX*nDOFE * nE1 * nZ2 * nZ3 * nZ4 * nFields * nSpecies );
         });
 
 //      DO iZ1    = iE_B0, iE_E0 ! always want iZ1 to not include ghost cells
@@ -157,6 +156,8 @@ extern "C" {
       Real dt,
       Thornado_rhs_funptr_t compute_rhs_collision,
       Thornado_rhs_funptr_t compute_rhs_streaming,
+      Thornado_applybc_funptr_t applybc_twomoment,
+      Thornado_applybc_funptr_t applybc_euler,
       int swX[3], int nGF, int nCF, int nCR, int nDOFX, int nDOFE, int nSpecies,
       int iE_E0, int iE_B0, int iE_E1, int iE_B1) {
 
@@ -209,27 +210,30 @@ extern "C" {
           u_rhs[0].setVal(0);
           u_rhs[1].setVal(0);
           u_rhs[2].setVal(0);
+          G.FillBoundary(GEOM->periodicity());
+          F.FillBoundary(GEOM->periodicity());
+          R.FillBoundary(GEOM->periodicity());
 
           amrex::Print() << "Iterating over multifabs\n";
           for ( MFIter mfi(R); mfi.isValid(); ++mfi )
           {
-            // FIXME: bx unused
-            const Box& bx = mfi.validbox();
+            // FIXME: grow tilebox by max(swX)
+            const Box& bx = mfi.growntilebox(swX[0]);
             const Box& tb = mfi.tilebox();
 
             amrex::Print() << "Setting bounds from bx\n";
-            const int iX_B0[3] = {lbound(bx).x,
-                                  lbound(bx).y,
-                                  lbound(bx).z};
-            const int iX_E0[3] = {ubound(bx).x,
-                                  ubound(bx).y,
-                                  ubound(bx).z};
-            const int iX_B1[3] = {lbound(bx).x - swX[0],
-                                  lbound(bx).y - swX[1],
-                                  lbound(bx).z - swX[2]};
-            const int iX_E1[3] = {ubound(bx).x + swX[0],
-                                  ubound(bx).y + swX[1],
-                                  ubound(bx).z + swX[2]};
+            const int iX_B0[3] = {lbound(tb).x,
+                                  lbound(tb).y,
+                                  lbound(tb).z};
+            const int iX_E0[3] = {ubound(tb).x,
+                                  ubound(tb).y,
+                                  ubound(tb).z};
+            const int iX_B1[3] = {lbound(tb).x - swX[0],
+                                  lbound(tb).y - swX[1],
+                                  lbound(tb).z - swX[2]};
+            const int iX_E1[3] = {ubound(tb).x + swX[0],
+                                  ubound(tb).y + swX[1],
+                                  ubound(tb).z + swX[2]};
             const int nE = (iE_E0    - iE_B0    + 1);
             const int nX = (iX_E1[0] - iX_B1[0] + 1)
                          * (iX_E1[1] - iX_B1[1] + 1)
@@ -244,10 +248,10 @@ extern "C" {
             // multi-dimensional arrays of Reals
             // We allocate the arrays (GX, U_F, U_R, dU_R) for this purpose
             // They should be indexed as the Fortran kernels expect
-            Real GX  [nDOFX * nX * nGF                        ];
-            Real U_F [nDOFX * nX * nCF                        ];
-            Real U_R [nDOFX * nX * nCR * nSpecies * nDOFE * nE];
-            Real dU_R[nDOFX * nX * nCR * nSpecies * nDOFE * nE];
+            Real GX  [nDOFX * nX * nGF                                ];
+            Real U_F [nDOFX * nX * nCF                                ];
+            Real U_R [nDOFX * nX * nCR * nSpecies * nDOFE * (nE+2*swE)];
+            Real dU_R[nDOFX * nX * nCR * nSpecies * nDOFE * (nE+2*swE)];
             amrex::Print() << "Allocated Real arrays in RHS\n";
 
 #if 0
@@ -269,10 +273,11 @@ extern "C" {
                                                   iZ_E0[3]-iZ_B0[3]+1,,
                                                   nCR, nSpecies];
 #endif
-            int iZ_B0[4] = {iE_B0, iX_B0[0], iX_B0[1], iX_B0[2]};
-            int iZ_E0[4] = {iE_E0, iX_E0[0], iX_E0[1], iX_E0[2]};
-            int iZ_B1[4] = {iE_B1, iX_B1[0], iX_B1[1], iX_B1[2]};
-            int iZ_E1[4] = {iE_E1, iX_E1[0], iX_E1[1], iX_E1[2]};
+            // FIXME: Energy index starts from 0 while spatial index starts from 1
+            const int iZ_B0[4] = {iE_B0, iX_B0[0]+1, iX_B0[1]+1, iX_B0[2]+1};
+            const int iZ_E0[4] = {iE_E0, iX_E0[0]+1, iX_E0[1]+1, iX_E0[2]+1};
+            const int iZ_B1[4] = {iE_B1, iX_B1[0]+1, iX_B1[1]+1, iX_B1[2]+1};
+            const int iZ_E1[4] = {iE_E1, iX_E1[0]+1, iX_E1[1]+1, iX_E1[2]+1};
 
 
             amrex::Print() << "Converting MultiFab data to Fortran array\n";
@@ -302,7 +307,13 @@ extern "C" {
 
             CALL ApplyBoundaryConditions_Euler_MF &
                    ( iX_B0, iX_E0, iX_B1, iX_E1, C, Edge_Map )
+
              */
+
+            //FIXME: Handle inner BC through edge map
+            //FIXME: Handle iApplyBC_Option
+            applybc_twomoment(iZ_B0, iZ_E0, iZ_B1, iZ_E1, U_R, nullptr);
+            applybc_euler(iX_B0, iX_E0, iX_B1, iX_E1, U_F, nullptr);
 
             amrex::Print() << "Computing increment\n";
             compute_rhs_streaming(
