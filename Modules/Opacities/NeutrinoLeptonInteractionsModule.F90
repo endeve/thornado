@@ -7,6 +7,9 @@ MODULE NeutrinoLeptonInteractionsModule
     ComputeMuonChemicalPotential_TABLE
   USE RadiationFieldsModule, ONLY: &
     nSpecies, iNuE, iNuE_Bar, iNuM, iNuM_Bar, iNuT, iNuT_Bar
+  USE TwoMoment_RetainedArithmeticModule, ONLY: &
+    RetainedReal, Retain, RetainedValue, &
+    OPERATOR(+), OPERATOR(-), OPERATOR(*), ASSIGNMENT(=)
 #ifdef MICROPHYSICS_WEAKLIB
   USE wlGeneralLeptonScatteringModuleThornadoInterface, ONLY: &
     InitGeneralScatteringKernels, FinalizeGeneralScatteringKernels, &
@@ -19,7 +22,7 @@ MODULE NeutrinoLeptonInteractionsModule
   INTEGER, PARAMETER, PUBLIC :: iGL_NMS  = 1
   INTEGER, PARAMETER, PUBLIC :: iGL_LFE  = 2
   INTEGER, PARAMETER, PUBLIC :: iGL_LFC  = 3
-  INTEGER, PARAMETER, PUBLIC :: iGL_IMD  = 4
+  INTEGER, PARAMETER, PUBLIC :: iGL_IMD  = 4 ! Both muon charges, resolved by neutrino species.
   INTEGER, PARAMETER, PUBLIC :: nGL      = 4
 
   INTEGER, PARAMETER :: iProcessMin = 13
@@ -658,11 +661,13 @@ CONTAINS
     INTEGER,  INTENT(in) :: iX
     REAL(DP), INTENT(in) :: W2(:), Dnu(:,:,:)
     INTEGER :: iChannel, iE1, iE3, iS1, iS3
-    REAL(DP) :: Event, Kf, Kr, F1, F3, NumberEvent, Sign
-    REAL(DP) :: NumberSource, NumberCorrection, EnergySource, EnergyCorrection
+    REAL(DP) :: Sign
+    TYPE(RetainedReal) :: Event, Kf, Kr, F1, F3, NumberEvent
+    TYPE(RetainedReal) :: NumberSource, EnergySource, Rate1, Chi1
+    TYPE(RetainedReal) :: Rate3(nE_Global), Chi3(nE_Global)
 
-    NumberSource = Zero; NumberCorrection = Zero
-    EnergySource = Zero; EnergyCorrection = Zero
+    NumberSource = Zero
+    EnergySource = Zero
     DO iChannel = 1, 2
       Sign = REAL(3-2*iChannel,DP)
       IF( iChannel == iChannelNu )THEN
@@ -671,33 +676,38 @@ CONTAINS
         iS1 = iNuE;     iS3 = iNuM_Bar
       END IF
       IF( iS1 > nSpecies_Global .OR. iS3 > nSpecies_Global ) CYCLE
+      Rate3 = Zero
+      Chi3 = Zero
       DO iE1 = 1, nE_Global
         F1 = Dnu(iE1,iS1,iX)
+        Rate1 = Zero
+        Chi1 = Zero
         DO iE3 = 1, nE_Global
           F3 = Dnu(iE3,iS3,iX)
           Kf = Phi_IMD_F(iE1,iE3,iChannel,iX)
           Kr = Phi_IMD_R(iE1,iE3,iChannel,iX)
           Event = Kf*F1*F3 - Kr*(One-F1)*(One-F3)
-          NumberEvent = ((W2(iE1)*PhaseNormalization)*W2(iE3))*Event
-          CALL AddInteractionSource &
-                 ( Sign*NumberEvent, NumberSource, NumberCorrection )
-          CALL AddInteractionSource &
-                 ( (EnergyGrid(iE1)+EnergyGrid(iE3))*NumberEvent, &
-                   EnergySource, EnergyCorrection )
-          R_GL(iE1,iS1,iX,iGL_IMD) = R_GL(iE1,iS1,iX,iGL_IMD) &
-            - W2(iE3)*Event
-          R_GL(iE3,iS3,iX,iGL_IMD) = R_GL(iE3,iS3,iX,iGL_IMD) &
-            - W2(iE1)*Event
-          Chi_GL(iE1,iS1,iX,iGL_IMD) = Chi_GL(iE1,iS1,iX,iGL_IMD) &
-            + W2(iE3)*( Kf*F3 + Kr*(One-F3) )
-          Chi_GL(iE3,iS3,iX,iGL_IMD) = Chi_GL(iE3,iS3,iX,iGL_IMD) &
-            + W2(iE1)*( Kf*F1 + Kr*(One-F1) )
+          NumberEvent = (Retain(W2(iE1))*PhaseNormalization)*W2(iE3)*Event
+          NumberSource = NumberSource + Sign*NumberEvent
+          EnergySource = EnergySource &
+            + (Retain(EnergyGrid(iE1))+EnergyGrid(iE3))*NumberEvent
+          ! One retained event supplies both species and their fluid source.
+          Rate1 = Rate1 - W2(iE3)*Event
+          Rate3(iE3) = Rate3(iE3) - W2(iE1)*Event
+          Chi1 = Chi1 + W2(iE3)*( Kf*F3 + Kr*(One-F3) )
+          Chi3(iE3) = Chi3(iE3) + W2(iE1)*( Kf*F1 + Kr*(One-F1) )
         END DO
+        R_GL(iE1,iS1,iX,iGL_IMD) = RetainedValue(Rate1)
+        Chi_GL(iE1,iS1,iX,iGL_IMD) = RetainedValue(Chi1)
+      END DO
+      DO iE3 = 1, nE_Global
+        R_GL(iE3,iS3,iX,iGL_IMD) = RetainedValue(Rate3(iE3))
+        Chi_GL(iE3,iS3,iX,iGL_IMD) = RetainedValue(Chi3(iE3))
       END DO
     END DO
-    Source_GL(2,iGL_IMD,iX) = NumberSource + NumberCorrection
+    Source_GL(2,iGL_IMD,iX) = RetainedValue(NumberSource)
     Source_GL(1,iGL_IMD,iX) = -Source_GL(2,iGL_IMD,iX)
-    Source_GL(3,iGL_IMD,iX) = EnergySource + EnergyCorrection
+    Source_GL(3,iGL_IMD,iX) = RetainedValue(EnergySource)
 
   END SUBROUTINE ComputeIMDPoint
 

@@ -71,6 +71,7 @@ endif
 
 NeutrinoLeptonInteractionsModule.o: \
   KindModule.o \
+  TwoMoment_RetainedArithmeticModule.o \
   UnitsModule.o \
   EquationOfStateModule_TABLE.o \
   RadiationFieldsModule.o \

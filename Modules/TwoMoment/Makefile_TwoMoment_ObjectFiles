@@ -6,9 +6,12 @@ else ifeq ($(TWOMOMENT_ORDER),RELATIVISTIC)
   include $(THORNADO_DIR)/Modules/TwoMoment/Relativistic/Makefile_TwoMoment_Relativistic_ObjectFiles
 endif
 
+TWO_MOMENT += TwoMoment_RetainedArithmeticModule.o
+
 ifeq ($(TWOMOMENT_ORDER),ORDER_V)
-TWO_MOMENT += TwoMoment_RetainedArithmeticModule.o TwoMoment_CollisionOperatorModule_OrderV.o
+TWO_MOMENT += TwoMoment_CollisionOperatorModule_OrderV.o
 TWO_MOMENT += TwoMoment_RadiationStateRecoveryModule_OrderV.o TwoMoment_NewtonSolverModule_OrderV.o
+endif
 
 # Error-free high/low transforms and compensated source sums require explicit
 # evaluation order. Protect the nested solver's local compensation helper too.
@@ -27,7 +30,6 @@ TwoMoment_RetainedArithmeticModule.o TwoMoment_CollisionOperatorModule_OrderV.o 
 TwoMoment_RadiationStateRecoveryModule_OrderV.o TwoMoment_NewtonSolverModule_OrderV.o \
 TwoMoment_NeutrinoMatterSolverModule.o NeutrinoLeptonInteractionsModule.o: %.o: %.F90
 	$(FORTRAN) -c $(DEFINES) $(FLAGS) $(RETAINED_FP_FLAGS) $(INCLUDE) $(SUFFIX_f90) $<
-endif
 
 TWO_MOMENT += \
   TwoMoment_TimersModule.o \

@@ -127,6 +127,7 @@ OBJS = \
        OpacityModule_TABLE.o \
        NeutrinoOpacitiesComputationModule.o \
        NeutrinoLeptonInteractionsModule.o \
+       TwoMoment_RetainedArithmeticModule.o \
        ThornadoInitializationModule.o \
        TimeSteppingModule_Flash.o
 
@@ -135,7 +136,6 @@ OBJS += \
        TwoMoment_TroubledCellIndicatorModule.o \
        TwoMoment_OpacityModule.o \
        TwoMoment_DiscretizationModule_Collisions.o \
-       TwoMoment_RetainedArithmeticModule.o \
        TwoMoment_CollisionOperatorModule_OrderV.o \
        TwoMoment_RadiationStateRecoveryModule_OrderV.o \
        TwoMoment_NewtonSolverModule_OrderV.o
@@ -181,7 +181,6 @@ $(LIBNAME): $(OBJS)
 %.o %.mod : %.F90
 	$(FCOMP) $(FFLAGS) $(filter-out -qrealsize=8,$(F90FLAGS)) $(DEFINES) $< -o $@
 
-ifeq ($(TWOMOMENT_ORDER),ORDER_V)
 # The FLASH bridge does not include Makefile_TwoMoment_ObjectFiles, which
 # carries these rules in standalone builds. Preserve the same IEEE
 # arithmetic here, even when the host OPT flags enable reassociation/FMA.
@@ -216,7 +215,6 @@ TwoMoment_RadiationStateRecoveryModule_OrderV.o TwoMoment_NewtonSolverModule_Ord
 TwoMoment_NeutrinoMatterSolverModule.o NeutrinoLeptonInteractionsModule.o \
 TimeSteppingModule_Flash.o: %.o: %.F90
 	$(FCOMP) $(FFLAGS) $(filter-out -qrealsize=8,$(F90FLAGS)) $(DEFINES) $(RETAINED_FP_FLAGS) $< -o $@
-endif
 
 .PHONY: clean
 clean:
