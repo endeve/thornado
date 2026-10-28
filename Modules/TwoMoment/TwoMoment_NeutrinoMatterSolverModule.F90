@@ -1381,12 +1381,14 @@ CONTAINS
     END IF
 #endif
     UseMuonLeptonSource = .FALSE.
-    IF( PRESENT(UseMuonLeptonSource_Option) ) UseMuonLeptonSource = UseMuonLeptonSource_Option
+    IF( .NOT. UseNewtonSolve )THEN
+      IF( PRESENT(UseMuonLeptonSource_Option) ) UseMuonLeptonSource = UseMuonLeptonSource_Option
+    END IF
     IF( UseNewtonSolve )THEN
       IF( DnuMax /= One .OR. Include_LinCorr .OR. FreezeOpacities .OR. &
-          ANY(wMatrRHS /= One) .OR. UseMuonLeptonSource )THEN
+          ANY(wMatrRHS /= One) )THEN
         WRITE(ERROR_UNIT,'(A)') 'Balanced Newton requires DnuMax=1, full fluid coupling, current opacities, '// &
-          'no angular corrections, and no nested-source override.'
+          'and no angular corrections.'
         CALL MPI_ABORT(MPI_COMM_WORLD,-1,ierr)
       END IF
     END IF
