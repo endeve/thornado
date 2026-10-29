@@ -1066,6 +1066,8 @@ CONTAINS
     INTEGER  :: i, j
     REAL(DP) :: VecTMP(4,M)
 
+    ShiftVec = Zero
+
     DO j = 1, mk - 1
     DO i = 1, 4
 
