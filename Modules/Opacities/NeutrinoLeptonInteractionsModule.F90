@@ -423,12 +423,8 @@ CONTAINS
         IF( IncludeLFE .AND. ActiveLFE(iX) )THEN
           Phi_LFE_F(iE1,iE3,iChannelNu, iX) = Scale * Phout(iP25,1)
           Phi_LFE_F(iE1,iE3,iChannelNub,iX) = Scale * Phout(iP27,1)
-          Phi_LFE_R(iE1,iE3,iChannelNu, iX) = Scale &
-            * ScaleByExponential &
-                ( Phout(iP25,1), ( E3 - E1 - MuE + MuM ) / kT )
-          Phi_LFE_R(iE1,iE3,iChannelNub,iX) = Scale &
-            * ScaleByExponential &
-                ( Phout(iP27,1), ( E3 - E1 + MuE - MuM ) / kT )
+          Phi_LFE_R(iE3,iE1,iChannelNu,iX) = Scale * Phout(iP25+1,1)
+          Phi_LFE_R(iE3,iE1,iChannelNub,iX) = Scale * Phout(iP27+1,1)
         ELSE
           Phi_LFE_F(iE1,iE3,:,iX) = Zero
           Phi_LFE_R(iE1,iE3,:,iX) = Zero
@@ -437,12 +433,8 @@ CONTAINS
         IF( IncludeLFC .AND. ActiveLFC(iX) )THEN
           Phi_LFC_F(iE1,iE3,iChannelNu, iX) = Scale * Phout(iP29,1)
           Phi_LFC_F(iE1,iE3,iChannelNub,iX) = Scale * Phout(iP31,1)
-          Phi_LFC_R(iE1,iE3,iChannelNu, iX) = Scale &
-            * ScaleByExponential &
-                ( Phout(iP29,1), ( E3 - E1 + MuM - MuE ) / kT )
-          Phi_LFC_R(iE1,iE3,iChannelNub,iX) = Scale &
-            * ScaleByExponential &
-                ( Phout(iP31,1), ( E3 - E1 - MuM + MuE ) / kT )
+          Phi_LFC_R(iE3,iE1,iChannelNu,iX) = Scale * Phout(iP29+1,1)
+          Phi_LFC_R(iE3,iE1,iChannelNub,iX) = Scale * Phout(iP31+1,1)
         ELSE
           Phi_LFC_F(iE1,iE3,:,iX) = Zero
           Phi_LFC_R(iE1,iE3,:,iX) = Zero
@@ -461,6 +453,54 @@ CONTAINS
           Phi_IMD_F(iE1,iE3,:,iX) = Zero
           Phi_IMD_R(iE1,iE3,:,iX) = Zero
         END IF
+    END DO
+    END DO
+    END DO
+
+    IF( .NOT. (IncludeLFE .OR. IncludeLFC) ) RETURN
+
+    ! Each pair has both independent quadrature directions available.
+    ! Retain the larger direction and obtain its smaller partner with a
+    ! nonpositive thermodynamic exponent.
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( iX, E1, E3, kT, MuE, MuM )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( iX, E1, E3, kT, MuE, MuM ) &
+    !$ACC PRESENT( ActiveLFE, ActiveLFC, UnpackIndex, EnergyGrid, &
+    !$ACC   KernelTemperature, KernelMuElectron, KernelMuMuon, &
+    !$ACC   Phi_LFE_F, Phi_LFE_R, Phi_LFC_F, Phi_LFC_R )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( iX, E1, E3, kT, MuE, MuM )
+#endif
+    DO iActive = 1, nActive
+    DO iE3 = 1, nE_Global
+    DO iE1 = 1, nE_Global
+      iX = UnpackIndex(iActive)
+      kT = KernelTemperature(iX)
+      IF( kT <= Zero ) CYCLE
+      MuE = KernelMuElectron(iX)
+      MuM = KernelMuMuon(iX)
+      E1 = EnergyGrid(iE1) / MeV
+      E3 = EnergyGrid(iE3) / MeV
+      IF( IncludeLFE .AND. ActiveLFE(iX) )THEN
+        CALL BalanceKernelPair &
+          ( Phi_LFE_F(iE1,iE3,iChannelNu,iX), Phi_LFE_R(iE1,iE3,iChannelNu,iX), &
+            (E3-E1-MuE+MuM)/kT )
+        CALL BalanceKernelPair &
+          ( Phi_LFE_F(iE1,iE3,iChannelNub,iX), Phi_LFE_R(iE1,iE3,iChannelNub,iX), &
+            (E3-E1+MuE-MuM)/kT )
+      END IF
+      IF( IncludeLFC .AND. ActiveLFC(iX) )THEN
+        CALL BalanceKernelPair &
+          ( Phi_LFC_F(iE1,iE3,iChannelNu,iX), Phi_LFC_R(iE1,iE3,iChannelNu,iX), &
+            (E3-E1+MuM-MuE)/kT )
+        CALL BalanceKernelPair &
+          ( Phi_LFC_F(iE1,iE3,iChannelNub,iX), Phi_LFC_R(iE1,iE3,iChannelNub,iX), &
+            (E3-E1-MuM+MuE)/kT )
+      END IF
     END DO
     END DO
     END DO
@@ -662,9 +702,13 @@ CONTAINS
     REAL(DP), INTENT(in) :: W2(:), Dnu(:,:,:)
     INTEGER :: iChannel, iE1, iE3, iS1, iS3
     REAL(DP) :: Sign
-    TYPE(RetainedReal) :: Event, Kf, Kr, F1, F3, NumberEvent
-    TYPE(RetainedReal) :: NumberSource, EnergySource, Rate1, Chi1
-    TYPE(RetainedReal) :: Rate3(nE_Global), Chi3(nE_Global)
+    REAL(DP) :: Kf, Kr, F1, F3
+    TYPE(RetainedReal) :: Event, NumberEvent
+    TYPE(RetainedReal) :: NumberSource, EnergySource, Rate1, EnergyRow, RowWeight
+    ! Damping is a sum of nonnegative terms; signed events retain both words.
+    REAL(DP) :: Chi1
+    TYPE(RetainedReal) :: Rate3(nE_Global)
+    REAL(DP) :: Chi3(nE_Global)
 
     NumberSource = Zero
     EnergySource = Zero
@@ -681,28 +725,30 @@ CONTAINS
       DO iE1 = 1, nE_Global
         F1 = Dnu(iE1,iS1,iX)
         Rate1 = Zero
+        EnergyRow = Zero
+        RowWeight = Retain(W2(iE1))*PhaseNormalization
         Chi1 = Zero
         DO iE3 = 1, nE_Global
           F3 = Dnu(iE3,iS3,iX)
           Kf = Phi_IMD_F(iE1,iE3,iChannel,iX)
           Kr = Phi_IMD_R(iE1,iE3,iChannel,iX)
-          Event = Kf*F1*F3 - Kr*(One-F1)*(One-F3)
-          NumberEvent = (Retain(W2(iE1))*PhaseNormalization)*W2(iE3)*Event
-          NumberSource = NumberSource + Sign*NumberEvent
-          EnergySource = EnergySource &
-            + (Retain(EnergyGrid(iE1))+EnergyGrid(iE3))*NumberEvent
+          Event = ComputeIMDEvent(Kf,Kr,F1,F3)
+          NumberEvent = MultiplyIMDEvent(W2(iE3),Event)
+          CALL AccumulateIMDEvent(EnergyRow,MultiplyIMDEvent(EnergyGrid(iE3),NumberEvent))
           ! One retained event supplies both species and their fluid source.
-          Rate1 = Rate1 - W2(iE3)*Event
-          Rate3(iE3) = Rate3(iE3) - W2(iE1)*Event
+          CALL AccumulateIMDEvent(Rate1,NumberEvent,-One)
+          CALL AccumulateIMDEvent(Rate3(iE3),MultiplyIMDEvent(W2(iE1),Event),-One)
           Chi1 = Chi1 + W2(iE3)*( Kf*F3 + Kr*(One-F3) )
           Chi3(iE3) = Chi3(iE3) + W2(iE1)*( Kf*F1 + Kr*(One-F1) )
         END DO
+        NumberSource = NumberSource - Sign*(RowWeight*Rate1)
+        EnergySource = EnergySource + RowWeight*(EnergyRow-EnergyGrid(iE1)*Rate1)
         R_GL(iE1,iS1,iX,iGL_IMD) = RetainedValue(Rate1)
-        Chi_GL(iE1,iS1,iX,iGL_IMD) = RetainedValue(Chi1)
+        Chi_GL(iE1,iS1,iX,iGL_IMD) = Chi1
       END DO
       DO iE3 = 1, nE_Global
         R_GL(iE3,iS3,iX,iGL_IMD) = RetainedValue(Rate3(iE3))
-        Chi_GL(iE3,iS3,iX,iGL_IMD) = RetainedValue(Chi3(iE3))
+        Chi_GL(iE3,iS3,iX,iGL_IMD) = Chi3(iE3)
       END DO
     END DO
     Source_GL(2,iGL_IMD,iX) = RetainedValue(NumberSource)
@@ -710,6 +756,118 @@ CONTAINS
     Source_GL(3,iGL_IMD,iX) = RetainedValue(EnergySource)
 
   END SUBROUTINE ComputeIMDPoint
+
+
+  PURE FUNCTION ComputeIMDEvent( Kf, Kr, F1, F3 ) RESULT(Event)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(in) :: Kf, Kr, F1, F3
+    TYPE(RetainedReal) :: Event
+    REAL(DP) :: H1, H3, L1, L3, P, EP, Q, EQ, R, ER, V, S, E
+    REAL(DP) :: SA, SB, AH, BH, AL, BL
+
+    H1 = One-F1
+    H3 = One-F3
+    L1 = (One-H1)-F1
+    L3 = (One-H3)-F3
+    P = Kf*F1
+    SA = 134217729.0_DP*Kf
+    SB = 134217729.0_DP*F1
+    AH = SA-(SA-Kf)
+    BH = SB-(SB-F1)
+    AL = Kf-AH
+    BL = F1-BH
+    EP = ((AH*BH-P)+AH*BL+AL*BH)+AL*BL
+    Q = P*F3
+    SA = 134217729.0_DP*P
+    SB = 134217729.0_DP*F3
+    AH = SA-(SA-P)
+    BH = SB-(SB-F3)
+    AL = P-AH
+    BL = F3-BH
+    EQ = ((AH*BH-Q)+AH*BL+AL*BH)+AL*BL
+    EQ = EQ+EP*F3
+    P = Kr*H1
+    SA = 134217729.0_DP*Kr
+    SB = 134217729.0_DP*H1
+    AH = SA-(SA-Kr)
+    BH = SB-(SB-H1)
+    AL = Kr-AH
+    BL = H1-BH
+    EP = ((AH*BH-P)+AH*BL+AL*BH)+AL*BL
+    EP = EP+Kr*L1
+    R = P*H3
+    SA = 134217729.0_DP*P
+    SB = 134217729.0_DP*H3
+    AH = SA-(SA-P)
+    BH = SB-(SB-H3)
+    AL = P-AH
+    BL = H3-BH
+    ER = ((AH*BH-R)+AH*BL+AL*BH)+AL*BL
+    ER = (ER+EP*H3)+P*L3
+    S = Q-R
+    V = S-Q
+    E = ((Q-(S-V))-(R+V))+(EQ-ER)
+    Event%High = S+E
+    V = Event%High-S
+    Event%Low = (S-(Event%High-V))+(E-V)
+  END FUNCTION ComputeIMDEvent
+
+
+  PURE FUNCTION MultiplyIMDEvent( Weight, Event ) RESULT(Term)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(in) :: Weight
+    TYPE(RetainedReal), INTENT(in) :: Event
+    TYPE(RetainedReal) :: Term
+    REAL(DP) :: SA, SB, AH, BH, AL, BL, P, E, V
+    P = Weight*Event%High
+    SA = 134217729.0_DP*Weight
+    SB = 134217729.0_DP*Event%High
+    AH = SA-(SA-Weight)
+    BH = SB-(SB-Event%High)
+    AL = Weight-AH
+    BL = Event%High-BH
+    E = ((AH*BH-P)+AH*BL+AL*BH)+AL*BL
+    E = E+Weight*Event%Low
+    Term%High = P+E
+    V = Term%High-P
+    Term%Low = (P-(Term%High-V))+(E-V)
+  END FUNCTION MultiplyIMDEvent
+
+
+  PURE SUBROUTINE AccumulateIMDEvent( Sum, Term, Sign_Option )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(inout) :: Sum
+    TYPE(RetainedReal), INTENT(in) :: Term
+    REAL(DP), INTENT(in), OPTIONAL :: Sign_Option
+    REAL(DP) :: B, BL, S, V, E, H, L
+
+    B = Term%High
+    BL = Term%Low
+    IF( PRESENT(Sign_Option) )THEN
+      B = Sign_Option*B
+      BL = Sign_Option*BL
+    END IF
+    S = Sum%High+B
+    V = S-Sum%High
+    E = ((Sum%High-(S-V))+(B-V))+(Sum%Low+BL)
+    H = S+E
+    V = H-S
+    L = (S-(H-V))+(E-V)
+    Sum%High = H
+    Sum%Low = L
+  END SUBROUTINE AccumulateIMDEvent
 
 
   PURE SUBROUTINE AddInteractionSource( Value, Total, Correction )
@@ -845,6 +1003,23 @@ CONTAINS
 #endif
 
   END SUBROUTINE ComputeNeutrinoLeptonPairingResiduals
+
+
+  PURE SUBROUTINE BalanceKernelPair( Forward, Reverse, Exponent )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(inout) :: Forward, Reverse
+    REAL(DP), INTENT(in) :: Exponent
+
+    IF( Exponent >= Zero )THEN
+      Forward = ScaleByExponential(Reverse,-Exponent)
+    ELSE
+      Reverse = ScaleByExponential(Forward,Exponent)
+    END IF
+  END SUBROUTINE BalanceKernelPair
 
 
   PURE FUNCTION SafeExponential( X ) RESULT( Value )
