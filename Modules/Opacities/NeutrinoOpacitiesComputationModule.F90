@@ -4,6 +4,9 @@
 
 MODULE NeutrinoOpacitiesComputationModule
 
+  USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: ERROR_UNIT
+  USE mpi, ONLY: MPI_COMM_WORLD, MPI_ABORT
+
   USE KindModule, ONLY: &
     DP, Zero, One, SqrtTiny, Pi, TwoPi, FourPi
   USE PhysicalConstantsModule, ONLY: &
@@ -85,7 +88,7 @@ MODULE NeutrinoOpacitiesComputationModule
     QueryOpacity_LFE, &
     QueryOpacity_LFC, &
     QueryOpacity_IMD, &
-    EmAb_Muon_Method, nE_Muon_2D, &
+    EmAb_Muon_Method, nE_Muon_2D, MuonCCCorrections, &
     MuonCC_QuadratureNodes, MuonCC_QuadratureWeights
   USE RadiationFieldsModule, ONLY: &
     iNuE, iNuE_Bar, iNuM, iNuM_Bar, iNuT, iNuT_Bar, LeptonNumber, &
@@ -214,8 +217,6 @@ MODULE NeutrinoOpacitiesComputationModule
                                     / TwoPi**3 * UnitBrem
 
   REAL(dp), PARAMETER :: Alpha_Brem(3) = [ 1.0d0, 1.0d0, 28.d0/3.d0 ]
-  ! Weak magnetism and pseudoscalar terms; no form-factor correction.
-  INTEGER,  PARAMETER :: MuonCCCorrections(3) = [ 1, 1, 0 ]
   REAL(dp), PARAMETER :: coeff = 2.0d0 &
                                * (Pi*SpeedOfLightCGS)**2 &
                                * hbarMeVs**3
@@ -1755,11 +1756,11 @@ CONTAINS
 
     IF( .NOT. ANY( Opacity_Mask(iOp_EmAb_Muon,iX_B:iX_E) ) )THEN
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO COLLAPSE(3)
+    !$OMP PARALLEL DO COLLAPSE(3)
 #endif
       DO iX = iX_B, iX_E
       DO iS = iNuM, iNuM_Bar
@@ -2019,28 +2020,31 @@ CONTAINS
     REAL(DP) :: ReactionOpacity, NodeContribution
     REAL(DP) :: Mnum, kT
     INTEGER  :: iReaction, iQ1, iQ2
+    INTEGER  :: EvaluationError, PointError, NodeError, ierr, ErrorX, ErrorE
     TYPE(CC2D_CallData) :: CallData
     TYPE(CC2D_RowData)  :: RowData
 
+    EvaluationError = 0
+
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE COLLAPSE(2) &
+    !$OMP TARGET TEAMS DISTRIBUTE COLLAPSE(2) REDUCTION(MAX:EvaluationError) &
     !$OMP PRIVATE( Mun_P, Mn_eff_P, Un_P, Mup_P, Mp_eff_P, Up_P, Mumu_P, &
     !$OMP          E_P, T_P, ReactionOpacity, NodeContribution, &
     !$OMP          iReaction, iQ1, iQ2, CallData, RowData, &
-    !$OMP          Mnum, kT )
+    !$OMP          Mnum, kT, PointError, NodeError )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG COLLAPSE(2) &
+    !$ACC PARALLEL LOOP GANG COLLAPSE(2) REDUCTION(MAX:EvaluationError) &
     !$ACC PRIVATE( Mun_P, Mn_eff_P, Un_P, Mup_P, Mp_eff_P, Up_P, Mumu_P, &
     !$ACC          E_P, T_P, ReactionOpacity, NodeContribution, &
     !$ACC          iReaction, iQ1, iQ2, CallData, RowData, &
-    !$ACC          Mnum, kT ) &
-    !$ACC PRESENT( MuonCC_QuadratureNodes, MuonCC_QuadratureWeights )
+    !$ACC          Mnum, kT, PointError, NodeError ) &
+    !$ACC PRESENT( MuonCC_QuadratureNodes, MuonCC_QuadratureWeights, MuonCCCorrections )
 #elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PARALLEL DO COLLAPSE(2) REDUCTION(MAX:EvaluationError) &
     !$OMP PRIVATE( Mun_P, Mn_eff_P, Un_P, Mup_P, Mp_eff_P, Up_P, Mumu_P, &
     !$OMP          E_P, T_P, ReactionOpacity, NodeContribution, &
     !$OMP          iReaction, iQ1, iQ2, CallData, RowData, &
-    !$OMP          Mnum, kT )
+    !$OMP          Mnum, kT, PointError, NodeError )
 #endif
     DO iX = iX_B, iX_E
     DO iE = iE_B, iE_E
@@ -2061,6 +2065,7 @@ CONTAINS
         opEC(iE,iNuM    ,iX) = Zero
         opEC(iE,iNuM_Bar,iX) = Zero
 
+        PointError = 0
         DO iReaction = 1, 3
 
           CALL CC2D_PrepareCall &
@@ -2072,11 +2077,11 @@ CONTAINS
 
           ReactionOpacity = Zero
 #if defined(THORNADO_OMP_OL)
-          !$OMP PARALLEL DO SIMD REDUCTION(+:ReactionOpacity) &
-          !$OMP PRIVATE( RowData, iQ2, NodeContribution )
+    !$OMP PARALLEL DO SIMD REDUCTION(+:ReactionOpacity) REDUCTION(MAX:PointError) &
+    !$OMP PRIVATE( RowData, iQ2, NodeContribution, NodeError )
 #elif defined(THORNADO_OACC)
-          !$ACC LOOP VECTOR REDUCTION(+:ReactionOpacity) &
-          !$ACC PRIVATE( RowData, iQ2, NodeContribution )
+    !$ACC LOOP VECTOR REDUCTION(+:ReactionOpacity) REDUCTION(MAX:PointError) &
+    !$ACC PRIVATE( RowData, iQ2, NodeContribution, NodeError )
 #endif
           DO iQ1 = 1, nE_Muon_2D
             CALL CC2D_RowSetup &
@@ -2086,11 +2091,13 @@ CONTAINS
               DO iQ2 = 1, nE_Muon_2D
                 CALL CC2D_NodeKernel &
                        ( CallData, RowData, MuonCC_QuadratureNodes(iQ2), &
-                         MuonCC_QuadratureWeights(iQ2), NodeContribution )
+                         MuonCC_QuadratureWeights(iQ2), NodeContribution, NodeError )
+                PointError = MAX(PointError,NodeError)
                 ReactionOpacity = ReactionOpacity + NodeContribution
               END DO
             END IF
           END DO
+          IF( PointError /= 0 ) EXIT
           CALL CC2D_ApplyPrefactor( CallData, ReactionOpacity )
 
           ! Reactions 1--3 are nu_mu absorption, anti-nu_mu absorption,
@@ -2107,6 +2114,11 @@ CONTAINS
           END IF
 
         END DO
+
+        IF( PointError /= 0 )THEN
+          EvaluationError = MAX(EvaluationError,(iX-iX_B)*(iE_E-iE_B+1)+iE-iE_B+1)
+          CYCLE
+        END IF
 
         Mnum = ( Mumu(iX) + Mup(iX) ) - Mun(iX)
         kT   = BoltzmannConstant * T(iX)
@@ -2126,6 +2138,13 @@ CONTAINS
 
     END DO
     END DO
+
+    IF( EvaluationError /= 0 )THEN
+      ErrorX = iX_B+(EvaluationError-1)/(iE_E-iE_B+1)
+      ErrorE = iE_B+MOD(EvaluationError-1,iE_E-iE_B+1)
+      WRITE(ERROR_UNIT,'(A,2I10)') 'Invalid muon CC pseudoscalar denominator: spatial/energy indices ', ErrorX, ErrorE
+      CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
+    END IF
 
   END SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons_2D
 
@@ -2147,7 +2166,7 @@ CONTAINS
     REAL(DP) :: RawIntegral, FinalOpacity, CorrectedOpacity
     REAL(DP) :: Mnum, kT, Exponent
     REAL(DP) :: NodeContribution
-    INTEGER  :: iE, iReaction, iQ1, iQ2, iS, nRows
+    INTEGER  :: iE, iReaction, iQ1, iQ2, iS, nRows, ierr
     TYPE(CC2D_CallData) :: CallData
     TYPE(CC2D_RowData)  :: RowData
 
@@ -2196,6 +2215,7 @@ CONTAINS
     WRITE(iFile,'(/,A)') '# muon charged-current opacity diagnostic'
     WRITE(iFile,'(A,5ES26.16E3)') &
       '# rho_gcm3 T_MeV Ye Ym mu_mu_MeV: ', D_P, T_P, Ye, Ym, Mumu_P
+    WRITE(iFile,'(A,3I3)') '# muon_cc_2d_wm_ps_ff: ', MuonCCCorrections
     WRITE(iFile,'(A,6ES26.16E3)') &
       '# mu_n mstar_n U_n mu_p mstar_p U_p [MeV]: ', &
       Mun_P, Mn_eff_P, Un_P, Mup_P, Mp_eff_P, Up_P
@@ -2225,6 +2245,10 @@ CONTAINS
               CALL CC2D_NodeKernel &
                      ( CallData, RowData, MuonCC_QuadratureNodes(iQ2), &
                        MuonCC_QuadratureWeights(iQ2), NodeContribution )
+              IF( NodeContribution < Zero )THEN
+                WRITE(ERROR_UNIT,'(A,2I10)') 'Invalid diagnostic muon CC denominator: energy/reaction ', iE, iReaction
+                CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
+              END IF
               RawIntegral = RawIntegral + NodeContribution
             END DO
           END DO

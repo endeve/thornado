@@ -181,7 +181,9 @@ contains
       LFC_MinD_Option, LFC_MaxD_Option, IMD_MinD_Option, IMD_MaxD_Option, &
       Include_NMS_Option, Include_LFE_Option, Include_LFC_Option, Include_IMD_Option, &
       GeneralLeptonQuadratureOrder_Option, Atol_inner_Option, SolverMethod_Option, &
-      UseMuonLeptonSource_Option, NewtonFluidSourceTolerance_Option, UseSourceAwareLLF_Option )
+      UseMuonLeptonSource_Option, NewtonFluidSourceTolerance_Option, UseSourceAwareLLF_Option, &
+      EmAb_Muon_2D_WeakMagnetism_Option, EmAb_Muon_2D_Pseudoscalar_Option, &
+      EmAb_Muon_2D_FormFactors_Option )
 
     integer,  intent(in) :: nNodes, nDimsX, nE, swE, bcE, nSpecies
     real(dp), intent(in) :: eL_MeV, eR_MeV, zoomE
@@ -260,6 +262,9 @@ contains
     logical,          intent(in), optional :: UseSimpleMeshRefinement_Option
     real(dp),         intent(in), optional :: EmAb_Muon_MinD_Option, EmAb_Muon_MaxD_Option
     integer,          intent(in), optional :: EmAb_Muon_Method_Option, nE_Muon_2D_Option
+    logical,          intent(in), optional :: EmAb_Muon_2D_WeakMagnetism_Option
+    logical,          intent(in), optional :: EmAb_Muon_2D_Pseudoscalar_Option
+    logical,          intent(in), optional :: EmAb_Muon_2D_FormFactors_Option
     real(dp),         intent(in), optional :: NMS_MinD_Option, NMS_MaxD_Option
     real(dp),         intent(in), optional :: LFE_MinD_Option, LFE_MaxD_Option
     real(dp),         intent(in), optional :: LFC_MinD_Option, LFC_MaxD_Option
@@ -608,6 +613,9 @@ contains
              EmAb_Muon_MaxD_Option = EmAb_Muon_MaxD_Option, &
              EmAb_Muon_Method_Option = EmAb_Muon_Method_Option, &
              nE_Muon_2D_Option = nE_Muon_2D_Option, &
+             EmAb_Muon_2D_WeakMagnetism_Option = EmAb_Muon_2D_WeakMagnetism_Option, &
+             EmAb_Muon_2D_Pseudoscalar_Option = EmAb_Muon_2D_Pseudoscalar_Option, &
+             EmAb_Muon_2D_FormFactors_Option = EmAb_Muon_2D_FormFactors_Option, &
              NMS_MinD_Option = NMS_MinD_Option, NMS_MaxD_Option = NMS_MaxD_Option, &
              LFE_MinD_Option = LFE_MinD_Option, LFE_MaxD_Option = LFE_MaxD_Option, &
              LFC_MinD_Option = LFC_MinD_Option, LFC_MaxD_Option = LFC_MaxD_Option, &

@@ -119,6 +119,7 @@ MODULE OpacityModule_TABLE
   INTEGER, PUBLIC :: EmAb_Muon_Method  ! Method for computing muon EmAb opacities
                                        !  1: elastic approximation (default)
                                        !  2: full-kinematics 2D integral
+  INTEGER, PUBLIC :: MuonCCCorrections(3) = [ 1, 1, 0 ]
   INTEGER, PUBLIC :: nE_Muon_2D        ! IF EmAb_Muon_Method == 2, this sets the number
                                        ! of quadrature points used for the integrals
   REAL(DP), DIMENSION(:), ALLOCATABLE, PUBLIC :: &
@@ -199,7 +200,7 @@ MODULE OpacityModule_TABLE
     !$OMP   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD,             &
     !$OMP   EmAb_MinD, EmAb_MaxD,                           &
     !$OMP   EmAb_Muon_MinD, EmAb_Muon_MaxD,                 &
-    !$OMP   EmAb_Muon_Method, nE_Muon_2D,                   &
+    !$OMP   EmAb_Muon_Method, nE_Muon_2D, MuonCCCorrections, &
     !$OMP   MuonCC_QuadratureNodes, MuonCC_QuadratureWeights, &
     !$OMP   Iso_MinD, Iso_MaxD,                             &
     !$OMP   NNS_MinD, NNS_MaxD,                             &
@@ -230,7 +231,7 @@ MODULE OpacityModule_TABLE
     !$ACC   EmAb_Nuclei_MinD, EmAb_Nuclei_MaxD,             &
     !$ACC   EmAb_MinD, EmAb_MaxD,                           &
     !$ACC   EmAb_Muon_MinD, EmAb_Muon_MaxD,                 &
-    !$ACC   EmAb_Muon_Method, nE_Muon_2D,                   &
+    !$ACC   EmAb_Muon_Method, nE_Muon_2D, MuonCCCorrections, &
     !$ACC   MuonCC_QuadratureNodes, MuonCC_QuadratureWeights, &
     !$ACC   Iso_MinD, Iso_MaxD,                             &
     !$ACC   NNS_MinD, NNS_MaxD,                             &
@@ -268,7 +269,9 @@ CONTAINS
       LFC_MinD_Option, LFC_MaxD_Option,                           &
       IMD_MinD_Option, IMD_MaxD_Option,                           &
       Op_MinD_Option, Op_MaxD_Option,                             &
-      EquationOfStateTableName_Option, Verbose_Option )
+      EquationOfStateTableName_Option, Verbose_Option, &
+      EmAb_Muon_2D_WeakMagnetism_Option, EmAb_Muon_2D_Pseudoscalar_Option, &
+      EmAb_Muon_2D_FormFactors_Option )
 
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_EmAb_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_Iso_Option
@@ -294,6 +297,9 @@ CONTAINS
     REAL(DP),         INTENT(in), OPTIONAL :: Op_MinD_Option, Op_MaxD_Option
     LOGICAL,          INTENT(in), OPTIONAL :: Verbose_Option
     INTEGER,          INTENT(in), OPTIONAL :: EmAb_Muon_Method_Option, nE_Muon_2D_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: EmAb_Muon_2D_WeakMagnetism_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: EmAb_Muon_2D_Pseudoscalar_Option
+    LOGICAL,          INTENT(in), OPTIONAL :: EmAb_Muon_2D_FormFactors_Option
 
     CHARACTER(128)     :: EquationOfStateTableName
     REAL(DP) :: LogE1, LogE2
@@ -518,6 +524,20 @@ CONTAINS
       CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
     END IF
 
+    MuonCCCorrections = [ 1, 1, 0 ]
+    IF( PRESENT(EmAb_Muon_2D_WeakMagnetism_Option) ) &
+      MuonCCCorrections(1) = MERGE(1,0,EmAb_Muon_2D_WeakMagnetism_Option)
+    IF( PRESENT(EmAb_Muon_2D_Pseudoscalar_Option) ) &
+      MuonCCCorrections(2) = MERGE(1,0,EmAb_Muon_2D_Pseudoscalar_Option)
+    IF( PRESENT(EmAb_Muon_2D_FormFactors_Option) ) &
+      MuonCCCorrections(3) = MERGE(1,0,EmAb_Muon_2D_FormFactors_Option)
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET ENTER DATA MAP( always, to: MuonCCCorrections )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE( MuonCCCorrections )
+#endif
+
     IF( PRESENT( nE_Muon_2D_Option)  )THEN
       nE_Muon_2D = nE_Muon_2D_Option
     ELSE
@@ -546,6 +566,7 @@ CONTAINS
         WRITE(*,'(A7,A32,A,I0)') '', 'Muon charged-current method: ', &
                                    'full kinematics, quadrature order = ', &
                                    nE_Muon_2D
+        WRITE(*,'(A7,A32,3I3)') '', 'Muon CC 2D WM/PS/FF: ', MuonCCCorrections
       END IF
     END IF
 
@@ -1066,11 +1087,11 @@ CONTAINS
 
     IF( ALLOCATED( MuonCC_QuadratureNodes ) )THEN
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET ENTER DATA &
-      !$OMP MAP( to: MuonCC_QuadratureNodes, MuonCC_QuadratureWeights )
+    !$OMP TARGET ENTER DATA &
+    !$OMP MAP( to: MuonCC_QuadratureNodes, MuonCC_QuadratureWeights )
 #elif defined(THORNADO_OACC)
-      !$ACC UPDATE DEVICE &
-      !$ACC ( MuonCC_QuadratureNodes, MuonCC_QuadratureWeights )
+    !$ACC UPDATE DEVICE &
+    !$ACC ( MuonCC_QuadratureNodes, MuonCC_QuadratureWeights )
 #endif
     END IF
 
@@ -1409,6 +1430,10 @@ CONTAINS
 
 #ifdef MICROPHYSICS_WEAKLIB
 
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET EXIT DATA MAP( release: MuonCCCorrections )
+#endif
+
   IF ( Use_OpacityTables ) THEN
 
     use_EC_table = OPACITIES % EmAb % nuclei_EC_table
@@ -1466,8 +1491,8 @@ CONTAINS
 
     IF( ALLOCATED( MuonCC_QuadratureNodes ) )THEN
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET EXIT DATA &
-      !$OMP MAP( release: MuonCC_QuadratureNodes, MuonCC_QuadratureWeights )
+    !$OMP TARGET EXIT DATA &
+    !$OMP MAP( release: MuonCC_QuadratureNodes, MuonCC_QuadratureWeights )
 #endif
       DEALLOCATE( MuonCC_QuadratureNodes, MuonCC_QuadratureWeights )
     END IF
