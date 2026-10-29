@@ -205,9 +205,9 @@ MODULE RadiationFieldsModule
   PUBLIC :: SetNumberOfSpecies
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP DECLARE TARGET( LeptonNumber )
+    !$OMP DECLARE TARGET( nSpecies, LeptonNumber )
 #elif defined(THORNADO_OACC)
-    !$ACC DECLARE CREATE( LeptonNumber )
+    !$ACC DECLARE CREATE( nSpecies, LeptonNumber )
 #endif
 
 CONTAINS
@@ -235,9 +235,9 @@ CONTAINS
     LeptonNumber = [ One, - One, One, - One, One, - One ]
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET UPDATE TO( LeptonNumber )
+    !$OMP TARGET UPDATE TO( nSpecies, LeptonNumber )
 #elif defined(THORNADO_OACC)
-    !$ACC UPDATE DEVICE( LeptonNumber )
+    !$ACC UPDATE DEVICE( nSpecies, LeptonNumber )
 #endif
 
   END SUBROUTINE SetNumberOfSpecies

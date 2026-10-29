@@ -151,9 +151,9 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), ALLOCATABLE, TARGET, PUBLIC :: NewtonFluidIncrement(:,:)
   REAL(DP), ALLOCATABLE, TARGET :: AcceptedNewtonEmAbRate(:,:,:)
 #if defined(THORNADO_OMP_OL)
-  !$OMP DECLARE TARGET(UseNewtonSolve,NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
+    !$OMP DECLARE TARGET(UseNewtonSolve,NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
 #elif defined(THORNADO_OACC)
-  !$ACC DECLARE CREATE(UseNewtonSolve,NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
+    !$ACC DECLARE CREATE(UseNewtonSolve,NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
 #endif
   PUBLIC :: ComputeOpacities_Packed
   PUBLIC :: ComputeRates_Packed
@@ -458,6 +458,48 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP), DIMENSION(:,:,:), ALLOCATABLE, TARGET :: S_Sigma_T
 
   LOGICAL,  DIMENSION(:,:),   ALLOCATABLE, TARGET :: Opacity_Mask_T
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET &
+    !$OMP ( W2_S, wMatrRHS, MatterSource_Mask, Opacity_Mask, &
+    !$OMP   Dnu_0, Sigma_Iso, Chi_EmAb, &
+    !$OMP   Chi_NNS, R_NNS, Chi_NES, R_NES, &
+    !$OMP   Chi_Pair, R_Pair, Chi_NuPair, R_NuPair, Chi_Brem, R_Brem, &
+    !$OMP   Phi_NNS_0, Phi_NbNS_0, H_I_0, H_II_0, J_I_0, J_II_0, &
+    !$OMP   Nu_J_I_0, Nu_J_II_0, S_Sigma, &
+    !$OMP   L_NNS__In__u_1, L_NNS__In__u_2, L_NNS__In__u_3, &
+    !$OMP   L_NNS__Out_u_1, L_NNS__Out_u_2, L_NNS__Out_u_3, &
+    !$OMP   L_NES__In__u_1, L_NES__In__u_2, L_NES__In__u_3, &
+    !$OMP   L_NES__Out_u_1, L_NES__Out_u_2, L_NES__Out_u_3, &
+    !$OMP   L_Pair_Pro_u_1, L_Pair_Pro_u_2, L_Pair_Pro_u_3, &
+    !$OMP   L_Pair_Ann_u_1, L_Pair_Ann_u_2, L_Pair_Ann_u_3, &
+    !$OMP   L_NuPair_Pro_u_1, L_NuPair_Pro_u_2, L_NuPair_Pro_u_3, &
+    !$OMP   L_NuPair_Ann_u_1, L_NuPair_Ann_u_2, L_NuPair_Ann_u_3, &
+    !$OMP   L_Brem_Pro_u_1, L_Brem_Pro_u_2, L_Brem_Pro_u_3, &
+    !$OMP   L_Brem_Ann_u_1, L_Brem_Ann_u_2, L_Brem_Ann_u_3, &
+    !$OMP   Include_NNS, Include_NES, Include_Pair, Include_NuPair, Include_Brem, &
+    !$OMP   Include_NMS, Include_LFE, Include_LFC, Include_IMD, Include_LinCorr )
+#elif defined(THORNADO_OACC)
+    !$ACC DECLARE CREATE &
+    !$ACC ( W2_S, wMatrRHS, MatterSource_Mask, Opacity_Mask, &
+    !$ACC   Dnu_0, Sigma_Iso, Chi_EmAb, &
+    !$ACC   Chi_NNS, R_NNS, Chi_NES, R_NES, &
+    !$ACC   Chi_Pair, R_Pair, Chi_NuPair, R_NuPair, Chi_Brem, R_Brem, &
+    !$ACC   Phi_NNS_0, Phi_NbNS_0, H_I_0, H_II_0, J_I_0, J_II_0, &
+    !$ACC   Nu_J_I_0, Nu_J_II_0, S_Sigma, &
+    !$ACC   L_NNS__In__u_1, L_NNS__In__u_2, L_NNS__In__u_3, &
+    !$ACC   L_NNS__Out_u_1, L_NNS__Out_u_2, L_NNS__Out_u_3, &
+    !$ACC   L_NES__In__u_1, L_NES__In__u_2, L_NES__In__u_3, &
+    !$ACC   L_NES__Out_u_1, L_NES__Out_u_2, L_NES__Out_u_3, &
+    !$ACC   L_Pair_Pro_u_1, L_Pair_Pro_u_2, L_Pair_Pro_u_3, &
+    !$ACC   L_Pair_Ann_u_1, L_Pair_Ann_u_2, L_Pair_Ann_u_3, &
+    !$ACC   L_NuPair_Pro_u_1, L_NuPair_Pro_u_2, L_NuPair_Pro_u_3, &
+    !$ACC   L_NuPair_Ann_u_1, L_NuPair_Ann_u_2, L_NuPair_Ann_u_3, &
+    !$ACC   L_Brem_Pro_u_1, L_Brem_Pro_u_2, L_Brem_Pro_u_3, &
+    !$ACC   L_Brem_Ann_u_1, L_Brem_Ann_u_2, L_Brem_Ann_u_3, &
+    !$ACC   Include_NNS, Include_NES, Include_Pair, Include_NuPair, Include_Brem, &
+    !$ACC   Include_NMS, Include_LFE, Include_LFC, Include_IMD, Include_LinCorr )
+#endif
 
 CONTAINS
 
@@ -843,6 +885,12 @@ CONTAINS
     !$ACC         DetailedBalanceScattering_T, &
     !$ACC         DetailedBalancePair_T, &
     !$ACC         Opacity_Mask, Opacity_Mask_T, MatterSource_Mask )
+#endif
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO( W2_S, wMatrRHS )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE( W2_S, wMatrRHS )
 #endif
 
     IF ( UseFirstMomentRates ) THEN
@@ -1462,6 +1510,16 @@ CONTAINS
     END IF
 
     M_FP = MAX( M_outer, M_inner )
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO &
+    !$OMP ( wMatrRHS, Include_NNS, Include_NES, Include_Pair, Include_NuPair, Include_Brem, &
+    !$OMP   Include_NMS, Include_LFE, Include_LFC, Include_IMD, Include_LinCorr )
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE &
+    !$ACC ( wMatrRHS, Include_NNS, Include_NES, Include_Pair, Include_NuPair, Include_Brem, &
+    !$ACC   Include_NMS, Include_LFE, Include_LFC, Include_IMD, Include_LinCorr )
+#endif
 
     SolverParametersInitialized = .TRUE.
 
@@ -3672,9 +3730,9 @@ CONTAINS
   SUBROUTINE ComputeCollisionKernel_OrderV_Point(P,S,R,Q,IX,KernelScale,Fwd,Back)
     USE OpacityModule_TABLE, ONLY: C1,C2,C1_NuPair,C2_NuPair
 #if defined(THORNADO_OMP_OL)
-      !$OMP DECLARE TARGET
+    !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
-      !$ACC ROUTINE SEQ
+    !$ACC ROUTINE SEQ
 #endif
       INTEGER, INTENT(in) :: P,S,R,Q,IX
       REAL(DP), INTENT(in) :: KernelScale(5)
