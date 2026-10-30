@@ -7,6 +7,7 @@ EquationOfStateModule_TABLE.o: \
   wlLeptonEOSTableModule.o \
   wlLeptonPhotonGasEOS.o \
   wlHelmIOModuleHDF.o \
+  wlEOSComponentsThermodynamicsModule.o \
   wlSoundSpeedModule.o \
   wlInterpolationUtilitiesModule.o \
   KindModule.o \

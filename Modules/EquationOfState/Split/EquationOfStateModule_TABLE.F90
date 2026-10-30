@@ -49,6 +49,8 @@ MODULE EquationOfStateModule_TABLE
   USE wlEosConstantsModule, ONLY: kmev
   USE wlHelmIOModuleHDF, ONLY: &
     ReadHelmholtzTableHDF
+  USE wlEOSComponentsThermodynamicsModule, ONLY: &
+    ComputeTotalEPS_CS
   USE wlSoundSpeedModule, ONLY: &
     CalculateSoundSpeed
   USE wlInterpolationUtilitiesModule, ONLY: &
@@ -982,7 +984,7 @@ CONTAINS
     REAL(DP) :: D_P, T_P, Ye_P, Ym_P, &
                 Pbary, Sbary, Ebary, &
                 P_LeptPhot, S_LeptPhot, E_LeptPhot, &
-                P_mu, S_mu, E_mu
+                P_mu, S_mu, E_mu, Cs_P
 
     TYPE(LeptonGasType) :: ElectronGasState
     TYPE(LeptonGasType) :: MuonGasState
@@ -1037,7 +1039,7 @@ CONTAINS
 
 #else
 
-    CALL ComputeTotalPES_TABLE_Scalar( D, T, Ye, Ym, P, E, S )
+    CALL ComputeTotalPES_TABLE_Scalar( D, T, Ye, Ym, P, E, S, Gm, Cs_P )
 
     ! Now take care of checmical potentials
     ElectronGasState % t   = T_P
@@ -1834,6 +1836,8 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D, Ev, Ne, Nm
     REAL(DP), INTENT(out) :: P, T, Ye, Ym, S, Em, Gm, Cs
 
+    REAL(DP) :: E_P
+
     Em  = Ev / D
     Ye  = Ne * ( BaryonMass / D )
     Ym = Nm * ( BaryonMass / D )
@@ -1845,17 +1849,12 @@ CONTAINS
     CALL CalculateSoundSpeed( D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, &
         D_T, T_T, Yp_T, P_T, OS_P, E_T, OS_E, S_T, OS_S, &
         HelmTableElectrons, HelmTableMuons, Gm, Cs, .TRUE.)
-#else
-    CALL CalculateSoundSpeed( D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, &
-        D_T, T_T, Yp_T, P_T, OS_P, E_T, OS_E, S_T, OS_S, &
-        HelmTableElectrons, HelmTableMuons, Gm, Cs, .FAlSE.)
-#endif
-
     Gm = Gm * UnitGm
     Cs = Cs * Centimeter / Second
-
-    ! Temporary sound speed calculation to test accuracy of solver
-    ! Cs = SQRT(Gm * P / D)
+#else
+    CALL ComputeTotalPES_TABLE_Scalar &
+           ( D, T, Ye, Ym, P, E_P, S, Gm, Cs )
+#endif
 
   END SUBROUTINE ComputeAuxiliary_Fluid_TABLE_Scalar
 
@@ -4686,7 +4685,7 @@ CONTAINS
   END SUBROUTINE ComputeDependentVariableTotal_TABLE_Vector
 
   SUBROUTINE ComputeTotalPES_TABLE_Scalar &
-    ( D, T, Ye, Ym, P, E, S )
+    ( D, T, Ye, Ym, P, E, S, Gm_Option, Cs_Option )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -4696,86 +4695,34 @@ CONTAINS
 
     REAL(DP), INTENT(in)  :: D, T, Ye, Ym
     REAL(DP), INTENT(out) :: P, E, S
+    REAL(DP), INTENT(out), OPTIONAL :: Gm_Option, Cs_Option
 
-    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P, P_P, E_P, S_P
-    REAL(DP) :: Ye_over_Yp, Ym_over_Yp
-    REAL(DP) :: D_Cube, T_cube, Ye_Cube, Ym_Cube
-    REAL(DP) :: P_LeptPhot(2,2,2), Ptot(2,2,2), &
-                E_LeptPhot(2,2,2), Etot(2,2,2), &
-                S_LeptPhot(2,2,2), Stot(2,2,2)
-
-    INTEGER  :: i, iD, iT, iYp, iL_D, iL_Y, iL_T
-    INTEGER  :: SizeDs, SizeTs, SizeYps
-
-    TYPE(LeptonGasType) :: LeptonGasState
-    TYPE(LeptonGasType) :: MuonGasState
+    REAL(DP) :: E_P, P_P, S_P, Gm_P, Cs_P
 
 #ifdef MICROPHYSICS_WEAKLIB
 
-    D_P = D / UnitD
-    T_P = T / UnitT
-    Ye_P = Ye / UnitY
-    Ym_P = Ym / UnitY
-    Yp_P = Ye_P + Ym_P
-
-    IF ( D_P < Eos_MinD ) THEN
+    IF( D / UnitD < Eos_MinD )THEN
       P = Zero
       E = Zero
       S = Zero
+      IF( PRESENT(Gm_Option) ) Gm_Option = Zero
+      IF( PRESENT(Cs_Option) ) Cs_Option = Zero
       RETURN
-    ENDIF
+    END IF
 
-    Ye_over_Yp = Ye_P / Yp_P
-    Ym_over_Yp = Ym_P / Yp_P
-
-    ! Now bracket the points
-    SizeDs  = SIZE( D_T  )
-    SizeTs  = SIZE( T_T  )
-    SizeYps = SIZE( Yp_T )
-
-    iD  = Index1D_Log( D_P , D_T  )
-    iT  = Index1D_Log( T_P , T_T  )
-    iYp = Index1D_Lin( Yp_P, Yp_T )
-
-    iD  = MIN( MAX( 1, iD ) , SizeDs - 1  )
-    iT  = MIN( MAX( 1, iT ) , SizeTs - 1  )
-    iYp = MIN( MAX( 1, iYp ), SizeYps - 1 )
-
-    DO iL_T=1,2
-      DO iL_D=1,2
-        DO iL_Y=1,2
-
-          T_Cube  = T_T (iT +iL_T-1)
-          D_Cube  = D_T (iD +iL_D-1)
-          Ye_Cube = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
-          Ym_Cube = Yp_T(iYp+iL_Y-1) * Ym_over_Yp
-
-          CALL GetPhotonLeptonGasEOS( &
-            D_Cube, T_Cube, Ye_Cube, Ym_Cube, &
-            HelmTableElectrons, HelmTableMuons, &
-            P_LeptPhot(iL_D,iL_T,iL_Y), &
-            E_LeptPhot(iL_D,iL_T,iL_Y), &
-            S_LeptPhot(iL_D,iL_T,iL_Y))
-
-        END DO
-      END DO
-    END DO
-
-    Ptot(:,:,:) = P_T(iD:iD+1,iT:iT+1,iYp:iYp+1)          + P_LeptPhot(:,:,:)
-    Etot(:,:,:) = 10.0_DP**E_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + E_LeptPhot(:,:,:)
-    Stot(:,:,:) = 10.0_DP**S_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + S_LeptPhot(:,:,:)
-
-    CALL LogInterpolateSingleVariable_3D_Custom_Point &
-           ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
-           OS_P, LOG10(Ptot), P_P )
-
-    CALL LogInterpolateSingleVariable_3D_Custom_Point &
-           ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
-           OS_E, LOG10(Etot), E_P )
-
-    CALL LogInterpolateSingleVariable_3D_Custom_Point &
-           ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
-           OS_S, LOG10(Stot), S_P )
+    IF( PRESENT(Gm_Option) .OR. PRESENT(Cs_Option) )THEN
+      CALL ComputeTotalEPS_CS &
+             ( D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, &
+               D_T, T_T, Yp_T, E_T, P_T, S_T, OS_E, OS_P, OS_S, &
+               HelmTableElectrons, HelmTableMuons, E_P, P_P, S_P, Gm_P, Cs_P )
+      IF( PRESENT(Gm_Option) ) Gm_Option = Gm_P * UnitGm
+      IF( PRESENT(Cs_Option) ) Cs_Option = Cs_P * Centimeter / Second
+    ELSE
+      CALL ComputeTotalEPS_CS &
+             ( D / UnitD, T / UnitT, Ye / UnitY, Ym / UnitY, &
+               D_T, T_T, Yp_T, E_T, P_T, S_T, OS_E, OS_P, OS_S, &
+               HelmTableElectrons, HelmTableMuons, E_P, P_P, S_P )
+    END IF
 
     P = P_P * UnitP
     E = E_P * UnitE
@@ -4786,6 +4733,8 @@ CONTAINS
     P = Zero
     E = Zero
     S = Zero
+    IF( PRESENT(Gm_Option) ) Gm_Option = Zero
+    IF( PRESENT(Cs_Option) ) Cs_Option = Zero
 
 #endif
 
@@ -4798,134 +4747,23 @@ CONTAINS
     REAL(DP), INTENT(in)  :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out) :: E(1:), P(1:), S(1:)
 
-    INTEGER  :: iP, nP
-    REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P, P_P, E_P, S_P
-    REAL(DP) :: Ye_over_Yp, Ym_over_Yp
-    REAL(DP) :: D_Cube, T_cube, Ye_Cube, Ym_Cube
-    REAL(DP) :: P_LeptPhot(2,2,2), Ptot(2,2,2), &
-                E_LeptPhot(2,2,2), Etot(2,2,2), &
-                S_LeptPhot(2,2,2), Stot(2,2,2)
-
-    INTEGER  :: i, iD, iT, iYp, iL_D, iL_Y, iL_T
-    INTEGER  :: SizeDs, SizeTs, SizeYps
-
-    TYPE(LeptonGasType) :: LeptonGasState
-    TYPE(LeptonGasType) :: MuonGasState
+    INTEGER :: iP, nP
 
     nP = SIZE( D )
 
-#ifdef MICROPHYSICS_WEAKLIB
-    SizeDs  = SIZE( D_T  )
-    SizeTs  = SIZE( T_T  )
-    SizeYps = SIZE( Yp_T )
-
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, P_P, E_P, S_P, iD, iT, iYp, &
-    !$OMP Ye_over_Yp, Ym_over_Yp, D_Cube, T_cube, Ye_Cube, Ym_Cube, &
-    !$OMP P_LeptPhot, E_LeptPhot, S_LeptPhot, Ptot, Etot, Stot ) &
-    !$OMP MAP( to: D, T, Ye, Ym, D_T, T_T, Yp_T ) &
-    !$OMP MAP( from: P, E, S )
+    !$OMP MAP( to: D, T, Ye, Ym ) MAP( from: P, E, S )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, P_P, E_P, S_P, iD, iT, iYp, &
-    !$ACC Ye_over_Yp, Ym_over_Yp, D_Cube, T_cube, Ye_Cube, Ym_Cube, &
-    !$ACC P_LeptPhot, E_LeptPhot, S_LeptPhot, Ptot, Etot, Stot ) &
-    !$ACC COPYIN( D, T, Ye, Ym, D_T, T_T, Yp_T ) &
-    !$ACC COPYOUT( P, E, S )
-#elif defined(THORNADO_OMP)
-    !$OMP PARALLEL DO &
-    !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, P_P, E_P, S_P, iD, iT, iYp, &
-    !$OMP Ye_over_Yp, Ym_over_Yp, D_Cube, T_cube, Ye_Cube, Ym_Cube, &
-    !$OMP P_LeptPhot, E_LeptPhot, S_LeptPhot, Ptot, Etot, Stot )
-#endif
-    DO iP = 1, nP
-
-      D_P  = D(iP)  / UnitD
-      T_P  = T(iP)  / UnitT
-      Ye_P = Ye(iP) / UnitY
-      Ym_P = Ym(iP) / UnitY
-      Yp_P = Ye_P + Ym_P
-
-      IF ( D_P < Eos_MinD ) THEN
-        P(iP) = Zero
-        E(iP) = Zero
-        S(iP) = Zero
-        CYCLE
-      ENDIF
-
-      Ye_over_Yp = Ye_P / Yp_P
-      Ym_over_Yp = Ym_P / Yp_P
-
-      iD  = Index1D_Log( D_P,  D_T  )
-      iT  = Index1D_Log( T_P,  T_T  )
-      iYp = Index1D_Lin( Yp_P, Yp_T )
-
-      iD  = MIN( MAX( 1, iD  ), SizeDs  - 1 )
-      iT  = MIN( MAX( 1, iT  ), SizeTs  - 1 )
-      iYp = MIN( MAX( 1, iYp ), SizeYps - 1 )
-
-      ! now calculate muon and electron contribution on that specific point
-      DO iL_T=1,2
-        DO iL_D=1,2
-          DO iL_Y=1,2
-
-            T_Cube  = T_T (iT +iL_T-1)
-            D_Cube  = D_T (iD +iL_D-1)
-            Ye_Cube = Yp_T(iYp+iL_Y-1) * Ye_over_Yp
-            Ym_Cube = Yp_T(iYp+iL_Y-1) * Ym_over_Yp
-
-            CALL GetPhotonLeptonGasEOS( &
-              D_Cube, T_Cube, Ye_Cube, Ym_Cube, &
-              HelmTableElectrons, HelmTableMuons, &
-              P_LeptPhot(iL_D,iL_T,iL_Y), &
-              E_LeptPhot(iL_D,iL_T,iL_Y), &
-              S_LeptPhot(iL_D,iL_T,iL_Y))
-
-          END DO
-        END DO
-      END DO
-
-      Ptot(:,:,:) = P_T(iD:iD+1,iT:iT+1,iYp:iYp+1)          + P_LeptPhot(:,:,:)
-      Etot(:,:,:) = 10.0_DP**E_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + E_LeptPhot(:,:,:)
-      Stot(:,:,:) = 10.0_DP**S_T(iD:iD+1,iT:iT+1,iYp:iYp+1) + S_LeptPhot(:,:,:)
-
-      CALL LogInterpolateSingleVariable_3D_Custom_Point &
-             ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
-             OS_P, LOG10(Ptot), P_P )
-
-      CALL LogInterpolateSingleVariable_3D_Custom_Point &
-             ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
-             OS_E, LOG10(Etot), E_P )
-
-      CALL LogInterpolateSingleVariable_3D_Custom_Point &
-             ( D_P, T_P, Yp_P, D_T(iD:iD+1), T_T(iT:iT+1), Yp_T(iYp:iYp+1), &
-             OS_S, LOG10(Stot), S_P )
-
-      P(iP) = P_P * UnitP
-      E(iP) = E_P * UnitE
-      S(iP) = S_P * UnitS
-
-    END DO
-
-#else
-
-#if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
-    !$OMP MAP( from: V )
-#elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR &
-    !$ACC COPYOUT( V )
+    !$ACC COPYIN( D, T, Ye, Ym ) COPYOUT( P, E, S )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO
 #endif
     DO iP = 1, nP
-      P(iP) = Zero
-      E(iP) = Zero
-      S(iP) = Zero
+      CALL ComputeTotalPES_TABLE_Scalar &
+             ( D(iP), T(iP), Ye(iP), Ym(iP), P(iP), E(iP), S(iP) )
     END DO
-
-#endif
 
   END SUBROUTINE ComputeTotalPES_TABLE_Vector
 
