@@ -501,17 +501,13 @@ CONTAINS
       TransportOpacity_Option = TransportOpacity_N
     END IF
 
+    CALL AllocateSourceAwareTransportOpacity &
+           ( iZ_B0_Input, iZ_E0_Input )
+
+    CALL StoreSourceAwareTransportOpacity &
+           ( iZ_B0_Input, iZ_E0_Input, nX, TransportOpacity_N )
+
     CALL SetSourceAwareLLFActive( PatchHasCollisions )
-
-    IF( PatchHasCollisions )THEN
-
-      CALL AllocateSourceAwareTransportOpacity &
-             ( iZ_B0_Input, iZ_E0_Input )
-
-      CALL StoreSourceAwareTransportOpacity &
-             ( iZ_B0_Input, iZ_E0_Input, nX, TransportOpacity_N )
-
-    END IF
 
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
@@ -1303,16 +1299,16 @@ CONTAINS
       END DO
 
 #if   defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(4) &
-    !$OMP PRIVATE( iN_X )
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP PRIVATE( iN_X, iNodeX )
 #elif defined(THORNADO_OACC  )
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(4) &
-    !$ACC PRIVATE( iN_X ) &
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC PRIVATE( iN_X, iNodeX ) &
     !$ACC PRESENT( uDR_Option, iX_B0, iX_E0, nX, &
     !$ACC          nIterations_Outer, nIterations_Inner )
 #elif defined(THORNADO_OMP   )
-    !$OMP PARALLEL DO COLLAPSE(4) &
-    !$OMP PRIVATE( iN_X )
+    !$OMP PARALLEL DO COLLAPSE(3) &
+    !$OMP PRIVATE( iN_X, iNodeX )
 #endif
       DO iX3 = iX_B0(3), iX_E0(3)
       DO iX2 = iX_B0(2), iX_E0(2)
