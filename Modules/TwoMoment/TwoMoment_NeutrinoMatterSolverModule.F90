@@ -1541,9 +1541,9 @@ CONTAINS
 #if defined(TWOMOMENT_ORDER_V)
     IF( ALLOCATED(NewtonRadiationIncrement) )THEN
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET EXIT DATA MAP(release:NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
+    !$OMP TARGET EXIT DATA MAP(release:NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
 #elif defined(THORNADO_OACC)
-      !$ACC EXIT DATA DELETE(NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
+    !$ACC EXIT DATA DELETE(NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
 #endif
       DEALLOCATE(NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
     END IF
@@ -1957,7 +1957,7 @@ CONTAINS
     !$ACC FIRSTPRIVATE( UseNNS, UseNES, UsePair, UseNuPair, UseBrem, &
     !$ACC               UseNMS, UseLFE, UseLFC, UseIMD ) &
     !$ACC PRESENT( TransportOpacity, Sigma_Iso, Chi_EmAb, Chi_NNS, &
-    !$ACC          Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, Chi_GL )
+    !$ACC          Chi_NES, Chi_Pair, Chi_NuPair, Chi_Brem, Chi_GL, Opacity_Mask )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) PRIVATE( iChiral )
 #endif
@@ -1967,46 +1967,53 @@ CONTAINS
 
       iChiral = nChirals - ( LeptonNumber(iS) + 1 ) / nChirals
 
-      TransportOpacity(iN_E,iS,iN_X) &
-        =   Sigma_Iso(iN_E,iChiral,iN_X) &
-          + Chi_EmAb  (iN_E,iS,iN_X)
+      TransportOpacity(iN_E,iS,iN_X) = Zero
 
-      IF( UseNNS ) &
+      IF( Opacity_Mask(iOp_Iso,iN_X) ) &
+        TransportOpacity(iN_E,iS,iN_X) = Sigma_Iso(iN_E,iChiral,iN_X)
+
+      IF(      Opacity_Mask(iOp_EmAb_Electron,iN_X) &
+          .OR. Opacity_Mask(iOp_EmAb_Muon,    iN_X) &
+          .OR. Opacity_Mask(iOp_ECTable,      iN_X) ) &
+        TransportOpacity(iN_E,iS,iN_X) &
+          = TransportOpacity(iN_E,iS,iN_X) + Chi_EmAb(iN_E,iS,iN_X)
+
+      IF( UseNNS .AND. Opacity_Mask(iOp_NNS,iN_X) ) &
         TransportOpacity(iN_E,iS,iN_X) &
           = TransportOpacity(iN_E,iS,iN_X) + Chi_NNS(iN_E,iS,iN_X)
 
-      IF( UseNES ) &
+      IF( UseNES .AND. Opacity_Mask(iOp_NES,iN_X) ) &
         TransportOpacity(iN_E,iS,iN_X) &
           = TransportOpacity(iN_E,iS,iN_X) + Chi_NES(iN_E,iS,iN_X)
 
-      IF( UsePair ) &
+      IF( UsePair .AND. Opacity_Mask(iOp_Pair,iN_X) ) &
         TransportOpacity(iN_E,iS,iN_X) &
           = TransportOpacity(iN_E,iS,iN_X) + Chi_Pair(iN_E,iS,iN_X)
 
-      IF( UseNuPair ) &
+      IF( UseNuPair .AND. Opacity_Mask(iOp_NuPair,iN_X) ) &
         TransportOpacity(iN_E,iS,iN_X) &
           = TransportOpacity(iN_E,iS,iN_X) + Chi_NuPair(iN_E,iS,iN_X)
 
-      IF( UseBrem ) &
+      IF( UseBrem .AND. Opacity_Mask(iOp_Brem,iN_X) ) &
         TransportOpacity(iN_E,iS,iN_X) &
           = TransportOpacity(iN_E,iS,iN_X) + Chi_Brem(iN_E,iS,iN_X)
 
-      IF( UseNMS ) &
+      IF( UseNMS .AND. Opacity_Mask(iOp_NMS,iN_X) ) &
         TransportOpacity(iN_E,iS,iN_X) &
           = TransportOpacity(iN_E,iS,iN_X) &
               + Chi_GL(iN_E,iS,iN_X,iGL_NMS)
 
-      IF( UseLFE ) &
+      IF( UseLFE .AND. Opacity_Mask(iOp_LFE,iN_X) ) &
         TransportOpacity(iN_E,iS,iN_X) &
           = TransportOpacity(iN_E,iS,iN_X) &
               + Chi_GL(iN_E,iS,iN_X,iGL_LFE)
 
-      IF( UseLFC ) &
+      IF( UseLFC .AND. Opacity_Mask(iOp_LFC,iN_X) ) &
         TransportOpacity(iN_E,iS,iN_X) &
           = TransportOpacity(iN_E,iS,iN_X) &
               + Chi_GL(iN_E,iS,iN_X,iGL_LFC)
 
-      IF( UseIMD ) &
+      IF( UseIMD .AND. Opacity_Mask(iOp_IMD,iN_X) ) &
         TransportOpacity(iN_E,iS,iN_X) &
           = TransportOpacity(iN_E,iS,iN_X) &
               + Chi_GL(iN_E,iS,iN_X,iGL_IMD)
@@ -3142,7 +3149,7 @@ CONTAINS
     INTEGER :: NF,K,M,NA,NX,NB,Limit,Ierr,Rank,P,Q,R,S,J,B,IX,Start,Count,Point,TraceUnit,IOS
     INTEGER :: MaskCode
     INTEGER, ALLOCATABLE, TARGET :: Indices(:),Active(:),BatchIterations(:),BatchQueries(:),BatchFailure(:)
-    INTEGER, ALLOCATABLE, TARGET :: QueryPack(:),QueryUnpack(:),LocalError(:)
+    INTEGER, ALLOCATABLE, TARGET :: QueryPack(:),QueryUnpack(:),LocalError(:),LocalIndex(:)
     INTEGER, ALLOCATABLE :: Codes(:),AllIndices(:)
     LOGICAL, INTENT(in) :: ComputeCollisionChecks
     LOGICAL :: Enabled(9),ElectronActive,MuonActive,RecordChecks
@@ -3178,9 +3185,9 @@ CONTAINS
       IF( SIZE(NewtonRadiationIncrement,1) /= nE_G .OR. SIZE(NewtonRadiationIncrement,2) /= nSpecies &
           .OR. SIZE(NewtonRadiationIncrement,3) /= nX_G )THEN
 #if defined(THORNADO_OMP_OL)
-        !$OMP TARGET EXIT DATA MAP(release:NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
+    !$OMP TARGET EXIT DATA MAP(release:NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
 #elif defined(THORNADO_OACC)
-        !$ACC EXIT DATA DELETE(NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
+    !$ACC EXIT DATA DELETE(NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
 #endif
         DEALLOCATE(NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
       END IF
@@ -3189,9 +3196,9 @@ CONTAINS
       ALLOCATE(NewtonRadiationIncrement(nE_G,nSpecies,nX_G,4),NewtonFluidIncrement(nX_G,nCF))
       ALLOCATE(AcceptedNewtonEmAbRate(nE_G,nSpecies,nX_G))
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET ENTER DATA MAP(alloc:NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
+    !$OMP TARGET ENTER DATA MAP(alloc:NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
 #elif defined(THORNADO_OACC)
-      !$ACC ENTER DATA CREATE(NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
+    !$ACC ENTER DATA CREATE(NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
 #endif
     END IF
     ALLOCATE(StageMask(nX_G),QueryMask(nX_G),QueryPack(nX_G),QueryUnpack(nX_G))
@@ -3350,12 +3357,12 @@ CONTAINS
         IF( RecordChecks )THEN
           ALLOCATE(BatchCheck(K,3,NB))
 #if defined(THORNADO_OMP_OL)
-          !$OMP TARGET ENTER DATA MAP(alloc:BatchCheck)
+    !$OMP TARGET ENTER DATA MAP(alloc:BatchCheck)
 #elif defined(THORNADO_OACC)
-          !$ACC ENTER DATA CREATE(BatchCheck)
+    !$ACC ENTER DATA CREATE(BatchCheck)
 #endif
         END IF
-        ALLOCATE(LocalD(NB),LocalT(NB),LocalYe(NB),LocalYm(NB),LocalE(NB),MuE(NB),MuM(NB),LocalError(NB))
+        ALLOCATE(LocalD(NB),LocalT(NB),LocalYe(NB),LocalYm(NB),LocalE(NB),MuE(NB),MuM(NB),LocalError(NB),LocalIndex(NB))
         ALLOCATE(LocalElectron(NB),LocalMuon(NB),LocalOpacityMask(nOp,NB))
         ALLOCATE(DBScatter(nE_G,nE_G,NB),DBPair(nE_G,nE_G,NB))
         Indices = AllIndices(Start:Start+NB-1)
@@ -3364,21 +3371,21 @@ CONTAINS
           FLUSH(TraceUnit)
         END IF
 #if defined(THORNADO_OMP_OL)
-        !$OMP TARGET ENTER DATA MAP(to:Indices,Active) &
-        !$OMP MAP(alloc:D0,I0,V0,Fluid0,W,U,Roots,BatchX,BatchIncrement,BatchIterations,BatchQueries, &
-        !$OMP   BatchRadiationError,BatchConservationError,BatchEmAb,&
-        !$OMP   LocalD,LocalT,LocalYe,LocalYm,LocalE,MuE,MuM,LocalError, &
-        !$OMP   LocalElectron,LocalMuon,LocalOpacityMask,DBScatter,DBPair)
-        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(IX,S,Q,J)
+    !$OMP TARGET ENTER DATA MAP(to:Indices,Active) &
+    !$OMP MAP(alloc:D0,I0,V0,Fluid0,W,U,Roots,BatchX,BatchIncrement,BatchIterations,BatchQueries, &
+    !$OMP   BatchRadiationError,BatchConservationError,BatchEmAb,&
+    !$OMP   LocalD,LocalT,LocalYe,LocalYm,LocalE,MuE,MuM,LocalError,LocalIndex, &
+    !$OMP   LocalElectron,LocalMuon,LocalOpacityMask,DBScatter,DBPair)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(IX,S,Q,J)
 #elif defined(THORNADO_OACC)
-        !$ACC ENTER DATA COPYIN(Indices,Active)
-        !$ACC ENTER DATA CREATE(D0,I0,V0,Fluid0,W,U,Roots,BatchX,BatchIncrement,BatchIterations,BatchQueries, &
-        !$ACC   BatchRadiationError,BatchConservationError,BatchEmAb,&
-        !$ACC   LocalD,LocalT,LocalYe,LocalYm,LocalE,MuE,MuM,LocalError, &
-        !$ACC   LocalElectron,LocalMuon,LocalOpacityMask,DBScatter,DBPair)
-        !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(IX,S,Q,J)
+    !$ACC ENTER DATA COPYIN(Indices,Active)
+    !$ACC ENTER DATA CREATE(D0,I0,V0,Fluid0,W,U,Roots,BatchX,BatchIncrement,BatchIterations,BatchQueries, &
+    !$ACC   BatchRadiationError,BatchConservationError,BatchEmAb,&
+    !$ACC   LocalD,LocalT,LocalYe,LocalYm,LocalE,MuE,MuM,LocalError,LocalIndex, &
+    !$ACC   LocalElectron,LocalMuon,LocalOpacityMask,DBScatter,DBPair)
+    !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(IX,S,Q,J)
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO PRIVATE(IX,S,Q,J)
+    !$OMP PARALLEL DO PRIVATE(IX,S,Q,J)
 #endif
         DO B = 1, NB
           IX = Indices(B)
@@ -3404,11 +3411,11 @@ CONTAINS
           CALL Fail('nonlinear batch failure',Indices(B),BatchFailure(B))
         END IF
 #if defined(THORNADO_OMP_OL)
-        !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(IX,J,Q,S,TF,DV,NewD,NewI)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(IX,J,Q,S,TF,DV,NewD,NewI)
 #elif defined(THORNADO_OACC)
-        !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(IX,J,Q,S,TF,DV,NewD,NewI)
+    !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(IX,J,Q,S,TF,DV,NewD,NewI)
 #elif defined(THORNADO_OMP)
-        !$OMP PARALLEL DO PRIVATE(IX,J,Q,S,TF,DV,NewD,NewI)
+    !$OMP PARALLEL DO PRIVATE(IX,J,Q,S,TF,DV,NewD,NewI)
 #endif
         DO B = 1, NB
           IX = Indices(B)
@@ -3478,29 +3485,29 @@ CONTAINS
           END DO
         END DO
 #if defined(THORNADO_OMP_OL)
-        !$OMP TARGET EXIT DATA MAP(release:Indices,Active,D0,I0,V0,Fluid0,W,U,Roots,BatchX,BatchIncrement, &
-        !$OMP   BatchIterations,BatchQueries,BatchRadiationError,BatchConservationError,BatchEmAb,&
-        !$OMP   LocalD,LocalT,LocalYe,LocalYm, &
-        !$OMP   LocalE,MuE,MuM,LocalError,LocalElectron,LocalMuon,LocalOpacityMask,&
-        !$OMP   DBScatter,DBPair)
+    !$OMP TARGET EXIT DATA MAP(release:Indices,Active,D0,I0,V0,Fluid0,W,U,Roots,BatchX,BatchIncrement, &
+    !$OMP   BatchIterations,BatchQueries,BatchRadiationError,BatchConservationError,BatchEmAb,&
+    !$OMP   LocalD,LocalT,LocalYe,LocalYm, &
+    !$OMP   LocalE,MuE,MuM,LocalError,LocalIndex,LocalElectron,LocalMuon,LocalOpacityMask,&
+    !$OMP   DBScatter,DBPair)
 #elif defined(THORNADO_OACC)
-        !$ACC EXIT DATA DELETE(Indices,Active,D0,I0,V0,Fluid0,W,U,Roots,BatchX,BatchIncrement, &
-        !$ACC   BatchIterations,BatchQueries,BatchRadiationError,BatchConservationError,BatchEmAb,&
-        !$ACC   LocalD,LocalT,LocalYe,LocalYm, &
-        !$ACC   LocalE,MuE,MuM,LocalError,LocalElectron,LocalMuon,LocalOpacityMask,&
-        !$ACC   DBScatter,DBPair)
+    !$ACC EXIT DATA DELETE(Indices,Active,D0,I0,V0,Fluid0,W,U,Roots,BatchX,BatchIncrement, &
+    !$ACC   BatchIterations,BatchQueries,BatchRadiationError,BatchConservationError,BatchEmAb,&
+    !$ACC   LocalD,LocalT,LocalYe,LocalYm, &
+    !$ACC   LocalE,MuE,MuM,LocalError,LocalIndex,LocalElectron,LocalMuon,LocalOpacityMask,&
+    !$ACC   DBScatter,DBPair)
 #endif
         DEALLOCATE(Indices,D0,I0,V0,Fluid0,W,U,Roots,BatchX,BatchIncrement,BatchIterations,BatchQueries,BatchFailure)
         DEALLOCATE(BatchRadiationError,BatchConservationError,BatchEmAb)
         IF( ALLOCATED(BatchCheck) )THEN
 #if defined(THORNADO_OMP_OL)
-          !$OMP TARGET EXIT DATA MAP(release:BatchCheck)
+    !$OMP TARGET EXIT DATA MAP(release:BatchCheck)
 #elif defined(THORNADO_OACC)
-          !$ACC EXIT DATA DELETE(BatchCheck)
+    !$ACC EXIT DATA DELETE(BatchCheck)
 #endif
           DEALLOCATE(BatchCheck)
         END IF
-        DEALLOCATE(LocalD,LocalT,LocalYe,LocalYm,LocalE,MuE,MuM,LocalError)
+        DEALLOCATE(LocalD,LocalT,LocalYe,LocalYm,LocalE,MuE,MuM,LocalError,LocalIndex)
         DEALLOCATE(LocalElectron,LocalMuon,LocalOpacityMask,DBScatter,DBPair)
       END DO
       WHERE(Codes == MaskCode) Codes = 0
@@ -3538,111 +3545,128 @@ CONTAINS
       TYPE(RetainedReal), INTENT(in) :: Transfer(:,:)
       REAL(DP), INTENT(out) :: KT(:),Mu(:,:),Susceptibility(:),Chi(:,:),Sigma(:,:),Gain(:,:),Loss(:,:)
       INTEGER, INTENT(out) :: Error(:)
-      INTEGER :: B,IX,Q,S,J,P,L,R,LO,HI,C,Count,Ierr
+      INTEGER :: B,IX,Q,S,J,P,L,R,LO,HI,C,Count,RequestedCount,Ierr
       REAL(DP) :: G,B0,V2,Fwd,Back,Diag,ProbeY,PairSusceptibility
       TYPE(RetainedReal) :: DV(3),Energy
 
       CALL TimersStart(Timer_Collisions_MatterFromRadiation)
+      RequestedCount=0
+      DO B=1,SIZE(Points)
+        IF( .NOT. Requested(B) ) CYCLE
+        RequestedCount=RequestedCount+1
+        LocalIndex(RequestedCount)=B
+      END DO
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(IX,DV,Energy)
+    !$OMP TARGET UPDATE TO(LocalIndex)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(IX,DV,Energy)
+    !$ACC UPDATE DEVICE(LocalIndex)
+    !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO PRIVATE(IX,DV,Energy)
+    !$OMP PARALLEL DO
 #endif
       DO B = 1, SIZE(Points)
+        Error(B)=0
+      END DO
+      IF( RequestedCount==0 )THEN
+        CALL TimersStop(Timer_Collisions_MatterFromRadiation)
+        RETURN
+      END IF
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(B,IX,DV,Energy)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(B,IX,DV,Energy)
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO PRIVATE(B,IX,DV,Energy)
+#endif
+      DO C=1,RequestedCount
+        B=LocalIndex(C)
         IX = Points(B)
-        LocalD(B) = D(IX)
-        LocalT(B) = WorkT(IX)
-        LocalYe(B) = OldYe(IX)
-        LocalYm(B) = OldYm(IX)
-        LocalE(B) = OldE(IX)
-        LocalError(B) = 0
-        Error(B) = 0
-        LocalElectron(B) = Opacity_Mask(iOp_EmAb_Electron,IX) .OR. Opacity_Mask(iOp_ECTable,IX)
-        LocalMuon(B) = Opacity_Mask(iOp_EmAb_Muon,IX)
-        LocalOpacityMask(:,B) = Opacity_Mask(:,IX)
-        IF( .NOT. Requested(B) ) CYCLE
+        LocalD(C) = D(IX)
+        LocalT(C) = WorkT(IX)
+        LocalYe(C) = OldYe(IX)
+        LocalYm(C) = OldYm(IX)
+        LocalE(C) = OldE(IX)
+        LocalError(C) = 0
+        LocalElectron(C) = Opacity_Mask(iOp_EmAb_Electron,IX) .OR. Opacity_Mask(iOp_ECTable,IX)
+        LocalMuon(C) = Opacity_Mask(iOp_EmAb_Muon,IX)
         DV = -Transfer(NF+2:K,B)
         Energy = OldE(IX)-Transfer(NF+1,B)-OldV(1,IX)*DV(1)-OldV(2,IX)*DV(2)-OldV(3,IX)*DV(3) &
           -0.5_DP*(DV(1)*DV(1)+DV(2)*DV(2)+DV(3)*DV(3))
-        LocalE(B) = RetainedValue(Energy)
-        LocalYe(B) = RetainedValue(OldYe(IX)-Transfer(1,B))
-        IF( NF >= 2 ) LocalYm(B) = RetainedValue(OldYm(IX)-Transfer(2,B))
-        IF( .NOT. IEEE_IS_FINITE(LocalE(B)) .OR. LocalYe(B) <= Zero .OR. LocalYe(B) >= One &
-            .OR. ABS(LocalYm(B)) >= One )THEN
-          LocalError(B) = 1
-          LocalYe(B) = OldYe(IX)
-          LocalYm(B) = OldYm(IX)
-          LocalE(B) = OldE(IX)
+        LocalE(C) = RetainedValue(Energy)
+        LocalYe(C) = RetainedValue(OldYe(IX)-Transfer(1,B))
+        IF( NF >= 2 ) LocalYm(C) = RetainedValue(OldYm(IX)-Transfer(2,B))
+        IF( .NOT. IEEE_IS_FINITE(LocalE(C)) .OR. LocalYe(C) <= Zero .OR. LocalYe(C) >= One &
+            .OR. ABS(LocalYm(C)) >= One )THEN
+          Error(B) = 1
+          LocalYe(C) = OldYe(IX)
+          LocalYm(C) = OldYm(IX)
+          LocalE(C) = OldE(IX)
         END IF
       END DO
       CALL ComputeTemperatureFromSpecificInternalEnergy_TABLE &
-        (LocalD,LocalE,LocalYe,LocalYm,LocalT,Error_Option=Error,DisplayErrors_Option=.FALSE.)
+        (LocalD(1:RequestedCount),LocalE(1:RequestedCount),LocalYe(1:RequestedCount), &
+         LocalYm(1:RequestedCount),LocalT(1:RequestedCount), &
+         Error_Option=LocalError(1:RequestedCount),DisplayErrors_Option=.FALSE.)
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(B,IX)
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR
+    !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(B,IX)
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO
+    !$OMP PARALLEL DO PRIVATE(B,IX)
 #endif
-      DO B = 1, SIZE(Points)
-        Error(B) = MAX(Error(B),LocalError(B))
-      END DO
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET UPDATE FROM(Error)
-#elif defined(THORNADO_OACC)
-      !$ACC UPDATE SELF(Error)
-#endif
-#if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(IX)
-#elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(IX)
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO PRIVATE(IX)
-#endif
-      DO B = 1, SIZE(Points)
+      DO C=1,RequestedCount
+        B=LocalIndex(C)
+        Error(B) = MAX(Error(B),LocalError(C))
         IF( Error(B) == 0 ) CYCLE
         IX = Points(B)
-        LocalT(B) = T(IX)
-        LocalYe(B) = OldYe(IX)
-        LocalYm(B) = OldYm(IX)
+        LocalT(C) = T(IX)
+        LocalYe(C) = OldYe(IX)
+        LocalYm(C) = OldYm(IX)
       END DO
-      CALL ComputeElectronNeutrinoChemicalPotential_TABLE &
-        (LocalD,LocalT,LocalYe,LocalYm,MuE,ChargedCurrentMask_Option=LocalElectron)
-      CALL ComputeMuonNeutrinoChemicalPotential_TABLE &
-        (LocalD,LocalT,LocalYe,LocalYm,MuM,ChargedCurrentMask_Option=LocalMuon)
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(ProbeY,PairSusceptibility,Ierr,S)
+    !$OMP TARGET UPDATE FROM(Error)
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(ProbeY,PairSusceptibility,Ierr,S)
-#elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO PRIVATE(ProbeY,PairSusceptibility,Ierr,S)
+    !$ACC UPDATE SELF(Error)
 #endif
-      DO B = 1, SIZE(Points)
-        IF( .NOT. Requested(B) .OR. Error(B) /= 0 ) CYCLE
-        KT(B) = BoltzmannConstant*LocalT(B)
+      CALL ComputeElectronNeutrinoChemicalPotential_TABLE &
+        (LocalD(1:RequestedCount),LocalT(1:RequestedCount),LocalYe(1:RequestedCount),LocalYm(1:RequestedCount), &
+         MuE(1:RequestedCount),ChargedCurrentMask_Option=LocalElectron(1:RequestedCount))
+      CALL ComputeMuonNeutrinoChemicalPotential_TABLE &
+        (LocalD(1:RequestedCount),LocalT(1:RequestedCount),LocalYe(1:RequestedCount),LocalYm(1:RequestedCount), &
+         MuM(1:RequestedCount),ChargedCurrentMask_Option=LocalMuon(1:RequestedCount))
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(B,ProbeY,PairSusceptibility,Ierr,S)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(B,ProbeY,PairSusceptibility,Ierr,S)
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO PRIVATE(B,ProbeY,PairSusceptibility,Ierr,S)
+#endif
+      DO C=1,RequestedCount
+        B=LocalIndex(C)
+        IF( Error(B) /= 0 ) CYCLE
+        KT(B) = BoltzmannConstant*LocalT(C)
         Susceptibility(B) = Zero
-        IF( LocalMuon(B) )THEN
-          CALL ComputeMuonFractionFromDegeneracy_TABLE(LocalD(B),LocalT(B),LocalYe(B),Zero, &
+        IF( LocalMuon(C) )THEN
+          CALL ComputeMuonFractionFromDegeneracy_TABLE(LocalD(C),LocalT(C),LocalYe(C),Zero, &
             ProbeY,PairSusceptibility,Ierr)
           IF( Ierr == 0 ) Susceptibility(B) = PairSusceptibility
         END IF
         DO S = 1, nSpecies
           Mu(S,B) = Zero
-          IF( S <= 2 ) Mu(S,B) = LeptonNumber(S)*MuE(B)
-          IF( S == 3 .OR. S == 4 ) Mu(S,B) = LeptonNumber(S)*MuM(B)
+          IF( S <= 2 ) Mu(S,B) = LeptonNumber(S)*MuE(C)
+          IF( S == 3 .OR. S == 4 ) Mu(S,B) = LeptonNumber(S)*MuM(C)
         END DO
       END DO
       CALL TimersStop(Timer_Collisions_MatterFromRadiation)
       IF( Mode == 2 ) RETURN
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR
+    !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO
+    !$OMP PARALLEL DO
 #endif
       DO IX = 1, nX_G
         QueryMask(IX) = .FALSE.
@@ -3655,45 +3679,49 @@ CONTAINS
         QueryPack(Points(B)) = Count
       END DO
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET UPDATE TO(QueryUnpack,QueryPack)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(IX)
+    !$OMP TARGET UPDATE TO(QueryUnpack,QueryPack)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(B,IX)
 #elif defined(THORNADO_OACC)
-      !$ACC UPDATE DEVICE(QueryUnpack,QueryPack)
-      !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(IX)
+    !$ACC UPDATE DEVICE(QueryUnpack,QueryPack)
+    !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(B,IX)
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO PRIVATE(IX)
+    !$OMP PARALLEL DO PRIVATE(B,IX)
 #endif
-      DO B = 1, SIZE(Points)
-        IF( .NOT. Requested(B) .OR. Error(B) /= 0 ) CYCLE
+      DO C=1,RequestedCount
+        B=LocalIndex(C)
+        IF( Error(B) /= 0 ) CYCLE
         IX = Points(B)
         QueryMask(IX) = .TRUE.
-        WorkT(IX) = LocalT(B)
-        WorkYe(IX) = LocalYe(B)
-        WorkYm(IX) = LocalYm(B)
-        WorkE(IX) = LocalE(B)
+        WorkT(IX) = LocalT(C)
+        WorkYe(IX) = LocalYe(C)
+        WorkYm(IX) = LocalYm(C)
+        WorkE(IX) = LocalE(C)
       END DO
       IF( Count == 0 ) RETURN
       CALL TimersStart(Timer_Collisions_ComputeOpacity)
       CALL ComputeOpacities_Packed(D,WorkT,WorkYe,WorkYm,WorkSqrtG,QueryMask,Count,QueryPack,QueryUnpack,nX_G, &
         Opacity_Mask_Input=Opacity_Mask)
       CALL TimersStop(Timer_Collisions_ComputeOpacity)
-      CALL ComputeDetailedBalanceFactors(1,nE_G,1,SIZE(Points),E_N,LocalT,.TRUE.,.TRUE.,DBScatter,DBPair)
+      CALL ComputeDetailedBalanceFactors(1,nE_G,1,RequestedCount,E_N,LocalT(1:RequestedCount), &
+        ANY(Enabled(1:2)) .OR. Enabled(6),ANY(Enabled(3:5)), &
+        DBScatter(:,:,1:RequestedCount),DBPair(:,:,1:RequestedCount))
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(IX,S,Q,R,J,P,L,C,Fwd,Back,Diag)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO PRIVATE(B,IX,S,Q,R,J,P,L,LO,Fwd,Back,Diag)
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(IX,S,Q,R,J,P,L,C,Fwd,Back,Diag)
+    !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(B,IX,S,Q,R,J,P,L,LO,Fwd,Back,Diag)
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO PRIVATE(IX,S,Q,R,J,P,L,C,Fwd,Back,Diag)
+    !$OMP PARALLEL DO PRIVATE(B,IX,S,Q,R,J,P,L,LO,Fwd,Back,Diag)
 #endif
-      DO B = 1, SIZE(Points)
-        IF( .NOT. Requested(B) .OR. Error(B) /= 0 ) CYCLE
+      DO C=1,RequestedCount
+        B=LocalIndex(C)
+        IF( Error(B) /= 0 ) CYCLE
         IX = Points(B)
         DO S = 1, nSpecies
         DO R = 1, nE_G
           J = (S-1)*nE_G+R
-          C = nChirals-(LeptonNumber(S)+1)/nChirals
+          LO = nChirals-(LeptonNumber(S)+1)/nChirals
           Chi(J,B) = Chi_EmAb(R,S,IX)
-          Sigma(J,B) = Sigma_Iso(R,C,IX)
+          Sigma(J,B) = Sigma_Iso(R,LO,IX)
           ! Diagonal self-scattering cancels identically in C0, but damps I.
           DO P = 1, 6
             IF( .NOT. Enabled(P) .OR. (P >= 3 .AND. P <= 5) ) CYCLE
@@ -3709,9 +3737,9 @@ CONTAINS
           Q = QB(L)
           CALL ComputeCollisionKernel_OrderV_Point(P,S,R,Q,IX,KernelScale,Fwd,Back)
           IF( P <= 2 .OR. P == 6 )THEN
-            Fwd = Back*DBScatter(Q,R,B)
+            Fwd = Back*DBScatter(Q,R,C)
           ELSE IF( P <= 5 )THEN
-            Fwd = Back*DBPair(Q,R,B)
+            Fwd = Back*DBPair(Q,R,C)
           END IF
           Gain(L,B) = Fwd*W2_N(Q)
           Loss(L,B) = Back*W2_N(Q)
@@ -4648,11 +4676,11 @@ CONTAINS
     ELSE
 
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC)
-      !$ACC PARALLEL LOOP GANG VECTOR
+    !$ACC PARALLEL LOOP GANG VECTOR
 #elif defined(THORNADO_OMP)
-      !$OMP PARALLEL DO
+    !$OMP PARALLEL DO
 #endif
       DO iX = 1, nX_G
         T_Opacity(iX) = T(iX)
@@ -6444,9 +6472,9 @@ CONTAINS
         CALL MPI_ABORT( MPI_COMM_WORLD, -1, ierr )
       END IF
 #if defined(THORNADO_OMP_OL)
-      !$OMP TARGET UPDATE TO(AcceptedNewtonEmAbRate)
+    !$OMP TARGET UPDATE TO(AcceptedNewtonEmAbRate)
 #elif defined(THORNADO_OACC)
-      !$ACC UPDATE DEVICE(AcceptedNewtonEmAbRate)
+    !$ACC UPDATE DEVICE(AcceptedNewtonEmAbRate)
 #endif
     END IF
 
@@ -9499,20 +9527,20 @@ CONTAINS
     !$OMP   Inu_u_1_old, Inu_u_2_old, Inu_u_3_old, &
     !$OMP   V_u_1_old, V_u_2_old, V_u_3_old, Ym_old, Opacity_Mask )
     IF( CheckOpacity )THEN
-      !$OMP TARGET UPDATE FROM( Dnu_0, Chi_EmAb )
+    !$OMP TARGET UPDATE FROM( Dnu_0, Chi_EmAb )
     END IF
     IF( CheckRates )THEN
-      !$OMP TARGET UPDATE FROM &
-      !$OMP ( R_NNS, R_NES, R_Pair, R_NuPair, R_Brem )
+    !$OMP TARGET UPDATE FROM &
+    !$OMP ( R_NNS, R_NES, R_Pair, R_NuPair, R_Brem )
     END IF
     IF( PRESENT( Fm_Option ) )THEN
-      !$OMP TARGET UPDATE FROM( Fm_Option )
+    !$OMP TARGET UPDATE FROM( Fm_Option )
     END IF
     IF( PRESENT( Gm_Option ) )THEN
-      !$OMP TARGET UPDATE FROM( Gm_Option )
+    !$OMP TARGET UPDATE FROM( Gm_Option )
     END IF
     IF( PRESENT( Error_Option ) )THEN
-      !$OMP TARGET UPDATE FROM( Error_Option )
+    !$OMP TARGET UPDATE FROM( Error_Option )
     END IF
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE HOST &
@@ -9522,20 +9550,20 @@ CONTAINS
     !$ACC   Inu_u_1_old, Inu_u_2_old, Inu_u_3_old, &
     !$ACC   V_u_1_old, V_u_2_old, V_u_3_old, Ym_old, Opacity_Mask )
     IF( CheckOpacity )THEN
-      !$ACC UPDATE HOST( Dnu_0, Chi_EmAb )
+    !$ACC UPDATE HOST( Dnu_0, Chi_EmAb )
     END IF
     IF( CheckRates )THEN
-      !$ACC UPDATE HOST &
-      !$ACC ( R_NNS, R_NES, R_Pair, R_NuPair, R_Brem )
+    !$ACC UPDATE HOST &
+    !$ACC ( R_NNS, R_NES, R_Pair, R_NuPair, R_Brem )
     END IF
     IF( PRESENT( Fm_Option ) )THEN
-      !$ACC UPDATE HOST( Fm_Option )
+    !$ACC UPDATE HOST( Fm_Option )
     END IF
     IF( PRESENT( Gm_Option ) )THEN
-      !$ACC UPDATE HOST( Gm_Option )
+    !$ACC UPDATE HOST( Gm_Option )
     END IF
     IF( PRESENT( Error_Option ) )THEN
-      !$ACC UPDATE HOST( Error_Option )
+    !$ACC UPDATE HOST( Error_Option )
     END IF
 #endif
 
