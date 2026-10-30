@@ -1,5 +1,7 @@
 MODULE NeutrinoLeptonInteractionsModule
 
+  USE mpi, ONLY: MPI_COMM_WORLD, MPI_COMM_RANK, MPI_INITIALIZED
+
   USE KindModule, ONLY: DP, Zero, One, FourPi
   USE UnitsModule, ONLY: BoltzmannConstant, Centimeter, MeV, PlanckConstant, SpeedOfLight
   USE EquationOfStateModule_TABLE, ONLY: &
@@ -220,7 +222,8 @@ CONTAINS
     INTEGER,  INTENT(in) :: nTheta
 
 #ifdef MICROPHYSICS_WEAKLIB
-    LOGICAL :: ConfigurationChanged
+    LOGICAL :: ConfigurationChanged, MPIInitialized
+    INTEGER :: iRank, iErr
 
     ConfigurationChanged = GeneralKernelWorkspaceInitialized
     IF( GeneralKernelWorkspaceInitialized )THEN
@@ -242,10 +245,14 @@ CONTAINS
       ALLOCATE( GeneralKernelEnergyGrid(SIZE(E)) )
       GeneralKernelEnergyGrid = E
       GeneralKernelQuadratureOrder = nTheta
+      iRank = 0
+      CALL MPI_INITIALIZED( MPIInitialized, iErr )
+      IF( MPIInitialized ) CALL MPI_COMM_RANK( MPI_COMM_WORLD, iRank, iErr )
       CALL InitGeneralScatteringKernels &
              ( E / MeV, E / MeV, SIZE(E), SIZE(E), nTheta, &
                iProcessMin_Option = iProcessMin, &
-               iProcessMax_Option = iProcessMax )
+               iProcessMax_Option = iProcessMax, &
+               Verbose_Option = iRank == 0 )
       GeneralKernelWorkspaceInitialized = .TRUE.
     END IF
 #endif
