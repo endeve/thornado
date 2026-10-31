@@ -122,7 +122,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     EddingtonFactor
 #if defined(TWOMOMENT_ORDER_V)
   USE TwoMoment_RetainedArithmeticModule
-  USE TwoMoment_NewtonSolverModule_OrderV, ONLY: SolveNeutrinoMatterCoupling_Newton_OrderV_Batch
+  USE TwoMoment_NewtonSolverModule_OrderV, ONLY: SolveNeutrinoMatterCoupling_Newton_OrderV_Batch, &
+    FinalizeNewtonSolverWorkspace
 #endif
   USE, INTRINSIC :: IEEE_ARITHMETIC, ONLY: IEEE_IS_FINITE
   IMPLICIT NONE
@@ -1539,6 +1540,7 @@ CONTAINS
     CALL FinalizeNeutrinoLeptonInteractions
 
 #if defined(TWOMOMENT_ORDER_V)
+    CALL FinalizeNewtonSolverWorkspace
     IF( ALLOCATED(NewtonRadiationIncrement) )THEN
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA MAP(release:NewtonRadiationIncrement,NewtonFluidIncrement,AcceptedNewtonEmAbRate)
